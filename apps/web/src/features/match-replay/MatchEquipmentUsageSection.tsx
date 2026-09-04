@@ -6,6 +6,17 @@
  * « qui a posé six murs » en regardant six instants séparés de trois minutes. Cette section les
  * COMPTE — et c'est tout ce qu'elle ajoute : aucune donnée nouvelle, aucun appel de plus.
  *
+ * DEUX VUES, PLUS UN TABLEAU (2026-09-03, retours utilisateur sur l'onglet Chronologie). Le
+ * tableau à deux niveaux d'en-tête donnait la bonne mesure dans la mauvaise forme : une grille
+ * de chiffres où l'œil ne trouve ni le geste dominant ni le camp qui s'en est servi. À sa place,
+ * dans la même carte :
+ *   1. « Nombre de gestes par joueur » — la grille partagée `components/charts/ValueGrid` :
+ *      lignes = joueurs dans l'ordre du roster, camp par camp, filet entre les deux camps ;
+ *      colonnes = grandeurs, CHACUNE AVEC SON ÉCHELLE (un mur se compare à un mur) ;
+ *   2. « Part de chaque équipe, geste par geste » — une barre 100 % par famille de geste, le
+ *      compte brut ET le pourcentage écrits dans le segment.
+ * Les colonnes restent DÉCIDÉES PAR LA DONNÉE (`usageColumnGroups`) : aucune liste en dur.
+ *
  * ELLE VIT DANS `match-replay/` ET NON DANS `match-view/`, à la différence de la courbe de score
  * qui la précède dans l'onglet. La raison est le VOCABULAIRE : chaque libellé qu'elle écrit —
  * familles de pose, familles d'état actif, types de grenade, socles de bonus — appartient au
@@ -21,7 +32,9 @@
  *
  * CE QUE L'ÉCRAN DIT DE SA PROPRE MESURE, et il doit le dire :
  *   - les états actifs (camouflage, surbouclier) sont un PROXY — le film mesure que l'effet
- *     court, pas d'où il vient. La réserve est en infobulle d'en-tête, pas dans un commentaire ;
+ *     court, pas d'où il vient. La réserve est en infobulle, portée par le NOM DE LA FAMILLE
+ *     dans la vue 2 (une famille y a exactement une ligne, donc exactement un endroit où sa
+ *     réserve se lit) ;
  *   - les socles de bonus vidés sont ANONYMES par mesure : une ligne au niveau du MATCH, jamais
  *     une colonne de joueur ;
  *   - répulseur et propulseur n'ont aucune colonne, et une phrase dit pourquoi — mais pas pour
@@ -31,23 +44,33 @@
  *     colonne : décision utilisateur — le geste dure une demi-seconde, il se lit sur la carte
  *     du rejeu (le dash du pion), pas dans un compte de tableau.
  *
- * Aucun calcul ici : tout vient de `equipmentUsageLogic` (les mesures) et
- * `equipmentUsageColumns` (les colonnes et leurs noms). Gabarit structurel :
- * `match-view/MatchObjectivesSection.tsx` — mêmes classes de tableau, mêmes tokens.
+ * COULEURS. Les familles de geste prennent la table d'encres de `equipmentUsageChart` (jetons
+ * sémantiques, jamais un hex) ; les camps prennent `teamTokenCssVar` — les jetons `team-ally` /
+ * `team-enemy` que les réglages d'accessibilité surchargent, et NON la cascade d'identité de
+ * `teamColor.ts` (cf. l'en-tête de `match-view/teamSeriesColor.ts` pour la frontière).
+ *
+ * Aucun calcul ici : tout vient de `equipmentUsageLogic` (les mesures),
+ * `equipmentUsageColumns` (les colonnes et leurs noms) et `equipmentUsageChart` (la projection).
  */
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 
+import { ChartLegend } from '@/components/charts/ChartLegend'
+import { ValueGrid } from '@/components/charts/ValueGrid'
+import { SectionCard } from '@/components/ui/section-card'
+import { Tooltip } from '@/components/ui/tooltip'
+import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 
-import { equipmentFamilyLabel, usageColumnGroups, type UsageColumn } from './equipmentUsageColumns'
 import {
-  buildEquipmentUsage,
-  tallyTotal,
-  type EquipmentUsage,
-  type EquipmentUsageTeam,
-} from './equipmentUsageLogic'
+  buildUsageGrid,
+  buildUsageShares,
+  usageGroupColor,
+  type UsageShareRow,
+} from './equipmentUsageChart'
+import { equipmentFamilyLabel, usageColumnGroups } from './equipmentUsageColumns'
+import { buildEquipmentUsage, tallyTotal, type EquipmentUsage } from './equipmentUsageLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplayText } from './i18nContract'
 import { useMatchReplay } from './queries'
@@ -76,125 +99,145 @@ export function MatchEquipmentUsageSection({
     () => (data && usage ? usageColumnGroups(usage, data, t, locale) : []),
     [data, usage, t, locale],
   )
-  const leaves = useMemo(() => groups.flatMap((g) => g.columns), [groups])
-  const meXUID = useMemo(() => board.find((r) => r.is_me)?.xuid ?? null, [board])
+  const meRow = useMemo(() => board.find((r) => r.is_me), [board])
+  const meSide = meRow?.team_side ?? null
+
+  const teamLabel = useCallback(
+    (side: string | null) =>
+      resolveTeamLabel(
+        side ? board.filter((r) => (r.team_side ?? '') === side) : [],
+        side,
+        t,
+      ),
+    [board, t],
+  )
+  // « Allié » = du côté du joueur de la page. Sans `is_me` au tableau des scores, ou pour un
+  // joueur que le film a vu vivre sans ligne de scoreboard, le camp est INCONNU (null) : encre
+  // neutre, jamais l'une des deux couleurs d'équipe (même règle que `ReplayTeamHeader`).
+  const teamAccent = useCallback(
+    (side: string | null) =>
+      teamTokenCssVar(side == null || meSide == null ? null : side === meSide),
+    [meSide],
+  )
+
+  const grid = useMemo(
+    () =>
+      buildUsageGrid({
+        teams: usage?.byTeam ?? [],
+        groups,
+        meXUID: meRow?.xuid ?? null,
+        teamLabel,
+        teamAccent,
+        tipFmt: t.equipmentUsage.gridTipFmt,
+      }),
+    [usage, groups, meRow, teamLabel, teamAccent, t],
+  )
+  const shares = useMemo(
+    () => buildUsageShares({ teams: usage?.byTeam ?? [], groups, teamLabel, teamAccent }),
+    [usage, groups, teamLabel, teamAccent],
+  )
 
   // Double porte : pas d'artefact, ou rien de mesuré -> rien du tout.
   if (!usage?.hasData) return null
 
   return (
-    <section className="rounded-lg border-2 border-border" aria-label={t.equipmentUsage.title}>
-      <h3 className="px-3 py-2 text-sm font-bold uppercase tracking-wider text-foreground">
-        {t.equipmentUsage.title}
-      </h3>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-3xs">
-          <thead>
-            <tr className="text-muted-foreground">
-              <th rowSpan={2} className="border border-border border-b-2 px-2 py-1 text-left">
-                {t.equipmentUsage.colPlayer}
-              </th>
-              {groups.map((g) => (
-                <th
-                  key={g.key}
-                  colSpan={g.columns.length}
-                  className="border border-border px-2 py-1 text-center font-semibold"
-                >
-                  <HeaderLabelTooltip text={g.hint} focusable>
-                    <span>{g.label}</span>
-                  </HeaderLabelTooltip>
-                </th>
-              ))}
-            </tr>
-            <tr className="text-muted-foreground">
-              {leaves.map((c) => (
-                <th key={c.key} className="border border-border border-b-2 px-2 py-1 text-right">
-                  {c.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          {usage.byTeam.map((team) => (
-            <UsageTeamBody
-              key={team.side ?? 'sans-equipe'}
-              team={team}
-              board={board}
-              leaves={leaves}
-              meXUID={meXUID}
-              t={t}
-            />
-          ))}
-        </table>
+    <SectionCard
+      title={t.equipmentUsage.title}
+      label={t.equipmentUsage.title}
+      footer={<UsageFootnotes usage={usage} t={t} />}
+    >
+      <div className="space-y-5 px-3 pb-3 pt-3">
+        <section aria-label={t.equipmentUsage.viewByPlayer}>
+          <ViewTitle>{t.equipmentUsage.viewByPlayer}</ViewTitle>
+          <ValueGrid model={grid} />
+          <ChartLegend
+            className="pt-2"
+            items={groups.map((g) => ({
+              key: g.key,
+              label: g.label,
+              color: usageGroupColor(g.key),
+            }))}
+          />
+        </section>
+        <section aria-label={t.equipmentUsage.viewTeamShare}>
+          <ViewTitle>{t.equipmentUsage.viewTeamShare}</ViewTitle>
+          <UsageTeamShares rows={shares} t={t} />
+        </section>
       </div>
-      <UsageFootnotes usage={usage} t={t} />
-    </section>
+    </SectionCard>
+  )
+}
+
+/** Le titre d'une vue à l'intérieur de la carte : les deux vues répondent à deux questions. */
+function ViewTitle({ children }: { children: string }) {
+  return (
+    <h4 className="mb-2 text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
+      {children}
+    </h4>
   )
 }
 
 /**
- * UsageTeamBody — un camp : son en-tête, ses joueurs, son total.
+ * UsageTeamShares — la vue 2 : une barre 100 % par famille de geste, un segment par camp.
  *
- * LE CAMP SANS NOM EST UN CAMP QUAND MÊME (`side` null) : ce sont les joueurs que le film a vus
- * vivre et que le scoreboard ignore. Ils gardent leur ligne sous « Sans équipe » — le trou se
- * montre, il ne se comble pas, et surtout on ne les verse pas dans un camp au hasard.
+ * LE COMPTE BRUT ET LE POURCENTAGE SONT ÉCRITS DANS LE SEGMENT (demande utilisateur du
+ * 2026-09-03) : une part sans son compte laisse croire qu'un 4-1 et un 40-10 racontent la même
+ * partie. À gauche, le nom de la famille, son total, et sa pastille — la même encre que la
+ * colonne correspondante de la vue 1.
  */
-function UsageTeamBody({
-  team,
-  board,
-  leaves,
-  meXUID,
-  t,
-}: {
-  team: EquipmentUsageTeam
-  board: MatchScoreboardRow[]
-  leaves: UsageColumn[]
-  meXUID: string | null
-  t: ReplayText
-}) {
-  const rows = board.filter((r) => (r.team_side ?? '') === (team.side ?? ''))
-  const label = resolveTeamLabel(team.side ? rows : [], team.side, t)
+function UsageTeamShares({ rows, t }: { rows: UsageShareRow[]; t: ReplayText }) {
   return (
-    <tbody>
-      <tr>
-        <th
-          colSpan={leaves.length + 1}
-          className="border border-border px-3 py-1 text-left text-xs font-semibold text-foreground"
-        >
-          {label}
-        </th>
-      </tr>
-      {team.players.map((p) => (
-        // Clé composite : un xuid peut manquer (entrée de film sans identité résolue) et
-        // plusieurs lignes se percuteraient sur une clé vide.
-        <tr key={`${p.xuid}||${p.name}`} className={p.xuid === meXUID ? 'bg-info/10' : ''}>
-          <td className="border border-border px-2 py-1 text-left">{p.name}</td>
-          {leaves.map((c) => (
-            <td key={c.key} className="border border-border px-2 py-1 text-right tabular-nums">
-              {c.cell(p)}
-            </td>
-          ))}
-        </tr>
-      ))}
-      <tr className="font-semibold text-foreground">
-        <td className="border border-border px-2 py-1 text-left">{t.equipmentUsage.teamTotal}</td>
-        {leaves.map((c) => (
-          <td key={c.key} className="border border-border px-2 py-1 text-right tabular-nums">
-            {c.cell(team.total)}
-          </td>
+    <div className="overflow-x-auto">
+      <div className="min-w-[420px] space-y-2.5">
+        {rows.map((row) => (
+          <div key={row.key} className="grid grid-cols-[158px_1fr] items-center gap-3.5">
+            <div className="flex items-center justify-end gap-2 text-xs">
+              <HeaderLabelTooltip text={row.hint} focusable>
+                <span className="truncate text-right">{row.label}</span>
+              </HeaderLabelTooltip>
+              <span className="text-muted-foreground tabular-nums">{row.total}</span>
+              <span
+                className="h-2.5 w-2.5 flex-none"
+                style={{ backgroundColor: row.color }}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="flex h-[22px] gap-0.5">
+              {row.segments.map((seg) => {
+                const tip = t.equipmentUsage.shareTipFmt(seg.label, row.label, seg.count, row.total)
+                // `text-white` : le libellé est posé SUR l'aplat du camp, quelle que soit la
+                // palette réglée — ce n'est pas une couleur sémantique mais le contraste d'un
+                // texte dans un aplat (même usage que `MatchNemesisCards`).
+                return (
+                  <Tooltip key={seg.side ?? 'sans-equipe'} content={tip} className="h-full">
+                    <div
+                      className="flex h-full items-center justify-center overflow-hidden whitespace-nowrap px-1 text-3xs font-semibold text-white"
+                      style={{ backgroundColor: seg.accent, flexGrow: seg.count, flexBasis: 0 }}
+                      tabIndex={0}
+                      role="img"
+                      aria-label={tip}
+                    >
+                      {`${seg.count} · ${seg.percent} %`}
+                    </div>
+                  </Tooltip>
+                )
+              })}
+            </div>
+          </div>
         ))}
-      </tr>
-    </tbody>
+      </div>
+    </div>
   )
 }
 
 /**
  * UsageFootnotes — la ligne ANONYME du match, les dénominateurs, et ce qui n'est pas mesuré.
  *
- * La ligne des socles de bonus est HORS DU TABLEAU, et ce n'est pas une question de place : le
- * ramasseur n'est pas AFFICHÉ ici (`padPickups[].xuid` est publié depuis le schéma 30, mais cet
- * écran n'a pas été repensé pour l'exploiter — il l'est par `MatchPadControlSection`, juste en
- * dessous dans l'onglet). Une colonne, même
- * intitulée « anonyme », finirait par se lire comme une grandeur de joueur.
+ * La ligne des socles de bonus est HORS DES DEUX VUES, et ce n'est pas une question de place :
+ * le ramasseur n'est pas AFFICHÉ ici (`padPickups[].xuid` est publié depuis le schéma 30, mais
+ * cet écran n'a pas été repensé pour l'exploiter — il l'est par `MatchPadControlSection`, juste
+ * en dessous dans l'onglet). Une colonne, même intitulée « anonyme », finirait par se lire comme
+ * une grandeur de joueur.
  */
 function UsageFootnotes({ usage, t }: { usage: EquipmentUsage; t: ReplayText }) {
   const u = t.equipmentUsage
@@ -204,7 +247,7 @@ function UsageFootnotes({ usage, t }: { usage: EquipmentUsage; t: ReplayText }) 
     .map(([family, n]) => `${equipmentFamilyLabel(family, t)} ${n}`)
     .join(' · ')
   return (
-    <div className="space-y-1 px-3 pb-2 pt-2 text-[11px] text-muted-foreground">
+    <div className="space-y-1 border-t border-border px-3 pb-2 pt-2 text-[11px] text-muted-foreground">
       {usage.powerupPickupsTotal > 0 && (
         <p className="text-foreground">
           <HeaderLabelTooltip text={u.powerupPadsHint} focusable>

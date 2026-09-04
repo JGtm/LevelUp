@@ -17297,6 +17297,8 @@ components:
         score_theirs:
           format: int64
           type: integer
+        score_timeline_kind:
+          type: string
         start_time:
           format: date-time
           type: string

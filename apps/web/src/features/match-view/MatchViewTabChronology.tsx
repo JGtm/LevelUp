@@ -25,8 +25,10 @@ import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
 import { MatchKDCumulChart } from './MatchKDCumulChart'
 import { MatchPositionsHeatmap } from './MatchPositionsHeatmap'
 import { MatchScoreCurveChart } from './MatchScoreCurveChart'
+import { MatchScoreEventsChart } from './MatchScoreEventsChart'
 import { MatchTugOfWarChart } from './MatchTugOfWarChart'
 import type { MatchViewText } from './i18n'
+import { SCORE_TIMELINE_EVENTS } from './scoreTimelineKind'
 
 interface Props {
   playerSlug: string
@@ -40,6 +42,12 @@ interface Props {
   matchPositions: MatchPlayerPosition[] | undefined
   tugOfWar: MatchTugOfWarBin[]
   cadence: MatchViewCadence | null | undefined
+  /**
+   * `header.score_timeline_kind` — la lecture du bloc « Score dans le temps » décidée par
+   * la DONNÉE du titre : rien (le mode marque au frag), des barres aux instants de marque,
+   * ou la courbe. Absent = la courbe, le repli sûr.
+   */
+  scoreTimelineKind?: string
   locale: Locale
   t: MatchViewText
 }
@@ -56,6 +64,7 @@ export function MatchViewTabChronology({
   matchPositions,
   tugOfWar,
   cadence,
+  scoreTimelineKind,
   locale,
   t,
 }: Props) {
@@ -83,15 +92,33 @@ export function MatchViewTabChronology({
       </div>
 
       {/* Le SCORE DANS LE TEMPS (film) ouvre le déroulé : c'est le fil du match.
-          Sans artefact il ne rend rien, et la mise en page ne bouge pas. */}
-      <MatchScoreCurveChart
-        playerSlug={playerSlug}
-        matchId={matchId}
-        replayAvailable={replayAvailable}
-        scoreboard={scoreboard}
-        meXUID={meXUID}
-        t={t}
-      />
+          Sans artefact il ne rend rien, et la mise en page ne bouge pas.
+
+          DEUX LECTURES, ET C'EST LA DONNÉE QUI TRANCHE (`header.score_timeline_kind`,
+          regulation.toml [score_timeline]) : les modes qui marquent en trois à cinq fois
+          (drapeau, colline, bombe) prennent les BARRES d'instants — une courbe y serait un
+          escalier vide ; les autres gardent la courbe. En Slayer, la courbe s'efface d'
+          elle-même : « Frags cumulés » vient de le dire, juste au-dessus. */}
+      {scoreTimelineKind === SCORE_TIMELINE_EVENTS ? (
+        <MatchScoreEventsChart
+          playerSlug={playerSlug}
+          matchId={matchId}
+          replayAvailable={replayAvailable}
+          scoreboard={scoreboard}
+          meXUID={meXUID}
+          t={t}
+        />
+      ) : (
+        <MatchScoreCurveChart
+          playerSlug={playerSlug}
+          matchId={matchId}
+          replayAvailable={replayAvailable}
+          scoreboard={scoreboard}
+          meXUID={meXUID}
+          scoreTimelineKind={scoreTimelineKind}
+          t={t}
+        />
+      )}
 
       {/* Le BILAN d'équipement du match (film), juste après la courbe : même artefact, même
           clé de cache, aucun appel de plus. Le rejeu montre ces gestes image par image ; ce

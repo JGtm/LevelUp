@@ -308,8 +308,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     equipmentUsage: {
       title: "Usages d'équipement",
-      colPlayer: 'Joueur',
-      teamTotal: 'Total équipe',
+      viewByPlayer: 'Nombre de gestes par joueur',
+      viewTeamShare: "Part de chaque équipe, geste par geste",
+      gridTipFmt: (player, column, value) => `${player} — ${column} : ${value}`,
+      shareTipFmt: (team, family, count, total) =>
+        `${team} — ${family} : ${count} sur ${total}`,
       groupGrapple: 'Grappin',
       groupGrappleHint:
         "Tractions de grappin lues dans le film — la seule activation de capacité que la mesure sait attribuer à un joueur. Un tir sans accroche n'est pas une traction : il est compté à part et n'entre pas dans cette colonne.",
@@ -339,7 +342,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       coverageGrappleFmt: (pulls, lives) =>
         `${pulls} traction${pulls > 1 ? 's' : ''} de grappin lue${pulls > 1 ? 's' : ''}, réparties sur ${lives} vie${lives > 1 ? 's' : ''}.`,
       unattributedFmt: (count) =>
-        `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} sans propriétaire (vie sans joueur, ou poseur non mesuré) : hors du tableau.`,
+        `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} sans propriétaire (vie sans joueur, ou poseur non mesuré) : hors des deux vues.`,
       notMeasured:
         "Le répulseur n'apparaît pas : neuf canaux du film ont été fouillés, aucun ne date son activation. Une colonne vide se lirait « zéro utilisation ». Le propulseur, lui, a désormais son canal d'usage mesuré — validé contre un relevé Theater — et ses poussées se voient sur la carte du rejeu, pas dans ce tableau : le geste dure une demi-seconde.",
       killBadgeFmt: {
@@ -352,10 +355,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     padControl: {
       title: 'Contrôle des armes spéciales',
       titleHint:
-        "Les armes de socle prises pendant le match, et par qui. Chaque prise vient de l'événement de ramassage écrit dans le film : il est daté à la milliseconde et porte son ramasseur. Une occupation de socle qu'aucun ramassage ne couvre — ou que plusieurs couvrent — n'est comptée pour personne : on ne devine pas un ramasseur, on s'abstient et on le dit sous le tableau.",
-      colPlayer: 'Joueur',
-      colTotal: 'Prises de socle',
-      teamTotal: 'Total équipe',
+        "Les armes de socle prises pendant le match, et par qui. Chaque prise vient de l'événement de ramassage écrit dans le film : il est daté à la milliseconde et porte son ramasseur. Une occupation de socle qu'aucun ramassage ne couvre — ou que plusieurs couvrent — n'est comptée pour personne : on ne devine pas un ramasseur, on s'abstient et on le dit sous le graphe.",
+      axisPickups: 'nombre de prises',
+      barTipFmt: (player, team, weapon, count) =>
+        `${player} (${team}) — ${weapon} : ${count} prise${count > 1 ? 's' : ''}`,
+      unnamedFmt: (count) => `+ ${count} sans nom`,
       attributedFmt: (attributed, occupations) =>
         `${attributed} prise${attributed > 1 ? 's' : ''} attribuée${attributed > 1 ? 's' : ''} sur ${occupations} occupation${occupations > 1 ? 's' : ''} de socle mesurée${occupations > 1 ? 's' : ''}.`,
       missingFmt: (missing) =>
@@ -696,8 +700,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     equipmentUsage: {
       title: 'Equipment usage',
-      colPlayer: 'Player',
-      teamTotal: 'Team total',
+      viewByPlayer: 'Gesture count by player',
+      viewTeamShare: "Each team's share, gesture by gesture",
+      gridTipFmt: (player, column, value) => `${player} — ${column}: ${value}`,
+      shareTipFmt: (team, family, count, total) => `${team} — ${family}: ${count} of ${total}`,
       groupGrapple: 'Grappleshot',
       groupGrappleHint:
         'Grapple pulls read from the film — the only ability activation the measurement can attribute to a player. A shot with no anchor is not a pull: it is counted separately and never enters this column.',
@@ -726,7 +732,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       coverageGrappleFmt: (pulls, lives) =>
         `${pulls} grapple pull${pulls > 1 ? 's' : ''} read, spread over ${lives} ${lives > 1 ? 'lives' : 'life'}.`,
       unattributedFmt: (count) =>
-        `${count} measured gesture${count > 1 ? 's' : ''} with no owner (life with no player, or unmeasured deployer): outside the table.`,
+        `${count} measured gesture${count > 1 ? 's' : ''} with no owner (life with no player, or unmeasured deployer): outside both views.`,
       notMeasured:
         'The repulsor is absent: nine channels of the film were searched, none dates its activation. An empty column would read as "zero uses". The thruster now has its own measured usage channel — validated against a Theater reading — and its bursts show on the replay map, not in this table: the gesture lasts half a second.',
       killBadgeFmt: {
@@ -739,10 +745,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     padControl: {
       title: 'Power weapon control',
       titleHint:
-        'The pad weapons picked up during the match, and by whom. Every pickup comes from the pickup event written in the film: it is timed to the millisecond and carries its picker. A pad occupancy no pickup covers — or that several cover — is counted for nobody: a picker is never guessed, the measurement abstains and says so below the table.',
-      colPlayer: 'Player',
-      colTotal: 'Pad pickups',
-      teamTotal: 'Team total',
+        'The pad weapons picked up during the match, and by whom. Every pickup comes from the pickup event written in the film: it is timed to the millisecond and carries its picker. A pad occupancy no pickup covers — or that several cover — is counted for nobody: a picker is never guessed, the measurement abstains and says so below the chart.',
+      axisPickups: 'pickup count',
+      barTipFmt: (player, team, weapon, count) =>
+        `${player} (${team}) — ${weapon}: ${count} pickup${count > 1 ? 's' : ''}`,
+      unnamedFmt: (count) => `+ ${count} unnamed`,
       attributedFmt: (attributed, occupations) =>
         `${attributed} pickup${attributed > 1 ? 's' : ''} attributed out of ${occupations} measured pad occupanc${occupations > 1 ? 'ies' : 'y'}.`,
       missingFmt: (missing) =>

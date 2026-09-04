@@ -13,12 +13,12 @@ package analysis
 import (
 	"regexp"
 	"strings"
+
+	"levelup/go-api/internal/analysis/modelabel"
 )
 
 // Regex partagées pour la normalisation des modes.
 var (
-	// Strip " sur NomCarte" ou " on MapName" (FR + EN) — générique.
-	modeLabelStripMapRe = regexp.MustCompile(`(?i)\s+(?:on|sur)\s+.+$`)
 	// Strip " - Forge" et " - Ranked" (suffixes Halo Infinite).
 	modeLabelForgeRe  = regexp.MustCompile(`(?i)\s*-\s*Forge\b`)
 	modeLabelRankedRe = regexp.MustCompile(`(?i)\s*-\s*Ranked\b`)
@@ -103,8 +103,11 @@ func NormalizeModeLabel(raw string, mapLabels ...string) string {
 		}
 	}
 
-	// Étape 3 — strip générique " sur/on <carte>" résiduel
-	normalized = modeLabelStripMapRe.ReplaceAllString(normalized, "")
+	// Étape 3 — strip générique " sur/on <carte>" résiduel. La regex vit dans le paquet
+	// feuille `modelabel` : l'appariement du bloc « Score dans le temps » a besoin du MÊME
+	// retrait sans le reste de cette normalisation, et deux expressions du même découpage
+	// finiraient par couper différemment (règle CLAUDE.md n°6).
+	normalized = modelabel.StripMapSuffix(normalized)
 
 	// Étape 4 — strip suffixes Forge / Ranked
 	normalized = modeLabelForgeRe.ReplaceAllString(normalized, "")
@@ -184,47 +187,11 @@ func resolveModeSource(preferred, fallback *string) *string {
 // knownModesEN = noms EN canoniques (clés mode_en de mode_name_tr), chargés par le
 // caller (repo). Retourne "" si aucun match → le caller garde le label d'origine.
 // Fonction pure (aucun accès DB), à appliquer APRÈS NormalizeModeLabel.
+//
+// LA RÈGLE D'APPARIEMENT ELLE-MÊME VIT DANS `analysis/modelabel` depuis le 2026-09-03 :
+// `games/mappings` en a besoin pour la table `[score_timeline]` de regulation.toml et ne
+// peut pas importer `analysis` (cycle). Ce point d'entrée est conservé — tous ses
+// appelants sont inchangés — mais il n'y a qu'UNE implémentation.
 func ExtractKnownMode(label string, knownModesEN []string) string {
-	label = strings.TrimSpace(label)
-	if label == "" || len(knownModesEN) == 0 {
-		return ""
-	}
-	low := strings.ToLower(label)
-	best := ""
-	for _, m := range knownModesEN {
-		m = strings.TrimSpace(m)
-		if m == "" || len(m) <= len(best) {
-			continue // garde le match le plus long (ex. "Super Fiesta" > "Fiesta")
-		}
-		if wholeWordIndex(low, strings.ToLower(m)) >= 0 {
-			best = m
-		}
-	}
-	return best
-}
-
-// wholeWordIndex retourne l'index de needle dans haystack en exigeant des frontières
-// de mot (lettres/chiffres) de part et d'autre, sinon -1. Évite que "Slayer" matche
-// au milieu d'un autre mot. haystack/needle doivent être déjà en minuscules ASCII.
-func wholeWordIndex(haystack, needle string) int {
-	for from := 0; from <= len(haystack)-len(needle); {
-		i := strings.Index(haystack[from:], needle)
-		if i < 0 {
-			return -1
-		}
-		idx := from + i
-		beforeOK := idx == 0 || !isWordChar(haystack[idx-1])
-		end := idx + len(needle)
-		afterOK := end >= len(haystack) || !isWordChar(haystack[end])
-		if beforeOK && afterOK {
-			return idx
-		}
-		from = idx + 1
-	}
-	return -1
-}
-
-// isWordChar : caractère de mot ASCII (a-z, 0-9, _). haystack est déjà en minuscules.
-func isWordChar(b byte) bool {
-	return b == '_' || (b >= 'a' && b <= 'z') || (b >= '0' && b <= '9')
+	return modelabel.ExtractKnownMode(label, knownModesEN)
 }

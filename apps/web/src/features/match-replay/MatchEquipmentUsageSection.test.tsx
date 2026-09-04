@@ -1,19 +1,27 @@
 /**
  * Tests — MatchEquipmentUsageSection (le bilan d'équipement de la page match).
  *
- * CE QU'ILS PROTÈGENT, et ce sont les quatre promesses de la section :
+ * CE QU'ILS PROTÈGENT, et ce sont les cinq promesses de la section :
  *   1. LA DOUBLE PORTE. Sans artefact — la quasi-totalité des matchs en production — la
  *      section ne rend RIEN ; avec un artefact qui ne porte aucune grandeur, non plus. Un cadre
  *      vide répété sur chaque page de match est une promesse non tenue à l'infini.
- *   2. LE TOTAL D'ÉQUIPE est la somme des lignes du camp, pas celle du match.
- *   3. L'ANONYME RESTE ANONYME : les socles de bonus vidés sont une ligne au niveau du MATCH,
+ *   2. LES DEUX VUES, et les colonnes que LA DONNÉE justifie — jamais une liste en dur.
+ *   3. LA PART D'UNE ÉQUIPE est la somme des gestes de ses joueurs, pas celle du match, et le
+ *      COMPTE BRUT est écrit à côté du pourcentage.
+ *   4. L'ANONYME RESTE ANONYME : les socles de bonus vidés sont une ligne au niveau du MATCH,
  *      jamais une colonne rattachée à quelqu'un.
- *   4. CE QUI N'EST PAS MESURÉ SE DIT. Aucune colonne pour le répulseur ni le propulseur, et
+ *   5. CE QUI N'EST PAS MESURÉ SE DIT. Aucune colonne pour le répulseur ni le propulseur, et
  *      une phrase à l'écran explique pourquoi — mais pas la même raison pour les deux depuis le
  *      2026-09-03 : le répulseur n'a AUCUN canal (une colonne de zéros se lirait « zéro usage »),
- *      le propulseur en a un (schéma 38) mais son geste se lit sur la CARTE, pas ici.
+ *      le propulseur en a un (schéma 38) mais son geste se lit sur la CARTE, pas ici. Et une
+ *      grandeur non mesurée écrit « — » là où un zéro se lirait comme une mesure.
  *
- * Le calcul est éprouvé chez `equipmentUsageLogic.test.ts` ; ici on éprouve le RENDU.
+ * LES VALEURS SE LISENT PAR LE NOM ACCESSIBLE DES BARRES (`gridTipFmt` : joueur — grandeur :
+ * valeur). C'est ce que porte l'écran depuis que la section est un graphe, et c'est aussi ce
+ * qu'entend un lecteur d'écran : l'éprouver ici éprouve les deux d'un coup.
+ *
+ * Le calcul est éprouvé chez `equipmentUsageLogic.test.ts` et `valueGridModel.test.ts` ; ici on
+ * éprouve le RENDU.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -131,19 +139,26 @@ describe('MatchEquipmentUsageSection — la double porte', () => {
   })
 })
 
-describe('MatchEquipmentUsageSection — le tableau', () => {
-  it('affiche le titre et un groupe de colonnes par canal mesuré', () => {
+describe('MatchEquipmentUsageSection — les deux vues', () => {
+  it('rend la carte et ses deux vues, chacune nommée', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
     expect(vue.getByRole('region', { name: t.equipmentUsage.title })).toBeTruthy()
-    for (const groupe of [
+    expect(vue.getByRole('region', { name: t.equipmentUsage.viewByPlayer })).toBeTruthy()
+    expect(vue.getByRole('region', { name: t.equipmentUsage.viewTeamShare })).toBeTruthy()
+  })
+
+  it('montre une FAMILLE par canal mesuré, en légende comme en part d’équipe', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    for (const famille of [
       t.equipmentUsage.groupGrapple,
       t.equipmentUsage.groupActive,
       t.equipmentUsage.groupDeployed,
       t.equipmentUsage.groupDropped,
       t.equipmentUsage.groupGrenades,
     ]) {
-      expect(vue.getAllByText(groupe).length).toBeGreaterThan(0)
+      expect(vue.getAllByText(famille).length).toBeGreaterThan(0)
     }
   })
 
@@ -163,37 +178,30 @@ describe('MatchEquipmentUsageSection — le tableau', () => {
     expect(vue.getByText(t.equipmentUsage.activeKillsFamily.overshield)).toBeTruthy()
   })
 
-  it('rend une ligne par joueur, chaque camp avec son TOTAL', () => {
+  it('rend une ligne par joueur, y compris celui que le scoreboard ignore', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
     for (const nom of ['Alpha', 'Bravo', 'Charlie', 'Delta']) {
       expect(vue.getByText(nom)).toBeTruthy()
     }
-    // Trois camps rendus : t0, t1, et les joueurs sans ligne de scoreboard.
-    expect(vue.getAllByText(t.equipmentUsage.teamTotal)).toHaveLength(3)
   })
 
-  it('le TOTAL d’un camp est la somme de SES lignes, pas celle du match', () => {
+  it('écrit la valeur de chaque barre dans son nom accessible : joueur, grandeur, valeur', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    const ligneTotal = vue.getAllByText(t.equipmentUsage.teamTotal)[0].closest('tr')
-    // Camp t0 = Alpha + Bravo : 2 tractions de grappin (le match en compte 3).
-    expect(ligneTotal?.querySelectorAll('td')[1]?.textContent).toBe('2')
+    const tip = t.equipmentUsage.gridTipFmt
+    expect(vue.getByLabelText(tip('Alpha', t.equipmentUsage.groupGrapple, '1'))).toBeTruthy()
+    expect(vue.getByLabelText(tip('Delta', t.equipmentUsage.groupGrapple, '0'))).toBeTruthy()
   })
 
   it('affiche la durée cumulée en m:ss, et « 0:00 » quand la mesure vaut zéro', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    const ligneAlpha = vue.getByText('Alpha').closest('tr')
-    const cellules = [...(ligneAlpha?.querySelectorAll('td') ?? [])].map((c) => c.textContent)
-    // nom | grappin 1 | camo 1 épisode | camo 0:05 | camo frags (—) | surbouclier 0 |
-    // surbouclier 0:00 | surbouclier frags (—) | ...
-    // La 6e cellule (index 5) est le point du correctif F12 : elle voisine un « 0 » (nombre
-    // d'épisodes de surbouclier d'Alpha). Un « — » y lirait « non mesuré » alors que la
-    // colonne n'existe que parce que la famille EST mesurée sur ce match. Les deux colonnes
-    // de frags (LOT F.2) écrivent « — » ici : TEMOIN ne pose pas `coverage.equipment.killsRead`,
-    // donc la jointure est réputée NON TENTÉE — jamais un zéro qui se lirait comme une mesure.
-    expect(cellules.slice(0, 8)).toEqual(['Alpha', '1', '1', '0:05', '—', '0', '0:00', '—'])
+    const duree = `Camouflage (${t.equipmentUsage.activeDuration})`
+    const tip = t.equipmentUsage.gridTipFmt
+    expect(vue.getByLabelText(tip('Alpha', duree, '0:05'))).toBeTruthy()
+    // Bravo n'a aucun épisode de camouflage : la mesure a eu lieu et vaut zéro.
+    expect(vue.getByLabelText(tip('Bravo', duree, '0:00'))).toBeTruthy()
   })
 
   it('un épisode MESURÉ de durée nulle s’écrit « 0:00 », pas « — »', () => {
@@ -207,31 +215,69 @@ describe('MatchEquipmentUsageSection — le tableau', () => {
       ],
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
-    const ligneAlpha = vue.getByText('Alpha').closest('tr')
-    const cellules = [...(ligneAlpha?.querySelectorAll('td') ?? [])].map((c) => c.textContent)
-    expect(cellules.slice(2, 4)).toEqual(['1', '0:00'])
+    const tip = t.equipmentUsage.gridTipFmt
+    expect(
+      vue.getByLabelText(tip('Alpha', `Camouflage (${t.equipmentUsage.activeCount})`, '1')),
+    ).toBeTruthy()
+    expect(
+      vue.getByLabelText(tip('Alpha', `Camouflage (${t.equipmentUsage.activeDuration})`, '0:00')),
+    ).toBeTruthy()
   })
 
-  it('range le joueur HORS SCOREBOARD sous « sans équipe », jamais dans un camp nommé', () => {
+  it('range le joueur HORS SCOREBOARD sous « équipe inconnue », jamais dans un camp nommé', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    expect(vue.getByText(t.teamUnknown)).toBeTruthy()
-    const corps = vue.getByText('Delta').closest('tbody')
-    expect(corps?.textContent).toContain(t.teamUnknown)
-    expect(corps?.textContent).not.toContain('Alpha')
+    // Son nom porte son camp en infobulle de ligne — et ce camp est l'inconnu.
+    expect(vue.getByText('Delta').closest('[title]')?.getAttribute('title')).toContain(
+      t.teamUnknown,
+    )
+  })
+})
+
+describe('MatchEquipmentUsageSection — la part de chaque équipe', () => {
+  it('somme les gestes du CAMP, pas ceux du match, et écrit le compte brut avec la part', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    // Grappin : Alpha + Bravo = 2 tractions pour le camp t0, sur les 3 du match.
+    const segment = vue.getByLabelText(
+      t.equipmentUsage.shareTipFmt('Équipe Eagle', t.equipmentUsage.groupGrapple, 2, 3),
+    )
+    expect(segment.textContent).toBe('2 · 67 %')
+    expect(
+      vue.getByLabelText(
+        t.equipmentUsage.shareTipFmt('Équipe Cobra', t.equipmentUsage.groupGrapple, 1, 3),
+      ).textContent,
+    ).toBe('1 · 33 %')
+  })
+
+  it('ne rend aucune ligne pour une famille qu’aucun camp n’a employée', () => {
+    poserArtefact({ ...TEMOIN, grappleLines: [] } as Partial<ReplayDocument>)
+    const vue = afficher()
+    // Plus de tractions : ni colonne, ni ligne de part, ni entrée de légende.
+    expect(vue.queryByText(t.equipmentUsage.groupGrapple)).toBeNull()
+  })
+
+  it('porte la RÉSERVE d’une famille en infobulle de son NOM, dans la vue des parts', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    // Le nom de la famille apparaît en légende de la vue 1 PUIS en tête de sa ligne de part :
+    // c'est cette dernière occurrence qui porte la réserve de mesure.
+    const noms = vue.getAllByText(t.equipmentUsage.groupActive)
+    fireEvent.mouseEnter(noms[noms.length - 1].parentElement as Element)
+    expect(screen.getByRole('tooltip').textContent).toBe(t.equipmentUsage.groupActiveHint)
   })
 })
 
 describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', () => {
-  it('pose les socles de bonus vidés HORS du tableau, avec leur dénominateur', () => {
+  it('pose les socles de bonus vidés HORS des vues, avec leur dénominateur', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
     const ligne = vue.getByText(t.equipmentUsage.powerupPads).closest('p')
     expect(ligne?.textContent).toContain('2')
     expect(ligne?.textContent).toContain(t.padEquipmentFamily.powerup_overshield)
     expect(ligne?.textContent).toContain(t.equipmentUsage.powerupPadsDenomFmt(1))
-    // ET IL RESTE HORS DU TABLEAU : aucune cellule ne le porte.
-    expect(ligne?.closest('table')).toBeNull()
+    // ET IL RESTE HORS DES GRAPHES : aucune barre ne le porte.
+    expect(ligne?.querySelector('[role="img"]')).toBeNull()
   })
 
   it('n’affiche aucune ligne de socles quand le film n’en a vidé aucun', () => {
@@ -262,14 +308,7 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     expect(vue.queryByText('thruster')).toBeNull()
   })
 
-  it('porte la RÉSERVE des états actifs en infobulle d’en-tête (source non distinguée)', () => {
-    poserArtefact(TEMOIN)
-    const vue = afficher()
-    fireEvent.mouseEnter(vue.getByText(t.equipmentUsage.groupActive).parentElement as Element)
-    expect(screen.getByRole('tooltip').textContent).toBe(t.equipmentUsage.groupActiveHint)
-  })
-
-  it('compte à part les gestes mesurés sans propriétaire, hors du tableau', () => {
+  it('compte à part les gestes mesurés sans propriétaire, hors des vues', () => {
     poserArtefact({
       ...TEMOIN,
       equipmentPlacements: [
@@ -282,13 +321,13 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
 })
 
 describe('MatchEquipmentUsageSection — parité FR/EN', () => {
-  it('EN : titre, groupes et libellé de total passent en anglais', () => {
+  it('EN : titre, vues et familles passent en anglais', () => {
     poserArtefact(TEMOIN)
     const vue = afficher('en')
     const en = REPLAY_TEXT.en
     expect(vue.getByRole('region', { name: en.equipmentUsage.title })).toBeTruthy()
+    expect(vue.getByRole('region', { name: en.equipmentUsage.viewByPlayer })).toBeTruthy()
     expect(vue.getAllByText(en.equipmentUsage.groupDeployed).length).toBeGreaterThan(0)
-    expect(vue.getAllByText(en.equipmentUsage.teamTotal)).toHaveLength(3)
     // Le catalogue du document est bilingue : le type de grenade suit la langue.
     expect(vue.getByText('Frag')).toBeTruthy()
     expect(vue.getByText(en.placementFamily.sensor)).toBeTruthy()
@@ -302,9 +341,11 @@ describe('MatchEquipmentUsageSection — frags sous effet actif (LOT F.2)', () =
     // TEMOIN ne pose pas `coverage.equipment.killsRead` : la jointure est réputée non tentée.
     poserArtefact(TEMOIN)
     const vue = afficher()
-    const ligneAlpha = vue.getByText('Alpha').closest('tr')
-    const cellules = [...(ligneAlpha?.querySelectorAll('td') ?? [])].map((c) => c.textContent)
-    expect(cellules).toContain('—')
+    expect(
+      vue.getByLabelText(
+        t.equipmentUsage.gridTipFmt('Alpha', t.equipmentUsage.activeKillsFamily.camo, '—'),
+      ),
+    ).toBeTruthy()
   })
 
   it('écrit le compte réel, kills sommés sur les épisodes de la famille, quand killsRead est vrai', () => {
@@ -326,10 +367,10 @@ describe('MatchEquipmentUsageSection — frags sous effet actif (LOT F.2)', () =
       },
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
-    const ligneAlpha = vue.getByText('Alpha').closest('tr')
-    const cellules = [...(ligneAlpha?.querySelectorAll('td') ?? [])].map((c) => c.textContent)
-    // nom | grappin | camo count | camo ms | camo frags | surbouclier count | ...
-    expect(cellules[4]).toBe('2')
-    expect(cellules).not.toContain('—')
+    expect(
+      vue.getByLabelText(
+        t.equipmentUsage.gridTipFmt('Alpha', t.equipmentUsage.activeKillsFamily.camo, '2'),
+      ),
+    ).toBeTruthy()
   })
 })
