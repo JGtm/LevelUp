@@ -100,23 +100,50 @@ PIÈGE À CONNAÎTRE : ce canal avait été écarté par un lot antérieur comme
 ce qui le rend utilisable. Un canal jugé sur sa fréquence brute, faute d'ancre pour le lire,
 avait été classé inutilisable alors qu'il portait la réponse.
 
-### 2. LE RÉPULSEUR — il manque UNE ancre, pas un canal
+### 2. LE RÉPULSEUR — RÉSOLU le 2026-09-04 (lot R12)
 
-Neuf canaux ont été jugés **sans jamais disposer d'un seul instant d'usage certain**. Le
-grappin en a 1 101 dans le corpus, et c'est exactement pour cela qu'on l'a trouvé du premier
-coup. **Un relevé Theater d'un seul usage, avec son instant, débloquerait tout.**
+**Le film porte l EFFET du répulseur, pas le GESTE.** Un relevé Theater d un collègue de
+l utilisateur (match `215e7022`, carte Argyle) a fourni les six ancres qui manquaient, dont
+un kill attribué au répulseur.
 
-Les plages où l'utilisateur porte lui-même le répulseur sont calculées et corrigées (bornées
-par ses changements d'équipement, pas par la fin de vie) dans
-`CRENEAUX_VERIFICATION_EQUIPEMENT_2026-09-03.md` et dans l'artefact publié pour lui. La plus
-longue dure 291 s. Deux fenêtres où un AUTRE joueur consomme sa dernière charge :
-`a6ae19fb` 6:21→7:29 et `0d265ab0` 2:46→4:19.
+- **Convention de temps établie deux fois** par deux canaux sans rapport : `killsource` place
+  l unique kill au `jpt! 07104b31` à 5:25,5 (relevé : 5:25) ; i48 retrouve les **4/4**
+  ramassages à +1,35 à +1,97 s (témoins décalés : 1/4 à +30 s, 0/4 à −30 s). Temps de FILM.
+- **L état du bipède ne bouge pas** aux cinq instants d usage (64 composants, 706 records du
+  porteur en fenêtre, zéro) — alors que le MÊME instrument, ancré sur les usages de grappin
+  du MÊME film, fait bondir i56 d un facteur **9,00**. Le témoin positif pré-inscrit passe :
+  la méthode voit, il n y a rien à voir.
+- **Ce qui bouge est la liste d événements** : les 2 seules occurrences du type **104
+  `EquipmentKnockbackPlayer`** du film tombent à 5:25,5 et 5:25,6 ; l unique TÊTE de type
+  **105 `EquipmentObjectKnockedBack`** (position 1, cadrage certain) à 5:25,6.
+- **Seconde ancre indépendante, sur un AUTRE film** : sur `a6ae19fb`, une tête de 105 tombe
+  **149 ms** avant la consommation de dernière charge que R11 §5 publiait comme « le cas qui
+  tranche ». Hasard des deux coïncidences ≈ **5e-7** (22 têtes de 105 pour 1 223 551 paquets
+  delta, 42 films).
+- **Rappel 2/5, STRUCTUREL** : ces événements sont des CONSÉQUENCES. Le film enregistre le
+  joueur poussé et l objet poussé, jamais le doigt sur la gâchette — un répulseur déclenché
+  dans le vide n écrit rien. **C est l explication de pourquoi neuf canaux d ÉTAT étaient
+  muets.**
+- **Réserve dite** : le 104 n est presque jamais en tête (2 sur 1,22 M paquets), ses deux
+  occurrences sont en position 4 et 2, donc sous réserve de cadrage ; le 105 y échappe.
+  Le type **14 `PlayEffectOnObject`** (report n°1 de R9) est **RÉFUTÉ** (1 occurrence, 0:54,2).
 
-Dernier canal non porté : le type d'événement **14 `PlayEffectOnObject`**.
+**Trois acquis latéraux du même lot** :
+1. `jpt! 07104b31` = Repulsor **confirmé** sur corpus réel + vérité terrain Theater — la ligne
+   du registre « PAS de vérité-terrain » est périmée (c est le statut SOUS_RÉSERVE signalé).
+2. **Réapparitions au socle datées 3/3** (témoin 0/3 ; 0/4 sur les ramassages) par les créations
+   `ti=37` du GlobalID `0x7ca85adc` — le socle est lisible, ce qui rejoint la jauge de
+   chargement observée à l écran.
+3. **La marche de liste d événements ne dépend plus du catalogue de bornes** :
+   `étendue := 2^AxisW/60` reconstruit depuis le seul layout du film rend les mêmes largeurs
+   (oracle de trame sur Argyle, carte SANS bornes : facteur 5,46 pour un seuil pré-inscrit à 3).
+   **Les cartes hors catalogue redeviennent lisibles pour ce canal.**
 
-Ses trois sons d'activation existent déjà dans la bibliothèque de l'utilisateur
-(`Downloads/Audio Library/EQUIPMENT/Repulser`) : le jour où le signal est trouvé, le câblage
-est de quelques minutes.
+Rapport : `.ai/V7.5/replay2d/RAPPORT_R12_REPULSEUR_ANCRES_2026-09-04.md`. Commit `664b64403`.
+Ce qui RESTE pour le répulseur : décider si l on publie ces événements de conséquence (et sous
+quel nom — ils ne disent pas « il a tiré », ils disent « quelqu un a été poussé »), et lever la
+réserve de cadrage du 104 par la marche de liste complète. Ses trois sons d activation existent
+déjà dans la bibliothèque de l utilisateur (`Downloads/Audio Library/EQUIPMENT/Repulser`).
 
 ### 3. DETTE OUVERTE — `damage_aftermath`, 872 000 événements
 
