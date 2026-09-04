@@ -1,3 +1,53 @@
+## [2026-09-04] Assaut — E2 : qui a arme la bombe, par jointure des deux canaux — Complete
+
+**Le probleme, et pourquoi la jointure est la SEULE voie.** L'anneau `ti=12 i14` date
+l'armement mais ne nomme personne : c'est un marqueur d'ecran. Et ce n'est pas une lacune de
+notre decodage — mesure Ghidra du 2026-09-04 : le Lua `primitive_carriable_arming_base`
+(tag `25af9c45`) emet six evenements d'armement dont le seul porteur d'identite est l'EQUIPE
+(`activatingTeam`), jamais un `activatingPlayer`. Meme si un canal d'armement tombait un jour,
+il donnerait l'instant et l'equipe. L'acteur ne peut se fermer que par le canal des armes
+tenues.
+
+**Decision technique : le LACHER est le geste de pose, et la fenetre est bornee par des
+mesures, pas choisie.** L'armeur d'un armement date est le porteur dont une periode de portage
+(1) a commence avant l'armement, (2) se ferme par un LACHER — ni par la mort, ni par la fin du
+film, (3) dans +/-2 500 ms, (4) est la plus proche et n'a pas deja servi. B2 deduisait le sens
+du geste de deux medianes (~126 ms) ; ce lot le MESURE directement : ecart lacher - armement
+sur 10 appariements de 4 films = +247 a +259 ms, tous positifs, etendue 12 ms. L'anneau se
+remplit, PUIS la bombe quitte les mains. La fenetre de 2 500 ms couvre ~10x cet ecart, absorbe
+le residu d'horloge (<= 114 ms) et reste sous la moitie de la separation minimale de deux
+armements reels (>= ~6 s).
+
+**Le piege des deux horloges, et ce que la verification a corrige.** `BombArming.TimeMS` est
+sur l'horloge du FILM (manifeste), les periodes de portage sur celle du MATCH
+(`TimestampUS/1000 - deathOffsetMS`). La note d'E1 annoncait un decalage de l'ordre de
+`deathOffsetMS` : c'est faux. Les deux horloges partagent presque le meme zero, et le pont
+exact — `horlogeMatch = horlogeFilm + premierPaquetDuFilmUS/1000 - deathOffsetMS` — est deja
+calcule en production dans `resolveOriginMs` (origin.go) comme controle croise de l'origine
+publiee. MESURE sur les 5 films du gate : 33 a 114 ms, meme ordre que les 16-81 ms des quatre
+films temoins. Le recalage est applique et TESTE (`TestBombArmsRecalageHorloge` force un offset
+de 40 000 ms pour que sa disparition rougisse) — sans ce test, l'oubli serait invisible, le
+decalage reel etant sous la fenetre.
+
+**Resultats mesures (gate reel, 5 films, code de sortie 0).** 13 armements dates, **9 attribues
+(69 %)**, 3 sans lacher dans la fenetre, 1 au slot non ponte ; les 4 non attribues sont PUBLIES
+SANS ACTEUR, jamais devines. Non-regression tenue : zero desaccord neuf sur `35b75a31` et
+`9f57c612` (juge `bpJugeExplosion`, denominateur « detonateur nomme ET porteur ponte »), et
+exactement 4 desaccords B2 sur `1c01e34f`/`3d58eb37`/`69b16f5d`, les quatre connus. Controle de
+coherence publie et verifie a trois niveaux : `attribues + sansLacher + sansPont == armements
+dates`, plus fort que la majoration par equipe demandee au plan.
+
+**Ce que la regle ne couvre pas, et qui reste a statuer.** Sur 3 armements, le porteur TRAVERSE
+la pose : sa periode couvre l'instant arme et ne se ferme que bien apres (35b75a31 a 299 176 :
+lacher 4 245 ms APRES l'explosion). Une regle de repli « porteur ACTIF a l'instant arme » les
+nommerait — avec corroboration du statborg sur le premier. Non traite : c'est une extension de
+la regle ecrite au plan, elle se statue avec l'utilisateur.
+
+**Prochaine etape** : E3 — persistance (`match_bomb_stats` append-only + vue `_latest`,
+INSERT-only via `persist.BatchBuilder` ; evenements dates dans `match_objective_events`).
+Livrables non committes : `bomb_arms.go`, `bomb_arms_test.go`,
+`assaut_bomb_arms_gate_test.go`, extensions de `bomb_stats.go`, `bpExtraire` rend l'OwnerReport.
+
 ## [2026-09-03] Match view — donnees des deux temoins chargees ; 9 formes proposees pour les trois blocs en tableau — En cours
 
 **Prerequis utilisateur : les deux temoins doivent porter leurs donnees.** Matchs
