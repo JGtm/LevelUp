@@ -54,8 +54,14 @@ Constats de verification (ecarts mineurs au handoff, sans consequence) :
       asymetrie contraire a la regle §4 du handoff lui-meme (verifie sur artefacts bruts :
       overshield etiquete par NOM, comme camo). 82 + 20 = 102, ecart integralement
       explique. Bonus session : camo 45, overshield 20. Signale a l'utilisateur.
-- [ ] Backfill reel des 114 artefacts (serveur arrete au prealable)
-- [ ] Commit(s) S1 (+ entree thought_log : ajoutee le 2026-09-04 par l'executant)
+- [x] Backfill reel (serveur arrete au prealable) : 106 ecrits, 0 echec, 4 s, sur les
+      106 artefacts du corpus (1853 matchs du registre sans artefact = hors fenetre de
+      retention, attendu). Reprise verifiee : second passage = 106 deja a jour, 0 ecrit.
+      Racine composite scratchpad (config S1 + jonction data reelle) — les deux worktrees
+      intacts. Serveur air relance depuis apps/go-api (piege : lance depuis la racine il
+      boucle sur exit status 1, .air.toml vit dans apps/go-api) et port 8000 re-ouvert.
+- [x] Commit S1 : `d448c3328` (+ etape 0 : `35baa7863`). Entree thought_log executant
+      + cloture pilote du 2026-09-04.
 
   AVERTISSEMENT PILOTE : deux executants ont ecrit EN PARALLELE dans ce worktree le
   2026-09-04 apres-midi (la session interrompue a repris d'elle-meme). Les implementations
