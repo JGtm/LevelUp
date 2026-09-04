@@ -325,13 +325,20 @@ describe('garde-rail : durée livrée par catégorie', () => {
     grapple_fire: 0.745,
     grapple_fire_v2: 0.765,
     grapple_fire_v3: 0.757,
-    // LE PROPULSEUR (2026-09-03) : `play_007_abl_evade_blast_player`, trois variantes stéréo
-    // rendues à leur nombre d'échantillons EXACT (47 825 / 42 961 / 39 817 à 48 kHz). Le dash
-    // est une impulsion : sa banque ne porte ni boucle, ni queue, ni recharge — la source fait
-    // cette durée-là, elle n'a pas été retronquée à la coupe des armes.
-    thruster_activate: 0.996,
-    thruster_activate_v2: 0.895,
-    thruster_activate_v3: 0.83,
+    // LE PROPULSEUR (2026-09-03) : les trois variantes d'ACTIVATION de la bibliothèque audio
+    // du jeu (« Thruster - Activate (Var. 01/02/03) »), converties à la convention de la
+    // banque — 48 kHz, 16 bits, crête normalisée à -1 dBTP comme `grapple_fire`.
+    //
+    // ELLES REMPLACENT UNE PREMIÈRE EXTRACTION faite le même jour depuis la banque Wwise
+    // (`play_007_abl_evade_blast_player`), qui rendait les mêmes gestes mais TRONQUÉS à
+    // 0,83-1,00 s. Les masters portent la queue entière : ce sont eux qui font foi, et le
+    // nom du fichier dit l'intention là où la banque demandait de la déduire.
+    //
+    // La bibliothèque porte aussi une « Recharge » par capacité : PAS livrée, faute de
+    // signal — le film ne date aucune recharge, et un asset non déclaré casse ce garde-rail.
+    thruster_activate: 1.433,
+    thruster_activate_v2: 1.5,
+    thruster_activate_v3: 1.325,
   }
 
   it('explosions et équipements gardent la durée de leur source, jamais retronquée à 1,2 s', () => {

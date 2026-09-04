@@ -130,6 +130,25 @@ type MatchViewHeader struct {
 	// front ne pose le lien « Rejeu 2D » que quand ce booléen est vrai, sans quoi
 	// il mènerait à un 404. Faux aussi quand le titre ne produit pas de rejeu.
 	ReplayAvailable bool `json:"replay_available"`
+	// ScoreTimelineKind : COMMENT le bloc « Score dans le temps » de la vue match doit se
+	// montrer sur ce mode. Deux valeurs servies, et une troisième qui se dit en se taisant :
+	//
+	//	"hidden"  le mode marque au FRAG (Slayer) : le client n'affiche RIEN — la courbe
+	//	          redirait « Frags cumulés », juste au-dessus dans le même onglet.
+	//	"events"  le mode marque en 3 à 5 points sur tout le match (drapeau, colline,
+	//	          bombe) : le client affiche des BARRES verticales aux instants de marque,
+	//	          une courbe sur cinq paliers étant un escalier vide.
+	//	VIDE      la COURBE en escalier — le comportement d'avant le 2026-09-03, et le repli
+	//	          de tout ce qui n'est pas déclaré : titre sans table `[score_timeline]`,
+	//	          mode non déclaré, `pair_name` absent.
+	//
+	// LE REPLI NE S'ÉCRIT PAS : `curve` étant le défaut du client, le servir explicitement
+	// serait redire le défaut sur chaque match. Le champ ne porte que ce qui CHANGE quelque
+	// chose — d'où `omitempty`.
+	//
+	// La règle vit en DONNÉE (config/titles/{slug}/mappings/regulation.toml), appariée sur
+	// le `pair_name` BRUT (suffixe de carte retiré), jamais dans un `slug ==`.
+	ScoreTimelineKind string `json:"score_timeline_kind,omitempty"`
 	// T0Ms : durée du countdown pré-match, en millisecondes (real_start_time −
 	// start_time_utc, cf. domain.MatchTimeline). 0 quand elle est inconnue.
 	//

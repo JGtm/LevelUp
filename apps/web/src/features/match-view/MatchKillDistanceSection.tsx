@@ -20,6 +20,7 @@
 import { useCallback, useMemo } from 'react'
 
 import { ChartCard } from '@/components/charts/ChartCard'
+import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken } from '@/lib/accessibility'
 import type { MatchKillDistancePlayer, MatchScoreboardRow } from '@/lib/api/types'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
@@ -84,34 +85,36 @@ export function MatchKillDistanceSection({ players, scoreboard, t }: Props) {
   const rows = useMemo(() => players ?? [], [players])
 
   return (
-    <section className="rounded-lg border-2 border-border" aria-label={t.killDistanceTitle}>
-      <h3 className="px-3 py-2 text-sm font-bold uppercase tracking-wider text-foreground">
-        {t.killDistanceTitle}
-      </h3>
-      {rows.length === 0 ? (
-        <p className="px-3 pb-3 text-xs text-muted-foreground">{t.killDistanceEmpty}</p>
-      ) : (
-        <>
-          {rows.map((player) => {
-            const { gamertag, totalKills } = playerContext(player.xuid, board)
-            const weapons = player.weapons ?? []
-            const measured = weapons.reduce((sum, w) => sum + w.measured_kills, 0)
-            const isMe = board.find((r) => r.xuid === player.xuid)?.is_me ?? false
-            const bars = killDistanceBars(weapons, locale)
-            return (
-              <div key={player.xuid} className={isMe ? 'bg-info/10' : ''}>
-                <p className="px-3 pt-1 text-xs font-semibold text-foreground">
-                  {t.killDistancePlayerHeaderFmt(gamertag, measured, totalKills)}
-                </p>
-                <PlayerDistanceChart bars={bars} t={t} />
-              </div>
-            )
-          })}
+    <SectionCard
+      title={t.killDistanceTitle}
+      label={t.killDistanceTitle}
+      footer={
+        rows.length === 0 ? undefined : (
           <p className="px-3 pb-2 pt-1 text-[11px] text-muted-foreground">
             {t.killDistanceReserve}
           </p>
-        </>
+        )
+      }
+    >
+      {rows.length === 0 ? (
+        <p className="px-3 pb-3 pt-2 text-xs text-muted-foreground">{t.killDistanceEmpty}</p>
+      ) : (
+        rows.map((player) => {
+          const { gamertag, totalKills } = playerContext(player.xuid, board)
+          const weapons = player.weapons ?? []
+          const measured = weapons.reduce((sum, w) => sum + w.measured_kills, 0)
+          const isMe = board.find((r) => r.xuid === player.xuid)?.is_me ?? false
+          const bars = killDistanceBars(weapons, locale)
+          return (
+            <div key={player.xuid} className={isMe ? 'bg-info/10' : ''}>
+              <p className="px-3 pt-1 text-xs font-semibold text-foreground">
+                {t.killDistancePlayerHeaderFmt(gamertag, measured, totalKills)}
+              </p>
+              <PlayerDistanceChart bars={bars} t={t} />
+            </div>
+          )
+        })
       )}
-    </section>
+    </SectionCard>
   )
 }

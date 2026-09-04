@@ -407,6 +407,7 @@ export function MatchViewPage() {
             matchPositions={matchPositions}
             tugOfWar={tugOfWar}
             cadence={combat_tab.cadence}
+            scoreTimelineKind={header.score_timeline_kind}
             locale={locale}
             t={t}
           />
