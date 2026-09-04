@@ -91041,3 +91041,52 @@ traitee : `buildGrappleFx` (`grappleLayer.ts:50`) porte le MEME defaut, anterieu
 c'est le modele qui a ete recopie. Le correctif tient en trois lignes mais change un calque
 livre en production le 2026-08-20 et demande sa propre fixture a deux vies : lot a part, a
 traiter AVANT la re-cuisson du parc, qui est ce qui rendra le defaut visible.
+
+## [2026-09-04] D1 — la ligne de grappin joignait la mauvaise vie (production web)
+
+**Statut** : Complete (branche `wt/grappin-vies`, non commite — relecture superviseur).
+
+**Le defaut.** `buildGrappleFx` (`grappleLayer.ts`) indexait `new Map(doc.tracks.map(t =>
+[t.slot, t.points]))`. Un slot de biped etant REATTRIBUE a chaque reapparition, le `Map` ne
+gardait que la DERNIERE piste du slot : une accroche d'une vie anterieure allait chercher les
+points d'une autre vie — disparition (l'instant precede les points retenus, `positionAt` rend
+`null`) ou cable peint a la position d'UN AUTRE JOUEUR. C'est le defaut releve en decouverte du
+lot P4 la veille, et laisse au registre parce qu'il touche un calque livre en production le
+2026-08-20.
+
+**Decision technique.** Patron canonique du depot, repris tel quel de `buildThrusterDashFx` /
+`buildShotFx` / `buildFireMarks` : `Map<number, ReplayTrackReady[]>` puis
+`.find((v) => isAliveAt(v, l.t0))`. L'instant de reference est `t0`, le DEPART de la traction —
+c'est le tir qui appartient a une vie ; une traction qui deborde la mort du porteur reste
+dessinee, `positionAt` figeant la derniere position. Effet voulu : une accroche qu'aucune vie
+ne couvre (trou entre deux vies) ne produit plus d'entree.
+
+**Resultats mesures.** Sur les 106 artefacts du cache local (lecture seule), 62 portent des
+lignes de grappin, 1 101 lignes au total, et **0 mal jointe (0,0 %)**. L'explication tient au
+schema : le decoupage d'une piste PAR VIE n'existe qu'a partir du SCHEMA 38 (modele des sieges,
+2026-09-02). Aux schemas 6 a 34, un slot porte exactement une piste (5 102 pistes pour 5 102
+slots uniques au schema 34) — le `Map` ne peut rien ecraser. Les DEUX seuls artefacts au schema
+38 comptent 213 pistes pour 195 slots (18 vies non finales, 15 slots multi-vie) et **2,6 % des
+images de vie appartiennent a une vie non finale** ; une seule de leurs 37 accroches tombe sur
+un slot multi-vie, et elle tombe dans la vie finale. LE DEFAUT EST DONC LATENT, PAS ACTIF — la
+premisse « visible sur tout le parc » est REFUTEE par la mesure. Il devient actif a la
+RE-CUISSON du parc : au taux mesure, de l'ordre de 30 accroches perdues sur le seul cache
+local, avec la disparition silencieuse comme mode dominant (vies disjointes et ordonnees).
+
+**Mutation tuee.** Fixture a deux vies orthogonales et disjointes du meme slot (plein est en
+bas a gauche, plein nord en haut a droite). Defaut reintroduit (`.at(-1)`) : 3 tests sur 9
+ROUGES (jointure, trou entre deux vies, trace du cable). Correctif restaure : 9/9 verts.
+
+**Autres porteurs** : balayage de tout `apps/web/src` — AUCUN. `indexBySlot`
+(`rosterLogic.ts:178`) ecrase volontairement (agregat de match, dette documentee sur place,
+remede `buildSlotOwnership` pour le rendu) ; tous les autres index sont des listes par cle ou
+des resolutions par image.
+
+**Gates** : `make check-types` exit 0 ; `make test-web` exit 0 — 562 fichiers, 5 843 tests
+passes, 14 skippes ; `npx eslint` exit 0. Zero couleur en dur, aucun cliquet de taille releve
+(`grappleLayer.ts` 118 L).
+
+**Conclusion / prochaine etape** : le calque du grappin rejoint les quatre autres au patron par
+vie ; le rejeu 2D n'a plus de jointure `slot -> points` ecrasante. Rapport detaille :
+`.ai/V7.5/replay2d/RAPPORT_D1_GRAPPIN_VIES_2026-09-04.md`. La RE-CUISSON DU PARC peut
+desormais se faire sans reintroduire ce trou — c'est elle qui aurait rendu le defaut visible.
