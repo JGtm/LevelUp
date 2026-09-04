@@ -239,3 +239,40 @@ func TestLoadReplayLabels_ImpulsionRefus(t *testing.T) {
 		t.Errorf("section absente -> %+v, attendu aucune famille", fams)
 	}
 }
+
+// TestLoadReplayLabels_FamillesDeCharges — la table `[ability_charges]` suit la MEME regle
+// que `[ability_impulses]` (meme validateur, cf. parseMeasuredFamilies) : les familles dont
+// les CHARGES sont mesurees par i56 (R11 : le grappin et le propulseur, et eux seuls) sont
+// une DONNEE de titre, refusee quand aucun rang de palette ne les nomme.
+func TestLoadReplayLabels_FamillesDeCharges(t *testing.T) {
+	base := "[meta]\ntitle_slug=\"x\"\nschema_version=1\n" +
+		"[[ability_palettes]]\nid=\"p\"\nmarkers=[4, 5]\n[ability_palettes.ranks]\n" +
+		"\"4\"={en=\"Grappleshot\",fr=\"grappin\",family=\"grapple\"}\n" +
+		"\"5\"={en=\"Thruster\",fr=\"propulseur\",family=\"thruster\"}\n"
+	set, err := LoadReplayLabelsFromBytes("t.toml",
+		[]byte(base+"[ability_charges]\nfamilies=[\"grapple\",\"thruster\"]\n"))
+	if err != nil {
+		t.Fatalf("chargement: %v", err)
+	}
+	fams := set.AbilityChargeFamilies()
+	if len(fams) != 2 || fams[0] != "grapple" || fams[1] != famPropulseur {
+		t.Errorf("familles de charges mal lues: %+v", fams)
+	}
+	// Les deux tables sont INDEPENDANTES : declarer les charges ne declare pas l'usage.
+	if got := set.AbilityImpulseFamilies(); len(got) != 0 {
+		t.Errorf("[ability_charges] a fuite vers les impulsions: %+v", got)
+	}
+	// Une famille qu'aucun rang ne nomme est refusee — le meme invariant fatal.
+	if _, err := LoadReplayLabelsFromBytes("t.toml",
+		[]byte(base+"[ability_charges]\nfamilies=[\"repulsor\"]\n")); err == nil {
+		t.Error("famille non nommee acceptee dans [ability_charges] : le calque serait muet en silence")
+	}
+	// Section absente = aucune famille : degradation, pas erreur.
+	set, err = LoadReplayLabelsFromBytes("t.toml", []byte(base))
+	if err != nil {
+		t.Fatalf("section absente refusee: %v", err)
+	}
+	if got := set.AbilityChargeFamilies(); len(got) != 0 {
+		t.Errorf("section absente -> %+v, attendu aucune famille", got)
+	}
+}

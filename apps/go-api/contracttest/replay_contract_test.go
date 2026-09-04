@@ -134,6 +134,12 @@ var replaySchemas = []struct {
 	{"TranslocationCoverage", replay.TranslocationCoverage{}},
 	{"AbilityImpulse", replay.AbilityImpulse{}},
 	{"AbilityImpulseCoverage", replay.AbilityImpulseCoverage{}},
+	// AJOUTES AU LOT P5 (2026-09-04), DANS LE MEME LOT que le champ (lecon P2-3 appliquee
+	// d'emblee) : `charges` est un int NU (zero = une mesure, jamais omis) la ou
+	// `componentAbsent` de la couverture est omitempty — exactement le couple que les gardes
+	// omitempty<->required jugent.
+	{"AbilityCharge", replay.AbilityCharge{}},
+	{"AbilityChargeCoverage", replay.AbilityChargeCoverage{}},
 	{"Coverage", replay.Coverage{}},
 	{"LayerCoverage", replay.LayerCoverage{}},
 	{"BridgeHealth", replay.BridgeHealth{}},
@@ -571,9 +577,31 @@ var replaySchemas = []struct {
 //	                      Avec lui, le bloc `coverage.abilityImpulses` et les deux types dans
 //	                      replaySchemas, MEME LOT (lecon P2-3).
 //
-// Les dix-neuf fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	51 -> 52  2026-09-04  UN champ, les CHARGES RESTANTES (lot P5, schema 38 ENRICHI) :
+//	                      - `abilityCharges` : LES LECTURES du compteur de charges entieres
+//	                        (i56, quartet HAUT de la valeur 7 bits — rapport R11 : serie
+//	                        4, 3, 2, 1, 0 sur `1cd3848a` exactement aux cinq usages du releve
+//	                        Theater ; 36/36 accroches de grappin appariees a une baisse,
+//	                        temoin decale 2/36), attribuees par le rang i48 de la MEME VIE et
+//	                        ANTERIEUREMENT — la meme jointure que les impulsions. Ce sont les
+//	                        LECTURES, jamais un compte d usages derive (une baisse peut valoir
+//	                        plusieurs usages), et rien n est affirme avant la premiere lecture
+//	                        (le film ne transmet rien au ramassage). Seules les familles que
+//	                        le titre declare mesurees y entrent ([ability_charges] : grapple,
+//	                        thruster) — le REPULSEUR n arme jamais i56 (218 vies, 0 baisse,
+//	                        negatif MESURE R11 §4-5).
+//	                      LE SCHEMA RESTE 38 ALORS QUE DES ARTEFACTS 38 CUITS EXISTENT
+//	                      (verifie sur pieces le 2026-09-04 : `1b2d9e08`, `1cd3848a` — les
+//	                      temoins du gate visuel, hors repertoires de test) : les ajouts sont
+//	                      purement additifs et omitempty, un lecteur 38 reste correct, et une
+//	                      montee a 39 n aurait protege aucun lecteur de plus — justification
+//	                      complete a la chronique de document.go.
+//	                      Avec lui, le bloc `coverage.abilityCharges` et les deux types dans
+//	                      replaySchemas, MEME LOT (lecon P2-3).
+//
+// Les vingt fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 51
+const wantReplayDocumentFields = 52
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.
