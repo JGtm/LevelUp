@@ -138,7 +138,6 @@ type v6MarcheStats struct {
 	perFilmDeepBoard, perFilmDeepExit map[string]int
 	perFilmHeadBoard, perFilmHeadExit map[string]int
 	multiPerPacket                    map[int]int
-	trials                            int
 }
 
 func newV6Marche() *v6MarcheStats {
