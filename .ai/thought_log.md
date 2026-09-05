@@ -1,3 +1,13 @@
+## [2026-09-05] Volet C — ronde 2 de revue adversariale : la boucle converge (P0+P1 : 2 → 0) — Complete
+
+Relecture en contexte frais du seul commit de corrections `68e6d5752`. Aucun P0/P1, 18
+conditions qui tiennent (dont le determinisme du test « corps coupe » et l'equivalence
+`isAuthErr`→`IsAuthError`). Un P2 consigne, non traite par respect de la borne de boucle
+(`adversarial-review` §8) : le garde-rail textuel ne visite pas les declarations courtes
+`:=` ni les `case` de `switch` — lot a part, cf. plan §5.2. Branche poussee ; `wt/**` ne
+declenche pas la CI (`ci.yml`), donc miroir `feat/blob-304-retry-ci` sur le meme commit
+pour obtenir le verdict. Pas de merge dans `feat/v75` (decision utilisateur du jour).
+
 ## [2026-09-05] Volet C — ronde 1 de revue adversariale : le retry de blob durci sur 10 points — Complete
 
 **CE QUI ARRIVE.** Deux relecteurs independants ont relu le lot C.3 (`downloadBlob` retente,

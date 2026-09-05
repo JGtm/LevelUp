@@ -679,6 +679,27 @@ respecté : aucune autre commande `go` sur la machine pendant chaque étape) :
 (`sync/`, 2 relecteurs, skill `adversarial-review`) n'a PAS été faite — elle n'est pas un
 item du lot C.3 et demande des contextes frais. Elle est le dernier verrou avant le merge.
 
+## 5.2 — Ronde 2 de revue adversariale (2026-09-05) : les seules corrections, contexte frais
+
+Relecture du commit `68e6d5752` uniquement (skill `adversarial-review` §8 : la ronde 2 relit
+les corrections, pas tout le diff). **P0+P1 : 2 → 0** — la boucle converge, elle s'arrête ici.
+18 conditions vérifiées qui tiennent, dont les six questions de régression posées d'avance :
+lecture de corps sous `ctx` annulé (aucune requête émise en plus), sortie de boucle (aucun
+chemin muet, `blobAbandon` toujours atteint après la 4e tentative), `Retry-After` non
+reporté d'une tentative à l'autre (valeur neuve par `fetchBlobOnce`), drain exécuté avant le
+`Close` différé sur tous les non-200, équivalence exacte `isAuthErr`→`IsAuthError` (`doGet`
+sort immédiatement sur 401/403, jamais enveloppé), déterminisme du test « corps coupé »
+(`Content-Length` > octets écrits + `Flush()` : `RoundTrip` réussit, donc pas de retry
+transparent du `Transport`, et `http.body` rend `io.ErrUnexpectedEOF`).
+
+- (P2, consigné, NON traité — borne de boucle) `no_text_predicate_test.go:107-114` : le
+  garde-rail étendu ne visite que les `*ast.ValueSpec` (`const`/`var`). Une déclaration
+  courte `marqueur := "HTTP 401"` puis `strings.Contains(s, marqueur)` est un
+  `*ast.AssignStmt`, non inspecté ; même trou, préexistant, pour `switch s { case "HTTP 401" }`.
+  La forme documentée (`const`) est bien attrapée ; la promesse « indirections par
+  `const`/`var` » n'est tenue qu'à moitié. Lot à part : visiter `*ast.AssignStmt` et les
+  `case` de `switch`.
+
 ## C.3-r1 — Ronde 1 de corrections après revue adversariale (2026-09-05)
 
 Deux relecteurs indépendants ont rendu 11 constats sur le lot C.3. Triage : 2 P1 et 6 P2
