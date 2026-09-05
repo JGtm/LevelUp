@@ -176,6 +176,26 @@ Tous joués en avant-plan, depuis `apps/go-api` pour le Go, avec
 **Correction de commande** : le plan écrivait `./internal/contracttest/...` ; le paquet est
 à `apps/go-api/contracttest/` (le chemin du plan échoue en `[setup failed]`).
 
+## Réparation après CI (commit `4a2bf1043`)
+
+Premier run CI rouge sur UN job : `Go Coverage + Baseline non-régression (CGO_ENABLED=1
+— ./... complet)`, le seul qui joue `-tags=integration` sur tout le module. Deux tests
+d'intégration du rattrapage (`TestRun_RattrapeSansAucuneInsertion`,
+`TestRun_LaJaugeDecroitSurDeuxCycles`) passaient `RepoRoot: t.TempDir()` : une racine vide
+n'est plus neutre depuis que `Run` passe la porte `film.replay_artifact` en tête — le titre
+n'y est pas résolvable, la porte se ferme, le cycle ne fait rien.
+
+Ces deux tests ÉCRIVENT dans leur racine (l'ouvrier simulé y dépose des artefacts) : leur
+passer la racine du dépôt les ferait sortir de leur bac à sable. Helper neuf
+`racineIsoleeAvecManifestes` : un TempDir qui porte une COPIE de
+`config/titles/{slug}/mappings/` — isolation préservée, titre résolvable.
+
+**Leçon de gate** : le gate du plan (`go test` sans tag) ne pouvait PAS voir ce trou ; seul
+`-tags=integration -p 1` le révèle. Gate ajouté et rejoué vert :
+`go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/api/...`
+— aucune ligne hors `ok` / `no test files`. Les treize autres jobs des trois workflows
+étaient verts au premier run.
+
 ## Découvertes (hors périmètre, non traitées)
 
 1. **`MatchPositionsHeatmap` et les hooks du film de la Match View.** Le verdict V-GO-B2
