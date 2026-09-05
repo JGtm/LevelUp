@@ -304,6 +304,21 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 
 ## 6. Journal
 - 2026-09-06 : revision 4, worktree `LevelUp-wt-tactique` cree, phase 1 lancee.
+- 2026-09-06 : **revue adversariale ronde 2 (derniere salve) — 3 constats, tous corriges** en
+  2 commits `tactique(1.9)`. **R2-1 (P1, doc inversee)** : depuis la correction C, la phrase
+  « les bornes d'une lecture agregee sont l'UNION des bornes des rasters sommes » etait fausse
+  (un raster par match n'a aucune cellule a 3 matchs distincts, ses bornes sont vides par
+  construction) — `analysis/tactical/doc.go:32-42` dit desormais que les bornes se lisent sur
+  L'AGREGAT, et la regle est epinglee par `raster_test.go:229`. **R2-2 (P1)** : le garde-rail
+  du taux nu exemptait tout type d'un autre paquet (`type TauxEchange float64` dans `domain`
+  passait) ; logique inversee en LISTE BLANCHE datee des types de retour
+  (`no_naked_rate_test.go:12-46` : error, bool, int, int64, string, `domain.Couverture`,
+  `domain.BilanEchanges`, plus les conteneurs dont chaque composant CLE COMPRISE y figure —
+  `MortSuivie` et `PaireEchange` ecartees, verification sur pieces : aucune fonction exportee
+  ne les rend), verificateur `:147`. **R2-3 (P2)** : sentinelle anti-vacuite retablie
+  (`no_naked_rate_test.go:76` : compte des fonctions exportees inspectees, echec a zero).
+  Gate rejoue : `go vet` propre, `go test -count=1` vert sur 8 paquets en 10,7 s,
+  `golangci-lint` a 0 issue.
 - 2026-09-06 : **revue adversariale ronde 1 — 13 constats retenus, TOUS corriges** en 5
   commits `tactique(1.8)`. Gate elargi a `./internal/archlint/...` (le ratchet d'imports y
   entre) : `go vet` propre, `go test -count=1` vert sur 8 paquets en 9,1 s, `golangci-lint`

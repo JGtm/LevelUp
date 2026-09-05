@@ -95480,3 +95480,21 @@ lecture signee, cumul des points illisibles, tri des paires d'echange sur quatre
 `merge_test.go` a franchi les 500 lignes sous ces ajouts et a ete scinde. Gate rejoue, elargi a
 `internal/archlint` : `go vet` propre, `go test -count=1` vert sur 8 paquets en 9,1 s,
 `golangci-lint` a 0 issue, fichiers de 17 a 349 L.
+
+**Revue ronde 2 : 3 constats (2 P1, 1 P2), corriges, liste blanche des types de retour.** La
+correction C de la ronde 1 avait INVERSE la doc du paquet — « les bornes sont l'union des
+bornes des rasters sommes » est faux des lors que `Bornes()` applique le plancher, un raster
+par match n'ayant aucune cellule a trois matchs distincts : le paragraphe dit maintenant que
+les bornes se lisent sur l'agregat, et un test l'epingle plutot que la relecture. Le garde-rail
+du taux nu, lui, exemptait tout type d'un autre paquet : `type TauxEchange float64` dans
+`domain` aurait rendu au taux sa forme de nombre seul sans qu'aucun `float64` n'apparaisse
+dans `coordination`. Une liste noire ne peut pas gagner cette course — il y a une infinite de
+facons d'emballer un nombre et une seule liste de ce que le paquet a le droit de rendre : la
+logique est inversee en LISTE BLANCHE datee (error, bool, int, int64, string,
+`domain.Couverture`, `domain.BilanEchanges`, plus les conteneurs dont chaque composant, cle
+comprise, y figure), tout ajout exigeant une justification datee dans le fichier. Enfin la
+sentinelle anti-vacuite, perdue au passage precedent, est retablie sur le compte des fonctions
+exportees inspectees. Cinq inversions rapportees : `domain.TauxEchange` refuse,
+`[]domain.Couverture` accepte, `func() (domain.Couverture, float64)` refuse, `map[float64]int`
+refuse, garde d'inspection neutralisee -> sentinelle. Gate rejoue : vet propre, `test -count=1`
+vert sur 8 paquets en 10,7 s, `golangci-lint` a 0 issue.
