@@ -44,6 +44,10 @@
 //	eqip-arbre  module `pc/globals` : la STRUCTURE des evenements d'une banque
 //	            (couches simultanees vs variantes, gains, delais, couverture). Detail
 //	            dans `eqip_arbre.go` — c'est ce qui manque pour RECONSTRUIRE un son.
+//	livrer      AUCUN module : fusionne les sons d'armes extraits et votes avec le moteur
+//	            sonore du rejeu (etape 7 de RECETTE_SONS_ARMES.md). Detail dans
+//	            livraison.go — portage fidele de `_outils/livraison.py` (archive Desktop,
+//	            hors depot), au meme titre que pck-dump a ferme `akpk_unpack.py`.
 //
 // ATTENTION MEMOIRE : `himodule.Open` lit le module ENTIER en memoire. Le module qui porte
 // les `sbnk` fait 7,24 Go, celui qui porte les `snd!`/`weap` 0,62 Go. Ne jamais charger les
@@ -118,6 +122,9 @@ func main() {
 	tirages := flag.Int("tirages", 3, "nombre de tirages complets a rendre (mode rendu-event)")
 	graine := flag.Int64("graine", 1, "graine du tirage de variantes (mode rendu-event)")
 	dureeBoucle := flag.Float64("duree", 0, "duree de boucle en secondes ; 0 = one-shot (mode rendu-event)")
+	donneesDir := flag.String("donnees", "", "dossier _donnees du chantier sons (lot1.json, lot2.json, manifeste.json, coups.json, votes-final.json) (mode livrer)")
+	sonsRacine := flag.String("sons", "", "racine du chantier sons armes (dossiers d'armes avec leurs .wav sources) ; defaut : parent de -donnees (mode livrer)")
+	depotCible := flag.String("depot", "", "racine du depot cible ; defaut : title.FindRepoRoot (mode livrer)")
 	flag.Parse()
 
 	racine, err := resoudreDeploy(*deploy)
@@ -327,6 +334,12 @@ func main() {
 			}
 		}
 		err = extrairePck(*pck, *sortieTir, filtre)
+	case "livrer":
+		if *donneesDir == "" {
+			err = fmt.Errorf("le mode livrer exige -donnees (dossier _donnees)")
+			break
+		}
+		err = livrer(*donneesDir, *sonsRacine, *depotCible)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}
