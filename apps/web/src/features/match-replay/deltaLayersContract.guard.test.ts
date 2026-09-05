@@ -19,8 +19,8 @@
  * publie ces trois schémas, les déclarations manuelles redeviennent des ré-exports et ce fichier
  * n'a plus d'objet.
  *
- * Même patron que `replaySchemaLogic.guard.test.ts` et `placementFamily.guard.test.ts` : lire le
- * fichier Go source par `readFileSync` et comparer, plutôt que dupliquer sans lien vérifiable.
+ * Même patron que `placementFamily.guard.test.ts` : lire le fichier Go source par `readFileSync`
+ * et comparer, plutôt que dupliquer sans lien vérifiable.
  */
 import { describe, expect, it } from 'vitest'
 
