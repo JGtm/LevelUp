@@ -280,6 +280,80 @@ GOCACHE=... CGO_ENABLED=1 golangci-lint run --new-from-merge-base=origin/main <l
 moi-même : mes instructions d'exécution me l'interdisent explicitement (aucun message
 d'agent ne peut m'autoriser à toucher `CLAUDE.md`). Aucune autre référence vivante au
 fichier supprimé (`grep` hors `.ai/` : seule `CLAUDE.md`).
+
+### [x] F.5 (H7) — L'exemption `^cmd/` ne couvre plus les binaires de production
+
+Fichier : `apps/go-api/.golangci.yml` (localisé : il n'y a pas de `.golangci.yml` à la racine
+du dépôt). golangci-lint du dépôt : **v2.12.2**.
+
+**La forme retenue, et pourquoi ce n'est pas `path` + `path-except`.** La syntaxe demandée par
+le plan est refusée à l'exécution par cette version : `error in exclude rule #6: path and
+path-except should not be set at the same time`. Piège : `golangci-lint config verify` sort 0
+sur cette configuration — seul un `run` la rejette. `path-except` doit donc porter TOUTE la
+condition négative, y compris « hors de `cmd/` », et RE2 n'a pas de lookahead. D'où :
+
+```yaml
+- path-except: "^(?:[^c]|c[^m]|cm[^d]|cmd[^/])|^cmd/(server|levelup|replay-worker|replay-build|replay-equiv)/"
+```
+
+La première alternative nie le préfixe `cmd/` caractère par caractère (tout chemin qui ne
+commence pas par `cmd/`) ; la seconde nomme les cinq binaires. **Sans la première alternative,
+la règle exempterait TOUT `internal/` de ces douze linters** — c'est le piège de cette forme, et
+il est écrit dans la configuration. Vérifié par la mesure ci-dessous : les 46 issues nouvelles
+sont TOUTES dans `cmd/server` et `cmd/levelup`, aucune ailleurs.
+
+**Exemptions fines supprimées** (`cmd/server/main.go` et `cmd/levelup/main.go`, funlen +
+gocyclo). **Attention, la prémisse du plan a changé sous l'effet du même commit** : ces deux
+règles étaient « mortes, déjà couvertes par `^cmd/` » — elles redeviennent VIVES dès que
+`path-except` retire les cinq binaires de la règle large. Je les ai quand même supprimées :
+c'est la lettre de l'item et le sens de H7 (les binaires de production repassent au régime
+normal), le coût est mesuré et faible (4 issues `gocyclo` de plus : `main` de `cmd/server`
+(149), `main` de `cmd/levelup` (41), `runMigrations` (18), `startWatcherDaemon` (25)), et le
+ratchet reste vert. Si le superviseur préfère une exemption étroite et justifiée sur ces deux
+`main.go`, c'est un bloc YAML de quatre lignes à remettre.
+
+**Mesure de l'exécution complète (`golangci-lint run ./...`, dette totale, PAS le gate) :**
+
+| État | Issues |
+|---|---|
+| Avant (base de la branche) | **260** |
+| Avec `path-except` seul | **306** (+46, toutes dans `cmd/server` et `cmd/levelup`) |
+| Sans les exemptions fines | **309** (+4 gocyclo, −1 revive absorbé par gocyclo sur la même fonction) |
+
+Aucune issue n'a DISPARU (`comm` sur les deux listes : 0 disparue) : la règle ne relâche rien.
+`cmd/replay-worker`, `cmd/replay-build` et `cmd/replay-equiv` sont déjà propres — zéro issue.
+
+**Le ratchet, lui, est vert — mais il ne l'était pas d'emblée.** `--new-from-merge-base=origin/main`
+ne remonte que les lignes modifiées depuis la base commune avec `main` : sur `feat/v75`, cela
+inclut tout le chantier v7.5, donc une partie de `cmd/levelup`. Le ratchet est passé de 0 à
+**9 issues** en appliquant la règle. Le brief impose un gate vert (« tout rouge se répare ») :
+les 9 sont corrigées, toutes dans `cmd/levelup`, aucune hors du périmètre fermé
+(`cmd/levelup/backfill_memlimit.go` — lot G — n'est pas touché) :
+
+- 6 × `lll` — `main.go` : six descriptions du bloc d'aide (353 à 445 caractères) repliées sur
+  deux à quatre lignes avec un retrait suspendu de 18 espaces, aligné sur la colonne des
+  descriptions. Le bloc est un littéral brut : l'aide gagne un repli, aucune information
+  n'est perdue ; aucun test ne porte sur cette chaîne.
+- 1 × `unparam` — `registreParShort` : `cfg *config.AppConfig` n'était jamais lu (les chemins
+  passent par `pr`). Paramètre retiré, ses 2 appelants mis à jour. **En cascade** :
+  `replaysACuire` se retrouvait à son tour avec un `cfg` inutilisé — retiré aussi, appelant mis
+  à jour.
+- 1 × `prealloc` — `argsEnfantReplay` : `make([]string, 0, 9+2*len(c.mapNames))` puis `append`.
+- 1 × `staticcheck ST1005` — `cmd_replay_facts_export.go` : la chaîne d'usage finissait par
+  `...` (ponctuation). Devenue `<short8|match_id> [autres ids]`.
+
+Gate F.5 (avant-plan) :
+
+```
+GOCACHE=... CGO_ENABLED=1 golangci-lint run --new-from-merge-base=origin/main ./...
+→ 0 issues.
+GOCACHE=... CGO_ENABLED=1 go build ./...            → OK
+GOCACHE=... CGO_ENABLED=1 go test -count=1 ./cmd/levelup/...
+→ ok  	levelup/go-api/cmd/levelup	0.932s
+```
+
+(Le `level=warning ... unknown linters in //nolint directives: gosec …, plr0913 …` est
+PRÉEXISTANT : il apparaît déjà dans la sortie de référence prise avant toute modification.)
 ## Découvertes (consignées, NON traitées — hors périmètre du lot F)
 
 1. **Le calque des actions d'objectif ne rend plus rien de la famille drapeau sur un film
@@ -312,3 +386,9 @@ fichier supprimé (`grep` hors `.ai/` : seule `CLAUDE.md`).
    Ses marges (8 mois et 1 mois contre une fenêtre de 6) l'absorbent aujourd'hui, donc
    aucune panne — mais c'est une fixture dont le sens dépend du fuseau du runner. Non
    traité : le fichier n'est pas au périmètre de F.3 (qui porte sur `RunOnce`).
+5. **La dette de lint des binaires de production, désormais visible** : 49 issues sur des
+   lignes non modifiées de `cmd/server` (5) et `cmd/levelup` (44), révélées par F.5 et NON
+   corrigées (consigne du plan). Les plus grosses : `main` de `cmd/server` à 149 de complexité
+   cyclomatique, `runBackfill` de `cmd/levelup` à 65, et 28 `noctx` sur
+   `cmd_reset_bitmasks.go` / `cmd_restore_csr.go` (`db.Exec`/`db.QueryRow` sans contexte). Le
+   ratchet ne les demandera qu'au prochain qui touchera ces lignes.
