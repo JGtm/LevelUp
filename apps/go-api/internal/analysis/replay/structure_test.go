@@ -673,8 +673,82 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   reste correct, et une montée à 39 n'aurait protégé aucun lecteur de plus (le parc
 	//   entier est déjà <= 38 et la reprise du backfill par SchemaVersion ne perd rien) —
 	//   la justification complète est à la chronique de document.go.
-	if SchemaVersion != 38 {
-		t.Fatalf("SchemaVersion = %d, attendu 38 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// - v39 (2026-09-05, chantier VÉHICULES ET TOURELLES) : les trois montées 29, 30 et 31 du
+	//   chantier, numérotées sur une base antérieure, arrivent POSÉES SUR LE 38 et fondues en UNE
+	//   seule (décision D3 du plan d'intégration) — aucun artefact n'a jamais été cuit à ces
+	//   numéros-là. Ce qu'elles apportent, en trois temps :
+	// v39 (1) — LES VÉHICULES (`vehicles`). La vie de chaque véhicule `ti=40` du match : naissance
+	//   (position du record de création, à des emplacements mesurés FIXES au rayon 0,00 m),
+	//   identité de châssis (`MPPWord32`) résolue en famille de sprite, trajectoire échantillonnée
+	//   sur la grille du document avec son CAP, et les ÉPISODES D'OCCUPATION (qui est à bord, de
+	//   quand à quand, sur quel siège). Champ omitempty, même raison de monter que
+	//   v14/v16/v21/v22/v25/v26/v27 : c'est la CLÉ DE REPRISE du backfill — le calque des
+	//   véhicules n'existe que sur un artefact qui le porte, un v38 doit se lire « à re-cuire ».
+	//   NIVEAU DE PREUVE, INÉGAL, et il doit se lire ici. SÛR : les positions (la grammaire bipède
+	//   rend 99,4-100 % de pas sous 35 m/s sur la bande `ti=40`, contre 21,2-41,8 % pour celle des
+	//   objets du monde) ; le CAP par la vélocité `i1` (écart médian au déplacement 1,7-2,1 deg sur
+	//   4 films, R = 0,992-0,997, témoin par mélange déterministe 51-88 deg) ; l'identité
+	//   `MPPWord32` (constance 100 % par vie, 5 valeurs sur 7 survivent au changement de build ET
+	//   de carte, donc c'est un GlobalID de tag). PARTIEL, et publié comme tel : l'occupation, dont
+	//   la primitive du « début de trou de position » n'attribue que 15,6-21,1 % des vies — mais à
+	//   x20,3 et x30,5 le hasard, TÉMOIN FANTÔME NUL (0 contre 12 et 14) ; et la table de familles,
+	//   dont la couverture est publiée châssis par châssis (`coverage.vehicles.unknownChassis`).
+	//   CE QUE LA VERSION REFUSE, et c'est une réfutation mesurée (V3_DESTRUCTION_DATEE_2026-09-02,
+	//   460 vies / 12 films / 8 gates, 7 échouent) : la DESTRUCTION datée. Zéro vie avec un occupant
+	//   encore à bord à la fin serrée de son flux ; mort à bord ANTI-corrélée (3/80 = 3,8 % contre
+	//   17/80 = 21,3 % au témoin à occupant décalé sur le MÊME intervalle) ; véhicule qui réplique
+	//   encore 13 à 36 s (médiane par lot) après avoir été quitté — la fin de trajectoire est une
+	//   MISE AU REPOS, pas une disparition. `VehicleTrack.End` vaut donc `inconnue`, et la
+	//   disparition du sprite ne dit PAS que le véhicule a explosé.
+	//   Détail : internal/analysis/replay/document_vehicles.go.
+	//
+	// v39 (2) — LES TIRS DES JOUEURS EMBARQUÉS (`shots[].v`). Un occupant attaché cesse de répliquer
+	//   la position de son bipède : la porte des tirs, qui pose chaque tir sur cette position,
+	//   écartait TOUS les tirs partis d'un véhicule. Mesure du 2026-09-02 sur `0d76e8f1` :
+	//   1 166 tirs publiés, 12 épisodes d'occupation, ZÉRO tir pendant un épisode. Une seconde
+	//   porte (`vehicle_shots.go`) reprend ces orphelins, leur donne la position INTERPOLÉE du
+	//   véhicule et les marque de son slot (`v`) — sans quoi le client chercherait un pion qui
+	//   n'existe pas. Champ omitempty, même raison de monter que v25/v26/v27 : c'est la CLÉ
+	//   DE REPRISE du backfill, un artefact 38 est MUET au volant.
+	//   NIVEAU DE PREUVE — un ORACLE INDÉPENDANT le fonde, et il ne doit rien à la géométrie (le
+	//   record de tir ne porte AUCUNE position monde ; le critère est l'IDENTITÉ, le film écrivant
+	//   son tireur). Les identifiants d'arme se lisent en deux moitiés de 32 bits : les 1 166 tirs
+	//   publiés portent TOUS la moitié basse `0x42C9679F` (19 familles personnelles) ; les 23
+	//   événements à moitié basse NULLE sont TOUS écartés par la porte du bipède (23/23) — une
+	//   arme qu'on ne porte pas à pied, tirée par un joueur qui ne réplique plus. 17 de ces 23
+	//   (73,9 %) tombent dans un épisode publié, contre 6 des 229 orphelins d'arme personnelle
+	//   (2,6 %) : enrichissement x28. Témoin temporel (6 décalages de ±30 à ±120 s) : 12,2 en
+	//   moyenne contre 23.
+	//   CE QUE LA VERSION REFUSE : les tirs AMBIGUS (deux slots du même joueur répliquant tous
+	//   deux une position) — leur signature est celle d'un joueur qui n'est PAS embarqué.
+	//   Détail : internal/analysis/replay/vehicle_shots.go.
+	//
+	// v39 (3) — LA VISÉE DE CHAQUE OCCUPANT DE VÉHICULE (`vehicles[].rides[].aim`). Un occupant
+	//   attaché cesse de répliquer sa POSITION (primitive du « trou »), et le dépôt en concluait
+	//   qu'il ne répliquait plus RIEN : le cône du conducteur était dessiné au CAP DU CHÂSSIS,
+	//   l'artilleur et le passager n'avaient aucun cône. La faute était dans le DÉTECTEUR —
+	//   `ScanBipedRecords` exige un `i0` absolu et un masque commençant par 0, quand la forme la
+	//   plus fréquente de la bande bipède est `i21,i25`, un record de VISÉE SANS POSITION
+	//   (22 963 lectures sur le seul `0d76e8f1`). Champ omitempty, même raison de monter que
+	//   v25/v26/v27 : c'est la CLÉ DE REPRISE du backfill, un artefact 38 fait viser tous
+	//   ses occupants dans l'axe du châssis.
+	//   NIVEAU DE PREUVE (V11_ORIENTATION_TOURELLE_2026-09-03, 5 films). PRÉSENCE : 4 832 à
+	//   24 050 lectures par film, 46,5 à 231,2 par slot bipède, contre 0,2 à 0,9 par slot sur une
+	//   bande FANTÔME de même cardinalité (x155 à x925). JUSTESSE : appariée à la lecture `i21`
+	//   AVEC position du même slot à moins de 200 ms, écart médian de cap 0,2 à 0,5 deg
+	//   (R 0,979-0,989) contre 75,7 à 93,7 deg au témoin par mélange (R 0,011-0,134) — la
+	//   référence étant `Point.H`, déjà publié et validé par l'oracle du kill. COUVERTURE :
+	//   35 / 35 (100 %) des épisodes attestés par la sortie portent au moins une visée à bord, à
+	//   5 à 46 lectures/s, quand le même épisode porte 0 ou 1 lecture `i21` avec position.
+	//   UTILITÉ : la visée n'est PAS le cap du châssis — médiane 15,7-21,8 deg, q3 39,6-52,9 deg.
+	//   CE QUE LA VERSION REFUSE, réfutation mesurée AVEC TÉMOIN : l'orientation de la TOURELLE en
+	//   tant qu'objet. L'entité tourelle ne réplique rien (139,6 et 85,5 en-têtes par slot contre
+	//   86,3 et 194,2 au FANTÔME, formes de masque plates) et `i31`/`i41`/`i42` de `ti=40` ne sont
+	//   jamais émis. Le cône de l'artilleur vient de L'HOMME, pas de la tourelle.
+	//   Détail : internal/analysis/replay/vehicle_rides_aim.go.
+	if SchemaVersion != 39 {
+		t.Fatalf("SchemaVersion = %d, attendu 39 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -397,9 +397,9 @@ func InferResyncCount() int { return inferResyncStat }
 // coincidental target-slot delta that does not lead to sustained clean decode is
 // rejected — the discriminator raw resync lacked.
 func validatedResync(buf []byte, from int, w *World, cfg FrameConfig) (int, bool) {
-	savedPos, savedDP := posCaptureHook, dynPrecHook
-	posCaptureHook, dynPrecHook = nil, nil
-	defer func() { posCaptureHook, dynPrecHook = savedPos, savedDP }()
+	savedPos, savedDP, savedRef := posCaptureHook, dynPrecHook, unitRefHook
+	posCaptureHook, dynPrecHook, unitRefHook = nil, nil, nil
+	defer func() { posCaptureHook, dynPrecHook, unitRefHook = savedPos, savedDP, savedRef }()
 
 	frameLen := len(buf) * 8
 	c := &chainCtx{buf: buf, frameLen: frameLen, w: w, cfg: cfg,
@@ -686,8 +686,14 @@ func SetInferRepair(v bool) { inferRepair = v }
 func inferUnboundArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (uint32, int, bool) {
 	saved := posCaptureHook
 	savedDP := dynPrecHook
-	posCaptureHook, dynPrecHook = nil, nil
-	defer func() { posCaptureHook, dynPrecHook = saved, savedDP }()
+	// `unitRefHook` rejoint la liste POUR LA MÊME RAISON que les deux autres : ce qui suit
+	// est une lecture SPÉCULATIVE (chaque archétype du registre est essayé sur les mêmes
+	// bits), et une lecture spéculative n'est pas une lecture. Sans cette mise à nil, les
+	// tentatives abandonnées déposent des valeurs à des positions que la traversée retenue
+	// ne lit jamais — elles seraient attribuées à un composant au hasard.
+	savedRef := unitRefHook
+	posCaptureHook, dynPrecHook, unitRefHook = nil, nil, nil
+	defer func() { posCaptureHook, dynPrecHook, unitRefHook = saved, savedDP, savedRef }()
 
 	var winTi uint32
 	winEnd, matches := -1, 0

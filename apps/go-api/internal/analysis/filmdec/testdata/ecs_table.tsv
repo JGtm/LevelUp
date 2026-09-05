@@ -803,7 +803,7 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 37	equipment / item (objet du monde)	30	equipment-has-infinite-uses-component	1	porte	FUN_142ed4640	R(1)	1	traverse.go:762		aucun	l'equipement a des usages ILLIMITES (socle de carte contre equipement de joueur)	UN BIT qui separerait probablement le mobilier de carte de l'equipement pose par un joueur — exactement la question laissee ouverte par le verdict 0.6 (« sept equipements ou deployables seuls ? »). Jamais lu.	haute	
 38	generic-rigid-body (corps rigide)	0	object-position-component	0	porte	FUN_14076e29c	chemin world-object	45	traverse.go:259		aucun	position du corps rigide	Les BIDONS A FUSION explosifs de la carte sont des corps rigides : leur position et leur destruction expliqueraient une partie des morts « sans revendication ».	moyenne	niveau_jeu=1
 38	generic-rigid-body (corps rigide)	1	object-translational-velocity-component	1	porte	FUN_14076e228	R(1) [+ R(19) + R(10)]	1-30	traverse.go:289		aucun	vitesse du corps rigide	inconnu	moyenne	
-38	generic-rigid-body (corps rigide)	2	object-forward-and-up-dynamic-precision-component	1	porte	FUN_142ed3fcc	reutilise le deser i2 du bipede	9	traverse.go:292		aucun	orientation du corps rigide	inconnu	haute	niveau_jeu=2
+38	generic-rigid-body (corps rigide)	2	object-forward-and-up-dynamic-precision-component	1	partiel	FUN_140c5f7ec	R(1) A ; si A=0 R(1) B ; [param>=2 : R(1) C] ; A=1 -> R(192) ; B=0 -> R(1)[+R(19)]+R(8) ; B=1 -> FUN_14076e744 ; mode C=1 (FUN_142e29bac) NON porte	11-30	traverse.go:310		aucun	orientation du corps rigide	inconnu	haute	niveau_jeu=2 ; deser resolu statiquement 2026-09-03 (chaine chaine-ASCII -> vtable[0x28]) : PAS le deser du bipede
 38	generic-rigid-body (corps rigide)	3	object-angular-velocity-component	2	porte	FUN_140d70998			traverse.go:204		aucun	inconnu		aucune	niveau_jeu=1
 38	generic-rigid-body (corps rigide)	4	object-body-vitality-component	1	porte				traverse.go:783		aucun	inconnu		aucune	
 38	generic-rigid-body (corps rigide)	5	object-shield-vitality-component	1	porte				traverse.go:786		aucun	inconnu		aucune	
@@ -823,7 +823,7 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 38	generic-rigid-body (corps rigide)	19	animated-mesh-dynamic-state-component	1	porte	FUN_142f0258c	R(8) + R(1) + R(16)	25	traverse.go:405		aucun	l'etat d'une piece animee (porte qui s'ouvre, ascenseur)	L'etat des PORTES et des ascenseurs de la carte : un fond de carte qui bouge avec le match. Decode, jete.	haute	
 39	inconnu	0	object-position-component	0	porte	FUN_14076e29c			traverse.go:259		aucun	inconnu		aucune	niveau_jeu=1
 39	inconnu	1	object-translational-velocity-component	1	porte	FUN_14076e228			traverse.go:289		aucun	inconnu		aucune	
-39	inconnu	2	object-forward-and-up-dynamic-precision-component	1	porte	FUN_142ed3fcc			traverse.go:292		aucun	inconnu		aucune	niveau_jeu=2
+39	inconnu	2	object-forward-and-up-dynamic-precision-component	1	partiel	FUN_140c5f7ec	R(1) A ; si A=0 R(1) B ; [param>=2 : R(1) C] ; A=1 -> R(192) ; B=0 -> R(1)[+R(19)]+R(8) ; B=1 -> FUN_14076e744 ; mode C=1 (FUN_142e29bac) NON porte	11-30	traverse.go:310		aucun	inconnu		haute	niveau_jeu=2 ; deser resolu statiquement 2026-09-03 (chaine chaine-ASCII -> vtable[0x28]) : PAS le deser du bipede
 39	inconnu	3	object-angular-velocity-component	2	porte	FUN_140d70998			traverse.go:204		aucun	inconnu		aucune	niveau_jeu=1
 39	inconnu	4	object-body-vitality-component	1	porte				traverse.go:783		aucun	inconnu		aucune	
 39	inconnu	5	object-shield-vitality-component	1	porte				traverse.go:786		aucun	inconnu		aucune	
@@ -843,8 +843,8 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 39	inconnu	19	animated-mesh-dynamic-state-component	1	porte	FUN_142f0258c			traverse.go:405		aucun	inconnu		aucune	
 40	vehicule (presume)	0	object-position-dynamic-precision-component	0	porte				traverse.go:198		aucun	inconnu		aucune	niveau_jeu=1
 40	vehicule (presume)	1	object-translational-velocity-dynamic-precision-component	1	porte				traverse.go:201		aucun	inconnu		aucune	
-40	vehicule (presume)	2	object-forward-and-up-dynamic-precision-component	1	porte	FUN_142ed3fcc			traverse.go:292		aucun	inconnu		aucune	niveau_jeu=2
-40	vehicule (presume)	3	object-angular-velocity-dynamic-precision-component	2	porte	FUN_140d70998			traverse.go:204		aucun	inconnu		aucune	niveau_jeu=1
+40	vehicule (presume)	2	object-forward-and-up-dynamic-precision-component	1	partiel	FUN_140c5f7ec	R(1) A ; si A=0 R(1) B ; [param>=2 : R(1) C] ; A=1 -> R(192) ; B=0 -> R(1)[+R(19)]+R(8) ; B=1 -> FUN_14076e744 ; mode C=1 (FUN_142e29bac) NON porte	11-30	traverse.go:310		aucun	inconnu		haute	niveau_jeu=2 ; deser resolu statiquement 2026-09-03 (chaine chaine-ASCII -> vtable[0x28]) : PAS le deser du bipede
+40	vehicule (presume)	3	object-angular-velocity-dynamic-precision-component	2	porte	FUN_140d87740	R(1) outer ; si 1 -> R(96) ; sinon R(1) present [+R(19)+R(8)]	2-97	traverse.go:214		aucun	inconnu		haute	niveau_jeu=1 deser resolu statiquement 2026-09-03 : FUN_140d87740, distinct du FUN_140d70998 du composant sans dyn.-prec.
 40	vehicule (presume)	4	object-body-vitality-component	1	porte				traverse.go:783		aucun	inconnu		aucune	
 40	vehicule (presume)	5	object-shield-vitality-component	1	porte				traverse.go:786		aucun	inconnu		aucune	
 40	vehicule (presume)	6	object-region-state-component	1	porte				traverse.go:217		aucun	inconnu		aucune	
@@ -934,7 +934,7 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 42	ground-weapon (arme au sol)	20	weapon-ammo-component	1	porte	FUN_140fc3028	R(8) + R(11) + R(12)	31	traverse.go:393		aucun	les munitions restantes dans l'arme au sol	Un lance-roquettes au sol a-t-il encore ses roquettes ? Decode, jete.	haute	
 43	device (dispositif de carte)	0	object-position-component	0	porte	FUN_14076e29c	R(14) + R(1)	15	traverse.go:259		aucun	LA POSITION D'UN DISPOSITIF sur son axe (une porte a moitie ouverte, un ascenseur a mi-course)	L'etat des portes et des ascenseurs, sur 14 bits, deja decode : un fond de carte qui bouge, et une explication pour des trajectoires qui semblent traverser un mur.	haute	niveau_jeu=1
 43	device (dispositif de carte)	1	object-translational-velocity-component	1	porte	FUN_14076e228			traverse.go:289		aucun	inconnu		aucune	
-43	device (dispositif de carte)	2	object-forward-and-up-dynamic-precision-component	1	porte	FUN_142ed3fcc			traverse.go:292		aucun	inconnu		aucune	niveau_jeu=2
+43	device (dispositif de carte)	2	object-forward-and-up-dynamic-precision-component	1	partiel	FUN_140c5f7ec	R(1) A ; si A=0 R(1) B ; [param>=2 : R(1) C] ; A=1 -> R(192) ; B=0 -> R(1)[+R(19)]+R(8) ; B=1 -> FUN_14076e744 ; mode C=1 (FUN_142e29bac) NON porte	11-30	traverse.go:310		aucun	inconnu		haute	niveau_jeu=2 ; deser resolu statiquement 2026-09-03 (chaine chaine-ASCII -> vtable[0x28]) : PAS le deser du bipede
 43	device (dispositif de carte)	3	object-angular-velocity-component	2	porte	FUN_140d70998			traverse.go:204		aucun	inconnu		aucune	niveau_jeu=1
 43	device (dispositif de carte)	4	object-body-vitality-component	1	porte				traverse.go:783		aucun	inconnu		aucune	
 43	device (dispositif de carte)	5	object-shield-vitality-component	1	porte				traverse.go:786		aucun	inconnu		aucune	

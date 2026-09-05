@@ -125,6 +125,10 @@ type Options struct {
 	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
 	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
 	Pads PadScans
+	// Vehicles : ce que le film rend sur les VEHICULES (`ti=40`) — recensement, creations,
+	// nuage de positions et evenements d'embarquement (cf. build_vehicles.go). Entree de
+	// DONNEES, comme Pads. `Scanned` faux = rejeu sans vehicules, jamais des vehicules devines.
+	Vehicles VehicleScan
 	// SpawnPoints : les points d'apparition d'objet ramassable NON-ARME de la CARTE, lus au
 	// catalogue fige par l'appelant (cf. cmd/replay-build). Entree de DONNEES, pas de reglage.
 	//

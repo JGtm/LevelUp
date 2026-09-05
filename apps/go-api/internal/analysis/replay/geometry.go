@@ -25,6 +25,15 @@ func dist3(a, b [3]float32) float64 {
 	return math.Sqrt(dx*dx + dy*dy + dz*dz)
 }
 
+// planDist est LA distance EN PLAN (XY) du paquet, en metres — l autre grandeur, a cote de
+// `dist3`, et elle a sa raison d etre propre : la hauteur d un occupant et celle du repere d un
+// vehicule ne se referent pas au meme point, une distance 3D ecarterait des embarquements reels
+// (meme choix, meme raison qu aux socles). Elle est nommee pour que les deux ne se confondent
+// pas a la lecture, et pour n avoir qu UNE ecriture comme sa soeur 3D.
+func planDist(ax, ay, bx, by float32) float64 {
+	return math.Hypot(float64(ax-bx), float64(ay-by))
+}
+
 // Fichiers du fond de carte, produits par le RE de la variante Forge (.mvar) et par la
 // résolution des tags de modèle (cf. cmd/tmp_forgedim). Ils vivent sous
 // `PathResolver.MapGeometryDir(titleSlug)` — donnée de référence versionnée du titre,

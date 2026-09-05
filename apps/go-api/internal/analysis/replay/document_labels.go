@@ -69,3 +69,27 @@ type WeaponLabel struct {
 	Img    string `json:"img,omitempty"`
 	Tinted bool   `json:"tinted,omitempty"`
 }
+
+// VehicleLabel est ce qu il faut pour DESSINER une famille de chassis : sa vignette, et le fait
+// qu elle se teigne.
+//
+// IL N A PAS DE `En`/`Fr`, ET C EST DELIBERE. Le nom d un vehicule est un NOM PROPRE du jeu
+// (Warthog, Banshee, Mongoose) : il ne se traduit pas, et la CLE de la table EST deja ce nom.
+// Cabler ici un libelle bilingue reviendrait a ecrire du FR/EN en dur cote Go — ce que la regle
+// du depot interdit et ce que la decision de cadrage du plan a tranche.
+//
+// IL N EST PAS ECRIT DANS L ARTEFACT : il est rempli A LA REQUETE par le service
+// (`replay_vehicle_labels.go`), comme `WeaponLabel.Key` et `mapObjectives`. Meme raison, et elle
+// est mesuree — figer une URL d asset au build laisserait muets tous les artefacts deja cuits
+// jusqu a une re-cuisson complete, et une resolution qui peut s ameliorer ne se stocke pas.
+type VehicleLabel struct {
+	// Img est l URL du sprite vu de dessus, EXTRAIT DU JEU (cf. `static/vehicles-assets`). Vide =
+	// aucun sprite servi pour cette famille : le client dessine un marqueur neutre, jamais le
+	// sprite d un vehicule voisin.
+	Img string `json:"img,omitempty"`
+	// Tinted dit que le visuel se teint a la couleur de l equipe qui l occupe. Les sprites de
+	// vehicule sont des silhouettes claires a traits noirs : ils se teignent en `multiply`, la ou
+	// les icones de HUD sont des masques — meme contrat de champ que `WeaponLabel.Tinted`, autre
+	// mode de composition (decision de cadrage du plan, cote client).
+	Tinted bool `json:"tinted,omitempty"`
+}

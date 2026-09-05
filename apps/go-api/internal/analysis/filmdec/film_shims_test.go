@@ -60,3 +60,32 @@ func objectiveArchetypeDir(dir string) (Archetype, *Registry, error) {
 func filmArchetypeDir(dir string, ti int) (Archetype, *Registry, error) {
 	return NewFilmContext(filmDeDir(dir)).filmArchetype(ti)
 }
+
+// vehicleArchetypeDir : [FilmContext.vehicleArchetype] depuis un repertoire.
+func vehicleArchetypeDir(dir string) (Archetype, error) {
+	return NewFilmContext(filmDeDir(dir)).vehicleArchetype()
+}
+
+// vehicleI0LayoutDir : le decoupage d'i0 d'un film de repertoire, AUTO-DETECTE.
+//
+// C'est bien l'auto-detection ici, et non la regle du catalogue : ces instruments de mesure ne
+// disposent d'aucune entree de carte, et c'est exactement ce que faisait `vehicleI0Layout(dir)`
+// avant la migration.
+func vehicleI0LayoutDir(dir string) (I0Layout, error) {
+	return NewFilmContext(filmDeDir(dir)).I0Layout()
+}
+
+// bipedSlotBandMapDir : [bipedSlotBand] depuis un repertoire, rendue en ENSEMBLE.
+//
+// Les instruments de mesure des lots V5 a V8 tiennent leur bande dans une `map[uint32]bool` :
+// ils la croisent avec des bandes d'objets du monde (qui sont des ensembles), en retirent des
+// slots, la parcourent. Leur convertir la bande dense ici coute une allocation par appel dans un
+// test, et evite de reecrire des dizaines de lignes de mesure — la bande dense sert la
+// PRODUCTION, ou elle est consultee par bit candidat.
+func bipedSlotBandMapDir(dir string, chunks []int) map[uint32]bool {
+	out := map[uint32]bool{}
+	for _, s := range bipedSlotBandDir(dir, chunks).Slots() {
+		out[s] = true
+	}
+	return out
+}
