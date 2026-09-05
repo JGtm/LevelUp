@@ -3,8 +3,13 @@
  *
  * CE QU'ILS PROTÈGENT :
  *   1. LA DOUBLE PORTE. Slayer ne porte aucun bloc d'objectif -> `detectObjectiveMode` rend
- *      null -> RIEN à l'écran. Assaut tombe dans la même porte : l'API ne fournit aucune
- *      statistique de bombe, et la base n'en porte aucune colonne.
+ *      null -> RIEN à l'écran. C'est le cas de Slayer, et de tout mode dont aucune source ne
+ *      publie de compteur.
+ *   1bis. L'ASSAUT EST ENTRÉ DANS LA PORTE LE 2026-09-05, et il y est entré PAR LE FILM :
+ *      l'API 343 ne publie toujours AUCUNE statistique de bombe (la famille `BombStats` du
+ *      moteur est de la télémétrie, jamais répliquée). Ses quatre colonnes viennent de
+ *      `match_bomb_stats`, reconstruites du film et gatées par la capability `film.bomb_stats`.
+ *      Un titre sans la clé retombe donc sur le cas 1 — rien à l'écran, et c'est correct.
  *   2. LES DEUX VUES, et le fait qu'elles suivent LE MODE : les colonnes viennent de
  *      `objectiveColsFor`, pas d'une liste écrite dans le composant. Éprouvé sur trois
  *      grandeurs (Bastion) ET sur cinq (VIP) — la grille doit encaisser les deux.
