@@ -67,6 +67,11 @@ type MatchViewRepo struct {
 	// slug ==. Zéro-value false = pas de strip (un titre dont les noms officiels
 	// n'ont pas de préfixe, ex. Halo 5, garde "Super Fiesta Fête" entier).
 	stripPlaylistCategory bool
+	// bombStats : le titre déclare-t-il `film.bomb_stats` ? Câblé au wiring depuis la
+	// CapabilityMap du titre (jamais un slug). Faux = la SECONDE requête du scoreboard
+	// (Q12cBombStats) n'est même pas payée, et aucune colonne d'Assaut n'est exposée — Halo 5
+	// n'a pas de décodeur de film, donc rien à lire.
+	bombStats bool
 	// playlistLabelOverrides : table data-driven nom brut -> libelle court, chargee
 	// depuis config/titles/{slug}/mappings/playlist_labels.toml (ex. Halo 5
 	// "Super Fiesta Fete" -> "Super Fiesta"). nil/vide = no-op. Appliquee APRES le
@@ -116,6 +121,14 @@ func (r *MatchViewRepo) WithViewer(slug string) *MatchViewRepo {
 // WithPlaylistCategoryStrip active/désactive le retrait du préfixe de catégorie
 // matchmaking du libellé de playlist (CapPlaylistCategoryStrip). Câblé au wiring
 // depuis la CapabilityMap du titre. Retourne le repo pour chaînage.
+// WithBombStats active la lecture des STATISTIQUES D'ASSAUT reconstruites du film
+// (`match_bomb_stats_latest`, capability `film.bomb_stats`). Câblé au wiring depuis la
+// CapabilityMap du titre. Retourne le repo pour chaînage.
+func (r *MatchViewRepo) WithBombStats(enabled bool) *MatchViewRepo {
+	r.bombStats = enabled
+	return r
+}
+
 func (r *MatchViewRepo) WithPlaylistCategoryStrip(enabled bool) *MatchViewRepo {
 	r.stripPlaylistCategory = enabled
 	return r

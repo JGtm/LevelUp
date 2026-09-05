@@ -694,6 +694,15 @@ type MatchScoreboardObjective struct {
 	MaxKillingSpreeAsVip    *int     `json:"max_killing_spree_as_vip,omitempty"`
 	TimeAsVipSeconds        *float64 `json:"time_as_vip_seconds,omitempty"`
 	LongestTimeAsVipSeconds *float64 `json:"longest_time_as_vip_seconds,omitempty"`
+	// Assaut (match_bomb_stats_latest — RECONSTRUITES DU FILM ; l'API 343 n'en publie AUCUNE
+	// pour ce mode). Table DÉDIÉE, seconde requête, gatée par la capability `film.bomb_stats` :
+	// un titre qui ne la déclare pas n'expose aucune de ces cinq clés. NULL = non mesuré,
+	// jamais zéro — `bomb_carriers_killed` est absent PARTOUT à ce jour.
+	BombDetonations          *int     `json:"bomb_detonations,omitempty"`
+	BombArms                 *int     `json:"bomb_arms,omitempty"`
+	BombGrabs                *int     `json:"bomb_grabs,omitempty"`
+	TimeAsBombCarrierSeconds *float64 `json:"time_as_bomb_carrier_seconds,omitempty"`
+	BombCarriersKilled       *int     `json:"bomb_carriers_killed,omitempty"`
 }
 
 // MatchNemesisRow : adversaire fréquent (kills reçus de lui).

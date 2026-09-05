@@ -8041,6 +8041,14 @@ export interface components {
         /** @description Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés. */
         MatchScoreboardObjective: {
             /** Format: int64 */
+            bomb_arms?: number;
+            /** Format: int64 */
+            bomb_carriers_killed?: number;
+            /** Format: int64 */
+            bomb_detonations?: number;
+            /** Format: int64 */
+            bomb_grabs?: number;
+            /** Format: int64 */
             extraction_conversions_completed?: number;
             /** Format: int64 */
             extraction_conversions_denied?: number;
@@ -8094,6 +8102,8 @@ export interface components {
             skull_scoring_ticks?: number;
             /** Format: int64 */
             successful_extractions?: number;
+            /** Format: double */
+            time_as_bomb_carrier_seconds?: number;
             /** Format: double */
             time_as_flag_carrier_seconds?: number;
             /** Format: double */

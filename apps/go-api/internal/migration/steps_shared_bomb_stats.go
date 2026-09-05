@@ -56,7 +56,10 @@ package migration
 // meme consequence, deja assumee et documentee, que pour `match_kill_events`. Le branchement
 // produit se fait sur capability (`film.bomb_stats`), jamais sur le slug.
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+)
 
 func init() {
 	Register(Migration{
@@ -78,13 +81,32 @@ func init() {
 // la liste de colonnes d'un `SELECT *` a la creation de la vue. Modele a copier :
 // `shared_objective_stats_add_stockpile_extraction`.
 func applyMatchBombStats(db *sql.DB) error {
-	return execScript(db, ddlMatchBombStats+ddlMatchBombStatsLatest)
+	return execScript(db, MatchBombStatsTableSQL("match_bomb_stats")+
+		MatchBombStatsLatestViewSQL("match_bomb_stats"))
 }
 
-// ddlMatchBombStats : la table et son unique index.
+// MatchBombStatsTableSQL rend le DDL de la table d Assaut et de son index pour une REFERENCE DE
+// TABLE donnee.
+//
+// EXPORTE POUR QUE PERSONNE NE LE RECOPIE. Une DDL recopiee dans une fixture de test derive de
+// la production sans que rien ne rougisse — c est le piege le plus cher du depot (une colonne
+// ajoutee ici, un test qui continue de passer sur l ancienne forme). Les fixtures d integration
+// (`platform/duckdb`) appellent cette fonction avec `shared.match_bomb_stats` ; la migration
+// l appelle avec `match_bomb_stats`. UNE seule definition, deux references.
+func MatchBombStatsTableSQL(tableRef string) string {
+	return fmt.Sprintf(ddlMatchBombStats, tableRef, tableRef)
+}
+
+// MatchBombStatsLatestViewSQL rend le DDL de la vue `_latest` pour une REFERENCE DE TABLE
+// donnee. Meme raison d etre exportee, meme patron que MatchObjectiveStatsLatestViewSQL.
+func MatchBombStatsLatestViewSQL(tableRef string) string {
+	return fmt.Sprintf(ddlMatchBombStatsLatest, tableRef)
+}
+
+// ddlMatchBombStats : la table et son unique index. %s (verbatim) = la reference de table.
 const ddlMatchBombStats = `
 	CREATE SEQUENCE IF NOT EXISTS match_bomb_stats_id_seq START 1;
-	CREATE TABLE IF NOT EXISTS match_bomb_stats (
+	CREATE TABLE IF NOT EXISTS %s (
 		-- identite technique (append-only : PK non naturelle, ADR 0026)
 		id                           BIGINT    PRIMARY KEY DEFAULT nextval('match_bomb_stats_id_seq'),
 		match_id                     VARCHAR   NOT NULL,
@@ -104,7 +126,7 @@ const ddlMatchBombStats = `
 		written_at                   TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 	);
 	CREATE INDEX IF NOT EXISTS idx_match_bomb_stats_match
-		ON match_bomb_stats(match_id);
+		ON %s(match_id);
 `
 
 // ddlMatchBombStatsLatest : LE SEUL CHEMIN DE LECTURE AUTORISE (ADR 0026 — une lecture brute
@@ -118,7 +140,7 @@ const ddlMatchBombStats = `
 const ddlMatchBombStatsLatest = `
 	CREATE OR REPLACE VIEW match_bomb_stats_latest AS
 	SELECT *
-	FROM match_bomb_stats
+	FROM %s
 	QUALIFY ROW_NUMBER() OVER (
 		PARTITION BY match_id, xuid
 		ORDER BY written_at DESC, id DESC
