@@ -83,8 +83,8 @@ func pickupWeaponForm(fam uint32) string { return fmt.Sprintf("%08x", fam) }
 
 func TestPadFamilyKeyNormalisesBothConventions(t *testing.T) {
 	const fam = 0x11223344
-	kPad, okPad := padFamilyKey(padWeaponForm(fam))
-	kPick, okPick := padFamilyKey(pickupWeaponForm(fam))
+	kPad, okPad := PadWeaponFamilyKey(padWeaponForm(fam))
+	kPick, okPick := PadWeaponFamilyKey(pickupWeaponForm(fam))
 	if !okPad || !okPick {
 		t.Fatalf("les deux formes de production doivent être reconnues : socle=%v ramassage=%v", okPad, okPick)
 	}
@@ -93,10 +93,10 @@ func TestPadFamilyKeyNormalisesBothConventions(t *testing.T) {
 	}
 	// UN NOM CANONIQUE DE POWER-UP N'EST PAS UNE FAMILLE, et c'est ainsi qu'on le distingue
 	// sans connaître la liste des noms.
-	if _, ok := padFamilyKey("overshield"); ok {
+	if _, ok := PadWeaponFamilyKey("overshield"); ok {
 		t.Error("un nom canonique de power-up ne doit PAS passer pour une famille d arme")
 	}
-	if _, ok := padFamilyKey(""); ok {
+	if _, ok := PadWeaponFamilyKey(""); ok {
 		t.Error("une famille vide ne doit pas produire de clé")
 	}
 }
@@ -193,7 +193,7 @@ func TestDatePadPickupsFailsOnBrokenJoinKey(t *testing.T) {
 	}
 
 	// (3) LE PIÈGE D'ORIGINE : la forme du socle comparée SANS normalisation à celle du
-	// ramassage. Les deux conventions doivent rester distinctes — sinon `padFamilyKey` ne sert
+	// ramassage. Les deux conventions doivent rester distinctes — sinon `PadWeaponFamilyKey` ne sert
 	// plus à rien et ce test doit le dire.
 	if padWeaponForm(fam) == pickupWeaponForm(fam) {
 		t.Error("les deux conventions coïncident désormais : la normalisation est devenue " +

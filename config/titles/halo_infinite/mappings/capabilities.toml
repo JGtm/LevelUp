@@ -117,3 +117,14 @@ schema_version = 1
 # reste not_exposed tant qu'aucun consommateur ne lit kill_positions pour ce titre
 # (G.3, hors périmètre G.2bis).
 "film.kill_positions"    = "supported"
+# Résumé d'usage PAR MATCH ET PAR JOUEUR dérivé de l'ARTEFACT DE REJEU (tractions de
+# grappin, épisodes camo/surbouclier, poses et lâchers d'équipement, prises de socle
+# d'arme et de bonus) → shared.match_usage_players + match_usage_films
+# (décision utilisateur 2026-09-04 : persistance en BASE au sync, voie sidecar
+# abandonnée). Quatrième famille dérivée du film — mais PAS de la même passe : elle se
+# dérive de l'artefact QUI VIENT D'ÊTRE cuit (étape post-sync replaybuild), jamais d'un
+# second décodage. ABSENTE pour Halo 5 : pas de décodeur de film, donc aucun artefact,
+# donc rien à résumer — silence propre, pas une dégradation.
+# ⚠ Clé FINE, même doctrine que les trois film.* ci-dessus : elle gouverne la
+# PRODUCTION du résumé, pas ce qu'une page en affiche. Ne pas l'élargir.
+"film.usage_summary"     = "supported"

@@ -96,7 +96,7 @@ type Pickup struct {
 	// moitié. `Loadout.W` et `WeaponPad.Weapon` passent par `formatWeaponFamily`, qui écrit
 	// `"0x"` + huit MAJUSCULES. La datation des occupations de socle comparait les deux
 	// espaces directement et ne trouvait donc JAMAIS rien (revue adversariale du 2026-08-31).
-	// La jointure normalise désormais au point de comparaison (`padFamilyKey`) ; les formes
+	// La jointure normalise désormais au point de comparaison (`PadWeaponFamilyKey`) ; les formes
 	// publiées, elles, ne bougent pas — des clients les lisent déjà.
 	//
 	// L'ESPACE DE VALEURS, lui, est bien commun : mesuré, 100 % des familles vues par i43..i46
