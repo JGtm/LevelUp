@@ -561,6 +561,7 @@ lot 4b, régime connu).
 
 - Fusion D (`1c1b6026f`, 15 h 55) : zéro octet Go, plan en union ; gates web déjà rendus dans le worktree D sur le même contenu.
 - Fusion C (`9423b9ba4`, 16 h 54) : conflits documents seuls ; typecheck web exit 0, `go build` OK, `go test` replayartifacts / replay / persist / archlint ok, **harnais 13/13 identiques sans `-update`** (les TSV sont encore ceux de A : B n'est pas fusionnée).
+- Fusion B (`b1827d9a2`, 17 h 29) : conflits documents seuls ; D11 verifie (openapi-gen et generate-types : diff NUL contre l'auto-merge, openapi-check 0) ; `go build` 0, `go test` analysis / replaybuild / replayartifacts / archlint / api / contracttest EXIT 0 ; **harnais 13/13 identiques sans `-update`** (TSV de B, 49 etapes) ; web complet : lint 0, lint:fields 0, vitest 585 fichiers / 6 187 tests / 0 echec, build 0, knip 0/0/0. Ateliers B, C, D supprimes (jonctions retirees d'abord, cache principal verifie a 1 380 films) et branches d'atelier effacees ; reste `wt/integ-assaut` (etape G en cours).
 
 ## §6 Journal
 - 2026-09-05 14 h 40 — plan écrit après inventaire mesuré (§1) ; relecture `plan-review` lancée
