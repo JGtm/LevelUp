@@ -130,7 +130,9 @@ func vehicleEventEpisodes(
 		}
 	}
 	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
-	var out []vehicleEpisode
+	// Capacite = un episode par slot au MINIMUM (un occupant en fait souvent plusieurs) : ce n est
+	// pas la taille finale, c est l economie des premieres reallocations (prealloc, 2026-09-05).
+	out := make([]vehicleEpisode, 0, len(slots))
 	for _, s := range slots {
 		out = append(out, vehicleEpisodesOfOccupant(s, mergeVehicleEvents(boards[s], exits[s]),
 			bySlot[s])...)

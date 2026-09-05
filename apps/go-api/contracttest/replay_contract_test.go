@@ -401,9 +401,27 @@ var replaySchemas = []struct {
 //	                        champ au document : `until`/`untilMax`/`end` vivent sur
 //	                        EquipmentPlacement, pas a la racine.
 //
-// Les quatorze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	44 -> 46  2026-09-05  DEUX champs, le chantier VEHICULES ET TOURELLES (schemas 29-31) :
+//	                      - `vehicles` (v29) : la vie de chaque vehicule du film — naissance,
+//	                        trajectoire echantillonnee avec son cap, episodes d occupation
+//	                        (`rides`, avec la serie de visee par occupant en v31), et borne d
+//	                        affichage. Lu par le calque du rejeu 2D, qui dessine le chassis a sa
+//	                        taille reelle, teinte a l equipe du conducteur ;
+//	                      - `vehicleLabels` (v29) : la table des FAMILLES employees par le film et
+//	                        leur sprite, posee A LA REQUETE par le service (jamais dans l artefact
+//	                        stocke) — meme patron que `weaponLabels` et `grenadeLabels`.
+//	                      Le champ `end` de `VehicleTrack` vaut TOUJOURS `unknown` a ce jour : la
+//	                      datation de la destruction a ete mesuree et refutee sur les 28 types d
+//	                      evenements (lot V7), et `tEnd` est declare en avance de phase pour que
+//	                      l effet d explosion (image ET son, livres le 2026-09-05) s allume sans
+//	                      re-livraison le jour ou le Go publiera `destroyed`. Le gel avait ete
+//	                      laisse a 44 pendant tout le chantier (point enregistre du handoff, « a
+//	                      statuer avant merge ») : c est CE commit qui le statue, apres la
+//	                      premiere CI du chantier.
+//
+// Les quinze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 44
+const wantReplayDocumentFields = 46
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

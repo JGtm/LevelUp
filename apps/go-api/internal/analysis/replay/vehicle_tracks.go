@@ -372,10 +372,10 @@ func vehicleTrackOf(
 // fausse. La meme liste vit cote web (`vehiclesLayer.FAMILLES_NON_JOUABLES`) ; les deux se
 // justifient : le document refuse de l affirmer, le calque refuse de le dessiner.
 var vehicleFamillesNonPilotables = map[string]bool{
-	"falcon":  true,
-	"pelican": true,
-	"phantom": true,
-	"skiff":   true,
+	familleFalcon:  true,
+	famillePelican: true,
+	famillePhantom: true,
+	familleSkiff:   true,
 }
 
 // vehicleFamilyIsRideable dit si une famille peut porter un episode d occupation. Une famille

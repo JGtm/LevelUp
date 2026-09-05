@@ -82764,3 +82764,31 @@ CI = juge d'autorite au push.
 **Conclusion / prochaine etape.** Commit + PREMIER PUSH du chantier (CI jamais executee),
 verdict CI au niveau job a suivre. Restent : verifications Theater (7 candidates), boost
 (condition de reprise ecrite), missiles Wasp, tag Warthog a departager, recapture boost Banshee.
+
+## [2026-09-05] Vehicules — premiere CI du chantier : rouges statues et repares — Complete
+
+**Contexte.** Premier push du chantier (branche CI `feat/v75-vehicules-sons`, `claude/**` ne
+declenche pas ci.yml). Run 33962905810 : 5 jobs verts (frontend, OpenAPI lint, contract test,
+lease ADR 0013, gitleaks, deploy pre-check), 3 rouges.
+
+**Decision technique.** (1) `TestReplayDocumentFieldCountIsFrozen` 46 vs 44 — point ENREGISTRE
+du handoff « a statuer avant merge » : gel porte a 46 avec l entree de chronique 44 -> 46 datee
+(champs `vehicles` + `vehicleLabels`, schemas 29-31 ; le contrat etait deja regenere, les deux
+cotes du test concordent). (2) `TestNoRawKillScopeLiteral` : faux positif sur la sous-commande
+`"scan"` de `cmd/vehicle-sprite` — le mot est une VALEUR DE PORTEE film (ratchet J4R-3) ;
+correction A LA SOURCE (sous-commande renommee `inventaire`), garde-rail NI assoupli NI
+allowliste. (3) `TestNoAdHocRepoRootLadderInTests` : `vehicle_families_test.go` passe a
+`testutil.RepoRoot()` + segments. (4) golangci : constantes de famille (`familleWarthog`...,
+goconst 12 occurrences) partagees par `vehicle_families.go` et `vehicle_tracks.go`, prealloc sur
+`vehicle_rides_events.go`.
+
+**Resultats.** `go test contracttest + archlint + analysis/replay` : exit 0.
+`golangci-lint run ./internal/analysis/replay/... ./cmd/vehicle-sprite/...` : **0 issues**.
+Reste hors perimetre : la dette lint `himap`/`hinavmesh`/`mapfond-cadrage` (gocyclo, goconst,
+staticcheck) — AUCUN de ces fichiers n est dans le diff du chantier (verifie par
+`git diff merge-base..HEAD`) ; elle vient de la base de depart. `feat/v75` a avance depuis et
+porte sa propre dette lint (filmdec), pas celle-ci : notre branche est simplement en retard.
+
+**Conclusion / prochaine etape.** Push des correctifs et nouvelle CI. Si le lint reste le seul
+job rouge et uniquement sur l heritage : decision utilisateur — integrer `origin/feat/v75` dans
+la branche (recupere les corrections himap) ou traiter la dette ici.
