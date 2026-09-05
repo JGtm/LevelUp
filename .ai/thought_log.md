@@ -1,3 +1,42 @@
+## [2026-09-05] Integration branches — N-17/N-18 : cinquieme colonne d'Assaut affichee, contrat OpenAPI aligne — Complete
+
+**Le mandat.** Deux corrections bornees issues de la seconde lecture E.2 (`wt/integ-col5`, HEAD
+`19c112483`) : N-17 (decision produit escaladee : la cinquieme statistique d'Assaut est mesuree
+depuis G.6 mais n'etait affichee nulle part) et N-18 (la description publiee de
+`MatchScoreboardObjective` enumerait les modes sans l'Assaut, alors que la godoc Go avait ete
+corrigee). L'utilisateur a tranche N-17 : les cinq colonnes s'affichent.
+
+**Decision technique.** N-17 : `bomb_carriers_killed` ajoute a `BOMB_COLS`
+(`MatchScoreboard.logic.ts`), meme patron que les quatre voisines (`agg: 'sum'`, pas de duree),
+en cinquieme position (ordre du DTO Go `match_view.go:705-709`). Libelle FR (« Porteurs tues »)
+et EN (« Carriers killed ») ajoutes a `i18n.ts` par le mecanisme existant (parite par le typage
+`Record<MatchViewLocale, MatchViewText>`), pas de nouveau mecanisme. La reserve du noyau — « ni
+camp, ni tir ami : un tir ami sur un porteur de son propre camp compte » — vit dans
+`internal/analysis/replay/bomb_stats.go` (en-tete) ; reportee en une phrase dans le commentaire
+de tete de `BOMB_COLS`, et dans le tooltip FR/EN de la colonne. Verifie sur pieces que
+`detectObjectiveMode` (web) et `ObjectiveRaw.HasBomb()` (Go) n'avaient PAS a changer : les deux
+testent la MEME liste de TROIS compteurs (`bomb_detonations || bomb_arms || bomb_grabs`),
+`bomb_carriers_killed` n'en fait pas partie. `objectivesBomb.test.ts` remis en accord : 12 -> 15
+tests (fixture enrichie avec un cas mesure a zero, un cas mesure non nul et un cas non mesure sur
+la colonne neuve, dans le meme match). N-18 : `openapi_manual_fragment.yaml:2902` corrige
+(enumeration + Assaut), `openapi-gen` / `generate-types` / `openapi-check` rejoues.
+
+**Resultats observes.** Gates Go : `TestOpenAPIYAMLIsUpToDate` ok, `TestContract` ok,
+`check-generated-types-fresh.mjs` OK. Gates web (apres `npm ci`, `node_modules` absent du
+worktree) : typecheck 0, lint 0 (28 warnings preexistants hors perimetre, verifie par grep),
+lint:fields 0 (220 libelles FR+EN, aucune violation), vitest 589 fichiers / 6227 tests dont
+`objectivesBomb.test.ts` 15/15, build 0. `knip-ratchet` (racine) 0/0/0. Diff limite a 4 fichiers
+sources + 2 fichiers derives (`openapi.yaml`, `generated.ts`) — perimetre exactement celui des
+deux constats.
+
+**Decouverte non traitee (hors perimetre).** `objectivesChart.ts:14-16` enumere les six modes a
+objectif et leur nombre de colonnes sans jamais nommer l'Assaut — gap de doc PREEXISTANT,
+anterieur a ce lot. Ne bloque aucun gate ; note pour un futur lot qui retoucherait ce fichier.
+
+**Conclusion.** N-17 et N-18 clos, plan (§4, §6) et registre mis a jour. Prochaine etape :
+reprise du plan d'integration a E.3 (journal, registre des reports, suppression des worktrees
+d'integration).
+
 ## [2026-09-05] Integration branches — E.2 seconde lecture (contexte frais) : les six constats tiennent, six docs inversees de plus corrigees — Complete
 
 **Le mandat.** Relire, dans un contexte qui n'a ecrit ni le code ni ses corrections, le diff
