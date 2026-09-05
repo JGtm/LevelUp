@@ -176,10 +176,6 @@ func averageAndParity(measured []MatchInput, size func(MatchInput) int) (float64
 // (triées : l'ordre de sortie est un contrat de stabilité, pas une itération de
 // map).
 func metricKeys(measured []MatchInput) []string {
-	keys := []string{
-		MetricPadPickups, MetricCamoEpisodes, MetricOvershieldEpisodes,
-		MetricGrapplePulls, MetricDroppedObjects,
-	}
 	seen := map[string]bool{}
 	for _, m := range measured {
 		for _, p := range m.Players {
@@ -193,6 +189,11 @@ func metricKeys(measured []MatchInput) []string {
 		fams = append(fams, fam)
 	}
 	sort.Strings(fams)
+	keys := make([]string, 0, 5+len(fams))
+	keys = append(keys,
+		MetricPadPickups, MetricCamoEpisodes, MetricOvershieldEpisodes,
+		MetricGrapplePulls, MetricDroppedObjects,
+	)
 	for _, fam := range fams {
 		keys = append(keys, MetricDeployedPrefix+fam)
 	}
