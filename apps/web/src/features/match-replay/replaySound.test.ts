@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { KillEvent } from '@/features/match-view/_momentum'
+import type { ReplayKill } from './killFeedLogic'
 import type { ReplayDocument, ReplayGrenade } from '@/lib/api/types'
 
 import { SOUND_CUT_MAX_S, SOUND_FADE_S, soundEnvelope } from './replayAudio'
@@ -30,9 +30,15 @@ function vignette(sprite: string): string {
   return `/static/weapons-assets/halo_infinite/jeu/${sprite}.png`
 }
 
-/** Un kill minimal (même patron que killFx.test.ts) ; tMs est sur l'horloge gameplay. */
-function kill(over: Partial<KillEvent> = {}): KillEvent {
+/**
+ * Un kill DU FIL (même patron que killFx.test.ts), donc DÉJÀ RECALÉ : `replayMs` est
+ * l'instant sur l'axe du rejeu, le seul que la piste sonore lise. `tMs` reste porté pour
+ * mémoire — c'est l'instant servi par la Match View, sur l'horloge gameplay.
+ */
+function kill(over: Partial<ReplayKill> = {}): ReplayKill {
   return {
+    replayMs: 2_000,
+    medals: [],
     tMs: 2_000,
     xuid: 'K',
     ally: true,
@@ -109,10 +115,11 @@ function docAvecVols(vols: { t: number; rank: number; flight: number }[]) {
 }
 
 describe('buildSoundTimeline', () => {
-  it("pose le kill sur l'horloge du FIL (fin de vie de la victime), pas l'horloge brute", () => {
-    // Kill servi 3 s après la fin de vie (décalage d'origine, même mesure que killFx) :
-    // l'alignement le pose à 2 000 ms — là où le fil et la fiche le montrent.
-    const tl = buildSoundTimeline(docWithCouple(), [kill({ tMs: 5_000 })], 0)
+  it("pose le kill sur l'horloge DU FIL telle qu'elle arrive, sans la rejouer", () => {
+    // Le kill est servi 5 000 ms sur l'horloge gameplay ; le fil l'a déjà recalé à 2 000 ms
+    // (fin de vie de sa victime). La piste sonne à 2 000 — elle lit `replayMs`, pas `tMs`,
+    // et ne refait aucun recalage (2026-09-05, J2 : un seul, celui de la page).
+    const tl = buildSoundTimeline(docWithCouple(), [kill({ tMs: 5_000, replayMs: 2_000 })])
     expect(tl).toEqual([{ ms: 2_000, stem: 'hinf_br75' }])
   })
 
@@ -120,7 +127,6 @@ describe('buildSoundTimeline', () => {
     const tl = buildSoundTimeline(
       docWithCouple(),
       [kill({ weaponKey: '' }), kill({ weaponKey: 'hinf_mutilator' })],
-      0,
     )
     expect(tl).toEqual([])
   })
@@ -131,7 +137,6 @@ describe('buildSoundTimeline', () => {
     const tl = buildSoundTimeline(
       docWithCouple(),
       [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })],
-      0,
     )
     expect(tl.map((e) => e.stem)).toEqual(['explosion_spike'])
   })
@@ -140,7 +145,6 @@ describe('buildSoundTimeline', () => {
     const tl = buildSoundTimeline(
       docWithCouple(),
       [kill({ weaponKey: '', weaponLabel: '', weaponImageUrl: vignette('killfeed-65') })],
-      0,
     )
     expect(tl.map((e) => e.stem)).toEqual(['melee_kill'])
   })
@@ -157,7 +161,6 @@ describe('buildSoundTimeline', () => {
         ],
       }),
       [],
-      0,
     )
     expect(tl).toEqual([
       { ms: 1_000, stem: 'throw_frag' },
@@ -171,7 +174,6 @@ describe('buildSoundTimeline', () => {
     const tl = buildSoundTimeline(
       docWithCouple({ grenades: [grenade({ t: 50, rank: 0 })] }),
       [kill()],
-      0,
     )
     expect(tl.map((e) => e.ms)).toEqual([2_000, 5_000])
   })
@@ -196,7 +198,7 @@ describe('buildSoundTimeline', () => {
     const doc = docWithCouple({ grenades: [grenade({ t: 8, rank: 3 })] })
     // Lancer à 800 ms (fichier tenu jusqu'à 2 000 ms) et explosion posée par le fil à
     // 2 000 ms : 0 ms d'écart, le pire cas mesuré. Les deux événements sont là.
-    const tl = buildSoundTimeline(doc, [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })], 0)
+    const tl = buildSoundTimeline(doc, [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })])
     expect(tl).toEqual([
       { ms: 800, stem: 'throw_spike' },
       { ms: 2_000, stem: 'explosion_spike' },
@@ -206,7 +208,7 @@ describe('buildSoundTimeline', () => {
   it('CHAQUE tir sonne son arme — aucun filtrage de densité (décision du 2026-08-15)', () => {
     // Six tirs de la même arme en 600 ms : les six sonnent. Le seul plafond est technique
     // (voix simultanées, replayAudio.ts), et il ne vit pas dans cette table.
-    const tl = buildSoundTimeline(docAvecTirs(6), [], 0)
+    const tl = buildSoundTimeline(docAvecTirs(6), [])
     expect(tl.map((e) => e.stem)).toEqual(Array(6).fill('hinf_br75'))
     expect(tl.map((e) => e.ms)).toEqual([0, 100, 200, 300, 400, 500])
   })
@@ -223,7 +225,7 @@ describe('buildSoundTimeline', () => {
       ],
       weaponLabels: { '0xMUT1L4': { en: 'Mutilator', fr: 'Mutilator', key: 'hinf_mutilator' } },
     })
-    expect(buildSoundTimeline(doc, [], 0)).toEqual([])
+    expect(buildSoundTimeline(doc, [])).toEqual([])
   })
 
   it('un libellé SANS clé ne sonne pas : la clé est posée à la requête, jamais devinée', () => {
@@ -232,7 +234,7 @@ describe('buildSoundTimeline', () => {
       shots: [{ slot: 1, t: 0, x: 0, y: 0, w: '0x2B1824D5' }],
       weaponLabels: { '0x2B1824D5': { en: 'BR75', fr: 'BR75', fx: 'ballistic' } },
     })
-    expect(buildSoundTimeline(doc, [], 0)).toEqual([])
+    expect(buildSoundTimeline(doc, [])).toEqual([])
   })
 
   it('tirs, kills et lancers cohabitent sur UNE piste triée', () => {
@@ -243,7 +245,6 @@ describe('buildSoundTimeline', () => {
         grenades: [grenade({ t: 50, rank: 0 })],
       }),
       [kill()],
-      0,
     )
     expect(tl.map((e) => e.ms)).toEqual([500, 2_000, 5_000])
   })
@@ -257,7 +258,6 @@ describe('buildSoundTimeline', () => {
         ],
       }),
       [],
-      0,
     )
     expect(tl).toEqual([
       { ms: 1_000, stem: 'camo_activate' },
@@ -273,7 +273,6 @@ describe('buildSoundTimeline', () => {
         equipmentEpisodes: [{ slot: 2, fam: 'camo', t0: 5, t1: 20 }], // endRead absent = mort
       }),
       [],
-      0,
     )
     expect(tl).toEqual([{ ms: 500, stem: 'camo_activate' }])
   })
@@ -284,7 +283,6 @@ describe('buildSoundTimeline', () => {
         equipmentEpisodes: [{ slot: 1, fam: 'grapple', t0: 10, t1: 30, endRead: true }],
       }),
       [],
-      0,
     )
     expect(tl).toEqual([])
   })
@@ -298,7 +296,6 @@ describe('buildSoundTimeline', () => {
         ],
       }),
       [],
-      0,
     )
     expect(tl).toEqual([
       { ms: 1_000, stem: 'wall_activate' },
@@ -338,7 +335,6 @@ describe('buildSoundTimeline', () => {
         ],
       }),
       [],
-      0,
     )
     expect(tl).toEqual([
       { ms: 1_000, stem: 'sensor_activate' },
@@ -363,7 +359,6 @@ describe('buildSoundTimeline', () => {
         ],
       }),
       [],
-      0,
     )
     expect(tl).toEqual([])
   })
@@ -379,7 +374,6 @@ describe('buildSoundTimeline', () => {
         ],
       }),
       [],
-      0,
     )
     expect(tl).toEqual([])
   })
@@ -392,7 +386,6 @@ describe('buildSoundTimeline', () => {
         ],
       }),
       [],
-      0,
     )
     expect(tl).toEqual([])
   })
@@ -407,7 +400,6 @@ describe('buildSoundTimeline', () => {
         ],
       }),
       [],
-      0,
     )
     expect(tl).toEqual([{ ms: 1_400, stem: 'wall_activate' }])
   })
@@ -421,7 +413,6 @@ describe('buildSoundTimeline', () => {
         ],
       }),
       [],
-      0,
     )
     expect(tl).toEqual([
       { ms: 500, stem: 'grapple_fire', variants: SOUND_VARIANTS.grapple_fire },
@@ -430,7 +421,7 @@ describe('buildSoundTimeline', () => {
   })
 
   it('un document sans grappleLines ne sonne aucun grappin', () => {
-    const tl = buildSoundTimeline(docWithCouple(), [], 0)
+    const tl = buildSoundTimeline(docWithCouple(), [])
     expect(tl).toEqual([])
   })
 })
@@ -455,7 +446,6 @@ describe('buildSoundTimeline — explosions de fin de vol', () => {
         { t: 40, rank: 3, flight: 20 },
       ]),
       [],
-      0,
     )
     expect(tl.filter((e) => e.stem.startsWith('explosion_'))).toEqual([
       { ms: 2_400, stem: 'explosion_frag' }, // 10 + 14
@@ -470,17 +460,17 @@ describe('buildSoundTimeline — explosions de fin de vol', () => {
   it('la DYNAMO sonne aussi, alors que l écran ne la fait pas détoner (nappe)', () => {
     // `restKindOf(2)` rend une nappe électrique et non une explosion : c'est un choix de
     // RENDU. La décharge s'entend quand même, et le pack porte son fichier.
-    const tl = buildSoundTimeline(docAvecVols([{ t: 10, rank: 2, flight: 6 }]), [], 0)
+    const tl = buildSoundTimeline(docAvecVols([{ t: 10, rank: 2, flight: 6 }]), [])
     expect(tl.map((e) => e.stem)).toEqual(['throw_dynamo', 'explosion_dynamo'])
   })
 
   it('un type NON ÉTABLI reste muet des deux côtés — jamais l explosion d une voisine', () => {
-    const tl = buildSoundTimeline(docAvecVols([{ t: 10, rank: 7, flight: 6 }]), [], 0)
+    const tl = buildSoundTimeline(docAvecVols([{ t: 10, rank: 7, flight: 6 }]), [])
     expect(tl).toEqual([])
   })
 
   it('une grenade sans projectile lié ne sonne que son lancer : rien ne date sa fin', () => {
-    const tl = buildSoundTimeline(docWithCouple({ grenades: [grenade({ t: 10, rank: 0 })] }), [], 0)
+    const tl = buildSoundTimeline(docWithCouple({ grenades: [grenade({ t: 10, rank: 0 })] }), [])
     expect(tl).toEqual([{ ms: 1_000, stem: 'throw_frag' }])
   })
 
@@ -490,7 +480,6 @@ describe('buildSoundTimeline — explosions de fin de vol', () => {
     const tl = buildSoundTimeline(
       docAvecVols([{ t: 6, rank: 3, flight: 14 }]),
       [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })],
-      0,
     )
     expect(tl).toEqual([
       { ms: 600, stem: 'throw_spike' },
@@ -504,7 +493,6 @@ describe('buildSoundTimeline — explosions de fin de vol', () => {
     const tl = buildSoundTimeline(
       docAvecVols([{ t: 7, rank: 3, flight: 14 }]),
       [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })],
-      0,
     )
     expect(tl.filter((e) => e.stem === 'explosion_spike')).toEqual([{ ms: 2_000, stem: 'explosion_spike' }])
   })
@@ -514,7 +502,6 @@ describe('buildSoundTimeline — explosions de fin de vol', () => {
     const tl = buildSoundTimeline(
       docAvecVols([{ t: 10, rank: 3, flight: 14 }]),
       [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })],
-      0,
     )
     expect(tl.filter((e) => e.stem === 'explosion_spike').map((e) => e.ms)).toEqual([2_000, 2_400])
   })
@@ -523,7 +510,6 @@ describe('buildSoundTimeline — explosions de fin de vol', () => {
     const tl = buildSoundTimeline(
       docAvecVols([{ t: 6, rank: 0, flight: 14 }]),
       [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })], // Spike
-      0,
     )
     // À instant égal, le tri conserve l'ordre de construction : le kill d'abord.
     expect(tl.filter((e) => e.stem.startsWith('explosion_'))).toEqual([
@@ -541,7 +527,6 @@ describe('buildSoundTimeline — explosions de fin de vol', () => {
         { t: 6, rank: 3, flight: 14 },
       ]),
       [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })],
-      0,
     )
     expect(tl.filter((e) => e.stem === 'explosion_spike').map((e) => e.ms)).toEqual([2_000, 2_000])
   })
@@ -551,7 +536,7 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
   const ALL_ON: SoundCategoryFilter = { weapon: true, grenade: true, melee: true, equipment: true, objective: true }
 
   it('sans 4e paramètre, comportement INCHANGÉ : les cinq catégories sonnent', () => {
-    const tl = buildSoundTimeline(docAvecTirs(2), [], 0)
+    const tl = buildSoundTimeline(docAvecTirs(2), [])
     expect(tl.map((e) => e.stem)).toEqual(['hinf_br75', 'hinf_br75'])
   })
 
@@ -563,7 +548,6 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
         grenades: [grenade({ t: 50, rank: 0 })],
       }),
       [kill()], // kill à l'arme (hinf_br75)
-      0,
       { ...ALL_ON, weapon: false },
     )
     expect(tl.map((e) => e.stem)).toEqual(['throw_frag'])
@@ -580,7 +564,6 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
         projectiles: [{ t0: 6, p: [[0, 0, 0], [14, 1, 1]] }],
       }),
       [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })], // kill à la grenade à pointes
-      0,
       { ...ALL_ON, grenade: false },
     )
     expect(tl.map((e) => e.stem)).toEqual(['hinf_br75'])
@@ -590,7 +573,6 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
     const tl = buildSoundTimeline(
       docWithCouple(),
       [kill({ weaponKey: '', weaponLabel: '', weaponImageUrl: vignette('killfeed-65') })],
-      0,
       { ...ALL_ON, melee: false },
     )
     expect(tl).toEqual([])
@@ -606,7 +588,6 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
         grappleLines: [{ slot: 1, t0: 15, t1: 25, ax: 3, ay: 3 }],
       }),
       [],
-      0,
       { ...ALL_ON, equipment: false },
     )
     expect(tl).toEqual([])
@@ -616,7 +597,6 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
     const tl = buildSoundTimeline(
       docWithCouple({ grenades: [grenade({ t: 50, rank: 0 })] }),
       [kill()],
-      0,
       { weapon: false, grenade: false, melee: false, equipment: false, objective: false },
     )
     expect(tl).toEqual([])

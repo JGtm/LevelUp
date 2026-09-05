@@ -116,11 +116,10 @@ describe('objectiveSoundEvents — les actions posées sur l horloge du rejeu', 
     const sansObjectifs = buildSoundTimeline(
       doc,
       [],
-      0,
       { ...SOUND_CATEGORIES_DEFAULT, objective: false },
       side,
     )
     expect(sansObjectifs).toEqual([])
-    expect(buildSoundTimeline(doc, [], 0, SOUND_CATEGORIES_DEFAULT, side)).toHaveLength(4)
+    expect(buildSoundTimeline(doc, [], SOUND_CATEGORIES_DEFAULT, side)).toHaveLength(4)
   })
 })

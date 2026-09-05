@@ -22,12 +22,12 @@
 import { useCallback, useMemo, type ChangeEvent, type ComponentProps, type RefObject } from 'react'
 
 import { useCapability } from '@/lib/capabilities'
-import { formatClockMMSS } from '@/lib/formatters'
 import { leaderStates, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import type { ReplayFeedEntry } from './killFeedLogic'
 import type { ReplayLocale } from './i18n'
 import type { PlayerMarkKind } from './playerMarks'
+import { formatClock } from './replayLogic'
 import { EMPTY_MEDIA, SKIP_SECONDS } from './replayCanvasConfig'
 import type { ReplayTimelineTracks } from './ReplayTimelineTracks'
 import {
@@ -119,8 +119,15 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
   const scale = useMemo(() => trackScale(playWindow, frameCount), [playWindow, frameCount])
   // L'HORLOGE AFFICHÉE, celle du GAMEPLAY (D-A2) : la même règle que le fil, le bandeau et les
   // infobulles — le coup d'envoi se lit 0:00, le countdown ne se compte pas.
+  //
+  // ET C'EST LE MÊME FORMATEUR QUE TOUT LE REJEU (résidu P0-6, 2026-09-05). Cette ligne
+  // appelait le formateur d'INSTANT de `lib/formatters`, qui ARRONDIT à la seconde là où
+  // l'horloge du lecteur, le fil et les infobulles TRONQUENT (`replayLogic.formatClock`) :
+  // deux écritures du même instant sur le même écran, à une seconde d'écart, sur les marques
+  // de la frise. Une seule subsiste dans cette feature — garde-rail
+  // `replayClockFormat.guard.test.ts`.
   const clockOf = useCallback(
-    (replayMs: number) => formatClockMMSS(displayClockMs(replayMs, playWindow)),
+    (replayMs: number) => formatClock(displayClockMs(replayMs, playWindow)),
     [playWindow],
   )
   const { kills, deaths, frags } = useMemo(() => reduceFeed(feedEntries, marks), [feedEntries, marks])

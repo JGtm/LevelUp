@@ -74,12 +74,12 @@ describe('buildSoundTimeline — le dash entre par la catégorie ÉQUIPEMENT', (
   const doc = docWith([{ t: 10, slot: 5, family: 'thruster' }])
 
   it('la piste porte le son quand la catégorie est allumée', () => {
-    const piste = buildSoundTimeline(doc, [], 0, CATEGORIES)
+    const piste = buildSoundTimeline(doc, [], CATEGORIES)
     expect(piste.filter((e) => e.stem === 'thruster_activate')).toHaveLength(1)
   })
 
   it('couper « Équipements » coupe le dash, comme elle coupe le grappin', () => {
-    const piste = buildSoundTimeline(doc, [], 0, { ...CATEGORIES, equipment: false })
+    const piste = buildSoundTimeline(doc, [], { ...CATEGORIES, equipment: false })
     expect(piste.filter((e) => e.stem === 'thruster_activate')).toEqual([])
   })
 })

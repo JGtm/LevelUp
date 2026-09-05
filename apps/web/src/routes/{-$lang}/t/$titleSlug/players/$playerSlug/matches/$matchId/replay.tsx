@@ -295,8 +295,6 @@ function ReplayPage() {
               doc={data}
               locale={locale}
               playWindow={playWindow}
-              kills={kills}
-              t0Ms={t0Ms}
               onFrameChange={setFrame}
               background={mapBackground}
               callouts={callouts}
