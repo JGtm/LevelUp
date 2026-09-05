@@ -616,6 +616,11 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
           label: 'Temps porteur',
           tooltip: 'Temps en tant que porteur de la bombe',
         },
+        bomb_carriers_killed: {
+          label: 'Porteurs tués',
+          tooltip:
+            'Porteurs de la bombe éliminés (un tir ami sur un porteur de son propre camp compte)',
+        },
       },
     },
   },
@@ -908,6 +913,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
         time_as_bomb_carrier_seconds: {
           label: 'Carrier time',
           tooltip: 'Time as bomb carrier',
+        },
+        bomb_carriers_killed: {
+          label: 'Carriers killed',
+          tooltip: 'Bomb carriers eliminated (friendly fire on your own carrier counts)',
         },
       },
     },

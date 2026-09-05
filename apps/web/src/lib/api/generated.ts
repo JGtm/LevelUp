@@ -8038,7 +8038,7 @@ export interface components {
             team_side?: string;
             xuid: string;
         };
-        /** @description Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés. */
+        /** @description Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP/Assaut) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés. */
         MatchScoreboardObjective: {
             /** Format: int64 */
             bomb_arms?: number;

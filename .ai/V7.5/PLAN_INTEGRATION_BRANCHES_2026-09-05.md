@@ -442,7 +442,18 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
     indentation OK, `HasBomb()` ≡ `detectObjectiveMode` (3 compteurs des deux côtés), archlint
     vert (clé d'allowlist déplacée cohérente), aucun marqueur de conflit dans le dépôt.
     **N-15 CORRIGÉ** (`options.go`) + **5 AUTRES DOCS INVERSÉES trouvées et corrigées**, toutes
-    créées par la fusion de G.6 APRÈS les corrections (§4, N-16). **RESTE À ARBITRER : N-17.**
+    créées par la fusion de G.6 APRÈS les corrections (§4, N-16). **N-17 arbitré, N-18 corrigé
+    ci-dessous.**
+  - [x] **N-17 / N-18 CORRIGÉS (`wt/integ-col5`, 1 commit, 2026-09-05).** N-17 : la décision
+    d'affichage de la cinquième statistique d'Assaut est prise (utilisateur) — colonne
+    `bomb_carriers_killed` ajoutée à `BOMB_COLS` (`MatchScoreboard.logic.ts`), libellé FR/EN
+    (`i18n.ts`, parité par typage), `objectivesBomb.test.ts` porté à 15/15 (5 colonnes, un cas
+    NULL et un cas mesuré sur la colonne neuve) ; `detectObjectiveMode`/`HasBomb()` INCHANGÉS
+    (discriminant à trois compteurs, la colonne n'en est pas un — vérifié sur pièces) ; réserve
+    « ni camp, ni tir ami » du noyau (`bomb_stats.go`, en-tête) reportée en une phrase dans le
+    commentaire de `BOMB_COLS`. N-18 : `openapi_manual_fragment.yaml:2902` énumère désormais
+    l'Assaut ; `openapi-gen` / `generate-types` / `openapi-check` rejoués, tous **0**. Preuve par
+    gate au §6 (entrée « N-17/N-18 »). **RESTE À ARBITRER : rien — les deux constats sont clos.**
 - [ ] E.3 Journal, registre des reports (D5, D6, D7), thought_log ; suppression des trois worktrees
   et branches d'intégration ; commit.
 
@@ -575,6 +586,10 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   l'arbitrage (déjà écrite en tête de `bomb_stats.go`) : `KillRef` ne porte aucune information
   d'équipe — un tir ami sur un porteur de son propre camp y compterait, là où le compteur
   officiel de l'API pour les modes qui en publient un ne compte que les porteurs ADVERSES.
+  **[CORRIGÉ — `wt/integ-col5`, 2026-09-05] Décision de l'utilisateur : les CINQ colonnes
+  s'affichent.** `BOMB_COLS` porte désormais `bomb_carriers_killed`, i18n FR/EN ajoutée, la
+  réserve ci-dessus reportée en une phrase dans le commentaire de `BOMB_COLS`, tests portés à
+  15/15. Détail au §4/§6.
 - **N-18 (seconde lecture E.2) — la description PUBLIÉE de `MatchScoreboardObjective` énumère
   toujours les modes SANS l'Assaut**, alors que le mineur n° 5 des corrections d'E.2 a bien
   corrigé la godoc Go (`domain/match_view.go:643-650`). La description vit dans
@@ -584,6 +599,9 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   fragment impose de rejouer `openapi-gen` / `generate-types` / `openapi-check` (contrat publié
   + `generated.ts`), ce qui dépasse le mandat « commentaires seuls » et se heurte au filet de
   gates en cours. Condition de reprise : avant F.1, avec D11 rejoué.
+  **[CORRIGÉ — `wt/integ-col5`, 2026-09-05]** `openapi_manual_fragment.yaml:2902` énumère
+  l'Assaut ; `openapi-gen` / `generate-types` / `openapi-check` rejoués, `TestOpenAPIYAMLIsUpToDate`
+  + `TestContract` + `check-generated-types-fresh.mjs` **exit 0**. Détail au §4/§6.
 - N-13 `apps/web/.../ReplayCanvas.tsx` est **exactement à son plafond** (664 lignes pour 665) après
   le câblage véhicules. La prochaine addition devra être payée par une extraction, comme les dix-sept
   précédentes.
@@ -1700,6 +1718,53 @@ la baseline exacte, **0 sur un fichier touché**) · `lint:fields` **EXIT_FIELDS
   fusion de G.6 : **N-17 (décision produit — la cinquième statistique est mesurée et n'est
   affichée nulle part) et N-18 (description de contrat)**, tous deux escaladés, aucun des deux
   bloquant au sens des invariants.
+
+- **2026-09-05 — N-17/N-18 CORRIGÉS (`wt/integ-col5`, HEAD `19c112483`, 1 commit).** Les deux
+  constats bornés de la seconde lecture d'E.2.
+
+  **N-17 — décision produit prise (utilisateur) : les CINQ colonnes s'affichent.**
+  `MatchScoreboard.logic.ts` : `bomb_carriers_killed` ajouté à `BOMB_COLS` (`agg: 'sum'`, pas de
+  durée — même patron que les quatre autres), en cinquième position (ordre du DTO Go,
+  `match_view.go:705-709`). Commentaire de tête du bloc Assaut réécrit : 5/5 exposées, référence
+  à l'arbitrage N-17, et la RÉSERVE du noyau reportée en une phrase — « ni camp, ni tir ami : un
+  tir ami sur un porteur de son propre camp compte » (source : `internal/analysis/replay/
+  bomb_stats.go`, en-tête, section « ni camp, ni tir ami »). `i18n.ts` : libellé + tooltip
+  FR (« Porteurs tués ») et EN (« Carriers killed », la réserve reformulée dans le tooltip),
+  parité par le typage `Record<MatchViewLocale, MatchViewText>` existant — aucun nouveau
+  mécanisme. Vérifié SUR PIÈCES que `detectObjectiveMode` (web) et `ObjectiveRaw.HasBomb()` (Go)
+  n'ont PAS à changer : les deux testent la MÊME liste de TROIS compteurs
+  (`bomb_detonations || bomb_arms || bomb_grabs`), `bomb_carriers_killed` n'en fait pas partie —
+  ajouter une colonne au tableau `objectiveColsFor('bomb')` ne touche pas le discriminant.
+  `objectivesBomb.test.ts` : fixture `ASSAUT` enrichie (Alpha `bomb_carriers_killed: 2`, Bravo
+  `0` — mesuré à zéro, Charlie sans la clé — non mesuré, dans le même match) ; 3 tests ajoutés
+  (12 → 15) : colonnes à 5 dans l'ordre du mode, `objectiveValue` rend `null` sur Charlie et la
+  valeur mesurée (zéro compris) sur Alpha/Bravo, `objectiveTeamTotal` cumule 2+0 sur le camp t0.
+  Rendu (`MatchObjectivesSection.tsx`, `objectivesChart.ts`) et i18n `lint:fields` INCHANGÉS —
+  la grille et le face-à-face sont déjà data-driven par `cols`, aucune ligne de code par mode.
+
+  **N-18 — `openapi_manual_fragment.yaml:2902` corrigé.** Description de
+  `MatchScoreboardObjective` : énumération `(CTF/Zones/Oddball/Stockpile/Extraction/VIP)` →
+  `(CTF/Zones/Oddball/Stockpile/Extraction/VIP/Assaut)`. `make openapi-gen` (676077 octets,
+  `openapi.yaml:16914` porte la nouvelle description) → `make generate-types` → `make
+  openapi-check` (« api/openapi.yaml est à jour » + `[generated-types] OK`).
+
+  **GATES, un code par ligne.** `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate -count=1`
+  **ok** · `CGO_ENABLED=0 go test ./contracttest/... -run TestContract -count=1` **ok** ·
+  `node tools/check-generated-types-fresh.mjs` **OK** · web (`apps/web`, `npm ci` d'abord —
+  `node_modules` absent du worktree) : `npm run typecheck` **0**, `npm run lint` **0** (28
+  warnings préexistants, aucun sur les fichiers touchés — vérifié par grep), `npm run lint:fields`
+  **0** (220 libellés FR+EN, aucune violation), `npm run test -- --run` **589 fichiers / 6227
+  tests passés** dont `objectivesBomb.test.ts` **15/15**, `npm run build` **0** · `node
+  tools/knip-ratchet.mjs` (racine) **0/0/0**. `git diff --name-only` : exactement les 4 fichiers
+  sources attendus + les 2 fichiers dérivés (`openapi.yaml`, `generated.ts`).
+
+  **DÉCOUVERTE NON TRAITÉE (hors périmètre des deux constats)** : `objectivesChart.ts:14-16`
+  énumère les six modes à objectif et leur nombre de colonnes (« drapeau (4)… VIP (5) ») sans
+  jamais nommer l'Assaut — gap de doc PRÉEXISTANT (antérieur à ce lot), pas introduit ici. Ne
+  bloque aucun gate ; à corriger si ce fichier est retouché pour une autre raison.
+
+  **VERDICT : N-17 et N-18 CLOS.** Aucun défaut introduit, aucune régression sur les six
+  constats de la revue de branche ni sur les mineurs déjà vérifiés en seconde lecture.
 
 ## §7 Contrat d'exécution (rappel opposable)
 Statuts : `[x]` fait · `[~]` couvert ailleurs (avec la référence) · `[!]` non traité (avec la
