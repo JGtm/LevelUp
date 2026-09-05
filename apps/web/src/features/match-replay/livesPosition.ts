@@ -13,9 +13,14 @@
  * LA FENÊTRE APRÈS-MORT fait partie du bloc, pas une option : un poseur de bombe meurt souvent
  * DANS son explosion, un porteur lâche à sa mort — sans elle, l'événement le mieux daté du
  * match perdrait sa position.
+ *
+ * C'EST LA POSITION DU BIPÈDE, ET ELLE N'EST PLUS LE DERNIER MOT DEPUIS LE 2026-09-05. Un joueur
+ * embarqué ne réplique plus sa position monde : la relecture ci-dessous interpole alors en ligne
+ * droite à travers le décor. Les calques d'objectif passent donc par `carrierPosition.ts`
+ * (`useCarrierPosAt`), qui pose le véhicule par-dessus ce repli. Ce module reste la relecture
+ * DU BIPÈDE, une fois — il ne connaît aucun véhicule, et c'est la seule chose que veulent les
+ * pulses d'objectif (`objectivesLayer.ts`), son dernier appelant direct.
  */
-
-import { useCallback, useMemo } from 'react'
 
 import { KILLPOS_WINDOW_MS, posOfPlayerAt } from './killFx'
 import { msToFrames } from './replayLogic'
@@ -46,14 +51,4 @@ export function buildPlayerPosAt(doc: ReplayDocumentReady): PlayerPosAt {
   const lives = buildLivesByXuid(doc.tracks)
   const window = deathWindowFrames(doc)
   return (xuid, frame) => posOfPlayerAt(lives.get(xuid), frame, window)
-}
-
-/** usePlayerPosAt — la même relecture, mémoïsée pour les hooks de calque. */
-export function usePlayerPosAt(doc: ReplayDocumentReady): PlayerPosAt {
-  const lives = useMemo(() => buildLivesByXuid(doc.tracks), [doc.tracks])
-  const window = useMemo(() => deathWindowFrames(doc), [doc])
-  return useCallback<PlayerPosAt>(
-    (xuid, frame) => posOfPlayerAt(lives.get(xuid), frame, window),
-    [lives, window],
-  )
 }

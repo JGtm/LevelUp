@@ -11,8 +11,9 @@
  * CE QU'IL DÉTECTE : toute nouvelle écriture de `livesByXuid` hors des deux autorisées —
  * `livesPosition.ts` (la canonique) et `killFx.ts` (la jumelle du propriétaire de la
  * primitive : il définit `posOfPlayerAt`/`KILLPOS_WINDOW_MS`, importer livesPosition d'ici
- * ferait un cycle). Un appelant qui a besoin de la relecture importe `usePlayerPosAt` (hook)
- * ou `buildPlayerPosAt` (pur), jamais la formule.
+ * ferait un cycle). Un appelant qui a besoin de la relecture importe `useCarrierPosAt`
+ * (carrierPosition.ts — la porte des calques, véhicule compris) ou `buildPlayerPosAt` (pur),
+ * jamais la formule.
  *
  * CE QU'IL NE PRÉTEND PAS : une réécriture qui renommerait sa carte passerait — aucun test
  * grep ne remplace une revue. Il bloque la copie la plus probable, celle qui part du code
@@ -38,7 +39,7 @@ describe('livesPosition — unique écriture du bloc de position', () => {
     expect(
       fautifs,
       `le bloc de position est RÉÉCRIT hors de livesPosition.ts : [${fautifs.join(', ')}]. ` +
-        `Importer usePlayerPosAt (hook) ou buildPlayerPosAt (pur), jamais la formule.`,
+        `Importer useCarrierPosAt (carrierPosition.ts) ou buildPlayerPosAt (pur), jamais la formule.`,
     ).toEqual([])
   })
 })
