@@ -32,12 +32,15 @@ import (
 
 	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/replayview"
 )
 
-// MapCallouts retourne les zones nommées de la carte du match.
-func (s *replayService) MapCallouts(ctx context.Context, matchID string) (*replay.MapCalloutsEntry, error) {
+// MapCallouts retourne les zones nommées de la carte du match, dans sa forme SERVIE : le
+// catalogue versionné est lu dans sa forme de fichier puis projeté sur le contrat public.
+func (s *replayService) MapCallouts(ctx context.Context, matchID string) (*replaydoc.MapCalloutsEntry, error) {
 	keys := s.matchMapKeys(ctx, matchID)
 	if keys.MapID == "" && len(keys.Names) == 0 {
 		// Journalisé, jamais avalé : une carte qu'on ne sait pas nommer est une donnée
@@ -56,7 +59,7 @@ func (s *replayService) MapCallouts(ctx context.Context, matchID string) (*repla
 		return nil, port.ErrMapCalloutsNotAvailable
 	}
 	if entry, ok := s.calloutsByModule(ctx, cat, keys); ok {
-		return entry, nil
+		return replayview.MapCalloutsOf(entry), nil
 	}
 	entry, err := cat.LookupByID(keys.MapID)
 	if err != nil {
@@ -70,7 +73,7 @@ func (s *replayService) MapCallouts(ctx context.Context, matchID string) (*repla
 			"titleSlug", s.titleSlug)
 		return nil, port.ErrMapCalloutsNotAvailable
 	}
-	return &entry, nil
+	return replayview.MapCalloutsOf(&entry), nil
 }
 
 // calloutsByModule tente l'essai 1 : nom de carte -> module -> entrée du catalogue.
