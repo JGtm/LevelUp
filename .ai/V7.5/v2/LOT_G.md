@@ -33,9 +33,11 @@ Fait :
   `debug.SetMemoryLimit(` brut hors `internal/filmproc` est désormais une violation du
   ratchet. Le message d'erreur de `TestPointsDEntreeDeDecodageArmentUneSentinelle` mis à jour
   en cohérence.
-- Commentaires stale corrigés (référençaient les fichiers supprimés) :
-  `internal/domain/build_queue.go` (doc de `BuildJobErrorCodeMemoryExceeded`), six mentions
-  « cf. memlimit.go » dans `cmd/replay-worker/job.go`/`main.go`.
+- Commentaires stale corrigés (référençaient les fichiers supprimés) : six mentions
+  « cf. memlimit.go » dans `cmd/replay-worker/job.go`/`main.go`. Le commentaire de
+  `internal/domain/build_queue.go` (doc de `BuildJobErrorCodeMemoryExceeded`), qui citait
+  aussi les deux fichiers supprimés, avait été corrigé au même titre puis REVERTÉ : ce paquet
+  est hors périmètre du lot G (réservé aux lots B/C) — cf. Découvertes.
 - Deux petits helpers de mise en forme humaine (`libelleOctets` dans `cmd/levelup`,
   `formatMemGuardBytes` dans `cmd/replay-worker`) restent dupliqués entre les deux `main` —
   2 copies, sous le seuil de centralisation de la règle 6 ; leur constante `octetsParGiB` /
@@ -235,9 +237,17 @@ golangci-lint run --timeout 5m --new-from-merge-base=origin/main \
 ```
 → `0 issues.`
 
-`lefthook` `docs-fr-sync` : satisfait à chacun des quatre commits du lot (aucun avertissement
-de désynchronisation EN/FR — `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` toujours stagés
-ensemble dans le commit G.4, seul commit touchant un guide bilingue majeur).
+`lefthook` `docs-fr-sync` : satisfait à chacun des commits du lot qui touchent
+`docs/COMMANDS.md` (aucun avertissement de désynchronisation EN/FR — les deux fichiers
+toujours stagés ensemble).
+
+**Correction post-gate** : en relisant le diff complet du lot (`git diff --stat
+a21fd77f4..feat/v2-outils`) après la clôture ci-dessus, l'exécuteur a constaté que le commit
+G.1 touchait un fichier hors périmètre (`internal/domain/build_queue.go`, réservé aux lots
+B/C — cf. Découvertes). Reverté dans un commit dédié (`132967520`), pur retrait de commentaire
+sans effet sur le code compilé — `go build ./...` et le hook `go-vet` du commit (module
+entier) restent propres après ce commit. Le Gate G ci-dessus n'a pas eu besoin d'être rejoué :
+aucun des six paquets qu'il couvre n'est affecté par ce fichier.
 
 Tous les quatre items du lot sont statués `[x]`, gate passé sans allowlist nouvelle, sans
 test désactivé.
@@ -289,6 +299,13 @@ test désactivé.
   hors périmètre de ce lot). Mentionné en une ligne dans l'entrée de doc G.4 pour ne pas
   laisser croire que cet outil est l'unique écrivain, sans reprendre le fond du sujet (couches
   ART, overlay non versionné) qui appartient au lot A.
+- **`internal/domain/build_queue.go` : commentaire stale non corrigé (périmètre)** — la doc de
+  `BuildJobErrorCodeMemoryExceeded` cite encore `cmd/replay-worker/memlimit.go` et
+  `cmd/levelup/backfill_memlimit.go`, tous deux supprimés par G.1. `internal/domain/` est
+  explicitement réservé aux lots B/C par le plan : la correction faite par erreur dans le
+  commit G.1 a été revertée (`132967520`) dès que l'exécuteur l'a repérée en relisant le diff
+  complet du lot. Le lot qui touchera ce fichier peut mettre à jour ce commentaire au passage
+  (même correction que celle déjà faite dans `cmd/replay-worker/job.go`).
 
 ## Questions ouvertes
 
