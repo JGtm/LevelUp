@@ -4,39 +4,79 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"io/fs"
 	"strings"
 	"testing"
 )
 
-// TestAucunTauxNu — GARDE-RAIL. Aucune fonction exportee de ce paquet ne rend un float64, sous
-// AUCUN emballage : ni `float64`, ni `[]float64`, ni `map[string]float64`, ni `*float64`, ni un
-// type nomme du paquet dont le sous-jacent est un float64. Un taux sort dans
-// `domain.Couverture`, avec son compte brut, sa quantite par match et son drapeau
-// d'echantillon faible.
+// LISTE BLANCHE DES TYPES DE RETOUR — 2026-09-06, revue ronde 2.
 //
-// Sans ce test, la regle se perd au premier ajout (« juste un TauxDEchange() pour le KPI »), et
-// l'appelant qui recoit un nombre seul n'a plus aucun moyen de savoir s'il tient une mesure ou
-// un tirage a huit morts. La premiere version n'inspectait que `*ast.Ident` : elle laissait
-// passer les quatre emballages ci-dessus, c'est-a-dire toutes les facons realistes de servir une
-// serie de taux (revue ronde 1, 2026-09-06).
+// Ce paquet ne rend que ces types-la, et les conteneurs dont CHAQUE composant (cle comprise)
+// est lui-meme de cette liste. Tout le reste est refuse : `float64` nu, tout type nomme hors
+// liste, `map[float64]T`, une struct anonyme, un type d'un autre paquet non cite ici.
 //
-// Les helpers NON exportes restent libres : le risque est a la frontiere du paquet, pas dans son
-// arithmetique interne.
+// POURQUOI UNE LISTE BLANCHE ET NON UNE LISTE NOIRE. La version precedente cherchait des
+// `float64` a travers les emballages et exemptait tout type d'un AUTRE paquet. Elle laissait
+// donc passer la mutation la plus probable de toutes : `type TauxEchange float64` dans
+// `domain`, puis `func TauxDEchange(...) domain.TauxEchange` ici. Un taux aurait retrouve sa
+// forme de nombre seul par le chemin le plus court, sans qu'aucun `float64` n'apparaisse dans
+// ce paquet. Une liste noire ne peut pas gagner cette course : il y a une infinite de facons
+// d'emballer un nombre, et une seule liste de ce que ce paquet a le droit de rendre.
 //
-// SECOND VOLET : le paquet ne declare AUCUN type struct exporte. Les types de resultat vivent
-// dans `domain/` (arch-rules) — c'est ce qui garantit qu'un taux emballe dans une struct maison
-// ne puisse pas contourner la premiere regle, et que les couches hautes n'aient qu'un seul
-// vocabulaire.
+// AJOUTER UN TYPE A CETTE LISTE EXIGE UNE JUSTIFICATION DATEE, ICI MEME. Un type qui porte un
+// taux le porte SOUS `domain.Couverture` (taux + brut + par match + N + echantillon faible) :
+// c'est la seule forme sous laquelle un taux quitte ce paquet.
+var (
+	// identsAutorises : les types de base sans danger. Aucun ne peut porter un taux.
+	identsAutorises = map[string]bool{
+		"error":  true,
+		"bool":   true,
+		"int":    true,
+		"int64":  true,
+		"string": true,
+	}
+
+	// typesQualifiesAutorises : les types de resultat rendus AUJOURD'HUI par ce paquet,
+	// verifies sur pieces le 2026-09-06 — `Mesurer` rend domain.Couverture, `Echanges` rend
+	// domain.BilanEchanges. `domain.MortSuivie` et `domain.PaireEchange` n'y figurent PAS :
+	// ils voyagent a l'interieur du bilan, aucune fonction exportee ne les rend directement.
+	// Le jour ou l'une le fera, la ligne s'ajoute ici, datee et justifiee.
+	typesQualifiesAutorises = map[string]bool{
+		"domain.Couverture":    true,
+		"domain.BilanEchanges": true,
+	}
+)
+
+// TestAucunTauxNu — GARDE-RAIL, deux volets.
+//
+//  1. Aucune fonction exportee ne rend un type hors de la liste blanche ci-dessus. Sans lui, la
+//     regle se perd au premier ajout (« juste un TauxDEchange() pour le KPI »), et l'appelant
+//     qui recoit un nombre seul n'a plus aucun moyen de savoir s'il tient une mesure ou un
+//     tirage a huit morts.
+//  2. Le paquet ne declare AUCUN type struct exporte : les types de resultat vivent dans
+//     `domain/` (arch-rules). C'est ce qui empeche de contourner le premier volet en emballant
+//     un taux dans une struct maison.
+//
+// Les helpers NON exportes restent libres : le risque est a la frontiere du paquet, pas dans
+// son arithmetique interne.
 func TestAucunTauxNu(t *testing.T) {
 	fichiers := sourcesDuPaquet(t)
-	declarations := typesDeclares(fichiers)
 
+	inspectees := 0
 	for chemin, fichier := range fichiers {
 		for _, decl := range fichier.Decls {
 			verifieTypeExporte(t, chemin, decl)
-			verifieFonctionExportee(t, chemin, decl, declarations)
+			if verifieFonctionExportee(t, chemin, decl) {
+				inspectees++
+			}
 		}
+	}
+
+	// Sentinelle anti-vacuite : un garde-rail qui n'inspecte plus rien passe au vert en
+	// silence, et c'est exactement ce qu'un refactor du parcours ci-dessus produirait.
+	if inspectees == 0 {
+		t.Fatalf("aucune fonction exportee inspectee : le garde-rail ne garde rien")
 	}
 }
 
@@ -62,26 +102,6 @@ func sourcesDuPaquet(t *testing.T) map[string]*ast.File {
 	return fichiers
 }
 
-// typesDeclares releve les types du paquet et leur sous-jacent, pour pouvoir suivre un alias
-// jusqu'au float64 qu'il cache.
-func typesDeclares(fichiers map[string]*ast.File) map[string]ast.Expr {
-	declarations := map[string]ast.Expr{}
-	for _, fichier := range fichiers {
-		for _, decl := range fichier.Decls {
-			gen, ok := decl.(*ast.GenDecl)
-			if !ok || gen.Tok != token.TYPE {
-				continue
-			}
-			for _, spec := range gen.Specs {
-				if ts, ok := spec.(*ast.TypeSpec); ok {
-					declarations[ts.Name.Name] = ts.Type
-				}
-			}
-		}
-	}
-	return declarations
-}
-
 // verifieTypeExporte : les types de resultat vivent dans domain/, pas ici.
 func verifieTypeExporte(t *testing.T, chemin string, decl ast.Decl) {
 	t.Helper()
@@ -97,70 +117,66 @@ func verifieTypeExporte(t *testing.T, chemin string, decl ast.Decl) {
 		if _, struc := ts.Type.(*ast.StructType); struc {
 			t.Errorf("%s : le type struct exporte %s ne doit pas vivre ici — les types de resultat "+
 				"vivent dans internal/domain (arch-rules), sans quoi un taux emballe dans une struct "+
-				"maison contournerait la regle du taux nu", chemin, ts.Name.Name)
+				"maison contournerait la liste blanche", chemin, ts.Name.Name)
 		}
 	}
 }
 
-// verifieFonctionExportee : aucun retour ne porte un float64, quel que soit son emballage.
-func verifieFonctionExportee(t *testing.T, chemin string, decl ast.Decl, declarations map[string]ast.Expr) {
+// verifieFonctionExportee controle les retours d'une fonction exportee ; rend vrai si elle a
+// ete inspectee (c'est ce compte qui alimente la sentinelle anti-vacuite).
+func verifieFonctionExportee(t *testing.T, chemin string, decl ast.Decl) bool {
 	t.Helper()
 	fn, ok := decl.(*ast.FuncDecl)
 	if !ok || !fn.Name.IsExported() || fn.Type.Results == nil {
-		return
-	}
-	for _, res := range fn.Type.Results.List {
-		if porteUnFloat64(res.Type, declarations, map[string]bool{}) {
-			t.Errorf("%s : %s rend un float64 (nu ou emballe) — un taux sort dans domain.Couverture "+
-				"(taux + brut + par match + echantillon faible), jamais seul", chemin, fn.Name.Name)
-		}
-	}
-}
-
-// porteUnFloat64 deballe un type de retour jusqu'a savoir s'il transporte un float64.
-//
-// Un `*ast.SelectorExpr` (domain.Couverture, time.Duration, ...) est TERMINAL et autorise : les
-// types de resultat d'un autre paquet sont hors du perimetre de ce garde-rail, et c'est
-// precisement la sortie que la regle demande.
-func porteUnFloat64(expr ast.Expr, declarations map[string]ast.Expr, vus map[string]bool) bool {
-	switch t := expr.(type) {
-	case *ast.Ident:
-		if t.Name == "float64" {
-			return true
-		}
-		sousJacent, connu := declarations[t.Name]
-		if !connu || vus[t.Name] {
-			return false
-		}
-		vus[t.Name] = true
-		return porteUnFloat64(sousJacent, declarations, vus)
-	case *ast.ArrayType:
-		return porteUnFloat64(t.Elt, declarations, vus)
-	case *ast.Ellipsis:
-		return porteUnFloat64(t.Elt, declarations, vus)
-	case *ast.MapType:
-		return porteUnFloat64(t.Value, declarations, vus)
-	case *ast.StarExpr:
-		return porteUnFloat64(t.X, declarations, vus)
-	case *ast.ChanType:
-		return porteUnFloat64(t.Value, declarations, vus)
-	case *ast.StructType:
-		return champsPortentUnFloat64(t.Fields, declarations, vus)
-	case *ast.FuncType:
-		return champsPortentUnFloat64(t.Results, declarations, vus)
-	}
-	return false
-}
-
-// champsPortentUnFloat64 : un des champs (ou des resultats) transporte-t-il un float64 ?
-func champsPortentUnFloat64(champs *ast.FieldList, declarations map[string]ast.Expr, vus map[string]bool) bool {
-	if champs == nil {
 		return false
 	}
-	for _, c := range champs.List {
-		if porteUnFloat64(c.Type, declarations, vus) {
-			return true
+	for _, res := range fn.Type.Results.List {
+		if !typeAutorise(res.Type) {
+			t.Errorf("%s : %s rend %s, hors de la liste blanche des types de retour — un taux sort "+
+				"dans domain.Couverture (taux + brut + par match + echantillon faible), jamais seul "+
+				"ni sous un type nomme qui le deguiserait. Ajouter un type a la liste exige une "+
+				"justification datee dans no_naked_rate_test.go", chemin, fn.Name.Name, types.ExprString(res.Type))
 		}
 	}
+	return true
+}
+
+// typeAutorise : le type est-il dans la liste blanche, ou un conteneur dont TOUS les
+// composants y sont ? Tout ce qui n'est pas reconnu est refuse — c'est le sens d'une liste
+// blanche.
+func typeAutorise(expr ast.Expr) bool {
+	switch t := expr.(type) {
+	case *ast.Ident:
+		return identsAutorises[t.Name]
+	case *ast.SelectorExpr:
+		pkg, ok := t.X.(*ast.Ident)
+		return ok && typesQualifiesAutorises[pkg.Name+"."+t.Sel.Name]
+	case *ast.ArrayType:
+		return typeAutorise(t.Elt)
+	case *ast.Ellipsis:
+		return typeAutorise(t.Elt)
+	case *ast.MapType:
+		// La CLE compte autant que la valeur : `map[float64]int` est une serie de taux.
+		return typeAutorise(t.Key) && typeAutorise(t.Value)
+	case *ast.StarExpr:
+		return typeAutorise(t.X)
+	case *ast.ChanType:
+		return typeAutorise(t.Value)
+	case *ast.FuncType:
+		return resultatsAutorises(t.Results)
+	}
 	return false
+}
+
+// resultatsAutorises : tous les resultats d'une signature sont-ils autorises ?
+func resultatsAutorises(champs *ast.FieldList) bool {
+	if champs == nil {
+		return true
+	}
+	for _, c := range champs.List {
+		if !typeAutorise(c.Type) {
+			return false
+		}
+	}
+	return true
 }
