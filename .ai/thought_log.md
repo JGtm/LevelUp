@@ -95401,3 +95401,43 @@ demander avant). Prochaine etape : decision utilisateur sur les 6 escalades, pui
 plan `.ai/PLAN_V2_REJEU_FILM_<date>.md` sous `plan-review`, lot 0 (trois P0 + les deux items
 actifs au merge : catalogue ecrit par le runtime, projections sur « artefact range ») avant le
 tag v7.5.0.
+
+## [2026-09-06] Lot G (outils et catalogues) — v2 rejeu/film — Complete
+
+**Contexte.** Execution du lot G du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, worktree
+dedie `LevelUp-wt-v2-outils` (branche `feat/v2-outils`). Quatre items fermes : G.1 (H5,
+sentinelle memoire dupliquee), G.2 (I2, code mort `himap/heightfield.go`), G.3 (H2, portage Go
+du dernier maillon Python de la chaine des sons d'armes), G.4 (H3, documentation des onze
+chaines de fabrication d'assets versionnes).
+
+**Decision technique.** G.1 : les deux copies de la sentinelle memoire (`cmd/levelup`,
+`cmd/replay-worker`) remplacees par `internal/filmproc.Arm`, deja importe par les deux
+fichiers pour d'autres besoins (aucun cout de dependance) ; le garde `archlint` qui entérinait
+la duplication (`sentinelleTokens` acceptait `debug.SetMemoryLimit(` brut) ne l'accepte plus.
+G.2 : suppression cible du code mort apres verification qu'une partie du fichier
+(`borne`/`altitudeAuPoint`) etait en realite partagee par quatre autres fichiers — un premier
+essai de suppression totale avait casse la compilation, restaure puis retraite correctement.
+G.3 : portage fidele de `_outils/livraison.py` (hors depot) en mode `livrer` de
+`cmd/weapon-sounds`, avec un port BIT A BIT du generateur pseudo-aleatoire de CPython
+(Mersenne Twister, verifie contre la sortie reelle de `random.Random`) pour l'unique arme
+rendue par evenement. G.4 : chaque chaine documentee verifiee sur pieces (lecture directe des
+`main.go`, comptage des fichiers commites), pas recopiee depuis l'annexe d'audit — deux
+imprecisions de cette annexe corrigees en route (deux CSV sans producteur automatise,
+sortie de `mapnav-fetch` gitignoree et non versionnee).
+
+**Resultats.** Preuve de fidelite du mode `livrer` : jeu d'entrees synthetique construit dans
+le scratchpad (les vraies sources `.wav` du chantier ont disparu du poste depuis la livraison
+du 2026-08-16), sortie comparee octet a octet (`cmp` + `md5sum`) contre les DEUX scripts
+Python d'origine (copies non modifiees) executes sur le meme jeu : IDENTIQUE sur les 4 fichiers
+`.wav` produits, y compris celui qui depend du generateur aleatoire ; execute aussi contre les
+vraies donnees `_donnees` de production (sans les sources manquantes) : le port Go et le
+script Python echouent au meme point avec le meme message. Gate G au complet : `go build
+./...` propre ; `go test ./internal/himap/... ./internal/archlint/... ./internal/filmproc/...
+./cmd/levelup/... ./cmd/replay-worker/... ./cmd/weapon-sounds/...` tous `ok` ;
+`golangci-lint run --new-from-merge-base=origin/main` sur ces six paquets : 0 issues. Quatre
+commits (un correctif de staging git sur G.2, decouverte consignee : `git add` multi-chemins
+avorte en bloc sur un pathspec deja supprime).
+
+**Conclusion / prochaine etape.** Lot G ferme, journal `.ai/V7.5/v2/LOT_G.md`. Push de
+`feat/v2-outils` et surveillance CI a suivre. Integration dans `feat/v75` par le superviseur
+apres revue adversariale, dans l'ordre prevu par le plan (C, A, B, F, G, E, D).
