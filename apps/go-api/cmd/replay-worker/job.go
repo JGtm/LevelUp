@@ -11,6 +11,8 @@ import (
 	"bytes"
 	"compress/zlib"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -297,6 +299,14 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 	if err != nil {
 		return "", err
 	}
+	// L'EMPREINTE SE CALCULE ICI, SUR LES OCTETS ENCORE EN MÉMOIRE — jamais par une relecture
+	// du disque (l'ouvrier n'en garde pas, cf. D8 et TestOuvrier_NeComposeJamaisLEcritureDArtefact).
+	// C'est la SEULE trace indépendante de ce que l'ouvrier a construit qui survit à son
+	// processus : le compte rendu (ci-dessous) est journalisé et lu par la file durable, alors
+	// que `built.Blob` disparaît avec l'ouvrier. Elle prouve, sans copie locale, que l'artefact
+	// rangé par le serveur est bien celui-ci — cf. build_queue_worker_binary_integration_test.go,
+	// assertArtefactLivreEtComplet.
+	empreinte := sha256.Sum256(built.Blob)
 	// Contexte frais : un Ctrl-C pendant le décodage ne doit pas jeter un artefact
 	// qui a coûté 50 s de CPU alors qu'il ne reste qu'à l'envoyer.
 	sctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), artifactUploadTimeout)
@@ -319,6 +329,10 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 		"tracks":   built.Tracks,
 		"bytes":    receipt.Bytes,
 		"chunks":   len(chunks),
+		// sha256 : empreinte de `built.Blob` (avant envoi), pas de l'artefact rangé — ils ne
+		// peuvent différer que si le serveur a REFUSÉ l'écriture (garde anti-régression,
+		// cf. writeArtifactBytes) ; le vérifier alors est un faux positif attendu, pas un bug.
+		"sha256": hex.EncodeToString(empreinte[:]),
 	})
 	if err != nil {
 		return "", fmt.Errorf("sérialisation du résultat : %w", err)

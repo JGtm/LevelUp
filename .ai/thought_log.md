@@ -1,3 +1,47 @@
+## [2026-09-05] Gate d'integration wt/cuisson-perf — TestOuvrierReel_ConstruitEtLivre (assertion perimee du lot 5, D8) — Complete
+
+**Le constat.** `bash scripts/check_test_baseline.sh tests` rougissait sur UN test :
+`internal/api/wire::TestOuvrierReel_ConstruitEtLivre` (tags `integration && cgo`, tourne en CI
+dans le job `go-coverage` — la CI amont `feat/v75` est verte dessus, la regression etait locale
+au worktree). Message : « l'ouvrier n'a rien construit » sur un chemin que l'ouvrier n'ecrit
+plus depuis le lot 5 de `PLAN_CUISSON_PERF` (D8 : l'ouvrier envoie des OCTETS en memoire,
+`built.Blob`, au serveur qui seul range — il ne garde et n'ecrit RIEN localement). L'assertion
+`assertArtefactLivreEtComplet` relisait une copie locale (`ouvrierRepo/data/cache/replays/...`)
+que la nouvelle architecture ne produit plus : le journal du test prouvait pourtant que la chaine
+marchait (« artefact recu et range bytes=283260 tracks=22 », job `succeeded`).
+
+**Decision technique : empreinte sha256 declaree par l'ouvrier dans son compte rendu de job,
+plutot qu'un champ neuf de transport ou une comparaison par taille seule.** Options envisagees
+dans l'ordre du mandat : (a) empreinte deja declaree — INEXISTANTE (le `BuildArtifactReceipt`
+ne porte que `bytes`/`schema_version`, pas de digest) ; (b) empreinte calculable depuis le
+journal/resultat de job existant — le resume JSON du job (`ResultJSON`, lu par
+`BuildQueueReport` -> `vue.Jobs[].ResultJSON`, jamais par la table d'evenements, regle ART n2)
+ne portait que `match_id`/`module`/`tracks`/`bytes`/`chunks` ; (c) ajouter un champ neuf,
+coherent avec le protocole existant, teste. Retenue : (c) au format de (b) — le champ `sha256`
+s'ajoute au resume JSON deja transporte par le protocole `complete` (aucune route neuve, aucun
+changement de `BuildArtifactReceipt`), calcule UNE fois sur `built.Blob` en memoire avant
+l'envoi (`crypto/sha256`, zero relecture disque — le garde-rail
+`TestOuvrier_NeComposeJamaisLEcritureDArtefact` interdit `os.ReadFile(` hors test dans
+`cmd/replay-worker`, la solution le respecte par construction). Le test lit l'empreinte
+declaree via `BuildQueueReport`, la compare a `sha256(artefact range cote serveur)` : la preuve
+d'identite octet a octet survit a l'ouvrier sans qu'il garde de copie.
+
+**Resultats observes.** `gofmt -l .` vide ; `go vet -tags='integration cgo' ./internal/api/wire/`
+et `./cmd/replay-worker/...` (avec et sans tags) : 0 ; test cible PASS (6,45 s, empreinte
+`b8b9ae2dd098cb7e133de9171d8e4b430f8d9e7d7aa7cb5d86bfbeeb43c14fb6` verifiee) ; suite complete
+`go test -tags='integration cgo' ./internal/api/...` : PASS (5 paquets, 0 echec) ;
+`golangci-lint run --new-from-merge-base=origin/main` : 0 issue ; `bash
+scripts/check_test_baseline.sh tests` : exit 0 (voir sortie jointe au commit).
+
+**Decouverte hors perimetre (notee, non traitee ici) : le filet local d'integration ne couvrait
+que `./internal/sync/` en tags `integration/cgo` — l'epreuve ouvrier d'`internal/api/wire` n'y
+etait pas, ce qui a laisse cette regression invisible jusqu'a ce constat.** Consignee en N-15,
+`.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md` §4, avec la correction a apporter a l'etape
+E.1 du meme plan (et a `delivery-checklist`).
+
+**Conclusion / prochaine etape.** Gate vert ; retour au pilote de `wt/cuisson-perf` pour la
+suite de l'etape E (revue adversariale, filet complet, cloture) du plan d'integration — hors
+perimetre de cette tache.
 ## [2026-09-05] Integration — ETAPE G.5 : backfill-bomb-stats et la cloture du chantier d'Assaut — Complete
 
 **Le geste.** Etape G.5 du plan d'integration, E6 du plan d'Assaut. Le chantier passe de « ecrit
