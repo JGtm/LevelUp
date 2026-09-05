@@ -22,7 +22,11 @@ package filmdec
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // Étiquettes de registre des composants de ti=37 dont ce fichier publie la valeur. Elles
 // servent DEUX fois chacune (le routage de consumeByName et la résolution d'index par nom
@@ -195,20 +199,35 @@ func equipmentFieldIndices(arch Archetype) [EquipmentFieldCount]int {
 	return out
 }
 
-// EquipmentArchetype charge l'archétype des objets d'équipement (ti=37) du registre du film.
-func EquipmentArchetype(dir string) (Archetype, error) {
-	raw, err := ReadFilmChunk(dir, 0)
+// EquipmentArchetypeDir charge l'archétype des objets d'équipement (ti=37) du registre du film.
+//
+// ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [FilmContext.EquipmentArchetype].
+//
+// LE SUFFIXE `Dir` N'EST PAS UN ORNEMENT (lot 6, constat 4 de la revue de branche). Elle
+// s'appelait `EquipmentArchetype`, exactement comme la MÉTHODE que la production appelle : le
+// garde-rail `archlint.TestProductionNAppellePasLesEnveloppes` compare des NOMS d'appelés (il
+// parse l'AST, il ne type rien), et il aurait donc rougi le jour où un paquet de production
+// aurait écrit `fc.EquipmentArchetype()` — l'appel LÉGITIME. Une règle qui interdit le bon geste
+// finit désactivée. Le nom porte désormais la distinction : c'est la seule des enveloppes qui
+// entrait en collision avec une méthode (vérifié au grep sur la liste entière — 40 noms au lot 6,
+// 43 depuis la réconciliation du 2026-09-05 qui a migré les trois balayages amont).
+func EquipmentArchetypeDir(dir string) (Archetype, error) {
+	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
-		return Archetype{}, fmt.Errorf("chunk_00 (registre) illisible dans %s : %w", dir, err)
+		return Archetype{}, err
 	}
-	reg, err := ParseRegistryChunk(raw)
+	return NewFilmContext(film).EquipmentArchetype()
+}
+
+// EquipmentArchetype rend l'archétype ti=37 du registre du film, ANALYSE UNE FOIS par le contexte
+// (lot 2, 2026-09-03 : la calibration MPP et les deux balayages de création le redemandaient).
+func (c *FilmContext) EquipmentArchetype() (Archetype, error) {
+	arch, _, ok, err := c.archetype(EquipmentTypeIndex)
 	if err != nil {
-		return Archetype{}, fmt.Errorf("registre illisible dans %s : %w", dir, err)
+		return Archetype{}, err
 	}
-	arch, ok := reg.Archetype(EquipmentTypeIndex)
 	if !ok {
-		return Archetype{}, fmt.Errorf("archétype équipement %d absent du registre de %s",
-			EquipmentTypeIndex, dir)
+		return Archetype{}, fmt.Errorf("archétype équipement %d absent du registre", EquipmentTypeIndex)
 	}
 	return arch, nil
 }
@@ -218,19 +237,31 @@ func EquipmentArchetype(dir string) (Archetype, error) {
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `equipmentStateHook`,
 // qui est un global de paquet. Le hook est restauré à la sortie, y compris en cas d'erreur.
+//
+// ScanFilmEquipmentState est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanEquipmentState].
 func ScanFilmEquipmentState(dir string) ([]EquipmentStateSample, EquipmentStateStats, error) {
-	var st EquipmentStateStats
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, EquipmentStateStats{}, err
 	}
-	band := worldObjectSlotBand(dir, n, EquipmentTypeIndex)
+	return ScanEquipmentState(NewFilmContext(film))
+}
+
+// ScanEquipmentState décode l'état des objets d'équipement d'un film DEJA CHARGE.
+func ScanEquipmentState(fc *FilmContext) ([]EquipmentStateSample, EquipmentStateStats, error) {
+	var st EquipmentStateStats
+	nums := fc.ChunkNumbers()
+	if len(nums) == 0 {
+		return nil, st, ErrNoFilmChunk
+	}
+	band := worldObjectSlotBand(fc.Film(), EquipmentTypeIndex)
 	if len(band) == 0 {
-		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes de %s",
-			EquipmentTypeIndex, dir)
+		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film",
+			EquipmentTypeIndex)
 	}
 	st.Slots = len(band)
-	arch, err := EquipmentArchetype(dir)
+	arch, err := fc.EquipmentArchetype()
 	if err != nil {
 		return nil, st, err
 	}
@@ -244,12 +275,12 @@ func ScanFilmEquipmentState(dir string) ([]EquipmentStateSample, EquipmentStateS
 	defer SetEquipmentStateHook(prev)
 
 	var out []EquipmentStateSample
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range nums {
+		data, pks, ok := fc.ChunkAt(c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}

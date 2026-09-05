@@ -51,7 +51,7 @@ func TestEquipmentLifeEnd(t *testing.T) {
 	lifeEndRegistry(t, dir)
 
 	n := CountFilmChunks(dir)
-	band := worldObjectSlotBand(dir, n, EquipmentTypeIndex)
+	band := worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)
 	if len(band) == 0 {
 		t.Fatalf("aucun slot ti=%d", EquipmentTypeIndex)
 	}

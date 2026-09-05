@@ -348,6 +348,7 @@ export function SessionDetailPage() {
               scale={compareScale}
               intensityRows={data.intensity_rows ?? []}
               firstBlood={data.first_blood ?? []}
+              usage={data.usage}
             />
           </>
         ) : (

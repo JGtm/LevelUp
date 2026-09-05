@@ -642,10 +642,12 @@ type MatchScoreboardRow struct {
 
 // MatchScoreboardObjective : stats objectifs par joueur d'un match à objectif.
 // Blocs mutuellement exclusifs par mode (CTF / Zones (Strongholds+KOTH) / Oddball /
-// Stockpile / Extraction / VIP) : seuls les champs du mode joué sont renseignés (les autres
-// nil, omitempty). Totaux équipe/lobby calculés à la LECTURE côté front (SUM par équipe).
+// Stockpile / Extraction / VIP / Assaut) : seuls les champs du mode joué sont renseignés (les
+// autres nil, omitempty). Totaux équipe/lobby calculés à la LECTURE côté front (SUM par équipe).
 // Colonnes verrouillées sur payload réel GetMatchStats (PLAN_V72_OBJECTIVE_STATS.md ;
-// Stockpile + Extraction + VIP : V721-02, PLAN_V721_NOTION_BATCH.md).
+// Stockpile + Extraction + VIP : V721-02, PLAN_V721_NOTION_BATCH.md). L'ASSAUT EST LE SEUL BLOC
+// QUI NE VIENT PAS DE L'API : il est reconstruit du FILM et lu dans `match_bomb_stats_latest`
+// sous la capability `film.bomb_stats` — un `nil` y dit « pas mesuré », jamais « zéro ».
 type MatchScoreboardObjective struct {
 	// CTF (CaptureTheFlagStats)
 	FlagCaptures             *int     `json:"flag_captures,omitempty"`
@@ -694,6 +696,17 @@ type MatchScoreboardObjective struct {
 	MaxKillingSpreeAsVip    *int     `json:"max_killing_spree_as_vip,omitempty"`
 	TimeAsVipSeconds        *float64 `json:"time_as_vip_seconds,omitempty"`
 	LongestTimeAsVipSeconds *float64 `json:"longest_time_as_vip_seconds,omitempty"`
+	// Assaut (match_bomb_stats_latest — RECONSTRUITES DU FILM ; l'API 343 n'en publie AUCUNE
+	// pour ce mode). Table DÉDIÉE, seconde requête, gatée par la capability `film.bomb_stats` :
+	// un titre qui ne la déclare pas n'expose aucune de ces cinq clés. NULL = non mesuré,
+	// jamais zéro. LES CINQ SONT MESURÉES depuis le lot G.6 (2026-09-05),
+	// `bomb_carriers_killed` compris : `null` y dit « source non lue » (fil des morts illisible,
+	// portage non ponté), pas « impossible à mesurer » comme l'affirmait ce commentaire.
+	BombDetonations          *int     `json:"bomb_detonations,omitempty"`
+	BombArms                 *int     `json:"bomb_arms,omitempty"`
+	BombGrabs                *int     `json:"bomb_grabs,omitempty"`
+	TimeAsBombCarrierSeconds *float64 `json:"time_as_bomb_carrier_seconds,omitempty"`
+	BombCarriersKilled       *int     `json:"bomb_carriers_killed,omitempty"`
 }
 
 // MatchNemesisRow : adversaire fréquent (kills reçus de lui).

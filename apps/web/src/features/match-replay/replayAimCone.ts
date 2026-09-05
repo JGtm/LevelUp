@@ -114,19 +114,73 @@ export function drawAimCone(
   const fresh = freshness(read.age, style.timing.aimHold, AIM_FADE);
   // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi.
   const ang = (-read.value * Math.PI) / 180;
-  const R =
-    AIM_LENGTH * pitchScale(heldPitch(track.points, style, read.age)) * style.k;
   // LA LUNETTE agit sur l'OUVERTURE, jamais sur la longueur : celle-ci est deja portee par
-  // l'elevation, juste au-dessus. Les deux mecaniques restent ainsi lisibles ensemble.
+  // l'elevation. Les deux mecaniques restent ainsi lisibles ensemble.
   const palier = heldScoped(track.points, style, read.age);
-  const halfAngle = scopedHalfAngle(palier);
+  drawAimSector(ctx, c, ang, style.k, color, {
+    lengthScale: aimLengthScale(heldPitch(track.points, style, read.age)),
+    fresh,
+    halfAngle: scopedHalfAngle(palier),
+    alphaBoost: palier > 0 ? AIM_SCOPED_ALPHA_BOOST : 1,
+  });
+}
+
+/** Ce que le SECTEUR laisse choisir à son appelant, en plus de l'angle et de l'encre. */
+export interface AimSectorOptions {
+  /**
+   * Multiplie la longueur de référence (52 px). Le cône d'un PION y met son élévation
+   * (`aimLengthScale`) ; un appelant qui n'a pas d'élévation à dire laisse 1 — « à plat », qui est
+   * exactement le sens de l'absence (cf. la note du champ `p` ci-dessus).
+   */
+  lengthScale?: number;
+  /** Fraîcheur de la mesure, 0..1 : elle module l'opacité. 1 = mesure de l'instant. */
+  fresh?: number;
+  /**
+   * DEMI-OUVERTURE du secteur, en radians. Défaut : celle de la hanche. Le cône d'un PION y met
+   * son palier de lunette (`scopedHalfAngle`) ; un véhicule n'a pas de lunette et laisse le
+   * défaut.
+   */
+  halfAngle?: number;
+  /**
+   * Multiplie l'opacité, plafonnée à 1. Sert au PALIER DE LUNETTE, qui resserre le cône : sans
+   * ce gain, un secteur trois fois plus étroit se lirait trois fois plus pâle à l'écran.
+   */
+  alphaBoost?: number;
+}
+
+/**
+ * drawAimSector — LE SECTEUR DE VISÉE lui-même : la géométrie et les opacités, sans la mesure.
+ *
+ * EXTRAIT DE `drawAimCone` (lot véhicules) : un joueur EMBARQUÉ ne réplique plus
+ * son bipède, donc plus aucun cap de visée — mais le VÉHICULE, lui, porte un cap, et la décision
+ * utilisateur du chantier est de l'employer (« à l'arrêt on assume qu'il regarde devant lui ; en
+ * mouvement, la direction du déplacement »). Le calque des véhicules a donc besoin du MÊME cône,
+ * à partir d'un angle qu'il calcule lui-même — pas d'une seconde géométrie qui divergerait au
+ * premier réglage (règle « ≤ 2 copies »).
+ *
+ * `ang` EST DÉJÀ EN RADIANS CANEVAS (l'inversion monde -> écran appartient à l'appelant, qui
+ * seul sait de quel cap il part), et l'appelant fournit aussi sa densité `k` et son encre : ce
+ * bloc ne connaît ni marqueur, ni piste, ni thème.
+ */
+export function drawAimSector(
+  ctx: CanvasRenderingContext2D,
+  c: XY,
+  ang: number,
+  k: number,
+  color: string,
+  options: AimSectorOptions = {},
+): void {
+  const {
+    lengthScale = 1,
+    fresh = 1,
+    halfAngle = AIM_HALF_ANGLE,
+    alphaBoost = 1,
+  } = options;
+  const R = AIM_LENGTH * lengthScale * k;
   const gradient = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, R);
   gradient.addColorStop(0, color);
   gradient.addColorStop(1, "transparent");
-  ctx.globalAlpha = Math.min(
-    1,
-    AIM_CONE_ALPHA * fresh * (palier > 0 ? AIM_SCOPED_ALPHA_BOOST : 1),
-  );
+  ctx.globalAlpha = Math.min(1, AIM_CONE_ALPHA * fresh * alphaBoost);
   ctx.beginPath();
   ctx.moveTo(c.x, c.y);
   ctx.arc(c.x, c.y, R, ang - halfAngle, ang + halfAngle);
@@ -202,7 +256,12 @@ function scopedHalfAngle(palier: number): number {
 }
 
 /**
- * pitchScale : ce que l'élévation fait à la LONGUEUR du cône — `1 + 0,55 × sin(p)`.
+ * aimLengthScale : ce que l'élévation fait à la LONGUEUR du cône — `1 + 0,55 × sin(p)`.
+ *
+ * EXPORTÉE LE 2026-09-03 (chantier véhicules, schéma 39) : le cône d'un OCCUPANT DE VÉHICULE lit désormais une vraie
+ * élévation (`ReplayVehicleAim.p`, même composant `i21`, même convention que `Point.p`) et doit
+ * donc la traduire de la MÊME façon qu'un pion — sinon deux barèmes de longueur coexisteraient
+ * pour la même grandeur.
  *
  * CE N'EST PLUS UNE PROJECTION, ET C'EST DÉLIBÉRÉ. La version précédente valait `cos(p)`, la
  * part horizontale d'un regard incliné : physiquement juste, mais PAIRE — plonger de 30° et
@@ -225,7 +284,7 @@ function scopedHalfAngle(palier: number): number {
  * moitié centrale du champ raccourcirait donc un cône qui monte — on l'écrête plutôt que de
  * laisser la lecture s'inverser.
  */
-function pitchScale(pitchDeg: number): number {
+export function aimLengthScale(pitchDeg: number): number {
   const bounded = Math.max(
     -AIM_PITCH_CLAMP_DEG,
     Math.min(AIM_PITCH_CLAMP_DEG, pitchDeg),

@@ -52,7 +52,11 @@ package filmdec
 // événement hors tête de liste — non départagé, R1 §4.3). Lire la liste entière est le
 // chantier PLAN_PERCER_TRAME_FILM.
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 const (
 	// translocFamilyByte : le premier octet des paquets dont l'événement de tête est le
@@ -117,14 +121,27 @@ type TranslocatorTeleport struct {
 // Lecture seule, sans état global de décodage : comme le zoom, ce scanner n'appelle aucun
 // déserialiseur de trame et n'a pas besoin du verrou de paquet. Les chunks illisibles sont
 // une couverture moindre, pas une erreur.
+//
+// ScanFilmTranslocatorTeleports est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis
+// appelle [ScanTranslocatorTeleports]. La cuisson, elle, passe le film qu'elle a déjà chargé.
 func ScanFilmTranslocatorTeleports(dir string, entry *MapQuantEntry) []TranslocatorTeleport {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil // meme degradation silencieuse qu'un chunk illisible : couverture moindre
+	}
+	return ScanTranslocatorTeleports(film, entry)
+}
+
+// ScanTranslocatorTeleports lit les téléportations du translocateur d'un film DEJA CHARGE,
+// triées par instant. Cf. [ScanFilmTranslocatorTeleports] pour la doctrine du balayage.
+func ScanTranslocatorTeleports(film *filmsource.Film, entry *MapQuantEntry) []TranslocatorTeleport {
 	var out []TranslocatorTeleport
-	for c := 1; c <= CountFilmChunks(dir); c++ {
-		chunk, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range FilmChunkNumbers(film) {
+		chunk, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(chunk) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta || pk.Size < 2 {
 				continue
 			}

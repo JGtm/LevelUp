@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 )
@@ -21,16 +22,16 @@ import (
 // decodeKillSource décode killsource UNE SEULE FOIS par match. neutralDeaths ET killRefs en
 // dérivent tous les deux — avant le lot F.1, seul neutralDeaths décodait ; lui ajouter un
 // second appel aurait payé une DEUXIÈME fois le verrou filmdec partagé pour le même fait.
-// nil = décodage impossible (chunks illisibles ou source non décodable), déjà journalisé ici :
+// nil = décodage impossible (film absent ou source non décodable), déjà journalisé ici :
 // les deux appelants n'ont qu'à tester le nil.
-func (b *Builder) decodeKillSource(matchID, filmDir string) *killsource.Result {
-	src, err := killsource.DirChunks(filmDir)
-	if err != nil {
-		slog.Debug("replaybuild: chunks illisibles pour la source de dégât — morts neutres et frags sous effet non décodés",
-			"err", err, "match_id", matchID)
-		return nil
-	}
-	res, err := killsource.Decode(context.Background(), matchID, src, nil)
+//
+// LE FILM EST CELUI QUE `BuildBytes` A DÉJÀ CHARGÉ (lot 1, PLAN_CUISSON_PERF item 1.4) : ce
+// décodage ouvrait et redécompressait le film ENTIER pour son propre compte, en plus des
+// balayages. `film` nil (chunks illisibles, déjà journalisé par `chargerFilm`) n'est plus une
+// lecture ratée ici mais un refus en amont — `killsource.Decode` rend alors `ErrNoChunk`, et le
+// journal en Info ci-dessous reste la SEULE trace côté cuisson, au même niveau qu'avant.
+func (b *Builder) decodeKillSource(matchID string, film *filmsource.Film) *killsource.Result {
+	res, err := killsource.Decode(context.Background(), matchID, film, nil)
 	if err != nil {
 		slog.Info("replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",
 			"err", err, "match_id", matchID)
@@ -39,59 +40,119 @@ func (b *Builder) decodeKillSource(matchID, filmDir string) *killsource.Result {
 	return res
 }
 
-// killRefs résout, pour chaque frag publié par killsource, l'identité du tueur et de
-// l'assistant en XUID — la jointure avec les épisodes elle-même (analysis/replay) ne
-// consomme plus que des identités déjà résolues (cf. EquipmentKillRef).
+// killRefs résout, pour chaque frag publié par killsource, l'identité du TUEUR, de l'ASSISTANT
+// et de la VICTIME en XUID — les deux jointures de `analysis/replay` (épisodes d'équipement et
+// `bomb_carriers_killed`) ne consomment plus que des identités déjà résolues.
+//
+// DEUX SORTIES, UNE SEULE PASSE DE RÉSOLUTION (lot G.6, 2026-09-05). La victime a été ajoutée
+// ici plutôt que dans un second producteur : c'est LA MÊME table gamertag -> xuid et LE MÊME
+// enregistrement killsource, et une seconde résolution en aurait fait une copie du même fait —
+// la règle des 2 copies du dépôt. Elles restent DEUX types parce que les deux jointures n'ont
+// pas la même population : la première crédite un TUEUR (un frag sur un bot y compte), la
+// seconde exige les DEUX identités et écarte le couple sinon.
 //
 // MÊME PORTE QUE LES MORTS SANS REVENDICATION (`Result.LineByLinePublishable`) : porte
-// fermée = `KillsInput{}` (Read=false), jamais un champ à zéro qui se lirait comme une
-// mesure — c'est exactement ce que `Coverage.Equipment.KillsRead` existe pour distinguer.
+// fermée = les deux entrées à `Read=false`, jamais un champ à zéro qui se lirait comme une
+// mesure — c'est exactement ce que `Coverage.Equipment.KillsRead` et
+// `BombStatsCoverage.KillsRead` existent pour distinguer.
 //
 // LA RÉSOLUTION EST HORS LIGNE, ENTIÈREMENT FILM-NATIVE : ce paquet n'ouvre AUCUNE base (même
-// contrat que neutralDeaths et que le reste de replaybuild). `killsource.Kill.Feed.Killer`
-// porte un GAMERTAG (ou `xuid:<N>` en repli, cf. killsource.XUIDNamePrefix) ; le pont
-// gamertag -> xuid vient du fil des morts DU FILM (replay.ScanFilmDeaths) : chaque mort y
-// porte le xuid ET le gamertag de sa victime dans le MÊME enregistrement — aucune table
-// externe à charger. C'est un second appel à ScanFilmDeaths (matchfacts.go en fait déjà un,
-// pour l'identité des actions d'objectif) : relire un petit chunk binaire est bon marché, et
-// c'est le même choix que `analysis/replay` fait déjà en interne entre ses propres calques.
-func (b *Builder) killRefs(matchID, filmDir string, res *killsource.Result) replay.KillsInput {
+// contrat que neutralDeaths et que le reste de replaybuild). `killsource.Kill.Feed.Killer` et
+// `killsource.Kill.Victim` portent un GAMERTAG (ou `xuid:<N>` en repli, cf.
+// killsource.XUIDNamePrefix) ; le pont gamertag -> xuid vient du fil des morts DU FILM : chaque
+// mort y porte le xuid ET le gamertag de sa victime dans le MÊME enregistrement — aucune table
+// externe à charger.
+//
+// L'HORLOGE DES COUPLES EST CELLE DU MATCH, sans conversion : `killsource.Kill.TimeMS` et
+// `replay.Death.TimeMS` sont le MÊME champ du MÊME enregistrement du chunk highlight. La
+// dérivation et son contrôle vivent en tête de `replay.MatchKillsInput` — c'est là que la règle
+// doit être lue, pas ici, parce que c'est là qu'elle est consommée.
+//
+// LA LECTURE EST PARTAGÉE DEPUIS LE LOT 1 (2026-09-02) : ce fichier et `matchfacts.go`
+// ouvraient et reparsaient chacun le chunk highlight, pour en tirer le même fil. Ils reçoivent
+// désormais le MÊME résultat, lu une fois par `BuildBytes` — mêmes valeurs, mêmes refus
+// journalisés, une décompression et un parse de moins par cuisson.
+func (b *Builder) killRefs(matchID string, deaths filmDeaths, res *killsource.Result) (replay.KillsInput, replay.MatchKillsInput) {
 	if res == nil {
-		return replay.KillsInput{}
+		return replay.KillsInput{}, replay.MatchKillsInput{}
 	}
 	if !res.LineByLinePublishable() {
-		slog.Info("replaybuild: attribution ligne par ligne refusée — frags sous effet actif non mesurés",
+		slog.Info("replaybuild: attribution ligne par ligne refusée — frags sous effet actif et porteurs tués non mesurés",
 			"match_id", matchID, "kills", len(res.Kills))
-		return replay.KillsInput{}
+		return replay.KillsInput{}, replay.MatchKillsInput{}
 	}
-	deaths, err := replay.ScanFilmDeaths(filmDir)
-	if err != nil {
-		slog.Info("replaybuild: fil des morts illisible — frags sous effet actif non mesurés",
-			"err", err, "match_id", matchID)
-		return replay.KillsInput{}
+	if deaths.err != nil {
+		slog.Info("replaybuild: fil des morts illisible — frags sous effet actif et porteurs tués non mesurés",
+			"err", deaths.err, "match_id", matchID)
+		return replay.KillsInput{}, replay.MatchKillsInput{}
 	}
-	byGamertag := gamertagXUIDIndex(deaths)
-	refs := make([]replay.EquipmentKillRef, 0, len(res.Kills))
-	unresolved := 0
-	for _, k := range res.Kills {
-		xuid, ok := resolveKillIdentity(k.Feed.Killer, byGamertag)
+	r := resolveKills(res.Kills, gamertagXUIDIndex(deaths.list))
+	r.log(matchID, len(res.Kills))
+	return replay.KillsInput{Read: true, Kills: r.refs},
+		replay.MatchKillsInput{Read: true, Kills: r.pairs, Dropped: len(res.Kills) - len(r.pairs)}
+}
+
+// killResolution est ce qu'UNE passe de résolution rend, POUR LES DEUX JOINTURES — plus ce
+// qu'elle a perdu, ventilé par CAUSE. Sans cette ventilation, « 12 couples écartés » ne
+// distinguerait pas un roster de bots (attendu, majoritaire) d'un pont d'identité cassé.
+type killResolution struct {
+	refs  []replay.EquipmentKillRef
+	pairs []replay.KillRef
+	// killerUnresolved : frags dont le TUEUR n'a pas d'identité — ils manquent aux DEUX sorties.
+	killerUnresolved int
+	// victimUnresolved : frags dont le tueur est résolu mais PAS la victime — ils manquent à la
+	// seule sortie des couples. Cas nominal et attendu : une victime BOT n'a pas de xuid, sa
+	// mort n'est dans aucun enregistrement du fil, et aucune période de portage ne lui est
+	// pontée non plus — l'écarter ne perd donc rien de mesurable.
+	victimUnresolved int
+}
+
+// resolveKills résout tueur, assistant et victime en xuid, EN UNE PASSE. Pure : aucune I/O,
+// testable sans film (kills_test.go).
+func resolveKills(kills []killsource.Kill, byGamertag map[string]uint64) killResolution {
+	r := killResolution{
+		refs:  make([]replay.EquipmentKillRef, 0, len(kills)),
+		pairs: make([]replay.KillRef, 0, len(kills)),
+	}
+	for _, k := range kills {
+		killer, ok := resolveKillIdentity(k.Feed.Killer, byGamertag)
 		if !ok {
-			unresolved++
+			r.killerUnresolved++
 			continue // aucune identité résolue : ce frag ne rencontrera aucun slot, l'omettre est sans perte
 		}
-		ref := replay.EquipmentKillRef{XUID: xuid, TimeMS: k.TimeMS}
+		ref := replay.EquipmentKillRef{XUID: killer, TimeMS: k.TimeMS}
 		if k.Assist.Known && k.Assist.Name != "" {
 			if aXUID, ok := resolveKillIdentity(k.Assist.Name, byGamertag); ok {
 				ref.AssistXUID, ref.AssistKnown = aXUID, true
 			}
 		}
-		refs = append(refs, ref)
+		r.refs = append(r.refs, ref)
+		victim, ok := resolveKillIdentity(k.Victim, byGamertag)
+		if !ok {
+			r.victimUnresolved++
+			continue
+		}
+		r.pairs = append(r.pairs, replay.KillRef{
+			KillerXUID: killer, VictimXUID: victim, TimeMS: int64(k.TimeMS),
+		})
 	}
-	if unresolved > 0 {
+	return r
+}
+
+// log publie ce que la passe a perdu. DEUX NIVEAUX, parce que les deux faits n'ont pas la même
+// gravité : un tueur non résolu reste une anomalie du pont d'identité (WARN, message inchangé
+// depuis le lot F.1), une victime non résolue est le cas NOMINAL des morts de bot (INFO). Aucun
+// des deux n'est tu : un producteur qui tait ses trous laisse croire à l'exhaustivité.
+func (r killResolution) log(matchID string, total int) {
+	if r.killerUnresolved > 0 {
 		slog.Warn("replaybuild: tueur non résolu en xuid — frag omis de la jointure équipement",
-			"match_id", matchID, "non_resolus", unresolved, "total", len(res.Kills))
+			"match_id", matchID, "non_resolus", r.killerUnresolved, "total", total)
 	}
-	return replay.KillsInput{Read: true, Kills: refs}
+	if r.victimUnresolved > 0 {
+		slog.Info("replaybuild: victime non résolue en xuid — couple omis de la jointure porteurs tués",
+			"match_id", matchID, "non_resolues", r.victimUnresolved, "couples", len(r.pairs),
+			"total", total)
+	}
 }
 
 // gamertagXUIDIndex construit gamertag -> xuid depuis le fil des morts du film — le MÊME

@@ -36,6 +36,8 @@ package filmdec
 // L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : les hooks installés
 // sont des globaux de paquet.
 
+import "levelup/go-api/internal/analysis/filmsource"
+
 // abilityImpulseTag : la valeur du tag externe qui date une impulsion. Le 3 est le grappin
 // (grapple_state.go), le 0 et le 2 sont l'état de repos (1 572 et 1 565 lectures sur
 // `00ba2e1c`, tous rangs mélangés, pic au niveau du témoin aléatoire — R8 §8.2).
@@ -106,9 +108,23 @@ type AbilityImpulseStats struct {
 // `spartanAbilityHook` et `abilityNonPredictedHook`, qui sont des globaux de paquet.
 // L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait). Les hooks sont
 // restaurés à la sortie, y compris en cas d'erreur.
+//
+// ScanFilmAbilityImpulses est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film, ouvre un
+// contexte pour elle seule, puis appelle [ScanAbilityImpulses]. La cuisson, elle, passe le
+// contexte qu'elle partage entre tous ses balayages.
 func ScanFilmAbilityImpulses(dir string) ([]AbilityImpulse, AbilityImpulseStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, AbilityImpulseStats{}, err
+	}
+	return ScanAbilityImpulses(NewFilmContext(film))
+}
+
+// ScanAbilityImpulses décode les impulsions de capacité d'un film DEJA CHARGE. Cf.
+// [ScanFilmAbilityImpulses] pour la doctrine du balayage.
+func ScanAbilityImpulses(fc *FilmContext) ([]AbilityImpulse, AbilityImpulseStats, error) {
 	var st AbilityImpulseStats
-	s, err := resolveAbilityScan(dir)
+	s, err := resolveAbilityScan(fc)
 	if err != nil {
 		return nil, st, err
 	}
@@ -137,11 +153,11 @@ func ScanFilmAbilityImpulses(dir string) ([]AbilityImpulse, AbilityImpulseStats,
 
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + s.lay.TotalBits()
 	for _, c := range s.chunks {
-		data, err := ReadFilmChunk(s.dir, c)
-		if err != nil {
+		data, pks, ok := s.fc.ChunkAt(c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}

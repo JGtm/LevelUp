@@ -1,6 +1,10 @@
 package objectiveevents
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // slotidentity.go — QUI est le joueur derriere un slot d'entite du statborg.
 //
@@ -66,8 +70,8 @@ type PlayerLine struct {
 // Ne depend d'AUCUN mode : les frags, morts et assistances sont des statistiques de base,
 // repliquees quel que soit le type de partie. L'appariement fonctionne donc aussi en
 // Slayer, KOTH ou Oddball, ou aucun emplacement d'objectif n'est nomme.
-func SlotIdentity(src FilmSource, lines []PlayerLine) map[int]string {
-	return SlotIdentityFrom(StatRecords(src), lines)
+func SlotIdentity(film *filmsource.Film, lines []PlayerLine) map[int]string {
+	return SlotIdentityFrom(StatRecords(film), lines)
 }
 
 // SlotIdentityFrom est le coeur pur : il travaille sur des enregistrements deja decodes.
@@ -76,9 +80,13 @@ func SlotIdentity(src FilmSource, lines []PlayerLine) map[int]string {
 // d'artefact decode le film une seule fois et fait servir les memes enregistrements a la
 // courbe de score, a l'identite des slots et aux evenements nommes.
 func SlotIdentityFrom(recs []StatRecord, lines []PlayerLine) map[int]string {
-	kills := countsOf(recs, statSlotKey{coreKillsComp, sideA})
-	deaths := countsOf(recs, statSlotKey{coreKillsComp, sideB})
-	assists := countsOf(recs, statSlotKey{coreAssistsComp, sideA})
+	// UN budget pour les trois compteurs (lot 4b) : ce pont deroule lui aussi des compteurs,
+	// et les bornes qui protegent le nommage doivent le proteger de la meme facon.
+	b := newEventBudget("slot_identity")
+	kills := countsOf(recs, statSlotKey{coreKillsComp, sideA}, b)
+	deaths := countsOf(recs, statSlotKey{coreKillsComp, sideB}, b)
+	assists := countsOf(recs, statSlotKey{coreAssistsComp, sideA}, b)
+	b.resume()
 
 	// Premiere passe : les slots dont le triplet designe UNE seule ligne de match.
 	claim := map[int]string{}

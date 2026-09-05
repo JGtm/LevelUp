@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/analysis/replay/mapvar"
@@ -70,7 +71,16 @@ const nullShiftFrames = 300
 // measure croise un match : film -> trajectoires + actions, puis prepare les temoins.
 func (r *runner) measure(ctx context.Context, m eligible) result {
 	res := result{m: m}
-	src, ok, err := filmcache.Open(r.cacheDir, m.short)
+	lines, err := loadPlayerLines(ctx, r.db, m.full)
+	if err != nil {
+		res.err = err
+		return res
+	}
+	// LE FILM EST CHARGE UNE FOIS pour les trois consommateurs de cette mesure (les
+	// enregistrements d'entite, le pont d'identite par instants de mort, et le decodage
+	// complet) : jamais un `*Film` d'un cote et une enveloppe `dir` de l'autre — ce serait
+	// deux decompressions du meme film.
+	film, ok, err := filmcache.LoadFilm(r.cacheDir, m.short)
 	if err != nil {
 		res.err = err
 		return res
@@ -79,15 +89,10 @@ func (r *runner) measure(ctx context.Context, m eligible) result {
 		res.err = fmt.Errorf("manifeste de film absent")
 		return res
 	}
-	lines, err := loadPlayerLines(ctx, r.db, m.full)
-	if err != nil {
-		res.err = err
-		return res
-	}
-	identified := identifyZoneActions(src, lines, filmcache.ChunkDir(r.cacheDir, m.short))
+	identified := identifyZoneActions(lines, film)
 	res.identified = len(identified)
 
-	doc, err := replay.BuildFromFilm(m.short, r.slug, filmcache.ChunkDir(r.cacheDir, m.short),
+	doc, err := replay.BuildFromFilm(m.short, r.slug, film,
 		replay.Options{MapQuant: m.quant, Objectives: identified})
 	if err != nil {
 		res.err = err
@@ -195,10 +200,10 @@ func shiftBy(actions []replay.ObjectiveAction, frameCount, delta int) []replay.O
 // `64e8adfa` et `24dbb67d`, plan objectifs vivants phase 0). Le repli par INSTANTS DE MORT
 // n'emprunte rien a la base, tient sur un film tronque, et ne se declenche que s'il nomme
 // STRICTEMENT plus de slots — un film complet rend donc exactement ce qu'il rendait avant.
-func identifyZoneActions(src objectiveevents.FilmSource, lines []objectiveevents.PlayerLine,
-	chunkDir string) []objectiveevents.IdentifiedEvent {
-	named := objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeZone)
-	identity, st := objectiveevents.SlotIdentityResolved(src, lines, deathInstantsOf(chunkDir))
+func identifyZoneActions(lines []objectiveevents.PlayerLine,
+	film *filmsource.Film) []objectiveevents.IdentifiedEvent {
+	named := objectiveevents.NamedEvents(film, objectiveevents.ObjectiveTypeZone)
+	identity, st := objectiveevents.SlotIdentityResolved(film, lines, deathInstantsOf(film))
 	if st.Source != objectiveevents.IdentitySourceTotals || st.Conflicts > 0 {
 		fmt.Printf("    pont d'identite : voie %q (%d par totaux, %d par instants de mort, "+
 			"%d desaccords ecartes)\n", st.Source, st.ByTotals, st.ByDeaths, st.Conflicts)
@@ -230,8 +235,8 @@ func printSelection(all []candidate, elig []eligible, rej rejects) {
 // deathInstantsOf lit le fil des morts du film et le met dans la forme qu'attend le pont
 // d'identite. Un fil illisible rend une liste vide : le pont retombe alors sur les seuls
 // totaux, exactement comme avant ce correctif — une degradation, jamais une erreur.
-func deathInstantsOf(chunkDir string) []objectiveevents.DeathInstant {
-	deaths, err := replay.ScanFilmDeaths(chunkDir)
+func deathInstantsOf(film *filmsource.Film) []objectiveevents.DeathInstant {
+	deaths, err := replay.ScanDeaths(film)
 	if err != nil {
 		fmt.Printf("    fil des morts illisible (%v) — pont d'identite par totaux seuls\n", err)
 		return nil

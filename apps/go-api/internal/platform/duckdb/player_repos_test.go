@@ -318,6 +318,11 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			time_as_vip_seconds DOUBLE, longest_time_as_vip_seconds DOUBLE,
 			written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		migration.MatchObjectiveStatsLatestViewSQL("shared.match_objective_stats"),
+		// match_bomb_stats (shared, append-only) : les cinq statistiques d Assaut RECONSTRUITES
+		// DU FILM. DDL NON RECOPIEE — la migration l expose (MatchBombStatsTableSQL), pour que
+		// la fixture ne puisse pas deriver de la production sans que rien ne rougisse.
+		migration.MatchBombStatsTableSQL("shared.match_bomb_stats"),
+		migration.MatchBombStatsLatestViewSQL("shared.match_bomb_stats"),
 		// Schéma append-only (Phase 2.G refactor ART) + vue latest
 		`CREATE SEQUENCE pcs_seq START 1`,
 		`CREATE TABLE player_csr_snapshots (

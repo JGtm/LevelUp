@@ -106,7 +106,7 @@ func TestAssautA6Armement(t *testing.T) {
 	totalExplosions := 0
 
 	for _, id := range films {
-		src, ok, err := filmcache.Open(cache, id)
+		src, ok, err := filmcache.LoadFilm(cache, id)
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}
@@ -285,7 +285,7 @@ func TestAssautA6Minuterie(t *testing.T) {
 	// rs[canal] = les correlations mesurees, une par (explosion, slot) exploitable.
 	rs := map[a6Canal][]float64{}
 	for _, id := range films {
-		src, ok, err := filmcache.Open(cache, id)
+		src, ok, err := filmcache.LoadFilm(cache, id)
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}
@@ -422,7 +422,7 @@ func TestAssautA6TemoinMinuterie(t *testing.T) {
 	reel := map[a6Canal][]float64{}
 	temoin := map[a6Canal][]float64{}
 	for _, id := range films {
-		src, ok, err := filmcache.Open(cache, id)
+		src, ok, err := filmcache.LoadFilm(cache, id)
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}

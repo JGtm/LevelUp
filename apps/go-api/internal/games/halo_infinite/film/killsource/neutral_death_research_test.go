@@ -41,6 +41,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
 )
 
@@ -67,7 +68,7 @@ func TestNeutralDeathNatureCoverage(t *testing.T) {
 
 func neutralDeathReport(t *testing.T, b *strings.Builder, dir string) {
 	t.Helper()
-	src, err := DirChunks(dir)
+	src, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks %s : %v", dir, err)
 	}

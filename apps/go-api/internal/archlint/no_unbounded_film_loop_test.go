@@ -52,23 +52,42 @@ var filmBuildCalls = []string{
 var filmBuildAllowedCallers = map[string]string{
 	"internal/replaybuild/replaybuild.go": "2026-08-26 — la DEFINITION de BuildMatch ; elle " +
 		"appelle BuildFromFilm, elle ne boucle sur rien",
-	"cmd/levelup/cmd_backfill_replay_child.go": "2026-08-26 — ENFANT de la passe bornee " +
-		"(backfill_child.go) : un film par processus, sentinelle armee, le parent compte les issues",
+	"cmd/levelup/cmd_backfill_replay_child.go": "2026-08-26 — ENFANT de la passe bornee : un " +
+		"film par processus, sentinelle armee, le parent compte les issues. REGIME PRECISE LE " +
+		"2026-09-03 (PLAN_CUISSON_PERF 5.4/5.7) : le parent est desormais `internal/filmproc` " +
+		"(priorite CPU basse comprise, elle manquait), et cet enfant prend le VERROU SOLO EN " +
+		"ATTENTE BORNEE (10 min) — une passe n'a pas de cycle suivant, elle attend son tour " +
+		"plutot que d'echouer sur un chevauchement",
 	"cmd/replay-build/main.go": "2026-08-31 — CLI unitaire : un film par invocation, le " +
 		"processus meurt ensuite. ARME LES TROIS PROTECTIONS (verrou solo, priorite basse, " +
 		"sentinelle a MeasureLimitGiB) — la justification du 2026-08-26 s'arretait a « aucune " +
 		"boucle DANS le processus », ce qui n'a pas empeche un operateur d'en lancer deux en " +
 		"parallele et de saturer la machine (cf. internal/filmproc/solo.go)",
 	"cmd/replay-worker/job.go": "2026-08-26 — ouvrier : un job a la fois, sentinelle armee PAR " +
-		"JOB (memlimit.go) et desarmee entre deux. Processus long-vivant, jamais deux films en vol",
+		"JOB (memlimit.go) et desarmee entre deux. Processus long-vivant, jamais deux films en " +
+		"vol. REGIME COMPLETE LE 2026-09-03 (PLAN_CUISSON_PERF 5.7) : « un film a la fois DANS " +
+		"ce processus » ne disait rien des AUTRES processus de la machine (serveur post-sync, " +
+		"passe backfill, second ouvrier) — il prend donc le VERROU SOLO EN ATTENTE BORNEE " +
+		"(10 min) autour du seul decodage, rendu avant l'envoi",
 	"internal/api/wire/registry_replay_build.go": "2026-08-26 — action admin sur UN match, " +
 		"declenchee a la main. Aucune boucle",
 	"cmd/zone-attribution/measure.go": "2026-08-26 — ENFANT de la passe bornee (passe.go) : " +
 		"un film par processus, plafond de MESURE (2 Gio) et priorite basse via internal/filmproc",
-	"internal/analysis/replay/build.go": "2026-08-26 — la DEFINITION de BuildFromFilm ; elle " +
-		"ne boucle sur rien",
+	"internal/analysis/replay/build_from_film.go": "2026-08-26 — la DEFINITION de " +
+		"BuildFromFilm ; elle ne boucle sur rien. Fichier renomme au lot 1 de PLAN_CUISSON_PERF " +
+		"(2026-09-02) : le decodage a quitte `build.go`, qui garde l'assemblage",
 	"internal/replaychild/replaychild.go": "2026-08-26 — ENFANT BORNE du post-sync : un film " +
-		"par processus, sentinelle armee, aucune base ouverte ; le PARENT range les octets",
+		"par processus, sentinelle armee, aucune base ouverte ; le PARENT range les octets. " +
+		"REGIME COMPLETE LE 2026-09-03 (PLAN_CUISSON_PERF 5.7) : `Spawn` (cote parent, dans le " +
+		"serveur) prend le VERROU SOLO EN REFUS IMMEDIAT avant de faire naitre l'enfant — le " +
+		"post-sync ne doit rien attendre, le match manquant revient au cycle suivant et compte " +
+		"en echec de ce cycle-ci. La cuisson est en outre bornee par une deadline " +
+		"(min(budget restant, 15 min), item 5.5)",
+	"cmd/replay-equiv/child.go": "2026-09-02 — harnais d'equivalence de la cuisson " +
+		"(PLAN_CUISSON_PERF D4b) : un film par processus, sentinelle armee, verrou solo en " +
+		"attente bornee, aucune base ouverte. Le PARENT (parent.go) lit le corpus et ne decode " +
+		"rien — il n'enchaine jamais deux films dans un processus, c'est le motif des quatre " +
+		"sinistres RAM que ce ratchet garde",
 }
 
 func TestNoUnboundedFilmLoop(t *testing.T) {

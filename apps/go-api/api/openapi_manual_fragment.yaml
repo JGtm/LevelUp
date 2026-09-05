@@ -2899,7 +2899,7 @@ components:
           allOf:
             - $ref: '#/components/schemas/FilterContextInput'
     MatchScoreboardObjective:
-      description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
+      description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP/Assaut) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
     ObjectiveAggregate:
       description: Cumul (SUM) des stats objectifs (CTF/Zones/Oddball) d'un joueur sur un ensemble de matchs. Champs zéro omis.
     TeammatesQueryRequest:

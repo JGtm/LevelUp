@@ -49,8 +49,10 @@ var slotBandScope = filepath.Join("analysis", "filmdec")
 // slotBandAllowed : les SEULS fichiers autorisés à tenir une liste d'exclusion de slots, avec la
 // raison de chacun. Ajouter une entrée ici est une décision, pas une formalité.
 var slotBandAllowed = map[string]string{
-	// La règle COMBLÉE, avec la mesure du 2026-07-26 qui l'a établie.
-	"projectiles.go": "règle COMBLÉE (worldObjectSlotBand / slotBandExcluding)",
+	// La règle COMBLÉE, avec la mesure du 2026-07-26 qui l'a établie. Elle a quitté
+	// `projectiles.go` au lot 1 de PLAN_CUISSON_PERF (2026-09-02, deplacement pur : le fichier
+	// passait au-dessus de 500 lignes) pour rejoindre sa jumelle observée.
+	"slot_band_filled.go": "règle COMBLÉE (worldObjectSlotBand / slotBandExcluding)",
 	// La règle OBSERVÉE, avec la mesure du 2026-09-01 qui l'a séparée de la précédente.
 	"slot_band_observed.go": "règle OBSERVÉE (observedSlotBand)",
 	// Relève seen/others dans la MÊME marche que le recensement, puis délègue la règle à
@@ -59,6 +61,11 @@ var slotBandAllowed = map[string]string{
 	// Bande FANTÔME : un témoin d'ancrage bâti sur les slots des AUTRES archétypes. Ce n'est pas
 	// une bande d'archétype, c'est son négatif — et le témoin doit rester libre de le construire.
 	"equipment_creation_test.go": "bande FANTÔME (témoin d'ancrage, pas une bande d'archétype)",
+	// Même cas, arrivé le 2026-09-05 avec le chantier VEHICULES : `vehiclePhantomBand` bâtit le
+	// témoin d'ancrage de `ti=40` sur les slots des AUTRES archétypes. C'est le négatif d'une
+	// bande, pas une quatrième règle — et le témoin doit passer par le MÊME décodeur que la mesure,
+	// donc construire son ensemble lui-même.
+	"vehicle_creation_test.go": "bande FANTÔME ti=40 (témoin d'ancrage, pas une bande d'archétype)",
 	// Même pattern que world_object_census.go : relève seen/others puis délègue la règle à
 	// `slotBandExcluding` (deto_attribution_helpers_test.go:77) — il ne la réécrit pas. Sa marche
 	// est BORNÉE aux n premiers chunks (leçon RAM : worldObjectSlotBand balaie tout le film), ce

@@ -1,13 +1,12 @@
 package filmdec
 
 import (
-	"bytes"
-	"compress/zlib"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // packetHeaderSize est la taille de l'en-tête d'un paquet de chunk film :
@@ -39,35 +38,30 @@ func (p FilmPacket) Payload(chunk []byte) []byte { return chunk[p.Start : p.Star
 
 // ReadFilmChunk lit chunk_NN.bin dans dir et le décompresse si nécessaire (les chunks
 // sont stockés en zlib brut ; certains dumps sont déjà décompressés).
+//
+// ENVELOPPE D2, HORS PRODUCTION (lot 1 de PLAN_CUISSON_PERF, 2026-09-02). Le chemin de cuisson
+// charge le film UNE fois par `filmsource.LoadDir` et lit ses chunks par [FilmChunkAt] : plus
+// aucune relecture disque par balayage. Cette fonction ne survit que pour les LECTEURS D'UN SEUL
+// CHUNK — instruments de recherche et tests de `filmdec`, `replay`, `objectiveevents` — et pour
+// `FindPackets`, qui balaye une RACINE de films et n'a pas de film a charger. L'inflate lui-meme
+// vit desormais dans `filmsource` : un seul decompresseur dans le depot.
 func ReadFilmChunk(dir string, chunk int) ([]byte, error) {
 	path := filepath.Join(dir, fmt.Sprintf("chunk_%02d.bin", chunk))
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	return inflateChunk(raw), nil
-}
-
-// inflateChunk décompresse un chunk zlib ; renvoie l'entrée telle quelle si elle n'est pas
-// compressée (ou si le flux est tronqué mais a produit des octets exploitables).
-func inflateChunk(raw []byte) []byte {
-	if len(raw) < 2 || raw[0] != 0x78 {
-		return raw
-	}
-	zr, err := zlib.NewReader(bytes.NewReader(raw))
-	if err != nil {
-		return raw
-	}
-	defer func() { _ = zr.Close() }()
-	out, err := io.ReadAll(zr)
-	if len(out) == 0 && err != nil {
-		return raw
-	}
-	return out
+	return filmsource.Inflate(raw), nil
 }
 
 // WalkPackets énumère les paquets d'un chunk décompressé. S'arrête au premier en-tête
 // incohérent (fin de chunk ou padding) — les paquets déjà lus restent valides.
+//
+// MARCHEUR HORS PRODUCTION depuis le lot 1 (2026-09-02) : la grammaire de la chaine de cuisson
+// vit dans `filmsource` (une seule, mesuree sur 1 378 films), et [FilmChunkAt] rend ses paquets.
+// Celui-ci survit pour les lecteurs d'un chunk ISOLE (`FindPackets` et les instruments de
+// recherche) et comme TEMOIN : `TestFilmChunkAtEgaleWalkPackets` compare les deux vues sur un
+// vrai chunk, et c'est cette comparaison qui autorise la migration.
 func WalkPackets(chunk []byte) []FilmPacket {
 	var out []FilmPacket
 	off := 0
@@ -90,6 +84,11 @@ func WalkPackets(chunk []byte) []FilmPacket {
 
 // CountFilmChunks compte les chunk_NN.bin présents dans dir (chunk_00 = registre exclu),
 // en s'arrêtant au premier index manquant.
+//
+// ENVELOPPE D2, HORS PRODUCTION (lot 1, 2026-09-02) : la cuisson enumere les chunks d'un film
+// DEJA CHARGE par [FilmChunkNumbers], qui reproduit exactement cette regle d'arret sans toucher
+// le disque. Survit pour `FindPackets` (qui balaye une racine de films, pas un film) et pour les
+// tests qui comparent les deux chemins.
 func CountFilmChunks(dir string) int {
 	n := 0
 	for i := 1; ; i++ {

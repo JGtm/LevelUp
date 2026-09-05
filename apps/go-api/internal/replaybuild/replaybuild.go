@@ -26,12 +26,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"time"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
@@ -85,6 +86,9 @@ type Builder struct {
 	// VICTOIRE publiee avec la courbe de score. Chargee une fois au NewBuilder, best-effort :
 	// table absente ou illisible = aucune cible, jamais un echec (le client a son repli).
 	regulation *mappings.RegulationSet
+	// observer recoit chaque etape de BuildBytes et de BuildFromFilm avec sa sortie (cf.
+	// replay/observe.go et cmd/replay-equiv). Nil = aucun appel, aucun cout.
+	observer replay.Observer
 }
 
 // Outcome décrit un artefact construit.
@@ -197,7 +201,29 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 	if err != nil {
 		return Built{}, err
 	}
-	stats := readFilmStats(context.Background(), matchID, filmDir, facts)
+	// LES PHASES SONT CHRONOMETREES (cf. timing.go) : ce sont les travaux qui lisent le film, et
+	// le total ci-dessous n'est utile que si on sait lequel l'a mange.
+	debutTotal := time.Now()
+	ctx := context.Background()
+	// LE FILM EST DECOMPRESSE UNE FOIS ICI, POUR TOUTE LA CUISSON (lot 1, PLAN_CUISSON_PERF
+	// item 1.3). Avant, chacun des ~20 balayages de `BuildFromFilm` relisait et redecompressait
+	// le film entier depuis le disque. Le manifeste, deja ouvert pour le statborg, donne le
+	// type et le debut de chaque chunk ; les NUMEROS, eux, viennent des fichiers presents.
+	tFilm := time.Now()
+	src := ouvrirManifeste(ctx, matchID, filmDir)
+	film := chargerFilm(ctx, matchID, filmDir, src)
+	// UNE SEULE LECTURE DU FIL DES MORTS pour les deux consommateurs de cet etage
+	// (`identifiedEvents` et `killRefs`, qui ouvraient chacun le chunk highlight).
+	deaths := lireMorts(film)
+	logPhase("film", matchID, tFilm)
+	tStats := time.Now()
+	stats := readFilmStats(ctx, matchID, film, facts, deaths)
+	logPhase("stats", matchID, tStats)
+	b.observe("score", stats.score)
+	b.observe("objectives", stats.objectives)
+	b.observe("vip", stats.vip)
+	b.observe("skull", stats.skull)
+	b.observe("bomb", stats.bomb)
 	// La CIBLE DE VICTOIRE vient de la table de règlement du titre, jamais du film : elle
 	// s'ajoute à l'entrée du calque de score, et la garde de publication vit chez lui
 	// (`publishableTarget` — une table périmée se tait au lieu de publier une cible fausse).
@@ -208,53 +234,127 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 		stats.score.TargetScore, _ = b.regulation.ScoreTarget(facts.GameVariantName)
 		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
 	}
-	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
-	// lectures que le second décodage a déjà faites (cf. flagspawns.go).
-	stats.flag.Spawns = b.flagSpawns(matchID, facts.MapID)
-	// Les ZONES du mode viennent du même catalogue de carte, dans l'ORDRE OÙ LE SERVICE LES SERT :
-	// c'est cet ordre qui donne son sens à `zoneStates[].zoneRef` (cf. zones.go). Aucune zone =
-	// aucun balayage de `ti=13`, donc aucun coût sur les modes qui n'en ont pas.
-	zones, zoneRoles := b.matchZones(matchID, facts.MapID, facts.GameVariantName)
-	// UN SEUL décodage killsource par match : neutralDeaths ET killRefs (cf. kills.go) en
-	// dérivent tous les deux, pour ne payer qu'UNE fois le verrou filmdec partagé avec
-	// `replay.BuildFromFilm` — au lieu de deux, comme avant la jointure des frags sous
-	// effet actif (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1).
-	ksRes := b.decodeKillSource(matchID, filmDir)
-	// Les POINTS D'APPARITION viennent du catalogue des socles, par map_id — ils donnent leur
-	// origine aux ramassages non-arme (cf. spawnpoints.go).
-	spawnPts, mapState := b.spawnPoints(matchID, facts.MapID, mapNames)
-	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, filmDir, replay.Options{
+	cat := b.collecterEntreesCatalogue(matchID, film, facts, mapNames, &stats, deaths)
+	tDecode := time.Now()
+	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, film, replay.Options{
 		FrameIntervalMS: b.interval,
 		Geometry:        b.geometry,
 		Structure:       b.structureFor(entry.Module),
 		Labels:          b.labels,
-		NeutralDeaths:   b.neutralDeaths(matchID, ksRes),
-		Kills:           b.killRefs(matchID, filmDir, ksRes),
-		Bots:            botIdentities(ksRes),
-		Successions:     botSuccessions(matchID, facts, ksRes),
+		NeutralDeaths:   cat.neutral,
+		Kills:           cat.kills,
+		MatchKills:      cat.matchKills,
+		Bots:            cat.bots,
+		Successions:     cat.successions,
 		Objectives:      stats.objectives,
 		Score:           stats.score,
 		Flag:            stats.flag,
 		Vip:             stats.vip,
 		Skull:           stats.skull,
 		Bomb:            stats.bomb,
-		Zone: replay.ZoneInput{Zones: zones, Roles: zoneRoles, TeamByXUID: teamByXUID(facts),
+		Zone: replay.ZoneInput{Zones: cat.zones, Roles: cat.zoneRoles, TeamByXUID: teamByXUID(facts),
 			Hill: isHillVariant(facts.GameVariantName)},
 		MapQuant:         &entry,
-		SpawnPoints:      spawnPts,
-		SpawnPointsState: mapState,
+		Observe:          b.observe,
+		SpawnPoints:      cat.spawnPts,
+		SpawnPointsState: cat.spawnPointsState,
 	})
+	logPhase("decodage", matchID, tDecode)
 	if err != nil {
 		return Built{}, fmt.Errorf("décodage du film %s: %w", matchID, err)
 	}
 	if len(doc.Tracks) == 0 {
 		return Built{}, fmt.Errorf("%w (match %s)", ErrNoTracks, matchID)
 	}
+	tMarshal := time.Now()
 	blob, err := json.Marshal(doc)
+	logPhase("marshal", matchID, tMarshal)
 	if err != nil {
 		return Built{}, fmt.Errorf("sérialisation artefact %s: %w", matchID, err)
 	}
+	b.observe("artifact", blob)
+	slog.Info("cuisson: octets construits", "match_id", matchID,
+		"duration", time.Since(debutTotal), "tracks", len(doc.Tracks), "bytes", len(blob))
 	return Built{Blob: blob, Module: entry.Module, Tracks: len(doc.Tracks)}, nil
+}
+
+// entreesCatalogue porte ce que la construction lit HORS DU FILM : les zones et leurs rôles,
+// les points d'apparition, et ce que le décodage killsource en tire (morts neutres, références
+// de frag, identités de bot et relais). Les socles de drapeau, eux, se posent directement dans
+// `stats.flag`.
+type entreesCatalogue struct {
+	zones            []replay.Zone
+	zoneRoles        string
+	spawnPts         []replay.MapSpawnPoint
+	spawnPointsState string
+	neutral          []replay.NeutralDeath
+	kills            replay.KillsInput
+	// matchKills sort de LA MÊME passe de résolution que `kills` (cf. kills.go) : les couples
+	// (tueur, victime, instant) que la jointure `bomb_carriers_killed` consomme.
+	matchKills  replay.MatchKillsInput
+	bots        []replay.BotIdentity
+	successions []replay.Succession
+}
+
+// collecterEntreesCatalogue rassemble tout ce que `BuildFromFilm` reçoit SANS l'avoir décodé
+// lui-même : catalogues de carte (socles de drapeau, zones, points d'apparition) et sorties du
+// décodage killsource. Extraite de `BuildBytes` le 2026-09-02 pour la ramener sous les 80 lignes
+// du dépôt — L'ORDRE DES ÉTAPES OBSERVÉES EST INCHANGÉ, et `observe_test.go` descend désormais
+// dans cette fonction pour continuer de le vérifier sur la source.
+//
+// `stats` est pris par POINTEUR parce que les socles de drapeau s'ajoutent à `stats.flag`, qui
+// part ensuite tel quel dans les options du décodage.
+//
+// `film` est celui que `BuildBytes` a charge une fois : `decodeKillSource` n'ouvre plus rien
+// lui-meme (item 1.4 du plan). `deaths` est l'unique lecture du fil des morts, partagee avec
+// `readFilmStats`.
+func (b *Builder) collecterEntreesCatalogue(
+	matchID string, film *filmsource.Film, facts port.MatchFacts, mapNames []string,
+	stats *filmStats, deaths filmDeaths,
+) entreesCatalogue {
+	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
+	// lectures que le second décodage a déjà faites (cf. flagspawns.go).
+	stats.flag.Spawns = b.flagSpawns(matchID, facts.MapID)
+	b.observe("flag", stats.flag)
+	// Les ZONES du mode viennent du même catalogue de carte, dans l'ORDRE OÙ LE SERVICE LES SERT :
+	// c'est cet ordre qui donne son sens à `zoneStates[].zoneRef` (cf. zones.go). Aucune zone =
+	// aucun balayage de `ti=13`, donc aucun coût sur les modes qui n'en ont pas.
+	zones, zoneRoles := b.matchZones(matchID, facts.MapID, facts.GameVariantName)
+	b.observe("zones", zones)
+	b.observe("zoneRoles", zoneRoles)
+	// UN SEUL décodage killsource par match : neutralDeaths ET killRefs (cf. kills.go) en
+	// dérivent tous les deux, pour ne payer qu'UNE fois le verrou filmdec partagé avec
+	// `replay.BuildFromFilm` — au lieu de deux, comme avant la jointure des frags sous
+	// effet actif (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1).
+	tKS := time.Now()
+	ksRes := b.decodeKillSource(matchID, film)
+	logPhase("killsource", matchID, tKS)
+	b.observe("killsource", ksRes)
+	// Les POINTS D'APPARITION viennent du catalogue des socles, par map_id — ils donnent leur
+	// origine aux ramassages non-arme (cf. spawnpoints.go).
+	spawnPts, mapState := b.spawnPoints(matchID, facts.MapID, mapNames)
+	b.observe("spawnPoints", spawnPts)
+	b.observe("spawnPointsState", mapState)
+	neutral := b.neutralDeaths(matchID, ksRes)
+	b.observe("neutralDeaths", neutral)
+	// UNE SEULE ÉTAPE OBSERVÉE, et c'est délibéré : `matchKills` sort de la MÊME passe et n'est
+	// pas un balayage de plus. L'observateur continue de rendre EXACTEMENT `replay.KillsInput`,
+	// sans quoi le harnais d'équivalence aurait vu bouger `killRefs` sur les 13 films alors que
+	// rien de ce qu'il mesure n'a changé.
+	kills, matchKills := b.killRefs(matchID, deaths, ksRes)
+	b.observe("killRefs", kills)
+	// Les IDENTITÉS DE BOT et les RELAIS sortent du MÊME décodage killsource (amont
+	// 2026-09-02/03) : ils se calculent ici, où `ksRes` vit, et voyagent avec les autres
+	// entrées. Aucune étape observée ne s'ajoute — ce sont des projections de `killsource`,
+	// déjà observé plus haut.
+	bots := botIdentities(ksRes)
+	successions := botSuccessions(matchID, facts, ksRes)
+	return entreesCatalogue{
+		zones: zones, zoneRoles: zoneRoles,
+		spawnPts: spawnPts, spawnPointsState: mapState,
+		neutral: neutral, kills: kills, matchKills: matchKills,
+		bots: bots, successions: successions,
+	}
 }
 
 // Built : un artefact CONSTRUIT mais PAS ENCORE RANGÉ.
@@ -291,7 +391,7 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 		return Outcome{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
 	return Outcome{ArtifactPath: outPath, Module: built.Module, Tracks: built.Tracks,
-		Bytes: surDisque.bytes}, nil
+		Bytes: surDisque.Bytes}, nil
 }
 
 // neutralDeaths rend les entrées d'artefact déjà résolues (type de mort + pictogramme du
@@ -438,119 +538,29 @@ func (b *Builder) structureFor(module string) []replay.Surface {
 	return ms.Surfaces
 }
 
-// ArtifactUpToDate dit si l'artefact au chemin donné existe ET porte la version de schéma
-// courante. C'est LA clé de reprise des backfills (cf. replay.SchemaVersion) : un artefact
-// d'une version antérieure se lit « à re-cuire », jamais « à jour ». Un fichier illisible
-// est traité comme périmé (il sera réécrit), pas comme une erreur.
-func ArtifactUpToDate(path string) bool {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
-	var head struct {
-		SchemaVersion int `json:"schemaVersion"`
-	}
-	if err := json.Unmarshal(raw, &head); err != nil {
-		return false
-	}
-	return head.SchemaVersion == replay.SchemaVersion
+// WithObserver branche l'observateur de construction (cf. replay/observe.go) : chaque etape de
+// BuildBytes et de BuildFromFilm lui est rendue avec son nom et sa sortie. Chainable. Nil (le
+// defaut) = aucun appel. C'est la porte du harnais d'equivalence `cmd/replay-equiv`, et elle ne
+// modifie aucune valeur : les etapes se montrent, elles ne se laissent pas toucher.
+func (b *Builder) WithObserver(fn replay.Observer) *Builder {
+	b.observer = fn
+	return b
 }
 
-// ArtifactHasPlayerCounters dit si l'artefact au chemin donné PORTE des compteurs de joueur
-// (`scoreTimeline.players` non vide). Faux aussi quand le fichier est absent ou illisible.
-//
-// CE QU'IL AFFIRME, ET CE QU'IL N'AFFIRME PAS. Il constate une PROPRIÉTÉ DU DOCUMENT, il ne
-// devine pas comment il a été cuit. L'implication ne vaut que dans un sens :
-//
-//	compteurs présents  =>  les lignes de match ont été fournies   (sûr)
-//	compteurs absents   =>  les lignes de match manquaient          (FAUX en général)
-//
-// TROIS FAÇONS LÉGITIMES d'être vide MALGRÉ des faits complets, toutes constatées dans le code :
-// (a) le film n'a aucun enregistrement d'entité à lire (cas journalisé, `matchfacts.go:70-73`) ;
-// (b) l'appariement slot -> joueur échoue — `SlotIdentityFrom` écarte les triplets ambigus, et
-// les `COALESCE(..., 0)` de `replay_facts_repo.go` peuvent rendre plusieurs (0,0,0)
-// indistinguables ; (c) aucun compteur ne bouge dans la fenêtre lue (`PlayerScore` vide).
-//
-// UN APPELANT NE DOIT DONC JAMAIS EN DÉDUIRE « à re-cuire » À LUI SEUL. Le vide est une
-// PRÉSOMPTION d'appauvrissement, pas une preuve : c'est pour cela que `replayartifacts.enqueueAll`
-// exige EN PLUS de tenir des lignes de match (`len(facts.Players) > 0`), et que le rangement
-// d'artefact (`StoreArtifact`) refuse de son côté toute régression. Le pire résidu possible est
-// alors UN cycle d'ouvrier gâché — jamais un artefact rétrogradé, jamais une boucle qui converge
-// vers rien.
-//
-// POURQUOI CE SIGNAL PLUTÔT QU'UN AUTRE. Mesuré sur deux témoins le 2026-08-24 : 8 joueurs avec
-// faits, 0 sans, sur 7344d24f comme sur 530820e5. Les autres candidats sont pires :
-// `coverage.score.teamIdentity` vaut légitimement `unresolved` sur 7 des 34 artefacts du cache
-// POURTANT cuits avec faits, et `objectives` est vide de plein droit sur un Slayer.
-//
-// PAS DE CHAMP DÉDIÉ DANS LE DOCUMENT, ET C'EST DÉLIBÉRÉ : un marqueur `factsApplied` — qui
-// LUI porterait l'implication dans les deux sens — forcerait un incrément de
-// `replay.SchemaVersion`, donc la re-cuisson de tout le cache, aujourd'hui bloquée par la bombe
-// RAM de `NamedEventsFrom` (registre du 2026-08-24). C'est la dette assumée de ce choix.
-func ArtifactHasPlayerCounters(path string) bool {
-	d, ok := readArtifactDigest(path)
-	return ok && d.players > 0
+// observe rend une etape a l'observateur s'il y en a un.
+func (b *Builder) observe(step string, v any) {
+	if b.observer != nil {
+		b.observer(step, v)
+	}
 }
 
-// artifactDigest : les seules marques d'un artefact que les gardes ont à lire. Une SEULE forme
-// de lecture pour tous — deux structures anonymes concurrentes finiraient par diverger sur le
-// nom d'un champ, et le garde deviendrait muet sans que rien ne le signale.
-type artifactDigest struct {
-	matchID       string
-	schemaVersion int
-	players       int
-	tracks        int
-	bytes         int
-}
-
-// readArtifactDigest lit un artefact sur disque. ok=false si absent ou illisible : dans le
-// doute, l'appelant traite l'artefact comme inexploitable, jamais comme bon.
-func readArtifactDigest(path string) (artifactDigest, bool) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return artifactDigest{}, false
+// BuildBytesStepsBefore et BuildBytesStepsAfter sont les etapes que BuildBytes rend a
+// l'observateur AVANT et APRES le decodage des positions (`replay.BuildFromFilmSteps`), dans
+// l'ordre. Exportees pour le harnais d'equivalence, gardees par observe_test.go.
+var (
+	BuildBytesStepsBefore = []string{
+		"score", "objectives", "vip", "skull", "bomb", "flag", "zones", "zoneRoles",
+		"killsource", "spawnPoints", "spawnPointsState", "neutralDeaths", "killRefs",
 	}
-	return digestFromBytes(raw)
-}
-
-// digestFromBytes lit les marques d'un artefact déjà en mémoire (cas du dépôt d'un ouvrier :
-// le blob est là, le relire depuis le disque serait absurde).
-func digestFromBytes(raw []byte) (artifactDigest, bool) {
-	var head struct {
-		MatchID       string            `json:"matchId"`
-		SchemaVersion int               `json:"schemaVersion"`
-		Tracks        []json.RawMessage `json:"tracks"`
-		ScoreTimeline struct {
-			Players []json.RawMessage `json:"players"`
-		} `json:"scoreTimeline"`
-	}
-	if err := json.Unmarshal(raw, &head); err != nil {
-		return artifactDigest{}, false
-	}
-	return artifactDigest{
-		matchID:       head.MatchID,
-		schemaVersion: head.SchemaVersion,
-		players:       len(head.ScoreTimeline.Players),
-		tracks:        len(head.Tracks),
-		bytes:         len(raw),
-	}, true
-}
-
-// writeArtifact sérialise le document et l'écrit ATOMIQUEMENT (cf.
-// writeArtifactBytes, artifact_store.go) ; renvoie la taille en octets. Même
-// écriture que le dépôt d'un ouvrier : le service de lecture sert le fichier tel
-// quel, il ne doit jamais tomber sur un artefact à moitié écrit.
-// La taille rendue est celle de ce qui est FINALEMENT sur le disque, pas celle du document
-// qu'on voulait écrire : quand le garde anti-régression conserve l'artefact en place, annoncer
-// la taille du candidat ferait croire à une écriture qui n'a pas eu lieu.
-func writeArtifact(outPath, titleSlug, matchID string, doc replay.ReplayDocument) (int, error) {
-	blob, err := json.Marshal(doc)
-	if err != nil {
-		return 0, err
-	}
-	surDisque, err := writeArtifactBytes(outPath, titleSlug, matchID, blob)
-	if err != nil {
-		return 0, err
-	}
-	return surDisque.bytes, nil
-}
+	BuildBytesStepsAfter = []string{"artifact"}
+)

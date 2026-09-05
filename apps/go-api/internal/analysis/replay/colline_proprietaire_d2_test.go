@@ -109,7 +109,7 @@ func TestCollineProprietaireD2(t *testing.T) {
 		e.short, d.slot, len(d.changes), d.first, ownerSlot, len(samples),
 		e.doc.FrameCount, e.doc.FrameIntervalMS)
 
-	recs := objectiveevents.StatRecords(p2aSource(t, e.dir))
+	recs := objectiveevents.StatRecords(p2aBobine(t, e.dir))
 	score := objectiveevents.SeriesTotal(recs, objectiveevents.ModeScoreComponent, true)
 	slots := d2ScoreSlots(score)
 	// DIAGNOSTIC DE L'ORACLE, pose AVANT de s'en servir. Un slot d'equipe manquant peut venir

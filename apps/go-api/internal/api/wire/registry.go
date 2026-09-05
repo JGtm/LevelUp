@@ -486,7 +486,11 @@ func (r *ServiceRegistry) newMatchViewRepo(pdb *duckdb.PlayerDB) *duckdb.MatchVi
 		WithPlaylistLabelOverrides(cfg.Overrides).
 		// Armes du match : source de degat pour les titres qui savent la traduire, sinon
 		// v_weapon_kills. nil = titre sans decodeur de film (bascule du 2026-09-01).
-		WithKillSourceClassifier(r.killSourceClassifierFor(pdb))
+		WithKillSourceClassifier(r.killSourceClassifierFor(pdb)).
+		// Statistiques d Assaut reconstruites du film (match_bomb_stats_latest) : gatees par
+		// la capability film.bomb_stats — absente pour Halo 5, qui n a pas de decodeur de
+		// film. Jamais slug==.
+		WithBombStats(r.capabilitiesForPDB(pdb).Has(games.CapFilmBombStats))
 }
 
 // playlistLabelConfigFor construit la config d'affichage title-aware du libellé

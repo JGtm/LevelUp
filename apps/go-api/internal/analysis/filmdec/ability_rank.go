@@ -23,7 +23,11 @@ package filmdec
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // i48Index est l'index d'itérateur du composant `biped-desired-ability-set-component` dans
 // l'archétype biped (cf. components_biped_ability.go, section i48).
@@ -74,9 +78,23 @@ type AbilityRankStats struct {
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `abilitySetHook`,
 // qui est un global de paquet. L'appelant doit détenir LockProcessDecode (BuildFromFilm le
 // fait). Le hook est restauré à la sortie, y compris en cas d'erreur.
+//
+// ScanFilmAbilityRanks est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film, ouvre un
+// contexte pour elle seule, puis appelle [ScanAbilityRanks]. La cuisson, elle, passe le contexte
+// qu'elle partage entre tous ses balayages.
 func ScanFilmAbilityRanks(dir string) ([]AbilityRank, AbilityRankStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, AbilityRankStats{}, err
+	}
+	return ScanAbilityRanks(NewFilmContext(film))
+}
+
+// ScanAbilityRanks decode les identites de capacite d'un film DEJA CHARGE. Cf.
+// [ScanFilmAbilityRanks] pour la doctrine du balayage.
+func ScanAbilityRanks(fc *FilmContext) ([]AbilityRank, AbilityRankStats, error) {
 	var out []AbilityRank
-	st, err := walkAbilityEmissions(dir, func(e abilityEmission) {
+	st, err := walkAbilityEmissions(fc, func(e abilityEmission) {
 		if e.Rank == AbilitySetNoRank {
 			return
 		}
@@ -104,38 +122,44 @@ type abilityEmission struct {
 	Rank int
 }
 
-// abilityScanSetup porte le contexte résolu d'un balayage i48 : la liste des chunks, la
-// bande de slots biped, le découpage d'i0 et l'archétype. Il est PARTAGÉ entre le balayage
-// strict (walkAbilityEmissions) et la récupération gatée (equipment_recovery.go) — deux
-// résolutions divergeraient au premier changement de film.
+// abilityScanSetup porte le contexte résolu d'un balayage i48 : le contexte du film, la liste
+// de ses chunks, la bande de slots biped, le découpage d'i0 et l'archétype. Il est PARTAGÉ
+// entre le balayage strict (walkAbilityEmissions), la récupération gatée
+// (equipment_recovery.go) et les deux autres balayages du même archétype (impulsions,
+// charges) — deux résolutions divergeraient au premier changement de film.
+//
+// LE FILM Y EST UN `*FilmContext` DEPUIS LA RECONCILIATION DU 2026-09-05, et non le
+// répertoire de l'amont : les quatre dérivations que ce setup résout sont EXACTEMENT celles
+// que le contexte memorise (lot 2 de PLAN_CUISSON_PERF), et les relire du disque ici
+// rouvrirait les relectures que le lot 1 a supprimées. La résolution unique que l'amont
+// voulait est donc conservée, et elle est même plus forte : le contexte la partage aussi
+// avec les balayages qui n'entrent pas dans ce setup.
 type abilityScanSetup struct {
-	dir    string
+	fc     *FilmContext
 	chunks []int
-	slots  map[uint32]bool
+	slots  SlotBand
 	lay    I0Layout
 	arch   Archetype
 }
 
-// resolveAbilityScan résout le contexte du balayage i48 d'un film.
-func resolveAbilityScan(dir string) (abilityScanSetup, error) {
-	s := abilityScanSetup{dir: dir}
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return s, fmt.Errorf("aucun chunk film dans %s", dir)
+// resolveAbilityScan résout le contexte du balayage i48 d'un film DEJA CHARGE. Les messages
+// d'erreur sont ceux du lot 1 (aucun répertoire à nommer : le film est en mémoire).
+func resolveAbilityScan(fc *FilmContext) (abilityScanSetup, error) {
+	s := abilityScanSetup{fc: fc}
+	s.chunks = fc.ChunkNumbers()
+	if len(s.chunks) == 0 {
+		return s, ErrNoFilmChunk
 	}
-	for i := 1; i <= n; i++ {
-		s.chunks = append(s.chunks, i)
+	s.slots = fc.BipedSlots()
+	if s.slots.Count() == 0 {
+		return s, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	s.slots = bipedSlotBand(dir, s.chunks)
-	if len(s.slots) == 0 {
-		return s, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
-	}
-	lay, _, err := DetectI0Layout(dir)
+	lay, err := fc.I0Layout()
 	if err != nil {
-		return s, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
+		return s, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
 	s.lay = lay
-	if s.arch, err = bipedArchetype(dir); err != nil {
+	if s.arch, err = fc.bipedArchetype(); err != nil {
 		return s, err
 	}
 	return s, nil
@@ -147,8 +171,8 @@ func resolveAbilityScan(dir string) (abilityScanSetup, error) {
 //
 // Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit pas les
 // bits à côté de lui. Deux lecteurs du même champ divergeraient.
-func walkAbilityEmissions(dir string, visit func(abilityEmission)) (AbilityRankStats, error) {
-	s, err := resolveAbilityScan(dir)
+func walkAbilityEmissions(fc *FilmContext, visit func(abilityEmission)) (AbilityRankStats, error) {
+	s, err := resolveAbilityScan(fc)
 	if err != nil {
 		return AbilityRankStats{}, err
 	}
@@ -156,7 +180,7 @@ func walkAbilityEmissions(dir string, visit func(abilityEmission)) (AbilityRankS
 }
 
 // walkAbilityEmissionsWith est le corps du balayage, sur un contexte déjà résolu — c'est ce
-// qui permet à `ScanFilmEquipmentChanges` de résoudre le film UNE fois pour ses deux passes
+// qui permet à `ScanEquipmentChanges` de résoudre le film UNE fois pour ses deux passes
 // (balayage strict, puis récupération gatée des fenêtres de saut).
 func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) AbilityRankStats {
 	var st AbilityRankStats
@@ -175,11 +199,11 @@ func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) A
 
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	for _, c := range chunks {
-		data, err := ReadFilmChunk(s.dir, c)
-		if err != nil {
+		data, pks, ok := s.fc.ChunkAt(c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
@@ -216,19 +240,15 @@ func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) A
 	return st
 }
 
-// bipedArchetype charge l'archétype biped depuis le registre du film (chunk_00).
-func bipedArchetype(dir string) (Archetype, error) {
-	raw, err := ReadFilmChunk(dir, 0)
+// bipedArchetype rend l'archétype biped du registre du film (chunk_00), ANALYSE UNE FOIS par le
+// contexte (lot 2, 2026-09-03 : cinq balayages delta le redemandaient, donc cinq re-analyses).
+func (c *FilmContext) bipedArchetype() (Archetype, error) {
+	arch, _, ok, err := c.archetype(BipedTypeIndex)
 	if err != nil {
-		return Archetype{}, fmt.Errorf("chunk_00 (registre) illisible dans %s : %w", dir, err)
+		return Archetype{}, err
 	}
-	reg, err := ParseRegistryChunk(raw)
-	if err != nil {
-		return Archetype{}, fmt.Errorf("registre illisible dans %s : %w", dir, err)
-	}
-	arch, ok := reg.Archetype(BipedTypeIndex)
 	if !ok {
-		return Archetype{}, fmt.Errorf("archétype biped %d absent du registre de %s", BipedTypeIndex, dir)
+		return Archetype{}, fmt.Errorf("archétype biped %d absent du registre", BipedTypeIndex)
 	}
 	return arch, nil
 }

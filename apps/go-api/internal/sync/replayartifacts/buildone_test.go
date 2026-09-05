@@ -13,9 +13,13 @@ package replayartifacts
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
+	"levelup/go-api/internal/analysis/replay"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
 
@@ -52,9 +56,9 @@ func TestBuildAndStoreOneSansStrategieNeDecodePas(t *testing.T) {
 // faits sont deja lus par le parent.
 func TestBuildAndStoreOneTransmetLaRequeteComplete(t *testing.T) {
 	var vu BuildOneRequest
-	_, _ = buildAndStoreOne(context.Background(), deps(func(_ context.Context, r BuildOneRequest) ([]byte, error) {
+	_, _ = buildAndStoreOne(context.Background(), deps(func(_ context.Context, r BuildOneRequest) (BuildOneResult, error) {
 		vu = r
-		return nil, errors.New("stop : la requete suffit a ce cas")
+		return BuildOneResult{}, errors.New("stop : la requete suffit a ce cas")
 	}), work(), "/films/64e8adfa")
 
 	if vu.TitleSlug != "halo_infinite" || vu.RepoRoot != t0RepoRoot {
@@ -76,8 +80,8 @@ func TestBuildAndStoreOneTransmetLaRequeteComplete(t *testing.T) {
 // meme pas.
 func TestBuildAndStoreOneEchecNEcritRien(t *testing.T) {
 	sentinelle := errors.New("cuisson en echec (issue mort subite, code 137)")
-	_, err := buildAndStoreOne(context.Background(), deps(func(context.Context, BuildOneRequest) ([]byte, error) {
-		return nil, sentinelle
+	_, err := buildAndStoreOne(context.Background(), deps(func(context.Context, BuildOneRequest) (BuildOneResult, error) {
+		return BuildOneResult{}, sentinelle
 	}), work(), "/films/64e8adfa")
 	if !errors.Is(err, sentinelle) {
 		t.Fatalf("err = %v, attendu l'echec de l'enfant tel quel", err)
@@ -89,9 +93,9 @@ func TestBuildAndStoreOneEchecNEcritRien(t *testing.T) {
 // pour un succes.
 func TestBuildAndStoreOneMortSubiteNeCasseriPasLeCycle(t *testing.T) {
 	appels := 0
-	d := deps(func(context.Context, BuildOneRequest) ([]byte, error) {
+	d := deps(func(context.Context, BuildOneRequest) (BuildOneResult, error) {
 		appels++
-		return nil, errors.New("cuisson en echec (issue mort subite, code -1)")
+		return BuildOneResult{}, errors.New("cuisson en echec (issue mort subite, code -1)")
 	})
 	for i := 0; i < 3; i++ {
 		if _, err := buildAndStoreOne(context.Background(), d, work(), "/films/x"); err == nil {
@@ -100,5 +104,46 @@ func TestBuildAndStoreOneMortSubiteNeCasseriPasLeCycle(t *testing.T) {
 	}
 	if appels != 3 {
 		t.Errorf("%d appel(s), attendu 3 — chaque film est tente independamment du precedent", appels)
+	}
+}
+
+// LA MESURE DE LA CUISSON TRAVERSE LA FRONTIERE (PLAN_CUISSON_PERF §3 D5). Duree et pic
+// memoire sont mesures par le lanceur de l'enfant ; s'ils s'arretaient a `buildAndStoreOne`, le
+// log de succes du cycle ne pourrait toujours rien dire de ce qu'un film a coute. Ce cas verifie
+// que ce sont EXACTEMENT les valeurs rendues par la strategie qui remontent — pas une mesure
+// refaite ici, qui mesurerait le test.
+func TestBuildAndStoreOneRemonteLaMesure(t *testing.T) {
+	repoRoot := t.TempDir()
+	w := work()
+	// UNE TRAJECTOIRE AU MOINS : `StoreArtifact` refuse un document vide (il se servirait comme
+	// le rejeu « propre » d'un match sans joueur).
+	blob, err := json.Marshal(replay.ReplayDocument{
+		SchemaVersion: replay.SchemaVersion, MatchID: w.matchID,
+		Tracks: []replay.Track{{Slot: 1, Team: -1}},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const dureeAttendue = 1234 * time.Millisecond
+	const picAttendu = uint64(987_654_321)
+
+	d := Deps{RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug,
+		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
+			return BuildOneResult{Blob: blob, Dur: dureeAttendue, Peak: picAttendu}, nil
+		}}
+
+	out, err := buildAndStoreOne(context.Background(), d, w, "/films/64e8adfa")
+	if err != nil {
+		t.Fatalf("buildAndStoreOne: %v", err)
+	}
+	if out.dur != dureeAttendue {
+		t.Errorf("duree = %v, attendu %v", out.dur, dureeAttendue)
+	}
+	if out.peak != picAttendu {
+		t.Errorf("pic = %d, attendu %d", out.peak, picAttendu)
+	}
+	// L'ARTEFACT EST BIEN RANGE : la mesure accompagne un rangement reel, elle ne le remplace pas.
+	if out.stored.Path == "" || out.stored.Bytes != len(blob) {
+		t.Errorf("artefact range = %+v, attendu %d octets a une place canonique", out.stored, len(blob))
 	}
 }

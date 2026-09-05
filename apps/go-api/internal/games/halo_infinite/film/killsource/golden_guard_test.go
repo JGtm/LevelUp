@@ -17,6 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // phrasesParFilm : ce que le golden d un film doit dire, et pas seulement chiffrer.
@@ -200,7 +202,7 @@ func TestLigneDiscriminanteEstServieParLaMarche(t *testing.T) {
 	if dir == "" {
 		t.Skip("KILLSOURCE_FIXTURES non defini : l A/B sur film reel est ignore")
 	}
-	src, err := DirChunks(filepath.Join(dir, "fccc61cd"))
+	src, err := filmsource.LoadDir(filepath.Join(dir, "fccc61cd"), nil)
 	if err != nil {
 		t.Skipf("film absent : %v", err)
 	}

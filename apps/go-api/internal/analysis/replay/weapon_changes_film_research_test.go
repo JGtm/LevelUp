@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 func TestWeaponChangesSurFilmReel(t *testing.T) {
@@ -29,7 +30,11 @@ func TestWeaponChangesSurFilmReel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("carte %q : %v", mapName, err)
 	}
-	doc, err := BuildFromFilm("mesure-ramassage", "halo_infinite", dir, Options{MapQuant: &entry})
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		t.Fatalf("chunks du film illisibles : %v", err)
+	}
+	doc, err := BuildFromFilm("mesure-ramassage", "halo_infinite", film, Options{MapQuant: &entry})
 	if err != nil {
 		t.Fatalf("assemblage : %v", err)
 	}
@@ -77,7 +82,11 @@ func TestGroundWeaponsSurFilmReel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("carte %q : %v", mapName, err)
 	}
-	doc, err := BuildFromFilm("mesure-armes-au-sol", "halo_infinite", dir, Options{MapQuant: &entry})
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		t.Fatalf("chunks du film illisibles : %v", err)
+	}
+	doc, err := BuildFromFilm("mesure-armes-au-sol", "halo_infinite", film, Options{MapQuant: &entry})
 	if err != nil {
 		t.Fatalf("assemblage : %v", err)
 	}

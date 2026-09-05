@@ -46,7 +46,11 @@ package filmdec
 // liste entière exige de connaître la longueur de charge de chaque type d'événement ; c'est le
 // prochain palier, et il est suivi au plan `PLAN_PERCER_TRAME_FILM_2026-08-30.md`.
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 const (
 	// zoomFamilyByte : le premier octet des paquets dont l'événement de tête est unit_zoom.
@@ -90,14 +94,25 @@ func (z ZoomEvent) Scoped() bool { return z.Level > 0 }
 // Lecture seule, sans état global de décodage : ce scanner n'a pas besoin du verrou de paquet
 // (il n'appelle aucun décodeur de trame). Les paquets illisibles sont ignorés en silence — un
 // chunk absent n'est pas une erreur pour ce scanner, c'est une couverture moindre.
+//
+// ScanFilmZoomEvents est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanZoomEvents].
 func ScanFilmZoomEvents(dir string) []ZoomEvent {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil // meme degradation silencieuse qu'un chunk illisible : couverture moindre
+	}
+	return ScanZoomEvents(film)
+}
+
+// ScanZoomEvents lit les bascules de lunette d'un film DEJA CHARGE, triées par instant.
+func ScanZoomEvents(film *filmsource.Film) []ZoomEvent {
 	var out []ZoomEvent
-	for c := 1; c <= CountFilmChunks(dir); c++ {
-		chunk, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range FilmChunkNumbers(film) {
+		chunk, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(chunk) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta || pk.Size < 2 {
 				continue
 			}

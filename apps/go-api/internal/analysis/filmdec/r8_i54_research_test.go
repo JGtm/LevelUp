@@ -52,7 +52,7 @@ type r8MobEvent struct {
 type r8MobSetup struct {
 	dir      string
 	chunks   []int
-	slots    map[uint32]bool
+	slots    SlotBand
 	lay      I0Layout
 	arch     Archetype
 	i54Index int
@@ -68,15 +68,15 @@ func r8MobResolve(t *testing.T, dir string) r8MobSetup {
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, i)
 	}
-	slots := bipedSlotBand(dir, chunks)
-	if len(slots) == 0 {
+	slots := bipedSlotBandDir(dir, chunks)
+	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped dans les keyframes de %s", dir)
 	}
 	lay, _, err := DetectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible : %v", err)
 	}
-	arch, err := bipedArchetype(dir)
+	arch, err := bipedArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archetype biped illisible : %v", err)
 	}

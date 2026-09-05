@@ -34,7 +34,11 @@ package filmdec
 //
 // HORS LIGNE par construction (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // EquipmentChangeKind qualifie un changement d'équipement porté.
 type EquipmentChangeKind string
@@ -139,10 +143,25 @@ const equipmentFirstCounter = 5
 // émissions récupérées sont étiquetées `Recovered` et comptées à part.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS (cf. ScanFilmAbilityRanks).
+//
+// ScanFilmEquipmentChanges est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanEquipmentChanges].
 func ScanFilmEquipmentChanges(
 	dir string, bornAt func(slot uint32) (uint64, bool),
 ) ([]EquipmentChange, EquipmentChangeStats, error) {
-	setup, err := resolveAbilityScan(dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, EquipmentChangeStats{}, err
+	}
+	return ScanEquipmentChanges(NewFilmContext(film), bornAt)
+}
+
+// ScanEquipmentChanges décode les changements d'équipement porté d'un film DEJA CHARGE. Cf.
+// [ScanFilmEquipmentChanges] pour la doctrine des deux passes.
+func ScanEquipmentChanges(
+	fc *FilmContext, bornAt func(slot uint32) (uint64, bool),
+) ([]EquipmentChange, EquipmentChangeStats, error) {
+	setup, err := resolveAbilityScan(fc)
 	if err != nil {
 		return nil, EquipmentChangeStats{}, err
 	}

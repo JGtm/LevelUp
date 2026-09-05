@@ -134,7 +134,7 @@ func ti12Horloge(dir string) (zcClock, bool) {
 		return zcClock{}, false
 	}
 	clk := zcClock{startMS: map[int]int{}}
-	for _, m := range src.Chunks() {
+	for _, m := range src.Meta() {
 		clk.startMS[m.Index] = m.StartMS
 	}
 	return clk, len(clk.startMS) > 0

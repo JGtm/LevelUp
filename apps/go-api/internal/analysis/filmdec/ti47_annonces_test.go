@@ -95,7 +95,7 @@ func ti47Horloge(t *testing.T) probeHorloge {
 		return probeHorloge{}
 	}
 	hor := probeHorloge{startMS: map[int]int{}}
-	for _, c := range src.Chunks() {
+	for _, c := range src.Meta() {
 		hor.startMS[c.Index] = c.StartMS
 	}
 	return hor

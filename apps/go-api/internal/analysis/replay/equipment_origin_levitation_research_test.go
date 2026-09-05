@@ -185,8 +185,8 @@ func levDistSocle(socles []MapWeaponPadSpot, x, y, z float32) float64 {
 func TestOriginLevitationCalibratedOnKnownWeaponPads(t *testing.T) {
 	s := glResolve(t)
 	socles, module := levSocles(t)
-	_, pst := decodeFilmPlacements(s.dir, &s.wr)
-	scans := decodeFilmPadScans(s.dir, &s.wr, pst.Calibration.Widths)
+	_, pst := decodeFilmPlacementsDir(s.dir, &s.wr)
+	scans := decodeFilmPadScansDir(s.dir, &s.wr, pst.Calibration.Widths)
 	if !scans.Weapons.Scanned || len(scans.Weapons.Tracks) == 0 {
 		t.Fatalf("chaîne des armes au sol muette : scanned=%v pistes=%d",
 			scans.Weapons.Scanned, len(scans.Weapons.Tracks))
@@ -300,7 +300,7 @@ func TestOriginLevitationCalibratedOnKnownWeaponPads(t *testing.T) {
 func TestOriginBirthRecurrenceClusters(t *testing.T) {
 	s := glResolve(t)
 	socles, module := levSocles(t)
-	poses, pst := decodeFilmPlacements(s.dir, &s.wr)
+	poses, pst := decodeFilmPlacementsDir(s.dir, &s.wr)
 	if len(poses) == 0 {
 		t.Skip("aucune pose ti=37 sur ce film")
 	}

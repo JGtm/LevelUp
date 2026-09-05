@@ -1,6 +1,6 @@
 package filmdec
 
-import "fmt"
+import "levelup/go-api/internal/analysis/filmsource"
 
 // keyframe_carrier_mark.go — LE MARQUEUR DE PORTAGE, lu dans le record de bipede des
 // images-cles.
@@ -64,17 +64,28 @@ type CarrierMarkScan struct {
 // portant le marqueur de portage.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requete.
+//
+// ScanFilmCarrierMarks est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanCarrierMarks].
 func ScanFilmCarrierMarks(dir string) (CarrierMarkScan, error) {
-	n := CountFilmChunks(dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return CarrierMarkScan{}, err
+	}
+	return ScanCarrierMarks(film)
+}
+
+// ScanCarrierMarks balaye les images-cles d'un film DEJA CHARGE.
+func ScanCarrierMarks(film *filmsource.Film) (CarrierMarkScan, error) {
 	var out CarrierMarkScan
 	read := 0
-	for c := 1; c <= n; c++ {
-		chunk, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range FilmChunkNumbers(film) {
+		chunk, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
 		read++
-		for _, p := range WalkPackets(chunk) {
+		for _, p := range pks {
 			if p.Type != PacketTypeKeyframe {
 				continue
 			}
@@ -83,7 +94,7 @@ func ScanFilmCarrierMarks(dir string) (CarrierMarkScan, error) {
 		}
 	}
 	if read == 0 {
-		return CarrierMarkScan{}, fmt.Errorf("aucun chunk film lisible dans %s", dir)
+		return CarrierMarkScan{}, ErrNoReadableFilmChunk
 	}
 	return out, nil
 }

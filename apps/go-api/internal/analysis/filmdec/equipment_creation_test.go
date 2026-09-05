@@ -122,7 +122,7 @@ func TestEquipmentCreationRecord(t *testing.T) {
 func equipCreationBands(t *testing.T, dir string) (real, phantom map[uint32]bool) {
 	t.Helper()
 	n := CountFilmChunks(dir)
-	real = worldObjectSlotBand(dir, n, EquipmentTypeIndex)
+	real = worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)
 	if len(real) == 0 {
 		t.Fatalf("aucun slot ti=%d dans les images-clés de %s", EquipmentTypeIndex, dir)
 	}

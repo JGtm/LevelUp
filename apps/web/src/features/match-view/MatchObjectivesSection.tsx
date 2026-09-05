@@ -2,7 +2,7 @@
  * MatchObjectivesSection — section « Objectifs » de la page match (V72-03).
  *
  * CE QU'ELLE MONTRE, ET SOUS QUELLE FORME. Les statistiques d'objectif du mode joué (drapeau /
- * zones — Bastion et King of the Hill / crâne / réserve / extraction / VIP), en DEUX VUES
+ * zones — Bastion et King of the Hill / crâne / réserve / extraction / VIP / Assaut), en DEUX VUES
  * empilées depuis le 2026-09-03 (retours utilisateur : le tableau était hors style et illisible
  * d'un coup d'œil) :
  *   1. « Actions d'objectif par joueur » — la grille partagée `components/charts/ValueGrid` :
@@ -18,8 +18,14 @@
  * Double porte d'affichage, inchangée :
  *   - capability `objective_stats` (titre) via useCapability — masquée sur un titre qui ne la
  *     déclare pas (Halo 5) ;
- *   - data-driven : aucune ligne ne porte de bloc objectif (Slayer, et Assaut dont l'API ne
- *     fournit aucune statistique) → mode == null → rien affiché, pas de section vide.
+ *   - data-driven : aucune ligne ne porte de bloc objectif (Slayer) → mode == null → rien
+ *     affiché, pas de section vide.
+ *
+ * L'ASSAUT EST DANS LES DEUX VUES DEPUIS LE 2026-09-04, et cet en-tête a porté l'inverse : ses
+ * quatre grandeurs ne viennent PAS de l'API — qui n'en publie aucune — mais du FILM, reconstruites
+ * à la cuisson et servies par `match_bomb_stats_latest` sous la capability `film.bomb_stats`. Rien
+ * de particulier n'est écrit ici pour elles : le mode se détecte comme les autres
+ * (`detectObjectiveMode`) et ses colonnes sortent d'`objectiveColsFor`.
  *
  * COULEURS D'ÉQUIPE : les jetons `team-ally` / `team-enemy` via `teamTokenCssVar`, donc la
  * palette d'accessibilité réglée par l'utilisateur. C'est un changement assumé du 2026-09-03 :

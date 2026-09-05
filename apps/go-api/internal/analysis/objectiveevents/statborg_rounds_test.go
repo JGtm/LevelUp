@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/binary"
 	"testing"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // statborg_rounds_test.go — les corrections de production du 2026-08-18 (lot A, item A.1.0),
@@ -137,7 +139,7 @@ func TestStatborgListeDenseLue(t *testing.T) {
 // TestStatRecordsPlafond verifie la garde memoire : au-dela du plafond, la lecture s'arrete et le
 // resultat est marque tronque. La source rend le meme paquet en boucle — un film pathologique.
 func TestStatRecordsPlafond(t *testing.T) {
-	recs, truncated := StatRecordsCtx(context.Background(), repeatingSource{data: vecRound0.data}, "test")
+	recs, truncated := StatRecordsCtx(context.Background(), filmRepete(t, vecRound0.data), "test")
 	if !truncated {
 		t.Fatal("le plafond n'a pas ete atteint : la garde ne protege rien")
 	}
@@ -146,36 +148,49 @@ func TestStatRecordsPlafond(t *testing.T) {
 	}
 }
 
-// repeatingSource rend le meme chunk un grand nombre de fois : elle simule un film dont le
-// balayage ne converge pas, sans avoir besoin du film de 3,3 Go qui a motive le plafond.
-type repeatingSource struct{ data []byte }
+// filmRepete fabrique un film dont chaque chunk rend le meme enregistrement un grand nombre de
+// fois : il simule un film dont le balayage ne converge pas, sans avoir besoin du film de 3,3 Go
+// qui a motive le plafond.
+//
+// LE MANIFESTE EST SYNTHETISE AVEC UN TYPE DE JEU (2) : `objectiveevents` ne balaie que les
+// chunks que le manifeste decrit, et un type ZERO signifierait « chunk hors manifeste »
+// (cf. `manifestChunks`).
+func filmRepete(t *testing.T, data []byte) *filmsource.Film {
+	t.Helper()
+	chunks := make(filmsource.MemoryChunks, repeatChunks)
+	meta := make([]filmsource.ChunkMeta, repeatChunks)
+	brut := chunkRepete(data)
+	for i := range chunks {
+		chunks[i] = brut
+		meta[i] = filmsource.ChunkMeta{Index: i + 1, ChunkType: 2, StartMS: i * 1000}
+	}
+	film, err := filmsource.Load(chunks, meta)
+	if err != nil {
+		t.Fatalf("chargement du film repete : %v", err)
+	}
+	return film
+}
 
 // repeatChunks / repeatPackets dimensionnent la source pour depasser le plafond : chaque paquet
 // porte au moins un enregistrement, donc leur produit doit exceder statMaxRecordsPerFilm.
 const (
 	repeatChunks  = 200
 	repeatPackets = 200
+	// repeatHdrSize est la taille de l'en-tete de paquet, telle que `filmsource` la decoupe.
+	repeatHdrSize = 16
 )
 
-func (r repeatingSource) Chunks() []ChunkMeta {
-	out := make([]ChunkMeta, repeatChunks)
-	for i := range out {
-		out[i] = ChunkMeta{Index: i + 1, ChunkType: 0, StartMS: i * 1000}
-	}
-	return out
-}
-
-// ChunkData fabrique un chunk NON compresse (le premier octet vaut 0, pas la marque zlib) fait
+// chunkRepete fabrique un chunk NON compresse (le premier octet vaut 0, pas la marque zlib) fait
 // de repeatPackets paquets FRAME portant tous le meme enregistrement.
-func (r repeatingSource) ChunkData(int) ([]byte, bool) {
-	out := make([]byte, 0, repeatPackets*(packetHdr+len(r.data)))
+func chunkRepete(data []byte) []byte {
+	out := make([]byte, 0, repeatPackets*(repeatHdrSize+len(data)))
 	for i := 0; i < repeatPackets; i++ {
-		hdr := make([]byte, packetHdr)
+		hdr := make([]byte, repeatHdrSize)
 		binary.LittleEndian.PutUint16(hdr[0:], packetFrame)
-		binary.LittleEndian.PutUint32(hdr[4:], uint32(len(r.data)))
+		binary.LittleEndian.PutUint32(hdr[4:], uint32(len(data)))
 		binary.LittleEndian.PutUint64(hdr[8:], uint64(i)*1000)
 		out = append(out, hdr...)
-		out = append(out, r.data...)
+		out = append(out, data...)
 	}
-	return out, true
+	return out
 }

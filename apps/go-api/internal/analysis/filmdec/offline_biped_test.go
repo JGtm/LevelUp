@@ -1,6 +1,11 @@
 package filmdec
 
-import "testing"
+import (
+	"errors"
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
 // cliffLayout est le découpage d'i0 de la carte de 000d5950 (Cliffhanger), établi par
 // DetectI0Layout sur le film et recoupé avec la table de largeurs live (13/13/14).
@@ -44,7 +49,7 @@ func TestScanBipedRecords_RoundTrip(t *testing.T) {
 	writeBipedRecord(w, slot, 1, 3, 4096, 5000, 8192)
 	w.bits(0, 64) // queue
 
-	got := ScanBipedRecords(w.buf, map[uint32]bool{slot: true}, cliffLayout, scanOptWorld())
+	got := ScanBipedRecords(w.buf, NewSlotBand(map[uint32]bool{slot: true}), cliffLayout, scanOptWorld())
 	if len(got) != 1 {
 		t.Fatalf("attendu 1 record, obtenu %d (%+v)", len(got), got)
 	}
@@ -64,24 +69,24 @@ func TestScanBipedRecords_Rejects(t *testing.T) {
 
 	w := &bitWriter{}
 	writeBipedRecord(w, slot, 1, 3, 4096, 5000, 8192)
-	if got := ScanBipedRecords(w.buf, map[uint32]bool{999: true}, cliffLayout, opt); len(got) != 0 {
+	if got := ScanBipedRecords(w.buf, NewSlotBand(map[uint32]bool{999: true}), cliffLayout, opt); len(got) != 0 {
 		t.Errorf("slot hors bande accepté: %+v", got)
 	}
 
 	w2 := &bitWriter{}
 	writeBipedRecord(w2, slot, 2, 3, 4096, 5000, 8192) // tag != 1
-	if got := ScanBipedRecords(w2.buf, map[uint32]bool{slot: true}, cliffLayout, opt); len(got) != 0 {
+	if got := ScanBipedRecords(w2.buf, NewSlotBand(map[uint32]bool{slot: true}), cliffLayout, opt); len(got) != 0 {
 		t.Errorf("tag != 1 accepté: %+v", got)
 	}
 
 	w3 := &bitWriter{}
 	writeBipedRecord(w3, slot, 1, 3, 0, 5000, 8192) // qx == 0 -> écrêté
-	if got := ScanBipedRecords(w3.buf, map[uint32]bool{slot: true}, cliffLayout, opt); len(got) != 0 {
+	if got := ScanBipedRecords(w3.buf, NewSlotBand(map[uint32]bool{slot: true}), cliffLayout, opt); len(got) != 0 {
 		t.Errorf("quantum saturé accepté: %+v", got)
 	}
 	noDrop := opt
 	noDrop.DropSaturated = false
-	if got := ScanBipedRecords(w3.buf, map[uint32]bool{slot: true}, cliffLayout, noDrop); len(got) != 1 {
+	if got := ScanBipedRecords(w3.buf, NewSlotBand(map[uint32]bool{slot: true}), cliffLayout, noDrop); len(got) != 1 {
 		t.Errorf("DropSaturated=false devrait conserver le record, obtenu %d", len(got))
 	}
 }
@@ -131,5 +136,54 @@ func TestWalkPackets(t *testing.T) {
 	}
 	if len(pk[1].Payload(chunk)) != 8 {
 		t.Errorf("payload paquet 1 = %d octets, attendu 8", len(pk[1].Payload(chunk)))
+	}
+}
+
+// TestScanFilmBipedPositionsDelegue : les DEUX entrées de balayage de film partagent le même
+// pré-contrôle, donc la même erreur, mot pour mot.
+//
+// CE TEST N'A BESOIN D'AUCUN FILM, et c'est exactement le point. Le cache film n'existe pas en
+// CI : un point d'entrée dont la délégation ne serait éprouvée que par des instruments sous
+// garde d'environnement ne serait éprouvé par personne. ScanFilmBipedPositions déléguant à
+// ScanFilmBipedPositionsForBand, toute divergence de pré-contrôle entre les deux se voit ici,
+// sur un répertoire vide.
+func TestScanFilmBipedPositionsDelegue(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "film-absent")
+	band := NewSlotBand(map[uint32]bool{7: true})
+	quanta := DefaultScanFilmOptions()
+	quanta.QuantaOnly = true
+	for _, c := range []struct {
+		nom string
+		opt ScanFilmOptions
+	}{
+		{"ni bornes de carte ni QuantaOnly", DefaultScanFilmOptions()},
+		{"QuantaOnly sur un film absent", quanta},
+	} {
+		t.Run(c.nom, func(t *testing.T) {
+			_, errBipede := ScanFilmBipedPositions(dir, c.opt)
+			_, errBande := ScanFilmBipedPositionsForBand(dir, band, c.opt)
+			if errBipede == nil || errBande == nil {
+				t.Fatalf("les deux entrées doivent échouer : bipède = %v, bande = %v",
+					errBipede, errBande)
+			}
+			if errBipede.Error() != errBande.Error() {
+				t.Fatalf("erreurs divergentes :\n  bipède = %v\n  bande  = %v", errBipede, errBande)
+			}
+		})
+	}
+	if _, err := ScanFilmBipedPositions(dir, DefaultScanFilmOptions()); !errors.Is(err, ErrUnknownMapBounds) {
+		t.Fatalf("sans bornes de carte, l'erreur doit envelopper ErrUnknownMapBounds : %v", err)
+	}
+}
+
+// TestScanFilmBipedPositionsForBandRefuseBandeVide : une bande vide est une erreur NOMMÉE, pas
+// un balayage silencieusement vide — l'équivalent, pour l'entrée générique, du « aucun slot
+// biped » que l'entrée bipède rend quand les images-clés n'en portent pas.
+func TestScanFilmBipedPositionsForBandRefuseBandeVide(t *testing.T) {
+	opt := DefaultScanFilmOptions()
+	opt.QuantaOnly, opt.Chunks = true, []int{1} // la liste de chunks passe le pré-contrôle
+	_, err := ScanFilmBipedPositionsForBand(t.TempDir(), SlotBand{}, opt)
+	if err == nil || !strings.Contains(err.Error(), "bande de slots vide") {
+		t.Fatalf("bande vide : erreur « bande de slots vide » attendue, obtenu %v", err)
 	}
 }

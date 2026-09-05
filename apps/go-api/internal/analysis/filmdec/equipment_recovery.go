@@ -116,8 +116,11 @@ func buildEquipRecoveryWindows(
 
 // scanEquipmentRecovery re-balaye les fenêtres et rend, pour chacune, les émissions
 // ACCEPTÉES par le témoin de compteur — avec leur offset de bit : c'est lui qui départage
-// deux émissions du même paquet à la fusion (revue ronde 1, F3). Lecture disque bornée aux
-// chunks des fenêtres.
+// deux émissions du même paquet à la fusion (revue ronde 1, F3). La relecture est bornée aux
+// chunks des fenêtres — et depuis la reconciliation du 2026-09-05, elle ne touche plus le
+// disque du tout : le film est DEJA CHARGE (lot 1), les chunks se relisent en mémoire par
+// `s.fc.ChunkAt`. La borne reste, parce qu'elle borne le TRAVAIL (marche bit à bit), pas
+// seulement l'E/S.
 func scanEquipmentRecovery(s abilityScanSetup, wins []equipRecoveryWindow) []equipRecovered {
 	if len(wins) == 0 {
 		return nil
@@ -138,11 +141,11 @@ func scanEquipmentRecovery(s abilityScanSetup, wins []equipRecoveryWindow) []equ
 		if len(active) == 0 {
 			continue
 		}
-		data, err := ReadFilmChunk(s.dir, c)
-		if err != nil {
+		data, pks, ok := s.fc.ChunkAt(c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}

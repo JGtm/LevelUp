@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
@@ -107,8 +108,7 @@ func zcLoadOracle(t *testing.T, dir string) zcOracle {
 	if fam != objectiveevents.ObjectiveTypeZone && fam != objectiveevents.ObjectiveTypeFlag {
 		return o // `none`, KOTH, Oddball, Slayer : aucune table nommee
 	}
-	src := zcOpenSource(t, dir)
-	for _, e := range objectiveevents.NamedEvents(src, fam) {
+	for _, e := range objectiveevents.NamedEvents(zcOpenFilm(t, dir), fam) {
 		o.counts[e.Stat]++
 		if zcCombatStats[e.Stat] {
 			o.nCombat++
@@ -119,8 +119,8 @@ func zcLoadOracle(t *testing.T, dir string) zcOracle {
 	return o
 }
 
-// zcOpenSource ouvre la source disque CANONIQUE du film (`filmcache`). Aucune implementation
-// locale de `FilmSource` : le garde-rail `filmcache_guard_test.go` l'interdit, et il a raison.
+// zcOpenSource ouvre le MANIFESTE du film par la porte canonique (`filmcache`). Aucune source
+// locale : la disposition du cache n'est declaree que dans ce paquet-la.
 func zcOpenSource(t *testing.T, dir string) *filmcache.Source {
 	t.Helper()
 	root := filepath.Dir(filepath.Dir(dir))
@@ -135,11 +135,24 @@ func zcOpenSource(t *testing.T, dir string) *filmcache.Source {
 	return src
 }
 
+// zcOpenFilm charge le FILM du repertoire de chunks (une decompression, item 1.5).
+func zcOpenFilm(t *testing.T, dir string) *filmsource.Film {
+	t.Helper()
+	film, ok, err := filmcache.LoadFilmDir(dir)
+	if err != nil {
+		t.Fatalf("chargement du film %s : %v", dir, err)
+	}
+	if !ok {
+		t.Fatalf("manifeste absent pour %s : l'horloge du film est indisponible", dir)
+	}
+	return film
+}
+
 // zcLoadClock rend l'horloge du film : start_ms par chunk, lu dans le manifeste.
 func zcLoadClock(t *testing.T, dir string) zcClock {
 	t.Helper()
 	clk := zcClock{startMS: map[int]int{}}
-	for _, m := range zcOpenSource(t, dir).Chunks() {
+	for _, m := range zcOpenSource(t, dir).Meta() {
 		clk.startMS[m.Index] = m.StartMS
 	}
 	return clk

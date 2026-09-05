@@ -73,8 +73,8 @@ func StoreArtifact(repoRoot, titleSlug, matchID string, blob []byte) (StoredArti
 		return StoredArtifact{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
 	return StoredArtifact{
-		Path: outPath, MatchID: matchID, Bytes: surDisque.bytes,
-		Tracks: surDisque.tracks, SchemaVersion: surDisque.schemaVersion,
+		Path: outPath, MatchID: matchID, Bytes: surDisque.Bytes,
+		Tracks: surDisque.Tracks, SchemaVersion: surDisque.SchemaVersion,
 	}, nil
 }
 
@@ -85,13 +85,13 @@ func StoreArtifact(repoRoot, titleSlug, matchID string, blob []byte) (StoredArti
 // LE GARDE NE MONTE PAS DE VERSION : à schéma DIFFÉRENT il se tait. Une montée de schéma doit
 // TOUJOURS passer — c'est une reconstruction voulue, et un artefact d'un autre schéma ne se
 // compare pas à celui-ci.
-func wouldDowngrade(outPath string, blob []byte) (enPlace artifactDigest, oui bool) {
-	current, ok := readArtifactDigest(outPath)
-	if !ok || current.players == 0 {
-		return artifactDigest{}, false // rien à protéger
+func wouldDowngrade(outPath string, blob []byte) (enPlace Digest, oui bool) {
+	current, ok := ArtifactDigest(outPath)
+	if !ok || current.Players == 0 {
+		return Digest{}, false // rien à protéger
 	}
 	incoming, ok := digestFromBytes(blob)
-	if !ok || incoming.players > 0 || incoming.schemaVersion != current.schemaVersion {
+	if !ok || incoming.Players > 0 || incoming.SchemaVersion != current.SchemaVersion {
 		return current, false
 	}
 	return current, true
@@ -152,7 +152,7 @@ func validateArtifact(titleSlug, matchID string, blob []byte) (replay.ReplayDocu
 // des faits, et `chargerFaitsReplay` qui dégrade à vide pour TOUTE une passe de backfill si son
 // unique ouverture de base échoue.
 //
-// C'EST AUSSI LE FILET DU PRÉDICAT DE FRAÎCHEUR. `ArtifactHasPlayerCounters` ne peut que
+// C'EST AUSSI LE FILET DU PRÉDICAT DE FRAÎCHEUR. [Digest.HasPlayerCounters] ne peut que
 // PRÉSUMER l'appauvrissement (trois vacuités légitimes, cf. son en-tête) : avec ce garde, une
 // présomption fausse coûte au pire un décodage gâché, jamais un artefact rétrogradé.
 //
@@ -165,27 +165,27 @@ func validateArtifact(titleSlug, matchID string, blob []byte) (replay.ReplayDocu
 //
 // titleSlug et matchID sont ceux de l'APPELANT (identité du job / du registre), pas ceux du
 // document : cf. ArtifactStored.
-func writeArtifactBytes(outPath, titleSlug, matchID string, blob []byte) (artifactDigest, error) {
+func writeArtifactBytes(outPath, titleSlug, matchID string, blob []byte) (Digest, error) {
 	if enPlace, oui := wouldDowngrade(outPath, blob); oui {
 		// Jamais muet : un artefact non écrit doit s'expliquer, sinon l'admin verra une
 		// construction « réussie » sans comprendre pourquoi le fichier n'a pas changé.
 		slog.Warn("replaybuild: écriture d'artefact REFUSÉE — elle rétrograderait celui en place "+
 			"(compteurs de joueur présents sur disque, absents dans le candidat, même schéma)",
-			"match_id", enPlace.matchID, "path", outPath, "joueurs_en_place", enPlace.players,
-			"schema", enPlace.schemaVersion, "octets_refuses", len(blob))
+			"match_id", enPlace.MatchID, "path", outPath, "joueurs_en_place", enPlace.Players,
+			"schema", enPlace.SchemaVersion, "octets_refuses", len(blob))
 		observability.IncCounter("replay_artifact_downgrade_refused_total")
 		return enPlace, nil
 	}
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-		return artifactDigest{}, err
+		return Digest{}, err
 	}
 	if err := atomicfile.WriteFile(outPath, blob, 0o644); err != nil {
-		return artifactDigest{}, err
+		return Digest{}, err
 	}
 	ecrit, _ := digestFromBytes(blob)
 	publishArtifactStored(ArtifactStored{
 		TitleSlug: titleSlug, MatchID: matchID, Path: outPath,
-		Bytes: ecrit.bytes, Tracks: ecrit.tracks, SchemaVersion: ecrit.schemaVersion,
+		Bytes: ecrit.Bytes, Tracks: ecrit.Tracks, SchemaVersion: ecrit.SchemaVersion,
 	})
 	return ecrit, nil
 }

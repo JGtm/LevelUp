@@ -40,6 +40,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 )
 
@@ -195,10 +196,14 @@ func withFilm(args []string, o options, render func(*rapport) error) error {
 }
 
 // decoder : LA SEULE FACON DE LIRE UN FILM ICI, et c est exactement le code que le brancheur
-// ecrira — une source de chunks, un appel, un resultat.
+// ecrira — un film charge, un appel, un resultat.
+//
+// LE CHARGEMENT EST HORS DU CHRONOMETRE depuis le lot 1 de PLAN_CUISSON_PERF (item 1.4) :
+// `killsource.Decode` ne lit plus le disque et ne decompresse plus rien, donc `duree` mesure
+// le DECODAGE seul — la lecture et l inflate du film, eux, sont le cout de `filmsource.LoadDir`.
 func decoder(film, cache string) (*rapport, error) {
 	dir, name := resoudre(film, cache)
-	src, err := killsource.DirChunks(dir)
+	src, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		return nil, fmt.Errorf("film %s : %w", name, err)
 	}
