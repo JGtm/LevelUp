@@ -62,7 +62,31 @@ import (
 // Elle ne sert pas a faire joli : c est elle qui permettra de savoir QUELS matchs redecoder
 // apres un changement de decodage, au lieu de tout reprendre (1 325 films a 8-30 s = 3 a 11 h).
 // LA FAIRE EVOLUER a chaque changement de decodage qui change les lignes produites.
-const KillSourceDecoderRev = "killsource-2026-07-31"
+//
+// 2026-09-05 : `killsource-2026-07-31` -> `killsource-2026-09-05`. LE CONTRAT CI-DESSUS N AVAIT
+// PAS ETE TENU : 14 commits ont touche `games/halo_infinite/film/killsource/` depuis v7.3.0 sans
+// un seul bump (le seul commit qui touchait cette ligne etait un deplacement de paquet). Les
+// lignes deja en base portaient donc la revision courante et etaient exclues A VIE du backlog
+// (`conditionBacklog`, postsync.go) — source du degat, categorie et assistant servis avec le
+// decodage d avant les vehicules. Le bump les rend a nouveau candidates.
+const KillSourceDecoderRev = "killsource-2026-09-05"
+
+// killSourceDecoderFingerprint — L EMPREINTE DES SOURCES DU DECODEUR, FIGEE A COTE DE SA REVISION.
+//
+// POURQUOI ELLE EXISTE. La consigne « faire evoluer la revision a chaque changement de decodage »
+// est une consigne : elle a ete oubliee 14 fois de suite. Cette empreinte la transforme en gate.
+// `TestKillSourceDecoderRevSuitLeDecodeur` (decoder_rev_fingerprint_test.go) hache les sources
+// NON-TEST de `internal/games/halo_infinite/film/killsource/` et compare a cette valeur : toute
+// modification du decodeur fait ECHOUER le test tant que la revision ET l empreinte n ont pas ete
+// mises a jour ENSEMBLE.
+//
+// CE QU ELLE NE PROMET PAS : elle ne dit pas si le changement modifie les lignes produites (un
+// commentaire reformule la fait bouger). Le jugement reste humain — mais il devient EXPLICITE :
+// on ne peut plus changer le decodeur sans decider, par ecrit, si les lignes en base doivent etre
+// redecodees.
+//
+// COMMENT LA METTRE A JOUR : jouer le test, il imprime la valeur mesuree.
+const killSourceDecoderFingerprint = "b272f221909247fd6f8e2c1cca01d4136ec9b317fbecd31488e3eda48bc59379"
 
 // defaultKillSourceTimeout — la limite de temps PAR MATCH.
 //
