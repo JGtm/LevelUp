@@ -37,6 +37,7 @@ import { getSquadText } from '@/features/squad/i18n'
 import { REPLAY_TEXT } from '@/features/match-replay/i18n'
 import { useMatchReplay } from '@/features/match-replay/queries'
 import type { MatchImpactBadge, MatchScoreboardRow } from '@/lib/api/types'
+import { formatClockMShort } from '@/lib/formatters'
 import { stripBotSuffix } from '@/lib/players/displayName'
 import { computeEquipmentKillBadges } from './equipmentKillBadges'
 import type { MatchViewText } from './i18n'
@@ -73,12 +74,17 @@ function valenceColorToken(v: Valence | undefined): 'success' | 'destructive' | 
   return null
 }
 
+/**
+ * L'instant d'un fait marquant, ou RIEN.
+ *
+ * LE `null` EST LA DÉCISION PROPRE À CE SITE, et c'est pour lui que la fonction survit : un
+ * badge sans instant mesuré n'affiche pas d'horodatage du tout, là où le formateur canonique
+ * rendrait « 0m00s » — le coup d'envoi, qui serait ici une affirmation fausse. L'ÉCRITURE du
+ * format, elle, vient de `lib/formatters` (registre 2026-09-05, N3).
+ */
 function formatTime(ms: number | null | undefined): string | null {
   if (ms == null || ms <= 0) return null
-  const totalSec = Math.floor(ms / 1000)
-  const m = Math.floor(totalSec / 60)
-  const s = totalSec % 60
-  return `${m}m${s.toString().padStart(2, '0')}s`
+  return formatClockMShort(ms)
 }
 
 function buildXUIDIndex(scoreboard: MatchScoreboardRow[]): Map<string, MatchScoreboardRow> {
