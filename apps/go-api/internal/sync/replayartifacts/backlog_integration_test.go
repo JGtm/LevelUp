@@ -281,3 +281,135 @@ func (f fetcherComptant) GetFilmChunks(context.Context, string) ([]haloclient.Fi
 	*f.n++
 	return nil, false, nil
 }
+
+// ─── LE RATTRAPAGE DES DÉRIVÉS (constat A2) ───────────────────────────────────────────────────
+//
+// Même raison d'être que les tests ci-dessus : la requête d'horizon est partagée avec le
+// rattrapage de cuisson, mais la SÉLECTION est différente (artefact présent ET dérivés absents).
+// Elle ne peut être éprouvée que sur une vraie base migrée.
+
+// TestCandidatsDerivations_SelectionneLesRangesSansDerives : la sélection, cas par cas.
+func TestCandidatsDerivations_SelectionneLesRangesSansDerives(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := t.TempDir()
+	maintenant := time.Now().UTC()
+
+	// m-sans-artefact : rien sur disque -> AFFAIRE DE LA CUISSON, pas de la dérivation.
+	inscrireAuRegistre(t, db, "sansarte", maintenant.Add(-1*time.Hour), 0)
+	// m-a-deriver : artefact rangé, aucune marque -> candidat.
+	inscrireAuRegistre(t, db, "aderiver", maintenant.Add(-2*time.Hour), 0)
+	poserArtefact(t, repoRoot, "aderiver")
+	// m-deja-derive : artefact rangé ET marqué à la révision courante -> écarté.
+	inscrireAuRegistre(t, db, "dejaderi", maintenant.Add(-3*time.Hour), 0)
+	poserArtefact(t, repoRoot, "dejaderi")
+	marquerArtefactCommeDerive(t, repoRoot, "dejaderi")
+
+	work, restant := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
+
+	if restant != 0 {
+		t.Errorf("restant = %d, attendu 0 (trois matchs, un seul candidat)", restant)
+	}
+	if len(work) != 1 || work[0].MatchID != "aderiver" {
+		t.Fatalf("candidats = %+v, attendu le seul artefact rangé sans marque", work)
+	}
+	attendu := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, "aderiver")
+	if work[0].Path != attendu {
+		t.Errorf("chemin = %q, attendu la place canonique %q", work[0].Path, attendu)
+	}
+}
+
+// TestCandidatsDerivations_ConvergeApresDerivation : LA PROPRIÉTÉ QUI FAIT TOUT TENIR. Sans
+// marque, les mêmes cinq artefacts reviendraient à chaque cycle, indéfiniment.
+func TestCandidatsDerivations_ConvergeApresDerivation(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := t.TempDir()
+	inscrireAuRegistre(t, db, "unmatch1", time.Now().UTC().Add(-time.Hour), 0)
+	poserArtefact(t, repoRoot, "unmatch1")
+	d := depsRattrapage(repoRoot, 0)
+
+	work, _ := candidatsDerivations(context.Background(), db, d)
+	if len(work) != 1 {
+		t.Fatalf("cycle 1 : %d candidat(s), attendu 1", len(work))
+	}
+	// La dérivation pose la marque (marquerDerivations, appelé par Deriver).
+	marquerDerivations(context.Background(), lireArtefacts(context.Background(), d, work))
+
+	work2, restant := candidatsDerivations(context.Background(), db, d)
+	if len(work2) != 0 || restant != 0 {
+		t.Fatalf("cycle 2 : %d candidat(s) et %d restant(s), attendu 0 et 0 — le rattrapage "+
+			"ne converge pas, il rejouerait les mêmes artefacts à chaque cycle", len(work2), restant)
+	}
+}
+
+// TestCandidatsDerivations_PlafondEtRestant : le lot est borné par maxPerCycle, et ce qui
+// dépasse est COMPTÉ (une jauge qui reste à zéro pendant qu'il reste du travail ne décrit rien).
+func TestCandidatsDerivations_PlafondEtRestant(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := t.TempDir()
+	const total = maxPerCycle + 3
+	for i := 0; i < total; i++ {
+		id := fmt.Sprintf("mderiv%02d", i)
+		inscrireAuRegistre(t, db, id, time.Now().UTC().Add(-time.Duration(i)*time.Hour), 0)
+		poserArtefact(t, repoRoot, id)
+	}
+
+	work, restant := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
+
+	if len(work) != maxPerCycle {
+		t.Errorf("lot = %d, attendu le plafond %d", len(work), maxPerCycle)
+	}
+	if restant != total-maxPerCycle {
+		t.Errorf("restant = %d, attendu %d", restant, total-maxPerCycle)
+	}
+}
+
+// TestCandidatsDerivations_ArtefactPerimeEstDeriveTelQuel : la re-cuisson du corpus est un
+// ARBITRAGE UTILISATEUR DATÉ (registre des reports l. 17) que ce rattrapage ne renverse pas —
+// il dérive l'artefact TEL QU'IL EST, ce qui vaut mieux que rien.
+func TestCandidatsDerivations_ArtefactPerimeEstDeriveTelQuel(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := t.TempDir()
+	inscrireAuRegistre(t, db, "perimeee", time.Now().UTC().Add(-time.Hour), 0)
+	poserArtefactPerime(t, repoRoot, "perimeee")
+
+	work, _ := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
+	if len(work) != 1 || work[0].MatchID != "perimeee" {
+		t.Fatalf("candidats = %+v, attendu l'artefact périmé (dérivé tel quel, JAMAIS re-cuit ici)", work)
+	}
+}
+
+// TestRattraperDerivations_SansSegmentDeLectureNeFaitRien : un chemin de sync sans lecture
+// câblée ne panique pas et ne prétend rien rattraper.
+func TestRattraperDerivations_SansSegmentDeLectureNeFaitRien(t *testing.T) {
+	rattraperDerivations(context.Background(), Deps{RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug})
+}
+
+// marquerArtefactCommeDerive pose la marque de dérivation d'un artefact déjà sur disque.
+func marquerArtefactCommeDerive(t *testing.T, repoRoot, matchID string) {
+	t.Helper()
+	path := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, matchID)
+	st, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat artefact %s: %v", matchID, err)
+	}
+	if err := replaybuild.WriteDerivationsMark(path, replay.SchemaVersion, int(st.Size())); err != nil {
+		t.Fatalf("WriteDerivationsMark %s: %v", matchID, err)
+	}
+}
+
+// poserArtefactPerime pose un artefact d'une version de schéma ANTÉRIEURE — la situation des
+// 106 artefacts du cache local (9 versions, aucune à la courante).
+func poserArtefactPerime(t *testing.T, repoRoot, matchID string) {
+	t.Helper()
+	path := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, matchID)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	blob, err := json.Marshal(replay.ReplayDocument{SchemaVersion: replay.SchemaVersion - 1, MatchID: matchID})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if err := os.WriteFile(path, blob, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+}

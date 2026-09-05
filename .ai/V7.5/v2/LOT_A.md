@@ -293,7 +293,68 @@ golangci-lint run --new-from-merge-base=origin/main ./internal/sync/... ./intern
   -> 0 issues.  EXIT=0
 ```
 
-### [ ] A.5 (A2)
+### [x] A.5 (A2) — un rattrapage unique des dérivés, à prédicat de digest
+
+**Vérification sur pièces.** `backlog.go` `artefactPresent` (`os.Stat` + taille > 0) était bien
+le seul filtre du rattrapage, et sa justification écrite tient toujours pour la CUISSON (le
+prédicat complet lit un document de ~2 Mo, « ruineux sur soixante-quatre à chaque cycle »).
+Il ne dit en revanche RIEN des dérivés — c'est le constat A2.
+
+**Fait.** `internal/replaybuild/derivations_index.go` : l'index des dérivations, à côté du
+digest de l'artefact.
+
+- `DerivationsRev = "derivations-2026-09-06"` — à bumper quand ce que les dérivations ÉCRIVENT
+  change (même doctrine que `KillSourceDecoderRev`) ; le rattrapage rejoue alors tout le parc,
+  cinq artefacts par cycle.
+- `DerivationsMark` (`rev`, `artifactBytes`, `artifactSchema`, `at`) sérialisée dans
+  `<artefact>.derived.json` — un fichier À CÔTÉ, pas une colonne : le rattrapage tourne AVANT
+  tout writer et le backfill CLI tourne sans base du tout.
+- `DerivationsUpToDate(path)` = artefact présent ET marque présente ET même révision ET **même
+  taille**. La taille (et non un hachage) parce qu'elle vient du `os.Stat` qu'on fait de toute
+  façon : le prédicat reste jouable sur les 64 candidats d'un horizon à chaque cycle. Le
+  compromis (un artefact re-cuit à la taille identique à l'octet près) est écrit dans l'en-tête,
+  et le prochain bump de révision le rattrape.
+- `RemoveDerivationsMark` : le geste « redemande les dérivations de ce match ».
+
+`internal/sync/replayartifacts/derivations_backlog.go` : `rattraperDerivations` +
+`candidatsDerivations`, appelés depuis `Run` **sur les DEUX placements** (en placement
+« ouvrier » ce process ne cuit rien, mais les artefacts déposés sont sur le disque).
+
+- Il **ne cuit rien** : il ne sélectionne que des artefacts DÉJÀ RANGÉS et n'appelle jamais la
+  cuisson. Un artefact PÉRIMÉ est dérivé **tel quel** — la re-cuisson du corpus local (106
+  artefacts, 9 versions de schéma) est l'arbitrage utilisateur daté du 2026-09-02 (registre des
+  reports l. 17), que ce lot ne renverse pas.
+- Bornes : l'horizon existant (`BacklogHorizon` = 64, **la même requête** que le rattrapage de
+  cuisson — `requeteQueueRecente`) et le plafond existant (`maxPerCycle` = 5).
+- `fenetreRetention(months)` extrait dans `backlog.go` : le calcul de la borne basse était sur
+  le point d'exister en deux exemplaires (règle des ≤ 2 copies appliquée avant la 2e).
+- Compteurs : `postsync_replay_derivations_rattrapees_total` et la jauge
+  `postsync_replay_derivations_retard`, publiée **même à zéro**.
+
+`Deriver` pose la marque en fin de passe (`marquerDerivations`), **même quand rien n'a été
+écrit** : un match hors Assaut ou un document sans `t0FilmMs` sont des dérivations JOUÉES, pas
+manquantes.
+
+**Tests** : `internal/replaybuild/derivations_index_test.go` (7 cas du prédicat : artefact
+absent, artefact vide, marque absente, marque illisible, marque courante, artefact re-cuit,
+révision antérieure) et 5 tests d'intégration dans `backlog_integration_test.go` — dont
+**`TestCandidatsDerivations_ConvergeApresDerivation`, la propriété qui fait tout tenir** : sans
+marque, les mêmes cinq artefacts reviendraient à chaque cycle indéfiniment.
+
+**Piège rencontré et corrigé** : `FilmShortMatchID` coupe au premier `-`, donc des identifiants
+de test `m-1`, `m-2`… écrivent TOUS le même fichier d'artefact. Un des tests passait par
+coïncidence ; les identifiants ont été refaits sans tiret.
+
+**Gate A.5** :
+
+```
+go build ./...                                                            -> EXIT=0
+go test ./internal/replaybuild/ -run Derivations -v                       -> 10 sous-tests PASS
+go test -tags=integration -p 1 ./internal/sync/replayartifacts/... ./internal/replaybuild/...
+  -> ok levelup/go-api/internal/replaybuild  0.532s   EXIT=0
+golangci-lint run --new-from-merge-base=origin/main ./internal/sync/... ./internal/replaybuild/...
+  -> 0 issues.  EXIT=0
+```
 
 ### [ ] A.6 (décision 1)
 

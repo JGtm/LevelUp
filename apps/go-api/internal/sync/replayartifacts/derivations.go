@@ -51,6 +51,7 @@ import (
 	"os"
 
 	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/replaybuild"
 )
 
 // ArtefactRange : UN artefact qui vient d'etre range sur disque. C'est le seul fait qui
@@ -123,6 +124,28 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	reporterT0Film(ctx, d, rapportsT0(lus))
 	persisterResumesUsage(ctx, d, lus)
 	persisterStatsBombe(ctx, d, lus)
+	marquerDerivations(ctx, lus)
+}
+
+// marquerDerivations inscrit, dans l'index des artefacts, que CE contenu a ete derive a la
+// revision courante. C'est ce qui permet au rattrapage de distinguer « artefact present » de
+// « artefact derive », et c'est ce qui le fait CONVERGER (cf. derivations_backlog.go et
+// replaybuild.DerivationsMark).
+//
+// LA MARQUE SE POSE MEME QUAND RIEN N'A ETE ECRIT, et c'est voulu : un match hors Assaut, un
+// document sans `t0FilmMs`, un titre sans la capability — ce sont des derivations JOUEES, pas
+// des derivations manquantes. Les rejouer a chaque cycle serait du travail pur perte.
+//
+// UNE MARQUE QUI ECHOUE NE FAIT RIEN ECHOUER : les derives sont deja ecrits, la seule
+// consequence est que le rattrapage les rejouera. C'est journalise, jamais avale.
+func marquerDerivations(ctx context.Context, lus []artefactLu) {
+	for _, a := range lus {
+		if err := replaybuild.WriteDerivationsMark(a.path, a.doc.SchemaVersion, a.octets); err != nil {
+			slog.WarnContext(ctx, "post-sync: marque de derivation non ecrite — le rattrapage "+
+				"rejouera ces derivations au prochain cycle",
+				"match_id", a.matchID, "path", a.path, "err", err)
+		}
+	}
 }
 
 // lireArtefacts lit et deserialise chaque artefact UNE fois. Un artefact illisible est un echec

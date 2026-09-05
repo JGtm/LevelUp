@@ -320,6 +320,11 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 	rattraperCartesAbsentes(ctx, d, work, d.MvarFetcher)
 	if d.Placement == replaybuild.PlacementWorker {
 		enqueueAll(ctx, d, work)
+		// LE RATTRAPAGE DES DÉRIVÉS TOURNE ICI AUSSI, et c'est le pendant du constat A1 : en
+		// placement « ouvrier » ce process ne cuit RIEN, mais les artefacts que l'ouvrier a
+		// déposés sont bien sur le disque. Le rattrapage ne cuit rien non plus — il ne fait
+		// que rejouer les dérivations d'artefacts déjà rangés (cf. derivations_backlog.go).
+		rattraperDerivations(ctx, d)
 		return
 	}
 	if len(work) > maxPerCycle {
@@ -346,6 +351,9 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
 		AcquireWriter: d.AcquireWriter,
 	}, b.ranges)
+	// PUIS LE RATTRAPAGE DES DÉRIVÉS : les artefacts déjà rangés dont les dérivations manquent
+	// ou datent d'une révision antérieure. Il ne cuit rien et se borne tout seul (constat A2).
+	rattraperDerivations(ctx, d)
 	publierBilan(ctx, d, b, len(work))
 }
 
