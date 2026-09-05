@@ -20,10 +20,20 @@ import (
 // nouveau deux propriétaires (règle 6 du dépôt).
 //
 // Ce qui est interdit : ces littéraux en position de PRÉDICAT (argument d'un test
-// de sous-chaîne, ou opérande d'une comparaison), dans les fichiers NON-test du
-// paquet. Les CONSTRUIRE reste licite : errors.New("ressource absente") dans
-// doGet ou le message de BlobHTTPError.Error() ne sont pas des prédicats.
+// de sous-chaîne, opérande d'une comparaison) ET en position d'INITIALISEUR d'une
+// const/var (l'indirection `const marqueur = "HTTP 404"` puis
+// `strings.Contains(s, marqueur)` contournerait le premier contrôle), dans les
+// fichiers NON-test du paquet. Les CONSTRUIRE reste licite : errors.New(
+// "ressource absente") dans doGet ou le message de BlobHTTPError.Error() ne sont
+// pas des prédicats — un littéral NOMMÉ, lui, n'a aucun usage légitime ici.
+//
+// 401/403 ajoutés en ronde 1 de revue (2026-09-05) : isAuthErr faisait
+// exactement ce contains-là, et le message d'un BlobHTTPError du CDN public
+// contient « HTTP 403 » — le prédicat textuel aurait fait dégrader une réponse
+// player-gated sur une panne d'edge. Le verdict passe par IsAuthError.
 var litterauxInterditsEnPredicat = map[string]bool{
+	"HTTP 401":             true,
+	"HTTP 403":             true,
 	"HTTP 404":             true,
 	"HTTP 410":             true,
 	"ressource absente":    true,
@@ -92,6 +102,14 @@ func inspecterPredicatsTextuels(t *testing.T, fset *token.FileSet, nom string, f
 			for _, operande := range []ast.Expr{node.X, node.Y} {
 				if lit, ok := litteralInterdit(operande); ok {
 					signaler(operande.Pos(), lit, "comparaison d'égalité")
+				}
+			}
+		case *ast.ValueSpec:
+			// Indirection : nommer le littéral (const marqueur = "HTTP 404") puis
+			// l'utiliser en prédicat échapperait aux deux cas ci-dessus.
+			for _, valeur := range node.Values {
+				if lit, ok := litteralInterdit(valeur); ok {
+					signaler(valeur.Pos(), lit, "initialiseur de const/var")
 				}
 			}
 		}

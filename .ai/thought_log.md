@@ -1,3 +1,63 @@
+## [2026-09-05] Volet C — ronde 1 de revue adversariale : le retry de blob durci sur 10 points — Complete
+
+**CE QUI ARRIVE.** Deux relecteurs independants ont relu le lot C.3 (`downloadBlob` retente,
+le 304 d edge n est plus un verdict). **11 constats recus** : 8 recevables corriges tels quels,
+1 amendement de decision (C.2.7), 2 consignes NON TRAITES (ils visent `doGet`, hors perimetre).
+Liste FERMEE, zero fix opportuniste.
+
+**DECISION TECHNIQUE PRINCIPALE : le prédicat textuel d auth meurt aussi.** Le constat qui
+change une decision : `isAuthErr` (`halo_client_career.go`) cherchait « HTTP 401 » / « HTTP 403 »
+dans `err.Error()`, et le garde-rail pose au lot C.3 pretendait interdire le predicat textuel
+sur les erreurs HTTP tout en EXEMPTANT, sans l ecrire ni la dater, la seule occurrence restante.
+Pire : le message de `BlobHTTPError.Error()` contient exactement ces sous-chaines — un 403 du
+CDN PUBLIC pouvait donc faire dire a `doPlayerGatedGet` « ton jeton n a pas la portee » et
+degrader une reponse player-gated sur une panne d edge. `isAuthErr` est SUPPRIME,
+`doPlayerGatedGet` appelle `IsAuthError` (`errors.As` sur `*HTTPError` ; verifie sur pieces que
+`doGet` rend bien ce type sur 401/403). Le garde-rail gagne « HTTP 401 » / « HTTP 403 » ET les
+INDIRECTIONS : un litteral interdit nomme par une `const`/`var` est desormais un constat, parce
+que nommer la chaine suffisait a contourner le controle precedent.
+
+**LES DEUX P1.** (a) Un corps coupe a mi-lecture apres un 200 (`unexpected EOF`,
+`connection reset`) etait marque FATAL : une coupure de transport condamnait le film comme un
+404. Il se retente maintenant comme tout autre echec de transport, et compte dans l abandon.
+Restent fatals, exactement deux cas : la requete impossible a construire, et un corps 200
+COMPLET qui n est pas du zlib (page d erreur HTML servie en 200 — la retenter couterait
+4 x 870 Ko pour rien). (b) Le caractere COLLANT du `Cache-Control: no-cache` (une fois un 304 vu,
+toutes les retentatives le portent, meme apres un 503 intermediaire) n avait aucun garde-rail :
+il en a un.
+
+**LES SIX P2.** Plus de backoff apres la DERNIERE tentative (un 304 epuise coute 5,6 s au lieu
+de 12 s, et un `ctx` qui expirait pendant ce sommeil final MASQUAIT l abandon : ni compteur
+`retry_exhausted`, ni WARN — la sortie de boucle passe desormais toujours par `blobAbandon`) ;
+`Retry-After` honore sur les blobs ; corps draine avant fermeture sur un statut non-200 (sinon
+`net/http` jette la connexion au lieu de la rendre au pool) ; commentaire du champ `Attempts`
+corrige (1..maxRetries, pas « 1 ou maxRetries ») ; table `retryableBlobStatus` couverte EN
+ENTIER (7 statuts retentes + 6 definitifs, les deux sens rougissent) ; borne basse de
+`retryBaseDelay` (>= 500 ms), qui remplace la garantie de compilation perdue au passage
+`const` -> `var`.
+
+**METHODE.** Chaque test neuf a ete VU ROUGE une fois par mutation temporaire du code, puis le
+code restaure. Un test s est revele complaisant a ce moment-la : le cas « corps coupe » passait
+meme avec le bug, parce que le serveur de test n avait rien pousse sur le fil avant d abandonner
+— l echec retombait sur le transport et ne prouvait rien. Corrige par un `Flush()` explicite
+avant l abandon ; il rougit alors bien. C est le rappel que « le test passe » ne dit rien tant
+qu on ne l a pas vu echouer pour la bonne raison.
+
+**RESULTATS.** Les quatre gates, en serie, sur le worktree `LevelUp-wt-blob-304` :
+`go test ./internal/sync/... -count=1` exit 0 (59 s, 0 `--- FAIL:`) ;
+`go vet ./internal/sync/...` exit 0 (2 s) ;
+`go test -tags=integration -p 1 ./... -count=1` exit 0 (17 min 26 s, 0 `--- FAIL:`) ;
+`make gate-push` exit 0 (17 min 25 s, eslint 0 erreur / 28 warnings preexistants, baseline
+8 586/8 586 presents sur un run courant de 14 625 tests). Seuils : `downloadBlob` 60 lignes,
+`halo_client_http.go` 404 lignes, `gofmt -l` vide. Diff : 3 fichiers de test, 2 de production
+(`halo_client_http.go`, `halo_client_career.go`) ; `halo_client.go` n a PAS eu besoin d etre
+touche, `IsAuthError` portait deja la bonne semantique.
+
+**CONCLUSION / PROCHAINE ETAPE.** Le lot C.3 plus cette ronde forment le volet C complet ;
+il reste le merge dans `feat/v75` (decision utilisateur) et l observation prescrite C.4 a J+7
+apres deploiement, deja inscrite au registre des reports. Les deux constats NON TRAITES visent
+`doGet` (backoff terminal identique, corps perdu quand la lecture echoue) : ils sont ecrits en
+5.1 du plan, a reprendre dans un lot dedie a `doGet`.
 ## [2026-09-05] downloadBlob : le 304 du CDN n etait pas un echec, et un blob ne se retentait jamais — Complete
 
 **LE CONSTAT, MESURE AVANT D ETRE CODE.** Le volet C du plan de reprise du fork est ne d une
