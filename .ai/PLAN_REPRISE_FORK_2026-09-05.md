@@ -418,6 +418,37 @@ Report LÉGITIME (délai d'observation, pas un report de complaisance) :
   `isAuthErr` reste donc un prédicat TEXTUEL — 401/403 sont hors de la liste de la
   décision 4, et le garde-rail ne les couvre pas. Constaté, NON TRAITÉ ici : fermer aussi
   ce repli-là (doGet rend déjà un `*HTTPError` typé sur 401/403) est un lot à part.
+  **TRAITÉ depuis, en ronde 1 de revue (C.3-r1.P2-h)** : `isAuthErr` est supprimé,
+  `doPlayerGatedGet` passe par `IsAuthError`, et le garde-rail couvre 401/403 et les
+  indirections.
+
+## 5.1 — Ronde 1 de revue adversariale du volet C (2026-09-05) : les 11 constats
+
+Deux relecteurs indépendants, périmètre `sync/`. Triage complet, aucun constat sans suite.
+
+**Recevables et CORRIGÉS dans le lot C.3-r1** (8) : P1-a échec de lecture du corps traité
+comme fatal · P1-b caractère collant du `no-cache` sans garde-rail · P2-a backoff après la
+dernière tentative (temps perdu + abandon masqué par un `ctx` expiré) · P2-b `Retry-After`
+ignoré sur les blobs · P2-c corps non drainé sur un statut non-200 (connexion jetée au lieu
+d'être rendue au pool) · P2-d commentaire du champ `Attempts` faux · P2-e table
+`retryableBlobStatus` couverte à moitié · P2-f 200 au corps non-zlib sans test · P2-g borne
+basse de `retryBaseDelay` perdue au passage `const` → `var`. (Le décompte des corrections
+est de 10 avec P1-b et P2-h, qui portent aussi du code.)
+
+**Amendement de décision** (1) : P2-h, `isAuthErr` textuel exempté du garde-rail sans que
+ce soit écrit ni daté → décision C.2.7 amendée, prédicat supprimé (voir C.2.7 et C.3-r1).
+
+**Consignés, NON TRAITÉS** (2) — hors périmètre de la ronde, à reprendre dans un lot dédié
+à `doGet` :
+- (r1, `doGet`) **Même défaut de backoff terminal** : la boucle de `doGet`
+  (`halo_client_http.go`) appelle `c.backoff` sur sa DERNIÈRE itération, avant de sortir
+  vers le log `GET échec définitif` — jusqu'à 6,4 s de sommeil qui ne précèdent aucune
+  tentative, sur CHAQUE appel API épuisé. `doGet` est explicitement hors périmètre du volet
+  C (décision C.2.7) : constaté, NON TRAITÉ.
+- (r1, `doGet`) **Corps non drainé sur les statuts retentés** : `doGet` lit le corps par
+  `io.ReadAll` puis `Close` — il draine donc bien le corps dans le cas nominal (contrairement
+  à l'ancien `downloadBlob`), SAUF quand `readErr != nil`, où la connexion est perdue. Effet
+  marginal (une lecture en erreur signifie déjà une connexion cassée) : constaté, NON TRAITÉ.
 
 # 6. Mesures
 
@@ -537,6 +568,20 @@ film entier.
    reste (les retries vivent DANS `downloadBlob`). `doGet` n'est pas modifié.
    `backfill_weapons.go` (code `main` uniquement, table supprimée sur v7.5) : rien.
 
+   **Amendé le 2026-09-05 en ronde 1 de revue** (le texte d'origine ci-dessus reste, il
+   dit ce qui a été décidé avant la revue) : le point « le paquet `haloclient` garde son
+   prédicat textuel `isAuthErr` » NE TIENT PLUS. Les deux relecteurs ont constaté que le
+   garde-rail `no_text_predicate_test.go` prétendait interdire le prédicat textuel sur les
+   erreurs HTTP tout en exemptant, sans l'écrire ni la dater, la seule occurrence restante
+   — et que le message de `BlobHTTPError.Error()` contient précisément « HTTP 401 » /
+   « HTTP 403 », donc qu'un 403 du CDN PUBLIC pouvait faire dégrader une réponse
+   player-gated en « token insuffisant ». Décision amendée : `isAuthErr` est SUPPRIMÉ,
+   `doPlayerGatedGet` appelle `IsAuthError` (`errors.As` sur `*HTTPError`, vérifié sur
+   pièces : `doGet` rend bien un `*HTTPError` typé sur 401/403), et le garde-rail couvre
+   désormais « HTTP 401 » / « HTTP 403 » ET les indirections (littéral interdit nommé par
+   une `const`/`var` puis passé à un `strings.Contains`). Reste hors périmètre, inchangé :
+   la copie de test `isNotFoundErr` du paquet `sync`, l'errgroup, `doGet`.
+
 ## C.3 — Lot unique, items
 
 - [x] C.3.1 Rouvrir `halo_client_http.go`, `halo_client_film.go:340-350` (consommateur
@@ -633,6 +678,77 @@ respecté : aucune autre commande `go` sur la machine pendant chaque étape) :
 **RESTE AVANT MERGE dans `feat/v75`** : la revue adversariale annoncée en tête du volet C
 (`sync/`, 2 relecteurs, skill `adversarial-review`) n'a PAS été faite — elle n'est pas un
 item du lot C.3 et demande des contextes frais. Elle est le dernier verrou avant le merge.
+
+## C.3-r1 — Ronde 1 de corrections après revue adversariale (2026-09-05)
+
+Deux relecteurs indépendants ont rendu 11 constats sur le lot C.3. Triage : 2 P1 et 6 P2
+recevables et CORRIGÉS ici, 1 amendement de décision (C.2.7, ci-dessus), 2 constats
+consignés NON TRAITÉS (hors périmètre, cf. §5). Liste FERMÉE, aucun autre changement.
+
+- [x] r1.P1-a L'échec de LECTURE du corps (`io.ReadAll` après un 200 : corps coupé,
+      `unexpected EOF`, `connection reset`) n'est plus `fatal` : c'est un échec de
+      TRANSPORT, retenté comme les autres (DEBUG à chaque retry, compté dans
+      `blobAbandon` avec `status == 0`). Restent fatals : la construction de requête
+      impossible, et un corps 200 complet non-zlib (`inflateBlob` en erreur — retenter
+      une page d'erreur HTML coûterait 4 × 870 Ko). Test
+      `TestDownloadBlob_CorpsCoupeEstRetente` (le serveur doit `Flush()` avant d'abandonner,
+      sinon l'échec retombe sur le transport et le test ne prouve rien) — VU ROUGE sous
+      mutation (`fatal: true` réintroduit) : `downloadBlob read: unexpected EOF`.
+- [x] r1.P1-b Caractère COLLANT de `Cache-Control: no-cache` gardé par un test :
+      304 → 503 → 200, 3 requêtes, en-tête absent sur la 1re et posé sur les 2 suivantes,
+      compteur `retry_success` +1 (`TestDownloadBlob_NoCacheCollantApres304`). VU ROUGE
+      sous mutation (`revalider = at.status == 304` au lieu de `revalider || …`).
+- [x] r1.P2-a Plus de backoff après la DERNIÈRE tentative (`attempt < maxRetries-1`) :
+      un 304 épuisé coûte 5,6 s au lieu de 12 s, et un `ctx` qui expirait pendant ce
+      sommeil final ne masque plus l'abandon (le compteur `retry_exhausted` et le WARN
+      partaient à la trappe). La sortie de boucle passe TOUJOURS par `blobAbandon`. Test
+      déterministe `TestDownloadBlob_AbandonNonMasqueParUnCtxExpire` (transport factice
+      qui annule le contexte pile après la 4e tentative) — VU ROUGE sous mutation
+      (backoff inconditionnel restauré). `doGet` porte le même défaut : NON TRAITÉ, §5.
+- [x] r1.P2-b `Retry-After` honoré sur les blobs : `fetchBlobOnce` le lit via le
+      `parseRetryAfter` existant et le rend dans `blobAttempt`, la boucle le passe à
+      `c.backoff` (déjà plafonné par `backoffCeiling`). Test
+      `TestDownloadBlob_RetryAfterHonore` (429 + `Retry-After: 1` puis 200, borne BASSE
+      mesurée entre les deux requêtes) — VU ROUGE sous mutation (`c.backoff(ctx, attempt, 0)`).
+- [x] r1.P2-c Corps drainé (`io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))`)
+      avant la fermeture sur un statut non-200, pour que `net/http` rende la connexion au
+      pool au lieu de la jeter. Commentaire d'une ligne sur le pourquoi ; pas de test
+      (non observable simplement).
+- [x] r1.P2-d Commentaire du champ `Attempts` corrigé : « nombre de requêtes réellement
+      envoyées, dans 1..maxRetries » — deux 503 puis un 404 donne 3, pas 1. Doc seule,
+      aucun changement de code.
+- [x] r1.P2-e Table `retryableBlobStatus` couverte EN ENTIER par
+      `TestDownloadBlob_TableDesStatuts` : 304/408/429/500/502/503/504 → 2 requêtes et
+      succès ; 400/401/403/404/410/418 → 1 requête et `*BlobHTTPError{N, Attempts: 1}`.
+      VU ROUGE dans les DEUX sens sous une mutation unique (408 retiré de la liste, 404
+      ajouté) : `retente_408` et `definitif_404` rouges.
+- [x] r1.P2-f 200 au corps non-zlib : `TestDownloadBlob_200CorpsNonZlib` — 1 requête,
+      erreur non nulle, PAS un `*BlobHTTPError`, les deux compteurs à delta 0. VU ROUGE
+      sous mutation (erreur d'inflation traitée comme retentable → 4 requêtes).
+- [x] r1.P2-g Borne basse de `retryBaseDelay` (`TestRetryBaseDelay_BorneBasse`, ≥ 500 ms) :
+      remplace la garantie de compilation perdue au passage `const` → `var`. Lit la
+      variable sans surcharge (aucun test du paquet n'est parallèle, `avecRetryBaseDelayCourt`
+      restaure via `t.Cleanup`). VU ROUGE sous mutation (`retryBaseDelay = 100ms`).
+- [x] r1.P2-h `isAuthErr` SUPPRIMÉ, `doPlayerGatedGet` appelle `IsAuthError` (amendement
+      de la décision C.2.7). Garde-rail étendu : « HTTP 401 » / « HTTP 403 » ajoutés aux
+      littéraux interdits, et l'INDIRECTION (littéral en initialiseur d'une `const`/`var`)
+      est désormais un constat. VU ROUGE sous mutation (`const marqueurTemporaireRevue =
+      "HTTP 404"` + `strings.Contains` dans `halo_client_career.go` : `littéral "HTTP 404"
+      utilisé comme prédicat (initialiseur de const/var)`), essai retiré. Cas de non-régression
+      ajouté à `TestIsAuthError` : un `*BlobHTTPError` 403 (CDN public) n'est PAS une erreur
+      d'auth, alors que son message contient « HTTP 403 ».
+
+**Gate C-r1** — mêmes commandes que le gate C, en série, résultats :
+
+| Commande | Code de sortie | Durée | `^--- FAIL:` |
+|---|---|---|---|
+| `go test ./internal/sync/... -count=1` | 0 | 59 s | 0 |
+| `go vet ./internal/sync/...` | 0 | 2 s | 0 |
+| `go test -tags=integration -p 1 ./... -count=1` | 0 | 17 min 26 s | 0 |
+| `make gate-push` | 0 | 17 min 25 s | 0 (eslint : 0 erreur, 28 warnings préexistants ; baseline 8 586/8 586 présents, run courant 14 625 tests) |
+
+Seuils après ronde 1 : `downloadBlob` = 60 lignes (≤ 80), `halo_client_http.go` = 404
+lignes (≤ 500), `gofmt -l` vide.
 
 ## C.4 — Observation prescrite (J+7 après déploiement)
 

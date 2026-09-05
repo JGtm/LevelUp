@@ -44,8 +44,9 @@ const (
 type BlobHTTPError struct {
 	StatusCode int
 	URL        string
-	// Attempts : nombre de requêtes réellement envoyées (1 si le statut n'est pas
-	// retentable, maxRetries si les tentatives ont été épuisées).
+	// Attempts : nombre de requêtes réellement envoyées, dans 1..maxRetries. Un
+	// statut non retentable rencontré à la 3e tentative (deux 503 puis un 404)
+	// donne 3, pas 1 ; maxRetries quand les tentatives ont été épuisées.
 	Attempts int
 }
 
@@ -79,9 +80,16 @@ func retryableBlobStatus(code int) bool {
 // blobAttempt : résultat d'UNE tentative de téléchargement de blob.
 type blobAttempt struct {
 	raw    []byte
-	status int   // 0 si la requête n'a pas abouti
-	err    error // erreur de transport (retentable) ou définitive si fatal
-	fatal  bool  // true : ne pas retenter (requête invalide, corps illisible)
+	status int // 0 si la requête n'a pas abouti, ou si le corps s'est coupé en route
+	err    error
+	// retryAfter : fenêtre demandée par le header Retry-After de cette réponse
+	// (429/503), déjà parsée et bornée. 0 = header absent ou non parsable.
+	retryAfter time.Duration
+	// fatal : ne pas retenter. Un SEUL cas — la requête n'a pas pu être
+	// construite (URL invalide) : la reconstruire à l'identique échouerait
+	// pareil. Un corps coupé en route est, lui, un échec de TRANSPORT : il se
+	// retente comme les autres (P1-a, ronde 1 de revue).
+	fatal bool
 }
 
 // fetchBlobOnce exécute UNE requête GET sur le CDN, sans en-tête d'auth.
@@ -103,11 +111,20 @@ func (c *HaloAPIClient) fetchBlobOnce(ctx context.Context, blobURL string, reval
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return blobAttempt{status: resp.StatusCode}
+		// Drainer le peu qui reste avant la fermeture : sans ça net/http jette la
+		// connexion au lieu de la rendre au pool (une rafale de 304 rouvrirait
+		// autant de connexions TLS vers le CDN).
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
+		return blobAttempt{
+			status:     resp.StatusCode,
+			retryAfter: parseRetryAfter(resp.Header.Get("Retry-After"), time.Now()),
+		}
 	}
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return blobAttempt{status: resp.StatusCode, err: fmt.Errorf("downloadBlob read: %w", err), fatal: true}
+		// Corps coupé à mi-chemin (unexpected EOF, connection reset) : échec de
+		// transport, retenté comme tel — status 0, jamais fatal.
+		return blobAttempt{err: fmt.Errorf("downloadBlob read: %w", err)}
 	}
 	return blobAttempt{raw: raw, status: resp.StatusCode}
 }
@@ -154,7 +171,9 @@ func blobAbandon(ctx context.Context, blobURL string, status int, lastErr error,
 // Portage de download_film_chunk() (Python api_client.py:485-498).
 //
 // Retry (2026-09-05) : jusqu'à maxRetries tentatives sur les statuts de
-// retryableBlobStatus et sur les échecs de transport, avec le backoff de doGet.
+// retryableBlobStatus et sur les échecs de transport, avec le backoff de doGet
+// (fenêtre Retry-After honorée quand le CDN en fournit une, bornée par
+// backoffCeiling).
 // Avant, TOUT statut non-200 était un échec définitif de la tentative unique, et
 // un seul 304 d'edge coûtait le film entier (errgroup : première erreur = film
 // abandonné) à CHAQUE passe de rattrapage.
@@ -173,6 +192,7 @@ func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byt
 		case at.fatal:
 			return nil, at.err
 		case at.err != nil:
+			// Transport : requête en erreur, ou corps coupé après un 200.
 			lastErr, lastStatus = at.err, 0
 			slog.DebugContext(ctx, "halo_api: downloadBlob échec réseau (retry)",
 				"url", blobURL, "attempt", attempt+1, "err", at.err)
@@ -201,11 +221,18 @@ func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byt
 			lastErr, lastStatus = nil, at.status
 			revalider = revalider || at.status == http.StatusNotModified
 			slog.DebugContext(ctx, "halo_api: downloadBlob HTTP error (retry)",
-				"url", blobURL, "status", at.status, "attempt", attempt+1)
+				"url", blobURL, "status", at.status, "attempt", attempt+1,
+				"retry_after_s", at.retryAfter.Seconds())
 		}
-		c.backoff(ctx, attempt, 0)
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
+		// Pas de backoff après la DERNIÈRE tentative : il ne précède plus rien, et
+		// un ctx qui expirait pendant ce sommeil masquait l'abandon (ni compteur
+		// retry_exhausted, ni WARN). La sortie de boucle passe TOUJOURS par
+		// blobAbandon.
+		if attempt < maxRetries-1 {
+			c.backoff(ctx, attempt, at.retryAfter)
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 		}
 	}
 	return nil, blobAbandon(ctx, blobURL, lastStatus, lastErr, start)

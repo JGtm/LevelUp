@@ -208,23 +208,25 @@ func (c *HaloAPIClient) gameCMSHost(ctx context.Context) string {
 	return c.hostFor(ctx, games.EndpointGameCMS, haloGameCMSHost)
 }
 
+// doPlayerGatedGet exécute un GET dont le 401/403 n'est PAS une erreur : le
+// token courant n'a simplement pas la portée player-gated (career, apparence)
+// → (nil, false, nil), au caller de dégrader.
+//
+// Le verdict 401/403 passe par IsAuthError (errors.As sur *HTTPError), jamais
+// par le texte : doGet rend un *HTTPError typé sur ces deux statuts
+// (halo_client_http.go, branche « GET refusé auth »). L'ex-prédicat textuel
+// local isAuthErr, qui cherchait « HTTP 401 » / « HTTP 403 » dans err.Error(),
+// est supprimé (ronde 1 de revue du volet C, 2026-09-05) : il matchait aussi le
+// message d'un BlobHTTPError du CDN public.
 func (c *HaloAPIClient) doPlayerGatedGet(ctx context.Context, rawURL string) ([]byte, bool, error) {
 	body, err := c.doGet(ctx, rawURL)
 	if err != nil {
-		if isAuthErr(err) {
+		if IsAuthError(err) {
 			return nil, false, nil
 		}
 		return nil, false, err
 	}
 	return body, true, nil
-}
-
-func isAuthErr(err error) bool {
-	if err == nil {
-		return false
-	}
-	s := err.Error()
-	return strings.Contains(s, "HTTP 401") || strings.Contains(s, "HTTP 403")
 }
 
 func parseCareerProgressPayload(body []byte, xuid string) (*CareerRankData, error) {
