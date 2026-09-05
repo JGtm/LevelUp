@@ -168,19 +168,33 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 ## 4. Phases
 
 ### Phase 1 — Socle pur (aucune I/O, aucun reseau) — EXECUTABLE MAINTENANT
-- [ ] 1.1 `analysis/tactical/grid.go` : monde <-> cellule, bornes en union, pas 0,5 m
-- [ ] 1.2 `analysis/tactical/raster.go` : comptes + matchs distincts par cellule, a partir de
+- [x] 1.1 `analysis/tactical/grid.go` : monde <-> cellule, bornes en union, pas 0,5 m
+- [x] 1.2 `analysis/tactical/raster.go` : comptes + matchs distincts par cellule, a partir de
       points `(matchID, x, y)` ; une cellule jamais atteinte n'existe pas dans le raster
-- [ ] 1.3 `analysis/tactical/merge.go` : somme de rasters par match ; planchers (3 matchs
+- [x] 1.3 `analysis/tactical/merge.go` : somme de rasters par match ; planchers (3 matchs
       distincts ; **3 V et 3 D** pour un raster signe) ; valeur **par match**
-- [ ] 1.4 `analysis/tactical/quantile.go` : p50/p95 sur cellules alimentees ; **echelle
+- [x] 1.4 `analysis/tactical/quantile.go` : p50/p95 sur cellules alimentees ; **echelle
       symetrique** par p95 de |valeur| pour un champ signe
-- [ ] 1.5 `analysis/coordination/measure.go` : type `Couverture` (taux, brut, par match, N,
+- [x] 1.5 `analysis/coordination/measure.go` : type `Couverture` (taux, brut, par match, N,
       echantillon faible sous 30) — le seul type de retour d'un taux
-- [ ] 1.6 `analysis/coordination/trade.go` : fenetre 5 s en constante nommee (date + autorite
+- [x] 1.6 `analysis/coordination/trade.go` : fenetre 5 s en constante nommee (date + autorite
       en commentaire) ; **les deux cas limites** de §1 ; sortie = paires (vengeur, venge) avec
       delai, + par mort : vengee ou non
-- [ ] 1.7 `domain/tactical.go`, `domain/coordination.go` : types de resultat
+- [~] 1.7 `domain/tactical.go`, `domain/coordination.go` : types de resultat — couvert par
+      1.1, 1.5 et 1.6 : un type ne se livre pas apres le code qui le compile.
+      `domain/tactical.go` (PositionSample, BornesMonde, CelluleTactique, EchelleTactique)
+      est dans le commit 1.1 ; `domain/coordination.go` porte Couverture (commit 1.5) puis
+      KillEvent, EquipesParMatch, MortSuivie, PaireEchange, BilanEchanges (commit 1.6).
+- **Gate PASSE le 2026-09-06** (avant-plan, `GOCACHE=...\go-build-tactique`, `CGO_ENABLED=1`) :
+  `go vet` sur les trois arbres, propre (0,8 s) ; `go test` idem, 7 paquets verts en 13,1 s
+  (tactical 0,278 s ; coordination 0,306 s ; domain 0,313 s) ; `golangci-lint run` sur les
+  deux nouveaux paquets : 0 issue. Fichiers de 30 a 315 L, fonctions <= 33 L, <= 3 parametres.
+  Chaque condition du gate a ete verifiee PAR INVERSION (le test echoue si on retourne la
+  condition qu'il garde) : floor -> troncature, plancher par cote -> plancher global, valeur
+  par match -> par matchs de la cellule, ecart de taux -> difference brute, p95 sur |valeur|
+  -> p95 signe, fenetre 5 s -> 15 s, vengeur unique -> appariement un-pour-un, tueur sans
+  auteur -> vengeur valide, equipes inconnues/coequipier -> vengeable, plancher 30 -> 8,
+  garde-rail du taux nu (fonction float64 ajoutee).
 - **Gate** : `cd apps/go-api && go test ./internal/analysis/tactical/...
   ./internal/analysis/coordination/... ./internal/domain/...` vert ; tests a cellules posees
   a la main (comptes EXACTS) ; somme de deux rasters ; plancher par cote (3 V / 0 D -> vide) ;
@@ -290,9 +304,23 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 
 ## 6. Journal
 - 2026-09-06 : revision 4, worktree `LevelUp-wt-tactique` cree, phase 1 lancee.
+- 2026-09-06 : phase 1 CLOSE — socle pur livre en 6 commits (`tactique(1.1)` a `(1.6)`),
+  items 1.1-1.6 `[x]`, 1.7 `[~]` (couvert par 1.1/1.5/1.6), gate vert et rejoue en
+  avant-plan, `golangci-lint` a 0 issue, zero I/O et zero import de `analysis/replay` ou de
+  `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
-- (vide)
+- 2026-09-06 (phase 1) — **TROIS implementations de quantile dans le depot, deux conventions
+  differentes.** `analysis/replay.gwPadsQuantile` tronque l'index (`s[int(q*(n-1))]`),
+  `analysis/temporal.quantileSorted` interpole lineairement ; `analysis/tactical.quantile`
+  est la troisieme et suit la convention de `temporal`. Deux mesures du depot qui disent
+  « p95 » ne disent donc pas toutes la meme chose. La regle des <= 2 copies demanderait un
+  helper canonique + garde-rail, ce qui exigerait de toucher `replay` et `temporal` : hors
+  perimetre de la phase 1, NON TRAITE. Candidat pour un lot de dette dedie.
+- 2026-09-06 (phase 1) — **le hook `go-vet` de lefthook noie son verdict.** Chaque commit
+  affiche une soixantaine de lignes « build constraints exclude all Go files » (les `cmd/*`
+  et `internal/ooz` derriere un tag ou du CGO) avant son `OK`. Un vrai echec de vet s'y
+  perdrait a la lecture. NON TRAITE (hors perimetre).
 
 ## 8. Reprise de session
 Avancement = les cases de ce fichier dans le worktree. Reprendre a la premiere case non
