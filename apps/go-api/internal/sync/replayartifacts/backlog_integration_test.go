@@ -284,3 +284,46 @@ func (f fetcherComptant) GetFilmChunks(context.Context, string) ([]haloclient.Fi
 	*f.n++
 	return nil, false, nil
 }
+
+// racineIsoleeAvecManifestes rend un TempDir qui porte une COPIE des manifestes du titre
+// (config/titles/{slug}/mappings/), pour les tests qui ecrivent dans leur racine — la
+// cuisson y depose des artefacts, on ne peut donc pas leur passer la racine du depot.
+//
+// IL VIT SOUS LE TAG `integration`, avec ses deux seuls appelants : declare dans un fichier
+// sans tag, il serait du code mort en build par defaut (`unused`, ratchet golangci-lint).
+// Son voisin `racineDepot` (capability_test.go), lui, sert dans les DEUX modes.
+//
+// Depuis que Run passe la porte `film.replay_artifact` (capability.go), une racine vide
+// n'est plus neutre : elle ferme la porte et l'etape ne fait rien. Ce helper rend a ces
+// tests le titre qu'ils croyaient avoir.
+func racineIsoleeAvecManifestes(t *testing.T, slug string) string {
+	t.Helper()
+	racine := t.TempDir()
+	src := filepath.Join(racineDepot(t), "config", "titles", slug, "mappings")
+	dst := filepath.Join(racine, "config", "titles", slug, "mappings")
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		t.Fatalf("MkdirAll(%s): %v", dst, err)
+	}
+	entrees, err := os.ReadDir(src)
+	if err != nil {
+		t.Fatalf("ReadDir(%s): %v", src, err)
+	}
+	copies := 0
+	for _, e := range entrees {
+		if e.IsDir() {
+			continue
+		}
+		octets, err := os.ReadFile(filepath.Join(src, e.Name()))
+		if err != nil {
+			t.Fatalf("lecture de %s: %v", e.Name(), err)
+		}
+		if err := os.WriteFile(filepath.Join(dst, e.Name()), octets, 0o644); err != nil {
+			t.Fatalf("ecriture de %s: %v", e.Name(), err)
+		}
+		copies++
+	}
+	if copies == 0 {
+		t.Fatalf("aucun manifeste copie depuis %s — le titre serait muet", src)
+	}
+	return racine
+}
