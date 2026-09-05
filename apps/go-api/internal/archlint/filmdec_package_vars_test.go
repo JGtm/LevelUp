@@ -76,6 +76,12 @@ package archlint
 // ecrivaient RESTENT, avec leur valeur de production, parce qu elles sont lues par le decodage
 // et que leur retrait serait une de-globalisation (D10), pas un retrait de code mort.
 //
+// SECOND RESSERRAGE DU 2026-09-05 (meme lot, item E.3) : 113 -> 111. Les DEUX copies de la table
+// des largeurs de reference par domaine — `lot1RefDomWidths` (weapon_hits_decode.go) et
+// `zoomRefWidth` (zoom_events.go) — sont remplacees par la fonction `refDomWidth`
+// (event_list.go), qui ne porte AUCUN etat : une table de grammaire deguisee en `var` redevient
+// ce qu elle est, du code. Garde-rail : `filmdec/event_preamble_guard_test.go`.
+//
 // RETRAIT CIBLE : le jour ou `filmdec` est de-globalise (hors de ce plan, cf. §7). Critere
 // mesurable de ce jour-la : `LockProcessDecode` n'a plus de raison d'etre.
 
@@ -93,7 +99,7 @@ import (
 
 // filmdecVarsGeles : le compte GELE des variables de paquet de `filmdec` (cf. l'en-tete pour la
 // convention de comptage et la date de mesure).
-const filmdecVarsGeles = 113
+const filmdecVarsGeles = 111
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {
