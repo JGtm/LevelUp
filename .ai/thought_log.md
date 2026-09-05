@@ -118,6 +118,17 @@ binaire que la CI (v2.12.2) : `0 issues`, code de sortie 0. `gofmt`, `go vet`, e
 au travers d un `tail`, qui m avait fait annoncer une CI verte alors qu elle etait rouge
 (le code de sortie lu etait celui du filtre, pas celui de `gh run watch`).
 
+**Complement, meme jour.** Deux choses manquaient a ce qui precede. (1) Le litteral d i59 avait
+une TROISIEME copie, le `case` de `traverse.go:839` : elle passe aux constantes elle aussi,
+sinon la factorisation restait a mi-chemin (anti-pattern 8 du CLAUDE.md, « factorisation
+abandonnee »). (2) Le chemin ref1/ref2 de `decodeTranslocJump` — celui-la meme que le `||`
+traversait — n avait AUCUNE couverture, et c est pour cela qu il a fallu lire le code a la main
+pour etablir que le court-circuit etait sans consequence. Sous-test `ref1_presente` ajoute a
+`TestDecodeTranslocJumpDegradation` : ref1 presente -> l evenement reste date et attribue
+(slot 535) et sort SANS positions. Il ne DISCRIMINE pas l ancien code du nouveau (les deux
+formes rendent la meme chose) : c est justement ce qui prouve que le correctif est neutre. Sa
+valeur est de figer un contrat sur un chemin qui n en avait pas, pas de prouver une regression.
+
 **Suite.** Branche `wt/lint-filmdec` fusionnee dans `feat/v75`. La CI de branche fait foi.
 ## [2026-09-05] internal/himap ne terminait pas — ce n'etait pas un blocage, c'etaient 20 minutes de balayage sans etiquette — Complete
 
