@@ -110,3 +110,55 @@ describe('buildShotFx', () => {
     expect(buildShotFx(doc(), 50)).toEqual([])
   })
 })
+
+// Le tag `weap` du Ghost tel que le porte réellement `Shot.w` (`vehicleWeaponMounts.ts` :
+// `0x` + tag weap 8 hex + 32 bits nuls, vérifié en direct sur le Warthog et le Wasp). Une
+// arme de véhicule N'A PAS d'entrée dans `weaponLabels` (ce ne sont pas des armes de joueur).
+const GHOST_WEAP_TAG = '0x0001543500000000'
+
+describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu’au centre', () => {
+  it('v marqué + arme au montage connu (fixe) : vehicleShot porte le montage et le cap', () => {
+    const d = doc({
+      vehicles: [
+        {
+          slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'ghost',
+          samples: [{ t: 0, x: 5, y: 5, h: 45 }],
+          rides: [],
+        },
+      ],
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: GHOST_WEAP_TAG, v: 700 }],
+    })
+    const fx = buildShotFx(d, 50)
+    expect(fx).toHaveLength(1)
+    expect(fx[0].vehicleShot).not.toBeNull()
+    expect(fx[0].vehicleShot?.mount.classe).toBe('fixe')
+    expect(fx[0].vehicleShot?.family).toBe('ghost')
+    expect(fx[0].vehicleShot?.headingDeg).toBe(45)
+  })
+
+  it('v marqué mais arme SANS montage connu (arme de joueur tirée par un passager) : vehicleShot est null', () => {
+    const d = doc({
+      vehicles: [
+        { slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'ghost', samples: [], rides: [] },
+      ],
+      weaponLabels: { '0xBR': { en: 'BR75', fr: 'BR75', fx: 'ballistic', tint: 'kinetic' } },
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: '0xBR', v: 700 }],
+    })
+    expect(buildShotFx(d, 50)[0].vehicleShot).toBeNull()
+  })
+
+  it('v marqué mais AUCUN véhicule de ce slot dans le document : vehicleShot est null', () => {
+    const d = doc({
+      vehicles: [],
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: GHOST_WEAP_TAG, v: 700 }],
+    })
+    expect(buildShotFx(d, 50)[0].vehicleShot).toBeNull()
+  })
+
+  it('tir à pied (v absent) : vehicleShot est null, même avec une arme de véhicule connue', () => {
+    const d = doc({
+      shots: [{ slot: 1, t: 10, x: 0, y: 0, w: GHOST_WEAP_TAG }],
+    })
+    expect(buildShotFx(d, 50)[0].vehicleShot).toBeNull()
+  })
+})

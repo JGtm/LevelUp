@@ -38,6 +38,7 @@
 package filmdec
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -135,6 +136,15 @@ type ScanFilmOptions struct {
 	// produire des coordonnées monde : nil -> ScanFilmBipedPositions échoue avec
 	// ErrUnknownMapBounds, sauf si QuantaOnly. Cf. MapQuantCatalog.
 	WorldRange *Vec3Range
+	// DynPrecOrientation choisit la grammaire d'i2/i3 sous CaptureDirs. false (défaut) =
+	// celle du BIPÈDE. true = celle des archétypes qui portent les variantes
+	// `-dynamic-precision-` de forward-and-up et angular-velocity : ti=38 (corps rigide),
+	// 39, **40 (véhicule)** et 43 (dispositif). Ce sont QUATRE désérialiseurs distincts
+	// (FUN_14076e278/FUN_140d70998 contre FUN_140c5f7ec/FUN_140d87740), résolus
+	// statiquement le 2026-09-03 — cf. components_dynprec_orientation.go. Laisser ce
+	// drapeau à false sur la bande ti=40 fait atteindre i4/i5 avec un curseur décalé :
+	// c'est la cause racine du bruit de vitalité mesuré au lot V2b.
+	DynPrecOrientation bool
 	// QuantaOnly autorise un balayage SANS bornes : les positions ne portent alors que Q
 	// (HasWorld=false), et les filtres exprimés en m/s sont inopérants — donc désactivés.
 	// Réservé aux outils d'analyse du bitstream.
@@ -163,6 +173,7 @@ func DefaultScanFilmOptions() ScanFilmOptions {
 // ScanFilmBipedPositions décode toutes les positions absolues de bipeds des chunks du
 // film situé dans dir. Les chunks illisibles sont ignorés (le film peut être partiel) ;
 // une erreur n'est renvoyée que si AUCUN chunk n'a pu être lu.
+//
 // ScanFilmBipedPositions est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis appelle
 // [ScanBipedPositions]. La cuisson passe un film deja charge (une seule decompression).
 func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, error) {
@@ -179,9 +190,100 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 	return ScanBipedPositions(film, opt)
 }
 
+// ScanFilmBipedPositionsForBand est l'ENVELOPPE D2, HORS PRODUCTION, de
+// [ScanBipedPositionsForBand] : elle charge le film puis lui passe la bande. La cuisson passe un
+// film deja charge (une seule decompression).
+func ScanFilmBipedPositionsForBand(dir string, band SlotBand, opt ScanFilmOptions) (
+	[]BipedPosition, error) {
+	if opt.WorldRange == nil && !opt.QuantaOnly {
+		return nil, fmt.Errorf("%w (film %s) : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", ErrUnknownMapBounds, dir)
+	}
+	// LES DEUX REFUS D'ENTREE PRECEDENT LE CHARGEMENT, et c'est l'ordre d'origine : un appelant
+	// sans bornes ou sans bande doit recevoir SON erreur, pas une erreur de lecture de repertoire.
+	if band.Count() == 0 {
+		return nil, errors.New("bande de slots vide")
+	}
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ScanBipedPositionsForBand(film, band, opt)
+}
+
 // ScanBipedPositions décode les positions absolues de bipeds d'un film DEJA CHARGE. Cf.
 // [ScanFilmBipedPositions] pour la doctrine du balayage.
+//
+// C'est l'entrée BIPÈDE de [ScanBipedPositionsForBand] : elle ne fait qu'y ajouter le relevé
+// de la bande de slots `ti=35` (bipedSlotBand). Aucun décodage ne lui est propre.
 func ScanBipedPositions(film *filmsource.Film, opt ScanFilmOptions) ([]BipedPosition, error) {
+	chunks, err := bipedScanChunks(film, opt)
+	if err != nil {
+		return nil, err
+	}
+	band := bipedSlotBand(film, chunks)
+	if band.Count() == 0 {
+		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
+	}
+	return ScanBipedPositionsForBand(film, band, opt)
+}
+
+// ScanBipedPositionsForBand décode les positions absolues des records dont le SLOT tombe
+// dans band, avec la grammaire du bipède — celle de la forme `object-position-dynamic-
+// precision`, porte de 5 bits.
+//
+// POURQUOI CETTE ENTRÉE EXISTE. Deux archétypes seulement portent cette forme d'i0 : le bipède
+// (`ti=35`) et le VÉHICULE (`ti=40`). Le registre du film le dit, et la mesure du cadrage
+// véhicules du 2026-08-31 le confirme sur pièces : sur la même bande de slots et le même film,
+// cette grammaire rend 99,4 à 100 % de pas de trajectoire sous 35 m/s, celle des objets du
+// monde (porte de 3 bits, `ScanWorldObjects`) 21,2 à 41,8 %. Le décodeur savait donc déjà
+// lire un véhicule ; il lui manquait ce point d'entrée, `bipedSlotBand` filtrant en dur
+// `ti=35`. Rien de la grammaire n'est paramétré ici : seule la bande l'est.
+//
+// LA BANDE d'un archétype d'objet du monde se relève par
+// `ScanWorldObjectKeyframes(film, ti).Band`, puis `NewSlotBand`. TROIS RÉGLAGES sont à connaître
+// pour un archétype autre que le bipède, tous déjà dans ScanFilmOptions — aucune ligne à
+// recopier :
+//
+//   - RequireTag1 est à DÉSARMER : le tag de 2 bits est la génération du handle, et les objets
+//     du monde en emploient les quatre valeurs (règle établie par matchWorldObjectRecord).
+//   - MaxSpeedMPS et IsolationGapMS sont les deux filtres de post-traitement du bipède ; ils
+//     s'appliquent tels quels, et zéro les désarme pour obtenir le flux brut.
+//   - Layout à nil laisse DetectI0LayoutOf lire le découpage DANS LE FILM : les largeurs d'axe
+//     sont une constante de CARTE, jamais d'archétype ; la cuisson, elle, impose celles du
+//     catalogue par le FilmContext (cf. build_from_film.go).
+//
+// Ce qui ne bouge pas : l'en-tête, le masque, l'exigence d'un i0 absolu de la région attendue,
+// et bipedMinMaskCnt — le masque nominal d'un véhicule porte cinq composants (i0/i1/i2/i3/i25),
+// donc le minimum de deux est franchi sans réglage.
+func ScanBipedPositionsForBand(film *filmsource.Film, band SlotBand, opt ScanFilmOptions) (
+	[]BipedPosition, error) {
+	chunks, err := bipedScanChunks(film, opt)
+	if err != nil {
+		return nil, err
+	}
+	if band.Count() == 0 {
+		// Une bande vide n est pas un film illisible : l appelant a releve un archetype absent.
+		return nil, errors.New("bande de slots vide")
+	}
+	lay, err := bipedI0Layout(film, opt)
+	if err != nil {
+		return nil, err
+	}
+	out, read := scanBipedChunks(film, chunks, band, lay, opt)
+	if read == 0 {
+		return nil, ErrNoReadableFilmChunk
+	}
+	out = DropIsolated(out, opt.IsolationGapMS)
+	if opt.WorldRange == nil {
+		return out, nil // sans coordonnées monde, un seuil en m/s n'a aucun sens
+	}
+	return DropTeleportsExcept(out, opt.MaxSpeedMPS, opt.TeleportExemptions), nil
+}
+
+// bipedScanChunks refuse les options qui interdisent toute émission de coordonnée, puis rend la
+// liste des chunks à balayer. Les DEUX entrées y passent : c'est ce qui leur garantit la même
+// erreur, dans le même ordre, sur des options incomplètes ou un film sans chunk.
+func bipedScanChunks(film *filmsource.Film, opt ScanFilmOptions) ([]int, error) {
 	if opt.WorldRange == nil && !opt.QuantaOnly {
 		return nil, fmt.Errorf("%w : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", ErrUnknownMapBounds)
 	}
@@ -192,20 +294,25 @@ func ScanBipedPositions(film *filmsource.Film, opt ScanFilmOptions) ([]BipedPosi
 	if len(chunks) == 0 {
 		return nil, ErrNoFilmChunk
 	}
-	slots := bipedSlotBand(film, chunks)
-	if slots.Count() == 0 {
-		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
-	}
-	var lay I0Layout
+	return chunks, nil
+}
+
+// bipedI0Layout rend le découpage d'i0 : celui que l'appelant force, sinon celui lu dans le film.
+func bipedI0Layout(film *filmsource.Film, opt ScanFilmOptions) (I0Layout, error) {
 	if opt.Layout != nil {
-		lay = *opt.Layout
-	} else {
-		detected, _, err := DetectI0LayoutOf(film)
-		if err != nil {
-			return nil, fmt.Errorf("découpage i0 illisible : %w", err)
-		}
-		lay = detected
+		return *opt.Layout, nil
 	}
+	lay, _, err := DetectI0LayoutOf(film)
+	if err != nil {
+		return I0Layout{}, fmt.Errorf("découpage i0 illisible : %w", err)
+	}
+	return lay, nil
+}
+
+// scanBipedChunks déroule le balayage sur les chunks demandés et rend les positions ainsi que
+// le nombre de chunks effectivement LUS — un film partiel est licite, un film illisible non.
+func scanBipedChunks(film *filmsource.Film, chunks []int, band SlotBand, lay I0Layout,
+	opt ScanFilmOptions) ([]BipedPosition, int) {
 	var out []BipedPosition
 	read := 0
 	for _, c := range chunks {
@@ -218,20 +325,13 @@ func ScanBipedPositions(film *filmsource.Film, opt ScanFilmOptions) ([]BipedPosi
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
-			for _, r := range ScanBipedRecords(pk.Payload(data), slots, lay, opt) {
+			for _, r := range ScanBipedRecords(pk.Payload(data), band, lay, opt) {
 				r.Chunk, r.PacketIndex, r.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, r)
 			}
 		}
 	}
-	if read == 0 {
-		return nil, ErrNoReadableFilmChunk
-	}
-	out = DropIsolated(out, opt.IsolationGapMS)
-	if opt.WorldRange == nil {
-		return out, nil // sans coordonnées monde, un seuil en m/s n'a aucun sens
-	}
-	return DropTeleportsExcept(out, opt.MaxSpeedMPS, opt.TeleportExemptions), nil
+	return out, read
 }
 
 // bipedSlotBand construit l'ensemble des slots biped plausibles : union des ti=35 des
@@ -296,6 +396,12 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilm
 	// UN SEUL lecteur de bits pour tout le payload : `scanRecordDirs` le repositionne par
 	// `SetBitPos` a chaque composant de vitalite, la ou il en allouait deux PAR RECORD.
 	br := NewBitReader(payload)
+	// LA GRAMMAIRE D'ORIENTATION EST RESOLUE UNE FOIS PAR PAYLOAD, hors de la boucle : elle ne
+	// depend que des options (l'archetype decide d'i2 ET d'i3 a la fois), jamais du record.
+	g := dirsGrammar{}
+	if opt.DynPrecOrientation {
+		g = dynPrecOrientationGrammar()
+	}
 	for p := 0; p+minRecord <= total; {
 		i0, slot, idx, ok := matchBipedHeader(payload, p, total, slots, opt.RequireTag1, lay)
 		if !ok {
@@ -318,7 +424,7 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilm
 			rec.Z = DequantBipedAxis(q[2], 2, lay, *opt.WorldRange)
 		}
 		if opt.CaptureDirs {
-			rec.componentDirs, rec.componentVitals = scanRecordDirs(br, i0+i0Bits, total, idx)
+			rec.componentDirs, rec.componentVitals = scanRecordDirs(br, i0+i0Bits, total, idx, g)
 			rec.MaskBits, rec.MaskOver = maskBitsOf(idx)
 			if recordMaskHook != nil {
 				recordMaskHook(idx, payload, i0+i0Bits)

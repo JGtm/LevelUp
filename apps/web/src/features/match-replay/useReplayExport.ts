@@ -69,6 +69,7 @@ import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import { exportRenderScale, exportScaleFor } from './useReplayView'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplaySoundEvent } from './replaySoundVariants'
+import type { EnginePlan } from './vehicleEngineSound'
 import { readVictory } from './victoryLogic'
 
 /** Cadence de publication de la progression, en images encodées. */
@@ -102,6 +103,8 @@ export interface ReplayExportOptions {
     distancePercent: number
     /** Quels stems sont de la voix, lesquels de la musique (cf. `useReplaySound.exportTrack`). */
     families: { voice: readonly string[]; music: readonly string[] }
+    /** Le plan MOTEUR des véhicules — états continus, mixés par `vehicleEngineMix.ts`. */
+    engines: readonly EnginePlan[]
   }
   /** Le volume réglé dans la page. Le mixage le suit, même haut-parleurs coupés (décision D6). */
   soundVolume?: number
@@ -503,7 +506,8 @@ async function mixExportAudio(
   // LA PISTE SE LIT ICI, au lancement : elle porte des reglages d'instance qui vivent dans des
   // refs, et les lire au rendu rendrait des valeurs arbitraires.
   const track = o.soundTrack?.()
-  if (!track || track.timeline.length === 0) return null
+  // Une piste sans événement mais avec un MOTEUR de véhicule dans la plage se mixe quand même.
+  if (!track || (track.timeline.length === 0 && track.engines.length === 0)) return null
   const startMs = frameToMs(bounds.startFrame, o.doc)
   return mixReplayAudio(
     track.timeline,
@@ -516,6 +520,7 @@ async function mixExportAudio(
       // fanfare de victoire : le son affirmait un fait faux sur l'extrait.
       endMatchStems: reachesMatchEnd(o, bounds) ? track.endMatchStems : [],
       families: track.families,
+      engines: track.engines,
       volume: o.soundVolume ?? 1,
       urlOf: soundUrlOf,
     },

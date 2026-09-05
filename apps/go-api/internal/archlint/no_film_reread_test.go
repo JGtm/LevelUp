@@ -213,6 +213,21 @@ func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
 // la cuisson appelle) : l'enveloppe s'appelle desormais `EquipmentArchetypeDir`. Avant d'ajouter
 // un nom ici, verifier qu'aucune methode ne le porte
 // (`grep -rE '^func \([^)]+\) <Nom>\('`).
+// QUATRE NOMS AJOUTES A L'INTEGRATION DU CHANTIER VEHICULES (2026-09-05, union de
+// `feat/v75-vehicules-sons` et `wt/vehicule-deadstate`) : `ScanFilmBipedPositionsForBand`,
+// `ScanFilmBipedAimOnly`, `ScanFilmVehicleEvents` et `ScanFilmVehicleCreations`. Les quatre
+// balayages arrivaient en ANCIENNE forme, dont trois APPELES EN PRODUCTION par
+// `replay/build_vehicles.go` ; ils ont recu leur forme film (`ScanBipedPositionsForBand(film,
+// band, opt)`, `ScanBipedAimOnly(fc)`, `ScanVehicleEvents(fc)`, `ScanVehicleCreations(fc, wr)`),
+// et ces quatre enveloppes `dir` survivent parce que des tests les appellent
+// (`filmdec/offline_biped_test.go`, `filmdec/vehicle_creation_test.go`,
+// `filmdec/vehicules_v11_scan_test.go`, `filmdec/event_list*_test.go`,
+// `replay/vehicules_v*_test.go`). TROIS AUTRES enveloppes du chantier sont arrivees SANS AUCUN
+// APPELANT et ont ete SUPPRIMEES au lieu d'etre inscrites ici (`ScanFilmVehicleCreationsForBand`,
+// `ScanFilmKeyframeRecordSpans`, `ScanFilmVehicleOccupancy`) — regle D2 : une enveloppe sans
+// appelant se supprime. Aucune methode ne porte ces quatre noms (verifie par
+// `grep -rE '^func \([^)]+\) ScanFilm...\('` : aucune correspondance).
+//
 // TROIS NOMS AJOUTES A LA RECONCILIATION DU 2026-09-05 (merge de `feat/v75`, 65 commits) :
 // `ScanFilmAbilityImpulses`, `ScanFilmAbilityCharges` et `ScanFilmTranslocatorTeleports`. Les
 // trois balayages arrivaient de l'amont en ANCIENNE forme et etaient appeles EN PRODUCTION
@@ -233,6 +248,8 @@ var enveloppesInterditesEnProduction = []string{
 	"ScanFilmKeyframeLoadouts", "ScanFilmManagedProperties", "ScanFilmNavpointRadial",
 	"ScanFilmObjectives", "ScanFilmProjectiles", "ScanFilmTranslocatorTeleports",
 	"ScanFilmUnitEquipment",
+	"ScanFilmBipedAimOnly", "ScanFilmBipedPositionsForBand",
+	"ScanFilmVehicleCreations", "ScanFilmVehicleEvents",
 	"ScanFilmWorldObjectKeyframes", "ScanFilmWorldObjects", "ScanFilmWorldObjectsForBand",
 	"ScanFilmZoomEvents",
 	"DetectI0Layout", "EquipmentArchetypeDir", "CalibrateMPPWidths",

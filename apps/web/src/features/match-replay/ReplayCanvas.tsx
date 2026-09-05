@@ -53,6 +53,7 @@ import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
 import { useReplayGroundWeapons } from './useReplayGroundWeapons'
+import { useReplayVehicles } from './useReplayVehicles'
 import type { ReplayLocale } from './i18n'
 import type { EndMatchSoundSpec } from './endMatchSound'
 import type { ReplayFeedEntry } from './killFeedLogic'
@@ -90,8 +91,6 @@ import { CANVAS_PAD, exportRenderScale, useReplayView, type ReplayMapBackgroundL
 import { useReplayViewport } from './useReplayViewport'
 import { useReplayWheelZoom } from './useReplayWheelZoom'
 import { useReplayDrag } from './useReplayDrag'
-
-
 
 interface ReplayCanvasProps {
   doc: ReplayDocumentReady
@@ -173,7 +172,7 @@ export function ReplayCanvas({
   const {
     showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
-    showWeaponPads, showGroundWeapons, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, speed: multiplier,
+    showWeaponPads, showGroundWeapons, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, speed: multiplier,
     markerColors,
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
@@ -193,7 +192,7 @@ export function ReplayCanvas({
     return markerColors === 'player' ? getSeriesColors(doc.roster.length, SERIES_TOKENS) : null
   }, [markerColors, doc.roster.length, paletteVersion])
   // Identité PAR SLOT ET PAR IMAGE : strict pour marqueurs/vies, `OrLast` pour la frontière — cf. useSlotIdentity.
-  const { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, sideOfSlot } = useSlotIdentity({
+  const { colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, sideOfSlot } = useSlotIdentity({
     doc,
     scoreboard,
     xuidMeta,
@@ -296,6 +295,8 @@ export function ReplayCanvas({
     doc, view: canvasView, enabled: showGroundWeapons,
     ink: { fill: markInk.fill, outline: neutralInk }, redraw,
   })
+  // `showNames: true` : le calque des noms a quitte le tiroir le 2026-09-02 (toujours allume).
+  const vehicles = useReplayVehicles({ doc, view: canvasView, enabled: showVehicles, showNames: true, showAim, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, neutralInk, labelStroke, explosionInk: fxInk, reducedMotion, redraw }) // schéma 39 ; prédicat embarqué C7 ; cône du conducteur + nom ET couleur par xuid (2026-09-02) ; explosion de destruction (2026-09-03, en avance de phase).
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
   // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE suivent leur bascule, et rien
   // d'autre — plus de garde de mode par-dessus (2026-08-20).
@@ -410,6 +411,7 @@ export function ReplayCanvas({
         { colorOfSlot: colorOfSlotOrLast, neutral: floorStyle.edge, wall: wallInk, rift: riftInk },
       )
     }
+    vehicles.paint(ctx, frame, dpr)
     drawTracksLayer(ctx, doc.tracks, view, {
       colorOfSlot,
       ink: floorStyle.edge,
@@ -423,7 +425,7 @@ export function ReplayCanvas({
       showTrail,
       selfInk,
       deathInk: shotColor,
-      labelStroke,
+      labelStroke, embarkedAtSlot: vehicles.isEmbarkedAt, // PION EMBARQUÉ (C7).
     })
     // Le « ! » PAR-DESSUS le marqueur du tireur, centré dans le noyau : il se lit sur le
     // point, il se dessine donc juste après lui. Même interrupteur que l'éclair de bouche
@@ -444,10 +446,10 @@ export function ReplayCanvas({
     // « éliminations » de la carte de chaleur, qui n'est pas un effet.
     const win = { frame, hold: eventHoldFrames, frameMs: frameToMs(1, doc) }
     if (showShotFx && shotFx.length > 0) {
+      // vehicleSizeOf : origine des tirs en véhicule sur LA MÊME source de tailles que le
+      // calque véhicules (`useReplayVehicles.sizeOf`), jamais un second chargement.
       drawShotsLayer(ctx, shotFx, view, { ...win, hold: shotHoldFrames }, {
-        ink: fxInk,
-        k: dpr,
-        reducedMotion,
+        ink: fxInk, k: dpr, reducedMotion, vehicleSizeOf: vehicles.sizeOf,
       })
     }
     if (doc.grenades?.length) {
@@ -511,7 +513,7 @@ export function ReplayCanvas({
     // Le TRACÉ seul, jamais l'objet du hook : `hover` change à chaque mouvement de pointeur,
     // et le mettre ici ferait recuire `draw` (donc toute la scène) pour une infobulle.
     weaponPads,
-    groundWeapons,
+    groundWeapons, vehicles,
     shotColor,
     grenadeColor,
     eventHoldFrames,
@@ -559,7 +561,7 @@ export function ReplayCanvas({
   // dans useReplayPlayback : le canvas garde le DESSIN, le hook porte le TEMPS.
   const playback = useReplayPlayback({
     doc, playWindow, baseFps, speed: multiplier, renderWidth, frameRef, draw,
-    soundTick: sound.tick, onEnded: sound.endMatch, onTransportGesture: sound.wake,
+    soundTick: sound.tick, onEnded: sound.endMatch, onTransportGesture: sound.wake, onPlayingChange: sound.setTransportPlaying,
   })
   // LA FRISE ET SON CLAVIER (planche 2a) vivent dans useReplayTimeline — treizième extraction
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.
@@ -584,7 +586,7 @@ export function ReplayCanvas({
       flagCarries: flags.available,
       vipCrown: vipCrown.available,
       skullCarrier: skullCarrier.available,
-      bombCarrier: bombCarrier.available,
+      bombCarrier: bombCarrier.available, vehicles: vehicles.available,
     },
   })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son

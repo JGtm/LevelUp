@@ -61,6 +61,11 @@ var slotBandAllowed = map[string]string{
 	// Bande FANTÔME : un témoin d'ancrage bâti sur les slots des AUTRES archétypes. Ce n'est pas
 	// une bande d'archétype, c'est son négatif — et le témoin doit rester libre de le construire.
 	"equipment_creation_test.go": "bande FANTÔME (témoin d'ancrage, pas une bande d'archétype)",
+	// Même cas, arrivé le 2026-09-05 avec le chantier VEHICULES : `vehiclePhantomBand` bâtit le
+	// témoin d'ancrage de `ti=40` sur les slots des AUTRES archétypes. C'est le négatif d'une
+	// bande, pas une quatrième règle — et le témoin doit passer par le MÊME décodeur que la mesure,
+	// donc construire son ensemble lui-même.
+	"vehicle_creation_test.go": "bande FANTÔME ti=40 (témoin d'ancrage, pas une bande d'archétype)",
 	// Même pattern que world_object_census.go : relève seen/others puis délègue la règle à
 	// `slotBandExcluding` (deto_attribution_helpers_test.go:77) — il ne la réécrit pas. Sa marche
 	// est BORNÉE aux n premiers chunks (leçon RAM : worldObjectSlotBand balaie tout le film), ce

@@ -167,44 +167,38 @@ fichiers générés + `lib/api/types.ts` + `thought_log.md`.
 - [x] A.5 Commit du pilote : **`eb80a4f0a`** (vérifications sur pièces : 0 conflit, 0 marqueur,
   0 `ScanFilm*(filmDir` dans `build_from_film.go`, 48 lignes × 13 TSV, build/vet/tests verts).
 
-### Étape B — Véhicules (union D9) — schéma 39 — worktree `LevelUp-wt-integ-vehicules`
-- [ ] B.0 D8bis (re-mesure amont) ; `git merge --no-ff --no-commit origin/feat/v75-vehicules-sons`
-  puis, une fois résolu, `wt/vehicule-deadstate`.
-- [ ] B.1 Conflits (base à 339 commits : `build.go` → nos `build_from_film.go`/`options.go`,
-  `document.go` (bloc de version unique 39), `registry.go`, `traverse.go`, `offline_biped.go`,
-  `event_list.go`, `frame_records.go`, `keyframe_*`, `equipment_creation.go`, `unit_weaponstate.go`,
-  tests, web match-replay, `.ai`) résolus « sémantique véhicules dans notre architecture ET sur le
-  schéma 38 amont ». Fichiers générés : D11.
-- [ ] B.2 CINQ SITES DE PRODUCTION dans `build_vehicles.go`, un par case, aucun autre :
-  - [ ] B.2.a `:84` `ScanFilmWorldObjectKeyframes(dir, 40)` → `ScanWorldObjectKeyframes(film,
-    filmdec.VehicleTypeIndex)` (la forme neuve EXISTE : `filmdec/world_object_census.go:79` —
-    remplacement d'appel)
-  - [ ] B.2.b `:90` → `ScanVehicleCreationsForBand(film, wr, band)` (+ enveloppe `(dir)` hors prod)
-  - [ ] B.2.c `:96` → `ScanBipedPositionsForBand(film, band, opt)` (+ enveloppe `(dir)` hors prod ;
-    n'existe pas encore sur cuisson-perf)
-  - [ ] B.2.d `:125` → `ScanBipedAimOnly(film)` (+ enveloppe `(dir)` hors prod)
-  - [ ] B.2.e `:139` → `ScanVehicleEvents(film)` (+ enveloppe `(dir)` hors prod)
-  - [ ] B.2.f `ScanKeyframeRecordSpans`, `ScanVehicleCreations`, `ScanVehicleOccupancy` : formes
-    neuves + enveloppes `(dir)`, appelants NON production uniquement.
-  - [ ] B.2.g `decodeFilmVehicleScan(filmDir, ...)` → `decodeVehicleScan(film, fc, ...)` : UN seul
-    appel dans `BuildFromFilm`, UNE seule étape observée `vehicles` ; `attachVehicles`,
-    `attachVehicleShots`, `buildShots` restent dans `BuildFromPositions` (pas d'étape : régime de
-    `bots`/`successions`, couverts par `artifact`).
-  - [ ] B.2.h ENVELOPPES OBLIGATOIRES (appelants mesurés dans les tests v13 de
-    `wt/vehicule-deadstate`) : `ReadFilmChunk`, `CountFilmChunks`, `ScanFilmBipedPositions`,
-    `ScanFilmBipedPositionsForBand`. Toute enveloppe sans appelant après merge se supprime.
-- [ ] B.3 `SchemaVersion = 39` (une fois, commentée : véhicules sur le 38, décision D3) ; document :
-  champs véhicules ; D11 (regénération, gates OpenAPI).
-- [ ] B.4 Gates Go (comme A.3, `GOCACHE` propre) + D12 (web complet) + `go test ./internal/api/ -run
-  TestOpenAPIYAMLIsUpToDate`.
-- [ ] B.5 Harnais (D4, diff PAR NOM). ÉCARTS ATTENDUS SUR LA LISTE RÉELLE DES ÉTAPES : une étape
-  NEUVE `vehicles` (seule greffe dans `BuildFromFilm`) ; `artifact` bouge sur 13/13 (numéro de
-  schéma) et davantage sur les films à véhicule ; AUCUNE autre étape ne bouge. `shots` et
-  `coverage` NE SONT PAS des étapes observées — ne pas leur en créer. Gate de lignes : **49
-  partout**. Témoin obligatoire : un BTB du corpus (`084a804d`). Corrélation : les films dont
-  `vehicles` est non vide sont exactement ceux dont l'artefact grossit au-delà du plancher.
-- [ ] B.6 Commit de l'agent dans `wt/integ-vehicules` ; puis fusion D10 par le pilote dans
-  `wt/cuisson-perf`.
+### Étape B — Véhicules (union D9) — schéma 39
+- [x] B.0 D8bis — `git fetch origin` : **`origin/feat/v75` inchangé à `7fb4b60a1`**, ZÉRO commit
+  amont depuis l'étape A (`git log --oneline 7fb4b60a1..origin/feat/v75` rend vide). Aucune
+  mini-réconciliation. Merge lancé sur cette base.
+- [x] B.1 Merge `origin/feat/v75-vehicules-sons` (`1e3d459d1`, 28 commits, base `14a115bb1`) puis
+  ajout du second parent `wt/vehicule-deadstate` (`0b5141b8a`) — **387 fichiers, 26 conflits**,
+  résolus « sémantique véhicules dans NOTRE architecture ET sur le schéma 38 amont ». Détail
+  fichier par fichier au §6. PREUVE : `git diff --name-only --diff-filter=U` VIDE,
+  `git grep '^<<<<<<< '` VIDE.
+- [x] B.2 Les balayages en nouvelle forme, les CINQ sites de production de `build_vehicles.go`
+  compris ; trois enveloppes SANS APPELANT supprimées (N-6) ; quatre enveloppes ajoutées à la
+  liste fermée d'archlint (**43 → 47**) ; ratchet des vars de `filmdec` **116 → 118** (deux vars
+  de la branche, chacune justifiée) ; UNE étape observée `vehicles` (`BuildFromFilmSteps`
+  **34 → 35**). Tableau des migrations au §6. Gardes vertes : `./internal/archlint/` **ok**.
+- [x] B.3 `SchemaVersion = 39` (une fois, `document.go`, commentaire : les trois montées 29/30/31
+  du chantier fondues en une, posées sur le 38 — décision D3) ; `make openapi-gen` +
+  `make generate-types` + `make openapi-check` **exit 0** ; `contracttest` **ok**
+  (`wantReplayDocumentFields` 52 → 54).
+- [x] B.4 Gates — `gofmt -l .` VIDE · `go build ./...` **EXIT_BUILD=0** · `go vet ./...`
+  **EXIT_VET=0** · suites `./internal/analysis/... ./internal/replaybuild/
+  ./internal/games/halo_infinite/film/... ./internal/sync/... ./internal/archlint/
+  ./internal/api/... ./cmd/...` **EXIT_TESTS=0** (71 paquets `ok`). Web : détail au §6.
+- [x] B.5 Harnais — passe 1 SANS `-update` : 0 identique / 13 différents ; **diff PAR NOM** (la
+  comparaison est POSITIONNELLE) : `vehicles` NEUVE 13/13, `artifact` bouge 13/13, `killsource`
+  bouge **4/13** — les 4 films dont la bande `ti=40` est peuplée, et eux seuls : c'est la
+  correction déclarée du lot V9 de la branche (N-8), pas un effet de l'intégration ; AUCUNE autre
+  étape ne bouge, aucune ne disparaît. Corrélation MESURÉE : `artifact` dépasse son plancher de
+  +450 octets sur EXACTEMENT les 5 films à `vehicles` non vide. Puis `-update` (13 écrits) et
+  passe de vérification **13 identiques, 0 différent, 0 écarté, 0 échec, 0 illisible**. Gate de
+  lignes : 49 étapes sur les 13 TSV ; `minifilm.tsv` INTACT. Témoin BTB obligatoire : `084a804d`
+  (180 vies, 109 478 échantillons). Tableau complet au §5.
+- [x] B.6 Commit du pilote — un seul commit de merge à DEUX parents.
 
 ### Étape C — Usage de session (`wt/session-usage`)
 - [x] C.0 D8bis — `git fetch origin` : `origin/feat/v75` **INCHANGÉE** à `7fb4b60a1`,
@@ -392,6 +386,24 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   vert, `golangci-lint run --new-from-merge-base=origin/main` (cache nettoyé) **0 issue**.
 - N-11 la comparaison du harnais est positionnelle (§5 A) : une amélioration « diff par nom »
   de `cmd/replay-equiv` serait pérenne — hors périmètre de l'intégration, au registre.
+- N-12 **Trois entrées de balayage du chantier véhicules arrivaient SANS AUCUN APPELANT** (tests
+  compris) : `ScanFilmVehicleCreationsForBand`, `ScanFilmKeyframeRecordSpans` et
+  `ScanFilmVehicleOccupancy` — cette dernière avec sa forme film, dont elle était l'unique
+  consommateur. Elles ont été **supprimées** à l'étape B (règle D2 « une enveloppe sans appelant
+  est supprimée » + règle 0 du dépôt), et NON inscrites à la liste fermée d'archlint. Rien de la
+  MESURE n'est perdu : les moitiés pures et testées restent (`KeyframeRecordSpans`,
+  `VehicleKeyframeStates`, `FindKeyframeBlockInsertion`), et l'en-tête de chaque fichier dit ce
+  qui a été retiré et pourquoi. À signaler à l'auteur du chantier.
+- N-13 `apps/web/.../ReplayCanvas.tsx` est **exactement à son plafond** (664 lignes pour 665) après
+  le câblage véhicules. La prochaine addition devra être payée par une extraction, comme les dix-sept
+  précédentes.
+- N-14 **L'ÉCART `killsource` de l'étape B est une CORRECTION DÉCLARÉE DE LA BRANCHE, pas une
+  régression de l'intégration** : `filmdec/traverse.go` routait les deux composants
+  `-dynamic-precision-` d'orientation de `ti=38/39/40/43` vers les désérialiseurs du BIPÈDE ; le
+  lot V9 du chantier (Ghidra, validé 6/6 contre la table ECS live) les remet sur les leurs. Le
+  digest `killsource` bouge donc sur les 4 films du corpus dont la bande `ti=40` est peuplée, et
+  sur eux seuls. Chiffres et corrélation au §5. **À signaler à l'utilisateur** : le kill-feed des
+  matchs à véhicules change avec cette livraison, dans le sens de la correction.
 
 ## §5 Diffs des comptes (par étape)
 
@@ -449,7 +461,72 @@ bouge, contrairement au 2026-09-03 où `fire` avait changé. Le test passe sur l
 pics 0,10 à 0,66 Gio. Témoins : `01e1f945` **17,9 s**, `7344d24f` **21,0 s**, `696a9d7c`
 **20,5 s** — le gain du chantier est intact après le merge (cible du plan : < 100 s).
 
-### Étape B — (à remplir par l'agent : tableau par NOM d'étape, corrélation véhicules, 49 lignes)
+
+### Étape B — véhicules (union D9), schéma 39 (2026-09-05)
+
+**LE DIFF EXPLOITABLE EST CELUI PAR NOM D'ÉTAPE** (la comparaison du harnais est POSITIONNELLE, et
+`vehicles` s'insère APRÈS `pads`, donc au milieu du fichier) : copie des 13 TSV prise avant
+refigeage, comparée nom par nom aux TSV refigés. **AUCUNE étape ne disparaît**, et seuls **TROIS
+noms** bougent :
+
+| étape | films touchés | nature | cause |
+|---|---|---|---|
+| `vehicles` | **13/13** | NOUVELLE | le calque `ti=40` du chantier. Contenu VIDE (sha `f73d0cef…`, `VehicleScan{}`) sur 8 films sans aucun slot `ti=40` aux images-clés ; contenu propre sur 5 : `084a804d` (180 vies, 109 478 échantillons, 78 événements, 64 297 visées), `a349fea8`, `1c4c63c2` (67 vies), `53ce4390` (26 vies) et `60ae07c4` (4 slots recensés, **0 échantillon** — bande présente, entités muettes) |
+| `artifact` | **13/13** | CHANGE (octets) | schéma **38 → 39** + le calque véhicules. **Plancher mesuré : +450 octets**, et il tombe sur les 8 films à `vehicles` VIDE (`000d5950`, `01e1f945`, `51101d1d`, `64e8adfa`, `696a9d7c`, `7344d24f`, `9f57c612`, `d9781168`) — le coût fixe du numéro de schéma et du calque vide. `60ae07c4` fait **+452** : deux octets de plus, exactement le bloc de couverture « balayé, rien trouvé ». Les 4 films à véhicules montent de **+301 553** (`53ce4390`) à **+1 980 061** (`084a804d`) |
+| `killsource` | **4/13** | CHANGE | **ÉCART HORS DE L'ATTENDU, MESURÉ ET EXPLIQUÉ** — voir ci-dessous |
+
+**CORRÉLATION MESURÉE, PAS DÉDUITE** : `artifact` dépasse le plancher sur **EXACTEMENT** les
+5 films dont `vehicles` n'est pas vide, et sur **AUCUN** des 8 autres. 13/13, zéro exception. Le
+sha de `vehicles` est LE MÊME (`f73d0cef…`) sur les 8 films vides et DISTINCT sur les 5 autres :
+le zéro est un zéro MESURÉ (le balayage a tourné et n'a rien trouvé), pas un balayage qui n'aurait
+pas tourné.
+
+**L'ÉCART `killsource`, ET POURQUOI IL N'EST PAS UNE RÉGRESSION DE L'INTÉGRATION.** Il tombe sur
+`084a804d`, `1c4c63c2`, `53ce4390` et `a349fea8` — les **QUATRE films dont la bande `ti=40` est
+peuplée**, et sur aucun autre (`60ae07c4`, dont la bande existe mais dont les entités ne
+répliquent pas, ne bouge pas). Sa cause est une **CORRECTION DÉCLARÉE DE LA BRANCHE**, mesurée par
+elle et arrivée avec elle (`filmdec/traverse.go`, lot V9 du 2026-09-03) : les deux composants
+`-dynamic-precision-` d'orientation de `ti=38/39/40/43` étaient routés vers les désérialiseurs du
+BIPÈDE, ce qui amputait `i2` de ses bits de tête et `i3` de son gate externe. Les vrais
+désérialiseurs (`FUN_140c5f7ec` / `FUN_140d87740`) ont été résolus statiquement sous Ghidra et
+validés 6/6 contre la table ECS live (`components_dynprec_orientation.go`). Le marcheur de records
+que `killsource` emprunte (`consumeByName`) traverse donc ces deux composants autrement — et
+seulement là où des entités `ti=38/39/40/43` en émettent. Les deux autres fichiers du chemin
+`killsource` touchés par la branche (`frame_records.go`, `components_object.go`) sont **neutres au
+bit près** (plomberie de sonde et extraction d'un décodeur : vérifié sur pièces).
+
+**LES QUATRE FILMS À VÉHICULES, CHIFFRÉS** :
+
+| film | variante | vies `ti=40` | échantillons | `artifact` | `killsource` |
+|---|---|---|---|---|---|
+| `084a804d` | BTB Heavies : CTF | 180 | 109 478 | 7 275 954 → **9 256 015** (+1 980 061) | bouge |
+| `a349fea8` | BTB Heavies : Total Control | — | — | 6 897 326 → **8 709 326** (+1 812 000) | bouge |
+| `1c4c63c2` | BTB : One Flag CTF | 67 | 111 822 | 7 433 969 → **8 301 577** (+867 608) | bouge |
+| `53ce4390` | CTF : Arena (Behemoth) | 26 | 28 072 | 2 696 470 → **2 998 023** (+301 553) | bouge |
+| `60ae07c4` | Ranked : Oddball (Live Fire) | 4 recensées, **0** échantillon | 0 | 3 035 677 → **3 036 129** (+452) | IDENTIQUE |
+
+**AUCUN AUTRE DIGEST NE BOUGE** : `score`, `objectives`, `vip`, `skull`, `bomb`, `flag`, `zones`,
+`zoneRoles`, `spawnPoints`, `spawnPointsState`, `neutralDeaths`, `killRefs`, `translocations`,
+`positions`, `fire`, `loadouts`, `heldWeaponChanges`, `pickups`, `inventory`, `inventoryDeltas`,
+`abilityRanks`, `equipmentChanges`, `camoStates`, `grappleReads`, `abilityImpulses`,
+`abilityCharges`, `zoomEvents`, `placements`, `pads`, `carrierMarks`, `zoneReads`, `bombReads`,
+`grenades`, `projectiles`, `deaths`, `playerIndices`, `clockOrigin` et les six canaux `.stats` sont
+**IDENTIQUES AU BIT PRÈS** sur les 13 films. En particulier `positions` ne bouge pas : la
+correction `i2`/`i3` dyn.-préc. ne touche que le marcheur ECS de `killsource`, jamais le nuage
+bipède (qui lit `i0` AVANT `i2`).
+
+**GATE DE LIGNES : les 13 TSV portent 49 étapes, tous** (48 + `vehicles`), et `minifilm.tsv` ses 7.
+
+**MINI-BOBINE (étage CI) : AUCUN REFIGEAGE.** `TestEquivalenceMiniFilm` ne couvre que sept étapes
+(`fire`, `grenades`, `loadouts`, `inventory`, `deaths`, `playerIndices`, `projectiles`) : aucune ne
+bouge.
+
+**PASSES ET DURÉES.** Passe 1 SANS `-update` : **0 identique / 13 différents / 0 écarté / 0 échec /
+0 illisible** ; passe `-update` : 13 écrits, BILAN **13 identiques** ; passe de VÉRIFICATION sans
+`-update` : **13 identiques, 0 différent, 0 écarté, 0 échec, 0 illisible** (exit 0). Témoins de la
+passe de vérification : `01e1f945` **18,2 s**, `7344d24f` **22,2 s**, `696a9d7c` **22,9 s** —
+cible < 100 s tenue (le gain du chantier survit au merge). Pics 0,08 à 0,67 Gio ; le plus long est
+`084a804d` à 2 min 35,6 s, le BTB à 180 véhicules.
 
 ### Étape C — usage de session `wt/session-usage` `c4f7d5417` (2026-09-05)
 
@@ -691,6 +768,88 @@ lot 4b, régime connu).
   résolution ; (c) le résumé n'est produit QUE pour les artefacts cuits DANS LE CYCLE — le parc
   déjà sur disque relève de `levelup backfill-usage-summary`, qui n'a PAS été lancé ici (aucune
   base ouverte de toute l'étape).
+- 2026-09-05 — **ÉTAPE B exécutée (B.0 à B.5), un seul commit de merge** (union D9 : deux parents,
+  `origin/feat/v75-vehicules-sons` `1e3d459d1` et `wt/vehicule-deadstate` `0b5141b8a`, sur
+  `eb80a4f0a`). D8bis : `origin/feat/v75` MESURÉ inchangé à `7fb4b60a1` — zéro commit amont.
+  387 fichiers, 26 conflits.
+
+  **LES 26 CONFLITS ET LEUR RÉSOLUTION** (règle : la SÉMANTIQUE véhicules est préservée
+  intégralement, dans NOTRE architecture, et POSÉE SUR LE 38 amont) :
+
+  | conflit | ce que la branche voulait | résolution |
+  |---|---|---|
+  | `replay/build.go` (2 blocs) | ajouter `Vehicles VehicleScan` à `Options`, un appel de décodage à `BuildFromFilm`, et — dans `BuildFromPositions` — `buildShots` à 3 retours, `attachVehicles`, `attachVehicleShots`, le journal sur `doc.Coverage.Shots` | Le premier bloc EST celui que le lot 1 a sorti de `build.go`. Diff bloc-à-bloc base `14a115bb1` contre la branche : elle n'y touche QUE ces deux choses. Bloc supprimé ; le champ REJOUÉ dans `options.go` au rang de `Pads`, l'appel dans `build_from_film.go` juste après `pads`. Les hunks de `BuildFromPositions` avaient fusionné SEULS (vérifié : `shotOrphans`, `attachVehicles`, `attachVehicleShots`, `shotsPub` en place) ; le second conflit est l'UNION du bloc « impulsions + charges » (à nous) et de la ligne `shotsPub := doc.Coverage.Shots` (à elle) |
+  | `replay/document.go` | trois blocs de doc de version (29 véhicules, 30 tirs embarqués, 31 visée d'occupant) et `SchemaVersion = 31` | Notre bloc 29→38 est conservé INTÉGRALEMENT ; les trois blocs de la branche FONDENT EN UN, « CE QUE LA VERSION 39 PORTE… EN TROIS TEMPS », avec les renvois de numéro corrigés (« un artefact 38 doit se lire à re-cuire ») ; `const SchemaVersion = 39`. Les champs `Vehicles`, `VehicleLabels` et `Shot.Vehicle` avaient fusionné seuls |
+  | `replay/structure_test.go` | les trois mêmes blocs + `SchemaVersion != 31` | Même geste : nos blocs jusqu'à 38, puis les trois de la branche renumérotés `v39 (1)/(2)/(3)` sous une introduction qui dit la fusion, puis `!= 39` |
+  | `contracttest/replay_contract_test.go` | `wantReplayDocumentFields` 44 → 46 (`vehicles`, `vehicleLabels`) | Notre 52 + les deux champs = **54**, avec l'entrée de chronique « 52 → 54 » et « Les vingt et une fois » |
+  | `replay/testdata/assembly_000d5950.golden` | `schema 31` | `schema 39` |
+  | `filmdec/offline_biped.go` (4 hunks) | scinder `ScanFilmBipedPositions` en `bipedScanChunks` / `bipedI0Layout` / `scanBipedChunks` pour ouvrir `ScanFilmBipedPositionsForBand(dir, band, opt)`, et ajouter l'option `DynPrecOrientation` | Structure de la branche reprise TELLE QUELLE, en forme FILM : `ScanBipedPositions(film, opt)` délègue à `ScanBipedPositionsForBand(film, band, opt)` ; les trois helpers prennent `*filmsource.Film` ; la bande est une `SlotBand` dense (le type du lot 2) et non une map. `DynPrecOrientation` conservé mot pour mot, sa grammaire RÉSOLUE UNE FOIS PAR PAYLOAD (hors de la boucle de records) au lieu d'une fois par record |
+  | `filmdec/offline_aim.go` | `scanRecordDirs(pay, …, g dirsGrammar)` + deux lecteurs dyn.-préc. qui allouent chacun leur `BitReader` | Corps de la branche pris INTÉGRALEMENT ; la tête garde NOTRE lecteur partagé : `scanRecordDirs(br, …, g)`, et `readForwardComponentDynPrec` / `readAngularVelocityComponentDynPrec` reçoivent `br` au lieu d'allouer — deux allocations de moins par record, exactement la raison d'être du lecteur partagé |
+  | `filmdec/offline_aim_test.go` | deux appels à `scanRecordDirs` | Signature à cinq paramètres, lecteur partagé |
+  | `.ai/thought_log.md` (2 blocs) | deux blocs insérés aux mêmes ancres | UNION : nos entrées en tête, puis celles de la branche, ligne de séparation rétablie ; l'entrée V13 du dead-state (second parent) insérée en tête de la section du chantier |
+  | `.ai/V7.5/REGISTRE_REPORTS.md` | une ligne de report (cap i2 réfuté) | UNION du tableau |
+  | `.gitignore` | un commentaire sur `.gocache-*/` | UNION (le motif était déjà chez nous, le commentaire est repris) |
+  | `api/openapi.yaml`, `web/lib/api/generated.ts` | contrat régénéré au schéma 31 | D11 : `--ours` puis **régénération** (`make openapi-gen && make generate-types && make openapi-check`), JAMAIS à la main |
+  | 13 fichiers `web/features/match-replay/` | le calque véhicules dans le tiroir, le contrat, la normalisation, les marqueurs, le cône | UNION partout. Trois résolutions non triviales : (a) `ReplaySettingsLayers.tsx` — la branche pose une liste PLATE, nous des `LayerGroup` ; la bascule `vehicles` entre dans le groupe TERRAIN (l'intention écrite de la branche : « meubles du terrain, pas l'enjeu du mode ») ; (b) `replayAimCone.ts` — la branche extrait `drawAimSector` pour que le calque véhicules réutilise le cône, nous avions ajouté la LUNETTE (ouverture variable + gain d'opacité) ; le secteur extrait reçoit deux options de plus, `halfAngle` et `alphaBoost`, et le cône du pion les lui passe : une seule géométrie, les deux mécaniques intactes ; (c) `ReplayCanvas.tsx` — `showNames` n'existe plus (le calque des noms a quitté le tiroir le 02/09, toujours allumé) : le calque véhicules reçoit `showNames: true` |
+
+  **DEUX RUPTURES DE COMPILATION LAISSÉES PAR L'AUTO-MERGE**, toutes deux dans des tests de la
+  branche appelant des symboles disparus au lot 1 — intention rejouée, jamais contournée :
+  `filmdec/event_list_test.go` redéclarait `itoa` (le nôtre vit dans
+  `lot1_visee_calib_research_test.go` : le doublon est retiré, la mesure est identique) ; et
+  `killsource/vehicules_v10_deadstate_test.go` appelait `DirChunks(dir)`, supprimé au lot 1 —
+  remplacé par `filmsource.LoadDir(dir, nil)`, la source que `loadFilm` prend désormais.
+
+  **LES BALAYAGES MIGRÉS (D2)**, avec l'enveloppe conservée et son unique raison d'être :
+
+  | ancien (site) | nouveau | enveloppe `(dir)` gardée pour |
+  |---|---|---|
+  | `ScanFilmWorldObjectKeyframes(dir, 40)` — `build_vehicles.go:84` | `ScanWorldObjectKeyframes(film, VehicleTypeIndex)` — existait déjà (`world_object_census.go:79`) | déjà à la liste depuis le lot 1 |
+  | `ScanFilmVehicleCreationsForBand(dir, wr, band)` — `build_vehicles.go:90` | `ScanVehicleCreationsForBand(fc, wr, band)` — `vehicle_creation.go` | AUCUNE : l'enveloppe n'avait pas d'appelant, elle est SUPPRIMÉE (N-6) |
+  | `ScanFilmBipedPositionsForBand(dir, band, opt)` — `build_vehicles.go:96` | `ScanBipedPositionsForBand(film, band, opt)` — `offline_biped.go` | `filmdec/offline_biped_test.go`, `vehicle_creation_test.go`, huit instruments `vehicules_v*` de `filmdec` et sept de `replay` |
+  | `ScanFilmBipedAimOnly(dir)` — `build_vehicles.go:125` | `ScanBipedAimOnly(fc)` — `offline_aim_only.go` (bande bipède du CONTEXTE) | `filmdec/vehicules_v11_scan_test.go` |
+  | `ScanFilmVehicleEvents(dir)` — `build_vehicles.go:139` | `ScanVehicleEvents(fc)` — `event_list.go` (bande bipède du CONTEXTE) | `filmdec/event_list_test.go`, `event_list_board_test.go`, `replay/vehicules_v2b_occupant_test.go`, `vehicules_v3_destruction_test.go` |
+  | `ScanFilmVehicleCreations(dir, wr)` | `ScanVehicleCreations(fc, wr)` | `replay/vehicules_v2b_cooldown_test.go` |
+  | `ScanFilmKeyframeRecordSpans(dir)` | `ScanKeyframeRecordSpans(film)`, puis SUPPRIMÉ (N-6) | — |
+  | `ScanFilmVehicleOccupancy(dir)` | `ScanVehicleOccupancy(film)`, puis SUPPRIMÉ (N-6) | — |
+
+  `decodeFilmVehicleScan` ne touche plus le disque : elle prend le `*FilmContext` et fait dessus
+  ses CINQ lectures (recensement, créations, nuage, événements, visées) ; le découpage d'i0 du
+  nuage `ti=40` vient désormais du CONTEXTE (`ImposedLayout`) et non de l'auto-détection — la même
+  règle du catalogue que les positions bipèdes du même film (lot 3). Le nom garde le préfixe
+  `decodeFilm*` de ses cinq sœurs (`decodeFilmPadScans`, `decodeFilmPlacements`, …), qui est aussi
+  ce que lit `observe_test.go`.
+
+  **UNE FACTORISATION, PARCE QUE C'ÉTAIT LA TROISIÈME COPIE** : la boucle de marche des records de
+  création existait pour l'équipement et pour l'arme au sol ; le véhicule en aurait été la
+  troisième. `runCreationWalk(fc, w, &st)` est devenu le point de passage UNIQUE des trois, chacun
+  gardant ses refus en propre (règle n°6 du dépôt).
+
+  **GARDES TOUCHÉES** :
+  - `archlint/no_film_reread_test.go` — `enveloppesInterditesEnProduction` **43 → 47** :
+    `ScanFilmBipedPositionsForBand`, `ScanFilmBipedAimOnly`, `ScanFilmVehicleEvents`,
+    `ScanFilmVehicleCreations`, avec la justification datée et la vérification d'homonymie exigée
+    par le fichier (aucune méthode ne porte ces noms — vérifié). Les TROIS enveloppes sans appelant
+    ne sont PAS entrées à la liste : elles ont été supprimées (N-6).
+  - `archlint/filmdec_package_vars_test.go` — ratchet **116 → 118**, avec les deux variables
+    nommées et justifiées : `unitRefHook` (une SONDE, nil en production, le patron déjà compté du
+    paquet) et `vehicleMediaFrameBits` (une TABLE DE GRAMMAIRE mesurée). L'intégration n'en ajoute
+    AUCUNE de son fait — la seule erreur sentinelle qu'elle allait poser est restée locale.
+  - `archlint/no_recomputed_film_context_test.go` — l'entrée
+    `offline_biped.go/ScanBipedPositions -> DetectI0LayoutOf` devient
+    `offline_biped.go/bipedI0Layout -> DetectI0LayoutOf` : MÊME appel, MÊME valeur, le site a
+    seulement été extrait pour que les deux entrées le partagent. Aucune allowlist élargie.
+  - `archlint/no_rewritten_slot_band_test.go` — une entrée d'allowlist de plus,
+    `vehicle_creation_test.go`, pour sa bande FANTÔME : c'est le NÉGATIF d'une bande (le témoin
+    d'ancrage), pas une quatrième règle — exactement le cas déjà admis pour
+    `equipment_creation_test.go`.
+  - `replay/observe.go` — `BuildFromFilmSteps` **34 → 35** : `vehicles` entre APRÈS `pads`, à
+    l'endroit exact où le balayage tourne. **Pas d'étape pour les tirs en véhicule ni pour la
+    couverture** : ils vivent dans `BuildFromPositions`, que l'observateur ne couvre pas, et le
+    digest `artifact` les porte.
+  - `web/placementFamily.guard.test.ts` — plafond de `ReplayCanvas.tsx` **INCHANGÉ à 665** ; le
+    fichier en fait 664 après le câblage véhicules (N-7).
+  - `no_unbounded_film_loop_test.go`, `filmsource_leaf_test.go`, `no_rewritten_slot_band_test.go`
+    (règle 2), `no_art_patterns_test.go` : verts sans modification.
 ## §7 Contrat d'exécution (rappel opposable)
 Statuts : `[x]` fait · `[~]` couvert ailleurs (avec la référence) · `[!]` non traité (avec la
 justification écrite). AUCUNE case vide à la clôture d'une étape. Ordre strict : l'étape N+1 ne

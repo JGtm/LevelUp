@@ -5476,6 +5476,7 @@ export interface components {
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
             t0Film?: components["schemas"]["T0FilmCoverage"];
             translocations?: components["schemas"]["TranslocationCoverage"];
+            vehicles?: components["schemas"]["VehicleCoverage"];
             verdict?: {
                 [key: string]: string;
             };
@@ -9812,6 +9813,10 @@ export interface components {
             titleSlug: string;
             tracks: components["schemas"]["Track"][] | null;
             translocations?: components["schemas"]["Translocation"][] | null;
+            vehicleLabels?: {
+                [key: string]: components["schemas"]["VehicleLabel"];
+            };
+            vehicles?: components["schemas"]["VehicleTrack"][] | null;
             vipCrown?: components["schemas"]["VipPeriod"][] | null;
             weaponChanges?: components["schemas"]["WeaponChange"][] | null;
             weaponLabels?: {
@@ -10522,6 +10527,8 @@ export interface components {
             slot: number;
             /** Format: int64 */
             t: number;
+            /** Format: int32 */
+            v?: number;
             w?: string;
             /** Format: float */
             x: number;
@@ -11879,6 +11886,131 @@ export interface components {
             y: number;
             /** Format: double */
             z: number;
+        };
+        VehicleAim: {
+            /** Format: float */
+            h?: number;
+            /** Format: float */
+            p?: number;
+            /** Format: int64 */
+            t: number;
+        };
+        VehicleCoverage: {
+            /** Format: int64 */
+            aimReads: number;
+            /** Format: int64 */
+            aimRideFrames: number;
+            /** Format: int64 */
+            aimSamples: number;
+            /** Format: int64 */
+            ambiguous: number;
+            /** Format: int64 */
+            familyResolved: number;
+            /** Format: int64 */
+            familyUnknown: number;
+            /** Format: int64 */
+            lives: number;
+            /** Format: int64 */
+            merged: number;
+            /** Format: int64 */
+            noPosition: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            rides: number;
+            /** Format: int64 */
+            ridesFromEvent: number;
+            /** Format: int64 */
+            ridesFromGap: number;
+            /** Format: int64 */
+            ridesMixed: number;
+            /** Format: int64 */
+            ridesNamed: number;
+            /** Format: int64 */
+            ridesWithAim: number;
+            /** Format: int64 */
+            ridesWithSeat: number;
+            /** Format: int64 */
+            samples: number;
+            scanned: boolean;
+            /** Format: int64 */
+            shots: number;
+            /** Format: int64 */
+            shotsAmbiguous: number;
+            /** Format: int64 */
+            shotsNoRide: number;
+            /** Format: int64 */
+            shotsUnplaced: number;
+            /** Format: int64 */
+            shotsVehicleWeapon: number;
+            unknownChassis?: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            vehiclesRidden: number;
+            /** Format: int64 */
+            withChassis: number;
+            /** Format: int64 */
+            withHeading: number;
+            /** Format: int64 */
+            withSpawn: number;
+        };
+        VehicleLabel: {
+            img?: string;
+            tinted?: boolean;
+        };
+        VehicleRide: {
+            aim?: components["schemas"]["VehicleAim"][] | null;
+            /** Format: int64 */
+            seat?: number;
+            /** Format: int32 */
+            slot: number;
+            src: string;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            xuid?: string;
+        };
+        VehicleSample: {
+            /** Format: float */
+            h?: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        VehicleSpawn: {
+            /** Format: float */
+            h?: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        VehicleTrack: {
+            chassis?: string;
+            end: string;
+            family?: string;
+            /** Format: int32 */
+            gen: number;
+            rides?: components["schemas"]["VehicleRide"][] | null;
+            samples?: components["schemas"]["VehicleSample"][] | null;
+            /** Format: int32 */
+            slot: number;
+            spawn?: components["schemas"]["VehicleSpawn"];
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: int64 */
+            t1max: number;
         };
         VipCrownCoverage: {
             /** Format: int64 */

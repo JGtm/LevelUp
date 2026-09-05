@@ -1,0 +1,182 @@
+[
+ {
+  "file": "banshee.png",
+  "famille": "banshee",
+  "libelle": "Banshee",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "ECHELLES_SPRITES_2026-09-02.md",
+  "note": "Rendu V4 (-cote=256, cadrage auto) mesure a 10,25-10,26 mm/px (chassis mode 0xb07d7500, dX=2,503 m / dY=2,347 m vs opaque 244x229 px) : dans la tolerance +-3% (+2,6%) par coincidence de taille, NON retouche. ORIENTATION corrigee le 2026-09-02 (verdict utilisateur, haut = avant) : rotation 180 deg - la convention V4 \"+X = arriere\" etait fausse, +X = AVANT pour tous les vehicules."
+ },
+ {
+  "file": "chopper.png",
+  "famille": "chopper",
+  "libelle": "Chopper",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "ECHELLES_SPRITES_2026-09-02.md",
+  "note": "CORRIGE : rendu V4 (-cote=256) mesure a ~9,3 mm/px (-7% hors tolerance). Re-rendu a -cellmm=10 fixe (vehi 0x002ba902 -> mode 0xf22c06af), verifie 10,01 mm/px (opaque 226x163 px vs dX=2,265 m/dY=1,628 m). Sens +X etabli sur la geometrie (grande roue avant a cX positif, pieces symetriques etroites = garde-boue/lames, cf. secs) : +X = AVANT ; pivote 180 deg (roue en haut)."
+ },
+ {
+  "file": "falcon.png",
+  "famille": "falcon",
+  "libelle": "Falcon",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "ECHELLES_SPRITES_2026-09-02.md",
+  "note": "CORRIGE : rendu V4 (-cote=256) mesure a ~17,1 mm/px (+71% hors tolerance). Re-rendu a -cellmm=10 fixe (vehi 0x0000254b -> mode 0xa0ca8a6f), verifie 10,00 mm/px (opaque 377x418 px vs dX=3,771 m/dY=4,180 m). Sens +X etabli sur la geometrie (nez/boom avant fin et bas a cX positif ; empennage/derives symetriques plus massifs a cX negatif, cf. profil + secs) : +X = AVANT ; pivote 180 deg (nez en haut)."
+ },
+ {
+  "file": "ghost.png",
+  "famille": "ghost",
+  "libelle": "Ghost",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "ECHELLES_SPRITES_2026-09-02.md",
+  "note": "CORRIGE : rendu V4 (-cote=256) mesure a ~6,43 mm/px (-36% hors tolerance). Re-rendu a -cellmm=10 fixe (vehi 0x0000d3dc -> mode 0x34b6148f), verifie 9,99 mm/px (opaque 157x128 px vs dX=1,569 m/dY=1,279 m). Sens +X etabli sur la geometrie (paire de canons jumeles tres etroits dY=0.08-0.12 a cX positif proche du bord ; capot moteur arrondi et plus large a cX negatif, cf. secs) : +X = AVANT (canons) ; pivote 180 deg (canons en haut)."
+ },
+ {
+  "file": "gungoose.png",
+  "famille": "gungoose",
+  "libelle": "Gungoose",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "CONTACT_ARMES_GUNGOOSE_2026-09-02.md",
+  "note": "Candidat n.11 valide par l'utilisateur le 2026-09-02 (commit 230b615b1) : canons jumeles (objet scen 0x004164ea) poses par detection de zone avant, 10 mm/px, nez en haut. La note 6 mm/px du rapport decrivait l'ANCIEN fichier, remplace. Reconfirme mesure le 2026-09-02 (ECHELLES_SPRITES_2026-09-02.md) : opaque 116x66 px vs chassis Mongoose dX=1,155 m/dY=0,673 m => 9,96 mm/px, inchange."
+ },
+ {
+  "file": "mongoose.png",
+  "famille": "mongoose",
+  "libelle": "Mongoose",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "CONTACT_ARMES_GUNGOOSE_2026-09-02.md",
+  "note": "Echelle confirmee a 10,04 mm/px (CONTACT_ARMES_GUNGOOSE_2026-09-02.md). Pivote NEZ EN HAUT le 2026-09-02 (commit 230b615b1, meme canevas que le Gungoose) - la mention nez en bas du rapport decrivait l'ancien fichier. Reconfirme mesure le 2026-09-02 (ECHELLES_SPRITES_2026-09-02.md) : opaque 116x66 px vs dX=1,155 m/dY=0,673 m => 9,96 mm/px, inchange."
+ },
+ {
+  "file": "pelican.png",
+  "famille": "pelican",
+  "libelle": "Pelican",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "ECHELLES_SPRITES_2026-09-02.md",
+  "note": "CORRIGE : rendu V4 (-cote=256) mesure a ~45,5 mm/px (+354% hors tolerance, le vehicule le plus long noyait le cadrage auto-256px commun). Re-rendu a -cellmm=10 fixe (vehi 0x000026f0 -> mode 0x0bb06a30), verifie 10,00 mm/px (opaque 1109x829 px vs dX=11,090 m/dY=8,288 m). Sens +X etabli sur la geometrie (piece nez/train avant fine et basse cX~+3 ; paire de derives/nacelles arriere large et haute cX~-5,8, cf. secs) : +X = AVANT (nez) ; pivote 180 deg (nez en haut)."
+ },
+ {
+  "file": "phantom.png",
+  "famille": "phantom",
+  "libelle": "Phantom",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "ignore-non-jouable",
+  "source_report": "ECHELLES_SPRITES_2026-09-02.md",
+  "note": "Regenere par ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md (ordre-peintre, chassis + phantom_g, cadre=7/cellmm=10 fixe) - source_report V4 obsolete pour ce fichier. Reconfirme mesure le 2026-09-02 : opaque 1072x734 px vs chassis dX=10,725 m/dY=7,347 m => 10,00-10,01 mm/px, inchange. Caveat deja documente (V4 §10.4) : modele en unites compactes, pas a l'echelle lore. phantom_g (tourelle) minuscule/peu visible, non retouche (hors perimetre). ORIENTATION corrigee le 2026-09-02 (verdict utilisateur, haut = avant) : rotation 180 deg - la convention V4 \"+X = arriere\" etait fausse, +X = AVANT pour tous les vehicules."
+ },
+ {
+  "file": "razorback.png",
+  "famille": "razorback",
+  "libelle": "Razorback",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "WARTHOG_FINAL_V2_2026-09-02.md",
+  "note": "Reconfirme mesure le 2026-09-02 (ECHELLES_SPRITES_2026-09-02.md) : rendu -cellmm=10 fixe, opaque 211x101 px, chassis ~2,11 m, inchange."
+ },
+ {
+  "file": "rockethog.png",
+  "famille": "rockethog",
+  "libelle": "Rockethog",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "WARTHOG_FINAL_V2_2026-09-02.md",
+  "note": "Reconfirme mesure le 2026-09-02 (ECHELLES_SPRITES_2026-09-02.md) : rendu -cellmm=10 fixe, opaque 210x100 px, chassis 2,10 m, inchange."
+ },
+ {
+  "file": "scorpion.png",
+  "famille": "scorpion",
+  "libelle": "Scorpion",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md",
+  "note": "Regenere par ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md (ordre-peintre, chassis + collier + canon, cadre=7/cellmm=10 fixe) - source_report V4 obsolete pour ce fichier. Reconfirme mesure le 2026-09-02 (ECHELLES_SPRITES_2026-09-02.md) : opaque 380x252 px vs chassis dY=2,511 m => 9,96 mm/px, inchange. Composition armee (canon+collier) verifiee a l'oeil. ORIENTATION corrigee le 2026-09-02 (verdict utilisateur, haut = avant) : rotation 180 deg - la convention V4 \"+X = arriere\" etait fausse, +X = AVANT pour tous les vehicules."
+ },
+ {
+  "file": "shade.png",
+  "famille": "shade",
+  "libelle": "Shade",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "ECHELLES_SPRITES_2026-09-02.md",
+  "note": "CORRIGE : rendu V4 (-cote=256) mesure a ~5,74 mm/px (-43% hors tolerance). Re-rendu a -cellmm=10 fixe (vehi 0x000df0c4 -> mode 0xfa88c317), verifie 10,01 mm/px (opaque 140x101 px vs dX=1,401 m/dY=1,008 m). Sens +X etabli sur la geometrie (paire de canons etroits dY~0,19 a cX~+0,45..+0,54 pres du bord +X ; bouclier/poste de tir a cX negatif, cf. secs + profil) : +X = AVANT (bouches) ; pivote 180 deg (canons en haut)."
+ },
+ {
+  "file": "skiff.png",
+  "famille": "skiff",
+  "libelle": "Skiff",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "ECHELLES_SPRITES_2026-09-02.md",
+  "note": "CORRIGE : rendu V4 (-cote=256) mesure a ~21,4 mm/px (+114% hors tolerance). Re-rendu a -cellmm=10 fixe (vehi 0x86799cb6 -> mode 0xa3aaa279), verifie 10,00 mm/px (opaque 522x266 px vs dX=5,218 m/dY=2,665 m). Sens +X etabli sur la geometrie (cote -X : forte densite de petites pieces symetriques cX=-1,1..-2,15, l'operateur debout + consoles ; cote +X : coque lisse qui s'effile, cf. secs) : +X = AVANT (etrave), -X = ARRIERE (pilote) ; pivote 180 deg (etrave en haut)."
+ },
+ {
+  "file": "tourelle_montee.png",
+  "famille": "tourelle_montee",
+  "libelle": "Tourelle montee",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "ECHELLES_SPRITES_2026-09-02.md",
+  "note": "CORRIGE : rendu V4 (-cote=256) mesure a ~5,18 mm/px (-48% hors tolerance). Re-rendu a -cellmm=10 fixe (vehi 0x038df01a -> mode 0x1ae526e1), verifie 10,03 mm/px (opaque 126x123 px vs dX=1,264 m/dY=1,234 m). Sens -X etabli sur la geometrie (grappe etroite dY~0,31 + capuchon quasi plat (dX=0,02) a cX=-0,45..-0,60 pres du bord -X = bouche/frein de bouche ; masse large dY=1,23 plus centree/positive = recepteur/support) : -X = AVANT (bouche) ; conserve SANS rotation (deja nez/bouche en haut dans le rendu -cote=256 d'origine — un essai de rotation 180 par pattern-matching a ete teste puis ANNULE apres verification quantitative des sections, cf. rapport)."
+ },
+ {
+  "file": "warthog.png",
+  "famille": "warthog",
+  "libelle": "Warthog",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "WARTHOG_FINAL_V2_2026-09-02.md",
+  "note": "Reconfirme mesure le 2026-09-02 (ECHELLES_SPRITES_2026-09-02.md) : rendu -cellmm=10 fixe, opaque 210x100 px, chassis 2,10 m, inchange."
+ },
+ {
+  "file": "warthog_gauss.png",
+  "famille": "warthog_gauss",
+  "libelle": "Warthog Gauss",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "WARTHOG_FINAL_V2_2026-09-02.md",
+  "note": "Reconfirme mesure le 2026-09-02 (ECHELLES_SPRITES_2026-09-02.md) : rendu -cellmm=10 fixe, opaque 210x100 px, chassis 2,10 m, inchange."
+ },
+ {
+  "file": "wasp.png",
+  "famille": "wasp",
+  "libelle": "Wasp",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "ECHELLES_SPRITES_2026-09-02.md",
+  "note": "Rendu V4 (-cote=256, cadrage auto) mesure a 10,27-10,29 mm/px (mode 0x06d6ce82, dX=2,507 m / dY=2,109 m vs opaque 244x205 px) : dans la tolerance +-3% (+2,8%) par coincidence de taille, NON retouche. Armes integrees au chassis (pas de tourelle-enfant separee, cf. ASSEMBLAGE_ENFANTS_2026-09-01.md). ORIENTATION corrigee le 2026-09-02 (verdict utilisateur, haut = avant) : rotation 180 deg - la convention V4 \"+X = arriere\" etait fausse, +X = AVANT pour tous les vehicules."
+ },
+ {
+  "file": "wraith.png",
+  "famille": "wraith",
+  "libelle": "Wraith",
+  "scale_mm_per_px": 10,
+  "date": "2026-09-02",
+  "statut": "valide",
+  "source_report": "ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md",
+  "note": "Regenere par ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md (ordre-peintre, chassis + tourelle plasma wraith_g, cadre=7/cellmm=10 fixe) - source_report V4 obsolete pour ce fichier. Reconfirme mesure le 2026-09-02 (ECHELLES_SPRITES_2026-09-02.md) : opaque 305x296 px vs chassis dX=3,057 m/dY=2,963 m => 10,01-10,02 mm/px, inchange. Composition armee (tourelle plasma) verifiee a l'oeil. ORIENTATION corrigee le 2026-09-02 (verdict utilisateur, haut = avant) : rotation 180 deg - la convention V4 \"+X = arriere\" etait fausse, +X = AVANT pour tous les vehicules."
+ }
+]

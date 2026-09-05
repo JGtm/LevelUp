@@ -104,20 +104,7 @@ func ScanGroundWeaponCreationsForBand(
 		comps: len(arch.Components), wr: wr, band: band, cur: &cur,
 		ti: GroundWeaponTypeIndex, deser: consumeDefaultStateTI42,
 	}
-	var out []EquipmentCreation
-	for _, c := range nums {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta {
-				continue
-			}
-			out = append(out, w.scanPayload(pk.Payload(data), &st, pk, c)...)
-		}
-	}
-	return out, st, nil
+	return runCreationWalk(fc, w, &st), st, nil
 }
 
 // groundWeaponArchetype rend l'archétype `ti=42` du registre du film (chunk_00), ANALYSE UNE

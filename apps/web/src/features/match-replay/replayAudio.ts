@@ -209,6 +209,22 @@ export class ReplayAudioPlayer {
     this.master.connect(this.distGain)
   }
 
+  /**
+   * engineBus — LE PORT DES MOTEURS DE VÉHICULES (`vehicleEnginePlayer.ts`) : le contexte, un
+   * bus de gain dédié branché sur le MAÎTRE, et l'accès aux tampons déjà décodés.
+   *
+   * Le bus passe par `master` et non par la sortie : les moteurs suivent ainsi le volume
+   * réglé, la chaîne de distance ET le robinet d'enregistrement sans qu'aucun des trois n'ait
+   * à connaître leur existence. Le gain du bus (0,85, décision utilisateur du 2026-09-04) est
+   * posé par l'appelant — ce lecteur ne connaît aucune règle moteur.
+   */
+  engineBus(gain: number): { ctx: BaseAudioContext; out: AudioNode; bufferOf: (url: string) => AudioBuffer | null | undefined } {
+    const bus = this.ctx.createGain()
+    bus.gain.value = gain
+    bus.connect(this.master)
+    return { ctx: this.ctx, out: bus, bufferOf: (url) => this.buffers.get(url) }
+  }
+
   /** resume relance le contexte (à appeler dans le geste d'activation). */
   resume(): void {
     void this.ctx.resume()
