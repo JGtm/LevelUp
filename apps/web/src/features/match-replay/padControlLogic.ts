@@ -39,8 +39,10 @@
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
 
+import { isGameChangerFamily, isGameChangerWeaponKey } from './gameChangers'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { buildPlayers, groupByTeam, playerName, type ReplayPlayer } from './rosterLogic'
+import { padEquipmentFamilyOf } from './weaponPadFamilies'
 
 /** Les prises comptées, sans identité — la ligne d'un joueur comme le total d'un camp. */
 export interface PadControlTally {
@@ -78,8 +80,21 @@ export type PadControlCoverage = NonNullable<
 /** Le résultat complet : les camps, les colonnes d'arme, et ce qui reste hors tableau. */
 export interface PadControl {
   byTeam: PadControlTeam[]
-  /** Identifiants d'arme à mettre en colonne, ordre écrit (cf. `weaponsOf`). */
+  /**
+   * Identifiants d'arme à mettre en colonne, ordre écrit (cf. `weaponsOf`) : les ÉLUES du
+   * vote d'abord, les REPLIÉES ensuite — c'est la concaténation exacte des deux listes
+   * ci-dessous, gardée pour l'écran déplié et l'axe du graphe.
+   */
   weapons: string[]
+  /**
+   * LA PARTITION DU REPLI « GAME CHANGERS » (plan 2026-09-05) : les socles élus par le vote
+   * (`forwardWeapons`, visibles d'emblée) et les repliés (`collapsedWeapons`, derrière
+   * « Voir plus (N) »). Le tri « du plus disputé au moins disputé » survit DANS chaque liste.
+   * AUCUN TOTAL ne passe par ce découpage : `attributed`, les totaux de camp et de joueur
+   * comptent toutes les armes, repliées comprises — le total ne ment pas.
+   */
+  forwardWeapons: string[]
+  collapsedWeapons: string[]
   /**
    * Le bloc de datation du document. `null` n'arrive PAS en production — le service le pose
    * inconditionnellement, et un artefact qui porte un `xuid` d'occupation le porte forcément —
@@ -164,9 +179,12 @@ export function buildPadControl(
 
   const byTeam = teamsOf(players, tallies)
   const attributed = byTeam.reduce((sum, team) => sum + team.total.total, 0)
+  const { forward, collapsed } = weaponsOf(matchTotal, doc.weaponLabels)
   return {
     byTeam,
-    weapons: weaponsOf(matchTotal),
+    weapons: [...forward, ...collapsed],
+    forwardWeapons: forward,
+    collapsedWeapons: collapsed,
     coverage: doc.coverage?.padDating ?? null,
     attributed,
     unjoined,
@@ -213,15 +231,37 @@ function teamsOf(
 }
 
 /**
- * weaponsOf retient les socles qu'au moins une prise attribuée justifie, du plus disputé au
- * moins disputé.
+ * weaponsOf retient les socles qu'au moins une prise attribuée justifie, PARTITIONNÉS par le
+ * vote « game changers » PUIS triés du plus disputé au moins disputé dans chaque partition
+ * (plan 2026-09-05, G2.1) — un socle replié très disputé ne remonte jamais devant un élu.
  *
  * UNE COLONNE DE ZÉROS N'EST PAS UNE MESURE : un socle que personne n'a pris n'a pas de colonne,
  * il reste dans le compte des occupations non attribuées. À égalité, l'identifiant départage —
  * l'ordre ne dépend jamais de l'ordre de rencontre dans le film.
+ *
+ * LE JUGEMENT SUIT LES DEUX VOCABULAIRES D'UN SOCLE (décision D6, même cascade que
+ * `padScaleFor`) : un socle de BONUS publie sa famille d'équipement — la table écrite
+ * `padEquipmentFamilyOf` la reconnaît, jamais un test de préfixe — et se juge par elle ; un
+ * socle d'ARME publie un hexadécimal, et se juge par la clé canonique du catalogue
+ * (`weaponLabels[hex].key`). Un label SANS clé (artefact ancien, arme hors catalogue) est
+ * REPLIÉ : dégradation voulue, on ne promeut pas ce qu'on ne sait pas nommer.
  */
-function weaponsOf(matchTotal: Record<string, number>): string[] {
-  return Object.keys(matchTotal).sort((a, b) => matchTotal[b] - matchTotal[a] || a.localeCompare(b))
+function weaponsOf(
+  matchTotal: Record<string, number>,
+  labels: ReplayDocumentReady['weaponLabels'],
+): { forward: string[]; collapsed: string[] } {
+  const enAvant = (weapon: string): boolean => {
+    const family = padEquipmentFamilyOf(weapon)
+    if (family) return isGameChangerFamily(family)
+    return isGameChangerWeaponKey(labels?.[weapon]?.key)
+  }
+  const parVolume = (a: string, b: string) =>
+    matchTotal[b] - matchTotal[a] || a.localeCompare(b)
+  const weapons = Object.keys(matchTotal)
+  return {
+    forward: weapons.filter(enAvant).sort(parVolume),
+    collapsed: weapons.filter((w) => !enAvant(w)).sort(parVolume),
+  }
 }
 
 /** Les cinq raisons pour lesquelles une occupation n'est pas dans le tableau. */

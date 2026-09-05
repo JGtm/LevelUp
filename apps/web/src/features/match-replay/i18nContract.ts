@@ -771,6 +771,18 @@ export interface ReplayText {
    * Le seul écran du dépôt qui NOMME le ramasseur d'un socle — cf. `PadControlText`.
    */
   padControl: PadControlText
+  /**
+   * LE REPLI « GAME CHANGERS » des deux bilans ci-dessus (plan 2026-09-05, décision D3) : les
+   * colonnes hors du vote se masquent derrière « Voir plus (N) », N = colonnes masquées. Les
+   * clés sont PARTAGÉES par les deux sections — même geste, mêmes mots — et vivent ici plutôt
+   * qu'en double dans leurs deux blocs. Elles ne se prennent PAS chez MedalDigest (i18n de
+   * `squad`, autre feature) : le dictionnaire du rejeu ne s'importe pas de là-bas.
+   * `collapsedColumnsHint` (infobulle du bouton) dit la promesse du repli : rien n'est
+   * supprimé, les totaux et les notes comptent toujours tout.
+   */
+  collapsedColumnsShowFmt: (count: number) => string
+  collapsedColumnsHide: string
+  collapsedColumnsHint: string
   /** Pictogramme « munitions pleines » (emplacement jamais écrit) : décision produit 4. */
   ammoFullLabel: string
   ammoDrawnHint: string

@@ -42,7 +42,7 @@
  * Aucun calcul ici : tout vient de `padControlLogic` (les mesures) et `padControlChart` (la
  * projection).
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { ChartLegend } from '@/components/charts/ChartLegend'
 import { SectionCard } from '@/components/ui/section-card'
@@ -88,6 +88,17 @@ export function MatchPadControlSection({
   const { data } = useMatchReplay(playerSlug, matchId, replayAvailable)
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const control = useMemo(() => (data ? buildPadControl(data, board) : null), [data, board])
+  // REPLIÉ PAR DÉFAUT (plan 2026-09-05, décision D3) : état posé AU MONTAGE, jamais persisté.
+  // Le repli ne touche QUE les lignes du graphe : totaux, dénominateurs et ventilation des
+  // manques viennent de `control`, calculé sur TOUTES les armes — le total ne ment pas.
+  const [expanded, setExpanded] = useState(false)
+  const visibleControl = useMemo(
+    () =>
+      control && !expanded && control.collapsedWeapons.length > 0
+        ? { ...control, weapons: control.forwardWeapons }
+        : control,
+    [control, expanded],
+  )
   const meSide = useMemo(() => board.find((r) => r.is_me)?.team_side ?? null, [board])
 
   const teamLabel = useCallback(
@@ -102,9 +113,9 @@ export function MatchPadControlSection({
   )
   const bars = useMemo(
     () =>
-      control && data
+      visibleControl && data
         ? buildPadControlBars({
-            control,
+            control: visibleControl,
             weaponLabel: (weapon) => padNameFor(weapon, data.weaponLabels, t, locale),
             teamLabel,
             teamColor: (side) => teamTokenCssVar(allyOf(side)),
@@ -113,7 +124,7 @@ export function MatchPadControlSection({
             teamRank: (side) => (allyOf(side) === true ? 0 : side == null ? 2 : 1),
           })
         : null,
-    [control, data, t, locale, teamLabel, allyOf],
+    [visibleControl, data, t, locale, teamLabel, allyOf],
   )
 
   // Double porte : pas d'artefact, ou aucune prise attribuée -> rien du tout.
@@ -124,24 +135,92 @@ export function MatchPadControlSection({
       title={t.padControl.title}
       label={t.padControl.title}
       titleAdornment={(label) => (
-        <HeaderLabelTooltip text={t.padControl.titleHint} focusable>
-          <span>{label}</span>
-        </HeaderLabelTooltip>
+        // Le bouton du repli vit dans l'EN-TÊTE de la carte, à côté du titre et de son
+        // infobulle (plan 2026-09-05, G2.2). Zéro socle replié = pas de bouton.
+        <span className="flex items-center justify-between gap-2">
+          <HeaderLabelTooltip text={t.padControl.titleHint} focusable>
+            <span>{label}</span>
+          </HeaderLabelTooltip>
+          {control.collapsedWeapons.length > 0 && (
+            <CollapsedWeaponsToggle
+              expanded={expanded}
+              count={control.collapsedWeapons.length}
+              onToggle={() => setExpanded((v) => !v)}
+              t={t}
+            />
+          )}
+        </span>
       )}
       footer={<PadControlFootnotes control={control} t={t} />}
     >
-      <div className="px-3 pb-3 pt-3">
-        <PadControlBars model={bars} t={t} />
-        <ChartLegend
-          className="pt-3"
-          items={(bars.rows[0]?.sticks ?? []).map((stick) => ({
-            key: stick.side ?? 'sans-equipe',
-            label: stick.label,
-            color: teamTokenCssVar(allyOf(stick.side)),
-          }))}
-        />
-      </div>
+      <PadControlBody bars={bars} allyOf={allyOf} t={t} />
     </SectionCard>
+  )
+}
+
+/**
+ * PadControlBody — le corps de la carte : le graphe et sa légende, gardés par leur contenu.
+ *
+ * Extrait du composant le 2026-09-05 (plafond de taille de fonction du dépôt). Replié avec
+ * ZÉRO socle élu (toutes les prises sont hors vote) : rien à dessiner — le bouton de l'en-tête
+ * reste la porte, et la note de pied garde tous les comptes.
+ */
+function PadControlBody({
+  bars,
+  allyOf,
+  t,
+}: {
+  bars: PadBarModel
+  allyOf: (side: string | null) => boolean | null
+  t: ReplayText
+}) {
+  return (
+    <div className="px-3 pb-3 pt-3">
+      {bars.rows.length > 0 && (
+        <>
+          <PadControlBars model={bars} t={t} />
+          <ChartLegend
+            className="pt-3"
+            items={(bars.rows[0]?.sticks ?? []).map((stick) => ({
+              key: stick.side ?? 'sans-equipe',
+              label: stick.label,
+              color: teamTokenCssVar(allyOf(stick.side)),
+            }))}
+          />
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * CollapsedWeaponsToggle — le bouton « Voir plus (N) / Replier » du repli game changers.
+ *
+ * SECONDE COPIE LOCALE du patron `MedalDigest.tsx` (la première : `MatchEquipmentUsageSection`).
+ * Le plan du 2026-09-05 (décision D3) les accepte toutes deux et interdit l'extraction
+ * `components/ui/` dans ce lot — c'est la limite exacte de la règle des <= 2 copies : une
+ * troisième copie devra centraliser ET poser un garde-rail.
+ */
+function CollapsedWeaponsToggle({
+  expanded,
+  count,
+  onToggle,
+  t,
+}: {
+  expanded: boolean
+  count: number
+  onToggle: () => void
+  t: ReplayText
+}) {
+  return (
+    <button
+      type="button"
+      className="text-xs font-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+      title={t.collapsedColumnsHint}
+      onClick={onToggle}
+    >
+      {expanded ? t.collapsedColumnsHide : t.collapsedColumnsShowFmt(count)}
+    </button>
   )
 }
 

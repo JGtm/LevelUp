@@ -119,6 +119,14 @@ function afficher(locale: 'fr' | 'en' = 'fr') {
   )
 }
 
+/**
+ * Déplie le repli « game changers » (plan 2026-09-05). Sur le TÉMOIN, deux colonnes sont
+ * repliées par défaut : le grappin et le champ de réparation lâché.
+ */
+function deplier(vue: ReturnType<typeof afficher>, count = 2) {
+  fireEvent.click(vue.getByRole('button', { name: t.collapsedColumnsShowFmt(count) }))
+}
+
 describe('MatchEquipmentUsageSection — la double porte', () => {
   it('ne rend RIEN sans artefact : 404 = pas de film, pas de cadre vide', () => {
     poserArtefact(null)
@@ -148,9 +156,11 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
     expect(vue.getByRole('region', { name: t.equipmentUsage.viewTeamShare })).toBeTruthy()
   })
 
-  it('montre une FAMILLE par canal mesuré, en légende comme en part d’équipe', () => {
+  it('montre une FAMILLE par canal mesuré, en légende comme en part d’équipe (déplié)', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
+    // Le grappin et les objets lâchés du témoin sont repliés par défaut (vote du 05/09).
+    deplier(vue)
     for (const famille of [
       t.equipmentUsage.groupGrapple,
       t.equipmentUsage.groupActive,
@@ -165,6 +175,8 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
   it('nomme les colonnes par les tables EXISTANTES du rejeu, jamais un nom en dur', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
+    // Le champ de réparation lâché est replié par défaut : on déplie pour lire son nom.
+    deplier(vue)
     // Familles de pose : libellés de `placementFamily` (par règle de rendu).
     expect(vue.getByText(t.placementFamily.sensor)).toBeTruthy()
     expect(vue.getByText(t.placementFamily.field)).toBeTruthy()
@@ -189,6 +201,8 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
   it('écrit la valeur de chaque barre dans son nom accessible : joueur, grandeur, valeur', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
+    // La colonne du grappin est repliée par défaut : on la déplie pour lire ses barres.
+    deplier(vue)
     const tip = t.equipmentUsage.gridTipFmt
     expect(vue.getByLabelText(tip('Alpha', t.equipmentUsage.groupGrapple, '1'))).toBeTruthy()
     expect(vue.getByLabelText(tip('Delta', t.equipmentUsage.groupGrapple, '0'))).toBeTruthy()
@@ -238,6 +252,8 @@ describe('MatchEquipmentUsageSection — la part de chaque équipe', () => {
   it('somme les gestes du CAMP, pas ceux du match, et écrit le compte brut avec la part', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
+    // La famille du grappin est repliée par défaut : sa ligne de part n'existe que dépliée.
+    deplier(vue)
     // Grappin : Alpha + Bravo = 2 tractions pour le camp t0, sur les 3 du match.
     const segment = vue.getByLabelText(
       t.equipmentUsage.shareTipFmt('Équipe Eagle', t.equipmentUsage.groupGrapple, 2, 3),
@@ -317,6 +333,58 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
       ],
     } as unknown as Partial<ReplayDocument>)
     expect(afficher().getByText(REPLAY_TEXT.fr.equipmentUsage.unattributedFmt(1))).toBeTruthy()
+  })
+})
+
+describe('MatchEquipmentUsageSection — le repli « game changers » (plan 2026-09-05)', () => {
+  it('REPLIE PAR DÉFAUT les familles hors vote : ni colonne, ni légende, ni ligne de part', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    // Le grappin (voté replié) est invisible d'emblée ; le capteur (élu) est là.
+    expect(vue.queryByText(t.equipmentUsage.groupGrapple)).toBeNull()
+    expect(vue.queryByText(t.placementFamily.field)).toBeNull()
+    expect(vue.getByText(t.placementFamily.sensor)).toBeTruthy()
+    // Le bouton porte le COMPTE des colonnes masquées : grappin + champ de réparation lâché.
+    expect(vue.getByRole('button', { name: t.collapsedColumnsShowFmt(2) })).toBeTruthy()
+  })
+
+  it('« Voir plus (N) » révèle les colonnes repliées APRÈS les élues, puis « Replier »', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    deplier(vue)
+    expect(vue.getAllByText(t.equipmentUsage.groupGrapple).length).toBeGreaterThan(0)
+    expect(vue.getByText(t.placementFamily.field)).toBeTruthy()
+    // Le bouton s'est renversé, et un clic replie tout à nouveau.
+    fireEvent.click(vue.getByRole('button', { name: t.collapsedColumnsHide }))
+    expect(vue.queryByText(t.equipmentUsage.groupGrapple)).toBeNull()
+  })
+
+  it('zéro colonne repliée = AUCUN bouton', () => {
+    // Tout ce que ce film mesure est élu (capteur, épisodes) ou hors vote (grenades).
+    poserArtefact({
+      ...TEMOIN,
+      grappleLines: [],
+      equipmentPlacements: [
+        { family: 'sensor', origin: 'deployed', owner: 1, id: '0x1', t0: 5, t1: 9, x: 0, y: 0 },
+      ],
+    } as unknown as Partial<ReplayDocument>)
+    const vue = afficher()
+    expect(vue.queryByRole('button', { name: t.collapsedColumnsHide })).toBeNull()
+    expect(vue.queryByRole('button', { name: /Voir plus/ })).toBeNull()
+  })
+
+  it('les GRENADES restent visibles sans déplier (hors vote, décision D4)', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    expect(vue.getByText('Fragmentation')).toBeTruthy()
+    expect(vue.getAllByText(t.equipmentUsage.groupGrenades).length).toBeGreaterThan(0)
+  })
+
+  it('les FOOTNOTES comptent les familles repliées : la note du grappin reste, repliée', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    // Trois tractions lues — la colonne est repliée, la note de couverture ne bouge pas.
+    expect(vue.getByText(t.equipmentUsage.coverageGrappleFmt(3, 3))).toBeTruthy()
   })
 })
 

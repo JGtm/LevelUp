@@ -379,6 +379,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         unjoined: (n) => `${n} au nom d'un joueur que le film n'a pas vu vivre`,
       },
     },
+    collapsedColumnsShowFmt: (count) => `Voir plus (${count})`,
+    collapsedColumnsHide: 'Replier',
+    collapsedColumnsHint:
+      'Les colonnes les moins décisives sont repliées. Rien n’est retiré : les totaux, les dénominateurs et les notes de mesure les comptent toujours.',
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
     exportVideo: 'Exporter la vidéo',
@@ -774,6 +778,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         unjoined: (n) => `${n} named for a player the film never saw alive`,
       },
     },
+    collapsedColumnsShowFmt: (count) => `Show more (${count})`,
+    collapsedColumnsHide: 'Collapse',
+    collapsedColumnsHint:
+      'The least game-changing columns are folded away. Nothing is removed: totals, denominators and measurement notes still count them.',
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',
     exportVideo: 'Export video',
