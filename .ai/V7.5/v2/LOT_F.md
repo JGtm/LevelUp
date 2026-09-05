@@ -162,6 +162,69 @@ présence. Le lot E (E.2 supprime du code mort et ses tests ; E.5 touche
 ajouter/retirer les entrées correspondantes DANS LE MÊME COMMIT que ses suppressions,
 sans quoi le job `go-coverage` sera rouge. C'est le comportement voulu du gate.
 
+
+### [x] F.3 (G7) — Tests de `ReplayPurgeCron.RunOnce`
+
+Fichier neuf : `apps/go-api/internal/scheduler/replay_purge_cron_runonce_test.go`
+(3 tests, 1 helper de dépôt temporaire). Vérifié sur pièces avant : les deux tests
+existants (`replay_purge_cron_test.go`) ne franchissent que
+`purgeReplayArtifactsForTitle`, c'est-à-dire la purge d'UN titre avec un `cutoff` DÉJÀ
+calculé — ni la garde `months <= 0`, ni le calcul du seuil, ni la boucle sur les titres
+actifs n'étaient couverts, alors que la godoc de `RunOnce` dit « exporté pour les tests ».
+
+**Une couture d'horloge a été ajoutée** (`ReplayPurgeCron.now func() time.Time`, NIL en
+production = `time.Now`, plus `nowUTC()`) : la frontière de la fenêtre ne se prouve qu'avec
+un seuil connu à la seconde près. Sans elle, un test ne peut que dater des matchs très loin
+de part et d'autre du seuil, ce qui laisse passer un décalage d'un mois ou une comparaison
+rendue non stricte. Seule modification de production du lot F.
+
+Les trois propriétés demandées :
+
+- **Garde `months <= 0`** (`TestRunOnce_FenetreIllimitee`) : 0, −1 et −12 mois laissent les
+  4 artefacts en place. C'est le mode de panne du constat G7 (inverser la garde purge tout
+  le parc au premier tick).
+- **Sélection par âge** (`TestRunOnce_SelectionParAge`) : horloge fixée au
+  2026-06-15T12:00:00Z, fenêtre 6 mois. Trois matchs posés à `seuil − 1 s`, `seuil` et
+  `seuil + 1 s` ; seul le premier part. Le quatrième artefact n'a aucune ligne de registre :
+  indatable, jamais détruit.
+- **Aucune suppression hors du dossier des artefacts** (`assertLeurresIntacts`, joué par les
+  trois tests) : cinq leurres, tous nommés d'après un match PURGEABLE — les morceaux de
+  film, le manifeste de film, un homonyme dans le dossier PARENT du titre, un fichier SANS
+  extension et un RÉPERTOIRE VIDE nommé comme un artefact.
+
+**Preuves par mutation (4, toutes annulées ensuite).**
+
+| Mutation (production) | Effet observé |
+|---|---|
+| `if months <= 0` → `if months < -999999` (garde neutralisée) | `rétention 0 / −1 / −12 mois : artefacts restants [dddd0004.json], attendu les 4` |
+| `!at.Before(cutoff)` → `at.After(cutoff)` (frontière non stricte) | `artefacts restants [cccc0003.json dddd0004.json]`, il manque `bbbb0002.json` — le match POSÉ sur le seuil |
+| `e.IsDir() \|\| !strings.HasSuffix(name, ".json")` → `e.IsDir()` (filtre d'extension retiré) | `HORS PÉRIMÈTRE détruit par la purge : .../halo_infinite/aaaa0001` |
+| idem → `!strings.HasSuffix(name, ".json")` (garde répertoire retirée) | `HORS PÉRIMÈTRE détruit par la purge : .../halo_infinite/eeee0005.json` |
+
+**Ce que la mutation a corrigé dans le test lui-même.** La première version des leurres
+employait `aaaa0001.txt` et un sous-dossier `sous-dossier/` : la mutation « filtre
+d'extension retiré » ne les emportait PAS, parce que le nom tronqué (`aaaa0001.txt`,
+`sous-dossier`) n'est dans aucun registre — donc indatable, donc épargné par une AUTRE
+garde. Deux leurres qui ne prouvaient rien. Remplacés par un fichier sans extension (le
+tronquage le laisse intact : datable, purgeable, seul le filtre `.json` le sauve) et un
+répertoire VIDE nommé comme un artefact purgeable (vide, `os.Remove` réussirait : seul
+`e.IsDir()` le sauve). Les deux mutations mordent depuis.
+
+**Défaut de fixture attrapé au passage** : insérer `2006-01-02 15:04:05` (sans décalage) dans
+une colonne `TIMESTAMPTZ` fait lire la valeur dans le fuseau de SESSION de DuckDB (UTC+2
+ici) et déplace l'instant de deux heures — assez pour faire basculer du mauvais côté du
+seuil les matchs posés dessus. Le nouveau helper écrit du RFC3339 avec son `Z`, et le dit
+en commentaire. (Le helper voisin `prepareReplayPurgeFixture` a le même défaut latent, masqué
+par ses marges de plusieurs mois : consigné en découverte, non traité.)
+
+Gate F.3 (avant-plan) :
+
+```
+GOCACHE=... CGO_ENABLED=1 go test -count=1 ./internal/scheduler/
+→ ok  	levelup/go-api/internal/scheduler	23.486s
+GOCACHE=... CGO_ENABLED=1 golangci-lint run --new-from-merge-base=origin/main ./internal/scheduler/...
+→ 0 issues.
+```
 ## Découvertes (consignées, NON traitées — hors périmètre du lot F)
 
 1. **Le calque des actions d'objectif ne rend plus rien de la famille drapeau sur un film
@@ -188,3 +251,9 @@ sans quoi le job `go-coverage` sera rouge. C'est le comportement voulu du gate.
    `pass` → `skip` là où la baseline attend `pass`. Non traité : hors des trois
    sous-items de F.2, et la baseline héritée du 2026-06-26 contient des tests légitimement
    passés au skip depuis — l'appliquer sans tri la rendrait rouge d'emblée.
+4. **`prepareReplayPurgeFixture` (helper du fichier de test voisin) insère des horodatages
+   sans décalage dans une colonne `TIMESTAMPTZ`** : DuckDB les lit dans le fuseau de session
+   (UTC+2 en local, UTC en CI), ce qui déplace l'instant de deux heures selon la machine.
+   Ses marges (8 mois et 1 mois contre une fenêtre de 6) l'absorbent aujourd'hui, donc
+   aucune panne — mais c'est une fixture dont le sens dépend du fuseau du runner. Non
+   traité : le fichier n'est pas au périmètre de F.3 (qui porte sur `RunOnce`).
