@@ -3,9 +3,10 @@
  *
  * Smoke : monte, affiche les onglets Matchs / Joueur.
  */
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { ExplorerMatchesQueryResponse } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { ExplorerPage } from './ExplorerPage'
@@ -19,6 +20,45 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     useParams: () => ({ playerSlug: 'test-player' }),
     useSearch: () => ({}),
   }
+})
+
+/** Force les capabilities du titre courant (fail-open par défaut sinon). */
+function setTitleCaps(caps: string[]) {
+  useAppShellStore.setState({
+    currentTitleSlug: 'test_title',
+    availableTitles: [
+      {
+        slug: 'test_title', name: 'Test', status: 'active', capabilities: caps, is_default: true,
+        effective_hp_to_kill: 225, provides_damage_taken: true, provides_team_mmr: true,
+        provides_max_killing_spree: true, offensive_conversion_p80: 0.9,
+        defensive_resistance_p80: 1.65,
+      },
+    ],
+  })
+}
+
+// PORTE DE TITRE DU FILTRE « Avec rejeu / Sans rejeu » (2026-09-05, registre L5). Sur un
+// titre sans décodeur de film, « Avec rejeu » rendrait toujours zéro ligne et « Sans rejeu »
+// serait un synonyme de « tous » : un filtre qui ne filtre rien est pire qu'absent.
+describe('ExplorerPage — filtre « rejeu » gaté par la capability replay', () => {
+  const FILTRE_REJEU = 'Filtrer par présence de rejeu 2D'
+
+  afterEach(() => {
+    useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
+  })
+
+  it('présent quand le titre déclare `replay`', async () => {
+    setTitleCaps(['replay'])
+    renderWithProviders(<ExplorerPage />)
+    await waitFor(() => expect(screen.getByLabelText(FILTRE_REJEU)).toBeInTheDocument())
+  })
+
+  it('absent quand le titre ne la déclare pas', async () => {
+    setTitleCaps(['ranked'])
+    renderWithProviders(<ExplorerPage />)
+    await waitFor(() => expect(screen.getByText('Matchs')).toBeInTheDocument())
+    expect(screen.queryByLabelText(FILTRE_REJEU)).not.toBeInTheDocument()
+  })
 })
 
 describe('ExplorerPage', () => {
