@@ -81,6 +81,87 @@ GOCACHE=... CGO_ENABLED=1 golangci-lint run --build-tags=integration \
 → 0 issues.
 ```
 
+### [x] F.2 (G3) — Baseline de présence des tests
+
+Trois sous-items, statués séparément.
+
+**(a) [x] Entrées de baseline pour les cinq paquets du chantier.** Vérifié sur pièces
+avant : `grep -c` sur `.ai/baselines/tests_pre_migration.jsonl` rendait **0** pour
+`analysis/replay`, `replaybuild`, `sync/replayartifacts`, `sync/killcollector`,
+`analysis/objectiveevents` (la baseline date du 2026-06-26, avant tout le chantier v7.5).
+Chemins réels vérifiés : `internal/replaybuild` (PAS `internal/sync/replaybuild` comme
+l'écrit le plan) et `internal/analysis/objectiveevents`.
+
+Production : run réel des cinq paquets (six avec `analysis/replay/mapvar`),
+`-tags=integration -count=1 -p 1 -json`, CGO — **944 pass, 265 skip, 0 échec** en 2 min 13.
+Les 1 209 events terminaux (pass/skip, avec champ `Test`, dédupliqués par
+`Package|Test`) sont appendus tels quels à la baseline : ce sont de VRAIES lignes d'un
+VRAI run, pas des lignes fabriquées. Baseline : 8 586 → **9 795 noms de tests uniques**
+(60 920 → 62 129 lignes).
+
+Risque de faux rouge en CI écarté sur pièces : aucun `//go:build` autre qu'`integration`
+dans ces paquets (donc rien de Windows-only), aucun `TestMain`, aucun `runtime.GOOS` dans
+leurs tests ; la CI joue exactement les mêmes drapeaux (`ci.yml:338-348` :
+`-tags=integration -timeout 600s -count=1 -p 1 ./...`, `CGO_ENABLED=1`).
+
+**(b) [x] Le contrôle « par paquet » rendu réel — les DEUX contrôles concernés.**
+Le verdict V-GO-C2 vise le contrôle 4 (couverture) ; le contrôle 1 (présence), lui, est
+celui que la CI joue. Les deux sont traités.
+
+- *Contrôle 1 (présence)* — `report_missing_par_paquet` : le bilan d'absence est rendu
+  package par package, avec `manquants/total` et le nombre de présents. Les deux causes,
+  jusqu'ici mélangées dans une liste à plat, se distinguent maintenant d'un coup d'œil :
+  « AUCUN test du package n'a rendu de verdict » = compilation impossible ; un compte
+  partiel = tests renommés ou supprimés. Les noms sont plafonnés à dix par paquet (sur un
+  paquet de 300 tests, l'ancienne sortie imprimait 300 lignes et noyait le signal).
+- *Contrôle 4 (couverture)* — `compare_coverage_par_paquet` : la doc annonçait « Coverage
+  par package ne baisse pas de plus de 1 point » et `check_coverage` ne lisait que la ligne
+  `^total:` de `go tool cover -func`, UN chiffre global. La comparaison par paquet est
+  faite, en plus du total. Limite écrite dans le code : `-func` ne publie pas le nombre
+  d'instructions par fonction, donc le pourcentage d'un paquet est la MOYENNE NON PONDÉRÉE
+  de ses fonctions, calculée à l'identique des deux côtés (le profil brut,
+  `coverage_pre_migration.raw`, n'est pas versionné). Les paquets absents d'un côté sont
+  comptés et nommés, jamais jugés.
+
+Supprimé au passage, dans la même fonction : la variable morte `BASELINE_COV_RAW`
+(déclarée `:62`, aucun usage dans tout le dépôt — CLAUDE.md règle 7).
+
+**(c) [~] Le script est DÉJÀ invoqué par la CI.** Vérifié sur pièces : `.github/workflows/
+ci.yml:374-376`, job `go-coverage`, step « Vérifier suite baseline de tests pré-migration »,
+`bash ../../scripts/check_test_baseline.sh tests --from-jsonl baseline_current.jsonl`, sous
+`if: always()`. Le `paths-ignore` (`ci.yml:49-50`) ne porte que sur `.ai/**.md` : la
+modification de `.ai/baselines/*.jsonl` déclenche donc bien la CI, comme le commentaire
+`ci.yml:35-39` l'exige. Rien à brancher.
+
+**Preuves par mutation (3).**
+
+| Mutation | Effet observé |
+|---|---|
+| Deux tests de `sync/killcollector` retirés du JSONL courant (simule une suppression) | `levelup/go-api/internal/sync/killcollector : 2/75 absents (73 présents)` + les deux noms ; **exit 1** (exit 0 sur le JSONL sain) |
+| Fichier `-func` synthétique, paquet `internal/a` : `Bar` 80 % → 20 % (total INCHANGÉ à 75,0 %) | `❌ levelup/go-api/internal/a : 90.0% -> 60.0% (-30.0 pt)`, **exit 1** — c'est exactement ce que le contrôle global ne voyait pas |
+| Même fichier, paquet `c` disparu et paquet `d` neuf | `2 package(s) comparé(s), 1 neuf(s) non jugé(s), 1 disparu(s)`, **exit 0** (pas de faux rouge sur les paquets non comparables) |
+
+Gate F.2 (avant-plan) — JSONL de suite COMPLÈTE produit en 6 groupes de paquets
+(`go list -tags=integration ./...` = 315 paquets, `split -n l/6`), chacun en avant-plan
+sous 10 min, concaténés (100 902 lignes, 315 paquets, 0 `"Action":"fail"`) :
+
+```
+bash scripts/check_test_baseline.sh tests --from-jsonl <full.jsonl>
+→ Baseline : 9795 tests / Courant : 14595 tests
+→ ✅ Tous les tests baseline présents dans le run courant
+→ [OK] Aucun test en échec dans le run courant
+→ [OK] Aucun package en échec hors test        (exit 0)
+bash -n scripts/check_test_baseline.sh        → syntaxe OK
+shellcheck scripts/check_test_baseline.sh     → 5 lignes, toutes SC2030/SC2031 préexistantes
+```
+
+**Conséquence à signaler aux autres lots** : les paquets `analysis/replay`,
+`sync/killcollector` et `analysis/objectiveevents` sont désormais sous baseline de
+présence. Le lot E (E.2 supprime du code mort et ses tests ; E.5 touche
+`killcollector/positions.go` et `replay/world_object_precision_guard_test.go`) devra
+ajouter/retirer les entrées correspondantes DANS LE MÊME COMMIT que ses suppressions,
+sans quoi le job `go-coverage` sera rouge. C'est le comportement voulu du gate.
+
 ## Découvertes (consignées, NON traitées — hors périmètre du lot F)
 
 1. **Le calque des actions d'objectif ne rend plus rien de la famille drapeau sur un film
@@ -93,3 +174,17 @@ GOCACHE=... CGO_ENABLED=1 golangci-lint run --build-tags=integration \
    CAUSE n'est pas traitée ici : le calque des objectifs relève des lots A et E. À vérifier :
    la garde de mode sur `Husky Raid:CTF` (`objectiveevents.ObjectiveTypeOf`,
    `replaybuild/matchfacts.go:102` → `identifiedEvents`).
+
+2. **Le mode `coverage` du script n'est invoqué par AUCUN gate.** `Makefile:310` et
+   `scripts/gate-push.ps1:109` appellent `tests` ; `ci.yml:376` appelle
+   `tests --from-jsonl`. Le ratchet de couverture réellement joué en CI est
+   `apps/go-api/scripts/coverage_check.sh` (global, tolérance 0,1 pt, baseline 69.0),
+   distinct de `coverage_pre_migration.txt` (73.0, capturé le 2026-06-26). Deux ratchets
+   de couverture coexistent, dont un que rien n'appelle : à trancher par le superviseur
+   (brancher, ou supprimer avec ses fichiers de baseline — CLAUDE.md règle 7 et
+   anti-pattern 1). Non traité ici : hors des trois sous-items de F.2.
+3. **`extract_test_names` accepte `skip` pour la présence** : un test transformé en
+   `t.Skip` permanent reste « présent ». Le rapport G7 propose de refuser le passage
+   `pass` → `skip` là où la baseline attend `pass`. Non traité : hors des trois
+   sous-items de F.2, et la baseline héritée du 2026-06-26 contient des tests légitimement
+   passés au skip depuis — l'appliquer sans tri la rendrait rouge d'emblée.
