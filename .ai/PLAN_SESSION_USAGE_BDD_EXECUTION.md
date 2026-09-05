@@ -116,13 +116,24 @@ Constats de verification (ecarts mineurs au handoff, sans consequence) :
       frais, corrections seules) : AUCUN defaut recevable, 6/6 tiennent.
 - [x] Commit(s) S2 (PILOTE) + entree thought_log [x]
 
-## Lot S3 — Front Sessions (Solo + Escouade)
+## Lot S3 — Front Sessions (Solo + Escouade) — REPORTE (decision utilisateur 2026-09-05)
 
-- [ ] Seize formes de la maquette dans features/session-detail, ValueGrid reutilise,
-      jetons team-ally/team-enemy et squad-player-1..3, i18n FR+EN par typage
-- [ ] Gate : make check-types + make test-web + verification visuelle sur le temoin
-      (session 2026-07-31, JGtm)
-- [ ] Commit(s) S3 + entree thought_log
+> Report VALIDE (plan-execution regle 3 : donnee que seul l'utilisateur possede) : la
+> maquette des seize formes (artefact 2ec1b8eb-5b4d-4484-b632-c8ee91569825) n'est
+> accessible depuis aucune session de ce poste — publiee depuis un autre contexte.
+> REPRISE : (1) l'utilisateur republie la maquette ou en colle le HTML ; (2) premiere
+> action : `make generate-types` (openapi.yaml porte deja le bloc usage commite en S2,
+> generated.ts n'est PAS regenere — note ronde 2) ; (3) le contrat est
+> `SessionPageResponse.usage` (domain/session_usage.go) ; (4) ValueGrid + jetons
+> team-ally/team-enemy + squad-player-1..3, i18n FR+EN par typage ; (5) gate :
+> make check-types + make test-web + verification visuelle sur le temoin corrige
+> (193 nommees / 82 anonymes / bonus {camo 45, overshield 20} ; murs : 7 panneaux
+> lobby, 0 JGtm ; parites 12,5 % / 25,0 %).
+
+- [!] Seize formes de la maquette dans features/session-detail — BLOQUE : maquette
+      inaccessible, utilisateur a choisi « S3 plus tard »
+- [!] Gate front — idem
+- [!] Commit(s) S3 — idem
 
 ## Decouvertes hors perimetre (notees, non traitees)
 
