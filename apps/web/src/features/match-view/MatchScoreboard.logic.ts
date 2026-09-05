@@ -258,9 +258,11 @@ export function detectObjectiveMode(rows: MatchScoreboardRow[]): ObjectiveMode |
     }
     if (o.times_selected_as_vip != null || o.kills_as_vip != null) return 'vip'
     // Assaut : dernier de la liste, et sans risque de collision — aucun autre mode ne porte de
-    // clé `bomb_*`. Les deux compteurs pris ici sont ceux que la chaîne publie ensemble dès
-    // qu'une source est lue.
-    if (o.bomb_detonations != null || o.bomb_arms != null) return 'bomb'
+    // clé `bomb_*`. TROIS compteurs, un par canal, LA MÊME LISTE que `ObjectiveRaw.HasBomb()`
+    // côté Go : les colonnes d'Assaut ne sortent pas toutes de la même lecture, et un film dont
+    // seul le portage a été lu ne publie que `bomb_grabs`. Deux discriminants divergents
+    // afficheraient deux vérités du même match.
+    if (o.bomb_detonations != null || o.bomb_arms != null || o.bomb_grabs != null) return 'bomb'
   }
   return null
 }

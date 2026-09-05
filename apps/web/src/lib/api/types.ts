@@ -2810,7 +2810,7 @@ export type ReplayGaugePoint = components['schemas']['GaugePoint']
 // les incohérences. Absente = personne n'a lu le film pour ce calque.
 export type ReplayFlagCarriesCoverage = components['schemas']['FlagCarriesCoverage']
 
-// LA VIE D'UN VÉHICULE (schéma 29) : où il naît, sa trajectoire échantillonnée avec son cap,
+// LA VIE D'UN VÉHICULE (schéma 39) : où il naît, sa trajectoire échantillonnée avec son cap,
 // ses épisodes d'occupation (qui est à bord et quand), et jusqu'à quelle frame l'afficher.
 // `end` vaut TOUJOURS `unknown` (cf. `apps/go-api/internal/analysis/replay/document_vehicles.go`) :
 // la datation de la destruction a été mesurée et RÉFUTÉE une première fois
@@ -2818,7 +2818,7 @@ export type ReplayFlagCarriesCoverage = components['schemas']['FlagCarriesCovera
 // une explosion.
 //
 // `tEnd` EST UNE DÉCLARATION EN AVANCE DE PHASE (2026-09-03) : un second lot Go mesure une
-// nouvelle fois la destruction (schéma 30) pendant que ce lot web prépare le calque. Le contrat
+// nouvelle fois la destruction (schéma 39) pendant que ce lot web prépare le calque. Le contrat
 // GÉNÉRÉ (`generated.ts`) ne porte NI `tEnd` NI de valeur `"destroyed"` pour `end` — l'un et
 // l'autre sont donc ajoutés ici À LA MAIN, en TOLÉRANT (optionnel), le temps que
 // `make openapi-gen` les régénère : un artefact actuel (`end` toujours `"unknown"`, `tEnd`
@@ -2827,7 +2827,7 @@ export type ReplayFlagCarriesCoverage = components['schemas']['FlagCarriesCovera
 // resserrer ici romprait le ré-export si le Go publie un jour une troisième valeur. Le calque lit
 // `VEHICLE_END_DESTROYED` (vehiclesLayer.ts) plutôt qu'un littéral semé à chaque appelant.
 export type ReplayVehicleTrack = components['schemas']['VehicleTrack'] & {
-  /** Index de frame de la destruction (schéma 30, `omitempty` côté Go). Absent tant que la
+  /** Index de frame de la destruction (schéma 39, `omitempty` côté Go). Absent tant que la
    *  mesure n'a pas abouti — voir l'en-tête ci-dessus. */
   tEnd?: number
 }
@@ -2844,7 +2844,7 @@ export type ReplayVehicleSample = components['schemas']['VehicleSample']
 // est un POINTEUR — nil = aucun événement apparié. `xuid` vide = occupant non nommé, l'épisode
 // reste publié. Deux épisodes d'un même véhicule peuvent se chevaucher (plusieurs passagers).
 export type ReplayVehicleRide = components['schemas']['VehicleRide']
-// UNE LECTURE DE VISÉE D'OCCUPANT (schéma 31), sur l'axe de frames : `h` = cap, `p` = élévation,
+// UNE LECTURE DE VISÉE D'OCCUPANT (schéma 39), sur l'axe de frames : `h` = cap, `p` = élévation,
 // MÊMES conventions que `Point.h`/`Point.p` (même composant `i21`, même accesseur côté Go). C'est
 // la visée de L'HOMME à bord — conducteur, artilleur ou passager, chacun la sienne —, jamais
 // l'orientation du châssis ni celle de la tourelle (celle-ci ne réplique RIEN : réfutée avec
