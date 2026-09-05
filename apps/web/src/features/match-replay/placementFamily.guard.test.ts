@@ -281,7 +281,21 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  *     demandait ses lignes de glue alors que le fichier etait PILE a son plafond. Seul l'appel
  *     de trace et son objet d'options se deplacent ; la mesure reste dans `useReplayFx` et
  *     `useReplayTiming`.
-
+ *
+ * Le plafond SUIT le fichier vers le bas, comme a chaque extraction depuis 861.
+ *
+ * 665 -> 665 le 2026-09-05 (lot VEHICULES, arrive du chantier `feat/v75-vehicules-sons`, ses
+ * schemas 29-31 fondus dans le 39) : un CALQUE FRERE de plus (sprites teintes, cap dans le sens
+ * du deplacement), PLUS une donnee transverse que nul calque precedent ne portait — le PREDICAT
+ * EMBARQUE (C7) que `drawTracksLayer` consomme pour supprimer le pion d'un occupant. Toute la
+ * logique est dans `vehiclesLayer.ts` (pur) et `useReplayVehicles.ts` (le hook, dix-huitieme de
+ * la famille) ; le canvas ne gagne que le cablage IRREDUCTIBLE : un import, l'appel du hook, une
+ * ligne de peinture, une dependance de `draw`, une entree de disponibilite du tiroir, et le
+ * branchement d'`embarkedAtSlot` sur le style du calque des pions. Le meme lot apporte la SOURCE
+ * D'IDENTITE `colorOfXuid` (le pont slot->joueur est MUET pendant un episode d'occupation, le
+ * bipede ne repliquant plus, alors que le document nomme son occupant) : tout est dans
+ * `rosterLogic.ts` / `useSlotIdentity.ts` / `vehiclesLayer.ts`, le canvas ne gagne QUE deux
+ * jetons sur des lignes existantes. Le plafond NE BOUGE PAS D'UNE LIGNE.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {

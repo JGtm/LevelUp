@@ -66,3 +66,8 @@ func decodeFilmPadScanDir(
 ) WorldObjectScan {
 	return decodeFilmPadScan(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr, mpp, arch)
 }
+
+// decodeFilmVehicleScanDir : [decodeFilmVehicleScan] depuis un repertoire.
+func decodeFilmVehicleScanDir(dir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths) VehicleScan {
+	return decodeFilmVehicleScan(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
+}

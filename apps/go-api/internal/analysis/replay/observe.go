@@ -56,7 +56,7 @@ var BuildFromFilmSteps = []string{
 	"abilityImpulses", "abilityCharges",
 	"zoomEvents",
 	"placements", "placements.stats",
-	"pads", "carrierMarks", "zoneReads", "bombReads",
+	"pads", "vehicles", "carrierMarks", "zoneReads", "bombReads",
 	"grenades", "projectiles", "deaths", "playerIndices", "clockOrigin",
 }
 
