@@ -8,13 +8,13 @@
  * armes spéciales) — ce qui n'y est pas se REPLIE derrière « Voir plus (N) », il ne disparaît
  * jamais : les totaux, dénominateurs et notes de couverture comptent tout, replié compris.
  *
- * ELLE N'EST PAS `POWER_PAD_KEYS`, ET LA DIVERGENCE EST VOULUE (décision D1 du plan
- * 2026-09-05). `POWER_PAD_KEYS` (weaponPadFamilies.ts) répond à « quelle icône mérite d'être
- * GRANDE sur un socle du rejeu 2D » (arbitrage utilisateur du 2026-08-18) ; cette liste-ci
- * répond à « quelle colonne mérite d'être VISIBLE d'emblée dans un bilan » (vote du
- * 2026-09-05). Même mot « game changer », deux jugements, deux surfaces — et un désaccord
- * mesurable : `hinf_cindershot` est GRAND sur la carte et REPLIÉ dans les bilans (voté non).
- * Un réalignement éventuel est une décision utilisateur future, pas une correction.
+ * ELLE N'EST PAS `POWER_PAD_KEYS` (décision D1 du plan 2026-09-05). `POWER_PAD_KEYS`
+ * (weaponPadFamilies.ts) répond à « quelle icône mérite d'être GRANDE sur un socle du rejeu
+ * 2D » (arbitrage utilisateur du 2026-08-18) ; cette liste-ci répond à « quelle colonne mérite
+ * d'être VISIBLE d'emblée dans un bilan » (vote du 2026-09-05). Même mot « game changer »,
+ * deux jugements, deux surfaces : que leurs armes COÏNCIDENT aujourd'hui (depuis la promotion
+ * du cindershot, décision utilisateur du 05/09) n'en fait pas une seule liste — l'une ne
+ * dérive jamais de l'autre, et le garde-rail fige la coïncidence comme un FAIT daté.
  *
  * DEUX VOCABULAIRES POUR LE MÊME BONUS, ET UN PONT ÉCRIT (décision D5 — le piège n°1 du lot).
  * Un SOCLE de bonus publie une famille d'équipement (`powerup_camo`) ; l'ÉPISODE d'état actif
@@ -45,10 +45,12 @@ export const GAME_CHANGER_EQUIPMENT_FAMILIES: readonly string[] = [
 ]
 
 /**
- * LES ARMES ÉLUES (5 + 1 variante) : les `weapon_key` du registre du titre
+ * LES ARMES ÉLUES (6 + 1 variante) : les `weapon_key` du registre du titre
  * (`weapon_names.toml`, vérifié par garde-rail). `hinf_fuel_rod_spnkr` est la variante Fiesta
- * du même socle SPNKr — élu avec lui. `hinf_cindershot` a été voté NON : c'est LA divergence
- * assumée avec `POWER_PAD_KEYS` (cf. en-tête).
+ * du même socle SPNKr — élu avec lui. `hinf_cindershot` : voté NON le 05/09 au matin, PROMU
+ * par décision utilisateur le 05/09 même (« le cindershot peut être un game changer ») — les
+ * armes de cette liste et celles de `POWER_PAD_KEYS` coïncident donc à nouveau, sans que l'une
+ * dérive de l'autre (deux jugements, deux surfaces — cf. en-tête).
  */
 export const GAME_CHANGER_WEAPON_KEYS: readonly string[] = [
   'hinf_s7_sniper',
@@ -57,6 +59,7 @@ export const GAME_CHANGER_WEAPON_KEYS: readonly string[] = [
   'hinf_energy_sword',
   'hinf_gravity_hammer',
   'hinf_skewer',
+  'hinf_cindershot',
 ]
 
 /**

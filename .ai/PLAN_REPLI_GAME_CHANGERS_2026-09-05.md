@@ -18,9 +18,13 @@
 - Équipements EN AVANT (5) : `powerup_camo`, `powerup_overshield`, `sensor`,
   `threat_seeker`, `shroud_screen`. REPLIÉS (6) : `grapple`, `thruster`, `repulsor`,
   `wall`, `repair_field`, `translocator_beacon`.
-- Armes EN AVANT (weapon_key, 5+1 variante) : `hinf_s7_sniper`, `hinf_m41_spnkr`
+- Armes EN AVANT (weapon_key, 6+1 variante) : `hinf_s7_sniper`, `hinf_m41_spnkr`
   (+ `hinf_fuel_rod_spnkr`, variante du même socle), `hinf_energy_sword`,
-  `hinf_gravity_hammer`, `hinf_skewer`. REPLIÉ notamment : `hinf_cindershot` (voté non).
+  `hinf_gravity_hammer`, `hinf_skewer`, et `hinf_cindershot` — voté non au matin du
+  05/09, PROMU par décision utilisateur le 05/09 même (« le cindershot peut être un game
+  changer ») ; la coïncidence avec `POWER_PAD_KEYS` redevient un fait, figé par test.
+  DÉCISION du même échange : PAS de réalignement du rejeu 2D sur le vote —
+  `POWER_PAD_KEYS` reste une liste indépendante.
 
 ## Décisions tranchées AVANT exécution (non rediscutables par l'agent)
 

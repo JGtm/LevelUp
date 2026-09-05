@@ -9,8 +9,8 @@
  *  - chaque `weapon_key` élu existe au registre du titre (`weapon_names.toml`) — même piège ;
  *  - le PONT D5 tient dans les deux sens : ses clés sont des familles de socle ÉLUES, ses
  *    valeurs sont des familles d'ÉPISODE que la mesure connaît (`EPISODE_FAMILIES`) ;
- *  - la DIVERGENCE cindershot avec `POWER_PAD_KEYS` est un choix DIT : ce test la fige pour
- *    qu'une réécriture ne la « corrige » pas en douce ;
+ *  - la COÏNCIDENCE cindershot avec `POWER_PAD_KEYS` (promotion utilisateur du 05/09) est
+ *    un FAIT daté : ce test la fige pour qu'une réécriture ne la défasse pas en douce ;
  *  - les prédicats : élu = en avant, tout le reste (y compris l'inconnu et la clé absente,
  *    décision D6) = replié.
  */
@@ -63,7 +63,7 @@ describe('GAME_CHANGER_EQUIPMENT_FAMILIES — les cinq familles élues', () => {
   })
 })
 
-describe('GAME_CHANGER_WEAPON_KEYS — les armes élues, et la divergence assumée', () => {
+describe('GAME_CHANGER_WEAPON_KEYS — les armes élues, et la coïncidence datée', () => {
   it('chaque clé existe au registre du titre (une faute de frappe ne dirait rien)', () => {
     const toml = readFileSync(WEAPON_NAMES, 'utf8')
     for (const key of GAME_CHANGER_WEAPON_KEYS) {
@@ -71,12 +71,13 @@ describe('GAME_CHANGER_WEAPON_KEYS — les armes élues, et la divergence assum�
     }
   })
 
-  it('fige la DIVERGENCE cindershot : grand sur la carte, replié dans les bilans (D1)', () => {
+  it('fige la COÏNCIDENCE cindershot : grand sur la carte ET en avant dans les bilans (D1)', () => {
     // POWER_PAD_KEYS (échelle des socles du rejeu 2D) garde le cindershot ; le vote du 05/09
-    // l'a replié des bilans. Les deux affirmations comptent : si l'une tombe, c'est une
-    // décision utilisateur à consigner, pas une réécriture silencieuse.
+    // l'avait replié, puis l'utilisateur l'a PROMU le jour même (« le cindershot peut être un
+    // game changer »). Les deux affirmations comptent : si l'une tombe, c'est une décision
+    // utilisateur à consigner, pas une réécriture silencieuse.
     expect(POWER_PAD_KEYS).toContain('hinf_cindershot')
-    expect(GAME_CHANGER_WEAPON_KEYS).not.toContain('hinf_cindershot')
+    expect(GAME_CHANGER_WEAPON_KEYS).toContain('hinf_cindershot')
   })
 
   it('les deux SPNKr voyagent ensemble : la variante est élue avec son socle', () => {
@@ -127,10 +128,11 @@ describe('isGameChangerWeaponKey — le prédicat d’arme (D6)', () => {
   it('une arme élue est EN AVANT', () => {
     expect(isGameChangerWeaponKey('hinf_s7_sniper')).toBe(true)
     expect(isGameChangerWeaponKey('hinf_gravity_hammer')).toBe(true)
+    expect(isGameChangerWeaponKey('hinf_cindershot')).toBe(true)
   })
 
   it('une arme non élue, ou une clé ABSENTE (label sans key), reste REPLIÉE', () => {
-    expect(isGameChangerWeaponKey('hinf_cindershot')).toBe(false)
+    expect(isGameChangerWeaponKey('hinf_vk78_commando')).toBe(false)
     expect(isGameChangerWeaponKey('hinf_br75')).toBe(false)
     expect(isGameChangerWeaponKey(undefined)).toBe(false)
     expect(isGameChangerWeaponKey(null)).toBe(false)
