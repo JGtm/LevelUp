@@ -160,7 +160,14 @@ export function formatRank(rank: number | null): string {
 // ---------------------------------------------------------------------------
 
 /** Mode à objectif détecté sur le scoreboard (blocs mutuellement exclusifs). */
-export type ObjectiveMode = 'ctf' | 'zones' | 'oddball' | 'stockpile' | 'extraction' | 'vip'
+export type ObjectiveMode =
+  | 'ctf'
+  | 'zones'
+  | 'oddball'
+  | 'stockpile'
+  | 'extraction'
+  | 'vip'
+  | 'bomb'
 
 /**
  * Colonne objectif : clé du bloc, agrégat équipe (`sum` = cumul ; `max` pour les
@@ -218,6 +225,19 @@ const VIP_COLS: ObjectiveColSpec[] = [
   { key: 'time_as_vip_seconds', agg: 'sum', duration: true },
   { key: 'longest_time_as_vip_seconds', agg: 'max', duration: true },
 ]
+// Assaut (2026-09-05) : LES SEULES STATISTIQUES D'OBJECTIF QUE L'API 343 NE PUBLIE PAS. Elles
+// sont reconstruites du film Theater (statborg pour les explosions, canal des armes tenues pour
+// le portage, anneau `ti=12` + jointure pour l'armement) et servies par une table dédiée, gatée
+// par la capability `film.bomb_stats`. 4 colonnes sur 5 exposées : `bomb_carriers_killed` reste
+// dans le DTO SANS colonne dédiée — il est `null` partout à ce jour (la paire tueur/victime
+// qu'il demande n'existe pas dans la chaîne de cuisson), et une colonne qui n'afficherait que
+// des « — » sur tous les joueurs de tous les matchs ne dit rien.
+const BOMB_COLS: ObjectiveColSpec[] = [
+  { key: 'bomb_detonations', agg: 'sum' },
+  { key: 'bomb_arms', agg: 'sum' },
+  { key: 'bomb_grabs', agg: 'sum' },
+  { key: 'time_as_bomb_carrier_seconds', agg: 'sum', duration: true },
+]
 
 /**
  * detectObjectiveMode — mode à objectif du match d'après le premier bloc non-nil
@@ -237,6 +257,10 @@ export function detectObjectiveMode(rows: MatchScoreboardRow[]): ObjectiveMode |
       return 'extraction'
     }
     if (o.times_selected_as_vip != null || o.kills_as_vip != null) return 'vip'
+    // Assaut : dernier de la liste, et sans risque de collision — aucun autre mode ne porte de
+    // clé `bomb_*`. Les deux compteurs pris ici sont ceux que la chaîne publie ensemble dès
+    // qu'une source est lue.
+    if (o.bomb_detonations != null || o.bomb_arms != null) return 'bomb'
   }
   return null
 }
@@ -256,6 +280,8 @@ export function objectiveColsFor(mode: ObjectiveMode): ObjectiveColSpec[] {
       return EXTRACTION_COLS
     case 'vip':
       return VIP_COLS
+    case 'bomb':
+      return BOMB_COLS
   }
 }
 
