@@ -1,3 +1,55 @@
+## [2026-09-05] V13 — le dead-state des VEHICULES est dans le film, et il est lisible — Complete
+
+**Contexte.** Piste ouverte §7.2 du handoff vehicules : « i11 dead-state est sous-instrumente,
+pas refute ». Mesure lancee sur feu vert utilisateur, avec ses deux gardes (temoins ecrits AVANT
+la mesure ; couverture publiee a cote de tout compte). Worktree DEDIE `LevelUp-wt-vehicule-deadstate`
+(branche `wt/vehicule-deadstate`, partie de `origin/feat/v75-vehicules-sons`) : la branche du
+collegue n'est pas touchee, et c'est bien la SIENNE qu'il fallait comme base — la grammaire ti=40
+corrigee (variantes -dynamic-precision-) n'existe que la.
+
+**Decision technique.** Porter la MARCHE de `killsource` (timeline chronologique + localisateur
+d'events + 8 vues + snapshot/restore) dans `filmdec` sur la branche vehicules, SANS filtre de
+bande : recolte de tous les dead-states, rangement par ARCHETYPE apres coup. Gate ecrit avant la
+mesure : `.ai/V7.5/GATE_V13_DEADSTATE_MARCHE_2026-09-05.md`.
+
+**Resultats.** (1) VERROU 1, connu : la marche bat l'ancre **353 dead-states bipedes contre 1**
+sur 6 films (l'ancre en trouve 0 sur 5 films). Le diagnostic §7.2 est valide sur pieces.
+(2) VERROU 2, NEUF et decisif : avec le seul verrou 1 leve, ti=40 rendait **0**. Le controle de
+MASQUE impose par le gate G3 a dementi l'absence — **69 records ti=40 DECLARENT le dead-state,
+dont 65 dans des records desynchronises**. Localisation de la rupture : **i30..i36
+(`vehicle-auto-turret-*`, `vehicle-type-state`), TOUJOURS APRES i11**. Le filtre historique
+`DesyncAt == -1`, herite de killsource ou le risque est en AMONT, jetait donc des morts de
+vehicule PARFAITEMENT LUES. Apres assouplissement (accepter si rupture > index du dead-state,
+classe comptee a part) : **21 a 27 dead-states ti=40 par film**, majoritairement dans la bande
+vehicule (slots 768, 769, 782, 811), champ tueur EnumB renseigne. Meme pathologie sur ti=43
+(device, rupture i19..i23). Gain annexe mesure : le filtre de bande aurait perdu 2 a 5 dead-states
+BIPEDES par film (le film lie des entites par records NEW en cours de flux).
+
+**Deux decisions prises APRES l'ecriture du gate, consignees** : G1a passe d'assertion a rapport
+(il a echoue en disant vrai : la bande derivee des images-cles EST incomplete, et l'instrument
+range par archetype donc n'en depend pas) ; filtre DesyncAt assoupli sur mesure, pas par confort.
+
+**Apport Ghidra du jour** : le pipeline de mort est GENERIQUE — `FUN_1404d9828` (degat jpt!) →
+`FUN_140adefbc` → `FUN_142c4e850` le classifieur, qui emet `enemy_vehicle_kill` quand la victime
+n'a pas d'index joueur ; `FUN_142c4dcf8` calcule `vehicle_destroy_assist` sur la liste des
+contributeurs de degat. Aucun composant ECS « vehicule detruit » n'existe : que des composants
+d'OBJET. Et les evenements NOMMES du moteur sont haches par `FUN_140748a74` = murmur3 x86_32
+seed 0 (meme hachage que les noms `vehi` Forge) : `vehicle_death`=0x5c1d8575,
+`enemy_vehicle_kill`=0xd12acf08, `vehicle_destroy_assist`=0x4ef6ef77 — piste DISTINCTE des 28
+types refutes par V7 (elle porte sur le vocabulaire des proprietes nommees), notee non traitee.
+
+**Reserves.** Positions validees, pas les VALEURS. Sur-comptage certain (un vehicule mort
+re-replique son dead-state sur plusieurs ticks — le bipede a le meme profil : 84 dead-states pour
+~60 morts) : il faut grouper en EPISODES de mort. Quelques entrees hors bande (slots 116, 1449,
+5507) = candidats artefacts.
+
+**Conclusion / prochaine etape.** Grouper en episodes, ecarter le hors-bande, puis recouper avec
+les 2 candidates Theater deja datees du handoff §3.1 qui sont dans l'echantillon mesure
+(`0d76e8f1` Wasp 6:51, `b232e02d` Banshee 6:09) — piege du decalage d'horloge ~1 870 s documente.
+Si le recoupement tient, le Go publie `end="destroyed"` + `tEnd` et l'explosion + les sons deja
+cables (ad811de64, f4c3ed417) s'allument sans re-livraison. Note complete :
+`.ai/V7.5/film_re/NOTE_V13_DEADSTATE_VEHICULE_2026-09-05.md`.
+
 ## [2026-09-04] Chantier vehicules — HANDOFF complet ecrit — En cours (3 validations utilisateur en attente)
 
 **Handoff** : `.ai/HANDOFF_VEHICULES_2026-09-04.md`. Etat du chantier apres 21 commits depuis
