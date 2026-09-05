@@ -747,44 +747,167 @@ meme fenetre de lease que `SharedPersister`, transaction distincte) ; chemin dir
 
 ### E4 — Branchement au sync
 
-- [ ] Dans `internal/sync/replayartifacts/`, extraire les stats bombe PENDANT le decodage deja
+> **EXECUTE LE 2026-09-05, etape G.2 du plan d'integration** (`wt/integ-assaut`). La forme a
+> CHANGE par rapport a la lettre de ces items, et le constat qui l'a imposee est mesure : le
+> DOCUMENT ne porte pas les entrees de `BuildBombStats` sous la forme voulue (portage en FRAMES
+> et non en ms, periodes non pontees ecartees, pas de recalage film->match, pas de paire
+> tueur/victime). Les recalculer chez le consommateur en aurait fait un SECOND decodeur du meme
+> fait. Les stats se calculent donc A LA CUISSON (`replay.attachBombStats`, appele par
+> `BuildFromPositions`, ou les quatre sources vivent en pleine fidelite) et voyagent dans
+> l'artefact (`bombStats` + `bombEvents`, schema 39) ; le crochet post-sync ne fait plus que les
+> TRANSPORTER vers `persist`. L'esprit de l'item — « aucun second decodage, aucun film relu » —
+> est tenu a la lettre.
+
+- [x] Dans `internal/sync/replayartifacts/`, extraire les stats bombe PENDANT le decodage deja
       fait pour l'artefact, et les soumettre au batch. Aucun second decodage, aucun film relu.
-- [ ] Degradation gracieuse : film absent, mode non-Assaut, capability absente -> rien d'ecrit,
+      **FAIT, sous la forme ci-dessus** : `attachBombStats` calcule au moment du decodage (aucun
+      balayage de plus, aucune etape observee de plus — `BuildFromFilmSteps` reste a 35), et
+      `replayartifacts/bombstats.go` lit l'artefact RANGE (jamais le blob candidat) puis ecrit
+      par `persist.BombStatsPersister.PersistPass`. Patron EXACT de `usage.go` : projections
+      avant le writer, burst court apres TOUTE cuisson.
+- [x] Degradation gracieuse : film absent, mode non-Assaut, capability absente -> rien d'ecrit,
       aucune erreur remontee, un `slog.InfoContext` qui dit pourquoi.
-- [ ] `slog.ErrorContext(ctx, ..., "err", err, "match_id", ...)` sur toute erreur non triviale.
+      **FAIT, et les trois silences sont DISTINGUES** : mode hors Assaut (le document ne porte
+      aucun `bombStats` — DEBUG, et surtout PAS un echec : c'est le cas majoritaire de chaque
+      cycle), capability absente (DEBUG), artefact illisible (WARN + compteur d'echecs). Un
+      quatrieme cas a ete ajoute apres coup : un film d'Assaut dont AUCUNE source n'a rien rendu
+      est ecarte lui aussi, sans quoi le persister aurait WARNe « passe vide » a chaque cycle.
+- [x] `slog.ErrorContext(ctx, ..., "err", err, "match_id", ...)` sur toute erreur non triviale.
       Jamais d'erreur avalee.
-- [ ] Verifier que le plafond `maxPerCycle` (5) et le verrou de decodage sont respectes : ce
+      **FAIT** : l'echec d'ECRITURE d'un match est un `slog.ErrorContext` avec `match_id` et
+      `err` ; les indisponibilites (writer absent, capabilities illisibles) sont des WARN
+      comptes. Aucun `_ = f()`, aucun `continue` muet.
+- [x] Verifier que le plafond `maxPerCycle` (5) et le verrou de decodage sont respectes : ce
       lot n'augmente PAS le nombre de films decodes par cycle.
+      **VERIFIE SUR PIECES** : ni `maxPerCycle` ni `filmproc` ne sont touches par le lot, et le
+      crochet ne decode rien — il lit un fichier JSON deja ecrit. La liste des artefacts cuits
+      du cycle (`artefactCuit`, ex-`rapportUsage`) est PARTAGEE avec le resume d'usage : une
+      seule collecte, deux projections.
 
 **Gate E4** : test du hook avec un film factice ; et `go test ./internal/sync/... -run
 ReplayArtifacts` vert.
 
+**Gate E4 — PASSE le 2026-09-05** :
+
+```
+$ go test -tags=integration -p 1 ./internal/sync/replayartifacts/ -run StatsBombe -v   # EXIT=0
+--- PASS: TestPersisterStatsBombe_UnMatchDAssautEcritSesLignesEtSesFaits (0.96s)
+--- PASS: TestPersisterStatsBombe_ModeHorsAssautNEcritRien              (0.90s)
+--- PASS: TestPersisterStatsBombe_TitreSansCapability                   (0.97s)
+--- PASS: TestPersisterStatsBombe_ArtefactIllisibleNArretePasLeLot      (0.94s)
+$ go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/migration/...
+                                                          # EXIT_G2_INTEG=0, 12 paquets ok
+$ go build ./... ; go vet ./... ; gofmt -l .              # 0, 0, vide
+```
+
+Le gate par capability est juge SUR LES VRAIS TOML du depot : `halo_infinite` declare
+`film.bomb_stats`, `halo_5` ne le declare pas — un test qui fabriquerait ses TOML prouverait la
+mecanique, pas la configuration livree.
+
 ### E5 — Lecture, API, UI
 
-- [ ] Repo de lecture (`platform/duckdb/`) sur la vue `_latest`, type de retour canonique.
-- [ ] Service + handler : aucune logique metier dans le handler, aucun SQL inline dans le
+> **EXECUTE LE 2026-09-05, etapes G.3 (serveur) et G.4 (web).**
+
+- [x] Repo de lecture (`platform/duckdb/`) sur la vue `_latest`, type de retour canonique.
+      **FAIT** : `Q12cBombStats` sur `match_bomb_stats_latest` UNIQUEMENT (regle ART n2), lue par
+      `loadMatchBombStats` — best-effort, comme sa soeur `loadMatchObjectiveStats` : vue absente
+      -> WARN structure + colonnes absentes, scoreboard servi ENTIER. Type de retour :
+      `domain.ObjectiveRaw`, le meme que les autres modes.
+- [~] Service + handler : aucune logique metier dans le handler, aucun SQL inline dans le
       service.
-- [ ] Multi-titre : branche sur capability, degradation `ErrCapabilityNotSupported` en reponse
+      **COUVERT AUTREMENT, ET C'EST UN CHOIX** : aucun handler neuf. Les cinq colonnes entrent
+      dans le bloc `objective` DEJA servi par la fiche de match — `buildScoreboardObjective` les
+      recopie sous `HasBomb()`, exactement comme les six autres modes. Un endpoint dedie aurait
+      demande au web une seconde requete pour la meme page, et aurait laisse la section
+      « Objectifs » incapable de les afficher avec ses deux vues. Le contrat de l'item est tenu :
+      zero SQL dans le service (la requete vit dans `platform/duckdb`), zero logique metier dans
+      un handler (il n'y en a pas de neuf).
+- [x] Multi-titre : branche sur capability, degradation `ErrCapabilityNotSupported` en reponse
       partielle propre. Halo 5 ne doit rien casser.
-- [ ] Web : affichage dans la fiche de match sur le patron des autres modes a objectif ;
+      **FAIT, et la degradation est plus propre qu'une erreur** : le gate est
+      `WithBombStats(caps.Has(games.CapFilmBombStats))` au wiring (jamais `slug ==`). Un titre
+      sans la cle ne paie meme pas la requete et n'expose AUCUNE des cinq cles ; le bloc
+      `objective` reste celui des autres modes, et la section web se masque d'elle-meme
+      (`detectObjectiveMode` rend `null`). Il n'y a pas d'erreur a lever :
+      `ErrCapabilityNotSupported` sert a exprimer une reponse partielle quand un endpoint DEDIE
+      existe — ici il n'y en a pas, et la reponse est partielle par construction.
+- [x] Web : affichage dans la fiche de match sur le patron des autres modes a objectif ;
       libelles via `useFieldLabel()`, i18n **FR et EN**, query key dans `lib/query/keys.ts`,
       zero hex / zero classe Tailwind couleur.
-- [ ] `make generate-types` apres modification de l'openapi.
+      **FAIT sur le patron EXACT** : la section « Objectifs » a remplace son tableau par DEUX
+      VUES le 2026-09-03 (grille `ValueGrid` par joueur, face-a-face par equipe), toutes deux
+      pilotees par `objectiveColsFor(mode)`. L'Assaut y entre en trois points — un mode de plus a
+      `ObjectiveMode`, `BOMB_COLS`, un discriminant dans `detectObjectiveMode`. DEUX NUANCES,
+      dites plutot que passees sous silence : (a) les libelles ne passent pas par
+      `useFieldLabel()` mais par la table `t.objectives.cols` de la section, typee
+      `Record<MatchViewLocale, MatchViewText>` — donc parite FR/EN par TYPAGE, ce que l'item
+      demande ; en devier aurait donne deux sources de libelles dans la meme grille ; (b) aucune
+      query key n'est ajoutee, les colonnes voyageant avec la requete de la fiche de match deja
+      en place. Zero hex, zero classe couleur : la section suit les jetons `team-ally` /
+      `team-enemy` qu'elle emploie deja.
+- [x] `make generate-types` apres modification de l'openapi.
+      **FAIT** : `make openapi-gen` + `make generate-types` + `make openapi-check` (exit 0), et
+      `node tools/check-generated-types-fresh.mjs` exit 0. `wantReplayDocumentFields` 54 -> 56.
 
 **Gate E5** : `make check-types` (apres purge de `node_modules/.tmp`), `make test-web`,
 `go test ./internal/api/... ./internal/service/...`.
 
+**Gate E5 — PASSE le 2026-09-05** (D12 complet, pas seulement les trois commandes de l'item) :
+
+```
+$ go test ./internal/service/ ./internal/platform/duckdb/ ./internal/api/... ./internal/domain/...
+  ./contracttest/...                                                          # EXIT=0
+$ go test -tags=integration -p 1 ./internal/platform/duckdb/ -run BombStats -v # EXIT=0
+--- PASS: TestGetMatchScoreboard_BombStatsSansCapability_AucuneColonne
+--- PASS: TestGetMatchScoreboard_BombStatsVueAbsente_ServiEtAvertit
+--- PASS: TestGetMatchScoreboard_BombStatsPresentes_JointesParXUID
+$ npm run typecheck   # 0      $ npm run lint        # 0 (28 warnings, EXACTEMENT la baseline)
+$ npm run lint:fields # 0      $ npm run test        # 0 (585 fichiers, 6 187 tests)
+$ npm run build       # 0      $ node tools/knip-ratchet.mjs # 0 (files/exports/types 0/0)
+```
+
 ### E6 — Backfill et cloture
 
-- [ ] CLI de backfill : reutiliser `levelup backfill-replay` si le chemin existant suffit,
+> **EXECUTE LE 2026-09-05, etape G.5.**
+
+- [x] CLI de backfill : reutiliser `levelup backfill-replay` si le chemin existant suffit,
       sinon sous-commande dediee. **Ne pas la lancer sur le parc.**
-- [ ] Entree au carnet Notion, section « Sequence a derouler a la release, dans l'ordre » :
+      **SOUS-COMMANDE DEDIEE, et la question a ete tranchee SUR PIECES.** `backfill-replay` ne
+      passe PAS par le crochet `replayartifacts` (verifie : aucune reference dans
+      `cmd_backfill_replay.go`) — il CUIT et range, il ne projette rien. Et le crochet du fil de
+      l'eau ne voit que les artefacts cuits DANS SON CYCLE. Il fallait donc les deux, dans cet
+      ordre : `backfill-replay` re-cuit le parc (le schema 39 perime tout artefact anterieur —
+      c'est cette passe qui fait NAITRE `bombStats` dans les artefacts), puis
+      `backfill-bomb-stats` PROJETTE. L'ordre est ecrit dans l'en-tete de la commande, avec ce
+      qui se passe si on l'inverse (un no-op qui le dit, pas une erreur). Patron EXACT de
+      `backfill-usage-summary` : aucun film decode, un artefact lu a la fois, reprenable,
+      `--dry-run` / `--force` / `--match` / `--limit`, `OpenReadWrite` sous precondition
+      « serveur arrete » documentee en tete comme ses freres. **JAMAIS LANCEE** : aucune base de
+      prod ouverte de toute l'etape.
+- [!] Entree au carnet Notion, section « Sequence a derouler a la release, dans l'ordre » :
       le backfill des stats d'Assaut, sa condition et sa position dans l'ordre.
-- [ ] Entree `.ai/thought_log.md` (date, titre, statut, decision, resultats, prochaine etape).
-- [ ] Entree au registre `.ai/V7.5/REGISTRE_REPORTS.md` pour le desamorcage, avec sa condition
+      **NON TRAITE — le carnet Notion est le carnet de l'UTILISATEUR, pas un livrable d'agent**
+      (regle memorisee). La sequence a y inscrire est ecrite ici et dans l'en-tete de la
+      commande, prete a etre recopiee : (1) `levelup backfill-replay` serveur arrete, (2)
+      `levelup backfill-bomb-stats --dry-run` pour controle, (3) `levelup backfill-bomb-stats`.
+      A signaler a l'utilisateur en cloture.
+- [x] Entree `.ai/thought_log.md` (date, titre, statut, decision, resultats, prochaine etape).
+- [x] Entree au registre `.ai/V7.5/REGISTRE_REPORTS.md` pour le desamorcage, avec sa condition
       de reprise (« un corpus portant un desamorcage avere »).
-- [ ] Verifier l'etat CI de la branche (`gh run list --branch wt/assaut-stats`) avant de
+      **FAIT** : la ligne existait deja (posee par la branche) ; elle portait une DEPENDANCE DE
+      LIVRAISON devenue fausse (« la garde `isArmableBombVariant` exclut One Bomb — donc etape
+      E2-ter d'abord »). Elle est amendee dans le commit qui la perime : la garde n'existe plus,
+      One Bomb publie ses armements, et la condition de reprise du desamorcage — un corpus
+      portant un desamorcage AVERE — est la seule qui reste. Un second report est AJOUTE :
+      `bomb_carriers_killed`, absent partout faute d'une paire tueur/victime datee sur l'horloge
+      du match.
+- [!] Verifier l'etat CI de la branche (`gh run list --branch wt/assaut-stats`) avant de
       declarer le lot clos.
+      **SANS OBJET SOUS CETTE FORME** : le travail ne vit plus sur `wt/assaut-stats` mais sur
+      `wt/integ-assaut`, une branche d'integration JETABLE qui n'est pas poussee (regle du plan
+      d'integration : un seul merge final vers `feat/v75`, un seul push, etape F). L'etat CI se
+      juge donc la, sur `feat/v75`, au niveau JOB — c'est la que la condition de ce gate se
+      realise. Les gates locaux equivalents sont passes et colles ci-dessus.
 
 **Gate E6** : CI verte au niveau JOB sur la branche.
 

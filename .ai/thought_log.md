@@ -1,3 +1,110 @@
+## [2026-09-05] Integration — ETAPE G.5 : backfill-bomb-stats et la cloture du chantier d'Assaut — Complete
+
+**Le geste.** Etape G.5 du plan d'integration, E6 du plan d'Assaut. Le chantier passe de « ecrit
+au fil de l'eau » a « le parc existant a sa commande, et les deux trous connus sont au registre ».
+
+**Decision technique : sous-commande DEDIEE, tranchee sur pieces.** La question du plan etait
+« `levelup backfill-replay` suffit-il ? ». Verification : `cmd_backfill_replay.go` ne contient
+AUCUNE reference a `replayartifacts` — il cuit et range, il ne projette rien ; et le crochet du
+fil de l'eau ne voit que les artefacts cuits DANS SON CYCLE. Il faut donc les deux, dans cet
+ordre : `backfill-replay` re-cuit le parc (le schema 39 perime tout artefact anterieur — c'est
+cette passe qui fait NAITRE `bombStats` dans les artefacts), puis `backfill-bomb-stats`
+PROJETTE sans re-cuire. L'ordre est ecrit en tete de la commande AVEC ce qui se passe si on
+l'inverse : un no-op qui le dit (compteur « sans calque de bombe »), pas une erreur. Patron exact
+de `backfill-usage-summary`. **JAMAIS LANCEE** — aucune base de production ouverte de toute
+l'etape G.
+
+**Deux reports au registre.** (a) La ligne du DESAMORCAGE portait une dependance de livraison
+devenue FAUSSE (« la garde `isArmableBombVariant` exclut One Bomb — donc E2-ter d'abord ») : la
+garde n'existe plus, One Bomb publie ses armements, la ligne est amendee dans le commit qui la
+perime, et sa condition de reprise — un corpus portant un desamorcage AVERE — est inchangee.
+(b) Ligne NEUVE pour `bomb_carriers_killed` : le noyau sait le calculer, c'est SON ENTREE qui
+manque. Mesure source par source : `Options.Kills` = `[]EquipmentKillRef` (tueur + instant, PAS
+de victime, horloge du FILM) ; `replay.Death` = victime + horloge du MATCH, pas de tueur ;
+`killsource.Kill` = les deux noms mais un TROISIEME referentiel (« ms depuis le debut du film »).
+Le seul producteur de `replay.KillRef` du depot lit `match_kill_events`, une table de BASE que
+`replay` n'ouvre jamais. La condition de reprise nomme la premiere marche : un GATE DE MESURE du
+pont d'horloge, jamais une affirmation — c'est exactement le piege des deux horloges que E1/E2
+ont documente.
+
+**Cases du plan d'Assaut : ZERO case vide.** E4/E5/E6 statuees dans le fichier, avec trois `[~]`
+references (pas de handler dedie — le bloc `objective` existant porte les colonnes, sans quoi la
+section « Objectifs » ne pourrait pas les afficher avec ses deux vues ; pas de `useFieldLabel()`
+— la section a sa propre table typee, parite FR/EN par typage ; pas de query key — les colonnes
+voyagent avec la requete de la fiche de match) et deux `[!]` justifies (le carnet Notion
+appartient a l'utilisateur ; l'etat CI se juge a l'etape F sur `feat/v75`, pas sur une branche
+d'integration jetable).
+
+**Conclusion / prochaine etape.** Etape G CLOSE, cinq commits (`978d5b1c2` merge, `380ddcdcd`
+crochet, `75dd032ab` API, `efa920f3e` web, ce commit). La suite du plan d'integration est
+l'etape E (filet complet + revue adversariale) puis F (merge et push de `feat/v75`), qui ne sont
+PAS du ressort de cette etape. A SIGNALER a l'utilisateur : la sequence de release —
+`backfill-replay` puis `backfill-bomb-stats --dry-run` puis `backfill-bomb-stats` — est a
+inscrire au carnet Notion, et aucune des deux n'a ete lancee.
+
+## [2026-09-05] Integration — ETAPES G.2/G.3/G.4 : les stats d'Assaut, de la cuisson a la fiche de match — Complete
+
+**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etapes G.2 (E4 : crochet au
+sync), G.3 (E5 serveur) et G.4 (E5 web) du plan d'Assaut. La fonctionnalite passe de
+« bibliotheque non cablee » a « ecrite en base a chaque sync, servie par l'API, affichee sur la
+fiche de match ».
+
+**Decision technique n1 — LE DOCUMENT NE PORTE PAS CE QUE LE NOYAU ATTEND, et c'est ce constat
+qui commande toute l'architecture du lot.** Le plan demandait un crochet qui rejoue
+`BuildBombStats` sur l'artefact range (patron de `usage.go`). Verification sur pieces, entree par
+entree : `Objectives` OUI (`doc.Objectives` porte Stat/XUID/TimeMS), `Armings` OUI
+(`doc.BombArmings`, meme type, meme horloge) ; mais le PORTAGE non — le document le publie en
+FRAMES (grille 100 ms), ECARTE les periodes non pontees, ne distingue pas un lacher d'une mort et
+ne publie pas `CarryMSByXUID` ; le RECALAGE film->match non ; la paire tueur/victime non plus.
+Les re-deriver aurait fait un SECOND decodeur du meme fait, moins precis. Les quatre premieres
+vivent en pleine fidelite dans `BuildFromPositions`, entre `attachBombCarries` (qui rend
+desormais la chronologie en MILLISECONDES) et `attachBombArmings` : **le calcul s'y fait, une
+fois, et le resultat voyage dans l'artefact** (`bombStats` + `bombEvents`, poses sur la MEME
+montee 39 — elle n'avait encore cuit aucun artefact). Le crochet ne fait plus que TRANSPORTER.
+Consequence verifiee : aucune etape observee ajoutee (`BuildFromFilmSteps` reste a 35), et c'est
+le digest `artifact` qui porte le changement.
+
+**Decision technique n2 — `bomb_carriers_killed` reste ABSENT (NULL) partout, et c'est ecrit a
+cinq endroits plutot que comble.** Il demande une mort appariee a son TUEUR ET a sa VICTIME sur
+l'horloge du MATCH ; cette forme n'existe pas dans la chaine de cuisson (`opt.Kills` est un
+`[]EquipmentKillRef` — tueur + instant, pas de victime, et sur l'horloge du FILM ; le seul
+producteur de `replay.KillRef` du depot est `killcollector/positions.go`, qui les lit dans
+`match_kill_events`, une table de BASE). Report inscrit au registre. La colonne existe au schema,
+elle est nullable, et le web ne lui donne pas de colonne dediee : une colonne de « — » ne dit
+rien.
+
+**Decision technique n3 — TABLE DEDIEE cote lecture aussi, mais MEME BLOC cote DTO.** La lecture
+est une SECONDE requete (`Q12cBombStats` sur `match_bomb_stats_latest`, vue `_latest` uniquement)
+degradable independamment et gatee par la capability neuve `film.bomb_stats` cablee au wiring
+(`WithBombStats`, jamais slug==). Mais le DTO les porte dans le MEME bloc `objective` que les
+autres modes — c'est ce qui fait que les DEUX VUES existantes de la section « Objectifs »
+(livrees par l'amont le 03/09) les affichent sans un composant de plus : un mode de plus a
+`ObjectiveMode`, ses colonnes, son discriminant. `HasObjective()` compte desormais le bloc bombe,
+sans quoi un match d'Assaut — qui n'a AUCUN bloc API — rendrait `nil` et la section entiere
+disparaitrait.
+
+**Resultats mesures.** Harnais 13 films : passe 1 **12 identiques / 1 different**, le different
+etant `9f57c612` (le seul film d'Assaut du corpus) a l'etape `artifact` seule,
+1 582 605 -> 1 583 856 octets (+1 251) ; les 48 etapes qui precedent sont identiques au bit pres
+sur les 13 films. `git status` sur `testdata/` apres `-update` : UNE ligne. 49 lignes par TSV,
+inchange. Gates : build/vet 0, `go test ./internal/... ./contracttest/... ./cmd/...` 0 (un rouge
+en cours de lot, `TestAllCapabilityKeys_Count` 24 -> 25 — le garde-fou a fait son travail),
+integration `-p 1` 0 (12 paquets), openapi regenere (`wantReplayDocumentFields` 54 -> 56), web
+typecheck/lint/lint:fields/vitest/build/knip tous 0 (28 warnings de lint, EXACTEMENT la
+baseline). Tests neufs : 4 d'integration pour le crochet, 3 purs pour le convertisseur, 3
+d'integration pour le repo, 12 pour la logique web.
+
+**Piege releve et ferme.** La fixture d'integration de `platform/duckdb` RECOPIE a la main le DDL
+des tables qu'elle monte — la derive y est indetectable. `migration.MatchBombStatsTableSQL` et
+`MatchBombStatsLatestViewSQL` sont donc EXPORTEES (patron de `MatchObjectiveStatsLatestViewSQL`)
+et la migration les appelle elle-meme : une seule definition, deux references.
+
+**Conclusion / prochaine etape.** Reste G.5 (backfill `backfill-bomb-stats` sur le patron de
+`backfill-usage-summary`, registre des reports, cloture des cases du plan d'Assaut). L'ordre de
+la RELEASE est ecrit dans l'en-tete de la commande et n'est pas interchangeable :
+`backfill-replay` (re-cuit le parc, fait naitre `bombStats`) PUIS `backfill-bomb-stats`
+(projette). Aucune des deux n'est lancee ici.
+
 ## [2026-09-05] Integration — ETAPE G.1 : merge de `wt/assaut-stats`, un seul bloc de schema 39 — Complete
 
 **Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape G.1 (D13 : la decision
