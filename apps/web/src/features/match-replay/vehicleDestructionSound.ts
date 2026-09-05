@@ -1,7 +1,7 @@
 /**
  * vehicleDestructionSound.ts — LE SON DE LA DESTRUCTION D'UN VÉHICULE (lot du 2026-09-05).
  *
- * LE SIGNAL EST EXACTEMENT CELUI DE L'EFFET VISUEL (schéma 30, `vehiclesLayer.ts`) : un
+ * LE SIGNAL EST EXACTEMENT CELUI DE L'EFFET VISUEL (schéma 39, `vehiclesLayer.ts`) : un
  * véhicule dont `end === VEHICLE_END_DESTROYED` ET dont `tEnd` est publié — les deux
  * conditions, portées par `vehicleDestructionFrame`, la MÊME fonction que l'explosion du
  * calque (`vehiclesPaint.ts`). Tant que le Go ne publie que `end: "unknown"` (l'état actuel

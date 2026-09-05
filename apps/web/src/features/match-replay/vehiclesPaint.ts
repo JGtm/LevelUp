@@ -208,7 +208,7 @@ function occupantName(
  * médiane (q3 39,6-52,9 deg). CHAQUE occupant actif obtient donc SON cône, à SA couleur.
  *
  * LE CAP DU CHÂSSIS RESTE LE REPLI, occupant par occupant, quand la série n'a pas de lecture en
- * vigueur à cette image — un artefact antérieur au schéma 31 rend donc exactement le rendu
+ * vigueur à cette image — un artefact antérieur au schéma 39 rend donc exactement le rendu
  * d'avant pour son conducteur, et rien de plus pour les autres sièges (ils n'ont pas de série).
  *
  * MÊME GÉOMÉTRIE ET MÊMES OPACITÉS QUE LE CÔNE DES PIONS : c'est le module `replayAimCone` qui
@@ -377,7 +377,7 @@ export function drawVehiclesLayer(
         }
       }
     }
-    // LA DESTRUCTION (schéma 30, EN AVANCE DE PHASE) : `null` tant que le document ne publie que
+    // LA DESTRUCTION (schéma 39, EN AVANCE DE PHASE) : `null` tant que le document ne publie que
     // `end: "unknown"` — aujourd'hui, systématiquement. Voir l'en-tête de fonction pour l'ordre
     // peintre et l'indépendance vis-à-vis de la visibilité ci-dessus.
     const destroyedFrame = vehicleDestructionFrame(track)

@@ -642,10 +642,12 @@ type MatchScoreboardRow struct {
 
 // MatchScoreboardObjective : stats objectifs par joueur d'un match à objectif.
 // Blocs mutuellement exclusifs par mode (CTF / Zones (Strongholds+KOTH) / Oddball /
-// Stockpile / Extraction / VIP) : seuls les champs du mode joué sont renseignés (les autres
-// nil, omitempty). Totaux équipe/lobby calculés à la LECTURE côté front (SUM par équipe).
+// Stockpile / Extraction / VIP / Assaut) : seuls les champs du mode joué sont renseignés (les
+// autres nil, omitempty). Totaux équipe/lobby calculés à la LECTURE côté front (SUM par équipe).
 // Colonnes verrouillées sur payload réel GetMatchStats (PLAN_V72_OBJECTIVE_STATS.md ;
-// Stockpile + Extraction + VIP : V721-02, PLAN_V721_NOTION_BATCH.md).
+// Stockpile + Extraction + VIP : V721-02, PLAN_V721_NOTION_BATCH.md). L'ASSAUT EST LE SEUL BLOC
+// QUI NE VIENT PAS DE L'API : il est reconstruit du FILM et lu dans `match_bomb_stats_latest`
+// sous la capability `film.bomb_stats` — un `nil` y dit « pas mesuré », jamais « zéro ».
 type MatchScoreboardObjective struct {
 	// CTF (CaptureTheFlagStats)
 	FlagCaptures             *int     `json:"flag_captures,omitempty"`

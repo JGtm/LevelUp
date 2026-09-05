@@ -80,6 +80,17 @@ describe('le mode Assaut est reconnu par la section Objectifs', () => {
     const zeros = [ligne('Alpha', 't0', { bomb_detonations: 0, bomb_arms: 0 })]
     expect(detectObjectiveMode(zeros)).toBe('bomb')
   })
+
+  // LE PORTAGE SEUL SUFFIT, et c'est le cas que le discriminant à deux compteurs perdait
+  // (revue adversariale de branche, 2026-09-05). Les colonnes d'Assaut ne sortent pas toutes de
+  // la même lecture : `bomb_detonations` demande le statborg, `bomb_arms` demande l'anneau ET le
+  // portage, `bomb_grabs` ne demande QUE le portage. Un film dont seul le canal des armes tenues
+  // a été lu ne publie donc que celui-là — le Go le déclare Assaut (`ObjectiveRaw.HasBomb()`,
+  // MÊME liste de trois), et le web faisait disparaître la section entière.
+  it('rend « bomb » quand SEUL le portage a été lu — la même liste que HasBomb() côté Go', () => {
+    const portageSeul = [ligne('Alpha', 't0', { bomb_grabs: 2, time_as_bomb_carrier_seconds: 18 })]
+    expect(detectObjectiveMode(portageSeul)).toBe('bomb')
+  })
 })
 
 describe('les colonnes d’Assaut', () => {
