@@ -22211,6 +22211,95 @@ components:
         - cumulative
         - accuracy
       type: object
+    SessionObjectiveFamilyBlock:
+      additionalProperties: false
+      properties:
+        family:
+          type: string
+        matches:
+          format: int64
+          type: integer
+        roles:
+          items:
+            $ref: '#/components/schemas/SessionObjectiveRoleMetric'
+          type:
+            - array
+            - "null"
+      required:
+        - family
+        - matches
+        - roles
+      type: object
+    SessionObjectiveRoleMetric:
+      additionalProperties: false
+      properties:
+        is_duration:
+          type: boolean
+        lobby_total:
+          format: double
+          type: number
+        player_share_of_lobby_pct:
+          format: double
+          type: number
+        player_share_of_team_pct:
+          format: double
+          type: number
+        player_total:
+          format: double
+          type: number
+        role:
+          type: string
+        squad:
+          items:
+            $ref: '#/components/schemas/SessionUsageSquadShare'
+          type:
+            - array
+            - "null"
+        team_share_of_lobby_pct:
+          format: double
+          type: number
+        team_total:
+          format: double
+          type: number
+      required:
+        - role
+        - player_total
+        - lobby_total
+      type: object
+    SessionObjectivesBlock:
+      additionalProperties: false
+      properties:
+        families:
+          items:
+            $ref: '#/components/schemas/SessionObjectiveFamilyBlock'
+          type:
+            - array
+            - "null"
+        lobby_parity_pct:
+          format: double
+          type: number
+        lobby_size_avg:
+          format: double
+          type: number
+        matches_with_objectives:
+          format: int64
+          type: integer
+        roles:
+          items:
+            $ref: '#/components/schemas/SessionObjectiveRoleMetric'
+          type:
+            - array
+            - "null"
+        team_parity_pct:
+          format: double
+          type: number
+        team_size_avg:
+          format: double
+          type: number
+      required:
+        - matches_with_objectives
+        - roles
+      type: object
     SessionOption:
       additionalProperties: false
       properties:
@@ -22331,6 +22420,8 @@ components:
           type: string
         suggested_compare:
           $ref: '#/components/schemas/SessionCompareSuggestion'
+        usage:
+          $ref: '#/components/schemas/SessionUsageBlock'
       required:
         - current_session
         - available_sessions
@@ -22350,6 +22441,222 @@ components:
       required:
         - name
         - value
+      type: object
+    SessionUsageBlock:
+      additionalProperties: false
+      properties:
+        available:
+          type: boolean
+        lobby_parity_pct:
+          format: double
+          type: number
+        lobby_size_avg:
+          format: double
+          type: number
+        matches_measured:
+          format: int64
+          type: integer
+        matches_total:
+          format: int64
+          type: integer
+        measured_duration_seconds:
+          format: double
+          type: number
+        metrics:
+          items:
+            $ref: '#/components/schemas/SessionUsageMetric'
+          type:
+            - array
+            - "null"
+        objectives:
+          $ref: '#/components/schemas/SessionObjectivesBlock'
+        pad_families:
+          items:
+            $ref: '#/components/schemas/SessionUsagePadFamily'
+          type:
+            - array
+            - "null"
+        pad_unnamed_total:
+          format: int64
+          type: integer
+        powerup_pickups:
+          items:
+            $ref: '#/components/schemas/SessionUsagePowerup'
+          type:
+            - array
+            - "null"
+        squad_players:
+          items:
+            $ref: '#/components/schemas/SessionUsageSquadPlayer'
+          type:
+            - array
+            - "null"
+        team_parity_pct:
+          format: double
+          type: number
+        team_size_avg:
+          format: double
+          type: number
+        unavailable_reason:
+          type: string
+      required:
+        - available
+        - matches_measured
+        - matches_total
+      type: object
+    SessionUsageMatchPoint:
+      additionalProperties: false
+      properties:
+        match_id:
+          type: string
+        player_share_of_lobby_pct:
+          format: double
+          type: number
+        player_share_of_team_pct:
+          format: double
+          type: number
+        team_share_of_lobby_pct:
+          format: double
+          type: number
+      required:
+        - match_id
+      type: object
+    SessionUsageMetric:
+      additionalProperties: false
+      properties:
+        key:
+          type: string
+        lobby_per_10min:
+          format: double
+          type: number
+        lobby_total:
+          format: double
+          type: number
+        matches_above_lobby_parity:
+          format: int64
+          type: integer
+        matches_above_team_parity:
+          format: int64
+          type: integer
+        per_match:
+          items:
+            $ref: '#/components/schemas/SessionUsageMatchPoint'
+          type:
+            - array
+            - "null"
+        player_per_10min:
+          format: double
+          type: number
+        player_share_of_lobby_pct:
+          format: double
+          type: number
+        player_share_of_team_max_pct:
+          format: double
+          type: number
+        player_share_of_team_min_pct:
+          format: double
+          type: number
+        player_share_of_team_pct:
+          format: double
+          type: number
+        player_total:
+          format: double
+          type: number
+        squad:
+          items:
+            $ref: '#/components/schemas/SessionUsageSquadShare'
+          type:
+            - array
+            - "null"
+        team_per_10min:
+          format: double
+          type: number
+        team_share_of_lobby_pct:
+          format: double
+          type: number
+        team_total:
+          format: double
+          type: number
+      required:
+        - key
+        - matches_above_lobby_parity
+        - player_total
+        - lobby_total
+      type: object
+    SessionUsagePadFamily:
+      additionalProperties: false
+      properties:
+        family_key:
+          type: string
+        lobby_total:
+          format: double
+          type: number
+        player_share_of_lobby_pct:
+          format: double
+          type: number
+        player_share_of_team_pct:
+          format: double
+          type: number
+        player_total:
+          format: double
+          type: number
+        team_share_of_lobby_pct:
+          format: double
+          type: number
+        team_total:
+          format: double
+          type: number
+      required:
+        - family_key
+        - player_total
+        - lobby_total
+      type: object
+    SessionUsagePowerup:
+      additionalProperties: false
+      properties:
+        family_key:
+          type: string
+        occupations:
+          format: int64
+          type: integer
+        per_10min:
+          format: double
+          type: number
+      required:
+        - family_key
+        - occupations
+      type: object
+    SessionUsageSquadPlayer:
+      additionalProperties: false
+      properties:
+        gamertag:
+          type: string
+        xuid:
+          type: string
+      required:
+        - xuid
+        - gamertag
+      type: object
+    SessionUsageSquadShare:
+      additionalProperties: false
+      properties:
+        per_10min:
+          format: double
+          type: number
+        share_of_lobby_pct:
+          format: double
+          type: number
+        share_of_team_pct:
+          format: double
+          type: number
+        total:
+          format: double
+          type: number
+        xuid:
+          type: string
+      required:
+        - xuid
+        - total
       type: object
     SessionsFilter:
       additionalProperties: false

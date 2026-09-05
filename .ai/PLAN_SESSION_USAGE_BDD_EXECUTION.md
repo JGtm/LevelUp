@@ -69,14 +69,52 @@ Constats de verification (ecarts mineurs au handoff, sans consequence) :
 
 ## Lot S2 — Agregat de session et contrat
 
-- [ ] Service d'agregat sur analysis.ComputeSessions (gap 120 min) : somme joueur/camp/
+> EN COURS depuis le 2026-09-04 soir. ARBITRAGE UTILISATEUR (2026-09-04, ~21h30) :
+> le pilotage S2/S3 revient a la session « levelup-go-migration-ad » (pilote de
+> l'etape 0, du commit S1 d448c3328 et du backfill reel). La session
+> « levelup-go-migration-8a » a ete notifiee par message direct : ne pas lancer
+> S2/S3, ne pas committer, ne pas ecrire dans ce worktree. Une seule main au volant.
+
+- [x] Service d'agregat sur analysis.ComputeSessions (gap 120 min) : somme joueur/camp/
       lobby, deux effectifs moyens (-> deux parites), etendue par match, matchs au-dessus
       de la parite, cadence par 10 min (duree des matchs MESURES)
-- [ ] Objectifs agreges depuis match_objective_stats_latest (rien a produire)
-- [ ] Contrat : QUE du normalise + champ « matchs mesures / matchs de la session »
-- [ ] Verification pilote contre les chiffres de reference §7 du handoff (parite joueur
-      11,9 %, equipe 24,2 %, tableau des 9 grandeurs)
-- [ ] Commit(s) S2 + entree thought_log
+      — sessionusage.ComputeUsage + attachSessionUsage (session_page_usage.go),
+      bloc `usage` ATTACHE a POST .../pages/sessions/detail (design B arbitre,
+      patron IntensityRows/FirstBlood — pas d'endpoint dedie)
+- [x] Objectifs agreges depuis match_objective_stats_latest (rien a produire)
+      — LoadObjectiveRoleRows (SUM generes depuis narrative.ObjectiveRoleColumns,
+      SOURCE UNIQUE arbitree ; la table concurrente de sessionusage/objectives.go
+      a ete SUPPRIMEE) ; roles par famille derives (intersection role x vocabulaire
+      narrative), jamais de liste parallele
+- [x] Contrat : QUE du normalise + champ « matchs mesures / matchs de la session »
+      — domain/session_usage.go (design B) + lignes d'escouade (SquadPlayers au bloc,
+      Squad par metrique et par role — contexte Filters.MatchContext=squad, resolution
+      miroir sessionCoreTeammates, cap 3) ; openapi-gen regenere, garde vert
+- [x] Verification pilote contre le §7 du handoff (sonde SQL pilote sur copie scratchpad) :
+      CINQ grandeurs EXACTES au dixieme (socles 45,6/20,5/9,3 · camo 50,0/14,8/7,4 ·
+      surbouclier 45,5/20,0/9,1 · grappin 44,4/50,0/22,2 · laches 49,1/24,6/12,1).
+      DEUX references du §7 sont FAUSSES (meme famille d'erreur que le « 102 ») :
+      (a) MURS 33,3/42,9/14,3 : le mock comptait les 21 lignes wall (appareils lachés
+      compris — 0x2974c233, 86 % dropped) ; la regle validee vue-match (panneaux
+      deployes seuls, 0x686b40c9) donne lobby 7, camp JGtm 0, JGtm 0 — JGtm n'a
+      DEPLOYE aucun mur sur le temoin, ses « 3 murs » etaient des appareils laches en
+      mourant. Regle S1 conservee, temoin corrige.
+      (b) PARITES 11,9/24,2 : le mock comptait tous les inscrits (lobby moyen 8,4) ;
+      le canon du depot (LobbySizesAtCompletion, presents a la fin) donne 8,0 -> parites
+      12,5 % / 25,0 %. Canon conserve (regle 14 : reutiliser les KPI existants).
+      ROLE « PRENDRE » — mesures executant (les trois classifications candidates,
+      aucune ne reproduit le §7 56,5/11,5/6,5 calcule hors depot) : DECISION UTILISATEUR
+      du 2026-09-05 : flag_grabs EXCLU (les porter-jeter tactiques en chaine gonfleraient
+      la grandeur) — table narrative conservee telle quelle (48,3/14,0/6,7 au temoin).
+- [x] Revue adversariale S2 : ronde 1 = 1 relecteur frais (lentille correction des
+      donnees) — 3 P1 (scope camp connu/inconnu croise : parts > 100 % possibles ;
+      TeamPer10Min et team_share_of_lobby a 0-pour-inconnu) + 3 P2 (copie ToAnySlice,
+      champs FilmRow morts, cadences gonflees par match sans echelle de temps), 18
+      conditions qui tiennent. Ronde de correction (executant) : regle de scope unique
+      appliquee aux 4 sites, tests anti-mutants (600 % -> 100 %), DTO TeamTotal/
+      MatchesAboveTeamParity passes en pointeurs, openapi regenere. Ronde 2 (contexte
+      frais, corrections seules) : AUCUN defaut recevable, 6/6 tiennent.
+- [x] Commit(s) S2 (PILOTE) + entree thought_log [x]
 
 ## Lot S3 — Front Sessions (Solo + Escouade)
 
@@ -88,6 +126,11 @@ Constats de verification (ecarts mineurs au handoff, sans consequence) :
 
 ## Decouvertes hors perimetre (notees, non traitees)
 
+- (utilisateur, 2026-09-05) Idee future pour le role « prendre » : un filtre anti-spam
+  des prises de drapeau — distinguer une prise PORTEE vers le socle des porter-jeter
+  tactiques en chaine. Exige la chronologie des portages, qui vit dans les artefacts de
+  film (les episodes de portage drapeau/bombe existent deja cote rejeu 2D), pas dans
+  match_objective_stats. Chantier separe si retenu.
 - (revue adversariale 2026-09-04, P2 consignes) `usage_summary_persister.go:71-85` :
   l'atomicite films+joueurs (une seule transaction) n'est prouvee par aucun test — un
   sabotage en deux transactions passerait inapercu et la reprise (qui ne lit que
@@ -103,12 +146,49 @@ Constats de verification (ecarts mineurs au handoff, sans consequence) :
   pas de resume au fil de l'eau : le CLI backfill couvre ce cas — a garder en tete prod.
 - (pilote) le corpus reel compte 106 artefacts au 2026-09-04 (le handoff en annoncait
   114) — quelques-uns purges/archives entre-temps, sans consequence.
+- (pilote, gate complet -p 1 du 2026-09-04 soir) DEUX rouges PRE-EXISTANTS de la base
+  feat/v75, etrangers au lot (reproduits a l'identique sur feat/v75 nu) :
+  `TestNoRewrittenSlotBand` (archlint — faille_activation_research_test.go du commit
+  d28a3aa6a, chantier translocateur, reecrit la regle de bande de slots ; tache separee
+  creee) ; `internal/himap` : VERDICT TOMBE (session 8a, 2026-09-04 soir) —
+  `TestBalayageCoquille/aquarius_map` PEND a l'identique sur feat/v75 nu et sur
+  wt/session-usage (timeout a 2/10/15 min, blocage ~1m14 dans le sous-test), rouge
+  PRE-EXISTANT etranger au chantier ; fiche de tache separee proposee a l'utilisateur.
+  `TestCareerLive_NilAPIResponse_NotCached` etait un flaky de contention (vert isole
+  des deux cotes). Les paquets DU LOT sont tous verts, integration -p 1 comprise.
+  CONSEQUENCE GATES S2/S3 : `go test ./...` restera rouge sur ces deux paquets quoi
+  qu'on fasse — depouiller les FAIL nominativement (motif ancre `^--- FAIL:` + code de
+  sortie), ne jamais attendre un exit 0 global ni maquiller ces deux rouges en verts.
+
+- (executant S2, 2026-09-05) Ordre de mise en place d'une DB shared de test : appliquer
+  EnsureSharedSchema AVANT migration.RunForDB(TargetShared) fait echouer la migration
+  `add_mv_player_matches_fr_cols` (match_registry preexiste sans les colonnes _fr que
+  le step halo n'a pas encore ajoutees). Sur DB vierge, RunForDB d'abord puis
+  EnsureSharedSchema passe (session_usage_aggregate_integration_test.go). Fragilite
+  d'ordonnancement a regarder un jour — non traitee.
+- (executant S2) `cmd/inspect_bp/main.go` pointe par defaut sur l'ancien chemin v6
+  `data/warehouse/metadata.duckdb` (mort depuis l'ADR 0008) — non traite.
+- (executant S2) L'entree thought_log S1 annoncee par la cloture pilote n'est pas dans
+  `.ai/thought_log.md` du worktree (premiere entree au 2026-09-03) — probablement dans le
+  worktree principal ; non traite.
 
 ## Journal
 
 - [2026-09-04] Etape 0 close. Verification du handoff : conforme, deux ecarts mineurs
   notes ci-dessus. Base worktree = feat/v75 @ da616828f + purge sidecar. S1 confie a un
   agent executant (implementation seule, commits et verification par le pilote).
+- [2026-09-05] S2 — reconciliation TERMINEE par l'executant de reprise (3e session,
+  apres deux coupures) : design B retabli dans domain/session_usage.go (le fichier du
+  worktree portait le contrat concurrent a endpoint dedie — remplace par la sauvegarde
+  s2-executant-B + types escouade) ; table de roles concurrente SUPPRIMEE de
+  sessionusage/objectives.go, source unique narrative.ObjectiveRoleColumns, sommes par
+  role GENEREES au repo (LoadObjectiveRoleRows) ; lignes d'escouade (bloc + metriques +
+  roles) via ResolveTrackedSquad (miroir sessionCoreTeammates, cap 3) ; service
+  attachSessionUsage (patron IntensityRows), DI gated CapFilmUsageSummary dans
+  registry_pages (~l.292), degradation unsupported/load_failed jamais 500 ;
+  openapi-gen regenere + garde vert ; tests unitaires (14) + integration persister
+  reel verts. MESURE flag_grabs consignee au lot S2 ci-dessus. RESTE PILOTE : verdict
+  §7, relecture du diff entier, commit S2.
 - [2026-09-04] S1 — revue adversariale (2 relecteurs frais, lentilles anti-ART et
   couverture de tests) : 2 P1 convergents corriges (vue players_latest desormais assise
   sur films_latest — l'autorite de passe est la ligne film, toujours ecrite ; tables
