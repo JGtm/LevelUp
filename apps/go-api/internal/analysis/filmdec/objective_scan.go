@@ -94,7 +94,11 @@ package filmdec
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requete.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // ObjectiveRead est UNE valeur de champ d'objectif lue dans un paquet.
 type ObjectiveRead struct {
@@ -157,30 +161,41 @@ type ObjectiveScan struct {
 //
 // UN SEUL DECODAGE filmdec A LA FOIS PAR PROCESS : ce balayage installe un hook global de
 // paquet. Il est restaure a la sortie, y compris en cas d'erreur.
+//
+// ScanFilmObjectives est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanObjectives].
 func ScanFilmObjectives(dir string) (ObjectiveScan, error) {
-	sc := ObjectiveScan{}
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return sc, fmt.Errorf("aucun chunk film dans %s", dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return ObjectiveScan{}, err
 	}
-	band := observedSlotBand(dir, n, ObjectiveTypeIndex)
+	return ScanObjectives(NewFilmContext(film))
+}
+
+// ScanObjectives décode les champs publiés de ti=11 d'un film DEJA CHARGE.
+func ScanObjectives(fc *FilmContext) (ObjectiveScan, error) {
+	sc := ObjectiveScan{}
+	nums := fc.ChunkNumbers()
+	if len(nums) == 0 {
+		return sc, ErrNoFilmChunk
+	}
+	band := observedSlotBand(fc.Film(), ObjectiveTypeIndex)
 	if len(band) == 0 {
-		return sc, fmt.Errorf("aucun slot d'archetype ti=%d dans les keyframes de %s",
-			ObjectiveTypeIndex, dir)
+		return sc, fmt.Errorf("aucun slot d'archetype ti=%d dans les keyframes du film",
+			ObjectiveTypeIndex)
 	}
 	sc.Slots = len(band)
-	arch, reg, err := objectiveArchetype(dir)
+	arch, reg, err := fc.objectiveArchetype()
 	if err != nil {
 		return sc, err
 	}
 	w := objectiveWalk{arch: arch, reg: reg, sc: &sc}
 	defer w.install()()
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range nums {
+		data, pks, ok := fc.ChunkAt(c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			switch pk.Type {
 			case PacketTypeDelta:
 				w.scanPayload(pk.Payload(data), band, pk.TimestampUS, &sc)
@@ -205,19 +220,13 @@ func ScanFilmObjectives(dir string) (ObjectiveScan, error) {
 // LE DECOUPAGE DU REGISTRE CHANGE AVEC LE BUILD (mesure du lot 0) : les noms sont lus du film,
 // jamais supposes aux index attendus — c'est `consumeByName` qui route, et un archetype dont les
 // noms ne sont pas ceux de ti=11 rend simplement zero lecture.
-func objectiveArchetype(dir string) (Archetype, *Registry, error) {
-	raw, err := ReadFilmChunk(dir, 0)
+func (c *FilmContext) objectiveArchetype() (Archetype, *Registry, error) {
+	arch, reg, ok, err := c.archetype(ObjectiveTypeIndex)
 	if err != nil {
-		return Archetype{}, nil, fmt.Errorf("chunk_00 (registre) illisible dans %s : %w", dir, err)
+		return Archetype{}, nil, err
 	}
-	reg, err := ParseRegistryChunk(raw)
-	if err != nil {
-		return Archetype{}, nil, fmt.Errorf("registre illisible dans %s : %w", dir, err)
-	}
-	arch, ok := reg.Archetype(ObjectiveTypeIndex)
 	if !ok {
-		return Archetype{}, nil, fmt.Errorf("archetype ti=%d absent du registre de %s",
-			ObjectiveTypeIndex, dir)
+		return Archetype{}, nil, fmt.Errorf("archetype ti=%d absent du registre", ObjectiveTypeIndex)
 	}
 	return arch, reg, nil
 }

@@ -73,7 +73,7 @@ func TestBombePortageGate(t *testing.T) {
 	defer release()
 
 	for _, f := range bpFilms {
-		periodes, carries, cov := bpExtraire(t, cache, f.id)
+		periodes, carries, cov, _ := bpExtraire(t, cache, f.id)
 		detonateurs := b2Detonateurs(t, cache, f.id)
 		bpLog(t, f.id, periodes, cov)
 		// (a) — calque non vide, couverture équilibrée.
@@ -104,7 +104,13 @@ func TestBombePortageGate(t *testing.T) {
 // (`Restated`), que `bombHeldEventsOf` ne consulte pas — la bombe n'est jamais une arme de
 // spawn. Le gate de présence est nil, comme dans les tests unitaires : les pistes publiées
 // n'existent pas hors assemblage complet, et ce que le gate juge est la chronologie.
-func bpExtraire(t *testing.T, cache, id string) ([]HeldObjectPeriod, []BombCarry, *BombCarriesCoverage) {
+//
+// L'`OwnerReport` est rendu en quatrième valeur parce que son `DeathOffsetMS` EST la moitié du
+// recalage d'horloge de la jointure d'armement (cf. bomb_arms.go) : le gate de `bomb_arms`
+// réutilise cette extraction plutôt que d'en payer une seconde sur le même film.
+func bpExtraire(t *testing.T, cache, id string) (
+	[]HeldObjectPeriod, []BombCarry, *BombCarriesCoverage, OwnerReport,
+) {
 	t.Helper()
 	dir := filepath.Join(cache, "film_chunks", id)
 	changes, _, err := filmdec.ScanFilmHeldWeaponChanges(dir, nil)
@@ -138,7 +144,7 @@ func bpExtraire(t *testing.T, cache, id string) ([]HeldObjectPeriod, []BombCarry
 	events := bombHeldEventsOf(changes, own.DeathOffsetMS)
 	carry := BuildHeldObjectCarry(events, slotXUID, deaths)
 	carries, cov := buildBombCarries(carry, matchClock{origin: 0, step: 1000, frames: 1 << 20}, nil)
-	return carry.Periods, carries, cov
+	return carry.Periods, carries, cov, own
 }
 
 // bpJugeExplosion applique (b) et (c) à UNE explosion du relevé, sur la chronologie BRUTE

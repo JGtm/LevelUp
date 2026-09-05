@@ -181,8 +181,8 @@ func oriNearDeath(ends []equipLife, x, y, z float32, at uint64) bool {
 func TestOrigineEtalonSurLesArmes(t *testing.T) {
 	s := glResolve(t)
 	pads := oriPads(t)
-	_, pst := decodeFilmPlacements(s.dir, &s.wr)
-	scans := decodeFilmPadScans(s.dir, &s.wr, pst.Calibration.Widths)
+	_, pst := decodeFilmPlacementsDir(s.dir, &s.wr)
+	scans := decodeFilmPadScansDir(s.dir, &s.wr, pst.Calibration.Widths)
 	if !scans.Weapons.Scanned || len(scans.Weapons.Creations) == 0 {
 		t.Fatalf("voie des armes muette : scanned=%v creations=%d",
 			scans.Weapons.Scanned, len(scans.Weapons.Creations))
@@ -222,8 +222,8 @@ type oriBucket struct{ socle, sol, abstention int }
 func TestOrigineEquipementSocleOuSol(t *testing.T) {
 	s := glResolve(t)
 	pads := oriPads(t)
-	_, pst := decodeFilmPlacements(s.dir, &s.wr)
-	scans := decodeFilmPadScans(s.dir, &s.wr, pst.Calibration.Widths)
+	_, pst := decodeFilmPlacementsDir(s.dir, &s.wr)
+	scans := decodeFilmPadScansDir(s.dir, &s.wr, pst.Calibration.Widths)
 	pu := scans.Powerups
 	if !pu.Scanned || len(pu.Creations) == 0 {
 		t.Fatalf("voie des power-ups muette : scanned=%v creations=%d", pu.Scanned, len(pu.Creations))

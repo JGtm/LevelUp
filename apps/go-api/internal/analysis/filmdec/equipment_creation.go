@@ -34,7 +34,11 @@ package filmdec
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // EquipmentCreationField désigne l'un des deux champs que le default-state de ti=37 lisait et
 // jetait. L'ordre est celui du flux.
@@ -162,18 +166,29 @@ type EquipmentCreationStats struct {
 // `equipmentCreationHook`, qui est un global de paquet. Le hook est restauré à la sortie.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+//
+// ScanFilmEquipmentCreations est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanEquipmentCreations].
 func ScanFilmEquipmentCreations(dir string, wr *Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, EquipmentCreationStats{}, err
+	}
+	return ScanEquipmentCreations(NewFilmContext(film), wr)
+}
+
+// ScanEquipmentCreations décode les records de création d'équipement d'un film DEJA CHARGE.
+func ScanEquipmentCreations(fc *FilmContext, wr *Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
+	if len(fc.ChunkNumbers()) == 0 {
+		return nil, st, ErrNoFilmChunk
 	}
-	band := worldObjectSlotBand(dir, n, EquipmentTypeIndex)
+	band := worldObjectSlotBand(fc.Film(), EquipmentTypeIndex)
 	if len(band) == 0 {
-		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes de %s",
-			EquipmentTypeIndex, dir)
+		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film",
+			EquipmentTypeIndex)
 	}
-	return ScanFilmEquipmentCreationsForBand(dir, wr, band)
+	return ScanEquipmentCreationsForBand(fc, wr, band)
 }
 
 // ScanFilmEquipmentCreationsForBand balaye une BANDE DE SLOTS donnée. La bande est un paramètre
@@ -181,19 +196,33 @@ func ScanFilmEquipmentCreations(dir string, wr *Vec3Range) ([]EquipmentCreation,
 // vus porter cet archétype) passe par le MÊME code que la mesure — sans quoi le contrôle ne
 // contrôlerait pas le décodeur mais une variante de lui (règle établie par
 // WorldObjectPositionsForBand).
+//
+// ScanFilmEquipmentCreationsForBand est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanEquipmentCreationsForBand].
 func ScanFilmEquipmentCreationsForBand(
 	dir string, wr *Vec3Range, band map[uint32]bool,
+) ([]EquipmentCreation, EquipmentCreationStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, EquipmentCreationStats{}, err
+	}
+	return ScanEquipmentCreationsForBand(NewFilmContext(film), wr, band)
+}
+
+// ScanEquipmentCreationsForBand balaye une bande de slots donnée dans un film DEJA CHARGE.
+func ScanEquipmentCreationsForBand(
+	fc *FilmContext, wr *Vec3Range, band map[uint32]bool,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
 	if wr == nil {
 		return nil, st, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
 	}
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
+	nums := fc.ChunkNumbers()
+	if len(nums) == 0 {
+		return nil, st, ErrNoFilmChunk
 	}
 	st.Slots = len(band)
-	arch, err := EquipmentArchetype(dir)
+	arch, err := fc.EquipmentArchetype()
 	if err != nil {
 		return nil, st, err
 	}
@@ -202,20 +231,7 @@ func ScanFilmEquipmentCreationsForBand(
 	defer installCreationHooks(&cur)()
 
 	w := equipCreationWalk{comps: len(arch.Components), wr: wr, band: band, cur: &cur}
-	var out []EquipmentCreation
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
-			continue
-		}
-		for _, pk := range WalkPackets(data) {
-			if pk.Type != PacketTypeDelta {
-				continue
-			}
-			out = append(out, w.scanPayload(pk.Payload(data), &st, pk, c)...)
-		}
-	}
-	return out, st, nil
+	return runCreationWalk(fc, w, &st), st, nil
 }
 
 // installCreationHooks branche les DEUX sondes du record de création — le default-state de
@@ -262,6 +278,15 @@ type equipCreationWalk struct {
 	ti uint32
 	// deser est le déserialiseur du default-state de cet archétype ; nil vaut celui de `ti=37`.
 	deser func(*BitReader)
+	// posDecode décode et VALIDE le composant i0 à l'offset donné (gate de sélectivité). nil vaut
+	// le chemin OBJET DU MONDE (decodeWorldObjectPos, porte 3 bits). L'archétype VÉHICULE (`ti=40`)
+	// porte un i0 en PRÉCISION-DYNAMIQUE (porte 5 bits, biped) : il passe ici decodeBipedI0Pos
+	// (vehicle_creation.go). Sans ce paramètre le gate lit i0 avec la mauvaise grammaire et n'est
+	// plus sélectif — mesuré : le témoin fantôme rendait alors PLUS de records que la vraie bande.
+	posDecode func([]byte, int) ([3]float32, bool)
+	// posBits est la largeur du composant i0, pour avancer le curseur après un record accepté.
+	// Zéro vaut projPosBits() (chemin objet du monde) ; `ti=40` passe lay.TotalBits().
+	posBits int
 }
 
 // archetype et defaultState rendent les réglages effectifs de la marche (défauts `ti=37`).
@@ -277,6 +302,23 @@ func (w equipCreationWalk) defaultState() func(*BitReader) {
 		return consumeDefaultStateTI37
 	}
 	return w.deser
+}
+
+// decodePos VALIDE et décode i0 à l'offset at : le décodeur paramétré (dyn.-préc. pour `ti=40`)
+// s'il est fourni, sinon le chemin objet du monde (porte 3 bits).
+func (w equipCreationWalk) decodePos(pay []byte, at int) ([3]float32, bool) {
+	if w.posDecode != nil {
+		return w.posDecode(pay, at)
+	}
+	return decodeWorldObjectPos(pay, at, w.wr)
+}
+
+// posAdvance rend la largeur d'i0 pour avancer le curseur après un record accepté.
+func (w equipCreationWalk) posAdvance() int {
+	if w.posBits > 0 {
+		return w.posBits
+	}
+	return projPosBits()
 }
 
 // scanPayload balaye UN payload delta et rend les records de création reconnus.
@@ -370,7 +412,7 @@ func (w equipCreationWalk) readCreation(
 		st.MaskBad++
 		return cre, false
 	}
-	v, ok := decodeWorldObjectPos(pay, br.BitPos(), w.wr)
+	v, ok := w.decodePos(pay, br.BitPos())
 	if !ok {
 		st.PosBad++
 		return cre, false
@@ -380,7 +422,7 @@ func (w equipCreationWalk) readCreation(
 	cre.MPPPresent, cre.MPPVal = w.cur.mppPresent, w.cur.mppVal
 	cre.X, cre.Y, cre.Z = v[0], v[1], v[2]
 	cre.Mask, cre.MaskFull, cre.MaskHasI0 = idx, full, idx[0] == 0
-	cre.AfterBit = br.BitPos() + projPosBits()
+	cre.AfterBit = br.BitPos() + w.posAdvance()
 	return cre, true
 }
 

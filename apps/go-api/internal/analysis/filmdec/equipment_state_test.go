@@ -97,7 +97,7 @@ func (a Archetype) indicesOfFirst(name string) int {
 // déclare. C'est la pièce : les index cités par le plan sont vérifiés ici, pas supposés.
 func equipLogArchetype(t *testing.T, dir string) Archetype {
 	t.Helper()
-	arch, err := EquipmentArchetype(dir)
+	arch, err := EquipmentArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archétype ti=%d illisible : %v", EquipmentTypeIndex, err)
 	}
@@ -267,9 +267,9 @@ func equipCreatorControl(t *testing.T, dir string, samples []EquipmentStateSampl
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, i)
 	}
-	band := bipedSlotBand(dir, chunks)
+	band := bipedSlotBandDir(dir, chunks)
 	lo, hi := uint32(1)<<31, uint32(0)
-	for s := range band {
+	for _, s := range band.Slots() {
 		if s < lo {
 			lo = s
 		}
@@ -286,7 +286,7 @@ func equipCreatorControl(t *testing.T, dir string, samples []EquipmentStateSampl
 		}
 	}
 	t.Logf("== MESURE A4 — CONTRÔLE DU CHAMP `creator` ==")
-	t.Logf("  bande de slots de BIPÈDE du film : %d slots, de %d à %d", len(band), lo, hi)
+	t.Logf("  bande de slots de BIPÈDE du film : %d slots, de %d à %d", band.Count(), lo, hi)
 	if len(vals) == 0 {
 		t.Log("  C1/C2 NON CALCULABLES : aucune valeur de creator transmise")
 		return
@@ -294,7 +294,7 @@ func equipCreatorControl(t *testing.T, dir string, samples []EquipmentStateSampl
 	inBand := 0
 	maxVal := uint64(0)
 	for _, v := range vals {
-		if band[uint32(v)] {
+		if band.Has(uint32(v)) {
 			inBand++
 		}
 		if v > maxVal {
@@ -304,7 +304,7 @@ func equipCreatorControl(t *testing.T, dir string, samples []EquipmentStateSampl
 	t.Logf("  C1 (prescrit) : %d valeurs sur %d tombent dans la bande des slots de bipède "+
 		"-> %s", inBand, len(vals), equipVerdict(inBand == len(vals)))
 	t.Logf("  C2 (plus faible) : valeur maximale %d, pour %d slots de bipède dans le film "+
-		"-> %s", maxVal, len(band), equipVerdict(int(maxVal) < len(band)))
+		"-> %s", maxVal, band.Count(), equipVerdict(int(maxVal) < band.Count()))
 	t.Logf("  distribution des valeurs de creator : %s", equipRenderU64(hist))
 }
 

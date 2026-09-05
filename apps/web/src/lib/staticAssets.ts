@@ -19,6 +19,7 @@ const FOLDER: Record<StaticKind, string> = {
   'csr-rank': 'ranks',
   weapon: 'weapons-assets',
   commendation: 'commendations',
+  vehicle: 'vehicles-assets',
   // Sons du rejeu 2D (WAV, lot 5 parité rejeu). Composé UNIQUEMENT côté front
   // (le backend Go n'émet aucune URL de son dans ses payloads — pas de miroir
   // dans internal/assets/static/layout.go tant que c'est vrai).
@@ -31,6 +32,7 @@ export type StaticKind =
   | 'csr-rank'
   | 'weapon'
   | 'commendation'
+  | 'vehicle'
   | 'sound'
 
 export const DEFAULT_TITLE_SLUG = 'halo_infinite'

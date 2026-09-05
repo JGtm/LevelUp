@@ -89,7 +89,7 @@ func gameEntityBands(c gameEntityCensus) (map[int]map[uint32]bool, int, int) {
 func gameEntityFilledExcess(bands map[int]map[uint32]bool) int {
 	excess := 0
 	for _, ti := range []int{GameEngineTypeIndex, PlayerEngineTypeIndex} {
-		for s := range fillSlotBand(bands[ti]) {
+		for _, s := range fillSlotBand(bands[ti]).Slots() {
 			if !bands[ti][s] {
 				excess++
 			}

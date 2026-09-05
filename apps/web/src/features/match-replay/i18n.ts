@@ -176,6 +176,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerGroundWeapons: 'Armes au sol',
     layerGroundWeaponsHint:
       "Les armes abandonnées au sol, lues dans le film : l'arme d'un mort, celle qu'on laisse en ramassant autre chose, ou celle qu'un râtelier a éjectée. Chacune est dessinée là où elle s'est arrêtée, dès qu'elle y tombe. Les armes SUR LEUR EMPLACEMENT ne sont pas ici : elles appartiennent au calque des emplacements d'arme. LA FIN est celle que le film montre, jamais une durée de table : un ramassage daté l'arrête exactement ; sinon l'arme est dessinée pleine tant qu'un relevé la voit encore, puis S'ESTOMPE jusqu'au premier relevé qui ne la voit plus — la disparition a eu lieu quelque part entre les deux, et rien n'est dessiné au-delà de cette borne.",
+    layerVehicles: 'Véhicules',
+    layerVehiclesHint:
+      "Les véhicules du match, lus dans le film : leur naissance, leur trajectoire orientée dans le sens du déplacement (le dernier cap connu à l'arrêt), et qui est à bord. Un véhicule sans occupant connu reste neutre ; un châssis que la table ne nomme pas encore se dessine en petit repère neutre, jamais avec le véhicule d'un voisin. LA DISPARITION DU SPRITE N'EST PAS UNE DESTRUCTION : le film ne date aucune destruction — le véhicule reste dessiné jusqu'à la PREMIÈRE preuve mesurée de son absence (fenêtre d'environ 20 s après la dernière preuve de présence), puis s'efface — rien de plus.",
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnMeasuredFmt: (seconds) => `Réapparition dans ${Math.ceil(seconds)} s`,
     padRespawnExpectedFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,
@@ -379,6 +382,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         unjoined: (n) => `${n} au nom d'un joueur que le film n'a pas vu vivre`,
       },
     },
+    collapsedColumnsShowFmt: (count) => `Voir plus (${count})`,
+    collapsedColumnsHide: 'Replier',
+    collapsedColumnsHint:
+      'Les colonnes les moins décisives sont repliées. Rien n’est retiré : les totaux, les dénominateurs et les notes de mesure les comptent toujours.',
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
     exportVideo: 'Exporter la vidéo',
@@ -575,6 +582,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerGroundWeapons: 'Weapons on the ground',
     layerGroundWeaponsHint:
       'Weapons abandoned on the ground, read from the film: a weapon dropped by a dead player, left behind while picking up another, or ejected from a rack. Each one is drawn where it came to rest, from the moment it lands. Weapons ON THEIR SPOT are not here — they belong to the weapon-spots layer. The END is what the film shows, never a duration from a table: a dated pickup ends the display exactly; otherwise the weapon is drawn solid for as long as a key frame still records it, then FADES to the first key frame that no longer does — the disappearance happened somewhere in between, and nothing is drawn past that bound.',
+    layerVehicles: 'Vehicles',
+    layerVehiclesHint:
+      "The match's vehicles, read from the film: their birth, their trajectory oriented in the direction of travel (the last known heading while stopped), and who is aboard. A vehicle with no known occupant stays neutral; a chassis the table doesn't name yet is drawn as a small neutral marker, never with a neighbor's vehicle. THE SPRITE DISAPPEARING IS NOT A DESTRUCTION: the film dates no destruction — the vehicle stays drawn until the FIRST measured proof of its absence (a window of about 20 s past the last proof of presence), then vanishes — nothing more.",
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnMeasuredFmt: (seconds) => `Respawn in ${Math.ceil(seconds)} s`,
     padRespawnExpectedFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s`,
@@ -774,6 +784,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         unjoined: (n) => `${n} named for a player the film never saw alive`,
       },
     },
+    collapsedColumnsShowFmt: (count) => `Show more (${count})`,
+    collapsedColumnsHide: 'Collapse',
+    collapsedColumnsHint:
+      'The least game-changing columns are folded away. Nothing is removed: totals, denominators and measurement notes still count them.',
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',
     exportVideo: 'Export video',

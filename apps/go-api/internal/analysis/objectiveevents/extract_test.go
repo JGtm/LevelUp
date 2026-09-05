@@ -1,13 +1,12 @@
 package objectiveevents
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 // filmCacheEnv — nom de la variable qui porte la racine du cache film
@@ -28,50 +27,23 @@ const filmCacheEnv = "FILM_CACHE_ROOT"
 // cacheRoot rend la racine du cache film, ou "" si la variable n'est pas posée.
 func cacheRoot() string { return os.Getenv(filmCacheEnv) }
 
-// diskFilmSource = FilmSource de test adossée au cache disque
-// (film_chunks/<id>/chunk_NN.bin + film_manifests/<id>.json). Mime la future
-// source disque du CLI diagnostic v3.
-type diskFilmSource struct {
-	id     string
-	chunks []ChunkMeta
-}
-
-type manifestJSON struct {
-	Chunks []struct {
-		Index     int `json:"index"`
-		ChunkType int `json:"chunk_type"`
-		StartMS   int `json:"start_ms"`
-	} `json:"chunks"`
-}
-
-// newDiskFilmSource charge le manifest d'un film ; renvoie (nil,false) si absent.
-func newDiskFilmSource(t *testing.T, id string) (*diskFilmSource, bool) {
+// newDiskFilm charge UN film du cache disque (film_manifests/<id>.json +
+// film_chunks/<id>/chunk_NN.bin) dans la forme que prennent les points d'entree : un
+// `*filmsource.Film` deja decompresse et decoupe. Renvoie (nil,false) si le film est absent.
+//
+// IL PASSE PAR `filmcache`, LA SEULE PORTE DU CACHE, ET C'EST NEUF (item 1.5, 2026-09-02).
+// Ce fichier reconstituait la disposition du cache pour son compte, avec une entree d'allowlist
+// datee dans l'ancien `filmcache_guard_test.go` ; sa justification etait un CYCLE D'IMPORT —
+// `filmcache` importait `objectiveevents` pour ses types de chunk. Le lot 1 a supprime ce
+// cycle (les deux paquets dependent maintenant du paquet FEUILLE `filmsource`), donc la
+// derogation n'a plus d'objet et la copie s'en va avec elle.
+func newDiskFilm(t *testing.T, id string) (*filmsource.Film, bool) {
 	t.Helper()
-	mfPath := filepath.Join(cacheRoot(), "film_manifests", id+".json")
-	raw, err := os.ReadFile(mfPath)
+	film, ok, err := filmcache.LoadFilm(cacheRoot(), id)
 	if err != nil {
-		return nil, false
+		t.Fatalf("film %s : chargement : %v", id, err)
 	}
-	var mf manifestJSON
-	if err := json.Unmarshal(raw, &mf); err != nil {
-		t.Fatalf("manifest %s: unmarshal: %v", id, err)
-	}
-	src := &diskFilmSource{id: id}
-	for _, c := range mf.Chunks {
-		src.chunks = append(src.chunks, ChunkMeta{Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS})
-	}
-	return src, true
-}
-
-func (d *diskFilmSource) Chunks() []ChunkMeta { return d.chunks }
-
-func (d *diskFilmSource) ChunkData(index int) ([]byte, bool) {
-	p := filepath.Join(cacheRoot(), "film_chunks", d.id, fmt.Sprintf("chunk_%02d.bin", index))
-	raw, err := os.ReadFile(p)
-	if err != nil {
-		return nil, false
-	}
-	return raw, true
+	return film, ok
 }
 
 // rosterFor renvoie le mapping xuid->team_id ground-truth (issu de
@@ -134,11 +106,11 @@ func TestExtractCTFCaptureCount(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.id, func(t *testing.T) {
-			src, ok := newDiskFilmSource(t, tc.id)
+			bobine, ok := newDiskFilm(t, tc.id)
 			if !ok {
 				t.Skipf("film %s absent du cache (%s=%q) — verite terrain non rejouee", tc.id, filmCacheEnv, cacheRoot())
 			}
-			events := Extract(tc.id, tc.variant, src, rosterFor(tc.id))
+			events := Extract(tc.id, tc.variant, bobine, rosterFor(tc.id))
 
 			var captures int
 			for _, e := range events {

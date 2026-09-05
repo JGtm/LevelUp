@@ -7,11 +7,13 @@
  * Ce hook réunit la relecture de position, la garde d'horloge des explosions et le tracé par
  * image, et n'en rend au canvas que deux lignes utiles.
  *
- * LE PORTEUR SE RELIT DANS SES TRAJECTOIRES, image par image (`posOfPlayerAt`, le même
+ * LE PORTEUR SE RELIT DANS SES TRAJECTOIRES, image par image (`useCarrierPosAt`, le même
  * utilitaire que le crâne, le drapeau porté et la couronne) : la bombe « colle » à son
  * marqueur. La bombe AU SOL relit la position du LÂCHEUR à l'instant du lâcher (t1) — la
- * fenêtre après-mort de `posOfPlayerAt` compte ici : un porteur tué lâche la bombe à sa mort,
- * et sa position doit se lire à cette image-là.
+ * fenêtre après-mort compte ici : un porteur tué lâche la bombe à sa mort, et sa position doit
+ * se lire à cette image-là. PORTEUR EMBARQUÉ : c'est la position du VÉHICULE qui répond
+ * (décision produit du 2026-09-05, cf. l'en-tête de `carrierPosition.ts`) — un bipède attaché
+ * ne réplique plus, et la bombe traversait le décor en ligne droite.
  *
  * LES EXPLOSIONS COUPENT LE SOL, sous la garde d'horloge de la déflagration
  * (`filmClockTrusted`, même règle que `bombBlastFx`) : sans origine résolue, `explosions`
@@ -24,7 +26,7 @@ import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
 import { BOMB_DETONATION_STAT } from './bombBlastFx'
 import { drawBombCarrier, type BombCarrierInput } from './bombCarrierLayer'
-import { usePlayerPosAt } from './livesPosition'
+import { useCarrierPosAt } from './carrierPosition'
 import type { CanvasView } from './objectivesLayer'
 import type { ReplayDocumentReady } from './replayNormalize'
 
@@ -57,9 +59,10 @@ export function useReplayBombCarrier({
 }: UseReplayBombCarrierArgs): ReplayBombCarrier {
   const carries = doc.bombCarries
 
-  // La relecture de position partagée (livesPosition.ts) : un porteur tué lâche à sa mort, la
-  // fenêtre après-mort garde sa dernière position lisible.
-  const posOf = usePlayerPosAt(doc)
+  // La relecture de position partagée (carrierPosition.ts : embarqué -> position du véhicule,
+  // sinon celle du bipède) : un porteur tué lâche à sa mort, la fenêtre après-mort du repli
+  // garde sa dernière position lisible.
+  const posOf = useCarrierPosAt(doc)
 
   // LES FRAMES DES EXPLOSIONS, triées — `null` sans horloge de confiance : le sol s'éteint
   // (cf. bombCarrierLayer, en-tête). Le porté, lui, ne dépend pas de cette horloge : les

@@ -44,8 +44,10 @@ var worldObjectPrecisionReaders = map[string]string{
 		"components_biped_anchor.go) — aucune lecture de la valeur ici",
 	"internal/analysis/replay/world_object_precision.go": "l'INSTALLATEUR de production : " +
 		"pose les largeurs de la carte du match et rend la restauration",
-	"internal/analysis/replay/build.go": "le BRANCHEMENT : `BuildFromFilm` appelle " +
-		"`installWorldObjectPrecision` depuis `Options.MapQuant`, sous le verrou de décodage",
+	"internal/analysis/replay/build_from_film.go": "le BRANCHEMENT : `BuildFromFilm` appelle " +
+		"`installWorldObjectPrecision` depuis `Options.MapQuant`, sous le verrou de décodage. " +
+		"Le fichier s'appelait `build.go` jusqu'au lot 1 de PLAN_CUISSON_PERF (2026-09-02), qui " +
+		"a sorti le decodage de l'assemblage par un deplacement pur",
 	"internal/analysis/replay/build_ground_weapons.go": "2026-08-17 (correctif de revue du " +
 		"lot des socles) : le décodage `ti=42` est SOUS les largeurs que `BuildFromFilm` a " +
 		"installées juste avant — il ne les pose pas, il en dépend, et son commentaire le dit " +

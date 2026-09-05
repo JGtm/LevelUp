@@ -35,6 +35,14 @@ import { distanceChain, drawVariation, gainFromDb, type SoundDraw } from './weap
 import { SOUND_MAX_VOICES, soundEnvelope } from './replayAudio'
 import { WEAPON_SOUND_VARIATIONS } from './weaponSoundVariations'
 import { pickVariantStem, type ReplaySoundEvent } from './replaySoundVariants'
+import {
+  engineStemsOf,
+  engineTailSeconds,
+  planEngineSegments,
+  scheduleEngineMix,
+  type EngineSegment,
+} from './vehicleEngineMix'
+import type { EnginePlan } from './vehicleEngineSound'
 import { staticAssetURL } from '@/lib/staticAssets'
 
 /** Fréquence d'échantillonnage du mixage. 48 kHz : la cadence native des assets livrés. */
@@ -111,6 +119,13 @@ export interface MixOptions {
    * retrouve dans les bruitages, jamais absent du mixage complet.
    */
   families?: { voice: readonly string[]; music: readonly string[] }
+  /**
+   * LE PLAN MOTEUR DES VÉHICULES (`vehicleEngineSound.planVehicleEngines`, transmis par la
+   * page) : des ÉTATS continus, posés en segments par `vehicleEngineMix.ts` — mêmes bornes
+   * d'épisodes, mêmes fondus de 150 ms et même bus 0,85 que la lecture temps réel. Ils sont
+   * des BRUITAGES (famille `sfx`) et ne comptent pas dans le plafond de voix, comme en direct.
+   */
+  engines?: readonly EnginePlan[]
 }
 
 /**
@@ -315,6 +330,8 @@ export async function renderAudioMix(
   durationMs: number,
   masterGain: number,
   distancePercent = 0,
+  /** Les segments moteur à poser derrière leur bus (0,85), avec les mêmes tampons. */
+  engineSegments: readonly EngineSegment[] = [],
 ): Promise<AudioBuffer> {
   const frames = Math.max(1, Math.ceil((durationMs / 1000) * MIX_SAMPLE_RATE))
   const ctx = new OfflineAudioContext(MIX_CHANNELS, frames, MIX_SAMPLE_RATE)
@@ -337,6 +354,7 @@ export async function renderAudioMix(
     master.connect(ctx.destination)
   }
   scheduleMix(ctx, master, sounds, buffers)
+  scheduleEngineMix(ctx, master, engineSegments, buffers)
   return ctx.startRendering()
 }
 
@@ -397,29 +415,42 @@ export async function mixReplayAudio(
 ): Promise<MixedTracks | null> {
   if (typeof OfflineAudioContext !== 'function') return null
   const planned = planAudioMix(timeline, bounds, options)
-  if (planned.length === 0) return null
+  const enginePlans = options.engines ?? []
+  // « Rien à mixer » compte les MOTEURS : un match sans événement mais avec un véhicule
+  // occupé dans la plage a bien une piste sonore à rendre.
+  if (planned.length === 0 && enginePlans.length === 0) return null
   const durationMs = bounds.endMs - bounds.startMs
   // UN CONTEXTE JETABLE POUR LE SEUL DECODAGE : `decodeAudioData` a besoin d'un contexte, mais
   // pas de celui qui rendra le mixage — dont la longueur depend justement des durees decodees.
   const probe = new OfflineAudioContext(MIX_CHANNELS, 1, MIX_SAMPLE_RATE)
   const buffers = await decodeMixSources(
-    planned.map((s) => s.stem),
+    [...planned.map((s) => s.stem), ...engineStemsOf(enginePlans)],
     options.urlOf,
     probe,
   )
-  const kept = applyVoiceCap(planned, (stem) => buffers.get(stem)?.duration ?? null)
-  if (kept.length === 0) return null
+  const durOf = (stem: string) => buffers.get(stem)?.duration ?? null
+  const kept = applyVoiceCap(planned, durOf)
+  // LES SEGMENTS MOTEUR : mêmes bornes que la page, bornés à la plage. Hors plafond de voix.
+  const engineSegments = enginePlans.flatMap((p) => planEngineSegments(p, bounds, durOf))
+  if (kept.length === 0 && engineSegments.length === 0) return null
   // LA DUREE EST CELLE DU MIXAGE COMPLET POUR TOUTES LES PISTES : des pistes de longueurs
-  // differentes se decaleraient a la lecture dans un montage.
-  const total = durationMs + tailSeconds(kept, buffers, durationMs) * 1000
-  const rendre = (sons: readonly MixedSound[]) =>
-    renderAudioMix(sons, buffers, total, options.volume, options.distancePercent ?? 0)
-  const full = await rendre(kept)
+  // differentes se decaleraient a la lecture dans un montage. La queue prend le plus long des
+  // deux mondes — le dernier événement enveloppé, ou un `exit` de moteur gravé qui déborde.
+  const tail = Math.max(
+    tailSeconds(kept, buffers, durationMs),
+    engineTailSeconds(engineSegments, durOf, durationMs / 1000),
+  )
+  const total = durationMs + tail * 1000
+  const rendre = (sons: readonly MixedSound[], engines: readonly EngineSegment[]) =>
+    renderAudioMix(sons, buffers, total, options.volume, options.distancePercent ?? 0, engines)
+  const full = await rendre(kept, engineSegments)
   const families: MixedTracks['families'] = []
   for (const family of FAMILY_ORDER) {
     const sons = kept.filter((s) => s.family === family)
-    if (sons.length === 0) continue
-    families.push({ family, buffer: await rendre(sons) })
+    // Les moteurs sont des BRUITAGES : ils sortent dans la piste `sfx`, comme dans le mixage.
+    const engines = family === 'sfx' ? engineSegments : []
+    if (sons.length === 0 && engines.length === 0) continue
+    families.push({ family, buffer: await rendre(sons, engines) })
   }
   return { full, families }
 }

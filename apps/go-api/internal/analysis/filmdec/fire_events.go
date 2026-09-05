@@ -1,8 +1,9 @@
 package filmdec
 
 import (
-	"fmt"
 	"math"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // Décodage OFFLINE des ÉVÉNEMENTS DE TIR du film (record d'event type 105).
@@ -138,17 +139,27 @@ type FireEvent struct {
 // ScanFilmFireEvents décode tous les événements de tir LONGS des chunks du film de dir.
 // Aucun balayage bit-à-bit : un paquet de type 0 = un event, son type est dans le premier
 // octet. Les chunks illisibles sont ignorés (le film peut être partiel).
+//
+// ScanFilmFireEvents est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanFireEvents].
 func ScanFilmFireEvents(dir string) ([]FireEvent, error) {
-	n := CountFilmChunks(dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ScanFireEvents(film)
+}
+
+// ScanFireEvents décode les événements de tir longs d'un film DEJA CHARGE.
+func ScanFireEvents(film *filmsource.Film) ([]FireEvent, error) {
 	var out []FireEvent
 	read := 0
-	for c := 1; c <= n; c++ {
-		chunk, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range FilmChunkNumbers(film) {
+		chunk, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
 		read++
-		for _, p := range WalkPackets(chunk) {
+		for _, p := range pks {
 			if p.Type != PacketTypeDelta || p.Size < 1 {
 				continue
 			}
@@ -165,7 +176,7 @@ func ScanFilmFireEvents(dir string) ([]FireEvent, error) {
 		}
 	}
 	if read == 0 {
-		return nil, fmt.Errorf("aucun chunk film lisible dans %s", dir)
+		return nil, ErrNoReadableFilmChunk
 	}
 	return out, nil
 }

@@ -397,7 +397,7 @@ func TestHillShapesMeasure(t *testing.T) {
 		t.Fatalf("%d forme(s) de colline depuis %s — rien a mesurer", len(hills), source)
 	}
 	quant := p2aQuant(t, film.Carte)
-	src := p2aSource(t, dir)
+	src := p2aBobine(t, dir)
 	sc := p2bScan(t, dir)
 	doc, origin := p2bBuild(t, dir, short, quant, ZoneInput{
 		Scanned: true, Reads: sc.Reads, Zones: hills, Roles: "hill", Hill: true,

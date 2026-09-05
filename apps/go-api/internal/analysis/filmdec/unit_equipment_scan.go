@@ -13,7 +13,11 @@ package filmdec
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // UnitEquipmentEmission est UNE lecture d'i26 rattachée à son record bipède.
 type UnitEquipmentEmission struct {
@@ -30,24 +34,32 @@ type UnitEquipmentEmission struct {
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `unitEquipmentHook`,
 // un global de paquet. L'appelant doit détenir LockProcessDecode ; le hook est restauré à la
 // sortie, y compris en cas d'erreur.
+//
+// ScanFilmUnitEquipment est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanUnitEquipment].
 func ScanFilmUnitEquipment(dir string) ([]UnitEquipmentEmission, error) {
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, fmt.Errorf("aucun chunk film dans %s", dir)
-	}
-	chunks := make([]int, 0, n)
-	for i := 1; i <= n; i++ {
-		chunks = append(chunks, i)
-	}
-	slots := bipedSlotBand(dir, chunks)
-	if len(slots) == 0 {
-		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
-	}
-	lay, _, err := DetectI0Layout(dir)
+	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
-		return nil, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
+		return nil, err
 	}
-	arch, err := bipedArchetype(dir)
+	return ScanUnitEquipment(NewFilmContext(film))
+}
+
+// ScanUnitEquipment décode les émissions d'i26 d'un film DEJA CHARGE.
+func ScanUnitEquipment(fc *FilmContext) ([]UnitEquipmentEmission, error) {
+	chunks := fc.ChunkNumbers()
+	if len(chunks) == 0 {
+		return nil, ErrNoFilmChunk
+	}
+	slots := fc.BipedSlots()
+	if slots.Count() == 0 {
+		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
+	}
+	lay, err := fc.I0Layout()
+	if err != nil {
+		return nil, fmt.Errorf("découpage i0 illisible : %w", err)
+	}
+	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +71,7 @@ func ScanFilmUnitEquipment(dir string) ([]UnitEquipmentEmission, error) {
 		}
 	}
 	if idx26 < 0 {
-		return nil, fmt.Errorf("aucun unit-equipment-component dans l'archétype biped de %s", dir)
+		return nil, fmt.Errorf("aucun unit-equipment-component dans l'archétype biped du film")
 	}
 
 	var last struct {
@@ -73,11 +85,11 @@ func ScanFilmUnitEquipment(dir string) ([]UnitEquipmentEmission, error) {
 	var out []UnitEquipmentEmission
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	for _, c := range chunks {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+		data, pks, ok := fc.ChunkAt(c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}

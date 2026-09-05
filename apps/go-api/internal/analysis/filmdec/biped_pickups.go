@@ -1,5 +1,7 @@
 package filmdec
 
+import "levelup/go-api/internal/analysis/filmsource"
+
 // biped_pickups.go — LES RAMASSAGES, lus dans l'ÉVÉNEMENT NATIF `biped_pickup` de la bobine.
 //
 // CE QUE C'EST. Un paquet delta ne porte pas que des records d'entités : il commence par une
@@ -50,8 +52,6 @@ package filmdec
 //
 // HORS LIGNE par construction (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 // UN SEUL décodage filmdec à la fois par process (verrou partagé, cf. LockProcessDecode).
-
-import "fmt"
 
 const (
 	// bipedPickupPacketByte est l'octet de tête d'un paquet dont la liste d'événements
@@ -147,28 +147,36 @@ func bipedPickupReadRef(br *BitReader, w uint) (uint64, bool) {
 //
 // Le balayage est autonome : il ne lit que la tête des payloads delta et n'installe aucun
 // hook. Il ne peut donc pas altérer ce que les autres canaux décodent.
+//
+// ScanFilmBipedPickups est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanBipedPickups].
 func ScanFilmBipedPickups(dir string) ([]BipedPickup, BipedPickupStats, error) {
-	var st BipedPickupStats
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, BipedPickupStats{}, err
 	}
-	chunks := make([]int, 0, n)
-	for i := 1; i <= n; i++ {
-		chunks = append(chunks, i)
+	return ScanBipedPickups(NewFilmContext(film))
+}
+
+// ScanBipedPickups décode les ramassages natifs d'un film DEJA CHARGE.
+func ScanBipedPickups(fc *FilmContext) ([]BipedPickup, BipedPickupStats, error) {
+	var st BipedPickupStats
+	chunks := fc.ChunkNumbers()
+	if len(chunks) == 0 {
+		return nil, st, ErrNoFilmChunk
 	}
 	// La bande de bipèdes sert de SENTINELLE : un slot reconstruit hors bande dénonce une
 	// largeur d'index inadaptée à ce film. Son absence n'empêche pas de décoder, elle
 	// désactive seulement le rejet — et on le dit dans les stats.
-	band := bipedSlotBand(dir, chunks)
+	band := fc.BipedSlots()
 
 	var out []BipedPickup
 	for _, c := range chunks {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+		data, pks, ok := fc.ChunkAt(c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta || pk.Size < 2 {
 				continue
 			}
@@ -181,7 +189,7 @@ func ScanFilmBipedPickups(dir string) ([]BipedPickup, BipedPickupStats, error) {
 			if !ok {
 				continue
 			}
-			if len(band) > 0 && !band[p.Slot] {
+			if band.Count() > 0 && !band.Has(p.Slot) {
 				st.RefusedOffBand++
 				continue
 			}

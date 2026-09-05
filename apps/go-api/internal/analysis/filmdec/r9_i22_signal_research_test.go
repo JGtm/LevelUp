@@ -67,8 +67,8 @@ type r9Signal struct {
 func r9SigScan(t *testing.T, dir string) ([]r9Signal, map[int]int, int) {
 	t.Helper()
 	n := CountFilmChunks(dir)
-	band := worldObjectSlotBand(dir, n, EquipmentTypeIndex)
-	arch, err := EquipmentArchetype(dir)
+	band := worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)
+	arch, err := EquipmentArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archetype ti=37 illisible : %v", err)
 	}
@@ -176,7 +176,7 @@ func r9I22OneFilm(t *testing.T, dir string) {
 		fam[p.Life] = r8FamilyOf(p.GlobalID)
 	}
 	sigs, census, records := r9SigScan(t, dir)
-	arch, _ := EquipmentArchetype(dir)
+	arch, _ := EquipmentArchetypeDir(dir)
 	t.Logf("%s : records ti=37 = %d | lectures i22 = %d | poses nommees = %d",
 		filepath.Base(dir), records, len(sigs), len(fam))
 	r9LogCensus(t, census, arch, records)

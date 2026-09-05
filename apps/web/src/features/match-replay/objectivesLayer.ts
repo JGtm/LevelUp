@@ -39,7 +39,7 @@
  */
 import type { ReplayBounds, ReplayMapObjectives } from '@/lib/api/types'
 
-import { buildPlayerPosAt } from './livesPosition'
+import { buildCarrierPosAt } from './carrierPosition'
 import { canvasScale, worldToCanvas, type XY } from './replayLogic'
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
@@ -248,8 +248,9 @@ export interface ObjectivePulse {
 
 /**
  * buildObjectivePulses apparie chaque action d'objectif du document à l'élément servi le
- * plus proche de son AUTEUR à l'instant de l'action (position relue dans ses vies,
- * patron posOfPlayerAt du calque des morts — même fenêtre après-mort).
+ * plus proche de son AUTEUR à l'instant de l'action (position relue par `buildCarrierPosAt` :
+ * le VÉHICULE quand l'auteur y est embarqué, sinon ses vies de bipède et la même fenêtre
+ * après-mort que le calque des morts).
  *
  * LA PROXIMITÉ EST 2D : la position interpolée d'une trace est XY (le z ne voyage pas
  * dans positionAt), et les objectifs d'un même mode ne se superposent pas en plan sur
@@ -287,7 +288,7 @@ export function buildObjectivePulses(
   // LE SUBSTITUT DU DRAPEAU SORT ICI, à la source, plutôt qu'au tracé : un pulse construit puis
   // non dessiné resterait dans la mémoire de la scène et dans les dépendances de `draw`.
   const dropFlags = flagPulsesRetired(doc)
-  const posOf = buildPlayerPosAt(doc)
+  const posOf = buildCarrierPosAt(doc)
   const out: ObjectivePulse[] = []
   for (const a of doc.objectives) {
     if (dropFlags && a.stat.startsWith(FLAG_STAT_PREFIX)) continue

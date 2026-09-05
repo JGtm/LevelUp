@@ -36,6 +36,7 @@ package replayartifacts
 import (
 	"context"
 	"errors"
+	"time"
 
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
@@ -62,6 +63,22 @@ type BuildOneRequest struct {
 	Facts port.MatchFacts
 }
 
+// BuildOneResult : les octets d'UN artefact et CE QU'A COUTE leur construction.
+//
+// POURQUOI LA MESURE TRAVERSE CE CONTRAT (PLAN_CUISSON_PERF §3 D5). Le lanceur de l'enfant
+// mesure duree et pic memoire depuis toujours ; sans les faire passer par ici, le log de succes
+// du cycle ne pouvait dire ni combien de temps un film avait pris, ni combien de memoire il
+// avait demande — les deux chiffres qu'un operateur regarde d'abord quand un cycle traine. Une
+// implementation de test qui les laisse a zero reste parfaitement valide : zero = pas de mesure.
+type BuildOneResult struct {
+	// Blob est le document SERIALISE, pret pour StoreArtifact.
+	Blob []byte
+	// Dur est la duree de la construction de CE film, mesuree par l'appelant qui l'a lancee.
+	Dur time.Duration
+	// Peak est le pic memoire en octets du processus qui a decode. Zero = non mesure.
+	Peak uint64
+}
+
 // BuildOneFunc construit l'artefact d'UN film et rend ses OCTETS SERIALISES, sans les ecrire.
 //
 // L'IMPLEMENTATION DE PRODUCTION DECODE HORS DU PROCESSUS (un enfant borne : plafond memoire
@@ -71,11 +88,20 @@ type BuildOneRequest struct {
 //
 // Une erreur est un echec de CE film, jamais du cycle : l'appelant journalise et passe au
 // suivant.
-type BuildOneFunc func(ctx context.Context, req BuildOneRequest) ([]byte, error)
+type BuildOneFunc func(ctx context.Context, req BuildOneRequest) (BuildOneResult, error)
 
 // ErrNoBuilder : aucune stratégie de construction n'est câblée. Le pont disque continue, la
 // cuisson est sautée — jamais remplacée par un décodage in-process.
 var ErrNoBuilder = errors.New("aucune construction hors processus câblée")
+
+// storedOne : l'artefact RANGE et la mesure de sa cuisson, tels que l'orchestrateur les
+// journalise. Les deux voyagent ensemble parce qu'ils decrivent le meme film : rendre la mesure
+// a part inviterait a la perdre au premier `continue`.
+type storedOne struct {
+	stored replaybuild.StoredArtifact
+	dur    time.Duration
+	peak   uint64
+}
 
 // buildAndStoreOne délègue la construction d'UN film puis RANGE ses octets.
 //
@@ -83,21 +109,25 @@ var ErrNoBuilder = errors.New("aucune construction hors processus câblée")
 // lot : décoder ailleurs, écrire ici. Séparer les deux appels chez l'appelant laisserait croire
 // qu'on peut ranger sans avoir délégué, ou déléguer sans ranger.
 func buildAndStoreOne(ctx context.Context, d Deps, w buildWork, filmDir string,
-) (replaybuild.StoredArtifact, error) {
+) (storedOne, error) {
 	if d.BuildOne == nil {
-		return replaybuild.StoredArtifact{}, ErrNoBuilder
+		return storedOne{}, ErrNoBuilder
 	}
-	blob, err := d.BuildOne(ctx, BuildOneRequest{
+	res, err := d.BuildOne(ctx, BuildOneRequest{
 		MatchID: w.matchID, TitleSlug: d.TitleSlug, RepoRoot: d.RepoRoot,
 		MapNames: w.mapNames, FilmDir: filmDir, Facts: w.facts,
 	})
 	if err != nil {
-		return replaybuild.StoredArtifact{}, err
+		return storedOne{}, err
 	}
 	// L'ÉCRITURE RESTE CHEZ LE PARENT : `StoreArtifact` valide, applique le garde
 	// anti-régression et publie l'événement « artefact rangé » — les trois au même endroit
 	// qu'avant ce lot.
-	return replaybuild.StoreArtifact(d.RepoRoot, d.TitleSlug, w.matchID, blob)
+	stored, err := replaybuild.StoreArtifact(d.RepoRoot, d.TitleSlug, w.matchID, res.Blob)
+	if err != nil {
+		return storedOne{}, err
+	}
+	return storedOne{stored: stored, dur: res.Dur, peak: res.Peak}, nil
 }
 
 // SpawnBuildOne est la strategie de PRODUCTION : elle delegue a un enfant borne (plafond
@@ -106,8 +136,8 @@ func buildAndStoreOne(ctx context.Context, d Deps, w buildWork, filmDir string,
 // ELLE VIT ICI ET NON DANS LE PAQUET DU LANCEUR pour que la dependance reste a SENS UNIQUE :
 // ce paquet-ci definit le contrat et connait le lanceur ; le lanceur, lui, ne connait rien de
 // la synchronisation. L'inverse ferait un cycle d'import.
-func SpawnBuildOne(ctx context.Context, req BuildOneRequest) ([]byte, error) {
-	return replaychild.Spawn(ctx, replaychild.Request{
+func SpawnBuildOne(ctx context.Context, req BuildOneRequest) (BuildOneResult, error) {
+	res, err := replaychild.Spawn(ctx, replaychild.Request{
 		MatchID:   req.MatchID,
 		TitleSlug: req.TitleSlug,
 		RepoRoot:  req.RepoRoot,
@@ -115,4 +145,8 @@ func SpawnBuildOne(ctx context.Context, req BuildOneRequest) ([]byte, error) {
 		FilmDir:   req.FilmDir,
 		Facts:     req.Facts,
 	})
+	if err != nil {
+		return BuildOneResult{}, err
+	}
+	return BuildOneResult{Blob: res.Blob, Dur: res.Dur, Peak: res.Peak}, nil
 }

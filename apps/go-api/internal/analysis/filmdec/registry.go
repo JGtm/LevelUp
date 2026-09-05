@@ -14,9 +14,7 @@ package filmdec
 
 import (
 	"bytes"
-	"compress/zlib"
 	"encoding/binary"
-	"io"
 )
 
 const (
@@ -33,6 +31,7 @@ const (
 const (
 	compObjectBodyVitality  = "object-body-vitality-component"
 	compWeaponStateTypeInfo = "weapon-state-type-info"
+	compForwardUpDynPrec    = "object-forward-and-up-dynamic-precision-component"
 )
 
 // Archetype is one ECS archetype: an ordered list of component names. The slice
@@ -96,21 +95,18 @@ func (r *Registry) Archetype(idx int) (Archetype, bool) {
 	return r.Archetypes[idx], true
 }
 
-// ParseRegistryChunk inflates a raw chunk_00 (zlib, magic 0x78) when needed and
-// parses every fixed-size archetype block. Already-inflated input is accepted as-is.
-func ParseRegistryChunk(raw []byte) (*Registry, error) {
-	data := raw
-	if len(raw) >= 2 && raw[0] == 0x78 {
-		zr, err := zlib.NewReader(bytes.NewReader(raw))
-		if err != nil {
-			return nil, err
-		}
-		dec, err := io.ReadAll(zr)
-		if err != nil && len(dec) == 0 {
-			return nil, err
-		}
-		data = dec
-	}
+// ParseRegistryChunk parses every fixed-size archetype block of an ALREADY-INFLATED chunk_00.
+//
+// IT NO LONGER INFLATES (lot 1 of PLAN_CUISSON_PERF, 2026-09-02). Decompression happens once per
+// film, in `filmsource`: the cooking path hands over `film.Chunk(<registre>)`, and the single-chunk
+// readers (research tools, tests) hand over `filmdec.ReadFilmChunk(dir, 0)`, which inflates
+// through the same decompressor. Feeding it a still-compressed buffer now yields an EMPTY registry
+// rather than an error — callers must inflate first; `internal/archlint` forbids a second
+// `zlib.NewReader` inside `filmdec` so the rule cannot silently come back.
+//
+// The error return is kept: the signature is used in a dozen files, and the parse itself will grow
+// error cases (a registry whose block size does not divide the buffer is already suspicious).
+func ParseRegistryChunk(data []byte) (*Registry, error) {
 	return parseRegistry(data), nil
 }
 

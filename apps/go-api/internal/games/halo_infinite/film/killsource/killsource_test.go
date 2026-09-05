@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -332,7 +333,7 @@ func TestReferenceFilms(t *testing.T) {
 
 func checkFilm(t *testing.T, dir string, ref reference) {
 	t.Helper()
-	src, err := DirChunks(dir)
+	src, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		t.Skipf("film absent : %v", err)
 	}

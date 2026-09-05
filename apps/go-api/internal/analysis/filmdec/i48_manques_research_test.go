@@ -53,7 +53,7 @@ const (
 type i48mSetup struct {
 	dir    string
 	chunks []int
-	slots  map[uint32]bool
+	slots  SlotBand
 	lay    I0Layout
 	arch   Archetype
 	idx48  int
@@ -71,15 +71,15 @@ func i48mResolve(t *testing.T, dir string) i48mSetup {
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, i)
 	}
-	slots := bipedSlotBand(dir, chunks)
-	if len(slots) == 0 {
+	slots := bipedSlotBandDir(dir, chunks)
+	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped dans les keyframes de %s", dir)
 	}
 	lay, _, err := DetectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible : %v", err)
 	}
-	arch, err := bipedArchetype(dir)
+	arch, err := bipedArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archetype biped illisible : %v", err)
 	}
@@ -212,7 +212,7 @@ func i48mMatchAt(s i48mSetup, pay []byte, p, total int) (i48mCand, int, bool) {
 		return i48mCand{}, 0, false
 	}
 	slot := readBitsAt(pay, p+1, bipedSlotBits)
-	if !s.slots[slot] {
+	if !s.slots.Has(slot) {
 		return i48mCand{}, 0, false
 	}
 	tag := readBitsAt(pay, p+14, 2)

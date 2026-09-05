@@ -117,3 +117,26 @@ schema_version = 1
 # reste not_exposed tant qu'aucun consommateur ne lit kill_positions pour ce titre
 # (G.3, hors périmètre G.2bis).
 "film.kill_positions"    = "supported"
+# Résumé d'usage PAR MATCH ET PAR JOUEUR dérivé de l'ARTEFACT DE REJEU (tractions de
+# grappin, épisodes camo/surbouclier, poses et lâchers d'équipement, prises de socle
+# d'arme et de bonus) → shared.match_usage_players + match_usage_films
+# (décision utilisateur 2026-09-04 : persistance en BASE au sync, voie sidecar
+# abandonnée). Quatrième famille dérivée du film — mais PAS de la même passe : elle se
+# dérive de l'artefact QUI VIENT D'ÊTRE cuit (étape post-sync replaybuild), jamais d'un
+# second décodage. ABSENTE pour Halo 5 : pas de décodeur de film, donc aucun artefact,
+# donc rien à résumer — silence propre, pas une dégradation.
+# ⚠ Clé FINE, même doctrine que les trois film.* ci-dessus : elle gouverne la
+# PRODUCTION du résumé, pas ce qu'une page en affiche. Ne pas l'élargir.
+"film.usage_summary"     = "supported"
+# Les CINQ statistiques d'objectif de l'ASSAUT, reconstruites du FILM, par match et par
+# joueur (bomb_detonations, bomb_arms, bomb_grabs, time_as_bomb_carrier_seconds,
+# bomb_carriers_killed) → shared.match_bomb_stats (append-only + vue _latest).
+# POURQUOI PAS match.objective.stats : celle-ci gouverne le JOIN sur match_objective_stats,
+# table alimentée par le SYNC API — or l'API 343 ne publie AUCUNE statistique d'objectif
+# pour l'Assaut (famille BombStats du moteur = télémétrie Bond, jamais répliquée dans le
+# film ; mesure du 2026-09-04, cause unique du silence des deux côtés). Ces chiffres-là
+# viennent du décodeur de film, et la convention préfixe film.* tout ce qui en vient.
+# ABSENTE pour Halo 5 : pas de décodeur de film, donc rien à reconstruire — silence propre.
+# ⚠ Clé FINE, même doctrine que les quatre film.* ci-dessus : elle gouverne la PRODUCTION
+# et l'EXPOSITION de ces cinq statistiques, rien d'autre du mode Assaut. Ne pas l'élargir.
+"film.bomb_stats"        = "supported"

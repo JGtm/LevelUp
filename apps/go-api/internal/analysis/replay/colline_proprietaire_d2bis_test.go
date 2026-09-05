@@ -167,7 +167,7 @@ func TestCollineProprietaireD2Bis(t *testing.T) {
 // auteur resolu par le ROSTER FIGE du corpus (aucune base ouverte).
 func d2bPrises(t *testing.T, e ctEntree) []d2bPrise {
 	t.Helper()
-	evs := objectiveevents.Extract(e.short, "KOTH:Arena", p2aSource(t, e.dir),
+	evs := objectiveevents.Extract(e.short, "KOTH:Arena", p2aBobine(t, e.dir),
 		objectiveevents.MapRoster(e.film.p2aTeams()))
 	var out []d2bPrise
 	horsAxe, sansCamp := 0, 0

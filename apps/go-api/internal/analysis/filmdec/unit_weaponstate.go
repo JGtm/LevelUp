@@ -47,9 +47,16 @@ func consumeGate0R(br *BitReader, width uint) {
 
 // consumeOpt32 mirrors FUN_14080d69c: R(1) gate; if set R(32) (FUN_14080d6f0).
 func consumeOpt32(br *BitReader) {
+	at := br.BitPos()
 	if br.ReadBit() {
-		br.ReadBits(32) // FUN_14080d6f0 = R(32)
+		v := br.ReadBits(32) // FUN_14080d6f0 = R(32)
+		publishUnitRef(UnitRefRead{
+			Kind: UnitRefWord32, StartBit: at, EndBit: br.BitPos(),
+			Present: true, Val: uint32(v),
+		})
+		return
 	}
+	publishUnitRef(UnitRefRead{Kind: UnitRefWord32, StartBit: at, EndBit: br.BitPos()})
 }
 
 // consumeID2 mirrors FUN_1406d00ec: R(1); if bit==0 R(2); else nothing.
@@ -113,11 +120,19 @@ func consume1408f0ac4(br *BitReader) (bool, uint64) {
 // Les retours (valeur, queue, présence) existent pour la sonde d'i26 — mêmes bits, rien de
 // plus lu ni de moins.
 func consume1408f0ac4Probe(br *BitReader, probe bool) (val, tail uint64, present bool) {
+	at := br.BitPos()
 	if br.ReadBit() {
 		val, tail = readVarWidthInt(br, defaultReplRange, probe) // FUN_1406d3140 probe iff param_3==1
 		// FUN_1406cb0cc consumes 0 bits (config check).
+		publishUnitRef(UnitRefRead{
+			Kind: UnitRefVarWidth, StartBit: at, EndBit: br.BitPos(), Present: true,
+			Val: uint32(val), Tail: uint32(tail), Probe: probe,
+		})
 		return val, tail, true
 	}
+	publishUnitRef(UnitRefRead{
+		Kind: UnitRefVarWidth, StartBit: at, EndBit: br.BitPos(), Probe: probe,
+	})
 	return 0, 0, false
 }
 
@@ -166,8 +181,13 @@ func consumeUnitActorControl(br *BitReader, recordStateParam uint32) {
 	if sel == 1 {
 		return
 	}
+	at := br.BitPos()
 	if br.ReadBit() { // present flag (FUN_1406cf008)
-		br.ReadBits(32) // FUN_141015740 = R(32)
+		v := br.ReadBits(32) // FUN_141015740 = R(32)
+		publishUnitRef(UnitRefRead{
+			Kind: UnitRefWord32, StartBit: at, EndBit: br.BitPos(),
+			Present: true, Val: uint32(v),
+		})
 	}
 	br.ReadBits(1)       // FUN_1406d310c(2)=1 -> R(1) mode
 	br.ReadBits(6)       // FUN_140e186dc = R(6)
@@ -446,7 +466,14 @@ func consume14058c058(br *BitReader) {
 
 // consume141d0f344 mirrors FUN_141d0f344 = unconditional R(32) (*(param_1+0x2c)+=0x20).
 // CONFIRMED by decompile: it is a flat 32-bit read, NOT a gated single bit.
-func consume141d0f344(br *BitReader) { br.ReadBits(32) }
+func consume141d0f344(br *BitReader) {
+	at := br.BitPos()
+	v := br.ReadBits(32)
+	publishUnitRef(UnitRefRead{
+		Kind: UnitRefWord32Plain, StartBit: at, EndBit: br.BitPos(),
+		Present: true, Val: uint32(v),
+	})
+}
 
 // consumeQuat16 models FUN_14076e494 16-bit quat: R(16) core (gate/index variants
 // collapse to a 16-bit field in the common exact case).

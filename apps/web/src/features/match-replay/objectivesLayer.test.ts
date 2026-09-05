@@ -163,6 +163,46 @@ describe('buildObjectivePulses', () => {
     ],
   })
 
+  /**
+   * L'AUTEUR EMBARQUÉ (2026-09-05) : sa trace de bipède le donne immobile en (1,9), à un pas du
+   * marqueur `flag_spawn` ; son véhicule, lui, est en (8,2), c'est-à-dire SUR la zone
+   * `flag_delivery` de l'équipe 1. L'appariement au plus proche tranche donc entre deux éléments
+   * DIFFÉRENTS selon la position lue — c'est ce qui rend le test discriminant.
+   */
+  const docEmbarque = testReplayDoc({
+    frameIntervalMs: 100,
+    tracks: [
+      {
+        slot: 1, team: -1, xuid: 'A',
+        points: [{ t: 0, x: 1, y: 9 }, { t: 100, x: 1, y: 9 }],
+        startFrame: 0, endFrame: 100,
+      },
+    ],
+    objectives: [
+      { t: 10, xuid: 'A', stat: 'flag_grabs', timeMs: 1_000 },
+      { t: 60, xuid: 'A', stat: 'flag_grabs', timeMs: 6_000 },
+    ],
+    vehicles: [
+      {
+        slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'warthog',
+        samples: [{ t: 0, x: 8, y: 2 }, { t: 100, x: 8, y: 2 }],
+        rides: [{ t0: 0, t1: 50, slot: 1, seat: 0, src: 'event', xuid: 'A' }],
+      },
+    ],
+  } as never)
+
+  it("AUTEUR EMBARQUÉ : le pulse s'apparie depuis le VÉHICULE, pas depuis la trace du bipède", () => {
+    const pulses = buildObjectivePulses(docEmbarque, normalizeMapObjectives(MO))
+    const p = pulses.find((x) => x.frame === 10)
+    // Véhicule en (8,2) -> zone flag_delivery de l'équipe 1, et non le spawn (1,9) de l'équipe 0.
+    expect(p).toEqual({ frame: 10, x: 8, y: 2, team: 1 })
+  })
+
+  it('APRÈS LA DESCENTE, le même auteur s’apparie de nouveau depuis son bipède', () => {
+    const pulses = buildObjectivePulses(docEmbarque, normalizeMapObjectives(MO))
+    expect(pulses.find((x) => x.frame === 60)).toEqual({ frame: 60, x: 1, y: 9, team: 0 })
+  })
+
   it("pose le pulse sur l'élément le plus proche de l'AUTEUR à l'instant de l'action", () => {
     const pulses = buildObjectivePulses(doc, normalizeMapObjectives(MO))
     // L'action du joueur A (en 1,9) matche le spawn (1,9) — pas la zone (5,5).

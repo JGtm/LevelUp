@@ -99,6 +99,20 @@ dire ce que la jauge devient.
 Cuisson par `cmd/replay-build --facts`, un film par processus, `LEVELUP_REPO_ROOT` = worktree,
 films lus dans le tronc principal, plafond 3 Go : **peak 194 / 159 / 140 Mo**, **239 / 235 / 224 s**.
 
+> **[2026-09-02] LES PICS RAM DE CE LOT NE MESURENT PAS LE DECODEUR — a ne plus citer comme
+> mesure memoire.** Tous les pics de ce document, et la colonne « pic » de
+> `lotCter/cout_machine.tsv` d'ou ils viennent, sortent du meme dispositif :
+> `lotCter/run_replay_build.ps1` lance `go run ./cmd/replay-build` par `Start-Process -FilePath
+> "go"` (l. 40) et echantillonne `$p.PeakWorkingSet64` toutes les 250 ms (l. 48). `$p` est le
+> processus **`go` LANCEUR** : il compile puis execute le binaire dans un processus ENFANT, dont
+> le jeu de travail n'entre jamais dans cette mesure. Le chiffre releve est donc celui de la
+> chaine d'outils Go (compilation comprise), pas celui de la cuisson — ce qui explique des « pics »
+> de 120 a 194 Mo la ou le decodeur en demande des centaines. C'est le constat **C6** de
+> `.ai/AUDIT_CUISSON_REPLAY_PERF_2026-09-02.md`, qui a la meme lecture pour `lotCter/cout_machine.tsv`.
+> Les DUREES du meme tableau, elles, restent lisibles (bout en bout du `go run`, compilation
+> comprise) ; seuls les pics sont a ecarter. La mesure juste vient desormais du binaire lui-meme,
+> qui arme la sentinelle `filmproc` et publie son propre pic (« pic memoire de la cuisson »).
+
 | film | mode | zones | points de jauge (par zone) | octets des series | artefact v17 | v16 | ecart |
 |---|---|---|---|---|---|---|---|
 | `7344d24f` | Strongholds | 3 | **1 701** (479 / 666 / 556) | 34 960 o = **1,562 %** | 2 237 955 o | 2 202 930 o | **+1,590 %** |
@@ -245,6 +259,10 @@ sont recuits ici, a l'identique de la commande CLI (memes `--map`, `--facts`, me
 principal). Le code de sortie du watchdog est vide sur `696a9d7c` et `01e1f945` — meme limite deja
 presente dans LEUR cuisson schema 17 d'origine (`kill=[] exit=` deja vide dans les logs d'avant ce
 sous-volet). La reussite est etablie par l'artefact ecrit et verifie ci-dessous, pas par ce champ.
+
+> **[2026-09-02]** Ces pics (0 / 159 / 120 Mo) sortent du meme dispositif que ceux du §6 et
+> mesurent eux aussi le processus `go` LANCEUR, pas le decodeur : voir la note du §6 et le
+> constat C6 de `.ai/AUDIT_CUISSON_REPLAY_PERF_2026-09-02.md`. Seules les durees restent lisibles.
 
 | film | mode | zones | points de jauge (par zone) | octets des series | artefact v18 | v16 | ecart |
 |---|---|---|---|---|---|---|---|

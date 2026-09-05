@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // statborg.go — le decodage des ENREGISTREMENTS D'ENTITE des paquets FRAME, d'ou sortent
@@ -173,8 +175,8 @@ func IsTeamSlot(slot int) bool { return slot <= statTeamSlotMax }
 // [StatRecordsCtx] et JETTE le drapeau de troncature. Tout appelant qui publie ce qu'il lit
 // doit utiliser [StatRecordsCtx] et propager `truncated` — publier un score tronque sans le
 // dire serait un mensonge silencieux.
-func StatRecords(src FilmSource) []StatRecord {
-	recs, _ := StatRecordsCtx(context.Background(), src, "")
+func StatRecords(film *filmsource.Film) []StatRecord {
+	recs, _ := StatRecordsCtx(context.Background(), film, "")
 	return recs
 }
 
@@ -183,27 +185,24 @@ func StatRecords(src FilmSource) []StatRecord {
 // cas la lecture s'arrete la, elle est journalisee, et l'appelant doit le publier.
 //
 // matchID n'est utilise que pour le journal ; il peut etre vide.
-func StatRecordsCtx(ctx context.Context, src FilmSource, matchID string) (recs []StatRecord, truncated bool) {
+//
+// LE FILM ARRIVE DEJA CHARGE, et seuls les chunks du MANIFESTE sont balayes (cf. [manifestChunks]).
+func StatRecordsCtx(ctx context.Context, film *filmsource.Film, matchID string) (recs []StatRecord, truncated bool) {
 	var out []StatRecord
-	for _, meta := range src.Chunks() {
-		raw, ok := src.ChunkData(meta.Index)
-		if !ok {
-			continue
-		}
-		data := decompressChunk(raw)
-		frames := walkFrames(data)
+	for _, c := range chunksDatables(ctx, film, matchID) {
+		frames := framesOf(film, c.pos)
 		if len(frames) == 0 {
 			continue
 		}
-		base := frames[0].us
+		base := frames[0].TS
 		for _, f := range frames {
-			tMS := meta.StartMS + int((f.us-base)/1000)
-			out = append(out, scanFrameForRecords(data[f.off:f.off+f.size], tMS)...)
+			tMS := c.meta.StartMS + int((f.TS-base)/1000)
+			out = append(out, scanFrameForRecords(f.Payload, tMS)...)
 			if len(out) >= statMaxRecordsPerFilm {
 				slog.WarnContext(ctx,
 					"statborg: plafond d'enregistrements atteint, lecture tronquee",
 					"match_id", matchID, "records", len(out),
-					"limite", statMaxRecordsPerFilm, "chunk", meta.Index)
+					"limite", statMaxRecordsPerFilm, "chunk", c.meta.Index)
 				return sortRecords(out), true
 			}
 		}

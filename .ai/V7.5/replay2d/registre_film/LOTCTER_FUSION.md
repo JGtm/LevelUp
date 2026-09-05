@@ -184,6 +184,15 @@ Les attendus tombent tous, et plusieurs contrôles supplémentaires les serrent 
 
 Coût machine de la cuisson : `lotCter/cout_machine.tsv` (1,4 s à 394 s par film, 31 à 36 Go).
 
+> **[2026-09-02] La colonne « pic » de ce `.tsv` ne mesure pas le décodeur — à ne plus citer
+> comme mesure mémoire.** `lotCter/run_replay_build.ps1` lance `go run ./cmd/replay-build` par
+> `Start-Process -FilePath "go"` (l. 40) et échantillonne `$p.PeakWorkingSet64` (l. 48) : `$p`
+> est le processus **`go` LANCEUR**, qui compile puis exécute le binaire dans un processus
+> ENFANT — celui qui décode, et dont le jeu de travail n'entre jamais dans cette mesure. Les
+> durées, elles, restent lisibles (bout en bout du `go run`, compilation comprise). Constat
+> **C6** de `.ai/AUDIT_CUISSON_REPLAY_PERF_2026-09-02.md` ; même lecture pour les pics de
+> `LOTCTER_VOLET3.md` (§6 et « recuits en schéma 18 »).
+
 ## 5. Gates
 
 Section « APRÈS RE-FUSION D'ORIGIN » de `LOTCTER_fusion_gates.log`. Tous les `EXIT_*` à 0 :

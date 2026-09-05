@@ -211,7 +211,7 @@ func i57hLogValues(t *testing.T, samples []i57hSample) {
 // publie leurs taux — y compris nuls.
 func i57hControlC2(t *testing.T, samples []i57hSample, lives map[eaLifeKey]*eaLife, s eaFilmSetup) {
 	n := CountFilmChunks(s.dir)
-	ti37band := worldObjectSlotBand(s.dir, n, EquipmentTypeIndex)
+	ti37band := worldObjectSlotBandDir(s.dir, n, EquipmentTypeIndex)
 	var withRef []i57hSample
 	for _, sm := range samples {
 		if sm.hasRef && sm.ref != 0xFFFFFF {
@@ -260,7 +260,7 @@ func i57hControlC2(t *testing.T, samples []i57hSample, lives map[eaLifeKey]*eaLi
 	// autre joueur plutôt qu'à un objet) ?
 	inBiped := 0
 	for _, sm := range withRef {
-		if s.slots[sm.ref&0x1FFF] {
+		if s.slots.Has(sm.ref & 0x1FFF) {
 			inBiped++
 		}
 	}
@@ -447,7 +447,7 @@ func i57hPairReport(t *testing.T, label string, events, sorted []uint64) {
 
 // i57hLogLifeEnds répond à l'item C.4 : les vies ti=37 ont-elles une FIN lisible ?
 func i57hLogLifeEnds(t *testing.T, dir string, lives map[eaLifeKey]*eaLife) {
-	arch, err := EquipmentArchetype(dir)
+	arch, err := EquipmentArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archétype ti=37 illisible : %v", err)
 	}

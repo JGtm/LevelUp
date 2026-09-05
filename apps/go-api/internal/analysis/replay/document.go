@@ -570,7 +570,114 @@ package replay
 // document_translocations.go, document_equipment_changes.go, document_ability_impulses.go,
 // document_ability_charges.go, filmdec/equipment_recovery.go, filmdec/transloc_events.go,
 // filmdec/ability_impulses.go, filmdec/ability_charges.go, filmdec/offline_filters.go.
-const SchemaVersion = 38
+//
+// CE QUE LA VERSION 39 PORTE, ET CE QU'ELLE REFUSE — CINQ APPORTS EN UNE SEULE MONTÉE. Deux
+// chantiers montaient le schéma en même temps sans qu'aucun de leurs numéros n'ait jamais cuit un
+// artefact : les VÉHICULES (branche `feat/v75-vehicules-sons`, lots V0 à V12, qui avait numéroté
+// ses trois apports 29, 30 et 31 sur une base antérieure) et l'ARMEMENT DE LA BOMBE EN ONE BOMB
+// (branche `wt/assaut-stats`, qui avait numéroté le sien 39 sur le 38). Les deux arrivent ici
+// POSÉS SUR LE 38 et fondus en UNE seule montée (décisions D3 et D13 du plan d'intégration,
+// 2026-09-05). La reprise du backfill se faisant par SchemaVersion, un artefact 38 doit se lire
+// « à re-cuire » : il ne porte AUCUN véhicule, aucun tir au volant, aucune visée d'occupant, aucune
+// statistique d'objectif d'Assaut, et aucun compte à rebours de bombe sur les matchs One Bomb.
+//
+// (1) LES VÉHICULES (`vehicles`) : la vie de chaque véhicule `ti=40` du match — naissance
+// (position exacte du record de création), identité de châssis (`MPPWord32`, stable inter-build)
+// résolue en famille de sprite, trajectoire échantillonnée sur la grille du document avec son
+// CAP, et les ÉPISODES D'OCCUPATION (qui est à bord, de quand à quand, sur quel siège).
+// NIVEAU DE PREUVE, INÉGAL ET IL DOIT SE LIRE ICI. Ce qui est SÛR : les positions (la grammaire
+// bipède rend 99,4-100 % de pas sous 35 m/s sur la bande `ti=40`, contre 21-42 % pour celle des
+// objets du monde) ; le CAP par la vélocité `i1` (écart médian 1,7-2,1 deg au déplacement sur
+// 4 films, R = 0,992-0,997, témoin par mélange 51-88 deg) ; l'identité `MPPWord32` (constance
+// 100 % par vie, et 5 valeurs sur 7 survivent au changement de build ET de carte). Ce qui est
+// PARTIEL : l'occupation, dont la primitive n'attribue que 15,6-21,1 % des vies (mais à x20-x30
+// le hasard, témoin fantôme NUL) ; et la table de familles, dont la couverture est publiée
+// châssis par châssis (`coverage.vehicles.unknownChassis`).
+// CE QUE LA VERSION REFUSE, mesure à l'appui (V3_DESTRUCTION_DATEE_2026-09-02, 460 vies /
+// 12 films / 8 gates) : la DESTRUCTION datée. Zéro occupant à bord à la fin serrée du flux, mort
+// à bord ANTI-corrélée (3,8 % contre 21,3 % au témoin), véhicule qui réplique encore 13 à 36 s
+// après avoir été quitté. `VehicleTrack.End` vaut `unknown`, et la disparition du sprite ne dit
+// PAS que le véhicule a explosé. Détail : internal/analysis/replay/document_vehicles.go.
+//
+// (2) LES TIRS DES JOUEURS EMBARQUÉS. Un occupant attaché cesse de répliquer la position de son
+// bipède (primitive V1a.4) : la porte des tirs, qui pose chaque tir sur la position du BIPÈDE à
+// cet instant, écartait donc TOUS les tirs tirés depuis un véhicule sous la cause « sans slot » —
+// mesuré sur `0d76e8f1` : 1 166 tirs publiés, 12 épisodes d'occupation, et ZÉRO tir pendant un
+// épisode. Une seconde porte (`vehicle_shots.go`) reprend ces orphelins et leur donne la position
+// INTERPOLÉE du véhicule occupé ; les tirs ainsi posés portent le marqueur `shots[].v` (le slot
+// du véhicule), sans quoi le client chercherait un pion qui n'existe pas à cet instant.
+// CE QUE LE CRITÈRE EST, ET CE QU'IL N'EST PAS. Il est l'IDENTITÉ, pas la géométrie : le record
+// de tir porte son tireur (`FilmIndex`, écrit dans le film), l'épisode d'occupation porte son
+// occupant, et l'instant les recoupe. Aucun critère de distance n'était possible — le record de
+// tir ne porte AUCUNE position monde, il n'y a rien à comparer au véhicule. Le témoin est donc
+// temporel : les mêmes tirs contre les mêmes épisodes décalés de 60 s.
+// CE QUE LA VERSION REFUSE : les tirs AMBIGUS (deux slots du même joueur répliquant tous deux une
+// position). Leur signature est celle d'un joueur qui n'est PAS embarqué ; les reprendre
+// mélangerait un défaut du pont slot -> joueur avec un embarquement.
+//
+// (3) LA VISÉE DE CHAQUE OCCUPANT DE VÉHICULE (`vehicles[].rides[].aim`). Un occupant attaché
+// cesse de répliquer sa POSITION — c'est la primitive du « trou » —, et le dépôt en concluait
+// qu'il ne répliquait plus RIEN : le cône du conducteur était donc dessiné au CAP DU CHÂSSIS, et
+// l'artilleur comme le passager n'avaient aucun cône. Le lot V11 (2026-09-03) a montré que la
+// faute était dans le DÉTECTEUR : `ScanBipedRecords` exige un `i0` absolu et un masque commençant
+// par 0, quand la forme la plus fréquente de la bande bipède est `i21,i25` — un record de VISÉE
+// SANS POSITION.
+// NIVEAU DE PREUVE. PRÉSENCE : 4 832 à 24 050 lectures par film (5 films), 46,5 à 231,2 par slot
+// bipède, contre 0,2 à 0,9 par slot sur une bande FANTÔME de même cardinalité — x155 à x925.
+// JUSTESSE : appariée à la lecture `i21` AVEC position du même slot à moins de 200 ms, l'écart
+// médian de cap vaut 0,2 à 0,5 deg (R 0,979-0,989), témoin par mélange déterministe 75,7 à
+// 93,7 deg (R 0,011-0,134) ; la référence est le champ déjà publié `Point.H`, lui-même validé par
+// l'oracle du kill. COUVERTURE : sur les 35 épisodes d'occupation ATTESTÉS par la sortie,
+// 35 / 35 (100 %) portent au moins une visée à bord, à 5 à 46 lectures par seconde, quand le même
+// épisode porte 0 ou 1 lecture `i21` avec position. UTILITÉ : la visée N'EST PAS le cap du
+// châssis — écart médian 15,7 à 21,8 deg, q3 39,6 à 52,9 deg, un tiers des instants au-delà de
+// 30 deg.
+// CE QUE LA VERSION REFUSE, et c'est une réfutation mesurée avec témoin (V11 § 3) : l'ORIENTATION
+// DE LA TOURELLE en tant qu'objet. L'entité tourelle ne réplique RIEN dans le flux delta —
+// 139,6 et 85,5 en-têtes par slot contre 86,3 et 194,2 sur une bande FANTÔME, histogramme de
+// formes de masque PLAT, et les slots MUETS non-tourelle rendent le même chiffre. Les composants
+// `i31` (auto-turret-aiming-vector), `i41` et `i42` (seats-override pitch/yaw) de `ti=40` ne sont
+// pas seulement non portés : ils ne sont JAMAIS émis. Le cône de l'artilleur ne vient donc pas de
+// la tourelle, il vient de L'HOMME qui la tient — et c'est la même mesure que celle du
+// conducteur. Détail : internal/analysis/replay/vehicle_rides_aim.go.
+//
+// (4) L'ARMEMENT DE LA BOMBE EN ONE BOMB. Aucun champ neuf : ce qui change est le CONTENU d'un
+// calque existant (`bombArmings`), et cela suffit à imposer la montée pour la raison exacte des
+// montées v14/v22/v25/v37 — sans elle, aucun rejeu One Bomb déjà cuit ne porterait jamais son
+// compte à rebours.
+// CE QUI A CHANGÉ. Le calque `bombArmings` était gouverné par une garde de mode DOUBLE, dont la
+// première écartait One Bomb PAR SON NOM : sous la lecture SIMPLE (montée contiguë, mèche fixe de
+// 4,93 s) le protocole du 2026-09-01 y avait RÉFUTÉ le signal (CV 0,725). La lecture « mèche
+// pausable » du même jour l'explique (9/9 explosions portées, médiane 16,18 s, CV 0,017, 0/1000
+// tirages nuls) et elle est désormais EN PRODUCTION : segments contigus, armement = segment qui
+// finit à son sommet plein, tenue de désarmement qui SUSPEND la mèche, et MÈCHE MESURÉE SUR LE
+// FILM au lieu d'une constante unique. Les témoins ne bougent pas (Neutral Bomb 13/13, Husky Raid
+// 4/4, au chiffre près) ; ce qui bouge est qu'une variante entière d'Assaut publie enfin son
+// compte à rebours. La garde qui reste est la confrontation locale TOUT-OU-RIEN, en deux branches
+// (couverture des explosions, puis dispersion des délais corrigés) : deux films One Bomb du
+// corpus sont RETENUS par elle, et c'est voulu.
+// Chronique : filmdec/navpoint_radial_segments.go, replay/bomb_armings.go, replaybuild/zones.go.
+//
+// (5) LES CINQ STATISTIQUES D'OBJECTIF DE L'ASSAUT (`bombStats`) ET SES FAITS DATÉS
+// (`bombEvents`). Deux champs neufs, posés SUR LA MÊME MONTÉE 39 et non sur une 40 : le 39
+// n'a jamais cuit un artefact hors répertoires de test (contrairement au 38, cf. la politique
+// du lot P5 ci-dessus), et cette intégration est le commit qui le met au monde — deux montées
+// pour un numéro jamais servi marqueraient « à re-cuire » un parc qui l'est déjà.
+// CE QUE C'EST : `bomb_detonations`, `bomb_arms`, `bomb_grabs`,
+// `time_as_bomb_carrier_seconds` et `bomb_carriers_killed`, par joueur — les statistiques que
+// l'API 343 NE PUBLIE PAS pour ce mode (la famille `BombStats` du moteur est de la TÉLÉMÉTRIE
+// Bond, jamais répliquée dans le film : mesure Ghidra du 2026-09-04, cause UNIQUE du silence
+// des deux côtés). Elles sont reconstruites de sources déjà décodées, et chaque champ est un
+// POINTEUR : `null` dit « source non mesurée », `0` dit « mesuré à zéro ».
+// LES CINQ SONT MESURÉES, `bomb_carriers_killed` COMPRIS (lot G.6, 2026-09-05). Cette entrée a
+// porté l'inverse — « aujourd'hui `null` PARTOUT, la paire tueur/victime n'existe pas dans la
+// chaîne de cuisson » — et le motif était faux sur son second membre : l'horloge ne manquait pas
+// (`killsource.Kill.TimeMS` EST celle du fil des morts), seule la VICTIME n'était pas résolue,
+// et `replaybuild.killRefs` la résout désormais dans la MÊME passe. Le champ voyage par
+// `Options.MatchKills` ; `Read=false` (source non lue) le laisse absent chez TOUS les joueurs —
+// « on n'a pas regardé », jamais un zéro qui se lirait comme une mesure.
+// Détail : internal/analysis/replay/bomb_stats.go et bomb_stats_document.go.
+const SchemaVersion = 39
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -773,6 +880,18 @@ type ReplayDocument struct {
 	// daté, ou recensement des images-clés) — jamais une durée de table. Les armes de socle
 	// restent au calque `weaponPads`. Absent si le film n'en porte aucune.
 	GroundWeapons []GroundWeapon `json:"groundWeapons,omitempty"`
+	// Vehicles est LA VIE DE CHAQUE VÉHICULE du match (cf. document_vehicles.go) : où il naît,
+	// sa trajectoire échantillonnée avec son cap, ses épisodes d'occupation (qui est à bord et
+	// quand), et jusqu'à quelle frame l'afficher. La fin est une BORNE de recensement et sa
+	// cause vaut `unknown` — la datation de la destruction a été mesurée et RÉFUTÉE. Absent
+	// quand le film ne porte aucun véhicule ; `coverage.vehicles` dit lequel des silences.
+	Vehicles []VehicleTrack `json:"vehicles,omitempty"`
+	// VehicleLabels nomme les FAMILLES de châssis employées par `vehicles` et pointe leur
+	// sprite — REMPLI À LA REQUÊTE par le service, jamais écrit dans l'artefact (même règle et
+	// même raison que `mapObjectives` : ce qui se résout d'un catalogue du titre se résout au
+	// service, sinon les artefacts déjà cuits resteraient muets). Absent quand aucune famille
+	// n'est résolue.
+	VehicleLabels map[string]VehicleLabel `json:"vehicleLabels,omitempty"`
 	// WeaponPads (les SOCLES D'ARME du match) et PadPickups (leurs occupations ACHEVÉES) : une
 	// donnée de MATCH et non de carte, publiée seulement là où la récurrence est mesurée.
 	// Forme, chronique et refus de publication : document_ground_weapons.go.
@@ -901,6 +1020,28 @@ type ReplayDocument struct {
 	// periodes et des pistes (dernier point du lacheur — la bombe au sol n'a pas de canal
 	// mesure). Absente hors de la famille bomb — `coverage.bombCarries` dit lequel des silences.
 	BombCarries []BombCarry `json:"bombCarries,omitempty"`
+	// BombStats est LES CINQ STATISTIQUES D'OBJECTIF DE L'ASSAUT, par joueur, reconstruites du
+	// film (forme, provenance et réserves : bomb_stats.go ; câblage : bomb_stats_document.go).
+	// L'API 343 n'en publie AUCUNE pour ce mode — le bundle `Stats` de `GetMatchStats` ne porte
+	// ni `bomb` ni la famille `BombStats` du moteur, qui est de la TÉLÉMÉTRIE Bond et n'est
+	// jamais répliquée dans le film (mesure Ghidra du 2026-09-04).
+	//
+	// POURQUOI ELLES SONT DANS L'ARTEFACT ET PAS RECALCULÉES PAR LEUR CONSOMMATEUR : elles
+	// naissent de quatre sources que SEULE la cuisson tient en pleine fidélité — la chronologie
+	// de portage en MILLISECONDES (le document, lui, la publie en frames sous `bombCarries`),
+	// le recalage film -> match, les armements datés et les actions d'objectif nommées. Les
+	// re-dériver du document en ferait un SECOND décodeur du même fait, moins précis.
+	//
+	// ABSENT hors de la famille bomb — `bombStats.coverage` dit, DANS le bloc, quelles sources
+	// ont été lues : un champ de joueur à `null` est une source non mesurée, jamais un zéro.
+	BombStats *BombMatchStats `json:"bombStats,omitempty"`
+	// BombEvents est LES FAITS DATÉS DE LA BOMBE — armements et explosions —, sur l'horloge du
+	// FILM, la même que `objectives[].timeMs`. Chacun porte son acteur quand la jointure l'a
+	// nommé, et la RÈGLE qui l'a nommé (`actorSource`) : `carry_drop` (la bombe a quitté les
+	// mains, un geste observé) ou `carry_active` (personne d'autre ne la tenait, une présence
+	// constatée) — deux forces de preuve, jamais confondues. Un fait SANS acteur est publié
+	// quand même : l'instant est vrai, le nom manque, et l'inventer serait la seule vraie faute.
+	BombEvents []BombEvent `json:"bombEvents,omitempty"`
 	// Coverage dit, pour chaque calque, COMBIEN il a rattaché SUR COMBIEN existaient, et
 	// pourquoi il a écarté le reste (cf. coverage.go).
 	//
@@ -990,6 +1131,20 @@ type Shot struct {
 	// Weapon est l'identifiant global 64 bits de l'arme, en hexadécimal (un entier 64 bits
 	// ne survit pas au `number` JavaScript). Clé de metadata.weapon_labels.weapon_id.
 	Weapon string `json:"w,omitempty"`
+	// Vehicle est le SLOT DU VÉHICULE d'où part le tir, quand le tireur était EMBARQUÉ.
+	//
+	// À QUOI IL SERT, ET POURQUOI IL FAUT UN MARQUEUR. Sur un tir à pied, `X`/`Y` sont la
+	// position du BIPÈDE : le client peut retrouver le tireur dans ses pistes et y accrocher ce
+	// qu'il veut. Sur un tir en véhicule, le bipède ne réplique plus (primitive V1a.4) et
+	// `X`/`Y` sont la position INTERPOLÉE DU VÉHICULE : sans ce champ, le client ne saurait pas
+	// que la piste du `Slot` est muette à cet instant, et chercherait un pion qui n'existe pas.
+	// Il porte le slot plutôt qu'un booléen pour que l'effet puisse s'ancrer sur LE véhicule
+	// concerné — c'est la même clé que `VehicleTrack.Slot`.
+	//
+	// POINTEUR, comme `VehicleRide.Seat` et pour la même raison : un slot vaut zéro en droit, et
+	// `omitempty` sur un entier effacerait ce zéro exactement comme une absence de véhicule.
+	// Nil = tir à pied, et c'est le cas nominal.
+	Vehicle *uint32 `json:"v,omitempty"`
 }
 
 // Bounds est l'étendue alignée sur les axes de tous les points de trajectoire, dans le

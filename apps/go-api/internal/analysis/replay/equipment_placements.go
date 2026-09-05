@@ -313,18 +313,18 @@ func equipmentOrigin(lives []equipLife, p filmdec.EquipmentPlacement) string {
 //
 // HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
 func decodeFilmPlacements(
-	filmDir string, worldRange *filmdec.Vec3Range,
+	fc *filmdec.FilmContext, matchID string, worldRange *filmdec.Vec3Range,
 ) ([]filmdec.EquipmentPlacement, filmdec.EquipmentPlacementStats) {
-	pl, st, err := filmdec.ScanFilmEquipmentPlacements(filmDir, worldRange)
+	pl, st, err := filmdec.ScanEquipmentPlacements(fc, worldRange)
 	switch {
 	case err != nil:
 		slog.Warn("poses d'equipement illisibles — rejeu sans equipement pose",
-			"err", err, "filmDir", filmDir)
+			"err", err, "match_id", matchID)
 		return nil, st
 	case !st.Calibration.Widths.Valid():
 		slog.Warn("poses d'equipement : le decoupage du bloc de replication n'a pas ete tranche"+
 			" sur ce film — AUCUNE pose publiee plutot que du bruit",
-			"filmDir", filmDir, "ancres", st.Calibration.Anchors,
+			"match_id", matchID, "ancres", st.Calibration.Anchors,
 			"vies", st.Calibration.Lives, "chunksLus", st.Calibration.Chunks)
 	default:
 		slog.Info("poses d'equipement : records de creation ti=37",
@@ -547,9 +547,18 @@ func equipmentOwner(
 			aim[s.Slot] = s
 		}
 	}
+	// LE PLUS PROCHE, ET À ÉGALITÉ LE PLUS PETIT SLOT (correction du 2026-09-02, item 0.4bis
+	// étendu de PLAN_CUISSON_PERF). `best` est une MAP : sans le second critère, deux bipèdes à
+	// la MÊME distance de la pose — des coordonnées quantifiées, donc des égalités exactes, et un
+	// film BTB à 26 joueurs en réveille — laissaient l'ordre d'itération, tiré au sort à chaque
+	// exécution, nommer le poseur publié. Le départage vient du slot, une donnée de l'élément.
 	var near filmdec.BipedPosition
 	for _, s := range best {
-		if d := equipDist(p, s); d <= equipOwnerMaxDist && (!ok || d < equipDist(p, near)) {
+		d := equipDist(p, s)
+		if d > equipOwnerMaxDist {
+			continue
+		}
+		if nd := equipDist(p, near); !ok || d < nd || (d == nd && s.Slot < near.Slot) {
 			near, ok = s, true
 		}
 	}

@@ -46,6 +46,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
@@ -133,26 +134,26 @@ var objCTFFilms = []string{"64e8adfa", "530820e5", "53ce4390"}
 // objBallFilm — le film Oddball de l'item 0.3.
 const objBallFilm = "24dbb67d"
 
-// objDiskFilm est la source de film adossee au cache disque : c'est `filmcache.Source`, la
-// SEULE source disque du depot (garde-rail `TestUneSeuleSourceDisqueDeFilm`). La copie locale
-// que portait la phase 0 (« newDiskFilmSource n'est pas atteignable d'ici ») est retiree le
-// 2026-08-18 : le paquet `replay` importe `filmcache` sans cycle, la raison n'existait pas.
-type objDiskFilm = filmcache.Source
+// objDiskFilm est LE FILM CHARGE depuis le cache disque : chunks decompresses et paquets
+// decoupes une fois (`filmsource`), c'est ce que prennent les points d'entree d'`objectiveevents`
+// depuis l'item 1.5 de PLAN_CUISSON_PERF. Il valait `filmcache.Source` — la source BRUTE — tant
+// que ces points d'entree decompressaient eux-memes, a chaque appel.
+type objDiskFilm = filmsource.Film
 
 // objChunkDir rend le repertoire des chunks d'un film.
 func objChunkDir(root, id string) string { return filepath.Join(root, "film_chunks", id) }
 
-// objOpenFilm charge le manifeste d'un film ; (nil, false) si le film n'est pas en cache.
+// objOpenFilm charge un film du cache ; (nil, false) si le film n'y est pas.
 func objOpenFilm(t *testing.T, root, id string) (*objDiskFilm, bool) {
 	t.Helper()
-	src, ok, err := filmcache.Open(root, id)
+	film, ok, err := filmcache.LoadFilm(root, id)
 	if err != nil {
-		t.Fatalf("manifeste %s illisible : %v", id, err)
+		t.Fatalf("film %s illisible : %v", id, err)
 	}
 	if !ok {
 		return nil, false
 	}
-	return src, true
+	return film, true
 }
 
 // objRequireRoot rend la racine du cache film, ou saute le test.

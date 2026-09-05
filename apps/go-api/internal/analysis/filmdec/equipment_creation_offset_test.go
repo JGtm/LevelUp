@@ -55,12 +55,12 @@ func TestEquipmentCreationOffset(t *testing.T) {
 	SetWorldObjectPrecisionFromLayout(lay)
 
 	n := CountFilmChunks(dir)
-	band := worldObjectSlotBand(dir, n, EquipmentTypeIndex)
+	band := worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)
 	tracks, err := ScanFilmWorldObjects(dir, &equipCreationUnitRange, EquipmentTypeIndex)
 	if err != nil {
 		t.Fatalf("trajectoires ti=%d illisibles : %v", EquipmentTypeIndex, err)
 	}
-	arch, err := EquipmentArchetype(dir)
+	arch, err := EquipmentArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archétype ti=%d illisible : %v", EquipmentTypeIndex, err)
 	}

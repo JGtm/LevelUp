@@ -39,14 +39,20 @@ func TestArtifactUpToDate(t *testing.T) {
 	}
 }
 
-// TestArtifactHasPlayerCounters — le prédicat constate une PROPRIÉTÉ DU DOCUMENT
+// TestDigestHasPlayerCounters — le prédicat constate une PROPRIÉTÉ DU DOCUMENT
 // (`scoreTimeline.players` non vide), là où la version de schéma ne distingue rien.
 //
 // Il n'affirme PAS que les faits manquaient quand il rend faux : trois vacuités légitimes
 // existent (film sans enregistrement d'entité, appariement ambigu, aucun compteur dans la
 // fenêtre). C'est pourquoi ses appelants exigent une condition de plus. Mesuré sur deux
 // témoins le 2026-08-24 : 8 avec faits, 0 sans, sur 7344d24f comme sur 530820e5.
-func TestArtifactHasPlayerCounters(t *testing.T) {
+//
+// IL PORTAIT SUR `ArtifactHasPlayerCounters`, SUPPRIMEE AU LOT 6 (constat 6.3) : c'était la
+// forme qui relisait le disque pour cette seule question, et elle n'avait plus d'appelant de
+// production. Le prédicat, lui, est bien vivant — quatre sites de production le lisent par le
+// digest — et ces cinq formes de document sont sa SEULE couverture : le test suit donc l'API
+// survivante au lieu de disparaître avec la fonction morte.
+func TestDigestHasPlayerCounters(t *testing.T) {
 	dir := t.TempDir()
 	cas := map[string]struct {
 		contenu string
@@ -63,11 +69,12 @@ func TestArtifactHasPlayerCounters(t *testing.T) {
 		if err := os.WriteFile(p, []byte(c.contenu), 0o644); err != nil {
 			t.Fatalf("écriture fixture %s: %v", nom, err)
 		}
-		if got := ArtifactHasPlayerCounters(p); got != c.attendu {
-			t.Errorf("%s : ArtifactHasPlayerCounters = %v, attendu %v", nom, got, c.attendu)
+		d, ok := ArtifactDigest(p)
+		if got := ok && d.HasPlayerCounters(); got != c.attendu {
+			t.Errorf("%s : HasPlayerCounters = %v, attendu %v", nom, got, c.attendu)
 		}
 	}
-	if ArtifactHasPlayerCounters(filepath.Join(dir, "absent.json")) {
+	if d, ok := ArtifactDigest(filepath.Join(dir, "absent.json")); ok && d.HasPlayerCounters() {
 		t.Error("artefact absent : attendu « sans faits », obtenu « avec faits »")
 	}
 }

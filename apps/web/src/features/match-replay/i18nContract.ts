@@ -456,6 +456,16 @@ export interface ReplayText {
   layerGroundWeapons: string
   layerGroundWeaponsHint: string
   /**
+   * LES VÉHICULES (schéma 29) : le nom du calque et sa réserve.
+   *
+   * LA RÉSERVE DIT LA FIN DE VIE, et c'est le point qui trompe le plus facilement : la
+   * disparition du sprite n'est PAS une destruction — le film ne date aucune destruction
+   * (mesuré et réfuté, `V3_DESTRUCTION_DATEE_2026-09-02.md`). Le calque cesse de dessiner un
+   * véhicule à la dernière preuve de sa présence, jamais au moment où il explose.
+   */
+  layerVehicles: string
+  layerVehiclesHint: string
+  /**
    * LE NOM D'UN SOCLE QUI NE PORTE PAS UNE ARME (schéma 17). Les clés sont les familles
    * d'équipement publiées par le document (`weaponPads[].weapon`), énumérées une par une dans
    * `weaponPadFamilies.ts` — d'où le typage : une famille ajoutée là-bas sans libellé ici ne
@@ -771,6 +781,18 @@ export interface ReplayText {
    * Le seul écran du dépôt qui NOMME le ramasseur d'un socle — cf. `PadControlText`.
    */
   padControl: PadControlText
+  /**
+   * LE REPLI « GAME CHANGERS » des deux bilans ci-dessus (plan 2026-09-05, décision D3) : les
+   * colonnes hors du vote se masquent derrière « Voir plus (N) », N = colonnes masquées. Les
+   * clés sont PARTAGÉES par les deux sections — même geste, mêmes mots — et vivent ici plutôt
+   * qu'en double dans leurs deux blocs. Elles ne se prennent PAS chez MedalDigest (i18n de
+   * `squad`, autre feature) : le dictionnaire du rejeu ne s'importe pas de là-bas.
+   * `collapsedColumnsHint` (infobulle du bouton) dit la promesse du repli : rien n'est
+   * supprimé, les totaux et les notes comptent toujours tout.
+   */
+  collapsedColumnsShowFmt: (count: number) => string
+  collapsedColumnsHide: string
+  collapsedColumnsHint: string
   /** Pictogramme « munitions pleines » (emplacement jamais écrit) : décision produit 4. */
   ammoFullLabel: string
   ammoDrawnHint: string

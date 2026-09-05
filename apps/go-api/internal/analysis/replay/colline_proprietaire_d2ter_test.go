@@ -98,7 +98,7 @@ func TestCollineProprietaireD2Ter(t *testing.T) {
 
 	// LE PONT, ET SES DENOMINATEURS. Sans eux, un accord ne se juge pas : un pont qui ne nomme
 	// que la moitie des slots mesurerait la moitie du match sans le dire.
-	recs := objectiveevents.StatRecords(p2aSource(t, e.dir))
+	recs := objectiveevents.StatRecords(p2aBobine(t, e.dir))
 	deaths, err := ScanFilmDeaths(e.dir)
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", e.short, err)
