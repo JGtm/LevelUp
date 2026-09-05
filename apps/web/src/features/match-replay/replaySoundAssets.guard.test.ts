@@ -54,6 +54,12 @@ import {
   WEAPON_CHANGE_SOUND_STEMS,
   EQUIPMENT_PICKUP_SOUND_STEM,
 } from './replaySound'
+import {
+  allVehicleBoomStems,
+  VEHICLE_BOOM_FAMILY_SET,
+  VEHICLE_BOOM_SETS,
+  VEHICLE_BOOM_SOUND_VARIANTS,
+} from './vehicleDestructionSound'
 import { allEngineStems, VEHICLE_ENGINE_STEMS } from './vehicleEngineSound'
 import { VEHICLE_SHOT_SOUND_STEMS, VEHICLE_SHOT_SOUND_VARIANTS } from './vehicleShotSound'
 
@@ -631,9 +637,9 @@ describe('garde-rail : moteurs de vehicules (categorie boucles, banque du 2026-0
  *    stem n'aurait pas d'entree de variantes jouerait un seul fichier nomme `_1` — le signe
  *    d'une table editee a moitie ;
  *  - FORMAT CANONIQUE 48 kHz / 16 bits / STEREO, la meme livraison que les moteurs ;
- *  - LA BANSHEE MODE 1 RESTE MUETTE : sa reconstruction est REFUTEE (cadence fausse,
- *    refabrication en cours au 2026-09-04). Un fichier `vehicle_shot_banshee_m1*` livre, ou
- *    une entree pour le tag 0000AA68, serait un son non valide par l'utilisateur.
+ *  - LA BANSHEE MODE 1 SONNE DEPUIS LE 2026-09-05 : l'utilisateur a reecoute et VALIDE la
+ *    reconstruction originale (0,125 s — la piste cadence-du-tag, v2 a 240 cpm, est
+ *    abandonnee). L'entree du tag 0000AA68 et ses deux prises font partie du manifeste.
  */
 describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
   it('chaque arme cablee tire dans ses variantes, et la premiere porte le stem de la table', () => {
@@ -665,8 +671,71 @@ describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
     }
   })
 
-  it('la Banshee mode 1 reste muette (reconstruction refutee, 2026-09-04)', () => {
-    expect([...shipped].filter((s) => s.startsWith('vehicle_shot_banshee_m1'))).toEqual([])
-    expect([...VEHICLE_SHOT_SOUND_STEMS.keys()]).not.toContain('0x0000AA6800000000')
+  it('la Banshee mode 1 sonne (reconstruction originale validee par l utilisateur, 2026-09-05)', () => {
+    expect(VEHICLE_SHOT_SOUND_STEMS.get('0x0000AA6800000000')).toBe('vehicle_shot_banshee_m1_1')
+    expect(shipped.has('vehicle_shot_banshee_m1_1')).toBe(true)
+    expect(shipped.has('vehicle_shot_banshee_m1_2')).toBe(true)
+  })
+})
+
+/**
+ * SEPTIEME GARDE-RAIL : LES DESTRUCTIONS DE VEHICULE (lot du 2026-09-05) — une categorie a part.
+ *
+ * Des ONE-SHOTS longs (2,58 a 5,36 s), poses sur le MEME signal que l'effet visuel (schema 30 :
+ * `end === "destroyed"` + `tEnd`), INERTES tant qu'aucun artefact ne publie la destruction.
+ * Quatre proprietes se verifient sur pieces :
+ *  - la JOINTURE famille -> jeu de sons ne pointe que sur des jeux DECLARES, et chaque jeu a
+ *    ses trois variantes dont la premiere porte le stem (une table editee a moitie devient
+ *    rouge, pas muette) ;
+ *  - la DEDUPLICATION MESUREE (md5 des banques sources, 2026-09-05) est ecrite : wasp partage
+ *    la banque du warthog, wraith celle de la banshee — si la jointure divergeait, deux
+ *    familles a banque identique livreraient deux copies ;
+ *  - FORMAT CANONIQUE 48 kHz / 16 bits / STEREO, meme livraison que moteurs et tirs ;
+ *  - DUREES : jamais retronquees a la coupe des armes (ce sont des explosions), jamais
+ *    au-dela du plafond de surete du lecteur (12 s — les sources livrees en restent loin,
+ *    la troncature au fondu n'a pas eu a servir).
+ */
+describe('garde-rail : destructions de vehicule (lot du 2026-09-05)', () => {
+  it('chaque famille mappee pointe un jeu declare, et chaque jeu a ses trois variantes', () => {
+    for (const [famille, set] of Object.entries(VEHICLE_BOOM_FAMILY_SET)) {
+      const stems = VEHICLE_BOOM_SETS[set]
+      expect(stems, `${famille} -> ${set}`).toBeTruthy()
+      expect(stems, set).toHaveLength(3)
+      expect(VEHICLE_BOOM_SOUND_VARIANTS[stems![0]], set).toEqual(stems)
+    }
+  })
+
+  it('les doublons de banque mesures partagent leur jeu (wasp=warthog, wraith=banshee)', () => {
+    expect(VEHICLE_BOOM_FAMILY_SET.wasp).toBe(VEHICLE_BOOM_FAMILY_SET.warthog)
+    expect(VEHICLE_BOOM_FAMILY_SET.wraith).toBe(VEHICLE_BOOM_FAMILY_SET.banshee)
+  })
+
+  it('format canonique de la livraison : 48 kHz, 16 bits, stereo', () => {
+    for (const stem of allVehicleBoomStems()) {
+      const buf = readFileSync(resolve(SOUNDS_DIR, `${stem}.wav`))
+      let fmt: { canaux: number; cadence: number; bits: number } | null = null
+      for (let at = 12; at + 8 <= buf.length; ) {
+        const id = buf.toString('latin1', at, at + 4)
+        const size = buf.readUInt32LE(at + 4)
+        if (id === 'fmt ') {
+          fmt = {
+            canaux: buf.readUInt16LE(at + 10),
+            cadence: buf.readUInt32LE(at + 12),
+            bits: buf.readUInt16LE(at + 22),
+          }
+          break
+        }
+        at += 8 + size + (size % 2)
+      }
+      expect(fmt, stem).toEqual({ canaux: 2, cadence: 48_000, bits: 16 })
+    }
+  })
+
+  it('des explosions entieres : jamais la coupe des armes, jamais au-dela du plafond', () => {
+    for (const stem of allVehicleBoomStems()) {
+      const s = wavDurationS(resolve(SOUNDS_DIR, `${stem}.wav`))
+      expect(s, `${stem} : retronque a la coupe des armes`).toBeGreaterThan(1.2)
+      expect(s, `${stem} : au-dela du plafond de surete`).toBeLessThanOrEqual(SOUND_CUT_MAX_S)
+    }
   })
 })

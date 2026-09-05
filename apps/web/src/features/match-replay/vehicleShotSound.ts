@@ -24,10 +24,15 @@
  * même perspective en seconde variante). La prise extérieure 1 du Ghost dure 0,128 s — trop
  * courte pour une mesure LUFS intégrée : elle est livrée plafonnée à -1 dBTP, au plus près.
  *
+ * LA BANSHEE MODE 1 (canons à plasma, weap 0000aa68) SONNE DEPUIS LE 2026-09-05, et c'est
+ * l'UTILISATEUR qui a tranché : la reconstruction ORIGINALE (0,125 s par tir) est la bonne —
+ * la piste « cadence du tag » a été essayée (v2 à 240 coups/min) et ABANDONNÉE à la réécoute.
+ * Les votes priment sur tout critère (RECETTE_SONS_ARMES §5) : ses deux prises livrées sont
+ * les fichiers `tir_M1_*` d'origine, la 3e personne d'abord (vue spectateur), la vue pilote
+ * en seconde variante. Trop courtes pour une mesure LUFS intégrée, elles sont livrées au
+ * plafond -1 dBTP, comme la prise extérieure 1 du Ghost.
+ *
  * CE QUI NE SONNE PAS, ET POURQUOI (mesuré ou décidé, jamais supposé) :
- *  - la Banshee MODE 1 (canons à plasma, weap 0000aa68) : sa reconstruction est RÉFUTÉE
- *    (cadence fausse, refabrication en cours) — AUCUNE entrée, silence propre, jamais le son
- *    du mode 2 à sa place ;
  *  - les MISSILES du Wasp (weap d3c407ed) : aucune reconstruction n'existe — silence ;
  *  - toute arme de véhicule dont le tag `weap` n'est pas documenté (Shade...) : la clé
  *    n'existe pas, la table ne répond pas, même règle que les montages.
@@ -56,7 +61,7 @@ import { vehicleWeapTag } from './vehicleWeaponMounts'
 export const VEHICLE_SHOT_SOUND_STEMS: ReadonlyMap<string, string> = new Map([
   [vehicleWeapTag('00015435'), 'vehicle_shot_ghost_1'], // Ghost — canons à plasma jumeaux.
   [vehicleWeapTag('0000aa69'), 'vehicle_shot_banshee_m2_1'], // Banshee M2 — bombe à combustible.
-  // Banshee M1 (0000aa68) : EXCLUE — reconstruction réfutée, cf. en-tête.
+  [vehicleWeapTag('0000aa68'), 'vehicle_shot_banshee_m1_1'], // Banshee M1 — canons à plasma (validée 2026-09-05).
   [vehicleWeapTag('121b4009'), 'vehicle_shot_wraith_1'], // Wraith — mortier à plasma.
   [vehicleWeapTag('b40e9618'), 'vehicle_shot_chopper_1'], // Chopper — canons jumeaux avant.
   [vehicleWeapTag('00015cfa'), 'vehicle_shot_scorpion_1'], // Scorpion — canon principal.
@@ -77,6 +82,8 @@ export const VEHICLE_SHOT_SOUND_STEMS: ReadonlyMap<string, string> = new Map([
 export const VEHICLE_SHOT_SOUND_VARIANTS: Readonly<Record<string, readonly string[]>> = {
   vehicle_shot_ghost_1: ['vehicle_shot_ghost_1', 'vehicle_shot_ghost_2'],
   vehicle_shot_banshee_m2_1: ['vehicle_shot_banshee_m2_1', 'vehicle_shot_banshee_m2_2'],
+  // Banshee M1 : _1 = prise 3e personne (vue spectateur), _2 = vue pilote — cf. en-tête.
+  vehicle_shot_banshee_m1_1: ['vehicle_shot_banshee_m1_1', 'vehicle_shot_banshee_m1_2'],
   vehicle_shot_wraith_1: ['vehicle_shot_wraith_1', 'vehicle_shot_wraith_2'],
   vehicle_shot_chopper_1: ['vehicle_shot_chopper_1', 'vehicle_shot_chopper_2'],
   vehicle_shot_scorpion_1: ['vehicle_shot_scorpion_1', 'vehicle_shot_scorpion_2'],
