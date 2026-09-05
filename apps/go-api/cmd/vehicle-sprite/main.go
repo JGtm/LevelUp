@@ -9,7 +9,7 @@
 //
 // Sous-commandes :
 //
-//	scan   : enumere les `vehi`, resout la chaine, dumpe les chaines ASCII (identification).
+//	inventaire : enumere les `vehi`, resout la chaine, dumpe les chaines ASCII (identification).
 //	render : rend un `vehi` (ou tous) en PNG teintable dans un dossier de sortie.
 package main
 
@@ -29,7 +29,10 @@ func main() {
 	}
 	var err error
 	switch os.Args[1] {
-	case "scan":
+	// « inventaire » et non « scan » : `"scan"` est une VALEUR DE PORTEE de
+	// `shared.match_kill_events` (voie film), dont le ratchet J4R-3 interdit le litteral hors de
+	// `domain/killscope` — un nom de sous-commande n a aucune raison de disputer ce mot (2026-09-05).
+	case "inventaire":
 		err = cmdScan(os.Args[2:])
 	case "render":
 		err = cmdRender(os.Args[2:])
@@ -52,8 +55,8 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: vehicle-sprite <scan|render> [flags]")
-	fmt.Fprintln(os.Stderr, "  scan   -modules=a,b   liste les vehi et leur chaine")
+	fmt.Fprintln(os.Stderr, "usage: vehicle-sprite <inventaire|render> [flags]")
+	fmt.Fprintln(os.Stderr, "  inventaire -modules=a,b   liste les vehi et leur chaine")
 	fmt.Fprintln(os.Stderr, "  render -out=DIR -id=0x..  rend un vehi (ou tous si -id absent)")
 }
 

@@ -14,7 +14,7 @@ import (
 // chaines ASCII lisibles du tag (pour identifier le vehicule sans son nom de fichier, strippe
 // dans les modules release).
 func cmdScan(args []string) error {
-	fs := flag.NewFlagSet("scan", flag.ExitOnError)
+	fs := flag.NewFlagSet("inventaire", flag.ExitOnError)
 	mods := fs.String("modules", "", "modules a ouvrir (basenames, virgule)")
 	variant := fs.String("variant", "any", "variante deploy: any|pc|ds")
 	nStr := fs.Int("strings", 12, "chaines ASCII a montrer par vehi")
