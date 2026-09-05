@@ -17,7 +17,7 @@
 ## Regles d'environnement (memes que l'audit v2 — un seul poste, un seul cache par lot)
 
 - Worktree DEDIE `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-tactique`, branche
-  `wt/tactique` depuis `feat/v75`. Checkout principal : lecture seule, jamais d'ecriture.
+  `feat/tactique` depuis `feat/v75`. Checkout principal : lecture seule, jamais d'ecriture.
 - Commandes `go` en SERIE (jamais deux a la fois), cache propre au lot :
   `GOCACHE=C:\Users\Guillaume\AppData\Local\go-build-tactique`, `CGO_ENABLED=1`, gcc msys64
   ucrt64 dans le PATH, depuis `apps/go-api`. Integration : `-tags=integration -p 1`.
@@ -41,7 +41,7 @@
    lignes, lentilles selon le diff, recevabilite fichier:ligne + declencheur + consequence) :
    ronde 1, tri P0/P1/P2, corrections par l'executeur, ronde 2 sur les corrections. Deux
    rondes maximum.
-3. Le superviseur pousse `wt/tactique`, surveille la CI en avant-plan, journal.
+3. Le superviseur pousse `feat/tactique`, surveille la CI en avant-plan, journal.
 4. Integration dans `feat/v75` par l'utilisateur ou sur son go, apres le lot C de l'audit au
    minimum (phases 4-7 : apres C, B et D).
 
@@ -249,7 +249,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 > D.8), extrait le peintre de `heatmapLayer.ts` (arbre reorganise par D.11, D.13) ; la 6
 > lit les artefacts par `ReplayService` (refondu par B) et se branche dans `replayartifacts`
 > (modifie par C) ; la 7 depend de la 6. Les faire avant = les faire deux fois.
-> A la reprise : rebaser `wt/tactique` sur `feat/v75`, relire D.13 (`lib/replay/`) pour y
+> A la reprise : rebaser `feat/tactique` sur `feat/v75`, relire D.13 (`lib/replay/`) pour y
 > loger le peintre, relire B.1 (`domain/replaydoc`) pour le type lu par la projection.
 
 ### Phase 4 — Grille des cartes (GELEE)
@@ -303,6 +303,7 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : branche renommee `wt/tactique` -> `feat/tactique` par le superviseur : le filtre `push.branches` de `ci.yml` ne couvre pas `wt/**` (seulement `feat/**`, `fix/**`, ...), aucun run ne se declenchait. Meme convention que les lots `feat/v2-*` de l audit.
 - 2026-09-06 : revision 4, worktree `LevelUp-wt-tactique` cree, phase 1 lancee.
 - 2026-09-06 : **revue adversariale ronde 2 (derniere salve) — 3 constats, tous corriges** en
   2 commits `tactique(1.9)`. **R2-1 (P1, doc inversee)** : depuis la correction C, la phrase
