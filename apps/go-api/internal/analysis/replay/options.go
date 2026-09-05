@@ -68,6 +68,24 @@ type Options struct {
 	// filmdec/grapple_state.go). Entree de DONNEES, comme CamoStates. Absente = rejeu sans
 	// tractions de grappin — jamais des tractions devinees.
 	GrappleReads []filmdec.GrappleRead
+	// AbilityImpulses / AbilityImpulseStats : les IMPULSIONS DE CAPACITE lues dans le corps
+	// tag==1 des composants i57/i59 (cf. filmdec/ability_impulses.go). Entree de DONNEES,
+	// comme GrappleReads — c'est le MEME composant, l'autre valeur de son tag.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le temoin
+	// `Absent` (le film ne declare NI i57 NI i59). Une liste vide sans lui serait
+	// indistinguable d'un film ou personne ne s'est servi de son propulseur.
+	AbilityImpulses     []filmdec.AbilityImpulse
+	AbilityImpulseStats filmdec.AbilityImpulseStats
+	// AbilityCharges / AbilityChargeStats : les CHARGES RESTANTES lues sur les emplacements
+	// ARMES du composant i56 (cf. filmdec/ability_charges.go). Entree de DONNEES, comme
+	// AbilityImpulses — meme canal d'identite (i48), autre grandeur.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent les temoins
+	// `Absent` (le film ne declare pas i56) et `Scanned` (le balayage a tourne). Une liste
+	// vide sans eux serait indistinguable d'un film ou personne n'use ses charges.
+	AbilityCharges     []filmdec.AbilityCharge
+	AbilityChargeStats filmdec.AbilityChargeStats
 	// Placements / PlacementStats : les POSES d'objets d'equipement lues dans les records de
 	// CREATION de l'archetype 37 (cf. filmdec/equipment_placements.go). Entree de DONNEES,
 	// comme GrappleReads. Absente = rejeu sans poses — jamais des poses devinees.
@@ -95,8 +113,14 @@ type Options struct {
 	// (compteur de rotation) : sans elles, la couverture ne saurait pas dire ce qui manque.
 	EquipmentChanges     []filmdec.EquipmentChange
 	EquipmentChangeStats filmdec.EquipmentChangeStats
-	Placements           []filmdec.EquipmentPlacement
-	PlacementStats       filmdec.EquipmentPlacementStats
+	// Translocations : les TÉLÉPORTATIONS du translocateur, datées par l'événement type 117
+	// du film (cf. filmdec/transloc_events.go). Entrée de DONNÉES, comme EquipmentChanges.
+	// Absente = rejeu sans téléportations — jamais des téléportations devinées. Ce sont les
+	// MÊMES événements qui exemptent le filtre de vitesse au décodage (décision D2) : le
+	// scan se fait UNE fois, avant les positions.
+	Translocations []filmdec.TranslocatorTeleport
+	Placements     []filmdec.EquipmentPlacement
+	PlacementStats filmdec.EquipmentPlacementStats
 	// Pads : ce que le film rend sur les SOCLES — armes au sol (`ti=42`) et power-ups (`ti=37`),
 	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
 	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.

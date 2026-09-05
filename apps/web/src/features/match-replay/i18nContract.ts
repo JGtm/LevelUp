@@ -32,8 +32,12 @@ import type { PadEquipmentFamilyKey } from './weaponPadFamilies'
  *     (`padPickups[].xuid` est publié depuis le schéma 30 mais cet écran ne l'exploite pas) :
  *     la ligne reste au niveau du MATCH, et aucun
  *     libellé ne doit laisser croire qu'on connaît le ramasseur.
- *  3. `notMeasured` — répulseur et propulseur n'ont AUCUN canal d'activation dans le film. Pas
- *     de colonne vide (elle se lirait « zéro utilisation ») : une phrase qui le dit.
+ *  3. `notMeasured` — le RÉPULSEUR n'a aucun canal d'activation dans le film (neuf canaux
+ *     fouillés, négatif mesuré le 2026-09-03). Pas de colonne vide (elle se lirait « zéro
+ *     utilisation ») : une phrase qui le dit. LE PROPULSEUR EN EST SORTI le même jour — son
+ *     usage est mesuré (schéma 38, `abilityImpulses`) et validé contre un relevé Theater ; il
+ *     n'a pas de colonne pour autant, parce que le geste dure une demi-seconde et se lit sur
+ *     la CARTE (le dash du pion), pas dans un compte de tableau. La phrase dit les deux.
  *  4. LA CELLULE « — » DES COLONNES DE FRAGS (cf. `equipmentUsageColumns.ts`, `killsCell`) —
  *     un match dont `EquipmentUsageCoverage.killsRead` est faux écrit « — », jamais un zéro :
  *     pas un texte à part, un CARACTÈRE, identique dans les deux langues (même convention que
@@ -45,8 +49,22 @@ import type { PadEquipmentFamilyKey } from './weaponPadFamilies'
  */
 export interface EquipmentUsageText {
   title: string
-  colPlayer: string
-  teamTotal: string
+  /**
+   * LES DEUX VUES EMPILEES DE LA SECTION (2026-09-03). Le tableau a deux niveaux d'en-tete a
+   * ete remplace par un graphe : `viewByPlayer` classe les joueurs geste par geste,
+   * `viewTeamShare` dit quel camp s'est appuye sur quel outil. Deux titres et pas un : les
+   * deux vues repondent a deux questions, et une carte sans titre de vue laisserait croire
+   * a deux lectures de la meme.
+   */
+  viewByPlayer: string
+  viewTeamShare: string
+  /** Infobulle d'une barre de la grille : joueur, grandeur, valeur DEJA ecrite. */
+  gridTipFmt: (player: string, column: string, value: string) => string
+  /**
+   * Infobulle d'un segment de part d'equipe. Le COMPTE BRUT y figure avec son total, jamais
+   * le seul pourcentage : deux segments a 50 % ne disent pas s'ils valent 1 ou 40.
+   */
+  shareTipFmt: (team: string, family: string, count: number, total: number) => string
   /** Tractions de grappin : la seule ACTIVATION de capacité que le film mesure et attribue. */
   groupGrapple: string
   groupGrappleHint: string
@@ -126,9 +144,20 @@ export interface PadControlText {
   title: string
   /** Infobulle du titre : d'où vient l'attribution, et ce qu'elle refuse de faire. */
   titleHint: string
-  colPlayer: string
-  colTotal: string
-  teamTotal: string
+  /**
+   * LE GRAPHE (2026-09-03) : une arme par ligne, deux bâtons superposés, une échelle commune.
+   * `axisPickups` nomme cette échelle — sans lui, une graduation « 0 1 2 3 » ne dit pas de
+   * quoi elle compte les unités.
+   */
+  axisPickups: string
+  /** Infobulle d'un segment : le joueur, son camp, le socle, ses prises. */
+  barTipFmt: (player: string, team: string, weapon: string, count: number) => string
+  /**
+   * L'ANNOTATION DE DROITE : les occupations de CE socle dont l'événement natif ne nomme pas le
+   * ramasseur. Elles ne sont versées à aucun camp — les afficher à part est la seule façon de
+   * dire « ce socle a changé de mains plus souvent que la ligne ne le montre » sans inventer.
+   */
+  unnamedFmt: (count: number) => string
   /** Le dénominateur : « N prises attribuées sur M occupations de socle ». */
   attributedFmt: (attributed: number, occupations: number) => string
   /** L'annonce du reste, avant la ventilation par cause. */
@@ -688,6 +717,17 @@ export interface ReplayText {
   abilityUnidentified: (rank: number) => string
   abilityAge: string
   abilityAhead: string
+  /**
+   * LES CHARGES DE LA CAPACITÉ PORTÉE (schéma 38 enrichi, lot P6) : le compte de la lecture
+   * la plus récente de la même vie et du même équipement — et « PLEIN » QUALITATIF avant la
+   * première lecture (décision utilisateur du 04/09) : le film ne transmet RIEN au ramassage,
+   * un chiffre serait inventé. Une famille que le canal ne mesure pas n'affiche rien du tout
+   * — ni compte, ni « plein » (cf. `abilityChargeLogic.ts`).
+   */
+  abilityChargesFull: string
+  abilityChargesFullHint: string
+  abilityChargesCount: (n: number) => string
+  abilityChargesAge: string
   /**
    * État ACTIF d'un équipement, par FAMILLE mesurée (jamais un libellé libre) : le
    * camouflage rend la fiche vitreuse, le surbouclier l'encadre d'or (cahier des

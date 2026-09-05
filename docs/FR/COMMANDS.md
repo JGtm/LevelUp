@@ -301,6 +301,39 @@ make go-api-coverage   # rapport de couverture
 make go-api-lint       # go vet
 ```
 
+#### Corpus de rétro-ingénierie des cartes (tag de build `gamefiles`)
+
+Les 59 fichiers `*_gamefiles_test.go` de `internal/himap/` décodent les modules du **jeu
+installé** et balaient les 26 cartes du catalogue. Ils sont longs par nature — mesuré le
+2026-09-05, `TestBalayageCoquille` prend à lui seul **203 s** pour 26 cartes (1 246 s avant
+le passage du lecteur de modules en projection mémoire, le même jour).
+Ils vivent derrière `//go:build gamefiles` pour qu'un `go test ./internal/himap/` nu reste
+utilisable (2,8 s).
+
+```bash
+make go-api-test-gamefiles                       # corpus entier (~6 min, exige le jeu)
+cd apps/go-api && go test -tags=gamefiles -count=1 -timeout 3600s ./internal/himap/ -v
+
+# Une seule carte (beaucoup plus rapide) :
+BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
+  ./internal/himap/ -run TestBalayageCoquille -v
+
+# Jeu installé ailleurs :
+LEVELUP_HALO_DEPLOY=/chemin/vers/Halo Infinite/deploy go test -tags=gamefiles ./internal/himap/
+```
+
+Sans installation du jeu, chaque test prend son `t.Skip` et le corpus est vide en une
+seconde — c'est exactement ce qui se passe en CI. La CI se contente donc de le **compiler**
+(`go vet -tags=gamefiles ./internal/himap/`, job `go-test`) ; elle ne l'exécute jamais. Le
+tag lui-même est tenu par `internal/himap/corpus_tag_test.go`, qui tourne dans le build par
+défaut.
+
+**Test rouge connu** : `TestBancCliffhanger` échoue (accord 64,4 % contre une référence
+re-basée à 64,7 %). Il est *préexistant*, pas une régression — vérifié le 2026-09-05 en le
+rejouant sur le commit précédent, qui rend des chiffres identiques au bit près. Personne ne
+pouvait le voir : le corpus ne terminait jamais, et la CI ne l’exécute pas. Consigné dans
+`.ai/V7.5/REGISTRE_REPORTS.md`.
+
 ### Frontend (`apps/web`)
 
 ```bash

@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // LE RENDU D'UNE CARTE FORGE — Vagabond, posee depuis les objets de son `.mvar`.

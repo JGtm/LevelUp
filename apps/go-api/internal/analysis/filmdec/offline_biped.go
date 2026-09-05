@@ -118,6 +118,11 @@ type ScanFilmOptions struct {
 	// IsolationGapMS écarte les échantillons temporellement isolés dans leur slot (cf.
 	// DropIsolated). 0 = désactivé.
 	IsolationGapMS int
+	// TeleportExemptions lève le filtre MaxSpeedMPS à ±200 ms d'un événement 117 du même
+	// slot (cf. TeleportExemptions — décision D2) : une téléportation de translocateur est
+	// un déplacement RÉEL à 193-1540 m/s, pas un faux positif du balayage. nil (défaut) =
+	// aucun événement fourni, filtre strictement identique à l'actuel.
+	TeleportExemptions TeleportExemptions
 	// CaptureDirs décode en plus les composants i1 (vélocité) et i2 (forward/cap) qui
 	// suivent i0 dans le même record. Ne change AUCUNE position émise (le curseur repart
 	// toujours de la fin d'i0) : le décodage des directions est en lecture seule.
@@ -226,7 +231,7 @@ func ScanBipedPositions(film *filmsource.Film, opt ScanFilmOptions) ([]BipedPosi
 	if opt.WorldRange == nil {
 		return out, nil // sans coordonnées monde, un seuil en m/s n'a aucun sens
 	}
-	return DropTeleports(out, opt.MaxSpeedMPS), nil
+	return DropTeleportsExcept(out, opt.MaxSpeedMPS, opt.TeleportExemptions), nil
 }
 
 // bipedSlotBand construit l'ensemble des slots biped plausibles : union des ti=35 des

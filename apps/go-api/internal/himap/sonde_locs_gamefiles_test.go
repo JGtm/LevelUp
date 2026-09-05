@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE (2026-08-27) — LE TAG `locs` (location_name_globals_definition) EST-IL LE

@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // LA PREUVE level_id DES APPARIEMENTS carte -> module, MATERIALISEE EN TEST DURABLE.

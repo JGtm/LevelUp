@@ -312,6 +312,9 @@ func renderAssembly(doc ReplayDocument) string {
 	renderGrenadeReads(p, doc)
 	renderAbilities(p, doc)
 	renderEquipment(p, doc)
+	renderTranslocations(p, doc)
+	renderAbilityImpulses(p, doc)
+	renderAbilityCharges(p, doc)
 	renderGrapple(p, doc)
 	renderPlacements(p, doc)
 	renderGroundWeapons(p, doc)
@@ -558,6 +561,83 @@ func renderEquipment(p func(string, ...any), doc ReplayDocument) {
 	if c := doc.Coverage.Equipment; c != nil {
 		p("couverture : %d vie(s) publiee(s) · camo %d vie(s) / %d episode(s) · surbouclier %d vie(s) / %d episode(s)",
 			c.TracksTotal, c.CamoLives, c.CamoEpisodes, c.OvershieldLives, c.OvershieldEpisodes)
+	}
+	p("")
+}
+
+// renderTranslocations fige le calque des TELEPORTATIONS du translocateur (schema 38) :
+// datees ET SITUEES par l evenement 117 du film — jamais devinees d un seuil spatial, jamais
+// datees du `spent`, jamais derivees d une discontinuite de piste. Le va-et-vient se fige
+// AVEC son compteur (`positioned`) : un saut publie sans lui est une charge non lue, pas un
+// saut vers l origine du monde. Le film de reference (Fiesta Cliffhanger) peut n en porter
+// aucune : le zero se fige AVEC ses compteurs, sinon il se confondrait avec une lecture qui
+// aurait echoue.
+func renderTranslocations(p func(string, ...any), doc ReplayDocument) {
+	p("## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil")
+	if c := doc.Coverage.Translocations; c != nil {
+		p("%d evenement(s) -> %d publie(s) (%d avec va-et-vient) · %d avant l origine · %d sans piste publiee",
+			c.Events, c.Published, c.Positioned, c.BeforeOrigin, c.Unpublished)
+	} else {
+		p("aucune couverture (rien n a ete fourni a lire)")
+	}
+	for _, tr := range doc.Translocations {
+		if tr.FX == nil {
+			p("  slot=%d t=%d (sans va-et-vient)", tr.Slot, tr.T)
+			continue
+		}
+		p("  slot=%d t=%d (%.2f,%.2f,%.2f) -> (%.2f,%.2f,%.2f)",
+			tr.Slot, tr.T, *tr.FX, *tr.FY, *tr.FZ, *tr.TX, *tr.TY, *tr.TZ)
+	}
+	p("")
+}
+
+// renderAbilityImpulses fige le calque des IMPULSIONS DE CAPACITE (schema 38) : l usage
+// MESURE du propulseur, date par le corps tag==1 d i57/i59 et ATTRIBUE par le rang i48 de la
+// MEME vie. L ENTONNOIR ENTIER SE FIGE — lectures, gestes, publiees, et les CINQ refus (avant
+// l origine, sans piste, sans identite, famille non mesuree, attribution indisponible) : une
+// ligne qui ne dirait que « N impulsions » ne distinguerait pas un film sans propulseur d un
+// film dont la palette n a pas ete classee, ni d un canal qui refuse une famille non mesuree.
+// `familleNonMesuree` est le compteur qui dit que le repulseur reste dehors ;
+// `attributionIndisponible` celui qui dit que la chaine d identite n a pas pu tourner.
+func renderAbilityImpulses(p func(string, ...any), doc ReplayDocument) {
+	p("## IMPULSIONS DE CAPACITE — l usage MESURE du propulseur, attribue par le rang de la vie")
+	if c := doc.Coverage.AbilityImpulses; c != nil {
+		p("%d lecture(s) -> %d geste(s) -> %d publiee(s) · %d sans identite · "+
+			"%d famille non mesuree · %d attribution indisponible · %d avant l origine · "+
+			"%d sans piste publiee · composant absent=%t",
+			c.Reads, c.Episodes, c.Published, c.NoIdentity, c.OtherFamily, c.NoResolver,
+			c.BeforeOrigin, c.Unpublished, c.ComponentAbsent)
+	} else {
+		p("aucune couverture (rien n a ete fourni a lire)")
+	}
+	for _, im := range doc.AbilityImpulses {
+		p("  slot=%d t=%d %s", im.Slot, im.T, im.Family)
+	}
+	p("")
+}
+
+// renderAbilityCharges fige le calque des CHARGES RESTANTES (schema 38 enrichi, lot P5) :
+// les LECTURES d i56 (quartet haut = charges entieres), attribuees par le rang i48 de la
+// MEME vie — jamais un compte d usages derive (une baisse peut valoir plusieurs usages,
+// R11 §2), et rien avant la premiere lecture (le film ne transmet rien au ramassage).
+// L ENTONNOIR ENTIER SE FIGE — lectures, publiees, et les CINQ refus (avant l origine,
+// sans piste, sans identite, famille non mesuree, attribution indisponible) : une ligne qui
+// ne dirait que « N lectures » ne distinguerait pas un film sans grappin d un film dont la
+// palette n a pas ete classee. `familleNonMesuree` est le compteur qui dit que le repulseur
+// reste dehors.
+func renderAbilityCharges(p func(string, ...any), doc ReplayDocument) {
+	p("## CHARGES D EQUIPEMENT — les lectures du film, jamais un compte d usages derive")
+	if c := doc.Coverage.AbilityCharges; c != nil {
+		p("%d lecture(s) -> %d publiee(s) · %d sans identite · %d famille non mesuree · "+
+			"%d attribution indisponible · %d avant l origine · %d sans piste publiee · "+
+			"composant absent=%t",
+			c.Reads, c.Published, c.NoIdentity, c.OtherFamily, c.NoResolver,
+			c.BeforeOrigin, c.Unpublished, c.ComponentAbsent)
+	} else {
+		p("aucune couverture (rien n a ete fourni a lire)")
+	}
+	for _, ac := range doc.AbilityCharges {
+		p("  slot=%d t=%d %s charges=%d", ac.Slot, ac.T, ac.Family, ac.Charges)
 	}
 	p("")
 }

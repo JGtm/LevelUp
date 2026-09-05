@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // points_apparition_gamefiles_test.go — LE GARDE-RAIL de la table figee.

@@ -213,8 +213,17 @@ func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
 // la cuisson appelle) : l'enveloppe s'appelle desormais `EquipmentArchetypeDir`. Avant d'ajouter
 // un nom ici, verifier qu'aucune methode ne le porte
 // (`grep -rE '^func \([^)]+\) <Nom>\('`).
+// TROIS NOMS AJOUTES A LA RECONCILIATION DU 2026-09-05 (merge de `feat/v75`, 65 commits) :
+// `ScanFilmAbilityImpulses`, `ScanFilmAbilityCharges` et `ScanFilmTranslocatorTeleports`. Les
+// trois balayages arrivaient de l'amont en ANCIENNE forme et etaient appeles EN PRODUCTION
+// (`replay/build.go:308/457/473`) ; ils ont recu leur forme film (`ScanAbilityImpulses(fc)`,
+// `ScanAbilityCharges(fc)`, `ScanTranslocatorTeleports(film, entry)`), et leurs enveloppes `dir`
+// survivent parce que des tests les appellent (`replay/golden_inputs_test.go`,
+// `filmdec/transloc_{exemption,positions}_film_test.go`). Aucune methode ne porte ces noms
+// (verifie : `grep -rE '^func \([^)]+\) (ScanFilmAbilityImpulses|ScanFilmAbilityCharges|ScanFilmTranslocatorTeleports)\('`).
 var enveloppesInterditesEnProduction = []string{
 	// filmdec
+	"ScanFilmAbilityCharges", "ScanFilmAbilityImpulses",
 	"ScanFilmAbilityRanks", "ScanFilmBipedPickups", "ScanFilmBipedPositions", "ScanFilmCamoStates",
 	"ScanFilmCarrierMarks", "ScanFilmEquipmentChanges", "ScanFilmEquipmentCreations",
 	"ScanFilmEquipmentCreationsForBand", "ScanFilmEquipmentPlacements", "ScanFilmEquipmentState",
@@ -222,7 +231,8 @@ var enveloppesInterditesEnProduction = []string{
 	"ScanFilmGroundWeaponCreations", "ScanFilmGroundWeaponCreationsForBand",
 	"ScanFilmHeldWeaponChanges", "ScanFilmInventoryDeltas", "ScanFilmKeyframeGroundWeapons",
 	"ScanFilmKeyframeLoadouts", "ScanFilmManagedProperties", "ScanFilmNavpointRadial",
-	"ScanFilmObjectives", "ScanFilmProjectiles", "ScanFilmUnitEquipment",
+	"ScanFilmObjectives", "ScanFilmProjectiles", "ScanFilmTranslocatorTeleports",
+	"ScanFilmUnitEquipment",
 	"ScanFilmWorldObjectKeyframes", "ScanFilmWorldObjects", "ScanFilmWorldObjectsForBand",
 	"ScanFilmZoomEvents",
 	"DetectI0Layout", "EquipmentArchetypeDir", "CalibrateMPPWidths",

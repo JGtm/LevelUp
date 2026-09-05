@@ -126,6 +126,20 @@ var replaySchemas = []struct {
 	{"Pickup", replay.Pickup{}},
 	{"PickupCoverage", replay.PickupCoverage{}},
 	{"T0FilmCoverage", replay.T0FilmCoverage{}},
+	// AJOUTES AU SCHEMA 38 (2026-09-03), DANS LE MEME LOT que le champ — la lecon P2-3 du
+	// 2026-09-01 (`Pickup` absent de cette table pendant deux schemas) appliquee d'emblee :
+	// le couple `recovered`/`gap` (optionnels) contre `recovered` de la couverture (requis)
+	// est exactement ce que les gardes omitempty<->required jugent.
+	{"Translocation", replay.Translocation{}},
+	{"TranslocationCoverage", replay.TranslocationCoverage{}},
+	{"AbilityImpulse", replay.AbilityImpulse{}},
+	{"AbilityImpulseCoverage", replay.AbilityImpulseCoverage{}},
+	// AJOUTES AU LOT P5 (2026-09-04), DANS LE MEME LOT que le champ (lecon P2-3 appliquee
+	// d'emblee) : `charges` est un int NU (zero = une mesure, jamais omis) la ou
+	// `componentAbsent` de la couverture est omitempty — exactement le couple que les gardes
+	// omitempty<->required jugent.
+	{"AbilityCharge", replay.AbilityCharge{}},
+	{"AbilityChargeCoverage", replay.AbilityChargeCoverage{}},
 	{"Coverage", replay.Coverage{}},
 	{"LayerCoverage", replay.LayerCoverage{}},
 	{"BridgeHealth", replay.BridgeHealth{}},
@@ -520,9 +534,74 @@ var replaySchemas = []struct {
 //	                      moment dans `replaySchemas` : la lecon P2-3 du 2026-09-01 (`Pickup`
 //	                      absent de la table pendant deux schemas) est appliquee tout de suite.
 //
-// Les dix-huit fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	49 -> 51  2026-09-03  DEUX champs, la LECTURE FIABLE des usages d equipement (schema 38,
+//	                      lots P1, P1bis et P3 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03) :
+//	                      - `translocations` : LES TELEPORTATIONS DU TRANSLOCATEUR, datees
+//	                        ET SITUEES par l evenement type 117 du film (precision 18/18,
+//	                        rappel 8/8 sur 5 films — rapport R1). Le client cessera d en
+//	                        deviner par seuil spatial (> 4 m : aveugle a un saut de 3,24 m
+//	                        mesure) ou de les dater du `spent` (jusqu a 16,5 s de retard
+//	                        mesure).
+//	                      Ce lot ajoute AUSSI, sans nouveau champ racine : `recovered` et
+//	                      `gap` sur EquipmentChange (la recuperation gatee par le temoin de
+//	                      compteur, et le saut residuel — decisions D1/D3), `recovered` sur
+//	                      EquipmentChangeCoverage, et le bloc `coverage.translocations`.
+//	                      Puis, au lot P1bis et TOUJOURS sans nouveau champ racine (le schema
+//	                      38 est enrichi avant sa premiere cuisson, pas remplace par un 39) :
+//	                      `fx/fy/fz` -> `tx/ty/tz` sur Translocation — le VA-ET-VIENT lu dans
+//	                      la CHARGE de l evenement (layout source de l executable, valide
+//	                      18/18 a 0,00-0,26 m des discontinuites de piste, rapport R6 par.1),
+//	                      six champs SOLIDAIRES absents en bloc quand la charge n a pas pu
+//	                      etre dequantifiee — et `positioned` sur TranslocationCoverage, qui
+//	                      en porte le denominateur.
+//	                      Les deux types du calque entrent dans replaySchemas DANS LE MEME
+//	                      LOT (lecon P2-3 du 2026-09-01).
+//	                      Puis, au lot P3 et TOUJOURS sur le schema 38 (aucun artefact 38
+//	                      n existe hors repertoires de test : on enrichit avant la premiere
+//	                      cuisson plutot que d empiler un 39), LE SECOND champ racine :
+//	                      - `abilityImpulses` : L USAGE MESURE DU PROPULSEUR, date par le
+//	                        corps `tag == 1` des composants i57/i59 — le MEME dont le tag 3
+//	                        porte le grappin — et ATTRIBUE par le rang i48 lu dans la MEME VIE
+//	                        et ANTERIEUREMENT (rapport R8 par. 8.8 : 0,361 impulsion par vie de
+//	                        propulseur contre 0,011 par vie de repulseur, PLUS porte, et 0,000
+//	                        sur 132 vies de grappin ; verite terrain Theater sur `1cd3848a` :
+//	                        5 usages releves, 5 rendus, ecart <= 1 s). LE CALQUE NE COUVRE PAS
+//	                        TOUS LES EQUIPEMENTS et le DIT : seules les familles que le titre
+//	                        declare mesurees y entrent, les autres sont ecartees et comptees
+//	                        (`otherFamily`). Le REPULSEUR n y est pas — negatif MESURE (R9).
+//	                        `noResolver` est le CINQUIEME refus, ajoute a la revue de ronde 1 :
+//	                        quand la chaine d attribution n a pas pu tourner (palette du match
+//	                        non classee, titre sans famille declaree, aucune vie), les gestes y
+//	                        tombent au lieu de se deguiser en « autre equipement » ou en « rang
+//	                        non lu » — deux compteurs qui affirmaient une mesure non faite.
+//	                      Avec lui, le bloc `coverage.abilityImpulses` et les deux types dans
+//	                      replaySchemas, MEME LOT (lecon P2-3).
+//
+//	51 -> 52  2026-09-04  UN champ, les CHARGES RESTANTES (lot P5, schema 38 ENRICHI) :
+//	                      - `abilityCharges` : LES LECTURES du compteur de charges entieres
+//	                        (i56, quartet HAUT de la valeur 7 bits — rapport R11 : serie
+//	                        4, 3, 2, 1, 0 sur `1cd3848a` exactement aux cinq usages du releve
+//	                        Theater ; 36/36 accroches de grappin appariees a une baisse,
+//	                        temoin decale 2/36), attribuees par le rang i48 de la MEME VIE et
+//	                        ANTERIEUREMENT — la meme jointure que les impulsions. Ce sont les
+//	                        LECTURES, jamais un compte d usages derive (une baisse peut valoir
+//	                        plusieurs usages), et rien n est affirme avant la premiere lecture
+//	                        (le film ne transmet rien au ramassage). Seules les familles que
+//	                        le titre declare mesurees y entrent ([ability_charges] : grapple,
+//	                        thruster) — le REPULSEUR n arme jamais i56 (218 vies, 0 baisse,
+//	                        negatif MESURE R11 §4-5).
+//	                      LE SCHEMA RESTE 38 ALORS QUE DES ARTEFACTS 38 CUITS EXISTENT
+//	                      (verifie sur pieces le 2026-09-04 : `1b2d9e08`, `1cd3848a` — les
+//	                      temoins du gate visuel, hors repertoires de test) : les ajouts sont
+//	                      purement additifs et omitempty, un lecteur 38 reste correct, et une
+//	                      montee a 39 n aurait protege aucun lecteur de plus — justification
+//	                      complete a la chronique de document.go.
+//	                      Avec lui, le bloc `coverage.abilityCharges` et les deux types dans
+//	                      replaySchemas, MEME LOT (lecon P2-3).
+//
+// Les vingt fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 49
+const wantReplayDocumentFields = 52
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

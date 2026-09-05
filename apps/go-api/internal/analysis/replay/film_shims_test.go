@@ -31,6 +31,23 @@ func filmDeDir(dir string) *filmsource.Film {
 	return film
 }
 
+// buildFromFilmDir : [BuildFromFilm] depuis un REPERTOIRE de film. Ajoutee a la reconciliation
+// du 2026-09-05 : deux instruments d'acceptation venus de l'amont (`ability_impulses_film_test.go`,
+// `ability_charges_film_test.go`) rejouent la chaine de production sur un film designe par
+// variable d'environnement, et l'amont leur donnait un `dir` parce que `BuildFromFilm` en prenait
+// un. Le chargement est ici, dans un `_test.go`, ou le compilateur interdit qu'un chemin de
+// production l'emprunte.
+//
+// Un repertoire illisible fait ECHOUER l'appel plutot que de construire sur un film nil : ces
+// instruments comparent des sorties a des releves Theater, un document vide leur mentirait.
+func buildFromFilmDir(matchID, titleSlug, dir string, opt Options) (ReplayDocument, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return ReplayDocument{}, err
+	}
+	return BuildFromFilm(matchID, titleSlug, film, opt)
+}
+
 // decodeFilmPlacementsDir : [decodeFilmPlacements] depuis un repertoire.
 func decodeFilmPlacementsDir(
 	dir string, wr *filmdec.Vec3Range,

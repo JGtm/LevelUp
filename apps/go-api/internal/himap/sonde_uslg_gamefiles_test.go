@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE (2026-09-02) — OU VIT LE TEXTE JOUEUR D'UNE ZONE NOMMEE, ET POURQUOI IL MANQUE

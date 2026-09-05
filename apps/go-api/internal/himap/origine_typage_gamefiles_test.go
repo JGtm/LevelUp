@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // origine_typage_gamefiles_test.go — TYPER les points d'apparition rendus par la recette.

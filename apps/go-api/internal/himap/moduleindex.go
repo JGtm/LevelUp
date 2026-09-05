@@ -56,6 +56,27 @@ func NewModuleIndex(chemins ...string) (*ModuleIndex, error) {
 	return idx, nil
 }
 
+// Close relache les modules ouverts par l'index.
+//
+// POURQUOI CA COMPTE ICI PLUS QU'AILLEURS. Un index couvre la carte PLUS tous les modules
+// globaux — 16,2 Go d'archives sur l'installation de reference (`globals` 7,4 Go, `common`
+// 2,7 Go, `multiplayer` 0,9 Go, plus leurs compagnons `_hd1`) — et la cuisson en construit
+// un PAR CARTE. Vingt-six cartes sans fermeture, ce sont vingt-six jeux de projections tenues
+// jusqu'a la fin du processus.
+//
+// Rend la PREMIERE erreur rencontree, apres avoir tente de fermer tous les modules : abandonner
+// au premier echec laisserait les suivants ouverts.
+func (idx *ModuleIndex) Close() error {
+	var premiere error
+	for _, m := range idx.modules {
+		if err := m.Close(); err != nil && premiere == nil {
+			premiere = err
+		}
+	}
+	idx.modules, idx.parID = nil, nil
+	return premiere
+}
+
 // GeometrySearchPath rend l'ordre de recherche d'une carte : son module d'abord, puis les
 // modules globaux. C'est cet ordre qui donne la priorite au contenu de la carte.
 func GeometrySearchPath(deployRoot, moduleCarte string) ([]string, error) {

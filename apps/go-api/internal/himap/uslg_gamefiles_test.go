@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // GARDE-RAIL DU DÉCODEUR uslg — il exige le jeu installé et se déclare absent sinon.

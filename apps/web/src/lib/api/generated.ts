@@ -3956,6 +3956,58 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AbilityCharge: {
+            /** Format: int64 */
+            charges: number;
+            family: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+        };
+        AbilityChargeCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            componentAbsent?: boolean;
+            /** Format: int64 */
+            noIdentity: number;
+            /** Format: int64 */
+            noResolver: number;
+            /** Format: int64 */
+            otherFamily: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            reads: number;
+            /** Format: int64 */
+            unpublished: number;
+        };
+        AbilityImpulse: {
+            family: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+        };
+        AbilityImpulseCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            componentAbsent?: boolean;
+            /** Format: int64 */
+            episodes: number;
+            /** Format: int64 */
+            noIdentity: number;
+            /** Format: int64 */
+            noResolver: number;
+            /** Format: int64 */
+            otherFamily: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            reads: number;
+            /** Format: int64 */
+            unpublished: number;
+        };
         AbilityRead: {
             /** Format: int64 */
             r: number;
@@ -5399,6 +5451,8 @@ export interface components {
             y_value: number;
         };
         Coverage: {
+            abilityCharges?: components["schemas"]["AbilityChargeCoverage"];
+            abilityImpulses?: components["schemas"]["AbilityImpulseCoverage"];
             bombArmings?: components["schemas"]["BombArmingsCoverage"];
             bombCarries?: components["schemas"]["BombCarriesCoverage"];
             bridge: components["schemas"]["BridgeHealth"];
@@ -5421,6 +5475,7 @@ export interface components {
             shots: components["schemas"]["LayerCoverage"];
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
             t0Film?: components["schemas"]["T0FilmCoverage"];
+            translocations?: components["schemas"]["TranslocationCoverage"];
             verdict?: {
                 [key: string]: string;
             };
@@ -5717,9 +5772,12 @@ export interface components {
         EquipmentChange: {
             /** Format: int64 */
             from: number;
+            /** Format: int64 */
+            gap?: number;
             kind: string;
             /** Format: int64 */
             r: number;
+            recovered?: boolean;
             /** Format: int32 */
             slot: number;
             /** Format: int64 */
@@ -5740,6 +5798,8 @@ export interface components {
             missedEstimate: number;
             /** Format: int64 */
             published: number;
+            /** Format: int64 */
+            recovered: number;
             /** Format: int64 */
             repeats: number;
             /** Format: int64 */
@@ -7866,7 +7926,13 @@ export interface components {
             /** Format: int64 */
             deaths: number;
             /** Format: int64 */
+            joinMatchMs?: number;
+            joinedInProgress?: boolean;
+            /** Format: int64 */
             kills: number;
+            /** Format: int64 */
+            leaveMatchMs?: number;
+            leftInProgress?: boolean;
             /** Format: int64 */
             teamId: number;
             xuid: string;
@@ -8207,6 +8273,7 @@ export interface components {
             score_points_label?: string;
             /** Format: int64 */
             score_theirs?: number;
+            score_timeline_kind?: string;
             /** Format: date-time */
             start_time?: string;
             start_time_label: string;
@@ -9689,6 +9756,8 @@ export interface components {
         };
         ReplayDocument: {
             abilities?: components["schemas"]["AbilityRead"][] | null;
+            abilityCharges?: components["schemas"]["AbilityCharge"][] | null;
+            abilityImpulses?: components["schemas"]["AbilityImpulse"][] | null;
             abilityLabels?: {
                 [key: string]: components["schemas"]["Label"];
             };
@@ -9742,6 +9811,7 @@ export interface components {
             t0FilmMs?: number;
             titleSlug: string;
             tracks: components["schemas"]["Track"][] | null;
+            translocations?: components["schemas"]["Translocation"][] | null;
             vipCrown?: components["schemas"]["VipPeriod"][] | null;
             weaponChanges?: components["schemas"]["WeaponChange"][] | null;
             weaponLabels?: {
@@ -11611,6 +11681,36 @@ export interface components {
             /** Format: int64 */
             team: number;
             xuid?: string;
+        };
+        Translocation: {
+            /** Format: float */
+            fx?: number;
+            /** Format: float */
+            fy?: number;
+            /** Format: float */
+            fz?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            tx?: number;
+            /** Format: float */
+            ty?: number;
+            /** Format: float */
+            tz?: number;
+        };
+        TranslocationCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            events: number;
+            /** Format: int64 */
+            positioned: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            unpublished: number;
         };
         UnreadCount: {
             /** Format: int64 */

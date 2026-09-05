@@ -20,8 +20,8 @@
  */
 import type { ReplayBounds, ReplayPoint } from '@/lib/api/types'
 
-import { positionAt, worldToCanvas, type XY } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import { isAliveAt, positionAt, worldToCanvas, type XY } from './replayLogic'
+import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 interface CanvasView {
@@ -42,17 +42,36 @@ export interface GrappleFxEntry {
 
 /**
  * buildGrappleFx précalcule les tractions dessinables : chaque ligne du document jointe
- * aux points de sa vie. Une ligne dont la vie n'est pas publiée ne se dessine pas — il n'y
- * aurait aucun joueur à relier (le build l'écarte déjà ; la jointure reste défensive).
+ * aux points de LA VIE QUI COUVRE SON DÉPART. Une ligne dont aucune vie du slot ne couvre
+ * l'instant ne se dessine pas — il n'y aurait aucun joueur à relier.
+ *
+ * UNE TRACE = UNE VIE, ET LE SLOT DE BIPED EST RÉATTRIBUÉ À CHAQUE RÉAPPARITION. C'est
+ * l'invariant du dossier (`shotFx.ts`, `fireMark.ts`, `riftStations.ts`, `replayMarkers.ts`,
+ * `thrusterDashFx.ts`) : indexer `slot -> points` ne garderait que la DERNIÈRE piste du slot,
+ * et une accroche d'une vie antérieure irait chercher les points d'une autre vie — au mieux
+ * elle disparaîtrait (l'instant précède les points retenus, `positionAt` rend `null`), au pire
+ * le câble se peindrait à la position d'UN AUTRE JOUEUR, tendu vers une ancre qui n'est pas la
+ * sienne. On groupe donc par slot, puis on retient la vie qui COUVRE le départ de la traction —
+ * le patron exact de `buildShotFx`, `buildFireMarks` et `buildThrusterDashFx`.
+ *
+ * LE DÉPART (`t0`) EST L'INSTANT DE RÉFÉRENCE, pas `t1` : c'est le tir qui appartient à une
+ * vie. Une traction peut se terminer après la mort du porteur — `positionAt` fige alors la
+ * dernière position, ce qui est exactement ce qu'on veut voir.
  */
 export function buildGrappleFx(doc: ReplayDocumentReady): GrappleFxEntry[] {
   if (doc.grappleLines.length === 0) return []
-  const pointsBySlot = new Map(doc.tracks.map((t) => [t.slot, t.points]))
+  const bySlot = new Map<number, ReplayTrackReady[]>()
+  for (const t of doc.tracks) {
+    const lives = bySlot.get(t.slot)
+    if (lives) lives.push(t)
+    else bySlot.set(t.slot, [t])
+  }
   const out: GrappleFxEntry[] = []
   for (const l of doc.grappleLines) {
-    const points = pointsBySlot.get(l.slot)
-    if (!points || points.length === 0 || l.t1 <= l.t0) continue
-    out.push({ t0: l.t0, t1: l.t1, anchor: { x: l.ax, y: l.ay }, points })
+    if (l.t1 <= l.t0) continue
+    const track = (bySlot.get(l.slot) ?? []).find((v) => isAliveAt(v, l.t0))
+    if (!track || track.points.length === 0) continue
+    out.push({ t0: l.t0, t1: l.t1, anchor: { x: l.ax, y: l.ay }, points: track.points })
   }
   return out
 }

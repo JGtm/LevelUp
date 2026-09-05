@@ -112,6 +112,7 @@ func VocabulaireLieux(racineDeploy string) ([]uint32, error) {
 	if err != nil {
 		return nil, fmt.Errorf("himap: globals : %w", err)
 	}
+	defer func() { _ = m.Close() }()
 	fichiers := m.Files("locs")
 	if len(fichiers) != 1 {
 		return nil, fmt.Errorf("himap: %d tag(s) locs, 1 attendu", len(fichiers))
@@ -160,6 +161,7 @@ func LexiqueLieux(racineDeploy string) (map[uint32]LibelleLieu, error) {
 	if err != nil {
 		return nil, fmt.Errorf("himap: globals : %w", err)
 	}
+	defer func() { _ = m.Close() }()
 	var meilleur map[uint32]LibelleLieu
 	meilleureCouverture := -1
 	for _, f := range m.Files("uslg") {

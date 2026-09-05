@@ -122,6 +122,49 @@ type abilityEmission struct {
 	Rank int
 }
 
+// abilityScanSetup porte le contexte résolu d'un balayage i48 : le contexte du film, la liste
+// de ses chunks, la bande de slots biped, le découpage d'i0 et l'archétype. Il est PARTAGÉ
+// entre le balayage strict (walkAbilityEmissions), la récupération gatée
+// (equipment_recovery.go) et les deux autres balayages du même archétype (impulsions,
+// charges) — deux résolutions divergeraient au premier changement de film.
+//
+// LE FILM Y EST UN `*FilmContext` DEPUIS LA RECONCILIATION DU 2026-09-05, et non le
+// répertoire de l'amont : les quatre dérivations que ce setup résout sont EXACTEMENT celles
+// que le contexte memorise (lot 2 de PLAN_CUISSON_PERF), et les relire du disque ici
+// rouvrirait les relectures que le lot 1 a supprimées. La résolution unique que l'amont
+// voulait est donc conservée, et elle est même plus forte : le contexte la partage aussi
+// avec les balayages qui n'entrent pas dans ce setup.
+type abilityScanSetup struct {
+	fc     *FilmContext
+	chunks []int
+	slots  SlotBand
+	lay    I0Layout
+	arch   Archetype
+}
+
+// resolveAbilityScan résout le contexte du balayage i48 d'un film DEJA CHARGE. Les messages
+// d'erreur sont ceux du lot 1 (aucun répertoire à nommer : le film est en mémoire).
+func resolveAbilityScan(fc *FilmContext) (abilityScanSetup, error) {
+	s := abilityScanSetup{fc: fc}
+	s.chunks = fc.ChunkNumbers()
+	if len(s.chunks) == 0 {
+		return s, ErrNoFilmChunk
+	}
+	s.slots = fc.BipedSlots()
+	if s.slots.Count() == 0 {
+		return s, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
+	}
+	lay, err := fc.I0Layout()
+	if err != nil {
+		return s, fmt.Errorf("découpage i0 illisible : %w", err)
+	}
+	s.lay = lay
+	if s.arch, err = fc.bipedArchetype(); err != nil {
+		return s, err
+	}
+	return s, nil
+}
+
 // walkAbilityEmissions est LE SEUL balayage d'i48 (règle des <= 2 copies, CLAUDE.md n°6) :
 // `ScanFilmAbilityRanks` et `ScanFilmEquipmentChanges` le partagent, chacune ne différant
 // que par ce qu'elle fait des émissions.
@@ -129,23 +172,19 @@ type abilityEmission struct {
 // Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit pas les
 // bits à côté de lui. Deux lecteurs du même champ divergeraient.
 func walkAbilityEmissions(fc *FilmContext, visit func(abilityEmission)) (AbilityRankStats, error) {
+	s, err := resolveAbilityScan(fc)
+	if err != nil {
+		return AbilityRankStats{}, err
+	}
+	return walkAbilityEmissionsWith(s, visit), nil
+}
+
+// walkAbilityEmissionsWith est le corps du balayage, sur un contexte déjà résolu — c'est ce
+// qui permet à `ScanEquipmentChanges` de résoudre le film UNE fois pour ses deux passes
+// (balayage strict, puis récupération gatée des fenêtres de saut).
+func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) AbilityRankStats {
 	var st AbilityRankStats
-	chunks := fc.ChunkNumbers()
-	if len(chunks) == 0 {
-		return st, ErrNoFilmChunk
-	}
-	slots := fc.BipedSlots()
-	if slots.Count() == 0 {
-		return st, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
-	}
-	lay, err := fc.I0Layout()
-	if err != nil {
-		return st, fmt.Errorf("découpage i0 illisible : %w", err)
-	}
-	arch, err := fc.bipedArchetype()
-	if err != nil {
-		return st, err
-	}
+	chunks, slots, lay, arch := s.chunks, s.slots, s.lay, s.arch
 
 	var last struct {
 		counter uint32
@@ -160,7 +199,7 @@ func walkAbilityEmissions(fc *FilmContext, visit func(abilityEmission)) (Ability
 
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	for _, c := range chunks {
-		data, pks, ok := fc.ChunkAt(c)
+		data, pks, ok := s.fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -198,7 +237,7 @@ func walkAbilityEmissions(fc *FilmContext, visit func(abilityEmission)) (Ability
 			}
 		}
 	}
-	return st, nil
+	return st
 }
 
 // bipedArchetype rend l'archétype biped du registre du film (chunk_00), ANALYSE UNE FOIS par le
@@ -265,8 +304,16 @@ func walkRecordTo(pay []byte, i0, total int, idx []int, lay I0Layout, arch Arche
 func walkRecordComponents(
 	pay []byte, i0, total int, idx []int, lay I0Layout, arch Archetype, visit func(id int) bool,
 ) {
-	at := i0 + lay.TotalBits() + i0TailBits
-	for _, id := range idx[1:] {
+	walkComponentsAt(pay, i0+lay.TotalBits()+i0TailBits, total, idx[1:], arch, visit)
+}
+
+// walkComponentsAt marche une liste de composants à partir d'une position de bit donnée —
+// le corps de walkRecordComponents, exposé à part parce que la récupération gatée
+// (equipment_recovery.go) doit marcher des records SANS i0 : les composants y commencent
+// juste après les indices du masque, sans vec3 de position devant. Même marche, même
+// exemplaire (règle des <= 2 copies).
+func walkComponentsAt(pay []byte, at, total int, ids []int, arch Archetype, visit func(id int) bool) {
+	for _, id := range ids {
 		name := arch.component(id)
 		if name == "" {
 			return

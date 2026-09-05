@@ -48,11 +48,17 @@ interface ManifestObject {
  * pour trois clés serait une dépendance de production payée par un test. Les blocs sont plats
  * (`cle = "valeur"`), la découpe est donc sûre — et un jour où elle ne le serait plus, le test
  * échouerait au lieu de passer à côté (les assertions de cardinalité ci-dessous le garantissent).
+ *
+ * LA DÉCOUPE EST ANCRÉE SUR LA LIGNE ENTIÈRE, et ce n'est pas un raffinement : une découpe par
+ * SOUS-CHAÎNE comptait aussi les mentions du nom de table dans les COMMENTAIRES du manifeste —
+ * la cardinalité est passée à 22 le 2026-09-03 quand un commentaire a cité
+ * `[[equipment_objects]].family`, et le bloc fantôme en question rendait `id = "famille_a"`,
+ * une palette de capacités. Le test a bien parlé, comme son en-tête le promettait.
  */
 function manifestObjects(): ManifestObject[] {
   const toml = readFileSync(MANIFEST, 'utf8')
   return toml
-    .split('[[equipment_objects]]')
+    .split(/^\[\[equipment_objects\]\][ \t]*$/m)
     .slice(1)
     .map((bloc) => {
       const champ = (nom: string) =>

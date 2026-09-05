@@ -30,7 +30,7 @@ import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from './e
 import { objectiveMarkAt } from './objectiveMark'
 import { ReplayObjectiveMark } from './ReplayObjectiveMark'
 import { equippedWeapons } from './equippedLogic'
-import { lastTeleportAge, riftTeleports, spentTranslocations, translocatorRanks, type TranslocationMoment } from './placementTeleport'
+import { lastTeleportAge, teleportMoments, type TranslocationMoment } from './placementTeleport'
 import { cardChrome, hasUnderLayer, playerCardFx } from './playerCardFx'
 import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
@@ -105,24 +105,21 @@ export function ReplayTeams({
   const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
   const presence = useMemo(() => vitalityPresence(doc), [doc])
   // LA SCÈNE DES EFFETS D'ÉQUIPEMENT : les camps par vie (le capteur adverse en a besoin,
-  // même contrat que le calque), l'axe de temps des fenêtres de pose, et les passages par
-  // faille — un balayage de toutes les pistes, donc UNE FOIS par document, jamais par image
-  // (le canvas fait le sien de son côté : deux consommateurs, un seul foyer `riftTeleports`).
+  // même contrat que le calque), l'axe de temps des fenêtres de pose, et les instants de
+  // translocation — une lecture de document, donc UNE FOIS par document et jamais par image
+  // (le canvas lit le même calque de son côté, par son propre besoin : lui veut les POSITIONS,
+  // la fiche ne veut que les INSTANTS).
   // LE CAMP D'UNE VIE PAR SLOT ET PAR IMAGE (résolveur frame-aware) : un slot de biped est
   // réattribué entre manches, le camp doit suivre l'occupant. Le capteur adverse le lit à
   // l'image du joueur interrogé / à la pose du capteur (cf. equipmentZones).
   const sideOfSlot = useMemo(() => sideResolver(buildSlotOwnership(players)), [players])
-  // L'ÉCLAT DE TRANSLOCATION A DEUX SOURCES (2026-09-02) : les usages MESURÉS du calque
-  // d'équipement (`spent` du rang translocateur — le canal principal, daté à la frame par le
-  // schéma 26) et les passages spatiaux corroborés (`riftTeleports` — rendement faible assumé,
-  // il reste le canal du lien sur la carte). La fiche ne consomme que (slot, frame).
-  const teleports = useMemo(() => {
-    const ranks = translocatorRanks(doc.abilityLabels)
-    return [
-      ...riftTeleports(doc.equipmentPlacements, doc.tracks, doc.abilities, ranks),
-      ...spentTranslocations(doc.equipmentChanges, ranks),
-    ]
-  }, [doc])
+  // L'ÉCLAT DE TRANSLOCATION EST DATÉ PAR L'ÉVÉNEMENT DU FILM (schéma 38, 2026-09-03) :
+  // `translocations[]` porte l'instant EXACT de chaque usage — plus jamais le `spent`, qui date
+  // la FIN de l'équipement avec jusqu'à 16,5 s de retard mesuré, ni l'heuristique spatiale
+  // supprimée le même jour. Sur un artefact antérieur au schéma 38, `teleportMoments` retombe
+  // sur le repli daté du `spent` (kill-switch dans `placementTeleport.ts`). La fiche ne
+  // consomme que (slot, frame) : une translocation sans position l'allume comme les autres.
+  const teleports = useMemo(() => teleportMoments(doc), [doc])
   const fxScene = useMemo<CardFxScene>(
     () => ({
       zones: {

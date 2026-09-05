@@ -301,11 +301,60 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	doc.EquipmentChanges = keepEquipmentChangesOfPublishedTracks(ecChanges, doc.Tracks)
 	doc.Coverage.EquipmentChanges = &ecCov
 	logEquipmentChangeCoverage(ecCov)
+	// LES TÉLÉPORTATIONS du translocateur, datées par l'événement 117 — même axe, même
+	// règle de publication que les autres calques (rien avant l'origine, rien sans piste).
+	var trCov TranslocationCoverage
+	doc.Translocations, trCov = buildTranslocations(opt.Translocations, doc.Tracks, origin, step)
+	doc.Coverage.Translocations = &trCov
+	logTranslocationCoverage(trCov)
 	palette := classifyAbilityPalette(doc.Abilities, opt.Labels.Abilities)
 	doc.AbilityLabels = abilityLabelsUsed(doc.Abilities, palette)
 	slog.Info("rejeu : palette de capacites",
 		"palette", paletteIDOrNone(palette), "lectures", len(doc.Abilities),
 		"rangsNommes", len(doc.AbilityLabels))
+	// LES IMPULSIONS DE CAPACITE, APRES la palette et non avant : leur identite est le RANG
+	// i48 de la vie, et c'est la palette du match qui le nomme (le propulseur vaut 5 en
+	// famille A et 21 en famille B). Un film non classe ne rend donc aucune impulsion —
+	// mieux vaut muet que faux, la meme regle que `abilityLabelsUsed`.
+	var aiCov AbilityImpulseCoverage
+	doc.AbilityImpulses, aiCov = buildAbilityImpulses(abilityImpulseInputs{
+		reads: opt.AbilityImpulses, stats: opt.AbilityImpulseStats, ranks: opt.AbilityRanks,
+		lives: own.lives, palette: palette, measured: opt.Labels.AbilityImpulseFamilies,
+	}, doc.Tracks, origin, step)
+	// LA COUVERTURE NE SE PUBLIE QUE SI LE BALAYAGE A TOURNE — patron `attachInventoryCoverage`
+	// (inventory.go), et pour la raison qu'il documente : publier {0,0,0,...} affirmerait
+	// « lecture faite, zero trouve », qui est le contraire de ce qui s'est passe quand le
+	// balayage n'a jamais commence (BuildFromFilm degrade alors en `nil, AbilityImpulseStats{}`,
+	// cf. son warn). L'ABSENCE de bloc dit encore autre chose, et c'est la distinction sur
+	// laquelle repose toute la doctrine de coverage.go. Un balayage qui aboutit le pose, meme
+	// vide et meme `componentAbsent`.
+	if opt.AbilityImpulseStats.Scanned {
+		doc.Coverage.AbilityImpulses = &aiCov
+		logAbilityImpulseCoverage(aiCov)
+	} else {
+		slog.Warn("rejeu : impulsions de capacite NON BALAYEES — aucune couverture publiee",
+			"lectures", len(opt.AbilityImpulses))
+	}
+	// LES CHARGES RESTANTES, par la MEME palette et la MEME jointure d'identite que les
+	// impulsions (le rang i48 de la vie, nomme par la palette du match) — un film non classe
+	// ne rend donc aucune lecture : mieux vaut muet que faux.
+	var acCov AbilityChargeCoverage
+	doc.AbilityCharges, acCov = buildAbilityCharges(abilityChargeInputs{
+		reads: opt.AbilityCharges, stats: opt.AbilityChargeStats, ranks: opt.AbilityRanks,
+		lives: own.lives, palette: palette, measured: opt.Labels.AbilityChargeFamilies,
+	}, doc.Tracks, origin, step)
+	// LA COUVERTURE NE SE PUBLIE QUE SI LE BALAYAGE A TOURNE — le patron exact du bloc
+	// ci-dessus (`attachInventoryCoverage`, et la lecon H1 de la seconde passe de revue P3) :
+	// publier {0,0,...} quand le balayage n'a jamais commence affirmerait « lecture faite,
+	// zero trouve », le contraire de ce qui s'est passe. Un balayage qui aboutit la pose,
+	// meme vide et meme `componentAbsent`.
+	if opt.AbilityChargeStats.Scanned {
+		doc.Coverage.AbilityCharges = &acCov
+		logAbilityChargeCoverage(acCov)
+	} else {
+		slog.Warn("rejeu : charges d equipement NON BALAYEES — aucune couverture publiee",
+			"lectures", len(opt.AbilityCharges))
+	}
 	slog.Info("rejeu : couverture par calque",
 		"tirsRattaches", shotCov.Attached, "tirsDisponibles", shotCov.Available,
 		"tirsSansSlot", shotCov.NoSlot, "tirsAmbigus", shotCov.Ambiguous,

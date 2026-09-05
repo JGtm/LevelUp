@@ -727,23 +727,11 @@ describe('ReplayTeams — zones d’équipement et translocation', () => {
     expect(cardOf(allie).querySelector('.replay-zone-sensor')).toBeNull()
   })
 
-  it('translocation : le FOURREAU sur la bordure à l’arrivée du saut, à délai négatif', () => {
-    const saut = {
-      slot: 512,
-      team: -1,
-      xuid: 'A',
-      startFrame: 0,
-      endFrame: 100,
-      points: [
-        { t: 0, x: 0, y: 0 },
-        { t: 20, x: 0, y: 0 },
-        { t: 21, x: 20, y: 0 },
-      ],
-    }
-    const view = renderTeams({
-      tracks: [saut],
-      abilities: [{ t: 0, slot: 512, r: 11, src: 'i48' }],
-    }, 22)
+  it('translocation : le FOURREAU sur la bordure à l’instant de l’ÉVÉNEMENT, à délai négatif', () => {
+    // L'ÉCLAT VIENT DE `translocations[]` DEPUIS LE 2026-09-03 : l'événement 117 du film date
+    // l'usage lui-même. La piste ne porte plus aucune discontinuité ici — c'est le point : le
+    // saut de 3,24 m mesuré sur le corpus n'en produirait aucune de lisible non plus.
+    const view = renderTeams({ translocations: [{ slot: 512, t: 21 }] }, 22)
     const card = cardOf(view)
     const fourreau = card.querySelector('.replay-flash-translocation') as HTMLElement
     expect(fourreau).toBeTruthy()

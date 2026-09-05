@@ -1,3 +1,78 @@
+## [2026-09-05] Integration des branches — ETAPE A : reconciliation avec `feat/v75` `7fb4b60a1`, 5 conflits, 3 balayages amont migres, sorties re-figees en changement declare AMONT — Complete
+
+**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape A. `git merge --no-ff
+--no-commit origin/feat/v75` (`7fb4b60a1`, 65 commits amont, base de merge `ceabaad67`) dans le
+worktree `LevelUp-wt-cuisson-perf` (branche `wt/cuisson-perf`, HEAD `31b754363`). **324 fichiers,
+5 conflits. Rien n'est commite** : l'arbre est resolu, l'index pret, le pilote verifie et commite.
+
+**Decision technique principale : la SEMANTIQUE amont est preservee integralement, dans NOTRE
+architecture.** Le conflit central est le meme qu'au 2026-09-03 — le bloc `Options` +
+`BuildFromFilm` que le lot 1 a sorti de `replay/build.go`. L'amont y ajoute cinq champs et trois
+balayages : le bloc est supprime chez nous, les cinq champs rejoues dans `replay/options.go`, les
+trois balayages dans `replay/build_from_film.go`. Les deux autres conflits Go
+(`filmdec/ability_rank.go`, `filmdec/equipment_changes.go`) portent une intention amont qui
+CONVERGE avec la notre : l'amont extrayait `abilityScanSetup` + `resolveAbilityScan(dir)` pour
+resoudre le film UNE fois entre ses deux passes (balayage strict, puis recuperation gatee des
+emissions i48 manquees — `equipment_recovery.go`, neuf). C'est exactement ce que `FilmContext`
+fait depuis le lot 2. La structure amont est reprise telle quelle, son `dir string` devenant
+`fc *FilmContext` : la resolution unique voulue par l'amont est conservee, et elargie.
+
+**Les trois balayages amont en ancienne forme, appeles EN PRODUCTION** (`build.go:308/457/473`),
+passent en nouvelle forme (regle D2) : `ScanFilmTranslocatorTeleports(dir, entry)` ->
+`ScanTranslocatorTeleports(film, entry)` (patron de `ScanZoomEvents`),
+`ScanFilmAbilityImpulses(dir)` -> `ScanAbilityImpulses(fc)`, `ScanFilmAbilityCharges(dir)` ->
+`ScanAbilityCharges(fc)`. Les trois enveloppes `(dir)` survivent parce que des TESTS les
+appellent (`replay/golden_inputs_test.go`, `filmdec/transloc_{exemption,positions}_film_test.go`)
+et entrent dans la liste fermee d'archlint : **40 -> 43 noms**. `BuildFromFilmSteps` passe de
+**31 a 34** etapes observees. Le ratchet des vars de paquet `filmdec` reste a **116** : mesure
+faite, l'amont n'en ajoute aucune. **Aucune allowlist elargie.**
+
+**Cinq ruptures de compilation laissees par l'auto-merge**, toutes dans des tests de recherche
+NEUFS de l'amont appelant des symboles supprimes au lot 1 — meme classe qu'`inflateChunk` le
+2026-09-03. Intention rejouee, jamais contournee : `bipedSlotBand(dir,...)` ->
+`bipedSlotBandDir`, `bipedArchetype(dir)` -> `bipedArchetypeDir`, `worldObjectSlotBand(dir,...)`
+-> `worldObjectSlotBandDir`, `EquipmentArchetype(dir)` -> `EquipmentArchetypeDir`, et un shim
+`buildFromFilmDir` ajoute a `replay/film_shims_test.go` pour les deux instruments d'acceptation
+amont qui rejouaient la chaine depuis un repertoire.
+
+**Resultats observes — gates.** `gofmt -l .` VIDE · `go build ./...` 0 · `go vet ./...` 0 ·
+suites `analysis/replaybuild/film/sync/archlint/cmd` **EXIT_TESTS=0** (66 paquets `ok`) ·
+integration `-p 1` sur sync **EXIT_INTEG=0** · `golangci-lint run` : **281 issues** au total,
+**zero sur un fichier touche par la resolution** (croisement mesure).
+
+**Resultats observes — harnais d'equivalence.** Passe SANS `-update` : 0 identique, 13
+differents. La comparaison du harnais etant POSITIONNELLE et l'etape `translocations` s'inserant
+en TETE (le balayage arme l'exemption du filtre de vitesse, il doit preceder les positions), son
+message « premiere etape en ecart » est un artefact de decalage : le diagnostic a ete refait PAR
+NOM D'ETAPE, entre une copie des 13 TSV de reference et les TSV refiges. **Six noms bougent,
+aucun ne disparait** : trois etapes NEUVES (`translocations`, `abilityImpulses`,
+`abilityCharges`), `equipmentChanges` + `.stats` (la recuperation gatee ajoute `Recovered`/`Gap`
+au struct — le compte monte sur 8 films, le sha bouge sur 13 par les champs ajoutes),
+`artifact` (schema **37 -> 38**, +364 a +7 769 octets) et — le point interessant — **`positions`
+sur 2 films SEULEMENT**.
+
+**Correlation MESUREE, pas deduite** : `positions` bouge sur EXACTEMENT les deux films dont
+`translocations > 0` (`60ae07c4` 2 evenements, +6 enregistrements ; `64e8adfa` 4, +12) et sur
+AUCUN des onze a zero. 13/13, zero exception — c'est l'exemption du filtre de vitesse par les
+teleportations (decision D2 amont), et rien d'autre. Second controle : les zeros des trois
+calques neufs sont MESURES, pas des balayages absents — les 26 lignes de journal rendent
+`composantAbsent=false`. Troisieme : le plancher de +364 octets d'artefact tombe sur exactement
+les 3 films a 0 translocation, 0 impulsion et 0 charge. **Tous les autres digests sont
+IDENTIQUES AU BIT PRES** sur les 13 films — l'architecture du chantier a traverse le merge sans
+dommage.
+
+`-update` puis passe de verification : **13 identiques, 0 different, 0 ecarte, 0 echec, 0
+illisible**. Le refigeage est deterministe. **La mini-bobine de CI n'a PAS eu besoin d'etre
+refigee** (ses sept etapes ne bougent pas, contrairement au 2026-09-03). Durees 5,1 s a 1 min
+58,7 s, pics 0,10 a 0,66 Gio ; temoins `01e1f945` **17,9 s**, `7344d24f` **21,0 s**, `696a9d7c`
+**20,5 s** — le gain du chantier est intact apres le merge (cible du plan : < 100 s).
+
+**Conclusion / prochaine etape.** Etape A close cote execution (A.1 a A.4 coches avec leur ligne
+de preuve, §5 rempli, §6 detaille conflit par conflit). A.5 = commit du pilote, qui verifie
+d'abord. Puis etape B (vehicules, union D9, schema 39) — et elle devra refaire le diff PAR NOM :
+`vehicles`/`vehicleShots` s'inserent au milieu de la sequence, la comparaison positionnelle du
+harnais ne dira rien d'utile toute seule.
+
 ## [2026-09-03] Cuisson perf — RECONCILIATION avec `feat/v75` : 4 conflits resolus dans notre architecture, sorties re-figees en changement declare AMONT — Complete
 
 Merge `feat/v75` (~150 commits, 324 fichiers, dont les deux derniers merges `f6d236d2e` calage des
@@ -648,6 +723,453 @@ Lecon : une « liste fermee » se verifie par un grep dont la commande est ecrit
 bornes 10 000 / 1 000 000, R-11 films hors corpus divergents acceptes comme corrections) ; puis
 lot 0 (reference, instrumentation, mesure de divergence sur 1 380 films). Aucun code modifie,
 rien de commite : commit du plan + registre a la demande de l'utilisateur.
+
+## [2026-09-05] CI — l etape « vet du corpus gamefiles » ne pouvait pas passer : ooz est un paquet CGO — Complete
+
+**Le rouge, apres le lint.** Le ratchet golangci-lint eteint, la CI de branche restait rouge sur
+un AUTRE job : `Go Build + Test (ubuntu-latest)`, avec `Go Build + Test (windows-latest)` annule
+par fail-fast. Cause unique, reproduite deux fois de suite (pas un flake) et rejouee en local :
+l etape `go vet -tags=gamefiles ./internal/himap/` tourne avec `CGO_ENABLED: "0"`, or `himap`
+importe `himodule`, qui importe `internal/ooz` — le decodeur Oodle clean-room, un paquet CGO
+(C++). Sous CGO_ENABLED=0, ooz n a AUCUN fichier compilable : le vet meurt sur « build
+constraints exclude all Go files ». L etape a ete ajoutee le jour meme avec le tag `gamefiles` ;
+elle n avait jamais pu passer.
+
+**Mesure locale avant de toucher a la CI.** `CGO_ENABLED=0 go vet -tags=gamefiles
+./internal/himap/` : code de sortie 1, meme message qu en CI. `CGO_ENABLED=1` : code de sortie 0.
+La cause est donc la variable, pas le code du corpus.
+
+**Correctif : CGO_ENABLED=1, et Linux seulement.** Le toolchain C++ est garanti sur le runner
+Linux — le job Coverage y compile deja ooz avec CGO_ENABLED=1, c est la preuve qu il est present.
+Il ne l est pas sur le runner Windows, et compiler le corpus DEUX fois n apprend rien : l etape
+porte `if: runner.os == 'Linux'`. Le commentaire de l etape porte la date et la raison, pour que
+personne ne remette CGO_ENABLED=0 en croyant accelerer le job.
+
+**Verification.** YAML reparse (js-yaml) : l etape rend exactement `if runner.os == 'Linux'`,
+`run go vet -tags=gamefiles ./internal/himap/`, `env CGO_ENABLED=1`. Le vet local passe. La CI de
+branche fait foi pour le reste.
+
+**A noter pour la suite.** Le meme piege attend toute etape future qui vet/build `himap`,
+`himodule` ou `ooz` sans CGO.
+## [2026-09-05] Le lecteur de modules PROJETTE au lieu de copier — 16,2 Go relus par carte supprimes, cuisson x6, memoire /12 — Complete
+
+**D'OU VIENT CE LOT.** Le chantier precedent (tag `gamefiles`) laissait une question ouverte
+et chiffree : `himodule.Open` faisait `os.ReadFile`, donc chargeait l'archive ENTIERE dans le
+tas, et `himap.NewModuleIndex` le refaisait POUR CHAQUE CARTE sur la carte plus tous les
+modules globaux — 16,2 Go d'archives par carte. Profil de l'epoque : 87,7 Go alloues sur 4
+cartes, dont 74,6 Go (85 %) par `os.readFileContents`.
+
+**L'ORDRE DES OPERATIONS EST LE SUJET, PAS LE MMAP.** `internal/himodule` n'avait AUCUN test
+alors qu'il est la porte d'entree de TOUTES les donnees du jeu — geometrie, tags de scenario,
+sons, icones. Changer sa facon de lire sans empreinte, c'est changer la source de tout sans
+pouvoir montrer que rien n'a bouge. Le harnais a donc ete ecrit ET fige AVANT la moindre ligne
+de projection : `TestEmpreinteLecteurDeModules` (himap, tag `gamefiles`), trois niveaux qui se
+rattrapent — la table des entrees (un decalage d'index), les octets DECOMPRESSES de chaque
+entree (la chaine blocs -> Kraken -> assemblage), les blobs de ressources (la table des slots,
+que les deux premiers ne touchent pas). Trois modules choisis pour la couverture, pas pour la
+taille : `academy_weapon_drills` et `fo05_desert` portent un compagnon `_hd1` du meme ordre que
+l'archive et exercent la calibration hd1, la partie la plus fragile ; `chasm` exerce le chemin
+ordinaire. 135 Mo d'octets decompresses haches, en 0,8 s.
+
+**LE CHANGEMENT.** `projection.go` + `projection_windows.go` / `projection_unix.go` : l'archive
+est projetee en lecture seule (`CreateFileMapping`/`MapViewOfFile`, `mmap` MAP_SHARED) au lieu
+d'etre copiee. `m.data` reste un `[]byte` a acces direct — la MEME arithmetique d'offsets s'y
+applique, c'est ce qui rend le changement invisible aux appelants. Aucune dependance nouvelle :
+`golang.org/x/sys` etait deja directe.
+
+**CE QUI REND LA FERMETURE SURE, ET C'EST LA CONDITION DE TOUT LE RESTE.** Rien de ce que
+`himodule` rend n'aliase la projection : `Extract` decompresse dans un tampon neuf ou fait
+`copy`, `ResourceBlob` concatene par `append`, `Files`/`fourCC` rendent des valeurs. Verifie
+site par site avant d'ajouter `Module.Close()` et `ModuleIndex.Close()`, puis cable aux 11
+ouvertures de `himap` — dont `peupleDepuisModule`, le chemin chaud (un index par carte). Cas
+particulier traite chez le proprietaire : `indexForge` REND ses deux ouvertures sans les fermer,
+la fermeture est donc chez son appelant.
+
+**LE DETAIL QUI A DEMANDE UN CHOIX.** `go vet` (analyseur `unsafeptr`, actif par defaut dans
+golangci-lint) refuse toute conversion `uintptr` -> `unsafe.Pointer` : de son point de vue
+l'entier pourrait designer de la memoire deplacable. Ici l'adresse vient de `MapViewOfFile`,
+hors du tas Go, valide jusqu'a `UnmapViewOfFile`. Plutot que d'affaiblir la configuration du
+linter, la tranche est fabriquee via un en-tete local ({donnee, longueur, capacite}) dont on
+prend l'adresse — un `unsafe.Pointer` sur une variable ordinaire, que vet accepte. Meme forme
+que les bibliotheques de projection memoire, et le garde-rail reste intact.
+
+**MESURES, avant -> apres, meme machine, meme protocole.**
+
+	balayage de 4 cartes   duree 191,2 s -> 18,0 s      pic memoire privee 25,12 Go -> 0,87 Go
+	balayage des 26 cartes duree 1 246,7 s -> 203,5 s   pic memoire privee   ~25 Go -> 2,01 Go
+
+Soit x6,1 sur le balayage complet et un pic memoire divise par 12. Le regime a change de
+nature : le processus etait limite par la PAGINATION (13,5 min de CPU pour 30 min d'horloge),
+il est desormais limite par le CALCUL.
+
+**NON-REGRESSION, sur pieces.** Les trois empreintes du lecteur sont INCHANGEES apres le
+passage a la projection (memes SHA-256 qu'avant, rejouees 2x). Les 26 cartes du balayage
+rendent des chiffres IDENTIQUES a la reference du chantier precedent — memes tris, memes
+ancres, memes pixels avant/apres coquille, ligne a ligne. Les 5 autres paquets qui consomment
+`himodule` (`mapfond-build`, `mapplafond-mesure`, `mapstruct-build`, `weapon-icons-build`,
+`weapon-sounds`) compilent, passent vet et leurs tests. `golangci-lint` 0 issue dans les deux
+configurations de build.
+
+**CE QUE CE LOT DEBLOQUE, ET CE QUE CA A REVELE.** Le corpus `gamefiles` ENTIER, que le
+chantier precedent avait du ARRETER a 30 min et 24 Go, tourne desormais **en 385 s (6,4 min) a
+0,8-2 Go**. Premiere execution complete de son histoire — et elle rend un ROUGE :
+`TestBancCliffhanger` echoue, accord 64,4 % contre la reference re-basee de 64,7 %.
+
+**CE ROUGE N'EST PAS DE MOI, ET C'EST PROUVE.** Rejoue sur le code d'AVANT la projection
+(`feat/v75` @ d34ff50a6, arbre propre), il rend des chiffres IDENTIQUES au bit pres : 5 102
+instances dessinees, 859 ecartees, manquants 9,9 %, exces 39,8 %, ACCORD 64,4 %. C'est donc un
+rouge PREEXISTANT — et sa decouverte illustre exactement ce que le chantier du tag annoncait :
+un corpus qu'on ne joue pas pourrit hors de vue. Personne ne pouvait le voir, le corpus ne
+terminant jamais et la CI ne l'executant pas (pas de jeu installe).
+
+Non traite ici, deliberement : melanger un correctif de mesure a un lot de performance, c'est
+perdre la lisibilite des deux (regle « zero fix opportuniste hors perimetre »). Inscrit au
+`REGISTRE_REPORTS.md` avec sa condition de reprise — le test signale AUSSI « document de rejeu
+introuvable (poser ORACLE_REPLAY ou LEVELUP_REPO_ROOT) », donc il mesure peut-etre sans sa
+reference complete ; c'est la premiere chose a lever. Au passage, le meme test passe de 63,9 s
+a 6,9 s.
+
+Une consequence secondaire, appliquee : l'estimation « ~1 h » que le chantier precedent avait
+ecrite pour le corpus etait une SUPPOSITION (personne ne l'avait jamais mesure). Elle est
+remplacee par la mesure — 6 min — dans le Makefile, CLAUDE.md et les deux COMMANDS.md, et le
+rouge connu y est signale pour que le prochain qui joue le corpus ne le prenne pas pour sien.
+
+**AU PASSAGE.** Le garde-rail `TestCorpusGamefilesEstTague`, pose la veille, m'a attrape :
+j'avais nomme le harnais `*_gamefiles_test.go` sans lui poser le tag. Il a fait exactement son
+travail, un jour apres avoir ete ecrit.
+
+
+## [2026-09-05] CI de branche — les six rouges du ratchet golangci-lint eteints — Complete
+
+**D ou venait le rouge.** Le push du merge de garde-rail (9d0f82031) a rendu publique une CI
+rouge sur `feat/v75` : huit jobs verts sur neuf, seul `Go Lint (golangci-lint)` en echec avec
+six problemes. Aucun dans les fichiers du garde-rail. Ils venaient des commits fa09f4ee5
+(equipement lecture schema 38), 58ad66573 (translocation schema 38) et 07ad449b1 (propulseur
+i57/i59), arrives sur la branche par des merges d une session parallele et jamais passes en CI
+ici — le dernier run vert de la branche datait du 03/09, avant eux.
+
+**Le SA4000 n etait PAS le bug annonce, et il fallait le verifier avant de corriger.**
+`transloc_events.go:172` faisait `if br.ReadBit() || br.ReadBit()` : le court-circuit ne lit pas
+le second bit quand le premier vaut 1. J avais annonce un decalage d un bit dans tout ce qui
+suit — c est FAUX sur pieces : ce chemin `return none, none, false` sort aussitot, le lecteur de
+bits est abandonne et l appelant (`decodeTranslocHead`) ne s en ressert pas. Aucun decodage
+n etait fausse. Corrige quand meme, en lisant les deux portes explicitement
+(`ref1, ref2 := br.ReadBit(), br.ReadBit()`) : l intention appartient au code, pas au hasard du
+court-circuit, et le prochain lecteur ne refera pas mon erreur d analyse.
+
+**Les cinq autres.** Deux `goconst` dans `traverse.go` : les etiquettes de registre d i59
+avaient deja leurs constantes dans `grapple_state.go` (`grappleComponentName` /
+`...NameAlt`) — la table `paramByComponent` les nomme maintenant au lieu de recopier le
+litteral, comme elle le faisait deja pour `compWeaponStateTypeInfo`. Un `QF1001` dans
+`offline_filters.go` : loi de De Morgan appliquee (`!(len(exempt) > 0 && covers)` devient
+`len(exempt) == 0 || !covers`), equivalence verifiee a la main. Deux symboles morts supprimes
+(regle 7, zero code mort) : `r8CoincUS` et `r8QRatio`, sans aucun referent dans le module.
+
+**Verification.** `golangci-lint run --new-from-merge-base=origin/main` en LOCAL avec le MEME
+binaire que la CI (v2.12.2) : `0 issues`, code de sortie 0. `gofmt`, `go vet`, et
+`go test ./internal/analysis/...` (17 paquets) verts, codes de sortie 0 lus directement — pas
+au travers d un `tail`, qui m avait fait annoncer une CI verte alors qu elle etait rouge
+(le code de sortie lu etait celui du filtre, pas celui de `gh run watch`).
+
+**Complement, meme jour.** Deux choses manquaient a ce qui precede. (1) Le litteral d i59 avait
+une TROISIEME copie, le `case` de `traverse.go:839` : elle passe aux constantes elle aussi,
+sinon la factorisation restait a mi-chemin (anti-pattern 8 du CLAUDE.md, « factorisation
+abandonnee »). (2) Le chemin ref1/ref2 de `decodeTranslocJump` — celui-la meme que le `||`
+traversait — n avait AUCUNE couverture, et c est pour cela qu il a fallu lire le code a la main
+pour etablir que le court-circuit etait sans consequence. Sous-test `ref1_presente` ajoute a
+`TestDecodeTranslocJumpDegradation` : ref1 presente -> l evenement reste date et attribue
+(slot 535) et sort SANS positions. Il ne DISCRIMINE pas l ancien code du nouveau (les deux
+formes rendent la meme chose) : c est justement ce qui prouve que le correctif est neutre. Sa
+valeur est de figer un contrat sur un chemin qui n en avait pas, pas de prouver une regression.
+
+**Suite.** Branche `wt/lint-filmdec` fusionnee dans `feat/v75`. La CI de branche fait foi.
+## [2026-09-05] internal/himap ne terminait pas — ce n'etait pas un blocage, c'etaient 20 minutes de balayage sans etiquette — Complete
+
+**Le symptome, et pourquoi il ressemblait a un bug.** `go test ./internal/himap/` ne
+terminait jamais sur le poste de developpement ; `TestBalayageCoquille` (sous-test
+`aquarius_map`) faisait timeout a 2, 10 ET 15 min, a l'identique sur `feat/v75` nu et sur
+`wt/session-usage`. La forme du symptome — toujours la meme carte dans le dump — pointait
+vers une boucle infinie ou une attente de ressource (fichier de carte absent ?).
+
+**La mesure a refute les trois hypotheses d'un coup.** Lance seul avec un budget large,
+`TestBalayageCoquille` **passe** : 1 246 s (20 min 47 s), 26 cartes cuites, 0 ancre perdue,
+0 coquille refusee. Ni boucle infinie, ni fichier manquant, ni interblocage : un balayage
+de recherche qui coute vingt minutes. Le detail par carte confirme la regularite du cout —
+behemoth 86 s, bazaar 66 s, ctf_illusion 64 s, `aquarius_map` 59 s. Les trois timeouts
+tombaient tous A L'INTERIEUR de cette duree legitime, et le dump attrapait `aquarius_map`
+en vol parce qu'elle est la 4e mesurable de l'ordre alphabetique.
+
+**Ce que l'erreur de lecture a coute, et l'asymetrie qui l'a nourrie.** Le paquet melange
+deux populations sans rien pour les separer : 20 tests unitaires ordinaires et 59
+`*_gamefiles_test.go` qui decodent l'installation locale de Halo Infinite. En CI le jeu
+n'est pas la : `DeployRoot()` echoue, chaque test prend son `t.Skip`, le paquet est vert en
+une seconde. Le cout n'existe donc QUE sur un poste de developpement — le seul endroit ou
+personne ne regarde un tableau de bord. C'est ce qui a laisse la situation s'installer sans
+qu'aucun signal public ne rougisse.
+
+**Decision : borner par un tag de build explicite, pas par un skip.** Les 59 fichiers
+passent derriere `//go:build gamefiles`, sur le modele du tag `integration` deja en usage
+dans le depot. Ce n'est pas un skip silencieux : la commande pour les jouer est publiee
+(`make go-api-test-gamefiles`, `docs/COMMANDS.md` FR+EN, CLAUDE.md), et le corpus rend les
+memes chiffres qu'avant sous son tag (`aquarius_map` : 22 -> 22 ancres, 17,4 % de pixels
+retires — identique a la mesure d'avant tag).
+
+**Deux helpers ont du sortir du corpus, et c'est la partie non mecanique.** `cle_forge_test.go`
+et `fond_png_test.go` tournent SANS le jeu mais empruntaient `cheminDepuisDepot` et le calage
+du banc (`gateEchelle`, `gateX0`, `gateY1`) a des fichiers gamefiles. Taguer sans les
+extraire cassait la compilation du build par defaut. Ils vivent desormais dans
+`chemin_depot_test.go` et `calage_banc_test.go`, hors tag : le premier localise le DEPOT et
+non le jeu, le second decrit un ASSET versionne et doit rougir partout, CI comprise.
+
+**Garde-rails poses (regle des <= 2 copies : une regle a la main sur 59 fichiers se
+re-perd).** `internal/himap/corpus_tag_test.go`, dans le build PAR DEFAUT donc en CI, tient
+les deux sens : tout `*_gamefiles_test.go` porte le tag, et aucun test non tague n'appelle
+`DeployRoot(` / `LevelsDir(` / `ChercheModuleInstalle(` (allowlist a 2 entrees, chacune
+justifiee et datee). Les deux ont ete vus ROUGIR avant d'etre satisfaits — un garde-rail
+qu'on n'a pas vu echouer ne garde rien. Cote CI, un step `go vet -tags=gamefiles
+./internal/himap/` (job `go-test`) : la CI ne peut pas EXECUTER le corpus faute de jeu, mais
+elle doit le COMPILER, sinon il pourrit hors de vue — exactement le defaut qu'on repare.
+
+**LE CORPUS N'EST PAS SEULEMENT LONG, IL EST GOURMAND — 24 Go, ET LA CAUSE EST NOMMEE.**
+Constat brut : **24,2 Go de memoire privee sur une machine de 31,2 Go** (2 Go libres), avec
+13,5 min de CPU pour 30 min d'horloge — le processus PAGINE, il n'est pas limite par le calcul.
+
+PREMIERE EXPLICATION ECRITE ICI, ET ELLE ETAIT FAUSSE : j'avais avance « chaque carte laisse
+sa grille derriere elle, le tas ne redescend pas entre sous-tests ». C'etait une hypothese
+presentee comme une mesure. Le profil la REFUTE : `-memprofile` sur un balayage de 4 cartes
+rend **7 Mo retenus a la fin** (`inuse_space`). Il n'y a ni fuite, ni accumulation entre
+sous-tests. La courbe le disait deja : la memoire privee atteint 22,4 Go **en 30 secondes**,
+avant meme la deuxieme carte.
+
+LA VRAIE CAUSE, MESUREE. `alloc_space` sur ces 4 cartes : **87,7 Go alloues au total, dont
+74,6 Go (85 %) par `os.readFileContents`**, atteint via `himap.NewModuleIndex` (79 % en
+cumul). `himodule.Open` fait `os.ReadFile` — il charge le `.module` ENTIER en memoire, plus
+son compagnon `_hd1`. Et `peupleDepuisModule` appelle `NewModuleIndex` A CHAQUE CARTE, sur la
+carte PLUS tous les modules globaux. Inventaire de ces globaux sur l'installation :
+`globals` 7,4 Go (+1,3 Go hd1), `common` 2,7 Go (+1,9 Go hd1), `multiplayer` 0,9 Go (+0,8 Go),
+les autres en dessous — **16,2 Go relus et remis en tas pour CHAQUE carte du balayage**, plus
+le module de la carte. 4 cartes x ~18,6 Go = les 74,6 Go du profil, au Go pres.
+
+Ce n'est donc pas un defaut de liberation, c'est une lecture integrale d'archives de plusieurs
+gigaoctets, repetee par carte. Corriger demanderait de projeter les modules en memoire (mmap)
+au lieu de `os.ReadFile`, ou de garder l'index des globaux d'une carte a l'autre — les deux
+hors perimetre ici, mais desormais chiffres.
+
+NON EXPLIQUE, et je ne le comble pas par une hypothese : `aquarius_map` coute 21 s seule et
+59 s dans le balayage complet. La relecture de 16 Go par carte et le lessivage du cache disque
+en sont des candidats plausibles, non mesures.
+
+**CE QUI N'A PAS ETE VERIFIE, ET POURQUOI JE LE DIS PLUTOT QUE DE L'ARRONDIR.** Le run du
+corpus ENTIER a ete ARRETE par moi a 30 min (`exit status 0xffffffff` dans le journal du run :
+c'est mon kill, pas un echec de test) parce qu'il asphyxiait la machine. La non-regression des
+59 fichiers repose donc sur : (a) aucun code Go de PRODUCTION touche — le diff ne contient que
+des fichiers de test, la doc, le Makefile et la CI ; (b) `go vet -tags=gamefiles` compile les
+59 ; (c) golangci-lint 0 issue dans les deux configurations ; (d) les tests des deux fichiers
+les plus remanies rejoues sous le tag avec des chiffres IDENTIQUES a l'avant-correctif
+(`TestBalayageCoquille/aquarius_map` 22 -> 22 ancres et 17,4 % de pixels retires ;
+`TestSondeEqip*` + `TestSondeGlpa` verts en 7,6 s). Aucune logique n'a bouge : le risque
+residuel est la compilation, et elle est prouvee.
+
+**Resultats.** `go test ./internal/himap/` : **2,8 s, vert** (avant : ne terminait pas).
+`go vet` propre dans les deux configurations. `gofmt` propre. Le garde-rail voisin
+`TestAucuneAutreCopieDuCheminDuJeu` m'a attrape en cours de route (j'avais cite le litteral
+qu'il interdit dans un commentaire) : reformule plutot qu'allowliste — la bonne reaction a
+un garde-rail qui rougit n'est pas de l'elargir.
+
+**Prochaine etape.** Rejouer le corpus tague en ENTIER reste a faire, et demande d'abord de
+traiter sa consommation memoire (24 Go et croissante) — sinon c'est la machine qui decide de
+la fin du run. Piste : liberer la grille et les instances entre sous-tests, ou lancer le
+corpus par tranches (`-run` par famille de sondes). Non traite volontairement (hors perimetre,
+note sans y toucher) : la
+cuisson d'une carte coute 20 a 86 s et le chantier `wt/cuisson-perf` travaille deja ce
+terrain ; et `RestreintALaFrontiere` balaie NX x NY x triangles sans prefiltre de boite —
+negligeable aux 12 triangles d'aquarius, a regarder si un maillage a 116 faces (behemoth)
+devient le cout dominant. Verifie au passage que la pathologie ne survit pas ailleurs : les
+deux autres paquets qui ouvrent l'installation (`cmd/mapfond-build`, `cmd/mapstruct-build`)
+sont MESURES rapides (0,17 s et 3,9 s) — pas de tag necessaire. Seule scorie notee, non
+traitee : `cmd/mapstruct-build/equivalence_gamefiles_test.go` porte le suffixe sans porter le
+tag ; inoffensif tant qu'il coute 4 s, mais le suffixe veut desormais dire quelque chose.
+
+## [2026-09-05] Garde-rail bande de slots — l instrument faille ne reecrit plus la convention d exclusion — Complete
+
+**Le rouge.** `archlint.TestNoRewrittenSlotBand` echouait sur
+`analysis/filmdec/faille_activation_research_test.go` (arrive avec le commit d28a3aa6a,
+chantier lecture-equipement R1-R3 translocateur). Le fichier marche les images-cles
+(`WalkKeyframeWorld`) ET tenait sa propre liste d exclusion (`others[...] = true`) dans
+`failleKF.bande` : la signature d une regle de bande reecrite.
+
+**Pourquoi il ne pouvait pas juste appeler `worldObjectSlotBand`.** Les deux regles
+canoniques relisent tout le film a chaque appel, pour UN archetype. L instrument a besoin
+des bandes de treize archetypes (7 en creation, 7 en delta) plus un recensement de tous les
+ti 0..49 : les appeler une par une, c est treize relectures completes du film la ou l
+instrument en fait UNE (choix delibere, meme lecon RAM que `deto_attribution_helpers_test.go`).
+
+**Decision : un point unique pour la convention d exclusion multi-archetypes**, plutot qu une
+quatrieme entree d allowlist. Nouveau `filmdec.slotBandFromCensus(seenByTI, ti)`
+(`slot_band_census_helpers_test.go`) : il part d un releve deja fait (`ti -> slots vus`),
+construit l exclusion « les slots des AUTRES archetypes » et delegue la regle a
+`slotBandExcluding`. Il ne marche pas les images-cles, donc il ne declenche pas le garde-rail
+et n a pas a etre allowliste. `failleKF.bande` devient une ligne. Semantique identique a l
+avant (verifie sur pieces : meme construction du `others`, meme delegation).
+
+**Le garde-rail dit maintenant la sortie.** Son en-tete et son message d echec nomment ce
+troisieme chemin (releve multi-archetypes -> `slotBandFromCensus`), pour que le prochain
+instrument n arbitre pas entre « reecrire » et « agrandir l allowlist ». `slotBandAllowed` est
+inchangee : aucune entree ajoutee, aucun seuil relache.
+
+**Resultats.** `go vet` + `go test ./internal/archlint/ ./internal/analysis/filmdec/` verts
+(code de sortie 0 ; rouge reproduit avant correctif sur la meme commande). Nouveau test unitaire
+`TestSlotBandFromCensus` : fixe le comblement (le trou entre deux slots vus entre dans la bande)
+et l exclusion (un slot partage sort, meme vu pour l archetype demande) — le chemin est desormais
+couvert sans film, alors que `TestFailleActivationEntites` se saute sans `FAILLE_FILM`.
+
+**Suite.** Branche `wt/slot-band-faille` (worktree `LevelUp-wt-slot-band`), 1 commit, ni push
+ni merge. A fusionner dans `feat/v75` pour eteindre le rouge de branche.
+
+## [2026-09-03] Match view — donnees des deux temoins chargees ; 9 formes proposees pour les trois blocs en tableau — En cours
+
+**Prerequis utilisateur : les deux temoins doivent porter leurs donnees.** Matchs
+`f0220a96` (Community:Team Slayer sur Starboard, 38-50) et `696a9d7c`
+(Arena:Strongholds sur Vagabond, 200-94). Constat sur pieces : les deux artefacts de rejeu
+existent deja (schema 34, `scoreTimeline` publie, `originResolved` vrai) — le score dans le
+temps etait donc deja servi. En revanche `kill_positions_latest` etait VIDE sur tout le
+corpus (0 ligne, 0 match) : la distance par arme n'avait de mesure nulle part.
+
+**Comment la passe a ete restreinte a deux films SANS toucher au code.**
+`backfill-killsource` n'a pas de filtre par match, et `--force` sur le cache complet
+redecoderait 949 films. Le filtre de candidature passe par
+`film_manifests/{court}.json` du cache resolu par `--cache` : un cache MIROIR ne portant
+que les deux manifestes et les deux repertoires de chunks reduit le plan a exactement deux
+films. `levelup backfill-killsource --cache <miroir> --force --films-only`, serveur arrete,
+2 min 13 s, 0 erreur. 170 lignes de positions ecrites (68 + 102).
+
+**Le temoin Slayer ne portera PAS de distance par arme, et c'est une mesure, pas un bug.**
+La passe de `f0220a96` est `publishable = false` : sante en ALERTE (16 dead-states a `jpt!`
+valide portant un indice hors du roster retenu — le roster du film compte 9 noms pour 8
+sieges), couverture 77,3 % pour un plancher a 100 %. `killDistanceQuery` exige
+`e.publishable` : l'attribution par kill est refusee par construction sur ce match.
+`696a9d7c` rend 92 morts mesurees, 8 joueurs, 3 a 6 armes chacun — le rendu s'y verifie.
+
+**Neuf formes proposees, sur donnees reelles de `696a9d7c`.** Les trois blocs en tableau
+(usages d'equipements, controle des armes speciales, objectifs) recoivent chacun trois
+formes graphiques au gabarit de l'app, publiees en artefact. Aucun code produit : la
+decision de forme appartient a l'utilisateur.
+
+**Formes retenues par l'utilisateur** (mock v2 valide) : usages d'equipement = classement par
+geste EN GRILLE (noms alignes, une echelle et un axe par colonne) + part de chaque equipe en
+pourcentage ; armes speciales = une ligne par arme avec DEUX batons superposes (un par camp),
+axe = nombre de prises ; objectifs = grille par joueur + face-a-face des deux camps. Aucun
+nuage de points. Legendes en pied, centrees. Les vues d'objectif suivent les colonnes du mode
+(`detectObjectiveMode`) : demontre sur Bastion (3 grandeurs) et sur CTF `fdcc8634` (4).
+**Assaut ne peut PAS avoir de bloc objectif** : `match_objective_stats` n'a aucune colonne de
+bombe et l'API n'en fournit aucune.
+
+**Lot 1 livre en worktree dedie** (`wt/match-view-retours`, 3 commits, ni push ni merge) :
+primitive `components/ui/section-card.tsx` + garde-rail (les 4 sections divergentes migrees
+au gabarit « Citations ») · table `[score_timeline]` de `regulation.toml` (schema 5) +
+`header.score_timeline_kind` + `MatchScoreEventsChart` (barres verticales aux instants de
+marque, meme calque, meme cle de cache) · « Assistances » a droite d'« Antagonistes » avec le
+cas cellule fantome traite.
+
+**LE DEFAUT QUE LA REVUE A ATTRAPE, et il tenait a la source d'appariement.** La regle
+etait appariee sur `analysis.NormalizeModeLabel(pair_name)`, comme `objective_roles.toml`.
+Or cette normalisation GARDE le prefixe d'identite de playlist et jette le sous-mode :
+`Super Fiesta:Slayer` -> `Super Fiesta`, ou le jeton « Slayer » n'existe plus. Mesure sur le
+registre local : **460 matchs au mauvais verdict, dont les 429 du mode le plus joue du
+corpus** (+ `Super Husky Raid:CTF` 11, `Team Snipers` 10, et les `pair_name` de forme
+`Mode:Playlist` — `Team Slayer:Arena` -> `Arena`). Correctif : appariement sur le `pair_name`
+BRUT, dont on ne retire que le suffixe de carte (`modelabel.StripMapSuffix`, regex unique du
+depot, `NormalizeModeLabel` y delegue son etape 3). Controle croise sur les 70 `pair_name`
+distincts du registre : 1 194 masques (toutes variantes Slayer, FFA et Shotty Snipes
+comprises), 403 en barres (drapeau/colline/bombe), 275 en courbe (Bastion, Oddball, Total
+Control, Stockpile, VIP, Extraction, Land Grab, variantes UUID) — zero faux positif. Le
+champ ne porte QUE `hidden`/`events` : `curve` etant le defaut du client, le servir
+redirait le defaut sur chaque match.
+
+**Decouverte hors perimetre, NON traitee** : `service/replay_map_objectives.go` a la meme
+cecite (`objectiveRoleSpecs` apparie sur le libelle normalise). `Husky Raid:CTF` (3) et
+`Super Husky Raid:CTF` (11) ne recoivent donc probablement AUCUN role `flag_spawn` /
+`flag_delivery` dans le rejeu 2D, et `Husky Raid:Assault` (1) perd `assault_bomb` —
+~15 matchs a calque d'objectifs muet. Le geste correctif serait le meme (`StripMapSuffix`).
+
+**Lot 2 livre** (4 commits de plus sur la meme branche, ni push ni merge) : primitive
+`components/charts/ValueGrid` + `valueGridModel` (grille alignee, une echelle et un axe PAR
+COLONNE — elle sert DEUX blocs, d'ou `components/` et non une feature), puis les trois
+tableaux remplaces par les formes du mock v2. Rendu DOM/CSS et non ECharts : l'alignement des
+lignes d'une colonne a l'autre est un probleme de MISE EN PAGE, que cinq grilles ECharts
+calculeraient separement. Couleurs d'equipe = jetons `team-ally`/`team-enemy` partout
+(`teamTokenCssVar`, pendant DOM de `teamSeriesColor`) — le bloc Objectifs quitte donc la
+cascade d'IDENTITE et suit desormais les reglages d'accessibilite.
+
+**Deux ecarts au mock, ASSUMES par l'executeur et a arbitrer par l'utilisateur.**
+(1) La vue 1 des equipements affiche les colonnes REELLES du modele
+(`equipmentUsageColumns`) : sur le temoin Bastion cela fait une douzaine de colonnes
+(camouflage compte/duree/frags, surbouclier idem, poses par famille, grenades par type) la
+ou le mock en montrait cinq. La grille defile horizontalement dans sa carte. (2) La vue 2
+compte une ligne par GROUPE (5) et non par famille : un groupe porte des colonnes d'unites
+differentes (episodes / duree / frags), les additionner n'aurait pas de sens — d'ou la
+grandeur `usageGestureCount`. Consequence visible : « Murs » et « Capteurs » partagent une
+ligne et une teinte.
+
+**Point de dette a surveiller** : la table `USAGE_GROUP_TOKENS` emprunte la famille `frag-*`
+(la seule dont la distance perceptuelle toutes-paires est tenue PALETTE PAR PALETTE). C'est
+exactement l'emprunt que la creation de la famille `frag-*` avait supprime le 2026-08-29 pour
+les frags eux-memes. Le garde-rail `fragClass.colorSource.guard` ne le voit pas (il n'interdit
+que les cles de CLASSE). Correction propre : une famille dediee `equip-*` declaree dans les
+QUATRE palettes. Non fait — cout reel sur Okabe-Ito.
+
+**Decouvertes hors perimetre** : `ANTAGONIST_TOKENS` et `ASSIST_TOKENS` sont deux copies de
+la meme liste de 11 jetons · quatre barres DOM proches (`proportional-bar`, `outcome-bar`,
+`composite-progress-bar`, `combat-yield-bar`) qui pourraient fusionner · `weaponsOf`
+(padControlLogic) n'expose pas un socle dont TOUTES les occupations sont anonymes · le ratchet
+`lint-cross-feature-imports` est AU PLAFOND (7/7).
+
+**PAGE SESSIONS — formes choisies par l'utilisateur le 04/09**, apres trois planches
+(cadences par 10 min ; part du lobby ; consolidation). Doctrine retenue :
+
+- **Tout est NORMALISE**, aucune valeur brute — la page sert a comparer DES SESSIONS entre
+  elles. Cadences par dix minutes de jeu, ou parts en pourcentage. La grille « Objectif par
+  mode en valeurs brutes » est ecartee pour ce motif.
+- **La reference est l'equipe d'en face**, et elle n'est JAMAIS affichee : ni ligne, ni nom,
+  ni couleur. Elle est le denominateur et le trait de PARITE (colore).
+- **DEUX denominateurs partout** : ma part de MON EQUIPE (parite 100/effectif d'equipe) et
+  ma part du LOBBY (parite 100/effectif du lobby). Les deux ensemble repondent a « ai-je ete
+  un poids mort » : etre a la parite de son equipe pendant que l'equipe est sous celle du
+  lobby, ce n'est pas etre en defaut.
+- **Les GRENADES sortent du bloc equipement** (decision utilisateur : ce n'en sont pas).
+  Restent camouflage, surbouclier, mur, grappin, objets laches au sol.
+- Trois formes composent la grammaire : ecart a la parite · jauge double avec etendue ·
+  piste du lobby (colore = nous, hachure = eux). Plus la grille alignee et la bande de
+  regularite, avec axe des valeurs gradue sous chaque forme.
+
+**PIEGE MESURE — les socles melangent armes et bonus.** Releve sur 40 artefacts :
+`weaponPads[].weapon` porte 26 armes reelles PLUS `powerup_camo` (17) et
+`powerup_overshield` (15), plus un identifiant non catalogue. Le bloc de la vue match exclut
+deja les socles de bonus (note de pied `gapFmt.powerup`). Aucun equipement DEPLOYABLE
+(grappin, mur, capteur) n'apparait en socle dans ce corpus.
+
+**Les grandeurs de session vivent UNIQUEMENT dans les artefacts de rejeu** — 1,8 Mo en
+moyenne, 114 artefacts, 208 Mo : ouvrir neuf artefacts par chargement de page est exclu, il
+faut un resume par match. Premiere voie tentee : un SIDECAR a cote de l'artefact (aucune
+table DuckDB, dans l'esprit de la decision D2 du plan d'exploitation du registre). **Voie
+ABANDONNEE le 04/09 sur decision de l'utilisateur : « il faut les sauvegarder en BDD lors du
+sync ».** Le lot a ete arrete en vol, son WIP commite (`wt/session-usage`, `b8dc38107` —
+seule la sortie de la regle socle-arme / socle-bonus y est reutilisable).
+
+**MERGE FAIT** (accord utilisateur 04/09) : `wt/match-view-retours` -> `feat/v75`, merge
+`2577e57a5`. Un seul conflit, sur un commentaire d'en-tete de test que `wt/grappin-vies`
+avait touche en parallele (repulseur/propulseur) — resolu en gardant les DEUX faits.
+Gates apres merge : `tsc -b` propre, 248 fichiers vitest / 3 077 tests verts sur
+match-replay + match-view + components.
+
+**Handoff ecrit** : `.ai/HANDOFF_SESSION_USAGE_BDD_2026-09-04.md` — table append-only
+(ADR 0026, vue `_latest`), ecriture INSERT-only par `persist` (ADR 0019/0030), branchement
+dans l'etape post-sync qui cuit deja les artefacts (`sync/engine_postsync.go`), CLI de
+backfill sur les 114 artefacts existants, puis agregat de session et front. Il porte les
+formes validees, les chiffres de reference du temoin et les controles croises a exiger.
+
+**Prochaine etape.** Reprise du handoff (lots S1/S2/S3). Verification visuelle du merge par
+l'utilisateur sur `:8000`.
 
 ## [2026-09-03] Fonds de carte du rejeu 2D — la premisse « reutiliser les dessins » est REFUTEE ; +8 cartes par l'heritage variante -> base — Complete
 
@@ -89988,3 +90510,1878 @@ justement le geste qui a provoque quatre sinistres RAM. Non traite, a decider av
 **Conclusion / prochaine etape** : une carte sans fond cale n a desormais plus rien sous les
 joueurs (hors props Forge). Le chantier des fonds devient donc le seul chemin, et il avance —
 +8 cartes par heritage variante->base le meme jour.
+
+---
+
+## [2026-09-03] Rejeu 2D : translocateur toujours muet — le web est sain, la DONNEE n a rien a lui donner
+
+**Statut** : Complete (diagnostic seul, aucun code modifie).
+
+**Decision technique principale** : constat utilisateur « toujours pas d effet R3-1/R3-3 sur le
+dernier match Dynasty ». Verification sur pieces : le cablage du 02/09 (`f3bd18fd7`,
+spentTranslocations + translocatorRanks + riftTeleports) est en place et correct. Le silence
+vient des donnees, a deux niveaux.
+
+**Resultats observes** (artefact 1b2d9e08, cuit le 02/09 20:10, JGtm au roster) :
+- Match Dynasty : 7 prises du translocateur (jamais JGtm), ZERO spent rang 11, zero saut >10 m
+  chez les 7 porteurs -> personne n a teleporte ni consomme. Les 3 poses translocator_beacon
+  sont l OBJET LACHE A LA MORT : les vies des poseurs s achevent exactement a la frame des
+  poses (958/1030/1061). Sur CE match il n y avait rien a eclairer — silence correct.
+- R3-1 STRUCTUREL (parc entier, 12 films concernes) : 16 poses translocator_beacon = 15
+  dropped + 1 unknown, ZERO deployed — or le calque ne dessine la faille que sur deployed.
+  Contre-epreuve decisive : 10 spent rang 11 sur 4 films (= 10 teleportations reelles, donc
+  autant de failles ouvertes en jeu) et AUCUNE pose correspondante, ni beacon ni `other`.
+  L entite de la faille ACTIVEE n est PAS capturee par le canal ti=37/eqip : 0x730dc70f est
+  l objet RAMASSABLE. La faille du 27/08 ne peut s afficher sur aucun artefact existant.
+- R3-3 : les deux canaux sont troues. `spent` : 8 films sur 12 avec prises n en ont aucun ;
+  quand il existe il date 14-26 s APRES le saut reel (sauf 1 cas colle a 1 frame) — le
+  translocateur permet plusieurs sauts, le spent date l epuisement. `riftTeleports` : seuil
+  12 m / 3 frames ; les sauts reels mesures font 8 a 21 m en 1 frame — la moitie passe sous
+  le seuil.
+- Autres equipements (question user) : cote poses, AUCUNE autre famille a 0 % deployed (mur
+  51 %, capteur 17 %, champ 20 %, traqueur 3/15, ecran occultant 9/105 — faible, a surveiller).
+  Cote spent, tout ce qui est branche dessus sous-reagit : parc famille A repulseur 7 spent /
+  366 taken, grappin 14/264, mur 14/153, propulseur 14/94, detecteur 5/41. Consommateur
+  principal : l extinction de la vignette d equipement (refineAbilityReading) — famille A
+  (rangs 1-12) sans resync keyframe (fenetre kf = 16..23), la vignette reste allumee apres
+  usage jusqu a la mort. Famille B (19-22) resynchronise, spent bien mieux couvert (r19 :
+  118 spent / 59 taken).
+
+**Conclusion / prochaine etape** : matchs temoins ou l eclat DOIT se voir aujourd hui :
+4577fcc4, a0c36016, f2966f08, faff9935 (spent reels). Pistes a decider : (1) R3-3 — detecter
+le passage par la trajectoire seule (seuil ~8 m / 1 frame chez porteur confirme) et dater
+l eclat au saut, pas au spent ; (2) R3-1 — chantier RE : retrouver l entite de la faille dans
+le film ; en attendant, option produit : dessiner la faille a l ARRIVEE du saut detecte ;
+(3) vignette famille A — trou documente, a cadrer.
+
+---
+
+## [2026-09-03] CORRECTIF translocateur : Dynasty portait DEUX translocations reelles — ma conclusion « rien a eclairer » etait fausse
+
+**Statut** : Complete (diagnostic corrige, aucun code modifie).
+
+**Decision technique principale** : contre-observation user (« JGtm l a utilise, on voit un
+saut sans mourir ; un adversaire aussi ») verifiee et CONFIRMEE. Mon balayage d hier ne
+couvrait que les 7 porteurs ENREGISTRES par le canal — or le canal rate des prises : c est
+precisement le defaut. Lecon de methode : ne jamais restreindre une recherche de verite
+terrain aux seuls slots que le canal suspect a bien voulu enregistrer.
+
+**Resultats observes** (artefact 1b2d9e08) :
+- JGtm slot 535 : saut de 22,1 m en 1 frame a t=1762, vie continue 48 s. Sa prise du
+  translocateur (entre 1378 et 1762) n a JAMAIS ete decodee — et le canal le SAVAIT :
+  coverage.equipmentChanges publie counterJumps=1 / missedEstimate=1 sur ce match, le saut
+  de compteur R(3) est exactement cette emission manquee. Consequence en cascade : le spent
+  de 1851 porte from=4 (grappin, dernier rang vu) -> spentTranslocations le rejette ; la
+  derniere lecture abilities du slot est r=4 -> portaitLeTranslocateur rejette un saut de
+  22 m. UNE emission manquee aveugle LES DEUX canaux.
+- SpiffyDart86537 slot 560 : saut de 7,8 m a t=3420 (prise r=11 bien decodee a 3191), mort a
+  3432. Sous le seuil 12 m/3 frames, et aucune emission d epuisement (mort pendant l effet).
+- Auto-mesure du canal sur 67 films : 3 158 emissions decodees, 165 manquees entre deux vues
+  (5,0 %), 114 vies sur 2 503 (4,6 %) amputees de leur debut. Le taux brut est conforme au
+  ~95 % documente, mais l AMPLIFICATION est le vrai probleme : en famille A (rangs 1-12,
+  hors fenetre keyframe 16-23) il n y a AUCUNE resynchronisation — une emission manquee
+  corrompt from/etat porteur jusqu a la fin de la vie, et les consommateurs (filtre from,
+  garde porteur) traitent le canal comme s il etait complet.
+- Le temoin de completude (counterJumps/missedEstimate/livesFirstOffSpec) est publie par
+  FILM dans coverage et consomme par PERSONNE ; par EMISSION, l information existe au
+  decodage (saut de compteur) mais n est pas publiee.
+
+**Conclusion / prochaine etape** : chantier « fiabiliser la lecture des usages d equipement »
+propose au user, lots esquisses : (A) passage par la cinematique seule (saut intra-vie
+>= ~6 m / 1 frame, grappin <= ~2 m/frame, exclusion portes existante ; porteur requis
+seulement en zone grise) + eclat date au saut ; (B) publier le marqueur `gap` par emission
+(schema +1, nouveaux films seulement) ; (C) spent a from perime requalifiable quand gap +
+saut cinematique concordent ; (D) RE entite faille (worktree dedie) ; (E) vignette famille A
+(degradation honnete). Encart du PLAN_RETOURS mis a jour dans le meme geste.
+
+---
+
+## [2026-09-03] Chantier « lecture fiable des usages d equipement » — ouvert, agents R1/R2 lances
+
+**Statut** : En cours (pilotage).
+
+**Decision technique principale** : decision user — pas de regle arbitraire (le lot « saut
+spatial >= X m » est ABANDONNE : une teleportation peut faire 50 cm) ; on cherche les
+ENREGISTREMENTS du film eux-memes. Chantier pilote par agents. Worktree
+`LevelUp-wt-lecture-equipement`, branche `wt/lecture-equipement`, plan
+`.ai/PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03.md` (revu contre la grille plan-review :
+statuts d items, gates = rapports rejouables, reprise, decouvertes).
+
+**Resultats observes** : lots R1 (entite de la faille activee — creations tous ti,
+recensement images-cles, canal des evenements ; ancres A1/A2 de Dynasty) et R2 (emission
+i48 manquee du slot 535 : octets presents mais rates par le scanner, ou absents du film ;
+puis echantillon de ~10 counterJumps du parc) lances en parallele, worktrees isoles,
+instruments env-gated, lecture seule, aucun commit agent. R3 (filtre MaxSpeedMPS=100)
+attendra la fin de R1 ; R4 (marqueur `gap`, schema +1) est gate par la decision D3.
+
+**Conclusion / prochaine etape** : consolider les rapports R1/R2 a leur arrivee dans le
+worktree du chantier, statuer les items du plan, presenter les verdicts et les decisions
+D1-D4 au user. Aucun commit sans son accord.
+
+---
+
+## [2026-09-03] Page Classements vide — diagnostic sur pieces (aucune modif de code)
+
+**Statut** : Complete (diagnostic seul ; correctif non lance, en attente d arbitrage user).
+
+**Decision technique principale** : ne rien supposer, tout prouver par sonde. Endpoints
+appeles en local avec un cookie de session SIGNE (HMAC du secret `.env.local`) pour passer
+`RequirePlayerOwnership` ; donnees lues par `cmd/diag_q` compile en CGO (msys64), DB
+ouverte en read_only, binaire temporaire supprime apres coup.
+
+**Resultats observes** :
+- API et capability NE SONT PAS en cause : `/pages/leaderboard/catalog` rend 8 saisons +
+  7 playlists ; le bootstrap declare bien `world.leaderboard` ; la vue par defaut
+  (csrseason13-2 + Arene classee) rend 86 lignes, gamertag + CSR + palier PLEINS.
+- Ce qui est vide, c est l ENRICHISSEMENT : 4/86 lignes portent `match_count`, 0/86
+  portent un xuid → colonnes FDA/Frags/victoires a « — » sur ~95 % des lignes, et le
+  compte local n est jamais surligne (`isLocalXUID` compare un xuid vide).
+- CAUSE RACINE — la vue `world_csr_leaderboard_latest` retient `max(fetched_at)` par
+  (titre, saison, playlist) : DERNIER LOT GAGNE, sans notion de qualite. Historique du
+  couple (13-2, Arene) : lot 03/07 11:25 = 100 lignes / 100 xuid / **88 % enrichi** ;
+  lot 07/07 05:27 = 86 lignes / **0 xuid** / **4,7 % enrichi**. Le cycle degrade du 07/07
+  a donc masque DEFINITIVEMENT un lot sain. Le « 90 % » dont se souvient le user est
+  mesure a 88 %.
+- Le plancher de coherence (`world_leaderboard_cron.go` scrapeAll, `minEntries` = 25) est
+  ABSOLU et ne compte que les LIGNES : une chute 200 → 86 (-57 %) passe, et l effondrement
+  xuid 100 % → 0 % n est controle nulle part.
+- L enrichissement se joint par `lower(gamertag)` et non par xuid : 824 lignes de stats
+  existent pour (13-2, Arene), seules 4 se joignent aux 86 servies.
+- 3 playlists sur 7 n ont AUCUNE stat pour 13-2, mais `hasEnrichment` (un seul
+  `match_count` non nul suffit) allume quand meme les 11 colonnes enrichies.
+- `GetCSRWorldLeaderboard` rend une erreur DURE si saison ou playlist est vide → HTTP 500
+  `leaderboard_error` la ou tout le reste du domaine degrade en 200 vide.
+- Le cron est en echec TOTAL depuis le 13/07 (267 occurrences local + prod) : la page-graine
+  Waypoint rend 404, `discoverActiveSeason` echoue et `runOnceForTitle` retourne nil — la
+  degradation est classee nominale, donc AUCUNE alerte apres deux mois sans scrape.
+
+**Conclusion / prochaine etape** : le correctif minimal n est PAS un re-scrape (Waypoint
+404 aujourd hui) mais un changement de regle de selection du lot servi + des garde-fous de
+qualite au scrape. Pistes soumises au user, rien n a ete modifie.
+
+---
+
+## [2026-09-03] Classements — contre-verification du diagnostic + plan de reprise
+
+**Statut** : Complete (plan redige, en attente du go user — « ok plan » ne vaut pas go).
+
+**Decision technique principale** : verification adversariale AVANT plan. Trois faits
+nouveaux prouves en live : (1) Halo Waypoint est VIVANT — la saison courante est
+csrseason13-3, __NEXT_DATA__ intact, player.xuid + gamertag presents sur les 100 entrees
+de la page 1 (curl brut) ; (2) l ancienne saison csrseason13-2 rend 404 ET a disparu du
+menu deroulant — l hypothese fondatrice de la graine de decouverte (« une saison capturee
+rend toujours sa page ») est refutee, le cron est un point fixe mort, PAS auto-resolutif ;
+(3) la resolution gamertag→xuid multi-comptes avec respect des debits demandee par le user
+EXISTE deja (internal/worldenrich : chaine PeopleHub→Profil Xbox, round-robin 429,
+ratebudget.ForXUID, cache persistant) — reutiliser, rien a reimplementer. Verifie aussi :
+world_player_season_stats n a PAS de colonne xuid (jointure gamertag) → le lot « xuid de
+bout en bout » (recette ADR 0026) est DIFFERE au registre des reports ; le cycle du 07/07
+n a AUCUNE ligne d enrichissement au log (enricher nil = skip silencieux, ligne 429-431 du
+cron) la ou 06/26 et 07/01 en ont.
+
+**Resultats observes** : plan ecrit — .ai/PLAN_LEADERBOARD_MONDE_REPRISE_2026-09-03.md
+(grille plan-review passee : decisions D1-D4 tranchees par defaut, gates en commandes
+exactes, statuts d items, reports, protocole de reprise). Lots : 1 decouverte reparee
+(repli base-URL + escalade + logs honnetes), 2 garde-fous qualite au persist (seuils D1),
+3 restauration append-only des lots sains du 03/07 (-restore-best, dry-run d abord),
+4 UI honnete (seuil colonnes + bandeau + selecteurs couples + 500→200).
+
+**Conclusion / prochaine etape** : presenter solutions + plan au user ; attendre le go
+explicite et le nom de branche valide (propose : fix/leaderboard-monde-reprise-scrape,
+worktree dedie). Merge final = deploy prod auto, a annoncer.
+
+---
+
+## [2026-09-03] Classements — Lot 1 CLOS (decouverte par redirection + escalade)
+
+**Statut** : Complete (Lot 1) ; chantier en cours, Lot 2 a suivre.
+
+**Decision technique principale** : la saison active se lit dans le header Location du 307
+de /halo-infinite/leaderboards (suivi de redirection desactive) — repli branche dans
+discoverActiveSeason apres epuisement des pages-graines ; escalade WARN→ERROR au-dela de
+3 cycles consecutifs sans decouverte (jauge expvar world_leaderboard_season_discovery_
+fail_streak) ; enrich() plus jamais silencieux quand l enricher manque. Correctif de
+revue : extraction world_leaderboard_discovery.go (cron 642→451 L, seuil 500 respecte).
+
+**Resultats observes** : gate test/vet/build vert rejoue par l orchestrateur ; verification
+sur donnees reelles (binaire worktree contre checkout principal, air arrete/restaure) —
+graines 13-2 en 404, saison csrseason13-3 obtenue PAR LE REPLI, cycle termine : 516
+lignes inserees, 516/516 avec xuid, Legacy (2 entrees) rejetee par le plancher existant.
+Effet de bord vertueux : la graine persistee redevient une saison VIVANTE, meme l ancien
+binaire red-decouvre desormais. Ce cycle n a couvert que les 4 playlists statiques
+(decouverte playlists via page-graine morte a cet instant) — auto-repare au cycle suivant.
+
+**Conclusion / prochaine etape** : commit Lot 1 sur fix/leaderboard-monde-reprise-scrape
+(worktree LevelUp-wt-leaderboard), lancement Lot 2 (garde-fous qualite au persist, seuils
+D1). Details : .ai/PLAN_LEADERBOARD_MONDE_REPRISE_2026-09-03.md (journal).
+
+---
+
+## [2026-09-03] Classements — Lot 2 CLOS (garde-fous qualite au persist)
+
+**Statut** : Complete (Lot 2) ; Lot 3 a suivre (restauration + protection CLI).
+
+**Decision technique principale** : decision D1 isolee en fonction PURE degradedBatchReason
+(cause en clair reutilisee dans le WARN) dans world_leaderboard_quality.go ; mesure du lot
+candidat en memoire ISO-definition avec la requete SQL du lot servi (WorldCSRBatchStats,
+extrait dans leaderboard_world_batch_stats.go — le repo a 733 L reste byte-identique) ;
+application par playlist dans scrapeAll, hors lease writer, reader RO court, FAIL-OPEN si
+la qualite du lot servi est illisible (on ne gele jamais une premiere capture). Refus =
+skip + WARN chiffre + expvar world_leaderboard_batch_refused_total.
+
+**Resultats observes** : 6 tests (refus volume, refus xuid, acceptations, refus PARTIEL
+sur vraie shared DB migree, bornes table-driven) ; piege de test evite — candidats a
+fetched_at POSTERIEUR au lot servi, sinon la vue _latest servirait l ancien lot et les
+tests d acceptation ne prouveraient rien. Gate rejoue par l orchestrateur : vert, y
+compris le test du helper sous -tags=integration (decouverte : la commande sans tag ne
+fait que compiler ce fichier de test — gate du plan amende).
+
+**Conclusion / prochaine etape** : commit Lot 2, puis Lot 3 : flag -restore-best du CLI
+snapshot-world-leaderboard + execution locale (serveur arrete) + brancher le meme
+garde-fou D1 sur le chemin de scrape du CLI (decouverte Lot 2 : il ecrit sans protection).
+
+---
+
+## [2026-09-03] Classements — Lot 3 CLOS : restauration reelle des lots sains
+
+**Statut** : Complete (3.1/3.2/3.3) ; 3.4 statue [!] — enrichissement de la population
+servie via backfill operationnel, creneau a trancher par le user.
+
+**Decision technique principale** : le verdict de restauration REUTILISE la regle D1 a
+l envers — DegradedBatchReason(meilleur, servi) != "" ssi le lot servi serait refuse face
+au meilleur — d ou une idempotence par construction (apres restauration, servi == meilleur
+→ regle rend ""). Regle centralisee dans duckdb (une definition, deux callers cron + CLI),
+scrape du CLI protege par le meme garde-fou. Ordre de merite du meilleur lot : with_xuid
+DESC puis rows DESC puis fetched_at DESC (un classement sans xuid ne se joint a rien).
+
+**Resultats observes** : dry-run = EXACTEMENT les 3 couples degrades du 07/07 (Assassin
+85/0, Arene 86/0, Duo 200/0), 37 couples sains intacts ; execute = 3 restaures, 0 echec ;
+re-run = 0 a restaurer / 40 au meilleur. Etat 13-2 apres restauration : 100 % xuid sur
+toutes les playlists, enrichies Assassin 115 / Duo 101 / Arene 87 (sur le lot de 200).
+CONSTAT : le top-100 affiche de l Arene ne joint que 34 stats (les stats de juillet
+couvrent d autres tranches de population) → completer par backfill-world-player-stats
+-season csrseason13-2 (+13-3), qui cible par construction la population SERVIE avec les
+xuid pre-seedes. Fenetre serveur arrete ~15-40 min, creneau propose au user.
+
+**Conclusion / prochaine etape** : commit Lot 3 apres la retouche d extraction de main()
+(en cours), lancement Lot 4 (UI honnete + contrat), puis gate-push et merge (prevenir :
+deploy prod auto) + rejouer restore + backfill sur le VPS.
+
+---
+
+## [2026-09-03] Classements — Lot 4 CLOS (UI honnete + contrat robuste)
+
+**Statut** : Complete (4.1-4.4). Reste : fin du backfill 3.4 (13-2 a reprendre en -force),
+gate-push, delivery-checklist + adversarial-review, merge main (prevenir : deploy prod).
+
+**Decision technique principale** : couverture d enrichissement = fonction pure exportee
+(LeaderboardBlock.logic.ts, seuils 25 %/80 % bornes inclusives) pilotant colonnes ET
+bandeaux ICU chiffres {enriched}/{total} FR+EN ; selecteurs saison-playlist couples via
+LeaderboardCatalogRef.PlaylistIDs (couples reels de la vue _latest, best-effort AVEC warn,
+double degradation front) ; 500 → 200 vide sur couple incomplet AVEC Entries=[] sur tous
+les retours anticipes (ratchet NoNilSlices — couvrait un trou pre-existant du chemin
+sans-capability). total_local = NON-BUG : le fil s appelle total (json:"total"), fige par
+test ; ma sonde du diagnostic grep-ait le mauvais nom.
+
+**Resultats observes** : gates rejoues orchestrateur — tsc -b --force 0 erreur, vitest
+leaderboard 35/35, go service+handlers+duckdb+integration verts, build vert ; executeur :
+make test-web 3547 pass (14 skips pre-existants hors perimetre), eslint perimetre 0
+warning. LeaderboardBlock.tsx ramene a 539 L (sous son niveau d avant-lot), repo duckdb a
+725 L (sous son niveau d avant-chantier).
+
+**Conclusion / prochaine etape** : commit Lot 4 ; fin de fenetre backfill (13-3 en cours,
+13-2 a relancer -force -skip-existing) ; relance serveur ; puis Livraison (gate-push,
+delivery-checklist, adversarial-review du diff persist, merge avec preavis deploy).
+
+## [2026-09-03] Fonds de carte : l inventaire des manques est REFAIT par la mesure, et Live Fire cuit pour la premiere fois
+
+**Statut** : En cours (worktree `wt/fonds-manquants`, rien de commite, rien de publie en production).
+
+**Decision technique principale** : ecrire l outil que le handoff reclamait
+(`cmd/mapfond-inventaire`) plutot que de croire sa liste. Il rejoue la resolution EXACTE de
+`replayService.resolveBackgroundKey` — stat du sidecar sous `map_id`, puis
+`replay.MapBackgroundIndex.Lookup` sur les memes noms candidats que `MapKeysForMatch` — et il
+croise le resultat avec les playlists de `match_registry`. Il appelle le MEME index que la
+production au lieu d en recopier la regle : une copie divergerait sans qu aucun test ne le voie.
+
+**Resultats observes** :
+
+- LA LISTE DU HANDOFF NE DECRIT PAS LE PRODUIT. Ses 23 cartes viennent du CATALOGUE DE ZONES ;
+  les cartes qui manquent A L ECRAN sont celles qui ont ete JOUEES. Sur 150 identites de carte
+  du registre, **4 cartes seulement n ont pas de fond** : Live Fire (3 assets, 71 matchs),
+  Detachment (25), Argyle (22), plus Cole Protocol (1 match, Firefight) et TFF Night Of The
+  Undead (1 match, playlist personnalisee). Apostle, Aqueduct, Arrival, Daimyo, Dead Water,
+  Exiled, Kusini Bay, Last Broadcast, Suban, Vallaheim, Waterworks n apparaissent pas : elles ne
+  sont pas jouees par les joueurs suivis.
+- LA QUESTION OUVERTE DU HANDOFF EST TRANCHEE, et par la playlist, pas par le nombre de joueurs :
+  `player_count` compte les joueurs SUIVIS (2 sur Argyle, 5 sur Live Fire), il ne dit rien de la
+  taille de la partie. Les trois cartes qui restent sont de l arene (Quick Play, Ranked Arena,
+  Team Snipers, Super Fiesta) ; les deux autres sont hors perimetre par leur playlist.
+- « Argyle est deja servie » (handoff §2.2) est FAUX : aucun sidecar du catalogue ne la nomme.
+- L outil de requete existait deja : `cmd/diag_q`, et il lit `shared_matches_v2` en lecture seule
+  meme quand le serveur local la tient. `metadata.duckdb`, elle, est tenue en EXCLUSIF par le
+  serveur — l inventaire a tourne sur `metadata-prebuilt.zip` (22/06) pour nommer les assets.
+  A rejouer sur la base vivante avant de clore : sans les noms d asset, 20 cartes ressortent au
+  lieu de 8, dont 12 fantomes.
+
+**LIVE FIRE — PREMIERE CUISSON, et ce qu elle apprend.** Cuite sans levier, elle rend 119,0 x
+117,9 m et DEUX amas disjoints. Cause mesuree : `himap.ChoisitBSP` designe bien le bon tag
+(63,2 x 63,8 m), mais **les bornes declarees d un bsp ne bornent pas la pose de ses instances** —
+`common-rtx-new` pose plusieurs petites arenes dans le meme bsp, et la matiere dessinee depasse
+de 43 m en Y les bornes du bsp retenu. Le cadre aux ancres ne peut pas trancher : les 24 ancres
+tiennent dans une bande de 9,0 x 25,0 m. Le masque des zones nommees non plus : les 55 zones de
+`sgh_interlock` couvrent X [-8,9 ; 74,7] et Y [16,2 ; 98,1], donc les DEUX amas.
+
+Ce qui a marche : borner a la boite du bsp retenu (`boiteUtile` [-16,7 -10,1 46,5 53,7], valeurs
+LUES dans le module, pas tracees a l oeil) + `rogneAuxZones` + habillage encre. Cadre 1 643 x
+1 207 px, **21 ancres sur 28 avec du sol**, une seule arene lisible. L ecretage a ete essaye puis
+RETIRE : il descend a 17/28 (il coute 4 ancres pour ramener l ecart median de -7,37 a -3,38 m).
+
+**Degradation connue** : les passes `sddt` (zone jouable) et eau exigent
+`any/levels/multi/globals/common-rtx-new.module`, absent de l installation — la geometrie commune
+n a pas de pendant dans la racine `any`. Live Fire n a pas d eau ; il manque le bornage sddt.
+
+**Conclusion / prochaine etape** : image soumise a l utilisateur pour le gate visuel (la recette
+interdit de publier une image qu il n a pas vue). Si le verdict est positif : recuire sans
+`--out-dir`, passer la ligne du registre a VALIDEE avec verbatim, committer. Detachment et Argyle
+sont bloquees en amont — elles n ont AUCUNE entree dans `map_objectives.json`, donc pas d ancre,
+donc pas de cadre ; les debloquer demande un `mapobj-build --map-id` authentifie, a demander.
+
+## [2026-09-03] Live Fire est VALIDEE et publiee — et la reconstruction du catalogue de callouts a bien mordu
+
+**Statut** : Complete cote carte (gate utilisateur obtenu), non commite.
+
+**Verbatim du gate** : « Ah oui c'est exactement cette map je la reconnais tres bien ! Par contre
+faut couper un peu les toits. Et remplir le sol avec une couleur, mais que a l'interieur de la
+silhouette », puis « Y a juste un trait horizontal a droite en haut a virer et c'est 100% valide ».
+
+**Decision technique principale** : les trois demandes se sont traduites par trois leviers
+EXISTANTS, dont un qui ne marchait pas.
+
+1. `ecreteToits` + `plafondArene: 8` — le defaut est 6, donc on coupe MOINS que la recette, ce
+   que « un peu » demandait. Cout mesure et assume : 21 ancres sur 28 avec du sol sans lui,
+   **17 sur 28** avec ; le cran de 6 m coute exactement les memes quatre, monter le plafond ne
+   les recupere donc pas.
+2. `combleTrous` — **195 030 cellules** d aplat dans les trous FERMES du masque des zones. C est
+   bien ce levier et non `combleZonesEntieres`, qui aurait rempli aussi les vides OUVERTS, donc
+   deborde hors de la silhouette : la demande disait « que a l interieur ».
+3. `rogneAuxComposantesAncrees` — **IL ETAIT INERTE SUR LES CARTES NATIVES.** Declare dans
+   `reglageCarte`, donc offert a toutes les cartes, il n etait cable que dans `cuisson_forge.go`.
+   Arme sur Live Fire il rendait une image identique A L OCTET PRES (hash verifie). Cable ce jour
+   dans `himap.OptionsCuisson` + le chemin natif de `cmd/mapfond-build`, juste apres `BoiteUtile`
+   pour ne juger que ce qui reste. Effet : **15 700 cellules effacees, 1 composante gardee sur
+   36**, cadre 1 643 -> **1 302** x 1 192 px, ancres inchangees a 17/28. Le trait horizontal en
+   haut a droite disparait, la diagonale en bas a gauche aussi.
+
+**LE PIEGE DU HANDOFF S EST REFERME, ET LE GARDE-RAIL L A ATTRAPE.** Publier le fond fait basculer
+`TestCatalogueCalloutsLivreEstExploitable` : la regle est « une carte est `decoupe` SI ET SEULEMENT
+SI son fond est publie ». La reconstruction native de `map_callouts.json` a donc ete lancee — et
+elle a rejoue exactement la non-reproductibilite documentee : fichier **3,71 Mo -> 2,97 Mo**,
+**32 716 nombres perdus** soit environ 16 400 sommets, repartis sur 16 cartes
+(btb_fragmentation -9 372, btb_highpower -4 786, btb_exiled -4 299, va_behemoth -4 120...). Les
+comptes de zones, eux, ne bougeaient pas (3 352 zones, 64 entrees Forge) : **un compte de zones ne
+voit pas une perte de sommets.**
+
+Traitement applique, celui que le handoff prescrit : restaurer depuis HEAD et ne garder QUE ce
+qu on produit. Le bloc `sgh_interlock` du fichier reconstruit a ete recolle dans le fichier de
+HEAD (lignes 114874-117738). Verification : delta de sommets NUL sur les 21 autres cartes,
+`sgh_interlock` +5, memes cles, 878 insertions / 938 suppressions. 42 zones sur 55 sont desormais
+decoupees sur le decor ; **13 restent brutes** — Lobby, AI Lab, Locker Room, Movement Course,
+Hallway, Armory, Weapon Range, Landing Pad — ce sont les salles du second amas, celui que
+`boiteUtile` retire. A regarder si une zone nommee doit un jour porter du sol.
+
+**Resultats observes** : fond publie sous `map_backgrounds/sgh_interlock.png` (126 988 octets,
+identique a l octet pres a l image gatee), sidecar declarant les deux identites. L inventaire
+retombe de 8 lignes a **4** : les 71 matchs de Live Fire et Live Fire - Ranked sont servis.
+107 fonds, 232 identites, 0 ambiguite. Tests verts : `internal/himap` (liste sans `_gamefiles_`,
+13,3 s), `internal/analysis/replay`, `cmd/mapfond-build`, `cmd/mapcallouts-build`.
+
+**Conclusion / prochaine etape** : restent Detachment (25 matchs) et Argyle (22), bloquees en
+amont — aucune entree dans `map_objectives.json`, donc aucune ancre, donc aucun cadre. Le
+deblocage passe par `mapobj-build --map-id <uuid> --player <GT>`, un appel reseau authentifie par
+carte, a demander a l utilisateur. Report ouvert : `cmd/mapfond-inventaire` n a pas de test qui
+verifie qu il reste d accord avec `resolveBackgroundKey` — c est pourtant sa seule raison d etre.
+
+## [2026-09-03] Detachment et Argyle DEBLOQUEES — le level_id nomme la toile que l asset ne publie pas
+
+**Statut** : En cours (Detachment soumis au gate visuel, Argyle cuite mais pas encore presentable).
+
+**Decision technique principale** : le registre les portait « BLOQUEE canevas inconnu ». La mesure
+dit autre chose, et il y avait DEUX blocages empiles, pas un.
+
+1. AUCUNE ANCRE. Ni Detachment ni Argyle n avaient d entree dans `map_objectives.json` — donc pas
+   d ancre, donc pas de cadre, donc rien a cuire. `mapobj-build` les a rapatriees : Detachment
+   4 511 objets / **14 objectifs**, Argyle 5 002 / **14**. Le blocage etait la, pas au canevas.
+2. CANEVAS INCONNU. Leur asset ne publie pas de fichier-lien de canevas — c est vrai. Mais le
+   `level_id` le dit sans lui, et c est deja le critere de `TestPreuveLevelIDCartes` :
+   **1 437 677 928** est la toile de The Pit et Houseki (`fo09_academy`), **426 470 249** celle
+   d Empyrean, Solitude et Shogun (`fo11_blank`). Les deux cartes sont declarees dans
+   `himap.CartesForge` sur cette preuve.
+
+**COMMENT LE RESEAU A ETE JOUE SANS TOUCHER AU WORKTREE PRINCIPAL.** Les jetons vivent dans le
+depot principal (`data/auth/watcher_tokens/`), pas dans le worktree dedie, et un refresh ROTATIONNE
+le RT : copier le fichier aurait fabrique deux verites. Sequence retenue : `mapobj-build` lance
+DEPUIS le principal (jetons vivants), le catalogue regenere copie de cote, puis
+`git checkout` immediat du fichier dans le principal — verifie propre — et le catalogue copie
+installe dans le worktree dedie. Verification : 126 -> 128 cartes, 2 680 -> 2 708 roles, **aucune
+carte perdue**. Un premier essai par le chemin hors ligne (`--from-file`) avait ete ecarte : il
+rend `public_name` et `version_id` VIDES, donc un fond sans identite pour l index des noms.
+
+**Resultats observes** — deux passes, et la premiere etait la bouillie attendue :
+
+| | sans levier | + navmesh | + composantes / tolerance |
+|---|---|---|---|
+| Detachment | 2 417 x 2 935 | 2 332 x 2 038 | **1 526 x 1 666** |
+| Argyle | 2 514 x 3 001 | 1 090 x 2 300 | **1 090 x 1 614** |
+
+28 ancres sur 28 avec du sol a chaque passe : aucun levier n a coute de terrain. `navmeshReference`
++ `rogneAuNavmesh` (blobs rapatries sans jeton : 5 559 520 et 258 090 octets) font le gros du
+travail, comme sur Isolation. `rogneAuxComposantesAncrees` retire ensuite 65 125 cellules sur
+Detachment (1 composante gardee sur 4) et 118 798 sur Argyle (1 sur 326). Argyle recoit en plus
+`toleranceNavmesh: 3` : c est une carte couverte, et sans elle on voit les toits au lieu du sol.
+
+**Conclusion / prochaine etape** : Detachment soumise au gate — reste a trancher si l ilot de
+droite appartient a la carte (il porte une ancre, donc le rognage aux composantes le garde).
+Argyle est cuite mais encore tres chargee : un second levier sera probablement necessaire avant de
+la presenter. Rien de publie pour ces deux cartes, tout est en scratch.
+
+## [2026-09-03] Detachment et Argyle VALIDEES et publiees — plus aucune carte jouee en mode supporte sans fond
+
+**Statut** : Complete (les deux gates obtenus), non commite.
+
+**Verbatim** : « Detachment est parfaite » ; puis pour Argyle « faut juste remplir tous les trous a
+l interieur de la silhouette et retirer un peu de toits comme pour live fire », et « ok argyle
+validée ! ».
+
+**Decision technique principale — la demande d Argyle etait la MEME que celle de Live Fire, mais
+elle ne pouvait pas passer par les memes leviers, et pour deux raisons mesurees.**
+
+1. LE COMBLEMENT. `combleTrous` exige les zones nommees ; Argyle est une carte Forge, elle n en a
+   pas. Le pendant est `combleAuMaillage`, qui pose le sol suppose partout ou le MAILLAGE dit qu on
+   marche. La contrainte « que a l interieur de la silhouette » est alors garantie par
+   construction : sur une carte Forge, le maillage EST la silhouette jouee.
+2. LES TOITS. `ecreteToits` a ete REFUSE, sur la regle de couverture de la recette : Argyle est
+   mesuree **couverte a 53,2 pour cent**, largement au-dessus du seuil d un tiers — le regime exact
+   de Launch Site (53,5) ou l ecretage avait substitue 162 139 cellules a 245 307 et rendu une
+   arene creuse. Sur une carte couverte l ecretage REMPLACE la substitution au lieu de s y
+   ajouter, et ici la substitution est celle du maillage, c est-a-dire ce qui rend la carte
+   lisible. Levier retenu : `toleranceNavmesh` serre de 3 a 2 m, qui vide les surfaces loin du sol
+   SANS desarmer la substitution.
+
+**DEUX GARDE-RAILS ONT MORDU PENDANT LE LOT, ET AUCUN N A ETE CONTOURNE.**
+
+- `TestCatalogueObjectifsModulesDistincts` : les deux entrees arrivaient avec `module: "map"` —
+  exactement la regression du 2026-08-25 que ce test decrit, « un tirage reseau a ecrase `module`
+  par le nom de fichier servi ». Corrige en `detachment_map` / `argyle_map`, la convention du reste
+  du catalogue. La correction est DURABLE sans toucher au code : `gardeModuleConnu` conserve un
+  module deja connu a la prochaine regeneration.
+- `TestFondForgeJamaisSousCleModule` : rouge tant qu Argyle etait declaree sans fond publie. Il
+  disait vrai ; il est passe au vert par la publication, pas par un amenagement.
+
+**Resultats observes** : Detachment 1 526 x 1 666 px, Argyle 1 090 x 1 707 px, **14 ancres sur 14**
+chacune, images identiques a l octet pres a celles qui ont ete gatees. Le catalogue des fonds passe
+a **109**, 236 identites, 0 ambiguite. L inventaire des cartes JOUEES sans fond tombe de 8 lignes a
+**2** : Cole Protocol (1 match, Firefight) et TFF Night Of The Undead (1 match, playlist
+personnalisee) — les deux hors perimetre du rejeu. **Plus aucune carte jouee en mode supporte n est
+sans fond.** Tests verts : `internal/analysis/replay`, `internal/himap` (cles Forge et reglages),
+`cmd/mapfond-build`, `cmd/mapobj-build`, `cmd/mapcallouts-build`, `cmd/mapnav-fetch`.
+
+**Conclusion / prochaine etape** : le chantier ouvert par HANDOFF_FONDS_CARTE_2026-09-03 est solde
+sur son perimetre produit. Reports ouverts, tous ecrits : les 13 zones de `sgh_interlock` qui
+restent brutes faute de decor sous elles ; l absence de test d accord entre `cmd/mapfond-inventaire`
+et `resolveBackgroundKey` ; et la non-reproductibilite de la passe native de `mapcallouts-build`,
+qui reste un piege arme pour le prochain qui publiera un fond de carte NATIVE.
+
+## [2026-09-03] Les trois reports du lot fonds sont soldes — dont un qui n en etait pas un
+
+**Statut** : Complete.
+
+**REPORT 1 — LES 13 ZONES « BRUTES » DE LIVE FIRE : FAUSSE ALERTE, et la mesure le dit.**
+Question de l utilisateur : « on est en 2D donc on devrait etre bon au niveau du sol non ? ». Oui,
+et pour deux raisons independantes.
+
+D abord, une zone gardee BRUTE nomme quand meme : `zoneAt` interroge le polygone servi, et le
+decoupage n est qu un affinage de PRECISION (il empeche une zone de reclamer un joueur qui est a
+cote). Rien n est casse par une zone non decoupee.
+
+Ensuite, et c est le point : les 13 zones ne sont pas de Live Fire. Leurs centroides le montrent
+sans ambiguite. Les callouts de l arene — Tunnel, Canal, Yard, House, Nest, Tower, Platform, Green
+Building, Green Bend, Turbine, Brutes, Storage, Overlook, Grad Board — tiennent tous dans
+**x [-9 ; 27], y [16 ; 47]**, c est-a-dire dans la boite publiee. Les 13 brutes — Weapon Range,
+Movement Course, AI Lab, Armory, Locker Room, Lobby, Landing Pad — sont a **y [66 ; 98]**, un
+batiment situe 30 a 50 m au nord : c est l ACADEMIE, que le meme tag `levl` declare parce que la
+geometrie commune loge plusieurs petites arenes. Aucune ancre d objectif n y tombe. Report FERME,
+il n y avait rien a corriger.
+
+**REPORT 2 — L INVENTAIRE EST DESORMAIS TENU A LA PRODUCTION.** `cmd/mapfond-inventaire` n avait
+aucun test, alors que sa seule raison d etre est de resoudre comme
+`replayService.resolveBackgroundKey`. Deux familles ajoutees, et il fallait les DEUX : six cas de
+comportement sur un repertoire fabrique (map_id prioritaire sur l index — le cas ou l inversion
+servirait le fond d une AUTRE carte —, rattrapage par nom, nom d asset avant libelle brut,
+heritage variante vers base, variante qui garde son propre fond, carte inconnue) ; et un
+GARDE-RAIL DE SOURCE qui compte les chemins de resolution du fichier de production. Le
+comportement seul ne verrait rien : un troisieme chemin ajoute cote service laisserait ces tests
+verts et l inventaire faux. Le garde verifie aussi l ORDRE (map_id avant index) et echoue avec un
+message qui dit quoi faire.
+
+**REPORT 3 — LE CATALOGUE DE CALLOUTS NE PEUT PLUS MAIGRIR EN SILENCE.**
+`cmd/mapcallouts-build/garde_perte.go` compare la sortie a ce qui est deja sur le disque, carte
+par carte, sur le nombre de SOMMETS (contour + parties + trous), et refuse d ecrire des qu une
+carte en perd. Seuil ZERO. Une carte qui DISPARAIT compte comme une perte totale. Echappatoire
+explicite et bruyante : `--accepte-perte`, qui journalise chaque carte perdante avec ses deux
+comptes.
+
+Pourquoi les sommets et pas autre chose : les trois invariants deja poses comptent les cartes
+(22), les zones (816) et les libelles (816/816) — **aucun des trois n avait bouge** le
+2026-09-03 pendant que 16 400 sommets disparaissaient sur 16 cartes. Le temoin du test rejoue
+exactement cette forme : memes cartes, memes zones, moins de sommets. Cinq autres cas couvrent le
+gain (le decoupage nominal doit passer), le comptage de `Parts`/`Holes` (ne compter que `Polygon`
+ferait passer un decoupage REUSSI pour une perte et bloquerait la chaine), la disparition d une
+carte, les deux sens de l echappatoire, et le premier ecrit d un titre.
+
+**Resultats observes** : `go vet` propre sur cmd/, himap et replay ; tests verts sur
+`cmd/mapfond-inventaire` (nouveau), `cmd/mapcallouts-build` (6 nouveaux cas),
+`cmd/mapfond-build`, `cmd/mapobj-build`, `cmd/mapnav-fetch`, `internal/analysis/replay`.
+
+**Conclusion / prochaine etape** : le chantier ouvert par HANDOFF_FONDS_CARTE_2026-09-03 est clos,
+reports compris. Reste a committer.
+
+## [2026-09-03] Merge du lot fonds dans feat/v75, et la CI rouge qui l attendait
+
+**Statut** : Complete pour le merge et le correctif ; CI en cours d observation.
+
+**Decision technique principale — l ordre des operations.** Le worktree principal portait
+305 lignes de `.ai/` non commitees d une session parallele, dont `thought_log.md` que le merge
+touche : git refuse alors le merge. La regle du depot interdit `git stash` et prescrit un commit
+WIP a sa place, c est donc ce qui a ete fait (`journal(wip)`, Markdown seul, aucune relecture ni
+modification du contenu). Le conflit sur `thought_log.md` a ete resolu en gardant LES DEUX blocs.
+Merge `--no-ff` conforme aux lots precedents, puis push.
+
+**LA CI DE feat/v75 ETAIT DEJA ROUGE, depuis le push du 2026-09-02** (run 33667780959, job « Go
+Coverage + Baseline non-regression »). Cinq tests, une seule cause : le lot sieges a ajoute quatre
+champs de PRESENCE sans propager aux deux endroits qui les derivent.
+
+- `TestOpenAPIYAMLIsUpToDate` : `api/openapi.yaml` non regenere — 654 184 octets commites contre
+  654 421 generes, divergence des la ligne 16542, quatre champs manquants (`joinMatchMs`,
+  `joinedInProgress`, `leaveMatchMs`, `leftInProgress`). `make openapi-gen` PUIS
+  `make generate-types` : le second maillon compte autant, sans lui le front resterait type sur
+  l ancien contrat avec un tsc vert.
+- Les quatre `TestReplayFacts*` : « Binder Error: Table p does not have a column named
+  joined_in_progress ». La DDL du fixture est une COPIE de celle de production, et une copie
+  derive — exactement la lecon deja consignee. Elle a recu les quatre colonnes plus
+  `start_time_utc` et `start_time`, les deux faces du temps canonique dont la requete derive les
+  instants.
+
+**Trois durcissements plutot qu une rustine** : les INSERT nomment desormais leurs colonnes (une
+DDL positionnelle casse tous les cas des qu une colonne s ajoute) ; le cas nominal COUVRE la
+presence — un joueur au coup d envoi, un autre qui entre a 90 s, verifie jusqu a `JoinMatchMS` —
+la ou aucune assertion ne touchait les champs du lot ; et l en-tete du fixture enonce la regle a
+tenir quand la requete de production bouge.
+
+**Resultats observes** : les cinq tests passent en local (`-tags=integration -p 1`),
+`TestOpenAPIYAMLIsUpToDate` vert, `check-generated-types-fresh.mjs` vert. Pousse sur `feat/v75`
+(a916e7744).
+
+**Conclusion / prochaine etape** : surveiller le run CI de a916e7744 jusqu au bout. Rappel : la
+CI ne se declenche PAS sur les branches `wt/**` — seul le merge dans `feat/v75` la joue.
+
+---
+
+## [2026-09-03] Classements — revue adversariale : 4 SERIEUX corriges, merge debloque
+
+**Statut** : Complete (vague de revue) ; restent re-run integration complet, backfills,
+gate-push, go user pour merge.
+
+**Decision technique principale** : les 4 constats SERIEUX du relecteur frais retenus et
+corriges — S1 escalade ERROR des refus consecutifs (symetrie avec la decouverte, reset sur
+tout lot ecrit) ; S2 la regle D1 compare desormais a min(profondeur servie, profondeur
+demandee) — un candidat au plafond de SA limite n est jamais « effondre » face a une
+archive plus profonde (decision : sur saison active le servi est le frais, l archive est
+un filet) ; S3 -restore-best exige -season nommee et refuse all (le run VPS visera
+csrseason13-2) ; S4 tri effectif derive au rendu, retombe sur le rang quand la colonne
+triee est masquee. Bonus suite integration : litteral halowaypoint retire du message
+d escalade (garde-rail archlint — seul echec de toute la suite).
+
+**Resultats observes** : gates verts des deux executeurs, re-verifies sur pieces (regle
+plafonnee lue, FATAL du scoping testes en reel par l executeur). Decouverte methodo :
+archlint absent des gates de lot — ajoute aux consignes des futurs gates backend.
+
+**Conclusion / prochaine etape** : commit de la vague, re-run suite integration (script
+corrige en UTF-8 via cmd), fin du backfill 13-3 puis 13-2 -force -skip-existing, relance
+serveur, gate-push, delivery-checklist, preavis deploy et go user.
+
+---
+
+## [2026-09-03] Classements — pre-merge complet : tous gates verts, CI branche en cours
+
+**Statut** : En attente (verdict CI branche + go user pour merge).
+
+**Decision technique principale** : livraison verifiee maillon par maillon — suite
+integration complete v2 (etat final, -tags=integration -p 1 ./...) EXIT=0 zero fail ;
+baseline de tests OK (11712 courants >= 8761 baseline, 0 echec) ; ratchet golangci
+--new-from-merge-base 0 issue ; delivery-checklist deroulee (0 TODO, 0 fmt.Println,
+tailles fichiers/fonctions tenues, i18n FR+EN, append-only intact) ; branche POUSSEE sur
+origin (fix/*, aucun deploy) pour le verdict CI d autorite, monitore.
+
+**Resultats observes** : backfill 13-3 termine SEUL dans la fenetre accordee (145/145
+joueurs, 310 lignes, 0 erreur, 1h23) ; serveur air relance, sondes authentifiees vertes —
+13-3 Arene 100 entrees/100 xuid/45 match_count, 13-2 Arene 100/100/34. Couverture 43-45 %
+sur 13-3 = saison jeune + 20 comptes no-data ; croitra par le cron quotidien. NOTE : le
+serveur local (feat/v75) sert l ANCIENNE UI — les bandeaux D2 et selecteurs couples
+arrivent au merge. Reste 13-2 -force (~1 h, creneau user) — plan item 3.4 statue [~].
+
+**Conclusion / prochaine etape** : CI verte au niveau job → demander le GO de merge au
+user (preavis deploy prod auto), merge sur main local puis push, verifs post-deploy VPS
+(restore 13-2 + backfills avec preavis), MAJ registre des reports, retrait jonction
+node_modules avant worktree remove.
+
+## [2026-09-03] CI de feat/v75 VERTE au niveau job — le lot fonds est clos
+
+**Statut** : Complete.
+
+**Resultat** : run 33752805992 sur `08255b670`, **8 jobs verts** (Go Lint, Go Lease Enforcement
+ADR 0013, Frontend TypeScript + Vite, Go Coverage + Baseline non-regression avec
+`-tags=integration` sur `./...` complet, OpenAPI Lint, Go Build + Test ubuntu ET windows, Go
+Contract Test), E2E React saute comme d habitude. `Deploy Pre-Check` et `Secrets (gitleaks)`
+verts sur le meme push. C est le critere de cloture du mode branche unique.
+
+**Il a fallu DEUX tours, et les deux causes sont instructives.**
+
+Tour 1 — rouge HERITE, pas le mien : le lot sieges du 2026-09-02 avait ajoute quatre champs de
+presence sans regenerer `openapi.yaml` ni mettre a jour la DDL du fixture `replay_facts`. Cinq
+tests. La CI etait rouge depuis la veille et le lot suivant l aurait heritee a son tour.
+
+Tour 2 — rouge de MON lot, et les deux garde-rails ont eu raison :
+
+- `TestNoNewRawStartTimeLiteral` a attrape mon litteral SQL brut dans
+  `cmd/mapfond-inventaire/lecture.go`, ecrit sous un commentaire qui citait la regle qu il
+  violait. Lecon : citer une regle dans un commentaire ne la respecte pas ; seul l appel au
+  fragment partage est cherchable, et c est ce que le ratchet compte.
+- `TestRegistreAllowlistSansEntreePerimee` a exige le retrait des cinq entrees d allowlist que
+  la publication des fonds venait de perimer. Le cliquet a fonctionne EXACTEMENT comme prevu :
+  il impose le retrait au moment meme de la publication, pas « un jour ». L allowlist tombe de
+  7 map_id / 120 matchs a 2 entrees / 2 matchs, et le test mesure 121 cartes jouees sur 123
+  avec un fond.
+
+**Ce qu il faut retenir pour le prochain lot** : la CI ne se declenche PAS sur les branches
+`wt/**` (`ci.yml` liste main, feat, feature, fix, hotfix, refactor, perf, docs, chore,
+integration). Un lot n est donc jamais CI-verifie tant qu il reste sur sa branche de travail —
+c est precisement pour cela que le rouge du 2026-09-02 avait pu vivre une journee.
+
+**Conclusion / prochaine etape** : `feat/v75` est a `08255b670`, verte, poussee. Le chantier des
+fonds de carte est clos. Rien n est deploye : le tag v7.5.0 et le merge vers `main` restent a
+faire, et c est une decision utilisateur (push sur main = deploiement prod).
+
+---
+
+## [2026-09-03] Rejeu 2D : la toile prend tout le bloc — « quand je zoome c est croppe »
+
+**Statut** : Complete (code + gates) ; merge vers feat/v75 dans la foulee.
+
+**Decision technique principale** : retour utilisateur — « c est presque parfait mais c est le
+panneau qui est etroit ? quand je zoom c est croppe alors que le bloc du replay est assez
+grand ». Diagnostic : la toile epousait le ratio de la SCENE (`renderWidth = fitWidth(scene,
+dispo, renderHeight, pad)`). Or des que la hauteur est bornee par l ECRAN — le cas courant — ce
+calcul rend une largeur INFERIEURE au bloc : la toile etait plus etroite que la carte, avec des
+marges vides de part et d autre, et l image zoomee se coupait a ses bords pendant que la place
+d a cote ne servait a rien.
+
+CE N EST PLUS LA TOILE QUI PREND LA FORME DE LA SCENE, C EST LA FENETRE QUI PREND LA FORME DE LA
+TOILE. `renderWidth` vaut desormais la largeur disponible, et `frameBounds` (neuf) elargit la
+scene sur l axe non limitant jusqu au ratio de la toile. Les bandes vides d hier deviennent de
+l espace monde : a grossissement 1 le rendu est identique, mais des qu on zoome la fenetre
+retrecit depuis ce cadre et remplit la toile entiere.
+
+LE CADRE, ET NON LA SCENE, EST DEVENU LA REFERENCE DU ZOOM (`clampCenter`, `visibleBounds`,
+`useReplayZoom`). Borner sur la scene aurait arrete le deplacement avant les bords de ce qu on
+voit, et le zoom serait reparti d une forme qui n est pas celle de la toile : le recadrage
+serait revenu au premier cran.
+
+`fitWidth` n avait plus d appelant de production : supprime avec ses tests (CLAUDE.md n7). Son
+invariant est reecrit sans lui — « a la hauteur utile, la toile a le ratio exact de la carte ».
+
+**Resultats observes** : typecheck EXIT=0 ; 168 fichiers / 2355 tests verts (5 neufs sur
+`frameBounds`, dont « zoomee, la fenetre garde le ratio de la toile — donc la remplit ») ; lint
+0 erreur. `ReplayCanvas.tsx` a 662/665.
+
+**Conclusion / prochaine etape** : gate visuel du zoom, qui etait la derniere reserve.
+
+---
+
+## [2026-09-03] Rejeu 2D : « Tout » retire du niveau de zoom — un mot au milieu d une echelle
+
+**Statut** : Complete ; merge vers feat/v75.
+
+**Decision technique principale** : le temoin de grossissement affichait « Tout » au niveau 1
+(EN : « All ») pour signifier « toute la carte est visible ». Question de l utilisateur : « ca
+veut dire quoi Tout au niveau du zoom ? » — et la question EST la reponse. Un mot au milieu d une
+echelle de nombres (1,5x / 2x / 3x) casse la serie : on ne sait plus si on lit un niveau ou un
+etat, donc on s arrete pour se le demander.
+
+Le temoin affiche desormais « 1x » comme les autres. L information perdue — « on voit tout » —
+n en est pas une : le bouton « moins » est DESACTIVE a ce niveau, ce qui dit deja qu on ne peut
+pas reculer davantage. La forme portait l information mieux que le mot.
+
+**Resultats observes** : typecheck EXIT=0 ; 138 fichiers / 2088 tests verts ; lint 0 erreur.
+
+**Conclusion / prochaine etape** : reste l arbitrage sur la largeur des colonnes du tiroir.
+## [2026-09-03] R1 lecture fiable equipement — la teleportation du translocateur EST un evenement nomme du film (type 117) ; la pose ne cree aucune entite — Complete
+
+**Question (lot R1 de `PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03.md`)** : quand un joueur
+ACTIVE le translocateur, le film enregistre-t-il quelque chose ? Instruments (recherche pure,
+gardes par `FAILLE_FILM`, skip par defaut) :
+`filmdec/faille_activation_research_test.go` (creations NEW tous archetypes lisibles, deltas
+d'objet du monde, recensement d'images-cles) et
+`filmdec/faille_activation_events_research_test.go` (canal des evenements, tetes de liste).
+
+**Decision technique principale** : chercher l'ENREGISTREMENT du film (entite datee OU
+evenement date), aucune heuristique de seuil spatial. Piege d'horloge appris : les paquets
+sont dates sur l'horloge MOTEUR ; ancres en horloge FILM decalees par l'origine (premier
+paquet du chunk 1, modele `replay.ScanFilmClockOrigin`).
+
+**Resultats** : (1) ENTITES : negatif mesure sur `1b2d9e08` — 0 creation NEW a <= 3 m des
+ancres (ti 37/38/42/43, 90 acceptees toutes a 10-40 m = churn des socles), 0 vie delta pres
+des ancres hors presence physique du poseur, recensement sans candidat corrobore. La faille
+n'est pas une entite repliquee lisible. (2) EVENEMENTS : POSITIF — type 117
+`EquipmentTranslocatorTeleportEffects` (nom exe, annexe A GRAMMAIRE_EVENTS), UN evenement par
+TELEPORTATION exécutee, ref0 = slot du bipede (porte 1 + index 8 bits base 512 + gen 2),
+emis 5-80 ms AVANT la discontinuite de position. Precision 18/18 sur 5 films (chaque
+evenement = un saut reel 3,24-25,36 m verifie a l'artefact), rappel 8/8 sur les
+teleportations mesurees ; il revele en prime des teleportations invisibles au seuil de 4 m
+(3,24 m sur `1b2d9e08`) et des usages de slots hors ancres (555 x2, 610). 3 spent sur 10
+n'ont aucun evenement (expiration sans usage, ou evenement hors tete de liste — le scanner ne
+lit que la tete, limite `zoom_events.go`). Semantique etablie : VA-ET-VIENT (la balise
+echange sa position avec le joueur).
+
+**Conclusion / prochaine etape** : rapport complet avec commandes rejouables dans
+`.ai/V7.5/replay2d/RAPPORT_R1_FAILLE_ACTIVATION_2026-09-03.md`. Brique de production
+candidate (hors R1, decision superviseur) : lecteur type `ScanFilmTranslocatorTeleports` sur
+le modele de `zoom_events.go` — datation exacte sans heuristique. Reserves ouvertes : liste
+d'evenements complete (au-dela de la tete), charge utile de `FUN_140f04fb8` (position de la
+faille probablement dedans).
+
+
+---
+
+
+## [2026-09-03] Classements — LIVRE EN PROD (v7.3.1) + ecrasement de base ANNULE sur mesure
+
+**Statut** : Complete. Chantier clos.
+
+**Decision technique principale** : le user autorisait l ecrasement de la base prod par la
+locale (« la locale est toujours plus avancee »). MESURE AVANT ACTION (conteneurs arretes,
+sauvegarde faite, diag_q compile pour Linux via docker golang:1.26-bookworm — bullseye
+donne un binaire glibc trop recent) : la premisse est FAUSSE. Prod > local sur tout ce qui
+compte : matchs 1984 vs 1959, participants 28497 vs 28291, world_player_season_stats 11377
+vs 10328, et surtout enrichissement SERVI de csrseason13-2 a 84-94 % (168/188/176 sur 200)
+contre 34 % en local. L ecrasement aurait detruit 25 matchs + 206 participations + ~1000
+lignes de stats et fait CHUTER l enrichissement de ~90 % a 34 %. ANNULE, aucune ecriture ;
+prod redemarree (downtime ~4 min), sauvegarde VPS supprimee sur consigne user.
+
+**Resultats observes** : la PROD S EST REPAREE SEULE au deploiement — binaire 12:49, cycle
+de boot, saison csrseason13-3 decouverte PAR LA REDIRECTION et scrapee : 515 lignes,
+100 % xuid sur 3 playlists. Le correctif Lot 1 valide en production sans intervention.
+Reste a la prod : enrichissement de 13-3 (0 %), que le cron fait cette nuit 04:00.
+Backfill local 13-2 : 28 joueurs restants traites en 5m41 puis « saison complete » — 34 %
+est le PLAFOND REEL (comptes desactives + horizon API), pas un manque : le bandeau chiffre
+du Lot 4 l annonce desormais au lieu d afficher un mur de tirets.
+Livraison : merge 036c47629 + badge 98bd7c143, tag v7.3.1, Release verte, CI main verte.
+
+**Conclusion / prochaine etape** : verifier le cron prod du 04/09 04:00 (log « cycle
+termine » saison 13-3 + enrichissement). Ecart residuel connu et ASSUME : prod sert 13-2
+sans xuid (pas de surlignage/Explorer sur cette archive), local a les xuid mais moins d
+enrichissement — aucune des deux n a tout ; non bloquant, la saison active est complete
+des deux cotes. Worktrees retires (jonction node_modules d abord), branche conservee.
+## [2026-09-03] R2 — Emissions i48 manquees : verdict SCANNER (77 %), correctif gate par le temoin
+
+**Statut** : Complete (lot R2 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, agent de recherche).
+**Decision technique** : confrontation strict/relache sur fenetres bornees, avec PREDICTION du
+compteur R(3) avant balayage. Cas index (1b2d9e08, slot 535) : l'emission manquante EXISTE dans
+les octets — record SANS i0, masque [17 25 48 56], chunk 9 paquet 134 bit 3055, compteur 6
+(predit) rang 11 (translocateur) ; garde fautive = ascendingFromZero (premier index = 0).
+**Resultats** : 13 sauts (12 echantillonnes + index) : 10 SCANNER / 3 FILM (77 %) en lecture
+liberale, 8/13 en conservatrice ; deux formes de records rejetees identifiees (sans-i0, masque
+dense R(64) ordre bit k = composant 63-k). Controle negatif : l'acceptation inconditionnelle
+est REFUTEE (+800 fausses acceptations sur 10 films, sauts 14->310, repetitions 0->122) — le
+correctif propose est la recuperation gatee par la fermeture des chaines de compteur (rapport §6,
+decision D1 user).
+**Livrables** : apps/go-api/internal/analysis/filmdec/i48_manques_research_test.go,
+i48_manques_parc_research_test.go (env-gates I48M_*), .ai/V7.5/replay2d/RAPPORT_R2_I48_MANQUES_2026-09-03.md.
+**Prochaine etape** : decision D1 (appliquer la recuperation gatee) ; R4 (marqueur gap) pour les
+manques FILM residuels ; figer l'ordre de bits dense sur plus de temoins avant application.
+
+
+---
+
+
+## [2026-09-03] R3 — Filtre MaxSpeedMPS=100 : cout mesure (borne a 3 echantillons), option A retenue en proposition
+
+**Statut** : Complete (lot R3 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, agent de recherche).
+**Decision technique** : re-derivation des 18 teleportations par le recensement des tetes 117
+(meme canal que R1, denominateurs identiques), decodage sans filtre en QUANTA sur fenetres
+[evenement-5s, +10s] bornees par chunks, dequantification par l'entree de CATALOGUE
+(map_quant_bounds.json) avec identification de carte par calibration contre l'artefact
+(ecart 0,004-0,030 m) — PIEGE DECOUVERT : le champ `bounds` de l'artefact est un cadrage
+d'affichage, PAS l'AABB de dequantification (1re execution compressee ~10x). Simulation
+decision par decision de la semantique exacte de DropTeleports.
+**Resultats** : la premisse « cascade jusqu'a la fin de la vie » est fausse — maxRejectStreak=3
+borne le rejet (offline_biped.go:144). 18/18 mesures : 51 rejets a tort au total (1-3 par
+saut, jamais plus), retard du 1er point produit 49 ms median / 149 ms pire ; ARTEFACT : aucun
+saut perdu, arrivee publiee +1 frame (15) ou +0 (3) = la grille de 100 ms, seul effet du
+filtre = deplacement 0,00-0,20 m du 1er point d'arrivee ; les 4 trous de frames observes sont
+des pauses d'emission du film (>= +500 ms du saut), pas le filtre. Lateral : les transitions
+de manche relocalisent tous les slots d'un coup et subissent le meme rejet (3 instants, 17
+points reels rejetes, y compris sur le temoin 7344d24f). Options : A (exemption ±200 ms d'un
+evenement 117 du meme slot) couvre 51/51, 0 fausse exemption, 0 changement temoins (0 tete
+117 / 34115 et 36203 paquets delta) ; B (reancrage corrobore, k mesure = 2 suffirait,
+profondeur arrivees 8/8 vs aberration 0) couvre autant mais MODIFIE les films sans
+translocateur (5 points sur 7344d24f) — exclu par le cahier des charges.
+**Livrables** : apps/go-api/internal/analysis/filmdec/vitesse_filtre_research_test.go,
+vitesse_filtre_outils_research_test.go, vitesse_filtre_artefact_research_test.go (env-gates
+VITESSE_*), .ai/V7.5/replay2d/RAPPORT_R3_FILTRE_VITESSE_2026-09-03.md. go vet vert.
+**Prochaine etape** : decision D2 user (proposition : option A, via la brique
+ScanFilmTranslocatorTeleports deja cadree R1 §6) ; noter que le benefice visible artefact est
+minime (<= 0,20 m) — le vrai gain est en amont (positions brutes exactes pour D4 et les
+consommateurs de ScanFilmBipedPositions).
+
+## [2026-09-03] P1 — la lecture fiable des usages d'equipement entre en production (schema 38)
+
+**Statut** : Complete (aucun commit — consolidation superviseur). Worktree
+LevelUp-wt-lecture-equipement, branche wt/lecture-equipement.
+**Decision technique principale** : les quatre decisions D1-D4 implementees SANS affaiblir une
+seule garde du balayage strict — la recuperation i48 est une POST-PASSE gatee par le temoin de
+compteur (fenetres de saut seules, formes « sans i0 » et « dense msb=true », candidat accepte
+au compteur predit, sans doublon ni nouveau saut — regle du trou unique), et l'exemption du
+filtre de vitesse est declenchee par l'EVENEMENT 117 du meme slot a ±200 ms, jamais par un
+seuil. P1.0 prealable : ordre de bits du masque dense FIGE (bit k = composant 63-k) sur 40
+temoins supplementaires / 12 films (instruments R2 rejoues), l'unique contre-signal msb=false
+est du plancher de bruit ET illisible par la forme de production (idx[0]=3). La couverture de
+tete de vie (livesFirstOffSpec) est GARDEE : mesuree saine sur 9 temoins (5 tetes combles a la
+prediction exacte, 0 repetition creee, pertes FILM laissees en residuel).
+**Resultats observes** : Dynasty 1b2d9e08 re-cuit (schema 38, artefact du worktree) —
+(a) slot 535 : taken r4 @1378 -> RECUPEREE taken r11 from=4 @1520 -> spent from=11 @1851,
+chaines closes (0 saut residuel, 0 gap) ; (b) translocations [{535,1761},{560,3261},
+{560,3419}] = 3/3 evenements du film ; (c) 7 echantillons bruts re-acceptes dans les fenetres
+(les 3+1+3 de R3), 0 hors fenetre ; les 34 114 points publies restent identiques a l'ancien
+artefact (conforme R3 : gain d'amont). Invariance D2 : 7344d24f, 0 tete 117, 188 979
+echantillons bit a bit identiques. Gates : go test filmdec+replay+replaybuild+contracttest
+exit 0 (0 --- FAIL), go vet exit 0, openapi-gen +62 l., generate-types +29 l., check-types
+exit 0, vitest replayContract 13/13. Golden reassemble (fixture REPLAYINPUTS11 + section
+TRANSLOCATEUR figee a zero avec ses compteurs).
+**Conclusion / prochaine etape** : lot P2 (web) — consommer translocations[] (eclat,
+va-et-vient, faille apres premier echange, fin mesuree), retirer riftTeleports et le repli
+spentTranslocations (kill-switch date), traiter `from` sous gap comme inconnu. La frontiere
+web est deja comble (translocations dans replayNormalize — exige par le garde de compilation,
+partie mecanique seulement). Re-cuisson de masse : decision separee apres P2.
+
+---
+
+
+## [2026-09-03] R5 — Evenements nommes des autres equipements (agent de recherche, worktree agent)
+
+**Statut** : Complete (lot R5 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, execution pilotee).
+
+**Decision technique** : reutiliser la lecture O(1) des tetes de liste etablie par R1 (aucun
+decodage de trame), croiser sur 9 films avec les verites terrain des artefacts (grappleLines,
+poses deployed, episodes camo/surbouclier) — croisement par slot (hypothese ref0 w=8 de R1)
+PUIS temps seul quand ref0 ne rend pas le porteur ; sonde de continuation sur les tetes 103
+(charge 0 bit) pour mesurer la profondeur de liste.
+
+**Resultats** : 325 160 paquets delta. Seul le translocateur (117, R1) a un signal d'usage
+fiable. Type 103 (poses deployables) : reel, date a ~100 ms, mais rappel en tete 60 % (murs
+77/129, de 0 % a 100 % selon film) et refs = objets (pas le poseur) — redondant avec le canal
+placements de prod. Type 100 (camo/OS) : 7/17 precision, rappel episodes 7/31 et 1/15 — faible.
+118 = effet de reparation (0/11 vs poses). Repulseur/grappin/propulseur : 0 tete (104/119/48/
+42/43), grappin deja couvert par grappleLines. 13 types suspects a 0 tete dont 30
+biped_equipment_activation. Sonde liste : 80/347 paquets a tete 103 portent >= 2 evenements
+(23 %), distribution des types suivants = census (auto-validation des largeurs).
+
+**Conclusion / suite** : rapport `.ai/V7.5/replay2d/RAPPORT_R5_EVENTS_EQUIPEMENTS_2026-09-03.md`
++ instruments `filmdec/equipements_events_{research,sondes_research}_test.go` (env-gates,
+skip par defaut). La liste complete (PLAN_PERCER_TRAME_FILM) reste le seul levier pour les
+deficits de rappel ; aucun equipement hors translocateur ne gagne une lecture fiable en tete.
+Aucun commit (consolidation superviseur).
+
+## [2026-09-03] P1 — revue adversariale ronde 1 : corrections F1-F6
+
+**Statut** : Complete (aucun commit). Constats recus : 8 recevables (3 du relecteur
+invariants + 5 du relecteur tests, dont 1 doublon — le paquet frontiere, trouve par les
+deux), 0 jete. Triage superviseur : 1 P0 + 6 P1 -> corrections F1-F6, zero fix opportuniste.
+**Corrections** :
+F1 (P0) garde de borne dans la forme « sans i0 » (equipment_recovery.go, walkEquipRecoveryAt)
+— la boucle ne garantissait que p+27 <= total, ascendingIndices lisait jusqu'a p+62 via
+readBitsAt (sans filet) : panic en queue de paquet. Meme patron que le strict ; repro figee
+en test (TestRecuperationBorneEnQueueDePaquet, formes count ET dense).
+F2 arithmetique modulo 8 : 5 copies -> UN helper `counterStep` (equipment_changes.go), 4
+sites migres, garde-rail grep pose (TestCounterStepLitteralUnique ; exclusions justifiees :
+fichier hote + instruments *_research_test.go figes par le protocole).
+F3 paquet frontiere : l'offset de bit voyage jusqu'a la fusion (equipRecovered.off ->
+equipEmission.off, strict = -1 documente « stricte avant recuperee a cle egale ») ET verrou
+final pruneRecoveredViolations — toute recuperee dont le RETRAIT baisse repetitions ou sauts
+de la chaine FINALE est retiree ; st.Recovered ne compte que les survivantes.
+F4 fusion extraite PURE (assembleEquipmentChanges / mergeEquipEmissions) + tests non gates
+qui tuent les mutations : ordre publie, chainage Previous (spent from=11), Gap CALCULE
+(0/3 sur saut de 4), stats finales, determinisme au paquet frontiere dans les deux ordres
+d'entree (equipment_assemble_test.go).
+F5 fixtures multi-evenements pour `covers` : deux ilots du meme slot, NON-exemption a ±201 ms
+et au milieu (tue la mutation ts[i]->ts[0]) + aberration entre deux fenetres filtree.
+F6 preuve d'invariance reelle : dropTeleportsReference = copie VERBATIM figee de la
+semantique schema 37 dans le test (DropTeleports delegue desormais a Except : se comparer a
+soi-meme ne prouvait rien) ; TestP1InvarianceSansTete117 compare a CETTE reference ; les 3
+commentaires de prod (TeleportExemptions, chronique v38, structure_test) cites corriges.
+**Resultats** : gates rejoues — go test filmdec+replay+replaybuild+contracttest exit 0
+(0 --- FAIL), go vet exit 0 ; valides gates rejoues sur l'etat corrige : recuperation Dynasty
+(slot 535 c6 r11 recovered, spent from=11, 2 recuperees, residuel 0/0/0), exemption 7
+re-acceptes / 0 hors fenetre, invariance 188 979 echantillons identiques A LA REFERENCE.
+Dynasty re-cuit : constats (a)(b)(c) INCHANGES au chiffre pres (artefact 2 251 698 octets,
+identique).
+**Prochaine etape** : ronde 2 de revue eventuelle, puis lot P2.
+
+---
+
+## [2026-09-03] Lot R6 — Ghidra sur les evenements d'equipement (agent de recherche) — Complete
+
+**Contexte** : lot R6 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03 (worktree agent, aucun
+commit — consolidation superviseur). Ghidra explicitement autorise par l'utilisateur. Aucune
+instance ne tournait : instance creee SANS GUI ni re-import via le serveur headless du plugin
+GhidraMCP sur le projet existant HI.gpr (piege machine : AF_UNIX connect casse sous ce JDK →
+`-Djdk.net.unixdomain.tmpdir=Q:\nexistepas` force le repli TCP du pipe NIO ; commande complete
+au rapport, annexe C.1). Analyse STATIQUE seulement (decompilation, xrefs, lecture memoire).
+
+**Decision technique principale** : sourcer le layout du 117 de l'exe (lecteur FUN_140f04fb8 +
+quantification FUN_14076e524/FUN_140be9b88) puis le REJOUER sur les 18 evenements reels — et
+la formule des largeurs lue dans l'exe (granularite 1/120 m, b=ceil(log2(extent*60)) cap 22/26)
+reproduit exactement les axisWidths de map_quant_bounds.json : la quantification des evenements
+est celle du catalogue de production.
+
+**Resultats observes** : (1) layout 117 VALIDE 18/18 — [R(1);R(32)=0xA1344FC2 constant] puis
+DEUX positions quantifiees, A = DEPART du saut, B = ARRIVEE (0,00-0,26 m d'ecart) ; le « mot
+0x42689F84 aligne octet » de R1 etait un artefact de fenetre decale d'un bit ; PIEGE : la porte
+region du vecteur est INVERSEE (bit 0 → index de region + bornes carte ; bit 1 → defaut
+±20000/22 bits). (2) Types muets 30/42/43/48/93/104 : emetteurs INTROUVABLES statiquement
+(negatif B2a.4 reconfirme, aucun immediat de type), reception fonctionnelle et diffusion non
+filtree par type (vtable+0x50 = 0x81/0x82 ; seul 93 conditionnel) → l'absence vient de
+l'emission ; sondage film : 0 occurrence derriere 597 tetes de liste marchees (profondeur 1).
+(3) Lateral : unit_zoom (21) EST dans la bobine (5 occ. en position 2 — E8 ne valait que pour
+les tetes) ; un type 15 Script suit chaque 117 ; action_weapon_fire 20 occ. en position 2.
+
+**Conclusion / prochaine etape** : la brique P1.3 (ScanFilmTranslocatorTeleports) peut publier
+from/to/slot/t SANS heuristique depuis le seul evenement 117 (layout au rapport
+RAPPORT_R6_GHIDRA_EVENTS_2026-09-03.md, instruments r6_*_research_test.go valides, go vet
+vert) ; la POSE reste illisible (aucun canal) ; la liste complete reste le seul chemin vers les
+types muets et vers unit_zoom.
+
+
+---
+
+## [2026-09-03] P1bis — la charge du 117 entre en production : le va-et-vient est LU, plus derive
+
+**Statut** : Complete (worktree `LevelUp-wt-lecture-equipement`, branche `wt/lecture-equipement`,
+aucun commit — relecture et commit par le superviseur).
+
+**Decision technique principale** : porter le layout valide par R6 dans le chemin de PRODUCTION
+plutot que de laisser les positions a un instrument de recherche —
+`ScanFilmTranslocatorTeleports(dir, *MapQuantEntry)` decode la charge de l'evenement 117 et rend
+les positions MONDE, et le document publie `translocations[].fx/fy/fz -> tx/ty/tz`. SCHEMA 38
+MAINTENU (aucun artefact 38 n'existe hors repertoires de test : on enrichit avant la premiere
+cuisson, on ne cree pas un 39). Les deux pieges de R6 sont dans le code ET dans les tests : porte
+de region INVERSEE (bit 1 = bornes moteur ±20000/22 bits) et dequantification aux bornes VRAIES
+du catalogue (`MapQuantEntry.Range()` + `DequantBipedAxis`, jamais le champ `bounds` d'un
+artefact, qui n'est qu'un cadrage d'affichage). DEGRADATION HONNETE assumee : carte hors
+catalogue, entree sans largeurs, region etrangere ou charge tronquee -> la teleportation se publie
+SANS positions (six champs POINTEURS, solidaires, absents en bloc), et
+`coverage.translocations.positioned` porte le denominateur.
+
+Second correctif du meme lot : le P2 de la revue ronde 2 (« verrou tete partielle »).
+`chainViolations` ignorait le compteur VIRTUEL de tete de vie, si bien que le verrou final
+retirait une recuperation de tete PARTIELLE alors qu'elle n'aggravait rien. L'origine de la
+fenetre voyage desormais avec le candidat (`equipRecovered.head` -> `equipEmission.head`) et la
+chaine s'amorce a `equipRecoveryHeadCounter` quand la vie porte une recuperee de tete — la MEME
+amorce que celle qui a servi a predire les candidats.
+
+**Resultats observes** : (1) VALIDATION DYNASTY (`TestP1bisPositionsDynasty`, gate P1_FILM +
+P1_MAP) : 3/3 evenements positionnes, ecarts aux discontinuites de piste publiees 0,00-0,10 m —
+slot 535 (2.79,152.19) -> (17.34,135.50) contre l'ancre A1 (depart 0,02 m, arrivee 0,00 m),
+slot 560 #1 arrivee 0,09 m, slot 560 #2 depart 0,03 m / arrivee 0,10 m. (2) CONTROLE ELARGI aux
+4 autres films temoins R6 (cartes calibrees) : a0c36016 4/4, f2966f08 2/2, 4577fcc4 6/6,
+faff9935 3/3 — 18/18 positionnes, la production reproduit le rapport R6. (3) NON-REGRESSION P1
+rejouee a l'identique : recuperation Dynasty 2 recuperees / 0 residuel, exemption +7 echantillons
+et 0 hors fenetre, invariance sans tete 117 sur 188 979 echantillons. (4) La mutation « amorce de
+tete jamais posee » reproduit EXACTEMENT la sonde du relecteur (out=2, Recovered=0) et le nouveau
+test la tue ; effet du correctif sur Dynasty : aucun (ses deux recuperations de tete etaient
+completes) — il ferme un cas de perte silencieuse, il ne change pas le corpus temoin.
+
+**Gates** : `CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/replay/...
+./internal/replaybuild/... ./contracttest/` — 5/5 ok, 0 `--- FAIL:` ; `go vet` exit 0 ;
+`gofmt -l internal/ contracttest/` vide ; `make openapi-gen` (+22 lignes), `make generate-types`
+(+14 lignes), `make check-types` exit 0 ; vitest replayContract 13/13. Golden reassemble par la
+recette (fixture REPLAYINPUTS11 -> 12 : la suite des sections change meme si le film de reference
+ne porte aucune teleportation).
+
+**Conclusion / prochaine etape** : P2 peut lire le va-et-vient DIRECTEMENT sur l'evenement
+(P2.2 n'a plus a deriver une discontinuite de piste) et dessiner la faille au point de DEPART
+(`fx/fy`), le translocateur etant un ECHANGE de positions. Reste inchange : la position de la
+faille AVANT le premier echange n'est portee par aucun canal (R1 §1-3, R6 §1.4), et les trois
+`spent` sans tete 117 attendent le decodage de la LISTE COMPLETE d'evenements.
+
+---
+
+## [2026-09-03] P1bis — revue adversariale ronde 1 : la propagation qui n etait couverte par rien
+
+**Statut** : Complete (worktree `LevelUp-wt-lecture-equipement`, aucun commit).
+
+**Decision technique principale** : traiter les constats de la revue par la MUTATION, pas par la
+relecture — pour chacun, jouer la mutation, verifier qu elle laisse la suite VERTE, ecrire le
+test qui la tue, rejouer. 4 constats, 0 P0 ; 3 corriges dans le lot, 1 scinde (partie hors
+perimetre consignee au plan sans toucher le code).
+
+**Resultats observes** : (1) G1 — `equipment_recovery.go:363`, la ligne `c.head = w.head` etait
+la SEULE a relier la fenetre au verrou et rien ne la couvrait : la neutraliser laissait tout
+vert (le defaut « verrou tete partielle » revenait entier). Corrige par une assertion sur
+l origine de fenetre de chaque candidat accepte (dont un cas de MILIEU a `false`) et par un test
+DE BOUT EN BOUT qui ne fabrique aucun `head` a la main (fenetre -> acceptEquipRecovery ->
+fusion) ; la mutation fait desormais tomber DEUX tests. LIMITE DITE : la mutation « amorce posee
+partout » survit — equivalence et non trou de test (l amorce ne pese que si une recuperee occupe
+l indice 0, ce qui n arrive que pour une fenetre de tete). (2) G2 — mon commentaire v12 affirmait
+« les octets figes ne bougent pas » : MESURE FAUX (98 octets hors magie). J ai mesure la cause
+directement — deux regenerations SUCCESSIVES du meme film rendent des fixtures DIFFERENTES
+(copie, `-update`, `cmp`, restauration) : le fixture n est pas reproductible, independamment de
+ce lot. Commentaire corrige ; la cause (`lessTrack` ordonne des SEGMENTS sur (naissance, slot,
+gen) avec un `sort.Slice` non stable, alors que `projectiles.go:173-175` affirme l ordre total)
+est consignee en Decouvertes, `projectiles.go` NON touche. (3) G3 — la chronique 49->50 de
+`contracttest` decrivait encore la forme d avant P1bis alors que quatre autres fichiers
+decrivaient la forme finale : « doc inversee » corrigee (`fx/fy/fz` -> `tx/ty/tz` et
+`positioned` enumeres). (4) G4 — la branche `br.Remaining() < 0` de `decodeTranslocJump` etait
+INATTEIGNABLE et son commentaire lui pretait une protection tenue ailleurs : code mort supprime,
+vraie garde gardee et documentee comme unique, et le test de troncature rendu discriminant (coupe
+CALCULEE du layout, entre les deux vecteurs) — retirer la vraie garde fait maintenant tomber
+`TestDecodeTranslocJumpDegradation`.
+
+**Gates** : filmdec + replay + replaybuild + contracttest `-count=1` : 5/5 ok, 0 `--- FAIL:` ;
+`go vet` exit 0 ; `gofmt -l internal/ contracttest/` vide ; `make check-types` exit 0.
+Validation Dynasty INCHANGEE : 3/3 positionnes, ecarts 0,00-0,10 m (slot 535 depart 0,02 /
+arrivee 0,00 ; slot 560 #1 arrivee 0,09 ; slot 560 #2 depart 0,03 / arrivee 0,10) ; controle
+elargi inchange, 18/18 sur les 5 films temoins.
+
+**Conclusion / prochaine etape** : lot P1bis mergeable de mon cote (aucun commit pose). Le seul
+report est G2 (b) — l ordre non total de `lessTrack` — consigne en Decouvertes avec sa mesure :
+tant qu il tient, un diff de fixture ne distingue pas une regression du bruit d ordonnancement.
+
+---
+
+
+---
+
+## [2026-09-03] R7 : la liste complete d evenements se marche — et le repulseur n est pas dans le film
+
+**Statut** : Complete (recherche ; aucun fichier de production modifie).
+
+**Decision technique principale** : commande utilisateur — « on ne l arrete pas tant qu on n a
+pas le propulseur et le repulseur ». Le verrou etait la LARGEUR de charge par type : sans elle
+on ne sait pas ou commence l evenement suivant, donc on ne lisait que la TETE de chaque paquet.
+Il a saute par derivation systematique depuis l executable : domaines des references extraits
+mecaniquement (30 thunks — dix lectures de R6 corrigees au passage), largeurs derivees des
+lecteurs decompiles sous une regle unique (le flux porte son compteur de bits consommes).
+
+**Resultats observes** : 96,5 % des listes marchees integralement (91 845/95 133 ; 12 films,
+430 046 paquets delta, 236 321 evenements traverses). Cadrage PROUVE et non suppose : oracle de
+trame a facteur 7,8 contre temoin decale de +3 bits (seuil 3 ecrit d avance), et les 18
+evenements 117 de R6 retrouves au metre avec leur Script suivant 18/18. VERDICT : repulseur
+(104) et propulseur (42, 43) ABSENTS du film — la preuve tient sur la POSITION 1 d une liste,
+dont le cadrage est certain : les temoins positifs y sont tous a hauteur de leur part, les
+cibles y sont a ZERO pour 42, 30 et 16 attendues. Les 108 occurrences derriere une tete sont de
+la derive (reference constante 4224). Seule trace de la famille : 105 EquipmentObjectKnockedBack
+(l objet pousse), 8 tetes.
+
+**Ce que je n ai PAS verifie, et je le dis** : la prediction ecrite avant mesure (« les cibles
+tombent a zero une fois les predecesseurs fautifs corriges ») est FAUSSE en l etat — apres
+correction partielle du type 5 les occurrences montent (104 : 108 -> 123). Le verdict ne repose
+pas sur elle mais sur le test de position 1.
+
+**Conclusion / prochaine etape** : le chantier equipement est CLOS cote lecture — il n y a rien
+a lire pour le repulseur et le propulseur, et c est desormais etabli sur la liste entiere, plus
+seulement sur les tetes. Deux suites au plan : (1) la grammaire de PRODUCTION
+`lot1DecodeDamageAftermath` est mesuree DOUTEUSE par le meme oracle et touche 872 k evenements
+de degats deja exploites — chantier a ouvrir ; (2) la liste complete est un canal neuf (x2,5
+d evenements lisibles), a exploiter quand un besoin le justifiera.
+
+---
+
+## [2026-09-03] R8 — L'usage du PROPULSEUR est dans le film : i57/i59, tag 1 — Complete
+
+**Statut** : Complete (retro-ingenierie, lecture seule, aucun commit, aucune DuckDB ouverte).
+Rapport : `.ai/V7.5/replay2d/RAPPORT_R8_USAGE_REPULSEUR_PROPULSEUR_2026-09-03.md`.
+Instruments : 9 fichiers `apps/go-api/internal/analysis/filmdec/r8_*_research_test.go`, gardes
+par `R8_ARTIFACTS` / `R8_FILMS` / `R8_BOUNDS` / `R8_IDS`, sautes par defaut.
+
+**Decision technique principale** : cesser de deviner quel composant porte l'usage, et partir
+d'une ANCRE avec un TEMOIN POSITIF. Le grappin fournit les deux — ses instants d'usage sont
+certains (`ScanFilmGrappleReads`) et son canal est connu : le corps `tag == 3` du composant
+i59 `biped-spartan-ability-non-predicted-state`. Or ce tag est un R(2) : il a QUATRE valeurs,
+et la production n'en exploitait qu'une. Croiser le TAG avec le rang de capacite porte (i48,
+lu dans la MEME vie et anterieurement a l'instant) et avec un oracle de vitesse a repondu.
+
+**Resultats observes** :
+- PROPULSEUR TROUVE — `tag == 1` d'i57/i59. Sur les 4 films de famille A : 0,361 impulsion par
+  vie de propulseur (22 sur 61) contre 0,000 pour le grappin (0 sur 132 vies — il a son propre
+  tag), le detecteur, le mur, l'ecran occultant et le champ de reparation. Pic de vitesse
+  median 6,2 a 8,8 m/s contre 2,9 a 3,6 pour un instant tire au hasard dans la meme vie. Les
+  desers sont DEJA en production (`spartanAbilityHook`, `abilityNonPredictedHook`) : aucune
+  grammaire a porter, seulement un scan et une jointure.
+- REPULSEUR NON TROUVE — 1 impulsion sur 90 vies (0,011) alors qu'il est PLUS porte que le
+  propulseur (90 vies contre 61). Negatif mesure, pas suppose.
+- PISTE A REFUTEE — les poses `equipmentPlacements` `deployed` de ces deux familles ne datent
+  aucun geste (oracle physique avec temoin positif grappin ; zero `spent` i48 en coincidence
+  sur 76 poses).
+- PIEGE CONSIGNE — `WorldObjectPrecision` est un global de paquet que seul
+  `replay.installWorldObjectPrecision` pose : un instrument qui l'oublie rend 13 poses au lieu
+  de 537 sur `00ba2e1c`, SANS aucune erreur. Il s'identifie sans base de donnees
+  (`DetectI0Layout` + `map_quant_bounds.json`, les largeurs d'axe servant de cle).
+
+**Conclusion / prochaine etape** : livrer le propulseur (un `ScanFilmAbilityImpulses` calque sur
+`ScanFilmGrappleReads`, tag 1 au lieu de 3, joint au rang i48 par vie) ; pour le repulseur,
+trois portes chiffrees au par. 11 du rapport, la plus prometteuse etant la branche `tag == 3`
+d'i57 (`consumeSpartanAbilityTag3`), portee partiellement car gatee sur un octet d'etat runtime.
+
+---
+
+
+---
+
+## [2026-09-03] Creneaux Theater pour la verite terrain propulseur/repulseur — l'horloge du visionneur est CALEE, et deux canaux se recoupent 9 fois sur 9 — Complete
+
+**Ce qui etait demande.** Transformer le resultat de R8 (le propulseur est l'impulsion
+`tag == 1` d'i57/i59) en une liste de creneaux qu'un humain peut aller regarder dans le
+Theater du jeu, pour etablir la verite terrain — le report n°2 du registre R8.
+
+**Le verrou etait le TEMPS, et il est leve.** Un creneau faux en temps est inutilisable. La
+conversion retenue est `msEcoule = (tsUS - tsUS du premier paquet du chunk 1) / 1000`, et
+elle est CONTROLEE et non supposee : le manifeste du film (`data/cache/film_manifests/`)
+publie `start_ms` par chunk, chunk 1 a zero — c'est l'horloge du jeu lui-meme. Confrontation
+chunk par chunk sur **23 films** : ecart maximal **4 a 17 ms** (21 a 38 chunks par film).
+Second temoin : le coup d'envoi detecte tombe entre 0:26 et 0:40 sur presque tous les films
+(frame 226-229 apres le premier paquet de position — soit les 22,7 s mesurees par
+`t0_film.go`).
+
+**LE RESULTAT INATTENDU, et c'est le plus fort du lot : deux canaux independants datent le
+meme geste a une seconde pres, 9 fois sur 9.** Le canal i48 publie des `spent` (« il a
+consomme son equipement ») ; sur les dix films decodes, les NEUF `spent` de propulseur
+tombent tous a 0 ou 1 seconde d'une impulsion `tag == 1` du meme joueur. Cela valide d'un coup
+le canal de R8, la jointure d'identite slot x frame, et la conversion de temps de bout en
+bout. Deux de ces neuf sont de JGtm lui-meme (`1cd3848a` 2:15/2:16, `3ba5a548` 3:09/3:10) :
+ce sont les deux creneaux a verifier en premier.
+
+**Le propulseur, chiffre.** Dix films ou JGtm porte le propulseur, decodes un par un :
+623 impulsions au total, **146 de JGtm**, dont **89 avec la lecture stricte « il portait le
+propulseur juste avant »**. Aucun film muet (le plus pauvre, `9e8fb31b`, rend 22 impulsions
+dont 2 de JGtm — il sert de contre-test au releve). Onze creneaux retenus sur neuf films.
+
+**Le repulseur reste sans signal, et le document le dit a chaque ligne.** Trois sources de
+CANDIDATS, jamais presentees comme des detections : (a) 9 candidats physiques — porteur de
+repulseur, victime a moins de 6 m projetee de 2-3 m/s a 6,5-11 m/s en s'ecartant, le porteur
+la visant (colonne « vise » : 8 des 9 entre 0,89 et 1,00) ; **3 d'entre eux ont JGtm pour
+victime** ; (b) 5 fenetres tirees des `spent` de repulseur (le parc entier n'en porte que 7,
+dont 2 dans un film sans horloge calee, non datables et dits comme tels) ; (c) les 52 vies ou
+JGtm porte lui-meme le repulseur, avec leur plage.
+
+**Un detail de convention mesure au passage** : le cap `h` des points de piste est compte
+depuis +X en sens antihoraire. Verifie en confrontant le cap au deplacement reel des joueurs
+en course (413 pas a plus de 3,5 m/s sur `af3500aa`) : `(cos h, sin h)` rend un cosinus moyen
+de 0,74, les trois autres conventions -0,09 a 0,08.
+
+**Ce que ce lot NE dit pas.** Le rappel n'est toujours pas etabli (c'est justement l'objet du
+releve demande). Et un doute residuel est ECRIT dans le document : le Theater n'a pas pu etre
+ouvert pour lire l'heure affichee a l'ecran ; s'il affichait le chrono du match plutot que le
+temps d'enregistrement, tout le tableau serait decale d'un bloc constant par film — la colonne
+« coup d'envoi » permet a l'utilisateur de le trancher au premier creneau.
+
+**Livrables.** `.ai/V7.5/replay2d/CRENEAUX_VERIFICATION_EQUIPEMENT_2026-09-03.md` (document
+destine a l'utilisateur : les 11 creneaux mesures, les 14 candidats, le mode d'emploi et le
+formulaire de releve) et l'instrument
+`apps/go-api/internal/analysis/filmdec/r9_creneaux_research_test.go` (`TestR9Horloge`,
+`TestR9CreneauxPropulseur` — gardes par environnement, sautes par defaut, `LockProcessDecode`
+et `WorldObjectPrecision` tenus, aucune ecriture, aucune DuckDB ouverte, aucun commit).
+
+**Prochaine etape.** Le releve utilisateur. La ligne la plus rentable : une seule vie de la
+partie 2.c regardee en entier, ou l'on note chaque declenchement du repulseur — c'est le seul
+chemin vers un verdict sur son enregistrement.
+
+
+---
+
+## [2026-09-03] R9 — Le REPULSEUR : les trois portes sont fermees, le negatif devient structurel — Complete
+
+**Statut** : Complete (retro-ingenierie STATIQUE, lecture seule, aucun commit, aucune DuckDB
+ouverte, Ghidra headless arrete en fin de lot). Branche `wt/r9-repulseur` (depuis
+`wt/lecture-equipement`). Rapport : `.ai/V7.5/replay2d/RAPPORT_R9_REPULSEUR_2026-09-03.md`.
+Instruments : 6 fichiers `apps/go-api/internal/analysis/filmdec/r9_*_research_test.go`, gardes
+par `R8_FILMS` / `R8_BOUNDS` / `R8_IDS`, sautes par defaut, `gofmt`/`go vet` verts.
+
+**Decision technique principale** : ne juger AUCUN canal sans un temoin positif inscrit AVANT
+la mesure, et publier le denominateur de bruit de chaque instrument. Deux idees ont paye plus
+que les portes elles-memes : (1) le bit `a` de la branche `tag == 3` d'i57 se DERIVE de
+l'issue de `walkRecordTo` (le deser rend false ssi `a != 0`) — aucune copie de la marche de
+production n'a ete necessaire ; (2) le recensement du masque de ti=37 porte son propre etalon
+de bruit, puisque l'archetype n'a que 31 composants et que tout comptage sur i31..i63 est une
+fausse reconnaissance.
+
+**Resultats observes** :
+- PORTE (a) FERMEE — le `tag == 3` d'i57 est le GRAPPIN predit : sur 4 films, 100 % des
+  lectures passent par `a == 1` (la moitie PORTEE est morte) et 90 a 100 % tombent sur le rang
+  du grappin, 0 a 7 % sur celui du repulseur ; oracle du voisin SOUS le temoin aleatoire.
+  Report 3 du registre R8 solde.
+- LE TAG EST SATURE — les quatre valeurs du `R(2)` sont attribuees (0 et 2 = deux etats de
+  repos avec la MEME distribution de rangs, 1 = propulseur, 3 = grappin). Aucune place libre.
+- PORTE (b) FERMEE DEUX FOIS — la jointure d'identite par les handles d'i26 plafonne a 3,2 %
+  (contre 13,2 % par les poses : i26 n'emet que 170 fois par film) ; et le canal d'etat de
+  ti=37 ne transmet RIEN au-dessus du bruit — `equipment-activated` a 204 annonces pour un
+  plancher de faux positifs mesure a ~210, `equipment-control-signal` (i22, decouvert ce lot,
+  jamais lu, `R(4)`) a 126, et ses 126 valeurs sont UNIFORMES sur les 16 possibles, une par
+  entite. Report 4 du registre R8 solde par la negative.
+- i54 FERME SUR LES DEUX ORACLES — R8 ne l'avait juge qu'a la vitesse, que le repulseur ne
+  produit pas. Rejuge a l'IDENTITE : aucune cellule au-dela de 27 % sur le rang du repulseur.
+- PORTE (c) FERMEE, DANS SA FORME LA PLUS FORTE — au lieu d'instruire i56 seul, recensement du
+  masque bipede par rang porte, SANS ancre (celui de R8 dependait d'une bouffee de vitesse que
+  le repulseur ne produit pas). Le recensement DETECTE le surbouclier (i5 a 0,561 sur son rang
+  contre 0,215 ailleurs) et le grappin (i59 a 0,023, i56 a 0,004) ; le repulseur, rang le mieux
+  echantillonne du film avec 36 939 records, n'est le maximum d'AUCUN des 64 composants. Le
+  temoin PRE-INSCRIT (i28 x camouflage) a echoue et les deux temoins qui passent sont
+  POSTERIEURS : le negatif est publie avec cette reserve ecrite.
+- LA FACE VICTIME NE MONTRE RIEN, ET LA MESURE EST SOUS-PUISSANTE (dit) — les voisins d'un
+  porteur de repulseur ne sont pas pousses plus que ceux d'un temoin ; mais le temoin positif
+  (le propulseur, sur sa propre poussee) ne separe qu'a 1,4-1,8. Corollaire : l'oracle physique
+  qui servait a R8 a fermer sa « piste A » est aveugle au repulseur — la piste A tient encore,
+  mais sur son argument i48 seul, pas sur deux.
+- GHIDRA — `KnockbackTargetComponent` existe dans le moteur et n'est PAS dans les 64 composants
+  repliques du bipede (la liste est pleine, borne dure du masque). `RepulsorField` n'est qu'un
+  nom dans la table des equipements. Cinq composants de ti=37 sont lus-jetes par
+  `consumeByName`, dont i22 et i28.
+- DECOUVERTE A CONSIGNER — le reconnaisseur de records ti=37 a un plancher de faux positifs de
+  ~210 par index et par film ; tous les comptes ti=37 publies (dont les « 856 lectures de
+  charges » et les « 45 baisses » de R8) doivent etre relus avec ce plancher.
+
+**Conclusion / prochaine etape** : ce que le visionneur Theater emploie n'est PAS etabli, et
+c'est ecrit tel quel. Deux pistes chiffrees au par. 9 du rapport : (1) porter la grammaire du
+type d'evenement 14 `PlayEffectOnObject`, PRESENT dans les films et non porte (il bloque
+48 listes sur 12 films, R7) — c'est la forme meme d'un effet rejouable ; (2) instruire les
+composants d'etat de ti=37 dans les IMAGES-CLES, ou ils sont peut-etre transmis alors qu'ils
+ne le sont pas dans les deltas. Et surtout : **le report le plus rentable est la VERITE TERRAIN
+Theater du repulseur** — huit canaux ont ete juges sans jamais disposer d'un seul instant
+d'usage certain, alors que le grappin en a 1 101 et que c'est pour cela qu'on l'a trouve.
+
+---
+
+
+## [2026-09-03] P3 — L'usage du PROPULSEUR entre en production (schema 38 enrichi)
+
+**Statut** : Complete (lot P3 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, worktree
+`LevelUp-wt-lecture-equipement`, branche `wt/lecture-equipement`, aucun commit — relecture
+superviseur).
+
+**Decision technique principale** : publier au document de rejeu ce que R8 a mesure et que R9
+a borne — l'IMPULSION de capacite (corps de tag externe `R(2) == 1` des composants bipede i57
+`biped-spartan-ability` et i59 `-non-predicted-state`, le MEME dont le tag 3 porte deja le
+grappin) — en resolvant l'identite par le canal i48, **rang lu dans la MEME VIE et
+ANTERIEUREMENT**. Aucune grammaire nouvelle : les deux deserialiseurs publiaient deja le tag
+depuis le 2026-08-16, seul le croisement manquait.
+
+**Le point de conception qui commandait tout le lot** : NE PAS ECRIRE LE RANG DU PROPULSEUR
+DANS DU GO. Il vaut 5 en famille A et 21 en famille B — un litteral en dur aurait rendu le
+calque muet sur l'autre famille, exactement le piege qui avait rendu le translocateur muet hors
+famille A. La reponse est allee jusqu'au bout : le manifeste du titre gagne (1) une `family`
+par rang de palette (`[ability_palettes.ranks]`, validee contre la liste FERMEE
+`equipmentFamilies` deja en place — une faute de frappe est refusee, pas absorbee), et (2) la
+declaration des familles dont l'usage est MESURE sur ce canal (`[ability_impulses] families =
+["thruster"]`, refusee si aucun rang ne nomme la famille citee). **Resultat : zero litteral
+d'equipement cote Go, et le repulseur reste dehors sans qu'on l'ait ecrit dans le code.**
+
+**Resultats observes** :
+- TEST D'ACCEPTATION contre la VERITE TERRAIN (film `1cd3848a`, releve Theater utilisateur du
+  03/09) : la chaine de production rend **5 impulsions de propulseur pour JGtm a 1:52, 1:55,
+  2:03, 2:05, 2:15** — precision 5/5, rappel 5/5 contre le releve (1:51, 1:54, 2:03, 2:05,
+  2:14), ecart <= 1 s. Instrument gate `P3_FILM` + `P3_BOUNDS`.
+- ECART DIT, NON MASQUE : sur TOUT le film la chaine rend **9** impulsions de JGtm (2:42, 2:47,
+  5:21, 5:34 en plus des cinq). Ce n'est pas une contradiction — la fiche de creneaux ne
+  demandait a l'utilisateur de regarder QUE la salve 1:52-2:15, et la mesure du lot precedent
+  comptait deja 14 impulsions de JGtm sur ce film. Le test controle donc la FENETRE DU RELEVE
+  et journalise les quatre autres comme ni confirmees ni infirmees.
+- Film entier `1cd3848a` : 123 lectures -> 62 gestes (le rapport de creneaux comptait 62) ->
+  33 publiees, 18 sans identite, 11 famille non mesuree.
+- Film de reference du golden `000d5950` (famille B) : 86 lectures -> 43 gestes -> 37 publiees,
+  4 sans identite, 2 famille non mesuree — a comparer aux 43 `tag==1` dont 38 sur le rang 21
+  que R8 par. 8.5 y avait mesures. Le golden exerce donc le calque pour de vrai.
+- Mutations rejouees et TUEES sur les deux gardes qui portent la jointure : sans l'anteriorite,
+  et sans le decoupage par vie, un test tombe a chaque fois (le second avec son controle
+  POSITIF sur la meme entree).
+- Gates : `go test` filmdec + replay + contracttest + replaybuild + mappings + replaylabels
+  exit 0 (0 `--- FAIL:`), `go vet ./internal/analysis/...` exit 0, `gofmt -l internal/
+  contracttest/` vide, `make check-types` exit 0, vitest `replayContract` 13/13.
+
+**Ce que le lot NE dit pas, et le dit** : le calque NE COUVRE PAS tous les equipements, et sa
+couverture le publie (`otherFamily`). Le REPULSEUR n'est pas dans ce canal — negatif MESURE
+(R8 par. 8.7, R9 : trois portes fermees), pas une lacune d'implementation. Le RAPPEL reste un
+plancher hors de la fenetre temoin : 18 gestes sur 62 n'ont aucun rang i48 dans leur vie (le
+canal d'identite n'emet qu'environ une fois par vie), et le detecteur de records bipede ignore
+toujours les masques denses.
+
+**Conclusion / prochaine etape** : le schema 38 est reste 38 (aucun artefact 38 hors
+repertoires de test : on enrichit avant la premiere cuisson plutot que d'empiler un 39) et
+porte desormais QUATRE choses. Suite : lot P2 (consommation web) — la frontiere est comble par
+ce lot, il reste le rendu. `make go-api-lint` etait DEJA rouge avant P3 sur 4 constats
+anterieurs (consignes au plan, Decouvertes) ; les 2 que P3 avait introduits sont corriges.
+
+## [2026-09-03] P3 — revue adversariale ronde 1 (3 constats recevables, 20 conditions tiennent)
+
+**Statut** : Complete (worktree `LevelUp-wt-lecture-equipement`, aucun commit).
+
+**Ce que la revue a tenu** : 20 conditions verifiees — resolution de famille par manifeste et
+ses trois refus, equivalence terme a terme de `rankInLife` avec l'instrument d'origine
+(`r8RankInLife`), somme de la couverture, cohabitation avec le grappin (golden +40/-0, section
+grappin identique au bit pres), chronique v38 sur les quatre surfaces, et le test d'acceptation
+qui echoue bien sur un releve non rendu ET sur une impulsion en trop dans la fenetre.
+
+**Decision technique principale (H2)** : un compteur DISTINCT pour « la chaine d'attribution
+n'a pas pu tourner ». Trois pieces la conditionnent (palette du match classee, familles mesurees
+declarees par le titre, vies decoupees) ; il en manque une et TOUS les gestes tombaient jusqu'ici
+dans `otherFamily` — c'est-a-dire annoncaient « ils viennent d'un AUTRE equipement » alors
+qu'AUCUNE famille n'avait jamais ete resolue — ou dans `noIdentity`, qui affirme « le rang n'a
+pas ete lu dans la vie » la ou il n'y a pas de vie. Les deux se lisaient comme des mesures.
+`coverage.abilityImpulses.noResolver` dit desormais ce qui s'est passe. C'est exactement la
+doctrine du chantier : publier l'incertitude, jamais la deguiser en mesure.
+
+**Le constat le plus grave etait un test, pas du code (H1)** : `ability_impulses_test.go`
+injectait `abilityImpulseTag` lui-meme et verifiait qu'une des quatre valeurs sortait — il
+passait donc pour N'IMPORTE QUELLE valeur du constant. Mutation reproduite : `1 -> 3` (le tag du
+GRAPPIN) laissait TOUT vert, et le document aurait publie les corps d'accroche de grappin sous
+`family:"thruster"`. Les quatre valeurs sont maintenant ecrites A LA MAIN avec leur verdict, sans
+jamais lire la constante de production. Second trou du meme constat : `emit` extrait d'`account`
+pour fixer que i57 ET i59 contribuent — neutraliser i57 faisait tomber `coverage.reads` de 86 a
+43 dans le document servi, en silence.
+
+**Resultats observes** :
+- Trois mutations rejouees et TUEES : tag 1->3 fait tomber TROIS tests (avant : zero) ;
+  publication d'i57 retiree en fait tomber un ; `noResolver` retire en fait tomber un ; fenetre
+  de repliement ancree sur la premiere lecture au lieu de glisser en fait tomber un (H3 — la
+  regle n'etait pinnee par RIEN, golden compris ; le nouveau cas separe les deux regles par
+  construction : quatre lectures a 0,9 s couvrant 2,7 s rendent 1 geste, pas 2).
+- Test d'acceptation `1cd3848a` REJOUE, chiffres INCHANGES : 123 lectures -> 62 gestes ->
+  33 publiees, 18 sans identite, 11 famille non mesuree, **0 attribution indisponible** (la
+  palette de ce film est classee), les 5 impulsions de JGtm de la fenetre toujours a 1:52, 1:55,
+  2:03, 2:05, 2:15.
+- Golden reassemble : la ligne de couverture porte le sixieme compteur, les 37 impulsions
+  publiees de `000d5950` sont inchangees. Schema TOUJOURS 38.
+- Gates : 7/7 paquets ok (0 `--- FAIL:`), `go vet` 0, `gofmt -l internal/ contracttest/` vide,
+  `make check-types` 0, vitest replayContract 13/13, openapi + generated.ts regeneres.
+  `make go-api-lint` : memes 4 constats ANTERIEURS, aucun neuf.
+
+**Conclusion / prochaine etape** : P0+P1 de la ronde = 3 -> 0, lot mergeable. Suite : P2
+(consommation web), la frontiere est deja comble.
+
+---
+
+## [2026-09-03] Lot R11 — Le canal des CHARGES est trouvé ; il ne porte pas le répulseur
+
+**Statut** : Complété (rétro-ingénierie, aucun code de production touché, aucun commit).
+
+**Contexte** : l'utilisateur a livré la première ancre NUMÉRIQUE du répulseur (film `72b0a25e` :
+ramassage à 2:46 avec 3 CHARGES) et validé la mesure du propulseur (5 usages relevés = 5
+impulsions mesurées sur `1cd3848a`).
+
+**Décision technique principale** : lire les VALEURS du composant bipède i56
+`biped-spartan-ability-energy` — jamais fait : R9 ne l'avait jugé que sur un recensement
+d'ANNONCES et avait écrit lui-même la limite de cet instrument. Le quartet haut de sa valeur
+7 bits est un COMPTEUR DE CHARGES ENTIÈRES ; sa décroissance date chaque usage.
+
+**Résultats observés** :
+- Série 4, 3, 2, 1, 0 pour JGtm sur `1cd3848a` aux instants 1:52 / 1:55 / 2:03 / 2:05 / 2:15 —
+  exactement les 5 usages du relevé Theater (précision 5/5, rappel 5/5).
+- Témoins positifs pré-inscrits : 52 baisses sur 54 coïncident avec une impulsion i57/i59 ;
+  36 accroches de grappin sur 36 sont appariées (témoin décalé de 5 s : 2/36).
+- Couverture des deux familles de palette : propulseur rang 21 (famille B, `1cd3848a`) ET
+  rang 5 (famille A, `00ba2e1c`, `084a804d`) — résolution par le NOM de la palette, jamais par
+  un numéro figé.
+- RÉPULSEUR : 218 vies, 111,7 minutes de port sur 11 films, ZÉRO baisse attribuable. Dans les
+  6 films sans grappin ni propulseur, i56 est lu 485 fois et jamais armé. Deux porteurs dont
+  le film annonce lui-même la consommation de la dernière charge (`spent` depuis le rang
+  répulseur) ne produisent aucune lecture armée.
+- Faux positifs de mon propre instrument (8 baisses dites « répulseur ») abattus par
+  `grappleLines[]` : c'étaient des accroches de grappin nommées par une lecture i48 vieille de
+  1 à 3 minutes. D'où la colonne `dont_<20s` (fraîcheur du rang attributeur).
+- Réfutés aussi : le compteur R(3) d'i48 (compteur de changements : 5, 6, 7, bouclage) et
+  l'entité ti=37 portée (l'entité du répulseur, identifiée par le handle i26 à l'instant de
+  l'ancre, n'émet aucun record ; le champ i27 ne rend que 6,9 % de valeurs dans 0..8).
+- Correction à la fiche de créneaux : sur `72b0a25e` la fenêtre de port est 2:47 → 2:52 (i48
+  et i26 concordent), pas 2:47 → 3:59.
+
+**Conclusion / prochaine étape** : le négatif du répulseur devient structurel ET ancré — le
+canal des charges existe, il est validé par deux vérités terrain indépendantes, et il ne porte
+que les capacités qui déplacent leur porteur (grappin `e2`, propulseur `e0`). Prochaine piste :
+le type d'événement 14 `PlayEffectOnObject` (grammaire non portée). Acquis livrable au
+passage : i56 date les usages de grappin et de propulseur avec un meilleur rappel que
+`grappleLines[]`. Détail complet et commandes rejouables :
+`.ai/V7.5/replay2d/RAPPORT_R11_REPULSEUR_CHARGES_2026-09-03.md`.
+
+---
+
+
+## [2026-09-03] P3 — revue ronde 1, seconde passe (3 constats recevables, 18 conditions tenues)
+
+**Statut** : Complete (worktree `LevelUp-wt-lecture-equipement`, aucun commit).
+
+**Ce que la revue a tenu** : 18 conditions — resolution de famille par manifeste dans ses QUATRE
+cas, FRAICHEUR du rang doublement bornee (`rankInLife` + `buildLifeSpans` : une lecture de trois
+minutes n'est acceptee que si la vie a dure trois minutes sans nouvelle emission), coherence des
+six compteurs, cohabitation avec le grappin (diff du golden strictement additif, section grappin
+inchangee), ordre i57-avant-i59, absence de tout litteral d'equipement cote Go, non-circularite
+de deux tests cles. Le relecteur note que `NoResolver`, ajoute a la passe precedente, avait ferme
+pendant sa relecture le defaut de conflation qu'il avait isole.
+
+**Decision technique principale (H1)** : un balayage qui n'a JAMAIS TOURNE ne publie plus de
+couverture. Les quatre portes de `ScanFilmAbilityImpulses` rendent une erreur, `BuildFromFilm`
+degrade en `nil, AbilityImpulseStats{}` — et l'artefact affirmait alors « le balayage a tourne,
+le composant est la, personne ne s'en est servi » sur un film ou rien n'avait ete lu. C'est la
+MEME classe que le defaut ferme par `NoResolver` a la passe precedente, un cran plus haut : la
+conflation ne portait plus sur l'attribution mais sur la LECTURE. La reponse est le patron que
+le meme fichier documente pour l'inventaire (`attachInventoryCoverage` : « Publier {0,0,0,0}
+affirmerait "lecture faite, zero trouve", qui est le contraire de ce qui s'est passe ») : un
+temoin `Scanned` pose par le balayage sur ses DEUX sorties abouties (`Absent` compris — « aucun
+composant declare » EST un resultat de balayage), et une garde de publication. Le temoin voyage
+dans le fixture golden, sans quoi le fixture aurait reintroduit le zero muet.
+
+**Le point que le relecteur a eu raison de remonter (H2)** : `keepAbilityImpulsesOfPublishedTracks`
+rejouait le MEME predicat que le constructeur sur les MEMES `doc.Tracks`, a la ligne suivante —
+il ne pouvait jamais rien retirer. Et son commentaire etait faux DEUX FOIS (il n'y a pas de
+nommage de vies entre les deux passes ; les tirs et les grenades ne font qu'UNE passe). La
+seconde passe et son helper sont supprimes ; le filtre reste dans le constructeur, ou il peut
+etre COMPTE (`Unpublished`), et le commentaire dit maintenant que les deux places sont admises
+mais jamais les deux ensemble.
+
+**Resultats observes** :
+- Mutation H1 rejouee et TUEE : garde forcee a `true` -> `TestBuildFromPositions_
+  PasDeCouvertureQuandLeBalayageNAPasTourne` tombe. Le test separe les TROIS zeros (echec de
+  balayage / balayage sans composant / balayage sans impulsion), qui ne disent pas la meme chose.
+- H2 : plus aucun appelant du helper (verifie par grep), suppression complete.
+- H3 : l'en-tete de `renderAbilityImpulses` annoncait « les QUATRE refus » quand la ligne en
+  imprime CINQ depuis `NoResolver` — doc inversee sur le fichier meme dont le role est de dire
+  ce que le golden verrouille. Corrigee, les cinq enumeres.
+- Test d'acceptation `1cd3848a` REJOUE, chiffres INCHANGES : 123 lectures -> 62 gestes ->
+  33 publiees, 18 sans identite, 11 famille non mesuree, 0 attribution indisponible ; les
+  5 impulsions de JGtm de la fenetre toujours a 1:52, 1:55, 2:03, 2:05, 2:15.
+- Golden `000d5950` : ligne de couverture et 37 impulsions publiees INCHANGEES (le temoin
+  `Scanned` est une donnee d'ENTREE, pas du document — `openapi-gen -check` le confirme : le
+  contrat servi n'a pas bouge).
+- Gates : 7/7 paquets ok (0 `--- FAIL:`), `go vet` 0, `gofmt -l internal/ contracttest/` vide,
+  `make check-types` 0, `openapi-gen -check` a jour. `make go-api-lint` : memes 4 constats
+  ANTERIEURS, aucun neuf.
+
+**Conclusion / prochaine etape** : constats de la ronde = 3 -> 0 sur les deux passes, lot
+mergeable. Suite : P2 (consommation web), la frontiere est deja comble.
+
+---
+
+## [2026-09-03] P2 — Web : la faille du translocateur se lit dans l'evenement, plus jamais dans une piste
+
+**Statut** : Complete (gates verts ; reste le gate VISUEL utilisateur sur un film re-cuit temoin).
+
+**Decision technique principale** : le client cesse de DEDUIRE les usages du translocateur et
+lit le calque `translocations[]` (schema 38, evenement 117 du film). Deux tranchages, tous deux
+demandes par le lot :
+
+1. `riftTeleports` — l'heuristique spatiale (saut > 12 m en < 3 images, croise avec le porteur
+   et les portes de carte) — est SUPPRIMEE avec ses cinq seuils, son type `RiftTeleport`, son
+   champ `viaRift` et ses tests. Motif : c'est precisement ce que la doctrine du chantier
+   abandonne (tout seuil de distance invente une regle ; le corpus porte un saut de 3,24 m
+   qu'aucun seuil ne voit), et son rendement etait de 4 detections sur 39 films.
+2. `spentTranslocations` — le `spent` du calque d'equipement — est CONSERVE mais reduit au REPLI
+   des artefacts anterieurs au schema 38, sous kill-switch date (bascule 2026-09-03, retrait
+   cible 2026-12-01, critere mesurable « plus aucun artefact servi sans
+   `coverage.translocations` »). Motif : la production est 100 % pre-38 tant que la re-cuisson
+   n'a pas eu lieu ; le supprimer eteindrait sur tout le parc un effet livre la veille. UN SEUL
+   CANAL A LA FOIS : le calque publie gagne des qu'il existe — les melanger ferait scintiller
+   deux fois le meme usage, a 16,5 s d'ecart.
+
+**Ce qui se voit a l'ecran** : l'eclat de fiche est desormais date a l'instant vrai du geste
+(le `spent` le datait avec jusqu'a 16,5 s de retard). Le lien du va-et-vient relie les deux
+positions LUES DANS L'EVENEMENT ; sans positions publiees, rien ne se trace et l'eclat reste
+seul. La FAILLE (nouveau `riftStations.ts`) apparait au PREMIER echange, a la position que le
+joueur QUITTE — c'est la semantique du va-et-vient, la balise echange sa place avec lui —, se
+DEPLACE a chaque echange suivant, et s'eteint a sa fin mesuree : le `spent` du rang
+translocateur (recuperee ou stricte, sans distinction) ou la mort du porteur. Jamais a demeure,
+et rien avant le premier echange : la pose est illisible, negatif mesure sur trois canaux.
+
+**`gap` : un `from` inconnu, ni vrai ni faux** — foyer unique `identityIsUnknown`. Le repli
+s'abstient (un eclat AFFIRME un geste), la faille ne se ferme pas et retombe sur la mort du
+porteur. La vignette d'equipement n'etait PAS concernee — verifie sur pieces : elle lit `r`
+(le rang porte, ecrit par l'emission) et jamais `from` — et cette propriete est desormais
+verrouillee par un test, pour qu'un futur passage par `from` fasse rougir la CI.
+
+**Resultats observes** :
+- `make check-types` exit 0 ; `make test-web` exit 0 — 560 fichiers, 5 802 tests, 14 skippes,
+  0 echec. `npx eslint` exit 0 sur les dix fichiers touches. Aucune couleur en dur.
+- Plafonds tenus SANS relever un cliquet : `equipmentPlacementsLayer.ts` reste a 519 L et
+  `ReplayCanvas.tsx` a 662 L (cliquet 665) — les ajouts ont ete payes en fusionnant
+  `teleports` + `rifts` en un seul objet `RiftScene`, qui est de toute facon la meme lecture.
+- TROIS ROUGES ANTERIEURS leves parce qu'ils bloquaient le gate (dettes P1/P3 du meme jour) :
+  la copie web de `SchemaVersion` restee a 37 ; le garde-rail de cardinalite du manifeste, dont
+  le decoupage lisait `[[equipment_objects]]` en SOUS-CHAINE et comptait un commentaire ajoute
+  par le lot du propulseur (corrige en ANCRANT sur la ligne entiere, cardinalite 21 conservee) ;
+  et `recovered`/`gap` absents du type manuel `ReplayEquipmentChange`.
+
+**Conclusion / prochaine etape** : P2 est complet cote code. Il reste (a) le gate VISUEL de
+l'utilisateur, qui suppose la re-cuisson d'un film temoin (`1b2d9e08`) — a demander
+explicitement, jamais de cuisson en lot ; (b) deux decouvertes ecrites au plan et NON traitees :
+le bloc manuel des schemas 25-27 de `types.ts` a atteint son critere de retrait, et
+`PLACEMENT_RENDER.translocator_beacon = 'rift'` garde une regle de rendu que rien ne declenche
+(0 pose `deployed` sur 16 au parc) et qui dessinerait une faille a demeure si elle se
+declenchait.
+
+---
+
+## [2026-09-03] P2 — revue ronde 1 : la faille intermediaire ne se bornait pas, et le depart brillait double
+
+**Statut** : Complete (3 constats du relecteur, tous corriges dans le lot ; gates rejoues verts).
+
+**Decision technique principale** : la fin mesuree d'un equipement ne borne plus la SEULE
+derniere station de la faille — elle borne CHAQUE station, pour son propre compte.
+`riftEnd` devient `stationEnd` et se calcule par echange : `min(echange suivant - 1,
+stationEnd(...))`, ou la borne de mort est celle de la vie qui COUVRE cet echange-la.
+
+**Ce que le relecteur a trouve, et pourquoi ca comptait** :
+- K1 (P1) — deux declenchements transcrits et executes : (a) un `spent` du rang translocateur
+  ENTRE deux echanges laissait la premiere faille vivre 5 s apres la fin mesuree de son
+  equipement (le « jamais a demeure » du contrat, viole une station sur deux) ; (b) sur un slot
+  REATTRIBUE, la premiere station courait 119 images apres la mort de son porteur, pendant la
+  vie du joueur suivant — exactement ce que le commentaire de `lifeEnd` annonce interdire.
+  PORTEE : dormant en production (le parc est 100 % pre-38, donc zero station), le defaut se
+  serait allume a la PREMIERE re-cuisson — au moment ou l'utilisateur regarde.
+- K2 (P2) — la raison d'etre de `lifeEnd` n'etait verifiee par rien : aucun cas ne construisait
+  deux pistes du MEME slot. La mutation « la derniere piste de ce slot » laissait les 13 cas ET
+  les 5 804 tests verts.
+- K3 (P2) — le point QUITTE etait peint deux fois pendant les 600 ms du lien (station + bout
+  `from` du lien), halo composite deux fois. Aucun test ne passait `teleports` et `rifts` non
+  vides ensemble.
+
+**Resultats observes** :
+- Les TROIS mutations ont ete rejouees et TUEES : borner a nouveau les stations intermediaires
+  sur le seul echange suivant fait tomber 2 tests ; `lifeEnd` = « derniere piste du slot » en
+  fait tomber 3 ; `paintFrom: true` en fait tomber 1. Avant les correctifs : zero.
+- C'est la STATION qui reste au point quitte et le bout du lien qui s'efface, pas l'inverse :
+  le bout du lien retrecit et perd son alpha, donc le garder aurait fait CLIGNOTER la faille a
+  l'instant precis ou le lien se termine.
+- Nettoyage au passage : `drawRiftLink` passe de 6 a 4 parametres (objet `RiftLinkDraw`), et
+  `drawRiftLink` / `drawTeleportLinks` cessent d'etre exportees — plus aucun appelant hors du
+  fichier depuis que `drawRiftLayer` est la porte unique.
+- Gates : `make check-types` exit 0, `make test-web` exit 0 — 560 fichiers, 5 811 tests,
+  14 skippes, 0 echec ; `npx eslint` exit 0 ; aucune couleur en dur. Plafonds inchanges
+  (`equipmentPlacementsLayer.ts` 519 L, `ReplayCanvas.tsx` 662 L pour un cliquet a 665).
+
+**Conclusion / prochaine etape** : constats de la ronde = 3 -> 0, lot mergeable. Reste le gate
+VISUEL de l'utilisateur, qui suppose la re-cuisson du film temoin `1b2d9e08` — a demander
+explicitement, jamais de cuisson en lot. Les deux decouvertes hors perimetre (bloc manuel des
+schemas 25-27 de `types.ts` a son critere de retrait ; `PLACEMENT_RENDER.translocator_beacon`
+garde une regle de rendu que rien ne declenche) restent ecrites au plan et NON traitees.
+
+## [2026-09-03] P4 (web) — L'usage du propulseur : un dash sur le pion, le son du jeu, et l'infobulle remise a l'endroit
+
+**Statut** : Complete (lot P4 du chantier « lecture fiable des usages d'equipement », branche
+`wt/lecture-equipement`, worktree dedie). Non commite : le superviseur relit.
+
+**Demande de l'utilisateur, dans ses mots** : « Nan trop bref pour mettre sur la fiche mais un
+petit effet sur le pion oui, fait un truc qui fait comme un dash. Tu peux mettre le son si
+c'est pas deja fait ». Donc AUCUN effet de fiche — le geste dure une demi-seconde.
+
+**Decision technique principale — LA DIRECTION SE LIT, ELLE NE SE DEVINE PAS.** L'impulsion
+publiee par le schema 38 (`abilityImpulses[]`, {t, slot, family}) date le geste et rien d'autre :
+elle ne porte ni cap ni vecteur. Le dash s'oriente donc par la TRAJECTOIRE du porteur autour de
+l'instant (`tracks[].points`, la meme interpolation que le marqueur), fenetre AVANT de 280 ms
+d'abord — la poussee suit le declenchement — puis repli sur l'ARRIERE quand la vie se ferme
+pendant le dash (`positionAt` fige alors la derniere position, la fenetre avant devient nulle).
+Sans deplacement mesurable, AUCUN dash : le seul seuil du fichier (0,05 u monde) est une garde
+contre la normalisation d'un vecteur nul, PAS une regle de detection — l'existence du geste
+vient du film, jamais d'une vitesse. C'est la doctrine du chantier tenue jusqu'au rendu.
+
+**Ce que le dash donne a l'ecran** (`thrusterDashFx.ts`, 303 L) : un sillage en coin DERRIERE le
+marqueur, decolle de 5 px de son noyau pour que le pion reste lisible, plus deux chevrons qui
+pointent dans le sens de la poussee. 20 px d'ecran de long, etirement en easeOutCubic (le patron
+de l'onde du capteur et de l'onde de choc), 460 ms en temps REEL du match — jamais un nombre
+d'images, sinon le geste s'allongerait en lecture acceleree. Encre = couleur d'EQUIPE de la vie
+qui pousse, resolue a l'image de L'IMPULSION et non a l'image courante (un slot est reattribue
+aux reapparitions). `prefers-reduced-motion` : forme POSEE, pleine longueur et opacite constante
+pendant toute la fenetre — convention de `revealAlpha`, l'information reste, l'animation
+s'eteint. Zero calque hors ecran, zero litteral de couleur.
+
+**LE PRIX DU CLIQUET, PAYE PAR EXTRACTION ET NON PAR UN RELEVEMENT.** `ReplayCanvas.tsx` etait a
+662 L pour un plafond de 665 : le dash y demandait 4 lignes de glue. DIX-HUITIEME EXTRACTION,
+`useReplayAbilityFx.ts` — les DEUX gestes de capacite qui agissent sur leur porteur (cable de
+grappin, schema 8 ; dash du propulseur, schema 38) y sont batis ET peints ensemble. Le
+regroupement n'est pas de circonstance : meme famille de geste, meme moment de la pile de
+calques, meme absence d'objet pose (`PLACEMENT_RENDER` les met deja tous deux a `null`).
+`buildGrappleFx` quitte `useReplayFx`, aucun doublon laisse derriere. Canvas a 660 L, cliquet
+inchange.
+
+**Le son** (`abilityImpulseSound.ts`, 54 L) : cable sur le MEME instant, categorie EQUIPEMENT
+(couper « Equipements » coupe le dash comme elle coupe le grappin). Table PAR FAMILLE et non un
+stem nu comme le grappin — le calque publie une `family`, une famille sans stem reste MUETTE,
+jamais le son d'une voisine. Les trois `.wav` du lot d'extraction sont COPIES DANS LE MEME LOT,
+et c'est obligatoire : les deux assertions du garde-rail d'assets sont symetriques (« chaque
+stem a son fichier » ET « chaque fichier est joue par un stem »), trois orphelins le rendent
+rouge. Variantes declarees dans `SOUND_VARIANTS` exactement comme `grapple_fire` — l'evenement
+du jeu est un `RandomSequence` « 1 parmi 3 », le tirage se fait a la LECTURE.
+
+**L'infobulle remise a l'endroit (FR et EN)** : `equipmentUsage.notMeasured` affirmait
+« Repulseur et propulseur n'apparaissent pas : le film ne publie aucun canal d'activation pour
+ces deux capacites ». Vrai pour le repulseur, FAUX pour le propulseur depuis P3. Elle dit
+desormais l'etat reel, et le grep a sorti CINQ autres porteurs de la meme affirmation perimee
+(`i18nContract.ts`, `MatchEquipmentUsageSection.tsx` + son test, `equipmentUsageLogic.ts` a deux
+endroits + son test, `replaySound.ts`) — tous corriges dans le lot, regle « doc inversee ».
+Aucune colonne AJOUTEE au tableau : l'utilisateur a tranche, le geste ne se compte pas sur une
+fiche.
+
+**Resultats observes / gates** : `make check-types` exit 0 ; `make test-web` exit 0 —
+562 fichiers, 5 835 tests passes, 14 skippes, 0 echec ; `npx eslint` sur les fichiers touches
+exit 0 ; garde-rail d'assets sonores VERT ; aucune couleur en dur ; `ReplayCanvas.tsx` a 660 L
+pour un cliquet a 665, INCHANGE. Tests neufs : `thrusterDashFx.test.ts` (19 cas — instants
+publies, duree bornee en temps reel, direction qui suit le deplacement et bascule quand on
+l'inverse, mouvement reduit AVEC son controle negatif) et `abilityImpulseSound.test.ts` (7 cas).
+
+**Conclusion / prochaine etape** : reste le GATE VISUEL de l'utilisateur (forme, longueur et
+lisibilite du dash sur le pion) et l'ecoute du son en situation — les deux supposent la
+re-cuisson d'un film temoin, a demander explicitement, jamais de cuisson en lot. Trois
+decouvertes hors perimetre ecrites au plan et NON traitees : l'absence de colonne « poussees »
+est desormais une decision et non un manque de donnee ; les trois variantes mono
+`blast_nonplayer` restent non livrees a dessein ; et le silence du dash sans deplacement
+mesurable n'est pas quantifie sur le parc, faute d'artefact 38 cuit.
+
+## [2026-09-04] P4 — revue ronde 1 : le dash prenait la mauvaise VIE, et le son partait quand meme
+
+**Statut** : Complete (3 constats de la revue adversariale P4, tous corriges ; toujours aucun
+commit, le superviseur relit).
+
+**LE P0, et il vaut d'etre ecrit en entier parce que c'est une lecon deja apprise quatre fois
+dans ce dossier.** `buildThrusterDashFx` joignait les impulsions aux pistes par
+`new Map(doc.tracks.map(t => [t.slot, t.points]))`. Un `Map` ne garde que la DERNIERE piste du
+slot — or le slot de biped est REATTRIBUE a chaque reapparition, invariant ecrit noir sur blanc
+dans `shotFx.ts`, `fireMark.ts`, `riftStations.ts` et `replayMarkers.ts`, avec sa fixture
+canonique (`fireMark.test.ts`, « Deux VIES du meme slot »). J'avais recopie le raccourci de
+`buildGrappleFx` sans verifier qu'il tenait l'invariant : il ne le tient pas non plus.
+
+**Les deux consequences etaient graves, et la premiere etait SILENCIEUSE :** dans le cas
+dominant, l'instant de l'impulsion precede les points de la vie retenue, `positionAt` rend
+`null`, et toutes les poussees d'un slot sauf celles de sa DERNIERE vie disparaissaient de la
+carte — pendant que le son partait quand meme, parce que `abilityImpulseSound.ts` ne joint
+aucune piste. Le joueur aurait entendu le dash sans le voir, et rien n'aurait signale l'ecart.
+Dans l'autre cas, l'instant tombe dans la fenetre de la vie usurpatrice : le sillage se peint
+alors a la position et dans la direction d'UN AUTRE JOUEUR, avec la couleur du vrai porteur —
+une affirmation fausse sur ce qui s'est passe dans la partie.
+
+**Correctif : le patron canonique de la maison, RECOPIE et non reinvente**
+(`fireMark.ts:50-59`, `shotFx.ts:62-73`) — `Map<number, ReplayTrackReady[]>` puis
+`.find(l => isAliveAt(l, imp.t))`. Test neuf sur la fixture canonique (vies [10,20] et [30,40],
+directions ORTHOGONALES pour que la confusion se voie), plus un second cas : une impulsion
+ENTRE deux vies ne dessine rien. **Deux mutations rejouees et TUEES** : `.at(-1)` (l'ancien
+defaut exact) ROUGE, `.at(0)` ROUGE. Aucun cas anterieur ne posait deux pistes d'un meme slot —
+c'est precisement pourquoi le defaut passait.
+
+**Les deux P2.** `available` etait du code mort : calcule, exporte, et zero lecteur sur tout
+`apps/web/src` — a la difference de `vipCrown.available` / `bombBlast.available`, consommes par
+le bandeau de disponibilite. Pire, son commentaire lui inventait un usage que le canvas n'a pas.
+Supprime ; le commentaire dit desormais POURQUOI ce hook n'a pas de drapeau. Meme traitement
+pour `DASH_FAMILIES`, `DashProgress` et `DashTime`, redevenus prives du module (aucun importeur,
+aucun test). Et une DOC INVERSEE dans le fichier meme que le lot modifiait : `ReplayCanvas.tsx`
+annoncait encore le grappin dans `useReplayFx` deux lignes au-dessus de l'appel qui ne le rend
+plus. J'avais fait ce grep pour l'infobulle et pas pour mon propre diff.
+
+**Gates rejoues** : `make check-types` exit 0 ; `make test-web` exit 0 — 562 fichiers,
+5 837 tests passes, 14 skippes, 0 echec ; `npx eslint` exit 0 ; garde-rail d'assets sonores
+VERT ; `ReplayCanvas.tsx` a 662 L pour un cliquet a 665, inchange.
+
+**Conclusion / prochaine etape** : constats 3 -> 0. UNE DECOUVERTE LOURDE ecrite au plan et NON
+traitee : `buildGrappleFx` (`grappleLayer.ts:50`) porte le MEME defaut, anterieur a ce lot —
+c'est le modele qui a ete recopie. Le correctif tient en trois lignes mais change un calque
+livre en production le 2026-08-20 et demande sa propre fixture a deux vies : lot a part, a
+traiter AVANT la re-cuisson du parc, qui est ce qui rendra le defaut visible.
+
+## [2026-09-04] D1 — la ligne de grappin joignait la mauvaise vie (production web)
+
+**Statut** : Complete (branche `wt/grappin-vies`, non commite — relecture superviseur).
+
+**Le defaut.** `buildGrappleFx` (`grappleLayer.ts`) indexait `new Map(doc.tracks.map(t =>
+[t.slot, t.points]))`. Un slot de biped etant REATTRIBUE a chaque reapparition, le `Map` ne
+gardait que la DERNIERE piste du slot : une accroche d'une vie anterieure allait chercher les
+points d'une autre vie — disparition (l'instant precede les points retenus, `positionAt` rend
+`null`) ou cable peint a la position d'UN AUTRE JOUEUR. C'est le defaut releve en decouverte du
+lot P4 la veille, et laisse au registre parce qu'il touche un calque livre en production le
+2026-08-20.
+
+**Decision technique.** Patron canonique du depot, repris tel quel de `buildThrusterDashFx` /
+`buildShotFx` / `buildFireMarks` : `Map<number, ReplayTrackReady[]>` puis
+`.find((v) => isAliveAt(v, l.t0))`. L'instant de reference est `t0`, le DEPART de la traction —
+c'est le tir qui appartient a une vie ; une traction qui deborde la mort du porteur reste
+dessinee, `positionAt` figeant la derniere position. Effet voulu : une accroche qu'aucune vie
+ne couvre (trou entre deux vies) ne produit plus d'entree.
+
+**Resultats mesures.** Sur les 106 artefacts du cache local (lecture seule), 62 portent des
+lignes de grappin, 1 101 lignes au total, et **0 mal jointe (0,0 %)**. L'explication tient au
+schema : le decoupage d'une piste PAR VIE n'existe qu'a partir du SCHEMA 38 (modele des sieges,
+2026-09-02). Aux schemas 6 a 34, un slot porte exactement une piste (5 102 pistes pour 5 102
+slots uniques au schema 34) — le `Map` ne peut rien ecraser. Les DEUX seuls artefacts au schema
+38 comptent 213 pistes pour 195 slots (18 vies non finales, 15 slots multi-vie) et **2,6 % des
+images de vie appartiennent a une vie non finale** ; une seule de leurs 37 accroches tombe sur
+un slot multi-vie, et elle tombe dans la vie finale. LE DEFAUT EST DONC LATENT, PAS ACTIF — la
+premisse « visible sur tout le parc » est REFUTEE par la mesure. Il devient actif a la
+RE-CUISSON du parc : au taux mesure, de l'ordre de 30 accroches perdues sur le seul cache
+local, avec la disparition silencieuse comme mode dominant (vies disjointes et ordonnees).
+
+**Mutation tuee.** Fixture a deux vies orthogonales et disjointes du meme slot (plein est en
+bas a gauche, plein nord en haut a droite). Defaut reintroduit (`.at(-1)`) : 3 tests sur 9
+ROUGES (jointure, trou entre deux vies, trace du cable). Correctif restaure : 9/9 verts.
+
+**Autres porteurs** : balayage de tout `apps/web/src` — AUCUN. `indexBySlot`
+(`rosterLogic.ts:178`) ecrase volontairement (agregat de match, dette documentee sur place,
+remede `buildSlotOwnership` pour le rendu) ; tous les autres index sont des listes par cle ou
+des resolutions par image.
+
+**Gates** : `make check-types` exit 0 ; `make test-web` exit 0 — 562 fichiers, 5 843 tests
+passes, 14 skippes ; `npx eslint` exit 0. Zero couleur en dur, aucun cliquet de taille releve
+(`grappleLayer.ts` 118 L).
+
+**Conclusion / prochaine etape** : le calque du grappin rejoint les quatre autres au patron par
+vie ; le rejeu 2D n'a plus de jointure `slot -> points` ecrasante. Rapport detaille :
+`.ai/V7.5/replay2d/RAPPORT_D1_GRAPPIN_VIES_2026-09-04.md`. La RE-CUISSON DU PARC peut
+desormais se faire sans reintroduire ce trou — c'est elle qui aurait rendu le defaut visible.
+
+---
+
+## [2026-09-04] Lot R12 — le REPULSEUR avec six ancres : le film porte l'EFFET, pas le GESTE — Complete
+
+**Statut** : Complete (retro-ingenierie statique, aucun code de production touche, aucun commit,
+aucune DuckDB ouverte, Ghidra non lance). Rapport :
+`.ai/V7.5/replay2d/RAPPORT_R12_REPULSEUR_ANCRES_2026-09-04.md`. Branche `wt/r12-repulseur`,
+creee depuis `wt/grappin-vies`. Huit `*_research_test.go` env-gates, NON commites.
+
+**Decision technique principale.** Neuf canaux avaient ete fermes par R8/R9/R11 sans un seul
+instant d'usage certain du repulseur. Un collegue de l'utilisateur en a releve six au Theater
+sur le film `215e7022` (Argyle). Le lot a d'abord TRANCHE LA CONVENTION DE TEMPS — les
+instants du releve sont en TEMPS DE FILM, etabli deux fois : (a) le decodeur de production
+`killsource` place l'unique kill au `jpt! 0x07104b31` du film a 325 526 ms = 5:25,5 la ou le
+releve situe l'usage a 5:25 ; (b) le canal i48 retrouve les QUATRE ramassages a +1,35 a
++1,97 s (bande de 620 ms), contre 1/4 et 0/4 pour les temoins decales de +/-30 s. Puis il a
+pose la question dans l'autre sens : qu'est-ce qui bouge chez le porteur a ces instants ?
+
+**Resultats observes.** (1) L'ETAT DU BIPEDE ne bouge pas : recensement ancre des 64
+composants, 706 records de porteur en fenetre, aucun composant de capacite au-dessus de son
+taux de repos — alors que le MEME instrument, ancre sur les usages de grappin du MEME film,
+fait bondir i56 d'un facteur 9,00. Le negatif de R9/R11 passe de « plancher de bruit » a
+« mesure a l'endroit et a l'heure, avec temoin positif interne ». (2) LA LISTE D'EVENEMENTS
+bouge : les DEUX seules occurrences du type 104 `EquipmentKnockbackPlayer` du film tombent a
+5:25,5 et 5:25,6, et l'UNIQUE tete de type 105 `EquipmentObjectKnockedBack` du film (position
+1, cadrage CERTAIN) tombe a 5:25,6. (3) SECONDE ANCRE, independante du releve et sur un autre
+film : sur `a6ae19fb`, une tete de 105 tombe 149 ms avant la consommation de la derniere
+charge de repulseur que R11 par. 5 publiait comme « le cas qui tranche ». Hasard des deux
+coincidences : ordre de 5e-7, sur une base de 22 tetes de 105 pour 1 223 551 paquets delta et
+42 films. (4) Le rappel est structurellement partiel — 2 usages sur 5 — parce que ces
+evenements sont des CONSEQUENCES : un repulseur declenche dans le vide ne pousse rien.
+(5) Le report n°1 de R9, le type 14 `PlayEffectOnObject`, est REFUTE : 1 occurrence dans tout
+le film, a 0:54,2.
+
+**Trois acquis lateraux.** (a) Le `jpt! 0x07104b31` = Repulsor est confirme sur corpus reel ET
+par verite terrain Theater — la raison specifique de sa reserve au registre (« PAS de
+verite-terrain Theater ») n'existe plus. (b) Les reapparitions au socle sont datees 3/3
+(temoin decale 0/3) par les creations d'entites ti=37 portant le GlobalID d'`eqip`
+`0x7ca85adc` ; le meme canal rend 0/4 sur les ramassages — separation propre. (c) LA MARCHE DE
+LISTE D'EVENEMENTS NE DEPEND PLUS DU CATALOGUE DE BORNES : `etendue := 2^AxisW[i] / 60`,
+reconstruit depuis le seul layout i0 du film, rend EXACTEMENT les memes largeurs que la vraie
+carte (classe d'equivalence, demontree et controlee a k=16) ; oracle de trame sur Argyle :
+facteur 5,46 contre un seuil pre-inscrit de 3, profondeur 1,763 = mediane du parc de R7.
+
+**Reserve dite.** Le type 104 n'est presque jamais en tete (2 sur 1,22 million de paquets
+delta, 42 films) : les deux occurrences de 5:25 sont en position 4 et 2, donc lues par la
+marche, et le corpus montre que la marche FABRIQUE ce type sur les films mal cadres. Ce qui
+les sauve : predecesseur 105 (pas le `damage_aftermath` suspect de R7), oracle de trame
+restreint non effondre, et coincidence avec un instant date par deux autres canaux. Le type
+105, lui, n'est pas sous cette reserve (tetes, cadrage certain). AMENDEMENT A R7 : son
+« 0 tete sur 108 occurrences, p ~ 1e-23 » doit se lire « trop rare pour se mesurer », pas
+« ce type n'existe pas ».
+
+**Conclusion / prochaine etape.** Registre des reports au par. 11 du rapport. Le plus rentable :
+porter la grammaire des types 104 et 105 (deja lue dans l'exe par R7 par. 4.1) et calibrer le
+domaine de leur reference — c'est ce qui transformerait une DATE en un fait de rejeu (qui
+pousse, qui est pousse, dans quelle direction). Ensuite : elargir le recensement des tetes aux
+1 380 films du cache, et faire relever au Theater les dix tetes de 105 non expliquees.
+
+---
+
+
+## [2026-09-04] Lot P5 — les CHARGES d'equipement entrent en production (schema 38 enrichi)
+
+**Statut : Complete.** Branche `wt/charges-equipement` (depuis `wt/grappin-vies`).
+Execution PILOTEE : un agent d'implementation (interrompu par limite API, repris par un
+second qui a TOUT re-audite sur pieces), revue adversariale a contexte frais, ronde 2 sur
+la seule correction. Supervision, triage et consolidation par la session principale.
+
+**Decision technique principale.** Le canal i56 `biped-spartan-ability-energy` (R11) entre
+en production sur le patron exact du propulseur (P3) : `filmdec.ScanFilmAbilityCharges`
+(hook `SetAbilityEnergyHook` comme seule grammaire, temoin `Scanned`, `Absent` distinct,
+ordre total), jointure d'identite par le rang i48 de la meme vie et anterieurement
+(`rankInLife` REUTILISE), familles mesurees = donnee de titre (`[ability_charges]
+families = ["grapple", "thruster"]`, validateur factorise `parseMeasuredFamilies`).
+Publication en LECTURES {t, slot, family, charges} — jamais un compte d'usages derive
+(une baisse peut valoir plusieurs usages). Masque non arme = RIEN publie (le film ne
+transmet rien au ramassage). Schema MAINTENU a 38 : ajouts additifs omitempty, les deux
+artefacts 38 cuits (`1b2d9e08`, `1cd3848a`) restent lisibles — justification en chronique.
+
+**Resultats observes.** Acceptation sur pieces, chaine BuildFromFilm entiere :
+`1cd3848a` — serie 4, 3, 2, 1, 0 a 1:52, 1:55, 2:03, 2:05, 2:15 contre le releve Theater
+de l'utilisateur (1:51-2:14), 5/5, ecart <= 1 s ; entonnoir 93 lectures -> 57 publiees,
+26 sans identite, 10 famille non mesuree. Temoin grappin `f2966f08` : 6/6 baisses
+appariees aux accroches publiees (le chiffre de R11 §3.2). Golden `000d5950` : 91 -> 69
+publiees, somme de couverture bouclee. En reprise, une faute d'axe de temps du premier
+jet de test d'acceptation (offset `originMs` sur une seule des deux series, 0/6) a ete
+trouvee et corrigee — production intouchee. REVUE : 16 conditions tiennent (mutations sur
+copies, restauration verifiee octet a octet), 2 constats — Q1 (P1) `account` a 9
+parametres, CORRIGE au patron du voisin (lay/arch dans la structure), ronde 2 conforme,
+lint n'en porte plus trace ; Q2 (P2) cablage des familles dans `replaylabels/catalog.go`
+couvert par aucun test (trou structurel identique pour les trois listes) — CONSIGNE.
+Gates : go test 7/7 paquets 0 FAIL, go vet 0, gofmt vide, check-types exit 0 (cache
+purge), vitest replayContract 13/13. `make go-api-lint` : 6 constats, TOUS anterieurs au
+lot (4 de P3 + 2 goconst `traverse.go` venus des commits precedents de la branche).
+
+**Conclusion / prochaine etape.** Lot P6 (web : la vignette montre les charges, jointure
+par vie) — avec un arbitrage utilisateur a soumettre : avant la premiere lecture, ne rien
+afficher ou afficher « pleines » (le film ne transmet rien au ramassage). Autres arbitrages
+ouverts : publier ou non les evenements de consequence 104/105 du repulseur (R12) ; le
+merge de `wt/grappin-vies` (R12) et de ce lot vers `feat/v75`.
+
+## [2026-09-04] Lot P6 — la vignette d'equipement montre les CHARGES (web)
+
+**Statut : Complete.** Meme branche `wt/charges-equipement`. Execution pilotee : agent
+d'implementation, relecteur adversarial frais (une coupure API au premier lancement,
+relance propre), corrections consolidees par le superviseur.
+
+**Decision technique principale.** Consommation du calque `abilityCharges` publie par P5 :
+logique PURE `abilityChargeLogic.ts` (lecture la plus recente <= image, jointe par la VIE
+qui couvre l'instant — patron fireMark, le piege du slot reattribue — et posterieure au
+dernier changement d'equipement de la vie), cellule `ReplayAbilityCell.tsx` extraite de
+`ReplayInventoryRow` (496->404 L). Decisions utilisateur du 04/09 appliquees : « plein »
+QUALITATIF avant la premiere lecture (semantique du protocole), jamais un chiffre invente ;
+famille non mesuree = rien. Reconnaissance rang->famille par racine de libelle
+(`abilityLabels`, table fermee, precedent translocatorRanks) — la revue a valide le
+procede en remontant la chaine TOML, et la piste sans heuristique (publier `family` dans
+`Label`) est consignee pour un lot Go futur.
+
+**Resultats observes.** Revue : 12 conditions tiennent, 3 constats TOUS corriges dans le
+lot — N1 (P0) : sur le parc pre-38, « plein » etait affirme a tort (le canal n'y a jamais
+ete balaye) et un test verrouillait la faute -> garde `hasAbilityChargeLayer`
+(coverage.abilityCharges present et composant present ; lecture publiee en filet), 3 cas
+testes, mutation tuee ; N2 : la regle « famille non mesuree sans lecture = rien » n'etait
+pinnee par rien (mutation survivante) -> test repulseur-sans-lecture, mutation tuee ;
+N3 : export sans lecteur retire. Gates : vitest 14/14, check-types exit 0 (cache purge),
+eslint 0, suite web complete 563 fichiers / 5 855 passes / 0 echec (un flake de worker
+make test-web note : « 1 fichier failed, 0 test failed », non reproduit).
+
+**Conclusion / prochaine etape.** Reste le GATE VISUEL utilisateur (vignette sur un film
+re-cuit — les deux films 38 du chantier n'ont pas ete re-cuits avec les charges). Merge
+`feat/v75` en un seul tenant (decision user : apres P6) — R12 + P5 + P6. En parallele :
+demande produit nouvelle du 04/09 (replier les equipements/armes non « game changer »
+dans les rendus d'usage) — artefact de vote a fabriquer pour que l'utilisateur tranche la
+liste.

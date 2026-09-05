@@ -122,6 +122,7 @@ func ReadModuleBSPBounds(modulePath string) ([]BSP, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = m.Close() }()
 	return bspBoundsFrom(m, modulePath)
 }
 

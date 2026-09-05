@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE (2026-08-18, plan PLAN_EQUIPEMENTS_MANQUANTS_SONS phase 1) — L'INVENTAIRE COMPLET

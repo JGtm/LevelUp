@@ -51,6 +51,16 @@ type AbilityPalette struct {
 	// Ranks nomme les rangs ETABLIS. Table partielle par nature : un rang absent garde son
 	// numero a l'ecran.
 	Ranks map[int]BilingualLabel
+	// Families donne l'IDENTITE STABLE d'un rang, dans le meme vocabulaire que
+	// `EquipmentObjects` (`thruster`, `grapple`, `wall`...). C'est ce qui permet a un calque
+	// de designer une capacite sans ecrire son RANG dans du Go : le propulseur vaut 5 en
+	// famille A et 21 en famille B.
+	//
+	// PLUS PARTIELLE ENCORE QUE `Ranks` : un rang nomme peut n'avoir aucune famille (les
+	// power-ups camouflage et surbouclier, dont l'objet de manifeste n'est pas l'emplacement
+	// de capacite). Une famille absente n'est pas une erreur — c'est une jointure qu'on ne
+	// fait pas.
+	Families map[int]string
 }
 
 // ReplayLabelSet porte les libelles de rejeu d'un titre.
@@ -62,6 +72,14 @@ type ReplayLabelSet struct {
 	shotEffects   map[string]string // weapon_key -> famille de rendu
 	shotTints     map[string]string // weapon_key -> nature de la decharge
 	equipObjects  map[uint32]string // GlobalID de tag `eqip` -> famille de pose
+	// impulseFamilies : les familles de capacite dont l'USAGE est MESURE par le canal
+	// d'impulsion du bipede (i57/i59 tag 1). Liste VIDE = le titre ne declare aucun usage
+	// mesure sur ce canal, et le calque ne publie rien — une degradation, jamais une erreur.
+	impulseFamilies []string
+	// chargeFamilies : les familles de capacite dont les CHARGES RESTANTES sont MESUREES
+	// par le canal d'energie du bipede (i56, quartet haut — rapport R11). Meme regime que
+	// impulseFamilies : liste vide = aucun releve de charge publie, degradation, pas erreur.
+	chargeFamilies []string
 	// objObjects : GlobalID de tag `ti=42` -> objet d'objectif (famille + nom bilingue).
 	// Table a part de la precedente : autre archetype, autre chaine d'etablissement
 	// (cf. loader_replay_labels_objectives.go).
@@ -81,12 +99,38 @@ type replayLabelsTOML struct {
 	EquipObjects []equipmentObjectEntry `toml:"equipment_objects"`
 	ObjObjects   []objectiveObjectEntry `toml:"objective_objects"`
 	FlagZone     *flagReturnZoneTOML    `toml:"flag_return_zone"`
+	Impulses     *abilityImpulsesEntry  `toml:"ability_impulses"`
+	Charges      *abilityImpulsesEntry  `toml:"ability_charges"`
 }
 
 type abilityPaletteEntry struct {
-	ID      string                    `toml:"id"`
-	Markers []int                     `toml:"markers"`
-	Ranks   map[string]bilingualEntry `toml:"ranks"`
+	ID      string                      `toml:"id"`
+	Markers []int                       `toml:"markers"`
+	Ranks   map[string]abilityRankEntry `toml:"ranks"`
+}
+
+// abilityRankEntry — un rang de capacite : son libelle bilingue, sa vignette, et
+// (OPTIONNEL) la FAMILLE qui l'identifie a travers les palettes. Type distinct de
+// `bilingualEntry` parce que la famille n'a de sens que pour une capacite : la porter sur le
+// type partage la ferait accepter en silence sur un rang de grenade.
+type abilityRankEntry struct {
+	En     string `toml:"en"`
+	Fr     string `toml:"fr"`
+	Icon   string `toml:"icon"`
+	Family string `toml:"family"`
+}
+
+// label projette l'entree vers la forme bilingue que le validateur partage attend.
+func (e abilityRankEntry) label() bilingualEntry {
+	return bilingualEntry{En: e.En, Fr: e.Fr, Icon: e.Icon}
+}
+
+// abilityImpulsesEntry — une liste de familles MESUREES sur un canal du film. Deux tables
+// du manifeste partagent cette forme et ce validateur : `[ability_impulses]` (l'usage,
+// canal i57/i59 tag 1) et `[ability_charges]` (les charges restantes, canal i56). Un
+// second type identique aurait diverge au premier champ ajoute.
+type abilityImpulsesEntry struct {
+	Families []string `toml:"families"`
 }
 
 type bilingualEntry struct {
@@ -132,16 +176,41 @@ func (s *ReplayLabelSet) AbilityPalettes() []AbilityPalette {
 	out := make([]AbilityPalette, 0, len(s.palettes))
 	for _, p := range s.palettes {
 		cp := AbilityPalette{
-			ID:      p.ID,
-			Markers: append([]int(nil), p.Markers...),
-			Ranks:   make(map[int]BilingualLabel, len(p.Ranks)),
+			ID:       p.ID,
+			Markers:  append([]int(nil), p.Markers...),
+			Ranks:    make(map[int]BilingualLabel, len(p.Ranks)),
+			Families: make(map[int]string, len(p.Families)),
 		}
 		for k, v := range p.Ranks {
 			cp.Ranks[k] = v
 		}
+		for k, v := range p.Families {
+			cp.Families[k] = v
+		}
 		out = append(out, cp)
 	}
 	return out
+}
+
+// AbilityImpulseFamilies retourne les familles de capacite dont l'USAGE est mesure par le
+// canal d'impulsion du bipede (copie). Vide = ce titre n'en declare aucune : le calque des
+// impulsions ne publie alors rien, ce qui est une degradation et non une erreur.
+func (s *ReplayLabelSet) AbilityImpulseFamilies() []string {
+	if s == nil {
+		return nil
+	}
+	return append([]string(nil), s.impulseFamilies...)
+}
+
+// AbilityChargeFamilies retourne les familles de capacite dont les CHARGES RESTANTES sont
+// mesurees par le canal d'energie du bipede — i56, quartet haut (copie). Vide = ce titre
+// n'en declare aucune : le calque des charges ne publie alors rien, degradation et non
+// erreur — la meme regle que le canal d'impulsion.
+func (s *ReplayLabelSet) AbilityChargeFamilies() []string {
+	if s == nil {
+		return nil
+	}
+	return append([]string(nil), s.chargeFamilies...)
 }
 
 // ShotEffects retourne la table weapon_key -> famille de rendu (copie).
@@ -280,17 +349,67 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 	if err != nil {
 		return nil, err
 	}
+	impulses, err := parseMeasuredFamilies(path, "ability_impulses", doc.Impulses, palettes)
+	if err != nil {
+		return nil, err
+	}
+	charges, err := parseMeasuredFamilies(path, "ability_charges", doc.Charges, palettes)
+	if err != nil {
+		return nil, err
+	}
 	return &ReplayLabelSet{
-		titleSlug:     doc.Meta.TitleSlug,
-		schemaVersion: doc.Meta.SchemaVersion,
-		grenades:      grenades,
-		palettes:      palettes,
-		shotEffects:   effects,
-		shotTints:     tints,
-		equipObjects:  equip,
-		objObjects:    objs,
-		flagZone:      zone,
+		titleSlug:       doc.Meta.TitleSlug,
+		schemaVersion:   doc.Meta.SchemaVersion,
+		grenades:        grenades,
+		palettes:        palettes,
+		shotEffects:     effects,
+		shotTints:       tints,
+		equipObjects:    equip,
+		impulseFamilies: impulses,
+		chargeFamilies:  charges,
+		objObjects:      objs,
+		flagZone:        zone,
 	}, nil
+}
+
+// parseMeasuredFamilies valide une liste de familles MESUREES sur un canal du film — le
+// meme validateur pour `[ability_impulses]` (l'usage) et `[ability_charges]` (les charges
+// restantes) : la regle est identique, deux copies auraient diverge.
+//
+// LE SEUL INVARIANT, ET IL EST FATAL : une famille citee doit etre NOMMEE par au moins un
+// rang d'une palette. Sans ce controle, une faute de frappe (`thrusters`) laisserait le
+// calque muet EN SILENCE — c'est-a-dire indistinguable d'un film ou personne ne se sert de
+// son equipement. Table absente = aucune famille mesuree, ce qui est une degradation.
+func parseMeasuredFamilies(path, table string, e *abilityImpulsesEntry,
+	palettes []AbilityPalette) ([]string, error) {
+	if e == nil {
+		return nil, nil
+	}
+	known := map[string]bool{}
+	for _, p := range palettes {
+		for _, fam := range p.Families {
+			known[fam] = true
+		}
+	}
+	out := make([]string, 0, len(e.Families))
+	seen := map[string]bool{}
+	for _, raw := range e.Families {
+		fam := strings.TrimSpace(raw)
+		if fam == "" {
+			return nil, fmt.Errorf("%s: [%s].families porte une famille vide", path, table)
+		}
+		if seen[fam] {
+			return nil, fmt.Errorf("%s: [%s].families cite %q deux fois", path, table, fam)
+		}
+		if !known[fam] {
+			return nil, fmt.Errorf(
+				"%s: [%s].families cite %q, qu'aucun rang de palette ne nomme — "+
+					"le calque serait muet en silence", path, table, fam)
+		}
+		seen[fam] = true
+		out = append(out, fam)
+	}
+	return out, nil
 }
 
 // parseGrenadeRanks valide les rangs : l'ORDRE est la donnee, un trou la detruirait.
@@ -336,31 +455,48 @@ func parseAbilityPalettes(path string, rows []abilityPaletteEntry) ([]AbilityPal
 			}
 			markerOwner[m] = id
 		}
-		ranks, err := parseAbilityRanks(path, id, e.Ranks)
+		ranks, fams, err := parseAbilityRanks(path, id, e.Ranks)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, AbilityPalette{ID: id, Markers: e.Markers, Ranks: ranks})
+		out = append(out, AbilityPalette{ID: id, Markers: e.Markers, Ranks: ranks, Families: fams})
 	}
 	return out, nil
 }
 
-// parseAbilityRanks valide les noms d'une palette. Les cles sont des rangs NUMERIQUES lus
-// dans le film : une cle non numerique ne designerait aucune capacite.
-func parseAbilityRanks(path, palette string, rows map[string]bilingualEntry) (map[int]BilingualLabel, error) {
+// parseAbilityRanks valide les noms d'une palette et rend, a cote, les FAMILLES declarees.
+// Les cles sont des rangs NUMERIQUES lus dans le film : une cle non numerique ne designerait
+// aucune capacite. La famille est OPTIONNELLE (cf. AbilityPalette.Families) : une capacite
+// sans identite stable garde son libelle, elle ne se joint simplement a rien.
+func parseAbilityRanks(path, palette string, rows map[string]abilityRankEntry) (
+	map[int]BilingualLabel, map[int]string, error) {
 	out := make(map[int]BilingualLabel, len(rows))
+	fams := map[int]string{}
 	for rawKey, e := range rows {
 		rank, err := strconv.Atoi(strings.TrimSpace(rawKey))
 		if err != nil {
-			return nil, fmt.Errorf("%s: rang de capacité %q non numérique (palette %q)", path, rawKey, palette)
+			return nil, nil, fmt.Errorf("%s: rang de capacité %q non numérique (palette %q)", path, rawKey, palette)
 		}
-		lbl, err := bilingual(path, fmt.Sprintf("capacité %d de la palette %q", rank, palette), e)
+		lbl, err := bilingual(path, fmt.Sprintf("capacité %d de la palette %q", rank, palette), e.label())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		out[rank] = lbl
+		fam := strings.TrimSpace(e.Family)
+		if fam == "" {
+			continue
+		}
+		// LA MEME LISTE FERMEE QUE LES OBJETS D'EQUIPEMENT, et c'est tout l'interet du champ :
+		// une famille libre ferait joindre un rang a un vocabulaire que personne d'autre ne
+		// parle, et le calque qui s'en sert (les impulsions) resterait muet EN SILENCE.
+		if !equipmentFamilies[fam] {
+			return nil, nil, fmt.Errorf(
+				"%s: capacité %d de la palette %q déclare la famille %q, hors de la liste fermée "+
+					"des familles d'équipement du titre", path, rank, palette, fam)
+		}
+		fams[rank] = fam
 	}
-	return out, nil
+	return out, fams, nil
 }
 
 // parseShotEffects valide les familles de rendu contre la liste fermee.

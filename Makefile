@@ -5,6 +5,7 @@
 #   make dev           # Lance l'API Go (air) + frontend Vite (http://localhost:5173)
 #   make go-api-build  # Compile le binaire Go
 #   make go-api-test   # Lance les tests Go
+#   make go-api-test-gamefiles # Corpus cartes (exige Halo installe, ~6 min)
 #   make install-web   # Installe les dépendances npm
 #   make test-web      # Tests Vitest frontend
 #   make openapi-gen   # Régénère api/openapi.yaml (Huma + fragment manuel)
@@ -22,7 +23,7 @@ LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
 
 .PHONY: help web dev stop restart test-web test-e2e test-e2e-ui demo-visual check-types \
         generate-types install-web \
-        go-api-build go-api-test go-api-dev _go-api-run \
+        go-api-build go-api-test go-api-test-gamefiles go-api-dev _go-api-run \
         go-api-test-shared-social-gate install-git-hooks gate-push \
         go-api-test-coverage-ratchet openapi-gen openapi-check
 
@@ -193,6 +194,20 @@ go-api-test:
 	cd $(GO_API_DIR) && CGO_ENABLED=0 LEVELUP_DEMO_MODE=true \
 		go test ./internal/domain/... ./internal/analysis/... ./contracttest/... \
 		-v -timeout 60s -count=1
+
+## Go API: corpus de retro-ingenierie des cartes (EXIGE Halo Infinite installe, ~6 min)
+##
+## Les 59 fichiers `*_gamefiles_test.go` de internal/himap/ decodent les modules du JEU
+## et balaient les 26 cartes du catalogue. Mesure du 2026-09-05 : `TestBalayageCoquille`
+## seul prend 1 246 s (20 min 47 s) et passe — ce n'est pas un blocage, c'est le prix du
+## balayage. Ils sont derriere `//go:build gamefiles` pour que `go test ./internal/himap/`
+## reste utilisable (22 s au lieu d'interminable).
+##
+## Sans installation du jeu, chaque test prend son `t.Skip` et la cible est vide en 1 s.
+## Cibler une carte : BALAYAGE_CARTES=aquarius_map ; installation ailleurs :
+## LEVELUP_HALO_DEPLOY=<chemin>.
+go-api-test-gamefiles:
+	cd $(GO_API_DIR) && go test -tags=gamefiles -count=1 -timeout 3600s ./internal/himap/ -v
 
 ## Go API: lance les tests avec rapport de couverture
 go-api-coverage:

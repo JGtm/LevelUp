@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 import (

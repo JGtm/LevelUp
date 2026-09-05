@@ -1,7 +1,5 @@
 package filmdec
 
-import "levelup/go-api/internal/analysis/filmsource"
-
 // equipment_changes.go — LES RAMASSAGES ET LES CONSOMMATIONS D'ÉQUIPEMENT, datés.
 //
 // CE QUE C'EST. L'équipement d'un joueur — la capacité d'armure : grappin, répulseur, mur de
@@ -35,6 +33,12 @@ import "levelup/go-api/internal/analysis/filmsource"
 // portait le joueur avant sa première émission.
 //
 // HORS LIGNE par construction (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+
+import (
+	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // EquipmentChangeKind qualifie un changement d'équipement porté.
 type EquipmentChangeKind string
@@ -79,6 +83,18 @@ type EquipmentChange struct {
 	Previous int
 	// Kind qualifie le changement.
 	Kind EquipmentChangeKind
+	// Recovered dit que cette émission vient de la RÉCUPÉRATION GATÉE (equipment_recovery.go)
+	// et non du balayage strict : ses octets existent dans le film sous une forme que la
+	// production rejette par construction, et son compteur comble exactement un saut annoncé.
+	// La provenance reste dite — un `from` redevenu fiable grâce à elle n'est pas un `from`
+	// lu par le chemin nominal.
+	Recovered bool
+	// Gap est le saut de compteur RÉSIDUEL constaté depuis l'émission précédente de la même
+	// vie, APRÈS récupération : 0 = chaîne saine (pas de 1), n > 0 = n émissions manquent
+	// encore juste avant celle-ci — son champ Previous n'est alors PAS une identité fiable.
+	// La première émission d'une vie porte 0 (pas d'émission précédente) ; l'incomplétude de
+	// tête se lit dans EquipmentChangeStats.LivesFirstOffSpec.
+	Gap int
 }
 
 // EquipmentChangeStats dit ce que le balayage a vu ET ce qu'il a MANQUÉ. Le second est la
@@ -100,6 +116,12 @@ type EquipmentChangeStats struct {
 	LivesFirstOffSpec int
 	// Spawned / Taken / Spent ventilent les changements rendus.
 	Spawned, Taken, Spent int
+	// Recovered compte les émissions issues de la récupération gatée (equipment_recovery.go),
+	// À PART des lues par le balayage strict. Les compteurs ci-dessus (CounterJumps,
+	// MissedEstimate, LivesFirstOffSpec) décrivent la chaîne FINALE, récupération comprise :
+	// ce qui reste manquant après elle — le témoin mesure ce qui est publié, pas un état
+	// intermédiaire.
+	Recovered int
 }
 
 // equipmentFirstCounter est la valeur du compteur R(3) à la première émission d'une vie,
@@ -113,7 +135,12 @@ const equipmentFirstCounter = 5
 // réapparition d'un ramassage, et le balayage REFUSE de trancher sans lui : sans témoin, une
 // première émission est rendue `EquipmentTaken`, ce qui SURESTIME les ramassages sur les
 // modes où les joueurs réapparaissent équipés. L'appelant qui n'a pas de témoin doit le
-// savoir.
+// savoir. Le témoin sert AUSSI la récupération de tête de vie (fenêtre
+// [naissance, première émission]) : sans lui, elle n'est pas tentée.
+//
+// DEUX PASSES : le balayage STRICT d'abord (aucune garde affaiblie), puis la RÉCUPÉRATION
+// GATÉE des seules fenêtres de saut de compteur (equipment_recovery.go, décision D1). Les
+// émissions récupérées sont étiquetées `Recovered` et comptées à part.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS (cf. ScanFilmAbilityRanks).
 //
@@ -129,63 +156,247 @@ func ScanFilmEquipmentChanges(
 	return ScanEquipmentChanges(NewFilmContext(film), bornAt)
 }
 
-// ScanEquipmentChanges décode les changements d'équipement porté d'un film DEJA CHARGE.
+// ScanEquipmentChanges décode les changements d'équipement porté d'un film DEJA CHARGE. Cf.
+// [ScanFilmEquipmentChanges] pour la doctrine des deux passes.
 func ScanEquipmentChanges(
 	fc *FilmContext, bornAt func(slot uint32) (uint64, bool),
 ) ([]EquipmentChange, EquipmentChangeStats, error) {
-	var st EquipmentChangeStats
-	var out []EquipmentChange
-	type state struct {
-		rank    int
-		counter uint32
-		seen    bool
-	}
-	per := map[uint32]*state{}
-
-	walk, err := walkAbilityEmissions(fc, func(e abilityEmission) {
-		s := per[e.Slot]
-		if s == nil {
-			s = &state{rank: AbilitySetNoRank}
-			per[e.Slot] = s
-			st.Lives++
-			if e.Counter != equipmentFirstCounter {
-				st.LivesFirstOffSpec++
-			}
-		} else {
-			countEquipmentCounterStep(&st, s.counter, e.Counter)
-		}
-		ch := EquipmentChange{
-			TimestampUS: e.TimestampUS, Chunk: e.Chunk, PacketIndex: e.PacketIndex,
-			Slot: e.Slot, Counter: e.Counter, Rank: e.Rank, Previous: AbilitySetNoRank,
-		}
-		if s.seen {
-			ch.Previous = s.rank
-		}
-		ch.Kind = classifyEquipmentChange(ch, s.seen, bornAt)
-		switch ch.Kind {
-		case EquipmentSpawned:
-			st.Spawned++
-		case EquipmentSpent:
-			st.Spent++
-		default:
-			st.Taken++
-		}
-		out = append(out, ch)
-		s.rank, s.counter, s.seen = e.Rank, e.Counter, true
-	})
+	setup, err := resolveAbilityScan(fc)
 	if err != nil {
-		return nil, st, err
+		return nil, EquipmentChangeStats{}, err
 	}
+	var strict []abilityEmission
+	walk := walkAbilityEmissionsWith(setup, func(e abilityEmission) {
+		strict = append(strict, e)
+	})
+	bySlot := map[uint32][]abilityEmission{}
+	for _, e := range strict {
+		bySlot[e.Slot] = append(bySlot[e.Slot], e)
+	}
+	for _, list := range bySlot {
+		sortEmissionsByFilmOrder(list)
+	}
+	recovered := scanEquipmentRecovery(setup, buildEquipRecoveryWindows(bySlot, bornAt))
+	out, st := assembleEquipmentChanges(strict, recovered, bornAt)
 	st.Walk = walk
 	return out, st, nil
+}
+
+// equipEmission est une émission en cours de FUSION : stricte ou récupérée, avec l'offset de
+// bit qui départage deux émissions du même paquet. Le balayage strict ne capture pas son
+// offset : il vaut alors -1 — à clé (instant, chunk, paquet) égale, la STRICTE passe avant
+// la récupérée. C'est un choix documenté, pas une vérité du film : quand ce départage place
+// une récupérée à contre-chaîne (candidat du paquet frontière), le verrou final la retire.
+type equipEmission struct {
+	abilityEmission
+	recovered bool
+	off       int
+	// head : la récupérée vient de la fenêtre de TÊTE de sa vie (cf. equipRecovered.head).
+	head bool
+}
+
+// assembleEquipmentChanges est LA FUSION — pure, testable sans film : émissions strictes +
+// récupérées, ordre total, verrou final, classification, gap et stats sur la chaîne FINALE.
+// C'est elle que les tests unitaires exercent sur des entrées synthétiques (revue ronde 1,
+// F4 : une fusion non testée hors gating laissait des mutations survivre à la CI).
+func assembleEquipmentChanges(
+	strict []abilityEmission, recovered []equipRecovered, bornAt func(uint32) (uint64, bool),
+) ([]EquipmentChange, EquipmentChangeStats) {
+	var st EquipmentChangeStats
+	var out []EquipmentChange
+	for _, list := range mergeEquipEmissions(strict, recovered, &st) {
+		st.Lives++
+		if list[0].Counter != equipmentFirstCounter {
+			st.LivesFirstOffSpec++
+		}
+		rank, seen := AbilitySetNoRank, false
+		for i, e := range list {
+			ch := EquipmentChange{
+				TimestampUS: e.TimestampUS, Chunk: e.Chunk, PacketIndex: e.PacketIndex,
+				Slot: e.Slot, Counter: e.Counter, Rank: e.Rank, Previous: AbilitySetNoRank,
+				Recovered: e.recovered,
+			}
+			if i > 0 {
+				countEquipmentCounterStep(&st, list[i-1].Counter, e.Counter)
+				ch.Gap = counterGap(list[i-1].Counter, e.Counter)
+			}
+			if seen {
+				ch.Previous = rank
+			}
+			ch.Kind = classifyEquipmentChange(ch, seen, bornAt)
+			switch ch.Kind {
+			case EquipmentSpawned:
+				st.Spawned++
+			case EquipmentSpent:
+				st.Spent++
+			default:
+				st.Taken++
+			}
+			out = append(out, ch)
+			rank, seen = e.Rank, true
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return equipmentChangeFilmOrderLess(out[i], out[j]) })
+	return out, st
+}
+
+// mergeEquipEmissions fusionne les deux sources par vie, dans l'ordre total du film (offset
+// de bit compris), puis passe le VERROU FINAL. st.Recovered ne compte que les récupérées qui
+// SURVIVENT au verrou : une récupérée retirée n'est pas publiée, elle ne se compte pas.
+func mergeEquipEmissions(
+	strict []abilityEmission, recovered []equipRecovered, st *EquipmentChangeStats,
+) map[uint32][]equipEmission {
+	merged := map[uint32][]equipEmission{}
+	for _, e := range strict {
+		merged[e.Slot] = append(merged[e.Slot], equipEmission{abilityEmission: e, off: -1})
+	}
+	// hasHead : les vies dont une récupérée vient de la fenêtre de TÊTE. Leur chaîne commence
+	// au compteur VIRTUEL equipRecoveryHeadCounter, et c'est cette amorce que le verrou final
+	// doit voir (revue ronde 2, « verrou tête partielle »).
+	hasHead := map[uint32]bool{}
+	for _, r := range recovered {
+		merged[r.Slot] = append(merged[r.Slot], equipEmission{
+			abilityEmission: r.abilityEmission, recovered: true, off: r.off, head: r.head})
+		if r.head {
+			hasHead[r.Slot] = true
+		}
+	}
+	for slot, list := range merged {
+		sort.Slice(list, func(i, j int) bool { return equipEmissionLess(list[i], list[j]) })
+		list = pruneRecoveredViolations(list, hasHead[slot])
+		merged[slot] = list
+		for _, e := range list {
+			if e.recovered {
+				st.Recovered++
+			}
+		}
+	}
+	return merged
+}
+
+// equipEmissionLess est l'ordre TOTAL de la fusion : instant, chunk, paquet, puis offset de
+// bit — la stricte (-1) avant toute récupérée du même paquet, deux récupérées par leur
+// position dans le flux. Sans ce dernier critère, sort.Slice (non stable) rendait un ordre
+// dépendant de l'exécution au paquet frontière (revue ronde 1, F3).
+func equipEmissionLess(a, b equipEmission) bool {
+	if a.TimestampUS != b.TimestampUS {
+		return a.TimestampUS < b.TimestampUS
+	}
+	if a.Chunk != b.Chunk {
+		return a.Chunk < b.Chunk
+	}
+	if a.PacketIndex != b.PacketIndex {
+		return a.PacketIndex < b.PacketIndex
+	}
+	return a.off < b.off
+}
+
+// pruneRecoveredViolations est LE VERROU FINAL (revue ronde 1, F3) : l'invariant « une
+// récupération ne crée ni répétition ni nouveau saut » se vérifie sur la CHAÎNE FINALE
+// TRIÉE, pas seulement dans acceptEquipRecovery — un départage de paquet frontière peut
+// intercaler une récupérée à contre-chaîne. Toute récupérée dont le RETRAIT fait baisser le
+// nombre de répétitions ou de sauts est retirée ; les strictes ne sont jamais touchées.
+//
+// `head` dit que la vie porte une récupérée de TÊTE : la vérification part alors du compteur
+// VIRTUEL qui précède la première émission (equipRecoveryHeadCounter), la MÊME amorce que
+// buildEquipRecoveryWindows a employée pour prédire les candidats. Sans elle, le verrou
+// comparait une chaîne amorcée à une chaîne SANS amorce et retirait toute récupération de
+// tête PARTIELLE non contiguë à la première stricte — perte conservatrice, mais perte
+// (revue ronde 2, « verrou tête partielle » ; sonde : première stricte c7, fromC=4, seul c5
+// retrouvé -> la récupérée disparaissait).
+func pruneRecoveredViolations(list []equipEmission, head bool) []equipEmission {
+	for again := true; again; {
+		again = false
+		baseRep, baseJumps := chainViolations(list, head)
+		for i, e := range list {
+			if !e.recovered {
+				continue
+			}
+			without := append(append([]equipEmission{}, list[:i]...), list[i+1:]...)
+			if rep, jumps := chainViolations(without, head); rep < baseRep || jumps < baseJumps {
+				list, again = without, true
+				break
+			}
+		}
+	}
+	return list
+}
+
+// chainViolations compte les répétitions et les sauts d'une chaîne triée d'émissions. Avec
+// `head`, la chaîne est amorcée par le compteur VIRTUEL de tête de vie : la première émission
+// se juge alors contre lui, exactement comme les fenêtres de tête la prédisent.
+func chainViolations(list []equipEmission, head bool) (repeats, jumps int) {
+	prev, seen := uint32(equipRecoveryHeadCounter), head
+	for _, e := range list {
+		if seen {
+			switch counterStep(prev, e.Counter) {
+			case 0:
+				repeats++
+			case 1:
+			default:
+				jumps++
+			}
+		}
+		prev, seen = e.Counter, true
+	}
+	return repeats, jumps
+}
+
+// sortEmissionsByFilmOrder trie des émissions dans l'ordre du film (instant, puis
+// localisation) — l'ordre dans lequel le balayage strict les produisait déjà.
+func sortEmissionsByFilmOrder(list []abilityEmission) {
+	sort.Slice(list, func(i, j int) bool { return emissionFilmOrderLess(list[i], list[j]) })
+}
+
+// emissionFilmOrderLess ordonne deux émissions par instant, puis par localisation dans le
+// film — un ordre TOTAL, pour une sortie déterministe.
+func emissionFilmOrderLess(a, b abilityEmission) bool {
+	if a.TimestampUS != b.TimestampUS {
+		return a.TimestampUS < b.TimestampUS
+	}
+	if a.Chunk != b.Chunk {
+		return a.Chunk < b.Chunk
+	}
+	return a.PacketIndex < b.PacketIndex
+}
+
+// equipmentChangeFilmOrderLess est le même ordre total, sur les changements assemblés.
+func equipmentChangeFilmOrderLess(a, b EquipmentChange) bool {
+	if a.TimestampUS != b.TimestampUS {
+		return a.TimestampUS < b.TimestampUS
+	}
+	if a.Chunk != b.Chunk {
+		return a.Chunk < b.Chunk
+	}
+	if a.PacketIndex != b.PacketIndex {
+		return a.PacketIndex < b.PacketIndex
+	}
+	return a.Slot < b.Slot
+}
+
+// counterStep rend l'avance du compteur R(3) entre deux émissions, MODULO 8 — LE SEUL
+// EXEMPLAIRE de cette arithmétique (règle des <= 2 copies, CLAUDE.md n°6 ; revue ronde 1,
+// F2 : cinq copies du littéral). Un garde-rail grep (TestCounterStepLitteralUnique) interdit
+// le littéral hors de ce fichier — une factorisation sans garde-rail re-diverge.
+func counterStep(from, to uint32) int {
+	return (int(to) - int(from) + 8) % 8
+}
+
+// counterGap rend le nombre d'émissions encore manquantes entre deux émissions consécutives
+// d'une même vie : pas − 1 quand le compteur saute, 0 sur un pas de 1 ET sur une répétition
+// (une répétition n'est pas un manque — elle contredit le canal et se compte à part).
+func counterGap(from, to uint32) int {
+	if step := counterStep(from, to); step > 1 {
+		return step - 1
+	}
+	return 0
 }
 
 // countEquipmentCounterStep comptabilise l'avance du compteur entre deux émissions d'une même
 // vie. Le compteur est sur 3 bits : l'avance se lit MODULO 8, et un pas de 1 dit « aucune
 // émission entre les deux ».
 func countEquipmentCounterStep(st *EquipmentChangeStats, from, to uint32) {
-	step := (int(to) - int(from) + 8) % 8
-	switch step {
+	switch step := counterStep(from, to); step {
 	case 0:
 		st.Repeats++
 	case 1:

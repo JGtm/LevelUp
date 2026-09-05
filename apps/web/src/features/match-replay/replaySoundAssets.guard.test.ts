@@ -53,6 +53,7 @@ import {
   EQUIPMENT_PAD_SPAWN_SOUND_STEM,
   WEAPON_CHANGE_SOUND_STEMS,
   EQUIPMENT_PICKUP_SOUND_STEM,
+  ABILITY_IMPULSE_SOUND_STEMS,
 } from './replaySound'
 
 /** Les stems d une entree d objectif : une PAIRE PEUT ETRE INCOMPLETE (le camp non design00e9 a
@@ -114,6 +115,10 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS_END),
     // Le TIR de grappin (lot G, 2026-08-20) : UN SEUL stem, aucune famille.
     GRAPPLE_SOUND_STEM,
+    // L'USAGE D'UNE CAPACITÉ QUI POUSSE SON PORTEUR (schéma 38, 2026-09-03) : un stem PAR
+    // FAMILLE — le propulseur aujourd'hui, et lui seul. Ses variantes entrent par
+    // SOUND_VARIANTS ci-dessous, comme celles du grappin.
+    ...Object.values(ABILITY_IMPULSE_SOUND_STEMS),
     // Les ACTIONS D'OBJECTIF (lot du 2026-08-26) : un ou deux stems par statistique, selon
     // que le jeu distingue les camps.
     ...Object.values(OBJECTIVE_SOUND_STEMS).flatMap(stemsObjectif),
@@ -228,6 +233,10 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // armes et demande désormais une entrée `SOURCES_COURTES`, ce que l'ancienne rédaction de
     // ce commentaire déclarait inutile.
     GRAPPLE_SOUND_STEM,
+    // Le PROPULSEUR : catégorie Équipement, même règle de durée. Sa source est naturellement
+    // courte (0,83 à 1,00 s — le dash EST une impulsion), d'où ses trois entrées dans
+    // `SOURCES_COURTES` : la coupe des armes ne l'a pas tronqué, le geste fait cette durée-là.
+    ...Object.values(ABILITY_IMPULSE_SOUND_STEMS),
     // Les ACTIONS D'OBJECTIF (lot du 2026-08-26) : catégorie Objectifs, même règle de durée que
     // les équipements — elles gardent la durée de leur source (1,31 à 3,41 s), jamais
     // retronquée. Un jingle de capture coupé à 1,2 s s'entendrait amputé de sa queue.
@@ -316,6 +325,20 @@ describe('garde-rail : durée livrée par catégorie', () => {
     grapple_fire: 0.745,
     grapple_fire_v2: 0.765,
     grapple_fire_v3: 0.757,
+    // LE PROPULSEUR (2026-09-03) : les trois variantes d'ACTIVATION de la bibliothèque audio
+    // du jeu (« Thruster - Activate (Var. 01/02/03) »), converties à la convention de la
+    // banque — 48 kHz, 16 bits, crête normalisée à -1 dBTP comme `grapple_fire`.
+    //
+    // ELLES REMPLACENT UNE PREMIÈRE EXTRACTION faite le même jour depuis la banque Wwise
+    // (`play_007_abl_evade_blast_player`), qui rendait les mêmes gestes mais TRONQUÉS à
+    // 0,83-1,00 s. Les masters portent la queue entière : ce sont eux qui font foi, et le
+    // nom du fichier dit l'intention là où la banque demandait de la déduire.
+    //
+    // La bibliothèque porte aussi une « Recharge » par capacité : PAS livrée, faute de
+    // signal — le film ne date aucune recharge, et un asset non déclaré casse ce garde-rail.
+    thruster_activate: 1.433,
+    thruster_activate_v2: 1.5,
+    thruster_activate_v3: 1.325,
   }
 
   it('explosions et équipements gardent la durée de leur source, jamais retronquée à 1,2 s', () => {

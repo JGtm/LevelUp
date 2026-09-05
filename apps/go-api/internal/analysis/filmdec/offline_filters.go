@@ -1,6 +1,9 @@
 package filmdec
 
-import "math"
+import (
+	"math"
+	"sort"
+)
 
 // Garde-fous contre les FAUX POSITIFS du balayage bit à bit : la grammaire du record biped
 // est fortement contrainte, mais sur des millions de positions de bit un motif conforme
@@ -70,6 +73,58 @@ func nearestGap(pos []BipedPosition, idx []int, k int) uint64 {
 // vitesse depuis la dernière position acceptée dépasse maxSpeed (m/s). maxSpeed <= 0
 // désactive le filtre. PUR.
 func DropTeleports(pos []BipedPosition, maxSpeed float64) []BipedPosition {
+	return DropTeleportsExcept(pos, maxSpeed, nil)
+}
+
+// translocExemptToleranceUS : demi-fenêtre de l'exemption autour d'un événement 117 —
+// mesurée, pas choisie : les 51 rejets à tort des 18 téléportations du corpus tombent TOUS
+// à ±200 ms de leur événement (rapport R3 §3), et les fenêtres de ±200 ms n'attrapent
+// aucune fausse exemption (0/51 hors corroboration, R3 §5 option A).
+const translocExemptToleranceUS = 200_000
+
+// TeleportExemptions porte, par slot, les instants (horloge des paquets) où le filtre de
+// vitesse est LEVÉ : les événements 117 du même slot, à ±translocExemptToleranceUS.
+//
+// C'est la décision D2 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03 (option A du rapport
+// R3) : une téléportation réelle part à 193-1540 m/s et le filtre à 100 m/s la rejetait à
+// tort — 1 à 3 échantillons bruts par saut, jamais l'arrivée (le réancrage borne la
+// cascade). L'exemption est déclenchée par un ENREGISTREMENT du film, jamais par un seuil
+// spatial : sur un film sans tête 117, elle n'existe pas et le filtre rend bit à bit la
+// sémantique du schéma 37 — invariance prouvée contre une implémentation de RÉFÉRENCE
+// FIGÉE dans le test (copie verbatim de l'ancien DropTeleports :
+// TestDropTeleportsInvarianceSansEvenement, et TestP1InvarianceSansTete117 sur film
+// témoin avec le même oracle — comparer à DropTeleports ne prouverait rien, il délègue).
+type TeleportExemptions map[uint32][]uint64
+
+// TeleportExemptionsOf construit les fenêtres d'exemption depuis les événements du scan
+// (ScanFilmTranslocatorTeleports rend les instants triés ; la construction re-trie par slot
+// pour ne pas dépendre de ce contrat).
+func TeleportExemptionsOf(evts []TranslocatorTeleport) TeleportExemptions {
+	if len(evts) == 0 {
+		return nil
+	}
+	out := TeleportExemptions{}
+	for _, e := range evts {
+		out[e.Slot] = append(out[e.Slot], e.TimestampUS)
+	}
+	for _, ts := range out {
+		sort.Slice(ts, func(i, j int) bool { return ts[i] < ts[j] })
+	}
+	return out
+}
+
+// covers dit si l'instant tombe à ±translocExemptToleranceUS d'un événement du slot.
+func (x TeleportExemptions) covers(slot uint32, tsUS uint64) bool {
+	ts := x[slot]
+	i := sort.Search(len(ts), func(i int) bool { return ts[i]+translocExemptToleranceUS >= tsUS })
+	return i < len(ts) && ts[i] <= tsUS+translocExemptToleranceUS
+}
+
+// DropTeleportsExcept est DropTeleports avec l'exemption D2 : une position couverte par une
+// fenêtre d'exemption de SON slot est acceptée sans condition de vitesse — et devient
+// l'ancre des décisions suivantes, comme toute position acceptée. exempt nil ou vide rend
+// le filtre STRICTEMENT identique à DropTeleports. PUR.
+func DropTeleportsExcept(pos []BipedPosition, maxSpeed float64, exempt TeleportExemptions) []BipedPosition {
 	if maxSpeed <= 0 || len(pos) == 0 {
 		return pos
 	}
@@ -86,7 +141,8 @@ func DropTeleports(pos []BipedPosition, maxSpeed float64) []BipedPosition {
 			a = &anchor{}
 			anchors[p.Slot] = a
 		}
-		if a.ok && a.streak < maxRejectStreak && speedFrom(a.p, p) > maxSpeed {
+		if a.ok && a.streak < maxRejectStreak && speedFrom(a.p, p) > maxSpeed &&
+			(len(exempt) == 0 || !exempt.covers(p.Slot, p.TimestampUS)) {
 			a.streak++
 			continue
 		}
