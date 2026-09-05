@@ -31,6 +31,10 @@ var (
 	// ErrResultatIncoherent : le meme match porte deux resultats selon le raster. C'est une
 	// erreur d'appel, pas une donnee a arbitrer en silence.
 	ErrResultatIncoherent = errors.New("tactical: resultats contradictoires pour un meme match")
+	// ErrUniversIncompatible : les rasters sommes ne portent pas le meme ensemble de matchs
+	// retenus. Deux vues d'un meme filtre ont le meme univers ; deux univers differents sont
+	// deux filtres, et leur somme n'aurait pas de denominateur commun.
+	ErrUniversIncompatible = errors.New("tactical: rasters d'univers differents")
 )
 
 // Somme agrege des rasters en un seul. Le cas nominal est un raster PAR MATCH (calcule une
@@ -39,6 +43,10 @@ var (
 // Le meme match peut apparaitre dans plusieurs rasters (deux vues partielles d'un match,
 // par exemple ses morts et ses kills) : ses passages s'additionnent, et il ne compte qu'UNE
 // FOIS dans les matchs distincts d'une cellule comme dans le denominateur par match.
+//
+// TOUS LES RASTERS PARTAGENT LE MEME UNIVERS, sinon ErrUniversIncompatible : deux vues d'un
+// meme filtre ont, par construction, le meme ensemble de matchs retenus. Sommer deux univers
+// differents melangerait deux filtres et fausserait le denominateur « par match ».
 func Somme(rasters ...*Raster) (*Raster, error) {
 	if len(rasters) == 0 {
 		return nil, ErrAucunRaster
@@ -46,18 +54,17 @@ func Somme(rasters ...*Raster) (*Raster, error) {
 	out := &Raster{
 		grille:    Grille{pasM: rasters[0].PasM()},
 		cellules:  make(map[Cellule]map[string]int),
-		resultats: make(map[string]int),
+		resultats: make(map[string]int, len(rasters[0].resultats)),
+	}
+	for matchID, res := range rasters[0].resultats {
+		out.resultats[matchID] = res
 	}
 	for _, r := range rasters {
 		if r.PasM() != out.PasM() {
 			return nil, fmt.Errorf("%w (%v et %v)", ErrPasIncompatible, out.PasM(), r.PasM())
 		}
-		for matchID, res := range r.resultats {
-			connu, deja := out.resultats[matchID]
-			if deja && connu != res {
-				return nil, fmt.Errorf("%w (match %s : %d et %d)", ErrResultatIncoherent, matchID, connu, res)
-			}
-			out.resultats[matchID] = res
+		if err := fusionnerUnivers(out.resultats, r.resultats); err != nil {
+			return nil, err
 		}
 		for c, parMatch := range r.cellules {
 			cible := out.cellules[c]
@@ -74,15 +81,43 @@ func Somme(rasters ...*Raster) (*Raster, error) {
 	return out, nil
 }
 
+// fusionnerUnivers verifie que deux rasters portent le MEME ensemble de matchs et consolide
+// leurs resultats.
+//
+// domain.OutcomeUnknown vaut ABSENCE d'information, pas un resultat concurrent : une vue non
+// signee (les morts, rasterisees sans table de resultats) et une vue signee (les kills) du
+// meme filtre se somment, et c'est la valeur CONNUE qui l'emporte. Seules deux valeurs
+// connues et differentes sont une contradiction — une erreur d'appel, pas une donnee a
+// arbitrer.
+func fusionnerUnivers(cible, source map[string]int) error {
+	if len(source) != len(cible) {
+		return fmt.Errorf("%w (%d matchs retenus d'un cote, %d de l'autre)", ErrUniversIncompatible, len(cible), len(source))
+	}
+	for matchID, res := range source {
+		connu, present := cible[matchID]
+		switch {
+		case !present:
+			return fmt.Errorf("%w (match %q absent d'un des rasters)", ErrUniversIncompatible, matchID)
+		case connu == res, res == domain.OutcomeUnknown:
+		case connu == domain.OutcomeUnknown:
+			cible[matchID] = res
+		default:
+			return fmt.Errorf("%w (match %q : %d et %d)", ErrResultatIncoherent, matchID, connu, res)
+		}
+	}
+	return nil
+}
+
 // Cellules rend les cellules lisibles d'une lecture NON signee (ou je meurs, ou je tue, ou
 // je passe mon temps), triees pour un rendu stable.
 //
 // Deux regles y sont appliquees, et elles sont indissociables :
 //   - le plancher de rarete (PlancherMatchsParCellule matchs distincts) ;
-//   - la valeur PAR MATCH, divisee par le nombre total de matchs du raster et non par les
-//     seuls matchs de la cellule. Diviser par les matchs de la cellule rendrait 1,0 aussi
-//     bien pour trois passages sur trois matchs que pour trente sur trente, et effacerait
-//     exactement ce que la lecture cherche : l'intensite.
+//   - la valeur PAR MATCH, divisee par la taille de L'UNIVERS — tous les matchs retenus, y
+//     compris ceux qui n'ont alimente aucune cellule — et non par les seuls matchs de la
+//     cellule. Diviser par les matchs de la cellule rendrait 1,0 aussi bien pour trois
+//     passages sur trois matchs que pour trente sur trente, et effacerait exactement ce que
+//     la lecture cherche : l'intensite.
 func (r *Raster) Cellules() []domain.CelluleTactique {
 	total := float64(r.NbMatchs())
 	out := make([]domain.CelluleTactique, 0, len(r.cellules))
@@ -114,6 +149,10 @@ func (r *Raster) Cellules() []domain.CelluleTactique {
 // cellule traversee 20 fois en victoire et 5 fois en defaite est NEUTRE (meme rythme des
 // deux cotes) ; une difference brute y lirait +15 et peindrait une zone gagnante qui n'est
 // que le reflet du taux de victoire global. La valeur est donc un ecart de taux par match.
+//
+// Les deux denominateurs comptent sur L'UNIVERS, pas sur les matchs de la cellule : une
+// victoire sans aucun point sur la lecture (aucun kill, aucune mort) est un zero legitime de
+// son cote, et l'omettre gonflerait le taux du cote qui a le plus de matchs muets.
 //
 // Le plancher est applique PAR COTE (PlancherMatchsParCote) : une cellule vue dans trois
 // victoires et aucune defaite est RETIREE, pas peinte en positif.
