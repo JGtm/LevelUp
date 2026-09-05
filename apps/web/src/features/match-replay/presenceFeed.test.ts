@@ -14,8 +14,11 @@ import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
 import type { ReplayWindowBounds } from './replayWindow'
 import type { ReplayPlayer } from './rosterLogic'
 
-/** Un document 10 Hz : frameToMs(t) = t * 100 ms. */
-const DOC = { frameIntervalMs: 100, frameCount: 3_000 } as ReplayDocumentReady
+/**
+ * Un document 10 Hz : frameToMs(t) = t * 100 ms. `originMs` est publié — sans lui, l'horloge
+ * de la page ne s'établit pas et la présence se tait (cf. `model/replayClock`).
+ */
+const DOC = { frameIntervalMs: 100, frameCount: 3_000, originMs: 0 } as ReplayDocumentReady
 
 /** Fenêtre de gameplay : de 10 s à 250 s (préambule de lecture 1 s avant, cadence 100 ms). */
 const WINDOW: ReplayWindowBounds = {

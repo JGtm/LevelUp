@@ -10,7 +10,8 @@
  *         PRÉCISE et AFFIRMATIVE : les drapeaux disent le fait, pas une déduction — un
  *         drapeau à `false` fait TAIRE ce joueur, ce n'est pas une absence de donnée.
  *         Le recalage vers l'axe du rejeu est CELUI DES MÉDIAS (replayMediaLogic) :
- *         replayMs = (absolu − header.start_time) − originMs — une seule doctrine.
+ *         replayMs = (absolu − header.start_time) − origine du film — une seule doctrine,
+ *         portée par l'horloge de la page (`model/replayClock`).
  *
  *   FILM  le repli, quand les drapeaux manquent (matchs d'avant les colonnes, en-tête
  *         absent) : les bornes de vie. Première vie bien après le coup d'envoi = entrée ;
@@ -26,6 +27,7 @@
 import { stripBotSuffix } from '@/lib/players/displayName'
 
 import type { ReplayFeedEntry } from './killFeedLogic'
+import { replayClock, type ReplayClock } from './model/replayClock'
 import { frameToMs, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import type { ReplayWindowBounds } from './replayWindow'
@@ -64,9 +66,12 @@ export function presenceEntries(
   doc: ReplayDocumentReady,
   header?: PresenceHeader | null,
 ): ReplayFeedEntry[] {
-  if (!playWindow) return []
+  // LE MÊME VERDICT QUE LE RESTE DE LA PAGE (`model/replayClock`) : sans horloge établie, une
+  // ligne d'entrée serait posée à un instant faux de 3,6 à 50,8 s. La fenêtre de gameplay
+  // n'existe d'ailleurs pas non plus dans ce cas — les deux portes disent la même chose.
+  const clock = replayClock(doc)
+  if (!playWindow || !clock) return []
   const matchStartMs = parseInstant(header?.start_time)
-  const origin = Number.isFinite(doc.originMs) ? (doc.originMs as number) : 0
   const out: ReplayFeedEntry[] = []
   for (const p of players) {
     const rawName = playerName(p)
@@ -77,7 +82,7 @@ export function presenceEntries(
     // LE CHEMIN API NE DEMANDE AUCUNE VIE : un remplaçant dont le pont n'a pas pu nommer
     // les vies (bot du match témoin 1b2d9e08) a quand même rejoint la partie — la base le
     // date, la ligne s'affiche. Seul le REPLI film exige des vies : il n'a rien d'autre.
-    const api = apiPresence(p, name, matchStartMs, origin, playWindow)
+    const api = apiPresence(p, name, matchStartMs, clock, playWindow)
     if (api) {
       out.push(...api)
       continue
@@ -98,7 +103,7 @@ function apiPresence(
   p: ReplayPlayer,
   name: string,
   matchStartMs: number | null,
-  originMs: number,
+  clock: ReplayClock,
   playWindow: ReplayWindowBounds,
 ): ReplayFeedEntry[] | null {
   const b = p.board
@@ -107,7 +112,7 @@ function apiPresence(
   const out: ReplayFeedEntry[] = []
   const toReplayMs = (iso: string | null | undefined): number | null => {
     const abs = parseInstant(iso)
-    return abs === null ? null : abs - matchStartMs - originMs
+    return abs === null ? null : clock.filmMsOfMatchMs(abs - matchStartMs)
   }
   if (b.joined_in_progress) {
     const ms = toReplayMs(b.first_joined_time)

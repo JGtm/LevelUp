@@ -8,8 +8,8 @@
  * sur des statues et se terminait sur une scène qui n'appartient plus au match.
  *
  * DEUX AXES, ET C'EST TOUTE LA DIFFICULTÉ. Le film compte en IMAGES depuis son premier paquet
- * de position (`doc.originMs`, schéma >= 4, dit à quel instant du match cette image zéro
- * tombe) ; le match, lui, compte en millisecondes depuis son `start_time` (`header.t0_ms` =
+ * de position (l'ORIGINE que porte l'horloge de la page — schéma >= 4 — dit à quel instant du
+ * match cette image zéro tombe) ; le match, lui, compte en ms depuis son `start_time` (`header.t0_ms` =
  * coup d'envoi, `header.playable_duration_seconds` = durée de jeu). Passer de l'un à l'autre
  * est une soustraction, et les deux bornes en découlent :
  *
@@ -52,15 +52,20 @@
  * gagnés au score — mais 133 s avant sur 64e8adfa, qui s'est terminé AU TEMPS. Une borne tirée
  * du score amputerait deux minutes de jeu sur ce match-là sans qu'aucun test ne rougisse.
  *
- * SANS DONNÉE, PAS DE CADRAGE (D-A3) : un artefact antérieur au schéma 4 (pas d'`originMs`) ou
- * un en-tête sans durée jouable rend `null`, et tout ce qui lit cette fenêtre retombe alors sur
- * le comportement d'avant ce lot — film entier, horloge du film. Une fenêtre incohérente (fin
- * avant début) rend `null` pour la même raison : mieux vaut le film entier qu'une lecture d'une
- * seule image.
+ * SANS DONNÉE, PAS DE CADRAGE (D-A3) : un artefact dont l'horloge n'est pas établie
+ * (`model/replayClock` — pas d'origine publiée, pas d'échelle temporelle, moins de deux
+ * images) ou un en-tête sans durée jouable rend `null`, et tout ce qui lit cette fenêtre
+ * retombe alors sur le comportement d'avant ce lot — film entier, horloge du film. Une
+ * fenêtre incohérente (fin avant début) rend `null` pour la même raison : mieux vaut le film
+ * entier qu'une lecture d'une seule image.
+ *
+ * L'ORIGINE NE SE LIT PLUS ICI (2026-09-05, P0-5) : elle vient de `replayClock`, le verdict
+ * unique de la page — le même que celui du fil, des médias, de la présence et des sièges.
  */
 import type { MatchViewHeader } from '@/lib/api/types'
 
-import { frameToMs, msToFrames } from './replayLogic'
+import { replayClock } from './model/replayClock'
+import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 
 /** Ce que la fenêtre lit de l'en-tête du match : les deux bornes de l'axe du MATCH. */
@@ -107,25 +112,25 @@ export function replayWindow(
   doc: ReplayDocumentReady,
   header: ReplayWindowHeader | null | undefined,
 ): ReplayWindowBounds | null {
-  const originMs = doc.originMs
+  const clock = replayClock(doc, header)
   const playableSeconds = header?.playable_duration_seconds
-  if (originMs == null || playableSeconds == null) return null
-  const lastFrame = doc.frameCount - 1
-  if (lastFrame <= 0) return null
+  if (!clock || playableSeconds == null) return null
+  // L'horloge garantit au moins deux images : la dernière existe donc.
+  const lastFrame = clock.frameCount - 1
 
   // LE T0 DE L'API sert la borne de FIN, et elle seule : c'est lui que le serveur a soustrait
   // pour produire `playable_duration_seconds` (cf. l'en-tête, § de la compensation).
-  const apiT0Ms = header?.t0_ms ?? 0
+  const apiT0Ms = clock.t0Ms
   // LE T0 DU DÉBUT PRÉFÈRE LE FILM : mesuré au premier mouvement, contre estimé des
   // `first_joined_time`. Les deux sont sur l'axe du MATCH, la soustraction est la même.
-  const startT0Ms = doc.t0FilmMs ?? apiT0Ms
-  const startMs = Math.max(0, startT0Ms - originMs)
+  const startT0Ms = clock.t0FilmMs ?? apiT0Ms
+  const startMs = Math.max(0, clock.filmMsOfMatchMs(startT0Ms))
   const filmEndMs = frameToMs(lastFrame, doc)
-  const endMs = Math.min(apiT0Ms + playableSeconds * 1000 - originMs, filmEndMs)
-  const startFrame = clampFrame(Math.round(msToFrames(startMs, doc)), lastFrame)
-  const endFrame = clampFrame(Math.round(msToFrames(endMs, doc)), lastFrame)
+  const endMs = Math.min(clock.filmMsOfMatchMs(apiT0Ms + playableSeconds * 1000), filmEndMs)
+  const startFrame = clampFrame(clock.frameOfFilmMs(startMs), lastFrame)
+  const endFrame = clampFrame(clock.frameOfFilmMs(endMs), lastFrame)
   if (endFrame <= startFrame) return null
-  const leadInFrame = clampFrame(Math.round(msToFrames(startMs - LEAD_IN_MS, doc)), lastFrame)
+  const leadInFrame = clampFrame(clock.frameOfFilmMs(startMs - LEAD_IN_MS), lastFrame)
   return { startFrame, leadInFrame, endFrame, startMs, endMs }
 }
 

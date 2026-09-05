@@ -3,11 +3,12 @@
  *
  * TROIS HORLOGES, UNE SEULE SOUSTRACTION. Un média porte des instants ABSOLUS (l'heure à
  * laquelle la capture a eu lieu) ; le match commence à `header.start_time` ; le film, lui,
- * cale son image zéro `doc.originMs` plus tard (cf. killFeedLogic). D'où :
+ * cale son image zéro plus tard, à l'origine que l'horloge de la page porte
+ * (`model/replayClock`). D'où :
  *
- *     replayMs = (capture − header.start_time) − originMs
+ *     replayMs = (capture − header.start_time) − origine du film
  *
- * C'est la MÊME doctrine que le fil (`replayMs = event_time_ms + t0Ms − originMs`), écrite
+ * C'est la MÊME doctrine que le fil (`replayMs = event_time_ms + t0Ms − origine`), écrite
  * pour une source qui donne des dates au lieu d'un offset : `capture − start_time` est
  * exactement ce que `event_time_ms + t0Ms` reconstruit. Le recalage se fait ICI et une seule
  * fois — aucun composant ne le refait, deux recalages menés séparément divergeraient.
@@ -28,6 +29,7 @@
  */
 import type { MatchMediaTab, MatchViewHeader } from '@/lib/api/types'
 
+import type { ReplayClock } from './model/replayClock'
 import type { ReplayMediaItem } from './replayTimelineTracksLogic'
 
 /** Ce que les médias lisent de l'en-tête : l'origine de l'axe du match. */
@@ -39,24 +41,25 @@ type MediaTabItem = NonNullable<MatchMediaTab['media_items']>[number]
 /**
  * buildReplayMedia mappe l'onglet médias du match vers la piste Médias de la frise.
  *
- * `originMs` absent (artefact antérieur au schéma v4, ou origine que le producteur a refusé
- * d'établir) vaut zéro : le placement se dégrade du décalage de l'image zéro plutôt que de
- * faire disparaître la piste. C'est le même choix que le reste du lecteur — la frise reste
- * lisible, elle n'est simplement plus au millième.
+ * SANS HORLOGE ÉTABLIE, PAS DE PISTE (2026-09-05, P0-5). Ce fichier posait jusqu'ici les
+ * captures à l'origine zéro quand l'artefact n'en publiait aucune — et l'affirmait « le même
+ * choix que le reste du lecteur », ce qui était faux : la frise se cadrait sur le film entier
+ * et le fil des éliminations, lui, se recalait sur un décalage MESURÉ. Deux pistes de la même
+ * frise à deux décalages, jusqu'à ~40 s l'une de l'autre. La piste Médias suit désormais le
+ * verdict unique de la page (`model/replayClock`) : établie, elle place ; sinon elle se tait.
  */
 export function buildReplayMedia(
   mediaTab: MatchMediaTab | null | undefined,
   header: ReplayMediaHeader | null | undefined,
-  originMs: number | null | undefined,
+  clock: ReplayClock | null | undefined,
 ): ReplayMediaItem[] {
   const items = mediaTab?.media_items
   const matchStartMs = parseInstant(header?.start_time)
-  if (!items || items.length === 0 || matchStartMs === null) return []
+  if (!items || items.length === 0 || matchStartMs === null || !clock) return []
 
-  const origin = Number.isFinite(originMs) ? (originMs as number) : 0
   const out: ReplayMediaItem[] = []
   for (const item of items) {
-    const built = toReplayMedia(item, matchStartMs, origin)
+    const built = toReplayMedia(item, matchStartMs, clock)
     if (built) out.push(built)
   }
   return out.sort((a, b) => a.replayMs - b.replayMs)
@@ -66,7 +69,7 @@ export function buildReplayMedia(
 function toReplayMedia(
   item: MediaTabItem,
   matchStartMs: number,
-  originMs: number,
+  clock: ReplayClock,
 ): ReplayMediaItem | null {
   // LE VOCABULAIRE DE LA FRISE N'EST PAS CELUI DE LA GALERIE : elle dit 'image'/'clip' là où
   // `normalizeMediaKind` dit 'screenshot'/'clip'. Tout ce qui n'est pas une vidéo est une
@@ -83,7 +86,7 @@ function toReplayMedia(
     // le rapprochement d'un rendu à l'autre.
     id: String(item.file_id),
     kind,
-    replayMs: startMs - matchStartMs - originMs,
+    replayMs: clock.filmMsOfMatchMs(startMs - matchStartMs),
     ...(durationMs !== undefined ? { durationMs } : {}),
     // Les vignettes sont les WebP ANIMÉS du pipeline (legacy .gif servis pareil) : un <img>
     // les anime sans rien de plus. À défaut, une image se sert d'elle-même en vignette ; un
