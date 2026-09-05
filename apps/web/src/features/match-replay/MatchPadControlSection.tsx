@@ -45,6 +45,7 @@
 import { useCallback, useMemo, useState } from 'react'
 
 import { ChartLegend } from '@/components/charts/ChartLegend'
+import { CollapsedItemsToggle } from '@/components/ui/collapsed-items-toggle'
 import { SectionCard } from '@/components/ui/section-card'
 import { Tooltip } from '@/components/ui/tooltip'
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
@@ -141,14 +142,14 @@ export function MatchPadControlSection({
           <HeaderLabelTooltip text={t.padControl.titleHint} focusable>
             <span>{label}</span>
           </HeaderLabelTooltip>
-          {control.collapsedWeapons.length > 0 && (
-            <CollapsedWeaponsToggle
-              expanded={expanded}
-              count={control.collapsedWeapons.length}
-              onToggle={() => setExpanded((v) => !v)}
-              t={t}
-            />
-          )}
+          <CollapsedItemsToggle
+            expanded={expanded}
+            count={control.collapsedWeapons.length}
+            onToggle={() => setExpanded((v) => !v)}
+            showLabelFmt={t.collapsedColumnsShowFmt}
+            hideLabel={t.collapsedColumnsHide}
+            hint={t.collapsedColumnsHint}
+          />
         </span>
       )}
       footer={<PadControlFootnotes control={control} t={t} />}
@@ -190,37 +191,6 @@ function PadControlBody({
         </>
       )}
     </div>
-  )
-}
-
-/**
- * CollapsedWeaponsToggle — le bouton « Voir plus (N) / Replier » du repli game changers.
- *
- * SECONDE COPIE LOCALE du patron `MedalDigest.tsx` (la première : `MatchEquipmentUsageSection`).
- * Le plan du 2026-09-05 (décision D3) les accepte toutes deux et interdit l'extraction
- * `components/ui/` dans ce lot — c'est la limite exacte de la règle des <= 2 copies : une
- * troisième copie devra centraliser ET poser un garde-rail.
- */
-function CollapsedWeaponsToggle({
-  expanded,
-  count,
-  onToggle,
-  t,
-}: {
-  expanded: boolean
-  count: number
-  onToggle: () => void
-  t: ReplayText
-}) {
-  return (
-    <button
-      type="button"
-      className="text-xs font-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-      title={t.collapsedColumnsHint}
-      onClick={onToggle}
-    >
-      {expanded ? t.collapsedColumnsHide : t.collapsedColumnsShowFmt(count)}
-    </button>
   )
 }
 

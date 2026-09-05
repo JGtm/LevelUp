@@ -91304,3 +91304,31 @@ eslint 0, garde-rails 12/12, plafonds tenus (composants ramenes a 80 L pile).
 (les deux tableaux repliés/déplies sur un vrai match), puis merge feat/v75 sur accord.
 Arbitrages futurs consignes : realigner POWER_PAD_KEYS sur le vote (cindershot), repli
 des surfaces exclues (charts partages, PlayerDetailPanel).
+
+## [2026-09-05] Lot H — extension du repli aux graphes partages : le socle est livre, les graphes attendent la cle
+
+**Statut : Complete** (H3/H4 statues [!] justifies). Branche `wt/game-changers`, agent
+d'implementation Sonnet (choix utilisateur) + relecteur adversarial frais.
+
+**Decision technique principale.** H-D3 appliquee a la lettre : AUCUNE des 4 surfaces
+d'agregats (frags par arme partage, kills d'escouade, precision d'escouade, precision de
+synthese) n'expose de cle stable cote front — matching par libelle REFUSE, surfaces
+statuees [!] plutot que bricolees. Contre-verifie par la revue (5 affirmations vraies sur
+pieces). Livre quand meme : l'extraction OBLIGATOIRE du controle « Voir plus (N) »
+(`components/ui/collapsed-items-toggle.tsx`, 3e usage = extraction, regle n°6), migration
+des deux copies G1/G2 a comportement constant (chaine CSS octet pour octet), garde-rail
+anti-redivergence avec assertion anti-glob-mort, mutations rejouees dans DEUX features.
+
+**Resultats observes.** Revue H7 : 12 conditions tiennent, 0 P0/P1, 1 P2 = la remontee
+devait porter le FAIT SERVEUR : `WeaponKillRow.WeaponKey` (hinf_*) est DEJA resolu dans
+la meme passe pour Squad kills et Synthesis kills — il n'est pas serialise. Gates :
+typecheck purge 0, make test-web 577 fichiers / 6 008 tests / 0 echec, eslint 0, ratchet
+cross-feature 7/7 inchange. Le cindershot avait ete PROMU game changer en amont du lot
+(decision utilisateur, commit 08fb40de2).
+
+**Conclusion / prochaine etape.** Lot I cadre au plan : exposer `weapon_key` dans les
+DEUX DTOs (kills seulement — l'utilisateur a rappele que la precision PAR ARME est
+Halo 5 seulement, chantier Infinite remise : surfaces de precision EXCLUES, verification
+de salubrite du gating capability a rapporter) puis replier les deux graphes, avec la
+GARDE MULTI-TITRE « zero elu = aucun repli » (jamais un test de slug). PAS DE MERGE
+feat/v75 (decision utilisateur) : cloture = commits sur la branche.

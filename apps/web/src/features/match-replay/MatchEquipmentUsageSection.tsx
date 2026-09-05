@@ -56,6 +56,7 @@ import { useCallback, useMemo, useState } from 'react'
 
 import { ChartLegend } from '@/components/charts/ChartLegend'
 import { ValueGrid } from '@/components/charts/ValueGrid'
+import { CollapsedItemsToggle } from '@/components/ui/collapsed-items-toggle'
 import { SectionCard } from '@/components/ui/section-card'
 import { Tooltip } from '@/components/ui/tooltip'
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
@@ -154,14 +155,14 @@ export function MatchEquipmentUsageSection({
         // sans dérouler les deux vues. Zéro colonne repliée = pas de bouton.
         <span className="flex items-center justify-between gap-2">
           <span>{label}</span>
-          {partition.collapsedColumnCount > 0 && (
-            <CollapsedColumnsToggle
-              expanded={expanded}
-              count={partition.collapsedColumnCount}
-              onToggle={() => setExpanded((v) => !v)}
-              t={t}
-            />
-          )}
+          <CollapsedItemsToggle
+            expanded={expanded}
+            count={partition.collapsedColumnCount}
+            onToggle={() => setExpanded((v) => !v)}
+            showLabelFmt={t.collapsedColumnsShowFmt}
+            hideLabel={t.collapsedColumnsHide}
+            hint={t.collapsedColumnsHint}
+          />
         </span>
       )}
       footer={<UsageFootnotes usage={usage} t={t} />}
@@ -240,37 +241,6 @@ function UsageViews({
         </section>
       )}
     </div>
-  )
-}
-
-/**
- * CollapsedColumnsToggle — le bouton « Voir plus (N) / Replier » du repli game changers.
- *
- * COPIE LOCALE du patron `MedalDigest.tsx` (bouton texte, état local du parent) : le plan du
- * 2026-09-05 (décision D3) accepte deux copies locales — celle-ci et celle du contrôle des
- * socles — et interdit l'extraction `components/ui/` dans ce lot (règle des <= 2 copies).
- * `font-normal` : il vit dans le `<h3>` du bandeau, il n'en hérite pas la graisse de titre.
- */
-function CollapsedColumnsToggle({
-  expanded,
-  count,
-  onToggle,
-  t,
-}: {
-  expanded: boolean
-  count: number
-  onToggle: () => void
-  t: ReplayText
-}) {
-  return (
-    <button
-      type="button"
-      className="text-xs font-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-      title={t.collapsedColumnsHint}
-      onClick={onToggle}
-    >
-      {expanded ? t.collapsedColumnsHide : t.collapsedColumnsShowFmt(count)}
-    </button>
   )
 }
 
