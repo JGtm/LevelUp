@@ -91221,3 +91221,29 @@ mais avant S2, une seule session doit garder le volant.
 
 Prochaine etape : S2 (agregat de session + contrat, chiffres §7 du handoff a re-deriver
 avec le temoin corrige).
+
+## [2026-09-05] Session-usage S2 — cloture pilote : agregat commite, S3 reporte — Complété
+
+S2 commite (`4c687645a`) apres deux rondes de revue adversariale : ronde 1 = 3 P1
+(scope camp connu/inconnu croise — parts > 100 % possibles — et deux 0-pour-inconnu)
++ 3 P2 ; ronde de correction avec tests anti-mutants (le cas 600 % passe a 100 %) ;
+ronde 2 = 6/6 corrections tiennent, aucun defaut recevable. Regle de scope documentee :
+grandeurs d'equipe sur les matchs mesures a camp connu, cadences sur les matchs a duree
+connue, nil quand le sous-ensemble est vide.
+
+Verification pilote au temoin 2026-07-31 : CINQ grandeurs exactes au dixieme contre le
+§7 du handoff. TROIS references du §7 corrigees sur pieces (meme cause : le mock hors
+depot) — anonymes 82 et non 102 (surbouclier mal classe), murs 7 panneaux deployes lobby
+et 0 pour JGtm (le mock comptait les appareils laches a la mort), parites 12,5/25,0
+(canon LobbySizesAtCompletion, le mock comptait tous les inscrits). Role « prendre » :
+decision utilisateur — flag_grabs EXCLU (porter-jeter tactiques) ; idee de filtre
+anti-spam des prises notee comme chantier futur (exige la chronologie des portages,
+cote artefacts de film).
+
+S3 (front, seize formes) REPORTE sur decision utilisateur : la maquette
+(artefact 2ec1b8eb...) est inaccessible depuis ce poste. Notes de reprise au plan —
+premiere action : make generate-types (generated.ts en retard sur openapi.yaml).
+
+Lecon de coordination (voir memoire agent) : l'executant S1 coupe par la limite avait
+repris SEUL et pilote en parallele toute la soiree — arbitrage utilisateur transmis par
+message de session, retrait propre de l'autre session, un seul pilote ensuite.
