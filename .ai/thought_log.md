@@ -57,8 +57,29 @@ ancres, memes pixels avant/apres coquille, ligne a ligne. Les 5 autres paquets q
 `weapon-sounds`) compilent, passent vet et leurs tests. `golangci-lint` 0 issue dans les deux
 configurations de build.
 
-**CE QUE CE LOT DEBLOQUE.** Le corpus `gamefiles` ENTIER, que le chantier precedent avait du
-arreter a 30 min et 24 Go, redevient jouable : il tourne a 0,8 Go de memoire privee.
+**CE QUE CE LOT DEBLOQUE, ET CE QUE CA A REVELE.** Le corpus `gamefiles` ENTIER, que le
+chantier precedent avait du ARRETER a 30 min et 24 Go, tourne desormais **en 385 s (6,4 min) a
+0,8-2 Go**. Premiere execution complete de son histoire — et elle rend un ROUGE :
+`TestBancCliffhanger` echoue, accord 64,4 % contre la reference re-basee de 64,7 %.
+
+**CE ROUGE N'EST PAS DE MOI, ET C'EST PROUVE.** Rejoue sur le code d'AVANT la projection
+(`feat/v75` @ d34ff50a6, arbre propre), il rend des chiffres IDENTIQUES au bit pres : 5 102
+instances dessinees, 859 ecartees, manquants 9,9 %, exces 39,8 %, ACCORD 64,4 %. C'est donc un
+rouge PREEXISTANT — et sa decouverte illustre exactement ce que le chantier du tag annoncait :
+un corpus qu'on ne joue pas pourrit hors de vue. Personne ne pouvait le voir, le corpus ne
+terminant jamais et la CI ne l'executant pas (pas de jeu installe).
+
+Non traite ici, deliberement : melanger un correctif de mesure a un lot de performance, c'est
+perdre la lisibilite des deux (regle « zero fix opportuniste hors perimetre »). Inscrit au
+`REGISTRE_REPORTS.md` avec sa condition de reprise — le test signale AUSSI « document de rejeu
+introuvable (poser ORACLE_REPLAY ou LEVELUP_REPO_ROOT) », donc il mesure peut-etre sans sa
+reference complete ; c'est la premiere chose a lever. Au passage, le meme test passe de 63,9 s
+a 6,9 s.
+
+Une consequence secondaire, appliquee : l'estimation « ~1 h » que le chantier precedent avait
+ecrite pour le corpus etait une SUPPOSITION (personne ne l'avait jamais mesure). Elle est
+remplacee par la mesure — 6 min — dans le Makefile, CLAUDE.md et les deux COMMANDS.md, et le
+rouge connu y est signale pour que le prochain qui joue le corpus ne le prenne pas pour sien.
 
 **AU PASSAGE.** Le garde-rail `TestCorpusGamefilesEstTague`, pose la veille, m'a attrape :
 j'avais nomme le harnais `*_gamefiles_test.go` sans lui poser le tag. Il a fait exactement son

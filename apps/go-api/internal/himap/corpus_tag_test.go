@@ -11,6 +11,7 @@ package himap
 // separer. Mesure du jour, sur `feat/v75` nu :
 //
 //	TestBalayageCoquille seul ...... 1 246 s (20 min 47 s), 26 cartes cuites, VERT
+//	  (203 s depuis le 2026-09-05 : le lecteur de modules PROJETTE au lieu de copier)
 //	  la plus chere (behemoth) ......... 86 s
 //	  aquarius_map ..................... 59 s
 //

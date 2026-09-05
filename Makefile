@@ -5,7 +5,7 @@
 #   make dev           # Lance l'API Go (air) + frontend Vite (http://localhost:5173)
 #   make go-api-build  # Compile le binaire Go
 #   make go-api-test   # Lance les tests Go
-#   make go-api-test-gamefiles # Corpus cartes (exige Halo installe, ~1 h)
+#   make go-api-test-gamefiles # Corpus cartes (exige Halo installe, ~6 min)
 #   make install-web   # Installe les dépendances npm
 #   make test-web      # Tests Vitest frontend
 #   make openapi-gen   # Régénère api/openapi.yaml (Huma + fragment manuel)
@@ -195,7 +195,7 @@ go-api-test:
 		go test ./internal/domain/... ./internal/analysis/... ./contracttest/... \
 		-v -timeout 60s -count=1
 
-## Go API: corpus de retro-ingenierie des cartes (EXIGE Halo Infinite installe, ~1 h)
+## Go API: corpus de retro-ingenierie des cartes (EXIGE Halo Infinite installe, ~6 min)
 ##
 ## Les 59 fichiers `*_gamefiles_test.go` de internal/himap/ decodent les modules du JEU
 ## et balaient les 26 cartes du catalogue. Mesure du 2026-09-05 : `TestBalayageCoquille`
