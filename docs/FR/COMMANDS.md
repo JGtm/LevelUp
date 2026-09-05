@@ -86,6 +86,34 @@ go run ./cmd/backfill-team-rounds --gamertag X
 go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--match ID]
 ```
 
+#### Projeter les artefacts de rejeu en base — L'ORDRE DE RELEASE N'EST PAS INTERCHANGEABLE
+
+Deux passes lisent les artefacts de rejeu DÉJÀ cuits (`data/cache/replays/{slug}/{short8}.json`)
+et les projettent vers les tables partagées. **Aucune des deux ne décode de film.** Ce sont des
+tâches de RELEASE, et toutes deux exigent le **serveur arrêté** : elles prennent `OpenReadWrite`
+sur la DB partagée et jouent elles-mêmes les migrations — y compris sous `--dry-run`.
+
+```bash
+# 1. RE-CUIRE les artefacts d'abord — le schéma 39 périme tout artefact antérieur, et c'est
+#    cette passe-là qui fait NAÎTRE `bombStats` dedans.
+go run ./cmd/levelup backfill-replay [--dry-run] [--force] [--limit N] [--only-existing]
+
+# 2. Usages d'équipement et de socles -> match_usage_players + match_usage_films.
+go run ./cmd/levelup backfill-usage-summary [--dry-run] [--force] [--match ID] [--limit N] [--title S]
+
+# 3. Statistiques d'Assaut -> match_bomb_stats (append-only) + faits datés dans
+#    match_objective_events. Répétition à blanc D'ABORD : elle imprime les compteurs par
+#    match et n'écrit rien.
+go run ./cmd/levelup backfill-bomb-stats --dry-run
+go run ./cmd/levelup backfill-bomb-stats [--force] [--match ID] [--limit N] [--title S]
+```
+
+Lancer (3) avant (1) est un **no-op SILENCIEUX** : un artefact antérieur au schéma 39 ne porte
+aucun `bombStats`, rien n'est écrit et chaque match tombe dans le compteur « sans calque ». Les
+deux passes sont reprenables — un match déjà présent dans la vue `_latest` est sauté, sauf
+`--force`. `backfill-usage-summary` re-résume en plus quand la révision de projection ou le
+schéma de l'artefact a bougé.
+
 ### Backup / restore
 
 ```bash

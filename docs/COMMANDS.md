@@ -85,6 +85,33 @@ go run ./cmd/backfill-team-rounds --gamertag X
 go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--match ID]
 ```
 
+#### Projecting replay artifacts into the database — RELEASE ORDER MATTERS
+
+Two passes read the already-cooked replay artifacts (`data/cache/replays/{slug}/{short8}.json`)
+and project them into shared tables. **Neither decodes a film.** Both are RELEASE tasks, and
+both need the **server stopped**: they take `OpenReadWrite` on the shared DB and run the shared
+migrations themselves — including under `--dry-run`.
+
+```bash
+# 1. RE-COOK the artifacts first — schema 39 makes every earlier artifact stale, and this is
+#    the pass that makes `bombStats` exist in them at all.
+go run ./cmd/levelup backfill-replay [--dry-run] [--force] [--limit N] [--only-existing]
+
+# 2. Equipment and pad usage -> match_usage_players + match_usage_films.
+go run ./cmd/levelup backfill-usage-summary [--dry-run] [--force] [--match ID] [--limit N] [--title S]
+
+# 3. Assault statistics -> match_bomb_stats (append-only) + dated facts in
+#    match_objective_events. Dry run FIRST: it prints per-match counters and writes nothing.
+go run ./cmd/levelup backfill-bomb-stats --dry-run
+go run ./cmd/levelup backfill-bomb-stats [--force] [--match ID] [--limit N] [--title S]
+```
+
+Running (3) before (1) is a **silent no-op**: artifacts older than schema 39 carry no
+`bombStats`, so nothing is written and every match lands in the `sans calque` counter. Both
+passes are resumable — a match already present in the `_latest` view is skipped unless
+`--force`. `backfill-usage-summary` additionally re-summarises when the projection revision or
+the artifact schema has moved.
+
 ### Backup / restore
 
 ```bash
