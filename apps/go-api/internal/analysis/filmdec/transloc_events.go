@@ -169,7 +169,12 @@ func decodeTranslocHead(pay []byte, tsUS uint64, entry *MapQuantEntry) (Transloc
 // mot d'effet gardé, puis les DEUX positions quantifiées. Rend (départ, arrivée, lues).
 func decodeTranslocJump(br *BitReader, entry *MapQuantEntry) ([3]float32, [3]float32, bool) {
 	var none [3]float32
-	if br.ReadBit() || br.ReadBit() {
+	// LES DEUX PORTES SE LISENT, PAS UNE. Un `||` court-circuitait la seconde (SA4000) : sans
+	// conséquence ici — le chemin sort aussitôt et le lecteur de bits est abandonné — mais
+	// l'intention (deux portes, lues dans l'ordre du flux) appartient au code, pas au hasard
+	// d'un court-circuit.
+	ref1, ref2 := br.ReadBit(), br.ReadBit()
+	if ref1 || ref2 {
 		// Une ref 1 ou 2 présente décale tout ce qui suit d'une largeur non sourcée pour ce
 		// type (domaines {2,0,0}, R6 §1.1) : la charge n'est plus lisible. Jamais observé.
 		return none, none, false
