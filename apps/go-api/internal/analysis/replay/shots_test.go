@@ -54,7 +54,7 @@ func TestBuildShots_PlacesShotOnItsOwnerSlot(t *testing.T) {
 		fireAt(1_300_000, 3, 90),
 		{TimestampUS: 1_400_000, FilmIndex: 3, WeaponID: 1}, // sans visée : le pont suffit
 	}
-	shots, cov := buildShots(pos, events, 1_000_000, 100_000, map[uint32]int{10: 3})
+	shots, _, cov := buildShots(pos, events, 1_000_000, 100_000, map[uint32]int{10: 3})
 	// L'invariant de couverture vaut AUSSI sur le cas nominal : tout ce qui existait est
 	// soit rattache, soit rejete sous une cause nommee.
 	if !cov.Balanced() {
@@ -91,7 +91,7 @@ func TestBuildShots_RejectsAmbiguous(t *testing.T) {
 	events := []filmdec.FireEvent{fireAt(1_200_000, 3, 90), fireAt(1_300_000, 3, 90)}
 	// DEUX slots pour le MEME joueur au meme instant : le rattachement est ambigu, et rien ne
 	// doit etre publie. C'est le cas que la categorie `Ambiguous` existe pour nommer.
-	shots, cov := buildShots(pos, events, 1_000_000, 100_000, map[uint32]int{10: 3, 11: 3})
+	shots, _, cov := buildShots(pos, events, 1_000_000, 100_000, map[uint32]int{10: 3, 11: 3})
 	if len(shots) != 0 {
 		t.Fatalf("tirs publiés malgré l'ambiguïté : %+v", shots)
 	}

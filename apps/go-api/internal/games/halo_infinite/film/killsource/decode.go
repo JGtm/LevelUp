@@ -18,11 +18,12 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // Erreurs rendues par [Decode]. Elles se testent avec `errors.Is`.
 var (
-	// ErrNoChunk : la source ne rend aucun chunk.
+	// ErrNoChunk : le film ne porte aucun chunk (film nil compris).
 	ErrNoChunk = errors.New("killsource: aucun chunk")
 	// ErrNoPacket : aucun paquet de replication : le film n est pas exploitable.
 	ErrNoPacket = errors.New("killsource: aucun paquet de replication (type 0)")
@@ -53,15 +54,21 @@ type decodeCtx struct {
 	bijScore  int
 }
 
-// Decode : LA fonction publique. Elle lit les chunks d un film et rend, pour chaque mort, LES
+// Decode : LA fonction publique. Elle lit un film DEJA CHARGE et rend, pour chaque mort, LES
 // DEUX VERITES — le credit que le jeu affiche, et la source du degat fatal — plus le drapeau de
 // leur divergence, la provenance technique de chaque ligne, les denominateurs nommes et la
 // metrique de sante.
 //
+// `film` est charge par l appelant (`filmsource.LoadDir` depuis le cache disque,
+// `filmsource.Load(filmsource.MemoryChunks(...), meta)` depuis des chunks telecharges) : depuis le
+// lot 1 de PLAN_CUISSON_PERF (item 1.4), ce paquet ne lit plus le disque et ne decompresse plus
+// rien lui-meme, et une cuisson qui decode aussi le rejeu 2D partage LE MEME film. `film` nil ou
+// vide rend [ErrNoChunk].
+//
 // `opts` peut valoir nil : c est alors la configuration GELEE, celle qui a produit les chiffres
 // publies. `name` sert uniquement a etiqueter la mesure de sante (identifiant de film ou de
 // match, au choix de l appelant).
-func Decode(ctx context.Context, name string, src ChunkSource, opts *Options) (*Result, error) {
+func Decode(ctx context.Context, name string, film *filmsource.Film, opts *Options) (*Result, error) {
 	o := DefaultOptions()
 	if opts != nil {
 		o = *opts
@@ -73,7 +80,7 @@ func Decode(ctx context.Context, name string, src ChunkSource, opts *Options) (*
 	resetGlobals()
 
 	c := &decodeCtx{name: name, opts: o}
-	if err := c.prepare(ctx, src); err != nil {
+	if err := c.prepare(ctx, film); err != nil {
 		return nil, err
 	}
 	return c.finish(), nil
@@ -92,7 +99,7 @@ func resetGlobals() {
 }
 
 // prepare : les cinq etapes qui precedent la publication. Aucune ne consulte l arme.
-func (c *decodeCtx) prepare(ctx context.Context, src ChunkSource) error {
+func (c *decodeCtx) prepare(ctx context.Context, src *filmsource.Film) error {
 	var err error
 	if c.film, err = loadFilm(src); err != nil {
 		return err

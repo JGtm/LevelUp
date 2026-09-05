@@ -210,7 +210,7 @@ func p5Build(t *testing.T, dir string) ReplayDocument {
 		t.Skipf("%s absent : sans bornes de carte le rejeu ne se construit pas", p5BoundsEnv)
 	}
 	entry := mapEntryFromCatalog(t, dir, path)
-	doc, err := BuildFromFilm(filepath.Base(dir), "halo_infinite", dir, Options{
+	doc, err := buildFromFilmDir(filepath.Base(dir), "halo_infinite", dir, Options{
 		MapQuant: &entry,
 		Labels:   goldenCatalog(t),
 	})

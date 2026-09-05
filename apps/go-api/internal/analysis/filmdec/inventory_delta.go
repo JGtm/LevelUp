@@ -36,7 +36,11 @@ package filmdec
 // L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : les hooks installés
 // sont des globaux de paquet.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // Les étiquettes de registre des deux composants. L'index d'itérateur est résolu PAR NOM dans
 // le registre du film, jamais câblé : un index est un numéro de build (même règle que
@@ -97,8 +101,20 @@ type InventoryDelta struct {
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `grenadeCountsHook`
 // et `grenadeSetHook`, qui sont des globaux de paquet. L'appelant doit détenir
 // LockProcessDecode (BuildFromFilm le fait). Les hooks sont restaurés à la sortie.
+//
+// ScanFilmInventoryDeltas est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanInventoryDeltas].
 func ScanFilmInventoryDeltas(dir string) ([]InventoryDelta, InventoryDeltaStats, error) {
-	sc, err := newInvDeltaScanner(dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, InventoryDeltaStats{}, err
+	}
+	return ScanInventoryDeltas(NewFilmContext(film))
+}
+
+// ScanInventoryDeltas décode l'inventaire suivi dans les paquets delta d'un film DEJA CHARGE.
+func ScanInventoryDeltas(fc *FilmContext) ([]InventoryDelta, InventoryDeltaStats, error) {
+	sc, err := newInvDeltaScanner(fc)
 	if err != nil {
 		return nil, InventoryDeltaStats{}, err
 	}
@@ -106,11 +122,11 @@ func ScanFilmInventoryDeltas(dir string) ([]InventoryDelta, InventoryDeltaStats,
 	defer restore()
 
 	for _, c := range sc.chunks {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+		data, pks, ok := fc.ChunkAt(c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
@@ -125,7 +141,7 @@ func ScanFilmInventoryDeltas(dir string) ([]InventoryDelta, InventoryDeltaStats,
 // slots, découpage i0, archétype, index des deux composants) et l'accumulateur.
 type invDeltaScanner struct {
 	chunks    []int
-	slots     map[uint32]bool
+	slots     SlotBand
 	lay       I0Layout
 	arch      Archetype
 	minRecord int
@@ -184,24 +200,20 @@ func (sc *invDeltaScanner) resetRecord() {
 }
 
 // newInvDeltaScanner résout tout ce qui ne dépend PAS du paquet — une fois pour le film.
-func newInvDeltaScanner(dir string) (*invDeltaScanner, error) {
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, fmt.Errorf("aucun chunk film dans %s", dir)
+func newInvDeltaScanner(fc *FilmContext) (*invDeltaScanner, error) {
+	chunks := fc.ChunkNumbers()
+	if len(chunks) == 0 {
+		return nil, ErrNoFilmChunk
 	}
-	chunks := make([]int, 0, n)
-	for i := 1; i <= n; i++ {
-		chunks = append(chunks, i)
+	slots := fc.BipedSlots()
+	if slots.Count() == 0 {
+		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	slots := bipedSlotBand(dir, chunks)
-	if len(slots) == 0 {
-		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
-	}
-	lay, _, err := DetectI0Layout(dir)
+	lay, err := fc.I0Layout()
 	if err != nil {
-		return nil, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
+		return nil, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
-	arch, err := bipedArchetype(dir)
+	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +223,7 @@ func newInvDeltaScanner(dir string) (*invDeltaScanner, error) {
 		minRecord: bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits(),
 	}
 	if len(sc.role) == 0 {
-		return nil, fmt.Errorf("aucun composant d'inventaire dans l'archétype biped de %s", dir)
+		return nil, fmt.Errorf("aucun composant d'inventaire dans l'archétype biped du film")
 	}
 	return sc, nil
 }

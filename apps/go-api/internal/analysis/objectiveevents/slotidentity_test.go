@@ -20,13 +20,13 @@ func TestSlotIdentityResolvesAllEightPlayers(t *testing.T) {
 	apparies := 0
 	for _, film := range []string{"696a9d7c", "1bc77d2e"} {
 		lines := linesOf(film)
-		src, ok := newDiskFilmSource(t, film)
+		bobine, ok := newDiskFilm(t, film)
 		if !ok {
 			t.Logf("film %s absent du cache local — aucun appariement joue dessus", film)
 			continue
 		}
 		apparies++
-		got := SlotIdentityFrom(StatRecords(src), lines)
+		got := SlotIdentityFrom(StatRecords(bobine), lines)
 		if len(got) != 8 {
 			t.Errorf("%s : %d slots apparies, attendu 8", film, len(got))
 		}
@@ -50,11 +50,11 @@ func TestSlotIdentityResolvesAllEightPlayers(t *testing.T) {
 // par une AUTRE methode (coincidence des increments de +100 avec les instants de frag,
 // etat de l'art §16.2). Deux chemins independants qui tombent d'accord.
 func TestSlotIdentityMatchesKnownOwners(t *testing.T) {
-	src, ok := newDiskFilmSource(t, "1bc77d2e")
+	bobine, ok := newDiskFilm(t, "1bc77d2e")
 	if !ok {
 		t.Skipf("film 1bc77d2e absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
-	got := SlotIdentityFrom(StatRecords(src), linesOf("1bc77d2e"))
+	got := SlotIdentityFrom(StatRecords(bobine), linesOf("1bc77d2e"))
 	// slotOwners (named_test.go) donne slot 18 = JGtm, dont le xuid est etabli en §16.2.
 	for slot, want := range map[int]string{
 		18: "2533274823110022", // JGtm
@@ -150,12 +150,12 @@ func TestIdentifyNamedEventsDropsUnmatchedSlots(t *testing.T) {
 // TestIdentifyNamedEventsOnRealFilm — bout en bout : les evenements nommes d'un vrai film,
 // attribues a de vrais xuid, prets a etre superposes aux positions du rejeu.
 func TestIdentifyNamedEventsOnRealFilm(t *testing.T) {
-	src, ok := newDiskFilmSource(t, "1bc77d2e")
+	bobine, ok := newDiskFilm(t, "1bc77d2e")
 	if !ok {
 		t.Skipf("film 1bc77d2e absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
-	evs := NamedEvents(src, ObjectiveTypeFlag)
-	identity := SlotIdentityFrom(StatRecords(src), linesOf("1bc77d2e"))
+	evs := NamedEvents(bobine, ObjectiveTypeFlag)
+	identity := SlotIdentityFrom(StatRecords(bobine), linesOf("1bc77d2e"))
 	got := IdentifyNamedEvents(evs, identity)
 
 	// Les 8 slots etant apparies, aucun evenement ne doit etre perdu.

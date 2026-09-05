@@ -22,46 +22,77 @@ package filmdec
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // ScanFilmGroundWeaponCreations décode les records de création des ARMES AU SOL du film de dir,
 // sur la bande de slots de `ti=42` lue dans les images-clés.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe les sondes de création
 // et du bloc MPP, qui sont des globaux de paquet. Elles sont restaurées à la sortie.
+//
+// ScanFilmGroundWeaponCreations est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanGroundWeaponCreations].
 func ScanFilmGroundWeaponCreations(
 	dir string, wr *Vec3Range,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, EquipmentCreationStats{}, err
+	}
+	return ScanGroundWeaponCreations(NewFilmContext(film), wr)
+}
+
+// ScanGroundWeaponCreations décode les records de création des armes au sol d'un film DEJA CHARGE.
+func ScanGroundWeaponCreations(
+	fc *FilmContext, wr *Vec3Range,
+) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
+	if len(fc.ChunkNumbers()) == 0 {
+		return nil, st, ErrNoFilmChunk
 	}
-	band := worldObjectSlotBand(dir, n, GroundWeaponTypeIndex)
+	band := worldObjectSlotBand(fc.Film(), GroundWeaponTypeIndex)
 	if len(band) == 0 {
-		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes de %s",
-			GroundWeaponTypeIndex, dir)
+		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film",
+			GroundWeaponTypeIndex)
 	}
-	return ScanFilmGroundWeaponCreationsForBand(dir, wr, band)
+	return ScanGroundWeaponCreationsForBand(fc, wr, band)
 }
 
 // ScanFilmGroundWeaponCreationsForBand balaye une BANDE DE SLOTS donnée. La bande est un
 // paramètre pour que le témoin de contrôle (une bande FANTÔME de même cardinalité, faite de
 // slots jamais vus porter cet archétype) passe par le MÊME code que la mesure — sans quoi le
 // contrôle ne contrôlerait pas le décodeur mais une variante de lui.
+//
+// ScanFilmGroundWeaponCreationsForBand est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanGroundWeaponCreationsForBand].
 func ScanFilmGroundWeaponCreationsForBand(
 	dir string, wr *Vec3Range, band map[uint32]bool,
+) ([]EquipmentCreation, EquipmentCreationStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, EquipmentCreationStats{}, err
+	}
+	return ScanGroundWeaponCreationsForBand(NewFilmContext(film), wr, band)
+}
+
+// ScanGroundWeaponCreationsForBand balaye une bande de slots donnée dans un film DEJA CHARGE.
+func ScanGroundWeaponCreationsForBand(
+	fc *FilmContext, wr *Vec3Range, band map[uint32]bool,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
 	if wr == nil {
 		return nil, st, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
 	}
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
+	nums := fc.ChunkNumbers()
+	if len(nums) == 0 {
+		return nil, st, ErrNoFilmChunk
 	}
 	st.Slots = len(band)
-	arch, err := groundWeaponArchetype(dir)
+	arch, err := fc.groundWeaponArchetype()
 	if err != nil {
 		return nil, st, err
 	}
@@ -73,36 +104,19 @@ func ScanFilmGroundWeaponCreationsForBand(
 		comps: len(arch.Components), wr: wr, band: band, cur: &cur,
 		ti: GroundWeaponTypeIndex, deser: consumeDefaultStateTI42,
 	}
-	var out []EquipmentCreation
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
-			continue
-		}
-		for _, pk := range WalkPackets(data) {
-			if pk.Type != PacketTypeDelta {
-				continue
-			}
-			out = append(out, w.scanPayload(pk.Payload(data), &st, pk, c)...)
-		}
-	}
-	return out, st, nil
+	return runCreationWalk(fc, w, &st), st, nil
 }
 
-// groundWeaponArchetype rend l'archétype `ti=42` du registre du film (chunk_00).
-func groundWeaponArchetype(dir string) (Archetype, error) {
-	raw, err := ReadFilmChunk(dir, 0)
+// groundWeaponArchetype rend l'archétype `ti=42` du registre du film (chunk_00), ANALYSE UNE
+// FOIS par le contexte (lot 2, 2026-09-03).
+func (c *FilmContext) groundWeaponArchetype() (Archetype, error) {
+	arch, _, ok, err := c.archetype(GroundWeaponTypeIndex)
 	if err != nil {
-		return Archetype{}, fmt.Errorf("chunk_00 (registre) illisible dans %s : %w", dir, err)
+		return Archetype{}, err
 	}
-	reg, err := ParseRegistryChunk(raw)
-	if err != nil {
-		return Archetype{}, fmt.Errorf("registre illisible dans %s : %w", dir, err)
-	}
-	arch, ok := reg.Archetype(GroundWeaponTypeIndex)
 	if !ok {
-		return Archetype{}, fmt.Errorf("archétype arme au sol %d absent du registre de %s",
-			GroundWeaponTypeIndex, dir)
+		return Archetype{}, fmt.Errorf("archétype arme au sol %d absent du registre",
+			GroundWeaponTypeIndex)
 	}
 	return arch, nil
 }

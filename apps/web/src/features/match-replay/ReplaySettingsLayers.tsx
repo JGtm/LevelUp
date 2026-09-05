@@ -104,6 +104,13 @@ export interface ReplayBombCarrierControls {
   onToggle: () => void
 }
 
+/** Les VÉHICULES (schéma 39) : un seul calque, allumé par défaut. */
+export interface ReplayVehicleControls {
+  available: boolean
+  show: boolean
+  onToggle: () => void
+}
+
 export interface LayersSectionProps {
   locale: ReplayLocale
   showAim: boolean
@@ -120,12 +127,13 @@ export interface LayersSectionProps {
   vipCrown: ReplayVipCrownControls
   skullCarrier: ReplaySkullCarrierControls
   bombCarrier: ReplayBombCarrierControls
+  vehicles: ReplayVehicleControls
 }
 
 export function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones,
   showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, groundWeapons, flagCarries,
-  vipCrown, skullCarrier, bombCarrier,
+  vipCrown, skullCarrier, bombCarrier, vehicles,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -150,7 +158,7 @@ export function LayersSection({
       {/* LE TERRAIN : des lieux et des objets, pas des gens. Les EMPLACEMENTS D'ARME sont une
           récurrence spatiale mesurée ; les ARMES AU SOL sont des objets qui gisent là où ils
           sont tombés — on peut vouloir les socles sans le fouillis, et l'inverse. */}
-      {(zonesAvailable || weaponPads.available || groundWeapons.available) && (
+      {(zonesAvailable || weaponPads.available || groundWeapons.available || vehicles.available) && (
         <LayerGroup title={t.layerGroupTerrain}>
           {zonesAvailable && (
             <SettingsToggle
@@ -174,6 +182,17 @@ export function LayersSection({
               pressed={groundWeapons.show}
               onToggle={groundWeapons.onToggle}
               hint={t.layerGroundWeaponsHint}
+            />
+          )}
+          {/* LES VÉHICULES sont des OBJETS qui bougent, comme les joueurs — mais ce sont des
+              meubles du terrain que le conducteur teinte, pas l'enjeu du mode. Ils rejoignent
+              donc le groupe des socles et des armes au sol plutôt que celui des drapeaux. */}
+          {vehicles.available && (
+            <SettingsToggle
+              label={t.layerVehicles}
+              pressed={vehicles.show}
+              onToggle={vehicles.onToggle}
+              hint={t.layerVehiclesHint}
             />
           )}
         </LayerGroup>

@@ -1,11 +1,14 @@
 // Package duckdb — MatchViewRepo : données pour la vue détail d'un match.
 //
 // Le code est découpé en fichiers thématiques pour respecter la limite des
-// 500 lignes par fichier (CLAUDE.md). Ce fichier contient le type repo, le
-// constructeur, les helpers de résolution d'assets et les 2 lectures de base
-// (meta, player stats, enrichment) + le sanitize_f64 partagé. Les autres
-// responsabilités vivent dans :
+// 500 lignes par fichier (CLAUDE.md). Ce fichier contient le type repo, les
+// helpers de résolution d'assets et les 2 lectures de base (meta, player stats,
+// enrichment) + le sanitize_f64 partagé. Les autres responsabilités vivent
+// dans :
 //
+//   - match_view_repo_options.go         — constructeur, options With*, viewer,
+//     sharedRead (déplacé le 2026-09-05, sans changement de logique : l'arrivée
+//     de WithBombStats faisait franchir les 500 lignes à ce fichier)
 //   - match_view_repo_scoreboard.go      — scoreboard + objective score
 //   - match_view_repo_medals.go          — médailles (single + bulk + lookup)
 //   - match_view_repo_weapons.go         — armes (single + bulk + lookup helpers)
@@ -67,6 +70,11 @@ type MatchViewRepo struct {
 	// slug ==. Zéro-value false = pas de strip (un titre dont les noms officiels
 	// n'ont pas de préfixe, ex. Halo 5, garde "Super Fiesta Fête" entier).
 	stripPlaylistCategory bool
+	// bombStats : le titre déclare-t-il `film.bomb_stats` ? Câblé au wiring depuis la
+	// CapabilityMap du titre (jamais un slug). Faux = la SECONDE requête du scoreboard
+	// (Q12cBombStats) n'est même pas payée, et aucune colonne d'Assaut n'est exposée — Halo 5
+	// n'a pas de décodeur de film, donc rien à lire.
+	bombStats bool
 	// playlistLabelOverrides : table data-driven nom brut -> libelle court, chargee
 	// depuis config/titles/{slug}/mappings/playlist_labels.toml (ex. Halo 5
 	// "Super Fiesta Fete" -> "Super Fiesta"). nil/vide = no-op. Appliquee APRES le
@@ -77,81 +85,6 @@ type MatchViewRepo struct {
 	// `liked` = « liké PAR CE VIEWER ». Distinct du joueur dont on consulte la
 	// page. Vide → repli sur ce dernier, cf. viewer().
 	viewerSlug string
-}
-
-// viewer retourne le liker dont l'état de like doit être servi dans l'onglet
-// Médias. Même repli — et mêmes raisons — que MediaRepo.viewer : sans joueur
-// courant en session (instance mono-utilisateur), la page consultée est celle du
-// joueur local, qui est donc le viewer.
-func (r *MatchViewRepo) viewer() string {
-	if r.viewerSlug != "" {
-		return r.viewerSlug
-	}
-	if r.pdb == nil {
-		return ""
-	}
-	return r.pdb.Gamertag
-}
-
-// NewMatchViewRepo crée un MatchViewRepo.
-func NewMatchViewRepo(pdb *PlayerDB, xuid string) *MatchViewRepo {
-	return &MatchViewRepo{pdb: pdb, xuid: xuid}
-}
-
-// WithViewer injecte le slug du joueur qui consulte la page (session HTTP), qui
-// détermine l'état `liked` des médias associés au match. Vide ou non appelé :
-// repli documenté dans viewer().
-// WithKillSourceClassifier injecte le traducteur de source de degat du titre. nil (ou
-// non appele) : les armes du match restent lues dans `v_weapon_kills`.
-func (r *MatchViewRepo) WithKillSourceClassifier(c port.KillSourceClassifier) *MatchViewRepo {
-	r.killSourceClassifier = c
-	return r
-}
-
-func (r *MatchViewRepo) WithViewer(slug string) *MatchViewRepo {
-	r.viewerSlug = slug
-	return r
-}
-
-// WithPlaylistCategoryStrip active/désactive le retrait du préfixe de catégorie
-// matchmaking du libellé de playlist (CapPlaylistCategoryStrip). Câblé au wiring
-// depuis la CapabilityMap du titre. Retourne le repo pour chaînage.
-func (r *MatchViewRepo) WithPlaylistCategoryStrip(enabled bool) *MatchViewRepo {
-	r.stripPlaylistCategory = enabled
-	return r
-}
-
-// WithPlaylistLabelOverrides injecte la table data-driven des overrides de
-// libellé de playlist (nom brut -> libellé court, playlist_labels.toml). nil = no-op.
-// Retourne le repo pour chaînage.
-func (r *MatchViewRepo) WithPlaylistLabelOverrides(overrides map[string]string) *MatchViewRepo {
-	r.playlistLabelOverrides = overrides
-	return r
-}
-
-// WithSharedReader injecte un SharedReader override pour les lectures shared (pilote
-// snapshot scoped). Retourne le repo pour chaînage. nil = no-op (reste sur pdb.SharedReadDB()).
-func (r *MatchViewRepo) WithSharedReader(sr SharedReader) *MatchViewRepo {
-	r.sharedReader = sr
-	return r
-}
-
-// WithModeTaxonomy injecte la classification des modes du titre (préfixes pair_name
-// par catégorie) pour le filtrage neighbors. Sans injection, la clause ModeCategory
-// est omise (dégradation gracieuse). Câblé au wiring depuis games/halo_infinite (F15-2).
-func (r *MatchViewRepo) WithModeTaxonomy(t analysis.ModeTaxonomy) *MatchViewRepo {
-	r.modeTax = t
-	return r
-}
-
-// sharedRead retourne le SharedReader effectif : l'override snapshot s'il est câblé
-// (et que la requête n'a pas basculé sur le live), sinon le reader live du pool
-// (pdb.SharedReadDB()). forceLive prime : voir le champ (fallback snapshot-miss).
-func (r *MatchViewRepo) sharedRead() SharedReader {
-	if r.sharedReader != nil && !r.forceLive {
-		return r.sharedReader
-	}
-	return r.pdb.SharedReadDB()
 }
 
 // GetMatchMeta retourne les métadonnées du match (Q13).

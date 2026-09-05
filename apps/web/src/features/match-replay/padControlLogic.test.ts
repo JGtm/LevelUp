@@ -284,6 +284,75 @@ describe('buildPadControl — le tri et les colonnes', () => {
   })
 })
 
+describe('buildPadControl — la partition « game changers » (plan 2026-09-05)', () => {
+  const BR = '0xCCCC3333'
+
+  /**
+   * QUATRE SOCLES, ET LE PLUS DISPUTÉ EST REPLIÉ — c'est ce qui rend la partition sensible :
+   * un tri global par volume mettrait le Commando (3 prises, voté NON) devant le Sniper
+   * (1 prise, élu). La partition passe AVANT le tri, qui survit dans chaque bloc.
+   */
+  function temoinCatalogue() {
+    return temoin({
+      weaponLabels: {
+        [SNIPER]: { fr: 'S7 Sniper', en: 'S7 Sniper', key: 'hinf_s7_sniper' },
+        // Clé CANONIQUE présente mais votée NON : repliée (le cindershot, lui, a été promu).
+        [EPEE]: { fr: 'VK78 Commando', en: 'VK78 Commando', key: 'hinf_vk78_commando' },
+        // Label SANS clé (artefact ancien) : replié, dégradation voulue (décision D6).
+        [BR]: { fr: 'BR75', en: 'BR75' },
+      },
+      weaponPads: [socle(SNIPER), socle(EPEE), socle('powerup_overshield'), socle(BR)],
+      padPickups: [
+        prise(0, 'a1', 10),
+        prise(1, 'a1', 20),
+        prise(1, 'a2', 30),
+        prise(1, 'b1', 40),
+        prise(3, 'a1', 50),
+        prise(3, 'b1', 60),
+        prise(2, 'a1', 70),
+      ],
+    } as unknown as Partial<ReplayDocument>)
+  }
+
+  it('PARTITIONNE AVANT LE TRI : un socle replié très disputé ne double jamais un élu', () => {
+    const control = buildPadControl(temoinCatalogue(), SB)
+    // Élus : Sniper (1) et socle de bonus (1) — à égalité, l'identifiant départage.
+    expect(control.forwardWeapons).toEqual([SNIPER, 'powerup_overshield'])
+    // Repliés, TRIÉS PAR VOLUME dans leur bloc : Crémateur (3) devant BR (2).
+    expect(control.collapsedWeapons).toEqual([EPEE, BR])
+    // L'ordre d'écran déplié est la concaténation exacte : élus d'abord, repliés ensuite.
+    expect(control.weapons).toEqual([SNIPER, 'powerup_overshield', EPEE, BR])
+  })
+
+  it('replie la clé votée NON et le label SANS clé (D6) ; le socle powerup_* est en avant', () => {
+    const control = buildPadControl(temoinCatalogue(), SB)
+    expect(control.collapsedWeapons).toContain(EPEE)
+    expect(control.collapsedWeapons).toContain(BR)
+    expect(control.forwardWeapons).toContain('powerup_overshield')
+  })
+
+  it('un artefact SANS catalogue replie tout : clé absente = jamais promu (D6)', () => {
+    const control = buildPadControl(
+      temoin({ padPickups: [prise(0, 'a1'), prise(1, 'b1')] } as Partial<ReplayDocument>),
+      SB,
+    )
+    expect(control.forwardWeapons).toEqual([])
+    expect(control.collapsedWeapons).toEqual(control.weapons)
+  })
+
+  it('le TOTAL ne ment pas : lignes, camps et somme attribuée comptent les armes repliées', () => {
+    const control = buildPadControl(temoinCatalogue(), SB)
+    const alpha = parNom(control).get('Alpha')
+    // Alpha : Sniper 1 + Crémateur 1 + BR 1 + bonus 1 — les trois repliés comptent.
+    expect(alpha?.total).toBe(4)
+    expect(alpha?.byWeapon[EPEE]).toBe(1)
+    expect(alpha?.byWeapon[BR]).toBe(1)
+    expect(control.attributed).toBe(7)
+    const t0 = control.byTeam.find((g) => g.side === 't0')
+    expect(t0?.total.byWeapon[EPEE]).toBe(2)
+  })
+})
+
 describe('buildPadControl — la double porte', () => {
   it('aucune prise attribuée = rien à rendre, même avec des socles et des occupations', () => {
     const control = buildPadControl(

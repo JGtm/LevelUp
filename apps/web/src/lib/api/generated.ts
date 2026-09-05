@@ -4644,6 +4644,66 @@ export interface components {
             t1: number;
             xuid: string;
         };
+        BombEvent: {
+            actorSource?: string;
+            /** Format: int64 */
+            timeMs: number;
+            type: string;
+            xuid?: string;
+        };
+        BombMatchStats: {
+            coverage: components["schemas"]["BombStatsCoverage"];
+            players?: components["schemas"]["BombPlayerStats"][] | null;
+        };
+        BombPlayerStats: {
+            /** Format: int64 */
+            arms?: number;
+            /** Format: int64 */
+            carriersKilled?: number;
+            /** Format: int64 */
+            detonations?: number;
+            /** Format: int64 */
+            grabs?: number;
+            /** Format: double */
+            timeAsCarrierSeconds?: number;
+            xuid: string;
+        };
+        BombStatsCoverage: {
+            /** Format: int64 */
+            armings: number;
+            /** Format: int64 */
+            armingsAmbiguous: number;
+            /** Format: int64 */
+            armingsAttributed: number;
+            /** Format: int64 */
+            armingsByActiveCarry: number;
+            /** Format: int64 */
+            armingsByDrop: number;
+            /** Format: int64 */
+            armingsNoBridge: number;
+            /** Format: int64 */
+            armingsNoCarrier: number;
+            armingsRead: boolean;
+            carryRead: boolean;
+            /** Format: int64 */
+            detonations: number;
+            detonationsRead: boolean;
+            /** Format: int64 */
+            kills: number;
+            /** Format: int64 */
+            killsOnCarrier: number;
+            killsRead: boolean;
+            /** Format: int64 */
+            periods: number;
+            /** Format: int64 */
+            periodsByDeath: number;
+            /** Format: int64 */
+            periodsNoBridge: number;
+            /** Format: int64 */
+            periodsOpen: number;
+            /** Format: int64 */
+            players: number;
+        };
         BootstrapResponse: {
             active_sync_job_id?: string;
             /** @enum {string} */
@@ -5476,6 +5536,7 @@ export interface components {
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
             t0Film?: components["schemas"]["T0FilmCoverage"];
             translocations?: components["schemas"]["TranslocationCoverage"];
+            vehicles?: components["schemas"]["VehicleCoverage"];
             verdict?: {
                 [key: string]: string;
             };
@@ -7977,8 +8038,16 @@ export interface components {
             team_side?: string;
             xuid: string;
         };
-        /** @description Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés. */
+        /** @description Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP/Assaut) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés. */
         MatchScoreboardObjective: {
+            /** Format: int64 */
+            bomb_arms?: number;
+            /** Format: int64 */
+            bomb_carriers_killed?: number;
+            /** Format: int64 */
+            bomb_detonations?: number;
+            /** Format: int64 */
+            bomb_grabs?: number;
             /** Format: int64 */
             extraction_conversions_completed?: number;
             /** Format: int64 */
@@ -8033,6 +8102,8 @@ export interface components {
             skull_scoring_ticks?: number;
             /** Format: int64 */
             successful_extractions?: number;
+            /** Format: double */
+            time_as_bomb_carrier_seconds?: number;
             /** Format: double */
             time_as_flag_carrier_seconds?: number;
             /** Format: double */
@@ -9763,6 +9834,8 @@ export interface components {
             };
             bombArmings?: components["schemas"]["BombArming"][] | null;
             bombCarries?: components["schemas"]["BombCarry"][] | null;
+            bombEvents?: components["schemas"]["BombEvent"][] | null;
+            bombStats?: components["schemas"]["BombMatchStats"];
             bounds: components["schemas"]["Bounds"];
             coverage?: components["schemas"]["Coverage"];
             /** Format: int64 */
@@ -9812,6 +9885,10 @@ export interface components {
             titleSlug: string;
             tracks: components["schemas"]["Track"][] | null;
             translocations?: components["schemas"]["Translocation"][] | null;
+            vehicleLabels?: {
+                [key: string]: components["schemas"]["VehicleLabel"];
+            };
+            vehicles?: components["schemas"]["VehicleTrack"][] | null;
             vipCrown?: components["schemas"]["VipPeriod"][] | null;
             weaponChanges?: components["schemas"]["WeaponChange"][] | null;
             weaponLabels?: {
@@ -10260,6 +10337,43 @@ export interface components {
             /** Format: double */
             skill_rating?: number;
         };
+        SessionObjectiveFamilyBlock: {
+            family: string;
+            /** Format: int64 */
+            matches: number;
+            roles: components["schemas"]["SessionObjectiveRoleMetric"][] | null;
+        };
+        SessionObjectiveRoleMetric: {
+            is_duration?: boolean;
+            /** Format: double */
+            lobby_total: number;
+            /** Format: double */
+            player_share_of_lobby_pct?: number;
+            /** Format: double */
+            player_share_of_team_pct?: number;
+            /** Format: double */
+            player_total: number;
+            role: string;
+            squad?: components["schemas"]["SessionUsageSquadShare"][] | null;
+            /** Format: double */
+            team_share_of_lobby_pct?: number;
+            /** Format: double */
+            team_total?: number;
+        };
+        SessionObjectivesBlock: {
+            families?: components["schemas"]["SessionObjectiveFamilyBlock"][] | null;
+            /** Format: double */
+            lobby_parity_pct?: number;
+            /** Format: double */
+            lobby_size_avg?: number;
+            /** Format: int64 */
+            matches_with_objectives: number;
+            roles: components["schemas"]["SessionObjectiveRoleMetric"][] | null;
+            /** Format: double */
+            team_parity_pct?: number;
+            /** Format: double */
+            team_size_avg?: number;
+        };
         SessionOption: {
             /** Format: date-time */
             ended_at_utc: string;
@@ -10294,11 +10408,114 @@ export interface components {
             next_session_label?: string;
             previous_session_label?: string;
             suggested_compare?: components["schemas"]["SessionCompareSuggestion"];
+            usage?: components["schemas"]["SessionUsageBlock"];
         };
         SessionParticipationAxis: {
             name: string;
             /** Format: double */
             value: number;
+        };
+        SessionUsageBlock: {
+            available: boolean;
+            /** Format: double */
+            lobby_parity_pct?: number;
+            /** Format: double */
+            lobby_size_avg?: number;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            /** Format: double */
+            measured_duration_seconds?: number;
+            metrics?: components["schemas"]["SessionUsageMetric"][] | null;
+            objectives?: components["schemas"]["SessionObjectivesBlock"];
+            pad_families?: components["schemas"]["SessionUsagePadFamily"][] | null;
+            /** Format: int64 */
+            pad_unnamed_total?: number;
+            powerup_pickups?: components["schemas"]["SessionUsagePowerup"][] | null;
+            squad_players?: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            /** Format: double */
+            team_parity_pct?: number;
+            /** Format: double */
+            team_size_avg?: number;
+            unavailable_reason?: string;
+        };
+        SessionUsageMatchPoint: {
+            match_id: string;
+            /** Format: double */
+            player_share_of_lobby_pct?: number;
+            /** Format: double */
+            player_share_of_team_pct?: number;
+            /** Format: double */
+            team_share_of_lobby_pct?: number;
+        };
+        SessionUsageMetric: {
+            key: string;
+            /** Format: double */
+            lobby_per_10min?: number;
+            /** Format: double */
+            lobby_total: number;
+            /** Format: int64 */
+            matches_above_lobby_parity: number;
+            /** Format: int64 */
+            matches_above_team_parity?: number;
+            per_match?: components["schemas"]["SessionUsageMatchPoint"][] | null;
+            /** Format: double */
+            player_per_10min?: number;
+            /** Format: double */
+            player_share_of_lobby_pct?: number;
+            /** Format: double */
+            player_share_of_team_max_pct?: number;
+            /** Format: double */
+            player_share_of_team_min_pct?: number;
+            /** Format: double */
+            player_share_of_team_pct?: number;
+            /** Format: double */
+            player_total: number;
+            squad?: components["schemas"]["SessionUsageSquadShare"][] | null;
+            /** Format: double */
+            team_per_10min?: number;
+            /** Format: double */
+            team_share_of_lobby_pct?: number;
+            /** Format: double */
+            team_total?: number;
+        };
+        SessionUsagePadFamily: {
+            family_key: string;
+            /** Format: double */
+            lobby_total: number;
+            /** Format: double */
+            player_share_of_lobby_pct?: number;
+            /** Format: double */
+            player_share_of_team_pct?: number;
+            /** Format: double */
+            player_total: number;
+            /** Format: double */
+            team_share_of_lobby_pct?: number;
+            /** Format: double */
+            team_total?: number;
+        };
+        SessionUsagePowerup: {
+            family_key: string;
+            /** Format: int64 */
+            occupations: number;
+            /** Format: double */
+            per_10min?: number;
+        };
+        SessionUsageSquadPlayer: {
+            gamertag: string;
+            xuid: string;
+        };
+        SessionUsageSquadShare: {
+            /** Format: double */
+            per_10min?: number;
+            /** Format: double */
+            share_of_lobby_pct?: number;
+            /** Format: double */
+            share_of_team_pct?: number;
+            /** Format: double */
+            total: number;
+            xuid: string;
         };
         SessionsFilter: {
             /** Format: int64 */
@@ -10382,6 +10599,8 @@ export interface components {
             slot: number;
             /** Format: int64 */
             t: number;
+            /** Format: int32 */
+            v?: number;
             w?: string;
             /** Format: float */
             x: number;
@@ -11739,6 +11958,131 @@ export interface components {
             y: number;
             /** Format: double */
             z: number;
+        };
+        VehicleAim: {
+            /** Format: float */
+            h?: number;
+            /** Format: float */
+            p?: number;
+            /** Format: int64 */
+            t: number;
+        };
+        VehicleCoverage: {
+            /** Format: int64 */
+            aimReads: number;
+            /** Format: int64 */
+            aimRideFrames: number;
+            /** Format: int64 */
+            aimSamples: number;
+            /** Format: int64 */
+            ambiguous: number;
+            /** Format: int64 */
+            familyResolved: number;
+            /** Format: int64 */
+            familyUnknown: number;
+            /** Format: int64 */
+            lives: number;
+            /** Format: int64 */
+            merged: number;
+            /** Format: int64 */
+            noPosition: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            rides: number;
+            /** Format: int64 */
+            ridesFromEvent: number;
+            /** Format: int64 */
+            ridesFromGap: number;
+            /** Format: int64 */
+            ridesMixed: number;
+            /** Format: int64 */
+            ridesNamed: number;
+            /** Format: int64 */
+            ridesWithAim: number;
+            /** Format: int64 */
+            ridesWithSeat: number;
+            /** Format: int64 */
+            samples: number;
+            scanned: boolean;
+            /** Format: int64 */
+            shots: number;
+            /** Format: int64 */
+            shotsAmbiguous: number;
+            /** Format: int64 */
+            shotsNoRide: number;
+            /** Format: int64 */
+            shotsUnplaced: number;
+            /** Format: int64 */
+            shotsVehicleWeapon: number;
+            unknownChassis?: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            vehiclesRidden: number;
+            /** Format: int64 */
+            withChassis: number;
+            /** Format: int64 */
+            withHeading: number;
+            /** Format: int64 */
+            withSpawn: number;
+        };
+        VehicleLabel: {
+            img?: string;
+            tinted?: boolean;
+        };
+        VehicleRide: {
+            aim?: components["schemas"]["VehicleAim"][] | null;
+            /** Format: int64 */
+            seat?: number;
+            /** Format: int32 */
+            slot: number;
+            src: string;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            xuid?: string;
+        };
+        VehicleSample: {
+            /** Format: float */
+            h?: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        VehicleSpawn: {
+            /** Format: float */
+            h?: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        VehicleTrack: {
+            chassis?: string;
+            end: string;
+            family?: string;
+            /** Format: int32 */
+            gen: number;
+            rides?: components["schemas"]["VehicleRide"][] | null;
+            samples?: components["schemas"]["VehicleSample"][] | null;
+            /** Format: int32 */
+            slot: number;
+            spawn?: components["schemas"]["VehicleSpawn"];
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: int64 */
+            t1max: number;
         };
         VipCrownCoverage: {
             /** Format: int64 */

@@ -68,11 +68,11 @@ func TestObjectifTi11DeltaGarde(t *testing.T) {
 		if n == 0 {
 			continue
 		}
-		arch, _, err := objectiveArchetype(dir)
+		arch, _, err := objectiveArchetypeDir(dir)
 		if err != nil {
 			continue
 		}
-		band := observedSlotBand(dir, n, ObjectiveTypeIndex)
+		band := observedSlotBandDir(dir, n, ObjectiveTypeIndex)
 		if len(band) == 0 {
 			continue
 		}
@@ -160,11 +160,11 @@ func TestObjectifTi11DeltaTemoin(t *testing.T) {
 		if n == 0 {
 			continue
 		}
-		arch, _, err := objectiveArchetype(dir)
+		arch, _, err := objectiveArchetypeDir(dir)
 		if err != nil {
 			continue
 		}
-		band := observedSlotBand(dir, n, ObjectiveTypeIndex)
+		band := observedSlotBandDir(dir, n, ObjectiveTypeIndex)
 		if len(band) == 0 {
 			continue
 		}
@@ -278,11 +278,11 @@ func TestObjectifTi11DeltaPresence(t *testing.T) {
 		if n == 0 {
 			continue
 		}
-		arch, _, err := objectiveArchetype(dir)
+		arch, _, err := objectiveArchetypeDir(dir)
 		if err != nil {
 			continue
 		}
-		band := observedSlotBand(dir, n, ObjectiveTypeIndex)
+		band := observedSlotBandDir(dir, n, ObjectiveTypeIndex)
 		if len(band) == 0 {
 			continue
 		}

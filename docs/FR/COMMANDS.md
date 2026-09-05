@@ -86,6 +86,34 @@ go run ./cmd/backfill-team-rounds --gamertag X
 go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--match ID]
 ```
 
+#### Projeter les artefacts de rejeu en base — L'ORDRE DE RELEASE N'EST PAS INTERCHANGEABLE
+
+Deux passes lisent les artefacts de rejeu DÉJÀ cuits (`data/cache/replays/{slug}/{short8}.json`)
+et les projettent vers les tables partagées. **Aucune des deux ne décode de film.** Ce sont des
+tâches de RELEASE, et toutes deux exigent le **serveur arrêté** : elles prennent `OpenReadWrite`
+sur la DB partagée et jouent elles-mêmes les migrations — y compris sous `--dry-run`.
+
+```bash
+# 1. RE-CUIRE les artefacts d'abord — le schéma 39 périme tout artefact antérieur, et c'est
+#    cette passe-là qui fait NAÎTRE `bombStats` dedans.
+go run ./cmd/levelup backfill-replay [--dry-run] [--force] [--limit N] [--only-existing]
+
+# 2. Usages d'équipement et de socles -> match_usage_players + match_usage_films.
+go run ./cmd/levelup backfill-usage-summary [--dry-run] [--force] [--match ID] [--limit N] [--title S]
+
+# 3. Statistiques d'Assaut -> match_bomb_stats (append-only) + faits datés dans
+#    match_objective_events. Répétition à blanc D'ABORD : elle imprime les compteurs par
+#    match et n'écrit rien.
+go run ./cmd/levelup backfill-bomb-stats --dry-run
+go run ./cmd/levelup backfill-bomb-stats [--force] [--match ID] [--limit N] [--title S]
+```
+
+Lancer (3) avant (1) est un **no-op SILENCIEUX** : un artefact antérieur au schéma 39 ne porte
+aucun `bombStats`, rien n'est écrit et chaque match tombe dans le compteur « sans calque ». Les
+deux passes sont reprenables — un match déjà présent dans la vue `_latest` est sauté, sauf
+`--force`. `backfill-usage-summary` re-résume en plus quand la révision de projection ou le
+schéma de l'artefact a bougé.
+
 ### Backup / restore
 
 ```bash
@@ -220,6 +248,58 @@ récurrente supprime — les artefacts plus anciens. `0` = illimité.
 
 La commande d'opérateur ignore volontairement ce réglage (cf. `cmd/levelup backfill-replay`) :
 celui qui la tape a déjà décidé où il construit, sur sa machine, avec ses films en cache.
+
+### Rejeu 2D — outillage de construction (faits, équivalence, profils)
+
+Outils d'opérateur de la chaîne de construction des artefacts (« cuisson » dans le plan
+`.ai/V7.5/PLAN_CUISSON_PERF.md`). Ils lisent le cache local de films ; les deux outils hors ligne
+n'ont besoin d'aucune base et décodent un film par processus enfant borné (plafond mémoire dur,
+priorité CPU basse, verrou solo).
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup replay-facts-export --out internal/analysis/replay/testdata/equivalence \
+  [--title slug] <short8|match_id>...
+```
+
+Écrit un `<short8>.facts.json` par match — lignes de match, scores des deux camps, variante,
+identités de carte candidates — dans la forme que `replay-build --facts` lit déjà. Sans ces faits,
+zones, actions d'objectif, VIP/crâne/bombe, socles et points d'apparition sont court-circuités et
+une passe d'équivalence serait vacuante. Lecture seule (`OpenReadForQuery`) ; la commande échoue
+franchement au lieu d'écrire des faits vides — arrêter un serveur qui tient la base partagée en
+écriture.
+
+```bash
+go run ./cmd/replay-equiv                          # tout le corpus (CORPUS.txt), comparaison seule
+go run ./cmd/replay-equiv -films 000d5950 -update  # (re)fige les références d'un seul film
+# flags : -corpus F  -films a,b (remplace le corpus)  -update  -mem-gib N (défaut 3, 0 = désarmé)
+#         -title slug
+```
+
+Le harnais d'équivalence de la construction : il hache la sortie de **chaque** balayage, pas
+seulement l'artefact final, ce qui localise une divergence au balayage près. Parent et enfant vivent
+dans le même binaire — le parent planifie et ne décode rien, chaque film naît dans un enfant borné
+(verrou solo en attente bornée, sentinelle) et meurt avec sa RAM. Les références vivent dans
+`internal/analysis/replay/testdata/equivalence/<short8>.tsv`, chacune ouverte par son marqueur
+`# digest-grammar: N` : une référence figée sous une autre grammaire est une panne
+d'infrastructure (« re-figer par `-update` »), jamais un écart de décodage. `-update` réécrit ces
+références au lieu de les comparer — pour une correction déclarée seulement. Le mode `-walkers`
+(divergence des grammaires de découpage sur tout le cache de films) a été **retiré** en 2026-09 :
+il portait en copie trois marcheurs de paquets historiques dont les originaux n'existent plus, il
+ne se comparait donc plus qu'à lui-même. Sa mesure reste figée au §2 de
+`.ai/V7.5/MESURES_CUISSON_PERF.md` et rejouée en CI par le test de la mini-bobine de
+`internal/analysis/filmsource`.
+
+```bash
+LEVELUP_LOG_LEVEL=debug go run ./cmd/replay-build --map "<nom de carte>" --facts <f>.facts.json \
+  --cpuprofile tmp/<f>.cpu.prof --memprofile tmp/<f>.heap.prof <short8> [dossierFilm]
+```
+
+Mesure d'une construction unitaire (protocole §6 du plan) : `LEVELUP_LOG_LEVEL=debug` fait
+apparaître la durée de chaque balayage (le binaire installe un handler slog) ; `--cpuprofile` et
+`--memprofile` écrivent des profils pprof (`go tool pprof`), celui du tas après la construction. Les
+trois sont inertes par défaut, et les options doivent précéder `<matchId>` — le paquet flag arrête
+l'analyse au premier argument positionnel.
 
 ### Notifications
 

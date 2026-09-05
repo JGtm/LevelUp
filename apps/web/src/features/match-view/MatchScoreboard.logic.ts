@@ -160,7 +160,14 @@ export function formatRank(rank: number | null): string {
 // ---------------------------------------------------------------------------
 
 /** Mode à objectif détecté sur le scoreboard (blocs mutuellement exclusifs). */
-export type ObjectiveMode = 'ctf' | 'zones' | 'oddball' | 'stockpile' | 'extraction' | 'vip'
+export type ObjectiveMode =
+  | 'ctf'
+  | 'zones'
+  | 'oddball'
+  | 'stockpile'
+  | 'extraction'
+  | 'vip'
+  | 'bomb'
 
 /**
  * Colonne objectif : clé du bloc, agrégat équipe (`sum` = cumul ; `max` pour les
@@ -218,6 +225,22 @@ const VIP_COLS: ObjectiveColSpec[] = [
   { key: 'time_as_vip_seconds', agg: 'sum', duration: true },
   { key: 'longest_time_as_vip_seconds', agg: 'max', duration: true },
 ]
+// Assaut (2026-09-05) : LES SEULES STATISTIQUES D'OBJECTIF QUE L'API 343 NE PUBLIE PAS. Elles
+// sont reconstruites du film Theater (statborg pour les explosions, canal des armes tenues pour
+// le portage, anneau `ti=12` + jointure pour l'armement, fil des kills apparié pour les porteurs
+// tués) et servies par une table dédiée, gatée par la capability `film.bomb_stats`. LES CINQ
+// COLONNES SONT EXPOSÉES depuis l'arbitrage N-17 (2026-09-05, registre du plan d'intégration,
+// seconde lecture E.2) : `bomb_carriers_killed` est mesuré depuis le lot G.6 (témoin `9f57c612` :
+// 3 porteurs tués) et la prémisse « colonne de tirets » qui la retenait n'était plus vraie.
+// RÉSERVE portée par `bomb_carriers_killed` (écrite en tête d'`internal/analysis/replay/bomb_stats.go`) :
+// ni camp, ni tir ami — un tir ami sur un porteur de son propre camp compte.
+const BOMB_COLS: ObjectiveColSpec[] = [
+  { key: 'bomb_detonations', agg: 'sum' },
+  { key: 'bomb_arms', agg: 'sum' },
+  { key: 'bomb_grabs', agg: 'sum' },
+  { key: 'time_as_bomb_carrier_seconds', agg: 'sum', duration: true },
+  { key: 'bomb_carriers_killed', agg: 'sum' },
+]
 
 /**
  * detectObjectiveMode — mode à objectif du match d'après le premier bloc non-nil
@@ -237,6 +260,12 @@ export function detectObjectiveMode(rows: MatchScoreboardRow[]): ObjectiveMode |
       return 'extraction'
     }
     if (o.times_selected_as_vip != null || o.kills_as_vip != null) return 'vip'
+    // Assaut : dernier de la liste, et sans risque de collision — aucun autre mode ne porte de
+    // clé `bomb_*`. TROIS compteurs, un par canal, LA MÊME LISTE que `ObjectiveRaw.HasBomb()`
+    // côté Go : les colonnes d'Assaut ne sortent pas toutes de la même lecture, et un film dont
+    // seul le portage a été lu ne publie que `bomb_grabs`. Deux discriminants divergents
+    // afficheraient deux vérités du même match.
+    if (o.bomb_detonations != null || o.bomb_arms != null || o.bomb_grabs != null) return 'bomb'
   }
   return null
 }
@@ -256,6 +285,8 @@ export function objectiveColsFor(mode: ObjectiveMode): ObjectiveColSpec[] {
       return EXTRACTION_COLS
     case 'vip':
       return VIP_COLS
+    case 'bomb':
+      return BOMB_COLS
   }
 }
 

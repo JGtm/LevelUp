@@ -226,6 +226,27 @@ type ObjectiveRaw struct {
 	MaxKillingSpreeAsVip    *int
 	TimeAsVipSeconds        *float64
 	LongestTimeAsVipSeconds *float64
+	// Assaut (match_bomb_stats_latest — RECONSTRUITES DU FILM, pas de l'API)
+	//
+	// SEUL BLOC DE CETTE STRUCTURE QUI NE VIENT PAS DE `match_objective_stats_latest`, et c'est
+	// une décision de schéma : l'API 343 ne publie AUCUNE statistique d'objectif pour l'Assaut
+	// (la famille `BombStats` du moteur est de la télémétrie Bond, jamais répliquée dans le
+	// film — mesure du 2026-09-04, cause unique du silence des deux côtés). Celles-ci sont
+	// décodées du film Theater et vivent dans une TABLE DÉDIÉE : deux producteurs sur la même
+	// table s'écraseraient dans la vue `_latest`, et un re-sync API effacerait les stats de
+	// bombe. Elles sont donc chargées par une SECONDE requête, dégradable indépendamment, et
+	// gatée par la capability `film.bomb_stats`.
+	//
+	// NULL = NON MESURÉ, JAMAIS ZÉRO : les cinq colonnes sont nullables au DDL.
+	// LES CINQ SONT MESURÉES depuis le lot G.6 (2026-09-05), `BombCarriersKilled` compris. Ce
+	// commentaire a porté l'inverse (« nul PARTOUT, la paire tueur/victime n'existe pas dans la
+	// chaîne de cuisson ») : seule la VICTIME n'était pas résolue, et `replaybuild.killRefs` la
+	// résout désormais dans la même passe. Un `null` y dit « source non lue », rien de plus.
+	BombDetonations          *int
+	BombArms                 *int
+	BombGrabs                *int
+	TimeAsBombCarrierSeconds *float64
+	BombCarriersKilled       *int
 }
 
 // HasCTF / HasZones / HasOddball / HasStockpile / HasExtraction / HasVip : discriminants
@@ -241,10 +262,25 @@ func (o ObjectiveRaw) HasExtraction() bool {
 	return o.SuccessfulExtractions != nil || o.ExtractionInitiationsCompleted != nil
 }
 
+// HasBomb : le bloc ASSAUT, reconstruit du FILM et NON de l'API (cf. le bloc de champs
+// ci-dessus).
+//
+// TROIS COMPTEURS, UN PAR CANAL, et c'est ce qui le distingue des autres discriminants : les
+// colonnes d'Assaut ne sortent pas toutes de la même lecture. `bomb_detonations` demande le
+// statborg, `bomb_arms` demande l'anneau ET le portage, `bomb_grabs` ne demande QUE le portage.
+// Un film dont seul le canal des armes tenues a été lu ne publie donc ni explosion ni armement
+// — et un discriminant à deux compteurs ferait disparaître sa section entière.
+// `time_as_bomb_carrier_seconds` n'y ajoute rien : il est écrit exactement quand `bomb_grabs`
+// l'est. LA MÊME LISTE est appliquée côté web (`detectObjectiveMode`, MatchScoreboard.logic.ts)
+// — deux discriminants divergents afficheraient deux vérités du même match.
+func (o ObjectiveRaw) HasBomb() bool {
+	return o.BombDetonations != nil || o.BombArms != nil || o.BombGrabs != nil
+}
+
 // HasObjective : au moins un bloc objectif présent.
 func (o ObjectiveRaw) HasObjective() bool {
 	return o.HasCTF() || o.HasZones() || o.HasOddball() ||
-		o.HasStockpile() || o.HasExtraction() || o.HasVip()
+		o.HasStockpile() || o.HasExtraction() || o.HasVip() || o.HasBomb()
 }
 
 // BulkMedalRaw : une ligne de Q27 (médailles de tous les joueurs du match).

@@ -83,7 +83,7 @@ func gwRunOffset(t *testing.T, dir string, ti int, predicted int) {
 		t.Fatalf("archetype ti=%d : %v", ti, err)
 	}
 	n := CountFilmChunks(dir)
-	band := worldObjectSlotBand(dir, n, ti)
+	band := worldObjectSlotBandDir(dir, n, ti)
 	tracks, err := ScanFilmWorldObjects(dir, &equipCreationUnitRange, ti)
 	if err != nil {
 		t.Fatalf("trajectoires ti=%d illisibles : %v", ti, err)

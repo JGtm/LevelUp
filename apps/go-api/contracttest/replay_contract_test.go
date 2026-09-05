@@ -140,6 +140,16 @@ var replaySchemas = []struct {
 	// omitempty<->required jugent.
 	{"AbilityCharge", replay.AbilityCharge{}},
 	{"AbilityChargeCoverage", replay.AbilityChargeCoverage{}},
+	// AJOUTES AU SCHEMA 39 (2026-09-05, etape G.2 de l integration), DANS LE MEME LOT que les
+	// deux champs (lecon P2-3 appliquee d emblee). Les quatre types portent EXACTEMENT le couple
+	// que les gardes omitempty<->required jugent : les cinq mesures de `BombPlayerStats` sont
+	// des POINTEURS omitempty (« absent n est pas zero »), la couverture n a que des compteurs
+	// NUS (requis), et `BombEvent` melange les deux (`type`/`timeMs` requis, `xuid`/`actorSource`
+	// optionnels — un fait sans acteur reste un fait).
+	{"BombMatchStats", replay.BombMatchStats{}},
+	{"BombPlayerStats", replay.BombPlayerStats{}},
+	{"BombEvent", replay.BombEvent{}},
+	{"BombStatsCoverage", replay.BombStatsCoverage{}},
 	{"Coverage", replay.Coverage{}},
 	{"LayerCoverage", replay.LayerCoverage{}},
 	{"BridgeHealth", replay.BridgeHealth{}},
@@ -599,9 +609,43 @@ var replaySchemas = []struct {
 //	                      Avec lui, le bloc `coverage.abilityCharges` et les deux types dans
 //	                      replaySchemas, MEME LOT (lecon P2-3).
 //
-// Les vingt fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	52 -> 54  2026-09-05  DEUX champs, le chantier VEHICULES ET TOURELLES (ses schemas 29-31,
+//	                      poses ici sur le 38 et fondus en UNE montee 39 — decision D3 du plan
+//	                      d integration) :
+//	                      - `vehicles` : la vie de chaque vehicule du film — naissance,
+//	                        trajectoire echantillonnee avec son cap, episodes d occupation
+//	                        (`rides`, avec la serie de visee par occupant), et borne d
+//	                        affichage. Lu par le calque du rejeu 2D, qui dessine le chassis a sa
+//	                        taille reelle, teinte a l equipe du conducteur ;
+//	                      - `vehicleLabels` : la table des FAMILLES employees par le film et
+//	                        leur sprite, posee A LA REQUETE par le service (jamais dans l artefact
+//	                        stocke) — meme patron que `weaponLabels` et `grenadeLabels`.
+//	                      Le champ `end` de `VehicleTrack` vaut TOUJOURS `unknown` a ce jour : la
+//	                      datation de la destruction a ete mesuree et refutee sur les 28 types d
+//	                      evenements (lot V7), et `tEnd` est declare en avance de phase pour que
+//	                      l effet d explosion (image ET son) s allume sans re-livraison le jour ou
+//	                      le Go publiera `destroyed`. Le marqueur `v` des tirs en vehicule est un
+//	                      champ IMBRIQUE de `shots`, il ne compte pas ici.
+//	54 -> 56  2026-09-05  DEUX champs, les STATISTIQUES D OBJECTIF DE L ASSAUT (etape G.2 de
+//	                      l integration, chantier `wt/assaut-stats`), poses sur la MEME montee 39
+//	                      que les vehicules — le 39 n avait encore cuit aucun artefact :
+//	                      - `bombStats` : les cinq statistiques par joueur (`bomb_detonations`,
+//	                        `bomb_arms`, `bomb_grabs`, `time_as_bomb_carrier_seconds`,
+//	                        `bomb_carriers_killed`) et leur COUVERTURE. L API 343 n en publie
+//	                        AUCUNE pour ce mode : elles sont reconstruites du film. Chaque
+//	                        mesure est un POINTEUR — `null` dit « source non lue », `0` dit
+//	                        « mesure a zero » ;
+//	                      - `bombEvents` : les faits DATES (armements, explosions) sur l horloge
+//	                        du film, chacun avec la REGLE qui a nomme son acteur (`actorSource`)
+//	                        quand la jointure y est parvenue.
+//	                      Les quatre types imbriques (`BombMatchStats`, `BombPlayerStats`,
+//	                      `BombEvent`, `BombStatsCoverage`) entrent a `replaySchemas` DANS CE LOT.
+//	                      `bomb_carriers_killed` est `null` partout a ce jour : la paire
+//	                      tueur/victime qu il demande n existe pas dans la chaine de cuisson.
+//
+// Les vingt et une fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 52
+const wantReplayDocumentFields = 56
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

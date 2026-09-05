@@ -11,6 +11,8 @@ import (
 	"bytes"
 	"compress/zlib"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,8 +22,12 @@ import (
 	"os"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
@@ -34,11 +40,30 @@ const heartbeatInterval = 30 * time.Second
 // chunkDownloadTimeout borne le téléchargement d'un morceau (CDN Azure).
 const chunkDownloadTimeout = 60 * time.Second
 
+// chunkParallelism : nombre maximal de téléchargements CDN simultanés pour UN film.
+//
+// MÊME VALEUR ET MÊME RAISON QUE `haloclient.filmChunkParallelism` : le CDN Azure sert des
+// blobs indépendants, la latence domine, et huit connexions saturent la bande passante d'une
+// liaison ordinaire sans jamais faire de l'ouvrier un client abusif. Les monter n'achète plus
+// de temps (la limite devient le débit) et multiplie la mémoire tenue simultanément —
+// l'ouvrier garde les morceaux décompressés en RAM jusqu'à l'écriture du cache.
+const chunkParallelism = 8
+
 // genericBuildFailedErrorCode : le motif d'échec ORDINAIRE (décodage, réseau, artefact non
 // transmis...). Nommé pour rester DISTINCT, par construction, de
 // domain.BuildJobErrorCodeMemoryExceeded — un film-bombe isolé ne doit jamais se confondre
 // avec une vraie erreur de décodage (cf. memlimit.go, TestProcessJob_EchecOrdinaire_GardeSonMotif).
 const genericBuildFailedErrorCode = "replay_build_failed"
+
+// outilOuvrier : le nom sous lequel l'ouvrier tient le verrou de décodage de la machine. C'est
+// ce mot que lira l'opérateur à qui le verrou est refusé (cf. internal/filmproc/solo.go).
+const outilOuvrier = "replay-worker"
+
+// attenteVerrouOuvrier : combien de temps l'ouvrier attend son tour avant de rendre le job en
+// échec. Même borne que l'enfant de la passe de backfill, pour la même raison : c'est plus long
+// que toute cuisson connue, donc une attente qui expire signale une machine vraiment occupée et
+// non un chevauchement ordinaire.
+const attenteVerrouOuvrier = 10 * time.Minute
 
 // exitCodeMemoryExceeded : code de sortie quand la sentinelle mémoire a isolé le job en
 // cours (cf. memlimit.go). Distinct de 1 (arrêt sur erreur de la boucle) et 2 (configuration
@@ -235,19 +260,58 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 			"job_id", job.JobID, "match_id", p.MatchID, "joueurs", len(facts.Players),
 			"variante", facts.GameVariantName, "carte", facts.MapID)
 	}
-	out, err := builder.BuildMatch(p.MatchID, p.MapNames, filmcache.ChunkDir(w.workDir, p.ShortID), facts)
+	// LE VERROU SOLO, EN ATTENTE BORNÉE (PLAN_CUISSON_PERF §3 D7). L'ouvrier ne prend qu'un job
+	// à la fois, mais RIEN n'empêche de le lancer sur une machine qui décode déjà — un poste de
+	// développement qui fait tourner le serveur (post-sync), une passe `backfill-replay`, ou
+	// simplement deux ouvriers. C'est exactement le trou par lequel le quatrième sinistre est
+	// passé (cf. internal/filmproc/solo.go) : « un film à la fois DANS ce processus » ne dit
+	// rien du nombre de processus. Il ATTEND son tour plutôt que d'échouer (le job est déjà pris,
+	// son bail court, et le rendre en échec pour un chevauchement gâcherait le téléchargement
+	// qu'on vient de payer) ; passé la borne, c'est un échec ordinaire, détenteur nommé.
+	//
+	// PRIS APRÈS LE TÉLÉCHARGEMENT ET RENDU AVANT L'ENVOI : le verrou protège la RAM du
+	// DÉCODAGE, pas le réseau. L'étendre au transfert immobiliserait la machine pour rien.
+	//
+	// ENRACINÉ SUR LE CACHE DU DÉPÔT, PAS SUR `w.workDir` (lot 6, constat 7). Le verrou vit à
+	// `<racine>/data/cache/film_decode.lock` : c'est le contrat de `filmproc.AcquireSolo`, et
+	// c'est là que le prennent les TROIS autres points d'entrée (post-sync, passe de backfill,
+	// `replay-build`). Tant que `--work` n'est pas passé, `w.workDir` VAUT ce cache et l'exclusion
+	// tenait par coïncidence ; dès qu'un ouvrier distant passe `--work`, il posait son verrou dans
+	// un dossier que personne d'autre ne regarde — et l'exclusion annoncée juste au-dessus
+	// n'existait plus. `w.repoRoot` est garanti non vide (le binaire sort en 2 sans `--repo`).
+	verrouRoot := titlePkg.NewPathResolver(w.repoRoot).CacheRootDir()
+	lock, err := filmproc.AcquireSoloWait(ctx, verrouRoot, outilOuvrier, p.MatchID, attenteVerrouOuvrier)
+	if err != nil {
+		return "", fmt.Errorf("decodage refuse : %w", err)
+	}
+	// LE DIFFÉRÉ EST UN FILET, PAS LE RENDU NOMINAL (`Release` est idempotent) : le verrou tombe
+	// explicitement dès le décodage fini, quelques lignes plus bas. Ce `defer` couvre le jour où
+	// quelqu'un ajoutera un retour anticipé entre les deux.
+	defer lock.Release()
+	// LES OCTETS NE TOUCHENT PAS LE DISQUE DE L'OUVRIER (PLAN_CUISSON_PERF §3 D8). `BuildMatch`
+	// écrivait l'artefact à sa place canonique LOCALE, puis cette fonction le RELISAIT pour
+	// l'envoyer : deux entrées/sorties de plusieurs mégaoctets pour un fichier dont personne
+	// ici n'a l'usage — l'artefact qui fait foi est celui que le SERVEUR range
+	// (`replaybuild.StoreArtifact`), avec son garde anti-régression et sa notification. Un
+	// ouvrier distant écrivait en prime dans une arborescence de dépôt qu'il n'a pas.
+	built, err := builder.BuildBytes(p.MatchID, p.MapNames, filmcache.ChunkDir(w.workDir, p.ShortID), facts)
+	lock.Release()
 	if err != nil {
 		return "", err
 	}
-	blob, err := os.ReadFile(out.ArtifactPath)
-	if err != nil {
-		return "", fmt.Errorf("relecture de l'artefact construit : %w", err)
-	}
+	// L'EMPREINTE SE CALCULE ICI, SUR LES OCTETS ENCORE EN MÉMOIRE — jamais par une relecture
+	// du disque (l'ouvrier n'en garde pas, cf. D8 et TestOuvrier_NeComposeJamaisLEcritureDArtefact).
+	// C'est la SEULE trace indépendante de ce que l'ouvrier a construit qui survit à son
+	// processus : le compte rendu (ci-dessous) est journalisé et lu par la file durable, alors
+	// que `built.Blob` disparaît avec l'ouvrier. Elle prouve, sans copie locale, que l'artefact
+	// rangé par le serveur est bien celui-ci — cf. build_queue_worker_binary_integration_test.go,
+	// assertArtefactLivreEtComplet.
+	empreinte := sha256.Sum256(built.Blob)
 	// Contexte frais : un Ctrl-C pendant le décodage ne doit pas jeter un artefact
 	// qui a coûté 50 s de CPU alors qu'il ne reste qu'à l'envoyer.
 	sctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), artifactUploadTimeout)
 	defer cancel()
-	receipt, err := w.client.sendArtifact(sctx, job.JobID, w.identity.workerID, blob)
+	receipt, err := w.client.sendArtifact(sctx, job.JobID, w.identity.workerID, built.Blob)
 	if err != nil {
 		return "", fmt.Errorf("%w : %v", errArtifactNotDelivered, err)
 	}
@@ -255,13 +319,20 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 		"job_id", job.JobID, "match_id", p.MatchID, "bytes", receipt.Bytes,
 		"schema", receipt.SchemaVersion)
 
+	// PAS DE `artifact_path` DANS LE RÉSUMÉ, ET C'EST LA CONSÉQUENCE DIRECTE DE D8 : l'ouvrier
+	// n'écrit plus d'artefact, il n'a donc plus de chemin à annoncer. Le champ n'avait aucun
+	// lecteur (ni serveur, ni web) — il décrivait un fichier de la machine de l'ouvrier, que
+	// personne d'autre ne pouvait ouvrir.
 	summary, err := json.Marshal(map[string]any{
-		"match_id":      p.MatchID,
-		"module":        out.Module,
-		"tracks":        out.Tracks,
-		"bytes":         receipt.Bytes,
-		"artifact_path": out.ArtifactPath,
-		"chunks":        len(chunks),
+		"match_id": p.MatchID,
+		"module":   built.Module,
+		"tracks":   built.Tracks,
+		"bytes":    receipt.Bytes,
+		"chunks":   len(chunks),
+		// sha256 : empreinte de `built.Blob` (avant envoi), pas de l'artefact rangé — ils ne
+		// peuvent différer que si le serveur a REFUSÉ l'écriture (garde anti-régression,
+		// cf. writeArtifactBytes) ; le vérifier alors est un faux positif attendu, pas un bug.
+		"sha256": hex.EncodeToString(empreinte[:]),
 	})
 	if err != nil {
 		return "", fmt.Errorf("sérialisation du résultat : %w", err)
@@ -302,21 +373,41 @@ func (w *worker) cleanupFilm(ctx context.Context, job *domain.BuildQueueJob) {
 // décompresse (le CDN Azure des films rend du zlib brut). Aucune authentification
 // n'est présentée : c'est exactement la propriété qui permet à cet ouvrier de
 // n'avoir aucun secret Halo.
+//
+// LES TÉLÉCHARGEMENTS SONT PARALLÈLES, BORNÉS À [chunkParallelism], SUR LE MODÈLE EXACT DU
+// CLIENT DE SYNC (`haloclient.fetchFilmChunks`) : errgroup.WithContext + SetLimit, chaque
+// goroutine écrivant dans un SLOT PRÉ-ALLOUÉ. Aucun mutex, aucun tri après coup —
+// l'assemblage est fait par l'indice de boucle, donc L'ORDRE DU JOB EST L'ORDRE RENDU, et il
+// l'est par construction plutôt que par une convention que la prochaine relecture pourrait
+// perdre. Un film de 30 morceaux tenait la latence CDN trente fois de suite ; il la tient
+// désormais quatre fois. Une erreur annule le contexte du groupe : les téléchargements en vol
+// s'arrêtent, et le JOB ÉCHOUE — un film à trous ne se cuit pas.
 func (w *worker) fetchChunks(ctx context.Context, p *domain.BuildQueuePayload) ([]filmcache.WriteChunk, error) {
+	// LE CONTEXTE DÉJÀ ANNULÉ NE LANCE RIEN. errgroup exécuterait quand même chaque tâche
+	// (pour la voir échouer sur son propre contexte) : le dire ici garde la propriété
+	// « annulé = aucun appel réseau », que le protocole d'arrêt de l'ouvrier suppose.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	client := &http.Client{Timeout: chunkDownloadTimeout}
-	out := make([]filmcache.WriteChunk, 0, len(p.Chunks))
-	for _, c := range p.Chunks {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		data, err := downloadChunk(ctx, client, c.URL)
-		if err != nil {
-			return nil, fmt.Errorf("morceau %d : %w", c.Index, err)
-		}
-		out = append(out, filmcache.WriteChunk{
-			Index: c.Index, ChunkType: c.ChunkType,
-			StartMS: c.StartMS, DurationMS: c.DurationMS, Data: data,
+	out := make([]filmcache.WriteChunk, len(p.Chunks))
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(chunkParallelism)
+	for i, c := range p.Chunks {
+		eg.Go(func() error {
+			data, err := downloadChunk(egCtx, client, c.URL)
+			if err != nil {
+				return fmt.Errorf("morceau %d : %w", c.Index, err)
+			}
+			out[i] = filmcache.WriteChunk{
+				Index: c.Index, ChunkType: c.ChunkType,
+				StartMS: c.StartMS, DurationMS: c.DurationMS, Data: data,
+			}
+			return nil
 		})
+	}
+	if err := eg.Wait(); err != nil {
+		return nil, err
 	}
 	return out, nil
 }

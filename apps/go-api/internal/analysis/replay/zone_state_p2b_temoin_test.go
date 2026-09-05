@@ -47,7 +47,7 @@ func p2bRoles(f p2aFilm) string {
 func TestZoneEtatPhase2bTemoin(t *testing.T) {
 	dir := p2aRequireFilm(t)
 	short, film := p2aFilmOf(t, dir)
-	src := p2aSource(t, dir)
+	src := p2aBobine(t, dir)
 	quant := p2aQuant(t, film.Carte)
 	zones := p2aZones(t, film.MapID, p2aRolesDuMode(film)...)
 	caps := p2aCaptures(src, film)

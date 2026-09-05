@@ -113,8 +113,8 @@ func TestEquipmentPickupOrigin(t *testing.T) {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
 	// LA CHAÎNE DE PRODUCTION, APPELÉE — jamais recopiée (leçon du lot 4).
-	_, pst := decodeFilmPlacements(s.dir, &s.wr)
-	scan := decodeFilmPadScans(s.dir, &s.wr, pst.Calibration.Widths).Powerups
+	_, pst := decodeFilmPlacementsDir(s.dir, &s.wr)
+	scan := decodeFilmPadScansDir(s.dir, &s.wr, pst.Calibration.Widths).Powerups
 	if !scan.Scanned || len(scan.Tracks) == 0 {
 		t.Fatalf("chaîne des power-ups muette : scanned=%v pistes=%d", scan.Scanned, len(scan.Tracks))
 	}

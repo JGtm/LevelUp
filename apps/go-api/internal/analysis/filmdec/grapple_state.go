@@ -24,7 +24,11 @@ package filmdec
 // L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : le hook installé
 // est un global de paquet.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // grappleComponentName / grappleComponentNameAlt : les deux étiquettes de registre d'i59
 // — les films portent l'une OU l'autre (avec ou sans le suffixe `-component`, même
@@ -76,25 +80,33 @@ type GrappleStats struct {
 // `abilityNonPredictedHook`, qui est un global de paquet. L'appelant doit détenir
 // LockProcessDecode (BuildFromFilm le fait). Le hook est restauré à la sortie, y compris
 // en cas d'erreur.
+//
+// ScanFilmGrappleReads est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanGrappleReads].
 func ScanFilmGrappleReads(dir string) ([]GrappleRead, GrappleStats, error) {
-	var st GrappleStats
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
-	}
-	chunks := make([]int, 0, n)
-	for i := 1; i <= n; i++ {
-		chunks = append(chunks, i)
-	}
-	slots := bipedSlotBand(dir, chunks)
-	if len(slots) == 0 {
-		return nil, st, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
-	}
-	lay, _, err := DetectI0Layout(dir)
+	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
-		return nil, st, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
+		return nil, GrappleStats{}, err
 	}
-	arch, err := bipedArchetype(dir)
+	return ScanGrappleReads(NewFilmContext(film))
+}
+
+// ScanGrappleReads décode les événements de grappin d'un film DEJA CHARGE.
+func ScanGrappleReads(fc *FilmContext) ([]GrappleRead, GrappleStats, error) {
+	var st GrappleStats
+	chunks := fc.ChunkNumbers()
+	if len(chunks) == 0 {
+		return nil, st, ErrNoFilmChunk
+	}
+	slots := fc.BipedSlots()
+	if slots.Count() == 0 {
+		return nil, st, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
+	}
+	lay, err := fc.I0Layout()
+	if err != nil {
+		return nil, st, fmt.Errorf("découpage i0 illisible : %w", err)
+	}
+	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return nil, st, err
 	}
@@ -106,7 +118,7 @@ func ScanFilmGrappleReads(dir string) ([]GrappleRead, GrappleStats, error) {
 		}
 	}
 	if i59idx < 0 {
-		return nil, st, fmt.Errorf("composant %q absent de l'archétype biped de %s", grappleComponentName, dir)
+		return nil, st, fmt.Errorf("composant %q absent de l'archétype biped du film", grappleComponentName)
 	}
 
 	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit
@@ -118,11 +130,11 @@ func ScanFilmGrappleReads(dir string) ([]GrappleRead, GrappleStats, error) {
 
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	for _, c := range chunks {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+		data, pks, ok := fc.ChunkAt(c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}

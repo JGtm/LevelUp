@@ -30,7 +30,23 @@ func (b *BitReader) Remaining() int { return len(b.buf)*8 - b.pos }
 // ReadBits reads n bits (0..64) MSB-first and returns them right-aligned in the
 // low n bits. Bits past the end of the buffer read as zero, matching the engine's
 // tail padding.
+// Lecture par mot de 64 bits (cf. bits_word.go) sur le domaine ou elle coincide avec la
+// boucle d'origine : position courante non negative et largeur <= 64. Hors de ce domaine
+// — position negative (l'indexation panique, comme avant) ou largeur > 64 (le resultat ne
+// garde que les 64 DERNIERS bits lus, et le curseur avance quand meme de n) — la boucle
+// d'origine reste seule maitresse.
 func (b *BitReader) ReadBits(n uint) uint64 {
+	if b.pos >= 0 && n <= 64 {
+		r := wordBitsAt(b.buf, b.pos, n)
+		b.pos += int(n)
+		return r
+	}
+	return b.readBitsLoop(n)
+}
+
+// readBitsLoop est la lecture bit a bit d'origine : elle porte les conventions de bord que
+// le chemin par mot ne couvre pas.
+func (b *BitReader) readBitsLoop(n uint) uint64 {
 	var r uint64
 	for i := uint(0); i < n; i++ {
 		var bit uint64

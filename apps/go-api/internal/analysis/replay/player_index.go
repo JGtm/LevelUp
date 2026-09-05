@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/weaponv3"
 )
 
@@ -50,21 +51,31 @@ type PlayerIndexTable struct {
 // réplication du film.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+// ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanPlayerIndices].
 func ScanFilmPlayerIndices(filmDir string, roster []uint64) (PlayerIndexTable, error) {
+	film, err := filmsource.LoadDir(filmDir, nil)
+	if err != nil {
+		return PlayerIndexTable{ByXUID: map[uint64]int{}}, err
+	}
+	return ScanPlayerIndices(film, roster)
+}
+
+// ScanPlayerIndices lit l'index de joueur de chaque xuid du roster dans un film DEJA CHARGE.
+func ScanPlayerIndices(film *filmsource.Film, roster []uint64) (PlayerIndexTable, error) {
 	out := PlayerIndexTable{ByXUID: map[uint64]int{}}
 	if len(roster) == 0 {
 		return out, fmt.Errorf("roster vide : rien à résoudre")
 	}
-	n := filmdec.CountFilmChunks(filmDir)
-	if n == 0 {
-		return out, fmt.Errorf("aucun chunk film lisible dans %s", filmDir)
+	nums := filmdec.FilmChunkNumbers(film)
+	if len(nums) == 0 {
+		return out, filmdec.ErrNoReadableFilmChunk
 	}
 	// Chunks de RÉPLICATION seulement : le 0 est le registre, le dernier porte les highlights.
 	// Les deux rendent une table nulle, et l'inclure écraserait la bonne.
 	seen := map[uint64]map[int]int{}
-	for c := 1; c < n; c++ {
-		raw, err := filmdec.ReadFilmChunk(filmDir, c)
-		if err != nil {
+	for _, c := range nums[:len(nums)-1] {
+		raw, _, ok := filmdec.FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
 		got := weaponv3.ResolveXuidToPI(roster, raw)

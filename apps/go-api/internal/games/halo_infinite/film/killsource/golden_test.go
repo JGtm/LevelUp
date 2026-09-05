@@ -48,6 +48,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 var updateGolden = flag.Bool("update", false, "reecrire les fichiers golden de testdata/")
@@ -92,7 +94,7 @@ func TestGoldenFilms(t *testing.T) {
 // decoderFixture : le decodage, plus le controle negatif qui exige de relire les paquets.
 func decoderFixture(t *testing.T, dir string) (*Result, negControle) {
 	t.Helper()
-	src, err := DirChunks(dir)
+	src, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		t.Skipf("film absent : %v", err)
 	}
@@ -115,7 +117,7 @@ type negControle struct {
 	candidats int
 }
 
-func controleNegatif(t *testing.T, src ChunkSource, nPlay int) negControle {
+func controleNegatif(t *testing.T, src *filmsource.Film, nPlay int) negControle {
 	t.Helper()
 	f, err := loadFilm(src)
 	if err != nil {

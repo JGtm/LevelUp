@@ -93,11 +93,11 @@ func linesOf(film string) []PlayerLine {
 // par compteur. L'appariement slot -> joueur passe par le triplet (cf. slotidentity.go).
 func checkAgainstOracle8(t *testing.T, film, objectiveType string) {
 	t.Helper()
-	src, ok := newDiskFilmSource(t, film)
+	bobine, ok := newDiskFilm(t, film)
 	if !ok {
 		t.Skipf("film %s absent du cache (%s=%q)", film, filmCacheEnv, cacheRoot())
 	}
-	recs := StatRecords(src)
+	recs := StatRecords(bobine)
 	identity := SlotIdentityFrom(recs, linesOf(film))
 	if len(identity) != 8 {
 		t.Fatalf("%s : %d slots apparies, attendu 8", film, len(identity))
@@ -147,12 +147,12 @@ func TestNamedEventsCTFAgainstEightPlayers(t *testing.T) {
 // somme 77, exactement le total du match. Meme si l'identite des slots derivait, ce total
 // tiendrait.
 func TestNamedEventsZoneTotalsMatchAPI(t *testing.T) {
-	src, ok := newDiskFilmSource(t, "696a9d7c")
+	bobine, ok := newDiskFilm(t, "696a9d7c")
 	if !ok {
 		t.Skipf("film 696a9d7c absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
 	total := map[string]int{}
-	for _, e := range NamedEvents(src, ObjectiveTypeZone) {
+	for _, e := range NamedEvents(bobine, ObjectiveTypeZone) {
 		total[e.Stat]++
 	}
 	if total[StatZoneCaptures] != 61 {
@@ -182,13 +182,13 @@ func TestNamedEventsCrossCheck(t *testing.T) {
 	for film, objectiveType := range map[string]string{
 		"696a9d7c": ObjectiveTypeZone, "1bc77d2e": ObjectiveTypeFlag,
 	} {
-		src, ok := newDiskFilmSource(t, film)
+		bobine, ok := newDiskFilm(t, film)
 		if !ok {
 			t.Logf("film %s absent du cache local — non confronte", film)
 			continue
 		}
 		confrontes++
-		for slot, byStat := range CrossCheckNamedEvents(src, objectiveType) {
+		for slot, byStat := range CrossCheckNamedEvents(bobine, objectiveType) {
 			for stat, pair := range byStat {
 				t.Errorf("%s slot %d : %s = %d sur l'emplacement canonique mais %d sur le "+
 					"redondant", film, slot, stat, pair[0], pair[1])

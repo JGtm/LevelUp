@@ -44,6 +44,8 @@ import (
 	"runtime/metrics"
 	"sync/atomic"
 	"time"
+
+	"levelup/go-api/internal/filmproc"
 )
 
 const (
@@ -128,8 +130,8 @@ func (s *sentinelleMemoire) veiller(periode time.Duration) {
 			slog.Error("PLAFOND MEMOIRE DEPASSE — arret du processus",
 				"empreinte_octets", v, "plafond_dur_octets", s.plafondDur)
 			// Le pic part AVANT la mort : c'est la seule trace que le parent aura.
-			emettrePicMemoire(v)
-			os.Exit(codeEnfantMemoire)
+			filmproc.EmitPeak(v)
+			os.Exit(filmproc.CodeMemory)
 		}
 	}
 }

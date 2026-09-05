@@ -74,7 +74,7 @@ func TestP3ImpulsionsJGtm(t *testing.T) {
 	}
 	entry := p3MapEntry(t, dir)
 	film := filepath.Base(dir)
-	doc, err := BuildFromFilm(film, "halo_infinite", dir, Options{
+	doc, err := buildFromFilmDir(film, "halo_infinite", dir, Options{
 		MapQuant: &entry,
 		Labels:   goldenCatalog(t),
 	})

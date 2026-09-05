@@ -1,106 +1,42 @@
 package killsource
 
-// chunks.go — L ENTREE DU PAQUET : LES CHUNKS, ET RIEN D AUTRE.
+// chunks.go — L ENTREE DU PAQUET : UN FILM DEJA CHARGE, ET RIEN D AUTRE.
 //
-// Un film Theater est une suite de chunks numerotes, chacun eventuellement compresse en zlib.
-// Ce paquet ne sait pas les TELECHARGER : c est deliberement la responsabilite de l appelant
-// (le telechargement est le vrai cout, il est batchable et il a deja son chemin store-first).
-// Il ne connait qu une interface a deux methodes, ce qui rend le decodage testable a partir
-// d octets en memoire, sans disque et sans reseau.
+// # CE QUE CE FICHIER A CESSE DE FAIRE (lot 1, PLAN_CUISSON_PERF item 1.4, 2026-09-02)
 //
-// PIEGE HISTORIQUE, ET IL A COUTE UN KILL-FEED ENTIER : tout l outillage de RE bornait la
-// lecture au chunk 41. Un film BTB en compte 63, et son chunk HIGHLIGHT est le n62 — le
-// kill-feed y etait purement introuvable (RE_LOG 7ter.52). Ici il n y a AUCUNE borne : la
-// source declare son compte, et tout est lu.
+// Il portait sa propre source de chunks (`ChunkSource`, `MemoryChunks`, `DirChunks`), son propre
+// inflate zlib et son propre marcheur de paquets (`splitPackets`) — la TROISIEME copie des trois,
+// a cote de `filmdec` et d `objectiveevents`, et les trois DIVERGEAIENT. Une cuisson d artefact
+// payait donc une lecture disque et une decompression du film ENTIER rien que pour ce decodeur,
+// en plus de celles des balayages.
+//
+// Tout cela vit desormais dans `internal/analysis/filmsource`, paquet FEUILLE : l appelant charge
+// le film UNE fois et le passe a [Decode]. Ce fichier ne fait plus que TRADUIRE ce film dans le
+// vocabulaire interne du decodeur (`packet`, `film`) et trier les paquets type-0 par horodatage.
+//
+// PIEGE HISTORIQUE, ET IL A COUTE UN KILL-FEED ENTIER : tout l outillage de RE bornait la lecture
+// au chunk 41. Un film BTB en compte 63, et son chunk HIGHLIGHT est le n62 — le kill-feed y etait
+// purement introuvable (RE_LOG 7ter.52). La garantie est intacte, elle a seulement change de
+// domicile : `filmsource` ne borne rien, et ce fichier lit TOUS les chunks du film charge.
+//
+// # LE CHUNK 0 EST LE PREMIER DE LA SOURCE, PAS « LE CHUNK NUMERO 0 »
+//
+// `f.chunks` est indexe par POSITION dans la source, exactement comme l ancien `ChunkSource` :
+// `f.chunks[0]` est le PREMIER chunk que la source donne, et c est lui que `newTimeline`
+// (world.go) lit comme registre ECS. Sur un cache complet ou sur une sequence telechargee, la
+// position 0 porte bien `chunk_00`, le registre ; sur une bobine partielle qui commence a
+// `chunk_01`, elle porte un chunk de donnees — et c etait DEJA le cas avant. Le contrat est donc
+// conserve tel quel : `film.Chunk(i)` de `filmsource` est indexe par la meme position.
 
 import (
-	"bytes"
-	"compress/zlib"
-	"encoding/binary"
-	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
-// ChunkSource : de quoi lire les chunks d un film. Deux methodes, aucune hypothese sur l origine
-// des octets (disque, cache, memoire, objet distant deja materialise).
-type ChunkSource interface {
-	// NumChunks : nombre de chunks, index 0..NumChunks()-1.
-	NumChunks() int
-	// Chunk : les octets BRUTS du chunk `i`, compresses ou non — la decompression est faite ici.
-	// Un chunk absent se signale par une erreur ; un chunk vide est accepte et ignore.
-	Chunk(i int) ([]byte, error)
-}
-
-// MemoryChunks : implementation triviale sur une tranche deja chargee. C est la forme que prend
-// naturellement un pipeline qui vient de telecharger les chunks.
-type MemoryChunks [][]byte
-
-func (m MemoryChunks) NumChunks() int { return len(m) }
-
-func (m MemoryChunks) Chunk(i int) ([]byte, error) {
-	if i < 0 || i >= len(m) {
-		return nil, fmt.Errorf("killsource: chunk %d hors bornes (%d chunks)", i, len(m))
-	}
-	return m[i], nil
-}
-
-// dirChunks : les chunks d un repertoire `chunk_NN.bin`, lus a la demande.
-type dirChunks struct {
-	dir   string
-	files []string
-}
-
-// DirChunks : source lisant `<dir>/chunk_NN.bin`, NN sur deux chiffres, sans borne haute.
-// Utile pour rejouer un film mis en fixture ; un pipeline de production preferera
-// [MemoryChunks].
-func DirChunks(dir string) (ChunkSource, error) {
-	names, err := filepath.Glob(filepath.Join(dir, "chunk_*.bin"))
-	if err != nil {
-		return nil, fmt.Errorf("killsource: lecture de %s: %w", dir, err)
-	}
-	if len(names) == 0 {
-		return nil, fmt.Errorf("killsource: aucun chunk_NN.bin dans %s", dir)
-	}
-	sort.Strings(names)
-	return &dirChunks{dir: dir, files: names}, nil
-}
-
-func (d *dirChunks) NumChunks() int { return len(d.files) }
-
-func (d *dirChunks) Chunk(i int) ([]byte, error) {
-	if i < 0 || i >= len(d.files) {
-		return nil, fmt.Errorf("killsource: chunk %d hors bornes (%d chunks)", i, len(d.files))
-	}
-	b, err := os.ReadFile(d.files[i])
-	if err != nil {
-		return nil, fmt.Errorf("killsource: %s: %w", d.files[i], err)
-	}
-	return b, nil
-}
-
-// inflate : decompresse un chunk zlib. Une entree deja decompressee traverse telle quelle, et
-// un flux tronque rend ce qui a pu etre lu — un film Theater se termine parfois net.
-func inflate(raw []byte) []byte {
-	if len(raw) < 2 || raw[0] != 0x78 {
-		return raw
-	}
-	zr, err := zlib.NewReader(bytes.NewReader(raw))
-	if err != nil {
-		return raw
-	}
-	defer func() { _ = zr.Close() }()
-	dec, err := io.ReadAll(zr)
-	if err != nil && len(dec) == 0 {
-		return raw
-	}
-	return dec
-}
-
 // packet : un paquet de replication, tel qu il se presente dans un chunk decompresse.
-// En-tete de 16 octets LITTLE-ENDIAN : [u16 type][2 o][u32 taille][u64 horodatage].
+// En-tete de 16 octets LITTLE-ENDIAN : [u16 type][2 o][u32 taille][u64 horodatage] — decode par
+// `filmsource`, dont ce type est la vue interne du decodeur.
 type packet struct {
 	chunk, idx int
 	typ        int
@@ -115,29 +51,28 @@ const (
 	packetTypeBotMeta  = 12 // BOT_METADATA : nbBots, slot, identifiant, nom (RE_LOG 7ter.62)
 )
 
+// packetTypeChunkEnd : CHUNK_END, le terminateur d un chunk de donnees. AUCUN consommateur de ce
+// paquet ne le lit — il est filtre a l entree, cf. [packetsOf].
+const packetTypeChunkEnd = 7
+
 // film : les octets d un film, deja decompresses, prets a decoder.
 type film struct {
-	chunks  [][]byte // par index de chunk, decompresses
+	chunks  [][]byte // par POSITION de chunk dans la source, decompresses
 	packets []packet
 	t0      []packet // paquets type-0, tries par horodatage
 	tsBase  uint64
 }
 
-// loadFilm : decompresse tous les chunks et decoupe les paquets. Une seule lecture de la source.
-func loadFilm(src ChunkSource) (*film, error) {
-	n := src.NumChunks()
-	if n == 0 {
+// loadFilm : traduit un film deja charge par `filmsource` dans le vocabulaire du decodeur, et
+// trie les paquets type-0 par horodatage. AUCUNE lecture disque, AUCUN inflate : tout est fait.
+func loadFilm(src *filmsource.Film) (*film, error) {
+	if src == nil || src.NumChunks() == 0 {
 		return nil, ErrNoChunk
 	}
-	f := &film{chunks: make([][]byte, n)}
+	n := src.NumChunks()
+	f := &film{chunks: make([][]byte, n), packets: packetsOf(src)}
 	for ch := 0; ch < n; ch++ {
-		raw, err := src.Chunk(ch)
-		if err != nil {
-			return nil, err
-		}
-		d := inflate(raw)
-		f.chunks[ch] = d
-		f.packets = append(f.packets, splitPackets(d, ch)...)
+		f.chunks[ch] = src.Chunk(ch)
 	}
 	for i := range f.packets {
 		if f.packets[i].typ == packetType0 {
@@ -152,20 +87,31 @@ func loadFilm(src ChunkSource) (*film, error) {
 	return f, nil
 }
 
-// splitPackets : decoupage d un chunk decompresse en paquets.
-func splitPackets(d []byte, ch int) []packet {
-	var out []packet
-	off, k := 0, 0
-	for off+16 <= len(d) {
-		typ := int(binary.LittleEndian.Uint16(d[off:]))
-		sz := int(binary.LittleEndian.Uint32(d[off+4:]))
-		ts := binary.LittleEndian.Uint64(d[off+8:])
-		if sz <= 0 || off+16+sz > len(d) {
-			break
+// packetsOf : les paquets du film dans la forme interne, LE TERMINATEUR EXCLU.
+//
+// LE FILTRE DE TYPE 7 EST LA POUR L IDENTITE, et il est le seul ecart entre les deux grammaires :
+// `filmsource` EMET le paquet CHUNK_END (regle 3 de D3 revisee, comme `filmdec` le faisait), la ou
+// l ancien `splitPackets` de ce paquet s arretait sur `taille <= 0` et ne l emettait donc jamais
+// (sur les chunks de donnees, « taille 0 » et « CHUNK_END » sont LE MEME paquet, en derniere
+// position — mesure sur 1 378 films, cf. `filmsource/doc.go`). Le filtrer ici reproduit
+// EXACTEMENT l ancien jeu de paquets, jusqu au rang `idx` : le terminateur etant le dernier paquet
+// de son chunk, le retirer ne decale aucun rang.
+//
+// Ce filtre est une precaution, pas une necessite : les trois consommateurs de `f.packets`
+// selectionnent deja par type (`packetType0` pour `t0` et le scan, `packetTypeKeyframe` pour la
+// timeline, `packetTypeBotMeta` pour les bots), donc un type 7 ne traverserait de toute facon
+// aucun d eux. Il est ecrit pour que l identite tienne AUSSI sur les comptes intermediaires
+// (`len(f.packets)`), et pour qu un futur lecteur de `f.packets` sans filtre de type herite du
+// meme jeu qu avant.
+func packetsOf(src *filmsource.Film) []packet {
+	all := src.AllPackets()
+	out := make([]packet, 0, len(all))
+	for i := range all {
+		p := &all[i]
+		if p.Type == packetTypeChunkEnd {
+			continue
 		}
-		out = append(out, packet{chunk: ch, idx: k, typ: typ, ts: ts, payload: d[off+16 : off+16+sz]})
-		off += 16 + sz
-		k++
+		out = append(out, packet{chunk: p.Chunk, idx: p.Index, typ: p.Type, ts: p.TS, payload: p.Payload})
 	}
 	return out
 }
