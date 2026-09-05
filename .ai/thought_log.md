@@ -95366,3 +95366,38 @@ porte sa propre dette lint (filmdec), pas celle-ci : notre branche est simplemen
 **Conclusion / prochaine etape.** Push des correctifs et nouvelle CI. Si le lint reste le seul
 job rouge et uniquement sur l heritage : decision utilisateur — integrer `origin/feat/v75` dans
 la branche (recupere les corrections himap) ou traiter la dette ici.
+
+## [2026-09-05] Audit feat/v75 depuis v7.3.0 — registre + proposition de v2 du rejeu et du film — Complete
+
+**Contexte.** Demande utilisateur : auditer tout ce qui a ete fait depuis le tag v7.3.0
+(a2719a68c -> 736ccf3c3, 2 058 commits) sur cinq questions — architecture et couches,
+rejeu 2D et fil des eliminations « chacun de son cote », pertinence des tests, portabilite a
+un futur titre, capabilities actives pour Halo Infinite seulement — et proposer une v2 du code
+(UI/UX hors perimetre). Skill `adversarial-audit` : l'audit ne corrige rien.
+
+**Decision technique.** Campagne perimetre x axe : 15 auditeurs en contexte frais, lecture
+seule (G1..G10 Go, W1..W5 web), puis 14 verificateurs adverses (« refuter ; en cas de doute,
+refuter ») sur les 86 constats P0/P1. Aucun go test / build / lint / vitest execute (regle des
+builds concurrents) : tout est etabli par lecture, git et grep. Le superviseur a rejoue sur
+pieces les faits pivots avant de retenir un constat.
+
+**Resultats.** 86 constats soumis : 35 tiennent (3 P0, 32 P1), 21 requalifies (1 P0 -> P1,
+20 P1 -> P2), 30 refutes. P0 retenus : `KillSourceDecoderRev` fige sur 14 commits de decodeur
+(lignes en base exclues a vie de la reprise) ; trois politiques « artefact sans origine » cote
+web ; deux horloges superposees dans l'onglet Chronologie. P0 refutes : porte `publishable`
+(les cumuls sont exemptes par arbitrage ecrit), diag seul ecrivain de match_objective_events
+(le persister d'Assaut ecrit la table en INSERT pur), deux formateurs d'horloge (le second
+n'atteint aucun pixel). Refutations notables : l'endpoint des capabilities fines existe deja
+(il manque le client web), la sentinelle auth balaie tout le module, le golden de la
+mini-bobine decode le registre reel en CI, les cinq tables `hinf_*` du TS sont des regles de
+rendu jointes par cle canonique, le roster n'est construit qu'une fois. Limite de methode : la
+base v7.3.0 tombe la veille du merge deja audite le 2026-08-06 (deux refutations en decoulent).
+Registre : `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` (constats, ecartes, reponses aux cinq
+questions, proposition de v2 en 7 volets, ordre de marche en 7 lots, 6 escalades). Annexes :
+29 fichiers sous `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05_annexes/`.
+
+**Conclusion / prochaine etape.** Aucune modification de code. Rien n'est commite (regle :
+demander avant). Prochaine etape : decision utilisateur sur les 6 escalades, puis cadrage du
+plan `.ai/PLAN_V2_REJEU_FILM_<date>.md` sous `plan-review`, lot 0 (trois P0 + les deux items
+actifs au merge : catalogue ecrit par le runtime, projections sur « artefact range ») avant le
+tag v7.5.0.
