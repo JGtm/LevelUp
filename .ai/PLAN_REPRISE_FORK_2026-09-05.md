@@ -418,6 +418,14 @@ Report LÉGITIME (délai d'observation, pas un report de complaisance) :
   `disk_watch: espace disque CRITIQUE sur le volume data` pour
   `LevelUp-go-migration\data\titles\halo_infinite`. Environnement, pas le diff — signalé à
   l'utilisateur.
+- (volet A, revue adversariale 2026-09-05, contexte frais, lentille L6) **0 constat
+  recevable, 14 conditions vérifiées qui tiennent.** Mutation ligne à ligne : chaque `if`
+  ajouté est gardé aux deux étages (ratchet + handler). Un P2 pré-existant, hors diff :
+  la fixture `csrWorld: []domain.LeaderboardEntry{}` du sous-test
+  `jsonshape_dto_smoke_test.go:155` est MORTE — sans saison ni playlist la requête sort
+  en amont (`leaderboard_service.go:72-78`) et n'atteint jamais le repo ; le cas « slice
+  vide non-nil » n'est donc pas exercé (dominé par le cas nil, sans conséquence
+  observable). Non traité.
 
 # 6. Mesures
 

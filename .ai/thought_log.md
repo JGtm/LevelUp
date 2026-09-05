@@ -1,5 +1,12 @@
 ## [2026-09-05] Classements — la garantie « collections jamais nulles » remonte des repos au service — Complété
 
+**Revue adversariale (après clôture, contexte frais, lentille « ce que les tests ne
+couvrent pas »)** : 0 constat recevable, 14 conditions vérifiées qui tiennent (mutation de
+chaque `if` ajouté → rougit aux deux étages ; le test handler lit le JSON émis, pas la
+struct ; une seule implémentation de `port.LeaderboardService`, câblée en un point). Un P2
+pré-existant consigné en §5 du plan (fixture morte du ratchet, hors diff). Branche poussée,
+CI surveillée.
+
 **Contexte** : volet A de `.ai/PLAN_REPRISE_FORK_2026-09-05.md`, reprise du commit
 `ad3f013d8` du fork ChaseWoodhams (le second commit du fork, `45fc3ce52`, est hors
 périmètre par décision utilisateur). Worktree dédié `LevelUp-wt-leaderboard-nonnil`,
