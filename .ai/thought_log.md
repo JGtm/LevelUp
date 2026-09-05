@@ -45,15 +45,34 @@ qu'on n'a pas vu echouer ne garde rien. Cote CI, un step `go vet -tags=gamefiles
 ./internal/himap/` (job `go-test`) : la CI ne peut pas EXECUTER le corpus faute de jeu, mais
 elle doit le COMPILER, sinon il pourrit hors de vue — exactement le defaut qu'on repare.
 
-**LE CORPUS N'EST PAS SEULEMENT LONG, IL EST GOURMAND — et ca explique un ecart qui
-intriguait.** `aquarius_map` coute 21 s lancee seule mais 59 s dans le balayage complet.
-Mesure du processus de test pendant un run du corpus entier : **24,2 Go de memoire privee
-apres 30 min sur une machine de 31,2 Go** (2 Go libres restants), avec seulement 13,5 min de
-CPU sur 30 min d'horloge — le processus PAGINE, il n'est pas limite par le calcul, et son tas
-grimpait encore. Chaque carte cuite laisse derriere elle une grille de ~2 millions de cellules
-et ses 26 000 instances ; le tas ne redescend pas entre sous-tests. Un corpus qui reclame les
-trois quarts de la RAM de la machine n'est de toute facon pas un gate qu'on fait tourner par
-defaut : la mesure renforce la decision de le taguer.
+**LE CORPUS N'EST PAS SEULEMENT LONG, IL EST GOURMAND — 24 Go, ET LA CAUSE EST NOMMEE.**
+Constat brut : **24,2 Go de memoire privee sur une machine de 31,2 Go** (2 Go libres), avec
+13,5 min de CPU pour 30 min d'horloge — le processus PAGINE, il n'est pas limite par le calcul.
+
+PREMIERE EXPLICATION ECRITE ICI, ET ELLE ETAIT FAUSSE : j'avais avance « chaque carte laisse
+sa grille derriere elle, le tas ne redescend pas entre sous-tests ». C'etait une hypothese
+presentee comme une mesure. Le profil la REFUTE : `-memprofile` sur un balayage de 4 cartes
+rend **7 Mo retenus a la fin** (`inuse_space`). Il n'y a ni fuite, ni accumulation entre
+sous-tests. La courbe le disait deja : la memoire privee atteint 22,4 Go **en 30 secondes**,
+avant meme la deuxieme carte.
+
+LA VRAIE CAUSE, MESUREE. `alloc_space` sur ces 4 cartes : **87,7 Go alloues au total, dont
+74,6 Go (85 %) par `os.readFileContents`**, atteint via `himap.NewModuleIndex` (79 % en
+cumul). `himodule.Open` fait `os.ReadFile` — il charge le `.module` ENTIER en memoire, plus
+son compagnon `_hd1`. Et `peupleDepuisModule` appelle `NewModuleIndex` A CHAQUE CARTE, sur la
+carte PLUS tous les modules globaux. Inventaire de ces globaux sur l'installation :
+`globals` 7,4 Go (+1,3 Go hd1), `common` 2,7 Go (+1,9 Go hd1), `multiplayer` 0,9 Go (+0,8 Go),
+les autres en dessous — **16,2 Go relus et remis en tas pour CHAQUE carte du balayage**, plus
+le module de la carte. 4 cartes x ~18,6 Go = les 74,6 Go du profil, au Go pres.
+
+Ce n'est donc pas un defaut de liberation, c'est une lecture integrale d'archives de plusieurs
+gigaoctets, repetee par carte. Corriger demanderait de projeter les modules en memoire (mmap)
+au lieu de `os.ReadFile`, ou de garder l'index des globaux d'une carte a l'autre — les deux
+hors perimetre ici, mais desormais chiffres.
+
+NON EXPLIQUE, et je ne le comble pas par une hypothese : `aquarius_map` coute 21 s seule et
+59 s dans le balayage complet. La relecture de 16 Go par carte et le lessivage du cache disque
+en sont des candidats plausibles, non mesures.
 
 **CE QUI N'A PAS ETE VERIFIE, ET POURQUOI JE LE DIS PLUTOT QUE DE L'ARRONDIR.** Le run du
 corpus ENTIER a ete ARRETE par moi a 30 min (`exit status 0xffffffff` dans le journal du run :
