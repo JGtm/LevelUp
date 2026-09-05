@@ -108,12 +108,13 @@ encore cherché « un objet créé à la position de l'ancre pendant la fenêtre
 
 ### R4 — Publier l'incertitude : le marqueur `gap` par émission (APRÈS R2)
 
-- [ ] R4.1 Si R2 laisse des manques incompressibles : publier sur chaque `EquipmentChange`
-      le saut de compteur constaté depuis l'émission précédente de la vie (`gap: n>0`) —
-      schéma +1, nouveaux films seulement, aucune re-cuisson. C'est de la lecture honnête,
-      pas une heuristique : le film se mesure lui-même.
-- [ ] R4.2 Consommateurs : un `from` sous `gap` n'est plus une identité fiable — les filtres
-      (`spentTranslocations`, vignette) le traitent comme inconnu, pas comme faux.
+- [~] R4.1 COUVERT par P1.2 (statué à la reprise du 04/09) : le marqueur `gap` par émission
+      est publié (schéma 38, `equipmentChanges[].gap` omitempty + coverage) — exactement ce
+      que cet item demandait (saut RÉSIDUEL après récupération, lecture honnête).
+- [~] R4.2 COUVERT par P2.4 (statué le 04/09) : foyer unique `identityIsUnknown(change)` —
+      `gap > 0` rend `from` INCONNU pour les deux consommateurs (`spentTranslocations`
+      s'abstient, `riftStations` retombe sur la mort du porteur), vignette verrouillée
+      (elle lit `r`, jamais `from`).
 
 ## Protocole de pilotage
 
@@ -742,16 +743,159 @@ zéro couleur en dur ; cliquet `ReplayCanvas.tsx` INCHANGÉ à 665 pour un fichi
 l'utilisateur : le GATE VISUEL du dash (forme, longueur, lisibilité sur le pion) et l'écoute du
 son en situation.
 
+### Lot P5 — Go, les CHARGES entrent en production (reprise du 04/09, handoff « CE QUI
+### RESTE » n°1 — demande utilisateur : « la fiche doit montrer l'équipement et ses
+### charges, du ramassage jusqu'à l'épuisement ou la mort »)
+
+Canal : i56 `biped-spartan-ability-energy`, quartet HAUT de la valeur 7 bits = charges
+entières restantes (R11 §2 — validé 5/5 contre le relevé Theater, 52/54 contre l'impulsion,
+36/36 contre `grappleLines`, témoin décalé 2/36). Branche `wt/charges-equipement` (depuis
+`wt/grappin-vies` 664b64403, qui porte R12). PIÈGES R11 à respecter ET tester :
+(a) aucune lecture au ramassage — masque à 0 = « le moteur pose 0x7F », plein ; la première
+valeur transmise est ce qui reste APRÈS le premier usage ; (b) une baisse peut valoir
+plusieurs usages (7→3, 4→2, 2→0 observés) — publier les LECTURES, jamais un compte d'usages
+dérivé ; (c) trois emplacements spécialisés MESURÉS (e0 propulseur, e2 grappin + 3
+surboucliers, e1 jamais armé) — AUCUNE spécialisation en dur côté Go : l'identité vient de
+la jointure par rang i48 de la même vie (patron P3.2), la famille de la palette du titre.
+
+- [x] P5.0 FAIT le 04/09 — schéma MAINTENU à 38 (pas de 39), décision documentée dans la
+      chronique de `document.go` avec la justification VRAIE : les deux artefacts 38 cuits
+      hors tests (`1b2d9e08`, `1cd3848a`) sont nommés, les ajouts sont additifs/omitempty
+      (lecteurs 38 existants insensibles) ; une montée à 39 marquerait « à re-cuire » un
+      parc entièrement <= 38 sans protéger aucun lecteur. Repris dans `structure_test.go`
+      et la chronique 51->52 du contracttest.
+- [x] P5.1 FAIT — `filmdec/ability_charges.go` sur le patron exact d'`ability_impulses.go` :
+      contexte partagé `resolveAbilityScan`, hook `SetAbilityEnergyHook` restauré par
+      defer, résolution i56 par nom EXACT (test anti-préfixe dans les DEUX sens — i57 est
+      un préfixe d'i56), témoin `Scanned` posé aux deux sorties abouties, `Absent`
+      distinct, ordre TOTAL (instant, slot, emplacement) testé. Masque non armé = RIEN
+      publié (« le moteur pose 0x7F » n'est pas une lecture), masque 000 compris.
+- [x] P5.2 FAIT — jointure par `b.byLife.rankInLife(...)` RÉUTILISÉ (une seule définition,
+      vérifié par grep), familles mesurées `[ability_charges] families = ["grapple",
+      "thruster"]` au manifeste (`replay_labels.toml`), validateur FACTORISÉ
+      `parseMeasuredFamilies` (sert les deux tables, pas de 3e copie) qui REFUSE une
+      famille qu'aucun rang ne nomme. Zéro littéral d'équipement, zéro spécialisation
+      e0/e2 côté Go (`Emplacement` reste dans filmdec, débogage — absent du type publié).
+      Mutations d'antériorité et de découpage par vie rejouées et TUÉES.
+- [x] P5.3 FAIT — `abilityCharges[]` = {t, slot, family, charges} publiés en LECTURES
+      (aucun repliement, série 4->0 telle quelle — une baisse peut valoir plusieurs
+      usages) ; `coverage.abilityCharges` : cinq refus comptés (beforeOrigin, unpublished,
+      noIdentity, otherFamily, noResolver), somme bouclée (test dédié) ; couverture jamais
+      publiée sans balayage (garde `Scanned` patron `attachInventoryCoverage`, les trois
+      zéros séparés). Oracles NON circulaires : quartets attendus écrits EN DUR
+      (64->4/0, 127->7/15...).
+- [x] P5.4 FAIT — chronique document.go, structure_test.go, golden v13->14 (section
+      « CHARGES D EQUIPEMENT », `000d5950` : 91 lectures -> 69 publiées, 20 sans identité,
+      2 famille non mesurée), contracttest 51->52 champs racine (types dans
+      `replaySchemas` au même lot), `make openapi-gen` + `make generate-types` (produits
+      par l'outillage, vérifié : `generated.ts` identique à l'octet après régénération,
+      `make openapi-check` propre), frontière web comblée (replayNormalize.ts `?? []` +
+      replayContract.test.ts), `make check-types` exit 0.
+- [x] P5.5 FAIT — acceptation sur pièces, chaîne `BuildFromFilm` entière (env-gaté) :
+      `1cd3848a` — **série 4, 3, 2, 1, 0 à 1:52, 1:55, 2:03, 2:05, 2:15** contre le relevé
+      Theater 1:51-2:14 (5/5, écart <= 1 s, rien d'autre dans la fenêtre) ; entonnoir 93
+      lectures -> 57 publiées, 26 sans identité, 10 famille non mesurée, 0 attribution
+      indisponible ; 4 lectures hors fenêtre journalisées (2:42, 2:47, 5:21, 5:34 — les
+      mêmes instants que les impulsions P3 hors fenêtre). Témoin grappin `f2966f08` :
+      **6/6 baisses appariées** aux accroches publiées (le chiffre exact de R11 §3.2) ;
+      28 lectures grappin -> 19 baisses, 11 sans accroche journalisées comme rappel
+      supérieur (R11 §3.3). CORRECTION DE TEST en reprise : le premier jet datait les
+      baisses avec l'offset `originMs` et les accroches SANS (0/6) — helper `p5OriginMS`
+      appliqué aux deux séries, production intouchée.
+- [x] P5.6 FAIT — gates rejoués : go test filmdec / replay/... / replaybuild/... /
+      contracttest / mappings / replaylabels 7/7 ok (0 `--- FAIL:`), go vet exit 0,
+      `gofmt -l` vide, `make check-types` exit 0, vitest replayContract 13/13. Revue
+      adversariale à contexte frais : voir bloc ci-dessous.
+
+REVUE ADVERSARIALE P5 RONDE 1 (04/09, relecteur frais, mutations sur copies avec
+restauration vérifiée octet à octet) : **16 conditions vérifiées qui tiennent** — dont les
+oracles en dur, le masque non armé, l'antériorité et le découpage par vie de la jointure,
+la garde de couverture, la somme bouclée, la cohérence transversale du schéma sur ses six
+surfaces, l'absence de littéral d'équipement, le validateur factorisé, la publication en
+lectures sans repliement. 2 constats recevables :
+
+- [x] Q1 (P1) CORRIGÉ dans le lot — `ability_charges.go` : `account` prenait 9 paramètres
+      (limite lint 7, règle repo <= 5) là où le voisin `abilityImpulseScanner` porte
+      `lay`/`arch` dans sa structure. Correctif = le patron du voisin, appliqué (structure
+      + signature + site d'appel + 2 appels du test). Vérifié : `make go-api-lint` ne
+      porte PLUS ce constat ; gates filmdec + replay rejoués verts ; ronde 2 sur la seule
+      correction.
+- [~] Q2 (P2) CONSIGNÉ, non corrigé (hors périmètre, trou STRUCTUREL pré-existant à
+      l'identique pour les trois listes) : voir Découvertes « le câblage des familles dans
+      `replaylabels/catalog.go` n'est couvert par aucun test ».
+
+### Lot P6 — Web : la fiche montre les charges (après P5)
+
+ARBITRAGES TRANCHÉS par l'utilisateur le 04/09 (à la clôture de P5) : (1) avant la
+première lecture, la vignette affiche « PLEIN » QUALITATIF, sans chiffre — c'est la
+sémantique documentée du protocole (bit de masque à 0 = « le moteur pose 0x7F »), donc de
+la lecture ; le chiffre n'apparaît que mesuré. (2) Les événements de conséquence du
+répulseur (104/105, R12) ne sont PAS publiés pour l'instant — reste en recherche.
+(3) Merge vers `feat/v75` APRÈS P6, en un seul tenant.
+
+- [x] P6.1 FAIT le 04/09 — `abilityChargeLogic.ts` (logique pure) + `ReplayAbilityCell.tsx`
+      (cellule extraite de `ReplayInventoryRow`, 496->404 L, qui délègue) : la lecture la
+      plus récente <= image courante, jointe par la VIE qui couvre l'instant (patron
+      `fireMark.ts`, jamais `Map(slot -> piste)`), postérieure au dernier changement
+      d'équipement de la vie (égalité = ambiguë = antérieure) ; « plein » qualitatif avant
+      la première lecture ; famille reconnue par racine de libellé sur `abilityLabels`
+      (table fermée grapple/thruster, les deux locales — précédent `translocatorRanks`,
+      validé par la revue : vocabulaire TOML fermé, dégradation en silence) ; famille non
+      mesurée ou lecture d'une autre famille = RIEN d'affirmé. GARDE DE CALQUE
+      `hasAbilityChargeLayer` (correction P0 de la revue, voir bloc) : sans
+      `coverage.abilityCharges` (parc pré-38, balayage en échec) ou avec `componentAbsent`,
+      rien — pas même « plein » ; une lecture publiée sert de filet.
+- [x] P6.2 FAIT — 4 clés i18n FR ET EN (parité par typage, `i18nContract.ts` §
+      abilityCharges), tests logic purs 14 cas (fabrique canonique, deux vies du même
+      slot, re-ramassage, égalité, futur, familles, les trois cas de calque), plafonds
+      tenus (404/207/134/~150 L, cliquets inchangés), zéro littéral de couleur (grep vide).
+
+REVUE ADVERSARIALE P6 RONDE 1 (04/09, relecteur frais, mutations sur copies, retour à
+l'identique vérifié par md5) : **12 conditions vérifiées qui tiennent** — dont la jointure
+par vie (mutation « dernière piste du slot » : 4 tests tombent), le re-ramassage, la lecture
+future, la propriété P2.4 (« la vignette lit `r`, jamais `from` ») intacte, la parité FR/EN,
+l'extraction sans logique métier dans le composant. POINT D'ATTENTION LIBELLÉS VALIDÉ : la
+chaîne réelle est le TOML du titre (vocabulaire fermé, En+Fr toujours publiés, aucune autre
+entrée ne porte les racines) — le précédent `translocatorRanks` justifie le procédé ; la
+piste SANS heuristique (publier `family` dans `Label`) est consignée en Découvertes.
+3 constats, TOUS corrigés dans le lot :
+
+- [x] N1 (P0) SUR LE PARC PRÉ-38, « PLEIN » ÉTAIT AFFIRMÉ À TORT — `abilityChargesAt`
+      rendait `full` dès qu'aucune lecture n'existait, or sur un artefact antérieur au
+      schéma 38 (100 % du parc) le canal n'a JAMAIS été balayé : « rien transmis » n'y
+      signifie pas « plein » — et un test verrouillait le comportement fautif. CORRIGÉ :
+      garde `hasAbilityChargeLayer` (patron `hasTranslocationLayer`, avec l'étage
+      `componentAbsent` que la couverture des charges publie), trois cas testés (pré-38 ->
+      rien ; composant absent -> rien ; couverture posée sans lecture -> « plein » redevient
+      une lecture). Mutation rejouée et TUÉE (retrait de la garde : 2 tests tombent).
+- [x] N2 (P2, code du lot) LA RÈGLE « FAMILLE NON MESURÉE SANS LECTURE = RIEN » N'ÉTAIT
+      VERROUILLÉE PAR RIEN — le seul test injectait une lecture, qui tombait dans un autre
+      filet ; la mutation « retirer `if (family === null)` » laissait 10/10 verts. CORRIGÉ :
+      test « répulseur porté, zéro lecture -> null » (le cas de production courant).
+      Mutation rejouée et TUÉE (1 test tombe).
+- [x] N3 (P2, code du lot) `CHARGE_FAMILY_STEMS` exporté sans lecteur (règle n°7) —
+      export retiré, la table redevient privée du module.
+
+Gate P6 (rejoué après corrections) : vitest abilityChargeLogic 14/14 ; `make check-types`
+exit 0 (cache purgé) ; eslint exit 0 ; suite web complète **563 fichiers / 5 855 tests
+passés, 14 skippés, 0 échec** (un run `make test-web` a rendu « 1 fichier failed, 0 test
+failed » — flake de worker, non reproduit : la relance directe rend 563/563). Reste à
+l'utilisateur : le GATE VISUEL (vignette sur un film re-cuit).
+
 ### Lot R5 — Recherche : les événements des AUTRES équipements (parallèle)
 
-- [ ] R5.1 Inventaire des types d'événements nommés (annexe A de la grammaire, table
-      chunk00) : lesquels parlent d'équipement/usage (répulseur, propulseur, camo,
-      surbouclier, écran, capteur, réparation…) ?
-- [ ] R5.2 Recensement des têtes par type sur ≥ 5 films et CROISEMENT avec les usages déjà
-      mesurés par ailleurs (grappleLines, kills répulseur, épisodes camo/surbouclier, poses
-      deployed datées) — précision/rappel par type, comme R1 l'a fait pour 117.
-- [ ] R5.3 Rapport : quels équipements gagnent un événement d'usage fiable, lesquels
-      restent sans signal — et ce que la LISTE COMPLÈTE (vs tête seule) rapporterait.
+Statué à la reprise du 04/09 — la commande utilisateur du 03/09 (« on ne l'arrête pas tant
+qu'on n'a pas le propulseur et le répulseur ») a recentré R5 sur ces deux équipements ; le
+recensement générique (camo, surbouclier, écran, capteur, réparation) n'a pas été rejoué —
+ces familles ont déjà leurs canaux d'état mesurés par ailleurs.
+
+- [~] R5.1 COUVERT par R6.B (émetteurs des types cibles) et R7.1 (les 123 types, domaines
+      extraits mécaniquement, largeurs dérivées des lecteurs décompilés).
+- [~] R5.2 COUVERT par R7.2-R7.3 (croisement en POSITION 1, témoins positifs 117/zoom/poses
+      à hauteur de leur part) et R12 (recensement ancré sur six usages datés au Theater).
+- [~] R5.3 COUVERT par RAPPORT_R7 §7 (la liste complète rapporte ~2,5x d'événements par
+      paquet) et RAPPORT_R12 (verdict final répulseur : conséquences 104/105, jamais le
+      geste). Rapports rendus, commandes rejouables en annexe.
 
 ### Lot R6 — Ghidra : charge du 117 et émetteurs (commandé oralement le 03/09, user : « si
 ### t'as besoin de ghidra tu peux utiliser ») — FAIT 03/09
@@ -808,6 +952,61 @@ jamais de cuisson de masse sans décision séparée.
       NON CONCLUANT). **Le verdict R7.3 ne repose PAS sur cette prédiction.**
 - Rapport : `RAPPORT_R7_TRAME_COMPLETE_2026-09-03.md` (§7 rédigé pour publication ;
   16 instruments `r7_*_research_test.go`).
+
+## Lot R12 — Répulseur : les ancres du relevé Theater d'un collègue (04/09) — FAIT
+## (branche `wt/grappin-vies`, commit `664b64403` — NON mergé sur feat/v75 à la reprise)
+
+- [x] R12.1 Six usages datés (film `215e7022`, Argyle) ; convention de temps établie DEUX
+      fois par deux canaux sans rapport (killsource 5:25,5 pour un relevé 5:25 ; i48 4/4
+      ramassages, témoins décalés 1/4 et 0/4). Temps de FILM.
+- [x] R12.2 VERDICT : l'état du bipède NE BOUGE PAS aux instants d'usage (64 composants,
+      706 records, zéro) — témoin positif grappin du même film : i56 x9,00. Ce qui bouge :
+      la LISTE D'ÉVÉNEMENTS — 104 `EquipmentKnockbackPlayer` (2 occurrences, positions 4
+      et 2, sous réserve de cadrage) et 105 `EquipmentObjectKnockedBack` (TÊTE, cadrage
+      certain). Seconde ancre indépendante (`a6ae19fb`, 105 à −149 ms de la dernière
+      charge). Hasard ≈ 5e-7. RAPPEL 2/5 STRUCTUREL : le film enregistre les CONSÉQUENCES
+      (joueur poussé, objet poussé), jamais le geste. Type 14 RÉFUTÉ (1 occurrence, 0:54,2).
+- [x] R12.3 Latéraux : `jpt! 07104b31` = Repulsor CONFIRMÉ (vérité terrain) ; socle du
+      répulseur lisible (créations ti=37 GlobalID `0x7ca85adc`, 3/3, témoins 0/3 et 0/4) ;
+      la marche de liste ne dépend plus du catalogue de bornes (`étendue := 2^AxisW/60`,
+      facteur 5,46 pour un seuil pré-inscrit à 3) — cartes hors catalogue lisibles.
+- Rapport : `RAPPORT_R12_REPULSEUR_ANCRES_2026-09-04.md`. Handoff mis à jour par le
+  collègue (`f2198d7c5` sur feat/v75). SUITE À ARBITRER (user) : publier ou non les
+  événements de conséquence 104/105 — ils disent « quelqu'un a été poussé », pas « il a
+  tiré » — et lever la réserve de cadrage du 104 par la marche de liste complète.
+
+- **P5 revue ronde 1 (04/09) — LE CÂBLAGE DES FAMILLES DANS `replaylabels/catalog.go` N'EST
+  COUVERT PAR AUCUN TEST, non traité.** Mutation rejouée par le relecteur : remplacer
+  `cat.AbilityChargeFamilies = labels.AbilityChargeFamilies()` (catalog.go:74) par un
+  discard laisse TOUTE la suite verte (replaylabels, mappings, replay, contracttest) — le
+  golden re-câble les familles lui-même dans `goldenCatalog` au lieu d'exercer
+  `replaylabels.Load`, et `catalog_test.go` ne vérifie aucune famille. Conséquence en cas
+  de régression : tous les films publieraient zéro charge (tout en `noResolver`) sans
+  qu'un test tombe. Le trou est IDENTIQUE et pré-existant pour `AbilityImpulseFamilies` et
+  `EquipmentFamilies` (parité de patron) : un test de câblage dans replaylabels fermerait
+  les trois d'un coup — lot à part, pas un fix opportuniste.
+- **P5 (04/09) — 2 constats goconst NEUFS au ratchet lint, ANTÉRIEURS au lot P5, non
+  traités** : `filmdec/traverse.go:96-97` — le littéral
+  `biped-spartan-ability-non-predicted-state(-component)` atteint 4 occurrences alors que
+  les constantes `grappleComponentName(Alt)` existent. Venu des commits précédents de la
+  branche (`wt/grappin-vies`), pas du diff P5 (traverse.go n'y est pas). S'ajoute aux 4
+  constats antérieurs consignés à P3 — `make go-api-lint` porte 6 constats, tous hors
+  périmètre P5.
+
+- **P6 revue ronde 1 (04/09) — LE CHEMIN SANS HEURISTIQUE DE LIBELLÉ EXISTE CÔTÉ GO, à un
+  champ près, non traité** : `AbilityPalette.Families map[int]string` (`abilities.go:139`)
+  est rempli depuis le TOML et sert déjà à attribuer les lectures ; publier `family` dans
+  `Label` (`document_labels.go:17`) supprimerait la reconnaissance par racine de libellé
+  côté web (`abilityChargeLogic.measuredChargeFamilyOf`) ET la double déclaration du
+  vocabulaire (TOML `[ability_charges] families` + table TS). Lot Go futur (schéma), pas un
+  fix opportuniste.
+- **P6 (04/09) — fixture « deux vies » de `fireMark.test.ts` sans `startFrame`** : les deux
+  fenêtres démarrent à 0 ([0,20] et [0,40], chevauchantes) ; les assertions tiennent par
+  l'ordre du tableau, la fixture ne teste pas aussi nettement que son commentaire l'annonce.
+  Antérieur au lot, non traité.
+- **P6 (04/09) — flake `make test-web`** : un run a rendu « 1 fichier failed » avec ZÉRO
+  test failed (bruit worker jsdom : HTMLMediaElement/canvas non implémentés) ; relance
+  directe 563/563. Non reproduit, à surveiller.
 
 ## Découvertes / suites à arbitrer (issues de R1-R2, hors périmètre des lots courants)
 

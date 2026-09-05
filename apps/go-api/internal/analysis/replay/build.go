@@ -81,6 +81,15 @@ type Options struct {
 	// indistinguable d'un film ou personne ne s'est servi de son propulseur.
 	AbilityImpulses     []filmdec.AbilityImpulse
 	AbilityImpulseStats filmdec.AbilityImpulseStats
+	// AbilityCharges / AbilityChargeStats : les CHARGES RESTANTES lues sur les emplacements
+	// ARMES du composant i56 (cf. filmdec/ability_charges.go). Entree de DONNEES, comme
+	// AbilityImpulses — meme canal d'identite (i48), autre grandeur.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent les temoins
+	// `Absent` (le film ne declare pas i56) et `Scanned` (le balayage a tourne). Une liste
+	// vide sans eux serait indistinguable d'un film ou personne n'use ses charges.
+	AbilityCharges     []filmdec.AbilityCharge
+	AbilityChargeStats filmdec.AbilityChargeStats
 	// Placements / PlacementStats : les POSES d'objets d'equipement lues dans les records de
 	// CREATION de l'archetype 37 (cf. filmdec/equipment_placements.go). Entree de DONNEES,
 	// comme GrappleReads. Absente = rejeu sans poses — jamais des poses devinees.
@@ -456,6 +465,22 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"tag1", iStats.Tag1, "composantAbsent", iStats.Absent)
 	}
 	opt.AbilityImpulses, opt.AbilityImpulseStats = impulses, iStats
+	// CHARGES D'EQUIPEMENT RESTANTES : les emplacements ARMES du composant i56, lus dans les
+	// paquets DELTA sur la MEME horloge (cf. filmdec/ability_charges.go). C'est le canal des
+	// charges mesure au lot R11 ; l'identite, elle, vient d'i48 (deja balaye ci-dessus).
+	// Absence non fatale — le rejeu sort sans releve de charges, jamais avec des charges
+	// devinees.
+	charges, chStats, err := filmdec.ScanFilmAbilityCharges(filmDir)
+	if err != nil {
+		slog.Warn("charges d equipement illisibles — rejeu sans releve de charges", "err", err, "filmDir", filmDir)
+		charges, chStats = nil, filmdec.AbilityChargeStats{}
+	} else {
+		slog.Info("capacites : lectures d i56",
+			"recordsDelta", chStats.Records, "masqueAvecI56", chStats.WithI56,
+			"lues", chStats.Read, "illisibles", chStats.Unread,
+			"emplacementsArmes", chStats.Armed, "composantAbsent", chStats.Absent)
+	}
+	opt.AbilityCharges, opt.AbilityChargeStats = charges, chStats
 	// POSES d'equipement : records de CREATION de l'archetype 37, sur la MEME horloge
 	// (cf. equipment_placements.go — decodage, journal et refus y vivent ensemble).
 	// LA LUNETTE (schema 24) : les bascules vivent dans la liste d'evenements en tete de
@@ -850,6 +875,26 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	} else {
 		slog.Warn("rejeu : impulsions de capacite NON BALAYEES — aucune couverture publiee",
 			"lectures", len(opt.AbilityImpulses))
+	}
+	// LES CHARGES RESTANTES, par la MEME palette et la MEME jointure d'identite que les
+	// impulsions (le rang i48 de la vie, nomme par la palette du match) — un film non classe
+	// ne rend donc aucune lecture : mieux vaut muet que faux.
+	var acCov AbilityChargeCoverage
+	doc.AbilityCharges, acCov = buildAbilityCharges(abilityChargeInputs{
+		reads: opt.AbilityCharges, stats: opt.AbilityChargeStats, ranks: opt.AbilityRanks,
+		lives: own.lives, palette: palette, measured: opt.Labels.AbilityChargeFamilies,
+	}, doc.Tracks, origin, step)
+	// LA COUVERTURE NE SE PUBLIE QUE SI LE BALAYAGE A TOURNE — le patron exact du bloc
+	// ci-dessus (`attachInventoryCoverage`, et la lecon H1 de la seconde passe de revue P3) :
+	// publier {0,0,...} quand le balayage n'a jamais commence affirmerait « lecture faite,
+	// zero trouve », le contraire de ce qui s'est passe. Un balayage qui aboutit la pose,
+	// meme vide et meme `componentAbsent`.
+	if opt.AbilityChargeStats.Scanned {
+		doc.Coverage.AbilityCharges = &acCov
+		logAbilityChargeCoverage(acCov)
+	} else {
+		slog.Warn("rejeu : charges d equipement NON BALAYEES — aucune couverture publiee",
+			"lectures", len(opt.AbilityCharges))
 	}
 	slog.Info("rejeu : couverture par calque",
 		"tirsRattaches", shotCov.Attached, "tirsDisponibles", shotCov.Available,

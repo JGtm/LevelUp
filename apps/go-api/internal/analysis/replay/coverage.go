@@ -231,6 +231,18 @@ type Coverage struct {
 	// et `componentAbsent` distingue en plus le film qui ne transmet PAS le composant de celui
 	// dont personne ne s'est servi.
 	AbilityImpulses *AbilityImpulseCoverage `json:"abilityImpulses,omitempty"`
+	// AbilityCharges est la couverture des CHARGES D'ÉQUIPEMENT RESTANTES (schéma 38, cf.
+	// document_ability_charges.go) : lectures armées d'i56, publiées, et les CINQ refus —
+	// avant l'origine, sans piste, SANS IDENTITÉ (aucun rang i48 dans la vie avant
+	// l'instant), FAMILLE NON MESURÉE (le canal n'est prouvé que pour celles que le titre
+	// déclare — le répulseur reste dehors) et ATTRIBUTION INDISPONIBLE (`noResolver` :
+	// palette non classée, aucune famille déclarée, ou aucune vie). La somme des six cases
+	// vaut `reads`, exactement. Publiée même quand aucune lecture ne l'est, pour la même
+	// raison que `abilityImpulses` — et JAMAIS quand le balayage n'a pas tourné
+	// (`Scanned` faux) : publier des zéros affirmerait une lecture qui n'a pas eu lieu.
+	// `componentAbsent` distingue en plus le film qui ne transmet PAS le composant de celui
+	// dont personne n'use ses charges.
+	AbilityCharges *AbilityChargeCoverage `json:"abilityCharges,omitempty"`
 	// GroundWeaponItems est la couverture des ARMES AU SOL individuelles (schéma 27, cf.
 	// document_ground_weapon_items.go) : combien d'objets, combien liés à leur lâcheur et à
 	// leur ramasseur, et comment leurs fins se répartissent entre observé et ouvert. Publiée

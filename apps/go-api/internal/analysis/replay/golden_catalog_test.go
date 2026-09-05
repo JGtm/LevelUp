@@ -63,6 +63,10 @@ func goldenCatalog(t *testing.T) LabelCatalog {
 	// (cf. replaylabels.Load). Les oublier ici ferait publier au golden un document SANS
 	// impulsion sur un film qui en porte — c'est-à-dire l'inverse de ce que la production sert.
 	cat.AbilityImpulseFamilies = labels.AbilityImpulseFamilies()
+	// LES FAMILLES MESUREES PAR LE CANAL DES CHARGES (i56), même chemin, même raison : les
+	// oublier ici ferait publier au golden un document SANS releve de charge sur un film qui
+	// en porte — l'inverse de ce que la production sert.
+	cat.AbilityChargeFamilies = labels.AbilityChargeFamilies()
 	// LE DRAPEAU, pour la MÊME raison et par le MÊME chemin que les familles d'équipement
 	// (cf. replaylabels.Load) : sans cette table, la chaîne des socles ne reconnaîtrait pas
 	// l'objet d'objectif du titre, et le golden figerait un document que la production ne sert
