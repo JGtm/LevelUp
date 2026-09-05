@@ -15,11 +15,13 @@ package wire
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
@@ -27,6 +29,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // replayManifestRPS : débit de résolution des manifestes de film. Très
@@ -231,10 +234,80 @@ func (r *ServiceRegistry) StoreBuildArtifact(ctx context.Context, jobID, workerI
 	monitoringLog.InfoContext(ctx, "build queue: artefact reçu et rangé",
 		"job_id", jobID, "worker_id", workerID, "match_id", job.MatchID, "title", slug,
 		"bytes", stored.Bytes, "tracks", stored.Tracks, "path", stored.Path)
+	// L'ARTEFACT EST RANGÉ : les dérivations se déclenchent ICI AUSSI (constat A1). Avant le
+	// 2026-09-06, elles n'étaient câblées que sur la cuisson locale — or `local` est REFUSÉ en
+	// production par construction : le jour de l'activation de l'ouvrier distant,
+	// `match_usage_*`, `match_bomb_stats` et `real_start_time` seraient restés vides sans
+	// qu'aucun compteur ne le dise. Best-effort : le reçu part quoi qu'il arrive.
+	r.deriverArtefactRange(ctx, slug, job.MatchID, stored.Path)
 	return domain.BuildArtifactReceipt{
 		JobID: jobID, MatchID: job.MatchID,
 		Bytes: stored.Bytes, SchemaVersion: stored.SchemaVersion,
 	}, nil
+}
+
+// deriverArtefactRange applique les dérivations post-rangement à UN artefact déposé par un
+// ouvrier, par LE MÊME point d'entrée que la cuisson locale (`replayartifacts.Deriver`).
+//
+// POURQUOI SYNCHRONE, ET POURQUOI C'EST TENABLE. L'ouvrier dépose ses artefacts un par un ;
+// la dérivation lit un document déjà sur disque et ouvre un segment writer COURT, relâché
+// aussitôt (même burst que le post-sync). Une file interne ajouterait un état à surveiller
+// pour économiser quelques dizaines de millisecondes sur un chemin qui n'est pas celui d'un
+// utilisateur.
+//
+// BEST-EFFORT STRICT : aucune erreur ne remonte. L'artefact est RANGÉ — c'est le produit ; les
+// dérivations ne sont que sa projection, et le rattrapage (derivations_backlog.go) les
+// rejouera. Un writer indisponible se journalise dans les projections elles-mêmes.
+func (r *ServiceRegistry) deriverArtefactRange(ctx context.Context, titleSlug, matchID, path string) {
+	ranges := []replayartifacts.ArtefactRange{{MatchID: matchID, Path: path}}
+	if r.replayDerivationsFn != nil {
+		r.replayDerivationsFn(ctx, titleSlug, ranges)
+		return
+	}
+	replayartifacts.Deriver(ctx, replayartifacts.DerivationsDeps{
+		RepoRoot:  r.cfg.RepoRoot,
+		TitleSlug: titleSlug,
+		// Gamertag VIDE, et c'est exact : un dépôt d'ouvrier ne travaille pour aucun joueur
+		// en particulier. Le champ ne sert qu'au journal.
+		AcquireWriter: r.sharedWriterForTitle(titleSlug),
+	}, ranges)
+}
+
+// sharedWriterForTitle rend l'acquisition d'un writer shared POUR CE TITRE, sous la forme que
+// les dérivations attendent. Nil quand rien ne peut écrire (aucun provider câblé) : les
+// projections le journalisent alors et ne persistent rien.
+//
+// LE PROVIDER EST RÉSOLU PAR TITRE, JAMAIS `cfg.SharedProvider` NU : celui-ci est le provider
+// du titre par DÉFAUT (B-swap), et un artefact d'un autre titre écrirait dans le mauvais
+// fichier. Le Manager déduplique par chemin — pour le titre par défaut il rend le MÊME
+// provider, sans ouvrir la moindre connexion supplémentaire.
+//
+// L'ACQUISITION EST BORNÉE (`acquireWriterTimeout`, comme les actions admin) : un cycle de sync
+// long tient le writer, et un dépôt d'ouvrier ne doit pas attendre indéfiniment derrière lui.
+func (r *ServiceRegistry) sharedWriterForTitle(titleSlug string) func(context.Context) (*sql.DB, func(), error) {
+	provider := r.cfg.SharedProvider
+	if r.cfg.SharedManager != nil {
+		p, err := r.cfg.SharedManager.For(
+			titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug), r.cfg.UserTimezone)
+		if err != nil {
+			// Jamais muet : sans provider du titre, on REFUSE d'écrire plutôt que d'écrire
+			// dans le shared d'un autre titre.
+			monitoringLog.Warn("build queue: provider shared du titre introuvable — dérivations non persistées",
+				"title", titleSlug, "err", err)
+			return nil
+		}
+		provider = p
+	}
+	if provider == nil {
+		return nil
+	}
+	return func(ctx context.Context) (*sql.DB, func(), error) {
+		acquireCtx, cancel := context.WithTimeout(ctx, acquireWriterTimeout)
+		defer cancel()
+		return syncpkg.AcquireSharedWriterStandalone(
+			ctxkeys.WithDBWriterLabel(acquireCtx, "replay_derivations"),
+			provider, titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug))
+	}
 }
 
 // ClaimBuildJob prend le prochain job pour un ouvrier (protocole ouvrier).

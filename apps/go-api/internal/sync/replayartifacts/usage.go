@@ -4,24 +4,28 @@ package replayartifacts
 //
 // # CE QUE CE FICHIER FAIT
 //
-// Chaque artefact CUIT DANS CE CYCLE est projeté en résumé d'usage
+// Chaque artefact QUI VIENT D'ÊTRE RANGÉ est projeté en résumé d'usage
 // (replay.BuildUsageSummary — tractions de grappin, épisodes camo/surbouclier, poses,
 // prises de socle) puis persisté dans `shared.match_usage_players` +
 // `shared.match_usage_films` (chantier session-usage, décision utilisateur 2026-09-04 :
-// « il faut les sauvegarder en BDD lors du sync »). C'est L'ÉTAPE QUI CONSTRUIT
-// L'ARTEFACT qui porte le résumé : jamais un second décodage de film, jamais une autre
-// passe — le document vient d'être rangé, on le projette.
+// « il faut les sauvegarder en BDD lors du sync »). Jamais un second décodage de film,
+// jamais une autre passe — le document vient d'être rangé, on le projette.
+//
+// LE DÉCLENCHEUR EST LE RANGEMENT, PAS LA CUISSON (constat A1, corrigé le 2026-09-06) :
+// l'appelant est [Deriver] (derivations.go), qui est lui-même appelé par les DEUX
+// rangeurs (cuisson locale et dépôt d'ouvrier) et par le rattrapage. Ce fichier ne lit
+// plus le disque : il reçoit le document déjà lu et désérialisé UNE fois pour toutes les
+// dérivations.
 //
 // # LA FORME, CALQUÉE SUR LE REPORT DU COUP D'ENVOI (t0film.go)
 //
-//	SUR DISQUE, PAS LE BLOB   la projection lit l'artefact TEL QU'IL EST RANGÉ.
-//	                          `StoreArtifact` peut REFUSER les octets candidats (garde
-//	                          anti-régression) et conserver l'artefact précédent :
+//	SUR DISQUE, PAS LE BLOB   le document vient de l'artefact TEL QU'IL EST RANGÉ (lu par
+//	                          [Deriver]). `StoreArtifact` peut REFUSER les octets candidats
+//	                          (garde anti-régression) et conserver l'artefact précédent :
 //	                          projeter le candidat écrirait en base un résumé que le
-//	                          disque ne porte pas — même doctrine que lireT0FilmArtefact.
-//	PROJETER PUIS ÉCRIRE      toutes les projections (lecture fichier + parse JSON) se
-//	                          font AVANT d'acquérir le writer : jamais un handle partagé
-//	                          tenu pendant une E/S disque évitable.
+//	                          disque ne porte pas.
+//	PROJETER PUIS ÉCRIRE      toutes les projections se font AVANT d'acquérir le writer :
+//	                          jamais un handle partagé tenu pendant un travail évitable.
 //	SEGMENT WRITER COURT      acquis APRÈS toute cuisson, relâché aussitôt — même burst
 //	                          borné (au plus maxPerCycle matchs) que le report du T0.
 //	VIA `internal/persist`    l'écriture vit dans persist.UsageSummaryPersister,
@@ -39,17 +43,14 @@ package replayartifacts
 //
 // # CE QUI N'EST PAS RÉSUMÉ ICI
 //
-// Seuls les artefacts CUITS DANS CE CYCLE. Un artefact déjà à jour est sauté par
-// `buildAll` sans être relu, et le chemin « ouvrier » ne cuit rien localement. Le corpus
-// déjà sur disque relève du backfill CLI (`levelup backfill-usage-summary`), hors ligne
-// et sous le contrôle de l'opérateur.
+// Les artefacts que personne ne range et que le rattrapage n'a pas encore atteints. Depuis
+// le 2026-09-06 le rattrapage des dérivés existe (derivations_backlog.go) : le corpus
+// déjà sur disque converge de lui-même, cinq artefacts par cycle. Le backfill CLI
+// (`levelup backfill-usage-summary`) reste le moyen de le forcer d'un coup.
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
-	"os"
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/ctxkeys"
@@ -58,18 +59,7 @@ import (
 	"levelup/go-api/internal/persist"
 )
 
-// artefactCuit : un match dont l'artefact a été cuit ce cycle. Il alimente TOUTES les
-// projections post-cuisson du paquet — le résumé d'usage (usage.go) ET les statistiques
-// d'Assaut (bombstats.go) —, parce qu'elles lisent le MÊME fichier rangé : deux listes
-// séparées auraient divergé au premier crochet ajouté.
-type artefactCuit struct {
-	matchID string
-	// path : l'artefact RANGÉ SUR DISQUE (StoredArtifact.Path) — la seule source que la
-	// projection accepte (voir l'en-tête).
-	path string
-}
-
-// resumeUsagePret : une projection réussie, prête à persister.
+// resumeUsagePret : une projection prête à persister.
 type resumeUsagePret struct {
 	matchID string
 	summary replay.UsageSummary
@@ -96,25 +86,11 @@ func capabilityUsageArmee(ctx context.Context, d Deps) (armee, incident bool) {
 	return true, false
 }
 
-// projeterResumeUsage lit UN artefact rangé et le projette. Une erreur est un échec de
-// CE match, jamais du cycle.
-func projeterResumeUsage(path string) (replay.UsageSummary, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return replay.UsageSummary{}, fmt.Errorf("lecture artefact: %w", err)
-	}
-	var doc replay.ReplayDocument
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		return replay.UsageSummary{}, fmt.Errorf("parse artefact: %w", err)
-	}
-	return replay.BuildUsageSummary(&doc), nil
-}
-
-// persisterResumesUsage projette puis écrit les résumés des artefacts cuits du cycle.
+// persisterResumesUsage projette puis écrit les résumés des artefacts rangés du lot.
 // Best-effort de bout en bout, comme toute l'étape : aucun échec ne remonte au cycle,
 // mais aucun ne se tait non plus.
-func persisterResumesUsage(ctx context.Context, d Deps, rapports []artefactCuit) {
-	if len(rapports) == 0 {
+func persisterResumesUsage(ctx context.Context, d Deps, lus []artefactLu) {
+	if len(lus) == 0 {
 		return
 	}
 	titre := ctxkeys.TitleSlug(ctx)
@@ -122,13 +98,13 @@ func persisterResumesUsage(ctx context.Context, d Deps, rapports []artefactCuit)
 		if incident {
 			// Capabilities illisibles : le lot entier du cycle est écarté — un DÉFAUT,
 			// compté comme tel (le WARN seul ne nourrit aucun monitoring).
-			observability.AddIntT(titre, CompteurUsageEchecs, int64(len(rapports)))
+			observability.AddIntT(titre, CompteurUsageEchecs, int64(len(lus)))
 		}
 		return
 	}
-	prets, echecs := projeterResumesUsage(ctx, d, rapports)
+	prets := projeterResumesUsage(lus)
+	echecs := 0
 	if len(prets) == 0 {
-		observability.AddIntT(titre, CompteurUsageEchecs, int64(echecs))
 		return
 	}
 	if d.AcquireWriter == nil {
@@ -164,20 +140,15 @@ func persisterResumesUsage(ctx context.Context, d Deps, rapports []artefactCuit)
 		"gamertag", d.Gamertag, "ecrits", ecrits, "echecs", echecs)
 }
 
-// projeterResumesUsage projette tous les artefacts du lot, AVANT tout writer. Rend les
-// projections réussies et le compte d'échecs (déjà journalisés, un par match).
-func projeterResumesUsage(ctx context.Context, d Deps, rapports []artefactCuit) ([]resumeUsagePret, int) {
-	prets := make([]resumeUsagePret, 0, len(rapports))
-	echecs := 0
-	for _, r := range rapports {
-		s, err := projeterResumeUsage(r.path)
-		if err != nil {
-			slog.WarnContext(ctx, "post-sync: artefact rangé mais résumé d'usage impossible",
-				"gamertag", d.Gamertag, "match_id", r.matchID, "err", err)
-			echecs++
-			continue
-		}
-		prets = append(prets, resumeUsagePret{matchID: r.matchID, summary: s})
+// projeterResumesUsage projette tous les documents du lot, AVANT tout writer.
+//
+// AUCUN ÉCHEC POSSIBLE ICI depuis que [Deriver] lit et désérialise (2026-09-06) : un document
+// illisible est écarté À LA LECTURE, avec son journal, et n'arrive jamais jusqu'ici.
+// `BuildUsageSummary` est une fonction pure sur un document déjà en mémoire.
+func projeterResumesUsage(lus []artefactLu) []resumeUsagePret {
+	prets := make([]resumeUsagePret, 0, len(lus))
+	for _, a := range lus {
+		prets = append(prets, resumeUsagePret{matchID: a.matchID, summary: replay.BuildUsageSummary(a.doc)})
 	}
-	return prets, echecs
+	return prets
 }
