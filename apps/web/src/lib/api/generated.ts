@@ -10232,6 +10232,43 @@ export interface components {
             /** Format: double */
             skill_rating?: number;
         };
+        SessionObjectiveFamilyBlock: {
+            family: string;
+            /** Format: int64 */
+            matches: number;
+            roles: components["schemas"]["SessionObjectiveRoleMetric"][] | null;
+        };
+        SessionObjectiveRoleMetric: {
+            is_duration?: boolean;
+            /** Format: double */
+            lobby_total: number;
+            /** Format: double */
+            player_share_of_lobby_pct?: number;
+            /** Format: double */
+            player_share_of_team_pct?: number;
+            /** Format: double */
+            player_total: number;
+            role: string;
+            squad?: components["schemas"]["SessionUsageSquadShare"][] | null;
+            /** Format: double */
+            team_share_of_lobby_pct?: number;
+            /** Format: double */
+            team_total?: number;
+        };
+        SessionObjectivesBlock: {
+            families?: components["schemas"]["SessionObjectiveFamilyBlock"][] | null;
+            /** Format: double */
+            lobby_parity_pct?: number;
+            /** Format: double */
+            lobby_size_avg?: number;
+            /** Format: int64 */
+            matches_with_objectives: number;
+            roles: components["schemas"]["SessionObjectiveRoleMetric"][] | null;
+            /** Format: double */
+            team_parity_pct?: number;
+            /** Format: double */
+            team_size_avg?: number;
+        };
         SessionOption: {
             /** Format: date-time */
             ended_at_utc: string;
@@ -10266,11 +10303,114 @@ export interface components {
             next_session_label?: string;
             previous_session_label?: string;
             suggested_compare?: components["schemas"]["SessionCompareSuggestion"];
+            usage?: components["schemas"]["SessionUsageBlock"];
         };
         SessionParticipationAxis: {
             name: string;
             /** Format: double */
             value: number;
+        };
+        SessionUsageBlock: {
+            available: boolean;
+            /** Format: double */
+            lobby_parity_pct?: number;
+            /** Format: double */
+            lobby_size_avg?: number;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            /** Format: double */
+            measured_duration_seconds?: number;
+            metrics?: components["schemas"]["SessionUsageMetric"][] | null;
+            objectives?: components["schemas"]["SessionObjectivesBlock"];
+            pad_families?: components["schemas"]["SessionUsagePadFamily"][] | null;
+            /** Format: int64 */
+            pad_unnamed_total?: number;
+            powerup_pickups?: components["schemas"]["SessionUsagePowerup"][] | null;
+            squad_players?: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            /** Format: double */
+            team_parity_pct?: number;
+            /** Format: double */
+            team_size_avg?: number;
+            unavailable_reason?: string;
+        };
+        SessionUsageMatchPoint: {
+            match_id: string;
+            /** Format: double */
+            player_share_of_lobby_pct?: number;
+            /** Format: double */
+            player_share_of_team_pct?: number;
+            /** Format: double */
+            team_share_of_lobby_pct?: number;
+        };
+        SessionUsageMetric: {
+            key: string;
+            /** Format: double */
+            lobby_per_10min?: number;
+            /** Format: double */
+            lobby_total: number;
+            /** Format: int64 */
+            matches_above_lobby_parity: number;
+            /** Format: int64 */
+            matches_above_team_parity?: number;
+            per_match?: components["schemas"]["SessionUsageMatchPoint"][] | null;
+            /** Format: double */
+            player_per_10min?: number;
+            /** Format: double */
+            player_share_of_lobby_pct?: number;
+            /** Format: double */
+            player_share_of_team_max_pct?: number;
+            /** Format: double */
+            player_share_of_team_min_pct?: number;
+            /** Format: double */
+            player_share_of_team_pct?: number;
+            /** Format: double */
+            player_total: number;
+            squad?: components["schemas"]["SessionUsageSquadShare"][] | null;
+            /** Format: double */
+            team_per_10min?: number;
+            /** Format: double */
+            team_share_of_lobby_pct?: number;
+            /** Format: double */
+            team_total?: number;
+        };
+        SessionUsagePadFamily: {
+            family_key: string;
+            /** Format: double */
+            lobby_total: number;
+            /** Format: double */
+            player_share_of_lobby_pct?: number;
+            /** Format: double */
+            player_share_of_team_pct?: number;
+            /** Format: double */
+            player_total: number;
+            /** Format: double */
+            team_share_of_lobby_pct?: number;
+            /** Format: double */
+            team_total?: number;
+        };
+        SessionUsagePowerup: {
+            family_key: string;
+            /** Format: int64 */
+            occupations: number;
+            /** Format: double */
+            per_10min?: number;
+        };
+        SessionUsageSquadPlayer: {
+            gamertag: string;
+            xuid: string;
+        };
+        SessionUsageSquadShare: {
+            /** Format: double */
+            per_10min?: number;
+            /** Format: double */
+            share_of_lobby_pct?: number;
+            /** Format: double */
+            share_of_team_pct?: number;
+            /** Format: double */
+            total: number;
+            xuid: string;
         };
         SessionsFilter: {
             /** Format: int64 */

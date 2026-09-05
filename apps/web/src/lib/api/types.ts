@@ -2097,6 +2097,22 @@ export interface SessionPageRequest {
 
 export type SessionPageResponse = components['schemas']['SessionPageResponse']
 
+// ─── Chantier session-usage (S3) : bloc « usages d'équipement, socles et objectifs » ──
+// Contrat Go : internal/domain/session_usage.go — TOUT axe est NORMALISÉ (parts %,
+// cadences /10 min) ; les totaux bruts ne sont que des dénominateurs d'honnêteté.
+// Un champ ABSENT (undefined) est « non mesuré », JAMAIS un zéro.
+
+export type SessionUsageBlock = components['schemas']['SessionUsageBlock']
+export type SessionUsageMetric = components['schemas']['SessionUsageMetric']
+export type SessionUsageMatchPoint = components['schemas']['SessionUsageMatchPoint']
+export type SessionUsageSquadPlayer = components['schemas']['SessionUsageSquadPlayer']
+export type SessionUsageSquadShare = components['schemas']['SessionUsageSquadShare']
+export type SessionUsagePadFamily = components['schemas']['SessionUsagePadFamily']
+export type SessionUsagePowerup = components['schemas']['SessionUsagePowerup']
+export type SessionObjectivesBlock = components['schemas']['SessionObjectivesBlock']
+export type SessionObjectiveRoleMetric = components['schemas']['SessionObjectiveRoleMetric']
+export type SessionObjectiveFamilyBlock = components['schemas']['SessionObjectiveFamilyBlock']
+
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 
 export interface NormalizedPlayerStats {
