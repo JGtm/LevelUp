@@ -95401,3 +95401,48 @@ demander avant). Prochaine etape : decision utilisateur sur les 6 escalades, pui
 plan `.ai/PLAN_V2_REJEU_FILM_<date>.md` sous `plan-review`, lot 0 (trois P0 + les deux items
 actifs au merge : catalogue ecrit par le runtime, projections sur « artefact range ») avant le
 tag v7.5.0.
+
+## [2026-09-05] Lot C v2 — capabilities du rejeu et vocabulaire — Complété
+
+**Contexte.** Premier lot execute du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md` (worktree
+dedie `LevelUp-wt-v2-capabilities`, branche `feat/v2-capabilities`). Il ferme les constats
+D1/D2/D3 (aucune cle de capability ne gouvernait la chaine du rejeu ; doc inversee promettant
+un 503 sur `/positions` et `/objective-events` ; mise en file avant la sonde de titre) et
+L3/L4/L5 (surfaces web sans porte de titre), sous les decisions utilisateur n°3
+(`film.replay_artifact` gouverne la PRODUCTION, l'affichage suit) et n°6 (« heatmap » banni,
+« lobby » assimile).
+
+**Decision technique.** DEUX cles, deux roles, sur le modele `match.objective.stats` /
+`objective_stats` : `games.CapFilmReplayArtifact` (data-level) gouverne la production de
+l'artefact et, par voie de consequence, les deux projections servies a la Match View ;
+`title.CapReplay` gouverne l'acces et l'affichage (routes `/replay*` sous
+`RequireCapability`, filtre et colonnes « Rejeu »). La porte de production est en TETE de
+`replayartifacts.Run`, avant la selection, le rattrapage des cartes et `enqueueAll` — la
+seule sonde existante etait une degradation par absence de donnee, apres la mise en file.
+Cote web, le canal `GET /titles/{slug}/capabilities` existait sans client : ajout de
+`useDataCapability` jumeau de `useCapability` et d'un `FeatureGate` unique acceptant les
+deux portes (decoupe en deux sous-composants pour que les gates title-level n'exigent pas de
+QueryClientProvider). Regle des deux portes appliquee : capability du titre PUIS presence de
+donnee du match. `synthetic_title_b` declare les six cles `film.*` avec UN cas `supported` —
+la fixture qui prouve que ces cles sont fines.
+
+**Resultats.** 4 commits (`b2f536c14`, `ee58a81c5`, `fc4307c0c`, `2ddca8291`). Tests neufs
+joues sur les fichiers LIVRES, jamais sur des fixtures fabriquees : `Run` sur halo_5 ne lit
+meme pas la base ; `/objective-events` et `/positions` rendent 503 `capability_not_supported`
+sans appeler de loader, 200 sur halo_infinite ; les quatre routes `/replay*` rendent 503
+`capability_unavailable` sur halo_5. Garde-rail neuf `capabilities_front_parity_test.go`
+(jumeau data-level du garde title-level) : un litteral de gating errone fermerait une porte
+pour toujours sans erreur. « heatmap » entre dans FORBIDDEN_PATTERNS avec preuve de morsure
+jouee ; trois chaines FR corrigees en « carte de chaleur » ; « lobby » documente comme mot
+assimile. Gates : suite Go complete verte, `go build` OK, ratchet golangci-lint
+`--new-from-merge-base=origin/main` a 0 issue, `make generate-types` sans diff, typecheck web
+OK, lint web 0 erreur, vitest COMPLET 591 fichiers / 6249 tests verts.
+
+**Conclusion / prochaine etape.** Deux ecarts au plan constates sur pieces et documentes :
+halo_infinite n'a PAS de `title.toml` (descripteur built-in, un manifeste y serait ignore),
+et les manifestes « heatmap » vivent sous `apps/web/src/lib/i18n/manifests/`, pas sous
+`config/titles/`. Trois decouvertes hors perimetre au journal du lot
+(`.ai/V7.5/v2/LOT_C.md`), dont la carte de chaleur des positions de la Match View, seule
+surface `film.*` non nommee au lot et qui affichera un etat vide sur un titre sans film.
+Prochaine etape : push, CI, revue adversariale, puis integration dans `feat/v75` (le lot C
+est le premier de l'ordre d'integration).
