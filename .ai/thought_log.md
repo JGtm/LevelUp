@@ -1,3 +1,57 @@
+## [2026-09-05] Classements — la garantie « collections jamais nulles » remonte des repos au service — Complété
+
+**Contexte** : volet A de `.ai/PLAN_REPRISE_FORK_2026-09-05.md`, reprise du commit
+`ad3f013d8` du fork ChaseWoodhams (le second commit du fork, `45fc3ce52`, est hors
+périmètre par décision utilisateur). Worktree dédié `LevelUp-wt-leaderboard-nonnil`,
+branche `fix/leaderboard-collections-non-nil` ancrée sur `origin/main` = `98bd7c143`.
+Deux défauts RÉELS, re-vérifiés sur pièces avant d'écrire une ligne : (1) `GetCatalog`
+rendait `domain.LeaderboardCatalog{}` pour un titre sans `world.leaderboard` — or Halo 5
+est un titre ACTIF qui exclut cette capability, donc
+`GET .../pages/leaderboard/catalog` y servait `{"seasons":null,"playlists":null}` ;
+(2) `scanCatalogColumn` (`leaderboard_world_repo.go:504`) construit sur un
+`var out []domain.LeaderboardCatalogRef`, donc `seasons: null` sortait AUSSI pour
+halo_infinite sur une base sans aucun snapshot. Ni `Seasons` ni `Playlists` ni `Entries`
+n'ont d'`omitempty` : le contrat promet le champ présent, donc `[]` et jamais `null`.
+
+**Décision technique principale** : le contrat appartient à l'APPELANT du repo, pas aux
+repos. `GetPage` normalise `entries` AVANT de l'affecter (l'affectation écrasait sa propre
+garantie de construction), et `normalizeLeaderboardCatalog` devient le point UNIQUE de la
+garantie pour les deux chemins servis de `GetCatalog`. Le chemin d'erreur, lui, garde sa
+valeur zéro : elle n'est jamais sérialisée, le handler en fait un 500 Huma
+(`handlers/leaderboard.go:112`). Les commentaires repris du fork étaient en anglais : tous
+réécrits en français (règle 1 du dépôt), libellés de sous-tests compris, sans aucun renvoi
+à des tickets ou branches qui n'existent pas ici.
+
+**Résultats observés** : le ratchet `TestDTOs_NoNilSlicesOnEmptyInput` passe de 1 à 5
+sous-tests sur le classement, et `TestLeaderboardPage_EmptyCollectionsOnTheWire` (4 cas)
+lit le JSON RÉELLEMENT émis — une assertion sur `len()` de la structure n'aurait jamais vu
+le `null`, c'est la sérialisation qui le produit. Le garde-rail MORD : correctif
+temporairement neutralisé sur copie, 4 des 5 sous-tests du ratchet et 3 des 4 cas HTTP
+rougissent, puis restauration. Gates : `go test ./internal/service/...` +
+`./internal/api/handlers/... -count=1` vert (19 s) ; `go test ./... -count=1` vert (76 s,
+0 `--- FAIL:` ancré) ; `go vet ./...` vert ; `make gate-push` vert dans ses 4 étapes
+(golangci-lint `--new-from-merge-base=origin/main`, typecheck, eslint 0 erreur, puis
+`check_test_baseline.sh tests` sorti 0 : 8 761 tests baseline tous présents, 11 722 au run
+courant, aucun test ni package en échec) — la 4e étape a dû être rejouée seule, le
+`make` complet dépassant le plafond de 10 min de l'outil d'exécution. Vérification manuelle
+sur données réelles (binaire du worktree, `LEVELUP_REPO_ROOT` sur le checkout principal,
+aucun autre serveur sur :8000, process arrêté et binaire supprimé après) :
+`X-LevelUp-Title: halo_5` rend `{"seasons":[],"playlists":[]}` ; sans en-tête,
+halo_infinite rend ses 4 saisons peuplées avec leurs `playlist_ids`.
+
+**Découvertes non traitées** (§5 du plan) : `internal/persist` est flaky sous parallélisme
+(`TestBatchQueue_Drain_PartialFailure_OnlySomeACKed`, vert isolé ×5 et à la re-passe
+complète) ; la route joueur est inatteignable en anonyme en local
+(`LEVELUP_AUTH_MODE=xbox` dans `.env.local`) ; le slug d'URL est le gamertag à la casse
+exacte ; `disk_watch` signale un espace disque CRITIQUE sur le volume data du checkout
+principal.
+
+**Prochaine étape** : A.4 — le merge va sur `main`, donc **déploiement prod automatique** :
+il attend l'accord explicite de l'utilisateur. Ensuite `feat/v75` récupère `main`, avec les
+deux pièges déjà consignés (conflit `.ai/thought_log.md` à résoudre en BASH sur octets
+bruts ; `.ai/PLAN_LEADERBOARD_MONDE_REPRISE_2026-09-03.md` non suivi côté v75 à déplacer
+AVANT le merge). Le volet B (films aux blobs expirés) n'a pas été ouvert.
+
 ## [2026-08-26] Hygiene secrets — seed de demo n'extrait plus aucun credential — Complete
 
 **Contexte** : lot A, worktree dedie `wt/lot-a-secrets-demo` (base 3177a57a2). La revue du
