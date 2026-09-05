@@ -95401,3 +95401,50 @@ demander avant). Prochaine etape : decision utilisateur sur les 6 escalades, pui
 plan `.ai/PLAN_V2_REJEU_FILM_<date>.md` sous `plan-review`, lot 0 (trois P0 + les deux items
 actifs au merge : catalogue ecrit par le runtime, projections sur « artefact range ») avant le
 tag v7.5.0.
+
+## [2026-09-06] Lot D tache D-I — les horloges du rejeu et de la vue match — Complete
+
+**Contexte.** Plan v2 du rejeu et du film (`.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`), lot D,
+premiere des deux taches. Trois constats du registre du 2026-09-05 sur les horloges cote web :
+P0-7 (deux horloges m:ss empilees dans l'onglet Chronologie), P0-5 (trois politiques pour
+« l'artefact n'a pas d'origine »), et leurs satellites J2/J3/J5/N1/N2/N3 + le residu P0-6.
+Refonte INTERNE : aucun changement visuel ni de comportement voulu, hors les deux corrections
+que les constats appellent. Worktree dedie `LevelUp-wt-v2-web-modele`, branche
+`feat/v2-web-modele`, base a21fd77f4.
+
+**Decision technique.** Deux foyers, et un garde-rail pose le meme jour pour chacun.
+`lib/replay/matchClock.ts` porte les conversions entre les trois axes d'un match (axe du match
+depuis `start_time`, axe du film depuis `originMs`, axe du gameplay depuis le coup d'envoi) ;
+`features/match-replay/model/replayClock.ts` pose par-dessus le VERDICT de la page de rejeu.
+L'axe commun de l'onglet Chronologie est celui de `event_time_ms`, ancre sur `header.t0_ms` —
+et il ne peut pas etre ancre ailleurs : c'est la valeur que le producteur a retranchee pour
+fabriquer ce champ ; y substituer le T0 film deplacerait « Frags cumules », la serie qui est
+deja juste. La politique de repli du rejeu est celle-ci, unique : l'origine est celle que
+l'ARTEFACT PUBLIE ; sans elle, aucune surface ne place quoi que ce soit sur l'axe du film. Une
+seule exception, nommee et mesuree — le fil des eliminations, seule surface a disposer d'une
+seconde source (appariement des kills aux fins de vie).
+
+**Resultats.** Cinq commits (c141e30b0, 4fb7de28e, a3f01e4ab, 198ab7e6c, 10aa884c3). La courbe
+de score ET les barres d'instants passent par l'horloge, `header.t0_ms` descend jusqu'aux deux
+cartes, et le test qui verrouillait la premisse fausse « borne au coup d'envoi » assert
+desormais des abscisses calculees a la main. Les cinq sites de P0-5 consomment un seul verdict.
+`killFx` et `replaySound` lisent les kills deja recales par le fil au lieu de rejouer
+`alignFeed` (quatre executions du meme recalage par chargement, ramenees a une). Les marques de
+la frise prennent le formateur du rejeu (troncature) au lieu de celui de `lib/formatters`
+(arrondi). Deux codes morts a tests verts supprimes (`replaySchemaLogic`, `roundAtFrame` et ses
+six assertions). `_kdCumul.ts` et `_cadence.ts` extraits des `.tsx` (260 L et 162 L de logique
+sans oracle) avec 31 cas a oracle ecrit a la main ; `MatchCombatCtfOverlay.test.tsx` lit enfin
+l'option ECharts entiere ; `formatClockMShort` remplace les quatre ecritures du format `MmSSs`.
+Cinq garde-rails poses. Mesure decisive du perimetre : sur les 106 artefacts servis localement,
+les 5 sans `originMs` portent tous `coverage.originResolved: false` et etaient donc DEJA
+ecartes par `filmClockTrusted` — la porte ajoutee ne retire aucune carte de l'ecran. Gates :
+`tsc -b --force` vert, lint 0 erreur (27 avertissements prexistants, un de moins qu'a la base),
+vitest 6 287 tests verts sur la suite web entiere, lint couleurs propre, cliquet d'imports
+croises inchange a 7/7.
+
+**Conclusion / prochaine etape.** Tache D-I close, poussee, CI surveillee. Decouverte non
+traitee (perimetre ferme) : `e2e/replay-explosion-raster.spec.ts` est rouge depuis AVANT ce lot
+— son harnais exige 7 imports de valeur dans `replayDraw.ts`, qui en porte 6, mesure identique
+au commit de base ; c'est le pendant de M1 (ces specs n'ont jamais tourne en CI) et cela releve
+de F.6. La tache D-II (modele, calques, arborescence) ne demarre qu'apres la revue adversariale
+de D-I.
