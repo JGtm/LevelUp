@@ -32,3 +32,69 @@ type Couverture struct {
 	// `explorer.briefing.low_sample` — et ne classer personne.
 	EchantillonFaible bool
 }
+
+// KillEvent est l'entree minimale de la mesure d'echange : une mort, son tueur quand il est
+// connu, et son instant. Projection de `match_kill_events_latest` (`victim_xuid`,
+// `feed_killer_xuid`, `time_ms`, `match_id`) faite par l'appelant — le paquet
+// `analysis/coordination` ne lit aucune base.
+type KillEvent struct {
+	MatchID string
+
+	// KillerXUID est VIDE quand personne ne revendique la mort : chute, hors-limites,
+	// grenade perdue, degat de l'environnement. Un tel evenement ne venge rien (decision
+	// produit 2026-09-05) — seul un kill de coequipier compte.
+	KillerXUID string
+
+	VictimXUID string
+
+	// TimeMs est l'instant de la mort sur l'horloge du match, en millisecondes.
+	TimeMs int64
+}
+
+// EquipesParMatch donne le numero d'equipe de chaque joueur, PAR MATCH : matchID -> xuid ->
+// equipe. La composition change d'un match a l'autre, et une table globale melangerait deux
+// compositions au premier joueur ayant change de camp. Un xuid absent a une equipe INCONNUE :
+// il ne peut alors etre ni coequipier ni adversaire, et aucun echange ne se conclut sur lui.
+type EquipesParMatch map[string]map[string]int
+
+// MortSuivie est le suivi d'UNE mort : a-t-elle ete vengee, par qui, en combien de temps.
+type MortSuivie struct {
+	MatchID     string
+	VictimeXUID string
+
+	// TueurXUID est vide quand la mort n'est revendiquee par personne.
+	TueurXUID string
+	TimeMs    int64
+
+	// Vengeable dit qu'un echange etait POSSIBLE : un tueur identifie, d'une equipe connue
+	// et adverse. Une mort non vengeable n'entre pas au denominateur du taux d'echange —
+	// compter comme un echec une mort que personne ne pouvait venger fausserait la mesure.
+	Vengeable bool
+
+	Vengee      bool
+	VengeurXUID string
+
+	// DelaiMs est le temps ecoule entre la mort et l'echange. Nul si la mort n'est pas vengee.
+	DelaiMs int64
+}
+
+// PaireEchange agrege les echanges d'un vengeur pour un venge — la matrice « qui echange
+// pour qui » de la page Escouade.
+type PaireEchange struct {
+	// VengeurXUID a tue le tueur ; VengeXUID est le coequipier tombe.
+	VengeurXUID string
+	VengeXUID   string
+
+	Nombre       int
+	DelaiMoyenMs float64
+}
+
+// BilanEchanges est le resultat complet de la mesure : chaque mort suivie, les paires
+// agregees, et les deux comptes qui alimentent une `Couverture` (NbVengees sur NbVengeables).
+type BilanEchanges struct {
+	Morts  []MortSuivie
+	Paires []PaireEchange
+
+	NbVengeables int
+	NbVengees    int
+}
