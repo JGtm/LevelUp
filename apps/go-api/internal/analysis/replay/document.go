@@ -546,7 +546,22 @@ package replay
 // document_translocations.go, document_equipment_changes.go, document_ability_impulses.go,
 // filmdec/equipment_recovery.go, filmdec/transloc_events.go, filmdec/ability_impulses.go,
 // filmdec/offline_filters.go.
-const SchemaVersion = 38
+// SCHEMA 39 (2026-09-04) — L'ARMEMENT DE LA BOMBE EN ONE BOMB. Aucun champ neuf : ce qui
+// change est le CONTENU d'un calque existant, et la version monte pour la raison exacte des
+// montees v14/v22/v25/v37 — la reprise du backfill se fait par SchemaVersion, et un artefact
+// 38 d'un match One Bomb doit se lire « a re-cuire », pas « a jour ».
+//
+// CE QUI A CHANGE. Le calque `bombArmings` etait gouverne par une garde de mode DOUBLE, dont
+// la premiere ecartait One Bomb PAR SON NOM : sous la lecture SIMPLE (montee contiguë, meche
+// fixe de 4,93 s) le protocole du 2026-09-01 y avait REFUTE le signal (CV 0,725). La lecture
+// « meche pausable » du meme jour l'explique (9/9 explosions portees, mediane 16,18 s,
+// CV 0,017, 0/1000 tirages nuls) et elle est desormais EN PRODUCTION : segments contigus,
+// armement = segment qui finit a son sommet plein, tenue de desarmement qui SUSPEND la meche,
+// et MECHE MESUREE SUR LE FILM au lieu d'une constante unique. Les temoins ne bougent pas
+// (Neutral Bomb 13/13, Husky Raid 4/4, au chiffre pres) ; ce qui bouge est qu'une variante
+// entiere d'Assaut publie enfin son compte a rebours. Chronique :
+// filmdec/navpoint_radial_segments.go, replay/bomb_armings.go, replaybuild/zones.go.
+const SchemaVersion = 39
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

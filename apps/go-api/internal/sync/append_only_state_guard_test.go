@@ -87,6 +87,12 @@ var appendOnlyStateTables = []string{
 	// une lecture brute servirait les lignes des passes précédentes.
 	"match_kill_events",
 	"match_weapon_shots",
+	// match_bomb_stats (E3 Assaut, 2026-09-04) : créée directement append-only (id PK seq +
+	// written_at + vue match_bomb_stats_latest). Unité de génération = la PASSE DE DÉCODAGE,
+	// arbitrée par written_at puis id. Écriture = INSERT pur (bomb_stats_persister.go) ;
+	// aucun DELETE / ON CONFLICT / INSERT OR REPLACE|IGNORE toléré. Lecture via _latest
+	// UNIQUEMENT — une lecture brute servirait les lignes des passes précédentes.
+	"match_bomb_stats",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors

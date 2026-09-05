@@ -33,8 +33,11 @@ package replay
 //	                              `ti=12` date l'armement sans nommer personne, et le moteur
 //	                              lui-même n'expose que l'ÉQUIPE qui arme (Lua
 //	                              `primitive_carriable_arming_base`, mesure du 2026-09-04) :
-//	                              l'acteur se ferme par le canal des armes tenues. La règle,
-//	                              sa fenêtre et le RECALAGE D'HORLOGE qu'elle exige vivent
+//	                              l'acteur se ferme par le canal des armes tenues. DEUX règles
+//	                              ordonnées : le LÂCHER (un geste observé) puis, à défaut, le
+//	                              PORTEUR ACTIF (une présence constatée) — et l'événement dit
+//	                              laquelle l'a nommé (`BombEvent.ActorSource`). Les règles,
+//	                              leur fenêtre et le RECALAGE D'HORLOGE qu'elles exigent vivent
 //	                              dans bomb_arms.go — le seul endroit de ce noyau où deux
 //	                              horloges se rencontrent.
 //	bomb_carriers_killed          DÉDUCTION, pas un compteur du moteur. Le fil des kills déjà
@@ -161,6 +164,14 @@ type BombEvent struct {
 	// XUID de l'acteur, en décimal. Vide = fait daté SANS acteur résolu : il se publie quand
 	// même, jamais avec un acteur deviné.
 	XUID string
+	// ActorSource dit QUELLE RÈGLE a nommé l'acteur — `BombActorSourceDrop` (la bombe a quitté
+	// les mains dans la fenêtre : un geste OBSERVÉ) ou `BombActorSourceActiveCarry` (le repli :
+	// personne d'autre ne la tenait, une présence CONSTATÉE). Vide quand XUID l'est aussi.
+	//
+	// Ce champ n'est pas décoratif : les deux règles n'ont pas la même force de preuve, et un
+	// lecteur qui les confondrait surestimerait ce que la mesure établit. Il n'a de sens que
+	// pour `BombEventArmed` — une explosion est nommée par le statborg, pas par une jointure.
+	ActorSource string
 }
 
 // BombStatsCoverage dit ce qui a été lu et ce qui a été écarté : publier des chiffres sans
@@ -172,13 +183,22 @@ type BombStatsCoverage struct {
 	Detonations int
 	// Armings est le nombre d'armements DATÉS fournis — le dénominateur du contrôle de
 	// cohérence de la jointure. ArmingsAttributed est le nombre d'armements auxquels un
-	// poseur a été nommé ; ArmingsNoDrop et ArmingsNoBridge disent les deux raisons de
-	// publier un armement SANS acteur (aucun lâcher dans la fenêtre / slot non ponté).
+	// poseur a été nommé, VENTILÉ PAR RÈGLE : ArmingsByDrop pour la source primaire (le
+	// lâcher, un geste observé), ArmingsByActiveCarry pour le repli (le porteur actif, une
+	// présence constatée). Publier les deux séparément est ce qui permet de lire la
+	// couverture SANS confondre deux forces de preuve.
+	//
+	// Les TROIS raisons de publier un armement SANS acteur se comptent à part :
+	// ArmingsNoCarrier (aucune période candidate : ni lâcher dans la fenêtre, ni porteur actif
+	// à l'instant armé), ArmingsNoBridge (une période retenue, mais son slot n'est pas ponté)
+	// et ArmingsAmbiguous (DEUX porteurs couvraient l'instant : le repli ne tranche jamais).
 	//
 	// INVARIANT PUBLIÉ, vrai par construction : la somme des `bomb_arms` de tous les joueurs
-	// vaut ArmingsAttributed, et ArmingsAttributed + ArmingsNoDrop + ArmingsNoBridge ==
-	// Armings. Un armement n'est jamais attribué deux fois, ni à un joueur deviné.
-	Armings, ArmingsAttributed, ArmingsNoDrop, ArmingsNoBridge int
+	// vaut ArmingsAttributed ; ArmingsAttributed == ArmingsByDrop + ArmingsByActiveCarry ; et
+	// ArmingsAttributed + ArmingsNoCarrier + ArmingsNoBridge + ArmingsAmbiguous == Armings.
+	// Un armement n'est jamais attribué deux fois, ni à un joueur deviné.
+	Armings, ArmingsAttributed, ArmingsByDrop, ArmingsByActiveCarry int
+	ArmingsNoCarrier, ArmingsNoBridge, ArmingsAmbiguous             int
 	// Periods / PeriodsNoBridge / PeriodsOpen / PeriodsByDeath ventilent le portage : combien
 	// de périodes, combien sans identité pontée (écartées), combien restées ouvertes à la fin
 	// du film (comptées en ramassages mais PAS en temps), combien fermées par la mort.

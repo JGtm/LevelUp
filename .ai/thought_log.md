@@ -1,3 +1,119 @@
+## [2026-09-04] Assaut — E2-ter : la garde de NOM tombe, la meche se MESURE — Complete
+
+**Decision technique n1 : la meche n'est plus une constante, elle est MESUREE par film.**
+`bomb_armings.go` supposait une meche de 4 930 ms a +/- 600 ms pour confronter armements et
+explosions. Cette fenetre SUPPOSAIT la variante reconnue — c'est elle qui obligeait a une garde
+de NOM en amont (`replaybuild.isArmableBombVariant`) pour ecarter One Bomb, ou la lecture simple
+etait refutee (CV 0,725). La lecture « meche pausable » du 2026-09-01 est portee en production :
+segments contigus SANS exigence de monotonie (`filmdec/navpoint_radial_segments.go`), armement =
+segment qui finit a son SOMMET et dont le sommet atteint le quantum plein, TENUE DE DESARMEMENT
+qui SUSPEND la meche (pente 14-26 quanta/s, contre 138 pour une chute d'explosion), delai =
+(explosion - fin d'armement) - somme des pauses du meme slot. La meche du film est la MEDIANE
+des delais corriges, publiee avec chaque evenement dans `BombArming.FuseMS` — un champ qui
+existait deja et annoncait ce role. Trois valeurs sortent de la MEME regle sans qu'aucun code ne
+branche sur un nom de variante : 4 987 ms (Neutral Bomb), 5 089 ms (Husky Raid — la valeur que
+`b3MecheMS` codait en dur a 5 100), 16 183 ms (One Bomb). `BombFuseMS` ne subsiste que comme
+reference DEDUITE pour un film sans aucune explosion a mesurer.
+
+**Decision technique n2 : la garde 1 tombe, la garde 2 se durcit.** `isArmableBombVariant` est
+SUPPRIMEE, `bombInput` ne prend plus qu'un booleen de FAMILLE, et un ratchet interdit son retour
+(`TestAucuneGardeParNomDeVariante` : aucun fichier de production de `replaybuild` ne doit
+contenir le litteral « one bomb » — une garde par le nom revient silencieusement, puisque son
+effet est une absence de calque). La garde 2 reste TOUT-OU-RIEN par film et gagne une seconde
+branche : (1) COUVERTURE — chaque explosion a un armement dans la fenetre de sens du protocole
+(120 s), delai corrige ; (2) DISPERSION — les delais du film doivent s'accorder (CV <= 0,20, le
+seuil du protocole ; mesures 0,010 a 0,019, contre 0,725 pour la lecture refutee). Les DEUX
+branches mordent sur le corpus, ce qui prouve qu'elles ne sont pas decoratives.
+
+**Resultats observes.** Temoins INCHANGES AU CHIFFRE PRES, verifies deux fois : cote filmdec
+13/13 (CV 0,016) sur Neutral Bomb et 4/4 (CV 0,016) sur Husky Raid — et l'exigence Husky, qui
+n'etait qu'imprimee, est desormais JUGEE ; cote replay, les quatre films temoins republient les
+memes armements aux memes instants, avec les memes acteurs et les memes regles qu'en E2-bis.
+`9f57c612` (One Bomb) publie enfin : 5 armements a 65 137 / 279 103 / 335 193 / 388 080 /
+445 839 ms, 4/4 explosions couvertes, meche 16 183 ms CV 0,010, et 3 armeurs nommes (2 par
+lacher, 1 par repli). Le statborg CORROBORE : pour l'explosion 298 489 il nomme le meme joueur
+que la regle du lacher a nomme sur l'armement de 279 103. Couverture d'attribution du corpus :
+12/13 (92,3 %) -> 15/18 (83,3 %) — le taux baisse pendant que le compte monte, parce que le
+denominateur a grandi de 5 armements qu'aucune mesure ne datait avant. La fenetre de jointure
+(+/- 2 500 ms) n'a PAS bouge et la mesure dit pourquoi : elle joint le LACHER a la FIN DE
+L'ARMEMENT, un geste, pas un compte a rebours — ecarts +250/+250/+251 ms sur One Bomb contre
++247 a +259 ms sur les films a meche courte. Les 4 desaccords B2 sont inchanges. Gates verts,
+codes de sortie verifies : purs, filmdec meche, gate d'armement (46 s), gate d'attribution
+(286 s), plus le filet des 4 paquets et `contracttest`.
+
+**Ce qui n'est PAS resolu, et pourquoi c'est ecrit.** Deux des trois films One Bomb restent
+RETENUS par la garde 2 : `c75f33b8` a une explosion sans armement (395 724), `df8fcbef` en a une
+dont le delai corrige vaut 27 845 ms contre ~16 000 pour les trois autres (778 033). Ces deux
+instants sont EXACTEMENT les deux entrees d'`a5SansPorteur` (mesure du 2026-08-31, anterieure) —
+les explosions dont aucun slot de JOUEUR ne porte le point de mode. L'anneau ne les explique pas
+plus que le statborg. Relacher la garde pour les recuperer publierait un calque explique aux
+trois quarts : refus assume. Avant ce lot ces films n'avaient meme pas de couverture ; ils en ont
+une desormais, qui DIT pourquoi elle se tait.
+
+**Schema 38 -> 39.** Aucun champ ajoute ni retire (le contrat OpenAPI est inchange, verifie par
+`contracttest`), mais le CONTENU d'un calque change pour toute une variante : la doctrine du
+depot veut alors la montee, parce que la reprise du backfill se fait par `SchemaVersion` et
+qu'un artefact 38 d'un match One Bomb doit se lire « a re-cuire ». Rien n'est cuit par ce lot —
+le backfill du parc reste la tache de RELEASE.
+
+**Conclusion / prochaine etape.** E2-ter close, gates colles au plan. Reste E4 (branchement au
+hook `replayartifacts`), E5 (lecture/API/UI) et E6 (backfill de release, journal, CI). Rien n'est
+committe : accord utilisateur en attente.
+
+## [2026-09-04] Assaut — E3 : la persistance, et deux tables qui n'ont pas la meme memoire — Complete
+
+**Decision technique n1 : une table DEDIEE, append-only, aux colonnes NULLABLE.**
+`match_bomb_stats` (step `shared_create_bomb_stats`, socle shared) porte les cinq statistiques
+par `(match_id, xuid)` : id PK sequence, `written_at`, index `match_id`, vue
+`match_bomb_stats_latest` sur le patron exact de `objective_stats_view.go`
+(`QUALIFY ROW_NUMBER() ... ORDER BY written_at DESC, id DESC`). Elle est DEDIEE et non cinq
+colonnes de plus sur `match_objective_stats` parce que cette derniere est alimentee par le sync
+API : deux producteurs sur une vue qui ne garde qu'une ligne par clef, et un re-sync effacerait
+les stats du film. Les cinq colonnes de mesure sont NULLABLE, et c'est le point qui compte : le
+noyau d'E1 rend des POINTEURS pilotes par des temoins de lecture, donc « non mesure » s'ecrit
+NULL et jamais 0. Un zero fabrique dirait « rien ne s'est passe » la ou la verite est « on n'a
+pas regarde », et tout agregat le sommerait sans rien signaler. Deux tests le verrouillent
+(`TestColonnesDeMesureNullables` cote schema, `TestAbsentNEstPasZero` cote persister).
+
+**Decision technique n2 : les deux tables n'ont PAS la meme capacite a remplacer une
+generation, et le persister l'assume au lieu de la masquer.** `match_bomb_stats` sait remplacer
+(append-only + vue `_latest`) ; `match_objective_events` NON — PK naturelle `(match_id, seq)`,
+aucune vue `_latest`, aucun `decode_pass`. Un INSERT-only repete sur elle ne pourrait donc que
+(a) violer la PK, ou (b) empiler deux generations que tout lecteur compterait double. Le
+`BombStatsPersister` prend la seule troisieme voie disponible sans DELETE : `seq` alloue APRES
+le maximum deja present sur le match (la PK est partagee avec les autres producteurs — repartir
+de 0 entrerait en collision), et faits ecrits UNIQUEMENT si le match n'en porte pas deja de la
+famille `bomb`, avec un `slog.InfoContext` quand il s'abstient. Consequence assumee, ecrite dans
+l'en-tete : apres un changement de decodeur, les statistiques se rafraichissent, les faits dates
+NON. `ObjectiveEventsRepo.WriteMatch` (DELETE-then-INSERT, « hors chemin live ») n'a ete ni
+appele ni modifie.
+
+**Anti-ART : le ratchet se DURCIT, aucune allowlist ne bouge.** Le persister n'emet que des
+INSERT — zero UPDATE, zero DELETE, zero ON CONFLICT. `match_bomb_stats` est AJOUTEE aux tables
+protegees de `no_art_patterns_test.go` ET a `appendOnlyStateTables`
+(`append_only_state_guard_test.go`, garde statement-level). `allowlistArtPatterns` et
+`allowlistRawDelete` restent VIDES : aucune entree ajoutee, aucune n'etait necessaire. Chemin
+d'ecriture : `SharedBatch.BombStats` -> `BatchBuilder.SetBombStats()` -> `BombStatsPersister`
+cable dans `CombinedPersister` (meme fenetre de lease que le SharedPersister, transaction
+distincte), plus `PersistPass` pour le chemin direct. Le cablage est pose MEME s'il n'a pas
+encore d'appelant (E4) : un setter dont la charge serait silencieusement jetee serait une perte
+de donnees muette.
+
+**Resultats observes (gate E3, codes de sortie verifies, motifs ancres sur `^--- FAIL:`).**
+`go test -tags=integration -p 1 ./internal/persist/... ./internal/migration/... ./internal/sync/...`
+= GATE_EXIT=0, 0 ligne `^--- FAIL:` (persist 52,9 s / migration 5,4 s / sync 123,1 s + 9
+sous-paquets verts). `go vet` (avec et sans tag integration) = 0, `gofmt -l` = aucun fichier,
+`golangci-lint` = 0 issue sur les fichiers touches (les 37 issues du perimetre sont la dette
+baseline preexistante, aucune sur `bomb_stats*`, `combined_persister.go`, `builder.go`,
+`batch.go`, `order.go`). 12 tests neufs : 2 de schema, 9 de persistance (dont 11 sous-cas de
+refus verifiant qu'un refus ne laisse AUCUNE ligne derriere lui), 1 sentinelle de vocabulaire.
+
+**Conclusion / prochaine etape.** E3 close ; les cinq cases du plan sont statuees `[x]`. Rien
+n'est encore branche au sync : E4 (extraction pendant le decodage deja fait par le hook
+`replayartifacts`, aucun second decodage) est l'etape suivante. Decouverte notee au plan et non
+traitee : `match_objective_events` n'a aucune semantique de generation, et lui en donner une est
+un chantier de schema, pas une ligne a glisser dans un persister.
+
 ## [2026-09-04] Assaut — E2 : qui a arme la bombe, par jointure des deux canaux — Complete
 
 **Le probleme, et pourquoi la jointure est la SEULE voie.** L'anneau `ti=12 i14` date

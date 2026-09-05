@@ -21,8 +21,10 @@ package objectiveevents
 // Second manque : aucune sonde du pied n'a jamais interroge l'instant d'ARMEMENT. Toutes ont
 // mesure le delai au plus proche bloc PRECEDANT une explosion dans une fenetre de 120 s — une
 // mesure que les recompenses de combat saturent. L'oracle d'armement existe desormais : la
-// MECHE de 4 930 ms, mesuree par l'anneau `ti=12 i14` et figee en production (`BombFuseMS`,
-// tolerance `bombFuseWindowMS` = 600 ms, gate `TestAssautArmementGate`).
+// MECHE de 4 930 ms des variantes A MECHE FIXE, mesuree par l'anneau `ti=12 i14` et gardee en
+// production comme meche de REFERENCE (`replay.BombFuseMS`, gate `TestAssautArmementGate`,
+// critere (b) a +-600 ms). Depuis le 2026-09-04 la production MESURE la meche de chaque film ;
+// la tolerance de 600 ms ci-dessous reste celle de CE protocole, qui ne juge que la meche fixe.
 //
 // # LE PROTOCOLE, FIGE AVANT LA PREMIERE MESURE
 //
@@ -70,7 +72,9 @@ const (
 	// apMecheMS : la meche des variantes a meche fixe, recopiee de `replay.BombFuseMS`. Le
 	// paquet `replay` importe celui-ci ; la constante est donc recopiee, pas importee.
 	apMecheMS = 4930
-	// apToleranceMS : la demi-fenetre, recopiee de `replay.bombFuseWindowMS`.
+	// apToleranceMS : la demi-fenetre de CE protocole, celle sous laquelle la meche fixe a ete
+	// mesuree (ecart-type ~80 ms). La production, elle, ne suppose plus de meche : elle la
+	// mesure par film (2026-09-04).
 	apToleranceMS = 600
 	// apTiragesPlancher : le nombre d'instants aleatoires par film qui donnent le plancher.
 	apTiragesPlancher = 500

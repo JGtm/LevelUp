@@ -33,7 +33,7 @@ package objectiveevents
 // # LE PROTOCOLE, FIGE AVANT LA PREMIERE MESURE
 //
 // ORACLE. Instant d'armement = `explosion - 4930 ms`, la meche mesuree par l'anneau `ti=12 i14`
-// et figee en production (`replay.BombFuseMS`), a +-600 ms (`replay.bombFuseWindowMS`). Il ne
+// et gardee en production comme meche de REFERENCE (`replay.BombFuseMS`), a +-600 ms. Il ne
 // s'applique qu'aux variantes A MECHE FIXE : Neutral Bomb (5 films) et Husky Raid (1 film), soit
 // **17 explosions**. Les trois films One Bomb (meche pausable) sont EXCLUS du critere ; ils
 // alimentent le plancher, jamais le verdict.
