@@ -116,6 +116,18 @@ func (b *BatchBuilder) SetWeaponShots(pass *WeaponShotsBatch) *BatchBuilder {
 	return b
 }
 
+// SetBombStats fixe les statistiques d'Assaut d'une passe de décodage du film
+// (les cinq mesures par joueur + les faits datés) pour ce match.
+//
+// Set… et non Add… pour la même raison que SetKillSource et SetWeaponShots :
+// l'unité de production est le FILM ENTIER. Concaténer deux passes produirait un
+// jeu de statistiques qui n'a jamais existé — et, ici, un doublon de xuid que le
+// persister refuse.
+func (b *BatchBuilder) SetBombStats(pass *BombStatsBatch) *BatchBuilder {
+	b.batch.Shared.BombStats = pass
+	return b
+}
+
 // AddXUIDAliases ajoute les rows xuid_aliases.
 func (b *BatchBuilder) AddXUIDAliases(rows []XUIDAliasInsert) *BatchBuilder {
 	b.batch.Shared.XUIDAliases = append(b.batch.Shared.XUIDAliases, rows...)

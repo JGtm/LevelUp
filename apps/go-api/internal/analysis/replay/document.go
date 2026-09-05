@@ -571,13 +571,15 @@ package replay
 // document_ability_charges.go, filmdec/equipment_recovery.go, filmdec/transloc_events.go,
 // filmdec/ability_impulses.go, filmdec/ability_charges.go, filmdec/offline_filters.go.
 //
-// CE QUE LA VERSION 39 PORTE, ET CE QU'ELLE REFUSE — LES VÉHICULES, EN TROIS TEMPS. Le chantier
-// véhicules (branche `feat/v75-vehicules-sons`, lots V0 à V12) avait numéroté ses trois apports
-// 29, 30 et 31 sur une base antérieure ; ils arrivent ici POSÉS SUR LE 38 et fondus en UNE seule
-// montée, parce qu'aucun artefact n'a jamais été cuit à ces numéros-là (décision D3 du plan
-// d'intégration, 2026-09-05). La reprise du backfill se faisant par SchemaVersion, un artefact 38
-// doit se lire « à re-cuire » : il ne porte AUCUN véhicule, aucun tir au volant, aucune visée
-// d'occupant.
+// CE QUE LA VERSION 39 PORTE, ET CE QU'ELLE REFUSE — QUATRE APPORTS FONDUS EN UNE MONTÉE. Deux
+// chantiers montaient le schéma en même temps sans qu'aucun de leurs numéros n'ait jamais cuit un
+// artefact : les VÉHICULES (branche `feat/v75-vehicules-sons`, lots V0 à V12, qui avait numéroté
+// ses trois apports 29, 30 et 31 sur une base antérieure) et l'ARMEMENT DE LA BOMBE EN ONE BOMB
+// (branche `wt/assaut-stats`, qui avait numéroté le sien 39 sur le 38). Les deux arrivent ici
+// POSÉS SUR LE 38 et fondus en UNE seule montée (décisions D3 et D13 du plan d'intégration,
+// 2026-09-05). La reprise du backfill se faisant par SchemaVersion, un artefact 38 doit se lire
+// « à re-cuire » : il ne porte AUCUN véhicule, aucun tir au volant, aucune visée d'occupant, et
+// aucun compte à rebours de bombe sur les matchs One Bomb.
 //
 // (1) LES VÉHICULES (`vehicles`) : la vie de chaque véhicule `ti=40` du match — naissance
 // (position exacte du record de création), identité de châssis (`MPPWord32`, stable inter-build)
@@ -638,6 +640,23 @@ package replay
 // pas seulement non portés : ils ne sont JAMAIS émis. Le cône de l'artilleur ne vient donc pas de
 // la tourelle, il vient de L'HOMME qui la tient — et c'est la même mesure que celle du
 // conducteur. Détail : internal/analysis/replay/vehicle_rides_aim.go.
+//
+// (4) L'ARMEMENT DE LA BOMBE EN ONE BOMB. Aucun champ neuf : ce qui change est le CONTENU d'un
+// calque existant (`bombArmings`), et cela suffit à imposer la montée pour la raison exacte des
+// montées v14/v22/v25/v37 — sans elle, aucun rejeu One Bomb déjà cuit ne porterait jamais son
+// compte à rebours.
+// CE QUI A CHANGÉ. Le calque `bombArmings` était gouverné par une garde de mode DOUBLE, dont la
+// première écartait One Bomb PAR SON NOM : sous la lecture SIMPLE (montée contiguë, mèche fixe de
+// 4,93 s) le protocole du 2026-09-01 y avait RÉFUTÉ le signal (CV 0,725). La lecture « mèche
+// pausable » du même jour l'explique (9/9 explosions portées, médiane 16,18 s, CV 0,017, 0/1000
+// tirages nuls) et elle est désormais EN PRODUCTION : segments contigus, armement = segment qui
+// finit à son sommet plein, tenue de désarmement qui SUSPEND la mèche, et MÈCHE MESURÉE SUR LE
+// FILM au lieu d'une constante unique. Les témoins ne bougent pas (Neutral Bomb 13/13, Husky Raid
+// 4/4, au chiffre près) ; ce qui bouge est qu'une variante entière d'Assaut publie enfin son
+// compte à rebours. La garde qui reste est la confrontation locale TOUT-OU-RIEN, en deux branches
+// (couverture des explosions, puis dispersion des délais corrigés) : deux films One Bomb du
+// corpus sont RETENUS par elle, et c'est voulu.
+// Chronique : filmdec/navpoint_radial_segments.go, replay/bomb_armings.go, replaybuild/zones.go.
 const SchemaVersion = 39
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.

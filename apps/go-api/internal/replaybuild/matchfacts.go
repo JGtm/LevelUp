@@ -59,8 +59,8 @@ type filmStats struct {
 	skull replay.SkullInput
 	// bomb porte L'ARMEMENT DE LA BOMBE d'Assaut : l'horloge du manifeste (le balayage de
 	// l'anneau ti=12 se date sur `start_ms` par chunk), plus la garde de mode posee selon
-	// `game_variant_name` — le canal n'est prouve que sur Neutral Bomb et Husky Raid, jamais
-	// One Bomb (cf. replaybuild/zones.go, isArmableBombVariant).
+	// `game_variant_name` — TOUTE la famille bomb, One Bomb comprise depuis le 2026-09-04
+	// (cf. replaybuild/zones.go, isBombVariant).
 	bomb replay.BombInput
 }
 
@@ -103,8 +103,7 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 		flag:       flagInput(recs, film),
 		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:      skullInput(recs, isSkullVariant(facts.GameVariantName)),
-		bomb: bombInput(film, isArmableBombVariant(facts.GameVariantName),
-			isBombVariant(facts.GameVariantName)),
+		bomb:       bombInput(film, isBombVariant(facts.GameVariantName)),
 	}
 }
 
@@ -132,21 +131,22 @@ func chunksDuManifeste(film *filmsource.Film) []filmsource.ChunkMeta {
 	return out
 }
 
-// bombInput assemble ce que LA BOMBE lit hors film, sous ses DEUX gardes de mode :
+// bombInput assemble ce que LA BOMBE lit hors film, sous UNE SEULE garde de mode — la
+// FAMILLE, One Bomb comprise depuis le 2026-09-04 (la garde de nom est levee, cf.
+// replaybuild/zones.go) :
 //
-//	armable  l'ARMEMENT (schema 33) — l'horloge du manifeste (start_ms par chunk, le
-//	         balayage de l'anneau la demande pour dater sur la meme base que les explosions
-//	         du statborg). Jamais One Bomb : le canal de l'anneau y est refute.
-//	carry    le PORTAGE (schema 34) — aucune donnee de plus (le canal des armes tenues est
-//	         deja balaye par BuildFromFilm) : la garde seule. TOUTES les variantes de la
-//	         famille bomb, One Bomb comprise.
+//	l'ARMEMENT (schema 33)  l'horloge du manifeste (start_ms par chunk, le balayage de
+//	                        l'anneau la demande pour dater sur la meme base que les
+//	                        explosions du statborg) ;
+//	le PORTAGE (schema 34)  aucune donnee de plus (le canal des armes tenues est deja
+//	                        balaye par BuildFromFilm) : la garde seule.
 //
 // Hors de la famille bomb, il rend un input VIDE : ni balayage, ni calque, ni couverture.
-func bombInput(film *filmsource.Film, armable, carry bool) replay.BombInput {
-	in := replay.BombInput{CarryScanned: carry}
-	if !armable {
-		return in
+func bombInput(film *filmsource.Film, bomb bool) replay.BombInput {
+	if !bomb {
+		return replay.BombInput{}
 	}
+	in := replay.BombInput{CarryScanned: true}
 	chunks := chunksDuManifeste(film)
 	clock := make(map[int]int, len(chunks))
 	for _, c := range chunks {
