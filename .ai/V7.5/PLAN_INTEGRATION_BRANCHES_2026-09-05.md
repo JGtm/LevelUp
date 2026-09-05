@@ -460,11 +460,11 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
 ### Étape F — Merge, push, CI
 - [x] F.1 `git fetch` ; D3(b) numéro de schéma amont ; si `origin/feat/v75` ≠ `7fb4b60a1` :
   mini-réconciliation (protocole A) + harnais + gates ; commit.
-- [ ] F.2 Worktree partagé propre → `git merge --no-ff wt/cuisson-perf` dans `feat/v75` ; sinon
+- [x] F.2 Worktree partagé propre → `git merge --no-ff wt/cuisson-perf` dans `feat/v75` ; sinon
   attendre/signaler.
-- [ ] F.3 `git push origin feat/v75` ; suivi `gh run watch` ; tout job rouge (même préexistant)
+- [x] F.3 `git push origin feat/v75` ; suivi `gh run watch` ; tout job rouge (même préexistant)
   se diagnostique et se corrige ; re-push jusqu'au vert au niveau job sur la liste mesurée (D8).
-- [ ] F.4 Rapport à l'utilisateur : ce qui est intégré, les écarts nommés, D5/D6/D7/D8ter, la
+- [x] F.4 Rapport à l'utilisateur : ce qui est intégré, les écarts nommés, D5/D6/D7/D8ter, la
   proposition de re-cuisson de masse (jamais lancée d'office), la note sur `main`, le sort des
   branches absorbées (`origin/feat/v75-vehicules-sons` est publiée : proposer sa suppression ;
   `wt/cuisson-perf` poussée comme trace ou non — décision utilisateur).
@@ -1789,3 +1789,11 @@ close est le point de reprise ; les worktrees D10 se listent par `git worktree l
   amont 38, 0 balayage neuf, worktree partagé propre (3 notes non suivies sans collision),
   `git merge-tree` à 0 conflit. Notion : séquence de release mise à jour (re-cuisson 39, usage,
   Assaut, merge main avant tag) — l'utilisateur a coché l'audit anti-bombe-RAM.
+- 2026-09-05 21 h 40 → 22 h 15 — **F CLOSE.** F.2 : `git merge --no-ff wt/cuisson-perf` dans `feat/v75`
+  (worktree partagé propre, amont `7fb4b60a1` inchangé) = **`736ccf3c3`**. F.3 : `git push origin
+  feat/v75` (hooks pré-push verts). CI sur `736ccf3c3` : **4 workflows verts** (Secrets, ADR 0021
+  Gate, Deploy Pre-Check, CI) ; **8 jobs verts** (Frontend, Go Build + Test ubuntu ET windows, Go
+  Lint, Lease Enforcement, Coverage + Baseline, OpenAPI Lint, Contract Test), E2E Playwright
+  « skipped » (pull_request seulement, D8). Aucun rouge, aucun correctif post-push. F.4 : rapport
+  rendu à l'utilisateur ; `main` non touché (interdit) ; `wt/cuisson-perf` gardée localement comme
+  trace (jamais poussée) — suppression à la main de l'utilisateur. PLAN INTÉGRALEMENT STATUÉ.
