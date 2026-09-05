@@ -388,7 +388,7 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   **3 porteurs tués** — détail et recoupement au §5 « G.6 ».
 
 ### Étape E — Filet complet et revue de branche (sur `wt/cuisson-perf` fusionnée)
-- [ ] E.1 FILET COMPLET, pièce par pièce, un code de sortie consigné par ligne (EXIT_*=0 dans un log
+- [x] E.1 FILET COMPLET, pièce par pièce, un code de sortie consigné par ligne (EXIT_*=0 dans un log
   persistant, jamais un pipe) : `make gate-push` (son ratchet lint compare à `origin/main` : tout le
   delta v75 s'affiche, ce n'est pas une régression) · `gofmt -l .` vide · `go vet ./...` · `go build
   ./...` · `go test ./... -count=1` · `go test -tags=integration -p 1 ./internal/sync/... -count=1` ·
@@ -398,7 +398,7 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
     copie locale que l'ouvrier n'écrit plus depuis D8) -> corrigé (empreinte sha256 déclarée dans
     le compte rendu de job, comparée à l'artefact rangé côté serveur), exit 0 sur la cible et sur
     `./internal/api/...` complet.
-- [ ] E.2 Revue adversariale du diff d'intégration (`eb80a4f0a..HEAD`, contexte frais) ;
+- [x] E.2 Revue adversariale du diff d'intégration (`eb80a4f0a..HEAD`, contexte frais) ;
   corrections ; seconde lecture.
   - [x] **I-1 : option 1** — LE GLYPHE D'OBJECTIF D'UN PORTEUR EMBARQUÉ SE DESSINE SUR LE
     VÉHICULE (décision produit de l'utilisateur, 2026-09-05). Constat de la revue vérifié SUR
@@ -454,11 +454,11 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
     commentaire de `BOMB_COLS`. N-18 : `openapi_manual_fragment.yaml:2902` énumère désormais
     l'Assaut ; `openapi-gen` / `generate-types` / `openapi-check` rejoués, tous **0**. Preuve par
     gate au §6 (entrée « N-17/N-18 »). **RESTE À ARBITRER : rien — les deux constats sont clos.**
-- [ ] E.3 Journal, registre des reports (D5, D6, D7), thought_log ; suppression des trois worktrees
+- [x] E.3 Journal, registre des reports (D5, D6, D7), thought_log ; suppression des trois worktrees
   et branches d'intégration ; commit.
 
 ### Étape F — Merge, push, CI
-- [ ] F.1 `git fetch` ; D3(b) numéro de schéma amont ; si `origin/feat/v75` ≠ `7fb4b60a1` :
+- [x] F.1 `git fetch` ; D3(b) numéro de schéma amont ; si `origin/feat/v75` ≠ `7fb4b60a1` :
   mini-réconciliation (protocole A) + harnais + gates ; commit.
 - [ ] F.2 Worktree partagé propre → `git merge --no-ff wt/cuisson-perf` dans `feat/v75` ; sinon
   attendre/signaler.
@@ -1775,3 +1775,17 @@ périmètre : la découverte va au §4, pas dans le diff. Jamais d'allowlist él
 justification datée, jamais de plafond de ratchet relevé. REPRISE DE SESSION : lire §5 (dernier
 diff de comptes consigné) puis §6 (journal) ; la première case non cochée de la première étape non
 close est le point de reprise ; les worktrees D10 se listent par `git worktree list | grep integ`.
+- 2026-09-05 21 h 45 — **E CLOSE.** E.1 filet complet final sur `cf0223550` (`tmp/E1_final.log`, 15 gates, un
+  code de sortie par ligne) : gofmt vide, vet 0, build 0, `go test ./...` 0, intégration `-p 1`
+  sync/persist/duckdb 0, **`integration && cgo` api/wire 0** (N-15 : entré au filet), lint de branche 0
+  issue, **harnais 13/13** (49 étapes), openapi-check 0, typecheck 0, eslint 0, lint:fields 0, vitest
+  6 224 tests 0, build 0, knip 0/0/0, **baseline 0**. Puis fusion col5 `7a60dc31c` : openapi-check /
+  golden / contrat / types frais 0, web complet 0 (6 227 tests), knip 0. E.2 : revue de branche (0
+  bloquant, 6 importants corrigés) + seconde lecture (6/6 vérifiés, N-15 + 5 docs inversées
+  corrigées `19c112483`) + I-1 option 1 utilisateur (`01450a8a5`) + N-17/N-18 (`7a60dc31c`). E.3 :
+  registre des reports (D6 structure, N-4 main, N-5 outils, N-6 harnais par nom, gaps de doc),
+  thought_log, sept ateliers créés et supprimés (jonctions retirées d'abord, cache principal
+  1 380 films à chaque fois). F.1 : `origin/feat/v75` = `7fb4b60a1` inchangé (gel respecté), schéma
+  amont 38, 0 balayage neuf, worktree partagé propre (3 notes non suivies sans collision),
+  `git merge-tree` à 0 conflit. Notion : séquence de release mise à jour (re-cuisson 39, usage,
+  Assaut, merge main avant tag) — l'utilisateur a coché l'audit anti-bombe-RAM.
