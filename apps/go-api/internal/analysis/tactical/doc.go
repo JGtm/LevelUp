@@ -32,6 +32,12 @@
 // ANCRAGE DES CELLULES. L'adresse d'une cellule est ancree sur l'ORIGINE DU MONDE, jamais
 // sur les bornes de la lecture courante. C'est ce qui rend deux rasters de matchs
 // differents sommables sans re-projection (le stockage d'un raster par match a la cuisson
-// en depend). Les bornes d'une lecture agregee sont l'UNION des bornes des rasters sommes,
-// et servent au cadrage, pas a l'adressage.
+// en depend). Les bornes, elles, servent au cadrage et jamais a l'adressage.
+//
+// LES BORNES SE LISENT SUR L'AGREGAT, jamais raster par raster. `Bornes()` cadre les cellules
+// LISIBLES — celles qui passent le plancher de trois matchs distincts — si bien que les bornes
+// d'un raster PAR MATCH sont VIDES par construction : aucune de ses cellules ne compte plus
+// d'un match distinct. Unionner les bornes des rasters sommes rendrait donc un cadre non
+// valide ; le cadre se prend APRES la somme, sur le raster agrege. (`UnionBornes` reste le
+// moyen d'accumuler ce cadre cellule par cellule, a l'interieur de `Bornes`.)
 package tactical

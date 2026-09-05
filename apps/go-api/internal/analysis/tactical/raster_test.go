@@ -223,3 +223,36 @@ func TestRaster_BornesSurLesCellulesLisibles(t *testing.T) {
 		t.Fatalf("Bornes d'un raster vide : Valide = true, attendu false")
 	}
 }
+
+// TestRaster_BornesSeLisentSurLAgregat : epingle la regle de doc.go. Un raster PAR MATCH n'a
+// aucune cellule a trois matchs distincts — ses bornes sont VIDES par construction. Unionner
+// les bornes des rasters sommes rendrait donc un cadre non valide : le cadre se prend APRES la
+// somme, sur l'agregat.
+func TestRaster_BornesSeLisentSurLAgregat(t *testing.T) {
+	g := GrilleParDefaut()
+	univers := []string{"m1", "m2", "m3"}
+
+	cadreUnionne := domain.BornesMonde{}
+	var parMatch []*Raster
+	for _, m := range univers {
+		r := rasteriseOk(t, g, univers, []domain.PositionSample{pt(m, 0.2, 0.2)})
+		if r.Bornes().Valide {
+			t.Fatalf("bornes du raster du seul match %s : Valide = true, attendu false "+
+				"(une cellule d'un seul match ne passe pas le plancher)", m)
+		}
+		cadreUnionne = UnionBornes(cadreUnionne, r.Bornes())
+		parMatch = append(parMatch, r)
+	}
+	if cadreUnionne.Valide {
+		t.Fatalf("l'union des bornes des rasters par match = %+v, attendu un cadre non valide", cadreUnionne)
+	}
+
+	somme, err := Somme(parMatch...)
+	if err != nil {
+		t.Fatalf("Somme : %v", err)
+	}
+	attendu := domain.BornesMonde{MinX: 0, MinY: 0, MaxX: 0.5, MaxY: 0.5, Valide: true}
+	if got := somme.Bornes(); got != attendu {
+		t.Fatalf("bornes de l'agregat = %+v, attendu %+v", got, attendu)
+	}
+}
