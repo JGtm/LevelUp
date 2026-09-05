@@ -82,7 +82,7 @@ func v6Depth(pay []byte, S int, w *World, cfg FrameConfig) int {
 // v6AncrageStats : ce que la passe d'etalonnage releve.
 type v6AncrageStats struct {
 	// paquets a LISTE VIDE (verite terrain S = 2)
-	emptyTotal, emptyCleanTrue, emptyCleanAny int
+	emptyTotal, emptyCleanTrue int
 	// paquets a tete board/exit (verite terrain S = fin + 1)
 	vehTotal, vehCleanTrue int
 	// rang du vrai S dans le balayage (0 = unique gagnant)
