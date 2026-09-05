@@ -50,8 +50,21 @@ go test ./internal/sync/killcollector/... ./internal/archlint/... -p 1 -parallel
   -> ok  levelup/go-api/internal/archlint            19.422s
 
 go build ./...                     -> exit 0
-golangci-lint run ./internal/analysis/filmdec/...   -> 0 issues.
+golangci-lint run ./internal/analysis/filmdec/...   -> 6 issues (goconst 4, unparam 2)
 ```
+
+CORRECTION DU 2026-09-06 — la premiere mesure de lint de ce fichier disait « 0 issues. » ET
+ELLE ETAIT FAUSSE. `golangci-lint` tient un cache de RESULTATS **global a la machine**
+(`%LocalAppData%\golangci-lint`, independant de `GOCACHE`), indexe par fichier ; il servait
+donc des verdicts calcules dans un AUTRE jeu de fichiers du meme paquet. Rejoue avec
+`GOLANGCI_LINT_CACHE` propre au lot, l'etat de base rend **6 issues** :
+4 `goconst` (`traverse.go` : `biped-spartan-ability`, `biped-spartan-ability-component`,
+`biped-desired-ability-set`, `biped-spartan-ability-energy`) et 2 `unparam`
+(`components_biped_ability.go:314` `consume140c1e9d4 - w always receives 12`,
+`components_movement.go:66` `consumeDynPrecVec3 - mag always receives 19`).
+C'est de la dette ANTERIEURE, gelee par le ratchet CI (`--new-from-merge-base=origin/main`).
+LECON, valable pour tous les lots : une mesure de lint de reference exige un
+`GOLANGCI_LINT_CACHE` propre au lot, sans quoi elle ment.
 
 ### 1.2 Les goldens nommes, un par un (verdict PASS de chacun)
 
