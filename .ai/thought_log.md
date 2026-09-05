@@ -1,3 +1,70 @@
+## [2026-09-05] Integration — ETAPE E.2 : les corrections de la revue adversariale de branche — Complete
+
+**Le geste.** Les six constats de la revue adversariale du diff d'integration (I-1 a I-6) plus le
+lot des mineurs, traites dans un worktree dedie (`wt/integ-assaut`, base `f0c38e08a`), quatre
+commits, un par groupe. Ce qui reste ouvert a E.2 : la seconde lecture.
+
+**Decision technique principale : le gate d'armement APPELLE la production au lieu de la recopier
+(I-2).** Le defaut n'etait pas dans le code teste, il etait dans ce qui n'etait teste par
+personne. Les trois temoins de lecture des stats d'Assaut ne sont pas des entrees : ils sont
+DERIVES au site de cablage (`attachBombStats`) — `DetonationsRead` de `opt.Score != nil`,
+`CarryRead` de `len(own.SlotXUID) > 0`, `ArmingsRead` de `bombArmingsRead(doc)`. Les inverser
+COMPILE, et fait sortir des ZEROS la ou la colonne devait rester absente : « ce joueur n'a rien
+arme » au lieu de « on n'a pas regarde ». Aucun test du noyau ne le voyait (ils fournissent les
+temoins eux-memes) et le seul gate qui traversait le cablage etait sous garde d'environnement,
+donc absent de la CI — et il RECOPIAIT la formule de recalage et DIVERGEAIT sur `ArmingsRead`
+(`!Suppressed` la ou la production exige aussi `Scanned`). Deux corrections, une seule
+doctrine : un test de paquet neuf qui passe par `BuildFromPositions` (5 combinaisons : trois
+etats de `Coverage.BombArmings` x pont slot->xuid present ou non), et le gate qui assemble le
+document minimal puis appelle `attachBombStats`. La 6e combinaison est INATTEIGNABLE en
+production et le test ecrit pourquoi plutot que de la taire : la confrontation locale lit
+`doc.Objectives`, que `dropUnpublishedActions` vide sans piste nommee — or c'est le MEME pont qui
+nomme les pistes et arme `CarryRead`.
+
+**Resultats observes.**
+- **I-2, discriminance prouvee par CINQ mutations**, production restauree a l'identique apres
+  chacune : `bombArmingsRead` force a `true` (2 cas rouges, `arms = 0` publie), a `false`
+  (3 rouges, `arms` absent), `CarryRead` inverse (5 rouges, des deux cotes de la regle), recalage
+  mis a `0` puis de SIGNE INVERSE (le test du recalage rouge : `arms = 0` au lieu de 1). L'en-tete
+  du gate affirmait que One Bomb ne publie aucun armement : faux depuis E2-ter — `9f57c612` en
+  publie 5, 4/4 explosions couvertes, meche 16 183 ms CV 0,010.
+- **I-3** : `cmd_backfill_bomb_stats.go` passe de 0 a 4 tests, sans base (en `--dry-run` la passe
+  ne touche jamais la connexion : le test lui passe `nil`). Mutations rouges : cle de reprise
+  inversee, garde du batch vide retiree.
+- **I-4** : quatre docs inversees. La plus vicieuse etait mecanique — deux fonctions inserees
+  ENTRE la doc d'une troisieme et sa signature, godoc attribuant la mauvaise doc a la mauvaise
+  fonction. Une autre decrivait un contrat CONTRAIRE a l'implementation (`isEmbarkedAt` « toujours
+  actif ») : c'est le contrat qui a ete corrige, le comportement etant le bon.
+- **I-5** : quatre fichiers franchissaient les 500 lignes A CAUSE de cette integration (mesure
+  `git show eb80a4f0a:<f> | wc -l` : 453->559, 430->511, 500->513, et un net-neuf a 538). Ils
+  redescendent a 385 / 216 / 433 / 420 par DEPLACEMENT PUR, verifie a trois niveaux : diff filtre
+  (les trois fichiers Go sources ne gagnent QUE des commentaires), comparaison a l'octet de chaque
+  bloc deplace contre son original, et **harnais `cmd/replay-equiv` sans `-update` : 13
+  identiques, 0 different, code 0** — le meme bilan qu'une mesure de reference prise sur le meme
+  arbre AVANT toute modification. Piege rencontre : la cle d'allowlist d'archlint
+  `offline_biped.go/bipedI0Layout` devenait MORTE, et le garde-rail le dit dans les deux sens (il
+  refuse l'entree morte autant que l'appel non declare) — la cle porte le nouveau fichier, datee.
+- **I-6** : les deux `COMMANDS.md` (regle 15, meme commit) portent l'ORDRE DE RELEASE et sa
+  consequence : lancer `backfill-bomb-stats` avant `backfill-replay` est un no-op SILENCIEUX.
+- **Mineurs** : le discriminant d'Assaut divergeait entre le Go (3 champs) et le web (2). Un film
+  dont seul le canal des armes tenues a ete lu ne publie ni explosion ni armement, seulement
+  `bomb_grabs` : le web faisait disparaitre une section que le Go declarait presente. Meme liste
+  des deux cotes, plus un test qui rougit sur l'ancienne. Et 27 sites web annoncaient « schema
+  29 / 30 / 31 » alors qu'AUCUN de ces artefacts n'a existe — le calque est parti d'un seul tenant
+  et le document est passe de 38 a 39.
+- **Gates, un code par ligne** : `gofmt -l .` VIDE · `go build ./...` 0 · `go vet ./...` 0 ·
+  `go test` sur les 12 paquets vises 0 · `golangci-lint run --new-from-merge-base=origin/main`
+  (cache nettoye) **0 issue**, code 0 · web : typecheck 0, lint 0 (28 warnings = baseline
+  exacte), `lint:fields` 0, vitest 0 (586 fichiers, 6 198 tests), build 0, knip 0/0/0 · harnais
+  13/13.
+
+**Conclusion / prochaine etape.** E.2 « corrections » est close ; reste la SECONDE LECTURE, sur
+le diff corrections comprises. Une decouverte est consignee et NON traitee (§4, N-15) :
+`replay/options.go:194-196` porte une CINQUIEME doc inversee (« le canal n'est prouve que sur
+Neutral Bomb et Husky Raid, jamais One Bomb »), fausse depuis E2-ter. Le fichier appartient au lot
+G.6 en cours dans un autre worktree — ne pas le toucher en parallele ; a corriger par son auteur,
+ou a la seconde lecture une fois G.6 fusionne.
+
 ## [2026-09-05] Integration — ETAPE G.5 : backfill-bomb-stats et la cloture du chantier d'Assaut — Complete
 
 **Le geste.** Etape G.5 du plan d'integration, E6 du plan d'Assaut. Le chantier passe de « ecrit
