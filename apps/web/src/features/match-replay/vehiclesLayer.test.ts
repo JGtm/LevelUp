@@ -192,7 +192,7 @@ describe('vehiclePositionAt / vehicleVisibleAt', () => {
     expect(vehicleVisibleAt(t, 101)).toBe(false)
   })
 
-  it('`tEnd` FAIT AUTORITÉ SUR `t1max` quand la destruction est établie (schéma 30)', () => {
+  it('`tEnd` FAIT AUTORITÉ SUR `t1max` quand la destruction est établie (schéma 39)', () => {
     const t = track({ t0: 10, t1: 90, t1max: 100, end: 'destroyed', tEnd: 60 })
     expect(vehicleVisibleAt(t, 60)).toBe(true)
     expect(vehicleVisibleAt(t, 61)).toBe(false)
@@ -206,7 +206,7 @@ describe('vehiclePositionAt / vehicleVisibleAt', () => {
   })
 })
 
-describe('vehicleDestructionFrame — schéma 30, EN AVANCE DE PHASE', () => {
+describe('vehicleDestructionFrame — schéma 39, EN AVANCE DE PHASE', () => {
   it('rend `null` tant que `end` vaut `"unknown"` (état actuel de CHAQUE artefact)', () => {
     expect(vehicleDestructionFrame(track({ end: 'unknown', tEnd: 42 }))).toBeNull()
   })

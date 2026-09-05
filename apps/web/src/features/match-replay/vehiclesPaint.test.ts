@@ -209,7 +209,7 @@ describe('drawVehiclesLayer — le NOM de l’occupant (retour utilisateur : « 
   })
 })
 
-describe('drawVehiclesLayer — LE CÔNE DE VISÉE DE CHAQUE OCCUPANT (schéma 31)', () => {
+describe('drawVehiclesLayer — LE CÔNE DE VISÉE DE CHAQUE OCCUPANT (schéma 39)', () => {
   const coneCount = (ops: CanvasOp[]) => count(ops, 'createRadialGradient')
 
   it('un véhicule avec CONDUCTEUR actif porte un cône', () => {
@@ -234,8 +234,8 @@ describe('drawVehiclesLayer — LE CÔNE DE VISÉE DE CHAQUE OCCUPANT (schéma 3
     expect(coneCount(paint([track({ rides: [] })]))).toBe(0)
   })
 
-  it('UN CÔNE PAR OCCUPANT (schéma 31) : l’artilleur et le passager en ont un, eux aussi', () => {
-    // C'EST LE POINT DU LOT V11. Avant le schéma 31, seul le siège 0 obtenait un cône : la visée
+  it('UN CÔNE PAR OCCUPANT (schéma 39) : l’artilleur et le passager en ont un, eux aussi', () => {
+    // C'EST LE POINT DU LOT V11. Avant le schéma 39, seul le siège 0 obtenait un cône : la visée
     // d'un artilleur était réputée absente du film. Elle y est — sur SON slot bipède, en continu.
     const trois = track({
       rides: [
@@ -266,7 +266,7 @@ describe('drawVehiclesLayer — LE CÔNE DE VISÉE DE CHAQUE OCCUPANT (schéma 3
 
   it('REPLI sur le cap du châssis quand l’épisode n’a pas de visée à cet instant', () => {
     // Châssis plein est (cap 0°) : le cône du conducteur vaut l'angle canevas 0, exactement comme
-    // au schéma 30 — un artefact antérieur rend donc le même dessin qu'avant.
+    // avant la série de visée — un artefact antérieur rend donc le même dessin qu'avant.
     const sansVisee = track({
       samples: [sample({ t: 0, x: 50, y: 50, h: 0 })],
       rides: [ride({ slot: 7, seat: 0, aim: [] })],
@@ -317,7 +317,7 @@ describe('drawVehiclesLayer — LE CÔNE DE VISÉE DE CHAQUE OCCUPANT (schéma 3
   })
 })
 
-describe('drawVehiclesLayer — LA DESTRUCTION (schéma 30, demande utilisateur : « il faut aussi la destruction et un effet UI »)', () => {
+describe('drawVehiclesLayer — LA DESTRUCTION (schéma 39, demande utilisateur : « il faut aussi la destruction et un effet UI »)', () => {
   /** Aucun cône, aucun nom : seule l'explosion peut produire un dégradé radial ou un arc ici. */
   const DESTROYED = track({ end: 'destroyed', tEnd: 50, rides: [] })
 

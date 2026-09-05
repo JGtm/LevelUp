@@ -1,5 +1,5 @@
 /**
- * vehiclesAim.ts — LA VISÉE D'UN OCCUPANT DE VÉHICULE (schéma 31) : quelle direction, à quelle
+ * vehiclesAim.ts — LA VISÉE D'UN OCCUPANT DE VÉHICULE (schéma 39) : quelle direction, à quelle
  * image, et quand retomber sur le cap du châssis.
  *
  * POURQUOI CE FICHIER EXISTE (2026-09-03). `vehiclesLayer.ts` a franchi le seuil de taille du
@@ -92,7 +92,7 @@ export function vehicleRideAimReading(
  * repli.
  *
  * LE REPLI RESTE LE CAP DU CHÂSSIS quand l'épisode n'a pas de visée en vigueur à cette image —
- * c'est EXACTEMENT le comportement du schéma 30, si bien qu'un artefact antérieur (aucun `aim`
+ * c'est EXACTEMENT le comportement d'avant la série de visée, si bien qu'un artefact antérieur (aucun `aim`
  * nulle part) rend le même cône qu'avant, sans branche particulière ni test de version.
  */
 export function vehicleOccupantAimAt(

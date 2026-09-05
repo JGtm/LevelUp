@@ -222,10 +222,20 @@ func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
 // et ces quatre enveloppes `dir` survivent parce que des tests les appellent
 // (`filmdec/offline_biped_test.go`, `filmdec/vehicle_creation_test.go`,
 // `filmdec/vehicules_v11_scan_test.go`, `filmdec/event_list*_test.go`,
-// `replay/vehicules_v*_test.go`). TROIS AUTRES enveloppes du chantier sont arrivees SANS AUCUN
-// APPELANT et ont ete SUPPRIMEES au lieu d'etre inscrites ici (`ScanFilmVehicleCreationsForBand`,
-// `ScanFilmKeyframeRecordSpans`, `ScanFilmVehicleOccupancy`) — regle D2 : une enveloppe sans
-// appelant se supprime. Aucune methode ne porte ces quatre noms (verifie par
+// `replay/vehicules_v*_test.go`). TROIS AUTRES enveloppes du chantier ont ete SUPPRIMEES au lieu
+// d'etre inscrites ici, et PAS POUR LA MEME RAISON — la distinction compte, parce qu'elle dit ou
+// est passee la fonctionnalite :
+//
+//	ScanFilmVehicleCreationsForBand  son APPELANT DE PRODUCTION A ETE MIGRE vers la forme film
+//	                                 (`replay/build_vehicles.go` appelle desormais
+//	                                 `filmdec.ScanVehicleCreationsForBand(fc, wr, band)`).
+//	                                 L'enveloppe `dir` n'avait plus d'appelant DU TOUT : elle
+//	                                 se supprime, elle ne s'interdit pas ;
+//	ScanFilmKeyframeRecordSpans      arrivee SANS AUCUN APPELANT ;
+//	ScanFilmVehicleOccupancy         idem — et c'etait l'unique consommateur de la precedente.
+//
+// Regle D2 dans les trois cas : une enveloppe sans appelant se supprime. Aucune methode ne porte
+// ces quatre noms (verifie par
 // `grep -rE '^func \([^)]+\) ScanFilm...\('` : aucune correspondance).
 //
 // TROIS NOMS AJOUTES A LA RECONCILIATION DU 2026-09-05 (merge de `feat/v75`, 65 commits) :

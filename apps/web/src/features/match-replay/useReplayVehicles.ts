@@ -69,7 +69,7 @@ export interface VehiclesInput {
   labelStroke: string
   /**
    * Teintes de nature des effets (fxInk.ts, MÊME source que les tirs/grenades) : l'explosion de
-   * destruction d'un véhicule (schéma 30, en avance de phase — cf. `VehicleStyle.explosionInk`)
+   * destruction d'un véhicule (schéma 39, en avance de phase — cf. `VehicleStyle.explosionInk`)
    * en tire sa couleur PLASMA vs NORMALE.
    */
   explosionInk: FxInk

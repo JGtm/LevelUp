@@ -1,6 +1,12 @@
 /**
- * vehiclesLayer.ts — LES VÉHICULES sur la carte du rejeu (schéma 29) : la géométrie et les
+ * vehiclesLayer.ts — LES VÉHICULES sur la carte du rejeu (schéma 39) : la géométrie et les
  * règles, sans une ligne de canvas.
+ *
+ * SUR LE NUMÉRO DE SCHÉMA. Le chantier véhicules s'est écrit en annonçant « schéma 29 », puis
+ * 30, puis 31, au fil de ses lots. AUCUN de ces artefacts n'a existé : le calque a été livré
+ * d'un seul tenant et le document est passé de 38 à 39. Ces numéros ont été corrigés partout
+ * le 2026-09-05 (revue adversariale de branche) — un lecteur qui chercherait un artefact de
+ * schéma 30 pour comprendre une dégradation ne trouverait rien, et conclurait à un bug.
  *
  * CE QUE CE CALQUE AFFIRME. Une entrée de `doc.vehicles` est LA VIE D'UN VÉHICULE : où il naît,
  * sa trajectoire échantillonnée avec son cap, ses épisodes d'occupation (qui est à bord et
@@ -8,7 +14,7 @@
  * AUJOURD'HUI toujours `unknown` côté document, et dans ce cas le sprite s'efface NETTEMENT à
  * `t1max`, sans aucun effet de destruction.
  *
- * DEPUIS LE 2026-09-03 (schéma 30, EN AVANCE DE PHASE — cf. `ReplayVehicleTrack` dans
+ * DEPUIS LE 2026-09-03 (schéma 39, EN AVANCE DE PHASE — cf. `ReplayVehicleTrack` dans
  * `lib/api/types.ts`), CE N'EST PLUS LE SEUL RÉGIME : quand `end` publie `"destroyed"` avec
  * `tEnd` (`vehicleDestructionFrame`), la fin devient une PREUVE au lieu d'une borne — le sprite
  * cesse à `tEnd` (qui prend alors l'autorité sur `t1max`, cf. `vehicleVisibleAt`) et
@@ -27,7 +33,7 @@
  * réponses image par image.
  *
  * UNE SEPTIÈME EST À CÔTÉ AUSSI (`vehiclesAim.ts`, extrait le 2026-09-03 pour la même raison de
- * taille) : LA VISÉE MESURÉE DE CHAQUE OCCUPANT (schéma 31, `vehicleOccupantAimAt`). Elle
+ * taille) : LA VISÉE MESURÉE DE CHAQUE OCCUPANT (schéma 39, `vehicleOccupantAimAt`). Elle
  * s'appuie sur `vehicleAimAngle`/`vehicleHeadingAt` de ce fichier — le cap du châssis n'est plus
  * la direction du cône, il n'en est que le REPLI.
  *
@@ -103,7 +109,7 @@ export function vehicleIsDecor(family: string | undefined): boolean {
   return family !== undefined && FAMILLES_NON_JOUABLES.has(family)
 }
 
-// --- DESTRUCTION (schéma 30 — EN AVANCE DE PHASE, cf. ReplayVehicleTrack dans types.ts) --------
+// --- DESTRUCTION (schéma 39 — EN AVANCE DE PHASE, cf. ReplayVehicleTrack dans types.ts) --------
 
 /**
  * VEHICLE_END_DESTROYED — LA SEULE valeur de `track.end` que ce calque traite comme une preuve
@@ -270,7 +276,7 @@ export function vehicleAimAngle(headingDeg: number): number {
  * aucun estompage entre `t1`/`t1max` (à la différence des armes au sol) : le véhicule est plein
  * jusqu'à `t1max` inclus, rien après.
  *
- * `tEnd` FAIT AUTORITÉ SUR `t1max` QUAND LA DESTRUCTION EST ÉTABLIE (schéma 30, cf.
+ * `tEnd` FAIT AUTORITÉ SUR `t1max` QUAND LA DESTRUCTION EST ÉTABLIE (schéma 39, cf.
  * `vehicleDestructionFrame`) : la demande utilisateur du lot (« il faut aussi la destruction et
  * un effet UI ») veut que le SPRITE cesse au moment exact de la destruction, pas à la dernière
  * preuve de présence du recensement — l'explosion (`vehiclesPaint.ts`) prend ensuite le relais à

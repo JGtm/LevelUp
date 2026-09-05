@@ -1,5 +1,5 @@
 /**
- * vehiclesAim.test.ts — LA VISÉE D'UN OCCUPANT DE VÉHICULE (schéma 31), sans canvas.
+ * vehiclesAim.test.ts — LA VISÉE D'UN OCCUPANT DE VÉHICULE (schéma 39), sans canvas.
  *
  * CE QUE CES TESTS PROTÈGENT. Une régression ici ne se verrait PAS à l'écran : le cône
  * retomberait sur le cap du châssis, c'est-à-dire sur une direction PLAUSIBLE mais fausse de 15,7
@@ -81,7 +81,7 @@ describe('vehicleOccupantAimAt — la mesure d’abord, le châssis en repli', (
     expect(artilleur.ang).not.toBeCloseTo(passager.ang, 3)
   })
 
-  it('SANS visée, le repli est le CAP DU CHÂSSIS, à plat — le comportement du schéma 30', () => {
+  it('SANS visée, le repli est le CAP DU CHÂSSIS, à plat — le comportement d’avant la série de visée', () => {
     const got = vehicleOccupantAimAt(track(), ride([]), 50)
     expect(got.measured).toBe(false)
     expect(got.ang).toBeCloseTo(vehicleAimAngle(0), 10) // châssis plein est
