@@ -138,6 +138,11 @@ Nouveau fichier `apps/go-api/internal/analysis/replay/bomb_stats.go` (<= 500 L, 
       troisieme copie du seuil 150. Ecartes : suicide (tueur = victime) et tueur non nomme.
       RESERVE ECRITE dans l'en-tete : `KillRef` ne porte pas l'equipe, donc un tir ami
       compterait ; la corriger demanderait une entree que ce noyau n'a pas.
+      **SON ENTREE EST BRANCHEE LE 2026-09-05 (lot G.6)** : le noyau savait calculer, il lui
+      manquait des couples. `replaybuild.killRefs` resout desormais la VICTIME en plus du tueur,
+      dans la MEME passe et par la MEME table, et les couples voyagent par
+      `replay.Options.MatchKills` — SANS recalage, `killsource.Kill.TimeMS` etant deja l'horloge
+      du fil des morts. Premiere mesure reelle : `9f57c612`, 3 porteurs tues sur 58 couples.
 - [x] Aucune stat inventee : tout champ sans source mesuree est absent, pas a zero.
       **FAIT** : les quatre champs de `BombPlayerStats` sont des POINTEURS, pilotes par trois
       temoins de lecture (`DetonationsRead` / `CarryRead` / `KillsRead`, patron de
@@ -898,9 +903,15 @@ $ npm run build       # 0      $ node tools/knip-ratchet.mjs # 0 (files/exports/
       LIVRAISON devenue fausse (« la garde `isArmableBombVariant` exclut One Bomb — donc etape
       E2-ter d'abord »). Elle est amendee dans le commit qui la perime : la garde n'existe plus,
       One Bomb publie ses armements, et la condition de reprise du desamorcage — un corpus
-      portant un desamorcage AVERE — est la seule qui reste. Un second report est AJOUTE :
+      portant un desamorcage AVERE — est la seule qui reste. Un second report a ete AJOUTE :
       `bomb_carriers_killed`, absent partout faute d'une paire tueur/victime datee sur l'horloge
-      du match.
+      du match — **il est CLOS le 2026-09-05, lot G.6 du plan d'integration**. Son motif etait
+      FAUX sur l'horloge : `killsource.Kill.TimeMS` et `replay.Death.TimeMS` sont le MEME champ
+      du MEME enregistrement du chunk highlight, donc les couples etaient deja sur l'horloge du
+      match. Seule la VICTIME manquait a `replaybuild.killRefs`, et elle se resout par la meme
+      table gamertag -> xuid dans la meme passe. Mesure sur `9f57c612` (le seul film d'Assaut du
+      corpus) : `killsRead: true`, 58 couples, 0 ecarte, **3 porteurs tues** (2 + 1, quatre
+      joueurs a zero MESURE) — recoupes par `periodsByDeath = 3`.
 - [!] Verifier l'etat CI de la branche (`gh run list --branch wt/assaut-stats`) avant de
       declarer le lot clos.
       **SANS OBJET SOUS CETTE FORME** : le travail ne vit plus sur `wt/assaut-stats` mais sur
