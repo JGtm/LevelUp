@@ -7027,6 +7027,62 @@ components:
             $ref: '#/components/schemas/ApiError'
       description: Authentification requise
   schemas:
+    AbilityCharge:
+      additionalProperties: false
+      properties:
+        charges:
+          format: int64
+          type: integer
+        family:
+          type: string
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+        - slot
+        - family
+        - charges
+      type: object
+    AbilityChargeCoverage:
+      additionalProperties: false
+      properties:
+        beforeOrigin:
+          format: int64
+          type: integer
+        componentAbsent:
+          type: boolean
+        noIdentity:
+          format: int64
+          type: integer
+        noResolver:
+          format: int64
+          type: integer
+        otherFamily:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        reads:
+          format: int64
+          type: integer
+        unpublished:
+          format: int64
+          type: integer
+      required:
+        - reads
+        - published
+        - beforeOrigin
+        - unpublished
+        - noIdentity
+        - otherFamily
+        - noResolver
+      type: object
     AbilityImpulse:
       additionalProperties: false
       properties:
@@ -10798,6 +10854,8 @@ components:
     Coverage:
       additionalProperties: false
       properties:
+        abilityCharges:
+          $ref: '#/components/schemas/AbilityChargeCoverage'
         abilityImpulses:
           $ref: '#/components/schemas/AbilityImpulseCoverage'
         bombArmings:
@@ -20920,6 +20978,12 @@ components:
         abilities:
           items:
             $ref: '#/components/schemas/AbilityRead'
+          type:
+            - array
+            - "null"
+        abilityCharges:
+          items:
+            $ref: '#/components/schemas/AbilityCharge'
           type:
             - array
             - "null"

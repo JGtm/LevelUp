@@ -3956,6 +3956,32 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AbilityCharge: {
+            /** Format: int64 */
+            charges: number;
+            family: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+        };
+        AbilityChargeCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            componentAbsent?: boolean;
+            /** Format: int64 */
+            noIdentity: number;
+            /** Format: int64 */
+            noResolver: number;
+            /** Format: int64 */
+            otherFamily: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            reads: number;
+            /** Format: int64 */
+            unpublished: number;
+        };
         AbilityImpulse: {
             family: string;
             /** Format: int32 */
@@ -5425,6 +5451,7 @@ export interface components {
             y_value: number;
         };
         Coverage: {
+            abilityCharges?: components["schemas"]["AbilityChargeCoverage"];
             abilityImpulses?: components["schemas"]["AbilityImpulseCoverage"];
             bombArmings?: components["schemas"]["BombArmingsCoverage"];
             bombCarries?: components["schemas"]["BombCarriesCoverage"];
@@ -9729,6 +9756,7 @@ export interface components {
         };
         ReplayDocument: {
             abilities?: components["schemas"]["AbilityRead"][] | null;
+            abilityCharges?: components["schemas"]["AbilityCharge"][] | null;
             abilityImpulses?: components["schemas"]["AbilityImpulse"][] | null;
             abilityLabels?: {
                 [key: string]: components["schemas"]["Label"];

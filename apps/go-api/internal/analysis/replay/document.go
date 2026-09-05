@@ -530,6 +530,30 @@ package replay
 // deux deserialiseurs publiaient deja le tag ; ce qui manquait etait le croisement avec
 // l'identite.
 //
+// (5) `abilityCharges[]` — LES CHARGES RESTANTES (lot P5 du 2026-09-04, rapport R11). Le
+// composant i56 `biped-spartan-ability-energy` transmet AU CHANGEMENT un compteur de
+// charges entieres par emplacement arme (quartet HAUT de la valeur 7 bits — la lecture
+// discrete du consommateur de l'exe, R11 §1.1). Serie temoin 4, 3, 2, 1, 0 sur `1cd3848a`,
+// exactement aux cinq usages du releve Theater ; 36/36 accroches de grappin appariees a une
+// baisse (temoin decale : 2/36). L'identite vient d'i48 (meme vie, anterieurement — la MEME
+// jointure que les impulsions), la famille de la palette du titre, et seules les familles
+// declarees mesurees (`[ability_charges]` du manifeste : grapple, thruster) sont publiees —
+// le REPULSEUR n'arme jamais i56 (218 vies, 0 baisse, R11 §4-5). Ce sont les LECTURES,
+// jamais un compte d'usages derive (une baisse peut valoir plusieurs usages), et rien n'est
+// affirme avant la premiere lecture (le film ne transmet rien au ramassage — masque a 0 =
+// le moteur pose plein).
+//
+// POLITIQUE DE SCHEMA DU LOT P5, VERIFIEE SUR PIECES LE 2026-09-04 : contrairement aux lots
+// P1bis et P3 (« aucun artefact 38 cuit »), DES ARTEFACTS 38 EXISTENT desormais hors
+// repertoires de test — `1b2d9e08` et `1cd3848a`, cuits pour le gate visuel du chantier. Le
+// schema RESTE a 38 malgre cela, et la justification n'est pas la commodite : les deux
+// ajouts (`abilityCharges` racine, `coverage.abilityCharges`) sont PUREMENT ADDITIFS et
+// omitempty — un lecteur 38 existant qui les ignore reste correct sur toute ligne qu'il
+// sait lire, et les deux artefacts cuits sont des temoins de gate destines a etre re-cuits
+// avec le lot (la re-cuisson du parc, elle, n'a pas commence : la reprise par SchemaVersion
+// ne perd rien). Une montee a 39 aurait marque « a re-cuire » un parc entier qui est DEJA
+// tout entier anterieur ou egal a 38 — elle n'aurait protege aucun lecteur de plus.
+//
 // Champs optionnels, mais la version monte pour la raison exacte des montees v14/v22/v25 :
 // la reprise du backfill se fait par SchemaVersion, et un artefact 37 doit se lire « a
 // re-cuire », pas « a jour » — sans quoi aucun rejeu deja cuit ne porterait ni les
@@ -544,8 +568,8 @@ package replay
 // masques denses, limite commune a tout le depot.
 // Chronique :
 // document_translocations.go, document_equipment_changes.go, document_ability_impulses.go,
-// filmdec/equipment_recovery.go, filmdec/transloc_events.go, filmdec/ability_impulses.go,
-// filmdec/offline_filters.go.
+// document_ability_charges.go, filmdec/equipment_recovery.go, filmdec/transloc_events.go,
+// filmdec/ability_impulses.go, filmdec/ability_charges.go, filmdec/offline_filters.go.
 const SchemaVersion = 38
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
@@ -730,6 +754,19 @@ type ReplayDocument struct {
 	// le film n'en porte aucune, ou si sa palette n'a pas été classée (sans nom de rang, pas
 	// d'identité).
 	AbilityImpulses []AbilityImpulse `json:"abilityImpulses,omitempty"`
+	// AbilityCharges est la liste des CHARGES D'ÉQUIPEMENT RESTANTES (cf.
+	// document_ability_charges.go) : qui, à quelle frame, quel ÉQUIPEMENT, et ce qu'il en
+	// reste — le quartet haut d'i56, transmis AU CHANGEMENT et attribué par le rang i48 lu
+	// dans la MÊME VIE et ANTÉRIEUREMENT. Ce sont les LECTURES du film, jamais un compte
+	// d'usages dérivé (une baisse peut valoir plusieurs usages — R11 §2), et RIEN n'est
+	// affirmé avant la première lecture : le film ne transmet rien au ramassage.
+	//
+	// CE CALQUE NE COUVRE PAS TOUS LES ÉQUIPEMENTS, et c'est publié comme tel : seules les
+	// familles que le titre déclare MESURÉES sur ce canal y entrent (le grappin et le
+	// propulseur, et eux seuls — le RÉPULSEUR n'arme jamais i56, négatif MESURÉ du rapport
+	// R11). `coverage.abilityCharges` porte l'entonnoir complet. Absent si le film n'en
+	// porte aucune, ou si sa palette n'a pas été classée (sans nom de rang, pas d'identité).
+	AbilityCharges []AbilityCharge `json:"abilityCharges,omitempty"`
 	// GroundWeapons est la liste des ARMES AU SOL individuelles (cf.
 	// document_ground_weapon_items.go) : où chacune gît, de quand à quand l'afficher, qui l'a
 	// lâchée et qui l'a prise quand le flux delta le dit. Les fins sont OBSERVÉES (ramassage

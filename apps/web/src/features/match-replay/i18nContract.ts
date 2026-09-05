@@ -718,6 +718,17 @@ export interface ReplayText {
   abilityAge: string
   abilityAhead: string
   /**
+   * LES CHARGES DE LA CAPACITÉ PORTÉE (schéma 38 enrichi, lot P6) : le compte de la lecture
+   * la plus récente de la même vie et du même équipement — et « PLEIN » QUALITATIF avant la
+   * première lecture (décision utilisateur du 04/09) : le film ne transmet RIEN au ramassage,
+   * un chiffre serait inventé. Une famille que le canal ne mesure pas n'affiche rien du tout
+   * — ni compte, ni « plein » (cf. `abilityChargeLogic.ts`).
+   */
+  abilityChargesFull: string
+  abilityChargesFullHint: string
+  abilityChargesCount: (n: number) => string
+  abilityChargesAge: string
+  /**
    * État ACTIF d'un équipement, par FAMILLE mesurée (jamais un libellé libre) : le
    * camouflage rend la fiche vitreuse, le surbouclier l'encadre d'or (cahier des
    * charges Notion 21.1, rendu par `ReplayTeams.tsx`). La clé est l'identifiant

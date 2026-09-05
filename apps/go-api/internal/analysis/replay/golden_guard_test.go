@@ -70,6 +70,12 @@ var phrasesGolden = []string{
 	// Le refus « la chaine d'attribution n'a pas pu tourner » se lit A PART des deux autres :
 	// le confondre avec « un autre equipement » deguiserait une indisponibilite en mesure.
 	"attribution indisponible",
+	// Schema 38 enrichi (2026-09-04, lot P5) : le calque des charges doit DIRE que ce sont
+	// les LECTURES du film et non un compte d usages — une baisse peut valoir plusieurs
+	// usages (R11 §2), et un golden qui compterait des « usages » affirmerait une mesure que
+	// le canal ne porte pas.
+	"les lectures du film, jamais un compte d usages derive",
+	"CHARGES D EQUIPEMENT",
 }
 
 func lireGoldenAssembly(t *testing.T) string {
