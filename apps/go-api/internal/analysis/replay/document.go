@@ -571,15 +571,15 @@ package replay
 // document_ability_charges.go, filmdec/equipment_recovery.go, filmdec/transloc_events.go,
 // filmdec/ability_impulses.go, filmdec/ability_charges.go, filmdec/offline_filters.go.
 //
-// CE QUE LA VERSION 39 PORTE, ET CE QU'ELLE REFUSE — QUATRE APPORTS FONDUS EN UNE MONTÉE. Deux
+// CE QUE LA VERSION 39 PORTE, ET CE QU'ELLE REFUSE — CINQ APPORTS EN UNE SEULE MONTÉE. Deux
 // chantiers montaient le schéma en même temps sans qu'aucun de leurs numéros n'ait jamais cuit un
 // artefact : les VÉHICULES (branche `feat/v75-vehicules-sons`, lots V0 à V12, qui avait numéroté
 // ses trois apports 29, 30 et 31 sur une base antérieure) et l'ARMEMENT DE LA BOMBE EN ONE BOMB
 // (branche `wt/assaut-stats`, qui avait numéroté le sien 39 sur le 38). Les deux arrivent ici
 // POSÉS SUR LE 38 et fondus en UNE seule montée (décisions D3 et D13 du plan d'intégration,
 // 2026-09-05). La reprise du backfill se faisant par SchemaVersion, un artefact 38 doit se lire
-// « à re-cuire » : il ne porte AUCUN véhicule, aucun tir au volant, aucune visée d'occupant, et
-// aucun compte à rebours de bombe sur les matchs One Bomb.
+// « à re-cuire » : il ne porte AUCUN véhicule, aucun tir au volant, aucune visée d'occupant, aucune
+// statistique d'objectif d'Assaut, et aucun compte à rebours de bombe sur les matchs One Bomb.
 //
 // (1) LES VÉHICULES (`vehicles`) : la vie de chaque véhicule `ti=40` du match — naissance
 // (position exacte du record de création), identité de châssis (`MPPWord32`, stable inter-build)
@@ -657,6 +657,23 @@ package replay
 // (couverture des explosions, puis dispersion des délais corrigés) : deux films One Bomb du
 // corpus sont RETENUS par elle, et c'est voulu.
 // Chronique : filmdec/navpoint_radial_segments.go, replay/bomb_armings.go, replaybuild/zones.go.
+//
+// (5) LES CINQ STATISTIQUES D'OBJECTIF DE L'ASSAUT (`bombStats`) ET SES FAITS DATÉS
+// (`bombEvents`). Deux champs neufs, posés SUR LA MÊME MONTÉE 39 et non sur une 40 : le 39
+// n'a jamais cuit un artefact hors répertoires de test (contrairement au 38, cf. la politique
+// du lot P5 ci-dessus), et cette intégration est le commit qui le met au monde — deux montées
+// pour un numéro jamais servi marqueraient « à re-cuire » un parc qui l'est déjà.
+// CE QUE C'EST : `bomb_detonations`, `bomb_arms`, `bomb_grabs`,
+// `time_as_bomb_carrier_seconds` et `bomb_carriers_killed`, par joueur — les statistiques que
+// l'API 343 NE PUBLIE PAS pour ce mode (la famille `BombStats` du moteur est de la TÉLÉMÉTRIE
+// Bond, jamais répliquée dans le film : mesure Ghidra du 2026-09-04, cause UNIQUE du silence
+// des deux côtés). Elles sont reconstruites de sources déjà décodées, et chaque champ est un
+// POINTEUR : `null` dit « source non mesurée », `0` dit « mesuré à zéro ».
+// CE QUE LA VERSION REFUSE : `bomb_carriers_killed`, aujourd'hui `null` PARTOUT. Il demande
+// une mort appariée à son tueur ET à sa victime sur l'horloge du match ; cette forme n'existe
+// pas dans la chaîne de cuisson (le seul producteur de `KillRef` du dépôt lit
+// `match_kill_events`, une table de base). Le champ est donc absent, jamais à zéro.
+// Détail : internal/analysis/replay/bomb_stats.go et bomb_stats_document.go.
 const SchemaVersion = 39
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
@@ -1000,6 +1017,28 @@ type ReplayDocument struct {
 	// periodes et des pistes (dernier point du lacheur — la bombe au sol n'a pas de canal
 	// mesure). Absente hors de la famille bomb — `coverage.bombCarries` dit lequel des silences.
 	BombCarries []BombCarry `json:"bombCarries,omitempty"`
+	// BombStats est LES CINQ STATISTIQUES D'OBJECTIF DE L'ASSAUT, par joueur, reconstruites du
+	// film (forme, provenance et réserves : bomb_stats.go ; câblage : bomb_stats_document.go).
+	// L'API 343 n'en publie AUCUNE pour ce mode — le bundle `Stats` de `GetMatchStats` ne porte
+	// ni `bomb` ni la famille `BombStats` du moteur, qui est de la TÉLÉMÉTRIE Bond et n'est
+	// jamais répliquée dans le film (mesure Ghidra du 2026-09-04).
+	//
+	// POURQUOI ELLES SONT DANS L'ARTEFACT ET PAS RECALCULÉES PAR LEUR CONSOMMATEUR : elles
+	// naissent de quatre sources que SEULE la cuisson tient en pleine fidélité — la chronologie
+	// de portage en MILLISECONDES (le document, lui, la publie en frames sous `bombCarries`),
+	// le recalage film -> match, les armements datés et les actions d'objectif nommées. Les
+	// re-dériver du document en ferait un SECOND décodeur du même fait, moins précis.
+	//
+	// ABSENT hors de la famille bomb — `bombStats.coverage` dit, DANS le bloc, quelles sources
+	// ont été lues : un champ de joueur à `null` est une source non mesurée, jamais un zéro.
+	BombStats *BombMatchStats `json:"bombStats,omitempty"`
+	// BombEvents est LES FAITS DATÉS DE LA BOMBE — armements et explosions —, sur l'horloge du
+	// FILM, la même que `objectives[].timeMs`. Chacun porte son acteur quand la jointure l'a
+	// nommé, et la RÈGLE qui l'a nommé (`actorSource`) : `carry_drop` (la bombe a quitté les
+	// mains, un geste observé) ou `carry_active` (personne d'autre ne la tenait, une présence
+	// constatée) — deux forces de preuve, jamais confondues. Un fait SANS acteur est publié
+	// quand même : l'instant est vrai, le nom manque, et l'inventer serait la seule vraie faute.
+	BombEvents []BombEvent `json:"bombEvents,omitempty"`
 	// Coverage dit, pour chaque calque, COMBIEN il a rattaché SUR COMBIEN existaient, et
 	// pourquoi il a écarté le reste (cf. coverage.go).
 	//

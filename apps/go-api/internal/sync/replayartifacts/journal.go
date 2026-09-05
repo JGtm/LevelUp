@@ -86,6 +86,14 @@ const (
 	// SANS la capability film.usage_summary ne compte rien : silence propre, en DEBUG).
 	CompteurUsageEcrits = "postsync_replay_usage_ecrits_total"
 	CompteurUsageEchecs = "postsync_replay_usage_echecs_total"
+	// Statistiques d Assaut projetees des artefacts cuits dans le cycle, ecrites dans
+	// `match_bomb_stats` + les faits dates de `match_objective_events` (cf. bombstats.go).
+	// CompteurBombStatsEcrits : passes persistees ; CompteurBombStatsEchecs : artefact
+	// illisible, writer indisponible, capabilities illisibles ou INSERT refuse — un defaut,
+	// jamais un etat normal. UN MATCH HORS ASSAUT NE COMPTE NI DANS L UN NI DANS L AUTRE :
+	// son artefact ne porte simplement aucun calque de bombe, et c est le cas majoritaire.
+	CompteurBombStatsEcrits = "postsync_replay_bomb_stats_ecrits_total"
+	CompteurBombStatsEchecs = "postsync_replay_bomb_stats_echecs_total"
 )
 
 // SignalerClientSansChunks journalise et compte l'échec de l'assertion `ChunksFetcher` faite

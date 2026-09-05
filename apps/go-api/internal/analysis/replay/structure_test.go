@@ -678,7 +678,8 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   VÉHICULES ET TOURELLES, numérotées sur une base antérieure, et la montée 39 du chantier
 	//   ASSAUT (armement de la bombe en One Bomb, numérotée sur le 38), arrivent toutes POSÉES SUR
 	//   LE 38 et fondues en UNE seule (décisions D3 et D13 du plan d'intégration) — aucun artefact
-	//   n'a jamais été cuit à ces numéros-là. Ce qu'elles apportent, en quatre temps :
+	//   n'a jamais été cuit à ces numéros-là. Ce qu'elles apportent, en CINQ temps — le cinquième
+	//   naît DANS ce commit, sur le même numéro : le 39 n'a encore servi aucun artefact :
 	// v39 (1) — LES VÉHICULES (`vehicles`). La vie de chaque véhicule `ti=40` du match : naissance
 	//   (position du record de création, à des emplacements mesurés FIXES au rayon 0,00 m),
 	//   identité de châssis (`MPPWord32`) résolue en famille de sprite, trajectoire échantillonnée
@@ -771,6 +772,30 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   contredisent, retiennent le calque ENTIER.
 	//   Détail : filmdec/navpoint_radial_segments.go, replay/bomb_armings.go,
 	//   replaybuild/zones.go et .ai/V7.5/PLAN_ASSAUT_STATS_2026-09-04.md (E2-ter).
+	//
+	// v39 (5) — LES CINQ STATISTIQUES D'OBJECTIF DE L'ASSAUT (`bombStats`) et ses FAITS DATÉS
+	//   (`bombEvents`), 2026-09-05, étape G.2 de l'intégration. DEUX CHAMPS NEUFS SUR LE MÊME
+	//   NUMÉRO, et la raison est mesurée : le 39 n'a JAMAIS cuit un artefact hors répertoires
+	//   de test (le 38, lui, en avait deux — cf. la politique du lot P5 ci-dessus), et cette
+	//   intégration est le commit qui le met au monde. Une montée à 40 marquerait « à
+	//   re-cuire » un parc qui l'est déjà tout entier : elle ne protégerait aucun lecteur.
+	//   CE QUE C'EST. `bomb_detonations`, `bomb_arms`, `bomb_grabs`,
+	//   `time_as_bomb_carrier_seconds`, `bomb_carriers_killed`, par joueur — les statistiques
+	//   que l'API 343 NE PUBLIE PAS pour ce mode. La cause du silence est structurelle et
+	//   mesurée (Ghidra, 2026-09-04) : la famille `BombStats` du moteur est de la TÉLÉMÉTRIE
+	//   Bond, écrite par un sérialiseur d'événement, jamais un composant d'entité — le film ne
+	//   peut pas la répliquer, par construction. Elles sont donc RECONSTRUITES : le statborg
+	//   `comp 0` canal A pour les explosions, le canal des armes tenues pour le portage,
+	//   l'anneau `ti=12 i14` pour l'armement, et une JOINTURE (lâcher, puis porteur actif) pour
+	//   nommer l'armeur — que le Lua du moteur, lui, ne nomme jamais (`activatingTeam` seul).
+	//   POURQUOI DANS L'ARTEFACT : les quatre sources ne vivent en pleine fidélité qu'à la
+	//   cuisson — le document publie le portage en FRAMES, sans les périodes non pontées ni le
+	//   recalage d'horloge. Les recalculer chez le consommateur en ferait un second décodeur
+	//   du même fait, moins précis.
+	//   CE QUE LA VERSION REFUSE : `bomb_carriers_killed` est `null` PARTOUT aujourd'hui. Il
+	//   demande une mort appariée à son tueur ET à sa victime sur l'horloge du match ; cette
+	//   forme n'existe pas dans la chaîne de cuisson. Absent, jamais zéro.
+	//   Détail : internal/analysis/replay/bomb_stats.go et bomb_stats_document.go.
 	if SchemaVersion != 39 {
 		t.Fatalf("SchemaVersion = %d, attendu 39 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)

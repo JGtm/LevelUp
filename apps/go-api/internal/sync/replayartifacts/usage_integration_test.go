@@ -100,7 +100,7 @@ func TestPersisterResumesUsage_BurstUniqueEtVuesLatest(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_infinite", &acquis, &relaches)
 
-	rapports := []rapportUsage{
+	rapports := []artefactCuit{
 		{matchID: "m-usage-1", path: artefactUsage(t, dir, "m-usage-1")},
 		{matchID: "m-usage-2", path: artefactUsage(t, dir, "m-usage-2")},
 	}
@@ -167,7 +167,7 @@ func TestPersisterResumesUsage_TitreSansCapability(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_5", &acquis, &relaches)
 
-	persisterResumesUsage(context.Background(), d, []rapportUsage{
+	persisterResumesUsage(context.Background(), d, []artefactCuit{
 		{matchID: "m-h5", path: artefactUsage(t, dir, "m-h5")},
 	})
 	if acquis != 0 {
@@ -191,7 +191,7 @@ func TestPersisterResumesUsage_ArtefactIllisibleNArretePasLeLot(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_infinite", &acquis, &relaches)
 
-	persisterResumesUsage(context.Background(), d, []rapportUsage{
+	persisterResumesUsage(context.Background(), d, []artefactCuit{
 		{matchID: "m-absent", path: filepath.Join(dir, "inexistant.json")},
 		{matchID: "m-ok", path: artefactUsage(t, dir, "m-ok")},
 	})
