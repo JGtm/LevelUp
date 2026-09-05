@@ -246,19 +246,13 @@ func failleWalkKeyframes(dir string, n int) failleKF {
 	return kf
 }
 
-// bande rend la bande de slots d'un archétype — la règle de production (worldObjectSlotBand) :
-// combler la plage observée, puis retirer tout slot vu porter un AUTRE archétype.
+// bande rend la bande de slots d'un archétype — la règle COMBLÉE de production
+// (`worldObjectSlotBand` : combler la plage observée, puis retirer tout slot vu porter un AUTRE
+// archétype), appliquée au relevé de l'unique marche d'images-clés de l'instrument plutôt qu'en
+// relisant le film une fois par archétype. La convention d'exclusion n'est pas réécrite ici :
+// elle est dans `slotBandFromCensus`, qui délègue lui-même la règle à `slotBandExcluding`.
 func (k failleKF) bande(ti int) map[uint32]bool {
-	others := map[uint32]bool{}
-	for o, slots := range k.seenByTI {
-		if o == ti {
-			continue
-		}
-		for s := range slots {
-			others[s] = true
-		}
-	}
-	return slotBandExcluding(k.seenByTI[ti], others)
+	return slotBandFromCensus(k.seenByTI, ti)
 }
 
 // TestFailleActivationEntites balaye les trois canaux d'entités dans les fenêtres des ancres.

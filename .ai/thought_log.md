@@ -1,3 +1,39 @@
+## [2026-09-05] Garde-rail bande de slots — l instrument faille ne reecrit plus la convention d exclusion — Complete
+
+**Le rouge.** `archlint.TestNoRewrittenSlotBand` echouait sur
+`analysis/filmdec/faille_activation_research_test.go` (arrive avec le commit d28a3aa6a,
+chantier lecture-equipement R1-R3 translocateur). Le fichier marche les images-cles
+(`WalkKeyframeWorld`) ET tenait sa propre liste d exclusion (`others[...] = true`) dans
+`failleKF.bande` : la signature d une regle de bande reecrite.
+
+**Pourquoi il ne pouvait pas juste appeler `worldObjectSlotBand`.** Les deux regles
+canoniques relisent tout le film a chaque appel, pour UN archetype. L instrument a besoin
+des bandes de treize archetypes (7 en creation, 7 en delta) plus un recensement de tous les
+ti 0..49 : les appeler une par une, c est treize relectures completes du film la ou l
+instrument en fait UNE (choix delibere, meme lecon RAM que `deto_attribution_helpers_test.go`).
+
+**Decision : un point unique pour la convention d exclusion multi-archetypes**, plutot qu une
+quatrieme entree d allowlist. Nouveau `filmdec.slotBandFromCensus(seenByTI, ti)`
+(`slot_band_census_helpers_test.go`) : il part d un releve deja fait (`ti -> slots vus`),
+construit l exclusion « les slots des AUTRES archetypes » et delegue la regle a
+`slotBandExcluding`. Il ne marche pas les images-cles, donc il ne declenche pas le garde-rail
+et n a pas a etre allowliste. `failleKF.bande` devient une ligne. Semantique identique a l
+avant (verifie sur pieces : meme construction du `others`, meme delegation).
+
+**Le garde-rail dit maintenant la sortie.** Son en-tete et son message d echec nomment ce
+troisieme chemin (releve multi-archetypes -> `slotBandFromCensus`), pour que le prochain
+instrument n arbitre pas entre « reecrire » et « agrandir l allowlist ». `slotBandAllowed` est
+inchangee : aucune entree ajoutee, aucun seuil relache.
+
+**Resultats.** `go vet` + `go test ./internal/archlint/ ./internal/analysis/filmdec/` verts
+(code de sortie 0 ; rouge reproduit avant correctif sur la meme commande). Nouveau test unitaire
+`TestSlotBandFromCensus` : fixe le comblement (le trou entre deux slots vus entre dans la bande)
+et l exclusion (un slot partage sort, meme vu pour l archetype demande) — le chemin est desormais
+couvert sans film, alors que `TestFailleActivationEntites` se saute sans `FAILLE_FILM`.
+
+**Suite.** Branche `wt/slot-band-faille` (worktree `LevelUp-wt-slot-band`), 1 commit, ni push
+ni merge. A fusionner dans `feat/v75` pour eteindre le rouge de branche.
+
 ## [2026-09-03] Match view — donnees des deux temoins chargees ; 9 formes proposees pour les trois blocs en tableau — En cours
 
 **Prerequis utilisateur : les deux temoins doivent porter leurs donnees.** Matchs
