@@ -370,6 +370,19 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   `make openapi-check` · D12 complet · harnais 13/13 identiques SANS `-update` (49 lignes).
 - [ ] E.2 Revue adversariale du diff d'intégration (`eb80a4f0a..HEAD`, contexte frais) ;
   corrections ; seconde lecture.
+  - [x] **E.2 — CORRECTIONS (worktree `wt/integ-assaut`, 4 commits, 2026-09-05).** Les six
+    constats + les mineurs sont traités ; preuve par constat au §6 (entrée « E.2 corrections »).
+    Résumé opposable : I-2 test de paquet du câblage « absent n'est pas zéro » (5 combinaisons
+    par `BuildFromPositions`, discriminance prouvée par 5 mutations de la production, restaurée
+    à l'identique) + gate d'armement qui APPELLE `attachBombStats` au lieu de recopier le
+    recalage et de diverger sur `ArmingsRead` + son en-tête One Bomb réécrit ; I-3
+    `cmd_backfill_bomb_stats.go` passe de 0 à 4 tests (clé de reprise, garde du batch vide,
+    `--limit`, quatre états de lecture ; 2 mutations rouges) ; I-4 quatre docs inversées
+    remises à l'endroit ; I-5 les quatre fichiers > 500 L redescendent par DÉPLACEMENT PUR
+    (harnais 13/13 identiques, code 0) ; I-6 les deux `COMMANDS.md` portent l'ordre de release.
+    Mineurs : indentation de l'aide, discriminant d'Assaut unifié Go/web (+ son test), 27 sites
+    « schéma 29/30/31 » → 39, motif d'archlint corrigé, description OpenAPI + D11.
+  - [ ] E.2 — seconde lecture (contexte frais, sur `eb80a4f0a..HEAD` corrections comprises).
 - [ ] E.3 Journal, registre des reports (D5, D6, D7), thought_log ; suppression des trois worktrees
   et branches d'intégration ; commit.
 
@@ -457,6 +470,19 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   MESURE n'est perdu : les moitiés pures et testées restent (`KeyframeRecordSpans`,
   `VehicleKeyframeStates`, `FindKeyframeBlockInsertion`), et l'en-tête de chaque fichier dit ce
   qui a été retiré et pourquoi. À signaler à l'auteur du chantier.
+  **CORRECTION (E.2, 2026-09-05) : le motif est faux pour la PREMIÈRE des trois.**
+  `ScanFilmVehicleCreationsForBand` avait bien un appelant, et de PRODUCTION — il a été MIGRÉ
+  vers la forme film à l'étape B (`replay/build_vehicles.go:93` appelle
+  `filmdec.ScanVehicleCreationsForBand(fc, wr, band)`, vivant et testé). C'est l'enveloppe `dir`
+  qui s'est retrouvée sans appelant, donc supprimée. Les DEUX autres, elles, sont bien arrivées
+  sans aucun appelant. La distinction dit où est passée la fonctionnalité, et le commentaire
+  d'archlint la porte désormais.
+- **N-15 (étape E.2) — CINQUIÈME DOC INVERSÉE, NON TRAITÉE : `replay/options.go:194-196`.** Le
+  champ `Bomb` documente sa garde de mode par « le canal n'est prouvé que sur Neutral Bomb et
+  Husky Raid, jamais One Bomb » — FAUX depuis E2-ter (2026-09-04) : la lecture « mèche pausable »
+  est en production et `9f57c612` publie 5 armements. Le fichier appartient au lot G.6 en cours
+  dans un autre worktree (`bomb_carriers_killed`) : ne pas le toucher en parallèle. À corriger
+  par l'auteur de G.6, ou à la seconde lecture d'E.2 une fois G.6 fusionné.
 - N-13 `apps/web/.../ReplayCanvas.tsx` est **exactement à son plafond** (664 lignes pour 665) après
   le câblage véhicules. La prochaine addition devra être payée par une extraction, comme les dix-sept
   précédentes.
@@ -1133,6 +1159,99 @@ garde-fou qui a fait son travail) · `go test -tags=integration -p 1 ./internal/
   validation et le même vocabulaire, défini en UN seul endroit ; (c) `bombStats` est le seul bloc
   du document de rejeu qui ne soit pas un calque de rendu — la frontière web le comble comme les
   autres, mais aucun composant ne le lit : c'est la base qui sert la fiche de match.
+
+- **2026-09-05 — E.2 CORRECTIONS, worktree `wt/integ-assaut` (base `f0c38e08a`, 4 commits).**
+  Constat par constat, avec la preuve :
+
+  **I-2 — le câblage « absent n'est pas zéro » n'était prouvé par rien.** Les trois témoins de
+  lecture (`DetonationsRead` = `opt.Score != nil`, `CarryRead` = `len(own.SlotXUID) > 0`,
+  `ArmingsRead` = `bombArmingsRead(doc)`) ne sont pas des entrées : ils sont DÉRIVÉS au site de
+  câblage. Les inverser COMPILE et publie des zéros là où la colonne devait rester absente ; les
+  tests du noyau les fournissent eux-mêmes, et le gate sur films est sous garde d'environnement
+  (pas de CI). Neuf : `replay/bomb_stats_wiring_test.go`, qui passe par `BuildFromPositions` sur
+  des entrées synthétiques — 5 combinaisons (trois états de `Coverage.BombArmings` × pont
+  slot→xuid présent ou non) plus le RECALAGE appliqué par `attachBombStats`. La 6ᵉ combinaison
+  (supprimé × sans pont) est INATTEIGNABLE en production et le test écrit pourquoi : la
+  confrontation lit `doc.Objectives`, que `dropUnpublishedActions` vide sans piste nommée — or
+  c'est le même pont qui nomme les pistes et arme `CarryRead`. **Discriminance prouvée par 5
+  mutations**, production restaurée à l'identique (`git status` propre après chaque) :
+  `bombArmingsRead`→`true` (2 cas rouges, `arms = 0` publié), →`false` (3 rouges, `arms` absent),
+  `CarryRead` inversé (5 rouges des deux côtés), recalage → `0` puis de SIGNE INVERSÉ (le test du
+  recalage rouge : `arms = 0` au lieu de 1). `assaut_bomb_arms_gate_test.go` corrigé : il
+  RECOPIAIT la formule de recalage et dérivait `ArmingsRead` de `!Suppressed` — prédicat
+  DIVERGENT (la production exige aussi `Scanned`) ; il assemble désormais le document minimal et
+  APPELLE `attachBombStats`. Son en-tête affirmait que One Bomb ne publie aucun armement et que la
+  mèche pausable n'est pas en production : faux depuis E2-ter — `9f57c612` publie 5 armements
+  (65 137 / 279 103 / 335 193 / 388 080 / 445 839 ms, 4/4 explosions couvertes, mèche 16 183 ms
+  CV 0,010).
+
+  **I-3 — `cmd_backfill_bomb_stats.go` (279 L) n'avait aucun test.** Neuf :
+  `cmd_backfill_bomb_stats_test.go`, patron de `cmd_backfill_usage_summary_test.go`, sans base
+  (en `--dry-run` la passe ne touche jamais la connexion — le test lui passe `nil`) : clé de
+  reprise (sans `--force` un match déjà en base est SAUTÉ et compte comme « déjà en base » ; avec
+  `--force` il est re-projeté), garde du batch vide (calque présent mais sans ligne ni fait → rien
+  d'écrit, compté « sans calque »), `--limit`, et les quatre états de `lireUnArtefactBombe` sur un
+  chemin construit par le `PathResolver`. **Mutations rouges** : clé inversée (`o.force` au lieu
+  de `!o.force`), garde du batch vide retirée.
+
+  **I-4 — quatre docs inversées.** `match_view_repo.go` : `WithKillSourceClassifier` et
+  `WithBombStats` avaient été insérées ENTRE la doc de `WithViewer` / `WithPlaylistCategoryStrip`
+  et leur signature — godoc attribuait la mauvaise doc à la mauvaise fonction. `useReplayVehicles.ts`
+  : la JSDoc d'`isEmbarkedAt` disait « TOUJOURS ACTIF, indépendamment de `enabled` » là où
+  l'implémentation rend `() => false` calque éteint — le COMPORTEMENT est le bon, c'est le
+  contrat qui est corrigé. `MatchObjectivesSection.tsx` : l'Assaut rangé parmi les modes « rien
+  affiché », faux depuis G.4. La quatrième est l'en-tête du gate d'armement (I-2).
+
+  **I-5 — les quatre fichiers > 500 L redescendent, par DÉPLACEMENT PUR.** Mesure `git show
+  eb80a4f0a:<f> | wc -l` contre l'arbre : c'est bien CETTE intégration qui les fait franchir le
+  seuil (`offline_biped.go` 453→559, `replayNormalize.ts` 430→511, `match_view_repo.go` 500→513,
+  `vehicle_tracks.go` net-neuf à 538). Après :
+
+  | fichier | avant | après | sous-fichier créé |
+  |---|---|---|---|
+  | `filmdec/offline_biped.go` | 559 | **385** | `offline_biped_band.go` (204) — entrée par bande + plomberie de balayage ; la GRAMMAIRE reste |
+  | `replay/vehicle_tracks.go` | 538 | **420** | `vehicle_relays.go` (138) — la fusion des vies en relais |
+  | `duckdb/match_view_repo.go` | 513 | **433** | `match_view_repo_options.go` (104) — constructeur + options `With*` + `viewer`/`sharedRead` |
+  | `web/replayNormalize.ts` | 511 | **216** | `replayReadyTypes.ts` (338) — les types `*Ready` ; la frontière RE-PUBLIE, ses ~140 appelants ne changent pas |
+
+  Preuve du « rien ne bouge » à trois niveaux : (1) diff filtré des trois fichiers Go sources —
+  AUCUNE ligne de code ajoutée, uniquement des commentaires ; (2) chaque bloc déplacé comparé à
+  l'octet à son original (`git show HEAD:<f>` découpé aux mêmes lignes) — identique, aux deux
+  `export` que la scission TS exige près ; (3) **HARNAIS `cmd/replay-equiv` SANS `-update` :
+  13 identique(s), 0 différent(s), 0 écarté(s), 0 échec(s), code 0** — le MÊME bilan qu'une
+  mesure de référence prise sur le même arbre avant toute modification. `archlint`
+  (`no_recomputed_film_context_test.go`) : la clé d'allowlist `offline_biped.go/bipedI0Layout`
+  devenait MORTE (le test le dit dans les deux sens) ; elle porte le nouveau fichier, datée.
+
+  **I-6 — `docs/COMMANDS.md` ET `docs/FR/COMMANDS.md`** (règle 15, même commit) : sous-section
+  « projeter les artefacts de rejeu en base », précondition SERVEUR ARRÊTÉ (les deux passes
+  prennent `OpenReadWrite` et jouent les migrations, `--dry-run` compris), drapeaux lus dans le
+  code, et l'ORDRE : `backfill-replay` → `backfill-bomb-stats --dry-run` → `backfill-bomb-stats`.
+  L'inverse est un no-op SILENCIEUX (artefact < 39 = pas de `bombStats`, tout tombe dans « sans
+  calque »).
+
+  **MINEURS** : indentation de la ligne d'aide de `backfill-bomb-stats` ; **discriminant d'Assaut
+  unifié** — `HasBomb()` testait 3 champs, `detectObjectiveMode` 2, et un film dont seul le
+  portage a été lu ne publie que `bomb_grabs` : le web faisait disparaître une section que le Go
+  déclarait présente (même liste des deux côtés + un test qui rougit sur l'ancienne) ; **27 sites
+  web « schéma 29 / 30 / 31 » → 39** (aucun de ces artefacts n'a existé, le saut réel est 38→39 ;
+  deux phrases qui opposaient « le comportement du schéma 30 » à l'actuel deviennent « avant la
+  série de visée », le numéro n'y désignant pas un artefact) ; motif d'archlint corrigé (cf. N-12) ;
+  description de `MatchScoreboardObjective` + D11 rejoué (`openapi-gen` / `generate-types` /
+  `openapi-check` — aucun diff généré, la doc de type ne descend pas dans le schéma).
+
+  **GATES, un code par ligne** : `gofmt -l .` VIDE · `go build ./...` **0** · `go vet ./...` **0** ·
+  `go test ./internal/analysis/replay/ ./internal/analysis/filmdec/ ./internal/platform/duckdb/
+  ./internal/domain/ ./internal/api/... ./cmd/levelup/ ./internal/archlint/ ./contracttest/...
+  -count=1` **0** (12 paquets `ok`) · `golangci-lint cache clean && golangci-lint run
+  --new-from-merge-base=origin/main` **0 issue, code 0** · web : typecheck **0**, lint **0**
+  (28 warnings = baseline exacte), `lint:fields` **0**, vitest **0** (586 fichiers, 6 198 tests),
+  build **0**, `knip-ratchet` **0/0/0** · harnais **13/13 identiques, code 0**.
+
+  **DÉCOUVERTE NON TRAITÉE (§4, N-15)** : `replay/options.go:194-196` porte une CINQUIÈME doc
+  inversée — « le canal n'est prouvé que sur Neutral Bomb et Husky Raid, jamais One Bomb », faux
+  depuis E2-ter. Le fichier appartient au lot G.6 en cours dans un autre worktree
+  (`bomb_carriers_killed`) : pas touché, à corriger par son auteur ou à la seconde lecture.
 
 ## §7 Contrat d'exécution (rappel opposable)
 Statuts : `[x]` fait · `[~]` couvert ailleurs (avec la référence) · `[!]` non traité (avec la
