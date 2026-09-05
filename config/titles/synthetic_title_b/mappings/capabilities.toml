@@ -29,3 +29,20 @@ schema_version = 1
 "match.events.spatial"   = "supported"
 # Stats objectifs par match : fixture 2e titre, non exposée (pas de substrat objectif).
 "match.objective.stats"  = "not_exposed"
+
+# ─── Famille `film.*` : LA FIXTURE DE LA DÉGRADATION FINE ────────────────────────
+#
+# Ce titre synthétique est le SEUL endroit du dépôt où l'on peut prouver que les clés
+# `film.*` sont FINES et non un fourre-tout « ce titre a un film ». Il déclare donc UN cas
+# `supported` — l'ARTEFACT lui-même — et met TOUS ses dérivés à `not_exposed` : un titre qui
+# sait produire l'artefact de rejeu mais dont aucune projection n'est câblée. Chaque porte
+# doit alors se fermer SÉPARÉMENT (résumé d'usage, statistiques d'Assaut, source du dégât
+# fatal, tirs par arme, positions par kill), et une seule d'entre elles reste ouverte.
+#
+# Ne pas « aligner » ces valeurs sur halo_infinite : la divergence EST le test.
+"film.replay_artifact"    = "supported"
+"film.usage_summary"      = "not_exposed"
+"film.bomb_stats"         = "not_exposed"
+"film.kill_source"        = "not_exposed"
+"film.weapon_shots"       = "not_exposed"
+"film.kill_positions"     = "not_exposed"
