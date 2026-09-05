@@ -8,16 +8,17 @@
  *      de bombe, et RIEN quand aucune ne le fait — c'est ce qui distingue « un titre sans la
  *      capability `film.bomb_stats` » (aucune colonne servie -> section masquée) d'un match
  *      d'Assaut mesuré. Sans lui, la section resterait invisible sur tout l'Assaut, comme
- *      avant le 2026-09-05.
- *   2. LES COLONNES SUIVENT LE MODE. `objectiveColsFor('bomb')` rend les quatre grandeurs
- *      affichées, et `bomb_carriers_killed` n'en fait PAS partie. LE MOTIF A CHANGÉ LE
- *      2026-09-05 (lot G.6) et cet en-tête portait l'ancien : le champ n'est plus `null`
- *      partout, il est MESURÉ à la cuisson. Son absence de colonne est désormais une décision
- *      d'AFFICHAGE non prise, pas une absence de mesure — le test verrouille l'état servi, pas
- *      une impossibilité.
+ *      avant le 2026-09-05. `bomb_carriers_killed` N'EN FAIT PAS PARTIE : le discriminant teste
+ *      TROIS compteurs (mêmes que `HasBomb()` côté Go), la cinquième colonne n'en est pas un.
+ *   2. LES COLONNES SUIVENT LE MODE. `objectiveColsFor('bomb')` rend les CINQ grandeurs
+ *      affichées depuis l'arbitrage N-17 (2026-09-05, registre du plan d'intégration, seconde
+ *      lecture E.2) : `bomb_carriers_killed` est mesuré depuis le lot G.6 (témoin `9f57c612` :
+ *      3 porteurs tués) et la prémisse « colonne de tirets » qui la retenait n'était plus vraie.
  *   3. ABSENT N'EST PAS ZÉRO. `objectiveValue` rend `null` — jamais 0 — pour une mesure non
  *      publiée, et le total d'équipe d'une colonne que personne ne porte est `null` : la
- *      cellule affiche alors le repli « non mesuré » de `ValueGrid`, pas un chiffre.
+ *      cellule affiche alors le repli « non mesuré » de `ValueGrid`, pas un chiffre. Vérifié à
+ *      la fois sur une colonne ancienne (`bomb_detonations`) et sur la colonne neuve
+ *      (`bomb_carriers_killed`).
  */
 import { describe, expect, it } from 'vitest'
 
@@ -40,20 +41,25 @@ function ligne(
 }
 
 // Un match d'Assaut MESURÉ : deux joueurs d'un camp, un de l'autre. Aucune valeur n'est
-// arbitraire — les comptes suivent la règle « une bombe explose au bout d'un armement », et
-// `bomb_carriers_killed` est ABSENT partout, comme la chaîne le publie aujourd'hui.
+// arbitraire — les comptes suivent la règle « une bombe explose au bout d'un armement ».
+// `bomb_carriers_killed` est MESURÉ sur Alpha (2, dont potentiellement un tir ami — la réserve
+// écrite en tête de `bomb_stats.go`) et à ZÉRO sur Bravo (une mesure, pas une absence) ; Charlie
+// ne le porte PAS, pour garder un cas « non mesuré » dans le même match — comme la chaîne peut le
+// publier aujourd'hui (source non lue sur cette ligne).
 const ASSAUT = [
   ligne('Alpha', 't0', {
     bomb_detonations: 2,
     bomb_arms: 2,
     bomb_grabs: 3,
     time_as_bomb_carrier_seconds: 41.5,
+    bomb_carriers_killed: 2,
   }),
   ligne('Bravo', 't0', {
     bomb_detonations: 0,
     bomb_arms: 0,
     bomb_grabs: 1,
     time_as_bomb_carrier_seconds: 4,
+    bomb_carriers_killed: 0,
   }),
   ligne('Charlie', 't1', {
     bomb_detonations: 1,
@@ -96,20 +102,21 @@ describe('le mode Assaut est reconnu par la section Objectifs', () => {
 })
 
 describe('les colonnes d’Assaut', () => {
-  it('sont les QUATRE grandeurs publiées, dans l’ordre du mode', () => {
+  it('sont les CINQ grandeurs publiées, dans l’ordre du mode — arbitrage N-17 (2026-09-05)', () => {
     expect(objectiveColsFor('bomb').map((c) => c.key)).toEqual([
       'bomb_detonations',
       'bomb_arms',
       'bomb_grabs',
       'time_as_bomb_carrier_seconds',
+      'bomb_carriers_killed',
     ])
   })
 
-  it('n’exposent PAS bomb_carriers_killed : mesuré depuis G.6, mais sans colonne à ce jour', () => {
-    expect(objectiveColsFor('bomb').map((c) => c.key)).not.toContain('bomb_carriers_killed')
+  it('exposent bomb_carriers_killed : mesuré depuis G.6, la prémisse « colonne de tirets » qui la retenait n’était plus vraie', () => {
+    expect(objectiveColsFor('bomb').map((c) => c.key)).toContain('bomb_carriers_killed')
   })
 
-  it('marquent le temps de portage comme une DURÉE (mm:ss), les trois autres comme des comptes', () => {
+  it('marquent le temps de portage comme une DURÉE (mm:ss), les quatre autres comme des comptes', () => {
     const cols = objectiveColsFor('bomb')
     const duree = cols.filter((c) => c.duration === true).map((c) => c.key)
     expect(duree).toEqual(['time_as_bomb_carrier_seconds'])
@@ -139,6 +146,25 @@ describe('absent n’est pas zéro', () => {
     const col = objectiveColsFor('bomb')[0]
     const t0 = ASSAUT.filter((r) => r.team_side === 't0')
     // 2 + 0 : le zéro MESURÉ entre dans la somme, il n'est pas écarté comme une absence.
+    expect(objectiveTeamTotal(t0, col)).toBe(2)
+  })
+
+  // La colonne NEUVE (N-17, arbitrage 2026-09-05) suit la MÊME règle que les quatre premières —
+  // ce n'est pas un cas particulier, et le test le vérifie explicitement sur elle.
+  it('rend null pour bomb_carriers_killed sur une ligne qui ne le porte pas (Charlie)', () => {
+    const col = objectiveColsFor('bomb')[4] // bomb_carriers_killed
+    expect(objectiveValue(ASSAUT[2], col)).toBeNull()
+  })
+
+  it('rend la valeur mesurée de bomb_carriers_killed, zéro compris (Alpha : 2, Bravo : 0)', () => {
+    const col = objectiveColsFor('bomb')[4]
+    expect(objectiveValue(ASSAUT[0], col)).toBe(2)
+    expect(objectiveValue(ASSAUT[1], col)).toBe(0)
+  })
+
+  it('cumule bomb_carriers_killed sur le camp qui le porte (2 + 0, Charlie hors mesure exclu du camp adverse)', () => {
+    const col = objectiveColsFor('bomb')[4]
+    const t0 = ASSAUT.filter((r) => r.team_side === 't0')
     expect(objectiveTeamTotal(t0, col)).toBe(2)
   })
 })
