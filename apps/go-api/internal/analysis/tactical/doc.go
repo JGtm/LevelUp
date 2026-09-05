@@ -22,6 +22,13 @@
 // Ce paquet REPREND cette mecanique plutot qu'il ne l'importe : `cmd/mappos-build` est un
 // `main`, il ecrit un catalogue sur disque, et il ne connait qu'une carte a la fois.
 //
+// L'UNIVERS EST UNE ENTREE. La liste des matchs RETENUS par le filtre est passee au
+// rasterisage ; elle n'est jamais deduite des points. Un match retenu qui n'a aucun point
+// sur la lecture courante (aucun kill, aucune mort) est un zero LEGITIME et compte au
+// denominateur « par match » — le deduire des points fabriquerait des zones gagnantes la ou
+// il n'y a que des matchs muets. Les points ILLISIBLES (position non finie) sont autre
+// chose : un decodage rate, compte a part dans PointsIgnores.
+//
 // ANCRAGE DES CELLULES. L'adresse d'une cellule est ancree sur l'ORIGINE DU MONDE, jamais
 // sur les bornes de la lecture courante. C'est ce qui rend deux rasters de matchs
 // differents sommables sans re-projection (le stockage d'un raster par match a la cuisson
