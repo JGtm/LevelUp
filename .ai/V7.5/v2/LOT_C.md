@@ -196,6 +196,28 @@ passer la racine du dépôt les ferait sortir de leur bac à sable. Helper neuf
 — aucune ligne hors `ok` / `no test files`. Les treize autres jobs des trois workflows
 étaient verts au premier run.
 
+## Seconde réparation (commit `2e502dee9`) et état CI à la remise
+
+Le run suivant a rougi sur `Go Lint (golangci-lint)` : `racineIsoleeAvecManifestes` était
+déclaré dans `capability_test.go` (SANS tag) et utilisé uniquement par
+`backlog_integration_test.go` (AVEC `//go:build integration`) — donc code mort en build par
+défaut (`unused`). Le helper descend auprès de ses deux appelants, sous le tag, avec le
+commentaire qui dit pourquoi ; `racineDepot`, lui, reste sans tag (il sert dans les deux
+modes). `gofmt` appliqué.
+
+Vérifié localement après ce commit : `golangci-lint run --new-from-merge-base=origin/main`
+→ `0 issues.` ; `go test ./internal/sync/replayartifacts/...` et
+`go test -tags=integration -p 1 ./internal/sync/replayartifacts/...` → `ok`.
+
+**État CI à la remise du lot** (run `33998216205`, commit `2e502dee9`) : la surveillance a
+été ARRÊTÉE sur consigne du superviseur (quota API GitHub) avant la fin du run. Au dernier
+relevé : 6 jobs `success` (Go Build + Test ubuntu et windows, Go Contract Test, OpenAPI
+Lint, Go Lease Enforcement, **Go Lint** — celui qui venait d'être réparé), 1 `skipped`
+(E2E React, gaté `pull_request`), 2 encore `in_progress` (Frontend, et **Go Coverage +
+Baseline** — le job long qui avait révélé le premier trou). Les deux runs voisins du commit
+précédent (`Secrets (gitleaks)`, `Deploy Pre-Check`) étaient `success`. La vérification
+finale revient au superviseur à l'intégration.
+
 ## Découvertes (hors périmètre, non traitées)
 
 1. **`MatchPositionsHeatmap` et les hooks du film de la Match View.** Le verdict V-GO-B2
