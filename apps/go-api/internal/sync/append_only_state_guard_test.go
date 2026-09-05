@@ -122,6 +122,14 @@ var appendOnlyStateTables = []string{
 	// l'enrôlement ne crée aucune entrée d'allowlist.
 	"kill_positions",
 	"match_weapon_hit_distance",
+	// match_player_positions (décision utilisateur 1 du plan v2, 2026-09-06) : convertie
+	// append-only (id PK + positions_pass + written_at + vue _latest PAR PASSE) le jour où elle
+	// est devenue une projection de l'artefact de rejeu, écrite dans le cycle de sync.
+	// L'unité de génération est LA PROJECTION D'UN MATCH ENTIER : toutes les lignes d'une passe
+	// partagent positions_pass et written_at, et la vue retient la dernière passe par match.
+	// Écriture = INSERT pur (persist/player_positions_persister.go) ; lecture via _latest
+	// UNIQUEMENT — une lecture brute empilerait toutes les projections d'un match.
+	"match_player_positions",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors

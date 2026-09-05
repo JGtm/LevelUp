@@ -161,6 +161,16 @@ var tablesProtegees = []string{
 	// final ne déborde pas sur les vues `_latest` (`_` est un caractère de mot).
 	"kill_positions",
 	"match_weapon_hit_distance",
+	// match_player_positions (décision utilisateur 1 du plan v2, 2026-09-06) : la table de la
+	// CARTE DE CHALEUR devient une PROJECTION DE L'ARTEFACT de rejeu, écrite dans le cycle de
+	// sync. Elle était jusque-là remplie par un outil de diagnostic en DELETE-then-INSERT sur
+	// le handle de LECTURE du pool — hors pression concurrente, donc tolérable ; sous le
+	// nouveau régime, ce DELETE indexé serait le déclencheur ART direct. Elle est convertie
+	// append-only (migration/steps_shared_player_positions_appendonly.go : id PK +
+	// positions_pass + vue match_player_positions_latest PAR PASSE) et son unique écrivain,
+	// persist/player_positions_persister.go, n'émet que des INSERT — aucune entrée d'allowlist.
+	// `PlayerPositionsRepo.WriteMatch` a été SUPPRIMÉE avec ses tests.
+	"match_player_positions",
 	// NB (2026-08-03) : `media_likes_history` et `media_match_associations_history` sont
 	// append-only elles aussi mais N'ONT PAS leur place ICI — même raison que
 	// `player_records_history` ci-dessus : elles co-résident dans
