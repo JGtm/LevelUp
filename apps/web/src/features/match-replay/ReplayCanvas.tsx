@@ -25,7 +25,6 @@ import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import type { KillEvent } from '@/features/match-view/_momentum'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 
 import type { CalloutZoneReady } from './calloutsLayer'
@@ -56,7 +55,7 @@ import { useReplayGroundWeapons } from './useReplayGroundWeapons'
 import { useReplayVehicles } from './useReplayVehicles'
 import type { ReplayLocale } from './i18n'
 import type { EndMatchSoundSpec } from './endMatchSound'
-import type { ReplayFeedEntry } from './killFeedLogic'
+import { killsOfFeed, type ReplayFeedEntry } from './killFeedLogic'
 import type { ReplayMediaItem } from './replayTimelineTracksLogic'
 import { useReplayFx } from './useReplayFx'
 import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
@@ -101,13 +100,6 @@ interface ReplayCanvasProps {
    * sans origine, en-tête sans durée jouable) : le film se lit entier, comme avant.
    */
   playWindow: ReplayWindowBounds | null
-  /**
-   * Kills du match (mêmes events que le fil, horloge gameplay) : la carte en tire les
-   * EFFETS DE MORT orientés tueur -> victime. Absents = pas d'effet, jamais une erreur.
-   */
-  kills?: KillEvent[]
-  /** Offset du countdown pré-match, en ms (`header.t0_ms`) — même recalage que le fil. */
-  t0Ms?: number
   /** Appelé à cadence réduite avec l'image courante : sert aux panneaux hors canvas. */
   onFrameChange?: (frame: number) => void
   /**
@@ -155,9 +147,14 @@ interface ReplayCanvasProps {
 }
 
 export function ReplayCanvas({
-  doc, locale, playWindow, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks,
+  doc, locale, playWindow, onFrameChange, background, callouts, scoreboard, xuidMeta, marks,
   endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
 }: ReplayCanvasProps) {
+  // LES KILLS VIENNENT DU FIL, DÉJÀ RECALÉS (2026-09-05, J2) : la carte et la piste sonore
+  // lisaient les kills BRUTS et rejouaient chacune `alignFeed` — quatre exécutions du même
+  // recalage par chargement, et deux chemins qui divergeraient le jour où le canvas ne
+  // recevrait plus exactement les mêmes kills que le fil. Ils partagent désormais sa sortie.
+  const feedKills = useMemo(() => killsOfFeed(feedEntries), [feedEntries])
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef(0)
@@ -177,7 +174,7 @@ export function ReplayCanvas({
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
   // objectiveSound.ts, fin endMatch, « manche terminée » locale-aware — la `locale` ne sert qu'à lui).
-  const sound = useReplaySound(doc, kills, t0Ms, multiplier, scoreboard, endMatch ?? null, locale)
+  const sound = useReplaySound(doc, feedKills, multiplier, scoreboard, endMatch ?? null, locale)
 
   const paletteVersion = useColorPaletteVersion()
   // TOUTES LES ENCRES DU REJEU, résolues une fois par palette — voir l'en-tête d'useReplayInks.
@@ -242,7 +239,7 @@ export function ReplayCanvas({
   // GRAPPIN N'Y EST PLUS depuis le 2026-09-03 : il a rejoint le dash du propulseur juste
   // au-dessous, où les deux gestes de capacité sont bâtis ET peints ensemble.
   const { shotFx, fireMarks, killFx, grenadeRestFx, objectivePulses } =
-    useReplayFx(doc, kills, t0Ms, timing.aimHold, mapObjectives)
+    useReplayFx(doc, feedKills, timing.aimHold, mapObjectives)
   // LES GESTES DE CAPACITÉ SUR LEUR PORTEUR (grappin, propulseur) : bâtis et peints par un
   // seul hook — ils ne posent rien au sol, ils se lisent sur le pion (cf. useReplayAbilityFx).
   const abilityFx = useReplayAbilityFx({ doc, view: canvasView, grappleInk, colorOfSlot, reducedMotion })

@@ -17,10 +17,9 @@
  */
 import { useMemo } from 'react'
 
-import type { KillEvent } from '@/features/match-view/_momentum'
-
 import { buildFireMarks } from './fireMark'
 import { buildGrenadeRestFx } from './grenadeFx'
+import type { ReplayKill } from './killFeedLogic'
 import { buildKillFx } from './killFx'
 import { buildObjectivePulses, type ObjectiveElementReady } from './objectivesLayer'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -28,8 +27,7 @@ import { buildShotFx } from './shotFx'
 
 export function useReplayFx(
   doc: ReplayDocumentReady,
-  kills: KillEvent[] | undefined,
-  t0Ms: number | undefined,
+  kills: readonly ReplayKill[],
   aimHold: number,
   mapObjectives: ObjectiveElementReady[],
 ) {
@@ -41,7 +39,7 @@ export function useReplayFx(
   // l'éclair de bouche — deux effets du même événement (cf. fireMark.ts).
   const fireMarks = useMemo(() => buildFireMarks(doc), [doc])
   // Les effets de mort, positions relues une fois (patron POC).
-  const killFx = useMemo(() => buildKillFx(doc, kills ?? [], t0Ms ?? 0), [doc, kills, t0Ms])
+  const killFx = useMemo(() => buildKillFx(doc, kills), [doc, kills])
   // Fins de vol de grenade : le lien lancer -> projectile est dans l'artefact (v3).
   const grenadeRestFx = useMemo(() => buildGrenadeRestFx(doc), [doc])
   // LES TRACTIONS DE GRAPPIN ONT QUITTÉ CE HOOK le 2026-09-03 : elles ont rejoint la poussée du

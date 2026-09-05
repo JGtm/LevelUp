@@ -53,9 +53,9 @@
  * CE QUI DÉCLENCHE UN SON, ET RIEN D'AUTRE :
  *  - les TIRS du film (doc.shots), TOUS — voir la règle de densité ci-dessous ;
  *  - les KILLS du fil (source résolue : vignette OU weapon_key, cf. `killSound`) —
- *    l'horloge est celle du fil (`alignFeed`), la même qui date le flash des fiches et
- *    l'effet de mort : un son qui partirait sur l'horloge brute sonnerait à côté de son
- *    image ;
+ *    l'horloge est celle du fil, DÉJÀ APPLIQUÉE quand ils arrivent ici, la même qui date le
+ *    flash des fiches et l'effet de mort : un son qui partirait sur l'horloge brute
+ *    sonnerait à côté de son image ;
  *  - les LANCERS de grenade (doc.grenades, l'auteur est écrit dans le film), par TYPE, et
  *    l'EXPLOSION de CHAQUE grenade à la FIN DE VOL de son projectile (décision utilisateur
  *    du 2026-08-18) — les deux formes du même objet, doctrine et tables : `grenadeSound.ts` ;
@@ -168,7 +168,7 @@ import type { KillEvent } from '@/features/match-view/_momentum'
 import { placementIsDeployedObject } from './equipmentPlacementsLayer'
 import { grenadeSoundEvents } from './grenadeSound'
 import type { ReplayLocale } from './i18n'
-import { alignFeed } from './killFeedLogic'
+import type { ReplayKill } from './killFeedLogic'
 import { bombArmingSoundEvents } from './bombCountdown'
 import { objectiveSoundEvents, type ObjectiveSide } from './objectiveSound'
 import { padSpawnSoundEvents } from './padSpawnSound'
@@ -573,9 +573,9 @@ export function killSound(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUrl'>)
 
 /**
  * buildSoundTimeline précalcule la piste sonore du document : TIRS datés par leur frame de
- * film + kills recalés par `alignFeed` (même règle que le fil et l'effet de mort — une seule
- * horloge) + lancers de grenade et explosions de fin de vol. Triée chronologiquement,
- * construite une fois.
+ * film + kills DÉJÀ RECALÉS par le fil (`killsOfFeed` — une seule horloge, et un seul
+ * recalage : ni ce module ni l'effet de mort ne le rejouent, 2026-09-05 J2) + lancers de
+ * grenade et explosions de fin de vol. Triée chronologiquement, construite une fois.
  *
  * LES TIRS ET LES KILLS COEXISTENT SANS DÉDUPLICATION, et c'est voulu : le tir qui tue est
  * un événement du film, la mort qu'il cause en est un autre, daté par le fil. Les fondre
@@ -589,8 +589,7 @@ export function killSound(kill: Pick<KillEvent, 'weaponKey' | 'weaponImageUrl'>)
  */
 export function buildSoundTimeline(
   doc: ReplayDocumentReady,
-  kills: KillEvent[],
-  t0Ms: number,
+  kills: readonly ReplayKill[],
   categories: SoundCategoryFilter = SOUND_CATEGORIES_DEFAULT,
   sideOfXuid?: (xuid: string) => ObjectiveSide,
   // Le camp ALLIÉ, en numéro d'équipe — la clé des sons d'ÉTAT DE ZONE, qui joignent sur le
@@ -627,7 +626,7 @@ export function buildSoundTimeline(
   // dédoublonnent les fins de vol, et elles doivent donc être connues avant.
   const killExplosions: ReplaySoundEvent[] = []
   if (kills.length > 0 && doc.tracks.length > 0) {
-    for (const k of alignFeed(kills, t0Ms, doc).kills) {
+    for (const k of kills) {
       const snd = killSound(k)
       if (!snd || !categories[snd.category]) continue
       const ev = soundEvent(k.replayMs, snd.stem)

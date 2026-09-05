@@ -43,8 +43,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import type { KillEvent } from '@/features/match-view/_momentum'
 import { useSettings } from '@/features/settings/queries'
+import type { ReplayKill } from './killFeedLogic'
 import { seededRandom, soundUrlOf } from './replayAudioMix'
 
 import { persistPreference, readStoredFlag, readStoredNumber } from './replayPreferences'
@@ -231,8 +231,8 @@ function useSoundCategoryFilter(): {
 /** Le match porte-t-il un son du tout, INDÉPENDAMMENT du filtre choisi ? Sert `available` :
  *  si elle suivait la piste filtrée, tout décocher ferait disparaître le seul bouton qui
  *  permet de tout rallumer. */
-function hasSoundEvents(doc: ReplayDocumentReady, kills: KillEvent[], t0Ms: number): boolean {
-  return buildSoundTimeline(doc, kills, t0Ms, SOUND_CATEGORIES_DEFAULT).length > 0
+function hasSoundEvents(doc: ReplayDocumentReady, kills: readonly ReplayKill[]): boolean {
+  return buildSoundTimeline(doc, kills, SOUND_CATEGORIES_DEFAULT).length > 0
 }
 
 /** Les URL des sons EFFECTIVEMENT présents dans une piste : on ne précharge jamais le pack
@@ -290,8 +290,8 @@ function useInstanceSoundTuning(playerRef: { current: ReplayAudioPlayer | null }
 
 export function useReplaySound(
   doc: ReplayDocumentReady,
-  kills: KillEvent[] | undefined,
-  t0Ms: number | undefined,
+  // Les kills DU FIL, déjà recalés (`killsOfFeed`) : la piste ne rejoue plus le recalage.
+  kills: readonly ReplayKill[],
   speed: number,
   // Le tableau de score, d'où se DÉDUIT le camp de l'auteur d'une action d'objectif (résolveur
   // pur : `sideResolverFromScoreboard`). Absent, ou sans ligne « moi » : les actions qui ont
@@ -321,14 +321,14 @@ export function useReplaySound(
   // Piste JOUÉE, catégories coupées retirées À LA CONSTRUCTION (jamais en aval, dans le
   // lecteur) ; DISPONIBILITÉ DU PANNEAU indépendante de ce filtre (hasSoundEvents ci-dessus).
   const timeline = useMemo(
-    () => buildSoundTimeline(doc, kills ?? [], t0Ms ?? 0, categories, sideOfXuid, allyTeam, locale),
-    [doc, kills, t0Ms, categories, sideOfXuid, allyTeam, locale],
+    () => buildSoundTimeline(doc, kills, categories, sideOfXuid, allyTeam, locale),
+    [doc, kills, categories, sideOfXuid, allyTeam, locale],
   )
   // Les MOTEURS comptent dans la disponibilité : un match sans événement sonore mais avec un
   // véhicule occupé a bien quelque chose à faire entendre, donc un bouton à offrir.
   const hasAnySound = useMemo(
-    () => hasSoundEvents(doc, kills ?? [], t0Ms ?? 0) || engine.stems.length > 0,
-    [doc, kills, t0Ms, engine.stems],
+    () => hasSoundEvents(doc, kills) || engine.stems.length > 0,
+    [doc, kills, engine.stems],
   )
   // Les prises de la FIN entrent dans le préchargement avec la piste : le tirage n'a lieu qu'à
   // l'arrivée en fin, et un fichier demandé à cet instant sonnerait après le silence.

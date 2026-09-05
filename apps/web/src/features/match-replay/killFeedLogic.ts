@@ -538,6 +538,25 @@ export function buildFeedEntries(
 }
 
 /**
+ * killsOfFeed — LES KILLS DU FIL, DÉJÀ RECALÉS.
+ *
+ * POURQUOI CETTE EXTRACTION EXISTE (registre 2026-09-05, J2). Le recalage est assemblé une
+ * seule fois, dans la page (`buildFeedEntries`), et le commentaire de la route l'écrit :
+ * « LE FIL ALIGNÉ, ASSEMBLÉ ICI ET NULLE PART AILLEURS ». Deux consommateurs en aval — les
+ * effets de mort de la carte et la piste sonore — le refaisaient pourtant en repartant des
+ * kills BRUTS : quatre exécutions du même recalage par chargement, et surtout deux chemins
+ * qui divergeraient le jour où le canvas ne recevrait plus exactement les mêmes kills. Ils
+ * prennent désormais leurs instants ICI, sur le fil lui-même.
+ *
+ * L'ordre est celui du fil, donc chronologique : `buildFeedEntries` trie sur `replayMs`.
+ */
+export function killsOfFeed(entries: readonly ReplayFeedEntry[]): ReplayKill[] {
+  const out: ReplayKill[] = []
+  for (const e of entries) if (e.kill) out.push(e.kill)
+  return out
+}
+
+/**
  * feedAt rend les lignes déjà survenues à l'instant `nowMs` du rejeu, de la plus récente
  * à la plus ancienne — le fil COMPLET, sans fenêtre : les lignes passées restent, le
  * défilement fait le reste.

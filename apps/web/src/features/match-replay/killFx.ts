@@ -27,10 +27,8 @@
  *
  * Pas de React, pas de canvas : logique pure, testée (killFx.test.ts).
  */
-import type { KillEvent } from '@/features/match-view/_momentum'
-
 import { buildCarrierPosAt } from './carrierPosition'
-import { alignFeed } from './killFeedLogic'
+import type { ReplayKill } from './killFeedLogic'
 import { buildLivesByXuid, deathWindowFrames } from './livesPosition'
 import { familyOf, type ShotFamily } from './shotEffects'
 import { isAliveAt, msToFrames, trackWindow } from './replayLogic'
@@ -94,15 +92,15 @@ function slotOfPlayerAt(
  * buildKillFx précalcule les effets de mort d'un document : positions monde résolues une
  * fois au chargement (patron du POC — 93 morts, aucune recherche pendant la lecture).
  *
- * L'horloge est celle du fil (`alignFeed` : l'origine publiée par l'artefact, cf. l'en-tête
- * de killFeedLogic.ts) : une seule règle de recalage pour le feed et la carte. C'est aussi
- * ce qui rend la fenêtre DEATH efficace — mesure témoin 000d5950 : 1/93 victimes relues
- * avec le recalage brut `+t0`, 90/93 une fois aligné.
+ * L'HORLOGE ARRIVE DÉJÀ FAITE (2026-09-05, J2) : les kills reçus sont ceux du FIL, recalés
+ * une seule fois par la page (`buildFeedEntries` -> `killsOfFeed`). Ce module ne rejoue plus
+ * le recalage — une seule règle pour le fil et la carte, et une seule exécution. C'est ce
+ * recalage qui rend la fenêtre DEATH efficace — mesure témoin 000d5950 : 1/93 victimes
+ * relues avec le recalage brut `+t0`, 90/93 une fois aligné.
  */
 export function buildKillFx(
   doc: ReplayDocumentReady,
-  kills: KillEvent[],
-  t0Ms: number,
+  kills: readonly ReplayKill[],
 ): KillFxEntry[] {
   if (kills.length === 0 || doc.tracks.length === 0) return []
   // LES POSITIONS PASSENT PAR LE RÉSOLVEUR DE PORTEUR (carrierPosition.ts, 2026-09-05) : un
@@ -116,7 +114,7 @@ export function buildKillFx(
   const lives = buildLivesByXuid(doc.tracks)
   const deathFrames = deathWindowFrames(doc)
   const out: KillFxEntry[] = []
-  for (const k of alignFeed(kills, t0Ms, doc).kills) {
+  for (const k of kills) {
     const frame = Math.round(msToFrames(k.replayMs, doc))
     const killer = posOf(k.xuid, frame)
     const victim = k.victimXuid ? posOf(k.victimXuid, frame) : null

@@ -14,7 +14,7 @@ import { act, renderHook } from '@testing-library/react'
 vi.mock('@/features/settings/queries', () => ({ useSettings: () => ({ data: undefined }) }))
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { KillEvent } from '@/features/match-view/_momentum'
+import type { ReplayKill } from './killFeedLogic'
 
 import type { EndMatchSoundSpec } from './endMatchSound'
 import { SOUND_MAX_SPEED } from './replaySoundCursor'
@@ -36,8 +36,10 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function kill(over: Partial<KillEvent> = {}): KillEvent {
+/** Un kill DU FIL, deja recale : `replayMs` est l'instant que la piste sonore lit. */
+function kill(over: Partial<ReplayKill> = {}): ReplayKill {
   return {
+    replayMs: 2_000, medals: [],
     tMs: 2_000, xuid: 'K', ally: true, teamID: 0,
     weaponKey: 'hinf_br75', weaponLabel: 'BR75', weaponImageUrl: '', weaponTinted: false,
     assistState: '', assistGamertag: '', assistTeamID: null,
@@ -62,7 +64,7 @@ function docWithCouple() {
 function mount(speed = 1) {
   const doc = docWithCouple()
   const kills = [kill()]
-  return renderHook(({ s }: { s: number }) => useReplaySound(doc, kills, 0, s), {
+  return renderHook(({ s }: { s: number }) => useReplaySound(doc, kills, s), {
     initialProps: { s: speed },
   })
 }
@@ -79,7 +81,7 @@ describe('useReplaySound — coupé par défaut', () => {
 
   it('pas un seul son dans la piste : aucune commande à offrir', () => {
     const doc = docWithCouple()
-    const { result } = renderHook(() => useReplaySound(doc, [], 0, 1))
+    const { result } = renderHook(() => useReplaySound(doc, [], 1))
     expect(result.current.available).toBe(false)
   })
 
@@ -95,7 +97,7 @@ describe('useReplaySound — coupé par défaut', () => {
    */
   it('MATCH MUET : la bascule ne persiste rien et n’ouvre aucun contexte audio', () => {
     const doc = docWithCouple()
-    const { result } = renderHook(() => useReplaySound(doc, [], 0, 1))
+    const { result } = renderHook(() => useReplaySound(doc, [], 1))
     act(() => result.current.toggle())
     expect(result.current.on).toBe(false)
     expect(localStorage.getItem('replay-sound-on')).toBeNull()
@@ -193,7 +195,7 @@ describe('useReplaySound — catégories (tiroir de réglages, phase 2)', () => 
       ],
       grenades: [{ i: 0, rank: 0, s: '', slot: 1, t: 5, x: 0, y: 0 }], // throw_frag à 500 ms
     })
-    const { result } = renderHook(() => useReplaySound(doc, [kill()], 0, 1))
+    const { result } = renderHook(() => useReplaySound(doc, [kill()], 1))
     act(() => result.current.toggleCategory('weapon'))
     act(() => result.current.toggle())
     await act(async () => { await flushAudio() })
@@ -324,7 +326,7 @@ describe('useReplaySound — le son déjà activé revit au premier geste', () =
     localStorage.setItem('replay-sound-on', 'true')
     const doc = docWithCouple()
     const { result } = renderHook(() =>
-      useReplaySound(doc, [kill()], 0, 1, undefined, { outcome: 'win', ffa: false, locale: 'fr' }),
+      useReplaySound(doc, [kill()], 1, undefined, { outcome: 'win', ffa: false, locale: 'fr' }),
     )
     act(() => result.current.wake())
     await act(async () => { await flushAudio() })
@@ -347,7 +349,7 @@ describe('useReplaySound — la fin de partie', () => {
   function mountWithEnd(spec: EndMatchSoundSpec | null = VICTOIRE_FR) {
     const doc = docWithCouple()
     const kills = [kill()]
-    return renderHook(() => useReplaySound(doc, kills, 0, 1, undefined, spec))
+    return renderHook(() => useReplaySound(doc, kills, 1, undefined, spec))
   }
 
   it('son coupé : la conclusion ne sonne pas, et n’ouvre aucun contexte au passage', () => {
@@ -379,7 +381,7 @@ describe('useReplaySound — la fin de partie', () => {
   it('avance rapide : la conclusion se tait aussi, comme l’annonce le panneau', async () => {
     const doc = docWithCouple()
     const { result } = renderHook(() =>
-      useReplaySound(doc, [kill()], 0, SOUND_MAX_SPEED * 2, undefined, VICTOIRE_FR),
+      useReplaySound(doc, [kill()], SOUND_MAX_SPEED * 2, undefined, VICTOIRE_FR),
     )
     act(() => result.current.toggle())
     await act(async () => { await flushAudio() })
