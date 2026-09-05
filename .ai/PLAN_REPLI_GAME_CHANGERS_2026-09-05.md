@@ -134,6 +134,121 @@ résiduel quand tout est replié). Pas de ronde 2 : aucune correction apportée.
 - Aucun commit par les agents — consolidation par le superviseur. Reprise : ce fichier +
   `.ai/thought_log.md` du worktree.
 
+## Lot H — Extension aux GRAPHES PARTAGÉS (commandé par l'utilisateur le 05/09 :
+## « il faut étendre le repli aux graphes partagés, mets un agent sonnet dessus »)
+
+Décisions tranchées :
+- H-D1 Périmètre : `FragWeaponBreakdown` (composant PARTAGÉ — consommateurs : fiche match
+  `MatchFragCard`, synthesis, timeseries summary, session-detail) ;
+  `SquadWeaponKillsChart` ; `SquadWeaponAccuracyBarsChart` ;
+  `SynthesisWeaponAccuracyChart`. TOUJOURS EXCLUS : `PlayerDetailPanel` (troncature
+  existante), rejeu 2D, tableaux déjà traités (G1/G2).
+- H-D2 Même grammaire que G1/G2 : armes élues d'abord, le reste replié derrière
+  « Voir plus (N) », replié par défaut, état au montage. AUCUNE valeur ne ment : si un
+  agrégat/une moyenne est AFFICHÉ, il se calcule sur toutes les armes.
+- H-D3 IDENTIFICATION PAR CLÉ STABLE OBLIGATOIRE : vérifier SUR PIÈCES comment ces
+  données agrégées identifient l'arme (weapon_key ? id ? libellé seul ?). Si une surface
+  n'expose AUCUNE clé stable côté données (que des libellés localisés), cette surface est
+  statuée `[!]` et REMONTÉE — jamais un matching par libellé FR/EN.
+- H-D4 Le prédicat est celui de `gameChangers.ts` (réutilisé, pas copié). Si une clé
+  d'agrégat diffère du vocabulaire `weapon_names.toml`, le pont est une table ÉCRITE et
+  gardée, comme D5.
+- H-D5 Ces surfaces vivent hors du rejeu : leurs strings i18n passent par le système de
+  la feature concernée (manifests TOML ou dictionnaire local — vérifier l'existant),
+  FR ET EN. Le patron « Voir plus (N) » y arrive en TROISIÈME+ copie -> extraction d'un
+  composant/hook partagé DEVIENT OBLIGATOIRE (règle n°6 : helper + garde-rail) — à
+  poser là où les quatre surfaces peuvent l'importer sans violer les frontières de
+  features (vérifier le ratchet lint-cross-feature-imports, AU PLAFOND 7/7 : si
+  l'extraction exige un 8e import croisé, la placer dans components/ ou lib/).
+
+- [x] H1 FAIT le 05/09 — reconnaissance sur pièces, tableau par surface au rapport :
+      AUCUNE des 4 surfaces n'expose de clé stable côté front (`SynthesisWeaponKillEntry`
+      sans id ; `SquadWeaponBar.weapon_id` = id brut opaque, mapping id->key
+      plusieurs-vers-un tenu en metadata.duckdb, non gardable côté front ;
+      `SquadWeaponAccuracyBar` agrégé par RÔLE ; `SynthesisWeaponAccuracyEntry` libellé
+      seul — et son port amont `WeaponAccuracyRow` n'a PAS de champ clé du tout) ;
+      `MatchFragCard` jette `weapon_id` avant l'appel. CONTRE-VÉRIFIÉ par la revue H7,
+      les cinq affirmations vraies. FAIT SERVEUR (P2 de la revue, décisif pour le lot I) :
+      `WeaponKillRow.WeaponKey` (format `hinf_*`) est DÉJÀ résolu dans la même passe
+      (`ResolveRoles: true`) pour Squad kills et Synthesis/Match kills — il n'est
+      simplement pas sérialisé.
+- [x] H2 FAIT — `components/ui/collapsed-items-toggle.tsx` (57 L, agnostique : zéro
+      import, libellés en props), les DEUX copies G1/G2 migrées dessus (comportement
+      constant : mêmes clés i18n, même chaîne CSS, garde N<=0 déplacée dans le
+      composant — appelants jamais négatifs, DOM identique), garde-rail
+      `collapsed-items-toggle.guard.test.ts` (glob src/** + assertion anti-glob-mort
+      > 200 fichiers).
+- [!] H3 NON TRAITÉ, justifié (H-D3 appliquée à la lettre) : aucune clé stable servie —
+      débloqué par le lot I (champ API), jamais par un matching de libellé.
+- [!] H4 NON TRAITÉ, même justification ; `SquadWeaponAccuracyBar` restera EXCLU même
+      après le lot I (agrégation par rôle par conception — décision I-D2).
+- [x] H5 FAIT — 6 tests du composant + garde-rail ; mutation « ré-inline fantôme »
+      rejouée deux fois (feature migrée ET autre feature) -> ROUGE les deux fois.
+- [x] H6 FAIT — typecheck purgé exit 0 ; vitest ciblé 51/51 ; make test-web 577
+      fichiers / 6 008 tests / 0 échec ; eslint 0 ; grep couleurs vide ; ratchet
+      cross-feature 7/7 inchangé (composant en components/ui/).
+- [x] H7 FAIT — revue à contexte frais : 12 conditions tiennent (migration octet pour
+      octet, garde-rail mordant dans toute feature, anti-glob-mort, suites
+      préexistantes inchangées vertes), 0 P0/P1, 1 P2 = complétude de la remontée
+      (le fait serveur ci-dessus), ABSORBÉ dans le cadrage du lot I ; 3 constats jetés
+      (conventions établies du dossier). Restauration vérifiée par sha1.
+
+DÉCISION UTILISATEUR (05/09) : PAS DE MERGE feat/v75 à ce stade — clôture = revue + gates
++ commit + thought_log sur `wt/game-changers` uniquement ; le merge attendra sa décision
+(gate visuel probablement d'abord).
+
+## Lot I — Exposer `weapon_key` dans les DTOs d'agrégats, puis replier les graphes
+## (commandé par l'utilisateur le 05/09 : « faut corriger c'est évident » + « la méthode
+## la plus propre, pérenne et solide » ; APRÈS la clôture du lot H)
+
+Constat fondateur (H1, contre-vérifié) : l'identité existe à chaque étage (agrégation
+DuckDB par `effective_weapon_id`, `port.WeaponKillRow.WeaponID` jusqu'au service) et
+n'est jetée qu'à la construction des DTOs servis — nés « affichage seul ».
+
+Décisions tranchées :
+- I-D1 La clé exposée est `weapon_key` (clé CANONIQUE du registre du titre, celle de
+  `weapon_names.toml` et du rejeu) — JAMAIS l'id numérique interne. Résolue côté service
+  dans la MÊME passe que Class/Role (le résolveur la connaît déjà), champ additif
+  `omitempty` : aucun client existant ne casse. Vide si le registre ne résout pas
+  (dégradation existante, conservée).
+- I-D2 (AMENDÉE le 05/09 sur info utilisateur) DTOs concernés : `SynthesisWeaponKillEntry`
+  (+ le chemin fiche match : `MatchFragCard` cesse de JETER l'identité — vérifier sur
+  pièces si `MatchWeaponKill` porte déjà une clé exploitable ou s'il faut l'ajouter) et
+  `SquadWeaponBar` — les DEUX où `WeaponKey` est déjà résolu serveur. EXCLUS :
+  `SquadWeaponAccuracyBar` (agrégé par RÔLE par conception) ET
+  `SynthesisWeaponAccuracyEntry`/`SynthesisWeaponAccuracyChart` — la précision PAR ARME
+  n'est PAS supportée par Halo Infinite (Halo 5 seulement, chantier Infinite remisé,
+  capability retirée) : le vote (clés `hinf_*`) ne s'y applique pas. VÉRIFICATION DE
+  SALUBRITÉ à faire au passage (I1, lecture seule, rapport sans correction) : ces
+  surfaces de précision sont-elles bien gatées par capability côté Go ET côté web — si
+  Halo Infinite les voit encore, c'est un reliquat à remonter.
+- I-D3 Côté web : repli des DEUX graphes (frags par arme partagé + kills d'escouade)
+  par le prédicat `isGameChangerWeaponKey` RÉUTILISÉ et le contrôle partagé
+  `collapsed-items-toggle` (lot H) — mêmes règles que G1/G2 : élus d'abord, tri
+  existant conservé dans chaque bloc, replié par défaut, N=0 = pas de bouton, aucun
+  agrégat affiché ne sous-compte, entrée sans `weapon_key` = repliée (dégradation
+  dite). Hauteurs dynamiques des charts = éléments VISIBLES. **GARDE MULTI-TITRE
+  (ajoutée le 05/09)** : ces graphes servent TOUS les titres — le vote est un jugement
+  Halo Infinite (clés `hinf_*`). Si la partition rend ZÉRO élu (Halo 5, titre futur,
+  vieux artefacts sans clés), AUCUN repli : tout visible, pas de bouton — jamais un
+  test de slug, la donnée décide. Règle TESTÉE par mutation sur les deux graphes.
+- I-D4 Surfaces Go : domain + service (résolution), openapi régénéré (`make
+  openapi-gen`), `make generate-types`, contracttest si ces schémas y sont tenus —
+  vérifier sur pièces. Aucune écriture DuckDB, lecture seule des repos existants.
+
+- [ ] I1 Go : `weapon_key` porté par `port.WeaponKillRow` (résolution existante) jusqu'à
+      `SynthesisWeaponKillEntry` / `SynthesisWeaponAccuracyEntry` / `SquadWeaponBar` ;
+      tests service (entrée avec/sans résolution).
+- [ ] I2 Génération : openapi + generated.ts + frontières éventuelles ; `make
+      check-types` exit 0.
+- [ ] I3 Web : repli des 2 graphes (logique pure par chart, composants rendent),
+      `MatchFragCard` transmet la clé au composant partagé.
+- [ ] I4 Tests : par graphe (partition, mutation tuée, sans clé = replié, agrégats
+      affichés inchangés, N=0) ; garde-rails existants verts.
+- [ ] I5 Gates : Go (go test paquets touchés, vet, gofmt) + web (typecheck purgé,
+      make test-web, eslint, grep couleurs) + openapi-check.
+- [ ] I6 Revue adversariale à contexte frais AVANT commit. PAS DE MERGE (décision user).
+
 ## Découvertes (hors périmètre, non traitées)
 
 - **P2 revue (05/09), cosmétique, NON corrigé dans ce diff** :
