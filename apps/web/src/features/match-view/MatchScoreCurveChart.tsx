@@ -40,6 +40,7 @@ import { useMatchReplay } from '@/features/match-replay/queries'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
+import { matchClock } from '@/lib/replay/matchClock'
 import { allyOfTeamId, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
@@ -57,6 +58,13 @@ interface Props {
   scoreboard: MatchScoreboardRow[] | null | undefined
   meXUID: string | null
   /**
+   * `header.t0_ms` — le countdown d'avant-match, en ms. C'est l'ancre qui met cette courbe
+   * sur l'horloge du GAMEPLAY, celle de « Frags cumulés » juste au-dessus dans le même
+   * onglet (cf. `lib/replay/matchClock`). Absent = countdown inconnu, les events n'ont pas
+   * été recalés non plus, et les deux blocs se retrouvent sur l'axe du match.
+   */
+  t0Ms?: number
+  /**
    * `header.score_timeline_kind` — la lecture du bloc décidée par la DONNÉE du titre
    * (`regulation.toml [score_timeline]`). `hidden` efface cette carte : le mode marque au
    * FRAG et « Frags cumulés » le dit déjà, juste au-dessus dans le même onglet. Absent ou
@@ -72,6 +80,7 @@ export function MatchScoreCurveChart({
   replayAvailable,
   scoreboard,
   meXUID,
+  t0Ms,
   scoreTimelineKind,
   t,
 }: Props) {
@@ -81,12 +90,14 @@ export function MatchScoreCurveChart({
   // La garde d'horloge du rejeu s'applique ICI AUSSI : un calque daté depuis une origine
   // non résolue placerait chaque but au mauvais instant (cf. lib/replay/scoreTimeline).
   const timeline = useMemo(() => (data ? scoreTimelineOf(data) : undefined), [data])
+  // L'HORLOGE DU MATCH, ÉTABLIE UNE FOIS : c'est elle qui ramène les images du film sur
+  // l'horloge du gameplay, celle de « Frags cumulés ». Non établie = pas de courbe.
+  const clock = useMemo(() => matchClock(data, { t0_ms: t0Ms }), [data, t0Ms])
   const curve = useMemo(
     () =>
       buildScoreCurve({
         timeline,
-        frameIntervalMs: data?.frameIntervalMs,
-        frameCount: data?.frameCount ?? 0,
+        clock,
         teamIds: teamIdsOf(
           board.map((r) => parseTeamSideID(r.team_side)),
           timeline,
@@ -99,7 +110,7 @@ export function MatchScoreCurveChart({
             t,
           ),
       }),
-    [timeline, data?.frameIntervalMs, data?.frameCount, board, xuidMeta, t],
+    [timeline, clock, board, xuidMeta, t],
   )
 
   const buildOption = useCallback(
@@ -137,8 +148,9 @@ export function MatchScoreCurveChart({
  *
  * UN SEUL AXE DE VALEURS (règle dataviz) : les deux camps se comparent sur la même échelle,
  * sans quoi « qui mène » deviendrait une illusion d'optique. L'axe des temps est en valeurs
- * (millisecondes) et non en catégories : les paliers ne tombent pas sur une grille régulière,
- * et les espacer également mentirait sur le rythme du match.
+ * (millisecondes DEPUIS LE COUP D'ENVOI, cf. `_scoreCurve`) et non en catégories : les
+ * paliers ne tombent pas sur une grille régulière, et les espacer également mentirait sur le
+ * rythme du match.
  */
 function scoreCurveOption(
   curve: ScoreCurve,
@@ -160,7 +172,7 @@ function scoreCurveOption(
       ...getAxisBase(tc),
       type: 'value',
       min: 0,
-      max: curve.durationMs,
+      max: curve.endMs,
       axisLabel: { color: tc.axisLabel, fontSize: 9, formatter: (v: number) => formatClock(v) },
       splitLine: { show: false },
     },

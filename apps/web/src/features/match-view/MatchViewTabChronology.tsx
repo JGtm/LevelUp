@@ -48,6 +48,15 @@ interface Props {
    * ou la courbe. Absent = la courbe, le repli sûr.
    */
   scoreTimelineKind?: string
+  /**
+   * `header.t0_ms` — le countdown d'avant-match, en ms. IL FAIT L'AXE COMMUN DE CET ONGLET :
+   * « Frags cumulés » date ses points en `event_time_ms`, dont le zéro est le coup d'envoi
+   * PARCE QUE le serveur a retranché ce countdown ; le bloc « Score dans le temps », lui,
+   * vient du film, qui compte depuis son premier paquet de position. Sans cette valeur, les
+   * deux blocs empilés l'un sous l'autre nommeraient « 0m00s » deux instants distants de
+   * −24 à +4,5 s (registre 2026-09-05, P0-7). La conversion vit dans `lib/replay/matchClock`.
+   */
+  t0Ms?: number
   locale: Locale
   t: MatchViewText
 }
@@ -65,6 +74,7 @@ export function MatchViewTabChronology({
   tugOfWar,
   cadence,
   scoreTimelineKind,
+  t0Ms,
   locale,
   t,
 }: Props) {
@@ -98,7 +108,11 @@ export function MatchViewTabChronology({
           regulation.toml [score_timeline]) : les modes qui marquent en trois à cinq fois
           (drapeau, colline, bombe) prennent les BARRES d'instants — une courbe y serait un
           escalier vide ; les autres gardent la courbe. En Slayer, la courbe s'efface d'
-          elle-même : « Frags cumulés » vient de le dire, juste au-dessus. */}
+          elle-même : « Frags cumulés » vient de le dire, juste au-dessus.
+
+          LES DEUX LECTURES REÇOIVENT `t0Ms`, ET C'EST CE QUI LES MET SUR L'AXE DU BLOC
+          CI-DESSUS : le film compte depuis son premier paquet de position, les frags depuis
+          le coup d'envoi (cf. la prop). */}
       {scoreTimelineKind === SCORE_TIMELINE_EVENTS ? (
         <MatchScoreEventsChart
           playerSlug={playerSlug}
@@ -106,6 +120,7 @@ export function MatchViewTabChronology({
           replayAvailable={replayAvailable}
           scoreboard={scoreboard}
           meXUID={meXUID}
+          t0Ms={t0Ms}
           t={t}
         />
       ) : (
@@ -115,6 +130,7 @@ export function MatchViewTabChronology({
           replayAvailable={replayAvailable}
           scoreboard={scoreboard}
           meXUID={meXUID}
+          t0Ms={t0Ms}
           scoreTimelineKind={scoreTimelineKind}
           t={t}
         />

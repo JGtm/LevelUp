@@ -15,6 +15,13 @@
  *
  * Source : `combat_tab.highlight_events` filtrés sur `event_type='kill'`,
  * équipe résolue via le scoreboard (team_side du joueur courant = ally team).
+ *
+ * L'AXE DES TEMPS EST LA RÉFÉRENCE DE L'ONGLET, et il l'est sans rien faire : `event_time_ms`
+ * est déjà recalé sur le début du GAMEPLAY par le serveur (`correctMatchViewEventsT0`), son
+ * zéro EST le coup d'envoi. C'est sur cet axe que le bloc « Score dans le temps », juste en
+ * dessous, vient se poser — lui vient du film et compte depuis le premier paquet de position,
+ * d'où la soustraction de `lib/replay/matchClock` (registre 2026-09-05, P0-7). Rien à
+ * convertir ici : toute correction ajoutée à ces abscisses les décalerait de la référence.
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { useCallback } from 'react'

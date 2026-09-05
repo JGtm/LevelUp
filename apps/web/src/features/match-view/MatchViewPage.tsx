@@ -408,6 +408,7 @@ export function MatchViewPage() {
             tugOfWar={tugOfWar}
             cadence={combat_tab.cadence}
             scoreTimelineKind={header.score_timeline_kind}
+            t0Ms={header.t0_ms}
             locale={locale}
             t={t}
           />
