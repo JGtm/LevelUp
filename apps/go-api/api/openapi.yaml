@@ -16913,6 +16913,18 @@ components:
       additionalProperties: false
       description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
       properties:
+        bomb_arms:
+          format: int64
+          type: integer
+        bomb_carriers_killed:
+          format: int64
+          type: integer
+        bomb_detonations:
+          format: int64
+          type: integer
+        bomb_grabs:
+          format: int64
+          type: integer
         extraction_conversions_completed:
           format: int64
           type: integer
@@ -16994,6 +17006,9 @@ components:
         successful_extractions:
           format: int64
           type: integer
+        time_as_bomb_carrier_seconds:
+          format: double
+          type: number
         time_as_flag_carrier_seconds:
           format: double
           type: number

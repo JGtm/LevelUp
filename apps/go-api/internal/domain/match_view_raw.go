@@ -226,6 +226,25 @@ type ObjectiveRaw struct {
 	MaxKillingSpreeAsVip    *int
 	TimeAsVipSeconds        *float64
 	LongestTimeAsVipSeconds *float64
+	// Assaut (match_bomb_stats_latest — RECONSTRUITES DU FILM, pas de l'API)
+	//
+	// SEUL BLOC DE CETTE STRUCTURE QUI NE VIENT PAS DE `match_objective_stats_latest`, et c'est
+	// une décision de schéma : l'API 343 ne publie AUCUNE statistique d'objectif pour l'Assaut
+	// (la famille `BombStats` du moteur est de la télémétrie Bond, jamais répliquée dans le
+	// film — mesure du 2026-09-04, cause unique du silence des deux côtés). Celles-ci sont
+	// décodées du film Theater et vivent dans une TABLE DÉDIÉE : deux producteurs sur la même
+	// table s'écraseraient dans la vue `_latest`, et un re-sync API effacerait les stats de
+	// bombe. Elles sont donc chargées par une SECONDE requête, dégradable indépendamment, et
+	// gatée par la capability `film.bomb_stats`.
+	//
+	// NULL = NON MESURÉ, JAMAIS ZÉRO : les cinq colonnes sont nullables au DDL.
+	// `BombCarriersKilled` est nul PARTOUT à ce jour — la paire tueur/victime qu'il demande
+	// n'existe pas dans la chaîne de cuisson (report au registre).
+	BombDetonations          *int
+	BombArms                 *int
+	BombGrabs                *int
+	TimeAsBombCarrierSeconds *float64
+	BombCarriersKilled       *int
 }
 
 // HasCTF / HasZones / HasOddball / HasStockpile / HasExtraction / HasVip : discriminants
@@ -241,10 +260,18 @@ func (o ObjectiveRaw) HasExtraction() bool {
 	return o.SuccessfulExtractions != nil || o.ExtractionInitiationsCompleted != nil
 }
 
+// HasBomb : le bloc ASSAUT, reconstruit du FILM et NON de l'API (cf. le bloc de champs
+// ci-dessus). Le discriminant prend les deux compteurs que la chaîne publie toujours ensemble
+// dès qu'une source est lue — `bomb_detonations` (statborg) et `bomb_arms` (anneau + jointure).
+// `bomb_carriers_killed` n'y entre PAS : il est nul partout, il ne discriminerait rien.
+func (o ObjectiveRaw) HasBomb() bool {
+	return o.BombDetonations != nil || o.BombArms != nil || o.BombGrabs != nil
+}
+
 // HasObjective : au moins un bloc objectif présent.
 func (o ObjectiveRaw) HasObjective() bool {
 	return o.HasCTF() || o.HasZones() || o.HasOddball() ||
-		o.HasStockpile() || o.HasExtraction() || o.HasVip()
+		o.HasStockpile() || o.HasExtraction() || o.HasVip() || o.HasBomb()
 }
 
 // BulkMedalRaw : une ligne de Q27 (médailles de tous les joueurs du match).
