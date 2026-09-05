@@ -25,13 +25,27 @@ package replay
 // « cette valeur est-elle une famille d'arme » du dépôt. Les tables ci-dessous ne
 // servent que les POSES d'équipement (`equipmentPlacements`), jamais les socles.
 
+// Clés de famille du manifeste dupliquées 4 fois ou plus dans le paquet (corpus de
+// test compris) : golangci-lint (goconst, min-occurrences: 4) exige une constante
+// nommée plutôt que le littéral répété. Les autres membres des mêmes maps
+// (grenade_plasma, grenade_dynamo, grenade_spike, repulsor) restent en littéral :
+// sous le seuil, aucune obligation.
+const (
+	usageFamilyGrenadeFrag       = "grenade_frag"
+	usageFamilyGrapple           = "grapple"
+	usageFamilyThruster          = "thruster"
+	usageFamilyPowerupCamo       = "powerup_camo"
+	usageFamilyPowerupOvershield = "powerup_overshield"
+	usageFamilyWall              = "wall"
+)
+
 // usageGrenadeFamilies — les familles de GRENADE du manifeste (liste `gggl` du jeu).
 // Un lâcher de grenade à la mort n'est PAS un « objet lâché au sol » au sens du
 // résumé (décision utilisateur du 2026-09-04 : les grenades ne sont pas des
 // équipements), et un « déploiement » de grenade est un LANCER, déjà compté par
 // `grenades_thrown` — le compter deux fois ferait deux colonnes d'un même geste.
 var usageGrenadeFamilies = map[string]bool{
-	"grenade_frag": true, "grenade_plasma": true, "grenade_dynamo": true,
+	usageFamilyGrenadeFrag: true, "grenade_plasma": true, "grenade_dynamo": true,
 	"grenade_spike": true,
 }
 
@@ -42,7 +56,7 @@ var usageGrenadeFamilies = map[string]bool{
 // d'impulsions ; le répulseur n'a aucun canal mesuré) — même décision que
 // PLACEMENT_RENDER côté web (valeurs `null` explicites).
 var usageCarriedCapacityFamilies = map[string]bool{
-	"grapple": true, "thruster": true, "repulsor": true,
+	usageFamilyGrapple: true, usageFamilyThruster: true, "repulsor": true,
 }
 
 // usagePowerupFamilies — les BONUS ramassés au sol. Un power-up n'est jamais un
@@ -50,7 +64,7 @@ var usageCarriedCapacityFamilies = map[string]bool{
 // PLACEMENT_RENDER côté web) ; son lâcher à la mort, lui, compte dans les objets
 // lâchés (un surbouclier au sol change l'échange suivant).
 var usagePowerupFamilies = map[string]bool{
-	"powerup_camo": true, "powerup_overshield": true,
+	usageFamilyPowerupCamo: true, usageFamilyPowerupOvershield: true,
 }
 
 // usageWallPanelIDs — les identifiants `eqip` des PANNEAUX du mur, les seuls sur
@@ -97,7 +111,7 @@ func usageDeployedCounts(p *EquipmentPlacement) bool {
 	if p.Origin != OriginDeployed || !usageFamilyIsDeployable(p.Family) {
 		return false
 	}
-	if p.Family == "wall" {
+	if p.Family == usageFamilyWall {
 		return usageWallPanelIDs[p.ID]
 	}
 	return true
