@@ -1,3 +1,62 @@
+## [2026-09-05] Integration des branches — ETAPE C : l'usage de session rejoue dans l'orchestration du lot 5, harnais 13/13 SANS refigeage — Complete
+
+**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape C, worktree DEDIE
+`LevelUp-wt-integ-usage` (branche `wt/integ-usage`, HEAD de depart `eb80a4f0a` = le merge de
+l'etape A). `git merge --no-ff --no-commit wt/session-usage` (`c4f7d5417`, 10 commits, base
+`da616828f`) : **67 fichiers** (+8 737 / −87), **3 conflits seulement**. D8bis mesure avant le
+merge : `origin/feat/v75` toujours `7fb4b60a1`, **0 commit** amont a rattraper.
+
+**Decision technique principale — LE CROCHET SE REJOUE, IL NE SE REINTRODUIT PAS.** La branche
+accroche la projection du resume d'usage dans `buildAll`, apres `b.construits++`, sur
+`out.Path`. Chez nous le lot 5 (`PLAN_CUISSON_PERF` items 5.5/5.6) a sorti la cuisson d'un match
+de `buildAll` vers `cuireUnMatch`, et `out` est devenu `storedOne{stored, dur, peak}`. Le bloc de
+la branche a donc ete SUPPRIME et le crochet reecrit dans `cuireUnMatch`, au contact du report du
+T0 (meme regle de voyage : le rapport monte dans le bilan, l'ecriture attend la fin du lot), sur
+`out.stored.Path`. Les quatre points de doctrine ecrits dans `replayartifacts/usage.go` sont
+tenus et ont ete verifies sur pieces : lecture du fichier RANGE (jamais le blob candidat, que
+`StoreArtifact` peut refuser), projection APRES rangement, TOUTES les projections avant
+`AcquireWriter`, segment writer COURT apres toute cuisson (`Run` :
+`reporterT0Film` -> `persisterResumesUsage` -> `publierBilan`). Les deux autres conflits
+(`cmd/levelup/main.go`, `thought_log.md`) sont des unions.
+
+**Deux ajustements au-dela des marqueurs, dans le sens de la doctrine.** (1) L'auto-merge de
+`migration/order.go` avait glisse la nouvelle entree ENTRE un commentaire et l'entree qu'il
+decrit (doc inversee) : chaque bloc a ete remis au contact du sien, l'ordre des entrees est
+inchange (il est dicte par `TestSortByCanonicalIsNoOpOnCurrentRegistry`). (2) L'etape **5** de la
+recette ADR 0026 manquait : `match_usage_players` et `match_usage_films` sont inscrites a
+`appendOnlyStateTables` (`internal/sync/append_only_state_guard_test.go`), sur le patron de
+`match_kill_events`/`match_weapon_shots`. En revanche elles N'ENTRENT PAS dans
+`append_only_rebuild.go` : ce helper est un SWAP DE CONVERSION legacy -> append-only et rend
+no-op sur une table absente ; ces deux tables sont NET-NEUVES, append-only des leur DDL. Quatre
+precedents du depot (`match_objective_stats`, `match_kill_events`, `match_weapon_shots`,
+`match_weapon_hit_distance`) sont exactement dans ce cas et tous hors du helper.
+
+**Resultats observes.** Harnais d'equivalence SANS `-update` : **13 identiques, 0 different,
+0 ecarte, 0 echec, 0 illisible** — le resultat ferme attendu, aucun refigeage, `testdata/`
+intact. C'etait previsible et c'est prouve : le seul diff Go sur le document est le renommage PUR
+`padFamilyKey` -> `PadWeaponFamilyKey` (corps inchange au caractere pres), et
+`replay/usage_summary.go` est HORS artefact (`import "sort"` seul, fonction pure
+document -> lignes appelee depuis `replayartifacts`). `BuildFromFilmSteps` reste a 34.
+Gates : `gofmt` vide, `go build`/`go vet` 0, suite Go **EXIT_TESTS=0** (101 paquets ok),
+integration `-p 1` **EXIT_INTEG=0** (15 paquets, dont `usage_integration_test.go` et
+`session_usage_aggregate_integration_test.go`), web COMPLET (typecheck, lint, lint:fields, 574
+fichiers / 5 991 tests vitest, build, knip 0/0/0). D11 : openapi.yaml et generated.ts REGENERES,
+jamais edites — `openapi-check`, `TestOpenAPIYAMLIsUpToDate`, `TestContract` et
+`check-generated-types-fresh.mjs` tous verts.
+
+**Conclusion / prochaine etape.** L'usage de session est integre a l'architecture cuisson-perf ;
+un commit de merge dans `wt/integ-usage`, aucun push. **RESTE — cinq issues sous le ratchet CI du
+lint** (`golangci-lint --new-from-merge-base=origin/main`), toutes dans deux fichiers NEUFS de la
+branche (`usage_summary_families.go` : quatre `goconst` ; `sessionusage/usage.go:179` :
+`prealloc`), aucune dans un fichier resolu a la main : elles rougiront `Go Lint` et
+`make gate-push`, elles sont a eteindre a l'etape E (consignees N-10 au plan). Consignes aussi :
+N-8 (`match_weapon_hit_distance` absente du meme garde-rail, trou preexistant) et N-9 (le ratchet
+D-3 de l'ADR 0030 sur `OpenReadWrite` n'existe pas dans le code — la verification C.2 a ete faite
+a la main). Aucune base DuckDB ouverte de toute l'etape : le backfill `backfill-usage-summary` du
+parc deja cuit n'a PAS ete lance.
+
+---
+
 ## [2026-09-05] Integration des branches — ETAPE A : reconciliation avec `feat/v75` `7fb4b60a1`, 5 conflits, 3 balayages amont migres, sorties re-figees en changement declare AMONT — Complete
 
 **Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape A. `git merge --no-ff
@@ -1025,6 +1084,108 @@ couvert sans film, alors que `TestFailleActivationEntites` se saute sans `FAILLE
 
 **Suite.** Branche `wt/slot-band-faille` (worktree `LevelUp-wt-slot-band`), 1 commit, ni push
 ni merge. A fusionner dans `feat/v75` pour eteindre le rouge de branche.
+
+## [2026-09-05] Session-usage S3 — front Sessions : trois blocs, grammaire du handoff §1 reconstruite (voie de repli, GO utilisateur) — Complete cote executant (commit au pilote)
+
+**Decision technique principale.** Maquette inaccessible : les formes sont reconstruites
+depuis la GRAMMAIRE validee (ecart a la parite / jauge avec etendue · piste du lobby ·
+grille alignee ValueGrid · bande de regularite) et le modele de la vue match
+(SectionCard, valueGridModel, DOM/CSS sans ECharts). 5 fichiers neufs dans
+features/session-detail (usageI18n Record<Locale,UsageText> ; usageLogic pur : formats,
+jauges, piste, bande ; usageGrids : 3 projections buildValueGrid ; SessionUsageForms :
+rendu des formes ; SessionUsageSection : les 3 cartes), branches sur le bloc `usage` de
+la reponse EXISTANTE (SessionPageResponse — aucune query nouvelle), alias types dans
+lib/api/types.ts. Arbitrages executant a faire valider a la revue visuelle : (a) couleurs
+joueurs = source unique features/squad/colors (moi=squad-player-1, coequipiers=2..4) et
+non 1..3 pour les coequipiers — coherence inter-pages ; (b) « eux » = hachure NEUTRE
+anonyme (jamais team-enemy : la reference n'est jamais affichee) ; (c) bande de
+regularite teintee contre la parite de SESSION (le contrat ne publie pas la parite par
+match ; les comptes « au-dessus » restent ceux du Go, per-match) ; (d) familles de socle
+affichees par leur cle hexa (le contrat ne porte pas de libelle d'arme) ; (e) piste du
+lobby refusee quand team_total est nil (pas de frontiere nous/eux), residus bornes a 0.
+
+**Resultats observes.** make generate-types EXIT=0 (apres npm install du worktree — piege :
+premier passage echouait en silence, openapi-typescript absent) ; diff generated.ts
++140 lignes, bloc usage complet. make check-types EXIT=0. make test-web EXIT=0 :
+573 fichiers / 5977 tests verts dont usageLogic.test.ts (25 tests : nil jamais 0, piste,
+bande, grilles, disponibilite). eslint fichiers du lot : 0 probleme. Ratchet
+cross-feature : 7 <= 7 (import squad/colors deja allowliste). Fichiers <= 500 L,
+fonctions <= 80 L.
+
+**Conclusion / prochaine etape.** Reste PILOTE : relecture du diff, commit S3, gate visuel
+utilisateur sur le temoin corrige (session 2026-07-31 19:22, JGtm : 193 nommees /
+82 anonymes / bonus camo 45 + overshield 20 / murs 7 lobby 0 JGtm / parites
+12,5 % / 25,0 %).
+
+## [2026-09-05] Session-usage S2 — ronde de correction post-revue (C1-C6) : regle de scope camp connu, cadences sur duree connue, contrat team_total nullable — Complete cote executant (commit au pilote)
+
+**Decision technique principale.** Application de l'arbitrage pilote sur les six constats
+de la revue adversariale S2. Racine commune C1-C3 : les grandeurs de session RELATIVES A
+L'EQUIPE (team_total, player_share_of_team, team_share_of_lobby, team_per_10min,
+matches_above_team_parity) se calculent sur le SOUS-ENSEMBLE des matchs mesures a camp
+CONNU — numerateurs ET denominateurs (y compris le denominateur lobby de
+team_share_of_lobby et la duree des cadences d'equipe) ; sous-ensemble vide = nil, jamais
+un 0 invente. Meme correctif aux trois sites (computeMetric, computePadFamilies,
+objectiveRoleMetrics) + lignes d'escouade alignees sur les memes scopes. CONSEQUENCE
+CONTRAT : `team_total` devient *float64 et `matches_above_team_parity` devient *int
+(omitempty) — openapi-gen regenere, garde vert. C6 : un match mesure sans echelle de temps
+(duration<=0, aucun repli stats) sort des cadences (numerateur ET denominateur, y compris
+measured_duration_seconds, doc mise a jour), reste dans totaux/parts ; slog.WarnContext
+une fois par session avec le compte. C4 : idArgs (copie de ToAnySlice) supprime — 4
+appelants bascules sur le helper canonique (le 4e, objective_role_rows_repo.go, revele par
+le build). C5 : FilmRow.FrameIntervalMS et FilmRow.PadNamed supprimes, colonnes retirees
+du SELECT films.
+
+**Resultats observes.** gofmt 0 ; go build OK ; paquets du lot verts (sessionusage,
+service, platform/duckdb, narrative, api/...) ; integration -tags=integration
+./internal/platform/duckdb/... verte (139 s). Tests renforces : FFA asserte TeamPer10Min /
+TeamTotal / MatchesAboveTeamParity nil (C2) ; nouveau cas session MIXTE equipe+FFA qui
+donnait 600 % avant correctif (C1, metriques ET familles) ; nouveau cas match sans duree
+(C6, cadence 1 vs 5 gonflee) ; objectifs : cas camp inconnu partout (C3) + cas scope mixte.
+FLAKY PRE-EXISTANT observe une fois au gate groupe : TestStartImport_HappyPathReturns202
+WithJobID (api/handlers, course TempDir RemoveAll Windows, paquet intouche par la ronde,
+3 passes isolees vertes ensuite).
+
+**Prochaine etape.** Pilote : relecture du diff, commit S2 (aucun commit par l'executant,
+consigne). Rien d'autre a corriger sur les six constats.
+
+## [2026-09-05] Session-usage S2 — reconciliation terminee : bloc `usage` attache a sessions/detail (design B), roles d'objectif sources de narrative, lignes d'escouade — En cours (commit et verdict §7 au pilote)
+
+**Decision technique principale.** Execution de l'arbitrage pilote apres la collision des
+deux executants S2 : le contrat est le design B (bloc `usage` ATTACHE a la reponse de
+`POST .../pages/sessions/detail`, patron IntensityRows/FirstBlood — pas d'endpoint dedie).
+`domain/session_usage.go` du worktree portait encore le contrat concurrent (endpoint
+dedie) : REMPLACE par la version design B (sauvegarde scratchpad s2-executant-B, identique
+au reste du disque), enrichie des types d'escouade. La table de roles concurrente de
+`sessionusage/objectives.go` (map par famille, avec `flag_grabs` dans « prendre » et
+`vip_kills` dans « defendre ») est SUPPRIMEE : la SOURCE UNIQUE est
+`narrative.ObjectiveRoleColumns` (objective_roles.go, garde-rail de partition), le repo
+GENERE ses sommes par role depuis cette table (`LoadObjectiveRoleRows`,
+objective_role_rows_repo.go) et la presence d'un role pour une famille se DERIVE
+(intersection role x vocabulaire narrative) — zero liste parallele.
+
+**Escouade.** `Filters.MatchContext == "squad"` => coequipiers suivis resolus en miroir de
+`sessionCoreTeammates` (allies presents dans TOUS les matchs, restriction amis configures
+via `friendGamertagsResolver`, cap 3, ordre alphabetique — `ResolveTrackedSquad`,
+sessionusage/squad.go) ; `SquadPlayers` au bloc, ligne `Squad` par metrique ET par role
+d'objectif (memes denominateurs que le joueur de la route, cadence sur duree mesuree).
+`match_participants.gamertag` ajoute au SELECT du repo pour la resolution.
+
+**Resultats observes.** gofmt 0 ; go build OK ; openapi-gen regenere + garde vert ;
+sessionusage 14 tests verts (couverture 2/3, parites inegales, cadence mesuree seule,
+etendue + au-dessus-parite du MATCH, FFA parts nil jamais 0, escouade) ; integration
+`TestSessionUsageAggregate_DePersisterAuBloc` vert (DB migree par les VRAIES migrations,
+peuplee par persist.UsageSummaryPersister, re-passe supplantee par `_latest`). MESURE
+flag_grabs sur le temoin (copie scratchpad de shared, 9 matchs retrouves) : « prendre »
+JGtm = 48,3/14,0/6,7 % (narrative, grabs exclus) vs 51,9/9,8/5,1 % (grabs inclus) vs
+54,4/9,5/5,1 % (ancienne table supprimee) — le §7 (56,5/11,5/6,5) ne correspond a aucune
+des trois, le pilote tranche. flag_grabs temoin : 69 lobby / 39 camp / 2 JGtm.
+
+**Prochaine etape.** Pilote : verdict §7 (classification « prendre »), relecture du diff
+entier (avertissement double-executant), commit S2. Aucun commit fait par l'executant
+(consigne). Deux rouges preexistants attendus au gate complet (archlint
+TestNoRewrittenSlotBand, himap TestBalayageCoquille/aquarius_map) — depouillement au
+rapport.
 
 ## [2026-09-03] Match view — donnees des deux temoins chargees ; 9 formes proposees pour les trois blocs en tableau — En cours
 
@@ -92385,3 +92546,119 @@ re-cuit — les deux films 38 du chantier n'ont pas ete re-cuits avec les charge
 demande produit nouvelle du 04/09 (replier les equipements/armes non « game changer »
 dans les rendus d'usage) — artefact de vote a fabriquer pour que l'utilisateur tranche la
 liste.
+
+## [2026-09-04] Session-usage S1 — socle BDD du resume d'usage (executant, reprise apres interruption)
+
+**Statut** : En cours (implementation S1 posee, backfill reel des 114 artefacts et commit = pilote)
+
+**Decision technique principale.** Le resume d'usage se branche dans l'etape qui CONSTRUIT
+l'artefact (`replayartifacts` : `buildAll` collecte les artefacts ranges, `Run` appelle
+`persisterResumesUsage` apres `reporterT0Film`), sur le patron exact du report du T0 :
+projection depuis le disque (jamais le blob candidat — `StoreArtifact` peut refuser), burst
+writer court apres toute cuisson, best-effort compte et journalise. Les modifications heritees
+dans `killcollector/` ne branchent RIEN sur la chaine killsource : c'est la centralisation de
+la recette de lecture des capabilities (`games.LoadCapabilityMap`, regle des <= 2 copies, la
+4e copie a declenche la factorisation + garde-rail `capability_loader_guard_test.go`).
+
+**Choix tranche en cours de route** : les cles de la ventilation par arme (`pad_pickups_json`,
+`weapon_pads_json`) sont NORMALISEES par `replay.PadWeaponFamilyKey` (8 hexa minuscules) des la
+projection — jamais la forme verbatim du document (deux conventions d'ecriture coexistent dans
+les artefacts, des cles verbatim couperaient une famille en deux a l'agregat de session).
+
+**Resultats observes.** `go build ./...` exit 0 ; `go test ./internal/analysis/replay ./internal/games/...
+./internal/migration ./internal/sync/... ./internal/persist ./cmd/levelup` tous verts. Controles
+croises du handoff verifies EN VRAI (bac a sable scratchpad, DB vierge migree + artefacts reels
+copies, aucune base de data/ touchee) : 696a9d7c = 26 prises nommees / 8 anonymes / 10
+powerup_camo en powerup_pickups_json et ZERO en pad_pickups ; b8a44fe8 = 51 / 11 ; ecriture
+reelle puis reprise (deja a jour) validees. ATTENTION : DEUX executants ont travaille en
+parallele dans ce worktree (la session interrompue a repris seule) — les deux implementations
+ont converge (l'autre a adopte usage.go/persist et ecrit usage_integration_test.go contre),
+mais le pilote doit relire en connaissance de cause.
+
+**Conclusion / prochaine etape.** Restent au pilote : suite integration complete (lancee),
+dry-run sur la session temoin 2026-07-31 (193/102), backfill reel serveur arrete, commit S1.
+
+## [2026-09-04] Session-usage S1 — cloture pilote : persiste, backfille, verifie — Complété
+
+Lot S1 commite (`d448c3328`) apres revue adversariale DOUBLE : deux relecteurs frais de
+cette session (lentilles anti-ART/multi-titre et tests/anti-patterns) PLUS la revue de la
+session parallele — les deux ont converge independamment sur les memes P1 (vue
+`match_usage_players_latest` cassee par une re-passe sans ligne joueur ; reprise du CLI
+prouvee par rien), signal fort que les defauts etaient reels. Correctifs complementaires
+du pilote : compteur d'echecs conforme a son contrat (capabilities illisibles comptees),
+origine de pose STRICTE (`deployed` seul compte — 1 artefact schema<10 present au corpus
+aurait gonfle les deploiements), ventilation DroppedByFamily documentee non-persistee,
+deux cas de test (capteur lache, origine absente).
+
+**Le chiffre temoin « 102 anonymes » du handoff est FAUX** : verifie sur artefacts bruts,
+il comptait les 20 occupations `powerup_overshield` comme socles d'arme anonymes tout en
+excluant `powerup_camo` — asymetrie contraire a la regle §4 du handoff. Vrai temoin
+session 2026-07-31 : 193 nommees / 82 anonymes / bonus {camo 45, overshield 20}.
+
+Backfill reel : 106/106 artefacts, 0 echec, reprise idempotente verifiee. Piege releve :
+`air` lance depuis la racine du depot boucle en `exit status 1` (`.air.toml` vit dans
+`apps/go-api/`) — relance depuis `apps/go-api`, port 8000 re-ouvert.
+
+**Coordination** : DEUX sessions pilotes ont travaille le meme worktree cet apres-midi
+(l'executant interrompu par la limite a repris seul). Convergence heureuse cette fois —
+mais avant S2, une seule session doit garder le volant.
+
+Prochaine etape : S2 (agregat de session + contrat, chiffres §7 du handoff a re-deriver
+avec le temoin corrige).
+
+## [2026-09-05] Session-usage S2 — cloture pilote : agregat commite, S3 reporte — Complété
+
+S2 commite (`4c687645a`) apres deux rondes de revue adversariale : ronde 1 = 3 P1
+(scope camp connu/inconnu croise — parts > 100 % possibles — et deux 0-pour-inconnu)
++ 3 P2 ; ronde de correction avec tests anti-mutants (le cas 600 % passe a 100 %) ;
+ronde 2 = 6/6 corrections tiennent, aucun defaut recevable. Regle de scope documentee :
+grandeurs d'equipe sur les matchs mesures a camp connu, cadences sur les matchs a duree
+connue, nil quand le sous-ensemble est vide.
+
+Verification pilote au temoin 2026-07-31 : CINQ grandeurs exactes au dixieme contre le
+§7 du handoff. TROIS references du §7 corrigees sur pieces (meme cause : le mock hors
+depot) — anonymes 82 et non 102 (surbouclier mal classe), murs 7 panneaux deployes lobby
+et 0 pour JGtm (le mock comptait les appareils laches a la mort), parites 12,5/25,0
+(canon LobbySizesAtCompletion, le mock comptait tous les inscrits). Role « prendre » :
+decision utilisateur — flag_grabs EXCLU (porter-jeter tactiques) ; idee de filtre
+anti-spam des prises notee comme chantier futur (exige la chronologie des portages,
+cote artefacts de film).
+
+S3 (front, seize formes) REPORTE sur decision utilisateur : la maquette
+(artefact 2ec1b8eb...) est inaccessible depuis ce poste. Notes de reprise au plan —
+premiere action : make generate-types (generated.ts en retard sur openapi.yaml).
+
+Lecon de coordination (voir memoire agent) : l'executant S1 coupe par la limite avait
+repris SEUL et pilote en parallele toute la soiree — arbitrage utilisateur transmis par
+message de session, retrait propre de l'autre session, un seul pilote ensuite.
+
+## [2026-09-05] Session-usage S3 — cloture pilote : le front des trois blocs, gate visuel remis a l'utilisateur — Complété
+
+S3 commite apres revue adversariale (ronde 1 : 1 P1 — la piste du lobby dimensionnait
+ses segments a leur TEXTE, flexGrow pose sur le contenu du Tooltip au lieu de l'item du
+flex — corrige par le pattern width calc(%) de MatchPadControlSection ; 1 P2 — rails de
+jauge de largeur variable sous un axe pleine colonne — corrige par des sous-colonnes
+rail/texte ; ronde 2 : 2/2, rien de nouveau). Gates : tsc vert, 5977 tests web verts
+dont 25 du lot, eslint 0, aucune couleur en dur, i18n FR+EN par typage.
+
+DECOUVERTE CONSIGNEE : le meme defaut flexGrow-sur-contenu-de-Tooltip existe dans la
+vue match LIVREE (MatchEquipmentUsageSection.tsx:212, UsageTeamShares) — masque parce
+que ses segments portent toujours du texte. Dette pre-existante, hors perimetre S3.
+
+RESTE OUVERT : le gate VISUEL utilisateur sur le temoin (session 2026-07-31 19:22,
+JGtm, chiffres corriges au plan) — six arbitrages pris sans maquette a valider, dont
+les familles de socle en hexadecimal brut (si illisible : enrichir le contrat Go d'un
+libelle d'arme, petit lot de suite).
+
+Le chantier du handoff est LIVRE sur wt/session-usage (S1 backfille en local, S2/S3
+commites, ni push ni merge — decision de merge a l'utilisateur, mode branche unique
+feat/v75).
+
+## [2026-09-05] Vue match — la dette flexGrow de UsageTeamShares SOLDEE — Complété
+
+La decouverte consignee a la cloture S3 (meme defaut que la piste du lobby :
+flexGrow sur le contenu du Tooltip, segments dimensionnes a leur texte) est corrigee
+sur demande utilisateur, commit `26b9e2cac` : largeur en calc(%) portee par l'item du
+flex (pattern MatchPadControlSection) + libelle ecrit seulement si le segment porte
+>= 11 % (l'infobulle garde la valeur exacte). tsc vert, 22 tests du fichier verts,
+2 170 tests match-replay verts au passage precedent.

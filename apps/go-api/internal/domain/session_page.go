@@ -138,4 +138,9 @@ type SessionPageResponse struct {
 	// graphes — MIROIR du bloc Timeseries. Vide sans repo highlight events ni event.
 	FirstBlood        []FirstBloodPlayerSeries `json:"first_blood,omitempty"`
 	CompareFirstBlood []FirstBloodPlayerSeries `json:"compare_first_blood,omitempty"`
+	// Usage : bloc « usages d'équipement, socles et objectifs » de la session
+	// COURANTE (chantier session-usage S2). Best-effort : nil si la session n'a
+	// aucun match ; Available=false avec raison machine si le titre ne déclare
+	// pas film.usage_summary ou si la lecture échoue (jamais un 500).
+	Usage *SessionUsageBlock `json:"usage,omitempty"`
 }
