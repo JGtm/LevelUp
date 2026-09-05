@@ -361,6 +361,30 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   `bomb_carriers_killed`. Les cases E4/E5/E6 du plan d'Assaut sont statuées DANS le fichier
   (zéro case vide restante ; deux `[!]` justifiés : le carnet Notion appartient à l'utilisateur,
   et l'état CI se juge à l'étape F sur `feat/v75`, pas sur une branche d'intégration jetable).
+- [x] G.6 — **LA CINQUIÈME STATISTIQUE EST COMBLÉE : `bomb_carriers_killed` PASSE DE NULL À
+  MESURÉE.** Le motif écrit à G.2 (« aucune source de la chaîne de cuisson ne porte une paire
+  (tueur, victime) datée sur l'horloge du MATCH ») était FAUX sur son second membre, et
+  l'utilisateur l'a démenti — vérification sur pièces à l'appui. **CE QUI MANQUAIT** : la
+  VICTIME, et elle seule. `killsource.Kill` porte `Feed.Killer` ET `Victim` en gamertags ;
+  `replaybuild.killRefs` ne résolvait que le premier, parce que la jointure d'équipement (son
+  seul consommateur d'alors) n'a que faire de la seconde. **CE QUI NE MANQUAIT PAS** :
+  L'HORLOGE. `killsource.Kill.TimeMS` et `replay.Death.TimeMS` sont LE MÊME CHAMP DU MÊME
+  ENREGISTREMENT du chunk highlight (`analysis.HighlightEvent.TimeMS`) ; or l'horloge du match
+  de `analysis/replay` EST celle du fil des morts. **Aucun pont à mesurer, et surtout aucun à
+  appliquer** — `FilmToMatchOffsetMS` reste lu par la SEULE jointure de `bomb_arms`, ce noyau ne
+  convertit une horloge qu'à un endroit. La résolution reste UNE passe (`resolveKills`, deux
+  sorties, la même table gamertag -> xuid — règle des 2 copies), et l'étape observée `killRefs`
+  continue de rendre EXACTEMENT `replay.KillsInput`, sans quoi le harnais aurait vu bouger
+  13 films pour rien. Les couples voyagent par `replay.Options.MatchKills`. Les couples PERDUS
+  (victime non résolue = cas nominal du bot) sont comptés et journalisés, ventilés par cause,
+  jamais tus. **[~] `BombStatsCoverage` N'EST PAS ÉLARGIE** : `killsDropped` y aurait été un
+  champ d'API (le type est publié dans `openapi.yaml` + `generated.ts`), et un compteur de
+  diagnostic ne justifie pas d'élargir un contrat — il est journalisé à côté du dénominateur
+  `kills` qu'il complète. Conséquence voulue : **D11 SANS OBJET**, `openapi-gen -check` **0**, le
+  contrat ne bouge pas. **[~] D12 SANS OBJET** : aucun fichier d'`apps/web` touché ; le web
+  n'affiche toujours pas de colonne pour ce champ (règle de G.4 — 4 colonnes sur 5), il change
+  seulement de valeur en base. **MESURE, `9f57c612`** : `killsRead: true`, 58 couples, 0 écarté,
+  **3 porteurs tués** — détail et recoupement au §5 « G.6 ».
 
 ### Étape E — Filet complet et revue de branche (sur `wt/cuisson-perf` fusionnée)
 - [ ] E.1 FILET COMPLET, pièce par pièce, un code de sortie consigné par ligne (EXIT_*=0 dans un log
@@ -719,6 +743,67 @@ garde-fou qui a fait son travail) · `go test -tags=integration -p 1 ./internal/
 4 tests neufs du crochet) · `make openapi-gen` + `make generate-types` + `make openapi-check`
 **0** · `contracttest` **ok** (`wantReplayDocumentFields` 54 → **56**).
 
+#### G.6 — `bomb_carriers_killed` : de NULL à MESURÉE (2026-09-05)
+
+**L'HORLOGE, LUE SUR PIÈCES PLUTÔT QU'ESTIMÉE.** C'est le fait qui décidait du lot, et il ne
+demandait aucune campagne de mesure : `killsource.Kill.TimeMS` est renseigné par
+`killsource.buildFeed` depuis `analysis.HighlightEvent.TimeMS`, et `replay.Death.TimeMS` par
+`replay.ScanDeaths` depuis LE MÊME CHAMP DU MÊME ENREGISTREMENT du chunk highlight. Or l'horloge
+du match de `analysis/replay` EST celle du fil des morts : c'est elle que `bombHeldEventsOf`
+rejoint par `matchMS = TimestampUS/1000 − deathOffsetMS`. Les couples et les périodes sont donc
+sur le même axe, **sans recalage**. Contrôle algébrique indépendant : la jointure d'équipement
+pose ces mêmes instants par `TimeMS − originMs`, et `originMs` est publié à moins de 100 ms de
+`firstPosUS/1000 − deathOffsetMS` (origin.go) — soit exactement le recalage qu'appliquerait un
+instant DÉJÀ sur l'horloge du match. `FilmToMatchOffsetMS` (33-114 ms sur les films d'Assaut)
+reste donc lu par la SEULE jointure de `bomb_arms`.
+
+| étape | films touchés | nature | cause |
+|---|---|---|---|
+| `killRefs` | **0/13** | IDENTIQUE | délibéré : `killRefs` rend désormais DEUX valeurs, mais l'observateur ne reçoit que la première (`replay.KillsInput`), inchangée. Observer la seconde aurait fait bouger 13 films pour un fait qui n'ajoute aucun balayage |
+| `artifact` | **1/13** (`9f57c612`) | CHANGE (octets) | **1 583 856 → 1 584 146 (+290)** — le champ `carriersKilled` passe de ABSENT (`omitempty` sur un `*int` nil) à MESURÉ chez les 6 joueurs, et la couverture publie `killsRead: true`, `kills: 58`, `killsOnCarrier: 3` |
+
+**LE LIVRABLE — `bomb_carriers_killed` par joueur sur `9f57c612`** (`Assault:One Bomb`, le SEUL
+film d'Assaut du corpus), lu dans l'artefact cuit :
+
+| xuid | carriersKilled |
+|---|---|
+| `2535446563676950` | **2** |
+| `2533274974091007` | **1** |
+| `2533274796620553` | 0 |
+| `2535419279251362` | 0 |
+| `2535470127489792` | 0 |
+| `2535470823750470` | 0 |
+
+Les quatre zéros sont des zéros **MESURÉS**, plus des `NULL` : `coverage.killsRead` vaut `true`.
+Dénominateur : **58 couples** fournis, **0 écarté** (aucun `tueur non résolu`, aucune `victime
+non résolue` au journal de ce film).
+
+**RECOUPEMENT INDÉPENDANT, non construit pour ça** : `coverage.periodsByDeath = 3` — trois
+périodes de portage fermées par la MORT du porteur — et `coverage.killsOnCarrier = 3`. Les deux
+comptes sortent de canaux différents (le canal des armes tenues croisé au fil des morts d'un
+côté, la jointure des couples de l'autre) et tombent sur le même nombre.
+
+**PASSES.** Passe 1 SANS `-update` : **12 identiques / 1 différent / 0 écarté / 0 échec /
+0 illisible**, l'écart déclaré à l'étape `artifact` de `9f57c612` et à elle seule (« ECART a
+l'etape "artifact" : attendu compte=1583856 …, obtenu compte=1584146 … »). **AUCUNE des
+48 étapes qui la précèdent ne bouge, sur aucun des 13 films** — `killRefs` compris.
+
+**PASSE `-update`** : 13 écrits, BILAN **13 identiques** (`EXIT_G6_UPDATE=0`), et `git status` sur
+`testdata/` rend **UNE SEULE ligne** — `9f57c612.tsv`, dont le diff est **d'UNE ligne** :
+`artifact 1583856 …` → `artifact 1584146 …`. Les douze autres TSV ont été réécrits et sont
+ressortis identiques à l'octet ; `minifilm.tsv` INTACT. **PASSE DE VÉRIFICATION** sans `-update` :
+**13 identiques, 0 différent, 0 écarté, 0 échec, 0 illisible** (`EXIT_G6_VERIF=0`). Gate de lignes
+tenu : **49 étapes** sur les 13 TSV (+ 7 pour `minifilm.tsv`), inchangé.
+
+**GATES G.6, un code de sortie par ligne** (log persistant `tmp/gates_g6.log`, jamais un pipe) —
+`gofmt -l .` VIDE **EXIT_GOFMT=0** · `go build ./...` **EXIT_BUILD=0** · `go vet ./...`
+**EXIT_VET=0** · `go test ./internal/analysis/replay/ ./internal/replaybuild/
+./internal/sync/replayartifacts/ ./internal/persist/ ./internal/archlint/ ./contracttest/...
+-count=1` **EXIT_TESTS=0** (6 paquets `ok`) · `go test -tags=integration -p 1 ./internal/sync/...
+-count=1` **EXIT_INTEG=0** (10 paquets `ok`) · `go run ./cmd/openapi-gen -check`
+**EXIT_OPENAPI_CHECK=0** — *« api/openapi.yaml est à jour (676070 octets) »*, **D11 SANS OBJET** ·
+`golangci-lint cache clean` puis `golangci-lint run --timeout 5m --new-from-merge-base=origin/main`
+**EXIT_LINT_RATCHET=0**, **0 issues**.
 
 ## §6 Journal
 - 2026-09-05 14 h 40 — plan écrit après inventaire mesuré (§1) ; relecture `plan-review` lancée
@@ -1133,6 +1218,54 @@ garde-fou qui a fait son travail) · `go test -tags=integration -p 1 ./internal/
   validation et le même vocabulaire, défini en UN seul endroit ; (c) `bombStats` est le seul bloc
   du document de rejeu qui ne soit pas un calque de rendu — la frontière web le comble comme les
   autres, mais aucun composant ne le lit : c'est la base qui sert la fiche de match.
+
+- 2026-09-05 — **ÉTAPE G.6 exécutée** (worktree dédié `LevelUp-wt-integ-bombkills`, branche
+  `wt/integ-bombkills`, HEAD de départ `f0c38e08a` = étape G complète). `bomb_carriers_killed`
+  passe de NULL À MESURÉE.
+
+  **LE MOTIF DE G.2 ÉTAIT FAUX SUR SON SECOND MEMBRE, et l'utilisateur l'a démenti** (« les kills
+  sont datés à la milliseconde près dans le match, on a déjà ces données »). La vérification sur
+  pièces lui donne raison, et elle se LIT — elle ne s'estime pas : `killsource.Kill.TimeMS` vient
+  de `analysis.HighlightEvent.TimeMS` (via `killsource.buildFeed`) et `replay.Death.TimeMS` du
+  MÊME CHAMP DU MÊME ENREGISTREMENT (via `replay.ScanDeaths`) ; or l'horloge du match de
+  `analysis/replay` EST celle du fil des morts, celle que `bombHeldEventsOf` rejoint par
+  `matchMS = TimestampUS/1000 − deathOffsetMS`. Le « troisième référentiel » inscrit au registre
+  était une lecture de commentaire. Ce qui manquait vraiment : la VICTIME, jamais résolue par
+  `replaybuild.killRefs` parce que son seul consommateur d'alors n'en avait pas besoin.
+
+  **CE QUI CHANGE, fichier par fichier** : `replaybuild/kills.go` (`killRefs` rend DEUX entrées
+  d'une seule passe ; `resolveKills` + `killResolution` extraits, pertes ventilées par cause et
+  journalisées à deux niveaux) · `replaybuild/replaybuild.go` (`entreesCatalogue.matchKills`,
+  `Options.MatchKills` ; l'étape observée `killRefs` rend EXACTEMENT la même valeur qu'avant) ·
+  `replay/killpos.go` (`MatchKillsInput`, et la dérivation d'horloge avec son contrôle
+  algébrique) · `replay/options.go` (`MatchKills`) · `replay/bomb_stats_document.go` (câblage,
+  en-tête RÉÉCRIT — la section « RESTE ABSENT, ET C'EST ÉCRIT PLUTÔT QUE COMBLÉ » était devenue
+  fausse, doc inversée interdite).
+
+  **AUCUNE CONVERSION D'HORLOGE N'EST AJOUTÉE** : `FilmToMatchOffsetMS` reste lu par la SEULE
+  jointure de `bomb_arms`. Un test de câblage pose un décalage volontairement ÉNORME (−5 000 ms)
+  et vérifie qu'un kill en plein portage compte quand même ; il a été validé PAR MUTATION (le
+  pont injecté pour de vrai dans `attachBombStats` fait tomber le test, son retrait le repasse).
+
+  **MESURE** : `9f57c612`, `killsRead: true`, 58 couples, 0 écarté, **3 porteurs tués**
+  (2535446563676950 → 2, 2533274974091007 → 1, quatre joueurs à zéro MESURÉ) — recoupés par
+  `periodsByDeath = 3`, un compte issu d'un autre canal. Détail au §5 « G.6 ».
+
+  **REGISTRE** : la ligne `bomb_carriers_killed` est CLOSE, datée, avec sa mesure ; son motif
+  historique est conservé mais MARQUÉ REFUTÉ. Les cases du plan d'Assaut sont amendées au même
+  endroit.
+
+  **RESTE DOUTEUX / À SURVEILLER** : (a) la réserve « ni camp ni tir ami » du noyau est TOUJOURS
+  vraie — `KillRef` ne porte aucune équipe, donc un tir ami sur un porteur de son propre camp
+  compte ici alors que le compteur officiel de l'API ne compte que les porteurs ADVERSES ; elle
+  est écrite, pas corrigeable sans une entrée que ce noyau n'a pas ; (a-bis) les deux lecteurs du
+  chunk highlight le LOCALISENT différemment (`ScanDeaths` prend le dernier du manifeste,
+  `killsource.loadKillFeed` celui qui rend le plus de kills) — s'ils désignaient des chunks
+  différents, l'horloge SERAIT fausse, mais le pont gamertag -> xuid le serait aussi, et il est en
+  production depuis le lot F.1 : l'hypothèse PRÉEXISTE, ce lot n'en ajoute pas ; (b) la mesure ne porte que
+  sur UN film — le corpus n'a qu'un match d'Assaut, et 3 porteurs tués est un échantillon, pas
+  une validation de population ; (c) le parc d'artefacts ne porte rien tant que les deux passes
+  de release (`backfill-replay` puis `backfill-bomb-stats`) n'ont pas tourné.
 
 ## §7 Contrat d'exécution (rappel opposable)
 Statuts : `[x]` fait · `[~]` couvert ailleurs (avec la référence) · `[!]` non traité (avec la

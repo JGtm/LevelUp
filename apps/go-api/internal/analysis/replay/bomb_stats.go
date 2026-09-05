@@ -41,9 +41,11 @@ package replay
 //	                              dans bomb_arms.go — le seul endroit de ce noyau où deux
 //	                              horloges se rencontrent.
 //	bomb_carriers_killed          DÉDUCTION, pas un compteur du moteur. Le fil des kills déjà
-//	                              apparié (`KillRef`, tel que `match_kill_events` le porte) est
-//	                              croisé aux périodes : un kill compte si sa VICTIME portait la
-//	                              bombe à l'instant du kill. Patron validé 10/10 sur
+//	                              apparié (`KillRef` — porté par `match_kill_events` en base, et
+//	                              reconstruit HORS LIGNE par `replaybuild.killRefs` pour la
+//	                              cuisson, cf. `MatchKillsInput`) est croisé aux périodes : un
+//	                              kill compte si sa VICTIME portait la bombe à l'instant du
+//	                              kill. Patron validé 10/10 sur
 //	                              `skull_carriers_killed` en Oddball (témoin `43716616`,
 //	                              bombe_b2_chronologie_test.go) : les 10 événements th=10 non
 //	                              couverts par un heartbeat de possession créditaient tous le
@@ -159,7 +161,7 @@ type BombStatsInput struct {
 	// absent partout. La statistique demande les DEUX témoins : sans portage, il n'y a aucune
 	// victime à qualifier, et le champ reste absent même si les kills sont lus.
 	KillsRead bool
-	// Kills sont les morts DÉJÀ appariées à leur tueur, horloge du MATCH.
+	// Kills sont les morts DÉJÀ appariées à leur tueur ET à leur victime, horloge du MATCH.
 	Kills []KillRef
 	// ArmingsRead : l'anneau d'armement a été balayé ET publié (`BombInput.Scanned` vraie,
 	// confrontation locale tenue — cf. bomb_armings.go). Faux = ni faits `bomb_armed`, ni
