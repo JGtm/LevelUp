@@ -1,3 +1,51 @@
+## [2026-09-05] Volet B « films aux blobs expires » — le Lot 0 rend zero, le volet se ferme sans une ligne de code — Complete
+
+**Ce qui etait prevu.** Le volet B de `.ai/PLAN_REPRISE_FORK_2026-09-05.md` visait un trou reel
+sur le papier : un manifeste de film encore vivant dont les blobs pre-signes rendent 404/410
+ressort en erreur de transport, donc `MBitFilmAbsent` n'est jamais pose, donc le match repart a
+chaque cycle des rattrapages 1.57/1.58 et n'aboutit jamais. Trois lots de code etaient ecrits et
+leurs decisions produit tranchees. Le plan les faisait preceder d'un Lot 0 de pure mesure, avec
+une clause de sortie explicite si le compte tombait a zero.
+
+**Decision technique principale.** L'asymetrie du plan commandait de mesurer avant de coder ; la
+mesure a rendu zero ; on ne code pas un verdict definitif contre un phenomene jamais observe. Le
+Lot 2 aurait ecrit `MBitFilmAbsent` dans `match_registry.backfill_completed` — un bit PERMANENT,
+qui retire le match des deux rattrapages pour toujours. Un faux positif ne se repare pas tout
+seul. Le cout d'attendre une premiere occurrence reelle est nul ; le cout d'un faux verdict est
+un film perdu sans retour.
+
+**Resultats observes.** Prod (VPS, `/opt/levelup/data/logs`, binaire `main` 98bd7c143, v7.3.1),
+fenetre 2026-06-13T22:08Z → 2026-09-05T18:54Z, TOUS les fichiers de log (34 `*.log*` : general,
+sync, auth, provider et leurs archives `.1` a `.3`) : `downloadBlob HTTP 404` ou `410`, tous
+messages confondus = **0**. Il y a bien 553 lignes `downloadBlob` (general.log 29, general.log.1
+18, sync.log 26, sync.log.1 480 ; messages : echec reseau 471, `weapon_kills: erreur match` 63,
+`downloadBlob HTTP error` 19), mais les seuls statuts HTTP observes sont **304 x 17 et 502 x 2**.
+`killsource: decodage du film` + `echec` en prod : 0, attendu — le collecteur v7.5 n'y est pas
+deploye. Local (`feat/v75`), deux repertoires : `logs/` (general.log du 2026-05-20 au
+2026-09-04) donne 304 x 4 et 502 x 1, zero echec de decodage ; `apps/go-api/logs/` (jusqu'au
+2026-09-05) porte 5 952 lignes `killsource` et **1 860 passes `decodage du film — debut` / 1 860
+`— fin`, 0 `— echec`** (resultat `sans-killfeed` x 1 860). La chaine visee a donc reellement
+tourne 1 860 fois sans jamais produire l'echec que le volet devait traiter. B.0.2 : 0 match_id
+distinct. B.0.4 : **0 sur 0**, aucun id a tester.
+
+**Ce qui a ete ecrit.** B.0.1 a B.0.4 coches ; les 16 items des lots 1, 2, 3 et de l'observation
+J+7 statues `[!]` avec la meme justification, sans etre supprimes ni reecrits — ils restent la
+trace de ce qui aurait ete fait, decisions produit comprises. Chiffres et fenetres en §6 du plan,
+etat et condition de reprise en tete du volet B, entree au registre des reports.
+
+**Decouverte laissee au §5, non traitee.** `apps/go-api/internal/sync/haloclient/halo_client_http.go`,
+`downloadBlob` lignes 50-53 : tout statut non-200 devient une erreur formatee
+`downloadBlob HTTP %d` et un WARN. C'est ce qui fait apparaitre **304** comme un echec de
+telechargement, 17 fois en prod et 5 fois en local — un « Not Modified » n'est pas un echec.
+Qualification a faire dans un lot dedie (d'ou vient l'en-tete conditionnel, et le 304 doit-il
+etre un succes ou un cas neutre), pas ici : zero fix opportuniste hors perimetre.
+
+**Conclusion / prochaine etape.** Volet B ferme, aucun code Go touche, aucun gate de test a
+jouer (lot documentaire). Condition de reprise ecrite en deux endroits : rouvrir si
+`downloadBlob HTTP 404|410` apparait dans les logs (prod `/opt/levelup/data/logs/*.log*`, local
+`apps/go-api/logs/`), et reprendre alors a B.0.4 avec les ids observes. Le volet A du meme plan
+(collections `null` des classements) reste entier et independant : c'est lui, la suite.
+
 ## [2026-09-05] CI — l etape « vet du corpus gamefiles » ne pouvait pas passer : ooz est un paquet CGO — Complete
 
 **Le rouge, apres le lint.** Le ratchet golangci-lint eteint, la CI de branche restait rouge sur
