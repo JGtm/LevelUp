@@ -407,6 +407,25 @@ describe('ExplorerMatchesTable — colonne « Rejeu »', () => {
     expect(screen.queryByRole('link', { name: REPLAY_LABEL })).not.toBeInTheDocument()
   })
 
+  // PORTE DE TITRE (2026-09-05, registre L5) : un titre sans décodeur de film n'aura
+  // jamais d'artefact — la colonne entière disparaît, pas seulement ses icônes. Sa
+  // voisine Waypoint était gatée depuis le 2026-07-24 ; celle-ci ne l'était pas.
+  it("masquée quand le titre courant ne déclare pas la capability replay", () => {
+    setTitleCaps(['team_mmr', 'waypoint_match_url'])
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: true })]} playerSlug="me" />,
+    )
+    expect(screen.queryByRole('link', { name: REPLAY_LABEL })).not.toBeInTheDocument()
+  })
+
+  it('rendue quand le titre déclare `replay` ET que la ligne porte un artefact', () => {
+    setTitleCaps(['replay'])
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: true })]} playerSlug="me" />,
+    )
+    expect(screen.getByRole('link', { name: REPLAY_LABEL })).toBeInTheDocument()
+  })
+
   it('un seul lien par ligne portant un artefact', () => {
     renderWithProviders(
       <ExplorerMatchesTable

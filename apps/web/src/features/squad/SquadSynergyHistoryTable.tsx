@@ -113,6 +113,9 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   // les DEUX titres depuis le 2026-07-24) ET par préférence LOCALE (Apparence →
   // « Colonne Halo Waypoint sur les listes de matchs », défaut ON).
   const waypointCapability = useCapability('waypoint_match_url')
+  // Colonne « Rejeu » : porte de TITRE. La porte de LIGNE (`has_replay`) vit dans
+  // MatchReplayLink.
+  const replayCapability = useCapability('replay')
   const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const showWaypoint = waypointCapability && showWaypointColumnPref
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
@@ -191,22 +194,29 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
             } as ColumnDef<SquadMatchHistoryRow>,
           ]
         : []),
-      {
-        id: 'replay',
-        header: '',
-        // Lien INTERNE vers la page de rejeu 2D — jamais triable (I16). Composant
-        // partagé avec le tableau Explorer (lib/match-nav/MatchReplayLink), qui porte
-        // la règle d'affichage : rien n'est rendu sans artefact.
-        enableSorting: false,
-        cell: (ctx) => (
-          <MatchReplayLink
-            available={!!ctx.row.original.has_replay}
-            matchId={ctx.row.original.match_id}
-            playerSlug={playerSlug}
-            label={labels.replayAriaLabel}
-          />
-        ),
-      },
+      // Colonne « Rejeu » : présente SEULEMENT si le titre déclare `replay` (2026-09-05,
+      // registre L5) — même forme conditionnelle que sa voisine Waypoint. Un titre sans
+      // décodeur de film n'aura jamais d'artefact : la colonne serait vide à perpétuité.
+      ...(replayCapability
+        ? [
+            {
+              id: 'replay',
+              header: '',
+              // Lien INTERNE vers la page de rejeu 2D — jamais triable (I16). Composant
+              // partagé avec le tableau Explorer (lib/match-nav/MatchReplayLink), qui
+              // porte la règle par LIGNE : rien n'est rendu sans artefact.
+              enableSorting: false,
+              cell: (ctx) => (
+                <MatchReplayLink
+                  available={!!ctx.row.original.has_replay}
+                  matchId={ctx.row.original.match_id}
+                  playerSlug={playerSlug}
+                  label={labels.replayAriaLabel}
+                />
+              ),
+            } as ColumnDef<SquadMatchHistoryRow>,
+          ]
+        : []),
       {
         accessorKey: 'start_time',
         header: labels.date,
@@ -363,7 +373,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           ]
         : []),
     ],
-    [labels, intlLocale, playerSlug, goToSynergyMatch, providesTeamMmr, showWaypoint, theme, currentTitleSlug],
+    [labels, intlLocale, playerSlug, goToSynergyMatch, providesTeamMmr, showWaypoint, replayCapability, theme, currentTitleSlug],
   )
 
   // I16 : tri CLIENT par clic sur les en-têtes. Pas d'état de tri initial : l'ordre
