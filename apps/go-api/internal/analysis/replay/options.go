@@ -213,6 +213,20 @@ type Options struct {
 	// fait. `Kills.Read=false` (repli zéro) publie `Coverage.Equipment.KillsRead=false` —
 	// jamais un `EquipmentEpisode.K/A` à zéro qui se lirait comme une mesure.
 	Kills KillsInput
+	// MatchKills : les couples (tueur, victime, instant) du match, RÉSOLUS EN XUID DES DEUX
+	// CÔTÉS et datés sur l'horloge du MATCH (celle du fil des morts). Entrée de DONNÉES, MÊME
+	// PRODUCTEUR que `Kills` — `replaybuild.killRefs` les construit dans la MÊME passe, sur la
+	// même table gamertag -> xuid, pour ne pas résoudre deux fois la même identité.
+	//
+	// POURQUOI UN SECOND CHAMP ET PAS UNE VICTIME DANS `EquipmentKillRef` : les deux jointures
+	// n'ont pas la même population. Celle des épisodes crédite un TUEUR et n'a que faire de la
+	// victime — un frag dont la victime est un bot y compte ; celle de `bomb_carriers_killed`
+	// exige les DEUX identités et écarte le couple sinon. Fondre les deux aurait imposé à la
+	// première les refus de la seconde.
+	//
+	// `Read=false` publie `BombStatsCoverage.KillsRead=false`, donc `bomb_carriers_killed`
+	// absent partout — jamais un zéro qui se lirait comme une mesure.
+	MatchKills MatchKillsInput
 	// FilmClockOriginUS est l'horodatage moteur du PREMIER PAQUET du film, c'est-à-dire le
 	// zéro de l'horloge sur laquelle les highlight events sont datés (cf. origin.go). Entrée
 	// de DONNÉES, comme Loadouts et Deaths. Zéro = origine incalculable : le document ne

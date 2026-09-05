@@ -48,6 +48,52 @@ type KillRef struct {
 	TimeMS int64
 }
 
+// MatchKillsInput porte les couples (tueur, victime, instant) d'un match ET le témoin de
+// LECTURE qui distingue « source non lue » d'une liste vide — exactement le rôle que
+// `KillsInput` tient pour la jointure d'équipement. Entrée de DONNÉES comme `Deaths` ou
+// `Objectives` : ce paquet ne décode ni film ni base, l'appelant résout et fournit.
+//
+// # L'HORLOGE EST CELLE DU MATCH, PAR CONSTRUCTION ET NON PAR CALAGE
+//
+// C'est le point qui décidait de tout ce lot, et il se lit sur pièces plutôt qu'il ne s'estime :
+// `killsource.Kill.TimeMS` et `Death.TimeMS` sont LE MÊME CHAMP DU MÊME ENREGISTREMENT du chunk
+// highlight (`analysis.HighlightEvent.TimeMS`), lu par `ScanDeaths` d'un côté
+// (deaths_source.go) et par `killsource.buildFeed` de l'autre. Or « l'horloge du match » de ce
+// paquet EST celle du fil des morts, par définition — c'est elle que `deathOffsetMS` sert à
+// rejoindre depuis les horodatages de paquet (`matchMS = TimestampUS/1000 − deathOffsetMS`,
+// cf. bomb_carries.go). Les couples et les périodes de portage sont donc DÉJÀ sur le même axe.
+//
+// COROLLAIRE, ET C'EST UNE INTERDICTION : le pont `FilmToMatchOffsetMS` ne s'applique PAS ici.
+// Il recale ce que le MANIFESTE date (l'anneau d'armement, cf. bomb_arms.go) ; l'appliquer à un
+// couple décalerait chaque kill de sa valeur mesurée — 33 à 114 ms sur les cinq films d'Assaut,
+// c'est-à-dire l'ordre de grandeur de la tolérance de fermeture elle-même.
+//
+// Contrôle algébrique indépendant, qui ne suppose rien de la lecture ci-dessus : la jointure
+// d'équipement pose ces mêmes instants sur la grille de frames par `TimeMS − originMs`, et
+// `originMs` est publié à moins de 100 ms de `firstPosUS/1000 − deathOffsetMS` (origin.go) —
+// soit exactement le recalage qu'appliquerait un instant DÉJÀ sur l'horloge du match.
+//
+// LA SEULE HYPOTHÈSE QUI RESTE, ET ELLE PRÉEXISTE : les deux lecteurs LOCALISENT ce chunk
+// différemment — `ScanDeaths` prend le DERNIER du manifeste, `killsource.loadKillFeed` celui
+// qui rend le plus de kills. Si ces deux-là désignaient des chunks différents, ce n'est pas
+// seulement l'horloge qui serait fausse : le pont gamertag -> xuid, en production depuis le lot
+// F.1, le serait aussi. L'hypothèse est donc DÉJÀ portée par la chaîne, ce lot n'en ajoute pas.
+type MatchKillsInput struct {
+	// Read : la source a été lue. Faux = `bomb_carriers_killed` reste absent chez TOUS les
+	// joueurs — jamais un zéro qui se lirait comme une mesure.
+	Read bool
+	// Kills sont les couples RÉSOLUS EN XUID DES DEUX CÔTÉS. Un couple dont une identité
+	// manque n'entre pas : il ne rencontrerait aucune période, et l'inscrire gonflerait le
+	// dénominateur d'une mort qu'on n'a pas su qualifier.
+	Kills []KillRef
+	// Dropped compte justement ces couples écartés — un producteur qui tait ses trous laisse
+	// croire à l'exhaustivité. Il est JOURNALISÉ (cf. logBombStats, à côté du dénominateur
+	// `kills` qu'il complète) et NON publié au document : `BombStatsCoverage` est un schéma
+	// d'API, et un compteur de diagnostic ne justifie pas d'en élargir le contrat. Sa
+	// ventilation par cause vit chez le producteur (`replaybuild.killResolution`).
+	Dropped int
+}
+
 // Vec3 est une position monde. Rendue par pointeur chez l'appelant : une coordonnée absente
 // doit rester distinguable d'un zéro, qui est une position valide.
 type Vec3 struct{ X, Y, Z float64 }
