@@ -379,6 +379,17 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   (extraction de constantes, capacité de slice) sans effet sur la sortie. **Condition de
   reprise : étape E** (E.1 `make gate-push`), qui ne peut pas passer avec ces cinq rouges — et
   D8 exige le vert au niveau job avant le push de F.3.
+
+  **ÉTEINTES le 2026-09-05, commit `983b696b1`** (worktree `wt/cuisson-perf`). Une constante
+  nommée par clé de famille répétée (`usageFamily*` dans `usage_summary_families.go`) ; dans
+  `metricKeys` (`sessionusage/usage.go`), calcul des familles déployées avant l'allocation de
+  `keys` (`make` + `append` au lieu du slice littéral qui grossissait par `append`). Piège
+  mesuré en cours de résolution : `--uniq-by-line` masquait DEUX occurrences goconst
+  supplémentaires (`thruster` ×13, `powerup_overshield` ×7) tant que `grapple`/`powerup_camo`
+  restaient en littéral sur la même ligne physique — apparues au relevé cache-nettoyé une fois
+  les quatre premières corrigées, mêmes constantes, même traitement. Gate final mesuré : `gofmt
+  -l .` vide, `go vet` propre, `go test ./internal/analysis/replay/ ./internal/analysis/sessionusage/`
+  vert, `golangci-lint run --new-from-merge-base=origin/main` (cache nettoyé) **0 issue**.
 - N-11 la comparaison du harnais est positionnelle (§5 A) : une amélioration « diff par nom »
   de `cmd/replay-equiv` serait pérenne — hors périmètre de l'intégration, au registre.
 
@@ -470,6 +481,9 @@ plancher `51101d1d` 7,5 s / 0,08 Gio, plafond `a349fea8` 4 min 38,9 s / 0,51 Gio
 lot 4b, régime connu).
 
 ### Fusions D10 — (attendu : 13/13 identiques sans `-update` sur les TSV de B, après chaque fusion)
+
+- Fusion D (`1c1b6026f`, 15 h 55) : zéro octet Go, plan en union ; gates web déjà rendus dans le worktree D sur le même contenu.
+- Fusion C (`9423b9ba4`, 16 h 54) : conflits documents seuls ; typecheck web exit 0, `go build` OK, `go test` replayartifacts / replay / persist / archlint ok, **harnais 13/13 identiques sans `-update`** (les TSV sont encore ceux de A : B n'est pas fusionnée).
 
 ## §6 Journal
 - 2026-09-05 14 h 40 — plan écrit après inventaire mesuré (§1) ; relecture `plan-review` lancée
