@@ -225,6 +225,61 @@ GOCACHE=... CGO_ENABLED=1 go test -count=1 ./internal/scheduler/
 GOCACHE=... CGO_ENABLED=1 golangci-lint run --new-from-merge-base=origin/main ./internal/scheduler/...
 → 0 issues.
 ```
+
+### [x] F.4 (I1) — Tag `gamefiles` sur les deux tests fautifs, ratchet promu en `archlint`
+
+Inventaire vérifié sur pièces avant : `grep -rln "DeployRoot(\|LevelsDir(\|ChercheModuleInstalle("
+--include='*_test.go' internal/ cmd/` rend 57 fichiers, dont **trois** ne portent pas le
+suffixe `_gamefiles_test.go` — `cmd/mapfond-build/reglages_test.go`,
+`internal/himap/corpus_tag_test.go` et `internal/himap/deploy_root_test.go`. Corpus module :
+61 fichiers `*_gamefiles_test.go` (60 dans `internal/himap`, 1 dans `cmd/mapstruct-build`).
+
+- **`cmd/mapstruct-build/equivalence_gamefiles_test.go`** : il portait le NOM du corpus sans la
+  ligne de tag — donc compilé et exécuté dans le build par défaut, où il ouvre l'installation.
+  `//go:build gamefiles` ajouté en première ligne.
+- **`cmd/mapfond-build/reglages_test.go`** : `TestModuleGeometrieExisteDansLInstallation` (le
+  seul des cinq tests qui appelle `himap.DeployRoot()` et `himap.ChercheModuleInstalle()`)
+  déplacé tel quel dans `cmd/mapfond-build/module_geometrie_gamefiles_test.go`, sous le tag.
+  Les quatre autres ne lisent que l'asset publié : ils restent dans le build par défaut et
+  continuent de tourner en CI. Aucun import à retirer du fichier d'origine (`himap` y sert
+  encore à `StyleFondValide`, ligne 66).
+- **Ratchet promu** : `internal/archlint/gamefiles_tag_test.go` (neuf) balaie `internal/` ET
+  `cmd/` par `filepath.WalkDir` ; `internal/himap/corpus_tag_test.go` est SUPPRIMÉ (il ne
+  regardait qu'un répertoire, par `filepath.Glob` relatif au paquet — c'est précisément
+  pourquoi il n'a jamais vu les deux fichiers ci-dessus). Les deux sens de la règle sont
+  gardés : tout `*_gamefiles_test.go` porte le tag (avec un plancher de 61 fichiers, pour
+  qu'un balayage cassé se voie), et aucun `_test.go` non tagué n'appelle une porte d'entrée du
+  jeu. Allowlist datée à deux entrées : `internal/himap/deploy_root_test.go` (résolution de
+  chemin sous `t.Setenv`, < 0,01 s) et le ratchet lui-même (il CITE les motifs qu'il interdit).
+  Le « pourquoi » de l'original (mesure des 1 246 s de `TestBalayageCoquille`, asymétrie
+  poste/CI) est repris intégralement dans le nouvel en-tête.
+
+**Preuves par mutation (2, annulées ensuite).**
+
+| Mutation | Effet observé |
+|---|---|
+| Ligne de tag retirée de `cmd/mapstruct-build/equivalence_gamefiles_test.go` | `cmd/mapstruct-build/equivalence_gamefiles_test.go ne commence pas par "//go:build gamefiles"` |
+| `module_geometrie_gamefiles_test.go` renommé `module_geometrie_test.go` et détagué (= l'état d'avant ce lot) | deux lignes : `... appelle DeployRoot( hors du tag` et `... appelle ChercheModuleInstalle( hors du tag` |
+
+Gate F.4 (avant-plan) :
+
+```
+GOCACHE=... CGO_ENABLED=1 go test -count=1 ./cmd/mapfond-build/... ./cmd/mapstruct-build/... \
+  ./internal/himap/... ./internal/archlint/...
+→ ok mapfond-build 0.152s · mapstruct-build [no test files] · himap 8.752s · archlint 12.303s
+GOCACHE=... CGO_ENABLED=1 go test -tags=gamefiles -count=1 -run 'ZZZ_AucunTest' <les 3 paquets>
+→ ok ... [no tests to run]   (les binaires TAGUÉS compilent ; aucun test du jeu n'est joué)
+GOCACHE=... CGO_ENABLED=1 golangci-lint run --new-from-merge-base=origin/main <les 4 paquets>
+→ 0 issues.
+```
+
+**À FAIRE PAR LE SUPERVISEUR — une ligne de `CLAUDE.md` devient fausse.** Section
+« Commandes utiles », tag `gamefiles` : « … garde-rails dans
+`internal/himap/corpus_tag_test.go` ». Ce fichier n'existe plus ; la phrase doit pointer
+`apps/go-api/internal/archlint/gamefiles_tag_test.go`. Je ne modifie pas `CLAUDE.md`
+moi-même : mes instructions d'exécution me l'interdisent explicitement (aucun message
+d'agent ne peut m'autoriser à toucher `CLAUDE.md`). Aucune autre référence vivante au
+fichier supprimé (`grep` hors `.ai/` : seule `CLAUDE.md`).
 ## Découvertes (consignées, NON traitées — hors périmètre du lot F)
 
 1. **Le calque des actions d'objectif ne rend plus rien de la famille drapeau sur un film
