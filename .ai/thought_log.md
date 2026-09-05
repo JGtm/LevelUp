@@ -95401,3 +95401,54 @@ demander avant). Prochaine etape : decision utilisateur sur les 6 escalades, pui
 plan `.ai/PLAN_V2_REJEU_FILM_<date>.md` sous `plan-review`, lot 0 (trois P0 + les deux items
 actifs au merge : catalogue ecrit par le runtime, projections sur « artefact range ») avant le
 tag v7.5.0.
+
+## [2026-09-06] Tactique phase 1 — socle pur : grille, raster, echange — Complete
+
+**Decision technique principale.** Deux paquets purs neufs, sans aucune I/O ni import de
+`analysis/replay` ou de `platform/duckdb` : `internal/analysis/tactical` (grille de 0,5 m,
+raster creux, somme, echelles) et `internal/analysis/coordination` (couverture, echange).
+Trois choix structurent le reste du chantier. (1) L'adresse d'une cellule est ancree sur
+l'ORIGINE DU MONDE, pas sur les bornes de la lecture : c'est ce qui rend deux rasters de
+matchs differents sommables sans re-projection, condition du stockage d'un raster par match a
+la cuisson (phase 6). Les bornes agregees sont l'union, et servent au cadrage, pas a
+l'adressage. (2) Le raster garde le detail PAR MATCH dans chaque cellule
+(`cellule -> matchID -> passages`) : le plancher de rarete se compte en matchs distincts et la
+lecture signee doit savoir quels passages viennent des victoires — un compteur global perdrait
+les deux. Une cellule jamais atteinte n'existe pas dans la table (pas de zero explicite).
+(3) La lecture signee normalise CHAQUE COTE par son propre nombre de matchs : avec 20 victoires
+et 5 defaites, une difference brute lit +15 sur une cellule au rythme identique des deux cotes
+et peint une zone gagnante qui n'est que le taux de victoire global. Plancher par cote (3 V ET
+3 D), echelle symetrique bornee par le p95 de |valeur| — un quantile sur le signe mesure la
+proportion de cellules favorables, pas l'intensite. Cote coordination : `domain.Couverture` est
+le SEUL type de retour d'un taux (taux 0..1, brut, par match, N, echantillon faible sous 30
+morts), tenu par un garde-rail AST qui interdit toute fonction exportee rendant un `float64` ;
+la fenetre d'echange est la constante `FenetreEchangeMs = 5000` (utilisateur, 2026-09-05,
+autorite mecanique de jeu) et non un parametre, deux surfaces qui la choisiraient separement
+publieraient deux taux sous le meme nom. Les codes de resultat existants `domain.Outcome*` sont
+reutilises : aucun enum de plus.
+
+**Resultats observes.** 6 commits sur `wt/tactique` (`tactique(1.1)` a `(1.6)`), 17 fichiers,
+2 013 lignes. Gate rejoue en avant-plan le 2026-09-06 : `go vet` propre (0,8 s), `go test` sur
+les trois arbres vert (7 paquets, 13,1 s), `golangci-lint run` sur les deux nouveaux paquets a
+0 issue. Seuils tenus : fichiers de 30 a 315 L, fonctions <= 33 L, <= 3 parametres. Les deux
+cas limites de l'echange sont couverts par des tests a comptes exacts : un tueur qui abat deux
+coequipiers puis tombe dans la fenetre venge LES DEUX morts (pas d'appariement un-pour-un) ;
+un tueur mort de l'environnement, de lui-meme ou de son propre coequipier ne venge rien. Une
+mort sans tueur, par un coequipier, ou aux equipes inconnues n'est pas VENGEABLE : elle sort du
+denominateur au lieu d'y compter comme un echec. Chaque condition du gate a ete verifiee PAR
+INVERSION (onze inversions jouees : floor -> troncature, plancher par cote -> plancher global,
+valeur par match -> par matchs de la cellule, ecart de taux -> difference brute, p95 sur
+|valeur| -> p95 signe, fenetre 5 s -> 15 s, vengeur unique -> appariement un-pour-un, tueur
+sans auteur -> vengeur valide, equipes inconnues et tir ami -> vengeable, plancher 30 -> 8,
+garde-rail du taux nu). Deux d'entre elles ont mis a nu un test non discriminant : la table
+d'equipes n'etait gardee que par `NbVengees`, deux assertions sur `NbVengeables` et un test de
+tir ami ont ete ajoutes. Deux decouvertes consignees au §7 du plan, non traitees : trois
+implementations de quantile dans le depot pour deux conventions differentes (`replay` tronque,
+`temporal` interpole, `tactical` suit `temporal`) ; le hook `go-vet` de lefthook noie son
+verdict sous 60 lignes de « build constraints exclude all Go files ».
+
+**Conclusion / prochaine etape.** Phase 1 close, items 1.1-1.6 `[x]` et 1.7 `[~]` (les types
+`domain/` sont livres avec le code qui les compile, commits 1.1, 1.5 et 1.6). RIEN N'EST
+POUSSE : le superviseur rejoue le gate, lance la revue adversariale, puis pousse. Phase 2
+(port, repo DuckDB, service, handler) executable ensuite ; phases 4-7 gelees jusqu'a
+l'integration des lots C, B et D de l'audit v2.
