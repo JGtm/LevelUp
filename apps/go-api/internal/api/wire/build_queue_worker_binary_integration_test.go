@@ -127,7 +127,7 @@ func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
 
 	// ── L'artefact rangé = celui construit (empreinte sha256 déclarée par l'ouvrier dans son
 	//    compte rendu), lisible par le service, et NON APPAUVRI ─────────────────────────────
-	assertArtefactLivreEtComplet(t, serveurRepo, vue.Jobs, job.JobID)
+	assertArtefactLivreEtComplet(t, serveurRepo, vue.Jobs, job.JobID, fx)
 
 	// ── L'ouvrier n'a rien gardé : ses morceaux sont effacés ─────────────────────────────
 	if _, err := os.Stat(filepath.Join(travail, "film_chunks", fixtureShort)); !os.IsNotExist(err) {
@@ -152,9 +152,16 @@ func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
 // APPAUVRI (mesuré : 0 joueur de courbe de score, camps `unresolved`) qui porte pourtant le bon
 // numéro de schéma. La présence de compteurs de joueur est LA ligne qui distingue « livré » de
 // « livré vide » — exactement l'appauvrissement que le transport des faits (via EnqueueReplayBuild)
-// doit supprimer. Ici, AVEC faits : 5 joueurs de courbe de score et 92 actions d'objectif nommées
-// (famille flag), contre 0 sans.
-func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domain.BuildQueueJob, jobID string) {
+// doit supprimer. Ici, AVEC faits : 5 joueurs de courbe de score et 12 actions d'objectif nommées
+// (8 `kills`, 4 `assists` — mesure du 2026-09-05 au schéma 39 ; la ligne disait « 92, famille
+// flag », mesure du 2026-08-25 au schéma 37, que le décodeur ne rend plus : écart consigné en
+// découverte du lot F), contre 0 sans.
+//
+// LES VALEURS, ELLES, SONT VÉRIFIÉES À CÔTÉ : `assertValeursDuDocument`
+// (build_queue_worker_valeurs_integration_test.go) confronte les compteurs décodés du film à
+// l'oracle INDÉPENDANT du fixture (la feuille de match de l'API) et fige l'horloge, le roster et
+// la courbe de score — constat G1 du registre d'audit du 2026-09-05.
+func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domain.BuildQueueJob, jobID string, fx filmFixture) {
 	t.Helper()
 	var resultJSON string
 	trouve := false
@@ -212,6 +219,7 @@ func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domai
 	// propriété de ce film. La ligne dure ci-dessus (joueurs présents) porte la preuve.
 	t.Logf("artefact COMPLET : %d joueurs de courbe de score, identité des camps = %q (informatif)",
 		len(doc.ScoreTimeline.Players), doc.Coverage.Score.TeamIdentity)
+	assertValeursDuDocument(t, doc, fx)
 }
 
 // chargerFixture lit le mini-film versionné (fixture.json + chunks) résolu PAR LE PAQUET
