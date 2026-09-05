@@ -6,7 +6,8 @@
  * oubliés en FR » (règle projet n°6 : à la 3e occurrence, centraliser +
  * garde-rail qui interdit l'ancien littéral). Ce test interdit la
  * RÉ-introduction, côté FRANÇAIS uniquement, des anglicismes purgés par I15 :
- * PB, kill(s), assist(s), streak, win rate, leaderboard.
+ * PB, kill(s), assist(s), streak, win rate, leaderboard — et, depuis le
+ * 2026-09-05 (décision utilisateur n°6), « heatmap », à dire « carte de chaleur ».
  *
  * PÉRIMÈTRE — fichiers traités par I15 + complément I15-bis (2026-07-24, lot
  * dédié à la dette listée comme point de vigilance dans le rapport I15) :
@@ -63,9 +64,16 @@
  *     template de clé) confirmant AUCUNE référence ailleurs dans
  *     apps/web/src : section entière morte (Onglet Résumé superseded),
  *     supprimée du manifest (FR+EN). Plus d'exception nécessaire ici.
- *   - `badge` et `playlist` ne sont volontairement PAS dans la liste des
- *     patterns interdits (mots jugés assimilés / cas au cas par cas ailleurs)
- *     — rien à exempter pour eux.
+ *   - MOTS ASSIMILÉS, volontairement PAS dans la liste des patterns interdits
+ *     (rien à exempter pour eux) :
+ *       · `badge`, `playlist` — jugés assimilés, cas au cas par cas ailleurs ;
+ *       · `lobby` (décision utilisateur du 2026-09-05, escalade 6) — c'est le
+ *         DÉNOMINATEUR d'une part : « les 8 ou 12 joueurs du match », tous camps
+ *         confondus. « Partie » désigne le match lui-même et « salon » n'a pas ce
+ *         sens en français de jeu vidéo : aucun équivalent FR net dans ce rôle, et
+ *         le mot est déjà servi en prose FR par les manifestes du titre
+ *         (`config/titles/halo_infinite/mappings/engagement.toml`). Le remplacer
+ *         par une périphrase rendrait la mesure moins lisible, pas plus française.
  *   - Noms propres (Kamikaze, Top Gun) : ne matchent aucun des patterns
  *     interdits, aucune exception nécessaire.
  */
@@ -96,6 +104,10 @@ const FORBIDDEN_PATTERNS: { name: string; re: RegExp }[] = [
   { name: 'streak', re: /\bstreak\b/i },
   { name: 'win rate', re: /\bwin rate\b/i },
   { name: 'leaderboard', re: /\bleaderboard\b/i },
+  // « heatmap » -> « carte de chaleur » (décision utilisateur du 2026-09-05, n°6).
+  // Deux manifestes le servaient encore en FR (`explorer.toml`, `timeseries.toml`) et
+  // passaient : le mot n'était tout simplement pas dans cette liste.
+  { name: 'heatmap', re: /\bheatmap\b/i },
 ]
 
 // Exceptions explicites : clé = `${source}:${path}`. Chaque entrée est datée
