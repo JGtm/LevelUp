@@ -376,6 +376,23 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
     `./internal/api/...` complet.
 - [ ] E.2 Revue adversariale du diff d'intégration (`eb80a4f0a..HEAD`, contexte frais) ;
   corrections ; seconde lecture.
+  - [x] **I-1 : option 1** — LE GLYPHE D'OBJECTIF D'UN PORTEUR EMBARQUÉ SE DESSINE SUR LE
+    VÉHICULE (décision produit de l'utilisateur, 2026-09-05). Constat de la revue vérifié SUR
+    PIÈCES : `replayMarkers.ts:243` cachait déjà le pion d'un occupant, mais les cinq calques qui
+    lisent une position de joueur passaient par `usePlayerPosAt` -> `posOfPlayerAt` ->
+    `replayLogic.positionAt`, qui INTERPOLE en ligne droite à travers le trou de réplication
+    (précondition Go `replay/vehicle_rides.go:12-15`). Exécuté dans `wt/integ-glyphes` (un
+    commit) : résolveur unique `carrierPosition.ts` (`positionOfCarrierAt`, `buildCarrierPosAt`,
+    `useCarrierPosAt`), CLÉ = XUID (celle que les calques tiennent déjà, et celle de
+    `VehicleRide.xuid`), position du véhicule par `vehiclePositionAt` — LA MÊME que le sprite.
+    Détail, décision `enabled` et gates au §6 « E.2 / I-1 ».
+  - [x] **I-1 (périmètre ÉTENDU par le pilote, même journée)** — les DEUX lecteurs signalés
+    comme non traités par le premier lot y passent à leur tour : `killFx.ts` (un joueur tué au
+    volant ou en passager explose sur son véhicule) et `objectivesLayer.ts:291` (pulsations
+    d'objectif). La « copie jumelle autorisée » de killFx.ts DISPARAÎT : la primitive
+    (`posOfPlayerAt`, `KILLPOS_WINDOW_MS`) est rapatriée dans `livesPosition.ts`, le cycle
+    d'imports qui la justifiait n'existe plus, et l'allowlist de `livesPosition.guard.test.ts`
+    retombe de 3 à 2 entrées. Second commit sur `wt/integ-glyphes` ; détail au §6.
 - [ ] E.3 Journal, registre des reports (D5, D6, D7), thought_log ; suppression des trois worktrees
   et branches d'intégration ; commit.
 
@@ -1147,6 +1164,140 @@ garde-fou qui a fait son travail) · `go test -tags=integration -p 1 ./internal/
   validation et le même vocabulaire, défini en UN seul endroit ; (c) `bombStats` est le seul bloc
   du document de rejeu qui ne soit pas un calque de rendu — la frontière web le comble comme les
   autres, mais aucun composant ne le lit : c'est la base qui sert la fiche de match.
+
+### E.2 / I-1 — Le glyphe d'un porteur embarqué suit le véhicule (2026-09-05, `wt/integ-glyphes`)
+
+**LE CONSTAT, RE-VÉRIFIÉ SUR PIÈCES AVANT DE CODER.** Le pion, sa traînée et sa croix d'un
+occupant embarqué sont bien supprimés (`replayMarkers.ts:243`, `style.embarkedAtSlot`). Les
+GLYPHES portés, non : `bombCarrierLayer.ts:136`, `vipCrownLayer.ts:103`,
+`skullCarrierLayer.ts:107`, `flagCarriesLayer.ts:218` appellent tous `layer.posOf(xuid, frame)`,
+et ce `posOf` venait de `usePlayerPosAt` (livesPosition.ts) -> `posOfPlayerAt` (killFx.ts) ->
+`positionAt` (replayLogic.ts:34-47). Un bipède attaché CESSE de répliquer sa position monde
+(précondition écrite de `replay/vehicle_rides.go:12-15`) : entre l'embarquement et la descente il
+n'y a plus d'échantillon, et `positionAt` interpole donc en LIGNE DROITE à travers le décor. Le
+CINQUIÈME consommateur de `usePlayerPosAt` a été trouvé par grep : `useReplayBombBlast.ts`
+(déflagration d'Assaut, posée au lieu relu de son auteur). Cinq, pas quatre.
+
+**CE QUI EST LIVRÉ — UN SEUL CHEMIN, PAS CINQ COPIES.** Nouveau module pur
+`apps/web/src/features/match-replay/carrierPosition.ts` (122 L) :
+- `buildEmbarkedPosAt(vehicles)` — l'index des épisodes d'occupation PAR XUID, MÊME filtre que
+  `buildEmbarkedPredicate` (`vehicleCanEmbark` : ni décor, ni châssis non résolu — le bug du prop
+  Falcon de `0d76e8f1` ne peut pas revenir par cette porte) ;
+- `positionOfCarrierAt(embarkedAt, bipedAt, xuid, frame)` (`carrierPosition.ts:103-110`) — LA
+  RÈGLE, écrite une seule fois : embarqué -> position du véhicule, sinon -> position du bipède ;
+- `buildCarrierPosAt(doc)` / `useCarrierPosAt(doc)` — la relecture complète, mémoïsée pour les
+  hooks. Les CINQ hooks de calque (`useReplayBombCarrier`, `useReplayVipCrown`,
+  `useReplaySkullCarrier`, `useReplayFlagCarries`, `useReplayBombBlast`) n'ont plus qu'une ligne
+  changée chacun. `usePlayerPosAt` DISPARAÎT (plus aucun appelant — règle n° 7, pas de code mort ;
+  knip aurait rougi de toute façon) ; `buildPlayerPosAt` reste, appelé par `objectivesLayer.ts:290`
+  (les pulses d'objectif, hors périmètre de la décision produit).
+
+**LA CLÉ EST LE XUID**, celle que les calques d'objectif tiennent déjà (une période de portage
+nomme son porteur par xuid, jamais par un slot de bipède) — et l'épisode d'occupation le nomme de
+la même façon (`VehicleRide.xuid`), qui est DÉJÀ la source prioritaire de l'identité d'un occupant
+pour la teinte et le nom du véhicule, pour la raison exacte qui nous occupe. Un épisode SANS xuid
+ne déplace aucun glyphe : repli bipède, c'est-à-dire le comportement d'avant — plutôt qu'un second
+pont d'identité slot->joueur à entretenir.
+
+**LA POSITION EST CELLE DU SPRITE, PAS UNE AUTRE** : `vehiclePositionAt` (vehiclesLayer.ts:297),
+la même fonction que `vehiclesPaint.ts:345` — glyphe et véhicule coïncident à l'écran par
+construction, pas par coïncidence.
+
+**DÉCISION `enabled`, ÉCRITE AU CONTRAT** (en-tête de `carrierPosition.ts`) : le glyphe suit le
+véhicule MÊME QUAND LE CALQUE DES VÉHICULES EST ÉTEINT. La position d'un porteur est un fait du
+document, pas une décoration du calque ; la bascule ne commande que ce qui se DESSINE. C'est une
+divergence VOLONTAIRE d'avec `Vehicles.isEmbarkedAt`, qui suit la bascule (revue adversariale du
+2026-09-02, point 7 : cacher un pion sans montrer son véhicule ferait disparaître un joueur sans
+réglage pour le récupérer). Conséquence assumée : calque éteint, le pion revient à sa position
+interpolée — fausse, mais c'est le régime déjà assumé de la bascule — tandis que le glyphe garde
+la seule position vraie dont on dispose. Le résolveur ne connaît donc AUCUN `enabled`.
+
+**TESTS — CONSTRUITS SUR LA RÈGLE, ET DISCRIMINANTS PAR MUTATION.**
+`carrierPosition.test.ts` (200 L, 15 cas) : la fixture oppose les deux positions du même instant
+(le bipède file en X, le véhicule monte en Y) et chaque assertion nomme celle qui doit gagner ET
+celle qui doit perdre — un test qui dirait « une position sort » passerait avant comme après.
+Cas : embarqué à f -> véhicule (et `not.toEqual` le bipède) ; bornes de l'épisode (t0 et t1
+inclus) ; DESCENTE à t1+1 -> de nouveau le bipède, à l'unité près ; changement de monture ; joueur
+JAMAIS embarqué inchangé sur 5 images ; **document ANTÉRIEUR aux véhicules (schéma <= 38) :
+identique au bipède sur 5 images** (aucune régression sur le parc déjà cuit) ; épisode anonyme ;
+épisode sur du décor ; monture sans aucune position ; joueur inconnu.
+`carrierPosition.guard.test.ts` (79 L) : les cinq calques passent par `useCarrierPosAt`, aucun ne
+reprend `buildPlayerPosAt` ni ne relit un véhicule lui-même, et `vehiclePositionAt` n'a que trois
+lecteurs autorisés (sa définition, le sprite, le résolveur de glyphe) — règle n° 6, la
+factorisation vient avec son garde-rail.
+**DISCRIMINANCE PROUVÉE PAR MUTATION, puis restaurée** : (a) `positionOfCarrierAt` réduit à
+`return bipedAt(xuid, frame)` -> **5 tests rouges** sur 15 (« expected {x:0,y:50}, received
+{x:50,y:0} » : exactement la ligne droite à travers le décor) ; (b) un hook remis sur
+`buildPlayerPosAt` -> **2 tests de garde rouges**, le fautif nommé. Les deux mutations annulées,
+vert reproduit.
+
+**GATES (un code de sortie par ligne, worktree `wt/integ-glyphes`)** : `npm run typecheck`
+**EXIT_TYPECHECK=0** · `npm run lint` **EXIT_LINT=0** (28 warnings, EXACTEMENT la baseline G.5,
+**0 sur un fichier touché** — croisement mesuré) · `npm run lint:fields` **EXIT_FIELDS=0**
+(220 labels FR+EN, 1671 fichiers, 0 violation) · `npm run test` **EXIT_TEST=0** (588 fichiers,
+**6 216 tests passés**, 14 skippés, 0 échec) · `npm run build` **EXIT_BUILD=0** ·
+`node tools/knip-ratchet.mjs` **EXIT_KNIP=0** (files 0/0, exports 0/0, types 0/0 — aucun export
+mort neuf malgré le retrait de `usePlayerPosAt`). Seuils : plus gros fichier touché
+`useReplayFlagCarries.ts` **284 L** ; `carrierPosition.ts` 122 L ; `ReplayCanvas.tsx` **INTACT à
+664 L** (aucune ligne ajoutée au canvas, tout passe par les hooks). Aucune couleur hex ni classe
+Tailwind couleur (grep sur les fichiers neufs : vide) ; aucune string UI ajoutée (le résolveur ne
+parle pas).
+
+**DOUTEUX / NON TRAITÉ** : (a) `objectivesLayer.ts:290` (pulses d'objectif) et `killFx.ts` (effets
+de mort, qui écrit sa propre copie jumelle autorisée de la relecture) restent sur la position de
+BIPÈDE : un kill ou un pulse d'un joueur embarqué garde donc la position interpolée. Hors de la
+décision produit (« glyphe d'objectif »), non traité, consigné ici — la correction, si elle est
+voulue un jour, est un appel de plus au même résolveur. (b) Vérification visuelle sur film réel
+non faite (pas de gate visuel dans ce lot) : la preuve est le harnais de tests, et le calque
+véhicules n'a pas bougé d'un pixel.
+
+### E.2 / I-1 (suite) — Périmètre étendu aux effets de mort et aux pulsations d'objectif
+
+**DÉCISION DU PILOTE, dans la ligne de l'option 1** : les deux lecteurs que le premier lot avait
+signalés comme non traités passent au même résolveur. Un joueur tué AU VOLANT (ou en passager)
+explose sur son véhicule ; un pulse d'objectif s'apparie à l'élément le plus proche du VÉHICULE
+de son auteur, pas d'une position où personne n'était.
+
+**LE VERROU ÉTAIT UN CYCLE D'IMPORTS, ET IL EST LEVÉ À LA RACINE.** `killFx.ts` ne pouvait pas
+importer `livesPosition.ts` : il DÉFINISSAIT `posOfPlayerAt` et `KILLPOS_WINDOW_MS`, que
+`livesPosition.ts` importait — d'où sa « copie jumelle autorisée » de l'index des vies, dûment
+allowlistée. Rien de tout cela n'aurait survécu à un import de `carrierPosition.ts` (qui dépend
+de `livesPosition.ts`). La primitive est donc RAPATRIÉE dans son module canonique
+(`livesPosition.ts`, 54 -> 102 L) : le cycle disparaît, la copie locale avec lui (killFx.ts
+importe désormais `buildLivesByXuid`/`deathWindowFrames` comme tout le monde), et l'allowlist de
+`livesPosition.guard.test.ts` **retombe de 3 entrées à 2** — un garde-rail qui rétrécit, vérifié
+par lui-même. Graphe d'imports revérifié avant de coder : `killFx` / `objectivesLayer` ->
+`carrierPosition` -> {`livesPosition`, `vehiclesLayer` -> `replayMarkers` -> ...} ne referme aucune
+boucle (`replayDraw`, seul autre importateur de `killFx`, n'est dans aucune de ces chaînes).
+
+**CE QUI CHANGE, LIGNE À LIGNE.** `killFx.ts:112` — `const posOf = buildCarrierPosAt(doc)` remplace
+l'index local ET les deux appels à `posOfPlayerAt` ; l'index canonique n'y sert plus qu'au SLOT
+(`killFx.ts:116-117, 136`), qui est une propriété de la vie du BIPÈDE qu'aucun véhicule ne
+déplace — c'est le cas distinct que la revue demandait de nommer, et il est écrit dans le code.
+`objectivesLayer.ts:291` — une ligne, `buildPlayerPosAt` -> `buildCarrierPosAt`. Aucune autre
+logique touchée ; `ReplayCanvas.tsx` **intact à 664 L**. Après ce lot, `buildPlayerPosAt` (le
+bipède seul) n'a plus qu'un appelant : le résolveur lui-même, dont il est le repli.
+
+**TESTS.** `killFx.test.ts` +4 cas (embarqué -> véhicule ; après la descente -> bipède ; document
+schéma <= 38 rigoureusement inchangé ; le SLOT reste celui du bipède). `objectivesLayer.test.ts`
++2 cas bâtis pour être discriminants : le bipède de l'auteur est à un pas du marqueur
+`flag_spawn` (équipe 0) tandis que son véhicule est SUR la zone `flag_delivery` (équipe 1) —
+l'appariement au plus proche tranche donc entre DEUX éléments distincts selon la position lue ;
+le cas « document sans véhicules » est déjà couvert par les trois cas préexistants du fichier,
+restés verts. `livesPosition.test.ts` NEUF (51 L) : les trois cas de `posOfPlayerAt` ont suivi la
+fonction déplacée plutôt que de rester derrière elle dans `killFx.test.ts`. Garde
+`carrierPosition.guard.test.ts` étendu : 5 hooks (`useCarrierPosAt`) **+ 2 lecteurs purs**
+(`buildCarrierPosAt`), et aucun des sept ne reprend `buildPlayerPosAt` ni ne relit un véhicule.
+**MUTATION PROUVÉE PUIS RESTAURÉE** : les deux lecteurs remis sur `buildPlayerPosAt` ->
+**4 rouges** (2 gardes nommant les fautifs, le cas du kill embarqué, le cas du pulse embarqué) ;
+les cas « descente » et « schéma <= 38 » restent VERTS sous la mutation, comme attendu d'un
+non-régression.
+
+**GATES D12 COMPLETS** : `typecheck` **EXIT_TYPECHECK=0** · `lint` **EXIT_LINT=0** (28 warnings,
+la baseline exacte, **0 sur un fichier touché**) · `lint:fields` **EXIT_FIELDS=0** · `test`
+**EXIT_TEST=0** (**589 fichiers, 6 223 tests passés**, 14 skippés) · `build` **EXIT_BUILD=0** ·
+`node tools/knip-ratchet.mjs` **EXIT_KNIP=0** (0/0/0). Seuils : `objectivesLayer.ts` 408 L,
+`killFx.ts` 141 L, `livesPosition.ts` 102 L — tous sous 500.
 
 ## §7 Contrat d'exécution (rappel opposable)
 Statuts : `[x]` fait · `[~]` couvert ailleurs (avec la référence) · `[!]` non traité (avec la

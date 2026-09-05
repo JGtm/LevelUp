@@ -42,6 +42,88 @@ E.1 du meme plan (et a `delivery-checklist`).
 **Conclusion / prochaine etape.** Gate vert ; retour au pilote de `wt/cuisson-perf` pour la
 suite de l'etape E (revue adversariale, filet complet, cloture) du plan d'integration — hors
 perimetre de cette tache.
+## [2026-09-05] Rejeu 2D — I-1 etendu : morts et pulsations d'objectif passent au meme resolveur — Complete
+
+**Le geste.** Decision du pilote, dans la ligne de l'option 1 de l'utilisateur : les DEUX lecteurs
+que le premier lot avait signales comme non traites y passent a leur tour. `killFx.ts` (un joueur
+tue AU VOLANT ou en passager explose sur son vehicule, pas sur une ligne droite dans le decor) et
+`objectivesLayer.ts:291` (pulsations d'objectif, appariees a l'element le plus proche de l'AUTEUR).
+
+**Decision technique : lever le cycle a la racine, plutot que justifier la copie.** killFx.ts ne
+POUVAIT PAS importer livesPosition.ts — il DEFINISSAIT `posOfPlayerAt` et `KILLPOS_WINDOW_MS`, que
+livesPosition.ts importait ; d'ou sa « copie jumelle autorisee » de l'index des vies. Importer
+carrierPosition.ts (qui depend de livesPosition.ts) aurait ferme la boucle. La primitive est donc
+RAPATRIEE dans son module canonique (livesPosition.ts, 54 -> 102 L) : le cycle disparait, la copie
+locale avec lui, et l'allowlist de `livesPosition.guard.test.ts` retombe de 3 entrees a 2 — un
+garde-rail qui retrecit, verifie par lui-meme. Graphe re-verifie avant de coder : killFx /
+objectivesLayer -> carrierPosition -> {livesPosition, vehiclesLayer -> replayMarkers} ne referme
+aucune boucle (replayDraw, seul autre importateur de killFx, n'est dans aucune de ces chaines).
+LE CAS DISTINCT, NOMME : l'index des vies survit dans killFx.ts pour le SLOT seul (la couleur de
+l'effet) — le slot est une propriete de la vie du BIPEDE, qu'aucun vehicule ne deplace.
+
+**Resultats observes.** killFx.test.ts +4 cas (embarque -> vehicule ; descente -> bipede ; schema
+<= 38 inchange ; le slot reste celui du bipede) ; objectivesLayer.test.ts +2 cas batis pour
+trancher entre DEUX elements distincts (bipede a un pas du spawn equipe 0, vehicule SUR la zone de
+livraison equipe 1) ; livesPosition.test.ts NEUF — les trois cas de `posOfPlayerAt` ont suivi la
+fonction deplacee. Garde carrierPosition etendu a 5 hooks + 2 lecteurs purs. Mutation prouvee puis
+restauree : les deux lecteurs remis sur `buildPlayerPosAt` -> 4 rouges (2 gardes nommant les
+fautifs, le kill embarque, le pulse embarque) ; les cas de non-regression restent verts sous la
+mutation, comme ils le doivent. Gates D12 : typecheck 0, lint 0 (28 warnings = baseline, 0 sur un
+fichier touche), lint:fields 0, vitest 0 (589 fichiers, 6 223 tests), build 0, knip 0/0/0.
+ReplayCanvas.tsx INTACT a 664 L ; aucun fichier au-dessus de 500 L.
+
+**Conclusion / prochaine etape.** Second commit sur `wt/integ-glyphes`. Apres ce lot,
+`buildPlayerPosAt` (le bipede seul) n'a plus qu'un appelant : le resolveur lui-meme, dont il est le
+repli — plus aucun lecteur de production ne lit une position de joueur sans passer par le vehicule.
+
+## [2026-09-05] Rejeu 2D — le glyphe d'un porteur EMBARQUE suit le vehicule (I-1, option 1) — Complete
+
+**Le geste.** Decision produit de l'utilisateur (« option 1 ») : quand un porteur d'objectif est a
+bord d'un vehicule, son glyphe (bombe, crane, drapeau porte, couronne VIP) se dessine SUR LE
+VEHICULE. Correctif WEB seul, branche `wt/integ-glyphes`, un commit.
+
+**Le constat, re-verifie sur pieces.** Le PION d'un occupant etait deja supprime
+(`replayMarkers.ts:243`, `style.embarkedAtSlot`) ; les GLYPHES, non. Les cinq calques qui lisent
+une position de joueur passaient par `usePlayerPosAt` -> `posOfPlayerAt` -> `replayLogic.positionAt`,
+qui INTERPOLE lineairement a travers le trou de replication — un bipede attache cesse de repliquer
+sa position monde (precondition Go `replay/vehicle_rides.go:12-15`). Le glyphe traversait donc le
+decor en ligne droite, seul, pendant que son vehicule roulait ailleurs. CINQ calques, pas quatre :
+le cinquieme (`useReplayBombBlast`, deflagration d'Assaut) a ete trouve par grep des consommateurs.
+
+**Decision technique : UN resolveur, pas cinq copies.** Nouveau module pur
+`apps/web/src/features/match-replay/carrierPosition.ts` — `positionOfCarrierAt` (la regle, ecrite
+une fois : embarque -> vehicule, sinon bipede), `buildEmbarkedPosAt` (index des episodes PAR XUID,
+MEME filtre `vehicleCanEmbark` que le predicat du pion), `buildCarrierPosAt` / `useCarrierPosAt`.
+Les cinq hooks changent d'UNE ligne chacun. `usePlayerPosAt` disparait (plus aucun appelant —
+regle n. 7) ; `buildPlayerPosAt` reste pour `objectivesLayer.ts:290`. CLE = LE XUID, celle que les
+calques tiennent deja et celle de `VehicleRide.xuid` — un episode sans xuid ne deplace aucun
+glyphe (repli bipede = comportement d'avant), plutot qu'un second pont d'identite a entretenir.
+POSITION = `vehiclePositionAt`, la MEME que le sprite : glyphe et vehicule coincident par
+construction. Garde-rail `carrierPosition.guard.test.ts` (regle n. 6) : les cinq calques passent
+par le resolveur, et `vehiclePositionAt` n'a que trois lecteurs autorises.
+
+**Contrat `enabled`, ecrit et assume.** Le glyphe suit le vehicule MEME calque vehicules eteint :
+la position d'un porteur est un fait du document, la bascule ne commande que ce qui se DESSINE.
+Divergence VOLONTAIRE d'avec `isEmbarkedAt` (qui, lui, suit la bascule — revue du 2026-09-02,
+point 7) : calque eteint, le pion reprend sa position interpolee (fausse, regime deja assume de la
+bascule) tandis que le glyphe garde la seule position vraie disponible.
+
+**Resultats observes.** Tests bati sur la regle, discriminance PROUVEE par mutation puis restauree :
+`positionOfCarrierAt` reduit au seul repli -> 5 rouges sur 15 (« expected {x:0,y:50}, received
+{x:50,y:0} » : la ligne droite a travers le decor) ; un hook remis sur `buildPlayerPosAt` -> 2
+gardes rouges, fautif nomme. Cas couverts : embarque, bornes de l'episode, DESCENTE (retour au
+bipede a l'unite pres), changement de monture, jamais embarque, episode anonyme, episode sur du
+decor, monture sans position, et **document anterieur aux vehicules (schema <= 38) identique au
+bipede** — zero regression sur le parc deja cuit. Gates : typecheck 0, lint 0 (28 warnings, la
+baseline exacte, 0 sur un fichier touche), lint:fields 0, vitest 0 (588 fichiers, 6 216 tests),
+build 0, knip 0/0/0. `ReplayCanvas.tsx` INTACT a 664 L, aucun fichier au-dessus de 500 L.
+
+**Conclusion / prochaine etape.** Livre dans `wt/integ-glyphes`, a fusionner par le pilote de
+l'integration (plan `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, item E.2 « I-1 », detail
+au paragraphe « E.2 / I-1 » du journal du plan). Consigne et NON traite (hors decision produit) :
+`objectivesLayer.ts` (pulses) et `killFx.ts` (effets de mort) restent sur la position de bipede —
+la correction, si elle est voulue, est un appel de plus au meme resolveur.
+
 ## [2026-09-05] Integration — ETAPE G.5 : backfill-bomb-stats et la cloture du chantier d'Assaut — Complete
 
 **Le geste.** Etape G.5 du plan d'integration, E6 du plan d'Assaut. Le chantier passe de « ecrit
