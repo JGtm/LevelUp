@@ -48,7 +48,7 @@ describe('binPositionsToHeatmap', () => {
 describe('MatchPositionsHeatmap', () => {
   it('rend sans crash avec des positions (echarts mocké)', async () => {
     render(<MatchPositionsHeatmap positions={sample} locale="fr" />)
-    expect(screen.getByText('Heatmap des positions')).toBeTruthy()
+    expect(screen.getByText('Carte de chaleur des positions')).toBeTruthy()
     // ChartCard lazy-load echarts-for-react via Suspense : le stub n'est monté
     // qu'après résolution du lazy import → assertion asynchrone.
     expect(await screen.findByTestId('echarts-stub')).toBeTruthy()
