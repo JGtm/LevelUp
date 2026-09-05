@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	"levelup/go-api/internal/config"
@@ -47,10 +48,22 @@ const attenteVerrouPasse = 10 * time.Minute
 // IL NE REND JAMAIS D'ERREUR A `main` : le code de sortie EST le canal de retour. Une erreur
 // rendue a main sortirait en 1, que le protocole reserve aux morts hors categorie.
 func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRoot string) int {
-	sentinelle := armerPlafondMemoire(o.memLimitGiB)
+	// SENTINELLE CANONIQUE (internal/filmproc.Arm) : memes deux plafonds qu'avant (souple +
+	// 25 % dur, echantillonnage 250 ms) — le calcul vit desormais dans un seul endroit
+	// (memguard.go). onExceeded applique LA DOCTRINE DE CET ENFANT : emettre le pic sur le
+	// protocole stdout puis mourir avec le code memoire, comme avant la centralisation.
+	g := filmproc.Arm(outilBackfillReplay, o.memLimitGiB, func(peak uint64) {
+		slog.Error("backfill-replay (enfant): PLAFOND MEMOIRE DEPASSE — arret du processus",
+			"empreinte_octets", peak, "match_id", o.one)
+		filmproc.EmitPeak(peak)
+		os.Exit(filmproc.CodeMemory)
+	})
 	// Le pic part sur TOUTES les sorties ordinaires. La sortie par la sentinelle, elle,
 	// l'emet elle-meme : `os.Exit` ne joue pas les differes.
-	defer func() { filmproc.EmitPeak(sentinelle.picObserve()) }()
+	defer func() {
+		g.Disarm()
+		filmproc.EmitPeak(g.Peak())
+	}()
 
 	ctx := context.Background()
 	// LE VERROU SOLO, EN ATTENTE BORNEE (PLAN_CUISSON_PERF §3 D7). Une PASSE n'a pas de cycle

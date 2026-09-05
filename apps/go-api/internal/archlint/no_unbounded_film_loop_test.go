@@ -64,8 +64,8 @@ var filmBuildAllowedCallers = map[string]string{
 		"boucle DANS le processus », ce qui n'a pas empeche un operateur d'en lancer deux en " +
 		"parallele et de saturer la machine (cf. internal/filmproc/solo.go)",
 	"cmd/replay-worker/job.go": "2026-08-26 — ouvrier : un job a la fois, sentinelle armee PAR " +
-		"JOB (memlimit.go) et desarmee entre deux. Processus long-vivant, jamais deux films en " +
-		"vol. REGIME COMPLETE LE 2026-09-03 (PLAN_CUISSON_PERF 5.7) : « un film a la fois DANS " +
+		"JOB (filmproc.Arm, processJob) et desarmee entre deux. Processus long-vivant, jamais " +
+		"deux films en vol. REGIME COMPLETE LE 2026-09-03 (PLAN_CUISSON_PERF 5.7) : « un film a la fois DANS " +
 		"ce processus » ne disait rien des AUTRES processus de la machine (serveur post-sync, " +
 		"passe backfill, second ouvrier) — il prend donc le VERROU SOLO EN ATTENTE BORNEE " +
 		"(10 min) autour du seul decodage, rendu avant l'envoi",
@@ -163,13 +163,17 @@ func TestNoUnboundedFilmLoop(t *testing.T) {
 	}
 }
 
-// sentinelleTokens : les marques d'une sentinelle memoire armee dans un paquet.
+// sentinelleTokens : la marque d'une sentinelle memoire armee dans un paquet.
 //
-// Deux formes coexistent legitimement : `filmproc.Arm` (la voie centralisee) et
-// `debug.SetMemoryLimit` (les deux `main` qui portent encore leur propre sentinelle,
-// `cmd/levelup/backfill_memlimit.go` et `cmd/replay-worker/memlimit.go`, avec leur doctrine
-// d'arret propre documentee sur place).
-var sentinelleTokens = []string{"filmproc.Arm(", "debug.SetMemoryLimit("}
+// UNE SEULE FORME LEGITIME DEPUIS LE LOT v2 G.1 (2026-09-05) : `filmproc.Arm`, la sentinelle
+// canonique (`internal/filmproc/memguard.go`). Les deux `main` qui portaient chacun leur
+// propre copie (`cmd/levelup/backfill_memlimit.go`, `cmd/replay-worker/memlimit.go`)
+// l'appelaient DEJA — `filmproc` n'a aucun cout de dependance (pas d'import projet
+// non-stdlib) et son callback `onExceeded` porte precisement les deux doctrines d'arret qui
+// divergent legitimement (code de sortie enfant vs rapport au serveur). Un `debug.SetMemoryLimit(`
+// brut hors de `internal/filmproc` est desormais une TROISIEME copie qui rouvrirait le meme
+// defaut : ce ratchet ne l'accepte plus — il doit passer par `filmproc.Arm`.
+var sentinelleTokens = []string{"filmproc.Arm("}
 
 // TestPointsDEntreeDeDecodageArmentUneSentinelle — LE RATCHET NE DE LA BOMBE RAM DU 2026-08-31.
 //
@@ -210,10 +214,10 @@ func TestPointsDEntreeDeDecodageArmentUneSentinelle(t *testing.T) {
 		pkgDir := filepath.Join(apiRoot, filepath.FromSlash(filepath.Dir(rel)))
 		if !sentinelleDansPaquet(t, pkgDir) {
 			t.Errorf("point d'entree %q decode un film SANS sentinelle memoire.\n"+
-				"Un processus d'operateur qui decode doit armer filmproc.Arm (ou sa propre "+
-				"sentinelle documentee) AVANT tout decodage : « un film par invocation » ne dit "+
-				"rien du nombre d'invocations, et c'est ce qui a sature la machine le "+
-				"2026-08-31. Modele : cmd/replay-build/main.go.", rel)
+				"Un processus d'operateur qui decode doit armer filmproc.Arm AVANT tout "+
+				"decodage : « un film par invocation » ne dit rien du nombre d'invocations, "+
+				"et c'est ce qui a sature la machine le 2026-08-31. "+
+				"Modele : cmd/replay-build/main.go.", rel)
 		}
 	}
 	if verifies == 0 {

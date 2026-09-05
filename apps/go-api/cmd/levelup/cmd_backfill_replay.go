@@ -107,6 +107,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/replaybuild"
@@ -203,7 +204,7 @@ func parserOptionsReplay(args []string) (replayBackfillOptions, error) {
 			"(remediation du cache appauvri — passe A LANCER AVANT activation ouvrier)")
 	fs.StringVar(&o.one, "one", "", "INTERNE : cuire CE seul match dans ce processus (forme appelee par le parent)")
 	fs.Var(&o.mapNames, "map-name", "INTERNE : identite de carte candidate (repetable, du plus fiable au moins fiable)")
-	fs.IntVar(&o.memLimitGiB, "mem-limit-gib", plafondMemoireDefautGiB,
+	fs.IntVar(&o.memLimitGiB, "mem-limit-gib", filmproc.DefaultLimitGiB,
 		"plafond memoire de chaque enfant, en GiB (0 = desarme)")
 	if err := fs.Parse(args); err != nil {
 		return o, err

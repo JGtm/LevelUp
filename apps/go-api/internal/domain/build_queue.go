@@ -164,9 +164,10 @@ const MaxBuildArtifactBytes = 16 << 20
 var ErrBuildArtifactInvalid = errors.New("build queue: artefact refusé")
 
 // BuildJobErrorCodeMemoryExceeded : ErrorCode explicite d'un BuildQueueJob mort par
-// dépassement du plafond mémoire dur — un film-bombe isolé par la sentinelle de son propre
-// processus ouvrier (cf. cmd/replay-worker/memlimit.go, même doctrine que le plafond de
-// cmd/levelup/backfill_memlimit.go : soupçon mesuré sur 51101d1d, 7,9 Go en 2,6 s).
+// dépassement du plafond mémoire dur — un film-bombe isolé par la sentinelle canonique
+// internal/filmproc.Arm de son propre processus ouvrier (cf. cmd/replay-worker/job.go, même
+// doctrine que le plafond armé par cmd/levelup/cmd_backfill_replay_child.go : soupçon mesuré
+// sur 51101d1d, 7,9 Go en 2,6 s).
 //
 // DISTINCT DU CODE GÉNÉRIQUE "replay_build_failed" : un opérateur qui lit le tableau de bord
 // admin doit voir IMMÉDIATEMENT qu'un film a été isolé pour sa RAM (film-bombe connu,
