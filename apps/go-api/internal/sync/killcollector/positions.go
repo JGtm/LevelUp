@@ -168,10 +168,24 @@ func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID stri
 //
 // LES QUATRE BALAYAGES PARTAGENT LE FILM DÉJÀ CHARGÉ (lot 1, item 1.6) : ils prenaient chacun un
 // répertoire et relisaient le film entier depuis le disque, décompression comprise.
+//
+// TIENT LE VERROU DE DÉCODAGE DU PROCESS, comme son frère `buildHitsBatches` (hits.go) et comme
+// le contrat de `filmdec/decode_gate.go:16-18` l'exige : « tout chemin qui enchaîne les balayages
+// de ce paquet acquiert ce verrou pour TOUTE la durée du décodage d'un film ». Ce chemin-ci
+// enchaîne QUATRE balayages sur des globaux de paquet et ne le prenait pas — asymétrie relevée
+// au registre (E5) et corrigée le 2026-09-05 (lot E, item E.5).
+//
+// PAS DE RÉ-ENTRANCE : le mutex n'est pas réentrant, et `killsource.Decode` — le seul autre
+// preneur du chemin `collect()` — le relâche AVANT de rendre (`killsource/decode.go:78-79`,
+// `defer release()` sur une fonction qui retourne). `collectPositions` est appelé après lui,
+// jamais dedans.
 func buildPositionRows(
 	film *filmsource.Film, entry filmdec.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
 ) (replay.KillPosReport, []persist.KillPositionInsert, error) {
+	release := filmdec.LockProcessDecode()
+	defer release()
+
 	bipedOpt := filmdec.DefaultScanFilmOptions()
 	rng := entry.Range()
 	bipedOpt.WorldRange = &rng
