@@ -95441,3 +95441,29 @@ avorte en bloc sur un pathspec deja supprime).
 **Conclusion / prochaine etape.** Lot G ferme, journal `.ai/V7.5/v2/LOT_G.md`. Push de
 `feat/v2-outils` et surveillance CI a suivre. Integration dans `feat/v75` par le superviseur
 apres revue adversariale, dans l'ordre prevu par le plan (C, A, B, F, G, E, D).
+
+## [2026-09-06] Lot G — cloture ajustee (arret de la surveillance CI sur consigne) — Complete
+
+**Contexte.** Pendant la surveillance CI de cloture du lot G, consigne du coordinateur
+(contrainte de quota) : abandonner la surveillance CI, ne pas reparer de job rouge (le
+superviseur verifie la CI a l'integration), rendre le rapport immediatement. Un fichier hors
+perimetre avait deja ete detecte et corrige avant cette consigne (voir entree precedente et
+`.ai/V7.5/v2/LOT_G.md`, section Decouvertes) : `internal/domain/build_queue.go` (reserve aux
+lots B/C) avait ete touche par erreur dans le commit G.1, reverte dans un commit dedie
+(`132967520`) des que l'exécuteur l'a repere en relisant le diff complet du lot.
+
+**Decision technique.** Arret immediat de tout `gh run list`/`gh run watch`. Etat CI constate
+avant l'arret consigne dans le journal du lot : 9 jobs verts (Go Lint, OpenAPI Lint, Go
+Build+Test windows/ubuntu, Frontend, Go Lease Enforcement, Go Contract Test, Secrets
+gitleaks, Deploy Pre-Check), 2 non conclus au moment de l'arret (Go Coverage + Baseline,
+E2E React). Risque de regression du ratchet de couverture evalue par grep sur les fichiers
+de baseline (aucune reference aux fichiers du lot ni aux tests supprimes) : juge faible mais
+non confirme par une execution CI complete.
+
+**Resultats.** Push final `2b9afd7af` confirme sur origin (verifie par `git fetch` +
+`rev-parse`, independamment du rate limit API GitHub qui a bloque `gh` pendant ~14 minutes
+plus tot dans la session — resolu de lui-meme avant la consigne d'arret).
+
+**Conclusion / prochaine etape.** Lot G clos du point de vue de l'executeur : gates locaux
+verts, perimetre verifie propre, journal a jour. Verdict CI complet (couverture, E2E) a la
+charge du superviseur au moment de l'integration dans `feat/v75`.

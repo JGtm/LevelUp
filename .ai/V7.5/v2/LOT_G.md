@@ -252,6 +252,21 @@ aucun des six paquets qu'il couvre n'est affecté par ce fichier.
 Tous les quatre items du lot sont statués `[x]`, gate passé sans allowlist nouvelle, sans
 test désactivé.
 
+**Surveillance CI (partielle, arrêtée sur consigne)** : après le push final
+(`2b9afd7af`), le run `https://github.com/JGtm/LevelUp/actions/runs/33997437532` a été
+observé jusqu'à interruption explicite de la consigne (contrainte de quota, l'intégrateur
+vérifiera la CI à l'integration). État constaté avant l'arrêt, tous verts :
+`Go Lint (golangci-lint)`, `OpenAPI Lint`, `Go Build + Test (windows-latest)`,
+`Go Build + Test (ubuntu-latest)`, `Frontend (TypeScript + Vite build)`,
+`Go Lease Enforcement (ADR 0013)`, `Go Contract Test (OpenAPI YAML)`, `Secrets (gitleaks)`,
+`Deploy Pre-Check`. Encore en cours au moment de l'arrêt, verdict NON CONNU :
+`Go Coverage + Baseline non-régression` (le job long — tests CGO + intégration sur tout le
+module) et `E2E React (Playwright)` (pas encore démarré). Risque évalué avant l'arrêt pour le
+job de couverture : les 14 lignes de `scripts/coverage_baseline.txt` (ratchet par fonction) et
+le seuil global `apps/go-api/coverage_baseline.txt` (69.0 %) ne référencent aucun fichier du
+lot — aucun test supprimé par G.1/G.2 n'apparaît dans `.ai/baselines/tests_pre_migration.jsonl`
+(vérifié par grep, zéro occurrence sur 14 noms de test). Risque jugé faible mais NON CONFIRMÉ.
+
 ## Découvertes (hors périmètre, consignées, non traitées)
 
 - **Mojibake Bash heredoc → `git commit -m`** : un seul caractère accentué français
