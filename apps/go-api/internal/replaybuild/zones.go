@@ -150,31 +150,28 @@ func isSkullVariant(variant string) bool {
 	return objectiveevents.ObjectiveTypeOf(variant) == objectiveevents.ObjectiveTypeSkull
 }
 
-// isArmableBombVariant dit si la variante du match est un ASSAUT DONT LE CANAL D'ARMEMENT EST
-// PROUVE — la GARDE DE MODE du compte a rebours (`replay.BombInput.Scanned`). Elle est ICI,
-// chez l'appelant, comme les autres : le paquet `replay` ne devine aucun mode.
+// isBombVariant dit si la variante est de la FAMILLE BOMB, TOUTES variantes — la GARDE DE
+// MODE de l'ARMEMENT (`replay.BombInput.Scanned`) ET du PORTAGE (`CarryScanned`). Elle est
+// ICI, chez l'appelant, comme les autres : le paquet `replay` ne devine aucun mode.
 //
 // LA FAMILLE vient du predicat canonique (`ObjectiveTypeOf` == bomb : « Assault:One Bomb »,
 // « Assault:Neutral Bomb », « Assault:Neutral Bomb Squad », « Husky Raid:Assault » — les 4
-// formes du registre, releve du 2026-08-31). ONE BOMB EN EST EXCLU PAR SON NOM : le protocole
-// du 2026-09-01 y a REFUTE la lecture (CV 0,725, 87/1000 tirages nuls aussi bien) la ou
-// Neutral Bomb (13/13, CV 0,016) et Husky Raid (4/4) la prouvent. La garde echoue FERMEE — une
-// variante d'Assaut au nom inconnu passe, et c'est la CONFRONTATION LOCALE aux explosions du
-// meme film (`replay/bomb_armings.go`, garde 2) qui tranche : elle retient le calque entier si
-// une seule explosion n'a pas son armement a la meche.
-func isArmableBombVariant(variant string) bool {
-	if !isBombVariant(variant) {
-		return false
-	}
-	return !strings.Contains(strings.ToLower(variant), "one bomb")
-}
-
-// isBombVariant dit si la variante est de la FAMILLE BOMB, TOUTES variantes — la GARDE DE
-// MODE du PORTAGE de la bombe (`replay.BombInput.CarryScanned`, schema 34). One Bomb y est
-// INCLUSE, et la difference avec `isArmableBombVariant` est mesuree : le negatif One Bomb
-// (CV 0,725) vise le canal de l'ANNEAU D'ARMEMENT, pas le composant d'arme tenue du bipede,
-// qui replique la bombe dans toutes les variantes (B1 2026-09-01 : 9 films sur 9, One Bomb
-// comprise). Meme predicat canonique que la colline et le crane (`ObjectiveTypeOf`).
+// formes du registre, releve du 2026-08-31). One Bomb Y EST INCLUSE.
+//
+// IL Y AVAIT ICI UNE SECONDE GARDE, `isArmableBombVariant`, QUI EXCLUAIT ONE BOMB PAR SON
+// NOM : sous la lecture SIMPLE (montee contigue, meche fixe de 4,93 s) le protocole du
+// 2026-09-01 y avait REFUTE le signal (CV 0,725, 87/1000 tirages nuls aussi bien). Elle est
+// LEVEE le 2026-09-04 : la lecture « meche pausable » du meme jour explique One Bomb (9/9
+// explosions portees, mediane 16,18 s, CV 0,017, 0/1000) sans toucher aux temoins (Neutral
+// Bomb 13/13, Husky Raid 4/4), et elle est desormais en production
+// (`filmdec/navpoint_radial_segments.go`, `replay/bomb_armings.go`). Ce qui protege le calque
+// n'est plus un NOM mais la CONFRONTATION LOCALE aux explosions du meme film (garde 2,
+// tout-ou-rien) : elle retient le calque entier si une explosion n'a pas son armement dans la
+// fenetre de sens, ou si les meches du film se contredisent.
+//
+// Le negatif de l'armement n'a jamais vise le canal des armes tenues, present dans les 9 films
+// d'Assaut de B1 (One Bomb comprise) : les deux gardes portent maintenant le meme predicat,
+// et restent DEUX champs parce qu'elles arment deux balayages distincts.
 func isBombVariant(variant string) bool {
 	return objectiveevents.ObjectiveTypeOf(variant) == objectiveevents.ObjectiveTypeBomb
 }

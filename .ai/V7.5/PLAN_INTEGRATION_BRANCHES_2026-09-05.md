@@ -270,17 +270,19 @@ Exécutée APRÈS les trois fusions D10 (elle crochète la même zone que C : `r
 branche, il fait foi pour les décisions §2 : table dédiée `match_bomb_stats`, append-only +
 `_latest`, INSERT-only via `BatchBuilder`, événements datés dans `match_objective_events`,
 capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
-- [ ] G.0 Sécuriser le travail NON COMMITÉ de l'autre session dans `LevelUp-wt-assaut-stats`
-  (29 fichiers modifiés + 8 non suivis = lots E2-bis, E2-ter, E3 « Complétés » au journal mais
-  jamais commités) : vérification sur pièces (build, vet, tests) puis commit SUR `wt/assaut-stats`
-  au nom du lot, sans rien y changer.
-- [ ] G.1 Merge `wt/assaut-stats` dans `wt/cuisson-perf` (fusionnée B+C+D) ; conflits attendus :
-  `document.go` (champs armements/portage sur le 39), `persist/{batch,builder,combined_persister}.go`
-  (C a ajouté le persister d'usage au même endroit), `no_art_patterns_test.go` et
-  `append_only_state_guard_test.go` (deux durcissements datés : union), `migration/order.go`,
-  `replaybuild/{matchfacts,zones}.go`, journaux. Harnais : écart déclaré si le document bouge
-  (armements pausables, `assembly_000d5950.golden` a bougé sur la branche) — corrélé aux films
-  d'Assaut du corpus, sinon anomalie.
+- [x] G.0 Sécurisé par le PILOTE : commit `e6455cab6` sur `wt/assaut-stats` (« assaut(E2-bis,
+  E2-ter, E3) : armement pausable, repli du porteur actif, persistance match_bomb_stats — travail
+  de la session du 04/09 securise tel quel »), build/vet/tests vérifiés avant commit. Vérifié sur
+  pièces à l'ouverture de G.1 : `git log --oneline 146f1d92e..wt/assaut-stats` rend 4 commits, et
+  le diff de branche porte bien les 40 fichiers des lots E1/E2/E2-bis/E2-ter/E3.
+- [x] G.1 Merge `wt/assaut-stats` (`e6455cab6`) — **40 fichiers, 8 conflits**, tous résolus
+  « sémantique de la branche dans NOTRE architecture ». D8bis mesuré AVANT : `origin/feat/v75`
+  inchangée à `7fb4b60a1`, **0 commit** d'écart, `SchemaVersion` amont **38**. **Complément D13
+  appliqué : UN SEUL bloc de doc de version 39** (« QUATRE APPORTS FONDUS EN UNE MONTÉE » —
+  (1)(2)(3) véhicules, (4) armement de la bombe), `const SchemaVersion = 39` une seule fois.
+  La garde de mode `isArmableBombVariant` disparaît (intention de la branche) dans notre forme
+  film (`bombInput(film, bomb)` sur `chunksDuManifeste`). PREUVE : `--diff-filter=U` VIDE,
+  `git grep '^<<<<<<< '` VIDE. Détail fichier par fichier au §6, harnais au §5.
 - [ ] G.2 E4 — branchement au sync : dans `replayartifacts`, projeter les stats bombe du
   DOCUMENT RANGÉ (patron EXACT de `usage.go` arrivé par C : projection après rangement, lecture
   du fichier rangé, writer court après toute cuisson, via `persist`), gate par capability
@@ -561,6 +563,54 @@ lot 4b, régime connu).
 
 - Fusion D (`1c1b6026f`, 15 h 55) : zéro octet Go, plan en union ; gates web déjà rendus dans le worktree D sur le même contenu.
 - Fusion C (`9423b9ba4`, 16 h 54) : conflits documents seuls ; typecheck web exit 0, `go build` OK, `go test` replayartifacts / replay / persist / archlint ok, **harnais 13/13 identiques sans `-update`** (les TSV sont encore ceux de A : B n'est pas fusionnée).
+
+### Étape G — stats d'Assaut `wt/assaut-stats` `e6455cab6` (2026-09-05)
+
+#### G.1 — merge de la branche (armement pausable, repli du porteur actif, persistance)
+
+**LE DIFF EXPLOITABLE EST CELUI PAR NOM D'ÉTAPE** (copie des 13 TSV prise avant refigeage,
+comparée nom par nom aux TSV refigés). **UN SEUL FILM DU CORPUS EST UN FILM D'ASSAUT** —
+`9f57c612` (`Assault:One Bomb`, lu dans `9f57c612.facts.json` ; les douze autres sont Slayer,
+CTF, Zones, Oddball, Strongholds, Total Control). C'est donc sur lui, et sur lui seul, que le
+document devait bouger.
+
+| étape | films touchés | nature | cause |
+|---|---|---|---|
+| `bombReads` | **1/13** (`9f57c612`) | CHANGE | **0 → 1 474 lectures** de l'anneau `ti=12 i14`. La garde de mode `isArmableBombVariant`, qui écartait One Bomb PAR SON NOM, est SUPPRIMÉE (lot E2-ter de la branche) : le balayage tourne enfin sur cette variante. Sur les 12 autres films, `bombReads` est identique au bit près (0 partout — aucun n'est de la famille bomb) |
+| `bomb` | **1/13** (`9f57c612`) | CHANGE | l'INTERPRÉTATION : segments contigus au lieu de montées, armement = segment finissant à son sommet plein, tenue de désarmement qui suspend la mèche, mèche MESURÉE par film. Journal de la passe : `lectures=1474 segments=111 sousLePlein=0 armements=5 paireFondue=5 publies=5 horsFenetre=0` |
+| `artifact` | **1/13** (`9f57c612`) | CHANGE (octets) | **1 582 064 → 1 582 605 (+541 octets)** — les 5 armements publiés dans `bombArmings`, plus le numéro de schéma. Aucun champ neuf au document (le diff Go de `document.go` sur la branche est un commentaire + `SchemaVersion`) |
+
+**CORRÉLATION MESURÉE, PAS DÉDUITE** : `git status` sur `internal/analysis/replay/testdata/`
+après `-update` rend **UNE SEULE ligne** — `9f57c612.tsv`. Les douze autres TSV ont été
+RÉÉCRITS par la passe `-update` et sont ressortis IDENTIQUES À L'OCTET ; `minifilm.tsv` est
+INTACT. Le film qui bouge est exactement le film d'Assaut, et le seul.
+
+**AUCUNE ÉTAPE N'APPARAÎT NI NE DISPARAÎT** : 49 lignes avant, 49 lignes après, sur les 13 TSV
+(gate de lignes de D4). Les stats bombe du chantier se calculent HORS `BuildFromFilm` :
+`BuildFromFilmSteps` reste à **35**.
+
+**AUCUN AUTRE DIGEST NE BOUGE** sur `9f57c612` : `score`, `objectives`, `vip`, `skull`, `flag`,
+`zones`, `zoneRoles`, `killsource`, `spawnPoints`, `spawnPointsState`, `neutralDeaths`,
+`killRefs`, `translocations`, `positions`, `fire`, `loadouts`, `heldWeaponChanges`, `pickups`,
+`inventory`, `inventoryDeltas`, `abilityRanks`, `equipmentChanges`, `camoStates`,
+`grappleReads`, `abilityImpulses`, `abilityCharges`, `zoomEvents`, `placements`, `pads`,
+`vehicles`, `carrierMarks`, `zoneReads`, `grenades`, `projectiles`, `deaths`, `playerIndices`,
+`clockOrigin` et les six canaux `.stats` sont identiques au bit près — la correction ne touche
+QUE l'anneau d'armement et ce qu'il publie.
+
+**PASSES.** Passe 1 SANS `-update` : **12 identiques / 1 différent / 0 écarté / 0 échec /
+0 illisible** (`EXIT_HARNAIS_P1=1`, le code de sortie attendu d'un écart déclaré). Passe
+`-update` : 13 écrits, un seul fichier modifié. Passe de VÉRIFICATION sans `-update` :
+**13 identiques, 0 différent, 0 écarté, 0 échec, 0 illisible** (`EXIT_HARNAIS_VERIF=0`).
+Gate de lignes tenu : **49 étapes sur les 13 TSV** (mesuré : `uniq -c` rend `13 × 49` + `1 × 7`
+pour `minifilm.tsv`). Durées de la passe de vérification : plancher `51101d1d` 5,2 s / 0,09 Gio,
+plafond `1c4c63c2` 2 min 13,7 s / 0,70 Gio ; témoins `01e1f945` **19,0 s**, `7344d24f`
+**22,2 s**, `696a9d7c` **21,9 s** — le gain du chantier survit au merge (cible < 100 s).
+
+**MINI-BOBINE : AUCUN REFIGEAGE.** `minifilm.tsv` n'est pas touché — ses sept étapes (`fire`,
+`grenades`, `loadouts`, `inventory`, `deaths`, `playerIndices`, `projectiles`) ne comptent aucun
+calque de bombe.
+
 
 ## §6 Journal
 - 2026-09-05 14 h 40 — plan écrit après inventaire mesuré (§1) ; relecture `plan-review` lancée
@@ -850,6 +900,72 @@ lot 4b, régime connu).
     fichier en fait 664 après le câblage véhicules (N-7).
   - `no_unbounded_film_loop_test.go`, `filmsource_leaf_test.go`, `no_rewritten_slot_band_test.go`
     (règle 2), `no_art_patterns_test.go` : verts sans modification.
+
+- 2026-09-05 — **ÉTAPE G.1 exécutée** (worktree dédié `LevelUp-wt-integ-assaut`, branche
+  `wt/integ-assaut`, HEAD de départ `b1827d9a2` = A+D+C+B fusionnées).
+
+  **D8bis, mesuré AVANT le merge** : `git fetch origin` — `origin/feat/v75` **toujours
+  `7fb4b60a1`**, `git rev-list --count b1827d9a2..origin/feat/v75` = **0**, et
+  `const SchemaVersion` sur l'amont vaut **38**. Aucune mini-réconciliation ; le 39 reste libre,
+  D3(b) tenu.
+
+  `git merge --no-ff --no-commit wt/assaut-stats` (`e6455cab6`, 4 commits, base `146f1d92e`) :
+  **40 fichiers**, **8 conflits**. `contracttest/replay_contract_test.go`,
+  `persist/{batch,builder,combined_persister}.go`, `migration/order.go`, `replaybuild/zones.go`,
+  `replay/{bomb_armings,coverage,document_bomb_armings,document_bomb_carries}.go` et le golden
+  d'assemblage ont fusionné SEULS — relus, et sains (les deux persisters coexistent dans
+  `CombinedPersister`, chacun sa transaction, même fenêtre de lease ; `order.go` garde chaque
+  bloc de commentaire au contact de son entrée, aucune doc inversée).
+
+  **LES 8 CONFLITS ET LEUR RÉSOLUTION** (règle : la SÉMANTIQUE de la branche est préservée
+  intégralement, dans NOTRE architecture) :
+
+  | conflit | ce que la branche voulait | résolution |
+  |---|---|---|
+  | `replay/document.go` | un bloc de doc de version 39 « L'ARMEMENT DE LA BOMBE EN ONE BOMB » + `SchemaVersion = 39` | **D13 : les deux 39 fondent en UN**. Le bloc devient « CE QUE LA VERSION 39 PORTE — QUATRE APPORTS FONDUS EN UNE MONTÉE », nommant les DEUX chantiers (véhicules 29/30/31, Assaut 39) et disant qu'aucun de leurs numéros n'a jamais cuit d'artefact ; (1)(2)(3) véhicules gardés mot pour mot, (4) l'armement ajouté. `const SchemaVersion = 39` UNE fois. La chronique de tête garde NOTRE ligne (plus complète : `document_ability_charges.go`, `filmdec/ability_charges.go`) |
+  | `replay/structure_test.go` | le même bloc, en `v39 —` | Même geste : l'introduction devient « v39 (2026-09-05, FUSION DE DEUX CHANTIERS) […] en quatre temps », les trois blocs véhicules restent `v39 (1)/(2)/(3)`, celui de la branche devient `v39 (4)`. `SchemaVersion != 39` inchangé |
+  | `replaybuild/matchfacts.go` (2 blocs) | supprimer la garde 1 (`isArmableBombVariant`, le NOM de la variante) et ramener `bombInput` à UN booléen de FAMILLE ; `src.Chunks()` | Sémantique de la branche (une seule garde) dans NOTRE forme film : `bombInput(film *filmsource.Film, bomb bool)`, l'horloge lue par `chunksDuManifeste(film)` — la fonction du lot 4b qui écarte les chunks hors manifeste. Le commentaire de tête est celui de la branche (« sous UNE SEULE garde de mode — la FAMILLE, One Bomb comprise ») |
+  | `replay/assaut_armement_gate_test.go` | `decodeFilmBombReads(dir, …)` + `agDiagnostiquerSegments` (le diagnostic passe des montées aux SEGMENTS) | Le diagnostic de la branche (`agDiagnostiquerSegments`) sur NOTRE entrée film (`filmsource.LoadDir` + `filmdec.NewFilmContext`) |
+  | `sync/no_art_patterns_test.go` | `match_bomb_stats` dans `tablesProtegees` | **UNION** des deux durcissements datés : `match_usage_players`/`match_usage_films` (étape C) ET `match_bomb_stats`, chacun avec son bloc de justification |
+  | `sync/append_only_state_guard_test.go` | `match_bomb_stats` dans `appendOnlyStateTables` | **UNION**, même geste (étape 5 de la recette ADR 0026 pour les deux chantiers) |
+  | `.ai/thought_log.md` | deux blocs à la même ancre | UNION : nos entrées en tête, les siennes ensuite, ligne de séparation rétablie |
+  | `.ai/V7.5/REGISTRE_REPORTS.md` | la ligne du DÉSAMORÇAGE | UNION du tableau |
+
+  **PREUVE** : `git diff --name-only --diff-filter=U` VIDE, `git grep '^<<<<<<< '` VIDE.
+
+  **GATES** — `gofmt -l .` VIDE · `go build ./...` **EXIT_BUILD=0** · `go vet ./...`
+  **EXIT_VET=0** · `go test ./internal/analysis/replay/ ./internal/replaybuild/
+  ./internal/migration/ ./internal/persist/ ./internal/sync/ ./internal/archlint/
+  ./contracttest/ -count=1` **EXIT_TESTS=0** (7 paquets `ok`) ·
+  `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate` **ok** ·
+  `CGO_ENABLED=0 go test ./contracttest/... -run TestContract` **ok** ·
+  `node tools/check-generated-types-fresh.mjs` code **0** (D11 : le contrat NE BOUGE PAS — la
+  branche n'ajoute aucun champ au document). **D12 [~] : la branche ne touche AUCUN fichier
+  d'`apps/web`** (`git diff --stat 146f1d92e wt/assaut-stats -- apps/web` vide) ; le filet web a
+  quand même été passé en base de référence pour la suite de l'étape : typecheck 0, lint 0,
+  lint:fields 0 (220 labels, 1 667 fichiers), vitest 0 (**585 fichiers / 6 187 tests**,
+  14 skipped), build 0, knip 0/0/0.
+
+  **HARNAIS** : tableau et corrélation au §5 « Étape G ». Un mot ici : `9f57c612` est le SEUL
+  film d'Assaut du corpus, et c'est le seul qui bouge — `bombReads` 0 → 1 474, `bomb`,
+  `artifact` +541 o. Les douze autres sont identiques au bit près, `minifilm.tsv` intact.
+
+  **LINT** : `golangci-lint cache clean` puis `golangci-lint run --new-from-merge-base=origin/main`
+  — **0 issues**, `EXIT_LINT_RATCHET=0` (le lint qui fait foi, celui du job CI `go-lint`).
+
+  **RESTE DOUTEUX / À SURVEILLER, et c'est le point de conception de G.2** : le DOCUMENT NE PORTE
+  PAS ce que `replay.BuildBombStats` attend, et le crochet de sync ne peut donc PAS se contenter
+  de le rejouer. Mesuré entrée par entrée : `Objectives` OUI (`doc.Objectives` porte
+  Stat/XUID/TimeMS) ; `Armings` OUI (`doc.BombArmings`, même type, même horloge) ; `Carry` NON
+  (`doc.BombCarries` est en FRAMES — grille de 100 ms —, écarte les périodes NON PONTÉES à la
+  publication, ne distingue pas lâcher et mort, et ne publie pas `CarryMSByXUID`) ;
+  `FilmToMatchOffsetMS` NON (ni `originMs` ni `t0FilmMs` ne l'expriment) ; `Kills` NON (la paire
+  tueur/victime n'existe nulle part dans le document — le seul producteur de `replay.KillRef` du
+  dépôt est `killcollector/positions.go`, qui la lit dans `match_kill_events`). Les quatre
+  premières existent EN PLEINE FIDÉLITÉ dans `BuildFromPositions`, entre `attachBombCarries` et
+  `attachBombArmings` : c'est là que G.2 calculera, une fois, et le crochet ne fera que persister
+  ce que l'artefact rangé porte.
+
 ## §7 Contrat d'exécution (rappel opposable)
 Statuts : `[x]` fait · `[~]` couvert ailleurs (avec la référence) · `[!]` non traité (avec la
 justification écrite). AUCUNE case vide à la clôture d'une étape. Ordre strict : l'étape N+1 ne

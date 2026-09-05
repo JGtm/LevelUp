@@ -117,6 +117,15 @@ func (p *CombinedPersister) Persist(ctx context.Context, batch *MatchBatch) erro
 		// quand même pour qu'un SetWeaponShots() ne puisse pas être silencieusement
 		// jeté. Transaction distincte, même fenêtre de lease.
 		sharedErr = NewWeaponShotsPersister(sharedDB).Persist(ctx, batch)
+		if sharedErr != nil {
+			return
+		}
+		// Statistiques d'Assaut reconstruites du film (match_bomb_stats append-only +
+		// faits datés dans match_objective_events). Même raisonnement que les deux
+		// ci-dessus : NO-OP tant que batch.Shared.BombStats est nil, câblé quand même
+		// pour qu'un SetBombStats() ne puisse pas être silencieusement jeté.
+		// Transaction distincte, même fenêtre de lease.
+		sharedErr = NewBombStatsPersister(sharedDB).Persist(ctx, batch)
 	}()
 	observePersistPhase("shared_write", writeStart, sharedErr == nil)
 
