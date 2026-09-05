@@ -239,6 +239,29 @@ func TestDecodeTranslocJumpDegradation(t *testing.T) {
 				"padding de queue a été lu comme une position", ev.To)
 		}
 	})
+	// PORTE DE REF1/REF2 : le seul chemin où l'ordre de lecture des deux portes pouvait se
+	// perdre (le `||` court-circuitait la seconde). L'événement doit rester daté et attribué,
+	// et sortir SANS positions — jamais la charge décalée d'un bit.
+	t.Run("ref1 presente", func(t *testing.T) {
+		w := translocHead(23)
+		w.put(1, 1) // porte de ref1 PRÉSENTE : la charge n'est plus lisible
+		w.put(1, 0) // porte de ref2
+		w.put(1, 0)
+		for i := 0; i < 2; i++ {
+			w.put(1, 0)
+			w.put(int(e.EffectiveRegionIndexBits()), 0)
+			for ax := 0; ax < 3; ax++ {
+				w.put(int(e.AxisWidths[ax]), 100)
+			}
+		}
+		ev, ok := decodeTranslocHead(w.pay, 0, &e)
+		if !ok || ev.Slot != 535 {
+			t.Fatalf("l'événement doit rester lu malgré la ref1 : %+v (ok=%v)", ev, ok)
+		}
+		if ev.HasPositions {
+			t.Fatalf("une charge décalée par la ref1 a été publiée comme des positions : %+v", ev)
+		}
+	})
 	t.Run("troncature au milieu du depart", func(t *testing.T) {
 		court := pay[:(translocPayloadStartBits+8)/8]
 		if ev, _ := decodeTranslocHead(court, 0, &e); ev.HasPositions {
