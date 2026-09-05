@@ -227,19 +227,19 @@ const VIP_COLS: ObjectiveColSpec[] = [
 ]
 // Assaut (2026-09-05) : LES SEULES STATISTIQUES D'OBJECTIF QUE L'API 343 NE PUBLIE PAS. Elles
 // sont reconstruites du film Theater (statborg pour les explosions, canal des armes tenues pour
-// le portage, anneau `ti=12` + jointure pour l'armement) et servies par une table dédiée, gatée
-// par la capability `film.bomb_stats`. 4 colonnes sur 5 exposées : `bomb_carriers_killed` reste
-// dans le DTO SANS colonne dédiée.
-// ATTENTION, LE MOTIF A CHANGÉ LE 2026-09-05 (lot G.6) et ce commentaire portait l'ancien : le
-// champ N'EST PLUS `null` partout — il est MESURÉ côté cuisson (la victime du couple tueur /
-// victime est résolue depuis G.6 ; témoin `9f57c612` : 3 porteurs tués). Il n'a donc plus de
-// colonne pour une raison de PRODUIT, pas de mesure : l'exposer est une décision d'affichage
-// non prise à ce jour (registre du plan d'intégration, seconde lecture E.2).
+// le portage, anneau `ti=12` + jointure pour l'armement, fil des kills apparié pour les porteurs
+// tués) et servies par une table dédiée, gatée par la capability `film.bomb_stats`. LES CINQ
+// COLONNES SONT EXPOSÉES depuis l'arbitrage N-17 (2026-09-05, registre du plan d'intégration,
+// seconde lecture E.2) : `bomb_carriers_killed` est mesuré depuis le lot G.6 (témoin `9f57c612` :
+// 3 porteurs tués) et la prémisse « colonne de tirets » qui la retenait n'était plus vraie.
+// RÉSERVE portée par `bomb_carriers_killed` (écrite en tête d'`internal/analysis/replay/bomb_stats.go`) :
+// ni camp, ni tir ami — un tir ami sur un porteur de son propre camp compte.
 const BOMB_COLS: ObjectiveColSpec[] = [
   { key: 'bomb_detonations', agg: 'sum' },
   { key: 'bomb_arms', agg: 'sum' },
   { key: 'bomb_grabs', agg: 'sum' },
   { key: 'time_as_bomb_carrier_seconds', agg: 'sum', duration: true },
+  { key: 'bomb_carriers_killed', agg: 'sum' },
 ]
 
 /**
