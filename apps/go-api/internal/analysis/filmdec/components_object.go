@@ -161,10 +161,9 @@ type DeadState struct {
 // It returns the captured dead-state fields (the weapon-attribution payload).
 // deadStatePreSkip injects N extra bits consumed BEFORE the dead-state head, to
 // brute-force a CONSTANT cumulative upstream misalignment (calibration harness only; 0 in prod).
+// Le réglage public `SetDeadStatePreSkip` a été supprimé le 2026-09-05 (lot E, item E.2) :
+// aucun appelant. Le pré-saut reste 0, la valeur de production.
 var deadStatePreSkip int
-
-// SetDeadStatePreSkip sets the calibration pre-skip (negative = rewind via Skip).
-func SetDeadStatePreSkip(n int) { deadStatePreSkip = n }
 
 // (La façade sans typeIndex `consumeObjectDeadStateBiped(br)` a été retirée le 2026-08-01 —
 // lot C : elle ne faisait que fixer 0x23 et n'avait plus d'appelant. Passer le typeIndex
@@ -299,11 +298,10 @@ func consumeDeadStateAnimBlock(br *BitReader, ds *DeadState) {
 // bitstream bit, so its presence cannot be read offline. Default true (the agent's
 // "moving biped / ragdoll" assumption); a validation harness flips it to test the
 // immobile case. See consumeDeadStateAnimBlock step 14.
+//
+// Le réglage public `SetDeadStateVelocityPresent` a été supprimé le 2026-09-05 (lot E, item
+// E.2) : aucun appelant. La valeur reste `false`, celle du décodage de production.
 var deadStateVelocityPresent = false
-
-// SetDeadStateVelocityPresent toggles the RAM-gated velocity block in the dead-state
-// tail (step 14). Calibration only.
-func SetDeadStateVelocityPresent(b bool) { deadStateVelocityPresent = b }
 
 // readOpt5Signed mirrors FUN_1407f2058: R(1) present bit; if CLEAR -> R(5) payload
 // (returned as a non-negative value); if SET -> -1 sentinel (no payload).

@@ -60,6 +60,22 @@ package archlint
 // Le ratchet ne monte QUE de ces deux-la : l integration n a ajoute aucune variable de son fait
 // (la seule erreur sentinelle qu elle a failli poser a ete rendue locale a son site).
 //
+// RESSERRAGE DU 2026-09-05 (lot E, item E.2 du PLAN_V2_REJEU_FILM) : 118 -> 113. CINQ
+// variables de paquet ont ete SUPPRIMEES, et aucune n etait un reglage vivant :
+//
+//   - `dynPrecHook` (components_movement.go) et `repTraceHook` (default_state.go) : deux
+//     crochets de capture PROUVABLEMENT toujours nil — aucun site du depot ne les installait
+//     non-nil, tests compris — que huit blocs de sauvegarde/restauration promenaient.
+//   - `useLegacyAngularVel` et `useBipedDefaultStateDeser` (traverse.go) : deux bascules A/B
+//     sans date ni critere (regle 11), dont le setter n avait aucun appelant : la branche
+//     opposee au defaut etait donc inatteignable dans les deux cas.
+//   - `defaultStateBitsByTI` (traverse.go) : table de surcharge peuplee par le seul
+//     `SetDefaultStateBitsForTI`, sans appelant — vide a jamais, deux branches mortes.
+//
+// Les 22 reglages `Set*` sans appelant ont disparu dans le meme lot ; les 17 variables qu ils
+// ecrivaient RESTENT, avec leur valeur de production, parce qu elles sont lues par le decodage
+// et que leur retrait serait une de-globalisation (D10), pas un retrait de code mort.
+//
 // RETRAIT CIBLE : le jour ou `filmdec` est de-globalise (hors de ce plan, cf. §7). Critere
 // mesurable de ce jour-la : `LockProcessDecode` n'a plus de raison d'etre.
 
@@ -77,7 +93,7 @@ import (
 
 // filmdecVarsGeles : le compte GELE des variables de paquet de `filmdec` (cf. l'en-tete pour la
 // convention de comptage et la date de mesure).
-const filmdecVarsGeles = 118
+const filmdecVarsGeles = 113
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

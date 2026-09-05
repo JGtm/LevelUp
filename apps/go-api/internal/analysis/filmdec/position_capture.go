@@ -81,18 +81,17 @@ var posCaptureSlot uint32
 // accumSlot est renseigné par le décodeur de record (decodeDelta / DecodeFrameRecords) AVANT la
 // boucle de composants. accumWorld == nil (défaut) = pas d'accumulation : le fix SÉMANTIQUE reste
 // actif (jamais d'émission des 96 bits keep-baseline bruts = fin de l'aberrant ~1e28) mais les
-// deltas sont émis bruts (bornés). Seul l'outil de trajectoire persistante installe accumWorld.
+// deltas sont émis bruts (bornés).
+//
+// PLUS AUCUN INSTALLATEUR depuis le 2026-09-05 (lot E, item E.2) : `SetPositionAccumulator`
+// n'avait aucun appelant et a été supprimé avec les 21 autres réglages inatteignables.
+// accumWorld reste donc nil sur tous les chemins ; la variable est conservée parce que
+// l'accumulation par World est la sémantique portée du deser i0, et qu'un harnais interne au
+// paquet la rétablirait en une ligne — pas par une surface publique que personne n'appelle.
 var (
 	accumWorld *World
 	accumSlot  uint32
 )
-
-// SetPositionAccumulator installe (ou retire, nil) le World qui accumule les positions i0 à
-// travers les records/paquets. Le World doit être CELUI passé au décodeur séquentiel
-// (DecodeFrameRecords) : les seeds absolus et l'accumulation de delta y sont écrits par slot.
-// Ne pas l'utiliser avec les décodeurs à essais/inférence (ils re-décodent en spéculatif et
-// pollueraient l'accumulation).
-func SetPositionAccumulator(w *World) { accumWorld = w }
 
 // setAccumSlot fixe le slot cible d'accumulation pour le record courant (appelé par les décodeurs).
 func setAccumSlot(slot uint32) { accumSlot = slot }
@@ -103,13 +102,14 @@ func setAccumSlot(slot uint32) { accumSlot = slot }
 var absViaFallback bool
 
 // posCaptureHook, when non-nil, receives every i0 position payload the deser decodes.
-// Installed by the probe via SetPositionCaptureHook; nil by default (no-op, no
-// behaviour change). Not safe for concurrent use across goroutines (single-frame
-// decode is sequential).
+// Nil by default (no-op, no behaviour change). Not safe for concurrent use across
+// goroutines (single-frame decode is sequential).
+//
+// INSTALLÉ DEPUIS LE PAQUET, PLUS DE L'EXTÉRIEUR : le seul installateur est
+// `scanForTargetDelta` (frame_records.go), qui capture la position i0 de chaque record
+// d'essai. Le réglage public `SetPositionCaptureHook` a été supprimé le 2026-09-05
+// (lot E, item E.2) : il n'avait aucun appelant.
 var posCaptureHook func(PositionSample)
-
-// SetPositionCaptureHook installs (or clears, with nil) the i0 position capture hook.
-func SetPositionCaptureHook(h func(PositionSample)) { posCaptureHook = h }
 
 // emitPos reports a decoded i0 sample to the hook if one is installed.
 func emitPos(kind PosKind, v [3]float32) {
@@ -182,10 +182,9 @@ const (
 )
 
 // absDequantMode : forme de déquant des chemins absolus i0 (défaut = range Cliffhanger historique).
+// Le réglage public `SetAbsDequantMode` (harnais de calibration) a été supprimé le 2026-09-05
+// (lot E, item E.2) : aucun appelant. La valeur de production est celle du défaut ci-dessous.
 var absDequantMode = AbsDequantRange
-
-// SetAbsDequantMode règle la forme de déquant absolu (harness de calibration contre l'oracle).
-func SetAbsDequantMode(m AbsDequantMode) { absDequantMode = m }
 
 // absoluteAxisW, si > 0, OVERRIDE la largeur d'axe des CHEMINS ABSOLUS i0 (consumeAbsoluteWithGate
 // + predFlag==1) — distincte de pd.AxisW (qui garde 6/6/6 pour le default-state et le delta
@@ -256,10 +255,9 @@ func absAxisW(i int) uint {
 // l'override uniforme `absoluteAxisW` suppose.
 //
 // nil = comportement historique (largeur uniforme). Cle -1 = chemin sans index.
+// Le reglage public `SetAbsPerIndexAxisW` a ete supprime le 2026-09-05 (lot E, item E.2) :
+// aucun appelant. La table reste nil, c'est-a-dire le comportement historique.
 var absPerIndexAxisW map[int][3]uint
-
-// SetAbsPerIndexAxisW installe (nil = efface) la table de largeurs par index de plage.
-func SetAbsPerIndexAxisW(t map[int][3]uint) { absPerIndexAxisW = t }
 
 // absAxisWFor retourne la largeur de l'axe i pour l'index de plage idx (repli : largeur uniforme).
 func absAxisWFor(idx, i int) uint {

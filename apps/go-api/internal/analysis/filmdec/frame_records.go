@@ -377,10 +377,9 @@ func decodeInferLoop(br *BitReader, buf []byte, w *World, cfg FrameConfig) ([]Fr
 // clean decoding (a hard-bound clean delta downstream or a flush end-of-frame). This
 // reaches biped records stranded in a desync tail with far fewer false positives than
 // raw DecodeFrameResync (which accepts any clean target delta). Nil = no recovery.
+// Le reglage public `SetInferResyncTargets` a ete supprime le 2026-09-05 (lot E, item E.2) :
+// aucun appelant. La table reste nil, c est-a-dire pas de recuperation par resync valide.
 var inferResyncTargets map[uint32]bool
-
-// SetInferResyncTargets sets (non-nil) or disables (nil) validated-resync recovery.
-func SetInferResyncTargets(t map[uint32]bool) { inferResyncTargets = t }
 
 // inferResyncStat counts validated-resync recoveries (diagnostics).
 var inferResyncStat int
@@ -397,9 +396,9 @@ func InferResyncCount() int { return inferResyncStat }
 // coincidental target-slot delta that does not lead to sustained clean decode is
 // rejected — the discriminator raw resync lacked.
 func validatedResync(buf []byte, from int, w *World, cfg FrameConfig) (int, bool) {
-	savedPos, savedDP, savedRef := posCaptureHook, dynPrecHook, unitRefHook
-	posCaptureHook, dynPrecHook, unitRefHook = nil, nil, nil
-	defer func() { posCaptureHook, dynPrecHook, unitRefHook = savedPos, savedDP, savedRef }()
+	savedPos, savedRef := posCaptureHook, unitRefHook
+	posCaptureHook, unitRefHook = nil, nil
+	defer func() { posCaptureHook, unitRefHook = savedPos, savedRef }()
 
 	frameLen := len(buf) * 8
 	c := &chainCtx{buf: buf, frameLen: frameLen, w: w, cfg: cfg,
@@ -455,8 +454,8 @@ func ScanFrameTargets(buf []byte, w *World, cfg FrameConfig, targets map[uint32]
 		// Suppress hooks AND position accumulation during the trial; re-decode the accepted
 		// record with hooks + accumulation live (so only accepted records seed/accumulate the
 		// persistent World, not the thousands of speculative trial decodes).
-		savedPos, savedDP, savedAcc := posCaptureHook, dynPrecHook, accumWorld
-		posCaptureHook, dynPrecHook, accumWorld = nil, nil, nil
+		savedPos, savedAcc := posCaptureHook, accumWorld
+		posCaptureHook, accumWorld = nil, nil
 		rec, after, ok := TryDeltaAt(buf, b, w, cfg)
 		confirmed := false
 		if ok && targets[rec.Slot] && len(rec.Trace.Comps) >= 1 {
@@ -467,7 +466,7 @@ func ScanFrameTargets(buf []byte, w *World, cfg FrameConfig, targets map[uint32]
 				confirmed = harvestNextBoundClean(buf, after, w, cfg)
 			}
 		}
-		posCaptureHook, dynPrecHook, accumWorld = savedPos, savedDP, savedAcc
+		posCaptureHook, accumWorld = savedPos, savedAcc
 		if confirmed {
 			rec2, end, _ := TryDeltaAt(buf, b, w, cfg) // re-decode with hooks live -> real samples
 			out = append(out, rec2)
@@ -660,11 +659,10 @@ func boundDeltaCleanAt(buf []byte, p int, w *World, cfg FrameConfig) bool {
 // inferRequireBoundSuccessor gates the strong confirmation (next record = clean bound
 // delta). Default true (correct, but blocked by transient CHAINS). Set false to infer on
 // unambiguity ALONE — reaches through chains; a wrong choice merely desyncs the frame
-// (stops), it does NOT fabricate a biped position (unlike the resync scan).
+// (stops), it does NOT fabricate a biped position (unlike the resync scan). Le reglage public
+// `SetInferStrict` a ete supprime le 2026-09-05 (lot E, item E.2) : aucun appelant. La
+// confirmation forte reste active, comme en production.
 var inferRequireBoundSuccessor = true
-
-// SetInferStrict toggles the bound-successor confirmation for unbound-slot inference.
-func SetInferStrict(v bool) { inferRequireBoundSuccessor = v }
 
 // inferChain routes unbound-slot inference through the recursive CHAIN resolver
 // (frame_chain_infer.go), which sees through sequences of transients that block the
@@ -677,23 +675,20 @@ func SetInferChain(v bool) { inferChain = v }
 // inferRepair enables component-width inference (repairUnportedComponent) on records
 // that desync on an un-ported component. Off by default: it is expensive and mostly
 // rescues non-biped transients (its true value is the per-component width observations
-// it accumulates for porting). Requires inferChain.
+// it accumulates for porting). Requires inferChain. Le reglage public `SetInferRepair` a ete
+// supprime le 2026-09-05 (lot E, item E.2) : aucun appelant. La reparation reste desactivee.
 var inferRepair = false
-
-// SetInferRepair toggles component-width repair for desynced records.
-func SetInferRepair(v bool) { inferRepair = v }
 
 func inferUnboundArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (uint32, int, bool) {
 	saved := posCaptureHook
-	savedDP := dynPrecHook
-	// `unitRefHook` rejoint la liste POUR LA MÊME RAISON que les deux autres : ce qui suit
+	// `unitRefHook` rejoint la liste POUR LA MÊME RAISON que `posCaptureHook` : ce qui suit
 	// est une lecture SPÉCULATIVE (chaque archétype du registre est essayé sur les mêmes
 	// bits), et une lecture spéculative n'est pas une lecture. Sans cette mise à nil, les
 	// tentatives abandonnées déposent des valeurs à des positions que la traversée retenue
 	// ne lit jamais — elles seraient attribuées à un composant au hasard.
 	savedRef := unitRefHook
-	posCaptureHook, dynPrecHook, unitRefHook = nil, nil, nil
-	defer func() { posCaptureHook, dynPrecHook, unitRefHook = saved, savedDP, savedRef }()
+	posCaptureHook, unitRefHook = nil, nil
+	defer func() { posCaptureHook, unitRefHook = saved, savedRef }()
 
 	var winTi uint32
 	winEnd, matches := -1, 0
