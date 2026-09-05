@@ -104,6 +104,24 @@ var appendOnlyStateTables = []string{
 	// aucun DELETE / ON CONFLICT / INSERT OR REPLACE|IGNORE toléré. Lecture via _latest
 	// UNIQUEMENT — une lecture brute servirait les lignes des passes précédentes.
 	"match_bomb_stats",
+	// kill_positions / match_weapon_hit_distance (G4 du registre v2, enrôlement 2026-09-05) :
+	// les deux dernières tables du film qui n'étaient enrôlées dans AUCUNE des deux listes
+	// anti-ART, alors que les deux sont append-only avec vue _latest depuis leur migration.
+	//   - kill_positions : rebuild append-only G.2 (2026-08-30,
+	//     games/halo_infinite/migrations/steps_appendonly_misc.go) — id PK + written_at + vue
+	//     kill_positions_latest par (match_id, killer_xuid, time_ms). Unité de génération = LA
+	//     LIGNE (pas la passe) : la table n'a volontairement pas de decoder_rev, written_at
+	//     arbitre. Écrivains INSERT purs : persist/kill_position_persister.go (film Infinite),
+	//     persist/shared_persister.go persistKillPositions (builder Halo 5).
+	//   - match_weapon_hit_distance : créée append-only
+	//     (migration/steps_shared_weapon_hit_distance.go) — id PK seq + decode_pass +
+	//     decoder_rev + written_at + vue _latest qui retient LA DERNIÈRE PASSE PAR MATCH
+	//     (l'unité de production est le film entier). Écrivain unique INSERT pur :
+	//     persist/weapon_hit_distance_persister.go.
+	// Aucun DELETE / ON CONFLICT / INSERT OR REPLACE|IGNORE sur l'une ou l'autre aujourd'hui :
+	// l'enrôlement ne crée aucune entrée d'allowlist.
+	"kill_positions",
+	"match_weapon_hit_distance",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors

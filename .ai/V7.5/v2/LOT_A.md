@@ -82,7 +82,57 @@ go test ./internal/sync/...                          -> ok levelup/go-api/intern
 golangci-lint run ./internal/sync/killcollector/...  -> 0 issues.  EXIT=0
 ```
 
-### [ ] A.2 (G4)
+### [x] A.2 (G4) — `kill_positions` et `match_weapon_hit_distance` enrôlées dans les deux listes
+
+**Vérification sur pièces avant enrôlement** (les deux tables doivent être append-only AVEC vue
+`_latest`, sinon l'enrôlement serait un mensonge) :
+
+| Table | Migration | Forme | Vue `_latest` | Écrivains |
+|---|---|---|---|---|
+| `kill_positions` | `games/halo_infinite/migrations/steps_appendonly_misc.go:53` (rebuild G.2, 2026-08-30) | id PK `kill_positions_seq` + `written_at` | `kill_positions_latest`, `QUALIFY ROW_NUMBER() … PARTITION BY (match_id, killer_xuid, time_ms)` | `persist/kill_position_persister.go` (film Infinite) et `persist/shared_persister.go` `persistKillPositions` (builder Halo 5) — **INSERT purs tous les deux** |
+| `match_weapon_hit_distance` | `migration/steps_shared_weapon_hit_distance.go:104` (créée append-only) | id PK seq + `decode_pass` + `decoder_rev` + `written_at` | `match_weapon_hit_distance_latest`, dernière PASSE par match | `persist/weapon_hit_distance_persister.go` — un seul statement, INSERT pur |
+
+Note de forme : `kill_positions` n'a volontairement pas de `decoder_rev` (`written_at` arbitre,
+cf. l'en-tête du persister) ; l'unité de génération y est LA LIGNE, alors que
+`match_weapon_hit_distance` supersède par PASSE entière. Les deux formes sont couvertes par les
+mêmes garde-rails (aucun n'inspecte la clé de partition).
+
+**Fait.** Les deux noms ajoutés à `tablesProtegees` (`internal/sync/no_art_patterns_test.go`) et à
+`appendOnlyStateTables` (`internal/sync/append_only_state_guard_test.go`), avec la justification
+et la date en commentaire. **Aucune allowlist agrandie** : `allowlistArtPatterns`,
+`allowlistRawDelete` et `allowlistMediaMutation` restent vides. Le `\b` final des motifs ne
+déborde pas sur les vues (`_` est un caractère de mot) : les lectures via `_latest` ne sont pas
+touchées.
+
+**Preuve que l'enrôlement mord** (deux violations injectées, puis annulées) :
+
+```
+# ajout temporaire d'un `DELETE FROM kill_positions …` dans persist/kill_position_persister.go
+# et d'un `INSERT INTO match_weapon_hit_distance … ON CONFLICT (…) DO UPDATE …` dans
+# persist/weapon_hit_distance_persister.go
+go test ./internal/sync/ -run 'TestNoRawDeleteOnAppendOnlyTables|TestNoMutationOnAppendOnlyStateTables|TestNoARTPatternsOnProtectedTables'
+  -> FAIL  - DELETE FROM kill_positions dans internal/persist/kill_position_persister.go
+           - INSERT ON CONFLICT/REPLACE/IGNORE sur match_weapon_hit_distance dans internal/persist/weapon_hit_distance_persister.go
+           - table=match_weapon_hit_distance pattern_detected file=internal/persist/weapon_hit_distance_persister.go
+           - table=kill_positions DELETE brut file=internal/persist/kill_position_persister.go
+git checkout -- (les deux fichiers)
+  -> ok  levelup/go-api/internal/sync  74.215s
+```
+
+**Gate A.2** :
+
+```
+go test ./internal/sync/ -run 'ART|AppendOnly|Mutation|Allowlist|Delete|Bulk' -v
+  -> ok  levelup/go-api/internal/sync  44.897s   (11 tests, 0 FAIL, 0 SKIP)
+golangci-lint run --new-from-merge-base=origin/main ./internal/sync/...
+  -> 0 issues.  EXIT=0
+```
+
+Note : `golangci-lint run ./internal/sync/` NON ratcheté remonte 15 problèmes, tous
+**préexistants** (goconst `weapon_kills`/`match_registry`, argument-limit de `citations.go` et
+`engine_v2bridge.go`, `unused` de `convergence.go`/`engine_e2e_test.go`, SA4006 de `engine.go`) —
+dette gelée par la baseline, aucune sur les deux fichiers modifiés. Le gate d'autorité est le
+ratchet `--new-from-merge-base` (Makefile:307), vert.
 
 ### [ ] A.3 (A0)
 
