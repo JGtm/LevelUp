@@ -91269,3 +91269,38 @@ re-cuit — les deux films 38 du chantier n'ont pas ete re-cuits avec les charge
 demande produit nouvelle du 04/09 (replier les equipements/armes non « game changer »
 dans les rendus d'usage) — artefact de vote a fabriquer pour que l'utilisateur tranche la
 liste.
+
+## [2026-09-05] Repli « game changers » — fiche match, bilan d'equipement et controle des socles
+
+**Statut : Complete.** Worktree `LevelUp-wt-game-changers`, branche `wt/game-changers`
+(base feat/v75 ca55f0ed7). Plan : `.ai/PLAN_REPLI_GAME_CHANGERS_2026-09-05.md`.
+Execution pilotee : agent d'implementation + relecteur adversarial frais, consolidation
+superviseur. Liste TRANCHEE PAR VOTE utilisateur (artefact « Game changers », 05/09) :
+5 familles d'equipement (powerup_camo, powerup_overshield, sensor, threat_seeker,
+shroud_screen) et 5+1 weapon_keys (s7_sniper, m41_spnkr + fuel_rod, energy_sword,
+gravity_hammer, skewer) en avant — le reste se replie derriere « Voir plus (N) »,
+replie par defaut.
+
+**Decision technique principale.** La liste est un jugement produit cote web :
+`gameChangers.ts` (constante TS + garde-rails contre les TOML du titre, patron
+POWER_PAD_KEYS), sementiquement DISTINCTE de POWER_PAD_KEYS (rejeu 2D, intouche —
+divergence cindershot dite et FIGEE par test). Pont ecrit powerup_camo->camo /
+powerup_overshield->overshield (double vocabulaire socle/etat actif). Armes jugees par
+weaponLabels[hex].key, jamais l'hex ; cle absente = replie. Partition dans la logique
+pure (l'ordre existant survit dans chaque partition, le tri par volume du controle des
+socles aussi) ; totaux, attribues, footnotes, hasData calcules sur TOUT — le repli est
+un affichage. Grenades hors vote, toujours visibles.
+
+**Resultats observes.** Revue : 16 conditions tiennent, 0 P0/P1, 1 P2 cosmetique
+consigne (padding residuel quand tout est replie). Incident d'execution dit et verifie :
+editions d'equipmentUsageColumns.ts effacees par un `git checkout --` de mutation puis
+reappliquees — relecture comptable imposee au relecteur : « coherent au centime ».
+Mutations tuees : partition inversee (7 tests), pont retire (19), grenades repliees (5),
+tri sans partition (3), cle absente promue (3), deplie par defaut (6), bouton a N=0 (1).
+Gates : typecheck purge exit 0, make test-web 575 fichiers / 5 999 tests / 0 echec,
+eslint 0, garde-rails 12/12, plafonds tenus (composants ramenes a 80 L pile).
+
+**Conclusion / prochaine etape.** Commit sur wt/game-changers ; GATE VISUEL utilisateur
+(les deux tableaux repliés/déplies sur un vrai match), puis merge feat/v75 sur accord.
+Arbitrages futurs consignes : realigner POWER_PAD_KEYS sur le vote (cindershot), repli
+des surfaces exclues (charts partages, PlayerDetailPanel).
