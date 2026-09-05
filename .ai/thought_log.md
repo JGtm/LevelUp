@@ -1,3 +1,51 @@
+## [2026-09-05] Rejeu 2D — le glyphe d'un porteur EMBARQUE suit le vehicule (I-1, option 1) — Complete
+
+**Le geste.** Decision produit de l'utilisateur (« option 1 ») : quand un porteur d'objectif est a
+bord d'un vehicule, son glyphe (bombe, crane, drapeau porte, couronne VIP) se dessine SUR LE
+VEHICULE. Correctif WEB seul, branche `wt/integ-glyphes`, un commit.
+
+**Le constat, re-verifie sur pieces.** Le PION d'un occupant etait deja supprime
+(`replayMarkers.ts:243`, `style.embarkedAtSlot`) ; les GLYPHES, non. Les cinq calques qui lisent
+une position de joueur passaient par `usePlayerPosAt` -> `posOfPlayerAt` -> `replayLogic.positionAt`,
+qui INTERPOLE lineairement a travers le trou de replication — un bipede attache cesse de repliquer
+sa position monde (precondition Go `replay/vehicle_rides.go:12-15`). Le glyphe traversait donc le
+decor en ligne droite, seul, pendant que son vehicule roulait ailleurs. CINQ calques, pas quatre :
+le cinquieme (`useReplayBombBlast`, deflagration d'Assaut) a ete trouve par grep des consommateurs.
+
+**Decision technique : UN resolveur, pas cinq copies.** Nouveau module pur
+`apps/web/src/features/match-replay/carrierPosition.ts` — `positionOfCarrierAt` (la regle, ecrite
+une fois : embarque -> vehicule, sinon bipede), `buildEmbarkedPosAt` (index des episodes PAR XUID,
+MEME filtre `vehicleCanEmbark` que le predicat du pion), `buildCarrierPosAt` / `useCarrierPosAt`.
+Les cinq hooks changent d'UNE ligne chacun. `usePlayerPosAt` disparait (plus aucun appelant —
+regle n. 7) ; `buildPlayerPosAt` reste pour `objectivesLayer.ts:290`. CLE = LE XUID, celle que les
+calques tiennent deja et celle de `VehicleRide.xuid` — un episode sans xuid ne deplace aucun
+glyphe (repli bipede = comportement d'avant), plutot qu'un second pont d'identite a entretenir.
+POSITION = `vehiclePositionAt`, la MEME que le sprite : glyphe et vehicule coincident par
+construction. Garde-rail `carrierPosition.guard.test.ts` (regle n. 6) : les cinq calques passent
+par le resolveur, et `vehiclePositionAt` n'a que trois lecteurs autorises.
+
+**Contrat `enabled`, ecrit et assume.** Le glyphe suit le vehicule MEME calque vehicules eteint :
+la position d'un porteur est un fait du document, la bascule ne commande que ce qui se DESSINE.
+Divergence VOLONTAIRE d'avec `isEmbarkedAt` (qui, lui, suit la bascule — revue du 2026-09-02,
+point 7) : calque eteint, le pion reprend sa position interpolee (fausse, regime deja assume de la
+bascule) tandis que le glyphe garde la seule position vraie disponible.
+
+**Resultats observes.** Tests bati sur la regle, discriminance PROUVEE par mutation puis restauree :
+`positionOfCarrierAt` reduit au seul repli -> 5 rouges sur 15 (« expected {x:0,y:50}, received
+{x:50,y:0} » : la ligne droite a travers le decor) ; un hook remis sur `buildPlayerPosAt` -> 2
+gardes rouges, fautif nomme. Cas couverts : embarque, bornes de l'episode, DESCENTE (retour au
+bipede a l'unite pres), changement de monture, jamais embarque, episode anonyme, episode sur du
+decor, monture sans position, et **document anterieur aux vehicules (schema <= 38) identique au
+bipede** — zero regression sur le parc deja cuit. Gates : typecheck 0, lint 0 (28 warnings, la
+baseline exacte, 0 sur un fichier touche), lint:fields 0, vitest 0 (588 fichiers, 6 216 tests),
+build 0, knip 0/0/0. `ReplayCanvas.tsx` INTACT a 664 L, aucun fichier au-dessus de 500 L.
+
+**Conclusion / prochaine etape.** Livre dans `wt/integ-glyphes`, a fusionner par le pilote de
+l'integration (plan `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, item E.2 « I-1 », detail
+au paragraphe « E.2 / I-1 » du journal du plan). Consigne et NON traite (hors decision produit) :
+`objectivesLayer.ts` (pulses) et `killFx.ts` (effets de mort) restent sur la position de bipede —
+la correction, si elle est voulue, est un appel de plus au meme resolveur.
+
 ## [2026-09-05] Integration — ETAPE G.5 : backfill-bomb-stats et la cloture du chantier d'Assaut — Complete
 
 **Le geste.** Etape G.5 du plan d'integration, E6 du plan d'Assaut. Le chantier passe de « ecrit
