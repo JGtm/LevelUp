@@ -674,10 +674,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   entier est déjà <= 38 et la reprise du backfill par SchemaVersion ne perd rien) —
 	//   la justification complète est à la chronique de document.go.
 	//
-	// - v39 (2026-09-05, chantier VÉHICULES ET TOURELLES) : les trois montées 29, 30 et 31 du
-	//   chantier, numérotées sur une base antérieure, arrivent POSÉES SUR LE 38 et fondues en UNE
-	//   seule (décision D3 du plan d'intégration) — aucun artefact n'a jamais été cuit à ces
-	//   numéros-là. Ce qu'elles apportent, en trois temps :
+	// - v39 (2026-09-05, FUSION DE DEUX CHANTIERS) : les trois montées 29, 30 et 31 du chantier
+	//   VÉHICULES ET TOURELLES, numérotées sur une base antérieure, et la montée 39 du chantier
+	//   ASSAUT (armement de la bombe en One Bomb, numérotée sur le 38), arrivent toutes POSÉES SUR
+	//   LE 38 et fondues en UNE seule (décisions D3 et D13 du plan d'intégration) — aucun artefact
+	//   n'a jamais été cuit à ces numéros-là. Ce qu'elles apportent, en CINQ temps — le cinquième
+	//   naît DANS ce commit, sur le même numéro : le 39 n'a encore servi aucun artefact :
 	// v39 (1) — LES VÉHICULES (`vehicles`). La vie de chaque véhicule `ti=40` du match : naissance
 	//   (position du record de création, à des emplacements mesurés FIXES au rayon 0,00 m),
 	//   identité de châssis (`MPPWord32`) résolue en famille de sprite, trajectoire échantillonnée
@@ -747,6 +749,53 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   86,3 et 194,2 au FANTÔME, formes de masque plates) et `i31`/`i41`/`i42` de `ti=40` ne sont
 	//   jamais émis. Le cône de l'artilleur vient de L'HOMME, pas de la tourelle.
 	//   Détail : internal/analysis/replay/vehicle_rides_aim.go.
+	//
+	// v39 (4) — L'ARMEMENT DE LA BOMBE EN ONE BOMB (étape E2-ter du plan d'Assaut, 2026-09-04,
+	//   arbitrage utilisateur). AUCUN CHAMP NEUF : ce qui change est le CONTENU du calque
+	//   `bombArmings`, et la version monte pour la raison exacte des montées v14/v22/v25/v37 —
+	//   la reprise du backfill se fait par SchemaVersion, et un artefact 38 d'un match One Bomb
+	//   ne porte AUCUN armement là où il en porte désormais.
+	//   CE QUI A CHANGÉ. Le calque était gouverné par une garde de mode DOUBLE, dont la
+	//   première écartait One Bomb PAR SON NOM : sous la lecture SIMPLE (montée contiguë,
+	//   mèche fixe de 4,93 s) le protocole du 2026-09-01 y avait RÉFUTÉ le signal (CV 0,725,
+	//   87/1000 tirages nuls aussi bien). La lecture « MÈCHE PAUSABLE » du même jour l'explique
+	//   — 9/9 explosions portées, médiane 16,18 s, CV 0,017, 0/1000 — et elle est maintenant EN
+	//   PRODUCTION : segments contigus (le cycle de recharge du marqueur finit à son MINIMUM et
+	//   sort de lui-même), armement = segment qui finit à son sommet PLEIN, TENUE DE
+	//   DÉSARMEMENT qui SUSPEND la mèche (pente 14-26 quanta/s, contre 138 pour une chute
+	//   d'explosion), et MÈCHE MESURÉE SUR LE FILM (médiane des délais corrigés) au lieu d'une
+	//   constante unique — 4,93 s en Neutral Bomb, 5,1 s en Husky Raid, ~16,2 s en One Bomb
+	//   sortent de la MÊME règle, sans qu'aucun code ne branche sur le nom de la variante.
+	//   CE QUI N'A PAS CHANGÉ, ET C'ÉTAIT L'EXIGENCE : les témoins Neutral Bomb (13/13) et
+	//   Husky Raid (4/4) au chiffre près. Et la GARDE 2 reste, seule et tout-ou-rien par film :
+	//   une explosion sans armement dans la fenêtre de sens, ou des mèches du film qui se
+	//   contredisent, retiennent le calque ENTIER.
+	//   Détail : filmdec/navpoint_radial_segments.go, replay/bomb_armings.go,
+	//   replaybuild/zones.go et .ai/V7.5/PLAN_ASSAUT_STATS_2026-09-04.md (E2-ter).
+	//
+	// v39 (5) — LES CINQ STATISTIQUES D'OBJECTIF DE L'ASSAUT (`bombStats`) et ses FAITS DATÉS
+	//   (`bombEvents`), 2026-09-05, étape G.2 de l'intégration. DEUX CHAMPS NEUFS SUR LE MÊME
+	//   NUMÉRO, et la raison est mesurée : le 39 n'a JAMAIS cuit un artefact hors répertoires
+	//   de test (le 38, lui, en avait deux — cf. la politique du lot P5 ci-dessus), et cette
+	//   intégration est le commit qui le met au monde. Une montée à 40 marquerait « à
+	//   re-cuire » un parc qui l'est déjà tout entier : elle ne protégerait aucun lecteur.
+	//   CE QUE C'EST. `bomb_detonations`, `bomb_arms`, `bomb_grabs`,
+	//   `time_as_bomb_carrier_seconds`, `bomb_carriers_killed`, par joueur — les statistiques
+	//   que l'API 343 NE PUBLIE PAS pour ce mode. La cause du silence est structurelle et
+	//   mesurée (Ghidra, 2026-09-04) : la famille `BombStats` du moteur est de la TÉLÉMÉTRIE
+	//   Bond, écrite par un sérialiseur d'événement, jamais un composant d'entité — le film ne
+	//   peut pas la répliquer, par construction. Elles sont donc RECONSTRUITES : le statborg
+	//   `comp 0` canal A pour les explosions, le canal des armes tenues pour le portage,
+	//   l'anneau `ti=12 i14` pour l'armement, et une JOINTURE (lâcher, puis porteur actif) pour
+	//   nommer l'armeur — que le Lua du moteur, lui, ne nomme jamais (`activatingTeam` seul).
+	//   POURQUOI DANS L'ARTEFACT : les quatre sources ne vivent en pleine fidélité qu'à la
+	//   cuisson — le document publie le portage en FRAMES, sans les périodes non pontées ni le
+	//   recalage d'horloge. Les recalculer chez le consommateur en ferait un second décodeur
+	//   du même fait, moins précis.
+	//   CE QUE LA VERSION REFUSE : `bomb_carriers_killed` est `null` PARTOUT aujourd'hui. Il
+	//   demande une mort appariée à son tueur ET à sa victime sur l'horloge du match ; cette
+	//   forme n'existe pas dans la chaîne de cuisson. Absent, jamais zéro.
+	//   Détail : internal/analysis/replay/bomb_stats.go et bomb_stats_document.go.
 	if SchemaVersion != 39 {
 		t.Fatalf("SchemaVersion = %d, attendu 39 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)

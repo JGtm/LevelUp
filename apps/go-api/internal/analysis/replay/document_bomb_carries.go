@@ -25,10 +25,12 @@ package replay
 // bombe posee portee par personne 27/28 intervalles (96,4 %). Le delai median lacher ->
 // explosion vaut 4 804 ms : le LACHER du canal EST le geste de pose, a ~130 ms de la meche.
 //
-// LA GARDE DE MODE COUVRE TOUTES LES VARIANTES D'ASSAUT, One Bomb comprise — et c'est LA
-// DIFFERENCE avec `bombArmings` (v33) : ce que One Bomb refute est le canal de l'ANNEAU
-// D'ARMEMENT (CV 0,725), pas le canal des armes tenues, qui reste le meme composant de
-// bipede dans toutes les variantes. La garde est chez l'APPELANT (`replaybuild`,
+// LA GARDE DE MODE COUVRE TOUTES LES VARIANTES D'ASSAUT, One Bomb comprise. Elle l'a toujours
+// fait, la ou `bombArmings` (v33) ecartait One Bomb : ce que la variante refutait etait la
+// lecture SIMPLE de l'ANNEAU D ARMEMENT (CV 0,725), pas le canal des armes tenues, qui reste le
+// meme composant de bipede dans toutes les variantes. DEPUIS LE SCHEMA 39 (2026-09-04) LA
+// DIFFERENCE N'EXISTE PLUS : la lecture « meche pausable » explique One Bomb, et les deux
+// calques partagent la meme garde de famille. La garde est chez l APPELANT (`replaybuild`,
 // `ObjectiveTypeOf` == bomb), comme le crane et la couronne : ce paquet ne devine aucun mode.
 //
 // LA BOMBE AU SOL N'EST PAS PUBLIEE, et c'est une decision de mesure, pas un oubli. Le crane

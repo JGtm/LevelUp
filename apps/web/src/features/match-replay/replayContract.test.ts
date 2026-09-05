@@ -173,6 +173,11 @@ const NULLABLE_ARRAYS = [
   // par période (xuid, t0, t1, closed), le patron de `skullCarries` sur le canal des armes
   // tenues. La garde de mode est côté serveur : toute la famille bomb, One Bomb comprise.
   'bombCarries',
+  // `bombEvents` : LES FAITS DATÉS DE LA BOMBE (schéma 39, 2026-09-05) — armements et
+  // explosions sur l'horloge du film, chacun avec la RÈGLE qui a nommé son acteur quand la
+  // jointure y est parvenue (`carry_drop` / `carry_active`, deux forces de preuve). Entrée
+  // PLATE. Comblé à VIDE par la frontière, comme `bombArmings` et `bombCarries`.
+  'bombEvents',
   // `translocations` : LES TÉLÉPORTATIONS DU TRANSLOCATEUR (schéma 38, 2026-09-03) — une entrée
   // PLATE par saut : (t, slot) ET le va-et-vient (`fx/fy/fz` -> `tx/ty/tz`), tous deux lus dans
   // l'ÉVÉNEMENT type 117 du film — jamais un seuil spatial, jamais le `spent` (jusqu'à 16,5 s de
@@ -295,6 +300,11 @@ const NULLABLE_ARRAY_PATHS = [
   'bombArmings',
   // `bombCarries` (schéma 34) : portage PLAT, aucun tableau imbriqué — un seul chemin, la racine.
   'bombCarries',
+  // `bombEvents` (schéma 39) : faits datés PLATS, aucun tableau imbriqué — un seul chemin.
+  'bombEvents',
+  // `bombStats.players` (schéma 39) : le SEUL tableau imbriqué du bloc de statistiques. L'objet
+  // `bombStats` garde le droit d'être absent (comme `scoreTimeline`), son tableau non.
+  'bombStats.players',
   'vehicles',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',

@@ -129,6 +129,18 @@ type SharedBatch struct {
 	// quoi ce kill a-t-il été fait »). Ici la question est « combien de tirs,
 	// avec quelle arme » — aucun kill n'y entre.
 	WeaponShots *WeaponShotsBatch `json:"weapon_shots,omitempty"`
+
+	// BombStats : LES STATISTIQUES D'ASSAUT d'une passe de décodage du film — les cinq
+	// mesures par joueur, plus les faits datés (armements, explosions). nil = aucun film
+	// décodé pour ce match, ou match hors Assaut.
+	//
+	// Tables cibles : `match_bomb_stats` (append-only, lecture par la vue
+	// `match_bomb_stats_latest` UNIQUEMENT — ADR 0026) et `match_objective_events` /
+	// `match_objective_event_players` pour les faits datés.
+	//
+	// ⚠ L'API 343 ne publie AUCUNE statistique d'objectif pour l'Assaut : cette charge n'a
+	// pas d'équivalent dans `ObjectiveStats` ci-dessus, et les deux ne se recouvrent jamais.
+	BombStats *BombStatsBatch `json:"bomb_stats,omitempty"`
 }
 
 // PlayerBatch contient les écritures pour stats.duckdb (du joueur Player).

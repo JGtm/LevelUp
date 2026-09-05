@@ -270,34 +270,97 @@ Exécutée APRÈS les trois fusions D10 (elle crochète la même zone que C : `r
 branche, il fait foi pour les décisions §2 : table dédiée `match_bomb_stats`, append-only +
 `_latest`, INSERT-only via `BatchBuilder`, événements datés dans `match_objective_events`,
 capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
-- [ ] G.0 Sécuriser le travail NON COMMITÉ de l'autre session dans `LevelUp-wt-assaut-stats`
-  (29 fichiers modifiés + 8 non suivis = lots E2-bis, E2-ter, E3 « Complétés » au journal mais
-  jamais commités) : vérification sur pièces (build, vet, tests) puis commit SUR `wt/assaut-stats`
-  au nom du lot, sans rien y changer.
-- [ ] G.1 Merge `wt/assaut-stats` dans `wt/cuisson-perf` (fusionnée B+C+D) ; conflits attendus :
-  `document.go` (champs armements/portage sur le 39), `persist/{batch,builder,combined_persister}.go`
-  (C a ajouté le persister d'usage au même endroit), `no_art_patterns_test.go` et
-  `append_only_state_guard_test.go` (deux durcissements datés : union), `migration/order.go`,
-  `replaybuild/{matchfacts,zones}.go`, journaux. Harnais : écart déclaré si le document bouge
-  (armements pausables, `assembly_000d5950.golden` a bougé sur la branche) — corrélé aux films
-  d'Assaut du corpus, sinon anomalie.
-- [ ] G.2 E4 — branchement au sync : dans `replayartifacts`, projeter les stats bombe du
-  DOCUMENT RANGÉ (patron EXACT de `usage.go` arrivé par C : projection après rangement, lecture
-  du fichier rangé, writer court après toute cuisson, via `persist`), gate par capability
-  `film.bomb_stats` (TOML du titre), dégradation gracieuse (film absent, mode non-Assaut,
-  capability absente → rien d'écrit, `slog.InfoContext` qui dit pourquoi), aucune erreur avalée,
-  `maxPerCycle` et verrou inchangés. Test du crochet + intégration `-p 1`.
-- [ ] G.3 E5 — lecture et API : repo `platform/duckdb` sur `match_bomb_stats_latest`, port, service
-  (zéro SQL inline), handler Huma (zéro logique métier), capability → `ErrCapabilityNotSupported`
-  en réponse partielle propre ; `make openapi-gen && make generate-types && make openapi-check`
-  (D11).
-- [ ] G.4 E5 — web : affichage dans la fiche de match sur le patron des autres modes à objectif
-  (section objectifs, vues arrivées par l'amont), `useFieldLabel()`, i18n FR **et** EN, query key
-  dans `lib/query/keys.ts`, tokens de couleur seulement ; D12 complet.
-- [ ] G.5 E6 — backfill : `levelup backfill-replay` suffit-il (le crochet projette tout artefact
-  cuit) ? sinon sous-commande dédiée sur le patron de `backfill-usage-summary` (C). JAMAIS lancé
-  sur le parc. Registre des reports (désamorçage, condition « corpus portant un désamorçage
-  avéré ») ; cases du plan Assaut statuées ; thought_log ; commit.
+- [x] G.0 Sécurisé par le PILOTE : commit `e6455cab6` sur `wt/assaut-stats` (« assaut(E2-bis,
+  E2-ter, E3) : armement pausable, repli du porteur actif, persistance match_bomb_stats — travail
+  de la session du 04/09 securise tel quel »), build/vet/tests vérifiés avant commit. Vérifié sur
+  pièces à l'ouverture de G.1 : `git log --oneline 146f1d92e..wt/assaut-stats` rend 4 commits, et
+  le diff de branche porte bien les 40 fichiers des lots E1/E2/E2-bis/E2-ter/E3.
+- [x] G.1 Merge `wt/assaut-stats` (`e6455cab6`) — **40 fichiers, 8 conflits**, tous résolus
+  « sémantique de la branche dans NOTRE architecture ». D8bis mesuré AVANT : `origin/feat/v75`
+  inchangée à `7fb4b60a1`, **0 commit** d'écart, `SchemaVersion` amont **38**. **Complément D13
+  appliqué : UN SEUL bloc de doc de version 39** (« QUATRE APPORTS FONDUS EN UNE MONTÉE » —
+  (1)(2)(3) véhicules, (4) armement de la bombe), `const SchemaVersion = 39` une seule fois.
+  La garde de mode `isArmableBombVariant` disparaît (intention de la branche) dans notre forme
+  film (`bombInput(film, bomb)` sur `chunksDuManifeste`). PREUVE : `--diff-filter=U` VIDE,
+  `git grep '^<<<<<<< '` VIDE. Détail fichier par fichier au §6, harnais au §5.
+- [x] G.2 E4 — **LE CROCHET AU SYNC, et un point de conception mesuré avant de coder.** Le
+  document NE PORTE PAS les entrées de `BuildBombStats` sous la forme voulue (`Objectives` et
+  `Armings` OUI ; le PORTAGE non — publié en FRAMES, sans les périodes non pontées, sans la
+  distinction lâcher/mort, sans `CarryMSByXUID` ; le RECALAGE film→match non ; la paire
+  tueur/victime non plus) : les re-dériver aurait fait un SECOND décodeur du même fait. Les
+  quatre premières vivent en pleine fidélité dans `BuildFromPositions` — le calcul s'y fait, une
+  fois (`attachBombStats`, `bomb_stats_document.go`), et le résultat voyage dans l'artefact
+  (`bombStats` + `bombEvents`, sur la MÊME montée 39 qui n'a encore cuit aucun artefact ;
+  `wantReplayDocumentFields` 54 → 56, les quatre types imbriqués à `replaySchemas` DANS CE LOT).
+  **AUCUNE étape observée ajoutée** : `BuildFromPositions` n'est pas couverte par l'observateur —
+  `BuildFromFilmSteps` reste à 35. Le crochet (`replayartifacts/bombstats.go`) est le patron EXACT
+  de `usage.go` : fichier RANGÉ, projections avant le writer, burst court après TOUTE cuisson,
+  `persist.BombStatsPersister.PersistPass` (INSERT-only). Capability **`film.bomb_stats`** neuve
+  (adapter.go + `AllCapabilityKeys` + `capabilities.toml` d'`halo_infinite` + repli
+  d'`adapter_data.go` ; ABSENTE pour `halo_5`) — jamais un slug. Trois silences, chacun dit :
+  mode hors Assaut (DEBUG, jamais un défaut — c'est le cas majoritaire), capability absente
+  (DEBUG), artefact illisible (WARN + `CompteurBombStatsEchecs`). `maxPerCycle` et le verrou de
+  décodage INCHANGÉS (aucun film de plus décodé). `rapportUsage` renommé `artefactCuit` : la
+  liste des artefacts cuits sert désormais DEUX projections. **`bomb_carriers_killed` reste
+  ABSENT (NULL) partout** — report au registre, justification en G.5.
+- [x] G.3 E5 — **LECTURE ET API, sur le chemin QUI EXISTE DÉJÀ.** `Q12cBombStats` sur
+  `match_bomb_stats_latest` (vue `_latest` UNIQUEMENT — règle ART n°2), lue par
+  `loadMatchBombStats` : SECONDE requête, dégradable indépendamment (vue absente → WARN
+  structuré + colonnes absentes, scoreboard servi ENTIER — même contrat que G1 du 25/07), et
+  gatée par `film.bomb_stats` câblée au wiring (`MatchViewRepo.WithBombStats`, jamais `slug ==`).
+  Un titre sans la clé ne paie même pas la requête. **[~] AUCUN handler ni endpoint neuf** : les
+  cinq colonnes entrent dans le bloc `objective` DÉJÀ servi par la fiche de match
+  (`buildScoreboardObjective`, sous `HasBomb()`), ce qui est la condition pour que les deux vues
+  de la section « Objectifs » les affichent sans un composant de plus (G.4) ; un endpoint dédié
+  aurait imposé une seconde requête au web pour la même page. `HasObjective()` compte désormais
+  le bloc bombe — sans quoi un match d'Assaut, qui n'a AUCUN bloc API, rendrait `nil` et la
+  section entière disparaîtrait. La dégradation multi-titre est donc PARTIELLE PAR CONSTRUCTION,
+  et `ErrCapabilityNotSupported` n'a rien à exprimer ici (il sert un endpoint dédié, il n'y en a
+  pas). **DDL EXPOSÉE PLUTÔT QUE RECOPIÉE** : `migration.MatchBombStatsTableSQL` /
+  `MatchBombStatsLatestViewSQL` (patron de `MatchObjectiveStatsLatestViewSQL`), appelées par la
+  migration ELLE-MÊME et par la fixture d'intégration — une définition, deux références. Gates :
+  `make openapi-gen`/`generate-types`/`openapi-check` **0**, `check-generated-types-fresh` **0**,
+  3 tests purs du convertisseur + 3 d'intégration du repo, tous verts.
+- [x] G.4 E5 — **WEB : L'ASSAUT ENTRE DANS LES DEUX VUES, sans composant neuf.** La section
+  « Objectifs » de la fiche de match (`MatchObjectivesSection`) a remplacé son tableau par la
+  grille `ValueGrid` par joueur + le face-à-face par équipe le 2026-09-03, toutes deux pilotées
+  par `objectiveColsFor(mode)`. L'Assaut y entre en TROIS points : `ObjectiveMode` + `'bomb'`,
+  `BOMB_COLS` (4 colonnes), et son discriminant dans `detectObjectiveMode`. **4 sur 5** :
+  `bomb_carriers_killed` reste au DTO sans colonne — `null` partout, et une colonne de « — » ne
+  dit rien (même règle que les 11 champs CTF exposés pour 4 affichés). **ABSENT ≠ ZÉRO** : déjà
+  vrai dans la primitive (`objectiveValue` rend `null`, `buildValueGrid` affiche son repli), et
+  désormais VÉRIFIÉ plutôt que supposé — 12 tests, dont « un zéro MESURÉ compte, dans la cellule
+  comme dans le total d'équipe ». i18n FR **et** EN, parité par TYPAGE
+  (`Record<MatchViewLocale, MatchViewText>`). **[~] `useFieldLabel()`** : la section emploie sa
+  propre table `t.objectives.cols` — le gabarit des six autres modes ; en dévier aurait donné
+  deux sources de libellés dans la même grille. **[~] query key** : aucune n'est ajoutée, les
+  colonnes voyagent avec la requête de la fiche de match. Zéro hex, zéro classe couleur. La
+  FRONTIÈRE du document de rejeu suit le schéma 39 : `replayContract.test.ts` (qui exige que TOUT
+  tableau nullable soit comblé ou justifié, à toute profondeur) impose de traiter `bombEvents` et
+  `bombStats.players` — `replayNormalize` les comble, l'objet `bombStats` gardant le droit d'être
+  absent comme `scoreTimeline`. Un commentaire de tête affirmant « Assaut tombe dans la même
+  porte : l'API ne fournit aucune statistique de bombe » est corrigé dans le commit qui le périme.
+  **D12 COMPLET** : typecheck **0**, lint **0** (28 warnings, EXACTEMENT la baseline, aucun sur
+  un fichier touché), lint:fields **0** (1 667 fichiers), vitest **0**, build **0**,
+  `knip-ratchet` **0** (0/0/0 au plafond 0).
+- [x] G.5 E6 — **BACKFILL : sous-commande DÉDIÉE, et la question est tranchée sur pièces.**
+  `backfill-replay` ne passe PAS par le crochet `replayartifacts` (vérifié : aucune référence
+  dans `cmd_backfill_replay.go`) — il CUIT et range, il ne projette rien ; et le crochet du fil
+  de l'eau ne voit que les artefacts cuits DANS SON CYCLE. Il faut donc les deux, **dans cet
+  ordre** : `levelup backfill-replay` re-cuit le parc (le schéma 39 périme tout artefact
+  antérieur — c'est cette passe qui fait NAÎTRE `bombStats` dans les artefacts), puis
+  `levelup backfill-bomb-stats` PROJETTE sans re-cuire. L'ordre et ce qui se passe si on
+  l'inverse (un no-op qui le dit, compteur « sans calque ») sont écrits en tête de la commande.
+  Patron EXACT de `backfill-usage-summary` : aucun film décodé, un artefact lu à la fois,
+  reprenable sur la vue `_latest`, `--dry-run` / `--force` / `--match` / `--limit`,
+  `OpenReadWrite` sous précondition « serveur arrêté » documentée comme ses frères, gate par
+  capability. **JAMAIS LANCÉE** — aucune base de production ouverte de toute l'étape G.
+  REGISTRE DES REPORTS : la ligne du DÉSAMORÇAGE est amendée (sa « dépendance de livraison »
+  citait la garde `isArmableBombVariant`, qui n'existe plus ; sa condition de reprise — un corpus
+  portant un désamorçage AVÉRÉ — est inchangée), et une ligne NEUVE entre pour
+  `bomb_carriers_killed`. Les cases E4/E5/E6 du plan d'Assaut sont statuées DANS le fichier
+  (zéro case vide restante ; deux `[!]` justifiés : le carnet Notion appartient à l'utilisateur,
+  et l'état CI se juge à l'étape F sur `feat/v75`, pas sur une branche d'intégration jetable).
 
 ### Étape E — Filet complet et revue de branche (sur `wt/cuisson-perf` fusionnée)
 - [ ] E.1 FILET COMPLET, pièce par pièce, un code de sortie consigné par ligne (EXIT_*=0 dans un log
@@ -562,6 +625,101 @@ lot 4b, régime connu).
 - Fusion D (`1c1b6026f`, 15 h 55) : zéro octet Go, plan en union ; gates web déjà rendus dans le worktree D sur le même contenu.
 - Fusion C (`9423b9ba4`, 16 h 54) : conflits documents seuls ; typecheck web exit 0, `go build` OK, `go test` replayartifacts / replay / persist / archlint ok, **harnais 13/13 identiques sans `-update`** (les TSV sont encore ceux de A : B n'est pas fusionnée).
 - Fusion B (`b1827d9a2`, 17 h 29) : conflits documents seuls ; D11 verifie (openapi-gen et generate-types : diff NUL contre l'auto-merge, openapi-check 0) ; `go build` 0, `go test` analysis / replaybuild / replayartifacts / archlint / api / contracttest EXIT 0 ; **harnais 13/13 identiques sans `-update`** (TSV de B, 49 etapes) ; web complet : lint 0, lint:fields 0, vitest 585 fichiers / 6 187 tests / 0 echec, build 0, knip 0/0/0. Ateliers B, C, D supprimes (jonctions retirees d'abord, cache principal verifie a 1 380 films) et branches d'atelier effacees ; reste `wt/integ-assaut` (etape G en cours).
+
+### Étape G — stats d'Assaut `wt/assaut-stats` `e6455cab6` (2026-09-05)
+
+#### G.1 — merge de la branche (armement pausable, repli du porteur actif, persistance)
+
+**LE DIFF EXPLOITABLE EST CELUI PAR NOM D'ÉTAPE** (copie des 13 TSV prise avant refigeage,
+comparée nom par nom aux TSV refigés). **UN SEUL FILM DU CORPUS EST UN FILM D'ASSAUT** —
+`9f57c612` (`Assault:One Bomb`, lu dans `9f57c612.facts.json` ; les douze autres sont Slayer,
+CTF, Zones, Oddball, Strongholds, Total Control). C'est donc sur lui, et sur lui seul, que le
+document devait bouger.
+
+| étape | films touchés | nature | cause |
+|---|---|---|---|
+| `bombReads` | **1/13** (`9f57c612`) | CHANGE | **0 → 1 474 lectures** de l'anneau `ti=12 i14`. La garde de mode `isArmableBombVariant`, qui écartait One Bomb PAR SON NOM, est SUPPRIMÉE (lot E2-ter de la branche) : le balayage tourne enfin sur cette variante. Sur les 12 autres films, `bombReads` est identique au bit près (0 partout — aucun n'est de la famille bomb) |
+| `bomb` | **1/13** (`9f57c612`) | CHANGE | l'INTERPRÉTATION : segments contigus au lieu de montées, armement = segment finissant à son sommet plein, tenue de désarmement qui suspend la mèche, mèche MESURÉE par film. Journal de la passe : `lectures=1474 segments=111 sousLePlein=0 armements=5 paireFondue=5 publies=5 horsFenetre=0` |
+| `artifact` | **1/13** (`9f57c612`) | CHANGE (octets) | **1 582 064 → 1 582 605 (+541 octets)** — les 5 armements publiés dans `bombArmings`, plus le numéro de schéma. Aucun champ neuf au document (le diff Go de `document.go` sur la branche est un commentaire + `SchemaVersion`) |
+
+**CORRÉLATION MESURÉE, PAS DÉDUITE** : `git status` sur `internal/analysis/replay/testdata/`
+après `-update` rend **UNE SEULE ligne** — `9f57c612.tsv`. Les douze autres TSV ont été
+RÉÉCRITS par la passe `-update` et sont ressortis IDENTIQUES À L'OCTET ; `minifilm.tsv` est
+INTACT. Le film qui bouge est exactement le film d'Assaut, et le seul.
+
+**AUCUNE ÉTAPE N'APPARAÎT NI NE DISPARAÎT** : 49 lignes avant, 49 lignes après, sur les 13 TSV
+(gate de lignes de D4). Les stats bombe du chantier se calculent HORS `BuildFromFilm` :
+`BuildFromFilmSteps` reste à **35**.
+
+**AUCUN AUTRE DIGEST NE BOUGE** sur `9f57c612` : `score`, `objectives`, `vip`, `skull`, `flag`,
+`zones`, `zoneRoles`, `killsource`, `spawnPoints`, `spawnPointsState`, `neutralDeaths`,
+`killRefs`, `translocations`, `positions`, `fire`, `loadouts`, `heldWeaponChanges`, `pickups`,
+`inventory`, `inventoryDeltas`, `abilityRanks`, `equipmentChanges`, `camoStates`,
+`grappleReads`, `abilityImpulses`, `abilityCharges`, `zoomEvents`, `placements`, `pads`,
+`vehicles`, `carrierMarks`, `zoneReads`, `grenades`, `projectiles`, `deaths`, `playerIndices`,
+`clockOrigin` et les six canaux `.stats` sont identiques au bit près — la correction ne touche
+QUE l'anneau d'armement et ce qu'il publie.
+
+**PASSES.** Passe 1 SANS `-update` : **12 identiques / 1 différent / 0 écarté / 0 échec /
+0 illisible** (`EXIT_HARNAIS_P1=1`, le code de sortie attendu d'un écart déclaré). Passe
+`-update` : 13 écrits, un seul fichier modifié. Passe de VÉRIFICATION sans `-update` :
+**13 identiques, 0 différent, 0 écarté, 0 échec, 0 illisible** (`EXIT_HARNAIS_VERIF=0`).
+Gate de lignes tenu : **49 étapes sur les 13 TSV** (mesuré : `uniq -c` rend `13 × 49` + `1 × 7`
+pour `minifilm.tsv`). Durées de la passe de vérification : plancher `51101d1d` 5,2 s / 0,09 Gio,
+plafond `1c4c63c2` 2 min 13,7 s / 0,70 Gio ; témoins `01e1f945` **19,0 s**, `7344d24f`
+**22,2 s**, `696a9d7c` **21,9 s** — le gain du chantier survit au merge (cible < 100 s).
+
+**MINI-BOBINE : AUCUN REFIGEAGE.** `minifilm.tsv` n'est pas touché — ses sept étapes (`fire`,
+`grenades`, `loadouts`, `inventory`, `deaths`, `playerIndices`, `projectiles`) ne comptent aucun
+calque de bombe.
+
+#### G.2 — le crochet au sync, et les stats calculées à la CUISSON
+
+**LE POINT DE CONCEPTION, MESURÉ AVANT DE CODER.** Le crochet ne pouvait PAS rejouer
+`replay.BuildBombStats` sur le document rangé : le document NE PORTE PAS ses entrées sous la
+forme voulue. Entrée par entrée —
+
+| entrée de `BombStatsInput` | portée par le document ? |
+|---|---|
+| `Objectives` | **OUI** — `doc.Objectives` porte `Stat` / `XUID` / `TimeMS` |
+| `Armings` | **OUI** — `doc.BombArmings`, MÊME type, MÊME horloge (celle du film) |
+| `Carry` | **NON** — `doc.BombCarries` est une projection sur la grille de FRAMES (100 ms), qui ÉCARTE les périodes non pontées, ne distingue pas un lâcher d'une mort, et ne publie pas `CarryMSByXUID` |
+| `FilmToMatchOffsetMS` | **NON** — ni `originMs` ni `t0FilmMs` ne l'expriment |
+| `Kills` | **NON** — la paire tueur/victime n'est nulle part dans le document |
+
+Les re-dériver aurait fait un SECOND décodeur du même fait, moins précis — l'anti-pattern que
+l'en-tête de `bomb_stats.go` condamne. Les quatre premières vivent en pleine fidélité dans
+`BuildFromPositions`, entre `attachBombCarries` (qui rend désormais la chronologie EN
+MILLISECONDES) et `attachBombArmings` : **le calcul s'y fait, une fois, et le résultat voyage
+dans l'artefact** (`bombStats` + `bombEvents`).
+
+| étape | films touchés | nature | cause |
+|---|---|---|---|
+| `artifact` | **1/13** (`9f57c612`) | CHANGE (octets) | **1 582 605 → 1 583 856 (+1 251)** — les deux calques neufs. Les 48 étapes qui le précèdent sont IDENTIQUES AU BIT PRÈS sur les 13 films : la passe 1 nomme `artifact` comme PREMIÈRE étape en écart, et c'est la DERNIÈRE de la séquence |
+
+**CORRÉLATION MESURÉE** : `git status` sur `testdata/` après `-update` rend **UNE SEULE ligne**,
+`9f57c612.tsv` — les douze autres TSV ont été réécrits identiques à l'octet. Les deux champs
+sont `omitempty` et ne sont posés que sous la garde `opt.Bomb.CarryScanned` : un film hors de la
+famille bomb ne les porte pas, et son artefact ne bouge pas d'un octet.
+
+**AUCUNE ÉTAPE OBSERVÉE N'EST AJOUTÉE, et c'est vérifié** : `BuildFromFilmSteps` reste à **35**,
+les 13 TSV portent toujours **49 lignes** (mesuré : `uniq -c` rend `13 × 49` + `1 × 7`).
+`BuildFromPositions` n'est pas couverte par l'observateur — comme `attachVehicleShots` et les
+couvertures, c'est le digest `artifact` qui la porte.
+
+**PASSES.** Passe 1 SANS `-update` : **12 identiques / 1 différent** (`EXIT_G2_P1=1`, le code
+attendu d'un écart déclaré). Passe `-update` : 13 écrits, BILAN **13 identiques**
+(`EXIT_G2_UPDATE=0`), un seul fichier modifié. Passe de VÉRIFICATION : **13 identiques, 0 différent, 0 écarté, 0 échec, 0 illisible**
+(`EXIT_G2_VERIF=0`).
+
+**GATES G.2** — `gofmt -l .` VIDE · `go build ./...` **0** · `go vet ./...` **0** ·
+`go test ./internal/... ./contracttest/... ./cmd/... -count=1` **EXIT_G2_TESTS=0** (86 paquets ;
+un seul rouge en cours de lot, `TestAllCapabilityKeys_Count` 24 → **25**, corrigé — c'est le
+garde-fou qui a fait son travail) · `go test -tags=integration -p 1 ./internal/sync/...
+./internal/persist/... ./internal/migration/...` **EXIT_G2_INTEG=0** (12 paquets, dont les
+4 tests neufs du crochet) · `make openapi-gen` + `make generate-types` + `make openapi-check`
+**0** · `contracttest` **ok** (`wantReplayDocumentFields` 54 → **56**).
+
 
 ## §6 Journal
 - 2026-09-05 14 h 40 — plan écrit après inventaire mesuré (§1) ; relecture `plan-review` lancée
@@ -851,6 +1009,132 @@ lot 4b, régime connu).
     fichier en fait 664 après le câblage véhicules (N-7).
   - `no_unbounded_film_loop_test.go`, `filmsource_leaf_test.go`, `no_rewritten_slot_band_test.go`
     (règle 2), `no_art_patterns_test.go` : verts sans modification.
+
+- 2026-09-05 — **ÉTAPE G.1 exécutée** (worktree dédié `LevelUp-wt-integ-assaut`, branche
+  `wt/integ-assaut`, HEAD de départ `b1827d9a2` = A+D+C+B fusionnées).
+
+  **D8bis, mesuré AVANT le merge** : `git fetch origin` — `origin/feat/v75` **toujours
+  `7fb4b60a1`**, `git rev-list --count b1827d9a2..origin/feat/v75` = **0**, et
+  `const SchemaVersion` sur l'amont vaut **38**. Aucune mini-réconciliation ; le 39 reste libre,
+  D3(b) tenu.
+
+  `git merge --no-ff --no-commit wt/assaut-stats` (`e6455cab6`, 4 commits, base `146f1d92e`) :
+  **40 fichiers**, **8 conflits**. `contracttest/replay_contract_test.go`,
+  `persist/{batch,builder,combined_persister}.go`, `migration/order.go`, `replaybuild/zones.go`,
+  `replay/{bomb_armings,coverage,document_bomb_armings,document_bomb_carries}.go` et le golden
+  d'assemblage ont fusionné SEULS — relus, et sains (les deux persisters coexistent dans
+  `CombinedPersister`, chacun sa transaction, même fenêtre de lease ; `order.go` garde chaque
+  bloc de commentaire au contact de son entrée, aucune doc inversée).
+
+  **LES 8 CONFLITS ET LEUR RÉSOLUTION** (règle : la SÉMANTIQUE de la branche est préservée
+  intégralement, dans NOTRE architecture) :
+
+  | conflit | ce que la branche voulait | résolution |
+  |---|---|---|
+  | `replay/document.go` | un bloc de doc de version 39 « L'ARMEMENT DE LA BOMBE EN ONE BOMB » + `SchemaVersion = 39` | **D13 : les deux 39 fondent en UN**. Le bloc devient « CE QUE LA VERSION 39 PORTE — QUATRE APPORTS FONDUS EN UNE MONTÉE », nommant les DEUX chantiers (véhicules 29/30/31, Assaut 39) et disant qu'aucun de leurs numéros n'a jamais cuit d'artefact ; (1)(2)(3) véhicules gardés mot pour mot, (4) l'armement ajouté. `const SchemaVersion = 39` UNE fois. La chronique de tête garde NOTRE ligne (plus complète : `document_ability_charges.go`, `filmdec/ability_charges.go`) |
+  | `replay/structure_test.go` | le même bloc, en `v39 —` | Même geste : l'introduction devient « v39 (2026-09-05, FUSION DE DEUX CHANTIERS) […] en quatre temps », les trois blocs véhicules restent `v39 (1)/(2)/(3)`, celui de la branche devient `v39 (4)`. `SchemaVersion != 39` inchangé |
+  | `replaybuild/matchfacts.go` (2 blocs) | supprimer la garde 1 (`isArmableBombVariant`, le NOM de la variante) et ramener `bombInput` à UN booléen de FAMILLE ; `src.Chunks()` | Sémantique de la branche (une seule garde) dans NOTRE forme film : `bombInput(film *filmsource.Film, bomb bool)`, l'horloge lue par `chunksDuManifeste(film)` — la fonction du lot 4b qui écarte les chunks hors manifeste. Le commentaire de tête est celui de la branche (« sous UNE SEULE garde de mode — la FAMILLE, One Bomb comprise ») |
+  | `replay/assaut_armement_gate_test.go` | `decodeFilmBombReads(dir, …)` + `agDiagnostiquerSegments` (le diagnostic passe des montées aux SEGMENTS) | Le diagnostic de la branche (`agDiagnostiquerSegments`) sur NOTRE entrée film (`filmsource.LoadDir` + `filmdec.NewFilmContext`) |
+  | `sync/no_art_patterns_test.go` | `match_bomb_stats` dans `tablesProtegees` | **UNION** des deux durcissements datés : `match_usage_players`/`match_usage_films` (étape C) ET `match_bomb_stats`, chacun avec son bloc de justification |
+  | `sync/append_only_state_guard_test.go` | `match_bomb_stats` dans `appendOnlyStateTables` | **UNION**, même geste (étape 5 de la recette ADR 0026 pour les deux chantiers) |
+  | `.ai/thought_log.md` | deux blocs à la même ancre | UNION : nos entrées en tête, les siennes ensuite, ligne de séparation rétablie |
+  | `.ai/V7.5/REGISTRE_REPORTS.md` | la ligne du DÉSAMORÇAGE | UNION du tableau |
+
+  **PREUVE** : `git diff --name-only --diff-filter=U` VIDE, `git grep '^<<<<<<< '` VIDE.
+
+  **GATES** — `gofmt -l .` VIDE · `go build ./...` **EXIT_BUILD=0** · `go vet ./...`
+  **EXIT_VET=0** · `go test ./internal/analysis/replay/ ./internal/replaybuild/
+  ./internal/migration/ ./internal/persist/ ./internal/sync/ ./internal/archlint/
+  ./contracttest/ -count=1` **EXIT_TESTS=0** (7 paquets `ok`) ·
+  `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate` **ok** ·
+  `CGO_ENABLED=0 go test ./contracttest/... -run TestContract` **ok** ·
+  `node tools/check-generated-types-fresh.mjs` code **0** (D11 : le contrat NE BOUGE PAS — la
+  branche n'ajoute aucun champ au document). **D12 [~] : la branche ne touche AUCUN fichier
+  d'`apps/web`** (`git diff --stat 146f1d92e wt/assaut-stats -- apps/web` vide) ; le filet web a
+  quand même été passé en base de référence pour la suite de l'étape : typecheck 0, lint 0,
+  lint:fields 0 (220 labels, 1 667 fichiers), vitest 0 (**585 fichiers / 6 187 tests**,
+  14 skipped), build 0, knip 0/0/0.
+
+  **HARNAIS** : tableau et corrélation au §5 « Étape G ». Un mot ici : `9f57c612` est le SEUL
+  film d'Assaut du corpus, et c'est le seul qui bouge — `bombReads` 0 → 1 474, `bomb`,
+  `artifact` +541 o. Les douze autres sont identiques au bit près, `minifilm.tsv` intact.
+
+  **LINT** : `golangci-lint cache clean` puis `golangci-lint run --new-from-merge-base=origin/main`
+  — **0 issues**, `EXIT_LINT_RATCHET=0` (le lint qui fait foi, celui du job CI `go-lint`).
+
+  **RESTE DOUTEUX / À SURVEILLER, et c'est le point de conception de G.2** : le DOCUMENT NE PORTE
+  PAS ce que `replay.BuildBombStats` attend, et le crochet de sync ne peut donc PAS se contenter
+  de le rejouer. Mesuré entrée par entrée : `Objectives` OUI (`doc.Objectives` porte
+  Stat/XUID/TimeMS) ; `Armings` OUI (`doc.BombArmings`, même type, même horloge) ; `Carry` NON
+  (`doc.BombCarries` est en FRAMES — grille de 100 ms —, écarte les périodes NON PONTÉES à la
+  publication, ne distingue pas lâcher et mort, et ne publie pas `CarryMSByXUID`) ;
+  `FilmToMatchOffsetMS` NON (ni `originMs` ni `t0FilmMs` ne l'expriment) ; `Kills` NON (la paire
+  tueur/victime n'existe nulle part dans le document — le seul producteur de `replay.KillRef` du
+  dépôt est `killcollector/positions.go`, qui la lit dans `match_kill_events`). Les quatre
+  premières existent EN PLEINE FIDÉLITÉ dans `BuildFromPositions`, entre `attachBombCarries` et
+  `attachBombArmings` : c'est là que G.2 calculera, une fois, et le crochet ne fera que persister
+  ce que l'artefact rangé porte.
+
+- 2026-09-05 — **ÉTAPES G.2 à G.5 exécutées** (worktree `LevelUp-wt-integ-assaut`, branche
+  `wt/integ-assaut`). Quatre commits : `380ddcdcd` (G.2, le crochet), `75dd032ab` (G.3, l'API),
+  `efa920f3e` (G.4, le web), et celui-ci (G.5, le backfill et la clôture).
+
+  **LE POINT DE CONCEPTION, ET IL A CHANGÉ LA FORME DU LOT.** Le plan demandait un crochet qui
+  rejoue `replay.BuildBombStats` sur le document rangé (patron de `usage.go`). Vérification sur
+  pièces AVANT de coder, entrée par entrée : le DOCUMENT NE PORTE PAS ce que le noyau attend
+  (tableau au §5 « G.2 »). Les re-dériver en aurait fait un SECOND décodeur du même fait, moins
+  précis — l'anti-pattern que l'en-tête de `bomb_stats.go` condamne. **Les stats se calculent
+  donc À LA CUISSON**, dans `BuildFromPositions` où leurs quatre sources vivent en pleine
+  fidélité, et voyagent dans l'artefact ; le crochet ne fait plus que TRANSPORTER. L'esprit de
+  l'item E4 — « aucun second décodage, aucun film relu » — est tenu à la lettre : aucun balayage
+  de plus, et **aucune étape observée de plus** (`BuildFromFilmSteps` reste à 35).
+
+  **CE QUI EST LIVRÉ, BOUT À BOUT.** Le calque `bombStats` + `bombEvents` au document
+  (schéma 39, le même — il n'avait encore cuit aucun artefact) ; le crochet post-sync gaté par la
+  capability NEUVE `film.bomb_stats` ; la lecture `Q12cBombStats` sur `match_bomb_stats_latest`,
+  dégradable indépendamment et gatée au wiring ; les cinq colonnes dans le bloc `objective` de la
+  fiche de match ; l'Assaut dans les DEUX VUES de la section « Objectifs » ; et
+  `levelup backfill-bomb-stats` pour le parc existant.
+
+  **LES QUATRE SILENCES, chacun distingué et journalisé** : mode hors Assaut (le document ne
+  porte aucun calque — DEBUG, et surtout PAS un défaut : c'est le cas majoritaire de chaque
+  cycle), capability absente (DEBUG), film d'Assaut dont aucune source n'a rien rendu (DEBUG,
+  ajouté après coup — sans lui le persister aurait WARNé « passe vide » à chaque cycle), artefact
+  illisible (WARN + compteur). Une écriture qui échoue est un `slog.ErrorContext` avec
+  `match_id`.
+
+  **CE QUI N'EST PAS LIVRÉ, ET C'EST ÉCRIT À CINQ ENDROITS** : `bomb_carriers_killed` est ABSENT
+  (NULL) chez tous les joueurs. Le noyau sait le calculer ; c'est son ENTRÉE qui manque — aucune
+  source de la chaîne de cuisson ne porte une paire (tueur, victime) datée sur l'horloge du
+  MATCH, et les trois qui s'en approchent sont chacune dans un référentiel différent. Report au
+  registre, avec sa première marche : un GATE DE MESURE du pont d'horloge, jamais une
+  affirmation.
+
+  **PIÈGE RELEVÉ ET FERMÉ** : la fixture d'intégration de `platform/duckdb` RECOPIE à la main le
+  DDL des tables qu'elle monte — la dérive y est indétectable. `migration.MatchBombStatsTableSQL`
+  et `MatchBombStatsLatestViewSQL` sont donc EXPORTÉES (patron de
+  `MatchObjectiveStatsLatestViewSQL`), et la migration les appelle elle-même : une définition,
+  deux références.
+
+  **GATES FINAUX (G.5), un code de sortie par ligne** : `gofmt -l .` VIDE (`EXIT_GOFMT=0`) ·
+  `go build ./...` **EXIT_BUILD=0** · `go vet ./...` **EXIT_VET=0** · `go test ./... -count=1`
+  **EXIT_TESTS=0** · `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...
+  ./internal/platform/duckdb/... -count=1` **EXIT_INTEG=0** · `golangci-lint run
+  --new-from-merge-base=origin/main` (cache nettoyé) **EXIT_LINT_RATCHET=0**, **0 issue**.
+  Web D12 complet au dernier état : typecheck 0, lint 0 (28 warnings, EXACTEMENT la baseline),
+  lint:fields 0, vitest 0, build 0, knip 0/0/0. Harnais : tableau et corrélation au §5 « G.2 ».
+
+  **RESTE DOUTEUX / À SURVEILLER** : (a) le parc d'artefacts est en schéma <= 38 et ne porte donc
+  AUCUN `bombStats` — la fonctionnalité est vraie pour les matchs cuits APRÈS le déploiement, et
+  le rattrapage du parc demande les DEUX passes de release dans l'ordre (`backfill-replay` puis
+  `backfill-bomb-stats`), qui n'ont pas été lancées ; (b) la conversion document -> batch existe
+  en DEUX exemplaires (le crochet et le backfill CLI) — c'est voulu (le paquet `cmd` ne peut pas
+  importer un identifiant non exporté de `sync/replayartifacts`, et l'exporter coderait une
+  dépendance de la production sur un outil hors ligne), et les deux sont tenues par la même
+  validation et le même vocabulaire, défini en UN seul endroit ; (c) `bombStats` est le seul bloc
+  du document de rejeu qui ne soit pas un calque de rendu — la frontière web le comble comme les
+  autres, mais aucun composant ne le lit : c'est la base qui sert la fiche de match.
+
 ## §7 Contrat d'exécution (rappel opposable)
 Statuts : `[x]` fait · `[~]` couvert ailleurs (avec la référence) · `[!]` non traité (avec la
 justification écrite). AUCUNE case vide à la clôture d'une étape. Ordre strict : l'étape N+1 ne

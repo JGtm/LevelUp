@@ -609,6 +609,13 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
           label: 'Meilleur temps',
           tooltip: 'Plus longue survie en tant que VIP',
         },
+        bomb_detonations: { label: 'Explosions', tooltip: 'Bombes ayant explosé' },
+        bomb_arms: { label: 'Armements', tooltip: 'Bombes armées (poses menées à terme)' },
+        bomb_grabs: { label: 'Récup.', tooltip: 'Récupérations de la bombe' },
+        time_as_bomb_carrier_seconds: {
+          label: 'Temps porteur',
+          tooltip: 'Temps en tant que porteur de la bombe',
+        },
       },
     },
   },
@@ -894,6 +901,13 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
         longest_time_as_vip_seconds: {
           label: 'Longest',
           tooltip: 'Longest survival as VIP',
+        },
+        bomb_detonations: { label: 'Explosions', tooltip: 'Bombs detonated' },
+        bomb_arms: { label: 'Arms', tooltip: 'Bombs armed (completed plants)' },
+        bomb_grabs: { label: 'Grabs', tooltip: 'Bomb grabs' },
+        time_as_bomb_carrier_seconds: {
+          label: 'Carrier time',
+          tooltip: 'Time as bomb carrier',
         },
       },
     },

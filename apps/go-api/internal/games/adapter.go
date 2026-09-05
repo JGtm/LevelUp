@@ -182,6 +182,27 @@ const (
 	// PRODUCTION du résumé, pas ce qu'une page en affiche. Ne pas l'élargir pour couvrir
 	// un autre dérivé du film.
 	CapFilmUsageSummary CapabilityKey = "film.usage_summary"
+
+	// CapFilmBombStats — le titre produit, PAR MATCH et PAR JOUEUR, LES CINQ STATISTIQUES
+	// D'OBJECTIF DE L'ASSAUT reconstruites du film (`bomb_detonations`, `bomb_arms`,
+	// `bomb_grabs`, `time_as_bomb_carrier_seconds`, `bomb_carriers_killed`), persistées dans
+	// `shared.match_bomb_stats` (append-only + vue `_latest`).
+	//
+	// POURQUOI UNE CLÉ NEUVE PLUTÔT QUE `match.objective.stats`. Cette dernière gouverne le
+	// JOIN sur `match_objective_stats`, table alimentée par le SYNC API — et l'API 343 ne
+	// publie AUCUNE statistique d'objectif pour l'Assaut (la famille `BombStats` du moteur est
+	// de la télémétrie Bond, jamais répliquée : mesure du 2026-09-04, cause unique du silence
+	// des deux côtés). Ces chiffres-là viennent du DÉCODEUR DE FILM, et la convention du dépôt
+	// préfixe `film.*` tout ce qui en vient.
+	//
+	// Halo Infinite : supported (dérivé de l'artefact qui vient d'être cuit, même étape
+	// post-sync que `film.usage_summary` — jamais de second décodage). Halo 5 : ABSENTE — pas
+	// de décodeur de film, donc aucun artefact, donc rien à reconstruire. Un titre qui ne la
+	// déclare pas ne produit AUCUNE ligne et n'expose AUCUNE colonne : silence propre.
+	//
+	// ⚠ Clé FINE, même doctrine que les quatre `film.*` ci-dessus : elle gouverne la PRODUCTION
+	// et l'EXPOSITION de ces cinq statistiques, rien d'autre du mode Assaut. Ne pas l'élargir.
+	CapFilmBombStats CapabilityKey = "film.bomb_stats"
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.

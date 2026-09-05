@@ -8760,6 +8760,136 @@ components:
         - t1
         - closed
       type: object
+    BombEvent:
+      additionalProperties: false
+      properties:
+        actorSource:
+          type: string
+        timeMs:
+          format: int64
+          type: integer
+        type:
+          type: string
+        xuid:
+          type: string
+      required:
+        - type
+        - timeMs
+      type: object
+    BombMatchStats:
+      additionalProperties: false
+      properties:
+        coverage:
+          $ref: '#/components/schemas/BombStatsCoverage'
+        players:
+          items:
+            $ref: '#/components/schemas/BombPlayerStats'
+          type:
+            - array
+            - "null"
+      required:
+        - coverage
+      type: object
+    BombPlayerStats:
+      additionalProperties: false
+      properties:
+        arms:
+          format: int64
+          type: integer
+        carriersKilled:
+          format: int64
+          type: integer
+        detonations:
+          format: int64
+          type: integer
+        grabs:
+          format: int64
+          type: integer
+        timeAsCarrierSeconds:
+          format: double
+          type: number
+        xuid:
+          type: string
+      required:
+        - xuid
+      type: object
+    BombStatsCoverage:
+      additionalProperties: false
+      properties:
+        armings:
+          format: int64
+          type: integer
+        armingsAmbiguous:
+          format: int64
+          type: integer
+        armingsAttributed:
+          format: int64
+          type: integer
+        armingsByActiveCarry:
+          format: int64
+          type: integer
+        armingsByDrop:
+          format: int64
+          type: integer
+        armingsNoBridge:
+          format: int64
+          type: integer
+        armingsNoCarrier:
+          format: int64
+          type: integer
+        armingsRead:
+          type: boolean
+        carryRead:
+          type: boolean
+        detonations:
+          format: int64
+          type: integer
+        detonationsRead:
+          type: boolean
+        kills:
+          format: int64
+          type: integer
+        killsOnCarrier:
+          format: int64
+          type: integer
+        killsRead:
+          type: boolean
+        periods:
+          format: int64
+          type: integer
+        periodsByDeath:
+          format: int64
+          type: integer
+        periodsNoBridge:
+          format: int64
+          type: integer
+        periodsOpen:
+          format: int64
+          type: integer
+        players:
+          format: int64
+          type: integer
+      required:
+        - detonationsRead
+        - carryRead
+        - killsRead
+        - armingsRead
+        - detonations
+        - armings
+        - armingsAttributed
+        - armingsByDrop
+        - armingsByActiveCarry
+        - armingsNoCarrier
+        - armingsNoBridge
+        - armingsAmbiguous
+        - periods
+        - periodsNoBridge
+        - periodsOpen
+        - periodsByDeath
+        - kills
+        - killsOnCarrier
+        - players
+      type: object
     BootstrapResponse:
       additionalProperties: false
       properties:
@@ -16783,6 +16913,18 @@ components:
       additionalProperties: false
       description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
       properties:
+        bomb_arms:
+          format: int64
+          type: integer
+        bomb_carriers_killed:
+          format: int64
+          type: integer
+        bomb_detonations:
+          format: int64
+          type: integer
+        bomb_grabs:
+          format: int64
+          type: integer
         extraction_conversions_completed:
           format: int64
           type: integer
@@ -16864,6 +17006,9 @@ components:
         successful_extractions:
           format: int64
           type: integer
+        time_as_bomb_carrier_seconds:
+          format: double
+          type: number
         time_as_flag_carrier_seconds:
           format: double
           type: number
@@ -21011,6 +21156,14 @@ components:
           type:
             - array
             - "null"
+        bombEvents:
+          items:
+            $ref: '#/components/schemas/BombEvent'
+          type:
+            - array
+            - "null"
+        bombStats:
+          $ref: '#/components/schemas/BombMatchStats'
         bounds:
           $ref: '#/components/schemas/Bounds'
         coverage:

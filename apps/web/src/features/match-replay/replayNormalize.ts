@@ -121,6 +121,14 @@ export type ReplayVehicleTrackReady = Omit<Filled<ReplayVehicleTrack, 'samples'>
 export type ReplayVehicleRideReady = Filled<ReplayVehicleRide, 'aim'>
 
 /**
+ * ReplayBombStatsReady — le bloc des statistiques d'Assaut, son tableau comblé. L'OBJET reste
+ * optionnel au document (cf. `ReplayDocumentReady.bombStats`) ; ce type-ci ne dit que ceci :
+ * s'il est là, `players` l'est aussi, fût-il vide. `coverage`, lui, n'est pas un tableau et ne
+ * se comble pas — il est toujours écrit par le producteur.
+ */
+export type ReplayBombStatsReady = Filled<NonNullable<ReplayDocument['bombStats']>, 'players'>
+
+/**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque
  * tableau est présent, jamais null, et les coordonnées ont retrouvé leur arité.
  */
@@ -131,6 +139,8 @@ export type ReplayDocumentReady = Omit<
   | 'abilityImpulses'
   | 'bombArmings'
   | 'bombCarries'
+  | 'bombEvents'
+  | 'bombStats'
   | 'equipmentChanges'
   | 'equipmentEpisodes'
   | 'equipmentPlacements'
@@ -206,6 +216,25 @@ export type ReplayDocumentReady = Omit<
    * dérive des périodes + pistes (dernier point du lâcheur — aucun canal mesuré côté Go).
    */
   bombCarries: NonNullable<ReplayDocument['bombCarries']>
+  /**
+   * LES FAITS DATÉS DE LA BOMBE (schéma 39) : armements et explosions sur l'horloge du film,
+   * chacun avec la RÈGLE qui a nommé son acteur (`actorSource`) quand la jointure y est
+   * parvenue — `carry_drop` (un geste observé) ou `carry_active` (une présence constatée), deux
+   * forces de preuve qu'un lecteur ne doit pas confondre. Un fait SANS acteur est publié quand
+   * même. Vide = artefact antérieur au schéma 39, ou film hors de la famille bomb.
+   */
+  bombEvents: NonNullable<ReplayDocument['bombEvents']>
+  /**
+   * LES CINQ STATISTIQUES D'OBJECTIF DE L'ASSAUT (schéma 39) — le seul bloc du document qui
+   * ne soit PAS un calque de rendu : la fiche de match les sert depuis la base, pas depuis
+   * l'artefact. Il voyage ici parce que c'est à la CUISSON qu'elles se calculent (leurs quatre
+   * sources n'y vivent en pleine fidélité qu'à cet instant), et le crochet de sync les
+   * persiste depuis l'artefact rangé.
+   * L'OBJET GARDE LE DROIT D'ÊTRE ABSENT (comme `scoreTimeline`) : absent = film hors de la
+   * famille bomb, et un bloc vide se lirait « lu, rien trouvé » — ce n'est pas la même chose.
+   * Son tableau, lui, est comblé.
+   */
+  bombStats?: ReplayBombStatsReady
   /**
    * LES RAMASSAGES ET LES CONSOMMATIONS D'ÉQUIPEMENT (schéma 26) : ce qui ARRIVE à un joueur,
    * là où `abilities` dit ce qu'il PORTE. Datés à la milliseconde puis projetés sur l'axe de
@@ -342,6 +371,12 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // Absent = artefact antérieur, ou film hors famille bomb — `coverage.bombCarries`
     // distingue les deux.
     bombCarries: raw.bombCarries ?? [],
+    // LES FAITS DATÉS DE LA BOMBE (schéma 39) : armements et explosions. Absent = artefact
+    // antérieur, ou film hors famille bomb.
+    bombEvents: raw.bombEvents ?? [],
+    // LES CINQ STATISTIQUES D'ASSAUT (schéma 39). L'OBJET garde le droit d'être absent — un
+    // bloc vide se lirait « lu, rien trouvé » —, mais son tableau est comblé.
+    bombStats: raw.bombStats == null ? undefined : { ...raw.bombStats, players: raw.bombStats.players ?? [] },
     // LES RAMASSAGES ET LES CONSOMMATIONS d'équipement (schéma 26) : la source FINE de datation
     // de ce que porte un joueur. `abilities` reste la LECTURE (ce qu'il porte, échantillonné) ;
     // ceci est l'ÉVÉNEMENT (ce qui lui arrive, daté). Absent = artefact antérieur, ou film qui
