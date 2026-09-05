@@ -19,10 +19,13 @@ package replay
 //	    pas tranchés en faveur du statborg, et une disparition silencieuse serait une dérive
 //	    de la chronologie, pas un progrès.
 //	(c) CONTRÔLE DE COHÉRENCE DE LA JOINTURE, sur les cinq films : la somme des `bomb_arms`
-//	    attribués vaut `ArmingsAttributed`, et la ventilation
-//	    (attribués + sans lâcher + sans pont) retombe sur le nombre d'armements DATÉS.
-//	(d) PUBLICATION : le test imprime, par film, `armements dates / attribues / non attribues`,
-//	    plus la distribution SIGNÉE de (lâcher − armement) qui calibre la fenêtre de jointure.
+//	    attribués vaut `ArmingsAttributed`, celui-ci se ventile exactement en (par lâcher +
+//	    par repli), et la ventilation complète (attribués + sans porteur + sans pont +
+//	    ambigus) retombe sur le nombre d'armements DATÉS.
+//	(d) PUBLICATION : le test imprime, par film, `armements dates / attribues par lacher /
+//	    attribues par repli / non attribues`, la RÈGLE qui a nommé chaque acteur, la
+//	    distribution SIGNÉE de (lâcher − armement) qui calibre la fenêtre de jointure, et les
+//	    périodes qui COUVRENT chaque armement — la matière du repli.
 //
 // # CE QUE LE GATE NE JUGE PAS, ET POURQUOI
 //
@@ -130,7 +133,7 @@ type baFilm struct {
 func baMesurer(t *testing.T, cache, id string) baFilm {
 	t.Helper()
 	periodes, _, _, own := bpExtraire(t, cache, id)
-	armings, armCov := agExtraire(t, cache, id)
+	armings, armCov, _ := agExtraire(t, cache, id)
 	filmClockUS, err := ScanFilmClockOrigin(filepath.Join(cache, "film_chunks", id))
 	if err != nil {
 		t.Fatalf("%s : horloge du film illisible : %v", id, err)
@@ -147,16 +150,21 @@ func baMesurer(t *testing.T, cache, id string) baFilm {
 	return f
 }
 
-// baPublier imprime le bilan demandé par le critère (d) : armements datés / attribués / non
-// attribués, la ventilation des non attribués, les lignes joueur, et la distribution signée
-// des lâchers voisins de chaque armement.
+// baPublier imprime le bilan demandé par le critère (d) : armements datés, attribués VENTILÉS
+// PAR RÈGLE (lâcher / repli), non attribués avec leurs trois raisons, les lignes joueur, et la
+// distribution signée des lâchers voisins de chaque armement.
+//
+// La ventilation par règle n'est pas cosmétique : un chiffre global de couverture qui monterait
+// uniquement par le repli ne dirait PAS la même chose qu'un chiffre porté par des gestes
+// observés, et c'est précisément ce qu'un lecteur doit pouvoir juger.
 func baPublier(t *testing.T, f baFilm) {
 	t.Helper()
 	cov := f.stats.Coverage
-	t.Logf("%s : armements dates %d / attribues %d / non attribues %d "+
-		"(sans lacher %d, slot non ponte %d)",
-		f.id, cov.Armings, cov.ArmingsAttributed,
-		cov.ArmingsNoDrop+cov.ArmingsNoBridge, cov.ArmingsNoDrop, cov.ArmingsNoBridge)
+	t.Logf("%s : armements dates %d / attribues par lacher %d / attribues par repli %d / "+
+		"non attribues %d (sans porteur %d, slot non ponte %d, ambigus %d)",
+		f.id, cov.Armings, cov.ArmingsByDrop, cov.ArmingsByActiveCarry,
+		cov.ArmingsNoCarrier+cov.ArmingsNoBridge+cov.ArmingsAmbiguous,
+		cov.ArmingsNoCarrier, cov.ArmingsNoBridge, cov.ArmingsAmbiguous)
 	for _, p := range f.stats.Players {
 		if p.Arms != nil && *p.Arms > 0 {
 			t.Logf("  %s : xuid %s -> bomb_arms %d", f.id, p.XUID, *p.Arms)
@@ -166,13 +174,39 @@ func baPublier(t *testing.T, f baFilm) {
 		if e.Type != BombEventArmed {
 			continue
 		}
-		acteur := e.XUID
+		acteur, regle := e.XUID, e.ActorSource
 		if acteur == "" {
-			acteur = "SANS ACTEUR"
+			acteur, regle = "SANS ACTEUR", "-"
 		}
-		t.Logf("  %s : bomb_armed %7d ms (film) -> %s", f.id, e.TimeMS, acteur)
+		t.Logf("  %s : bomb_armed %7d ms (film) -> %s (regle %s)", f.id, e.TimeMS, acteur, regle)
 	}
 	baDistributionLachers(t, f)
+	baCouverturesActives(t, f)
+}
+
+// baCouverturesActives imprime, pour chaque armement, les périodes FERMÉES qui COUVRENT
+// l'instant armé — la matière du REPLI, montrée brute. Elle dit d'un coup d'œil pourquoi un
+// armement est nommé par le repli (une seule couverture), pourquoi il reste ambigu (deux
+// couvertures), ou pourquoi il reste anonyme (aucune).
+func baCouverturesActives(t *testing.T, f baFilm) {
+	t.Helper()
+	for _, a := range f.armings {
+		armMatchMS := a.TimeMS + f.offset
+		n := 0
+		for _, p := range f.periodes {
+			if p.Ouverte || p.DebutMS > armMatchMS || p.FinMS < armMatchMS {
+				continue
+			}
+			n++
+			t.Logf("  %s : armement %7d ms (film) <- COUVERT par slot %d xuid %d "+
+				"[%d, %d] (fin par mort : %t)",
+				f.id, a.TimeMS, p.Slot, p.XUID, p.DebutMS, p.FinMS, p.FinParMort)
+		}
+		if n == 0 {
+			t.Logf("  %s : armement %7d ms (film) <- AUCUNE periode fermee ne le couvre",
+				f.id, a.TimeMS)
+		}
+	}
 }
 
 // baDistributionLachers imprime, pour chaque armement, les lâchers voisins avec leur écart
@@ -225,7 +259,12 @@ func baVerifierCoherence(t *testing.T, f baFilm) {
 		t.Errorf("%s : somme des bomb_arms = %d > %d armements DATES — critere (c) NON tenu",
 			f.id, somme, cov.Armings)
 	}
-	if v := cov.ArmingsAttributed + cov.ArmingsNoDrop + cov.ArmingsNoBridge; v != cov.Armings {
+	if v := cov.ArmingsByDrop + cov.ArmingsByActiveCarry; v != cov.ArmingsAttributed {
+		t.Errorf("%s : par regle %d (lacher %d + repli %d) != %d attribues — critere (c) NON tenu",
+			f.id, v, cov.ArmingsByDrop, cov.ArmingsByActiveCarry, cov.ArmingsAttributed)
+	}
+	v := cov.ArmingsAttributed + cov.ArmingsNoCarrier + cov.ArmingsNoBridge + cov.ArmingsAmbiguous
+	if v != cov.Armings {
 		t.Errorf("%s : ventilation %d != %d armements dates — critere (c) NON tenu",
 			f.id, v, cov.Armings)
 	}

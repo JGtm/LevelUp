@@ -664,8 +664,30 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   {effet, départ, arrivée}, R6 §1.4). APRÈS, la balise est au point de DÉPART du saut :
 	//   le va-et-vient publié suffit à la dessiner. Ni aucun usage du RÉPULSEUR, sur aucun des
 	//   huit canaux jugés.
-	if SchemaVersion != 38 {
-		t.Fatalf("SchemaVersion = %d, attendu 38 : incrémenter exige une raison écrite ci-dessus "+
+	// v39 — L'ARMEMENT DE LA BOMBE EN ONE BOMB (étape E2-ter du plan d'Assaut, 2026-09-04,
+	//   arbitrage utilisateur). AUCUN CHAMP NEUF : ce qui change est le CONTENU du calque
+	//   `bombArmings`, et la version monte pour la raison exacte des montées v14/v22/v25/v37 —
+	//   la reprise du backfill se fait par SchemaVersion, et un artefact 38 d'un match One Bomb
+	//   ne porte AUCUN armement là où il en porte désormais.
+	//   CE QUI A CHANGÉ. Le calque était gouverné par une garde de mode DOUBLE, dont la
+	//   première écartait One Bomb PAR SON NOM : sous la lecture SIMPLE (montée contiguë,
+	//   mèche fixe de 4,93 s) le protocole du 2026-09-01 y avait RÉFUTÉ le signal (CV 0,725,
+	//   87/1000 tirages nuls aussi bien). La lecture « MÈCHE PAUSABLE » du même jour l'explique
+	//   — 9/9 explosions portées, médiane 16,18 s, CV 0,017, 0/1000 — et elle est maintenant EN
+	//   PRODUCTION : segments contigus (le cycle de recharge du marqueur finit à son MINIMUM et
+	//   sort de lui-même), armement = segment qui finit à son sommet PLEIN, TENUE DE
+	//   DÉSARMEMENT qui SUSPEND la mèche (pente 14-26 quanta/s, contre 138 pour une chute
+	//   d'explosion), et MÈCHE MESURÉE SUR LE FILM (médiane des délais corrigés) au lieu d'une
+	//   constante unique — 4,93 s en Neutral Bomb, 5,1 s en Husky Raid, ~16,2 s en One Bomb
+	//   sortent de la MÊME règle, sans qu'aucun code ne branche sur le nom de la variante.
+	//   CE QUI N'A PAS CHANGÉ, ET C'ÉTAIT L'EXIGENCE : les témoins Neutral Bomb (13/13) et
+	//   Husky Raid (4/4) au chiffre près. Et la GARDE 2 reste, seule et tout-ou-rien par film :
+	//   une explosion sans armement dans la fenêtre de sens, ou des mèches du film qui se
+	//   contredisent, retiennent le calque ENTIER.
+	//   Détail : filmdec/navpoint_radial_segments.go, replay/bomb_armings.go,
+	//   replaybuild/zones.go et .ai/V7.5/PLAN_ASSAUT_STATS_2026-09-04.md (E2-ter).
+	if SchemaVersion != 39 {
+		t.Fatalf("SchemaVersion = %d, attendu 39 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
