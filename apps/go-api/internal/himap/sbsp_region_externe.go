@@ -49,6 +49,7 @@ func RegionsBSPExternes(modulePath string, porteurs []string) ([]RegionExterne, 
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = m.Close() }()
 	if len(m.Files("sbsp")) > 0 {
 		return nil, fmt.Errorf("himap: %s porte ses propres tags sbsp — utiliser BSPQuantification", modulePath)
 	}

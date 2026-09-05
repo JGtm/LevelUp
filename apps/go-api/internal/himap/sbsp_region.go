@@ -51,6 +51,7 @@ func BSPQuantification(modulePath string) (BSP, []BSP, error) {
 	if err != nil {
 		return BSP{}, nil, err
 	}
+	defer func() { _ = m.Close() }()
 	bsps, err := bspBoundsFrom(m, modulePath)
 	if err != nil {
 		return BSP{}, nil, err
