@@ -218,13 +218,22 @@ func p3FilmClockOffsetMS(t *testing.T, doc ReplayDocument) int64 {
 
 // p3MapEntry résout l'entrée de catalogue de la carte du film PAR SES LARGEURS D'AXE, sans
 // base de données : `DetectI0Layout` les lit dans le film, et le catalogue dit quelles cartes
-// les portent (la même clé que les instruments R8/R9).
+// les portent (la même clé que les instruments R8/R9). Le corps est partagé avec le test
+// d'acceptation du lot P5 (`mapEntryFromCatalog`) : deux résolutions divergeraient au
+// premier changement de catalogue.
 func p3MapEntry(t *testing.T, dir string) filmdec.MapQuantEntry {
 	t.Helper()
 	path := os.Getenv(p3BoundsEnv)
 	if path == "" {
 		t.Skipf("%s absent : sans bornes de carte le rejeu ne se construit pas", p3BoundsEnv)
 	}
+	return mapEntryFromCatalog(t, dir, path)
+}
+
+// mapEntryFromCatalog est le corps de la résolution : les largeurs d'axe lues dans le film
+// contre le catalogue versionné.
+func mapEntryFromCatalog(t *testing.T, dir, path string) filmdec.MapQuantEntry {
+	t.Helper()
 	cat, err := filmdec.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes illisible : %v", err)

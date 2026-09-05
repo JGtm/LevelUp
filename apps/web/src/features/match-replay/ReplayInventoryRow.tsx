@@ -28,13 +28,16 @@
  * posé sur le conteneur multipliait l'opacité propre de chaque cellule par celle de l'inventaire
  * et rendait toute cellule plus fraîche PLUS PÂLE que la rangée — l'inverse de ce qu'un
  * estompage dit. C'est la même raison que pour les armes portées, appliquée par lecture.
+ *
+ * LA CELLULE DE CAPACITÉ VIT DANS `ReplayAbilityCell.tsx` depuis le 2026-09-04 (lot P6) :
+ * l'affichage des CHARGES restantes s'y branche (compte lu, « plein » qualitatif, ou rien —
+ * cf. `abilityChargeLogic.ts`), et l'extraction paie l'addition — ce fichier était à 4 lignes
+ * de son plafond de 500.
  */
-import type { ReactNode } from 'react'
-
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
-import { catalogText, type CatalogLabel } from './catalogLabel'
+import type { CatalogLabel } from './catalogLabel'
 import type { EquippedReading } from './equippedLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import {
@@ -46,13 +49,11 @@ import {
   inventoryEmptyHint,
   selectedGrenadeFrom,
 } from './inventoryReading'
+import { ReplayAbilityCell, StateMark } from './ReplayAbilityCell'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
-import { abilityAt } from './rosterLogic'
 import { familyOf } from './shotEffects'
 
-/** Boîte de la vignette de CAPACITÉ : la hauteur de la ligne. */
-const HUD_ICON_PX = 16
 /** Vignette d'un TYPE DE GRENADE : 14 px (option 2a — la boîte de 56 px est taillée dessus). */
 const GRENADE_ICON_PX = 14
 /** Largeurs FIXES des cellules — la grille des fiches en dépend (option 2a : 32 / 56). */
@@ -79,10 +80,6 @@ export function ReplayInventoryRow({
 }) {
   const t = REPLAY_TEXT[locale]
   const read = inventoryAt(doc, slot, frame)
-  // LA CAPACITÉ A SA PROPRE LECTURE, et donc son propre âge : elle arrive surtout par le
-  // canal i48 des paquets delta, qui ne tombe pas sur les images-clés de l'inventaire.
-  const abilityRead = abilityAt(doc, slot, frame)
-  const ability = abilityText(doc, abilityRead?.rank, t, locale)
   const state = read?.state
   // LES GRENADES ONT LEUR PROPRE LECTURE, et donc leur propre age (schema 20, lot 4.4 du suivi
   // delta). L axe `grenadeReads` porte DEUX canaux sur la meme grandeur : les images-cles
@@ -192,33 +189,16 @@ export function ReplayInventoryRow({
           </span>
         )}
       </span>
-      <span className="inline-flex shrink-0 items-center" style={{ width: HUD_ICON_PX }}>
-        {ability && abilityRead && (
-          <span
-            className="inline-flex items-center"
-            // ÂGE PROPRE À LA CAPACITÉ : sa lecture ne tombe pas sur les images-clés de
-            // l'inventaire, l'estompage de la ligne ne la décrit donc pas.
-            style={{ opacity: freshness(abilityRead.age, readingFull, READING_FADE) }}
-            title={abilityAgeTitle(t, abilityRead.age, doc, ability.text)}
-          >
-            {ability.img ? (
-              <WeaponIcon
-                imageUrl={ability.img}
-                tinted={ability.tinted}
-                label={ability.text}
-                width={HUD_ICON_PX}
-                height={HUD_ICON_PX}
-              />
-            ) : ability.known ? (
-              ability.text
-            ) : (
-              /* RANG NON RÉSOLU : un GLYPHE, pas un mot ni un caractère (planche du 16/08).
-                 Le rang lu reste la seule chose vraie : il vit dans l'infobulle. */
-              <AbilityUnknownMark label={ability.text} />
-            )}
-          </span>
-        )}
-      </span>
+      {/* LA CELLULE DE CAPACITÉ vit dans son propre fichier depuis le lot P6 (charges) :
+          vignette à largeur fixe, puis compte de charges ou « plein » dans l'espace souple —
+          elle garde son âge propre, sa lecture ne tombant pas sur les images-clés. */}
+      <ReplayAbilityCell
+        doc={doc}
+        slot={slot}
+        frame={frame}
+        readingFull={readingFull}
+        locale={locale}
+      />
       {/* L'ÉTAT VIDE VIENT APRÈS LES CELLULES FIXES, et c'est ce qui concilie les deux règles.
           Le lot « lecture vide » le voulait à côté de l'équipement ; la refonte veut que les
           colonnes des fiches restent alignées. Un badge inséré AVANT une cellule fixe décalerait
@@ -312,20 +292,6 @@ function GrenadeChip({
 }
 
 /**
- * StateMark — le socle des pictogrammes d'état MESURÉ rendus muets (décision produit 4 du
- * plan parité) : « munitions pleines » (emplacement jamais écrit — flux différentiel, le
- * plein est la valeur par défaut). Un dessin discret, UNE infobulle simple. Encre en
- * currentColor : la couleur vient du texte environnant, aucun littéral.
- */
-function StateMark({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <span role="img" aria-label={label} title={label} className="inline-flex items-center opacity-70">
-      {children}
-    </span>
-  )
-}
-
-/**
  * InventoryEmptyMark — la lecture qui couvre cette image ne rend RIEN, et la ligne le DIT au
  * lieu de disparaître.
  *
@@ -388,64 +354,6 @@ function AmmoFullMark({ label }: { label: string }) {
       </svg>
     </StateMark>
   )
-}
-
-/**
- * AbilityUnknownMark — capacité LUE mais NON IDENTIFIÉE : l'emplacement de la vignette,
- * vide, en pointillés. Le dessin dit exactement ce qu'on sait — « il y avait quelque chose
- * ici, on ne sait pas quoi ». Même gabarit que les vignettes de la ligne (16 px).
- */
-function AbilityUnknownMark({ label }: { label: string }) {
-  return (
-    <StateMark label={label}>
-      <svg
-        width={HUD_ICON_PX}
-        height={HUD_ICON_PX}
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeDasharray="2.4 1.8"
-        aria-hidden="true"
-      >
-        <rect x="2.4" y="2.4" width="11.2" height="11.2" rx="2.4" />
-      </svg>
-    </StateMark>
-  )
-}
-
-/**
- * abilityText nomme la capacité — et porte sa vignette de HUD quand le document en sert
- * une. Un index hors table garde son NUMÉRO dans le texte servi. Renvoie null quand rien
- * n'a été lu — l'absence de capacité et une capacité non identifiée sont deux états
- * différents.
- */
-function abilityText(
-  doc: ReplayDocumentReady,
-  rank: number | undefined,
-  t: (typeof REPLAY_TEXT)[ReplayLocale],
-  locale: ReplayLocale,
-): { text: string; known: boolean; img?: string; tinted?: boolean } | null {
-  if (rank === undefined) return null
-  const lbl: CatalogLabel | undefined = doc.abilityLabels?.[String(rank)]
-  const name = catalogText(lbl, locale)
-  if (name) return { text: name, known: true, img: lbl?.img, tinted: lbl?.tinted }
-  return { text: t.abilityUnidentified(rank), known: false }
-}
-
-/**
- * abilityAgeTitle — l'infobulle de la capacité : son nom quand il est connu, et TOUJOURS
- * l'âge de sa lecture. Un âge négatif est une lecture À VENIR (début de vie), dit comme tel.
- */
-function abilityAgeTitle(
-  t: (typeof REPLAY_TEXT)[ReplayLocale],
-  age: number,
-  doc: ReplayDocumentReady,
-  name: string | null,
-): string {
-  const ms = formatSeconds(frameToMs(Math.abs(age), doc))
-  const when = age < 0 ? `${t.abilityAhead} ${ms}` : `${t.abilityAge} ${ms}`
-  return name ? `${t.abilityLabel} — ${name} · ${when}` : when
 }
 
 /**

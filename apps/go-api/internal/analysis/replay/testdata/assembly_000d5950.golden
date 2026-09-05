@@ -112,6 +112,78 @@ couverture : 104 vie(s) publiee(s) · camo 22 vie(s) / 36 episode(s) · surboucl
   slot=601 t=4877 thruster
   slot=601 t=4901 thruster
 
+## CHARGES D EQUIPEMENT — les lectures du film, jamais un compte d usages derive
+91 lecture(s) -> 69 publiee(s) · 20 sans identite · 2 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+  slot=517 t=857 thruster charges=4
+  slot=517 t=902 thruster charges=3
+  slot=517 t=1035 thruster charges=2
+  slot=530 t=1206 grapple charges=4
+  slot=532 t=1393 thruster charges=4
+  slot=537 t=1401 grapple charges=4
+  slot=537 t=1411 grapple charges=4
+  slot=534 t=1446 thruster charges=4
+  slot=534 t=1514 thruster charges=3
+  slot=538 t=1516 thruster charges=4
+  slot=540 t=1643 thruster charges=4
+  slot=544 t=1809 grapple charges=4
+  slot=544 t=1821 grapple charges=4
+  slot=540 t=1913 thruster charges=4
+  slot=547 t=1957 thruster charges=4
+  slot=550 t=1995 thruster charges=4
+  slot=547 t=2000 thruster charges=3
+  slot=550 t=2032 thruster charges=3
+  slot=551 t=2039 grapple charges=4
+  slot=547 t=2045 thruster charges=2
+  slot=551 t=2052 grapple charges=4
+  slot=546 t=2125 thruster charges=4
+  slot=547 t=2222 thruster charges=1
+  slot=547 t=2301 thruster charges=3
+  slot=561 t=2487 grapple charges=4
+  slot=561 t=2496 grapple charges=4
+  slot=561 t=2611 grapple charges=3
+  slot=561 t=2620 grapple charges=3
+  slot=561 t=2690 grapple charges=4
+  slot=561 t=2699 grapple charges=4
+  slot=559 t=2708 thruster charges=4
+  slot=561 t=2744 grapple charges=3
+  slot=561 t=2751 grapple charges=3
+  slot=561 t=2777 grapple charges=2
+  slot=561 t=2782 grapple charges=2
+  slot=563 t=2824 grapple charges=4
+  slot=563 t=2835 grapple charges=4
+  slot=559 t=2848 thruster charges=3
+  slot=561 t=3013 grapple charges=1
+  slot=564 t=3086 thruster charges=3
+  slot=561 t=3089 grapple charges=0
+  slot=569 t=3230 grapple charges=4
+  slot=569 t=3236 grapple charges=4
+  slot=575 t=3383 thruster charges=4
+  slot=582 t=3639 thruster charges=4
+  slot=581 t=3663 thruster charges=4
+  slot=582 t=3690 thruster charges=3
+  slot=581 t=3734 thruster charges=3
+  slot=588 t=3946 grapple charges=4
+  slot=588 t=3993 grapple charges=4
+  slot=589 t=4086 thruster charges=4
+  slot=592 t=4101 thruster charges=4
+  slot=587 t=4107 thruster charges=4
+  slot=588 t=4117 grapple charges=3
+  slot=592 t=4265 thruster charges=3
+  slot=594 t=4268 grapple charges=3
+  slot=592 t=4286 thruster charges=2
+  slot=596 t=4298 thruster charges=4
+  slot=596 t=4331 thruster charges=3
+  slot=592 t=4423 thruster charges=1
+  slot=596 t=4494 thruster charges=2
+  slot=592 t=4527 thruster charges=0
+  slot=596 t=4532 thruster charges=1
+  slot=592 t=4577 grapple charges=4
+  slot=592 t=4589 grapple charges=4
+  slot=605 t=4804 grapple charges=4
+  slot=605 t=4814 grapple charges=4
+  slot=601 t=4877 thruster charges=4
+  slot=601 t=4901 thruster charges=3
+
 ## GRAPPIN — tractions datees par vie, l ancre en coordonnees monde (fenetre MESUREE)
 25 traction(s) sur 15 vie(s) · lectures : 32 tir(s) + 25 accroche(s) · 7 rate(s) · 0 corps non decodable(s)
   slot=516 t=[272, 282] ancre=(10.77, 10.05, -1.09)

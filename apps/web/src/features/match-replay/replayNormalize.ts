@@ -103,6 +103,7 @@ export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans' | 'gauge'>
 export type ReplayDocumentReady = Omit<
   ReplayDocument,
   | 'abilities'
+  | 'abilityCharges'
   | 'abilityImpulses'
   | 'bombArmings'
   | 'bombCarries'
@@ -150,6 +151,21 @@ export type ReplayDocumentReady = Omit<
    * classée — `coverage.abilityImpulses` distingue les trois.
    */
   abilityImpulses: NonNullable<ReplayDocument['abilityImpulses']>
+  /**
+   * LES CHARGES D'ÉQUIPEMENT RESTANTES (schéma 38 enrichi, lot P5) : une entrée PLATE par
+   * lecture — (t, slot, family, charges) — le compteur de charges entières transmis AU
+   * CHANGEMENT par le composant i56 du film (quartet haut de la valeur 7 bits, rapport R11)
+   * et ATTRIBUÉ par le rang de capacité de la MÊME VIE. Ce sont les LECTURES, jamais un
+   * compte d'usages dérivé (une baisse peut valoir plusieurs usages), et rien n'est transmis
+   * au ramassage : la première lecture est ce qui reste APRÈS le premier usage.
+   *
+   * CE CALQUE NE COUVRE PAS TOUS LES ÉQUIPEMENTS : seules les familles que le titre déclare
+   * MESURÉES y entrent (le grappin et le propulseur — le répulseur n'arme jamais i56,
+   * négatif mesuré). `coverage.abilityCharges` porte l'entonnoir complet. Vide = artefact
+   * antérieur à ce lot, film sans lecture armée, ou palette non classée —
+   * `coverage.abilityCharges` distingue les trois.
+   */
+  abilityCharges: NonNullable<ReplayDocument['abilityCharges']>
   /**
    * L'ARMEMENT DE LA BOMBE d'Assaut (schéma 29) : le début du hold, l'instant armé et la
    * mèche (fuseMs) — le compte à rebours se dessine sur [t, t + fuseMs] sans autre donnée.
@@ -344,6 +360,11 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // l'usage MESURÉ du propulseur. Absent = artefact antérieur au schéma 38, film sans
     // propulseur, ou palette non classée — `coverage.abilityImpulses` distingue les trois.
     abilityImpulses: raw.abilityImpulses ?? [],
+    // LES CHARGES D'ÉQUIPEMENT RESTANTES (schéma 38 enrichi, lot P5) : une entrée plate par
+    // lecture (t, slot, family, charges) — jamais un compte d'usages dérivé. Absent =
+    // artefact antérieur, film sans lecture armée, ou palette non classée —
+    // `coverage.abilityCharges` distingue les trois.
+    abilityCharges: raw.abilityCharges ?? [],
     // LES OBJETS D'OBJECTIF LIBRES (schéma 21) : une entrée par VIE de l'objet hors portage.
     // Absent = artefact antérieur, mode sans objet porté, ou film qui n'en porte pas —
     // `coverage.objectiveObjects` distingue les trois, et c'est pour cela qu'il est publié.
