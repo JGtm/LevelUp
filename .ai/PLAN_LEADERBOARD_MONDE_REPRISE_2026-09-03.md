@@ -212,9 +212,13 @@ visuelle = MAIN AU USER (`http://localhost:5173/t/halo_infinite/players/JGtm/com
 - (Lot 3, exécuteur) `-restore-best` ignore `-dry-run` (c'est `-execute` qui commande dans
   ce mode) : deux drapeaux de simulation coexistent dans l'aide, libellés explicites mais
   confusion possible pour un opérateur pressé.
-- (Lot 4, exécuteur) le ratchet `TestDTOs_NoNilSlicesOnEmptyInput` n'exerce que le chemin
-  halo_infinite : le retour « titre sans capability » sérialisait `entries: null` sans
-  être attrapé (corrigé par construction au 4.1, le ratchet reste aveugle à ce chemin).
+- [x] (Lot 4, exécuteur) le ratchet `TestDTOs_NoNilSlicesOnEmptyInput` n'exerce que le
+  chemin halo_infinite : le retour « titre sans capability » sérialisait `entries: null`
+  sans être attrapé (corrigé par construction au 4.1, le ratchet reste aveugle à ce
+  chemin). **TRAITÉ le 2026-09-05** — volet A de `.ai/PLAN_REPRISE_FORK_2026-09-05.md` :
+  le ratchet passe de 1 à 5 sous-tests (titre sans capability, csr-world sans ligne,
+  catégorie de stats sans ligne, les deux chemins de `GetCatalog`), plus
+  `TestLeaderboardPage_EmptyCollectionsOnTheWire` (4 cas) qui lit le JSON émis.
 - (Lot 4, exécuteur) `LeaderboardResponse.total` n'est lu nulle part côté web — champ de
   contrat sans consommateur.
 - (Lot 4, exécuteur) `LeaderboardCatalogRef` sert saisons ET playlists mais porte deux
@@ -225,11 +229,15 @@ visuelle = MAIN AU USER (`http://localhost:5173/t/halo_infinite/players/JGtm/com
 - (revue) `internal/archlint` n'était dans aucun gate de lot — le littéral d'URL du Lot 1
   n'a été attrapé que par la suite complète. Les prochains gates backend qui touchent
   logs/chemins devraient inclure `./internal/archlint/...` (10 s).
-- (revue, mineurs M1-M5 non traités) : garantie Entries-non-nil du chemin nominal portée
-  par les repos, pas le service · `written_at` frais du restore rend la saison « fraîche »
-  pour le cron ~20 h · `openSharedRW` du CLI hors provider/dblease (pré-existant, échec
-  sûr par verrou) · validation Location limitée au préfixe `csrseason` · coexistence
-  `-dry-run`/`-execute` dans l'aide du CLI.
+- (revue, mineurs M1-M5) : **M1 [x] TRAITÉ le 2026-09-05** — la garantie Entries-non-nil
+  du chemin nominal était portée par les repos, pas le service ; elle est désormais posée
+  dans `LeaderboardService.GetPage` (normalisation AVANT l'affectation) et, pour le
+  catalogue, dans `normalizeLeaderboardCatalog`, point unique des deux chemins servis de
+  `GetCatalog`. Volet A de `.ai/PLAN_REPRISE_FORK_2026-09-05.md`. M2-M5 non traités :
+  `written_at` frais du restore rend la saison « fraîche » pour le cron ~20 h ·
+  `openSharedRW` du CLI hors provider/dblease (pré-existant, échec sûr par verrou) ·
+  validation Location limitée au préfixe `csrseason` · coexistence `-dry-run`/`-execute`
+  dans l'aide du CLI.
 
 ## Journal d'exécution
 
