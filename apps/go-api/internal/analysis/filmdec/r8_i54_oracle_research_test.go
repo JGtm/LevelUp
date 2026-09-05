@@ -46,8 +46,6 @@ const (
 	// r8SpeedMaxDtUS : ecart maximal entre deux echantillons pour que leur rapport soit une
 	// vitesse. 250 ms — au-dela, le trou de replication domine le deplacement.
 	r8SpeedMaxDtUS = 250_000
-	// r8CoincUS : fenetre de coincidence entre deux canaux (500 ms).
-	r8CoincUS = 500_000
 )
 
 // r8Speed est un segment de vitesse d'un slot : [t0, t1] et la vitesse horizontale.

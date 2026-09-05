@@ -292,13 +292,3 @@ func r8QBase(s []r8Sample, q float64) float64 {
 	}
 	return r8Quantile(v, q)
 }
-
-func r8QRatio(s []r8Sample, q float64) float64 {
-	v := make([]float64, 0, len(s))
-	for i := range s {
-		if s[i].base > 0.5 {
-			v = append(v, s[i].peak/s[i].base)
-		}
-	}
-	return r8Quantile(v, q)
-}
