@@ -142,7 +142,7 @@ func DropTeleportsExcept(pos []BipedPosition, maxSpeed float64, exempt TeleportE
 			anchors[p.Slot] = a
 		}
 		if a.ok && a.streak < maxRejectStreak && speedFrom(a.p, p) > maxSpeed &&
-			!(len(exempt) > 0 && exempt.covers(p.Slot, p.TimestampUS)) {
+			(len(exempt) == 0 || !exempt.covers(p.Slot, p.TimestampUS)) {
 			a.streak++
 			continue
 		}
