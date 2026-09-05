@@ -429,7 +429,20 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
     (harnais 13/13 identiques, code 0) ; I-6 les deux `COMMANDS.md` portent l'ordre de release.
     Mineurs : indentation de l'aide, discriminant d'Assaut unifié Go/web (+ son test), 27 sites
     « schéma 29/30/31 » → 39, motif d'archlint corrigé, description OpenAPI + D11.
-  - [ ] E.2 — seconde lecture (contexte frais, sur `eb80a4f0a..HEAD` corrections comprises).
+  - [x] **E.2 — SECONDE LECTURE (contexte frais, `eb80a4f0a..HEAD` corrections comprises,
+    2026-09-05).** Les six constats et les mineurs sont VÉRIFIÉS SUR PIÈCES, un par un — preuve
+    par ligne au §6 (entrée « E.2 seconde lecture »). Résumé opposable : I-1 `carrierPosition.ts`
+    existe et les 7 lecteurs y passent (garde-rail à 4 cas vert, allowlist `livesPosition` à 2
+    entrées, `ReplayCanvas.tsx` 664/665) ; I-2 le test de câblage et le gate sont COHÉRENTS avec
+    G.6 fusionné — aucune assertion sur `CarriersKilled`, `go test ./internal/analysis/replay/
+    -run 'Bomb|Assaut' -count=1` **ok** ; I-3 4 tests, `./cmd/levelup/ -run Bomb` **ok** ; I-4
+    les 4 docs à l'endroit ; I-5 les 8 fichiers < 500 L et le déplacement PUR re-vérifié par
+    diff (0 ligne de code ajoutée côté Go, bloc `vehicle_relays.go` identique à son original aux
+    12 lignes d'en-tête près) ; I-6 les deux `COMMANDS.md` portent l'ordre de release. Mineurs :
+    indentation OK, `HasBomb()` ≡ `detectObjectiveMode` (3 compteurs des deux côtés), archlint
+    vert (clé d'allowlist déplacée cohérente), aucun marqueur de conflit dans le dépôt.
+    **N-15 CORRIGÉ** (`options.go`) + **5 AUTRES DOCS INVERSÉES trouvées et corrigées**, toutes
+    créées par la fusion de G.6 APRÈS les corrections (§4, N-16). **RESTE À ARBITRER : N-17.**
 - [ ] E.3 Journal, registre des reports (D5, D6, D7), thought_log ; suppression des trois worktrees
   et branches d'intégration ; commit.
 
@@ -530,6 +543,47 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   est en production et `9f57c612` publie 5 armements. Le fichier appartient au lot G.6 en cours
   dans un autre worktree (`bomb_carriers_killed`) : ne pas le toucher en parallèle. À corriger
   par l'auteur de G.6, ou à la seconde lecture d'E.2 une fois G.6 fusionné.
+  **[x] CORRIGÉ à la seconde lecture d'E.2 (2026-09-05).** Le champ `Bomb` dit désormais que la
+  garde de mode est `replaybuild.isBombVariant` sur TOUTE la famille bomb (One Bomb comprise),
+  que la garde par NOM `isArmableBombVariant` n'existe plus depuis le 2026-09-04, et que ce qui
+  protège seul est la confrontation locale tout-ou-rien PAR FILM. Commentaire seul, aucun code.
+- **N-16 (seconde lecture E.2) — CINQ DOCS INVERSÉES DE PLUS, toutes créées par la fusion de G.6
+  (`b9382b2df`) qui a eu lieu APRÈS les corrections d'E.2 : elles affirment toutes que
+  `bomb_carriers_killed` est `null` PARTOUT et que la paire tueur/victime n'existe pas dans la
+  chaîne de cuisson — l'énoncé exact que G.6 réfute.** G.6 n'avait réécrit que l'en-tête de
+  `bomb_stats_document.go`. Sites : `replay/document.go:672` (le changelog du schéma 39 lui-même,
+  le plus visible), `replay/structure_test.go:795` (le commentaire du verrou de schéma),
+  `domain/match_view.go:702`, `domain/match_view_raw.go:241`,
+  `web/features/match-view/MatchScoreboard.logic.ts:229` (+ l'en-tête et un titre de `it()` de
+  `objectivesBomb.test.ts`). **[x] TOUTES CORRIGÉES** (commentaires seuls, aucun changement de
+  code ni d'assertion) ; `gofmt` vide, `go vet` 0, `go test ./internal/analysis/replay/ -run
+  'Structure|Bomb|Assaut'` + `./internal/domain/` **ok**, vitest `objectivesBomb.test.ts` 12/12.
+  Sixième site sans rapport, corrigé au passage : `web/.../replaySoundAssets.guard.test.ts:707`
+  datait la destruction de véhicule du « schéma 30 » — un des trois numéros du chantier véhicules
+  qui n'a jamais cuit d'artefact (le champ arrive au 39). Les deux autres occurrences résiduelles
+  de « schéma 29/30 » dans `apps/web/src` sont JUSTES et doivent rester : `replayAimCone.ts:228`
+  (la lunette, schéma 29 du 2026-08-31) et `ReplayCanvasTips.tsx:71` (le ramassage natif,
+  schéma 30) désignent les vrais schémas historiques, pas ceux du chantier véhicules.
+- **N-17 (seconde lecture E.2) — DÉCISION PRODUIT À PRENDRE, NON TRAITÉE : la cinquième
+  statistique est MESURÉE et n'est AFFICHÉE NULLE PART.** G.6 fait passer `bomb_carriers_killed`
+  de `null` à mesuré (témoin `9f57c612` : 3 porteurs tués), il est persisté, servi dans le DTO
+  (`match_view.go:707`) et publié au contrat (`openapi.yaml`) — mais `BOMB_COLS`
+  (`MatchScoreboard.logic.ts`) reste à 4 colonnes sur 5, et `objectivesBomb.test.ts` VERROUILLE
+  cette absence. Le plan l'a acté au titre de la « règle de G.4 — 4 colonnes sur 5 » (item G.6),
+  or cette règle était fondée sur la prémisse « colonne de tirets » qui n'est plus vraie. Exposer
+  la colonne est une décision d'affichage : escaladée, pas prise ici. Réserve à porter dans
+  l'arbitrage (déjà écrite en tête de `bomb_stats.go`) : `KillRef` ne porte aucune information
+  d'équipe — un tir ami sur un porteur de son propre camp y compterait, là où le compteur
+  officiel de l'API pour les modes qui en publient un ne compte que les porteurs ADVERSES.
+- **N-18 (seconde lecture E.2) — la description PUBLIÉE de `MatchScoreboardObjective` énumère
+  toujours les modes SANS l'Assaut**, alors que le mineur n° 5 des corrections d'E.2 a bien
+  corrigé la godoc Go (`domain/match_view.go:643-650`). La description vit dans
+  `apps/go-api/api/openapi_manual_fragment.yaml:2902` (recopiée en `openapi.yaml:16914`), que la
+  correction n'a pas touché — d'où le « aucun diff généré » constaté à D11, qui prouve seulement
+  que la godoc ne descend pas dans le schéma. NON TRAITÉ à la seconde lecture : corriger le
+  fragment impose de rejouer `openapi-gen` / `generate-types` / `openapi-check` (contrat publié
+  + `generated.ts`), ce qui dépasse le mandat « commentaires seuls » et se heurte au filet de
+  gates en cours. Condition de reprise : avant F.1, avec D11 rejoué.
 - N-13 `apps/web/.../ReplayCanvas.tsx` est **exactement à son plafond** (664 lignes pour 665) après
   le câblage véhicules. La prochaine addition devra être payée par une extraction, comme les dix-sept
   précédentes.
@@ -540,7 +594,8 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   digest `killsource` bouge donc sur les 4 films du corpus dont la bande `ti=40` est peuplée, et
   sur eux seuls. Chiffres et corrélation au §5. **À signaler à l'utilisateur** : le kill-feed des
   matchs à véhicules change avec cette livraison, dans le sens de la correction.
-- **N-15 le gate d'intégration du chantier ne couvrait que `./internal/sync/` ; les tests
+- **N-15bis** (renuméroté à la seconde lecture d'E.2 : deux découvertes portaient le numéro N-15)
+  **— le gate d'intégration du chantier ne couvrait que `./internal/sync/` ; les tests
   `integration && cgo` d'`internal/api/wire` (l'épreuve ouvrier, `TestOuvrierReel_ConstruitEtLivre`)
   tournent en CI (job `go-coverage`) mais n'étaient PAS dans le filet local — c'est ainsi que
   l'attendu périmé de l'assertion (copie locale de l'ouvrier, supprimée au lot 5 D8) a survécu
@@ -1551,6 +1606,100 @@ la baseline exacte, **0 sur un fichier touché**) · `lint:fields` **EXIT_FIELDS
   inversée — « le canal n'est prouvé que sur Neutral Bomb et Husky Raid, jamais One Bomb », faux
   depuis E2-ter. Le fichier appartient au lot G.6 en cours dans un autre worktree
   (`bomb_carriers_killed`) : pas touché, à corriger par son auteur ou à la seconde lecture.
+
+- **2026-09-05 — E.2 SECONDE LECTURE (contexte frais, worktree `wt/cuisson-perf`, HEAD
+  `cf0223550`).** Périmètre : vérifier SUR PIÈCES que chacun des six constats de la revue de
+  branche est corrigé, sans en créer de nouveau ; corriger N-15 ; balayer le diff
+  `eb80a4f0a..HEAD` à la recherche d'autres docs inversées. Aucune commande lourde (un filet
+  complet tournait en parallèle dans le même worktree) : lecture, `git`, `grep`, `go vet` ciblé,
+  `go test -run` ciblé, `wc -l`.
+
+  **CONSTAT PAR CONSTAT, avec la preuve.**
+
+  **I-1 VÉRIFIÉ.** `carrierPosition.ts` existe (`positionOfCarrierAt`, `buildCarrierPosAt`,
+  `useCarrierPosAt`, `buildEmbarkedPosAt`, clé = XUID, repli = position de bipède). Les SEPT
+  lecteurs y passent, mesurés par grep : `useReplayBombCarrier`, `useReplayVipCrown`,
+  `useReplaySkullCarrier`, `useReplayFlagCarries`, `useReplayBombBlast` (`useCarrierPosAt(doc)`),
+  `killFx.ts:112` et `objectivesLayer.ts:291` (`buildCarrierPosAt(doc)`). La copie jumelle de
+  `positionAt` a bien DISPARU de `killFx.ts` — la seule occurrence du mot y est une phrase
+  d'en-tête qui dit où la primitive est partie ; `posOfPlayerAt` / `KILLPOS_WINDOW_MS` vivent
+  dans `livesPosition.ts`, dont l'allowlist de garde-rail est retombée à DEUX entrées
+  (`livesPosition.guard.test.ts:35`). `carrierPosition.guard.test.ts` verrouille en QUATRE cas
+  (les 5 hooks, les 2 lecteurs purs, l'interdiction de `buildPlayerPosAt`/`vehiclePositionAt`
+  chez les 7, et le balayage du dossier pour toute lecture de position de véhicule hors des 3
+  écritures légitimes). `ReplayCanvas.tsx` = **664 lignes** (plafond 665, cf. N-13).
+
+  **I-2 VÉRIFIÉ, ET COHÉRENT AVEC G.6 FUSIONNÉ — c'était le risque nommé.** G.6 a modifié
+  `bomb_stats_document.go` (`KillsRead: opt.MatchKills.Read` au lieu de `false`, ajout de
+  `Kills: opt.MatchKills.Kills`). Ni `bomb_stats_wiring_test.go` ni `assaut_bomb_arms_gate_test.go`
+  ne nomment `CarriersKilled`, `KillsRead` ou `MatchKills` : aucune assertion à réconcilier, le
+  gate laisse `Options.MatchKills` à son zéro (donc `Read=false`, champ absent) et ne mesure rien
+  dessus. Le gate APPELLE bien la production (`attachBombStats(&doc, Options{FilmClockOriginUS:
+  filmClockUS, Bomb: BombInput{CarryScanned: true}}, own, HeldObjectCarry{Periods: periodes})`,
+  `assaut_bomb_arms_gate_test.go:164`) ; `offset` n'y subsiste que pour l'affichage, et le
+  fichier l'écrit. Son en-tête porte la section « ONE BOMB PUBLIE, DEPUIS LE 2026-09-04 (E2-ter) »
+  avec les 5 armements. **`go test ./internal/analysis/replay/ -run 'Bomb|Assaut' -count=1` : ok.**
+
+  **I-3 VÉRIFIÉ.** `go test ./cmd/levelup/ -run 'Bomb' -count=1 -v` : **4 tests, tous PASS** —
+  `TestProjeterCorpusBombe_CleDeReprise` (3 sous-cas), `_BatchVide`, `_Limit`,
+  `TestLireUnArtefactBombe` (5 sous-cas).
+
+  **I-4 VÉRIFIÉ (4/4).** `match_view_repo_options.go:42-71` : les quatre `With*` ont leur doc AU
+  CONTACT de leur signature. `useReplayVehicles.ts:91-97` : la JSDoc dit « IL SUIT LE TOGGLE DU
+  CALQUE », conforme à l'implémentation (`:131-134`). `MatchObjectivesSection.tsx:23-28` : l'Assaut
+  est dans les deux vues depuis le 2026-09-04, et l'en-tête dit qu'il a porté l'inverse. En-tête
+  du gate d'armement : cf. I-2.
+
+  **I-5 VÉRIFIÉ, ET LE « DÉPLACEMENT PUR » RE-PROUVÉ INDÉPENDAMMENT.** Mesures : `offline_biped.go`
+  **385** / `offline_biped_band.go` 204 · `vehicle_tracks.go` **420** / `vehicle_relays.go` 138 ·
+  `match_view_repo.go` **433** / `match_view_repo_options.go` 104 · `replayNormalize.ts` **216** /
+  `replayReadyTypes.ts` 338 — les huit sous les 500 L. Diff filtré de `34ca871ec` sur les quatre
+  fichiers d'origine : **zéro ligne non-commentaire ajoutée** dans les trois Go ; côté TS, les
+  seules additions sont un import et le bloc de re-export. Contrôle d'octet sur un échantillon :
+  `diff` des 115 lignes retirées de `vehicle_tracks.go` contre `vehicle_relays.go` — **identique**,
+  aux 12 lignes d'en-tête près (`package replay`, le commentaire de fichier, `import "sort"`).
+  `go test ./internal/archlint/ -count=1` : ok (clé d'allowlist `offline_biped_band.go/bipedI0Layout`
+  cohérente — `bipedI0Layout` et `bipedSlotBand` ont bien changé de fichier, `ScanBipedPositions`
+  est resté, donc la clé `offline_biped.go/ScanBipedPositions -> bipedSlotBand` reste juste).
+
+  **I-6 VÉRIFIÉ.** `docs/COMMANDS.md:88-114` et `docs/FR/COMMANDS.md:90-118` portent la même
+  sous-section : précondition SERVEUR ARRÊTÉ (`OpenReadWrite` + migrations, `--dry-run` compris),
+  l'ordre numéroté `backfill-replay` → `backfill-usage-summary` → `backfill-bomb-stats --dry-run`
+  → `backfill-bomb-stats`, et le no-op SILENCIEUX de l'inversion.
+
+  **MINEURS VÉRIFIÉS.** Aide de `main.go:191` indentée de deux espaces comme ses voisines ·
+  `ObjectiveRaw.HasBomb()` (`match_view_raw.go:274`) et `detectObjectiveMode`
+  (`MatchScoreboard.logic.ts:265`) testent la MÊME liste de trois compteurs
+  (`bomb_detonations || bomb_arms || bomb_grabs`) · motif d'archlint corrigé
+  (`no_film_reread_test.go:229-235`, la distinction migré / jamais appelé est écrite) ·
+  description de `MatchScoreboardObjective` corrigée côté godoc — mais PAS côté contrat publié
+  (N-18) · **`git grep -nE '^(<<<<<<<|>>>>>>>|\|\|\|\|\|\|\|)'` sur le dépôt : VIDE** ; `git
+  status` propre à l'ouverture.
+
+  **CORRECTIONS APPORTÉES (commentaires SEULEMENT, aucun changement de code ni d'assertion).**
+  N-15 (`replay/options.go`, champ `Bomb`) + les CINQ docs inversées de N-16, toutes créées par
+  la fusion de G.6 qui est passée APRÈS les corrections d'E.2 et n'avait réécrit que l'en-tête de
+  `bomb_stats_document.go` : `replay/document.go:672` (le changelog du schéma 39 lui-même),
+  `replay/structure_test.go:795`, `domain/match_view.go:702`, `domain/match_view_raw.go:241`,
+  `web/MatchScoreboard.logic.ts:229` + `objectivesBomb.test.ts` (en-tête et un titre d'`it()`).
+  Sixième correction sans rapport : `replaySoundAssets.guard.test.ts:707` datait la destruction de
+  véhicule du « schéma 30 » (39). **Vérifié que les deux autres « schéma 29/30 » d'`apps/web/src`
+  sont JUSTES** — la lunette (29) et le ramassage natif (30) sont de vrais schémas du 2026-08-31,
+  pas les numéros non cuits du chantier véhicules ; la correction du 27-sites ne les avait pas
+  ratés, elle les avait épargnés à raison.
+
+  **GATES DE LA SECONDE LECTURE, un code par ligne** : `gofmt -l` sur les 5 fichiers Go touchés
+  **vide** · `go vet ./internal/analysis/replay/ ./internal/domain/` **0** · `go test
+  ./internal/analysis/replay/ -run 'Structure|Bomb|Assaut' -count=1` **ok** · `go test
+  ./internal/domain/ -count=1` **ok** · `go test ./cmd/levelup/ -run Bomb -count=1` **ok** ·
+  `go test ./internal/archlint/ -count=1` **ok** · `npx vitest run objectivesBomb.test.ts`
+  **12/12**. Le filet complet reste celui d'E.1 / F.
+
+  **VERDICT : les six constats et les mineurs TIENNENT ; aucun défaut introduit par les
+  corrections.** Ce qui reste ouvert n'est pas une correction ratée mais un effet de bord de la
+  fusion de G.6 : **N-17 (décision produit — la cinquième statistique est mesurée et n'est
+  affichée nulle part) et N-18 (description de contrat)**, tous deux escaladés, aucun des deux
+  bloquant au sens des invariants.
 
 ## §7 Contrat d'exécution (rappel opposable)
 Statuts : `[x]` fait · `[~]` couvert ailleurs (avec la référence) · `[!]` non traité (avec la

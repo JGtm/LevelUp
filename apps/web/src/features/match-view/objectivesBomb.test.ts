@@ -10,9 +10,11 @@
  *      d'Assaut mesuré. Sans lui, la section resterait invisible sur tout l'Assaut, comme
  *      avant le 2026-09-05.
  *   2. LES COLONNES SUIVENT LE MODE. `objectiveColsFor('bomb')` rend les quatre grandeurs
- *      publiées, et `bomb_carriers_killed` n'en fait PAS partie : il est `null` partout tant
- *      que la paire tueur/victime n'existe pas dans la chaîne de cuisson, et une colonne de
- *      « — » ne dit rien.
+ *      affichées, et `bomb_carriers_killed` n'en fait PAS partie. LE MOTIF A CHANGÉ LE
+ *      2026-09-05 (lot G.6) et cet en-tête portait l'ancien : le champ n'est plus `null`
+ *      partout, il est MESURÉ à la cuisson. Son absence de colonne est désormais une décision
+ *      d'AFFICHAGE non prise, pas une absence de mesure — le test verrouille l'état servi, pas
+ *      une impossibilité.
  *   3. ABSENT N'EST PAS ZÉRO. `objectiveValue` rend `null` — jamais 0 — pour une mesure non
  *      publiée, et le total d'équipe d'une colonne que personne ne porte est `null` : la
  *      cellule affiche alors le repli « non mesuré » de `ValueGrid`, pas un chiffre.
@@ -103,7 +105,7 @@ describe('les colonnes d’Assaut', () => {
     ])
   })
 
-  it('n’exposent PAS bomb_carriers_killed : il est absent partout, une colonne vide ne dit rien', () => {
+  it('n’exposent PAS bomb_carriers_killed : mesuré depuis G.6, mais sans colonne à ce jour', () => {
     expect(objectiveColsFor('bomb').map((c) => c.key)).not.toContain('bomb_carriers_killed')
   })
 

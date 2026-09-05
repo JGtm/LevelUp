@@ -669,10 +669,13 @@ package replay
 // Bond, jamais répliquée dans le film : mesure Ghidra du 2026-09-04, cause UNIQUE du silence
 // des deux côtés). Elles sont reconstruites de sources déjà décodées, et chaque champ est un
 // POINTEUR : `null` dit « source non mesurée », `0` dit « mesuré à zéro ».
-// CE QUE LA VERSION REFUSE : `bomb_carriers_killed`, aujourd'hui `null` PARTOUT. Il demande
-// une mort appariée à son tueur ET à sa victime sur l'horloge du match ; cette forme n'existe
-// pas dans la chaîne de cuisson (le seul producteur de `KillRef` du dépôt lit
-// `match_kill_events`, une table de base). Le champ est donc absent, jamais à zéro.
+// LES CINQ SONT MESURÉES, `bomb_carriers_killed` COMPRIS (lot G.6, 2026-09-05). Cette entrée a
+// porté l'inverse — « aujourd'hui `null` PARTOUT, la paire tueur/victime n'existe pas dans la
+// chaîne de cuisson » — et le motif était faux sur son second membre : l'horloge ne manquait pas
+// (`killsource.Kill.TimeMS` EST celle du fil des morts), seule la VICTIME n'était pas résolue,
+// et `replaybuild.killRefs` la résout désormais dans la MÊME passe. Le champ voyage par
+// `Options.MatchKills` ; `Read=false` (source non lue) le laisse absent chez TOUS les joueurs —
+// « on n'a pas regardé », jamais un zéro qui se lirait comme une mesure.
 // Détail : internal/analysis/replay/bomb_stats.go et bomb_stats_document.go.
 const SchemaVersion = 39
 

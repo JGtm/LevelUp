@@ -1,3 +1,71 @@
+## [2026-09-05] Integration branches — E.2 seconde lecture (contexte frais) : les six constats tiennent, six docs inversees de plus corrigees — Complete
+
+**Le mandat.** Relire, dans un contexte qui n'a ecrit ni le code ni ses corrections, le diff
+d'integration `eb80a4f0a..cf0223550` (branche `wt/cuisson-perf`) — non pas en entier (regle 4 du
+skill `adversarial-review` : la ronde 2 relit LES CORRECTIONS, pas tout le diff), mais constat par
+constat : chacun des six de la revue de branche est-il corrige, et la correction a-t-elle introduit
+un defaut ? Plus : corriger N-15, et balayer le diff a la recherche d'autres docs inversees. Un
+filet complet de gates tournait EN PARALLELE dans le meme worktree : aucune commande lourde, que de
+la lecture, du `git`, du `grep`, du `go vet` cible et du `go test -run` cible.
+
+**Resultat : les six tiennent, verifies sur pieces.** I-1 (le glyphe d'un porteur embarque suit le
+vehicule) : `carrierPosition.ts` existe, les SEPT lecteurs y passent, la copie jumelle de
+`positionAt` a disparu de `killFx.ts`, l'allowlist de `livesPosition.guard.test.ts` est bien
+retombee a deux entrees, le garde-rail verrouille en quatre cas, `ReplayCanvas.tsx` = 664 lignes
+pour 665. I-2 : le test de cablage et le gate d'armement sont COHERENTS avec G.6 fusionne — c'etait
+le risque nomme, et il ne s'est pas materialise (ni l'un ni l'autre ne nomme `CarriersKilled`,
+`KillsRead` ou `MatchKills` ; le gate appelle `attachBombStats` au lieu de recopier le recalage).
+I-3 : quatre tests, verts. I-4 : les quatre docs a l'endroit. I-5 : les huit fichiers sous 500 L, et
+le « deplacement pur » re-prouve independamment (zero ligne non-commentaire ajoutee cote Go ; le
+bloc de `vehicle_relays.go` compare a l'octet a son original, identique aux douze lignes d'en-tete
+pres). I-6 : les deux COMMANDS.md portent l'ordre de release et la precondition serveur arrete.
+Mineurs OK, et `git grep` de marqueurs de conflit sur tout le depot : VIDE.
+
+**Decision technique : la seconde lecture a corrige SIX docs inversees, pas une.** N-15
+(`replay/options.go`, la garde de mode du champ `Bomb` disait « jamais One Bomb ») etait attendue.
+Les cinq autres ne l'etaient pas, et elles ont toutes la MEME cause : la fusion de G.6
+(`b9382b2df`, qui fait passer `bomb_carriers_killed` de NULL a mesure) est arrivee APRES les
+corrections d'E.2, et n'a reecrit que l'en-tete de `bomb_stats_document.go`. Cinq autres endroits
+continuaient d'affirmer que le champ est « null PARTOUT » et que « la paire tueur/victime n'existe
+pas dans la chaine de cuisson » : `replay/document.go:672` — le changelog du schema 39 lui-meme, le
+plus lu de tous —, `replay/structure_test.go:795`, `domain/match_view.go:702`,
+`domain/match_view_raw.go:241`, et cote web `MatchScoreboard.logic.ts:229` avec l'en-tete et un
+titre d'`it()` d'`objectivesBomb.test.ts`. Toutes corrigees en COMMENTAIRES SEULS — aucune
+assertion, aucune ligne de code. Sixieme correction sans rapport :
+`replaySoundAssets.guard.test.ts:707` datait la destruction de vehicule du « schema 30 », un des
+trois numeros du chantier vehicules qui n'ont jamais cuit d'artefact (le champ arrive au 39).
+
+**Piege verifie plutot que suppose.** Deux autres « schema 29 / 30 » subsistent dans `apps/web/src`
+et ils sont JUSTES : la lunette EST le schema 29 (2026-08-31) et le ramassage natif LE 30
+(`document.go:307`, `ground_weapon_pads.go:17`). Les numeros 29-31 existent donc bien deux fois
+dans l'histoire du depot — une fois comme vrais schemas, une fois comme numerotation locale du
+chantier vehicules, renumerotee 39 au merge. La correction du 27-sites ne les avait pas rates, elle
+les avait epargnes a raison : les remplacer aurait CREE la doc fausse qu'on croyait corriger.
+
+**Ce qui reste ouvert, escalade et non corrige.** N-17 : la cinquieme statistique est mesuree,
+persistee, servie dans le DTO et publiee au contrat — et affichee NULLE PART (`BOMB_COLS` reste a
+4 colonnes sur 5, et un test verrouille cette absence). Le plan l'avait acte au titre de la « regle
+de G.4 », or cette regle reposait sur la premisse « colonne de tirets » qui n'est plus vraie :
+exposer la colonne est une decision d'affichage, elle revient a l'utilisateur (reserve a lui porter :
+`KillRef` ne porte aucune information d'equipe, un tir ami compterait). N-18 : la description
+PUBLIEE de `MatchScoreboardObjective` enumere toujours les modes sans l'Assaut — elle vit dans
+`openapi_manual_fragment.yaml:2902`, que le mineur n5 des corrections n'a pas touche (il a corrige
+la godoc Go, d'ou le « aucun diff genere » de D11, qui ne prouvait que l'independance des deux).
+La corriger impose de rejouer `openapi-gen` / `generate-types` / `openapi-check` : hors du mandat
+« commentaires seuls » et incompatible avec le filet en cours. Condition de reprise : avant F.1.
+
+**Gates, un code par ligne** : `gofmt -l` sur les cinq fichiers Go touches VIDE · `go vet
+./internal/analysis/replay/ ./internal/domain/` 0 · `go test ./internal/analysis/replay/ -run
+'Structure|Bomb|Assaut' -count=1` ok · `go test ./internal/domain/ -count=1` ok · `go test
+./cmd/levelup/ -run Bomb -count=1` ok (4 tests) · `go test ./internal/archlint/ -count=1` ok ·
+`npx vitest run objectivesBomb.test.ts` 12/12.
+
+**Conclusion / prochaine etape.** E.2 est CLOSE : deux rondes, six constats recevables a la ronde 1,
+zero constat de correction ratee a la ronde 2 (le nombre de P0/P1 decroit strictement — borne 2 du
+skill respectee). Ce qui reste (N-17, N-18) n'est pas une correction ratee mais un effet de bord de
+la fusion de G.6, et aucun des deux ne touche un invariant. Suite : E.3 (registre des reports,
+suppression des worktrees) puis F.
+
 ## [2026-09-05] Gate d'integration wt/cuisson-perf — TestOuvrierReel_ConstruitEtLivre (assertion perimee du lot 5, D8) — Complete
 
 **Le constat.** `bash scripts/check_test_baseline.sh tests` rougissait sur UN test :

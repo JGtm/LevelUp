@@ -193,8 +193,14 @@ type Options struct {
 	Skull SkullInput
 	// Bomb : de quoi construire L'ARMEMENT DE LA BOMBE d'Assaut (entrée de DONNÉES comme Skull ;
 	// cf. bomb_armings.go). `Scanned` faux = ni balayage ni calque ni couverture. La GARDE DE
-	// MODE est chez l'appelant : le canal n'est prouvé que sur Neutral Bomb et Husky Raid,
-	// jamais One Bomb — ce paquet ne devine aucun mode.
+	// MODE est chez l'appelant (`replaybuild.isBombVariant`), et elle couvre TOUTE LA FAMILLE
+	// BOMB, ONE BOMB COMPRISE : la garde par NOM qui écartait cette variante
+	// (`isArmableBombVariant`) N'EXISTE PLUS depuis le 2026-09-04. La lecture « mèche pausable »
+	// est en production et explique One Bomb sans rien casser ailleurs (9/9 explosions portées,
+	// médiane 16,18 s, CV 0,017, 0/1000 tirages nuls ; témoins Neutral Bomb 13/13 et Husky Raid
+	// 4/4 inchangés) — `9f57c612` publie 5 armements. Ce qui protège désormais SEUL est la
+	// confrontation locale TOUT-OU-RIEN du calque, par film et non par variante (cf. l'en-tête
+	// de bomb_armings.go). Ce paquet, lui, ne devine toujours aucun mode.
 	Bomb BombInput
 	// NeutralDeaths : les morts que personne ne revendique, AVEC LEUR TYPE DÉJÀ RÉSOLU
 	// (cf. NeutralDeath). Entrée de DONNÉES comme Deaths et Objectives.
