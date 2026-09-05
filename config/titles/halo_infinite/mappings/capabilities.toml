@@ -128,3 +128,15 @@ schema_version = 1
 # ⚠ Clé FINE, même doctrine que les trois film.* ci-dessus : elle gouverne la
 # PRODUCTION du résumé, pas ce qu'une page en affiche. Ne pas l'élargir.
 "film.usage_summary"     = "supported"
+# Les CINQ statistiques d'objectif de l'ASSAUT, reconstruites du FILM, par match et par
+# joueur (bomb_detonations, bomb_arms, bomb_grabs, time_as_bomb_carrier_seconds,
+# bomb_carriers_killed) → shared.match_bomb_stats (append-only + vue _latest).
+# POURQUOI PAS match.objective.stats : celle-ci gouverne le JOIN sur match_objective_stats,
+# table alimentée par le SYNC API — or l'API 343 ne publie AUCUNE statistique d'objectif
+# pour l'Assaut (famille BombStats du moteur = télémétrie Bond, jamais répliquée dans le
+# film ; mesure du 2026-09-04, cause unique du silence des deux côtés). Ces chiffres-là
+# viennent du décodeur de film, et la convention préfixe film.* tout ce qui en vient.
+# ABSENTE pour Halo 5 : pas de décodeur de film, donc rien à reconstruire — silence propre.
+# ⚠ Clé FINE, même doctrine que les quatre film.* ci-dessus : elle gouverne la PRODUCTION
+# et l'EXPOSITION de ces cinq statistiques, rien d'autre du mode Assaut. Ne pas l'élargir.
+"film.bomb_stats"        = "supported"

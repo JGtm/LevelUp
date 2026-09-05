@@ -127,6 +127,8 @@ func main() {
 		exitErr = runBackfillReplay(cfg, args)
 	case "backfill-usage-summary":
 		exitErr = runBackfillUsageSummary(cfg, args)
+	case "backfill-bomb-stats":
+		exitErr = runBackfillBombStats(cfg, args)
 	case "replay-facts-export":
 		exitErr = runReplayFactsExport(cfg, args)
 	case "migrate":
@@ -186,6 +188,7 @@ Commandes:
   backfill-killsource Remplit match_kill_events + match_weapon_shots : décodage HORS LIGNE des films en cache (gros films en dernier, reprenable par decoder_rev) puis producteur credit-seul depuis highlight_events (--dry-run, --limit, --films-only, --credit-only, serveur arrêté). --online --gamertag <GT> va CHERCHER les films absents du cache et les y archive : c'est ce qui rattrape l'attribution des assistances, sans film il n'y en a aucune
   backfill-medailles-feed Rend leur nom aux médailles déjà en base : relit HORS LIGNE le chunk highlight des films en cache, apparie par (xuid, time_ms) et remplit highlight_events.raw_json + type_hint, restés vides depuis avril 2026 (415 matchs / 22 031 events sans identité, donc aucune médaille au fil des éliminations). Film absent du cache = match consigné et sauté (--dry-run, --limit, --cache, serveur arrêté)
   archive-films   Télécharge et CONSERVE les films manquants du cache local (manifeste + chunks complets, sans aucun décodage). Les films EXPIRENT côté 343 et ne se retéléchargent jamais : cette passe est la seule qui les sauve. Lecture seule sur la base (elle ne peut rien corrompre) mais SERVEUR ARRÊTÉ quand même : DuckDB n'autorise qu'un processus par fichier (--dry-run, --limit, --gamertag, --sauter-marques)
+backfill-bomb-stats    Projette en base les statistiques d'Assaut portées par les artefacts de rejeu déjà cuits (match_bomb_stats append-only + faits datés dans match_objective_events) : AUCUN décodage de film. À lancer APRÈS backfill-replay, qui est la passe qui les fait naître dans les artefacts (--dry-run, --force, --match, --limit, serveur arrêté)
   backfill-replay Construit les artefacts de rejeu 2D de tous les films en cache : décodage HORS LIGNE via la librairie replaybuild, UN PROCESSUS PAR FILM (un film-bombe n'emporte plus la passe ni la machine ; gros films en dernier, reprenable par SchemaVersion, échecs ventilés : carte hors catalogue, mémoire, mort subite) (--dry-run, --limit, --force, --only-existing, --mem-limit-gib)
   backfill-usage-summary Résume les artefacts de rejeu déjà cuits en usages d'équipement et de socles (match_usage_players + match_usage_films, append-only) : AUCUN décodage de film, un artefact lu à la fois, reprenable par (summary_rev, artifact_schema) via la vue _latest. --dry-run imprime les compteurs par match (prises nommées/anonymes, bonus par famille) pour les contrôles croisés (--force, --match, --limit, serveur arrêté)
   replay-facts-export  Exporte les faits de match (JSON, forme de replay-build --facts) et les cartes candidates de matchs nommes, pour le harnais d'equivalence des rejeux (--out, --title)

@@ -21,21 +21,22 @@ package filmdec
 //
 //	SEGMENT    suite maximale d'echantillons d'un meme slot, trous <= tpTrouMaxMS (500 ms).
 //	ARMEMENT   segment avec n >= ti12MonteeMinEch, amplitude montante (dernier - min) >=
-//	           ti12MonteeMinAmpl, ET dernier echantillon >= max du segment - mpPleinTolQ :
+//	           ti12MonteeMinAmpl, ET dernier echantillon >= max du segment - la tolerance :
 //	           le segment FINIT a son sommet (l'anneau reste plein). Le cycle RESET finit a
 //	           127, il est ecarte ; une descente finit a son minimum, ecartee.
-//	PAUSE      segment avec n >= 2, dernier < premier, max <= premier + mpPleinTolQ (jamais
+//	PAUSE      segment avec n >= 2, dernier < premier, max <= premier + la tolerance (jamais
 //	           au-dessus de son depart : le RESET remonte, il est ecarte), pente moyenne
-//	           (premier - dernier) / duree < mpPenteMaxQS. La chute d'explosion (~138 q/s)
+//	           (premier - dernier) / duree < la pente maximale. La chute d'explosion (~138 q/s)
 //	           est au-dessus du seuil, les tenues de desarmement (14-26 q/s) en dessous.
 //	DELAI      pour une cible : (cible - derniere fin d'ARMEMENT avant cible) moins la somme
 //	           des durees des PAUSES du MEME slot strictement entre cette fin et la cible.
 //	           Fenetre de sens et statistique inchangees (tpSensMaxMS, tpMedCV).
 //
-// Seuils NOUVEAUX, justifies par la mesure d'inspection : mpPleinTolQ = 4 quanta (1/32 de
-// course, sous l'amplitude minimale 16 — tolerance de bruit de fin de segment) ; mpPenteMaxQS =
-// 60 quanta/s, au milieu du vide entre les pentes de desarmement observees (14 a 26) et la
-// chute d'explosion (138). AUCUN seuil existant n'est modifie.
+// Seuils NOUVEAUX, justifies par la mesure d'inspection, et EN PRODUCTION depuis le
+// 2026-09-04 (navpoint_radial_segments.go) : NavpointSummitToleranceQ = 4 quanta (1/64 de
+// course, sous l'amplitude minimale 16 — tolerance de bruit de fin de segment) ;
+// NavpointPauseMaxSlopeQS = 60 quanta/s, au milieu du vide entre les pentes de desarmement
+// observees (14 a 26) et la chute d'explosion (138). AUCUN seuil existant n'est modifie.
 //
 // # LA REGLE DE DECISION, ecrite ici et appliquee telle quelle
 //
@@ -65,16 +66,14 @@ import (
 	"testing"
 )
 
-const (
-	// mpPleinTolQ : tolerance de fin de segment par rapport a son sommet (armement) ou a son
-	// depart (pause), en quanta.
-	mpPleinTolQ = 4
-	// mpPenteMaxQS : pente maximale (quanta/s) d'une tenue de desarmement. Mesure : 14-26 pour
-	// les tenues, 138 pour la chute d'explosion.
-	mpPenteMaxQS = 60.0
-	// mpCVSeuilTemoin : plafond du CV exige du temoin Neutral (le brief du chantier).
-	mpCVSeuilTemoin = 0.02
-)
+// mpCVSeuilTemoin : plafond du CV exige du temoin Neutral (le brief du chantier).
+//
+// LES DEUX SEUILS DE LA LECTURE ONT QUITTE CE FICHIER le 2026-09-04 : la tolerance de sommet
+// (4 quanta) et la pente maximale d'une tenue (60 quanta/s) vivent en PRODUCTION sous les noms
+// `NavpointSummitToleranceQ` et `NavpointPauseMaxSlopeQS` (navpoint_radial_segments.go), avec
+// la mesure qui les justifie. Cet instrument les applique en appelant les predicats de
+// production : il ne peut plus mesurer autre chose que ce qui est livre.
+const mpCVSeuilTemoin = 0.02
 
 // mpSansPorteur : les deux explosions SANS slot de joueur porteur, recopiees de a5SansPorteur
 // (analysis/replay/assaut_a5_explosions_test.go, mesure du 2026-08-31, anterieure a ce lot —
@@ -167,6 +166,15 @@ func TestNavpointTi12MecheTemoin(t *testing.T) {
 		exps []int32
 	}{{"1c01e34f", []int32{150546, 273787, 335637, 400853}}})
 	mpVerdict(t, "TEMOIN HUSKY RAID — 4 explosions", husky, nil)
+	// L'EXIGENCE HUSKY EST JUGEE, PAS SEULEMENT IMPRIMEE (ajout du 2026-09-04, avec le portage
+	// en production) : 4/4 au chiffre pres, meme plafond de dispersion que Neutral.
+	couvH, cvH, _ := mpStat(husky, nil, nil)
+	if couvH == 4 && cvH <= mpCVSeuilTemoin {
+		t.Logf("TEMOIN HUSKY : EXIGENCE TENUE (4/4, CV %.3f <= %.2f)", cvH, mpCVSeuilTemoin)
+	} else {
+		t.Errorf("TEMOIN HUSKY CASSE : couverture %d/4, CV %.3f (exige 4/4 et <= %.2f) — la "+
+			"lecture meche pausable est fausse", couvH, cvH, mpCVSeuilTemoin)
+	}
 }
 
 // mpChargerGroupe charge et digere une liste de films (id + explosions).
@@ -222,24 +230,13 @@ func mpDigerer(id string, series map[uint32][]ti12Ech, exps []int32) *mpFilm {
 	return f
 }
 
-// mpEstArmement dit si un segment finit plein au sens de la lecture.
-func mpEstArmement(g obSeg) bool {
-	return g.n >= ti12MonteeMinEch &&
-		int(g.q1) >= int(g.qmax)-mpPleinTolQ &&
-		int(g.q1)-int(g.qmin) >= ti12MonteeMinAmpl
-}
+// mpEstArmement dit si un segment finit plein au sens de la lecture — PAR LE PREDICAT DE
+// PRODUCTION (`NavpointSegment.EndsAtSummit`, porte le 2026-09-04 depuis ce fichier).
+func mpEstArmement(g obSeg) bool { return g.nav().EndsAtSummit() }
 
-// mpEstPause dit si un segment est une tenue de desarmement au sens de la lecture.
-func mpEstPause(g obSeg) bool {
-	if g.n < 2 || g.q1 >= g.q0 || int(g.qmax) > int(g.q0)+mpPleinTolQ {
-		return false
-	}
-	durS := float64(g.t1-g.t0) / 1000
-	if durS <= 0 {
-		return false
-	}
-	return float64(g.q0-g.q1)/durS < mpPenteMaxQS
-}
+// mpEstPause dit si un segment est une tenue de desarmement au sens de la lecture — PAR LE
+// PREDICAT DE PRODUCTION (`NavpointSegment.IsDisarmHold`).
+func mpEstPause(g obSeg) bool { return g.nav().IsDisarmHold() }
 
 // mpDelai rend le delai corrige d'une cible : cible moins la derniere fin d'armement, moins les
 // pauses du meme slot strictement entre les deux.

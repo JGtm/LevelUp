@@ -239,7 +239,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// son porteur) — garde de mode par l'appelant (opt.Bomb.CarryScanned, TOUTES les variantes
 	// de la famille bomb), source : le canal des armes tenues DEJA balaye (opt.WeaponChanges),
 	// cf. bomb_carries.go.
-	attachBombCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	bombCarry := attachBombCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// LES OBJETS D'OBJECTIF LIBRES SONT POSÉS HORS DE LA GARDE DE MODE DU DRAPEAU, et c'est
 	// délibéré : ce calque ne lit ni le statborg ni le fil des morts, donc rien de ce que cette
 	// garde protège. La placer devant l'éteindrait sur Oddball — là où il sert.
@@ -251,6 +251,13 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// explosions DEJA posees (`doc.Objectives`) — garde de mode par l'appelant
 	// (opt.Bomb.Scanned), cf. bomb_armings.go.
 	attachBombArmings(&doc, opt, clock)
+	// LES CINQ STATISTIQUES D'OBJECTIF DE L'ASSAUT, et les faits datés qui les portent. Elles
+	// se calculent ICI parce que c'est le seul endroit où leurs quatre sources vivent en pleine
+	// fidélité — la chronologie de portage EN MILLISECONDES (rendue par `attachBombCarries`),
+	// les armements DÉJÀ publiés (`attachBombArmings`, juste au-dessus), les actions d'objectif
+	// nommées et le recalage d'horloge. Aucun balayage de plus, aucune étape observée de plus
+	// (cf. bomb_stats_document.go).
+	attachBombStats(&doc, opt, own, bombCarry)
 	slog.Info("rejeu : episodes d'equipement actif",
 		"viesPubliees", doc.Coverage.Equipment.TracksTotal,
 		"viesCamo", doc.Coverage.Equipment.CamoLives,

@@ -4644,6 +4644,66 @@ export interface components {
             t1: number;
             xuid: string;
         };
+        BombEvent: {
+            actorSource?: string;
+            /** Format: int64 */
+            timeMs: number;
+            type: string;
+            xuid?: string;
+        };
+        BombMatchStats: {
+            coverage: components["schemas"]["BombStatsCoverage"];
+            players?: components["schemas"]["BombPlayerStats"][] | null;
+        };
+        BombPlayerStats: {
+            /** Format: int64 */
+            arms?: number;
+            /** Format: int64 */
+            carriersKilled?: number;
+            /** Format: int64 */
+            detonations?: number;
+            /** Format: int64 */
+            grabs?: number;
+            /** Format: double */
+            timeAsCarrierSeconds?: number;
+            xuid: string;
+        };
+        BombStatsCoverage: {
+            /** Format: int64 */
+            armings: number;
+            /** Format: int64 */
+            armingsAmbiguous: number;
+            /** Format: int64 */
+            armingsAttributed: number;
+            /** Format: int64 */
+            armingsByActiveCarry: number;
+            /** Format: int64 */
+            armingsByDrop: number;
+            /** Format: int64 */
+            armingsNoBridge: number;
+            /** Format: int64 */
+            armingsNoCarrier: number;
+            armingsRead: boolean;
+            carryRead: boolean;
+            /** Format: int64 */
+            detonations: number;
+            detonationsRead: boolean;
+            /** Format: int64 */
+            kills: number;
+            /** Format: int64 */
+            killsOnCarrier: number;
+            killsRead: boolean;
+            /** Format: int64 */
+            periods: number;
+            /** Format: int64 */
+            periodsByDeath: number;
+            /** Format: int64 */
+            periodsNoBridge: number;
+            /** Format: int64 */
+            periodsOpen: number;
+            /** Format: int64 */
+            players: number;
+        };
         BootstrapResponse: {
             active_sync_job_id?: string;
             /** @enum {string} */
@@ -7981,6 +8041,14 @@ export interface components {
         /** @description Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés. */
         MatchScoreboardObjective: {
             /** Format: int64 */
+            bomb_arms?: number;
+            /** Format: int64 */
+            bomb_carriers_killed?: number;
+            /** Format: int64 */
+            bomb_detonations?: number;
+            /** Format: int64 */
+            bomb_grabs?: number;
+            /** Format: int64 */
             extraction_conversions_completed?: number;
             /** Format: int64 */
             extraction_conversions_denied?: number;
@@ -8034,6 +8102,8 @@ export interface components {
             skull_scoring_ticks?: number;
             /** Format: int64 */
             successful_extractions?: number;
+            /** Format: double */
+            time_as_bomb_carrier_seconds?: number;
             /** Format: double */
             time_as_flag_carrier_seconds?: number;
             /** Format: double */
@@ -9764,6 +9834,8 @@ export interface components {
             };
             bombArmings?: components["schemas"]["BombArming"][] | null;
             bombCarries?: components["schemas"]["BombCarry"][] | null;
+            bombEvents?: components["schemas"]["BombEvent"][] | null;
+            bombStats?: components["schemas"]["BombMatchStats"];
             bounds: components["schemas"]["Bounds"];
             coverage?: components["schemas"]["Coverage"];
             /** Format: int64 */

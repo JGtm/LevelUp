@@ -229,6 +229,12 @@ func fallbackCapabilities() games.CapabilityMap {
 		// la production post-sync (replayartifacts) et le backfill CLI ; un titre sans
 		// la clé ne produit AUCUNE ligne, silence propre (cf. capabilities.toml).
 		games.CapFilmUsageSummary: games.CapSupported,
+		// Les CINQ statistiques d objectif de l ASSAUT reconstruites du film (l API 343
+		// n en publie aucune) -> shared.match_bomb_stats. Gouverne la production
+		// post-sync (replayartifacts), le backfill CLI et l exposition sur la fiche de
+		// match ; un titre sans la cle ne produit AUCUNE ligne et n expose AUCUNE
+		// colonne (cf. capabilities.toml).
+		games.CapFilmBombStats: games.CapSupported,
 	}
 }
 
