@@ -289,15 +289,15 @@ describe('buildPadControl — la partition « game changers » (plan 2026-09-05)
 
   /**
    * QUATRE SOCLES, ET LE PLUS DISPUTÉ EST REPLIÉ — c'est ce qui rend la partition sensible :
-   * un tri global par volume mettrait le Crémateur (3 prises, voté NON) devant le Sniper
+   * un tri global par volume mettrait le Commando (3 prises, voté NON) devant le Sniper
    * (1 prise, élu). La partition passe AVANT le tri, qui survit dans chaque bloc.
    */
   function temoinCatalogue() {
     return temoin({
       weaponLabels: {
         [SNIPER]: { fr: 'S7 Sniper', en: 'S7 Sniper', key: 'hinf_s7_sniper' },
-        // Clé CANONIQUE présente mais votée NON : replié — la divergence cindershot est dite.
-        [EPEE]: { fr: 'Crémateur', en: 'Cindershot', key: 'hinf_cindershot' },
+        // Clé CANONIQUE présente mais votée NON : repliée (le cindershot, lui, a été promu).
+        [EPEE]: { fr: 'VK78 Commando', en: 'VK78 Commando', key: 'hinf_vk78_commando' },
         // Label SANS clé (artefact ancien) : replié, dégradation voulue (décision D6).
         [BR]: { fr: 'BR75', en: 'BR75' },
       },
