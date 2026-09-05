@@ -10,8 +10,10 @@
  *
  * LE PORTEUR SE RELIT DANS SES TRAJECTOIRES, image par image, et c'est ce qui « colle » le
  * drapeau à son marqueur : le span publie UNE position pour tout son intervalle, alors que le
- * porteur court. `posOfPlayerAt` est le même utilitaire que les effets de mort et les pulses
- * d'objectif — une position relue, jamais devinée (cf. `flagPointAt` pour le repli).
+ * porteur court. `useCarrierPosAt` est le même utilitaire que la bombe, le crâne et la couronne —
+ * une position relue, jamais devinée (cf. `flagPointAt` pour le repli). PORTEUR EMBARQUÉ : c'est
+ * la position du VÉHICULE qui répond (décision produit du 2026-09-05, cf. l'en-tête de
+ * `carrierPosition.ts`).
  *
  * L'ONDE DE CAPTURE ENTRE ICI, ET PAS DANS LE CANVAS (2026-08-27). Elle a besoin des mêmes trois
  * choses que le glyphe — le document, la relecture de position, le camp vu de la page — et le
@@ -33,7 +35,7 @@ import { useCallback, useMemo, useState, type PointerEvent, type RefObject } fro
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
 
-import { usePlayerPosAt } from './livesPosition'
+import { useCarrierPosAt } from './carrierPosition'
 import {
   drawFlagCarries,
   flagAt,
@@ -110,8 +112,9 @@ export function useReplayFlagCarries({
   const carries = doc.flagCarries
   const [hover, setHover] = useState<FlagHover | null>(null)
 
-  // La relecture de position partagée (livesPosition.ts).
-  const posOf = usePlayerPosAt(doc)
+  // La relecture de position partagée (carrierPosition.ts) : embarqué -> position du véhicule,
+  // sinon celle du bipède.
+  const posOf = useCarrierPosAt(doc)
 
   const allyTeamID = useMemo(
     () => parseTeamSideID(scoreboard?.find((r) => r.is_me)?.team_side ?? null),
