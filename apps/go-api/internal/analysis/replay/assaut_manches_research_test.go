@@ -95,7 +95,7 @@ func TestAssautManchesRecherche(t *testing.T) {
 		"\tsuite_score\tsuite_frags\tsuite_morts\tsuite_assists\tsuite_scoreperso\tretenue_actuelle"
 	lignes = append(lignes, entete)
 	for _, f := range amCorpus {
-		src, ok, err := filmcache.Open(cache, f.id)
+		src, ok, err := filmcache.LoadFilm(cache, f.id)
 		if err != nil || !ok {
 			t.Logf("FILM %s ABSENT (%v) — saute", f.id, err)
 			continue
@@ -298,7 +298,7 @@ func TestAssautManchesControleHorsEchantillon(t *testing.T) {
 		if id == "" {
 			continue
 		}
-		src, ok, err := filmcache.Open(cache, id)
+		src, ok, err := filmcache.LoadFilm(cache, id)
 		if err != nil || !ok {
 			t.Logf("film %s absent — saute", id)
 			continue
@@ -370,7 +370,7 @@ func TestAssautPointsDeModeParJoueur(t *testing.T) {
 	}
 	defer amArmeSentinelle(t, "TestAssautPointsDeModeParJoueur")()
 	for _, f := range amCorpus[:3] { // les 3 One Bomb
-		src, ok, err := filmcache.Open(cache, f.id)
+		src, ok, err := filmcache.LoadFilm(cache, f.id)
 		if err != nil || !ok {
 			t.Logf("film %s absent — saute", f.id)
 			continue
@@ -439,7 +439,7 @@ func TestAssautMancheSansPorteur(t *testing.T) {
 		{"c75f33b8", 1, 395724},
 	}
 	for _, c := range cas {
-		src, ok, err := filmcache.Open(cache, c.id)
+		src, ok, err := filmcache.LoadFilm(cache, c.id)
 		if err != nil || !ok {
 			continue
 		}
@@ -485,7 +485,7 @@ func TestAssautParasiteCe083875(t *testing.T) {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
 	defer amArmeSentinelle(t, "TestAssautParasiteCe083875")()
-	src, ok, err := filmcache.Open(cache, "ce083875")
+	src, ok, err := filmcache.LoadFilm(cache, "ce083875")
 	if err != nil || !ok {
 		t.Skip("film absent")
 	}
@@ -533,7 +533,7 @@ func TestAssautDomaineComp0(t *testing.T) {
 		}
 	}
 	for _, f := range ids {
-		src, ok, err := filmcache.Open(cache, f)
+		src, ok, err := filmcache.LoadFilm(cache, f)
 		if err != nil || !ok {
 			continue
 		}
@@ -587,7 +587,7 @@ func TestAssautPontIdentite(t *testing.T) {
 	defer amArmeSentinelle(t, "TestAssautPontIdentite")()
 	var nommes, identifies int
 	for _, f := range amCorpus[:9] { // les 9 films d'Assaut
-		src, ok, err := filmcache.Open(cache, f.id)
+		src, ok, err := filmcache.LoadFilm(cache, f.id)
 		if err != nil || !ok {
 			continue
 		}

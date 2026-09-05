@@ -1,0 +1,70 @@
+{
+  "players": [
+    {
+      "xuid": "2533274823110022",
+      "kills": 9,
+      "deaths": 15,
+      "assists": 7,
+      "teamId": 1
+    },
+    {
+      "xuid": "2533274858283686",
+      "kills": 15,
+      "deaths": 11,
+      "assists": 5,
+      "teamId": 1
+    },
+    {
+      "xuid": "2533274917930188",
+      "kills": 15,
+      "deaths": 17,
+      "assists": 4,
+      "teamId": 1
+    },
+    {
+      "xuid": "2533274989524964",
+      "kills": 8,
+      "deaths": 12,
+      "assists": 8,
+      "teamId": 0
+    },
+    {
+      "xuid": "2535429028393121",
+      "kills": 15,
+      "deaths": 9,
+      "assists": 10,
+      "teamId": 0
+    },
+    {
+      "xuid": "2535438933682278",
+      "kills": 9,
+      "deaths": 12,
+      "assists": 4,
+      "teamId": 1
+    },
+    {
+      "xuid": "2535442956677772",
+      "kills": 15,
+      "deaths": 14,
+      "assists": 3,
+      "teamId": 0
+    },
+    {
+      "xuid": "2535458126310341",
+      "kills": 16,
+      "deaths": 13,
+      "assists": 4,
+      "teamId": 0
+    }
+  ],
+  "teamScores": [
+    200,
+    94
+  ],
+  "gameVariantName": "Strongholds:Arena",
+  "mapId": "105f5d84-8de1-4908-af3a-1c4f3bf9d642",
+  "matchId": "696a9d7c-009f-4750-8202-f1819947aa4e",
+  "mapNames": [
+    "Vagabond"
+  ]
+}

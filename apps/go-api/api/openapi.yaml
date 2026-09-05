@@ -8760,6 +8760,136 @@ components:
         - t1
         - closed
       type: object
+    BombEvent:
+      additionalProperties: false
+      properties:
+        actorSource:
+          type: string
+        timeMs:
+          format: int64
+          type: integer
+        type:
+          type: string
+        xuid:
+          type: string
+      required:
+        - type
+        - timeMs
+      type: object
+    BombMatchStats:
+      additionalProperties: false
+      properties:
+        coverage:
+          $ref: '#/components/schemas/BombStatsCoverage'
+        players:
+          items:
+            $ref: '#/components/schemas/BombPlayerStats'
+          type:
+            - array
+            - "null"
+      required:
+        - coverage
+      type: object
+    BombPlayerStats:
+      additionalProperties: false
+      properties:
+        arms:
+          format: int64
+          type: integer
+        carriersKilled:
+          format: int64
+          type: integer
+        detonations:
+          format: int64
+          type: integer
+        grabs:
+          format: int64
+          type: integer
+        timeAsCarrierSeconds:
+          format: double
+          type: number
+        xuid:
+          type: string
+      required:
+        - xuid
+      type: object
+    BombStatsCoverage:
+      additionalProperties: false
+      properties:
+        armings:
+          format: int64
+          type: integer
+        armingsAmbiguous:
+          format: int64
+          type: integer
+        armingsAttributed:
+          format: int64
+          type: integer
+        armingsByActiveCarry:
+          format: int64
+          type: integer
+        armingsByDrop:
+          format: int64
+          type: integer
+        armingsNoBridge:
+          format: int64
+          type: integer
+        armingsNoCarrier:
+          format: int64
+          type: integer
+        armingsRead:
+          type: boolean
+        carryRead:
+          type: boolean
+        detonations:
+          format: int64
+          type: integer
+        detonationsRead:
+          type: boolean
+        kills:
+          format: int64
+          type: integer
+        killsOnCarrier:
+          format: int64
+          type: integer
+        killsRead:
+          type: boolean
+        periods:
+          format: int64
+          type: integer
+        periodsByDeath:
+          format: int64
+          type: integer
+        periodsNoBridge:
+          format: int64
+          type: integer
+        periodsOpen:
+          format: int64
+          type: integer
+        players:
+          format: int64
+          type: integer
+      required:
+        - detonationsRead
+        - carryRead
+        - killsRead
+        - armingsRead
+        - detonations
+        - armings
+        - armingsAttributed
+        - armingsByDrop
+        - armingsByActiveCarry
+        - armingsNoCarrier
+        - armingsNoBridge
+        - armingsAmbiguous
+        - periods
+        - periodsNoBridge
+        - periodsOpen
+        - periodsByDeath
+        - kills
+        - killsOnCarrier
+        - players
+      type: object
     BootstrapResponse:
       additionalProperties: false
       properties:
@@ -10904,6 +11034,8 @@ components:
           $ref: '#/components/schemas/T0FilmCoverage'
         translocations:
           $ref: '#/components/schemas/TranslocationCoverage'
+        vehicles:
+          $ref: '#/components/schemas/VehicleCoverage'
         verdict:
           additionalProperties:
             type: string
@@ -16779,8 +16911,20 @@ components:
       type: object
     MatchScoreboardObjective:
       additionalProperties: false
-      description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
+      description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP/Assaut) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
       properties:
+        bomb_arms:
+          format: int64
+          type: integer
+        bomb_carriers_killed:
+          format: int64
+          type: integer
+        bomb_detonations:
+          format: int64
+          type: integer
+        bomb_grabs:
+          format: int64
+          type: integer
         extraction_conversions_completed:
           format: int64
           type: integer
@@ -16862,6 +17006,9 @@ components:
         successful_extractions:
           format: int64
           type: integer
+        time_as_bomb_carrier_seconds:
+          format: double
+          type: number
         time_as_flag_carrier_seconds:
           format: double
           type: number
@@ -21009,6 +21156,14 @@ components:
           type:
             - array
             - "null"
+        bombEvents:
+          items:
+            $ref: '#/components/schemas/BombEvent'
+          type:
+            - array
+            - "null"
+        bombStats:
+          $ref: '#/components/schemas/BombMatchStats'
         bounds:
           $ref: '#/components/schemas/Bounds'
         coverage:
@@ -21192,6 +21347,16 @@ components:
         translocations:
           items:
             $ref: '#/components/schemas/Translocation'
+          type:
+            - array
+            - "null"
+        vehicleLabels:
+          additionalProperties:
+            $ref: '#/components/schemas/VehicleLabel'
+          type: object
+        vehicles:
+          items:
+            $ref: '#/components/schemas/VehicleTrack'
           type:
             - array
             - "null"
@@ -22275,6 +22440,95 @@ components:
         - cumulative
         - accuracy
       type: object
+    SessionObjectiveFamilyBlock:
+      additionalProperties: false
+      properties:
+        family:
+          type: string
+        matches:
+          format: int64
+          type: integer
+        roles:
+          items:
+            $ref: '#/components/schemas/SessionObjectiveRoleMetric'
+          type:
+            - array
+            - "null"
+      required:
+        - family
+        - matches
+        - roles
+      type: object
+    SessionObjectiveRoleMetric:
+      additionalProperties: false
+      properties:
+        is_duration:
+          type: boolean
+        lobby_total:
+          format: double
+          type: number
+        player_share_of_lobby_pct:
+          format: double
+          type: number
+        player_share_of_team_pct:
+          format: double
+          type: number
+        player_total:
+          format: double
+          type: number
+        role:
+          type: string
+        squad:
+          items:
+            $ref: '#/components/schemas/SessionUsageSquadShare'
+          type:
+            - array
+            - "null"
+        team_share_of_lobby_pct:
+          format: double
+          type: number
+        team_total:
+          format: double
+          type: number
+      required:
+        - role
+        - player_total
+        - lobby_total
+      type: object
+    SessionObjectivesBlock:
+      additionalProperties: false
+      properties:
+        families:
+          items:
+            $ref: '#/components/schemas/SessionObjectiveFamilyBlock'
+          type:
+            - array
+            - "null"
+        lobby_parity_pct:
+          format: double
+          type: number
+        lobby_size_avg:
+          format: double
+          type: number
+        matches_with_objectives:
+          format: int64
+          type: integer
+        roles:
+          items:
+            $ref: '#/components/schemas/SessionObjectiveRoleMetric'
+          type:
+            - array
+            - "null"
+        team_parity_pct:
+          format: double
+          type: number
+        team_size_avg:
+          format: double
+          type: number
+      required:
+        - matches_with_objectives
+        - roles
+      type: object
     SessionOption:
       additionalProperties: false
       properties:
@@ -22395,6 +22649,8 @@ components:
           type: string
         suggested_compare:
           $ref: '#/components/schemas/SessionCompareSuggestion'
+        usage:
+          $ref: '#/components/schemas/SessionUsageBlock'
       required:
         - current_session
         - available_sessions
@@ -22414,6 +22670,222 @@ components:
       required:
         - name
         - value
+      type: object
+    SessionUsageBlock:
+      additionalProperties: false
+      properties:
+        available:
+          type: boolean
+        lobby_parity_pct:
+          format: double
+          type: number
+        lobby_size_avg:
+          format: double
+          type: number
+        matches_measured:
+          format: int64
+          type: integer
+        matches_total:
+          format: int64
+          type: integer
+        measured_duration_seconds:
+          format: double
+          type: number
+        metrics:
+          items:
+            $ref: '#/components/schemas/SessionUsageMetric'
+          type:
+            - array
+            - "null"
+        objectives:
+          $ref: '#/components/schemas/SessionObjectivesBlock'
+        pad_families:
+          items:
+            $ref: '#/components/schemas/SessionUsagePadFamily'
+          type:
+            - array
+            - "null"
+        pad_unnamed_total:
+          format: int64
+          type: integer
+        powerup_pickups:
+          items:
+            $ref: '#/components/schemas/SessionUsagePowerup'
+          type:
+            - array
+            - "null"
+        squad_players:
+          items:
+            $ref: '#/components/schemas/SessionUsageSquadPlayer'
+          type:
+            - array
+            - "null"
+        team_parity_pct:
+          format: double
+          type: number
+        team_size_avg:
+          format: double
+          type: number
+        unavailable_reason:
+          type: string
+      required:
+        - available
+        - matches_measured
+        - matches_total
+      type: object
+    SessionUsageMatchPoint:
+      additionalProperties: false
+      properties:
+        match_id:
+          type: string
+        player_share_of_lobby_pct:
+          format: double
+          type: number
+        player_share_of_team_pct:
+          format: double
+          type: number
+        team_share_of_lobby_pct:
+          format: double
+          type: number
+      required:
+        - match_id
+      type: object
+    SessionUsageMetric:
+      additionalProperties: false
+      properties:
+        key:
+          type: string
+        lobby_per_10min:
+          format: double
+          type: number
+        lobby_total:
+          format: double
+          type: number
+        matches_above_lobby_parity:
+          format: int64
+          type: integer
+        matches_above_team_parity:
+          format: int64
+          type: integer
+        per_match:
+          items:
+            $ref: '#/components/schemas/SessionUsageMatchPoint'
+          type:
+            - array
+            - "null"
+        player_per_10min:
+          format: double
+          type: number
+        player_share_of_lobby_pct:
+          format: double
+          type: number
+        player_share_of_team_max_pct:
+          format: double
+          type: number
+        player_share_of_team_min_pct:
+          format: double
+          type: number
+        player_share_of_team_pct:
+          format: double
+          type: number
+        player_total:
+          format: double
+          type: number
+        squad:
+          items:
+            $ref: '#/components/schemas/SessionUsageSquadShare'
+          type:
+            - array
+            - "null"
+        team_per_10min:
+          format: double
+          type: number
+        team_share_of_lobby_pct:
+          format: double
+          type: number
+        team_total:
+          format: double
+          type: number
+      required:
+        - key
+        - matches_above_lobby_parity
+        - player_total
+        - lobby_total
+      type: object
+    SessionUsagePadFamily:
+      additionalProperties: false
+      properties:
+        family_key:
+          type: string
+        lobby_total:
+          format: double
+          type: number
+        player_share_of_lobby_pct:
+          format: double
+          type: number
+        player_share_of_team_pct:
+          format: double
+          type: number
+        player_total:
+          format: double
+          type: number
+        team_share_of_lobby_pct:
+          format: double
+          type: number
+        team_total:
+          format: double
+          type: number
+      required:
+        - family_key
+        - player_total
+        - lobby_total
+      type: object
+    SessionUsagePowerup:
+      additionalProperties: false
+      properties:
+        family_key:
+          type: string
+        occupations:
+          format: int64
+          type: integer
+        per_10min:
+          format: double
+          type: number
+      required:
+        - family_key
+        - occupations
+      type: object
+    SessionUsageSquadPlayer:
+      additionalProperties: false
+      properties:
+        gamertag:
+          type: string
+        xuid:
+          type: string
+      required:
+        - xuid
+        - gamertag
+      type: object
+    SessionUsageSquadShare:
+      additionalProperties: false
+      properties:
+        per_10min:
+          format: double
+          type: number
+        share_of_lobby_pct:
+          format: double
+          type: number
+        share_of_team_pct:
+          format: double
+          type: number
+        total:
+          format: double
+          type: number
+        xuid:
+          type: string
+      required:
+        - xuid
+        - total
       type: object
     SessionsFilter:
       additionalProperties: false
@@ -22615,6 +23087,10 @@ components:
           type: integer
         t:
           format: int64
+          type: integer
+        v:
+          format: int32
+          minimum: 0
           type: integer
         w:
           type: string
@@ -26097,6 +26573,272 @@ components:
         - x
         - "y"
         - z
+      type: object
+    VehicleAim:
+      additionalProperties: false
+      properties:
+        h:
+          format: float
+          type: number
+        p:
+          format: float
+          type: number
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+      type: object
+    VehicleCoverage:
+      additionalProperties: false
+      properties:
+        aimReads:
+          format: int64
+          type: integer
+        aimRideFrames:
+          format: int64
+          type: integer
+        aimSamples:
+          format: int64
+          type: integer
+        ambiguous:
+          format: int64
+          type: integer
+        familyResolved:
+          format: int64
+          type: integer
+        familyUnknown:
+          format: int64
+          type: integer
+        lives:
+          format: int64
+          type: integer
+        merged:
+          format: int64
+          type: integer
+        noPosition:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        rides:
+          format: int64
+          type: integer
+        ridesFromEvent:
+          format: int64
+          type: integer
+        ridesFromGap:
+          format: int64
+          type: integer
+        ridesMixed:
+          format: int64
+          type: integer
+        ridesNamed:
+          format: int64
+          type: integer
+        ridesWithAim:
+          format: int64
+          type: integer
+        ridesWithSeat:
+          format: int64
+          type: integer
+        samples:
+          format: int64
+          type: integer
+        scanned:
+          type: boolean
+        shots:
+          format: int64
+          type: integer
+        shotsAmbiguous:
+          format: int64
+          type: integer
+        shotsNoRide:
+          format: int64
+          type: integer
+        shotsUnplaced:
+          format: int64
+          type: integer
+        shotsVehicleWeapon:
+          format: int64
+          type: integer
+        unknownChassis:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+        vehiclesRidden:
+          format: int64
+          type: integer
+        withChassis:
+          format: int64
+          type: integer
+        withHeading:
+          format: int64
+          type: integer
+        withSpawn:
+          format: int64
+          type: integer
+      required:
+        - scanned
+        - lives
+        - published
+        - noPosition
+        - merged
+        - withSpawn
+        - withChassis
+        - familyResolved
+        - familyUnknown
+        - samples
+        - withHeading
+        - rides
+        - vehiclesRidden
+        - ridesNamed
+        - ridesFromEvent
+        - ridesMixed
+        - ridesFromGap
+        - ridesWithSeat
+        - aimReads
+        - ridesWithAim
+        - aimSamples
+        - aimRideFrames
+        - ambiguous
+        - shots
+        - shotsAmbiguous
+        - shotsUnplaced
+        - shotsNoRide
+        - shotsVehicleWeapon
+      type: object
+    VehicleLabel:
+      additionalProperties: false
+      properties:
+        img:
+          type: string
+        tinted:
+          type: boolean
+      type: object
+    VehicleRide:
+      additionalProperties: false
+      properties:
+        aim:
+          items:
+            $ref: '#/components/schemas/VehicleAim'
+          type:
+            - array
+            - "null"
+        seat:
+          format: int64
+          type: integer
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        src:
+          type: string
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - t0
+        - t1
+        - slot
+        - src
+      type: object
+    VehicleSample:
+      additionalProperties: false
+      properties:
+        h:
+          format: float
+          type: number
+        t:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - t
+        - x
+        - "y"
+      type: object
+    VehicleSpawn:
+      additionalProperties: false
+      properties:
+        h:
+          format: float
+          type: number
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - x
+        - "y"
+      type: object
+    VehicleTrack:
+      additionalProperties: false
+      properties:
+        chassis:
+          type: string
+        end:
+          type: string
+        family:
+          type: string
+        gen:
+          format: int32
+          minimum: 0
+          type: integer
+        rides:
+          items:
+            $ref: '#/components/schemas/VehicleRide'
+          type:
+            - array
+            - "null"
+        samples:
+          items:
+            $ref: '#/components/schemas/VehicleSample'
+          type:
+            - array
+            - "null"
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        spawn:
+          $ref: '#/components/schemas/VehicleSpawn'
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        t1max:
+          format: int64
+          type: integer
+      required:
+        - slot
+        - gen
+        - t0
+        - t1
+        - t1max
+        - end
       type: object
     VipCrownCoverage:
       additionalProperties: false

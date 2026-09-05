@@ -158,8 +158,8 @@ type glRestLife struct {
 // plusieurs vies, on ne garde que les instants anterieurs au debut de la vie suivante).
 func glRestLives(t *testing.T, s glSetup) []glRestLife {
 	t.Helper()
-	_, pst := decodeFilmPlacements(s.dir, &s.wr)
-	gw := decodeFilmPadScans(s.dir, &s.wr, pst.Calibration.Widths).Weapons
+	_, pst := decodeFilmPlacementsDir(s.dir, &s.wr)
+	gw := decodeFilmPadScansDir(s.dir, &s.wr, pst.Calibration.Widths).Weapons
 	if !gw.Scanned || len(gw.Tracks) == 0 {
 		t.Fatalf("chaine des socles muette : scanned=%v pistes=%d", gw.Scanned, len(gw.Tracks))
 	}
@@ -705,7 +705,7 @@ func TestI26HandleVersCreation(t *testing.T) {
 	}
 	// Les CREATIONS ti=37, toutes — la calibration MPP vient des poses (chaine de prod),
 	// puis le balayage brut sur la bande des images-cles.
-	_, pst := decodeFilmPlacements(s.dir, &s.wr)
+	_, pst := decodeFilmPlacementsDir(s.dir, &s.wr)
 	if !pst.Calibration.Widths.Valid() {
 		t.Fatal("calibration MPP non tranchee : la mesure ne peut pas lire les identites")
 	}

@@ -243,7 +243,9 @@ func projOwnerPerLifeStable(reads []projOwnerRead) (lives, stable int) {
 // independant du rendement de DecodeFrameRecords : c'est le denominateur honnete de "i10 apparait-il".
 func projOwnerMaskCensus(t *testing.T, dir string, n int) (int, map[int]int) {
 	t.Helper()
-	band := worldObjectSlotBand(dir, n, ProjectileTypeIndex)
+	// Forme `dir` du lot 1 (PLAN_CUISSON_PERF) : le shim de test charge le film une fois et
+	// appelle `worldObjectSlotBand(film, ti)`. Mesure inchangee.
+	band := worldObjectSlotBandDir(dir, n, ProjectileTypeIndex)
 	hist := map[int]int{}
 	total := 0
 	if len(band) == 0 {

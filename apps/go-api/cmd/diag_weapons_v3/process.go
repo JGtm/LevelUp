@@ -20,7 +20,9 @@ func processMatch(ctx context.Context, c *conn, cfg runConfig, m matchRef) error
 	if !ok {
 		return fmt.Errorf("absent de match_registry")
 	}
-	src, ok, err := filmcache.Open(cfg.cacheDir, m.short)
+	// LE FILM EST CHARGE UNE FOIS (chunks decompresses, paquets decoupes) : c'est ce que prend
+	// desormais `objectiveevents` (item 1.5 de PLAN_CUISSON_PERF).
+	film, ok, err := filmcache.LoadFilm(cfg.cacheDir, m.short)
 	if err != nil {
 		return err
 	}
@@ -32,7 +34,7 @@ func processMatch(ctx context.Context, c *conn, cfg runConfig, m matchRef) error
 		return err
 	}
 
-	events := objectiveevents.Extract(m.full, reg.variant, src, objectiveevents.MapRoster(roster))
+	events := objectiveevents.Extract(m.full, reg.variant, film, objectiveevents.MapRoster(roster))
 	printSummary(m, reg, events)
 
 	if cfg.write {

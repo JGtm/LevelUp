@@ -17,25 +17,24 @@
  * absente (mêlée générique, source inconnue) tombe sur le rendu neutre — jamais celui d'une
  * arme voisine.
  *
+ * LES DEUX POSITIONS SONT CELLES DU RÉSOLVEUR DE PORTEUR (`carrierPosition.ts`, 2026-09-05) :
+ * un joueur tué au volant, ou en passager, explose SUR SON VÉHICULE. Un bipède attaché ne
+ * réplique plus sa position monde et sa trace s'interpole en ligne droite à travers le décor —
+ * l'effet de mort le mieux daté du match se posait donc, pour ces morts-là, à un endroit où
+ * personne n'était. La primitive de relecture (`posOfPlayerAt`) a été rapatriée dans son module
+ * canonique (`livesPosition.ts`) le même jour : ce fichier n'entretient plus AUCUNE copie de
+ * l'index des vies, et le cycle d'imports qui justifiait cette copie n'existe plus.
+ *
  * Pas de React, pas de canvas : logique pure, testée (killFx.test.ts).
  */
 import type { KillEvent } from '@/features/match-view/_momentum'
 
+import { buildCarrierPosAt } from './carrierPosition'
 import { alignFeed } from './killFeedLogic'
+import { buildLivesByXuid, deathWindowFrames } from './livesPosition'
 import { familyOf, type ShotFamily } from './shotEffects'
-import { isAliveAt, msToFrames, positionAt, trackWindow, type XY } from './replayLogic'
+import { isAliveAt, msToFrames, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
-
-/**
- * Fenêtre d'acceptation d'une DERNIÈRE position après la fin d'une vie, en ms. La victime,
- * par construction, vient de mourir — sa trace est close, sa dernière position reste vraie.
- *
- * ELLE VAUT LA FENÊTRE DEATH D'ORIGINE (1,5 s) MAIS N'EN DÉPEND PLUS : la croix de mort est
- * passée à 2,5 s le 2026-08-18, celle-ci non. Ce sont deux questions différentes — combien de
- * temps un repère reste LISIBLE d'un côté, jusqu'où une position reste VRAIE de l'autre — et
- * les lier ferait bouger la seconde à chaque réglage d'écran de la première.
- */
-export const KILLPOS_WINDOW_MS = 1_500
 
 /**
  * Seuil MÊLÉE, en mètres monde : en deçà, la victime est à portée du geste et l'arc de
@@ -74,39 +73,6 @@ export interface KillFxEntry {
   seed: number
 }
 
-/**
- * posOfPlayerAt — position d'un joueur (xuid) à une frame, relue dans ses trajectoires.
- *
- * Patron `posOfNameAt` du POC : une vie VIVANTE à cette frame rend sa position ; sinon on
- * accepte la DERNIÈRE position d'une vie close depuis moins de `deathFrames` — c'est le cas
- * de la victime, par construction. Au-delà : null, aucune position inventée.
- */
-export function posOfPlayerAt(
-  lives: ReplayTrackReady[] | undefined,
-  frame: number,
-  deathFrames: number,
-): XY | null {
-  if (!lives || lives.length === 0) return null
-  for (const l of lives) {
-    if (isAliveAt(l, frame)) {
-      const p = positionAt(l.points, frame)
-      if (p) return p
-    }
-  }
-  let best: ReplayTrackReady | null = null
-  let bestD = Number.POSITIVE_INFINITY
-  for (const l of lives) {
-    const d = frame - trackWindow(l).end
-    if (d >= 0 && d <= deathFrames && d < bestD) {
-      bestD = d
-      best = l
-    }
-  }
-  if (!best) return null
-  const last = best.points[best.points.length - 1]
-  return last ? { x: last.x, y: last.y } : null
-}
-
 /** slotOfPlayerAt — le slot de la vie du joueur couvrant la frame (ou la dernière close). */
 function slotOfPlayerAt(
   lives: ReplayTrackReady[] | undefined,
@@ -139,24 +105,21 @@ export function buildKillFx(
   t0Ms: number,
 ): KillFxEntry[] {
   if (kills.length === 0 || doc.tracks.length === 0) return []
-  // COPIE JUMELLE AUTORISEE de livesPosition.ts (buildLivesByXuid + deathWindowFrames) : ce
-  // module DEFINIT posOfPlayerAt et KILLPOS_WINDOW_MS — importer livesPosition d'ici ferait un
-  // cycle. Le garde-rail livesPosition.guard.test.ts n'autorise que ces deux ecritures.
-  const deathFrames = Math.max(1, Math.round(msToFrames(KILLPOS_WINDOW_MS, doc)))
-  const livesByXuid = new Map<string, ReplayTrackReady[]>()
-  for (const t of doc.tracks) {
-    if (!t.xuid) continue
-    const list = livesByXuid.get(t.xuid)
-    if (list) list.push(t)
-    else livesByXuid.set(t.xuid, [t])
-  }
+  // LES POSITIONS PASSENT PAR LE RÉSOLVEUR DE PORTEUR (carrierPosition.ts, 2026-09-05) : un
+  // joueur tué AU VOLANT — ou en passager — explose là où roule son véhicule, pas sur la ligne
+  // droite qu'interpolait sa trace de bipède pendant qu'il ne répliquait plus. La fenêtre
+  // après-mort du repli reste celle de la victime, qui vient de mourir par construction.
+  const posOf = buildCarrierPosAt(doc)
+  // L'INDEX DES VIES NE SERT PLUS QU'AU SLOT (la couleur de l'effet) : le slot est une
+  // propriété de la VIE DU BIPÈDE, qu'aucun véhicule ne déplace. Index et fenêtre viennent de
+  // livesPosition.ts — plus aucune copie locale depuis que la primitive y a été rapatriée.
+  const lives = buildLivesByXuid(doc.tracks)
+  const deathFrames = deathWindowFrames(doc)
   const out: KillFxEntry[] = []
   for (const k of alignFeed(kills, t0Ms, doc).kills) {
     const frame = Math.round(msToFrames(k.replayMs, doc))
-    const killer = posOfPlayerAt(livesByXuid.get(k.xuid), frame, deathFrames)
-    const victim = k.victimXuid
-      ? posOfPlayerAt(livesByXuid.get(k.victimXuid), frame, deathFrames)
-      : null
+    const killer = posOf(k.xuid, frame)
+    const victim = k.victimXuid ? posOf(k.victimXuid, frame) : null
     const origin = killer ?? victim
     if (!origin) continue // ni tueur ni victime localisable : on ne dessine rien
     const complete = killer !== null && victim !== null
@@ -170,7 +133,7 @@ export function buildKillFx(
       deathY: victim ? victim.y : null,
       dist: complete ? Math.hypot(victim.x - killer.x, victim.y - killer.y) : null,
       fam: familyOf(k.weaponKey ? doc.killEffects?.[k.weaponKey] : undefined),
-      slot: slotOfPlayerAt(livesByXuid.get(k.xuid), frame, deathFrames),
+      slot: slotOfPlayerAt(lives.get(k.xuid), frame, deathFrames),
       seed: (frame * 2654435761) % 100003,
     })
   }

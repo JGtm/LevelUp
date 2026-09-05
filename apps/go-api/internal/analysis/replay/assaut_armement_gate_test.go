@@ -1,21 +1,31 @@
 package replay
 
 // assaut_armement_gate_test.go — LE GATE DU PORTAGE DE L'ARMEMENT : la chaîne de PRODUCTION
-// (anneau ti=12 -> montées contiguës -> déduplication de paire -> confrontation locale ->
-// publication) confrontée au relevé A0.3 FIGÉ (les mêmes 28 explosions que le protocole du
-// 2026-09-01), sur les trois films désignés du portage.
+// (anneau ti=12 -> segments -> armements pleins et tenues de désarmement -> déduplication de
+// paire -> confrontation locale à mèche MESURÉE -> publication) confrontée au relevé A0.3
+// FIGÉ (les mêmes 28 explosions que le protocole du 2026-09-01).
 //
-// # LES CRITÈRES, ÉCRITS AVANT LE PREMIER RUN
+// # LES CRITÈRES, RÉÉCRITS LE 2026-09-04 AVEC LA LEVÉE DE LA GARDE DE NOM
 //
 //	(a) sur `35b75a31` (Neutral Bomb) et `1c01e34f` (Husky Raid), la chaîne rend un calque
 //	    NON VIDE et non supprimé ;
-//	(b) chaque explosion du relevé y est précédée d'AU MOINS UN `bomb_armed`, daté à
-//	    4 930 ± 600 ms avant elle — chaque délai mesuré est publié au journal ;
-//	(c) sur `9f57c612` (One Bomb), ZÉRO événement publié — dégradation propre :
-//	    c1. la garde de NOM ne pose jamais `Scanned` (`replaybuild.isArmableBombVariant`,
-//	        testée dans son paquet : TestIsArmableBombVariant) ;
-//	    c2. défense en profondeur : même `Scanned` FORCÉ, la confrontation locale retient le
-//	        calque entier (`Suppressed`) — aucune explosion One Bomb n'a d'armement à la mèche.
+//	(b) TÉMOINS INCHANGÉS AU CHIFFRE PRÈS : chaque explosion du relevé y est précédée d'AU
+//	    MOINS UN `bomb_armed`, daté à 4 930 ± 600 ms avant elle — la mèche courte, mesurée
+//	    avant la lecture pausable. Chaque délai est publié au journal. Aucune tenue de
+//	    désarmement n'est attendue sur ces films (17/17 des poses y ont explosé), donc le
+//	    délai BRUT y vaut le délai corrigé : c'est le contrôle le plus dur possible du
+//	    portage — s'il bougeait d'un armement, la lecture aurait changé de sens ;
+//	(c) ONE BOMB PUBLIE MAINTENANT. Sur `9f57c612`, `c75f33b8` et `df8fcbef`, le calque est
+//	    non supprimé, TOUTES les explosions du relevé sont couvertes, et la mèche MESURÉE du
+//	    film est LONGUE (au-delà de la mèche courte et de sa tolérance) — la lecture
+//	    « mèche pausable » du 2026-09-01, en production depuis le 2026-09-04. La garde de NOM
+//	    qui écartait cette variante (`replaybuild.isArmableBombVariant`) N'EXISTE PLUS ; son
+//	    ratchet vit dans `replaybuild.TestAucuneGardeParNomDeVariante`.
+//
+// CE QUI PROTÈGE DÉSORMAIS est la seule GARDE 2 : la confrontation locale, tout-ou-rien par
+// film. Le critère (c) juge qu'elle DIT OUI là où la lecture tient ; les tests purs
+// (`bomb_armings_test.go`) jugent qu'elle dit NON sur une explosion orpheline et sur des
+// mèches qui se contredisent.
 //
 // L'ORACLE est `a5Explosions` (assaut_a5_explosions_test.go) : le relevé A0.3, commité le
 // 2026-08-27, antérieur à la percée ti=12 — il ne doit rien au canal qu'il juge. L'HORLOGE de
@@ -27,97 +37,204 @@ package replay
 // est en processus.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
-//	go test ./internal/analysis/replay/ -run AssautArmementGate -v -timeout 30m
+//	go test ./internal/analysis/replay/ -run AssautArmementGate -v -timeout 60m
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
-// agFenetreMS est la tolérance du critère (b) : 4 930 ± 600 ms. C'est la fenêtre de la
-// confrontation locale de production (bombFuseWindowMS) — le gate vérifie qu'elles concordent
-// pour que son verdict porte sur la constante réellement livrée.
+// agFenetreMS est la tolérance du critère (b) : 4 930 ± 600 ms, la demi-fenêtre sous laquelle
+// la mèche COURTE a été mesurée (écart-type ~80 ms, CV 0,016 — la marge est large). Elle n'est
+// plus une constante de production : la production MESURE la mèche du film au lieu de la
+// supposer, et c'est ce gate qui vérifie que la valeur mesurée sur les témoins est bien celle
+// d'avant.
 const agFenetreMS = 600
 
-// TestAssautArmementGate applique les critères (a), (b) et (c2).
+// agUneBombe : les trois films de la variante One Bomb du corpus (même découpage que
+// `filmdec.ti12UneBombe`, antérieur à toute mesure de ce lot), et CE QUE LA GARDE 2 EN DIT —
+// FIGÉ SUR LA MESURE DU 2026-09-04, jamais sur une attente.
+//
+// UN SEUL DES TROIS PUBLIE, ET C'EST LE RÉSULTAT, PAS UN MANQUE. La garde 2 mord sur les deux
+// autres, chacun par une branche différente — la couverture pour l'un, la dispersion pour
+// l'autre. Le tout-ou-rien retient alors le film ENTIER : c'est exactement sa raison d'être,
+// et le journal du gate imprime, explosion par explosion, le délai corrigé qui l'a déclenché.
+//
+// ET DANS LES DEUX CAS, LE FAIT QUI LA DÉCLENCHE EST UNE EXPLOSION DÉJÀ CONNUE POUR ANORMALE :
+// `c75f33b8` @395 724 et `df8fcbef` @778 033 sont EXACTEMENT les deux entrées d'`a5SansPorteur`
+// (mesure du 2026-08-31, ANTÉRIEURE à ce lot : les explosions dont AUCUN slot de joueur ne
+// porte le point de mode — il n'existe que sur le slot d'ÉQUIPE). L'anneau ne les explique pas
+// davantage que le statborg : la première n'a aucun armement dans la fenêtre de sens, la
+// seconde rend 27 845 ms là où les trois autres du même film s'accordent à ~16 000. La garde 2
+// n'invente donc pas un défaut, elle retrouve celui que la partition avait déjà relevé — et
+// elle refuse de publier un film qu'elle n'explique qu'aux trois quarts.
+type agUneBombeCas struct {
+	id                    string
+	publie                bool
+	couvertes, explosions int
+	raison                string
+}
+
+var agUneBombe = []agUneBombeCas{
+	{"9f57c612", true, 4, 4,
+		"les 4 explosions ont leur armement, meche mesuree ~16 183 ms (CV 0,010)"},
+	{"c75f33b8", false, 2, 3,
+		"l'explosion 395 724 (a5SansPorteur) n'a AUCUN armement dans la fenetre de sens ; les " +
+			"deux autres rendent 16 318 et 15 900 ms — garde 2 par la COUVERTURE"},
+	{"df8fcbef", false, 4, 4,
+		"les 4 sont couvertes, mais l'explosion 778 033 (a5SansPorteur) rend 27 845 ms contre " +
+			"15 965 / 15 929 / 16 785 pour les trois autres : CV 0,331 > 0,20 — garde 2 par la " +
+			"DISPERSION"},
+}
+
+// TestAssautArmementGate applique les critères (a), (b) et (c).
 func TestAssautArmementGate(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
-	if agFenetreMS != bombFuseWindowMS {
-		t.Fatalf("fenetre du gate (%d ms) != fenetre de production (%d ms) — accorder avant de juger",
-			agFenetreMS, bombFuseWindowMS)
-	}
 	defer amArmeSentinelle(t, "TestAssautArmementGate")()
 	release := filmdec.LockProcessDecode()
 	defer release()
 
-	// (a) + (b) — les deux films où le canal est prouvé.
+	// (a) + (b) — LES TÉMOINS. Toute dérive ici est une régression, pas un effet de bord.
 	for _, id := range []string{"35b75a31", "1c01e34f"} {
-		armings, cov := agExtraire(t, cache, id)
+		armings, cov, v := agExtraire(t, cache, id)
 		if cov.Suppressed || len(armings) == 0 {
-			t.Errorf("%s : calque vide ou supprime (montees %d, armements %d, explosions %d, "+
+			t.Errorf("%s : calque vide ou supprime (segments %d, armements %d, explosions %d, "+
 				"couvertes %d) — critere (a) NON tenu", id, cov.Rises, cov.Armed,
 				cov.Detonations, cov.DetonationsCovered)
 			continue
 		}
-		t.Logf("%s : %d lectures, %d montees, %d armements (%d fondus de paire), %d publies",
-			id, cov.Reads, cov.Rises, cov.Armed, cov.PairMerged, cov.Published)
+		t.Logf("%s : %d lectures, %d segments, %d armements (%d fondus de paire), %d publies, "+
+			"meche MESUREE %d ms (CV %.3f)",
+			id, cov.Reads, cov.Rises, cov.Armed, cov.PairMerged, cov.Published, v.FuseMS, v.CV)
+		if d := v.FuseMS - BombFuseMS; d < -agFenetreMS || d > agFenetreMS {
+			t.Errorf("%s : meche mesuree %d ms hors de %d +/- %d — le temoin a DERIVE (critere (b))",
+				id, v.FuseMS, BombFuseMS, agFenetreMS)
+		}
 		agVerifierDelais(t, id, armings, a5Explosions[id])
 	}
 
-	// (c2) — One Bomb, garde de nom court-circuitée : la confrontation locale doit retenir.
-	armings, cov := agExtraire(t, cache, "9f57c612")
-	if !cov.Suppressed || len(armings) != 0 {
-		t.Errorf("9f57c612 (One Bomb, Scanned force) : %d evenement(s) publie(s), suppressed=%v "+
-			"— critere (c2) NON tenu (montees %d, explosions %d, couvertes %d)",
-			len(armings), cov.Suppressed, cov.Rises, cov.Detonations, cov.DetonationsCovered)
-	} else {
-		t.Logf("9f57c612 : calque retenu a la source (montees %d, explosions %d, couvertes %d) "+
-			"— degradation propre", cov.Rises, cov.Detonations, cov.DetonationsCovered)
+	// (c) — ONE BOMB, la variante que la garde de nom écartait.
+	for _, f := range agUneBombe {
+		armings, cov, v := agExtraire(t, cache, f.id)
+		t.Logf("%s (One Bomb) : %d segments, %d armements, %d publies, %d/%d explosions "+
+			"couvertes, meche MESUREE %d ms (CV %.3f, retenu %v, meche incoherente %v) — %s",
+			f.id, cov.Rises, cov.Armed, cov.Published, cov.DetonationsCovered, cov.Detonations,
+			v.FuseMS, v.CV, cov.Suppressed, v.Inconsistent, f.raison)
+		agJugerUneBombe(t, f, armings, cov, v)
+	}
+}
+
+// agJugerUneBombe applique le critère (c) à UN film One Bomb, contre le verdict FIGÉ de la
+// table : celui qui publie doit publier (couverture pleine, mèche LONGUE), ceux que la garde 2
+// retient doivent rester retenus AVEC LA MÊME COUVERTURE. Les deux sens comptent — un film qui
+// se mettrait à publier sans qu'on sache pourquoi est une dérive autant qu'un film qui
+// cesserait de le faire.
+func agJugerUneBombe(t *testing.T, f agUneBombeCas, armings []BombArming,
+	cov *BombArmingsCoverage, v bombFuseVerdict) {
+	t.Helper()
+	id := f.id
+	if cov.Detonations != f.explosions || cov.DetonationsCovered != f.couvertes {
+		t.Errorf("%s (One Bomb) : %d/%d explosions couvertes, fige %d/%d — critere (c) NON tenu",
+			id, cov.DetonationsCovered, cov.Detonations, f.couvertes, f.explosions)
+	}
+	if publie := !cov.Suppressed && len(armings) > 0; publie != f.publie {
+		t.Errorf("%s (One Bomb) : publie=%v, fige %v (retenu %v, incoherente %v, CV %.3f) — "+
+			"critere (c) NON tenu", id, publie, f.publie, cov.Suppressed, v.Inconsistent, v.CV)
+		return
+	}
+	if !f.publie {
+		return
+	}
+	if v.FuseMS <= BombFuseMS+agFenetreMS {
+		t.Errorf("%s (One Bomb) : meche mesuree %d ms — attendue LONGUE (au-dela de %d ms), "+
+			"sinon la lecture pausable n'est pas celle qui a servi",
+			id, v.FuseMS, BombFuseMS+agFenetreMS)
+	}
+	for _, det := range a5Explosions[id] {
+		meilleur, trouve := 0, false
+		for _, a := range armings {
+			if d := det - a.TimeMS; d > 0 && (!trouve || d < meilleur) {
+				meilleur, trouve = d, true
+			}
+		}
+		if !trouve {
+			t.Logf("%s : explosion %7d ms — aucun armement PUBLIE avant elle", id, det)
+			continue
+		}
+		t.Logf("%s : explosion %7d ms <- bomb_armed a %7d ms, delai BRUT %6d ms (meche mesuree "+
+			"%d ms — l'ecart est la somme des tenues de desarmement)",
+			id, det, det-meilleur, meilleur, v.FuseMS)
 	}
 }
 
 // agExtraire déroule la chaîne de production sur UN film : le balayage que `BuildFromFilm`
 // ferait (mêmes fonctions), puis `buildBombArmings` avec l'oracle figé pour explosions.
-func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCoverage) {
+func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCoverage, bombFuseVerdict) {
 	t.Helper()
 	src, ok, err := filmcache.Open(cache, id)
 	if err != nil || !ok {
-		t.Fatalf("film %s absent du cache (%s) : %v — le gate exige les trois films", id, cache, err)
+		t.Fatalf("film %s absent du cache (%s) : %v — le gate exige ses films", id, cache, err)
 	}
 	clock := map[int]int{}
-	for _, c := range src.Chunks() {
+	for _, c := range src.Meta() {
 		clock[c.Index] = c.StartMS
 	}
-	dir := filepath.Join(cache, "film_chunks", id)
-	reads := decodeFilmBombReads(dir, id, BombInput{Scanned: true, ChunkStartMS: clock})
-	agDiagnostiquerMontees(t, id, reads, a5ExplosionTimes(id))
+	film, err := filmsource.LoadDir(filepath.Join(cache, "film_chunks", id), nil)
+	if err != nil {
+		t.Fatalf("chunks du film %s illisibles : %v", id, err)
+	}
+	reads := decodeFilmBombReads(filmdec.NewFilmContext(film), id, BombInput{Scanned: true, ChunkStartMS: clock})
+	agDiagnostiquerSegments(t, id, reads, a5ExplosionTimes(id))
 	// Grille synthétique : originMS=0, pas 100 ms, axe assez long pour tout le film — le gate
 	// juge les délais en ms, la conversion en frames est couverte par les tests unitaires.
 	return buildBombArmings(reads, a5ExplosionTimes(id), scoreClock{intervalMS: 100, frames: 1 << 20})
 }
 
-// agDiagnostiquerMontees publie CHAQUE montée dédupliquée avec ses quanta : c'est la mesure qui
-// départage une montée COMPLÈTE (le plein de l'anneau -> bombe armée) d'une montée AVORTÉE (un
-// hold relâché). Le marqueur `<- EXPLOSION` dit lesquelles la mèche confirme.
-func agDiagnostiquerMontees(t *testing.T, id string, reads []filmdec.NavpointRadialRead, explosions []int) {
+// agDiagnostiquerSegments publie CHAQUE armement dédupliqué avec ses quanta, et CHAQUE tenue
+// de désarmement avec sa pente : c'est la matière brute de la lecture pausable, montrée avant
+// tout verdict. Le marqueur `<- EXPLOSION` dit quels armements une explosion suit de près.
+func agDiagnostiquerSegments(t *testing.T, id string, reads []filmdec.NavpointRadialRead, explosions []int) {
 	t.Helper()
 	cov := &BombArmingsCoverage{}
-	for _, r := range dedupPairedRises(filmdec.NavpointContiguousRises(reads), cov) {
+	full, pauses := classifyBombSegments(filmdec.NavpointSegments(reads), cov)
+	for _, r := range dedupPairedSegments(full, cov) {
 		lien := ""
 		for _, det := range explosions {
-			if d := det - int(r.EndMS); d >= BombFuseMS-agFenetreMS && d <= BombFuseMS+agFenetreMS {
-				lien = " <- EXPLOSION"
+			if d := det - int(r.EndMS); d > 0 && d <= BombFuseSenseWindowMS {
+				lien = fmt.Sprintf(" <- EXPLOSION a +%d ms", d)
 			}
 		}
-		t.Logf("%s : montee %7d..%7d ms, q %3d -> %3d, %2d ech.%s",
-			id, r.StartMS, r.EndMS, r.QStart, r.QEnd, r.Samples, lien)
+		t.Logf("%s : armement %7d..%7d ms, q %3d -> %3d (min %3d, max %3d), %2d ech.%s",
+			id, r.StartMS, r.EndMS, r.QStart, r.QEnd, r.QMin, r.QMax, r.Samples, lien)
+	}
+	for slot, ps := range pauses {
+		for _, p := range ps {
+			durS := float64(p.EndMS-p.StartMS) / 1000
+			t.Logf("%s : tenue de desarmement slot %d, %7d..%7d ms (%.1f s), q %3d -> %3d, "+
+				"pente %.1f q/s", id, slot, p.StartMS, p.EndMS, durS, p.QStart, p.QEnd,
+				float64(int(p.QStart)-int(p.QEnd))/durS)
+		}
+	}
+	// LE DÉLAI CORRIGÉ, EXPLOSION PAR EXPLOSION — c'est la matière exacte sur laquelle la
+	// garde 2 statue : une explosion sans armement dans la fenêtre de sens la fait mordre par
+	// la couverture, un délai qui s'écarte des autres la fait mordre par la dispersion.
+	for _, det := range explosions {
+		d, ok := bombCorrectedDelay(full, pauses, int32(det))
+		if !ok {
+			t.Logf("%s : explosion %7d ms — AUCUN armement dans la fenetre de sens (garde 2)",
+				id, det)
+			continue
+		}
+		t.Logf("%s : explosion %7d ms — delai CORRIGE %6d ms", id, det, d)
 	}
 }
 
@@ -144,7 +261,7 @@ func agVerifierDelais(t *testing.T, id string, armings []BombArming, explosions 
 				"critere (b) NON tenu", id, det, BombFuseMS-agFenetreMS, BombFuseMS+agFenetreMS)
 			continue
 		}
-		t.Logf("%s : explosion %7d ms <- bomb_armed a %7d ms, delai %4d ms (meche %d ms)",
+		t.Logf("%s : explosion %7d ms <- bomb_armed a %7d ms, delai %4d ms (meche courte %d ms)",
 			id, det, det-meilleur, meilleur, BombFuseMS)
 	}
 }

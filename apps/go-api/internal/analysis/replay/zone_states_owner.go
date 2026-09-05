@@ -109,7 +109,21 @@ func zoneLetterRanks(gauge map[int]uint32, catalog int, hill bool) map[int]int {
 	for ref := range gauge {
 		refs = append(refs, ref)
 	}
-	sort.Slice(refs, func(i, j int) bool { return gauge[refs[i]] < gauge[refs[j]] })
+	// ORDRE TOTAL : le slot de jauge, PUIS la reference de zone.
+	//
+	// LE SLOT SEUL N'EST PAS UNE CLE (correction du 2026-09-02, item 0.4bis etendu de
+	// PLAN_CUISSON_PERF). `pairGaugeSlots` garantit AU PLUS UNE jauge PAR ZONE — jamais au plus
+	// une zone par jauge : rien n'empeche un meme slot d'etre l'argmax de deux zones (a la
+	// difference d'`electZoneOwners`, qui tient un `held` par canal). Deux zones ex aequo sur le
+	// slot laissaient donc l'ordre d'iteration de la MAP `gauge`, tire au sort a chaque
+	// execution, decider quelle zone s'appelle A et laquelle s'appelle B. La reference de zone
+	// ferme l'egalite avec une donnee de l'element, jamais un rang d'iteration.
+	sort.Slice(refs, func(i, j int) bool {
+		if gauge[refs[i]] != gauge[refs[j]] {
+			return gauge[refs[i]] < gauge[refs[j]]
+		}
+		return refs[i] < refs[j]
+	})
 	out := make(map[int]int, len(refs))
 	for i, ref := range refs {
 		out[ref] = i

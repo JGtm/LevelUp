@@ -271,7 +271,7 @@ func worldPrecWalkStats(dir string, typeIndex int) worldPrecWalk {
 	if n == 0 {
 		return w
 	}
-	band := worldObjectSlotBand(dir, n, typeIndex)
+	band := worldObjectSlotBandDir(dir, n, typeIndex)
 	if len(band) == 0 {
 		return w
 	}

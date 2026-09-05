@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // world_object_precision_guard_test.go — GARDE-RAIL du correctif du 2026-08-15.
@@ -74,7 +75,11 @@ func TestInstallWorldObjectPrecisionKeepsDefaultWithoutWidths(t *testing.T) {
 // largeurs venant du MÊME champ, l'état « bornes armées, largeurs oubliées » n'existe pas —
 // c'est la raison d'être du champ unique `Options.MapQuant`.
 func TestBuildFromFilmRefusesWithoutMapQuant(t *testing.T) {
-	if _, err := BuildFromFilm("minifilm", "halo_infinite", MiniFilmDir, Options{}); err == nil {
+	film, err := filmsource.LoadDir(MiniFilmDir, nil)
+	if err != nil {
+		t.Fatalf("mini-bobine illisible : %v", err)
+	}
+	if _, err := BuildFromFilm("minifilm", "halo_infinite", film, Options{}); err == nil {
 		t.Fatal("BuildFromFilm a produit un document sans entrée de catalogue : les positions " +
 			"ne seraient que des quanta déquantifiés au hasard")
 	}
@@ -85,13 +90,13 @@ func TestBuildFromFilmRefusesWithoutMapQuant(t *testing.T) {
 // de décodage — le descripteur est un global, deux films décodés en parallèle se voleraient
 // leurs largeurs.
 func TestBuildFromFilmWiresWorldObjectPrecision(t *testing.T) {
-	src, err := os.ReadFile("build.go")
+	src, err := os.ReadFile("build_from_film.go")
 	if err != nil {
 		t.Fatal(err)
 	}
 	body, ok := funcBody(string(src), "func BuildFromFilm(")
 	if !ok {
-		t.Fatal("BuildFromFilm introuvable dans build.go : ce garde-rail ne garde plus rien")
+		t.Fatal("BuildFromFilm introuvable dans build_from_film.go : ce garde-rail ne garde plus rien")
 	}
 	install := regexp.MustCompile(`defer\s+installWorldObjectPrecision\(\*opt\.MapQuant\b`)
 	if !install.MatchString(body) {

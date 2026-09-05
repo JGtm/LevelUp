@@ -5,22 +5,27 @@ package killcollector
 // tirs (G.2bis — dernière pièce de la conception G.0/G.2 : la dette bloquante « table pas
 // append-only » est fermée, ce fichier câble enfin la CAPTURE).
 //
-// # POURQUOI UN PONT DISQUE, ET PAS UNE VARIANTE MÉMOIRE
+// # LE FILM EST CHARGÉ UNE FOIS, ET LE PONT DISQUE A DISPARU
 //
-// `analysis/replay`/`analysis/filmdec` exposent QUATRE lectures « hors ligne » (I/O disque,
-// jamais depuis un chemin de requête, cf. leurs propres en-têtes) : ScanFilmBipedPositions,
-// ScanFilmClockOrigin, ScanFilmPlayerIndices, ScanFilmDeaths. Le collecteur, lui, décode
-// aujourd'hui les chunks d'un film EN MÉMOIRE PURE (`killsource.Decode(..., ChunkSourceOf(chunks),
-// nil)`) — il ne les a jamais écrits sur disque.
+// `analysis/replay`/`analysis/filmdec` exposent QUATRE lectures du film : ScanBipedPositions,
+// ScanClockOrigin, ScanPlayerIndices, ScanDeaths. Le collecteur, lui, tient les chunks EN MÉMOIRE
+// PURE (téléchargés par `FilmChunksForMatch`) — il ne les a jamais écrits sur disque.
 //
-// Deux ponts étaient possibles (cf. plan G.2, §3bis) : (a) écrire les chunks déjà en mémoire dans
-// un répertoire temporaire et appeler les quatre fonctions exportées telles quelles ; (b) des
-// variantes mémoire de chacune. (b) est écarté : ce serait un DEUXIÈME décodeur des mêmes octets
-// pour chacune des quatre lectures — la règle qui gouverne tout ce chantier (« deux décodeurs du
-// même fait divergeraient », répétée dans killpos.go/deaths_source.go/identity.go) l'interdit. (a)
-// ne décode RIEN : il recopie des octets déjà téléchargés vers le nom de fichier attendu
-// (`chunk_NN.bin`, identique au cache film hérité — cf. writeChunksToTempDir). La seule façon
-// dont il peut échouer est un disque plein ou un chemin illisible, jamais une position fausse.
+// HISTORIQUE, ET CE QUI L'A FERMÉ. Deux ponts étaient possibles (plan G.2, §3bis) : (a) écrire les
+// chunks déjà en mémoire dans un répertoire temporaire et appeler les quatre fonctions `ScanFilm*`
+// telles quelles ; (b) des variantes mémoire de chacune. (b) était écarté parce que ç'aurait été un
+// DEUXIÈME décodeur des mêmes octets pour chacune des quatre lectures — la règle qui gouverne tout
+// ce chantier (« deux décodeurs du même fait divergeraient », répétée dans
+// killpos.go/deaths_source.go/identity.go) l'interdit. (a) a donc tenu jusqu'au lot 1 de
+// PLAN_CUISSON_PERF (item 1.6, 2026-09-02) : quatre écritures de fichiers, puis QUATRE relectures
+// et QUATRE décompressions du film entier.
+//
+// Le lot 1 a rendu (b) possible SANS second décodeur : `internal/analysis/filmsource` est la source
+// unique du film (une décompression, un découpage en paquets, une grammaire), et les quatre
+// balayages prennent désormais un `*filmsource.Film`. Le collecteur charge donc le film UNE fois
+// pour les morts (`killsource.Decode`) et le repasse tel quel ici. Plus de répertoire temporaire,
+// plus de disque plein possible — et le seul refus qui reste est celui qui protégeait d'une
+// position fausse : la séquence trouée (cf. refuserSequenceTrouee).
 //
 // # LE PONT SLOT -> XUID EST CELUI DU REJEU 2D, PAS UNE RÉSOLUTION LOCALE
 //
@@ -52,24 +57,25 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"strconv"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
-	"levelup/go-api/internal/sync/haloclient"
 )
 
 // Compteurs de sante de la passe de positions (ADR 0009 : entiers, snake_case, aucun ratio).
 const (
-	metricPositionsMatches      = "killsource_positions_matchs_couverts"
-	metricPositionsRows         = "killsource_positions_lignes_ecrites"
-	metricPositionsNoMap        = "killsource_positions_sans_carte"
-	metricPositionsNoOrigin     = "killsource_positions_sans_horloge"
+	metricPositionsMatches  = "killsource_positions_matchs_couverts"
+	metricPositionsRows     = "killsource_positions_lignes_ecrites"
+	metricPositionsNoMap    = "killsource_positions_sans_carte"
+	metricPositionsNoOrigin = "killsource_positions_sans_horloge"
+	// metricPositionsBridgeFail : le film n'a pas pu être présenté aux balayages. Le nom date du
+	// pont disque (supprimé au lot 1) ; il reste INCHANGÉ parce qu'un compteur publié est une
+	// interface, et sa seule cause aujourd'hui est la séquence trouée.
 	metricPositionsBridgeFail   = "killsource_positions_pont_echec"
 	metricPositionsAmbiguous    = "killsource_positions_index_ambigus"
 	metricPositionsNoBridge     = "killsource_positions_sans_pont_identite"
@@ -85,7 +91,7 @@ const (
 // structurellement aucune position à offrir. Utiliser la liste pré-fusion n'est donc pas une
 // approximation, c'est la population exacte qui peut avoir une position.
 func (c *KillSourceCollector) collectPositions(
-	ctx context.Context, matchID string, chunks []haloclient.FilmChunk,
+	ctx context.Context, matchID string, film *filmsource.Film,
 	ids MatchIdentities, deaths []persist.KillEventInsert,
 ) {
 	if !c.caps.Has(games.CapFilmKillPositions) {
@@ -115,16 +121,14 @@ func (c *KillSourceCollector) collectPositions(
 		return
 	}
 
-	dir, cleanup, err := writeChunksToTempDir(chunks)
-	if err != nil {
+	if err := refuserSequenceTrouee(film); err != nil {
 		observability.AddInt(metricPositionsBridgeFail, 1)
-		slog.ErrorContext(ctx, "killsource: positions — pont disque echoue",
+		slog.ErrorContext(ctx, "killsource: positions — film inexploitable",
 			"match_id", matchID, "err", err)
 		return
 	}
-	defer cleanup()
 
-	rep, rows, err := buildPositionRows(dir, entry, ids, kills, matchID)
+	rep, rows, err := buildPositionRows(film, entry, ids, kills, matchID)
 	if err != nil {
 		slog.WarnContext(ctx, "killsource: positions — passe ignoree", "match_id", matchID, "err", err)
 		return
@@ -158,32 +162,36 @@ func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID stri
 	return filmdec.MapQuantEntry{}, fmt.Errorf("%w (candidats: %v)", filmdec.ErrUnknownMapBounds, keys.Names)
 }
 
-// buildPositionRows : les QUATRE lectures hors ligne + la composition pure, une fois le pont
-// disque en place. Découpée de [collectPositions] pour rester sous le plafond de longueur du
-// dépôt (80 lignes) — chaque refus reste journalisable par l appelant, jamais avalé ici.
+// buildPositionRows : les QUATRE lectures du film + la composition pure. Découpée de
+// [collectPositions] pour rester sous le plafond de longueur du dépôt (80 lignes) — chaque refus
+// reste journalisable par l appelant, jamais avalé ici.
+//
+// LES QUATRE BALAYAGES PARTAGENT LE FILM DÉJÀ CHARGÉ (lot 1, item 1.6) : ils prenaient chacun un
+// répertoire et relisaient le film entier depuis le disque, décompression comprise.
 func buildPositionRows(
-	dir string, entry filmdec.MapQuantEntry, ids MatchIdentities, kills []replay.KillRef, matchID string,
+	film *filmsource.Film, entry filmdec.MapQuantEntry, ids MatchIdentities,
+	kills []replay.KillRef, matchID string,
 ) (replay.KillPosReport, []persist.KillPositionInsert, error) {
 	bipedOpt := filmdec.DefaultScanFilmOptions()
 	rng := entry.Range()
 	bipedOpt.WorldRange = &rng
-	positions, err := filmdec.ScanFilmBipedPositions(dir, bipedOpt)
+	positions, err := filmdec.ScanBipedPositions(film, bipedOpt)
 	if err != nil {
 		return replay.KillPosReport{}, nil, fmt.Errorf("positions bipeds: %w", err)
 	}
 
-	originUS, err := replay.ScanFilmClockOrigin(dir)
+	originUS, err := replay.ScanClockOrigin(film)
 	if err != nil {
 		observability.AddInt(metricPositionsNoOrigin, 1)
 		return replay.KillPosReport{}, nil, fmt.Errorf("horloge du film: %w", err)
 	}
 
-	deathsFilm, err := replay.ScanFilmDeaths(dir)
+	deathsFilm, err := replay.ScanDeaths(film)
 	if err != nil {
 		return replay.KillPosReport{}, nil, fmt.Errorf("fil des morts (rejeu): %w", err)
 	}
 
-	idx, err := replay.ScanFilmPlayerIndices(dir, rosterUint64(ids.XUIDs))
+	idx, err := replay.ScanPlayerIndices(film, rosterUint64(ids.XUIDs))
 	if err != nil {
 		return replay.KillPosReport{}, nil, fmt.Errorf("index de joueur: %w", err)
 	}
@@ -279,57 +287,33 @@ func toKillPositionRows(matchID string, positions []replay.KillPosition) []persi
 	return out
 }
 
-// writeChunksToTempDir ecrit les chunks DEJA EN MEMOIRE dans un repertoire temporaire, au format
-// chunk_NN.bin attendu par les scanners disque (identique au cache film herite,
-// haloclient.LocalFilmCache — memes octets, zlib ou non : ReadFilmChunk decompresse a la lecture,
-// et l operation est idempotente sur des octets deja clairs). AUCUN DECODAGE : un pont, rien de
-// plus — la seule facon d echouer est un disque plein ou un chemin illisible.
+// refuserSequenceTrouee : REFUS SUR TROU DE SEQUENCE, le seul controle du disparu pont disque
+// qui protegeait d une position FAUSSE — et il survit tel quel, sans disque.
 //
-// REFUS SUR TROU DE SEQUENCE. `ChunkSourceOf` (bridge.go) tolere des index non contigus (les
-// trous restent nil, `killsource.Decode` fait de l acces direct par index) ; les QUATRE scanners
-// disque, eux, comptent les chunks par PREFIXE CONTIGU (filmdec.CountFilmChunks s arrete au
-// premier index manquant — c est cette meme fonction que ScanFilmDeaths utilise pour trouver le
-// DERNIER chunk, cense etre le kill-feed). Un film troue verrait donc ces quatre lectures
-// s arreter prematurement, en silence, sur un PREFIXE du film — jamais une erreur. Le controle
-// ci-dessous refuse ce cas au lieu de le laisser produire une lecture partielle plausible : le
-// critere de ce chantier est qu aucune position fausse ne soit possible, un film incomplet perd
-// donc SES positions plutot que d en risquer de fausses.
-func writeChunksToTempDir(chunks []haloclient.FilmChunk) (string, func(), error) {
-	maxIdx := 0
-	for _, c := range chunks {
-		if c.Index > maxIdx {
-			maxIdx = c.Index
+// `FilmOf` (bridge.go) tolere des index non contigus (les trous restent des chunks VIDES,
+// `killsource.Decode` fait de l acces direct par index) ; les QUATRE balayages, eux, parcourent
+// les chunks de donnees par numero (`filmdec.FilmChunkNumbers`) et un chunk vide ne rend aucun
+// paquet — un film troue leur ferait donc lire un film AMPUTE, en silence, jamais une erreur. Le
+// controle ci-dessous refuse ce cas au lieu de le laisser produire une lecture partielle
+// plausible : le critere de ce chantier est qu aucune position fausse ne soit possible, un film
+// incomplet perd donc SES positions plutot que d en risquer de fausses.
+//
+// LA REGLE EST CELLE D AVANT, A L IDENTIQUE : le controle porte sur les chunks de DONNEES
+// (numeros 1..N), jamais sur l en-tete — c est ce que faisait `filmdec.CountFilmChunks`, qui
+// comptait a partir de `chunk_01.bin`. Un film reduit au seul chunk 0, ou vide, passe donc ici
+// et se fait refuser par les balayages eux-memes (`ErrNoFilmChunk`).
+func refuserSequenceTrouee(film *filmsource.Film) error {
+	if film == nil {
+		return fmt.Errorf("film absent")
+	}
+	for i := 1; i < film.NumChunks(); i++ {
+		if len(film.Chunk(i)) == 0 {
+			return fmt.Errorf("sequence de chunks trouee (chunk %d absent sur %d attendus depuis "+
+				"l index 1) — positions ignorees plutot que lues sur un film ampute",
+				i, film.NumChunks()-1)
 		}
 	}
-	dir, err := os.MkdirTemp("", "levelup-killpos-")
-	if err != nil {
-		return "", nil, fmt.Errorf("mkdir temporaire: %w", err)
-	}
-	cleanup := func() {
-		if err := os.RemoveAll(dir); err != nil {
-			slog.Warn("killsource: positions — nettoyage du repertoire temporaire echoue",
-				"dir", dir, "err", err)
-		}
-	}
-
-	for _, c := range chunks {
-		if c.Index < 0 || len(c.Data) == 0 {
-			continue
-		}
-		path := filepath.Join(dir, fmt.Sprintf("chunk_%02d.bin", c.Index))
-		if err := os.WriteFile(path, c.Data, 0o600); err != nil {
-			cleanup()
-			return "", nil, fmt.Errorf("ecriture %s: %w", path, err)
-		}
-	}
-
-	if got := filmdec.CountFilmChunks(dir); got != maxIdx {
-		cleanup()
-		return "", nil, fmt.Errorf("sequence de chunks trouee (attendu %d chunks contigus depuis "+
-			"l index 1, filmdec en compte %d) — positions ignorees plutot que lues sur un prefixe "+
-			"du film", maxIdx, got)
-	}
-	return dir, cleanup, nil
+	return nil
 }
 
 // publishPositionsPass : les compteurs de sante (ADR 0009) et la trace de la passe.

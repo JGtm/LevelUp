@@ -44,6 +44,8 @@ package filmdec
 // L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : le hook installé est
 // un global de paquet.
 
+import "levelup/go-api/internal/analysis/filmsource"
+
 // abilityEnergyName / abilityEnergyNameAlt : les deux étiquettes de registre d'i56 — les
 // films portent l'une OU l'autre (avec ou sans le suffixe `-component`, même dualité que
 // `abilityPredictedName` pour i57). L'index d'itérateur est résolu PAR NOM EXACT dans le
@@ -119,9 +121,23 @@ type AbilityChargeStats struct {
 // `abilityEnergyHook`, qui est un global de paquet. L'appelant doit détenir
 // LockProcessDecode (BuildFromFilm le fait). Le hook est restauré à la sortie, y compris
 // en cas d'erreur.
+//
+// ScanFilmAbilityCharges est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film, ouvre un
+// contexte pour elle seule, puis appelle [ScanAbilityCharges]. La cuisson, elle, passe le
+// contexte qu'elle partage entre tous ses balayages.
 func ScanFilmAbilityCharges(dir string) ([]AbilityCharge, AbilityChargeStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, AbilityChargeStats{}, err
+	}
+	return ScanAbilityCharges(NewFilmContext(film))
+}
+
+// ScanAbilityCharges décode les lectures de charge d'équipement d'un film DEJA CHARGE. Cf.
+// [ScanFilmAbilityCharges] pour la doctrine du balayage.
+func ScanAbilityCharges(fc *FilmContext) ([]AbilityCharge, AbilityChargeStats, error) {
 	var st AbilityChargeStats
-	s, err := resolveAbilityScan(dir)
+	s, err := resolveAbilityScan(fc)
 	if err != nil {
 		return nil, st, err
 	}
@@ -145,11 +161,11 @@ func ScanFilmAbilityCharges(dir string) ([]AbilityCharge, AbilityChargeStats, er
 
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + s.lay.TotalBits()
 	for _, c := range s.chunks {
-		data, err := ReadFilmChunk(s.dir, c)
-		if err != nil {
+		data, pks, ok := s.fc.ChunkAt(c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}

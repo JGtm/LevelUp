@@ -119,11 +119,11 @@ func TestObjectifTi11Ancre(t *testing.T) {
 		if n == 0 {
 			continue
 		}
-		arch, _, err := objectiveArchetype(dir)
+		arch, _, err := objectiveArchetypeDir(dir)
 		if err != nil {
 			continue
 		}
-		band := observedSlotBand(dir, n, ObjectiveTypeIndex)
+		band := observedSlotBandDir(dir, n, ObjectiveTypeIndex)
 		if len(band) == 0 {
 			continue
 		}

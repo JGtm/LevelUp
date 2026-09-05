@@ -107,12 +107,12 @@ func TestObjectifTi11DeltaChainage(t *testing.T) {
 		if n == 0 {
 			continue
 		}
-		a, _, err := objectiveArchetype(dir)
+		a, _, err := objectiveArchetypeDir(dir)
 		if err != nil {
 			continue
 		}
 		arch = a
-		band := observedSlotBand(dir, n, ObjectiveTypeIndex)
+		band := observedSlotBandDir(dir, n, ObjectiveTypeIndex)
 		if len(band) == 0 {
 			continue
 		}

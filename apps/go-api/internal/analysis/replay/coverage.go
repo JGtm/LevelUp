@@ -176,11 +176,11 @@ type Coverage struct {
 	// causes nommées de chaque rejet. Absente = l'appelant n'a pas reconnu un film de la
 	// famille bomb ; présente et vide de portages = film d'Assaut où rien n'a pu être nommé.
 	BombCarries *BombCarriesCoverage `json:"bombCarries,omitempty"`
-	// BombArmings est la couverture de L'ARMEMENT DE LA BOMBE d'Assaut (schéma 29, cf.
-	// document_bomb_armings.go) : lectures de l'anneau, montées, armements retenus, et le
+	// BombArmings est la couverture de L ARMEMENT DE LA BOMBE d Assaut (schéma 29, cf.
+	// document_bomb_armings.go) : lectures de l'anneau, segments, armements retenus, et le
 	// verdict de la confrontation locale aux explosions (`suppressed`). Son ABSENCE dit que
-	// l'appelant n'a PAS reconnu une variante d'Assaut couverte (la garde de mode est chez
-	// `replaybuild` — One Bomb n'y entre jamais).
+	// l'appelant n'a PAS reconnu un film de la FAMILLE bomb (la garde de mode est chez
+	// `replaybuild` — One Bomb y entre depuis le 2026-09-04, schéma 39).
 	BombArmings *BombArmingsCoverage `json:"bombArmings,omitempty"`
 	// WeaponChanges est la couverture des PRISES ET LACHERS d'arme (schéma 25, cf.
 	// document_weapon_changes.go) : les changements décodés, ceux publiés, et ce qui a été
@@ -248,6 +248,13 @@ type Coverage struct {
 	// leur ramasseur, et comment leurs fins se répartissent entre observé et ouvert. Publiée
 	// même vide, même raison que `weaponChanges`.
 	GroundWeaponItems *GroundWeaponItemsCoverage `json:"groundWeaponItems,omitempty"`
+	// Vehicles est la couverture du calque des VÉHICULES (schéma 29, cf. document_vehicles.go) :
+	// vies recensées, publiées, celles dont le châssis est lu et résolu en famille de sprite (et
+	// le détail des châssis NON résolus, châssis par châssis), points de trajectoire, et les
+	// épisodes d'occupation ventilés par précision de leurs bornes. Publiée même vide, même
+	// raison que `placements` et `groundWeapons` : un film d'arène sans véhicule et un film qu'on
+	// n'a pas su balayer rendent tous deux zéro véhicule — seul `scanned` les distingue.
+	Vehicles *VehicleCoverage `json:"vehicles,omitempty"`
 	// ObjectiveObjects est la couverture du calque des objets d'objectif LIBRES : combien le
 	// manifeste en déclare de publiables, combien de vies et de points sortent, et ce qui a été
 	// écarté hors axe (cf. document_objective_objects.go).

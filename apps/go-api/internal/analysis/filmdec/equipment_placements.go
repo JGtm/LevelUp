@@ -51,6 +51,8 @@ package filmdec
 import (
 	"fmt"
 	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // EquipmentPlacement est UNE pose d'objet d'équipement, telle que le film la porte.
@@ -112,24 +114,45 @@ type EquipmentPlacementStats struct {
 // écrit `mppLeadBits`. L'appelant doit détenir LockProcessDecode ; les globaux sont restaurés.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+//
+// ScanFilmEquipmentPlacements est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanEquipmentPlacements].
 func ScanFilmEquipmentPlacements(
 	dir string, wr *Vec3Range,
+) ([]EquipmentPlacement, EquipmentPlacementStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, EquipmentPlacementStats{ByID: map[uint32]int{}}, err
+	}
+	return ScanEquipmentPlacements(NewFilmContext(film), wr)
+}
+
+// ScanEquipmentPlacements décode les POSES d'objets d'équipement d'un film DEJA CHARGE. Cf.
+// [ScanFilmEquipmentPlacements] pour la doctrine du balayage.
+//
+// LA BANDE DE SLOTS N'EST RELEVÉE QU'UNE FOIS (lot 2 de PLAN_CUISSON_PERF, item 2.2). Ce
+// balayage relevait la sienne, puis appelait `ScanWorldObjects`, qui relevait EXACTEMENT LA
+// MÊME (`worldObjectSlotBand(film, ti=37)`) pour son propre compte — deux marches complètes des
+// images-clés du film pour une seule valeur. Il passe désormais par la forme `...ForBand`, qui
+// existe précisément pour ça ; les deux gardes que `ScanWorldObjects` posait avant de déléguer
+// (aucun chunk de données, bande vide) sont déjà passées trois lignes plus haut.
+func ScanEquipmentPlacements(
+	fc *FilmContext, wr *Vec3Range,
 ) ([]EquipmentPlacement, EquipmentPlacementStats, error) {
 	st := EquipmentPlacementStats{ByID: map[uint32]int{}}
 	if wr == nil {
 		return nil, st, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
 	}
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
+	if len(fc.ChunkNumbers()) == 0 {
+		return nil, st, ErrNoFilmChunk
 	}
-	band := worldObjectSlotBand(dir, n, EquipmentTypeIndex)
+	band := worldObjectSlotBand(fc.Film(), EquipmentTypeIndex)
 	if len(band) == 0 {
-		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes de %s",
-			EquipmentTypeIndex, dir)
+		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film",
+			EquipmentTypeIndex)
 	}
 	st.Slots = len(band)
-	tracks, err := ScanFilmWorldObjects(dir, wr, EquipmentTypeIndex)
+	tracks, err := ScanWorldObjectsForBand(fc.Film(), wr, band)
 	if err != nil {
 		return nil, st, err
 	}
@@ -137,14 +160,14 @@ func ScanFilmEquipmentPlacements(
 	st.Lives = len(spans)
 
 	defer SetMPPWidths(CurrentMPPWidths())
-	cal, ok := CalibrateMPPWidths(dir, wr, band, spans)
+	cal, ok := CalibrateMPPWidthsOf(fc, wr, band, spans)
 	st.Calibration, st.Scanned = cal, true // le film a été lu ; reste à savoir s'il a tranché
 	if !ok {
 		return nil, st, nil // le film n'a pas tranché : aucune pose, et les stats le disent
 	}
 	SetMPPWidths(cal.Widths)
 
-	cre, cst, err := ScanFilmEquipmentCreationsForBand(dir, wr, band)
+	cre, cst, err := ScanEquipmentCreationsForBand(fc, wr, band)
 	if err != nil {
 		return nil, st, err
 	}
@@ -154,6 +177,40 @@ func ScanFilmEquipmentPlacements(
 		st.ByID[p.GlobalID]++
 	}
 	return out, st, nil
+}
+
+// lessPlacement ordonne les poses : instant de pose, slot, génération, PUIS la pose elle-même.
+//
+// POURQUOI LE DÉPARTAGE PAR LA POSE (correction du 2026-09-02, item 0.4bis de
+// PLAN_CUISSON_PERF). `out` est bâti en itérant la MAP `best` — dont l'ordre change à chaque
+// exécution — et `sort.Slice` n'est pas stable : tout triplet (T0US, slot, génération) en ex
+// æquo laissait donc l'aléa décider du rang publié. Et le triplet N'EST PAS total : la clé de
+// `best` est (slot, génération, DÉBUT DE VIE), si bien que deux vies distinctes du même couple
+// peuvent porter le même instant de création. Même défaut, même remède que `lessTrack`
+// (projectiles.go) : le départage n'utilise QUE des champs de la pose, jamais une adresse ni un
+// rang d'itération. Deux poses que ce comparateur ne sépare pas sont identiques champ pour
+// champ — les échanger ne change pas la sortie.
+func lessPlacement(a, b EquipmentPlacement) bool {
+	switch {
+	case a.T0US != b.T0US:
+		return a.T0US < b.T0US
+	case a.Life.Slot != b.Life.Slot:
+		return a.Life.Slot < b.Life.Slot
+	case a.Life.Gen != b.Life.Gen:
+		return a.Life.Gen < b.Life.Gen
+	case a.T1US != b.T1US:
+		return a.T1US < b.T1US
+	case a.X != b.X:
+		return a.X < b.X
+	case a.Y != b.Y:
+		return a.Y < b.Y
+	case a.Z != b.Z:
+		return a.Z < b.Z
+	case a.GlobalID != b.GlobalID:
+		return a.GlobalID < b.GlobalID
+	default:
+		return a.Points < b.Points
+	}
 }
 
 // confirmPlacements garde les records que l'oracle de position confirme, et n'en rend qu'un par
@@ -193,15 +250,7 @@ func confirmPlacements(
 	for _, p := range best {
 		out = append(out, p)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].T0US != out[j].T0US {
-			return out[i].T0US < out[j].T0US
-		}
-		if out[i].Life.Slot != out[j].Life.Slot {
-			return out[i].Life.Slot < out[j].Life.Slot
-		}
-		return out[i].Life.Gen < out[j].Life.Gen
-	})
+	sort.Slice(out, func(i, j int) bool { return lessPlacement(out[i], out[j]) })
 	st.Placements = len(out)
 	return out
 }

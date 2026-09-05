@@ -70,7 +70,7 @@ func TestTotalControlDesignateurParManche(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s : origine d'horloge illisible : %v", short, err)
 	}
-	recs := objectiveevents.StatRecords(p2aSource(t, dir))
+	recs := objectiveevents.StatRecords(p2aBobine(t, dir))
 	manches := tcManchesOf(recs)
 	if len(manches) == 0 {
 		t.Logf("NON EXPLOITABLE %s : aucune manche lisible — ce film ne compte ni pour ni contre", short)

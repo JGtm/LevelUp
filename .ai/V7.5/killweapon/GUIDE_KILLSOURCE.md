@@ -588,7 +588,9 @@ import "levelup/go-api/internal/games/halo_infinite/film/killsource"
 // `chunks` : les chunks du film, deja telecharges. Le paquet ne les telecharge pas —
 // c est deliberement la responsabilite de l appelant (le telechargement est le vrai cout,
 // il est batchable, et il a deja son chemin store-first).
-src := killsource.MemoryChunks(chunks)
+film, err := filmsource.Load(filmsource.MemoryChunks(chunks), meta)
+// (depuis le lot 1 de PLAN_CUISSON_PERF, 2026-09-03 : killsource consomme un *filmsource.Film
+// deja charge — killsource.MemoryChunks/ChunkSource n'existent plus)
 
 // `nil` = la CONFIGURATION GELEE, celle qui a produit les chiffres publies.
 res, err := killsource.Decode(ctx, matchID, src, nil)
@@ -634,7 +636,8 @@ for _, p := range res.Health.ExpvarPairs() {
 ```
 
 Pour rejouer un film depuis le disque au lieu d une tranche en memoire :
-`killsource.DirChunks(dir)`.
+`filmsource.LoadDir(dir, nil)` puis `killsource.Decode(ctx, nom, film, opts)` (killsource.DirChunks
+n'existe plus depuis le lot 1 de PLAN_CUISSON_PERF, 2026-09-03).
 
 ### CE QUE LE BRANCHEUR DOIT SAVOIR EN PLUS
 

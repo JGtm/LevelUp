@@ -172,31 +172,35 @@ func obTousSegments(series map[uint32][]ti12Ech) []obSeg {
 	return out
 }
 
-// obSegmenter decoupe UNE serie triee en segments contigus, sans exigence de monotonie.
+// obSegmenter decoupe UNE serie triee en segments contigus, PAR LA FONCTION DE PRODUCTION
+// (`NavpointSegments`, portee le 2026-09-04 depuis cet instrument — la copie a DISPARU, elle
+// ne s'est pas dupliquee) : l'inspection juge le code qui publie, jamais une copie qui
+// derivera. Seul `gapAvant` reste local, il ne sert qu'a l'impression.
 func obSegmenter(slot uint32, s []ti12Ech) []obSeg {
-	var out []obSeg
-	for i := 0; i < len(s); {
-		j := i
-		for j+1 < len(s) && s[j+1].tMS-s[j].tMS <= NavpointRiseMaxGapMS {
-			j++
-		}
-		seg := obSeg{slot: slot, t0: s[i].tMS, t1: s[j].tMS, q0: s[i].q, q1: s[j].q,
-			qmin: s[i].q, qmax: s[i].q, n: j - i + 1, gapAvant: -1}
-		for k := i; k <= j; k++ {
-			if s[k].q < seg.qmin {
-				seg.qmin = s[k].q
-			}
-			if s[k].q > seg.qmax {
-				seg.qmax = s[k].q
-			}
-		}
+	reads := make([]NavpointRadialRead, 0, len(s))
+	for _, e := range s {
+		reads = append(reads, NavpointRadialRead{Slot: slot, TMS: e.tMS, Q: e.q})
+	}
+	segs := NavpointSegments(reads)
+	out := make([]obSeg, 0, len(segs))
+	for i, g := range segs {
+		seg := obSeg{slot: g.Slot, t0: g.StartMS, t1: g.EndMS, q0: g.QStart, q1: g.QEnd,
+			qmin: g.QMin, qmax: g.QMax, n: g.Samples, gapAvant: -1}
 		if i > 0 {
-			seg.gapAvant = s[i].tMS - s[i-1].tMS
+			// Les segments partitionnent la serie : le dernier echantillon du precedent est
+			// l'echantillon qui precede le premier de celui-ci.
+			seg.gapAvant = g.StartMS - segs[i-1].EndMS
 		}
 		out = append(out, seg)
-		i = j + 1
 	}
 	return out
+}
+
+// nav rend le segment de PRODUCTION equivalent : les predicats de forme (armement, tenue de
+// desarmement) vivent en production depuis le 2026-09-04, et l'instrument les appelle.
+func (g obSeg) nav() NavpointSegment {
+	return NavpointSegment{Slot: g.slot, StartMS: g.t0, EndMS: g.t1, QStart: g.q0, QEnd: g.q1,
+		QMin: g.qmin, QMax: g.qmax, Samples: g.n}
 }
 
 // obVueExplosion imprime les segments qui intersectent la fenetre autour d'une explosion.

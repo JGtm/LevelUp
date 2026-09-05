@@ -22,11 +22,11 @@ func TestWrite_PuisOpenRelit(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("Open apres Write: found=%v err=%v", found, err)
 	}
-	if got := len(src.Chunks()); got != 3 {
+	if got := len(src.Meta()); got != 3 {
 		t.Fatalf("chunks au manifeste = %d, attendu 3", got)
 	}
-	if data, ok := src.ChunkData(1); !ok || string(data) != "replication" {
-		t.Errorf("ChunkData(1) = %q ok=%v, attendu replication", data, ok)
+	if data, err := src.Chunk(1); err != nil || string(data) != "replication" {
+		t.Errorf("Chunk(1) = %q err=%v, attendu replication", data, err)
 	}
 	shorts, err := ListShortIDs(root)
 	if err != nil || len(shorts) != 1 || shorts[0] != "0badf00d" {

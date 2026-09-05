@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/analysis/replay"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmproc"
 )
 
 // ecrireArtefact pose un artefact de rejeu portant la version de schema demandee.
@@ -211,24 +212,24 @@ func TestTraiterResultatEnfant_Ventilation(t *testing.T) {
 		code int
 		lire func(replayBackfillReport) int
 	}{
-		{"construit", codeEnfantOK, func(r replayBackfillReport) int { return r.construits }},
-		{"hors catalogue", codeEnfantHorsCatalogue, func(r replayBackfillReport) int { return r.horsCatalogue }},
-		{"erreur de decodage", codeEnfantErreurDecodage, func(r replayBackfillReport) int { return r.erreurs }},
-		{"preparation", codeEnfantPreparation, func(r replayBackfillReport) int { return r.preparation }},
-		{"mort memoire", codeEnfantMemoire, func(r replayBackfillReport) int { return r.mortsMemoire }},
+		{"construit", filmproc.CodeOK, func(r replayBackfillReport) int { return r.construits }},
+		{"hors catalogue", filmproc.CodeSkipped, func(r replayBackfillReport) int { return r.horsCatalogue }},
+		{"erreur de decodage", filmproc.CodeFailed, func(r replayBackfillReport) int { return r.erreurs }},
+		{"preparation", filmproc.CodePreparation, func(r replayBackfillReport) int { return r.preparation }},
+		{"mort memoire", filmproc.CodeMemory, func(r replayBackfillReport) int { return r.mortsMemoire }},
 		{"mort subite (fatal error)", 2, func(r replayBackfillReport) int { return r.mortsSubites }},
 		{"mort subite (tue par l OS)", -1, func(r replayBackfillReport) int { return r.mortsSubites }},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			var r replayBackfillReport
-			res := resultatEnfant{code: c.code, issue: issuePourCode(c.code)}
+			res := filmproc.Result{Code: c.code, Issue: filmproc.IssueForCode(c.code)}
 			traiterResultatEnfant(&r, res, idMoyen, 1, 1)
 
 			if got := c.lire(r); got != 1 {
 				t.Fatalf("code %d : la ligne de recap attendue vaut %d, veut 1", c.code, got)
 			}
-			if c.code != codeEnfantOK && r.construits != 0 {
+			if c.code != filmproc.CodeOK && r.construits != 0 {
 				t.Fatalf("code %d compte a tort une construction", c.code)
 			}
 		})

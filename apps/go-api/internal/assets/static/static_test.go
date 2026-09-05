@@ -15,6 +15,7 @@ func TestKindValid(t *testing.T) {
 		{KindCSRRank, true},
 		{KindWeapon, true},
 		{KindCommendation, true},
+		{KindVehicle, true},
 		{Kind(""), false},
 		{Kind("unknown"), false},
 		{Kind("MAP"), false}, // case-sensitive
@@ -36,6 +37,7 @@ func TestFolder(t *testing.T) {
 		{KindCSRRank, "ranks"},
 		{KindWeapon, "weapons-assets"},
 		{KindCommendation, "commendations"},
+		{KindVehicle, "vehicles-assets"},
 		{Kind(""), ""},
 		{Kind("unknown"), ""},
 	}
@@ -61,6 +63,7 @@ func TestURL(t *testing.T) {
 		{"csr rank", KindCSRRank, "halo_infinite", "120px-HINF-CSR_Onyx", ".png", "/static/ranks/halo_infinite/120px-HINF-CSR_Onyx.png"},
 		{"weapon", KindWeapon, "halo_infinite", "br75", ".png", "/static/weapons-assets/halo_infinite/br75.png"},
 		{"commendation", KindCommendation, "halo_5_guardians", "achilles", ".png", "/static/commendations/halo_5_guardians/achilles.png"},
+		{"vehicle", KindVehicle, "halo_infinite", "warthog", ".png", "/static/vehicles-assets/halo_infinite/warthog.png"},
 		{"id without extension", KindMap, "halo_infinite", "Streets", "", "/static/maps/halo_infinite/Streets"},
 		{"different title slug", KindMap, "synthetic_title_b", "frags_arena", ".png", "/static/maps/synthetic_title_b/frags_arena.png"},
 		{"invalid kind → empty", Kind("unknown"), "halo_infinite", "x", ".png", ""},

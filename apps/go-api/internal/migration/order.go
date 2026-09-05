@@ -140,6 +140,12 @@ var canonicalOrder = []string{
 	// (donc la création/ALTER de weapon_kills) — sinon sur DB FRAÎCHE le rebuild
 	// no-ope (table absente). Name-keyed → no-op sur DB déjà migrées.
 	"shared_append_only_weapon_kills_v1", // shared
+	// Statistiques d'Assaut reconstruites du film (append-only + vue _latest). Table
+	// NET-NEUVE, sans dépendance : sa place relative n'a aucun enjeu fonctionnel. Elle est
+	// dictée par l'ordre d'init() (fichiers steps_*.go, alphabétique) — steps_shared_bomb_
+	// stats.go tombe entre steps_shared_append_only_weapon_kills.go et steps_shared_h5_*.go.
+	// Exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
+	"shared_create_bomb_stats", // shared
 	// Capture de la mecanique de kill Halo 5 (kill_kind) : ALTER weapon_kills +
 	// recreation v_weapon_kills. DOIT suivre shared_append_only_weapon_kills_v1
 	// (vue generationnelle + generation_id deja crees). Phase 1 (capture seule) ;
@@ -243,6 +249,11 @@ var canonicalOrder = []string{
 	"create_world_player_no_data",                              // shared (marqueur privés/sans-données classement mondial)
 	"shared_create_objective_stats",                            // shared (V72-03 : stats objectifs CTF/Zones/Oddball par joueur/match, append-only)
 	"shared_objective_stats_add_stockpile_extraction",          // shared (V721-02 : +18 colonnes Stockpile/Extraction/VIP + vue _latest recréée)
+	// Résumé d'usage équipement/socles dérivé de l'artefact de rejeu (session-usage,
+	// 2026-09-04). Position dictée par l'ordre d'init (alphabétique par nom de fichier :
+	// steps_shared_usage_summary.go précède steps_shared_weapon_*.go) — exigence de
+	// TestSortByCanonicalIsNoOpOnCurrentRegistry.
+	"shared_match_usage_summary_v1", // shared (match_usage_players + match_usage_films, append-only + vues _latest par passe)
 	// Table SOEUR de match_weapon_shots (distances tireur<->victime des touches, acquis du
 	// chantier precision remis le 2026-09-01). Position dictee par l'ordre d'init
 	// (alphabetique par nom de fichier) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.

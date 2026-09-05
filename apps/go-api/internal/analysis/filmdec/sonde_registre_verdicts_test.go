@@ -146,7 +146,7 @@ func probeOracleObjectif(t *testing.T) (probeHorloge, []objectiveevents.NamedEve
 		return probeHorloge{}, nil
 	}
 	hor := probeHorloge{startMS: map[int]int{}}
-	for _, c := range src.Chunks() {
+	for _, c := range src.Meta() {
 		hor.startMS[c.Index] = c.StartMS
 	}
 	objType := os.Getenv(probeObjTypeEnv)
@@ -155,7 +155,14 @@ func probeOracleObjectif(t *testing.T) (probeHorloge, []objectiveevents.NamedEve
 			" (une famille devinee fabrique des evenements : lecon du lot C).", probeObjTypeEnv)
 		return hor, nil
 	}
-	all := objectiveevents.NamedEvents(src, objType)
+	// Les evenements nommes se lisent sur le FILM CHARGE (item 1.5) — une decompression, pas une
+	// par balayage.
+	bobine, ok, err := filmcache.LoadFilm(root, short)
+	if err != nil || !ok {
+		t.Logf("ORACLE : film illisible (%v) — F2 se limite aux valeurs.", err)
+		return hor, nil
+	}
+	all := objectiveevents.NamedEvents(bobine, objType)
 	var evs []objectiveevents.NamedEvent
 	combat := 0
 	for _, e := range all {

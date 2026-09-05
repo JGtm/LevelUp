@@ -3,7 +3,29 @@ package logging
 import (
 	"log/slog"
 	"os"
+	"strings"
 )
+
+// ConsoleLevelFromEnv lit le niveau de CONSOLE dans LEVELUP_LOG_LEVEL (defaut INFO) — la meme
+// convention que le serveur (`cmd/server/main.go`). C'est `debug` qui fait apparaitre les lignes
+// de mesure (durees de balayage de la cuisson, cf. `analysis/replay/observe.go`).
+//
+// ELLE VIT ICI, ET PAS DANS CHAQUE CLI : la table etait deja recopiee dans `cmd/replay-build` et
+// s'appretait a l'etre dans `cmd/replay-equiv` — a la troisieme copie la regle du depot impose
+// de centraliser. Un CLI qui installe son journal appelle
+// `InstallCLILevel(root, ConsoleLevelFromEnv())`.
+func ConsoleLevelFromEnv() slog.Level {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("LEVELUP_LOG_LEVEL"))) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
 
 // InstallCLI configure le logging pour un binaire CLI (cmd/*) : console compacte
 // sur stderr + fichiers `logs/{module}.log` (comme le serveur). Permet aux jobs

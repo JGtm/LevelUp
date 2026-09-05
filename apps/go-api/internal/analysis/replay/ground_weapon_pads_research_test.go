@@ -204,7 +204,7 @@ func gwPadsPowerups(
 		t.Logf("1.0 POWER-UPS — calibration ti=37 impossible : %v", err)
 		return nil
 	}
-	scan := decodeFilmPadScan(dir, wr, st.Calibration.Widths, worldEquipmentArchetype())
+	scan := decodeFilmPadScanDir(dir, wr, st.Calibration.Widths, worldEquipmentArchetype())
 	objs, rejets := padObjects(scan, powerupPadRule(origineFamilles(t)), lives, pos)
 	out, byFamily := make([]gwPadApparition, 0, len(objs)), map[string]int{}
 	for _, o := range objs {
