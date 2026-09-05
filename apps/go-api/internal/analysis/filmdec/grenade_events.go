@@ -1,6 +1,6 @@
 package filmdec
 
-import "fmt"
+import "levelup/go-api/internal/analysis/filmsource"
 
 // grenade_events.go — LANCERS DE GRENADE, lus par balayage d'un marqueur dans les paquets
 // delta (type-0).
@@ -137,17 +137,28 @@ func (g GrenadeThrow) Rank() (int, bool) { return GrenadeRankOf(g.TypeID) }
 // ScanFilmGrenadeThrows décode tous les lancers de grenade du film de dir.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+//
+// ScanFilmGrenadeThrows est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanGrenadeThrows].
 func ScanFilmGrenadeThrows(dir string) ([]GrenadeThrow, error) {
-	n := CountFilmChunks(dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ScanGrenadeThrows(film)
+}
+
+// ScanGrenadeThrows décode les lancers de grenade d'un film DEJA CHARGE.
+func ScanGrenadeThrows(film *filmsource.Film) ([]GrenadeThrow, error) {
 	var out []GrenadeThrow
 	read := 0
-	for c := 1; c <= n; c++ {
-		chunk, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range FilmChunkNumbers(film) {
+		chunk, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
 		read++
-		for _, p := range WalkPackets(chunk) {
+		for _, p := range pks {
 			if p.Type != PacketTypeDelta {
 				continue
 			}
@@ -158,7 +169,7 @@ func ScanFilmGrenadeThrows(dir string) ([]GrenadeThrow, error) {
 		}
 	}
 	if read == 0 {
-		return nil, fmt.Errorf("aucun chunk film lisible dans %s", dir)
+		return nil, ErrNoReadableFilmChunk
 	}
 	return out, nil
 }
@@ -197,7 +208,15 @@ func scanGrenadeThrows(pay []byte) []GrenadeThrow {
 //
 // EXPORTÉ pour les sondes qui balayent un payload à la recherche d'un motif (marqueurs de
 // mêlée, de tir, de lancer) sans dérouler la chaîne de composants.
+//
+// Lecture par mot (cf. bits_word.go) des que la position de depart est positive et la
+// largeur tient sur 64 bits : `wordBitsAt` rend deja des zeros au-dela de la fin du tampon.
+// Un depart NEGATIF ou une largeur > 64 retombent sur la boucle d'origine, seule a porter
+// ces deux conventions.
 func PeekBits(d []byte, bp, n int) uint64 {
+	if bp >= 0 && n >= 0 && n <= 64 {
+		return wordBitsAt(d, bp, uint(n))
+	}
 	var v uint64
 	for i := 0; i < n; i++ {
 		p := bp + i

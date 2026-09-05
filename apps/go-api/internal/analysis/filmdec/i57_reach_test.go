@@ -82,8 +82,8 @@ func TestI57Reach(t *testing.T) {
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, i)
 	}
-	slots := bipedSlotBand(dir, chunks)
-	if len(slots) == 0 {
+	slots := bipedSlotBandDir(dir, chunks)
+	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
 	}
 	lay, _, err := DetectI0Layout(dir)
@@ -113,7 +113,7 @@ func TestI57Reach(t *testing.T) {
 
 // i57ScanPacket balaie un payload de paquet delta et compte les deux populations.
 func i57ScanPacket(
-	pay []byte, tsUS uint64, slots map[uint32]bool, lay I0Layout, arch Archetype, c *i57Counters,
+	pay []byte, tsUS uint64, slots SlotBand, lay I0Layout, arch Archetype, c *i57Counters,
 ) {
 	total := len(pay) * 8
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
@@ -141,10 +141,10 @@ func i57ScanPacket(
 // que l'en-tête d'i0 soit nul (i0 absolu), et que la MARCHE COMPLÈTE du masque soit portée.
 // Sans cette dernière condition, n'importe quel motif de 64 bits ferait un faux positif.
 func i57MatchDense(
-	pay []byte, p, total int, slots map[uint32]bool, lay I0Layout, arch Archetype,
+	pay []byte, p, total int, slots SlotBand, lay I0Layout, arch Archetype,
 ) (int, uint32, []int, bool) {
 	slot := readBitsAt(pay, p+1, bipedSlotBits)
-	if readBitsAt(pay, p, 1) != 1 || !slots[slot] {
+	if readBitsAt(pay, p, 1) != 1 || !slots.Has(slot) {
 		return 0, 0, nil, false
 	}
 	if readBitsAt(pay, p+14, 2) != 1 || readBitsAt(pay, p+16, 1) != 0 {

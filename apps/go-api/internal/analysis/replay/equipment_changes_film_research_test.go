@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 func TestEquipmentChangesSurFilmReel(t *testing.T) {
@@ -31,7 +32,11 @@ func TestEquipmentChangesSurFilmReel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("carte %q : %v", mapName, err)
 	}
-	doc, err := BuildFromFilm("mesure-equipement", "halo_infinite", dir, Options{MapQuant: &entry})
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		t.Fatalf("chunks du film illisibles : %v", err)
+	}
+	doc, err := BuildFromFilm("mesure-equipement", "halo_infinite", film, Options{MapQuant: &entry})
 	if err != nil {
 		t.Fatalf("assemblage : %v", err)
 	}

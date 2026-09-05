@@ -44,10 +44,10 @@ import (
 //
 // `slog.Warn` et non `WarnContext` : `BuildFromFilm` — le seul appelant — ne prend pas de
 // `ctx`, et tout le fichier `build.go` journalise ainsi.
-func installWorldObjectPrecision(e filmdec.MapQuantEntry, filmDir string) (restore func()) {
+func installWorldObjectPrecision(e filmdec.MapQuantEntry, matchID string) (restore func()) {
 	if e.AxisWidths[0] == 0 || e.AxisWidths[1] == 0 || e.AxisWidths[2] == 0 {
 		slog.Warn("largeurs d'axe absentes de l'entrée de catalogue — objets du monde déquantifiés aux largeurs par défaut",
-			"module", e.Module, "filmDir", filmDir,
+			"module", e.Module, "match_id", matchID,
 			"defaut", filmdec.WorldObjectPrecision.AxisW)
 		return func() {}
 	}

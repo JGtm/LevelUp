@@ -52,8 +52,8 @@ package main
 //	   qu il avait apres un seul. `replaybuild` n en avait pas davantage — mais SON APPELANT
 //	   chargeait les faits de TOUT le lot dans une map vivante toute la passe (supprime).
 //	2. LE PIC EST UNE FONCTION DES OCTETS DU FILM, BORNEE ET MESUREE. Le pic vaut le film brut
-//	   (garde vivant, `ChunkSourceOf` l aliase) plus le film decompresse (`loadFilm` :
-//	   `f.chunks = make([][]byte, n)`). Mesure du cache au 2026-08-24, 951 films : le PLUS GROS
+//	   (garde vivant, `FilmOf` l aliase) plus le film decompresse (`filmsource.Load`, un tampon
+//	   par chunk). Mesure du cache au 2026-08-24, 951 films : le PLUS GROS
 //	   du corpus est `1c4c63c2` a 88 Mio sur disque (69 chunks), la moyenne est a 24 Mio. Le
 //	   pire cas tient donc largement sous le gibioctet.
 //	3. LE REJEU 2D, LUI, N A AUCUN RAPPORT AVEC LA TAILLE DU FILM. `51101d1d` pese 9,1 Mio sur
@@ -104,7 +104,6 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
@@ -498,19 +497,9 @@ func resoudreCacheFilms(cfg *config.AppConfig, flagValue string) string {
 //
 // LE COLLECTEUR SE BRANCHE SUR UNE CAPABILITY, JAMAIS SUR UN SLUG (ratchet
 // no_slug_comparison_test.go). Un titre qui ne declare pas `film.kill_source` fait donc une
-// passe VIDE, proprement — pas une erreur, pas un panic.
+// passe VIDE, proprement — pas une erreur, pas un panic. La recette de lecture vit dans
+// games.LoadCapabilityMap (centralisee le 2026-09-04, regle des <= 2 copies — ce fichier
+// en portait une des trois copies d origine).
 func capabilitesDuTitre(cfg *config.AppConfig, slug string) (games.CapabilityMap, error) {
-	reg := mappings.NewRegistry()
-	for _, err := range reg.LoadFromConfigDir(cfg.RepoRoot, []string{slug}, nil) {
-		return nil, fmt.Errorf("mappings du titre %s: %w", slug, err)
-	}
-	set, ok := reg.GetCapabilities(slug)
-	if !ok {
-		return nil, fmt.Errorf("capabilities.toml absent pour le titre %s", slug)
-	}
-	caps, err := games.CapabilityMapFromMappings(set)
-	if err != nil {
-		return nil, fmt.Errorf("capabilities du titre %s: %w", slug, err)
-	}
-	return caps, nil
+	return games.LoadCapabilityMap(cfg.RepoRoot, slug)
 }

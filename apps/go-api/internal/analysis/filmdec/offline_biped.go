@@ -35,11 +35,17 @@
 // PROPRES À LA CARTE (AABB du BSP, tag scenario_structure_bsp du module) : elles doivent
 // être fournies par l'appelant via ScanFilmOptions.WorldRange, sinon aucune coordonnée
 // monde n'est émise (cf. map_bounds.go).
+//
+// CE FICHIER PORTE LA GRAMMAIRE. L'ENTRÉE PAR BANDE de slots et la plomberie du balayage
+// (choix des chunks, découpage i0, relevé de la bande `ti=35`) vivent dans
+// offline_biped_band.go — un DÉPLACEMENT du 2026-09-05, sans une ligne de logique changée,
+// pour repasser sous le seuil de 500 lignes.
 package filmdec
 
 import (
 	"fmt"
-	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // BipedTypeIndex est le typeIndex (ti) des entités biped (joueurs) dans le registre film.
@@ -133,6 +139,15 @@ type ScanFilmOptions struct {
 	// produire des coordonnées monde : nil -> ScanFilmBipedPositions échoue avec
 	// ErrUnknownMapBounds, sauf si QuantaOnly. Cf. MapQuantCatalog.
 	WorldRange *Vec3Range
+	// DynPrecOrientation choisit la grammaire d'i2/i3 sous CaptureDirs. false (défaut) =
+	// celle du BIPÈDE. true = celle des archétypes qui portent les variantes
+	// `-dynamic-precision-` de forward-and-up et angular-velocity : ti=38 (corps rigide),
+	// 39, **40 (véhicule)** et 43 (dispositif). Ce sont QUATRE désérialiseurs distincts
+	// (FUN_14076e278/FUN_140d70998 contre FUN_140c5f7ec/FUN_140d87740), résolus
+	// statiquement le 2026-09-03 — cf. components_dynprec_orientation.go. Laisser ce
+	// drapeau à false sur la bande ti=40 fait atteindre i4/i5 avec un curseur décalé :
+	// c'est la cause racine du bruit de vitalité mesuré au lot V2b.
+	DynPrecOrientation bool
 	// QuantaOnly autorise un balayage SANS bornes : les positions ne portent alors que Q
 	// (HasWorld=false), et les filtres exprimés en m/s sont inopérants — donc désactivés.
 	// Réservé aux outils d'analyse du bitstream.
@@ -161,116 +176,58 @@ func DefaultScanFilmOptions() ScanFilmOptions {
 // ScanFilmBipedPositions décode toutes les positions absolues de bipeds des chunks du
 // film situé dans dir. Les chunks illisibles sont ignorés (le film peut être partiel) ;
 // une erreur n'est renvoyée que si AUCUN chunk n'a pu être lu.
+//
+// ScanFilmBipedPositions est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis appelle
+// [ScanBipedPositions]. La cuisson passe un film deja charge (une seule decompression).
 func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, error) {
+	// LE REFUS DE BORNES PRECEDE LE CHARGEMENT, et c'est l'ordre d'origine : un appelant sans
+	// bornes doit recevoir ErrUnknownMapBounds, pas une erreur de lecture de repertoire. Le
+	// message garde le chemin du film, que la forme `Scan*(film)` n'a plus.
 	if opt.WorldRange == nil && !opt.QuantaOnly {
 		return nil, fmt.Errorf("%w (film %s) : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", ErrUnknownMapBounds, dir)
 	}
-	chunks := opt.Chunks
-	if len(chunks) == 0 {
-		n := CountFilmChunks(dir)
-		for i := 1; i <= n; i++ {
-			chunks = append(chunks, i)
-		}
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, err
 	}
-	if len(chunks) == 0 {
-		return nil, fmt.Errorf("aucun chunk film dans %s", dir)
-	}
-	slots := bipedSlotBand(dir, chunks)
-	if len(slots) == 0 {
-		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
-	}
-	var lay I0Layout
-	if opt.Layout != nil {
-		lay = *opt.Layout
-	} else {
-		detected, _, err := DetectI0Layout(dir)
-		if err != nil {
-			return nil, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
-		}
-		lay = detected
-	}
-	var out []BipedPosition
-	read := 0
-	for _, c := range chunks {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
-			continue
-		}
-		read++
-		for _, pk := range WalkPackets(data) {
-			if pk.Type != PacketTypeDelta {
-				continue
-			}
-			for _, r := range ScanBipedRecords(pk.Payload(data), slots, lay, opt) {
-				r.Chunk, r.PacketIndex, r.TimestampUS = c, pk.Index, pk.TimestampUS
-				out = append(out, r)
-			}
-		}
-	}
-	if read == 0 {
-		return nil, fmt.Errorf("aucun chunk film lisible dans %s", dir)
-	}
-	out = DropIsolated(out, opt.IsolationGapMS)
-	if opt.WorldRange == nil {
-		return out, nil // sans coordonnées monde, un seuil en m/s n'a aucun sens
-	}
-	return DropTeleportsExcept(out, opt.MaxSpeedMPS, opt.TeleportExemptions), nil
+	return ScanBipedPositions(film, opt)
 }
 
-// bipedSlotBand construit l'ensemble des slots biped plausibles : union des ti=35 des
-// keyframes de tous les chunks balayés (+ le suivant, car un biped créé en cours de chunk
-// n'apparaît que dans le keyframe d'après), trous comblés entre min et max — les slots
-// biped sont alloués dans une bande contiguë, et un biped créé PUIS détruit à l'intérieur
-// d'un chunk n'apparaît dans aucun keyframe.
-func bipedSlotBand(dir string, chunks []int) map[uint32]bool {
-	seen := map[uint32]bool{}
-	scan := append(append([]int{}, chunks...), chunks[len(chunks)-1]+1)
-	for _, c := range scan {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
-			continue
-		}
-		for _, pk := range WalkPackets(data) {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
-				if r.TI == BipedTypeIndex && r.Slot >= 0 {
-					seen[uint32(r.Slot)] = true
-				}
-			}
-			break
-		}
+// ScanBipedPositions décode les positions absolues de bipeds d'un film DEJA CHARGE. Cf.
+// [ScanFilmBipedPositions] pour la doctrine du balayage.
+//
+// C'est l'entrée BIPÈDE de [ScanBipedPositionsForBand] : elle ne fait qu'y ajouter le relevé
+// de la bande de slots `ti=35` (bipedSlotBand). Aucun décodage ne lui est propre.
+func ScanBipedPositions(film *filmsource.Film, opt ScanFilmOptions) ([]BipedPosition, error) {
+	chunks, err := bipedScanChunks(film, opt)
+	if err != nil {
+		return nil, err
 	}
-	return fillSlotBand(seen)
-}
-
-// fillSlotBand comble les trous entre le min et le max de l'ensemble (bande contiguë).
-func fillSlotBand(s map[uint32]bool) map[uint32]bool {
-	if len(s) == 0 {
-		return s
+	band := bipedSlotBand(film, chunks)
+	if band.Count() == 0 {
+		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	keys := make([]uint32, 0, len(s))
-	for k := range s {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-	out := make(map[uint32]bool, int(keys[len(keys)-1]-keys[0])+1)
-	for k := keys[0]; k <= keys[len(keys)-1]; k++ {
-		out[k] = true
-	}
-	return out
+	return ScanBipedPositionsForBand(film, band, opt)
 }
 
 // ScanBipedRecords balaie un payload de paquet delta bit à bit et renvoie les positions
 // absolues des records biped reconnus. PUR (aucune I/O) : c'est le cœur testable du
 // décodeur. Les champs Chunk/PacketIndex/TimestampUS sont laissés à zéro (remplis par
 // l'appelant).
-func ScanBipedRecords(payload []byte, slots map[uint32]bool, lay I0Layout, opt ScanFilmOptions) []BipedPosition {
+func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilmOptions) []BipedPosition {
 	total := len(payload) * 8
 	i0Bits := lay.TotalBits()
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + i0Bits
 	var out []BipedPosition
+	// UN SEUL lecteur de bits pour tout le payload : `scanRecordDirs` le repositionne par
+	// `SetBitPos` a chaque composant de vitalite, la ou il en allouait deux PAR RECORD.
+	br := NewBitReader(payload)
+	// LA GRAMMAIRE D'ORIENTATION EST RESOLUE UNE FOIS PAR PAYLOAD, hors de la boucle : elle ne
+	// depend que des options (l'archetype decide d'i2 ET d'i3 a la fois), jamais du record.
+	g := dirsGrammar{}
+	if opt.DynPrecOrientation {
+		g = dynPrecOrientationGrammar()
+	}
 	for p := 0; p+minRecord <= total; {
 		i0, slot, idx, ok := matchBipedHeader(payload, p, total, slots, opt.RequireTag1, lay)
 		if !ok {
@@ -293,7 +250,7 @@ func ScanBipedRecords(payload []byte, slots map[uint32]bool, lay I0Layout, opt S
 			rec.Z = DequantBipedAxis(q[2], 2, lay, *opt.WorldRange)
 		}
 		if opt.CaptureDirs {
-			rec.componentDirs, rec.componentVitals = scanRecordDirs(payload, i0+i0Bits, total, idx)
+			rec.componentDirs, rec.componentVitals = scanRecordDirs(br, i0+i0Bits, total, idx, g)
 			rec.MaskBits, rec.MaskOver = maskBitsOf(idx)
 			if recordMaskHook != nil {
 				recordMaskHook(idx, payload, i0+i0Bits)
@@ -310,7 +267,7 @@ func ScanBipedRecords(payload []byte, slots map[uint32]bool, lay I0Layout, opt S
 // sur les cartes dont la région jouée n'est pas la première du bloc structure-BSP) et
 // renvoie l'offset bit de i0, le slot et la liste des index de composants du masque.
 // Un record d'une autre région est écarté : ses quanta vivent dans une autre AABB.
-func matchBipedHeader(pay []byte, p, total int, slots map[uint32]bool, needTag1 bool, lay I0Layout) (int, uint32, []int, bool) {
+func matchBipedHeader(pay []byte, p, total int, slots SlotBand, needTag1 bool, lay I0Layout) (int, uint32, []int, bool) {
 	i0, slot, idx, ok := matchBipedHeaderRaw(pay, p, total, slots, needTag1, lay.TotalBits())
 	if !ok {
 		return 0, 0, nil, false
@@ -329,12 +286,12 @@ func matchBipedHeader(pay []byte, p, total int, slots map[uint32]bool, needTag1 
 // vérifie que needBits bits restent lisibles après le début d'i0. Il ne suppose RIEN du
 // contenu d'i0 : c'est le point d'entrée du détecteur de découpage (i0_layout.go), qui doit
 // justement mesurer i0 sans en présupposer la structure.
-func matchBipedHeaderRaw(pay []byte, p, total int, slots map[uint32]bool, needTag1 bool, needBits int) (int, uint32, []int, bool) {
+func matchBipedHeaderRaw(pay []byte, p, total int, slots SlotBand, needTag1 bool, needBits int) (int, uint32, []int, bool) {
 	if readBitsAt(pay, p, 1) != 1 {
 		return 0, 0, nil, false
 	}
 	slot := readBitsAt(pay, p+1, bipedSlotBits)
-	if !slots[slot] {
+	if !slots.Has(slot) {
 		return 0, 0, nil, false
 	}
 	if needTag1 && readBitsAt(pay, p+14, 2) != 1 {
@@ -360,8 +317,17 @@ func matchBipedHeaderRaw(pay []byte, p, total int, slots map[uint32]bool, needTa
 
 // ascendingFromZero valide la liste d'indices de composants (premier = 0, strictement
 // croissants — invariant fort du masque) et la renvoie.
+//
+// LA VALIDATION PASSE AVANT L'ALLOCATION. Ce test est joue pour CHAQUE position de bit
+// candidate d'un payload delta et il echoue dans l'immense majorite des cas : allouer la
+// tranche d'abord, c'etait une allocation jetee par candidat rejete. Les index sont donc
+// rassembles dans un tampon de pile (`count` vaut au plus [bipedMaxMaskCnt]) et la tranche
+// n'est allouee qu'une fois la liste validee.
 func ascendingFromZero(pay []byte, at, count int) ([]int, bool) {
-	out := make([]int, 0, count)
+	var buf [bipedMaxMaskCnt]int
+	if count < 0 || count > len(buf) {
+		return nil, false
+	}
 	prev := -1
 	for k := 0; k < count; k++ {
 		idx := int(readBitsAt(pay, at+bipedIndexBits*k, bipedIndexBits))
@@ -369,8 +335,10 @@ func ascendingFromZero(pay []byte, at, count int) ([]int, bool) {
 			return nil, false
 		}
 		prev = idx
-		out = append(out, idx)
+		buf[k] = idx
 	}
+	out := make([]int, count)
+	copy(out, buf[:count])
 	return out, true
 }
 
@@ -397,7 +365,17 @@ func DequantBipedAxis(q uint32, ax int, lay I0Layout, world Vec3Range) float32 {
 }
 
 // readBitsAt lit n bits MSB-first à la position bit pos (n <= 32).
+//
+// AUCUNE GARDE, ET C'EST VOULU : une lecture hors du tampon PANIQUE (`index out of range`).
+// Les balayages qui l'appellent bornent eux-memes leur fenetre ; une panique ici denonce un
+// balayage qui a perdu ses bornes, et la faire taire masquerait le defaut. Cette convention
+// est INCHANGEE par la lecture par mot : le chemin rapide n'est pris que quand les n bits
+// tiennent entierement dans le tampon, tout le reste retombe sur la boucle d'origine — qui
+// panique aux memes positions qu'avant.
 func readBitsAt(b []byte, pos, n int) uint32 {
+	if pos >= 0 && n > 0 && n <= 64 && pos+n <= len(b)*8 {
+		return uint32(wordBitsAt(b, pos, uint(n)))
+	}
 	var v uint32
 	for i := 0; i < n; i++ {
 		p := pos + i

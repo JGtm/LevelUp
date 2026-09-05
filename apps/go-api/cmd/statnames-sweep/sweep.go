@@ -11,7 +11,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 
@@ -87,16 +86,20 @@ func runChild(cache, id string) int {
 
 // sweepFilm decode le statborg d'un film et imprime le TSV : identite des slots, puis la
 // valeur finale de chaque emplacement par slot.
+//
+// UN SEUL CHARGEMENT DU FILM pour les deux lectures de ce balayage (les enregistrements
+// d'entite et le fil des morts) : jamais un `*Film` d'un cote et une enveloppe `dir` de
+// l'autre, ce serait deux decompressions du meme film (item 1.6 de PLAN_CUISSON_PERF).
 func sweepFilm(cache, id string) error {
-	src, ok, err := filmcache.Open(cache, id)
+	film, ok, err := filmcache.LoadFilm(cache, id)
 	if err != nil {
-		return fmt.Errorf("manifeste : %w", err)
+		return fmt.Errorf("chargement du film : %w", err)
 	}
 	if !ok {
 		return fmt.Errorf("film absent du cache (%s)", cache)
 	}
-	recs, truncated := objectiveevents.StatRecordsCtx(context.Background(), src, id)
-	deaths, err := replay.ScanFilmDeaths(filepath.Join(cache, "film_chunks", id))
+	recs, truncated := objectiveevents.StatRecordsCtx(context.Background(), film, id)
+	deaths, err := replay.ScanDeaths(film)
 	if err != nil {
 		return fmt.Errorf("fil des morts : %w", err)
 	}

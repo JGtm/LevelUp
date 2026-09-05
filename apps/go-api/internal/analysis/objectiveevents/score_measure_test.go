@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // score_measure_test.go — INSTRUMENT de la phase 0 du lot A de
@@ -51,7 +53,7 @@ func TestLotAPhase0Mesure(t *testing.T) {
 	or := loadOracle(t, oraclePath, short)
 
 	t.Setenv(filmCacheEnv, root)
-	src, ok := newDiskFilmSource(t, short)
+	bobine, ok := newDiskFilm(t, short)
 	if !ok {
 		t.Fatalf("manifeste du film %s absent sous %s", short, root)
 	}
@@ -59,14 +61,14 @@ func TestLotAPhase0Mesure(t *testing.T) {
 	// UN SEUL decodage : toutes les mesures derivent de `recs` par les fonctions pures du
 	// paquet. Rappeler ScoreCurve/SlotIdentity re-decoderait le film a chaque appel.
 	start := time.Now()
-	recs := StatRecords(src)
+	recs := StatRecords(bobine)
 	decodeMS := time.Since(start).Milliseconds()
 	if len(recs) == 0 {
 		t.Fatalf("aucun enregistrement d'entite decode dans %s", filmDir)
 	}
 
 	w := &measureRows{}
-	writeMeta(w, short, or, src, recs, decodeMS)
+	writeMeta(w, short, or, bobine, recs, decodeMS)
 	teams := writeTeams(w, recs, or)
 	ident, found := writePlayers(w, recs, or)
 	writeIdentity(w, recs, or, teams, ident)
@@ -109,7 +111,7 @@ func (m *measureRows) row(kind string, vals ...any) {
 }
 
 // writeMeta ecrit l'identite du film et le cout du decodage.
-func writeMeta(m *measureRows, short string, or oracleMatch, src FilmSource, recs []StatRecord, decodeMS int64) {
+func writeMeta(m *measureRows, short string, or oracleMatch, film *filmsource.Film, recs []StatRecord, decodeMS int64) {
 	tMin, tMax := recs[0].TimeMS, recs[0].TimeMS
 	nTeam, nPlayer := 0, 0
 	for _, r := range recs {
@@ -127,19 +129,15 @@ func writeMeta(m *measureRows, short string, or oracleMatch, src FilmSource, rec
 	}
 	m.row("meta", short, or.Variant, ObjectiveTypeOf(or.Variant), or.MapName,
 		or.Team0, or.Team1, or.DurationS, len(or.Lines), len(recs), nTeam, nPlayer,
-		tMin, tMax, framePacketCount(src), decodeMS)
+		tMin, tMax, framePacketCount(film), decodeMS)
 }
 
 // framePacketCount compte les paquets FRAME du film — denominateur commun avec la voie
 // « chaine » du controle D1, qui balaie les memes paquets.
-func framePacketCount(src FilmSource) int {
+func framePacketCount(film *filmsource.Film) int {
 	n := 0
-	for _, meta := range src.Chunks() {
-		raw, ok := src.ChunkData(meta.Index)
-		if !ok {
-			continue
-		}
-		n += len(walkFrames(decompressChunk(raw)))
+	for _, c := range manifestChunks(film) {
+		n += len(framesOf(film, c.pos))
 	}
 	return n
 }

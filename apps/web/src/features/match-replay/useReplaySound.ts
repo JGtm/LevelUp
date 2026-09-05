@@ -81,6 +81,8 @@ import {
   soundPlaysAtSpeed,
   type SoundCursor,
 } from './replaySoundCursor'
+import { useReplayEngineSound } from './useReplayEngineSound'
+import type { EnginePlan } from './vehicleEngineSound'
 
 /** Préférences persistées — patron partagé (replayPreferences.ts), né ici. */
 const SOUND_ON_KEY = 'replay-sound-on'
@@ -107,6 +109,12 @@ export interface ReplayExportTrack {
    * son-la vit dans la piste, mele aux bruitages.
    */
   families: { voice: readonly string[]; music: readonly string[] }
+  /**
+   * LE PLAN MOTEUR DES VÉHICULES (cf. `vehicleEngineSound.ts`) : pas des événements mais des
+   * ÉTATS continus — l'export les pose par segments (`vehicleEngineMix.ts`), la page par son
+   * lecteur dédié. Même plan des deux côtés : le clip ne peut ni inventer ni manquer un moteur.
+   */
+  engines: readonly EnginePlan[]
   /** Reglage d'instance de la variation d'arme, lu a l'appel (page admin). */
   variationPercent: number
   /**
@@ -138,6 +146,12 @@ export interface ReplaySound {
   toggleCategory: (category: SoundCategory) => void
   /** À appeler à chaque pas d'animation avec l'instant courant du rejeu, en ms. */
   tick: (ms: number) => void
+  /**
+   * LA LECTURE VIENT DE S'ARRÊTER OU DE REPARTIR. Les sons d'événement n'en ont pas besoin
+   * (sans battement, rien ne part) — les MOTEURS de véhicules, si : une boucle en vol ne
+   * s'éteint pas toute seule, la pause doit la couper (rampe de 20 ms, décision n° 6).
+   */
+  setTransportPlaying: (playing: boolean) => void
   /**
    * LA CONCLUSION : voix de l'annonceur + fanfare, à appeler UNE fois quand la lecture atteint
    * la borne de fin du match. Rien ne sonne si le son est coupé, si la fin n'est pas lisible
@@ -300,6 +314,9 @@ export function useReplaySound(
   const { categories, toggleCategory } = useSoundCategoryFilter()
   const playerRef = useRef<ReplayAudioPlayer | null>(null)
   const tuning = useInstanceSoundTuning(playerRef)
+  // LES MOTEURS DE VÉHICULES (sous-hook dédié, même raison de taille que les deux autres) :
+  // des états continus, pas des événements — ils ne passent ni par la piste ni par le curseur.
+  const engine = useReplayEngineSound(doc)
 
   // Piste JOUÉE, catégories coupées retirées À LA CONSTRUCTION (jamais en aval, dans le
   // lecteur) ; DISPONIBILITÉ DU PANNEAU indépendante de ce filtre (hasSoundEvents ci-dessus).
@@ -307,15 +324,17 @@ export function useReplaySound(
     () => buildSoundTimeline(doc, kills ?? [], t0Ms ?? 0, categories, sideOfXuid, allyTeam, locale),
     [doc, kills, t0Ms, categories, sideOfXuid, allyTeam, locale],
   )
+  // Les MOTEURS comptent dans la disponibilité : un match sans événement sonore mais avec un
+  // véhicule occupé a bien quelque chose à faire entendre, donc un bouton à offrir.
   const hasAnySound = useMemo(
-    () => hasSoundEvents(doc, kills ?? [], t0Ms ?? 0),
-    [doc, kills, t0Ms],
+    () => hasSoundEvents(doc, kills ?? [], t0Ms ?? 0) || engine.stems.length > 0,
+    [doc, kills, t0Ms, engine.stems],
   )
   // Les prises de la FIN entrent dans le préchargement avec la piste : le tirage n'a lieu qu'à
   // l'arrivée en fin, et un fichier demandé à cet instant sonnerait après le silence.
   const urls = useMemo(
-    () => soundURLsFor(timeline, endMatchSoundStems(endMatch)),
-    [timeline, endMatch],
+    () => soundURLsFor(timeline, [...endMatchSoundStems(endMatch), ...engine.stems]),
+    [timeline, endMatch, engine.stems],
   )
 
   const cursorRef = useRef<SoundCursor>({ ms: 0, idx: 0 })
@@ -371,11 +390,12 @@ export function useReplaySound(
       playerRef.current = player
       tuning.apply(player)
     }
+    engine.attach(player)
     player.resume()
     player.setVolume(level)
     player.preload(urlsRef.current.values())
     resyncRef.current = true
-  }, [tuning])
+  }, [tuning, engine.attach])
 
   /**
    * wake — CE QUE FAIT UN GESTE DE TRANSPORT QUAND LA PRÉFÉRENCE EST DÉJÀ À « ACTIVÉ ».
@@ -415,9 +435,14 @@ export function useReplaySound(
     // DANS LE GESTE, toujours. Coupure IMMÉDIATE dans l'autre sens (rampe du maître) : ce qui
     // est en vol s'éteint avec, plutôt que de traîner une seconde après le clic.
     if (next) openPlayer()
-    else playerRef.current?.setVolume(0)
+    else {
+      playerRef.current?.setVolume(0)
+      // La rampe du maître éteint ce qui est EN VOL ; une boucle moteur, elle, resterait à
+      // tourner en silence et repartirait au prochain réglage de volume — on la coupe.
+      engine.stop()
+    }
     setOn(next)
-  }, [openPlayer, hasAnySound])
+  }, [openPlayer, hasAnySound, engine.stop])
 
   const setVolume = useCallback((v: number) => {
     const clamped = Math.min(Math.max(v, 0), 1)
@@ -442,8 +467,14 @@ export function useReplaySound(
     // l'instant courant et non d'un passé enjambé.
     if (!onRef.current || !player || !soundPlaysAtSpeed(speedRef.current)) {
       cursorRef.current = resyncSoundCursor(tl, ms)
+      // Les MOTEURS se taisent avec le reste : au-delà de SOUND_MAX_SPEED, le panneau dit
+      // « son coupé par la vitesse », et un moteur qui continuerait le ferait mentir.
+      engine.stop()
       return
     }
+    // Les moteurs suivent l'instant AVANT le tirage des événements : un saut est réconcilié
+    // en silence par le lecteur moteur lui-même (reprise directement sur la boucle).
+    engine.sync(ms)
     if (resyncRef.current) {
       resyncRef.current = false
       cursorRef.current = resyncSoundCursor(tl, ms)
@@ -462,7 +493,7 @@ export function useReplaySound(
       // d'arme, tout autre stem se joue tel quel (drawVariation rend le neutre exact).
       player.play(url, drawVariation(WEAPON_SOUND_VARIATIONS[stem], tuning.variationPercentRef.current))
     }
-  }, [tuning])
+  }, [tuning, engine.stop, engine.sync])
 
   // LA CONCLUSION. Elle ne passe PAS par le curseur : elle n'a pas d'instant sur la piste, et
   // le curseur existe pour ne pas rejouer ce qu'on a enjambé — une question qui n'a pas de sens
@@ -494,10 +525,20 @@ export function useReplaySound(
       // Le tirage est SEME pour que deux exports du meme match sonnent pareil (decision D7).
       endMatchStems: endMatchSoundsFor(endMatchRef.current),
       families: soundFamiliesFor(endMatchRef.current, locale),
+      engines: engine.plansForExport(),
       variationPercent: tuning.variationPercentRef.current,
       distancePercent: tuning.distancePercentRef.current,
     }),
-    [tuning],
+    [tuning, engine.plansForExport, locale],
+  )
+
+  // LA PAUSE COUPE LES MOTEURS (rampe de 20 ms) : sans battement, une boucle en vol ne
+  // s'éteindrait jamais. La reprise n'a rien à faire — le prochain `tick` recale tout.
+  const setTransportPlaying = useCallback(
+    (playing: boolean) => {
+      if (!playing) engine.stop()
+    },
+    [engine.stop],
   )
 
   return {
@@ -511,6 +552,7 @@ export function useReplaySound(
     categories,
     toggleCategory,
     tick,
+    setTransportPlaying,
     endMatch: playEndMatch,
     recordingTrack,
     exportTrack,

@@ -34,8 +34,8 @@
 //
 // Une seule fonction publique, [Decode]. Le cablage complet tient en quelques lignes :
 //
-//	src := killsource.MemoryChunks(chunks)              // les chunks deja telecharges
-//	res, err := killsource.Decode(ctx, matchID, src, nil) // nil = la configuration GELEE
+//	film, err := filmsource.Load(filmsource.MemoryChunks(chunks), meta) // les chunks telecharges
+//	res, err := killsource.Decode(ctx, matchID, film, nil)              // nil = la config GELEE
 //	if err != nil {
 //	    return err                                       // errors.Is(err, killsource.ErrNoKillFeed), ...
 //	}
@@ -69,7 +69,10 @@
 //	    observability.AddInt(p.Name, p.Value)            // ADR 0009, compteurs entiers
 //	}
 //
-// `killsource.DirChunks(dir)` remplace `MemoryChunks` pour rejouer un film depuis le disque.
+// `filmsource.LoadDir(dir, nil)` remplace `MemoryChunks` pour rejouer un film depuis le disque.
+// LE FILM SE CHARGE CHEZ L APPELANT, et une seule fois : ce paquet ne lit plus le disque et ne
+// decompresse plus rien depuis le lot 1 de PLAN_CUISSON_PERF (item 1.4, 2026-09-02) — une cuisson
+// d artefact qui decode aussi le rejeu 2D passe le MEME `*filmsource.Film` aux deux.
 // Avant de publier ligne par ligne, tester `res.LineByLinePublishable()` : il refuse quand la
 // bijection indice -> joueur n a pas de marge (BTB) ou quand la sante est en ALERTE. CETTE PORTE
 // VAUT AUSSI POUR L ASSISTANT ET LES DEUX PARTS DE DEGATS : ils sont nommes par la MEME bijection
@@ -98,7 +101,7 @@
 // ratee — son interpretation (degat excedentaire) n est PAS etablie.
 //
 // CE PAQUET EST IMPORTE PAR L APPLICATION : `internal/replaybuild/replaybuild.go`
-// (`neutralDeaths`, via `killsource.DirChunks` + `killsource.Decode`) l utilise pour typer
+// (`neutralDeaths`, via le film que `BuildBytes` a deja charge + `killsource.Decode`) l utilise pour typer
 // les lignes de mort neutres de l artefact de rejeu 2D — brique partagee par
 // `cmd/replay-build`, `levelup backfill-replay`, l action admin replay-build et l etape
 // post-sync locale (cf. l en-tete de `replaybuild`). Le reste (`cmd/killsource`) est un

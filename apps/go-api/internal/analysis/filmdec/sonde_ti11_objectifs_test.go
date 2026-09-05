@@ -229,7 +229,7 @@ func TestTI11MasqueEtBande(t *testing.T) {
 	for s := range c.slotsTI[ti11TypeIndex] {
 		observed[s] = true
 	}
-	band := worldObjectSlotBand(dir, n, ti11TypeIndex)
+	band := worldObjectSlotBandDir(dir, n, ti11TypeIndex)
 	ghost := ti11GhostBand(c, len(band))
 	t.Logf("BANDE — ti=%d : %d slots OBSERVES en keyframe -> %d slots apres comblement et"+
 		" retrait des slots vus porter un autre archetype (facteur %s)",

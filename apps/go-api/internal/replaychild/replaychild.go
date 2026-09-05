@@ -35,7 +35,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
@@ -44,6 +46,11 @@ import (
 // Flag : le drapeau qui fait d'un processus l'enfant de cuisson. Il n'est pas destine a la main
 // de l'operateur — c'est un protocole interne, pas une commande.
 const Flag = "-film-child"
+
+// outilPostSync : le nom que le verrou de decodage porte quand c'est le post-sync qui le tient.
+// Un operateur a qui l'on refuse le verrou doit lire QUI travaille (cf. filmproc/solo.go) ; ce
+// nom est donc du texte d'interface, pas un detail.
+const outilPostSync = "post-sync"
 
 // Request : ce que le parent demande a l'enfant.
 type Request struct {
@@ -93,7 +100,7 @@ func RunChild(args []string) int {
 		return filmproc.CodePreparation
 	}
 
-	g := filmproc.Arm("post-sync", filmproc.DefaultLimitGiB, func(peak uint64) {
+	g := filmproc.Arm(outilPostSync, filmproc.DefaultLimitGiB, func(peak uint64) {
 		// LE PIC PART AVANT LA MORT : `os.Exit` ne joue pas les differes.
 		filmproc.EmitPeak(peak)
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : plafond memoire depasse (%d octets) — film abandonne\n", peak)
@@ -144,15 +151,57 @@ func valueOf(args []string, flag string) string {
 	return ""
 }
 
+// Result : ce que la cuisson d'UN film rend au parent — les octets ET LA MESURE.
+//
+// POURQUOI LA MESURE VOYAGE AVEC LES OCTETS (PLAN_CUISSON_PERF §3 D5). Le lanceur mesure deja
+// les deux (`filmproc.Result.Dur` et `.Peak`, ce dernier par le protocole du tube), et `Spawn`
+// les jetait : le log de succes du post-sync ne pouvait donc rien dire du temps ni de la memoire
+// de la cuisson qu'il venait de payer. Les rendre ici est le SEUL chemin par lequel ces deux
+// chiffres atteignent l'orchestrateur — un `slog` pose dans l'enfant finirait dans le tube du
+// journal, pas dans la ligne de bilan du cycle.
+type Result struct {
+	// Blob est le document SERIALISE, tel que l'enfant l'a depose.
+	Blob []byte
+	// Dur est la duree de bout en bout de l'ENFANT (lancement compris), pas celle du seul
+	// decodage : c'est ce que le cycle a reellement paye pour ce film.
+	Dur time.Duration
+	// Peak est le pic memoire de l'enfant en octets, tel qu'il s'est mesure lui-meme. ZERO
+	// QUAND L'ENFANT EST MORT AVANT DE POUVOIR SE MESURER — une valeur nulle ne veut donc pas
+	// dire « pas de memoire », elle veut dire « pas de mesure ».
+	Peak uint64
+}
+
 // Spawn est le cote PARENT : il serialise la requete, lance l'enfant borne, et rend les OCTETS
-// de l'artefact. Il n'ecrit RIEN a la place canonique — c'est l'appelant qui range.
+// de l'artefact AVEC leur mesure. Il n'ecrit RIEN a la place canonique — c'est l'appelant qui
+// range.
 //
 // TOUT CE QU'IL CREE, IL LE SUPPRIME : la requete et le depot sont des fichiers temporaires du
 // parent. Un enfant tue en vol ne laisse donc rien derriere lui.
-func Spawn(ctx context.Context, req Request) ([]byte, error) {
+func Spawn(ctx context.Context, req Request) (Result, error) {
+	// LE VERROU SOLO EST PRIS PAR LE PARENT, EN REFUS IMMEDIAT (PLAN_CUISSON_PERF §3 D7).
+	//
+	// PAR LE PARENT parce que c'est lui qui decide de faire naitre un processus : un verrou pris
+	// dans l'enfant aurait deja coute le lancement, la lecture du catalogue de bornes et les
+	// libelles du titre avant de constater qu'il fallait renoncer.
+	//
+	// EN REFUS IMMEDIAT parce que le post-sync n'a rien a attendre : le match manquant revient
+	// au cycle suivant (l'etape est idempotente, l'artefact deja a jour n'est pas reconstruit),
+	// tandis qu'une attente bloquerait la synchronisation entiere derriere un decodage qui ne
+	// lui appartient pas. Les PASSES, elles, attendent leur tour (`AcquireSoloWait`) : elles
+	// n'ont pas de cycle suivant.
+	//
+	// Le refus remonte comme une erreur de cuisson : le film compte en ECHEC du cycle, avec le
+	// detenteur nomme dans le message (cf. `filmproc.soloBusyError`).
+	cacheRoot := title.NewPathResolver(req.RepoRoot).CacheRootDir()
+	lock, err := filmproc.AcquireSolo(cacheRoot, outilPostSync, req.MatchID)
+	if err != nil {
+		return Result{}, fmt.Errorf("cuisson non lancee : %w", err)
+	}
+	defer lock.Release()
+
 	dir, err := os.MkdirTemp("", "levelup-filmchild-")
 	if err != nil {
-		return nil, fmt.Errorf("repertoire temporaire: %w", err)
+		return Result{}, fmt.Errorf("repertoire temporaire: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
 
@@ -160,33 +209,33 @@ func Spawn(ctx context.Context, req Request) ([]byte, error) {
 	reqPath := filepath.Join(dir, "request.json")
 	blob, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("serialisation de la requete: %w", err)
+		return Result{}, fmt.Errorf("serialisation de la requete: %w", err)
 	}
 	if err := os.WriteFile(reqPath, blob, 0o600); err != nil {
-		return nil, fmt.Errorf("ecriture de la requete: %w", err)
+		return Result{}, fmt.Errorf("ecriture de la requete: %w", err)
 	}
 
 	runner, err := filmproc.NewRunner(req.RepoRoot, os.Stdout)
 	if err != nil {
-		return nil, err
+		return Result{}, err
 	}
 	res := runner.Run(ctx, []string{Flag, reqPath})
 	switch res.Issue {
 	case filmproc.IssueOK:
 	case filmproc.IssueSkipped:
-		return nil, fmt.Errorf("%w (candidats: %v)", replaybuild.ErrMapNotInCatalog, req.MapNames)
+		return Result{}, fmt.Errorf("%w (candidats: %v)", replaybuild.ErrMapNotInCatalog, req.MapNames)
 	case filmproc.IssueMemory:
-		return nil, fmt.Errorf("cuisson abandonnee : plafond memoire depasse (pic %d octets)", res.Peak)
+		return Result{}, fmt.Errorf("cuisson abandonnee : plafond memoire depasse (pic %d octets)", res.Peak)
 	default:
 		// MORT SUBITE COMPRISE : un enfant tue par l'OS ne doit jamais passer pour un succes.
-		return nil, fmt.Errorf("cuisson en echec (issue %s, code %d): %v", res.Issue, res.Code, res.Err)
+		return Result{}, fmt.Errorf("cuisson en echec (issue %s, code %d): %v", res.Issue, res.Code, res.Err)
 	}
 	out, err := os.ReadFile(req.OutPath)
 	if err != nil {
-		return nil, fmt.Errorf("octets de l'artefact illisibles: %w", err)
+		return Result{}, fmt.Errorf("octets de l'artefact illisibles: %w", err)
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("l'enfant a rendu un artefact VIDE pour %s", req.MatchID)
+		return Result{}, fmt.Errorf("l'enfant a rendu un artefact VIDE pour %s", req.MatchID)
 	}
-	return out, nil
+	return Result{Blob: out, Dur: res.Dur, Peak: res.Peak}, nil
 }

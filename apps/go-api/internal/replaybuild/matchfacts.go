@@ -11,10 +11,11 @@ package replaybuild
 //	les ACTIONS D'OBJECTIF nommees (capture, retour, prise de zone) et attribuees a un xuid.
 //
 // UN SEUL DECODAGE POUR LES DEUX, et c'est la raison d'etre du fichier : les fonctions de
-// facade d'`objectiveevents` (`NamedEvents`, `SlotIdentity`) re-decodent le film
-// a chaque appel. Les enchainer coûterait trois balayages complets la ou un seul suffit — sur
+// facade d'`objectiveevents` (`NamedEvents`, `SlotIdentity`) re-balaient les enregistrements a
+// chaque appel. Les enchainer coûterait trois balayages complets la ou un seul suffit — sur
 // une machine qui paie deja le decodage des positions, ce n'est pas un detail (0,6 a 2,4 s et
-// jusqu'a 21 Mo par film, mesure du corpus de 22).
+// jusqu'a 21 Mo par film, mesure du corpus de 22). Depuis le lot 1 de PLAN_CUISSON_PERF, le
+// FILM lui-meme n'est de toute facon plus relu : il arrive charge (`filmload.go`).
 //
 // # POURQUOI C'EST ICI ET PAS DANS `analysis/replay`
 //
@@ -34,9 +35,9 @@ import (
 	"log/slog"
 	"strconv"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/analysis/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/port"
 )
 
@@ -58,8 +59,8 @@ type filmStats struct {
 	skull replay.SkullInput
 	// bomb porte L'ARMEMENT DE LA BOMBE d'Assaut : l'horloge du manifeste (le balayage de
 	// l'anneau ti=12 se date sur `start_ms` par chunk), plus la garde de mode posee selon
-	// `game_variant_name` — le canal n'est prouve que sur Neutral Bomb et Husky Raid, jamais
-	// One Bomb (cf. replaybuild/zones.go, isArmableBombVariant).
+	// `game_variant_name` — TOUTE la famille bomb, One Bomb comprise depuis le 2026-09-04
+	// (cf. replaybuild/zones.go, isBombVariant).
 	bomb replay.BombInput
 }
 
@@ -68,19 +69,18 @@ type filmStats struct {
 // Rend un filmStats VIDE (score nil) quand le film n'est pas lisible par cette porte : le
 // document sort alors sans courbe de score ET sans couverture de score, ce qui dit « rien n'a
 // ete lu » plutot que « rien n'existait ».
-func readFilmStats(ctx context.Context, matchID, filmDir string, facts port.MatchFacts) filmStats {
-	src, found, err := filmcache.OpenChunkDir(filmDir)
-	switch {
-	case err != nil:
-		slog.WarnContext(ctx, "replaybuild: manifeste de film illisible — rejeu sans courbe de score",
-			"err", err, "match_id", matchID, "filmDir", filmDir)
-		return filmStats{}
-	case !found:
-		slog.InfoContext(ctx, "replaybuild: film sans manifeste au cache — rejeu sans courbe de score",
-			"match_id", matchID, "filmDir", filmDir)
-		return filmStats{}
+//
+// LES DEUX REFUS SONT DISTINCTS, et ils l'etaient deja : un film ILLISIBLE (chunks absents du
+// cache) et un film SANS MANIFESTE. Le second garde son sens apres le lot 1 — le film se charge
+// tres bien sans manifeste, mais aucun de ses chunks n'a alors de type ni de `start_ms`, donc
+// rien n'est datable ici (cf. [chunksDuManifeste]).
+func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
+	facts port.MatchFacts, deaths filmDeaths,
+) filmStats {
+	if film == nil || len(chunksDuManifeste(film)) == 0 {
+		return filmStats{} // film illisible ou manifeste absent — deja journalise par filmload.go
 	}
-	recs, truncated := objectiveevents.StatRecordsCtx(ctx, src, matchID)
+	recs, truncated := objectiveevents.StatRecordsCtx(ctx, film, matchID)
 	if len(recs) == 0 {
 		slog.InfoContext(ctx, "replaybuild: aucun enregistrement d'entite dans le film — courbe de score vide",
 			"match_id", matchID)
@@ -99,32 +99,57 @@ func readFilmStats(ctx context.Context, matchID, filmDir string, facts port.Matc
 			TeamScores: facts.TeamScores,
 			Truncated:  truncated,
 		},
-		objectives: identifiedEvents(ctx, matchID, filmDir, recs, facts.GameVariantName),
-		flag:       flagInput(recs, src),
+		objectives: identifiedEvents(ctx, matchID, deaths, recs, facts.GameVariantName),
+		flag:       flagInput(recs, film),
 		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:      skullInput(recs, isSkullVariant(facts.GameVariantName)),
-		bomb: bombInput(src, isArmableBombVariant(facts.GameVariantName),
-			isBombVariant(facts.GameVariantName)),
+		bomb:       bombInput(film, isBombVariant(facts.GameVariantName)),
 	}
 }
 
-// bombInput assemble ce que LA BOMBE lit hors film, sous ses DEUX gardes de mode :
+// chunksDuManifeste rend les chunks du film que le MANIFESTE decrit.
 //
-//	armable  l'ARMEMENT (schema 33) — l'horloge du manifeste (start_ms par chunk, le
-//	         balayage de l'anneau la demande pour dater sur la meme base que les explosions
-//	         du statborg). Jamais One Bomb : le canal de l'anneau y est refute.
-//	carry    le PORTAGE (schema 34) — aucune donnee de plus (le canal des armes tenues est
-//	         deja balaye par BuildFromFilm) : la garde seule. TOUTES les variantes de la
-//	         famille bomb, One Bomb comprise.
+// ZERO N'EST PAS UN TYPE DE CHUNK : c'est ce que `filmsource.LoadDir` synthetise pour un
+// `chunk_NN.bin` present au cache mais ABSENT du manifeste. Mesure du 2026-09-02 sur les
+// 1 380 manifestes du cache : trois valeurs seulement — 1 pour l'en-tete, 2 pour les chunks de
+// jeu, 3 pour le pied — et jamais 0. Un chunk hors manifeste n'a donc pas de debut connu, et
+// l'inscrire a zero dans l'horloge dirait au balayage de l'anneau « ce chunk commence a 0 » au
+// lieu de « je ne sais pas » (`filmdec/navpoint_radial_scan.go`, `hasStart`). Un film du cache
+// est dans ce cas : `7b0d89c4` porte les fichiers 31 et 32 sans les avoir au manifeste.
+func chunksDuManifeste(film *filmsource.Film) []filmsource.ChunkMeta {
+	if film == nil {
+		return nil
+	}
+	meta := film.Meta()
+	out := make([]filmsource.ChunkMeta, 0, len(meta))
+	for _, m := range meta {
+		if m.ChunkType == 0 {
+			continue
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+// bombInput assemble ce que LA BOMBE lit hors film, sous UNE SEULE garde de mode — la
+// FAMILLE, One Bomb comprise depuis le 2026-09-04 (la garde de nom est levee, cf.
+// replaybuild/zones.go) :
+//
+//	l'ARMEMENT (schema 33)  l'horloge du manifeste (start_ms par chunk, le balayage de
+//	                        l'anneau la demande pour dater sur la meme base que les
+//	                        explosions du statborg) ;
+//	le PORTAGE (schema 34)  aucune donnee de plus (le canal des armes tenues est deja
+//	                        balaye par BuildFromFilm) : la garde seule.
 //
 // Hors de la famille bomb, il rend un input VIDE : ni balayage, ni calque, ni couverture.
-func bombInput(src objectiveevents.FilmSource, armable, carry bool) replay.BombInput {
-	in := replay.BombInput{CarryScanned: carry}
-	if !armable {
-		return in
+func bombInput(film *filmsource.Film, bomb bool) replay.BombInput {
+	if !bomb {
+		return replay.BombInput{}
 	}
-	clock := map[int]int{}
-	for _, c := range src.Chunks() {
+	in := replay.BombInput{CarryScanned: true}
+	chunks := chunksDuManifeste(film)
+	clock := make(map[int]int, len(chunks))
+	for _, c := range chunks {
 		clock[c.Index] = c.StartMS
 	}
 	in.Scanned = true
@@ -159,15 +184,15 @@ func vipInput(recs []objectiveevents.StatRecord, isVip bool) replay.VipInput {
 // morts) ; les BURSTS DE CAPTURE, eux, sont des evenements de score et se lisent ailleurs dans
 // le film. Sans eux le discriminant de mode ne tient pas : la table d'emplacements du drapeau,
 // appliquee a un film Oddball, rend 1 470 « prises » et 994 « vols ». Le cout est un parcours de
-// plus, sur une chaine qui en fait deja une dizaine pour le meme film.
+// plus des paquets deja decoupes — depuis le lot 1, ce n'est plus une relecture du film.
 //
 // AUCUN FAIT DE MATCH N'ENTRE ICI, et c'est ce qui rend le calque publiable hors ligne : le
 // porteur se nomme par les INSTANTS DE MORT, jamais par les lignes de match.
-func flagInput(recs []objectiveevents.StatRecord, src objectiveevents.FilmSource) replay.FlagInput {
+func flagInput(recs []objectiveevents.StatRecord, film *filmsource.Film) replay.FlagInput {
 	return replay.FlagInput{
 		Scanned: true,
 		Records: recs,
-		Bursts:  objectiveevents.CaptureBurstTimes(src),
+		Bursts:  objectiveevents.CaptureBurstTimes(film),
 	}
 }
 
@@ -184,22 +209,22 @@ func flagInput(recs []objectiveevents.StatRecord, src objectiveevents.FilmSource
 // variante inconnue) ou sans aucun emplacement nomme, aucun nom n'est possible ; sans fil des
 // morts lisible, aucun slot ne peut etre apparie par manche. Chacun rend nil, journalise.
 //
-// LE FIL DES MORTS EST RELU ICI (`replay.ScanFilmDeaths`) : c'est le meme chunk que
-// `BuildFromFilm` relira pour les autres calques (un seul fichier highlight, borne, sans verrou
-// filmdec). Le second decodage du statborg, lui, n'est PAS refait — `recs` est reutilise.
-func identifiedEvents(ctx context.Context, matchID, filmDir string,
+// LE FIL DES MORTS N'EST PLUS RELU ICI (lot 1, 2026-09-02) : il arrive DEJA LU, par `deaths`.
+// C'est la meme lecture que `killRefs` consomme (kills.go), la ou les deux ouvraient et
+// reparsaient chacune le chunk highlight. Le second decodage du statborg, lui, n'a jamais ete
+// refait — `recs` est reutilise.
+func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 	recs []objectiveevents.StatRecord, variant string) []objectiveevents.IdentifiedEvent {
 	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeOf(variant))
 	if len(named) == 0 {
 		return nil
 	}
-	deaths, err := replay.ScanFilmDeaths(filmDir)
-	if err != nil {
+	if deaths.err != nil {
 		slog.WarnContext(ctx, "replaybuild: fil des morts illisible — actions d'objectif non identifiees",
-			"err", err, "match_id", matchID, "nommees", len(named))
+			"err", deaths.err, "match_id", matchID, "nommees", len(named))
 		return nil
 	}
-	out := identifyRoundEvents(named, recs, deathInstantsOf(deaths))
+	out := identifyRoundEvents(named, recs, deathInstantsOf(deaths.list))
 	slog.InfoContext(ctx, "replaybuild: actions d'objectif identifiees par manche",
 		"match_id", matchID, "nommees", len(named), "identifiees", len(out))
 	return out

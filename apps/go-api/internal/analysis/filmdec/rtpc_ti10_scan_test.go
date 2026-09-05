@@ -125,7 +125,7 @@ func ti10ScanFilm(dir string, clk zcClock) (*ti10Scan, error) {
 	if len(band) == 0 {
 		return sc, nil // pas une erreur : c'est le negatif du gate 0
 	}
-	arch, reg, err := filmArchetype(dir, ti10ArchIndex)
+	arch, reg, err := filmArchetypeDir(dir, ti10ArchIndex)
 	if err != nil {
 		return sc, err
 	}

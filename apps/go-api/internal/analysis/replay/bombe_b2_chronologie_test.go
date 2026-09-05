@@ -172,7 +172,7 @@ func b2PorteurA(periodes []HeldObjectPeriod, t, maxMS int) (HeldObjectPeriod, bo
 // b2Detonateurs rend, par instant d'explosion, le xuid du détonateur (pont par manche).
 func b2Detonateurs(t *testing.T, cache, id string) map[int]string {
 	t.Helper()
-	src, ok, err := filmcache.Open(cache, id)
+	src, ok, err := filmcache.LoadFilm(cache, id)
 	if err != nil || !ok {
 		t.Fatalf("%s : film absent du cache : %v", id, err)
 	}
@@ -391,7 +391,7 @@ func TestBombeB2TemoinOddball(t *testing.T) {
 	}
 	kills := b2Kills(t, cache, b1Temoin)
 
-	src, ok, err := filmcache.Open(cache, b1Temoin)
+	src, ok, err := filmcache.LoadFilm(cache, b1Temoin)
 	if err != nil || !ok {
 		t.Fatalf("témoin %s absent du cache : %v", b1Temoin, err)
 	}

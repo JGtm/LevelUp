@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"testing"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
 )
 
@@ -52,14 +53,14 @@ func objDeathInstants(deaths []Death) []objectiveevents.DeathInstant {
 
 // objIdentites rend le pont slot statborg -> xuid par les INSTANTS DE MORT, tel que la
 // PRODUCTION le calcule.
-func objIdentites(src objectiveevents.FilmSource, deaths []Death) map[int]string {
-	return objectiveevents.SlotIdentityFromDeaths(src, objDeathInstants(deaths))
+func objIdentites(film *filmsource.Film, deaths []Death) map[int]string {
+	return objectiveevents.SlotIdentityFromDeaths(film, objDeathInstants(deaths))
 }
 
 // objRoundIdentites rend le pont slot statborg -> xuid PAR MANCHE, tel que la production le
 // calcule desormais pour les calques d'objectifs vivants (drapeau, couronne, porteur du crane).
-func objRoundIdentites(src objectiveevents.FilmSource, deaths []Death) objectiveevents.RoundIdentity {
-	return objectiveevents.ResolveRoundIdentity(objectiveevents.StatRecords(src), objDeathInstants(deaths))
+func objRoundIdentites(film *filmsource.Film, deaths []Death) objectiveevents.RoundIdentity {
+	return objectiveevents.ResolveRoundIdentity(objectiveevents.StatRecords(film), objDeathInstants(deaths))
 }
 
 // objTriplets rend, par slot statborg, le triplet final (frags, morts, assistances).

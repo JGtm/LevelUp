@@ -3,6 +3,8 @@ package filmdec
 import (
 	"fmt"
 	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // projectiles.go — TRAJECTOIRES DE PROJECTILE, décodées des paquets delta.
@@ -95,8 +97,18 @@ const EquipmentTypeIndex = 37
 // ScanFilmProjectiles décode les trajectoires de projectile du film de dir.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+// ScanFilmProjectiles est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanProjectiles].
 func ScanFilmProjectiles(dir string, wr *Vec3Range) ([]ProjectileTrack, error) {
-	return ScanFilmWorldObjects(dir, wr, ProjectileTypeIndex)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ScanProjectiles(film, wr)
+}
+
+// ScanProjectiles décode les trajectoires de projectile d'un film DEJA CHARGE.
+func ScanProjectiles(film *filmsource.Film, wr *Vec3Range) ([]ProjectileTrack, error) {
+	return ScanWorldObjects(film, wr, ProjectileTypeIndex)
 }
 
 // ScanFilmWorldObjects décode les trajectoires d'un archétype d'OBJET DU MONDE quelconque.
@@ -107,17 +119,26 @@ func ScanFilmProjectiles(dir string, wr *Vec3Range) ([]ProjectileTrack, error) {
 // des deltas. Un seul décodeur les sert donc tous, avec l'archétype en paramètre.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+// ScanFilmWorldObjects est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanWorldObjects].
 func ScanFilmWorldObjects(dir string, wr *Vec3Range, typeIndex int) ([]ProjectileTrack, error) {
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, fmt.Errorf("aucun chunk film dans %s", dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, err
 	}
-	band := worldObjectSlotBand(dir, n, typeIndex)
+	return ScanWorldObjects(film, wr, typeIndex)
+}
+
+// ScanWorldObjects décode les trajectoires d'un archétype d'objet du monde d'un film DEJA CHARGE.
+func ScanWorldObjects(film *filmsource.Film, wr *Vec3Range, typeIndex int) ([]ProjectileTrack, error) {
+	if len(FilmChunkNumbers(film)) == 0 {
+		return nil, ErrNoFilmChunk
+	}
+	band := worldObjectSlotBand(film, typeIndex)
 	if len(band) == 0 {
-		return nil, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes de %s",
-			typeIndex, dir)
+		return nil, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film", typeIndex)
 	}
-	return ScanFilmWorldObjectsForBand(dir, wr, band)
+	return ScanWorldObjectsForBand(film, wr, band)
 }
 
 // ScanFilmWorldObjectsForBand décode les trajectoires d'une BANDE DE SLOTS déjà relevée.
@@ -127,24 +148,37 @@ func ScanFilmWorldObjects(dir string, wr *Vec3Range, typeIndex int) ([]Projectil
 // la même donnée. Le chemin par défaut reste `ScanFilmWorldObjects`, qui la relève lui-même.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+// ScanFilmWorldObjectsForBand est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanWorldObjectsForBand].
 func ScanFilmWorldObjectsForBand(
 	dir string, wr *Vec3Range, band map[uint32]bool,
+) ([]ProjectileTrack, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ScanWorldObjectsForBand(film, wr, band)
+}
+
+// ScanWorldObjectsForBand décode les trajectoires d'une bande de slots dans un film DEJA CHARGE.
+func ScanWorldObjectsForBand(
+	film *filmsource.Film, wr *Vec3Range, band map[uint32]bool,
 ) ([]ProjectileTrack, error) {
 	if wr == nil {
 		return nil, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
 	}
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, fmt.Errorf("aucun chunk film dans %s", dir)
+	nums := FilmChunkNumbers(film)
+	if len(nums) == 0 {
+		return nil, ErrNoFilmChunk
 	}
 	type key struct{ slot, gen uint32 }
 	lives := map[key][]ProjectileSample{}
-	for c := 1; c <= n; c++ {
-		chunk, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range nums {
+		chunk, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
-		for _, p := range WalkPackets(chunk) {
+		for _, p := range pks {
 			if p.Type != PacketTypeDelta {
 				continue
 			}
@@ -190,7 +224,24 @@ func lessSample(a, b ProjectileSample) bool {
 	return a.Z < b.Z
 }
 
-// lessTrack : ordre total sur les vies (naissance, puis slot, puis génération).
+// lessTrack : ordre total sur les vies (naissance, slot, génération, PUIS la piste elle-même).
+//
+// POURQUOI LE DÉPARTAGE PAR LA PISTE (correction du 2026-09-02, item 0.4bis de
+// PLAN_CUISSON_PERF). Le triplet (naissance, slot, génération) N'EST PAS total, et c'était un
+// non-déterminisme mesurable : `splitLives` coupe une vie sur un trou de 250 ms MAIS AUSSI sur
+// un record `at rest`, si bien que plusieurs segments d'un même couple (slot, gen) peuvent
+// commencer au MÊME horodatage — ce qui arrive sur les objets du monde immobiles. Mesuré sur
+// `000d5950` : 3 pistes sur 549 partagent un triplet dans la bande `ti=42` (armes au sol), 3
+// sur 477 dans la bande `ti=37` (équipement). Comme `out` est bâti en itérant la MAP `lives` et
+// que `sort.Slice` n'est pas stable, l'ordre des ex æquo changeait à CHAQUE exécution — et cet
+// ordre n'est pas cosmétique : `replay.projectileBirths` retrie ces naissances et `birthNear`
+// prend celle d'un INDICE donné (cf. le commentaire de ScanFilmWorldObjectsForBand), donc deux
+// cuissons du même film pouvaient publier deux positions de naissance différentes.
+//
+// Le départage n'utilise QUE des données de la piste (longueur, puis les échantillons dans
+// l'ordre) : jamais une adresse mémoire ni le rang d'itération de la map, qui rendraient le
+// résultat non reproductible d'un processus à l'autre. Deux pistes que ce comparateur ne
+// sépare pas sont IDENTIQUES champ pour champ — les échanger ne change donc pas la sortie.
 func lessTrack(a, b ProjectileTrack) bool {
 	if a.Pts[0].TimestampUS != b.Pts[0].TimestampUS {
 		return a.Pts[0].TimestampUS < b.Pts[0].TimestampUS
@@ -198,7 +249,47 @@ func lessTrack(a, b ProjectileTrack) bool {
 	if a.Slot != b.Slot {
 		return a.Slot < b.Slot
 	}
-	return a.Gen < b.Gen
+	if a.Gen != b.Gen {
+		return a.Gen < b.Gen
+	}
+	if len(a.Pts) != len(b.Pts) {
+		return len(a.Pts) < len(b.Pts)
+	}
+	for i := range a.Pts {
+		if c := compareSample(a.Pts[i], b.Pts[i]); c != 0 {
+			return c < 0
+		}
+	}
+	return false
+}
+
+// compareSample ordonne deux échantillons sur TOUS leurs champs — c'est ce qui rend le
+// départage de lessTrack indépendant de l'ordre d'arrivée.
+func compareSample(a, b ProjectileSample) int {
+	switch {
+	case a.TimestampUS != b.TimestampUS:
+		return signe(a.TimestampUS < b.TimestampUS)
+	case a.X != b.X:
+		return signe(a.X < b.X)
+	case a.Y != b.Y:
+		return signe(a.Y < b.Y)
+	case a.Z != b.Z:
+		return signe(a.Z < b.Z)
+	case a.AtRest != b.AtRest:
+		return signe(!a.AtRest)
+	case a.Chunk != b.Chunk:
+		return signe(a.Chunk < b.Chunk)
+	default:
+		return 0
+	}
+}
+
+// signe rend -1 si la comparaison est vraie, +1 sinon.
+func signe(inferieur bool) int {
+	if inferieur {
+		return -1
+	}
+	return 1
 }
 
 // projectileGapUS est le trou temporel au-delà duquel deux échantillons d'un même couple
@@ -376,60 +467,4 @@ func decodeWorldObjectPos(pay []byte, at int, wr *Vec3Range) ([3]float32, bool) 
 		off += int(w)
 	}
 	return v, true
-}
-
-// worldObjectSlotBand rend les slots utilisables pour un archétype, lus dans les keyframes.
-//
-// NI L'UN NI L'AUTRE DES DEUX EXTRÊMES N'EST JUSTE — c'est la leçon du 2026-07-26, obtenue en
-// les essayant tous les deux :
-//
-//	COMBLER la plage (min..max), comme pour le bipède : contamine massivement. Le bipède a une
-//	plage remplie à 91 %, mais le projectile à 8 %, l'équipement à 23 %, le corps rigide à 10 %
-//	-- et les plages de ti=37 [1462,2660] et ti=38 [1280,2641] se recouvrent presque entièrement.
-//	Symptôme mesuré : les trois archétypes rendaient des chiffres identiques à 1 % près sur cinq
-//	critères indépendants (nombre de vies, durée, immobilité, convergence, vitesse d'approche).
-//
-//	S'EN TENIR À L'OBSERVÉ : rate l'essentiel. Un projectile vit moins d'une seconde et les
-//	keyframes sont espacés de 20 s : seuls 19 slots de projectile y apparaissent, contre 57 vies
-//	décodées au lieu de 580.
-//
-// LA FORME JUSTE est donc : combler la plage de l'archétype, PUIS retirer tout slot vu porter un
-// AUTRE archétype. On récupère la couverture sans la contamination, et le retrait est fondé sur
-// une observation, pas sur une heuristique.
-func worldObjectSlotBand(dir string, n int, typeIndex int) map[uint32]bool {
-	seen := map[uint32]bool{}
-	others := map[uint32]bool{}
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
-			continue
-		}
-		for _, pk := range WalkPackets(data) {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
-				if r.TI == typeIndex {
-					seen[uint32(r.Slot)] = true
-				} else {
-					others[uint32(r.Slot)] = true
-				}
-			}
-		}
-	}
-	return slotBandExcluding(seen, others)
-}
-
-// slotBandExcluding applique la règle ci-dessus à des ensembles DÉJÀ RELEVÉS : combler la plage
-// de l'archétype, puis retirer tout slot vu porter un autre archétype.
-//
-// ELLE EST EXTRAITE PARCE QU'UN SECOND APPELANT LA LIT (`ScanFilmWorldObjectKeyframes`, qui
-// relève bande et recensement dans la MÊME marche d'images-clés). Deux copies d'une règle de
-// bande divergeraient au premier correctif — et celle-ci a déjà été corrigée une fois.
-func slotBandExcluding(seen, others map[uint32]bool) map[uint32]bool {
-	band := fillSlotBand(seen)
-	for s := range others {
-		delete(band, s)
-	}
-	return band
 }

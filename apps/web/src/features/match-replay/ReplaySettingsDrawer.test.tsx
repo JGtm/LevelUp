@@ -65,9 +65,10 @@ function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
     categories: { weapon: true, grenade: true, melee: true, equipment: true, objective: true },
     toggleCategory: vi.fn(),
     tick: vi.fn(),
+    setTransportPlaying: vi.fn(),
     endMatch: vi.fn(),
     recordingTrack: () => null,
-  exportTrack: () => ({ timeline: [], endMatchStems: [], variationPercent: 0, distancePercent: 0, families: { voice: [], music: [] } }),
+  exportTrack: () => ({ timeline: [], endMatchStems: [], variationPercent: 0, distancePercent: 0, families: { voice: [], music: [] }, engines: [] }),
     ...over,
   }
 }
@@ -100,6 +101,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       vipCrown={makeFlagCarries()}
       skullCarrier={makeFlagCarries()}
       bombCarrier={makeFlagCarries()}
+      vehicles={makeWeaponPads()}
       heatmap={makeHeatmap()}
       showShotFx
       onToggleShotFx={onToggleShotFx}

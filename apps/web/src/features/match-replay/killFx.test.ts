@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { ReplayDocument } from '@/lib/api/types'
 
-import { buildKillFx, MELEE_LINK_MAX_M, posOfPlayerAt } from './killFx'
+import { buildKillFx, MELEE_LINK_MAX_M } from './killFx'
 import { testReplayDoc } from './test/testDoc'
 
 /** Un kill minimal ; tMs est sur l'horloge gameplay (le recalage ajoute t0Ms). */
@@ -70,20 +70,45 @@ function docWithCouple(over: Partial<ReplayDocument> = {}) {
   })
 }
 
-describe('posOfPlayerAt', () => {
-  const doc = docWithCouple()
-  const lives = doc.tracks.filter((t) => t.xuid === 'V')
+/**
+ * LE VÉHICULE DU TUEUR : immobile en (0,0) puis montant en Y, pendant que la trace de bipède
+ * de K file en X. Aucune image ne peut confondre les deux — c'est ce qui rend le test
+ * discriminant (`posOfPlayerAt` seule rendrait la ligne droite).
+ */
+function docTueurEmbarque(rideT1 = 50) {
+  return docWithCouple({
+    vehicles: [
+      {
+        slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'warthog',
+        samples: [{ t: 0, x: 0, y: 0 }, { t: 100, x: 0, y: 10 }],
+        rides: [{ t0: 10, t1: rideT1, slot: 1, seat: 0, src: 'event', xuid: 'K' }],
+      },
+    ] as never,
+  })
+}
 
-  it('rend la position exacte pendant la vie', () => {
-    expect(posOfPlayerAt(lives, 10, 15)).toEqual({ x: 5, y: 4.5 })
+describe('buildKillFx — le tueur EMBARQUÉ explose sur son véhicule (2026-09-05)', () => {
+  it("à une image de l'épisode, l'effet part du VÉHICULE et non de la ligne droite du bipède", () => {
+    // Kill à 2 000 ms -> frame 20. Bipède interpolé en (2, 0) ; véhicule en (0, 2).
+    const fx = buildKillFx(docTueurEmbarque(), [kill({ tMs: 2_000 })], 0)
+    expect(fx).toHaveLength(1)
+    expect({ x: fx[0].x, y: fx[0].y }).toEqual({ x: 0, y: 2 })
   })
 
-  it('rend la DERNIÈRE position dans la fenêtre DEATH après la fin de vie', () => {
-    expect(posOfPlayerAt(lives, 30, 15)).toEqual({ x: 5, y: 4 })
+  it('APRÈS LA DESCENTE, il repart du bipède, à l’unité près', () => {
+    // L'épisode se ferme à la frame 15 ; le kill est à la frame 20, à pied.
+    const fx = buildKillFx(docTueurEmbarque(15), [kill({ tMs: 2_000 })], 0)
+    expect({ x: fx[0].x, y: fx[0].y }).toEqual({ x: 2, y: 0 })
   })
 
-  it("ne rend RIEN au-delà de la fenêtre — aucune position inventée", () => {
-    expect(posOfPlayerAt(lives, 40, 15)).toBeNull()
+  it('document ANTÉRIEUR AUX VÉHICULES (schéma <= 38) : rigoureusement inchangé', () => {
+    const fx = buildKillFx(docWithCouple(), [kill({ tMs: 2_000 })], 0)
+    expect({ x: fx[0].x, y: fx[0].y }).toEqual({ x: 2, y: 0 })
+  })
+
+  it("le SLOT du tueur reste celui de sa vie de bipède — aucun véhicule ne le déplace", () => {
+    const fx = buildKillFx(docTueurEmbarque(), [kill({ tMs: 2_000 })], 0)
+    expect(fx[0].slot).toBe(1)
   })
 })
 

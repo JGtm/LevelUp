@@ -62,6 +62,7 @@ export type {
   ReplayGroundWeaponControls,
   ReplayPlacementControls,
   ReplaySkullCarrierControls,
+  ReplayVehicleControls,
   ReplayVipCrownControls,
   ReplayWeaponPadControls,
 } from './ReplaySettingsLayers'
@@ -72,6 +73,7 @@ import type {
   ReplayGroundWeaponControls,
   ReplayPlacementControls,
   ReplaySkullCarrierControls,
+  ReplayVehicleControls,
   ReplayVipCrownControls,
   ReplayWeaponPadControls,
 } from './ReplaySettingsLayers'
@@ -109,6 +111,8 @@ interface ReplaySettingsDrawerProps {
   skullCarrier: ReplaySkullCarrierControls
   /** LA BOMBE d'Assaut (schéma 30) : portée et posée, un seul calque, allumé par défaut. */
   bombCarrier: ReplayBombCarrierControls
+  /** Les VÉHICULES (schéma 39) : un seul calque, allumé par défaut. */
+  vehicles: ReplayVehicleControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -296,6 +300,7 @@ export function ReplaySettingsDrawer({
   vipCrown,
   skullCarrier,
   bombCarrier,
+  vehicles,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -357,6 +362,7 @@ export function ReplaySettingsDrawer({
         vipCrown={vipCrown}
         skullCarrier={skullCarrier}
         bombCarrier={bombCarrier}
+        vehicles={vehicles}
       />
       <EffectsSection
         locale={locale}

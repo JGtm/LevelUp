@@ -27,7 +27,7 @@ import {
   drawBombBlastFx,
   type BombBlastStyle,
 } from './bombBlastFx'
-import { usePlayerPosAt } from './livesPosition'
+import { useCarrierPosAt } from './carrierPosition'
 import type { CanvasView } from './objectivesLayer'
 import type { ReplayDocumentReady } from './replayNormalize'
 
@@ -57,9 +57,10 @@ export function useReplayBombBlast({
   neutral,
   reducedMotion,
 }: BombBlastHookInput): ReplayBombBlast {
-  // La relecture de position partagée (livesPosition.ts) — la fenêtre après-mort compte PLUS
-  // ici qu'ailleurs : le poseur meurt souvent DANS son explosion.
-  const posOf = usePlayerPosAt(doc)
+  // La relecture de position partagée (carrierPosition.ts : embarqué -> position du véhicule,
+  // sinon celle du bipède) — la fenêtre après-mort du repli compte PLUS ici qu'ailleurs : le
+  // poseur meurt souvent DANS son explosion.
+  const posOf = useCarrierPosAt(doc)
 
   const blasts = useMemo(() => buildBombBlastFx(doc, posOf), [doc, posOf])
 

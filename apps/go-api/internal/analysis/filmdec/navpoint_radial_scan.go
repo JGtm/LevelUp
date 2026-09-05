@@ -52,7 +52,11 @@ package filmdec
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requete.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // navpointRadialArchIndex est l'archetype des points de navigation geres.
 const navpointRadialArchIndex = 12
@@ -107,30 +111,42 @@ type NavpointRadialScan struct {
 //
 // UN SEUL DECODAGE filmdec A LA FOIS PAR PROCESS : le balayage installe un hook global de
 // paquet. L'appelant detient `LockProcessDecode` (BuildFromFilm le fait).
+//
+// ScanFilmNavpointRadial est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanNavpointRadial].
 func ScanFilmNavpointRadial(dir string, chunkStartMS map[int]int) (*NavpointRadialScan, error) {
-	sc := &NavpointRadialScan{Blocked: map[int]int{}}
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return sc, fmt.Errorf("aucun chunk film dans %s", dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return &NavpointRadialScan{Blocked: map[int]int{}}, err
 	}
-	kf := ScanFilmWorldObjectKeyframes(dir, navpointRadialArchIndex)
+	return ScanNavpointRadial(NewFilmContext(film), chunkStartMS)
+}
+
+// ScanNavpointRadial balaye l'anneau ti=12 d'un film DEJA CHARGE.
+func ScanNavpointRadial(fc *FilmContext, chunkStartMS map[int]int) (*NavpointRadialScan, error) {
+	sc := &NavpointRadialScan{Blocked: map[int]int{}}
+	nums := fc.ChunkNumbers()
+	if len(nums) == 0 {
+		return sc, ErrNoFilmChunk
+	}
+	kf := ScanWorldObjectKeyframes(fc.Film(), navpointRadialArchIndex)
 	band := bandeObserveeKeyframes(kf)
 	sc.KeyCensus, sc.SlotsBand, sc.SlotsObserved = len(kf.SeenUS), len(kf.Band), len(band)
 	if len(band) == 0 {
 		return sc, nil
 	}
-	arch, reg, err := filmArchetype(dir, navpointRadialArchIndex)
+	arch, reg, err := fc.filmArchetype(navpointRadialArchIndex)
 	if err != nil {
 		return sc, err
 	}
 	w := navpointRadialWalk{arch: arch, reg: reg, sc: sc}
 	defer w.install()()
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range nums {
+		data, pks, ok := fc.ChunkAt(c)
+		if !ok {
 			continue
 		}
-		w.scanChunk(data, band, chunkStartMS, c)
+		w.scanChunk(data, pks, band, chunkStartMS, c)
 	}
 	return sc, nil
 }
@@ -156,18 +172,13 @@ func bandeObserveeKeyframes(kf WorldObjectKeyframes) map[uint32]bool {
 // filmArchetype charge UN archetype du registre du film. PARTAGEE : ti=12 (production) et
 // l'instrument ti=10 s'en servent (le chemin ti=11 garde `objectiveArchetype`, qui ne rend pas
 // les memes erreurs).
-func filmArchetype(dir string, ti int) (Archetype, *Registry, error) {
-	raw, err := ReadFilmChunk(dir, 0)
+func (c *FilmContext) filmArchetype(ti int) (Archetype, *Registry, error) {
+	arch, reg, ok, err := c.archetype(ti)
 	if err != nil {
-		return Archetype{}, nil, fmt.Errorf("chunk_00 (registre) illisible dans %s : %w", dir, err)
+		return Archetype{}, nil, err
 	}
-	reg, err := ParseRegistryChunk(raw)
-	if err != nil {
-		return Archetype{}, nil, fmt.Errorf("registre illisible dans %s : %w", dir, err)
-	}
-	arch, ok := reg.Archetype(ti)
 	if !ok {
-		return Archetype{}, nil, fmt.Errorf("archetype ti=%d absent du registre de %s", ti, dir)
+		return Archetype{}, nil, fmt.Errorf("archetype ti=%d absent du registre", ti)
 	}
 	return arch, reg, nil
 }
@@ -212,10 +223,9 @@ func (s *NavpointRadialScan) ajouter(r NavpointRadialRead) {
 // LA BASE DE L'HORLOGE EST LE PREMIER PAQUET DELTA DU CHUNK, exactement comme la mesure du
 // lot C (`zsScan`) : c'est ce qui met les lectures sur la MEME base que
 // `objectiveevents.StatRecords`, donc que les explosions du statborg.
-func (w *navpointRadialWalk) scanChunk(data []byte, band map[uint32]bool, startMS map[int]int,
-	c int,
+func (w *navpointRadialWalk) scanChunk(data []byte, pks []FilmPacket, band map[uint32]bool,
+	startMS map[int]int, c int,
 ) {
-	pks := WalkPackets(data)
 	base, ok := navpointRadialBaseChunk(pks)
 	start, hasStart := startMS[c]
 	for _, pk := range pks {

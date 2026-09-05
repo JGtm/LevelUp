@@ -45,7 +45,6 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/haloclient"
@@ -130,28 +129,15 @@ func NewPostSyncHook(repoRoot string, perCycle int) *PostSyncHook {
 
 // capabilities resout `capabilities.toml` UNE fois, puis rend le resultat memorise — succes
 // comme echec. Reessayer a chaque cycle un fichier absent ne ferait que repeter le meme WARN.
+// La recette de lecture vit dans games.LoadCapabilityMap (centralisee le 2026-09-04, regle
+// des <= 2 copies) ; seule la MEMORISATION reste ici, propre a la vie du hook.
 func (h *PostSyncHook) capabilities(slug string) (games.CapabilityMap, error) {
 	if h.capsOK {
 		return h.caps, h.capsErr
 	}
 	h.capsOK = true
-	reg := mappings.NewRegistry()
-	for _, err := range reg.LoadFromConfigDir(h.repoRoot, []string{slug}, nil) {
-		h.capsErr = fmt.Errorf("mappings du titre %s: %w", slug, err)
-		return nil, h.capsErr
-	}
-	set, ok := reg.GetCapabilities(slug)
-	if !ok {
-		h.capsErr = fmt.Errorf("capabilities.toml absent pour le titre %s", slug)
-		return nil, h.capsErr
-	}
-	caps, err := games.CapabilityMapFromMappings(set)
-	if err != nil {
-		h.capsErr = fmt.Errorf("capabilities du titre %s: %w", slug, err)
-		return nil, h.capsErr
-	}
-	h.caps = caps
-	return caps, nil
+	h.caps, h.capsErr = games.LoadCapabilityMap(h.repoRoot, slug)
+	return h.caps, h.capsErr
 }
 
 // racineDuCache : LA racine, celle qu on lit ET celle qu on ecrit.

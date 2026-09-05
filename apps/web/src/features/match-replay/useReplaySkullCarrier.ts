@@ -7,14 +7,16 @@
  * EXTRACTION. Ce hook réunit la relecture de position du porteur et le tracé par image, et n'en
  * rend au canvas que deux lignes utiles.
  *
- * LE PORTEUR SE RELIT DANS SES TRAJECTOIRES, image par image (`posOfPlayerAt`, le même utilitaire
- * que les effets de mort, le drapeau porté et la couronne) : le crâne « colle » ainsi à son
+ * LE PORTEUR SE RELIT DANS SES TRAJECTOIRES, image par image (`useCarrierPosAt`, le même
+ * utilitaire que la bombe, le drapeau porté et la couronne) : le crâne « colle » ainsi à son
  * marqueur, alors que la période ne publie qu'un intervalle. Sans position, le crâne ne se dessine
- * pas — il n'a pas de place propre (il est TOUJOURS sur le joueur qui le porte).
+ * pas — il n'a pas de place propre (il est TOUJOURS sur le joueur qui le porte). PORTEUR
+ * EMBARQUÉ : c'est la position du VÉHICULE qui répond (décision produit du 2026-09-05, cf.
+ * l'en-tête de `carrierPosition.ts`).
  */
 import { useCallback, useMemo } from 'react'
 
-import { usePlayerPosAt } from './livesPosition'
+import { useCarrierPosAt } from './carrierPosition'
 import type { CanvasView } from './objectivesLayer'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { drawSkullCarrier, type SkullCarrierInput } from './skullCarrierLayer'
@@ -48,8 +50,9 @@ export function useReplaySkullCarrier({
 }: UseReplaySkullCarrierArgs): ReplaySkullCarrier {
   const carries = doc.skullCarries
 
-  // La relecture de position partagée (livesPosition.ts).
-  const posOf = usePlayerPosAt(doc)
+  // La relecture de position partagée (carrierPosition.ts) : embarqué -> position du véhicule,
+  // sinon celle du bipède.
+  const posOf = useCarrierPosAt(doc)
 
   const layer = useMemo<SkullCarrierInput>(
     () => ({ style: { ink, outline, reducedMotion }, posOf }),

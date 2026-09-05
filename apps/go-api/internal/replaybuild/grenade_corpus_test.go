@@ -40,6 +40,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
@@ -296,9 +297,9 @@ type filmDeLArtefact struct {
 	lancers  []lancerGrenade
 }
 
-// chargerFilm lit l'artefact et decode le film du meme match. (nil, false) quand l'un des deux
+// chargerArtefactEtFilm lit l'artefact et decode le film du meme match. (nil, false) quand l'un des deux
 // manque ou refuse.
-func chargerFilm(t *testing.T, path, cacheFilms string) (*filmDeLArtefact, bool) {
+func chargerArtefactEtFilm(t *testing.T, path, cacheFilms string) (*filmDeLArtefact, bool) {
 	t.Helper()
 	doc := lireArtefact(t, path)
 	if doc.OriginMs == nil {
@@ -306,7 +307,7 @@ func chargerFilm(t *testing.T, path, cacheFilms string) (*filmDeLArtefact, bool)
 		return nil, false
 	}
 	court := title.FilmShortMatchID(doc.MatchID)
-	src, err := killsource.DirChunks(filepath.Join(cacheFilms, court))
+	src, err := filmsource.LoadDir(filepath.Join(cacheFilms, court), nil)
 	if err != nil {
 		t.Logf("  %s : chunks absents du cache (%v) — film ecarte", court, err)
 		return nil, false

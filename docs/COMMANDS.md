@@ -85,6 +85,33 @@ go run ./cmd/backfill-team-rounds --gamertag X
 go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--match ID]
 ```
 
+#### Projecting replay artifacts into the database — RELEASE ORDER MATTERS
+
+Two passes read the already-cooked replay artifacts (`data/cache/replays/{slug}/{short8}.json`)
+and project them into shared tables. **Neither decodes a film.** Both are RELEASE tasks, and
+both need the **server stopped**: they take `OpenReadWrite` on the shared DB and run the shared
+migrations themselves — including under `--dry-run`.
+
+```bash
+# 1. RE-COOK the artifacts first — schema 39 makes every earlier artifact stale, and this is
+#    the pass that makes `bombStats` exist in them at all.
+go run ./cmd/levelup backfill-replay [--dry-run] [--force] [--limit N] [--only-existing]
+
+# 2. Equipment and pad usage -> match_usage_players + match_usage_films.
+go run ./cmd/levelup backfill-usage-summary [--dry-run] [--force] [--match ID] [--limit N] [--title S]
+
+# 3. Assault statistics -> match_bomb_stats (append-only) + dated facts in
+#    match_objective_events. Dry run FIRST: it prints per-match counters and writes nothing.
+go run ./cmd/levelup backfill-bomb-stats --dry-run
+go run ./cmd/levelup backfill-bomb-stats [--force] [--match ID] [--limit N] [--title S]
+```
+
+Running (3) before (1) is a **silent no-op**: artifacts older than schema 39 carry no
+`bombStats`, so nothing is written and every match lands in the `sans calque` counter. Both
+passes are resumable — a match already present in the `_latest` view is skipped unless
+`--force`. `backfill-usage-summary` additionally re-summarises when the projection revision or
+the artifact schema has moved.
+
 ### Backup / restore
 
 ```bash
@@ -214,6 +241,54 @@ purge deletes — artifacts older than it. `0` = unlimited.
 The operator CLI ignores this setting on purpose (see `cmd/levelup backfill-replay`): whoever
 types it has already decided where they build, on their own machine, with their own cached
 films.
+
+### 2D replay — build tooling (facts, equivalence, profiling)
+
+Operator tools of the artifact build chain ("cuisson" in `.ai/V7.5/PLAN_CUISSON_PERF.md`). They read
+the local film cache; the two offline ones need no DB and decode one film per bounded child process
+(hard memory cap, low CPU priority, solo lock).
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup replay-facts-export --out internal/analysis/replay/testdata/equivalence \
+  [--title slug] <short8|match_id>...
+```
+
+Writes one `<short8>.facts.json` per match — match rows, both team scores, variant, candidate map
+names — in the shape `replay-build --facts` already reads. Without those facts, zones, objective
+actions, VIP/skull/bomb, pads and spawn points are short-circuited and an equivalence run would be
+vacuous. Read-only (`OpenReadForQuery`); it fails outright rather than writing empty facts, so stop
+a server that holds the shared DB in write.
+
+```bash
+go run ./cmd/replay-equiv                            # whole corpus (CORPUS.txt), compare only
+go run ./cmd/replay-equiv -films 000d5950 -update    # (re-)freeze the references of one film
+# flags: -corpus F  -films a,b (replaces the corpus)  -update  -mem-gib N (default 3, 0 = off)
+#        -title slug
+```
+
+The equivalence harness of the build chain: it hashes the output of **every** scan, not just the
+final artifact, so a divergence is located down to the scan. Parent and child share one binary —
+the parent plans and decodes nothing, each film is born in a bounded child (solo lock with bounded
+wait, sentinel) and dies with its RAM. References live in
+`internal/analysis/replay/testdata/equivalence/<short8>.tsv`, each opening with its
+`# digest-grammar: N` marker: a reference frozen under another grammar is an infrastructure failure
+("re-freeze with `-update`"), never a decoding difference. `-update` rewrites those references
+instead of comparing them — for a declared correction only. The `-walkers` mode (divergence of the
+packet-splitting grammars over the whole film cache) was **removed** in 2026-09: it carried a copy
+of three historical packet walkers whose originals no longer exist, so it only compared against
+itself. Its measurement stays frozen in `.ai/V7.5/MESURES_CUISSON_PERF.md` §2 and is replayed in CI
+by the mini-reel test of `internal/analysis/filmsource`.
+
+```bash
+LEVELUP_LOG_LEVEL=debug go run ./cmd/replay-build --map "<map name>" --facts <f>.facts.json \
+  --cpuprofile tmp/<f>.cpu.prof --memprofile tmp/<f>.heap.prof <short8> [filmDir]
+```
+
+Measurement of a single build (protocol §6 of the plan): `LEVELUP_LOG_LEVEL=debug` brings out the
+per-scan durations (the binary installs an slog handler), `--cpuprofile` and `--memprofile` write
+pprof files (`go tool pprof`), the heap one after the build. All three are inert by default, and
+the options must precede `<matchId>` — the flag package stops at the first positional argument.
 
 ### Notifications
 

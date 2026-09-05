@@ -37,7 +37,23 @@ type KeyframeRec struct {
 }
 
 // kfReadBits lit n bits big-endian à partir de la position bit pos (0-safe hors borne).
+//
+// Lecture par mot (cf. bits_word.go) sur le domaine ou elle coincide avec la boucle
+// d'origine : `pos >= 0` et `0 <= n <= 64`. C'est la primitive la plus chaude de toute la
+// cuisson (58 a 61 % du CPU au profil du 2026-09-02) : `kfScanNext` l'appelle pour CHAQUE
+// position de bit du payload d'image-cle.
 func kfReadBits(buf []byte, pos, n int) uint64 {
+	if pos >= 0 && n >= 0 && n <= 64 {
+		return wordBitsAt(buf, pos, uint(n))
+	}
+	return kfReadBitsLoop(buf, pos, n)
+}
+
+// kfReadBitsLoop est la lecture bit a bit d'origine, gardee pour les positions NEGATIVES
+// (l'indexation y panique, comme avant) et les largeurs > 64 (seuls les 64 derniers bits
+// lus sont rendus). Aucun appelant de production n'y passe : elle est la pour que la
+// reecriture par mot ne CHANGE rien, pas pour servir.
+func kfReadBitsLoop(buf []byte, pos, n int) uint64 {
 	var r uint64
 	for i := 0; i < n; i++ {
 		p := pos + i
@@ -64,10 +80,24 @@ func kfBitAt(buf []byte, p int) uint64 {
 // field26 n'est PAS rendu : il ne sert qu'à expliquer pourquoi le filtre fort tient
 // (field26==0 au spawn -> le mot 32-bit vaut ti), et aucun appelant ne l'a jamais lu.
 func kfValidAnchor(buf []byte, q, prevSlot, total int) (slot, ti, gen int, ok bool) {
+	// La garde est ICI AUSSI parce qu'elle protege la LECTURE qui suit : `kfReadBits` a une
+	// position negative panique (convention preservee, cf. bits_word.go). [kfAnchorFromID] la
+	// rejoue pour son autre appelant, qui lui a deja lu l'identifiant.
 	if q < 0 || q+64 > total {
 		return
 	}
-	id := kfReadBits(buf, q, 32)
+	return kfAnchorFromID(buf, q, kfReadBits(buf, q, 32), prevSlot, total)
+}
+
+// kfAnchorFromID est [kfValidAnchor] quand l'appelant a DEJA lu les 32 bits d'identifiant a
+// la position q. `kfScanNext` les lit pour son test de sentinelle et les relisait ensuite :
+// deux lectures de 32 bits par position de bit du payload, soit la moitie du temps de la
+// primitive la plus chaude de la cuisson. Meme logique, memes gardes, meme resultat — `id`
+// est une fonction pure de (buf, q).
+func kfAnchorFromID(buf []byte, q int, id uint64, prevSlot, total int) (slot, ti, gen int, ok bool) {
+	if q < 0 || q+64 > total {
+		return
+	}
 	if id == kfSent {
 		return
 	}
@@ -129,14 +159,15 @@ func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 	}
 	sentStreak := 0
 	for q := from; q+64 <= end; q++ {
-		if kfReadBits(buf, q, 32) == kfSent {
+		id := kfReadBits(buf, q, 32)
+		if id == kfSent {
 			if sentStreak++; sentStreak >= 2048 {
 				break
 			}
 			continue
 		}
 		sentStreak = 0
-		s, _, g, ok := kfValidAnchor(buf, q, prevSlot, total)
+		s, _, g, ok := kfAnchorFromID(buf, q, id, prevSlot, total)
 		if !ok {
 			continue
 		}

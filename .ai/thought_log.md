@@ -1,3 +1,1431 @@
+## [2026-09-05] Integration des branches actives dans l'architecture cuisson-perf — CLOSE, merge feat/v75 — Complete
+
+**Decision technique principale.** Tout ce qui devait rejoindre `feat/v75` a ete rejoue DANS
+l'architecture du chantier cuisson-perf (source unique du film, FilmContext, balayages
+`Scan*(film)`), jamais l'inverse : amont 38 (3 balayages amont migres), vehicules (union de deux
+tetes, 5 sites de production migres, schema 39 en un seul bloc), usage de session (crochet rejoue
+dans `cuireUnMatch`), game-changers (web), stats d'Assaut (reprise du chantier : travail E3 non
+commite securise, E4-E6 executes ; calcul A LA CUISSON porte par l'artefact, crochet de transport,
+API, fiche de match, backfill), porteurs tues (le fil des kills killsource EST sur l'horloge du
+match — la victime seule manquait ; 3 mesures sur 9f57c612), glyphe d'objectif sur le vehicule
+(option 1 utilisateur, 7 lecteurs sur un resolveur unique). Execution en ateliers paralleles
+(worktrees derives, GOCACHE propre), fusions sequentielles, harnais 13/13 apres CHAQUE fusion.
+
+**Resultats observes.** Filet complet final : 15 gates verts dont baseline (une seule rougeur en
+route : l'epreuve E2E ouvrier attendait une copie locale supprimee par le lot 5 -> l'ouvrier
+declare desormais un sha256, identite prouvee cote serveur) ; revue adversariale de branche
+0 bloquant + seconde lecture 6/6 ; temoins de cuisson 18-23 s avec tout le nouveau contenu
+(contre 2 min 24 - 2 min 49 avant le chantier) ; 13 films, 49 etapes observees, references
+re-figees en changements declares et correles (positions/translocations, vehicles/artifact,
+killsource sur les 4 films a ti=40 peuple, 9f57c612 seul pour l'Assaut).
+
+**Conclusion / prochaine etape.** `wt/cuisson-perf` (`7a60dc31c`) merge dans `feat/v75` (go
+utilisateur), push, CI suivie job par job. INTERDIT : merger `feat/v75` dans `main` (travail
+utilisateur en cours). Reports au registre : champ `structure` (4 lecteurs web), `main` a ramener
+dans `feat/v75` avant le tag v7.5.0, trois outils de recherche vehicules a statuer, harnais par
+nom. Sequence de release sur Notion : backfill-replay (schema 39, ~1 h 30 - 2 h) ->
+backfill-usage-summary -> backfill-bomb-stats ; rien n'est lance d'office.
+
+## [2026-09-05] Integration branches — N-17/N-18 : cinquieme colonne d'Assaut affichee, contrat OpenAPI aligne — Complete
+
+**Le mandat.** Deux corrections bornees issues de la seconde lecture E.2 (`wt/integ-col5`, HEAD
+`19c112483`) : N-17 (decision produit escaladee : la cinquieme statistique d'Assaut est mesuree
+depuis G.6 mais n'etait affichee nulle part) et N-18 (la description publiee de
+`MatchScoreboardObjective` enumerait les modes sans l'Assaut, alors que la godoc Go avait ete
+corrigee). L'utilisateur a tranche N-17 : les cinq colonnes s'affichent.
+
+**Decision technique.** N-17 : `bomb_carriers_killed` ajoute a `BOMB_COLS`
+(`MatchScoreboard.logic.ts`), meme patron que les quatre voisines (`agg: 'sum'`, pas de duree),
+en cinquieme position (ordre du DTO Go `match_view.go:705-709`). Libelle FR (« Porteurs tues »)
+et EN (« Carriers killed ») ajoutes a `i18n.ts` par le mecanisme existant (parite par le typage
+`Record<MatchViewLocale, MatchViewText>`), pas de nouveau mecanisme. La reserve du noyau — « ni
+camp, ni tir ami : un tir ami sur un porteur de son propre camp compte » — vit dans
+`internal/analysis/replay/bomb_stats.go` (en-tete) ; reportee en une phrase dans le commentaire
+de tete de `BOMB_COLS`, et dans le tooltip FR/EN de la colonne. Verifie sur pieces que
+`detectObjectiveMode` (web) et `ObjectiveRaw.HasBomb()` (Go) n'avaient PAS a changer : les deux
+testent la MEME liste de TROIS compteurs (`bomb_detonations || bomb_arms || bomb_grabs`),
+`bomb_carriers_killed` n'en fait pas partie. `objectivesBomb.test.ts` remis en accord : 12 -> 15
+tests (fixture enrichie avec un cas mesure a zero, un cas mesure non nul et un cas non mesure sur
+la colonne neuve, dans le meme match). N-18 : `openapi_manual_fragment.yaml:2902` corrige
+(enumeration + Assaut), `openapi-gen` / `generate-types` / `openapi-check` rejoues.
+
+**Resultats observes.** Gates Go : `TestOpenAPIYAMLIsUpToDate` ok, `TestContract` ok,
+`check-generated-types-fresh.mjs` OK. Gates web (apres `npm ci`, `node_modules` absent du
+worktree) : typecheck 0, lint 0 (28 warnings preexistants hors perimetre, verifie par grep),
+lint:fields 0 (220 libelles FR+EN, aucune violation), vitest 589 fichiers / 6227 tests dont
+`objectivesBomb.test.ts` 15/15, build 0. `knip-ratchet` (racine) 0/0/0. Diff limite a 4 fichiers
+sources + 2 fichiers derives (`openapi.yaml`, `generated.ts`) — perimetre exactement celui des
+deux constats.
+
+**Decouverte non traitee (hors perimetre).** `objectivesChart.ts:14-16` enumere les six modes a
+objectif et leur nombre de colonnes sans jamais nommer l'Assaut — gap de doc PREEXISTANT,
+anterieur a ce lot. Ne bloque aucun gate ; note pour un futur lot qui retoucherait ce fichier.
+
+**Conclusion.** N-17 et N-18 clos, plan (§4, §6) et registre mis a jour. Prochaine etape :
+reprise du plan d'integration a E.3 (journal, registre des reports, suppression des worktrees
+d'integration).
+
+## [2026-09-05] Integration branches — E.2 seconde lecture (contexte frais) : les six constats tiennent, six docs inversees de plus corrigees — Complete
+
+**Le mandat.** Relire, dans un contexte qui n'a ecrit ni le code ni ses corrections, le diff
+d'integration `eb80a4f0a..cf0223550` (branche `wt/cuisson-perf`) — non pas en entier (regle 4 du
+skill `adversarial-review` : la ronde 2 relit LES CORRECTIONS, pas tout le diff), mais constat par
+constat : chacun des six de la revue de branche est-il corrige, et la correction a-t-elle introduit
+un defaut ? Plus : corriger N-15, et balayer le diff a la recherche d'autres docs inversees. Un
+filet complet de gates tournait EN PARALLELE dans le meme worktree : aucune commande lourde, que de
+la lecture, du `git`, du `grep`, du `go vet` cible et du `go test -run` cible.
+
+**Resultat : les six tiennent, verifies sur pieces.** I-1 (le glyphe d'un porteur embarque suit le
+vehicule) : `carrierPosition.ts` existe, les SEPT lecteurs y passent, la copie jumelle de
+`positionAt` a disparu de `killFx.ts`, l'allowlist de `livesPosition.guard.test.ts` est bien
+retombee a deux entrees, le garde-rail verrouille en quatre cas, `ReplayCanvas.tsx` = 664 lignes
+pour 665. I-2 : le test de cablage et le gate d'armement sont COHERENTS avec G.6 fusionne — c'etait
+le risque nomme, et il ne s'est pas materialise (ni l'un ni l'autre ne nomme `CarriersKilled`,
+`KillsRead` ou `MatchKills` ; le gate appelle `attachBombStats` au lieu de recopier le recalage).
+I-3 : quatre tests, verts. I-4 : les quatre docs a l'endroit. I-5 : les huit fichiers sous 500 L, et
+le « deplacement pur » re-prouve independamment (zero ligne non-commentaire ajoutee cote Go ; le
+bloc de `vehicle_relays.go` compare a l'octet a son original, identique aux douze lignes d'en-tete
+pres). I-6 : les deux COMMANDS.md portent l'ordre de release et la precondition serveur arrete.
+Mineurs OK, et `git grep` de marqueurs de conflit sur tout le depot : VIDE.
+
+**Decision technique : la seconde lecture a corrige SIX docs inversees, pas une.** N-15
+(`replay/options.go`, la garde de mode du champ `Bomb` disait « jamais One Bomb ») etait attendue.
+Les cinq autres ne l'etaient pas, et elles ont toutes la MEME cause : la fusion de G.6
+(`b9382b2df`, qui fait passer `bomb_carriers_killed` de NULL a mesure) est arrivee APRES les
+corrections d'E.2, et n'a reecrit que l'en-tete de `bomb_stats_document.go`. Cinq autres endroits
+continuaient d'affirmer que le champ est « null PARTOUT » et que « la paire tueur/victime n'existe
+pas dans la chaine de cuisson » : `replay/document.go:672` — le changelog du schema 39 lui-meme, le
+plus lu de tous —, `replay/structure_test.go:795`, `domain/match_view.go:702`,
+`domain/match_view_raw.go:241`, et cote web `MatchScoreboard.logic.ts:229` avec l'en-tete et un
+titre d'`it()` d'`objectivesBomb.test.ts`. Toutes corrigees en COMMENTAIRES SEULS — aucune
+assertion, aucune ligne de code. Sixieme correction sans rapport :
+`replaySoundAssets.guard.test.ts:707` datait la destruction de vehicule du « schema 30 », un des
+trois numeros du chantier vehicules qui n'ont jamais cuit d'artefact (le champ arrive au 39).
+
+**Piege verifie plutot que suppose.** Deux autres « schema 29 / 30 » subsistent dans `apps/web/src`
+et ils sont JUSTES : la lunette EST le schema 29 (2026-08-31) et le ramassage natif LE 30
+(`document.go:307`, `ground_weapon_pads.go:17`). Les numeros 29-31 existent donc bien deux fois
+dans l'histoire du depot — une fois comme vrais schemas, une fois comme numerotation locale du
+chantier vehicules, renumerotee 39 au merge. La correction du 27-sites ne les avait pas rates, elle
+les avait epargnes a raison : les remplacer aurait CREE la doc fausse qu'on croyait corriger.
+
+**Ce qui reste ouvert, escalade et non corrige.** N-17 : la cinquieme statistique est mesuree,
+persistee, servie dans le DTO et publiee au contrat — et affichee NULLE PART (`BOMB_COLS` reste a
+4 colonnes sur 5, et un test verrouille cette absence). Le plan l'avait acte au titre de la « regle
+de G.4 », or cette regle reposait sur la premisse « colonne de tirets » qui n'est plus vraie :
+exposer la colonne est une decision d'affichage, elle revient a l'utilisateur (reserve a lui porter :
+`KillRef` ne porte aucune information d'equipe, un tir ami compterait). N-18 : la description
+PUBLIEE de `MatchScoreboardObjective` enumere toujours les modes sans l'Assaut — elle vit dans
+`openapi_manual_fragment.yaml:2902`, que le mineur n5 des corrections n'a pas touche (il a corrige
+la godoc Go, d'ou le « aucun diff genere » de D11, qui ne prouvait que l'independance des deux).
+La corriger impose de rejouer `openapi-gen` / `generate-types` / `openapi-check` : hors du mandat
+« commentaires seuls » et incompatible avec le filet en cours. Condition de reprise : avant F.1.
+
+**Gates, un code par ligne** : `gofmt -l` sur les cinq fichiers Go touches VIDE · `go vet
+./internal/analysis/replay/ ./internal/domain/` 0 · `go test ./internal/analysis/replay/ -run
+'Structure|Bomb|Assaut' -count=1` ok · `go test ./internal/domain/ -count=1` ok · `go test
+./cmd/levelup/ -run Bomb -count=1` ok (4 tests) · `go test ./internal/archlint/ -count=1` ok ·
+`npx vitest run objectivesBomb.test.ts` 12/12.
+
+**Conclusion / prochaine etape.** E.2 est CLOSE : deux rondes, six constats recevables a la ronde 1,
+zero constat de correction ratee a la ronde 2 (le nombre de P0/P1 decroit strictement — borne 2 du
+skill respectee). Ce qui reste (N-17, N-18) n'est pas une correction ratee mais un effet de bord de
+la fusion de G.6, et aucun des deux ne touche un invariant. Suite : E.3 (registre des reports,
+suppression des worktrees) puis F.
+
+## [2026-09-05] Gate d'integration wt/cuisson-perf — TestOuvrierReel_ConstruitEtLivre (assertion perimee du lot 5, D8) — Complete
+
+**Le constat.** `bash scripts/check_test_baseline.sh tests` rougissait sur UN test :
+`internal/api/wire::TestOuvrierReel_ConstruitEtLivre` (tags `integration && cgo`, tourne en CI
+dans le job `go-coverage` — la CI amont `feat/v75` est verte dessus, la regression etait locale
+au worktree). Message : « l'ouvrier n'a rien construit » sur un chemin que l'ouvrier n'ecrit
+plus depuis le lot 5 de `PLAN_CUISSON_PERF` (D8 : l'ouvrier envoie des OCTETS en memoire,
+`built.Blob`, au serveur qui seul range — il ne garde et n'ecrit RIEN localement). L'assertion
+`assertArtefactLivreEtComplet` relisait une copie locale (`ouvrierRepo/data/cache/replays/...`)
+que la nouvelle architecture ne produit plus : le journal du test prouvait pourtant que la chaine
+marchait (« artefact recu et range bytes=283260 tracks=22 », job `succeeded`).
+
+**Decision technique : empreinte sha256 declaree par l'ouvrier dans son compte rendu de job,
+plutot qu'un champ neuf de transport ou une comparaison par taille seule.** Options envisagees
+dans l'ordre du mandat : (a) empreinte deja declaree — INEXISTANTE (le `BuildArtifactReceipt`
+ne porte que `bytes`/`schema_version`, pas de digest) ; (b) empreinte calculable depuis le
+journal/resultat de job existant — le resume JSON du job (`ResultJSON`, lu par
+`BuildQueueReport` -> `vue.Jobs[].ResultJSON`, jamais par la table d'evenements, regle ART n2)
+ne portait que `match_id`/`module`/`tracks`/`bytes`/`chunks` ; (c) ajouter un champ neuf,
+coherent avec le protocole existant, teste. Retenue : (c) au format de (b) — le champ `sha256`
+s'ajoute au resume JSON deja transporte par le protocole `complete` (aucune route neuve, aucun
+changement de `BuildArtifactReceipt`), calcule UNE fois sur `built.Blob` en memoire avant
+l'envoi (`crypto/sha256`, zero relecture disque — le garde-rail
+`TestOuvrier_NeComposeJamaisLEcritureDArtefact` interdit `os.ReadFile(` hors test dans
+`cmd/replay-worker`, la solution le respecte par construction). Le test lit l'empreinte
+declaree via `BuildQueueReport`, la compare a `sha256(artefact range cote serveur)` : la preuve
+d'identite octet a octet survit a l'ouvrier sans qu'il garde de copie.
+
+**Resultats observes.** `gofmt -l .` vide ; `go vet -tags='integration cgo' ./internal/api/wire/`
+et `./cmd/replay-worker/...` (avec et sans tags) : 0 ; test cible PASS (6,45 s, empreinte
+`b8b9ae2dd098cb7e133de9171d8e4b430f8d9e7d7aa7cb5d86bfbeeb43c14fb6` verifiee) ; suite complete
+`go test -tags='integration cgo' ./internal/api/...` : PASS (5 paquets, 0 echec) ;
+`golangci-lint run --new-from-merge-base=origin/main` : 0 issue ; `bash
+scripts/check_test_baseline.sh tests` : exit 0 (voir sortie jointe au commit).
+
+**Decouverte hors perimetre (notee, non traitee ici) : le filet local d'integration ne couvrait
+que `./internal/sync/` en tags `integration/cgo` — l'epreuve ouvrier d'`internal/api/wire` n'y
+etait pas, ce qui a laisse cette regression invisible jusqu'a ce constat.** Consignee en N-15,
+`.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md` §4, avec la correction a apporter a l'etape
+E.1 du meme plan (et a `delivery-checklist`).
+
+**Conclusion / prochaine etape.** Gate vert ; retour au pilote de `wt/cuisson-perf` pour la
+suite de l'etape E (revue adversariale, filet complet, cloture) du plan d'integration — hors
+perimetre de cette tache.
+## [2026-09-05] Rejeu 2D — I-1 etendu : morts et pulsations d'objectif passent au meme resolveur — Complete
+
+**Le geste.** Decision du pilote, dans la ligne de l'option 1 de l'utilisateur : les DEUX lecteurs
+que le premier lot avait signales comme non traites y passent a leur tour. `killFx.ts` (un joueur
+tue AU VOLANT ou en passager explose sur son vehicule, pas sur une ligne droite dans le decor) et
+`objectivesLayer.ts:291` (pulsations d'objectif, appariees a l'element le plus proche de l'AUTEUR).
+
+**Decision technique : lever le cycle a la racine, plutot que justifier la copie.** killFx.ts ne
+POUVAIT PAS importer livesPosition.ts — il DEFINISSAIT `posOfPlayerAt` et `KILLPOS_WINDOW_MS`, que
+livesPosition.ts importait ; d'ou sa « copie jumelle autorisee » de l'index des vies. Importer
+carrierPosition.ts (qui depend de livesPosition.ts) aurait ferme la boucle. La primitive est donc
+RAPATRIEE dans son module canonique (livesPosition.ts, 54 -> 102 L) : le cycle disparait, la copie
+locale avec lui, et l'allowlist de `livesPosition.guard.test.ts` retombe de 3 entrees a 2 — un
+garde-rail qui retrecit, verifie par lui-meme. Graphe re-verifie avant de coder : killFx /
+objectivesLayer -> carrierPosition -> {livesPosition, vehiclesLayer -> replayMarkers} ne referme
+aucune boucle (replayDraw, seul autre importateur de killFx, n'est dans aucune de ces chaines).
+LE CAS DISTINCT, NOMME : l'index des vies survit dans killFx.ts pour le SLOT seul (la couleur de
+l'effet) — le slot est une propriete de la vie du BIPEDE, qu'aucun vehicule ne deplace.
+
+**Resultats observes.** killFx.test.ts +4 cas (embarque -> vehicule ; descente -> bipede ; schema
+<= 38 inchange ; le slot reste celui du bipede) ; objectivesLayer.test.ts +2 cas batis pour
+trancher entre DEUX elements distincts (bipede a un pas du spawn equipe 0, vehicule SUR la zone de
+livraison equipe 1) ; livesPosition.test.ts NEUF — les trois cas de `posOfPlayerAt` ont suivi la
+fonction deplacee. Garde carrierPosition etendu a 5 hooks + 2 lecteurs purs. Mutation prouvee puis
+restauree : les deux lecteurs remis sur `buildPlayerPosAt` -> 4 rouges (2 gardes nommant les
+fautifs, le kill embarque, le pulse embarque) ; les cas de non-regression restent verts sous la
+mutation, comme ils le doivent. Gates D12 : typecheck 0, lint 0 (28 warnings = baseline, 0 sur un
+fichier touche), lint:fields 0, vitest 0 (589 fichiers, 6 223 tests), build 0, knip 0/0/0.
+ReplayCanvas.tsx INTACT a 664 L ; aucun fichier au-dessus de 500 L.
+
+**Conclusion / prochaine etape.** Second commit sur `wt/integ-glyphes`. Apres ce lot,
+`buildPlayerPosAt` (le bipede seul) n'a plus qu'un appelant : le resolveur lui-meme, dont il est le
+repli — plus aucun lecteur de production ne lit une position de joueur sans passer par le vehicule.
+
+## [2026-09-05] Rejeu 2D — le glyphe d'un porteur EMBARQUE suit le vehicule (I-1, option 1) — Complete
+
+**Le geste.** Decision produit de l'utilisateur (« option 1 ») : quand un porteur d'objectif est a
+bord d'un vehicule, son glyphe (bombe, crane, drapeau porte, couronne VIP) se dessine SUR LE
+VEHICULE. Correctif WEB seul, branche `wt/integ-glyphes`, un commit.
+
+**Le constat, re-verifie sur pieces.** Le PION d'un occupant etait deja supprime
+(`replayMarkers.ts:243`, `style.embarkedAtSlot`) ; les GLYPHES, non. Les cinq calques qui lisent
+une position de joueur passaient par `usePlayerPosAt` -> `posOfPlayerAt` -> `replayLogic.positionAt`,
+qui INTERPOLE lineairement a travers le trou de replication — un bipede attache cesse de repliquer
+sa position monde (precondition Go `replay/vehicle_rides.go:12-15`). Le glyphe traversait donc le
+decor en ligne droite, seul, pendant que son vehicule roulait ailleurs. CINQ calques, pas quatre :
+le cinquieme (`useReplayBombBlast`, deflagration d'Assaut) a ete trouve par grep des consommateurs.
+
+**Decision technique : UN resolveur, pas cinq copies.** Nouveau module pur
+`apps/web/src/features/match-replay/carrierPosition.ts` — `positionOfCarrierAt` (la regle, ecrite
+une fois : embarque -> vehicule, sinon bipede), `buildEmbarkedPosAt` (index des episodes PAR XUID,
+MEME filtre `vehicleCanEmbark` que le predicat du pion), `buildCarrierPosAt` / `useCarrierPosAt`.
+Les cinq hooks changent d'UNE ligne chacun. `usePlayerPosAt` disparait (plus aucun appelant —
+regle n. 7) ; `buildPlayerPosAt` reste pour `objectivesLayer.ts:290`. CLE = LE XUID, celle que les
+calques tiennent deja et celle de `VehicleRide.xuid` — un episode sans xuid ne deplace aucun
+glyphe (repli bipede = comportement d'avant), plutot qu'un second pont d'identite a entretenir.
+POSITION = `vehiclePositionAt`, la MEME que le sprite : glyphe et vehicule coincident par
+construction. Garde-rail `carrierPosition.guard.test.ts` (regle n. 6) : les cinq calques passent
+par le resolveur, et `vehiclePositionAt` n'a que trois lecteurs autorises.
+
+**Contrat `enabled`, ecrit et assume.** Le glyphe suit le vehicule MEME calque vehicules eteint :
+la position d'un porteur est un fait du document, la bascule ne commande que ce qui se DESSINE.
+Divergence VOLONTAIRE d'avec `isEmbarkedAt` (qui, lui, suit la bascule — revue du 2026-09-02,
+point 7) : calque eteint, le pion reprend sa position interpolee (fausse, regime deja assume de la
+bascule) tandis que le glyphe garde la seule position vraie disponible.
+
+**Resultats observes.** Tests bati sur la regle, discriminance PROUVEE par mutation puis restauree :
+`positionOfCarrierAt` reduit au seul repli -> 5 rouges sur 15 (« expected {x:0,y:50}, received
+{x:50,y:0} » : la ligne droite a travers le decor) ; un hook remis sur `buildPlayerPosAt` -> 2
+gardes rouges, fautif nomme. Cas couverts : embarque, bornes de l'episode, DESCENTE (retour au
+bipede a l'unite pres), changement de monture, jamais embarque, episode anonyme, episode sur du
+decor, monture sans position, et **document anterieur aux vehicules (schema <= 38) identique au
+bipede** — zero regression sur le parc deja cuit. Gates : typecheck 0, lint 0 (28 warnings, la
+baseline exacte, 0 sur un fichier touche), lint:fields 0, vitest 0 (588 fichiers, 6 216 tests),
+build 0, knip 0/0/0. `ReplayCanvas.tsx` INTACT a 664 L, aucun fichier au-dessus de 500 L.
+
+**Conclusion / prochaine etape.** Livre dans `wt/integ-glyphes`, a fusionner par le pilote de
+l'integration (plan `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, item E.2 « I-1 », detail
+au paragraphe « E.2 / I-1 » du journal du plan). Consigne et NON traite (hors decision produit) :
+`objectivesLayer.ts` (pulses) et `killFx.ts` (effets de mort) restent sur la position de bipede —
+la correction, si elle est voulue, est un appel de plus au meme resolveur.
+## [2026-09-05] Integration — ETAPE G.6 : `bomb_carriers_killed` passe de NULL a MESUREE — Complete
+
+**Le geste.** Complement de l'etape G. La cinquieme statistique d'Assaut avait ete livree ABSENTE
+(NULL partout) au motif ecrit a G.2 : « aucune source de la chaine de cuisson ne porte une paire
+(tueur, victime) datee sur l'horloge du MATCH ». L'utilisateur a dementi — « les kills sont dates
+a la milliseconde pres dans le match, on a deja ces donnees » — et la verification sur pieces lui
+donne raison. La statistique est desormais mesuree.
+
+**Decision technique : le motif etait faux sur SON SECOND MEMBRE, et il se lit, il ne s'estime
+pas.** Deux moities a distinguer.
+
+- CE QUI MANQUAIT VRAIMENT : la VICTIME. `killsource.Kill` porte `Feed.Killer` ET `Victim` en
+  gamertags ; `replaybuild.killRefs` ne resolvait que le premier, parce que la jointure
+  d'equipement — son seul consommateur d'alors — n'a que faire de la seconde. La resoudre coute
+  une ligne : la MEME table gamertag -> xuid, dans la MEME passe (`resolveKills`, deux sorties,
+  aucune seconde resolution — regle des 2 copies).
+- CE QUI NE MANQUAIT PAS : L'HORLOGE, et c'est le point qui decidait du lot.
+  `killsource.Kill.TimeMS` est renseigne par `killsource.buildFeed` depuis
+  `analysis.HighlightEvent.TimeMS` ; `replay.Death.TimeMS` par `replay.ScanDeaths` depuis LE MEME
+  CHAMP DU MEME ENREGISTREMENT du chunk highlight. Or « l'horloge du match » de `analysis/replay`
+  EST celle du fil des morts : c'est elle que `bombHeldEventsOf` rejoint par
+  `matchMS = TimestampUS/1000 - deathOffsetMS`. Les couples et les periodes de portage sont donc
+  DEJA sur le meme axe. Le « troisieme referentiel » ecrit au registre etait une lecture de
+  commentaire, pas une mesure.
+
+**Corollaire, et c'est une interdiction ecrite au code** : le pont `FilmToMatchOffsetMS` ne
+s'applique PAS aux couples. Il recale ce que le MANIFESTE date (l'anneau d'armement) ; l'appliquer
+ici decalerait chaque kill de 33 a 114 ms, l'ordre de grandeur de la tolerance de fermeture
+elle-meme. Ce noyau ne convertit une horloge qu'a UN endroit (`bomb_arms.go`), et ce lot n'en
+ajoute pas un second. Controle algebrique independant, ecrit en tete de `MatchKillsInput` : la
+jointure d'equipement pose ces memes instants par `TimeMS - originMs`, et `originMs` est publie a
+moins de 100 ms de `firstPosUS/1000 - deathOffsetMS` — soit exactement le recalage qu'appliquerait
+un instant DEJA sur l'horloge du match.
+
+**Resultats observes.** Harnais `replay-equiv` sur les 13 films : passe 1 sans `-update` rend
+**12 identiques / 1 different**, l'ecart etant `9f57c612` (le seul film d'Assaut du corpus) a la
+SEULE etape `artifact` — 1 583 856 -> 1 584 146 octets (+290). AUCUNE des 48 etapes qui la
+precedent ne bouge, `killRefs` compris : la seconde sortie ne passe pas par l'observateur, et
+c'est delibere (l'observer aurait fait bouger 13 films pour un fait qui n'ajoute aucun balayage).
+
+`bomb_carriers_killed` sur `9f57c612`, lu dans l'artefact cuit : **2535446563676950 = 2**,
+**2533274974091007 = 1**, et **0** chez les quatre autres joueurs — des zeros MESURES, plus des
+NULL (`coverage.killsRead: true`). Denominateur : 58 couples fournis, 0 ecarte. RECOUPEMENT
+INDEPENDANT, non construit pour ca : `periodsByDeath = 3` (trois periodes de portage fermees par
+la MORT du porteur) tombe exactement sur `killsOnCarrier = 3`, alors que les deux comptes sortent
+de canaux differents.
+
+**Tests non auto-confirmants, dont un verifie par MUTATION.** (a) `resolveKills` : tueur et
+victime resolus, victime inconnue ECARTEE ET COMPTEE (cas nominal du bot), tueur inconnu qui perd
+les deux sorties, et un invariant de conservation (couples + pertes = kills fournis). (b) Le
+cablage d'horloge (`bomb_stats_document_test.go`) : un decalage volontairement ENORME (-5 000 ms)
+est pose dans les options, et le test verifie qu'un kill en plein portage compte quand meme. Il a
+ete valide en injectant reellement le pont dans `attachBombStats` — le test tombe ; sans
+l'injection il repasse. (c) Le gate du noyau (`bomb_stats_test.go`) reste vert.
+
+**Arbitrage assume : `BombStatsCoverage` n'est PAS elargie.** Le compteur de couples ecartes y
+aurait ete un champ d'API — le type est publie dans `openapi.yaml` et `generated.ts`, et
+`openapi-gen -check` l'a montre en refusant. Un compteur de DIAGNOSTIC ne justifie pas d'elargir
+un contrat : il vit dans `MatchKillsInput.Dropped`, il est journalise a cote du denominateur
+`kills` qu'il complete, et sa ventilation par cause (tueur / victime) est chez le producteur.
+Consequence : D11 sans objet, le contrat ne bouge pas ; D12 sans objet, aucun fichier web touche.
+
+**Reste douteux, note plutot que tu.** Les deux lecteurs du chunk highlight le LOCALISENT
+differemment — `ScanDeaths` prend le DERNIER chunk du manifeste, `killsource.loadKillFeed` celui
+qui rend le plus de kills. S'ils designaient des chunks differents, l'horloge serait fausse — mais
+le pont gamertag -> xuid le serait aussi, et il est en production depuis le lot F.1 :
+l'hypothese PREEXISTE, ce lot n'en ajoute pas. Et la mesure ne porte que sur UN film : le corpus
+n'a qu'un match d'Assaut.
+
+**Conclusion / prochaine etape.** Le report `bomb_carriers_killed` est CLOS au registre, date et
+avec sa mesure ; le motif historique y est conserve MAIS marque comme refute (doc inversee
+interdite). Restent, hors lot : la reserve « ni camp ni tir ami » du noyau (ecrite, pas
+corrigeable sans une entree que ce noyau n'a pas) et le rattrapage du parc, qui demande les DEUX
+passes de release dans l'ordre (`backfill-replay` puis `backfill-bomb-stats`), deja au carnet. La
+suite du plan d'integration reste l'etape E puis F.
+
+---
+## [2026-09-05] Integration — ETAPE E.2 : les corrections de la revue adversariale de branche — Complete
+
+**Le geste.** Les six constats de la revue adversariale du diff d'integration (I-1 a I-6) plus le
+lot des mineurs, traites dans un worktree dedie (`wt/integ-assaut`, base `f0c38e08a`), quatre
+commits, un par groupe. Ce qui reste ouvert a E.2 : la seconde lecture.
+
+**Decision technique principale : le gate d'armement APPELLE la production au lieu de la recopier
+(I-2).** Le defaut n'etait pas dans le code teste, il etait dans ce qui n'etait teste par
+personne. Les trois temoins de lecture des stats d'Assaut ne sont pas des entrees : ils sont
+DERIVES au site de cablage (`attachBombStats`) — `DetonationsRead` de `opt.Score != nil`,
+`CarryRead` de `len(own.SlotXUID) > 0`, `ArmingsRead` de `bombArmingsRead(doc)`. Les inverser
+COMPILE, et fait sortir des ZEROS la ou la colonne devait rester absente : « ce joueur n'a rien
+arme » au lieu de « on n'a pas regarde ». Aucun test du noyau ne le voyait (ils fournissent les
+temoins eux-memes) et le seul gate qui traversait le cablage etait sous garde d'environnement,
+donc absent de la CI — et il RECOPIAIT la formule de recalage et DIVERGEAIT sur `ArmingsRead`
+(`!Suppressed` la ou la production exige aussi `Scanned`). Deux corrections, une seule
+doctrine : un test de paquet neuf qui passe par `BuildFromPositions` (5 combinaisons : trois
+etats de `Coverage.BombArmings` x pont slot->xuid present ou non), et le gate qui assemble le
+document minimal puis appelle `attachBombStats`. La 6e combinaison est INATTEIGNABLE en
+production et le test ecrit pourquoi plutot que de la taire : la confrontation locale lit
+`doc.Objectives`, que `dropUnpublishedActions` vide sans piste nommee — or c'est le MEME pont qui
+nomme les pistes et arme `CarryRead`.
+
+**Resultats observes.**
+- **I-2, discriminance prouvee par CINQ mutations**, production restauree a l'identique apres
+  chacune : `bombArmingsRead` force a `true` (2 cas rouges, `arms = 0` publie), a `false`
+  (3 rouges, `arms` absent), `CarryRead` inverse (5 rouges, des deux cotes de la regle), recalage
+  mis a `0` puis de SIGNE INVERSE (le test du recalage rouge : `arms = 0` au lieu de 1). L'en-tete
+  du gate affirmait que One Bomb ne publie aucun armement : faux depuis E2-ter — `9f57c612` en
+  publie 5, 4/4 explosions couvertes, meche 16 183 ms CV 0,010.
+- **I-3** : `cmd_backfill_bomb_stats.go` passe de 0 a 4 tests, sans base (en `--dry-run` la passe
+  ne touche jamais la connexion : le test lui passe `nil`). Mutations rouges : cle de reprise
+  inversee, garde du batch vide retiree.
+- **I-4** : quatre docs inversees. La plus vicieuse etait mecanique — deux fonctions inserees
+  ENTRE la doc d'une troisieme et sa signature, godoc attribuant la mauvaise doc a la mauvaise
+  fonction. Une autre decrivait un contrat CONTRAIRE a l'implementation (`isEmbarkedAt` « toujours
+  actif ») : c'est le contrat qui a ete corrige, le comportement etant le bon.
+- **I-5** : quatre fichiers franchissaient les 500 lignes A CAUSE de cette integration (mesure
+  `git show eb80a4f0a:<f> | wc -l` : 453->559, 430->511, 500->513, et un net-neuf a 538). Ils
+  redescendent a 385 / 216 / 433 / 420 par DEPLACEMENT PUR, verifie a trois niveaux : diff filtre
+  (les trois fichiers Go sources ne gagnent QUE des commentaires), comparaison a l'octet de chaque
+  bloc deplace contre son original, et **harnais `cmd/replay-equiv` sans `-update` : 13
+  identiques, 0 different, code 0** — le meme bilan qu'une mesure de reference prise sur le meme
+  arbre AVANT toute modification. Piege rencontre : la cle d'allowlist d'archlint
+  `offline_biped.go/bipedI0Layout` devenait MORTE, et le garde-rail le dit dans les deux sens (il
+  refuse l'entree morte autant que l'appel non declare) — la cle porte le nouveau fichier, datee.
+- **I-6** : les deux `COMMANDS.md` (regle 15, meme commit) portent l'ORDRE DE RELEASE et sa
+  consequence : lancer `backfill-bomb-stats` avant `backfill-replay` est un no-op SILENCIEUX.
+- **Mineurs** : le discriminant d'Assaut divergeait entre le Go (3 champs) et le web (2). Un film
+  dont seul le canal des armes tenues a ete lu ne publie ni explosion ni armement, seulement
+  `bomb_grabs` : le web faisait disparaitre une section que le Go declarait presente. Meme liste
+  des deux cotes, plus un test qui rougit sur l'ancienne. Et 27 sites web annoncaient « schema
+  29 / 30 / 31 » alors qu'AUCUN de ces artefacts n'a existe — le calque est parti d'un seul tenant
+  et le document est passe de 38 a 39.
+- **Gates, un code par ligne** : `gofmt -l .` VIDE · `go build ./...` 0 · `go vet ./...` 0 ·
+  `go test` sur les 12 paquets vises 0 · `golangci-lint run --new-from-merge-base=origin/main`
+  (cache nettoye) **0 issue**, code 0 · web : typecheck 0, lint 0 (28 warnings = baseline
+  exacte), `lint:fields` 0, vitest 0 (586 fichiers, 6 198 tests), build 0, knip 0/0/0 · harnais
+  13/13.
+
+**Conclusion / prochaine etape.** E.2 « corrections » est close ; reste la SECONDE LECTURE, sur
+le diff corrections comprises. Une decouverte est consignee et NON traitee (§4, N-15) :
+`replay/options.go:194-196` porte une CINQUIEME doc inversee (« le canal n'est prouve que sur
+Neutral Bomb et Husky Raid, jamais One Bomb »), fausse depuis E2-ter. Le fichier appartient au lot
+G.6 en cours dans un autre worktree — ne pas le toucher en parallele ; a corriger par son auteur,
+ou a la seconde lecture une fois G.6 fusionne.
+
+## [2026-09-05] Integration — ETAPE G.5 : backfill-bomb-stats et la cloture du chantier d'Assaut — Complete
+
+**Le geste.** Etape G.5 du plan d'integration, E6 du plan d'Assaut. Le chantier passe de « ecrit
+au fil de l'eau » a « le parc existant a sa commande, et les deux trous connus sont au registre ».
+
+**Decision technique : sous-commande DEDIEE, tranchee sur pieces.** La question du plan etait
+« `levelup backfill-replay` suffit-il ? ». Verification : `cmd_backfill_replay.go` ne contient
+AUCUNE reference a `replayartifacts` — il cuit et range, il ne projette rien ; et le crochet du
+fil de l'eau ne voit que les artefacts cuits DANS SON CYCLE. Il faut donc les deux, dans cet
+ordre : `backfill-replay` re-cuit le parc (le schema 39 perime tout artefact anterieur — c'est
+cette passe qui fait NAITRE `bombStats` dans les artefacts), puis `backfill-bomb-stats`
+PROJETTE sans re-cuire. L'ordre est ecrit en tete de la commande AVEC ce qui se passe si on
+l'inverse : un no-op qui le dit (compteur « sans calque de bombe »), pas une erreur. Patron exact
+de `backfill-usage-summary`. **JAMAIS LANCEE** — aucune base de production ouverte de toute
+l'etape G.
+
+**Deux reports au registre.** (a) La ligne du DESAMORCAGE portait une dependance de livraison
+devenue FAUSSE (« la garde `isArmableBombVariant` exclut One Bomb — donc E2-ter d'abord ») : la
+garde n'existe plus, One Bomb publie ses armements, la ligne est amendee dans le commit qui la
+perime, et sa condition de reprise — un corpus portant un desamorcage AVERE — est inchangee.
+(b) Ligne NEUVE pour `bomb_carriers_killed` : le noyau sait le calculer, c'est SON ENTREE qui
+manque. Mesure source par source : `Options.Kills` = `[]EquipmentKillRef` (tueur + instant, PAS
+de victime, horloge du FILM) ; `replay.Death` = victime + horloge du MATCH, pas de tueur ;
+`killsource.Kill` = les deux noms mais un TROISIEME referentiel (« ms depuis le debut du film »).
+Le seul producteur de `replay.KillRef` du depot lit `match_kill_events`, une table de BASE que
+`replay` n'ouvre jamais. La condition de reprise nomme la premiere marche : un GATE DE MESURE du
+pont d'horloge, jamais une affirmation — c'est exactement le piege des deux horloges que E1/E2
+ont documente.
+
+**Cases du plan d'Assaut : ZERO case vide.** E4/E5/E6 statuees dans le fichier, avec trois `[~]`
+references (pas de handler dedie — le bloc `objective` existant porte les colonnes, sans quoi la
+section « Objectifs » ne pourrait pas les afficher avec ses deux vues ; pas de `useFieldLabel()`
+— la section a sa propre table typee, parite FR/EN par typage ; pas de query key — les colonnes
+voyagent avec la requete de la fiche de match) et deux `[!]` justifies (le carnet Notion
+appartient a l'utilisateur ; l'etat CI se juge a l'etape F sur `feat/v75`, pas sur une branche
+d'integration jetable).
+
+**Conclusion / prochaine etape.** Etape G CLOSE, cinq commits (`978d5b1c2` merge, `380ddcdcd`
+crochet, `75dd032ab` API, `efa920f3e` web, ce commit). La suite du plan d'integration est
+l'etape E (filet complet + revue adversariale) puis F (merge et push de `feat/v75`), qui ne sont
+PAS du ressort de cette etape. A SIGNALER a l'utilisateur : la sequence de release —
+`backfill-replay` puis `backfill-bomb-stats --dry-run` puis `backfill-bomb-stats` — est a
+inscrire au carnet Notion, et aucune des deux n'a ete lancee.
+
+## [2026-09-05] Integration — ETAPES G.2/G.3/G.4 : les stats d'Assaut, de la cuisson a la fiche de match — Complete
+
+**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etapes G.2 (E4 : crochet au
+sync), G.3 (E5 serveur) et G.4 (E5 web) du plan d'Assaut. La fonctionnalite passe de
+« bibliotheque non cablee » a « ecrite en base a chaque sync, servie par l'API, affichee sur la
+fiche de match ».
+
+**Decision technique n1 — LE DOCUMENT NE PORTE PAS CE QUE LE NOYAU ATTEND, et c'est ce constat
+qui commande toute l'architecture du lot.** Le plan demandait un crochet qui rejoue
+`BuildBombStats` sur l'artefact range (patron de `usage.go`). Verification sur pieces, entree par
+entree : `Objectives` OUI (`doc.Objectives` porte Stat/XUID/TimeMS), `Armings` OUI
+(`doc.BombArmings`, meme type, meme horloge) ; mais le PORTAGE non — le document le publie en
+FRAMES (grille 100 ms), ECARTE les periodes non pontees, ne distingue pas un lacher d'une mort et
+ne publie pas `CarryMSByXUID` ; le RECALAGE film->match non ; la paire tueur/victime non plus.
+Les re-deriver aurait fait un SECOND decodeur du meme fait, moins precis. Les quatre premieres
+vivent en pleine fidelite dans `BuildFromPositions`, entre `attachBombCarries` (qui rend
+desormais la chronologie en MILLISECONDES) et `attachBombArmings` : **le calcul s'y fait, une
+fois, et le resultat voyage dans l'artefact** (`bombStats` + `bombEvents`, poses sur la MEME
+montee 39 — elle n'avait encore cuit aucun artefact). Le crochet ne fait plus que TRANSPORTER.
+Consequence verifiee : aucune etape observee ajoutee (`BuildFromFilmSteps` reste a 35), et c'est
+le digest `artifact` qui porte le changement.
+
+**Decision technique n2 — `bomb_carriers_killed` reste ABSENT (NULL) partout, et c'est ecrit a
+cinq endroits plutot que comble.** Il demande une mort appariee a son TUEUR ET a sa VICTIME sur
+l'horloge du MATCH ; cette forme n'existe pas dans la chaine de cuisson (`opt.Kills` est un
+`[]EquipmentKillRef` — tueur + instant, pas de victime, et sur l'horloge du FILM ; le seul
+producteur de `replay.KillRef` du depot est `killcollector/positions.go`, qui les lit dans
+`match_kill_events`, une table de BASE). Report inscrit au registre. La colonne existe au schema,
+elle est nullable, et le web ne lui donne pas de colonne dediee : une colonne de « — » ne dit
+rien.
+
+**Decision technique n3 — TABLE DEDIEE cote lecture aussi, mais MEME BLOC cote DTO.** La lecture
+est une SECONDE requete (`Q12cBombStats` sur `match_bomb_stats_latest`, vue `_latest` uniquement)
+degradable independamment et gatee par la capability neuve `film.bomb_stats` cablee au wiring
+(`WithBombStats`, jamais slug==). Mais le DTO les porte dans le MEME bloc `objective` que les
+autres modes — c'est ce qui fait que les DEUX VUES existantes de la section « Objectifs »
+(livrees par l'amont le 03/09) les affichent sans un composant de plus : un mode de plus a
+`ObjectiveMode`, ses colonnes, son discriminant. `HasObjective()` compte desormais le bloc bombe,
+sans quoi un match d'Assaut — qui n'a AUCUN bloc API — rendrait `nil` et la section entiere
+disparaitrait.
+
+**Resultats mesures.** Harnais 13 films : passe 1 **12 identiques / 1 different**, le different
+etant `9f57c612` (le seul film d'Assaut du corpus) a l'etape `artifact` seule,
+1 582 605 -> 1 583 856 octets (+1 251) ; les 48 etapes qui precedent sont identiques au bit pres
+sur les 13 films. `git status` sur `testdata/` apres `-update` : UNE ligne. 49 lignes par TSV,
+inchange. Gates : build/vet 0, `go test ./internal/... ./contracttest/... ./cmd/...` 0 (un rouge
+en cours de lot, `TestAllCapabilityKeys_Count` 24 -> 25 — le garde-fou a fait son travail),
+integration `-p 1` 0 (12 paquets), openapi regenere (`wantReplayDocumentFields` 54 -> 56), web
+typecheck/lint/lint:fields/vitest/build/knip tous 0 (28 warnings de lint, EXACTEMENT la
+baseline). Tests neufs : 4 d'integration pour le crochet, 3 purs pour le convertisseur, 3
+d'integration pour le repo, 12 pour la logique web.
+
+**Piege releve et ferme.** La fixture d'integration de `platform/duckdb` RECOPIE a la main le DDL
+des tables qu'elle monte — la derive y est indetectable. `migration.MatchBombStatsTableSQL` et
+`MatchBombStatsLatestViewSQL` sont donc EXPORTEES (patron de `MatchObjectiveStatsLatestViewSQL`)
+et la migration les appelle elle-meme : une seule definition, deux references.
+
+**Conclusion / prochaine etape.** Reste G.5 (backfill `backfill-bomb-stats` sur le patron de
+`backfill-usage-summary`, registre des reports, cloture des cases du plan d'Assaut). L'ordre de
+la RELEASE est ecrit dans l'en-tete de la commande et n'est pas interchangeable :
+`backfill-replay` (re-cuit le parc, fait naitre `bombStats`) PUIS `backfill-bomb-stats`
+(projette). Aucune des deux n'est lancee ici.
+
+## [2026-09-05] Integration — ETAPE G.1 : merge de `wt/assaut-stats`, un seul bloc de schema 39 — Complete
+
+**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape G.1 (D13 : la decision
+D5 « branche non integree » est RENVERSEE par l'utilisateur). Worktree dedie
+`LevelUp-wt-integ-assaut`, branche `wt/integ-assaut`, HEAD de depart `b1827d9a2` (A+D+C+B
+fusionnees). D8bis mesure AVANT le merge : `origin/feat/v75` toujours `7fb4b60a1`,
+`b1827d9a2..origin/feat/v75` = **0 commit**, `const SchemaVersion` amont = **38**. Aucune
+mini-reconciliation.
+
+**Decision technique n1 : UN SEUL bloc de doc de version 39, pour DEUX chantiers.** La branche
+Assaut montait elle aussi 38 -> 39 (armement pausable One Bomb) alors que nous portions deja un
+39 pour les vehicules. Aucun des deux numeros n'a jamais cuit un artefact : les deux montees
+FONDENT en une seule (D3 + D13). `document.go` porte desormais un bloc unique « QUATRE APPORTS
+FONDUS EN UNE MONTEE » — (1)(2)(3) vehicules, (4) armement de la bombe — et
+`const SchemaVersion = 39` une seule fois ; `structure_test.go` suit avec `v39 (1)..(4)` sous une
+introduction qui dit la fusion. Le contrat OpenAPI ne bouge pas : la branche Assaut n'ajoute
+AUCUN champ au document (son diff `document.go` est un commentaire + le numero).
+
+**Decision technique n2 : la garde de mode `isArmableBombVariant` disparait, dans NOTRE forme
+film.** `replaybuild/matchfacts.go` etait en conflit sur les deux memes points : la branche
+supprime la garde 1 (le NOM de la variante) et passe `bombInput` a un seul booleen de FAMILLE ;
+nous avions migre la lecture des chunks du manifeste vers `chunksDuManifeste(film)` (regle D2).
+Resolution : signature `bombInput(film *filmsource.Film, bomb bool)` — la semantique de la
+branche (une seule garde) dans notre architecture (forme film, jamais un repertoire). Meme geste
+sur `assaut_armement_gate_test.go` : le diagnostic passe de `agDiagnostiquerMontees` a
+`agDiagnostiquerSegments` (branche) sur `filmdec.NewFilmContext(film)` (nous).
+
+**Resultats mesures — le harnais d'equivalence, 13 films.** Passe 1 SANS `-update` : **12
+identiques / 1 different**. Le different est `9f57c612`, **le SEUL film d'Assaut du corpus**
+(`Assault:One Bomb` ; les 12 autres sont Slayer/CTF/Zones/Oddball/Strongholds/Total Control).
+Diff PAR NOM d'etape apres refigeage : TROIS noms bougent, tous sur ce seul film — `bombReads`
+0 -> 1 474 lectures (la garde de nom levee : le balayage de l'anneau tourne enfin sur One Bomb),
+`bomb` (l'interpretation en segments, mèche mesuree : 5 armements publies), `artifact`
+1 582 064 -> 1 582 605 octets (+541). AUCUNE etape n'apparait ni ne disparait (49 lignes avant,
+49 apres, sur les 13 TSV). `git status` sur `testdata/` apres `-update` rend UNE SEULE ligne :
+`9f57c612.tsv` — les douze autres ont ete reecrits identiques a l'octet, `minifilm.tsv` intact.
+
+**Conclusion / prochaine etape.** G.1 close. Reste G.2 (crochet au sync), G.3 (lecture + API),
+G.4 (web), G.5 (backfill + cloture). Point mesure a garder pour G.2 : le document NE PORTE PAS
+ce que `BuildBombStats` attend (portage en FRAMES et non en ms, sans les periodes non pontees ;
+pas de recalage film->match ; pas de paire tueur/victime) — les stats se calculeront donc a la
+CUISSON, ou toutes ces entrees vivent en pleine fidelite, et le crochet ne fera que persister ce
+que l'artefact range porte.
+
+## [2026-09-05] Integration des branches — ETAPE D : merge `wt/game-changers` dans `wt/integ-gamechangers`, zero conflit, gates web D12 completes au vert — Complete
+
+**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape D (web uniquement).
+Worktree DEDIE `LevelUp-wt-integ-gamechangers`, branche `wt/integ-gamechangers`, HEAD de depart
+`eb80a4f0a` (l'etape A deja mergee). D.0 : `git fetch origin` — **0 commit** d'ecart
+`eb80a4f0a..origin/feat/v75`, l'amont reste gele. `git merge --no-ff --no-commit
+wt/game-changers` (base `ca55f0ed7`, 4 commits, 16 fichiers).
+
+**Decision technique principale : aucun conflit a arbitrer.** Le merge automatique a reussi SANS
+AUCUN marqueur de conflit (`git status` : « All conflicts fixed », `git grep '^<<<<<<< HEAD$'`
+VIDE). Les croisements redoutes avec les etapes B et C (`i18n.ts`, `i18nContract.ts`,
+`MatchEquipmentUsageSection.tsx`) ne se sont pas materialises : cette branche ne porte encore ni
+B ni C, rien a fusionner en double — laisse au pilote a la fusion finale, comme prescrit par le
+plan. `.ai/thought_log.md` a fusionne seul en union (nos entrees en tete, celles de
+`wt/game-changers` a leur ancre d'origine, aucune perdue des deux cotes).
+
+**Contenu apporte** : `.ai/PLAN_REPLI_GAME_CHANGERS_2026-09-05.md` (neuf), 3
+`components/ui/collapsed-items-toggle.{tsx,test.tsx,guard.test.ts}` (extraction du controle
+« Voir plus (N) », 3e usage -> regle n°6 du depot), 12 fichiers `features/match-replay/` dont
+`gameChangers.ts`/`.test.ts` neufs (liste tranchee par vote utilisateur des familles
+d'equipement/armes « game changer ») et les adaptations d'`equipmentUsageColumns.ts`,
+`MatchEquipmentUsageSection.tsx`, `MatchPadControlSection.tsx`, `padControlLogic.ts`, `i18n.ts`,
+`i18nContract.ts`.
+
+**Resultats observes — gates D.2, un code de sortie par ligne.** `npm run typecheck` exit 0 ·
+`npm run lint` exit 0 (23 warnings preexistants, 0 erreur, aucun sur un fichier touche par ce
+merge) · `npm run lint:fields` exit 0 (220 labels FR+EN, 1643 fichiers scannes, 0 violation) ·
+`npm run test` exit 0 (**577 fichiers, 6008 tests passes, 14 skipped, 0 echec**) · `npm run
+build` exit 0 (avertissements de taille de chunk preexistants) · `node tools/knip-ratchet.mjs`
+(depuis la racine) exit 0 — **files 0/0, exports 0/0, types 0/0** : le nouveau
+`collapsed-items-toggle.tsx` est cable (consomme par les 3 fichiers cites ci-dessus), aucun
+export mort neuf, plafond jamais releve. Preuve harnais [~] : `git diff --stat eb80a4f0a --
+apps/go-api` VIDE — zero octet cote Go, le harnais des 13 films reste valide sans rejeu.
+
+**Conclusion / prochaine etape.** Commit du pilote sur `wt/integ-gamechangers` (fusion de
+`wt/game-changers`). Douteux signale hors perimetre (regle n°5, non traite ici) : le journal de
+`wt/game-changers` (commit `c972b8be0`) documente un lot I abandonne sur clarification
+utilisateur (exposition `weapon_key` pour etendre le repli aux graphes de performance) — decision
+deja actee par la branche source avant ce merge, rien a statuer cote integration. Prochaine
+etape : etape E (filet complet + revue de branche) puis F (merge final feat/v75, push), par le
+pilote.
+## [2026-09-05] Integration des branches — ETAPE C : l'usage de session rejoue dans l'orchestration du lot 5, harnais 13/13 SANS refigeage — Complete
+
+**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape C, worktree DEDIE
+`LevelUp-wt-integ-usage` (branche `wt/integ-usage`, HEAD de depart `eb80a4f0a` = le merge de
+l'etape A). `git merge --no-ff --no-commit wt/session-usage` (`c4f7d5417`, 10 commits, base
+`da616828f`) : **67 fichiers** (+8 737 / −87), **3 conflits seulement**. D8bis mesure avant le
+merge : `origin/feat/v75` toujours `7fb4b60a1`, **0 commit** amont a rattraper.
+
+**Decision technique principale — LE CROCHET SE REJOUE, IL NE SE REINTRODUIT PAS.** La branche
+accroche la projection du resume d'usage dans `buildAll`, apres `b.construits++`, sur
+`out.Path`. Chez nous le lot 5 (`PLAN_CUISSON_PERF` items 5.5/5.6) a sorti la cuisson d'un match
+de `buildAll` vers `cuireUnMatch`, et `out` est devenu `storedOne{stored, dur, peak}`. Le bloc de
+la branche a donc ete SUPPRIME et le crochet reecrit dans `cuireUnMatch`, au contact du report du
+T0 (meme regle de voyage : le rapport monte dans le bilan, l'ecriture attend la fin du lot), sur
+`out.stored.Path`. Les quatre points de doctrine ecrits dans `replayartifacts/usage.go` sont
+tenus et ont ete verifies sur pieces : lecture du fichier RANGE (jamais le blob candidat, que
+`StoreArtifact` peut refuser), projection APRES rangement, TOUTES les projections avant
+`AcquireWriter`, segment writer COURT apres toute cuisson (`Run` :
+`reporterT0Film` -> `persisterResumesUsage` -> `publierBilan`). Les deux autres conflits
+(`cmd/levelup/main.go`, `thought_log.md`) sont des unions.
+
+**Deux ajustements au-dela des marqueurs, dans le sens de la doctrine.** (1) L'auto-merge de
+`migration/order.go` avait glisse la nouvelle entree ENTRE un commentaire et l'entree qu'il
+decrit (doc inversee) : chaque bloc a ete remis au contact du sien, l'ordre des entrees est
+inchange (il est dicte par `TestSortByCanonicalIsNoOpOnCurrentRegistry`). (2) L'etape **5** de la
+recette ADR 0026 manquait : `match_usage_players` et `match_usage_films` sont inscrites a
+`appendOnlyStateTables` (`internal/sync/append_only_state_guard_test.go`), sur le patron de
+`match_kill_events`/`match_weapon_shots`. En revanche elles N'ENTRENT PAS dans
+`append_only_rebuild.go` : ce helper est un SWAP DE CONVERSION legacy -> append-only et rend
+no-op sur une table absente ; ces deux tables sont NET-NEUVES, append-only des leur DDL. Quatre
+precedents du depot (`match_objective_stats`, `match_kill_events`, `match_weapon_shots`,
+`match_weapon_hit_distance`) sont exactement dans ce cas et tous hors du helper.
+
+**Resultats observes.** Harnais d'equivalence SANS `-update` : **13 identiques, 0 different,
+0 ecarte, 0 echec, 0 illisible** — le resultat ferme attendu, aucun refigeage, `testdata/`
+intact. C'etait previsible et c'est prouve : le seul diff Go sur le document est le renommage PUR
+`padFamilyKey` -> `PadWeaponFamilyKey` (corps inchange au caractere pres), et
+`replay/usage_summary.go` est HORS artefact (`import "sort"` seul, fonction pure
+document -> lignes appelee depuis `replayartifacts`). `BuildFromFilmSteps` reste a 34.
+Gates : `gofmt` vide, `go build`/`go vet` 0, suite Go **EXIT_TESTS=0** (101 paquets ok),
+integration `-p 1` **EXIT_INTEG=0** (15 paquets, dont `usage_integration_test.go` et
+`session_usage_aggregate_integration_test.go`), web COMPLET (typecheck, lint, lint:fields, 574
+fichiers / 5 991 tests vitest, build, knip 0/0/0). D11 : openapi.yaml et generated.ts REGENERES,
+jamais edites — `openapi-check`, `TestOpenAPIYAMLIsUpToDate`, `TestContract` et
+`check-generated-types-fresh.mjs` tous verts.
+
+**Conclusion / prochaine etape.** L'usage de session est integre a l'architecture cuisson-perf ;
+un commit de merge dans `wt/integ-usage`, aucun push. **RESTE — cinq issues sous le ratchet CI du
+lint** (`golangci-lint --new-from-merge-base=origin/main`), toutes dans deux fichiers NEUFS de la
+branche (`usage_summary_families.go` : quatre `goconst` ; `sessionusage/usage.go:179` :
+`prealloc`), aucune dans un fichier resolu a la main : elles rougiront `Go Lint` et
+`make gate-push`, elles sont a eteindre a l'etape E (consignees N-10 au plan). Consignes aussi :
+N-8 (`match_weapon_hit_distance` absente du meme garde-rail, trou preexistant) et N-9 (le ratchet
+D-3 de l'ADR 0030 sur `OpenReadWrite` n'existe pas dans le code — la verification C.2 a ete faite
+a la main). Aucune base DuckDB ouverte de toute l'etape : le backfill `backfill-usage-summary` du
+parc deja cuit n'a PAS ete lance.
+## [2026-09-05] Integration du chantier VEHICULES dans l'architecture cuisson-perf (etape B) — Complete
+
+**Statut** : Complete. Branche `wt/integ-vehicules` (worktree dedie), un seul commit de merge a
+DEUX parents : `origin/feat/v75-vehicules-sons` (28 commits) et `wt/vehicule-deadstate`
+(`0b5141b8a`, dead-state v13). Plan : `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape B.
+
+**Contexte.** La branche vehicules etait basee 339 commits en arriere et portait son propre bump
+de schema (31) ; le refacto de cuisson avait entre-temps sorti le decodage de `build.go`, fait
+passer tous les balayages a `Scan*(film|fc, ...)` et pose six garde-rails. L'etape B rejoue
+l'INTENTION de la branche dans cette architecture, sur le schema 38 amont.
+
+**Decision technique principale — REJOUER, JAMAIS REINTRODUIRE.** Les cinq sites de production de
+`build_vehicles.go` lisaient le film depuis un REPERTOIRE, un chargement par balayage.
+`decodeFilmVehicleScan` prend desormais le `*FilmContext` et fait dessus ses cinq lectures ; le
+nuage `ti=40` lit ses axes au decoupage du CATALOGUE (`fc.ImposedLayout()`), le meme que les
+positions bipedes du meme film, et les visees d'occupant comme les evenements d'embarquement
+partagent la bande bipede deja relevee par le contexte. `ScanBipedPositionsForBand(film, band,
+opt)` est l'entree neuve qui rend la grammaire bipede utilisable sur un autre archetype, avec
+l'option `DynPrecOrientation` de la branche (i2/i3 en precision dynamique) — sa grammaire est
+resolue UNE fois par payload, hors de la boucle de records.
+
+**Trois entrees mortes retirees.** `ScanFilmVehicleCreationsForBand`, `ScanFilmKeyframeRecordSpans`
+et `ScanFilmVehicleOccupancy` arrivaient SANS AUCUN APPELANT, tests compris (la derniere avec sa
+forme film, dont elle etait l'unique consommateur). Regle D2 et regle 0 : supprimees, jamais
+inscrites a la liste fermee d'archlint. Les moities PURES et testees restent entieres
+(`KeyframeRecordSpans`, `VehicleKeyframeStates`, `FindKeyframeBlockInsertion`).
+
+**Un seul bump de schema.** Les trois montees du chantier (29 vehicules, 30 tirs embarques,
+31 visee d'occupant) fondent en UN bloc 39 pose sur le 38 : aucun artefact n'a jamais ete cuit aux
+numeros 29-31, et le parc entier est <= 38. `wantReplayDocumentFields` 52 -> 54.
+
+**Resultats observes.** Gardes : liste des enveloppes 43 -> 47 (quatre noms, homonymie verifiee),
+ratchet des vars `filmdec` 116 -> 118 (deux vars de la branche, chacune justifiee : une sonde et
+une table de grammaire), `BuildFromFilmSteps` 34 -> 35 (`vehicles`), une entree d'allowlist de
+bande fantome. Gates : `gofmt` vide, `go build`/`go vet` 0, 71 paquets `ok`, integration `-p 1`
+sur `sync` 0, `golangci-lint` sans issue sur un fichier touche, web complet vert (typecheck,
+eslint 0 erreur, lint:fields, 580 fichiers / 6 120 tests vitest, build, knip 0/0/0).
+Harnais d'equivalence : etape NEUVE `vehicles` sur 13/13 ; `artifact` bouge sur 13/13, avec un
+PLANCHER de +450 octets sur les 8 films sans vehicule et +301 553 a +1 980 061 sur les 4 qui en
+portent ; `killsource` bouge sur ces 4 films et sur eux seuls — SEUL ecart hors de l'attendu, et
+il est la CORRECTION DECLAREE du lot V9 de la branche (les deserialiseurs i2/i3
+`-dynamic-precision-` de ti=38/39/40/43 ne sont pas ceux du bipede). Aucune autre etape ne bouge,
+aucune ne disparait ; correlation MESUREE, 13/13 sans exception.
+
+**Conclusion / prochaine etape.** Etape C (usage de session) sur la meme branche d'integration.
+Reste au registre : les trois outils `cmd/{weapon-sounds,vs-measure,vehicle-sprite}` du chantier,
+a statuer par leur auteur, et les trois entrees mortes signalees ci-dessus.
+
+---
+
+## [2026-09-05] Integration des branches — ETAPE A : reconciliation avec `feat/v75` `7fb4b60a1`, 5 conflits, 3 balayages amont migres, sorties re-figees en changement declare AMONT — Complete
+
+**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape A. `git merge --no-ff
+--no-commit origin/feat/v75` (`7fb4b60a1`, 65 commits amont, base de merge `ceabaad67`) dans le
+worktree `LevelUp-wt-cuisson-perf` (branche `wt/cuisson-perf`, HEAD `31b754363`). **324 fichiers,
+5 conflits. Rien n'est commite** : l'arbre est resolu, l'index pret, le pilote verifie et commite.
+
+**Decision technique principale : la SEMANTIQUE amont est preservee integralement, dans NOTRE
+architecture.** Le conflit central est le meme qu'au 2026-09-03 — le bloc `Options` +
+`BuildFromFilm` que le lot 1 a sorti de `replay/build.go`. L'amont y ajoute cinq champs et trois
+balayages : le bloc est supprime chez nous, les cinq champs rejoues dans `replay/options.go`, les
+trois balayages dans `replay/build_from_film.go`. Les deux autres conflits Go
+(`filmdec/ability_rank.go`, `filmdec/equipment_changes.go`) portent une intention amont qui
+CONVERGE avec la notre : l'amont extrayait `abilityScanSetup` + `resolveAbilityScan(dir)` pour
+resoudre le film UNE fois entre ses deux passes (balayage strict, puis recuperation gatee des
+emissions i48 manquees — `equipment_recovery.go`, neuf). C'est exactement ce que `FilmContext`
+fait depuis le lot 2. La structure amont est reprise telle quelle, son `dir string` devenant
+`fc *FilmContext` : la resolution unique voulue par l'amont est conservee, et elargie.
+
+**Les trois balayages amont en ancienne forme, appeles EN PRODUCTION** (`build.go:308/457/473`),
+passent en nouvelle forme (regle D2) : `ScanFilmTranslocatorTeleports(dir, entry)` ->
+`ScanTranslocatorTeleports(film, entry)` (patron de `ScanZoomEvents`),
+`ScanFilmAbilityImpulses(dir)` -> `ScanAbilityImpulses(fc)`, `ScanFilmAbilityCharges(dir)` ->
+`ScanAbilityCharges(fc)`. Les trois enveloppes `(dir)` survivent parce que des TESTS les
+appellent (`replay/golden_inputs_test.go`, `filmdec/transloc_{exemption,positions}_film_test.go`)
+et entrent dans la liste fermee d'archlint : **40 -> 43 noms**. `BuildFromFilmSteps` passe de
+**31 a 34** etapes observees. Le ratchet des vars de paquet `filmdec` reste a **116** : mesure
+faite, l'amont n'en ajoute aucune. **Aucune allowlist elargie.**
+
+**Cinq ruptures de compilation laissees par l'auto-merge**, toutes dans des tests de recherche
+NEUFS de l'amont appelant des symboles supprimes au lot 1 — meme classe qu'`inflateChunk` le
+2026-09-03. Intention rejouee, jamais contournee : `bipedSlotBand(dir,...)` ->
+`bipedSlotBandDir`, `bipedArchetype(dir)` -> `bipedArchetypeDir`, `worldObjectSlotBand(dir,...)`
+-> `worldObjectSlotBandDir`, `EquipmentArchetype(dir)` -> `EquipmentArchetypeDir`, et un shim
+`buildFromFilmDir` ajoute a `replay/film_shims_test.go` pour les deux instruments d'acceptation
+amont qui rejouaient la chaine depuis un repertoire.
+
+**Resultats observes — gates.** `gofmt -l .` VIDE · `go build ./...` 0 · `go vet ./...` 0 ·
+suites `analysis/replaybuild/film/sync/archlint/cmd` **EXIT_TESTS=0** (66 paquets `ok`) ·
+integration `-p 1` sur sync **EXIT_INTEG=0** · `golangci-lint run` : **281 issues** au total,
+**zero sur un fichier touche par la resolution** (croisement mesure).
+
+**Resultats observes — harnais d'equivalence.** Passe SANS `-update` : 0 identique, 13
+differents. La comparaison du harnais etant POSITIONNELLE et l'etape `translocations` s'inserant
+en TETE (le balayage arme l'exemption du filtre de vitesse, il doit preceder les positions), son
+message « premiere etape en ecart » est un artefact de decalage : le diagnostic a ete refait PAR
+NOM D'ETAPE, entre une copie des 13 TSV de reference et les TSV refiges. **Six noms bougent,
+aucun ne disparait** : trois etapes NEUVES (`translocations`, `abilityImpulses`,
+`abilityCharges`), `equipmentChanges` + `.stats` (la recuperation gatee ajoute `Recovered`/`Gap`
+au struct — le compte monte sur 8 films, le sha bouge sur 13 par les champs ajoutes),
+`artifact` (schema **37 -> 38**, +364 a +7 769 octets) et — le point interessant — **`positions`
+sur 2 films SEULEMENT**.
+
+**Correlation MESUREE, pas deduite** : `positions` bouge sur EXACTEMENT les deux films dont
+`translocations > 0` (`60ae07c4` 2 evenements, +6 enregistrements ; `64e8adfa` 4, +12) et sur
+AUCUN des onze a zero. 13/13, zero exception — c'est l'exemption du filtre de vitesse par les
+teleportations (decision D2 amont), et rien d'autre. Second controle : les zeros des trois
+calques neufs sont MESURES, pas des balayages absents — les 26 lignes de journal rendent
+`composantAbsent=false`. Troisieme : le plancher de +364 octets d'artefact tombe sur exactement
+les 3 films a 0 translocation, 0 impulsion et 0 charge. **Tous les autres digests sont
+IDENTIQUES AU BIT PRES** sur les 13 films — l'architecture du chantier a traverse le merge sans
+dommage.
+
+`-update` puis passe de verification : **13 identiques, 0 different, 0 ecarte, 0 echec, 0
+illisible**. Le refigeage est deterministe. **La mini-bobine de CI n'a PAS eu besoin d'etre
+refigee** (ses sept etapes ne bougent pas, contrairement au 2026-09-03). Durees 5,1 s a 1 min
+58,7 s, pics 0,10 a 0,66 Gio ; temoins `01e1f945` **17,9 s**, `7344d24f` **21,0 s**, `696a9d7c`
+**20,5 s** — le gain du chantier est intact apres le merge (cible du plan : < 100 s).
+
+**Conclusion / prochaine etape.** Etape A close cote execution (A.1 a A.4 coches avec leur ligne
+de preuve, §5 rempli, §6 detaille conflit par conflit). A.5 = commit du pilote, qui verifie
+d'abord. Puis etape B (vehicules, union D9, schema 39) — et elle devra refaire le diff PAR NOM :
+`vehicles`/`vehicleShots` s'inserent au milieu de la sequence, la comparaison positionnelle du
+harnais ne dira rien d'utile toute seule.
+
+## [2026-09-03] Cuisson perf — RECONCILIATION avec `feat/v75` : 4 conflits resolus dans notre architecture, sorties re-figees en changement declare AMONT — Complete
+
+Merge `feat/v75` (~150 commits, 324 fichiers, dont les deux derniers merges `f6d236d2e` calage des
+variantes et `ceabaad67` suppression du sol reconstruit) dans le worktree `LevelUp-wt-cuisson-perf`
+(branche `wt/cuisson-perf`, base `900384f50`, HEAD `a7050a746`). **Rien n'est commite** : l'arbre est
+resolu, l'index pret, le pilote verifie.
+
+**Decision technique principale.** Regle unique appliquee a chaque conflit : *la semantique amont est
+preservee integralement, dans NOTRE architecture*. Les trois conflits de code portaient tous sur du
+code que le chantier avait DEPLACE — le hunk amont a donc ete rejoue a la main dans le nouveau
+fichier, jamais reintroduit dans l'ancienne forme :
+
+- `replay/build.go` : le bloc en conflit EST celui que le lot 1 a sorti du fichier. Verifie
+  bloc-a-bloc que l'amont n'y touche QUE `Options.Bots` et `Options.Successions` -> les deux champs
+  rejoues dans `replay/options.go`, au meme rang, commentaires compris. Les trois autres hunks amont
+  (nommage par vie, relais, `DetectT0Film`, `decimateTracks` une track par vie) etaient hors du bloc
+  et se sont fusionnes seuls.
+- `replaybuild/replaybuild.go` : `botIdentities`/`botSuccessions` calcules dans
+  `collecterEntreesCatalogue` (ou `ksRes` vit depuis le lot 6.1) et transportes par
+  `entreesCatalogue`. **Aucune etape observee ajoutee** — ce sont des projections de `killsource`,
+  deja observe : le contrat d'`observe_test.go` et les digests restent intacts.
+- `sync/replayartifacts/cuisson.go` : la capture `t0FilmMs` rejouee dans `cuireUnMatch` (extrait de
+  `buildAll` au lot 5), sur `out.stored.Path`.
+- `.ai/thought_log.md` (deux blocs) et `REGISTRE_REPORTS.md` : UNION, aucune entree perdue ;
+  separateur `---` en double supprime.
+
+Deux tests de recherche NEUFS de l'amont ne compilaient plus (ils appelaient `inflateChunk` et
+`worldObjectSlotBand(dir, n, ti)`, supprimes au lot 1) : intention rejouee via `filmsource.Inflate`
+et le shim `worldObjectSlotBandDir`, mesures inchangees.
+
+**Trois gardes du chantier ont rougi, mises a jour DANS LE SENS de l'intention amont.** Ratchet des
+`var` de `filmdec` 113 -> 116 (trois tables constantes du chantier « precision par arme » de
+l'amont) ; allowlist neuve dans `no_film_reread_test.go` et deux entrees dans
+`no_recomputed_film_context_test.go` pour `sync/killcollector/hits.go` — passe amont DIR-BASE par
+conception et **desactivee en production** (capability `match.weapon.accuracy` non declaree,
+`ConfigureFilmAccuracy` sans appelant de production). Migration reportee et **consignee au registre**
+avec sa condition de reprise ; les trois allowlists echouent sur une entree morte, donc l'oubli se
+verra.
+
+**Resultats observes.**
+- `replay.SchemaVersion` : base 34, nous 34 (refacto pur), amont **37** — aucune collision. Le commit
+  « suppression du sol reconstruit » ne touche AUCUN fichier `.go` : `Builder.structureFor`,
+  `LoadMapStructure` et les champs `structure`/`structureBounds` restent en place (report amont
+  assume). Sans effet sur le harnais : les deux seules cartes a structure figee (`ridgeline`,
+  `sgh_streets`) sont hors corpus.
+- Aucun balayage ni etape observee ajoutee ou retiree : 45 etapes, memes noms, sur les 13 films.
+- Gates : `gofmt -l` VIDE · `go build`/`go vet ./...` code 0 · suites completes (`analysis`,
+  `replaybuild`, `halo_infinite/film`, `sync`, `archlint`, `cmd`) code 0 · integration
+  `-tags=integration -p 1 ./internal/sync/...` code 0 · `golangci-lint run` 324 issues (273 avant
+  merge ; les 51 de plus sont du code amont, **zero issue sur un fichier du chantier**).
+- Harnais rebati, passe complete sans `-update` : **0 identique, 13 different** — attendu. Quatre
+  noms d'etape bougent et **aucun compte ne change** : `fire` (13/13, `ShooterIndex5` + visee
+  modale), `flag` (8/13), `killsource` (1/13, registre borne a 50 blocs et non 118), `artifact`
+  (13/13, +2 798 a +18 277 octets pour le schema 37).
+- **Correlation mesuree, pas deduite** : le digest `flag` bouge sur EXACTEMENT les 8 films dont la
+  carte declare un `flag_spawn` neutre (`team_index = -1`) au catalogue `map_objectives.json`, et
+  sur aucun des 5 qui n'en declarent pas. 13/13, zero exception — c'est ce qui prouve que l'ecart
+  vient de `flagspawns.go` (le socle neutre voyage desormais, le calque tranche) et non d'une
+  resolution ratee.
+- Refigeage des 13 films + mini-bobine, puis passe de verification : **13 identiques, 0 different, 0
+  ecarte, 0 echec**. Durees 4,8 s a 1 min 53, pics 0,09 a 0,65 Gio — **le gain du chantier est intact
+  apres le merge** (`01e1f945` 18,0 s, `7344d24f` 21,0 s, `696a9d7c` 20,5 s, contre une cible de
+  100 s).
+
+**Conclusion / prochaine etape.** La branche est reconciliee et verte ; §10 du plan porte le detail
+(conflits, gardes, table des ecarts, diff des comptes). Le pilote verifie l'arbre et committe le
+merge. Reste douteux, ecrit et non traite : `hits.go` hors de la source unique (registre des
+reports), et la baseline lint qui passe de 273 a 324 par l'amont.
+
+## [2026-09-03] Cuisson perf, lot 4b — les bornes du deroulage sont posees : les quatre films-bombes cuisent, le report RAM est leve — Complete (4/4 items)
+
+Reprise du lot 4b de `.ai/V7.5/PLAN_CUISSON_PERF.md` apres l'arbitrage utilisateur du meme jour
+(worktree `LevelUp-wt-cuisson-perf`, branche `wt/cuisson-perf`, base `2f930743d`, aucun commit).
+
+**Decision technique principale.** La mesure 4b.1 avait arrete le lot : la borne de 10 000 ecrite
+en D13 passait SOUS le pire deroulage d'un film SAIN (17 306 sur `d9781168`). L'utilisateur a
+tranche **100 000** — 5,8x au-dessus du pire cas sain, 5 377x sous la plus petite bombe, dans
+l'intervalle ou les deux populations sont separees d'un facteur 31 000. Deux bornes posees dans
+`objectiveevents` : (1) `incrementTimes` rejette un deroulage `p.Value - prev > 100 000` (le point
+n'emet rien, `prev` avance quand meme — sinon le point suivant rejouerait le meme ecart), compteur
++ `slog.Warn` ; (2) plafond total de 1 000 000 d'evenements par film dont le SOLDE descend DANS
+l'appel. Ce second point etait la vraie difficulte (note N-AV) : `statMaxRecordsPerFilm` borne les
+POINTS et non les evenements, donc un plafond verifie seulement entre les series aurait laisse un
+appel isole allouer 26 Gio. Consequence non prevue par le plan : les TROIS passes qui deroulent
+ouvrent un budget, et non une seule — `SlotIdentityFrom` et `crossCheckFrom` deroulent aussi, par
+`countsOf`, second consommateur d'`incrementTimes` que D13 n'avait pas vu (decouverte N-BA). Autre
+consequence : un budget rend l'ORDRE DE PARCOURS observable, donc trois iterations de map ont du
+etre triees (N-BB) — meme famille que les dix non-determinismes de l'item 0.4bis, trouvee cette
+fois par construction.
+
+**Resultats observes.** Les quatre bombes cuisent : `51101d1d` 4,9 s / **0,08 Gio** · `a349fea8`
+1 min 48 / **0,48 Gio** · `1c4c63c2` 1 min 54 / **0,68 Gio** · `60ae07c4` 25 s / **0,34 Gio** —
+contre 3,17 a 4,02 Gio auxquels elles MOURAIENT, et contre les ~26 Gio que `51101d1d` demandait
+sans garde. Deroulages rejetes : 1, 12 (9 sur la table flag + 3 sur la sienne), 1, 2. **Aucun film
+n'atteint le plafond total** (maximum emis 231 589 sur 1 000 000) : c'est la borne par pas qui fait
+tout le travail. Trois passes de verification : 4/4 bombes identiques au re-passage (figeage
+deterministe), **9/9 films sains identiques**, et **zero activation de borne sur un film sain**
+(0 ligne de journal, aucun `.tsv` sain modifie). Le corpus d'equivalence passe de 9 a **13 films**.
+Six tests unitaires ajoutes, discriminants verifies dans les deux sens (borne ramenee a 10 000 ->
+le test « serie saine » echoue ; `prev` fige apres rejet -> les deux tests de rejet echouent).
+Gate : `gofmt -l` vide, `go vet` propre, trois paquets de tests verts,
+`golangci-lint --new-from-merge-base=origin/main` 0 issue.
+
+**Conclusion / prochaine etape.** Le report « BOMBE RAM `NamedEventsFrom` » du
+`REGISTRE_REPORTS.md` est LEVE (cloture finale datee, avec durees et pics). **Le LOT 3 est
+DEBLOQUE** : son temoin `60ae07c4` etait bloque parce qu'il etait une bombe — il cuit maintenant
+en 25 s et son digest de reference est fige sous la borne, donc l'ecart Live Fire du lot 3 se
+mesurera contre une reference existante. Restent aussi debloquees mais NON lancees (hors mandat) :
+la passe `backfill-replay --only-existing` et la re-cuisson de masse (schema vehicules). Rien n'a
+ete commis.
+
+## [2026-09-03] Cuisson perf — CHANTIER LIVRE : 3 min 30 -> 15-19 s (-89 %), branche mergeable — Complete
+
+Fin des lots 0/1/2/4/5/6 de `.ai/V7.5/PLAN_CUISSON_PERF.md` (12 commits sur `wt/cuisson-perf`).
+
+**Resultats** : temoins a 15,7 / 18,6 / 18,2 s (references 2 min 24 - 2 min 49) ; BTB 26 joueurs
+19 min 54 -> 1 min 40 ; identite prouvee a CHAQUE lot par le harnais (45 empreintes x 9 films) ;
+harnais complet passe de ~40 min a ~5 min. En chemin : 10 non-determinismes de production
+corriges (donnees tirees au sort dans les rejeux), 2 nouvelles bombes memoire identifiees et
+expliquees a l'arithmetique pres, le cycle d'import filmcache->objectiveevents dissous, le
+verrou solo cable sur 4 chemins sur 4, ~15 garde-rails discriminants poses.
+
+**Gates de cloture** : revue adversariale de branche (0 bloquant, 7 corrections livrees),
+gate-push vert (lint Go branche 0 issue, baseline tests, web 0 erreur), integration -p 1 exit 0.
+
+**Restent** : D13 (borne anti-bombe, escalade — proposition 100 000) -> lot 4b (plafond +
+figeage des 4 bombes) -> lot 3 (justesse Live Fire) ; re-cuisson de masse au schema vehicules
+(~1 h 30 - 2 h au tarif mesure, contre ~55 h projetees a l'audit) ; merge dans feat/v75 a la
+main de l'utilisateur.
+
+## [2026-09-03] Cuisson perf, lot 6.3 — les sept constats de la revue de branche sont corriges : plancher de cuisson, code mort supprime, gardes rendus discriminants — Complete (7/7)
+
+Item 6.3 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
+(`wt/cuisson-perf`, base `d3af3f3bf`). **Aucun commit** (demande du pilote), aucune cuisson lancee,
+`tmp/` et `CORPUS.txt` intacts.
+
+**Decision technique principale : un budget presque epuise doit REPORTER, pas cuire pour se faire
+tuer.** La borne d'une cuisson valait `min(solde de budget, 15 min)` sans plancher : quand le pont
+disque avait mange le budget, `cuireUnMatch` recevait un contexte deja expire, l'enfant mourait a la
+naissance, le film comptait en ECHEC et un WARN accusait le decodage d'une panne inexistante — soit
+exactement ce que la doctrine du fichier interdit (« le budget s'applique ENTRE deux matchs, jamais
+au milieu d'un »). `PlancherCuisson = 30 s` (mesure : la cuisson d'un temoin vaut 15-19 s apres le
+lot 4, et 30 s est un dixieme du budget de cycle) arrete la boucle AVANT de cuire, en INFO, en
+gardant le film persiste — il expire cote serveur, l'artefact non. Nuance trouvee en codant et
+couverte par un second test : le plancher ne s'applique QUE si une cuisson est cablee
+(`d.BuildOne != nil`) — sans elle la boucle n'est plus qu'un pont disque, et s'arreter tot ne
+ferait que perdre des films.
+
+**Ce qui a ete supprime plutot que garde.** `replaybuild.ArtifactHasPlayerCounters` n'avait plus
+aucun appelant de production depuis l'item 5.3 : supprimee, son en-tete doctrinal (les trois
+vacuites legitimes, « jamais en deduire a re-cuire ») deplace sur `Digest.HasPlayerCounters`, et les
+six commentaires qui la citaient repointes. Le mode `-walkers` de `cmd/replay-equiv` (3 fichiers,
+2 drapeaux, l'aiguillage, l'entree d'allowlist zlib et le parametre `extra` d'`argsEnfant` devenu
+sans consommateur) est retire sur decision du pilote : il portait EN COPIE trois marcheurs de
+paquets dont les originaux ont disparu aux items 1.4/1.5 — il ne se comparait plus qu'a lui-meme.
+La mesure survit la ou elle doit : figee au §2 de `MESURES_CUISSON_PERF.md`, rejouee en CI par le
+test de la mini-bobine de `filmsource`, re-mesurable depuis le commit `aa694442f`.
+
+**Lecon a garder : un garde-rail qui interdit le bon geste finit desactive.** Le ratchet des
+enveloppes `dir` compare des NOMS d'appeles (il parse l'AST, il ne type rien) et portait
+`EquipmentArchetype` — nom que porte AUSSI la methode `FilmContext.EquipmentArchetype` que la
+cuisson appelle legitimement. L'enveloppe est renommee `EquipmentArchetypeDir`, et la liste fermee
+porte desormais sa condition de validite (« que des noms sans homonyme », avec la commande de
+verification). Meme famille : `lecturesDisque` ne listait que `ReadFile/ReadDir/Open/Stat` — le
+meme geste passait sous `os.OpenFile` ou `filepath.Glob`, les deux sont ajoutes. Et le verrou solo
+de l'ouvrier etait enracine sur `w.workDir` alors que son commentaire annoncait l'exclusion avec le
+post-sync : des qu'un ouvrier distant passe `--work`, il posait son verrou dans un dossier que
+personne d'autre ne regarde. Il est enracine sur `PathResolver(w.repoRoot).CacheRootDir()`, comme
+les trois autres points d'entree et comme le contrat ecrit d'`AcquireSolo`.
+
+**Resultats observes.** Chaque garde touche a ete verifie DISCRIMINANT par violation temporaire,
+supprimee ensuite : la garde du plancher neutralisee (`if false`) fait rougir les quatre assertions
+du nouveau test ; une sonde `os.OpenFile` + `filepath.Glob` dans `filmdec` fait rougir la regle 2 ;
+une sonde qui appelle les DEUX formes d'`EquipmentArchetype` depuis `replaybuild` fait rougir
+l'enveloppe et LAISSE PASSER la methode ; l'entree d'allowlist zlib reintroduite est signalee
+« entree MORTE ». Gate : `gofmt -l .` vide, `go vet ./...` et `go build ./...` codes 0,
+`go test` des cinq paquets du perimetre code 0 (archlint 5,6 s, le reste sous la seconde),
+`go test -tags=integration -p 1 ./internal/sync/replayartifacts/` code 0 (5,561 s),
+`golangci-lint run` 273 issues (baseline inchangee) et `--new-from-rev=HEAD` 0 issue.
+
+**Ecart assume, a arbitrer par le pilote.** Le mandat demandait de supprimer
+`TestArtifactHasPlayerCounters` avec sa fonction ; il a ete REPOINTE sur
+`ArtifactDigest(p).HasPlayerCounters()` (renomme `TestDigestHasPlayerCounters`) parce que ses cinq
+formes de document etaient la SEULE couverture d'un predicat toujours vivant, lu par quatre sites de
+production. Supprimer la fonction morte ne demandait pas de perdre la mesure de la regle.
+
+**Conclusion / prochaine etape.** Les sept constats sont statues `[x]`, rien n'est reporte. Reste
+au pilote pour clore le lot 6 : l'item 6.1 (mesure finale), le `delivery-checklist` de l'item 6.3,
+et la decouverte N-V ouverte depuis le 6.2 (`GUIDE_KILLSOURCE.md` cite encore
+`killsource.MemoryChunks`/`DirChunks`, symboles supprimes au lot 1).
+
+## [2026-09-03] Cuisson perf, lot 5 — orchestration et protections : le cycle ne peut plus etre pris en otage, et un seul processus decode a la fois — Complete (7/7 items)
+
+Lot 5 (items 5.1 a 5.7) de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
+(`wt/cuisson-perf`, base `5b9e9bca3`). **Aucun commit** (demande du pilote), aucune cuisson lancee,
+`tmp/` intact.
+
+**Decision technique principale : les trois protections manquantes du cycle sont des BORNES, pas
+des reglages — et chacune a son regime ecrit.** (1) Une cuisson qui ne rend jamais la main tenait
+la synchronisation entiere : le budget de cycle s'applique ENTRE deux matchs et ne pouvait rien
+contre elle. Elle est desormais bornee par `min(solde de budget, 15 min)` autour de `BuildOne` ; le
+film coupe compte en echec, le cycle continue. (2) Le verrou solo (cree au lot 0) est cable a ses
+DEUX regimes : refus IMMEDIAT pour le post-sync (il vit dans le serveur — attendre bloquerait toute
+la synchronisation, et son match revient au cycle suivant), attente BORNEE a 10 min pour les passes
+(l'enfant de backfill et l'ouvrier n'ont pas de cycle suivant : un refus sur simple chevauchement
+ferait echouer un film sain). (3) Le prechargement du film suivant est de profondeur 1 STRICTE,
+parce que ~24 Mo de morceaux vivent en RAM du serveur entre le CDN et l'ecriture du cache — le
+processus qui tient les bases en ecriture n'accumule pas des films.
+
+**Ce qui a ete supprime plutot qu'ajoute.** L'ouvrier n'ecrit ni ne relit plus d'artefact local
+(`BuildBytes` au lieu de `BuildMatch` : D8) ; les gardes de fraicheur lisent l'artefact UNE fois au
+lieu de deux (`replaybuild.ArtifactDigest` exporte, `ArtifactUpToDate` et
+`ArtifactHasPlayerCounters` devenues des vues) ; et `cmd/levelup/backfill_child.go` passe de 250 a
+45 lignes en abandonnant sa copie du lanceur parent/enfant au profit d'`internal/filmproc`.
+
+**Protocoles preserves, verifies un par un.** Les codes de sortie du backfill etaient DEJA ceux de
+`filmproc` (0 / 10 / 11 / 12 / 13), le marqueur de pic est le meme chaine pour chaine, et les
+libelles du recap restent ceux de la passe (« carte hors catalogue (echec voulu) », pas « ecarte »).
+Seule modification observable du lot : le resume JSON d'un job d'ouvrier perd `artifact_path` —
+consequence directe de D8, et le champ n'avait aucun lecteur dans le depot.
+
+**Resultats observes.** Gains structurels, non chronometres ici (la mesure revient au lot 6) : un
+film de 30 morceaux tient desormais la latence CDN 4 fois au lieu de 30 (parallelisme borne a 8,
+modele `haloclient`) ; le pont disque et le decodage ne s'attendent plus ; deux lectures completes
+d'un artefact de ~2 Mo par match et par cycle disparaissent ; la passe de backfill herite de la
+priorite CPU basse, qu'elle n'avait pas. Gate : `gofmt -l` vide, `go vet ./...` vide,
+`go build ./...` vide, les huit paquets du gate verts (code 0), **`go test -tags=integration -p 1
+./internal/sync/... -count=1` vert, code de sortie 0** (sync 120 s), `archlint` vert,
+`golangci-lint run --new-from-rev=HEAD` : **0 issue** (baseline 273 inchangee). Aucun garde
+affaibli : le garde-rail de `cmd/levelup` est au contraire DURCI (aucun fichier du paquet n'a plus
+le droit de lancer un processus), et l'allowlist du ratchet `no_unbounded_film_loop_test.go` gagne
+le regime date de chacun des trois sites.
+
+**Conclusion / prochaine etape.** Lot 5 clos cote code ; il reste au pilote un test de bout en bout
+(rien n'a ete cuit). Quatre decouvertes notees au §8 (N-AW a N-AZ), dont deux liees : la sentinelle
+memoire de `cmd/levelup` reste un doublon de `filmproc.Guard` (hors perimetre de l'item, qui ne
+visait que codes/marqueur/relais), et c'est pour cela que l'enfant de backfill ne rend pas son
+verrou avant `os.Exit` — la peremption le reprend en ~6 s, mecanisme documente. Le lot 3 reste en
+attente du lot 4b (escalade utilisateur D13 toujours ouverte).
+
+## [2026-09-03] Cuisson perf, lot 4b — la mesure prealable a arrete le lot : la borne ecrite passe SOUS le pire cas sain — En cours (escalade utilisateur ouverte)
+
+Item 4b.1 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
+(`wt/cuisson-perf`, HEAD `7d0af4440`). Aucun commit, **aucune ligne de code de production
+modifiee** (`git status` vide) : la decision D13 imposait de MESURER avant de poser la borne, et
+la mesure interdit de la poser telle qu'elle est ecrite.
+
+**Decision technique principale : ARRETER plutot que d'ajuster la borne de mon propre chef.**
+D13 fixait « rejet d'un deroulage `p.Value - prev > 10 000` dans `incrementTimes` », avec pour
+premisse ecrite que « la pire anomalie connue est un saut de 66 », et prescrivait une escalade si
+la mesure depassait 1 000. Elle vaut **17 306** (`d9781168`, Oddball, `comp 20 B`, slot 12,
+t = 345 931 ms) : 260 fois la premisse, 17 fois le seuil d'escalade, et surtout **1,73 fois
+AU-DESSUS de la borne proposee**. Poser 10 000 aurait rejete un point d'un film SAIN du corpus
+d'equivalence, donc fait bouger une reference qui doit rester figee — exactement ce que le gate
+du lot interdit. Choisir moi-meme 100 000 aurait re-decide un « defaut ferme » (§3) sans
+l'utilisateur. Le lot s'arrete donc a 4b.1 ; 4b.2 et 4b.3 sont statues `[!]`, 4b.4 `[~]`.
+
+**Methode.** Outil de mesure temporaire (un `_test.go` du paquet `objectiveevents`, seul endroit
+d'ou `rawSeriesByKey` / `cumulateRounds` / `RealRounds` sont visibles), un film par processus,
+supprime apres releve. Il rejoue le chemin de production jusqu'a l'entree de `incrementTimes`
+— memes filtres, meme cumul de manches — sur les 58 comps x 2 cotes, et marque ceux que la
+production deroule REELLEMENT. Point de methode qui a tout permis : **il somme les sauts sans
+jamais materialiser un evenement**, donc il mesure les films-bombes sans les faire exploser
+(`51101d1d` : 0,3 s, quelques Mo, la ou une cuisson demande 26 Go).
+
+**Resultats observes.** Films sains : huit sur neuf tiennent sous 2 (total 110 a 538 evenements) ;
+`d9781168` porte a lui seul l'anomalie (17 306 ; 21 160 evenements). Bombes, jamais cuites :
+`51101d1d` 2 163 333 610 (`20 B`), `60ae07c4` 2 148 206 590 (`21 A`), `a349fea8` 1 107 820 492
+(`21 B`), `1c4c63c2` 537 698 416 (`22 A`). **La cause de la bombe RAM du 2026-08-24 est confirmee
+arithmetiquement** : 2 163 333 677 evenements x 8 o = 17,31 Go de `[]int`, et le `growslice` final
+(8,65 Go copies vers 17,31 Go, les deux vivants) demande 25,96 Go — les « ~26 Go » du registre,
+retrouves a 0,2 % pres, sans profil heap. Les deux lignes du `REGISTRE_REPORTS.md` (bombe RAM et
+profiling non confirme) recoivent leur note datee.
+
+**Ce qui a ete appris, et qui vaut au-dela de ce lot.** (1) **La table FLAG est deroulee sur TOUS
+les films, hors de son mode** (`build_objectives_live.go:104`, pour seulement DECIDER si le film
+est un CTF ; idem la table VIP) — alors que `named.go` documente en tete que « le sens d'un
+emplacement DEPEND DU MODE ». C'est par la que trois bombes sur quatre explosent, `60ae07c4`
+compris, qui est un Oddball dont la famille n'a aucune table. Le detecteur paie le deroulage
+complet de huit emplacements pour n'en consommer que trois COMPTEURS. (2) **L'anomalie est un
+enregistrement mal aligne, pas un emplacement** : sur `60ae07c4`, trois comps sautent ensemble sur
+le meme slot au meme instant (2,1 Md / 1,7 Md / 31). Un plafond par pas coupe les gros canaux et
+laisse passer les petits : c'est un rempart memoire, pas un filtre d'anomalie. (3) **Le deroulage
+geant existe aussi sur huit des neuf films SAINS**, sur des emplacements que personne ne lit
+(2,4 a 3,9 milliards) : la frontiere « sain / bombe » n'est pas la qualite du decodage, c'est le
+hasard de savoir si l'emplacement fautif appartient a une table lue — donc toute extension future
+de `namedStatSlots` (les emplacements `hill` et `ball`, annonces comme « pas encore nommes ») arme
+une bombe si la borne n'est pas posee d'abord. (4) `statMaxRecordsPerFilm` borne les POINTS, pas
+les EVENEMENTS : un plafond total verifie seulement ENTRE les series laisse un seul appel de
+`incrementTimes` allouer 2,6 Gio — l'implementation devra passer le budget restant.
+
+**Conclusion / prochaine etape.** Le lot est suspendu a UN arbitrage : la valeur de la borne par
+pas. Les deux populations sont separees d'un facteur 31 000 (17 306 contre 537 698 416), donc
+toute valeur de `]17 306 ; 537 698 416[` laisse les neuf films sains a l'octet pres et tue les
+quatre bombes ; le journal du plan propose 100 000 (marge des deux cotes) ou 1 000 000 (aligne sur
+le plafond total). Le plafond TOTAL de 1 000 000 par film, lui, est valide par la mesure (47x le
+pire total sain) et n'attend rien. Des la borne tranchee : 4b.2 (avec le budget passe a
+`incrementTimes`), puis 4b.3 — et le temoin Live Fire `60ae07c4` du LOT 3, aujourd'hui bloque,
+cuira dans la foulee puisque sa bombe est bien celle-ci. Gate verifie malgre l'arret : `gofmt -l`
+vide, `go vet` vide, tests des trois paquets verts, `golangci-lint run` code 0 (baseline), et
+harnais complet **9 identiques / 0 different**.
+
+## [2026-09-03] Cuisson perf, lot 4 — la lecture de bits par mot : le profil designait d'autres primitives que le plan — En cours (equivalence a la charge du pilote)
+
+Items 4.1 a 4.4 (+ 4.6, ajoute par le pilote) de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree
+`LevelUp-wt-cuisson-perf` (`wt/cuisson-perf`). Aucun commit, aucune cuisson : le pilote lance le
+harnais 11 films et les temoins §6. L'item 4.5 (mesure) est statue `[!]` pour cette raison.
+
+**LE PROFIL A ETE LU AVANT DE TOUCHER AU CODE, ET IL A DEPLACE LE LOT.** Sur
+`tmp/L1_01e1f945.cpu.prof` (152,35 s d'echantillons), les deux primitives que l'item 4.2 NOMMAIT
+— `readBitsAt` et `BitReader.ReadBits` — pesent 0,62 % et rien du tout. Le temps est ailleurs :
+`filmdec.kfReadBits` 58,40 % flat (appelee pour CHAQUE position de bit du payload d'image-cle par
+`kfScanNext`, 62 % en cumul) et `weaponv3.bitReader.bit` 20,84 % flat (26 % en cumul, entierement
+sous `ResolveXuidToPI`, soit le balayage `playerIndices` que `tmp/refL2_01e1f945.log` chronometre
+a 38,47 s sur ~96 s de cuisson). Les quatre primitives ont ete traitees, en donnant la priorite a
+celles que la mesure designe. C'est la decouverte N-AO : le plan nommait ses primitives par
+lecture de code, pas par mesure.
+
+**Decision technique principale** : une seule primitive de lecture par mot, `wordBitsAt`
+(`filmdec/bits_word.go` ; jumelle dans `weaponv3`), sur laquelle QUATRE fonctions branchent leur
+chemin rapide — et chacune GARDE sa boucle bit a bit d'origine pour le domaine ou les deux ne
+coincident pas. C'est la clause D6 du plan, et elle est le coeur du lot : la semantique hors
+tampon est preservee PAR FONCTION — `readBitsAt` PANIQUE, `ReadBits` / `kfReadBits` / `PeekBits`
+rendent des zeros de bourrage — et toute position negative ou largeur > 64 repasse par l'ancien
+chemin. Un geste supplementaire, pur, sur la boucle d'ancrage : `kfScanNext` lisait les 32 bits
+d'identifiant pour son test de sentinelle puis `kfValidAnchor` LES RELISAIT ; `kfAnchorFromID`
+prend l'identifiant deja lu, memes gardes.
+
+**Resultats observes** (micro-mesures Go, Ryzen 7 9850X3D — elles NE VALENT PAS la mesure §6) :
+`kfScanNext` 5,23 ms -> 0,57 ms (9,2x) ; `ResolveXuidToPI` sur un chunk de 1 Mio, 8 xuids absents,
+2 459,6 ms -> 25,3 ms (97x) ; `readBitsAt` 13 bits 11,99 us -> 7,86 us (1,5x). Rapportes aux
+cumuls du profil, cela vise les deux tiers du temps de cuisson — le chiffre reel sortira de la
+mesure du pilote. Les autres items : bande de slots bipede en tableau indexe (`SlotBand`, un
+booleen par slot sur le domaine 2^13, construite une fois par balayage au lieu d'une consultation
+de map par bit candidat) ; deux allocations de `BitReader` par record bipede supprimees et
+`ascendingFromZero` qui valide dans un tampon de pile avant d'allouer ; `NamedEventsFrom` qui
+regroupe en UNE passe (`RealRounds` calcule une fois au lieu d'une fois par emplacement) avec la
+cle de tri completee par `Comp` et `Side` (plan §9 R-8 : le determinisme n'etait qu'accidentel).
+
+**Ce qui a ete appris, et qui vaut au-dela de ce lot.** (1) `SlotBand` est un STRUCT et non un
+`[]bool` nu, parce que `len(bande)` veut dire « combien de slots » dans tout le depot et vaudrait
+8 192 sur une tranche dense : le struct fait ECHOUER LA COMPILATION sur chaque usage de forme
+« map » au lieu de le laisser mentir, et c'est le compilateur qui a trouve les 30 sites, pas une
+relecture. (2) D6 se trompe sur le domaine de `ReadBits` : `components_batch7.go:137-138` lit une
+largeur sur 12 BITS DU FLUX puis `ReadBits(w)`, donc jusqu'a 4 095 (N-AN) — la semantique « seuls
+les 64 derniers bits, mais le curseur avance de n » est reelle et a du etre preservee. (3)
+`seriesBySlot` a failli etre supprimee comme code mort apres le regroupement : elle a encore un
+appelant de PRODUCTION, `countsOf` -> `CrossCheckNamedEvents` (N-AR).
+
+**Preuve d'identite, en trois pieces** — toutes locales, la vraie preuve etant le harnais du
+pilote : (a) tests differentiels D6 contre des COPIES DE REFERENCE des implementations d'avant,
+recopiees dans les `_test` et nulle part ailleurs, sur tampons aleatoires a graine fixee, toutes
+largeurs 0..64 (plus 65..200), positions autour de chaque frontiere d'octet, de mot et de fin de
+tampon, cas hors tampon compris — avec deux tests dedies aux DEUX semantiques de bord ;
+(b) `TestFindPattern64MatchesReference`, qui implante le motif xuid a chaque decalage de bit 0..7
+et jusqu'a la position 0, celle ou la relecture des 5 bits d'index recule sous zero ;
+(c) `TestNamedEventsFromOnePassMatchesReference`, qui oppose la forme d'avant a la nouvelle sur un
+corpus construit touchant chaque filtre (deux manches, slots d'equipe, emission a -115, score de
+mode hors domaine, manche fortuite), sur les cinq familles d'objectif.
+
+**Seuil de fichier tenu dans le lot meme** : le regroupement de 4.4 portait `named.go` de 441 a
+505 lignes ; depassement CREE par ce lot, donc corrige dedans (lecon du lot 0) — `named_series.go`
+recoit la chaine `enregistrements -> series cumulees`, scission pure, 339 + 178 lignes.
+
+**Gate** : `gofmt -l .` vide · `go vet ./...` vide · `go build ./...` vert · les six suites du
+gate 4 vertes, plus `killsource` et `weaponv3` · `go test ./...` (module entier) vert ·
+`golangci-lint run` : 273 issues = la baseline, ZERO nouvelle.
+
+**Conclusion / prochaine etape** : lot 4 clos cote code, `[!]` assume sur 4.5. Le pilote lance
+`replay-equiv` (11 films, identite EXIGEE : c'est un refacto pur) et les temoins §6 ; le verdict
+§1.2 s'ecrit sur ces chiffres. Deux leviers chiffres et volontairement non pris sont au §8 :
+la bande d'objets du monde (N-AP, 0,8 % du profil contre douze signatures exportees) et la fenetre
+glissante de `kfScanNext` (N-AQ). Le lot 3 reste apres le 4b, par decision anterieure.
+
+## [2026-09-03] Cuisson perf, lot 2 — le film ne se derive plus qu'une fois (bande, decoupage i0, registre) — En cours (equivalence a la charge du pilote)
+
+Items 2.1 a 2.4 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
+(`wt/cuisson-perf`). Aucun commit, aucune cuisson : le pilote lance le harnais 9 films et les
+temoins.
+
+**Decision technique principale** : `filmdec.FilmContext`, construit UNE fois par
+`replay.BuildFromFilm` et passe aux balayages, porte les trois derivations qui ne dependent que du
+film — bande de slots bipede, decoupage d'i0 AUTO-DETECTE (le catalogue est le lot 3, D3bis),
+registre ECS de `chunk_00`. Le lot 1 avait supprime les ~36 relectures du film ; celui-ci
+supprime le second etage du meme defaut, les recalculs sur le film deja charge : bande bipede
+8 -> 2 par cuisson, detection i0 6 -> 1, analyse du registre 10-12 -> 1, plus la double bande
+ti=37 des poses 2 -> 1 (item 2.2, par le motif `...ForBand` existant). Les six accesseurs
+d'archetype deviennent des methodes du contexte ; `filmdec.filmRegistry` disparait.
+
+**Deux choix qui ont demande une decision, tous deux dictes par l'IDENTITE.** (1) La memoisation
+est PARESSEUSE : un constructeur qui calculerait tout d'avance deplacerait le premier calcul avant
+le premier balayage — donc avant l'installation des largeurs d'axe et le demarrage de l'horloge
+des etapes — et ferait travailler un film qui echoue des les positions ; paresseux, le premier
+calcul a lieu exactement la ou il avait lieu avant. (2) `NewFilmContext` ne rend PAS d'erreur
+(ecart assume sur la signature suggeree) : les trois derivations echouent sur des films legitimes
+(bobine sans `chunk_00`, film trop court, film nil quand le chargement a echoue) et chaque
+balayage doit rejouer SON message a SON etape — refuser au constructeur changerait ces messages et
+l'etape a laquelle la cuisson s'arrete.
+
+**Resultats observes.** Identite prouvee en deux pieces : (a) les trois calculs sont des fonctions
+PURES des octets du film — verifie sur pieces jusqu'aux feuilles (`WalkKeyframeWorld`,
+`matchBipedHeaderRaw`/`readBitsAt`, `parseRegistry`), aucun global mute entre les etapes 4 et 11
+n'y entre ; (b) `filmdec/film_context_test.go` compare contexte et recalcul direct sur le meme
+film — numeros de chunks, bande slot par slot, decoupage (valeur ET erreur), registre (empreinte,
+composants, drapeaux), memoisation (meme instance au second appel). Deux etages : la mini-bobine
+en CI (elle n'a ni registre ni slot bipede : elle prouve l'egalite des ECHECS) et un vrai film
+sous `FILM_CONTEXT_FILM`, passe sur `000d5950`, `7344d24f` et `60ae07c4`. Garde-rail
+`archlint/no_recomputed_film_context_test.go` : allowlist fermee de sept couples
+`fichier/fonction -> calcul`, verifiee dans les deux sens et discriminante par violation
+temporaire restauree. Gate vert : `gofmt -l` vide, `go vet ./...`, `go build ./...`, les huit
+paquets de test du lot, `golangci-lint` 0 issue.
+
+**Conclusion / prochaine etape.** Le pilote lance le harnais d'equivalence (9 films, identite 9/9
+attendue) puis mesure les temoins §6 — le gain vise est ~15-20 s par film. Cinq decouvertes hors
+perimetre notees au §8 (N-AI a N-AM), dont la huitieme bande bipede de `ScanBipedPositions`
+(conditionnelle a `opt.Chunks`, allowlistee, retrait cible au lot 4) et la paire de bandes ti=37
+restante entre les poses et les socles.
+
+## [2026-09-03] Cuisson perf, lot 1 CLOS — une seule lecture du film, identite 9/9, aucun gain de vitesse (assume) — Complete
+
+Cloture du lot 1 de `.ai/V7.5/PLAN_CUISSON_PERF.md` (4 agents, gates et commits par le pilote).
+
+**Decision technique principale** : la chaine de cuisson entiere consomme un `*filmsource.Film`
+charge et decompresse UNE fois (grammaire D3 mesuree) — filmdec (31 balayages), replay (4),
+killsource, objectiveevents, killcollector ; 40 enveloppes `dir` restent pour les seuls tests de
+recherche (zero appelant de production, inventaire exhaustif au §10 du plan) ; `filmcache l'
+implemente sans plus importer objectiveevents (le cycle d'import est mort) ; garde-rails : zlib
+en liste fermee sur tout le module (verifiee dans les deux sens), os.* interdit dans filmdec,
+enveloppes interdites dans 7 paquets de production, filmsource feuille, 113 vars de paquet
+filmdec gelees, test « zero disque » discriminant.
+
+**Resultats observes** :
+- Identite prouvee DEUX fois par le harnais (9 films x 45 empreintes contre les references du
+  lot 0) : apres 1.1-1.3, puis apres le lot complet — 9/9 identiques a chaque fois. Preuves
+  intermediaires par mesure : 0 ecart sur 291 635 paquets (killsource, 4 films), empreintes
+  identiques a l'octet sur 10 films (objectiveevents).
+- VITESSE : AUCUN GAIN MESURABLE sur les temoins (2 min 24 - 3 min 03, dans le bruit de la
+  reference) — consigne sans fard au §4 des mesures. L'inflate x40 ne pesait que ~12 s sur 144
+  pour un film moyen ; les boucles de balayage bit a bit dominent. Gains attendus aux lots 2
+  (bande/layout/registre partages, ~45 s cumules des 6 scanners delta) et 4 (boucles chaudes,
+  `playerIndices` 35-40 s). Gain de bord reel : killcollector n'ecrit/relit plus le film sur
+  disque 4 fois par match.
+- Decouverte N-S : 3 goldens killsource (gate optionnel jamais joue en CI) derivaient DEJA a la
+  base du plan — consignes, pas refiges (D4).
+
+**Conclusion / prochaine etape** : commit L1b ; lot 2 (FilmContext : bande de slots, layout,
+archetypes partages) puis lot 3 sous decision D13/lot 4b (temoin Live Fire = bombe memoire).
+
+## [2026-09-02] Cuisson lot 1 (item 1.4 + moitie killcollector de 1.6) — le decodeur de la source de degat ne lit plus le disque — Complete
+
+Item 1.4 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, plus la moitie `killcollector` de l'item 1.6.
+Branche `wt/cuisson-perf`, rien committe.
+
+**Decision technique principale** : `killsource.Decode` prend un `*filmsource.Film` deja charge.
+Le paquet perd sa source de chunks (`ChunkSource`, `MemoryChunks`, `DirChunks`), son inflate et
+son marcheur de paquets — la troisieme copie des trois. `loadFilm` ne fait plus que traduire le
+film et trier les paquets type-0. L'IDENTITE TIENT A UN FILTRE, ecrit et documente sur place :
+`filmsource` emet le terminateur CHUNK_END (type 7) que l'ancien `splitPackets` n'emettait pas
+(il s'arretait sur `taille <= 0`) ; comme ce terminateur est le DERNIER paquet de son chunk, le
+filtrer par type restitue l'ancien jeu de paquets jusqu'au rang. Le registre, lui, reste lu par
+OCTETS de chunk (`f.chunks[0]` = `film.Chunk(0)`, la position 0 de la source), jamais par
+paquets. Verrou process `filmdec.LockProcessDecode` inchange ; seul le chargement, qui ne touche
+aucun global, est sorti du verrou.
+
+**Resultats observes** :
+- Identite MESUREE, pas affirmee : un diagnostic temporaire comparant l'ancienne entree
+  (`DirChunks` + `inflate` + `splitPackets` recopies) au film charge rend, sur les quatre films
+  de fixture, des chunks identiques a l'octet et **0 ecart sur 291 635 paquets**
+  (`chunk, idx, type, ts, taille`). Test supprime apres mesure.
+- La cuisson ne charge plus le film qu'une fois : `decodeKillSource` recoit le film de
+  `BuildBytes`. Ordre des etapes observees intact (`replaybuild/observe_test.go` vert).
+- Le collecteur de morts partage un seul film entre les morts et les positions : le PONT DISQUE
+  de `positions.go` (ecriture de N `chunk_NN.bin` dans un temporaire, puis quatre relectures et
+  quatre decompressions du film entier) est supprime. Son unique controle utile — le refus d'une
+  sequence trouee, qui empeche une position FAUSSE — survit en memoire avec ses tests.
+- Gate : `gofmt -l` vide sur mes paquets, `go build ./...` vert, `go test` vert sur `killsource`
+  (goldens inconditionnels de la mini-bobine compris), `replaybuild`, `killcollector` (dont
+  `-tags=integration` sur films reels) et `archlint` ; `golangci-lint` 0 issue.
+
+**Decouverte rouge, ANTERIEURE au chantier** (N-S au §8 du plan) : `TestGoldenFilms` de
+`killsource` — gate optionnel `KILLSOURCE_FIXTURES`, donc jamais joue en CI — echoue sur 3 des
+4 films de reference, avec les MEMES trois ecarts a `900384f50` (la base du plan), a HEAD et
+apres l'item 1.4. Verifie dans un worktree jetable, supprime depuis. Aucune ligne publiee ne
+change (calibration, et un candidat propose de plus non publie). Non traite : hors perimetre, et
+refiger un golden hors lot de correction est interdit par D4.
+
+**Prochaine etape** : `go vet ./...` et la suite `internal/analysis/replay` ne compilent pas tant
+que l'item 1.5 de l'agent parallele est en vol (toutes les erreurs sont des `objectiveevents`
+dans des `*_test.go`) — a rejouer une fois 1.5 rendu. Item 1.6 reste ouvert : sa moitie `cmd/*`
+appartient au meme agent.
+
+## [2026-09-02] Cuisson perf, lot 0 CLOS — harnais d'equivalence, determinisme prouve, reference HEAD — Complete
+
+Cloture du lot 0 de `.ai/V7.5/PLAN_CUISSON_PERF.md` (pilotage : agents pour le code et les
+revues, pilote pour gates/statuts/journal/commit — demande utilisateur).
+
+**Decision technique principale** : l'equivalence se prouve desormais par outillage —
+`cmd/replay-equiv` (un film par processus borne : verrou solo en attente, priorite basse,
+sentinelle), empreintes par etape (`internal/analysis/digest`, grammaire versionnee v2,
+marqueur dans chaque TSV), observateur dans le code de production (45 etapes), faits du match
+figes par film. Deux rondes de revue adversariale integrees.
+
+**Resultats observes** :
+- Determinisme de la cuisson PROUVE : 2 verifications completes x 9 films = 9/9 identiques
+  (45 empreintes par film, artefact compris). Pour y arriver, DIX sites de non-determinisme
+  reels corriges (0.4bis + extension assemblage) — dont trois qui publiaient des donnees
+  tirees au sort (lacheur d'arme au sol, poseur d'equipement, proprietaire de zone A/B) ;
+  10 tests d'ordre discriminants.
+- Reference HEAD posee (`MESURES_CUISSON_PERF.md` §1) : temoins a 2 min 24 - 2 min 49,
+  decodage = ~94 % du temps, assemblage+serialisation 8 ms ; poste n°1 inattendu :
+  `playerIndices` 35-40 s ; six scanners delta ~45 s cumules ; killsource 8-9 s seulement.
+- Grammaire D3 tranchee SUR MESURE (1 378 films) : le paquet taille 0 des chunks de donnees
+  est le terminateur CHUNK_END (type 7, dernier, rien apres) ; grammaire revisee (le
+  terminateur est emis) = 0 divergence sur les chunks de donnees de tout le cache.
+- DEUX NOUVELLES BOMBES MEMOIRE revelees par le figeage : `1c4c63c2` (3,96 Gio en 4,5 s) et
+  `60ae07c4` (Live Fire — le temoin du lot 3 ; 4,02 Gio en 2 min 12) — reclasses au regime
+  D11, le lot 3 depend du plafond D13 (decision a l'entree du lot 3).
+- Instrumentation en production : durees par balayage (Debug) et par phase (Info), duree+pic
+  remontes par l'enfant jusqu'au log post-sync, `replay-build` avec journal CLI et profils.
+
+**Conclusion / prochaine etape** : lot 0 clos au gate (suite complete + integration -p 1 +
+vet + lint 0 issue) ; commit sur `wt/cuisson-perf` (jamais pousse — la CI jugera au premier
+push). Prochaine etape : lot 1 (paquet feuille `filmsource`, decoder une fois) sous le meme
+protocole — cible principale eclairee par la reference : `playerIndices`, socles/poses, et
+les six scanners delta.
+
+## [2026-09-02] Harnais d'equivalence — reprises de la 2e ronde de revue (N-A, N-B, N-C, N-E)
+
+**Statut** : Complété (branche `wt/cuisson-perf`, non committé — le pilote décide du commit).
+
+**N-A — le digest d'une map n'était PAS déterministe.** `digest.table` triait les paires par le
+seul rendu de la CLÉ ; or la grammaire ne porte pas les noms de type, donc deux clés DISTINCTES
+peuvent rendre les mêmes octets. Mesuré avant correction : `map[any]int{int32(1):100,
+int64(1):200}` rendait **2 empreintes sur 200 tours** (176/24), et deux clés pointeur vers des
+valeurs égales également (174/26) — l'ordre aléatoire d'itération de map fuyait dans le flux.
+Correction : `departager()` ordonne les groupes de clés à rendu égal par le rendu de la VALEUR
+(calculé UNIQUEMENT en cas de conflit, puis réutilisé à l'écriture — coût nul dans le cas
+courant). Deux entrées dont clé ET valeur rendent les mêmes octets sont indiscernables par
+construction. La garantie de l'en-tête du paquet, qui affirmait l'indépendance à l'ordre
+d'insertion SANS condition, énonce désormais la condition réelle.
+
+**N-B — marqueur de version de grammaire.** `digest.GrammarVersion = 2` (v1 = rendu sans
+préfixes de longueur ; v2 = préfixes `s:`/`b:`/`n:` + départage des clés de map), avec
+`GrammarLine()`/`ParseGrammarLine()` en écriture unique (`digest/grammar.go`). L'enfant de
+`replay-equiv` écrit `# digest-grammar: 2` en PREMIÈRE ligne du TSV ; le parent la vérifie avant
+toute comparaison et classe un écart de version en **INFRA** (« références figées sous la
+grammaire N, harnais en N' : re-figer par -update »), jamais en ÉCART d'étape ; `-update`
+l'écrit. Même contrat dans `TestEquivalenceMiniFilm`. Motif : le 2026-09-02, 6 TSV sur 9 étaient
+restés sous la v1 et l'écart se lisait comme une régression du décodeur.
+**Les 9 TSV de corpus ont été SUPPRIMÉS** (mélange de grammaires) — le pilote re-fige tout par
+`-update` ; `minifilm.tsv` régénéré : seule la ligne de grammaire change, **les 7 empreintes
+sont identiques** (le départage ne modifie aucune valeur réelle).
+
+**N-C** : le WARN des socles journalisait `comptes["spawnPointsState"]`, c'est-à-dire la
+LONGUEUR de la chaîne. Le collecteur retient désormais la valeur des étapes-chaînes
+(`map_absent` / `not_established` / `established`).
+
+**N-E** : `TestAxeBorneHaute` asserte enfin la sortie de `marcheObjectiveevents` (l'axe porte sur
+la MARCHE, pas sur la sortie : il avance sans l'offset mais son test d'émission le reprend) ;
+deux cas ajoutés — terminateur en première position, et chunk sans terminateur (axe
+`fin_de_tampon`).
+
+**Gates** : `gofmt -l` vide ; `go vet` (digest, replay, replay-equiv) OK ; `go test` digest +
+replay-equiv OK ; `go test ./internal/analysis/replay/ -run 'TestObserve|TestEquivalenceMiniFilm|TestGolden'`
+OK ; `golangci-lint run` sur les 3 paquets : **0 issue** ; `go build ./cmd/...` OK.
+
+**Prochaine étape** : le pilote re-fige le corpus (`replay-equiv -update`) sous la grammaire 2.
+
+## [2026-09-02] Cuisson perf, lot 0 — corrections de la revue adversariale (B1, C1-C7, N1/N2/N4/N6/N7) — Complete
+
+Sous-agent de correction, worktree `LevelUp-wt-cuisson-perf` (`wt/cuisson-perf`). Rien commite,
+aucune cuisson lancee, aucun TSV du corpus regenere (seul `minifilm.tsv` l'a ete, cf. ci-dessous).
+
+**Decision technique principale** : le paquet `internal/analysis/digest` passe au PREFIXE DE
+LONGUEUR. Quatre collisions etaient CONSTRUCTIBLES (`[]string{"a,b"}` == `[]string{"a","b"}` ;
+une cle de map portant `=` ; `[][]byte{{1,2},{3}}` == `{{1,2,44,3}}` ; `[]byte("<nil>")` ==
+`[]byte(nil)`) — un harnais d'equivalence qui accepte des collisions constructibles ne prouve
+rien. Toute chaine imbriquee s'ecrit `s:<len>:<octets>`, toute tranche d'octets imbriquee
+`b:<len>:<octets>`, le nul `n:`. LE CAS RACINE RESTE BRUT : une `[]byte` passee directement a
+`Of` est hachee telle quelle, parce que l'empreinte d'un artefact DOIT etre celle que
+`sha256sum` rend sur le fichier range — la contrepartie (a la racine, `[]byte(nil)` vaut zero
+octet) est ecrite en tete du paquet. La marche gagne une BORNE DE PROFONDEUR (1 000) : le garde
+de cycle ne suivait que les pointeurs, et `m := map[string]any{}; m["soi"] = m` faisait deborder
+la pile.
+
+**Resultats observes** :
+- Grammaire unifiee de `cmd/replay-equiv -walkers` alignee sur D3 REVISEE (elle implementait
+  encore la grammaire ABANDONNEE : arret sur `size <= 0` sans emettre). Le terminateur de type 7
+  est desormais EMIS puis ferme le chunk ; l'arret sans emission est reserve a l'en-tete degenere
+  (taille 0, type != 7) de `chunk_00`. En-tete du fichier corrige (il decrivait l'abandonnee sous
+  le titre « la grammaire retenue » — doc inversee).
+- Dette CREEE par le lot et notee a tort comme heritee (§8 du plan) : a la base `0c70e3bbc`,
+  `replaybuild.go` faisait **488** lignes et `BuildBytes` **62** — sous les seuils. Corrige dans
+  le lot : scission pure vers `internal/replaybuild/artifact_digest.go` (462 L) et extraction de
+  `collecterEntreesCatalogue` (`BuildBytes` a 66 L). Le garde `replaybuild/observe_test.go`
+  DESCEND desormais dans la sous-fonction — sans quoi il aurait declare huit etapes disparues,
+  ou aurait ete « corrige » en les retirant de la liste, rendant l'equivalence aveugle sur les
+  zones, les socles et les frags.
+- `cmd/replay-equiv` n'installait AUCUN handler slog, dans aucun de ses deux roles : les
+  degradations de `replaybuild` etaient muettes et `-update` pouvait figer du vide sans un mot.
+  `logging.InstallCLILevel` installe pour les deux roles, plus une DEFENSE DE FOND dans l'enfant
+  (WARN quand `zones` ou `spawnPoints` comptent 0 malgre un `MapID` non vide, l'aiguillage de
+  variante venant de `objectiveevents.ObjectiveTypeOf`). Le niveau `LEVELUP_LOG_LEVEL` est
+  centralise en `logging.ConsoleLevelFromEnv()` — une troisieme copie de la table de niveaux
+  aurait viole la regle des 2 copies.
+- Profil CPU de `cmd/replay-build` ferme AUSSI quand la sentinelle memoire tranche (le
+  commentaire le promettait, le rappel sortait sans) : c'est precisement sur un film qui explose
+  qu'on veut pouvoir lire le profil.
+- Trois tests d'ordre TOTAL ajoutes pour les corrections 0.4bis qui n'en avaient pas :
+  `lessPlacement`, `roundStartsOf`, `gwPadsClass`.
+- `minifilm.tsv` regenere (C6 change les empreintes) : comptes IDENTIQUES sur les 7 etapes,
+  empreintes changees sur `fire`, `inventory` et `deaths` (les seules qui portent des chaines ou
+  des octets) — la preuve que le changement est un changement de RENDU, pas de contenu.
+
+**Conclusion / prochaine etape** : gate vert (gofmt, vet, tests digest/filmdec/objectiveevents/
+replaybuild/archlint/replay-equiv, `TestObserve|TestEquivalenceMiniFilm|TestGolden`, build des
+quatre binaires, `golangci-lint` a 0 issue sur le perimetre). RESTE AU PILOTE : re-figer les TSV
+du corpus (C6 change toutes les empreintes) et relancer la mesure `-walkers` (C1 change la
+grammaire mesuree — la section §divergence de `MESURES_CUISSON_PERF.md` decrit desormais un
+resultat obtenu avec la grammaire abandonnee).
+
+## [2026-09-02] Plan « cuisson des artefacts de rejeu : decoder une fois » — ecrit, relu deux fois — En cours
+
+Suite de l'audit du meme jour (`.ai/AUDIT_CUISSON_REPLAY_PERF_2026-09-02.md`, deplace dans ce
+worktree). Go utilisateur pour cadrer le chantier avec revue de plan avant execution. Worktree
+dedie `LevelUp-wt-cuisson-perf`, branche `wt/cuisson-perf` (base `feat/v75` `900384f50`), cache
+film partage monte par jonctions (`data/cache/{film_chunks,film_manifests,mvar,replays}`).
+
+**Decision technique principale** : `.ai/V7.5/PLAN_CUISSON_PERF.md` — trois responsabilites
+(source du film / contexte du film / balayages purs), la source dans un paquet FEUILLE
+`internal/analysis/filmsource` (toute autre place cree un cycle d'import, demontre par
+`go list -deps` et cinq tests internes de `filmdec`), equivalence prouvee par digests figes
+depuis l'ancien code AVEC les faits du match, un film par processus borne, observateur dans le
+code de production plutot qu'une copie de l'orchestration. Pas de parallelisme intra-decodeur
+(refute par l'audit), pas de de-globalisation.
+
+**Resultats observes** : premiere revue adversariale = « a refaire partiellement » (9 bloquants :
+cycle d'import, trois marcheurs de paquets DIVERGENTS donc lot 1 non pur par construction,
+equivalence vacuante sans faits, mini-bobine incapable de `BuildFromFilm`, harnais enchainant
+12 films dans un processus non borne, une dizaine de sites de production non inventories).
+Plan reecrit. Seconde revue = « executable apres corrections » (3 bloquants : ordre de creation
+du verrou d'attente, 9 points d'entree `FilmSource` et non 3, plafond `incrementTimes` sur la
+mauvaise grandeur — `p.Value - prev` premier terme compris ; 11 recevables), toutes integrees.
+Lecon : une « liste fermee » se verifie par un grep dont la commande est ecrite dans l'item.
+
+**Conclusion / prochaine etape** : plan pret ; decisions par defaut soumises a l'utilisateur
+(D7 verrou a deux regimes, D8 ouvrier sans ecriture locale, D9 `validateArtifact` intact, D13
+bornes 10 000 / 1 000 000, R-11 films hors corpus divergents acceptes comme corrections) ; puis
+lot 0 (reference, instrumentation, mesure de divergence sur 1 380 films). Aucun code modifie,
+rien de commite : commit du plan + registre a la demande de l'utilisateur.
+
 ## [2026-09-05] CI — l etape « vet du corpus gamefiles » ne pouvait pas passer : ooz est un paquet CGO — Complete
 
 **Le rouge, apres le lint.** Le ratchet golangci-lint eteint, la CI de branche restait rouge sur
@@ -299,6 +1727,274 @@ couvert sans film, alors que `TestFailleActivationEntites` se saute sans `FAILLE
 
 **Suite.** Branche `wt/slot-band-faille` (worktree `LevelUp-wt-slot-band`), 1 commit, ni push
 ni merge. A fusionner dans `feat/v75` pour eteindre le rouge de branche.
+
+## [2026-09-05] Session-usage S3 — front Sessions : trois blocs, grammaire du handoff §1 reconstruite (voie de repli, GO utilisateur) — Complete cote executant (commit au pilote)
+
+**Decision technique principale.** Maquette inaccessible : les formes sont reconstruites
+depuis la GRAMMAIRE validee (ecart a la parite / jauge avec etendue · piste du lobby ·
+grille alignee ValueGrid · bande de regularite) et le modele de la vue match
+(SectionCard, valueGridModel, DOM/CSS sans ECharts). 5 fichiers neufs dans
+features/session-detail (usageI18n Record<Locale,UsageText> ; usageLogic pur : formats,
+jauges, piste, bande ; usageGrids : 3 projections buildValueGrid ; SessionUsageForms :
+rendu des formes ; SessionUsageSection : les 3 cartes), branches sur le bloc `usage` de
+la reponse EXISTANTE (SessionPageResponse — aucune query nouvelle), alias types dans
+lib/api/types.ts. Arbitrages executant a faire valider a la revue visuelle : (a) couleurs
+joueurs = source unique features/squad/colors (moi=squad-player-1, coequipiers=2..4) et
+non 1..3 pour les coequipiers — coherence inter-pages ; (b) « eux » = hachure NEUTRE
+anonyme (jamais team-enemy : la reference n'est jamais affichee) ; (c) bande de
+regularite teintee contre la parite de SESSION (le contrat ne publie pas la parite par
+match ; les comptes « au-dessus » restent ceux du Go, per-match) ; (d) familles de socle
+affichees par leur cle hexa (le contrat ne porte pas de libelle d'arme) ; (e) piste du
+lobby refusee quand team_total est nil (pas de frontiere nous/eux), residus bornes a 0.
+
+**Resultats observes.** make generate-types EXIT=0 (apres npm install du worktree — piege :
+premier passage echouait en silence, openapi-typescript absent) ; diff generated.ts
++140 lignes, bloc usage complet. make check-types EXIT=0. make test-web EXIT=0 :
+573 fichiers / 5977 tests verts dont usageLogic.test.ts (25 tests : nil jamais 0, piste,
+bande, grilles, disponibilite). eslint fichiers du lot : 0 probleme. Ratchet
+cross-feature : 7 <= 7 (import squad/colors deja allowliste). Fichiers <= 500 L,
+fonctions <= 80 L.
+
+**Conclusion / prochaine etape.** Reste PILOTE : relecture du diff, commit S3, gate visuel
+utilisateur sur le temoin corrige (session 2026-07-31 19:22, JGtm : 193 nommees /
+82 anonymes / bonus camo 45 + overshield 20 / murs 7 lobby 0 JGtm / parites
+12,5 % / 25,0 %).
+
+## [2026-09-05] Session-usage S2 — ronde de correction post-revue (C1-C6) : regle de scope camp connu, cadences sur duree connue, contrat team_total nullable — Complete cote executant (commit au pilote)
+
+**Decision technique principale.** Application de l'arbitrage pilote sur les six constats
+de la revue adversariale S2. Racine commune C1-C3 : les grandeurs de session RELATIVES A
+L'EQUIPE (team_total, player_share_of_team, team_share_of_lobby, team_per_10min,
+matches_above_team_parity) se calculent sur le SOUS-ENSEMBLE des matchs mesures a camp
+CONNU — numerateurs ET denominateurs (y compris le denominateur lobby de
+team_share_of_lobby et la duree des cadences d'equipe) ; sous-ensemble vide = nil, jamais
+un 0 invente. Meme correctif aux trois sites (computeMetric, computePadFamilies,
+objectiveRoleMetrics) + lignes d'escouade alignees sur les memes scopes. CONSEQUENCE
+CONTRAT : `team_total` devient *float64 et `matches_above_team_parity` devient *int
+(omitempty) — openapi-gen regenere, garde vert. C6 : un match mesure sans echelle de temps
+(duration<=0, aucun repli stats) sort des cadences (numerateur ET denominateur, y compris
+measured_duration_seconds, doc mise a jour), reste dans totaux/parts ; slog.WarnContext
+une fois par session avec le compte. C4 : idArgs (copie de ToAnySlice) supprime — 4
+appelants bascules sur le helper canonique (le 4e, objective_role_rows_repo.go, revele par
+le build). C5 : FilmRow.FrameIntervalMS et FilmRow.PadNamed supprimes, colonnes retirees
+du SELECT films.
+
+**Resultats observes.** gofmt 0 ; go build OK ; paquets du lot verts (sessionusage,
+service, platform/duckdb, narrative, api/...) ; integration -tags=integration
+./internal/platform/duckdb/... verte (139 s). Tests renforces : FFA asserte TeamPer10Min /
+TeamTotal / MatchesAboveTeamParity nil (C2) ; nouveau cas session MIXTE equipe+FFA qui
+donnait 600 % avant correctif (C1, metriques ET familles) ; nouveau cas match sans duree
+(C6, cadence 1 vs 5 gonflee) ; objectifs : cas camp inconnu partout (C3) + cas scope mixte.
+FLAKY PRE-EXISTANT observe une fois au gate groupe : TestStartImport_HappyPathReturns202
+WithJobID (api/handlers, course TempDir RemoveAll Windows, paquet intouche par la ronde,
+3 passes isolees vertes ensuite).
+
+**Prochaine etape.** Pilote : relecture du diff, commit S2 (aucun commit par l'executant,
+consigne). Rien d'autre a corriger sur les six constats.
+
+## [2026-09-05] Session-usage S2 — reconciliation terminee : bloc `usage` attache a sessions/detail (design B), roles d'objectif sources de narrative, lignes d'escouade — En cours (commit et verdict §7 au pilote)
+
+**Decision technique principale.** Execution de l'arbitrage pilote apres la collision des
+deux executants S2 : le contrat est le design B (bloc `usage` ATTACHE a la reponse de
+`POST .../pages/sessions/detail`, patron IntensityRows/FirstBlood — pas d'endpoint dedie).
+`domain/session_usage.go` du worktree portait encore le contrat concurrent (endpoint
+dedie) : REMPLACE par la version design B (sauvegarde scratchpad s2-executant-B, identique
+au reste du disque), enrichie des types d'escouade. La table de roles concurrente de
+`sessionusage/objectives.go` (map par famille, avec `flag_grabs` dans « prendre » et
+`vip_kills` dans « defendre ») est SUPPRIMEE : la SOURCE UNIQUE est
+`narrative.ObjectiveRoleColumns` (objective_roles.go, garde-rail de partition), le repo
+GENERE ses sommes par role depuis cette table (`LoadObjectiveRoleRows`,
+objective_role_rows_repo.go) et la presence d'un role pour une famille se DERIVE
+(intersection role x vocabulaire narrative) — zero liste parallele.
+
+**Escouade.** `Filters.MatchContext == "squad"` => coequipiers suivis resolus en miroir de
+`sessionCoreTeammates` (allies presents dans TOUS les matchs, restriction amis configures
+via `friendGamertagsResolver`, cap 3, ordre alphabetique — `ResolveTrackedSquad`,
+sessionusage/squad.go) ; `SquadPlayers` au bloc, ligne `Squad` par metrique ET par role
+d'objectif (memes denominateurs que le joueur de la route, cadence sur duree mesuree).
+`match_participants.gamertag` ajoute au SELECT du repo pour la resolution.
+
+**Resultats observes.** gofmt 0 ; go build OK ; openapi-gen regenere + garde vert ;
+sessionusage 14 tests verts (couverture 2/3, parites inegales, cadence mesuree seule,
+etendue + au-dessus-parite du MATCH, FFA parts nil jamais 0, escouade) ; integration
+`TestSessionUsageAggregate_DePersisterAuBloc` vert (DB migree par les VRAIES migrations,
+peuplee par persist.UsageSummaryPersister, re-passe supplantee par `_latest`). MESURE
+flag_grabs sur le temoin (copie scratchpad de shared, 9 matchs retrouves) : « prendre »
+JGtm = 48,3/14,0/6,7 % (narrative, grabs exclus) vs 51,9/9,8/5,1 % (grabs inclus) vs
+54,4/9,5/5,1 % (ancienne table supprimee) — le §7 (56,5/11,5/6,5) ne correspond a aucune
+des trois, le pilote tranche. flag_grabs temoin : 69 lobby / 39 camp / 2 JGtm.
+
+**Prochaine etape.** Pilote : verdict §7 (classification « prendre »), relecture du diff
+entier (avertissement double-executant), commit S2. Aucun commit fait par l'executant
+(consigne). Deux rouges preexistants attendus au gate complet (archlint
+TestNoRewrittenSlotBand, himap TestBalayageCoquille/aquarius_map) — depouillement au
+rapport.
+
+## [2026-09-04] Assaut — E2-ter : la garde de NOM tombe, la meche se MESURE — Complete
+
+**Decision technique n1 : la meche n'est plus une constante, elle est MESUREE par film.**
+`bomb_armings.go` supposait une meche de 4 930 ms a +/- 600 ms pour confronter armements et
+explosions. Cette fenetre SUPPOSAIT la variante reconnue — c'est elle qui obligeait a une garde
+de NOM en amont (`replaybuild.isArmableBombVariant`) pour ecarter One Bomb, ou la lecture simple
+etait refutee (CV 0,725). La lecture « meche pausable » du 2026-09-01 est portee en production :
+segments contigus SANS exigence de monotonie (`filmdec/navpoint_radial_segments.go`), armement =
+segment qui finit a son SOMMET et dont le sommet atteint le quantum plein, TENUE DE DESARMEMENT
+qui SUSPEND la meche (pente 14-26 quanta/s, contre 138 pour une chute d'explosion), delai =
+(explosion - fin d'armement) - somme des pauses du meme slot. La meche du film est la MEDIANE
+des delais corriges, publiee avec chaque evenement dans `BombArming.FuseMS` — un champ qui
+existait deja et annoncait ce role. Trois valeurs sortent de la MEME regle sans qu'aucun code ne
+branche sur un nom de variante : 4 987 ms (Neutral Bomb), 5 089 ms (Husky Raid — la valeur que
+`b3MecheMS` codait en dur a 5 100), 16 183 ms (One Bomb). `BombFuseMS` ne subsiste que comme
+reference DEDUITE pour un film sans aucune explosion a mesurer.
+
+**Decision technique n2 : la garde 1 tombe, la garde 2 se durcit.** `isArmableBombVariant` est
+SUPPRIMEE, `bombInput` ne prend plus qu'un booleen de FAMILLE, et un ratchet interdit son retour
+(`TestAucuneGardeParNomDeVariante` : aucun fichier de production de `replaybuild` ne doit
+contenir le litteral « one bomb » — une garde par le nom revient silencieusement, puisque son
+effet est une absence de calque). La garde 2 reste TOUT-OU-RIEN par film et gagne une seconde
+branche : (1) COUVERTURE — chaque explosion a un armement dans la fenetre de sens du protocole
+(120 s), delai corrige ; (2) DISPERSION — les delais du film doivent s'accorder (CV <= 0,20, le
+seuil du protocole ; mesures 0,010 a 0,019, contre 0,725 pour la lecture refutee). Les DEUX
+branches mordent sur le corpus, ce qui prouve qu'elles ne sont pas decoratives.
+
+**Resultats observes.** Temoins INCHANGES AU CHIFFRE PRES, verifies deux fois : cote filmdec
+13/13 (CV 0,016) sur Neutral Bomb et 4/4 (CV 0,016) sur Husky Raid — et l'exigence Husky, qui
+n'etait qu'imprimee, est desormais JUGEE ; cote replay, les quatre films temoins republient les
+memes armements aux memes instants, avec les memes acteurs et les memes regles qu'en E2-bis.
+`9f57c612` (One Bomb) publie enfin : 5 armements a 65 137 / 279 103 / 335 193 / 388 080 /
+445 839 ms, 4/4 explosions couvertes, meche 16 183 ms CV 0,010, et 3 armeurs nommes (2 par
+lacher, 1 par repli). Le statborg CORROBORE : pour l'explosion 298 489 il nomme le meme joueur
+que la regle du lacher a nomme sur l'armement de 279 103. Couverture d'attribution du corpus :
+12/13 (92,3 %) -> 15/18 (83,3 %) — le taux baisse pendant que le compte monte, parce que le
+denominateur a grandi de 5 armements qu'aucune mesure ne datait avant. La fenetre de jointure
+(+/- 2 500 ms) n'a PAS bouge et la mesure dit pourquoi : elle joint le LACHER a la FIN DE
+L'ARMEMENT, un geste, pas un compte a rebours — ecarts +250/+250/+251 ms sur One Bomb contre
++247 a +259 ms sur les films a meche courte. Les 4 desaccords B2 sont inchanges. Gates verts,
+codes de sortie verifies : purs, filmdec meche, gate d'armement (46 s), gate d'attribution
+(286 s), plus le filet des 4 paquets et `contracttest`.
+
+**Ce qui n'est PAS resolu, et pourquoi c'est ecrit.** Deux des trois films One Bomb restent
+RETENUS par la garde 2 : `c75f33b8` a une explosion sans armement (395 724), `df8fcbef` en a une
+dont le delai corrige vaut 27 845 ms contre ~16 000 pour les trois autres (778 033). Ces deux
+instants sont EXACTEMENT les deux entrees d'`a5SansPorteur` (mesure du 2026-08-31, anterieure) —
+les explosions dont aucun slot de JOUEUR ne porte le point de mode. L'anneau ne les explique pas
+plus que le statborg. Relacher la garde pour les recuperer publierait un calque explique aux
+trois quarts : refus assume. Avant ce lot ces films n'avaient meme pas de couverture ; ils en ont
+une desormais, qui DIT pourquoi elle se tait.
+
+**Schema 38 -> 39.** Aucun champ ajoute ni retire (le contrat OpenAPI est inchange, verifie par
+`contracttest`), mais le CONTENU d'un calque change pour toute une variante : la doctrine du
+depot veut alors la montee, parce que la reprise du backfill se fait par `SchemaVersion` et
+qu'un artefact 38 d'un match One Bomb doit se lire « a re-cuire ». Rien n'est cuit par ce lot —
+le backfill du parc reste la tache de RELEASE.
+
+**Conclusion / prochaine etape.** E2-ter close, gates colles au plan. Reste E4 (branchement au
+hook `replayartifacts`), E5 (lecture/API/UI) et E6 (backfill de release, journal, CI). Rien n'est
+committe : accord utilisateur en attente.
+
+## [2026-09-04] Assaut — E3 : la persistance, et deux tables qui n'ont pas la meme memoire — Complete
+
+**Decision technique n1 : une table DEDIEE, append-only, aux colonnes NULLABLE.**
+`match_bomb_stats` (step `shared_create_bomb_stats`, socle shared) porte les cinq statistiques
+par `(match_id, xuid)` : id PK sequence, `written_at`, index `match_id`, vue
+`match_bomb_stats_latest` sur le patron exact de `objective_stats_view.go`
+(`QUALIFY ROW_NUMBER() ... ORDER BY written_at DESC, id DESC`). Elle est DEDIEE et non cinq
+colonnes de plus sur `match_objective_stats` parce que cette derniere est alimentee par le sync
+API : deux producteurs sur une vue qui ne garde qu'une ligne par clef, et un re-sync effacerait
+les stats du film. Les cinq colonnes de mesure sont NULLABLE, et c'est le point qui compte : le
+noyau d'E1 rend des POINTEURS pilotes par des temoins de lecture, donc « non mesure » s'ecrit
+NULL et jamais 0. Un zero fabrique dirait « rien ne s'est passe » la ou la verite est « on n'a
+pas regarde », et tout agregat le sommerait sans rien signaler. Deux tests le verrouillent
+(`TestColonnesDeMesureNullables` cote schema, `TestAbsentNEstPasZero` cote persister).
+
+**Decision technique n2 : les deux tables n'ont PAS la meme capacite a remplacer une
+generation, et le persister l'assume au lieu de la masquer.** `match_bomb_stats` sait remplacer
+(append-only + vue `_latest`) ; `match_objective_events` NON — PK naturelle `(match_id, seq)`,
+aucune vue `_latest`, aucun `decode_pass`. Un INSERT-only repete sur elle ne pourrait donc que
+(a) violer la PK, ou (b) empiler deux generations que tout lecteur compterait double. Le
+`BombStatsPersister` prend la seule troisieme voie disponible sans DELETE : `seq` alloue APRES
+le maximum deja present sur le match (la PK est partagee avec les autres producteurs — repartir
+de 0 entrerait en collision), et faits ecrits UNIQUEMENT si le match n'en porte pas deja de la
+famille `bomb`, avec un `slog.InfoContext` quand il s'abstient. Consequence assumee, ecrite dans
+l'en-tete : apres un changement de decodeur, les statistiques se rafraichissent, les faits dates
+NON. `ObjectiveEventsRepo.WriteMatch` (DELETE-then-INSERT, « hors chemin live ») n'a ete ni
+appele ni modifie.
+
+**Anti-ART : le ratchet se DURCIT, aucune allowlist ne bouge.** Le persister n'emet que des
+INSERT — zero UPDATE, zero DELETE, zero ON CONFLICT. `match_bomb_stats` est AJOUTEE aux tables
+protegees de `no_art_patterns_test.go` ET a `appendOnlyStateTables`
+(`append_only_state_guard_test.go`, garde statement-level). `allowlistArtPatterns` et
+`allowlistRawDelete` restent VIDES : aucune entree ajoutee, aucune n'etait necessaire. Chemin
+d'ecriture : `SharedBatch.BombStats` -> `BatchBuilder.SetBombStats()` -> `BombStatsPersister`
+cable dans `CombinedPersister` (meme fenetre de lease que le SharedPersister, transaction
+distincte), plus `PersistPass` pour le chemin direct. Le cablage est pose MEME s'il n'a pas
+encore d'appelant (E4) : un setter dont la charge serait silencieusement jetee serait une perte
+de donnees muette.
+
+**Resultats observes (gate E3, codes de sortie verifies, motifs ancres sur `^--- FAIL:`).**
+`go test -tags=integration -p 1 ./internal/persist/... ./internal/migration/... ./internal/sync/...`
+= GATE_EXIT=0, 0 ligne `^--- FAIL:` (persist 52,9 s / migration 5,4 s / sync 123,1 s + 9
+sous-paquets verts). `go vet` (avec et sans tag integration) = 0, `gofmt -l` = aucun fichier,
+`golangci-lint` = 0 issue sur les fichiers touches (les 37 issues du perimetre sont la dette
+baseline preexistante, aucune sur `bomb_stats*`, `combined_persister.go`, `builder.go`,
+`batch.go`, `order.go`). 12 tests neufs : 2 de schema, 9 de persistance (dont 11 sous-cas de
+refus verifiant qu'un refus ne laisse AUCUNE ligne derriere lui), 1 sentinelle de vocabulaire.
+
+**Conclusion / prochaine etape.** E3 close ; les cinq cases du plan sont statuees `[x]`. Rien
+n'est encore branche au sync : E4 (extraction pendant le decodage deja fait par le hook
+`replayartifacts`, aucun second decodage) est l'etape suivante. Decouverte notee au plan et non
+traitee : `match_objective_events` n'a aucune semantique de generation, et lui en donner une est
+un chantier de schema, pas une ligne a glisser dans un persister.
+
+## [2026-09-04] Assaut — E2 : qui a arme la bombe, par jointure des deux canaux — Complete
+
+**Le probleme, et pourquoi la jointure est la SEULE voie.** L'anneau `ti=12 i14` date
+l'armement mais ne nomme personne : c'est un marqueur d'ecran. Et ce n'est pas une lacune de
+notre decodage — mesure Ghidra du 2026-09-04 : le Lua `primitive_carriable_arming_base`
+(tag `25af9c45`) emet six evenements d'armement dont le seul porteur d'identite est l'EQUIPE
+(`activatingTeam`), jamais un `activatingPlayer`. Meme si un canal d'armement tombait un jour,
+il donnerait l'instant et l'equipe. L'acteur ne peut se fermer que par le canal des armes
+tenues.
+
+**Decision technique : le LACHER est le geste de pose, et la fenetre est bornee par des
+mesures, pas choisie.** L'armeur d'un armement date est le porteur dont une periode de portage
+(1) a commence avant l'armement, (2) se ferme par un LACHER — ni par la mort, ni par la fin du
+film, (3) dans +/-2 500 ms, (4) est la plus proche et n'a pas deja servi. B2 deduisait le sens
+du geste de deux medianes (~126 ms) ; ce lot le MESURE directement : ecart lacher - armement
+sur 10 appariements de 4 films = +247 a +259 ms, tous positifs, etendue 12 ms. L'anneau se
+remplit, PUIS la bombe quitte les mains. La fenetre de 2 500 ms couvre ~10x cet ecart, absorbe
+le residu d'horloge (<= 114 ms) et reste sous la moitie de la separation minimale de deux
+armements reels (>= ~6 s).
+
+**Le piege des deux horloges, et ce que la verification a corrige.** `BombArming.TimeMS` est
+sur l'horloge du FILM (manifeste), les periodes de portage sur celle du MATCH
+(`TimestampUS/1000 - deathOffsetMS`). La note d'E1 annoncait un decalage de l'ordre de
+`deathOffsetMS` : c'est faux. Les deux horloges partagent presque le meme zero, et le pont
+exact — `horlogeMatch = horlogeFilm + premierPaquetDuFilmUS/1000 - deathOffsetMS` — est deja
+calcule en production dans `resolveOriginMs` (origin.go) comme controle croise de l'origine
+publiee. MESURE sur les 5 films du gate : 33 a 114 ms, meme ordre que les 16-81 ms des quatre
+films temoins. Le recalage est applique et TESTE (`TestBombArmsRecalageHorloge` force un offset
+de 40 000 ms pour que sa disparition rougisse) — sans ce test, l'oubli serait invisible, le
+decalage reel etant sous la fenetre.
+
+**Resultats mesures (gate reel, 5 films, code de sortie 0).** 13 armements dates, **9 attribues
+(69 %)**, 3 sans lacher dans la fenetre, 1 au slot non ponte ; les 4 non attribues sont PUBLIES
+SANS ACTEUR, jamais devines. Non-regression tenue : zero desaccord neuf sur `35b75a31` et
+`9f57c612` (juge `bpJugeExplosion`, denominateur « detonateur nomme ET porteur ponte »), et
+exactement 4 desaccords B2 sur `1c01e34f`/`3d58eb37`/`69b16f5d`, les quatre connus. Controle de
+coherence publie et verifie a trois niveaux : `attribues + sansLacher + sansPont == armements
+dates`, plus fort que la majoration par equipe demandee au plan.
+
+**Ce que la regle ne couvre pas, et qui reste a statuer.** Sur 3 armements, le porteur TRAVERSE
+la pose : sa periode couvre l'instant arme et ne se ferme que bien apres (35b75a31 a 299 176 :
+lacher 4 245 ms APRES l'explosion). Une regle de repli « porteur ACTIF a l'instant arme » les
+nommerait — avec corroboration du statborg sur le premier. Non traite : c'est une extension de
+la regle ecrite au plan, elle se statue avec l'utilisateur.
+
+**Prochaine etape** : E3 — persistance (`match_bomb_stats` append-only + vue `_latest`,
+INSERT-only via `persist.BatchBuilder` ; evenements dates dans `match_objective_events`).
+Livrables non committes : `bomb_arms.go`, `bomb_arms_test.go`,
+`assaut_bomb_arms_gate_test.go`, extensions de `bomb_stats.go`, `bpExtraire` rend l'OwnerReport.
 
 ## [2026-09-03] Match view — donnees des deux temoins chargees ; 9 formes proposees pour les trois blocs en tableau — En cours
 
@@ -3583,6 +5279,1347 @@ au catalogue, donc aucune rentrée n'y apparaît). Instrument de recherche sous 
 `timeToRespawnFlag` restent NON LUS (dédupliqués dans le pool de constantes) ; le corpus de mesure
 se réduit à deux films faute de socles au catalogue. Les quatre reports sont au registre. Plan et
 protocole : `.ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md`.
+
+---
+
+## [2026-09-05] V13 — le dead-state des VEHICULES est dans le film, et il est lisible — Complete
+
+**Contexte.** Piste ouverte §7.2 du handoff vehicules : « i11 dead-state est sous-instrumente,
+pas refute ». Mesure lancee sur feu vert utilisateur, avec ses deux gardes (temoins ecrits AVANT
+la mesure ; couverture publiee a cote de tout compte). Worktree DEDIE `LevelUp-wt-vehicule-deadstate`
+(branche `wt/vehicule-deadstate`, partie de `origin/feat/v75-vehicules-sons`) : la branche du
+collegue n'est pas touchee, et c'est bien la SIENNE qu'il fallait comme base — la grammaire ti=40
+corrigee (variantes -dynamic-precision-) n'existe que la.
+
+**Decision technique.** Porter la MARCHE de `killsource` (timeline chronologique + localisateur
+d'events + 8 vues + snapshot/restore) dans `filmdec` sur la branche vehicules, SANS filtre de
+bande : recolte de tous les dead-states, rangement par ARCHETYPE apres coup. Gate ecrit avant la
+mesure : `.ai/V7.5/GATE_V13_DEADSTATE_MARCHE_2026-09-05.md`.
+
+**Resultats.** (1) VERROU 1, connu : la marche bat l'ancre **353 dead-states bipedes contre 1**
+sur 6 films (l'ancre en trouve 0 sur 5 films). Le diagnostic §7.2 est valide sur pieces.
+(2) VERROU 2, NEUF et decisif : avec le seul verrou 1 leve, ti=40 rendait **0**. Le controle de
+MASQUE impose par le gate G3 a dementi l'absence — **69 records ti=40 DECLARENT le dead-state,
+dont 65 dans des records desynchronises**. Localisation de la rupture : **i30..i36
+(`vehicle-auto-turret-*`, `vehicle-type-state`), TOUJOURS APRES i11**. Le filtre historique
+`DesyncAt == -1`, herite de killsource ou le risque est en AMONT, jetait donc des morts de
+vehicule PARFAITEMENT LUES. Apres assouplissement (accepter si rupture > index du dead-state,
+classe comptee a part) : **21 a 27 dead-states ti=40 par film**, majoritairement dans la bande
+vehicule (slots 768, 769, 782, 811), champ tueur EnumB renseigne. Meme pathologie sur ti=43
+(device, rupture i19..i23). Gain annexe mesure : le filtre de bande aurait perdu 2 a 5 dead-states
+BIPEDES par film (le film lie des entites par records NEW en cours de flux).
+
+**Deux decisions prises APRES l'ecriture du gate, consignees** : G1a passe d'assertion a rapport
+(il a echoue en disant vrai : la bande derivee des images-cles EST incomplete, et l'instrument
+range par archetype donc n'en depend pas) ; filtre DesyncAt assoupli sur mesure, pas par confort.
+
+**Apport Ghidra du jour** : le pipeline de mort est GENERIQUE — `FUN_1404d9828` (degat jpt!) →
+`FUN_140adefbc` → `FUN_142c4e850` le classifieur, qui emet `enemy_vehicle_kill` quand la victime
+n'a pas d'index joueur ; `FUN_142c4dcf8` calcule `vehicle_destroy_assist` sur la liste des
+contributeurs de degat. Aucun composant ECS « vehicule detruit » n'existe : que des composants
+d'OBJET. Et les evenements NOMMES du moteur sont haches par `FUN_140748a74` = murmur3 x86_32
+seed 0 (meme hachage que les noms `vehi` Forge) : `vehicle_death`=0x5c1d8575,
+`enemy_vehicle_kill`=0xd12acf08, `vehicle_destroy_assist`=0x4ef6ef77 — piste DISTINCTE des 28
+types refutes par V7 (elle porte sur le vocabulaire des proprietes nommees), notee non traitee.
+
+**Reserves.** Positions validees, pas les VALEURS. Sur-comptage certain (un vehicule mort
+re-replique son dead-state sur plusieurs ticks — le bipede a le meme profil : 84 dead-states pour
+~60 morts) : il faut grouper en EPISODES de mort. Quelques entrees hors bande (slots 116, 1449,
+5507) = candidats artefacts.
+
+**Conclusion / prochaine etape.** Grouper en episodes, ecarter le hors-bande, puis recouper avec
+les 2 candidates Theater deja datees du handoff §3.1 qui sont dans l'echantillon mesure
+(`0d76e8f1` Wasp 6:51, `b232e02d` Banshee 6:09) — piege du decalage d'horloge ~1 870 s documente.
+Si le recoupement tient, le Go publie `end="destroyed"` + `tEnd` et l'explosion + les sons deja
+cables (ad811de64, f4c3ed417) s'allument sans re-livraison. Note complete :
+`.ai/V7.5/film_re/NOTE_V13_DEADSTATE_VEHICULE_2026-09-05.md`.
+
+---
+
+## [2026-09-04] Chantier vehicules — HANDOFF complet ecrit — En cours (3 validations utilisateur en attente)
+
+**Handoff** : `.ai/HANDOFF_VEHICULES_2026-09-04.md`. Etat du chantier apres 21 commits depuis
+feat/v75 (branche JAMAIS POUSSEE, CI jamais executee — seul vrai risque en suspens).
+
+**Livre et en production** : les 4 objectifs utilisateur sont couverts sauf la datation de
+destruction. Le rejeu 2D dessine les vehicules (proportions reelles, teinte equipe, orientation,
+occupants nommes avec sieges, un cone de visee PAR OCCUPANT, tirs partant de leur monture,
+fantomes fusionnes, decor filtre). Document schema 31.
+
+**En attente de l utilisateur** : (1) verifier 2-3 destructions candidates en Theater — les 7
+sont datees en TEMPS DE MATCH avec leur identifiant complet dans le handoff §3.1, 5/7 suffisent
+a publier ; (2) ecouter les 4 tirs Covenant reconstruits ; (3) capturer les moteurs en jeu ;
+(4) feu vert pour pousser et jouer la CI.
+
+**Acquis RE qui depassent le chantier** (handoff §5) : table composant->deser STATIQUE (methode
+validee 6/6) ; ti=40 porte les variantes -dynamic-precision- (un correctif de 2026-07 avait
+repare ti=35 en cassant ti=40) ; le decodeur bipede ignorait les records de VISEE SANS POSITION
+(22 963 lectures sur un film) — toute conclusion tiree d une « absence dans le flux » est a
+relire ; domaine 1 = les UNITES ; la tourelle est une entite a part ; le « switch de regime
+moteur » est l espace de l auditeur (reverberation).
+
+**Negatifs mesures a ne pas re-creuser** (handoff §6) : etat « qui est a bord » inexistant dans
+le film (6 endroits), pas d embarquement cache (1,2e8 essais temoins), destruction non datee par
+evenement (28 types, 6 angles), i2 refute meme sous grammaire corrigee, moteurs non
+reconstructibles depuis les banques.
+
+## [2026-09-03] Rejeu vehicules — V12 : la VISEE DE CHAQUE OCCUPANT publiee (schema 31) et branchee dans le cone — Complété
+
+Execute le report n° 1 du lot V11. Aucun commit, aucun `git add`. GOCACHE isole
+(`scratchpad/gocache_v12`), avant-plan, `CGO_ENABLED=0` pour l'analyse et `CGO_ENABLED=1` pour le
+service. Rapport : `.ai/V7.5/film_re/V12_VISEE_OCCUPANTS_PROD_2026-09-03.md`.
+
+**DECISION TECHNIQUE PRINCIPALE — LA VISEE VIT SUR L'EPISODE D'OCCUPATION, ET NULLE PART AILLEURS.**
+`Point.H` ne pouvait pas la porter (un occupant attache n'a PAS de position : il n'y a aucun point
+ou accrocher l'angle) et `VehicleTrack.Samples` non plus (la visee est celle de l'OCCUPANT, pas du
+vehicule — un chassis porte plusieurs occupants, donc plusieurs visees simultanees et distinctes).
+Le document publie donc `vehicles[].rides[].aim = [{t, h, p}]`, echantillonne sur la grille du
+document (un point par frame, « le premier observe gagne », la regle de `decimateTracks` et de
+`vehicleSamplesOf`), alimente par `filmdec.ScanFilmBipedAimOnly` filtre au slot de l'occupant et a
+la fenetre de son episode. Les deux angles reutilisent les conventions et les arrondis du pion
+(`headingForJSON` / `pitchForJSON`) : le client n'a qu'une regle d'orientation a connaitre.
+`SchemaVersion` 30 -> **31** (chronique dans `document.go` et dans le ratchet `structure_test.go`).
+`filmdec` n'a PAS ete touche.
+
+**RESULTATS MESURES (deux artefacts reconstruits, `0d76e8f1` Behemoth et `fccc61cd` Launch Site).**
+- **Couverture : 11 / 11 episodes (100 %) portent une visee**, 1 537 points publies pour 2 980
+  frames d'episode (51,6 %), sur 27 795 lectures brutes decodees (22 963 + 4 832).
+- **L'erreur que le cone faisait, mesuree sur l'artefact publie** (visee contre cap du chassis EN
+  VIGUEUR a la meme frame, c'est-a-dire contre ce que le client dessinait) : **mediane 52,0 deg**
+  (q1 22,0 · q3 88,7 · **68,2 %** au-dela de 30 deg) sur `0d76e8f1`, **6,6 deg** (q3 23,2 · 21,4 %)
+  sur `fccc61cd`. Plus severe que les 15,7-21,8 deg de V11, et c'est explicable : V11 mesurait sur
+  du vehicule EN MOUVEMENT, alors que le cap publie est FIGE sous 5 m/s (`vehicleMinSpeedMPS`) —
+  un vehicule a l'arret garde un cap immobile pendant que son occupant balaye la carte du regard.
+- **Cote web** : `drawVehicleAimCone` (conducteur seul, cap du chassis) devient
+  `drawVehicleAimCones` — **un cone par occupant actif**, a SA couleur, oriente par SA visee,
+  longueur portee par SON elevation ; le cap du chassis n'est plus que le REPLI (maintien de
+  10 frames = 1 s, justifie par la densite mesuree de 5-46 lectures/s). `drawAimSector` et le
+  resolveur de couleur par xuid sont REUTILISES ; `pitchScale` est simplement exporte sous le nom
+  `aimLengthScale` (regle « <= 2 copies »).
+- **Quatre compteurs de couverture**, dont le denominateur : `aimReads` (brut du film, il distingue
+  « personne ne visait » de « le decodeur n'a rien lu »), `ridesWithAim`, `aimSamples`,
+  `aimRideFrames` — plus un warn de silence quand des episodes existent sans aucune visee.
+
+**GATES.** `gofmt -l internal/` vide · `go vet` exit 0 · `CGO_ENABLED=0 go test
+./internal/analysis/replay/ ./internal/analysis/filmdec/ -count=1` VERT sans aucune variable
+d'environnement (`grep '^--- FAIL:'` vide) · `CGO_ENABLED=1 go build ./...` exit 0 ·
+`TestOpenAPIYAMLIsUpToDate` PASS · golden regenere = **UNE SEULE LIGNE** (`schema 30` -> `31`) ·
+web : `.tmp` purge, `typecheck` exit 0, `lint` 0 erreur (25 warnings preexistants), `test`
+5 725 verts / 0 echec. Artefacts reconstruits puis copies vers `LevelUp-wt-capture-rejeu`.
+`vehiclesLayer.ts` serait sorti a 581 L : la 7e responsabilite a ete EXTRAITE (`vehiclesAim.ts`,
+110 L) plutot qu'exemptee.
+
+**DECOUVERTES, NOTEES ET NON TRAITEES.** (1) Un episode publie de **90,7 s ne porte que 2 lectures
+de visee** (`0d76e8f1`, vie 773, occupant 561) alors que le meme slot emet a 5-46 lectures/s
+ailleurs : c'est la BORNE DE FIN de l'episode a fin ouverte qui est suspecte, pas la visee — et la
+serie de visee est le premier instrument capable de la contredire. Elle pese a elle seule 905 des
+1 402 frames non couvertes (hors elle, la couverture passe de 50,3 % a 74,0 %).
+(2) `TestReplayDocumentFieldCountIsFrozen` (`contracttest`) etait DEJA rouge avant ce lot
+(46 champs contre 44 geles, `vehicles` et `vehicleLabels` du schema 29) — ce lot n'ajoute aucun
+champ de premier niveau. (3) La visee coute une 5e lecture complete du film (~80 s de plus par
+artefact) ; fusionner les deux balayages relacherait la porte du nuage de positions.
+
+**CE QUE LE LOT NE PROUVE PAS, et c'est ecrit au rapport.** Qu'un artilleur et un conducteur
+affichent DEUX cones distincts dans un artefact reel : **aucun des 11 episodes du corpus ne porte
+un siege > 0**. Le cas est etabli par construction (chaque occupant a son slot bipede) et couvert
+par les tests (Go et web), pas par l'image.
+
+**CONCLUSION / PROCHAINE ETAPE.** Le cone du rejeu dit desormais ou regardent le conducteur,
+l'artilleur et le passager, et non plus ou pointe le chassis. Prochaine etape utile : la borne de
+fin des episodes a fin ouverte (decouverte 1), testable contre les sorties attestees sans aucun
+decodage nouveau ; puis un film dont la sortie nomme la tourelle, pour voir deux cones a l'ecran.
+
+## [2026-09-03] Rejeu vehicules — V11 : la TOURELLE ne replique rien, mais la VISEE DE CHAQUE OCCUPANT est dans le film — Complété
+
+**Question de l'utilisateur** : « est-ce qu'on a l'orientation de la tourelle, ou le point de vue
+de l'artilleur ou du passager ? C'est pour le cone de visee. » **REPONSE : la tourelle NON (refute
+avec temoin), l'occupant OUI — conducteur, artilleur et passager, en continu, pendant tout
+l'episode.** Aucun commit, `CGO_ENABLED=0`, GOCACHE isole, avant-plan. Contrat INCHANGE
+(`SchemaVersion` reste 30, aucun artefact reconstruit). Rapport :
+`.ai/V7.5/film_re/V11_ORIENTATION_TOURELLE_2026-09-03.md`.
+
+**DECISION TECHNIQUE PRINCIPALE — LE POINT AVEUGLE DU DECODEUR, ET IL DEPASSE CE LOT.**
+`ScanBipedRecords` n'accepte un record que s'il porte un `i0` ABSOLU **et** si le premier index de
+son masque vaut 0 (`ascendingFromZero`). Cette exigence est celle du DETECTEUR, pas du format : le
+masque d'un record delta n'a aucune obligation de declarer `i0`. Consequence mesuree : la forme de
+masque la plus frequente de la bande bipede parmi les records sans `i0` est **`i21,i25`** — un
+record de VISEE SANS POSITION — soit **22 963 lectures sur le seul `0d76e8f1`**, invisibles depuis
+toujours. Tout ce que le depot a conclu d'une « absence » dans le flux delta bipede est a relire a
+cette lumiere.
+
+**RESULTATS MESURES.**
+- **Piste A, `i2` du chassis rejoue sous la grammaire V9 : TOUJOURS REFUTE.** Ecart median au cap
+  de deplacement 47,9 / 122,7 / 99,9 / 75,7 deg (seuil 30) sur 4 films ; controle `i1` vert dans
+  les deux regimes (1,7 a 2,9 deg), donc la faute reste dans `i2` seul. Un signal reel apparait
+  sur le plus gros film (R 0,376 contre 0,032 au temoin) sans suffire — inscrit au registre.
+- **Piste B, l'entite TOURELLE : REFUTEE.** Balayage d'en-tetes sans exigence d'`i0`, quatre
+  classes de slots : TOURELLE 139,6 / 85,5 touches par slot contre FANTOME 86,3 / 194,2 (donc
+  SOUS le bruit sur un film), histogramme de formes de masque PLAT, et les slots MUETS
+  non-tourelle rendent la meme chose. La tourelle est muette **tout court**, pas seulement en
+  position. Corollaire : `i31`/`i41`/`i42` ne sont jamais emis, les porter ne servirait a rien.
+  La marche sequentielle (`DecodeFrameViews`) ne repond pas : 323 records `ti=40` recuperes sur
+  32 246, la plupart post-desync avec des index i48-i63 impossibles.
+- **Piste C, `i21` : ABSENT de `ti=40` (2,8 par slot contre 2,1 au bruit) mais DECISIF sur le
+  BIPEDE.** Presence 46,5 a 231,2 lectures par slot contre **0,2 a 0,9** sur la bande FANTOME
+  (x151 a x925, 5 films). Justesse : appariee a moins de 200 ms a la lecture `i21` AVEC position
+  du meme slot, ecart median **0,2 a 0,5 deg** (R 0,979-0,989) contre **75,7 a 93,7 deg** au
+  temoin par melange. Utilite : **35 / 35 episodes d'occupation attestes (100 %)** portent au
+  moins une visee A BORD, a 5 a 46 lectures par seconde, quand le meme episode porte 0 ou 1
+  lecture `i21` avec position. Distinction du cap du chassis : mediane 15,7 a 21,8 deg,
+  quartile superieur 39,6 a 52,9 deg — correlee mais distincte, donc le cone actuel du
+  conducteur (oriente par le cap du vehicule) se trompe de cet ordre.
+
+**PORTE (additif, contrat inchange)** : `filmdec/offline_aim_only.go` (NEUF, 219 L —
+`ScanFilmBipedAimOnly` / `ScanBipedAimRecords`, aucune grammaire reecrite : l'en-tete est celle de
+`matchBipedHeaderRaw` moins la seule contrainte `idx[0]==0`, les composants anterieurs a `i21`
+sont consommes par leurs detenteurs existants), son garde-rail de grammaire SANS environnement
+(6 temoins), et l'extraction de `aimHeadingDegFromRaw`/`aimPitchDegFromRaw` dans `offline_aim.go`
+(un seul detenteur de la convention pour deux appelants, zero bit change).
+
+**NON PORTE, CONFLIT DE PERIMETRE SIGNALE** : l'unique emplacement correct de cette visee dans le
+document est l'EPISODE D'OCCUPATION (`replay/vehicle_rides*.go`), explicitement hors perimetre —
+un autre agent y travaille. `Point.H` ne convient pas (l'occupant n'a par definition pas de
+position a bord) et `VehicleTrack.Samples` non plus (la visee est celle de l'occupant, pas du
+vehicule ; un vehicule a plusieurs occupants). Rien n'a ete invente ailleurs.
+
+**PROCHAINE ETAPE** : publier `aim: [{t,h,p}]` sur le `Ride` (bump `SchemaVersion`, openapi,
+golden, rendu web — le cone existe deja pour le bipede a pied), par le detenteur de
+`vehicle_rides*.go`. Puis remplacer le cone du conducteur, aujourd'hui oriente par le cap du
+vehicule. Restent ouverts : `i2` du chassis (seule orientation qui vaudrait aussi a l'arret),
+l'oracle du tir en vehicule (piste 5, non pose), et le cas ARTILLEUR sur un episode atteste
+(aucune sortie du corpus ne porte un siege > 0).
+
+## [2026-09-03] Rejeu vehicules — V10 : i11 dead-state de ti=40 (deja porte, sous-instrumente) et le PALIER D'EPAVE de la vitalite — Complété
+
+**Question** : dater la DESTRUCTION d'un vehicule, par `i11 object-dead-state` puis — cadrage
+corrige en cours de lot par l'utilisateur — par la VITALITE EFFONDREE EN FIN DE VIE. **REPONSE :
+les deux signaux EXISTENT, aucun n'est publiable en l'etat, et rien n'a ete publie.** Aucun commit,
+`CGO_ENABLED=0`, GOCACHE isole, avant-plan, Ghidra en lecture seule. Contrat INCHANGE
+(`SchemaVersion` reste 30). Rapport : `.ai/V7.5/film_re/V10_DEADSTATE_TI40_2026-09-03.md`.
+
+**GHIDRA — i11 EST DEJA JUSTE, ET LE PIEGE DU LOT V9 N'A PAS D'EQUIVALENT ICI.** `/search_strings`
+sur `dead-state` rend **UNE seule chaine** (`0x143c99320`) : il n'existe AUCUN
+`object-dead-state-dynamic-precision-component`. Chaine statique du lot V9 : chaine -> thunk
+`name()` `0x14064c6d0` -> vtable `0x143d0ba40` -> `[0x28]` = `0x14076ce9c` = LE thunk (dont le
+decompile est LITTERALEMENT `(**(code**)(*p+0x30))()`, ce qui etablit la regle au desassemblage) ->
+deser = **`0x140c1dce0`**. Sa decompile : `mort=R(1)` ; si `ti in {0x23, 0x28}` -> `FUN_140c1dd44` ;
+si `ti == 0x23` -> `R(1)`. `ti=40` = `0x28` : **la forme du bipede MOINS le bit de queue**, et
+`FUN_140c1dd44` ne recoit PAS le typeIndex — c'est le MEME corps lourd que celui du kill-feed. Le
+depot le portait deja (`consumeObjectDeadStateBipedTI`). **Zero ligne de production ecrite.**
+
+**LE TEMOIN QUI A SAUVE LE LOT D'UNE CONCLUSION FAUSSE.** Le balayage ANCRE de `filmdec` voit
+**0 record `ti=40` porteur d'i11 sur 37 677**. Conclusion tentante et FAUSSE : sur la bande BIPEDE
+du meme film, ou les morts sont un fait etabli, il en voit **1 sur 207 808** et **0 sur 193 762**.
+L'ancre exige un i0 ABSOLU en tete de masque : elle est aveugle au dead-state POUR TOUT LE MONDE.
+
+**i11 EST SOUS-INSTRUMENTE, PAS REFUTE.** La marche de `killsource` (la seule voie qui l'atteigne)
+rend **5 dead-states `ti=40` `Mort=1` sur 10 films / 315 vies**, dont **3 en bande** (tous sur
+`fccc61cd`, dates en absolu : slots 772 @3172,2 s · 769 @3243,7 s · 777 @3243,8 s). MAIS le
+denominateur, mesure dans le meme passage, dit pourquoi c'est un PLANCHER : la marche n'atteint que
+**764 records `ti=40` sur les 32 246** que l'ancre accepte = **2,4 % de couverture**, contre
+**24,5 %** pour le bipede. Cause EXCLUE par mesure : ce n'est pas la profondeur — `V10_VIEWS=64`
+(x8) rend des chiffres identiques au record pres. Le verrou est la DESYNCHRONISATION de la chaine
+de records (`frame_records.go`), pas le decodeur du composant.
+
+**LE RESULTAT NEUF : LE PALIER BAS TERMINAL EXISTE — l'intuition « l'epave persiste » est
+CONFIRMEE.** Sur 315 vies / 91 porteuses d'`i4` : **18 vies finissent par une suite de lectures
+`i4 <= 0,25`**, de duree **mediane 2,6 s** et max **6,2 s** (histogramme `[3 1 8 2 0 0]` sur
+[0-1,1-2,2-5,5-10,10-30,>30] s) — un mode NON NUL de quelques secondes. Et le fait le plus fort,
+un ZERO PROPRE : **aucune vie sur 91 ne porte de palier bas de plus de 6,2 s**. Un vehicule
+seulement ENDOMMAGE survivrait a integrite basse pendant des dizaines de secondes ; il n'y en a
+AUCUN. L'etat bas est toujours bref et toujours terminal. Cinematique coherente : le profil EPAVE
+(`i4 <= 0,25` + vitesse finale < 0,5 m/s) fait **9/91 = 10 %** des vies decidables, **2,9 %** de
+toutes les vies — plausible, a comparer aux **89 %** de la lecture fausse d'avant V9.
+
+**POURQUOI RIEN N'EST PUBLIE MALGRE CA.** Le gate de separation ne passe pas franchement, et le
+recoupement independant est sans puissance. Sur la DERNIERE VALEUR d'`i4` : Youden **J = 0,39**
+(sens. 0,63, spec. 0,76) — mauvais. Sur le PALIER, l'enrichissement est significatif — palier
+`<= 0,10` sur **4/19 = 21 %** des vies finissant occupees contre **3/66 = 4,5 %** des abandonnees
+(facteur 4,6, Fisher **p = 0,041** ; au seuil 0,25 : 37 % contre 7,6 %, **p = 0,0039**) — MAIS le
+temoin n'est PAS un temoin d'intactes : la primitive d'occupation n'attribue que 15-21 % des vies,
+et un vehicule detruit **A VIDE** y tombe mecaniquement (cas d'ecole mesure : `51d3ab9f` slot 784,
+chopper de vitesse MAXIMALE 1,2 m/s — jamais conduit — dont l'integrite tombe a 0,02 sur 2,4 s).
+**Le taux de faux positifs n'est donc pas bornable.** Et le recoupement avec `i11` rend une
+intersection de **0/3** dont l'esperance par hasard vaut **0,07** : le test **N'A AUCUNE
+PUISSANCE**, il ne dit ni oui ni non. Publier `destroyed` + une explosion sur 7 vies au vu d'un
+p = 0,041 sans une seule confirmation independante ferait ce que la consigne interdit.
+
+**CE QUI EST LIVRE A LA PLACE, ET C'EST LE PLUS UTILE : LES CANDIDATES DATEES EN TEMPS DE MATCH.**
+La verite terrain manquante est a quelques minutes de visionnage Theater. Regle stricte (palier
+`i4 <= 0,10`, >= 2 lectures) = **7 vies, 6 films, 6 familles**, chacune avec l'instant de la CHUTE
+(= le `tEnd` qui serait publie) : `0d76e8f1`/792 wasp **6:51** · `21468645`/783 falcon **6:01** ·
+`4898d586`/804 (chassis inconnu) **8:35** · `51d3ab9f`/778 warthog **7:35** · `51d3ab9f`/784
+chopper **7:19** · `b232e02d`/776 banshee **6:09** · `e1bdb97f`/776 warthog **2:30**. Regle large
+(`<= 0,25`) : 14 vies, listees au rapport § 4.3. **5 confirmations sur 7 rendent le gate de
+separation sans objet et la publication immediate** — regle, champ et instant sont deja ecrits.
+
+**CONVERSION D'HORLOGE — les instants mesures N'ETAIENT PAS des temps de match, et c'est corrige.**
+`BipedPosition.TimestampUS` est une horloge MOTEUR (temps depuis le demarrage du jeu, 754 a 4 238 s
+de zero selon le film) : une candidate « a 2 519,9 s » etait inverifiable dans un match qui dure
+654 s. La conversion appliquee est celle de `origin.go` — le premier paquet du chunk 1 est le zero
+de l'horloge de match (`start_ms = 0` au manifeste), donc
+`tempsMatchMS = (paquetUS - ScanFilmClockOrigin(dir)) / 1000`. **REPERE DE VALIDATION** :
+`originMs` recalcule par le meme chemin sur `0d76e8f1` rend **10 667 ms** et
+**durationMs 654 200 ms**, soit EXACTEMENT les valeurs de l'artefact deja construit ; second
+controle, **les 14 candidates tombent toutes dans la duree de leur match**. Instrument :
+`replay/vehicules_v10_horloge_test.go` (NEUF, 196 L).
+
+**LA FACTION NE DEMANDE AUCUN CHAMP NOUVEAU — verifie sur pieces.** `VehicleTrack.Family` est deja
+publie et sa table (`vehicle_families.go`) est CLOSE : `warthog`/`mongoose`/`scorpion`/`wasp`
+(humain), `ghost`/`banshee`/`wraith`/`chopper` (Banni), plus `falcon`/`pelican`/`phantom`/`skiff`
+(decor non pilotable, deja filtre cote web). Les variantes citees ne sont pas des familles
+distinctes (rockethog/gauss/razorback -> `warthog`, gungoose -> `mongoose`, toutes humaines). Le
+client derive les deux effets d'explosion ; un champ `faction` serait une seconde source pour la
+meme jointure (anti-patron n°8).
+
+**LIVRE** : 5 instruments NEUFS, gardes par variable d'environnement, **zero fichier de production
+modifie** — `filmdec/vehicules_v10_deadstate_test.go` (260 L, masques + temoin bipede),
+`killsource/vehicules_v10_deadstate_test.go` (244 L, recolte + denominateur par archetype + knob
+`V10_VIEWS`), `replay/vehicules_v10_vitalite_test.go` (298 L, mesure),
+`replay/vehicules_v10_rapport_test.go` (271 L, les cinq gates) et
+`replay/vehicules_v10_horloge_test.go` (190 L, conversion en temps de match + controle `originMs`).
+
+**GATES** : `gofmt -l internal/` vide · `go vet` propre sur les trois paquets ·
+`CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/replay/
+./internal/games/halo_infinite/film/killsource/ -count=1` SANS env -> `ok` 1,2 s / 29,2 s / 1,4 s,
+aucun `--- FAIL:`. Fichiers <= 500 L, fonctions <= 80 L.
+
+**COORDINATION** : `replay/vehicle_rides*.go`, `vehicle_tracks.go` et `filmdec/event_list.go` sont
+modifies EN PARALLELE par le lot V8 et n'ont PAS ete touches. L'instrument V10 les APPELLE
+(`buildVehicleRides`, `vehicleDrawableLives`, `vehicleFamilyOf`) sans les modifier : si V8 change
+la signature de `buildVehicleRides` ou la forme de `vehicleRideInputs`, c'est
+`vehicules_v10_vitalite_test.go` qui cassera, et l'adaptation tient en une ligne.
+
+**PROCHAINE ETAPE** : visionner les 7 candidates datees. En parallele, la couverture de la marche
+sur `ti=40` (2,4 %) est le seul verrou d'`i11` — chantier `frame_records.go`.
+
+## [2026-09-03] Rejeu vehicules — V8 : le vehicule d'un episode est resolu PAR L'EVENEMENT, et la tourelle est une unite a part — Complété
+
+**Question** : exploiter l'acquis V7 (« la reference 1 de la sortie EST le vehicule, 105/105 ») pour
+que le calque cesse de resoudre le vehicule d'un episode d'occupation par la GEOMETRIE. **REPONSE :
+fait, mesure, et le chemin a revele autre chose.** Aucun commit, `CGO_ENABLED=0`, GOCACHE isole,
+avant-plan. Contrat INCHANGE (`SchemaVersion` reste 30).
+
+**LE 105/105 EST REPRODUIT PAR LE DECODEUR DE PRODUCTION.** `decodeExitRefs` lisait `r1` et le
+JETAIT ; il publie desormais `VehicleEvent.VehicleSlot/VehicleSlotValid/VehicleGen`. Re-mesure sur
+12 films par `decodeVehicleEvent` lui-meme : **105/105 en bande `ti=40`, 0 bipede, 0 hors bande**
+(chance analytique 3,1 a 16,3 %). Resolution en vie : **100/105** ; les 5 restantes tombent hors de
+toute fenetre de recensement (ecart max **41,9 s**) et sont traitees par la vie la plus proche.
+**Zero cas « plusieurs vies candidates »** (les fenetres d'un meme slot ne se recouvrent pas).
+Temoins DEGENERES et dits comme tels : toutes les vies `ti=40` du corpus ont `gen = 1` (histogramme
+`[0,460,0,0]`), donc l'accord de generation (100 %) vaut aussi 100 % sous permutation.
+
+**L'EMBARQUEMENT NE NOMME RIEN — negatif net, re-examine a la lumiere de « domaine 1 = unites ».**
+Ses trois references (domaines 2/3/7) ET la variante « ref 1 lue en domaine 1 avec sonde » resolvent
+**0/15** slots `ti=40`. La production ne lit donc le vehicule que dans la SORTIE ; les silences
+terminaux restent geometriques.
+
+**LE GATE DE PRODUCTION : 46/49 -> 48/49** (5 films, 49 episodes attestes, avant/apres calcules dans
+le MEME processus, un seul parametre change). +2 gagnes, **0 perdu**. Le 48/49 du lot V6 mesurait le
+RAYON (« un vehicule sous 3 m ») ; la production, qui exige en plus une fenetre de VIE, plafonnait a
+46/49 — le nom la ramene au plafond du rayon sans elargir quoi que ce soit. L'unique ambiguite
+geometrique du corpus (2 vehicules sous 3 m) est nommee : **1/1**, elle tombe.
+
+**LES 6 DESACCORDS SONT LE VRAI RESULTAT : LA TOURELLE EST UNE ENTITE `ti=40` A PART, ET
+L'EVENEMENT LA NOMME.** Sur 41 episodes ou les deux voies repondent : 35 accords, **6 desaccords**,
+temoin par permutation **0/41**. Les six ont quatre invariants communs : la vie nommee est MUETTE
+(0 echantillon, 0 record de creation), son slot vaut `slot geometrique - 1`, les deux vies ont la
+MEME fenetre de recensement, l'occupant porte le siege 0 — et le vehicule geometrique est un
+**warthog** (5) ou un **falcon** (1). Sur les 50 vies muettes du corpus, le voisin `slot+1` a la
+meme fenetre est warthog (23), falcon (10) ou chassis non resolu (3), **jamais** ghost / mongoose /
+chopper / banshee : les deux seules familles a TOURELLE D'ARTILLEUR. Recoupe
+`ASSEMBLAGE_ENFANTS_2026-09-01.md` (la tourelle `warthog_g` est un `vehi` a part entiere). Le pas
+« c'est l'artilleur qui descend » n'est PAS prouve (pas de verite terrain) et c'est ecrit.
+
+**GARDE-FOU QUI A SAUVE LE LOT** : une vie muette n'est pas publiable, donc un episode accroche a
+elle serait un occupant PERDU. Regle livree — « le nom prime, SAUF quand il designe une vie que le
+calque ne dessinera pas » (`vehicleLifeFromEvent` + `vehicleDrawableLives`). Cout mesure de
+l'absence de ce garde-fou : **-4 episodes sur 41**.
+
+**ARTEFACTS DE DEMONSTRATION RECUITS** (`replay-build`, copies vers `LevelUp-wt-capture-rejeu`) :
+calque vehicules **identique au bit pres** sur les deux (`0d76e8f1` 20 vies / 9 episodes / 8 nommes
+/ 23 tirs `Shot.v` ; `fccc61cd` 8 / 2 / 1 / 0). Les deux films sont precisement ceux ou les deux
+voies s'accordent sur tout ce qui est publie ; le gain (+1 episode, +1 nomme, +1 siege) est sur
+`4898d586`, hors demonstration. Dit tel quel, pas maquille. **Seule difference d'octets : le champ
+`dropper` de 5 armes au sol sur 204 (et 1 sur 220)** — non determinisme PREEXISTANT
+(`ground_weapon_rules.go:347` parcourt une map et rend le premier match). Decouverte notee, NON
+traitee.
+
+**GATES** : gofmt vide ; `go vet` exit 0 ; `CGO_ENABLED=0 go test ./internal/analysis/{filmdec,replay}/
+-count=1` sans env : `ok` / `ok`, `grep -c '^--- FAIL:'` = **0** ; service `CGO_ENABLED=1 go build
+./cmd/server` exit 0 ; `vehicle_tracks.go` reste a 533 L (dette gelee non accrue) ; `apps/web/`,
+`cmd/weapon-sounds/`, `cmd/vs-measure/` non touches.
+
+**RESERVE** : une AUTRE session travaillait dans le meme worktree (lot V9, `-dynamic-precision-`).
+Tous les avant/apres sont calcules dans un seul processus avec un seul parametre change, donc
+insensibles a l'autre lot ; seule la comparaison d'artefacts sur disque ne l'est pas, et le rapport
+le dit en tete.
+
+**PROCHAINE ETAPE** : rapport `.ai/V7.5/film_re/V8_VEHICULE_PAR_EVENEMENT_2026-09-02.md` § 9 —
+l'item 1 (la tourelle nommee = le marqueur d'ARTILLEUR) est la voie pour resoudre les 7
+chevauchements d'episodes conducteur/passager, et il demande un champ publie donc un bump de
+contrat ; l'item 5 rappelle que le corpus n'a qu'une generation, donc que la resolution
+`(slot, instant) -> vie` n'a jamais ete eprouvee sur un rebouclage de pool.
+
+---
+
+## [2026-09-03] Rejeu vehicules — V9 : la grammaire d'i2/i3 de `ti=40` etait un MAPPING faux, pas une largeur manquante — la vitalite i4 devient lisible, la destruction reste refutee — Complété
+
+**Question** : etablir la consommation de bits d'i2/i3 pour `ti=40` (Ghidra) pour debloquer la
+lecture de la vitalite i4, donc la destruction datee. **La grammaire est ETABLIE et portee, la
+vitalite est LISIBLE ; la destruction par `i4 -> 0` est REFUTEE — et pour la raison inverse de
+V2b.** Rapport : `.ai/V7.5/film_re/V9_GRAMMAIRE_I2I3_VITALITE_2026-09-03.md`. Aucun commit,
+Ghidra en lecture seule (HTTP direct, le pont MCP est mort), `CGO_ENABLED=0`, GOCACHE isole.
+
+**LA CAUSE RACINE N'ETAIT PAS UNE LARGEUR INCONNUE — C'ETAIT UNE ERREUR DE MAPPING.** `ti=40` ne
+porte pas les composants d'orientation du bipede : il porte les variantes `-dynamic-precision-`,
+qui sont **quatre deserialiseurs distincts** — `object-forward-and-up-component` -> FUN_14076e278
+contre `object-forward-and-up-dynamic-precision-component` -> **FUN_140c5f7ec** ;
+`object-angular-velocity-component` -> FUN_140d70998 contre
+`object-angular-velocity-dynamic-precision-component` -> **FUN_140d87740**. Le dispatch fusionnait
+les noms deux a deux et lisait donc i2/i3 de `ti=40` avec la grammaire du bipede, plus courte : le
+curseur arrivait faux sur i4. **Les 46 autres composants de `ti=40` resolvent vers EXACTEMENT le
+meme deser que le bipede** (verifies un par un) : i4 et i5 n'ont jamais eu de probleme propre.
+
+**LE FAIT DE METHODE LE PLUS REUTILISABLE — LA TABLE COMPOSANT -> DESER EST STATIQUE.** Le depot la
+tenait pour une constante de RUNTIME lisible seulement par Cheat Engine sur jeu lance
+(`RECETTE_DECODAGE_FILM_CHUNKS.md` § 5, `DAT_144e61d88`). Faux : les descripteurs de TYPE de
+composant sont des objets statiques. Chaine : la chaine ASCII du nom -> son unique xref DATA (un
+thunk `LEA RAX,[chaine] ; RET` = la methode `name()`) -> le slot qui stocke ce thunk = la vtable a
++0x08 -> deser = `vtable[0x28]`, ou `vtable[0x30]` si `[0x28]` est le thunk `FUN_14076ce9c`.
+**Validee 6/6 contre la table extraite en live du bipede.** N'importe quel deser se resout
+desormais a froid.
+
+**LE CORRECTIF DE 2026-07 AVAIT REPARE ti=35 EN CASSANT ti=40.** `consumeObjectAngularVelocity`
+(= FUN_140d87740, gate externe + R(96)) avait ete debranche sous `useLegacyAngularVel` avec le
+diagnostic « gate parasite ». Juste pour le bipede, faux pour `ti=40` : c'est le vrai deser de la
+variante dyn.-prec. Il est rebranche, sur la SEULE branche du nom dyn.-prec.
+
+**LE BIT QUE SEULE LA MESURE POUVAIT TRANCHER.** `FUN_140c5f7ec` lit un 3e bit de porte C si son
+`arg5 >= 2` — un argument pose par la vtable, illisible au call-site. Balayage de 5 hypotheses sur
+2 films de builds distincts (instrument `TestV9Grammaire`, qui rejoue `scanRecordDirs` sur les
+memes records captes une fois) : part des quanta i4 au-dessus de 192 = **24,0 %** (grammaire du
+depot), 13,5 % (i2 seul), 23,8 % (i3 seul), 27,7 % (i2+i3 sans C), **93,6 % (i2+i3 AVEC C)** ;
+temoin bipede valide 82,9 %. Sur Launch Site : 24,4 / 13,9 / 26,9 / 39,3 / **98,5** contre 86,2.
+Aucun demi-correctif ne suffit ; la grammaire complete depasse la concentration du temoin lui-meme.
+
+**GATE DE VITALITE — TENU, 10 films / 315 vies / 7 943 echantillons i4.** Histogramme des quanta :
+de `[1430 589 1067 497 1102 535 1141 400]` (UNIFORME) a `[0 0 0 4 483 978 2150 3146]`
+(CONCENTRE pres du plein, forme de la sante bipede). Fraction de vie MIN mediane par vie : **0,00 ->
+0,65**. Pas decroissants : **51 % / 48 % (pile ou face exact) -> 60 % / 74 %**. Le seuil « 13-26 % »
+du cadrage etait le MAUVAIS repere et c'est ecrit tel quel au rapport : c'est le chiffre du bipede,
+dont la sante REGENERE (87 % de pas montants) ; une integrite de vehicule ne regenere pas. Le
+discriminant valide est l'ecart au pile-ou-face, et il est net. **Temoin de non-regression : la
+ligne de controle bipede est bit pour bit identique avant/apres** (`DynPrecOrientation` vaut `false`
+par defaut, la branche du nom bipede n'a pas bouge).
+
+**LA DESTRUCTION RESTE REFUTEE — ET LA LECTURE FAUSSE MENTAIT DANS L'AUTRE SENS.** Avec la grammaire
+du depot, **64 des 72 vies decidables (89 %) « tombaient a zero »** : un taux qu'aucun match ne
+produit. Avec la grammaire juste : **3 vies sur 315**, dont **0 % de zeros terminaux**. Le repli
+« la vie finit bas » (dernier i4 <= 0,05) ne donne que 6 vies sur 86. Le gate a 90 % n'est pas
+atteignable : la valeur d'i4 repliquee juste avant qu'un vehicule cesse d'exister n'est pas ~0,
+l'entite disparait du flux sans passer par zero. **Ce n'est pas un defaut de grammaire, c'est ce que
+le flux contient.** Consequence appliquee : `VehicleTrack.End` reste `unknown`, aucun champ `tEnd`,
+`SchemaVersion` inchangee, openapi et golden non touches, **aucun artefact de demo reconstruit**.
+
+**PORTE (additif)** : `filmdec/components_dynprec_orientation.go` (neuf, toute la chaine de preuve
+Ghidra en en-tete), branches separees dans `traverse.go` + cle `paramByComponent` mesuree,
+`decodeObjectForwardAndUp` extrait (une seule copie de grammaire), `ScanFilmOptions.DynPrecOrientation`
+(defaut `false`), `vehicleScanOptions` l'arme (neutre sur positions et velocite, lues avant i2),
+5 lignes d'`ecs_table.tsv` corrigees (le `deser_addr` d'i2 valait `FUN_142ed3fcc`, recopie par erreur
+depuis `change-scene`). Garde-rail neuf : 12 cas de cout en bits sans film. `gofmt` vide, `go vet`
+propre, `filmdec` + `replay` verts sans env.
+
+**PROCHAINE ETAPE — `i11 object-dead-state` de `ti=40` est desormais ATTEIGNABLE** (FUN_140c1dce0,
+forme lourde 191 bits, la meme qui a resolu l'arme du kill a 97,6 %) : le curseur y arrive juste
+maintenant. C'est la piste de destruction la plus serieuse qui reste, et elle est dans le perimetre
+du lot V8 — non touchee ici.
+
+## [2026-09-03] Rejeu vehicules — V7 : la destruction N'EST PAS dans la liste d'evenements, mais le VEHICULE y est (le domaine 1 est celui des UNITES) — Complété
+
+**Question** : parmi les 28 types de tete jamais decodes du registre V6, lequel date la DESTRUCTION
+d'un vehicule ? **REPONSE : AUCUN.** Cinq angles independants, tous negatifs, tous chiffres.
+`VehicleTrack.End` reste `unknown`, aucun fichier de production modifie. Ghidra MORT : tout est
+mesure, `CGO_ENABLED=0`, GOCACHE isole, avant-plan, aucun commit.
+
+**L'ACQUIS QUI COMPTE — LE DOMAINE 1 EST CELUI DES UNITES, BIPEDES *ET* VEHICULES.** Sur les
+references de domaine 1 a sonde = 1, la partition « bande bipede OU bande `ti=40` » vaut **100,0 %**
+(types 1 et 7), **99,96 %** (type 0, 18 489 / 18 497) et **99,8 %** (type 36) sur 12 films — quand
+les deux bandes ne couvrent que 20 a 33 % des index possibles. La base est le minimum de la bande
+bipede, et l'index de 9 bits porte au-dela jusqu'aux slots 768+. Forme qui porte la preuve : parmi
+les references dont l'index SORT de la bande bipede, **99,6 a 100,0 %** tombent dans la bande
+`ti=40`, la ou le hasard en mettrait **3 a 16 %**. (Le temoin de cadrage a +1 bit est DEGENERE et
+c'est ecrit tel quel au rapport § 6 : relu au bit 10 il ne resélectionne que les references
+vehicule.) **Le lot V6 avait cherche le vehicule en domaine 7 et l'y avait refute ; il est en
+domaine 1.**
+
+**CONSEQUENCE MESUREE, HORS PERIMETRE ET NON TRAITEE : LA REFERENCE 1 DE LA SORTIE *EST* LE
+VEHICULE — 105 / 105 sorties de 12 films, 100,0 % en bande, zero bipede, zero hors bande.** Le
+calque resout aujourd'hui le vehicule d'un episode par la GEOMETRIE (ancre 3 m, 48/49) alors que
+l'evenement le NOMME. Note au rapport § 14 item 1 avec ce qu'il faudrait pour le prendre ; pas
+touche (regle du perimetre).
+
+**LA VOIE NOMMEE PAR V3 § 6 EST OUVERTE ET REFUTEE.** Le type 0 (« degat ») vise bien une unite :
+3 099 de ses 18 684 instances designent un VEHICULE. Mais leur ecart median a la FIN SERREE du
+vehicule vaut **-21,0 s** et seules **0,7 %** tombent a moins d'une seconde — indiscernable du
+controle type 36 (le tir : -14,5 s, 2,0 %). Meme forme pour les types 1 et 7 (-15,2 et -16,5 s).
+**Ce sont des degats, pas des destructions.** Aucun DRAPEAU de letalite ne les separe : sur 247 bits
+de charge balayes, le meilleur separe 101 instances sur 3 099 a 44,6 % — et le controle type 36
+produit le meme genre de « meilleur bit » a 37,5 %.
+
+**LE TEMOIN NATUREL DU CORPUS FONCTIONNE** (40 films, 27 sans vehicule / 13 avec) : les deux
+evenements connus sortent en tete de la signature cherchee (type 22 sortie **0,04** par film sans
+vehicule contre **23,54** avec, r = 0,973 ; type 8 **0,00** / **1,08**, r = 0,921) et deux types la
+contredisent (le 15 est ANTI-correle, le 109 n'existe que sans vehicule). Les types NEUFS a
+signature identique — **2, 40, 41, 118** — sont depouilles instance par instance : seul le **118**
+resout un vehicule (89,5 %), et **0 %** de ses instances tombe en fin de vie (salves de 3 a 6 au
+milieu de la vie : evenement d'ETAT, pas de fin).
+
+**NEGATIFS COMPLEMENTAIRES.** Balayage aveugle (bits 9..120 x largeurs {7,8,9,11,13} x 2
+adressages, 12 films) : meilleur couple a 13,3 % sur un effectif exploitable, gate a 90 %.
+Coincidence temporelle avec les 195 fins serrees : purete maximale **12,5 %** sur huit instances,
+tous les types frequents entre 3,7 et 6,6 % — au niveau de leur propre temoin.
+
+**LIVRE** : huit instruments `*_test.go` neufs sous garde `V7_ROOT` (`vehicules_v7_{refs,temps,
+correl,dom1,chaine,cible,letal,delta}_test.go`), 8 SKIP sans environnement. **AUCUN code de
+production touche**, `SchemaVersion` reste 30, pas d'OpenAPI, pas de golden, pas d'artefact
+reconstruit (rien a reconstruire). gofmt vide, vet exit 0, `go test filmdec + replay` sans env :
+`grep -c '^--- FAIL:'` = **0**.
+
+**PROCHAINE ETAPE** : rapport `.ai/V7.5/film_re/V7_DESTRUCTION_EVENEMENT_2026-09-02.md` § 14 —
+l'item 1 (la sortie nomme son vehicule) est le seul gain de production immediat et il demande son
+propre lot avec ses gates avant/apres ; l'item 5 rappelle que la destruction n'est peut-etre pas
+dans la liste du tout, auquel cas la voie est la grammaire d'`i2`/`i3` pour `ti=40`.
+
+---
+
+## [2026-09-03] Rejeu vehicules — V6 : la liste d'evenements N'A PAS de suite (temoin), et la machine d'etats d'occupation par occupant — Complété
+
+**Question** : le ratio board:exit = 1:15 vient-il de notre decodeur, qui ne lit que l'evenement de
+TETE de chaque paquet ? Premisse fondatrice du plan revise du lot V5B. **REPONSE : NON, et le
+temoin le prouve.** Ghidra MORT : tout est mesure, `CGO_ENABLED=0`, GOCACHE isole, avant-plan.
+
+**GRAMMAIRE D'ENCHAINEMENT ETABLIE.** Le bit qui suit la charge d'un evenement vehicule de tete
+vaut 0 (fin de liste) sur **99/100** instances (temoins -1 / +1 bit : 5 % / 0 %), et il reste
+1 300 a 2 800 bits derriere : la trame ECS. La longueur d'un evenement est une CONSTANTE PAR TYPE,
+mesuree au bit pres : sortie **42 bits** (debut de trame 43 sur **307/307** paquets de 40 films),
+embarquement **52 bits** (53 sur 14/14). Decomposition exacte avec les largeurs deja portees le
+02/09 : sortie `9 + [13+13+1] + 6 + 1`, embarquement `9 + [11+10+16] + 6 + 1` — recoupement
+independant du portage Ghidra, aucun parametre ajuste.
+
+**ANCRAGE AVAL REFUTE COMME ORACLE DE LONGUEUR.** « Fin propre de trame » : vrai dans **0,0 %** des
+cas AU VRAI DEBUT (34 538 paquets a liste vide, verite terrain). Score de repli (profondeur de
+marche) : gagnant unique dans **23,3 %** par paquet, et AGREGE sur 250 sorties il pointe **S = 47
+au lieu de 43** (rang 4) — biaise, pas seulement bruite. Le decodeur ECS n'est pas bit-exact, il ne
+peut pas servir de regle. La marche sequentielle des types inconnus reste donc fermee.
+
+**MAIS LA QUESTION EST TRANCHEE PAR LA SIGNATURE.** Puisqu'un evenement vehicule TERMINE la liste,
+son cadrage est contraint de bout en bout (15 bits board / 17 bits exit + occupant en bande) : on
+balaie les 400 premiers decalages de TOUS les paquets delta. 8 films, 296 595 paquets, 1,2 x 10^8
+essais. **Reel hors tete : 1 894. Temoins (corps decale de +1/+2/+3/+4 bits) : 4 246 / 1 539 /
+3 400 / 2 881, moyenne 3 017.** Le reel est SOUS ses temoins, et les sieges des candidats sont
+UNIFORMES sur 0..7 (les vrais valent 0 a 94-95 %). **Il n'y a AUCUN embarquement hors tete.** Le
+1:15 est une propriete du film : le moteur n'emet `biped_board_vehicle` que pour un sous-ensemble
+des montees. Registre des 30 types de tete au rapport.
+
+**REF 2 DE L'EMBARQUEMENT : CE N'EST PAS LE VEHICULE.** Les trois refs sont PRESENTES (22/22, ce
+qui explique les 37 bits), mais la valeur de la ref 2 ne tombe dans la bande `ti=40` dans **0/22**
+des cas, ni dans celle des armes au sol (0/22), et elle ne prend que **4 valeurs distinctes** sur
+22 instances de 8 films (180, 116, 244, 208) : un identifiant de definition, pas d'instance.
+
+**MACHINE D'ETATS LIVREE ET BRANCHEE** (`replay/vehicle_rides_events.go`, additif ; `buildVehicleRides`
+la consomme d'abord, le trou passe en REPLI). Par OCCUPANT : embarquement ouvre, sortie ferme,
+sortie orpheline ouvre au dernier point replique, episode ouvert -> reapparition sinon fin de vie
+du vehicule (SILENCE TERMINAL, **5 sur 49** episodes de 5 films, la ou l'ancien pilotage en
+attribuait 0). Vehicule resolu par la position avec DEUX ancres (debut puis fin).
+
+**UN SEUL SEUIL NOUVEAU, ET SA TABLE** : `vehicleEventAnchorRadiusM = 3,0 m`. La population n'est
+pas celle du lot V4 (le rayon du trou DECIDE de l'embarquement ; celui de l'ancre ne choisit que
+QUEL vehicule, l'evenement ayant deja prouve l'embarquement). Mesure sur 49 episodes attestes,
+5 films : 1,5 m -> 39/49 rattaches (1 ambigu, temoin 1) · 2,0 m -> 46/49 (1, 1) · **3,0 m -> 48/49
+(1, 1)** · 5,0 m -> 48/49 (2, 2) · 12 m -> 49/49 (4, 3). 3 m est le dernier rayon qui ne coute RIEN.
+
+**DEUX PIEGES CORRIGES SUR MESURE** : (1) la regle anti-doublon naive faisait PERDRE un episode
+(12 -> 11 sur `0d76e8f1`) parce qu'un episode d'evenement NON RESOLU supprimait quand meme le trou
+qui savait le rattacher — seuls les episodes PUBLIES ferment desormais la porte ; (2) la borne
+« reapparition » du silence terminal est posee par SEMANTIQUE, et il est dit qu'elle **n'a change
+aucun chiffre** sur les deux films (le slot 561 ne reapparait vraiment jamais).
+
+**ARTEFACTS** : `0d76e8f1` **12 -> 13** episodes (11 mixtes + 2 trou, 11 nommes, **10 -> 11** avec
+siege, ambigus 1 -> 3 = multi-occupants publies) ; `fccc61cd` **2 -> 3** (+50 %, 3 avec siege).
+Tirs en vehicule INCHANGES (23 et 0) : les episodes gagnes ne portaient pas d'orphelin d'arme de
+vehicule — dit tel quel. SchemaVersion **inchange (30)** : memes champs, aucun contrat touche.
+
+**Gates** : gofmt vide · `go vet` filmdec+replay exit 0 · `CGO_ENABLED=0 go test
+./internal/analysis/filmdec/ ./internal/analysis/replay/ -count=1` VERT sans env (0 `--- FAIL:`) ·
+`CGO_ENABLED=1` service + replaybuild verts · fichiers <= 500 L, fonctions <= 80 L · pas de
+regeneration OpenAPI (contrat inchange). `internal/analysis/filmdec/` **non modifie** (5
+instruments `_test.go` seulement) : le garde-fou de cadrage est intact par construction.
+
+**Conclusion / prochaine etape** : le plafond de couverture des episodes est le FILM, pas le
+decodeur — c'est desormais demontre par deux voies independantes (le bloc d'image-cle au lot V5B,
+la liste d'evenements ici). La seule piste restante pour gagner des episodes est le TIR EN
+VEHICULE comme SOURCE (et non plus comme consommateur) : un tir d'arme de vehicule nomme son
+tireur et prouve son occupation, mais aucune methode justifiable ne resout le vehicule a cet
+instant — 180 orphelins hors episode sur `0d76e8f1`. Rapport :
+`.ai/V7.5/film_re/V6_LISTE_COMPLETE_2026-09-02.md`
+
+## [2026-09-03] Rejeu vehicules — V5B : le bloc de 89 bits OUVERT — c'est du MOUVEMENT, pas de l'occupation — Complété
+
+**Question** : lire le CONTENU du bloc supplementaire du record d'image-cle d'un vehicule (+89
+bits, mesure au lot V5). Ghidra toujours MORT : tout est mesure. Corpus 8 films, oracle = les
+episodes attestes (sortie decodee + trou du flux de position), garde-fou `SlotGap == 1`.
+**LE BLOC EST BIEN UNE INSERTION** : le modele « O = F[0:p] + BLOC(d) + F[p:] » explique 95,4 a
+97,7 % des bits compares contre 66-91 % aux deux modeles degeneres ; `d = 89` EXACTEMENT sur 10
+blocs sur 18, 6 films ; `p` varie (364 a 422 bits depuis le debut du record — pas de porte a
+decalage fixe). Temoin libre/libre a 96-98 % d'accord PARTOUT : la chute n'est pas de la derive.
+**IL NE NOMME PERSONNE — refutation exhaustive avec temoin par permutation.** Balayage de tout le
+dictionnaire du chantier (4 formes d'entite du lot V5, refs gardees w=7/8/13 des evenements
+board/exit, siege R(6)) x 185 decalages x 18 instances : meilleur canal **1/18 = 5,6 %**, et le
+temoin par permutation des occupants donne **1/18 lui aussi**. Le siege « passe » a 16/18 mais le
+temoin permute fait 16/18 : les 18 sieges attestes valent 0, le canal lit un zero.
+**LE RESULTAT QUI CORRIGE LE LOT V5** : le facteur explicatif est la CINEMATIQUE. Mesure SANS
+aucun oracle sur 104 records ti=40 de 8 films — un vehicule A L'ARRET porte un exces >= 89 bits
+dans **25,0 %** des cas, EN MOUVEMENT dans **66,2 %**. Deux cas le montrent a l'unite : le
+vehicule 781 de `53ce4390` a la MEME longueur (2 398) libre-en-mouvement qu'occupe-en-mouvement,
+et 2 309 a l'arret ; le vehicule 775 de `21468645` fait +89 sans aucune occupation attestee. A
+mouvement controle l'occupation attestee ajoute un residu (80,0 % contre 58,1 %, n=68) mais la
+classe temoin est contaminee (ratio board:exit = 1:15) : non exploitable.
+**« Un bloc par occupant » NON TESTABLE** : aucun vehicule du corpus n'a 2 occupants attestes
+SIMULTANEMENT. Le Warthog multi-occupants de `0d76e8f1` se defait a l'appariement (ep6/ep8
+sequentiels sur le vehicule 773, ep7 apparie au vehicule 792).
+**Les longueurs ne sont pas un quantum de 89** : 2 vehicules sur 9 ont toutes leurs longueurs
+congruentes mod 89. `+89` et `+190` se repetent, le reste (19, 20, 52, 108, 137, 171, 279, 348...)
+non. Plusieurs blocs optionnels, pas une unite de comptage — d'ou le choix de traiter 89 comme un
+PLANCHER dans le decodeur livre.
+**Livre** : `filmdec/vehicle_occupancy.go` (production, additif, exporte) —
+`ScanFilmVehicleOccupancy` / `VehicleKeyframeStates` (exces de longueur par image-cle et par
+vehicule, ligne de base par chassis, `Measurable` = SlotGap==1) et `FindKeyframeBlockInsertion`
+(localisateur d'insertion par max. de vraisemblance, pur, lineaire) ; 3 garde-rails SANS
+environnement ; 4 instruments gardes `V5_ROOT`/`V5_FILMS`. Le contrat est ecrit dans l'en-tete
+AVEC les chiffres de la refutation : ce n'est PAS un oracle d'occupation.
+**Conclusion / prochaine etape** : la voie image-cle est close pour l'occupation. Le goulot est
+ailleurs et il est mecanique : marcher la liste ENTIERE d'evenements (aujourd'hui seul
+l'evenement de TETE de chaque paquet est decode) pour redresser le ratio board:exit de 1:15, puis
+machine d'etats [board -> exit] par occupant, vehicule resolu par la position (appariement 12/12
+sur les films-demo). Rapport : `.ai/V7.5/film_re/V5B_BLOC_OCCUPATION_2026-09-02.md`.
+
+## [2026-09-03] Rejeu vehicules — V5 : ou est l'ETAT D'OCCUPATION courant ? (4 pistes refutees, 1 signal trouve) — Complété
+
+**Question** : les evenements board/exit sont des TRANSITIONS ; le Theatre affiche l'occupant a
+tout instant et permet le seek, donc l'etat est serialise quelque part. Cherche par CORRELATION
+SUPERVISEE contre les episodes attestes (10 sur 0d76e8f1, 2 sur fccc61cd ; appariement episode ->
+vehicule par la position, 12/12). Ghidra MORT (curl exit 7) : tout est mesure.
+**Les 4 pistes de champ sont REFUTEES, chacune avec son temoin** : (1) image-cle cote joueur —
+balayage 28 610 canaux (4 extracteurs x 2 ancres x tous decalages), 0 passant ; presence sans
+decalage 0/11 contre 22,7 % de fond ; (2) composants ti=40 en delta — 314 records exploitables
+sur tout le film, aucune valeur repetee, 0 en bande ; (3) entites-enfants (sieges/tourelles) —
+vies contenues dans un episode reel 114/67/109 contre TEMOIN 125/83/121 (le temoin fait mieux) ;
+(5, ajout utilisateur) flux delta — sonde neuve sur les 3 formes de champ de reference, i10 lu
+dans 0,15 % des records bipede propres.
+**CE QUI EST TROUVE** : le record d'IMAGE-CLE d'un vehicule est plus long quand il est OCCUPE.
+Test apparie vehicule-contre-lui-meme, 8 films : 16/17 = 94,1 %, ecart moyen +151 bits, temoin
+decale 37 s 3/12 = 25,0 % (signes p ~ 2,7e-4). Ecart RECURRENT +89 bits sur 3 films independants.
+Controle de specificite : la meme mesure cote BIPEDE ne donne rien (64,3 % reel contre 81,8 % au
+temoin) — le signal est propre au vehicule.
+**Confondant trouve et neutralise (facteur 9)** : WalkKeyframeWorld saute les records a Field26
+non nul, donc une « longueur » peut couvrir plusieurs records. Sans filtre +1 348 bits, restreint
+aux records a voisin de slot immediat +151. Le filtre monte la proportion et baisse le temoin.
+**Bogue de methode corrige** : inferUnboundArchetype essaie chaque archetype sur les memes bits
+(lectures SPECULATIVES) et polluait l'attribution par position — 9 613 lectures -> 1 210. Le hook
+neuf rejoint posCaptureHook/dynPrecHook dans les mises a nil (idem validatedResync, repair).
+**Gates** : (a) occupant a toute frame >= 90 % ECHOUE (aucun signal ne nomme l'occupant ; la voie
+image-cle plafonne a 7/12 = 58,3 % de couverture) ; (b) PASSE ; (c) siege ECHOUE ; (d) temoin
+decale PASSE. Victoire PARTIELLE : occupation d'un vehicule, pas identite de l'occupant.
+**Livre** (additif, non branche dans replay) : filmdec/keyframe_record_spans.go
+(KeyframeRecordSpans + ScanFilmKeyframeRecordSpans, garde-fou SlotGap) et filmdec/unit_ref_probe.go
+(SetUnitRefHook), avec 2 garde-rails SANS environnement. gofmt/vet/tests filmdec+replay verts.
+**Prochaine etape** : LIRE le bloc de +89 bits (diff bit a bit du meme vehicule occupe/libre) et
+tester l'hypothese « un bloc par occupant » — s'il porte le siege et l'occupant, (a) et (c)
+tombent d'un coup. Rapport : .ai/V7.5/film_re/V5_ETAT_OCCUPATION_2026-09-02.md
+
+## [2026-09-02] Rejeu vehicules — V4 : tirs en vehicule, plafond de couverture MESURE, fusion des fantomes (schema 30) — Complété
+
+**Tirs en vehicule** : le record de tir ne porte PAS de position monde (premisse corrigee) ->
+rattachement par IDENTITE (tireur du film x occupant de l episode x instant), pose a la position
+interpolee du vehicule (ecart max 0,003 m). Temoin decisif = l ARME : moitie basse 0x42C9679F sur
+100% des 1166 tirs a pied ; les 23 evenements a moitie basse nulle sont tous rejetes par la porte
+bipede, 73,9% tombent dans un episode publie (enrichissement x28 vs orphelins d arme personnelle).
+0d76e8f1 : 1166 -> 1189 tirs publies (+23 marques v). Champ Shot.v, schema 29->30.
+**Couverture des episodes** : les 4 pistes d assouplissement REFUTEES une a une (d90 des trous
+confirmes = 1,2 m < 1,5 ; trous confirmes constants a 3/1,5/0,8 s ; 0 besoin du repli naissance ;
+0 hors fenetre) + hypothese co-mobilite testee (0 couple < 3 m > 1,6 s sur 1347 instants). CAUSE
+RACINE : le film n atteste que ~10 trajets (0d76e8f1) et 3 (fccc61cd) — la production est AU
+PLAFOND (12 et 2). Seul manque reel : le SILENCE TERMINAL (occupant qui ne re-emet jamais),
+inattribuable sans seuil injustifiable (2,6 m vs 29,3 m selon film) — consigne, pas corrige.
+**Couleur** : team absente du film (Track.Team=-1) -> contrat tenu cote web (colorOfXuid, xuid du
+document prioritaire, pont slot en repli — meme patron que le nom).
+**Fantomes (bug utilisateur)** : le film RE-CREE les vehicules sous un nouveau slot (parfois par
+vagues) ; fusion des vies en relais (meme chassis, <= 0,5 m, fenetre [t1..t1max]) : 10+3 paires
+-> 0+0, vies 30->20 et 11->8 (merged=10/3), temoin chassis-differents = 0 fusion, chaines par
+point fixe, 9 tests fixtures. planDist ajoute dans geometry.go (unique ecriture plan, dist3 intact).
+**Gates** : gofmt/vet/tests Go verts sans env ; web typecheck/lint/5676 tests ; openapi +
+generate-types ; golden 1 ligne (schema) ; artefacts schema 30 reconstruits et copies dans l app.
+
+## [2026-09-02] Vehicules V3F — LES TIRS COVENANT / BANNIS, et la preuve que les « moteurs » du lot V3E sont des sons d'ARMES — Complété
+
+**Decision technique** : arreter de deviner l'evenement de tir par recoupement de medias et le
+faire DESIGNER par le champ nomme du tag. Nouveau mode `tir-vehi` (`cmd/weapon-sounds/tir_vehicules.go`,
+204 L, additif) : `vehi` -> refs `weap` INLINE -> champ « Weapon Fire Sound » de `weap.xml` ->
+tags `lsnd`/`snd!` -> `sbnk` + mots du corps. La chaine `lot`/`lot-tir` ne balayait que les packs
+`wea_`/`tur_`/`whizby_` : aucun `weap` de CHASSIS n'avait jamais ete resolu par elle, d'ou le trou.
+
+**Resultats observes** :
+- Le tag de tir de chaque vehicule porte EXACTEMENT DEUX identifiants d'evenement de sa propre
+  banque (sur 7 a 14) : Ghost `a91f9f78`/`603d9e29`, Banshee `bdb30da6`/`851558f7` (M1) et
+  `f76415db`/`6ed9c3bc` (M2), Wraith `46b14f04`/`aa6215eb`, Chopper `66b341e8`/`1adf8067`.
+- Regle 3P/1P confirmee 10/10 : l'evenement 3P n'a QUE des medias mono, le 1P QUE du stereo
+  (regle du lot armes du 2026-08-15, jamais appliquee aux vehicules).
+- Cadence du tag x nb de canons = cadence du conteneur (mode 5) : Ghost 450 contre 0,130 s,
+  Banshee 480 contre 0,125 s, Chopper 240 contre 0,250 s, temoin Falcon 780 contre 0,077 s.
+- **LE VERDICT UTILISATEUR EST DEMONTRE** : les evenements que V3E a rendus sous
+  `deplacement/moteur_*.wav` et `deplacement/contact_*.wav` SONT ces evenements de tir, sur les
+  SIX vehicules. Temoin : le Scorpion `951f76c0` est a la fois `deplacement/moteur_conduite` (V3E)
+  et `tir/tir_M1_1p_1.wav` (deja valide par l'utilisateur comme un tir).
+- **Le switch 2275666646 n'est pas un regime moteur** : 8 de ses 9 etats casses par FNV-1 =
+  `exterioropen`/`exteriorsmall`/`exteriormed`/`exteriorlarge`/`interiornarrow`/`interiorsmall`/
+  `interiormed`/`interiorlarge`. C'est l'ESPACE DE L'AUDITEUR. V3E rendait `interiormed`.
+  V3F rend l'etat par DEFAUT de la banque, toujours exterieur.
+- Cle `_EMBARQUES` du mandat REFUTEE : 0 intersection avec le DIDX des vraies banques ;
+  `Covenant_ghost_EMBARQUES` est identique 65/65 a `bt_bank01862ab3_EMB`, le DIDX de la banque du
+  Warthog (erreur d'attribution corrigee par V3D §10).
+
+**Livre** : `sons_v3_reconstruits/{Ghost,Banshee,Wraith,Chopper}/tir/` (29 WAV a la racine + 40 stems, non
+commites), convention de nommage des 5 dossiers `tir/` valides ; pas de rafale pour le Wraith
+(mortier one-shot) ni la Banshee M2. Manifeste `rev12` (section `tir_covenant_v3f` +
+`alerte_v3f_deplacement`). Rapport `.ai/V7.5/film_re/V3F_TIRS_COVENANT_2026-09-02.md`.
+Gates verts : `gofmt`, `go vet`, `go test ./cmd/weapon-sounds/`, `go build`. Decodage vgmstream
+verifie identique au dossier utilisateur (434 fichiers, ecart de duree max 0,0000 s).
+
+**Hors perimetre, signale et NON traite** : les `deplacement/*.wav` des six vehicules portent des
+sons de tir sous des noms de moteur — rien supprime ni renomme, l'utilisateur tranche.
+
+**Prochaine etape** : ecoute utilisateur des 4 dossiers `tir/`. Si valides, decider du sort des
+`deplacement/` (suppression ou renommage) ; le vrai deplacement reste le `lsnd` PARTAGE `06ba1096`
+/ banque `e793c135`, et la capture en jeu reste la voie pour un moteur par vehicule.
+
+## [2026-09-02] Rejeu 2D — INTEGRATION DES VEHICULES (lots A/B/C/D du plan) + revue adversariale corrigee — Complété (preuve visuelle utilisateur en attente)
+
+**Plan** : .ai/V7.5/PLAN_INTEGRATION_REJEU_VEHICULES.md (grille plan-review, decisions tranchees :
+un document, pas de capability replay, taille ancree au pion, pion embarque multi-passagers,
+tourelles = vehicules sans translation, end=unknown seul).
+
+**LOT A (assets)** : static/vehicles-assets/halo_infinite/replay/ (18 PNG + index.json mesure),
+KindVehicle Go + web, option composite multiply de tintedIconCanvas (source-in intact).
+**LOT B (Go)** : build_vehicles/vehicle_tracks/vehicle_rides/vehicle_families/document_vehicles
++ VehicleLabel a la requete (service) + SchemaVersion 29 + openapi. Episodes d occupation
+board->exit (grammaire board Ghidra : domaines 2/3/7, occupant 100% en bande). Table MPPWord32
+-> famille 21 entrees sourcees ; fe32c0f4/cb96ca07 = warthog par la chaine de destruction V3D
+(hlmt daf7f543). Sur les 2 artefacts de demo : 29/29 et 11/11 familles resolues.
+**LOT C (web)** : vehiclesLayer + useReplayVehicles (patron weaponPads), drawRotatedSprite
+(1re rotation bitmap du depot, angle (90-h) prouve 4 points cardinaux + 0,5 deg sur donnees
+reelles), taille = manifeste ancre pion (Mongoose ~1,75 pion), pion+nom+trainee supprimes par
+occupant embarque (multi-rides simultanes, sieges), toggle+i18n FR/EN.
+**Echelles** : 7 sprites sur 18 etaient faux (Pelican +354%, Skiff +114%, Ghost -36%...) —
+re-rendus a 10 mm/px, planche PLANCHE_ECHELLES. Orientations par heuristique geometrique :
+l utilisateur signale des sens faux sur la planche -> correction a pointer (suivi).
+**Revue adversariale (REVUE_ADVERSARIALE_REJEU)** : GO avec reserves, TOUTES traitees avant
+commit : .gocache-agentA (167 Mo) supprime + .gitignore ; VehicleEndUnknown "inconnue"->"unknown"
+(coherence contrat) ; clamp des episodes dans [t0,t1max] (+2 tests, joueur invisible corrige) ;
+i18n honnete (dessine jusqu a la PREMIERE preuve d absence) ; fausse citation C6 corrigee ;
+predicat embarque gate sur le toggle (calque eteint = pions rendus).
+**SONS — verdict utilisateur** : V3E (reconstruction Wwise complete, 4 reglages jamais lus) =
+ENCORE FAUX. Les packs vehicules portent l audio des ARMES ; des vehicules sans event moteur =
+preuve de mauvaise piste. PISTE BANQUES FERMEE pour les moteurs -> CAPTURE EN JEU (protocole
+convenu). Destructions conservees « a confronter a la capture ». Rotation tourelle Scorpion
+(validee) restauree apres suppression par l agent V3E.
+
+**Prochaines etapes** : (1) preuve visuelle utilisateur (merge local vers feat/v75, l app n a
+pas de donnees dans le worktree) ; (2) corrections d orientation pointees par l utilisateur ;
+(3) capture audio en jeu ; (4) gate-push/CI avant tout merge distant.
+
+## [2026-09-02] Vehicules V3E — RECONSTRUCTION COMPLETE : l'evenement Wwise entier (gain de chemin HIRC, offsets, cadence de grains), destructions refaites et moteurs covenant depuis les VRAIES banques — Complété
+
+**Decision technique** : arreter de sommer des couches « au gain relatif » et lire le paquet
+Wwise en entier. Nouveau lecteur `NodeBaseParams` complet (`hirc_noeuds.go`) : `OverrideBusId`,
+`DirectParentID` et TOUTES les proprietes, avec les octets bruts de celles que la table ne nomme
+pas. Nouveau mode `hirc-event` (dump d'un evenement : chaine action -> conteneurs -> Sound, gain
+de chemin COMPLET parents compris, offsets, hauteur, fourchettes RANGED, table de `Switch` etat
+par etat, un dump par etat) et nouveau mode `rendu-event` (melange en `float64`, tirages
+independants par couche, mode de boucle du conteneur respecte, UNE normalisation a -1 dBFS).
+Mode `mesurer-wav` en prime : fiche spectrale par FFT, pour ne plus dependre de quatre appels
+ffmpeg par fichier. Declencheur : reproche utilisateur — « tu n'as rendu que les fichiers isoles,
+pas reconstitues avec leur format wwise et reglages de package ».
+
+**Resultats observes** :
+- **La table `AkPropID` de `proprietes.go` etait fausse sur le delai.** L'identifiant 17
+  (lu comme `InitialDelay`) n'apparait sur AUCUN noeud des 12 banques ouvertes ; c'est le **59**,
+  present 25 fois, avec des valeurs de 0,05 a 0,25 s. Le « zero delai partout » des lots
+  precedents etait un artefact de lecture, pas une propriete des donnees.
+- **`MakeUpGain` (id 6) n'avait jamais ete lu** : 15 occurrences. Et le gain des PARENTS
+  actor-mixer (`DirectParentID`) n'avait jamais ete somme : jusqu'a **-14,5 dB** de chemin amont
+  sur le Ghost, **+7 dB** sur la lointaine du Wraith.
+- **Destructions, ce que ca change** : le lit sub etait a **-2 dB** de son niveau reel sur
+  small_unsc et small_covenant (ActorMixer parent `1f009c9e` a -2 dB) et a **+3 dB** sur med_unsc
+  et med_covenant (`33a0f093` a +3 dB) ; l'explosion du **Ghost** pose ses trois couches proches
+  **100 ms APRES** le lit sub ; la lointaine du **Warthog/Wasp** est jouee **+380 cents plus
+  haut** (3,97 s -> 3,19 s) ; les deux lointaines du Wraith/Banshee gagnent **+7 dB** d'amont.
+  Mesure avant/apres sur `explosion.wav` (meme tirage) : l'ecart `RMS moins bande 3-8 kHz` passe
+  de 16,22 a 19,91 dB sur le Chopper, de 15,35 a 17,57 sur le Ghost, et ne bouge que de 0,26 dB
+  sur le Scorpion, dont le lit etait deja juste.
+- **Moteurs : l'evenement se trouve par la STRUCTURE, plus par le spectre.** Un seul evenement
+  par banque traverse le `Switch` du groupe **2275666646** : Ghost `603d9e29` (banque `ccd43fa8`),
+  Wraith `aa6215eb` (`fda12da2`), Banshee `6ed9c3bc` (`c682f736`), Chopper `1adf8067`
+  (`1bb9f097`), Scorpion `951f76c0`, Warthog `68b1a949`.
+- **L'echelle de regime a NEUF etats et CINQ paliers** (rev9 en voyait cinq), et elle est
+  **monotone sur les six vehicules** : ralenti `356702912`/`3561860439` (le DEFAUT), bas
+  `1093928064`, intermediaire `1136871302`, **conduite `1248419637`/`3707760930`**, plein regime
+  `163696720`. rev9 rendait le palier 4 pour le Scorpion mais le palier 5 pour le Warthog : deux
+  vehicules cote a cote ne tournaient pas au meme regime. rev11 rend le palier 4 partout.
+- **Le moteur du Ghost est un NUAGE DE GRAINS, pas une boucle** : conteneur en boucle infinie,
+  `AkTransitionMode` = **5 (CADENCE)**, une lecture toutes les **0,130 s** pour des grains de
+  0,12 a 0,68 s, soit quatre a cinq grains superposes en permanence. Cadences mesurees : Ghost
+  0,130 s, Banshee 0,125 s, Chopper 0,250 s. En repeter un seul pendant 8 s donnait un hachage
+  periodique — c'est exactement ce que faisaient les lots precedents.
+- **Le bus nomme les evenements sans nom** : `5a880943` = moteur proche (switch), `1f17314c` =
+  lit sub du moteur, `8165b6c5` = contact avec le sol (chenilles Scorpion, roues Warthog,
+  antigrav covenant), `0f233096` = **cinq evenements par banque, un par palier de regime**, joues
+  hors switch (moteur a distance). Cinq evenements pour cinq paliers, sur les six banques.
+- **Verite terrain respectee** : Ghost a crest 11,8 et centroide 2870 Hz (texture continue), rien
+  de la signature « jeep » de V3B (cycles de rev de 1,15 s, centroide 1805 Hz) ; chenilles du
+  Scorpion a 4237 Hz de centroide et bande 3-8 kHz a -18,98 dB, 25 dB au-dessus de son moteur.
+  Temoin de comparabilite du centroide : le wem `1033065922` mesure 4747 Hz ici contre 4687 Hz
+  dans V3B (1,3 % d'ecart).
+- **Attribution Ghost re-verifiee** : les quatre medias que rev9 servait (`192653757`,
+  `68830349`, `835658180`, `52024965`) sont absents du pack du Ghost (248) COMME de celui du
+  Warthog (78), et d'un balayage des **841 packs** du jeu. Ils n'existent que dans `01862ab3`.
+- **Defaut de rendu trouve et corrige DANS le lot** : la montee mono -> stereo faisait pointer
+  les deux canaux sur le meme tableau, donc le gain de chemin etait applique **deux fois** sur
+  les seules couches mono (+7 dB rendus a +14 dB). Detecte en mesurant les stems (couche stereo
+  a -10,27 dB comme prevu, couche mono a -5,27 au lieu de -15,27). Corrige, et garde par
+  `wav_io_test.go`.
+- **Non decodable, DIT et non tu** : `AkPropID 71` = 55,0, octets `[00 00 5c 42]`, sur quatre
+  ActorMixer de la chaine lointaine — hors du chemin de tout fichier livre. Le `HPF` (id 4,
+  valeurs 10/16/20/35, dont la couche 2 de chaque explosion) est LU mais NON APPLIQUE : la
+  correspondance Wwise 0..100 -> Hz n'est pas dans la banque. Le lit sub covenant `87187708` ne
+  fait que 0,031 s et n'existe dans aucun pack : regle retenue (un media absent de tout pack est
+  complet dans la banque), defendable mais refutable a l'oreille.
+- **Zero objet `Bus` dans les 12 banques** : les gains de bus restent inconnus. Les couches d'un
+  meme bus sont exactes au dixieme de dB ; l'equilibre inter-bus est la seule incertitude qui
+  reste — bien plus etroit que le « calibre par cible de RMS » de rev9.
+
+**Conclusion / prochaine etape** : livre — 8 vehicules en `destruction/` (evenement complet +
+3 tirages + 2 etats lointains + `stems/`), 6 vehicules en `deplacement/` (conduite palier 4,
+plein regime / boost palier 5, contact au sol, amorce et queue reelles pour le Scorpion,
+`stems/`). Rapport `V3E_RECONSTRUCTION_COMPLETE_2026-09-02.md`, manifeste rev11 (champ
+`reconstruction_v3e` : 27 evenements decrits noeud par noeud, 45 lots de rendu mesures). Code
+additif sous `cmd/weapon-sounds/` (8 fichiers, tous < 500 L, `gofmt`/`vet`/`test`/`build` verts).
+AUCUN commit, AUCUN `git add`, WAV non commites. **Prochaine etape : ecoute utilisateur.** Trois
+points a trancher a l'oreille en priorite — (1) le lit sub covenant de 31 ms boucle a 100 ms
+sonne-t-il comme un thrum ou comme un bourdonnement ; (2) le palier 5 est-il bien la poussee du
+Ghost/Wraith/Banshee ou seulement un haut regime ; (3) faut-il appliquer le `HPF` declare sur la
+couche 2 des explosions. Restent non traites : le cas « eau peu profonde » de la destruction
+(V3D §9) et les moteurs du Wasp et du Gungoose, hors mandat de ce lot.
+
+## [2026-09-02] Vehicules V3D — sons de DESTRUCTION : six banques `exp_vehicle` par taille x faction, 8 vehicules rendus, et une erreur d'attribution de rev9 mise au jour — Complété
+
+**Decision technique** : ne pas chercher l'explosion dans la banque du vehicule (c'est ce que
+faisait l'intuition heritee des tirs et des moteurs), mais partir du disque. Les `.pck` du jeu
+portent des noms en clair : `sb_008_exp_vehicle_{small,med,large}_{unsc,covenant}` — six banques
+d'explosion de vehicule, indexees par TAILLE et par FACTION. Restait la seule question qui
+decide : QUEL vehicule joue QUELLE banque. La descente `vehi -> lsnd/snd!/effe -> sbnk`
+(`vehicules_sons.go`) ne repond pas (elle ne franchit qu'un niveau d'`effe` et n'atteint que les
+deux effets partages par les 13 vehicules). J'ai donc lu la chaine A L'ENVERS : nouveau mode
+`remonter-banque` (banque -> `snd!` -> ... -> `vehi`, balayage inline par niveau, filtre 16 bits).
+
+**Resultats observes** :
+- **Chaine complete et sans ambiguite** : `vehi -> hlmt -> foot (table de MATERIAU) -> snd! ->
+  sbnk exp_vehicle_<taille>_<faction> -> event a 4 COUCHES SIMULTANEES` (3 couches de 6 variantes
+  + 1 lit sub partage). One-shot : aucun switch, aucun RTPC, aucun delai — a l'oppose du moteur.
+- **Remontee UNSC** (`any/globals`) : niveau 0 = 9 `snd!`, niveau 1 = 3 `effe` + 3 `foot` +
+  3 `stai`, niveau 2 = **4 `hlmt` seulement**, niveau 3 = 8 `vehi`. L'ancre nommee qui ferme la
+  lecture : `hlmt e7fe7564` est deja documente comme le chassis SCORPION
+  (`ASSEMBLAGE_ENFANTS_2026-09-01.md`), et c'est lui qui mene a `exp_vehicle_LARGE_unsc`.
+- **Mapping** : Mongoose/Gungoose -> `969f4dc6` (small_unsc, event `1c0dae6d`) ; Warthog (toute la
+  famille) et Wasp -> `c468fb55` (med_unsc, `2152102c`) ; Scorpion -> `94d43e95` (large_unsc,
+  `dcc7bca1`) ; Ghost -> `b1f8608b` (small_cv, `8b33a81a`) ; Chopper -> `3fdc61a7` (med_cv,
+  `ed7cfa4b`) ; Wraith + Banshee + Phantom -> `2eaae6d7` (large_cv, `1bf6fdde`).
+- **Designation prouvee par `sndscan`** : chaque `snd!` porte EXACTEMENT un identifiant
+  d'evenement en clair. Celui que le vehicule pose est TOUJOURS l'evenement a 4 couches.
+- **Le lit generique partage existe** (c'etait la question du mandat) : `224468375` (0,30 s,
+  mono, 3-8 kHz a **-73,6 dB** = sub pur) porte par les DEUX banques « small », unsc et covenant,
+  et par **le meme noeud de couche `16ad77c5`** ; `686882988` (0,92 s, 3-8 kHz a -71,8 dB) porte
+  par les QUATRE banques med et large des deux factions.
+- **Spectre conforme** : melanges livres a crest 17,2-20,6 dB (un moteur en boucle est a 4 dB),
+  corps grave a 1 dB du RMS global, haut 3-8 kHz a -32..-38 dB, durees 3,20 a 5,36 s.
+- **Etats alternatifs `stai`** : chaque banque appaire deux evenements a une couche, mesures
+  11 a 27 dB sous l'explosion proche, transitoire adouci = tres probablement les versions
+  LOINTAINES. Etiquette assumee comme une lecture du spectre, pas un nom lu.
+- **Negatifs mesures** : les banques de DEBRIS (`exp_ge_debris_*`) remontent a 16 `proj` et
+  9 `eqip`, **aucun `vehi`** ; la boucle d'epave `burningvehicle_loop_a` remonte a un `forg`
+  (objet Forge) ; les objets-ENFANTS (canon `0000d4ff`, collier `0000d500`, tourelles de Warthog
+  `64b925eb`/`bcfb852f`/`dd7f9102`) n'ont AUCUN evenement de destruction propre — l'explosion est
+  posee une seule fois, par le chassis. Le dossier `Falcon_LMG` n'aura donc pas de `destruction/`.
+- **Materiau** : le tag `foot` est une table de materiau ; il apparie systematiquement
+  l'explosion au SOL avec une explosion en EAU PEU PROFONDE (`exp_*_watershallow`). Le lot livre
+  le cas sol ; le cas eau est localise, non rendu.
+- **ALERTE hors perimetre, non corrigee** : **rev9 attribue au Ghost la banque `01862ab3`, qui
+  n'est pas la sienne.** Intersection pack Ghost (248 medias) / `01862ab3` : 1/248 en references
+  HIRC (bruit) et **0/65** en medias embarques. La vraie banque du Ghost est **`ccd43fa8`** dans
+  **`pc/globals/common`** (248/248 sur les deux liens). Et `01862ab3` est atteinte par les `vehi`
+  dont le `hlmt` est `daf7f543` = celui du WARTHOG. Cause racine : V3B/V3C n'a jamais ouvert
+  `pc/globals/common-rtx-new.module` (2,86 Go), qui porte TOUTES les banques covenant/bannis
+  (Ghost `ccd43fa8`, Wraith `fda12da2`, Banshee `c682f736`, Chopper `1bb9f097`). Les attributions
+  UNSC de rev9 (Scorpion `05a51e0a`, rockethog `a52af042`, wargoose `38167604`, Wasp `4993b379`)
+  sont, elles, confirmees 78-268/78-268.
+- **Piege corrige en cours** : la premiere remontee rendait 46 618 tags au niveau 2 — les
+  sentinelles `00000000`/`ffffffff` (les « pas de reference » des tables de tags) etaient restees
+  dans l'ensemble cible. Exclues, le niveau 2 tombe a 4 tags. Second piege : la somme des couches
+  ecretait a 0 dBFS quand elle etait ecrite en entier 24 bits ; rendu refait en `pcm_f32le` avec
+  une seule normalisation finale a -1 dBFS.
+- **Livre** : `sons_v3_reconstruits/<Vehicule>/destruction/` pour Gungoose, Warthog_roquettes,
+  Wasp, Scorpion, Ghost, Chopper (nouveau), Wraith (nouveau), Banshee (nouveau) — 9 fichiers
+  chacun (`explosion.wav`, `_v2`, `_v3`, `couche_1..3`, `lit_sub_partage`,
+  `explosion_lointaine_A/B`), 72 WAV, non commites comme le reste du dossier.
+- **Code ajoute, uniquement sous `cmd/weapon-sounds/`** (additif, `gofmt`/`go vet`/`go build`
+  verts, tous les fichiers < 500 L et toutes les fonctions < 80 L) : `pck_dump.go` (mode
+  `pck-dump` : `.pck` AKPK -> `.wem` complets SANS module — ferme le trou « script Python hors
+  depot » ouvert par le scout S1), `pck_banques.go` (mode `pck-banques` : N packs -> leur `sbnk`
+  en UNE charge de module, avec les deux liens mesures separement, REF/HIRC et EMB/DIDX),
+  `remonter_banque.go` (mode `remonter-banque`). `trouverSbnk` existant ne pouvait pas servir :
+  il echantillonne les 24 identifiants les plus BAS du pack, precisement ceux que les banques
+  covenant ne citent pas (score mesure 1/24, verdict faux ; balayage complet : 248/248).
+
+**Conclusion / prochaine etape** : les sons de destruction sont livres pour les 8 vehicules du
+corpus, avec la chaine de tags complete et la mesure spectrale pour chacun. Rapport
+`.ai/V7.5/film_re/V3D_DESTRUCTION_SONS_2026-09-02.md`, manifeste `sons_v3_reconstruits/
+manifeste_v3.json` passe en **rev10** (section `destruction` + champ `correction_ghost`).
+Le juge reste l'utilisateur : ces WAV n'ont pas ete compares a une capture en jeu. Suite
+naturelle, dans un lot dedie : re-mesurer les boucles de DEPLACEMENT covenant/bannis sur les
+vraies banques de `pc/globals/common` (le Ghost de rev9 est a refaire).
+
+## [2026-09-02] Vehicules V3 item B — l'occupant de l'EMBARQUEMENT resolu par Ghidra : refs en domaines 2/3/7 (pas 1/7/7), occupant en bande 100 % (0 % avant) — Complété
+
+**Decision technique** : reprendre l'impasse du portage de la liste d'evenements (01/09, § 4 :
+« l'occupant de l'embarquement n'est pas resolu, sa ref 0 porte une sonde variable et tombe hors
+bande »). Le blocage venait d'une fausse piste : la table 0x144724A90 n'est PAS celle des handlers
+d'evenements — lue en memoire, elle pointe des CHAINES de medailles (« AuntieDot »,
+« DespawnSad »). Le bon chemin part de `FUN_14080ada0`, qui rend le nom d'un type via
+`vtable+0x08` : chaine `"biped_board_vehicle"` (0x143c97f80) -> xref = thunk de nom (0x14119e9b0,
+`LEA RAX,[rip+off]; RET`) -> xref = slot de vtable (0x143d0d338) -> **vtable 0x143d0d330** ->
+`vtable+0x58` = **0x142f1556c**, l'aiguillage qui rend le DOMAINE de chaque ref. Ghidra en HTTP
+direct, LECTURE SEULE (les deux aiguillages ne sont pas definis comme fonctions : lus en octets
+bruts par `read_memory` et desassembles a la main, aucun `create_function`).
+
+**Resultats observes** :
+- **EMBARQUEMENT : refs en domaines 2, 3, 7** (`test edx,edx; je -> eax=2` / `sub edx,1; je ->
+  eax=3` / `eax=7`), et non 1, 7, 7. **METHODE CONTROLEE** : le meme emplacement du descripteur
+  `unit_exit_vehicle` (vtable 0x143d0c708, +0x58 = 0x14080a018) rend **1, 1, 7** — exactement la
+  grammaire de la sortie deja validee par la mesure.
+- **La sonde n'existe que pour le domaine 1** : `FUN_1406d3140` la lit sous `if (param_3 == 1 &&
+  ReadBit())`. La « sonde variable » de l'embarquement n'etait que le premier bit de son index.
+- **Les LARGEURS sont runtime** (`FUN_1406d310c(count) = ceil(log2(count))` sur `DAT_1451f98d0`,
+  en BSS) : impossibles a lire statiquement, donc MESUREES par balayage. **dom2 = 8** (occupant en
+  bande 22/22 = 100 %, ouvre un trou de position 77,3 %, temoin 0 % ; a 7 bits le recoupement
+  tombe a 4,5 %, a 9 bits la bande a 72,7 %). **dom3 = 7**, departage par un oracle independant,
+  le SIEGE : accord avec le siege de la sortie appariee 5/6 = 83,3 % et siege 0 sur 21/22 (meme
+  « siege dominant 0 » que la sortie) ; a 8 bits l'accord est 0/6.
+- **Effet mesure** : dump `0d76e8f1` `BOARD occ_slot=3160 inBand=false seat=16` ->
+  **`occ_slot=561 inBand=true seat=0`** ; validation 5 films : occupant en bande **68/68 = 100 %**
+  (95,5 % avant, aucun board en bande), siege board **0 x 16**.
+- **Gate de recoupement a 90 % NON ATTEINT (77,3 %) — mais la reference non plus** : le controle
+  de non-regression (la SORTIE, deja validee) rend **90,7 %** sur le meme corpus avec la meme
+  primitive quanta. L'embarquement est a 85 % du taux de la reference, temoin NUL. Devenir :
+  6/22 = 27,3 % suivis d'une sortie du meme occupant (mais **6/6 trajets complets** et **ecart de
+  numerotation 0 sur 6/6** entre domaines 1 et 2 — pas de base a corriger), et cote `replay`
+  (gate B5) mort de l'occupant 2/5 = 40 % contre 1/5 = 20 % au temoin. Ensemble : 4/5 = 80 % des
+  embarquements finissent par une sortie du meme occupant OU par sa mort (n=5, dit comme tel).
+  Le ratio corpus board:exit = 1:15 explique le reste : la masse des montees en vehicule n'emet
+  pas de `biped_board_vehicle`.
+- **Bug d'instrument corrige, note car il fabriquait un faux negatif** : l'appariement
+  embarquement -> sortie tournait dans la boucle qui REMPLISSAIT la liste des sorties, donc chaque
+  embarquement ne voyait que les sorties anterieures — B4 rendait 0/22, ce qui ressemblait a une
+  refutation. Deux passes explicites : 6/22.
+
+**Conclusion / prochaine etape** : porte en production dans `event_list.go` (additif, sortie
+intacte, garde-fou de cadrage `fire_events == head type36` toujours bit-exact, comptes corpus
+inchanges 348/5144), avec un garde-rail **sans environnement** `TestBoardEventGrammar` (payload
+synthetique + temoin : les memes bits relus en grammaire de sortie doivent rendre un occupant
+different). Restent ouverts : (a) la largeur runtime par film (lecture de `DAT_1451f98d0` a
+l'execution, debogueur), (b) le SENS des refs 1 et 2 (la ref 2, domaine 7, est le candidat
+vehicule mais elle est gardee-absente presque partout), (c) marcher la liste ENTIERE pour
+retrouver les sorties manquantes. Rapport :
+`.ai/V7.5/film_re/V3_EMBARQUEMENT_2026-09-02.md`.
+
+## [2026-09-02] Vehicules V3 item A — dater la destruction par la mort du conducteur : REFUTE (0/460 vies), mais la fin de trajectoire n'est PAS la destruction et l'episode d'occupation est valide a 100 % — Complété
+
+**Decision technique** : refaire la mesure du lot V2 item 4b (« une mort coincide avec la fin de
+vie d'un vehicule », conclue au hasard : 52 % vs 48 %) en la RESTREIGNANT a l'occupant nomme, que
+V1a.4/V1c (debut de trou de position a < 1,5 m d'un vehicule) et V2b (evenement de sortie) savent
+desormais designer. Gate ecrit AVANT mesure, en constantes nommees, avec temoin a occupant DECALE
+(rotation de 3 crans du roster trie : meme densite de morts, autre identite). Trois etages
+successifs, chacun avec son gate ecrit avant sa propre mesure : (1) l'occupant est-il encore a
+bord a la fin serree du vehicule, (2) meurt-il DANS son trou d'embarquement, (3) meurt-il au BORD
+du trou (ejection). Deux instruments neufs sous garde `V3_DESTR_FILMS`/`V3_DESTR_ROOT`, aucun
+fichier de production touche.
+
+**Resultats observes** (12 films, 3 regimes : Behemoth SF, Launch Site SF, Behemoth non-SF ;
+460 vies de vehicule, 80 episodes d'occupation) :
+- **Gate 1-3 ECHOUENT : 0 occupant encore a bord a la fin serree, sur 64 vies a candidat.** Cause
+  mesuree, et c'est le fait le plus utile du lot : **le flux de position du vehicule continue 13 a
+  36 s (mediane par lot) APRES que son occupant l'a quitte**. « Fin de trajectoire = destruction »
+  est REFUTE — meme piege que `EquipmentLifeSpan.T1US` (mise au repos, pas disparition). Un slot
+  porte plusieurs occupants successifs (`0d76e8f1` slot=771 : 512 puis 514 puis 515).
+- **Gate 4 ECHOUE, et ANTI-correle : mort a bord 3/80 = 3,8 % contre 17/80 = 21,3 % au temoin
+  (-17,5 pts).** Le conducteur ne meurt pas dans le vehicule : il en sort.
+- **Gate 7 ECHOUE : mort a +/-3 s de la fermeture du trou 21,3 % contre 13,8 % au temoin
+  (+7,5 pts, seuil 10).** Un lot sur trois passe (+16,0), deux echouent (+3,3 et +4,0) : bruit
+  d'echantillon. Ecart signe toujours POSITIF (mediane +1,0 a +2,3 s) = le joueur descend PUIS se
+  fait tuer a pied.
+- **Gate 6 (controle) PASSE et vaut a lui seul le lot** : 69/80 trous (86,3 %) portent un
+  evenement de sortie de leur occupant, et **69/69 = 100 %** de ces sorties ferment le trou a
+  +/-2 s. C'est le recoupement V2b (10/10 sur UN film) reproduit sur 12 films. Temps a bord
+  median 11,2-12,5 s.
+- Piege corrige, note car il fausse toute mesure de trou : V1c ne compte les trous que sur les
+  echantillons `HasWorld`, `indexBySlot` garde tout — lire la fermeture sur le flux complet la
+  fait tomber juste apres l'ouverture (`v3dMondeSeul` aligne les deux flux).
+
+**Conclusion / prochaine etape** : A3 (point d'entree de production) **NON ECRIT** — le plan le
+conditionnait au passage du gate, et publier une « cause = destruction » sur un signal refute
+serait du code mort porteur d'une fausse promesse. Ce qui merite une production est l'EPISODE
+D'OCCUPATION (`VehicleRide` : occupant, vehicule, embarquement ~0,5 s, sortie a la ms, siege),
+a trancher par le superviseur. Deux voies restent ouvertes pour DATER la destruction :
+(a) la grammaire de bits d'i2/i3 pour `ti=40` (Ghidra), sans quoi i4 reste du bruit — reprise
+deja posee par V2b ; (b) **le type 0 « degats » de la liste d'evenements (1 313 occurrences sur
+`0d76e8f1`, jamais decode)**, moins cher car le cadrage de la liste est deja porte et prouve
+bit-exact. Rapport : `.ai/V7.5/film_re/V3_DESTRUCTION_DATEE_2026-09-02.md`.
+
+## [2026-09-02] Vehicules — Gungoose : la permutation 0x02c9ed0a etait un JEU DE PNEUS ; la vraie arme est un objet `scen` attache par la meme `sofa` que le weap `veh_un_wargoose` — Complété
+
+**Question utilisateur** : « on a bien les deux lance-missiles dessus ? Y a pas un module comme
+pour les warthogs a placer ? ». Reponse : NON, le sprite actuel ne les a pas — et OUI, il y a un
+module a placer.
+
+**Decision technique** : ne plus faire confiance a la piste « permutation du render_model »
+(le lot Warthog l'avait deja invalidee) et enumerer par les TAGS. Deux outils ajoutes au driver
+jetable `cmd/vs-measure` (nouveau `goose.go`) : recherche INVERSE `-refvers` (qui reference tel
+tag, balayage octet a octet de tous les tags des groupes demandes) et `-refsde` (toutes les refs
+sortantes d'un tag, par groupe). Plus `-axe=y` (rendu de profil), `-tforce`, `-permchassis`.
+
+**Resultats observes** :
+- Permutation `0x02c9ed0a` du `mode 0x9e581380` : 7 regions, mesurees une par une = **4 pneus**
+  (sections 23/30/35/46, 1 764 sommets chacun, MEME maillage, 0,386 x 0,102 x 0,343, aux 4 moyeux)
+  + **3 garde-boue** (20/38 arriere, 43 avant pleine largeur), region[06] supprimee. Image de
+  difference : seules les 4 roues changent. Ce n'est pas une arme — c'est exactement le piege
+  « socles/garde-boue » du Warthog. `sprites_v4/gungoose.png` actuel = cette permutation (et a
+  6 mm/px au lieu de 10 : 1,67x trop grand).
+- Recherche inverse de `weap 0x0042678e` (Gungoose, banque `veh_un_wargoose`, manifeste V3) sur
+  15 517 tags / 2 passes de modules : **0 objet-enfant `vehi`**. La piste Warthog ne s'applique pas.
+- **Chaine prouvee** : `vcdd 0xe3ef53f0` -> `vehi 0x000025aa` (Mongoose) + `sofd 0x79b55260` ->
+  `sofa 0x6d1193cc` -> { `uwfa 0xe3d5dc10` -> `weap 0x0042678e` ; `scen 0x004164ed` ->
+  `hlmt 0x004164eb` -> `mode 0x004164ea` }. Arme sonore et geometrie sur le MEME tag. Temoin :
+  la variante nue (`vcdd 0x29c4c340` -> `sofa 0xf8eb3113`) n'a ni `uwfa` ni `scen`. Les deux
+  `vcdd` du Gungoose imposent la permutation `default`, jamais `0x02c9ed0a`.
+- `mode 0x004164ea` = **canons jumeles** : 1 section, 3 686 sommets, 0,303 x 0,346 x 0,123 m,
+  racine `b_pedestal` (murmur3 resolu), deux noeuds symetriques a (+0,007 ; -+0,128 ; -0,019).
+  Le chassis porte le couple de marqueurs (+0,285 ; -+0,126 ; +0,322) : ecart 2 mm en Y ->
+  `T = (+0,278 ; 0,000 ; +0,341)`. La detection de zone (methode Warthog) donne independamment
+  `T = (+0,303 ; 0 ; +0,439)`, a 2,5 cm.
+- **Sens de X du Mongoose : +X = AVANT** (guidon cX +0,32, poignees +0,37, pare-chocs +0,41,
+  garde-boue avant pleine largeur +0,286, essieu directeur a parent commun ; porte-bagages plat
+  -0,55, antenne -0,46, crochet de remorquage -0,655). Sprite pivote de 180 deg comme la famille
+  Warthog. Note : `sprites_v4/mongoose.png` est encore nez en BAS.
+
+**Conclusion / prochaine etape** : planche-contact `PLANCHE_CONTACT_ARMES_GUNGOOSE_2026-09-02.png`
+(13 entrees, Mongoose en n.REF, colonnes isole/pose, 2 images de difference) + rapport
+`CONTACT_ARMES_GUNGOOSE_2026-09-02.md` + 4 candidats dans `gungoose_candidats/`.
+`sprites_v4/gungoose.png` NON reecrit : l'utilisateur pointe (avis : n.10, canons non pivotes).
+Lecon transverse : une « permutation d'arme » de render_model n'est jamais l'arme ; l'arme d'une
+variante de vehicule se trouve par la chaine `vcdd -> sofd -> sofa`, ou le `uwfa` (le weap, donc
+l'identite sonore) et le `scen` (la geometrie) sont cote a cote.
+
+## [2026-09-02] Vehicules — Warthog arme V3 : la rotation Z de l'arme (V2) etait une sur-interpretation, orientation authored conservee (canon vers l'AVANT) — Complété
+
+**Correction utilisateur** : le placement V2 (arme au centre du grand rectangle du plateau arriere)
+est valide (« parfait »), le rockethog n.13 aussi, MAIS la rotation de 180 degres autour de Z que
+V2 appliquait aux armes n.15 (mitrailleuse) et n.16 (gauss) est refusee : « pourquoi as-tu fait
+pivoter la tourelle ? ». L'orientation AUTHORED (canon vers +X modele = vers l'AVANT du Warthog,
+par-dessus l'habitacle, position de repos de la LAAG et du Gauss) est la bonne. V2 avait deduit
+« canon vers l'arriere » du seul fait que le plateau est a l'arriere : sur-interpretation.
+
+**Decision technique** : n.15 et n.16 refaits avec EXACTEMENT la chaine V2 (`vs-measure plateau`,
+cadre 5 m, 10 mm/px, `-xplateau=-1`, erosion 1, union 0,6, rectangle du haut 40 x 51 px centre
+(505,5 ; 447,0) px = X -0,585 / Y 0,000 / Z 0,420, centre de base = tranche basse 8 cm, ordre
+peintre, rognage, rotation finale 180 deg de l'image) mais `-rotarme=false` : translation seule,
+aucune rotation de l'arme. Le drapeau `-rotarme` est conserve (defaut bascule a false, en-tete de
+`plateau.go` corrige), pas active. T = (-0,577 ; 0,000 ; +0,420) pour la LAAG (V2 : -0,593) et
+(-0,548 ; +0,001 ; +0,419) pour le Gauss (V2 : -0,622) : le centre de base n'est plus retourne,
+d'ou 1,6 / 7,4 cm d'ecart en X ; ecart centre de base / centre du rectangle = 0,00 cellule.
+
+**Resultats** : `sprites_v4/warthog.png` et `warthog_gauss.png` ECRASES, 112 x 222 px chacun
+(V2 : 246 / 245 — le canon ne deborde plus le pare-chocs, il est au-dessus de l'habitacle :
+emprise posee X[-0,77..+0,18] / X[-0,78..+0,17]), chassis 210 px a y[6..215], centre du rectangle
+a (55,5 ; 163,0) comme le rockethog. Controle a l'oeil (planche
+`PLANCHE_WARTHOG_FINAL_V3_2026-09-02.png`) : arme en bas au centre du rectangle, canon vers le
+HAUT du sprite (avant) ; bloc lateral du Gauss a Y -0,39 (repere arme) -> a DROITE du sprite nez
+en haut (= -Y du vehicule), rotation d'image pure, pas de miroir. `rockethog.png` et
+`razorback.png` NON touches. Rapport : section « V3 » ajoutee a `WARTHOG_FINAL_V2_2026-09-02.md`.
+himap et cmd/vehicle-sprite intacts ; gofmt/vet/build OK ; aucun commit.
+
+**Conclusion / prochaine etape** : ne jamais deduire l'orientation d'une arme de la position de
+son point d'attache — l'orientation authored du `mode` enfant fait foi tant qu'aucune donnee
+(squelette, animation de repos) ne dit le contraire. Prochaine etape : validation visuelle
+utilisateur de V3 ; si OK, commit du lot et suppression du driver jetable `cmd/vs-measure`.
+
+## [2026-09-02] Vehicules — Warthog arme V2 : AVANT/ARRIERE INVERSES en V1, corrige par l'utilisateur (+X = AVANT pour la famille Warthog) — Complété
+
+**Erreur V1 corrigee par l'utilisateur** : « tu as confondu l'avant et l'arriere du vehicule, je te
+parle bien du rectangle EN HAUT de l'image ». V1 avait cherche le plateau dans la moitie BASSE du
+rendu (X local > 0) et pose l'arme dans le V du CAPOT. Dans le rendu (remap {Y,-X}) le HAUT = X < 0
+= ARRIERE (grand rectangle blanc du plateau), le BAS = X > 0 = AVANT (capot en V, pare-chocs
+anguleux). **Decision : +X = AVANT pour la famille Warthog** (inverse du Scorpion, +X = arriere) —
+le sens de X est PAR MODELE, pas une convention universelle. Consequence : le Razorback (meme
+chassis, valide en forme) etait aussi nez en bas -> pivote de 180 degres avec le lot.
+
+**Decision technique** : meme methode (masque blanc sans trait, erosion 1, composantes 4-connexes,
+10 mm/px = echelle du Razorback) restreinte a X < 0 (`-xplateau=-1`). Plus grande composante =
+interieur du grand rectangle : 40 x 51 px = 0,40 x 0,51 m, centre (505,5 ; 447,0) px = local
+X -0,585 / Y 0,000, Z 0,420 ; la 2e composante fait 15 % (pas d'union). Robuste : erosion 0/1/2 ->
+X -0,575/-0,585/-0,585, Y 0,000. Les 3 armes sont authored canon vers +X (= avant) -> **pivotees de
+180 degres autour de Z** avant la pose (canon vers l'arriere, deborde le pare-chocs ARRIERE) ;
+faute de rotation dans `himap.PartAssemblage`, rotation de l'IMAGE de l'arme rendue au canevas
+symetrique (= (X,Y)->(-X,-Y) exact) avec T_rendu = -T. T (apres rotation) : rockethog
+-0,520/-0,001/+0,424 ; LAAG -0,593/0,000/+0,420 ; Gauss -0,622/-0,001/+0,419. Puis **rotation finale
+de 180 degres** du sprite (rotation, pas miroir : chiralite du Gauss conservee) -> nez en haut,
+arme en bas, canon vers le bas, comme les autres vehicules du lot.
+
+**Resultats** : ecart centre de base / centre du rectangle = 0,00 cellule (3 armes) ; chassis 210 px
+(y[6..215]) dans les 3 sprites, Razorback 211 px ; meme sens de rotation pour les 4 ; controle a
+l'oeil sur la planche (bloc A arriere en haut : arme au milieu du rectangle du haut, canon vers le
+haut ; bloc B : nez en haut, arme en bas). Limite : l'eclairement (direction fixe) tourne avec
+l'image -> ombrage du chassis inverse par rapport aux autres vehicules (alpha 0,80..1, subtil).
+
+**Livrables** : `sprites_v4/{warthog,rockethog,warthog_gauss,razorback}.png` ECRASES
+(112x246 / 112x222 / 112x245 / 127x250), `PLANCHE_WARTHOG_FINAL_V2_2026-09-02.png`,
+`WARTHOG_FINAL_V2_2026-09-02.md`. Code : `cmd/vs-measure/plateau.go` + `plateau_detect.go`
+(drapeaux `-xplateau`, `-rotarme`, `-rot180`, `-pivote`), en-tete de `main.go` corrige (sens de X
+par modele). himap et cmd/vehicle-sprite intacts. gofmt/vet/build OK, aucun commit. Prochaine
+etape : validation visuelle utilisateur ; si OK, commit du lot et suppression du driver jetable.
+
+## [2026-09-02] Vehicules — Warthog arme : arme posee au CENTRE DU PLATEAU (rectangle blanc arriere) — Complété
+
+**Pointage utilisateur (definitif)** sur la planche-contact : n.13 = LANCE-ROQUETTES (`0xbe74e831`),
+n.15 = MITRAILLEUSE/LAAG (`0xc0803caa`), n.16 = CANON GAUSS (`0x9c7f3b54`) — tous pc:globals, comme le
+chassis `0x561f2ca7`. Pose « T = noeud n[006] (+0,765) » REJETEE : « au centre du rectangle blanc a
+l'arriere, la plus grande aire sans rien » = le pont arriere.
+
+**Decision technique** : placement VISUEL mesure sur le rendu, pas par noeud moteur. Chassis `default`
+rendu seul au canevas fixe (cadre 5 m, 10 mm/px = echelle de razorback.png valide : 101 x 211 px) ->
+masque blanc sans trait (alpha>0, non noir), moitie arriere, erosion 1 px, composantes 4-connexes. Deux
+zones d'aire voisine (1257 / 1171 px) separees par les traits en V du couvercle-moteur : interieur du V
+(Z 0,67) et U du plancher (Z 0,57) -> le rectangle percu = leur REUNION (regle `-union=0.6`) :
+0,72 x 0,61 m, centre (504,5 ; 559,0) px = local X +0,535 / Y -0,010, Z 0,674. Par arme : centroide de
+la tranche basse (8 cm) amene sur ce centre (T rockethog +0,470/-0,009/+0,678 ; LAAG +0,543/-0,010/
++0,673 ; Gauss +0,572/-0,009/+0,673) ; ordre peintre (chassis puis arme), rognage du composite.
+
+**Resultats** : ecart centre arme / centre plateau = 0,00 cellule (par construction, controle imprime +
+croix sur la planche) ; robuste a l'erosion 0/1/2 a 10 mm/px (X +0,535 constant) ; a 8 mm/px le U se
+scinde (biais Y 6 cm) -> 10 mm/px retenu. Canon LAAG/Gauss deborde le pare-chocs de 0,3 m (attendu).
+Pivot `0x99d45ed9` NON retenu comme centre : 28 cm derriere la base ronde. Chassis 210 px vs 211 px
+Razorback.
+
+**Livrables** : `sprites_v4/{warthog,rockethog,warthog_gauss}.png` ECRASES (112 x 253/222/252),
+`PLANCHE_WARTHOG_FINAL_2026-09-02.png`, `WARTHOG_FINAL_2026-09-02.md`. Code : `cmd/vs-measure/
+plateau.go` + `plateau_detect.go` (driver jetable, non commite ; himap et cmd/vehicle-sprite intacts).
+gofmt/vet/build OK, aucun commit. Prochaine etape : validation visuelle utilisateur ; si OK, commit du
+lot (sprites + rapports) et suppression du driver jetable (0 code mort).
+
+## [2026-09-01] Vehicules — CORRECTION de lecture : toute la famille Warthog armee est NON validee — En cours
+
+**Erreur de lecture corrigee par l utilisateur.** « Je les valide tous sauf warthog » designait la FAMILLE
+Warthog (chaingun, roquettes, gauss), pas le seul chaingun. Rockethog et Warthog Gauss n ont JAMAIS ete
+valides : ils sont restes au rendu V4 (permutations de region) dont l utilisateur disait deja « rien n est
+monte a l arriere ». Seul le RAZORBACK (cargo) est valide -> le chassis de la famille est bon, le defaut
+est l ARME ARRIERE pour les trois. Le commit f32784673 a embarque rockethog.png / warthog_gauss.png en les
+presentant comme valides : FAUX, ce sont des tentatives V4 a remplacer.
+
+**Decision : ne plus deviner.** Agent lance pour une ENUMERATION EXHAUSTIVE des geometries candidates
+d arme arriere (enfants vehi, TOUTES les permutations de la region tourelle, et piste neuve : tags weap
+de la famille dont le modele avait ete declare absent AVANT la correction du resolveur — a re-tester),
+rendues isolees + assemblees a la meme echelle, a cote du Razorback valide, sur une planche-contact ou
+l utilisateur POINTE (PLANCHE_CONTACT_ARMES_WARTHOG_2026-09-01). Aucun sprite reecrit avant ce choix.
+
+## [2026-09-01] Rework Warthog + Gungoose — LAAG surdimensionnee / pods gungoose — Complété
+
+**Retour user** : Warthog LAAG (via `warthog_g 0x0000e0da`) trop grosse/mal placee ; Gungoose pods
+avant peut-etre manquants.
+
+**Mesure decisive** : `warthog_g 0x0000e0da` = dX 2,39 m (> chassis 2,24 m), centroide cX +1,74
+(hors chassis, 3 sections) = MAUVAIS ASSET (barillet LAAG deploye vers l'arriere). Directive Ghidra
+(attache = transformee de noeud {echelle,rot,T} ; `GHIDRA_ATTACHEMENT_VEHICULE_2026-09-01.md`)
+testee SUR PIECE : parse du squelette du chassis (bloc racine +64, 124 o/noeud, echelle a +40) ->
+les **106 noeuds ont echelle = 1,000** -> AUCUNE echelle de noeud a l'origine du « trop grosse ».
+Noeud de mount plausible par position `n[006] 0xe1a390ba` = arriere-centre (+0,765,0,+0,541),
+echelle 1. -> cas « mauvais asset » prevu par la directive -> retour a la piste silhouette.
+
+**Correctif** : la LAAG correcte est DEJA dans le render_model du chassis en PERMUTATION
+`0x06c86db1` (region[17] sec 84-85, 0,26x0,76 m, cX +0,93 arriere-centre, co-reperee par
+construction). `warthog.png` = cette permutation (pas d'enfant compose). Gungoose : pods avant =
+PERMUTATION `0x02c9ed0a` (sec 20,23,35,38 ; aucun `gungoose_g`), PRESENTS, atteignant le nez
+(X -0,64) sans depasser (nez a -0,655) ; `gungoose.png` regenere a echelle lisible (cellmm=6).
+
+**Livrables** : `sprites_v4/{warthog,gungoose}.png`, `PLANCHE_WARTHOG_GUNGOOSE_2026-09-01.png`,
+`REWORK_WARTHOG_GUNGOOSE_2026-09-01.md`. Code : `himap/noeuds.go`+`noeuds_test.go` (brique
+transformee de noeud, reproduit FUN_140474790, testee), `cmd/vs-measure` (mesures boite/centroide +
+dump squelette). `PartAssemblage` NON etendu (aucun noeud non-identite dans le perimetre -> eviter
+du code mort). gofmt/vet/test OK, aucun commit, `cmd/vehicle-sprite` non modifie.
+
+## [2026-09-01] Vehicules — commit de vague f32784673 + V2b (occupant/destruction/cooldown) + garde-rail dist3 — Complété
+
+**Commit f32784673** (branche wt/vehicules-tourelles) : assemblage parent/enfant (himap
+objet_isole+vehicules+tagblocks_diag ; cmd/vehicle-sprite assemble+compose+diag+variantes), decodeur
+liste d'evenements (filmdec/event_list), 9 tests V1/V2/V2b, sprites (famille Warthog armee chaingun/roquettes/gauss + gungoose NON valides, en
+rework), rapports + planches, manifeste rev9. EXCLUS : WAV de sons (transitoires), warthog/gungoose
+(rework), parasites de racine (supprimes).
+
+**V2b (3 signaux, gates ecrits AVANT mesure, donnees reelles ; rapport V2B_ATTACHEMENT_VITALITE)** :
+(1) occupant par attachement i10 REFUTE (0/19) -> le relais est la liste d'evenements monte/descend
+(sorties = occupant a la ms, recoupement V1a.4 parfait 10/10) ; embarquement = deser Ghidra restant.
+(2) destruction par i4->0 REFUTEE (i4 = bruit pour ti=40 : 51% de pas decroissants vs 13-26% bipedes ;
+cause : i2/i3 non decodes avant i4 desynchronisent le curseur) -> datation par la MORT DU CONDUCTEUR
+(voie validee user). (3) cooldown par methode des socles RESOLU hors Super Fiesta (Behemoth ~58 s,
+CV 0,17, 4/6 pads) ; en SF non resolu (densite : vehicules concurrents par pad).
+
+**Garde-rail rattrape par le gate** : v2dDist/v2cDist avaient recopie la formule de distance 3D ->
+TestUneSeuleFormuleDeDistance3D rouge. Corrige : adaptateur d'une ligne vers dist3 (unique ecriture,
+geometry.go), import math retire. LECON : lancer les tests du package AVANT de committer un instrument,
+meme « lecture seule » — un garde-rail de factorisation attrape la formule recopiee.
+
+## [2026-09-01] Sprites vehicules — assemblage parent/enfant (tourelle/canon = objet-enfant) — Complété
+
+**Insight (utilisateur) CONFIRME** : un vehicule n'est pas un seul render_model ; la tourelle/le
+canon est un OBJET-ENFANT distinct (`vehi` a part) avec son propre `hlmt`->`mode`, co-repere avec
+le chassis. Le lot V4 ne rendait que le chassis parent -> Scorpion sans canon, Warthog sans arme.
+
+**Decision technique** : (1) le `vehi` parent NE reference PAS l'enfant par tagref inline (balayage
+d'octets : seulement self + hlmt chassis + chaine son `sofd`) — le lien est par NOM DE FAMILLE
+(`scorpion` -> `scorpion_c`/`scorpion_g`), resolu au runtime. (2) Chaque enfant se resout comme un
+`vehi` : `enfant -> hlmt -> mode`. Il a fallu corriger `RefModeleVehicule` : plancher anti-parasite
+abaisse `0x10000`->`0x100` + liste NOMMEE `parasitesVehicule={0x1f,0x3a73,0x27d0}` + chaine hlmt
+AVANT la ref directe (sinon le mode d'etat partage `vehicle_partial_emp` 0x27d0 fuit). (3) Pas de
+marqueur a extraire pour le sprite fige : le render_model de chassis N'A PAS de bloc marker-groups
+(dump root-blocks : off124=materiaux « mat », marqueurs vides ; le pivot est un noeud du squelette,
+pour l'anime seulement). Les modeles enfants sont authored CO-REPERES -> assemblage a translation
+NULLE correct. (4) `RenduAssemblage` fond N modeles dans un z-buffer partage ; cross-module (chassis
+pc/globals + tourelle pc/multiplayer, jamais charges ensemble) via canevas fixe `-cadre` + `compose2d`.
+
+**Resultats (vus a l'oeil, planche)** :
+- Scorpion chassis `0x39918211` (84 sec) SEUL = anneau vide, AUCUN canon. + `scorpion_c` (`0x0000d4ff`
+  -> mode `0x60dd0e4e`, canon) + `scorpion_g` (`0x0000d500` -> `0x8bf43b79`, collier) = **char avec
+  canon net**. Composition 2D == assemblage in-module (verifie).
+- Warthog `0x561f2ca7` + `warthog_g` (`0x0000e0da`, LAAG pc/multiplayer) = arme a l'arriere.
+- Wasp : canons integres au chassis (pas de tourelle separee). Wraith/Phantom : tourelles resolues.
+- Non-regression : les 13 chassis V4 resolvent aux memes modes.
+
+**Livrables** : `sprites_v4/` regenere (scorpion.png + canon, warthog.png/warthog_laag.png + LAAG,
+warthog_v2.png, scorpion_canon_enfant.png) ; `PLANCHE_ASSEMBLAGE_ENFANTS_2026-09-01.png` ; rapport
+`ASSEMBLAGE_ENFANTS_2026-09-01.md`. Code : `himap/{vehicules,objet_isole,tagblocks_diag}.go`,
+`cmd/vehicle-sprite/{assemble,compose,diag}.go`. gofmt/build/vet propres, aucun commit.
+
+**CR honnete / prochaine etape** : chaingun (LAAG) = objet-enfant net ; gauss/roquettes ne se
+separent PAS proprement en objets-enfants distincts -> pour ces 2 variantes, garder les permutations
+de region du lot V4 (solution complete = layering enfant + permutation). Marqueur/noeud a extraire
+seulement si un jour on veut la tourelle a son cap ANIME.
+
+## [2026-09-01] Port de la LISTE D'EVENEMENTS du film + evenements vehicule board/exit — Complété
+
+**Decision technique** : porter le CADRAGE de la liste d'evenements delta
+(`[config][liste (1 [R7 type] [3 refs gardees] [charge])* 0][trame ECS]`) dans des fichiers NEUFS
+`filmdec/event_list.go` + `event_list_test.go`, sans toucher au decodeur ECS. Cadrage MSB-first :
+bit0=config, bit1=continuation, bits2..8=R(7) type. Dispatcher Ghidra `FUN_14080AADE` decompile :
+type 7 bits <123, puis EXACTEMENT 3 refs gardees, puis charge. Binaire peu analyse (thunks
+relocatés = 0xcc statique) -> grammaire du siege fixee par oracle empirique, pas par le deser.
+
+**Resultats** :
+- **Cadrage PROUVE bit-exact** : garde-fou `head type36 == fire_events == 1418` a l'unite (0d76e8f1).
+- **SORTIE (type 22) RESOLUE** : occupant = ref0 (dom1 sonde, slot=base+idx9), siege = R(6) apres
+  ref1(dom1)+ref2(dom7). 209 sorties : occupant 95,5 % en-bande, sonde=1 a 100 %, **siege=0 a 93,8 %**
+  (= « siege dominant 0 » mesure). Independant de la largeur runtime.
+- **EMBARQUEMENT (type 8) PARTIEL** : siege reproduit « siege dominant 16 » (5/12) ; occupant NON
+  resolu (ref0 sonde variable, souvent hors bande -> probable = le vehicule, occupant en ref
+  ulterieure). Echantillon board petit (348 corpus vs 5144 exit).
+- **Comptes corpus (cache 949 films)** : board=348/138 films, exit=5144/230, enter=0. Ref 1367
+  films : 374/5600/0 ; ratio board:exit 1:14,8 recoupe 1:15 (deficit = films absents du cache).
+- **Garde-fou ECS/kill** : `traverse/frame_records/fire_events` non touches ;
+  `go test ./internal/analysis/filmdec/` vert ; recoupement fire_events bit-exact.
+
+**Livrable** : `.ai/V7.5/film_re/PORT_LISTE_EVENEMENTS_2026-09-01.md`. Instruments gardes :
+`event_list_test.go` (EVT_CHUNK_DIR/EVT_CACHE/EVT_FILMS).
+
+**Prochaine etape** : resoudre l'occupant d'embarquement (probable ref0=vehicule) ; marcher la
+liste ENTIERE (evenements non-tete) pour l'exact des comptes ; confirmer la largeur dom7 par film.
+Le decodeur remplace le substitut « debut de trou » pour l'attribution du conducteur et donne le
+temps en vehicule par joueur (sorties).
+
+## [2026-09-01] Vehicules lot V2 — emplacements de spawn, cooldowns, etat detruit — Complété
+
+**Corpus** : 18 Behemoth SF + 8 Launch Site SF (avant-plan, GOCACHE isole, aucun commit).
+Instruments neufs gardes : `filmdec/vehicules_v2_test.go` + `vehicules_v2_items_test.go` (items 1-3
++ i14), `replay/vehicules_v2_deaths_test.go` (mort-coincidente). Aucun fichier de prod modifie ;
+reutilise le gate durci V1.5 et le pont `buildOwners`/`bestDeathOffset`.
+
+**Resultats** :
+- **Item 1** : naissances a des pads FIXES EXACTS (rayon 0,00 m) — 6 sur Behemoth (grille 2x3),
+  4-5 sur Launch Site ; 100 % de chassis lus. Le seuil « <=4 amas/chassis » est map-dependant
+  (ECHEC Behemoth car 6 pads ; PASS Launch Site) ; en SF le chassis est tire au hasard PAR pad.
+- **Item 2** : piege Forge confirme SUR PIECES — `map_weapon_pads.json` couvre les 2 cartes mais
+  n'a que rack/power/powerup, AUCUNE famille vehicule. Repères alignes (bbox naissances ~ pads).
+  Gate NON APPLICABLE. Reprise = re-extraction .mvar sur type_id vehicule (himap + fichiers absents).
+- **Item 3** : cooldowns non resolus (IQR/mediane 0,87-0,98) — resolution recensement +/-20 s.
+- **Item 4** : i14 sous plancher (0,002 %). Dater par la MORT de l'occupant = AU HASARD sur le
+  corpus (52 % vs 48 % temoin Behemoth ; 47 % vs 43 % LS) ; le pilote 0d76e8f1 (38 vs 18) ne
+  generalise pas. Spatial : victimes coincidentes = badauds (0-4 % a <5 m) ; le conducteur meurt
+  dans le TROU de position embarque (recoupe V1a.4). Classer detruit/ejection/despawn = BLOQUE sur
+  l'attribution du conducteur (V1a.4 non porte) + un signal de destruction date.
+
+**Livrable** : `.ai/V7.5/film_re/V2_SPAWNS_COOLDOWNS_2026-09-01.md`. Point d'entree prod a creer :
+`vehicle_placements.go` (modele `equipment_placements.go`) -> catalogue de pads par carte + vies
+bornees. NON exploitable : datation de destruction ; confrontation .mvar.
+
+**Prochaine etape** : porter le point d'entree prod (pads + vies bornees) ; item 2 et item 4d en
+report avec conditions de reprise inscrites au rapport.
+
+## [2026-09-01] Sons vehicules — le moteur de DEPLACEMENT est DISTINCT par vehicule (rev7 refute) — Complété
+
+**Refutation du rapport V3 rev7** (« les 13 vehicules partagent une boucle unique 06ba1096 ->
+e793c135 ; per-vehicule = RTPC seul ; non extractible »). L'utilisateur avait raison
+physiquement : un RTPC ne change que hauteur/volume, pas le timbre. Preuve sur pieces, 3 axes.
+
+**Decision technique** : ne pas se fier a la ref COMMUNE du tag `vehi` ; descendre dans la
+banque PROPRE a chaque vehicule (mappee par intersection des wems du pck, `lot1_vehbanks.json`,
+toutes dans `pc/globals`) et lire sa structure (`eqip-arbre`) :
+- Ghost -> banque `01862ab3`, event moteur `47361baf` (3 couches simultanees, souffle+thrum) ;
+- Scorpion -> banque `05a51e0a`, event `951f76c0` (base + son partage 195277626 + **SWITCH de
+  regime 196e9bed, groupe 2275666646, 4 etats**) + boucles chenilles `d5c7daeb`/`13beda14` ;
+- Warthog -> banque `a52af042`, event `68b1a949` (**SWITCH 3c24a4f9, meme groupe**) + `38b83eb8`.
+
+**Le SWITCH existe** (rev7 avait inspecte la mauvaise banque, le lit commun e793c135 qui n'en a
+pas). Le jeu change de SAMPLES par bande de regime, pas seulement le pitch. Piege evite : le wem
+embarque dans la banque est un PREFETCH tronque (~0,5 s) ; le wem COMPLET est streame dans le
+pck (prendre le plus long des deux).
+
+**Resultats** : timbres spectralement distincts et conformes a la verite terrain — Ghost souffle
+aerien + thrum (centroides 1796/751 Hz), Scorpion grondement + cliquetis de chenilles (centroide
+4687 Hz, striations d'impacts de maillons), Warthog combustion basse (1472-1698 Hz). Le lit
+commun e793c135 est plus brillant (2822 Hz) et pose SOUS chaque moteur — d'ou le « aucune
+difference » de rev7.
+
+**Livre** : `sons_v3_reconstruits/{Ghost,Scorpion,Warthog_roquettes}/deplacement/` (corps brut +
+boucle 8 s regime median + amorce + queue ; Scorpion : amorce d'allumage 0134da4e). Manifeste
+rev8, rapport `V3B_MOTEUR_PARVEHICULE_2026-09-01.md`. Lecture seule, aucun commit.
+
+**Prochaine etape** : meme recette pour les 6 autres (events deja dans `lot2_moteur.json`) et le
+boost antigrav si demande. Gate d'ecoute utilisateur sur les 3 boucles.
 
 ## [2026-08-30] Sons — le merge ramassage fournit les déclencheurs, les quatre sons muets sont câblés — Complété
 
@@ -88482,6 +91519,94 @@ rien ne s'affiche en app avant la levee ; son de prise/lacher de bombe volontair
 
 ---
 
+## [2026-09-02] Cuisson lot 1 (items 1.2/1.3) — les balayages ne relisent plus le film
+
+**Statut** : Complété (gate vert, rien committé — le harnais des 9 films est au pilote).
+
+**Décision technique principale.** Les ~30 `ScanFilm*(dir)` de `filmdec` et les quatre de
+`replay` obtiennent chacun leur forme `Scan*(film *filmsource.Film, ...)` ;
+`BuildFromFilm(matchID, titleSlug, film, opt)` remplace `filmDir` ; `replaybuild.BuildBytes`
+charge le film UNE fois et le passe à tout le monde. Les formes `dir` survivent en enveloppes
+minces (D2) pour la quarantaine de tests et instruments qui n'ont qu'un chemin sous la main —
+aucune n'a d'appelant de production, et un garde-rail `archlint` (parse go/ast, liste fermée de
+40 noms) l'interdit désormais. `ParseRegistryChunk` perd son inflate, `inflateChunk` meurt :
+`filmdec` et `replay` n'importent plus `compress/zlib`.
+
+**Le point qui a demandé une décision** : la POSITION d'un chunk dans le film ne vaut pas son
+NUMÉRO. Une bobine sans `chunk_00` (la mini-bobine de fixture) a son premier chunk de DONNÉES à
+la position 0 ; les confondre marcherait un chunk de données comme un registre. `LoadDir`
+synthétise donc toujours `ChunkMeta.Index` depuis le nom de fichier et fusionne le manifeste PAR
+NUMÉRO, jamais par position (un téléchargement partiel décalerait tout). Côté consommateur,
+`filmdec.FilmChunkNumbers` s'arrête au premier trou de numérotation — la règle de l'ancien
+`CountFilmChunks`, héritée SCIEMMENT parce que le lot est un refacto pur, et qui tombera avec les
+enveloppes.
+
+**Résultats observés.** Deux points de chargement en production, et deux seulement
+(`replaybuild/filmload.go`, `cmd/zone-attribution/measure.go`). Le pont `FilmChunkAt` est prouvé
+équivalent à `ReadFilmChunk` + `WalkPackets` sur un vrai chunk, bornes de payload comprises.
+`TestEquivalenceMiniFilm` (empreintes FIGÉES) passe : identité prouvée en CI sur les sept
+familles que la mini-bobine supporte. Gate complet vert, `golangci-lint` 0 issue. Dette de taille
+résorbée par déplacements purs : `replay/build.go` 922 -> 415 lignes.
+
+**Trois changements de comportement déclarés**, tous hors corpus : un chunk illisible fait
+échouer le chargement au lieu d'être sauté (refus bruyant plutôt qu'artefact amputé) ; le chunk
+highlight arrive décompressé à `ParseHighlightEvents`, qui accepte les deux formes ; sur un flux
+zlib tronqué (aucun sur 1 378 films) le fil des morts rend désormais le partiel au lieu d'une
+erreur. Détail en N-M à N-R du §8 de `PLAN_CUISSON_PERF.md`.
+
+**Prochaine étape** : le pilote lance le harnais d'équivalence (9 films). Items 1.4 à 1.8 aux
+agents suivants (`killsource`, `objectiveevents`, `killcollector`, CLI de recherche).
+
+---
+
+## [2026-09-03] Cuisson lot 3 — la règle du catalogue, écrite une fois pour tous les balayages
+
+**Statut** : Complété (gate vert, 3/3 items, rien committé — mandat sans commit).
+
+**Décision technique principale.** Le découpage d'i0 que `filmdec.FilmContext` sert à TOUS les
+balayages suit désormais la règle que les positions appliquaient seules : découpage forcé par
+l'appelant > entrée de catalogue quand elle est valide > auto-détection en repli. La règle vit
+dans `filmdec/film_context.go` (`resolveI0Layout`, privé) et `replay.BuildFromFilm` la CONSOMME au
+lieu de la refaire — `fc := NewFilmContextForMap(film, opt.MapQuant, scan.Layout)` puis
+`scan.Layout = fc.ImposedLayout()`. Il n'existe plus qu'UNE résolution par cuisson, partagée par
+les positions et les six canaux delta ; les trois lignes de `build_from_film.go` qui la
+dupliquaient ont disparu. `NewFilmContext(film)` reste inchangé pour les 40 enveloppes D2 et les
+usages hors production (entrée nil = auto-détection).
+
+**Le point qui a demandé une vérification sur pièces — et qui a démenti le plan.** Le plan
+annonçait « avant : canaux delta vides ou rejetés sur Live Fire ; après : comptes non nuls ». La
+mesure dit autre chose : sur `60ae07c4` l'auto-détection RÉUSSIT et rend `gate=5 region=0
+13/12/11`, soit 41 bits d'i0 — la longueur totale EXACTE du catalogue (`gate=6 region=1
+12/12/11`). Les canaux delta ne lisent du découpage que `TotalBits()` et la porte de région : ils
+marchaient. Le rejet total prédit par la doctrine ne vaut que pour les POSITIONS, qui
+déquantifient le vec3 et le voient sortir de l'AABB. La vraie faute était une porte de région trop
+permissive : un bit testé contre 0 accepte les régions `00` ET `01`, deux bits testés contre 1
+n'acceptent que `01`. Sur ce film, 27 enregistrements d'une autre région de compression sur
+267 400 (0,010 %) étaient décodés comme s'ils appartenaient à l'arène jouée.
+
+**Résultats observés.** Passe d'équivalence complète : 12 identiques, 1 différent (`60ae07c4`,
+première étape en écart `heldWeaponChanges.stats`) — la correction mord sur Live Fire et nulle
+part ailleurs, ce qui était le critère. Après `-update -films 60ae07c4` : 13/13 identiques.
+Le film perd de FAUX événements, il n'en gagne pas : capacités 29 -> 27, ramassages d'équipement
+38 -> 33 (dont « manquées estimées » 6 -> 0, signature d'un canal redevenu cohérent), artefact
+3 030 556 -> 3 030 137 octets ; arme en main (120), inventaire delta (2 430), camo (1 593),
+grappin (0), ramassages natifs (297) et positions (267 365) sont identiques à l'octet — seuls
+leurs compteurs de diagnostic bougent (267 400 -> 267 374 enregistrements delta vus). Les
+ramassages natifs ne lisent pas le découpage du tout. Cuisson `replay-build` de `60ae07c4` :
+21,8 s, 3 030 137 octets, zéro ligne « découpage i0 illisible » — contrôle fait dans les deux
+sens, il valait déjà zéro AVANT (l'auto-détection réussissait). Test de la règle sur le catalogue
+VERSIONNÉ (Live Fire gate 6 région 1, Cliffhanger gate 5, entrée sans largeurs, découpage forcé),
+discriminance prouvée par deux mutations restaurées. `gofmt` vide, `go vet` 0, quatre paquets de
+tests verts, `golangci-lint` 0 nouvelle issue (baseline 273 inchangée).
+
+**Conclusion / prochaine étape.** Le lot 3 est clos, le corpus est refigé à 13 films. Quatre
+découvertes notées et non traitées (§8, N-BD à N-BG), dont la plus structurante : `DetectI0LayoutOf`
+est AVEUGLE par construction à un index de région de plus d'un bit (`GateBits` câblé à 5,
+`Region` à 0) — toute future carte à plus de deux régions produira un découpage décalé et MUET
+pour les consommateurs qui gardent l'auto-détection (enveloppes D2, CLI de recherche,
+`ScanUnitEquipment`, qui n'a aucun appelant de production). Le pilote décide de la suite ; rien
+n'est committé.
+
 ## [2026-09-02] Instruction des 7 retours user (rejeu 2D + match view) — analyse et plan
 
 **Statut** : Complété (analyse + plan). Exécution en attente des décisions D1-D5.
@@ -91571,3 +94696,673 @@ re-cuit — les deux films 38 du chantier n'ont pas ete re-cuits avec les charge
 demande produit nouvelle du 04/09 (replier les equipements/armes non « game changer »
 dans les rendus d'usage) — artefact de vote a fabriquer pour que l'utilisateur tranche la
 liste.
+
+## [2026-09-05] Repli « game changers » — fiche match, bilan d'equipement et controle des socles
+
+**Statut : Complete.** Worktree `LevelUp-wt-game-changers`, branche `wt/game-changers`
+(base feat/v75 ca55f0ed7). Plan : `.ai/PLAN_REPLI_GAME_CHANGERS_2026-09-05.md`.
+Execution pilotee : agent d'implementation + relecteur adversarial frais, consolidation
+superviseur. Liste TRANCHEE PAR VOTE utilisateur (artefact « Game changers », 05/09) :
+5 familles d'equipement (powerup_camo, powerup_overshield, sensor, threat_seeker,
+shroud_screen) et 5+1 weapon_keys (s7_sniper, m41_spnkr + fuel_rod, energy_sword,
+gravity_hammer, skewer) en avant — le reste se replie derriere « Voir plus (N) »,
+replie par defaut.
+
+**Decision technique principale.** La liste est un jugement produit cote web :
+`gameChangers.ts` (constante TS + garde-rails contre les TOML du titre, patron
+POWER_PAD_KEYS), sementiquement DISTINCTE de POWER_PAD_KEYS (rejeu 2D, intouche —
+divergence cindershot dite et FIGEE par test). Pont ecrit powerup_camo->camo /
+powerup_overshield->overshield (double vocabulaire socle/etat actif). Armes jugees par
+weaponLabels[hex].key, jamais l'hex ; cle absente = replie. Partition dans la logique
+pure (l'ordre existant survit dans chaque partition, le tri par volume du controle des
+socles aussi) ; totaux, attribues, footnotes, hasData calcules sur TOUT — le repli est
+un affichage. Grenades hors vote, toujours visibles.
+
+**Resultats observes.** Revue : 16 conditions tiennent, 0 P0/P1, 1 P2 cosmetique
+consigne (padding residuel quand tout est replie). Incident d'execution dit et verifie :
+editions d'equipmentUsageColumns.ts effacees par un `git checkout --` de mutation puis
+reappliquees — relecture comptable imposee au relecteur : « coherent au centime ».
+Mutations tuees : partition inversee (7 tests), pont retire (19), grenades repliees (5),
+tri sans partition (3), cle absente promue (3), deplie par defaut (6), bouton a N=0 (1).
+Gates : typecheck purge exit 0, make test-web 575 fichiers / 5 999 tests / 0 echec,
+eslint 0, garde-rails 12/12, plafonds tenus (composants ramenes a 80 L pile).
+
+**Conclusion / prochaine etape.** Commit sur wt/game-changers ; GATE VISUEL utilisateur
+(les deux tableaux repliés/déplies sur un vrai match), puis merge feat/v75 sur accord.
+Arbitrages futurs consignes : realigner POWER_PAD_KEYS sur le vote (cindershot), repli
+des surfaces exclues (charts partages, PlayerDetailPanel).
+
+## [2026-09-05] Lot H — extension du repli aux graphes partages : le socle est livre, les graphes attendent la cle
+
+**Statut : Complete** (H3/H4 statues [!] justifies). Branche `wt/game-changers`, agent
+d'implementation Sonnet (choix utilisateur) + relecteur adversarial frais.
+
+**Decision technique principale.** H-D3 appliquee a la lettre : AUCUNE des 4 surfaces
+d'agregats (frags par arme partage, kills d'escouade, precision d'escouade, precision de
+synthese) n'expose de cle stable cote front — matching par libelle REFUSE, surfaces
+statuees [!] plutot que bricolees. Contre-verifie par la revue (5 affirmations vraies sur
+pieces). Livre quand meme : l'extraction OBLIGATOIRE du controle « Voir plus (N) »
+(`components/ui/collapsed-items-toggle.tsx`, 3e usage = extraction, regle n°6), migration
+des deux copies G1/G2 a comportement constant (chaine CSS octet pour octet), garde-rail
+anti-redivergence avec assertion anti-glob-mort, mutations rejouees dans DEUX features.
+
+**Resultats observes.** Revue H7 : 12 conditions tiennent, 0 P0/P1, 1 P2 = la remontee
+devait porter le FAIT SERVEUR : `WeaponKillRow.WeaponKey` (hinf_*) est DEJA resolu dans
+la meme passe pour Squad kills et Synthesis kills — il n'est pas serialise. Gates :
+typecheck purge 0, make test-web 577 fichiers / 6 008 tests / 0 echec, eslint 0, ratchet
+cross-feature 7/7 inchange. Le cindershot avait ete PROMU game changer en amont du lot
+(decision utilisateur, commit 08fb40de2).
+
+**Conclusion / prochaine etape.** Lot I cadre au plan : exposer `weapon_key` dans les
+DEUX DTOs (kills seulement — l'utilisateur a rappele que la precision PAR ARME est
+Halo 5 seulement, chantier Infinite remise : surfaces de precision EXCLUES, verification
+de salubrite du gating capability a rapporter) puis replier les deux graphes, avec la
+GARDE MULTI-TITRE « zero elu = aucun repli » (jamais un test de slug). PAS DE MERGE
+feat/v75 (decision utilisateur) : cloture = commits sur la branche.
+
+## [2026-09-05] Lot I — ABANDONNE sur clarification utilisateur, avant toute ecriture retenue
+
+**Statut : Clos (abandon).** La commande « etendre le repli aux graphes partages » etait un
+malentendu du superviseur : seuls les rendus d'USAGE du chantier (bilan d'equipement,
+controle des socles — deja repliables) sont concernes ; les graphes de PERFORMANCE
+existants (« Frags par arme » et declinaisons synthese/escouade/session) ne se replient
+pas — leur role est different. Agent Sonnet arrete en vol, ses modifications Go defaites
+(git checkout sur 6 fichiers, worktree revenu a 8180180f1), exposition `weapon_key`
+abandonnee avec le lot (note technique conservee au H1). VERIFICATION DE SALUBRITE faite
+par le superviseur : la precision par arme est correctement gatee par capability
+(`match.weapon.accuracy` = not_exposed pour halo_infinite, natif halo_5, exclusion
+mutuelle documentee dans SquadFragSection) — ni erreur ni reliquat.
+
+**Prochaine etape.** Gate visuel utilisateur des deux tableaux repliables, puis merge
+feat/v75 sur sa decision. Rien d'autre ouvert sur cette branche.
+## [2026-09-04] Session-usage S1 — socle BDD du resume d'usage (executant, reprise apres interruption)
+
+**Statut** : En cours (implementation S1 posee, backfill reel des 114 artefacts et commit = pilote)
+
+**Decision technique principale.** Le resume d'usage se branche dans l'etape qui CONSTRUIT
+l'artefact (`replayartifacts` : `buildAll` collecte les artefacts ranges, `Run` appelle
+`persisterResumesUsage` apres `reporterT0Film`), sur le patron exact du report du T0 :
+projection depuis le disque (jamais le blob candidat — `StoreArtifact` peut refuser), burst
+writer court apres toute cuisson, best-effort compte et journalise. Les modifications heritees
+dans `killcollector/` ne branchent RIEN sur la chaine killsource : c'est la centralisation de
+la recette de lecture des capabilities (`games.LoadCapabilityMap`, regle des <= 2 copies, la
+4e copie a declenche la factorisation + garde-rail `capability_loader_guard_test.go`).
+
+**Choix tranche en cours de route** : les cles de la ventilation par arme (`pad_pickups_json`,
+`weapon_pads_json`) sont NORMALISEES par `replay.PadWeaponFamilyKey` (8 hexa minuscules) des la
+projection — jamais la forme verbatim du document (deux conventions d'ecriture coexistent dans
+les artefacts, des cles verbatim couperaient une famille en deux a l'agregat de session).
+
+**Resultats observes.** `go build ./...` exit 0 ; `go test ./internal/analysis/replay ./internal/games/...
+./internal/migration ./internal/sync/... ./internal/persist ./cmd/levelup` tous verts. Controles
+croises du handoff verifies EN VRAI (bac a sable scratchpad, DB vierge migree + artefacts reels
+copies, aucune base de data/ touchee) : 696a9d7c = 26 prises nommees / 8 anonymes / 10
+powerup_camo en powerup_pickups_json et ZERO en pad_pickups ; b8a44fe8 = 51 / 11 ; ecriture
+reelle puis reprise (deja a jour) validees. ATTENTION : DEUX executants ont travaille en
+parallele dans ce worktree (la session interrompue a repris seule) — les deux implementations
+ont converge (l'autre a adopte usage.go/persist et ecrit usage_integration_test.go contre),
+mais le pilote doit relire en connaissance de cause.
+
+**Conclusion / prochaine etape.** Restent au pilote : suite integration complete (lancee),
+dry-run sur la session temoin 2026-07-31 (193/102), backfill reel serveur arrete, commit S1.
+
+## [2026-09-04] Session-usage S1 — cloture pilote : persiste, backfille, verifie — Complété
+
+Lot S1 commite (`d448c3328`) apres revue adversariale DOUBLE : deux relecteurs frais de
+cette session (lentilles anti-ART/multi-titre et tests/anti-patterns) PLUS la revue de la
+session parallele — les deux ont converge independamment sur les memes P1 (vue
+`match_usage_players_latest` cassee par une re-passe sans ligne joueur ; reprise du CLI
+prouvee par rien), signal fort que les defauts etaient reels. Correctifs complementaires
+du pilote : compteur d'echecs conforme a son contrat (capabilities illisibles comptees),
+origine de pose STRICTE (`deployed` seul compte — 1 artefact schema<10 present au corpus
+aurait gonfle les deploiements), ventilation DroppedByFamily documentee non-persistee,
+deux cas de test (capteur lache, origine absente).
+
+**Le chiffre temoin « 102 anonymes » du handoff est FAUX** : verifie sur artefacts bruts,
+il comptait les 20 occupations `powerup_overshield` comme socles d'arme anonymes tout en
+excluant `powerup_camo` — asymetrie contraire a la regle §4 du handoff. Vrai temoin
+session 2026-07-31 : 193 nommees / 82 anonymes / bonus {camo 45, overshield 20}.
+
+Backfill reel : 106/106 artefacts, 0 echec, reprise idempotente verifiee. Piege releve :
+`air` lance depuis la racine du depot boucle en `exit status 1` (`.air.toml` vit dans
+`apps/go-api/`) — relance depuis `apps/go-api`, port 8000 re-ouvert.
+
+**Coordination** : DEUX sessions pilotes ont travaille le meme worktree cet apres-midi
+(l'executant interrompu par la limite a repris seul). Convergence heureuse cette fois —
+mais avant S2, une seule session doit garder le volant.
+
+Prochaine etape : S2 (agregat de session + contrat, chiffres §7 du handoff a re-deriver
+avec le temoin corrige).
+
+## [2026-09-05] Session-usage S2 — cloture pilote : agregat commite, S3 reporte — Complété
+
+S2 commite (`4c687645a`) apres deux rondes de revue adversariale : ronde 1 = 3 P1
+(scope camp connu/inconnu croise — parts > 100 % possibles — et deux 0-pour-inconnu)
++ 3 P2 ; ronde de correction avec tests anti-mutants (le cas 600 % passe a 100 %) ;
+ronde 2 = 6/6 corrections tiennent, aucun defaut recevable. Regle de scope documentee :
+grandeurs d'equipe sur les matchs mesures a camp connu, cadences sur les matchs a duree
+connue, nil quand le sous-ensemble est vide.
+
+Verification pilote au temoin 2026-07-31 : CINQ grandeurs exactes au dixieme contre le
+§7 du handoff. TROIS references du §7 corrigees sur pieces (meme cause : le mock hors
+depot) — anonymes 82 et non 102 (surbouclier mal classe), murs 7 panneaux deployes lobby
+et 0 pour JGtm (le mock comptait les appareils laches a la mort), parites 12,5/25,0
+(canon LobbySizesAtCompletion, le mock comptait tous les inscrits). Role « prendre » :
+decision utilisateur — flag_grabs EXCLU (porter-jeter tactiques) ; idee de filtre
+anti-spam des prises notee comme chantier futur (exige la chronologie des portages,
+cote artefacts de film).
+
+S3 (front, seize formes) REPORTE sur decision utilisateur : la maquette
+(artefact 2ec1b8eb...) est inaccessible depuis ce poste. Notes de reprise au plan —
+premiere action : make generate-types (generated.ts en retard sur openapi.yaml).
+
+Lecon de coordination (voir memoire agent) : l'executant S1 coupe par la limite avait
+repris SEUL et pilote en parallele toute la soiree — arbitrage utilisateur transmis par
+message de session, retrait propre de l'autre session, un seul pilote ensuite.
+
+## [2026-09-05] Session-usage S3 — cloture pilote : le front des trois blocs, gate visuel remis a l'utilisateur — Complété
+
+S3 commite apres revue adversariale (ronde 1 : 1 P1 — la piste du lobby dimensionnait
+ses segments a leur TEXTE, flexGrow pose sur le contenu du Tooltip au lieu de l'item du
+flex — corrige par le pattern width calc(%) de MatchPadControlSection ; 1 P2 — rails de
+jauge de largeur variable sous un axe pleine colonne — corrige par des sous-colonnes
+rail/texte ; ronde 2 : 2/2, rien de nouveau). Gates : tsc vert, 5977 tests web verts
+dont 25 du lot, eslint 0, aucune couleur en dur, i18n FR+EN par typage.
+
+DECOUVERTE CONSIGNEE : le meme defaut flexGrow-sur-contenu-de-Tooltip existe dans la
+vue match LIVREE (MatchEquipmentUsageSection.tsx:212, UsageTeamShares) — masque parce
+que ses segments portent toujours du texte. Dette pre-existante, hors perimetre S3.
+
+RESTE OUVERT : le gate VISUEL utilisateur sur le temoin (session 2026-07-31 19:22,
+JGtm, chiffres corriges au plan) — six arbitrages pris sans maquette a valider, dont
+les familles de socle en hexadecimal brut (si illisible : enrichir le contrat Go d'un
+libelle d'arme, petit lot de suite).
+
+Le chantier du handoff est LIVRE sur wt/session-usage (S1 backfille en local, S2/S3
+commites, ni push ni merge — decision de merge a l'utilisateur, mode branche unique
+feat/v75).
+
+## [2026-09-05] Vue match — la dette flexGrow de UsageTeamShares SOLDEE — Complété
+
+La decouverte consignee a la cloture S3 (meme defaut que la piste du lobby :
+flexGrow sur le contenu du Tooltip, segments dimensionnes a leur texte) est corrigee
+sur demande utilisateur, commit `26b9e2cac` : largeur en calc(%) portee par l'item du
+flex (pattern MatchPadControlSection) + libelle ecrit seulement si le segment porte
+>= 11 % (l'infobulle garde la valeur exacte). tsc vert, 22 tests du fichier verts,
+2 170 tests match-replay verts au passage precedent.
+---
+
+## [2026-08-31] Chantier vehicules et tourelles — lot V0 : cadrage, scouts sons et sprites — Complete
+
+**Contexte** : ouverture du chantier vehicules (worktree dedie LevelUp-wt-vehicules, branche
+wt/vehicules-tourelles, base feat/v75 14a115bb1). Trois agents en parallele : cadrage Opus,
+scout sons, scout sprites. Plan du chantier : `.ai/V7.5/PLAN_VEHICULES_TOURELLES.md`.
+
+**Decision technique principale — LA GRAMMAIRE BIPEDE DU VEHICULE.** `ti=40` porte a `i0` la
+forme dynamic-precision du BIPEDE (porte 5 bits), pas la forme objet du monde (3 bits) que
+`ScanFilmWorldObjects` lui appliquait — seule voie employee jusqu'ici, sonde du 18/08 comprise.
+Mesure (meme film, meme bande, critere pas < 35 m/s ecrit avant) : grammaire bipede 99,4-100 %
+de pas plausibles, grammaire objet du monde 21-42 %, temoin fantome 0-3 pas. REJOUE PAR LE
+SUPERVISEUR sur `fccc61cd` : 100,0 % vs 37,4 %, temoin 0 — identique au rapport. Consequence :
+tout chiffre de position vehicule anterieur est repute non mesure ; l'oracle geometrique du
+18/08 est a rejouer (inscrit au lot V1a).
+
+**Resultats observes** :
+- `ti=40` stable sur 6 empreintes de registre (11 films) ; 48 composants, 30 portes ; masque
+  nominal du flux {i0,i1,i2,i3,i25} ; plancher de faux positifs 0,17 % mesure dans la meme
+  sortie. Anomalie 174 vs 118 RECONCILIEE (118 blocs bruts, 50 semantiques `kfArchMax`, 1067
+  slots non vides) ; VEHICULES_ARCHETYPE_40.md corrige (14 composants propres, pas 8).
+- `i33` vehicle-type-state REFUTE comme signal delta ; `i11` dead-state porte mais n'arrive
+  pas : la destruction se BORNE par le recensement des images-cles, elle ne se date pas.
+  Identite du chassis : voie MPPWord32 du record de creation (`FUN_1410a5a74` est un des six
+  appelants directs du bloc MPP) ; default-state ti=40 NON porte = chemin critique de V1.
+- Corpus : PAS D'ALERTE — 951 films en cache, 18 Behemoth SF + 8 Launch Site SF, les 26
+  portent ti=40 ; 348/951 films en portent (BTB 2-4x plus denses). Temoins negatifs mesures a
+  zero (Streets x2, Bazaar, Aquarius SF, et Behemoth Tactical — temoin a carte constante).
+  Critere de qualification = records delta acceptes (>= 1000), pas les slots en image-cle
+  (Illusion : 7 slots mais 17 records — entites statiques). Team Slayer : 13 vies mediane
+  420 s contre 27-62 vies de 60-100 s en Super Fiesta — « moins de vehicules, non aleatoires »
+  confirme par la mesure.
+- Scout sons : les banques `_veh_` (15) et `_tur_` (8) sont NOMMEES EN CLAIR sur le disque du
+  jeu — pas besoin de la voie hachage des equipements. Chaine armes reutilisable telle quelle ;
+  2 preuves extraites bout en bout sans Go ni Python (format AKPK rejoue en PowerShell depuis
+  la doc de `pck.go`). Precision utilisateur du 31/08 : les tirs de TOURELLES sont DEJA tries
+  dans l'artefact « Tri des sons d'armes » du 16/08 — V3 repart de ces selections.
+- Scout sprites : les icones vehicules du kill feed existent deja (index 26-38) mais VUE DE
+  PROFIL ; voie retenue = rendu top-down maison depuis les `mode` (render_model) via le
+  rasterizer himap deja en prod (fonds de carte) ; teinte equipe deja en prod cote web
+  (`tintedIconCanvas`). Manquent : lecteur `vehi -> hlmt` et mode objet isole du rasterizer.
+- Artefact « Le Garage » publie (preuves ecoutables, 13 silhouettes teintables, catalogue V3),
+  mis a jour a chaque lot.
+
+**Arbitrage** : walker d'evenements (board/exit, occupation par siege) NON reimplemente — le
+code vit hors depot (chantier trame 30-31/08) ; V1/V2 n'en ont pas besoin ; repli mesurable =
+oracle geometrique rejoue sur positions justes. Options restantes : attendre l'atterrissage
+(retenue) ou demander l'export du walker (decision utilisateur).
+
+**Ecart au cadrage, assume** : les instruments V0 (2 fichiers `*_test.go` sous garde
+d'environnement, 444 + 198 lignes, 0 TODO) sont COMMITES avec le lot au lieu d'etre supprimes
+comme le § 7 du cadrage le proposait — V1.1 les reutilise ; leur sort se regle a la cloture de
+V1. `go vet` OK sur les deux paquets ; aucun code de production touche par ce lot.
+
+**Conclusion / prochaine etape** : lot V1a lance (V1.1 qualification corpus, V1.2 exposition
+`ScanFilmBipedPositionsForBand` avec gate de non-regression exact sur `000d5950`, V1.3 oracle
+du cap i2/i3, rejeu de l'oracle geometrique du 18/08). Puis V1b (Ghidra : portage
+`FUN_1410A5A74`, identite MPPWord32), V2 spawns/cooldowns, V3 sons, V4 sprites.
+
+## [2026-08-31] Vehicules lot V1a — positions par la grammaire bipede, cap i2 refute, conducteur par les trous — Complete
+
+**Contexte** : lot V1a du chantier vehicules (worktree LevelUp-wt-vehicules). Pilote un agent Opus,
+CR verifie sur pieces. Rapport : `.ai/V7.5/film_re/V1A_RAPPORT_2026-08-31.md`.
+
+**Decisions et resultats** :
+- V1.1 corpus : 46 films mesures, 41 retenus (min 2 637 records, seuil 1 000), les 5 temoins
+  negatifs a bande VIDE (Aquarius, Bazaar, Behemoth Tactical, Streets x2). Nom de carte pris de
+  `match_registry.map_name`. Le Behemoth non-SF qualifie aussi (13 films) : corpus de reference
+  extensible de 26 a 39.
+- V1.2 : `ScanFilmBipedPositionsForBand(dir, band, opt)` livree (offline_biped.go 402->467),
+  `ScanFilmBipedPositions` delegue. Non-regression BIT-POUR-BIT sur 000d5950 (empreinte FNV
+  identique avant/apres, 3 variantes). Suites replay+filmdec VERTES, killsource 59/59 intact.
+- V1.3 : le cap i2 (object-forward-and-up en precision-dynamique) est INDISCERNABLE du hasard
+  (mediane 40-137 deg, temoin permute = pareil) => REFUTE, non publie, aucune correction bricolee.
+  MAIS i1 (direction de velocite) s'accorde au deplacement a 1,7-2,1 deg, R 0,992-0,997 : la faute
+  est dans i2 SEUL, pas dans le curseur. Consequence : orientation d'un vehicule EN MOUVEMENT
+  disponible via i1 ; a l'arret, sans cap tant qu'i2 non perce.
+- V1a.4 : oracle geometrique du 18/08 rejoue sur les BONNES positions. Coincidence prolongee
+  faible (2-10 periodes/film) mais les TROUS du flux bipede s'ouvrent pres d'un vehicule 8 a 80x
+  plus souvent que le hasard (presence de fond 0,5-2,3 %). Modele « l'occupant attache cesse de
+  repliquer » soutenu ; bonne primitive = DEBUT DE TROU pres d'un vehicule, pas la coincidence.
+  BipedPosition n'a pas de generation => attribution designe un SLOT, pas une vie.
+
+**Repriorisation 2D (decision utilisateur du 31/08)** : le rejeu est en 2D vue de dessus, donc le
+haut/bas de forward-and-up ne sert a rien et l'altitude est mineure. i2 (orientation chassis a
+l'arret) PARQUE, faible valeur. La vraie cible « ou porte le regard » = i21
+(unit-desired-aiming-vector), NON teste sur ti=40 : c'est la visee, distincte de i2, et
+probablement la ou passe l'aim du canonnier quand l'occupant est embarque (son biped cesse de
+repliquer). Report inscrit au registre. i21 a mesurer au prochain lot film.
+
+**Incident de livraison (a ne pas repeter)** : le commit V0 `ec549ee9b` est parti avec la suite
+`replay` ROUGE — l'instrument V0 avait recopie la formule de distance 3D a six flottants, ce que
+`TestUneSeuleFormuleDeDistance3D` interdit. Cause : au commit V0 je n'avais lance que `go vet` +
+un seul test de grammaire, PAS `go test` du paquet. Corrige par V1a (passage par `dist3`). Lecon
+de la delivery-checklist enfreinte : lancer la SUITE du paquet, pas un test isole.
+
+**Conclusion / prochaine etape** : V1a compile + vet propres (verifies sur pieces, cache isole).
+Commit V1a pose sur base propre. V1b (identite du chassis) : ses gates ECHOUENT a la mesure (voir
+son entree a venir) => renvoye en RE. Prochaines etapes : identite V1b, puis i21, puis V2 spawns.
+
+## [2026-08-31] Vehicules lot V1b — l'identite du chassis est le mot MPP du record de creation — Complete
+
+**Contexte** : lot V1b (identite du chassis dans le film). Pilote un agent Opus, RE de
+`FUN_1410a5a74` par Ghidra en HTTP direct (pont MCP mort, curl sur 8089). Rapport RE :
+`.ai/V7.5/film_re/RE_DEFAULTSTATE_TI40_2026-08-31.md`. Instrument : `vehicle_creation_test.go`.
+
+**Piege evite (deux fois)** : le PREMIER CR de l'agent surestimait (« MPPWord32 debloquee et
+bit-exacte ») alors que ses propres gates ECHOUAIENT a la mesure — atterrissage 7 %, 450 valeurs
+pour 174 vies, et l'instrument reconnaissait n'importe quoi (temoin fantome 2057 > vraie bande
+526). Renvoye en RE avec ces chiffres. Lecon : verifier le CR SUR PIECES avant de le croire, meme
+quand il affirme « bit-exact ».
+
+**Decision technique principale** : l'identite du chassis est le mot `MPPWord32` du bloc
+object-multiplayer-properties, lu dans le record de CREATION (default-state `FUN_1410a5a74`),
+exactement comme le GlobalID `eqip` pour ti=37. La cause racine de l'echec initial etait
+Finding B : `equipCreationWalk` decodait i0 en grammaire objet-du-monde (porte 3 bits) alors que
+i0 de ti=40 est en precision-dynamique (porte 5 bits) — le cadre du record glissait, tout en aval
+etait faux. Correctif : `equipCreationWalk` recoit `posDecode`/`posBits` parametrables (ADDITIF,
+defaut = decodeWorldObjectPos, ti=37/ti=42 STRICTEMENT inchanges) ; `vehicle_creation.go` fournit
+`decodeBipedI0Pos` (porte 5 bits + rejet quanta satures) bati sur les primitives V1a. L'oracle
+d'atterrissage est DURCI par le nuage des vraies positions ti=40 (via
+`ScanFilmBipedPositionsForBand` de V1a) : un i0 n'est accepte que s'il coincide avec une position
+de vehicule mesuree.
+
+**Resultats observes (rejoues par le superviseur, cache isole)** : sur 0d76e8f1 fantome 3,2 %
+(seuil <5), temoins faux <=9,7 % (<10), V1.5 gates PASS (31 vies, 7 valeurs, 0 inconstante) ; sur
+fccc61cd fantome 0,0 %, temoins 0 %, gates PASS (11 vies, 5 valeurs). LE RESULTAT LE PLUS FORT :
+5 valeurs MPP sur 7 REAPPARAISSENT sur l'autre film (build/carte differents, empreinte de registre
+distincte) — une valeur qui survit au changement de build n'est pas un artefact de film, c'est un
+GlobalID de tag. Hypothese `vehi` SOUTENUE. Non-regression : ti=42 118/119 = 99,2 %, temoins
+0/119 ; suites filmdec+replay vertes.
+
+**Limites honnetes assumees** : taux de capture ~2/3 (31/47 vies, 11/21) — le tiers manquant bute
+sur la feuille 4 (quaternion config-dependant, `bVar14==1` deplace i0, record ecarte par
+l'oracle). L'identite est prouvee sur les vies capturees, pas exhaustive. `ti=40` reste HORS
+`defaultStateDeserByTI` (le chemin keyframe decode TOUS les records sans filtre, il ne tolererait
+pas la feuille 4 non figee) — c'est la voie CREATION+oracle qui est validee, pas le default-state
+complet. Le WARN « empreinte registre inconnue » vient du fingerprint global (reference figee),
+pas de l'instrument, qui lit l'archetype et le decoupage i0 DU film.
+
+**Conclusion / prochaine etape** : identite du chassis ETABLIE (mot MPP stable inter-build). Reste
+a TRADUIRE les 5-7 valeurs MPP en tags `vehi` via `himap.ModuleIndex` (gate 4 / voie C du cadrage)
+pour obtenir les noms lisibles (Warthog, Ghost...). Puis i21 (visee vehicule) et V2 (spawns, qui
+s'appuie sur la position de naissance du record de creation, desormais lisible).
+
+## [2026-08-31] Vehicules lot V4 — sprites vue de dessus rendus depuis les modeles 3D — Complete
+
+**Contexte** : lot V4 (le plus long), sprites vue de dessus teintables pour le rejeu 2D. Agent
+Opus, rapport `.ai/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md`. Cache Go DEDIE (gocache_v4),
+CC winlibs.
+
+**Decision technique principale** : rendu maison, cha\u00eene `vehi -> hlmt -> mode (render_model)
+-> triangles -> rasterizer top-down local -> PNG silhouette+alpha`. Seul maillon neuf = le
+resolveur du tag `vehi` ; le reste reutilise l'existant (`NewRenderModelAsset`, `Rendu` du
+paquet himap, deja en prod pour les fonds de carte). Axe HAUT = Z (repere moteur X=avant,
+Y=gauche, Z=haut), orientation canonique nez en haut (+X -> haut image, remap (x,y,z)->(-y,x,z)).
+Jalon 1 franchi ET regarde a l'oeil (superviseur) : Warthog top-down reconnaissable (chassis 4
+roues), et planche des 13 verifiee visuellement (warthog/mongoose/scorpion/wasp/falcon/ghost/
+banshee/wraith/chopper/phantom/pelican/skiff/shade tous reconnus).
+
+**Trois pieges resolus (non anticipes par le scout)** : (1) `color.RGBA` de Go est
+alpha-premultiplie -> blanc vire au gris ; corrige en `image.NRGBA`. (2) les tags `vehi` ne
+vivent que dans la variante `any`, les `mode` dans `pc` REPARTIS entre `pc/globals` et
+`pc/multiplayer+common` -> index complet ~16,7 Go > 12,6 libres, d'ou un RENDU EN DEUX PASSES
+complementaires (himodule charge par os.ReadFile complet). (3) faux positif du balayage d'octets
+(`hlmt 0x1f` = l'entier 31, `mode 0x00003a73` parasite) deraillait 15 vehicules -> filtre
+`minTagIDVehicule = 0x10000` + resolveur RECURSIF dans les hlmt composites (Ghost = hlmt parent
+-> 12 hlmt enfants).
+
+**Resultats observes** : 13 sprites livres dans `.ai/V7.5/film_re/sprites_v4/`, format
+teintable (blanc + alpha) compatible du pipeline web existant (`tintedIconCanvas`). Code :
+`internal/himap/vehicules.go` (RefModeleVehicule recursif + filtre, GroupeVehi, EntreesDuGroupe),
+`internal/himap/objet_isole.go` (RenduObjetIsole, SpriteObjetPNG), `cmd/vehicle-sprite/`
+(main/scan/render mode curate/classify). gofmt/build/vet propres, seuils tenus.
+
+**Reste** : desambiguer les variantes d'un meme chassis (Rockethog/Razorback partagent le mode
+Warthog ; Gungoose partage Mongoose) -> top-down identique, distinguer exige de composer
+l'armement au niveau `vehi` (hors lot). Bruit interne mineur (maillages d'etat detruit rendus
+par-dessus, invisibles au downscale). Deux passes obligees tant que himodule charge tout le
+module en RAM.
+
+**Conclusion / prochaine etape** : sprites LIVRES, envoyes a l'utilisateur (planche). A brancher
+au rejeu quand le calque vehicules existera (apres V2). Mise a jour de l'artefact « Le Garage »
+avec les sprites + les sons finaux de V3 en UNE passe (V3 reecrit le dossier sons au moment de
+ce commit, ne pas republier le catalogue sonore depuis un dossier en cours de modification).
+
+## [2026-08-31] Vehicules lot V3 — sons reconstruits (tir + moteur par la chaine Wwise), identite de banque corrigee — Complete (en attente d'ecoute)
+
+**Contexte** : lot V3 (sons des vehicules pilotables ; tourelles deja validees le 16/08). Agent
+Opus rejouant la RECETTE_SONS_ARMES. Rapport `.ai/V7.5/film_re/V3_RAPPORT_SONS_2026-08-31.md`,
+manifeste `sons_v3_reconstruits/manifeste_v3.json` (revision 3). WAV NON commites (37 Mo,
+transitoires, regenerables depuis les chaines du manifeste).
+
+**Deux corrections payees a l'ecoute de l'utilisateur** :
+1. Premiere version : le DEPLACEMENT etait choisi par HEURISTIQUE DE DUREE (les clips les plus
+   longs du pack) = l'erreur que la recette interdit. L'utilisateur : « aucun deplacement, ce ne
+   sont que des tirs isoles » (visible sur Banshee/Wraith sans tir apparie). Corrige : le moteur
+   est un EVENEMENT (conteneur Blend pilote par RTPC de vitesse, boucle continue), reconstruit
+   par la MEME chaine que le tir (event -> couches -> gains sommes), pas par la duree.
+2. En reconstruisant proprement, decouverte d'une erreur d'IDENTITE DE BANQUE plus grave :
+   l'appariement pck->banque par INTERSECTION DE WEMS produisait des FAUX. Tranche par FNV-1
+   (mode banks-noms, la voie autoritaire). Resultat : le « moteur Wraith » etait le son du
+   DRAPEAU CTF (sb_004_mod_mp_ctf, prouve). Faux RETIRE — mieux vaut rien qu'un faux.
+
+**Resultats** : 4 banques `_veh_` CONFIRMEES par FNV-1 -> moteur + tir fiables : Wasp (moteur
+5baca8ee, boucle continue RTPC, confiance haute), Scorpion (0134da4e), Gungoose (e3082ea3),
+Warthog roquettes (28338148). Falcon : tir = mitrailleuse detachable partagee (deja validee),
+PAS de banque chassis -> moteur non reconstruit. Ghost/Banshee/Wraith/Chopper : banque chassis
+NON identifiee (matches anonymes non confirmes ; Wraith = faux prouve) -> moteur ET tir en
+attente. TIRS RECONFIRMES sur pieces (Wasp event e22a0d32 = 3 couches RandomSequence, gains
++38/+33/+31 dB sommes ; coups_lot.py applique 10^(g/20) puis somme+normalise ; cadences ->
+intervalles rafale justes). Assemblage correct.
+
+**Cause racine du perimetre reduit** : seules 4 banques `_veh_` ont un nom FNV-1 ; les autres
+vehicules Covenant/Bannis demandent de retrouver leur vraie banque parmi 712 anonymes/partagees/
+codename (leurs wems ne sont references dans le corps d'aucune banque) -> follow-up.
+
+**Artefact « Le Garage » a jour** (meme URL) : page d'ecoute Web Audio (moteur + tir des 4
+confirmes, notes honnetes pour les autres) + les 13 sprites vue de dessus de V4. En attente du
+VOTE de l'utilisateur (rafale 1re/3e personne ; moteur = bourdon soutenu).
+
+**Conclusion / prochaine etape** : apres ecoute, retenir moteur + tir par vehicule, egaliser
+-16 LUFS, livrer dans static/sounds/halo_infinite/ (join par cle canonique ; vehicules HORS
+registre non livrables tant que le registre ne les nomme pas). Follow-up : retrouver les
+banques Ghost/Banshee/Wraith/Chopper ; armes secondaires (coaxial Scorpion, missiles Wasp,
+2 armes Falcon) ; rotor Falcon.
+
+## [2026-08-31] Vehicules — iteration « faire juste » : sprites au trait + vrai son de moteur (chaine vehi) — Complete
+
+**Sprites v2 (lot V4, retour utilisateur « presque parfait »)** : ajout des TRAITS NOIRS de
+volume. Passe de detection d'aretes dans `himap/objet_isole.go` (`aretesObjet` + `despeckle`) sur
+la profondeur et les normales du z-buffer : contour + rupture de profondeur (occlusion roue/cockpit
+/pale) + rupture de normale (capot/panneau/pale) -> trait noir sur le remplissage blanc, alpha
+inchange. Seuils regardes a l'oeil : profondeur 7 cellules, angle 30 deg. Verifie a la planche
+(roues Warthog/Mongoose, rotors Wasp/Falcon, chenilles Scorpion, canons Shade). NOTE TEINTE
+(follow-up web) : avec des traits noirs la teinte d'equipe doit passer en MULTIPLY (blanc->couleur,
+noir->noir) — `tintedIconCanvas` fait un source-in aujourd'hui. Tourelles : seule `tourelle_montee`
+ajoutee ; les tourelles UNSC/Bannis distinctes N'EXISTENT PAS comme tags `vehi`/`bloc`/`mach`
+separes (scan exhaustif = 0) — ce sont des variantes d'armement. Variantes Warthog/Mongoose NON
+composees : l'armement est une piece jointe RUNTIME (hors du balayage d'octets), demande de parser
+la structure d'attachement du `vehi` (Ghidra) — piste documentee.
+
+**Son de deplacement (lot V3, l'utilisateur ne reconnaissait AUCUN moteur)** : l'hypothese lsnd
+etait la BONNE direction — le tag `vehi` REFERENCE ses propres sons de mouvement, dont l'audio vit
+dans des banques ANONYMES PARTAGEES (jamais dans le pck `_veh_`, qui ne porte que tir/impacts).
+Mode lecture-seule `vehi-sons` ajoute (`cmd/weapon-sounds/vehicules_sons.go`) suivant
+`vehi -> lsnd/snd!/effe -> sbnk`. Architecture : une COUCHE PARTAGEE generique (lsnd 06ba1096,
+classe de mixage, pas de switch par vehicule) + des COUCHES SPECIFIQUES snd! pour Ghost (f2b547a1),
+Wasp (09e2e7ee), et un groupe de chassis 033e41df. RECONSTRUITS par la chaine (event->couches->
+wems, gains sommes) : Ghost 3 segments, Wasp 2, Chassis_033e41df 4. Les faux moteurs structurels
+des rev precedentes RETIRES. LIMITE HONNETE : Scorpion/Gungoose/Warthog/Falcon n'ont AUCUN snd! de
+mouvement dedie dans leur `vehi` (seulement la couche partagee generique) -> leur moteur specifique
+n'est PAS isolable par les tags ; il faut une session GHIDRA (POST de l'evenement Wwise de
+deplacement + RTPC de vitesse / switch de type-vehicule). 033e41df non nomme -> a reconnaitre a
+l'oreille (Chopper/Banshee/Wraith probable).
+
+**Conclusion / prochaine etape** : sprites au trait + moteurs Ghost/Wasp/033e41df envoyes a
+l'utilisateur pour validation. En attente : (1) l'oreille sur Ghost/Wasp (valide la methode) ;
+(2) decision sur la session GHIDRA pour les moteurs switches des vehicules au sol ; (3) nommer
+033e41df. Artefact « Le Garage » a mettre a jour (les deux dossiers sont stables). WAV non commites.
+
+## [2026-09-01] Vehicules — deux percees : moteur PAR VEHICULE (V3B) + variantes REELLES (V4) — Complete
+
+**MOTEUR PAR VEHICULE (V3B, agent frais adverse) — la conclusion « generique seule » de rev7
+REFUTEE.** L'utilisateur avait raison sur pieces (physique) : un RTPC de vitesse ne change que
+hauteur/volume, il ne peut pas transformer un moteur de jeep en souffle d'antigrav — donc des
+samples DISTINCTS par vehicule DOIVENT exister. Ils existent, dans la banque PROPRE a chaque
+vehicule (pas le lit commun `e793c135` ou rev7 cherchait le switch). Preuve 3 axes : (1) structure
+`eqip-arbre` par banque — Ghost banque `01862ab3` event `47361baf` (3 couches), Scorpion `05a51e0a`
+event `951f76c0` avec SWITCH DE REGIME `196e9bed` (4 etats, 6 wems/etat), Warthog `a52af042` event
+`68b1a949` avec switch `3c24a4f9` (meme groupe) — le switch existe, le jeu change de SAMPLES par
+bande de regime, pas que le pitch ; (2) contenu des pck franchement different ; (3) SPECTRE
+conforme a la verite terrain — Ghost souffle+thrum (1796/751 Hz), Scorpion grondement+cliquetis de
+chenilles (4687 Hz, striations d'impacts de maillons), Warthog combustion (1472-1698 Hz). Le lit
+commun `06ba1096`->`e793c135` est pose SOUS chaque moteur, d'ou le « aucune difference » de rev7.
+Livre : Ghost/Scorpion/Warthog corps+boucle regime median 8s+amorce+queue (+ allumage Scorpion
+authentique `0134da4e`). Les 6 autres ont deja leur event moteur identifie (`lot2_moteur.json`),
+meme recette. Rapport `V3B_MOTEUR_PARVEHICULE_2026-09-01.md`, manifeste rev8. LECON : une
+conclusion qui contredit une observation robuste de l'utilisateur est fausse — regard neuf adverse.
+
+**VARIANTES REELLES (V4, marcheur de permutations) — la voie Ghidra etait une impasse, la vraie
+voie est le render_model.** Les armes de variantes (roquettes/gauss/chaingun) n'ont AUCUN modele
+3D (que du comportement de tir) ; le binaire est strippe (pas de parse d'attachement). Mais les
+tourelles sont des PERMUTATIONS d'une region du render_model partage. Nouveau walker
+`himap.ModeRegions` (`regions.go`) : `mode` -> bloc regions (champ racine +40, 24 o/region = Name
+StringId + TagBlock permutations) -> permutation (12 o : Name, SectionIndex u16, SectionCount u16).
+Une variante = un nom de permutation partage entre regions ; SectionIndex < 0 = herite la base
+(fix crucial : sans lui le Razorback perdait ses roues). Noms resolus par murmur3
+(`mapvar.LabelHash`) : `default` et `unarmed`(=cargo/Razorback) confirmes ; 3 StringId Warthog non
+resolus mappes par FORME de tourelle (silhouettes reelles, seul le nom exact manque). Resultat
+regarde a l'oeil : Warthog/Rockethog/Gauss/Razorback nettement distincts a l'arriere, Gungoose vs
+Mongoose au mount avant — VRAIE geometrie, vrais emplacements, aucune composition 2D. Code :
+`internal/himap/regions.go` + `cmd/vehicle-sprite/variantes.go` + `objet_isole.go`
+(`SectionsChoisies`/cadre). `vehicules.go` non touche (coordination inter-agents).
+
+**Conclusion / prochaine etape** : moteurs Ghost/Scorpion/Warthog + variantes envoyes a
+l'utilisateur pour validation ; WAV non commites (transitoires). Si les 3 moteurs conviennent :
+derouler les 6 autres (event deja identifie). Puis MAJ artefact (moteurs par vehicule + variantes),
+egalisation -16 LUFS, livraison static/. Restes : dictionnaire StringId pour nommer les 3 variantes
+Warthog ; amorce/queue generiques (enveloppes) ; boost antigrav ; noms de chassis (MPP) ; i21 ; V2.
+
+## [2026-09-01] Vehicules — boucle de deplacement CORRIGEE : etat EN CONDUITE + couches superposees (V3C) — Complete
+
+**Le probleme (retour utilisateur).** « Le seul que je reconnais c'est l'ALLUMAGE du Scorpion ;
+y a pas les CHENILLES ni le DIESEL. » Diagnostic sur pieces (aucun rechargement du module 7,24 Go :
+tout etait dans `<scratch>/v3b/arbre_veh.json` + wems des pck) : (1) l'event moteur
+`951f76c0`/`68b1a949` porte un switch de regime a **5 etats** (defaut + 4), et rev8 rendait l'etat
+par DEFAUT `356702912` = le RALENTI (mesure le plus faible et le plus spiky) ; (2) pire, le Scorpion
+rev8 n'utilisait meme PAS l'event moteur — il rendait `d5c7daeb`+`13beda14` (chenilles seules, sans
+corps diesel). D'ou « pas de diesel ».
+
+**Methode : le spectre tranche l'etat.** ffmpeg `astats` par etat/couche : RMS global, RMS bas
+(<400 Hz = diesel), RMS 3-6 kHz (= chenilles), crest (bas=continu, haut=chugs). Les 5 etats forment
+une **echelle monotone** : plus le regime monte, plus c'est FORT et moins c'est spiky (crest baisse)
+— comportement moteur. EN CONDUITE = `3707760930` (Scorpion : -17,7 dB, crest 7,7, boucle 6,2 s) ;
+Warthog : seul `163696720` se detache (+3 dB, crest 7,6). Le moteur est un pur grave (3-6 kHz a
+-40 dB) ; les chenilles `d5c7daeb` sont un event DISTINCT (brillant -19 dB a 3-6 kHz, centroide
+4687 Hz). Groupe de switch `2275666646` = hachages FNV-1 non resolus (noms courants non matches).
+
+**Livre (ecrase les 4 fichiers rev8 faux).** Scorpion = diesel(`3707760930`/`85078605`) +
+chenilles(`d5c7daeb`/`1033065922`) + bed, allumage `0134da4e` conserve. Warthog = corps RPM
+(`68b1a949`/`163696720`) + combustion (`38b83eb8` L2/L3/L1) + bed. Ghost = souffle `47361baf` +
+BOOST `2e7f2aa2` (event le plus fort de la banque, gain chemin +20 dB). Mixes verifies : bas
+dominant (diesel = fondation), le 3-6 kHz remonte de -35 a -27,7 dB (chenilles presentes),
+crest ~4,3 (continu). Fichiers `moteur_conduite_boucle8s.wav` (+ couches isolees `diesel.wav`,
+`chenilles.wav`, `boost.wav`) dans `sons_v3_reconstruits/<veh>/deplacement/`. Manifeste rev9,
+rapport `V3C_MOTEUR_CONDUITE_2026-09-01.md`. WAV non commites (transitoires).
+
+**Limites honnetes.** Ghost boost = preuve ACOUSTIQUE (le plus fort, +20 dB), non confirme en jeu.
+Warthog : aucune couche de roues distincte (le -31 dB du haut porte deja le mecanique) — rien ne
+manque vraiment. Etat Scorpion `3707760930` defendable mais non unique (`163696720` = alternative
+regime plein). **Prochaine etape** : validation utilisateur a l'oreille ; si OK, derouler les 6
+autres vehicules (event moteur deja identifie), egalisation, livraison. LECON : quand une boucle
+sonne maigre, verifier QUEL etat de switch est rendu — le defaut est souvent le ralenti, pas la
+conduite.
+
+
+## [2026-09-01] Vehicules — planche-contact des armes arriere Warthog (enumeration exhaustive, verdict weap) — Complete
+
+**Contexte.** Trois rejets de suite des sprites Warthog armes (chaingun/roquettes/gauss) ; seul le
+Razorback est valide. Consigne : ne pas deviner, enumerer TOUTES les geometries candidates d'arme
+arriere (weap, enfants vehi, permutations) et livrer une planche ou l'utilisateur pointe.
+
+**Decision technique.** Driver jetable `cmd/vs-measure armes` (non commite, aucun code partage
+touche) : scan des 192 `weap` avec le resolveur corrige + refs brutes par groupe, scan des 67 `vehi`,
+rendu de CHAQUE (region, permutation) du mode chassis et de chaque enfant sur un canevas fixe commun
+(cadre 5 m, 8 mm/px), mesures bbox/centroide, squelettes, chaine sonore FNV-1, brute-force murmur3
+des noms de noeuds. Planche composee en PowerShell/System.Drawing (27 candidats + reference).
+
+**Resultats.** (1) `weap` : 128 modes resolus au total, TOUS armes tenues (dY <= 0,30 m) ; les 9
+weap de la famille Warthog n'ont AUCUNE ref hlmt/mode au balayage brut -> pas de geometrie de
+tourelle sur les weap (le lot V4 avait raison, pour une autre raison que le plancher). (2) MAIS
+croisement decisif : l'enfant `vehi 0xbcfb852f` (mode `0xbe74e831`) reference le `weap 0xc7d50912`
+= ROCKETHOG du manifeste sons -> pod de roquettes IDENTIFIE. (3) Les enfants ne sont PAS co-reperes
+(base Z=0, pivot `0x99d45ed9` a (+0,27,0,+0,40) partage par 4 enfants) : il faut les translater au
+noeud d'attache du chassis (candidat par position n[006] `0xe1a390ba` (+0,765,0,+0,541), dont le Z
+egale le sommet des socles region[17]) ; la conclusion « translation nulle » du rapport ASSEMBLAGE
+ne tenait que sur le Scorpion (pivot a l'origine). (4) Les 3 sprites rejetes = groupes de perms
+(socles 0,2-0,3 m + garde-boue + plaques) : jamais une arme. (5) `mode` par nom ASCII : 0/2250.
+
+**Conclusion / prochaine etape.** Livre `PLANCHE_CONTACT_ARMES_WARTHOG_2026-09-01.png` +
+`CONTACT_ARMES_WARTHOG_2026-09-01.md`. Avis (non impose) : roquettes = n.13 `0xbe74e831` (prouve),
+chaingun = n.14 `0x6b17fdb5` (forme), gauss = n.15 `0xc0803caa` (forme), tous en pose T=noeud. Les
+sprites v4 ne sont PAS reecrits : attendre que l'utilisateur pointe (numero + colonne), puis
+regenerer (n.13/15/16 in-module avec le chassis en pc:globals ; n.14/17 via canevas 2D).
+
+## [2026-09-04] Vehicules — integration des sons moteurs dans le rejeu 2D (banque SFX validee) — Complete
+
+**Contexte.** Banque moteurs livree et validee par l'utilisateur (`Downloads/SFX_vehicules/out`,
+31 clips enter/loop/exit + boosts + idle, contrat HANDOFF : boucles gapless, jonctions crossfade
+150 ms puissance constante, fins gravees). Mandat : integrer au rejeu (temps reel + export),
+detecter les boosts, moteurs 15 % sous le niveau des autres sons. wraith_boost refute par
+l'utilisateur (2026-09-04), boost banshee absent de la banque.
+
+**Decision technique.** Modele de lecture NOUVEAU, separe du lecteur d'evenements one-shot :
+plan pur `vehicleEngineSound.ts` (union des rides fusionnes < 2 s, table famille->stems, decor
+silencieux, scorpion_idle avec hysteresis 1 s), lecture temps reel `vehicleEnginePlayer.ts`
+(loop=true, crossfades sin/cos 150 ms, pause = rampe 20 ms anti-clic, seek mi-episode = loop
+direct, vitesse de lecture != 1 sans pitch), export hors-ligne `vehicleEngineMix.ts` (memes
+bornes/fondus/bus). Bus moteur `VEHICLE_ENGINE_BUS_GAIN = 0.85` (decision utilisateur). 28 WAV
+copies sous `static/sounds/halo_infinite/vehicle_*` ; garde-rail assets etendu (categorie moteur,
+bidirectionnel, format, interdiction des boosts livres).
+
+**Resultats.** Gates web verts (typecheck 0, lint 0 avec warnings deps non bloquants, vitest 0 :
+5754 passed). BOOST NON CABLE, mesure et non oubli : gate ecrit avant mesure (vitesse soutenue
+> k x croisiere, temoin mongoose/warthog = zero detection exigee) ; k=1,3/N=15 -> le temoin
+detecte (faux positifs) ; k=1,5 -> temoin propre mais le seul ghost occupe du corpus ne detecte
+rien (croisiere 8,72, p90 9,10 : l'echantillonnage 10 Hz lisse le boost). Detection par vitesse
+NON FIABLE sur ces donnees ; clips boost non copies (asset mort sinon). Condition de reprise
+ecrite en tete de module : mesure ne passant pas par la vitesse, ou echantillonnage plus fin.
+Constat annexe : les tirs vehicules/tourelles ne sont PAS cables dans le rejeu (aucun stem
+vehicule dans static/sounds avant ce lot) — le cablage attend l'ecoute utilisateur des 4 armes
+Covenant (artefact ca9d05dc).
+
+**Conclusion / prochaine etape.** Rien de commite (feu vert utilisateur attendu). Restent :
+ecoute des 4 tirs Covenant puis lot de cablage des tirs ; verif Theater des 7 destructions ;
+recapture boost Banshee (4-5 s tenu) ; SCORPION_IDLE_SPEED=0,5 a recaler a la premiere ecoute ;
+push de la branche + CI (jamais executee sur ce chantier).
+
+## [2026-09-05] Vehicules — cablage des sons de tir des vehicules dans le rejeu 2D — Complete
+
+**Contexte.** Verdicts d'ecoute utilisateur du 2026-09-04 (artefact cac88f12, votes lus en base) :
+Ghost, Banshee M2, Wraith, Chopper VALIDES ; Banshee M1 A REFAIRE (cadence). Rafale M1 remontee en
+v2 a la cadence du tag (240 cpm, source V3F ; l'ancienne etait au double par un x2 canons jumeles
+suppose) — re-ecoute utilisateur en attente sur le meme artefact.
+
+**Decision technique.** `vehicleShotSound.ts` : table weap-tag -> stems via `vehicleWeapTag()`
+exporte de `vehicleWeaponMounts.ts` (zero copie du littéral). 9 armes cablees (4 validees du jour
++ 5 anterieures), Banshee M1 exclue avec commentaire, missiles Wasp muets. Repli dans
+`shotSoundStem` : armes de joueur d'abord, puis stems vehicule, sinon silence. Variantes 2 prises
+par arme fusionnees dans SOUND_VARIANTS (tirage par coup existant). La cadence des rafales vient
+des evenements de tir reels du film — pas de rafale pre-montee cote rejeu. 18 WAV
+`vehicle_shot_*` (1,2 s max, entiers si plus courts), garde-rail etendu (6e garde-rail :
+variantes completes, format, interdiction banshee_m1).
+
+**Resultats.** Gates verts (garde-rail 22/22, typecheck 0, lint 0, vitest 0 : 5757 passes).
+PalmaresRelationsPage : FLAKE prouve (2 runs seuls exit 0, 14/14) — l'echec du run interrompu
+etait un timeout d'environnement. Reserve documentee : le tag Warthog c7d50912 ne departage pas
+LAAG/Gauss/roquettes (un tir LAAG sonne roquette pour l'instant).
+
+**Conclusion / prochaine etape.** Commit unique moteurs+tirs (les deux lots partagent le
+garde-rail d'assets — un decoupage en deux commits laisserait le premier rouge). Restent :
+verdict utilisateur rafale Banshee M1 v2 ; departager le tag Warthog ; missiles Wasp (methode
+V3F) ; push branche + CI.
+
+## [2026-09-05] Vehicules — Banshee M1 cable + sons de destruction sur le signal tEnd — Complete
+
+**Contexte.** Verdicts utilisateur du jour : Banshee M1 valide avec la rafale D'ORIGINE (la v2
+cadence-du-tag 240 cpm est abandonnee — essai documente V3F_BANSHEE_M1_CADENCE_2026-09-04.md) ;
+les 6 jeux de sons de destruction sont valides a l'ecoute (artefact cac88f12).
+
+**Decision technique.** Banshee M1 : exclusion levee dans vehicleShotSound.ts (weap 0000aa68),
+2 stems variantes, garde-rail inverse (le test « muette » devient « sonne »). Destructions :
+module vehicleDestructionSound.ts, evenement dans buildSoundTimeline sur le MEME predicat que
+l'effet visuel (end === "destroyed" ET tEnd — vehicleDestructionFrame), bruitage sfx normal,
+decor exclu. 20 WAV dedupliques par jeu (md5 verrouille par test : wasp==warthog,
+wraith==banshee ; mongoose = banque Gungoose), 2,58-5,36 s, livres entiers. INERTE aujourd'hui,
+preuve : le Go ne publie que VehicleEndUnknown (document_vehicles.go) — image et son
+s'allumeront ensemble quand les verifications Theater debloqueront la publication.
+
+**Resultats.** typecheck 0, lint 0 ; suite complete : 1 seul echec PalmaresRelationsPage =
+flake de charge jsdom prouve (relance seul : 0, 14/14 ; fichiers du lot cibles : 0, 126/126).
+CI = juge d'autorite au push.
+
+**Conclusion / prochaine etape.** Commit + PREMIER PUSH du chantier (CI jamais executee),
+verdict CI au niveau job a suivre. Restent : verifications Theater (7 candidates), boost
+(condition de reprise ecrite), missiles Wasp, tag Warthog a departager, recapture boost Banshee.
+
+## [2026-09-05] Vehicules — premiere CI du chantier : rouges statues et repares — Complete
+
+**Contexte.** Premier push du chantier (branche CI `feat/v75-vehicules-sons`, `claude/**` ne
+declenche pas ci.yml). Run 33962905810 : 5 jobs verts (frontend, OpenAPI lint, contract test,
+lease ADR 0013, gitleaks, deploy pre-check), 3 rouges.
+
+**Decision technique.** (1) `TestReplayDocumentFieldCountIsFrozen` 46 vs 44 — point ENREGISTRE
+du handoff « a statuer avant merge » : gel porte a 46 avec l entree de chronique 44 -> 46 datee
+(champs `vehicles` + `vehicleLabels`, schemas 29-31 ; le contrat etait deja regenere, les deux
+cotes du test concordent). (2) `TestNoRawKillScopeLiteral` : faux positif sur la sous-commande
+`"scan"` de `cmd/vehicle-sprite` — le mot est une VALEUR DE PORTEE film (ratchet J4R-3) ;
+correction A LA SOURCE (sous-commande renommee `inventaire`), garde-rail NI assoupli NI
+allowliste. (3) `TestNoAdHocRepoRootLadderInTests` : `vehicle_families_test.go` passe a
+`testutil.RepoRoot()` + segments. (4) golangci : constantes de famille (`familleWarthog`...,
+goconst 12 occurrences) partagees par `vehicle_families.go` et `vehicle_tracks.go`, prealloc sur
+`vehicle_rides_events.go`.
+
+**Resultats.** `go test contracttest + archlint + analysis/replay` : exit 0.
+`golangci-lint run ./internal/analysis/replay/... ./cmd/vehicle-sprite/...` : **0 issues**.
+Reste hors perimetre : la dette lint `himap`/`hinavmesh`/`mapfond-cadrage` (gocyclo, goconst,
+staticcheck) — AUCUN de ces fichiers n est dans le diff du chantier (verifie par
+`git diff merge-base..HEAD`) ; elle vient de la base de depart. `feat/v75` a avance depuis et
+porte sa propre dette lint (filmdec), pas celle-ci : notre branche est simplement en retard.
+
+**Conclusion / prochaine etape.** Push des correctifs et nouvelle CI. Si le lint reste le seul
+job rouge et uniquement sur l heritage : decision utilisateur — integrer `origin/feat/v75` dans
+la branche (recupere les corrections himap) ou traiter la dette ici.

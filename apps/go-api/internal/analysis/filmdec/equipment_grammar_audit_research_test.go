@@ -44,7 +44,6 @@ package filmdec
 
 import (
 	"os"
-	"path/filepath"
 	"sort"
 	"testing"
 )
@@ -90,7 +89,8 @@ func TestAuditGrammaireEquipementParLeRegistre(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", egaFilmEnv)
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, "chunk_00.bin"))
+	// ReadFilmChunk DECOMPRESSE : ParseRegistryChunk ne le fait plus (lot 1).
+	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("chunk_00 illisible : %v", err)
 	}
@@ -164,7 +164,8 @@ func TestAuditRegistreComposantsEquipement(t *testing.T) {
 	if dir == "" {
 		t.Skipf("%s absent : instrument de mesure saute", egaFilmEnv)
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, "chunk_00.bin"))
+	// ReadFilmChunk DECOMPRESSE : ParseRegistryChunk ne le fait plus (lot 1).
+	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
 		t.Fatalf("chunk_00 illisible : %v", err)
 	}

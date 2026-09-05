@@ -219,7 +219,7 @@ func r9Ti37OneFilm(t *testing.T, dir string) {
 		t.Logf("rangs de capacite illisibles : %v", err)
 	}
 	var st r9IdentStats
-	band := worldObjectSlotBand(dir, CountFilmChunks(dir), EquipmentTypeIndex)
+	band := worldObjectSlotBandDir(dir, CountFilmChunks(dir), EquipmentTypeIndex)
 	owners := r9CollectOwners(t, dir, band, &st)
 	ident := r9Identify(owners, ranks, lives)
 	pl, _, err := ScanFilmEquipmentPlacements(dir, &wr)

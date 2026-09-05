@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/domain/title"
@@ -177,21 +178,24 @@ func (f p2aFilm) p2aTeams() map[string]int {
 	return out
 }
 
-// p2aSource ouvre la source disque canonique du film (`filmcache`) — jamais une implementation
-// locale de `FilmSource` (le garde-rail `filmcache_guard_test.go` l'interdit, et il a raison).
-func p2aSource(t *testing.T, dir string) *filmcache.Source {
+// p2aBobine charge le FILM du repertoire de chunks par la porte canonique du cache
+// (`filmcache`) — jamais une disposition reconstituee sur place. C'est lui que prennent les
+// points d'entree d'`objectiveevents` depuis l'item 1.5 : une decompression, pas une par
+// balayage. Il remplace `p2aSource`, qui n'ouvrait que le manifeste et n'a plus d'appelant.
+func p2aBobine(t *testing.T, dir string) *filmsource.Film {
 	t.Helper()
-	src, ok, err := filmcache.OpenChunkDir(dir)
+	film, ok, err := filmcache.LoadFilmDir(dir)
 	if err != nil || !ok {
-		t.Fatalf("manifeste de film illisible (%s) : ok=%v err=%v", dir, ok, err)
+		t.Fatalf("film illisible (%s) : ok=%v err=%v", dir, ok, err)
 	}
-	return src
+	return film
 }
 
-// p2aStartMS rend l'instant de depart de chaque chunk, sur l'horloge du manifeste.
-func p2aStartMS(src *filmcache.Source) map[int]int {
+// p2aStartMS rend l'instant de depart de chaque chunk, sur l'horloge du manifeste — que le
+// film charge porte deja (`Meta()`), sans rouvrir le manifeste.
+func p2aStartMS(film *filmsource.Film) map[int]int {
 	out := map[int]int{}
-	for _, m := range src.Chunks() {
+	for _, m := range film.Meta() {
 		out[m.Index] = m.StartMS
 	}
 	return out
@@ -321,12 +325,12 @@ var p2aZoneStats = map[string]bool{
 }
 
 // p2aCaptures rend les captures et securisations de zone, identifiees par xuid.
-func p2aCaptures(src objectiveevents.FilmSource, f p2aFilm) []objectiveevents.IdentifiedEvent {
+func p2aCaptures(film *filmsource.Film, f p2aFilm) []objectiveevents.IdentifiedEvent {
 	if f.ObjType != objectiveevents.ObjectiveTypeZone {
 		return nil // KOTH, Oddball, Slayer : aucun emplacement nomme (cf. named.go)
 	}
-	named := objectiveevents.NamedEvents(src, f.ObjType)
-	identity := objectiveevents.SlotIdentity(src, f.p2aLines())
+	named := objectiveevents.NamedEvents(film, f.ObjType)
+	identity := objectiveevents.SlotIdentity(film, f.p2aLines())
 	out := make([]objectiveevents.IdentifiedEvent, 0, len(named))
 	for _, e := range objectiveevents.IdentifyNamedEvents(named, identity) {
 		if p2aZoneStats[e.Stat] {
