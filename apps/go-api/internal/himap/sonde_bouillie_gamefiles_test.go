@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE BOUILLIE (2026-08-13, INVESTIGATION_BOUILLIE_FORGE) — instrument sous garde,

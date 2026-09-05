@@ -91,6 +91,23 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// balayage. A partir d'ici, chaque `opt.observe` ferme le balayage qu'il annonce
 	// (cf. observe.go).
 	opt.clock = &stepClock{last: time.Now()}
+	// TÉLÉPORTATIONS DU TRANSLOCATEUR : lues AVANT les positions, parce qu'elles servent
+	// deux fois — le calque `translocations` du document, et l'EXEMPTION du filtre de
+	// vitesse (décision D2) : une arrivée de téléportation part à 193-1540 m/s, le filtre à
+	// 100 m/s la rejetait à tort (R3 : 51/51 rejets mesurés, tous à ±200 ms d'un événement
+	// 117 du même slot). Sur un film sans tête 117, la liste est vide et le filtre est
+	// bit à bit identique à l'actuel — invariance prouvée par test.
+	//
+	// L'ENTRÉE DE CATALOGUE Y DESCEND parce que la CHARGE de l'événement porte les deux
+	// positions du va-et-vient, quantifiées aux bornes de la carte (R6 §1, validé 18/18) :
+	// sans elle le scanner rendrait des quanta invérifiables, donc rien. Elle est garantie
+	// non nulle ici (refus en tête de fonction).
+	opt.Translocations = filmdec.ScanTranslocatorTeleports(film, opt.MapQuant)
+	scan.TeleportExemptions = filmdec.TeleportExemptionsOf(opt.Translocations)
+	if len(opt.Translocations) > 0 {
+		slog.Info("translocateur : teleportations lues", "evenements", len(opt.Translocations))
+	}
+	opt.observe("translocations", opt.Translocations)
 	positions, err := filmdec.ScanBipedPositions(film, scan)
 	if err != nil {
 		return ReplayDocument{}, err
@@ -249,6 +266,40 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	opt.GrappleReads = grappleReads
 	opt.observe("grappleReads", grappleReads)
 	opt.observe("grappleReads.stats", gStats)
+	// IMPULSIONS DE CAPACITE : le corps tag==1 des MEMES composants (i57 et son jumeau non
+	// predit i59), lu dans les paquets DELTA sur la MEME horloge (cf.
+	// filmdec/ability_impulses.go). C'est le canal d'usage du PROPULSEUR, mesure au lot R8 ;
+	// l'identite, elle, vient d'i48 (deja balaye ci-dessus). Absence non fatale — le rejeu
+	// sort sans impulsions, jamais avec des impulsions devinees.
+	impulses, iStats, err := filmdec.ScanAbilityImpulses(fc)
+	if err != nil {
+		slog.Warn("impulsions de capacite illisibles — rejeu sans impulsions", "err", err, "match_id", matchID)
+		impulses, iStats = nil, filmdec.AbilityImpulseStats{}
+	} else {
+		slog.Info("capacites : lectures de tag d i57/i59",
+			"recordsDelta", iStats.Records, "masqueAvecI57", iStats.WithI57,
+			"masqueAvecI59", iStats.WithI59, "lues", iStats.Read, "illisibles", iStats.Unread,
+			"tag1", iStats.Tag1, "composantAbsent", iStats.Absent)
+	}
+	opt.AbilityImpulses, opt.AbilityImpulseStats = impulses, iStats
+	opt.observe("abilityImpulses", impulses)
+	// CHARGES D'EQUIPEMENT RESTANTES : les emplacements ARMES du composant i56, lus dans les
+	// paquets DELTA sur la MEME horloge (cf. filmdec/ability_charges.go). C'est le canal des
+	// charges mesure au lot R11 ; l'identite, elle, vient d'i48 (deja balaye ci-dessus).
+	// Absence non fatale — le rejeu sort sans releve de charges, jamais avec des charges
+	// devinees.
+	charges, chStats, err := filmdec.ScanAbilityCharges(fc)
+	if err != nil {
+		slog.Warn("charges d equipement illisibles — rejeu sans releve de charges", "err", err, "match_id", matchID)
+		charges, chStats = nil, filmdec.AbilityChargeStats{}
+	} else {
+		slog.Info("capacites : lectures d i56",
+			"recordsDelta", chStats.Records, "masqueAvecI56", chStats.WithI56,
+			"lues", chStats.Read, "illisibles", chStats.Unread,
+			"emplacementsArmes", chStats.Armed, "composantAbsent", chStats.Absent)
+	}
+	opt.AbilityCharges, opt.AbilityChargeStats = charges, chStats
+	opt.observe("abilityCharges", charges)
 	// POSES d'equipement : records de CREATION de l'archetype 37, sur la MEME horloge
 	// (cf. equipment_placements.go — decodage, journal et refus y vivent ensemble).
 	// LA LUNETTE (schema 24) : les bascules vivent dans la liste d'evenements en tete de

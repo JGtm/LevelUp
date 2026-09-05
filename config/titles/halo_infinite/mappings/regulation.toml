@@ -30,7 +30,7 @@
 
 [meta]
 title_slug     = "halo_infinite"
-schema_version = 4
+schema_version = 5
 
 [regulation_seconds]
 "CTF:Arena"                   = 720
@@ -207,3 +207,86 @@ schema_version = 4
 "Arena:Oddball"  = true
 "Ranked:Oddball" = true
 "Oddball:Arena"  = true
+
+# ---------------------------------------------------------------------------------------
+# COMMENT LE SCORE SE MONTRE DANS LE TEMPS (schema_version 5, decision produit 2026-09-03).
+#
+# LE BLOC « Score dans le temps » DE LA VUE MATCH NE VA PAS A TOUS LES MODES, et c'est un
+# fait de la donnee, pas un gout. Trois lectures :
+#
+#   hidden   Le mode marque au FRAG : la courbe de score REDIT ce que « Frags cumules »
+#            montre deja, deux fois de suite dans le meme onglet. On ne l'affiche pas.
+#   events   Le mode marque en 3 a 5 POINTS sur tout le match (une capture de drapeau, une
+#            colline, une bombe). Une courbe sur cinq paliers est un escalier vide : ce sont
+#            les INSTANTS de marque qui portent l'information, donc des barres verticales.
+#   curve    Le mode marque en continu (Oddball au tic, Bastion a la garde) : la courbe est
+#            la bonne lecture, et c'est le REPLI.
+#
+# LA CLE EST UN JETON DE MODE, cherche comme MOT ENTIER (insensible a la casse, jeton le plus
+# long gagnant) DANS LE `pair_name` BRUT du match, dont on n'a retire que le suffixe de carte
+# (« on <carte> » / « sur <carte> »).
+#
+# CETTE TABLE N'APPARIE DONC PAS COMME `objective_roles.toml`, ET LA DIFFERENCE EST LE COEUR
+# DE LA DECISION. `objective_roles` apparie sur le libelle NORMALISE
+# (`analysis.NormalizeModeLabel`), qui MANGE le jeton de mode sur toute une famille de
+# pair_name. Comptage sur le registre local (2026-09-03), matchs qui auraient recu le mauvais
+# verdict :
+#
+#   "Super Fiesta:Slayer"      -> "Super Fiesta"        429 matchs   attendu hidden
+#   "Super Husky Raid:CTF"     -> "Super Husky Raid"     11 matchs   attendu events
+#   "Arena:Team Snipers"       -> "Team Snipers"          8 matchs   attendu hidden
+#   "Husky Raid:CTF"           -> "Husky Raid"            3 matchs   attendu events
+#   "Team Slayer:Arena"        -> "Arena"                 3 matchs   attendu hidden
+#   "CTF:Arena"                -> "Arena"                 2 matchs   attendu events
+#   "BTB:Team Snipers"         -> "Team Snipers"          2 matchs   attendu hidden
+#   "Husky Raid:Assault"       -> "Husky Raid"            1 match    attendu events
+#   "Slayer:Arena"             -> "Arena"                 1 match    attendu hidden
+#
+# 460 matchs, dont le mode LE PLUS JOUE du corpus. Deux causes : la normalisation garde le
+# prefixe d'identite de playlist et jette le sous-mode (Super Fiesta, Husky Raid), et certains
+# pair_name sont de forme `Mode:Playlist` — elle prend alors la partie DROITE et rend
+# « Arena ». Sur le brut, les neuf lignes retombent justes.
+#
+# LE RETRAIT DU SUFFIXE DE CARTE NE SE SAUTE PAS : c'est lui qui protege des collisions entre
+# un jeton de mode et un nom de carte. Verifie sur les 70 pair_name distincts du registre, le
+# brut ainsi coupe rend le bon verdict sur TOUS. Aucune contradiction prefixe/mode dans le
+# corpus : les seuls pair_name en « Assault: » sont Neutral Bomb et One Bomb (events tous les
+# deux), et « Husky Raid:Assault » est bien un mode Assaut.
+#
+# CE QUE CET APPARIEMENT ATTRAPE EN PLUS, ET QUI EST SANS CONSEQUENCE : les libelles Firefight
+# (« Firefight:Heroic King of the Hill », « Gruntpocalypse:Heroic KOTH ») tombent en `events`.
+# Ces matchs PvE n'ont pas de calque de score d'EQUIPE, donc le graphe ne rend rien de toute
+# facon — mais mieux vaut l'ecrire ici que le decouvrir.
+#
+# MEME DOCTRINE QUE LES QUATRE TABLES CI-DESSUS pour le reste : contenu explicite, jamais « au
+# juge ». L'ABSENCE EST LE REPLI SUR, et c'est le comportement d'avant le 2026-09-03 : un mode
+# non declare, un titre sans cette table, un `pair_name` illisible -> `curve`, la courbe.
+# Jamais un bloc qui disparait par accident.
+#
+# VOLONTAIREMENT ABSENTS, faute de decision produit : Stockpile, Extraction, VIP, Total
+# Control, Land Grab. Tous restent au repli `curve`. Les declarer choisirait a la place de
+# l'utilisateur une lecture qu'aucune mesure ne recommande.
+#
+# Consommation : mappings.LoadRegulation -> RegulationSet.ScoreTimelineKind(pair_name brut,
+# carte retiree) -> MatchViewHeader.score_timeline_kind -> MatchViewTabChronology (courbe /
+# barres / rien).
+[score_timeline]
+# Le mode marque au frag : « Frags cumules » le dit deja, juste au-dessus dans l'onglet.
+# « Slayer » attrape Team Slayer, Tactical Slayer, Super Fiesta:Slayer, Escalation Slayer.
+"Slayer"       = "hidden"
+# Team Snipers est une variante Slayer (meme cible 50 au [score_target] ci-dessus) que le
+# jeton « Slayer » n'attrape pas : elle a son propre jeton. 10 matchs au registre local.
+"Team Snipers" = "hidden"
+# Drapeau : 3 a 5 captures sur tout le match. Memes jetons que objective_roles.toml —
+# « CTF » attrape One Flag CTF / Fiesta CTF / CTF 3 Captures / Husky Raid:CTF, et
+# « Neutral Flag » attrape « Arena Neutral Flag ».
+"CTF"              = "events"
+"Neutral Flag"     = "events"
+# Roi de la colline : le score EST le compte de collines gagnees (3 en social, 4 en classe).
+"King of the Hill" = "events"
+"KOTH"             = "events"
+# Assaut : 3 bombes. Memes jetons que objective_roles.toml — les variantes bombe sont des
+# habillages d'Assaut.
+"Assault"          = "events"
+"Neutral Bomb"     = "events"
+"One Bomb"         = "events"

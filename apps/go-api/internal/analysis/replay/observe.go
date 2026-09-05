@@ -43,6 +43,7 @@ type Observer func(step string, v any)
 // manque a un fichier de digests, et gardee par observe_test.go : un balayage ajoute a
 // BuildFromFilm sans etape ici fait echouer le test.
 var BuildFromFilmSteps = []string{
+	"translocations",
 	"positions", "fire", "loadouts",
 	"heldWeaponChanges", "heldWeaponChanges.stats",
 	"pickups", "pickups.stats",
@@ -52,6 +53,7 @@ var BuildFromFilmSteps = []string{
 	"equipmentChanges", "equipmentChanges.stats",
 	"camoStates", "camoStates.stats",
 	"grappleReads", "grappleReads.stats",
+	"abilityImpulses", "abilityCharges",
 	"zoomEvents",
 	"placements", "placements.stats",
 	"pads", "carrierMarks", "zoneReads", "bombReads",

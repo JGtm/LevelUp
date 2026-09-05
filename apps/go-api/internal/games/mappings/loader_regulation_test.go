@@ -286,3 +286,160 @@ func TestRegulationReelle_OddballDeclare(t *testing.T) {
 		}
 	}
 }
+
+// ---------------------------------------------------------------------------------------
+// [score_timeline] — comment le score se montre dans le temps (schema_version 5).
+// ---------------------------------------------------------------------------------------
+
+// La table est indexée par JETON DE MODE, cherché comme MOT ENTIER dans le `pair_name` BRUT
+// (suffixe de carte retiré) — et NON dans le libellé normalisé, qui mange le jeton sur toute
+// une famille de pair_name (cf. le commentaire de la table).
+func TestLoadRegulation_ScoreTimelineKinds(t *testing.T) {
+	t.Parallel()
+	set, err := LoadRegulationFromBytes("regulation.toml", []byte(`
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 5
+
+[score_timeline]
+"Slayer"           = "hidden"
+"CTF"              = "events"
+"King of the Hill" = "events"
+"Oddball"          = "curve"
+`))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	cases := map[string]string{
+		// Jeton exact.
+		"Slayer": ScoreTimelineHidden,
+		"CTF":    ScoreTimelineEvents,
+		// Mot ENTIER à l'intérieur du libellé normalisé — le cas nominal des variantes.
+		"Team Slayer":      ScoreTimelineHidden,
+		"Tactical Slayer":  ScoreTimelineHidden,
+		"One Flag CTF":     ScoreTimelineEvents,
+		"CTF 3 Captures":   ScoreTimelineEvents,
+		"King of the Hill": ScoreTimelineEvents,
+		"Oddball":          ScoreTimelineCurve,
+		// Insensible à la casse.
+		"team slayer": ScoreTimelineHidden,
+		// MODE ABSENT DE LA TABLE = REPLI SÛR : la courbe, jamais un bloc effacé.
+		"Strongholds": ScoreTimelineCurve,
+		"Stockpile":   ScoreTimelineCurve,
+		"":            ScoreTimelineCurve,
+		// Pas un mot entier : "Slayers" ne doit pas attraper "Slayer".
+		"Slayers": ScoreTimelineCurve,
+	}
+	for label, want := range cases {
+		if got := set.ScoreTimelineKind(label); got != want {
+			t.Errorf("ScoreTimelineKind(%q) = %q, want %q", label, got, want)
+		}
+	}
+}
+
+// Une valeur hors des trois lectures admises est une ERREUR DE CONFIGURATION au chargement,
+// jamais un silence : une faute de frappe tomberait sinon sur le repli `curve` et se lirait
+// à l'écran comme une décision produit.
+func TestLoadRegulation_ScoreTimelineRejectsUnknownKind(t *testing.T) {
+	t.Parallel()
+	for _, bad := range []string{`"Slayer" = "event"`, `"Slayer" = ""`, `"Slayer" = "bar"`} {
+		_, err := LoadRegulationFromBytes("t.toml", []byte(`
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 5
+
+[score_timeline]
+`+bad+`
+`))
+		if err == nil {
+			t.Errorf("lecture inconnue (%s) : attendu une erreur de chargement", bad)
+		}
+	}
+}
+
+// Table absente (TOML antérieur au schéma 5) ou jeu de règles nil : tout retombe sur la
+// courbe — le comportement d'avant la table.
+func TestRegulationSet_ScoreTimelineFallsBackToCurve(t *testing.T) {
+	t.Parallel()
+	set, err := LoadRegulationFromBytes("regulation.toml", []byte(`
+[meta]
+title_slug     = "halo_5"
+schema_version = 1
+`))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if got := set.ScoreTimelineKind("Slayer"); got != ScoreTimelineCurve {
+		t.Errorf("table absente : got %q, want %q", got, ScoreTimelineCurve)
+	}
+	var nilSet *RegulationSet
+	if got := nilSet.ScoreTimelineKind("Slayer"); got != ScoreTimelineCurve {
+		t.Errorf("nil : got %q, want %q", got, ScoreTimelineCurve)
+	}
+}
+
+// Smoke test sur le VRAI fichier du repo, avec les `pair_name` RÉELS du registre local.
+//
+// LES NEUF FAMILLES QUI RATAIENT SONT ICI EN ASSERTION NOMINATIVE. Elles rendaient toutes
+// `curve` tant que l'appariement passait par `NormalizeModeLabel` (460 matchs, dont les 429
+// de « Super Fiesta:Slayer », le mode le plus joué du corpus). L'entrée passe désormais par
+// le brut, suffixe de carte retiré — c'est ce que ce test verrouille.
+func TestScoreTimelineFromRepo(t *testing.T) {
+	t.Parallel()
+	_, thisFile, _, _ := runtime.Caller(0)
+	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "..")
+	hi, err := LoadRegulationFromFile(filepath.Join(repoRoot, "config", "titles", "halo_infinite", "mappings", "regulation.toml"))
+	if err != nil {
+		t.Fatalf("halo_infinite regulation.toml: %v", err)
+	}
+	cases := map[string]string{
+		// --- LES NEUF FAMILLES DU DÉFAUT, par ordre de volume au registre -----------------
+		"Super Fiesta:Slayer":  ScoreTimelineHidden, // 429 matchs — normalisé : « Super Fiesta »
+		"Super Husky Raid:CTF": ScoreTimelineEvents, //  11 matchs — « Super Husky Raid »
+		"Arena:Team Snipers":   ScoreTimelineHidden, //   8 matchs — « Team Snipers »
+		"Husky Raid:CTF":       ScoreTimelineEvents, //   3 matchs — « Husky Raid »
+		"Team Slayer:Arena":    ScoreTimelineHidden, //   3 matchs — « Arena »
+		"CTF:Arena":            ScoreTimelineEvents, //   2 matchs — « Arena »
+		"BTB:Team Snipers":     ScoreTimelineHidden, //   2 matchs — « Team Snipers »
+		"Husky Raid:Assault":   ScoreTimelineEvents, //   1 match  — « Husky Raid »
+		"Slayer:Arena":         ScoreTimelineHidden, //   1 match  — « Arena »
+
+		// --- Le suffixe de carte est retiré, et lui seul ---------------------------------
+		"Super Fiesta:Slayer on Forbidden - Forge": ScoreTimelineHidden,
+		"Community:Team Slayer on Starboard":       ScoreTimelineHidden,
+		"Husky Raid:CTF on Catalyst":               ScoreTimelineEvents,
+		"Arena:Strongholds on Vagabond":            ScoreTimelineCurve,
+
+		// --- Le cas nominal, inchangé ----------------------------------------------------
+		"Arena:Slayer":            ScoreTimelineHidden,
+		"Arena:CTF":               ScoreTimelineEvents,
+		"Arena:Neutral Flag CTF":  ScoreTimelineEvents,
+		"CTF:Arena Neutral Flag":  ScoreTimelineEvents,
+		"Arena:King of the Hill":  ScoreTimelineEvents,
+		"KOTH:Arena":              ScoreTimelineEvents,
+		"Assault:One Bomb":        ScoreTimelineEvents,
+		"Assault:Neutral Bomb":    ScoreTimelineEvents,
+		"Arena:Escalation Slayer": ScoreTimelineHidden,
+
+		// --- VOLONTAIREMENT au repli, faute de décision produit (cf. le TOML) ------------
+		"Arena:Strongholds": ScoreTimelineCurve,
+		"Arena:Oddball":     ScoreTimelineCurve,
+		"BTB:Total Control": ScoreTimelineCurve,
+		"BTB:Stockpile":     ScoreTimelineCurve,
+		"Arena:Extraction":  ScoreTimelineCurve,
+		"Arena:VIP":         ScoreTimelineCurve,
+		"Arena:Land Grab":   ScoreTimelineCurve,
+
+		// --- Ce que l'appariement attrape EN PLUS, et qui est sans conséquence -----------
+		// Les libellés Firefight tombent en `events`. Ces matchs PvE n'ont pas de calque de
+		// score d'ÉQUIPE, donc le graphe ne rend rien de toute façon — c'est écrit ici pour
+		// que ce soit une décision assumée et non une surprise.
+		"Firefight:Heroic King of the Hill": ScoreTimelineEvents,
+		"Gruntpocalypse:Heroic KOTH":        ScoreTimelineEvents,
+	}
+	for pairName, want := range cases {
+		if got := hi.ScoreTimelineKind(pairName); got != want {
+			t.Errorf("ScoreTimelineKind(%q) = %q, want %q", pairName, got, want)
+		}
+	}
+}

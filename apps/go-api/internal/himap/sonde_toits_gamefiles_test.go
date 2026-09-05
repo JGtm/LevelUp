@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE DES TOITS — cherche le critere UNIVERSEL qui separe un PLAFOND (a remplacer par le sol

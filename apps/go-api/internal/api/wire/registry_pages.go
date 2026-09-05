@@ -100,6 +100,9 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		// Score en MANCHES : même fichier de config, autre table. Titre qui n'en déclare
 		// aucune → nil → l'en-tête garde le score de l'API.
 		WithRoundsDecide(r.roundsDecideFor(pdb)).
+		// Lecture du bloc « Score dans le temps » : même fichier de config, table
+		// [score_timeline]. Titre sans table → nil → le client garde la courbe.
+		WithScoreTimelineKind(r.scoreTimelineKindFor(pdb)).
 		WithMetadataRepo(duckdb.NewMetadataRepo(pdb)).
 		// Loader unifié des highlight_events (MV4.A) : sans lui, d.canonicalEvents
 		// reste nil et la correction T0 (vrai début de match) est du code mort sur

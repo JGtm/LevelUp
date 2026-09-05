@@ -468,7 +468,109 @@ package replay
 // publiee. Chronique, seuils et mesures : t0_film.go. (Ce lot avait pris le 36 sur
 // `wt/t0-film` pendant que l'identite des vies prenait le 36 sur `feat/v75` : renumerote 37
 // au merge du 2026-09-02 — l'arbitrage par renumerotation ecrit aux schemas 30, 31, 33 et 35.)
-const SchemaVersion = 37
+//
+// CE QUE LA VERSION 38 PORTE : LA LECTURE FIABLE DES USAGES D'EQUIPEMENT (lots P1, P1bis et
+// P3 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, decisions user D1-D4 — « pas
+// d'heuristique : les ENREGISTREMENTS du film, ou rien »). Quatre choses, un seul chantier :
+//
+// (1) `translocations[]` — LES TELEPORTATIONS DU TRANSLOCATEUR, datees ET SITUEES par
+// l'EVENEMENT du film (type 117 `EquipmentTranslocatorTeleportEffects`, nom source de
+// l'exe) : precision 18/18 et rappel 8/8 sur 5 films (rapport R1). Jusqu'ici le client
+// DEVINAIT la teleportation d'un seuil spatial (> 4 m — aveugle a un saut de 3,24 m mesure)
+// ou la datait du `spent`, qui peut suivre l'usage de 16,5 s. Chaque saut porte AUSSI son
+// VA-ET-VIENT (`fx/fy/fz` -> `tx/ty/tz`) : la charge de l'evenement transporte deux
+// positions quantifiees — A = depart, B = arrivee —, layout lu dans l'executable et valide
+// 18/18 a 0,00-0,26 m des discontinuites de piste (rapport R6 §1). Le client n'a donc plus a
+// deriver le lien d'une discontinuite de piste, et la faille se dessine au point de DEPART
+// (le translocateur est un ECHANGE de positions). PAS DE BORNES DE CARTE -> PAS DE
+// POSITIONS : les six champs sont solidaires et absents ensemble ;
+// `coverage.translocations` compte les ecartees ET les positionnees.
+//
+// (2) `equipmentChanges[].recovered` et `[].gap` — LE CANAL i48 SE REPARE ET PUBLIE SON
+// RESIDU. La recuperation GATEE PAR LE TEMOIN DE COMPTEUR (R2 : les octets des emissions
+// manquees existent dans ~3 cas sur 4, sous deux formes que le balayage strict rejette par
+// construction — record sans i0, masque dense R(64) a l'ordre de bits fige par P1.0 sur 44
+// temoins) re-balaye les SEULES fenetres de saut et n'accepte un candidat QUE s'il comble
+// exactement le saut ; le relachement inconditionnel est REFUTE (+800 fausses acceptations
+// sur 10 films, R2 §5). `gap` publie le saut RESIDUEL apres recuperation : un `from` sous
+// gap n'est plus une identite fiable, et le document le dit au lieu de le laisser croire.
+// Cas fondateur (Dynasty 1b2d9e08) : la prise du translocateur de JGtm etait invisible et
+// son `spent` portait `from=4` (le grappin) — l'emission recuperee (c6, rang 11) le
+// corrige, et les stats comptent les recuperees A PART (`coverage.equipmentChanges.
+// recovered` ; les temoins missedEstimate/counterJumps/livesFirstOffSpec decrivent la
+// chaine FINALE, ce qui manque ENCORE).
+//
+// (3) LE FILTRE DE VITESSE S'EXEMPTE SUR PIECE (aucun champ neuf, mais le CONTENU des
+// pistes bouge) : `DropTeleports` rejetait 1 a 3 echantillons REELS par teleportation
+// (51/51 rejets a tort mesures, R3), il est leve a ±200 ms d'un evenement 117 du MEME
+// slot — jamais ailleurs : invariance bit a bit prouvee CONTRE UNE IMPLEMENTATION DE
+// REFERENCE FIGEE (la semantique d'avant l'exemption, copiee verbatim dans le test), sur
+// donnees synthetiques (TestDropTeleportsInvarianceSansEvenement) et sur film sans tete
+// 117 (TestP1InvarianceSansTete117, 188 979 echantillons identiques a la reference).
+//
+// (4) `abilityImpulses[]` — L'USAGE MESURE DU PROPULSEUR (lot P3, rapports R8 et R9). Le tag
+// externe des composants bipede `biped-spartan-ability` (i57) et `-non-predicted-state`
+// (i59) est un R(2) : la production n'en exploitait qu'UNE valeur, le corps `tag == 3` qui
+// porte le GRAPPIN depuis le 2026-08-16. Le corps `tag == 1` du MEME composant date une
+// IMPULSION, et son identite vient du canal i48 — rang lu dans la MEME VIE et
+// ANTERIEUREMENT (le slot migre aux reapparitions, et un joueur peut changer d'equipement
+// dans sa vie ; le `sub` du composant a ete essaye comme discriminant puis REFUTE par le
+// corpus, R8 par. 8.5). Preuve : 0,361 impulsion par vie de propulseur contre 0,011 par vie
+// de repulseur — PLUS porte que lui — et 0,000 sur 132 vies de grappin, qui a son propre tag
+// (quatre films, R8 par. 8.8) ; oracle physique independant a 6,2-8,8 m/s de pic contre
+// 2,9-3,6 au hasard ; et VERITE TERRAIN Theater du 2026-09-03 sur `1cd3848a` — 5 usages
+// releves, 5 impulsions rendues, ecart <= 1 s. LE CALQUE NE COUVRE PAS TOUS LES EQUIPEMENTS,
+// et il le dit : seules les familles que le TITRE declare mesurees y entrent (le propulseur,
+// et lui seul — le REPULSEUR n'est PAS dans ce canal, negatif MESURE dont le lot R9 a ferme
+// les trois dernieres portes), les autres sont ecartees ET COMPTEES
+// (`coverage.abilityImpulses.otherFamily`) — et quand la chaine d'attribution elle-meme n'a
+// pas pu tourner (palette du match non classee, titre sans famille declaree, aucune vie), les
+// gestes tombent dans un compteur A PART (`noResolver`) plutot que de se deguiser en « un
+// autre equipement ». Aucune grammaire nouvelle n'a ete portee : les
+// deux deserialiseurs publiaient deja le tag ; ce qui manquait etait le croisement avec
+// l'identite.
+//
+// (5) `abilityCharges[]` — LES CHARGES RESTANTES (lot P5 du 2026-09-04, rapport R11). Le
+// composant i56 `biped-spartan-ability-energy` transmet AU CHANGEMENT un compteur de
+// charges entieres par emplacement arme (quartet HAUT de la valeur 7 bits — la lecture
+// discrete du consommateur de l'exe, R11 §1.1). Serie temoin 4, 3, 2, 1, 0 sur `1cd3848a`,
+// exactement aux cinq usages du releve Theater ; 36/36 accroches de grappin appariees a une
+// baisse (temoin decale : 2/36). L'identite vient d'i48 (meme vie, anterieurement — la MEME
+// jointure que les impulsions), la famille de la palette du titre, et seules les familles
+// declarees mesurees (`[ability_charges]` du manifeste : grapple, thruster) sont publiees —
+// le REPULSEUR n'arme jamais i56 (218 vies, 0 baisse, R11 §4-5). Ce sont les LECTURES,
+// jamais un compte d'usages derive (une baisse peut valoir plusieurs usages), et rien n'est
+// affirme avant la premiere lecture (le film ne transmet rien au ramassage — masque a 0 =
+// le moteur pose plein).
+//
+// POLITIQUE DE SCHEMA DU LOT P5, VERIFIEE SUR PIECES LE 2026-09-04 : contrairement aux lots
+// P1bis et P3 (« aucun artefact 38 cuit »), DES ARTEFACTS 38 EXISTENT desormais hors
+// repertoires de test — `1b2d9e08` et `1cd3848a`, cuits pour le gate visuel du chantier. Le
+// schema RESTE a 38 malgre cela, et la justification n'est pas la commodite : les deux
+// ajouts (`abilityCharges` racine, `coverage.abilityCharges`) sont PUREMENT ADDITIFS et
+// omitempty — un lecteur 38 existant qui les ignore reste correct sur toute ligne qu'il
+// sait lire, et les deux artefacts cuits sont des temoins de gate destines a etre re-cuits
+// avec le lot (la re-cuisson du parc, elle, n'a pas commence : la reprise par SchemaVersion
+// ne perd rien). Une montee a 39 aurait marque « a re-cuire » un parc entier qui est DEJA
+// tout entier anterieur ou egal a 38 — elle n'aurait protege aucun lecteur de plus.
+//
+// Champs optionnels, mais la version monte pour la raison exacte des montees v14/v22/v25 :
+// la reprise du backfill se fait par SchemaVersion, et un artefact 37 doit se lire « a
+// re-cuire », pas « a jour » — sans quoi aucun rejeu deja cuit ne porterait ni les
+// teleportations, ni les emissions recuperees, ni les impulsions. CE QUE LA VERSION NE PORTE
+// PAS : la POSITION de la faille AVANT le premier echange (aucune entite repliquee lisible —
+// negatif mesure R1 §1-3 ; la charge du 117 ne porte que {effet, depart, arrivee}, R6 §1.4),
+// rien pour les trois `spent` sans evenement 117 du corpus (hors TETE de liste ou expiration
+// sans usage, non departage R1 §4.3 — la LISTE COMPLETE d'evenements est un chantier
+// distinct), et AUCUN usage du REPULSEUR : huit canaux ont ete juges, le film ne
+// l'enregistre pas (R8 par. 10.2, R9). Le RAPPEL des impulsions n'est etabli que sur UN film
+// (5/5 au Theater) : ailleurs, c'est un plancher — le detecteur de records bipede ignore les
+// masques denses, limite commune a tout le depot.
+// Chronique :
+// document_translocations.go, document_equipment_changes.go, document_ability_impulses.go,
+// document_ability_charges.go, filmdec/equipment_recovery.go, filmdec/transloc_events.go,
+// filmdec/ability_impulses.go, filmdec/ability_charges.go, filmdec/offline_filters.go.
+const SchemaVersion = 38
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -629,6 +731,42 @@ type ReplayDocument struct {
 	// ÉCARTÉES : ce ne sont pas des ramassages, et ce que le joueur porte à sa naissance est
 	// déjà dans `abilities`. Absent si le film n'en porte aucun.
 	EquipmentChanges []EquipmentChange `json:"equipmentChanges,omitempty"`
+	// Translocations est la liste des TÉLÉPORTATIONS du translocateur (cf.
+	// document_translocations.go) : qui saute, à quelle frame, et d'où à où — daté ET situé
+	// par l'ÉVÉNEMENT du film (type 117), jamais déduit d'un seuil spatial, ni du `spent`
+	// (qui peut suivre l'usage de 16,5 s), ni d'une discontinuité de piste. Le va-et-vient
+	// (`fx/fy/fz` -> `tx/ty/tz`) vient de la CHARGE de l'événement, déquantifiée aux bornes
+	// de la carte ; il est ABSENT EN BLOC quand elle n'a pas pu être lue, et
+	// `coverage.translocations.positioned` dit combien de sauts le portent. Absent si le
+	// film n'en porte aucune.
+	Translocations []Translocation `json:"translocations,omitempty"`
+	// AbilityImpulses est la liste des IMPULSIONS DE CAPACITÉ (cf.
+	// document_ability_impulses.go) : qui, à quelle frame, et de quel ÉQUIPEMENT — l'usage
+	// MESURÉ du propulseur, daté par le corps `tag == 1` des composants i57/i59 (le même dont
+	// le tag 3 porte le grappin) et attribué par le rang i48 lu dans la MÊME VIE et
+	// ANTÉRIEUREMENT. Aucun seuil de vitesse, aucune heuristique : le film enregistre le
+	// geste, le canal d'identité dit de quel équipement il vient.
+	//
+	// CE CALQUE NE COUVRE PAS TOUS LES ÉQUIPEMENTS, et c'est publié comme tel : seules les
+	// familles que le titre déclare MESURÉES sur ce canal y entrent (aujourd'hui le
+	// propulseur, et lui seul — le RÉPULSEUR n'y est pas, négatif MESURÉ des rapports R8/R9).
+	// `coverage.abilityImpulses` porte l'entonnoir complet, `otherFamily` compris. Absent si
+	// le film n'en porte aucune, ou si sa palette n'a pas été classée (sans nom de rang, pas
+	// d'identité).
+	AbilityImpulses []AbilityImpulse `json:"abilityImpulses,omitempty"`
+	// AbilityCharges est la liste des CHARGES D'ÉQUIPEMENT RESTANTES (cf.
+	// document_ability_charges.go) : qui, à quelle frame, quel ÉQUIPEMENT, et ce qu'il en
+	// reste — le quartet haut d'i56, transmis AU CHANGEMENT et attribué par le rang i48 lu
+	// dans la MÊME VIE et ANTÉRIEUREMENT. Ce sont les LECTURES du film, jamais un compte
+	// d'usages dérivé (une baisse peut valoir plusieurs usages — R11 §2), et RIEN n'est
+	// affirmé avant la première lecture : le film ne transmet rien au ramassage.
+	//
+	// CE CALQUE NE COUVRE PAS TOUS LES ÉQUIPEMENTS, et c'est publié comme tel : seules les
+	// familles que le titre déclare MESURÉES sur ce canal y entrent (le grappin et le
+	// propulseur, et eux seuls — le RÉPULSEUR n'arme jamais i56, négatif MESURÉ du rapport
+	// R11). `coverage.abilityCharges` porte l'entonnoir complet. Absent si le film n'en
+	// porte aucune, ou si sa palette n'a pas été classée (sans nom de rang, pas d'identité).
+	AbilityCharges []AbilityCharge `json:"abilityCharges,omitempty"`
 	// GroundWeapons est la liste des ARMES AU SOL individuelles (cf.
 	// document_ground_weapon_items.go) : où chacune gît, de quand à quand l'afficher, qui l'a
 	// lâchée et qui l'a prise quand le flux delta le dit. Les fins sont OBSERVÉES (ramassage

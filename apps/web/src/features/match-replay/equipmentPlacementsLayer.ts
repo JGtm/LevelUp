@@ -42,8 +42,7 @@
  */
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
-import { drawRift, drawTeleportLinks, type RiftInk } from './placementRift'
-import type { RiftTeleport } from './placementTeleport'
+import { drawRift, drawRiftLayer, type RiftInk, type RiftScene } from './placementRift'
 import { placementIsDroppedPower } from './placementDropped'
 import {
   drawDroppedObject,
@@ -281,10 +280,11 @@ export interface PlacementScene {
    */
   sideOfSlot: (slot: number, frame: number) => string | null
   /**
-   * Passages par une faille (cf. `placementTeleport`). Calculés UNE FOIS par l'appelant : la
-   * détection balaye toutes les pistes, ce qu'on ne refait pas à chaque image.
+   * LE TRANSLOCATEUR : où est la faille à cette image, et les va-et-vient qui l'y ont mise
+   * (cf. `RiftScene`). Une lecture de document, calculée UNE FOIS par l'appelant — la faille
+   * n'est PAS une pose, c'est le premier ÉCHANGE qui la situe.
    */
-  teleports?: readonly RiftTeleport[]
+  rift?: RiftScene
 }
 
 /** Les encres du calque : la couleur d'équipe du poseur, et le neutre quand il n'y en a pas. */
@@ -474,7 +474,7 @@ export function drawEquipmentPlacementsLayer(
     drawPlacement(ctx, { p, kind, lives: scene.lives }, view, time, ink)
     if (kind === 'sensor') sensors.push(p)
   }
-  drawTeleportLinks(ctx, scene.teleports ?? [], view, time, ink.rift)
+  drawRiftLayer(ctx, scene.rift, view, time, ink.rift)
   if (sensors.length === 0) return
   for (const reveal of sensorReveals(sensors, scene, time)) {
     // La marque porte la couleur du POSEUR, résolue à l'image de sa pose (`reveal.ownerFrame`) :

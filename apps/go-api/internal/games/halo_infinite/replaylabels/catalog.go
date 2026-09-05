@@ -62,6 +62,16 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 	// et les teintes : elle est keyée par GlobalID de tag `eqip` (lu dans le film), et
 	// n'entre dans aucune jointure du catalogue.
 	cat.EquipmentFamilies = labels.EquipmentObjects()
+	// Les familles dont l'USAGE est MESURÉ par le canal d'impulsion se posent après
+	// construction, pour la même raison : c'est une déclaration du titre (ce que SA mesure
+	// établit), pas une jointure du catalogue. Le paquet `replay` ne saurait pas, seul, que
+	// le propulseur est le seul équipement que ce canal enregistre.
+	cat.AbilityImpulseFamilies = labels.AbilityImpulseFamilies()
+	// Les familles dont les CHARGES RESTANTES sont mesurées par le canal d'énergie (i56) se
+	// posent par le même chemin et pour la même raison : le paquet `replay` ne saurait pas,
+	// seul, que le grappin et le propulseur sont les deux seuls équipements que ce canal
+	// enregistre (rapport R11).
+	cat.AbilityChargeFamilies = labels.AbilityChargeFamilies()
 	// Les OBJETS D'OBJECTIF PORTÉS : les identifiants d'objet du monde que le manifeste déclare
 	// de l'une des familles portées, projetés vers la table d'identité du rejeu. Le filtrage par
 	// famille se fait ICI — c'est la couche titre qui sait ce que `flag` et `ball` veulent dire
@@ -178,7 +188,8 @@ func abilityPalettes(slug string, in []mappings.AbilityPalette) []replay.Ability
 		for rank, l := range p.Ranks {
 			ranks[rank] = toLabel(slug, l)
 		}
-		out = append(out, replay.AbilityPalette{ID: p.ID, Markers: p.Markers, Ranks: ranks})
+		out = append(out, replay.AbilityPalette{
+			ID: p.ID, Markers: p.Markers, Ranks: ranks, Families: p.Families})
 	}
 	return out
 }

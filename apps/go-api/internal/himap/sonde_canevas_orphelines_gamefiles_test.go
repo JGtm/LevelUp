@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE DES CARTES ORPHELINES : celles dont le depot porte le `.mvar` par defaut mais

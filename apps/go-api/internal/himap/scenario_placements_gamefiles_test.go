@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // scenario_placements_gamefiles_test.go — LA CARTE DES BLOCS DU SCENARIO `levl`.

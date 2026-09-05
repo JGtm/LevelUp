@@ -208,8 +208,9 @@ func equipmentFieldIndices(arch Archetype) [EquipmentFieldCount]int {
 // garde-rail `archlint.TestProductionNAppellePasLesEnveloppes` compare des NOMS d'appelés (il
 // parse l'AST, il ne type rien), et il aurait donc rougi le jour où un paquet de production
 // aurait écrit `fc.EquipmentArchetype()` — l'appel LÉGITIME. Une règle qui interdit le bon geste
-// finit désactivée. Le nom porte désormais la distinction : c'est la seule des 40 enveloppes qui
-// entrait en collision avec une méthode (vérifié au grep sur la liste entière).
+// finit désactivée. Le nom porte désormais la distinction : c'est la seule des enveloppes qui
+// entrait en collision avec une méthode (vérifié au grep sur la liste entière — 40 noms au lot 6,
+// 43 depuis la réconciliation du 2026-09-05 qui a migré les trois balayages amont).
 func EquipmentArchetypeDir(dir string) (Archetype, error) {
 	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {

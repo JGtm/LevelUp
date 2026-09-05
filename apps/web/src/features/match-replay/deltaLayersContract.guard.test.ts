@@ -81,7 +81,10 @@ function goStringConst(file: string, name: string): string {
 const WEAPON_CHANGE_KEYS = ['t', 'slot', 'kind', 'w', 'from'] as const
 type _ClesWeaponChange = Expect<Equals<(typeof WEAPON_CHANGE_KEYS)[number], keyof ReplayWeaponChange>>
 
-const EQUIPMENT_CHANGE_KEYS = ['t', 'slot', 'kind', 'r', 'from'] as const
+// `recovered` et `gap` entrent au schéma 38 (2026-09-03) : la PROVENANCE de l'émission et le
+// saut de compteur RÉSIDUEL. Le second est celui qui compte pour le rendu — sous un saut, `from`
+// n'est plus une identité (cf. `identityIsUnknown`, placementTeleport.ts).
+const EQUIPMENT_CHANGE_KEYS = ['t', 'slot', 'kind', 'r', 'from', 'recovered', 'gap'] as const
 type _ClesEquipmentChange = Expect<
   Equals<(typeof EQUIPMENT_CHANGE_KEYS)[number], keyof ReplayEquipmentChange>
 >

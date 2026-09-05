@@ -22,6 +22,13 @@
 // liste d'exclusion (`others[...] = ...`) reconstruit une règle de bande. Hors de l'allowlist,
 // c'est une quatrième copie.
 //
+// LE CAS DE L'INSTRUMENT MULTI-ARCHÉTYPES. Les deux règles relisent le film à chaque appel : un
+// balayage qui a besoin des bandes de dix archétypes ne peut pas les appeler dix fois. Il marche
+// les images-clés UNE fois, en sort un relevé `ti -> slots vus`, et passe ce relevé à
+// `filmdec.slotBandFromCensus` (slot_band_census_helpers_test.go) — qui tient la convention
+// d'exclusion « les slots des AUTRES archétypes » et délègue la règle à `slotBandExcluding`.
+// C'est la sortie normale ici : ni une troisième règle, ni une entrée d'allowlist de plus.
+//
 // CE QU'IL NE PRÉTEND PAS. Une réécriture qui nommerait sa carte d'exclusion autrement passerait :
 // aucun test grep ne remplace une revue. Il bloque la copie la plus probable — celle qui part du
 // code existant — là où elle s'écrit.
@@ -104,7 +111,9 @@ func TestNoRewrittenSlotBand(t *testing.T) {
 	t.Fatalf("règle de bande de slots RÉÉCRITE dans %d fichier(s) : %s\n"+
 		"Deux règles existent et suffisent : `worldObjectSlotBand` (comblée, objets nombreux et"+
 		" éphémères) et `observedSlotBand` (observée, objets rares et durables). Appeler la"+
-		" bonne, ou justifier une entrée de plus dans `slotBandAllowed`.",
+		" bonne ; si le balayage relève PLUSIEURS archétypes en une seule marche, passer son"+
+		" relevé `ti -> slots` à `slotBandFromCensus`. En dernier recours seulement, justifier"+
+		" une entrée de plus dans `slotBandAllowed`.",
 		len(violations), strings.Join(violations, ", "))
 }
 

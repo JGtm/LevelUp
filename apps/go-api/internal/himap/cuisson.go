@@ -145,6 +145,15 @@ type OptionsCuisson struct {
 	// main. Il ne se justifie que par sa raison ecrite et il ne doit jamais devenir la voie
 	// normale — un rectangle ne connait pas la carte.
 	BoiteUtile [4]float64
+	// RogneAuxComposantesAncrees efface les amas de matiere qui ne portent aucune ancre et n en
+	// touchent aucun qui en porte une (`composantes.go`).
+	//
+	// POURQUOI IL ARRIVE ICI LE 2026-09-03. Le levier existait depuis le 2026-08-30, il etait
+	// declare dans `reglageCarte` — donc offert a TOUTES les cartes — et cable sur le SEUL
+	// chemin Forge. Sur une carte native il ne faisait rien, en silence : arme sur Live Fire, il
+	// rendait une image identique a l octet pres. Un reglage qui ne dit pas qu il est sans effet
+	// est pire qu un reglage absent. Il opere apres `BoiteUtile`, pour ne juger que ce qui reste.
+	RogneAuxComposantesAncrees bool
 	// Echelle est le cote d'un pixel du fond, en metres. ZERO = `EchelleFondCarte`.
 	//
 	// POURQUOI CE N'EST PLUS UNE CONSTANTE (2026-08-26). Le cadre est propre a chaque carte,
@@ -283,6 +292,11 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	appliqueFrontiere(ctx, r, &b, opts, zJeu)
 	mesureEtRogneZones(ctx, r, &b, opts)
 	borneALaBoite(ctx, r, &b, opts.BoiteUtile)
+	if opts.RogneAuxComposantesAncrees {
+		n, gardees, total := r.GardeComposantesAncrees(opts.Ancres)
+		slog.InfoContext(ctx, "mapfond: composantes sans ancre effacees", "carte", b.Module,
+			"cellules", n, "composantes", fmt.Sprintf("%d/%d gardees", gardees, total))
+	}
 	JugeParLesAncres(r, &b, opts.Ancres)
 	if !opts.SansEau {
 		PoseEauDepuisModule(ctx, r, &b, opts.CheminModule)
@@ -329,6 +343,9 @@ func peupleDepuisModule(ctx context.Context, r *Rendu, b *BilanCuisson, opts Opt
 	if err != nil {
 		return fmt.Errorf("index des modules : %w", err)
 	}
+	// L'index vit le temps de CETTE carte : sans cette fermeture, un balayage garde autant de
+	// jeux de projections qu'il a cuit de cartes (cf. ModuleIndex.Close).
+	defer func() { _ = idx.Close() }()
 	bsps, err := ReadModuleInstances(opts.CheminModule)
 	if err != nil {
 		return fmt.Errorf("instances du module : %w", err)

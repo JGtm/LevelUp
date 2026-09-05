@@ -81,19 +81,10 @@ func casseIdentifiantsDeChaine(cibles map[uint32]bool) (map[uint32]string, int) 
 	return out, n
 }
 
-// tableCandidats rend le dictionnaire COMPLET indexe par hachage, et sa taille. Il sert a
-// chercher un identifiant de chaine a une position INCONNUE d'une structure — a n'employer
-// que sur des fenetres etroites, sous peine de collisions (l'esperance vaut
-// taille_table x mots_balayes / 2^32).
-func tableCandidats() (map[uint32]string, int) {
-	out := make(map[uint32]string, 400000)
-	n := enumereCandidats(func(nom string, h uint32) {
-		if _, deja := out[h]; !deja {
-			out[h] = nom
-		}
-	})
-	return out, n
-}
+// `tableCandidats` — le dictionnaire complet indexe par hachage — vit avec son SEUL appelant,
+// dans `sonde_eqip_gamefiles_test.go` : la sonde eqip est derriere le tag `gamefiles`, et le
+// laisser ici en ferait du code mort dans le build par defaut (attrape par golangci-lint le
+// 2026-09-05, en posant ce tag).
 
 // enumereCandidats parcourt le dictionnaire a DEUX jetons et rend le nombre de candidats.
 func enumereCandidats(vu func(nom string, h uint32)) int {

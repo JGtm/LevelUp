@@ -201,6 +201,7 @@ func LitSddt(cheminModule string) (Sddt, error) {
 	if err != nil {
 		return Sddt{}, err
 	}
+	defer func() { _ = m.Close() }()
 	fichiers := m.Files("sddt")
 	if len(fichiers) == 0 {
 		return Sddt{}, nil

@@ -66,7 +66,7 @@ export function MatchViewTabPlayers({
     <>
       {/* §2 — Duels & confrontations (face-à-face) */}
       <DetailSection title={t.sectionDuels}>
-        {/* Némésis + Souffre-douleur | Antagonistes */}
+        {/* Némésis + Souffre-douleur pleine largeur, puis Antagonistes | Assistances */}
         <div className="flex flex-col gap-4">
           <MatchNemesisCards
             nemesis={nemesis}
@@ -74,16 +74,9 @@ export function MatchViewTabPlayers({
             meXUID={meXUID}
             t={t}
           />
-          <MatchAntagonistChart
-            pairs={killerVictim}
-            scoreboard={scoreboard}
-            meXUID={meXUID}
-            t={t}
-          />
-          {/* Assistances (assistant → tueur assisté) — sous les antagonistes, dont il
-              est le miroir. Ne rend rien quand le match n'a aucune ligne de film. */}
-          <MatchAssistChart
-            block={assistPairs}
+          <DuelsRow
+            killerVictim={killerVictim}
+            assistPairs={assistPairs}
             scoreboard={scoreboard}
             meXUID={meXUID}
             t={t}
@@ -123,5 +116,49 @@ export function MatchViewTabPlayers({
         />
       </DetailSection>
     </>
+  )
+}
+
+/**
+ * DuelsRow — ANTAGONISTES et ASSISTANCES CÔTE À CÔTE, et l'un seul quand l'autre n'a rien
+ * à dire.
+ *
+ * Les deux graphes sont des MIROIRS (qui m'a tué / qui a aidé à tuer) : les empiler les
+ * faisait lire l'un après l'autre alors qu'ils se comparent (demande utilisateur du
+ * 2026-09-03). Sur une rangée, chacun tient une demi-largeur à partir de `lg` et reprend
+ * toute la largeur en dessous.
+ *
+ * LE CAS DE LA CELLULE FANTÔME, ET IL EST TRAITÉ EXPLICITEMENT. `MatchAssistChart` ne rend
+ * RIEN quand le bloc d'assistances est absent — le match n'a aucune ligne de film, ce qui
+ * est le cas de la quasi-totalité des matchs. Dans une grille à deux colonnes, son absence
+ * laisserait les antagonistes sur une demi-largeur avec un vide à droite : un trou qui se
+ * lit « il manque quelque chose ». On ne pose donc PAS la grille dans ce cas — le graphe
+ * restant reprend la pleine largeur, exactement comme avant la rangée.
+ *
+ * La condition est celle de la porte 1 de `MatchAssistChart` (bloc absent = rien) ; les deux
+ * sont couvertes par leurs tests respectifs.
+ */
+function DuelsRow({
+  killerVictim,
+  assistPairs,
+  scoreboard,
+  meXUID,
+  t,
+}: {
+  killerVictim: MatchKillerVictimPair[]
+  assistPairs: MatchAssistPairs | undefined
+  scoreboard: MatchScoreboardRow[]
+  meXUID: string | null
+  t: MatchViewText
+}) {
+  const antagonistes = (
+    <MatchAntagonistChart pairs={killerVictim} scoreboard={scoreboard} meXUID={meXUID} t={t} />
+  )
+  if (assistPairs == null) return antagonistes
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {antagonistes}
+      <MatchAssistChart block={assistPairs} scoreboard={scoreboard} meXUID={meXUID} t={t} />
+    </div>
   )
 }

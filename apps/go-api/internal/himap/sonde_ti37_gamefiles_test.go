@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE (2026-08-17, plan .ai/V7.5/replay2d/PLAN_IDENTITE_TI37.md phase 0.3) — NOMMER les

@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE DURABLE (2026-08-13) — LOT B : le SAUT `bloc`/`scen`/`mach` -> `hlmt` des objets

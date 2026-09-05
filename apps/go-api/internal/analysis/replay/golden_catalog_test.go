@@ -45,7 +45,8 @@ func goldenCatalog(t *testing.T) LabelCatalog {
 		for rank, v := range p.Ranks {
 			ranks[rank] = Label{En: v.En, Fr: v.Fr}
 		}
-		abilities = append(abilities, AbilityPalette{ID: p.ID, Markers: p.Markers, Ranks: ranks})
+		abilities = append(abilities, AbilityPalette{
+			ID: p.ID, Markers: p.Markers, Ranks: ranks, Families: p.Families})
 	}
 	grenades := make([]Label, 0, len(labels.GrenadeRanks()))
 	for _, v := range labels.GrenadeRanks() {
@@ -58,6 +59,14 @@ func goldenCatalog(t *testing.T) LabelCatalog {
 	// ici ferait publier au golden un document dont TOUTES les poses sont `other`, alors que
 	// le manifeste en nomme — c'est-à-dire un document que la production ne sert pas.
 	cat.EquipmentFamilies = labels.EquipmentObjects()
+	// LES FAMILLES MESUREES PAR LE CANAL D'IMPULSION, par le MÊME chemin qu'en production
+	// (cf. replaylabels.Load). Les oublier ici ferait publier au golden un document SANS
+	// impulsion sur un film qui en porte — c'est-à-dire l'inverse de ce que la production sert.
+	cat.AbilityImpulseFamilies = labels.AbilityImpulseFamilies()
+	// LES FAMILLES MESUREES PAR LE CANAL DES CHARGES (i56), même chemin, même raison : les
+	// oublier ici ferait publier au golden un document SANS releve de charge sur un film qui
+	// en porte — l'inverse de ce que la production sert.
+	cat.AbilityChargeFamilies = labels.AbilityChargeFamilies()
 	// LE DRAPEAU, pour la MÊME raison et par le MÊME chemin que les familles d'équipement
 	// (cf. replaylabels.Load) : sans cette table, la chaîne des socles ne reconnaîtrait pas
 	// l'objet d'objectif du titre, et le golden figerait un document que la production ne sert

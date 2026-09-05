@@ -178,3 +178,40 @@ describe('MatchScoreCurveChart — ce que la carte DIT de sa mesure', () => {
     expect(view.getByText(MATCH_VIEW_TEXT.en.scoreCurveTitle)).toBeTruthy()
   })
 })
+
+describe('MatchScoreCurveChart — la lecture décidée par la DONNÉE du titre', () => {
+  it('s’efface en `hidden` : le mode marque au frag, « Frags cumulés » vient de le dire', () => {
+    poserArtefact({})
+    const vue = render(
+      <MatchScoreCurveChart
+        playerSlug="joueur"
+        matchId="m1"
+        replayAvailable
+        scoreboard={SCOREBOARD}
+        meXUID="me"
+        scoreTimelineKind="hidden"
+        t={t}
+      />,
+    )
+    expect(vue.container.firstChild).toBeNull()
+  })
+
+  it('garde la courbe sur toute autre valeur — l’inconnu est le REPLI SÛR, jamais une absence', () => {
+    for (const kind of [undefined, 'curve', 'valeur-inconnue']) {
+      poserArtefact({})
+      const vue = render(
+        <MatchScoreCurveChart
+          playerSlug="joueur"
+          matchId="m1"
+          replayAvailable
+          scoreboard={SCOREBOARD}
+          meXUID="me"
+          scoreTimelineKind={kind}
+          t={t}
+        />,
+      )
+      expect(vue.getByText(t.scoreCurveTitle)).toBeTruthy()
+      vue.unmount()
+    }
+  })
+})

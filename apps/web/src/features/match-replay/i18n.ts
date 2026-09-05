@@ -93,7 +93,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     zoomIn: 'Grossir (+ ou molette)',
     zoomOut: 'Réduire (− ou molette)',
     zoomReset: 'Revoir toute la carte',
-    zoomLevelFmt: (z: number) => (z === 1 ? 'Tout' : `${String(z).replace('.', ',')}x`),
+    zoomLevelFmt: (z: number) => `${String(z).replace('.', ',')}x`,
     panUp: 'Déplacer vers le haut (Maj + flèche haut)',
     panDown: 'Déplacer vers le bas (Maj + flèche bas)',
     panLeft: 'Déplacer vers la gauche (Maj + flèche gauche)',
@@ -288,6 +288,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityUnidentified: (rank) => `capacité non identifiée (rang ${rank})`,
     abilityAge: 'Capacité lue il y a',
     abilityAhead: 'Capacité lue dans',
+    abilityChargesFull: 'plein',
+    abilityChargesFullHint:
+      'Charges pleines — le film ne transmet une lecture qu’après le premier usage.',
+    abilityChargesCount: (n) => `Charges restantes : ${n}`,
+    abilityChargesAge: 'Charges lues il y a',
     equipmentActive: {
       camo: 'Camouflage actif — le joueur est invisible à l’écran de jeu',
       overshield: 'Surbouclier actif',
@@ -308,8 +313,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     equipmentUsage: {
       title: "Usages d'équipement",
-      colPlayer: 'Joueur',
-      teamTotal: 'Total équipe',
+      viewByPlayer: 'Nombre de gestes par joueur',
+      viewTeamShare: "Part de chaque équipe, geste par geste",
+      gridTipFmt: (player, column, value) => `${player} — ${column} : ${value}`,
+      shareTipFmt: (team, family, count, total) =>
+        `${team} — ${family} : ${count} sur ${total}`,
       groupGrapple: 'Grappin',
       groupGrappleHint:
         "Tractions de grappin lues dans le film — la seule activation de capacité que la mesure sait attribuer à un joueur. Un tir sans accroche n'est pas une traction : il est compté à part et n'entre pas dans cette colonne.",
@@ -339,9 +347,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       coverageGrappleFmt: (pulls, lives) =>
         `${pulls} traction${pulls > 1 ? 's' : ''} de grappin lue${pulls > 1 ? 's' : ''}, réparties sur ${lives} vie${lives > 1 ? 's' : ''}.`,
       unattributedFmt: (count) =>
-        `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} sans propriétaire (vie sans joueur, ou poseur non mesuré) : hors du tableau.`,
+        `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} sans propriétaire (vie sans joueur, ou poseur non mesuré) : hors des deux vues.`,
       notMeasured:
-        "Répulseur et propulseur n'apparaissent pas : le film ne publie aucun canal d'activation pour ces deux capacités. Une colonne vide se lirait « zéro utilisation ».",
+        "Le répulseur n'apparaît pas : neuf canaux du film ont été fouillés, aucun ne date son activation. Une colonne vide se lirait « zéro utilisation ». Le propulseur, lui, a désormais son canal d'usage mesuré — validé contre un relevé Theater — et ses poussées se voient sur la carte du rejeu, pas dans ce tableau : le geste dure une demi-seconde.",
       killBadgeFmt: {
         camo: (kills) => `${kills} frags sous camouflage`,
         overshield: (kills) => `${kills} frags sous surbouclier`,
@@ -352,10 +360,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     padControl: {
       title: 'Contrôle des armes spéciales',
       titleHint:
-        "Les armes de socle prises pendant le match, et par qui. Chaque prise vient de l'événement de ramassage écrit dans le film : il est daté à la milliseconde et porte son ramasseur. Une occupation de socle qu'aucun ramassage ne couvre — ou que plusieurs couvrent — n'est comptée pour personne : on ne devine pas un ramasseur, on s'abstient et on le dit sous le tableau.",
-      colPlayer: 'Joueur',
-      colTotal: 'Prises de socle',
-      teamTotal: 'Total équipe',
+        "Les armes de socle prises pendant le match, et par qui. Chaque prise vient de l'événement de ramassage écrit dans le film : il est daté à la milliseconde et porte son ramasseur. Une occupation de socle qu'aucun ramassage ne couvre — ou que plusieurs couvrent — n'est comptée pour personne : on ne devine pas un ramasseur, on s'abstient et on le dit sous le graphe.",
+      axisPickups: 'nombre de prises',
+      barTipFmt: (player, team, weapon, count) =>
+        `${player} (${team}) — ${weapon} : ${count} prise${count > 1 ? 's' : ''}`,
+      unnamedFmt: (count) => `+ ${count} sans nom`,
       attributedFmt: (attributed, occupations) =>
         `${attributed} prise${attributed > 1 ? 's' : ''} attribuée${attributed > 1 ? 's' : ''} sur ${occupations} occupation${occupations > 1 ? 's' : ''} de socle mesurée${occupations > 1 ? 's' : ''}.`,
       missingFmt: (missing) =>
@@ -483,7 +492,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     zoomIn: 'Zoom in (+ or wheel)',
     zoomOut: 'Zoom out (− or wheel)',
     zoomReset: 'Show the whole map',
-    zoomLevelFmt: (z: number) => (z === 1 ? 'All' : `${z}x`),
+    zoomLevelFmt: (z: number) => `${z}x`,
     panUp: 'Pan up (Shift + up arrow)',
     panDown: 'Pan down (Shift + down arrow)',
     panLeft: 'Pan left (Shift + left arrow)',
@@ -676,6 +685,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityUnidentified: (rank) => `unidentified ability (rank ${rank})`,
     abilityAge: 'Ability read',
     abilityAhead: 'Ability read in',
+    abilityChargesFull: 'full',
+    abilityChargesFullHint:
+      'Charges full — the film only transmits a reading after the first use.',
+    abilityChargesCount: (n) => `Charges left: ${n}`,
+    abilityChargesAge: 'Charges read',
     equipmentActive: {
       camo: 'Active camo — the player is invisible on the game screen',
       overshield: 'Overshield active',
@@ -696,8 +710,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     equipmentUsage: {
       title: 'Equipment usage',
-      colPlayer: 'Player',
-      teamTotal: 'Team total',
+      viewByPlayer: 'Gesture count by player',
+      viewTeamShare: "Each team's share, gesture by gesture",
+      gridTipFmt: (player, column, value) => `${player} — ${column}: ${value}`,
+      shareTipFmt: (team, family, count, total) => `${team} — ${family}: ${count} of ${total}`,
       groupGrapple: 'Grappleshot',
       groupGrappleHint:
         'Grapple pulls read from the film — the only ability activation the measurement can attribute to a player. A shot with no anchor is not a pull: it is counted separately and never enters this column.',
@@ -726,9 +742,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       coverageGrappleFmt: (pulls, lives) =>
         `${pulls} grapple pull${pulls > 1 ? 's' : ''} read, spread over ${lives} ${lives > 1 ? 'lives' : 'life'}.`,
       unattributedFmt: (count) =>
-        `${count} measured gesture${count > 1 ? 's' : ''} with no owner (life with no player, or unmeasured deployer): outside the table.`,
+        `${count} measured gesture${count > 1 ? 's' : ''} with no owner (life with no player, or unmeasured deployer): outside both views.`,
       notMeasured:
-        'Repulsor and thruster are absent: the film publishes no activation channel for those two abilities. An empty column would read as "zero uses".',
+        'The repulsor is absent: nine channels of the film were searched, none dates its activation. An empty column would read as "zero uses". The thruster now has its own measured usage channel — validated against a Theater reading — and its bursts show on the replay map, not in this table: the gesture lasts half a second.',
       killBadgeFmt: {
         camo: (kills) => `${kills} kills under camo`,
         overshield: (kills) => `${kills} kills under overshield`,
@@ -739,10 +755,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     padControl: {
       title: 'Power weapon control',
       titleHint:
-        'The pad weapons picked up during the match, and by whom. Every pickup comes from the pickup event written in the film: it is timed to the millisecond and carries its picker. A pad occupancy no pickup covers — or that several cover — is counted for nobody: a picker is never guessed, the measurement abstains and says so below the table.',
-      colPlayer: 'Player',
-      colTotal: 'Pad pickups',
-      teamTotal: 'Team total',
+        'The pad weapons picked up during the match, and by whom. Every pickup comes from the pickup event written in the film: it is timed to the millisecond and carries its picker. A pad occupancy no pickup covers — or that several cover — is counted for nobody: a picker is never guessed, the measurement abstains and says so below the chart.',
+      axisPickups: 'pickup count',
+      barTipFmt: (player, team, weapon, count) =>
+        `${player} (${team}) — ${weapon}: ${count} pickup${count > 1 ? 's' : ''}`,
+      unnamedFmt: (count) => `+ ${count} unnamed`,
       attributedFmt: (attributed, occupations) =>
         `${attributed} pickup${attributed > 1 ? 's' : ''} attributed out of ${occupations} measured pad occupanc${occupations > 1 ? 'ies' : 'y'}.`,
       missingFmt: (missing) =>

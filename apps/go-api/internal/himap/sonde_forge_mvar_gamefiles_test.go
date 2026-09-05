@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE (2026-08-10) — les champs du .mvar que la grammaire ne parse pas, et l'ECHELLE.

@@ -11,7 +11,8 @@
  */
 import type { XY } from './replayLogic'
 import { type PlacementView, project, type ShapeStyle } from './placementShapes'
-import type { RiftTeleport } from './placementTeleport'
+import type { TeleportLink } from './placementTeleport'
+import { riftStationsAt, type RiftStation } from './riftStations'
 
 /**
  * Demi-hauteur de la faille, en pixels d'écran.
@@ -128,6 +129,25 @@ const RIFT_LINK_ALPHA = 0.55
 const RIFT_LINK_END_MIN = 0.45
 
 /**
+ * Un lien à tracer : ses deux bouts DÉJÀ PROJETÉS, son avancement d'effacement (0 à l'instant
+ * du saut, 1 à la disparition), et la question de savoir si le point QUITTÉ lui appartient.
+ *
+ * `paintFrom` À FAUX QUAND UNE STATION EST DÉJÀ LÀ, et c'est la correction du 2026-09-03
+ * (revue ronde 1, constat K3) : `drawRiftLayer` peint la faille au point quitté — c'est
+ * exactement là que la balise se retrouve après l'échange — et le lien y peignait la SIENNE
+ * par-dessus. Le halo se composait alors deux fois : ce point brillait, pendant 600 ms, plus
+ * fort qu'à n'importe quelle autre image, sans que rien ne le justifie. C'est la STATION qui
+ * reste (stable, à pleine taille) et le bout du lien qui s'efface : l'inverse ferait clignoter
+ * la faille au moment où le lien se termine.
+ */
+interface RiftLinkDraw {
+  from: XY
+  to: XY
+  progress: number
+  paintFrom: boolean
+}
+
+/**
  * drawRiftLink — LE PASSAGE : l'arc bref qui relie l'ancienne position à la nouvelle quand un
  * joueur se téléporte.
  *
@@ -136,19 +156,15 @@ const RIFT_LINK_END_MIN = 0.45
  * prétend PAS que le joueur a suivi cette courbe : entre les deux bouts d'une téléportation il
  * n'y a pas de trajectoire, il y a un LIEN. D'où le POINTILLÉ, qui est la convention du calque
  * pour « lu, mais non parcouru », et l'ARC, qui l'écarte du trait droit d'un tir.
- *
- * `progress` va de 0 (à l'instant du saut) à 1 (à l'effacement).
  */
-export function drawRiftLink(
+function drawRiftLink(
   ctx: CanvasRenderingContext2D,
-  from: XY,
-  to: XY,
-  progress: number,
+  link: RiftLinkDraw,
   style: ShapeStyle,
   ink: RiftInk,
 ): void {
-  const p = Math.min(1, Math.max(0, progress))
-  const reste = 1 - p
+  const { from, to } = link
+  const reste = 1 - Math.min(1, Math.max(0, link.progress))
   if (reste <= 0) return
   const dx = to.x - from.x
   const dy = to.y - from.y
@@ -177,13 +193,19 @@ export function drawRiftLink(
   const bout: ShapeStyle = { ...style, k: style.k * facteur }
   ctx.save()
   ctx.globalAlpha = reste
-  drawRift(ctx, from, bout, ink)
+  if (link.paintFrom) drawRift(ctx, from, bout, ink)
   drawRift(ctx, to, bout, ink)
   ctx.restore()
 }
 
+/** Un lien ENCORE VISIBLE à cette image, et son avancement d'effacement. */
+interface LienActif {
+  t: TeleportLink
+  progress: number
+}
+
 /**
- * drawTeleportLinks — les liens des passages ENCORE VISIBLES à cette frame.
+ * activeLinks — les passages ENCORE VISIBLES à cette frame.
  *
  * La fenêtre est comptée en TEMPS DE MATCH (`frameMs`), pas en nombre d'images : à 60 images
  * par seconde comme à 10, l'effet dure les mêmes 600 ms. C'est la règle déjà tenue par le ping
@@ -192,21 +214,73 @@ export function drawRiftLink(
  * PAS DE BASCULE D'INTERFACE dédiée : le lien n'est pas un objet posé de plus qu'on afficherait
  * ou non, c'est ce que FAIT une faille déjà affichée. Il suit donc la même porte qu'elle.
  */
-export function drawTeleportLinks(
+function activeLinks(
+  teleports: readonly TeleportLink[],
+  time: { frame: number; frameMs: number },
+): LienActif[] {
+  const out: LienActif[] = []
+  for (const t of teleports) {
+    const ageMs = (time.frame - t.frame) * time.frameMs
+    if (ageMs < 0 || ageMs > RIFT_LINK_MS) continue
+    out.push({ t, progress: ageMs / RIFT_LINK_MS })
+  }
+  return out
+}
+
+/**
+ * RiftScene — TOUT CE QUE LE TRANSLOCATEUR DONNE À DESSINER, et c'est UNE seule lecture.
+ *
+ * Les deux sortent du même calque publié (`translocations[]`, l'événement 117 du film) et se
+ * calculent au même endroit, une fois par document : les séparer en deux arguments ferait deux
+ * fois la même glue chez l'appelant, alors qu'ils ne se conçoivent pas l'un sans l'autre.
+ */
+export interface RiftScene {
+  /** Les VA-ET-VIENT : d'où à où, à quelle image. */
+  teleports: readonly TeleportLink[]
+  /** OÙ EST LA FAILLE et jusqu'à quand — une station par échange (cf. `riftStations`). */
+  rifts: readonly RiftStation[]
+}
+
+/**
+ * drawRiftLayer — LA FAILLE LÀ OÙ ELLE EST À CETTE IMAGE, et le LIEN du saut qui l'y a mise.
+ *
+ * LA FAILLE N'EST PLUS DESSINÉE DEPUIS UNE POSE, et c'est le changement du 2026-09-03 : la pose
+ * du translocateur est ILLISIBLE (négatif mesuré sur trois canaux), tandis que chaque ÉCHANGE
+ * dit exactement où la balise se retrouve — au point que le joueur vient de quitter.
+ * `riftStations` porte cette lecture et ses bornes ; ce tracé n'en fait que la forme, la même
+ * que celle d'une pose déployée (`drawRift`), aux mêmes encres fixes. RIEN avant le premier
+ * échange, RIEN après la fin mesurée : les intervalles viennent déjà bornés.
+ *
+ * UN POINT N'EST JAMAIS PEINT DEUX FOIS (constat K3 de la revue) : une station et le bout
+ * `from` du lien qui l'ouvre sont LE MÊME objet — même vie, même image d'échange. L'appariement
+ * se fait donc sur (slot, image) et non sur des coordonnées flottantes ; le lien renonce alors
+ * à son bout de départ, la station le tient.
+ *
+ * LE LIEN PASSE APRÈS : il est bref et daté, il doit se lire au-dessus de l'objet qu'il quitte.
+ */
+export function drawRiftLayer(
   ctx: CanvasRenderingContext2D,
-  teleports: readonly RiftTeleport[],
+  scene: RiftScene | undefined,
   view: PlacementView,
   time: ShapeStyle & { frame: number; frameMs: number },
   ink: RiftInk,
 ): void {
-  for (const t of teleports) {
-    const ageMs = (time.frame - t.frame) * time.frameMs
-    if (ageMs < 0 || ageMs > RIFT_LINK_MS) continue
+  if (!scene) return
+  const liens = activeLinks(scene.teleports, time)
+  const stations = riftStationsAt(scene.rifts, time.frame)
+  for (const s of stations) {
+    drawRift(ctx, project({ x: s.x, y: s.y }, view), time, ink)
+  }
+  for (const { t, progress } of liens) {
+    const tenuParUneStation = stations.some((s) => s.slot === t.slot && s.t0 === t.frame)
     drawRiftLink(
       ctx,
-      project({ x: t.from.x, y: t.from.y }, view),
-      project({ x: t.to.x, y: t.to.y }, view),
-      ageMs / RIFT_LINK_MS,
+      {
+        from: project({ x: t.from.x, y: t.from.y }, view),
+        to: project({ x: t.to.x, y: t.to.y }, view),
+        progress,
+        paintFrom: !tenuParUneStation,
+      },
       time,
       ink,
     )
