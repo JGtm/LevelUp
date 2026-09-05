@@ -124,6 +124,11 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	reporterT0Film(ctx, d, rapportsT0(lus))
 	persisterResumesUsage(ctx, d, lus)
 	persisterStatsBombe(ctx, d, lus)
+	// LES POSITIONS EN DERNIER (decision utilisateur 1) : c'est la projection la plus VOLUMINEUSE
+	// du lot (~215 lignes par match apres decimation, cf. positions.go). La passer apres les
+	// trois autres garantit que si le writer devient indisponible en cours de route, ce sont les
+	// donnees les moins couteuses a rejouer qui manquent.
+	persisterPositions(ctx, d, lus)
 	marquerDerivations(ctx, lus)
 }
 

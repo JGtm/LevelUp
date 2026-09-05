@@ -356,7 +356,85 @@ golangci-lint run --new-from-merge-base=origin/main ./internal/sync/... ./intern
   -> 0 issues.  EXIT=0
 ```
 
-### [ ] A.6 (décision 1)
+### [x] A.6 (décision 1) — `match_player_positions` devient une projection de l'artefact
+
+**Vérification sur pièces.** La table était écrite UNIQUEMENT par
+`cmd/diag_weapons_v3 -positions -write` → `PlayerPositionsRepo.WriteMatch` (DELETE+INSERT dans
+une transaction, sur le handle de LECTURE du pool). Sans PK, sans vue `_latest`. Lecteur unique :
+`LoadMatch` → `GET /matches/{id}/positions` → `MatchPositionsHeatmap.tsx`.
+
+**Fait, en quatre pièces :**
+
+1. **Migration** `internal/migration/steps_shared_player_positions_appendonly.go` : rebuild CTAS
+   (`ApplyAppendOnlyRebuild`) → `id` PK + `positions_pass` + vue `match_player_positions_latest`
+   **par PASSE** (`QUALIFY positions_pass = FIRST_VALUE(...) OVER (PARTITION BY match_id ORDER BY
+   written_at DESC, id DESC)`). Les lignes déjà en base reçoivent
+   `positions_pass = 'legacy-diag'` : elles forment UNE génération cohérente au lieu d'être
+   éclatées en autant de « passes » d'une ligne. Inscrite dans `order.go` juste après son
+   créateur.
+2. **Persister** `internal/persist/player_positions_persister.go`, sur le patron EXACT de
+   `bomb_stats_persister.go` : une transaction, INSERT purs, `positions_pass` + `written_at`
+   partagés par toute la passe (`newDecodePassID`, le même générateur que les autres passes),
+   matchID vide refusé, passe vide ignorée ET journalisée. **La reprise sur un match déjà
+   projeté écrit une NOUVELLE passe** — rien n'est lu, rien n'est effacé.
+3. **Projection** `internal/sync/replayartifacts/positions.go`, appelée par `Deriver` (A.4) en
+   DERNIER (c'est la plus volumineuse).
+4. **Suppressions** (règle 7, zéro code mort) : `PlayerPositionsRepo.WriteMatch` et
+   `writePlayerPositionsTx` ; les 4 tests d'écriture du repo ; le `-write` du mode positions de
+   `cmd/diag_weapons_v3` (il **refuse** désormais explicitement, en disant où le travail se fait)
+   et `cmd/diag_weapons_v3/write_conn.go` **entier** (101 L), devenu sans appelant.
+   La lecture passe sur `match_player_positions_latest` (règle ART n°2).
+
+**LA CADENCE : LA SEULE DÉCISION DE CE POINT, ET ELLE EST MESURÉE.** Le document publie une
+position par vie et par frame (100 ms). Mesure faite sur les **106 artefacts du cache local** le
+2026-09-06 :
+
+| | par match |
+|---|---|
+| trajectoires BRUTES | moyenne **31 051**, médiane 29 167, max 129 096 |
+| décimées à 20 s (`GrainPositionsMS`) | moyenne **215**, médiane 201, max 895 |
+
+Le grain de 20 s n'est pas choisi : c'est celui que **le schéma de la table déclare depuis sa
+création** (`steps_shared_player_positions.go` : « granularité ~20s du snapshot type-2 »), et son
+unique lecteur binne en grille 20×20 — au-delà de quelques centaines de points, chaque ligne de
+plus est du poids de base et de fil pour zéro pixel. Projeter les trajectoires brutes aurait
+multiplié par ~145 le volume d'une table qui alimente une carte de chaleur. Le premier point de
+chaque vie est toujours retenu (une vie plus courte que le grain existe quand même). **Signalé
+comme question ouverte Q-2 ci-dessous** : c'est le seul endroit du lot où j'ai tranché un
+paramètre produit, et il est réversible d'une constante.
+
+**Forme de la table anti-ART** : append-only avec vue `_latest` **par passe** (et non à clé
+naturelle comme `match_objective_events`) — le choix est dicté par le schéma lui-même, qui
+déclare « pas de PK contraignante » parce qu'une position n'a pas de clé naturelle (deux joueurs
+peuvent occuper le même point au même instant). `match_player_positions` est donc ajoutée aux
+DEUX listes (`tablesProtegees`, `appendOnlyStateTables`) ; **aucune allowlist agrandie**.
+
+**Tests** : `persist/player_positions_persister_test.go` (nominal + **reprise qui supersède sans
+effacer** : 1 ligne servie par la vue, 4 en base + les deux refus) ;
+`platform/duckdb/player_positions_repo_test.go` réécrit pour la lecture (`_latest`, seconde passe,
+match absent, capability) ; `replayartifacts/positions_test.go` (6 cas de décimation + transport
+des valeurs, dont « l'équipe n'est pas inventée »).
+
+**Gate A-II** :
+
+```
+go build ./...                                                     -> EXIT=0
+go test ./internal/sync/... ./internal/analysis/replay/... ./internal/domain/...
+        ./internal/archlint/... ./internal/persist/... ./internal/platform/duckdb/...
+        ./cmd/diag_weapons_v3/...
+  -> ok levelup/go-api/internal/platform/duckdb/sharedprovider  0.443s   EXIT=0
+go test ./internal/migration/... ./internal/games/...             -> ok (…/weapons 12.401s) EXIT=0
+go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...
+  -> ok levelup/go-api/internal/persist  31.454s   EXIT=0
+go test -tags=integration -p 1 ./internal/migration/... ./internal/api/...
+  -> ok levelup/go-api/internal/api/wire  15.302s   EXIT=0
+golangci-lint run --new-from-merge-base=origin/main ./internal/sync/... ./internal/persist/...
+        ./internal/migration/... ./internal/platform/duckdb/... ./internal/replaybuild/...
+        ./internal/api/wire/... ./cmd/diag_weapons_v3/...
+  -> 0 issues.  EXIT=0
+go test ./internal/sync/ -run 'ART|AppendOnly|Mutation|Allowlist|Delete|Bulk'
+  -> ok levelup/go-api/internal/sync  38.341s   EXIT=0  (match_player_positions enrôlée, 0 allowlist)
+```
 
 ## Découvertes (hors périmètre, NON traitées)
 
@@ -374,6 +452,28 @@ golangci-lint run --new-from-merge-base=origin/main ./internal/sync/... ./intern
   le dossier.
 - **D-3** — Le lint non ratcheté de `internal/sync/` remonte 15 problèmes préexistants (détail
   en A.2). Hors périmètre du lot A ; ils appartiennent à la dette gelée par la baseline.
+- **D-4 (demandée par le plan)** — `match_objective_events` (les captures CTF écrites par
+  `cmd/diag_weapons_v3` en objective-events `-write`, via `ObjectiveEventsRepo.WriteMatch` en
+  DELETE-then-INSERT) est restée **strictement hors périmètre**, comme le plan l'exige. Elle
+  garde son `-write`, son repo, et son DELETE. Note de forme pour qui la reprendra : elle a une
+  PK naturelle `(match_id, seq)` et AUCUNE vue `_latest` — c'est pourquoi
+  `bomb_stats_persister.go` y écrit « seulement si le match n'a pas déjà de faits ». La convertir
+  demande une sémantique de génération que son schéma ne porte pas : un chantier de schéma, pas
+  une ligne de code.
+- **D-5** — Les positions projetées n'ont **aucune clé de capability** (`film.*`), là où l'usage
+  et l'Assaut en ont une (`film.usage_summary`, `film.bomb_stats`). Non traité : les fichiers
+  `config/titles/**/capabilities.toml` et `internal/domain/title/**` appartiennent au lot C.
+  Effet nul aujourd'hui — un titre sans décodeur de film n'a aucun artefact, donc aucune
+  dérivation ne s'exécute pour lui.
+- **D-6** — La table reste MATCH-LEVEL (pas de `xuid`) alors que le document, lui, nomme le
+  porteur de chaque trajectoire. Nommer le joueur est désormais POSSIBLE (ce ne l'était pas avec
+  l'ancien décodeur keyframe) mais changerait la forme d'une table déjà lue par la carte de
+  chaleur — hors décision 1.
+- **D-7 (risque d'intégration, à signaler au superviseur)** — La tâche A-I a modifié
+  `internal/domain/title/registry.go` (ajout de `MapWeaponPadsOverlayPath`), fichier que le brief
+  listait comme appartenant au lot C. Le lot C ajoutera `CapReplay` au même fichier : **conflit de
+  merge probable, sur deux ajouts indépendants** (une méthode de chemin d'un côté, une capability
+  de l'autre) — résolution attendue triviale, mais elle doit être anticipée à l'intégration.
 
 ## Questions ouvertes
 
@@ -382,3 +482,14 @@ golangci-lint run --new-from-merge-base=origin/main ./internal/sync/... ./intern
   l'effet VOULU du constat P0-1, mais c'est une charge de fond qui démarrera au premier cycle
   après le merge : à arbitrer au moment de l'intégration (horizon du backlog, ordre du plus
   récent au plus vieux déjà en place depuis le 2026-08-29).
+- **Q-2 (A.6, le seul paramètre produit que j'ai tranché)** — La cadence d'échantillonnage des
+  positions projetées, `GrainPositionsMS = 20 000`. Justification : c'est la granularité que le
+  schéma de la table déclare depuis sa création, et elle reproduit l'ordre de grandeur de ce que
+  la table portait (215 positions par match en moyenne contre 31 051 sans décimation, mesuré sur
+  le corpus local). Si le produit veut une carte de chaleur plus dense, la constante est le seul
+  point à changer — mais le volume écrit suit linéairement (grain 2 s ≈ 2 150 lignes par match,
+  grain 100 ms ≈ 31 000). À confirmer ou à corriger, avec la mesure sous les yeux.
+- **Q-3 (A.5, effet de bord du premier cycle après merge)** — Le rattrapage des dérivés va
+  prendre en charge les 106 artefacts du cache local, cinq par cycle, jusqu'à convergence (~21
+  cycles). Chacun ouvre un writer shared court et écrit jusqu'à ~900 positions. C'est borné et
+  voulu, mais c'est un régime transitoire qu'il vaut mieux avoir vu venir.

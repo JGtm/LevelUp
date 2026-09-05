@@ -95448,3 +95448,47 @@ La tache A-II (A.4 point d'entree unique des derivations, A.5 rattrapage par dig
 adversariale entre les deux taches. Une question ouverte pour le superviseur : le bump de
 revision rend tout le parc a nouveau candidat au backlog de redecodage (1 325 films), effet
 voulu du constat mais charge de fond a arbitrer au merge.
+
+## [2026-09-06] Lot A tache A-II (v2 rejeu/film) — derivations sur rangement, rattrapage des derives, positions en projection — Complete
+
+**Contexte.** Suite du lot A du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, tache A-II, apres
+validation sur pieces de A-I par le superviseur. Trois items : A.4 (constat A1 — les derivations
+post-cuisson ne se declenchaient que sur la branche « construction locale »), A.5 (constat A2 —
+les derives n avaient aucun rattrapage), A.6 (decision utilisateur 1 — `match_player_positions`
+devient une projection de l artefact). Meme worktree, meme branche `feat/v2-faits`.
+
+**Decision technique.** (A.4) Un point d entree unique `replayartifacts.Deriver`, declenche par
+le FAIT « un artefact vient d etre range » et non par « je viens de cuire » : appele par la
+cuisson locale ET par `StoreBuildArtifact` (depot d ouvrier). Le puits `SetArtifactStoredSink` ne
+pouvait pas le porter — mono-emplacement, deja pris par la notification Discord, second cablage
+interdit par archlint. Gain collateral : les trois derivations ouvraient chacune l artefact
+(3 lectures + 2 deserialisations d un document de ~2 Mo par match) ; Deriver lit une fois.
+(A.5) Un index des derivations a cote du digest de l artefact (`<artefact>.derived.json` :
+revision + taille du document), et un rattrapage borne par l horizon et le plafond EXISTANTS qui
+ne cuit rien. Le predicat « deja derive » remplace « le fichier existe » — c est ce qui le fait
+CONVERGER. La re-cuisson du corpus perime reste l arbitrage utilisateur date du 02/09.
+(A.6) Table convertie append-only (id PK + `positions_pass` + vue `_latest` PAR PASSE), persister
+INSERT-only sur le patron exact de `bomb_stats_persister`, `WriteMatch` (DELETE+INSERT sur le
+handle de LECTURE) et le `-write` positions du diagnostic supprimes avec leurs tests et
+`write_conn.go` entier. La lecture passe sur la vue.
+
+**Resultats.** Preuve de morsure A.4 : l appel debranche de `StoreBuildArtifact` fait rougir le
+test du chemin ouvrier (« derivations appelees 0 fois pour UN artefact range »), le rebrancher le
+remet au vert. MESURE qui a tranche A.6, sur les 106 artefacts du cache local : trajectoires
+brutes 31 051 positions par match en moyenne (max 129 096) contre 215 apres decimation a la
+granularite de 20 s que le schema de la table declare depuis sa creation (max 895) — projeter
+brut aurait multiplie par ~145 le volume d une table qui alimente une carte de chaleur binnee en
+20x20. Piege paye : `FilmShortMatchID` coupe au premier tiret, donc des identifiants de test
+`m-1`, `m-2` ecrivent tous le meme fichier d artefact ; un test passait par coincidence.
+`match_player_positions` enrolee dans les deux listes anti-ART, aucune allowlist agrandie. Gates
+joues en avant-plan : build, tests des sept familles de paquets, integration `-p 1` sur sync,
+persist, migration et api, ratchet `golangci-lint --new-from-merge-base` — tous verts.
+
+**Conclusion / prochaine etape.** Six items du lot A statues `[x]`, journal
+`.ai/V7.5/v2/LOT_A.md` (mesures, preuves, gates, sept decouvertes, trois questions). Surveillance
+CI abandonnee sur consigne utilisateur (quota) : le superviseur verifiera a l integration. Trois
+questions lui reviennent : le bump de revision rouvre le backlog de redecodage sur tout le parc ;
+la cadence des positions (`GrainPositionsMS`) est le seul parametre produit tranche par
+l executeur, reversible d une constante ; le rattrapage des derives traitera les 106 artefacts
+locaux en ~21 cycles. Risque d integration signale : A-I a touche
+`internal/domain/title/registry.go`, que le lot C touchera aussi.
