@@ -295,6 +295,10 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 	if !armee(ctx, d) {
 		return
 	}
+	// LA PORTE DE PRODUCTION, AVANT TOUT LE RESTE (cf. capability.go).
+	if !titreProduitDesArtefacts(ctx, d) {
+		return
+	}
 	titre := ctxkeys.TitleSlug(ctx)
 	observability.IncCounterT(titre, CompteurCycles)
 	work, retard := selectionnerLeTravail(ctx, d, insertedIDs)
