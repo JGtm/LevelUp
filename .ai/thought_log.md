@@ -95438,11 +95438,22 @@ assimile. Gates : suite Go complete verte, `go build` OK, ratchet golangci-lint
 `--new-from-merge-base=origin/main` a 0 issue, `make generate-types` sans diff, typecheck web
 OK, lint web 0 erreur, vitest COMPLET 591 fichiers / 6249 tests verts.
 
+**Deux reparations apres CI.** Le job `Go Coverage + Baseline` (le seul qui joue
+`-tags=integration` sur ./... complet) a revele que deux tests d integration du rattrapage
+passaient `RepoRoot: t.TempDir()` — une racine vide n est plus neutre depuis que la porte est
+en tete de Run. Helper neuf `racineIsoleeAvecManifestes` (TempDir + copie des manifestes du
+titre) : isolation preservee, titre resolvable. Le job `Go Lint` a ensuite rougi (le helper,
+declare sans tag et utilise sous tag, etait `unused` en build par defaut) : il descend sous
+le tag avec ses appelants. Lecon : le gate du plan (go test sans tag) ne voyait ni l un ni l
+autre ; `-tags=integration -p 1` + le ratchet golangci-lint sont desormais au journal du lot.
+
 **Conclusion / prochaine etape.** Deux ecarts au plan constates sur pieces et documentes :
 halo_infinite n'a PAS de `title.toml` (descripteur built-in, un manifeste y serait ignore),
 et les manifestes « heatmap » vivent sous `apps/web/src/lib/i18n/manifests/`, pas sous
 `config/titles/`. Trois decouvertes hors perimetre au journal du lot
 (`.ai/V7.5/v2/LOT_C.md`), dont la carte de chaleur des positions de la Match View, seule
 surface `film.*` non nommee au lot et qui affichera un etat vide sur un titre sans film.
-Prochaine etape : push, CI, revue adversariale, puis integration dans `feat/v75` (le lot C
-est le premier de l'ordre d'integration).
+Surveillance CI ARRETEE sur consigne du superviseur (quota API) avant la fin du dernier run :
+6 jobs verts au dernier releve dont le lint repare, 2 encore en cours (Frontend, Coverage).
+Prochaine etape : verification CI par le superviseur, revue adversariale, puis integration
+dans `feat/v75` (le lot C est le premier de l'ordre d'integration).
