@@ -18,6 +18,8 @@
  * est censée éviter.
  */
 
+import { VEHICLE_SHOT_SOUND_VARIANTS } from './vehicleShotSound'
+
 /** Un événement sonore posé sur l'horloge du rejeu. */
 export interface ReplaySoundEvent {
   /** Instant en ms sur l'horloge du rejeu (celle du fil et des fiches). */
@@ -66,6 +68,13 @@ export const SOUND_VARIANTS: Readonly<Record<string, readonly string[]>> = {
     'objective_skull_dropped_v2',
     'objective_skull_dropped_v3',
   ],
+  // LES TIRS D'ARMES DE VÉHICULE (lot du 2026-09-04) : deux prises par arme, tirées à chaque
+  // coup comme le jeu le fait. La table vit dans `vehicleShotSound.ts` (avec la jointure
+  // `Shot.w` -> stem et toute la doctrine) et se fusionne ici pour que `soundEvent` les
+  // attache sans qu'aucun appelant ne change. Leur nommage `_1`/`_2` (pas `stem`/`_v2`)
+  // suit la règle de livraison du lot véhicules ; le garde-rail les reconnaît à leur
+  // préfixe pour leur appliquer la règle de durée des ARMES (1,2 s), pas des équipements.
+  ...VEHICLE_SHOT_SOUND_VARIANTS,
 }
 
 /**

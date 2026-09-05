@@ -54,6 +54,16 @@ import {
   WEAPON_CHANGE_SOUND_STEMS,
   EQUIPMENT_PICKUP_SOUND_STEM,
 } from './replaySound'
+import { allEngineStems, VEHICLE_ENGINE_STEMS } from './vehicleEngineSound'
+import { VEHICLE_SHOT_SOUND_STEMS, VEHICLE_SHOT_SOUND_VARIANTS } from './vehicleShotSound'
+
+/**
+ * Les stems de TIR DE VÉHICULE (lot du 2026-09-04) : des ARMES au sens de la règle de durée
+ * (coupe 1,2 s), pas des équipements — mais ils entrent dans `SOUND_VARIANTS` pour le tirage
+ * par coup. Ce prédicat les extrait du flat des variantes, qui range tout le reste chez les
+ * « longs » : sans lui, un tir de Ghost à 0,64 s serait accusé d'être « retronqué ».
+ */
+const vehicleShotStems = new Set(Object.values(VEHICLE_SHOT_SOUND_VARIANTS).flat())
 
 /** Les stems d une entree d objectif : une PAIRE PEUT ETRE INCOMPLETE (le camp non design00e9 a
  *  l oreille reste muet), et le garde-rail ne doit pas r00e9clamer un fichier pour un stem absent. */
@@ -142,6 +152,10 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // doc.objectives — le nommage statborg ne couvre pas Oddball. Leurs variantes entrent par
     // SOUND_VARIANTS ci-dessus, comme celles du grappin.
     ...Object.values(SKULL_SOUND_STEMS),
+    // Les MOTEURS DE VÉHICULES (lot du 2026-09-04) : une NOUVELLE catégorie — des BOUCLES
+    // continues (enter/loop/exit + idle du Scorpion), pas des one-shots. Elles ont leur propre
+    // garde-rail de durée et de format plus bas ; ici, seulement manifeste <-> dossier.
+    ...allEngineStems(),
   ])
 
   it('chaque stem du manifeste a son fichier .wav', () => {
@@ -203,6 +217,10 @@ describe('garde-rail : durée livrée par catégorie', () => {
   // ligne CLASSE MELEE dans rules.tsv, cf. garde-rail ci-dessus).
   const courts = [
     ...Object.values(WEAPON_SOUND_STEMS),
+    // Les TIRS D'ARMES DE VÉHICULE (2026-09-04) : la même catégorie de durée que les armes —
+    // coupe à 1,2 s, une source plus courte livrée entière (Ghost 0,128 / 0,645 s,
+    // Falcon 0,71 s : la prise du jeu fait cette durée-là).
+    ...vehicleShotStems,
     ...THROW_SOUND_STEMS,
     ...Object.values(KILL_SPRITE_SOUND_STEMS)
       .map((v) => v.stem)
@@ -253,8 +271,11 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // 2026-08-29) : le `Set` les absorbe, et leur dispense de durée est déjà déclarée plus bas.
     ...Object.values(SKULL_SOUND_STEMS),
     // Les VARIANTES d'un geste suivent la règle de leur geste : ce sont les autres tirages du
-    // MÊME `RandomSequence`, pas d'autres sons.
-    ...Object.values(SOUND_VARIANTS).flat(),
+    // MÊME `RandomSequence`, pas d'autres sons. Les tirs de véhicule en sortent — leur geste
+    // est une ARME, ils sont déjà comptés dans `courts` ci-dessus.
+    ...Object.values(SOUND_VARIANTS)
+      .flat()
+      .filter((s) => !vehicleShotStems.has(s)),
   ]
 
   it('aucun son ne dépasse le plafond de sûreté du lecteur', () => {
@@ -526,5 +547,126 @@ describe('garde-rail : tout WAV livre est decodable par un navigateur', () => {
       else if (f.canaux > 2) fautifs.push(`${nom} : ${f.canaux} canaux`)
     }
     expect(fautifs, `WAV indecodables par un navigateur :\n  ${fautifs.join('\n  ')}`).toEqual([])
+  })
+})
+
+/**
+ * CINQUIEME GARDE-RAIL : LES MOTEURS DE VEHICULES (lot du 2026-09-04) — une categorie a part.
+ *
+ * Ce ne sont PAS des sons d'evenement : ce sont des BOUCLES continues (enter -> loop x N ->
+ * exit, + idle du Scorpion), produites par la banque SFX_vehicules validee par l'utilisateur
+ * le 2026-09-04. Trois proprietes du CONTRAT de la banque se verifient sur fichiers :
+ *
+ *  - FORMAT CANONIQUE 48 kHz / 16 bits / STEREO : le rebouclage sans clic suppose que le
+ *    fondu grave DANS le fichier tombe a l'echantillon pres — un re-encodage qui changerait
+ *    la cadence ou la profondeur le casserait en silence ;
+ *  - DUREES DE LA BANQUE (1,45 a 6,70 s livrees) : elles ne sont PAS soumises a la coupe de
+ *    1,2 s des armes — une re-livraison qui retronquerait un moteur a la coupe des armes
+ *    transformerait sa boucle en hoquet. La borne haute est le plafond de surete du lecteur ;
+ *  - COMPLETUDE PAR FAMILLE : chaque famille de la table a ses trois clips (l'idle du
+ *    Scorpion en plus), dans les deux sens (le manifeste <-> dossier est deja rejoue par le
+ *    premier garde-rail, `allEngineStems` etant dans `referenced`).
+ *
+ * LES BOOSTS NE SONT PAS LIVRES, et c'est une mesure : la detection par vitesse a echoue au
+ * temoin (mongoose sans boost detecte, ghost occupe ne detecte rien — artefacts 0d76e8f1 et
+ * fccc61cd, 2026-09-04, cf. l'en-tete de `vehicleEngineSound.ts`). `wraith_boost` est de
+ * toute facon REFUTE par l'utilisateur (le clip n'est pas un boost). Un fichier `*_boost`
+ * livre sans etre cable serait un asset mort — ce test l'interdit explicitement.
+ */
+describe('garde-rail : moteurs de vehicules (categorie boucles, banque du 2026-09-04)', () => {
+  /** Le chunk fmt complet d'un WAV : cadence, canaux, profondeur. */
+  function fmtDe(stem: string): { canaux: number; cadence: number; bits: number } {
+    const buf = readFileSync(resolve(SOUNDS_DIR, `${stem}.wav`))
+    for (let at = 12; at + 8 <= buf.length; ) {
+      const id = buf.toString('latin1', at, at + 4)
+      const size = buf.readUInt32LE(at + 4)
+      if (id === 'fmt ') {
+        return {
+          canaux: buf.readUInt16LE(at + 10),
+          cadence: buf.readUInt32LE(at + 12),
+          bits: buf.readUInt16LE(at + 22),
+        }
+      }
+      at += 8 + size + (size % 2)
+    }
+    throw new Error(`${stem} : chunk fmt introuvable`)
+  }
+
+  it('chaque famille de la table a ses clips, et chaque clip son fichier', () => {
+    for (const [famille, stems] of Object.entries(VEHICLE_ENGINE_STEMS)) {
+      const clips = stems.idle
+        ? [stems.enter, stems.loop, stems.idle, stems.exit]
+        : [stems.enter, stems.loop, stems.exit]
+      for (const stem of clips) {
+        expect(shipped.has(stem), `${famille} : ${stem}`).toBe(true)
+      }
+    }
+  })
+
+  it('format canonique de la banque : 48 kHz, 16 bits, stereo', () => {
+    for (const stem of allEngineStems()) {
+      expect(fmtDe(stem), stem).toEqual({ canaux: 2, cadence: 48_000, bits: 16 })
+    }
+  })
+
+  it('jamais retronques a la coupe des armes, jamais au-dela du plafond du lecteur', () => {
+    for (const stem of allEngineStems()) {
+      const s = wavDurationS(resolve(SOUNDS_DIR, `${stem}.wav`))
+      expect(s, `${stem} : retronque a la coupe des armes`).toBeGreaterThan(1.2)
+      expect(s, `${stem} : au-dela du plafond de surete`).toBeLessThanOrEqual(SOUND_CUT_MAX_S)
+    }
+  })
+
+  it('aucun boost livre tant que rien ne le joue (detection refutee au temoin, 2026-09-04)', () => {
+    const boosts = [...shipped].filter((s) => s.startsWith('vehicle_') && s.endsWith('_boost'))
+    expect(boosts).toEqual([])
+  })
+})
+
+/**
+ * SIXIEME GARDE-RAIL : LES TIRS D'ARMES DE VEHICULE (lot du 2026-09-04).
+ *
+ * Trois proprietes du lot se verifient sur pieces :
+ *  - CHAQUE ARME CABLEE A SES VARIANTES : une entree de la jointure `Shot.w -> stem` dont le
+ *    stem n'aurait pas d'entree de variantes jouerait un seul fichier nomme `_1` — le signe
+ *    d'une table editee a moitie ;
+ *  - FORMAT CANONIQUE 48 kHz / 16 bits / STEREO, la meme livraison que les moteurs ;
+ *  - LA BANSHEE MODE 1 RESTE MUETTE : sa reconstruction est REFUTEE (cadence fausse,
+ *    refabrication en cours au 2026-09-04). Un fichier `vehicle_shot_banshee_m1*` livre, ou
+ *    une entree pour le tag 0000AA68, serait un son non valide par l'utilisateur.
+ */
+describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
+  it('chaque arme cablee tire dans ses variantes, et la premiere porte le stem de la table', () => {
+    for (const stem of VEHICLE_SHOT_SOUND_STEMS.values()) {
+      const variants = VEHICLE_SHOT_SOUND_VARIANTS[stem]
+      expect(variants, stem).toBeTruthy()
+      expect(variants?.[0], stem).toBe(stem)
+    }
+  })
+
+  it('format canonique de la livraison : 48 kHz, 16 bits, stereo', () => {
+    for (const stem of Object.values(VEHICLE_SHOT_SOUND_VARIANTS).flat()) {
+      const buf = readFileSync(resolve(SOUNDS_DIR, `${stem}.wav`))
+      let fmt: { canaux: number; cadence: number; bits: number } | null = null
+      for (let at = 12; at + 8 <= buf.length; ) {
+        const id = buf.toString('latin1', at, at + 4)
+        const size = buf.readUInt32LE(at + 4)
+        if (id === 'fmt ') {
+          fmt = {
+            canaux: buf.readUInt16LE(at + 10),
+            cadence: buf.readUInt32LE(at + 12),
+            bits: buf.readUInt16LE(at + 22),
+          }
+          break
+        }
+        at += 8 + size + (size % 2)
+      }
+      expect(fmt, stem).toEqual({ canaux: 2, cadence: 48_000, bits: 16 })
+    }
+  })
+
+  it('la Banshee mode 1 reste muette (reconstruction refutee, 2026-09-04)', () => {
+    expect([...shipped].filter((s) => s.startsWith('vehicle_shot_banshee_m1'))).toEqual([])
+    expect([...VEHICLE_SHOT_SOUND_STEMS.keys()]).not.toContain('0x0000AA6800000000')
   })
 })
