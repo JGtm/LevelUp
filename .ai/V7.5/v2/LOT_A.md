@@ -226,6 +226,77 @@ Tous joués en avant-plan, dans ce worktree, avec
 Aucun test skippé, aucune variable d'environnement de film posée, aucune cuisson d'artefact,
 aucune allowlist agrandie.
 
+## Tâche A-II
+
+### [x] A.4 (A1) — les dérivations se déclenchent sur « un artefact vient d'être rangé »
+
+**Vérification sur pièces avant de coder** (le code avait bougé : les lignes citées par l'audit
+sont désormais 321-322 → `artifacts.go` autour de 320) :
+
+- `artifacts.go` : `if d.Placement == replaybuild.PlacementWorker { enqueueAll(...); return }`
+  précédait bien `reporterT0Film`, `persisterResumesUsage`, `persisterStatsBombe`.
+- `api/wire/registry_build_queue.go` `StoreBuildArtifact` : validait, rangeait, comptait,
+  journalisait, `return`. **Aucune dérivation.**
+- `replaybuild/placement.go` : `local` est REFUSÉ en production (`ErrLocalBuildInProduction`) et
+  le défaut y est `worker` — la branche des dérivations est donc inatteignable en prod par
+  construction, pas seulement par défaut.
+- Le puits `SetArtifactStoredSink` existe mais est mono-emplacement et déjà pris par la
+  notification Discord ; le ratchet `archlint/no_second_artifact_sink_test.go` interdit un second
+  câblage. Il ne pouvait donc PAS porter les dérivations — d'où un point d'entrée dédié.
+
+**Fait.** `internal/sync/replayartifacts/derivations.go` : `ArtefactRange` (le fait « un artefact
+vient d'être rangé »), `DerivationsDeps` (sous-ensemble strict de `Deps` — le chemin ouvrier n'a
+ni client film, ni segment de lecture, ni placement) et `Deriver`, appelé des DEUX rangeurs :
+
+| Rangeur | Site d'appel |
+|---|---|
+| cuisson locale | `artifacts.go` `Run` → `Deriver(ctx, DerivationsDeps{...}, b.ranges)` |
+| dépôt d'ouvrier | `registry_build_queue.go` `StoreBuildArtifact` → `r.deriverArtefactRange(...)` |
+
+Côté wire : `sharedWriterForTitle(slug)` résout le provider **par titre**
+(`cfg.SharedManager.For(SharedDBPath(slug))`, jamais `cfg.SharedProvider` nu qui est celui du
+titre par défaut) et borne l'acquisition par `acquireWriterTimeout`, comme les actions admin.
+Seam `replayDerivationsFn` (nil en production, même parti pris que `replayJobFactsFn`).
+
+**Gain collatéral mesuré à la lecture** : les trois dérivations ouvraient CHACUNE l'artefact
+(3 `os.ReadFile` + 2 désérialisations d'un document de ~2 Mo par match). `Deriver` lit et
+désérialise **une fois** et passe le document aux projections ; `lireT0FilmArtefact`,
+`projeterResumeUsage` et la lecture de `projeterStatsBombe` disparaissent avec leurs chemins
+d'erreur (un document illisible est écarté à la lecture, journalisé, une seule fois).
+
+**Test qui prouve l'appel sur le chemin ouvrier** :
+`internal/api/wire/build_queue_derivations_cgo_test.go` (store monitoring DuckDB réel, rangement
+par `replaybuild.StoreArtifact`) — `TestStoreBuildArtifact_DeclencheLesDerivations` vérifie
+l'appel unique, le slug, l'identité du **job** (pas celle du document) et le chemin **rangé** ;
+`TestStoreBuildArtifact_ArtefactRefuseNeDerivePas` vérifie qu'un dépôt refusé ne dérive rien.
+
+**Preuve par mutation** :
+
+```
+# `r.deriverArtefactRange(...)` remplacé par `_ = stored.Path` dans StoreBuildArtifact
+go test ./internal/api/wire/ -run TestStoreBuildArtifact_DeclencheLesDerivations
+  -> FAIL  dérivations appelées 0 fois pour UN artefact rangé, attendu 1 —
+           c'est exactement le maillon du constat A1
+(retour à l'appel)
+  -> ok  levelup/go-api/internal/api/wire  0.193s
+```
+
+**Gate A.4** :
+
+```
+go build ./...                                                     -> EXIT=0
+go test ./internal/sync/... ./internal/api/... ./internal/archlint/...
+  -> ok levelup/go-api/internal/archlint  17.636s   EXIT=0
+go test -tags=integration -p 1 ./internal/sync/replayartifacts/...
+  -> ok levelup/go-api/internal/sync/replayartifacts  16.085s   EXIT=0
+golangci-lint run --new-from-merge-base=origin/main ./internal/sync/... ./internal/api/wire/...
+  -> 0 issues.  EXIT=0
+```
+
+### [ ] A.5 (A2)
+
+### [ ] A.6 (décision 1)
+
 ## Découvertes (hors périmètre, NON traitées)
 
 - **D-1** — Aucune des trois familles passagères de la passe film (`match_weapon_shots`,

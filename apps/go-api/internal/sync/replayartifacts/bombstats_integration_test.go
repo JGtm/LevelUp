@@ -87,9 +87,9 @@ func TestPersisterStatsBombe_UnMatchDAssautEcritSesLignesEtSesFaits(t *testing.T
 	d := depsUsage(t, db, "halo_infinite", &acquis, &relaches)
 	ctx := context.Background()
 
-	persisterStatsBombe(ctx, d, []artefactCuit{
-		{matchID: "m-bombe", path: artefactBombe(t, dir, "m-bombe")},
-	})
+	persisterStatsBombe(ctx, d, lus(d,
+		ArtefactRange{MatchID: "m-bombe", Path: artefactBombe(t, dir, "m-bombe")},
+	))
 
 	if acquis != 1 || relaches != 1 {
 		t.Fatalf("writer acquis %d fois, relache %d fois — attendu 1 et 1 (burst unique)", acquis, relaches)
@@ -153,9 +153,9 @@ func TestPersisterStatsBombe_ModeHorsAssautNEcritRien(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_infinite", &acquis, &relaches)
 
-	persisterStatsBombe(context.Background(), d, []artefactCuit{
-		{matchID: "m-slayer", path: artefactHorsAssaut(t, dir, "m-slayer")},
-	})
+	persisterStatsBombe(context.Background(), d, lus(d,
+		ArtefactRange{MatchID: "m-slayer", Path: artefactHorsAssaut(t, dir, "m-slayer")},
+	))
 
 	if acquis != 0 {
 		t.Fatalf("writer acquis %d fois pour un lot sans Assaut, attendu 0", acquis)
@@ -179,9 +179,9 @@ func TestPersisterStatsBombe_TitreSansCapability(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_5", &acquis, &relaches)
 
-	persisterStatsBombe(context.Background(), d, []artefactCuit{
-		{matchID: "m-h5", path: artefactBombe(t, dir, "m-h5")},
-	})
+	persisterStatsBombe(context.Background(), d, lus(d,
+		ArtefactRange{MatchID: "m-h5", Path: artefactBombe(t, dir, "m-h5")},
+	))
 
 	if acquis != 0 {
 		t.Fatalf("writer acquis %d fois pour un titre sans capability, attendu 0", acquis)
@@ -204,10 +204,10 @@ func TestPersisterStatsBombe_ArtefactIllisibleNArretePasLeLot(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_infinite", &acquis, &relaches)
 
-	persisterStatsBombe(context.Background(), d, []artefactCuit{
-		{matchID: "m-absent", path: filepath.Join(dir, "inexistant.json")},
-		{matchID: "m-ok", path: artefactBombe(t, dir, "m-ok")},
-	})
+	persisterStatsBombe(context.Background(), d, lus(d,
+		ArtefactRange{MatchID: "m-absent", Path: filepath.Join(dir, "inexistant.json")},
+		ArtefactRange{MatchID: "m-ok", Path: artefactBombe(t, dir, "m-ok")},
+	))
 
 	if acquis != 1 {
 		t.Fatalf("writer acquis %d fois, attendu 1 (le lot valide s'ecrit)", acquis)

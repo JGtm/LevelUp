@@ -49,9 +49,7 @@ package replayartifacts
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"log/slog"
-	"os"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -77,28 +75,17 @@ const (
 	t0FilmEchec
 )
 
-// lireT0FilmArtefact lit le SEUL champ `t0FilmMs` de l'artefact RANGE SUR DISQUE.
+// LA LECTURE DU CHAMP `t0FilmMs` A DEMENAGE (2026-09-06) : elle vit dans `rapportsT0`
+// (derivations.go), qui la tire du document DEJA LU par [Deriver] — une seule lecture de
+// l'artefact range pour les quatre derivations, au lieu d'une par famille.
 //
-// SUR DISQUE, ET NON DANS LE BLOB CANDIDAT : `StoreArtifact` peut REFUSER l'ecriture (garde
-// anti-regression) et conserver l'artefact precedent. Reporter la valeur du candidat
-// ecrirait alors en base un coup d'envoi que le disque ne porte pas.
+// SUR DISQUE, ET NON DANS LE BLOB CANDIDAT : la regle n'a pas bouge. `StoreArtifact` peut
+// REFUSER l'ecriture (garde anti-regression) et conserver l'artefact precedent ; reporter la
+// valeur du candidat ecrirait en base un coup d'envoi que le disque ne porte pas.
 //
-// Nil quand le fichier est illisible, quand le schema est anterieur au champ, ou quand le
-// detecteur a REFUSE de dater le coup d'envoi (piege omitempty documente sur le champ) — les
-// trois cas veulent la meme chose : ne rien ecrire.
-func lireT0FilmArtefact(path string) *int64 {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	var head struct {
-		T0FilmMs *int64 `json:"t0FilmMs"`
-	}
-	if err := json.Unmarshal(raw, &head); err != nil {
-		return nil
-	}
-	return head.T0FilmMs
-}
+// Un document sans `t0FilmMs` — schema anterieur au champ, ou detecteur qui a REFUSE de dater
+// le coup d'envoi (piege omitempty documente sur le champ) — ne donne aucun rapport : les deux
+// cas veulent la meme chose, ne rien ecrire.
 
 // reporterT0Film ecrit les coups d'envoi mesures du cycle dans `match_registry`.
 //

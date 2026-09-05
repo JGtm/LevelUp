@@ -339,17 +339,13 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 		return
 	}
 	b := buildAll(ctx, d, work)
-	// LE REPORT DU COUP D'ENVOI VIENT APRÈS TOUTE CUISSON, jamais entre deux : c'est ce qui
-	// garantit que le burst writer ne recouvre aucun décodage (cf. t0film.go).
-	reporterT0Film(ctx, d, b.t0Film)
-	// LE RÉSUMÉ D'USAGE SUIT LA MÊME RÈGLE (cf. usage.go) : projeté depuis les artefacts
-	// rangés de CE cycle, écrit dans un second burst court, gate par capability.
-	persisterResumesUsage(ctx, d, b.usage)
-	// LES STATISTIQUES D'ASSAUT, TROISIÈME ET DERNIER BURST, même règle encore (cf.
-	// bombstats.go) : projetées depuis les MÊMES artefacts rangés, écrites après toute
-	// cuisson, gatées par `film.bomb_stats`. Un cycle sans match d'Assaut n'ouvre aucun
-	// writer — la projection le voit avant, sur le document.
-	persisterStatsBombe(ctx, d, b.usage)
+	// LES DÉRIVATIONS VIENNENT APRÈS TOUTE CUISSON, jamais entre deux : c'est ce qui garantit
+	// que les bursts writer ne recouvrent aucun décodage. UN SEUL POINT D'ENTRÉE, le même que
+	// celui du dépôt d'ouvrier (cf. derivations.go — constat A1).
+	Deriver(ctx, DerivationsDeps{
+		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
+		AcquireWriter: d.AcquireWriter,
+	}, b.ranges)
 	publierBilan(ctx, d, b, len(work))
 }
 
