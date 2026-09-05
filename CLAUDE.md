@@ -169,7 +169,7 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
 make go-api-test            # tests Go rapides (domain/analysis/contracttest)
 cd apps/go-api && go test ./...                      # suite complète
 cd apps/go-api && go test -tags=integration ./...    # inclut les tests persist anti-ART (OBLIGATOIRE avant livraison sync/persist)
-make go-api-test-gamefiles  # corpus cartes internal/himap (tag `gamefiles`, EXIGE Halo installe, ~1 h)
+make go-api-test-gamefiles  # corpus cartes internal/himap (tag `gamefiles`, EXIGE Halo installe, ~6 min)
 make go-api-lint            # golangci-lint
 make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests ; la CI reste le gate d'autorité
 
@@ -192,7 +192,8 @@ go run ./apps/go-api/cmd/levelup --help              # sync, backfill, diag
 
 **Tag `gamefiles` (2026-09-05)** : les 59 `*_gamefiles_test.go` de `internal/himap/` lisent
 l'installation locale de Halo Infinite et coûtent des dizaines de minutes
-(`TestBalayageCoquille` seul : 1 246 s, 26 cartes, VERT). Ils sont derrière
+(`TestBalayageCoquille` seul : 203 s pour 26 cartes ; 1 246 s avant le passage du lecteur
+ de modules en projection mémoire le 2026-09-05). Ils sont derrière
 `//go:build gamefiles` — sans quoi `go test ./internal/himap/` ne terminait jamais sur un
 poste où le jeu est installé, alors que la CI (pas de jeu → `t.Skip`) restait verte. Un test
 qui ouvre le jeu se nomme `*_gamefiles_test.go` ET porte le tag : garde-rails dans

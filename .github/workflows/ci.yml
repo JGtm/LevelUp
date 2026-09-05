@@ -170,7 +170,7 @@ jobs:
 
       # CORPUS `gamefiles` (2026-09-05) : les 59 tests de rétro-ingénierie de
       # internal/himap/ lisent l'installation locale de Halo Infinite et coûtent des
-      # dizaines de minutes (TestBalayageCoquille seul : 1 246 s, 26 cartes). Ils sont
+      # minutes (corpus entier : ~385 s ; TestBalayageCoquille seul : 203 s, 26 cartes). Ils sont
       # derrière `//go:build gamefiles` — donc PAS compilés par le `go test` par défaut.
       # Sans ce vet, ils pourriraient sans que rien ne rougisse : la CI n'a pas le jeu
       # installé, elle ne peut pas les EXÉCUTER, mais elle doit les COMPILER.
