@@ -32,6 +32,16 @@ package replayartifacts
 // exactement la lourdeur que ce chemin doit eviter. La derive des cartes connues se traite par
 // `mapopads-build --refresh-drifted`, a la main ou en maintenance planifiee.
 //
+// # IL LIT DEUX FICHIERS ET N'EN ECRIT QU'UN (correction A0, 2026-09-05)
+//
+// « Absente du catalogue » se juge sur la FUSION du catalogue VERSIONNE
+// (`reference/map_weapon_pads.json`, suivi par git) et de l'OVERLAY
+// (`reference/generated/map_weapon_pads.json`, ignore par git) — sinon une carte rattrapee au
+// cycle precedent serait re-telechargee a chaque cycle. L'ecriture, elle, ne va QUE dans
+// l'overlay : avant cette correction ce code ecrivait le fichier versionne, que le deploiement
+// (`scripts/deploy.sh`, `git reset --hard origin/main`) aurait efface a chaque livraison, et
+// qu'un commit local a deja avale par accident (+332 lignes de reference sans relecture).
+//
 // # Best-effort STRICT
 //
 // Auth, reseau, parse, ecriture : TOUT echec est journalise, compte, et le fetch de film
@@ -97,16 +107,20 @@ func rattraperCartesAbsentes(ctx context.Context, d Deps, work []buildWork,
 	// echec PAR CYCLE, ce qui est bruyant mais assume : la jauge `postsync_mvar_echecs` reste
 	// non nulle tant que le fichier manque, et c'est exactement ce qu'on veut voir. Le chemin
 	// est de toute facon inatteignable sans films : `Run` sort avant si la selection est vide.
-	catPath := title.NewPathResolver(d.RepoRoot).MapWeaponPadsPath(d.TitleSlug)
-	cat, err := replay.LoadMapWeaponPads(catPath)
+	res := title.NewPathResolver(d.RepoRoot)
+	catPath := res.MapWeaponPadsPath(d.TitleSlug)
+	overlayPath := res.MapWeaponPadsOverlayPath(d.TitleSlug)
+	// LECTURE FUSIONNEE, ECRITURE DANS L'OVERLAY SEUL. Sans la fusion, une carte deja rattrapee
+	// au cycle precedent serait re-telechargee a chaque cycle : elle n'est pas dans le fichier
+	// versionne, et c'est lui seul que la premiere version de ce code lisait.
+	cat, err := replay.LoadMapWeaponPadsMerged(catPath, overlayPath)
 	if err != nil {
 		slog.WarnContext(ctx, "rattrapage mvar: catalogue des cartes illisible — rattrapage "+
 			"saute, les films sont recuperes normalement", "err", err, "path", catPath)
 		b.echecs++
 		return b
 	}
-	objectifs, err := replay.LoadMapObjectives(
-		title.NewPathResolver(d.RepoRoot).MapObjectivesPath(d.TitleSlug))
+	objectifs, err := replay.LoadMapObjectives(res.MapObjectivesPath(d.TitleSlug))
 	if err != nil {
 		slog.WarnContext(ctx, "rattrapage mvar: catalogue d objectifs illisible — sans lui on "+
 			"ne sait pas quel fichier de variante demander", "err", err)
@@ -136,7 +150,7 @@ func rattraperCartesAbsentes(ctx context.Context, d Deps, work []buildWork,
 			b.horsObjectifs++
 			continue
 		}
-		if ajouterCarteAuCatalogue(ctx, d, fetcher, catPath, mapID, e) {
+		if ajouterCarteAuCatalogue(ctx, d, fetcher, overlayPath, mapID, e) {
 			b.ajoutees++
 		} else {
 			b.echecs++
@@ -172,8 +186,12 @@ func publierBilanRattrapage(ctx context.Context, b bilanRattrapage) {
 
 // ajouterCarteAuCatalogue fait le travail d'UNE carte. Rend faux sur tout echec — et l'echec
 // n'interrompt jamais rien.
+//
+// `overlayPath` EST L'OVERLAY, PAS LE CATALOGUE VERSIONNE : le runtime n'ecrit jamais un fichier
+// suivi par git (cf. PathResolver.MapWeaponPadsOverlayPath et le garde-rail
+// `archlint/no_runtime_versioned_catalog_write_test.go`).
 func ajouterCarteAuCatalogue(ctx context.Context, d Deps, fetcher MvarFetcher,
-	catPath, mapID string, e replay.MapObjectivesEntry,
+	overlayPath, mapID string, e replay.MapObjectivesEntry,
 ) bool {
 	blob, base, err := fetcher.FetchMvarForMap(ctx, mapID, e.MvarFile)
 	if err != nil {
@@ -202,15 +220,15 @@ func ajouterCarteAuCatalogue(ctx context.Context, d Deps, fetcher MvarFetcher,
 			"map_id", mapID, "carte", e.PublicName,
 			"socles_melanges", mixedPads, "points_melanges", mixedPts)
 	}
-	err = mapcatalog.AddEntry(catPath, mapID, entry)
+	err = mapcatalog.AddOverlayEntry(overlayPath, d.TitleSlug, mapID, entry)
 	switch {
 	case errors.Is(err, mapcatalog.ErrEntryExists):
 		// Un autre film du meme lot, ou un autre processus, l'a ajoutee entre-temps. Ce n'est
 		// pas un echec : l'ajout-seul a fait exactement son travail.
 		return true
 	case err != nil:
-		slog.WarnContext(ctx, "rattrapage mvar: ecriture du catalogue echouee",
-			"map_id", mapID, "err", err)
+		slog.WarnContext(ctx, "rattrapage mvar: ecriture de l overlay du catalogue echouee",
+			"map_id", mapID, "overlay", overlayPath, "err", err)
 		return false
 	}
 	n := 0

@@ -134,11 +134,97 @@ Note : `golangci-lint run ./internal/sync/` NON ratcheté remonte 15 problèmes,
 dette gelée par la baseline, aucune sur les deux fichiers modifiés. Le gate d'autorité est le
 ratchet `--new-from-merge-base` (Makefile:307), vert.
 
-### [ ] A.3 (A0)
+### [x] A.3 (A0) — le runtime n'écrit plus le catalogue versionné
+
+**Vérification sur pièces avant de coder.** `mvar_rattrapage.go` lisait
+`PathResolver.MapWeaponPadsPath` (fichier suivi par git) et écrivait ce même chemin via
+`mapcatalog.AddEntry` (un seul appelant de production, confirmé par grep). Le catalogue livré
+fait 928 747 octets pour 72+ cartes.
+
+**Conception retenue** (une entrée relue, une sortie jetable) :
+
+| Rôle | Fichier | Producteur | Versionné |
+|---|---|---|---|
+| ENTRÉE relue en revue | `reference/map_weapon_pads.json` | `cmd/mapopads-build`, à la main | oui |
+| SORTIE de runtime | `reference/generated/map_weapon_pads.json` | rattrapage `.mvar` au fetch de film | **non** (`.gitignore`) |
+
+- `PathResolver.MapWeaponPadsOverlayPath(slug)` — nouveau chemin, documenté avec les deux dégâts
+  qu'il évite (le `git reset --hard origin/main` de `scripts/deploy.sh` et le commit local qui
+  avale +332 lignes de référence).
+- `replay.LoadMapWeaponPadsMerged(versionne, overlay)` — la fusion À LA LECTURE, **l'entrée
+  versionnée primant** sur la rattrapée. Overlay absent = cas nominal, silencieux ; overlay
+  illisible = `slog.Warn` puis dégradation au seul versionné (un fichier jetable ne doit pas
+  faire perdre les cartes relues) ; le versionné absent reste une erreur.
+- `mapcatalog.AddEntry` → `mapcatalog.AddOverlayEntry(overlay, titleSlug, mapID, entry)` : elle
+  ne connaît plus le chemin versionné du tout. Renversement de contrat assumé et testé :
+  l'ancienne devait ÉCHOUER sur un fichier absent (créer un catalogue de zéro aurait effacé le
+  titre) ; la nouvelle CRÉE l'overlay absent (c'est le premier rattrapage) mais refuse toujours
+  d'écraser un overlay corrompu.
+- Les trois lecteurs de production passent au chargeur fusionné : `mvar_rattrapage.go` (sinon une
+  carte rattrapée serait re-téléchargée à chaque cycle), `replaybuild/spawnpoints.go` (la
+  cuisson, destinataire réel du rattrapage) et `service/replay_map_weapon_pads.go` (le calque
+  servi). `cmd/mapopads-build` continue de ne lire que le versionné : c'est lui qui le produit.
+- `.gitignore` : `data/titles/*/reference/generated/`, avec la raison écrite. Vérifié :
+  `git check-ignore -v data/titles/halo_infinite/reference/generated/map_weapon_pads.json`
+  → `.gitignore:152`. **Le contenu déjà versionné n'a pas été touché** (`git status data/` vide).
+
+**Garde-rail** : `internal/archlint/no_runtime_versioned_catalog_write_test.go`, trois tests.
+
+1. `TestRuntimeNEcritPasLeCatalogueVersionne` — analyse **AST avec suivi de valeur** (pas un
+   grep) sur tout `internal/` et `cmd/` non-test : repère `…MapWeaponPadsPath(…)`, suit la
+   variable qui en reçoit le résultat dans la même fonction, et refuse que cette valeur atteigne
+   un verbe d'écriture. Une valeur qui part dans un contexte non suivable (littéral composite,
+   `return`, champ) est refusée aussi — un ratchet qui ne sait pas doit dire non. Exception
+   unique et datée : `cmd/mapopads-build/` (la chaîne de fabrication, dont c'est le métier).
+   **Les verbes d'écriture incluent les verbes FRANÇAIS** (`ajouter`, `ecrire`, `deposer`…) :
+   sans eux, le ratchet aurait été vert sur `ajouterCarteAuCatalogue`, c'est-à-dire sur le défaut
+   même qu'il doit garder.
+2. `TestCatalogueVersionneNommeParLeResolverSeul` — ferme le contournement par le littéral :
+   `"map_weapon_pads.json"` n'a le droit d'apparaître que dans `domain/title/registry.go`.
+3. `TestRatchetCatalogueVersionneMord` — 5 sources refusées, 3 acceptées (dont la forme exacte de
+   la production d'aujourd'hui, pour que le ratchet ne soit pas « vert par excès de sévérité »).
+
+**Preuve par mutation sur le code réel** :
+
+```
+sed -i 's/ajouterCarteAuCatalogue(ctx, d, fetcher, overlayPath,/…, catPath,/' mvar_rattrapage.go
+go test ./internal/archlint/ -run TestRuntimeNEcritPasLeCatalogueVersionne
+  -> FAIL  internal/sync/replayartifacts/mvar_rattrapage.go ligne 153 : le chemin VERSIONNÉ
+           (catPath) est passé à ajouterCarteAuCatalogue() — le runtime doit écrire l'overlay
+(retour à overlayPath)
+  -> ok  levelup/go-api/internal/archlint  0.309s
+```
+
+**Tests de comportement ajoutés** (au-delà du ratchet, qui ne lit que du code) :
+
+- `mapcatalog` : `TestAddOverlayEntryNeTouchePasLeCatalogueVersionne` (contenu ET mtime du
+  versionné inchangés après un rattrapage), `…CreeLOverlayAbsent`, `…EchoueSurOverlayCorrompu`,
+  plus les trois tests d'origine portés sur l'overlay (refus de clé existante, ajout d'une clé
+  neuve, concurrence à 8 écrivains).
+- `analysis/replay` : quatre tests de `LoadMapWeaponPadsMerged` (overlay absent nominal, overlay
+  complété, **le versionné prime**, overlay illisible → dégradation).
+- `replayartifacts` : `TestRattrapageCarteInconnueAjouteSansToucherLesAutres` étendu (le fichier
+  versionné ressort byte-identique, l'ajout est dans l'overlay) et
+  `TestRattrapageCarteDejaDansLOverlayNeRetelechargePas` (deux cycles : le second ne fait AUCUN
+  appel réseau — sans la lecture fusionnée, chaque cycle re-téléchargerait toutes les cartes
+  déjà rattrapées).
 
 ## Gates de la tâche A-I
 
-(à remplir à la clôture)
+Tous joués en avant-plan, dans ce worktree, avec
+`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-faits CGO_ENABLED=1` depuis `apps/go-api`.
+
+| # | Commande | Dernière ligne |
+|---|---|---|
+| 1 | `go test ./internal/sync/... ./internal/analysis/replay/... ./internal/domain/... ./internal/archlint/...` | `ok levelup/go-api/internal/archlint 18.811s` — EXIT=0 |
+| 2 | `go test ./internal/mapcatalog/... ./internal/replaybuild/... ./internal/service/...` (paquets touchés hors liste du plan) | `ok levelup/go-api/internal/service/teammates 0.529s` — EXIT=0 |
+| 3 | `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` | `ok levelup/go-api/internal/persist 32.787s` — EXIT=0 |
+| 4 | `golangci-lint run --timeout 5m --new-from-merge-base=origin/main ./internal/sync/... ./internal/analysis/replay/... ./internal/domain/title/... ./internal/mapcatalog/... ./internal/replaybuild/... ./internal/service/... ./internal/archlint/...` | `0 issues.` — EXIT=0 |
+| 5 | `golangci-lint run --timeout 5m ./internal/mapcatalog/... ./internal/archlint/... ./internal/analysis/replay/...` (non ratcheté, paquets à code neuf) | `0 issues.` — EXIT=0 |
+| 6 | `go build ./...` | (aucune sortie) — EXIT=0 |
+
+Aucun test skippé, aucune variable d'environnement de film posée, aucune cuisson d'artefact,
+aucune allowlist agrandie.
 
 ## Découvertes (hors périmètre, NON traitées)
 
@@ -147,7 +233,20 @@ ratchet `--new-from-merge-base` (Makefile:307), vert.
   reprise possible passe par `KillSourceDecoderRev`, alors que deux d'entre elles portent une
   révision distincte qui n'est lue nulle part et que la troisième n'en a pas. Détail et mesures
   ci-dessus (A.1). Le plan interdit d'ajouter une révision dans ce lot.
+- **D-2** — Les autres catalogues de `reference/` restent écrits UNIQUEMENT par leurs CLI
+  (`map_objectives.json`, `map_positions_jouees.json`, `map_callouts.json`,
+  `map_fond_reglages.json`) : vérifié, aucun autre chemin runtime n'écrit dans `reference/`.
+  L'overlay et son ratchet ne couvrent donc aujourd'hui QUE `map_weapon_pads.json`, ce qui suffit
+  au constat A0 ; le jour où un second rattrapage runtime apparaît, il faudra le même
+  garde-rail — la structure `reference/generated/` est déjà prête et ignorée par git pour tout
+  le dossier.
+- **D-3** — Le lint non ratcheté de `internal/sync/` remonte 15 problèmes préexistants (détail
+  en A.2). Hors périmètre du lot A ; ils appartiennent à la dette gelée par la baseline.
 
 ## Questions ouvertes
 
-(aucune à ce stade)
+- **Q-1 (pour le superviseur, pas bloquante)** — Le bump de `KillSourceDecoderRev` rend TOUT le
+  parc à nouveau candidat au backlog de redécodage (1 325 films, 8 à 30 s par film). C'est
+  l'effet VOULU du constat P0-1, mais c'est une charge de fond qui démarrera au premier cycle
+  après le merge : à arbitrer au moment de l'intégration (horizon du backlog, ordre du plus
+  récent au plus vieux déjà en place depuis le 2026-08-29).

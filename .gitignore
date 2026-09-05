@@ -140,6 +140,17 @@ data/titles/*/warehouse/*.wal.orphan-*
 data/titles/*/warehouse/shared_social_export_*/
 data/backups/
 
+# Constat A0 (2026-09-05) — SORTIES DE RUNTIME des catalogues de référence.
+# `reference/` porte des données VERSIONNÉES, produites à la main par les chaînes de
+# fabrication (cmd/mapopads-build, cmd/mapobj-build...) et relues en revue. Ce que le
+# RUNTIME rattrape tout seul (rattrapage `.mvar` au fetch de film) va dans
+# `reference/generated/` et n'est JAMAIS versionné : un déploiement fait
+# `git reset --hard origin/main` (scripts/deploy.sh) et effacerait ces fichiers, et un
+# commit local les avalerait sans relecture (+332 lignes entrées ainsi par accident).
+# La fusion des deux se fait à la LECTURE (replay.LoadMapWeaponPadsMerged), le versionné
+# primant sur le rattrapé.
+data/titles/*/reference/generated/
+
 # Tokens OAuth Halo per-joueur (SPNKR refresh tokens — SECRET, ne JAMAIS commiter)
 apps/go-api/token_*.txt
 **/token_*.txt
