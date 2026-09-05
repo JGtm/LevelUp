@@ -1,3 +1,35 @@
+## [2026-09-05] Session-usage S3 — front Sessions : trois blocs, grammaire du handoff §1 reconstruite (voie de repli, GO utilisateur) — Complete cote executant (commit au pilote)
+
+**Decision technique principale.** Maquette inaccessible : les formes sont reconstruites
+depuis la GRAMMAIRE validee (ecart a la parite / jauge avec etendue · piste du lobby ·
+grille alignee ValueGrid · bande de regularite) et le modele de la vue match
+(SectionCard, valueGridModel, DOM/CSS sans ECharts). 5 fichiers neufs dans
+features/session-detail (usageI18n Record<Locale,UsageText> ; usageLogic pur : formats,
+jauges, piste, bande ; usageGrids : 3 projections buildValueGrid ; SessionUsageForms :
+rendu des formes ; SessionUsageSection : les 3 cartes), branches sur le bloc `usage` de
+la reponse EXISTANTE (SessionPageResponse — aucune query nouvelle), alias types dans
+lib/api/types.ts. Arbitrages executant a faire valider a la revue visuelle : (a) couleurs
+joueurs = source unique features/squad/colors (moi=squad-player-1, coequipiers=2..4) et
+non 1..3 pour les coequipiers — coherence inter-pages ; (b) « eux » = hachure NEUTRE
+anonyme (jamais team-enemy : la reference n'est jamais affichee) ; (c) bande de
+regularite teintee contre la parite de SESSION (le contrat ne publie pas la parite par
+match ; les comptes « au-dessus » restent ceux du Go, per-match) ; (d) familles de socle
+affichees par leur cle hexa (le contrat ne porte pas de libelle d'arme) ; (e) piste du
+lobby refusee quand team_total est nil (pas de frontiere nous/eux), residus bornes a 0.
+
+**Resultats observes.** make generate-types EXIT=0 (apres npm install du worktree — piege :
+premier passage echouait en silence, openapi-typescript absent) ; diff generated.ts
++140 lignes, bloc usage complet. make check-types EXIT=0. make test-web EXIT=0 :
+573 fichiers / 5977 tests verts dont usageLogic.test.ts (25 tests : nil jamais 0, piste,
+bande, grilles, disponibilite). eslint fichiers du lot : 0 probleme. Ratchet
+cross-feature : 7 <= 7 (import squad/colors deja allowliste). Fichiers <= 500 L,
+fonctions <= 80 L.
+
+**Conclusion / prochaine etape.** Reste PILOTE : relecture du diff, commit S3, gate visuel
+utilisateur sur le temoin corrige (session 2026-07-31 19:22, JGtm : 193 nommees /
+82 anonymes / bonus camo 45 + overshield 20 / murs 7 lobby 0 JGtm / parites
+12,5 % / 25,0 %).
+
 ## [2026-09-05] Session-usage S2 — ronde de correction post-revue (C1-C6) : regle de scope camp connu, cadences sur duree connue, contrat team_total nullable — Complete cote executant (commit au pilote)
 
 **Decision technique principale.** Application de l'arbitrage pilote sur les six constats
@@ -91247,3 +91279,25 @@ premiere action : make generate-types (generated.ts en retard sur openapi.yaml).
 Lecon de coordination (voir memoire agent) : l'executant S1 coupe par la limite avait
 repris SEUL et pilote en parallele toute la soiree — arbitrage utilisateur transmis par
 message de session, retrait propre de l'autre session, un seul pilote ensuite.
+
+## [2026-09-05] Session-usage S3 — cloture pilote : le front des trois blocs, gate visuel remis a l'utilisateur — Complété
+
+S3 commite apres revue adversariale (ronde 1 : 1 P1 — la piste du lobby dimensionnait
+ses segments a leur TEXTE, flexGrow pose sur le contenu du Tooltip au lieu de l'item du
+flex — corrige par le pattern width calc(%) de MatchPadControlSection ; 1 P2 — rails de
+jauge de largeur variable sous un axe pleine colonne — corrige par des sous-colonnes
+rail/texte ; ronde 2 : 2/2, rien de nouveau). Gates : tsc vert, 5977 tests web verts
+dont 25 du lot, eslint 0, aucune couleur en dur, i18n FR+EN par typage.
+
+DECOUVERTE CONSIGNEE : le meme defaut flexGrow-sur-contenu-de-Tooltip existe dans la
+vue match LIVREE (MatchEquipmentUsageSection.tsx:212, UsageTeamShares) — masque parce
+que ses segments portent toujours du texte. Dette pre-existante, hors perimetre S3.
+
+RESTE OUVERT : le gate VISUEL utilisateur sur le temoin (session 2026-07-31 19:22,
+JGtm, chiffres corriges au plan) — six arbitrages pris sans maquette a valider, dont
+les familles de socle en hexadecimal brut (si illisible : enrichir le contrat Go d'un
+libelle d'arme, petit lot de suite).
+
+Le chantier du handoff est LIVRE sur wt/session-usage (S1 backfille en local, S2/S3
+commites, ni push ni merge — decision de merge a l'utilisateur, mode branche unique
+feat/v75).
