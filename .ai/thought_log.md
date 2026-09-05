@@ -85,6 +85,40 @@ rouge connu y est signale pour que le prochain qui joue le corpus ne le prenne p
 j'avais nomme le harnais `*_gamefiles_test.go` sans lui poser le tag. Il a fait exactement son
 travail, un jour apres avoir ete ecrit.
 
+
+## [2026-09-05] CI de branche — les six rouges du ratchet golangci-lint eteints — Complete
+
+**D ou venait le rouge.** Le push du merge de garde-rail (9d0f82031) a rendu publique une CI
+rouge sur `feat/v75` : huit jobs verts sur neuf, seul `Go Lint (golangci-lint)` en echec avec
+six problemes. Aucun dans les fichiers du garde-rail. Ils venaient des commits fa09f4ee5
+(equipement lecture schema 38), 58ad66573 (translocation schema 38) et 07ad449b1 (propulseur
+i57/i59), arrives sur la branche par des merges d une session parallele et jamais passes en CI
+ici — le dernier run vert de la branche datait du 03/09, avant eux.
+
+**Le SA4000 n etait PAS le bug annonce, et il fallait le verifier avant de corriger.**
+`transloc_events.go:172` faisait `if br.ReadBit() || br.ReadBit()` : le court-circuit ne lit pas
+le second bit quand le premier vaut 1. J avais annonce un decalage d un bit dans tout ce qui
+suit — c est FAUX sur pieces : ce chemin `return none, none, false` sort aussitot, le lecteur de
+bits est abandonne et l appelant (`decodeTranslocHead`) ne s en ressert pas. Aucun decodage
+n etait fausse. Corrige quand meme, en lisant les deux portes explicitement
+(`ref1, ref2 := br.ReadBit(), br.ReadBit()`) : l intention appartient au code, pas au hasard du
+court-circuit, et le prochain lecteur ne refera pas mon erreur d analyse.
+
+**Les cinq autres.** Deux `goconst` dans `traverse.go` : les etiquettes de registre d i59
+avaient deja leurs constantes dans `grapple_state.go` (`grappleComponentName` /
+`...NameAlt`) — la table `paramByComponent` les nomme maintenant au lieu de recopier le
+litteral, comme elle le faisait deja pour `compWeaponStateTypeInfo`. Un `QF1001` dans
+`offline_filters.go` : loi de De Morgan appliquee (`!(len(exempt) > 0 && covers)` devient
+`len(exempt) == 0 || !covers`), equivalence verifiee a la main. Deux symboles morts supprimes
+(regle 7, zero code mort) : `r8CoincUS` et `r8QRatio`, sans aucun referent dans le module.
+
+**Verification.** `golangci-lint run --new-from-merge-base=origin/main` en LOCAL avec le MEME
+binaire que la CI (v2.12.2) : `0 issues`, code de sortie 0. `gofmt`, `go vet`, et
+`go test ./internal/analysis/...` (17 paquets) verts, codes de sortie 0 lus directement — pas
+au travers d un `tail`, qui m avait fait annoncer une CI verte alors qu elle etait rouge
+(le code de sortie lu etait celui du filtre, pas celui de `gh run watch`).
+
+**Suite.** Branche `wt/lint-filmdec` fusionnee dans `feat/v75`. La CI de branche fait foi.
 ## [2026-09-05] internal/himap ne terminait pas — ce n'etait pas un blocage, c'etaient 20 minutes de balayage sans etiquette — Complete
 
 **Le symptome, et pourquoi il ressemblait a un bug.** `go test ./internal/himap/` ne
