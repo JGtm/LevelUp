@@ -139,9 +139,28 @@ Corpus du harnais : 13 films (`internal/analysis/replay/testdata/equivalence/COR
 - [ ] C.5 Commit du pilote.
 
 ### Étape D — Game-changers (`wt/game-changers`, web)
-- [ ] D.1 Merge ; conflits web match-replay (avec B) résolus dans le sens des deux intentions.
-- [ ] D.2 typecheck, lint, vitest ; harnais 13/13 sans `-update` (rien côté Go).
-- [ ] D.3 Commit du pilote.
+- [x] D.0 `git fetch origin` — **0 commit** entre `eb80a4f0a` et `origin/feat/v75` (amont
+  toujours gelé, mesuré). `git merge --no-ff --no-commit wt/game-changers` — base de merge
+  **`ca55f0ed7`** (celle du §1), **4 commits**, **16 fichiers** (`.ai/thought_log.md`,
+  `.ai/PLAN_REPLI_GAME_CHANGERS_2026-09-05.md` neuf, 3 `components/ui/collapsed-items-toggle*`
+  neufs, 12 `features/match-replay`). Détail au §6.
+- [x] D.1 Merge automatique SANS AUCUN CONFLIT (`git status` : « All conflicts fixed » —
+  aucun marqueur `<<<<<<<`, `git grep` VIDE) : les croisements annoncés avec B/C
+  (`i18n.ts`, `i18nContract.ts`, `MatchEquipmentUsageSection.tsx`) ne se sont pas manifestés
+  ici, B et C n'étant pas encore mergées dans cette branche — laissés au pilote à la fusion
+  finale, comme prescrit. `.ai/thought_log.md` fusionné seul par git en UNION (nos entrées en
+  tête à la ligne 1, les leurs à leur ancre d'origine plus bas, aucune perdue des deux côtés).
+- [x] D.2 Gates web D12 complets, tous verts : `npm run typecheck` **exit 0** ·
+  `npm run lint` **exit 0** (23 warnings préexistants, 0 erreur, aucun sur un fichier touché) ·
+  `npm run lint:fields` **exit 0** (220 labels FR+EN, 1643 fichiers scannés, 0 violation) ·
+  `npm run test` **exit 0** (577 fichiers / 6008 tests passés, 14 skipped, 0 échec) ·
+  `npm run build` **exit 0** (avertissements de taille de chunk préexistants) ·
+  `node tools/knip-ratchet.mjs` **exit 0** (files 0/0, exports 0/0, types 0/0 — le nouveau
+  `collapsed-items-toggle.tsx` est consommé par `equipmentUsageColumns.ts` /
+  `MatchEquipmentUsageSection.tsx` / `MatchPadControlSection.tsx`, aucun export mort neuf).
+  PREUVE harnais [~] : `git diff --stat eb80a4f0a -- apps/go-api` **VIDE** — rien côté Go,
+  harnais non rejoué (étape déclarée sans changement attendu, prouvé sur pièces).
+- [x] D.3 Commit du pilote : merge commit sur `wt/integ-gamechangers`, SHA au §6.
 
 ### Étape E — Filet complet et revue de branche
 - [ ] E.1 `make gate-push` vert (lint Go de branche, baseline de tests, web) ; intégration `-p 1`
@@ -300,3 +319,44 @@ pics 0,10 à 0,66 Gio. Témoins : `01e1f945` **17,9 s**, `7344d24f` **21,0 s**, 
   `vehicles`/`vehicleShots`, devra refaire le diff par NOM ; (b) l'étape `translocations` est
   observée AVANT `positions` parce que le balayage arme l'exemption du filtre — si un lot futur
   déplaçait ce balayage, l'ordre de `BuildFromFilmSteps` devrait suivre.
+
+- 2026-09-05 — **ÉTAPE D exécutée et commitée** (worktree dédié `LevelUp-wt-integ-gamechangers`,
+  branche `wt/integ-gamechangers`, HEAD de départ `eb80a4f0a`). D.0 : `git fetch origin` — 0 commit
+  d'écart `eb80a4f0a..origin/feat/v75` (amont toujours gelé). `git merge --no-ff --no-commit
+  wt/game-changers` (base `ca55f0ed7`, 4 commits, 16 fichiers) : **merge automatique SANS AUCUN
+  CONFLIT** — `git status` rend « All conflicts fixed », `git grep '^<<<<<<< HEAD$'` VIDE. Les
+  croisements redoutés avec les étapes B/C (`i18n.ts`, `i18nContract.ts`,
+  `MatchEquipmentUsageSection.tsx`) ne se sont pas matérialisés : cette branche ne porte encore
+  aucune des deux, rien à arbitrer ici — reste au pilote à la fusion finale. `.ai/thought_log.md`
+  a fusionné seul en union (nos entrées en tête, celles de `wt/game-changers` à leur ancre
+  d'origine, aucune perdue).
+
+  **Fichiers apportés** : `.ai/PLAN_REPLI_GAME_CHANGERS_2026-09-05.md` (neuf, plan de repli
+  « game changers »), 3 `apps/web/src/components/ui/collapsed-items-toggle.{tsx,test.tsx,
+  guard.test.ts}` (extraction du contrôle « Voir plus (N) », 3e usage → règle n°6), 12 fichiers
+  `apps/web/src/features/match-replay/` dont `gameChangers.ts`/`.test.ts` (nouveaux — la liste
+  tranchée par vote utilisateur des familles d'équipement/armes « game changer ») et les
+  adaptations de `equipmentUsageColumns.ts`, `MatchEquipmentUsageSection.tsx`,
+  `MatchPadControlSection.tsx`, `padControlLogic.ts`, `i18n.ts`, `i18nContract.ts`.
+
+  **Gates D.2 — tous verts, un code de sortie par ligne** : `npm run typecheck` exit 0 ·
+  `npm run lint` exit 0 (23 warnings préexistants, 0 erreur, aucun sur un fichier touché par ce
+  merge) · `npm run lint:fields` exit 0 (220 labels FR+EN, 1643 fichiers scannés, 0 violation) ·
+  `npm run test` exit 0 (**577 fichiers, 6008 tests passés, 14 skipped, 0 échec**) ·
+  `npm run build` exit 0 (avertissements de taille de chunk préexistants, non nouveaux) ·
+  `node tools/knip-ratchet.mjs` (depuis la racine) exit 0 — **files 0/0, exports 0/0, types
+  0/0** : le nouveau `collapsed-items-toggle.tsx` est bien câblé (consommé par
+  `equipmentUsageColumns.ts`, `MatchEquipmentUsageSection.tsx`, `MatchPadControlSection.tsx`),
+  aucun export mort neuf, plafond jamais relevé.
+
+  **Preuve harnais [~]** : `git diff --stat eb80a4f0a -- apps/go-api` rend VIDE — zéro octet
+  touché côté Go par ce merge (branche 100% web) ; le harnais d'équivalence (13 films) reste
+  valide sans rejeu, comme prévu pour une étape sans changement attendu côté artefact.
+
+  **Douteux / hors périmètre signalé, non traité ici (règle n°5 zéro fix opportuniste)** : le
+  journal `wt/game-changers` (commit `c972b8be0`) documente un lot I abandonné sur clarification
+  utilisateur (exposition `weapon_key` pour répliquer le repli aux graphes de performance) — décision
+  déjà actée par cette branche avant le merge, rien à statuer côté intégration.
+
+  Commit du pilote : merge de fusion sur `wt/integ-gamechangers`, message français, voir
+  `git log --oneline -1` pour le SHA (rapporté à l'utilisateur en clôture de tâche).

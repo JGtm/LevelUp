@@ -52,10 +52,11 @@
  * Aucun calcul ici : tout vient de `equipmentUsageLogic` (les mesures),
  * `equipmentUsageColumns` (les colonnes et leurs noms) et `equipmentUsageChart` (la projection).
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { ChartLegend } from '@/components/charts/ChartLegend'
 import { ValueGrid } from '@/components/charts/ValueGrid'
+import { CollapsedItemsToggle } from '@/components/ui/collapsed-items-toggle'
 import { SectionCard } from '@/components/ui/section-card'
 import { Tooltip } from '@/components/ui/tooltip'
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
@@ -69,7 +70,13 @@ import {
   usageGroupColor,
   type UsageShareRow,
 } from './equipmentUsageChart'
-import { equipmentFamilyLabel, usageColumnGroups } from './equipmentUsageColumns'
+import {
+  equipmentFamilyLabel,
+  partitionUsageGroups,
+  uniqueUsageGroups,
+  usageColumnGroups,
+  type UsageColumnGroup,
+} from './equipmentUsageColumns'
 import { buildEquipmentUsage, tallyTotal, type EquipmentUsage } from './equipmentUsageLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplayText } from './i18nContract'
@@ -95,10 +102,9 @@ export function MatchEquipmentUsageSection({
   const { data } = useMatchReplay(playerSlug, matchId, replayAvailable)
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const usage = useMemo(() => (data ? buildEquipmentUsage(data, board) : null), [data, board])
-  const groups = useMemo(
-    () => (data && usage ? usageColumnGroups(usage, data, t, locale) : []),
-    [data, usage, t, locale],
-  )
+  // REPLIÉ PAR DÉFAUT (plan 2026-09-05, décision D3) : état posé AU MONTAGE, jamais persisté.
+  const [expanded, setExpanded] = useState(false)
+  const { partition, groups, familles } = useUsagePartition(usage, data, t, locale, expanded)
   const meRow = useMemo(() => board.find((r) => r.is_me), [board])
   const meSide = meRow?.team_side ?? null
 
@@ -133,8 +139,8 @@ export function MatchEquipmentUsageSection({
     [usage, groups, meRow, teamLabel, teamAccent, t],
   )
   const shares = useMemo(
-    () => buildUsageShares({ teams: usage?.byTeam ?? [], groups, teamLabel, teamAccent }),
-    [usage, groups, teamLabel, teamAccent],
+    () => buildUsageShares({ teams: usage?.byTeam ?? [], groups: familles, teamLabel, teamAccent }),
+    [usage, familles, teamLabel, teamAccent],
   )
 
   // Double porte : pas d'artefact, ou rien de mesuré -> rien du tout.
@@ -144,27 +150,97 @@ export function MatchEquipmentUsageSection({
     <SectionCard
       title={t.equipmentUsage.title}
       label={t.equipmentUsage.title}
+      titleAdornment={(label) => (
+        // Le bouton du repli vit dans l'EN-TÊTE de la carte (plan 2026-09-05, G1.2) : visible
+        // sans dérouler les deux vues. Zéro colonne repliée = pas de bouton.
+        <span className="flex items-center justify-between gap-2">
+          <span>{label}</span>
+          <CollapsedItemsToggle
+            expanded={expanded}
+            count={partition.collapsedColumnCount}
+            onToggle={() => setExpanded((v) => !v)}
+            showLabelFmt={t.collapsedColumnsShowFmt}
+            hideLabel={t.collapsedColumnsHide}
+            hint={t.collapsedColumnsHint}
+          />
+        </span>
+      )}
       footer={<UsageFootnotes usage={usage} t={t} />}
     >
-      <div className="space-y-5 px-3 pb-3 pt-3">
+      <UsageViews grid={grid} groups={groups} familles={familles} shares={shares} t={t} />
+    </SectionCard>
+  )
+}
+
+/**
+ * useUsagePartition — les groupes de colonnes du repli « game changers », prêts à rendre.
+ *
+ * Extrait du composant le 2026-09-05 (plafond de taille de fonction du dépôt). Déplié = les
+ * élus D'ABORD, les repliés ENSUITE — l'ordre interne survit dans chaque bloc. `familles` sert
+ * la légende et la vue 2, qui raisonnent PAR FAMILLE DE GESTE : un groupe mixte redécoupé n'y
+ * a qu'une occurrence (cf. `uniqueUsageGroups`).
+ */
+function useUsagePartition(
+  usage: EquipmentUsage | null,
+  data: ReturnType<typeof useMatchReplay>['data'],
+  t: ReplayText,
+  locale: ReplayLocale,
+  expanded: boolean,
+) {
+  const partition = useMemo(
+    () => partitionUsageGroups(data && usage ? usageColumnGroups(usage, data, t, locale) : []),
+    [data, usage, t, locale],
+  )
+  const groups = useMemo(
+    () => (expanded ? [...partition.forward, ...partition.collapsed] : partition.forward),
+    [expanded, partition],
+  )
+  const familles = useMemo(() => uniqueUsageGroups(groups), [groups])
+  return { partition, groups, familles }
+}
+
+/**
+ * UsageViews — le corps de la carte : les deux vues empilées, chacune gardée par son contenu.
+ *
+ * Replié avec ZÉRO colonne élue (tous les gestes mesurés sont hors vote) : les deux vues n'ont
+ * rien à dessiner — le bouton de l'en-tête reste la porte vers tout.
+ */
+function UsageViews({
+  grid,
+  groups,
+  familles,
+  shares,
+  t,
+}: {
+  grid: ReturnType<typeof buildUsageGrid>
+  groups: UsageColumnGroup[]
+  familles: UsageColumnGroup[]
+  shares: UsageShareRow[]
+  t: ReplayText
+}) {
+  return (
+    <div className="space-y-5 px-3 pb-3 pt-3">
+      {groups.length > 0 && (
         <section aria-label={t.equipmentUsage.viewByPlayer}>
           <ViewTitle>{t.equipmentUsage.viewByPlayer}</ViewTitle>
           <ValueGrid model={grid} />
           <ChartLegend
             className="pt-2"
-            items={groups.map((g) => ({
+            items={familles.map((g) => ({
               key: g.key,
               label: g.label,
               color: usageGroupColor(g.key),
             }))}
           />
         </section>
+      )}
+      {shares.length > 0 && (
         <section aria-label={t.equipmentUsage.viewTeamShare}>
           <ViewTitle>{t.equipmentUsage.viewTeamShare}</ViewTitle>
           <UsageTeamShares rows={shares} t={t} />
         </section>
-      </div>
-    </SectionCard>
+      )}
+    </div>
   )
 }
 

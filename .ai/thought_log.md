@@ -1,3 +1,45 @@
+## [2026-09-05] Integration des branches — ETAPE D : merge `wt/game-changers` dans `wt/integ-gamechangers`, zero conflit, gates web D12 completes au vert — Complete
+
+**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape D (web uniquement).
+Worktree DEDIE `LevelUp-wt-integ-gamechangers`, branche `wt/integ-gamechangers`, HEAD de depart
+`eb80a4f0a` (l'etape A deja mergee). D.0 : `git fetch origin` — **0 commit** d'ecart
+`eb80a4f0a..origin/feat/v75`, l'amont reste gele. `git merge --no-ff --no-commit
+wt/game-changers` (base `ca55f0ed7`, 4 commits, 16 fichiers).
+
+**Decision technique principale : aucun conflit a arbitrer.** Le merge automatique a reussi SANS
+AUCUN marqueur de conflit (`git status` : « All conflicts fixed », `git grep '^<<<<<<< HEAD$'`
+VIDE). Les croisements redoutes avec les etapes B et C (`i18n.ts`, `i18nContract.ts`,
+`MatchEquipmentUsageSection.tsx`) ne se sont pas materialises : cette branche ne porte encore ni
+B ni C, rien a fusionner en double — laisse au pilote a la fusion finale, comme prescrit par le
+plan. `.ai/thought_log.md` a fusionne seul en union (nos entrees en tete, celles de
+`wt/game-changers` a leur ancre d'origine, aucune perdue des deux cotes).
+
+**Contenu apporte** : `.ai/PLAN_REPLI_GAME_CHANGERS_2026-09-05.md` (neuf), 3
+`components/ui/collapsed-items-toggle.{tsx,test.tsx,guard.test.ts}` (extraction du controle
+« Voir plus (N) », 3e usage -> regle n°6 du depot), 12 fichiers `features/match-replay/` dont
+`gameChangers.ts`/`.test.ts` neufs (liste tranchee par vote utilisateur des familles
+d'equipement/armes « game changer ») et les adaptations d'`equipmentUsageColumns.ts`,
+`MatchEquipmentUsageSection.tsx`, `MatchPadControlSection.tsx`, `padControlLogic.ts`, `i18n.ts`,
+`i18nContract.ts`.
+
+**Resultats observes — gates D.2, un code de sortie par ligne.** `npm run typecheck` exit 0 ·
+`npm run lint` exit 0 (23 warnings preexistants, 0 erreur, aucun sur un fichier touche par ce
+merge) · `npm run lint:fields` exit 0 (220 labels FR+EN, 1643 fichiers scannes, 0 violation) ·
+`npm run test` exit 0 (**577 fichiers, 6008 tests passes, 14 skipped, 0 echec**) · `npm run
+build` exit 0 (avertissements de taille de chunk preexistants) · `node tools/knip-ratchet.mjs`
+(depuis la racine) exit 0 — **files 0/0, exports 0/0, types 0/0** : le nouveau
+`collapsed-items-toggle.tsx` est cable (consomme par les 3 fichiers cites ci-dessus), aucun
+export mort neuf, plafond jamais releve. Preuve harnais [~] : `git diff --stat eb80a4f0a --
+apps/go-api` VIDE — zero octet cote Go, le harnais des 13 films reste valide sans rejeu.
+
+**Conclusion / prochaine etape.** Commit du pilote sur `wt/integ-gamechangers` (fusion de
+`wt/game-changers`). Douteux signale hors perimetre (regle n°5, non traite ici) : le journal de
+`wt/game-changers` (commit `c972b8be0`) documente un lot I abandonne sur clarification
+utilisateur (exposition `weapon_key` pour etendre le repli aux graphes de performance) — decision
+deja actee par la branche source avant ce merge, rien a statuer cote integration. Prochaine
+etape : etape E (filet complet + revue de branche) puis F (merge final feat/v75, push), par le
+pilote.
+
 ## [2026-09-05] Integration des branches — ETAPE A : reconciliation avec `feat/v75` `7fb4b60a1`, 5 conflits, 3 balayages amont migres, sorties re-figees en changement declare AMONT — Complete
 
 **Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape A. `git merge --no-ff
@@ -92385,3 +92427,82 @@ re-cuit — les deux films 38 du chantier n'ont pas ete re-cuits avec les charge
 demande produit nouvelle du 04/09 (replier les equipements/armes non « game changer »
 dans les rendus d'usage) — artefact de vote a fabriquer pour que l'utilisateur tranche la
 liste.
+
+## [2026-09-05] Repli « game changers » — fiche match, bilan d'equipement et controle des socles
+
+**Statut : Complete.** Worktree `LevelUp-wt-game-changers`, branche `wt/game-changers`
+(base feat/v75 ca55f0ed7). Plan : `.ai/PLAN_REPLI_GAME_CHANGERS_2026-09-05.md`.
+Execution pilotee : agent d'implementation + relecteur adversarial frais, consolidation
+superviseur. Liste TRANCHEE PAR VOTE utilisateur (artefact « Game changers », 05/09) :
+5 familles d'equipement (powerup_camo, powerup_overshield, sensor, threat_seeker,
+shroud_screen) et 5+1 weapon_keys (s7_sniper, m41_spnkr + fuel_rod, energy_sword,
+gravity_hammer, skewer) en avant — le reste se replie derriere « Voir plus (N) »,
+replie par defaut.
+
+**Decision technique principale.** La liste est un jugement produit cote web :
+`gameChangers.ts` (constante TS + garde-rails contre les TOML du titre, patron
+POWER_PAD_KEYS), sementiquement DISTINCTE de POWER_PAD_KEYS (rejeu 2D, intouche —
+divergence cindershot dite et FIGEE par test). Pont ecrit powerup_camo->camo /
+powerup_overshield->overshield (double vocabulaire socle/etat actif). Armes jugees par
+weaponLabels[hex].key, jamais l'hex ; cle absente = replie. Partition dans la logique
+pure (l'ordre existant survit dans chaque partition, le tri par volume du controle des
+socles aussi) ; totaux, attribues, footnotes, hasData calcules sur TOUT — le repli est
+un affichage. Grenades hors vote, toujours visibles.
+
+**Resultats observes.** Revue : 16 conditions tiennent, 0 P0/P1, 1 P2 cosmetique
+consigne (padding residuel quand tout est replie). Incident d'execution dit et verifie :
+editions d'equipmentUsageColumns.ts effacees par un `git checkout --` de mutation puis
+reappliquees — relecture comptable imposee au relecteur : « coherent au centime ».
+Mutations tuees : partition inversee (7 tests), pont retire (19), grenades repliees (5),
+tri sans partition (3), cle absente promue (3), deplie par defaut (6), bouton a N=0 (1).
+Gates : typecheck purge exit 0, make test-web 575 fichiers / 5 999 tests / 0 echec,
+eslint 0, garde-rails 12/12, plafonds tenus (composants ramenes a 80 L pile).
+
+**Conclusion / prochaine etape.** Commit sur wt/game-changers ; GATE VISUEL utilisateur
+(les deux tableaux repliés/déplies sur un vrai match), puis merge feat/v75 sur accord.
+Arbitrages futurs consignes : realigner POWER_PAD_KEYS sur le vote (cindershot), repli
+des surfaces exclues (charts partages, PlayerDetailPanel).
+
+## [2026-09-05] Lot H — extension du repli aux graphes partages : le socle est livre, les graphes attendent la cle
+
+**Statut : Complete** (H3/H4 statues [!] justifies). Branche `wt/game-changers`, agent
+d'implementation Sonnet (choix utilisateur) + relecteur adversarial frais.
+
+**Decision technique principale.** H-D3 appliquee a la lettre : AUCUNE des 4 surfaces
+d'agregats (frags par arme partage, kills d'escouade, precision d'escouade, precision de
+synthese) n'expose de cle stable cote front — matching par libelle REFUSE, surfaces
+statuees [!] plutot que bricolees. Contre-verifie par la revue (5 affirmations vraies sur
+pieces). Livre quand meme : l'extraction OBLIGATOIRE du controle « Voir plus (N) »
+(`components/ui/collapsed-items-toggle.tsx`, 3e usage = extraction, regle n°6), migration
+des deux copies G1/G2 a comportement constant (chaine CSS octet pour octet), garde-rail
+anti-redivergence avec assertion anti-glob-mort, mutations rejouees dans DEUX features.
+
+**Resultats observes.** Revue H7 : 12 conditions tiennent, 0 P0/P1, 1 P2 = la remontee
+devait porter le FAIT SERVEUR : `WeaponKillRow.WeaponKey` (hinf_*) est DEJA resolu dans
+la meme passe pour Squad kills et Synthesis kills — il n'est pas serialise. Gates :
+typecheck purge 0, make test-web 577 fichiers / 6 008 tests / 0 echec, eslint 0, ratchet
+cross-feature 7/7 inchange. Le cindershot avait ete PROMU game changer en amont du lot
+(decision utilisateur, commit 08fb40de2).
+
+**Conclusion / prochaine etape.** Lot I cadre au plan : exposer `weapon_key` dans les
+DEUX DTOs (kills seulement — l'utilisateur a rappele que la precision PAR ARME est
+Halo 5 seulement, chantier Infinite remise : surfaces de precision EXCLUES, verification
+de salubrite du gating capability a rapporter) puis replier les deux graphes, avec la
+GARDE MULTI-TITRE « zero elu = aucun repli » (jamais un test de slug). PAS DE MERGE
+feat/v75 (decision utilisateur) : cloture = commits sur la branche.
+
+## [2026-09-05] Lot I — ABANDONNE sur clarification utilisateur, avant toute ecriture retenue
+
+**Statut : Clos (abandon).** La commande « etendre le repli aux graphes partages » etait un
+malentendu du superviseur : seuls les rendus d'USAGE du chantier (bilan d'equipement,
+controle des socles — deja repliables) sont concernes ; les graphes de PERFORMANCE
+existants (« Frags par arme » et declinaisons synthese/escouade/session) ne se replient
+pas — leur role est different. Agent Sonnet arrete en vol, ses modifications Go defaites
+(git checkout sur 6 fichiers, worktree revenu a 8180180f1), exposition `weapon_key`
+abandonnee avec le lot (note technique conservee au H1). VERIFICATION DE SALUBRITE faite
+par le superviseur : la precision par arme est correctement gatee par capability
+(`match.weapon.accuracy` = not_exposed pour halo_infinite, natif halo_5, exclusion
+mutuelle documentee dans SquadFragSection) — ni erreur ni reliquat.
+
+**Prochaine etape.** Gate visuel utilisateur des deux tableaux repliables, puis merge
+feat/v75 sur sa decision. Rien d'autre ouvert sur cette branche.
