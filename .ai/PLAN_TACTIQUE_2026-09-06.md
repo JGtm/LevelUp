@@ -1,0 +1,300 @@
+# PLAN — Onglet « Tactique » + derives de coordination — V1
+
+> Redige le 2026-09-05 depuis `feat/v75`. **Revision 4 (2026-09-06)** : execution demarree.
+> Le chantier coexiste avec l'audit v2 du rejeu et du film (`.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`,
+> lots A-G sur `feat/v2-*`). Croisement des diffs fait sur pieces : les phases 1-3 ne
+> croisent AUCUN lot ; les phases 4-7 croisent C (capabilities), B (document servi) et D
+> (modele web) et sont GELEES jusqu'a leur integration dans `feat/v75`. Deux concepts
+> supprimes parce que le lot C les apporte sous un autre nom : `CapTactical` -> `CapReplay`
+> (title-level) ; `film.replay_tracks` -> `film.replay_artifact` (data-level) ;
+> `useDataCapability(cle fine)` cote web.
+>
+> Contrat d'execution : skill `plan-execution` (ordre strict, aucun report, statut par item,
+> verification sur pieces, zero fix hors perimetre). Orchestration : superviseur = ce contexte
+> (revues adversariales, commits d'integration, CI) ; executeurs = agents Opus (algos, Go,
+> web complexe) ou Sonnet (docs, catalogues, deplacements purs).
+
+## Regles d'environnement (memes que l'audit v2 — un seul poste, un seul cache par lot)
+
+- Worktree DEDIE `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-tactique`, branche
+  `wt/tactique` depuis `feat/v75`. Checkout principal : lecture seule, jamais d'ecriture.
+- Commandes `go` en SERIE (jamais deux a la fois), cache propre au lot :
+  `GOCACHE=C:\Users\Guillaume\AppData\Local\go-build-tactique`, `CGO_ENABLED=1`, gcc msys64
+  ucrt64 dans le PATH, depuis `apps/go-api`. Integration : `-tags=integration -p 1`.
+- Gates en AVANT-PLAN uniquement (aucun run d'arriere-plan, aucun outil d'attente).
+- Web : `npm --prefix apps/web run typecheck`, `npm --prefix apps/web run lint`, vitest via
+  `cd apps/web && node_modules/.bin/vitest run --pool=forks <filtre>` hors sandbox ;
+  `git checkout -- apps/web/src/routeTree.gen.ts` avant tout staging.
+- `git add` NOMME (jamais `-A` ni `.`) ; un commit par etape, prefixe `tactique(<phase>.<n>)` ;
+  jamais `git stash` ; l'executeur ne POUSSE pas — le superviseur pousse apres revue.
+- Aucune cuisson d'artefacts. Aucun film reel. Aucun serveur laisse tourner.
+- `.ai/` : l'executeur n'ecrit que ce plan (`.ai/PLAN_TACTIQUE_2026-09-06.md`, cases +
+  journal) et une entree en FIN de `.ai/thought_log.md` par phase close. Decouvertes hors
+  perimetre : consignees en §7, pas traitees. Aucun emoji dans les fichiers versionnes.
+
+## Protocole de revue et d'integration
+
+1. Fin de phase : l'executeur commit (sans pousser), rend un rapport (items statues, gates
+   joues avec sorties, commits, decouvertes, questions).
+2. Le superviseur verifie le rapport sur pieces, rejoue les gates, puis lance la revue
+   adversariale (skill `adversarial-review` : sous-agent au contexte frais, contrat en 6
+   lignes, lentilles selon le diff, recevabilite fichier:ligne + declencheur + consequence) :
+   ronde 1, tri P0/P1/P2, corrections par l'executeur, ronde 2 sur les corrections. Deux
+   rondes maximum.
+3. Le superviseur pousse `wt/tactique`, surveille la CI en avant-plan, journal.
+4. Integration dans `feat/v75` par l'utilisateur ou sur son go, apres le lot C de l'audit au
+   minimum (phases 4-7 : apres C, B et D).
+
+## 0. Objectif et critere de succes
+
+**Objectif** — un onglet `Tactique` sous Ascension qui repond, carte par carte et sur
+l'ensemble des matchs filtres, a six questions de placement : ou je passe mon temps, ou je
+meurs, ou je tue, ou je meurs isole, ou je gagne, et quelles routes je prends en sortant du
+spawn. Plus le derive non spatial que ce chantier rend possible : l'ECHANGE, servi en KPI ici
+et en graphes sur la page Escouade — **livre en premier** (phases 1-3), parce qu'il ne depend
+d'aucun artefact et ne croise aucun lot de l'audit.
+
+**Critere de succes V1** — sur une carte jouee au moins 10 fois : les six lectures
+s'affichent en moins d'une seconde des le premier affichage, chaque cellule chaude se rouvre
+sur la liste des matchs qui l'ont alimentee, un clic ouvre le rejeu 2D a l'instant
+contributeur, et la page Escouade montre qui echange pour qui. Aucune re-cuisson.
+
+**Hors perimetre V1** — portee « Tout le monde » (ossature posee, valeur non exposee) ;
+comparaison de deux jeux de filtres ; export d'image ; feu croise ; Halo 5 (degradation
+propre uniquement) ; toute re-cuisson d'artefacts.
+
+**Effort** — phase 1 : petit · phase 2 : moyen · phase 3 : moyen · phases 4-6 : un lot
+chacune · phase 7 : lourd (autant que 1 a 6) · phase 8 : petit.
+
+## 1. Decisions produit — TRANCHEES avant execution
+
+| Sujet | Decision |
+|---|---|
+| Nom de l'onglet | **Tactique** (FR) / **Tactics** (EN), rang 5 apres Realisations — utilisateur, 2026-09-05 |
+| Emplacement | `/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique` |
+| Ecran d'entree | Grille des cartes JOUEES, triees par nombre de matchs |
+| Unite de lecture | Une carte a la fois. Jamais d'agregat inter-cartes. |
+| Grille | 0,5 m, bornes = union des bornes des matchs retenus |
+| Echelle des densites | Quantile p50 vers p95 des cellules alimentees, valeur **par match** |
+| Echelle de « Ou je gagne » | **Symetrique autour de zero**, bornee par le p95 de la valeur absolue. Plancher **par cote : au moins 3 victoires ET 3 defaites** dans la cellule. Libelle = correlation, jamais une cause. |
+| Cellule jamais atteinte | VIDE, jamais peinte en froid |
+| Plancher par cellule | 3 matchs distincts (calibration mesuree de `mappos-build`) |
+| Plancher par carte | 10 matchs ; en dessous, desaturee et non ouvrable |
+| Axe QUI | `Moi / Escouade / Adversaires`. **Escouade = mes coequipiers DU MATCH.** |
+| Spawn : depart vs reapparition | Filtre « spawn de depart » = **premiere vie** seulement. Lecture « routes » = 15 premieres secondes de **toutes** les vies. |
+| Algorithme de grappes | Densite des premiers points sur la grille de 0,5 m ; composantes connexes (8-voisinage) au-dessus du plancher de 3 matchs distincts ; nommage par le callout le plus proche du barycentre. Aucun catalogue manuel. |
+| Filtres | `usePageScope` (URL + miroir localStorage), forme Explorer |
+| Controles | `select` pour la question (forme `MediaToolbar`) ; segmentes pour les axes courts. **La question courante est reprise dans le titre de la carte.** |
+| Stockage des rasters | **Un raster par match, calcule UNE FOIS a la cuisson** (etape post-sync `replayartifacts`, precedent `usage.go`), sidecar via `PathResolver`. La page en somme N. Aucun cache d'agregat, aucune invalidation. |
+| Rattrapage | CLI `levelup tactical-rasters --backfill` : LIT les artefacts existants, ne cuit RIEN. |
+| **Capabilities** | **Title-level `replay` (`CapReplay`, lot C)** gate l'onglet, les routes et les sections web. **Data-level** : `film.kill_positions` (morts/kills/gagne), `film.kill_source` (echange), **`film.replay_artifact` (lot C)** pour tout ce qui vient des pistes. Cote web, clé fine par `useDataCapability` (lot C). Ce plan ne cree AUCUNE capability. |
+| Jamais un taux seul | Tout taux de couverture est servi AVEC son compte brut ET une quantite PAR MATCH (doctrine `SquadAssistPairsTable`). |
+| Plancher d'echantillon | 30 morts pour un taux par joueur sans reserve ; en dessous « echantillon faible » (`explorer.briefing.low_sample`). **Aucun classement de joueurs.** |
+| Maille du nuage | Isolement x couverture : par SESSION sous les reperes joueur (taille = morts). Session sous 5 morts exclue. |
+| Fenetre d'echange | **5 s** — utilisateur, 2026-09-05. |
+| Cas limites de l'echange | Un tueur qui abat DEUX coequipiers puis meurt dans la fenetre **echange les deux morts**. Un tueur mort de l'environnement, d'une grenade perdue ou de lui-meme **n'echange rien** : seul un kill de coequipier compte. Un kill de coequipier est un evenement dont `feed_killer_xuid` est un coequipier de la victime initiale et dont la victime est le tueur initial. |
+| Rayon d'isolement | **Portee du radar** : 18 m en Arene, 24 m en BTB — utilisateur, 2026-09-05. Table mesuree dans `config/titles/{slug}/mappings/` (doctrine `regulation.toml`) ; variante non listee = pas de lecture ; rayon **par match**. |
+| Cas limite de l'isolement | Tous les coequipiers deja morts -> mort **exclue du denominateur**. |
+| Deux taux d'echange | Tactique : par carte, libelle « sur cette carte ». Escouade : par session et composition. |
+| Instant contributeur | Morts / kills : l'horodatage. Occupation : premiere entree dans la cellule. Routes : debut de la vie. |
+| Seuil du « Cap du moment » | Rendu seulement si au moins **30 morts d'equipe** ET (ecart d'au moins **5 points** au taux d'echange habituel OU part de morts isolees d'au moins **50 %**). Sinon non rendu. |
+| Couleurs V/D | `outcome-win` / `outcome-loss` — jamais `compare-a/b`. |
+| Anglicismes | `heatmap` entre au garde anti-anglicismes (lot C.4) : aucune chaine FR de ce chantier ne le contient. |
+
+## 2. Ce qui existe deja — verifie sur pieces, a NE PAS reecrire
+
+- **`kill_positions`** (`killer_x/y/z`, `victim_x/y/z`, `match_id`, `killer_xuid`,
+  `time_ms`), vue `kill_positions_latest` ; jointure vers la victime :
+  `platform/duckdb/kill_distance_repo.go:122` (`kill_positions_latest x match_kill_events_latest`).
+- **`match_kill_events_latest`** : `victim_xuid`, `feed_killer_xuid`, `feed_present`, `time_ms`.
+- **`service.replayService`** (`replay_service.go`) : `GetReplay`, `AvailableSet` — LE
+  lecteur d'artefacts (`archlint/no_second_artifact_sink_test.go`). Refondu par le lot B.
+- **`sync/replayartifacts/usage.go`** (`projeterResumeUsage`) : precedent de projection
+  post-cuisson. Modifie par le lot C (porte de capability).
+- **`cmd/mappos-build`** : art anterieur (grille 0,5 m, matchs DISTINCTS par cellule, filtre
+  de rarete). `map_positions_jouees.json` : une carte, preuve, pas une source.
+- `PathResolver.MapBackgroundPath` + sidecar ; `map_callouts.json`.
+- **Types du document stocke** : `analysis/replay/document.go` — `Track{Slot, Team(-1), XUID,
+  Points []Point{T,X,Y,Z}, StartFrame, EndFrame}`.
+- **Coordination Escouade existante** (ne pas dupliquer) : `SquadAssistPairsTable`,
+  `squad_impact.go`, `SquadEngagementGapChart`, `SquadSynergyHistoryTable`,
+  `FirstBloodLanes`. Aucune ne lit une position ni un appariement dans le temps.
+- **Port** : `port/repository_data.go` (`KillDistanceRepository` a cote duquel ajouter).
+- **Gabarits UI** : `section-card.tsx` (+ `footer`), `KPIStrip.tsx`, `KpiCard.tsx`,
+  `empty-state.tsx`, `page-unavailable.tsx`, `select.tsx`, `info-tooltip.tsx`, `FeatureGate`,
+  `feedback/NarrativeBadge.tsx`, gabarit `CoachFocusCard`, `formatSignedPoints` /
+  `isFullHistoryScope` (briefing Explorateur). Charts : `Heatmap2DChart`, `HistogramChart`,
+  `ScatterChart`. Aucun nouveau wrapper. Palette joueurs `squad-player-1..4` validee.
+- **Escouade, mecanique de donnees** : `SquadContext` distribue un `pageData` unique aux
+  onglets (Contributions, Dynamique) — aucune query key propre par onglet.
+
+## 3. Architecture — couches
+
+```
+apps/go-api/internal/
+  analysis/tactical/              (NOUVEAU — pur, aucun I/O)
+    grid.go        Grille(bornes, pasM) -> index cellule <-> monde
+    raster.go      Rasterise(points, grille) -> Raster{cellules, comptes, matchsDistincts}
+    merge.go       Somme(rasters par match) -> Raster agrege + planchers (3 distincts ; 3V et 3D)
+    quantile.go    Echelle(raster) -> p50/p95 ; EchelleSymetrique(raster signe)
+    spawn.go       (phase 7) GrappesDeSpawn -> composantes connexes
+    tracks.go      (phase 7) Occupation(pistes, pasMs=250)
+  analysis/coordination/          (NOUVEAU — pur, aucun I/O, PARTAGE Tactique + Escouade)
+    measure.go     Couverture{Taux, Brut, ParMatch, N, EchantillonFaible} — jamais un taux nu
+    trade.go       Echanges(kills, morts, equipes, fenetre) -> paires + delais
+    isolation.go   (phase 7) ; dispersion.go (phase 7)
+  domain/
+    tactical.go  coordination.go
+  port/
+    repository_data.go            + TacticalRepository
+  platform/duckdb/
+    tactical_repo.go
+  service/
+    tactical_service.go           (phase 2) ; squad : consomme analysis/coordination (phase 3)
+  api/handlers/
+    tactical.go
+  sync/replayartifacts/raster.go  (phase 6, GELEE)
+  cmd/levelup/cmd_tactical_rasters.go (phase 6, GELEE)
+apps/web/src/
+  features/squad/                 (phase 3) sections Synergies + Dynamique, Cap du moment
+  features/tactical/              (phases 4-5, GELEES)
+  components/charts/heatPaint.ts  (phase 5, GELEE — extrait de heatmapLayer.ts apres le lot D)
+```
+
+`analysis/coordination/` est PUR et PARTAGE. Regles : aucun SQL hors `platform/duckdb` ;
+aucune logique dans le handler ; types dans `domain/` ; chemins par `PathResolver` ;
+artefacts lus par `ReplayService` uniquement ; branchement par capability jamais par slug.
+
+## 4. Phases
+
+### Phase 1 — Socle pur (aucune I/O, aucun reseau) — EXECUTABLE MAINTENANT
+- [ ] 1.1 `analysis/tactical/grid.go` : monde <-> cellule, bornes en union, pas 0,5 m
+- [ ] 1.2 `analysis/tactical/raster.go` : comptes + matchs distincts par cellule, a partir de
+      points `(matchID, x, y)` ; une cellule jamais atteinte n'existe pas dans le raster
+- [ ] 1.3 `analysis/tactical/merge.go` : somme de rasters par match ; planchers (3 matchs
+      distincts ; **3 V et 3 D** pour un raster signe) ; valeur **par match**
+- [ ] 1.4 `analysis/tactical/quantile.go` : p50/p95 sur cellules alimentees ; **echelle
+      symetrique** par p95 de |valeur| pour un champ signe
+- [ ] 1.5 `analysis/coordination/measure.go` : type `Couverture` (taux, brut, par match, N,
+      echantillon faible sous 30) — le seul type de retour d'un taux
+- [ ] 1.6 `analysis/coordination/trade.go` : fenetre 5 s en constante nommee (date + autorite
+      en commentaire) ; **les deux cas limites** de §1 ; sortie = paires (vengeur, venge) avec
+      delai, + par mort : vengee ou non
+- [ ] 1.7 `domain/tactical.go`, `domain/coordination.go` : types de resultat
+- **Gate** : `cd apps/go-api && go test ./internal/analysis/tactical/...
+  ./internal/analysis/coordination/... ./internal/domain/...` vert ; tests a cellules posees
+  a la main (comptes EXACTS) ; somme de deux rasters ; plancher par cote (3 V / 0 D -> vide) ;
+  echange : mort a t, kill du tueur a t+3 s compte, a t+9 s non ; un tueur de deux
+  coequipiers mort a t+4 s -> DEUX echanges ; tueur mort de l'environnement -> zero ;
+  `Couverture` avec 8 morts -> echantillon faible ; `go vet` propre ; fichiers <= 500 L,
+  fonctions <= 80 L.
+
+### Phase 2 — Port, repo, service, handler (aucun artefact, aucune capability creee) — EXECUTABLE
+- [ ] 2.1 `port/repository_data.go` : `TacticalRepository` (`KillPositions(filtre)`,
+      `KillEvents(filtre)`, `MapsPlayed(filtre)`) a cote de `KillDistanceRepository`
+- [ ] 2.2 `platform/duckdb/tactical_repo.go`, calque sur la jointure de `kill_distance_repo.go:122` ;
+      filtre temporel par le fragment canonique `COALESCE(start_time_utc, ...)`
+- [ ] 2.3 `service/tactical_service.go` : lectures `morts`, `kills`, `gagne` (rasters SQL) +
+      `Couverture` d'echange **par carte** ; gates data-level existantes (`film.kill_positions`,
+      `film.kill_source`) via le mecanisme `CapabilityMap` en place ; `ErrCapabilityNotSupported`
+      -> 503 propre
+- [ ] 2.4 `api/handlers/tactical.go` : `GET /players/{slug}/tactical/maps`,
+      `GET /players/{slug}/tactical/{mapId}/raster` ; enregistrement dans le registry ;
+      OpenAPI regenere (`make generate-types`)
+- [ ] 2.5 `slog.InfoContext` sur chaque calcul (carte, question, matchs retenus, cellules) ;
+      `slog.ErrorContext(ctx, ..., "err", err)` sur toute erreur
+- **Gate** : `go test ./internal/platform/duckdb/... ./internal/service/... ./internal/api/...`
+  vert ; repo en DuckDB `:memory:` ; handler `httptest` ; titre sans `film.kill_positions`
+  -> 503 ; ratchets `no_slug_comparison_test`, `no_data_path_join_test` verts ;
+  `make generate-types` puis `git diff --exit-code apps/web/src/lib/api/generated.ts`
+  ne montre que les nouveaux types.
+
+### Phase 3 — L'ECHANGE SUR LA PAGE ESCOUADE — EXECUTABLE (un item attend le lot C)
+- [ ] 3.1 Service Escouade : consomme `analysis/coordination` ; l'echange entre dans le
+      `pageData` de `SquadContext` (aucune query key propre)
+- [ ] 3.2 Onglet **Synergies** : `SectionCard` « Qui echange pour qui » + `Heatmap2DChart`
+      (ligne = vengeur, colonne = venge, orientation `SquadAssistPairsTable`) ;
+      `NarrativeBadge` « le plus couvert » / « le moins couvert » ; bandeau de couverture
+- [ ] 3.3 Onglet **Dynamique** : `SectionCard` « Delai d'echange » + `HistogramChart`, fenetre
+      tracee, barres hors fenetre hachurees (montrees, non comptees)
+- [ ] 3.4 KPI « taux d'echange » (bandeau Escouade) : brut + par match + ecart a l'habituel
+      (`formatSignedPoints`, masque si `isFullHistoryScope`)
+- [ ] 3.5 « Cap du moment » de l'Escouade, gabarit `CoachFocusCard`, regle de seuil de §1
+- [ ] 3.6 Lignes narratives AU-DESSUS de chaque graphe, manifeste `squad.toml` FR + EN, regen
+- [ ] 3.7 **Gate web des sections** : `useDataCapability('film.kill_source')` — **attend le
+      lot C** (`[!]` avec reference si C n'est pas integre a la cloture de la phase ; le
+      superviseur le cable a l'integration)
+- **Gate** : typecheck + lint + vitest cible (squad) ; matrice sur un jeu pose a la main ;
+  etat vide -> `EmptyState` ; **Cap non rendu sous le seuil** ; **anti-biais** (8 morts et
+  100 % -> echantillon faible, classe devant personne) ; `node tools/lint-no-hardcoded-colors.mjs` ;
+  parite FR/EN ; garde anti-anglicismes.
+- **Livrable** : push par le superviseur + CI verte au niveau job.
+
+### Phases 4-7 — GELEES. Condition de reprise : lots C, B et D de l'audit integres dans `feat/v75`.
+> Motif : la phase 4 n'a pas de valeur sans la 5 ; la 5 touche `replay.tsx` (refondu par D.6,
+> D.8), extrait le peintre de `heatmapLayer.ts` (arbre reorganise par D.11, D.13) ; la 6
+> lit les artefacts par `ReplayService` (refondu par B) et se branche dans `replayartifacts`
+> (modifie par C) ; la 7 depend de la 6. Les faire avant = les faire deux fois.
+> A la reprise : rebaser `wt/tactique` sur `feat/v75`, relire D.13 (`lib/replay/`) pour y
+> loger le peintre, relire B.1 (`domain/replaydoc`) pour le type lu par la projection.
+
+### Phase 4 — Grille des cartes (GELEE)
+- [ ] 4.1 Route `ascension/tactique` ; onglet dans `AscensionLayout.tsx` ;
+      `FeatureGate capability="replay"`
+- [ ] 4.2 `manifests/tactical.toml` + regen ; query keys (`titleSlug` en 2e segment)
+- [ ] 4.3 `TacticalPage.tsx` : `SectionCard` « Cartes jouees » ; vignette = fond + nom + nb de
+      matchs + barre `outcome-win` / `outcome-loss` ; carte sous plancher desaturee ; `EmptyState`
+- [ ] 4.4 Endpoint image par CARTE (`MapBackgroundPath`)
+- **Gate** : typecheck + test-web ; couleurs ; parite FR/EN.
+
+### Phase 5 — Vue d'analyse, lectures SQL, drilldown (GELEE)
+- [ ] 5.1 Peintre partage dans `lib/replay/` (selon D.13), extrait de `heatmapLayer.ts`,
+      garde-rail grep contre une seconde implementation du noyau
+- [ ] 5.2 `tacticalScope.ts` (usePageScope) ; barre d'outils ; titre « Plan de <carte> — <question> »
+- [ ] 5.3 `KPIStrip` : matchs retenus, couverture, morts isolees, echange « sur cette carte »
+- [ ] 5.4 `SectionCard` « Plan » : canvas + legende ; `footer` = unite, planchers, source
+- [ ] 5.5 `?frame=` sur la route du rejeu, selon le modele D.6/D.8 (playbackStore)
+- [ ] 5.6 `SectionCard` « Cellule selectionnee » : contributeurs, lien `?frame=` ; **liste
+      filtree par l'ownership XUID** (ADR 0029) ; `footer` = matchs comptes non ouvrables
+- **Gate** : typecheck + vitest ; test pur de `tacticalLogic.ts` ; smoke canvas ; garde-rail
+  du peintre ; filtrage d'acces ; `?frame=` positionne le rejeu ; couleurs.
+
+### Phase 6 — Rasters par match a la cuisson + rattrapage (GELEE)
+- [ ] 6.1 `PathResolver.TacticalRasterPath(slug, shortID)`
+- [ ] 6.2 `sync/replayartifacts/raster.go` : projection artefact -> rasters par match ;
+      `platform/atomicfile` ; meme declencheur et journal que `usage.go` ; sous la porte
+      `film.replay_artifact` du lot C
+- [ ] 6.3 `cmd/levelup/cmd_tactical_rasters.go --backfill` : lecture par `ReplayService`,
+      ne cuit rien, serveur arrete
+- [ ] 6.4 Le service somme les sidecars (`merge.go`)
+- **Gate** : projection sur fixture (comptes exacts) ; schema ancien (v20) projete ;
+  idempotence ; aucun chemin de la page n'ecrit ni ne cuit ; `no_second_artifact_sink_test`.
+
+### Phase 7 — Occupation, spawns, routes, isolement (GELEE — le lot lourd)
+- [ ] 7.1 `tracks.go` (250 ms, position tenue) ; 7.2 `spawn.go` (composantes connexes,
+      premieres vies, callouts) ; 7.3 table du rayon de radar + chargeur ; 7.4 `isolation.go`
+      (rayon en parametre, tous-morts exclu) ; 7.5 `dispersion.go` ; 7.6 filtre spawn de
+      depart, lectures routes / isole / temps / gagne ; 7.7 Escouade Synergies : nuage
+      isolement x couverture (quadrants nommes, sessions, taille = morts)
+- **Gate** : trajectoires posees a la main ; rayon par match (18/24 dans le meme filtre) ;
+  variante absente -> pas de lecture ; tous-morts exclu ; premiere vie seule ; session < 5
+  morts exclue ; aucune cuisson.
+
+### Phase 8 — Cloture
+- [ ] 8.1 `.ai/thought_log.md` ; 8.2 `REGISTRE_REPORTS.md` si report ; 8.3 `make gate-push`
+      puis CI verte au niveau JOB ; 8.4 revue adversariale du diff integral avant merge
+
+## 5. Prepare pour l'ouverture au public (sans rien exposer en V1)
+Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pas par joueur
+(« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
+
+## 6. Journal
+- 2026-09-06 : revision 4, worktree `LevelUp-wt-tactique` cree, phase 1 lancee.
+
+## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- (vide)
+
+## 8. Reprise de session
+Avancement = les cases de ce fichier dans le worktree. Reprendre a la premiere case non
+statuee de la phase la plus basse non close. `[x]` fait, `[~]` couvert ailleurs (reference),
+`[!]` non traite (justification). Aucune case vide a la cloture.
