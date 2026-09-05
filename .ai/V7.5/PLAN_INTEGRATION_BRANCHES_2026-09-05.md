@@ -206,24 +206,45 @@ fichiers générés + `lib/api/types.ts` + `thought_log.md`.
 - [ ] B.6 Commit de l'agent dans `wt/integ-vehicules` ; puis fusion D10 par le pilote dans
   `wt/cuisson-perf`.
 
-### Étape C — Usage de session (`wt/session-usage`) — worktree `LevelUp-wt-integ-usage`
-- [ ] C.0 D8bis ; `git merge --no-ff --no-commit wt/session-usage`.
-- [ ] C.1 Conflits `replayartifacts/{cuisson,artifacts,journal}.go` : le crochet de projection se
-  rejoue dans `cuireUnMatch`/le bilan du lot 5 (projection APRÈS rangement, lecture du fichier
-  rangé, writer court APRÈS toute cuisson — doctrine de `usage.go`) ; `killcollector`,
-  `no_art_patterns_test.go` (durcissement daté 2026-09-04 : garder), migration ; fichiers générés :
-  D11.
-- [ ] C.2 Vérifier sur pièces : persister INSERT-only, tables append-only avec vues `_latest` (ordre
-  `films_latest` avant `players_latest`), capability et non `slug ==`, aucune lecture brute des
-  tables append-only.
-- [ ] C.2bis Recette ADR 0026 complète : statuer si `match_usage_players`/`match_usage_films`
-  doivent entrer dans `internal/migration/append_only_rebuild.go` (la branche ne le fait pas) —
-  l'ajouter, ou écrire pourquoi non au §4.
-- [ ] C.3 Gates Go + intégration `-p 1` (dont `usage_integration_test.go`) + D11 + D12 (web complet
-  — `usageLogic.ts` 486 l. et `SessionUsageSection.tsx` 417 l. passent ; ne pas « réparer » hors
-  périmètre, noter au §4 si une résolution franchit 500).
-- [ ] C.4 Harnais : **13/13 identiques SANS `-update`** — gate ferme, tout écart est une anomalie.
-- [ ] C.5 Commit de l'agent dans `wt/integ-usage` ; fusion D10 par le pilote.
+### Étape C — Usage de session (`wt/session-usage`)
+- [x] C.0 D8bis — `git fetch origin` : `origin/feat/v75` **INCHANGÉE** à `7fb4b60a1`,
+  `git rev-list --count HEAD..origin/feat/v75` = **0**. Aucune mini-réconciliation à faire.
+  Cible du merge : `wt/session-usage` = `c4f7d5417`, base de merge `da616828f`, **10 commits**
+  (conformes au §1).
+- [x] C.1 Merge `--no-commit` : **68 fichiers**, **3 conflits** seulement (les crochets de
+  `artifacts.go` et `journal.go` ont fusionné SEULS, ainsi que `killcollector`,
+  `no_art_patterns_test.go`, `migration/order.go` et `openapi.yaml`). Détail et résolutions au §6.
+  PREUVE : `git diff --name-only --diff-filter=U` VIDE, `git grep '^<<<<<<< HEAD$'` VIDE.
+  D11 respecté : `openapi.yaml`/`generated.ts` **régénérés**, jamais édités —
+  `make openapi-gen` (666 456 o, diff NUL contre l'auto-merge) · `make generate-types` ·
+  `make openapi-check` code 0 · `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate` **ok** ·
+  `CGO_ENABLED=0 go test ./contracttest/... -run TestContract` **ok** ·
+  `node tools/check-generated-types-fresh.mjs` code **0**.
+- [x] C.2 Vérifié SUR PIÈCES (preuves au §6) : persister INSERT-only, deux tables append-only
+  avec leurs vues `_latest` (`films_latest` créée AVANT `players_latest`), tous les lecteurs de
+  production sur les vues, gate par `film.usage_summary` (jamais `slug ==`), aucun
+  `OpenReadWrite` neuf hors du régime « serveur arrêté » des backfills CLI.
+- [x] C.2bis **NON** — `match_usage_players`/`match_usage_films` n'entrent PAS dans
+  `internal/migration/append_only_rebuild.go` (justification N-6 au §4). En revanche l'étape **5**
+  de la recette ADR 0026 manquait : les deux tables sont inscrites à `appendOnlyStateTables`
+  (`internal/sync/append_only_state_guard_test.go`), sur le patron de `match_kill_events` /
+  `match_weapon_shots`. `internal/sync` **ok**.
+- [x] C.3 Gates — `gofmt -l .` VIDE (**EXIT_GOFMT=0**) · `go build ./...` **EXIT_BUILD=0** ·
+  `go vet ./...` **EXIT_VET=0** · suite Go des 12 périmètres **EXIT_TESTS=0** (101 paquets `ok`,
+  0 FAIL) · intégration `-p 1` **EXIT_INTEG=0** (15 paquets `ok`, dont `replayartifacts` avec
+  `usage_integration_test.go` et `platform/duckdb` avec
+  `session_usage_aggregate_integration_test.go`) · `golangci-lint run` : **336 issues** au total,
+  **0 sur un fichier touché par la RÉSOLUTION** (croisement mesuré : les 5 fichiers résolus à la
+  main n'apparaissent dans aucune ligne du rapport). MAIS le lint QUI FAIT FOI (ratchet CI
+  `--new-from-merge-base=origin/main`) rend **5 issues, toutes dans deux fichiers NEUFS de la
+  branche** — détail et attribution en N-10 au §4. Web D12 COMPLET : `npm run typecheck` **0**, `npm run lint` **0**,
+  `npm run lint:fields` **0**, `npm run test` **0** (574 fichiers, 5 991 tests passés,
+  14 skippés), `npm run build` **0**, `node tools/knip-ratchet.mjs` **0** (0/0/0 au plafond 0).
+  Seuils : `usageLogic.ts` **486 L**, `SessionUsageSection.tsx` **417 L** — sous 500, passés tels
+  quels. Aucun fichier n'a franchi 500 L par la résolution (mesuré HEAD vs merge, §4 N-7).
+- [x] C.4 Harnais — passe SANS `-update` : **13 identiques, 0 différent** (verdict complet au §5).
+  Aucun `-update`, aucun refigeage.
+- [x] C.5 Commit du merge dans `wt/integ-usage`.
 
 ### Étape D — Game-changers (`wt/game-changers`, web)
 - [x] D.0 `git fetch origin` — **0 commit** entre `eb80a4f0a` et `origin/feat/v75` (amont
@@ -315,7 +336,50 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   mandat.
 - N-5 les trois outils `cmd/{weapon-sounds,vs-measure,vehicle-sprite}` de la branche véhicules
   arrivent tels quels ; à statuer par leur auteur (outillage de recherche vs production).
-- N-6 la comparaison du harnais est positionnelle (§5 A) : une amélioration « diff par nom »
+- **N-6 (étape C, C.2bis) — `match_usage_players` / `match_usage_films` N'ENTRENT PAS dans
+  `internal/migration/append_only_rebuild.go`, et c'est la recette elle-même qui le dit.** Le
+  helper est un **SWAP DE CONVERSION** (`legacy → append-only`) : son en-tête l'écrit
+  (« factorise le SWAP de conversion, commun à 7 tables »), et `applyAppendOnlyRebuild` rend
+  **no-op sur une table absente** (étape 2 de son contrat : « table absente → no-op ») — il ne
+  CRÉE jamais rien. Les deux tables du chantier sont NET-NEUVES, écrites append-only dès leur
+  DDL (PK technique `id` sur séquence, `summary_pass`/`summary_rev`/`written_at`, vues
+  `_latest`) : il n'y a aucun héritage à convertir, donc rien à passer au helper. Le dépôt a
+  déjà quatre précédents exactement de cette forme, tous hors du helper :
+  `match_objective_stats`, `match_kill_events`, `match_weapon_shots` et
+  `match_weapon_hit_distance`. Ce qui manquait de la recette ADR 0026, c'est son **étape 5**
+  (inscription au garde-rail `internal/sync/append_only_state_guard_test.go`) — FAITE en C.2bis.
+- **N-7 (étape C) — quatre fichiers Go touchés dépassent 500 L, TOUS déjà au-dessus avant le
+  merge** (mesuré `git show HEAD:<f> | wc -l` contre l'arbre) : `cmd_backfill_killsource.go`
+  516 → **505** (la branche le RACCOURCIT), `games/halo_infinite/adapter_data.go` 501 → 506,
+  `service/session_page_service.go` 844 → 856, `sync/no_art_patterns_test.go` 542 → 550. Dette
+  gelée par la baseline lint, aucune résolution ne franchit le seuil : rien à traiter ici.
+- **N-8 (étape C) — `match_weapon_hit_distance` n'est PAS inscrite à `appendOnlyStateTables`**
+  alors que `match_kill_events` et `match_weapon_shots`, ses sœurs du même chantier, le sont
+  (`internal/sync/append_only_state_guard_test.go`). Trou PRÉEXISTANT à l'étape C (la table
+  arrive de la branche précision, remise le 2026-09-01), hors périmètre : consigné, non traité.
+- **N-9 (étape C) — le ratchet D-3 de l'ADR 0030 (allowlist datée des sites `OpenReadWrite`)
+  N'EXISTE PAS dans le code.** L'ADR est « Accepted » et le décrit (§D-3, §Implémentation
+  point 2), mais aucun test n'énumère les appelants : grep exhaustif du dépôt, aucun fichier de
+  garde. La vérification C.2 « aucun `OpenReadWrite` hors allowlist » a donc été faite À LA
+  MAIN : la branche ajoute **un seul** site de production, `cmd/levelup/cmd_backfill_usage_summary.go:103`,
+  CLI hors ligne sous précondition « serveur arrêté » écrite en tête de fichier — même régime
+  que `cmd_backfill_killsource.go` qui le précède. Le second ajout est un `_test.go`
+  d'intégration. Hors périmètre : poser le ratchet est un chantier ADR 0030 à part entière.
+- **N-10 (étape C) — CINQ ISSUES DE LINT QUI ROUGIRONT LE JOB CI `Go Lint`.** Le lint qui fait
+  foi est `golangci-lint run --new-from-merge-base=origin/main` (Makefile `go-api-lint`, job CI
+  `go-lint`) : la dette gelée reste invisible, seules les issues AJOUTÉES rougissent. Mesuré sur
+  l'arbre de merge, il rend **5** issues (`EXIT_LINT_RATCHET=1`), toutes dans **deux fichiers
+  NET-NEUFS apportés par `wt/session-usage`**, aucune dans un fichier résolu à la main :
+  - `internal/analysis/replay/usage_summary_families.go` : `grenade_frag` ×17, `grapple` ×8
+    (« constante `eqUsesGrappleFamily` existe déjà »), `powerup_camo` ×4, `wall` ×11 (goconst) ;
+  - `internal/analysis/sessionusage/usage.go:179` : préallocation de `keys` (prealloc).
+
+  NON TRAITÉ à l'étape C, à dessein : le mandat de l'étape est la résolution du merge, pas la
+  réécriture du code de la branche (aucun fix hors périmètre). Ce sont des corrections pures
+  (extraction de constantes, capacité de slice) sans effet sur la sortie. **Condition de
+  reprise : étape E** (E.1 `make gate-push`), qui ne peut pas passer avec ces cinq rouges — et
+  D8 exige le vert au niveau job avant le push de F.3.
+- N-11 la comparaison du harnais est positionnelle (§5 A) : une amélioration « diff par nom »
   de `cmd/replay-equiv` serait pérenne — hors périmètre de l'intégration, au registre.
 
 ## §5 Diffs des comptes (par étape)
@@ -376,7 +440,34 @@ pics 0,10 à 0,66 Gio. Témoins : `01e1f945` **17,9 s**, `7344d24f` **21,0 s**, 
 
 ### Étape B — (à remplir par l'agent : tableau par NOM d'étape, corrélation véhicules, 49 lignes)
 
-### Étape C — (attendu : 13/13 identiques sans `-update`)
+### Étape C — usage de session `wt/session-usage` `c4f7d5417` (2026-09-05)
+
+**AUCUN REFIGEAGE, ET C'EST LE RÉSULTAT ATTENDU (D4, item C.4).** Passe SANS `-update` :
+
+```
+BILAN : 13 identique(s), 0 different(s), 0 ecarte(s), 0 echec(s), 0 illisible(s) (harnais)
+```
+
+Les treize, nommément : `000d5950`, `01e1f945`, `64e8adfa`, `7344d24f`, `696a9d7c`, `084a804d`,
+`1c4c63c2`, `53ce4390`, `d9781168`, `9f57c612`, `60ae07c4`, `51101d1d`, `a349fea8` — tous
+« identique ». `git status` sur `internal/analysis/replay/testdata/` rend VIDE : pas un octet
+de référence n'a bougé.
+
+**POURQUOI ZÉRO ÉCART ÉTAIT PRÉVISIBLE, ET CE QUI LE PROUVE.** La branche ne touche que deux
+fichiers du chemin de cuisson, et le diff y est un **RENOMMAGE PUR** :
+`padFamilyKey` -> `PadWeaponFamilyKey` (`pad_pickup_dating.go` : la signature, deux appels dans
+`datePadPickups`, un bloc de commentaire ajouté ; `document_pickups.go` : une seule ligne de
+commentaire citant l'ancien nom). Le corps de la fonction est inchangé au caractère près, et le
+seul appelant de production reste `datePadPickups`. Le résumé d'usage lui-même
+(`replay/usage_summary.go`) est **HORS ARTEFACT** : `import "sort"` et rien d'autre,
+`BuildUsageSummary(doc)` est une fonction pure document -> lignes, appelée depuis
+`replayartifacts`, jamais depuis `BuildFromFilm`. Aucune étape observée n'est ajoutée :
+`BuildFromFilmSteps` reste à **34** et les 13 TSV gardent leurs 48 étapes.
+
+**DURÉES ET PICS** (passe unique, à titre de veille — le gain du chantier tient) : `01e1f945`
+**25,1 s** / 0,21 Gio, `7344d24f` **26,8 s** / 0,22 Gio, `696a9d7c` **26,3 s** / 0,22 Gio ;
+plancher `51101d1d` 7,5 s / 0,08 Gio, plafond `a349fea8` 4 min 38,9 s / 0,51 Gio (film-bombe du
+lot 4b, régime connu).
 
 ### Fusions D10 — (attendu : 13/13 identiques sans `-update` sur les TSV de B, après chaque fusion)
 
@@ -502,6 +593,90 @@ pics 0,10 à 0,66 Gio. Témoins : `01e1f945` **17,9 s**, `7344d24f` **21,0 s**, 
   Commit du pilote : merge de fusion sur `wt/integ-gamechangers`, message français, voir
   `git log --oneline -1` pour le SHA (rapporté à l'utilisateur en clôture de tâche).
 
+- 2026-09-05 — **ÉTAPE C exécutée (C.0 à C.5)**, worktree `LevelUp-wt-integ-usage`, branche
+  `wt/integ-usage`, HEAD de départ `eb80a4f0a`.
+
+  **C.0 / D8bis.** `git fetch origin` : `origin/feat/v75` **toujours `7fb4b60a1`**,
+  `HEAD..origin/feat/v75` = **0 commit**. Rien à réconcilier. Cible : `wt/session-usage`
+  `c4f7d5417`, base `da616828f`, 10 commits, **67 fichiers** (+8 737 / −87).
+
+  **LES TROIS CONFLITS ET LEUR RÉSOLUTION** (règle : la sémantique de la branche est préservée
+  intégralement, dans NOTRE architecture) :
+
+  | conflit | ce que la branche voulait | résolution |
+  |---|---|---|
+  | `sync/replayartifacts/cuisson.go` | dans `buildAll`, après `b.construits++` : empiler `rapportUsage{matchID, path: out.Path}` | Le bloc en conflit EST celui que le lot 5 a sorti de `buildAll` vers `cuireUnMatch` (items 5.5/5.6). Bloc de la branche supprimé ; le crochet **REJOUÉ dans `cuireUnMatch`**, immédiatement après le report du T0, sur `out.stored.Path` (notre `storedOne{stored, dur, peak}` au lieu du `stored` nu). Le champ `usage []rapportUsage` du bilan avait fusionné SEUL. Doctrine de `usage.go` respectée sur les quatre points : fichier RANGÉ et non blob candidat, projection après rangement, toutes les projections avant `AcquireWriter`, segment writer court après TOUTE cuisson (`Run` : `reporterT0Film` -> `persisterResumesUsage` -> `publierBilan`, fusionné seul dans `artifacts.go`) |
+  | `cmd/levelup/main.go` | `case "backfill-usage-summary"` + sa ligne d'aide | UNION, aux deux endroits : la commande de la branche prend sa place au contact de `backfill-replay` (son voisin thématique), notre `replay-facts-export` la suit |
+  | `.ai/thought_log.md` | deux blocs insérés aux mêmes ancres | UNION : nos entrées en tête, puis celles de la branche — aucune perdue des deux côtés |
+
+  **CE QUI A FUSIONNÉ SEUL, ET QUI A ÉTÉ RELU** : `replayartifacts/artifacts.go` (l'appel à
+  `persisterResumesUsage` est bien APRÈS `reporterT0Film` et AVANT `publierBilan`),
+  `replayartifacts/journal.go` (deux compteurs), `killcollector/{classifier,postsync}.go`
+  (centralisation de la lecture des capabilities dans `games.LoadCapabilityMap` + garde-rail
+  `capability_loader_guard_test.go`), `no_art_patterns_test.go` (**le durcissement daté du
+  2026-09-04 est intact** : le diff contre HEAD est purement additif, +8 lignes, les deux
+  nouvelles tables dans `tablesProtegees`), `migration/order.go`, `openapi.yaml`.
+
+  **DEUX AJUSTEMENTS AU-DELÀ DES MARQUEURS**, tous deux dans le sens de la doctrine du dépôt :
+  - `migration/order.go` : l'auto-merge avait glissé l'entrée `shared_match_usage_summary_v1`
+    ENTRE le commentaire « Table SOEUR de match_weapon_shots… » et l'entrée qu'il décrit
+    (`shared_match_weapon_hit_distance_v1`) — doc inversée (anti-pattern n°9). Chaque bloc de
+    commentaire a été remis au contact de son entrée ; l'ORDRE des entrées, lui, ne bouge pas
+    (il est dicté par `TestSortByCanonicalIsNoOpOnCurrentRegistry`).
+  - `sync/append_only_state_guard_test.go` : étape **5** de la recette ADR 0026, manquante à
+    l'arrivée de la branche — `match_usage_players` et `match_usage_films` inscrites à
+    `appendOnlyStateTables`, sur le patron de `match_kill_events`/`match_weapon_shots`
+    (cf. C.2bis et N-6).
+
+  **D11 — L'OPENAPI N'A PAS ÉTÉ TOUCHÉ À LA MAIN.** `make openapi-gen` régénère 666 456 octets
+  et le diff contre l'auto-merge est **NUL** (l'auto-merge était déjà la sortie du générateur) ;
+  `make generate-types` ; `make openapi-check` code 0 ;
+  `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate` **ok** ;
+  `CGO_ENABLED=0 go test ./contracttest/... -run TestContract` **ok** ;
+  `node tools/check-generated-types-fresh.mjs` code **0**. +307 lignes d'OpenAPI, conformes au §1.
+
+  **C.2 — LES PREUVES, MESURÉES, PAS DÉDUITES** :
+
+  1. **Persister INSERT-only.** `internal/persist/usage_summary_persister.go` ne porte que deux
+     `const` SQL, `INSERT INTO match_usage_films` et `INSERT INTO match_usage_players`, dans une
+     transaction unique (`BeginTx` / `Commit`, `Rollback` différé). Grep exhaustif du module :
+     `(UPDATE|DELETE FROM|ON CONFLICT).*match_usage` rend **VIDE**. La passe entière (ligne film
+     + lignes joueurs) porte le même `summary_pass` et le même `written_at` — la re-projection
+     est atomique à la lecture.
+  2. **Append-only + vues `_latest`, dans le bon ordre.** `steps_shared_usage_summary.go` :
+     deux tables à PK technique `id` sur séquence, `written_at` par défaut UTC, un index par
+     table ; `applyMatchUsageSummary` exécute les scripts dans l'ordre
+     `players`, `films`, **`films_latest`, puis `players_latest`** — et le commentaire dit
+     pourquoi : `players_latest` se DÉFINIT sur `films_latest` (JOIN sur
+     `match_id` + `summary_pass`), l'autorité de passe étant la ligne film, toujours écrite.
+  3. **Lecteurs sur les vues UNIQUEMENT.** Grep `match_usage_[a-z]*` hors migration et hors
+     tests : les seuls `FROM` de production sont
+     `platform/duckdb/session_usage_repo.go:58` (`FROM match_usage_films_latest`), `:95`
+     (`FROM match_usage_players_latest`) et `cmd/levelup/cmd_backfill_usage_summary.go:162`
+     (`FROM match_usage_films_latest`). **Aucune lecture brute.** Toutes les autres occurrences
+     sont des commentaires ou les deux INSERT du persister.
+  4. **Capability, jamais un slug.** `games.CapFilmUsageSummary = "film.usage_summary"`, déclarée
+     dans `AllCapabilityKeys`, dans le repli d'`adapter_data.go` et dans
+     `config/titles/halo_infinite/mappings/capabilities.toml` ; absente de Halo 5 (pas de
+     décodeur de film). Trois gates, tous par la clé : production post-sync
+     (`replayartifacts/usage.go:88`), backfill CLI (`cmd_backfill_usage_summary.go:122`),
+     exposition de la page (`api/wire/registry_pages.go:298` -> repo nil, donc bloc absent, jamais
+     un 500). Ratchet `archlint/no_slug_comparison_test.go` **vert** (paquet `internal/archlint`
+     `ok`, 22,7 s).
+  5. **`OpenReadWrite`.** Un seul site de production neuf,
+     `cmd/levelup/cmd_backfill_usage_summary.go:103`, CLI hors ligne sous précondition « serveur
+     arrêté » écrite en tête de fichier — même régime que `cmd_backfill_killsource.go`. Le
+     ratchet D-3 de l'ADR 0030 n'existe pas dans le code (N-9) : la vérification est manuelle et
+     dite comme telle.
+
+  **RESTE DOUTEUX / À SURVEILLER** : (a) **N-10** — cinq issues sous le ratchet CI du lint, dans
+  deux fichiers neufs de la branche ; elles rougiront `Go Lint` et `make gate-push` tant qu'elles
+  ne sont pas éteintes (étape E) ; (b) l'entrée thought_log S1 de la branche (2026-09-04) décrit
+  encore le crochet comme vivant dans `buildAll` — c'est un journal historique, il n'a pas été
+  réécrit, mais la lecture du code fait foi : le crochet vit dans `cuireUnMatch` depuis cette
+  résolution ; (c) le résumé n'est produit QUE pour les artefacts cuits DANS LE CYCLE — le parc
+  déjà sur disque relève de `levelup backfill-usage-summary`, qui n'a PAS été lancé ici (aucune
+  base ouverte de toute l'étape).
 ## §7 Contrat d'exécution (rappel opposable)
 Statuts : `[x]` fait · `[~]` couvert ailleurs (avec la référence) · `[!]` non traité (avec la
 justification écrite). AUCUNE case vide à la clôture d'une étape. Ordre strict : l'étape N+1 ne

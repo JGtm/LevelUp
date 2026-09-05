@@ -87,6 +87,17 @@ var appendOnlyStateTables = []string{
 	// une lecture brute servirait les lignes des passes précédentes.
 	"match_kill_events",
 	"match_weapon_shots",
+	// match_usage_players / match_usage_films (session-usage, 2026-09-04) : créées
+	// directement append-only (id PK seq + summary_pass + summary_rev + written_at +
+	// vues _latest). L'unité de génération est LA PROJECTION D'UN ARTEFACT ENTIER, pas
+	// la ligne : la vue films_latest retient la dernière PASSE par match, et
+	// players_latest se JOINT à elle (un joueur d'une passe précédente disparaît avec
+	// elle). Écriture = INSERT pur (persist/usage_summary_persister.go, deux statements
+	// dans une transaction unique) ; aucun DELETE / ON CONFLICT / INSERT OR
+	// REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT.
+	// Recette ADR 0026 étape 5 — l'inscription manquait à l'arrivée de la branche.
+	"match_usage_players",
+	"match_usage_films",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors

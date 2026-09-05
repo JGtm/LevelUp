@@ -165,6 +165,23 @@ const (
 	// questions différentes, comme `film.weapon_shots` (stockage) et
 	// `match.weapon.accuracy` (publication) le font déjà.
 	CapFilmKillPositions CapabilityKey = "film.kill_positions"
+
+	// CapFilmUsageSummary — le titre produit, PAR MATCH et PAR JOUEUR, le RÉSUMÉ D'USAGE
+	// dérivé de l'artefact de rejeu (tractions de grappin, épisodes de camouflage et de
+	// surbouclier, poses d'équipement, objets lâchés, prises de socle d'arme et de bonus),
+	// persisté EN BASE au sync (décision utilisateur du 2026-09-04, voie sidecar abandonnée)
+	// pour qu'une page d'agrégat (Sessions) le lise sans ouvrir les artefacts (1,8 Mo pièce).
+	//
+	// Halo Infinite : supported (dérivé de l'artefact qui vient d'être écrit, même étape
+	// post-sync que replaybuild — jamais de second décodage de film). Halo 5 : ABSENTE —
+	// pas de décodeur de film, donc aucun artefact, donc rien à résumer. Un titre qui ne
+	// la déclare pas ne produit AUCUNE ligne, et c'est un silence propre, pas une
+	// dégradation.
+	//
+	// ⚠ Clé FINE, même doctrine que les trois `film.*` ci-dessus : elle gouverne la
+	// PRODUCTION du résumé, pas ce qu'une page en affiche. Ne pas l'élargir pour couvrir
+	// un autre dérivé du film.
+	CapFilmUsageSummary CapabilityKey = "film.usage_summary"
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.

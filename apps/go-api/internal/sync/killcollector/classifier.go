@@ -18,12 +18,10 @@
 package killcollector
 
 import (
-	"fmt"
 	"log/slog"
 
 	"levelup/go-api/internal/games"
 	halo "levelup/go-api/internal/games/halo_infinite"
-	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
 
@@ -48,18 +46,9 @@ func ClassifierPourTitre(repoRoot, slug string) port.KillSourceClassifier {
 // capabilitiesDuTitre lit `capabilities.toml` du titre. Sans memorisation : les appelants
 // de cette fonction sont des chemins de BACKFILL, appeles une fois par lot, pas une fois
 // par match — la memorisation de PostSyncHook sert un cycle, pas un lot.
+//
+// La recette elle-meme vit dans games.LoadCapabilityMap (centralisee le 2026-09-04,
+// regle des <= 2 copies — ce fichier en portait une des trois copies d origine).
 func capabilitiesDuTitre(repoRoot, slug string) (games.CapabilityMap, error) {
-	reg := mappings.NewRegistry()
-	for _, err := range reg.LoadFromConfigDir(repoRoot, []string{slug}, nil) {
-		return nil, fmt.Errorf("mappings du titre %s: %w", slug, err)
-	}
-	set, ok := reg.GetCapabilities(slug)
-	if !ok {
-		return nil, fmt.Errorf("capabilities.toml absent pour le titre %s", slug)
-	}
-	caps, err := games.CapabilityMapFromMappings(set)
-	if err != nil {
-		return nil, fmt.Errorf("capabilities du titre %s: %w", slug, err)
-	}
-	return caps, nil
+	return games.LoadCapabilityMap(repoRoot, slug)
 }

@@ -79,6 +79,13 @@ const (
 	CompteurT0FilmReportes = "postsync_replay_t0_film_reportes_total"
 	CompteurT0FilmDejaLa   = "postsync_replay_t0_film_deja_a_jour_total"
 	CompteurT0FilmEchecs   = "postsync_replay_t0_film_echecs_total"
+	// Resume d'usage equipement/socles derive des artefacts cuits dans le cycle, ecrit dans
+	// `match_usage_films` + `match_usage_players` (cf. usage.go). CompteurUsageEcrits :
+	// passes persistees ; CompteurUsageEchecs : artefact illisible, writer indisponible,
+	// capabilities illisibles ou INSERT refuse — un defaut, jamais un etat normal (un titre
+	// SANS la capability film.usage_summary ne compte rien : silence propre, en DEBUG).
+	CompteurUsageEcrits = "postsync_replay_usage_ecrits_total"
+	CompteurUsageEchecs = "postsync_replay_usage_echecs_total"
 )
 
 // SignalerClientSansChunks journalise et compte l'échec de l'assertion `ChunksFetcher` faite
