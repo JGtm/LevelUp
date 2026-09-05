@@ -569,7 +569,7 @@ compare_coverage_par_paquet() {
         c = somme[cour "\x1c" p] / compte[cour "\x1c" p]
         compares++
         if (c + tol < b) {
-          printf "    ❌ %s : %.1f%% -> %.1f%% (-%.1f pt)\n", p, b, c, b - c
+          printf "    [ECHEC] %s : %.1f%% -> %.1f%% (-%.1f pt)\n", p, b, c, b - c
           regressions++
         }
       }
@@ -577,10 +577,10 @@ compare_coverage_par_paquet() {
       printf "    %d package(s) comparé(s), %d neuf(s) non jugé(s), %d disparu(s) (contrôles 1-3)\n",
         compares, neufs, disparus
       if (regressions > 0) {
-        printf "❌ %d package(s) en régression de couverture de plus de %.1f point\n", regressions, tol
+        printf "[ECHEC] %d package(s) en regression de couverture de plus de %.1f point\n", regressions, tol
         exit 1
       }
-      printf "✅ Aucun package en régression de couverture de plus de %.1f point\n", tol
+      printf "[OK] Aucun package en regression de couverture de plus de %.1f point\n", tol
       exit 0
     }
   ' "$baseline_txt" "$current_txt"

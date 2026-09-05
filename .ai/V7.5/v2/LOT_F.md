@@ -138,7 +138,7 @@ modification de `.ai/baselines/*.jsonl` déclenche donc bien la CI, comme le com
 | Mutation | Effet observé |
 |---|---|
 | Deux tests de `sync/killcollector` retirés du JSONL courant (simule une suppression) | `levelup/go-api/internal/sync/killcollector : 2/75 absents (73 présents)` + les deux noms ; **exit 1** (exit 0 sur le JSONL sain) |
-| Fichier `-func` synthétique, paquet `internal/a` : `Bar` 80 % → 20 % (total INCHANGÉ à 75,0 %) | `❌ levelup/go-api/internal/a : 90.0% -> 60.0% (-30.0 pt)`, **exit 1** — c'est exactement ce que le contrôle global ne voyait pas |
+| Fichier `-func` synthétique, paquet `internal/a` : `Bar` 80 % → 20 % (total INCHANGÉ à 75,0 %) | `[ECHEC] levelup/go-api/internal/a : 90.0% -> 60.0% (-30.0 pt)`, **exit 1** — c'est exactement ce que le contrôle global ne voyait pas |
 | Même fichier, paquet `c` disparu et paquet `d` neuf | `2 package(s) comparé(s), 1 neuf(s) non jugé(s), 1 disparu(s)`, **exit 0** (pas de faux rouge sur les paquets non comparables) |
 
 Gate F.2 (avant-plan) — JSONL de suite COMPLÈTE produit en 6 groupes de paquets
@@ -148,7 +148,7 @@ sous 10 min, concaténés (100 902 lignes, 315 paquets, 0 `"Action":"fail"`) :
 ```
 bash scripts/check_test_baseline.sh tests --from-jsonl <full.jsonl>
 → Baseline : 9795 tests / Courant : 14595 tests
-→ ✅ Tous les tests baseline présents dans le run courant
+→ Tous les tests baseline presents dans le run courant
 → [OK] Aucun test en échec dans le run courant
 → [OK] Aucun package en échec hors test        (exit 0)
 bash -n scripts/check_test_baseline.sh        → syntaxe OK
@@ -417,8 +417,42 @@ GOCACHE=... CGO_ENABLED=1 go vet -tags=gamefiles ./internal/himap/ ./cmd/mapstru
 node (yaml.parse de ci.yml) → structure valide, step inséré au bon endroit du job `frontend`
 ```
 
-**Preuve définitive** : un run CI vert de la branche qui les exécute (nombre de tests dans le
-log du job `frontend`) — cf. la section « CI » ci-dessous.
+**Statut de la preuve.** Le plan demandait comme preuve « un run CI vert de la branche qui les
+exécute ». Changement de consigne utilisateur en cours de lot (quota) : la surveillance CI est
+abandonnée côté exécuteur, la CI sera vérifiée par le superviseur à l'intégration. L'item est
+donc statué `[x]` sur la preuve LOCALE, qui est complète pour ce qui dépend de moi : Playwright
+1.62.1 est disponible, les deux specs sont jouées et **3 passed (2.1 s)**, la mutation prouve
+qu'elles peuvent échouer, et la structure du workflow est vérifiée par un parseur YAML (le step
+est bien dans le job `frontend`, après Vitest). Ce qui reste à confirmer par le superviseur : le
+comptage de tests dans le log du job `frontend` d'un run réel, et le coût de
+`npx playwright install chromium --with-deps` sur le runner.
+
+## Gate F (final, rejoué sur l'état complet de la branche)
+
+Toutes les commandes en avant-plan, depuis `apps/go-api` sauf mention, préfixe
+`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-tests-ci CGO_ENABLED=1`.
+
+| Commande | Dernière ligne |
+|---|---|
+| `go test -count=1 ./internal/archlint/... ./internal/service/... ./internal/api/wire/... ./internal/himap/... ./cmd/mapstruct-build/... ./cmd/mapfond-build/... ./internal/scheduler/... ./cmd/levelup/...` | `ok levelup/go-api/cmd/levelup 1.852s` (11 lignes, 0 échec, 2 `[no test files]`) |
+| `go test -tags=integration -p 1 -count=1 ./internal/api/wire/...` | `ok levelup/go-api/internal/api/wire 16.455s` |
+| `go build ./...` | `BUILD OK` |
+| `golangci-lint run --timeout 5m --new-from-merge-base=origin/main ./...` (LE gate CI, `Makefile:307` + `ci.yml:266`) | `0 issues.` — `exit=0` |
+| `golangci-lint run ./...` (dette totale, informatif) | `300 issues` (funlen 34, goconst 102, gocyclo 26, lll 16, noctx 28, prealloc 2, revive 54, staticcheck 11, unparam 11, unused 16) |
+| `bash scripts/check_test_baseline.sh tests --from-jsonl <final.jsonl>` | `[OK] Aucun package en échec hors test` — `EXIT=0` (Baseline 9 795 / Courant 14 594) |
+| `cd apps/web && npx playwright test --project=chromium --reporter=list e2e/replay-*-raster.spec.ts` | `3 passed (2.1s)` |
+| `cd apps/web && npm run typecheck` | `tsc -b`, aucune sortie |
+| `cd apps/web && npm run lint` | `28 problems (0 errors, 28 warnings)` — préexistants |
+
+Le JSONL de suite complète est produit en 6 groupes de paquets en avant-plan
+(`go list -tags=integration ./...` = 315 paquets, `split -n l/6`), chacun sous 10 min :
+31 s + 1 min 54 + 1 min 19 + 3 min 35 + 7 min 35 + 5 min 13. Concaténé : **100 906 lignes,
+315 paquets, 0 `"Action":"fail"`**.
+
+Aucun test skippé pour faire passer un gate, aucune allowlist agrandie sans justification datée
+(les deux entrées de `horsCorpusAutorises` sont datées et argumentées ; la baseline de tests
+GRANDIT de 1 209 entrées, elle ne rétrécit pas).
+
 ## Découvertes (consignées, NON traitées — hors périmètre du lot F)
 
 1. **Le calque des actions d'objectif ne rend plus rien de la famille drapeau sur un film
@@ -457,3 +491,22 @@ log du job `frontend`) — cf. la section « CI » ci-dessous.
    cyclomatique, `runBackfill` de `cmd/levelup` à 65, et 28 `noctx` sur
    `cmd_reset_bitmasks.go` / `cmd_restore_csr.go` (`db.Exec`/`db.QueryRow` sans contexte). Le
    ratchet ne les demandera qu'au prochain qui touchera ces lignes.
+
+## Points à trancher par le superviseur
+
+1. **`CLAUDE.md`, section « Commandes utiles » (tag `gamefiles`)** cite encore
+   `internal/himap/corpus_tag_test.go` comme lieu du garde-rail. Le fichier a été supprimé par
+   F.4 ; la phrase doit pointer `apps/go-api/internal/archlint/gamefiles_tag_test.go`. Je n'ai
+   pas modifié `CLAUDE.md` : mes instructions d'exécution me l'interdisent explicitement.
+2. **Les deux exemptions fines de `.golangci.yml`** (`cmd/server/main.go` et
+   `cmd/levelup/main.go`, funlen + gocyclo) ont été supprimées comme le demande F.5, alors que
+   leur prémisse (« déjà couvertes par `^cmd/` ») a cessé d'être vraie du fait du même commit.
+   Coût mesuré : 4 issues `gocyclo` de plus, toutes sur des lignes non modifiées (ratchet vert).
+   Les remettre est un bloc YAML de quatre lignes si le superviseur préfère une exemption
+   étroite et justifiée sur ces deux points d'entrée.
+3. **Le lot E devra rejouer la baseline de présence** dans le même commit que ses suppressions
+   de tests (`analysis/replay`, `sync/killcollector`, `analysis/objectiveevents` y sont
+   désormais enrôlés). C'est le comportement voulu du gate, pas un accident.
+4. **La CI n'a pas été surveillée** (consigne utilisateur en cours de lot, quota) : aucun
+   `gh run list` ni `gh run watch` n'a été lancé, aucun job n'a été réparé sur la base d'un
+   verdict CI. Tous les gates sont locaux et verts.

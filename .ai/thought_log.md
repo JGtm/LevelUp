@@ -95401,3 +95401,58 @@ demander avant). Prochaine etape : decision utilisateur sur les 6 escalades, pui
 plan `.ai/PLAN_V2_REJEU_FILM_<date>.md` sous `plan-review`, lot 0 (trois P0 + les deux items
 actifs au merge : catalogue ecrit par le runtime, projections sur « artefact range ») avant le
 tag v7.5.0.
+
+## [2026-09-06] Plan v2 du rejeu — LOT F : tests, garde-rails et CI — Complete
+
+**Contexte.** Lot F du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, worktree dedie
+`LevelUp-wt-v2-tests-ci`, branche `feat/v2-tests-ci` sur base `a21fd77f4`. Six items issus du
+registre d'audit du 2026-09-05 : G1 (aucune assertion de VALEUR en CI sur un ReplayDocument
+obtenu d'un film), G3 (la baseline de presence des tests ignore tout le chantier v7.5 et son
+controle « par paquet » est une doc inversee), G7 (RunOnce du cron de purge, seul cron qui
+supprime des fichiers, sans aucun test), I1 (deux tests ouvrent le jeu hors du tag `gamefiles`
+et le ratchet ne regarde qu'un paquet), H7 (l'exemption `^cmd/` du lint couvre les binaires
+deployes), M1 (les deux seules preuves de rendu du rejeu n'ont jamais tourne en CI).
+
+**Decision technique.** Mesurer avant de figer, et prouver chaque test neuf par mutation.
+F.1 : le fixture e2e porte deja un oracle INDEPENDANT du film (la feuille de match de l'API) —
+le differentiel etait gratuit et n'existait pas ; mesure d'abord (15 compteurs sur 15 EXACTS
+pour les 5 joueurs apparies), puis gel des grandeurs sans oracle exterieur (originMs 34 870,
+t0FilmMs 35 170, grille 781 x 100 ms, 22 vies, courbe d'equipe 195:1 485:2 706:3). L'oracle est
+RECOPIE A LA MAIN et confronte au fichier a chaque execution, sans quoi l'assertion serait
+auto-validante. F.2 : 1 209 entrees ajoutees a la baseline depuis un vrai run, et le controle
+« par paquet » rendu reel des DEUX cotes (bilan de presence groupe par paquet ; comparaison de
+couverture paquet par paquet, avec sa limite ecrite — `-func` ne publie pas les comptes
+d'instructions). F.3 : une couture d'horloge ajoutee au cron (nil en production), sans quoi la
+FRONTIERE de la fenetre de retention n'est pas testable. F.4 : le garde-rail du tag promu de
+`internal/himap` vers `internal/archlint`, balayage WalkDir de `internal/` et `cmd/`. F.5 :
+`path` + `path-except` sur la meme regle est REFUSE par golangci-lint v2.12.2 (et `config
+verify` ne l'attrape pas) — `path-except` seul porte toute la condition negative, RE2 n'ayant
+pas de lookahead. F.6 : les deux specs n'ouvrent aucun serveur, elles rejoignent le job
+`frontend` qui tourne a chaque push.
+
+**Resultats.** Six items `[x]` (dont un sous-item `[~]` : la CI invoquait deja le script de
+baseline, verifie sur pieces). Treize mutations manuelles, toutes rattrapees, toutes annulees.
+Deux decouvertes majeures faites PAR les mutations : (a) deux leurres du test de purge ne
+prouvaient rien (leur nom tronque n'etant dans aucun registre, une AUTRE garde les epargnait) —
+remplaces par un fichier sans extension et un repertoire vide nommes comme un artefact
+purgeable ; (b) les deux specs de rasterisation etaient ROUGES au premier rejeu (2 echecs sur
+3), leur harnais perime de deux refactorings du chantier v7.5 — la demonstration exacte du
+constat M1. Consigne aussi : le calque des actions d'objectif ne rend plus AUCUNE action de la
+famille drapeau sur un film CTF (12 actions kills/assists au schema 39 contre « 92, famille
+flag » ecrit au schema 37) ; cause non traitee, elle releve des lots A et E. Le ratchet de lint
+passait de 0 a 9 issues en appliquant F.5 : les 9 sont reparees dans `cmd/levelup` (six
+descriptions d'aide repliees, deux parametres inutilises retires en cascade, un prealloc, un
+ST1005). Gate final sur l'etat complet de la branche, tout en avant-plan : suite ciblee verte,
+`-tags=integration -p 1` sur `api/wire` vert, `go build ./...` OK, ratchet golangci-lint
+`0 issues`, baseline `EXIT=0` sur un JSONL de suite COMPLETE (315 paquets, 100 906 lignes, 0
+echec, produit en 6 groupes sous 10 min chacun), specs Playwright `3 passed`, typecheck et lint
+web sans erreur.
+
+**Conclusion / prochaine etape.** Six commits `v2(F.n)` pousses sur `feat/v2-tests-ci`. La CI
+n'a PAS ete surveillee (consigne utilisateur en cours de lot, quota) : elle sera verifiee par
+le superviseur a l'integration. Trois points a trancher par lui, tous consignes au journal du
+lot `.ai/V7.5/v2/LOT_F.md` : la ligne de `CLAUDE.md` qui cite le fichier supprime
+`internal/himap/corpus_tag_test.go` (je n'ai pas le droit de modifier `CLAUDE.md`), les deux
+exemptions fines de `.golangci.yml` supprimees alors que leur premisse a change sous l'effet du
+meme commit, et le fait que le lot E devra rejouer la baseline de presence dans le meme commit
+que ses suppressions de tests.
