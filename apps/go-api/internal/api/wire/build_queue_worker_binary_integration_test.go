@@ -28,11 +28,24 @@
 //
 // COÛT : un décodage de film COMPLET mais MINIMAL (8 morceaux). D'où le tag integration ; le job
 // CI go-coverage (CGO + integration) l'exécute.
+//
+// CORRECTIF DU 2026-09-05 — PLUS DE COPIE LOCALE CHEZ L'OUVRIER À RELIRE. Ce test comparait
+// jusqu'ici l'artefact rangé par le serveur à une copie que l'ouvrier aurait écrite dans SON
+// dépôt (`ouvrierRepo`) — une hypothèse d'architecture PÉRIMÉE : le lot 5 de PLAN_CUISSON_PERF
+// (D8) a fait de l'ouvrier un pur producteur d'OCTETS envoyés en mémoire (`built.Blob` →
+// `sendArtifact`), qui ne garde et n'écrit RIEN localement (cf.
+// `TestOuvrier_NeComposeJamaisLEcritureDArtefact` et `TestBuildAndSend_NEcritAucunArtefactLocal`
+// dans cmd/replay-worker) — seul le serveur range (`replaybuild.StoreArtifact`). La preuve
+// d'identité octet à octet passe désormais par l'EMPREINTE sha256 que l'ouvrier calcule sur
+// `built.Blob` avant l'envoi et qu'il porte dans le compte rendu de son job (`ResultJSON`,
+// champ `sha256` — cf. job.go, buildAndSend) : cette valeur survit à son processus, contrairement
+// à ses octets. Voir `assertArtefactLivreEtComplet`.
 package wire
 
 import (
-	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -44,6 +57,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
@@ -101,10 +115,8 @@ func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
 	lancerOuvrier(t, binaire, srv.URL+"/internal", ouvrierRepo, travail)
 	t.Logf("DÉCODAGE + LIVRAISON en %s (fixture %s, 8 morceaux)", time.Since(debut).Round(time.Millisecond), fixtureShort)
 
-	// ── L'artefact rangé = celui construit, lisible par le service, et NON APPAUVRI ──────
-	assertArtefactLivreEtComplet(t, serveurRepo, ouvrierRepo)
-
-	// ── Le job est `succeeded` (donc le compte rendu a trouvé le fichier) ────────────────
+	// ── Le job est `succeeded` (donc le compte rendu a trouvé le fichier) — et c'est CE
+	//    compte rendu qui porte l'empreinte utilisée juste après. ────────────────────────
 	vue, err := reg.monitoringStore.BuildQueueReport(context.Background(), 10)
 	if err != nil {
 		t.Fatalf("BuildQueueReport: %v", err)
@@ -112,6 +124,10 @@ func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
 	if vue.Counts.Succeeded != 1 {
 		t.Fatalf("file après passage de l'ouvrier : %+v, attendu 1 fait (job %s)", vue.Counts, job.JobID)
 	}
+
+	// ── L'artefact rangé = celui construit (empreinte sha256 déclarée par l'ouvrier dans son
+	//    compte rendu), lisible par le service, et NON APPAUVRI ─────────────────────────────
+	assertArtefactLivreEtComplet(t, serveurRepo, vue.Jobs, job.JobID)
 
 	// ── L'ouvrier n'a rien gardé : ses morceaux sont effacés ─────────────────────────────
 	if _, err := os.Stat(filepath.Join(travail, "film_chunks", fixtureShort)); !os.IsNotExist(err) {
@@ -122,27 +138,55 @@ func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
 // assertArtefactLivreEtComplet vérifie que l'artefact rangé par le web est À L'OCTET celui
 // construit par l'ouvrier, lisible par le service de rejeu, et NON APPAUVRI.
 //
+// L'OUVRIER NE GARDE NI N'ÉCRIT AUCUNE COPIE LOCALE (PLAN_CUISSON_PERF §3 D8 — il envoie des
+// OCTETS en mémoire, `built.Blob`, jamais un fichier ; garde-rail
+// `TestOuvrier_NeComposeJamaisLEcritureDArtefact`, cmd/replay-worker) : il n'existe donc PLUS de
+// double locale à relire pour prouver l'identité octet à octet. La preuve passe par l'EMPREINTE
+// sha256 que l'ouvrier calcule lui-même sur ses octets, AVANT l'envoi, et qu'il porte dans le
+// compte rendu de son job (`ResultJSON`, champ `sha256` — cf. job.go, buildAndSend) : cette
+// valeur survit à son processus quand ses octets ne survivent pas. `jobs` est la liste rendue
+// par `BuildQueueReport` (lue APRÈS le passage de l'ouvrier) ; `jobID` désigne celui qu'il vient
+// de traiter.
+//
 // C'EST LE CRITÈRE DE SUCCÈS DU CHANTIER. Un ouvrier qui décode SANS les faits rend un artefact
 // APPAUVRI (mesuré : 0 joueur de courbe de score, camps `unresolved`) qui porte pourtant le bon
 // numéro de schéma. La présence de compteurs de joueur est LA ligne qui distingue « livré » de
 // « livré vide » — exactement l'appauvrissement que le transport des faits (via EnqueueReplayBuild)
 // doit supprimer. Ici, AVEC faits : 5 joueurs de courbe de score et 92 actions d'objectif nommées
 // (famille flag), contre 0 sans.
-func assertArtefactLivreEtComplet(t *testing.T, serveurRepo, ouvrierRepo string) {
+func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domain.BuildQueueJob, jobID string) {
 	t.Helper()
+	var resultJSON string
+	trouve := false
+	for _, j := range jobs {
+		if j.JobID == jobID {
+			resultJSON, trouve = j.ResultJSON, true
+			break
+		}
+	}
+	if !trouve {
+		t.Fatalf("job %s absent du rapport de file — impossible de lire son compte rendu", jobID)
+	}
+	var rendu struct {
+		SHA256 string `json:"sha256"`
+	}
+	if err := json.Unmarshal([]byte(resultJSON), &rendu); err != nil {
+		t.Fatalf("compte rendu du job illisible (%q): %v", resultJSON, err)
+	}
+	if rendu.SHA256 == "" {
+		t.Fatalf("compte rendu du job sans empreinte sha256 (%q)", resultJSON)
+	}
+
 	// Le chemin canonique est TOUJOURS la forme courte (ReplayArtifactPath normalise).
 	recu := filepath.Join(serveurRepo, "data", "cache", "replays", titlePkg.DefaultSlug, fixtureShort+".json")
 	blobRecu, err := os.ReadFile(recu)
 	if err != nil {
 		t.Fatalf("aucun artefact rangé côté serveur (%s): %v", recu, err)
 	}
-	construit := filepath.Join(ouvrierRepo, "data", "cache", "replays", titlePkg.DefaultSlug, fixtureShort+".json")
-	blobConstruit, err := os.ReadFile(construit)
-	if err != nil {
-		t.Fatalf("l'ouvrier n'a rien construit (%s): %v", construit, err)
-	}
-	if !bytes.Equal(blobRecu, blobConstruit) {
-		t.Fatalf("artefact rangé ≠ artefact construit (%d vs %d octets)", len(blobRecu), len(blobConstruit))
+	empreinteRecue := sha256.Sum256(blobRecu)
+	if hex.EncodeToString(empreinteRecue[:]) != rendu.SHA256 {
+		t.Fatalf("empreinte de l'artefact rangé (%d octets) ≠ empreinte déclarée par l'ouvrier dans son compte rendu (%s)",
+			len(blobRecu), rendu.SHA256)
 	}
 
 	doc, err := service.NewReplayService(titlePkg.DefaultSlug, serveurRepo, nil).

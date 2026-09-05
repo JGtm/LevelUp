@@ -129,6 +129,21 @@ var tablesProtegees = []string{
 	// d'allowlist à prévoir. Même mécanique de passe et même couverture DELETE que
 	// match_kill_events ci-dessus.
 	"match_weapon_shots",
+	// match_usage_players / match_usage_films (session-usage, 2026-09-04) : tables
+	// append-only NET-NEUVES (résumé d'usage équipement/socles dérivé de l'artefact de
+	// rejeu, une passe = un artefact projeté). Leur persister
+	// (internal/persist/usage_summary_persister.go) n'émet que des INSERT dans une
+	// transaction unique — aucune entrée d'allowlist à prévoir. Même mécanique de passe
+	// (vues _latest) et même couverture DELETE que match_kill_events ci-dessus.
+	"match_usage_players",
+	"match_usage_films",
+	// match_bomb_stats (E3 Assaut, 2026-09-04) : table append-only NET-NEUVE (5 statistiques
+	// d'objectif du mode Assaut par joueur/match, reconstruites du film — l'API 343 n'en
+	// publie aucune). Son persister (internal/persist/bomb_stats_persister.go) n'émet que des
+	// INSERT — aucune entrée d'allowlist à prévoir, ni ici ni dans allowlistRawDelete.
+	// Remplacer une passe = en écrire une nouvelle ; la vue match_bomb_stats_latest ne rend
+	// que la dernière ligne par (match_id, xuid).
+	"match_bomb_stats",
 	// NB (2026-08-03) : `media_likes_history` et `media_match_associations_history` sont
 	// append-only elles aussi mais N'ONT PAS leur place ICI — même raison que
 	// `player_records_history` ci-dessus : elles co-résident dans

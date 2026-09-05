@@ -74,15 +74,23 @@ type PadDatingStats struct {
 	PowerupOccupations int `json:"powerupOccupations"`
 }
 
-// padFamilyKey rend la clé de comparaison d'une famille d'arme, quelle que soit la convention
-// d'écriture de la source, et dit si la valeur EST une famille.
+// PadWeaponFamilyKey rend la clé de comparaison d'une famille d'arme, quelle que soit la
+// convention d'écriture de la source, et dit si la valeur EST une famille.
 //
 // Les deux écritures rencontrées : `fmt.Sprintf("%08x", fam)` (canaux `pickups` et
 // `weaponChanges`) et `formatWeaponFamily(fam)` = `"0x" + huit majuscules` (`loadouts`,
 // `weaponPads`). Le second retour est FAUX pour tout ce qui n'est pas huit chiffres
 // hexadécimaux — c'est ainsi qu'un socle de power-up (nom canonique) se distingue d'un socle
 // d'arme, sans avoir à connaître la liste des noms.
-func padFamilyKey(s string) (string, bool) {
+//
+// EXPORTÉE LE 2026-09-04 (résumé d'usage de session) : c'est LA frontière socle d'ARME /
+// socle de BONUS du dépôt, celle que `datePadPickups` emploie pour sortir les bonus de la
+// jointure (`PadDatingStats.PowerupOccupations`) et que le client rejoue côté web
+// (`padControlLogic.ts`, note de pied `gapFmt.powerup`). Le résumé sidecar en avait besoin
+// depuis `replaybuild` : en RÉ-ÉCRIRE le test hexadécimal là-bas aurait fait une troisième
+// écriture d'une règle qui doit rester unique — un socle compté du mauvais côté fausse à la
+// fois « prises de socle » et « bonus ramassés ».
+func PadWeaponFamilyKey(s string) (string, bool) {
 	if len(s) >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X') {
 		s = s[2:]
 	}
@@ -128,7 +136,7 @@ func datePadPickups(pads []WeaponPad, picks []PadPickup, pickups []Pickup) PadDa
 		if p.Kind != PickupWeapon {
 			continue // un socle d'arme ne rend pas de l'équipement
 		}
-		key, ok := padFamilyKey(p.W)
+		key, ok := PadWeaponFamilyKey(p.W)
 		if !ok {
 			continue
 		}
@@ -140,7 +148,7 @@ func datePadPickups(pads []WeaponPad, picks []PadPickup, pickups []Pickup) PadDa
 			st.Uncovered++
 			continue
 		}
-		key, ok := padFamilyKey(pads[k.Pad].Weapon)
+		key, ok := PadWeaponFamilyKey(pads[k.Pad].Weapon)
 		if !ok {
 			// Socle de POWER-UP (nom canonique) : rien à chercher, et on ne fait pas passer
 			// ça pour une recherche infructueuse.

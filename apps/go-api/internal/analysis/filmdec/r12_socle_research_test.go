@@ -55,7 +55,7 @@ type r12Setup struct {
 	id     string
 	dir    string
 	chunks []int
-	slots  map[uint32]bool
+	slots  SlotBand
 	lay    I0Layout
 	arch   Archetype
 	origin uint64
@@ -78,8 +78,8 @@ func r12Prepare(t *testing.T, dir string) r12Setup {
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, i)
 	}
-	slots := bipedSlotBand(dir, chunks)
-	if len(slots) == 0 {
+	slots := bipedSlotBandDir(dir, chunks)
+	if slots.Count() == 0 {
 		t.Fatalf("%s : aucun slot biped dans les keyframes", id)
 	}
 	lay, _, err := DetectI0Layout(dir)
@@ -87,7 +87,7 @@ func r12Prepare(t *testing.T, dir string) r12Setup {
 		t.Fatalf("%s : decoupage i0 illisible : %v", id, err)
 	}
 	SetWorldObjectPrecisionFromLayout(lay)
-	arch, err := bipedArchetype(dir)
+	arch, err := bipedArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("%s : archetype biped illisible : %v", id, err)
 	}
@@ -351,7 +351,7 @@ func r12AncrageOneFilm(t *testing.T, dir string) {
 	rep := pal.r12RankOf("Repulsor")
 	t.Logf("=== FILM %s ===", s.id)
 	t.Logf("  layout AxisW=%v region=%d gate=%d | %d chunks | %d slots biped",
-		s.lay.AxisW, s.lay.Region, s.lay.GateBits, len(s.chunks), len(s.slots))
+		s.lay.AxisW, s.lay.Region, s.lay.GateBits, len(s.chunks), s.slots.Count())
 	t.Logf("  denominateurs : %v", r12SortedStat(rd.Stat))
 	t.Logf("  palette=%s rangRepulseur=%d", palID, rep)
 

@@ -57,19 +57,61 @@ func TestOpenLitLIndexEtLesOctets(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("Open: ok=%v err=%v", ok, err)
 	}
-	chunks := src.Chunks()
-	if len(chunks) != 2 {
-		t.Fatalf("chunks = %d, attendu 2", len(chunks))
+	chunks := src.Meta()
+	if len(chunks) != 2 || src.NumChunks() != 2 {
+		t.Fatalf("chunks = %d (NumChunks %d), attendu 2", len(chunks), src.NumChunks())
 	}
 	if chunks[0].ChunkType != 2 || chunks[1].StartMS != 15000 {
 		t.Errorf("index mal relu : %+v", chunks)
 	}
-	raw, ok := src.ChunkData(1)
-	if !ok || string(raw) != "BB" {
-		t.Errorf("ChunkData(1) = %q ok=%v, attendu \"BB\"", raw, ok)
+	raw, err := src.Chunk(1)
+	if err != nil || string(raw) != "BB" {
+		t.Errorf("Chunk(1) = %q err=%v, attendu \"BB\"", raw, err)
 	}
-	if _, ok := src.ChunkData(7); ok {
-		t.Error("ChunkData(7) : un chunk absent doit rendre ok=false")
+	if _, err := src.Chunk(7); err == nil {
+		t.Error("Chunk(7) : un indice hors manifeste doit rendre une erreur")
+	}
+}
+
+// TestLoadFilmFusionneLeManifestePARNUMERO — le contrat d'indexation du chargeur.
+//
+// Le film porte les FICHIERS PRESENTS ; le manifeste ne fournit que le type et le debut de
+// chacun, fusionnes PAR NUMERO. Le test le prouve sur les deux ecarts possibles : une entree
+// de manifeste dont le fichier manque (chunk 1) est absente du film, et un fichier hors
+// manifeste (chunk 2) y figure SANS type ni debut. Aligner par POSITION rendrait ici le
+// chunk 2 avec le type du chunk 1 — c'est le piege que cette regle ferme.
+func TestLoadFilmFusionneLeManifestePARNUMERO(t *testing.T) {
+	const manifeste = `{"chunks":[
+	  {"index":0,"chunk_type":1,"start_ms":0},
+	  {"index":1,"chunk_type":2,"start_ms":15000}
+	]}`
+	root := ecrireFilm(t, "cafe0003", manifeste, map[int]string{0: "entete", 2: "horsmanifeste"})
+
+	film, ok, err := filmcache.LoadFilm(root, "cafe0003")
+	if err != nil || !ok {
+		t.Fatalf("LoadFilm: ok=%v err=%v", ok, err)
+	}
+	meta := film.Meta()
+	if len(meta) != 2 || film.NumChunks() != 2 {
+		t.Fatalf("film = %d chunk(s) / %d meta, attendu 2 (les fichiers presents)", film.NumChunks(), len(meta))
+	}
+	if meta[0].Index != 0 || meta[0].ChunkType != 1 || meta[0].StartMS != 0 {
+		t.Errorf("chunk 0 : %+v, attendu {0 1 0} (le manifeste)", meta[0])
+	}
+	if meta[1].Index != 2 || meta[1].ChunkType != 0 || meta[1].StartMS != 0 {
+		t.Errorf("chunk 2 (hors manifeste) : %+v, attendu {2 0 0} — jamais le type du chunk 1", meta[1])
+	}
+	if got := string(film.Chunk(1)); got != "horsmanifeste" {
+		t.Errorf("octets du chunk a la position 1 = %q", got)
+	}
+}
+
+// TestLoadFilmSansManifeste : meme contrat qu'Open — un film absent du cache n'est pas une
+// panne, et le chargeur ne doit pas inventer un film vide.
+func TestLoadFilmSansManifeste(t *testing.T) {
+	film, ok, err := filmcache.LoadFilm(t.TempDir(), "deadbeef")
+	if err != nil || ok || film != nil {
+		t.Errorf("LoadFilm sans manifeste = (%v, %v, %v), attendu (nil, false, nil)", film, ok, err)
 	}
 }
 

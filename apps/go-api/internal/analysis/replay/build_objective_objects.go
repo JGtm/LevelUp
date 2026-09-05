@@ -89,16 +89,53 @@ func buildObjectiveObjects(scan WorldObjectScan, labels map[uint32]Label,
 	if len(out) == 0 {
 		return nil, cov
 	}
-	// ORDRE TOTAL : l'instant de départ, puis la famille. `flagFreeLives` trie déjà par instant
-	// et par clé de vie ; ce tri-ci le rend indépendant de cette garantie plutôt que de s'y
-	// adosser — deux tris cohérents coûtent moins qu'un couplage silencieux.
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].T0 != out[j].T0 {
-			return out[i].T0 < out[j].T0
-		}
-		return out[i].Family < out[j].Family
-	})
+	// ORDRE TOTAL : l'instant de départ, puis la famille, PUIS la vie elle-même.
+	//
+	// LE COUPLE DE TÊTE NE SUFFISAIT PAS, ET L'INDÉPENDANCE ANNONCÉE ÉTAIT FAUSSE (correction du
+	// 2026-09-02, item 0.4bis étendu de PLAN_CUISSON_PERF). Une seule famille est publiée
+	// aujourd'hui (`ball`) : (T0, famille) ne sépare donc RIEN de deux vies nées sur la même
+	// frame — et `sort.SliceStable` reconduisant l'ordre d'entrée pour les ex æquo, ce tri
+	// s'adossait en réalité à `flagFreeLives`, exactement le couplage que le commentaire d'avant
+	// prétendait avoir coupé. Le départage par le contenu de la vie le coupe pour de bon.
+	sort.SliceStable(out, func(i, j int) bool { return objectiveObjectLess(out[i], out[j]) })
 	return out, cov
+}
+
+// objectiveObjectLess est l'ordre TOTAL des vies publiées : instant, famille, fin, libellés,
+// puis les points dans l'ordre. Il n'utilise QUE des données de la vie — jamais une adresse ni
+// un rang d'itération de map. Deux vies qu'il ne sépare pas sont identiques champ pour champ.
+func objectiveObjectLess(a, b ObjectiveObjectLife) bool {
+	switch {
+	case a.T0 != b.T0:
+		return a.T0 < b.T0
+	case a.Family != b.Family:
+		return a.Family < b.Family
+	case a.T1 != b.T1:
+		return a.T1 < b.T1
+	case a.En != b.En:
+		return a.En < b.En
+	case a.Fr != b.Fr:
+		return a.Fr < b.Fr
+	case len(a.Pts) != len(b.Pts):
+		return len(a.Pts) < len(b.Pts)
+	}
+	for i := range a.Pts {
+		if a.Pts[i] != b.Pts[i] {
+			return objectiveObjectPointLess(a.Pts[i], b.Pts[i])
+		}
+	}
+	return false
+}
+
+// objectiveObjectPointLess ordonne deux points sur TOUS leurs champs.
+func objectiveObjectPointLess(a, b ObjectiveObjectPoint) bool {
+	switch {
+	case a.T != b.T:
+		return a.T < b.T
+	case a.X != b.X:
+		return a.X < b.X
+	}
+	return a.Y < b.Y
 }
 
 // objectiveObjectLifeOf convertit UNE vie libre en sa forme publiée. Faux quand la vie tombe

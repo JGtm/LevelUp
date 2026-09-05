@@ -52,6 +52,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // lot3Scan re-implemente la regle structurelle SANS passer par parseRegistry : c'est la
@@ -143,7 +145,10 @@ func TestLot3CompteRegistre(t *testing.T) {
 			continue
 		}
 		lus++
-		data := inflateChunk(raw)
+		// `filmdec.inflateChunk` a disparu au lot 1 de PLAN_CUISSON_PERF (2026-09-02) : la
+		// decompression vit desormais dans `filmsource`, et c'est le MEME inflate (partiel sur
+		// flux tronque). Mesure inchangee.
+		data := filmsource.Inflate(raw)
 		s := lot3ScanChunk(data)
 		e, ok := lireEntete(data)
 		cle := "SANS SECTION D'IDENTIFICATION"

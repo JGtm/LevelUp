@@ -1,0 +1,4734 @@
+{
+  "genere_le": "2026-09-02",
+  "revision": "12 (TIRS COVENANT / BANNIS — lot V3F. AJOUTE la section tir_covenant_v3f : Ghost, Banshee, Wraith, Chopper. Les evenements de tir de ces quatre vehicules sont DESIGNES PAR LE CHAMP NOMME « Weapon Fire Sound » du tag weap (nouveau mode `tir-vehi`, module any/globals/common), et non plus devines : weap 00015435 (Ghost), 0000aa68 + 0000aa69 (Banshee), 121b4009 (Wraith), b40e9618 (Chopper). CORRECTION MAJEURE DE rev11 : les evenements que le lot V3E a rendus sous deplacement/moteur_*.wav et deplacement/contact_*.wav SONT CES MEMES EVENEMENTS DE TIR — le verdict de l'utilisateur (« ce sont des sons d'armes ») est confirme sur pieces, sur les SIX vehicules (Scorpion et Warthog compris). Le groupe de switch 2275666646 n'est PAS un regime moteur : ses etats sont les hachages FNV-1 de exterioropen / exteriorsmall / exteriormed / exteriorlarge / interiornarrow / interiorsmall / interiormed / interiorlarge — c'est l'ESPACE DE L'AUDITEUR (reverberation), et le lot V3F rend l'etat par DEFAUT declare par la banque, toujours exterieur. Voir V3F_TIRS_COVENANT_2026-09-02.md. rev11 disait : RECONSTRUCTION COMPLETE, lot V3E.)",
+  "tir_livre": "Wasp, Scorpion, Gungoose, Warthog (banques _veh_ FNV-1) + Falcon (mitrailleuse) + Ghost, Banshee, Wraith, Chopper (lot V3F).",
+  "deplacement": "DISTINCT PAR VEHICULE. Boucle EN CONDUITE (rev9) : etat de switch a diesel/regime soutenu (pas le ralenti par defaut), couches SUPERPOSEES et sommees (semantique arbre.go), niveaux calibres par mesure RMS. Fichiers deplacement/moteur_conduite_boucle8s.wav (+ couches isolees). e793c135/06ba1096 = lit commun de presence, PAS le moteur.",
+  "sadt_verdict": "REFUTE comme moteur par vehicule : sadt 2b6f1d67 est PARTAGE Ghost+Scorpion ; le handler du FourCC 'sadt' (FUN_1404cc908) est un simple test de groupe, aucune structure audio. sadt ne porte pas le moteur.",
+  "per_vehicule": "EXTRACTIBLES et rendus : Ghost=souffle+thrum (bank 01862ab3, event 47361baf) ; Scorpion=grondement+chenilles (bank 05a51e0a, events 951f76c0/d5c7daeb) ; Warthog=combustion (bank a52af042, events 68b1a949/38b83eb8). Timbres spectralement distincts, conformes a la verite terrain.",
+  "preuve_ghidra": {
+    "SetRTPCValue": "@14196fb90",
+    "sadt_handler": "FUN_1404cc908 (cmp FourCC 0x73616474, pas d'audio)",
+    "PostEvent": "AK::SoundEngine::PostEvent @14196a700",
+    "composant": "managed-object-looping-sound-component @143c94ac0 + managed-object-rtpc-component @143c952c8"
+  },
+  "vehicules": [
+    {
+      "nom": "Wasp (AV-49)",
+      "type": "tir",
+      "banque_tir": "4993b379 (FNV-1 confirme)",
+      "sons": [
+        {
+          "role": "tir",
+          "arme_weap": "11725dc4",
+          "cadence_cpm": 450,
+          "chaine": "weap 11725dc4 -> snd! ce8e2f81 -> events (banque veh_un_wasp 4993b379), gains sommes",
+          "coup_3p": [
+            {
+              "fichier": "tir_M1_3p_1.wav",
+              "duree_s": 3.13
+            },
+            {
+              "fichier": "tir_M1_3p_2.wav",
+              "duree_s": 2.98
+            }
+          ],
+          "coup_1p": [
+            {
+              "fichier": "tir_M1_1p_1.wav",
+              "duree_s": 4.26
+            },
+            {
+              "fichier": "tir_M1_1p_2.wav",
+              "duree_s": 4.51
+            }
+          ],
+          "rafale": [
+            {
+              "fichier": "tir_RAFALE.wav",
+              "duree_s": 4.78
+            },
+            {
+              "fichier": "tir_RAFALE_M1_1p.wav",
+              "duree_s": 6.03
+            },
+            {
+              "fichier": "tir_RAFALE_M1_3p.wav",
+              "duree_s": 4.26
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nom": "Scorpion (M808)",
+      "type": "tir",
+      "banque_tir": "05a51e0a (FNV-1 confirme)",
+      "sons": [
+        {
+          "role": "tir",
+          "arme_weap": "00015cfa",
+          "cadence_cpm": 0,
+          "chaine": "weap 00015cfa -> snd! b3adf402 -> events (banque veh_un_scorpion 05a51e0a), gains sommes",
+          "coup_3p": [
+            {
+              "fichier": "tir_M1_3p_1.wav",
+              "duree_s": 2.95
+            },
+            {
+              "fichier": "tir_M1_3p_2.wav",
+              "duree_s": 2.95
+            }
+          ],
+          "coup_1p": [
+            {
+              "fichier": "tir_M1_1p_1.wav",
+              "duree_s": 7.51
+            },
+            {
+              "fichier": "tir_M1_1p_2.wav",
+              "duree_s": 7.17
+            }
+          ],
+          "rafale": []
+        }
+      ]
+    },
+    {
+      "nom": "Gungoose",
+      "type": "tir",
+      "banque_tir": "38167604 (FNV-1 confirme)",
+      "sons": [
+        {
+          "role": "tir",
+          "arme_weap": "0042678e",
+          "cadence_cpm": 420,
+          "chaine": "weap 0042678e -> snd! 276fa353 -> events (banque veh_un_wargoose 38167604), gains sommes",
+          "coup_3p": [
+            {
+              "fichier": "tir_M1_3p_1.wav",
+              "duree_s": 2.16
+            },
+            {
+              "fichier": "tir_M1_3p_2.wav",
+              "duree_s": 2.16
+            }
+          ],
+          "coup_1p": [
+            {
+              "fichier": "tir_M1_1p_1.wav",
+              "duree_s": 6.6
+            },
+            {
+              "fichier": "tir_M1_1p_2.wav",
+              "duree_s": 6.6
+            }
+          ],
+          "rafale": [
+            {
+              "fichier": "tir_RAFALE.wav",
+              "duree_s": 3.44
+            },
+            {
+              "fichier": "tir_RAFALE_M1_1p.wav",
+              "duree_s": 7.89
+            },
+            {
+              "fichier": "tir_RAFALE_M1_3p.wav",
+              "duree_s": 3.44
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nom": "Warthog a roquettes",
+      "type": "tir",
+      "banque_tir": "a52af042 (FNV-1 confirme)",
+      "sons": [
+        {
+          "role": "tir",
+          "arme_weap": "c7d50912",
+          "cadence_cpm": 126,
+          "chaine": "weap c7d50912 -> snd! 155f1354 -> events (banque veh_un_rockethog a52af042), gains sommes",
+          "coup_3p": [
+            {
+              "fichier": "tir_M1_3p_1.wav",
+              "duree_s": 2.94
+            },
+            {
+              "fichier": "tir_M1_3p_2.wav",
+              "duree_s": 2.42
+            }
+          ],
+          "coup_1p": [
+            {
+              "fichier": "tir_M1_1p_1.wav",
+              "duree_s": 4.56
+            },
+            {
+              "fichier": "tir_M1_1p_2.wav",
+              "duree_s": 4.53
+            }
+          ],
+          "rafale": [
+            {
+              "fichier": "tir_RAFALE.wav",
+              "duree_s": 6.71
+            },
+            {
+              "fichier": "tir_RAFALE_M1_1p.wav",
+              "duree_s": 9.13
+            },
+            {
+              "fichier": "tir_RAFALE_M1_3p.wav",
+              "duree_s": 6.7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nom": "Falcon (tourelle LMG)",
+      "type": "tir",
+      "banque_tir": "bd807a77 = mitrailleuse partagee",
+      "sons": [
+        {
+          "role": "tir",
+          "arme_weap": "00015cd3",
+          "cadence_cpm": 780,
+          "note": "= mitrailleuse detachable",
+          "coup_3p": [
+            {
+              "fichier": "tir_M1_3p_1.wav",
+              "duree_s": 0.71
+            },
+            {
+              "fichier": "tir_M1_3p_2.wav",
+              "duree_s": 0.7
+            }
+          ],
+          "rafale": [
+            {
+              "fichier": "tir_RAFALE.wav",
+              "duree_s": 1.75
+            },
+            {
+              "fichier": "tir_RAFALE_M1_1p.wav",
+              "duree_s": 4.5
+            },
+            {
+              "fichier": "tir_RAFALE_M1_3p.wav",
+              "duree_s": 1.75
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nom": "Mouvement generique (PARTAGE par les 13 vehicules)",
+      "type": "deplacement",
+      "chaine": "TOUS les vehi -> lsnd 06ba1096 (sound_looping, PARTAGE) -> banque e793c135 -> 11 wems soutenus (0.98-5.27s). Mecanisme (Ghidra): managed-object-looping-sound-component + RTPC vitesse.",
+      "nature": "boucle de mouvement PAR DEFAUT (start/loop/stop, regime median). PARTAGEE : le jeu la re-pitch/switch PAR VEHICULE au runtime (RTPC vitesse). Ce n'est donc PAS un moteur distinct par vehicule.",
+      "fichiers": [
+        {
+          "fichier": "moteur_boucle_assemblee_M1.wav",
+          "duree_s": 5.77
+        },
+        {
+          "fichier": "moteur_boucle_assemblee_M3.wav",
+          "duree_s": 5.77
+        },
+        {
+          "fichier": "moteur_boucle_brut_439608271_5.27s.wav",
+          "duree_s": 5.27
+        },
+        {
+          "fichier": "moteur_boucle_brut_681253652_4.71s.wav",
+          "duree_s": 4.71
+        },
+        {
+          "fichier": "moteur_boucle_preview10s.wav",
+          "duree_s": 10
+        },
+        {
+          "fichier": "startstop_cand_260321039_0.98s.wav",
+          "duree_s": 0.98
+        },
+        {
+          "fichier": "startstop_cand_301192717_1.17s.wav",
+          "duree_s": 1.17
+        }
+      ]
+    }
+  ],
+  "switch_verdict": "OUI, il y a un SWITCH — mais dans la banque DU VEHICULE, pas dans e793c135. Scorpion event 951f76c0 : switch 196e9bed (groupe 2275666646, defaut 356702912, 4 etats de regime, chaque etat = 6 wems differents). Warthog event 68b1a949 : switch 3c24a4f9 (meme groupe). rev7 avait inspecte la MAUVAISE banque (le lit commun e793c135, qui lui n'a pas de switch).",
+  "per_vehicule_extractible": "OUI (prouve, 3 axes : structure eqip-arbre + contenu du pck + spectre). Le prefetch embarque de la banque est tronque (~0.5s) ; le wem COMPLET est streame dans le pck du vehicule.",
+  "switch_regime_5_etats": "Event moteur 951f76c0 (Scorpion) et 68b1a949 (Warthog) : switch groupe 2275666646, 5 etats (1 defaut 356702912 + 4 conditionnels), 6 wems/etat, +8..+9 dB. Echelle monotone mesuree au spectre : le defaut est le RALENTI (le plus faible, crest le plus haut = chugs distincts) ; l energie monte et le crest baisse (grondement continu) vers les etats hauts. EN CONDUITE = etat a diesel soutenu (Scorpion 3707760930 ; Warthog 163696720). rev8 avait rendu le ralenti (ou meme, pour Scorpion, pas l event moteur du tout) : d ou la boucle maigre.",
+  "deplacement_par_vehicule": [
+    {
+      "nom": "Ghost",
+      "banque": "01862ab3",
+      "event_moteur": "47361baf (souffle, 3 couches simultanees) + 2e7f2aa2 (BOOST)",
+      "etat_conduite": "aucun switch (antigrav continu). Le moving = souffle + boost.",
+      "couches_superposees": "souffle mid 68830349 (dominant, -14 dB) + bed grave 192653757 (-20) + thrum tonal 835658180 (-20) ; boost = 2e7f2aa2 wem 52024965 (event le plus fort de la banque, gain chemin +20 dB : brut -16,7 dB effectif +3,6 dB ; -13 dB dans le mix boost)",
+      "mesures_mix": "souffle mono, bas -14,5 dB dominant, crest 4,1 (continu) ; +boost : +2,4 dB de niveau, bas -10,9 dB (poussee grave)",
+      "verite_terrain": "CONFORME (souffle antigrav + poussee de boost)",
+      "fichiers": "moteur_conduite_boucle8s.wav ; moteur_conduite_boost_boucle8s.wav ; boost.wav",
+      "dossier": "Ghost/deplacement"
+    },
+    {
+      "nom": "Scorpion",
+      "banque": "05a51e0a",
+      "event_moteur": "951f76c0 (regime, switch 196e9bed) = DIESEL ; d5c7daeb = CHENILLES ; 0134da4e = allumage (RECONNU, conserve)",
+      "switch": "196e9bed etat 3707760930 (EN CONDUITE, diesel soutenu : brut -17,7 dB, crest 7,7, boucle 6,2 s) ; groupe 2275666646, 5 etats (defaut 356702912=ralenti + 4), 6 wems/etat",
+      "regression_rev8": "rev8 ne rendait NI 951f76c0 NI un etat de conduite : elle rendait d5c7daeb+13beda14 (chenilles seules, sans corps diesel), d ou l absence de diesel signalee.",
+      "couches_superposees": "diesel = 951f76c0 etat 3707760930 wem 85078605 (-14 dB) + chenilles = d5c7daeb wem 1033065922 (centroide 4687 Hz, -19 dB) + bed 195277626 (-25 dB)",
+      "mesures_mix": "bas -13,8 dB dominant (diesel) ; haut 3-6 kHz de -35 (diesel seul) a -27,7 dB (chenilles presentes) ; crest 4,3 (continu)",
+      "verite_terrain": "CONFORME (grondement diesel + cliquetis de chenilles)",
+      "fichiers": "moteur_conduite_boucle8s.wav ; diesel.wav ; chenilles.wav ; moteur_amorce_allumage.wav (0134da4e conserve)",
+      "dossier": "Scorpion/deplacement"
+    },
+    {
+      "nom": "Warthog a roquettes",
+      "banque": "a52af042",
+      "event_moteur": "68b1a949 (regime, switch 3c24a4f9) + 38b83eb8 (3 couches combustion)",
+      "switch": "3c24a4f9 etat 163696720 (EN CONDUITE, seul a se detacher : brut -17,6 dB, crest 7,6, +3 dB) ; groupe 2275666646 (meme que Scorpion)",
+      "couches_superposees": "corps RPM = 68b1a949 etat 163696720 wem 675731033 (-15) + combustion 38b83eb8 L2 351128378 (-16) + detail L3 585735189 (-21) + chug L1 128563311 (-22) + bed 195277626 (-26). Aucune couche surface/roues distincte (le haut -31 dB de l etat de conduite porte deja le mecanique).",
+      "mesures_mix": "bas -13,6 dB dominant, crest 4,3 (combustion continue)",
+      "verite_terrain": "CONFORME (moteur de jeep en marche)",
+      "fichiers": "moteur_conduite_boucle8s.wav ; diesel.wav (corps RPM + combustion)",
+      "dossier": "Warthog_roquettes/deplacement"
+    }
+  ],
+  "lit_commun": "lsnd 06ba1096 -> banque e793c135 : present sur les 13 vehi, fond de presence/grondement pose SOUS le moteur propre. Sous-lit partage supplementaire Scorpion+Warthog : son 195277626. Ce ne sont PAS les moteurs distinctifs.",
+  "destruction": {
+    "resume": "TROUVEE, et elle n'est PAS dans la banque du vehicule : les explosions de vehicule vivent dans six banques dediees sb_008_exp_vehicle_{small,med,large}_{unsc,covenant}. Chaque vehicule en designe UNE par sa chaine de tags. Voir V3D_DESTRUCTION_SONS_2026-09-02.md.",
+    "chaine": "vehi -> hlmt -> foot (table de MATERIAU) -> snd! -> sbnk exp_vehicle_<taille>_<faction> -> event a 4 COUCHES SIMULTANEES (3 couches de 6 variantes + 1 lit sub partage). One-shot : aucun switch, aucun RTPC, aucun delai.",
+    "preuve": "3 axes. (1) STRUCTURE : mode `remonter-banque` (nouveau) remonte la banque jusqu au vehi ; l ancre nommee est le Scorpion, dont le hlmt e7fe7564 est deja documente dans ASSEMBLAGE_ENFANTS_2026-09-01.md. (2) DESIGNATION : mode `sndscan` prouve QUEL evenement de la banque chaque snd! porte (1 evenement par snd!, aucune ambiguite). (3) SPECTRE : crest 17 a 21 dB, corps grave dominant, haut 3-8 kHz a -33..-38 dB, duree 3,2 a 5,4 s = signature d explosion.",
+    "materiau": "Le tag `foot` est une TABLE DE MATERIAU : il apparie l explosion au sol (exp_vehicle_*) avec une explosion en eau peu profonde (exp_{burst_small,single_med,single_large}_watershallow). Le rendu livre le cas SOL.",
+    "lit_sub_partage": "Deux medias partages entre banques, 4e couche de chaque evenement : 224468375 (0,30 s, mono, sub pur : 3-8 kHz a -73 dB) pour les DEUX banques SMALL (unsc ET covenant, meme noeud de couche 16ad77c5) ; 686882988 (0,92 s, mono, sub pur) pour les QUATRE banques MED et LARGE des deux factions. C est le lit commun d explosion, l equivalent du lit commun de mouvement e793c135.",
+    "etats_alternatifs": "Chaque banque porte, a cote de l evenement a 4 couches, DEUX evenements a UNE couche apparies par un relais `stai` (etat). Mesures 11 a 27 dB sous l explosion proche, transitoire adouci : tres probablement les versions LOINTAINES (distance/LOD). Le nom n est pas lu, l etiquette est une lecture du spectre.",
+    "negatifs_mesures": "(a) Les banques de DEBRIS (sb_008_exp_ge_debris_*) ne sont PAS posees par les vehicules : leur remontee donne des `proj` et des `eqip`, jamais un `vehi`. (b) sb_003_lvl_positional_fo_fire_burningvehicle_loop_a remonte a un `forg` (objet Forge), pas a un vehicule. (c) Les objets-ENFANTS (canon de Scorpion 0000d4ff, collier 0000d500, tourelles de Warthog 64b925eb/bcfb852f/dd7f9102) n ont AUCUN evenement de destruction propre : l explosion est posee une fois, par le CHASSIS.",
+    "rendu": "Somme des 4 couches simultanees, gains de chemin RELATIFS respectes (couche la plus forte = 0, les autres a leur ecart declare), mixage en flottant puis normalisation unique a -1 dBFS. Aucune egalisation, aucun limiteur, aucune compression. Les 3 variantes prennent la variante 1, 2 puis 3 de chaque couche. Les fichiers `explosion_lointaine_*` sont normalises a -1 dBFS pour etre AUDIBLES ; leur ecart reel est donne par `ecart_dB`.",
+    "banques": [
+      {
+        "pck": "sb_008_exp_vehicle_small_unsc",
+        "sbnk": "969f4dc6",
+        "module": "pc/globals",
+        "event_destruction": "1c0dae6d",
+        "snd": "92da46d8",
+        "couches": "L1 +7 dB (6 variantes) + L2 +10 dB (6) + L3 +15 dB (6) + lit sub 224468375 a -8 dB",
+        "etats_stai": "16c57452 (+6) et daaf2744 (+9), relais stai 722a9fe4"
+      },
+      {
+        "pck": "sb_008_exp_vehicle_med_unsc",
+        "sbnk": "c468fb55",
+        "module": "pc/globals",
+        "event_destruction": "2152102c",
+        "snd": "5600ccdd",
+        "couches": "L1 +10 dB + L2 +15 dB + L3 +13 dB + lit sub 686882988 a 0 dB",
+        "etats_stai": "50f7b5c5 (+2) et 29082103 (+8), relais stai 33f6727f"
+      },
+      {
+        "pck": "sb_008_exp_vehicle_large_unsc",
+        "sbnk": "94d43e95",
+        "module": "pc/globals",
+        "event_destruction": "dcc7bca1",
+        "snd": "2b49d0d7",
+        "couches": "L1 +17 dB + L2 +20 dB + L3 +10 dB + lit sub 686882988 a +2 dB",
+        "etats_stai": "7b1d99fe (+6) et 651b5570 (+9), relais stai 52b9f7e9"
+      },
+      {
+        "pck": "sb_008_exp_vehicle_small_covenant",
+        "sbnk": "b1f8608b",
+        "module": "pc/globals/common",
+        "event_destruction": "8b33a81a",
+        "snd": "9a37c894",
+        "couches": "L1 +17 dB + L2 +14 dB + L3 +12 dB + lit sub 224468375 a -8 dB",
+        "etats_stai": "ab214f3f (+2) et 65fe08f9 (+6)",
+        "note": "la banque porte un SECOND evenement a 4 couches, 00f65dc0, pose par la tourelle montee (vehi 038df01a) et non par le Ghost : memes 3 groupes de wems, permutes entre couches, a des gains plus bas."
+      },
+      {
+        "pck": "sb_008_exp_vehicle_med_covenant",
+        "sbnk": "3fdc61a7",
+        "module": "pc/globals/common",
+        "event_destruction": "ed7cfa4b",
+        "snd": "cdf0b06a",
+        "couches": "L1 +12 dB + L2 +9 dB + L3 +8 dB + lit sub 686882988 a 0 dB",
+        "etats_stai": "7d52bdd4 (+2) et 3a818492 (+6)"
+      },
+      {
+        "pck": "sb_008_exp_vehicle_large_covenant",
+        "sbnk": "2eaae6d7",
+        "module": "pc/globals/common",
+        "event_destruction": "1bf6fdde",
+        "snd": "9d3c427a",
+        "couches": "L1 +12 dB + L2 +8 dB + L3 +5 dB + lit sub 686882988 a +2 dB",
+        "etats_stai": "df41ac8b (+3) et f97fc935 (+6)"
+      }
+    ],
+    "par_vehicule": [
+      {
+        "nom": "Mongoose / Gungoose",
+        "dossier": "Gungoose/destruction",
+        "vehi": "000025aa, af31ab1a, de26e3d7",
+        "hlmt": "10199eb5",
+        "foot": "5cc09369",
+        "banque": "969f4dc6 (small_unsc)",
+        "event": "1c0dae6d",
+        "duree_s": 3.2,
+        "mesure": "RMS -17,6 dB, crete -0,4 dBFS, crest 17,2 dB, bas -18,6 dB",
+        "confiance": "HAUTE (chaine de tags complete + evenement designe sans ambiguite)"
+      },
+      {
+        "nom": "Warthog (toute la famille : warthog, razorback, rockethog)",
+        "dossier": "Warthog_roquettes/destruction",
+        "vehi": "00002705, cb96ca07, fe32c0f4 (+ 5159c8ef, 75312e51, 7617ff6e dans any/globals/common)",
+        "hlmt": "daf7f543",
+        "foot": "ac015a46",
+        "banque": "c468fb55 (med_unsc)",
+        "event": "2152102c",
+        "duree_s": 4.84,
+        "mesure": "RMS -21,6 dB, crete -1,0 dBFS, crest 20,6 dB, bas -22,9 dB",
+        "confiance": "HAUTE"
+      },
+      {
+        "nom": "Wasp (AV-49)",
+        "dossier": "Wasp/destruction",
+        "vehi": "b65b3b4a",
+        "hlmt": "6b06a15e",
+        "foot": "ac015a46",
+        "banque": "c468fb55 (med_unsc)",
+        "event": "2152102c",
+        "duree_s": 4.84,
+        "mesure": "identique au Warthog : MEME banque, MEME evenement (le hlmt differe, la chaine converge sur foot ac015a46)",
+        "confiance": "HAUTE"
+      },
+      {
+        "nom": "Scorpion (M808)",
+        "dossier": "Scorpion/destruction",
+        "vehi": "f6f54e56 (any/globals) = chassis 0000d3db (pc/globals), meme hlmt",
+        "hlmt": "e7fe7564",
+        "foot": "7b3a23f8",
+        "banque": "94d43e95 (large_unsc)",
+        "event": "dcc7bca1",
+        "duree_s": 5.19,
+        "mesure": "RMS -18,5 dB, crete -0,6 dBFS, crest 17,8 dB, bas -19,4 dB",
+        "confiance": "HAUTE (ancre nommee : hlmt e7fe7564 = chassis Scorpion, ASSEMBLAGE_ENFANTS_2026-09-01.md)"
+      },
+      {
+        "nom": "Ghost",
+        "dossier": "Ghost/destruction",
+        "vehi": "0000d3dc (+ 5b80c406, 9af9e693)",
+        "hlmt": "3b3038e6",
+        "foot": "0dfde60d",
+        "banque": "b1f8608b (small_covenant)",
+        "event": "8b33a81a",
+        "duree_s": 4.38,
+        "mesure": "RMS -19,6 dB, crete -1,0 dBFS, crest 18,6 dB, bas -20,9 dB",
+        "confiance": "HAUTE (vehi 0000d3dc = Ghost, ASSEMBLAGE_WRAITH_PHANTOM_2026-09-01.md)"
+      },
+      {
+        "nom": "Chopper (Bannis)",
+        "dossier": "Chopper/destruction",
+        "vehi": "002ba902 (+ 3d4a8a5a)",
+        "hlmt": "fe29d23d",
+        "foot": "6864f41f",
+        "banque": "3fdc61a7 (med_covenant)",
+        "event": "ed7cfa4b",
+        "duree_s": 4.03,
+        "mesure": "RMS -19,6 dB, crete -1,0 dBFS, crest 18,6 dB, bas -20,7 dB",
+        "confiance": "HAUTE"
+      },
+      {
+        "nom": "Wraith",
+        "dossier": "Wraith/destruction",
+        "vehi": "00002706 (+ ae845375)",
+        "hlmt": "5b5c960d",
+        "foot": "48669cd9",
+        "banque": "2eaae6d7 (large_covenant)",
+        "event": "1bf6fdde",
+        "duree_s": 5.36,
+        "mesure": "RMS -18,3 dB, crete -1,0 dBFS, crest 17,3 dB, bas -19,5 dB",
+        "confiance": "HAUTE"
+      },
+      {
+        "nom": "Banshee",
+        "dossier": "Banshee/destruction",
+        "vehi": "000026ed (+ 0001530a, c6e79dcc)",
+        "hlmt": "df38bc96",
+        "foot": "48669cd9",
+        "banque": "2eaae6d7 (large_covenant)",
+        "event": "1bf6fdde",
+        "duree_s": 5.36,
+        "mesure": "identique au Wraith : MEME banque, MEME evenement (le Phantom 000026f2 aussi)",
+        "confiance": "HAUTE"
+      },
+      {
+        "nom": "Falcon (tourelle LMG) et autres objets-enfants",
+        "dossier": "aucun",
+        "verdict": "PAS DE SON DE DESTRUCTION PROPRE. Les tourelles et canons sont des tags `vehi` ENFANTS (0000d4ff, 0000d500, 64b925eb, bcfb852f, dd7f9102) : aucun n atteint une banque d explosion. L explosion est posee une seule fois, par le chassis porteur."
+      }
+    ],
+    "fichiers_par_vehicule": "explosion.wav (variante 1) ; explosion_v2.wav ; explosion_v3.wav ; couche_1..3.wav (couches isolees de la variante 1, au meme gain) ; lit_sub_partage.wav ; explosion_lointaine_A.wav et _B.wav (les 2 etats du relais stai).",
+    "outils_ajoutes": "cmd/weapon-sounds : modes `pck-dump` (pck AKPK -> wem complets, sans module), `pck-banques` (N packs -> leur sbnk en UNE charge de module, par REF HIRC et par EMB DIDX), `remonter-banque` (banque -> snd! -> ... -> vehi)."
+  },
+  "correction_ghost": "TRAITEE par le lot V3E : les fichiers Ghost/deplacement de rev9 venaient de la banque 01862ab3, atteinte par le hlmt du WARTHOG. Leurs quatre medias (192653757, 68830349, 835658180, 52024965) sont absents du pack du Ghost (248 medias) COMME du pack du Warthog (78) : ils n'appartiennent qu'a 01862ab3. rev11 rend le Ghost depuis ccd43fa8 (pc/globals/common), 248/248 en reference et en embarque avec son pack.",
+  "reconstruction_v3e": {
+    "reproche_traite": "« tu n'as rendu que les fichiers isoles, pas reconstitues avec leur format wwise et reglages de package » (utilisateur, 2026-09-02).",
+    "table_akpropid": {
+      "0": "Volume",
+      "2": "Pitch",
+      "4": "HPF",
+      "5": "BusVolume",
+      "6": "MakeUpGain",
+      "7": "Priority",
+      "8": "PriorityDistanceOffset",
+      "19": "UserAuxSendVolume0",
+      "23": "GameAuxSendVolume",
+      "58": "Loop",
+      "59": "InitialDelay",
+      "70": "AttenuationID",
+      "71": "NON DECODEE (2 occurrences) — octets bruts consignes dans le rapport V3E",
+      "source": "table AkPropID des versions de bank 113+, CONFIRMEE par le releve des identifiants reellement presents dans les 11 banques ouvertes",
+      "desaccord_corrige": "proprietes.go lit l'identifiant 17 comme InitialDelay ; 17 est Probability et n'apparait sur AUCUN noeud de ces banques. Le delai est le 59, ce qui explique le « zero delai partout » des lots precedents."
+    },
+    "gain_de_chemin": {
+      "definition": "somme de (Volume + MakeUpGain) sur la chaine Sound -> conteneurs -> parents actor-mixer (DirectParentID), plus la chaine de bus",
+      "nouveaute": "les lots V3B/V3C/V3D ne sommaient que la partie DESCENDANTE (evenement -> conteneurs -> Sound)",
+      "bus": "AUCUN objet Bus n'est present dans les 11 banques ouvertes : la hierarchie de bus vit dans une banque d'initialisation absente des tags sbnk. Les gains de bus sont donc INCONNUS et non appliques. Les couches d'un meme bus sont exactes entre elles ; l'equilibre INTER-BUS reste la seule incertitude.",
+      "bus_rencontres": {
+        "a47c42cf": "explosion, couches principales et lit sub",
+        "395ebec8": "explosion, une couche par banque route a part",
+        "ff2ef7d6": "explosion lointaine (relais stai)",
+        "5a880943": "moteur, couche de regime (switch)",
+        "1f17314c": "moteur, lit sub",
+        "8165b6c5": "contact avec le sol (chenilles, roues, antigrav)",
+        "0f233096": "versions par PALIER DE REGIME jouees hors switch (cinq evenements par banque de vehicule, un par palier)",
+        "fd3d66ca": "Wraith uniquement, evenement e0302bdf"
+      }
+    },
+    "echelle_de_regime": {
+      "groupe_switch": 2275666646,
+      "etats": "neuf etats, cinq reservoirs distincts ; l'echelle est MONOTONE et identique sur les six vehicules mesures",
+      "ordre_mesure": [
+        {
+          "rang": 1,
+          "etats": [
+            356702912,
+            1975887784,
+            2311227951,
+            3561860439
+          ],
+          "lecture": "ralenti — le plus faible, le plus long, DEFAUT des banques UNSC (356702912) et covenant (3561860439)"
+        },
+        {
+          "rang": 2,
+          "etats": [
+            1093928064
+          ],
+          "lecture": "bas regime"
+        },
+        {
+          "rang": 3,
+          "etats": [
+            1136871302
+          ],
+          "lecture": "regime intermediaire"
+        },
+        {
+          "rang": 4,
+          "etats": [
+            1248419637,
+            3707760930
+          ],
+          "lecture": "EN CONDUITE — l'etat rendu par rev11"
+        },
+        {
+          "rang": 5,
+          "etats": [
+            163696720
+          ],
+          "lecture": "plein regime — le plus fort et le plus court ; poussee/boost sur les vehicules antigrav"
+        }
+      ],
+      "correction_rev9": "rev9 retenait 3707760930 pour le Scorpion (rang 4, confirme) mais 163696720 pour le Warthog (rang 5) : deux vehicules au meme moment ne tournaient pas au meme regime. rev11 rend le rang 4 pour tous, et le rang 5 dans un fichier separe."
+    },
+    "evenements": {
+      "969f4dc6/1c0dae6d@0": {
+        "banque": "969f4dc6",
+        "event": "1c0dae6d",
+        "etat_switch": 0,
+        "joue_par": [
+          "Gungoose (destruction)"
+        ],
+        "actions": [
+          {
+            "id": "28080dab",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "03705f6d"
+          },
+          {
+            "id": "3bd3c09e",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "16ad77c5"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "2609fa3d",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 28080dab(+0.000s) <- 0e8c7c7f(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 03705f6d(Blend,+0.0dB) -> 2609fa3d(RandomSequence,+7.0dB) -> 129c363d(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 7,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              17983854,
+              170569459,
+              317714643,
+              400981918,
+              1012026839,
+              1067400768
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "31bc9582",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 28080dab(+0.000s) <- 0e8c7c7f(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 03705f6d(Blend,+0.0dB) -> 31bc9582(RandomSequence,+10.0dB) -> 008f1cd0(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 10,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              279161110,
+              739349108,
+              743217220,
+              821658720,
+              836675238,
+              862538612
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 3,
+            "conteneur": "3ee8adb3",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 28080dab(+0.000s) <- 0e8c7c7f(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 03705f6d(Blend,+0.0dB) -> 3ee8adb3(RandomSequence,+15.0dB) -> 3ef8ced4(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 15,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "395ebec8",
+            "bus_resolu": false,
+            "variantes": [
+              47163637,
+              394134296,
+              397806591,
+              441534104,
+              653215933,
+              775091524
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 4,
+            "conteneur": "16ad77c5",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 3bd3c09e(+0.000s) <- 1f009c9e(ActorMixer,-2.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 16ad77c5(RandomSequence,-8.0dB) -> 2edaa68c(Sound,+0.0dB)",
+            "gain_amont_db": -2,
+            "gain_chemin_complet_db": -10,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              224468375
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "c468fb55/2152102c@0": {
+        "banque": "c468fb55",
+        "event": "2152102c",
+        "etat_switch": 0,
+        "joue_par": [
+          "Warthog_roquettes (destruction)",
+          "Wasp (destruction)"
+        ],
+        "actions": [
+          {
+            "id": "2e39442d",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3b7b50f3"
+          },
+          {
+            "id": "3c80d8b4",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "346e285c"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "183c6215",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 2e39442d(+0.000s) <- 2b17d803(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 3b7b50f3(Blend,+0.0dB) -> 183c6215(RandomSequence,+10.0dB) -> 3052cbe9(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 10,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              345656110,
+              411446211,
+              558974615,
+              595765463,
+              662380549,
+              886427985
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "246d2a3a",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 2e39442d(+0.000s) <- 2b17d803(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 3b7b50f3(Blend,+0.0dB) -> 246d2a3a(RandomSequence,+15.0dB) -> 01ee6c5f(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 15,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "395ebec8",
+            "bus_resolu": false,
+            "variantes": [
+              204443614,
+              291713810,
+              332750808,
+              451901319,
+              685790684,
+              1053969567
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 3,
+            "conteneur": "25ab97db",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 2e39442d(+0.000s) <- 2b17d803(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 3b7b50f3(Blend,+0.0dB) -> 25ab97db(RandomSequence,+13.0dB) -> 26572baf(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 13,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              133102342,
+              209807755,
+              560942056,
+              721007245,
+              865532887,
+              1005850904
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 4,
+            "conteneur": "346e285c",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 3c80d8b4(+0.000s) <- 33a0f093(ActorMixer,+3.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 346e285c(RandomSequence,+8.0dB) -> 24c07707(Sound,-8.0dB)",
+            "gain_amont_db": 3,
+            "gain_chemin_complet_db": 3,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              686882988
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "94d43e95/dcc7bca1@0": {
+        "banque": "94d43e95",
+        "event": "dcc7bca1",
+        "etat_switch": 0,
+        "joue_par": [
+          "Scorpion (destruction)"
+        ],
+        "actions": [
+          {
+            "id": "39a28030",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "05aa04fe"
+          },
+          {
+            "id": "3e33f3fb",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "35278286"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "20d47cce",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 39a28030(+0.000s) <- 0aa8e7f7(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 05aa04fe(Blend,+0.0dB) -> 20d47cce(RandomSequence,+17.0dB) -> 09709240(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 17,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              13353040,
+              133393323,
+              218433237,
+              888260502,
+              959267019,
+              979095968
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "36c9b286",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 39a28030(+0.000s) <- 0aa8e7f7(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 05aa04fe(Blend,+0.0dB) -> 36c9b286(RandomSequence,+20.0dB) -> 1b0d0d53(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 20,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "395ebec8",
+            "bus_resolu": false,
+            "variantes": [
+              176464618,
+              304353642,
+              387859342,
+              871694806,
+              907510484,
+              943937175
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 3,
+            "conteneur": "3c95cab9",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 39a28030(+0.000s) <- 0aa8e7f7(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 05aa04fe(Blend,+0.0dB) -> 3c95cab9(RandomSequence,+10.0dB) -> 2914b45e(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 10,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              76801691,
+              352298157,
+              532744785,
+              623960989,
+              628566016,
+              778884090
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 4,
+            "conteneur": "35278286",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 3e33f3fb(+0.000s) <- 3d0ee8f0(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 35278286(RandomSequence,+8.0dB) -> 37355e5a(Sound,-6.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 2,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              686882988
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "b1f8608b/8b33a81a@0": {
+        "banque": "b1f8608b",
+        "event": "8b33a81a",
+        "etat_switch": 0,
+        "joue_par": [
+          "Ghost (destruction)"
+        ],
+        "actions": [
+          {
+            "id": "1ab8305f",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "1658ecd7"
+          },
+          {
+            "id": "314d3376",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "16ad77c5"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "21574f2b",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 1ab8305f(+0.000s) <- 0e8c7c7f(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 1658ecd7(Blend,+4.0dB) -> 21574f2b(RandomSequence,+13.0dB) -> 0e31a75b(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 17,
+            "offset_s": 0.1,
+            "pitch_cents": 0,
+            "bus": "395ebec8",
+            "bus_resolu": false,
+            "variantes": [
+              148509808,
+              540450163,
+              731780503,
+              894216880,
+              932722641,
+              965219065
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "258b4c25",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 1ab8305f(+0.000s) <- 0e8c7c7f(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 1658ecd7(Blend,+4.0dB) -> 258b4c25(RandomSequence,+10.0dB) -> 3b733f97(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 14,
+            "offset_s": 0.1,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              181585037,
+              444045967,
+              536758426,
+              611301526,
+              945925682,
+              1051097451
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 3,
+            "conteneur": "312792c5",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 1ab8305f(+0.000s) <- 0e8c7c7f(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 1658ecd7(Blend,+4.0dB) -> 312792c5(RandomSequence,+8.0dB) -> 2b39d1c5(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 12,
+            "offset_s": 0.1,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              53123745,
+              98561180,
+              361539703,
+              387946480,
+              501066972,
+              747539011
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 4,
+            "conteneur": "16ad77c5",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 314d3376(+0.000s) <- 1f009c9e(ActorMixer,-2.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 16ad77c5(RandomSequence,-8.0dB) -> 2edaa68c(Sound,+0.0dB)",
+            "gain_amont_db": -2,
+            "gain_chemin_complet_db": -10,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              224468375
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "3fdc61a7/ed7cfa4b@0": {
+        "banque": "3fdc61a7",
+        "event": "ed7cfa4b",
+        "etat_switch": 0,
+        "joue_par": [
+          "Chopper (destruction)"
+        ],
+        "actions": [
+          {
+            "id": "1584089b",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3e751c54"
+          },
+          {
+            "id": "27e657bf",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "346e285c"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "09efe94d",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 1584089b(+0.000s) <- 2b17d803(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 3e751c54(Blend,+0.0dB) -> 09efe94d(RandomSequence,+12.0dB) -> 2aede9dd(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 12,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "395ebec8",
+            "bus_resolu": false,
+            "variantes": [
+              7372039,
+              155333672,
+              489840241,
+              650360393,
+              717167016,
+              898666538
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "21c64f8a",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 1584089b(+0.000s) <- 2b17d803(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 3e751c54(Blend,+0.0dB) -> 21c64f8a(RandomSequence,+9.0dB) -> 08a9f96d(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 9,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              16110141,
+              107334858,
+              287484855,
+              908824235,
+              910446330,
+              968058425
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 3,
+            "conteneur": "3c982220",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 1584089b(+0.000s) <- 2b17d803(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 3e751c54(Blend,+0.0dB) -> 3c982220(RandomSequence,+8.0dB) -> 3cdc3b1f(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 8,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              38120895,
+              275466102,
+              705538484,
+              1003390990,
+              1038161747,
+              1063918695
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 4,
+            "conteneur": "346e285c",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 27e657bf(+0.000s) <- 33a0f093(ActorMixer,+3.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 346e285c(RandomSequence,+8.0dB) -> 24c07707(Sound,-8.0dB)",
+            "gain_amont_db": 3,
+            "gain_chemin_complet_db": 3,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              686882988
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "2eaae6d7/1bf6fdde@0": {
+        "banque": "2eaae6d7",
+        "event": "1bf6fdde",
+        "etat_switch": 0,
+        "joue_par": [
+          "Wraith (destruction)",
+          "Banshee (destruction)"
+        ],
+        "actions": [
+          {
+            "id": "14853d20",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "1f5cac4b"
+          },
+          {
+            "id": "30541d9c",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "35278286"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "0036de34",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 14853d20(+0.000s) <- 0aa8e7f7(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 1f5cac4b(Blend,+0.0dB) -> 0036de34(RandomSequence,+12.0dB) -> 19927ecd(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 12,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "395ebec8",
+            "bus_resolu": false,
+            "variantes": [
+              45964905,
+              177260871,
+              387655263,
+              483293691,
+              823544523,
+              962489738
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "19282ccb",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 14853d20(+0.000s) <- 0aa8e7f7(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 1f5cac4b(Blend,+0.0dB) -> 19282ccb(RandomSequence,+8.0dB) -> 1f600aff(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 8,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              3996053,
+              430376359,
+              666802963,
+              669363313,
+              728043162,
+              808567392
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 3,
+            "conteneur": "1b1ec4cb",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 14853d20(+0.000s) <- 0aa8e7f7(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 1f5cac4b(Blend,+0.0dB) -> 1b1ec4cb(RandomSequence,+5.0dB) -> 0d44c5c1(Sound,+0.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 5,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              83178095,
+              170966123,
+              190026534,
+              442952888,
+              906551088,
+              935665083
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 4,
+            "conteneur": "35278286",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 30541d9c(+0.000s) <- 3d0ee8f0(ActorMixer,+0.0dB) <- 1b645ed9(ActorMixer,+0.0dB) | bus a47c42cf HORS BANQUE -> 35278286(RandomSequence,+8.0dB) -> 37355e5a(Sound,-6.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 2,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "a47c42cf",
+            "bus_resolu": false,
+            "variantes": [
+              686882988
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "ccd43fa8/603d9e29@3707760930": {
+        "banque": "ccd43fa8",
+        "event": "603d9e29",
+        "etat_switch": 3707760930,
+        "joue_par": [
+          "Ghost (moteur conduite)"
+        ],
+        "actions": [
+          {
+            "id": "04247f19",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "37f07dd4"
+          },
+          {
+            "id": "255ddd90",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "2199fb1d"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "37f07dd4",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 04247f19(+0.000s) <- 10f589ad(ActorMixer,-2.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 37f07dd4(RandomSequence,+1.0dB) -> 107d73ac(Switch,+0.0dB) -> 150677c5(RandomSequence,+0.0dB) -> 3bd460c3(RandomSequence,-3.0dB) -> 384422ee(Sound,+0.0dB)",
+            "gain_amont_db": -7,
+            "gain_chemin_complet_db": -9,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              44396653,
+              98299382,
+              135722940,
+              162301563,
+              232236451,
+              332124343,
+              348170039,
+              449405208,
+              451239517,
+              465484172,
+              510166211,
+              522604601,
+              640144031,
+              641584455,
+              654999330,
+              658577295,
+              702945834,
+              721999388,
+              742276396,
+              833880714,
+              944224971,
+              957354862,
+              999677784,
+              1069248959
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.13,
+            "continu": true,
+            "sequence": true
+          },
+          {
+            "rang": 2,
+            "conteneur": "2199fb1d",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 255ddd90(+0.000s) <- 29ee5b69(ActorMixer,-4.0dB) <- 35f6b1a8(ActorMixer,+0.0dB) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 2199fb1d(RandomSequence,+0.0dB) -> 0a8a3f19(RandomSequence,+0.0dB) -> 23f8b89c(Sound,+0.0dB)",
+            "gain_amont_db": -4,
+            "gain_chemin_complet_db": -4,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              87187708
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.1,
+            "continu": true,
+            "sequence": true
+          }
+        ]
+      },
+      "ccd43fa8/603d9e29@163696720": {
+        "banque": "ccd43fa8",
+        "event": "603d9e29",
+        "etat_switch": 163696720,
+        "joue_par": [
+          "Ghost (moteur plein regime / boost)"
+        ],
+        "actions": [
+          {
+            "id": "04247f19",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "37f07dd4"
+          },
+          {
+            "id": "255ddd90",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "2199fb1d"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "37f07dd4",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 04247f19(+0.000s) <- 10f589ad(ActorMixer,-2.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 37f07dd4(RandomSequence,+1.0dB) -> 107d73ac(Switch,+0.0dB) -> 29f66aaf(RandomSequence,+0.0dB) -> 1ebb2a7b(RandomSequence,-3.0dB) -> 3519bd73(Sound,+0.0dB)",
+            "gain_amont_db": -7,
+            "gain_chemin_complet_db": -9,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              41485926,
+              218072261,
+              264763550,
+              334829098,
+              347455031,
+              470547091,
+              504875863,
+              523492329,
+              563004114,
+              599728117,
+              689086459,
+              753540384,
+              787464427,
+              806354037,
+              809894124,
+              813021783,
+              835816107,
+              903655955,
+              928246930,
+              928947214,
+              950482211,
+              975218730,
+              993311651,
+              1011663376
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.13,
+            "continu": true,
+            "sequence": true
+          },
+          {
+            "rang": 2,
+            "conteneur": "2199fb1d",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 255ddd90(+0.000s) <- 29ee5b69(ActorMixer,-4.0dB) <- 35f6b1a8(ActorMixer,+0.0dB) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 2199fb1d(RandomSequence,+0.0dB) -> 0a8a3f19(RandomSequence,+0.0dB) -> 23f8b89c(Sound,+0.0dB)",
+            "gain_amont_db": -4,
+            "gain_chemin_complet_db": -4,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              87187708
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.1,
+            "continu": true,
+            "sequence": true
+          }
+        ]
+      },
+      "ccd43fa8/a91f9f78@0": {
+        "banque": "ccd43fa8",
+        "event": "a91f9f78",
+        "etat_switch": 0,
+        "joue_par": [
+          "Ghost (contact antigrav)"
+        ],
+        "actions": [
+          {
+            "id": "1b6aa392",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "08db6152"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "0a7965fc",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 1b6aa392(+0.000s) <- 1fb0270a(ActorMixer,-5.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 08db6152(Blend,+0.0dB) -> 0a7965fc(RandomSequence,-1.0dB) -> 18ef53aa(RandomSequence,+2.0dB) -> 253f5514(Sound,+0.0dB)",
+            "gain_amont_db": -12,
+            "gain_chemin_complet_db": -11,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              11026741,
+              307975597,
+              336965661,
+              337948491,
+              492092346,
+              516042765,
+              521648500,
+              729801827,
+              842729108,
+              868175786,
+              889711426,
+              892625787,
+              963531072,
+              976807105,
+              1018646876,
+              1032548546
+            ],
+            "ranged_volume_db": [
+              -3,
+              0
+            ],
+            "ranged_pitch_cents": [
+              -80,
+              80
+            ],
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.13,
+            "continu": true,
+            "sequence": true
+          },
+          {
+            "rang": 2,
+            "conteneur": "31e0da9b",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 1b6aa392(+0.000s) <- 1fb0270a(ActorMixer,-5.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 08db6152(Blend,+0.0dB) -> 31e0da9b(RandomSequence,+10.0dB) -> 314e154e(RandomSequence,+0.0dB) -> 2596ad30(Sound,+0.0dB)",
+            "gain_amont_db": -12,
+            "gain_chemin_complet_db": -2,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              277980005,
+              292233007,
+              309471603,
+              351321478,
+              354468133,
+              371118507,
+              377487580,
+              378025059,
+              444890353,
+              461465978,
+              516068626,
+              519860172,
+              624678713,
+              720096264,
+              1034988974
+            ],
+            "ranged_volume_db": [
+              -3,
+              0
+            ],
+            "ranged_pitch_cents": [
+              -85,
+              80
+            ],
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.13,
+            "continu": true,
+            "sequence": true
+          },
+          {
+            "rang": 3,
+            "conteneur": "3b58773c",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 1b6aa392(+0.000s) <- 1fb0270a(ActorMixer,-5.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 08db6152(Blend,+0.0dB) -> 3b58773c(RandomSequence,-0.5dB) -> 0239aa98(RandomSequence,+0.0dB) -> 1da350e6(Sound,+0.0dB)",
+            "gain_amont_db": -12,
+            "gain_chemin_complet_db": -12.5,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              9998900,
+              18763209,
+              48662800,
+              50253674,
+              206241339,
+              512083647,
+              545879151,
+              583870998,
+              631391888,
+              673895740,
+              756865213,
+              806379501,
+              980740142,
+              984975552,
+              1032051255,
+              1048045664
+            ],
+            "ranged_volume_db": [
+              -3,
+              0
+            ],
+            "ranged_pitch_cents": [
+              -40,
+              40
+            ],
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.13,
+            "continu": true,
+            "sequence": true
+          }
+        ]
+      },
+      "fda12da2/aa6215eb@3707760930": {
+        "banque": "fda12da2",
+        "event": "aa6215eb",
+        "etat_switch": 3707760930,
+        "joue_par": [
+          "Wraith (moteur conduite)"
+        ],
+        "actions": [
+          {
+            "id": "29edb781",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "0073efe5"
+          },
+          {
+            "id": "0eba10b0",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3c133923"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "11241395",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 29edb781(+0.000s) <- 3175261e(ActorMixer,+3.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 0073efe5(Switch,-6.0dB) -> 11241395(RandomSequence,+0.0dB) -> 16aad177(Sound,+0.0dB)",
+            "gain_amont_db": -2,
+            "gain_chemin_complet_db": -8,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              89213318,
+              141710060,
+              463531967,
+              572796333,
+              762689577,
+              877781866
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "3c133923",
+            "type": "Sound",
+            "chemin_hirc": "action 0eba10b0(+0.000s) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 3c133923(Sound,+3.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 3,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              195277626
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "fda12da2/aa6215eb@163696720": {
+        "banque": "fda12da2",
+        "event": "aa6215eb",
+        "etat_switch": 163696720,
+        "joue_par": [
+          "Wraith (moteur plein regime / boost)"
+        ],
+        "actions": [
+          {
+            "id": "29edb781",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "0073efe5"
+          },
+          {
+            "id": "0eba10b0",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3c133923"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "2641ad95",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 29edb781(+0.000s) <- 3175261e(ActorMixer,+3.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 0073efe5(Switch,-6.0dB) -> 2641ad95(RandomSequence,+0.0dB) -> 2157f346(Sound,+0.0dB)",
+            "gain_amont_db": -2,
+            "gain_chemin_complet_db": -8,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              63638766,
+              194514942,
+              236442366,
+              455027503,
+              467555395,
+              748507485
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "3c133923",
+            "type": "Sound",
+            "chemin_hirc": "action 0eba10b0(+0.000s) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 3c133923(Sound,+3.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 3,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              195277626
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "fda12da2/46b14f04@0": {
+        "banque": "fda12da2",
+        "event": "46b14f04",
+        "etat_switch": 0,
+        "joue_par": [
+          "Wraith (contact antigrav)"
+        ],
+        "actions": [
+          {
+            "id": "2e70738f",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3298a31e"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "1bcfc602",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 2e70738f(+0.000s) <- 334f9952(ActorMixer,-1.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 3298a31e(Blend,+12.0dB) -> 1bcfc602(RandomSequence,-2.0dB) -> 2634152d(Sound,+0.0dB)",
+            "gain_amont_db": -8,
+            "gain_chemin_complet_db": 2,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              34673914,
+              298280790,
+              528022989,
+              757668648,
+              851633618,
+              935256629
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "2520a2b5",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 2e70738f(+0.000s) <- 334f9952(ActorMixer,-1.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 3298a31e(Blend,+12.0dB) -> 2520a2b5(RandomSequence,-1.0dB) -> 0b28816f(Sound,+0.0dB)",
+            "gain_amont_db": -8,
+            "gain_chemin_complet_db": 3,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              156866882,
+              253928765,
+              371365916,
+              464622454,
+              601122648,
+              638835491
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 3,
+            "conteneur": "2e579615",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 2e70738f(+0.000s) <- 334f9952(ActorMixer,-1.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 3298a31e(Blend,+12.0dB) -> 2e579615(RandomSequence,+5.0dB) -> 224c5a86(Sound,+0.0dB)",
+            "gain_amont_db": -8,
+            "gain_chemin_complet_db": 9,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              343814424,
+              404033917,
+              641203287,
+              806718249,
+              873456316,
+              948784227
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "c682f736/6ed9c3bc@3707760930": {
+        "banque": "c682f736",
+        "event": "6ed9c3bc",
+        "etat_switch": 3707760930,
+        "joue_par": [
+          "Banshee (moteur conduite)"
+        ],
+        "actions": [
+          {
+            "id": "051c7534",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "38a08494"
+          },
+          {
+            "id": "1ff5bc75",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3f98b1bf"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "2af1f7df",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 051c7534(+0.000s) <- 0aa32c36(ActorMixer,+2.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 38a08494(Switch,-2.0dB) -> 2af1f7df(RandomSequence,+0.0dB) -> 0918b2e8(Sound,+0.0dB)",
+            "gain_amont_db": -3,
+            "gain_chemin_complet_db": -5,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              162726285,
+              251783337,
+              400778807,
+              541010004,
+              669723330,
+              1012418937
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "3f98b1bf",
+            "type": "Sound",
+            "chemin_hirc": "action 1ff5bc75(+0.000s) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 3f98b1bf(Sound,-3.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": -3,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              195277626
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "c682f736/6ed9c3bc@163696720": {
+        "banque": "c682f736",
+        "event": "6ed9c3bc",
+        "etat_switch": 163696720,
+        "joue_par": [
+          "Banshee (moteur plein regime / boost)"
+        ],
+        "actions": [
+          {
+            "id": "051c7534",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "38a08494"
+          },
+          {
+            "id": "1ff5bc75",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3f98b1bf"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "25921d67",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 051c7534(+0.000s) <- 0aa32c36(ActorMixer,+2.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 38a08494(Switch,-2.0dB) -> 25921d67(RandomSequence,+0.0dB) -> 1056671d(Sound,+0.0dB)",
+            "gain_amont_db": -3,
+            "gain_chemin_complet_db": -5,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              292536382,
+              317601162,
+              662844430,
+              682708192,
+              780907964,
+              826972162
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "3f98b1bf",
+            "type": "Sound",
+            "chemin_hirc": "action 1ff5bc75(+0.000s) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 3f98b1bf(Sound,-3.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": -3,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              195277626
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "c682f736/851558f7@3707760930": {
+        "banque": "c682f736",
+        "event": "851558f7",
+        "etat_switch": 3707760930,
+        "joue_par": [
+          "Banshee (moteur, couche de grain)"
+        ],
+        "actions": [
+          {
+            "id": "02efb2d8",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "282e786e"
+          },
+          {
+            "id": "2b8a0918",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "272977ff"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "282e786e",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 02efb2d8(+0.000s) <- 0aa32c36(ActorMixer,+2.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 282e786e(RandomSequence,-3.0dB) -> 3d5ea999(Switch,-9.0dB) -> 347005a4(RandomSequence,+0.0dB) -> 1b4d3f09(RandomSequence,+0.0dB) -> 0d3597fb(Sound,+0.0dB)",
+            "gain_amont_db": -3,
+            "gain_chemin_complet_db": -18,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              915224,
+              197547669,
+              222993310,
+              240837379,
+              305472042,
+              364284366,
+              374429265,
+              389856419,
+              457014485,
+              546415593,
+              564873805,
+              585170108,
+              595488315,
+              658365958,
+              686738074,
+              696541724,
+              737701750,
+              739795837,
+              754550699,
+              775520456,
+              823675749,
+              941923796,
+              950186323,
+              965248201,
+              1062445823,
+              1068226166
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.125,
+            "continu": true,
+            "sequence": true
+          },
+          {
+            "rang": 2,
+            "conteneur": "272977ff",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 2b8a0918(+0.000s) <- 2ec22b88(ActorMixer,-4.0dB) <- 35f6b1a8(ActorMixer,+0.0dB) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 272977ff(RandomSequence,+3.0dB) -> 157646db(RandomSequence,-14.0dB) -> 25630e86(Sound,+0.0dB)",
+            "gain_amont_db": -4,
+            "gain_chemin_complet_db": -15,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              87187708
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": [
+              0,
+              800
+            ],
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.125,
+            "continu": true,
+            "sequence": true
+          }
+        ]
+      },
+      "c682f736/f76415db@0": {
+        "banque": "c682f736",
+        "event": "f76415db",
+        "etat_switch": 0,
+        "joue_par": [
+          "Banshee (contact antigrav)"
+        ],
+        "actions": [
+          {
+            "id": "2862bd56",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "1be9d9fc"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "02b8484e",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 2862bd56(+0.000s) <- 24b54c91(ActorMixer,+0.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 1be9d9fc(Blend,+8.0dB) -> 02b8484e(RandomSequence,+4.0dB) -> 31a9abd5(Sound,+0.0dB)",
+            "gain_amont_db": -7,
+            "gain_chemin_complet_db": 5,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              14384988,
+              100437193,
+              426157298,
+              468519661,
+              714266790,
+              888466031
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "07449866",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 2862bd56(+0.000s) <- 24b54c91(ActorMixer,+0.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 1be9d9fc(Blend,+8.0dB) -> 07449866(RandomSequence,+3.0dB) -> 1727d225(Sound,+0.0dB)",
+            "gain_amont_db": -7,
+            "gain_chemin_complet_db": 4,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              374722174,
+              493632524,
+              529951651,
+              618128799,
+              843326432,
+              865080227
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 3,
+            "conteneur": "30026e40",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 2862bd56(+0.000s) <- 24b54c91(ActorMixer,+0.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 1be9d9fc(Blend,+8.0dB) -> 30026e40(RandomSequence,+10.0dB) -> 2a7d089f(Sound,+0.0dB)",
+            "gain_amont_db": -7,
+            "gain_chemin_complet_db": 11,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              4630881,
+              59156423,
+              214158381,
+              380700115,
+              576727374,
+              980725713
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "1bb9f097/1adf8067@3707760930": {
+        "banque": "1bb9f097",
+        "event": "1adf8067",
+        "etat_switch": 3707760930,
+        "joue_par": [
+          "Chopper (moteur conduite)"
+        ],
+        "actions": [
+          {
+            "id": "0deb6fa5",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "28b2123c",
+            "delai_s": 0.038
+          },
+          {
+            "id": "2cf4c755",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "160b118a",
+            "delai_s": 0.038
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "3969437a",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 0deb6fa5(+0.038s) <- 05af5fe3(ActorMixer,-5.5dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 28b2123c(Switch,+0.5dB) -> 3969437a(RandomSequence,+0.0dB) -> 2602e705(Sound,+0.0dB)",
+            "gain_amont_db": -10.5,
+            "gain_chemin_complet_db": -10,
+            "offset_s": 0.038,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              219998890,
+              245126122,
+              378187484,
+              471854133,
+              701345155,
+              883348693
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.25,
+            "continu": true,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "160b118a",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 2cf4c755(+0.038s) <- 2278eb7f(ActorMixer,-4.0dB) <- 35f6b1a8(ActorMixer,+0.0dB) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 160b118a(RandomSequence,+0.0dB) -> 1f0a9373(RandomSequence,-15.0dB) -> 28d944be(Sound,+0.0dB)",
+            "gain_amont_db": -4,
+            "gain_chemin_complet_db": -19,
+            "offset_s": 0.038,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              87187708
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": [
+              0,
+              800
+            ],
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.25,
+            "continu": true,
+            "sequence": true
+          }
+        ]
+      },
+      "1bb9f097/1adf8067@163696720": {
+        "banque": "1bb9f097",
+        "event": "1adf8067",
+        "etat_switch": 163696720,
+        "joue_par": [
+          "Chopper (moteur plein regime)"
+        ],
+        "actions": [
+          {
+            "id": "0deb6fa5",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "28b2123c",
+            "delai_s": 0.038
+          },
+          {
+            "id": "2cf4c755",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "160b118a",
+            "delai_s": 0.038
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "3428067b",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 0deb6fa5(+0.038s) <- 05af5fe3(ActorMixer,-5.5dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 28b2123c(Switch,+0.5dB) -> 3428067b(RandomSequence,+0.0dB) -> 0c98bfc1(Sound,+0.0dB)",
+            "gain_amont_db": -10.5,
+            "gain_chemin_complet_db": -10,
+            "offset_s": 0.038,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              15741538,
+              65690238,
+              192492478,
+              463545023,
+              606818939,
+              1067253815
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.25,
+            "continu": true,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "160b118a",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 2cf4c755(+0.038s) <- 2278eb7f(ActorMixer,-4.0dB) <- 35f6b1a8(ActorMixer,+0.0dB) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 160b118a(RandomSequence,+0.0dB) -> 1f0a9373(RandomSequence,-15.0dB) -> 28d944be(Sound,+0.0dB)",
+            "gain_amont_db": -4,
+            "gain_chemin_complet_db": -19,
+            "offset_s": 0.038,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              87187708
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": [
+              0,
+              800
+            ],
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.25,
+            "continu": true,
+            "sequence": true
+          }
+        ]
+      },
+      "1bb9f097/66b341e8@0": {
+        "banque": "1bb9f097",
+        "event": "66b341e8",
+        "etat_switch": 0,
+        "joue_par": [
+          "Chopper (contact sol)"
+        ],
+        "actions": [
+          {
+            "id": "303ac908",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "264c7c71",
+            "delai_s": 0.038
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "09981649",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 303ac908(+0.038s) <- 3d5f400d(ActorMixer,-1.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 264c7c71(Blend,+2.0dB) -> 09981649(RandomSequence,-2.0dB) -> 1905d5ac(Sound,+0.0dB)",
+            "gain_amont_db": -8,
+            "gain_chemin_complet_db": -8,
+            "offset_s": 0.038,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              254098371,
+              286067129,
+              377164462,
+              482235739,
+              1012746526,
+              1017587718
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.25,
+            "continu": true,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "357c1998",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 303ac908(+0.038s) <- 3d5f400d(ActorMixer,-1.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 264c7c71(Blend,+2.0dB) -> 357c1998(RandomSequence,+1.0dB) -> 3147ea6c(Sound,+0.0dB)",
+            "gain_amont_db": -8,
+            "gain_chemin_complet_db": -5,
+            "offset_s": 0.038,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              68127557,
+              239162335,
+              415730445,
+              579284663,
+              719747294,
+              843196131
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.25,
+            "continu": true,
+            "sequence": false
+          },
+          {
+            "rang": 3,
+            "conteneur": "3a9ac371",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 303ac908(+0.038s) <- 3d5f400d(ActorMixer,-1.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 264c7c71(Blend,+2.0dB) -> 3a9ac371(RandomSequence,-2.5dB) -> 3da1b670(Sound,+0.0dB)",
+            "gain_amont_db": -8,
+            "gain_chemin_complet_db": -8.5,
+            "offset_s": 0.038,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              154122834,
+              378157059,
+              742938104,
+              885689749,
+              977491706,
+              1063808426
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": [
+              -48,
+              43
+            ],
+            "repetitions": 0,
+            "mode_transition": 5,
+            "transition_s": 0.25,
+            "continu": true,
+            "sequence": false
+          }
+        ]
+      },
+      "05a51e0a/951f76c0@3707760930": {
+        "banque": "05a51e0a",
+        "event": "951f76c0",
+        "etat_switch": 3707760930,
+        "joue_par": [
+          "Scorpion (moteur conduite)"
+        ],
+        "actions": [
+          {
+            "id": "200bc8dc",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "196e9bed"
+          },
+          {
+            "id": "3b4d66d6",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3c133923"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "3a630449",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 200bc8dc(+0.000s) <- 380be330(ActorMixer,+2.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 196e9bed(Switch,+9.0dB) -> 3a630449(RandomSequence,-0.5dB) -> 2ef84549(Sound,+0.0dB)",
+            "gain_amont_db": -3,
+            "gain_chemin_complet_db": 5.5,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              85078605,
+              177051282,
+              195848469,
+              650881348,
+              1002378053,
+              1064803719
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "3c133923",
+            "type": "Sound",
+            "chemin_hirc": "action 3b4d66d6(+0.000s) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 3c133923(Sound,+3.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 3,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              195277626
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "05a51e0a/951f76c0@163696720": {
+        "banque": "05a51e0a",
+        "event": "951f76c0",
+        "etat_switch": 163696720,
+        "joue_par": [
+          "Scorpion (moteur plein regime)"
+        ],
+        "actions": [
+          {
+            "id": "200bc8dc",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "196e9bed"
+          },
+          {
+            "id": "3b4d66d6",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3c133923"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "3e320457",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 200bc8dc(+0.000s) <- 380be330(ActorMixer,+2.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 196e9bed(Switch,+9.0dB) -> 3e320457(RandomSequence,-1.0dB) -> 04a62f10(Sound,+0.0dB)",
+            "gain_amont_db": -3,
+            "gain_chemin_complet_db": 5,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              77778401,
+              360936688,
+              509723401,
+              517620047,
+              563165414,
+              921720924
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "3c133923",
+            "type": "Sound",
+            "chemin_hirc": "action 3b4d66d6(+0.000s) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 3c133923(Sound,+3.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": 3,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              195277626
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "05a51e0a/d5c7daeb@0": {
+        "banque": "05a51e0a",
+        "event": "d5c7daeb",
+        "etat_switch": 0,
+        "joue_par": [
+          "Scorpion (chenilles)"
+        ],
+        "actions": [
+          {
+            "id": "3c73602b",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "08893a55"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "08893a55",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 3c73602b(+0.000s) <- 380be330(ActorMixer,+2.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 08893a55(RandomSequence,-20.0dB) -> 2f352579(Sound,+0.0dB)",
+            "gain_amont_db": -3,
+            "gain_chemin_complet_db": -23,
+            "offset_s": 0.73,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              418953157,
+              627514740,
+              1033065922
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": [
+              -76,
+              76
+            ],
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "05a51e0a/0134da4e@0": {
+        "banque": "05a51e0a",
+        "event": "0134da4e",
+        "etat_switch": 0,
+        "joue_par": [
+          "Scorpion (amorce (allumage))"
+        ],
+        "actions": [
+          {
+            "id": "3b9a4b3f",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "131169d8"
+          },
+          {
+            "id": "3aaddd0e",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "22ab713a"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "131169d8",
+            "type": "Sound",
+            "chemin_hirc": "action 3b9a4b3f(+0.000s) <- 380be330(ActorMixer,+2.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 131169d8(Sound,-10.0dB)",
+            "gain_amont_db": -3,
+            "gain_chemin_complet_db": -13,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              649399036
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "22ab713a",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 3aaddd0e(+0.000s) <- 380be330(ActorMixer,+2.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 22ab713a(RandomSequence,-7.0dB) -> 33f1f208(Sound,+0.0dB)",
+            "gain_amont_db": -3,
+            "gain_chemin_complet_db": -10,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              105613159,
+              1070305244,
+              1073150292
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "05a51e0a/7f6a7624@0": {
+        "banque": "05a51e0a",
+        "event": "7f6a7624",
+        "etat_switch": 0,
+        "joue_par": [
+          "Scorpion (queue (extinction))"
+        ],
+        "actions": [
+          {
+            "id": "02efb63a",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "1d8c0a26"
+          },
+          {
+            "id": "2ff46ea4",
+            "type": "Stop",
+            "type_brut": 259,
+            "cible": "(non jouee)"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "1d8c0a26",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 02efb63a(+0.000s) <- 380be330(ActorMixer,+2.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 1d8c0a26(RandomSequence,-11.0dB) -> 0549b4e8(Sound,+0.0dB)",
+            "gain_amont_db": -3,
+            "gain_chemin_complet_db": -14,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              82204113,
+              304244236
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": [
+              -76,
+              76
+            ],
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "a52af042/68b1a949@3707760930": {
+        "banque": "a52af042",
+        "event": "68b1a949",
+        "etat_switch": 3707760930,
+        "joue_par": [
+          "Warthog_roquettes (moteur conduite)"
+        ],
+        "actions": [
+          {
+            "id": "13984835",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3c24a4f9"
+          },
+          {
+            "id": "20b74cc1",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3f98b1bf"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "35beafd0",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 13984835(+0.000s) <- 24afd678(ActorMixer,+4.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 3c24a4f9(Switch,+8.0dB) -> 35beafd0(RandomSequence,+0.0dB) -> 343c14c5(Sound,+0.0dB)",
+            "gain_amont_db": -1,
+            "gain_chemin_complet_db": 7,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              579828705,
+              653112262,
+              825007725,
+              918862076,
+              995063250,
+              1044673609
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "3f98b1bf",
+            "type": "Sound",
+            "chemin_hirc": "action 20b74cc1(+0.000s) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 3f98b1bf(Sound,-3.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": -3,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              195277626
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "a52af042/68b1a949@163696720": {
+        "banque": "a52af042",
+        "event": "68b1a949",
+        "etat_switch": 163696720,
+        "joue_par": [
+          "Warthog_roquettes (moteur plein regime)"
+        ],
+        "actions": [
+          {
+            "id": "13984835",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3c24a4f9"
+          },
+          {
+            "id": "20b74cc1",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "3f98b1bf"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "393d386b",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 13984835(+0.000s) <- 24afd678(ActorMixer,+4.0dB) <- 138d1e40(ActorMixer,-8.0dB) <- 2774363f(ActorMixer,+3.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 5a880943 HORS BANQUE -> 3c24a4f9(Switch,+8.0dB) -> 393d386b(RandomSequence,+0.0dB) -> 09a846ca(Sound,+0.0dB)",
+            "gain_amont_db": -1,
+            "gain_chemin_complet_db": 7,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "5a880943",
+            "bus_resolu": false,
+            "variantes": [
+              8501545,
+              130360019,
+              338808470,
+              591644443,
+              675731033,
+              854846944
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "3f98b1bf",
+            "type": "Sound",
+            "chemin_hirc": "action 20b74cc1(+0.000s) <- 1f0e4952(ActorMixer,+0.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 1f17314c HORS BANQUE -> 3f98b1bf(Sound,-3.0dB)",
+            "gain_amont_db": 0,
+            "gain_chemin_complet_db": -3,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "1f17314c",
+            "bus_resolu": false,
+            "variantes": [
+              195277626
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      },
+      "a52af042/38b83eb8@0": {
+        "banque": "a52af042",
+        "event": "38b83eb8",
+        "etat_switch": 0,
+        "joue_par": [
+          "Warthog_roquettes (roues / combustion)"
+        ],
+        "actions": [
+          {
+            "id": "35f4f34e",
+            "type": "Play",
+            "type_brut": 1027,
+            "cible": "1a99fff0"
+          }
+        ],
+        "couches": [
+          {
+            "rang": 1,
+            "conteneur": "07b2abf7",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 35f4f34e(+0.000s) <- 361125a4(ActorMixer,+0.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 1a99fff0(Blend,+8.0dB) -> 07b2abf7(RandomSequence,+4.0dB) -> 143a2c14(Sound,+0.0dB)",
+            "gain_amont_db": -7,
+            "gain_chemin_complet_db": 5,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              128563311,
+              407135520,
+              463838985,
+              861458078,
+              953072255,
+              1050985565
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 2,
+            "conteneur": "2790b34f",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 35f4f34e(+0.000s) <- 361125a4(ActorMixer,+0.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 1a99fff0(Blend,+8.0dB) -> 2790b34f(RandomSequence,+1.0dB) -> 1d628e21(Sound,+0.0dB)",
+            "gain_amont_db": -7,
+            "gain_chemin_complet_db": 2,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              64078249,
+              351128378,
+              361597239,
+              748191544,
+              955693063,
+              1031867631
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          },
+          {
+            "rang": 3,
+            "conteneur": "3883dc7e",
+            "type": "RandomSequence",
+            "chemin_hirc": "action 35f4f34e(+0.000s) <- 361125a4(ActorMixer,+0.0dB) <- 2274a969(ActorMixer,+0.0dB) <- 21352ab8(ActorMixer,-7.0dB) <- 0af1684d(ActorMixer,+0.0dB) <- 280705ab(ActorMixer,+0.0dB) | bus 8165b6c5 HORS BANQUE -> 1a99fff0(Blend,+8.0dB) -> 3883dc7e(RandomSequence,+0.0dB) -> 1e125c3d(Sound,+0.0dB)",
+            "gain_amont_db": -7,
+            "gain_chemin_complet_db": 1,
+            "offset_s": 0,
+            "pitch_cents": 0,
+            "bus": "8165b6c5",
+            "bus_resolu": false,
+            "variantes": [
+              79651516,
+              156826934,
+              386380284,
+              585735189,
+              655415473,
+              995248167
+            ],
+            "ranged_volume_db": null,
+            "ranged_pitch_cents": null,
+            "repetitions": null,
+            "mode_transition": null,
+            "transition_s": null,
+            "continu": false,
+            "sequence": false
+          }
+        ]
+      }
+    },
+    "fichiers_rendus": {
+      "Banshee_contact_antigrav_boucle8s": [
+        {
+          "event": "f76415db",
+          "banque": "c682f736",
+          "gain_normalisation_db": -15.448,
+          "fichiers": [
+            {
+              "fichier": "contact_antigrav_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -17.343,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Banshee_explosion": [
+        {
+          "event": "1bf6fdde",
+          "banque": "2eaae6d7",
+          "gain_normalisation_db": -18.718,
+          "fichiers": [
+            {
+              "fichier": "explosion.wav",
+              "duree_s": 5.363,
+              "crete_dbfs": -1,
+              "rms_dbfs": -19.041,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v2.wav",
+              "duree_s": 5.363,
+              "crete_dbfs": -1.146,
+              "rms_dbfs": -19.365,
+              "canaux": 2,
+              "variantes": [
+                0,
+                1,
+                4,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v3.wav",
+              "duree_s": 5.28,
+              "crete_dbfs": -1.494,
+              "rms_dbfs": -18.248,
+              "canaux": 2,
+              "variantes": [
+                4,
+                3,
+                1,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Banshee_farA": [
+        {
+          "event": "df41ac8b",
+          "banque": "2eaae6d7",
+          "gain_normalisation_db": -9.332,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_A.wav",
+              "duree_s": 3.98,
+              "crete_dbfs": -1,
+              "rms_dbfs": -27.616,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Banshee_farB": [
+        {
+          "event": "f97fc935",
+          "banque": "2eaae6d7",
+          "gain_normalisation_db": -13.903,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_B.wav",
+              "duree_s": 4.933,
+              "crete_dbfs": -1,
+              "rms_dbfs": -23.1,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Banshee_moteur_boost_boucle8s": [
+        {
+          "event": "6ed9c3bc",
+          "banque": "c682f736",
+          "gain_normalisation_db": -1.24,
+          "fichiers": [
+            {
+              "fichier": "moteur_boost_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -19.229,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Banshee_moteur_conduite_boucle8s": [
+        {
+          "event": "6ed9c3bc",
+          "banque": "c682f736",
+          "gain_normalisation_db": -1.351,
+          "fichiers": [
+            {
+              "fichier": "moteur_conduite_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1.362,
+              "rms_dbfs": -17.954,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "moteur_conduite_boucle8s_v2.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -19.115,
+              "canaux": 2,
+              "variantes": [
+                2,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Banshee_moteur_grain_boucle8s": [
+        {
+          "event": "851558f7",
+          "banque": "c682f736",
+          "gain_normalisation_db": 7.666,
+          "fichiers": [
+            {
+              "fichier": "moteur_grain_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -13.688,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Chopper_contact_sol_boucle8s": [
+        {
+          "event": "66b341e8",
+          "banque": "1bb9f097",
+          "gain_normalisation_db": -2.997,
+          "fichiers": [
+            {
+              "fichier": "contact_sol_boucle8s.wav",
+              "duree_s": 8.038,
+              "crete_dbfs": -1,
+              "rms_dbfs": -18.714,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Chopper_explosion": [
+        {
+          "event": "ed7cfa4b",
+          "banque": "3fdc61a7",
+          "gain_normalisation_db": -20.188,
+          "fichiers": [
+            {
+              "fichier": "explosion.wav",
+              "duree_s": 4.027,
+              "crete_dbfs": -1.453,
+              "rms_dbfs": -20.756,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v2.wav",
+              "duree_s": 4.027,
+              "crete_dbfs": -1.331,
+              "rms_dbfs": -20.298,
+              "canaux": 2,
+              "variantes": [
+                0,
+                1,
+                4,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v3.wav",
+              "duree_s": 4.055,
+              "crete_dbfs": -1,
+              "rms_dbfs": -19.7,
+              "canaux": 2,
+              "variantes": [
+                4,
+                3,
+                1,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Chopper_farA": [
+        {
+          "event": "7d52bdd4",
+          "banque": "3fdc61a7",
+          "gain_normalisation_db": 7.148,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_A.wav",
+              "duree_s": 4.201,
+              "crete_dbfs": -1,
+              "rms_dbfs": -22.718,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Chopper_farB": [
+        {
+          "event": "3a818492",
+          "banque": "3fdc61a7",
+          "gain_normalisation_db": -6.567,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_B.wav",
+              "duree_s": 6.026,
+              "crete_dbfs": -1,
+              "rms_dbfs": -22.564,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Chopper_moteur_conduite_boucle8s": [
+        {
+          "event": "1adf8067",
+          "banque": "1bb9f097",
+          "gain_normalisation_db": 3.48,
+          "fichiers": [
+            {
+              "fichier": "moteur_conduite_boucle8s.wav",
+              "duree_s": 8.038,
+              "crete_dbfs": -1.081,
+              "rms_dbfs": -13.389,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "moteur_conduite_boucle8s_v2.wav",
+              "duree_s": 8.038,
+              "crete_dbfs": -1,
+              "rms_dbfs": -13.199,
+              "canaux": 2,
+              "variantes": [
+                2,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Chopper_moteur_plein_regime_boucle8s": [
+        {
+          "event": "1adf8067",
+          "banque": "1bb9f097",
+          "gain_normalisation_db": 3.635,
+          "fichiers": [
+            {
+              "fichier": "moteur_plein_regime_boucle8s.wav",
+              "duree_s": 8.038,
+              "crete_dbfs": -1,
+              "rms_dbfs": -13.218,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Ghost_contact_antigrav_boucle8s": [
+        {
+          "event": "a91f9f78",
+          "banque": "ccd43fa8",
+          "gain_normalisation_db": 0.604,
+          "fichiers": [
+            {
+              "fichier": "contact_antigrav_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -15.386,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Ghost_explosion": [
+        {
+          "event": "8b33a81a",
+          "banque": "b1f8608b",
+          "gain_normalisation_db": -24.15,
+          "fichiers": [
+            {
+              "fichier": "explosion.wav",
+              "duree_s": 4.475,
+              "crete_dbfs": -1.271,
+              "rms_dbfs": -20.354,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v2.wav",
+              "duree_s": 4.146,
+              "crete_dbfs": -1.967,
+              "rms_dbfs": -20.618,
+              "canaux": 2,
+              "variantes": [
+                0,
+                1,
+                4,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v3.wav",
+              "duree_s": 4.275,
+              "crete_dbfs": -1,
+              "rms_dbfs": -20.553,
+              "canaux": 2,
+              "variantes": [
+                4,
+                3,
+                1,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Ghost_farA": [
+        {
+          "event": "ab214f3f",
+          "banque": "b1f8608b",
+          "gain_normalisation_db": 5.046,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_A.wav",
+              "duree_s": 4.942,
+              "crete_dbfs": -1,
+              "rms_dbfs": -22.697,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Ghost_farB": [
+        {
+          "event": "65fe08f9",
+          "banque": "b1f8608b",
+          "gain_normalisation_db": -7,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_B.wav",
+              "duree_s": 3.947,
+              "crete_dbfs": -1,
+              "rms_dbfs": -19.635,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Ghost_moteur_boost_boucle8s": [
+        {
+          "event": "603d9e29",
+          "banque": "ccd43fa8",
+          "gain_normalisation_db": -1.689,
+          "fichiers": [
+            {
+              "fichier": "moteur_boost_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -13.808,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Ghost_moteur_conduite_boucle8s": [
+        {
+          "event": "603d9e29",
+          "banque": "ccd43fa8",
+          "gain_normalisation_db": -1.553,
+          "fichiers": [
+            {
+              "fichier": "moteur_conduite_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1.972,
+              "rms_dbfs": -13.772,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "moteur_conduite_boucle8s_v2.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -13.513,
+              "canaux": 2,
+              "variantes": [
+                2,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Gungoose_explosion": [
+        {
+          "event": "1c0dae6d",
+          "banque": "969f4dc6",
+          "gain_normalisation_db": -21.47,
+          "fichiers": [
+            {
+              "fichier": "explosion.wav",
+              "duree_s": 3.198,
+              "crete_dbfs": -2.13,
+              "rms_dbfs": -19.709,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v2.wav",
+              "duree_s": 3.312,
+              "crete_dbfs": -1,
+              "rms_dbfs": -17.908,
+              "canaux": 2,
+              "variantes": [
+                0,
+                1,
+                4,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v3.wav",
+              "duree_s": 2.583,
+              "crete_dbfs": -1.655,
+              "rms_dbfs": -16.626,
+              "canaux": 2,
+              "variantes": [
+                4,
+                3,
+                1,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Gungoose_farA": [
+        {
+          "event": "16c57452",
+          "banque": "969f4dc6",
+          "gain_normalisation_db": 2.271,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_A.wav",
+              "duree_s": 2.753,
+              "crete_dbfs": -1,
+              "rms_dbfs": -19.86,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Gungoose_farB": [
+        {
+          "event": "daaf2744",
+          "banque": "969f4dc6",
+          "gain_normalisation_db": -4.552,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_B.wav",
+              "duree_s": 4.524,
+              "crete_dbfs": -1,
+              "rms_dbfs": -21.255,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Scorpion_chenilles_boucle8s": [
+        {
+          "event": "d5c7daeb",
+          "banque": "05a51e0a",
+          "gain_normalisation_db": 22,
+          "fichiers": [
+            {
+              "fichier": "chenilles_boucle8s.wav",
+              "duree_s": 8.73,
+              "crete_dbfs": -1,
+              "rms_dbfs": -10.691,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Scorpion_explosion": [
+        {
+          "event": "dcc7bca1",
+          "banque": "94d43e95",
+          "gain_normalisation_db": -27.053,
+          "fichiers": [
+            {
+              "fichier": "explosion.wav",
+              "duree_s": 5.186,
+              "crete_dbfs": -1.857,
+              "rms_dbfs": -20.012,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v2.wav",
+              "duree_s": 5.186,
+              "crete_dbfs": -2.983,
+              "rms_dbfs": -22.738,
+              "canaux": 2,
+              "variantes": [
+                0,
+                1,
+                4,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v3.wav",
+              "duree_s": 5.038,
+              "crete_dbfs": -1,
+              "rms_dbfs": -19.413,
+              "canaux": 2,
+              "variantes": [
+                4,
+                3,
+                1,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Scorpion_farA": [
+        {
+          "event": "7b1d99fe",
+          "banque": "94d43e95",
+          "gain_normalisation_db": -5.293,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_A.wav",
+              "duree_s": 5.486,
+              "crete_dbfs": -1,
+              "rms_dbfs": -20.255,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Scorpion_farB": [
+        {
+          "event": "651b5570",
+          "banque": "94d43e95",
+          "gain_normalisation_db": -3.153,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_B.wav",
+              "duree_s": 5.062,
+              "crete_dbfs": -1,
+              "rms_dbfs": -20.146,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Scorpion_moteur_amorce": [
+        {
+          "event": "0134da4e",
+          "banque": "05a51e0a",
+          "gain_normalisation_db": 14.499,
+          "fichiers": [
+            {
+              "fichier": "moteur_amorce.wav",
+              "duree_s": 3.541,
+              "crete_dbfs": -1,
+              "rms_dbfs": -21.351,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Scorpion_moteur_conduite_boucle8s": [
+        {
+          "event": "951f76c0",
+          "banque": "05a51e0a",
+          "gain_normalisation_db": -10.001,
+          "fichiers": [
+            {
+              "fichier": "moteur_conduite_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1.136,
+              "rms_dbfs": -19.159,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "moteur_conduite_boucle8s_v2.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -19.067,
+              "canaux": 2,
+              "variantes": [
+                2,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Scorpion_moteur_plein_regime_boucle8s": [
+        {
+          "event": "951f76c0",
+          "banque": "05a51e0a",
+          "gain_normalisation_db": -9.716,
+          "fichiers": [
+            {
+              "fichier": "moteur_plein_regime_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -19.302,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Scorpion_moteur_queue": [
+        {
+          "event": "7f6a7624",
+          "banque": "05a51e0a",
+          "gain_normalisation_db": 18.443,
+          "fichiers": [
+            {
+              "fichier": "moteur_queue.wav",
+              "duree_s": 1.152,
+              "crete_dbfs": -1,
+              "rms_dbfs": -17.399,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Warthog_roquettes_explosion": [
+        {
+          "event": "2152102c",
+          "banque": "c468fb55",
+          "gain_normalisation_db": -23.335,
+          "fichiers": [
+            {
+              "fichier": "explosion.wav",
+              "duree_s": 4.842,
+              "crete_dbfs": -1.53,
+              "rms_dbfs": -22.368,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v2.wav",
+              "duree_s": 4.842,
+              "crete_dbfs": -2.262,
+              "rms_dbfs": -21.76,
+              "canaux": 2,
+              "variantes": [
+                0,
+                1,
+                4,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v3.wav",
+              "duree_s": 3.469,
+              "crete_dbfs": -1,
+              "rms_dbfs": -21.007,
+              "canaux": 2,
+              "variantes": [
+                4,
+                3,
+                1,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Warthog_roquettes_farA": [
+        {
+          "event": "50f7b5c5",
+          "banque": "c468fb55",
+          "gain_normalisation_db": 3.916,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_A.wav",
+              "duree_s": 3.185,
+              "crete_dbfs": -1,
+              "rms_dbfs": -19.527,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Warthog_roquettes_farB": [
+        {
+          "event": "29082103",
+          "banque": "c468fb55",
+          "gain_normalisation_db": -5.999,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_B.wav",
+              "duree_s": 5.135,
+              "crete_dbfs": -1,
+              "rms_dbfs": -22.769,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Warthog_roquettes_moteur_conduite_boucle8s": [
+        {
+          "event": "68b1a949",
+          "banque": "a52af042",
+          "gain_normalisation_db": -8.695,
+          "fichiers": [
+            {
+              "fichier": "moteur_conduite_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1.022,
+              "rms_dbfs": -21.616,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "moteur_conduite_boucle8s_v2.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -21.717,
+              "canaux": 2,
+              "variantes": [
+                2,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Warthog_roquettes_moteur_plein_regime_boucle8s": [
+        {
+          "event": "68b1a949",
+          "banque": "a52af042",
+          "gain_normalisation_db": -8.445,
+          "fichiers": [
+            {
+              "fichier": "moteur_plein_regime_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -18.776,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Warthog_roquettes_roues_combustion_boucle8s": [
+        {
+          "event": "38b83eb8",
+          "banque": "a52af042",
+          "gain_normalisation_db": -11.539,
+          "fichiers": [
+            {
+              "fichier": "roues_combustion_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -22.017,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Wasp_explosion": [
+        {
+          "event": "2152102c",
+          "banque": "c468fb55",
+          "gain_normalisation_db": -23.335,
+          "fichiers": [
+            {
+              "fichier": "explosion.wav",
+              "duree_s": 4.842,
+              "crete_dbfs": -1.53,
+              "rms_dbfs": -22.368,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v2.wav",
+              "duree_s": 4.842,
+              "crete_dbfs": -2.262,
+              "rms_dbfs": -21.76,
+              "canaux": 2,
+              "variantes": [
+                0,
+                1,
+                4,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v3.wav",
+              "duree_s": 3.469,
+              "crete_dbfs": -1,
+              "rms_dbfs": -21.007,
+              "canaux": 2,
+              "variantes": [
+                4,
+                3,
+                1,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Wasp_farA": [
+        {
+          "event": "50f7b5c5",
+          "banque": "c468fb55",
+          "gain_normalisation_db": 3.916,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_A.wav",
+              "duree_s": 3.185,
+              "crete_dbfs": -1,
+              "rms_dbfs": -19.527,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Wasp_farB": [
+        {
+          "event": "29082103",
+          "banque": "c468fb55",
+          "gain_normalisation_db": -5.999,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_B.wav",
+              "duree_s": 5.135,
+              "crete_dbfs": -1,
+              "rms_dbfs": -22.769,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Wraith_contact_antigrav_boucle8s": [
+        {
+          "event": "46b14f04",
+          "banque": "fda12da2",
+          "gain_normalisation_db": -14.585,
+          "fichiers": [
+            {
+              "fichier": "contact_antigrav_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -17.532,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Wraith_explosion": [
+        {
+          "event": "1bf6fdde",
+          "banque": "2eaae6d7",
+          "gain_normalisation_db": -18.718,
+          "fichiers": [
+            {
+              "fichier": "explosion.wav",
+              "duree_s": 5.363,
+              "crete_dbfs": -1,
+              "rms_dbfs": -19.041,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v2.wav",
+              "duree_s": 5.363,
+              "crete_dbfs": -1.146,
+              "rms_dbfs": -19.365,
+              "canaux": 2,
+              "variantes": [
+                0,
+                1,
+                4,
+                0
+              ]
+            },
+            {
+              "fichier": "explosion_v3.wav",
+              "duree_s": 5.28,
+              "crete_dbfs": -1.494,
+              "rms_dbfs": -18.248,
+              "canaux": 2,
+              "variantes": [
+                4,
+                3,
+                1,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Wraith_farA": [
+        {
+          "event": "df41ac8b",
+          "banque": "2eaae6d7",
+          "gain_normalisation_db": -9.332,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_A.wav",
+              "duree_s": 3.98,
+              "crete_dbfs": -1,
+              "rms_dbfs": -27.616,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Wraith_farB": [
+        {
+          "event": "f97fc935",
+          "banque": "2eaae6d7",
+          "gain_normalisation_db": -13.903,
+          "fichiers": [
+            {
+              "fichier": "explosion_lointaine_B.wav",
+              "duree_s": 4.933,
+              "crete_dbfs": -1,
+              "rms_dbfs": -23.1,
+              "canaux": 2,
+              "variantes": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Wraith_moteur_boost_boucle8s": [
+        {
+          "event": "aa6215eb",
+          "banque": "fda12da2",
+          "gain_normalisation_db": -2.677,
+          "fichiers": [
+            {
+              "fichier": "moteur_boost_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -17.193,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "Wraith_moteur_conduite_boucle8s": [
+        {
+          "event": "aa6215eb",
+          "banque": "fda12da2",
+          "gain_normalisation_db": -3.646,
+          "fichiers": [
+            {
+              "fichier": "moteur_conduite_boucle8s.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -18.356,
+              "canaux": 2,
+              "variantes": [
+                0,
+                0
+              ]
+            },
+            {
+              "fichier": "moteur_conduite_boucle8s_v2.wav",
+              "duree_s": 8,
+              "crete_dbfs": -1,
+              "rms_dbfs": -18.271,
+              "canaux": 2,
+              "variantes": [
+                2,
+                0
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "alerte_v3f_deplacement": "LES FICHIERS deplacement/moteur_*.wav ET deplacement/contact_*.wav DE rev11 SONT DES SONS DE TIR. Preuve : le champ nomme « Weapon Fire Sound » du tag weap de chaque vehicule designe exactement le couple d'evenements que V3E a rendus sous ces noms (Scorpion 251190f3/951f76c0, Warthog 38b83eb8/68b1a949, Wasp e22a0d32/b0554fc9 et 5baca8ee/ad6b4715, Falcon d36e3c93/2b145170, Ghost a91f9f78/603d9e29, Banshee bdb30da6/851558f7 et f76415db/6ed9c3bc, Wraith 46b14f04/aa6215eb, Chopper 66b341e8/1adf8067). Le lot V3F NE SUPPRIME RIEN (hors perimetre) : il livre les memes evenements sous tir/, au bon nom, au bon etat de switch. Le vrai deplacement reste le lsnd PARTAGE 06ba1096 / banque e793c135 (section Mouvement_generique_partage).",
+  "tir_covenant_v3f": {
+    "date": "2026-09-02",
+    "rapport": "V3F_TIRS_COVENANT_2026-09-02.md",
+    "outil_ajoute": "cmd/weapon-sounds, mode `tir-vehi` (tir_vehicules.go, 204 L) : vehi -> refs weap INLINE -> champ nomme « Weapon Fire Sounds » -> tags lsnd/snd! -> sbnk + mots. Module any/globals/common-rtx-new.module.",
+    "trois_preuves": {
+      "1_champ_nomme": "Le tag `weap` designe son son de tir par le champ « Weapon Fire Sound » de weap.xml. Le tag de son ainsi designe porte, dans son corps, EXACTEMENT DEUX identifiants d'evenement de la banque du vehicule (sur 7 a 14 evenements presents). Probabilite de coincidence sur 94 a 120 mots u32 : ~4e-7.",
+      "2_mono_stereo": "Regle etablie par le lot armes (PLAN_EXTRACTION_SONS_ARMES, 2026-08-15) : « les evenements vont par paires mono/stereo : troisieme et premiere personne ». Verifiee ici : dans chacun des cinq couples designes, un evenement n'a QUE des medias mono (3e personne) et l'autre QUE des medias stereo (1re personne). 0 exception sur 10 evenements.",
+      "3_cadence": "La cadence declaree par le tag `weap` (barrels -> rounds per second) multipliee par le nombre de canons egale la cadence du conteneur (AkTransitionMode 5). Ghost 225 cpm x2 = 450/min contre 0,130 s = 461/min ; Banshee 240 x2 = 480 contre 0,125 s = 480 ; Chopper 120 x2 = 240 contre 0,250 s = 240. Temoin UNSC : Falcon LMG 780 cpm contre 0,077 s = 779/min."
+    },
+    "temoin_de_methode": "La meme chaine, appliquee aux CINQ vehicules dont l'utilisateur a valide les tirs (Scorpion, Warthog, Wasp, Gungoose, Falcon), retombe sur les evenements deja livres : Scorpion 251190f3 (3P, mono, 2,25 s) / 951f76c0 (1P, stereo, 6,34 s) contre tir_M1_3p 2,95 s / tir_M1_1p 7,51 s du manifeste rev9. La methode n'a donc pas ete calibree sur les covenant : elle est verifiee sur du deja-accepte.",
+    "switch_2275666646": {
+      "nature": "ESPACE DE L'AUDITEUR (reverberation), pas un regime moteur. Huit des neuf etats sont casses par hachage FNV-1 32 bits (minuscules, sans separateur).",
+      "etats": {
+        "163696720": "interiornarrow",
+        "356702912": "exteriorsmall (DEFAUT des banques Wraith, Chopper, Banshee-6ed9c3bc, et cote UNSC)",
+        "1093928064": "NON CASSE (balayage de ~30 M de noms candidats infructueux) ; il pointe sur un enfant propre, donc ce n'est pas un alias",
+        "1136871302": "interiorlarge",
+        "1248419637": "interiormed",
+        "1975887784": "exteriorlarge",
+        "2311227951": "exteriormed",
+        "3561860439": "exterioropen (DEFAUT des banques Ghost et Banshee-851558f7)",
+        "3707760930": "interiorsmall"
+      },
+      "consequence": "rev11 lisait ces etats comme cinq paliers de regime monotone et rendait le « palier 4 » (1248419637 = interiormed) : c'est une reverberation d'interieur moyen. Le lot V3F rend l'etat par DEFAUT de la banque, toujours exterieur."
+    },
+    "regle_de_rendu": {
+      "coups": "-mode rendu-event -duree 0 -tirages 2, une SEULE normalisation a -1 dBFS pour les deux tirages. Tirage 1 = variante d'indice 0 sur chaque couche (convention V3E) ; tirage 2 = tirage aleatoire reel. Graine 7, portee a 11 quand la graine 7 retombait sur l'indice 0 et livrait deux fichiers identiques (Chopper 1P, Wraith 1P, Banshee M2 1P).",
+      "rafales": "-duree 3 (CHOIX DECLARE, 3,00 s de declenchements a la cadence reelle du conteneur), un seul tirage. Absentes pour les armes one-shot (Wraith, Banshee M2). tir_RAFALE.wav = copie de tir_RAFALE_M1_3p.wav (la 3e personne est la perspective du rejeu 2D, decision produit du lot armes).",
+      "medias": "wem du .pck du vehicule (complets) quand ils y sont, wem embarques du chunk DIDX de la banque sinon. Le decodage vgmstream est identique au bit pres a celui du dossier utilisateur (248/78/230/78 fichiers compares, ecart de duree max 0,0000 s).",
+      "pas_d_egalisation": "aucune egalisation, aucune compression, aucun limiteur. Une seule multiplication scalaire apres la somme."
+    },
+    "vehicules": [
+      {
+        "nom": "Ghost",
+        "banque": "ccd43fa8 (pc/globals/common)",
+        "vehi": [
+          "0000d3dc",
+          "5b80c406",
+          "9af9e693"
+        ],
+        "weap": "00015435",
+        "tag_son": "lsnd 809481d1",
+        "cadence_tag_cpm": 225,
+        "canons": 2,
+        "cadence_conteneur_s": 0.13,
+        "arme": "canons a plasma jumeles (tir continu)",
+        "event_3p": {
+          "event": "a91f9f78",
+          "couches": 3,
+          "variantes": [
+            16,
+            15,
+            16
+          ],
+          "bus": "8165b6c5",
+          "wems": 47,
+          "dans_le_pck": 47,
+          "part_du_dossier_utilisateur_pct": 18.9,
+          "canaux": "mono",
+          "duree_medias_s": [
+            0.12,
+            0.68
+          ],
+          "gain_amont_db": -12,
+          "ranged_volume_db": [
+            -3,
+            0
+          ],
+          "ranged_pitch_cents": [
+            [
+              -80,
+              80
+            ],
+            [
+              -85,
+              80
+            ],
+            [
+              -40,
+              40
+            ]
+          ]
+        },
+        "event_1p": {
+          "event": "603d9e29",
+          "etat_rendu": "3561860439 (exterioropen, DEFAUT)",
+          "couches": 2,
+          "variantes": [
+            24,
+            1
+          ],
+          "bus": [
+            "5a880943",
+            "1f17314c"
+          ],
+          "wems_tous_etats": 121,
+          "dans_le_pck": 100,
+          "part_du_dossier_utilisateur_pct": 40.2,
+          "canaux": "stereo",
+          "gain_amont_db": [
+            -7,
+            -4
+          ],
+          "cadence_s": [
+            0.13,
+            0.1
+          ]
+        },
+        "fichiers": [
+          {
+            "fichier": "tir_M1_3p_1.wav",
+            "duree_s": 0.128,
+            "rms_dbfs": -12.76,
+            "centroide_hz": 1788
+          },
+          {
+            "fichier": "tir_M1_3p_2.wav",
+            "duree_s": 0.645,
+            "rms_dbfs": -20,
+            "centroide_hz": 2068
+          },
+          {
+            "fichier": "tir_M1_1p_1.wav",
+            "duree_s": 0.678,
+            "rms_dbfs": -19.5,
+            "centroide_hz": 4996
+          },
+          {
+            "fichier": "tir_M1_1p_2.wav",
+            "duree_s": 0.125,
+            "rms_dbfs": -15.59,
+            "centroide_hz": 3258
+          },
+          {
+            "fichier": "tir_RAFALE_M1_3p.wav",
+            "duree_s": 3,
+            "rms_dbfs": -14.53,
+            "centroide_hz": 2083
+          },
+          {
+            "fichier": "tir_RAFALE_M1_1p.wav",
+            "duree_s": 3,
+            "rms_dbfs": -12.22,
+            "centroide_hz": 2908
+          },
+          {
+            "fichier": "tir_RAFALE.wav",
+            "duree_s": 3,
+            "rms_dbfs": -14.53,
+            "centroide_hz": 2083
+          }
+        ]
+      },
+      {
+        "nom": "Banshee",
+        "banque": "c682f736 (pc/globals/common)",
+        "vehi": [
+          "000026ed",
+          "0001530a",
+          "c6e79dcc"
+        ],
+        "armes": [
+          {
+            "mode": "M1",
+            "weap": "0000aa68",
+            "tag_son": "lsnd 572c0c57",
+            "cadence_tag_cpm": 240,
+            "canons": 2,
+            "cadence_conteneur_s": 0.125,
+            "arme": "canons a plasma jumeles (tir continu)"
+          },
+          {
+            "mode": "M2",
+            "weap": "0000aa69",
+            "tag_son": "snd! dc3d707b",
+            "cadence_tag_cpm": null,
+            "cadence_conteneur_s": 0,
+            "arme": "tir lourd unique (bombe / canon a combustible) — aucune cadence declaree, aucun conteneur en boucle"
+          }
+        ],
+        "event_M1_3p": {
+          "event": "bdb30da6",
+          "couches": 3,
+          "variantes": [
+            19,
+            19,
+            19
+          ],
+          "bus": "8165b6c5",
+          "wems": 57,
+          "dans_le_pck": 57,
+          "part_du_dossier_utilisateur_pct": 24.7,
+          "canaux": "mono",
+          "duree_medias_s": [
+            0.12,
+            0.16
+          ],
+          "gain_amont_db": -7
+        },
+        "event_M1_1p": {
+          "event": "851558f7",
+          "etat_rendu": "3561860439 (exterioropen, DEFAUT)",
+          "couches": 2,
+          "variantes": [
+            26,
+            1
+          ],
+          "bus": [
+            "5a880943",
+            "1f17314c"
+          ],
+          "wems_tous_etats": 131,
+          "dans_le_pck": 0,
+          "part_du_dossier_utilisateur_pct": 0,
+          "canaux": "stereo",
+          "note": "SEUL evenement retenu dont AUCUN media n'est dans le .pck : ses 131 medias vivent uniquement dans le chunk DIDX de la banque. Son identification ne repose donc PAS sur le recoupement de dossier mais sur le champ nomme + la regle mono/stereo + la cadence."
+        },
+        "event_M2_3p": {
+          "event": "f76415db",
+          "couches": 3,
+          "variantes": [
+            6,
+            6,
+            6
+          ],
+          "bus": "8165b6c5",
+          "wems": 18,
+          "dans_le_pck": 18,
+          "part_du_dossier_utilisateur_pct": 7.8,
+          "canaux": "mono",
+          "duree_medias_s": [
+            1.2,
+            1.3
+          ]
+        },
+        "event_M2_1p": {
+          "event": "6ed9c3bc",
+          "etat_rendu": "356702912 (exteriorsmall, DEFAUT)",
+          "couches": 2,
+          "variantes": [
+            6,
+            1
+          ],
+          "bus": [
+            "5a880943",
+            "1f17314c"
+          ],
+          "wems_tous_etats": 31,
+          "dans_le_pck": 30,
+          "part_du_dossier_utilisateur_pct": 13,
+          "canaux": "stereo"
+        },
+        "fichiers": [
+          {
+            "fichier": "tir_M1_3p_1.wav",
+            "duree_s": 0.125,
+            "rms_dbfs": -15.61,
+            "centroide_hz": 2113
+          },
+          {
+            "fichier": "tir_M1_3p_2.wav",
+            "duree_s": 0.125,
+            "rms_dbfs": -16.3,
+            "centroide_hz": 2227
+          },
+          {
+            "fichier": "tir_M1_1p_1.wav",
+            "duree_s": 0.125,
+            "rms_dbfs": -12.52,
+            "centroide_hz": 2861
+          },
+          {
+            "fichier": "tir_M1_1p_2.wav",
+            "duree_s": 0.125,
+            "rms_dbfs": -12.51,
+            "centroide_hz": 3013
+          },
+          {
+            "fichier": "tir_M2_3p_1.wav",
+            "duree_s": 1.283,
+            "rms_dbfs": -17.77,
+            "centroide_hz": 1498
+          },
+          {
+            "fichier": "tir_M2_3p_2.wav",
+            "duree_s": 1.26,
+            "rms_dbfs": -17.19,
+            "centroide_hz": 1475
+          },
+          {
+            "fichier": "tir_M2_1p_1.wav",
+            "duree_s": 5.574,
+            "rms_dbfs": -21.12,
+            "centroide_hz": 1791
+          },
+          {
+            "fichier": "tir_M2_1p_2.wav",
+            "duree_s": 6.554,
+            "rms_dbfs": -22.11,
+            "centroide_hz": 1847
+          },
+          {
+            "fichier": "tir_RAFALE_M1_3p.wav",
+            "duree_s": 3,
+            "rms_dbfs": -16.29,
+            "centroide_hz": 2711
+          },
+          {
+            "fichier": "tir_RAFALE_M1_1p.wav",
+            "duree_s": 3,
+            "rms_dbfs": -12.59,
+            "centroide_hz": 2804
+          },
+          {
+            "fichier": "tir_RAFALE.wav",
+            "duree_s": 3,
+            "rms_dbfs": -16.29,
+            "centroide_hz": 2711
+          }
+        ]
+      },
+      {
+        "nom": "Wraith",
+        "banque": "fda12da2 (pc/globals/common)",
+        "vehi": [
+          "233c877d"
+        ],
+        "weap": "121b4009",
+        "tag_son": "snd! 5116c72e",
+        "cadence_tag_cpm": null,
+        "cadence_conteneur_s": 0,
+        "arme": "mortier a plasma — one-shot : aucune cadence declaree, conteneurs en mode 0 (pas de boucle). AUCUNE rafale livree.",
+        "event_3p": {
+          "event": "46b14f04",
+          "couches": 3,
+          "variantes": [
+            6,
+            6,
+            6
+          ],
+          "bus": "8165b6c5",
+          "wems": 18,
+          "dans_le_pck": 18,
+          "part_du_dossier_utilisateur_pct": 22.8,
+          "canaux": "mono",
+          "duree_medias_s": [
+            1.89,
+            3.6
+          ],
+          "gain_amont_db": -8
+        },
+        "event_1p": {
+          "event": "aa6215eb",
+          "etat_rendu": "356702912 (exteriorsmall, DEFAUT)",
+          "couches": 2,
+          "variantes": [
+            6,
+            1
+          ],
+          "bus": [
+            "5a880943",
+            "1f17314c"
+          ],
+          "wems_tous_etats": 31,
+          "dans_le_pck": 30,
+          "part_du_dossier_utilisateur_pct": 38,
+          "canaux": "stereo"
+        },
+        "fichiers": [
+          {
+            "fichier": "tir_M1_3p_1.wav",
+            "duree_s": 3.2,
+            "rms_dbfs": -20.04,
+            "centroide_hz": 1973
+          },
+          {
+            "fichier": "tir_M1_3p_2.wav",
+            "duree_s": 3.2,
+            "rms_dbfs": -21.1,
+            "centroide_hz": 2080
+          },
+          {
+            "fichier": "tir_M1_1p_1.wav",
+            "duree_s": 6.845,
+            "rms_dbfs": -22.01,
+            "centroide_hz": 2102
+          },
+          {
+            "fichier": "tir_M1_1p_2.wav",
+            "duree_s": 6.845,
+            "rms_dbfs": -21.75,
+            "centroide_hz": 2015
+          }
+        ]
+      },
+      {
+        "nom": "Chopper",
+        "banque": "1bb9f097 (pc/globals/common)",
+        "vehi": [
+          "002ba902",
+          "3d4a8a5a"
+        ],
+        "weap": "b40e9618",
+        "tag_son": "lsnd f87b01a8",
+        "cadence_tag_cpm": 120,
+        "canons": 2,
+        "cadence_conteneur_s": 0.25,
+        "arme": "canons jumeles (tir continu)",
+        "event_3p": {
+          "event": "66b341e8",
+          "couches": 3,
+          "variantes": [
+            6,
+            6,
+            6
+          ],
+          "bus": "8165b6c5",
+          "wems": 18,
+          "dans_le_pck": 18,
+          "part_du_dossier_utilisateur_pct": 22.8,
+          "canaux": "mono",
+          "duree_medias_s": [
+            0.99,
+            1.54
+          ],
+          "gain_amont_db": -8,
+          "delai_s": 0.038
+        },
+        "event_1p": {
+          "event": "1adf8067",
+          "etat_rendu": "356702912 (exteriorsmall, DEFAUT)",
+          "couches": 2,
+          "variantes": [
+            6,
+            1
+          ],
+          "bus": [
+            "5a880943",
+            "1f17314c"
+          ],
+          "wems_tous_etats": 31,
+          "dans_le_pck": 30,
+          "part_du_dossier_utilisateur_pct": 38,
+          "canaux": "stereo",
+          "delai_s": 0.038
+        },
+        "fichiers": [
+          {
+            "fichier": "tir_M1_3p_1.wav",
+            "duree_s": 1.464,
+            "rms_dbfs": -25.29,
+            "centroide_hz": 2628
+          },
+          {
+            "fichier": "tir_M1_3p_2.wav",
+            "duree_s": 1.444,
+            "rms_dbfs": -25.73,
+            "centroide_hz": 2646
+          },
+          {
+            "fichier": "tir_M1_1p_1.wav",
+            "duree_s": 4.398,
+            "rms_dbfs": -21.82,
+            "centroide_hz": 2724
+          },
+          {
+            "fichier": "tir_M1_1p_2.wav",
+            "duree_s": 4.366,
+            "rms_dbfs": -22.13,
+            "centroide_hz": 2634
+          },
+          {
+            "fichier": "tir_RAFALE_M1_3p.wav",
+            "duree_s": 3.038,
+            "rms_dbfs": -18.15,
+            "centroide_hz": 2880
+          },
+          {
+            "fichier": "tir_RAFALE_M1_1p.wav",
+            "duree_s": 3.038,
+            "rms_dbfs": -12.56,
+            "centroide_hz": 3416
+          },
+          {
+            "fichier": "tir_RAFALE.wav",
+            "duree_s": 3.038,
+            "rms_dbfs": -18.15,
+            "centroide_hz": 2880
+          }
+        ]
+      }
+    ],
+    "dossiers_embarques_utilisateur": "INEXPLOITABLES pour ce lot, et c'est mesure : les quatre dossiers `*_EMBARQUES` du poste utilisateur ont une intersection VIDE avec le chunk DIDX de la vraie banque du vehicule (0/65 Ghost, 0/52 Wraith, 0/279 Banshee, 0/40 Chopper) alors que le dossier de base y est a 100 % (248/248, 78/78, 230/230, 78/78). Cause identifiee pour le Ghost : `Covenant_ghost_EMBARQUES` est identique fichier pour fichier (65/65) a `bt_bank01862ab3_EMB`, c'est-a-dire au DIDX de la banque 01862ab3 — celle du Warthog (erreur d'attribution corrigee par V3D §10). La cle « 1re personne = _EMBARQUES » ne tient donc pas ; c'est la regle MONO/STEREO qui departage les perspectives.",
+    "reserves": [
+      "Le juge final reste l'utilisateur : aucune de ces reconstructions n'a ete comparee a une capture en jeu.",
+      "Les gains de bus restent inconnus (aucun objet Bus dans les banques ouvertes) : exacts a l'interieur d'un bus, decales d'une constante inconnue entre deux bus.",
+      "La duree de rafale (3,00 s) est un CHOIX, pas une mesure : la recette de la rafale du lot du 2026-08-31 n'est pas reproductible depuis les rapports.",
+      "L'etat 1093928064 du groupe 2275666646 n'est pas casse.",
+      "Le nombre de canons (x2) qui ferme la preuve de cadence est une connaissance du jeu, pas une lecture de tag : le tag ne declare que la cadence par canon."
+    ]
+  }
+}

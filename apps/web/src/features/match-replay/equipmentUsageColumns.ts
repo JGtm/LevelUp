@@ -19,6 +19,7 @@ import { formatDurationMMSS } from '@/lib/formatters/duration'
 import { catalogText } from './catalogLabel'
 import { PLACEMENT_RENDER } from './equipmentPlacementsLayer'
 import type { EquipmentUsage, EquipmentUsageTally } from './equipmentUsageLogic'
+import { isGameChangerFamily } from './gameChangers'
 import type { ReplayLocale } from './i18n'
 import type { ReplayText } from './i18nContract'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -80,6 +81,14 @@ export interface UsageColumn {
   format: (value: number) => string
   /** La colonne porte une durée : sa graduation médiane ne s'arrondit pas à l'entier. */
   duration?: boolean
+  /**
+   * LA FAMILLE QUE LE VOTE JUGE (repli « game changers », plan 2026-09-05) : famille de pose
+   * ou de socle (`sensor`, `powerup_camo`), d'épisode (`camo`) ou de capacité (`grapple`) —
+   * c'est elle que `partitionUsageGroups` passe à `isGameChangerFamily`. ABSENTE = colonne
+   * HORS VOTE, TOUJOURS VISIBLE : les grenades, que l'utilisateur a déjà tranchées hors des
+   * équipements (décision D4) — pas un défaut de prudence, une exclusion écrite.
+   */
+  family?: string
 }
 
 /** Un groupe de colonnes : l'en-tête de premier niveau et sa réserve de mesure. */
@@ -153,41 +162,13 @@ export function usageColumnGroups(
           label: u.groupGrapple,
           value: (x) => intValue(x.grapplePulls),
           format: intFormat,
+          // Identifiant stable du document — la même clé que `PLACEMENT_RENDER.grapple`.
+          family: 'grapple',
         },
       ],
     })
   }
-  if (usage.columns.episodes.length > 0) {
-    // Lu UNE FOIS par appel, fermé sur les cellules : `killsRead` est une propriété du
-    // MATCH entier (cf. EquipmentUsageCoverage), pas d'un joueur ni d'une famille.
-    const killsRead = usage.coverage.killsRead
-    groups.push({
-      key: 'episodes',
-      label: u.groupActive,
-      hint: u.groupActiveHint,
-      columns: usage.columns.episodes.flatMap((fam) => [
-        {
-          key: `${fam}.count`,
-          label: `${u.activeFamily[fam]} (${u.activeCount})`,
-          value: (x: EquipmentUsageTally) => intValue(x.episodes[fam]?.count),
-          format: intFormat,
-        },
-        {
-          key: `${fam}.ms`,
-          label: `${u.activeFamily[fam]} (${u.activeDuration})`,
-          value: (x: EquipmentUsageTally) => durationValue(x.episodes[fam]?.ms),
-          format: durationFormat,
-          duration: true,
-        },
-        {
-          key: `${fam}.kills`,
-          label: u.activeKillsFamily[fam],
-          value: (x: EquipmentUsageTally) => killsValue(x.episodes[fam]?.kills, killsRead),
-          format: intFormat,
-        },
-      ]),
-    })
-  }
+  if (usage.columns.episodes.length > 0) groups.push(activeEpisodesGroup(usage, u))
   for (const [key, families, label, hint, pick] of [
     ['deployed', usage.columns.deployed, u.groupDeployed, u.groupDeployedHint, 'deployed'],
     ['dropped', usage.columns.dropped, u.groupDropped, u.groupDroppedHint, 'dropped'],
@@ -202,6 +183,7 @@ export function usageColumnGroups(
         label: equipmentFamilyLabel(family, t),
         value: (x: EquipmentUsageTally) => intValue(x[pick][family]),
         format: intFormat,
+        family,
       })),
     })
   }
@@ -210,6 +192,8 @@ export function usageColumnGroups(
       key: 'grenades',
       label: u.groupGrenades,
       hint: u.groupGrenadesHint,
+      // AUCUNE `family` : les grenades sont HORS VOTE (décision D4, tranchée par
+      // l'utilisateur : ce ne sont pas des équipements) — toujours visibles, jamais repliées.
       columns: usage.columns.grenades.map((rank) => ({
         key: `grenade.${rank}`,
         label: grenadeTypeLabel(doc, rank, t, locale),
@@ -219,5 +203,105 @@ export function usageColumnGroups(
     })
   }
   return groups
+}
+
+/**
+ * activeEpisodesGroup — le groupe des ÉTATS ACTIFS et ses trois colonnes par famille (nombre,
+ * durée, frags). Extrait de `usageColumnGroups` le 2026-09-05, quand l'ajout de la famille de
+ * vote sur chaque colonne l'a fait franchir le plafond de taille de fonction du dépôt.
+ */
+function activeEpisodesGroup(
+  usage: EquipmentUsage,
+  u: ReplayText['equipmentUsage'],
+): UsageColumnGroup {
+  // Lu UNE FOIS par appel, fermé sur les cellules : `killsRead` est une propriété du
+  // MATCH entier (cf. EquipmentUsageCoverage), pas d'un joueur ni d'une famille.
+  const killsRead = usage.coverage.killsRead
+  return {
+    key: 'episodes',
+    label: u.groupActive,
+    hint: u.groupActiveHint,
+    columns: usage.columns.episodes.flatMap((fam) => [
+      {
+        key: `${fam}.count`,
+        label: `${u.activeFamily[fam]} (${u.activeCount})`,
+        value: (x: EquipmentUsageTally) => intValue(x.episodes[fam]?.count),
+        format: intFormat,
+        family: fam,
+      },
+      {
+        key: `${fam}.ms`,
+        label: `${u.activeFamily[fam]} (${u.activeDuration})`,
+        value: (x: EquipmentUsageTally) => durationValue(x.episodes[fam]?.ms),
+        format: durationFormat,
+        duration: true,
+        family: fam,
+      },
+      {
+        key: `${fam}.kills`,
+        label: u.activeKillsFamily[fam],
+        value: (x: EquipmentUsageTally) => killsValue(x.episodes[fam]?.kills, killsRead),
+        format: intFormat,
+        family: fam,
+      },
+    ]),
+  }
+}
+
+/**
+ * LA PARTITION DU REPLI « GAME CHANGERS » (plan 2026-09-05, décision D3) : ce que le vote a
+ * élu se montre d'emblée, le reste se replie derrière « Voir plus (N) ».
+ */
+export interface UsageGroupPartition {
+  /** Les groupes EN AVANT, dans l'ordre écrit de `usageColumnGroups` — grenades comprises. */
+  forward: UsageColumnGroup[]
+  /** Les groupes REPLIÉS, même ordre. Un groupe mixte (poses) figure dans les DEUX listes. */
+  collapsed: UsageColumnGroup[]
+  /** Nombre de colonnes masquées — le compte du bouton « Voir plus (N) ». Zéro = pas de bouton. */
+  collapsedColumnCount: number
+}
+
+/**
+ * partitionUsageGroups — coupe les groupes en deux d'après le VOTE, sans toucher aux mesures.
+ *
+ * L'ORDRE INTERNE SURVIT DANS CHAQUE PARTITION : les colonnes gardent l'ordre des tables de
+ * référence (`PLACEMENT_RENDER`, etc.) telles que `usageColumnGroups` les a posées — la
+ * partition filtre, elle ne trie jamais. Les épisodes camo/surbouclier passent EN AVANT par le
+ * pont D5 (`isGameChangerFamily` répond dans les deux vocabulaires) ; une colonne SANS famille
+ * est hors vote (grenades, D4) et reste visible. Les TOTAUX, footnotes et `hasData` ne passent
+ * pas par ici : ils lisent `EquipmentUsage`, que ce découpage d'affichage ne modifie pas.
+ */
+export function partitionUsageGroups(groups: UsageColumnGroup[]): UsageGroupPartition {
+  const enAvant = (c: UsageColumn): boolean => c.family == null || isGameChangerFamily(c.family)
+  const forward: UsageColumnGroup[] = []
+  const collapsed: UsageColumnGroup[] = []
+  for (const group of groups) {
+    const elues = group.columns.filter(enAvant)
+    const repliees = group.columns.filter((c) => !enAvant(c))
+    if (elues.length > 0) forward.push({ ...group, columns: elues })
+    if (repliees.length > 0) collapsed.push({ ...group, columns: repliees })
+  }
+  return {
+    forward,
+    collapsed,
+    collapsedColumnCount: collapsed.reduce((n, g) => n + g.columns.length, 0),
+  }
+}
+
+/**
+ * uniqueUsageGroups — une seule occurrence par famille de geste, la première.
+ *
+ * La légende et la vue « part de chaque équipe » raisonnent PAR FAMILLE DE GESTE (`key`), pas
+ * par colonne : quand la partition dépliée remet un groupe mixte en deux morceaux (poses en
+ * avant + poses repliées), ces deux vues n'en veulent qu'UN — même libellé, même réserve, et
+ * un compte de gestes qui vient du tally, donc identique dans les deux morceaux.
+ */
+export function uniqueUsageGroups(groups: UsageColumnGroup[]): UsageColumnGroup[] {
+  const vus = new Set<UsageGroupKey>()
+  return groups.filter((g) => {
+    if (vus.has(g.key)) return false
+    vus.add(g.key)
+    return true
+  })
 }
 

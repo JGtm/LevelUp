@@ -187,7 +187,7 @@ func TestPickupNamingSurvivesTheThreeWritingConventions(t *testing.T) {
 			nu, maj, min)
 	}
 	for _, s := range []string{nu, maj, min} {
-		k, ok := padFamilyKey(s)
+		k, ok := PadWeaponFamilyKey(s)
 		if !ok || k != "bcabbe43" {
 			t.Errorf("%q se normalise en %q (ok=%v), attendu \"bcabbe43\"", s, k, ok)
 		}

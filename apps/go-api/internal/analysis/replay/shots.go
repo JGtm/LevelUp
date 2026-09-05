@@ -48,29 +48,53 @@ func (s slotTrack) at(tUS uint64) (filmdec.BipedPosition, uint64) {
 	return best, bestD
 }
 
+// orphanShot est un événement de tir que la porte du BIPÈDE a écarté, avec la cause du rejet.
+//
+// IL EXISTE PARCE QUE LE REJET N'EST PAS LA FIN DE L'HISTOIRE. Un joueur EMBARQUÉ cesse de
+// répliquer la position de son bipède (primitive V1a.4) : ses tirs sortent d'ici sous
+// `reasonNoSlot`, non parce que le film ignorerait qui a tiré — l'événement porte son tireur —
+// mais parce qu'il n'y a AUCUNE position de bipède à poser sur la carte. La seconde porte, celle
+// du VÉHICULE (`vehicle_shots.go`), reprend exactement cette liste et lui donne la position du
+// véhicule occupé. LA CAUSE VOYAGE AVEC L'ÉVÉNEMENT : sans elle, la couverture ne saurait pas
+// quel compteur décrémenter quand la seconde porte rattache.
+type orphanShot struct {
+	ev     filmdec.FireEvent
+	reason rejectReason
+}
+
 // buildShots rattache les events de tir aux slots et produit les tirs publiables, AVEC la
 // couverture : combien rattachés sur combien disponibles, et pourquoi le reste est écarté.
 //
 // AUCUN CHEMIN DE REJET N'EST MUET ICI. C'est l'invariant que le test vérifie :
 // rattachés + rejetés = disponibles, exactement.
+//
+// LE SECOND RETOUR est la liste des ORPHELINS reprenables par la porte du véhicule : les rejets
+// « sans slot » et « hors fenêtre », ceux dont la signature est celle d'un tireur embarqué. Les
+// AMBIGUS n'y sont PAS, et c'est une mesure : l'ambiguïté naît de DEUX slots du même joueur qui
+// répliquent tous deux une position à cet instant — donc d'un joueur qui n'est PAS embarqué.
 func buildShots(pos []filmdec.BipedPosition, events []filmdec.FireEvent, origin, step uint64,
-	owner map[uint32]int) ([]Shot, LayerCoverage) {
+	owner map[uint32]int) ([]Shot, []orphanShot, LayerCoverage) {
 	cov := LayerCoverage{Available: len(events)}
 	if len(pos) == 0 || len(events) == 0 || len(owner) == 0 {
 		cov.NoSlot = len(events) // rien pour rattacher : tout est écarté, et c'est dit
-		return nil, cov
+		return nil, nil, cov
 	}
 	tracks := indexBySlot(pos)
 	var out []Shot
+	var orphans []orphanShot
 	for _, e := range events {
 		slot, reason := slotFor(tracks, owner, e.FilmIndex, e.TimestampUS)
 		if reason != reasonAttached {
 			cov.count(reason)
+			if reason == reasonNoSlot {
+				orphans = append(orphans, orphanShot{ev: e, reason: reason})
+			}
 			continue
 		}
 		p, d := tracks[slot].at(e.TimestampUS)
 		if d > shotPosToleranceUS || !p.HasWorld {
 			cov.count(reasonOutOfWindow)
+			orphans = append(orphans, orphanShot{ev: e, reason: reasonOutOfWindow})
 			continue
 		}
 		cov.count(reasonAttached)
@@ -89,7 +113,7 @@ func buildShots(pos []filmdec.BipedPosition, events []filmdec.FireEvent, origin,
 		out = append(out, s)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].T < out[j].T })
-	return out, cov
+	return out, orphans, cov
 }
 
 // indexBySlot regroupe les positions par slot, triées par instant.

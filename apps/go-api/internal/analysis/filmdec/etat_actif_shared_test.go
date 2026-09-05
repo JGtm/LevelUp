@@ -22,7 +22,7 @@ import (
 type eaFilmSetup struct {
 	dir    string
 	chunks []int
-	slots  map[uint32]bool
+	slots  SlotBand
 	lay    I0Layout
 	arch   Archetype
 }
@@ -38,8 +38,8 @@ func eaSetupBiped(t *testing.T, dir string) eaFilmSetup {
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, i)
 	}
-	slots := bipedSlotBand(dir, chunks)
-	if len(slots) == 0 {
+	slots := bipedSlotBandDir(dir, chunks)
+	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
 	}
 	lay, _, err := DetectI0Layout(dir)
@@ -224,7 +224,7 @@ func eaScanTi37Lives(t *testing.T, dir string) map[eaLifeKey]*eaLife {
 	if n == 0 {
 		t.Fatalf("aucun chunk film dans %s", dir)
 	}
-	band := worldObjectSlotBand(dir, n, EquipmentTypeIndex)
+	band := worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)
 	if len(band) == 0 {
 		t.Fatalf("aucun slot d'archétype ti=%d dans les keyframes de %s", EquipmentTypeIndex, dir)
 	}

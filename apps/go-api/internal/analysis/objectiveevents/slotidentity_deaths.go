@@ -1,6 +1,10 @@
 package objectiveevents
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // slotidentity_deaths.go — LE SECOND PONT slot statborg -> joueur : par les INSTANTS DE
 // MORT, et sans jamais consulter la base.
@@ -92,8 +96,8 @@ const (
 // disjointes, un desaccord signale que l'une des deux lit de travers, et rien ne dit laquelle.
 //
 // `deaths` vide (fil des morts illisible) : seul le pont par totaux repond, comme avant.
-func SlotIdentityResolved(src FilmSource, lines []PlayerLine, deaths []DeathInstant) (map[int]string, IdentityStats) {
-	return slotIdentityResolvedFrom(StatRecords(src), lines, deaths)
+func SlotIdentityResolved(film *filmsource.Film, lines []PlayerLine, deaths []DeathInstant) (map[int]string, IdentityStats) {
+	return slotIdentityResolvedFrom(StatRecords(film), lines, deaths)
 }
 
 // slotIdentityResolvedFrom est le coeur pur : il travaille sur des enregistrements deja
@@ -120,8 +124,8 @@ func slotIdentityResolvedFrom(recs []StatRecord, lines []PlayerLine, deaths []De
 // SlotIdentityFromDeaths apparie chaque slot statborg a un xuid par les seuls INSTANTS DE MORT
 // du film. Aucune ligne de match, aucune base — c'est ce qui le rend employable sur un film
 // tronque.
-func SlotIdentityFromDeaths(src FilmSource, deaths []DeathInstant) map[int]string {
-	return slotIdentityFromDeaths(StatRecords(src), deaths)
+func SlotIdentityFromDeaths(film *filmsource.Film, deaths []DeathInstant) map[int]string {
+	return slotIdentityFromDeaths(StatRecords(film), deaths)
 }
 
 // SlotIdentityByDeaths est la MEME regle sur des enregistrements DEJA DECODES — le suffixe de ce

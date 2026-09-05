@@ -14,12 +14,14 @@ import type {
   IntensityMatchRow,
   SessionCompareEntry,
   SessionDetailMatchRow,
+  SessionUsageBlock,
 } from '@/lib/api/types'
 
 import type { CompareScale } from './_compareScale'
 import { SessionChartStack } from './SessionChartStack'
 import { SessionMatchesTable } from './SessionMatchesTable'
 import { SessionSummaryCard } from './SessionSummaryCard'
+import { SessionUsageSection } from './SessionUsageSection'
 import { useSessionT } from './_shared'
 
 interface Props {
@@ -36,6 +38,12 @@ interface Props {
   intensityRows?: IntensityMatchRow[]
   /** Premiers frag/mort par match de la session — calculés côté Go (payload). */
   firstBlood?: FirstBloodPlayerSeriesDTO[]
+  /**
+   * Bloc « usages d'équipement, socles et objectifs » (S3) — servi UNIQUEMENT pour
+   * la session courante (le contrat ne le calcule pas pour la session comparée) :
+   * la colonne principale le passe, le drawer compare non → pas de bloc fantôme.
+   */
+  usage?: SessionUsageBlock
 }
 
 export function SessionColumnBody({
@@ -47,6 +55,7 @@ export function SessionColumnBody({
   scale,
   intensityRows,
   firstBlood,
+  usage,
 }: Props) {
   const t = useSessionT()
 
@@ -64,6 +73,11 @@ export function SessionColumnBody({
         intensityRows={intensityRows}
         firstBlood={firstBlood}
       />
+
+      {/* Blocs « usages d'équipement, socles et objectifs » (S3) — session courante
+          seulement (prop absente côté drawer). Le composant gère lui-même ses états
+          indisponible / sans film ; absent du payload → rien. */}
+      <SessionUsageSection usage={usage} meLabel={playerSlug} />
 
       {/* Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau). */}
       <div className="space-y-3">

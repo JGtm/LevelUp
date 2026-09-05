@@ -1,6 +1,10 @@
 package filmdec
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // world_object_census.go — LE RECENSEMENT des OBJETS DU MONDE aux images-clés, et la BANDE de
 // slots de leur archétype, rendus par UNE SEULE marche des images-clés.
@@ -60,16 +64,27 @@ func (k WorldObjectKeyframes) LastTimeUS() uint64 {
 // de slots de l'archétype `ti` avec le recensement des vies qui y figurent.
 //
 // HORS LIGNE (I/O disque sur tout le film).
+//
+// ScanFilmWorldObjectKeyframes est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanWorldObjectKeyframes].
 func ScanFilmWorldObjectKeyframes(dir string, ti int) WorldObjectKeyframes {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return WorldObjectKeyframes{SeenUS: map[EquipmentLifeKey][]uint64{}}
+	}
+	return ScanWorldObjectKeyframes(film, ti)
+}
+
+// ScanWorldObjectKeyframes marche les images-clés d'un film DEJA CHARGE.
+func ScanWorldObjectKeyframes(film *filmsource.Film, ti int) WorldObjectKeyframes {
 	out := WorldObjectKeyframes{SeenUS: map[EquipmentLifeKey][]uint64{}}
 	seen, others := map[uint32]bool{}, map[uint32]bool{}
-	n := CountFilmChunks(dir)
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range FilmChunkNumbers(film) {
+		data, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}

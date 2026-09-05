@@ -25,7 +25,11 @@ package filmdec
 // L'appelant doit détenir LockProcessDecode (BuildFromFilm le fait) : le hook installé est
 // un global de paquet.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // camoComponentName est l'étiquette de registre d'i28 — celle par laquelle consumeByName
 // route vers consumeUnitActiveCamoState. L'index d'itérateur est résolu PAR NOM dans le
@@ -79,25 +83,32 @@ type CamoStateStats struct {
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `camoStateHook`,
 // qui est un global de paquet. L'appelant doit détenir LockProcessDecode (BuildFromFilm le
 // fait). Le hook est restauré à la sortie, y compris en cas d'erreur.
+//
+// ScanFilmCamoStates est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanCamoStates].
 func ScanFilmCamoStates(dir string) ([]CamoRead, CamoStateStats, error) {
-	var st CamoStateStats
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
-	}
-	chunks := make([]int, 0, n)
-	for i := 1; i <= n; i++ {
-		chunks = append(chunks, i)
-	}
-	slots := bipedSlotBand(dir, chunks)
-	if len(slots) == 0 {
-		return nil, st, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
-	}
-	lay, _, err := DetectI0Layout(dir)
+	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
-		return nil, st, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
+		return nil, CamoStateStats{}, err
 	}
-	arch, err := bipedArchetype(dir)
+	return ScanCamoStates(NewFilmContext(film))
+}
+
+// ScanCamoStates décode les transmissions de la voie d'état du camouflage d'un film DEJA CHARGE.
+func ScanCamoStates(fc *FilmContext) ([]CamoRead, CamoStateStats, error) {
+	var st CamoStateStats
+	chunks := fc.ChunkNumbers()
+	if len(chunks) == 0 {
+		return nil, st, ErrNoFilmChunk
+	}
+	slots := fc.BipedSlots()
+	if slots.Count() == 0 {
+		return nil, st, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
+	}
+	lay, err := fc.I0Layout()
+	if err != nil {
+		return nil, st, fmt.Errorf("découpage i0 illisible : %w", err)
+	}
+	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return nil, st, err
 	}
@@ -106,7 +117,7 @@ func ScanFilmCamoStates(dir string) ([]CamoRead, CamoStateStats, error) {
 		i28idx = ids[0]
 	}
 	if i28idx < 0 {
-		return nil, st, fmt.Errorf("composant %q absent de l'archétype biped de %s", camoComponentName, dir)
+		return nil, st, fmt.Errorf("composant %q absent de l'archétype biped du film", camoComponentName)
 	}
 
 	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit
@@ -126,11 +137,11 @@ func ScanFilmCamoStates(dir string) ([]CamoRead, CamoStateStats, error) {
 	var out []CamoRead
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	for _, c := range chunks {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+		data, pks, ok := fc.ChunkAt(c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}

@@ -435,21 +435,20 @@ func TestPontAssembleLaSequenceCompleteAvecTrous(t *testing.T) {
 			{Index: 5, ChunkType: 3, Data: []byte("killfeed")},
 		},
 	}}
-	src, found, err := ChunkSourceForMatch(context.Background(), client, "m1")
+	film, found, err := FilmForMatch(context.Background(), client, "m1")
 	if err != nil || !found {
-		t.Fatalf("ChunkSourceForMatch: found=%v err=%v", found, err)
+		t.Fatalf("FilmForMatch: found=%v err=%v", found, err)
 	}
-	if got := src.NumChunks(); got != 6 {
+	if got := film.NumChunks(); got != 6 {
 		t.Fatalf("NumChunks = %d, attendu 6 (dimensionne sur l index MAX, pas sur le compte)", got)
 	}
 	for idx, attendu := range map[int]string{0: "entete", 2: "replication", 5: "killfeed"} {
-		b, cErr := src.Chunk(idx)
-		if cErr != nil || string(b) != attendu {
-			t.Errorf("chunk %d = %q (%v), attendu %q", idx, b, cErr, attendu)
+		if b := film.Chunk(idx); string(b) != attendu {
+			t.Errorf("chunk %d = %q, attendu %q", idx, b, attendu)
 		}
 	}
 	for _, vide := range []int{1, 3, 4} {
-		if b, _ := src.Chunk(vide); len(b) != 0 {
+		if b := film.Chunk(vide); len(b) != 0 {
 			t.Errorf("chunk %d = %q, attendu vide (le trou du manifeste)", vide, b)
 		}
 	}

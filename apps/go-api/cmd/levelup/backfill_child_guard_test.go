@@ -8,8 +8,13 @@ package main
 //  1. LE PARENT NE DECODE PAS. `BuildMatch` ne doit vivre QUE dans le fichier de l'enfant.
 //     Le jour ou quelqu'un remet un `builder.BuildMatch(...)` dans une boucle du parent
 //     « pour aller plus vite », c'est la bombe RAM qui revient — et ce test tombe.
-//  2. LE LANCEUR EST UNIQUE. Le motif parent/enfant vit dans UN fichier ; une deuxieme
-//     copie de `exec.Command` dans ce paquet doit passer par le runner partage.
+//  2. CE PAQUET NE LANCE PLUS AUCUN PROCESSUS LUI-MEME. La regle s'est DURCIE le 2026-09-03
+//     (PLAN_CUISSON_PERF item 5.4) : le motif parent/enfant ne vit plus dans un fichier de ce
+//     paquet, il vit dans `internal/filmproc` — un seul lanceur pour la passe de backfill, le
+//     post-sync, le harnais d'equivalence et l'attribution de zones. Auparavant le garde
+//     TOLERAIT `exec.CommandContext` dans `backfill_child.go` (et l'EXIGEAIT meme, pour que
+//     l'allowlist ne pourrisse pas) ; il l'interdit desormais PARTOUT dans le paquet. Une
+//     copie locale du lanceur, c'est un second protocole de codes de sortie qui derive.
 
 import (
 	"os"
@@ -22,8 +27,8 @@ import (
 //
 // `doitExister` distingue deux natures de garde. Le motif qui DOIT exister ancre le
 // blindage : s'il disparait, c'est que le decodage a demenage et que le garde-rail ne garde
-// plus rien — on veut le savoir. Le motif qui PEUT ne pas exister (une autre forme d'appel a
-// os/exec) n'est la que pour interdire une seconde copie du lanceur.
+// plus rien — on veut le savoir. Le motif qui PEUT ne pas exister n'est la que pour interdire
+// une porte : `proprietaire` vide veut dire « aucun fichier de ce paquet n'a le droit ».
 type motifGarde struct {
 	motif        string
 	proprietaire string
@@ -32,9 +37,10 @@ type motifGarde struct {
 
 var motifsGardes = []motifGarde{
 	{motif: "BuildMatch(", proprietaire: "cmd_backfill_replay_child.go", doitExister: true},
-	{motif: "exec.CommandContext", proprietaire: "backfill_child.go", doitExister: true},
-	{motif: "exec.Command(", proprietaire: "backfill_child.go"},
-	{motif: "os.StartProcess", proprietaire: "backfill_child.go"},
+	// AUCUN PROPRIETAIRE : le lancement de processus a quitte ce paquet pour `internal/filmproc`.
+	{motif: "exec.CommandContext", proprietaire: ""},
+	{motif: "exec.Command(", proprietaire: ""},
+	{motif: "os.StartProcess", proprietaire: ""},
 }
 
 // sourcesDuPaquet : les .go du paquet, tests EXCLUS (un test cite forcement les motifs).
@@ -75,11 +81,18 @@ func TestGardeRail_MotifsCentralises(t *testing.T) {
 				"le decodage a demenage, corriger le proprietaire", g.motif)
 		}
 		for _, p := range porteurs {
-			if p != g.proprietaire {
-				t.Errorf("%q apparait dans %s ; ce motif n appartient qu a %s.\n"+
-					"Le parent d une passe de cuisson NE DECODE PAS et NE LANCE PAS de processus "+
-					"hors du runner partage (cf. backfill_child.go).", g.motif, p, g.proprietaire)
+			if p == g.proprietaire {
+				continue
 			}
+			if g.proprietaire == "" {
+				t.Errorf("%q apparait dans %s ; AUCUN fichier de ce paquet n a le droit de "+
+					"lancer un processus.\nLe lanceur parent/enfant est `internal/filmproc` "+
+					"(un processus par film, plafond memoire dur, priorite CPU basse) — une "+
+					"copie locale, c est un second protocole de codes de sortie qui derive.", g.motif, p)
+				continue
+			}
+			t.Errorf("%q apparait dans %s ; ce motif n appartient qu a %s.\n"+
+				"Le parent d une passe de cuisson NE DECODE PAS.", g.motif, p, g.proprietaire)
 		}
 	}
 }

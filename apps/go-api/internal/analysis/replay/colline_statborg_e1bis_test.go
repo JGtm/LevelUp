@@ -109,7 +109,7 @@ func TestCollineStatborgE1Bis(t *testing.T) {
 		t.Skipf("film %s hors corpus E1-bis (aucun oracle gele pour lui)", short)
 	}
 
-	recs := objectiveevents.StatRecords(p2aSource(t, dir))
+	recs := objectiveevents.StatRecords(p2aBobine(t, dir))
 	if len(recs) == 0 {
 		t.Fatalf("%s : aucun enregistrement de statistiques — rien a balayer", short)
 	}

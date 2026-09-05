@@ -128,6 +128,13 @@ export interface ReplayPlaybackOptions {
    * dans un geste utilisateur, et ces deux boutons en sont (cf. `useReplaySound.wake`).
    */
   onTransportGesture: () => void
+  /**
+   * L'ÉTAT LU/PAUSE VIENT DE CHANGER (lot moteurs de véhicules, 2026-09-04). Les sons
+   * d'ÉVÉNEMENT n'en ont pas besoin — sans battement, rien ne part — mais une BOUCLE moteur
+   * en vol ne s'éteint pas toute seule : la pause doit la couper (cf.
+   * `useReplaySound.setTransportPlaying`). Optionnel : les autres appelants n'ont rien à dire.
+   */
+  onPlayingChange?: (playing: boolean) => void
 }
 
 /** Ce que la barre de lecture reçoit — l'état à afficher et les commandes. */
@@ -162,10 +169,14 @@ export interface ReplayPlayback {
 
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw } = o
-  const { soundTick, onEnded, onTransportGesture } = o
+  const { soundTick, onEnded, onTransportGesture, onPlayingChange } = o
   const sliderRef = useRef<HTMLInputElement>(null)
   // LA LECTURE AUTOMATIQUE EST UN RÉGLAGE, LU UNE FOIS (cf. l'en-tête, § du même nom).
   const [playing, setPlaying] = useState(() => readStoredFlag(AUTOPLAY_KEY, AUTOPLAY_DEFAULT))
+  // Le changement d'état lu/pause se PUBLIE (moteurs de véhicules, cf. ReplayPlaybackOptions).
+  useEffect(() => {
+    onPlayingChange?.(playing)
+  }, [playing, onPlayingChange])
   const lastFrame = Math.max(doc.frameCount - 1, 0)
   const startFrame = playWindow?.startFrame ?? 0
   const endFrame = playWindow?.endFrame ?? lastFrame

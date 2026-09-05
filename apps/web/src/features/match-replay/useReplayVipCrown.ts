@@ -6,14 +6,15 @@
  * fait par EXTRACTION. Ce hook réunit la relecture de position du VIP et le tracé par image, et
  * n'en rend au canvas que deux lignes utiles.
  *
- * LE VIP SE RELIT DANS SES TRAJECTOIRES, image par image (`posOfPlayerAt`, le même utilitaire que
- * les effets de mort et le drapeau porté) : la couronne « colle » ainsi à son marqueur, alors que
- * la période ne publie qu'un intervalle. Sans position, la couronne ne se dessine pas — elle n'a
- * pas de place propre.
+ * LE VIP SE RELIT DANS SES TRAJECTOIRES, image par image (`useCarrierPosAt`, le même utilitaire
+ * que la bombe, le crâne et le drapeau porté) : la couronne « colle » ainsi à son marqueur, alors
+ * que la période ne publie qu'un intervalle. Sans position, la couronne ne se dessine pas — elle
+ * n'a pas de place propre. VIP EMBARQUÉ : c'est la position du VÉHICULE qui répond (décision
+ * produit du 2026-09-05, cf. l'en-tête de `carrierPosition.ts`).
  */
 import { useCallback, useMemo } from 'react'
 
-import { usePlayerPosAt } from './livesPosition'
+import { useCarrierPosAt } from './carrierPosition'
 import type { CanvasView } from './objectivesLayer'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { drawVipCrown, type VipCrownInput } from './vipCrownLayer'
@@ -44,8 +45,9 @@ export function useReplayVipCrown({
 }: UseReplayVipCrownArgs): ReplayVipCrown {
   const periods = doc.vipCrown
 
-  // La relecture de position partagée (livesPosition.ts).
-  const posOf = usePlayerPosAt(doc)
+  // La relecture de position partagée (carrierPosition.ts) : embarqué -> position du véhicule,
+  // sinon celle du bipède.
+  const posOf = useCarrierPosAt(doc)
 
   const layer = useMemo<VipCrownInput>(
     () => ({ style: { ink, reducedMotion }, posOf }),

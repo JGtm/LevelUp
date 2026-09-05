@@ -162,16 +162,56 @@ func flagFreeLifeOf(id uint32, k filmdec.EquipmentLifeKey, c filmdec.EquipmentCr
 	return l
 }
 
-// flagFreeLess est l'ordre TOTAL des vies libres : instant, puis slot et generation. Sans lui,
-// le parcours de map rendrait une sortie differente a chaque execution.
+// flagFreeLess est l'ordre TOTAL des vies libres : instant, puis slot et generation, PUIS la vie
+// elle-meme. Sans lui, le parcours de map rendrait une sortie differente a chaque execution.
+//
+// POURQUOI LE DEPARTAGE PAR LA VIE (correction du 2026-09-02, item 0.4bis etendu de
+// PLAN_CUISSON_PERF). Le triplet de tete N'EST PAS total : `out` est bati en iterant la MAP
+// `byKey`, et une meme cle (slot, generation) peut porter DEUX creations au MEME instant — la
+// fin de vie est alors la creation suivante, donc l'instant lui-meme, et les deux vies sont
+// strictement ex aequo sur (T0US, slot, generation) tout en portant des positions differentes.
+// `sort.Slice` n'etant pas stable, leur rang etait tire au sort a chaque execution.
+//
+// L'ORDRE N'EST PAS COSMETIQUE : `buildObjectiveObjects` retrie cette tranche avec un
+// `sort.SliceStable`, qui RECONDUIT l'ordre d'entree pour les ex aequo — l'alea se serait donc
+// propage tel quel jusqu'a l'artefact. Le departage n'utilise QUE des donnees de la vie (fin,
+// identite d'objet, puis les echantillons dans l'ordre) : jamais une adresse memoire ni le rang
+// d'iteration de la map. Deux vies que ce comparateur ne separe pas sont identiques champ pour
+// champ. Meme patron que `lessTrack` (filmdec/projectiles.go) et `lessPlacement`
+// (filmdec/equipment_placements.go).
 func flagFreeLess(a, b flagFreeLife) bool {
 	switch {
 	case a.T0US != b.T0US:
 		return a.T0US < b.T0US
 	case a.Key.Slot != b.Key.Slot:
 		return a.Key.Slot < b.Key.Slot
+	case a.Key.Gen != b.Key.Gen:
+		return a.Key.Gen < b.Key.Gen
+	case a.T1US != b.T1US:
+		return a.T1US < b.T1US
+	case a.ID != b.ID:
+		return a.ID < b.ID
+	case len(a.Pts) != len(b.Pts):
+		return len(a.Pts) < len(b.Pts)
 	}
-	return a.Key.Gen < b.Key.Gen
+	for i := range a.Pts {
+		if a.Pts[i] != b.Pts[i] {
+			return flagFreeSampleLess(a.Pts[i], b.Pts[i])
+		}
+	}
+	return false
+}
+
+// flagFreeSampleLess ordonne deux echantillons sur TOUS leurs champs — c'est ce qui rend le
+// departage de `flagFreeLess` independant de l'ordre d'arrivee.
+func flagFreeSampleLess(a, b flagFreeSample) bool {
+	switch {
+	case a.TUS != b.TUS:
+		return a.TUS < b.TUS
+	case a.X != b.X:
+		return a.X < b.X
+	}
+	return a.Y < b.Y
 }
 
 // flagFreeDropWindowMS — l'ecart maximal, en millisecondes, entre la fin d'un portage et la

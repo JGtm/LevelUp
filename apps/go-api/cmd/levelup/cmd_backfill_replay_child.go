@@ -19,14 +19,28 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 )
+
+// outilBackfillReplay : le nom sous lequel l'enfant de la passe tient le verrou de decodage.
+// C'est ce mot que lira l'operateur a qui le verrou est refuse (cf. internal/filmproc/solo.go).
+const outilBackfillReplay = "backfill-replay"
+
+// attenteVerrouPasse : combien de temps l'enfant d'une PASSE attend son tour avant de renoncer.
+//
+// DIX MINUTES PARCE QUE C'EST PLUS LONG QUE TOUTE CUISSON CONNUE (le film le plus cher du corpus
+// se cuit en moins de deux minutes) : une attente qui expire signale donc une machine vraiment
+// occupee, pas un chevauchement ordinaire. Le refus reste possible — c'est ce qui distingue une
+// attente bornee d'un blocage.
+const attenteVerrouPasse = 10 * time.Minute
 
 // runBackfillReplayUn cuit UN film et rend le code de sortie du protocole parent/enfant.
 //
@@ -36,14 +50,27 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 	sentinelle := armerPlafondMemoire(o.memLimitGiB)
 	// Le pic part sur TOUTES les sorties ordinaires. La sortie par la sentinelle, elle,
 	// l'emet elle-meme : `os.Exit` ne joue pas les differes.
-	defer func() { emettrePicMemoire(sentinelle.picObserve()) }()
+	defer func() { filmproc.EmitPeak(sentinelle.picObserve()) }()
 
 	ctx := context.Background()
+	// LE VERROU SOLO, EN ATTENTE BORNEE (PLAN_CUISSON_PERF §3 D7). Une PASSE n'a pas de cycle
+	// suivant : lui refuser le verrou sur un simple chevauchement (un post-sync qui cuit au meme
+	// moment) transformerait un partage de machine en echec de film, et le recap accuserait le
+	// decodage. Elle attend donc son tour jusqu'a [attenteVerrouPasse], puis renonce
+	// proprement — detenteur nomme, code de PREPARATION, la passe continue avec le film suivant.
+	lock, verr := filmproc.AcquireSoloWait(ctx, cacheRoot, outilBackfillReplay, o.one, attenteVerrouPasse)
+	if verr != nil {
+		slog.ErrorContext(ctx, "backfill-replay (enfant): decodage refuse — un autre decodage tient la machine",
+			"err", verr, "match_id", o.one, "attente_max", attenteVerrouPasse)
+		return filmproc.CodePreparation
+	}
+	defer lock.Release()
+
 	builder, err := replaybuild.NewBuilder(cfg.RepoRoot, o.titleSlug)
 	if err != nil {
 		slog.ErrorContext(ctx, "backfill-replay (enfant): builder indisponible",
 			"err", err, "match_id", o.one, "title", o.titleSlug)
-		return codeEnfantPreparation
+		return filmproc.CodePreparation
 	}
 
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
@@ -62,15 +89,15 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 	switch {
 	case berr == nil:
 		fmt.Printf("  %s : %d tracks, %d octets (%s)\n", o.one, out.Tracks, out.Bytes, out.Module)
-		return codeEnfantOK
+		return filmproc.CodeOK
 	case errors.Is(berr, replaybuild.ErrMapNotInCatalog):
 		fmt.Printf("  %s : carte hors catalogue (%v) — echec voulu\n", o.one, mapNames)
-		return codeEnfantHorsCatalogue
+		return filmproc.CodeSkipped
 	default:
 		slog.ErrorContext(ctx, "backfill-replay (enfant): decodage en echec",
 			"err", berr, "match_id", o.one)
 		fmt.Printf("  %s : ERREUR %v\n", o.one, berr)
-		return codeEnfantErreurDecodage
+		return filmproc.CodeFailed
 	}
 }
 

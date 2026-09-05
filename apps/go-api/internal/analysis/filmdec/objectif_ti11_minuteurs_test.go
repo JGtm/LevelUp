@@ -201,7 +201,7 @@ func mntChargerHorloge(dir string) (mntHorloge, bool) {
 		return h, false
 	}
 	debut := map[int]int{}
-	for _, m := range src.Chunks() {
+	for _, m := range src.Meta() {
 		debut[m.Index] = m.StartMS
 	}
 	n := CountFilmChunks(dir)

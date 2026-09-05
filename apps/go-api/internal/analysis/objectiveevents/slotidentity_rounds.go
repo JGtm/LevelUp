@@ -156,7 +156,17 @@ func roundStartsOf(recs []StatRecord, byRound map[int]map[int]string) []roundSta
 	for round, start := range min {
 		out = append(out, roundStart{round: round, startMS: start})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].startMS < out[j].startMS })
+	// LE NUMERO DE MANCHE DEPARTAGE, et il le faut : `out` est bati en iterant la MAP `min`,
+	// `sort.Slice` n'est pas stable, et deux manches peuvent porter le MEME instant de debut
+	// (une manche vide, ou deux enregistrements au meme horodatage). Sans ce departage, l'ordre
+	// des ex aequo changeait a chaque execution (meme defaut que lessTrack, filmdec/projectiles.go
+	// — correction du 2026-09-02, item 0.4bis de PLAN_CUISSON_PERF).
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].startMS != out[j].startMS {
+			return out[i].startMS < out[j].startMS
+		}
+		return out[i].round < out[j].round
+	})
 	return out
 }
 

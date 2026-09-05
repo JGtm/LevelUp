@@ -22,9 +22,10 @@ package killcollector
 // lecture de manifeste au lieu de deux).
 //
 // CE QUE `killsource` FAIT DE CHAQUE TYPE, verifie dans le code du decodeur :
-//   - il decompresse et decoupe en paquets TOUS les chunks qu on lui donne, sans borne d index
-//     (piege historique : l outillage de RE bornait au chunk 41, et le HIGHLIGHT d un film BTB
-//     est le n62 — le kill-feed y etait purement introuvable) ;
+//   - il lit TOUS les chunks du film qu on lui donne, sans borne d index (piege historique :
+//     l outillage de RE bornait au chunk 41, et le HIGHLIGHT d un film BTB est le n62 — le
+//     kill-feed y etait purement introuvable). La decompression et le decoupage en paquets, eux,
+//     sont faits UNE fois par `filmsource` avant l appel (lot 1 de PLAN_CUISSON_PERF) ;
 //   - il localise le HIGHLIGHT PAR SON CONTENU (le chunk qui produit le plus d evenements
 //     `kill`), donc sa position dans la sequence est libre ;
 //   - il n a pas besoin de l en-tete. Le lui donner est sans effet pour lui, et c est ce que le
@@ -41,7 +42,7 @@ import (
 	"context"
 	"fmt"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/sync/haloclient"
 )
 
@@ -51,8 +52,8 @@ type filmChunkFetcher interface {
 	GetFilmChunks(ctx context.Context, matchID string) ([]haloclient.FilmChunk, bool, error)
 }
 
-// ChunkSourceForMatch assemble la sequence de chunks d un film, dans l ordre du manifeste
-// (en-tete, replication, kill-feed).
+// FilmForMatch assemble et CHARGE le film d un match, dans l ordre du manifeste (en-tete,
+// replication, kill-feed).
 //
 // Le booleen rendu vaut false quand le film n existe pas (404/410 cote API, ou plus aucun chunk
 // disponible) : c est un cas NORMAL, pas une erreur.
@@ -61,21 +62,25 @@ type filmChunkFetcher interface {
 // la plus probable d un branchement qui n aurait telecharge que la replication. Le pont ne peut
 // pas la prevenir (le manifeste peut legitimement ne pas en declarer), mais il compte les types
 // pour que le diagnostic soit lisible cote appelant.
-func ChunkSourceForMatch(
+func FilmForMatch(
 	ctx context.Context, client filmChunkFetcher, matchID string,
-) (killsource.ChunkSource, bool, error) {
+) (*filmsource.Film, bool, error) {
 	chunks, found, err := FilmChunksForMatch(ctx, client, matchID)
 	if err != nil || !found {
 		return nil, found, err
 	}
-	return ChunkSourceOf(chunks), true, nil
+	film, err := FilmOf(chunks)
+	if err != nil {
+		return nil, true, fmt.Errorf("chargement du film %s: %w", matchID, err)
+	}
+	return film, true, nil
 }
 
 // FilmChunksForMatch : les chunks TYPES d un film, en une seule lecture de manifeste.
 //
 // C est le point d entree du collecteur, parce que lui a besoin du TYPE : les morts se
 // decodent sur la sequence complete, les tirs sur la REPLICATION_DATA seule. Rendre
-// `killsource.ChunkSource` ici perdrait cette information — d ou deux fonctions et pas une.
+// un `*filmsource.Film` ici perdrait cette information — d ou deux fonctions et pas une.
 func FilmChunksForMatch(
 	ctx context.Context, client filmChunkFetcher, matchID string,
 ) ([]haloclient.FilmChunk, bool, error) {
@@ -89,18 +94,23 @@ func FilmChunksForMatch(
 	return chunks, true, nil
 }
 
-// ChunkSourceOf assemble la sequence que le decodeur attend a partir de chunks DEJA
-// telecharges.
+// FilmOf CHARGE le film a partir de chunks DEJA telecharges : decompression et decoupage en
+// paquets, une fois pour toutes (`filmsource`, lot 1 de PLAN_CUISSON_PERF).
 //
-// Elle existe separement parce qu une passe de collecte lit le film DEUX FOIS — les morts
-// (`killsource`) et les tirs (`analysis.ScanFireEventsB5`) — et que telecharger deux fois
-// serait payer deux fois le seul cout reseau du chantier. L appelant recupere les chunks
-// TYPES une fois, en derive cette source pour les morts, et selectionne lui-meme la
-// REPLICATION_DATA pour les tirs.
-func ChunkSourceOf(chunks []haloclient.FilmChunk) killsource.ChunkSource {
-	// Les index du manifeste ne sont pas garantis contigus : on dimensionne sur le maximum
-	// observe plutot que sur le nombre d entrees, et on laisse les trous a nil. Le decodeur
-	// ignore les chunks vides — il ne compte pas sur leur position, il lit ce qu on lui donne.
+// Elle existe separement parce qu une passe de collecte lit le film PLUSIEURS FOIS — les morts
+// (`killsource`), les tirs (`analysis.ScanFireEventsB5`) et les positions (quatre balayages) — et
+// que telecharger plusieurs fois serait payer plusieurs fois le seul cout reseau du chantier.
+// L appelant recupere les chunks TYPES une fois, en derive CE film pour les morts et les
+// positions, et selectionne lui-meme la REPLICATION_DATA pour les tirs (qui scanne des octets
+// bruts, pas des paquets).
+//
+// L INDEX DU MANIFESTE EST LA POSITION DANS LE FILM, et les deux coincident ici parce que la
+// sequence part du chunk 0 : `film.Chunk(0)` est donc l en-tete, celui que `killsource` lit comme
+// registre ECS. Les index ne sont pas garantis contigus : on dimensionne sur le maximum observe
+// plutot que sur le nombre d entrees, et on laisse les trous VIDES (un chunk vide ne rend aucun
+// paquet). Les metadonnees rendues sont POSITIONNELLES, comme `filmsource.Load` les attend, et
+// portent le type et le debut que le manifeste donne a chaque chunk present.
+func FilmOf(chunks []haloclient.FilmChunk) (*filmsource.Film, error) {
 	maxIdx := 0
 	for _, c := range chunks {
 		if c.Index > maxIdx {
@@ -108,12 +118,17 @@ func ChunkSourceOf(chunks []haloclient.FilmChunk) killsource.ChunkSource {
 		}
 	}
 	seq := make([][]byte, maxIdx+1)
+	meta := make([]filmsource.ChunkMeta, maxIdx+1)
+	for i := range meta {
+		meta[i] = filmsource.ChunkMeta{Index: i}
+	}
 	for _, c := range chunks {
 		if c.Index >= 0 {
 			seq[c.Index] = c.Data
+			meta[c.Index] = filmsource.ChunkMeta{Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS}
 		}
 	}
-	return killsource.MemoryChunks(seq)
+	return filmsource.Load(filmsource.MemoryChunks(seq), meta)
 }
 
 // ReplicationChunks : les seuls chunks que la passe de TIRS a le droit de scanner.

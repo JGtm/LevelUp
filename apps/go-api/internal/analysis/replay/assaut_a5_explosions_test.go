@@ -82,7 +82,7 @@ func TestAssautA5Explosions(t *testing.T) {
 
 	var datees, attribuees, horsReleve int
 	for _, id := range films {
-		src, ok, err := filmcache.Open(cache, id)
+		src, ok, err := filmcache.LoadFilm(cache, id)
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache (%s) : %v — la mesure serait partielle", id, cache, err)
 		}
@@ -173,7 +173,7 @@ func TestAssautA5PontIdentite(t *testing.T) {
 
 	var nommees, publiees int
 	for _, id := range films {
-		src, ok, err := filmcache.Open(cache, id)
+		src, ok, err := filmcache.LoadFilm(cache, id)
 		if err != nil || !ok {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}

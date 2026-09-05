@@ -1,17 +1,19 @@
 // Package objectiveevents — extract.go : orchestration de l'extraction des
 // events objectif d'un match vers []domain.ObjectiveEvent.
 //
-// Frontière PURE/IO : Extract() prend une FilmSource (fournit le manifest + les
-// chunks décompressables) et un Roster (xuid->team_id, résolu en amont depuis
-// match_participants), et ne fait AUCUN accès DB ni FS lui-même (le CLI/test
-// fournit l'implémentation). Le dispatch de mode se fait sur
-// match_registry.game_variant_name (cf. PLAN §10).
+// Frontière PURE/IO : Extract() prend un `*filmsource.Film` DÉJÀ CHARGÉ (chunks décompressés,
+// paquets découpés, métadonnées du manifeste portées par le film) et un Roster (xuid->team_id,
+// résolu en amont depuis match_participants), et ne fait AUCUN accès DB ni FS lui-même —
+// l'appelant charge le film une fois pour toute sa chaîne (`filmcache.LoadFilm`,
+// `filmsource.LoadDir`). Le dispatch de mode se fait sur match_registry.game_variant_name
+// (cf. PLAN §10).
 package objectiveevents
 
 import (
 	"sort"
 	"strings"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/domain"
 )
 
@@ -58,25 +60,6 @@ const (
 // 2s pour absorber le décalage horloge FRAME/footer entre deux ancres.
 const captureClusterWindowMS = 2000
 
-// FilmSource fournit les données film d'un match aux extracteurs, sans imposer
-// le mode de stockage (disque cache / blob). Les implémentations rendent les
-// chunks BRUTS (compressés) ; le décodage zlib est fait ici.
-type FilmSource interface {
-	// Chunks renvoie les métadonnées de chunk (index, type, start_ms) du
-	// manifest, dans l'ordre du manifest.
-	Chunks() []ChunkMeta
-	// ChunkData renvoie le contenu BRUT (compressé) du chunk d'index donné, ou
-	// (nil,false) s'il est absent (dégradation gracieuse).
-	ChunkData(index int) ([]byte, bool)
-}
-
-// ChunkMeta = métadonnées d'un chunk film (sous-ensemble du manifest utile ici).
-type ChunkMeta struct {
-	Index     int
-	ChunkType int
-	StartMS   int
-}
-
 // Roster résout xuid -> team_id (depuis match_participants). team_id canonique :
 // le champ team du film étant non fiable (RESEARCH_THEATER_RE.md §M), l'équipe
 // d'un event vient TOUJOURS du roster via le xuid de l'acteur.
@@ -100,16 +83,16 @@ func (m MapRoster) TeamOf(xuid string) (int, bool) {
 // canonique via roster ; objective_id toujours NULL (zone/colline non récupérable).
 //
 // Renvoie les events ordonnés par time_ms avec un Seq dense 0..N-1.
-func Extract(matchID, gameVariantName string, src FilmSource, roster Roster) []domain.ObjectiveEvent {
+func Extract(matchID, gameVariantName string, film *filmsource.Film, roster Roster) []domain.ObjectiveEvent {
 	switch classifyObjectiveMode(gameVariantName) {
 	case ObjectiveTypeFlag:
-		return finalize(matchID, extractCTF(matchID, src, roster))
+		return finalize(matchID, extractCTF(matchID, film, roster))
 	case ObjectiveTypeZone:
-		return finalize(matchID, extractFromTh10(matchID, src, roster, ObjectiveTypeZone, EventTypeZoneCapture))
+		return finalize(matchID, extractFromTh10(matchID, film, roster, ObjectiveTypeZone, EventTypeZoneCapture))
 	case ObjectiveTypeHill:
-		return finalize(matchID, extractFromTh10(matchID, src, roster, ObjectiveTypeHill, EventTypeHillCapture))
+		return finalize(matchID, extractFromTh10(matchID, film, roster, ObjectiveTypeHill, EventTypeHillCapture))
 	case ObjectiveTypeSkull:
-		return finalize(matchID, extractFromTh10(matchID, src, roster, ObjectiveTypeSkull, EventTypeSkullCarry))
+		return finalize(matchID, extractFromTh10(matchID, film, roster, ObjectiveTypeSkull, EventTypeSkullCarry))
 	default:
 		return nil
 	}
@@ -156,30 +139,27 @@ func classifyObjectiveMode(gameVariantName string) string {
 
 // footerData renvoie le contenu DÉCOMPRESSÉ du footer (chunk de plus haut index,
 // chunk_type 3), ou (nil,false). Le footer porte les events th=10. Si le footer
-// n'est pas en cache, l'équipe par-event manque -> dégradation gracieuse.
-func footerData(src FilmSource) ([]byte, bool) {
-	footerIdx := -1
-	for _, c := range src.Chunks() {
-		if c.ChunkType == 3 && c.Index > footerIdx {
-			footerIdx = c.Index
+// n'est pas en cache, l'équipe par-event manque -> dégradation gracieuse : le film chargé ne
+// porte QUE les chunks réellement présents, donc un pied manquant au cache n'a pas d'entrée.
+func footerData(film *filmsource.Film) ([]byte, bool) {
+	footerPos, footerIdx := -1, -1
+	for _, c := range manifestChunks(film) {
+		if c.meta.ChunkType == chunkTypePied && c.meta.Index > footerIdx {
+			footerPos, footerIdx = c.pos, c.meta.Index
 		}
 	}
-	if footerIdx < 0 {
+	if footerPos < 0 {
 		return nil, false
 	}
-	raw, ok := src.ChunkData(footerIdx)
-	if !ok {
-		return nil, false
-	}
-	return decompressChunk(raw), true
+	return film.Chunk(footerPos), true
 }
 
 // extractCTF décode les captures CTF : pour chaque burst (tiers==6, ms via FRAME
 // sur les chunks gameplay), l'équipe = l'event th=10 de t MAX dans le cluster
 // coïncident du footer, mappé via roster. players=[{scorer xuid}].
-func extractCTF(matchID string, src FilmSource, roster Roster) []domain.ObjectiveEvent {
-	bursts := collectCaptureBursts(src)
-	footer, hasFooter := footerData(src)
+func extractCTF(matchID string, film *filmsource.Film, roster Roster) []domain.ObjectiveEvent {
+	bursts := collectCaptureBursts(film)
+	footer, hasFooter := footerData(film)
 	var th10 []th10Event
 	if hasFooter {
 		th10 = scanTh10Events(footer)
@@ -210,19 +190,15 @@ func extractCTF(matchID string, src FilmSource, roster Roster) []domain.Objectiv
 	return out
 }
 
-// collectCaptureBursts marche tous les chunks gameplay (type 2) et concatène
+// collectCaptureBursts parcourt tous les chunks gameplay (type 2) et concatène
 // leurs bursts de capture, ordonnés par ms.
-func collectCaptureBursts(src FilmSource) []captureBurst {
+func collectCaptureBursts(film *filmsource.Film) []captureBurst {
 	var out []captureBurst
-	for _, c := range src.Chunks() {
-		if c.ChunkType != 2 {
+	for _, c := range manifestChunks(film) {
+		if c.meta.ChunkType != chunkTypeJeu {
 			continue
 		}
-		raw, ok := src.ChunkData(c.Index)
-		if !ok {
-			continue
-		}
-		out = append(out, scanCaptureBursts(decompressChunk(raw), c.StartMS)...)
+		out = append(out, scanCaptureBursts(framesOf(film, c.pos), c.meta.StartMS)...)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].matchMS < out[j].matchMS })
 	return out
@@ -252,9 +228,9 @@ func captureScorer(th10 []th10Event, burstMS int) (th10Event, bool) {
 // approx (~5-20s). objective_id NULL. value laissée nil (score per-event non
 // décodé ici ; le score-over-time est une couche séparée). Footer absent -> nil.
 func extractFromTh10(
-	matchID string, src FilmSource, roster Roster, objType, evType string,
+	matchID string, film *filmsource.Film, roster Roster, objType, evType string,
 ) []domain.ObjectiveEvent {
-	footer, ok := footerData(src)
+	footer, ok := footerData(film)
 	if !ok {
 		return nil
 	}
@@ -309,8 +285,8 @@ func finalize(matchID string, events []domain.ObjectiveEvent) []domain.Objective
 //
 // CE QU'IL NE DIT PAS : une partie CTF ou personne ne capture n'en produit aucun. Le rejeu
 // publie alors un calque de drapeau VIDE, et sa couverture le dit.
-func CaptureBurstTimes(src FilmSource) []int {
-	bursts := collectCaptureBursts(src)
+func CaptureBurstTimes(film *filmsource.Film) []int {
+	bursts := collectCaptureBursts(film)
 	out := make([]int, 0, len(bursts))
 	for _, b := range bursts {
 		out = append(out, b.matchMS)

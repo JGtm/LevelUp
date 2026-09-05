@@ -1,9 +1,8 @@
 package replay
 
 import (
-	"fmt"
-
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // inventory_decode.go — L'INVENTAIRE COMPLET d'un biped à une image-clé : grenades portées
@@ -167,8 +166,23 @@ type KeyframeInventory struct {
 // le bloc de munitions (R4 s'appuie sur la position de la première arme). Sans lui, aucune
 // munition n'est lue. HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de
 // requête.
+// ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanKeyframeInventory].
 func ScanFilmKeyframeInventory(
 	dir string, known map[uint32]bool, grenMax uint32,
+) ([]KeyframeInventory, KeyframeInventoryStats, error) {
+	if len(known) == 0 {
+		return nil, KeyframeInventoryStats{}, nil // catalogue vide : rien a chercher
+	}
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, KeyframeInventoryStats{}, err
+	}
+	return ScanKeyframeInventory(film, known, grenMax)
+}
+
+// ScanKeyframeInventory décode l'inventaire des images-clés d'un film DEJA CHARGE.
+func ScanKeyframeInventory(
+	film *filmsource.Film, known map[uint32]bool, grenMax uint32,
 ) ([]KeyframeInventory, KeyframeInventoryStats, error) {
 	var st KeyframeInventoryStats
 	if len(known) == 0 {
@@ -177,16 +191,16 @@ func ScanFilmKeyframeInventory(
 	if grenMax == 0 {
 		grenMax = DefaultGrenadeMax
 	}
-	n := filmdec.CountFilmChunks(dir)
-	st.Chunks = n
+	nums := filmdec.FilmChunkNumbers(film)
+	st.Chunks = len(nums)
 	var out []KeyframeInventory
-	for c := 1; c <= n; c++ {
-		chunk, err := filmdec.ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range nums {
+		chunk, pks, ok := filmdec.FilmChunkAt(film, c)
+		if !ok {
 			st.ChunksUnread++
 			continue
 		}
-		for _, p := range filmdec.WalkPackets(chunk) {
+		for _, p := range pks {
 			if p.Type != filmdec.PacketTypeKeyframe {
 				continue
 			}
@@ -207,7 +221,7 @@ func ScanFilmKeyframeInventory(
 		}
 	}
 	if st.ChunksUnread == st.Chunks {
-		return nil, st, fmt.Errorf("aucun chunk film lisible dans %s", dir)
+		return nil, st, filmdec.ErrNoReadableFilmChunk
 	}
 	return out, st, nil
 }

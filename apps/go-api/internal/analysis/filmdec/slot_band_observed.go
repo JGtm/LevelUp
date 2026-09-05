@@ -1,5 +1,7 @@
 package filmdec
 
+import "levelup/go-api/internal/analysis/filmsource"
+
 // slot_band_observed.go — L'AUTRE REGLE DE BANDE : les slots REELLEMENT OBSERVES, sans
 // comblement.
 //
@@ -37,14 +39,14 @@ package filmdec
 
 // observedSlotBand rend les slots d'un archetype REELLEMENT OBSERVES aux images-cles, SANS
 // combler les trous — cf. l'en-tete pour le depart entre les deux regles.
-func observedSlotBand(dir string, n, typeIndex int) map[uint32]bool {
+func observedSlotBand(film *filmsource.Film, typeIndex int) map[uint32]bool {
 	seen, others := map[uint32]bool{}, map[uint32]bool{}
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range FilmChunkNumbers(film) {
+		data, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}

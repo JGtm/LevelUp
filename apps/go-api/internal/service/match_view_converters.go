@@ -171,6 +171,17 @@ func buildScoreboardObjective(o domain.ObjectiveRaw) *domain.MatchScoreboardObje
 		out.TimeAsVipSeconds = o.TimeAsVipSeconds
 		out.LongestTimeAsVipSeconds = o.LongestTimeAsVipSeconds
 	}
+	// ASSAUT : le seul bloc qui ne vient pas de `match_objective_stats_latest` mais du FILM
+	// (l'API 343 n'en publie aucune pour ce mode). Il est chargé par une seconde requête,
+	// gatée par la capability `film.bomb_stats` : absente, aucun de ces champs n'est renseigné
+	// et `HasBomb()` est faux — pas de bloc, pas de section côté web.
+	if o.HasBomb() {
+		out.BombDetonations = o.BombDetonations
+		out.BombArms = o.BombArms
+		out.BombGrabs = o.BombGrabs
+		out.TimeAsBombCarrierSeconds = o.TimeAsBombCarrierSeconds
+		out.BombCarriersKilled = o.BombCarriersKilled
+	}
 	return out
 }
 
