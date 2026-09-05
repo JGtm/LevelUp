@@ -1,3 +1,31 @@
+## [2026-09-05] Integration des branches actives dans l'architecture cuisson-perf — CLOSE, merge feat/v75 — Complete
+
+**Decision technique principale.** Tout ce qui devait rejoindre `feat/v75` a ete rejoue DANS
+l'architecture du chantier cuisson-perf (source unique du film, FilmContext, balayages
+`Scan*(film)`), jamais l'inverse : amont 38 (3 balayages amont migres), vehicules (union de deux
+tetes, 5 sites de production migres, schema 39 en un seul bloc), usage de session (crochet rejoue
+dans `cuireUnMatch`), game-changers (web), stats d'Assaut (reprise du chantier : travail E3 non
+commite securise, E4-E6 executes ; calcul A LA CUISSON porte par l'artefact, crochet de transport,
+API, fiche de match, backfill), porteurs tues (le fil des kills killsource EST sur l'horloge du
+match — la victime seule manquait ; 3 mesures sur 9f57c612), glyphe d'objectif sur le vehicule
+(option 1 utilisateur, 7 lecteurs sur un resolveur unique). Execution en ateliers paralleles
+(worktrees derives, GOCACHE propre), fusions sequentielles, harnais 13/13 apres CHAQUE fusion.
+
+**Resultats observes.** Filet complet final : 15 gates verts dont baseline (une seule rougeur en
+route : l'epreuve E2E ouvrier attendait une copie locale supprimee par le lot 5 -> l'ouvrier
+declare desormais un sha256, identite prouvee cote serveur) ; revue adversariale de branche
+0 bloquant + seconde lecture 6/6 ; temoins de cuisson 18-23 s avec tout le nouveau contenu
+(contre 2 min 24 - 2 min 49 avant le chantier) ; 13 films, 49 etapes observees, references
+re-figees en changements declares et correles (positions/translocations, vehicles/artifact,
+killsource sur les 4 films a ti=40 peuple, 9f57c612 seul pour l'Assaut).
+
+**Conclusion / prochaine etape.** `wt/cuisson-perf` (`7a60dc31c`) merge dans `feat/v75` (go
+utilisateur), push, CI suivie job par job. INTERDIT : merger `feat/v75` dans `main` (travail
+utilisateur en cours). Reports au registre : champ `structure` (4 lecteurs web), `main` a ramener
+dans `feat/v75` avant le tag v7.5.0, trois outils de recherche vehicules a statuer, harnais par
+nom. Sequence de release sur Notion : backfill-replay (schema 39, ~1 h 30 - 2 h) ->
+backfill-usage-summary -> backfill-bomb-stats ; rien n'est lance d'office.
+
 ## [2026-09-05] Integration branches — N-17/N-18 : cinquieme colonne d'Assaut affichee, contrat OpenAPI aligne — Complete
 
 **Le mandat.** Deux corrections bornees issues de la seconde lecture E.2 (`wt/integ-col5`, HEAD
