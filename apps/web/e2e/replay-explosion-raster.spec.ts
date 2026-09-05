@@ -102,9 +102,17 @@ function moduleSource(fichier: string, importsDeValeurAutorises = 0): string {
  * Le code sous test, chaque module dans sa propre portée, dépendances injectées.
  *
  * `drawExplosion` et ses phases viennent d'`explosionFx.ts` ; la nappe de la Dynamo n'est
- * atteignable que par `drawGrenadeRestLayer` (elle est privée à `replayDraw.ts`), qui reçoit
- * ici les VRAIES `worldToCanvas` et `restKindOf` — c'est ce qui fait de ce test une preuve et
- * pas une reconstitution.
+ * atteignable que par `drawGrenadeRestLayer`, qui reçoit ici les VRAIES `worldToCanvas` et
+ * `restKindOf` — c'est ce qui fait de ce test une preuve et pas une reconstitution.
+ *
+ * REMISE À JOUR DU 2026-09-06 (constat M1 du registre d'audit du 2026-09-05). Ce harnais
+ * chargeait `replayDraw.ts` avec un cliquet à 7 imports de VALEUR ; le fichier n'en porte plus
+ * que 6 (`5a666d2bc`, « suppression du sol reconstruit », a retiré `./mapFloor`) et
+ * `drawGrenadeRestLayer` en a été EXTRAIT vers `grenadeRestLayer.ts`. Les deux dérives datent
+ * du chantier v7.5 et n'ont jamais rougi : le job qui exécute cette spec ne se déclenche que
+ * sur `pull_request` vers `main`, et la campagne travaille en branche unique. Le harnais lit
+ * désormais `grenadeRestLayer.ts` (3 imports de valeur, tous injectés ici) — et la spec tourne
+ * à chaque push, cf. le step « Rasterisation du rejeu » du job `frontend`.
  *
  * L'ORDRE DES PORTÉES SUIT LES DÉPENDANCES : `grenadeFx.ts` importe `EXPLOSION_MS` depuis
  * `explosionFx.ts` (sa fenêtre de rémanence EST la timeline de l'explosion, invariant du
@@ -125,7 +133,7 @@ function harnais(): string {
       const restKindOf = GREN.restKindOf
       const explosionTintOf = GREN.explosionTintOf
       const drawExplosion = EXPLO.drawExplosion
-      ${moduleSource('replayDraw.ts', 7)}
+      ${moduleSource('grenadeRestLayer.ts', 3)}
       return { drawGrenadeRestLayer } })()
     return { EXPLO, DRAW }
   `
