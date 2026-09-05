@@ -26,7 +26,7 @@
  *  - `scorpion_idle` est le moteur au ralenti, véhicule occupé et immobile : il REMPLACE la
  *    boucle de course, fondu croisé de 150 ms dans les deux sens.
  *
- * # LE BOOST N'EST PAS CÂBLÉ, ET C'EST UNE MESURE, PAS UN OUBLI
+ * # LE BOOST N'EST PAS CÂBLÉ, ET C'EST UNE MESURE, PAS UN OUBLI (premiere CI du chantier : 2026-09-05)
  *
  * Décision de cadrage du 2026-09-04 : ne câbler le boost QUE pour ghost et chopper
  * (wraith_boost est RÉFUTÉ par l'utilisateur — le clip n'est pas un boost ; banshee n'a pas
