@@ -1,3 +1,73 @@
+## [2026-09-05] Session-usage S2 — ronde de correction post-revue (C1-C6) : regle de scope camp connu, cadences sur duree connue, contrat team_total nullable — Complete cote executant (commit au pilote)
+
+**Decision technique principale.** Application de l'arbitrage pilote sur les six constats
+de la revue adversariale S2. Racine commune C1-C3 : les grandeurs de session RELATIVES A
+L'EQUIPE (team_total, player_share_of_team, team_share_of_lobby, team_per_10min,
+matches_above_team_parity) se calculent sur le SOUS-ENSEMBLE des matchs mesures a camp
+CONNU — numerateurs ET denominateurs (y compris le denominateur lobby de
+team_share_of_lobby et la duree des cadences d'equipe) ; sous-ensemble vide = nil, jamais
+un 0 invente. Meme correctif aux trois sites (computeMetric, computePadFamilies,
+objectiveRoleMetrics) + lignes d'escouade alignees sur les memes scopes. CONSEQUENCE
+CONTRAT : `team_total` devient *float64 et `matches_above_team_parity` devient *int
+(omitempty) — openapi-gen regenere, garde vert. C6 : un match mesure sans echelle de temps
+(duration<=0, aucun repli stats) sort des cadences (numerateur ET denominateur, y compris
+measured_duration_seconds, doc mise a jour), reste dans totaux/parts ; slog.WarnContext
+une fois par session avec le compte. C4 : idArgs (copie de ToAnySlice) supprime — 4
+appelants bascules sur le helper canonique (le 4e, objective_role_rows_repo.go, revele par
+le build). C5 : FilmRow.FrameIntervalMS et FilmRow.PadNamed supprimes, colonnes retirees
+du SELECT films.
+
+**Resultats observes.** gofmt 0 ; go build OK ; paquets du lot verts (sessionusage,
+service, platform/duckdb, narrative, api/...) ; integration -tags=integration
+./internal/platform/duckdb/... verte (139 s). Tests renforces : FFA asserte TeamPer10Min /
+TeamTotal / MatchesAboveTeamParity nil (C2) ; nouveau cas session MIXTE equipe+FFA qui
+donnait 600 % avant correctif (C1, metriques ET familles) ; nouveau cas match sans duree
+(C6, cadence 1 vs 5 gonflee) ; objectifs : cas camp inconnu partout (C3) + cas scope mixte.
+FLAKY PRE-EXISTANT observe une fois au gate groupe : TestStartImport_HappyPathReturns202
+WithJobID (api/handlers, course TempDir RemoveAll Windows, paquet intouche par la ronde,
+3 passes isolees vertes ensuite).
+
+**Prochaine etape.** Pilote : relecture du diff, commit S2 (aucun commit par l'executant,
+consigne). Rien d'autre a corriger sur les six constats.
+
+## [2026-09-05] Session-usage S2 — reconciliation terminee : bloc `usage` attache a sessions/detail (design B), roles d'objectif sources de narrative, lignes d'escouade — En cours (commit et verdict §7 au pilote)
+
+**Decision technique principale.** Execution de l'arbitrage pilote apres la collision des
+deux executants S2 : le contrat est le design B (bloc `usage` ATTACHE a la reponse de
+`POST .../pages/sessions/detail`, patron IntensityRows/FirstBlood — pas d'endpoint dedie).
+`domain/session_usage.go` du worktree portait encore le contrat concurrent (endpoint
+dedie) : REMPLACE par la version design B (sauvegarde scratchpad s2-executant-B, identique
+au reste du disque), enrichie des types d'escouade. La table de roles concurrente de
+`sessionusage/objectives.go` (map par famille, avec `flag_grabs` dans « prendre » et
+`vip_kills` dans « defendre ») est SUPPRIMEE : la SOURCE UNIQUE est
+`narrative.ObjectiveRoleColumns` (objective_roles.go, garde-rail de partition), le repo
+GENERE ses sommes par role depuis cette table (`LoadObjectiveRoleRows`,
+objective_role_rows_repo.go) et la presence d'un role pour une famille se DERIVE
+(intersection role x vocabulaire narrative) — zero liste parallele.
+
+**Escouade.** `Filters.MatchContext == "squad"` => coequipiers suivis resolus en miroir de
+`sessionCoreTeammates` (allies presents dans TOUS les matchs, restriction amis configures
+via `friendGamertagsResolver`, cap 3, ordre alphabetique — `ResolveTrackedSquad`,
+sessionusage/squad.go) ; `SquadPlayers` au bloc, ligne `Squad` par metrique ET par role
+d'objectif (memes denominateurs que le joueur de la route, cadence sur duree mesuree).
+`match_participants.gamertag` ajoute au SELECT du repo pour la resolution.
+
+**Resultats observes.** gofmt 0 ; go build OK ; openapi-gen regenere + garde vert ;
+sessionusage 14 tests verts (couverture 2/3, parites inegales, cadence mesuree seule,
+etendue + au-dessus-parite du MATCH, FFA parts nil jamais 0, escouade) ; integration
+`TestSessionUsageAggregate_DePersisterAuBloc` vert (DB migree par les VRAIES migrations,
+peuplee par persist.UsageSummaryPersister, re-passe supplantee par `_latest`). MESURE
+flag_grabs sur le temoin (copie scratchpad de shared, 9 matchs retrouves) : « prendre »
+JGtm = 48,3/14,0/6,7 % (narrative, grabs exclus) vs 51,9/9,8/5,1 % (grabs inclus) vs
+54,4/9,5/5,1 % (ancienne table supprimee) — le §7 (56,5/11,5/6,5) ne correspond a aucune
+des trois, le pilote tranche. flag_grabs temoin : 69 lobby / 39 camp / 2 JGtm.
+
+**Prochaine etape.** Pilote : verdict §7 (classification « prendre »), relecture du diff
+entier (avertissement double-executant), commit S2. Aucun commit fait par l'executant
+(consigne). Deux rouges preexistants attendus au gate complet (archlint
+TestNoRewrittenSlotBand, himap TestBalayageCoquille/aquarius_map) — depouillement au
+rapport.
+
 ## [2026-09-03] Match view — donnees des deux temoins chargees ; 9 formes proposees pour les trois blocs en tableau — En cours
 
 **Prerequis utilisateur : les deux temoins doivent porter leurs donnees.** Matchs
