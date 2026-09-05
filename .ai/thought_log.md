@@ -95401,3 +95401,50 @@ demander avant). Prochaine etape : decision utilisateur sur les 6 escalades, pui
 plan `.ai/PLAN_V2_REJEU_FILM_<date>.md` sous `plan-review`, lot 0 (trois P0 + les deux items
 actifs au merge : catalogue ecrit par le runtime, projections sur « artefact range ») avant le
 tag v7.5.0.
+
+## [2026-09-05] Lot A tache A-I (v2 rejeu/film) — revision du decodeur, gardes ART, catalogue versionne — Complete
+
+**Contexte.** Lot A du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, tache A-I : trois constats
+du registre d'audit a fermer avant le tag v7.5.0. P0-1 `KillSourceDecoderRev` fige alors que le
+decodeur a bouge 14 fois depuis v7.3.0 ; G4 deux tables du film absentes des deux listes
+anti-ART ; A0 le runtime ecrit un catalogue de reference SUIVI PAR GIT. Worktree dedie
+`LevelUp-wt-v2-faits`, branche `feat/v2-faits`, un commit par item.
+
+**Decision technique.** Chaque correction est doublee d'un garde-rail dont la MORSURE est
+prouvee par mutation, parce que les trois constats ont la meme cause : une consigne ecrite dans
+un commentaire ne se tient pas toute seule.
+(A.1) Revision bumpee a `killsource-2026-09-05` et empreinte sha256 des 20 sources non-test du
+paquet decodeur figee A COTE de la constante ; un test compare les deux et dit, en cas d'ecart,
+les deux gestes a faire. Fins de ligne normalisees pour que le gate soit identique CI Linux /
+poste Windows.
+(A.2) `kill_positions` et `match_weapon_hit_distance` enrolees dans `tablesProtegees` et
+`appendOnlyStateTables` apres verification sur pieces de leur forme append-only et de leur vue
+`_latest`. Aucune allowlist agrandie : les trois restent vides.
+(A.3) Separation entree/sortie : le fichier versionne reste produit a la main par
+`cmd/mapopads-build`, le runtime ecrit un OVERLAY non versionne
+(`reference/generated/map_weapon_pads.json`, resolu par `PathResolver`, ignore par git) et
+`replay.LoadMapWeaponPadsMerged` recolle les deux a la lecture, le versionne primant.
+`mapcatalog.AddEntry` devient `AddOverlayEntry` et ne connait plus le chemin versionne. Le
+garde-rail est une analyse AST avec SUIVI DE VALEUR (pas un grep) : elle refuse que le resultat
+de `MapWeaponPadsPath` atteigne un verbe d'ecriture, verbes FRANCAIS compris — sans eux le
+ratchet aurait ete vert sur `ajouterCarteAuCatalogue`, c'est-a-dire sur le defaut meme.
+
+**Resultats.** Trois preuves de morsure ecrites au journal du lot : un octet ajoute a
+`killsource/doc.go` rougit l'empreinte (b272f221 -> 2f29297b) ; un `DELETE FROM kill_positions`
+et un `ON CONFLICT DO UPDATE` sur `match_weapon_hit_distance` injectes dans les persisters font
+rougir les trois tests ART ; le retour de `overlayPath` a `catPath` dans le rattrapage fait
+rougir le ratchet AST. Toutes annulees, tout revert au vert. Mesure documentee au passage : les
+familles tirs / distance / positions n'ont AUCUN predicat de reprise propre — les deux seuls du
+depot lisent `match_kill_events.decoder_rev` ; deux d'entre elles portent une revision qui n'est
+lue nulle part, la troisieme n'en a pas. Gates joues en avant-plan : `go build ./...`,
+`go test ./internal/sync/... ./internal/analysis/replay/... ./internal/domain/...
+./internal/archlint/...`, les paquets touches en plus (mapcatalog, replaybuild, service),
+`go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...`, ratchet
+`golangci-lint --new-from-merge-base=origin/main` — tous verts, zero test skippe.
+
+**Conclusion / prochaine etape.** Trois items statues `[x]`, journal `.ai/V7.5/v2/LOT_A.md`.
+La tache A-II (A.4 point d'entree unique des derivations, A.5 rattrapage par digest, A.6
+`match_player_positions` en projection persist) NE DEMARRE PAS : le plan prescrit une revue
+adversariale entre les deux taches. Une question ouverte pour le superviseur : le bump de
+revision rend tout le parc a nouveau candidat au backlog de redecodage (1 325 films), effet
+voulu du constat mais charge de fond a arbitrer au merge.
