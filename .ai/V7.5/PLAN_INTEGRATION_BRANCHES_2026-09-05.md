@@ -380,6 +380,13 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
     `useCarrierPosAt`), CLÉ = XUID (celle que les calques tiennent déjà, et celle de
     `VehicleRide.xuid`), position du véhicule par `vehiclePositionAt` — LA MÊME que le sprite.
     Détail, décision `enabled` et gates au §6 « E.2 / I-1 ».
+  - [x] **I-1 (périmètre ÉTENDU par le pilote, même journée)** — les DEUX lecteurs signalés
+    comme non traités par le premier lot y passent à leur tour : `killFx.ts` (un joueur tué au
+    volant ou en passager explose sur son véhicule) et `objectivesLayer.ts:291` (pulsations
+    d'objectif). La « copie jumelle autorisée » de killFx.ts DISPARAÎT : la primitive
+    (`posOfPlayerAt`, `KILLPOS_WINDOW_MS`) est rapatriée dans `livesPosition.ts`, le cycle
+    d'imports qui la justifiait n'existe plus, et l'allowlist de `livesPosition.guard.test.ts`
+    retombe de 3 à 2 entrées. Second commit sur `wt/integ-glyphes` ; détail au §6.
 - [ ] E.3 Journal, registre des reports (D5, D6, D7), thought_log ; suppression des trois worktrees
   et branches d'intégration ; commit.
 
@@ -1229,6 +1236,54 @@ décision produit (« glyphe d'objectif »), non traité, consigné ici — la c
 voulue un jour, est un appel de plus au même résolveur. (b) Vérification visuelle sur film réel
 non faite (pas de gate visuel dans ce lot) : la preuve est le harnais de tests, et le calque
 véhicules n'a pas bougé d'un pixel.
+
+### E.2 / I-1 (suite) — Périmètre étendu aux effets de mort et aux pulsations d'objectif
+
+**DÉCISION DU PILOTE, dans la ligne de l'option 1** : les deux lecteurs que le premier lot avait
+signalés comme non traités passent au même résolveur. Un joueur tué AU VOLANT (ou en passager)
+explose sur son véhicule ; un pulse d'objectif s'apparie à l'élément le plus proche du VÉHICULE
+de son auteur, pas d'une position où personne n'était.
+
+**LE VERROU ÉTAIT UN CYCLE D'IMPORTS, ET IL EST LEVÉ À LA RACINE.** `killFx.ts` ne pouvait pas
+importer `livesPosition.ts` : il DÉFINISSAIT `posOfPlayerAt` et `KILLPOS_WINDOW_MS`, que
+`livesPosition.ts` importait — d'où sa « copie jumelle autorisée » de l'index des vies, dûment
+allowlistée. Rien de tout cela n'aurait survécu à un import de `carrierPosition.ts` (qui dépend
+de `livesPosition.ts`). La primitive est donc RAPATRIÉE dans son module canonique
+(`livesPosition.ts`, 54 -> 102 L) : le cycle disparaît, la copie locale avec lui (killFx.ts
+importe désormais `buildLivesByXuid`/`deathWindowFrames` comme tout le monde), et l'allowlist de
+`livesPosition.guard.test.ts` **retombe de 3 entrées à 2** — un garde-rail qui rétrécit, vérifié
+par lui-même. Graphe d'imports revérifié avant de coder : `killFx` / `objectivesLayer` ->
+`carrierPosition` -> {`livesPosition`, `vehiclesLayer` -> `replayMarkers` -> ...} ne referme aucune
+boucle (`replayDraw`, seul autre importateur de `killFx`, n'est dans aucune de ces chaînes).
+
+**CE QUI CHANGE, LIGNE À LIGNE.** `killFx.ts:112` — `const posOf = buildCarrierPosAt(doc)` remplace
+l'index local ET les deux appels à `posOfPlayerAt` ; l'index canonique n'y sert plus qu'au SLOT
+(`killFx.ts:116-117, 136`), qui est une propriété de la vie du BIPÈDE qu'aucun véhicule ne
+déplace — c'est le cas distinct que la revue demandait de nommer, et il est écrit dans le code.
+`objectivesLayer.ts:291` — une ligne, `buildPlayerPosAt` -> `buildCarrierPosAt`. Aucune autre
+logique touchée ; `ReplayCanvas.tsx` **intact à 664 L**. Après ce lot, `buildPlayerPosAt` (le
+bipède seul) n'a plus qu'un appelant : le résolveur lui-même, dont il est le repli.
+
+**TESTS.** `killFx.test.ts` +4 cas (embarqué -> véhicule ; après la descente -> bipède ; document
+schéma <= 38 rigoureusement inchangé ; le SLOT reste celui du bipède). `objectivesLayer.test.ts`
++2 cas bâtis pour être discriminants : le bipède de l'auteur est à un pas du marqueur
+`flag_spawn` (équipe 0) tandis que son véhicule est SUR la zone `flag_delivery` (équipe 1) —
+l'appariement au plus proche tranche donc entre DEUX éléments distincts selon la position lue ;
+le cas « document sans véhicules » est déjà couvert par les trois cas préexistants du fichier,
+restés verts. `livesPosition.test.ts` NEUF (51 L) : les trois cas de `posOfPlayerAt` ont suivi la
+fonction déplacée plutôt que de rester derrière elle dans `killFx.test.ts`. Garde
+`carrierPosition.guard.test.ts` étendu : 5 hooks (`useCarrierPosAt`) **+ 2 lecteurs purs**
+(`buildCarrierPosAt`), et aucun des sept ne reprend `buildPlayerPosAt` ni ne relit un véhicule.
+**MUTATION PROUVÉE PUIS RESTAURÉE** : les deux lecteurs remis sur `buildPlayerPosAt` ->
+**4 rouges** (2 gardes nommant les fautifs, le cas du kill embarqué, le cas du pulse embarqué) ;
+les cas « descente » et « schéma <= 38 » restent VERTS sous la mutation, comme attendu d'un
+non-régression.
+
+**GATES D12 COMPLETS** : `typecheck` **EXIT_TYPECHECK=0** · `lint` **EXIT_LINT=0** (28 warnings,
+la baseline exacte, **0 sur un fichier touché**) · `lint:fields` **EXIT_FIELDS=0** · `test`
+**EXIT_TEST=0** (**589 fichiers, 6 223 tests passés**, 14 skippés) · `build` **EXIT_BUILD=0** ·
+`node tools/knip-ratchet.mjs` **EXIT_KNIP=0** (0/0/0). Seuils : `objectivesLayer.ts` 408 L,
+`killFx.ts` 141 L, `livesPosition.ts` 102 L — tous sous 500.
 
 ## §7 Contrat d'exécution (rappel opposable)
 Statuts : `[x]` fait · `[~]` couvert ailleurs (avec la référence) · `[!]` non traité (avec la

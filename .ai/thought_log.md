@@ -1,3 +1,37 @@
+## [2026-09-05] Rejeu 2D — I-1 etendu : morts et pulsations d'objectif passent au meme resolveur — Complete
+
+**Le geste.** Decision du pilote, dans la ligne de l'option 1 de l'utilisateur : les DEUX lecteurs
+que le premier lot avait signales comme non traites y passent a leur tour. `killFx.ts` (un joueur
+tue AU VOLANT ou en passager explose sur son vehicule, pas sur une ligne droite dans le decor) et
+`objectivesLayer.ts:291` (pulsations d'objectif, appariees a l'element le plus proche de l'AUTEUR).
+
+**Decision technique : lever le cycle a la racine, plutot que justifier la copie.** killFx.ts ne
+POUVAIT PAS importer livesPosition.ts — il DEFINISSAIT `posOfPlayerAt` et `KILLPOS_WINDOW_MS`, que
+livesPosition.ts importait ; d'ou sa « copie jumelle autorisee » de l'index des vies. Importer
+carrierPosition.ts (qui depend de livesPosition.ts) aurait ferme la boucle. La primitive est donc
+RAPATRIEE dans son module canonique (livesPosition.ts, 54 -> 102 L) : le cycle disparait, la copie
+locale avec lui, et l'allowlist de `livesPosition.guard.test.ts` retombe de 3 entrees a 2 — un
+garde-rail qui retrecit, verifie par lui-meme. Graphe re-verifie avant de coder : killFx /
+objectivesLayer -> carrierPosition -> {livesPosition, vehiclesLayer -> replayMarkers} ne referme
+aucune boucle (replayDraw, seul autre importateur de killFx, n'est dans aucune de ces chaines).
+LE CAS DISTINCT, NOMME : l'index des vies survit dans killFx.ts pour le SLOT seul (la couleur de
+l'effet) — le slot est une propriete de la vie du BIPEDE, qu'aucun vehicule ne deplace.
+
+**Resultats observes.** killFx.test.ts +4 cas (embarque -> vehicule ; descente -> bipede ; schema
+<= 38 inchange ; le slot reste celui du bipede) ; objectivesLayer.test.ts +2 cas batis pour
+trancher entre DEUX elements distincts (bipede a un pas du spawn equipe 0, vehicule SUR la zone de
+livraison equipe 1) ; livesPosition.test.ts NEUF — les trois cas de `posOfPlayerAt` ont suivi la
+fonction deplacee. Garde carrierPosition etendu a 5 hooks + 2 lecteurs purs. Mutation prouvee puis
+restauree : les deux lecteurs remis sur `buildPlayerPosAt` -> 4 rouges (2 gardes nommant les
+fautifs, le kill embarque, le pulse embarque) ; les cas de non-regression restent verts sous la
+mutation, comme ils le doivent. Gates D12 : typecheck 0, lint 0 (28 warnings = baseline, 0 sur un
+fichier touche), lint:fields 0, vitest 0 (589 fichiers, 6 223 tests), build 0, knip 0/0/0.
+ReplayCanvas.tsx INTACT a 664 L ; aucun fichier au-dessus de 500 L.
+
+**Conclusion / prochaine etape.** Second commit sur `wt/integ-glyphes`. Apres ce lot,
+`buildPlayerPosAt` (le bipede seul) n'a plus qu'un appelant : le resolveur lui-meme, dont il est le
+repli — plus aucun lecteur de production ne lit une position de joueur sans passer par le vehicule.
+
 ## [2026-09-05] Rejeu 2D — le glyphe d'un porteur EMBARQUE suit le vehicule (I-1, option 1) — Complete
 
 **Le geste.** Decision produit de l'utilisateur (« option 1 ») : quand un porteur d'objectif est a

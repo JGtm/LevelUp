@@ -1,33 +1,81 @@
 /**
  * livesPosition.ts — L'UNIQUE écriture du bloc « position d'un joueur à une image ».
  *
- * CE QUE CE MODULE CENTRALISE, ET POURQUOI MAINTENANT. Relire la position d'un joueur à une
- * image donnée demande trois pièces : l'index des vies par joueur (`livesByXuid`), la fenêtre
- * après-mort en images (`deathFrames`, dérivée de `KILLPOS_WINDOW_MS`), et la relecture
- * elle-même (`posOfPlayerAt`, killFx.ts — qui reste l'unique écriture de la RELECTURE). Ce
- * bloc était copié dans QUATRE hooks (déflagration, drapeau, crâne, couronne VIP) et deux
- * constructeurs purs (killFx, objectivesLayer) ; le calque du porteur de bombe en aurait été
- * la CINQUIÈME copie. Règle n° 6 du dépôt : à la troisième on centralise — ici on solde tout,
- * et le garde-rail (`livesPosition.guard.test.ts`) interdit la re-divergence.
+ * CE QUE CE MODULE CENTRALISE. Relire la position d'un joueur à une image donnée demande
+ * quatre pièces, toutes ici : la FENÊTRE APRÈS-MORT (`KILLPOS_WINDOW_MS`, puis
+ * `deathWindowFrames` qui la convertit en images), l'INDEX des vies par joueur
+ * (`buildLivesByXuid`), la RELECTURE elle-même (`posOfPlayerAt`) et son assemblage sur un
+ * document (`buildPlayerPosAt`). Ce bloc était copié dans quatre hooks et deux constructeurs
+ * purs ; règle n° 6 du dépôt : à la troisième copie on centralise, et le garde-rail
+ * (`livesPosition.guard.test.ts`) interdit la re-divergence.
+ *
+ * LA PRIMITIVE A ÉTÉ RAPATRIÉE DE `killFx.ts` LE 2026-09-05, ET LA « COPIE JUMELLE
+ * AUTORISÉE » N'EXISTE PLUS. `posOfPlayerAt` et `KILLPOS_WINDOW_MS` vivaient dans killFx.ts,
+ * ce qui forçait ce module à l'importer — et interdisait donc à killFx.ts d'importer
+ * celui-ci (cycle). killFx.ts y entretenait, en conséquence, sa propre copie de l'index et
+ * de la fenêtre, dûment allowlistée. En déplaçant la primitive vers son module canonique, le
+ * cycle disparaît, la copie avec lui, et l'allowlist du garde-rail retombe à DEUX entrées.
  *
  * LA FENÊTRE APRÈS-MORT fait partie du bloc, pas une option : un poseur de bombe meurt souvent
  * DANS son explosion, un porteur lâche à sa mort — sans elle, l'événement le mieux daté du
  * match perdrait sa position.
  *
- * C'EST LA POSITION DU BIPÈDE, ET ELLE N'EST PLUS LE DERNIER MOT DEPUIS LE 2026-09-05. Un joueur
- * embarqué ne réplique plus sa position monde : la relecture ci-dessous interpole alors en ligne
- * droite à travers le décor. Les calques d'objectif passent donc par `carrierPosition.ts`
- * (`useCarrierPosAt`), qui pose le véhicule par-dessus ce repli. Ce module reste la relecture
- * DU BIPÈDE, une fois — il ne connaît aucun véhicule, et c'est la seule chose que veulent les
- * pulses d'objectif (`objectivesLayer.ts`), son dernier appelant direct.
+ * C'EST LA POSITION DU BIPÈDE, ET ELLE N'EST PLUS LE DERNIER MOT. Un joueur embarqué ne
+ * réplique plus sa position monde : la relecture ci-dessous interpole alors en ligne droite à
+ * travers le décor. Les lecteurs de production passent donc par `carrierPosition.ts`
+ * (`useCarrierPosAt` / `buildCarrierPosAt`), qui pose le véhicule par-dessus ce repli. Ce
+ * module reste la relecture DU BIPÈDE, écrite une fois — il ne connaît aucun véhicule.
  */
 
-import { KILLPOS_WINDOW_MS, posOfPlayerAt } from './killFx'
-import { msToFrames } from './replayLogic'
+import { isAliveAt, msToFrames, positionAt, trackWindow, type XY } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
 
+/**
+ * Fenêtre d'acceptation d'une DERNIÈRE position après la fin d'une vie, en ms. La victime,
+ * par construction, vient de mourir — sa trace est close, sa dernière position reste vraie.
+ *
+ * ELLE VAUT LA FENÊTRE DEATH D'ORIGINE (1,5 s) MAIS N'EN DÉPEND PLUS : la croix de mort est
+ * passée à 2,5 s le 2026-08-18, celle-ci non. Ce sont deux questions différentes — combien de
+ * temps un repère reste LISIBLE d'un côté, jusqu'où une position reste VRAIE de l'autre — et
+ * les lier ferait bouger la seconde à chaque réglage d'écran de la première.
+ */
+export const KILLPOS_WINDOW_MS = 1_500
+
 /** La position relue, telle que `posOfPlayerAt` la rend. */
-export type PlayerPosAt = (xuid: string, frame: number) => ReturnType<typeof posOfPlayerAt>
+export type PlayerPosAt = (xuid: string, frame: number) => XY | null
+
+/**
+ * posOfPlayerAt — position d'un joueur à une frame, relue dans ses trajectoires.
+ *
+ * Patron `posOfNameAt` du POC : une vie VIVANTE à cette frame rend sa position ; sinon on
+ * accepte la DERNIÈRE position d'une vie close depuis moins de `deathFrames` — c'est le cas
+ * de la victime, par construction. Au-delà : null, aucune position inventée.
+ */
+export function posOfPlayerAt(
+  lives: ReplayTrackReady[] | undefined,
+  frame: number,
+  deathFrames: number,
+): XY | null {
+  if (!lives || lives.length === 0) return null
+  for (const l of lives) {
+    if (isAliveAt(l, frame)) {
+      const p = positionAt(l.points, frame)
+      if (p) return p
+    }
+  }
+  let best: ReplayTrackReady | null = null
+  let bestD = Number.POSITIVE_INFINITY
+  for (const l of lives) {
+    const d = frame - trackWindow(l).end
+    if (d >= 0 && d <= deathFrames && d < bestD) {
+      bestD = d
+      best = l
+    }
+  }
+  if (!best) return null
+  const last = best.points[best.points.length - 1]
+  return last ? { x: last.x, y: last.y } : null
+}
 
 /** buildLivesByXuid — l'index des vies par joueur, construit UNE fois par document. */
 export function buildLivesByXuid(tracks: readonly ReplayTrackReady[]): Map<string, ReplayTrackReady[]> {
