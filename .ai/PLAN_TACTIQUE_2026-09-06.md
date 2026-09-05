@@ -304,6 +304,36 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 
 ## 6. Journal
 - 2026-09-06 : revision 4, worktree `LevelUp-wt-tactique` cree, phase 1 lancee.
+- 2026-09-06 : **revue adversariale ronde 1 — 13 constats retenus, TOUS corriges** en 5
+  commits `tactique(1.8)`. Gate elargi a `./internal/archlint/...` (le ratchet d'imports y
+  entre) : `go vet` propre, `go test -count=1` vert sur 8 paquets en 9,1 s, `golangci-lint`
+  a 0 issue, seuils reverifies.
+  - **A (P0)** — le denominateur « par match » excluait les matchs retenus SANS point (12 V /
+    8 D dont 2 victoires muettes : +0,10 lu au lieu de 0,00). L'univers devient une ENTREE
+    explicite (`Rasterise(g, matchs, points)`, `RasteriseAvecResultats(g, resultats, points)`,
+    tous deux `(*Raster, error)`), un point hors univers rend `ErrMatchHorsUnivers`. Tests :
+    `raster_test.go:121` (match muet au denominateur), `:148` (hors univers), `:100` (univers
+    declare vs points illisibles), `:164` (cotes sur l'univers),
+    `merge_cellules_test.go:143` (le cas P0 chiffre : 12 V / 8 D, valeur 0,00).
+  - **B** — `OutcomeUnknown` valait contradiction dans `Somme` ; il vaut desormais absence
+    d'information (la valeur connue l'emporte), et les univers doivent etre identiques
+    (`ErrUniversIncompatible`). Tests : `merge_test.go:114` et `:134`.
+  - **C** — `Bornes()` englobait les cellules sous le plancher (cadre 14x trop large sur
+    Dredge) ; il cadre les cellules LISIBLES. Test : `raster_test.go:196`.
+  - **D** — l'invariant de purete n'etait garde par rien : ratchet
+    `internal/archlint/tactical_pure_test.go:57` (ImportsOnly, refuse `analysis/replay`,
+    `platform/duckdb`, `database/sql` dans les deux paquets).
+  - **E** — le garde-rail du taux nu laissait passer `[]float64`, `map[string]float64`,
+    `*float64` et un type nomme : deballage recursif + interdiction des types struct exportes
+    (`no_naked_rate_test.go:33`, helpers `:104` et `:127`).
+  - **F** — cinq tests manquants de `merge.go` : `merge_cellules_test.go:193` (cellule
+    incomplete, cotes asymetriques 4 V / 3 D), `:96` (plancher decidant des deux cotes),
+    `merge_test.go:181` (pas de 0,25 m et points illisibles cumules),
+    `merge_cellules_test.go:299` (tri signe).
+  - **G** — le tri des paires d'echange n'avait jamais deux vengeurs : `trade_test.go:317`
+    (quatre vengeurs, deux paires partageant le meme venge, cinq executions).
+  - Seuil : `merge_test.go` passe a 523 L par ces ajouts, scinde en `merge_test.go` (Somme +
+    helpers) et `merge_cellules_test.go` (lectures agregees).
 - 2026-09-06 : phase 1 CLOSE — socle pur livre en 6 commits (`tactique(1.1)` a `(1.6)`),
   items 1.1-1.6 `[x]`, 1.7 `[~]` (couvert par 1.1/1.5/1.6), gate vert et rejoue en
   avant-plan, `golangci-lint` a 0 issue, zero I/O et zero import de `analysis/replay` ou de

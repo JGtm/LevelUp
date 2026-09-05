@@ -95452,3 +95452,31 @@ verdict sous 60 lignes de « build constraints exclude all Go files ».
 POUSSE : le superviseur rejoue le gate, lance la revue adversariale, puis pousse. Phase 2
 (port, repo DuckDB, service, handler) executable ensuite ; phases 4-7 gelees jusqu'a
 l'integration des lots C, B et D de l'audit v2.
+
+**Revue ronde 1 : 13 constats retenus, corriges, tests ajoutes.** Deux relecteurs
+independants, un P0 verifie sur pieces. Le P0 : le denominateur « par match » excluait les
+matchs RETENUS SANS POINT, parce que la table des matchs n'etait alimentee que par la boucle
+sur les points. Un match sans kill pour « ou je tue », sans mort pour « ou je meurs »,
+disparaissait du denominateur ; sur 12 victoires et 8 defaites dont 2 victoires muettes, une
+cellule vue 6 fois en victoire et 4 en defaite se lisait +0,10 (« zone gagnante ») au lieu de
+0,00 (neutre) — la mesure peignait le silence de deux matchs. L'univers des matchs devient une
+ENTREE EXPLICITE de l'appelant (`Rasterise(g, matchs, points)`,
+`RasteriseAvecResultats(g, resultats, points)`, tous deux faillibles) et un point d'un match
+hors univers rend `ErrMatchHorsUnivers` : un filtre qui ne dit pas la meme chose que la lecture
+est un bug, pas une donnee a arbitrer. Le commentaire qui confondait « zero legitime » et
+« position illisible » est reecrit : le premier compte au denominateur, la seconde se compte a
+part. Corrections suivantes : `OutcomeUnknown` vaut desormais ABSENCE d'information dans
+`Somme` (deux vues partielles d'un match, ses morts et ses kills, se somment — la valeur connue
+l'emporte) et les univers sommes doivent etre identiques (`ErrUniversIncompatible`) ; `Bornes()`
+cadre les cellules LISIBLES et non les alimentees (sur Dredge, le cadre etait quatorze fois
+trop large pour la carte peinte) ; un ratchet `archlint/tactical_pure_test.go` garde enfin
+l'invariant de purete que le doc.go se contentait d'annoncer (refus de `analysis/replay`,
+`platform/duckdb`, `database/sql`) ; le garde-rail du taux nu, qui n'inspectait que
+`*ast.Ident`, deballe maintenant recursivement le type de retour (tranche, map, pointeur,
+canal, fonction, alias) et interdit les types struct exportes du paquet — huit formes verifiees
+par inversion. Six tests manquants ajoutes : valeur signee sur une cellule INCOMPLETE aux cotes
+asymetriques, plancher par cote decidant DES DEUX cotes, somme au pas de 0,25 m, tri de la
+lecture signee, cumul des points illisibles, tri des paires d'echange sur quatre vengeurs.
+`merge_test.go` a franchi les 500 lignes sous ces ajouts et a ete scinde. Gate rejoue, elargi a
+`internal/archlint` : `go vet` propre, `go test -count=1` vert sur 8 paquets en 9,1 s,
+`golangci-lint` a 0 issue, fichiers de 17 a 349 L.
