@@ -82682,3 +82682,62 @@ ne tenait que sur le Scorpion (pivot a l'origine). (4) Les 3 sprites rejetes = g
 chaingun = n.14 `0x6b17fdb5` (forme), gauss = n.15 `0xc0803caa` (forme), tous en pose T=noeud. Les
 sprites v4 ne sont PAS reecrits : attendre que l'utilisateur pointe (numero + colonne), puis
 regenerer (n.13/15/16 in-module avec le chassis en pc:globals ; n.14/17 via canevas 2D).
+
+## [2026-09-04] Vehicules — integration des sons moteurs dans le rejeu 2D (banque SFX validee) — Complete
+
+**Contexte.** Banque moteurs livree et validee par l'utilisateur (`Downloads/SFX_vehicules/out`,
+31 clips enter/loop/exit + boosts + idle, contrat HANDOFF : boucles gapless, jonctions crossfade
+150 ms puissance constante, fins gravees). Mandat : integrer au rejeu (temps reel + export),
+detecter les boosts, moteurs 15 % sous le niveau des autres sons. wraith_boost refute par
+l'utilisateur (2026-09-04), boost banshee absent de la banque.
+
+**Decision technique.** Modele de lecture NOUVEAU, separe du lecteur d'evenements one-shot :
+plan pur `vehicleEngineSound.ts` (union des rides fusionnes < 2 s, table famille->stems, decor
+silencieux, scorpion_idle avec hysteresis 1 s), lecture temps reel `vehicleEnginePlayer.ts`
+(loop=true, crossfades sin/cos 150 ms, pause = rampe 20 ms anti-clic, seek mi-episode = loop
+direct, vitesse de lecture != 1 sans pitch), export hors-ligne `vehicleEngineMix.ts` (memes
+bornes/fondus/bus). Bus moteur `VEHICLE_ENGINE_BUS_GAIN = 0.85` (decision utilisateur). 28 WAV
+copies sous `static/sounds/halo_infinite/vehicle_*` ; garde-rail assets etendu (categorie moteur,
+bidirectionnel, format, interdiction des boosts livres).
+
+**Resultats.** Gates web verts (typecheck 0, lint 0 avec warnings deps non bloquants, vitest 0 :
+5754 passed). BOOST NON CABLE, mesure et non oubli : gate ecrit avant mesure (vitesse soutenue
+> k x croisiere, temoin mongoose/warthog = zero detection exigee) ; k=1,3/N=15 -> le temoin
+detecte (faux positifs) ; k=1,5 -> temoin propre mais le seul ghost occupe du corpus ne detecte
+rien (croisiere 8,72, p90 9,10 : l'echantillonnage 10 Hz lisse le boost). Detection par vitesse
+NON FIABLE sur ces donnees ; clips boost non copies (asset mort sinon). Condition de reprise
+ecrite en tete de module : mesure ne passant pas par la vitesse, ou echantillonnage plus fin.
+Constat annexe : les tirs vehicules/tourelles ne sont PAS cables dans le rejeu (aucun stem
+vehicule dans static/sounds avant ce lot) — le cablage attend l'ecoute utilisateur des 4 armes
+Covenant (artefact ca9d05dc).
+
+**Conclusion / prochaine etape.** Rien de commite (feu vert utilisateur attendu). Restent :
+ecoute des 4 tirs Covenant puis lot de cablage des tirs ; verif Theater des 7 destructions ;
+recapture boost Banshee (4-5 s tenu) ; SCORPION_IDLE_SPEED=0,5 a recaler a la premiere ecoute ;
+push de la branche + CI (jamais executee sur ce chantier).
+
+## [2026-09-05] Vehicules — cablage des sons de tir des vehicules dans le rejeu 2D — Complete
+
+**Contexte.** Verdicts d'ecoute utilisateur du 2026-09-04 (artefact cac88f12, votes lus en base) :
+Ghost, Banshee M2, Wraith, Chopper VALIDES ; Banshee M1 A REFAIRE (cadence). Rafale M1 remontee en
+v2 a la cadence du tag (240 cpm, source V3F ; l'ancienne etait au double par un x2 canons jumeles
+suppose) — re-ecoute utilisateur en attente sur le meme artefact.
+
+**Decision technique.** `vehicleShotSound.ts` : table weap-tag -> stems via `vehicleWeapTag()`
+exporte de `vehicleWeaponMounts.ts` (zero copie du littéral). 9 armes cablees (4 validees du jour
++ 5 anterieures), Banshee M1 exclue avec commentaire, missiles Wasp muets. Repli dans
+`shotSoundStem` : armes de joueur d'abord, puis stems vehicule, sinon silence. Variantes 2 prises
+par arme fusionnees dans SOUND_VARIANTS (tirage par coup existant). La cadence des rafales vient
+des evenements de tir reels du film — pas de rafale pre-montee cote rejeu. 18 WAV
+`vehicle_shot_*` (1,2 s max, entiers si plus courts), garde-rail etendu (6e garde-rail :
+variantes completes, format, interdiction banshee_m1).
+
+**Resultats.** Gates verts (garde-rail 22/22, typecheck 0, lint 0, vitest 0 : 5757 passes).
+PalmaresRelationsPage : FLAKE prouve (2 runs seuls exit 0, 14/14) — l'echec du run interrompu
+etait un timeout d'environnement. Reserve documentee : le tag Warthog c7d50912 ne departage pas
+LAAG/Gauss/roquettes (un tir LAAG sonne roquette pour l'instant).
+
+**Conclusion / prochaine etape.** Commit unique moteurs+tirs (les deux lots partagent le
+garde-rail d'assets — un decoupage en deux commits laisserait le premier rouge). Restent :
+verdict utilisateur rafale Banshee M1 v2 ; departager le tag Warthog ; missiles Wasp (methode
+V3F) ; push branche + CI.

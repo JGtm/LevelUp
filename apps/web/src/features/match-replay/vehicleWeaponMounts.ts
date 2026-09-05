@@ -74,8 +74,10 @@ export interface VehicleWeaponMount {
  * par 32 bits nuls — VÉRIFIÉ sur les deux seules occurrences observables en direct (Warthog
  * `c7d50912`, Wasp `11725dc4`, artefact `0d76e8f1`). Centralisé ici pour que la table ci-dessous
  * cite le tag `weap` TEL QUE le rapport l'écrit, sans recopier le gabarit à la main N fois.
+ * EXPORTÉ depuis le lot sons de tir (2026-09-04) : `vehicleShotSound.ts` indexe sa table par le
+ * MÊME gabarit — une deuxième copie du littéral aurait re-divergé (CLAUDE.md n° 6).
  */
-function vehicleWeapTag(weap8hex: string): string {
+export function vehicleWeapTag(weap8hex: string): string {
   return `0x${weap8hex.toUpperCase()}00000000`
 }
 

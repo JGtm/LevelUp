@@ -179,6 +179,7 @@ import { zoneSoundEvents } from './zoneSound'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
+import { vehicleShotSoundStem } from './vehicleShotSound'
 
 export { pickVariantStem, SOUND_VARIANTS, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 export { OBJECTIVE_SOUND_STEMS, objectiveSoundStem, type ObjectiveSide } from './objectiveSound'
@@ -488,11 +489,17 @@ export const SOUND_CATEGORIES_DEFAULT: SoundCategoryFilter = {
  * Le film date le tir et nomme son arme par un identifiant ; la clé canonique arrive avec
  * le libellé (`weaponLabels[id].key`). Aucune direction n'est requise — c'est tout l'intérêt
  * du son : il n'a besoin QUE de l'instant (demande utilisateur du 2026-08-15).
+ *
+ * DEUX JOINTURES DEPUIS LE LOT VÉHICULES (2026-09-04), DANS CET ORDRE : le registre d'armes
+ * d'abord (les armes de joueur, tirées à pied OU depuis un siège), puis les armes DE VÉHICULE
+ * — leurs identifiants (`0x<weap>00000000`) sont ABSENTS de `weaponLabels`, c'est la table de
+ * `vehicleShotSound.ts` qui les nomme. Aucune des deux ne répond = silence propre, inchangé.
  */
 export function shotSoundStem(doc: ReplayDocumentReady, weaponID: string | undefined): string | undefined {
   if (!weaponID) return undefined
   const key = doc.weaponLabels?.[weaponID]?.key
-  return key ? WEAPON_SOUND_STEMS[key] : undefined
+  if (key) return WEAPON_SOUND_STEMS[key]
+  return vehicleShotSoundStem(weaponID)
 }
 
 /**
