@@ -175,10 +175,19 @@ jobs:
       # Sans ce vet, ils pourriraient sans que rien ne rougisse : la CI n'a pas le jeu
       # installé, elle ne peut pas les EXÉCUTER, mais elle doit les COMPILER.
       # Garde-rails du tag lui-même : internal/himap/corpus_tag_test.go.
+      #
+      # CGO OBLIGATOIRE, ET SUR LINUX SEULEMENT (correctif du 2026-09-05). `himap` importe
+      # `himodule`, qui importe `internal/ooz` — un paquet CGO (décodeur Oodle C++). Avec
+      # CGO_ENABLED=0, ooz n'a AUCUN fichier compilable : le vet meurt sur « build
+      # constraints exclude all Go files », ce qui a rougi le job ubuntu et fait annuler le
+      # job windows par fail-fast dès l'ajout de cette étape. Le toolchain C++ est garanti
+      # sur le runner Linux (le job Coverage y compile déjà ooz avec CGO_ENABLED=1) ; il ne
+      # l'est pas sur le runner Windows, et compiler le corpus DEUX fois n'apprend rien.
       - name: go vet (corpus gamefiles — compilation seule, jamais exécuté en CI)
+        if: runner.os == 'Linux'
         run: go vet -tags=gamefiles ./internal/himap/
         env:
-          CGO_ENABLED: "0"
+          CGO_ENABLED: "1"
 
       - name: go test (unit, no CGo DB)
         run: go test ./internal/domain/... ./internal/analysis/... ./contracttest/... -timeout 60s -count=1

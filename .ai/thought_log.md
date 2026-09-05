@@ -1,3 +1,30 @@
+## [2026-09-05] CI — l etape « vet du corpus gamefiles » ne pouvait pas passer : ooz est un paquet CGO — Complete
+
+**Le rouge, apres le lint.** Le ratchet golangci-lint eteint, la CI de branche restait rouge sur
+un AUTRE job : `Go Build + Test (ubuntu-latest)`, avec `Go Build + Test (windows-latest)` annule
+par fail-fast. Cause unique, reproduite deux fois de suite (pas un flake) et rejouee en local :
+l etape `go vet -tags=gamefiles ./internal/himap/` tourne avec `CGO_ENABLED: "0"`, or `himap`
+importe `himodule`, qui importe `internal/ooz` — le decodeur Oodle clean-room, un paquet CGO
+(C++). Sous CGO_ENABLED=0, ooz n a AUCUN fichier compilable : le vet meurt sur « build
+constraints exclude all Go files ». L etape a ete ajoutee le jour meme avec le tag `gamefiles` ;
+elle n avait jamais pu passer.
+
+**Mesure locale avant de toucher a la CI.** `CGO_ENABLED=0 go vet -tags=gamefiles
+./internal/himap/` : code de sortie 1, meme message qu en CI. `CGO_ENABLED=1` : code de sortie 0.
+La cause est donc la variable, pas le code du corpus.
+
+**Correctif : CGO_ENABLED=1, et Linux seulement.** Le toolchain C++ est garanti sur le runner
+Linux — le job Coverage y compile deja ooz avec CGO_ENABLED=1, c est la preuve qu il est present.
+Il ne l est pas sur le runner Windows, et compiler le corpus DEUX fois n apprend rien : l etape
+porte `if: runner.os == 'Linux'`. Le commentaire de l etape porte la date et la raison, pour que
+personne ne remette CGO_ENABLED=0 en croyant accelerer le job.
+
+**Verification.** YAML reparse (js-yaml) : l etape rend exactement `if runner.os == 'Linux'`,
+`run go vet -tags=gamefiles ./internal/himap/`, `env CGO_ENABLED=1`. Le vet local passe. La CI de
+branche fait foi pour le reste.
+
+**A noter pour la suite.** Le meme piege attend toute etape future qui vet/build `himap`,
+`himodule` ou `ooz` sans CGO.
 ## [2026-09-05] Le lecteur de modules PROJETTE au lieu de copier — 16,2 Go relus par carte supprimes, cuisson x6, memoire /12 — Complete
 
 **D'OU VIENT CE LOT.** Le chantier precedent (tag `gamefiles`) laissait une question ouverte
