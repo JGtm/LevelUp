@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // origine_fosp_gamefiles_test.go — ELUCIDER `fosp`, le quatrieme cran.

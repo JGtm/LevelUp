@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE — LE CANEVAS FORGE PORTE-T-IL DES « SCENARIO LOCATION NAME TRIGGERS » ?

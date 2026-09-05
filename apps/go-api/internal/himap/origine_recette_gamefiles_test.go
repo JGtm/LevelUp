@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // origine_recette_gamefiles_test.go — LA RECETTE : trouver les points d'apparition d'objet

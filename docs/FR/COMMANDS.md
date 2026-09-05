@@ -249,6 +249,32 @@ make go-api-coverage   # rapport de couverture
 make go-api-lint       # go vet
 ```
 
+#### Corpus de rétro-ingénierie des cartes (tag de build `gamefiles`)
+
+Les 59 fichiers `*_gamefiles_test.go` de `internal/himap/` décodent les modules du **jeu
+installé** et balaient les 26 cartes du catalogue. Ils sont longs par nature — mesuré le
+2026-09-05, `TestBalayageCoquille` prend à lui seul **1 246 s (20 min 47 s)** et passe.
+Ils vivent derrière `//go:build gamefiles` pour qu'un `go test ./internal/himap/` nu reste
+utilisable (22 s).
+
+```bash
+make go-api-test-gamefiles                       # corpus entier (~1 h, exige le jeu)
+cd apps/go-api && go test -tags=gamefiles -count=1 -timeout 3600s ./internal/himap/ -v
+
+# Une seule carte (beaucoup plus rapide) :
+BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
+  ./internal/himap/ -run TestBalayageCoquille -v
+
+# Jeu installé ailleurs :
+LEVELUP_HALO_DEPLOY=/chemin/vers/Halo Infinite/deploy go test -tags=gamefiles ./internal/himap/
+```
+
+Sans installation du jeu, chaque test prend son `t.Skip` et le corpus est vide en une
+seconde — c'est exactement ce qui se passe en CI. La CI se contente donc de le **compiler**
+(`go vet -tags=gamefiles ./internal/himap/`, job `go-test`) ; elle ne l'exécute jamais. Le
+tag lui-même est tenu par `internal/himap/corpus_tag_test.go`, qui tourne dans le build par
+défaut.
+
 ### Frontend (`apps/web`)
 
 ```bash

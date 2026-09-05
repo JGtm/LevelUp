@@ -168,6 +168,18 @@ jobs:
         env:
           CGO_ENABLED: "0"
 
+      # CORPUS `gamefiles` (2026-09-05) : les 59 tests de rétro-ingénierie de
+      # internal/himap/ lisent l'installation locale de Halo Infinite et coûtent des
+      # dizaines de minutes (TestBalayageCoquille seul : 1 246 s, 26 cartes). Ils sont
+      # derrière `//go:build gamefiles` — donc PAS compilés par le `go test` par défaut.
+      # Sans ce vet, ils pourriraient sans que rien ne rougisse : la CI n'a pas le jeu
+      # installé, elle ne peut pas les EXÉCUTER, mais elle doit les COMPILER.
+      # Garde-rails du tag lui-même : internal/himap/corpus_tag_test.go.
+      - name: go vet (corpus gamefiles — compilation seule, jamais exécuté en CI)
+        run: go vet -tags=gamefiles ./internal/himap/
+        env:
+          CGO_ENABLED: "0"
+
       - name: go test (unit, no CGo DB)
         run: go test ./internal/domain/... ./internal/analysis/... ./contracttest/... -timeout 60s -count=1
         env:

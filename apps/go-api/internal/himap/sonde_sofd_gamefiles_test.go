@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE (2026-08-18, plan .ai/V7.5/replay2d/PLAN_NOMMAGE_EQIP_TRANSLOCATEUR.md phase 0) —
