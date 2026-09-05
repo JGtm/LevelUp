@@ -343,6 +343,9 @@ func peupleDepuisModule(ctx context.Context, r *Rendu, b *BilanCuisson, opts Opt
 	if err != nil {
 		return fmt.Errorf("index des modules : %w", err)
 	}
+	// L'index vit le temps de CETTE carte : sans cette fermeture, un balayage garde autant de
+	// jeux de projections qu'il a cuit de cartes (cf. ModuleIndex.Close).
+	defer func() { _ = idx.Close() }()
 	bsps, err := ReadModuleInstances(opts.CheminModule)
 	if err != nil {
 		return fmt.Errorf("instances du module : %w", err)

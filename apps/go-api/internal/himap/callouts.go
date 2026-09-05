@@ -119,6 +119,9 @@ func ReadModuleCallouts(modulePath string) ([]Callout, error) {
 	if err != nil {
 		return nil, fmt.Errorf("himap: ouvrir %s: %w", modulePath, err)
 	}
+	// Le module est projete en memoire : tout ce qui est rendu ci-dessous est une COPIE, la
+	// projection peut donc etre relachee a la sortie (cf. himodule.Module.Close).
+	defer func() { _ = m.Close() }()
 	levls := m.Files("levl")
 	if len(levls) != 1 {
 		return nil, fmt.Errorf("himap: %d tags levl dans %s (attendu 1)", len(levls), modulePath)

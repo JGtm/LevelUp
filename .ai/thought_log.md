@@ -1,3 +1,69 @@
+## [2026-09-05] Le lecteur de modules PROJETTE au lieu de copier — 16,2 Go relus par carte supprimes, cuisson x6, memoire /12 — Complete
+
+**D'OU VIENT CE LOT.** Le chantier precedent (tag `gamefiles`) laissait une question ouverte
+et chiffree : `himodule.Open` faisait `os.ReadFile`, donc chargeait l'archive ENTIERE dans le
+tas, et `himap.NewModuleIndex` le refaisait POUR CHAQUE CARTE sur la carte plus tous les
+modules globaux — 16,2 Go d'archives par carte. Profil de l'epoque : 87,7 Go alloues sur 4
+cartes, dont 74,6 Go (85 %) par `os.readFileContents`.
+
+**L'ORDRE DES OPERATIONS EST LE SUJET, PAS LE MMAP.** `internal/himodule` n'avait AUCUN test
+alors qu'il est la porte d'entree de TOUTES les donnees du jeu — geometrie, tags de scenario,
+sons, icones. Changer sa facon de lire sans empreinte, c'est changer la source de tout sans
+pouvoir montrer que rien n'a bouge. Le harnais a donc ete ecrit ET fige AVANT la moindre ligne
+de projection : `TestEmpreinteLecteurDeModules` (himap, tag `gamefiles`), trois niveaux qui se
+rattrapent — la table des entrees (un decalage d'index), les octets DECOMPRESSES de chaque
+entree (la chaine blocs -> Kraken -> assemblage), les blobs de ressources (la table des slots,
+que les deux premiers ne touchent pas). Trois modules choisis pour la couverture, pas pour la
+taille : `academy_weapon_drills` et `fo05_desert` portent un compagnon `_hd1` du meme ordre que
+l'archive et exercent la calibration hd1, la partie la plus fragile ; `chasm` exerce le chemin
+ordinaire. 135 Mo d'octets decompresses haches, en 0,8 s.
+
+**LE CHANGEMENT.** `projection.go` + `projection_windows.go` / `projection_unix.go` : l'archive
+est projetee en lecture seule (`CreateFileMapping`/`MapViewOfFile`, `mmap` MAP_SHARED) au lieu
+d'etre copiee. `m.data` reste un `[]byte` a acces direct — la MEME arithmetique d'offsets s'y
+applique, c'est ce qui rend le changement invisible aux appelants. Aucune dependance nouvelle :
+`golang.org/x/sys` etait deja directe.
+
+**CE QUI REND LA FERMETURE SURE, ET C'EST LA CONDITION DE TOUT LE RESTE.** Rien de ce que
+`himodule` rend n'aliase la projection : `Extract` decompresse dans un tampon neuf ou fait
+`copy`, `ResourceBlob` concatene par `append`, `Files`/`fourCC` rendent des valeurs. Verifie
+site par site avant d'ajouter `Module.Close()` et `ModuleIndex.Close()`, puis cable aux 11
+ouvertures de `himap` — dont `peupleDepuisModule`, le chemin chaud (un index par carte). Cas
+particulier traite chez le proprietaire : `indexForge` REND ses deux ouvertures sans les fermer,
+la fermeture est donc chez son appelant.
+
+**LE DETAIL QUI A DEMANDE UN CHOIX.** `go vet` (analyseur `unsafeptr`, actif par defaut dans
+golangci-lint) refuse toute conversion `uintptr` -> `unsafe.Pointer` : de son point de vue
+l'entier pourrait designer de la memoire deplacable. Ici l'adresse vient de `MapViewOfFile`,
+hors du tas Go, valide jusqu'a `UnmapViewOfFile`. Plutot que d'affaiblir la configuration du
+linter, la tranche est fabriquee via un en-tete local ({donnee, longueur, capacite}) dont on
+prend l'adresse — un `unsafe.Pointer` sur une variable ordinaire, que vet accepte. Meme forme
+que les bibliotheques de projection memoire, et le garde-rail reste intact.
+
+**MESURES, avant -> apres, meme machine, meme protocole.**
+
+	balayage de 4 cartes   duree 191,2 s -> 18,0 s      pic memoire privee 25,12 Go -> 0,87 Go
+	balayage des 26 cartes duree 1 246,7 s -> 203,5 s   pic memoire privee   ~25 Go -> 2,01 Go
+
+Soit x6,1 sur le balayage complet et un pic memoire divise par 12. Le regime a change de
+nature : le processus etait limite par la PAGINATION (13,5 min de CPU pour 30 min d'horloge),
+il est desormais limite par le CALCUL.
+
+**NON-REGRESSION, sur pieces.** Les trois empreintes du lecteur sont INCHANGEES apres le
+passage a la projection (memes SHA-256 qu'avant, rejouees 2x). Les 26 cartes du balayage
+rendent des chiffres IDENTIQUES a la reference du chantier precedent — memes tris, memes
+ancres, memes pixels avant/apres coquille, ligne a ligne. Les 5 autres paquets qui consomment
+`himodule` (`mapfond-build`, `mapplafond-mesure`, `mapstruct-build`, `weapon-icons-build`,
+`weapon-sounds`) compilent, passent vet et leurs tests. `golangci-lint` 0 issue dans les deux
+configurations de build.
+
+**CE QUE CE LOT DEBLOQUE.** Le corpus `gamefiles` ENTIER, que le chantier precedent avait du
+arreter a 30 min et 24 Go, redevient jouable : il tourne a 0,8 Go de memoire privee.
+
+**AU PASSAGE.** Le garde-rail `TestCorpusGamefilesEstTague`, pose la veille, m'a attrape :
+j'avais nomme le harnais `*_gamefiles_test.go` sans lui poser le tag. Il a fait exactement son
+travail, un jour apres avoir ete ecrit.
+
 ## [2026-09-05] internal/himap ne terminait pas — ce n'etait pas un blocage, c'etaient 20 minutes de balayage sans etiquette — Complete
 
 **Le symptome, et pourquoi il ressemblait a un bug.** `go test ./internal/himap/` ne

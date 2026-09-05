@@ -132,6 +132,7 @@ func ReadModuleInstances(modulePath string) ([]BSPInstances, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = m.Close() }()
 	files := m.Files("sbsp")
 	sort.Slice(files, func(i, j int) bool { return files[i].UncompSize > files[j].UncompSize })
 	out := make([]BSPInstances, 0, len(files))
@@ -353,6 +354,7 @@ func DescribeRootBlocks(modulePath string) ([]RootBlockInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = m.Close() }()
 	files := m.Files("sbsp")
 	if len(files) == 0 {
 		return nil, fmt.Errorf("%w dans %s", ErrAucunTagSbsp, modulePath)

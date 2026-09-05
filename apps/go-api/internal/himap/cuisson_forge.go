@@ -274,6 +274,11 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	if err != nil {
 		return nil, b, err
 	}
+	// `indexForge` REND ses deux ouvertures sans les fermer — c'est l'appelant qui en est le
+	// proprietaire, et c'est ici que leur vie se termine. Une cuisson Forge ouvre le module des
+	// objets (8,1 Go) en plus de l'index.
+	defer func() { _ = idx.Close() }()
+	defer func() { _ = forge.Close() }()
 
 	r := CadreSurAncresEchelle(opts.Ancres, EchellePourCadre(opts.Ancres, opts.Echelle, opts.CibleCadrePx))
 	r.SeuilArete = opts.SeuilArete
