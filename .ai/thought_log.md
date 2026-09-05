@@ -95401,3 +95401,52 @@ demander avant). Prochaine etape : decision utilisateur sur les 6 escalades, pui
 plan `.ai/PLAN_V2_REJEU_FILM_<date>.md` sous `plan-review`, lot 0 (trois P0 + les deux items
 actifs au merge : catalogue ecrit par le runtime, projections sur « artefact range ») avant le
 tag v7.5.0.
+
+## [2026-09-05] Lot B du plan v2 — le document de rejeu SERVI separe du document STOCKE — Complete
+
+**Contexte.** Decision utilisateur ferme n2 du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`
+(constat C7 du registre d'audit, annexes G2/G3) : le format du FICHIER d'artefact de rejeu
+(`internal/analysis/replay.ReplayDocument`) etait aussi le contrat public — 99 de ses types
+atteignables sont des `components.schemas` d'`api/openapi.yaml`, donc autant de types
+TypeScript. Consequence mesuree : 43 montees de `SchemaVersion` en cinq semaines, chacune
+regenerant le contrat pour un champ que le client ne lisait pas ; et aucun renommage cote
+client possible sans invalider le parc d'artefacts cuits. Exigence du lot : separer
+MAINTENANT, avec une forme de fil strictement inchangee (`openapi.yaml` et `generated.ts`
+sans diff). Worktree dedie `LevelUp-wt-v2-docservi`, branche `feat/v2-docservi`.
+
+**Decision technique.** Trois pieces. (1) `internal/domain/replaydoc` porte la forme de fil et
+rien d'autre : 99 structs + 3 scalaires nommes, memes noms de types (Huma en derive les noms
+de schemas), memes tags, meme ordre de champs (il gouverne la liste `required`), zero import
+du monde stocke ; `ContractVersion = 39`, distincte de la version stockee qui, elle, pilote la
+re-cuisson. (2) `internal/service/replayview` projette, une fonction pure par type, sans E/S,
+en preservant la nullite des tranches (sur les champs sans `omitempty`, `null` et `[]` sont
+deux corps differents). Projection EXPLICITE et non aller-retour JSON ni copie par reflexion :
+le but de la separation est qu'un champ non servi soit une decision visible au diff.
+(3) Le port, le service et le handler passent aux types servis ; un ratchet `archlint` (scan
+AST d'`internal/api/`, champs `Body`/`RawBody` et structs `*Input`/`*Output`) interdit le
+retour d'un type `analysis` en corps de route. Prealable verifie sur pieces avant d'ecrire :
+`huma@v2.39.1/registry.go` ignore le paquet dans le nom de schema et fait `panic` sur deux
+types NOMMES homonymes — le suffixe numerique ne concerne que les types anonymes.
+
+**Resultats.** Contrat INCHANGE : `go run ./cmd/openapi-gen` reecrit 676 077 octets et
+`git diff --exit-code` est vide sur `api/openapi.yaml` comme sur `generated.ts`. Controle
+prealable par programme jetable : les 99 schemas Huma des trois racines sont identiques octet
+pour octet des deux cotes. Trois garde-rails prouves par MUTATION (mutation posee, echec
+constate et cite, mutation annulee, suite re-jouee verte) : retirer un champ du seul
+convertisseur, le retirer aussi du type servi, remettre un type `analysis` en corps de route.
+`TestReplayDocumentFieldCountIsFrozen` change de nature — il porte desormais sur le contrat
+servi, chronique mise a jour dans le meme commit — et la garantie qu'il portait implicitement
+(« la cuisson ecrit tout ce que le contrat promet ») passe au test de parite, qui exige une
+decision ecrite par champ stocke, liste `champsNonServis` vide au 2026-09-05. Gates verts :
+suites `api`/`service`/`domain`/`archlint`/`contracttest`, `make go-api-test`, `go build ./...`,
+`golangci-lint` (0 issue sur les paquets crees ; les 19 restantes sont de la dette anterieure
+gelee dans `handlers/`), typecheck web. Quatre commits (`40667b2c2`, `1d32a6356`, `fac6d2c07`,
+`28b3e4ce1`). Decouverte hors perimetre, non traitee et inscrite a l'allowlist datee du
+ratchet : `handlers/patterns.go` sert `analysis/patterns.PatternReport` (4 schemas), meme
+defaut, anterieur au lot — cible de retrait 2026-11-01, critere mesurable ecrit. Deuxieme
+decouverte : le « 100 schemas » du registre en vaut 99, `Vec3` venant de `games/canonical`.
+
+**Conclusion / prochaine etape.** Lot B clos, 4 items sur 4 statues `[x]`, journal
+`.ai/V7.5/v2/LOT_B.md`. Ajouter un calque a la cuisson ne touche plus le contrat public.
+Prochaine etape : revue adversariale du diff par le superviseur, puis integration dans
+`feat/v75` selon l'ordre du plan (C -> A -> B -> F -> G -> E -> D).
