@@ -91332,3 +91332,19 @@ Halo 5 seulement, chantier Infinite remise : surfaces de precision EXCLUES, veri
 de salubrite du gating capability a rapporter) puis replier les deux graphes, avec la
 GARDE MULTI-TITRE « zero elu = aucun repli » (jamais un test de slug). PAS DE MERGE
 feat/v75 (decision utilisateur) : cloture = commits sur la branche.
+
+## [2026-09-05] Lot I — ABANDONNE sur clarification utilisateur, avant toute ecriture retenue
+
+**Statut : Clos (abandon).** La commande « etendre le repli aux graphes partages » etait un
+malentendu du superviseur : seuls les rendus d'USAGE du chantier (bilan d'equipement,
+controle des socles — deja repliables) sont concernes ; les graphes de PERFORMANCE
+existants (« Frags par arme » et declinaisons synthese/escouade/session) ne se replient
+pas — leur role est different. Agent Sonnet arrete en vol, ses modifications Go defaites
+(git checkout sur 6 fichiers, worktree revenu a 8180180f1), exposition `weapon_key`
+abandonnee avec le lot (note technique conservee au H1). VERIFICATION DE SALUBRITE faite
+par le superviseur : la precision par arme est correctement gatee par capability
+(`match.weapon.accuracy` = not_exposed pour halo_infinite, natif halo_5, exclusion
+mutuelle documentee dans SquadFragSection) — ni erreur ni reliquat.
+
+**Prochaine etape.** Gate visuel utilisateur des deux tableaux repliables, puis merge
+feat/v75 sur sa decision. Rien d'autre ouvert sur cette branche.
