@@ -4644,6 +4644,66 @@ export interface components {
             t1: number;
             xuid: string;
         };
+        BombEvent: {
+            actorSource?: string;
+            /** Format: int64 */
+            timeMs: number;
+            type: string;
+            xuid?: string;
+        };
+        BombMatchStats: {
+            coverage: components["schemas"]["BombStatsCoverage"];
+            players?: components["schemas"]["BombPlayerStats"][] | null;
+        };
+        BombPlayerStats: {
+            /** Format: int64 */
+            arms?: number;
+            /** Format: int64 */
+            carriersKilled?: number;
+            /** Format: int64 */
+            detonations?: number;
+            /** Format: int64 */
+            grabs?: number;
+            /** Format: double */
+            timeAsCarrierSeconds?: number;
+            xuid: string;
+        };
+        BombStatsCoverage: {
+            /** Format: int64 */
+            armings: number;
+            /** Format: int64 */
+            armingsAmbiguous: number;
+            /** Format: int64 */
+            armingsAttributed: number;
+            /** Format: int64 */
+            armingsByActiveCarry: number;
+            /** Format: int64 */
+            armingsByDrop: number;
+            /** Format: int64 */
+            armingsNoBridge: number;
+            /** Format: int64 */
+            armingsNoCarrier: number;
+            armingsRead: boolean;
+            carryRead: boolean;
+            /** Format: int64 */
+            detonations: number;
+            detonationsRead: boolean;
+            /** Format: int64 */
+            kills: number;
+            /** Format: int64 */
+            killsOnCarrier: number;
+            killsRead: boolean;
+            /** Format: int64 */
+            periods: number;
+            /** Format: int64 */
+            periodsByDeath: number;
+            /** Format: int64 */
+            periodsNoBridge: number;
+            /** Format: int64 */
+            periodsOpen: number;
+            /** Format: int64 */
+            players: number;
+        };
         BootstrapResponse: {
             active_sync_job_id?: string;
             /** @enum {string} */
@@ -9764,6 +9824,8 @@ export interface components {
             };
             bombArmings?: components["schemas"]["BombArming"][] | null;
             bombCarries?: components["schemas"]["BombCarry"][] | null;
+            bombEvents?: components["schemas"]["BombEvent"][] | null;
+            bombStats?: components["schemas"]["BombMatchStats"];
             bounds: components["schemas"]["Bounds"];
             coverage?: components["schemas"]["Coverage"];
             /** Format: int64 */

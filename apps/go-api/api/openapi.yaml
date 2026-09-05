@@ -8760,6 +8760,136 @@ components:
         - t1
         - closed
       type: object
+    BombEvent:
+      additionalProperties: false
+      properties:
+        actorSource:
+          type: string
+        timeMs:
+          format: int64
+          type: integer
+        type:
+          type: string
+        xuid:
+          type: string
+      required:
+        - type
+        - timeMs
+      type: object
+    BombMatchStats:
+      additionalProperties: false
+      properties:
+        coverage:
+          $ref: '#/components/schemas/BombStatsCoverage'
+        players:
+          items:
+            $ref: '#/components/schemas/BombPlayerStats'
+          type:
+            - array
+            - "null"
+      required:
+        - coverage
+      type: object
+    BombPlayerStats:
+      additionalProperties: false
+      properties:
+        arms:
+          format: int64
+          type: integer
+        carriersKilled:
+          format: int64
+          type: integer
+        detonations:
+          format: int64
+          type: integer
+        grabs:
+          format: int64
+          type: integer
+        timeAsCarrierSeconds:
+          format: double
+          type: number
+        xuid:
+          type: string
+      required:
+        - xuid
+      type: object
+    BombStatsCoverage:
+      additionalProperties: false
+      properties:
+        armings:
+          format: int64
+          type: integer
+        armingsAmbiguous:
+          format: int64
+          type: integer
+        armingsAttributed:
+          format: int64
+          type: integer
+        armingsByActiveCarry:
+          format: int64
+          type: integer
+        armingsByDrop:
+          format: int64
+          type: integer
+        armingsNoBridge:
+          format: int64
+          type: integer
+        armingsNoCarrier:
+          format: int64
+          type: integer
+        armingsRead:
+          type: boolean
+        carryRead:
+          type: boolean
+        detonations:
+          format: int64
+          type: integer
+        detonationsRead:
+          type: boolean
+        kills:
+          format: int64
+          type: integer
+        killsOnCarrier:
+          format: int64
+          type: integer
+        killsRead:
+          type: boolean
+        periods:
+          format: int64
+          type: integer
+        periodsByDeath:
+          format: int64
+          type: integer
+        periodsNoBridge:
+          format: int64
+          type: integer
+        periodsOpen:
+          format: int64
+          type: integer
+        players:
+          format: int64
+          type: integer
+      required:
+        - detonationsRead
+        - carryRead
+        - killsRead
+        - armingsRead
+        - detonations
+        - armings
+        - armingsAttributed
+        - armingsByDrop
+        - armingsByActiveCarry
+        - armingsNoCarrier
+        - armingsNoBridge
+        - armingsAmbiguous
+        - periods
+        - periodsNoBridge
+        - periodsOpen
+        - periodsByDeath
+        - kills
+        - killsOnCarrier
+        - players
+      type: object
     BootstrapResponse:
       additionalProperties: false
       properties:
@@ -21011,6 +21141,14 @@ components:
           type:
             - array
             - "null"
+        bombEvents:
+          items:
+            $ref: '#/components/schemas/BombEvent'
+          type:
+            - array
+            - "null"
+        bombStats:
+          $ref: '#/components/schemas/BombMatchStats'
         bounds:
           $ref: '#/components/schemas/Bounds'
         coverage:

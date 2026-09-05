@@ -58,8 +58,11 @@ import (
 	"levelup/go-api/internal/persist"
 )
 
-// rapportUsage : un match dont l'artefact a été cuit ce cycle, à projeter en résumé.
-type rapportUsage struct {
+// artefactCuit : un match dont l'artefact a été cuit ce cycle. Il alimente TOUTES les
+// projections post-cuisson du paquet — le résumé d'usage (usage.go) ET les statistiques
+// d'Assaut (bombstats.go) —, parce qu'elles lisent le MÊME fichier rangé : deux listes
+// séparées auraient divergé au premier crochet ajouté.
+type artefactCuit struct {
 	matchID string
 	// path : l'artefact RANGÉ SUR DISQUE (StoredArtifact.Path) — la seule source que la
 	// projection accepte (voir l'en-tête).
@@ -110,7 +113,7 @@ func projeterResumeUsage(path string) (replay.UsageSummary, error) {
 // persisterResumesUsage projette puis écrit les résumés des artefacts cuits du cycle.
 // Best-effort de bout en bout, comme toute l'étape : aucun échec ne remonte au cycle,
 // mais aucun ne se tait non plus.
-func persisterResumesUsage(ctx context.Context, d Deps, rapports []rapportUsage) {
+func persisterResumesUsage(ctx context.Context, d Deps, rapports []artefactCuit) {
 	if len(rapports) == 0 {
 		return
 	}
@@ -163,7 +166,7 @@ func persisterResumesUsage(ctx context.Context, d Deps, rapports []rapportUsage)
 
 // projeterResumesUsage projette tous les artefacts du lot, AVANT tout writer. Rend les
 // projections réussies et le compte d'échecs (déjà journalisés, un par match).
-func projeterResumesUsage(ctx context.Context, d Deps, rapports []rapportUsage) ([]resumeUsagePret, int) {
+func projeterResumesUsage(ctx context.Context, d Deps, rapports []artefactCuit) ([]resumeUsagePret, int) {
 	prets := make([]resumeUsagePret, 0, len(rapports))
 	echecs := 0
 	for _, r := range rapports {

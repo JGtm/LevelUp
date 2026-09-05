@@ -88,6 +88,43 @@ import (
 // l'objectif `objectiveevents.ObjectiveTypeBomb`.
 const BombEventDetonated = "bomb_detonated"
 
+// BombSourceNavpointRing / BombSourceStatborg nomment LA PROVENANCE de chaque fait daté de la
+// bombe, dans le vocabulaire `source` de `match_objective_events`.
+//
+// ELLES SONT ICI, CHEZ LE PRODUCTEUR, ET NULLE PART AILLEURS. La table refuse un fait dont la
+// `source` ou la `confidence` manque — « un fait qui ne dit pas d'où il vient laisse un lecteur
+// lui prêter la précision qu'il veut » (persist/bomb_stats_persister.go). Les poser au point de
+// persistance en ferait une seconde définition du même fait ; le transporteur les LIT ici, il ne
+// les invente pas.
+//
+//	BombSourceNavpointRing  l'anneau `ti=12 i14` du film — segments contigus, armement = segment
+//	                        qui finit à son sommet plein, mèche MESURÉE par film ;
+//	BombSourceStatborg      le statborg `comp 0` canal A (`StatBombDetonations`), le compteur de
+//	                        points de mode que l'Assaut fait coïncider avec les explosions.
+const (
+	BombSourceNavpointRing = "navpoint_ring"
+	BombSourceStatborg     = "statborg"
+)
+
+// BombEventProvenance rend la `source` et la `confidence` d'un fait daté, d'après son type.
+//
+// LES DEUX FAMILLES SONT `exact`, ET CE N'EST PAS UNE FACILITÉ : l'armement est daté par la FIN
+// d'un segment de l'anneau (l'instant du paquet, à la milliseconde), l'explosion par l'émission
+// du statborg qui la porte (idem). Aucune des deux n'est une inflexion interpolée — c'est ce que
+// `objectiveevents.ConfidenceApprox` désigne, et ce n'est pas notre cas.
+//
+// Un type inconnu rend deux chaînes VIDES : le persister refusera alors la ligne plutôt que de
+// l'écrire sans provenance, ce qui est exactement le comportement voulu.
+func BombEventProvenance(eventType string) (source, confidence string) {
+	switch eventType {
+	case BombEventArmed:
+		return BombSourceNavpointRing, objectiveevents.ConfidenceExact
+	case BombEventDetonated:
+		return BombSourceStatborg, objectiveevents.ConfidenceExact
+	}
+	return "", ""
+}
+
 // bombCarrierKillToleranceMS borne l'écart accepté entre l'instant d'un kill et la FERMETURE
 // de la période de portage de sa victime.
 //
@@ -141,29 +178,29 @@ type BombStatsInput struct {
 // BombPlayerStats porte les statistiques d'UN joueur. Un champ à `nil` n'a pas été mesuré.
 type BombPlayerStats struct {
 	// XUID du joueur, en décimal — la même clef que `ObjectiveAction.XUID` et `Track.XUID`.
-	XUID string
+	XUID string `json:"xuid"`
 	// Detonations : explosions de bombe créditées au joueur.
-	Detonations *int
+	Detonations *int `json:"detonations,omitempty"`
 	// Arms : armements attribués au joueur par la jointure de bomb_arms.go.
-	Arms *int
+	Arms *int `json:"arms,omitempty"`
 	// Grabs : ramassages de la bombe.
-	Grabs *int
+	Grabs *int `json:"grabs,omitempty"`
 	// TimeAsCarrierSeconds : temps cumulé bombe en main, périodes fermées seulement.
-	TimeAsCarrierSeconds *float64
+	TimeAsCarrierSeconds *float64 `json:"timeAsCarrierSeconds,omitempty"`
 	// CarriersKilled : porteurs de bombe tués (cf. la réserve de l'en-tête).
-	CarriersKilled *int
+	CarriersKilled *int `json:"carriersKilled,omitempty"`
 }
 
 // BombEvent est un fait daté de la bombe, sur l'horloge du FILM — la même que celle des
 // `ObjectiveAction`, superposable sans recalage.
 type BombEvent struct {
 	// Type est la valeur `event_type` (cf. BombEventDetonated).
-	Type string
+	Type string `json:"type"`
 	// TimeMS est l'instant sur l'horloge du film.
-	TimeMS int
+	TimeMS int `json:"timeMs"`
 	// XUID de l'acteur, en décimal. Vide = fait daté SANS acteur résolu : il se publie quand
 	// même, jamais avec un acteur deviné.
-	XUID string
+	XUID string `json:"xuid,omitempty"`
 	// ActorSource dit QUELLE RÈGLE a nommé l'acteur — `BombActorSourceDrop` (la bombe a quitté
 	// les mains dans la fenêtre : un geste OBSERVÉ) ou `BombActorSourceActiveCarry` (le repli :
 	// personne d'autre ne la tenait, une présence CONSTATÉE). Vide quand XUID l'est aussi.
@@ -171,16 +208,19 @@ type BombEvent struct {
 	// Ce champ n'est pas décoratif : les deux règles n'ont pas la même force de preuve, et un
 	// lecteur qui les confondrait surestimerait ce que la mesure établit. Il n'a de sens que
 	// pour `BombEventArmed` — une explosion est nommée par le statborg, pas par une jointure.
-	ActorSource string
+	ActorSource string `json:"actorSource,omitempty"`
 }
 
 // BombStatsCoverage dit ce qui a été lu et ce qui a été écarté : publier des chiffres sans
 // dire sur quel dénominateur ils portent laisserait croire à l'exhaustivité.
 type BombStatsCoverage struct {
 	// Les quatre témoins de lecture, recopiés de l'entrée.
-	DetonationsRead, CarryRead, KillsRead, ArmingsRead bool
+	DetonationsRead bool `json:"detonationsRead"`
+	CarryRead       bool `json:"carryRead"`
+	KillsRead       bool `json:"killsRead"`
+	ArmingsRead     bool `json:"armingsRead"`
 	// Detonations est le nombre d'explosions identifiées (le numérateur publié).
-	Detonations int
+	Detonations int `json:"detonations"`
 	// Armings est le nombre d'armements DATÉS fournis — le dénominateur du contrôle de
 	// cohérence de la jointure. ArmingsAttributed est le nombre d'armements auxquels un
 	// poseur a été nommé, VENTILÉ PAR RÈGLE : ArmingsByDrop pour la source primaire (le
@@ -197,26 +237,34 @@ type BombStatsCoverage struct {
 	// vaut ArmingsAttributed ; ArmingsAttributed == ArmingsByDrop + ArmingsByActiveCarry ; et
 	// ArmingsAttributed + ArmingsNoCarrier + ArmingsNoBridge + ArmingsAmbiguous == Armings.
 	// Un armement n'est jamais attribué deux fois, ni à un joueur deviné.
-	Armings, ArmingsAttributed, ArmingsByDrop, ArmingsByActiveCarry int
-	ArmingsNoCarrier, ArmingsNoBridge, ArmingsAmbiguous             int
+	Armings              int `json:"armings"`
+	ArmingsAttributed    int `json:"armingsAttributed"`
+	ArmingsByDrop        int `json:"armingsByDrop"`
+	ArmingsByActiveCarry int `json:"armingsByActiveCarry"`
+	ArmingsNoCarrier     int `json:"armingsNoCarrier"`
+	ArmingsNoBridge      int `json:"armingsNoBridge"`
+	ArmingsAmbiguous     int `json:"armingsAmbiguous"`
 	// Periods / PeriodsNoBridge / PeriodsOpen / PeriodsByDeath ventilent le portage : combien
 	// de périodes, combien sans identité pontée (écartées), combien restées ouvertes à la fin
 	// du film (comptées en ramassages mais PAS en temps), combien fermées par la mort.
-	Periods, PeriodsNoBridge, PeriodsOpen, PeriodsByDeath int
+	Periods         int `json:"periods"`
+	PeriodsNoBridge int `json:"periodsNoBridge"`
+	PeriodsOpen     int `json:"periodsOpen"`
+	PeriodsByDeath  int `json:"periodsByDeath"`
 	// Kills est le nombre de morts fournies — le dénominateur de CarriersKilled.
-	Kills int
+	Kills int `json:"kills"`
 	// KillsOnCarrier est le nombre de morts retenues comme kill de porteur.
-	KillsOnCarrier int
+	KillsOnCarrier int `json:"killsOnCarrier"`
 	// Players est le nombre de joueurs publiés.
-	Players int
+	Players int `json:"players"`
 }
 
 // BombMatchStats est le résultat par match : les joueurs et ce qui a été vu.
 type BombMatchStats struct {
 	// Players, triés par xuid — un ordre total, donc une sortie reproductible.
-	Players []BombPlayerStats
+	Players []BombPlayerStats `json:"players,omitempty"`
 	// Coverage dit sur quoi ces chiffres portent.
-	Coverage BombStatsCoverage
+	Coverage BombStatsCoverage `json:"coverage"`
 }
 
 // BuildBombStats calcule les cinq statistiques d'Assaut et les faits datés.

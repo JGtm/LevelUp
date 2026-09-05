@@ -126,19 +126,27 @@ func buildBombCarries(carry HeldObjectCarry, ctx matchClock,
 // (`opt.WeaponChanges`) ; le pont et son calage d'horloge viennent d'`own`, comme pour le
 // drapeau. Sans pont (`own.SlotXUID` vide), rien n'est reconstruit : aucune période ne
 // pourrait être nommée, et la couverture dit ce qui a été vu.
-func attachBombCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock replayClock) {
+//
+// ELLE REND LA CHRONOLOGIE RECONSTRUITE, EN MILLISECONDES, et pas seulement ce qu'elle publie :
+// `attachBombStats` en a besoin ENTIÈRE — périodes non pontées comprises, distinction lâcher /
+// mort comprise, `CarryMSByXUID` compris —, or `doc.BombCarries` est une projection sur la
+// grille de frames qui perd les trois. La rendre ici est ce qui évite de la reconstruire une
+// seconde fois (cf. l'en-tête de bomb_stats_document.go). Zéro valeur = rien n'a été
+// reconstruit (hors famille bomb, ou aucun pont).
+func attachBombCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock replayClock) HeldObjectCarry {
 	if !opt.Bomb.CarryScanned {
-		return
+		return HeldObjectCarry{}
 	}
 	events := bombHeldEventsOf(opt.WeaponChanges, own.DeathOffsetMS)
 	var carries []BombCarry
 	var cov *BombCarriesCoverage
+	var carry HeldObjectCarry
 	if len(own.SlotXUID) == 0 {
 		cov = &BombCarriesCoverage{BombFilm: true, Events: len(events)}
 		slog.Warn("rejeu : portage de la bombe sans pont slot->xuid — aucune periode publiable",
 			"match_id", doc.MatchID, "transitions", len(events))
 	} else {
-		carry := BuildHeldObjectCarry(events, own.SlotXUID, opt.Deaths)
+		carry = BuildHeldObjectCarry(events, own.SlotXUID, opt.Deaths)
 		carries, cov = buildBombCarries(carry, matchClock{
 			origin: clock.origin, step: clock.step, frames: clock.frames,
 			deathOffsetMS: own.DeathOffsetMS,
@@ -153,4 +161,5 @@ func attachBombCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 		"fermes", cov.Closed, "ouverts", cov.Open, "parMort", cov.ByDeath,
 		"sansPont", cov.NoBridge, "horsFenetre", cov.OutOfWindow,
 		"porteurAbsent", cov.CarrierAbsent)
+	return carry
 }
