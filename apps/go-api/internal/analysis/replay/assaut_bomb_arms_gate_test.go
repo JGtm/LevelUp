@@ -27,14 +27,22 @@ package replay
 //	    distribution SIGNÉE de (lâcher − armement) qui calibre la fenêtre de jointure, et les
 //	    périodes qui COUVRENT chaque armement — la matière du repli.
 //
-// # CE QUE LE GATE NE JUGE PAS, ET POURQUOI
+// # ONE BOMB PUBLIE, DEPUIS LE 2026-09-04 (E2-ter)
 //
-// One Bomb ne publie AUCUN armement : la confrontation locale de `buildBombArmings` retient le
-// calque entier (mèche fixe de 4,93 s réfutée sur cette variante, CV 0,725 — la mèche pausable
-// de 16,2 s est une lecture de RECHERCHE, elle n'est pas en production sur cette branche).
-// `9f57c612` est donc au gate pour le critère (a) — la non-régression du portage — et son
-// compte d'armements attendu est ZÉRO. Ce n'est pas un manque du lot : c'est la dégradation
-// propre déjà gatée par `TestAssautArmementGate` (critère c2).
+// Cet en-tête a porté l'inverse, et c'est la mesure qui l'a périmé : sous la lecture SIMPLE
+// (mèche fixe de 4,93 s) la confrontation locale retenait le calque entier de One Bomb (CV
+// 0,725). La lecture « MÈCHE PAUSABLE » est PASSÉE EN PRODUCTION avec le schéma 39, et
+// `9f57c612` publie désormais **5 armements** — 65 137 / 279 103 / 335 193 / 388 080 /
+// 445 839 ms —, 4/4 explosions couvertes, mèche mesurée 16 183 ms (CV 0,010), 3 armeurs nommés
+// (2 par lâcher, 1 par repli). Le statborg corrobore : pour l'explosion de 298 489 il nomme le
+// joueur que la règle du lâcher a nommé sur l'armement de 279 103.
+//
+// `9f57c612` est donc au gate pour les critères (a), (c) et (d) comme les autres. Ce qui reste
+// vrai de l'ancien en-tête, et qui vaut d'être écrit ici : DEUX des trois films One Bomb du
+// corpus (`c75f33b8`, `df8fcbef`) restent RETENUS par la garde 2 — une explosion sans armement
+// pour l'un, un délai corrigé aberrant pour l'autre. Ce sont exactement les deux instants
+// d'`a5SansPorteur` ; relâcher la garde pour les récupérer publierait un calque expliqué aux
+// trois quarts. Ni l'un ni l'autre n'est au gate.
 //
 // RÉGIME : garde `ASSAUT_CACHE`. Aucune base, aucun réseau, sentinelle mémoire armée, UN SEUL
 // décodage à la fois (`filmdec.LockProcessDecode`). Jamais `cmd/replay-build`.
@@ -59,7 +67,7 @@ var baGateFilms = []struct {
 	portage bool
 }{
 	{"35b75a31", true},  // Neutral Bomb — 3 explosions, armements publiés
-	{"9f57c612", true},  // One Bomb — 4 explosions, ZÉRO armement publié (cf. l'en-tête)
+	{"9f57c612", true},  // One Bomb — 4 explosions, 5 armements publiés (cf. l'en-tête)
 	{"1c01e34f", false}, // Husky Raid
 	{"3d58eb37", false},
 	{"69b16f5d", false},
@@ -121,15 +129,24 @@ type baFilm struct {
 }
 
 // baMesurer déroule la chaîne complète sur UN film : portage (chaîne de production, via
-// `bpExtraire`), armements (via `agExtraire`), recalage d'horloge, puis la jointure.
+// `bpExtraire`), armements (via `agExtraire`), puis LA JOINTURE PAR LE SITE DE CÂBLAGE DE LA
+// PRODUCTION.
 //
-// LE RECALAGE est calculé EXACTEMENT comme l'appelant de production devra le faire :
-// `premierPaquetDuFilmUS/1000 − deathOffsetMS` (dérivation complète en tête de bomb_arms.go).
-// Sa valeur est imprimée : les quatre films témoins d'origin.go la mesurent à 16-81 ms, et un
-// ordre de grandeur au-dessus dirait qu'un des deux termes a changé de référentiel.
+// LE GATE N'ÉCRIT PLUS NI LE RECALAGE NI LES TÉMOINS DE LECTURE, et c'est le correctif du
+// constat I-2 de la revue de branche. Il recopiait `premierPaquetDuFilmUS/1000 −
+// deathOffsetMS` et dérivait `ArmingsRead` de `!armCov.Suppressed` — une copie de plus de la
+// formule, et un prédicat DIVERGENT de la production, qui exige aussi `Scanned` (un calque non
+// balayé n'est pas un calque publié). Le gate assemble donc maintenant le DOCUMENT MINIMAL que
+// `attachBombStats` consomme et appelle `attachBombStats` : les trois témoins de lecture et le
+// recalage sortent du code livré, jamais d'une seconde écriture.
 //
-// `ArmingsRead` suit `Suppressed` : un calque retenu à la source (One Bomb) n'est pas un
-// armement à zéro, c'est une absence de lecture — et la couverture doit le dire ainsi.
+// `f.offset` reste calculé ici, mais POUR L'AFFICHAGE SEUL (les deux diagnostics du critère (d),
+// qui posent les armements sur l'horloge du match) : il n'entre dans AUCUNE mesure ni dans aucun
+// verdict. Sa valeur est imprimée — les quatre films témoins d'origin.go la mesurent à 16-81 ms,
+// les cinq du gate à 33-114 ms, et un ordre de grandeur au-dessus dirait qu'un des deux termes a
+// changé de référentiel. Il est ÉPINGLÉ à la production par
+// `TestBombStatsCablageRecalageHorloge` (bomb_stats_wiring_test.go), qui tourne en CI et rougit
+// si `attachBombStats` cesse d'appliquer cette dérivation.
 func baMesurer(t *testing.T, cache, id string) baFilm {
 	t.Helper()
 	periodes, _, _, own := bpExtraire(t, cache, id)
@@ -139,15 +156,19 @@ func baMesurer(t *testing.T, cache, id string) baFilm {
 		t.Fatalf("%s : horloge du film illisible : %v", id, err)
 	}
 	offset := int(int64(filmClockUS)/1000 - own.DeathOffsetMS)
-	t.Logf("%s : recalage film -> match = %d ms (premier paquet %d ms, deathOffset %d ms)",
+	t.Logf("%s : recalage film -> match = %d ms (premier paquet %d ms, deathOffset %d ms) "+
+		"— AFFICHAGE SEUL, la mesure passe par attachBombStats",
 		id, offset, int64(filmClockUS)/1000, own.DeathOffsetMS)
-	f := baFilm{id: id, periodes: periodes, armings: armings, offset: offset}
-	f.stats, f.evts = BuildBombStats(BombStatsInput{
-		ArmingsRead: !armCov.Suppressed, Armings: armings,
-		CarryRead: true, Carry: HeldObjectCarry{Periods: periodes},
-		FilmToMatchOffsetMS: offset,
-	})
-	return f
+	doc := ReplayDocument{MatchID: id, BombArmings: armings,
+		Coverage: &Coverage{BombArmings: armCov}}
+	attachBombStats(&doc, Options{FilmClockOriginUS: filmClockUS,
+		Bomb: BombInput{CarryScanned: true}}, own,
+		HeldObjectCarry{Periods: periodes})
+	if doc.BombStats == nil {
+		t.Fatalf("%s : attachBombStats n'a pose aucune statistique", id)
+	}
+	return baFilm{id: id, periodes: periodes, armings: armings, offset: offset,
+		stats: *doc.BombStats, evts: doc.BombEvents}
 }
 
 // baPublier imprime le bilan demandé par le critère (d) : armements datés, attribués VENTILÉS
