@@ -243,6 +243,11 @@ var canonicalOrder = []string{
 	"create_world_player_no_data",                              // shared (marqueur privés/sans-données classement mondial)
 	"shared_create_objective_stats",                            // shared (V72-03 : stats objectifs CTF/Zones/Oddball par joueur/match, append-only)
 	"shared_objective_stats_add_stockpile_extraction",          // shared (V721-02 : +18 colonnes Stockpile/Extraction/VIP + vue _latest recréée)
+	// Résumé d'usage équipement/socles dérivé de l'artefact de rejeu (session-usage,
+	// 2026-09-04). Position dictée par l'ordre d'init (alphabétique par nom de fichier :
+	// steps_shared_usage_summary.go précède steps_shared_weapon_*.go) — exigence de
+	// TestSortByCanonicalIsNoOpOnCurrentRegistry.
+	"shared_match_usage_summary_v1", // shared (match_usage_players + match_usage_films, append-only + vues _latest par passe)
 	// Table SOEUR de match_weapon_shots (distances tireur<->victime des touches, acquis du
 	// chantier precision remis le 2026-09-01). Position dictee par l'ordre d'init
 	// (alphabetique par nom de fichier) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.

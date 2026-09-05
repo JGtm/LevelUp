@@ -123,6 +123,9 @@ type bilanCuisson struct {
 	// plutôt que d'être écrits ici : un burst writer au milieu d'une boucle de décodage est
 	// exactement ce que le découpage du paquet interdit.
 	t0Film []rapportT0Film
+	// usage : les artefacts cuits dans ce cycle, à projeter en résumé d'usage puis à écrire
+	// une fois toute cuisson terminée (cf. usage.go) — même règle de voyage que t0Film.
+	usage []rapportUsage
 }
 
 // DeadlineParFilm : la borne DURE de la cuisson d'UN film, quand le budget du cycle en laisse
@@ -304,6 +307,10 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 	if t0 := lireT0FilmArtefact(out.stored.Path); t0 != nil {
 		b.t0Film = append(b.t0Film, rapportT0Film{matchID: w.matchID, t0FilmMs: *t0})
 	}
+	// Le résumé d'usage suit la même règle : projeté depuis le FICHIER RANGÉ (jamais les
+	// octets candidats, que `StoreArtifact` peut refuser), écrit en base une fois toute
+	// cuisson terminée (cf. usage.go).
+	b.usage = append(b.usage, rapportUsage{matchID: w.matchID, path: out.stored.Path})
 	// LA DUREE ET LE PIC VIENNENT DE L'ENFANT (cf. buildone.go) : c'est la seule ligne du
 	// cycle qui dit ce qu'a coute un film. Un pic a zero signifie « non mesure » — un enfant
 	// mort avant de se mesurer —, jamais « aucune memoire ».

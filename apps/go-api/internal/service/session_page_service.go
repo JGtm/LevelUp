@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // errCodeSessionNotFound est le code machine renvoyé quand une session
@@ -60,6 +61,13 @@ type SessionPageService struct {
 	// gated par la capability match.objective.stats (jamais slug==) ; nil → axe retiré.
 	objectiveIndex port.ObjectiveIndexRepository
 	objectiveXUID  string
+	// sessionUsageRepo / usageXUID / usageFriends (optionnels) : bloc « usages
+	// d'équipement, socles et objectifs » de la session (chantier session-usage
+	// S2). Câblé gated par la capability film.usage_summary (jamais slug==) ;
+	// nil → bloc Available=false avec raison machine. Cf. session_page_usage.go.
+	sessionUsageRepo port.SessionUsageRepository
+	usageXUID        string
+	usageFriends     teammates.FriendGamertagsResolver
 }
 
 // NewSessionPageService crÃ©e un SessionPageService.
@@ -273,6 +281,10 @@ func (s *SessionPageService) GetPage(
 	// Taille de lobby (joueurs présents à la fin, bots inclus) pour le breakdown
 	// des placements — best-effort, dégrade gracieusement si le repo ne le fournit pas.
 	s.attachLobbySizes(ctx, resp.Matches, resp.CompareMatches)
+
+	// Bloc « usages d'équipement, socles et objectifs » de la session courante
+	// (chantier session-usage S2) — best-effort, cf. session_page_usage.go.
+	s.attachSessionUsage(ctx, &resp, currentMatches, req.Filters.MatchContext)
 
 	slog.InfoContext(ctx, "session page generated",
 		"resolved_session", currentLabel,

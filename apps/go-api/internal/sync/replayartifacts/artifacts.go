@@ -342,6 +342,9 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 	// LE REPORT DU COUP D'ENVOI VIENT APRÈS TOUTE CUISSON, jamais entre deux : c'est ce qui
 	// garantit que le burst writer ne recouvre aucun décodage (cf. t0film.go).
 	reporterT0Film(ctx, d, b.t0Film)
+	// LE RÉSUMÉ D'USAGE SUIT LA MÊME RÈGLE (cf. usage.go) : projeté depuis les artefacts
+	// rangés de CE cycle, écrit dans un second burst court, gate par capability.
+	persisterResumesUsage(ctx, d, b.usage)
 	publierBilan(ctx, d, b, len(work))
 }
 

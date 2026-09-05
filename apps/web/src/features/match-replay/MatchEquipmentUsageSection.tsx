@@ -265,7 +265,9 @@ function UsageTeamShares({ rows, t }: { rows: UsageShareRow[]; t: ReplayText }) 
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[420px] space-y-2.5">
-        {rows.map((row) => (
+        {rows.map((row) => {
+          const segTotal = row.segments.reduce((a, s) => a + s.count, 0)
+          return (
           <div key={row.key} className="grid grid-cols-[158px_1fr] items-center gap-3.5">
             <div className="flex items-center justify-end gap-2 text-xs">
               <HeaderLabelTooltip text={row.hint} focusable>
@@ -278,29 +280,43 @@ function UsageTeamShares({ rows, t }: { rows: UsageShareRow[]; t: ReplayText }) 
                 aria-hidden="true"
               />
             </div>
-            <div className="flex h-[22px] gap-0.5">
+            <div className="flex h-[22px]">
+              {/* La largeur est portée par l'ITEM du flex, en `calc(%)` — jamais un flexGrow
+                  sur le contenu d'un Tooltip : son wrapper garde flex-grow 0 et les segments
+                  se dimensionneraient à leur texte, pas à leurs comptes (revue adversariale
+                  2026-09-05 ; pattern : MatchPadControlSection). Et comme là-bas, le libellé
+                  ne s'écrit que si le segment est assez large pour le porter — l'infobulle
+                  garde toujours la valeur exacte. */}
               {row.segments.map((seg) => {
                 const tip = t.equipmentUsage.shareTipFmt(seg.label, row.label, seg.count, row.total)
+                const fraction = segTotal > 0 ? seg.count / segTotal : 0
                 // `text-white` : le libellé est posé SUR l'aplat du camp, quelle que soit la
                 // palette réglée — ce n'est pas une couleur sémantique mais le contraste d'un
                 // texte dans un aplat (même usage que `MatchNemesisCards`).
                 return (
-                  <Tooltip key={seg.side ?? 'sans-equipe'} content={tip} className="h-full">
-                    <div
-                      className="flex h-full items-center justify-center overflow-hidden whitespace-nowrap px-1 text-3xs font-semibold text-white"
-                      style={{ backgroundColor: seg.accent, flexGrow: seg.count, flexBasis: 0 }}
-                      tabIndex={0}
-                      role="img"
-                      aria-label={tip}
-                    >
-                      {`${seg.count} · ${seg.percent} %`}
-                    </div>
-                  </Tooltip>
+                  <div
+                    key={seg.side ?? 'sans-equipe'}
+                    className="mr-[2px] h-full last:mr-0"
+                    style={{ width: `calc(${fraction * 100}% - 2px)` }}
+                  >
+                    <Tooltip content={tip} className="h-full w-full">
+                      <div
+                        className="flex h-full w-full items-center justify-center overflow-hidden whitespace-nowrap px-1 text-3xs font-semibold text-white"
+                        style={{ backgroundColor: seg.accent }}
+                        tabIndex={0}
+                        role="img"
+                        aria-label={tip}
+                      >
+                        {fraction >= 0.11 ? `${seg.count} · ${seg.percent} %` : ''}
+                      </div>
+                    </Tooltip>
+                  </div>
                 )
               })}
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
