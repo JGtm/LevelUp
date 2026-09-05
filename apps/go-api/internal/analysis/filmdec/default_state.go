@@ -61,43 +61,37 @@ import "fmt"
 // FUN_140F44C38 (iVar15 != -1 path). Default false: a fresh keyframe decode runs
 // against a memset(0) DST, so the block is absent. Exposed as a package var so a
 // calibration harness can probe the alternative.
+//
+// Le réglage public `SetBipedMediaFramePresent` a été supprimé le 2026-09-05 (lot E, item E.2) :
+// aucun appelant. La valeur reste `false`, le cas mesuré du décodage keyframe.
 var bipedMediaFramePresent = false
-
-// SetBipedMediaFramePresent toggles the FUN_140F44C38 media-frame quat block.
-func SetBipedMediaFramePresent(v bool) { bipedMediaFramePresent = v }
 
 // bipedDefaultStateTailBits is the number of extra bits consumed by the
 // config-gated tail of FUN_141f86704 that runs AFTER vtable[0x60] and BEFORE the
 // presence mask (@141f868fd..). Those reads (≤2× R(1)) depend on runtime config
 // globals; their count is supplied externally, like recordStateParam. Default 0.
+//
+// Le réglage public `SetBipedDefaultStateTailBits` a été supprimé le 2026-09-05 (lot E, item
+// E.2) : aucun appelant. La largeur reste 0, la valeur mesurée du chemin nominal.
 var bipedDefaultStateTailBits = 0
-
-// SetBipedDefaultStateTailBits sets the FUN_141f86704 post-vtable[0x60] tail width.
-func SetBipedDefaultStateTailBits(n int) { bipedDefaultStateTailBits = n }
 
 // consumeBipedDefaultState ports FUN_140F44C38 bit-exact. It consumes the biped
 // default-state region of a keyframe record (the bits between the R(6) typeIndex
 // and the presence mask, excluding the FUN_141f86704 config tail — see
 // consumeBipedDefaultStateTail). All reads are bit-consume-exact; decoded values
 // are discarded.
-// repTraceHook (DEBUG) reçoit la position bit après chaque champ de consumeBipedDefaultState,
-// pour localiser une divergence de largeur du rep (166 vs 198 selon la donnée).
-var repTraceHook func(label string, bitpos int)
+//
+// LE CROCHET DE TRACE `repTraceHook` A ETE SUPPRIME le 2026-09-05 (lot E, item E.2), avec son
+// setter `SetRepTraceHook` et les neuf appels `traceRep` qu'il gardait : aucun site du depot
+// ne l'installait non-nil, tests compris — il etait donc prouvablement toujours nil, et les
+// neuf appels ne pouvaient rien emettre. La divergence de largeur du rep qu'il servait a
+// localiser (166 contre 198 bits) est close depuis, et ecrite dans la grammaire ci-dessus.
 
 // lastRepVersion (DEBUG) = la valeur uVar10 (version) lue au dernier appel du rep.
 var lastRepVersion uint32
 
 // LastRepVersion retourne la version du dernier rep décodé.
 func LastRepVersion() uint32 { return lastRepVersion }
-
-// SetRepTraceHook installe/retire le hook de trace du rep biped.
-func SetRepTraceHook(h func(string, int)) { repTraceHook = h }
-
-func traceRep(br *BitReader, label string) {
-	if repTraceHook != nil {
-		repTraceHook(label, br.BitPos())
-	}
-}
 
 // BipedDefaultStateEndBit runs the FUN_140F44C38 grammar (consumeBipedDefaultState)
 // starting at absolute bit offset stateBit over buf and returns the bit position
@@ -136,27 +130,23 @@ func b2i(b bool) int {
 }
 
 func consumeBipedDefaultState(br *BitReader) {
-	traceRep(br, "start")
 	// uVar10 selector: default 13; R(1) gate, if set uVar10 = R(8).
 	uVar10 := uint32(13)
 	if br.ReadBit() { // g0 = FUN_1406cf008
 		uVar10 = uint32(br.ReadBits(8)) // FUN_140F44C38 inlined R(8)
 	}
 	lastRepVersion = uVar10
-	traceRep(br, "afterVersion")
 
 	// Player-representation-name: R(1) gate; if bit==1 -> R(32) (FUN_14080dec4).
 	// Polarity: bVar16 = (bit==0); the body runs on !bVar16 == (bit==1).
 	if br.ReadBit() { // gRep
 		br.ReadBits(32) // FUN_14080dec4 "player-representation-name"
 	}
-	traceRep(br, "gRep")
 
 	// if uVar10 > 10: FUN_1407f2058 = R(1); if bit==0 R(5).
 	if int32(uVar10) > 10 {
 		consumeGate0R(br, 5) // FUN_1407f2058
 	}
-	traceRep(br, "f2058")
 
 	// FUN_14080cfe8 (object-multiplayer-properties block). The decompiler renders the
 	// call as FUN_14080cfe8(param_3) (DST only), but the asm at FUN_140F44C38 @140f44d0e
@@ -164,20 +154,17 @@ func consumeBipedDefaultState(br *BitReader) {
 	// BITREADER (RDI). So this block DOES consume the bitstream. Omitting it was the
 	// root cause of the 348-bit residue (see consumeMultiplayerPropertiesBlock).
 	consumeMultiplayerPropertiesBlock(br)
-	traceRep(br, "multProps")
 
 	// gC6 = R(1); if bit==1 -> R(6) (inlined). Polarity: body runs on cVar2 != 0.
 	if br.ReadBit() { // gC6 = FUN_1406cf008
 		br.ReadBits(6) // inlined R(6), width R11D = -1+7 = 6
 	}
-	traceRep(br, "gC6")
 
 	// Unconditional inlined R(1) (-> dst+0x61).
 	br.ReadBit()
 
 	// FUN_14080d69c = R(1); if bit==1 R(32).
 	consumeOpt32(br)
-	traceRep(br, "opt32a")
 
 	// Media-frame block: gated by DST-state (iVar15 != -1), normally absent.
 	if bipedMediaFramePresent {
@@ -186,7 +173,6 @@ func consumeBipedDefaultState(br *BitReader) {
 
 	// FUN_14076dc04 = R(19) unconditional (width R9D = 0x13).
 	br.ReadBits(19)
-	traceRep(br, "r19")
 
 	// if uVar10 > 5: R(1) (FUN_1406cf008).
 	if int32(uVar10) > 5 {
@@ -199,7 +185,6 @@ func consumeBipedDefaultState(br *BitReader) {
 	if int32(uVar10) >= 12 {
 		br.ReadBit()
 	}
-	traceRep(br, "end")
 
 	// EXPÉRIMENTAL : le résidu de la default-state = les défauts des composants mouvement.
 	if bipedDefaultStateDecodeMovement {
@@ -213,10 +198,10 @@ func consumeBipedDefaultState(br *BitReader) {
 // le résidu. Hypothèse : le "résidu 260 bits" de la default-state biped = ces défauts de
 // spawn (la position i0 n'est PAS dans la boucle de composants — masque = i5,i7,...). Si
 // vrai, on atterrit sur le gate calibré ET on capture la position de spawn.
+//
+// Le réglage public `SetBipedDefaultStateDecodeMovement` a été supprimé le 2026-09-05 (lot E,
+// item E.2) : aucun appelant. Le décodage expérimental reste donc désactivé.
 var bipedDefaultStateDecodeMovement = false
-
-// SetBipedDefaultStateDecodeMovement (dé)active le décodage expérimental des défauts mouvement.
-func SetBipedDefaultStateDecodeMovement(v bool) { bipedDefaultStateDecodeMovement = v }
 
 // consumeBipedDefaultStateMovement décode les défauts des composants mouvement du biped
 // au spawn (default-mask i0-i4), avec les desers SPAWN (≠ desers delta), issus du RE

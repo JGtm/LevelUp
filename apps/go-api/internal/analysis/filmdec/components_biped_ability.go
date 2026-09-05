@@ -488,11 +488,9 @@ func consumeBipedSlide(br *BitReader) {
 // number of bits depending on the R(5) tag value — see consumeBipedActionLoop1Item. It
 // is ported only for tag values whose sub-deser is itself ported; an unknown/heavy tag
 // desyncs (rare: loop1 count is 0 for a biped that is not mid weapon-set transition).
+// Le reglage public `SetBipedActionLoop2Count` a ete supprime le 2026-09-05 (lot E, item E.2) :
+// aucun appelant. Le compte reste 0, le cas commun mesure.
 var bipedActionLoop2Count = 0
-
-// SetBipedActionLoop2Count overrides i63's second-loop iteration count (the RAM-popcount
-// FUN_1409fe718(state,0x49) that is invisible in a delta). Default 0 (common case).
-func SetBipedActionLoop2Count(n int) { bipedActionLoop2Count = n }
 
 // consumeBipedActionSubBlock mirrors FUN_142f21b10's deterministic prologue/epilogue:
 // a `for (p = base; p != base+3; p++)` loop that reads R(0x20)=R(32) on EACH of its 3
@@ -539,15 +537,17 @@ func consumeBipedActionLoop1Item(br *BitReader) (ported bool) {
 }
 
 // --- instrumentation i63 (calibration tags ; à retirer après) ---
+//
+// L'ACTIVATEUR PUBLIC `SetBipedActionDebug` A DISPARU le 2026-09-05 (lot E, item E.2) :
+// aucun appelant. `biDebug` reste donc faux, et cette instrumentation ne collecte plus rien.
+// Elle n'est PAS supprimée ici : le lot E-I a un périmètre fermé (les 22 réglages morts, pas
+// leur clôture), et sa suppression est consignée en découverte au journal du lot.
 var (
 	biDebug   bool
 	biCurSeq  []uint64
 	BiBadSeqs [][]uint64 // séquences de tags des records désync (count1>0, finit en tag>=12)
 	BiOkSeqs  [][]uint64 // séquences de tags des records clean (count1>0)
 )
-
-// SetBipedActionDebug active la capture des séquences de tags i63 (calibration).
-func SetBipedActionDebug(b bool) { biDebug = b; BiBadSeqs = nil; BiOkSeqs = nil }
 
 // gate8 = FUN_1407f08bc: R(1); if set R(8). The shared "R(1)+optR(8)" leaf reached by
 // several i63-dispatch branches (its payload reader FUN_1407f08f8 is a flat R(8)).
