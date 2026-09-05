@@ -16,7 +16,9 @@ import { describe, expect, it } from 'vitest'
 
 import type { MatchMediaTab } from '@/lib/api/types'
 
+import { replayClock } from './model/replayClock'
 import { buildReplayMedia, type ReplayMediaHeader } from './replayMediaLogic'
+import { testReplayDoc } from './test/testDoc'
 
 type MediaTabItem = NonNullable<MatchMediaTab['media_items']>[number]
 
@@ -24,6 +26,14 @@ type MediaTabItem = NonNullable<MatchMediaTab['media_items']>[number]
 const MATCH_START = '2026-08-28T12:00:00Z'
 const ORIGIN_MS = 10_000
 const HEADER: ReplayMediaHeader = { start_time: MATCH_START }
+
+/**
+ * L'horloge de la page, etablie sur l'origine ci-dessus : c'est elle qui porte desormais la
+ * soustraction, et c'est par elle que la piste se tait quand l'artefact n'a pas d'origine.
+ */
+const CLOCK = replayClock(
+  testReplayDoc({ originMs: ORIGIN_MS, frameIntervalMs: 100, frameCount: 6_000 }),
+)
 
 function item(over: Partial<MediaTabItem> = {}): MediaTabItem {
   return {
@@ -46,7 +56,7 @@ describe('buildReplayMedia — le recalage temporel', () => {
     const [media] = buildReplayMedia(
       tab(item({ capture_time: '2026-08-28T12:01:00Z', duration_seconds: 30 })),
       HEADER,
-      ORIGIN_MS,
+      CLOCK,
     )
     expect(media.replayMs).toBe(30_000 - ORIGIN_MS)
     expect(media.durationMs).toBe(30_000)
@@ -62,7 +72,7 @@ describe('buildReplayMedia — le recalage temporel', () => {
         }),
       ),
       HEADER,
-      ORIGIN_MS,
+      CLOCK,
     )
     expect(media.replayMs).toBe(50_000 - ORIGIN_MS)
   })
@@ -71,7 +81,7 @@ describe('buildReplayMedia — le recalage temporel', () => {
     const [media] = buildReplayMedia(
       tab(item({ kind: 'image', file_name: 'shot.png', capture_time: '2026-08-28T12:00:20Z' })),
       HEADER,
-      ORIGIN_MS,
+      CLOCK,
     )
     expect(media.kind).toBe('image')
     expect(media.replayMs).toBe(20_000 - ORIGIN_MS)
@@ -82,19 +92,10 @@ describe('buildReplayMedia — le recalage temporel', () => {
     const [media] = buildReplayMedia(
       tab(item({ capture_time: '2026-08-28T12:00:40Z' })),
       HEADER,
-      ORIGIN_MS,
+      CLOCK,
     )
     expect(media.replayMs).toBe(40_000 - ORIGIN_MS)
     expect(media.durationMs).toBeUndefined()
-  })
-
-  it("SANS ORIGINE PUBLIÉE, la pose se dégrade du décalage de l'image zéro — la piste reste", () => {
-    const [media] = buildReplayMedia(
-      tab(item({ capture_start_time: '2026-08-28T12:00:30Z' })),
-      HEADER,
-      undefined,
-    )
-    expect(media.replayMs).toBe(30_000)
   })
 
   it('LES MÉDIAS SORTENT DANS L’ORDRE DE L’AXE, quel que soit celui de l’API', () => {
@@ -104,7 +105,7 @@ describe('buildReplayMedia — le recalage temporel', () => {
         item({ file_id: '1', capture_start_time: '2026-08-28T12:00:30Z' }),
       ),
       HEADER,
-      ORIGIN_MS,
+      CLOCK,
     )
     expect(media.map((m) => m.id)).toEqual(['1', '2'])
   })
@@ -115,33 +116,44 @@ describe('buildReplayMedia — ce qu’on refuse d’inventer', () => {
     const media = buildReplayMedia(
       tab(item({ file_id: '1' }), item({ file_id: '2', capture_time: '2026-08-28T12:00:30Z' })),
       HEADER,
-      ORIGIN_MS,
+      CLOCK,
     )
     expect(media.map((m) => m.id)).toEqual(['2'])
   })
 
   it("UN HORODATAGE ILLISIBLE VAUT UNE ABSENCE, pas un NaN posé sur la frise", () => {
-    expect(buildReplayMedia(tab(item({ capture_time: 'pas une date' })), HEADER, ORIGIN_MS))
+    expect(buildReplayMedia(tab(item({ capture_time: 'pas une date' })), HEADER, CLOCK))
       .toEqual([])
   })
 
   it("SANS HEURE DE DÉBUT DE MATCH, aucun média n'est plaçable", () => {
     expect(
-      buildReplayMedia(tab(item({ capture_start_time: MATCH_START })), { start_time: undefined }, 0),
+      buildReplayMedia(tab(item({ capture_start_time: MATCH_START })), { start_time: undefined }, CLOCK),
+    ).toEqual([])
+  })
+
+  it("SANS HORLOGE ÉTABLIE, LA PISTE SE TAIT — jamais une pose à l'origine zéro", () => {
+    // L'artefact qui ne publie pas d'origine ne dit pas « zéro », il ne dit RIEN : poser les
+    // captures à zéro les éloignait du fil des éliminations, lui recalé sur un décalage
+    // MESURÉ, de l'écart réel entre les deux (3,6 à 50,8 s selon le match).
+    const sansOrigine = replayClock(testReplayDoc({ frameIntervalMs: 100, frameCount: 6_000 }))
+    expect(sansOrigine).toBeNull()
+    expect(
+      buildReplayMedia(tab(item({ capture_start_time: MATCH_START })), HEADER, sansOrigine),
     ).toEqual([])
   })
 
   it('UN ONGLET VIDE OU ABSENT NE FAIT PAS TOMBER LE MAPPEUR', () => {
-    expect(buildReplayMedia(tab(), HEADER, ORIGIN_MS)).toEqual([])
-    expect(buildReplayMedia(null, HEADER, ORIGIN_MS)).toEqual([])
-    expect(buildReplayMedia({ media_items: null }, HEADER, ORIGIN_MS)).toEqual([])
+    expect(buildReplayMedia(tab(), HEADER, CLOCK)).toEqual([])
+    expect(buildReplayMedia(null, HEADER, CLOCK)).toEqual([])
+    expect(buildReplayMedia({ media_items: null }, HEADER, CLOCK)).toEqual([])
   })
 
   it('UNE DURÉE NULLE OU NÉGATIVE NE DEVIENT PAS UNE LARGEUR', () => {
     const [media] = buildReplayMedia(
       tab(item({ capture_start_time: '2026-08-28T12:00:30Z', duration_seconds: 0 })),
       HEADER,
-      ORIGIN_MS,
+      CLOCK,
     )
     expect(media.durationMs).toBeUndefined()
     expect(media.replayMs).toBe(30_000 - ORIGIN_MS)
@@ -159,7 +171,7 @@ describe('buildReplayMedia — identité et rendu', () => {
         }),
       ),
       HEADER,
-      ORIGIN_MS,
+      CLOCK,
     )
     expect(media.id).toBe('77')
     expect(media.url).toBe('/api/v1/players/Hero/media/files/hls/clip/master.m3u8')
@@ -169,14 +181,14 @@ describe('buildReplayMedia — identité et rendu', () => {
     const [image] = buildReplayMedia(
       tab(item({ kind: 'image', file_path: '/shot.png', capture_time: '2026-08-28T12:00:30Z' })),
       HEADER,
-      ORIGIN_MS,
+      CLOCK,
     )
     expect(image.thumbUrl).toBe('/shot.png')
 
     const [clip] = buildReplayMedia(
       tab(item({ capture_time: '2026-08-28T12:00:30Z' })),
       HEADER,
-      ORIGIN_MS,
+      CLOCK,
     )
     expect(clip.thumbUrl).toBe('')
   })
@@ -190,7 +202,7 @@ describe('buildReplayMedia — identité et rendu', () => {
         }),
       ),
       HEADER,
-      ORIGIN_MS,
+      CLOCK,
     )
     expect(media.thumbUrl).toBe('/api/v1/players/Hero/media/files/thumbs/clip.webp')
     expect(media.label).toBe('clip.mp4')
@@ -200,7 +212,7 @@ describe('buildReplayMedia — identité et rendu', () => {
     const [media] = buildReplayMedia(
       tab(item({ kind: 'autre', capture_time: '2026-08-28T12:00:30Z' })),
       HEADER,
-      ORIGIN_MS,
+      CLOCK,
     )
     expect(media.kind).toBe('image')
   })

@@ -22,6 +22,7 @@ import {
   toReplayKills,
   type MedalEvent,
 } from './killFeedLogic'
+import { replayClock } from './model/replayClock'
 import { testReplayDoc } from './test/testDoc'
 
 const T0 = 18_465
@@ -156,11 +157,13 @@ describe('alignFeedToTracks — le fil sur le référentiel des pistes', () => {
 describe("alignFeedByOrigin — le fil sur l'origine publiée par l'artefact", () => {
   // Même montage que le repli : l'artefact publie 500 ms d'origine au lieu de la faire
   // mesurer au navigateur.
-  const docAvecOrigine = () => testReplayDoc({ ...docSpec(), originMs: 500 })
+  const DOC_ORIGINE = testReplayDoc({ ...docSpec(), originMs: 500 })
+  // L'horloge de la page, établie sur ce document : c'est elle qui porte la soustraction.
+  const HORLOGE = replayClock(DOC_ORIGINE)!
   const kills = [kill(2_500, 'k1', 'V'), kill(8_500, 'k2', 'V')]
 
   it("retranche l'origine à TOUS les kills — une soustraction, pas un appariement", () => {
-    const out = alignFeedByOrigin(kills, 0, docAvecOrigine(), 500)
+    const out = alignFeedByOrigin(kills, 0, DOC_ORIGINE, HORLOGE)
     expect(out.kills.map((k) => k.replayMs)).toEqual([2_000, 8_000])
     expect(out.offsetMs).toBe(500)
   })
@@ -168,27 +171,27 @@ describe("alignFeedByOrigin — le fil sur l'origine publiée par l'artefact", (
   it('recale AUSSI les kills sans victime nommée — ce que le repli ne savait pas faire', () => {
     // Le cas du témoin 606d9844 : 35 kills, 0 victime nommée. L'appariement laissait
     // l'horloge brute ; l'origine les corrige comme les autres.
-    const out = alignFeedByOrigin([kill(2_500, 'k1'), kill(8_500, 'k2')], 0, docAvecOrigine(), 500)
+    const out = alignFeedByOrigin([kill(2_500, 'k1'), kill(8_500, 'k2')], 0, DOC_ORIGINE, HORLOGE)
     expect(out.kills.map((k) => k.replayMs)).toEqual([2_000, 8_000])
   })
 
   it('remet le countdown retranché par la Match View avant de retrancher l\'origine', () => {
-    const out = alignFeedByOrigin([kill(16_841)], T0, docAvecOrigine(), 500)
+    const out = alignFeedByOrigin([kill(16_841)], T0, DOC_ORIGINE, HORLOGE)
     expect(out.kills[0].replayMs).toBe(34_806) // 16 841 + 18 465 − 500
   })
 
   it('la mort sans kill fait une MORT NEUTRE ; une fin de vie revendiquée n\'en fait pas', () => {
-    const out = alignFeedByOrigin(kills, 0, docAvecOrigine(), 500)
+    const out = alignFeedByOrigin(kills, 0, DOC_ORIGINE, HORLOGE)
     expect(out.deaths).toEqual([{ replayMs: 5_000, xuid: 'W', kind: '', img: '', tinted: false }])
   })
 
   it('un survivant de fin de partie ne meurt pas dans le fil', () => {
-    const out = alignFeedByOrigin(kills, 0, docAvecOrigine(), 500)
+    const out = alignFeedByOrigin(kills, 0, DOC_ORIGINE, HORLOGE)
     expect(out.deaths.some((d) => d.xuid === 'S')).toBe(false)
   })
 
   it('un kill SANS victime au voisinage met son VETO sur la mort neutre (anti-doublon)', () => {
-    const out = alignFeedByOrigin([...kills, kill(5_900, 'k3')], 0, docAvecOrigine(), 500)
+    const out = alignFeedByOrigin([...kills, kill(5_900, 'k3')], 0, DOC_ORIGINE, HORLOGE)
     expect(out.deaths).toEqual([])
   })
 })

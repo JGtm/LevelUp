@@ -21,6 +21,7 @@ import {
   useReplayMapImage,
 } from '@/features/match-replay/queries'
 import { buildFeedEntries, collectMedalEvents } from '@/features/match-replay/killFeedLogic'
+import { replayClock } from '@/features/match-replay/model/replayClock'
 import { mergeFeedWithPresence, presenceEntries } from '@/features/match-replay/presenceFeed'
 import { buildPlayers } from '@/features/match-replay/rosterLogic'
 import { buildReplayMedia } from '@/features/match-replay/replayMediaLogic'
@@ -166,10 +167,12 @@ function ReplayPage() {
   // ceux de l'onglet médias du match, déjà en mémoire — la page monte la vue du match pour ses
   // fiches et son fil, aucun appel de plus. Leur horodatage est ABSOLU (l'heure de la capture),
   // là où le fil compte en millisecondes de match : `buildReplayMedia` fait la soustraction,
-  // une seule fois, sur la même origine que le fil (`doc.originMs`).
+  // une seule fois, sur la MÊME horloge que le fil, la frise et les sièges — le verdict
+  // unique de la page (`model/replayClock`, 2026-09-05). Non établie : pas de piste Médias.
+  const clock = useMemo(() => replayClock(data, matchView?.header), [data, matchView?.header])
   const replayMedia = useMemo(
-    () => buildReplayMedia(matchView?.media_tab, matchView?.header, data?.originMs),
-    [matchView?.media_tab, matchView?.header, data?.originMs],
+    () => buildReplayMedia(matchView?.media_tab, matchView?.header, clock),
+    [matchView?.media_tab, matchView?.header, clock],
   )
   const nowMs = data ? frameToMs(frame, data) : 0
   // LE CADRAGE SUR LE MATCH RÉEL, CALCULÉ UNE FOIS ICI (et nulle part ailleurs) : le film

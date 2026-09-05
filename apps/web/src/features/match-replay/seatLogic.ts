@@ -19,10 +19,15 @@
  * un relais que la base ne dit pas.
  *
  * L'INSTANT DU RELAIS se convertit en frame par la même doctrine que les médias et la
- * présence : frame((abs − start_time − originMs) / frameIntervalMs).
+ * présence, et par la même horloge (`model/replayClock`) :
+ * frame((abs − start_time − origine du film) / durée d'une image). SANS HORLOGE ÉTABLIE,
+ * AUCUN RELAIS (2026-09-05, P0-5) : dater une relève à une origine inventée la placerait
+ * jusqu'à 50,8 s à côté, et l'affichage retombe alors sur le repli déjà documenté plus haut
+ * — chaque joueur garde son siège.
  */
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
+import { replayClock } from './model/replayClock'
 import type { PresenceHeader } from './presenceFeed'
 import type { ReplayDocumentReady } from './replayNormalize'
 import type { ReplayPlayer } from './rosterLogic'
@@ -120,7 +125,8 @@ function pairSuccessions(
 ): Map<string, SeatOccupant> {
   const out = new Map<string, SeatOccupant>()
   const matchStartMs = parseInstant(header?.start_time)
-  if (matchStartMs === null) return out
+  const clock = replayClock(doc)
+  if (matchStartMs === null || !clock) return out
   const filmIdx = filmIndexByIdentity(doc)
   const sides = new Set<string>()
   for (const p of players) {
@@ -158,7 +164,10 @@ function pairSuccessions(
       if (Math.abs(joinMs - parseInstant(l.board?.last_leave_time)!) > SEAT_RELAY_WINDOW_MS) {
         continue
       }
-      out.set(l.xuid, { player: j, fromFrame: frameOfAbs(joinMs, matchStartMs, doc) })
+      out.set(l.xuid, {
+        player: j,
+        fromFrame: clock.frameOfFilmMs(clock.filmMsOfMatchMs(joinMs - matchStartMs)),
+      })
     }
   }
   return out
@@ -172,13 +181,6 @@ function filmIndexByIdentity(doc: ReplayDocumentReady): Map<string, number> {
     if (key) out.set(key, e.filmIndex)
   }
   return out
-}
-
-/** L'image d'un instant absolu — la conversion des médias et de la présence, bornée à 0. */
-function frameOfAbs(absMs: number, matchStartMs: number, doc: ReplayDocumentReady): number {
-  const origin = Number.isFinite(doc.originMs) ? (doc.originMs as number) : 0
-  const interval = doc.frameIntervalMs || 100
-  return Math.max(0, Math.round((absMs - matchStartMs - origin) / interval))
 }
 
 function parseInstant(iso: string | null | undefined): number | null {

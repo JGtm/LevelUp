@@ -100,6 +100,18 @@ export interface MatchClock {
   gameplayMsOfFilmMs(filmMs: number): number
   /** gameplayMsOfFrame — une IMAGE du film, lue sur l'horloge du gameplay. */
   gameplayMsOfFrame(frame: number): number
+  /**
+   * filmMsOfMatchMs — un instant de l'axe du MATCH, lu sur l'axe du FILM. `matchMs −
+   * originMs`. C'EST LA SOUSTRACTION UNIQUE du rejeu 2D : les médias, les entrées/sorties
+   * de partie, les relais de siège et le fil des éliminations la font tous, et c'est de
+   * l'avoir écrite cinq fois que naissaient trois réponses différentes (P0-5).
+   */
+  filmMsOfMatchMs(matchMs: number): number
+  /**
+   * frameOfFilmMs — l'IMAGE d'un instant du film, arrondie à l'image la plus proche et
+   * jamais négative : rien ne se joue avant l'image zéro.
+   */
+  frameOfFilmMs(filmMs: number): number
 }
 
 /**
@@ -137,5 +149,7 @@ export function matchClock(
     frameCount: doc.frameCount,
     gameplayMsOfFilmMs,
     gameplayMsOfFrame: (frame: number) => gameplayMsOfFilmMs(frame * frameIntervalMs),
+    filmMsOfMatchMs: (matchMs: number) => matchMs - originMs,
+    frameOfFilmMs: (filmMs: number) => Math.max(0, Math.round(filmMs / frameIntervalMs)),
   }
 }

@@ -8,7 +8,8 @@
  * film, un instant qui varie de 3,6 s à 39,8 s selon le match (chargement et mise en
  * place). Il reste donc UN décalage entre les deux, et un seul.
  *
- * CE DÉCALAGE EST DÉSORMAIS PUBLIÉ PAR L'ARTEFACT (`doc.originMs`, schéma v4) : c'est
+ * CE DÉCALAGE EST DÉSORMAIS PUBLIÉ PAR L'ARTEFACT (`originMs`, schéma v4, lu par la seule
+ * horloge de la page — `model/replayClock`) : c'est
  * l'instant de la frame 0 sur l'horloge du fil, mesuré hors ligne comme la différence de
  * deux en-têtes de paquet du même film (cf. Go `internal/analysis/replay/origin.go`). Le
  * recalage nominal est donc une SOUSTRACTION, `alignFeedByOrigin` :
@@ -54,6 +55,7 @@
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { MatchHighlightEvent } from '@/lib/api/types'
 
+import { replayClock, type ReplayClock } from './model/replayClock'
 import { frameToMs, msToFrames, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 
@@ -220,23 +222,26 @@ interface LifeEnd {
 
 /**
  * alignFeed pose le fil sur l'axe du rejeu. C'est le POINT D'ENTRÉE unique du recalage :
- * l'origine publiée quand l'artefact la porte, l'appariement statistique sinon.
+ * l'horloge de la page quand elle est établie, l'appariement statistique sinon.
  *
- * Le repli n'est pas un ancien chemin qu'on aurait oublié de retirer : un artefact
- * antérieur au schéma v4 n'a pas d'origine, et le producteur REFUSE d'en publier une
- * lorsqu'il ne peut pas l'établir (cf. origin.go). Dans ces deux cas, la mesure par
- * appariement reste la moins fausse — quand le match a des victimes nommées.
+ * LE FIL EST LA SEULE SURFACE QUI MESURE, et c'est une exception NOMMÉE dans la politique
+ * d'horloge de la page (`model/replayClock`) : lui seul dispose d'une seconde source pour
+ * l'origine — l'appariement des kills aux fins de vie de leurs victimes — et cette mesure
+ * est étayée (cf. l'en-tête de ce fichier). Le repli n'est donc pas un ancien chemin qu'on
+ * aurait oublié de retirer : un artefact antérieur au schéma v4 n'a pas d'origine, et le
+ * producteur REFUSE d'en publier une lorsqu'il ne peut pas l'établir (cf. origin.go). Dans
+ * ces deux cas, la mesure par appariement reste la moins fausse — quand le match a des
+ * victimes nommées.
  */
 export function alignFeed(
   kills: KillEvent[],
   t0Ms: number,
   doc: ReplayDocumentReady,
 ): AlignedFeed {
-  const origin = doc.originMs
-  const feed =
-    typeof origin === 'number' && Number.isFinite(origin)
-      ? alignFeedByOrigin(kills, t0Ms, doc, origin)
-      : alignFeedToTracks(kills, t0Ms, doc)
+  const clock = replayClock(doc)
+  const feed = clock
+    ? alignFeedByOrigin(kills, t0Ms, doc, clock)
+    : alignFeedToTracks(kills, t0Ms, doc)
   // LE TYPE DE MORT SE POSE ICI, une seule fois pour les deux recalages : il dépend du
   // décalage, et le décalage n'est connu qu'une fois le recalage choisi. Le poser dans
   // chacune des deux branches en ferait deux copies qui divergeraient.
@@ -262,11 +267,15 @@ export function alignFeedByOrigin(
   kills: KillEvent[],
   t0Ms: number,
   doc: ReplayDocumentReady,
-  originMs: number,
+  clock: ReplayClock,
 ): AlignedFeed {
   const offset = replayOffset(t0Ms)
   const aligned: ReplayKill[] = kills
-    .map((k) => ({ ...k, replayMs: k.tMs + offset - originMs, medals: [] as MedalEvent[] }))
+    .map((k) => ({
+      ...k,
+      replayMs: clock.filmMsOfMatchMs(k.tMs + offset),
+      medals: [] as MedalEvent[],
+    }))
     .sort((a, b) => a.replayMs - b.replayMs)
 
   const ends = lifeEndsOf(doc)
@@ -292,7 +301,7 @@ export function alignFeedByOrigin(
     deaths.push(neutralDeath(e.endMs, e.xuid))
   }
   deaths.sort((a, b) => a.replayMs - b.replayMs)
-  return { kills: aligned, deaths, offsetMs: originMs }
+  return { kills: aligned, deaths, offsetMs: clock.originMs }
 }
 
 /**
