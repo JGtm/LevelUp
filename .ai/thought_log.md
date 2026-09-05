@@ -47,12 +47,24 @@ elle doit le COMPILER, sinon il pourrit hors de vue — exactement le defaut qu'
 
 **LE CORPUS N'EST PAS SEULEMENT LONG, IL EST GOURMAND — et ca explique un ecart qui
 intriguait.** `aquarius_map` coute 21 s lancee seule mais 59 s dans le balayage complet.
-Mesure du processus de test pendant un run du corpus entier : **22,7 Go de memoire privee
-apres 26 min**, avec seulement 12 min de CPU sur 26 min d'horloge — le processus PAGINE, il
-n'est pas limite par le calcul. Chaque carte cuite laisse derriere elle une grille de ~2
-millions de cellules et ses 26 000 instances ; le tas ne redescend pas entre sous-tests. Un
-corpus qui reclame 22 Go n'est de toute facon pas un gate qu'on fait tourner par defaut : la
-mesure renforce la decision de le taguer plutot que de l'optimiser.
+Mesure du processus de test pendant un run du corpus entier : **24,2 Go de memoire privee
+apres 30 min sur une machine de 31,2 Go** (2 Go libres restants), avec seulement 13,5 min de
+CPU sur 30 min d'horloge — le processus PAGINE, il n'est pas limite par le calcul, et son tas
+grimpait encore. Chaque carte cuite laisse derriere elle une grille de ~2 millions de cellules
+et ses 26 000 instances ; le tas ne redescend pas entre sous-tests. Un corpus qui reclame les
+trois quarts de la RAM de la machine n'est de toute facon pas un gate qu'on fait tourner par
+defaut : la mesure renforce la decision de le taguer.
+
+**CE QUI N'A PAS ETE VERIFIE, ET POURQUOI JE LE DIS PLUTOT QUE DE L'ARRONDIR.** Le run du
+corpus ENTIER a ete ARRETE par moi a 30 min (`exit status 0xffffffff` dans le journal du run :
+c'est mon kill, pas un echec de test) parce qu'il asphyxiait la machine. La non-regression des
+59 fichiers repose donc sur : (a) aucun code Go de PRODUCTION touche — le diff ne contient que
+des fichiers de test, la doc, le Makefile et la CI ; (b) `go vet -tags=gamefiles` compile les
+59 ; (c) golangci-lint 0 issue dans les deux configurations ; (d) les tests des deux fichiers
+les plus remanies rejoues sous le tag avec des chiffres IDENTIQUES a l'avant-correctif
+(`TestBalayageCoquille/aquarius_map` 22 -> 22 ancres et 17,4 % de pixels retires ;
+`TestSondeEqip*` + `TestSondeGlpa` verts en 7,6 s). Aucune logique n'a bouge : le risque
+residuel est la compilation, et elle est prouvee.
 
 **Resultats.** `go test ./internal/himap/` : **2,8 s, vert** (avant : ne terminait pas).
 `go vet` propre dans les deux configurations. `gofmt` propre. Le garde-rail voisin
@@ -60,8 +72,11 @@ mesure renforce la decision de le taguer plutot que de l'optimiser.
 qu'il interdit dans un commentaire) : reformule plutot qu'allowliste — la bonne reaction a
 un garde-rail qui rougit n'est pas de l'elargir.
 
-**Prochaine etape.** Corpus tague rejoue en entier pour prouver la non-regression des 59
-fichiers touches. Non traite volontairement (hors perimetre, note sans y toucher) : la
+**Prochaine etape.** Rejouer le corpus tague en ENTIER reste a faire, et demande d'abord de
+traiter sa consommation memoire (24 Go et croissante) — sinon c'est la machine qui decide de
+la fin du run. Piste : liberer la grille et les instances entre sous-tests, ou lancer le
+corpus par tranches (`-run` par famille de sondes). Non traite volontairement (hors perimetre,
+note sans y toucher) : la
 cuisson d'une carte coute 20 a 86 s et le chantier `wt/cuisson-perf` travaille deja ce
 terrain ; et `RestreintALaFrontiere` balaie NX x NY x triangles sans prefiltre de boite —
 negligeable aux 12 triangles d'aquarius, a regarder si un maillage a 116 faces (behemoth)
