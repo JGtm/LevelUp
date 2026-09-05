@@ -17,7 +17,7 @@
  * Le calcul est éprouvé chez `padControlLogic.test.ts` ; ici on éprouve le RENDU.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { fireEvent, render } from '@testing-library/react'
 
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
@@ -191,6 +191,75 @@ describe('MatchPadControlSection — le graphe', () => {
     // Trois occupations du socle S7, deux nommées : la troisième s'affiche à part.
     const annotation = vue.getByText(t.padControl.unnamedFmt(1))
     expect(annotation.querySelector('[role="img"]')).toBeNull()
+  })
+})
+
+describe('MatchPadControlSection — le repli « game changers » (plan 2026-09-05)', () => {
+  const BR = '0xDDDD4444'
+
+  /**
+   * LE TÉMOIN MIXTE : le Sniper (élu) et un BR dont le label n'a PAS de clé canonique —
+   * replié par la dégradation D6. Trois prises attribuées sur cinq occupations mesurées.
+   */
+  const TEMOIN_MIXTE: Partial<ReplayDocument> = {
+    ...TEMOIN,
+    weaponLabels: {
+      [SNIPER]: { fr: 'S7 Sniper', en: 'S7 Sniper', key: 'hinf_s7_sniper' },
+      [BR]: { fr: 'BR75', en: 'BR75' },
+    },
+    weaponPads: [
+      { weapon: SNIPER, x: 0, y: 0, spawns: [], presence: [] },
+      { weapon: 'powerup_overshield', x: 1, y: 1, spawns: [], presence: [] },
+      { weapon: BR, x: 2, y: 2, spawns: [], presence: [] },
+    ],
+    padPickups: [
+      { pad: 0, t: 10, tLow: 5, tHigh: 15, xuid: 'a1' },
+      { pad: 0, t: 40, tLow: 35, tHigh: 45, xuid: 'a1' },
+      { pad: 2, t: 50, tLow: 45, tHigh: 55, xuid: 'a2' },
+      { pad: 0, tLow: 60, tHigh: 70, xuid: null },
+      { pad: 1, tLow: 80, tHigh: 90, xuid: null },
+    ],
+    coverage: {
+      padDating: {
+        occupations: 5,
+        dated: 3,
+        named: 3,
+        ambiguous: 1,
+        uncovered: 0,
+        powerupOccupations: 1,
+      },
+    },
+  } as unknown as Partial<ReplayDocument>
+
+  it('REPLIE PAR DÉFAUT le socle hors vote : pas de ligne, un bouton qui compte', () => {
+    poserArtefact(TEMOIN_MIXTE)
+    const vue = afficher()
+    expect(vue.getByText('S7 Sniper')).toBeTruthy()
+    expect(vue.queryByText('BR75')).toBeNull()
+    expect(vue.getByRole('button', { name: t.collapsedColumnsShowFmt(1) })).toBeTruthy()
+  })
+
+  it('« Voir plus (N) » révèle la ligne repliée, puis « Replier » la cache à nouveau', () => {
+    poserArtefact(TEMOIN_MIXTE)
+    const vue = afficher()
+    fireEvent.click(vue.getByRole('button', { name: t.collapsedColumnsShowFmt(1) }))
+    expect(vue.getByText('BR75')).toBeTruthy()
+    fireEvent.click(vue.getByRole('button', { name: t.collapsedColumnsHide }))
+    expect(vue.queryByText('BR75')).toBeNull()
+  })
+
+  it('la note de pied ne bouge pas : le TOTAL compte la prise du socle replié', () => {
+    poserArtefact(TEMOIN_MIXTE)
+    const vue = afficher()
+    // Trois prises attribuées — dont celle du BR replié — sur cinq occupations mesurées.
+    expect(note(vue, t.padControl.attributedFmt(3, 5))).toBeTruthy()
+  })
+
+  it('zéro socle replié = AUCUN bouton (le témoin de base n’a que des élus)', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    expect(vue.queryByRole('button', { name: /Voir plus/ })).toBeNull()
+    expect(vue.queryByRole('button', { name: t.collapsedColumnsHide })).toBeNull()
   })
 })
 
