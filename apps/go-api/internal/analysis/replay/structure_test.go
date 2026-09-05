@@ -792,9 +792,10 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   cuisson — le document publie le portage en FRAMES, sans les périodes non pontées ni le
 	//   recalage d'horloge. Les recalculer chez le consommateur en ferait un second décodeur
 	//   du même fait, moins précis.
-	//   CE QUE LA VERSION REFUSE : `bomb_carriers_killed` est `null` PARTOUT aujourd'hui. Il
-	//   demande une mort appariée à son tueur ET à sa victime sur l'horloge du match ; cette
-	//   forme n'existe pas dans la chaîne de cuisson. Absent, jamais zéro.
+	//   LES CINQ SONT MESURÉES, `bomb_carriers_killed` COMPRIS (lot G.6, 2026-09-05) : ce
+	//   commentaire a porté l'inverse, au motif que la paire tueur/victime n'existait pas dans
+	//   la chaîne de cuisson — faux, seule la VICTIME n'était pas résolue. Source non lue =
+	//   champ absent chez tous les joueurs, jamais zéro.
 	//   Détail : internal/analysis/replay/bomb_stats.go et bomb_stats_document.go.
 	if SchemaVersion != 39 {
 		t.Fatalf("SchemaVersion = %d, attendu 39 : incrémenter exige une raison écrite ci-dessus "+

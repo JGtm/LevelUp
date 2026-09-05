@@ -704,7 +704,7 @@ describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
 /**
  * SEPTIEME GARDE-RAIL : LES DESTRUCTIONS DE VEHICULE (lot du 2026-09-05) — une categorie a part.
  *
- * Des ONE-SHOTS longs (2,58 a 5,36 s), poses sur le MEME signal que l'effet visuel (schema 30 :
+ * Des ONE-SHOTS longs (2,58 a 5,36 s), poses sur le MEME signal que l'effet visuel (schema 39 :
  * `end === "destroyed"` + `tEnd`), INERTES tant qu'aucun artefact ne publie la destruction.
  * Quatre proprietes se verifient sur pieces :
  *  - la JOINTURE famille -> jeu de sons ne pointe que sur des jeux DECLARES, et chaque jeu a

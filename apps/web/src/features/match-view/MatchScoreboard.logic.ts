@@ -229,9 +229,12 @@ const VIP_COLS: ObjectiveColSpec[] = [
 // sont reconstruites du film Theater (statborg pour les explosions, canal des armes tenues pour
 // le portage, anneau `ti=12` + jointure pour l'armement) et servies par une table dédiée, gatée
 // par la capability `film.bomb_stats`. 4 colonnes sur 5 exposées : `bomb_carriers_killed` reste
-// dans le DTO SANS colonne dédiée — il est `null` partout à ce jour (la paire tueur/victime
-// qu'il demande n'existe pas dans la chaîne de cuisson), et une colonne qui n'afficherait que
-// des « — » sur tous les joueurs de tous les matchs ne dit rien.
+// dans le DTO SANS colonne dédiée.
+// ATTENTION, LE MOTIF A CHANGÉ LE 2026-09-05 (lot G.6) et ce commentaire portait l'ancien : le
+// champ N'EST PLUS `null` partout — il est MESURÉ côté cuisson (la victime du couple tueur /
+// victime est résolue depuis G.6 ; témoin `9f57c612` : 3 porteurs tués). Il n'a donc plus de
+// colonne pour une raison de PRODUIT, pas de mesure : l'exposer est une décision d'affichage
+// non prise à ce jour (registre du plan d'intégration, seconde lecture E.2).
 const BOMB_COLS: ObjectiveColSpec[] = [
   { key: 'bomb_detonations', agg: 'sum' },
   { key: 'bomb_arms', agg: 'sum' },

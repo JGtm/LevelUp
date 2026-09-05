@@ -238,8 +238,10 @@ type ObjectiveRaw struct {
 	// gatée par la capability `film.bomb_stats`.
 	//
 	// NULL = NON MESURÉ, JAMAIS ZÉRO : les cinq colonnes sont nullables au DDL.
-	// `BombCarriersKilled` est nul PARTOUT à ce jour — la paire tueur/victime qu'il demande
-	// n'existe pas dans la chaîne de cuisson (report au registre).
+	// LES CINQ SONT MESURÉES depuis le lot G.6 (2026-09-05), `BombCarriersKilled` compris. Ce
+	// commentaire a porté l'inverse (« nul PARTOUT, la paire tueur/victime n'existe pas dans la
+	// chaîne de cuisson ») : seule la VICTIME n'était pas résolue, et `replaybuild.killRefs` la
+	// résout désormais dans la même passe. Un `null` y dit « source non lue », rien de plus.
 	BombDetonations          *int
 	BombArms                 *int
 	BombGrabs                *int

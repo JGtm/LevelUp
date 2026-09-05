@@ -699,7 +699,9 @@ type MatchScoreboardObjective struct {
 	// Assaut (match_bomb_stats_latest — RECONSTRUITES DU FILM ; l'API 343 n'en publie AUCUNE
 	// pour ce mode). Table DÉDIÉE, seconde requête, gatée par la capability `film.bomb_stats` :
 	// un titre qui ne la déclare pas n'expose aucune de ces cinq clés. NULL = non mesuré,
-	// jamais zéro — `bomb_carriers_killed` est absent PARTOUT à ce jour.
+	// jamais zéro. LES CINQ SONT MESURÉES depuis le lot G.6 (2026-09-05),
+	// `bomb_carriers_killed` compris : `null` y dit « source non lue » (fil des morts illisible,
+	// portage non ponté), pas « impossible à mesurer » comme l'affirmait ce commentaire.
 	BombDetonations          *int     `json:"bomb_detonations,omitempty"`
 	BombArms                 *int     `json:"bomb_arms,omitempty"`
 	BombGrabs                *int     `json:"bomb_grabs,omitempty"`
