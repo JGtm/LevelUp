@@ -130,6 +130,39 @@ jobs:
         # Le rapport HTML est uploade en artefact pour debug.
         run: npm run test:coverage --if-present
 
+      # LES DEUX SEULES PREUVES DE RENDU DU REJEU — ICI, ET PAS DANS LE JOB e2e-react
+      # (M1, registre d'audit du 2026-09-05). Le job `e2e-react` est gaté
+      # `github.event_name == 'pull_request'` (l.524) ; la campagne v7.5 travaille en
+      # branche unique, donc ZÉRO exécution depuis le tag v7.3.0 : 373 commits sur
+      # `match-replay` que ces 589 lignes de garde-rail n'ont pas protégés. Elles étaient
+      # d'ailleurs ROUGES quand on les a rejouées le 2026-09-06 (harnais périmé de deux
+      # refactorings) — un garde-rail qu'on n'exécute pas ne garde rien.
+      #
+      # POURQUOI ELLES ONT LEUR PLACE ICI : elles n'ouvrent AUCUN serveur (`page.setContent`
+      # seul ; `playwright.config.ts` n'a pas de bloc `webServer`), donc ni API démo ni Vite,
+      # contrairement au reste de `e2e/`. Coût : l'installation de Chromium (~1 min) plus
+      # ~3 s d'exécution.
+      #
+      # POURQUOI PAS EN VITEST : jsdom n'a pas de moteur 2D. Seul un Chromium réel dit ce que
+      # `oklch(...)` et `globalCompositeOperation: 'lighter'` produisent — la panne que ces
+      # specs ont démasquée (« primitives parfaites, image vide », 0 pixel changé sur fond
+      # clair) est invisible à vitest par construction.
+      - name: Rasterisation du rejeu (Playwright, sans serveur)
+        run: |
+          npx playwright install chromium --with-deps
+          npx playwright test --project=chromium --reporter=list \
+            e2e/replay-explosion-raster.spec.ts \
+            e2e/replay-muzzle-raster.spec.ts
+
+      - name: Upload Playwright report (rasterisation, si échec)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raster-playwright-results
+          path: tests/e2e-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload coverage report (Vitest)
         if: always()
         uses: actions/upload-artifact@v4
@@ -168,13 +201,18 @@ jobs:
         env:
           CGO_ENABLED: "0"
 
-      # CORPUS `gamefiles` (2026-09-05) : les 59 tests de rétro-ingénierie de
-      # internal/himap/ lisent l'installation locale de Halo Infinite et coûtent des
-      # minutes (corpus entier : ~385 s ; TestBalayageCoquille seul : 203 s, 26 cartes). Ils sont
+      # CORPUS `gamefiles` (2026-09-05) : les 62 tests de rétro-ingénierie du dépôt
+      # lisent l'installation locale de Halo Infinite et coûtent des minutes (corpus
+      # entier : ~385 s ; TestBalayageCoquille seul : 203 s, 26 cartes). Ils sont
       # derrière `//go:build gamefiles` — donc PAS compilés par le `go test` par défaut.
       # Sans ce vet, ils pourriraient sans que rien ne rougisse : la CI n'a pas le jeu
       # installé, elle ne peut pas les EXÉCUTER, mais elle doit les COMPILER.
-      # Garde-rails du tag lui-même : internal/himap/corpus_tag_test.go.
+      # Garde-rails du tag lui-même : internal/archlint/gamefiles_tag_test.go.
+      #
+      # LES DEUX PAQUETS `cmd/` SONT ARRIVÉS LE 2026-09-06 (constat I1) : jusque-là leurs
+      # tests ouvraient le jeu SANS le tag, donc le `go test` par défaut les compilait —
+      # les mettre sous le tag les aurait sortis de toute compilation en CI si cette liste
+      # n'avait pas suivi. Un tag sans vet est un fichier qui pourrit en silence.
       #
       # CGO OBLIGATOIRE, ET SUR LINUX SEULEMENT (correctif du 2026-09-05). `himap` importe
       # `himodule`, qui importe `internal/ooz` — un paquet CGO (décodeur Oodle C++). Avec
@@ -185,7 +223,7 @@ jobs:
       # l'est pas sur le runner Windows, et compiler le corpus DEUX fois n'apprend rien.
       - name: go vet (corpus gamefiles — compilation seule, jamais exécuté en CI)
         if: runner.os == 'Linux'
-        run: go vet -tags=gamefiles ./internal/himap/
+        run: go vet -tags=gamefiles ./internal/himap/ ./cmd/mapstruct-build/ ./cmd/mapfond-build/
         env:
           CGO_ENABLED: "1"
 

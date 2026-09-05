@@ -354,6 +354,71 @@ GOCACHE=... CGO_ENABLED=1 go test -count=1 ./cmd/levelup/...
 
 (Le `level=warning ... unknown linters in //nolint directives: gosec …, plr0913 …` est
 PRÉEXISTANT : il apparaît déjà dans la sortie de référence prise avant toute modification.)
+
+### [x] F.6 (M1) — Les deux specs de rasterisation jouées dans le job `frontend`
+
+**Vérifié sur pièces (le rapport W3 dit vrai) : aucune des deux n'ouvre de serveur.**
+`page.setContent` seul (`replay-explosion-raster.spec.ts:248` et `:323`,
+`replay-muzzle-raster.spec.ts:131`), et `apps/web/playwright.config.ts` ne porte AUCUN bloc
+`webServer` (ligne 88 : « ne JAMAIS démarrer les serveurs ici »). Elles n'ont donc besoin que
+du navigateur — installé dans le step comme le fait déjà le job `e2e-react` (`ci.yml:524`,
+`npx playwright install chromium --with-deps`).
+
+**Elles étaient ROUGES.** Rejouées localement avant toute modification : **2 échecs sur 3
+tests**. C'est la démonstration du constat M1 — un garde-rail que la CI n'exécute jamais rote.
+Deux dérives, toutes deux du chantier v7.5, toutes deux dans le HARNAIS (pas dans le rendu) :
+
+1. le cliquet d'imports de VALEUR de `replayDraw.ts` attendait 7, le fichier en porte 6 depuis
+   `5a666d2bc` (« suppression du sol reconstruit » : `./mapFloor` retiré) ;
+2. `drawGrenadeRestLayer` n'est plus dans `replayDraw.ts` — il a été EXTRAIT vers
+   `grenadeRestLayer.ts` ; le harnais chargeait donc un module qui ne contient plus la
+   fonction sous test (`ReferenceError: drawGrenadeRestLayer is not defined`).
+
+Corrigé dans la spec uniquement (`apps/web/e2e/` n'est pas au périmètre fermé ; aucun fichier
+de `apps/web/src/**` n'est touché) : le harnais lit `grenadeRestLayer.ts` avec un cliquet à 3
+imports de valeur, tous déjà injectés (`drawExplosion`, `explosionTintOf`/`restKindOf`,
+`worldToCanvas`). Les deux dérives sont datées en commentaire dans la spec.
+
+**Preuve par mutation (annulée ensuite)** : `return` posé en tête de `drawFlash`
+(`src/features/match-replay/explosionFx.ts`) →
+`dark/fond0/frag/flash@40ms = 0 px (plancher 300)` sur les six combinaisons thème × fond ×
+type. La spec mesure bien des PIXELS, pas la présence d'une fonction.
+
+**Step CI ajouté** au job `frontend` (après Vitest), plus un upload d'artefact
+`tests/e2e-results/` en cas d'échec :
+
+```yaml
+- name: Rasterisation du rejeu (Playwright, sans serveur)
+  run: |
+    npx playwright install chromium --with-deps
+    npx playwright test --project=chromium --reporter=list \
+      e2e/replay-explosion-raster.spec.ts \
+      e2e/replay-muzzle-raster.spec.ts
+```
+
+**Suite de F.4 dans le même commit CI** — sans elle, F.4 aurait sorti deux fichiers de toute
+compilation en CI. Le step `go vet (corpus gamefiles)` du job `go-build` ne vetait que
+`./internal/himap/` ; il vete désormais aussi `./cmd/mapstruct-build/` et
+`./cmd/mapfond-build/`, dont les tests viennent de passer sous le tag (avant F.4 le `go test`
+par défaut les compilait). Le commentaire du step, qui nommait
+`internal/himap/corpus_tag_test.go` (supprimé) et « 59 tests », est remis à jour
+(`internal/archlint/gamefiles_tag_test.go`, 62). Plancher du ratchet porté 61 → 62.
+
+Gate F.6 (avant-plan) :
+
+```
+cd apps/web && npx playwright test --project=chromium --reporter=list \
+  e2e/replay-explosion-raster.spec.ts e2e/replay-muzzle-raster.spec.ts
+→ 3 passed (2.1s)
+npm run typecheck   → OK (tsc -b, aucune sortie)
+npm run lint        → 28 problems (0 errors, 28 warnings) — préexistants
+GOCACHE=... CGO_ENABLED=1 go vet -tags=gamefiles ./internal/himap/ ./cmd/mapstruct-build/ ./cmd/mapfond-build/
+→ OK
+node (yaml.parse de ci.yml) → structure valide, step inséré au bon endroit du job `frontend`
+```
+
+**Preuve définitive** : un run CI vert de la branche qui les exécute (nombre de tests dans le
+log du job `frontend`) — cf. la section « CI » ci-dessous.
 ## Découvertes (consignées, NON traitées — hors périmètre du lot F)
 
 1. **Le calque des actions d'objectif ne rend plus rien de la famille drapeau sur un film
