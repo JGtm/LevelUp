@@ -47,6 +47,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
+import { matchClock } from '@/lib/replay/matchClock'
 import { allyOfTeamId, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import { formatClock, teamIdsOf } from './_scoreCurve'
@@ -62,6 +63,12 @@ interface Props {
   replayAvailable: boolean
   scoreboard: MatchScoreboardRow[] | null | undefined
   meXUID: string | null
+  /**
+   * `header.t0_ms` — le countdown d'avant-match, en ms. C'est l'ancre qui met ces barres sur
+   * l'horloge du GAMEPLAY, celle de « Frags cumulés » juste au-dessus dans le même onglet
+   * (cf. `lib/replay/matchClock`).
+   */
+  t0Ms?: number
   t: MatchViewText
 }
 
@@ -71,18 +78,20 @@ export function MatchScoreEventsChart({
   replayAvailable,
   scoreboard,
   meXUID,
+  t0Ms,
   t,
 }: Props) {
   const { data } = useMatchReplay(playerSlug, matchId, replayAvailable)
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const xuidMeta = useMemo(() => resolveXuidMeta(board, meXUID), [board, meXUID])
   const timeline = useMemo(() => (data ? scoreTimelineOf(data) : undefined), [data])
+  // L'HORLOGE DU MATCH, ÉTABLIE UNE FOIS : même axe que la courbe et que « Frags cumulés ».
+  const clock = useMemo(() => matchClock(data, { t0_ms: t0Ms }), [data, t0Ms])
   const events = useMemo(
     () =>
       buildScoreEvents({
         timeline,
-        frameIntervalMs: data?.frameIntervalMs,
-        frameCount: data?.frameCount ?? 0,
+        clock,
         teamIds: teamIdsOf(
           board.map((r) => parseTeamSideID(r.team_side)),
           timeline,
@@ -95,7 +104,7 @@ export function MatchScoreEventsChart({
             t,
           ),
       }),
-    [timeline, data?.frameIntervalMs, data?.frameCount, board, xuidMeta, t],
+    [timeline, clock, board, xuidMeta, t],
   )
 
   const buildOption = useCallback(
@@ -131,10 +140,11 @@ export function MatchScoreEventsChart({
 /**
  * scoreEventsOption — l'option ECharts, extraite du composant pour rester lisible.
  *
- * L'AXE DES TEMPS EST EN VALEURS (millisecondes) et non en catégories : les marques ne
- * tombent pas sur une grille régulière, et les espacer également mentirait sur le rythme du
- * match — le même choix que la courbe. Il court de 0 à la fin du rejeu, pas du premier au
- * dernier point : une capture à 1:10 et une à 9:50 doivent se lire aux deux bouts.
+ * L'AXE DES TEMPS EST EN VALEURS (millisecondes DEPUIS LE COUP D'ENVOI, cf. `_scoreEvents`)
+ * et non en catégories : les marques ne tombent pas sur une grille régulière, et les espacer
+ * également mentirait sur le rythme du match — le même choix que la courbe. Il court de 0 à
+ * la fin du film, pas du premier au dernier point : une capture à 1:10 et une à 9:50 doivent
+ * se lire aux deux bouts.
  *
  * `barWidth` EST EN PIXELS, ET C'EST OBLIGATOIRE ici : sur un axe de valeurs, la largeur
  * automatique d'une barre se déduit de l'intervalle entre catégories — qui n'existe pas.
@@ -164,7 +174,7 @@ function scoreEventsOption(
       ...getAxisBase(tc),
       type: 'value',
       min: 0,
-      max: events.durationMs,
+      max: events.endMs,
       axisLabel: { color: tc.axisLabel, fontSize: 9, formatter: (v: number) => formatClock(v) },
       splitLine: { show: false },
     },

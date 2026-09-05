@@ -65,11 +65,20 @@ const CTF_3_0 = {
   players: null,
 }
 
+/**
+ * L'HORLOGE DU TÉMOIN : l'image zéro du film tombe 12 s après le début du match, le coup
+ * d'envoi 30 s après. Le film commence donc 18 s AVANT le coup d'envoi, et toute abscisse
+ * attendue plus bas vaut `image × 100 − 18 000`, calculé à la main.
+ */
+const ORIGIN_MS = 12_000
+const T0_MS = 30_000
+
 function poserArtefact(over: Partial<ReplayDocument> | null) {
   artefact.current = over
     ? normalizeReplayDocument({
         frameCount: 3001,
         frameIntervalMs: 100,
+        originMs: ORIGIN_MS,
         scoreTimeline: CTF_3_0,
         ...over,
       } as unknown as ReplayDocument)
@@ -84,6 +93,7 @@ function afficher(locale: 'fr' | 'en' = 'fr') {
       replayAvailable
       scoreboard={SCOREBOARD}
       meXUID="me"
+      t0Ms={T0_MS}
       t={MATCH_VIEW_TEXT[locale]}
     />,
   )
@@ -106,7 +116,12 @@ describe('MatchScoreEventsChart — quand la carte apparaît', () => {
   })
 
   it('ne rend rien quand l’origine du film n’est ni résolue ni publiée (garde d’horloge)', () => {
-    poserArtefact({ coverage: { originResolved: false } } as never)
+    poserArtefact({ originMs: undefined, coverage: { originResolved: false } } as never)
+    expect(afficher().container.firstChild).toBeNull()
+  })
+
+  it('ne rend rien SANS ORIGINE PUBLIÉE : l’axe serait décalé de 3,6 à 50,8 s sans le dire', () => {
+    poserArtefact({ originMs: undefined } as never)
     expect(afficher().container.firstChild).toBeNull()
   })
 
@@ -139,12 +154,14 @@ describe('MatchScoreEventsChart — ce que l’option ECharts contient', () => {
     expect(opt.series.every((s: { type: string }) => s.type === 'bar')).toBe(true)
     expect(opt.xAxis.type).toBe('value')
     expect(opt.xAxis.min).toBe(0)
-    // L'axe court jusqu'à la FIN du rejeu, pas jusqu'à la dernière marque.
-    expect(opt.xAxis.max).toBe(300_000)
+    // L'axe court du COUP D'ENVOI à la fin du film, pas jusqu'à la dernière marque :
+    // 3 000 images = 300 s de film, dont 18 s avant le coup d'envoi.
+    expect(opt.xAxis.max).toBe(282_000)
+    // Paliers 400 / 1 200 / 2 600 -> 40 / 120 / 260 s de film, moins 18 s.
     expect(opt.series[0].data).toEqual([
-      [40_000, 1, 1],
-      [120_000, 1, 2],
-      [260_000, 1, 3],
+      [22_000, 1, 1],
+      [102_000, 1, 2],
+      [242_000, 1, 3],
     ])
   })
 
