@@ -93,8 +93,10 @@ var paramByComponent = map[string]uint32{
 	// queue R(3) d'i59 (FUN_140fc147c, param_4>1) n'était JAMAIS lue offline. Mesure :
 	// chaque record i59 finissait à 3 bits exactement du record suivant (écarts
 	// p10=p50=p90=3, n=988, TestI59AnchorWalkProof) ; avec la clé, l'écart tombe à 0.
-	"biped-spartan-ability-non-predicted-state":           2,
-	"biped-spartan-ability-non-predicted-state-component": 2,
+	// Les deux étiquettes viennent des constantes de `grapple_state.go` (une seule source par
+	// littéral de registre) : le lecteur d'i59 et cette table ne peuvent plus diverger.
+	grappleComponentNameAlt: 2,
+	grappleComponentName:    2,
 }
 
 // paramForComponent rend le param_4 du composant `name`. Défaut 1 : c'est la valeur
@@ -836,7 +838,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		// FUN_142f262d4, gate par des octets d'etat runtime) : desync propre plutot que
 		// desalignement silencieux.
 		return variant, nil, consumeBipedSpartanAbility(br)
-	case "biped-spartan-ability-non-predicted-state", "biped-spartan-ability-non-predicted-state-component": // i59 (FUN_142f02994)
+	case grappleComponentNameAlt, grappleComponentName: // i59 (FUN_142f02994)
 		// Corps tag==3 (FUN_142f25e90, ancre du grappin) porté le 2026-08-16 : rend
 		// ported=false sur les seules valeurs internes jamais observées — désync propre,
 		// même contrat qu'i57 ci-dessus. param_4 vient de paramForComponent (i59 -> 2,
