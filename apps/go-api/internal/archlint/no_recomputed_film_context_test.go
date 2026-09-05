@@ -66,11 +66,17 @@ var calculsDuContexteFilm = map[string]bool{
 //	                      couvre tous les chunks de donnees — deux valeurs differentes, deux
 //	                      calculs, et les partager changerait la detection. `DetectI0Layout(dir)`
 //	                      est l'enveloppe D2, hors production (regle 3 de no_film_reread_test.go).
-//	offline_biped.go      DEUX SITES depuis le 2026-09-05 (arrivee du chantier vehicules) :
+//	offline_biped[_band].go
+//	                      DEUX SITES depuis le 2026-09-05 (arrivee du chantier vehicules) :
 //	                      `ScanBipedPositions` releve sa bande, `bipedI0Layout` detecte le
 //	                      decoupage — le second a ete EXTRAIT pour que la nouvelle entree
 //	                      `ScanBipedPositionsForBand` (bande d un archetype autre que le bipede,
 //	                      `ti=40`) partage exactement le meme repli. Rien n a change de valeur.
+//	                      LE SECOND A CHANGE DE FICHIER le meme jour : offline_biped.go
+//	                      franchissait les 500 lignes, et toute la plomberie de balayage (entree
+//	                      par bande, choix des chunks, decoupage i0, relevé de bande) vit
+//	                      desormais dans offline_biped_band.go — un DEPLACEMENT, pas une
+//	                      reecriture. La cle d'allowlist porte donc le nouveau fichier.
 //	offline_biped.go      `ScanBipedPositions` releve sa bande sur `opt.Chunks` (une SOUS-LISTE
 //	                      quand l'appelant la restreint) et ne detecte le decoupage que si
 //	                      `opt.Layout` est nil — en cuisson il vient du CATALOGUE, donc la
@@ -100,7 +106,7 @@ var appelsAutorisesDuContexte = map[string]string{
 	"i0_layout.go/DetectI0LayoutOf -> bipedSlotBand":                "bande REDUITE aux 6 premiers chunks : autre valeur",
 	"i0_layout.go/DetectI0Layout -> DetectI0LayoutOf":               "enveloppe D2, hors production",
 	"offline_biped.go/ScanBipedPositions -> bipedSlotBand":          "bande sur opt.Chunks : hors perimetre du lot 2",
-	"offline_biped.go/bipedI0Layout -> DetectI0LayoutOf":            "repli quand opt.Layout est nil : hors perimetre du lot 2 (le site a change de nom le 2026-09-05, quand `ScanBipedPositionsForBand` a extrait le helper partage par les deux entrees)",
+	"offline_biped_band.go/bipedI0Layout -> DetectI0LayoutOf":       "repli quand opt.Layout est nil : hors perimetre du lot 2 (le site a change de nom le 2026-09-05 quand `ScanBipedPositionsForBand` a extrait le helper partage par les deux entrees, puis de FICHIER le meme jour — offline_biped.go franchissait les 500 lignes, la plomberie de balayage a ete deplacee dans offline_biped_band.go, sans changement de logique)",
 	"weapon_hit_distance_resolver.go/DetectFilmWorldRange -> DetectI0Layout": "amont 2026-09-03 : " +
 		"signature de largeurs d'axe depuis un repertoire, passe de precision par arme desactivee",
 }

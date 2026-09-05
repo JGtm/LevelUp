@@ -201,7 +201,7 @@ const NULLABLE_ARRAYS = [
   // compte le reste (`coverage.abilityCharges`). La vignette d'équipement le lit depuis le
   // lot P6 (`abilityChargeLogic.ts`) ; la frontière le comble dès le schéma.
   'abilityCharges',
-  // `vehicles` : LA VIE DE CHAQUE VÉHICULE du match (schéma 29, 2026-09-02) — naissance,
+  // `vehicles` : LA VIE DE CHAQUE VÉHICULE du match (schéma 39, 2026-09-02) — naissance,
   // trajectoire échantillonnée (cap compris), épisodes d'occupation, borne d'affichage. `end`
   // vaut TOUJOURS `inconnue` : la datation de la destruction a été mesurée et RÉFUTÉE (le
   // conducteur sort vivant, le véhicule réplique encore 13-36 s après avoir été quitté).
@@ -308,12 +308,12 @@ const NULLABLE_ARRAY_PATHS = [
   'vehicles',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
-  // La vie d'un véhicule (schéma 29) porte DEUX tableaux imbriqués nullables : sa trajectoire
+  // La vie d'un véhicule (schéma 39) porte DEUX tableaux imbriqués nullables : sa trajectoire
   // (`samples`) et ses épisodes d'occupation (`rides`). `spawn`, lui, n'est PAS un tableau — un
   // objet optionnel absent quand le record de création n'a pas été lu — et ne figure donc pas ici.
   'vehicles[].samples',
   'vehicles[].rides',
-  // TROISIÈME NIVEAU (schéma 31) : la SÉRIE DE VISÉE d'un épisode d'occupation — un tableau
+  // TROISIÈME NIVEAU (schéma 39) : la SÉRIE DE VISÉE d'un épisode d'occupation — un tableau
   // nullable DANS un tableau imbriqué, le premier du document. Elle est comblée comme les autres
   // (`ReplayVehicleRideReady`) : un épisode sans lecture arrive à vide, et le cône retombe alors
   // sur le cap du châssis au lieu de tomber à l'exécution.

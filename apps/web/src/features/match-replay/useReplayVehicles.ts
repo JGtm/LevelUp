@@ -69,7 +69,7 @@ export interface VehiclesInput {
   labelStroke: string
   /**
    * Teintes de nature des effets (fxInk.ts, MÊME source que les tirs/grenades) : l'explosion de
-   * destruction d'un véhicule (schéma 30, en avance de phase — cf. `VehicleStyle.explosionInk`)
+   * destruction d'un véhicule (schéma 39, en avance de phase — cf. `VehicleStyle.explosionInk`)
    * en tire sa couleur PLASMA vs NORMALE.
    */
   explosionInk: FxInk
@@ -87,8 +87,12 @@ export interface Vehicles {
   /**
    * PRÉDICAT « EMBARQUÉ À T » (C7) : à consommer par `replayMarkers.drawTracksLayer`
    * (`MarkerStyle.embarkedAtSlot`) pour supprimer le pion et le nom d'un occupant SANS dupliquer
-   * la logique d'occupation. TOUJOURS ACTIF, indépendamment de `enabled` : un pion figé à son
-   * point d'embarquement resterait faux même si on choisit de ne pas dessiner le véhicule.
+   * la logique d'occupation.
+   *
+   * IL SUIT LE TOGGLE DU CALQUE (revue adversariale 2026-09-02, point 7) : calque ÉTEINT, il rend
+   * `false` partout et les pions restent dessinés. Supprimer un occupant sans dessiner son
+   * véhicule ferait disparaître des joueurs sans aucun réglage pour les récupérer — c'est ce
+   * qu'un prédicat « toujours actif » produirait, et l'implémentation ne l'a jamais fait.
    */
   isEmbarkedAt: (slot: number, frame: number) => boolean
   /**

@@ -261,9 +261,16 @@ func (o ObjectiveRaw) HasExtraction() bool {
 }
 
 // HasBomb : le bloc ASSAUT, reconstruit du FILM et NON de l'API (cf. le bloc de champs
-// ci-dessus). Le discriminant prend les deux compteurs que la chaîne publie toujours ensemble
-// dès qu'une source est lue — `bomb_detonations` (statborg) et `bomb_arms` (anneau + jointure).
-// `bomb_carriers_killed` n'y entre PAS : il est nul partout, il ne discriminerait rien.
+// ci-dessus).
+//
+// TROIS COMPTEURS, UN PAR CANAL, et c'est ce qui le distingue des autres discriminants : les
+// colonnes d'Assaut ne sortent pas toutes de la même lecture. `bomb_detonations` demande le
+// statborg, `bomb_arms` demande l'anneau ET le portage, `bomb_grabs` ne demande QUE le portage.
+// Un film dont seul le canal des armes tenues a été lu ne publie donc ni explosion ni armement
+// — et un discriminant à deux compteurs ferait disparaître sa section entière.
+// `time_as_bomb_carrier_seconds` n'y ajoute rien : il est écrit exactement quand `bomb_grabs`
+// l'est. LA MÊME LISTE est appliquée côté web (`detectObjectiveMode`, MatchScoreboard.logic.ts)
+// — deux discriminants divergents afficheraient deux vérités du même match.
 func (o ObjectiveRaw) HasBomb() bool {
 	return o.BombDetonations != nil || o.BombArms != nil || o.BombGrabs != nil
 }

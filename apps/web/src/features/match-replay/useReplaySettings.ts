@@ -183,7 +183,7 @@ const SHOW_SKULL_CARRIER_DEFAULT = true
 const SHOW_BOMB_CARRIER_DEFAULT = true
 
 /**
- * LES VÉHICULES SONT ALLUMÉS PAR DÉFAUT (schéma 29, lot du 2026-09-02) : c'est l'objectif même
+ * LES VÉHICULES SONT ALLUMÉS PAR DÉFAUT (schéma 39, lot du 2026-09-02) : c'est l'objectif même
  * du chantier (« rejouer un match ... avec véhicules visibles »), au même titre que les socles
  * ou les drapeaux — un objet du terrain qui change la lecture du match, pas un effet de style.
  * Le film qui n'en porte aucun (`coverage.vehicles`) n'affiche ni calque ni bascule.
