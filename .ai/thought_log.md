@@ -91301,3 +91301,12 @@ libelle d'arme, petit lot de suite).
 Le chantier du handoff est LIVRE sur wt/session-usage (S1 backfille en local, S2/S3
 commites, ni push ni merge — decision de merge a l'utilisateur, mode branche unique
 feat/v75).
+
+## [2026-09-05] Vue match — la dette flexGrow de UsageTeamShares SOLDEE — Complété
+
+La decouverte consignee a la cloture S3 (meme defaut que la piste du lobby :
+flexGrow sur le contenu du Tooltip, segments dimensionnes a leur texte) est corrigee
+sur demande utilisateur, commit `26b9e2cac` : largeur en calc(%) portee par l'item du
+flex (pattern MatchPadControlSection) + libelle ecrit seulement si le segment porte
+>= 11 % (l'infobulle garde la valeur exacte). tsc vert, 22 tests du fichier verts,
+2 170 tests match-replay verts au passage precedent.
