@@ -152,7 +152,27 @@ linters:
       # cmd/ (CLI tools / scripts ponctuels) : permissifs sur tout
       # Les scripts de diag/migration/seed/repair n'ont pas vocation a etre
       # production-grade (utilises rarement, manipules manuellement).
-      - path: "^cmd/"
+      #
+      # SAUF LES BINAIRES DE PRODUCTION (2026-09-05, registre d'audit constat H7).
+      # L'exemption disait « scripts ponctuels » et couvrait en realite cmd/server
+      # (deploye par release.yml:62), cmd/replay-worker (deploye par
+      # scripts/deploy-worker.sh:100), cmd/levelup (la CLI d'exploitation) et les deux
+      # commandes du rejeu. Le gate de lint est un RATCHET
+      # (--new-from-merge-base=origin/main, Makefile:307) : l'exemption ne dispensait
+      # donc pas le passe, elle dispensait le code NEUF de ces binaires — exactement
+      # l'inverse de ce qu'on veut. Les cinq repassent au regime normal ; les autres
+      # cmd/ (170+ sondes et scripts) gardent l'exemption.
+      #
+      # POURQUOI CETTE FORME, ET PAS `path` + `path-except` : golangci-lint v2 REFUSE
+      # les deux sur la meme regle (« path and path-except should not be set at the
+      # same time », erreur de chargement — et `config verify` ne l'attrape pas, seule
+      # l'execution le dit). `path-except` seul doit donc porter TOUTE la condition
+      # negative, y compris « hors de cmd/ ». RE2 n'a pas de lookahead : la premiere
+      # alternative nie le prefixe `cmd/` caractere par caractere (tout chemin qui ne
+      # commence pas par `cmd/`), la seconde nomme les cinq binaires. Une regle qui
+      # oublierait la premiere alternative exempterait TOUT `internal/` de ces douze
+      # linters.
+      - path-except: "^(?:[^c]|c[^m]|cm[^d]|cmd[^/])|^cmd/(server|levelup|replay-worker|replay-build|replay-equiv)/"
         linters:
           - funlen
           - lll
@@ -207,12 +227,6 @@ linters:
         linters:
           - gocyclo
 
-      # cmd/server/main.go : init server inevitablement long
-      - path: "cmd/server/main.go"
-        linters:
-          - funlen
-          - gocyclo
-
       # validation : gate check multi-etapes
       - path: "internal/validation/"
         linters:
@@ -241,12 +255,6 @@ linters:
       - path: "internal/sync/backfill"
         linters:
           - revive
-
-      # main.go CLI : switch volumineux accepte
-      - path: "cmd/levelup/main\\.go"
-        linters:
-          - funlen
-          - gocyclo
 
       # Multi-titres : packages Go nommes avec underscore par convention produit
       # (coherence avec title.DefaultSlug = "halo_infinite" et les configs
