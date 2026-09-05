@@ -103,9 +103,6 @@ func NewMatchViewRepo(pdb *PlayerDB, xuid string) *MatchViewRepo {
 	return &MatchViewRepo{pdb: pdb, xuid: xuid}
 }
 
-// WithViewer injecte le slug du joueur qui consulte la page (session HTTP), qui
-// détermine l'état `liked` des médias associés au match. Vide ou non appelé :
-// repli documenté dans viewer().
 // WithKillSourceClassifier injecte le traducteur de source de degat du titre. nil (ou
 // non appele) : les armes du match restent lues dans `v_weapon_kills`.
 func (r *MatchViewRepo) WithKillSourceClassifier(c port.KillSourceClassifier) *MatchViewRepo {
@@ -113,14 +110,14 @@ func (r *MatchViewRepo) WithKillSourceClassifier(c port.KillSourceClassifier) *M
 	return r
 }
 
+// WithViewer injecte le slug du joueur qui consulte la page (session HTTP), qui
+// détermine l'état `liked` des médias associés au match. Vide ou non appelé :
+// repli documenté dans viewer().
 func (r *MatchViewRepo) WithViewer(slug string) *MatchViewRepo {
 	r.viewerSlug = slug
 	return r
 }
 
-// WithPlaylistCategoryStrip active/désactive le retrait du préfixe de catégorie
-// matchmaking du libellé de playlist (CapPlaylistCategoryStrip). Câblé au wiring
-// depuis la CapabilityMap du titre. Retourne le repo pour chaînage.
 // WithBombStats active la lecture des STATISTIQUES D'ASSAUT reconstruites du film
 // (`match_bomb_stats_latest`, capability `film.bomb_stats`). Câblé au wiring depuis la
 // CapabilityMap du titre. Retourne le repo pour chaînage.
@@ -129,6 +126,9 @@ func (r *MatchViewRepo) WithBombStats(enabled bool) *MatchViewRepo {
 	return r
 }
 
+// WithPlaylistCategoryStrip active/désactive le retrait du préfixe de catégorie
+// matchmaking du libellé de playlist (CapPlaylistCategoryStrip). Câblé au wiring
+// depuis la CapabilityMap du titre. Retourne le repo pour chaînage.
 func (r *MatchViewRepo) WithPlaylistCategoryStrip(enabled bool) *MatchViewRepo {
 	r.stripPlaylistCategory = enabled
 	return r
