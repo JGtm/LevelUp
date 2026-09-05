@@ -17,6 +17,7 @@ vérifieras que tout est vert, même si ce n'est pas de ta faute. » Contraintes
 solide et pérenne, si jamais tu dois faire des ajustements » ; « si tu peux orchestrer plusieurs
 étapes en parallèle, go » ; **`feat/v75` est GELÉ par l'utilisateur pour la durée de
 l'intégration** (« C'est gelé, je touche plus à rien », 15 h).
+**GO utilisateur donné d'avance (21 h) pour le merge dans `feat/v75` et le push. INTERDIT : tout merge de `feat/v75` dans `main` — l'utilisateur a encore du travail sur `feat/v75`, la prod ne bouge pas.**
 
 ## §1 État des lieux (mesuré le 2026-09-05, 14 h 30)
 
@@ -368,6 +369,11 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   delta v75 s'affiche, ce n'est pas une régression) · `gofmt -l .` vide · `go vet ./...` · `go build
   ./...` · `go test ./... -count=1` · `go test -tags=integration -p 1 ./internal/sync/... -count=1` ·
   `make openapi-check` · D12 complet · harnais 13/13 identiques SANS `-update` (49 lignes).
+  - baseline : rouge sur `TestOuvrierReel_ConstruitEtLivre` (`internal/api/wire`, tags
+    `integration && cgo`) — attendu PÉRIMÉ du lot 5 (`assertArtefactLivreEtComplet` relisait une
+    copie locale que l'ouvrier n'écrit plus depuis D8) -> corrigé (empreinte sha256 déclarée dans
+    le compte rendu de job, comparée à l'artefact rangé côté serveur), exit 0 sur la cible et sur
+    `./internal/api/...` complet.
 - [ ] E.2 Revue adversariale du diff d'intégration (`eb80a4f0a..HEAD`, contexte frais) ;
   corrections ; seconde lecture.
 - [ ] E.3 Journal, registre des reports (D5, D6, D7), thought_log ; suppression des trois worktrees
@@ -467,6 +473,13 @@ capability `film.bomb_stats`, désamorçage HORS LOT, aucune cuisson en lot).
   digest `killsource` bouge donc sur les 4 films du corpus dont la bande `ti=40` est peuplée, et
   sur eux seuls. Chiffres et corrélation au §5. **À signaler à l'utilisateur** : le kill-feed des
   matchs à véhicules change avec cette livraison, dans le sens de la correction.
+- **N-15 le gate d'intégration du chantier ne couvrait que `./internal/sync/` ; les tests
+  `integration && cgo` d'`internal/api/wire` (l'épreuve ouvrier, `TestOuvrierReel_ConstruitEtLivre`)
+  tournent en CI (job `go-coverage`) mais n'étaient PAS dans le filet local — c'est ainsi que
+  l'attendu périmé de l'assertion (copie locale de l'ouvrier, supprimée au lot 5 D8) a survécu
+  jusqu'au constat de ce chantier au lieu d'être vu à l'étape qui a introduit D8. Doivent entrer
+  dans le filet : E.1 (ajouter `go test -tags='integration cgo' ./internal/api/...`) ET
+  `delivery-checklist` (item générique « tags integration/cgo hors internal/sync »).**
 
 ## §5 Diffs des comptes (par étape)
 
