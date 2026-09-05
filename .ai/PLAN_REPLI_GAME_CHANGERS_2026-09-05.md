@@ -197,9 +197,22 @@ DÉCISION UTILISATEUR (05/09) : PAS DE MERGE feat/v75 à ce stade — clôture =
 + commit + thought_log sur `wt/game-changers` uniquement ; le merge attendra sa décision
 (gate visuel probablement d'abord).
 
-## Lot I — Exposer `weapon_key` dans les DTOs d'agrégats, puis replier les graphes
-## (commandé par l'utilisateur le 05/09 : « faut corriger c'est évident » + « la méthode
-## la plus propre, pérenne et solide » ; APRÈS la clôture du lot H)
+## Lot I — ABANDONNÉ le 05/09 SUR CLARIFICATION UTILISATEUR, avant toute écriture
+## retenue (agent arrêté en vol, ses modifications Go défaites, worktree revenu à
+## `8180180f1`)
+
+La commande « étendre le repli aux graphes partagés » reposait sur un MALENTENDU du
+superviseur : l'utilisateur a clarifié que SEULS les rendus d'USAGE de ce chantier (les
+« nouveaux graphes » — bilan d'équipement, contrôle des socles, déjà repliables G1/G2)
+sont concernés — « leur rôle n'est pas le même que les précédents ». Les graphes de
+PERFORMANCE existants (« Frags par arme » et ses déclinaisons synthèse/escouade/session)
+ne se replient PAS. Conséquence : l'exposition de `weapon_key` dans les DTOs d'agrégats
+n'a plus de demandeur — abandonnée avec le lot (la note technique reste vraie et
+documentée au H1 si un besoin futur la ressuscite). La section ci-dessous est conservée
+comme trace de cadrage, AUCUN item n'est à exécuter.
+
+## (trace, non exécuté) Lot I — Exposer `weapon_key` dans les DTOs d'agrégats, puis
+## replier les graphes
 
 Constat fondateur (H1, contre-vérifié) : l'identité existe à chaque étage (agrégation
 DuckDB par `effective_weapon_id`, `port.WeaponKillRow.WeaponID` jusqu'au service) et
