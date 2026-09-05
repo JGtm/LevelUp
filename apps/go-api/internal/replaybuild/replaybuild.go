@@ -243,6 +243,7 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 		Labels:          b.labels,
 		NeutralDeaths:   cat.neutral,
 		Kills:           cat.kills,
+		MatchKills:      cat.matchKills,
 		Bots:            cat.bots,
 		Successions:     cat.successions,
 		Objectives:      stats.objectives,
@@ -288,8 +289,11 @@ type entreesCatalogue struct {
 	spawnPointsState string
 	neutral          []replay.NeutralDeath
 	kills            replay.KillsInput
-	bots             []replay.BotIdentity
-	successions      []replay.Succession
+	// matchKills sort de LA MÊME passe de résolution que `kills` (cf. kills.go) : les couples
+	// (tueur, victime, instant) que la jointure `bomb_carriers_killed` consomme.
+	matchKills  replay.MatchKillsInput
+	bots        []replay.BotIdentity
+	successions []replay.Succession
 }
 
 // collecterEntreesCatalogue rassemble tout ce que `BuildFromFilm` reçoit SANS l'avoir décodé
@@ -333,7 +337,11 @@ func (b *Builder) collecterEntreesCatalogue(
 	b.observe("spawnPointsState", mapState)
 	neutral := b.neutralDeaths(matchID, ksRes)
 	b.observe("neutralDeaths", neutral)
-	kills := b.killRefs(matchID, deaths, ksRes)
+	// UNE SEULE ÉTAPE OBSERVÉE, et c'est délibéré : `matchKills` sort de la MÊME passe et n'est
+	// pas un balayage de plus. L'observateur continue de rendre EXACTEMENT `replay.KillsInput`,
+	// sans quoi le harnais d'équivalence aurait vu bouger `killRefs` sur les 13 films alors que
+	// rien de ce qu'il mesure n'a changé.
+	kills, matchKills := b.killRefs(matchID, deaths, ksRes)
 	b.observe("killRefs", kills)
 	// Les IDENTITÉS DE BOT et les RELAIS sortent du MÊME décodage killsource (amont
 	// 2026-09-02/03) : ils se calculent ici, où `ksRes` vit, et voyagent avec les autres
@@ -344,7 +352,7 @@ func (b *Builder) collecterEntreesCatalogue(
 	return entreesCatalogue{
 		zones: zones, zoneRoles: zoneRoles,
 		spawnPts: spawnPts, spawnPointsState: mapState,
-		neutral: neutral, kills: kills,
+		neutral: neutral, kills: kills, matchKills: matchKills,
 		bots: bots, successions: successions,
 	}
 }
