@@ -313,3 +313,37 @@ func TestEchanges_CouvertureDepuisLeBilan(t *testing.T) {
 		t.Fatalf("EchantillonFaible = false sur 3 morts, attendu true")
 	}
 }
+
+// TestEchanges_TriDesPairesSurPlusieursVengeurs : la sortie ne doit pas bouger d'un appel a
+// l'autre, et l'ordre est (vengeur, venge) — dans cet ordre. Le jeu porte QUATRE vengeurs
+// differents et DEUX paires partageant le meme venge (A) : trier sur le seul venge rendrait
+// (B,A), (C,A), (A,B), (L,K), donc la premiere cle est decidante ici.
+// L'equipe adverse echange aussi : la mort de K a 4 000 est vengee par L a 6 000, ce qui
+// donne la quatrieme paire.
+func TestEchanges_TriDesPairesSurPlusieursVengeurs(t *testing.T) {
+	kills := []domain.KillEvent{
+		ev("m1", "A", "K", 0),    // C vengera A
+		ev("m1", "K", "C", 1000), //   -> paire (C, A), delai 1000
+		ev("m1", "B", "K", 3000), // A vengera B
+		ev("m1", "K", "A", 4000), //   -> paire (A, B), delai 1000 ; et L vengera K
+		ev("m1", "A", "L", 6000), //   -> paire (L, K), delai 2000 ; B vengera A
+		ev("m1", "L", "B", 8000), //   -> paire (B, A), delai 2000
+	}
+	attendu := []domain.PaireEchange{
+		{VengeurXUID: "A", VengeXUID: "B", Nombre: 1, DelaiMoyenMs: 1000},
+		{VengeurXUID: "B", VengeXUID: "A", Nombre: 1, DelaiMoyenMs: 2000},
+		{VengeurXUID: "C", VengeXUID: "A", Nombre: 1, DelaiMoyenMs: 1000},
+		{VengeurXUID: "L", VengeXUID: "K", Nombre: 1, DelaiMoyenMs: 2000},
+	}
+	for essai := 0; essai < 5; essai++ {
+		bilan := Echanges(kills, equipesArene())
+		if len(bilan.Paires) != len(attendu) {
+			t.Fatalf("essai %d : len(Paires) = %d, attendu %d : %+v", essai, len(bilan.Paires), len(attendu), bilan.Paires)
+		}
+		for i, a := range attendu {
+			if bilan.Paires[i] != a {
+				t.Fatalf("essai %d : Paires[%d] = %+v, attendu %+v", essai, i, bilan.Paires[i], a)
+			}
+		}
+	}
+}
