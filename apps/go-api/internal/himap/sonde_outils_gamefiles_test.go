@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // Outils communs des sondes d'investigation (food, scnr, stse) et des temoins gamefiles.

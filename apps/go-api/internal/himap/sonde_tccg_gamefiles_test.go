@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 // Sonde d'investigation (2026-08-27, voie de secours des fonds Forge) : que porte le tag
 // `tccg` (terrain collision cell) du canevas Forge, et peut-il servir de plan de sol ?
 //

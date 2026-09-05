@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 import (
@@ -7,7 +9,6 @@ import (
 	"image/png"
 	"math"
 	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -23,12 +24,9 @@ import (
 //
 // Variables : GATE_REFERENCE (chemin de la carte validee), GATE_PNG (sortie).
 
-// Calage de `carte_validee_v1.png`, mesure sur les trajectoires de joueur.
-const (
-	gateEchelle = 0.0920 // metres par pixel
-	gateX0      = -43.5
-	gateY1      = 61.0
-)
+// Le calage de `carte_validee_v1.png` (gateEchelle, gateX0, gateY1) vit dans
+// `calage_banc_test.go`, hors du tag `gamefiles` : `fond_png_test.go` l'oppose a
+// `EchelleFondCarte` et tourne sans installation du jeu.
 
 func TestGateVisuelCliffhanger(t *testing.T) {
 	ref := os.Getenv("GATE_REFERENCE")
@@ -125,24 +123,4 @@ func ancresCliffhanger(t *testing.T) [][3]float64 {
 		}
 	}
 	return pts
-}
-
-// cheminDepuisDepot remonte depuis le repertoire de test jusqu'a trouver un chemin relatif au
-// depot.
-func cheminDepuisDepot(rel string) (string, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for d := wd; ; {
-		c := filepath.Join(d, rel)
-		if _, err := os.Stat(c); err == nil {
-			return c, nil
-		}
-		parent := filepath.Dir(d)
-		if parent == d {
-			return "", fmt.Errorf("%s introuvable depuis %s", rel, wd)
-		}
-		d = parent
-	}
 }

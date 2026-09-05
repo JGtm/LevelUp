@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // LA PREUVE DES REGIONS DE LIVE FIRE, MATERIALISEE EN TEST DURABLE (lot C catalogues,

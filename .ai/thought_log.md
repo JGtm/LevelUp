@@ -1,3 +1,76 @@
+## [2026-09-05] internal/himap ne terminait pas — ce n'etait pas un blocage, c'etaient 20 minutes de balayage sans etiquette — Complete
+
+**Le symptome, et pourquoi il ressemblait a un bug.** `go test ./internal/himap/` ne
+terminait jamais sur le poste de developpement ; `TestBalayageCoquille` (sous-test
+`aquarius_map`) faisait timeout a 2, 10 ET 15 min, a l'identique sur `feat/v75` nu et sur
+`wt/session-usage`. La forme du symptome — toujours la meme carte dans le dump — pointait
+vers une boucle infinie ou une attente de ressource (fichier de carte absent ?).
+
+**La mesure a refute les trois hypotheses d'un coup.** Lance seul avec un budget large,
+`TestBalayageCoquille` **passe** : 1 246 s (20 min 47 s), 26 cartes cuites, 0 ancre perdue,
+0 coquille refusee. Ni boucle infinie, ni fichier manquant, ni interblocage : un balayage
+de recherche qui coute vingt minutes. Le detail par carte confirme la regularite du cout —
+behemoth 86 s, bazaar 66 s, ctf_illusion 64 s, `aquarius_map` 59 s. Les trois timeouts
+tombaient tous A L'INTERIEUR de cette duree legitime, et le dump attrapait `aquarius_map`
+en vol parce qu'elle est la 4e mesurable de l'ordre alphabetique.
+
+**Ce que l'erreur de lecture a coute, et l'asymetrie qui l'a nourrie.** Le paquet melange
+deux populations sans rien pour les separer : 20 tests unitaires ordinaires et 59
+`*_gamefiles_test.go` qui decodent l'installation locale de Halo Infinite. En CI le jeu
+n'est pas la : `DeployRoot()` echoue, chaque test prend son `t.Skip`, le paquet est vert en
+une seconde. Le cout n'existe donc QUE sur un poste de developpement — le seul endroit ou
+personne ne regarde un tableau de bord. C'est ce qui a laisse la situation s'installer sans
+qu'aucun signal public ne rougisse.
+
+**Decision : borner par un tag de build explicite, pas par un skip.** Les 59 fichiers
+passent derriere `//go:build gamefiles`, sur le modele du tag `integration` deja en usage
+dans le depot. Ce n'est pas un skip silencieux : la commande pour les jouer est publiee
+(`make go-api-test-gamefiles`, `docs/COMMANDS.md` FR+EN, CLAUDE.md), et le corpus rend les
+memes chiffres qu'avant sous son tag (`aquarius_map` : 22 -> 22 ancres, 17,4 % de pixels
+retires — identique a la mesure d'avant tag).
+
+**Deux helpers ont du sortir du corpus, et c'est la partie non mecanique.** `cle_forge_test.go`
+et `fond_png_test.go` tournent SANS le jeu mais empruntaient `cheminDepuisDepot` et le calage
+du banc (`gateEchelle`, `gateX0`, `gateY1`) a des fichiers gamefiles. Taguer sans les
+extraire cassait la compilation du build par defaut. Ils vivent desormais dans
+`chemin_depot_test.go` et `calage_banc_test.go`, hors tag : le premier localise le DEPOT et
+non le jeu, le second decrit un ASSET versionne et doit rougir partout, CI comprise.
+
+**Garde-rails poses (regle des <= 2 copies : une regle a la main sur 59 fichiers se
+re-perd).** `internal/himap/corpus_tag_test.go`, dans le build PAR DEFAUT donc en CI, tient
+les deux sens : tout `*_gamefiles_test.go` porte le tag, et aucun test non tague n'appelle
+`DeployRoot(` / `LevelsDir(` / `ChercheModuleInstalle(` (allowlist a 2 entrees, chacune
+justifiee et datee). Les deux ont ete vus ROUGIR avant d'etre satisfaits — un garde-rail
+qu'on n'a pas vu echouer ne garde rien. Cote CI, un step `go vet -tags=gamefiles
+./internal/himap/` (job `go-test`) : la CI ne peut pas EXECUTER le corpus faute de jeu, mais
+elle doit le COMPILER, sinon il pourrit hors de vue — exactement le defaut qu'on repare.
+
+**LE CORPUS N'EST PAS SEULEMENT LONG, IL EST GOURMAND — et ca explique un ecart qui
+intriguait.** `aquarius_map` coute 21 s lancee seule mais 59 s dans le balayage complet.
+Mesure du processus de test pendant un run du corpus entier : **22,7 Go de memoire privee
+apres 26 min**, avec seulement 12 min de CPU sur 26 min d'horloge — le processus PAGINE, il
+n'est pas limite par le calcul. Chaque carte cuite laisse derriere elle une grille de ~2
+millions de cellules et ses 26 000 instances ; le tas ne redescend pas entre sous-tests. Un
+corpus qui reclame 22 Go n'est de toute facon pas un gate qu'on fait tourner par defaut : la
+mesure renforce la decision de le taguer plutot que de l'optimiser.
+
+**Resultats.** `go test ./internal/himap/` : **2,8 s, vert** (avant : ne terminait pas).
+`go vet` propre dans les deux configurations. `gofmt` propre. Le garde-rail voisin
+`TestAucuneAutreCopieDuCheminDuJeu` m'a attrape en cours de route (j'avais cite le litteral
+qu'il interdit dans un commentaire) : reformule plutot qu'allowliste — la bonne reaction a
+un garde-rail qui rougit n'est pas de l'elargir.
+
+**Prochaine etape.** Corpus tague rejoue en entier pour prouver la non-regression des 59
+fichiers touches. Non traite volontairement (hors perimetre, note sans y toucher) : la
+cuisson d'une carte coute 20 a 86 s et le chantier `wt/cuisson-perf` travaille deja ce
+terrain ; et `RestreintALaFrontiere` balaie NX x NY x triangles sans prefiltre de boite —
+negligeable aux 12 triangles d'aquarius, a regarder si un maillage a 116 faces (behemoth)
+devient le cout dominant. Verifie au passage que la pathologie ne survit pas ailleurs : les
+deux autres paquets qui ouvrent l'installation (`cmd/mapfond-build`, `cmd/mapstruct-build`)
+sont MESURES rapides (0,17 s et 3,9 s) — pas de tag necessaire. Seule scorie notee, non
+traitee : `cmd/mapstruct-build/equivalence_gamefiles_test.go` porte le suffixe sans porter le
+tag ; inoffensif tant qu'il coute 4 s, mais le suffixe veut desormais dire quelque chose.
+
 ## [2026-09-03] Match view — donnees des deux temoins chargees ; 9 formes proposees pour les trois blocs en tableau — En cours
 
 **Prerequis utilisateur : les deux temoins doivent porter leurs donnees.** Matchs

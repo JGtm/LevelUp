@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // origine_foki_gamefiles_test.go — DESCENDRE D'UN CRAN : ce que le `foki` référence.

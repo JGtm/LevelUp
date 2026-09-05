@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE (2026-08-18, plan PLAN_NOMMAGE_EQIP_TRANSLOCATEUR phase 0.2) — le NIVEAU `eqip`.
@@ -282,4 +284,22 @@ func triOffsets(m map[int]uint32) []int {
 	}
 	sort.Ints(out)
 	return out
+}
+
+// tableCandidats rend le dictionnaire COMPLET indexe par hachage, et sa taille. Il sert a
+// chercher un identifiant de chaine a une position INCONNUE d'une structure — a n'employer
+// que sur des fenetres etroites, sous peine de collisions (l'esperance vaut
+// taille_table x mots_balayes / 2^32).
+//
+// Il vit ICI, et non avec le reste du dictionnaire (`sonde_stringid_dico_test.go`), parce que
+// cette sonde est son seul appelant et qu'elle est derriere le tag `gamefiles` : le laisser
+// dans un fichier non tague en ferait du code mort dans le build par defaut.
+func tableCandidats() (map[uint32]string, int) {
+	out := make(map[uint32]string, 400000)
+	n := enumereCandidats(func(nom string, h uint32) {
+		if _, deja := out[h]; !deja {
+			out[h] = nom
+		}
+	})
+	return out, n
 }

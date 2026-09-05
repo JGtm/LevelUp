@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // Temoins du lecteur sddt sur les FICHIERS DU JEU, et le banc de Cliffhanger.

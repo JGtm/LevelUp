@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE D'INVESTIGATION (2026-08-09, non destinee au commit) — le bloc

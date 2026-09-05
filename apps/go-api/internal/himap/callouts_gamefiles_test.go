@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // Témoins GAMEFILES du lecteur de callouts (exigent l'installation du jeu ; skip sinon).

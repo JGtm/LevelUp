@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // origine_typeid_tags_gamefiles_test.go — RÉSOUDRE LA SÉMANTIQUE DES `type_id` DE VARIANTE.

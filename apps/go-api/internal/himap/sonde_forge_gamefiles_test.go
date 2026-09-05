@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE (2026-08-10) — F1 du plan PLAN_PORT_TRIANGLES_GO.md §4 : le tag `food`

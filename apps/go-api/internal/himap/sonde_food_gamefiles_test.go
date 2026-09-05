@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 package himap
 
 // SONDE (2026-08-10, non commitee) — identifier les tags `food` (definitions
