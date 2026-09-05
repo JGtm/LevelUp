@@ -197,6 +197,12 @@ Tous joués en avant-plan, depuis `apps/go-api` pour le Go, avec
    gouverne deux routes servies) et documentée dans le TOML comme dans la CapabilityMap,
    mais c'est une divergence de style dans un fichier par ailleurs homogène.
 
+4. **`MatchHeader.replayLink.tsx` (le bouton « Rejeu » de la fiche de match) ne porte que
+   la porte de DONNEE** (`header.replay_available`, un `os.Stat` cote serveur), pas la
+   porte de TITRE. Aucun bloc mort en pratique — sur un titre sans film l'artefact n'existe
+   jamais, donc le bouton ne s'affiche jamais — mais c'est la seule des quatre entrees du
+   rejeu a ne pas porter les deux portes. La route qu'il ouvre est gatee par le lot D.
+
 ## Questions ouvertes
 
 Aucune bloquante. Deux points d'arbitrage pour la revue :
