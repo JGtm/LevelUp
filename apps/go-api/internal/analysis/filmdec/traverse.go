@@ -88,6 +88,15 @@ var paramByComponent = map[string]uint32{
 	"biped-malleable-property-component":   2,
 	"biped-spartan-ability":                2,
 	"biped-spartan-ability-component":      2,
+	// i2 dyn.-prec. (ti=38/39/40/43) : arg5 de FUN_140c5f7ec. >= 2 fait lire un bit de
+	// porte C supplémentaire qui, posé, bascule la charge utile sur FUN_142e29bac
+	// (R(1)[+R(30)] + R(30)) au lieu de FUN_140c5fa84. MESURÉ le 2026-09-03 sur la bande
+	// ti=40 de `0d76e8f1` et `fccc61cd` : avec param=1 l'histogramme des quanta i4 qui
+	// suit reste étalé (27,7 % / 39,3 % de quanta au-dessus de 192) ; avec param=2 il se
+	// concentre au plein — 93,6 % / 98,5 %, au-dessus même du témoin bipède (82,9 %
+	// / 86,2 %), et sans perdre un seul record (1249/1249 et 201/201 atteignent i4).
+	// Même nature de mesure que la clé i59 ci-dessous.
+	compForwardUpDynPrec: 2,
 	// i59 manquait à la table (2026-08-16, plan PLAN_GRAPPIN_LIGNE) : le commentaire
 	// ci-dessus disait « i57/i59 -> 2 » mais seules les clés d'i57 existaient, donc la
 	// queue R(3) d'i59 (FUN_140fc147c, param_4>1) n'était JAMAIS lue offline. Mesure :
@@ -213,7 +222,15 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "object-translational-velocity-dynamic-precision-component": // i1
 		consumeObjectTranslationalVelocity(br)
 		return variant, nil, true
-	case "object-angular-velocity-dynamic-precision-component", "object-angular-velocity-component": // i3
+	case "object-angular-velocity-dynamic-precision-component": // i3 de ti=40 UNIQUEMENT
+		// Déser propre, résolu STATIQUEMENT le 2026-09-03 : FUN_140d87740 (et non
+		// FUN_140d70998, qui est celui du composant SANS « dynamic-precision »). Chaîne de
+		// preuve et validation 6/6 contre la table live : components_dynprec_orientation.go.
+		// Le regroupement des deux noms dans une seule branche était la moitié de la cause
+		// racine du blocage d'i4 sur ti=40 (l'autre moitié étant i2).
+		consumeObjectAngularVelocityDynPrec(br)
+		return variant, nil, true
+	case "object-angular-velocity-component": // i3 du bipède (ti=35) et de la plupart des archétypes
 		// VRAI deser biped i3 (table ECS live) = FUN_140d70998 = FUN_14076d528 = un SEUL gate
 		// dynamic-precision : R(1) present ; si 0 -> R(19) dir + R(8) magnitude. L'ancien routage
 		// (consumeObjectAngularVelocity=FUN_140d87740) ajoutait un gate EXTERNE parasite + R(96)
@@ -301,9 +318,13 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case "object-translational-velocity-component": // world-object i1 (FUN_14076e228)
 		consume14076d528(br) // R(1)[+R(19)+R(10)]
 		return variant, nil, true
-	case "object-forward-and-up-dynamic-precision-component": // ti=38 i2 (reuse biped i2 deser)
-		consumeObjectForwardAndUp(br)
-		return variant, nil, true
+	case "object-forward-and-up-dynamic-precision-component": // i2 de ti=38/39/40/43
+		// N'EST PAS le déser du bipède. Résolu statiquement le 2026-09-03 :
+		// FUN_140c5f7ec (le bipède porte `object-forward-and-up-component` ->
+		// FUN_14076e278). Le « reuse biped i2 deser » qui tenait ici était une
+		// réutilisation héritée de ti=38, jamais mesurée (CADRAGE_VEHICULES § 2), et
+		// elle amputait i2 de son ou ses bits de tête sur TOUS les records ti=40.
+		return variant, nil, consumeObjectForwardAndUpDynPrec(br, paramForComponent(name))
 	case "change-scene-component": // ti=16 i0 (FUN_142ed3fcc)
 		consumeChangeScene(br)
 		return variant, nil, true

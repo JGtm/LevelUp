@@ -45,6 +45,21 @@ package archlint
 //     nouveau compte a inscrire dans `filmdecVarsGeles`, pour que le resserrage soit un geste
 //     CONSCIENT et date, jamais un effet de bord invisible.
 //
+// RE-MESURE DU 2026-09-05, A L'ARRIVEE DU CHANTIER VEHICULES : 118. Les DEUX de plus viennent
+// de la branche `feat/v75-vehicules-sons`, et chacune est justifiee :
+//
+//   - `unit_ref_probe.go` : `unitRefHook`, la SONDE des references d unite (`nil` en production,
+//     comme `equipmentCreationHook`, `mppHook`, `recordMaskHook` et les autres sondes deja
+//     comptees). C est le patron etabli du paquet pour observer une traversee sans la modifier ;
+//     de-globaliser les sondes est un chantier a part, et il les concerne TOUTES.
+//   - `default_state_ti40.go` : `vehicleMediaFrameBits`, la largeur MESUREE de la feuille
+//     config-dependante du default-state de `ti=40` (le quaternion du vehicule). C est une
+//     TABLE DE GRAMMAIRE deguisee en `var`, du meme genre que `lot1RefDomWidths` : elle ne porte
+//     aucun etat de balayage.
+//
+// Le ratchet ne monte QUE de ces deux-la : l integration n a ajoute aucune variable de son fait
+// (la seule erreur sentinelle qu elle a failli poser a ete rendue locale a son site).
+//
 // RETRAIT CIBLE : le jour ou `filmdec` est de-globalise (hors de ce plan, cf. §7). Critere
 // mesurable de ce jour-la : `LockProcessDecode` n'a plus de raison d'etre.
 
@@ -62,7 +77,7 @@ import (
 
 // filmdecVarsGeles : le compte GELE des variables de paquet de `filmdec` (cf. l'en-tete pour la
 // convention de comptage et la date de mesure).
-const filmdecVarsGeles = 116
+const filmdecVarsGeles = 118
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

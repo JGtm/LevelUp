@@ -102,7 +102,9 @@ const replayArtifactExt = ".json"
 //     replay_map_weapon_pads.go) ;
 //   - ce que le TITRE sait de chaque arme (WeaponLabel.Key et .Tint) : la clé qui ouvre la
 //     banque de sons du client, et la nature de la décharge qui teinte son éclair de
-//     bouche (cf. replay_weapon_labels.go).
+//     bouche (cf. replay_weapon_labels.go) ;
+//   - le SPRITE de chaque famille de châssis de véhicule (VehicleLabels) : l'artefact publie
+//     la famille, le service compose son URL sous /static (cf. replay_vehicle_labels.go).
 //
 // L'absence de l'une ou de l'autre n'est jamais une erreur — le rejeu se sert entier sans.
 func (s *replayService) GetReplay(ctx context.Context, matchID string) (replay.ReplayDocument, error) {
@@ -127,5 +129,9 @@ func (s *replayService) GetReplay(ctx context.Context, matchID string) (replay.R
 	// résolvent d'un catalogue du titre, donc ici et pas dans l'artefact (cf.
 	// replay_weapon_labels.go).
 	s.resolveWeaponLabels(ctx, &doc)
+	// LE SPRITE DE CHAQUE FAMILLE DE CHASSIS, même règle et même raison : une URL d'asset
+	// statique dépend du titre, et ne se fige donc pas dans l'artefact (cf.
+	// replay_vehicle_labels.go).
+	s.resolveVehicleLabels(ctx, &doc)
 	return doc, nil
 }

@@ -46,6 +46,27 @@ type componentVitals struct {
 	Shield    ShieldVitality
 }
 
+// dirsGrammar dit QUELLE grammaire d'orientation le balayage offline applique à i2 et i3.
+// Le zéro (tout faux) est la grammaire du BIPÈDE — c'est le comportement historique et
+// celui de tous les appelants existants. Les deux drapeaux sont SÉPARÉS pour qu'un
+// instrument puisse isoler la contribution de chacun (i2 seul, i3 seul, les deux) ; la
+// production, elle, ne pose qu'un seul choix (ScanFilmOptions.DynPrecOrientation), parce
+// que l'archétype décide des DEUX à la fois.
+type dirsGrammar struct {
+	fwdUpDynPrec  bool   // i2 : FUN_140c5f7ec au lieu de FUN_14076e278
+	angVelDynPrec bool   // i3 : FUN_140d87740 au lieu de FUN_140d70998
+	fwdUpParam    uint32 // arg5 de FUN_140c5f7ec : >= 2 ajoute le bit de porte C
+}
+
+// dynPrecOrientationGrammar est la grammaire des archétypes ti=38/39/40/43.
+func dynPrecOrientationGrammar() dirsGrammar {
+	return dirsGrammar{
+		fwdUpDynPrec:  true,
+		angVelDynPrec: true,
+		fwdUpParam:    paramForComponent(compForwardUpDynPrec),
+	}
+}
+
 // componentDirs porte les directions capturées dans un record biped.
 type componentDirs struct {
 	HasAim   bool   // i2 présent ET direction présente (gate==0)
@@ -107,7 +128,15 @@ func (p BipedPosition) AimHeadingDeg() (float32, bool) {
 	if !p.HasYaw {
 		return 0, false
 	}
-	return float32(360 * (float64(p.YawRaw) + 0.5) / (1 << aimYawBits)), true
+	return aimHeadingDegFromRaw(p.YawRaw), true
+}
+
+// aimHeadingDegFromRaw est le SEUL détenteur de la conversion « quantum de cap -> degrés ».
+// `BipedPosition.AimHeadingDeg` (record porteur de position) et `BipedAim.AimHeadingDeg`
+// (record SANS position, cf. offline_aim_only.go) l'appellent tous deux : la convention est
+// mesurée une fois et écrite une fois.
+func aimHeadingDegFromRaw(yaw uint32) float32 {
+	return float32(360 * (float64(yaw) + 0.5) / (1 << aimYawBits))
 }
 
 // AimPitchDeg renvoie l'ÉLÉVATION DE VISÉE en degrés (positif = vers le haut, 0 = à plat), et
@@ -140,7 +169,14 @@ func (p BipedPosition) AimPitchDeg() (float32, bool) {
 	if !p.HasYaw {
 		return 0, false
 	}
-	return float32(360*(float64(p.PitchRaw)+0.5)/(1<<aimPitchBits) - 180), true
+	return aimPitchDegFromRaw(p.PitchRaw), true
+}
+
+// aimPitchDegFromRaw est le SEUL détenteur de la conversion « quantum d'élévation -> degrés »,
+// réserve comprise (cf. le commentaire d'AimPitchDeg ci-dessus). Deux appelants :
+// `BipedPosition.AimPitchDeg` et `BipedAim.AimPitchDeg`.
+func aimPitchDegFromRaw(pitch uint32) float32 {
+	return float32(360*(float64(pitch)+0.5)/(1<<aimPitchBits) - 180)
 }
 
 // AimVector renvoie le cap unitaire décodé (cubemap 19 bits) et sa validité.
@@ -188,11 +224,22 @@ func ReadBitsAtForDiag(b []byte, pos, n int) uint32 { return readBitsAt(b, pos, 
 // Sans lui, tout record déclarant i3 s'arrêtait avant i4/i5 ET avant i21. Conséquence
 // mesurée et publiée : la couverture du cap de visée CHANGE (elle augmente) ; c'est un
 // effet de bord assumé d'un décodeur qui va plus loin, pas une modification de la position.
-// Le lecteur `br` est FOURNI PAR L'APPELANT et REUTILISE : les deux composants de vitalite
-// (i4 et i5) repositionnent le meme lecteur par `SetBitPos` au lieu d'en allouer un chacun.
-// C'etaient deux allocations PAR RECORD BIPEDE, sur un balayage qui en reconnait des
-// dizaines de milliers par film. `br` doit etre lie au payload balaye.
-func scanRecordDirs(br *BitReader, at, total int, idx []int) (componentDirs, componentVitals) {
+//
+// `g` choisit la grammaire d'i2/i3 : zéro = celle du BIPÈDE
+// (`object-forward-and-up-component` -> FUN_14076e278,
+// `object-angular-velocity-component` -> FUN_140d70998) ; les variantes
+// `-dynamic-precision-` que portent ti=38/39/40/43 sont QUATRE désérialiseurs distincts
+// (FUN_140c5f7ec / FUN_140d87740), résolus statiquement le 2026-09-03 : voir
+// components_dynprec_orientation.go. Sans elles, un balayage de la bande ti=40 lisait i2
+// amputé de ses bits de tête et i3 amputé de son gate externe, donc atteignait i4
+// (vitalité) avec un curseur faux — la cause racine du bruit mesuré au lot V2b.
+//
+// Le lecteur `br` est FOURNI PAR L'APPELANT et REUTILISE : les composants qui posent un
+// lecteur (i2 dyn.-prec., i3 dyn.-prec., i4 et i5) repositionnent le meme par `SetBitPos`
+// au lieu d'en allouer un chacun. C'etaient deux allocations PAR RECORD BIPEDE, sur un
+// balayage qui en reconnait des dizaines de milliers par film. `br` doit etre lie au
+// payload balaye.
+func scanRecordDirs(br *BitReader, at, total int, idx []int, g dirsGrammar) (componentDirs, componentVitals) {
 	pay := br.buf
 	var out componentDirs
 	var vit componentVitals
@@ -203,9 +250,17 @@ func scanRecordDirs(br *BitReader, at, total int, idx []int) (componentDirs, com
 		case 1:
 			at, ok = readVelocityComponent(pay, at, total, &out)
 		case 2:
-			at, ok = readForwardComponent(pay, at, total, &out)
+			if g.fwdUpDynPrec {
+				at, ok = readForwardComponentDynPrec(br, at, total, &out, g.fwdUpParam)
+			} else {
+				at, ok = readForwardComponent(pay, at, total, &out)
+			}
 		case 3:
-			at, ok = readAngularVelocityComponent(pay, at, total)
+			if g.angVelDynPrec {
+				at, ok = readAngularVelocityComponentDynPrec(br, at, total)
+			} else {
+				at, ok = readAngularVelocityComponent(pay, at, total)
+			}
 		case 4:
 			at, ok = readBodyVitalityComponent(br, at, total, &vit)
 		case 5:
@@ -331,6 +386,37 @@ func readForwardComponent(pay []byte, at, total int, out *componentDirs) (int, b
 		return at, false
 	}
 	return at + 8, true
+}
+
+// readForwardComponentDynPrec consomme i2 `object-forward-and-up-DYNAMIC-PRECISION-component`
+// (FUN_140c5f7ec, ti=38/39/40/43). La grammaire n'est PAS réécrite ici : on repositionne le
+// lecteur de l'appelant et on appelle son unique détenteur (components_dynprec_orientation.go).
+func readForwardComponentDynPrec(br *BitReader, at, total int, out *componentDirs, param uint32) (int, bool) {
+	br.SetBitPos(at)
+	v, ok := decodeObjectForwardAndUpDynPrec(br, param)
+	if !ok || br.BitPos() > total {
+		return at, false
+	}
+	if v.HasDir {
+		out.HasAim = true
+		out.AimRaw = v.DirRaw
+	}
+	return br.BitPos(), true
+}
+
+// readAngularVelocityComponentDynPrec consomme i3
+// `object-angular-velocity-DYNAMIC-PRECISION-component` (FUN_140d87740, ti=40) : un gate
+// EXTERNE R(1) que le composant sans « dynamic-precision » n'a pas, puis soit R(96) de
+// copie brute, soit le vec3 dyn.-préc. habituel. Aucune valeur capturée : ce composant
+// n'est traversé que pour atteindre i4/i5. Le lecteur vient de l'appelant : une allocation de
+// moins par record, comme pour i4 et i5.
+func readAngularVelocityComponentDynPrec(br *BitReader, at, total int) (int, bool) {
+	br.SetBitPos(at)
+	consumeObjectAngularVelocityDynPrec(br)
+	if br.BitPos() > total {
+		return at, false
+	}
+	return br.BitPos(), true
 }
 
 // readAimingVectorComponent consomme i21 (unit-desired-aiming-vector, FUN_14076df7c) et

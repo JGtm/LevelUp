@@ -510,3 +510,42 @@ describe("traînée en option et joueur de la page (V1, 2026-08-18)", () => {
     ).not.toContain("rgb(7 7 7)");
   });
 });
+
+describe('pion embarqué (lot véhicules, C7, 2026-09-02)', () => {
+  it('embarqué à cette image : RIEN n est dessiné pour ce slot (ni marqueur, ni nom, ni traînée)', () => {
+    const ops = trace({ embarkedAtSlot: () => true }, singlePointTrack(512))
+    // Seuls les réglages FIXES du calque (posés une fois, hors boucle par vie) survivent :
+    // aucune primitive de tracé (arc, texte, ligne) ne doit sortir pour ce slot supprimé.
+    expect(ops.map((o) => o.op)).toEqual(['set lineCap', 'set lineJoin', 'set globalAlpha'])
+    expect(count(ops, 'arc')).toBe(0)
+    expect(count(ops, 'fillText')).toBe(0)
+    expect(count(ops, 'lineTo')).toBe(0)
+  })
+
+  it('pas embarqué : le comportement est INCHANGÉ (le prédicat est demandé, mais dit non)', () => {
+    let asked: [number, number] | null = null
+    const withPredicate = trace({
+      embarkedAtSlot: (slot, frame) => {
+        asked = [slot, frame]
+        return false
+      },
+    })
+    const withoutPredicate = trace()
+    expect(withPredicate.map((o) => o.op)).toEqual(withoutPredicate.map((o) => o.op))
+    expect(asked).toEqual([512, 50])
+  })
+
+  it('absent (aucun véhicule au document) : comportement inchangé, comme avant ce lot', () => {
+    const ops = trace({ embarkedAtSlot: undefined })
+    expect(ops.length).toBeGreaterThan(0)
+  })
+
+  it('une croix de mort ne remplace PAS le pion supprimé : le slot embarqué reste muet', () => {
+    // Vie déjà terminée à l'image courante (frame 50 > endFrame 40) : sans le prédicat, ce
+    // serait la branche croix de mort qui dessinerait. Avec lui, rien ne doit sortir.
+    const dead = singlePointTrack(512, { endFrame: 40 })
+    const ops = trace({ embarkedAtSlot: () => true }, dead)
+    expect(count(ops, 'moveTo')).toBe(0) // la croix de mort trace deux `moveTo`/`lineTo`
+    expect(count(ops, 'stroke')).toBe(0)
+  })
+})

@@ -196,6 +196,11 @@ const NULLABLE_ARRAYS = [
   // compte le reste (`coverage.abilityCharges`). La vignette d'équipement le lit depuis le
   // lot P6 (`abilityChargeLogic.ts`) ; la frontière le comble dès le schéma.
   'abilityCharges',
+  // `vehicles` : LA VIE DE CHAQUE VÉHICULE du match (schéma 29, 2026-09-02) — naissance,
+  // trajectoire échantillonnée (cap compris), épisodes d'occupation, borne d'affichage. `end`
+  // vaut TOUJOURS `inconnue` : la datation de la destruction a été mesurée et RÉFUTÉE (le
+  // conducteur sort vivant, le véhicule réplique encore 13-36 s après avoir été quitté).
+  'vehicles',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -290,8 +295,19 @@ const NULLABLE_ARRAY_PATHS = [
   'bombArmings',
   // `bombCarries` (schéma 34) : portage PLAT, aucun tableau imbriqué — un seul chemin, la racine.
   'bombCarries',
+  'vehicles',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
+  // La vie d'un véhicule (schéma 29) porte DEUX tableaux imbriqués nullables : sa trajectoire
+  // (`samples`) et ses épisodes d'occupation (`rides`). `spawn`, lui, n'est PAS un tableau — un
+  // objet optionnel absent quand le record de création n'a pas été lu — et ne figure donc pas ici.
+  'vehicles[].samples',
+  'vehicles[].rides',
+  // TROISIÈME NIVEAU (schéma 31) : la SÉRIE DE VISÉE d'un épisode d'occupation — un tableau
+  // nullable DANS un tableau imbriqué, le premier du document. Elle est comblée comme les autres
+  // (`ReplayVehicleRideReady`) : un épisode sans lecture arrive à vide, et le cône retombe alors
+  // sur le cap du châssis au lieu de tomber à l'exécution.
+  'vehicles[].rides[].aim',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la
   // frontiere, comme `flagCarries[].spans` — une vie qui arriverait avec `pts: null` ferait
   // tomber le calque a l'execution, pas a la compilation.
@@ -424,9 +440,15 @@ describe('la frontière du document de rejeu', () => {
       loadouts: [{ t: 0, slot: 1 }],
       flagCarries: [{ team: 0 }],
       zoneStates: [{ zoneRef: 0 }],
+      vehicles: [{ slot: 5, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'inconnue' }],
     } as unknown as ReplayDocument
     const ready = normalizeReplayDocument(raw)
     expect(ready.flagCarries[0].spans, 'flagCarries[].spans').toEqual([])
+    expect(ready.vehicles[0].samples, 'vehicles[].samples').toEqual([])
+    expect(ready.vehicles[0].rides, 'vehicles[].rides').toEqual([])
+    // `spawn` N'EST PAS un tableau : absent reste absent, jamais un objet inventé qui se lirait
+    // comme une naissance que le film ne montre pas.
+    expect(ready.vehicles[0].spawn ?? null).toBeNull()
     expect(ready.zoneStates[0].spans, 'zoneStates[].spans').toEqual([])
     // La jauge en direct (schéma 18) : un artefact plus ancien ne la porte pas, et elle se
     // comble à VIDE — « aucun arc », jamais le sommet statique à sa place.

@@ -322,6 +322,11 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// la calibration des POSES vient de mesurer sur ce film (cf. build_ground_weapons.go).
 	opt.Pads = decodeFilmPadScans(fc, matchID, &worldRange, opt.PlacementStats.Calibration.Widths)
 	opt.observe("pads", opt.Pads)
+	// VEHICULES : archetype 40, sur la MEME horloge et AUX MEMES largeurs MPP que les socles —
+	// le mot d'identite du chassis se lit derriere les memes deux champs de largeur variable
+	// (cf. build_vehicles.go). CINQ lectures du film deja charge, aucune E/S.
+	opt.Vehicles = decodeFilmVehicleScan(fc, matchID, &worldRange, opt.PlacementStats.Calibration.Widths)
+	opt.observe("vehicles", opt.Vehicles)
 	// MARQUEUR DE PORTAGE : le controle independant du calque du drapeau, lu aux images-cles du
 	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
 	opt.Flag.Marks = decodeFilmCarrierMarks(film, matchID, opt.Flag)

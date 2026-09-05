@@ -231,20 +231,7 @@ func ScanEquipmentCreationsForBand(
 	defer installCreationHooks(&cur)()
 
 	w := equipCreationWalk{comps: len(arch.Components), wr: wr, band: band, cur: &cur}
-	var out []EquipmentCreation
-	for _, c := range nums {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta {
-				continue
-			}
-			out = append(out, w.scanPayload(pk.Payload(data), &st, pk, c)...)
-		}
-	}
-	return out, st, nil
+	return runCreationWalk(fc, w, &st), st, nil
 }
 
 // installCreationHooks branche les DEUX sondes du record de création — le default-state de
@@ -291,6 +278,15 @@ type equipCreationWalk struct {
 	ti uint32
 	// deser est le déserialiseur du default-state de cet archétype ; nil vaut celui de `ti=37`.
 	deser func(*BitReader)
+	// posDecode décode et VALIDE le composant i0 à l'offset donné (gate de sélectivité). nil vaut
+	// le chemin OBJET DU MONDE (decodeWorldObjectPos, porte 3 bits). L'archétype VÉHICULE (`ti=40`)
+	// porte un i0 en PRÉCISION-DYNAMIQUE (porte 5 bits, biped) : il passe ici decodeBipedI0Pos
+	// (vehicle_creation.go). Sans ce paramètre le gate lit i0 avec la mauvaise grammaire et n'est
+	// plus sélectif — mesuré : le témoin fantôme rendait alors PLUS de records que la vraie bande.
+	posDecode func([]byte, int) ([3]float32, bool)
+	// posBits est la largeur du composant i0, pour avancer le curseur après un record accepté.
+	// Zéro vaut projPosBits() (chemin objet du monde) ; `ti=40` passe lay.TotalBits().
+	posBits int
 }
 
 // archetype et defaultState rendent les réglages effectifs de la marche (défauts `ti=37`).
@@ -306,6 +302,23 @@ func (w equipCreationWalk) defaultState() func(*BitReader) {
 		return consumeDefaultStateTI37
 	}
 	return w.deser
+}
+
+// decodePos VALIDE et décode i0 à l'offset at : le décodeur paramétré (dyn.-préc. pour `ti=40`)
+// s'il est fourni, sinon le chemin objet du monde (porte 3 bits).
+func (w equipCreationWalk) decodePos(pay []byte, at int) ([3]float32, bool) {
+	if w.posDecode != nil {
+		return w.posDecode(pay, at)
+	}
+	return decodeWorldObjectPos(pay, at, w.wr)
+}
+
+// posAdvance rend la largeur d'i0 pour avancer le curseur après un record accepté.
+func (w equipCreationWalk) posAdvance() int {
+	if w.posBits > 0 {
+		return w.posBits
+	}
+	return projPosBits()
 }
 
 // scanPayload balaye UN payload delta et rend les records de création reconnus.
@@ -399,7 +412,7 @@ func (w equipCreationWalk) readCreation(
 		st.MaskBad++
 		return cre, false
 	}
-	v, ok := decodeWorldObjectPos(pay, br.BitPos(), w.wr)
+	v, ok := w.decodePos(pay, br.BitPos())
 	if !ok {
 		st.PosBad++
 		return cre, false
@@ -409,7 +422,7 @@ func (w equipCreationWalk) readCreation(
 	cre.MPPPresent, cre.MPPVal = w.cur.mppPresent, w.cur.mppVal
 	cre.X, cre.Y, cre.Z = v[0], v[1], v[2]
 	cre.Mask, cre.MaskFull, cre.MaskHasI0 = idx, full, idx[0] == 0
-	cre.AfterBit = br.BitPos() + projPosBits()
+	cre.AfterBit = br.BitPos() + w.posAdvance()
 	return cre, true
 }
 

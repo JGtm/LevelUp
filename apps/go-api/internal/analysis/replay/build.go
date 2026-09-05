@@ -82,7 +82,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 
 	// Chaque calque rend sa COUVERTURE en même temps que son contenu. Le filtrage par
 	// trajectoire publiée qui suit est lui aussi compté, sous une catégorie distincte.
-	shots, shotCov := buildShots(sorted, fire, origin, step, own.Owner)
+	shots, shotOrphans, shotCov := buildShots(sorted, fire, origin, step, own.Owner)
 	doc.Shots = keepShotsOfPublishedTracks(shots, doc.Tracks)
 	shotCov.Unpublished = countUnpublished(len(shots), len(doc.Shots))
 	shotCov.Attached = len(doc.Shots)
@@ -212,6 +212,18 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	doc.Coverage.GroundWeaponItems = &gwiCov
 	logGroundWeaponItems(gwiCov)
+	// LES VEHICULES, sur le MEME nuage NON decime de bipedes (ce sont ses TROUS qui portent les
+	// episodes d'occupation) et le MEME pont slot -> xuid que les tirs — cf. build_vehicles.go.
+	// Pose APRES la couverture : il publie la sienne.
+	attachVehicles(&doc, opt.Vehicles, sorted, own,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	// LES TIRS DES JOUEURS EMBARQUES : la SECONDE porte des tirs, celle que la premiere ne
+	// pouvait pas franchir (un occupant attache ne replique plus sa position de bipede, donc
+	// `slotFor` n'a rien a poser sur la carte). Elle exige les episodes d'occupation ET les
+	// trajectoires de vehicule : elle vient donc APRES `attachVehicles`, et elle met a jour la
+	// couverture des tirs deja publiee — cf. vehicle_shots.go.
+	attachVehicleShots(&doc, shotOrphans, own,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
 	attachFlagCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
@@ -355,10 +367,15 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		slog.Warn("rejeu : charges d equipement NON BALAYEES — aucune couverture publiee",
 			"lectures", len(opt.AbilityCharges))
 	}
+	// LES CHIFFRES DU JOURNAL SONT CEUX DE L'ARTEFACT, et c'est `doc.Coverage.Shots` qu'il faut
+	// lire, plus la copie locale : la SECONDE PORTE des tirs (`attachVehicleShots`) déplace des
+	// événements de « sans slot » vers « rattachés » APRÈS que `buildCoverage` a figé la
+	// couverture. Journaliser `shotCov` publierait un compte périmé à côté d'un artefact à jour.
+	shotsPub := doc.Coverage.Shots
 	slog.Info("rejeu : couverture par calque",
-		"tirsRattaches", shotCov.Attached, "tirsDisponibles", shotCov.Available,
-		"tirsSansSlot", shotCov.NoSlot, "tirsAmbigus", shotCov.Ambiguous,
-		"tirsHorsFenetre", shotCov.OutOfWindow, "tirsNonPublies", shotCov.Unpublished,
+		"tirsRattaches", shotsPub.Attached, "tirsDisponibles", shotsPub.Available,
+		"tirsSansSlot", shotsPub.NoSlot, "tirsAmbigus", shotsPub.Ambiguous,
+		"tirsHorsFenetre", shotsPub.OutOfWindow, "tirsNonPublies", shotsPub.Unpublished,
 		"grenadesRattachees", grenCov.Attached, "grenadesDisponibles", grenCov.Available,
 		"verdictTirs", doc.Coverage.Verdict["shots"],
 		"verdictGrenades", doc.Coverage.Verdict["grenades"],
