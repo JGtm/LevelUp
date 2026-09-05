@@ -1,3 +1,57 @@
+## [2026-09-05] downloadBlob : le 304 du CDN n etait pas un echec, et un blob ne se retentait jamais — Complete
+
+**LE CONSTAT, MESURE AVANT D ETRE CODE.** Le volet C du plan de reprise du fork est ne d une
+decouverte du volet B : `downloadBlob` traitait TOUT statut non-200 comme un echec definitif de
+sa tentative UNIQUE, alors que `doGet`, dix lignes plus bas, retente 5xx et pannes reseau. Les
+logs de trois mois (prod + local) disent quels statuts tombent reellement : **304 x 22**, 502 x 3,
+« echec reseau » x 471 — et JAMAIS de 404/410. Les 304 frappent toujours les MEMES 5-6 films,
+pendant des mois. Le blob, lui, est vivant : sonde sans jeton, `HEAD` -> 200, 870 413 octets.
+Nous n envoyons aucune en-tete conditionnelle : un « Not Modified » sur une requete
+INCONDITIONNELLE n est pas une information sur le blob, c est un artefact d edge Azure Front
+Door. Comme `fetchFilmChunks` abandonne tous les chunks a la premiere erreur (errgroup), un
+seul 304 coutait le film ENTIER, a chaque passe de rattrapage, indefiniment.
+
+**DECISION TECHNIQUE PRINCIPALE : un type d erreur DISTINCT, et c est le coeur du lot.**
+`BlobHTTPError{StatusCode, URL, Attempts}` n est ni un alias, ni un embed, ni un enveloppement
+de `HTTPError` — `errors.As(err, &*HTTPError)` ne doit PAS le trouver. La raison n est pas
+esthetique : le CDN des films est PUBLIC (URL sans query string, aucun jeton envoye), or
+`notifyPoolOnError` marque un slot `unhealthy` sur un `*HTTPError` 401/403 et gele TOUT le pool
+sur un 503. Si le type matchait, une panne d edge CDN poisonnerait un jeton Halo parfaitement
+valide. Le test qui le PROUVE passe par `notifyPoolOnError` lui-meme, avec le mock de pool
+existant, sur 401/403/429/503 : ni `MarkUnhealthy`, ni `OnHTTPError`, ni `On429ForToken`.
+
+**LE RETRY.** Liste FERMEE de statuts retentes — 304, 408, 429, 500, 502, 503, 504 — plus les
+echecs de transport, que `downloadBlob` ne retentait pas non plus. Jamais retentes : 404/410
+(absent) et 401/403 (sans objet sur un CDN public), comme tout autre 4xx. Une retentative qui
+SUIT un 304 porte `Cache-Control: no-cache` (forcer la revalidation a l origine), jamais la
+premiere requete ni les autres statuts. Sous delai depasse, aucun verdict : `ctx.Err()` sort
+immediatement. `downloadBlob` reste a 52 lignes, decoupe en `fetchBlobOnce` / `inflateBlob` /
+`blobAbandon` / `retryableBlobStatus`.
+
+**LE TEXTE N EST PLUS UNE API.** `isNotFoundErr` decidait « film absent » en cherchant
+« HTTP 404 » dans `err.Error()`. Il passe au typE (`*HTTPError` ET `*BlobHTTPError`, 404/410) et
+le repli textuel DISPARAIT. Garde-rail `no_text_predicate_test.go` : scan AST des `.go` non-test
+du paquet, echec si l un des quatre litteraux interdits sert de predicat (test de sous-chaine ou
+comparaison). Il a ete VERIFIE ROUGE une fois, litteral temporaire reintroduit puis retire.
+
+**UN ECART DU PLAN, TRAITE SUR PIECES.** La decision 4 affirmait que `contains`/`containsStr`
+deviendraient morts : faux, `isAuthErr` (career) les utilisait aussi pour « HTTP 401 »/« 403 ».
+La decision est appliquee quand meme — les helpers sont supprimes, `isAuthErr` bascule sur
+`strings.Contains`, semantique strictement identique (`contains` etait une reimplementation a la
+main de `strings.Contains`). Ce predicat-la reste textuel : consigne en decouverte, pas traite.
+
+**RESULTATS OBSERVES.** Gate C en serie, mutex `go` respecte : `go test ./internal/sync/...`
+code 0 (1 min 20 s) ; `go vet ./internal/sync/...` code 0 ; `go test -tags=integration -p 1 ./...`
+code 0 (16 min 28 s, 160 paquets `ok`, 0 `--- FAIL:`) ; `make gate-push` code 0 (15 min 23 s,
+baseline 8 586/8 586 tests presents). Les deux tests existants qui font echouer un blob (500,
+desormais RETENTE) restent verts a 0,02 s grace au backoff raccourci en test — `retryBaseDelay`
+devient une `var` de paquet, surchargee par un seul helper qui restaure la valeur de production.
+
+**PROCHAINE ETAPE.** Revue adversariale (`sync/`, 2 relecteurs) avant le merge dans `feat/v75` :
+elle n est pas un item du lot et n a pas ete faite. Puis, a J+7 du deploiement, l observation
+prescrite C.4.1 — compter `halo_api: downloadBlob 304 puis succes`. > 0 : l artefact cede au
+retry. = 0 avec des `retry_exhausted` sur 304 : le 304 est COLLANT cote Front Door, et le sujet
+suivant devient le contournement de l edge. Inscrit au registre des reports.
 ## [2026-09-05] CI — l etape « vet du corpus gamefiles » ne pouvait pas passer : ooz est un paquet CGO — Complete
 
 **Le rouge, apres le lint.** Le ratchet golangci-lint eteint, la CI de branche restait rouge sur

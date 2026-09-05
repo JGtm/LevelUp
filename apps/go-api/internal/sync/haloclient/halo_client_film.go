@@ -6,7 +6,9 @@ package haloclient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"sort"
 	"strings"
@@ -361,24 +363,23 @@ type FilmChunkData struct {
 	DurationMS int
 }
 
-// isNotFoundErr vérifie si l'erreur est un 404 ou 410 (film absent).
+// isNotFoundErr dit si l'erreur signale une ressource ABSENTE côté Halo (404/410) :
+// film, skill, CSR inexistants côté API, ou blob disparu du CDN.
+//
+// TYPÉ uniquement depuis le 2026-09-05 : le repli textuel
+// (« la chaîne contient HTTP 404 ») a disparu — le texte d'une erreur n'est pas
+// une API, et il suffisait qu'un message change de forme pour que le prédicat
+// devienne muet. Les deux seules sources possibles sont typées : *HTTPError
+// (doGet) et *BlobHTTPError (downloadBlob), deux types VOLONTAIREMENT distincts
+// (cf. BlobHTTPError). Garde-rail : no_text_predicate_test.go.
 func isNotFoundErr(err error) bool {
-	if err == nil {
-		return false
+	var he *HTTPError
+	if errors.As(err, &he) {
+		return he.StatusCode == http.StatusNotFound || he.StatusCode == http.StatusGone
 	}
-	s := err.Error()
-	return contains(s, "HTTP 404") || contains(s, "HTTP 410") || contains(s, "ressource absente")
-}
-
-func contains(s, sub string) bool {
-	return len(s) >= len(sub) && (s == sub || len(s) > 0 && containsStr(s, sub))
-}
-
-func containsStr(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
+	var be *BlobHTTPError
+	if errors.As(err, &be) {
+		return be.StatusCode == http.StatusNotFound || be.StatusCode == http.StatusGone
 	}
 	return false
 }

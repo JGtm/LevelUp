@@ -21,53 +21,194 @@ import (
 	"levelup/go-api/internal/platform/netguard"
 )
 
-func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byte, error) {
-	// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
-	if err := netguard.Check(ctx, "halo_api.download_blob"); err != nil {
-		return nil, err
+// Compteurs expvar du téléchargement de blobs (convention observability :
+// "<categorie>_<sous_cle>" en snake_case).
+const (
+	// metricBlobRetrySuccess : blobs obtenus grâce à une retentative — sans elle,
+	// c'était un film déclaré illisible.
+	metricBlobRetrySuccess = "halo_api_blob_retry_success"
+	// metricBlobRetryExhausted : abandons après maxRetries tentatives.
+	metricBlobRetryExhausted = "halo_api_blob_retry_exhausted"
+)
+
+// BlobHTTPError est l'échec HTTP DÉFINITIF d'un téléchargement de blob sur le CDN
+// des films Halo.
+//
+// Type DISTINCT de HTTPError, et surtout PAS un HTTPError enveloppé : le CDN des
+// films est PUBLIC et non authentifié (URL sans query string, aucune en-tête
+// d'auth envoyée). Un 401/403/503 venant de lui ne dit RIEN de la santé de nos
+// tokens ni de l'API Halo — or notifyPoolOnError (internal/sync/pooled_client.go)
+// marque un slot unhealthy sur un *HTTPError 401/403 et gèle TOUT le pool sur un
+// 503. Si errors.As(err, &*HTTPError) matchait une erreur de blob, une panne
+// d'edge CDN poisonnerait un token valide ou figerait le pool de l'API Halo.
+type BlobHTTPError struct {
+	StatusCode int
+	URL        string
+	// Attempts : nombre de requêtes réellement envoyées (1 si le statut n'est pas
+	// retentable, maxRetries si les tentatives ont été épuisées).
+	Attempts int
+}
+
+func (e *BlobHTTPError) Error() string {
+	return fmt.Sprintf("downloadBlob HTTP %d après %d tentative(s): %s", e.StatusCode, e.Attempts, e.URL)
+}
+
+// retryableBlobStatus dit si un statut de blob CDN mérite une nouvelle tentative.
+// Liste FERMÉE (mesure du 2026-09-05, volet C) :
+//   - 304 : artefact d'edge Azure Front Door. Nous n'envoyons AUCUNE en-tête
+//     conditionnelle — un « Not Modified » sur une requête inconditionnelle ne dit
+//     rien du blob, qui est bien vivant (sondé sans token : HEAD 200, 870 Ko).
+//     C'est le statut qui condamnait les mêmes 5-6 films à chaque passe, des mois
+//     durant.
+//   - 408/429/500/502/503/504 : transitoires côté serveur ou edge.
+//
+// JAMAIS retentés : 404/410 (blob réellement absent — verdict définitif lu par
+// isNotFoundErr) et 401/403 (n'ont aucun sens sur un CDN public et ne changeront
+// pas), comme tout autre 4xx.
+func retryableBlobStatus(code int) bool {
+	switch code {
+	case http.StatusNotModified, http.StatusRequestTimeout, http.StatusTooManyRequests,
+		http.StatusInternalServerError, http.StatusBadGateway,
+		http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
 	}
-	// Sprint B1 commit 18 : log download blob (film chunks, highlight events).
-	// Volume potentiellement gros (>100 KB) — log les bytes en sortie pour
-	// repérer les blobs anormalement gros.
-	start := time.Now()
+}
+
+// blobAttempt : résultat d'UNE tentative de téléchargement de blob.
+type blobAttempt struct {
+	raw    []byte
+	status int   // 0 si la requête n'a pas abouti
+	err    error // erreur de transport (retentable) ou définitive si fatal
+	fatal  bool  // true : ne pas retenter (requête invalide, corps illisible)
+}
+
+// fetchBlobOnce exécute UNE requête GET sur le CDN, sans en-tête d'auth.
+// revalider pose « Cache-Control: no-cache » pour forcer l'edge à revalider à
+// l'origine — UNIQUEMENT sur une retentative qui suit un 304, jamais sur la
+// première requête ni sur les autres statuts.
+func (c *HaloAPIClient) fetchBlobOnce(ctx context.Context, blobURL string, revalider bool) blobAttempt {
 	c.rateWait(ctx)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, blobURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("downloadBlob new request: %w", err)
+		return blobAttempt{err: fmt.Errorf("downloadBlob new request: %w", err), fatal: true}
+	}
+	if revalider {
+		req.Header.Set("Cache-Control", "no-cache")
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		// Anti-flood B6.4 : une panne réseau fait échouer tous les téléchargements
-		// de blobs en rafale → clé globale par cause, compteur expvar exact.
-		if allow, since := observability.AllowThrottledLog(
-			"log_throttle_halo_api_download_blob", observability.NetworkFloodWindow); allow {
-			slog.WarnContext(ctx, "halo_api: downloadBlob échec réseau",
-				"url", blobURL, "err", err, "throttled_since_last", since)
-		}
-		return nil, fmt.Errorf("downloadBlob: %w", err)
+		return blobAttempt{err: err}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		slog.WarnContext(ctx, "halo_api: downloadBlob HTTP error",
-			"url", blobURL, "status", resp.StatusCode, "duration_ms", time.Since(start).Milliseconds())
-		return nil, fmt.Errorf("downloadBlob HTTP %d", resp.StatusCode)
+		return blobAttempt{status: resp.StatusCode}
 	}
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("downloadBlob read: %w", err)
+		return blobAttempt{status: resp.StatusCode, err: fmt.Errorf("downloadBlob read: %w", err), fatal: true}
 	}
+	return blobAttempt{raw: raw, status: resp.StatusCode}
+}
+
+// inflateBlob décompresse le corps zlib d'un blob (le CDN Azure des films Halo
+// Infinite renvoie du zlib brut).
+func inflateBlob(raw []byte) ([]byte, error) {
 	zr, err := zlib.NewReader(bytes.NewReader(raw))
 	if err != nil {
 		return nil, fmt.Errorf("downloadBlob zlib header: %w", err)
 	}
 	defer zr.Close()
 	out, err := io.ReadAll(zr)
-	if err == nil {
-		slog.DebugContext(ctx, "halo_api: downloadBlob succès",
-			"url", blobURL, "bytes_compressed", len(raw), "bytes_inflated", len(out),
-			"duration_ms", time.Since(start).Milliseconds())
+	if err != nil {
+		return nil, fmt.Errorf("downloadBlob zlib: %w", err)
 	}
-	return out, err
+	return out, nil
+}
+
+// blobAbandon journalise l'abandon après maxRetries tentatives et rend l'erreur
+// définitive : typée (BlobHTTPError) si la dernière tentative portait un statut,
+// sinon l'erreur de transport enveloppée.
+func blobAbandon(ctx context.Context, blobURL string, status int, lastErr error, start time.Time) error {
+	observability.AddInt(metricBlobRetryExhausted, 1)
+	if status != 0 {
+		slog.WarnContext(ctx, "halo_api: downloadBlob HTTP error",
+			"url", blobURL, "status", status, "attempts", maxRetries,
+			"duration_ms", time.Since(start).Milliseconds())
+		return &BlobHTTPError{StatusCode: status, URL: blobURL, Attempts: maxRetries}
+	}
+	// Anti-flood B6.4 : une panne réseau fait échouer tous les téléchargements
+	// de blobs en rafale → clé globale par cause, compteur expvar exact.
+	if allow, since := observability.AllowThrottledLog(
+		"log_throttle_halo_api_download_blob", observability.NetworkFloodWindow); allow {
+		slog.WarnContext(ctx, "halo_api: downloadBlob échec réseau",
+			"url", blobURL, "attempts", maxRetries, "err", lastErr,
+			"throttled_since_last", since)
+	}
+	return fmt.Errorf("downloadBlob: %w", lastErr)
+}
+
+// downloadBlob télécharge un blob du CDN Halo (chunks de film, highlight events)
+// et le décompresse. Le CDN est public : aucune en-tête d'auth n'est envoyée.
+// Portage de download_film_chunk() (Python api_client.py:485-498).
+//
+// Retry (2026-09-05) : jusqu'à maxRetries tentatives sur les statuts de
+// retryableBlobStatus et sur les échecs de transport, avec le backoff de doGet.
+// Avant, TOUT statut non-200 était un échec définitif de la tentative unique, et
+// un seul 304 d'edge coûtait le film entier (errgroup : première erreur = film
+// abandonné) à CHAQUE passe de rattrapage.
+func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byte, error) {
+	// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
+	if err := netguard.Check(ctx, "halo_api.download_blob"); err != nil {
+		return nil, err
+	}
+	start := time.Now()
+	var lastStatus int
+	var lastErr error
+	revalider := false // vrai dès qu'un 304 est vu : les retentatives forcent la revalidation
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		at := c.fetchBlobOnce(ctx, blobURL, revalider)
+		switch {
+		case at.fatal:
+			return nil, at.err
+		case at.err != nil:
+			lastErr, lastStatus = at.err, 0
+			slog.DebugContext(ctx, "halo_api: downloadBlob échec réseau (retry)",
+				"url", blobURL, "attempt", attempt+1, "err", at.err)
+		case at.status == http.StatusOK:
+			out, iErr := inflateBlob(at.raw)
+			if iErr != nil {
+				return nil, iErr
+			}
+			if attempt > 0 {
+				observability.AddInt(metricBlobRetrySuccess, 1)
+				if revalider {
+					slog.InfoContext(ctx, "halo_api: downloadBlob 304 puis succès",
+						"url", blobURL, "attempts", attempt+1)
+				}
+			}
+			slog.DebugContext(ctx, "halo_api: downloadBlob succès",
+				"url", blobURL, "bytes_compressed", len(at.raw), "bytes_inflated", len(out),
+				"attempts", attempt+1, "duration_ms", time.Since(start).Milliseconds())
+			return out, nil
+		case !retryableBlobStatus(at.status):
+			slog.WarnContext(ctx, "halo_api: downloadBlob HTTP error",
+				"url", blobURL, "status", at.status, "attempts", attempt+1,
+				"duration_ms", time.Since(start).Milliseconds())
+			return nil, &BlobHTTPError{StatusCode: at.status, URL: blobURL, Attempts: attempt + 1}
+		default:
+			lastErr, lastStatus = nil, at.status
+			revalider = revalider || at.status == http.StatusNotModified
+			slog.DebugContext(ctx, "halo_api: downloadBlob HTTP error (retry)",
+				"url", blobURL, "status", at.status, "attempt", attempt+1)
+		}
+		c.backoff(ctx, attempt, 0)
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+	}
+	return nil, blobAbandon(ctx, blobURL, lastStatus, lastErr, start)
 }
 
 // doGet exécute un GET authentifié avec retry + backoff exponentiel.

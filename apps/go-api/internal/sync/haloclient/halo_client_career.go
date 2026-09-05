@@ -224,7 +224,7 @@ func isAuthErr(err error) bool {
 		return false
 	}
 	s := err.Error()
-	return contains(s, "HTTP 401") || contains(s, "HTTP 403")
+	return strings.Contains(s, "HTTP 401") || strings.Contains(s, "HTTP 403")
 }
 
 func parseCareerProgressPayload(body []byte, xuid string) (*CareerRankData, error) {
