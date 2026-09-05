@@ -18,6 +18,7 @@
  * est censée éviter.
  */
 
+import { VEHICLE_BOOM_SOUND_VARIANTS } from './vehicleDestructionSound'
 import { VEHICLE_SHOT_SOUND_VARIANTS } from './vehicleShotSound'
 
 /** Un événement sonore posé sur l'horloge du rejeu. */
@@ -75,6 +76,10 @@ export const SOUND_VARIANTS: Readonly<Record<string, readonly string[]>> = {
   // suit la règle de livraison du lot véhicules ; le garde-rail les reconnaît à leur
   // préfixe pour leur appliquer la règle de durée des ARMES (1,2 s), pas des équipements.
   ...VEHICLE_SHOT_SOUND_VARIANTS,
+  // LES DESTRUCTIONS DE VÉHICULE (lot du 2026-09-05) : trois prises par jeu de sons, tirées à
+  // chaque destruction. La table et sa doctrine (jointure famille -> set, banques dédupliquées
+  // par mesure md5) vivent dans `vehicleDestructionSound.ts` — même mécanique que les tirs.
+  ...VEHICLE_BOOM_SOUND_VARIANTS,
 }
 
 /**

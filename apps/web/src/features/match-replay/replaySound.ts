@@ -179,6 +179,7 @@ import { zoneSoundEvents } from './zoneSound'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
+import { vehicleDestructionSound } from './vehicleDestructionSound'
 import { vehicleShotSoundStem } from './vehicleShotSound'
 
 export { pickVariantStem, SOUND_VARIANTS, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
@@ -591,6 +592,16 @@ export function buildSoundTimeline(
     // déduire — c'est ce canal qui a remplacé la règle « au premier tir » retirée le même
     // jour. Doctrine, sons et choix du `swapped` : `weaponChangeSound.ts`.
     out.push(...weaponChangeSoundEvents(doc))
+    // La DESTRUCTION d'un véhicule (schéma 30, lot du 2026-09-05) : le MÊME signal que
+    // l'effet visuel — `end === VEHICLE_END_DESTROYED` ET `tEnd` publié, rien d'autre.
+    // INERTE AUJOURD'HUI : tout artefact existant publie `end: "unknown"`, donc zéro
+    // événement — le son est prêt, il n'invente pas la mesure. Un bruitage one-shot,
+    // catégorie ARMES du tiroir (comme les bobines), jamais le bus moteur. Doctrine,
+    // jeux de sons dédupliqués et jointure famille -> set : `vehicleDestructionSound.ts`.
+    for (const v of doc.vehicles) {
+      const boom = vehicleDestructionSound(v)
+      if (boom) out.push(soundEvent(frameToMs(boom.frame, doc), boom.stem))
+    }
   }
   // Les explosions programmées PAR UN KILL, retenues au passage : ce sont elles qui
   // dédoublonnent les fins de vol, et elles doivent donc être connues avant.

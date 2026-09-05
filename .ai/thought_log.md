@@ -82741,3 +82741,26 @@ LAAG/Gauss/roquettes (un tir LAAG sonne roquette pour l'instant).
 garde-rail d'assets — un decoupage en deux commits laisserait le premier rouge). Restent :
 verdict utilisateur rafale Banshee M1 v2 ; departager le tag Warthog ; missiles Wasp (methode
 V3F) ; push branche + CI.
+
+## [2026-09-05] Vehicules — Banshee M1 cable + sons de destruction sur le signal tEnd — Complete
+
+**Contexte.** Verdicts utilisateur du jour : Banshee M1 valide avec la rafale D'ORIGINE (la v2
+cadence-du-tag 240 cpm est abandonnee — essai documente V3F_BANSHEE_M1_CADENCE_2026-09-04.md) ;
+les 6 jeux de sons de destruction sont valides a l'ecoute (artefact cac88f12).
+
+**Decision technique.** Banshee M1 : exclusion levee dans vehicleShotSound.ts (weap 0000aa68),
+2 stems variantes, garde-rail inverse (le test « muette » devient « sonne »). Destructions :
+module vehicleDestructionSound.ts, evenement dans buildSoundTimeline sur le MEME predicat que
+l'effet visuel (end === "destroyed" ET tEnd — vehicleDestructionFrame), bruitage sfx normal,
+decor exclu. 20 WAV dedupliques par jeu (md5 verrouille par test : wasp==warthog,
+wraith==banshee ; mongoose = banque Gungoose), 2,58-5,36 s, livres entiers. INERTE aujourd'hui,
+preuve : le Go ne publie que VehicleEndUnknown (document_vehicles.go) — image et son
+s'allumeront ensemble quand les verifications Theater debloqueront la publication.
+
+**Resultats.** typecheck 0, lint 0 ; suite complete : 1 seul echec PalmaresRelationsPage =
+flake de charge jsdom prouve (relance seul : 0, 14/14 ; fichiers du lot cibles : 0, 126/126).
+CI = juge d'autorite au push.
+
+**Conclusion / prochaine etape.** Commit + PREMIER PUSH du chantier (CI jamais executee),
+verdict CI au niveau job a suivre. Restent : verifications Theater (7 candidates), boost
+(condition de reprise ecrite), missiles Wasp, tag Warthog a departager, recapture boost Banshee.
