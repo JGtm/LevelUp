@@ -50,6 +50,7 @@ var knownCapabilities = map[Capability]struct{}{
 	CapExpectedStats:       {},
 	CapWaypointMatchURL:    {},
 	CapObjectiveStats:      {},
+	CapReplay:              {},
 }
 
 func knownStatus(s Status) bool {
