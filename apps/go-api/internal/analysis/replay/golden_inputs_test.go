@@ -76,6 +76,17 @@ func goldenInputsPath() string {
 // a un offset arbitraire : bruyant par chance, pas par construction, et le message ne dit pas
 // quoi faire. [TestGoldenInputsVersionGuard] verrouille le refus explicite.
 //
+// v14 (2026-09-04, lot P5) : le fixture porte les CHARGES D'EQUIPEMENT RESTANTES (les
+// emplacements ARMES du composant i56, quartet haut = charges entieres — rapport R11) et
+// les statistiques de leur balayage, temoins `Absent` et `Scanned` compris (la lecon H1 de
+// la seconde passe de revue P3, appliquee d'emblee : sans `Scanned`, le fixture rendrait
+// une couverture de zeros indistinguable d'un balayage qui n'a jamais tourne). Que
+// BuildFromFilm decode desormais. La magie monte parce que la SUITE DES SECTIONS change
+// (un fixture v13 relu par ce codec deraillerait des la premiere lecture de charge). LE
+// FILM DE REFERENCE EN PORTE : `000d5950` est de famille B, ou le grappin est le rang 20
+// et le propulseur le rang 21 — les deux familles que le manifeste declare mesurees sur ce
+// canal — donc le golden exerce le calque pour de vrai, jointure d'identite comprise.
+//
 // v13 (2026-09-03, lot P3) : le fixture porte les IMPULSIONS DE CAPACITE (corps tag==1 des
 // composants i57/i59) et les statistiques de leur balayage — dont le temoin `Scanned`, ajoute
 // a la revue de ronde 1 (constat H1) : sans lui le fixture rendrait une couverture de zeros
@@ -145,7 +156,7 @@ func goldenInputsPath() string {
 // delta, d ou sortent les socles de POWER-UP. Elle est serialisee par le MEME codec que la voie
 // des armes (une seule forme, `WorldObjectScan`), a la suite, et non a sa place : les deux
 // entrent ensemble dans l assemblage.
-const goldenInputsMagic = "REPLAYINPUTS13\n"
+const goldenInputsMagic = "REPLAYINPUTS14\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -208,6 +219,14 @@ type goldenInputs struct {
 	// le temoin `Absent` que la couverture publie.
 	AbilityImpulses     []filmdec.AbilityImpulse
 	AbilityImpulseStats filmdec.AbilityImpulseStats
+	// AbilityCharges / AbilityChargeStats : les CHARGES RESTANTES (emplacements ARMES d i56,
+	// quartet haut — rapport R11). MEME raison que les impulsions : l assemblage en fait le
+	// calque `abilityCharges` du schema 38 enrichi, et le film de reference (famille B :
+	// grappin rang 20, propulseur rang 21) en porte — sans elles le golden verrouillerait un
+	// document que la production ne sert pas. Les stats voyagent avec parce qu elles portent
+	// les temoins `Absent` et `Scanned` que la couverture consulte.
+	AbilityCharges     []filmdec.AbilityCharge
+	AbilityChargeStats filmdec.AbilityChargeStats
 	// Placements / PlacementStats : les POSES d equipement et la CALIBRATION du bloc de
 	// replication. MEME raison que les deux precedents : l assemblage en fait le calque du
 	// schema 9. La calibration voyage avec la liste parce que la couverture la publie.
@@ -247,6 +266,9 @@ func (g *goldenInputs) options() Options {
 
 		AbilityImpulses:     g.AbilityImpulses,
 		AbilityImpulseStats: g.AbilityImpulseStats,
+
+		AbilityCharges:     g.AbilityCharges,
+		AbilityChargeStats: g.AbilityChargeStats,
 
 		Placements:        g.Placements,
 		PlacementStats:    g.PlacementStats,
@@ -575,6 +597,27 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 	// `Scanned` VOYAGE AVEC LES AUTRES : sans lui, un fixture rendrait une couverture de zeros
 	// indistinguable d un balayage qui n a jamais tourne (constat H1 de la revue de ronde 1).
 	w.bool8(g.AbilityImpulseStats.Scanned)
+
+	// LES CHARGES RESTANTES (v14) : le scan les rend TRIEES par instant, d ou le delta. Les
+	// STATS suivent la liste, `Absent` et `Scanned` compris — memes temoins, memes raisons
+	// que les impulsions ci-dessus.
+	w.u(uint64(len(g.AbilityCharges)))
+	lastTS = 0
+	for _, ac := range g.AbilityCharges {
+		w.u(ac.TimestampUS - lastTS)
+		lastTS = ac.TimestampUS
+		w.u(uint64(ac.Slot))
+		w.u(uint64(ac.Emplacement))
+		w.u(uint64(ac.Charges))
+		w.u(uint64(ac.Low))
+	}
+	w.u(uint64(g.AbilityChargeStats.Records))
+	w.u(uint64(g.AbilityChargeStats.WithI56))
+	w.u(uint64(g.AbilityChargeStats.Read))
+	w.u(uint64(g.AbilityChargeStats.Unread))
+	w.u(uint64(g.AbilityChargeStats.Armed))
+	w.bool8(g.AbilityChargeStats.Absent)
+	w.bool8(g.AbilityChargeStats.Scanned)
 
 	// Les POSES, puis la CALIBRATION qui les rend lisibles. Les deux vont ensemble : une
 	// liste vide ne dit pas la meme chose selon que le film a tranche sa largeur ou non.
@@ -1012,6 +1055,21 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 	}
 
 	n = int(r.u())
+	g.AbilityCharges = make([]filmdec.AbilityCharge, 0, n)
+	lastTS = 0
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		g.AbilityCharges = append(g.AbilityCharges, filmdec.AbilityCharge{
+			TimestampUS: lastTS, Slot: uint32(r.u()),
+			Emplacement: int(r.u()), Charges: int(r.u()), Low: int(r.u())})
+	}
+	g.AbilityChargeStats = filmdec.AbilityChargeStats{
+		Records: int(r.u()), WithI56: int(r.u()),
+		Read: int(r.u()), Unread: int(r.u()), Armed: int(r.u()),
+		Absent: r.bool8(), Scanned: r.bool8(),
+	}
+
+	n = int(r.u())
 	g.Placements = make([]filmdec.EquipmentPlacement, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
@@ -1121,7 +1179,7 @@ func TestGoldenInputsRoundTrip(t *testing.T) {
 // d octets alors que le probleme est une version. Le test relit le corps COURANT precede de la
 // magie PRECEDENTE : la seule reponse acceptable est le refus de version.
 func TestGoldenInputsVersionGuard(t *testing.T) {
-	const previousMagic = "REPLAYINPUTS12\n"
+	const previousMagic = "REPLAYINPUTS13\n"
 	if previousMagic == goldenInputsMagic {
 		t.Fatal("la magie precedente et la courante sont identiques : le test ne prouve plus rien")
 	}
@@ -1173,10 +1231,10 @@ func TestGoldenInputsRegenerate(t *testing.T) {
 	}
 	t.Logf("fixture reecrit : %s (%d octets brut, %d compresse) — %d positions, %d tirs, "+
 		"%d loadouts, %d lancers, %d projectiles, %d inventaires, %d lectures grappin, "+
-		"%d impulsions de capacite, %d morts, %d index",
+		"%d impulsions de capacite, %d lectures de charge, %d morts, %d index",
 		goldenInputsPath(), len(blob), buf.Len(), len(g.Positions), len(g.Fire), len(g.Loadouts),
 		len(g.Grenades), len(g.Projectiles), len(g.Inventory), len(g.GrappleReads),
-		len(g.AbilityImpulses), len(g.Deaths), len(g.Indices.ByXUID))
+		len(g.AbilityImpulses), len(g.AbilityCharges), len(g.Deaths), len(g.Indices.ByXUID))
 }
 
 // decodeFilmInputs rejoue EXACTEMENT la sequence de decodage de BuildFromFilm — c est ce qui
@@ -1233,6 +1291,10 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 	// MEME COMPOSANT, AUTRE TAG : les impulsions de capacite passent par LA MEME fonction que
 	// BuildFromFilm — le fixture porte ce que la production decode, pas une variante.
 	if g.AbilityImpulses, g.AbilityImpulseStats, err = filmdec.ScanFilmAbilityImpulses(dir); err != nil {
+		return nil, err
+	}
+	// LES CHARGES RESTANTES (v14) : la MEME fonction que BuildFromFilm, meme raison.
+	if g.AbilityCharges, g.AbilityChargeStats, err = filmdec.ScanFilmAbilityCharges(dir); err != nil {
 		return nil, err
 	}
 	if g.Placements, g.PlacementStats, err = filmdec.ScanFilmEquipmentPlacements(dir, &wr); err != nil {

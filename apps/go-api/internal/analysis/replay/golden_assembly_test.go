@@ -314,6 +314,7 @@ func renderAssembly(doc ReplayDocument) string {
 	renderEquipment(p, doc)
 	renderTranslocations(p, doc)
 	renderAbilityImpulses(p, doc)
+	renderAbilityCharges(p, doc)
 	renderGrapple(p, doc)
 	renderPlacements(p, doc)
 	renderGroundWeapons(p, doc)
@@ -611,6 +612,32 @@ func renderAbilityImpulses(p func(string, ...any), doc ReplayDocument) {
 	}
 	for _, im := range doc.AbilityImpulses {
 		p("  slot=%d t=%d %s", im.Slot, im.T, im.Family)
+	}
+	p("")
+}
+
+// renderAbilityCharges fige le calque des CHARGES RESTANTES (schema 38 enrichi, lot P5) :
+// les LECTURES d i56 (quartet haut = charges entieres), attribuees par le rang i48 de la
+// MEME vie — jamais un compte d usages derive (une baisse peut valoir plusieurs usages,
+// R11 §2), et rien avant la premiere lecture (le film ne transmet rien au ramassage).
+// L ENTONNOIR ENTIER SE FIGE — lectures, publiees, et les CINQ refus (avant l origine,
+// sans piste, sans identite, famille non mesuree, attribution indisponible) : une ligne qui
+// ne dirait que « N lectures » ne distinguerait pas un film sans grappin d un film dont la
+// palette n a pas ete classee. `familleNonMesuree` est le compteur qui dit que le repulseur
+// reste dehors.
+func renderAbilityCharges(p func(string, ...any), doc ReplayDocument) {
+	p("## CHARGES D EQUIPEMENT — les lectures du film, jamais un compte d usages derive")
+	if c := doc.Coverage.AbilityCharges; c != nil {
+		p("%d lecture(s) -> %d publiee(s) · %d sans identite · %d famille non mesuree · "+
+			"%d attribution indisponible · %d avant l origine · %d sans piste publiee · "+
+			"composant absent=%t",
+			c.Reads, c.Published, c.NoIdentity, c.OtherFamily, c.NoResolver,
+			c.BeforeOrigin, c.Unpublished, c.ComponentAbsent)
+	} else {
+		p("aucune couverture (rien n a ete fourni a lire)")
+	}
+	for _, ac := range doc.AbilityCharges {
+		p("  slot=%d t=%d %s charges=%d", ac.Slot, ac.T, ac.Family, ac.Charges)
 	}
 	p("")
 }

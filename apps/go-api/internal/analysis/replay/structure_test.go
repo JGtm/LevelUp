@@ -664,6 +664,15 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   {effet, départ, arrivée}, R6 §1.4). APRÈS, la balise est au point de DÉPART du saut :
 	//   le va-et-vient publié suffit à la dessiner. Ni aucun usage du RÉPULSEUR, sur aucun des
 	//   huit canaux jugés.
+	//   LE LOT P5 (2026-09-04) ENRICHIT LA MÊME v38 : `abilityCharges[]` — les CHARGES
+	//   RESTANTES (i56, quartet haut, rapport R11 : série 4→0 validée 5/5 au Theater, 36/36
+	//   accroches de grappin appariées) et `coverage.abilityCharges`. DES ARTEFACTS 38 CUITS
+	//   EXISTENT DÉSORMAIS hors répertoires de test (`1b2d9e08`, `1cd3848a`, les deux témoins
+	//   de gate visuel — vérifié sur pièces le 2026-09-04), et le schéma reste à 38 QUAND
+	//   MÊME : les deux ajouts sont purement additifs et omitempty, un lecteur 38 existant
+	//   reste correct, et une montée à 39 n'aurait protégé aucun lecteur de plus (le parc
+	//   entier est déjà <= 38 et la reprise du backfill par SchemaVersion ne perd rien) —
+	//   la justification complète est à la chronique de document.go.
 	if SchemaVersion != 38 {
 		t.Fatalf("SchemaVersion = %d, attendu 38 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)

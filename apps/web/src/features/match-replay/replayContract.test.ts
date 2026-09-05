@@ -187,6 +187,15 @@ const NULLABLE_ARRAYS = [
   // compte (`coverage.abilityImpulses.otherFamily`). La consommation viendra la lire ici ; la
   // frontière la comble dès le schéma.
   'abilityImpulses',
+  // `abilityCharges` : LES CHARGES D'ÉQUIPEMENT RESTANTES (schéma 38 enrichi, lot P5,
+  // 2026-09-04) — une entrée PLATE par lecture (t, slot, family, charges) : le compteur de
+  // charges entières transmis AU CHANGEMENT par i56 (quartet haut, rapport R11 — série
+  // 4→0 validée 5/5 au Theater, 36/36 accroches de grappin appariées) et ATTRIBUÉ par le
+  // rang de capacité de la MÊME VIE. Jamais un compte d'usages dérivé, rien au ramassage.
+  // Seules les familles déclarées mesurées y entrent (grappin, propulseur) — le serveur
+  // compte le reste (`coverage.abilityCharges`). La vignette d'équipement le lit depuis le
+  // lot P6 (`abilityChargeLogic.ts`) ; la frontière le comble dès le schéma.
+  'abilityCharges',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -274,6 +283,9 @@ const NULLABLE_ARRAY_PATHS = [
   // `abilityImpulses` (schéma 38) : impulsion PLATE — (t, slot, family), deux nombres et une
   // chaîne : un seul chemin, la racine.
   'abilityImpulses',
+  // `abilityCharges` (schéma 38 enrichi, lot P5) : lecture PLATE — (t, slot, family,
+  // charges), trois nombres et une chaîne : un seul chemin, la racine.
+  'abilityCharges',
   // `bombArmings` (schéma 33) : armement PLAT, aucun tableau imbriqué — un seul chemin, la racine.
   'bombArmings',
   // `bombCarries` (schéma 34) : portage PLAT, aucun tableau imbriqué — un seul chemin, la racine.

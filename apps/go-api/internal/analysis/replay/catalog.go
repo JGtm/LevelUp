@@ -51,6 +51,18 @@ type LabelCatalog struct {
 	// VIDE = aucun usage mesuré sur ce canal pour ce titre : le calque ne publie rien. Une
 	// dégradation, jamais une erreur.
 	AbilityImpulseFamilies []string
+	// AbilityChargeFamilies énumère les FAMILLES de capacité dont les CHARGES RESTANTES sont
+	// MESURÉES par le canal d'énergie du bipède (i56, quartet haut — cf.
+	// document_ability_charges.go). Posée par la COUCHE TITRE après NewLabelCatalog, comme
+	// AbilityImpulseFamilies et pour la même raison : ce paquet ne sait pas que seuls le
+	// grappin et le propulseur arment i56 (rapport R11 : 36/36 accroches de grappin appariées
+	// à une baisse, série 4→0 du propulseur validée au Theater, et 0 baisse de répulseur sur
+	// 218 vies) — le titre déclare ce que SA mesure établit, le calque écarte le reste ET LE
+	// COMPTE.
+	//
+	// VIDE = aucune charge mesurée sur ce canal pour ce titre : le calque ne publie rien. Une
+	// dégradation, jamais une erreur.
+	AbilityChargeFamilies []string
 	// Icons pointe l'icône extraite d'une famille d'arme. Posée par la COUCHE TITRE
 	// (elle seule connaît ses URLs d'assets), APRÈS NewLabelCatalog — d'où un champ et
 	// pas un sixième paramètre. Une famille absente garde son libellé sans visuel :

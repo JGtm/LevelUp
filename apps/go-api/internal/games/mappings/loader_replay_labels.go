@@ -76,6 +76,10 @@ type ReplayLabelSet struct {
 	// d'impulsion du bipede (i57/i59 tag 1). Liste VIDE = le titre ne declare aucun usage
 	// mesure sur ce canal, et le calque ne publie rien — une degradation, jamais une erreur.
 	impulseFamilies []string
+	// chargeFamilies : les familles de capacite dont les CHARGES RESTANTES sont MESUREES
+	// par le canal d'energie du bipede (i56, quartet haut — rapport R11). Meme regime que
+	// impulseFamilies : liste vide = aucun releve de charge publie, degradation, pas erreur.
+	chargeFamilies []string
 	// objObjects : GlobalID de tag `ti=42` -> objet d'objectif (famille + nom bilingue).
 	// Table a part de la precedente : autre archetype, autre chaine d'etablissement
 	// (cf. loader_replay_labels_objectives.go).
@@ -96,6 +100,7 @@ type replayLabelsTOML struct {
 	ObjObjects   []objectiveObjectEntry `toml:"objective_objects"`
 	FlagZone     *flagReturnZoneTOML    `toml:"flag_return_zone"`
 	Impulses     *abilityImpulsesEntry  `toml:"ability_impulses"`
+	Charges      *abilityImpulsesEntry  `toml:"ability_charges"`
 }
 
 type abilityPaletteEntry struct {
@@ -120,8 +125,10 @@ func (e abilityRankEntry) label() bilingualEntry {
 	return bilingualEntry{En: e.En, Fr: e.Fr, Icon: e.Icon}
 }
 
-// abilityImpulsesEntry — les familles dont l'USAGE est mesure par le canal d'impulsion
-// (cf. replay_labels.toml, [ability_impulses]).
+// abilityImpulsesEntry — une liste de familles MESUREES sur un canal du film. Deux tables
+// du manifeste partagent cette forme et ce validateur : `[ability_impulses]` (l'usage,
+// canal i57/i59 tag 1) et `[ability_charges]` (les charges restantes, canal i56). Un
+// second type identique aurait diverge au premier champ ajoute.
 type abilityImpulsesEntry struct {
 	Families []string `toml:"families"`
 }
@@ -193,6 +200,17 @@ func (s *ReplayLabelSet) AbilityImpulseFamilies() []string {
 		return nil
 	}
 	return append([]string(nil), s.impulseFamilies...)
+}
+
+// AbilityChargeFamilies retourne les familles de capacite dont les CHARGES RESTANTES sont
+// mesurees par le canal d'energie du bipede — i56, quartet haut (copie). Vide = ce titre
+// n'en declare aucune : le calque des charges ne publie alors rien, degradation et non
+// erreur — la meme regle que le canal d'impulsion.
+func (s *ReplayLabelSet) AbilityChargeFamilies() []string {
+	if s == nil {
+		return nil
+	}
+	return append([]string(nil), s.chargeFamilies...)
 }
 
 // ShotEffects retourne la table weapon_key -> famille de rendu (copie).
@@ -331,7 +349,11 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 	if err != nil {
 		return nil, err
 	}
-	impulses, err := parseAbilityImpulses(path, doc.Impulses, palettes)
+	impulses, err := parseMeasuredFamilies(path, "ability_impulses", doc.Impulses, palettes)
+	if err != nil {
+		return nil, err
+	}
+	charges, err := parseMeasuredFamilies(path, "ability_charges", doc.Charges, palettes)
 	if err != nil {
 		return nil, err
 	}
@@ -344,18 +366,21 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 		shotTints:       tints,
 		equipObjects:    equip,
 		impulseFamilies: impulses,
+		chargeFamilies:  charges,
 		objObjects:      objs,
 		flagZone:        zone,
 	}, nil
 }
 
-// parseAbilityImpulses valide les familles dont l'usage est mesure par le canal d'impulsion.
+// parseMeasuredFamilies valide une liste de familles MESUREES sur un canal du film — le
+// meme validateur pour `[ability_impulses]` (l'usage) et `[ability_charges]` (les charges
+// restantes) : la regle est identique, deux copies auraient diverge.
 //
 // LE SEUL INVARIANT, ET IL EST FATAL : une famille citee doit etre NOMMEE par au moins un
 // rang d'une palette. Sans ce controle, une faute de frappe (`thrusters`) laisserait le
 // calque muet EN SILENCE — c'est-a-dire indistinguable d'un film ou personne ne se sert de
-// son propulseur. Table absente = aucune famille mesuree, ce qui est une degradation.
-func parseAbilityImpulses(path string, e *abilityImpulsesEntry,
+// son equipement. Table absente = aucune famille mesuree, ce qui est une degradation.
+func parseMeasuredFamilies(path, table string, e *abilityImpulsesEntry,
 	palettes []AbilityPalette) ([]string, error) {
 	if e == nil {
 		return nil, nil
@@ -371,15 +396,15 @@ func parseAbilityImpulses(path string, e *abilityImpulsesEntry,
 	for _, raw := range e.Families {
 		fam := strings.TrimSpace(raw)
 		if fam == "" {
-			return nil, fmt.Errorf("%s: [ability_impulses].families porte une famille vide", path)
+			return nil, fmt.Errorf("%s: [%s].families porte une famille vide", path, table)
 		}
 		if seen[fam] {
-			return nil, fmt.Errorf("%s: [ability_impulses].families cite %q deux fois", path, fam)
+			return nil, fmt.Errorf("%s: [%s].families cite %q deux fois", path, table, fam)
 		}
 		if !known[fam] {
 			return nil, fmt.Errorf(
-				"%s: [ability_impulses].families cite %q, qu'aucun rang de palette ne nomme — "+
-					"le calque des impulsions serait muet en silence", path, fam)
+				"%s: [%s].families cite %q, qu'aucun rang de palette ne nomme — "+
+					"le calque serait muet en silence", path, table, fam)
 		}
 		seen[fam] = true
 		out = append(out, fam)
