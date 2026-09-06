@@ -183,7 +183,10 @@ function myCampIndex(scoreboard: VictoryRows, camps: readonly Camp[]): 0 | 1 | n
   return null
 }
 
-/** Le score FINAL du match, du point de vue du joueur de la page. */
+/**
+ * Le score FINAL du match, dans l'ordre du SUJET : son camp d'abord, l'autre ensuite. Sans
+ * sujet, c'est l'ordre du joueur de la page — celui dans lequel l'API le publie.
+ */
 export interface FinalScoreReading {
   ally: number
   enemy: number
@@ -218,8 +221,44 @@ export interface FinalScoreHeader {
  * Le pendant vivant — le compte de manches qui monte pendant la lecture — reste dérivé du
  * film : il doit suivre la position de lecture, ce que l'en-tête ne sait pas faire
  * (cf. `roundsTally`).
+ *
+ * # LE SUJET, ET POURQUOI IL A FALLU L'AJOUTER (2026-09-07, lot L3)
+ *
+ * `score_mine` / `score_theirs` sont ANCRÉS SUR LE JOUEUR DE LA PAGE — l'API ne publie pas le
+ * score vu d'un adversaire, exactement comme elle ne publie qu'un seul `outcome_code`. Tant que
+ * la page n'avait qu'un point de vue, l'ordre était juste par construction. Depuis L2b il ne
+ * l'est plus : `ReplayVictoryOverlay` donne à cette lecture la PRIORITÉ sur celle du calque
+ * (`readScoreBanner`), qui, elle, suit le point de vue. Vu depuis un adversaire, l'écran
+ * annonçait donc l'issue permutée (`readVictory` le fait) et le score dans l'ordre du joueur de
+ * la page : « Défaite, 3 - 1 ». Faux, en plein cadre, et parfaitement silencieux.
+ *
+ * La règle est celle de `readVictory` : sujet de l'AUTRE camp, on permute. Sujet du même camp,
+ * rigoureusement identique.
+ *
+ * SUJET NON SITUABLE (absent du tableau, camp non transmis, match qui n'oppose pas exactement
+ * deux camps) : on rend l'ordre du JOUEUR DE LA PAGE, pas `null`. Deux raisons. D'abord il n'y
+ * a rien à permuter — sans camp, « l'autre camp » n'existe pas, et l'ordre de l'API est le seul
+ * sens que ces deux nombres aient. Ensuite aucun score faux ne peut atteindre l'écran par ce
+ * chemin : les deux seules surfaces qui l'affichent (l'écran de fin et le panneau de l'export)
+ * ne se rendent qu'à condition que `readVictory` rende une lecture — et celui-ci rend `null`
+ * dans exactement les mêmes cas. Rendre `null` ici n'effacerait donc rien de visible, mais
+ * priverait un futur lecteur d'un score que l'API publie bel et bien.
+ *
+ * `subject` absent : comportement d'origine, à la ligne près (cf. `victoryLogic.test.ts`).
  */
-export function finalScoreFromHeader(header: FinalScoreHeader | undefined): FinalScoreReading | null {
+export function finalScoreFromHeader(
+  header: FinalScoreHeader | undefined,
+  scoreboard?: VictoryRows,
+  subject?: string | null,
+): FinalScoreReading | null {
   if (!header || header.score_mine == null || header.score_theirs == null) return null
-  return { ally: header.score_mine, enemy: header.score_theirs }
+  const page = { ally: header.score_mine, enemy: header.score_theirs }
+  if (subject == null || !scoreboard) return page
+  const camps = identifiedCamps(scoreboard)
+  if (camps.length !== 2) return page
+  const mien = myCampIndex(scoreboard, camps)
+  if (mien === null) return page
+  const vu = subjectCampIndex(scoreboard, camps, subject, mien)
+  if (vu === null) return page
+  return vu === mien ? page : { ally: page.enemy, enemy: page.ally }
 }

@@ -41,7 +41,7 @@ import { useReplayAbilityFx } from '../layers/useReplayAbilityFx'
 import { drawEquipmentPlacementsLayer } from '../layers/equipmentPlacementsLayer'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from '../layers/useReplayPlacements'
-import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_ZONES, SERIES_TOKENS } from '../layers/replayCanvasConfig'
+import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_PLAYERS, EMPTY_ZONES, NO_IDENTITY, NO_VIEWPOINT_SELECT, SERIES_TOKENS } from '../layers/replayCanvasConfig'
 import { useReplayObjectiveObjects } from '../layers/useReplayObjectiveObjects'
 import { useReplayVipCrown } from '../layers/useReplayVipCrown'
 import { useReplayBombCarrier } from '../layers/useReplayBombCarrier'
@@ -60,6 +60,7 @@ import { killsOfFeed, type ReplayFeedEntry } from '../model/killFeedLogic'
 import type { ReplayMediaItem } from '../model/replayTimelineTracksLogic'
 import { useReplayFx } from '../layers/useReplayFx'
 import { NO_MARKS, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { useReplayDrawer } from '../settings/useReplayDrawer'
 import { useReplayTimeline } from '../hooks/useReplayTimeline'
 import { useSlotIdentity } from '../layers/useSlotIdentity'
@@ -132,7 +133,7 @@ interface ReplayCanvasProps {
    * la carte reste lisible (points à l'encre neutre, sans étiquette) — jamais une erreur.
    */
   scoreboard?: MatchScoreboardRow[]
-  /** Camp de chaque xuid, du point de vue du joueur de la page (allié / adversaire). */
+  /** Camp de chaque xuid, RELATIF au point de vue (allié / adversaire) — cf. `viewpoint`. */
   xuidMeta?: XuidMeta
   /** Marques d'identité par xuid (« moi », « ami ») : elles décident de la FORME du point. */
   marks?: ReadonlyMap<string, PlayerMarkKind>
@@ -144,6 +145,14 @@ interface ReplayCanvasProps {
    * la ligne « moi » du tableau de score, c'est-à-dire le comportement d'origine.
    */
   viewpoint?: string | null
+  /**
+   * LE ROSTER JOINT DU MATCH (`model.players`) et le geste qui pose le point de vue : les deux
+   * ne servent qu'au MENU de la frise (2026-09-07, lot L3). Ils traversent le canvas comme le
+   * fil et les médias — assemblés une fois par la page, jamais reconstruits ici. Roster vide et
+   * geste absent = un menu sans option, ce qui est exactement l'état d'une page sans vue match.
+   */
+  players?: readonly ReplayPlayer[]
+  onSelectViewpoint?: (xuid: string | null) => void
   /**
    * LE FIL ALIGNÉ ET LES MÉDIAS, assemblés une fois par la page (`buildFeedEntries`,
    * `buildReplayMedia`) : un second recalage ici divergerait de ce qu'on lit à côté.
@@ -168,6 +177,7 @@ interface ReplayCanvasProps {
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, background, callouts, scoreboard, xuidMeta, marks,
   viewpoint, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
+  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT,
 }: ReplayCanvasProps) {
   // LES KILLS VIENNENT DU FIL, DÉJÀ RECALÉS (2026-09-05, J2) : la carte et la piste sonore
   // lisaient les kills BRUTS et rejouaient chacune `alignFeed` — quatre exécutions du même
@@ -577,6 +587,10 @@ export function ReplayCanvas({
   const timeline = useReplayTimeline({
     doc, playWindow, feedEntries, media, marks: marks ?? NO_MARKS, renderWidth, locale,
     lead: teamCascades, playback, toggleSound: sound.toggle, zoom,
+    // LE MENU DE POINT DE VUE (2026-09-07) : le canvas RELAIE, il ne résout rien. `identity`
+    // est la même table que celle des calques (`xuidMeta`), déjà relative au point de vue —
+    // c'est elle qui dit qui est coéquipier du joueur regardé.
+    viewpoint: viewpoint ?? null, identity: xuidMeta ?? NO_IDENTITY, players, onSelectViewpoint,
   })
   // LE TIROIR, groupé de même (useReplayDrawer) : les disponibilités viennent des calques, les
   // bascules de `useReplaySettings`, et l'état d'ouverture du hook lui-même (2026-08-30).

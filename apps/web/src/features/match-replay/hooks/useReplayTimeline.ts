@@ -25,7 +25,7 @@ import { useCapability } from '@/lib/capabilities'
 import { leaderStates, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import type { ReplayFeedEntry } from '../model/killFeedLogic'
-import type { ReplayLocale } from '../i18n/i18n'
+import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { formatClock } from '../../../lib/replay/replayLogic'
 import { EMPTY_MEDIA, SKIP_SECONDS } from '../layers/replayCanvasConfig'
@@ -47,6 +47,8 @@ import {
   type TrackScale,
 } from '../model/replayTimelineTracksLogic'
 import { roundTransitions } from '../model/roundsLogic'
+import { buildViewpointOptions } from '../model/viewpointOptions'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { usePersistedFlag, TIMELINE_EXPANDED_KEY } from '../settings/useReplaySettings'
@@ -58,8 +60,24 @@ export interface ReplayTimelineOptions {
   playWindow: ReplayWindowBounds | null
   /** Le fil aligné, assemblé UNE fois par la page (cf. l'en-tête). */
   feedEntries: readonly ReplayFeedEntry[]
-  /** Marques d'identité par xuid : elles décident de la piste, jamais de la couleur. */
+  /**
+   * Marques d'identité par xuid. ELLES NE DÉCIDENT PLUS DE LA PISTE (2026-09-07, décision 5) :
+   * la seconde piste est celle des COÉQUIPIERS du point de vue, et non plus celle des amis. Ce
+   * qui reste des marques sur la frise, c'est la FORME — un ami prend le losange (décision 4).
+   */
   marks: ReadonlyMap<string, PlayerMarkKind>
+  /**
+   * PAR LES YEUX DE QUI (2026-09-07) : le joueur dont la piste du haut porte les kills ET les
+   * morts, et dont le camp définit « coéquipier ». Résolu une fois par la page
+   * (`model.viewpoint`), relayé par le canvas — jamais redécouvert ici.
+   */
+  viewpoint: string | null
+  /** Camp de chaque xuid RELATIF au point de vue (`model.identity`) : qui est coéquipier. */
+  identity: ReadonlyMap<string, { ally: boolean }>
+  /** Le roster joint du match (`model.players`) : ce que le menu de point de vue propose. */
+  players: readonly ReplayPlayer[]
+  /** Poser le point de vue depuis le menu. `null` revient au joueur de la page. */
+  onSelectViewpoint: (xuid: string | null) => void
   /** Les deux cascades d'équipe de la piste Dominance (cf. `useTeamCascades`). */
   lead: {
     allyOf: (teamId: number) => boolean | null
@@ -105,7 +123,8 @@ export type ReplayTimeline = Omit<ComponentProps<typeof ReplayTimelineTracks>, '
 
 export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
   const { doc, playWindow, feedEntries, marks, lead, playback, toggleSound, renderWidth, locale, zoom } = o
-  const { media: mediaItems = EMPTY_MEDIA } = o
+  const { media: mediaItems = EMPTY_MEDIA, viewpoint, identity, players, onSelectViewpoint } = o
+  const t = REPLAY_TEXT[locale]
   const { frameIntervalMs, frameCount } = doc
   // LE REPLI EST UNE PRÉFÉRENCE DU LECTEUR, pas un calque : il ne passe pas par le tiroir mais
   // par un chevron sur la frise. Persisté (patron des autres réglages), DÉPLIÉ par défaut — la
@@ -130,10 +149,27 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     (replayMs: number) => formatClock(displayClockMs(replayMs, playWindow)),
     [playWindow],
   )
-  const { kills, deaths, frags } = useMemo(() => reduceFeed(feedEntries, marks), [feedEntries, marks])
+  const { kills, deaths, frags } = useMemo(
+    () => reduceFeed(feedEntries, viewpoint),
+    [feedEntries, viewpoint],
+  )
+  // LES TROIS LECTURES D'IDENTITÉ VOYAGENT ENSEMBLE (cf. `TrackAudience`) : qui on regarde, qui
+  // est de son camp, qui est un ami. Groupées, elles n'allongent pas la liste d'arguments et se
+  // mémoïsent d'un bloc — les trois changent en même temps, à chaque bascule de point de vue.
+  const audience = useMemo(
+    () => ({ viewpoint, identity, marks }),
+    [viewpoint, identity, marks],
+  )
   const tracks = useMemo(
-    () => buildEventTracks(kills, deaths, marks, frameIntervalMs ?? 0, scale, clockOf),
-    [kills, deaths, marks, frameIntervalMs, scale, clockOf],
+    () => buildEventTracks(kills, deaths, audience, frameIntervalMs ?? 0, scale, clockOf),
+    [kills, deaths, audience, frameIntervalMs, scale, clockOf],
+  )
+  // LE MENU DE POINT DE VUE : les sections viennent du roster joint, les trois libellés de
+  // l'i18n de la feature. La règle de valeur (le piège des bots) et la règle d'inertie (un
+  // joueur sans ligne de tableau de score) vivent dans `viewpointOptions`, pures et testées là.
+  const viewpointGroups = useMemo(
+    () => buildViewpointOptions(players, { teamLabelOf: lead.labelOf, noTeam: t.viewpointNoTeam, noData: t.viewpointNoData }),
+    [players, lead.labelOf, t.viewpointNoTeam, t.viewpointNoData],
   )
   // LA DOMINANCE SE LIT SUR LES FRAGS (2026-08-28), plus sur le compteur du mode : elle vient
   // donc du MÊME fil que les deux pistes du dessus, jamais d'un second calque.
@@ -167,7 +203,10 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     maxFrame: playback.endFrame,
     onScrub: playback.onScrub,
     own: tracks.own,
-    allies: tracks.allies,
+    teammates: tracks.teammates,
+    viewpoint,
+    viewpointGroups,
+    onSelectViewpoint,
     dominance,
     score,
     allyOf: lead.allyOf,
@@ -224,7 +263,7 @@ function scoreTrack(
  */
 export function reduceFeed(
   entries: readonly ReplayFeedEntry[],
-  marks: ReadonlyMap<string, PlayerMarkKind>,
+  viewpoint: string | null,
 ): { kills: TrackKill[]; deaths: TrackDeath[]; frags: TrackFrag[] } {
   const kills: TrackKill[] = []
   const deaths: TrackDeath[] = []
@@ -242,9 +281,11 @@ export function reduceFeed(
     // compte pour personne — l'attribuer par défaut fausserait le meneur.
     if (kill.teamID != null) frags.push({ replayMs: entry.replayMs, teamId: kill.teamID })
     // LA MÊME LIGNE PEUT ÊTRE LES DEUX : le frag de l'un est la mort de l'autre. On ne la range
-    // du côté des morts que si la victime porte une marque — sinon `buildEventTracks` l'écarte
-    // de toute façon, et la clé dérivée ne servirait à rien.
-    if (kill.victimXuid && marks.get(kill.victimXuid) === 'me') {
+    // du côté des morts que si la victime EST le joueur regardé — sinon `buildEventTracks`
+    // l'écarte de toute façon (les morts ne vont que sur sa piste), et la clé dérivée ne
+    // servirait à rien. Ce test lisait la marque `me` de `playerMarks` jusqu'au 2026-09-07 :
+    // c'était le même joueur, par un détour de plus. Le point de vue le dit directement.
+    if (kill.victimXuid && viewpoint != null && kill.victimXuid === viewpoint) {
       deaths.push({ key: `${entry.key}-v`, replayMs: entry.replayMs, xuid: kill.victimXuid })
     }
   }

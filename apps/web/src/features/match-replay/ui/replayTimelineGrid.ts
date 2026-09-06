@@ -14,9 +14,11 @@
  *     donc savoir où elle commence.
  *
  * Écrits en classes (`grid-cols-[76px_1fr]`, `gap-x-3`) et recopiés dans le calcul du trait, ces
- * deux nombres auraient dérivé au premier élargissement de la colonne — L3 la passe à 100 px pour
- * y loger un menu de joueurs. Chacune des trois écritures serait restée vraie de son côté, et le
- * trait aurait glissé sans qu'aucun test ne rougisse. Une définition, trois lecteurs.
+ * deux nombres auraient dérivé au premier élargissement de la colonne. Cet élargissement a eu
+ * lieu le 2026-09-07 (lot L3) : la colonne est passée de 76 à 100 px pour loger le MENU de
+ * joueurs qui remplace le libellé « Toi » — un gamertag ne tient pas dans la largeur d'un mot de
+ * quatre lettres. Une seule ligne a changé ici, et les deux grilles comme le trait ont suivi ;
+ * c'est exactement ce que cette centralisation achetait. Une définition, trois lecteurs.
  *
  * # CE QU'IL N'EST PAS
  *
@@ -26,8 +28,15 @@
  * d'abord, position dans la colonne ensuite — mais elles ne changent pas pour les mêmes raisons.
  */
 
-/** La colonne des LIBELLÉS de piste. */
-export const LABEL_COLUMN = '76px'
+/**
+ * La colonne des LIBELLÉS de piste.
+ *
+ * 100 px depuis le 2026-09-07 (décision 6 du plan « frise, point de vue »), contre 76 px
+ * auparavant : la première rangée n'y porte plus un mot mais un MENU de joueurs, et un gamertag
+ * tronqué à 76 px ne se reconnaît pas. La liste ouverte, elle, montre les noms entiers — c'est
+ * le navigateur qui la dimensionne, pas cette constante.
+ */
+export const LABEL_COLUMN = '100px'
 
 /** L'écart entre les libellés et les pistes (l'équivalent exact de `gap-x-3`). */
 export const COLUMN_GAP = '0.75rem'

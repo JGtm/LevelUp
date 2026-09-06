@@ -168,8 +168,11 @@ export function buildReplayModel(
     // même horloge que le fil, la frise et les sièges.
     media: buildReplayMedia(matchView?.media_tab, header, clock),
     // LE SCORE FINAL QUAND IL NE SE DÉDUIT PAS DU FILM : sur un mode à manches, le calque
-    // rendrait les points de la dernière manche au lieu du résultat.
-    score: finalScoreFromHeader(header),
+    // rendrait les points de la dernière manche au lieu du résultat. IL SUIT LE POINT DE VUE
+    // depuis le 2026-09-07 : l'API l'ancre sur le joueur de la page, et l'écran de fin le
+    // préfère à la lecture du calque — vu depuis un adversaire, les deux nombres seraient dans
+    // l'ordre de quelqu'un d'autre que l'issue affichée juste au-dessus.
+    score: finalScoreFromHeader(header, scoreboard, subject),
     t0Ms,
   }
 }
