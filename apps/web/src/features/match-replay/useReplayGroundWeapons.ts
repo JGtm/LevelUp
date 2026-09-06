@@ -2,7 +2,7 @@
  * useReplayGroundWeapons — LE CÂBLAGE DU CALQUE DES ARMES AU SOL, en un seul point.
  *
  * MÊME PARTI QUE `useReplayWeaponPads` ET `useReplayFlagCarries`, et pour la même raison :
- * `ReplayCanvas.tsx` porte un CLIQUET DE TAILLE (`placementFamily.guard.test.ts`) qui ne
+ * `ReplayCanvas.tsx` porte un SEUIL DE TAILLE (`max-lines` eslint, R5) qui ne
  * remonte pas. Un calque de plus s'y branche par un import, un appel et une ligne de peinture —
  * tout le reste (cuisson des vignettes, mémoïsation, tracé) vit ici.
  *

@@ -1,7 +1,7 @@
 /**
  * hoverLayers.ts — LE GESTE DE SURVOL, DISTRIBUÉ AUX CALQUES QUI L'ATTENDENT.
  *
- * EXTRACTION IMPOSÉE PAR LE CLIQUET DE TAILLE DU CANVAS (`placementFamily.guard.test.ts`) : le
+ * EXTRACTION IMPOSÉE PAR LE SEUIL DE TAILLE DU CANVAS (`max-lines` eslint, R5) : le
  * fichier était PILE à son plafond et le lot de l'export hors temps réel devait y brancher une
  * commande de plus. La règle du dépôt est d'extraire plutôt que de relever le plafond.
  *

@@ -2,8 +2,8 @@
  * useReplayCapture — LA COUTURE REACT DE LA CAPTURE : ce que la barre de lecture commande, et
  * ce que le canvas doit lui prêter pour cela.
  *
- * POURQUOI UN HOOK PLUTÔT QU'UN HANDLER DANS LE CANVAS. `ReplayCanvas.tsx` vit sous un cliquet
- * de taille (`placementFamily.guard.test.ts`, neuf extractions imposées à ce jour) : tout ce
+ * POURQUOI UN HOOK PLUTÔT QU'UN HANDLER DANS LE CANVAS. `ReplayCanvas.tsx` vit sous un seuil
+ * de taille (`max-lines` eslint, R5, neuf extractions imposées à ce jour) : tout ce
  * qui n'est pas du DESSIN en sort. Le canvas ne prête donc que sa TOILE, son HORLOGE et son
  * état de lecture, et reçoit en retour un objet unique qu'il repasse tel quel à la barre —
  * exactement le patron du son (`useReplaySound` -> `ReplaySound`), et pour la même raison :

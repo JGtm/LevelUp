@@ -4,9 +4,9 @@
  * sous le pointeur.
  *
  * POURQUOI CE FICHIER EXISTE, ET CE N'EST PAS UN CHOIX DE GOÛT. `ReplayCanvas.tsx` porte un
- * CLIQUET de taille (`placementFamily.guard.test.ts`) : il ne remonte jamais, et le franchir
+ * SEUIL de taille (`max-lines` eslint, R5) : il ne remonte jamais, et le franchir
  * se corrige en EXTRAYANT, pas en relevant le nombre. Le lot des objets lâchés ajoutait une
- * bascule, un comptage et un argument de survol — quatrième fois que ce cliquet impose une
+ * bascule, un comptage et un argument de survol — quatrième fois que ce seuil impose une
  * découpe, après `useReplayInks`, `useSlotIdentity` et `useReplayTiming`. Les trois morceaux
  * réunis ici étaient déjà voisins dans le canvas et parlent de la même chose : les poses.
  *

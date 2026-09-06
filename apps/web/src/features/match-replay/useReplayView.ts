@@ -1,9 +1,9 @@
 /**
  * useReplayView — LE CADRAGE du rejeu 2D : ce que la carte montre, et dans quel repère.
  *
- * EXTRAIT DE `ReplayCanvas.tsx` LE 2026-08-26 (neuvième extraction imposée par le cliquet de
- * taille, `placementFamily.guard.test.ts`). Le canvas était PILE à son plafond de 742 lignes
- * et le lot y branche la CAPTURE (image PNG, enregistrement vidéo) : le cliquet impose alors
+ * EXTRAIT DE `ReplayCanvas.tsx` LE 2026-08-26 (neuvième extraction imposée par le seuil de
+ * taille, `max-lines` eslint, R5). Le canvas était PILE à son plafond de 742 lignes
+ * et le lot y branche la CAPTURE (image PNG, enregistrement vidéo) : le seuil impose alors
  * d'extraire AVANT d'ajouter, jamais de relever le nombre — c'est sa raison d'être, et il
  * descend d'autant.
  *
@@ -60,7 +60,7 @@ import { useReplayZoom, type ReplayZoom } from './useReplayZoom'
  *
  * Le trace lit cette valeur au moment ou il dimensionne le backing store. La faire descendre en
  * prop ou en etat traverserait `ReplayCanvas`, qui est A SON PLAFOND DE TAILLE
- * (`placementFamily.guard.test.ts`) : le cablage couterait plus de lignes que la fonctionnalite.
+ * (`max-lines` eslint, R5) : le cablage couterait plus de lignes que la fonctionnalite.
  * Elle vit donc ici, ou le canvas puise deja sa geometrie, et l'export la repose a 1 dans un
  * `finally` — c'est le seul ecrivain, et il ne la laisse jamais levee.
  */

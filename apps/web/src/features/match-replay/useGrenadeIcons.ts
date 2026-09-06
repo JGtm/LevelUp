@@ -8,8 +8,8 @@
  * le thème, le document qu'au chargement.
  *
  * EXTRAIT DE `ReplayCanvas.tsx` LE 2026-08-18 (fusion des lots R2-P et R2-V) : le canvas porte
- * un cliquet de taille (`placementFamily.guard.test.ts`) que les deux lots ont rempli, et la
- * règle du cliquet est d'extraire avant d'ajouter. Ce bloc part le plus proprement — il ne
+ * un seuil de taille (`max-lines` eslint, R5) que les deux lots ont rempli, et la
+ * règle du seuil est d'extraire avant d'ajouter. Ce bloc part le plus proprement — il ne
  * connaît ni les réglages, ni le cadrage, ni l'image courante.
  *
  * IL PREND `redraw` ET NON `draw` : le chargement d'une image est asynchrone, et la scène doit

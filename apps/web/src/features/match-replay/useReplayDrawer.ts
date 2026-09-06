@@ -1,7 +1,7 @@
 /**
  * useReplayDrawer — LE TIROIR DE RÉGLAGES, assemblé en un objet.
  *
- * QUATORZIÈME EXTRACTION IMPOSÉE PAR LE CLIQUET DE TAILLE (`placementFamily.guard.test.ts`).
+ * QUATORZIÈME EXTRACTION IMPOSÉE PAR LE SEUIL DE TAILLE (`max-lines` eslint, R5).
  * Le montage du tiroir occupait une cinquantaine de lignes du canvas — trente réglages
  * recopiés un par un depuis `useReplaySettings`, plus les quatre disponibilités lues des
  * calques. Aucune de ces lignes ne décide de quoi que ce soit : elles TRANSPORTENT. Le canvas
@@ -17,7 +17,7 @@
  * viennent des calques eux-mêmes, seuls à savoir ce que le film porte.
  *
  * L'ÉTAT D'OUVERTURE A REJOINT CE HOOK LE 2026-08-30, et c'est la SEIZIÈME extraction imposée
- * par le cliquet de taille du canvas (`placementFamily.guard.test.ts`) : le lot des armes au sol
+ * par le seuil de taille du canvas (`max-lines` eslint, R5) : le lot des armes au sol
  * y branchait un calque de plus, et le fichier était PILE à son plafond. Le tiroir gardait au
  * canvas trois choses qui ne parlent que de lui — ouvert ou fermé, le bouton qui l'ouvre, et la
  * fermeture qui rend le focus à ce bouton. Elles s'appellent « tiroir », elles vivent désormais

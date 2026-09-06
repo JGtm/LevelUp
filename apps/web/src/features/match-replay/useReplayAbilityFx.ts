@@ -8,8 +8,8 @@
  * `equipmentPlacementsLayer` les met déjà toutes deux à `null` pour la même raison.
  *
  * POURQUOI UN HOOK PLUTÔT QUE DEUX APPELS DANS LE CANVAS. Le canvas du rejeu porte une dette
- * de taille GELÉE par un cliquet (`placementFamily.guard.test.ts`) : toute addition s'y paie
- * par une EXTRACTION — c'est la doctrine que ce cliquet documente depuis sa dix-septième.
+ * de taille GELÉE par un seuil (`max-lines` eslint, R5) : toute addition s'y paie
+ * par une EXTRACTION — c'est la doctrine que ce seuil documente depuis sa dix-septième.
  * Le dash du propulseur demandait ses lignes de glue alors que le fichier était à trois lignes
  * de son plafond. Regrouper les deux gestes de capacité rend au canvas plus qu'il ne lui prend,
  * et le regroupement n'est pas de circonstance : c'est la même famille de geste, le même

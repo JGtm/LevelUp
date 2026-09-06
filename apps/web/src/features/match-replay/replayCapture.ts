@@ -5,8 +5,8 @@
  * POURQUOI UN MODULE À PART, et pas trois lignes dans le composant. Les trois opérations
  * ci-dessous sont les seules du chantier de capture qui ne dépendent NI de React, NI de
  * l'état de lecture : nommer, remettre un blob au navigateur, et lire les pixels d'une toile.
- * Les isoler les rend testables sans monter un composant — et le cliquet de taille du canvas
- * (`placementFamily.guard.test.ts`) interdit de toute façon d'y loger la moindre logique.
+ * Les isoler les rend testables sans monter un composant — et le seuil de taille du canvas
+ * (`max-lines` eslint, R5) interdit de toute façon d'y loger la moindre logique.
  *
  * # LE NOM DIT L'INSTANT DU MATCH, PAS L'HEURE DE L'ORDINATEUR
  *

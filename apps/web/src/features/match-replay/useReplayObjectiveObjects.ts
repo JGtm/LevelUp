@@ -1,7 +1,7 @@
 /**
  * useReplayObjectiveObjects — LE CÂBLAGE du crâne d'Oddball au sol (schémas 21 + 23).
  *
- * DIXIÈME EXTRACTION IMPOSÉE PAR LE CLIQUET DE `ReplayCanvas.tsx` (cf. placementFamily.guard).
+ * DIXIÈME EXTRACTION IMPOSÉE PAR LE SEUIL DE `ReplayCanvas.tsx` (cf. `max-lines` eslint, R5).
  * Le canvas garde le DESSIN ; ce hook porte l'ENCRE et la décision de peindre, exactement comme
  * `useReplayFlagCarries` porte celles des drapeaux.
  *

@@ -2,7 +2,7 @@
  * useReplayBombBlast — LE CÂBLAGE de la DÉFLAGRATION D'ASSAUT (`bomb_detonations`), en un point.
  *
  * MÊME PARTI QUE `useReplayVipCrown` et `useReplaySkullCarrier` : le canvas du rejeu porte une
- * dette de taille GELÉE par un cliquet (`placementFamily.guard.test.ts`) — toute addition s'y
+ * dette de taille GELÉE par un seuil (`max-lines` eslint, R5) — toute addition s'y
  * fait par EXTRACTION, et ce hook n'en rend au canvas que deux lignes utiles.
  *
  * POURQUOI PAS DANS `useReplayFlagCarries`, qui porte déjà l'onde de capture et la même

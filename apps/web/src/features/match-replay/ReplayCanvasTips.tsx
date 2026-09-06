@@ -4,8 +4,8 @@
  * POURQUOI CE FICHIER EXISTE (CLAUDE.md n°6, « à la 3e copie, centraliser »). Chaque calque
  * survolable posait dans `ReplayCanvas.tsx` le MÊME bloc — un test de présence, un composant,
  * `locale` et `width` recopiés. Deux copies étaient tolérables ; le drapeau de CTF (schéma 15)
- * fait la troisième. Le canvas porte en outre une dette de taille GELÉE par un cliquet
- * (`placementFamily.guard.test.ts`) : toute addition s'y fait par EXTRACTION.
+ * fait la troisième. Le canvas porte en outre une dette de taille GELÉE par un seuil
+ * (`max-lines` eslint, R5) : toute addition s'y fait par EXTRACTION.
  *
  * CE QUE CE COMPOSANT NE FAIT PAS : décider ce qui est survolé. Chaque hook de calque garde son
  * survol, sa donnée et sa règle ; celui-ci ne fait que les afficher. Il ne connaît donc aucune

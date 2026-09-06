@@ -2,8 +2,8 @@
  * useReplayPlayback — LA LECTURE du rejeu : l'état lu / en pause, la boucle d'animation, le
  * curseur de la frise, et ce qui se passe quand le film ARRIVE AU BOUT.
  *
- * EXTRAIT DE `ReplayCanvas.tsx` LE 2026-08-25 (huitième extraction imposée par le cliquet de
- * taille, `placementFamily.guard.test.ts`) : le lot y ajoutait la politique de fin de rejeu, et
+ * EXTRAIT DE `ReplayCanvas.tsx` LE 2026-08-25 (huitième extraction imposée par le seuil de
+ * taille, `max-lines` eslint, R5) : le lot y ajoutait la politique de fin de rejeu, et
  * la règle du dépôt est d'extraire plutôt que de relever le plafond. La découpe tombe sur une
  * frontière nette — ce fichier porte le TEMPS de la lecture, le canvas porte le DESSIN. Il ne
  * dessine rien lui-même : il appelle le tracé que l'appelant lui passe.
