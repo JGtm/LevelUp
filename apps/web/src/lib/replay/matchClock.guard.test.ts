@@ -25,10 +25,18 @@ import { join, resolve } from 'node:path'
  * La signature de la conversion : une multiplication ou une division dont `frameIntervalMs`
  * est un opérande. Les deux sens sont couverts ; une étoile de bloc de commentaire (` * `
  * en tête de ligne) ne matche pas, faute d'opérande à sa gauche.
+ *
+ * LA LECTURE QUALIFIÉE COMPTE AUTANT QUE LA LECTURE NUE (2026-09-06, revue R1, constat C6).
+ * Le premier motif exigeait que `frameIntervalMs` SUIVE immédiatement l'opérateur : il
+ * attrapait la forme historique (`p.t * frameIntervalMs`, champ destructuré) et laissait
+ * passer `paliers[0].t * clock.frameIntervalMs` — la forme que le nouveau code rend
+ * naturelle, l'horloge étant devenue un objet. Le préfixe optionnel `<objet>.` (ou `?.`)
+ * ferme cet angle mort des deux côtés de l'opérateur.
  */
+const QUALIFIE = String.raw`(?:[A-Za-z0-9_$)\]]+\s*\??\.\s*)?`
 const CONVERSION = [
-  /[A-Za-z0-9_)\]]\s*[*/]\s*frameIntervalMs/,
-  /frameIntervalMs\s*[*/]\s*[A-Za-z0-9_([]/,
+  new RegExp(String.raw`[A-Za-z0-9_)\]]\s*[*/]\s*` + QUALIFIE + 'frameIntervalMs'),
+  new RegExp('frameIntervalMs' + String.raw`\s*[*/]\s*` + QUALIFIE + String.raw`[A-Za-z0-9_([]`),
 ]
 
 function walk(dir: string): string[] {
