@@ -254,6 +254,12 @@ export const queryKeys = {
   notificationsPreferences: (playerSlug: string, titleSlug: string) =>
     ['notifications', playerSlug, titleSlug, 'preferences'] as const,
 
+  // Capabilities DATA-LEVEL du titre (GET /titles/{slug}/capabilities) — « ce titre
+  // produit-il cette donnee ? ». Title-scopee par son PREMIER argument, comme les cles
+  // asset* : la reponse EST celle d'un titre, il n'y a pas de dimension joueur.
+  // Cf. lib/capabilities/dataCapabilities.ts (regle des deux portes).
+  titleDataCapabilities: (titleSlug: string) => ['title-data-capabilities', titleSlug] as const,
+
   // Asset Drawer (Phase 2)
   assetMaps: (titleSlug: string, q: string) => ['assets', titleSlug, 'maps', q] as const,
   assetWeapons: (titleSlug: string, q: string) => ['assets', titleSlug, 'weapons', q] as const,

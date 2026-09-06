@@ -513,3 +513,70 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   champs), `go vet` + intégration `api/wire` verts (`ok 18 s`). Décision user : feu vert au
   balayage du parc (un film par processus borné, jamais de bombe RAM) ; corpus élargi aux
   artefacts des autres worktrees et de la clé PNY (`E:\data\cache\replays\`, état du 31/07).
+- 2026-09-06 11:20 : C fusionné (ronde 2 close par `b13f36fe9` : porte cherchée sur un ANCÊTRE
+  du montage, mémo par titre prouvé) ; conflit thought_log concaténé. Balayage du parc lancé
+  (worktree `LevelUp-wt-v2-balayage`, outil `cmd/replay-diff`, rapport
+  `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md` attendu). Intégrés : B, F, C. Restent : A (corrections),
+  G et E (ronde 2), D (prêt, en dernier), CTF (enquête rouverte).
+- 2026-09-06 11:45 : ENQUÊTE CTF — VRAIE CAUSE ÉTABLIE (`feat/v2-ctf-drapeaux`, `91296072c` erratum
+  + `eb5585109` correctif) : le commit `d173b1a8c` (2026-08-28, `replaybuild/matchfacts.go`,
+  `identifiedEvents`) a REMPLACÉ le pont d'identité par triplet (`SlotIdentityFrom`) par le pont
+  par morts (`ResolveRoundIdentity`, `deathInstantMin = 3`) alors que les deux couvertures sont
+  complémentaires : les joueurs qui meurent moins de 3 fois (les meilleurs, donc les porteurs)
+  sortaient du pont → actions d'objectif perdues (17 → 12 sur `c0a82e88`, captures et vols de
+  SweatyYeti75 disparus). Régression, pas décision (« neutralité prouvée » contre le mauvais
+  témoin). Correctif : `RoundIdentity.CompletedByLines` (mono-manche, compléter sans contredire,
+  aucun xuid deux fois) → 7/7 pontés, 23 actions, chaque joueur = sa ligne de feuille de match.
+  Impact : tout artefact cuit depuis le 2026-08-28 sur film mono-manche avec un joueur à < 3
+  morts, toutes familles ; pas de bump de schéma (contenu enrichi) ; propagation par le
+  `backfill-replay` de la release (inscrit au registre). Revue adverse CTF-R2 lancée. DÉCISION
+  USER EN ATTENTE : `flagCarries` subit le même plafond mais son identité est construite dans
+  `analysis/replay` sans faits de match (frontière délibérée) — recommandation superviseur :
+  compléter dans `replaybuild` après cuisson (comme les actions), sans franchir la frontière.
+- 2026-09-06 12:10 : E-R2 : six constats FERMÉS, E.9 jugé prudent (3 lignes du TSV, zéro code du
+  décodeur, chaque note vérifiée), 3 P3 en retouche (résorption par la table non détectée, import
+  aliasé invisible au ratchet du verrou, liste d'angles morts non exhaustive). G-R2 : dix constats
+  FERMÉS, goldens reproduits indépendamment par le vrai Python (six `.wav` + `.ts` + console
+  identiques), 2 P3 en retouche (préfixe UNC sensible à la casse, double `Peak()` sur une ligne de
+  log). A-R2 en cours ; CTF-R2 (correctif du pont d'identité) en cours ; balayage en cours.
+- 2026-09-06 12:30 : G retouches vérifiées sur pièces (`6effae3ac` : `EqualFold` sur le préfixe UNC,
+  table à 32 entrées ; `Peak()` lu une fois) et G FUSIONNÉ dans `feat/v75`. Intégrés : B, F, C, G.
+- 2026-09-06 12:45 : E retouches vérifiées (`60072d717`, 3 gardes, zéro code du décodeur, golden
+  intact) ; aucun test supprimé par E ne figure dans la baseline (vérifié) ; E FUSIONNÉ dans
+  `feat/v75`. Intégrés : B, F, C, G, E. Restent : A (ronde 2), D (dernier), CTF (revue R2).
+- 2026-09-06 13:00 : CTF-R2 CONFIRME le diagnostic et le correctif du pont d'identité (0
+  contradiction sur 8 films mono-manche ; 4 manches identique octet pour octet ; additif strict
+  sur 11 films ; le triplet refuse toute ambiguïté). Constats : deux gardes (mono-manche,
+  « jamais contredire ») sans test qui morde ; justification fausse sur le slot 12 ; décision
+  « pas de bump » sûre aujourd'hui pour une raison non écrite (0 artefact au schéma 39 sur la
+  machine, prod au schéma 2) mais fragile dès le premier artefact 39 cuit avant la release (le
+  backfill le sauterait) ; fichier de test à 562 L. DÉCISION SUPERVISEUR : bump `SchemaVersion`
+  39 → 40 avec chronique (la règle du dépôt : un artefact vN doit se voir comme à re-cuire) ; l'étape
+  de release « re-cuisson du parc » passe à 40 (registre + Notion à mettre à jour). Corrections
+  en cours chez l'enquêteur.
+- 2026-09-06 13:15 : A-R2 : sept constats FERMÉS ; quatre défauts nés des corrections (N1 P2 :
+  une lecture d'équipe en échec marquait le match « dérivé » — classe de C1 réintroduite ; N3
+  jauge 0 sur cycle annulé ; N4 marque orpheline jamais ramassée ; N2 modes à > 2 camps, 4
+  matchs sur 1 959, décision produit) + doc inversée dans la migration des positions → retouches
+  en cours chez l'exécuteur A ; merge A ensuite (conflit attendu avec C sur
+  `domain/title/registry.go` et `replayartifacts/artifacts.go`).
+- 2026-09-06 13:40 : CTF corrections rendues (`7c85acf58` : deux gardes testées par mutation,
+  justification du slot 12 vraie, SchemaVersion 40 + chronique, assertions déplacées) et CTF
+  FUSIONNÉ dans `feat/v75`. Conflits sémantiques résolus par le superviseur : le test des calques
+  d'objectif typé sur `replaydoc` (lot B), et les valeurs figées par F.1 remesurées au schéma 40
+  (15 frags, 6 assistances, 1 capture, 1 vol = sommes des lignes des 7 pontés). Intégration wire,
+  contrat et `generate-types` verts et sans diff. Intégrés : B, F, C, G, E, CTF.
+- 2026-09-06 14:10 : A retouches rendues (`cb33d8ea8` : lecture d'équipe en échec = pas de marque,
+  jauge non publiée sur horizon illisible, marques orphelines ramassées, docs inversées corrigées ;
+  N2 modes > 2 camps consigné, décision produit pour le lot D) et A FUSIONNÉ dans `feat/v75`.
+  Conflits résolus par le superviseur : `replayartifacts.Run` = porte de capability (C) PUIS
+  compteur + `defer` rattrapage + `cuireLeCycle` (A) ; `racineDepot` en double (C dans
+  `capability_test.go`, A dans `helpers_test.go`) → le fichier de A supprimé ; journal concaténé.
+  Tests unitaires + intégration replayartifacts/persist/sync verts. Intégrés : B, F, C, G, E,
+  CTF, A. Reste D.
+- 2026-09-06 14:40 : D FUSIONNÉ dans `feat/v75` (seul conflit : journal ; le déplacement de
+  `weaponSoundVariations.ts` sous `sound/` a absorbé l'en-tête du lot G automatiquement). Gates
+  sur l'état fusionné : `tsc -b --force` 0, lint 0 erreur, `lint:colors` clean, frontière
+  `7 <= plafond 7`, build OK, vitest 612 fichiers / 6 393 verts. LES SEPT LOTS ET LE CORRECTIF
+  CTF SONT INTÉGRÉS : B, F, C, G, E, CTF, A, D. Reste : CI des derniers merges, balayage du parc
+  (en cours), balayage « après » sur `feat/v75` intégré, décision `flagCarries`.

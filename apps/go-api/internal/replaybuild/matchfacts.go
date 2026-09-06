@@ -99,7 +99,7 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 			TeamScores: facts.TeamScores,
 			Truncated:  truncated,
 		},
-		objectives: identifiedEvents(ctx, matchID, deaths, recs, facts.GameVariantName),
+		objectives: identifiedEvents(ctx, matchID, deaths, recs, facts),
 		flag:       flagInput(recs, film),
 		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:      skullInput(recs, isSkullVariant(facts.GameVariantName)),
@@ -198,12 +198,25 @@ func flagInput(recs []objectiveevents.StatRecord, film *filmsource.Film) replay.
 
 // identifiedEvents nomme les actions d'objectif du film et les attribue a un xuid PAR MANCHE.
 //
-// LE PONT EST PAR MANCHE, PAR LES SEULS INSTANTS DE MORT ([objectiveevents.ResolveRoundIdentity]),
+// LE PONT EST PAR MANCHE, PAR LES INSTANTS DE MORT ([objectiveevents.ResolveRoundIdentity]),
 // comme la couronne VIP, le drapeau et le porteur du crane — et PLUS par les TOTAUX du match. Le
 // slot d'entite statborg est REATTRIBUE d'une manche a l'autre : un pont par totaux collait les
 // actions d'apres-bascule au mauvais joueur (le compteur de morts repart de zero a chaque manche,
-// si bien qu'il ne voyait que la premiere). Aucune ligne de match n'est requise — le calque est
-// publiable hors ligne, exactement comme le drapeau.
+// si bien qu'il ne voyait que la premiere).
+//
+// IL EST COMPLETE PAR LE TRIPLET SUR LES FILMS MONO-MANCHE (correctif du 2026-09-06). Le pont par
+// morts exige TROIS instants coincidents : un joueur qui meurt moins de trois fois lui echappe par
+// construction, et ce sont les MEILLEURS joueurs — ceux qui portent le drapeau. `d173b1a8c`
+// (2026-08-28) a bascule ce calque du pont par TRIPLET vers le pont par MORTS en annoncant une
+// « neutralite mono-manche prouvee par construction » : elle etait vraie contre le pont PLAT PAR
+// MORTS, mais ce calque-ci n'etait pas sur ce pont-la — il etait sur le triplet. Mesure sur
+// `c0a82e88` (une manche) : 17 actions avant, 12 apres, les deux SEULES actions de famille `flag`
+// perdues avec le slot de leur auteur (7 frags, 2 morts). `CompletedByLines` rend la parite, sans
+// toucher a la correction multi-manche. Voir son en-tete pour les trois gardes et le controle
+// croise qui etablit les attributions rendues.
+//
+// LES LIGNES DE MATCH RESTENT FACULTATIVES : sans elles, `CompletedByLines` rend l'identite
+// inchangee et le calque reste publiable hors ligne, exactement comme le drapeau.
 //
 // TROIS REFUS EXPLICITES, ET AUCUN N'EST AVALE : sans famille d'objectif (mode sans table nommee,
 // variante inconnue) ou sans aucun emplacement nomme, aucun nom n'est possible ; sans fil des
@@ -214,8 +227,8 @@ func flagInput(recs []objectiveevents.StatRecord, film *filmsource.Film) replay.
 // reparsaient chacune le chunk highlight. Le second decodage du statborg, lui, n'a jamais ete
 // refait — `recs` est reutilise.
 func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
-	recs []objectiveevents.StatRecord, variant string) []objectiveevents.IdentifiedEvent {
-	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeOf(variant))
+	recs []objectiveevents.StatRecord, facts port.MatchFacts) []objectiveevents.IdentifiedEvent {
+	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeOf(facts.GameVariantName))
 	if len(named) == 0 {
 		return nil
 	}
@@ -224,17 +237,21 @@ func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 			"err", deaths.err, "match_id", matchID, "nommees", len(named))
 		return nil
 	}
-	out := identifyRoundEvents(named, recs, deathInstantsOf(deaths.list))
+	out := identifyRoundEvents(named, recs, deathInstantsOf(deaths.list), playerLines(facts))
 	slog.InfoContext(ctx, "replaybuild: actions d'objectif identifiees par manche",
-		"match_id", matchID, "nommees", len(named), "identifiees", len(out))
+		"match_id", matchID, "nommees", len(named), "identifiees", len(out), "lignes", len(facts.Players))
 	return out
 }
 
-// identifyRoundEvents resout l'identite PAR MANCHE (par les instants de mort) et attribue les
+// identifyRoundEvents resout l'identite PAR MANCHE (par les instants de mort), la COMPLETE par le
+// triplet quand le film est mono-manche et que les lignes de match sont la, puis attribue les
 // evenements nommes. Coeur PUR, sans I/O — testable sans film.
+//
+// `lines` vide = pont par morts seul (cf. [identifiedEvents], « les lignes restent facultatives »).
 func identifyRoundEvents(named []objectiveevents.NamedEvent, recs []objectiveevents.StatRecord,
-	deaths []objectiveevents.DeathInstant) []objectiveevents.IdentifiedEvent {
-	identity := objectiveevents.ResolveRoundIdentity(recs, deaths)
+	deaths []objectiveevents.DeathInstant, lines []objectiveevents.PlayerLine,
+) []objectiveevents.IdentifiedEvent {
+	identity := objectiveevents.ResolveRoundIdentity(recs, deaths).CompletedByLines(recs, lines)
 	return objectiveevents.IdentifyNamedEventsByRound(named, identity)
 }
 

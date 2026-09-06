@@ -41,10 +41,7 @@ package replayartifacts
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
-	"os"
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/ctxkeys"
@@ -77,21 +74,16 @@ func capabilityBombeArmee(ctx context.Context, d Deps) (armee, incident bool) {
 	return true, false
 }
 
-// projeterStatsBombe lit UN artefact rangé et en tire la passe à écrire. Rend une passe VIDE
+// projeterStatsBombe tire d'UN document rangé la passe à écrire. Rend une passe VIDE
 // (MatchID vide) quand il n'y a RIEN à écrire — document sans calque de bombe (le cas NORMAL de
 // tout match hors famille bomb), ou film d'Assaut dont aucune source n'a rien rendu. Ni l'un
 // ni l'autre n'est un défaut, et aucun ne doit se journaliser comme tel.
-func projeterStatsBombe(matchID, path string) (persist.BombStatsBatch, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return persist.BombStatsBatch{}, fmt.Errorf("lecture artefact: %w", err)
-	}
-	var doc replay.ReplayDocument
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		return persist.BombStatsBatch{}, fmt.Errorf("parse artefact: %w", err)
-	}
+//
+// LE DOCUMENT EST DÉJÀ LU (2026-09-06) : [Deriver] l'ouvre une fois pour toutes les
+// dérivations. Cette fonction ne touche plus le disque et ne peut donc plus échouer.
+func projeterStatsBombe(matchID string, doc *replay.ReplayDocument) persist.BombStatsBatch {
 	if doc.BombStats == nil {
-		return persist.BombStatsBatch{}, nil
+		return persist.BombStatsBatch{}
 	}
 	b := bombBatchDuDocument(matchID, doc.BombStats, doc.BombEvents)
 	if len(b.Players) == 0 && len(b.Events) == 0 {
@@ -100,9 +92,9 @@ func projeterStatsBombe(matchID, path string) (persist.BombStatsBatch, error) {
 		// refuserait déjà d'écrire une passe vide — « écrire zéro ligne serait indistinguable
 		// d'un match sans Assaut » —, mais il le dirait en WARN à chaque cycle. On l'écarte
 		// ici, au même titre qu'un mode hors Assaut : ce n'est pas un défaut.
-		return persist.BombStatsBatch{}, nil
+		return persist.BombStatsBatch{}
 	}
-	return b, nil
+	return b
 }
 
 // bombBatchDuDocument transporte le bloc du document vers la forme du persister. AUCUN calcul :
@@ -133,20 +125,24 @@ func bombBatchDuDocument(matchID string, stats *replay.BombMatchStats,
 	return out
 }
 
-// persisterStatsBombe projette puis écrit les statistiques d'Assaut des artefacts cuits du
-// cycle. Best-effort de bout en bout : aucun échec ne remonte au cycle, aucun ne se tait.
-func persisterStatsBombe(ctx context.Context, d Deps, rapports []artefactCuit) {
-	if len(rapports) == 0 {
+// persisterStatsBombe projette puis écrit les statistiques d'Assaut des artefacts rangés du
+// lot. Best-effort de bout en bout : aucun échec ne remonte au cycle, aucun ne se tait.
+func persisterStatsBombe(ctx context.Context, d Deps, b *bilanDerivations, lus []artefactLu) {
+	if len(lus) == 0 {
 		return
 	}
 	titre := ctxkeys.TitleSlug(ctx)
 	if armee, incident := capabilityBombeArmee(ctx, d); !armee {
 		if incident {
-			observability.AddIntT(titre, CompteurBombStatsEchecs, int64(len(rapports)))
+			// Capabilities illisibles : un DÉFAUT, compté comme tel — et aucun de ces matchs
+			// n'est marqué dérivé (constat C1).
+			observability.AddIntT(titre, CompteurBombStatsEchecs, int64(len(lus)))
+			b.echecLot(lus)
 		}
 		return
 	}
-	prets, echecs := projeterStatsBombeDuLot(ctx, d, rapports)
+	prets := projeterStatsBombeDuLot(ctx, lus)
+	echecs := 0
 	if len(prets) == 0 {
 		// AUCUN match d'Assaut dans le lot est le cas NORMAL et majoritaire : on ne compte
 		// que les échecs RÉELS, et le journal ne dit rien de plus.
@@ -157,6 +153,7 @@ func persisterStatsBombe(ctx context.Context, d Deps, rapports []artefactCuit) {
 		slog.WarnContext(ctx, "post-sync: stats d'Assaut NON persistées (aucun writer shared câblé sur ce chemin)",
 			"gamertag", d.Gamertag, "matchs", len(prets))
 		observability.AddIntT(titre, CompteurBombStatsEchecs, int64(echecs+len(prets)))
+		echecBombe(b, prets)
 		return
 	}
 	db, release, err := d.AcquireWriter(ctx)
@@ -164,6 +161,7 @@ func persisterStatsBombe(ctx context.Context, d Deps, rapports []artefactCuit) {
 		slog.WarnContext(ctx, "post-sync: writer shared indisponible, stats d'Assaut non persistées",
 			"gamertag", d.Gamertag, "matchs", len(prets), "err", err)
 		observability.AddIntT(titre, CompteurBombStatsEchecs, int64(echecs+len(prets)))
+		echecBombe(b, prets)
 		return
 	}
 	defer release()
@@ -174,6 +172,7 @@ func persisterStatsBombe(ctx context.Context, d Deps, rapports []artefactCuit) {
 			slog.ErrorContext(ctx, "post-sync: écriture des stats d'Assaut échouée",
 				"match_id", prets[i].matchID, "err", err)
 			echecs++
+			b.echec(prets[i].matchID)
 			continue
 		}
 		ecrits++
@@ -184,29 +183,35 @@ func persisterStatsBombe(ctx context.Context, d Deps, rapports []artefactCuit) {
 		"gamertag", d.Gamertag, "ecrits", ecrits, "echecs", echecs)
 }
 
-// projeterStatsBombeDuLot projette tous les artefacts du lot, AVANT tout writer. Rend les
-// passes NON VIDES et le compte d'échecs (déjà journalisés, un par match). Un match qui n'est
-// pas de la famille bomb rend une passe vide : ce n'est pas un échec, c'est un silence attendu.
-func projeterStatsBombeDuLot(ctx context.Context, d Deps, rapports []artefactCuit) ([]passeBombePrete, int) {
-	prets := make([]passeBombePrete, 0, len(rapports))
-	echecs := 0
-	for _, r := range rapports {
-		b, err := projeterStatsBombe(r.matchID, r.path)
-		if err != nil {
-			slog.WarnContext(ctx, "post-sync: artefact rangé mais stats d'Assaut illisibles",
-				"gamertag", d.Gamertag, "match_id", r.matchID, "err", err)
-			echecs++
-			continue
-		}
+// echecBombe enregistre au bilan que ces passes n'ont pas été persistées faute de writer :
+// sans cette trace, la marque de dérivation se poserait sur un match dont RIEN n'a été écrit
+// (constat C1 de la revue A-R1).
+func echecBombe(b *bilanDerivations, prets []passeBombePrete) {
+	b.writerIndisponible()
+	for i := range prets {
+		b.echec(prets[i].matchID)
+	}
+}
+
+// projeterStatsBombeDuLot projette tous les documents du lot, AVANT tout writer. Rend les
+// passes NON VIDES. Un match qui n'est pas de la famille bomb rend une passe vide : ce n'est pas
+// un échec, c'est un silence attendu.
+//
+// AUCUN ÉCHEC POSSIBLE ICI depuis que [Deriver] lit et désérialise : un document illisible est
+// écarté À LA LECTURE, avec son journal.
+func projeterStatsBombeDuLot(ctx context.Context, lus []artefactLu) []passeBombePrete {
+	prets := make([]passeBombePrete, 0, len(lus))
+	for _, a := range lus {
+		b := projeterStatsBombe(a.matchID, a.doc)
 		if b.MatchID == "" {
 			// PAS UN ÉCHEC, ET C EST LE CAS MAJORITAIRE : un match qui n est pas de la
 			// famille bomb n a aucun calque de bombe au document. Le compter en défaut
 			// noierait les vrais dans le bruit de chaque cycle.
 			slog.DebugContext(ctx, "post-sync: stats d'Assaut — artefact sans calque de bombe (mode hors Assaut)",
-				"match_id", r.matchID)
+				"match_id", a.matchID)
 			continue
 		}
-		prets = append(prets, passeBombePrete{matchID: r.matchID, batch: b})
+		prets = append(prets, passeBombePrete{matchID: a.matchID, batch: b})
 	}
-	return prets, echecs
+	return prets
 }

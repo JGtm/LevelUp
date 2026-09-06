@@ -20,10 +20,10 @@ import {
   type PlacementInk,
   type PlacementScene,
   type PlacementTime,
-} from '../equipmentPlacementsLayer'
-import { WALL_PANEL_IDS } from '../placementWall'
-import { worldToCanvas } from '../replayLogic'
-import type { ReplayTrackReady } from '../replayNormalize'
+} from '../layers/equipmentPlacementsLayer'
+import { WALL_PANEL_IDS } from '../layers/placementWall'
+import { worldToCanvas } from '../../../lib/replay/replayLogic'
+import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import { recordingContext } from './recordingContext'
 
 /** 10 m de côté sur 100 px : 10 px par mètre — le plancher de lisibilité ne mord pas. */

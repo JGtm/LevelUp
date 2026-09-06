@@ -1,5 +1,7 @@
 package filmdec
 
+import "math/bits"
+
 // quantCenter is the mid-bucket dequantization offset (engine constant
 // DAT_143cd84b0 = 0.5f): a quantized value q maps to min + step*(q + 0.5).
 // Mirrors FUN_140c1e978.
@@ -54,3 +56,54 @@ func (b *BitReader) ReadQuantizedVec3(bits uint, rng Vec3Range) [3]float32 {
 
 // BitLenExport expose bitLen pour les outils de calibration.
 func BitLenExport(v uint32) int { return bitLen(v) }
+
+// bitLen mirrors FUN_1406d310c: bit-length helper (NOT a reader). bitLen(6)=3.
+//
+// DEPLACE ICI le 2026-09-05 (lot E, item E.2) depuis `entity.go`, supprime avec
+// `entity_quant.go` : les deux decodeurs de record qu'ils portaient n'avaient aucun
+// appelant et visaient, de l'aveu du depot (`components_batch7.go:6-8`), une AUTRE
+// fonction du jeu. Trois helpers seulement etaient vivants : celui-ci, `readQuantStat`
+// et `quantStatDefaultWidth`.
+func bitLen(x uint32) int {
+	if x == 0 {
+		return 0
+	}
+	h := 31 - bits.LeadingZeros32(x)
+	if x&((1<<uint(h))-1) != 0 {
+		return h + 1
+	}
+	return h
+}
+
+// quantStatDefaultWidth is the value-field width for the default config range
+// DAT_144706100 = 0x1fff (bitLen 13). Used by the nested parent-mode reads in
+// FUN_140c9e990 where the runtime table slot is statically zero.
+const quantStatDefaultWidth = 13
+
+// readQuantStat mirrors FUN_1406d3140: a variable-width quantized integer read.
+// param3 selects the runtime table slot; statWidth is the value-field width W
+// (= bitLen(range)). Bit cost: [probe 1 bit when param3==1] + W value bits + 2
+// trailing bits. Result layout: bits[31:30] = trailing2, bits[29:0] = base+value
+// (base is DAT_1451f98d0[param3*2], statically 0).
+//
+// POURQUOI `param3` RESTE UN PARAMETRE alors que les quatre sites de production passent 1 :
+// il MODELISE `param_3` de FUN_1406d3140, dont depend le COUT EN BITS de la lecture (la sonde
+// d'un bit n'est depensee que pour param3==1). Le figer effacerait cette part de la grammaire
+// portee. Le second lecteur, qui passait une autre valeur, vivait dans `entity_quant.go` —
+// supprime le 2026-09-05 (lot E, item E.2) parce qu'il n'avait aucun appelant ; c'est cette
+// suppression, et elle seule, qui rend le parametre uniforme aujourd'hui.
+//
+//nolint:unparam // cf. le paragraphe ci-dessus : param_3 est une grandeur de la grammaire.
+func (b *BitReader) readQuantStat(param3 int, statWidth uint) uint32 {
+	// param3==1 always spends 1 probe bit (the && chain tests param3==1 first).
+	if param3 == 1 {
+		_ = b.ReadBit() // probe (FUN_1406cf008); selects a special range slot at runtime
+	}
+	var value uint32
+	if statWidth >= 1 {
+		value = uint32(b.ReadBits(statWidth)) // W value bits MSB-first
+	}
+	top2 := uint32(b.ReadBits(2)) // always 2 trailing bits
+	const base = 0                // DAT_1451f98d0[param3*2], statically 0
+	return (top2 << 30) | (uint32(base) + value)
+}

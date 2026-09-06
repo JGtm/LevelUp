@@ -5,8 +5,9 @@ package main
 // Pour chaque match (cache film présent), décode les positions joueurs keyframe
 // (positions.DecodeKeyframePositions, §N de .ai/RESEARCH_THEATER_RE.md) depuis le
 // cache disque (chunks BRUTS → décompressés zlib ici), affiche un résumé par
-// match (nb positions, bornes x/y/z, split équipe best-effort), et persiste via
-// PlayerPositionsRepo si -write (DELETE-then-INSERT par match).
+// match (nb positions, bornes x/y/z, split équipe best-effort). INSPECTION SEULE depuis le
+// 2026-09-06 : `match_player_positions` est PROJETEE de l artefact de rejeu (decision 1),
+// plus ecrite par cet outil — le `-write` du mode positions est refuse.
 //
 // Décodage MATCH-LEVEL : pas d'attribution xuid (la delta-compression bloque
 // l'index par joueur, cf. positions/positions.go). team est best-effort (-1 si
@@ -22,7 +23,6 @@ import (
 
 	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/platform/duckdb"
 )
 
 // runPositions traite le panel en mode POSITIONS, match par match.
@@ -35,7 +35,7 @@ func runPositions(ctx context.Context, c *conn, cfg runConfig, ids []matchRef) e
 	return nil
 }
 
-// processMatchPositions décode + résume (et persiste si cfg.write) les positions
+// processMatchPositions décode et résume les positions
 // d'un match.
 func processMatchPositions(ctx context.Context, c *conn, cfg runConfig, m matchRef) error {
 	if _, ok, err := loadRegistry(ctx, c.sqlDB, m.full); err != nil {
@@ -54,13 +54,6 @@ func processMatchPositions(ctx context.Context, c *conn, cfg runConfig, m matchR
 	chunks := collectPositionChunks(src)
 	pos := positions.DecodeKeyframePositions(chunks)
 	printPositionsSummary(m, pos)
-
-	if cfg.write {
-		if err := writePositions(ctx, c, m.full, pos); err != nil {
-			return err
-		}
-		fmt.Printf("  [write] %d position(s) persistées sur match_player_positions\n", len(pos))
-	}
 	fmt.Println()
 	return nil
 }
@@ -154,17 +147,6 @@ func positionTeamSplit(pos []positions.PlayerPosition) (t0, t1, unknown int) {
 		}
 	}
 	return
-}
-
-// writePositions persiste les positions via PlayerPositionsRepo (PlayerDB minimal :
-// seul Shared est requis, SharedReadDB() retombe sur LegacySharedReader).
-func writePositions(ctx context.Context, c *conn, matchID string, pos []positions.PlayerPosition) error {
-	if c.rwDB == nil {
-		return fmt.Errorf("connexion non-RW (write impossible)")
-	}
-	pdb := &duckdb.PlayerDB{Shared: c.rwDB}
-	repo := duckdb.NewPlayerPositionsRepo(pdb)
-	return repo.WriteMatch(ctx, matchID, pos)
 }
 
 func minF(a, b float32) float32 {

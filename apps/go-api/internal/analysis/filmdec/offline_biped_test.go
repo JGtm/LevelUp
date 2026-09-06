@@ -23,9 +23,13 @@ func scanOptWorld() ScanFilmOptions {
 	return o
 }
 
-// writeBipedRecord écrit un record biped conforme à la grammaire décodée (bitWriter est
-// l'écrivain MSB-first partagé des tests du package, cf. frame_chain_infer_test.go).
-func writeBipedRecord(w *bitWriter, slot uint32, tag, maskCount uint64, qx, qy, qz uint64) {
+// writeBipedHeaderEtMasque écrit l'EN-TÊTE d'un record biped et son masque, soit les
+// `bipedHeaderBits + bipedIndexBits*maskCount` bits qui précèdent i0.
+//
+// EXTRAIT DE writeBipedRecord LE 2026-09-06 (correction C1 de la revue du lot E). Le garde-rail
+// du marcheur delta doit planter un en-tête de record À L'INTÉRIEUR du composant i0 d'un autre
+// record ; s'il re-décrivait la grammaire pour le faire, il testerait sa propre copie.
+func writeBipedHeaderEtMasque(w *bitWriter, slot uint32, tag, maskCount uint64) {
 	w.bits(1, 1)                        // préfixe
 	w.bits(uint64(slot), bipedSlotBits) // idLow = slot
 	w.bits(tag, 2)                      // tag
@@ -34,6 +38,12 @@ func writeBipedRecord(w *bitWriter, slot uint32, tag, maskCount uint64, qx, qy, 
 	for k := uint64(0); k < maskCount; k++ {
 		w.bits(k, bipedIndexBits) // indices croissants depuis 0
 	}
+}
+
+// writeBipedRecord écrit un record biped conforme à la grammaire décodée (bitWriter est
+// l'écrivain MSB-first partagé des tests du package, cf. frame_chain_infer_test.go).
+func writeBipedRecord(w *bitWriter, slot uint32, tag, maskCount uint64, qx, qy, qz uint64) {
+	writeBipedHeaderEtMasque(w, slot, tag, maskCount)
 	w.bits(0, cliffLayout.GateBits) // i0 absolu
 	w.bits(qx, int(cliffLayout.AxisW[0]))
 	w.bits(qy, int(cliffLayout.AxisW[1]))

@@ -203,6 +203,28 @@ const (
 	// ⚠ Clé FINE, même doctrine que les quatre `film.*` ci-dessus : elle gouverne la PRODUCTION
 	// et l'EXPOSITION de ces cinq statistiques, rien d'autre du mode Assaut. Ne pas l'élargir.
 	CapFilmBombStats CapabilityKey = "film.bomb_stats"
+
+	// CapFilmReplayArtifact — le titre produit L'ARTEFACT DE REJEU 2D lui-même
+	// (`data/cache/replays/{slug}/{match}.json`) : trame de positions, kill-feed recalé,
+	// score, roster, calques d'objectif. C'est la SOURCE dont les quatre dérivés du film
+	// (`film.usage_summary`, `film.bomb_stats`, la timeline d'objectif et les positions
+	// keyframe servies à la Match View) sont les projections.
+	//
+	// Halo Infinite : supported (décodeur `analysis/filmdec` + `replaybuild`). Halo 5 :
+	// not_exposed — autre format de film, aucun décodeur, donc aucun artefact possible.
+	//
+	// ⚠ ELLE GOUVERNE LA PRODUCTION, ET L'AFFICHAGE SUIT (décision utilisateur du
+	// 2026-09-05, registre `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` D1/D2/D3) : sans la
+	// clé, l'étape post-sync `sync/replayartifacts` ne met RIEN en file et ne cuit RIEN, et
+	// les deux loaders du film de la Match View (`/objective-events`, `/positions`) ne sont
+	// pas câblés — les routes rendent alors un 503 `capability_not_supported` au lieu d'un
+	// 200 `[]` qui laissait croire à un match sans données. La PORTE D'AFFICHAGE de la page
+	// de rejeu, elle, est la capability title-level `replay` (domain/title/registry.go) :
+	// même règle que `match.objective.stats` (données) / `objective_stats` (UI).
+	//
+	// ⚠ Clé FINE, même doctrine que les cinq `film.*` ci-dessus : elle gouverne l'ARTEFACT,
+	// pas ce que tel ou tel dérivé en tire — chacun garde la sienne. Ne pas l'élargir.
+	CapFilmReplayArtifact CapabilityKey = "film.replay_artifact"
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.

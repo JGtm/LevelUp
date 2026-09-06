@@ -30,11 +30,11 @@ vi.mock('echarts-for-react', () => ({
 // La lecture de l'artefact est la SEULE frontière réseau de ce composant : on la pilote,
 // et tout le reste (garde d'horloge, projection en paliers) reste le vrai code.
 const artefact = vi.hoisted(() => ({ current: undefined as unknown }))
-vi.mock('@/features/match-replay/queries', () => ({
+vi.mock('@/lib/replay/queries', () => ({
   useMatchReplay: () => ({ data: artefact.current }),
 }))
 
-const { normalizeReplayDocument } = await import('@/features/match-replay/replayNormalize')
+const { normalizeReplayDocument } = await import('@/lib/replay/replayNormalize')
 
 const t = MATCH_VIEW_TEXT.fr
 
@@ -52,11 +52,20 @@ const SLAYER = {
   players: null,
 }
 
+/**
+ * L'HORLOGE DU TÉMOIN : l'image zéro du film tombe 12 s après le début du match, le coup
+ * d'envoi 30 s après. Le film commence donc 18 s AVANT le coup d'envoi — soit à l'image 180
+ * — et toute abscisse attendue plus bas vaut `image × 100 − 18 000`, calculé à la main.
+ */
+const ORIGIN_MS = 12_000
+const T0_MS = 30_000
+
 function poserArtefact(over: Partial<ReplayDocument> | null) {
   artefact.current = over
     ? normalizeReplayDocument({
         frameCount: 4985,
         frameIntervalMs: 100,
+        originMs: ORIGIN_MS,
         scoreTimeline: SLAYER,
         ...over,
       } as unknown as ReplayDocument)
@@ -71,6 +80,7 @@ function afficher(locale: 'fr' | 'en' = 'fr') {
       replayAvailable
       scoreboard={SCOREBOARD}
       meXUID="me"
+      t0Ms={T0_MS}
       t={MATCH_VIEW_TEXT[locale]}
     />,
   )
@@ -93,7 +103,12 @@ describe('MatchScoreCurveChart — quand la carte apparaît', () => {
   })
 
   it('ne rend rien quand l’origine du film n’est ni résolue ni publiée (garde d’horloge)', () => {
-    poserArtefact({ coverage: { originResolved: false } } as never)
+    poserArtefact({ originMs: undefined, coverage: { originResolved: false } } as never)
+    expect(afficher().container.firstChild).toBeNull()
+  })
+
+  it('ne rend rien SANS ORIGINE PUBLIÉE : l’axe serait décalé de 3,6 à 50,8 s sans le dire', () => {
+    poserArtefact({ originMs: undefined } as never)
     expect(afficher().container.firstChild).toBeNull()
   })
 
@@ -115,16 +130,50 @@ describe('MatchScoreCurveChart — ce que l’option ECharts contient', () => {
     expect(opt.series.every((s: { step: string }) => s.step === 'end')).toBe(true)
     expect(Array.isArray(opt.yAxis)).toBe(false)
     expect(opt.xAxis.type).toBe('value')
-    expect(opt.xAxis.max).toBe(498_400)
+    // 4 984 images = 498,4 s de film, dont 18 s AVANT le coup d'envoi.
+    expect(opt.xAxis.max).toBe(480_400)
   })
 
-  it('borne chaque série au coup d’envoi et à la fin du match', async () => {
+  it('borne chaque série au COUP D’ENVOI et à la fin du match, jamais à l’image zéro du film', async () => {
     poserArtefact({})
     const view = afficher()
     const opt = await waitFor(() => JSON.parse(view.getByTestId('echarts-stub').textContent ?? '{}'))
+    // Le point de départ est le coup d'envoi (score nul), et non l'image zéro du film :
+    // celle-ci se lirait « 0m00s » 18 s trop tôt, juste sous « Frags cumulés » qui, lui,
+    // compte depuis le coup d'envoi (registre 2026-09-05, P0-7).
     expect(opt.series[0].data[0]).toEqual([0, 0])
-    expect(opt.series[0].data.slice(-1)[0]).toEqual([498_400, 43])
-    expect(opt.series[1].data.slice(-1)[0]).toEqual([498_400, 50])
+    // Paliers 399 et 4 886 -> 39,9 s et 488,6 s de film, moins 18 s.
+    expect(opt.series[0].data).toEqual([
+      [0, 0],
+      [21_900, 1],
+      [470_600, 43],
+      [480_400, 43],
+    ])
+    // Paliers 317 et 4 908 -> 31,7 s et 490,8 s de film, moins 18 s.
+    expect(opt.series[1].data).toEqual([
+      [0, 0],
+      [13_700, 2],
+      [472_800, 50],
+      [480_400, 50],
+    ])
+  })
+
+  it('SANS T0 les deux axes retombent ensemble sur celui du match (countdown inconnu)', async () => {
+    poserArtefact({})
+    const view = render(
+      <MatchScoreCurveChart
+        playerSlug="joueur"
+        matchId="m1"
+        replayAvailable
+        scoreboard={SCOREBOARD}
+        meXUID="me"
+        t={t}
+      />,
+    )
+    const opt = await waitFor(() => JSON.parse(view.getByTestId('echarts-stub').textContent ?? '{}'))
+    // Le serveur n'a alors rien retranché aux events non plus : + originMs, rien de plus.
+    expect(opt.xAxis.max).toBe(498_400 + ORIGIN_MS)
+    expect(opt.series[0].data[1]).toEqual([39_900 + ORIGIN_MS, 1])
   })
 
   it('prend les tokens allié / adverse, jamais une couleur en dur', async () => {
@@ -155,8 +204,9 @@ describe('MatchScoreCurveChart — ce que l’option ECharts contient', () => {
     const view = afficher()
     const opt = await waitFor(() => JSON.parse(view.getByTestId('echarts-stub').textContent ?? '{}'))
     // t0 passe devant à l'image 300, t1 reprend à 400 : deux retournements, tous sur la
-    // première série (répétés sur chaque courbe, ils doubleraient chaque trait).
-    expect(opt.series[0].markLine.data.map((d: { xAxis: number }) => d.xAxis)).toEqual([30_000, 40_000])
+    // première série (répétés sur chaque courbe, ils doubleraient chaque trait). Datés sur
+    // l'horloge du gameplay comme le reste : 30 s et 40 s de film, moins 18 s.
+    expect(opt.series[0].markLine.data.map((d: { xAxis: number }) => d.xAxis)).toEqual([12_000, 22_000])
     expect(opt.series[1].markLine).toBeUndefined()
   })
 })

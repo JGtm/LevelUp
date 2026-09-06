@@ -215,9 +215,7 @@ func ScanBipedPositions(film *filmsource.Film, opt ScanFilmOptions) ([]BipedPosi
 // décodeur. Les champs Chunk/PacketIndex/TimestampUS sont laissés à zéro (remplis par
 // l'appelant).
 func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilmOptions) []BipedPosition {
-	total := len(payload) * 8
 	i0Bits := lay.TotalBits()
-	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + i0Bits
 	var out []BipedPosition
 	// UN SEUL lecteur de bits pour tout le payload : `scanRecordDirs` le repositionne par
 	// `SetBitPos` a chaque composant de vitalite, la ou il en allouait deux PAR RECORD.
@@ -228,21 +226,18 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilm
 	if opt.DynPrecOrientation {
 		g = dynPrecOrientationGrammar()
 	}
-	for p := 0; p+minRecord <= total; {
-		i0, slot, idx, ok := matchBipedHeader(payload, p, total, slots, opt.RequireTag1, lay)
-		if !ok {
-			p++
-			continue
-		}
+	// L'ANCRAGE EST CELUI DU MARCHEUR UNIQUE (delta_biped_walk.go) : ce balayage etait la
+	// neuvieme copie de la meme triple boucle. L'avance de curseur, la borne et le pas d'echec
+	// sont les siens ; ne reste ici que la LECTURE du record.
+	walkDeltaBipedPayload(payload, slots, lay, opt.RequireTag1, func(r deltaBipedRecord) {
 		var q [3]uint32
 		for ax := 0; ax < 3; ax++ {
-			q[ax] = readBitsAt(payload, i0+lay.AxisOffset(ax), int(lay.AxisW[ax]))
+			q[ax] = readBitsAt(payload, r.I0+lay.AxisOffset(ax), int(lay.AxisW[ax]))
 		}
 		if opt.DropSaturated && saturatedQuantum(q, lay) {
-			p = i0 + i0Bits
-			continue
+			return
 		}
-		rec := BipedPosition{Slot: slot, Q: q}
+		rec := BipedPosition{Slot: r.Slot, Q: q}
 		if opt.WorldRange != nil {
 			rec.HasWorld = true
 			rec.X = DequantBipedAxis(q[0], 0, lay, *opt.WorldRange)
@@ -250,15 +245,14 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilm
 			rec.Z = DequantBipedAxis(q[2], 2, lay, *opt.WorldRange)
 		}
 		if opt.CaptureDirs {
-			rec.componentDirs, rec.componentVitals = scanRecordDirs(br, i0+i0Bits, total, idx, g)
-			rec.MaskBits, rec.MaskOver = maskBitsOf(idx)
+			rec.componentDirs, rec.componentVitals = scanRecordDirs(br, r.I0+i0Bits, r.Total, r.Mask, g)
+			rec.MaskBits, rec.MaskOver = maskBitsOf(r.Mask)
 			if recordMaskHook != nil {
-				recordMaskHook(idx, payload, i0+i0Bits)
+				recordMaskHook(r.Mask, payload, r.I0+i0Bits)
 			}
 		}
 		out = append(out, rec)
-		p = i0 + i0Bits // pas de re-scan chevauchant
-	}
+	})
 	return out
 }
 

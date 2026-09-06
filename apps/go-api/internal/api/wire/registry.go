@@ -50,6 +50,7 @@ import (
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	sync_pkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 	"levelup/go-api/pkg/duckdbbackup"
 )
 
@@ -127,6 +128,13 @@ type ServiceRegistry struct {
 	// durcissement ouvrier volet A).
 	replayFilmResolver filmChunkResolver                                                                               // nil → *sync.HaloAPIClient construit depuis les tokens (resolveFilmChunkURLs)
 	replayJobFactsFn   func(ctx context.Context, titleSlug, matchID string) (string, []string, port.MatchFacts, error) // nil → lecture DuckDB (readReplayJobInputs)
+
+	// replayDerivationsFn : seam des DÉRIVATIONS déclenchées par le dépôt d'un artefact
+	// d'ouvrier (constat A1). nil = chemin RÉEL (replayartifacts.Deriver + writer shared du
+	// titre). Il existe pour une raison précise : prouver, SANS base partagée ni lease, que
+	// `StoreBuildArtifact` déclenche bien les dérivations — c'est exactement le maillon qui
+	// manquait et que le test doit tenir.
+	replayDerivationsFn func(ctx context.Context, titleSlug string, ranges []replayartifacts.ArtefactRange)
 }
 
 // WithJobStore attache le JobStore au registry — porte le cycle de vie des jobs

@@ -39,7 +39,7 @@ interface MatchPositionsHeatmapProps {
 
 const TEXT = {
   fr: {
-    title: 'Heatmap des positions',
+    title: 'Carte de chaleur des positions',
     teamAll: 'Global',
     team0: 'Équipe A',
     team1: 'Équipe B',

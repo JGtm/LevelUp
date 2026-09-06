@@ -93,6 +93,8 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   notifications: () => queryKeys.notifications(P, T, {}),
   notificationsUnreadCount: () => queryKeys.notificationsUnreadCount(P, T),
   notificationsPreferences: () => queryKeys.notificationsPreferences(P, T),
+  // Capabilities data-level du titre (title-scopé par le 1er argument).
+  titleDataCapabilities: () => queryKeys.titleDataCapabilities(T),
   // Asset drawer (title-scopé par le 1er argument).
   assetMaps: () => queryKeys.assetMaps(T, 'q'),
   assetWeapons: () => queryKeys.assetWeapons(T, 'q'),

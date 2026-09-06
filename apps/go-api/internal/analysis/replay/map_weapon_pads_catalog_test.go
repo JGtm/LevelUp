@@ -216,3 +216,123 @@ func TestCatalogueSoclesLivreEstDeterministe(t *testing.T) {
 		}
 	}
 }
+
+// ─── LA FUSION VERSIONNE + OVERLAY (constat A0, 2026-09-05) ──────────────────────────────────
+//
+// Le runtime n'écrit plus le catalogue versionné : il écrit un overlay non versionné
+// (`reference/generated/`), et c'est LoadMapWeaponPadsMerged qui recolle les deux à la lecture.
+// Quatre propriétés à tenir, chacune un test.
+
+// ecrireCatalogueA pose un catalogue à un chemin PRÉCIS (les tests de fusion ont besoin de deux
+// fichiers voisins, ce que `ecrireCatalogueSocles` — un TempDir par appel — ne permet pas).
+func ecrireCatalogueA(t *testing.T, path, corps string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(corps), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// catalogueAvec rend le corps JSON d'un catalogue portant les cartes nommées, avec un
+// `objects_n` distinctif par carte : c'est lui qui dira QUELLE version d'une carte a gagné.
+func catalogueAvec(cartes map[string]int) string {
+	cat := MapWeaponPadsCatalog{
+		SchemaVersion: MapWeaponPadsSchemaVersion,
+		TitleSlug:     "halo_infinite",
+		Maps:          map[string]MapWeaponPadsEntry{},
+	}
+	for id, n := range cartes {
+		cat.Maps[id] = MapWeaponPadsEntry{
+			MapID: id, MvarFile: id + ".mvar", LevelID: 1, ObjectsN: n,
+			Pads: []MapWeaponPadSpot{},
+		}
+	}
+	b, err := json.Marshal(cat)
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
+}
+
+func TestLoadMapWeaponPadsMerged_OverlayAbsentEstNominal(t *testing.T) {
+	dir := t.TempDir()
+	versionne := filepath.Join(dir, "map_weapon_pads.json")
+	ecrireCatalogueA(t, versionne, catalogueAvec(map[string]int{"relue": 100}))
+
+	cat, err := LoadMapWeaponPadsMerged(versionne, filepath.Join(dir, "generated", "map_weapon_pads.json"))
+	if err != nil {
+		t.Fatalf("overlay absent doit être le cas NOMINAL, obtenu : %v", err)
+	}
+	if len(cat.Maps) != 1 || cat.Maps["relue"].ObjectsN != 100 {
+		t.Errorf("catalogue fusionné = %+v, attendu la seule carte versionnée", cat.Maps)
+	}
+}
+
+func TestLoadMapWeaponPadsMerged_OverlayComplete(t *testing.T) {
+	dir := t.TempDir()
+	versionne := filepath.Join(dir, "map_weapon_pads.json")
+	overlay := filepath.Join(dir, "generated", "map_weapon_pads.json")
+	ecrireCatalogueA(t, versionne, catalogueAvec(map[string]int{"relue": 100}))
+	ecrireCatalogueA(t, overlay, catalogueAvec(map[string]int{"rattrapee": 200}))
+
+	cat, err := LoadMapWeaponPadsMerged(versionne, overlay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cat.Maps) != 2 {
+		t.Fatalf("catalogue fusionné = %d cartes, attendu 2", len(cat.Maps))
+	}
+	if cat.Maps["rattrapee"].ObjectsN != 200 {
+		t.Error("la carte rattrapée n'est pas servie — le rattrapage remplirait un fichier " +
+			"que personne ne lit")
+	}
+	if _, err := cat.Lookup("rattrapee"); err != nil {
+		t.Errorf("Lookup sur une carte rattrapée = %v", err)
+	}
+}
+
+// TestLoadMapWeaponPadsMerged_LeVersionnePrime — LE SENS DE LA PRÉSÉANCE, et il n'est pas
+// symétrique : le fichier versionné a été produit à la main et relu en revue, l'overlay est une
+// sortie de runtime que personne n'a regardée. Inverser reviendrait à laisser une donnée
+// automatique écraser une donnée relue.
+func TestLoadMapWeaponPadsMerged_LeVersionnePrime(t *testing.T) {
+	dir := t.TempDir()
+	versionne := filepath.Join(dir, "map_weapon_pads.json")
+	overlay := filepath.Join(dir, "generated", "map_weapon_pads.json")
+	ecrireCatalogueA(t, versionne, catalogueAvec(map[string]int{"partagee": 100}))
+	ecrireCatalogueA(t, overlay, catalogueAvec(map[string]int{"partagee": 999}))
+
+	cat, err := LoadMapWeaponPadsMerged(versionne, overlay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cat.Maps["partagee"].ObjectsN; got != 100 {
+		t.Errorf("objects_n = %d, attendu 100 (l'entrée VERSIONNÉE prime sur la rattrapée)", got)
+	}
+}
+
+// TestLoadMapWeaponPadsMerged_OverlayIllisibleDegrade — un overlay corrompu est un fichier
+// JETABLE : il ne doit jamais faire perdre les cartes versionnées. Le versionné, lui, reste
+// obligatoire.
+func TestLoadMapWeaponPadsMerged_OverlayIllisibleDegrade(t *testing.T) {
+	dir := t.TempDir()
+	versionne := filepath.Join(dir, "map_weapon_pads.json")
+	overlay := filepath.Join(dir, "generated", "map_weapon_pads.json")
+	ecrireCatalogueA(t, versionne, catalogueAvec(map[string]int{"relue": 100}))
+	ecrireCatalogueA(t, overlay, "{ pas du json")
+
+	cat, err := LoadMapWeaponPadsMerged(versionne, overlay)
+	if err != nil {
+		t.Fatalf("un overlay corrompu ne doit PAS faire échouer la lecture : %v", err)
+	}
+	if len(cat.Maps) != 1 || cat.Maps["relue"].ObjectsN != 100 {
+		t.Errorf("catalogue dégradé = %+v, attendu les seules cartes versionnées", cat.Maps)
+	}
+
+	// Le VERSIONNÉ absent reste une erreur : c'est une installation incomplète.
+	if _, err := LoadMapWeaponPadsMerged(filepath.Join(dir, "absent.json"), overlay); err == nil {
+		t.Error("un catalogue versionné absent doit rester une erreur")
+	}
+}

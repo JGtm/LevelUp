@@ -197,46 +197,27 @@ func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) A
 	})
 	defer SetAbilitySetHook(prev)
 
-	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
-	for _, c := range chunks {
-		data, pks, ok := s.fc.ChunkAt(c)
-		if !ok {
-			continue
+	walkDeltaBipedRecords(s.fc, chunks, slots, lay, func(r deltaBipedRecord) {
+		st.Records++
+		if !maskHas(r.Mask, i48Index) {
+			return
 		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta {
-				continue
-			}
-			pay := pk.Payload(data)
-			total := len(pay) * 8
-			for p := 0; p+minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, p, total, slots, true, lay)
-				if !ok {
-					p++
-					continue
-				}
-				st.Records++
-				if maskHas(idx, i48Index) {
-					st.WithI48++
-					last.got = false
-					if walkRecordTo(pay, i0, total, idx, lay, arch, i48Index) && last.got {
-						st.Read++
-						if last.rank == AbilitySetNoRank {
-							st.Gated++
-						}
-						visit(abilityEmission{
-							Slot: slot, Chunk: c, PacketIndex: pk.Index,
-							TimestampUS: pk.TimestampUS,
-							Counter:     last.counter, Rank: last.rank,
-						})
-					} else {
-						st.Unread++
-					}
-				}
-				p = i0 + lay.TotalBits()
-			}
+		st.WithI48++
+		last.got = false
+		if !walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, lay, arch, i48Index) || !last.got {
+			st.Unread++
+			return
 		}
-	}
+		st.Read++
+		if last.rank == AbilitySetNoRank {
+			st.Gated++
+		}
+		visit(abilityEmission{
+			Slot: r.Slot, Chunk: r.Chunk, PacketIndex: r.Packet.Index,
+			TimestampUS: r.Packet.TimestampUS,
+			Counter:     last.counter, Rank: last.rank,
+		})
+	})
 	return st
 }
 

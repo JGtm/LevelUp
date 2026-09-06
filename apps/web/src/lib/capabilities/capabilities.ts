@@ -32,6 +32,7 @@ export const TITLE_CAPABILITIES = [
   'expected_stats',
   'waypoint_match_url',
   'objective_stats',
+  'replay',
 ] as const
 
 export type TitleCapability = (typeof TITLE_CAPABILITIES)[number]
