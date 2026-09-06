@@ -37,8 +37,8 @@ vi.mock('./replayVideoEncoder', async (orig) => ({
     return { addFrame, addAudioTracks, finish, abort, audioEnabled: audioOk.value }
   },
 }))
-vi.mock('./replayAudioMix', async (orig) => {
-  const vrai = await orig<typeof import('./replayAudioMix')>()
+vi.mock('./sound/replayAudioMix', async (orig) => {
+  const vrai = await orig<typeof import('./sound/replayAudioMix')>()
   return { ...vrai, mixReplayAudio: vi.fn(async () => null) }
 })
 vi.mock('./replayCapture', async (orig) => ({
@@ -47,7 +47,7 @@ vi.mock('./replayCapture', async (orig) => ({
 }))
 
 import { triggerDownload } from './replayCapture'
-import { mixReplayAudio } from './replayAudioMix'
+import { mixReplayAudio } from './sound/replayAudioMix'
 
 const DOC = testReplayDoc({ frameIntervalMs: 50, frameCount: 200 })
 

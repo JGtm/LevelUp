@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest'
 
 import { activeBombCountdown, bombArmingSoundEvents } from './bombCountdown'
 import { testReplayDoc } from './test/testDoc'
-import { ZONE_SOUND_STEMS } from './zoneSound'
+import { ZONE_SOUND_STEMS } from './sound/zoneSound'
 
 /** Un armement : hold de 50 frames, armé à la frame 100, mèche 4 930 ms (49,3 frames à 100 ms). */
 const ARMING = { t: 100, timeMs: 10_000, startT: 50, startMs: 5_000, fuseMs: 4_930 }

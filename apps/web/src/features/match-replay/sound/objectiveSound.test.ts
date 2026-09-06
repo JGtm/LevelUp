@@ -14,7 +14,7 @@ import {
   sideResolverFromScoreboard,
 } from './objectiveSound'
 import { buildSoundTimeline, SOUND_CATEGORIES_DEFAULT } from './replaySound'
-import { testReplayDoc } from './test/testDoc'
+import { testReplayDoc } from '../test/testDoc'
 
 describe('objectiveSoundStem — la statistique désigne le geste, le camp désigne le fichier', () => {
   it('une capture joue DEUX fichiers différents selon le camp', () => {

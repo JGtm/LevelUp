@@ -26,7 +26,7 @@ import {
   flushAudio,
   installFakeAudio,
   okAudioResponse,
-} from './test/fakeAudio'
+} from '../test/fakeAudio'
 
 let ctx: FakeContext
 let fetchMock: ReturnType<typeof vi.fn>

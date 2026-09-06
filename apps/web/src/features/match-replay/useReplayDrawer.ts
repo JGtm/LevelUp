@@ -33,7 +33,7 @@ import { useCallback, useMemo, useRef, useState, type ComponentProps, type RefOb
 import type { ReplayLocale } from './i18n/i18n'
 import type { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
 import type { ReplaySettings } from './useReplaySettings'
-import type { ReplaySound } from './useReplaySound'
+import type { ReplaySound } from './sound/useReplaySound'
 
 /** Ce que le canvas prête au tiroir : les réglages, ce que le film porte, et les sorties. */
 export interface ReplayDrawerOptions {

@@ -21,7 +21,7 @@ const DIRECT_ACCESS = /\blocalStorage\.(getItem|setItem|removeItem)\(/
 
 // replayPreferences.ts EST le patron (légitime) ; useReplaySound.ts porte l'exception JSON
 // documentée ci-dessus.
-const ALLOWED = new Set(['replayPreferences.ts', 'useReplaySound.ts'])
+const ALLOWED = new Set(['replayPreferences.ts', './sound/useReplaySound.ts'])
 
 describe('garde-rail : localStorage des préférences du rejeu passe par replayPreferences.ts', () => {
   it('aucun accès direct ailleurs dans la feature (hors tests, hors patron, hors exception nommée)', () => {

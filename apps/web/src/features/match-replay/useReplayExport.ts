@@ -51,7 +51,7 @@ import {
   type OverlayPanelSource,
 } from './exportOverlayPanels'
 import { paintOverlayPanel, type OverlayFonts, type OverlayInk } from './overlayPaint'
-import { mixReplayAudio, soundUrlOf, type MixedTracks, type SoundFamily } from './replayAudioMix'
+import { mixReplayAudio, soundUrlOf, type MixedTracks, type SoundFamily } from './sound/replayAudioMix'
 import { formatClock, frameToMs } from './replayLogic'
 import { buildCaptureFilename, triggerDownload } from './replayCapture'
 import { tintedIconCanvas } from './replayDraw'
@@ -68,8 +68,8 @@ import { EXPORT_FPS, canExportVideo, openVideoExport, type VideoExportSink } fro
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import { exportRenderScale, exportScaleFor } from './useReplayView'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
-import type { ReplaySoundEvent } from './replaySoundVariants'
-import type { EnginePlan } from './vehicleEngineSound'
+import type { ReplaySoundEvent } from './sound/replaySoundVariants'
+import type { EnginePlan } from './sound/vehicleEngineSound'
 import { readVictory } from './victoryLogic'
 
 /** Cadence de publication de la progression, en images encodées. */

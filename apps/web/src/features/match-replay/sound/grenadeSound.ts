@@ -44,9 +44,9 @@
  *
  * Pas de React, pas de Web Audio : logique pure, testée (replaySound.test.ts).
  */
-import { buildGrenadeRestFx } from './grenadeFx'
-import { frameToMs } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import { buildGrenadeRestFx } from '../grenadeFx'
+import { frameToMs } from '../replayLogic'
+import type { ReplayDocumentReady } from '../replayNormalize'
 import type { ReplaySoundEvent } from './replaySound'
 
 /**

@@ -40,12 +40,12 @@ import { useState } from 'react'
 import { ReplayExportDialog, isExportBusy } from './ReplayExportDialog'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { SKIP_SECONDS } from './replayCanvasConfig'
-import { ReplaySoundControls } from './ReplaySoundControls'
+import { ReplaySoundControls } from './sound/ReplaySoundControls'
 import { ReplaySpeedMenu } from './ReplaySpeedMenu'
 import { ReplayTimelineTracks } from './ReplayTimelineTracks'
 import { SlidersIcon } from './SlidersIcon'
 import type { ReplayCapture } from './useReplayCapture'
-import type { ReplaySound } from './useReplaySound'
+import type { ReplaySound } from './sound/useReplaySound'
 
 interface ReplayTransportProps {
   playing: boolean

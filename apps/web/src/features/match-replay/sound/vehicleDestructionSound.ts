@@ -41,8 +41,8 @@
  * refus que le calque et les moteurs : rien ne les détruit dans une partie), une famille NON
  * RÉSOLUE (chaîne vide) ou SANS JEU DE SONS — silence propre, jamais la banque d'une voisine.
  */
-import type { ReplayVehicleTrackReady } from './replayNormalize'
-import { vehicleDestructionFrame, vehicleIsDecor } from './vehiclesLayer'
+import type { ReplayVehicleTrackReady } from '../replayNormalize'
+import { vehicleDestructionFrame, vehicleIsDecor } from '../vehiclesLayer'
 
 /**
  * VEHICLE_BOOM_SETS — jeu de sons -> ses trois variantes, la première portant le stem que la

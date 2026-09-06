@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayKill } from './killFeedLogic'
+import type { ReplayKill } from '../killFeedLogic'
 import type { ReplayDocument, ReplayGrenade } from '@/lib/api/types'
 
 import { SOUND_CUT_MAX_S, SOUND_FADE_S, soundEnvelope } from './replayAudio'
@@ -24,7 +24,7 @@ import {
   resyncSoundCursor,
   SOUND_RESYNC_JUMP_MS,
 } from './replaySoundCursor'
-import { testReplayDoc } from './test/testDoc'
+import { testReplayDoc } from '../test/testDoc'
 
 /** URL de vignette telle que le backend la compose (adapter_asset_urls.go + static.URL). */
 function vignette(sprite: string): string {

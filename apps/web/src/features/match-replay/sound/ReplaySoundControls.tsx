@@ -15,7 +15,7 @@
  * niveau lui-même survit à la coupure — `sound.volume` est l'état de préférence, que la bascule
  * ne touche pas ; le zéro affiché est un affichage, jamais une écriture.
  */
-import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
+import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplaySound } from './useReplaySound'
 
 interface ReplaySoundControlsProps {

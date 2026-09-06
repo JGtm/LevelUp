@@ -48,8 +48,8 @@
  * reprise : une mesure du boost qui ne passe pas par la vitesse (un champ du film, ou un
  * échantillonnage plus fin).
  */
-import type { ReplayVehicleTrackReady } from './replayNormalize'
-import { vehicleIsDecor } from './vehiclesLayer'
+import type { ReplayVehicleTrackReady } from '../replayNormalize'
+import { vehicleIsDecor } from '../vehiclesLayer'
 
 /**
  * LE BUS MOTEUR EST À 0,85 x LE MAÎTRE (décision utilisateur du 2026-09-04 : « les moteurs

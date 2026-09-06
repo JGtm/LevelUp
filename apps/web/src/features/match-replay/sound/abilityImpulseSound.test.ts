@@ -19,7 +19,7 @@ import {
 } from './abilityImpulseSound'
 import { buildSoundTimeline } from './replaySound'
 import { SOUND_VARIANTS } from './replaySoundVariants'
-import { testReplayDoc } from './test/testDoc'
+import { testReplayDoc } from '../test/testDoc'
 
 const CATEGORIES = {
   weapon: false,
