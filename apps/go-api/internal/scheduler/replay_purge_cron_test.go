@@ -131,3 +131,45 @@ func TestPurgeReplayArtifacts_MarquesDeDerivation(t *testing.T) {
 		}
 	}
 }
+
+// TestPurgeReplayArtifacts_MarqueOrpheline — constat N4 de la revue A-R2.
+//
+// Une marque dont l'artefact n'existe plus n'était ramassée par personne : le `continue` posé
+// pour C6 intervient AVANT toute datation, donc une marque n'est plus jamais examinée POUR
+// ELLE-MÊME. Le cas est réel sur toute instance dont le cron a purgé des artefacts avant que la
+// suppression de la marque n'existe, et après toute suppression manuelle par un opérateur.
+//
+// Litière disque sans effet fonctionnel (`DerivationsUpToDate` fait un `os.Stat` de l'artefact
+// d'abord), mais que rien n'aurait jamais enlevée.
+func TestPurgeReplayArtifacts_MarqueOrpheline(t *testing.T) {
+	sharedPath, artifactsDir := prepareReplayPurgeFixture(t)
+	// Une marque SEULE : son artefact a disparu avant ce passage.
+	orpheline := filepath.Join(artifactsDir, "dddd0004"+replaybuild.SuffixeMarqueDerivations)
+	if err := os.WriteFile(orpheline, []byte(`{"rev":"derivations-2026-09-06"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Et une marque ACCOMPAGNÉE, sur un artefact conservé : elle, doit rester.
+	if err := replaybuild.WriteDerivationsMark(
+		filepath.Join(artifactsDir, "bbbb0002.json"), 39, 42); err != nil {
+		t.Fatalf("marque bbbb0002: %v", err)
+	}
+	cutoff := time.Now().UTC().AddDate(0, -6, 0)
+
+	purged, kept, unknown, err := purgeReplayArtifactsForTitle(
+		context.Background(), sharedPath, artifactsDir, cutoff)
+	if err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	// Le bilan des ARTEFACTS ne bouge pas : une marque n'en est pas un, orpheline ou non.
+	if purged != 1 || kept != 1 || unknown != 1 {
+		t.Errorf("purge = (purged %d, kept %d, unknown %d), attendu (1, 1, 1)", purged, kept, unknown)
+	}
+	if _, err := os.Stat(orpheline); !os.IsNotExist(err) {
+		t.Error("la marque orpheline est toujours là — aucune reprise ne l'enlèvera jamais " +
+			"(constat N4)")
+	}
+	if _, err := os.Stat(filepath.Join(artifactsDir, "bbbb0002"+replaybuild.SuffixeMarqueDerivations)); err != nil {
+		t.Errorf("la marque d'un artefact CONSERVÉ a été supprimée : %v — le rattrapage "+
+			"rejouerait ses dérivations", err)
+	}
+}

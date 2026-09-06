@@ -65,8 +65,15 @@ type PlayerPositionRow struct {
 	X float32 `json:"x"`
 	Y float32 `json:"y"`
 	Z float32 `json:"z"`
-	// Team : 0 / 1, ou -1 quand l equipe n est pas etablie. -1 est une valeur PLEINE (« pas
-	// attribuee »), jamais un trou : le film ne porte pas l equipe.
+	// Team : L IDENTIFIANT D EQUIPE DE LA BASE (`match_participants.team_id`), ou -1 quand
+	// l equipe n est pas etablie. -1 est une valeur PLEINE (« pas attribuee »), jamais un
+	// trou : le film ne porte pas l equipe, elle est JOINTE par le xuid du porteur.
+	//
+	// PAS SEULEMENT 0 ET 1, et c est une mesure : 4 matchs sur 1 959 de la base locale portent
+	// plus de deux `team_id` distincts, avec des valeurs allant jusqu a 30 (modes a plus de
+	// deux camps). La colonne transporte ce que la base dit, sans borne ni normalisation — la
+	// carte de chaleur, elle, n offre aujourd hui que deux filtres : decision produit
+	// consignee, hors perimetre de ce lot.
 	Team int `json:"team"`
 }
 
