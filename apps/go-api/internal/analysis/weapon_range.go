@@ -70,6 +70,15 @@ const WeaponRangeLevelBandM = 1.0
 
 // MeasuredKill est UN frag mesuré : l'unité d'entrée de l'agrégat.
 type MeasuredKill struct {
+	// MatchID, KillerXUID, TimeMS IDENTIFIENT LE FRAG, et ne servent jamais à l'agrégat
+	// (qui ne groupe que par (arme, côté)). Ils sont là pour l'APPARIEMENT : la distance
+	// d'entame et la distance du coup fatal sont deux mesures du MÊME frag, et le delta
+	// entre les deux se calcule frag par frag — jamais entre deux médianes, qui ne
+	// décrivent pas les mêmes engagements dès qu'une mesure manque d'un côté. Ajoutés au
+	// lot 3 (2026-09-06) : le lot 2 n'avait pas encore de producteur, donc pas de clé.
+	MatchID    string
+	KillerXUID string
+	TimeMS     int64
 	// WeaponKey est la clé d'arme déjà classifiée par l'appelant (jamais un `source_tag`
 	// brut : la classification est un adaptateur de titre, elle ne remonte pas ici).
 	WeaponKey string

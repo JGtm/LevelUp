@@ -240,15 +240,21 @@ var canonicalOrder = []string{
 	"add_xuid_to_world_csr_leaderboard",                        // shared (B1)
 	"shared_create_kill_positions",                             // shared (positions monde par kill, ref inter-titres)
 	"shared_append_only_kill_positions_v1",                     // shared (G.2 : id PK + written_at + vue kill_positions_latest, éradique ART sur re-décodage)
-	"shared_create_match_commendations",                        // shared (commendations natives par match, ref inter-titres, AXE B)
-	"shared_match_commendations_add_progress",                  // shared (total à vie absolu au match — totaux commendations)
-	"add_player_count_to_match_registry",                       // shared (roster API attendu — oracle d'intégrité, fix #10)
-	"add_weapon_accuracy",                                      // shared (précision par arme/joueur/match, dérivée des events WeaponDrop H5)
-	"add_events_empty_to_match_registry",                       // shared (statut distinct « chunk récupéré, 0 event légitime » — fin boucle parse_anomaly)
-	"create_season_catalog",                                    // shared (C2 : noms+traductions des saisons CSR Waypoint, source scrape)
-	"create_world_player_no_data",                              // shared (marqueur privés/sans-données classement mondial)
-	"shared_create_objective_stats",                            // shared (V72-03 : stats objectifs CTF/Zones/Oddball par joueur/match, append-only)
-	"shared_objective_stats_add_stockpile_extraction",          // shared (V721-02 : +18 colonnes Stockpile/Extraction/VIP + vue _latest recréée)
+	// Table SOEUR de kill_positions (proxy d'entame D5, 2026-09-06) : mêmes clés, mêmes
+	// colonnes, positions prises un temps-pour-tuer AVANT le coup fatal. Créée DIRECTEMENT
+	// append-only (id PK + written_at + vue _latest), donc aucun step de conversion à sa
+	// suite. Title-owned Halo Infinite (steps_shared_kill_openings.go) : seul son NOM
+	// figure ici, comme pour tout step title-owned (order_audit_test.go l'exige des deux côtés).
+	"shared_create_kill_openings",                     // shared
+	"shared_create_match_commendations",               // shared (commendations natives par match, ref inter-titres, AXE B)
+	"shared_match_commendations_add_progress",         // shared (total à vie absolu au match — totaux commendations)
+	"add_player_count_to_match_registry",              // shared (roster API attendu — oracle d'intégrité, fix #10)
+	"add_weapon_accuracy",                             // shared (précision par arme/joueur/match, dérivée des events WeaponDrop H5)
+	"add_events_empty_to_match_registry",              // shared (statut distinct « chunk récupéré, 0 event légitime » — fin boucle parse_anomaly)
+	"create_season_catalog",                           // shared (C2 : noms+traductions des saisons CSR Waypoint, source scrape)
+	"create_world_player_no_data",                     // shared (marqueur privés/sans-données classement mondial)
+	"shared_create_objective_stats",                   // shared (V72-03 : stats objectifs CTF/Zones/Oddball par joueur/match, append-only)
+	"shared_objective_stats_add_stockpile_extraction", // shared (V721-02 : +18 colonnes Stockpile/Extraction/VIP + vue _latest recréée)
 	// Résumé d'usage équipement/socles dérivé de l'artefact de rejeu (session-usage,
 	// 2026-09-04). Position dictée par l'ordre d'init (alphabétique par nom de fichier :
 	// steps_shared_usage_summary.go précède steps_shared_weapon_*.go) — exigence de

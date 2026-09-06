@@ -156,7 +156,7 @@ WHERE mp.match_id IN (`)
 	sb.WriteString(matchPlaceholders)
 	sb.WriteString(`)`)
 	sb.WriteString(excludeCampaignByMatchID(titleSlug, "mp.match_id"))
-	appendXUIDFilter(&sb, &args, "mp", f)
+	appendXUIDFilter(&sb, &args, "mp.xuid", f)
 	sb.WriteString(`
 GROUP BY mp.xuid`)
 	return sb.String(), args
@@ -250,7 +250,7 @@ WHERE wk.match_id IN (`)
   AND wk.effective_weapon_id NOT IN (0, 1, 2)`)
 	sb.WriteString(excludeCampaignByMatchID(titleSlug, "wk.match_id"))
 
-	appendXUIDFilter(&sb, &args, "wk", f)
+	appendXUIDFilter(&sb, &args, "wk.xuid", f)
 
 	sb.WriteString(`
 GROUP BY wk.xuid, wk.effective_weapon_id`)
@@ -311,20 +311,27 @@ WHERE mp.match_id IN (`)
 	sb.WriteString(Placeholders(len(f.MatchIDs)))
 	sb.WriteString(`)`)
 	sb.WriteString(excludeCampaignByMatchID(titleSlug, "mp.match_id"))
-	appendXUIDFilter(sb, args, "mp", f)
+	appendXUIDFilter(sb, args, "mp.xuid", f)
 	sb.WriteString(`
 GROUP BY mp.xuid
 HAVING SUM(COALESCE(mp.` + column + `, 0)) > 0`)
 }
 
-// appendXUIDFilter ajoute la clause AND sur xuid en fonction de Gamertag ou XUIDs.
-// Au moins un des deux est garanti par Validate().
-func appendXUIDFilter(sb *strings.Builder, args *[]any, alias string, f port.WeaponKillFilters) {
+// appendXUIDFilter ajoute la clause AND sur une COLONNE de xuid en fonction de Gamertag
+// ou XUIDs. Au moins un des deux est garanti par Validate().
+//
+// `column` est la référence COMPLÈTE de la colonne (`mp.xuid`, `wa.xuid`,
+// `e.feed_killer_xuid`, `e.victim_xuid`...) et non un simple alias de table : depuis le
+// lot 3 du plan duels/portée (2026-09-06), un lecteur a besoin de filtrer sur DEUX colonnes
+// de xuid différentes de la même table (le tueur, puis la victime). Le paramètre a donc été
+// généralisé plutôt que de laisser une QUATRIÈME copie du sous-select `xuid_aliases`
+// apparaître dans le paquet (règle n°6 du dépôt).
+func appendXUIDFilter(sb *strings.Builder, args *[]any, column string, f port.WeaponKillFilters) {
 	if len(f.XUIDs) > 0 {
 		sb.WriteString(`
   AND `)
-		sb.WriteString(alias)
-		sb.WriteString(`.xuid IN (`)
+		sb.WriteString(column)
+		sb.WriteString(` IN (`)
 		sb.WriteString(Placeholders(len(f.XUIDs)))
 		sb.WriteString(`)`)
 		for _, x := range f.XUIDs {
@@ -335,8 +342,8 @@ func appendXUIDFilter(sb *strings.Builder, args *[]any, alias string, f port.Wea
 	// Gamertag -> resolution via xuid_aliases
 	sb.WriteString(`
   AND `)
-	sb.WriteString(alias)
-	sb.WriteString(`.xuid IN (
+	sb.WriteString(column)
+	sb.WriteString(` IN (
       SELECT xuid FROM xuid_aliases WHERE gamertag = ?
   )`)
 	*args = append(*args, f.Gamertag)

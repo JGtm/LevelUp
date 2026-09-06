@@ -2,14 +2,17 @@
 // « distance par arme, par joueur » pour UN match (POC LOT G.3, 2026-08-30,
 // plan .ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md §3bis DEC-8).
 //
-// Source : `kill_positions_latest` × `match_kill_events_latest` — TROISIÈME
-// lecteur de la même famille que KillSourceClassRepo (kills-hors-arme) et
-// Q21b/Q21c (kill feed du rejeu) : mêmes deux tables `_latest` (règle ART n°2,
-// jamais la table brute), même classificateur injecté
-// (port.KillSourceClassifier), même garde d'unanimité sur `source_tag` que
-// Q21b (un double kill au même (tueur, instant) qui ne s'accorde pas sur
-// l'arme ne publie RIEN plutôt que d'accrocher une position à la mauvaise
-// arme).
+// Source : la jointure « mort mesurée » — `match_kill_events_latest` × la table
+// de positions — qui ne s'écrit plus ici : elle vit dans kill_measured.go depuis
+// le lot 3 du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md (règle n°6 du dépôt : à la
+// troisième copie on centralise ET on migre les copies). Ce fichier n'apporte
+// donc plus que SA clause de portée (`killDistanceWhere`) et sa résolution
+// d'armes. Les gardes (règle ART n°2 — vues `_latest` jamais les tables brutes,
+// `publishable`, unanimité sur `source_tag` comme Q21b) sont celles de l'helper.
+//
+// Ce repo reste de la même famille que KillSourceClassRepo (kills-hors-arme) et
+// Q21b/Q21c (kill feed du rejeu) : même classificateur injecté
+// (port.KillSourceClassifier).
 //
 // CE QUE CE REPO AJOUTE PAR RAPPORT À KillSourceClassRepo : celui-là résout
 // UNIQUEMENT les sources HORS ARSENAL (anti-double-comptage avec
@@ -29,7 +32,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"math"
 	"sort"
 	"time"
 
@@ -52,14 +54,6 @@ type KillDistanceRepo struct {
 // classifier peut être nil : voir l'en-tête du fichier.
 func NewKillDistanceRepo(pdb *PlayerDB, classifier port.KillSourceClassifier) *KillDistanceRepo {
 	return &KillDistanceRepo{pdb: pdb, classifier: classifier}
-}
-
-// killDistanceMeasured : une mort mesurée (position connue des deux côtés,
-// arme non ambiguë), avant résolution du libellé de l'arme.
-type killDistanceMeasured struct {
-	xuid      string
-	sourceTag uint32
-	distanceM float64
 }
 
 // killDistanceAgg : compteur intermédiaire par (xuid, weapon_key).
@@ -103,83 +97,27 @@ func (r *KillDistanceRepo) LoadMatch(ctx context.Context, matchID string) ([]dom
 	return r.resolveRows(ctx, measured), nil
 }
 
-// killDistanceQuery : les morts mesurées d'un match — arme connue (source_tag)
-// ET position connue des DEUX côtés (tueur ET victime).
-//
-// Même garde d'unanimité que Q21b (queries_match.go) : un double kill au même
-// (tueur, instant) qui ne s'accorde pas sur l'arme ne publie RIEN — accrocher
-// une position à la mauvaise arme serait indétectable à l'écran. `publishable`
-// requis : cette lecture est PAR KILL (attribution nommée arme+distance), pas
-// un agrégat qui tolère une passe non publiable ligne à ligne (cf. doctrine
-// match_kill_events.publishable).
-const killDistanceQuery = `
-SELECT
-    e.feed_killer_xuid,
-    min(e.source_tag) AS source_tag,
-    min(kp.killer_x) AS killer_x, min(kp.killer_y) AS killer_y, min(kp.killer_z) AS killer_z,
-    min(kp.victim_x) AS victim_x, min(kp.victim_y) AS victim_y, min(kp.victim_z) AS victim_z
-FROM match_kill_events_latest e
-JOIN kill_positions_latest kp
-    ON kp.match_id = e.match_id
-   AND kp.killer_xuid = e.feed_killer_xuid
-   AND kp.time_ms = e.time_ms
-WHERE e.match_id = ?
-  AND e.publishable
-  AND e.source_tag IS NOT NULL
-  AND e.feed_killer_xuid IS NOT NULL
-  AND kp.killer_x IS NOT NULL AND kp.killer_y IS NOT NULL AND kp.killer_z IS NOT NULL
-  AND kp.victim_x IS NOT NULL AND kp.victim_y IS NOT NULL AND kp.victim_z IS NOT NULL
-GROUP BY e.feed_killer_xuid, e.time_ms
-HAVING count(DISTINCT e.source_tag) = 1`
+// killDistanceWhere : la portée de CE lecteur — un seul match, jamais un scan.
+// Le reste de la jointure (gardes `publishable` et d'unanimité, NULL-checks,
+// groupement) vit dans kill_measured.go, partagé avec WeaponRangeRepo.
+const killDistanceWhere = `e.match_id = ?`
 
-// queryMeasuredKills exécute killDistanceQuery et calcule la distance (hypot 3D)
-// de chaque ligne EN GO — même politique que KillSourceClassRepo : le SQL ne
-// connaît que des nombres, aucune traduction de sens n'y a lieu.
-func (r *KillDistanceRepo) queryMeasuredKills(ctx context.Context, matchID string) ([]killDistanceMeasured, error) {
+// queryMeasuredKills lit les morts mesurées du match via l'helper canonique.
+func (r *KillDistanceRepo) queryMeasuredKills(ctx context.Context, matchID string) ([]killMeasured, error) {
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("shared reader: %w", err)
 	}
 	defer release()
 
-	dbRows, err := db.QueryContext(ctx, killDistanceQuery, matchID)
-	if err != nil {
-		return nil, fmt.Errorf("query: %w", err)
-	}
-	defer dbRows.Close()
-
-	out := make([]killDistanceMeasured, 0)
-	for dbRows.Next() {
-		var (
-			xuid                      string
-			sourceTag                 uint32
-			killerX, killerY, killerZ float64
-			victimX, victimY, victimZ float64
-		)
-		if err := dbRows.Scan(&xuid, &sourceTag, &killerX, &killerY, &killerZ, &victimX, &victimY, &victimZ); err != nil {
-			// Une ligne illisible est une anomalie de schéma, pas un cas nominal : on
-			// la signale avant de dégrader, on ne l'avale pas en silence.
-			slog.ErrorContext(ctx, "KillDistanceRepo: scan failed, row skipped", "match_id", matchID, "err", err)
-			continue
-		}
-		out = append(out, killDistanceMeasured{
-			xuid:      xuid,
-			sourceTag: sourceTag,
-			distanceM: hypot3D(killerX, killerY, killerZ, victimX, victimY, victimZ),
-		})
-	}
-	return out, dbRows.Err()
-}
-
-// hypot3D : distance euclidienne entre deux points de l'espace monde (mètres).
-func hypot3D(x1, y1, z1, x2, y2, z2 float64) float64 {
-	dx, dy, dz := x1-x2, y1-y2, z1-z2
-	return math.Sqrt(dx*dx + dy*dy + dz*dz)
+	return queryMeasuredKills(ctx, db,
+		measuredKillsQuery(positionsAtKill, killDistanceWhere),
+		[]any{matchID}, "KillDistanceRepo("+matchID+")")
 }
 
 // resolveRows traduit source_tag -> weapon_key (classificateur), agrège par
 // (xuid, weapon_key), puis habille le résultat de son libellé.
-func (r *KillDistanceRepo) resolveRows(ctx context.Context, measured []killDistanceMeasured) []domain.MatchKillDistancePlayer {
+func (r *KillDistanceRepo) resolveRows(ctx context.Context, measured []killMeasured) []domain.MatchKillDistancePlayer {
 	type key struct {
 		xuid, weaponKey string
 	}
@@ -196,7 +134,7 @@ func (r *KillDistanceRepo) resolveRows(ctx context.Context, measured []killDista
 			keysSeen[wk] = true
 			weaponKeys = append(weaponKeys, wk)
 		}
-		k := key{xuid: m.xuid, weaponKey: wk}
+		k := key{xuid: m.killerXUID, weaponKey: wk}
 		a, exists := agg[k]
 		if !exists {
 			a = &killDistanceAgg{min: m.distanceM, max: m.distanceM}

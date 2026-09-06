@@ -93,6 +93,13 @@ func (b *BatchBuilder) AddKillPositions(rows []KillPositionInsert) *BatchBuilder
 	return b
 }
 
+// AddKillOpenings ajoute les rows kill_openings (positions monde un temps-pour-tuer
+// avant le coup fatal — proxy d'entame, D5).
+func (b *BatchBuilder) AddKillOpenings(rows []KillOpeningInsert) *BatchBuilder {
+	b.batch.Shared.KillOpenings = append(b.batch.Shared.KillOpenings, rows...)
+	return b
+}
+
 // SetKillSource fixe le résultat d'une passe de décodage du film (1 ligne par
 // mort, crédit + source du dégât) pour ce match.
 //

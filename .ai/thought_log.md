@@ -1,3 +1,65 @@
+## [2026-09-06] Lot 3 duels/portee — jointure mesuree centralisee, port et repo de portee, table `kill_openings` — Complete
+
+**Decision technique principale.** Lot 3 du `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`, execute sur
+`feat/duels-lot3` (worktree dedie). Trois decisions structurent le lot.
+
+(1) **La jointure kills x positions est extraite AVANT d etre reutilisee.** Le POC G.3
+(`kill_distance_repo.go`) en portait la seule copie ; ce lot en aurait ajoute deux (cote tueur,
+cote victime) puis deux autres pour l entame. Elle vit desormais dans
+`platform/duckdb/kill_measured.go` — `measuredKillsQuery(table, where)` — et le POC MIGRE dessus
+dans le meme commit, ses 9 tests inchanges. Ce qui rendait la centralisation obligatoire n est pas
+le volume mais la NATURE des deux gardes : `publishable` et l unanimite
+`HAVING count(DISTINCT source_tag) = 1` protegent d une mesure FAUSSE mais PLAUSIBLE (une position
+accrochee a la mauvaise arme est indetectable a l ecran). Une copie qui en oublierait une
+continuerait de rendre des nombres. D ou le garde-rail `kill_measured_guard_test.go`, vu ROUGE
+avant commit, qui interdit la jointure ailleurs ET verifie que le proprietaire porte toujours ses
+deux gardes — un garde-rail qui ne garde plus rien est pire qu aucun.
+
+(2) **Le signe du denivele n est pas inverse par le repo.** Convention tranchee au lot 2 :
+`MeasuredKill.DeltaZ` porte la grandeur PHYSIQUE `killer_z - victim_z` ; c est
+`WeaponRangeAggregate` qui la ramene au point de vue du cote demande. Le repo l ecrit BRUT pour
+les DEUX lectures. Une seconde inversion ici annulerait la premiere et le produit repondrait « d en
+haut » quand la verite est « d en bas » — faux et silencieux. Un test dedie l epingle dans les deux
+sens sur un jeu volontairement asymetrique.
+
+(3) **`kill_openings` est une table SOEUR, pas six colonnes de plus sur `kill_positions`.** Les
+deux couvertures ne peuvent PAS etre les memes (une mort des premieres 1,5 s n a pas d entame
+lisible), et les fusionner obligerait a ecrire des NULL dans une ligne existante, donc a REECRIRE
+une ligne append-only : exactement ce que la doctrine ART interdit. Creee DIRECTEMENT append-only
+(patron `match_bomb_stats`), pas via `ApplyAppendOnlyRebuild` qui est la recette de CONVERSION.
+Point le plus facile a rater, et il est teste : la ligne porte le `time_ms` DU KILL (la cle par
+laquelle le kill-feed se joint) et des coordonnees prises 1,5 s plus tot ; ecrire l instant decale
+rendrait la jointure du lecteur VIDE, en silence.
+
+**Resultats observes.** Livre : `platform/duckdb/{kill_measured.go, weapon_range_repo.go}` +
+2 garde-rails, `port/weapon_range.go` (deux methodes : coup fatal et entame),
+`games/halo_infinite/migrations/steps_shared_kill_openings.go` + `migration/order.go`,
+`persist/kill_opening_persister.go` + `KillOpeningInsert`/`AddKillOpenings`/`persistKillOpenings`,
+et le producteur dans `sync/killcollector/positions.go` (une seule lecture du film rend les deux
+jeux de lignes ; ecriture best-effort au carre, quatre compteurs ADR 0009). `analysis.MeasuredKill`
+a ete ETENDU de la cle du frag (`MatchID`, `KillerXUID`, `TimeMS`) : sans elle le lot 4 ne pourrait
+pas apparier l entame a son coup fatal PAR FRAG (D5), et un delta entre deux medianes ne decrit pas
+les memes engagements. `appendXUIDFilter` generalise de l alias a la COLONNE complete (4 appelants
+migres) pour ne pas poser une 4e copie du sous-select `xuid_aliases`. Gates verts :
+23 tests d integration `platform/duckdb` (dont les 9 du POC inchanges), 26 paquets unitaires,
+la suite `-tags=integration -p 1` sur persist/sync/migration/games a **code de sortie 0**,
+`go vet` silencieux, `gofmt -l` vide, `golangci-lint --new-from-merge-base=origin/main` a
+**0 issue**. `no_art_patterns_test.go` INCHANGE ; `append_only_state_guard_test.go` s est vu
+AJOUTER `kill_openings` (durcissement, recette ADR 0026 etape 5).
+
+**Conclusion / prochaine etape.** Items 3.1 a 3.12 tous statues (`[x]` sauf 3.11 et 3.12 `[~]`).
+UN report, inscrit au `.ai/V7.5/REGISTRE_REPORTS.md` et statue `[!]` sous 3.10 bis : le filtre
+« meme vie » de la position d entame. `BuildKillPositions` ignore les frontieres de vie, donc une
+reapparition entre T-1,5 s et T ferait publier un point de reapparition comme une entame. La
+correction est `replay.BuildKillOpenings`, attendue sur `feat/duels` et ABSENTE au moment d ecrire
+(verifie : `git grep "func BuildKillOpenings" feat/duels` = 0 resultat) ; consigne du pilote de ne
+pas la reimplementer (deux decodeurs du meme fait divergeraient). La bascule est ecrite au point d
+appel et tient en DEUX gestes indissociables — l appel change ET `toKillOpeningRows` cesse de
+rajouter `OpeningLeadMS` ; l un sans l autre decalerait toutes les lignes de 1,5 s. Aucune donnee d
+entame n etant encore cuite (backfill jamais lance, decision utilisateur), rien n est a recuire si
+la bascule precede le backfill. Trois decouvertes hors perimetre consignees au plan, dont un FAUX
+VERT generique : le gate du lot, sans `-tags=integration`, ne lancait AUCUN des tests qu il visait.
+
 ## [2026-09-06] Lot 1 duels — le bouclier DU TUEUR : signal reel, attribution impossible — NO-GO lot 7 — Complete
 
 **Decision technique principale.** Sonde n°2 du `.ai/PLAN_DUELS_PORTEE_2026-09-06.md` (lot 1),

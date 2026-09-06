@@ -119,6 +119,9 @@ func (p *SharedPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 	if err := persistKillPositions(ctx, tx, s.KillPositions); err != nil {
 		return err
 	}
+	if err := persistKillOpenings(ctx, tx, s.KillOpenings); err != nil {
+		return err
+	}
 	if err := persistHighlightEvents(ctx, tx, s.HighlightEvents); err != nil {
 		return err
 	}
@@ -423,6 +426,32 @@ func persistKillPositions(ctx context.Context, tx *sql.Tx, rows []KillPositionIn
 		)
 		if err != nil {
 			return fmt.Errorf("persist: INSERT kill_positions %s/%s/%d: %w",
+				r.MatchID, r.KillerXUID, r.TimeMS, err)
+		}
+	}
+	return nil
+}
+
+// persistKillOpenings écrit les positions d'ENTAME (D5) — table sœur, INSERT purs,
+// même doctrine append-only que persistKillPositions ci-dessus. Deux fonctions et non
+// une paramétrée par le nom de table : les deux types de row sont distincts À DESSEIN
+// (cf. KillOpeningInsert), et une fonction qui prendrait la table en paramètre
+// rouvrirait précisément la confusion que ces types ferment.
+func persistKillOpenings(ctx context.Context, tx *sql.Tx, rows []KillOpeningInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	for _, r := range rows {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO kill_openings (
+				match_id, killer_xuid, time_ms,
+				killer_x, killer_y, killer_z, victim_x, victim_y, victim_z
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			r.MatchID, r.KillerXUID, r.TimeMS,
+			r.KillerX, r.KillerY, r.KillerZ, r.VictimX, r.VictimY, r.VictimZ,
+		)
+		if err != nil {
+			return fmt.Errorf("persist: INSERT kill_openings %s/%s/%d: %w",
 				r.MatchID, r.KillerXUID, r.TimeMS, err)
 		}
 	}
