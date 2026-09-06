@@ -24,6 +24,7 @@
 import { trackWindow } from './replayLogic'
 import { identityIsUnknown, translocatorRanks } from './placementTeleport'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import { covers } from './replaySpans'
 
 /**
  * RiftStation — LA FAILLE À UNE POSITION, pendant un intervalle d'images.
@@ -150,5 +151,5 @@ export function riftStationsAt(
   stations: readonly RiftStation[],
   frame: number,
 ): RiftStation[] {
-  return stations.filter((s) => frame >= s.t0 && frame <= s.t1)
+  return stations.filter((s) => covers(s, frame))
 }

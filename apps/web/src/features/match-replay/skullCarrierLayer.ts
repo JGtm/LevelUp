@@ -29,6 +29,8 @@ import { drawSkullGlyph } from './skullGlyph'
 
 import { type CanvasView, projectTo } from './replayView'
 import type { ReplaySkullCarry } from './replayNormalize'
+import { carriedGlyphAlpha } from './carriedGlyphPulse'
+import { covers } from './replaySpans'
 
 /** Style du calque : les encres sont RÉSOLUES par l'appelant (règle color-tokens). */
 export interface SkullCarrierStyle {
@@ -55,12 +57,6 @@ export interface SkullCarrierInput {
 /** Décalage vertical au-dessus du point du joueur (le marqueur occupe le point lui-même). */
 const SKULL_OFFSET_Y = 12
 
-/** Opacité pleine : un fait a fermé le portage avant la fin de l'axe. */
-const ALPHA_SOLID = 0.95
-/** Bornes de la pulsation d'un portage « ouvert » (`closed` faux), et sa période en images. */
-const PULSE_MIN = 0.42
-const PULSE_MAX = 0.78
-const PULSE_PERIOD_FRAMES = 26
 
 /** Rayon de SURVOL potentiel, en pixels : exporté pour un futur survol, non consommé ici. */
 export const SKULL_CARRIER_HIT_RADIUS = 10
@@ -76,19 +72,12 @@ export function skullCarrierActiveAt(
 ): ReplaySkullCarry[] {
   const out: ReplaySkullCarry[] = []
   for (const c of carries) {
-    if (frame >= c.t0 && frame <= c.t1) out.push(c)
+    if (covers(c, frame)) out.push(c)
   }
   return out
 }
 
 /** Opacité du glyphe pour un portage — la pulsation d'un portage « ouvert » comprise. */
-function alphaOf(closed: boolean, frame: number, reducedMotion: boolean): number {
-  if (closed) return ALPHA_SOLID
-  if (reducedMotion) return (PULSE_MIN + PULSE_MAX) / 2
-  const phase = (2 * Math.PI * frame) / PULSE_PERIOD_FRAMES
-  return PULSE_MIN + (PULSE_MAX - PULSE_MIN) * (0.5 + 0.5 * Math.sin(phase))
-}
-
 /**
  * drawSkullCarrier peint, PAR-DESSUS les marqueurs, le crâne sur son porteur courant.
  *
@@ -113,7 +102,7 @@ export function drawSkullCarrier(
     drawSkullGlyph(ctx, center, {
       ink: layer.style.ink,
       outline: layer.style.outline,
-      alpha: alphaOf(c.closed, frame, layer.style.reducedMotion),
+      alpha: carriedGlyphAlpha(c.closed, frame, layer.style.reducedMotion),
     })
   }
   ctx.globalAlpha = 1

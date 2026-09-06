@@ -29,6 +29,8 @@ import { type XY } from './replayLogic'
 
 import { type CanvasView, projectTo } from './replayView'
 import type { ReplayBombCarry } from './replayNormalize'
+import { carriedGlyphAlpha } from './carriedGlyphPulse'
+import { covers } from './replaySpans'
 
 /** Style du calque : les encres sont RÉSOLUES par l'appelant (règle color-tokens). */
 export interface BombCarrierStyle {
@@ -56,18 +58,12 @@ export interface BombCarrierInput {
 /** Décalage vertical au-dessus du point du porteur (le marqueur occupe le point lui-même). */
 const BOMB_OFFSET_Y = 12
 
-/** Opacité pleine : un fait a fermé le portage avant la fin de l'axe. */
-const ALPHA_SOLID = 0.95
 /**
  * Opacité de la bombe AU SOL : légèrement sous le porté, parce que la position est DÉRIVÉE
  * (dernier point du lâcheur) et non publiée — la nuance dit la nature de la donnée sans
  * la faire disparaître.
  */
 const ALPHA_GROUND = 0.85
-/** Bornes de la pulsation d'un portage « ouvert » (`closed` faux), et sa période en images. */
-const PULSE_MIN = 0.42
-const PULSE_MAX = 0.78
-const PULSE_PERIOD_FRAMES = 26
 
 /**
  * bombCarrierActiveAt rend les portages qui COUVRENT l'image demandée. UNE SEULE bombe : au
@@ -79,7 +75,7 @@ export function bombCarrierActiveAt(
 ): ReplayBombCarry[] {
   const out: ReplayBombCarry[] = []
   for (const c of carries) {
-    if (frame >= c.t0 && frame <= c.t1) out.push(c)
+    if (covers(c, frame)) out.push(c)
   }
   return out
 }
@@ -100,7 +96,7 @@ export function bombGroundAt(
   if (explosions === null) return null
   let last: ReplayBombCarry | null = null
   for (const c of carries) {
-    if (frame >= c.t0 && frame <= c.t1) return null // portée : jamais au sol en même temps
+    if (covers(c, frame)) return null // portée : jamais au sol en même temps
     if (c.t1 < frame && c.closed && (last === null || c.t1 > last.t1)) last = c
   }
   if (last === null) return null
@@ -111,13 +107,6 @@ export function bombGroundAt(
 }
 
 /** Opacité du glyphe porté — la pulsation d'un portage « ouvert » comprise. */
-function alphaOf(closed: boolean, frame: number, reducedMotion: boolean): number {
-  if (closed) return ALPHA_SOLID
-  if (reducedMotion) return (PULSE_MIN + PULSE_MAX) / 2
-  const phase = (2 * Math.PI * frame) / PULSE_PERIOD_FRAMES
-  return PULSE_MIN + (PULSE_MAX - PULSE_MIN) * (0.5 + 0.5 * Math.sin(phase))
-}
-
 /**
  * drawBombCarrier peint la bombe de l'image : sur son porteur courant (par-dessus le marqueur),
  * ou au sol sur le dernier point de son lâcheur. Un joueur non localisable n'est PAS dessiné :
@@ -141,7 +130,7 @@ export function drawBombCarrier(
     drawBombGlyph(ctx, { x: at.x, y: at.y - BOMB_OFFSET_Y }, {
       ink: layer.style.ink,
       outline: layer.style.outline,
-      alpha: alphaOf(c.closed, frame, layer.style.reducedMotion),
+      alpha: carriedGlyphAlpha(c.closed, frame, layer.style.reducedMotion),
     })
     ctx.globalAlpha = 1
     return // une seule bombe : portée, donc jamais au sol à la même image
