@@ -22,11 +22,18 @@
 // reapparition n est pas une entame, et l absence est le resultat correct.
 //
 // ANTI-ART (ADR 0019/0026) : INSERT purs — la table est append-only depuis sa creation
-// (games/halo_infinite/migrations/steps_shared_kill_openings.go : id PK + written_at + vue
-// kill_openings_latest). « Remplacer » une passe consiste a en ecrire une nouvelle ; c est la
-// vue `_latest` qui ne rend que la DERNIERE ligne par (match_id, killer_xuid, time_ms). Ce
+// (games/halo_infinite/migrations/steps_shared_kill_openings.go : id PK + decode_pass +
+// written_at + vue kill_openings_latest). « Remplacer » une passe consiste a en ecrire une
+// nouvelle ; c est la vue `_latest` qui ne rend que la DERNIERE PASSE ENTIERE par match. Ce
 // persister n emet aucun UPDATE/DELETE/ON CONFLICT et n a donc rien a faire figurer dans
 // l allowlist de `internal/sync/no_art_patterns_test.go`.
+//
+// L UNITE DE GENERATION EST LA PASSE, ET C EST VITAL SUR CETTE TABLE-CI : une entame n existe
+// pas toujours (le filtre « meme vie » de `replay.BuildKillOpenings` en ecarte regulierement).
+// Un re-decodage qui ne resout PLUS une entame n ecrit aucune ligne pour ce frag ; une vue qui
+// arbitrerait par CLE servirait alors la ligne de la passe precedente A JAMAIS, melangee aux
+// nouvelles. Toutes les lignes d une passe portent donc le MEME `decode_pass` — tire une seule
+// fois par [newDecodePassID], meme doctrine que kill_events_persister.go.
 //
 // PRE-REQUIS : le caller doit tenir le lease RW sur shared_matches_v2.duckdb (comme tous les
 // persisters shared). `txBeginner` accepte aussi bien *sql.DB qu un LeasedWriter.
@@ -68,6 +75,12 @@ func (p *KillOpeningPersister) PersistPass(ctx context.Context, matchID string, 
 	if err := validerLignesEntame(matchID, rows); err != nil {
 		return err
 	}
+	// Le tirage AVANT la transaction : un decode_pass non distinguable ferait rendre a la vue
+	// _latest un MELANGE de passes, sans aucun symptome visible (cf. newDecodePassID).
+	pass, err := newDecodePassID()
+	if err != nil {
+		return fmt.Errorf("persist: kill_openings %s: %w", matchID, err)
+	}
 
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -75,7 +88,7 @@ func (p *KillOpeningPersister) PersistPass(ctx context.Context, matchID string, 
 	}
 	defer func() { _ = tx.Rollback() }() // no-op apres Commit
 
-	if err := persistKillOpenings(ctx, tx, rows); err != nil {
+	if err := persistKillOpenings(ctx, tx, pass, rows); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -89,17 +102,19 @@ func (p *KillOpeningPersister) PersistPass(ctx context.Context, matchID string, 
 // de table : les deux types de row sont distincts A DESSEIN (cf. KillOpeningInsert), et une
 // fonction qui prendrait la table en parametre rouvrirait precisement la confusion que ces types
 // ferment.
-func persistKillOpenings(ctx context.Context, tx *sql.Tx, rows []KillOpeningInsert) error {
+// `pass` est l identifiant de generation partage par TOUTE la passe : c est lui que la vue
+// `_latest` retient, entier, pour un match.
+func persistKillOpenings(ctx context.Context, tx *sql.Tx, pass string, rows []KillOpeningInsert) error {
 	if len(rows) == 0 {
 		return nil
 	}
 	for _, r := range rows {
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO kill_openings (
-				match_id, killer_xuid, time_ms,
+				match_id, decode_pass, killer_xuid, time_ms,
 				killer_x, killer_y, killer_z, victim_x, victim_y, victim_z
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			r.MatchID, r.KillerXUID, r.TimeMS,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			r.MatchID, pass, r.KillerXUID, r.TimeMS,
 			r.KillerX, r.KillerY, r.KillerZ, r.VictimX, r.VictimY, r.VictimZ,
 		)
 		if err != nil {

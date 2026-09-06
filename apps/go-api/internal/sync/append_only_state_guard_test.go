@@ -105,9 +105,13 @@ var appendOnlyStateTables = []string{
 	// UNIQUEMENT — une lecture brute servirait les lignes des passes précédentes.
 	"match_bomb_stats",
 	// kill_openings (duels/portée D5, 2026-09-06) : créée directement append-only (id PK seq
-	// + written_at + vue kill_openings_latest). Unité de génération = la PASSE DE DÉCODAGE,
-	// arbitrée par written_at puis id, sur la clé (match_id, killer_xuid, time_ms). Écriture =
-	// INSERT pur (kill_opening_persister.go) ; aucun DELETE / ON CONFLICT / INSERT OR
+	// + decode_pass + written_at + vue kill_openings_latest). L'unité de génération est la
+	// PASSE DE DÉCODAGE, pas la ligne : la vue retient la DERNIÈRE PASSE ENTIÈRE par match
+	// (`decode_pass`, modèle de match_kill_events_latest), et c'est vital ICI — une entame
+	// n'existe pas toujours (le filtre « même vie » de replay.BuildKillOpenings en écarte),
+	// donc un arbitrage par CLÉ servirait à jamais la ligne d'une passe précédente pour un
+	// frag que le re-décodage ne résout plus. Écriture = INSERT pur
+	// (kill_opening_persister.go, un seul statement) ; aucun DELETE / ON CONFLICT / INSERT OR
 	// REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT — une lecture brute servirait les
 	// positions d'une passe de décodage précédente. Recette ADR 0026 étape 5.
 	"kill_openings",

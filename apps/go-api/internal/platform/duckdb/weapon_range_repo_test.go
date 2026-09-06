@@ -40,6 +40,12 @@ const (
 	wrGamertag = "PorteeTest"
 )
 
+// wrOpeningPass : la génération des lignes d'entame posées par ces tests. La vue
+// `kill_openings_latest` retient la DERNIÈRE PASSE ENTIÈRE par match : toutes les lignes d'un
+// même scénario doivent donc porter la MÊME valeur, sans quoi la fixture ne servirait qu'une
+// partie d'elle-même.
+const wrOpeningPass = "pass-entame-v1"
+
 // insertKillOpening pose une ligne kill_openings brute.
 //
 // SŒUR d'insertKillPos (kill_distance_repo_test.go) : deux tables, deux INSERT. Les
@@ -52,9 +58,10 @@ func insertKillOpening(t *testing.T, pdb *PlayerDB, matchID, killerXUID string, 
 	t.Helper()
 	_, err := pdb.Shared.Exec(context.Background(), `
 		INSERT INTO kill_openings
-			(match_id, killer_xuid, time_ms, killer_x, killer_y, killer_z, victim_x, victim_y, victim_z)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		matchID, killerXUID, timeMS, kx, ky, kz, vx, vy, vz)
+			(match_id, decode_pass, killer_xuid, time_ms,
+			 killer_x, killer_y, killer_z, victim_x, victim_y, victim_z)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		matchID, wrOpeningPass, killerXUID, timeMS, kx, ky, kz, vx, vy, vz)
 	if err != nil {
 		t.Fatalf("insert kill_openings: %v", err)
 	}

@@ -49,19 +49,28 @@ func TestKillOpeningPersistPass_EcritEtRelitParLaVue(t *testing.T) {
 	}
 }
 
-// TestKillOpeningPersistPass_ReDecodeSupersede — une seconde passe ne SUPPRIME rien (append-only)
-// mais la vue ne sert que la derniere ligne par (match_id, killer_xuid, time_ms). C est ce qui
-// rend un re-decodage sur : sans la vue, la table servirait deux entames pour un meme frag.
+// TestKillOpeningPersistPass_ReDecodeSupersede — une seconde passe ne SUPPRIME rien
+// (append-only) mais la vue ne sert que la DERNIERE PASSE ENTIERE du match (`decode_pass`).
+//
+// LE CAS QUI JUSTIFIE `decode_pass`, ET QU UN ARBITRAGE PAR CLE RATAIT (revue adversariale du
+// 2026-09-06, constat D) : la passe B ne resout PLUS l entame du frag t=2000 — elle n ecrit
+// aucune ligne pour lui, ce qui est le cas NOMINAL quand le filtre « meme vie » de
+// `replay.BuildKillOpenings` ecarte les deux cotes. Avec une vue qui retenait la derniere ligne
+// par (match_id, killer_xuid, time_ms), l entame de la passe A pour ce frag serait restee
+// servie A JAMAIS, melangee aux lignes de B. Ici elle DISPARAIT.
 func TestKillOpeningPersistPass_ReDecodeSupersede(t *testing.T) {
 	db := openKillPositionTestDB(t)
 	ctx := context.Background()
 	p := NewKillOpeningPersister(db)
 
+	// Passe A : deux frags resolus.
 	if err := p.PersistPass(ctx, "m2", []KillOpeningInsert{
 		{MatchID: "m2", KillerXUID: "111", TimeMS: 1000, KillerX: f64(1)},
+		{MatchID: "m2", KillerXUID: "111", TimeMS: 2000, KillerX: f64(7)},
 	}); err != nil {
 		t.Fatalf("passe A: %v", err)
 	}
+	// Passe B : le second frag n a plus d entame lisible.
 	if err := p.PersistPass(ctx, "m2", []KillOpeningInsert{
 		{MatchID: "m2", KillerXUID: "111", TimeMS: 1000, KillerX: f64(42)},
 	}); err != nil {
@@ -72,8 +81,8 @@ func TestKillOpeningPersistPass_ReDecodeSupersede(t *testing.T) {
 	if err := db.QueryRow(`SELECT COUNT(*) FROM kill_openings WHERE match_id = 'm2'`).Scan(&brut); err != nil {
 		t.Fatalf("select table brute: %v", err)
 	}
-	if brut != 2 {
-		t.Errorf("table brute = %d lignes, attendu 2 (append-only : rien n est supprime)", brut)
+	if brut != 3 {
+		t.Errorf("table brute = %d lignes, attendu 3 (append-only : rien n est supprime)", brut)
 	}
 
 	var n int
@@ -83,7 +92,42 @@ func TestKillOpeningPersistPass_ReDecodeSupersede(t *testing.T) {
 		t.Fatalf("select vue: %v", err)
 	}
 	if n != 1 || kx != 42 {
-		t.Errorf("vue = %d ligne(s) / killer_x %v, attendu 1 / 42 (la derniere passe gagne)", n, kx)
+		t.Errorf("vue = %d ligne(s) / killer_x %v, attendu 1 / 42 — la passe B fait foi ENTIERE, "+
+			"l entame que B ne resout plus ne doit PAS survivre depuis A", n, kx)
+	}
+
+	// Explicite, parce que c est LE fait qui compte : plus aucune ligne a t=2000.
+	var survivante int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM kill_openings_latest WHERE match_id = 'm2' AND time_ms = 2000`).
+		Scan(&survivante); err != nil {
+		t.Fatalf("select survivante: %v", err)
+	}
+	if survivante != 0 {
+		t.Errorf("%d ligne(s) a t=2000 dans la vue, attendu 0 (la vue arbitre par PASSE, pas par cle)",
+			survivante)
+	}
+}
+
+// TestKillOpeningPersistPass_UnSeulDecodePassParPasse — toutes les lignes d une passe portent
+// la MEME generation. Deux generations dans une seule passe feraient rendre a la vue une
+// FRACTION de passe, ce qui est pire qu une passe entiere perimee.
+func TestKillOpeningPersistPass_UnSeulDecodePassParPasse(t *testing.T) {
+	db := openKillPositionTestDB(t)
+	if err := NewKillOpeningPersister(db).PersistPass(context.Background(), "m5", []KillOpeningInsert{
+		{MatchID: "m5", KillerXUID: "111", TimeMS: 1000, KillerX: f64(1)},
+		{MatchID: "m5", KillerXUID: "222", TimeMS: 2000, KillerX: f64(2)},
+		{MatchID: "m5", KillerXUID: "333", TimeMS: 3000, KillerX: f64(3)},
+	}); err != nil {
+		t.Fatalf("PersistPass: %v", err)
+	}
+	var distincts int
+	if err := db.QueryRow(
+		`SELECT COUNT(DISTINCT decode_pass) FROM kill_openings WHERE match_id = 'm5'`).Scan(&distincts); err != nil {
+		t.Fatalf("select: %v", err)
+	}
+	if distincts != 1 {
+		t.Errorf("%d decode_pass distincts sur une seule passe, attendu 1", distincts)
 	}
 }
 

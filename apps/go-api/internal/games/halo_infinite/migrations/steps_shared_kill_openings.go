@@ -24,14 +24,38 @@ package migrations
 //
 // ─── FORME APPEND-ONLY (ADR 0026), CRÉÉE DIRECTEMENT ──────────────────────────────────────
 //
-// Table NET-NEUVE : `id` PK adossée à une séquence + `written_at`, et lecture par la vue
-// `kill_openings_latest` UNIQUEMENT — jamais `ApplyAppendOnlyRebuild`, qui est la recette de
-// CONVERSION d'une table mutable existante (kill_positions y est passée en G.2). ART-safe
-// par construction (#23046) : écriture = INSERT pur (`persist.KillOpeningPersister`), un
-// re-décodage écrit une NOUVELLE passe que la vue fait gagner, il ne réécrit rien.
+// Table NET-NEUVE : `id` PK adossée à une séquence + `decode_pass` + `written_at`, et lecture
+// par la vue `kill_openings_latest` UNIQUEMENT — jamais `ApplyAppendOnlyRebuild`, qui est la
+// recette de CONVERSION d'une table mutable existante (kill_positions y est passée en G.2).
+// ART-safe par construction (#23046) : écriture = INSERT pur (`persist.KillOpeningPersister`),
+// un re-décodage écrit une NOUVELLE passe que la vue fait gagner, il ne réécrit rien.
 //
-// Clé fonctionnelle de la vue : `(match_id, killer_xuid, time_ms)` — LA MÊME que
-// kill_positions, parce que c'est la même population de frags vue à un autre instant.
+// ─── L'UNITÉ DE GÉNÉRATION EST LA PASSE, PAS LA LIGNE — ET C'EST VITAL ICI ─────────────────
+//
+// La vue retient LA DERNIÈRE PASSE ENTIÈRE PAR MATCH (`decode_pass`), sur le modèle exact de
+// `match_kill_events_latest` (migration/steps_shared_kill_events.go). Elle a d'abord arbitré
+// par CLÉ — dernière ligne par `(match_id, killer_xuid, time_ms)` — et c'était un défaut, pas
+// un raccourci : une entame N'EXISTE PAS TOUJOURS. Le filtre « même vie » de
+// `replay.BuildKillOpenings` écarte régulièrement un côté (le joueur avait réapparu entre
+// l'entame et le coup fatal), et un décodeur amélioré en écarte d'autres. Un re-décodage qui
+// ne RÉSOUT PLUS une entame n'écrit aucune ligne pour ce frag — et un arbitrage par clé aurait
+// alors continué de servir la ligne de la passe PRÉCÉDENTE, à jamais, en la mélangeant aux
+// nouvelles. C'est exactement le piège que `decode_pass` existe pour fermer partout ailleurs
+// dans le dépôt.
+//
+// La clé fonctionnelle `(match_id, killer_xuid, time_ms)` reste celle de la JOINTURE — la même
+// que kill_positions, parce que c'est la même population de frags vue à un autre instant —
+// mais elle n'arbitre plus rien.
+//
+// ─── LA MIGRATION A ÉTÉ MODIFIÉE EN PLACE LE 2026-09-06, ET VOICI POURQUOI C'EST LICITE ────
+//
+// Un step de migration est name-keyed : le modifier après coup ne rejoue RIEN sur une base qui
+// l'a déjà appliqué, ce qui produit d'ordinaire deux schémas divergents. Ici la table N'EXISTE
+// NULLE PART — créée le 2026-09-06 par le lot 3 du même chantier, jamais déployée en
+// production, aucun backfill lancé (décision utilisateur en attente, cf. D5 du plan). Le step
+// `shared_create_kill_openings` n'a donc été appliqué sur aucune base durable ; le modifier en
+// place est strictement équivalent à l'avoir écrit ainsi. TOUT ÉLARGISSEMENT ULTÉRIEUR, lui,
+// passera par un step au NOM NEUF.
 //
 // ─── CONSÉQUENCE ASSUMÉE — la table existe sur tous les titres qui héritent de ce schéma ──
 //
@@ -53,7 +77,8 @@ func sharedKillOpeningsSteps() []migration.Migration {
 			Name:     "shared_create_kill_openings",
 			TargetDB: migration.TargetShared,
 			Description: "Table append-only kill_openings (positions monde tueur/victime un temps-pour-tuer " +
-				"avant le coup fatal, proxy d entame D5) + index de jointure + vue kill_openings_latest",
+				"avant le coup fatal, proxy d entame D5) + decode_pass + index de jointure + vue " +
+				"kill_openings_latest (derniere passe entiere par match)",
 			ApplySchema: applyKillOpenings,
 		},
 	}
@@ -76,6 +101,7 @@ func applyKillOpenings(db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS kill_openings (
 			id          BIGINT    PRIMARY KEY DEFAULT nextval('kill_openings_id_seq'),
 			match_id    VARCHAR   NOT NULL,
+			decode_pass VARCHAR   NOT NULL,
 			killer_xuid VARCHAR   NOT NULL,
 			time_ms     INTEGER   NOT NULL,
 			killer_x    DOUBLE, killer_y DOUBLE, killer_z DOUBLE,
@@ -85,10 +111,9 @@ func applyKillOpenings(db *sql.DB) error {
 		CREATE INDEX IF NOT EXISTS idx_kill_openings_lookup
 			ON kill_openings(match_id, killer_xuid, time_ms, written_at);
 		CREATE OR REPLACE VIEW kill_openings_latest AS
-		SELECT * FROM kill_openings
-		QUALIFY ROW_NUMBER() OVER (
-			PARTITION BY match_id, killer_xuid, time_ms
-			ORDER BY written_at DESC, id DESC
-		) = 1;
+		SELECT * FROM kill_openings AS o
+		QUALIFY o.decode_pass = FIRST_VALUE(o.decode_pass) OVER (
+			PARTITION BY o.match_id ORDER BY o.written_at DESC, o.id DESC
+		);
 	`)
 }
