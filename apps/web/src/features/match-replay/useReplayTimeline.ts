@@ -29,7 +29,7 @@ import type { ReplayLocale } from './i18n/i18n'
 import type { PlayerMarkKind } from './playerMarks'
 import { formatClock } from './replayLogic'
 import { EMPTY_MEDIA, SKIP_SECONDS } from './layers/replayCanvasConfig'
-import type { ReplayTimelineTracks } from './ReplayTimelineTracks'
+import type { ReplayTimelineTracks } from './ui/ReplayTimelineTracks'
 import {
   buildEventTracks,
   buildFragDominance,

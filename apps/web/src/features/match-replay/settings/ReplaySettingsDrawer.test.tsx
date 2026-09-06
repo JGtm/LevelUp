@@ -7,7 +7,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
-import { ReplayHeatmapLegend } from '../ReplayHeatmapLegend'
+import { ReplayHeatmapLegend } from '../ui/ReplayHeatmapLegend'
 import {
   ReplaySettingsDrawer,
   type ReplayHeatmapControls,
