@@ -80,7 +80,7 @@ chacune · phase 7 : lourd (autant que 1 a 6) · phase 8 : petit.
 | Cellule jamais atteinte | VIDE, jamais peinte en froid |
 | Plancher par cellule | 3 matchs distincts (calibration mesuree de `mappos-build`) |
 | Plancher par carte | 10 matchs ; en dessous, desaturee et non ouvrable |
-| Axe QUI | `Moi / Escouade / Adversaires`. **Escouade = mes coequipiers DU MATCH.** |
+| Axe QUI | `Moi / Escouade / Adversaires`. **Escouade = LA COMPOSITION CHOISIE** dans le selecteur de coequipiers de la barre L2 (le meme que la page Escouade) — arrete par l utilisateur le 2026-09-06, REMPLACE « mes coequipiers du match » (phase 2). `Adversaires` = l autre equipe du match. Le KPI d echange « sur cette carte » reste sur MON CAMP entier (coherent avec la page Escouade : KPI = camp, matrice = roster). |
 | Spawn : depart vs reapparition | Filtre « spawn de depart » = **premiere vie** seulement. Lecture « routes » = 15 premieres secondes de **toutes** les vies. |
 | Algorithme de grappes | Densite des premiers points sur la grille de 0,5 m ; composantes connexes (8-voisinage) au-dessus du plancher de 3 matchs distincts ; nommage par le callout le plus proche du barycentre. Aucun catalogue manuel. |
 | Filtres | `usePageScope` (URL + miroir localStorage), forme Explorer |
@@ -621,6 +621,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   tombe ; `<img>` rendue inconditionnelle -> les deux tests du fond tombent ;
   `&& !isTactical` retire -> le test « un seul onglet selectionne » tombe.
 - **Gate** : typecheck + test-web ; couleurs ; parite FR/EN.
+### Phase 4 bis — Barre L2 et perimetre de matchs (items 4.5 et 4.6) — EXECUTABLE, avant la 6> Arbitrages utilisateur du 2026-09-06 : le filtre de session doit MARCHER ; la barre L2 est un mix> Explorateur + Escouade ; « Escouade » = la composition choisie.- [ ] 4.5 **Perimetre de matchs par liste blanche** : `domain.TacticalQuery` gagne `MatchIDs` ; les      requetes `QTacticalUnivers` / `QTacticalEvents` / `QTacticalPositions` acceptent un `IN (...)`      lie (parametre neutre quand vide, meme technique que la carte optionnelle ; ratchet Campagne      conserve) ; le service Tactique resout le perimetre par `service.FilteredMatchIDs` (periode,      sessions epinglees, contexte solo/escouade/mixte, composition) depuis la base joueur —      REUTILISER le chargeur de lignes que le FiltersService utilise, jamais une seconde requete ;      le handler accepte les memes parametres que l Explorateur + `coequipiers` (xuids de la      composition) ; la porte data-level et l univers MESURE (G2) restent tels quels. Tests : une      session epinglee restreint la grille ET le raster aux matchs de la session (repo :memory: +      service mock) ; liste vide = aucun match (pas « tous ») ; contrat regenere.- [ ] 4.6 **Barre L2 de l onglet** (`features/tactical/TacticalFilterBar.tsx` + `tacticalScope.ts`      via `usePageScope`) : `useLocalFilterBar` (periode/saison, experience, playlists, modes) +      `SessionMultiSelect` (sessions de la composition, comme `SquadLayout`) + segmentation      solo/escouade/mixte (Explorateur) + `GamertagCombobox` (composition, comme `SquadLayout`) ;      barre collante en tete de l onglet ; AUCUN nouveau composant de filtre (les pieces existent,      on les assemble) ; la grille et, plus tard, la vue d analyse lisent ce scope ; l axe      « Escouade » des rasters = la composition choisie (xuids passes au service) ; `adv` = autre      equipe. Tests : le scope se serialise dans l URL et se restaure ; les sessions proposees      suivent la composition ; sans composition, l axe Escouade n est pas propose.- **Gate** : Go vet + test (service, api, duckdb, archlint, contracttest) ; openapi-gen -check ;  typecheck, lint, vitest `tactical`, couleurs, imports croises (plafond 7/7 : les helpers  d Explorateur/Escouade necessaires descendent dans `lib/` ou `features/_shared/`), manifestes.
 
 ### Phase 5 — Vue d'analyse, lectures SQL, drilldown — GELEE JUSQU'AU LOT D
 - [ ] 5.1 Peintre partage dans `lib/replay/` (selon D.13), extrait de `heatmapLayer.ts`,
@@ -664,6 +665,7 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : arbitrages utilisateur — filtre de session a faire MARCHER (liste blanche `FilteredMatchIDs`), barre L2 = mix Explorateur + Escouade, « Escouade » = composition choisie. Items 4.5 / 4.6 ajoutes (phase 4 bis, avant la 6).
 - 2026-09-06 : **revue adversariale ronde 1 de la phase 4 — 8 constats, TOUS corriges** en
   2 commits `tactique(4.5)`. Gate rejoue integralement, six inversions/mutations jouees.
   - **G1 (P1, P0 sur un hote Windows expose) — UNE TRAVERSEE DE REPERTOIRE.** Le `map_id`
