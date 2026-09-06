@@ -604,3 +604,50 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   (lot G) lisait `weaponSoundVariations.ts` à l'ancien emplacement, déplacé sous `sound/` par le
   lot D (D.11) — troisième conflit sémantique entre lots parallèles ; chemin de sortie du mode
   `livrer`, test d'en-tête et golden alignés sur `features/match-replay/sound/`.
+- 2026-09-06 14:10 : BALAYAGE « APRÈS » RENDU (`feat/v2-balayage` `4c8de8a05`, fusionné) : 119/119
+  re-cuits au schéma 40 (34,8 min, pic 0,54 Gio, parc intact). (a) cuisson `f1c7b411f` contre
+  cuisson intégrée : 491 écarts, ZÉRO perte, ZÉRO disparition — `schemaVersion` 39 → 40 sur les
+  119 et +438 actions d'objectif retrouvées sur 17 matchs (captures +23, vols +20), rien d'autre :
+  100 matchs sur 119 strictement identiques hors numéro de schéma — preuve indépendante que le
+  lot E est à comportement identique, que A ne touche pas le document et que D ne touche que le
+  web. (b) référence contre intégré : candidate 1 RÉSOLUE (0 perte nouvelle, 300 pertes
+  résorbées, neuf familles à zéro perte) ; candidates 2-4 inchangées (instruction en cours).
+  Verdict : le parc peut être re-cuit au schéma 40 sans rien y perdre, sous réserve des
+  candidates 2-4.
+- 2026-09-06 15:00 : INSTRUCTION DES CANDIDATES 2-4 RENDUE (`feat/v2-regressions` `79bf2e6d2`) :
+  UNE SEULE cause racine, différente de celle soupçonnée par le balayage — `48cf4905d`
+  (2026-09-02, schéma 36, « une track = une vie ») a découpé les pistes par vie et trois
+  consommateurs ont continué de supposer une piste par slot, ne gardant que la dernière : vies
+  nommées (`owners.go`, désignation de la vie fermée jetée), grappin (`grapple_lines.go`,
+  `byTrack[slot]`), fenêtres camo/surbouclier (`trackFrameWindows`). Régressions corrigées
+  (index par piste, `closureReport.closedLife`), sept tests prouvés par mutation, SchemaVersion
+  40 → 41, `closures.go` scindé ; `13d92593` reste à 0 à raison (épisode nul sur point aberrant
+  supprimé). Impact parc : grappin 16 matchs / 54 tractions, épisodes 11 / 17, vies nommées 18
+  matchs. Revue adverse REG-R1 lancée (additivité, quatrième consommateur, mutations) avant merge
+  et balayage final au schéma 41.
+- 2026-09-06 15:40 : REG-R1 : diagnostic confirmé (lignes fautives nommées dans `owners.go`,
+  `grapple_lines.go`, `equipment_episodes.go`), correctif additif et sûr sur 4 films cuits (0 perte,
+  0 déplacement, pont byte-identique), 7 mutations tiennent, 22 conditions. Cinq constats renvoyés :
+  C1 moyen (une traction dont tir et accroche tombent hors de toute fenêtre est jetée alors que
+  la base la publiait, même mono-vie → ne jamais publier moins que la base), C2 (`camoLives` /
+  `overshieldLives` comptent des slots), C3 (« scission pure » fausse : `noteLife` ajouté dans
+  le bloc déplacé), C4 (commentaire contradictoire sur `13d92593`), C5 (`usage_summary.go`
+  attribue par slot « dernier gagnant » : quatrième consommateur, corrigé par piste).
+  Corrections en cours ; ensuite ronde 2, merge, balayage final au schéma 41.
+- 2026-09-06 16:00 : corrections REG rendues (`13c0336b6`) : C1 `lifeNearest` (jamais moins que la
+  base, deux scénarios figés), C2 compteurs par vie, C3/C4 docs vraies, C5 `usageOwners.at(slot,
+  frame)` par vie couvrante + `UsageSummaryRev` us1 → us2 (résumés d'usage à refaire au backfill ;
+  divergence Go/web sur un slot à deux identités inscrite au registre). Cuisson de contrôle
+  `879a4dba` identique à l'octet hors numéro de schéma. REG-R2 lancée ; puis merge, balayage
+  final au schéma 41, Notion (40 → 41).
+- 2026-09-06 16:30 : REG-R2 : C1-C4 FERMÉS, C5 PARTIEL (les poses d'équipement retombent sur le
+  repli « dernier occupant » dans 32 à 95 % des cas, un lâcher à la mort crédité au joueur suivant
+  sur un slot repris ; `avecVie` construit depuis `dernier` perd les lancers d'un joueur à vie
+  unique sur slot repris — préexistant) + trois commentaires absolus et une condition de reprise
+  fausse au registre. Cuissons : `879a4dba` identique à l'octet hors numéro, `4f77afc1` 28 → 31
+  tractions sans perte. Dernières retouches en cours (N-3, N-4 par vie couvrante ou adjacente,
+  docs) ; puis merge, balayage final au schéma 41, Notion.
+- 2026-09-06 17:00 : retouches REG rendues (`5d9f70f92` : poses par `atOrJustBefore`, `avecVie` sur
+  toutes les vies, commentaires exacts, registre corrigé) et REG FUSIONNÉ dans `feat/v75` sans
+  conflit (SchemaVersion 41, UsageSummaryRev us2). Gates rejoués sur l'état fusionné. Suite :
+  balayage final au schéma 41, Notion 40 → 41, nettoyage des worktrees.
