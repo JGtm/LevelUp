@@ -160,12 +160,16 @@ func inventorie(ctx context.Context, chemins cheminsInventaire) ([]verdict, erro
 	return out, nil
 }
 
-// resoutFond REJOUE `replayService.resolveBackgroundKey`, dans le meme ordre : le sidecar sous la
-// cle map_id d'abord (cartes Forge encore publiees sous leur asset du jour), l'index par nom
-// ensuite — lequel essaie l'identite exacte puis, a defaut, l'identite de base d'une variante.
+// resoutFond REJOUE `replayService.resolveBackgroundKeyDepuis`, dans le meme ordre : le sidecar
+// sous la cle map_id d'abord (cartes Forge encore publiees sous leur asset du jour), l'index par
+// nom ensuite — lequel essaie l'identite exacte puis, a defaut, l'identite de base d'une variante.
 //
 // Toute divergence avec ce fichier rendrait l'inventaire faux sans qu'aucun test ne le voie :
 // c'est pour cela qu'on appelle le MEME index plutot que de recopier sa regle.
+//
+// La garde `cleDeFondSure` de la production (refus des cles avec separateur ou `..`) ne change
+// rien ici : les map_id de `carteJouee` viennent de `match_registry` (lecture SQL), jamais d'une
+// entree utilisateur ou reseau — l'inventaire n'a donc rien a rejouer de cette garde.
 func resoutFond(c carteJouee, dirFonds string, idx *replay.MapBackgroundIndex) (string, voieResolution) {
 	if c.MapID != "" {
 		if _, err := os.Stat(filepath.Join(dirFonds, c.MapID+".json")); err == nil {
