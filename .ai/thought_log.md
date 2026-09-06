@@ -95643,3 +95643,55 @@ NON surveillee (consigne utilisateur). Les quatre points « non recevables » du
 laisses en l'etat sur son propre argument. Les trois points a trancher par le superviseur
 (ligne de `CLAUDE.md` qui cite le fichier supprime, exemptions fines de `.golangci.yml`,
 baseline a rejouer par le lot E) restent ouverts, inchanges.
+
+## [2026-09-06] Balayage de non-regression du parc de rejeux — 119 films re-cuits, 161 paires comparees
+
+**Statut** : Complete (branche `feat/v2-balayage`, worktree `LevelUp-wt-v2-balayage`).
+
+**Decision technique principale.** Comparer un artefact d'il y a quarante bumps de schema au
+document d'aujourd'hui interdit de deserialiser `replay.ReplayDocument` : `encoding/json` ignore
+en silence tout champ que la structure courante ne declare plus, si bien qu'un calque SUPPRIME
+disparaitrait des DEUX cotes et que l'outil rendrait « aucune difference » sur la regression la
+plus grave. `cmd/replay-diff` lit donc en `map[string]any` et reduit chaque artefact a une
+EMPREINTE de mesures nommees : passe generique (taille de chaque calque, presence de chaque
+champ, repartition des champs de famille, compte par xuid — elle ne connait aucun nom de champ,
+donc un calque neuf ou disparu entre au rapport sans qu'on l'y inscrive) et passe specialisee
+(joueur x famille d'action, dernieres valeurs des series de score, vies nommees, aplatissement
+de `coverage` et `bombStats`). Cuisson par le chemin EXACT de la production
+(`cmd/replay-build` = ce que fait l'enfant de `backfill-replay`), un film par processus borne
+(verrou solo, plafond `filmproc` 3 Gio, priorite basse), dans une racine de travail ou seuls
+`film_chunks`, `film_manifests`, `mvar` et `data/titles` sont des jonctions.
+
+**Resultats observes.** Inventaire : 465 fichiers, 161 contenus distincts, 119 matchs, 19
+schemas (1 a 38, aucun 39) — parc principal, 6 worktrees, cle PNY (archive `E:\replays` classee
+par version) ; 119/119 cuisables. Cuisson : 119/119, zero echec, 36 min cumulees, pic memoire
+0,56 Gio (19 % du plafond). 26 098 ecarts sur 161 paires. REGRESSION n° 1, generale et non
+isolee : les actions d'objectif de CTF ne sont plus attribuees — 297 actions perdues sur 14
+matchs (20 captures, 44 prises, 18 vols de drapeau), `145908d1` passe de 7 a 0. Le film NOMME
+toujours autant d'evenements (`nommees=60 identifiees=11`) : c'est le PONT D'IDENTITE qui tombe.
+Cause : `d173b1a8c` (2026-08-28), pont par manche via les instants de mort au lieu des totaux du
+match ; son message affirme « neutralite mono-manche prouvee par construction » — les 14 matchs
+touches sont TOUS a une seule manche, la preuve etait synthetique et aucun bump de schema n'a
+force la re-cuisson qui l'aurait dementie. Candidates suivantes : tractions de grappin −10 a
+−40 % sur 16 matchs (coincide avec les usages d'equipement du schema 38, nature non tranchee) ;
+episodes camo/surbouclier −1 a −2 sur 11 matchs ; 3 matchs ou un joueur perd toutes ses vies
+nommees. Tout le reste est explique sur pieces : drapeau neutre a un seul drapeau (schema 35,
+`document.go:428-433`), fusion des vies de vehicule en relais (`89a67a48f`), reclassement des
+familles de pose, `kind` des ramassages (schema 31), identite des camps enfin resolue (29
+paires `unresolved` -> `a`/`b`, scores echanges a somme constante 14/14), et surtout la
+SUPPRESSION DE 1 A 4 POINTS ABERRANTS par match qui resserre les bornes de scene d'un facteur
+100 (`4577fcc4` maxX 217,30 -> 1,50) — un gain, pas une perte.
+
+**Piege de methode, consigne pour la suite.** La premiere serie de 119 cuissons a tourne SANS
+les faits du match : le chemin Windows du fichier `--facts` etait construit dans une chaine bash
+(`"$SPW\facts\$s8.facts.json"`), ou `\$` mange l'expansion de la variable. Le rapport
+intermediaire annoncait alors « 89 matchs ont perdu leur courbe de score », ce qui etait FAUX.
+Meme famille : une racine de travail sans `data/cache/film_manifests` fait tomber la courbe de
+score en silence (journal INFO). Sur ce poste, tout chemin Windows passe par `cygpath -w`.
+
+**Conclusion / prochaine etape.** Outil `cmd/replay-diff` (6 fichiers, 1 049 L, 6 tests dont la
+morsure est prouvee par mutation, `golangci-lint 0 issues`) et rapport
+`.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md` livres. Le parc de reference n'a pas bouge (temoins
+mtime avant/apres sur `replays`, `reference`, `film_chunks` du checkout principal). A trancher
+par le superviseur : reparer le pont d'identite des actions d'objectif (candidate n° 1) AVANT la
+re-cuisson du parc, sans quoi la re-cuisson gravera la perte dans les 951 artefacts.
