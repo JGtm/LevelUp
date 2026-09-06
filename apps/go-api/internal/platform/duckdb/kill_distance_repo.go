@@ -118,6 +118,23 @@ const killDistanceWhere = `e.match_id = ?`
 // 4.0a). Ses paramètres sont liés AVANT ceux de killDistanceWhere.
 const killDistanceFragScope = `s.match_id = ?`
 
+// killDistanceQueryFor compose la lecture d'UN match : le texte SQL ET ses
+// paramètres, dans l'ordre du texte.
+//
+// UN SEUL SITE DE COMPOSITION, ET C'EST LUI QUE LE TEST DE PLAN EXERCE. La
+// tentation est d'écrire ce couple deux fois — ici et dans
+// kill_measured_scope_test.go — mais un test qui RECOMPOSE la requête à partir
+// des constantes ne juge plus le lecteur de production : ramener le scope de la
+// sous-requête à `TRUE` à cet endroit le laisserait vert (constat F1 de la revue
+// adversariale du lot 4, 2026-09-06). Le test appelle donc cette fonction.
+//
+// matchID est lié DEUX FOIS : la sous-requête `fragSolo` d'abord (elle précède
+// la clause WHERE dans le texte SQL), la portée externe ensuite.
+func killDistanceQueryFor(matchID string) (string, []any) {
+	return measuredKillsQuery(positionsAtKill, killDistanceFragScope, killDistanceWhere),
+		[]any{matchID, matchID}
+}
+
 // queryMeasuredKills lit les morts mesurées du match via l'helper canonique.
 func (r *KillDistanceRepo) queryMeasuredKills(ctx context.Context, matchID string) ([]killMeasured, error) {
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
@@ -126,11 +143,8 @@ func (r *KillDistanceRepo) queryMeasuredKills(ctx context.Context, matchID strin
 	}
 	defer release()
 
-	// matchID est lié DEUX FOIS : la sous-requête `fragSolo` d'abord (elle
-	// précède la clause WHERE dans le texte SQL), la portée externe ensuite.
-	return queryMeasuredKills(ctx, db,
-		measuredKillsQuery(positionsAtKill, killDistanceFragScope, killDistanceWhere),
-		[]any{matchID, matchID}, "KillDistanceRepo("+matchID+")")
+	q, args := killDistanceQueryFor(matchID)
+	return queryMeasuredKills(ctx, db, q, args, "KillDistanceRepo("+matchID+")")
 }
 
 // resolveRows traduit source_tag -> weapon_key (classificateur), agrège par

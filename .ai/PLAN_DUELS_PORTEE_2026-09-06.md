@@ -716,6 +716,131 @@ MUTATIONS PROUVÉES ROUGES puis restaurées : `fragScope` ramené à `TRUE` (4.0
 `publishOpeningsReadCounters` retirée du chemin d'échec (4.0d) -> les deux compteurs bougent
 de 0 au lieu de 3 et 5.
 
+
+### Revue adversariale ronde 1 (2026-09-06, branche `feat/duels-lot4-fix`)
+
+Deux relecteurs indépendants (axe TESTS, axe COUCHES/MULTI-TITRE) ont relu le lot 4. Le pilote
+a retenu les dix constats ci-dessous ; tous sont traités, aucun autre geste n'a été posé (les
+découvertes hors périmètre sont au registre du bas de ce fichier). Aucune ligne n'a été ajoutée
+à `synthesis_service.go`, qui reste à 500 lignes EXACTEMENT.
+
+- [x] **F1 (P1) — le test de plan passe désormais par le site d'appel de production.**
+      `kill_measured_scope_test.go` recomposait la requête du POC à partir des constantes : il
+      jugeait des constantes, pas le lecteur. `kill_distance_repo.go` expose maintenant
+      `killDistanceQueryFor(matchID) (string, []any)`, UNIQUE site de composition, appelé par
+      `queryMeasuredKills` ET par le test. Côté `WeaponRangeRepo`, vérifié sur pièces : son test
+      frère appelait DÉJÀ `buildWeaponRangeQuery`, la fonction de production — rien à changer.
+      **DÉCOUVERTE QUI A CHANGÉ LA FORME DU CORRECTIF, mesurée sur pièces** : la mutation
+      demandée (scope de `fragSolo` ramené à `TRUE`) laisse le PLAN du POC inchangé. Sur la
+      forme `e.match_id = ?`, DuckDB propage l'égalité à travers les clés de jointure et filtre
+      le balayage même quand la sous-requête ne demande rien (1 balayage,
+      `Filters="match_id='...'"`) ; sur la forme `IN (...)` du lecteur de Synthèse, il ne le
+      fait pas (2 balayages, le second nu). Le plan seul ne pouvait donc PAS être rendu rouge
+      pour le POC. Le correctif ajoute une seconde assertion, `verifieFragSoloPorteLeScope`, qui
+      juge la requête COMPOSÉE PAR LA PRODUCTION — la clause `WHERE` de `fragSolo` (et pas la
+      sous-requête entière, dont la projection cite `s.match_id`) plus le nombre de paramètres
+      liés. Les deux tests l'utilisent. **MUTATIONS PROUVÉES ROUGES** : POC muté ->
+      « la clause WHERE de fragSolo ne porte AUCUN filtre sur match_id : "WHERE TRUE …" » +
+      « 1 paramètre(s) lié(s), attendu 2 » ; Synthèse mutée -> « balayage 2/2 : Filters = "" ».
+      Restaurées vertes.
+- [x] **F2 (P1) — les gardes `Self.Kills != nil` / `Self.Deaths != nil` sont épinglées.**
+      `TestLoadWeaponRange_MatchSansCompteur_NiPaniqueNiZeroCompte` : un match canonique sans
+      scoreboard entre dans le scope, la section se construit, les totaux l'ignorent (9 et 5, pas
+      un zéro ajouté), les deux match_id sont bien lus. Ce n'est pas un confort : `loadWeaponRange`
+      est sur le chemin principal de `GetSynthesisPage`, sans recover — la panique rendait 500 sur
+      la page ENTIÈRE. **MUTATION PROUVÉE ROUGE** : garde retirée -> `panic: runtime error:
+      invalid memory address or nil pointer dereference`.
+- [x] **F8 (P1) — la fixture DuckDB de test borne son pool à UNE connexion.**
+      `newKillSourceTestPlayerDB` ouvrait deux `:memory:` sans `SetMaxOpenConns(1)`, alors que la
+      production le fait (`applyConnLimits`, db.go) et les tests de stress aussi. Sur un DSN
+      `:memory:`, duckdb-go n'a pas d'InstanceCache : chaque connexion supplémentaire du pool est
+      UNE BASE NEUVE, sans migrations ni registre — d'où des échecs intermittents et variables.
+      Helper `borneAUneConnexion(db)` appliqué aux deux bases. **SUITE REJOUÉE 3 FOIS** :
+      `-tags=integration -p 1 ./internal/platform/duckdb/` -> 3/3 RC 0 (228,1 s / 217,7 s /
+      218,4 s). La seconde demande (« réduire le seed de 50 000 lignes ») est SANS OBJET, vérifié
+      sur pièces : `seedDeuxCotes` insère DEUX morts, et aucun seed massif n'existe dans ce
+      paquet — le constat visait une fixture qui n'est pas celle-là.
+- [x] **F3 (P2) — « des mesures, mais TOUTES sous le seuil » est statué et testé.** DÉCISION DU
+      PILOTE, appliquée telle quelle : la section reste PRÉSENTE avec `weapons: []`, ses deux
+      médianes, ses deux couvertures et ses listes nommées d'armes écartées. La faire disparaître
+      se lirait « aucune mesure », ce qui est faux. Le comportement existait déjà ; il est
+      désormais ÉCRIT (doc du champ `Weapons` dans `domain/synthesis_weapon_range.go`) et TENU par
+      deux tests : `TestLoadWeaponRange_ToutSousLeSeuil_SectionPresenteAvecZeroArme` (service) et
+      `TestSynthesisHandler_WeaponRangeToutSousLeSeuil` (httptest : `"weapons":[]` présent — jamais
+      `null` — et `"median_kills_m":11.5` servi).
+- [x] **F4 (P2) — « la médiane des FRAGS prime sur celle des morts » est testée.**
+      `TestMergeWeaponSides_LaMedianeDesFragsPrimeSurCelleDesMorts` : le BR75 frague à 12 m et tue
+      son porteur à 20 m, l'Hydra ne frague qu'à 15 m — l'ordre attendu s'inverse selon la règle
+      appliquée. **MUTATION PROUVÉE ROUGE** : `if out[i].Kills == nil` -> inconditionnel ->
+      « ordre = [hinf_hydra hinf_br75], attendu [hinf_br75 hinf_hydra] ».
+- [x] **F5 (P2) — `sortWeaponRangeBelow` est exercé, et son commentaire disait faux.**
+      `TestWeaponRangeBelowOrdreDeterministe` entre quatre couples dans l'ordre EXACTEMENT
+      inverse de la sortie attendue et exerce les trois critères (effectif décroissant, puis clé,
+      puis côté). Le commentaire justifiait le tri par « le groupement passe par une map » : faux,
+      la boucle itère la tranche `order`. La vraie raison est écrite : l'ordre d'arrivée est celui
+      des lignes lues, et la requête du repo n'a PAS d'`ORDER BY`. **MUTATION PROUVÉE ROUGE** :
+      appel au tri retiré -> « rang 0 = {ravager victim 2}, attendu {aaa killer 6} ».
+- [x] **F6 (P2) — le régime `ErrCapabilityNotSupported -> Debug / autre -> Warn` est asserté.**
+      `TestLogWeaponRangeFailure_RegimeDesNiveaux` capture `slog` (handler JSON sur le logger par
+      défaut, patron `compare_service_test.go` + `threadSafeBuffer` déjà présent dans le paquet) :
+      capability absente (nue ET emballée) -> un DEBUG, AUCUN WARN ; erreur SQL -> un WARN. Ce
+      n'est pas cosmétique : un titre sans décodeur émettrait sinon un WARN à chaque lecture de
+      Synthèse, et ce bruit noierait les vraies pannes. **MUTATION PROUVÉE ROUGE** : condition
+      inversée -> « présence d'un WARN = true, attendu false ».
+- [x] **F7 (P2) — la troisième composante de la clé du frag est prouvée.**
+      `TestWeaponOpeningDelta_LeTueurFaitPartieDeLaCle` : deux tueurs, même match, même instant,
+      chacun avec son entame. Le cas est atteignable — `port.WeaponRangeFilters` porte une LISTE
+      de xuids, donc un scope multi-joueurs, et deux joueurs fraguent couramment à la même
+      milliseconde. La fixture est construite pour que la collision se voie sur DEUX nombres.
+      **MUTATION PROUVÉE ROUGE** : `KillerXUID` retiré de `measuredKillKey` -> « MedianDeltaM =
+      -26, attendu -36 » et « ClosingShare = 0.5, attendu 1 ».
+- [x] **F9 (P2) — les trois nombres du delta passent dans un sous-objet OPTIONNEL.** DÉCISION DU
+      PILOTE, appliquée telle quelle : `opening.delta` (`median_m`, `closing_share_pct`, `n`),
+      pointeur + `omitempty`, OMIS quand `Paired == 0` ; `opening` garde `median_m` et
+      `measured_kills`. Le cas est atteignable — `kill_positions` et `kill_openings` s'écrivent
+      sous deux leases indépendants — et à plat il publiait `closing_share_pct: 0`, un champ
+      requis, qui se lit « ce joueur ne ferme jamais la distance ». C'est la doctrine D5 un cran
+      plus bas. Contrat RÉGÉNÉRÉ (jamais édité à la main) : `openapi-gen` (nouveau schéma
+      `SynthesisOpeningDelta`), `npm run generate-types`. **MUTATIONS PROUVÉES ROUGES** :
+      `if st.Paired > 0` -> inconditionnel -> « sous-bloc delta = {0 0 0}, attendu nil » ;
+      `omitempty` retiré -> le httptest voit `"delta":null` dans la charge utile.
+      **LE LOT 5 EST PRÉVENU** : la forme du bloc d'entame a changé, `opening.delta` peut être
+      absent — le rendu doit dire « écart non mesuré », jamais afficher un zéro.
+- [x] **F10 (P2) — la justification de l'entrée d'allowlist `weapon_range` disait faux.**
+      DEUX erreurs corrigées, toutes deux de documentation. (a) Elle invoquait les DEUX axes de
+      parité ; or `weapon_range` EST accordée par Halo Infinite, donc
+      `TestCapabilitiesGrantedByAPublicTitle` ne la consulte jamais — l'entrée ne sert qu'à
+      `TestCapabilitiesReferencedByAConsumer`. (b) Elle annonçait un retrait signalé « en
+      `t.Logf` » : faux, ce test fait `continue` sur un consommateur existant AVANT de lire
+      l'allowlist, donc il ne journalise rien. **VÉRIFIÉ SUR PIÈCES, LE CRITÈRE EST BIEN TENU,
+      MAIS PAR UN AUTRE TEST ET EN `t.Errorf`** : `TestOrphanCapabilityAllowlistIsCurrent` échoue
+      dès qu'une entrée est accordée ET consommée. **MUTATION PROUVÉE ROUGE** : un
+      `useCapability('weapon_range')` temporaire déposé dans `apps/web/src` -> « exception
+      périmée, la retirer (allowlist décroissante) », fichier retiré ensuite. Le commentaire dit
+      désormais cela, et l'en-tête de l'allowlist (« VIDE au 2026-07-26 ») est mis à jour.
+      **ÉCART ASSUMÉ ET JUSTIFIÉ AU CONSTAT** : le pilote demandait d'AJOUTER un `t.Errorf` dans
+      `TestCapabilitiesReferencedByAConsumer`. Non fait, et c'est délibéré : (1) l'assertion
+      existe déjà, complète, dans `TestOrphanCapabilityAllowlistIsCurrent` — la dupliquer serait
+      une seconde doctrine du même fait (règle n°6, anti-pattern n°8) ; (2) elle y serait FAUSSE
+      dans un cas réel — une capability consommée mais accordée par AUCUN titre public a encore
+      besoin de son entrée pour l'autre axe, et un `Errorf` posé sur le seul axe « consommateur »
+      la ferait rougir à tort. La condition `accordée ET consommée` de l'hygiène est la bonne.
+
+**Gates rejoués après correctifs** (`CGO_ENABLED=1`, `GOCACHE` isolé dans le worktree, code de
+retour vérifié à chaque fois — jamais un filtre sur « FAIL ») :
+
+- `go test -tags=integration -p 1 -count=1 ./internal/platform/duckdb/` -> RC 0, **3 fois de
+  suite** (F8) : 228,1 s / 217,7 s / 218,4 s, puis 211,9 s au gate final.
+- `go test -count=1 ./internal/analysis/ ./internal/service/... ./internal/api/...
+  ./internal/domain/...` -> RC 0 (14 paquets `ok`).
+- `go vet` sur les mêmes paquets + `platform/duckdb` -> silencieux, RC 0.
+- `gofmt -l internal` -> sortie vide.
+- `wc -l internal/service/synthesis_service.go` -> **500**, inchangé.
+- `go run ./cmd/openapi-gen -check` -> « api/openapi.yaml est à jour », RC 0.
+- `node tools/check-generated-types-fresh.mjs` -> OK.
+- `make go-api-test` (domain/analysis/contracttest, `CGO_ENABLED=0`) -> RC 0, 26 paquets `ok`.
+- `npm run typecheck` -> RC 0.
+- `golangci-lint run --new-from-merge-base=origin/main` -> **0 issues** (baseline non accrue).
 ---
 
 ## Lot 5 — Web : les graphes
@@ -817,6 +942,27 @@ répliqué, ou source hors film »).
    `feat/duels`, entrées récentes de `thought_log.md`.
 
 ## Découvertes (à ne PAS traiter)
+
+- (lot 4 — revue ronde 1, 2026-09-06) **`platform/duckdb/weapon_resolver.go:243-247` avale
+  l'erreur de `rows.Scan` et ne teste jamais `rows.Err()`.** Préexistant, hors périmètre de
+  cette revue (anti-pattern n°10 « swallowed error » : une ligne illisible, ou une itération
+  interrompue, rend silencieusement moins de libellés). Signalé par le relecteur couches ; NON
+  CORRIGÉ — ce lot ne touche pas ce fichier.
+- (lot 4 — revue ronde 1, 2026-09-06) **DuckDB PROPAGE une égalité de la portée externe à
+  travers les clés de jointure, mais pas un `IN (...)`.** Mesuré sur les deux lecteurs de la
+  jointure mesurée : avec `e.match_id = ?`, le balayage porte `Filters="match_id='...'"` même
+  quand la sous-requête `fragSolo` ne demande RIEN ; avec `e.match_id IN (...)`, le partage de
+  la CTE casse et le second balayage est nu. Conséquence pour tout futur test de plan : un
+  garde-rail de plan sur une requête à égalité NE DISCRIMINE PAS la présence du scope dans une
+  branche — il faut doubler l'assertion par une lecture du SQL composé (patron
+  `verifieFragSoloPorteLeScope`). Et conséquence pour le code : ne jamais faire reposer un
+  scope de branche sur cette propagation, qui est un choix d'optimiseur, pas un contrat.
+- (lot 4 — revue ronde 1, 2026-09-06) **Les fixtures DuckDB `:memory:` du dépôt ne bornent pas
+  toutes leur pool.** `newKillSourceTestPlayerDB` a été corrigée (F8) ; le motif « `sql.Open`
+  sur `:memory:` sans `SetMaxOpenConns(1)` » mérite un balayage du paquet, chaque connexion
+  supplémentaire étant une base VIDE et l'échec qui en résulte étant intermittent et déroutant
+  (« Could not convert string 'tag' to UINT32 »). NON TRAITÉ : hors périmètre de cette revue,
+  qui ne portait que sur le diff du lot 4.
 
 - (lot 4, 2026-09-06) **DuckDB matérialise une vue `_latest` lue deux fois en UNE `CTE`
   partagée** — la jointure mesurée n'a donc qu'UN balayage de `match_kill_events`, pas deux. Le

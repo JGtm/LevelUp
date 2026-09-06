@@ -31,6 +31,14 @@ type SynthesisWeaponRange struct {
 	// Weapons : une ligne par arme, triée par médiane des frags croissante — le graphe se
 	// lit comme un continuum du contact à la longue portée (D6). Une arme mesurée d'un seul
 	// côté n'a qu'un côté renseigné.
+	//
+	// PEUT ÊTRE VIDE, ET LA SECTION RESTE PUBLIÉE (décision du 2026-09-06, constat F3 de la
+	// revue adversariale du lot 4). Un joueur dont TOUTES les armes passent sous le seuil de
+	// publication a bel et bien des mesures : les deux médianes globales, les deux
+	// couvertures et les listes nommées ci-dessous portent l'information, seul le graphe par
+	// arme n'a rien à tracer. Faire disparaître la section dans ce cas se lirait « aucune
+	// mesure », ce qui est faux. Toujours sérialisé (`[]`, jamais `null`) : le front itère
+	// sans garde.
 	Weapons []WeaponRangeRow `json:"weapons"`
 
 	// MedianKillsM / MedianDeathsM : les deux médianes GLOBALES, en mètres — le diagnostic
@@ -124,15 +132,31 @@ type SynthesisOpening struct {
 	// proxy, à publier telle quelle (« 618 frags mesurés »).
 	MeasuredKills int `json:"measured_kills"`
 
-	// DeltaMedianM est la médiane, PAR FRAG APPARIÉ, de `distance au coup fatal − distance
-	// à l'entame`. NÉGATIF = l'engagement se ferme. Calculée frag par frag et JAMAIS entre
+	// Delta : l'écart entame -> coup fatal, NIL quand aucun frag ne porte les DEUX mesures.
+	//
+	// POURQUOI UN SOUS-OBJET OPTIONNEL PLUTÔT QUE TROIS CHAMPS PLATS (2026-09-06, constat
+	// F9 de la revue adversariale du lot 4). Les deux couvertures sont indépendantes :
+	// `kill_positions` et `kill_openings` s'écrivent sous deux leases distincts, et un
+	// scope où les entames sont lues mais aucune position de coup fatal ne l'est est
+	// atteignable. À plat, ce cas publiait `delta_median_m: 0` et `closing_share_pct: 0` —
+	// deux champs requis, donc toujours présents — qui se lisent « l'engagement ne se ferme
+	// jamais » alors que la vérité est « on ne sait pas ». C'est exactement la faute que D5
+	// interdit au niveau du bloc entier ; elle est ici interdite au niveau du delta.
+	Delta *SynthesisOpeningDelta `json:"delta,omitempty"`
+}
+
+// SynthesisOpeningDelta : de l'entame au coup fatal, sur les frags qui portent LES DEUX
+// mesures. Publié seulement quand il y en a au moins un.
+type SynthesisOpeningDelta struct {
+	// MedianM est la médiane, PAR FRAG APPARIÉ, de `distance au coup fatal − distance à
+	// l'entame`. NÉGATIF = l'engagement se ferme. Calculée frag par frag et JAMAIS entre
 	// deux médianes : les deux couvertures ne décrivent pas la même population
 	// d'engagements (cf. analysis.WeaponOpeningDelta).
-	DeltaMedianM float64 `json:"delta_median_m"`
+	MedianM float64 `json:"median_m"`
 	// ClosingSharePct est la part des frags appariés dont la distance se ferme, en
 	// pourcentage 0..100.
 	ClosingSharePct float64 `json:"closing_share_pct"`
-	// N est le nombre de frags APPARIÉS — le dénominateur de DeltaMedianM et de
-	// ClosingSharePct, plus petit que MeasuredKills dès qu'une mesure manque d'un côté.
+	// N est le nombre de frags APPARIÉS — le dénominateur des deux nombres ci-dessus, plus
+	// petit que `SynthesisOpening.MeasuredKills` dès qu'une mesure manque d'un côté.
 	N int `json:"n"`
 }
