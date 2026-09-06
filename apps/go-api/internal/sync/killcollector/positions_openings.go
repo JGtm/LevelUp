@@ -53,12 +53,37 @@ func (c *KillSourceCollector) persistOpenings(ctx context.Context, matchID strin
 	if len(pass.openRows) > 0 {
 		if err := c.writeOpenings(ctx, matchID, pass.openRows); err != nil {
 			observability.AddInt(metricOpeningsWriteErrors, 1)
+			// LES COMPTEURS DE LECTURE SORTENT MEME ICI (residu 4.0d, 2026-09-06). Le film A
+			// ETE LU : les morts non localisables et les cotes ecartes par le filtre de vie
+			// sont des faits acquis, que l ecriture reussisse ou non. Les taire sur echec
+			// faisait mentir la doc de publishOpeningsPass (« il compte MEME quand rien n est
+			// ecrit ») et rendait un incident d ecriture indiscernable d une passe qui n avait
+			// rien trouve. Ce qui reste conditionne au SUCCES, c est la couverture
+			// (`matchs_couverts`, `lignes_ecrites`) : elle decrit ce qui est EN BASE.
+			publishOpeningsReadCounters(pass.openRep)
 			slog.ErrorContext(ctx, "killsource: entames — ecriture echouee",
-				"match_id", matchID, "err", err)
+				"match_id", matchID, "err", err,
+				"kills", pass.openRep.Kills, "sans_position", pass.openRep.Dropped,
+				"cotes_hors_vie", pass.openRep.OpeningOutOfLife)
 			return
 		}
 	}
 	publishOpeningsPass(ctx, matchID, pass.openRep, len(pass.openRows))
+}
+
+// publishOpeningsReadCounters : les deux pertes de LECTURE de la passe d entames.
+//
+// Elles decrivent ce que le decodeur a vu, jamais ce qui a ete ecrit : les morts sans aucune
+// position (`Dropped`) et les COTES ecartes parce que le joueur avait reapparu entre l entame
+// et le coup fatal (`OpeningOutOfLife`). D ou l extraction : les deux chemins de sortie de
+// persistOpenings — succes et echec d ecriture — les publient, et chacun exactement une fois.
+func publishOpeningsReadCounters(rep replay.KillPosReport) {
+	if rep.Dropped > 0 {
+		observability.AddInt(metricOpeningsKillsNoPos, int64(rep.Dropped))
+	}
+	if rep.OpeningOutOfLife > 0 {
+		observability.AddInt(metricOpeningsOutOfLife, int64(rep.OpeningOutOfLife))
+	}
 }
 
 // writeOpenings : l ecriture des entames, sous SON PROPRE lease court — meme raison que
@@ -115,17 +140,13 @@ func toKillOpeningRows(matchID string, openings []replay.KillPosition) []persist
 // est-il reellement mesure.
 //
 // LES DEUX PERTES SE COMPTENT AVANT CE PARTAGE, parce qu elles decrivent la LECTURE et pas
-// l ecriture : les morts sans aucune position (`Dropped`) et les COTES ecartes par le filtre de
-// vie (`OpeningOutOfLife` — le joueur avait reapparu entre l entame et le coup fatal). Un film
-// dont toutes les entames tombent doit se lire comme tel, pas comme une couverture basse sans
-// cause.
+// l ecriture (`publishOpeningsReadCounters`) : les morts sans aucune position (`Dropped`) et
+// les COTES ecartes par le filtre de vie (`OpeningOutOfLife` — le joueur avait reapparu entre
+// l entame et le coup fatal). Un film dont toutes les entames tombent doit se lire comme tel,
+// pas comme une couverture basse sans cause. Depuis le residu 4.0d (2026-09-06), le chemin
+// d ECHEC D ECRITURE les publie lui aussi, et cette fonction n est alors pas appelee.
 func publishOpeningsPass(ctx context.Context, matchID string, rep replay.KillPosReport, rowsWritten int) {
-	if rep.Dropped > 0 {
-		observability.AddInt(metricOpeningsKillsNoPos, int64(rep.Dropped))
-	}
-	if rep.OpeningOutOfLife > 0 {
-		observability.AddInt(metricOpeningsOutOfLife, int64(rep.OpeningOutOfLife))
-	}
+	publishOpeningsReadCounters(rep)
 	if rowsWritten == 0 {
 		slog.InfoContext(ctx, "killsource: entames — aucune position d entame sur ce film",
 			"match_id", matchID, "kills", rep.Kills, "sans_position", rep.Dropped,

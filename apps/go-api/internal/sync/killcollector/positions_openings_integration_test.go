@@ -166,6 +166,35 @@ func TestPersistOpenings_EchecDEcriture_CompteEtNePublieRien(t *testing.T) {
 	}
 }
 
+// TestPersistOpenings_EchecDEcriture_CompteQuandMemeLaLecture — résidu 4.0d. Les deux pertes
+// de LECTURE (morts sans position, côtés hors vie) décrivent ce que le décodeur a VU : elles
+// sont acquises que l'écriture réussisse ou non. Avant la correction, le `return` d'échec
+// précédait leur publication — la doc et le test frère promettaient pourtant « il compte MÊME
+// quand rien n'est écrit », et un incident d'écriture devenait indiscernable d'une passe qui
+// n'avait rien trouvé. Ce qui reste conditionné au succès (couverture, lignes écrites) est
+// couvert par le test précédent.
+func TestPersistOpenings_EchecDEcriture_CompteQuandMemeLaLecture(t *testing.T) {
+	db := openSharedTestDB(t)
+	supprimerTable(t, db, "kill_openings")
+	c := &KillSourceCollector{acquireShared: sharedWriter(db)}
+
+	pass := passeDeuxLignes("m-4-0-d")
+	pass.openRep = replay.KillPosReport{Kills: 4, Both: 1, Dropped: 3, OpeningOutOfLife: 5}
+
+	avantSansPos := observability.LoadCounter(metricOpeningsKillsNoPos)
+	avantHorsVie := observability.LoadCounter(metricOpeningsOutOfLife)
+	c.persistOpenings(context.Background(), "m-4-0-d", pass)
+
+	if got := observability.LoadCounter(metricOpeningsKillsNoPos) - avantSansPos; got != 3 {
+		t.Errorf("%s a bougé de %d, attendu 3 (la lecture a eu lieu, l'écriture a échoué)",
+			metricOpeningsKillsNoPos, got)
+	}
+	if got := observability.LoadCounter(metricOpeningsOutOfLife) - avantHorsVie; got != 5 {
+		t.Errorf("%s a bougé de %d, attendu 5 (la lecture a eu lieu, l'écriture a échoué)",
+			metricOpeningsOutOfLife, got)
+	}
+}
+
 // TestWriteOpenings_LeaseIndisponible_RemonteLErreur — le second chemin d'échec de la passe :
 // le lease RW n'est pas obtenu. Il ne doit pas se confondre avec un succès silencieux.
 func TestWriteOpenings_LeaseIndisponible_RemonteLErreur(t *testing.T) {

@@ -47,6 +47,22 @@ package migrations
 // que kill_positions, parce que c'est la même population de frags vue à un autre instant —
 // mais elle n'arbitre plus rien.
 //
+// ─── LA RÉTRACTATION EXIGE QUE LA PASSE SUIVANTE ÉCRIVE AU MOINS UNE LIGNE (assumé) ───────
+//
+// Ce que la vue rend, c'est la dernière passe QUI EXISTE. Une passe de re-décodage qui ne
+// résout AUCUNE entame de TOUT le match n'écrit donc rien du tout — pas de lignes, pas de
+// `decode_pass` neuf (`persist.KillOpeningPersister.PersistPass` sort en WARN sur une passe
+// vide) — et la vue continue de servir la passe précédente ENTIÈRE. La rétractation décrite
+// ci-dessus joue frag par frag DANS une passe qui écrit, jamais contre une passe absente.
+//
+// C'EST ASSUMÉ, ET C'EST LE MOINDRE MAL. L'alternative serait d'écrire une passe vide — une
+// génération sans aucune ligne — pour « retirer » le match ; il faudrait alors distinguer en
+// base un match sans entame lisible d'un match jamais décodé, et le persister devrait écrire
+// une ligne sentinelle dont aucun lecteur n'a l'usage. Le proxy d'entame est une couverture
+// PARTIELLE par construction (D5) : une entame périmée d'une passe précédente est du même
+// ordre d'imprécision que l'absence, alors qu'une sentinelle serait une donnée inventée.
+// Le comportement est épinglé par `TestKillOpeningPersistPass_PasseVideNeRetractePas`.
+//
 // ─── LA MIGRATION A ÉTÉ MODIFIÉE EN PLACE LE 2026-09-06, ET VOICI POURQUOI C'EST LICITE ────
 //
 // Un step de migration est name-keyed : le modifier après coup ne rejoue RIEN sur une base qui

@@ -1,3 +1,31 @@
+## [2026-09-06] Lot 4 duels/portee — les quatre residus du lot 3 (4.0a-4.0d) — Complete
+
+**Decision technique principale.** `fragSolo` porte desormais SON scope (`measuredKillsQuery(table,
+fragSoloScope, where)`, parametres dupliques, scope lie AVANT le WHERE). La preuve exigee par le
+plan a demande de changer de format : le plan textuel de DuckDB coupe le texte des filtres a 27
+caracteres dans ses boites ASCII, un detecteur pose dessus raterait justement les filtres longs
+d un scope multi-matchs — `kill_measured_scope_test.go` decode donc `EXPLAIN (FORMAT JSON)` et
+verifie que TOUT `SEQ_SCAN` de `match_kill_events` porte un `Filters` sur `match_id`.
+
+**Resultats observes.** Forme reelle du plan, decouverte a l EXPLAIN : DuckDB materialise
+`match_kill_events_latest` en UNE `CTE` que les deux branches relisent (`CTE_SCAN`) — il n y a
+donc pas deux balayages a filtrer mais UN SEUL, et il ne peut porter le filtre que si les DEUX
+branches le demandent. Sans le scope de la sous-requete, la CTE n est plus partagee : le plan
+repasse a deux balayages, dont un non filtre. Mutation prouvee rouge (`fragScope` = `TRUE` ->
+« balayage 2/2 : Filters = "" ») pendant que les douze tests de resultat WeaponRange restent
+verts — ce qui est exactement la raison d etre d un test de PLAN. 4.0b : la retractation par
+`decode_pass` exige que la passe suivante ecrive au moins une ligne (une passe vide n ecrit
+aucune generation) ; comportement assume, en-tete de migration corrige et cas asserte tel quel.
+4.0c : l enonce du durcissement `count(*) = 1` est ecrit sur `killDistanceWhere`. 4.0d : les deux
+compteurs de LECTURE (`morts_sans_position`, `cotes_hors_vie`) sortent desormais aussi sur echec
+d ecriture — la doc promettait « il compte MEME quand rien n est ecrit », le code ne le faisait
+pas ; mutation rouge.
+
+**Conclusion / prochaine etape.** Gates verts : `go test -tags=integration -p 1 -count=1
+./internal/platform/duckdb/` (138 s), `./internal/sync/killcollector/ ./internal/persist/
+./internal/games/halo_infinite/migrations/`. Suite du lot 4 : service, capability produit,
+contrat API (4.1-4.6).
+
 ## [2026-09-06] Lot 3 duels — revue adversariale a trois relecteurs, correctifs, ronde 2, fusion — Complete
 
 **Decision technique principale.** Revue L1 (anti-ART) + L3 (anti-patterns) + L6 (tests) en parallele et aveugles ; deux relecteurs ont converge independamment sur la vue `kill_openings_latest` arbitree par cle et non par passe ; decision pilote soumise a l utilisateur : `decode_pass` sur `kill_openings` (table jamais creee nulle part, migration modifiee en place, commit separe `ed3b323f3` retirable). Les deux P1 de L6 (signe du decalage et passe d entames non couverts par les tests) sont elimines structurellement par la bascule sur `replay.BuildKillOpenings` et pinces par des tests dont les mutations ont ete vues rouges.
