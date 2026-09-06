@@ -314,7 +314,9 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
   `apps/web/src/features/match-replay/weaponSoundVariations.ts`.
 - Prereq: the recipe's earlier, still-external steps (extraction, banks analysis, human vote)
   must already have produced `_donnees/*.json` and the per-weapon source/rendered `.wav`
-  tree ; no cgo/game-install for this final step alone.
+  tree. No game install is needed for this final step (the mode opens no game module), but
+  cgo IS required to BUILD the binary: `cmd/weapon-sounds` imports `internal/himap` ->
+  `internal/himodule` -> `internal/ooz` (Kraken decompression) for its other modes.
 - Replay when: a weapon vote is finalized, or the full recipe is redone (game update, new
   weapon). Full recipe: `.ai/V7.5/RECETTE_SONS_ARMES.md`.
 

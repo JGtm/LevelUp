@@ -328,7 +328,10 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
   `apps/web/src/features/match-replay/weaponSoundVariations.ts`.
 - Prérequis : les étapes antérieures de la recette, encore hors dépôt (extraction, analyse
   des banks, vote humain), doivent déjà avoir produit `_donnees/*.json` et l'arborescence de
-  `.wav` sources/rendus par arme ; aucun cgo/jeu installé pour cette seule étape finale.
+  `.wav` sources/rendus par arme. Aucun jeu installé n'est nécessaire pour cette étape finale
+  (le mode n'ouvre aucun module du jeu), mais cgo EST requis pour COMPILER le binaire :
+  `cmd/weapon-sounds` importe `internal/himap` -> `internal/himodule` -> `internal/ooz`
+  (décompression Kraken) pour ses autres modes.
 - À rejouer : un vote d'arme est finalisé, ou la recette complète est rejouée (mise à jour du
   jeu, nouvelle arme). Recette complète : `.ai/V7.5/RECETTE_SONS_ARMES.md`.
 
