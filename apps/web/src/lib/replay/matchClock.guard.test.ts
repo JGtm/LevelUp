@@ -26,14 +26,22 @@ import { join, resolve } from 'node:path'
  * est un opérande. Les deux sens sont couverts ; une étoile de bloc de commentaire (` * `
  * en tête de ligne) ne matche pas, faute d'opérande à sa gauche.
  *
- * LA LECTURE QUALIFIÉE COMPTE AUTANT QUE LA LECTURE NUE (2026-09-06, revue R1, constat C6).
- * Le premier motif exigeait que `frameIntervalMs` SUIVE immédiatement l'opérateur : il
- * attrapait la forme historique (`p.t * frameIntervalMs`, champ destructuré) et laissait
- * passer `paliers[0].t * clock.frameIntervalMs` — la forme que le nouveau code rend
- * naturelle, l'horloge étant devenue un objet. Le préfixe optionnel `<objet>.` (ou `?.`)
- * ferme cet angle mort des deux côtés de l'opérateur.
+ * LA LECTURE QUALIFIÉE COMPTE AUTANT QUE LA LECTURE NUE (2026-09-06, revue R1 constat C6,
+ * complété en ronde 2 constat N4). Le motif d'origine exigeait que `frameIntervalMs` SUIVE
+ * immédiatement l'opérateur : il attrapait la forme historique (`p.t * frameIntervalMs`,
+ * champ destructuré) et laissait passer `paliers[0].t * clock.frameIntervalMs` — la forme
+ * que le nouveau code rend naturelle, l'horloge étant devenue un objet.
+ *
+ * LE PRÉFIXE SE RÉPÈTE, ET IL ADMET `!` ET `?`. Une seule qualification ne suffisait pas :
+ * `matchClock()` rend `MatchClock | null`, et l'assertion non-null est l'idiome courant pour
+ * CET objet dans ce même répertoire (`matchClock({…})!`, `_scoreCurve.test.ts`). Les trois
+ * graphies mesurées comme passantes en ronde 2 — `t * clock!.frameIntervalMs`,
+ * `t * data.clock.frameIntervalMs` (deux niveaux), `t * (clock as MatchClock).frameIntervalMs`
+ * — sont désormais attrapées : le quantificateur `*` couvre la chaîne de qualifications, et
+ * `[!?]?` l'assertion ou le chaînage optionnel. Une conversion image → horloge écrite hors
+ * de `matchClock` est un second axe temporel, quelle que soit sa graphie.
  */
-const QUALIFIE = String.raw`(?:[A-Za-z0-9_$)\]]+\s*\??\.\s*)?`
+const QUALIFIE = String.raw`(?:(?:\([^()\n]*\)|[A-Za-z0-9_$)\]]+)\s*[!?]?\s*\.\s*)*`
 const CONVERSION = [
   new RegExp(String.raw`[A-Za-z0-9_)\]]\s*[*/]\s*` + QUALIFIE + 'frameIntervalMs'),
   new RegExp('frameIntervalMs' + String.raw`\s*[*/]\s*` + QUALIFIE + String.raw`[A-Za-z0-9_([]`),

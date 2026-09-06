@@ -625,10 +625,13 @@ la mutation du verdict rejouée ROUGE puis VERTE.
   `src/lib/replay/**` ajouté au balayage ; ouverture de bloc de commentaire (`/*`, `/**`)
   tolérée comme l'étaient déjà `//` et `*`. `color(` est VOLONTAIREMENT absent du motif : c'est
   aussi un nom de variable de rendu du dépôt (`valueGridModel.ts`), et un motif qui crie faux
-  se désactive. Les onze littéraux préexistants que le motif révèle portent une exception
-  nommée et datée ligne à ligne (dix voiles neutres d'ombre ou de contour — exception déjà
-  prévue par la doctrine `color-tokens` — et un helper qui convertit en `rgba` une couleur déjà
-  résolue). Aucun rendu ne change : ce sont des commentaires.
+  se désactive. **DÉCOMPTE EXACT, corrigé en ronde 2 (constat N3)** : la ronde 1 pose
+  **17 marqueurs `color-allow` sur 11 fichiers** — et non « onze littéraux », qui comptait les
+  fichiers. Ils se répartissent en trois familles : les voiles neutres (ombres d'infobulle
+  ECharts, contours de lisibilité, gris de repli d'une carte de match), **deux** helpers de
+  conversion (`hexToRgba` de `components/charts/_utils.ts` et son jumeau de
+  `squadPerformanceLineCharts.ts`), et **une** ligne de pur commentaire
+  (`ExplorerTargetIdentityBanner.tsx`). Aucun rendu ne change : ce sont des commentaires.
   **Mutation M10, rouge puis verte** : `oklch(...)` + `rgba(...)` dans `layers/fxInk.ts`
   (2 violations) ; `oklch(...)` dans `lib/replay/rosterLogic.ts` (1 violation).
 - [x] **C6 (P2) — le garde d'horloge attrape la lecture qualifiée.** `commit bc16a9b04`. Le
@@ -697,7 +700,59 @@ de lint sont ceux de la baseline. Rasterisation 3/3 après chacun des huit commi
     `1 failed | 6384 passed` sans nommer le cas dans la sortie capturée ; les deux runs suivants
     (dont celui du gate ci-dessus) sont verts à `6385 passed`. La machine était chargée (184 s
     contre 115 s). Signalé pour surveillance, aucune cause identifiée.
-16. **Onze littéraux de couleur préexistants** portent désormais une exception `color-allow`
-    nommée : dix voiles neutres (ombres d'infobulle ECharts, contours de lisibilité) et un
-    helper de conversion. Ils deviennent visibles au gate, ce qui est le point ; les porter sur
-    un token de voile, quand il existera, reste à faire.
+16. **Dix-sept littéraux de couleur préexistants, sur onze fichiers**, portent désormais une
+    exception `color-allow` nommée (décompte refait en ronde 2, constat N3 : « onze » comptait
+    les fichiers). Trois familles : les voiles neutres (ombres d'infobulle ECharts, contours de
+    lisibilité, gris de repli d'une carte de match), **deux** helpers de conversion, **une**
+    ligne de pur commentaire. Ils deviennent visibles au gate, ce qui est le point ; les porter
+    sur un token de voile, quand il existera, reste à faire. **Après la ronde 2**, le compte
+    passe à **19 sur 13 fichiers** : les deux lignes de prose de la carte de chaleur, que la
+    tolérance `/*` protégeait, portent la leur (N1).
+
+### Retouches après ronde 2 — CLOSES le 2026-09-06
+
+La seconde ronde ferme dix des onze points de R1, mesure C6 comme PARTIEL, et relève qu'une
+correction avait ouvert un défaut. Quatre retouches, un commit.
+
+- [x] **N1 (P2) — la tolérance `/*` rouvrait le gate hex : retirée.** Le test ne regardait que
+  le premier caractère non blanc : `/* rien */ const c = '#ff00aa'` passait, alors que le gate
+  d'AVANT la correction C5 l'attrapait. Élargir le lint aux fonctions de couleur l'avait
+  rétréci sur son périmètre historique. La clause disparaît ; les **deux lignes de prose**
+  qu'elle protégeait (`layers/heatmapLayer.ts`, `layers/useReplayHeatmap.ts` — des en-têtes qui
+  DÉCRIVENT la rampe) portent un `color-allow` daté, le geste appliqué 17 fois ailleurs.
+  **Mutation N1-a, rouge puis verte** : `/* rien */` + `rgba(...)` + `#ff00aa` dans
+  `layers/fxInk.ts` → `fxInk.ts:99 — fonction-couleur "rgba("`, `fxInk.ts:100 — hex "#ff00aa"`,
+  `ERREUR : 2 > plafond P8.1 (0)`.
+- [x] **N4 (P2, le PARTIEL de C6) — la qualification se répète, et admet `!`, `?` et un cast.**
+  Le préfixe optionnel ne fermait qu'UNE graphie : `clock!.frameIntervalMs`,
+  `data.clock.frameIntervalMs` et `(clock as MatchClock).frameIntervalMs` passaient encore —
+  or l'assertion non-null est l'idiome courant pour cet objet, `matchClock()` rendant
+  `MatchClock | null`. Le motif accepte désormais une CHAÎNE de qualifications, chacune pouvant
+  porter `!` ou `?`, et un segment parenthésé pour le cast.
+  **Cinq graphies plantées tour à tour dans `features/match-view/_scoreCurve.ts`**, toutes
+  rouges (`1 failed | 1 passed`), arbre restauré vert : `clock!.`, `data.clock.`,
+  `(clock as MatchClock).`, `doc?.`, et la forme nue historique.
+- [x] **N2 (P3) — la justification de l'exclusion de `color(` n'est plus écrite deux fois.**
+  Édition inachevée restée dans le commit `ec5a4f391` : la première version part.
+- [x] **N3 (P3) — chaque `color-allow` décrit SON site.** Le texte « voile NEUTRE d'ombre/fond
+  d'infobulle ECharts » avait été recopié sur quatre lignes qu'il ne décrit pas :
+  `components/ui/match-card-presentation.ts:24-25` (le gris de repli du panneau d'une carte de
+  match SANS issue connue) et `components/charts/_utils.ts:160-161` (`hexToRgba`, un helper de
+  conversion et son repli). Chacune porte sa vraie raison. Le décompte du journal est corrigé
+  au point C5 et à la découverte 16 : **17 marqueurs sur 11 fichiers** en ronde 1 (« onze »
+  comptait les fichiers), dont deux helpers et une ligne de pur commentaire ; **19 sur 13**
+  après N1.
+
+**Gate des retouches**
+
+| Gate | Commande exacte | Dernière ligne |
+|---|---|---|
+| Couleurs | `npm --prefix apps/web run lint:colors` | `lint-no-hardcoded-colors: clean (0 violation)` |
+| Typecheck (cache forcé) | `cd apps/web && npx tsc -b --force` | (aucune sortie) `TSC_EXIT=0` |
+| Vitest (les trois dossiers du lot) | `cd apps/web && node_modules/.bin/vitest run --pool=forks src/lib/replay src/features/match-view src/features/match-replay` | `Tests  2892 passed (2892)` (210 fichiers) |
+| Lint | `npm --prefix apps/web run lint` | `✖ 27 problems (0 errors, 27 warnings)` |
+| Rasterisation (témoin) | `cd apps/web && npx playwright test e2e/replay-explosion-raster.spec.ts e2e/replay-muzzle-raster.spec.ts --reporter=line` | `3 passed` |
+
+**Reste hors périmètre, signalé par R2** : `layers/replayMarkers.ts:173` porte un JSDoc orphelin
+de la même famille que C9 (« Calque des noms… » au-dessus de `showTrail`), mais il est
+ANTÉRIEUR au lot — identique à `a21fd77f4`. Non traité (règle 7).

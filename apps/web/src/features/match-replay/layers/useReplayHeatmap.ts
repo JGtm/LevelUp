@@ -44,7 +44,7 @@ const HEAT_LIVE_POLL_MS = 250
 export interface ReplayHeatmap {
   /** La grille cuite — null quand le calque est éteint OU que rien n'est mesurable. */
   grid: HeatGrid | null
-  /** Les paliers `rgba()` du thème. Vide = le thème ne donne pas la rampe : on ne peint pas. */
+  /** Les paliers `rgba()` du thème. Vide = le thème ne donne pas la rampe : on ne peint pas. — color-allow: 2026-09-06 (ronde 2, N1) — ligne de PROSE qui DECRIT la rampe du theme, elle n'en pose aucune. */
   ramp: string[]
   /**
    * La lecture EFFECTIVEMENT servie. Elle retombe sur la présence quand aucune mort du

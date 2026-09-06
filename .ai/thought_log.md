@@ -95678,3 +95678,33 @@ la minute). Trois decouvertes nouvelles au journal du lot, dont un flake de suit
 reproductible (un run sur trois, sous charge) et deux libelles FR en dur preexistants dans
 `MatchCadenceChart`. Prochaine etape : seconde ronde de revue sur ces corrections, puis
 integration dans `feat/v75`.
+
+## [2026-09-06] Lot D — retouches apres la ronde 2 de revue — Complete
+
+**Contexte.** La ronde 2 ferme dix des onze points de R1, mesure C6 comme PARTIEL et releve
+qu'une correction avait ouvert un defaut : la tolerance `/*` ajoutee au lint couleur laissait
+passer `/* rien */ const c = '#ff00aa'`, alors que le gate d'AVANT cette correction l'attrapait
+— un elargissement qui retrecissait le perimetre historique.
+
+**Decision technique.** La tolerance disparait et les deux lignes de PROSE qu'elle protegeait
+portent un `color-allow` date, comme les dix-sept autres exceptions du lot (N1). Le motif du
+garde d'horloge accepte desormais une CHAINE de qualifications, chacune pouvant porter `!` ou
+`?`, plus un segment parenthese pour le cast (N4) : l'assertion non-null est l'idiome courant
+pour cet objet, `matchClock()` rendant `MatchClock | null`. La justification dupliquee de
+l'exclusion de `color(` est ramenee a une (N2), et les quatre `color-allow` recopies sur des
+sites qu'ils ne decrivaient pas portent leur vraie raison (N3) — gris de repli d'une carte de
+match, helper de conversion et son repli.
+
+**Resultats.** Un commit. N1 prouve par la mutation du verdict, rouge puis verte : `rgba(` ET
+`#ff00aa` derriere un bloc de commentaire ferme font desormais rougir le lint. N4 prouve sur
+CINQ graphies plantees tour a tour dans `_scoreCurve.ts` (`clock!.`, `data.clock.`,
+`(clock as MatchClock).`, `doc?.`, forme nue), toutes rouges, arbre restaure vert. Gate :
+`lint:colors` 0 violation, `tsc -b --force` exit 0, vitest des trois dossiers du lot
+`2892 passed`, lint 0 error (27 warnings de baseline), rasterisation `3 passed`. Le decompte du
+journal est corrige : 17 marqueurs sur 11 fichiers en ronde 1 (« onze » comptait les fichiers),
+19 sur 13 apres N1.
+
+**Conclusion / prochaine etape.** Les quatre retouches sont closes ; C6 passe de PARTIEL a
+ferme. Un orphelin de la famille C9 subsiste (`replayMarkers.ts:173`) mais il est ANTERIEUR au
+lot, laisse en l'etat (regle 7). Prochaine etape : verification du diff par le superviseur,
+puis integration dans `feat/v75`.
