@@ -127,34 +127,43 @@ func main() {
 	depotCible := flag.String("depot", "", "racine du depot cible ; defaut : title.FindRepoRoot (mode livrer)")
 	flag.Parse()
 
-	racine, err := resoudreDeploy(*deploy)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "racine deploy introuvable:", err)
-		os.Exit(1)
-	}
-	chemin := filepath.Join(racine, filepath.FromSlash(*module))
-
 	temoins, err := parserWem(*wem)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "option -wem invalide:", err)
 		os.Exit(1)
 	}
 
-	// INDEX LARGE. Sans lui, un `sourceID` n'est accepte que s'il appartient au pack de
-	// l'arme — ce qui faisait disparaitre les couches partagees entre armes, precisement
-	// celles qui manquaient a l'oreille. Les garde-fous STRUCTURELS (listes d'enfants et
-	// d'actions validees contre les objets de la bank) restent inchanges.
-	if !*etroit {
-		dossier := *sfx
-		if dossier == "" {
-			dossier = dossierSFXParDefaut(racine)
+	// RESOLUTION PARESSEUSE DE LA RACINE `deploy`. Elle etait faite AVANT le switch, donc
+	// pour TOUS les modes : `livrer`, qui n'ouvre aucun module et ne lit que des `.json` et
+	// des `.wav` du chantier sons, echouait « racine deploy introuvable » sur un poste sans
+	// jeu installe — alors que le script Python qu'il remplace n'a jamais rien exige de tel
+	// (constat C1 de la revue R1 du lot v2 G). L'index large des `.pck`, lui aussi construit
+	// avant le switch, lui coutait en plus une indexation de 15 798 identifiants inutiles.
+	var racine, chemin string
+	if !modesSansJeu[*mode] {
+		racine, err = resoudreDeploy(*deploy)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "racine deploy introuvable:", err)
+			os.Exit(1)
 		}
-		idx, errIdx := indexTousPcks(dossier)
-		if errIdx != nil {
-			fmt.Fprintln(os.Stderr, "index large indisponible, validation etroite:", errIdx)
-		} else {
-			indexLarge = idx
-			fmt.Printf("index large : %d identifiants .wem sur tous les packs\n", len(indexLarge))
+		chemin = filepath.Join(racine, filepath.FromSlash(*module))
+
+		// INDEX LARGE. Sans lui, un `sourceID` n'est accepte que s'il appartient au pack de
+		// l'arme — ce qui faisait disparaitre les couches partagees entre armes, precisement
+		// celles qui manquaient a l'oreille. Les garde-fous STRUCTURELS (listes d'enfants et
+		// d'actions validees contre les objets de la bank) restent inchanges.
+		if !*etroit {
+			dossier := *sfx
+			if dossier == "" {
+				dossier = dossierSFXParDefaut(racine)
+			}
+			idx, errIdx := indexTousPcks(dossier)
+			if errIdx != nil {
+				fmt.Fprintln(os.Stderr, "index large indisponible, validation etroite:", errIdx)
+			} else {
+				indexLarge = idx
+				fmt.Printf("index large : %d identifiants .wem sur tous les packs\n", len(indexLarge))
+			}
 		}
 	}
 
@@ -348,6 +357,16 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+// modesSansJeu : les modes qui n'ouvrent AUCUN module du jeu et n'indexent aucun `.pck`.
+// Pour eux, resoudre la racine `deploy` avant le switch etait un prerequis fantome : ils
+// tournent sur un poste ou Halo n'est pas installe (cf. modesSansJeu dans main, et les
+// prerequis documentes de `weapon-sounds -mode livrer` dans docs/COMMANDS.md).
+//
+// Le BINAIRE, lui, reste lie a cgo : `internal/himap` -> `internal/himodule` -> `internal/ooz`
+// (decompression Kraken) est un import du paquet, pas du mode. Le retirer demanderait de
+// scinder ce `main` — hors du perimetre de cette correction, et la documentation le dit.
+var modesSansJeu = map[string]bool{"livrer": true}
 
 // resoudreDeploy rend la racine `deploy`, explicite ou auto-detectee.
 func resoudreDeploy(explicite string) (string, error) {
