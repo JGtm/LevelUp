@@ -10,8 +10,8 @@
  * LA PARITÉ FR/EN RESTE TENUE PAR LE TYPAGE : `Record<ReplayLocale, ReplayText>` dans
  * `i18n.ts` refuse toute langue à laquelle il manque un champ.
  */
-import type { PadControlGapKey } from './padControlLogic'
-import type { PadEquipmentFamilyKey } from './weaponPadFamilies'
+import type { PadControlGapKey } from '../padControlLogic'
+import type { PadEquipmentFamilyKey } from '../weaponPadFamilies'
 
 /**
  * LE TABLEAU DES USAGES D'ÉQUIPEMENT de la page match (onglet Chronologie). Il compte, sur tout

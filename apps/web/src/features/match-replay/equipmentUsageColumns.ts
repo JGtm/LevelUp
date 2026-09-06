@@ -16,12 +16,12 @@
  */
 import { formatDurationMMSS } from '@/lib/formatters/duration'
 
-import { catalogText } from './catalogLabel'
+import { catalogText } from './i18n/catalogLabel'
 import { PLACEMENT_RENDER } from './equipmentPlacementsLayer'
 import type { EquipmentUsage, EquipmentUsageTally } from './equipmentUsageLogic'
 import { isGameChangerFamily } from './gameChangers'
-import type { ReplayLocale } from './i18n'
-import type { ReplayText } from './i18nContract'
+import type { ReplayLocale } from './i18n/i18n'
+import type { ReplayText } from './i18n/i18nContract'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { padEquipmentFamilyOf } from './weaponPadFamilies'
 

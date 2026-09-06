@@ -25,7 +25,7 @@ import {
   type UsageColumnGroup,
 } from './equipmentUsageColumns'
 import { buildEquipmentUsage } from './equipmentUsageLogic'
-import { REPLAY_TEXT } from './i18n'
+import { REPLAY_TEXT } from './i18n/i18n'
 import { testReplayDoc } from './test/testDoc'
 
 const t = REPLAY_TEXT.fr

@@ -25,7 +25,7 @@ import { useCapability } from '@/lib/capabilities'
 import { leaderStates, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import type { ReplayFeedEntry } from './killFeedLogic'
-import type { ReplayLocale } from './i18n'
+import type { ReplayLocale } from './i18n/i18n'
 import type { PlayerMarkKind } from './playerMarks'
 import { formatClock } from './replayLogic'
 import { EMPTY_MEDIA, SKIP_SECONDS } from './replayCanvasConfig'

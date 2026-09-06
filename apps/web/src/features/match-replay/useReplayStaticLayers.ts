@@ -24,7 +24,7 @@ import { useEffect, useRef, type RefObject } from 'react'
 
 import { drawCalloutsLayer, type CalloutZoneReady } from './calloutsLayer'
 import { drawHeatmapLayer, type HeatGrid } from './heatmapLayer'
-import type { ReplayLocale } from './i18n'
+import type { ReplayLocale } from './i18n/i18n'
 import { drawObjectivesLayer, type ObjectiveElementReady } from './objectivesLayer'
 import { type CanvasView } from './replayView'
 

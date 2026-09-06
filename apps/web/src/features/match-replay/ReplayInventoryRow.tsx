@@ -37,9 +37,9 @@
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
-import type { CatalogLabel } from './catalogLabel'
+import type { CatalogLabel } from './i18n/catalogLabel'
 import type { EquippedReading } from './equippedLogic'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import {
   grenadeBoxAt,
   grenadeBoxHint,

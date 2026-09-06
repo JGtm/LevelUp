@@ -13,7 +13,7 @@ import { useCallback, useMemo } from 'react'
 
 import { normalizeCallouts } from '@/features/match-replay/calloutsLayer'
 import { endMatchSoundSpec } from '@/features/match-replay/endMatchSound'
-import { REPLAY_TEXT } from '@/features/match-replay/i18n'
+import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
 import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/model/playbackStore'
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
 import {

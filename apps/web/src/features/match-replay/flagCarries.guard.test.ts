@@ -31,7 +31,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import type { FlagState } from './flagCarriesLayer'
-import { REPLAY_TEXT } from './i18n'
+import { REPLAY_TEXT } from './i18n/i18n'
 
 /**
  * Les fichiers de ce lot : le calque, l'onde de capture (2026-08-27), le hook, l'infobulle, le

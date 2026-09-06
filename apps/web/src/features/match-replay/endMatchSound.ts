@@ -52,7 +52,7 @@
 import { outcomeCodeToValue } from '@/lib/outcome'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import type { ReplayLocale } from './i18n'
+import type { ReplayLocale } from './i18n/i18n'
 import { readVictory, type VictoryOutcome } from './victoryLogic'
 
 /**

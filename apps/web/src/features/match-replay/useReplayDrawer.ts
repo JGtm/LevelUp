@@ -30,7 +30,7 @@
  */
 import { useCallback, useMemo, useRef, useState, type ComponentProps, type RefObject } from 'react'
 
-import type { ReplayLocale } from './i18n'
+import type { ReplayLocale } from './i18n/i18n'
 import type { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
 import type { ReplaySettings } from './useReplaySettings'
 import type { ReplaySound } from './useReplaySound'

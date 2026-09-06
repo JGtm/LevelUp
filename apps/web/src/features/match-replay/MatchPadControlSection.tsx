@@ -53,8 +53,8 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import type { ReplayText } from './i18nContract'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
+import type { ReplayText } from './i18n/i18nContract'
 import { buildPadControlBars, type PadBarModel, type PadBarRow } from './padControlChart'
 import {
   buildPadControl,

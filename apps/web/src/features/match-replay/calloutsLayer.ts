@@ -19,7 +19,7 @@
  */
 import type { ReplayCalloutZone, ReplayMapCallouts } from '@/lib/api/types'
 
-import type { ReplayLocale } from './i18n'
+import type { ReplayLocale } from './i18n/i18n'
 import { type XY } from './replayLogic'
 import { type CanvasView, projectTo } from './replayView'
 

@@ -56,7 +56,7 @@ import {
   endMatchSoundStems,
   type EndMatchSoundSpec,
 } from './endMatchSound'
-import type { ReplayLocale } from './i18n'
+import type { ReplayLocale } from './i18n/i18n'
 import { ReplayAudioPlayer } from './replayAudio'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { distanceChain, drawVariation } from './weaponSoundLogic'

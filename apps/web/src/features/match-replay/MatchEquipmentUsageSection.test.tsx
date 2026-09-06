@@ -28,7 +28,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
-import { REPLAY_TEXT } from './i18n'
+import { REPLAY_TEXT } from './i18n/i18n'
 import { MatchEquipmentUsageSection } from './MatchEquipmentUsageSection'
 import { testReplayDoc } from './test/testDoc'
 

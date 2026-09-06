@@ -78,8 +78,8 @@ import {
   type UsageColumnGroup,
 } from './equipmentUsageColumns'
 import { buildEquipmentUsage, tallyTotal, type EquipmentUsage } from './equipmentUsageLogic'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import type { ReplayText } from './i18nContract'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
+import type { ReplayText } from './i18n/i18nContract'
 import { useMatchReplay } from './queries'
 
 interface Props {

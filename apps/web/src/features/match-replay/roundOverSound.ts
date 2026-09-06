@@ -33,7 +33,7 @@
  */
 import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
-import type { ReplayLocale } from './i18n'
+import type { ReplayLocale } from './i18n/i18n'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'

@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { NO_ZONES, type ZonePresence } from './equipmentZones'
-import { REPLAY_TEXT } from './i18n'
+import { REPLAY_TEXT } from './i18n/i18n'
 import { cardChrome, hasUnderLayer, playerCardFx, type CardFxInput } from './playerCardFx'
 
 function input(over: Partial<CardFxInput> = {}): CardFxInput {

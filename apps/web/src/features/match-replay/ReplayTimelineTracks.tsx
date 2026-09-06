@@ -35,7 +35,7 @@ import { useState, type ChangeEvent, type RefObject } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { ReplayMediaLightbox } from './ReplayMediaLightbox'
 import {
   clipFrameCount,

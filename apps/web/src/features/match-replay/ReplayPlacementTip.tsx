@@ -26,7 +26,7 @@
  */
 import { PLACEMENT_RENDER, type PlacementKind } from './equipmentPlacementsLayer'
 import { PLACEMENT_ORIGIN_DROPPED } from './placementDropped'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { formatClock } from './replayLogic'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import type { PlacementHover } from './usePlacementHover'

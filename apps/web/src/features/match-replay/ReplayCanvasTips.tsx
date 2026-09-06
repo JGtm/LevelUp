@@ -18,7 +18,7 @@
 import { ReplayFlagTip } from './ReplayFlagTip'
 import { ReplayPlacementTip } from './ReplayPlacementTip'
 import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
-import type { ReplayLocale } from './i18n'
+import type { ReplayLocale } from './i18n/i18n'
 import type { ReplayWindowBounds } from './replayWindow'
 import type { FlagHover } from './useReplayFlagCarries'
 import type { PlacementHover } from './usePlacementHover'
