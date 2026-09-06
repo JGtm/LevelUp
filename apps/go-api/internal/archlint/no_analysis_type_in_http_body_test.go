@@ -69,10 +69,28 @@ import (
 // CALCUL ou un format de STOCKAGE ; le contrat public se decrit dans `domain/`.
 const analysisPrefix = "levelup/go-api/internal/analysis/"
 
-// corpsHumaMinimum : le nombre de corps Huma que le scan doit voir au minimum. Mesure a 104
-// le 2026-09-05 ; le plancher est volontairement bas pour ne pas transformer ce garde-rail en
-// compteur a maintenir, et assez haut pour qu'un scan qui ne trouve plus rien echoue.
-const corpsHumaMinimum = 80
+// corpsHumaMinimum : le nombre de corps Huma que le scan doit voir au minimum.
+//
+// CHRONIQUE DU CHIFFRE, parce que la premiere version etait fausse :
+//
+//	2026-09-05  Plancher pose a 80, commentaire « mesure a 104 ». Les 104 venaient d'un grep
+//	            preparatoire (`^	Body `) qui ne comptait QUE les champs sur leur propre
+//	            ligne, pas les `struct{ Body T }` d'une seule ligne — le chiffre n'a jamais
+//	            decrit ce que ce scan voit. Le commentaire decrivait donc un etat qui n'a
+//	            jamais existe (anti-patron nº9, doc inversee), et le plancher se retrouvait a
+//	            35 % du corpus : un scan qui aurait perdu jusqu'a 65 % des corps aurait rendu
+//	            « aucune violation » sans declencher l'alerte que ce garde-rail existe pour
+//	            declencher.
+//	2026-09-06  Mesure REELLE par le scan lui-meme (plancher force a 100000, le test imprime
+//	            le compte) : 226. Oracle independant du code teste, par grep : 148 champs sur
+//	            leur propre ligne + 80 `struct{ Body ... }` sur une ligne = 228 — les deux
+//	            mesures concordent a 2 pres. Plancher porte a 180, soit 80 % de 226 : assez
+//	            serre pour qu'une perte de branche du parcours echoue, assez lache pour ne
+//	            pas devenir un compteur a maintenir a chaque route ajoutee ou retiree.
+//
+// Si le plancher devient contraignant parce que des routes DISPARAISSENT, le remesurer par la
+// meme methode et rechroniquer ici — jamais le baisser sans mesure.
+const corpsHumaMinimum = 180
 
 // corpsAnalysisTolere : les corps de route qui citent encore un type d'`internal/analysis/`,
 // par `fichier:Struct.Champ`, avec la DATE de l'inscription, la DATE CIBLE de retrait et le
