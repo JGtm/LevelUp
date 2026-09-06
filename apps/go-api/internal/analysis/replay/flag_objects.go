@@ -264,7 +264,7 @@ func closeByFreeLives(raws []flagCarryRaw, ctx flagCarryCtx, scan FlagCarryScan)
 	if len(scan.Free) == 0 {
 		return raws, 0
 	}
-	idx := tracksByXUID(ctx.tracks)
+	idx := tracksByXUID(ctx.tracks, ctx.slotXUID)
 	closed := 0
 	for i := range raws {
 		if raws[i].closed {

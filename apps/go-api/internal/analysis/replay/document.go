@@ -815,7 +815,29 @@ package replay
 // sans que sa forme le dise, et `backfill-replay` saute un artefact à la version courante.
 // Détail : internal/analysis/replay/skull_carries.go (carrierPresence.gate) et
 // .ai/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
-const SchemaVersion = 43
+//
+// v45 (2026-09-06) : UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE. Aucun champ n'est
+// ajouté ; c'est le CONTENU d'`equipmentEpisodes` et de `flagCarries` qui change. Même cause
+// qu'aux v41 et v43 — le découpage « une track = une vie » du v36 —, mais sur deux consommateurs
+// de plus, et sur une grandeur qu'aucun COMPTAGE ne voit : la DURÉE. Les deux faits sortent du
+// nouvel axe « somme des durées » du comparateur d'artefacts.
+//
+//	épisodes  L'état actif se lit PAR SLOT ; ses deux bornes sont des transitions LUES. Le
+//	          bornage à la vie de recouvrement MAXIMAL jetait la part couverte par une autre vie
+//	          du même slot, dont l'instant d'ACTIVATION — et pour le camouflage, l'état actif est
+//	          ce qui PROVOQUE le trou de réplication (porteur invisible et immobile). `084a804d`
+//	          slot 620 : camo lu [3105..3672] (568 frames), publié [3173..3672] (500).
+//	          `spanFor` borne désormais à l'UNION des vies recouvertes.
+//	drapeaux  `tracksByXUID` n'indexait que les pistes NOMMÉES : une prise que seule la vie
+//	          ANONYME du porteur recouvre sortait `NoTrack`. `bcb6d393` : 9 prises sur 16
+//	          perdues, `carries` 16 -> 7. L'identité vient du PONT canonique (`ResolveSlotXUID`),
+//	          jamais d'une déduction locale.
+//
+// La version monte pour la raison des montées v39 à v43 : un artefact 36 à 44 est appauvri sans
+// que sa forme le dise. **44 EST SAUTÉ ET RÉSERVÉ** au lot des manches, en cours sur une autre
+// branche. Détail : internal/analysis/replay/{equipment_episodes.go, flag_carries.go} et
+// .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
+const SchemaVersion = 45
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
