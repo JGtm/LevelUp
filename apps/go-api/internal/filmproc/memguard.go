@@ -91,6 +91,42 @@ type Guard struct {
 	probe func() uint64
 }
 
+// HardLimitFor rend le plafond DUR qu'[Arm] posera pour ce nombre de gibioctets (0 quand la
+// sentinelle est desarmee).
+//
+// IL EXISTE POUR QUE L'APPELANT PUISSE NOMMER CE PLAFOND DANS SON JOURNAL sans re-derouler le
+// calcul chez lui : la ligne fatale de l'enfant de passe dit « voici l'empreinte atteinte ET le
+// plafond franchi », et sans cet acces elle devrait recopier la marge de 25 % — exactement la
+// duplication que le lot v2 G.1 a supprimee.
+func HardLimitFor(giB int) uint64 {
+	if giB <= 0 {
+		return 0
+	}
+	return hardMargin(uint64(giB) * octetsParGiB)
+}
+
+// messageArmementParDefaut : la ligne d'armement des binaires qui n'en imposent pas d'autre.
+const messageArmementParDefaut = "plafond memoire arme pour ce decodage"
+
+// armConfig : ce qu'une option d'armement peut ajuster.
+type armConfig struct{ message string }
+
+// ArmOption ajuste l'armement de la sentinelle.
+type ArmOption func(*armConfig)
+
+// WithArmMessage impose le TEXTE de la ligne d'armement journalisee.
+//
+// POURQUOI UN APPELANT VOUDRAIT LE CHOISIR. Avant la centralisation (lot v2 G.1), chacun des
+// deux `main` qui portaient leur propre copie de la sentinelle journalisait SON texte —
+// « plafond memoire arme » cote passe de backfill, « replay-worker: plafond memoire arme pour
+// ce job » cote ouvrier. Les unifier a change une sortie observable : un filtre de journal ou
+// un oeil d'operateur cale sur ces libelles ne matchait plus (constat C5 de la revue R1). Le
+// texte redevient donc le choix de l'appelant ; le defaut sert les six autres binaires, qui
+// n'en avaient jamais eu d'autre.
+func WithArmMessage(message string) ArmOption {
+	return func(c *armConfig) { c.message = message }
+}
+
 // Arm pose les deux plafonds pour la duree d'UN decodage et rend la sentinelle.
 //
 // onExceeded est appele AU PLUS UNE FOIS, depuis la goroutine de la sentinelle, si l'empreinte
@@ -98,16 +134,17 @@ type Guard struct {
 // rapporter puis s'arreter...). `giB <= 0` desarme les deux plafonds : c'est l'echappatoire de
 // l'operateur qui sait ce qu'il fait.
 //
-// LE NOM DE L'OUTIL VOYAGE DANS LE JOURNAL parce que trois binaires arment desormais cette
+// LE NOM DE L'OUTIL VOYAGE DANS LE JOURNAL parce que huit binaires arment desormais cette
 // sentinelle : sans lui, une ligne « plafond memoire arme » ne dirait pas qui l'a armee.
-func Arm(tool string, giB int, onExceeded func(peakBytes uint64)) *Guard {
-	var hard uint64
+func Arm(tool string, giB int, onExceeded func(peakBytes uint64), opts ...ArmOption) *Guard {
+	cfg := armConfig{message: messageArmementParDefaut}
+	for _, o := range opts {
+		o(&cfg)
+	}
+	hard := HardLimitFor(giB)
 	if giB > 0 {
-		soft := uint64(giB) * octetsParGiB
-		debug.SetMemoryLimit(int64(soft))
-		hard = hardMargin(soft)
-		slog.Info("plafond memoire arme pour ce decodage",
-			"outil", tool, "souple_gib", giB, "dur_octets", hard)
+		debug.SetMemoryLimit(int64(uint64(giB) * octetsParGiB))
+		slog.Info(cfg.message, "outil", tool, "souple_gib", giB, "dur_octets", hard)
 	}
 	return newGuard(hard, samplePeriod, onExceeded)
 }

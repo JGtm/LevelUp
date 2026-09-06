@@ -111,9 +111,12 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 	// depuis le démarrage de l'ouvrier confondrait plusieurs films. onExceeded RAPPORTE
 	// l'échec au serveur PUIS arrête ce processus — l'OS récupère la RAM par construction,
 	// même doctrine que l'enfant de la passe hors ligne (cmd/levelup, blindage 2026-08-20/24).
+	// LE TEXTE DE LA LIGNE D'ARMEMENT EST CELUI D'AVANT LA CENTRALISATION, mot pour mot
+	// (constat C5 de la revue R1) : un filtre de journal cale sur « replay-worker: plafond
+	// memoire arme pour ce job » ne matchait plus le libelle unifie.
 	guard := filmproc.Arm(outilOuvrier, w.memLimitGiB, func(peakBytes uint64) {
 		w.reportMemoryExceeded(ctx, job, peakBytes)
-	})
+	}, filmproc.WithArmMessage("replay-worker: plafond memoire arme pour ce job"))
 	result, err := w.buildAndSend(ctx, job)
 	guard.Disarm()
 	stopBeat()

@@ -52,12 +52,18 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 	// 25 % dur, echantillonnage 250 ms) — le calcul vit desormais dans un seul endroit
 	// (memguard.go). onExceeded applique LA DOCTRINE DE CET ENFANT : emettre le pic sur le
 	// protocole stdout puis mourir avec le code memoire, comme avant la centralisation.
+	//
+	// LES DEUX LIGNES DE JOURNAL SONT CELLES D'AVANT, MOT POUR MOT (constat C5 de la revue
+	// R1) : le texte d'armement est impose a la sentinelle canonique, et la ligne fatale
+	// porte de nouveau le PLAFOND FRANCHI a cote de l'empreinte atteinte — sans lui, le
+	// journal disait jusqu'ou on etait monte mais plus ce qu'on avait depasse.
+	plafondDur := filmproc.HardLimitFor(o.memLimitGiB)
 	g := filmproc.Arm(outilBackfillReplay, o.memLimitGiB, func(peak uint64) {
 		slog.Error("backfill-replay (enfant): PLAFOND MEMOIRE DEPASSE — arret du processus",
-			"empreinte_octets", peak, "match_id", o.one)
+			"empreinte_octets", peak, "plafond_dur_octets", plafondDur, "match_id", o.one)
 		filmproc.EmitPeak(peak)
 		os.Exit(filmproc.CodeMemory)
-	})
+	}, filmproc.WithArmMessage("plafond memoire arme"))
 	// Le pic part sur TOUTES les sorties ordinaires. La sortie par la sentinelle, elle,
 	// l'emet elle-meme : `os.Exit` ne joue pas les differes.
 	defer func() {
