@@ -109,6 +109,43 @@ func TestKillOpeningPersistPass_ReDecodeSupersede(t *testing.T) {
 	}
 }
 
+// TestKillOpeningPersistPass_PasseVideNeRetractePas — LA BORNE DE LA RÉTRACTATION (résidu 4.0b
+// du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md), assertée TELLE QU ELLE EST et non telle qu on
+// l aimerait.
+//
+// Une passe B qui ne resout AUCUNE entame de tout le match n ecrit RIEN : ni ligne, ni
+// `decode_pass` neuf. La vue continue donc de servir la passe A ENTIERE. C est la limite du
+// mecanisme de `decode_pass`, il est assume (cf. l en-tete de la migration
+// steps_shared_kill_openings.go, section « la retractation exige que la passe suivante ecrive
+// au moins une ligne ») et il est epingle ici pour qu un changement de doctrine le dise.
+func TestKillOpeningPersistPass_PasseVideNeRetractePas(t *testing.T) {
+	db := openKillPositionTestDB(t)
+	ctx := context.Background()
+	p := NewKillOpeningPersister(db)
+
+	if err := p.PersistPass(ctx, "m6", []KillOpeningInsert{
+		{MatchID: "m6", KillerXUID: "111", TimeMS: 1000, KillerX: f64(1)},
+	}); err != nil {
+		t.Fatalf("passe A: %v", err)
+	}
+	// Passe B : plus AUCUNE entame lisible sur ce match (filtre « meme vie » de
+	// replay.BuildKillOpenings, film re-telecharge plus court...). Aucune erreur, aucune ligne.
+	if err := p.PersistPass(ctx, "m6", nil); err != nil {
+		t.Fatalf("passe B vide: %v", err)
+	}
+
+	var n int
+	var kx float64
+	if err := db.QueryRow(
+		`SELECT COUNT(*), min(killer_x) FROM kill_openings_latest WHERE match_id = 'm6'`).Scan(&n, &kx); err != nil {
+		t.Fatalf("select vue: %v", err)
+	}
+	if n != 1 || kx != 1 {
+		t.Errorf("vue = %d ligne(s) / killer_x %v, attendu 1 / 1 — une passe VIDE n ecrit aucune "+
+			"generation, la passe A reste donc servie ENTIERE (comportement assume)", n, kx)
+	}
+}
+
 // TestKillOpeningPersistPass_UnSeulDecodePassParPasse — toutes les lignes d une passe portent
 // la MEME generation. Deux generations dans une seule passe feraient rendre a la vue une
 // FRACTION de passe, ce qui est pire qu une passe entiere perimee.

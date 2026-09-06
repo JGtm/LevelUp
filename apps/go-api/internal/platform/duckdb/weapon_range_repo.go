@@ -139,13 +139,23 @@ func (r *WeaponRangeRepo) loadBothSides(
 	return out, nil
 }
 
-// buildWeaponRangeQuery compose la clause de portée puis délègue la jointure à l'helper
-// canonique. `column` est la colonne de xuid du côté lu.
+// buildWeaponRangeQuery compose les deux clauses de portée puis délègue la jointure à
+// l'helper canonique. `column` est la colonne de xuid du côté lu.
+//
+// LES MATCH_ID SONT LIÉS DEUX FOIS, ET L'ORDRE COMPTE : d'abord ceux de la sous-requête
+// `fragSolo` (elle précède la clause WHERE dans le texte SQL), ensuite ceux de la portée
+// externe, ensuite les arguments du filtre de joueur. Sans le scope de la sous-requête,
+// DuckDB balaie la vue entière pour juger l'unicité du frag — mesuré ×15,6 (résidu 4.0a).
 func buildWeaponRangeQuery(
 	table measuredPositionsTable, column string, f port.WeaponRangeFilters,
 ) (string, []any) {
 	var sb strings.Builder
-	args := make([]any, 0, len(f.MatchIDs)+len(f.XUIDs)+1)
+	args := make([]any, 0, 2*len(f.MatchIDs)+len(f.XUIDs)+1)
+
+	fragScope := "s.match_id IN (" + Placeholders(len(f.MatchIDs)) + ")"
+	for _, id := range f.MatchIDs {
+		args = append(args, id)
+	}
 
 	sb.WriteString("e.match_id IN (")
 	sb.WriteString(Placeholders(len(f.MatchIDs)))
@@ -161,7 +171,7 @@ func buildWeaponRangeQuery(
 		XUIDs:    f.XUIDs,
 	})
 
-	return measuredKillsQuery(table, sb.String()), args
+	return measuredKillsQuery(table, fragScope, sb.String()), args
 }
 
 // toMeasuredKills traduit `source_tag` -> `weapon_key` et habille chaque mesure de son côté.

@@ -56,6 +56,20 @@
 // événements du corpus. C'est un durcissement contre un cas futur, pas une correction de
 // chiffres publiés — et c'est pour ça qu'il est acceptable de le poser sans backfill.
 //
+// # `fragSolo` EST BORNÉE PAR LE SCOPE, ET ELLE DOIT L'ÊTRE (2026-09-06, résidu 4.0a)
+//
+// La sous-requête a d'abord balayé la vue ENTIÈRE : DuckDB ne pousse pas dans une branche de
+// jointure le `e.match_id IN (...)` de la requête externe (mesuré ×15,6 : 192 ms contre 12 ms
+// sur 140 000 événements). Elle porte donc désormais SON PROPRE scope — le MÊME `match_id`
+// que la requête externe, avec les paramètres dupliqués.
+//
+// CE QUE ÇA NE CHANGE PAS, ET C'EST LE POINT : la garde reste jugée AVANT tout filtre de
+// CÔTÉ. Restreindre aux matchs du scope ne peut pas rendre un groupe « solo » à tort — les
+// deux morts d'un double frag partagent le même `match_id` par construction (c'est la
+// première colonne de la clé), donc aucune ne sort du scope sans l'autre. Un filtre de côté,
+// lui, en aurait écarté une : c'est exactement la différence, et c'est pour ça que le côté
+// reste dehors.
+//
 // # AUCUNE DISTANCE N'EST STOCKÉE (doctrine G.0)
 //
 // La base porte des COORDONNÉES ; la distance et le dénivelé se calculent ICI, à la lecture.
@@ -106,21 +120,31 @@ type killMeasured struct {
 	deltaZ float64
 }
 
-// measuredKillsQuery compose la requête des morts mesurées pour une table de positions et
-// une clause `WHERE` données. La clause est du SQL du dépôt (jamais une entrée utilisateur) ;
-// ses valeurs voyagent en paramètres liés, pas dans le texte.
-func measuredKillsQuery(table measuredPositionsTable, where string) string {
-	return fmt.Sprintf(measuredKillsSQLTemplate, string(table), where)
+// measuredKillsQuery compose la requête des morts mesurées pour une table de positions, un
+// scope de sous-requête et une clause `WHERE` donnés. Les deux clauses sont du SQL du dépôt
+// (jamais une entrée utilisateur) ; leurs valeurs voyagent en paramètres liés, pas dans le
+// texte.
+//
+// ⚠ ORDRE DES PARAMÈTRES LIÉS : `fragSoloScope` est composé AVANT `where` dans le texte SQL
+// (la sous-requête est un JOIN, elle précède la clause WHERE de la requête externe). Un
+// appelant qui lie ses arguments dans l'autre ordre obtiendrait un résultat plausible et
+// faux — les deux clauses portent les MÊMES match_id, donc rien ne planterait. Les deux
+// appelants dupliquent leurs match_id, scope d'abord.
+func measuredKillsQuery(table measuredPositionsTable, fragSoloScope, where string) string {
+	return fmt.Sprintf(measuredKillsSQLTemplate, string(table), fragSoloScope, where)
 }
 
-// measuredKillsSQLTemplate : %s = la table de positions, %s = la clause de portée.
+// measuredKillsSQLTemplate : %s = la table de positions, %s = le scope de `fragSolo`,
+// %s = la clause de portée de la requête externe.
 //
 // Les six NULL-checks ne sont pas décoratifs : une ligne de positions PARTIELLE (un seul
 // côté localisé) existe réellement en base, et une distance calculée sur un côté manquant
 // serait un nombre plausible et faux. Elle est écartée, jamais approchée.
 //
 // `fragSolo` est la garde qui ne peut PAS vivre dans le `HAVING` (cf. en-tête du fichier) :
-// elle voit la vue entière, avant tout filtre de côté ou de scope.
+// elle juge le groupe AVANT tout filtre de CÔTÉ. Elle porte en revanche le MÊME scope de
+// match que la requête externe — sans quoi DuckDB balaie la vue entière (cf. l'en-tête,
+// section « fragSolo est bornée par le scope »).
 const measuredKillsSQLTemplate = `
 SELECT
     e.match_id,
@@ -137,7 +161,8 @@ JOIN %s kp
 JOIN (
     SELECT s.match_id, s.feed_killer_xuid, s.time_ms
     FROM match_kill_events_latest s
-    WHERE s.feed_killer_xuid IS NOT NULL
+    WHERE %s
+      AND s.feed_killer_xuid IS NOT NULL
     GROUP BY s.match_id, s.feed_killer_xuid, s.time_ms
     HAVING count(*) = 1 AND count(DISTINCT s.source_tag) = 1
 ) fragSolo
