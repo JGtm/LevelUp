@@ -95401,3 +95401,42 @@ demander avant). Prochaine etape : decision utilisateur sur les 6 escalades, pui
 plan `.ai/PLAN_V2_REJEU_FILM_<date>.md` sous `plan-review`, lot 0 (trois P0 + les deux items
 actifs au merge : catalogue ecrit par le runtime, projections sur « artefact range ») avant le
 tag v7.5.0.
+
+## [2026-09-06] Chantier v2 rejeu/film — lancement et rendu des sept lots (pilotage) — En cours
+
+**Contexte.** Suite de l'audit du 05/09 : le user a tranche les six escalades (positions =
+projection persist ; document servi separe MAINTENANT ; `film.replay_artifact` gouverne la
+production ; R5 web en lignes de code ; deplacement du decodeur APRES v7.5.0, inscrit dans la
+sequence de release Notion ; « heatmap » banni, « lobby » assimile) et demande de piloter le
+plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md` avec des agents paralleles.
+
+**Decision technique.** Sept lots en sept worktrees `LevelUp-wt-v2-*` (branches `feat/v2-*`,
+seul prefixe qui declenche la CI), cache Go et cache golangci par lot, jonctions node_modules
+pour les lots web, briefs fermes avec fichiers interdits par lot. Directives user en cours de
+route : revues adversariales reportees a la fin de tous les lots ; surveillance CI abandonnee
+(verification par le superviseur a l'integration) ; pause de D et E a 01:05 pour le quota,
+reprise programmee 03:21 (tache planifiee de session). Un executeur D remplace par un frais sur
+saturation de contexte (868 k tokens), depuis son journal.
+
+**Resultats.** Les sept lots rendus et pousses : A (P0-1 bump + empreinte, gardes ART, overlay
+de catalogue, derivations sur « artefact range », rattrapage a digest, positions en
+projection append-only) ; B (99 types servis miroir, projection pure, ratchet archlint,
+contrat et types web strictement inchanges, equivalence octet pour octet prouvee sur 106
+artefacts par la revue) ; C (clé `film.replay_artifact` + `CapReplay`, 503 reels, client web
+des cles fines, deux portes sur trois surfaces, vocabulaire) ; D (matchClock P0-7, replayClock
+P0-5, modele joint, composition en donnee, playbackStore, 5 canoniques, max-lines 500 code,
+arborescence 8 dossiers, lint couleur en CI, allowlist par modules, porte de route) ; E (1 300
+lignes de decodeur retirees a temoins identiques, preambule et marcheur uniques, verrou
+garde-raille, golden 30 familles, controle table ECS 179 largeurs, ratchet 118 -> 96) ; F
+(assertions de valeur e2e, baseline +1 209, purge testee, tag gamefiles module, lint sur
+binaires prod, specs raster en CI — elles etaient rouges) ; G (sentinelle unique, heightfield
+mort supprime, `livrer` porte en Go dont MT19937, doc des 11 chaines). Deux revues du lot B
+faites avant la directive : 1 P1 (parite aveugle a la classe zero/nil) + 5 P2. Decouvertes a
+instruire : calque CTF vide au schema 39 sur le fixture Husky Raid (flagCarries 0 contre 92
+au schema 37) ; golangci-lint a un cache GLOBAL qui ment entre worktrees.
+
+**Conclusion / prochaine etape.** Verification CI des sept branches, revues adversariales en
+bloc, corrections (dont B-R2 C1), integration dans l'ordre C -> A -> B -> F -> G -> E -> D avec
+CLAUDE.md corrige (garde-rail gamefiles deplace sous archlint), baseline rejouee au merge de E,
+temoin de rasterisation du lot D prime sur celui du lot F. Item D.15 (transport et tiroir freres
+du canvas) differe a un gate visuel valide par le user.
