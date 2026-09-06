@@ -95469,3 +95469,66 @@ sur film reel. Prochaine etape : revue adversariale du superviseur, puis la tach
 inconditionnels des ~26 familles `Scan*`, E.7 controle code contre `ecs_table.tsv`), qui ne demarre
 pas sans son message. Surveillance CI non effectuee : consigne du coordinateur, verification par le
 superviseur.
+
+## [2026-09-06] Lot E-II du plan v2 — le decodeur de film prouve en CI — Complete
+
+**Contexte.** Tache E-II du `PLAN_V2_REJEU_FILM_2026-09-05.md`, apres la tache E-I close le meme
+jour. Trois items : un golden inconditionnel sur octets reels pour les familles de balayage que la
+CI ne couvrait pas (constat F3 : 4 sur ~34), un controle code contre `ecs_table.tsv` sur les
+largeurs entieres (F4), et le traitement des variables sans ecrivain que E-I avait laissees
+(decouverte 2). Meme contrainte qu'en E-I : comportement identique, temoins E.1 comme gate.
+
+**Decision technique.** Le golden lit la mini-bobine de `killsource`, pas celle du rejeu : c'est un
+PREFIXE CONTIGU du film 000d5950 (chunks 00 a 05 + highlight), donc elle porte le REGISTRE et la
+continuite que le decodeur exige pour construire son monde par accumulation — mesure : 28 005
+records delta, 17 slots bipedes, contre aucun record de canal delta dans la bobine du rejeu. Il
+appelle les POINTS D'ENTREE de famille, jamais les enveloppes `ScanFilm*(dir)` ; deux exceptions
+assumees (`weaponShots`, `weaponDamages`) parce que leur point d'entree n'a pas d'autre forme.
+
+Deux pieges ont ete trouves en l'ecrivant, et c'est ce qui fait la valeur de l'item. (1) UN ZERO
+DE MAUVAIS APPEL N'EST PAS UNE POPULATION VIDE : `ScanKeyframeLoadouts` et
+`ScanKeyframeGroundWeapons` filtrent sur un catalogue de familles d'arme et rendent 0 avec `nil` ;
+figer ce 0 aurait verrouille du vide. Le catalogue est donc DERIVE DU FILM (identifiants d'arme
+des tirs et des changements d'arme portee) et les deux rendent 30 et 28. Idem pour
+`ScanFilmWeaponShots(dir, n)`, qui balaie les chunks 1..n. (2) LE DIGEST NE PEUT PAS PASSER PAR
+`%+v` : plusieurs structures portent des POINTEURS dont `%+v` imprime l'ADRESSE — deux passes
+consecutives donnaient deux empreintes differentes. `rendreStable` descend par reflexion,
+dereference, trie les cles de carte, et lit AUSSI les champs non exportes ou vit la moitie de ce
+qui distingue deux decodages.
+
+Pour E.7, la cle est de mesurer sur TROIS motifs de tampon (`0x00`, `0xFF`, `0xAA`) : beaucoup de
+composants sont gardes, et seul l'accord des trois motifs prouve une largeur FIXE — la seule
+categorie ou un ecart avec la table est une faute.
+
+Pour E.8, le traitement suit ce que chaque variable PORTE : une largeur mesuree devient une
+constante avec sa provenance, une instrumentation sans valeur mesuree disparait, et un modele de
+retro-ingenierie sans valeur (la table `absPerIndexAxisW`, nil) est supprime en DEPLACANT son
+desassemblage a l'endroit ou un futur portage viendra le lire.
+
+**Resultats.** Trois commits. E.6 : 35 lignes figees dont 30 familles, avec compte, digest et une
+valeur NOMMEE lisible par famille ; six lignes a zero ou en erreur d'etat sont figees telles
+quelles et expliquees une par une au journal (ce film est une Fiesta d'arene : pas de vehicule,
+pas d'objectif ti=11, pas de porteur, pas de translocateur). `registry_test.go` pointait un chemin
+ABSOLU de la machine de l'auteur et se `t.Skipf` ailleurs — il ne gardait rien ; il lit maintenant
+la bobine versionnee et `t.Fatal`. E.7 : 179 lignes classees, 114 a largeur fixe (111 d'accord
+avec la table) et 65 gardees, comptes GELES, TROIS ecarts dates et justifies — dont un ou c'est LA
+TABLE qui est perimee (`biped-map-editor-flag-component` : table 1 bit, code R(8) confirme
+bit-exact au decompile). E.8 : 10 constantes datees, 4 suppressions (instrumentation i63, annotee
+« a retirer apres » par son auteur), 1 suppression avec modele deplace ; ratchet 111 -> 96.
+
+Chaque garde-rail a ete verifie PAR MUTATION : `dom4RefWidth` 9->10 rougit exactement
+`zoomEvents` ; `bipedIndexBits` 6->7 rougit QUATORZE familles ; `tacmap-fasttravelstate` R(1)->R(3)
+fait designer a G4 la ligne 678 avec les deux largeurs. Gate de cloture : `go build ./...` exit 0,
+gofmt propre, les 10 paquets verts SANS aucune variable d'environnement,
+`golangci-lint --new-from-merge-base=origin/main ./...` = **0 issues**. Les temoins E.1 (goldens
+killsource sur 4 films reels, temoin de marche delta sur 3 films, table ECS, integration
+killcollector) sont IDENTIQUES sur les trois items.
+
+**Conclusion / prochaine etape.** Lot E complet : E-I (E.1 a E.5) et E-II (E.6 a E.8), huit items
+`[x]`, aucun `[!]`. Journal `.ai/V7.5/v2/LOT_E.md`, reference `.ai/V7.5/v2/LOT_E_digests_avant.md`.
+Quatre decouvertes consignees et non traitees, dont `ti=43 i=0 object-position-component` (la table
+dit 15 bits, le code en consomme 45 ou 60 — aucune des trois mesures) et les deux interrupteurs de
+mecanisme restes sans ecrivain (`accumWorld`, `inferResyncTargets`), dont le retrait est une
+decision produit. Prochaine etape : revue adversariale du superviseur puis integration dans
+`feat/v75`. Surveillance CI non effectuee : consigne du coordinateur, verification par le
+superviseur.

@@ -356,3 +356,222 @@ Aucun test desactive, aucun skip ajoute, aucun golden regenere, aucune allowlist
 
 Prochaine etape : revue adversariale du superviseur, puis la tache E-II (E.6, E.7) — qui ne
 demarre PAS sans son message.
+
+---
+
+# Tache E-II — preuves en CI (2026-09-06)
+
+Meme worktree, meme branche, memes regles. Les temoins de E.1 restent le gate de chaque item ;
+`GOLANGCI_LINT_CACHE=/c/Users/Guillaume/AppData/Local/golangci-v2-decodeur` isole desormais la
+mesure de lint (lecon du lot E-I : ce cache est global a la machine et sert des verdicts perimes).
+
+## [x] E.6 — golden inconditionnel des 30 familles de balayage (F3, residu F1)
+
+Commit `8a65d0969`. `filmdec/golden_minibobine_test.go` + `testdata/golden_minibobine_familles.tsv`.
+
+| item | statut | ce qui a ete fait |
+|---|---|---|
+| golden inconditionnel sur la mini-bobine versionnee | `[x]` | 35 lignes figees, dont 30 familles. Il appelle les POINTS D'ENTREE (`ScanCamoStates`, `ScanAbilityCharges`, `ScanZoomEvents`, `ScanTranslocatorTeleports`, `ScanBipedPickups`, `ScanInventoryDeltas`, `ScanHeldWeaponChanges`, ...), JAMAIS les enveloppes `ScanFilm*(dir)`. Deux exceptions assumees, `weaponShots` et `weaponDamages` : leur point d'entree N'A PAS de forme `film`, il prend le repertoire — c'est donc bien le point d'entree, pas une enveloppe. |
+| comptes + digest par famille | `[x]` | `nom \| compte \| digest \| premier`. |
+| une valeur nommee lisible par famille | `[x]` | Le premier element, champs NOMMES, tronque a 140 caracteres. Exemple : `zoomEvents 37 ... {TimestampUS:4551203771 Slot:517 Level:1}`. Un rouge se lit dans le diff, sans outil. |
+| `t.Fatal` si la bobine manque | `[x]` | Aucun `t.Skip` : la bobine est versionnee, son absence est une panne du depot. |
+| assertions nommees i0/i4/i11/i43-46 + empreinte du registre | `[x]` | Dans `registry_test.go`, rassemblees en UN test (voir ci-dessous) plutot que dupliquees. |
+| `registry_test.go` repointe, `t.Fatal` | `[x]` | Il pointait `c:/Users/Guillaume/.../data/cache/film_chunks/000d5950` — un chemin ABSOLU de la machine de l'auteur — et se `t.Skipf` ailleurs : il ne gardait rien en CI ni chez personne. Il lit maintenant la mini-bobine versionnee et `t.Fatal`. |
+
+POURQUOI CETTE BOBINE-CI. La mini-bobine de `killsource` est un PREFIXE CONTIGU du film 000d5950
+(chunks 00 a 05 + le chunk highlight), donc elle porte le REGISTRE et la continuite que le
+decodeur exige pour construire son monde par accumulation. Celle du rejeu est faite de paquets
+choisis : elle ne decode AUCUN record de canal delta. Mesure : cette bobine-ci rend 28 005 records
+delta et 17 slots bipedes.
+
+### Les 30 familles et leur population, une par une
+
+| famille | population sur la mini-bobine |
+|---|---|
+| `abilityCharges` | 12 |
+| `abilityImpulses` | 12 |
+| `abilityRanks` | 15 |
+| `bipedAim` | 398 |
+| `camoStates` | 126 |
+| `grappleReads` | 9 |
+| `heldWeaponChanges` | 4 |
+| `inventoryDeltas` | 187 |
+| `unitEquipment` | 11 |
+| `equipmentChanges` | 17 |
+| `equipmentState` | 65 |
+| `bipedPositions` | 28 004 |
+| `projectiles` | 53 |
+| `worldObjects_ti42` | 46 |
+| `equipmentCreations` | 38 |
+| `groundWeaponCreations` | 28 |
+| `vehicleCreations` | **erreur d'etat** — « aucun slot d'archetype ti=40 dans les keyframes du film » |
+| `equipmentPlacements` | 35 |
+| `worldObjectKeyframes_ti35` | 17 (slots de bande) |
+| `managedProperties` | 141 |
+| `objectives_ti11` | **erreur d'etat** — « aucun slot d'archetype ti=11 dans les keyframes du film » |
+| `navpointRadial` | **0 — population vide** |
+| `fireEvents` | 45 |
+| `grenadeThrows` | 10 |
+| `bipedPickups` | 21 |
+| `zoomEvents` | 37 |
+| `translocatorTeleports` | **0 — population vide** |
+| `vehicleEvents` | **0 — population vide** |
+| `carrierMarks` | **0 — population vide** |
+| `catalogueFamillesDuFilm` | 15 (mesure derivee, pas une famille) |
+| `keyframeLoadouts` | 30 |
+| `keyframeGroundWeapons` | 28 |
+| `weaponShots` | 45 |
+| `weaponDamages` | 46 |
+| `weaponDamagesBaseSlot` | 512 (mesure derivee, pas une famille) |
+
+CE QUE DISENT LES SIX LIGNES A ZERO OU EN ERREUR, ET C'EST UNE INFORMATION :
+
+- `vehicleEvents` = 0 et `vehicleCreations` en erreur : **ce match n'a pas de vehicule**. Le film
+  000d5950 est une partie Fiesta sur Cliffhanger — une arene sans vehicule. L'erreur est le refus
+  PROPRE du balayage (« aucun slot ti=40 »), pas une panne.
+- `objectives_ti11` en erreur : **pas d'objectif ti=11** — Fiesta est un mode a elimination.
+- `translocatorTeleports` = 0 : **pas de translocateur** dans ce prefixe.
+- `carrierMarks` = 0 : **pas de porteur** (ni drapeau, ni crane, ni bombe) — meme raison.
+- `navpointRadial` = 0 : pas de point de navigation radial dans ce prefixe.
+
+Si l'une de ces six se remplit un jour, le golden rougit — et c'est exactement ce qu'on veut
+savoir.
+
+### DEUX PIEGES TROUVES EN ECRIVANT CE GOLDEN, et corriges
+
+1. **UN ZERO DE MAUVAIS APPEL N'EST PAS UNE POPULATION VIDE.** `ScanKeyframeLoadouts` et
+   `ScanKeyframeGroundWeapons` filtrent sur un catalogue de familles d'arme ; appeles avec `nil`
+   ils rendent 0 sans rien lire. Figer ce 0 aurait verrouille du vide. Le catalogue est donc
+   DERIVE DU FILM lui-meme (identifiants d'arme des evenements de tir et des changements d'arme
+   portee) : deterministe, sans fixture, 15 familles — et les deux balayages rendent alors 30 et
+   28. De meme, `ScanFilmWeaponShots(dir, n)` balaie les chunks 1..n : avec `n=0` il rendait 0 ;
+   avec `n=6`, 45 tirs.
+2. **LE DIGEST NE PEUT PAS PASSER PAR `%+v`.** Plusieurs structures du decodeur portent des
+   POINTEURS (`InventoryDelta.Ammo[].Mag`), dont `%+v` imprime l'ADRESSE : deux passes
+   consecutives donnaient deux empreintes differentes pour `inventoryDeltas`. Un golden qui rougit
+   au hasard ne verrouille rien et finit desactive. `rendreStable` descend par reflexion,
+   dereference les pointeurs, trie les cles de carte et lit AUSSI les champs non exportes
+   (`componentDirs`, `componentVitals` d'une position bipede), ou vit la moitie de ce qui
+   distingue deux decodages. Stabilite verifiee sur TROIS passes independantes.
+
+### Preuve par mutation
+
+| mutation | familles rougies |
+|---|---|
+| `dom4RefWidth` 9 -> 10 (largeur du domaine 4 de la liste d'evenements) | **1** : `zoomEvents` — exactement la famille qui lit ce domaine |
+| `bipedIndexBits` 6 -> 7 (largeur d'un index de composant) | **14** : `abilityCharges`, `abilityImpulses`, `abilityRanks`, `bipedAim`, `bipedPositions`, `camoStates`, `catalogueFamillesDuFilm`, `equipmentChanges`, `grappleReads`, `heldWeaponChanges`, `inventoryDeltas`, `keyframeGroundWeapons`, `keyframeLoadouts`, `unitEquipment` |
+
+Les deux mutations ont ete annulees, et le golden repasse au vert.
+
+## [x] E.7 — les 179 largeurs entieres de la table ECS, confrontees au code (F4)
+
+Commit `25dbad2e6`. `filmdec/ecs_widths_guard_test.go` (controle G4).
+
+Zero fixture, zero variable d'environnement, zero octet de film. Pour chacune des 179 lignes a
+`bits_typ` ENTIER — toutes declarees « porte » —, le deser de PRODUCTION (`consumeByName`) tourne
+sur trois tampons synthetiques (`0x00`, `0xFF`, `0xAA`) et on lit le nombre de bits consommes.
+
+LES TROIS MOTIFS SONT LA CLE, parce que beaucoup de composants sont gardes :
+
+| categorie | compte | regle |
+|---|---|---|
+| les trois motifs s'accordent -> largeur FIXE | **114** | elle DOIT egaler `bits_typ` (111 s'accordent, 3 sont des ecarts admis) |
+| les trois divergent -> largeur GARDEE par le flux | **65** | l'entier de la table est NOMINAL ; ce controle ne peut pas le confronter |
+
+Les deux comptes sont GELES : une ligne qui change de categorie est un signal, jamais un silence.
+
+### Les trois ecarts, dates et justifies (`ecsEcartsAdmis`)
+
+| ligne | table | mesure | pourquoi |
+|---|---|---|---|
+| ti=13 i=1 `managed-object-property-component` | 28 | 4 | largeur gardee par le TAG, **et la table le dit dans ses propres notes** (« largeur totale 4/5/8/28/36 selon le tag ») ; les trois motifs tombent sur des tags a charge nulle (t0, t10, t15), d'ou le R(4) du tag seul. `bits_typ` fige le cas t3. |
+| ti=35 i=50 `biped-map-editor-flag-component` | 1 | 8 | **C'est la TABLE qui est perimee, pas le code.** `consumeBipedMapEditorFlag` lit un R(8) plat, « CONFIRMED bit-exact from the decompile » (FUN_142f02854). Corriger la colonne appartient a un lot qui revise la table ; la SIGNALER est le role de ce controle. |
+| ti=37 i=14 `object-dissolver-component` | 4 | 113 | largeur gardee par la VALEUR lue, pas par un bit de porte : R(4) puis, si la valeur n'est pas 13, R(96)+R(12)+R(1). Les trois motifs manquent la valeur 13. La table fige le cas nominal. |
+
+Le controle echoue aussi si un QUATRIEME ecart apparait, ou si l'un de ces trois se resorbe sans
+qu'on retire sa ligne — une allowlist sans cible est du code mort.
+
+**Preuve par mutation** : `tacmap-fasttravelstate` passe de `R(1)` a `R(3)` ; G4 designe
+« ligne 678 (ti=34 i=6 tacmap-fasttravelstate) : la table annonce 1 bits, le deser de production
+en consomme 3 (largeur FIXE : les trois motifs de tampon s'accordent) ». Retour, il passe.
+
+DECOUVERTE (consignee, NON traitee) — `ti=43 i=0 object-position-component` porte `bits_typ = 15`
+(« R(14) + R(1) ») alors que le code consomme 45 bits sur un tampon de zeros et 60 sur un tampon
+de uns. La ligne tombe dans la categorie GARDEE, donc le controle ne la signale pas ; mais la
+valeur de la table ne correspond a AUCUNE des trois mesures, ce qui est un cas different des trois
+ecarts admis. A verifier par un lot qui revise la table.
+
+## [x] E.8 — les 15 variables sans ecrivain (decouverte 2 de E-I)
+
+Commit `0dd6e0fc8`.
+
+| traitement | compte | detail |
+|---|---|---|
+| CONSTANTES NOMMEES, provenance ecrite | **10** | `absDequantMode`, `bipedActionLoop2Count`, `bipedDefaultStateDecodeMovement`, `bipedDefaultStateTailBits`, `bipedMediaFramePresent`, `deadStatePreSkip`, `deadStateVelocityPresent`, `inferRepair`, `inferRequireBoundSuccessor`, `vehicleMediaFrameBits` |
+| SUPPRIMEES (aucune valeur mesuree) | **4** | l'instrumentation i63 : `biDebug`, `biCurSeq`, `BiBadSeqs`, `BiOkSeqs`, et ses quatre branches |
+| SUPPRIMEE, MODELE GARDE | **1** | `absPerIndexAxisW` |
+| GARDEES en `var`, deliberement | **2** | `accumWorld` (avec `accumSlot`) et `inferResyncTargets` |
+
+Deux de ces constantes portent une LARGEUR MESUREE d'un chemin non nominal, et c'est la raison
+d'etre du traitement : `vehicleMediaFrameBits` (bloc quaternion de la feuille 4 de ti=40, modelise
+absent — bit-exact sur le chemin nominal, le cas d'un spawn) et `bipedDefaultStateTailBits` (queue
+config-gardee de FUN_141f86704, 0 bit sur le corpus). Un savoir de retro-ingenierie ne se jette
+pas : il se fige, et il se date.
+
+`absPerIndexAxisW` etait une table nil, donc aucune valeur mesuree — mais son commentaire portait
+le DESASSEMBLAGE des deux tables du moteur (`DAT_1445cc9e0` / `DAT_1445ccbe0`) et l'immediat
+`LEVEL = 0x10` releve sur les trois sites d'appel. Ce modele est deplace sur `absAxisWFor`, la ou
+un futur portage viendra le lire.
+
+POURQUOI DEUX RESTENT. `accumWorld` et `inferResyncTargets` ne sont ni des largeurs ni des
+valeurs : ce sont les INTERRUPTEURS de deux mecanismes entiers — l'accumulation de position par
+World, la recuperation par resync valide. Les retirer supprimerait `setAccumSlot` et ses sites
+d'appel dans les decodeurs, `validatedResync`, `scanForTargetDelta`, et l'unique installateur de
+PRODUCTION de `posCaptureHook`. C'est une suppression de FONCTIONNALITE : elle se decide, elle ne
+se glisse pas dans un lot a comportement identique. A trancher par le superviseur.
+
+Ratchet `filmdecVarsGeles` resserre **111 -> 96**, chronique datee.
+
+## Gate de cloture de la tache E-II
+
+| commande | derniere ligne / verdict |
+|---|---|
+| `go build ./...` | exit 0 |
+| `gofmt -l ./internal/ ./cmd/` | (aucune sortie) |
+| `go test ./internal/analysis/filmdec/... ./internal/games/halo_infinite/film/... ./internal/analysis/replay/... ./internal/sync/killcollector/... ./internal/archlint/... -p 1 -parallel 1 -count=1` (AUCUNE variable d'environnement) | `ok levelup/go-api/internal/archlint 5.856s` — **les 10 paquets ok**, exit 0 |
+| `KILLSOURCE_FIXTURES=<film_chunks> go test .../killsource/ -run TestGoldenFilms + TestReferenceFilms + TestLigneDiscriminante... -v` | **identique a la reference E.1**, echec anterieur `fccc61cd` compris |
+| `DELTA_WITNESS_FILM=<film> go test .../filmdec/ -run TestDeltaWalkWitness + TestRegistryFingerprintOnFilm -v` (x3) | les trois **identiques** |
+| `ECS_TABLE_FILM=<film> go test .../filmdec/ -run TestG1 + TestG2 + TestG3 + TestG4 -v` | les QUATRE controles PASS |
+| `KILLSOURCE_FIXTURES=<film_chunks> go test -tags=integration .../killcollector/ -v` | `ok` — verdicts **identiques** |
+| `golangci-lint run --timeout 5m ./internal/analysis/filmdec/...` (cache isole) | 6 issues — **memes linters, memes comptes que l'etat de base** |
+| `golangci-lint run --timeout 5m --new-from-merge-base=origin/main ./...` (la commande EXACTE de la CI) | **`0 issues.`**, exit 0 |
+
+AUCUN chiffre des temoins E.1 n'a bouge sur les trois items.
+
+## Ratchets, apres la tache E-II
+
+| ratchet | avant E-II | apres | sens |
+|---|---|---|---|
+| `archlint/filmdec_package_vars_test.go` | 111 | **96** | REDESCEND (E.8 : -15) |
+| `filmdec/ecs_widths_guard_test.go` (G4) | (n'existait pas) | 114 fixes / 65 gardees, 3 ecarts admis | NOUVEAU (E.7) |
+| `filmdec/golden_minibobine_test.go` | (n'existait pas) | 35 lignes figees, 30 familles | NOUVEAU (E.6) |
+| `filmdec/registry_test.go` | chemin absolu + `t.Skipf` | mini-bobine versionnee + `t.Fatal` | DURCI (E.6) |
+
+## Decouvertes de la tache E-II — consignees, NON traitees
+
+1. **`ti=43 i=0 object-position-component`** : `bits_typ = 15` ne correspond a AUCUNE des trois
+   mesures (45 / 60 / 60). La ligne est GARDEE, donc G4 ne la signale pas, mais l'ecart est d'une
+   autre nature que les trois ecarts admis. A verifier par un lot qui revise la table.
+2. **`biped-map-editor-flag-component`** : la table dit 1 bit, le code lit 8 et il est confirme
+   bit-exact au decompile. C'est LA TABLE qui est a corriger — hors perimetre d'un lot a
+   comportement identique.
+3. **`accumWorld` / `accumSlot` et `inferResyncTargets`** restent sans ecrivain : ce sont les
+   interrupteurs de deux mecanismes entiers, leur retrait est une decision produit.
+4. **Les enveloppes `ScanFilm*(dir)`** restent hors du golden, comme le mandat le demande — sauf
+   pour `weaponShots` et `weaponDamages`, qui n'ont PAS d'autre point d'entree. Leur forme `film`
+   reste a ecrire ; c'est le lot 6 des enveloppes (dette datee, `archlint/no_film_reread_test.go`).
+
+## Statut de la tache E-II
+
+Les trois items sont `[x]`, faits et verifies sur pieces. Aucun `[~]`, aucun `[!]`.
+Aucun test desactive, aucun skip ajoute, aucune allowlist agrandie sans justification datee.
