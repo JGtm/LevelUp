@@ -9062,10 +9062,22 @@ components:
         livesTotal:
           format: int64
           type: integer
+        namedByNextLife:
+          format: int64
+          type: integer
+        namedByPreviousLife:
+          format: int64
+          type: integer
+        namedBySlotBridge:
+          format: int64
+          type: integer
         slotCollisions:
           format: int64
           type: integer
         slots:
+          format: int64
+          type: integer
+        unnamedLives:
           format: int64
           type: integer
       required:
@@ -9076,6 +9088,10 @@ components:
         - indexReadings
         - indexDisagreements
         - slotCollisions
+        - namedByPreviousLife
+        - namedByNextLife
+        - namedBySlotBridge
+        - unnamedLives
         - closedByShot
         - closedByRespawn
         - closedContested

@@ -878,8 +878,21 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   chantiers parallèles ne peuvent pas revendiquer le même numéro (même règle qu'au v42).
 	//   Détail : internal/analysis/replay/{equipment_episodes.go (spanFor), flag_carries.go
 	//   (tracksByXUID)} et .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
-	if SchemaVersion != 45 {
-		t.Fatalf("SchemaVersion = %d, attendu 45 : incrémenter exige une raison écrite ci-dessus "+
+	// v47 — AUCUNE VIE PUBLIÉE NE RESTE SANS NOM (2026-09-07). Décision produit : « les vies
+	//   anonymes n'existent pas ; une vie est un humain ou un bot, point ». Une piste sans
+	//   identité est un DÉFAUT du pont, pas une donnée : une passe finale la nomme par
+	//   l'OCCUPATION DU SLOT DANS LE TEMPS (vie nommée du même slot qui précède, sinon qui suit,
+	//   sinon le pont canonique), et le résidu se publie (`bridge.unnamedLives`) doublé d'un
+	//   `slog.Error`. Sept lecteurs qui jetaient une lecture VRAIE faute de nom sont corrigés au
+	//   passage — objectifs (35 actions sur 76 perdues sur `3372e7eb`), zones (le calque ENTIER
+	//   pouvait disparaître : 11, 12 et 5 captures perdues sur `696a9d7c`, `7344d24f`,
+	//   `af13e2b2`), les deux fermetures, les rides de véhicule, les sièges de bot, et le
+	//   rognage des portages. Quatre champs de couverture s'ajoutent côté pont, trois côté zones.
+	//   POURQUOI LA VERSION MONTE : un artefact 36 à 46 est appauvri sans que sa forme le dise.
+	//   44, 45 et 46 SONT PRIS par les lots des manches, des durées et des drapeaux, en cours sur
+	//   d'autres branches. Détail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
+	if SchemaVersion != 47 {
+		t.Fatalf("SchemaVersion = %d, attendu 47 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
