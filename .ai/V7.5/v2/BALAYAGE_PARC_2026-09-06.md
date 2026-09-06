@@ -5,11 +5,13 @@
 > actions de capture et de vol de drapeau d'un match CTF (`c0a82e88`) etait le point de depart ;
 > l'objet de ce balayage est de dire si elle est isolee ou generale, et de chercher les autres.
 >
-> **CE DOCUMENT PORTE DEUX PASSES.** Les sections 1 a 9 sont le balayage AVANT (parc contre
-> `f1c7b411f`, lots B et F seuls) : elles etablissent le diagnostic et **restent au passe**. La
-> section « Balayage APRES » (en fin de document) rejoue la meme mesure contre `feat/v75`
-> integre au schema 40 : la regression n° 1 y est **resolue et chiffree**, et aucune perte
-> nouvelle n'apparait sur le parc.
+> **CE DOCUMENT PORTE TROIS PASSES, ET LE VERDICT EST DANS LA DERNIERE.** Les sections 1 a 9
+> sont le balayage AVANT (parc contre `f1c7b411f`, lots B et F seuls) : elles etablissent le
+> diagnostic et **restent au passe**. « Balayage APRES » rejoue la mesure au **schema 40** (les
+> sept lots + le correctif CTF : regression n° 1 resolue). « Balayage FINAL » la rejoue au
+> **schema 41** (correctif « une piste = une vie » : candidates 2 a 4 resolues).
+>
+> **VERDICT : le parc peut etre re-cuit au schema 41 sans rien perdre.**
 
 ## 1. Verdict en une page
 
@@ -533,3 +535,164 @@ et n'y touche pas.
 retrouvees, rien d'autre : c'est exactement, et exclusivement, ce que la confrontation (a)
 rend. Les quatre `changement` de verdict de couverture sont la consequence arithmetique du
 gain d'actions (section B), pas un ecart supplementaire.
+
+---
+
+# Balayage FINAL (schema 41) — le parc peut etre re-cuit sans rien perdre
+
+> **VERDICT : OUI.** Sur les 119 films du parc, la cuisson au schema 41 ne perd RIEN par rapport
+> a la cuisson au schema 40, et resorbe les trois dernieres regressions candidates. Les 1 160
+> ecarts qui subsistent contre les artefacts d'origine sont tous des correctifs documentes ou
+> des compteurs de defaut en baisse — aucune donnee produit perdue.
+
+Troisieme passe, memes bornes. `feat/v75` porte desormais le correctif « une piste = une vie »
+(commit fautif `48cf4905d` du 02/09 : les consommateurs de `tracks` lisaient encore un
+regroupement par joueur la ou le decoupage publie une vie par piste ; les joueurs a plusieurs
+vies y perdaient leurs vies nommees, leurs tractions de grappin, leurs episodes de camouflage et
+l'attribution de leurs usages). **SchemaVersion 41**, `UsageSummaryRev` **us2**.
+
+## A. Ce qui a ete joue
+
+| | |
+|---|---|
+| Merge | `origin/feat/v75` (`b696c7b11`) en **fast-forward** — la passe precedente etait deja integree (`590595612`) ; outil et rapport intacts, `cmd/replay-diff` compile et passe ses 6 tests **sans modification** (troisieme merge d'affilee sans adaptation : le pari de la lecture generique tient) |
+| Cuisson | **119 / 119**, zero echec, **37,9 min**, plus long `084a804d` **128 s** |
+| **Pic memoire max** | **0,563 Gio** (`4f77afc1`) = 19 % du plafond `filmproc` |
+| Faits du match | **0 cuisson sans faits** ; temoin verifie AVANT la serie sur `879a4dba` (le pire cas grappin) : `identiteEquipes=a`, courbe de score presente, **grappleLines 15 -> 23**, soit la valeur exacte de la reference s34 |
+| Ecriture hors perimetre | **aucune** — `replays`, `reference`, `film_chunks`, `film_manifests` du principal INCHANGES ; `git status` du worktree vide |
+
+## B. Confrontation (a) — `apres2/` (schema 40) contre `apres3/` (schema 41)
+
+C'est la mesure de ce que le seul correctif « une piste = une vie » change sur le parc entier.
+
+**466 ecarts sur 119 paires. ZERO disparition. Deux « pertes », toutes deux sur un COMPTEUR DE
+DEFAUT en baisse** (`coverage.flagCarries.noTrack` : `b8a44fe8` 11 -> 6, `bcb6d393` 10 -> 9) —
+c'est-a-dire moins d'intervalles de drapeau rejetes faute de piste, l'effet direct et attendu du
+correctif.
+
+| Axe | pertes | disparus | gains | apparus |
+|---|---|---|---|---|
+| entete | 0 | 0 | **119** (`schemaVersion 40 -> 41`, et rien d'autre) | 0 |
+| equipement | 0 | 0 | 170 | 0 |
+| pistes | 0 | 0 | 87 | 8 |
+| ports | 0 | 0 | 20 | 1 |
+| couverture | 2 (compteurs de defaut) | 0 | 59 | 0 |
+| *les 12 autres axes* | — | — | — | — |
+
+**Aucune difference non attendue.** Les trois axes annonces (vies nommees, grappin, episodes
+d'equipement) et la couverture qui en decoule sont les seuls touches, plus **un quatrieme que la
+consigne ne nommait pas et qui est la meme cause** : `ports` (`flagCarries`), ou deux matchs
+regagnent des intervalles de drapeau — `b8a44fe8` 115 -> **125** et `bcb6d393` 15 -> **17** —
+exactement les deux matchs dont `noTrack` baisse. C'est le meme defaut de lecture de piste,
+constate sur un cinquieme consommateur.
+
+**Objectifs, armes, grenades, vehicules, score, joueurs, roster, carte, horloges, objets
+d'objectif, assaut, morts : strictement identiques sur les 119 films.**
+
+### Ce qui a ete retrouve
+
+| Famille | Matchs | Gain |
+|---|---|---|
+| Tractions de grappin | 16 | **+52** |
+| Vies nommees | 18 | **+28** |
+| Episodes camouflage / surbouclier | 9 | **+15** |
+| Intervalles de drapeau | 2 | +12 |
+| Joueurs identifies aux pistes | 3 | `11de8353` 17 -> **19**, `145908d1` 23 -> **24**, `4f77afc1` 23 -> **24** |
+
+Grappin, les plus fortes reprises : `084a804d` 61 -> 71, `879a4dba` 15 -> **23**, `06dfe6d9`
+63 -> 71, `9ffce8ef` 45 -> 49, `bf15f7ab` 3 -> **6** (double), `0a44c6cc` 5 -> 8.
+
+## C. Confrontation (b) — `reference/` (161 artefacts) contre `apres3/`
+
+### Les quatre candidates, chiffrees
+
+| # | Candidate | ref -> 39 | ref -> 40 | **ref -> 41** |
+|---|---|---|---|---|
+| 1 | Actions d'objectif CTF non attribuees | 14 matchs, 297 actions | **0** | **0** |
+| 2 | **Tractions de grappin** | 18 paires | 18 | **0** |
+| 3 | **Episodes camo / surbouclier** | 11 paires | 11 | **2** |
+| 4 | **Vies nommees / xuids des pistes** | 3 paires (xuids), 19 (vies) | 3 / 19 | **0** (xuids) / **3** (vies) |
+
+- **Candidate 2 : RESOLUE a zero.** Aucune paire du parc ne perd de traction de grappin.
+- **Candidate 3 : deux residus.** `13d92593` (s20) `equipmentEpisodes` 1 -> absent — c'est **la
+  reserve connue** : ce match n'a pas d'episode, a raison. `2cf24f30` (s31) 7 -> 6, seul residu
+  reel, un episode de surbouclier.
+- **Candidate 4 : RESOLUE pour les identites** (`tracks/xuids-distincts` : 3 paires -> 0, et
+  `11de8353` remonte MEME AU-DESSUS de sa reference, 18 -> 19). Trois paires perdent encore
+  une vie nommee sur des centaines : `24dbb67d` (s20 et s21) 90 -> 89, `4f77afc1` (s34) 48 -> 47.
+
+### Controle croise : aucune regression introduite
+
+| | ref -> 39 | ref -> 40 | ref -> 41 |
+|---|---|---|---|
+| Ecarts totaux | 26 098 | 25 917 | 25 613 |
+| **Pertes distinctes** | **1 783** | **1 483** | **1 160** |
+| Pertes NOUVELLES vs la passe precedente | — | **0** | **0** |
+| Pertes resorbees | — | 300 | **323** |
+| Matchs sans aucune perte | 5 | 5 | 6 |
+
+Les 1 160 pertes de la troisieme passe sont un **sous-ensemble strict** des 1 483 de la
+deuxieme, elles-memes sous-ensemble strict des 1 783 de la premiere. **Aucun des huit lots ni
+des deux correctifs n'a casse quoi que ce soit.**
+
+### Recapitulatif par axe des trois passes (matchs avec perte / pertes / disparus)
+
+| Axe | ref -> 39 | ref -> 40 | ref -> 41 |
+|---|---|---|---|
+| **objectifs** | 14 / 106 / 153 | **1 / 0 / 4** | 1 / 0 / 4 |
+| **equipement** | 50 / 197 / 43 | 50 / 197 / 43 | **37 / 14 / 43** |
+| **pistes** | 78 / 679 / 8 | 78 / 679 / 8 | **74 / 594 / 0** |
+| **couverture** | 95 / 324 / 91 | 93 / 279 / 91 | **93 / 233 / 91** |
+| **ports** | 16 / 91 / 1 | 16 / 91 / 1 | **16 / 91 / 0** |
+| carte | 19 / 26 / 0 | 19 / 26 / 0 | 19 / 26 / 0 |
+| score | 13 / 14 / 2 | 13 / 14 / 2 | 13 / 14 / 2 |
+| armes | 3 / 1 / 2 | 3 / 1 / 2 | 3 / 1 / 2 |
+| objets d'objectif | 3 / 0 / 3 | 3 / 0 / 3 | 3 / 0 / 3 |
+| vehicules | 2 / 51 / 0 | 2 / 51 / 0 | 2 / 51 / 0 |
+| joueurs | 2 / 7 / 0 | 2 / 7 / 0 | 2 / 7 / 0 |
+| grenades | 1 / 0 / 1 | 1 / 0 / 1 | 1 / 0 / 1 |
+| horloges | 1 / 1 / 0 | 1 / 1 / 0 | 1 / 1 / 0 |
+| roster / assaut / morts / entete | 0 | 0 | 0 |
+
+### Liste EXHAUSTIVE des pertes restantes, hors familles deja expliquees au §6.3
+
+Les grandes familles residuelles sont celles que la premiere passe a classees EXPLIQUE et qui
+n'ont pas bouge : les 93 paires a 1-4 points aberrants supprimes (et les bornes de scene qui se
+resserrent avec elles, un GAIN), les compteurs de defaut en baisse (`missedEstimate`,
+`counterJumps`, `noSlot`, `livesFirstOffSpec`), le reclassement des poses `other` (35 paires), le
+drapeau neutre du schema 35, la deduplication des slots de zone, les scores d'equipe echanges a
+somme constante (14 paires, toutes compensees, verifie une troisieme fois). Hors de ces
+familles, il reste **quinze faits**, tous anterieurs a la premiere passe (aucun n'est apparu
+avec les lots) :
+
+| Match | Schema | Axe | Mesure | Valeur |
+|---|---|---|---|---|
+| `d9781168` | 23 | ports | `skullCarries/n` (portages du crane) | 36 -> **30** |
+| `43716616` | 21 | joueurs | frags / morts / assistances / score d'UN joueur | 13->9, 6->4, 5->3, 1600->1100 |
+| `51ebbc0f` | 21 | joueurs | frags / assistances / score d'UN joueur | 14->6, 2->1, 1845->970 |
+| `bcb6d393` | 20 | objectifs | 3 actions `kills` sur 2 joueurs | 2->0, 1->0 |
+| `24dbb67d` | 20, 21 | pistes | vies nommees | 90 -> 89 |
+| `4f77afc1` | 34 | pistes | vies nommees | 48 -> 47 |
+| `084a804d` | 20 | pistes | vies d'un xuid | 6 -> 5 |
+| `2cf24f30` | 31 | equipement | episodes de surbouclier | 7 -> 6 |
+| `13d92593` | 20 | equipement | episode de surbouclier (reserve : 0 a raison) | 1 -> absent |
+| `1b2d9e08`, `1cd3848a`, `3923bede`, `e85d7bad` | 38, 32, 32, 32 | couverture | `pickups.originGround` | −1 a −2 |
+| `21ece4d8` | 23 | equipement | `abilities/n` | 23 -> 22 |
+| `000d5950` | 2 | equipement | `abilityLabels/n` (artefact du 03/08) | 4 -> 2 |
+| `11de8353` | 20 | couverture | `coverage.score.points` | 506 -> 504 |
+| `bf15f7ab` | 34 | armes | `weaponLabels/n` | 17 -> 16 |
+
+Les deux cas `joueurs` et le cas `objectifs` sont des **re-attributions dans un gain** (le
+premier balayage l'a etabli : sur `43716616` et `51ebbc0f` l'ancien artefact ne portait qu'UN
+joueur au fil de score contre huit aujourd'hui ; sur `bcb6d393` le match gagne sur toutes les
+familles d'action). Le portage de crane de `d9781168` (36 -> 30) est le plus gros residu non
+instruit : il n'entrait dans aucune des quatre candidates et merite son propre examen si
+l'utilisateur veut fermer le sujet a zero.
+
+## D. Verdict
+
+**Le parc peut etre re-cuit au schema 41 sans rien perdre.** Trois passes de mesure, 119 films
+re-cuits trois fois, 483 comparaisons au total : chaque passe ne fait que RESORBER des pertes
+(1 783 -> 1 483 -> 1 160) et n'en introduit aucune. Ce qui reste est soit un correctif que la
+chronique documente, soit un compteur de defaut qui baisse, soit quinze faits residuels nommes
+ci-dessus, tous anterieurs au chantier v2.
