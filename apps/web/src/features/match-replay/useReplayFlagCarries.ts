@@ -33,7 +33,6 @@
 import { useCallback, useMemo, useState, type PointerEvent, type RefObject } from 'react'
 
 import type { MatchScoreboardRow } from '@/lib/api/types'
-import { parseTeamSideID } from '@/lib/halo/teamNames'
 
 import { useCarrierPosAt } from './carrierPosition'
 import {
@@ -52,6 +51,7 @@ import { type CanvasView, projectTo, scaleOf } from './replayView'
 import { buildFlagReturnDrops, drawFlagReturnZones } from './flagReturnZone'
 import { frameToMs, type XY } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { allyTeamFromScoreboard, teamOfXuidFromScoreboard } from './matchSides'
 
 /** Le camp d'un drapeau VU DE LA PAGE — `unknown` quand la ligne « moi » manque. */
 export type FlagSide = 'ally' | 'enemy' | 'unknown'
@@ -116,10 +116,7 @@ export function useReplayFlagCarries({
   // sinon celle du bipède.
   const posOf = useCarrierPosAt(doc)
 
-  const allyTeamID = useMemo(
-    () => parseTeamSideID(scoreboard?.find((r) => r.is_me)?.team_side ?? null),
-    [scoreboard],
-  )
+  const allyTeamID = useMemo(() => allyTeamFromScoreboard(scoreboard), [scoreboard])
   // UN DRAPEAU SANS ÉQUIPE N'EST PAS « ADVERSE ». Deux cas le produisent : la carte est hors du
   // catalogue d'objectifs (aucun socle, donc aucun camp), et — depuis le schéma 35 — la variante
   // À DRAPEAU NEUTRE, où l'unique drapeau n'appartient à personne. Sans cette garde, le premier
@@ -164,14 +161,7 @@ export function useReplayFlagCarries({
   // LE CAMP DE L'AUTEUR SE LIT AU TABLEAU DE BORD, jamais dans le film : l'action ne porte que le
   // xuid. Un auteur absent du tableau (ou dont le `team_side` ne se parse pas) n'a PAS de camp —
   // l'onde prend le neutre du thème plutôt qu'une équipe devinée, même règle que le glyphe.
-  const teamOfXuid = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const r of scoreboard ?? []) {
-      const team = parseTeamSideID(r.team_side ?? null)
-      if (team !== null) map.set(r.xuid, team)
-    }
-    return map
-  }, [scoreboard])
+  const teamOfXuid = useMemo(() => teamOfXuidFromScoreboard(scoreboard), [scoreboard])
 
   // LA ZONE DE RETOUR (schéma 35) : le cercle autour d'un drapeau tombé, et la jauge qui s'y
   // vide. Elle se construit UNE fois par document, comme les ondes de capture — l'occupation se

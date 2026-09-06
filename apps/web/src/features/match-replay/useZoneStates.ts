@@ -30,7 +30,6 @@
 import { useCallback, useMemo } from 'react'
 
 import type { MatchScoreboardRow } from '@/lib/api/types'
-import { parseTeamSideID } from '@/lib/halo/teamNames'
 
 import type { ObjectiveElementReady } from './objectivesLayer'
 import { msToFrames } from './replayLogic'
@@ -41,6 +40,7 @@ import {
   zoneElementsOf,
   type ZoneStatesLayerInput,
 } from './zoneStatesLayer'
+import { allyTeamFromScoreboard } from './matchSides'
 
 /** Ce que le canvas recopie tel quel dans ses appels de dessin. */
 export interface ReplayZoneStates extends ZoneStatesLayerInput {
@@ -75,10 +75,7 @@ export function useZoneStates(
   const zoneElements = useMemo(() => zoneElementsOf(objectives), [objectives])
   const joinable = zoneCatalogMatches(doc.coverage?.zones?.catalog, zoneElements.length)
   const gaugeHoldFrames = useMemo(() => msToFrames(ZONE_GAUGE_HOLD_MS, doc), [doc])
-  const allyTeamID = useMemo(
-    () => parseTeamSideID(scoreboard?.find((r) => r.is_me)?.team_side ?? null),
-    [scoreboard],
-  )
+  const allyTeamID = useMemo(() => allyTeamFromScoreboard(scoreboard), [scoreboard])
   /**
    * L'ENCRE D'UN CAMP VIENT DES RÉGLAGES DE L'UTILISATEUR, plus du référentiel du jeu
    * (retour du 2026-08-26 : « le socle de l'équipe est en bleu alors que j'utilise une

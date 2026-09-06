@@ -19,7 +19,6 @@
 import { useCallback, useMemo } from 'react'
 
 import type { MatchScoreboardRow } from '@/lib/api/types'
-import { parseTeamSideID } from '@/lib/halo/teamNames'
 
 import {
   BOMB_BLAST_HOLD_FRAMES,
@@ -30,6 +29,7 @@ import {
 import { useCarrierPosAt } from './carrierPosition'
 import { type CanvasView } from './replayView'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { allyTeamFromScoreboard, teamOfXuidFromScoreboard } from './matchSides'
 
 export interface BombBlastHookInput {
   doc: ReplayDocumentReady
@@ -67,19 +67,9 @@ export function useReplayBombBlast({
   // LE CAMP DE L'AUTEUR SE LIT AU TABLEAU DE BORD, jamais dans le film : l'action ne porte que
   // le xuid. Un auteur absent du tableau prend le neutre du thème — jamais une équipe devinée,
   // même règle que l'onde de capture.
-  const teamOfXuid = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const r of scoreboard ?? []) {
-      const team = parseTeamSideID(r.team_side ?? null)
-      if (team !== null) map.set(r.xuid, team)
-    }
-    return map
-  }, [scoreboard])
+  const teamOfXuid = useMemo(() => teamOfXuidFromScoreboard(scoreboard), [scoreboard])
 
-  const allyTeamID = useMemo(
-    () => parseTeamSideID(scoreboard?.find((r) => r.is_me)?.team_side ?? null),
-    [scoreboard],
-  )
+  const allyTeamID = useMemo(() => allyTeamFromScoreboard(scoreboard), [scoreboard])
 
   const style = useMemo<BombBlastStyle>(
     () => ({

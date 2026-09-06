@@ -18,11 +18,20 @@
  * DIFFÉRENTS — pas un même son passé dans un interrupteur. Six couples existent dans le jeu ;
  * trois statistiques du film y donnent accès.
  */
-import { parseTeamSideID } from '@/lib/halo/teamNames'
 
 import type { ReplayDocumentReady } from './replayNormalize'
 import { frameToMs } from './replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
+import {
+  allyTeamFromScoreboard,
+  teamOfXuidFromScoreboard,
+  type ScoreboardSide,
+} from './matchSides'
+
+// LES DEUX LECTURES DU TABLEAU DE SCORE ONT LEUR FOYER DANS `matchSides` (K1/K2,
+// 2026-09-06) : ce module les re-expose pour ses appelants historiques, il ne les
+// ecrit plus.
+export { allyTeamFromScoreboard, type ScoreboardSide }
 
 /** Le camp de l'auteur d'une action, vu de la page — la même notion que le fil et les calques. */
 export type ObjectiveSide = 'ally' | 'enemy' | 'unknown'
@@ -120,12 +129,6 @@ export function objectiveSoundStem(stat: string, side: ObjectiveSide): string | 
 
 /** Une ligne de tableau de score, réduite à ce dont le camp a besoin (typage structurel :
  *  ce fichier n'a pas à connaître le DTO complet). */
-export interface ScoreboardSide {
-  xuid: string
-  team_side?: string | null
-  is_me?: boolean | null
-}
-
 /**
  * sideResolverFromScoreboard — LA SEULE SOURCE DU CAMP, et c'est la même que celle des
  * calques : la ligne « moi » du tableau de score donne l'équipe alliée, chaque autre ligne
@@ -135,26 +138,11 @@ export interface ScoreboardSide {
  * `ReplayCanvas` n'a qu'à la brancher. Sans ligne « moi », ou pour un xuid absent du tableau,
  * elle rend `unknown` — et le son se tait plutôt que d'affirmer un camp.
  */
-/**
- * allyTeamFromScoreboard — L'IDENTIFIANT D'ÉQUIPE ALLIÉE, ou `null` s'il n'est pas résolu.
- *
- * EXTRAITE DE `sideResolverFromScoreboard` LE 2026-08-27, et pas dupliquée : les sons d'ÉTAT
- * DE ZONE (`zoneSound.ts`) joignent sur le camp PROPRIÉTAIRE d'une zone, pas sur le xuid d'un
- * joueur — ils ont besoin du numéro, pas du résolveur. Deux lectures du tableau de score qui
- * divergeraient feraient sonner l'ennemi pour l'allié sans que rien ne le signale.
- */
-export function allyTeamFromScoreboard(
-  scoreboard: readonly ScoreboardSide[] | undefined,
-): number | null {
-  return parseTeamSideID(scoreboard?.find((r) => r.is_me)?.team_side ?? null)
-}
-
 export function sideResolverFromScoreboard(
   scoreboard: readonly ScoreboardSide[] | undefined,
 ): (xuid: string) => ObjectiveSide {
   const allyTeam = allyTeamFromScoreboard(scoreboard)
-  const teamOf = new Map<string, number | null>()
-  for (const r of scoreboard ?? []) teamOf.set(r.xuid, parseTeamSideID(r.team_side ?? null))
+  const teamOf = teamOfXuidFromScoreboard(scoreboard)
   return (xuid: string): ObjectiveSide => {
     if (allyTeam === null) return 'unknown'
     const team = teamOf.get(xuid)
