@@ -62,6 +62,26 @@ func TestJoliDossier(t *testing.T) {
 	}
 }
 
+// TestJoliDossier_IndependantDuSeparateur — regression CI du 2026-09-06 : joliDossier
+// s'appuyait sur filepath.Base/Ext, dependants de l'OS DE COMPILATION (path/filepath de la
+// stdlib Go ne coupe que sur "/" sous Linux). Les chemins de lot1.json/lot2.json sont
+// TOUJOURS des chemins Windows (machine d'extraction du chantier) : la fonction doit
+// reconnaitre "\" ET "/" quelle que soit la plateforme qui l'execute, comme le faisait
+// os.path.basename de Python SOUS WINDOWS (le seul OS ou _outils/livraison.py a tourne).
+func TestJoliDossier_IndependantDuSeparateur(t *testing.T) {
+	cas := map[string]string{
+		`C:\Steam\SFX\sb_010_wea_un_assaultrifle.pck`:  "UNSC_assaultrifle",
+		"C:/Steam/SFX/sb_010_wea_un_assaultrifle.pck":  "UNSC_assaultrifle",
+		`C:\Steam/SFX\sb_010_tur_bt_gatlingmortar.pck`: "Banished_Tourelle_gatlingmortar", // separateurs mixtes
+		"sb_010_whizby_pl_generic.pck":                 "Divers_Whizby_generic",           // nom nu, sans repertoire
+	}
+	for pck, veut := range cas {
+		if got := joliDossier(pck); got != veut {
+			t.Errorf("joliDossier(%q) = %q, veut %q", pck, got, veut)
+		}
+	}
+}
+
 func TestLivraisonClefCoup(t *testing.T) {
 	cas := []struct {
 		groupe           string

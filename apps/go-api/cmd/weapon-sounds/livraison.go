@@ -186,8 +186,27 @@ var joliFactions = map[string]string{
 
 var joliPrefixes = map[string]string{"wea": "", "tur": "Tourelle_", "whizby": "Whizby_"}
 
+// joliBaseSansExt rend le nom de fichier nu (sans repertoire ni extension) d'un chemin
+// .pck — port fidele de os.path.basename/splitext TELS QU'ILS SE COMPORTENT SOUS WINDOWS
+// (module ntpath : "/" ET "\" sont deux separateurs valides), le SEUL OS sur lequel
+// `_outils/livraison.py` a jamais tourne. Les chemins de lot1.json/lot2.json sont TOUJOURS
+// des chemins Windows (ceux de la machine d'extraction), quelle que soit la plateforme de
+// compilation de ce binaire : filepath.Base/Ext de la stdlib Go sont, eux, dependants de
+// l'OS de COMPILATION et ne coupent que sur "/" sous Linux — bug constate en CI le
+// 2026-09-06 (TestJoliDossier rouge sous ubuntu-latest, cf. journal du lot v2 G).
+func joliBaseSansExt(pck string) string {
+	base := pck
+	if i := strings.LastIndexAny(base, `/\`); i >= 0 {
+		base = base[i+1:]
+	}
+	if j := strings.LastIndex(base, "."); j >= 0 {
+		base = base[:j]
+	}
+	return base
+}
+
 func joliDossier(pck string) string {
-	base := strings.TrimSuffix(filepath.Base(pck), filepath.Ext(pck))
+	base := joliBaseSansExt(pck)
 	m := joliRe.FindStringSubmatch(base)
 	if m == nil {
 		return strings.ReplaceAll(base, "sb_010_", "")
