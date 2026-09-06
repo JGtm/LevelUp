@@ -168,7 +168,10 @@ describe('TacticalPage — la grille des cartes', () => {
     const arg = navigate.mock.calls[0][0] as {
       search: (p: Record<string, unknown>) => Record<string, unknown>
     }
-    expect(arg.search({}).carte).toBe('streets')
+    // L'objet ENTIER : la garantie n'est pas seulement « carte est ecrite », c'est
+    // « et RIEN d'autre » — un encodage qui poserait `vue=all` ou `pl=` a chaque clic
+    // salirait l'URL de parametres neutres sans qu'aucune autre assertion ne le voie.
+    expect(arg.search({})).toEqual({ carte: 'streets' })
   })
 
   it('une carte sous le plancher ne navigue nulle part', async () => {
@@ -201,6 +204,9 @@ describe('TacticalPage — la grille des cartes', () => {
     )
     renderWithProviders(<TacticalPage />)
     expect(await screen.findByText('Aucune carte jouée')).toBeInTheDocument()
+    // La grille a REELLEMENT repondu : sans cette assertion, le test passerait aussi
+    // sur un etat vide rendu AVANT la reponse (le defaut W1).
+    expect(corpsGrille()).toBeDefined()
     expect(screen.queryByTestId('tactical-couverture')).toBeNull()
   })
 
@@ -212,6 +218,7 @@ describe('TacticalPage — la grille des cartes', () => {
     )
     renderWithProviders(<TacticalPage />)
     expect(await screen.findByText('Aucune carte jouée')).toBeInTheDocument()
+    expect(corpsGrille()).toBeDefined()
   })
 
   it('lecture en échec : on le dit, on ne rend pas une grille vide', async () => {
@@ -281,6 +288,61 @@ describe('TacticalPage — la grille des cartes', () => {
     renderWithProviders(<TacticalPage />)
     expect(await screen.findByText('Coéquipier introuvable')).toBeInTheDocument()
     expect(corpsGrille()).toBeUndefined()
+  })
+
+  // ─── W1 — « AUCUNE CARTE » EST UNE REPONSE, PAS UNE ATTENTE ───────────────────────
+  //
+  // La grille est SUSPENDUE tant que le perimetre n'est pas resolu. En TanStack v5,
+  // `isLoading` vaut `isPending && isFetching` — donc FAUX sur une requete desactivee :
+  // s'y fier faisait rendre « Aucune carte jouee » au premier montage, a chaque clic sur
+  // Analyser, et DEFINITIVEMENT quand la resolution echouait.
+
+  it('resolution EN COURS : la page dit « chargement », jamais « aucune carte »', async () => {
+    post.mockImplementation((path: string) =>
+      path.endsWith('/filters/match-ids')
+        ? new Promise(() => {}) // jamais resolue
+        : Promise.resolve(page),
+    )
+    renderWithProviders(<TacticalPage />)
+    expect(await screen.findByText('Chargement des cartes…')).toBeInTheDocument()
+    expect(screen.queryByText('Aucune carte jouée')).toBeNull()
+    // Et la grille n'est PAS demandee tant que le perimetre n'existe pas.
+    expect(corpsGrille()).toBeUndefined()
+  })
+
+  it('resolution EN ECHEC : la page le DIT, et ne rend pas un etat vide', async () => {
+    const erreurs = vi.spyOn(console, 'error').mockImplementation(() => {})
+    post.mockImplementation((path: string) =>
+      path.endsWith('/filters/match-ids')
+        ? Promise.reject(new Error('503'))
+        : Promise.resolve(page),
+    )
+    try {
+      renderWithProviders(<TacticalPage />)
+      expect(await screen.findByTestId('tactical-erreur')).toBeInTheDocument()
+      expect(screen.queryByText('Aucune carte jouée')).toBeNull()
+      // L'echec est JOURNALISE, jamais avale.
+      expect(erreurs).toHaveBeenCalled()
+    } finally {
+      erreurs.mockRestore()
+    }
+  })
+
+  // ─── W5 — UNE RESOLUTION VIDE EST UNE REPONSE : LA REQUETE PART ───────────────────
+  //
+  // « Aucun match ne passe le filtre » et « le perimetre n'est pas encore la » sont deux
+  // etats distincts. Le premier DOIT interroger la grille (avec une liste vide, que le
+  // serveur traduit en « aucune carte ») ; le second doit attendre.
+
+  it('resolution VIDE : la grille est bien demandee, avec une liste vide', async () => {
+    post.mockImplementation((path: string) =>
+      path.endsWith('/filters/match-ids')
+        ? Promise.resolve({ match_ids: [] })
+        : Promise.resolve({ cartes: [], plancher_matchs: 10 }),
+    )
+    renderWithProviders(<TacticalPage />)
+    expect(await screen.findByText('Aucune carte jouée')).toBeInTheDocument()
+    expect(corpsGrille()?.match_ids).toEqual([])
   })
 
   // ─── W2 — LE CHEMIN NOMINAL DU FOND ────────────────────────────────────────────────
