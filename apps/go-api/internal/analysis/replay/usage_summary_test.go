@@ -426,3 +426,50 @@ func TestUsageSummary_UneVieSurUnSlotReprisNePerdPasSesLancers(t *testing.T) {
 		t.Errorf("111 : %d traction(s), attendu 1 (pré-requis du test)", got)
 	}
 }
+
+// TestUsageNAttribuePasUnGesteDuneVieSansNomAuDernierOccupant — LE RESIDU B, instruit le
+// 2026-09-06.
+//
+// VERDICT : CONFIRME, l'exemption « lecteur deja rattrape » ne le couvrait PAS. Le correctif du
+// 2026-09-06 a remplace l'agregat « dernier gagnant » par une resolution PAR VIE, mais
+// `usageSlotOwners` continuait d'ecarter les vies non nommees de `parVie` (`default: continue`).
+// Un geste mesure pendant une telle vie ne trouvait donc AUCUNE vie couvrante et `at()`
+// retombait sur `dernier[slot]` — le dernier occupant du match : sur un slot recycle, la ligne
+// d'un joueur recevait un geste qui n'est pas le sien. C'est precisement la regle que le
+// correctif declare avoir supprimee.
+//
+// LA REPONSE EST CELLE DES BOTS, POUR LA MEME RAISON : la vie entre avec un xuid VIDE. Elle
+// n'ouvre aucune ligne (une ligne est keyee par xuid) mais elle OCCUPE son slot, ce qui rend
+// l'instant NON ATTRIBUABLE au lieu de l'attribuer a tort.
+//
+// MUTATION : remettre `default: continue` rougit (« proprietaire a la frame 150 = "B" »).
+func TestUsageNAttribuePasUnGesteDuneVieSansNomAuDernierOccupant(t *testing.T) {
+	doc := &ReplayDocument{
+		Tracks: []Track{
+			{Slot: 7, StartFrame: 0, EndFrame: 100, XUID: "A"},
+			{Slot: 7, StartFrame: 120, EndFrame: 180},            // nommage non resolu
+			{Slot: 7, StartFrame: 200, EndFrame: 300, XUID: "B"}, // dernier occupant du slot
+		},
+	}
+	o := usageSlotOwners(doc)
+	if got := o.at(7, 50); got != "A" {
+		t.Errorf("proprietaire a la frame 50 = %q, attendu A", got)
+	}
+	if got := o.at(7, 250); got != "B" {
+		t.Errorf("proprietaire a la frame 250 = %q, attendu B", got)
+	}
+	if got := o.at(7, 150); got != "" {
+		t.Errorf("proprietaire a la frame 150 = %q, attendu vide : la vie qui couvre cet "+
+			"instant n'est pas nommee, le geste n'est attribuable a PERSONNE — l'attribuer au "+
+			"dernier occupant du slot serait un faux positif nomme", got)
+	}
+	// `atOrJustBefore` suit la meme regle : la vie qui vient de s'achever a la frame 150 est
+	// celle sans nom, pas celle de A.
+	if got := o.atOrJustBefore(7, 190); got != "" {
+		t.Errorf("poseur a la frame 190 = %q, attendu vide", got)
+	}
+	// ... et un objet lache a la mort de A (t0 = finVie + 1) revient bien a A.
+	if got := o.atOrJustBefore(7, 101); got != "A" {
+		t.Errorf("poseur a la frame 101 = %q, attendu A", got)
+	}
+}

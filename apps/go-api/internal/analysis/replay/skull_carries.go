@@ -208,10 +208,10 @@ func (p carrierPresence) gate(xuid string, f0, f1 int) (int, int, bool) {
 	// `d9781168`, le rejet coutait 32,6 s de portage et le rognage 91,2 s. Rogner un portage a une
 	// vie nommee alors qu'une vie SANS NOM couvre le reste, c'est affirmer une absence que rien
 	// n'etablit.
-	if _, unknown := bestOverlap(p.unnamed, f0, f1); unknown {
+	if _, unknown := unionOverlap(p.unnamed, f0, f1); unknown {
 		return f0, f1, true
 	}
-	if span, ok := bestOverlap(spans, f0, f1); ok {
+	if span, ok := unionOverlap(spans, f0, f1); ok {
 		if f0 < span.f0 {
 			f0 = span.f0
 		}
@@ -223,12 +223,24 @@ func (p carrierPresence) gate(xuid string, f0, f1 int) (int, int, bool) {
 	return f0, f1, false
 }
 
-// bestOverlap rend la fenetre de presence qui recouvre le plus [f0,f1], et si un recouvrement
-// existe. Sans recouvrement (le porteur n'est present a AUCUN instant du portage), (presenceSpan{},
-// false) — le portage est un fantome.
-func bestOverlap(spans []presenceSpan, f0, f1 int) (presenceSpan, bool) {
-	best := presenceSpan{}
-	bestOv := 0
+// unionOverlap rend l'UNION des fenetres de presence que [f0,f1] recouvre, et si au moins une
+// le recouvre.
+//
+// POURQUOI L'UNION, ET PAS LA FENETRE QUI RECOUVRE LE PLUS (residu instruit le 2026-09-06). Le
+// rognage a `bestOverlap` etait le MEME defaut que `windowFor` avant le schema 45 : un portage
+// qu'un trou de replication de plus de `lifeGapUS` coupe en deux vies NOMMEES du meme porteur
+// etait tronque a la moitie la plus longue, et la part couverte par l'autre vie — dont, selon
+// le cote, l'instant de PRISE — partait a la trappe. `spanFor` (equipment_episodes.go) a tranche
+// la question pour les episodes d'equipement au schema 45 ; c'est la meme mesure, la meme cause
+// et la meme reponse. Le correctif du schema 43 n'avait traite que le REJET (« l'ignorance passe
+// avant le rognage »), jamais le rognage lui-meme.
+//
+// L'UNION NE DEBORDE JAMAIS L'INTERVALLE MESURE : les bornes rendues sont ensuite CLAMPEES sur
+// [f0,f1] par l'appelant, et une fenetre que l'intervalle ne recouvre pas n'entre pas dans
+// l'union. Un portage qu'AUCUNE vie nommee ne recouvre reste ecarte : la regle de rejet ne
+// bouge pas.
+func unionOverlap(spans []presenceSpan, f0, f1 int) (presenceSpan, bool) {
+	out, found := presenceSpan{}, false
 	for _, s := range spans {
 		lo, hi := f0, f1
 		if s.f0 > lo {
@@ -237,12 +249,22 @@ func bestOverlap(spans []presenceSpan, f0, f1 int) (presenceSpan, bool) {
 		if s.f1 < hi {
 			hi = s.f1
 		}
-		if ov := hi - lo + 1; ov > bestOv {
-			bestOv = ov
-			best = s
+		if hi < lo {
+			continue // cette vie ne recouvre pas l'intervalle
+		}
+		switch {
+		case !found:
+			out, found = s, true
+		default:
+			if s.f0 < out.f0 {
+				out.f0 = s.f0
+			}
+			if s.f1 > out.f1 {
+				out.f1 = s.f1
+			}
 		}
 	}
-	return best, bestOv > 0
+	return out, found
 }
 
 // skullCarryIntervals reconstruit les periodes de portage : les trains de tics de score de mode,
