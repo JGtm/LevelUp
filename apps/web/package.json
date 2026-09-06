@@ -9,6 +9,7 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "lint:fields": "node ../../tools/lint-no-hardcoded-fields.mjs",
+    "lint:colors": "node ../../tools/lint-no-hardcoded-colors.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",

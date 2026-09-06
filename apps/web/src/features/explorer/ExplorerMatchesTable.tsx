@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (revue R1 du lot v2 D, constat C8) : 839 lignes de code pour le tableau de matchs de l'Explorer (colonnes, tri client, filtres, rendu). RETRAIT MESURABLE : la table de colonnes sort dans un `_columns.ts` et le fichier repasse sous 500 — hors perimetre du lot v2 D (modele web du rejeu), qui n'y touche que par le merge du lot C. */
 /**
  * ExplorerMatchesTable — tableau historique mode "Matchs" de l'Explorer.
  *

@@ -295,39 +295,6 @@ export function teamIdOfSide(side: string | null | undefined): number | null {
   return parseTeamSideID(side)
 }
 
-/** La manche courante d'une équipe et sa valeur DANS cette manche. */
-export interface RoundReading {
-  /** Numéro de manche tel que le film l'écrit (0 pour un mode à manche unique). */
-  round: number
-  /** Rang d'affichage, à partir de 1 : « manche 2 » se lit mieux que « manche 1 ». */
-  index: number
-  /** Valeur atteinte dans CETTE manche au frame courant (elle repart de zéro à la suivante). */
-  value: number
-  /** Nombre total de manches publiées pour cette équipe. */
-  count: number
-}
-
-/**
- * roundAtFrame rend la manche en cours au frame donné, ou `null` si l'équipe n'a pas de
- * série. La manche courante est la DERNIÈRE dont le premier palier est déjà passé ; avant
- * le premier palier de toutes, c'est la première (le match a commencé, pas le compteur).
- */
-export function roundAtFrame(team: ReplayTeamScoreReady | null, frame: number): RoundReading | null {
-  if (!team || team.rounds.length === 0) return null
-  let idx = 0
-  for (let i = 0; i < team.rounds.length; i++) {
-    const first = team.rounds[i].points[0]
-    if (first && first.t <= frame) idx = i
-  }
-  const round = team.rounds[idx]
-  return {
-    round: round.round,
-    index: idx + 1,
-    value: scoreAtFrame(round.points, frame),
-    count: team.rounds.length,
-  }
-}
-
 /** Les quatre compteurs vivants d'un joueur, au frame courant. */
 export interface PlayerCounters {
   score: number

@@ -14,6 +14,7 @@ export { formatDate, formatDateRange, formatDateShort, formatDateTime, type Loca
 export { formatNumber, formatNumberFixed, formatSignedFixed, formatRatio, formatKDA } from './number'
 export {
   formatClockMMSS,
+  formatClockMShort,
   formatDurationMMSS,
   formatDurationHMS,
   formatDurationMinSec,

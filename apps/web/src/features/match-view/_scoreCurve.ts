@@ -18,6 +18,15 @@
  * mesure, pas une lacune — et sans sa ligne, un 3-0 se lirait comme un match à un seul
  * participant.
  *
+ * L'AXE DES TEMPS EST CELUI DU GAMEPLAY, ET C'EST UNE CORRECTION (registre 2026-09-05,
+ * P0-7). Jusqu'ici cette courbe posait ses paliers en `frame × frameIntervalMs`, c'est-à-dire
+ * en millisecondes depuis le PREMIER PAQUET DE POSITION du film — 3,6 à 50,8 s avant le coup
+ * d'envoi selon le match — et l'étiquette « 0m00s » se lisait juste sous « Frags cumulés »,
+ * dont le zéro est le coup d'envoi. Deux instants nommés pareil, distants de −24 à +4,5 s
+ * selon le témoin. La conversion vit désormais dans `lib/replay/matchClock` et RIEN ne se
+ * date ici sans passer par elle : sans horloge établie (artefact sans origine), il n'y a pas
+ * de courbe — un axe faux se lit comme juste.
+ *
  * Zéro dépendance React/ECharts : testable en pur (`_scoreCurve.test.ts`).
  */
 // LES LECTURES DU CALQUE NE SONT PAS RECOPIÉES ICI. `teamSeriesFor` (un camp sans série
@@ -25,6 +34,7 @@
 // éprouvés dans `lib/replay/scoreTimeline` : les réécrire serait la deuxième vérité que la
 // règle « ≤ 2 copies » interdit. Le rejeu 2D lit le MÊME module — la logique partagée par
 // deux features vit dans `lib/`, jamais dans l'une que l'autre irait importer (ratchet P8.5).
+import type { MatchClock } from '@/lib/replay/matchClock'
 import {
   leadChanges,
   teamSeriesFor,
@@ -40,7 +50,10 @@ export interface ScoreCurveSeries {
   /** Camp du point de vue du joueur de la page ; `null` = inconnu (encre neutre). */
   ally: boolean | null
   label: string
-  /** Paliers `[ms depuis le début du rejeu, valeur]`, bornés au début et à la fin du match. */
+  /**
+   * Paliers `[ms depuis le COUP D'ENVOI, valeur]`, bornés au coup d'envoi et à la fin du
+   * film. Même axe que `event_time_ms`, donc que « Frags cumulés » juste au-dessus.
+   */
   points: Array<[number, number]>
   /** Le film publie-t-il une série pour ce camp ? `false` = ligne plate MESURÉE à zéro. */
   published: boolean
@@ -48,7 +61,7 @@ export interface ScoreCurveSeries {
   final: number
 }
 
-/** Un retournement, daté en millisecondes de rejeu. */
+/** Un retournement, daté en millisecondes depuis le coup d'envoi. */
 export interface ScoreCurveLead {
   ms: number
   teamId: number
@@ -57,15 +70,20 @@ export interface ScoreCurveLead {
 export interface ScoreCurve {
   series: ScoreCurveSeries[]
   leads: ScoreCurveLead[]
-  /** Durée couverte par la courbe, en ms — l'axe des temps s'y arrête. */
-  durationMs: number
+  /**
+   * Fin de l'axe des temps, en ms depuis le coup d'envoi : la dernière image du film, lue
+   * sur l'horloge du gameplay. L'axe part de 0 (le coup d'envoi) et s'y arrête.
+   */
+  endMs: number
 }
 
 export interface ScoreCurveInput {
   timeline: ReplayScoreTimelineReady | undefined
-  /** Durée d'une image du document. Absente = pas d'échelle temporelle, pas de courbe. */
-  frameIntervalMs: number | undefined
-  frameCount: number
+  /**
+   * L'horloge du match (`lib/replay/matchClock`). `null` = origine du film non établie :
+   * aucun palier ne peut être daté sur l'horloge du gameplay, donc pas de courbe.
+   */
+  clock: MatchClock | null | undefined
   /** Les camps à tracer, dans l'ordre d'affichage (scoreboard d'abord, film ensuite). */
   teamIds: number[]
   allyOf: (teamId: number) => boolean | null
@@ -76,14 +94,16 @@ export interface ScoreCurveInput {
  * buildScoreCurve projette le calque de score en courbes ECharts.
  *
  * Rend `null` — donc RIEN À L'ÉCRAN — dès qu'une des conditions du tracé manque : pas de
- * calque, pas d'échelle temporelle, moins de deux camps, ou aucun camp publié. Le plan
- * l'exige explicitement : « affiche seulement si l'artefact existe, sinon rien, pas de
- * placeholder ». Un cadre vide est une promesse non tenue ; l'absence n'en fait aucune.
+ * calque, pas d'horloge établie, moins de deux camps, aucun camp publié, ou un film qui
+ * s'arrête avant le coup d'envoi. Le plan l'exige explicitement : « affiche seulement si
+ * l'artefact existe, sinon rien, pas de placeholder ». Un cadre vide est une promesse non
+ * tenue ; l'absence n'en fait aucune.
  */
 export function buildScoreCurve(input: ScoreCurveInput): ScoreCurve | null {
-  const { timeline, frameIntervalMs, frameCount, teamIds, allyOf, labelOf } = input
-  if (!timeline || !frameIntervalMs || frameCount <= 1 || teamIds.length < 2) return null
-  const durationMs = (frameCount - 1) * frameIntervalMs
+  const { timeline, clock, teamIds, allyOf, labelOf } = input
+  if (!timeline || !clock || teamIds.length < 2) return null
+  const endMs = clock.gameplayMsOfFrame(clock.frameCount - 1)
+  if (endMs <= 0) return null
   const series = teamIds.map<ScoreCurveSeries>((teamId) => {
     const team = teamSeriesFor(timeline, teamId)
     const paliers = team?.total ?? []
@@ -91,7 +111,7 @@ export function buildScoreCurve(input: ScoreCurveInput): ScoreCurve | null {
       teamId,
       ally: allyOf(teamId),
       label: labelOf(teamId),
-      points: stepPoints(paliers, frameIntervalMs, durationMs),
+      points: stepPoints(paliers, clock, endMs),
       published: team !== null,
       final: paliers.length > 0 ? paliers[paliers.length - 1].v : 0,
     }
@@ -99,30 +119,44 @@ export function buildScoreCurve(input: ScoreCurveInput): ScoreCurve | null {
   if (!series.some((s) => s.published)) return null
   return {
     series,
-    leads: leadChanges(timeline).map((c) => ({ ms: c.frame * frameIntervalMs, teamId: c.teamId })),
-    durationMs,
+    leads: leadChanges(timeline).map((c) => ({
+      ms: clock.gameplayMsOfFrame(c.frame),
+      teamId: c.teamId,
+    })),
+    endMs,
   }
 }
 
 /**
- * stepPoints borne la série aux deux extrémités du match.
+ * stepPoints borne la série aux deux extrémités du MATCH, sur l'horloge du gameplay.
  *
- * LES DEUX BORNES SONT DES MESURES, PAS DU REMPLISSAGE. Au coup d'envoi le score EST nul :
- * sans le point de départ, la courbe commencerait au premier but et laisserait croire que
- * le match a démarré là. À l'arrivée, le dernier palier tient jusqu'à la fin : sans le point
- * final, l'escalier s'arrêterait au dernier changement et la courbe paraîtrait plus courte
- * que le match — d'autant plus qu'un dernier but tombe rarement à la dernière seconde.
+ * LES DEUX BORNES SONT DES MESURES, PAS DU REMPLISSAGE. Au coup d'envoi le score EST celui
+ * du dernier palier déjà passé — nul dans tous les cas ordinaires : sans le point de départ,
+ * la courbe commencerait au premier but et laisserait croire que le match a démarré là. À
+ * l'arrivée, le dernier palier tient jusqu'à la fin : sans le point final, l'escalier
+ * s'arrêterait au dernier changement et la courbe paraîtrait plus courte que le match —
+ * d'autant plus qu'un dernier but tombe rarement à la dernière seconde.
+ *
+ * CE QUI PRÉCÈDE LE COUP D'ENVOI SE REPLIE SUR LUI. Le film commence avant le match (le
+ * countdown) : un palier daté avant 0 sur l'horloge du gameplay n'est pas un but d'avant le
+ * match, c'est l'état initial du compteur. Il donne donc sa valeur au point de départ plutôt
+ * qu'un point à abscisse négative que l'axe couperait sans le dire.
  */
 function stepPoints(
   paliers: ReadonlyArray<{ t: number; v: number }>,
-  frameIntervalMs: number,
-  durationMs: number,
+  clock: MatchClock,
+  endMs: number,
 ): Array<[number, number]> {
-  const out: Array<[number, number]> = []
-  if (paliers.length === 0 || paliers[0].t > 0) out.push([0, 0])
-  for (const p of paliers) out.push([p.t * frameIntervalMs, p.v])
+  let atKickoff = 0
+  let i = 0
+  while (i < paliers.length && clock.gameplayMsOfFrame(paliers[i].t) <= 0) {
+    atKickoff = paliers[i].v
+    i++
+  }
+  const out: Array<[number, number]> = [[0, atKickoff]]
+  for (; i < paliers.length; i++) out.push([clock.gameplayMsOfFrame(paliers[i].t), paliers[i].v])
   const last = out[out.length - 1]
-  if (last[0] < durationMs) out.push([durationMs, last[1]])
+  if (last[0] < endMs) out.push([endMs, last[1]])
   return out
 }
 

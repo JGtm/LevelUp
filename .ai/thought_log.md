@@ -96464,3 +96464,253 @@ deux camps ecrivent des `team_id` que la carte de chaleur ne sait pas filtrer (4
 C5 : avant, toutes les lignes valaient -1 et aucun bouton n'apparaissait. Traitement attendu au
 lot D (web). Le corollaire documentaire, lui, est traite : le persister n'annonce plus « 0 / 1 »
 mais l'identifiant d'equipe de la base.
+## [2026-09-06] Lot D tache D-I — les horloges du rejeu et de la vue match — Complete
+
+**Contexte.** Plan v2 du rejeu et du film (`.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`), lot D,
+premiere des deux taches. Trois constats du registre du 2026-09-05 sur les horloges cote web :
+P0-7 (deux horloges m:ss empilees dans l'onglet Chronologie), P0-5 (trois politiques pour
+« l'artefact n'a pas d'origine »), et leurs satellites J2/J3/J5/N1/N2/N3 + le residu P0-6.
+Refonte INTERNE : aucun changement visuel ni de comportement voulu, hors les deux corrections
+que les constats appellent. Worktree dedie `LevelUp-wt-v2-web-modele`, branche
+`feat/v2-web-modele`, base a21fd77f4.
+
+**Decision technique.** Deux foyers, et un garde-rail pose le meme jour pour chacun.
+`lib/replay/matchClock.ts` porte les conversions entre les trois axes d'un match (axe du match
+depuis `start_time`, axe du film depuis `originMs`, axe du gameplay depuis le coup d'envoi) ;
+`features/match-replay/model/replayClock.ts` pose par-dessus le VERDICT de la page de rejeu.
+L'axe commun de l'onglet Chronologie est celui de `event_time_ms`, ancre sur `header.t0_ms` —
+et il ne peut pas etre ancre ailleurs : c'est la valeur que le producteur a retranchee pour
+fabriquer ce champ ; y substituer le T0 film deplacerait « Frags cumules », la serie qui est
+deja juste. La politique de repli du rejeu est celle-ci, unique : l'origine est celle que
+l'ARTEFACT PUBLIE ; sans elle, aucune surface ne place quoi que ce soit sur l'axe du film. Une
+seule exception, nommee et mesuree — le fil des eliminations, seule surface a disposer d'une
+seconde source (appariement des kills aux fins de vie).
+
+**Resultats.** Cinq commits (c141e30b0, 4fb7de28e, a3f01e4ab, 198ab7e6c, 10aa884c3). La courbe
+de score ET les barres d'instants passent par l'horloge, `header.t0_ms` descend jusqu'aux deux
+cartes, et le test qui verrouillait la premisse fausse « borne au coup d'envoi » assert
+desormais des abscisses calculees a la main. Les cinq sites de P0-5 consomment un seul verdict.
+`killFx` et `replaySound` lisent les kills deja recales par le fil au lieu de rejouer
+`alignFeed` (quatre executions du meme recalage par chargement, ramenees a une). Les marques de
+la frise prennent le formateur du rejeu (troncature) au lieu de celui de `lib/formatters`
+(arrondi). Deux codes morts a tests verts supprimes (`replaySchemaLogic`, `roundAtFrame` et ses
+six assertions). `_kdCumul.ts` et `_cadence.ts` extraits des `.tsx` (260 L et 162 L de logique
+sans oracle) avec 31 cas a oracle ecrit a la main ; `MatchCombatCtfOverlay.test.tsx` lit enfin
+l'option ECharts entiere ; `formatClockMShort` remplace les quatre ecritures du format `MmSSs`.
+Cinq garde-rails poses. Mesure decisive du perimetre : sur les 106 artefacts servis localement,
+les 5 sans `originMs` portent tous `coverage.originResolved: false` et etaient donc DEJA
+ecartes par `filmClockTrusted` — la porte ajoutee ne retire aucune carte de l'ecran. Gates :
+`tsc -b --force` vert, lint 0 erreur (27 avertissements prexistants, un de moins qu'a la base),
+vitest 6 287 tests verts sur la suite web entiere, lint couleurs propre, cliquet d'imports
+croises inchange a 7/7.
+
+**Conclusion / prochaine etape.** Tache D-I close et poussee sur `feat/v2-web-modele`. La
+surveillance de la CI est ABANDONNEE sur consigne du superviseur (quota GitHub epuise, verdict
+reporte a sa verification) : la cloture s'appuie sur les gates locaux ci-dessus, rejoues sur
+l'etat exact publie. Decouverte non traitee (perimetre ferme) :
+`e2e/replay-explosion-raster.spec.ts` est rouge depuis AVANT ce lot — son harnais exige
+7 imports de valeur dans `replayDraw.ts`, qui en porte 6, mesure identique au commit de base ;
+c'est le pendant de M1 (ces specs n'ont jamais tourne en CI) et cela releve de F.6. La tache
+D-II (modele, calques, arborescence) ne demarre qu'apres la revue adversariale de D-I.
+
+## [2026-09-06] Lot D tache D-II premier temps — modele, calques, position de lecture — Complete
+
+**Contexte.** Plan v2 du rejeu et du film, lot D, tache D-II scindee en deux temps par le
+superviseur pour menager le contexte. Premier temps : D.6 (le modele de la page), D.7 (le
+contrat de calque et la composition), D.8 (la position de lecture hors de React). Trois
+constats du registre du 2026-09-05 : W1 (la jointure dans douze memos d'une route, et trois
+representations de la position de lecture) et M3 (la composition de la scene sans aucun test,
+son seul « test » comptant les lignes du fichier). Refonte INTERNE : aucun changement visuel
+ni de comportement voulu.
+
+**Decision technique.** Trois foyers, chacun teste sans React. `model/replayModel.ts` porte la
+jointure ARTEFACT x VUE MATCH en fonction pure ; `useReplayModel` ne fait que la memoiser.
+`replayCompose.ts` porte l'ordre des vingt-cinq calques EN DONNEE (`LAYER_ORDER`), la condition
+d'ouverture de chacun (`sceneLayers`) et la boucle (`composeScene`, qui rend la liste de ce
+qu'elle a peint) ; le contrat de calque n'invente rien — c'est la signature la plus large des
+onze `paint` que les hooks exposaient deja. `model/playbackStore.ts` porte la position PUBLIEE
+hors de React : le canvas publie, la page lit par `useSyncExternalStore`. Le magasin retient la
+valeur au lieu de lire la cellule vivante, et c'est une contrainte de React, pas un confort —
+un instantane qui change a chaque appel se signale comme une boucle.
+
+**Resultats.** Trois commits (0ff61938d, 246f3bbf2, 20c8abe9e) et 59 cas neufs a oracle ecrit a
+la main. La route passe de 395 a 316 lignes et de treize memos a trois. La fonction `draw` du
+canvas passe de 222 a 22 lignes ; le fichier de 661 a 651, les justifications d'ordre ayant
+migre dans `LAYER_ORDER` ou elles ont desormais leur seul foyer — le cliquet de taille a
+d'ailleurs morde en cours de route (666 > 665), ce qui a impose la deduplication. La copie
+React de la position et la prop de rappel `onFrameChange` disparaissent. Gates verts :
+`tsc -b --force`, lint a 27 avertissements (la baseline exacte), 6 339 tests web, couleurs
+propres, cliquet d'imports croises inchange a 7/7, build de production. TEMOIN VISUEL : les
+deux specs de rasterisation rendent les memes captures avant et apres chaque item (3 passed) —
+il a fallu reparer leur harnais pour cela, et la derive etait double et non simple
+(`drawGrenadeRestLayer` avait change de fichier), correctif local a reconcilier avec le lot F.
+
+**Conclusion / prochaine etape.** Premier temps clos et pousse. Un item non traite, avec sa
+raison mesuree : « `ReplayTransport` et `ReplaySettingsDrawer` remontent freres » exige de
+faire remonter neuf hooks de calque (les `available.*` du tiroir) et six hooks de transport,
+c'est-a-dire de demonter le composant-dieu — le contenu de D.9 et D.10 — et le tiroir est
+positionne en absolute par rapport a la div racine du canvas, donc changer son parent change sa
+position sous une contrainte « aucun changement visuel » que les specs de rasterisation ne
+couvrent pas. Question au superviseur : rattacher a D.9/D.10, ou item propre avec gate visuel ?
+Le second temps (D.9 a D.14) ne demarre qu'apres son message.
+
+## [2026-09-06] Lot D tache D-II second temps — canoniques et gardes derives — Partiel (D.9 et D.10 M4/M5)
+
+**Contexte.** Plan v2 du rejeu et du film, lot D, second temps de la tache D-II : D.9 (cinq
+canoniques du registre, constats K1 a K5) puis D.10 (les faux hooks, plus les deux gardes M4 et
+M5 a deriver de la source), D.11 a D.14 ensuite. Le superviseur a explicitement autorise l'arret
+propre apres l'item en cours plutot qu'un travail bacle, avec relance d'un executeur frais sur
+le journal. Contrainte inchangee : aucun changement visuel ni de comportement, rasterisation
+3/3 identique apres chaque item.
+
+**Decision technique.** Cinq canoniques livrees chacune avec son garde-rail dans le meme commit,
+et toutes leurs copies migrees : le cadrage qui sait projeter (`replayView`, 36 sites), l'index
+des vies par slot (`livesPosition`, 4 copies byte-identiques), les camps du match
+(`matchSides`, 4 + 2 copies dont une canonique cachee dans le module des sons), la respiration
+des glyphes portes (`carriedGlyphPulse`, 3 copies) et le predicat d'intervalle (`replaySpans`,
+12 copies en deux orthographes). Puis les deux gardes de D.10 : celui du porteur derive sa liste
+du code (« tout module qui se donne un resolveur de position est un lecteur de porteur ») et
+celui des encres derive la sienne de l'union `InkVar`. Chaque garde refondu porte un cas qui
+echoue si sa derivation rend une liste vide — sans quoi une convention abandonnee le rendrait
+vert et inerte, exactement le defaut qu'il corrige.
+
+**Resultats.** Cinq commits (32607ff66, 15613a2b7, bc57c117c, 803daf16a, 5fe9d1957). Gates
+verts : `tsc -b --force`, lint a 27 avertissements (la baseline exacte), 6 354 tests web,
+couleurs propres, cliquet d'imports croises a 7/7, build. Le temoin de rasterisation est vert
+APRES CHAQUE ITEM ; K3 a impose de lui ajouter la portee `replayView`. Deux mesures corrigent le
+registre : le predicat d'intervalle etait ecrit douze fois et non dix (`zoneSound.ts` en portait
+deux de plus), et les « 11 faux hooks » sont quinze.
+
+**Conclusion / prochaine etape.** ARRET PROPRE apres D.10, D.11 a D.14 non commences. Un item
+non traite, avec sa mesure : les faux hooks. Leur logique est DEJA pure et deja testee ailleurs
+— temoin `useReplayVipCrown`, 66 lignes dont trois memos et un appel a `drawVipCrown`, fonction
+pure testee dans son propre fichier. Les convertir ne gagnerait aucune testabilite, deplacerait
+une quinzaine de memos dans `ReplayCanvas` (651 lignes pour un plafond de 665, que D.11 veut
+faire maigrir) et risquerait une perte de memoisation sur une boucle a 60 images par seconde,
+sous une contrainte « aucun changement de comportement » qu'aucun gate ne mesure. Question au
+superviseur : le constat vise-t-il le NOM (renommer en `buildX` + `useX` mince, patron de D.6)
+ou la STRUCTURE ? Prochain item : D.11.
+
+## [2026-09-06] Lot D taches D.11 a D.14 — seuil en lignes de code, arborescence, frontieres, porte de titre — Complete
+
+**Contexte.** Fin du lot D du plan v2 du rejeu et du film
+(`.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, worktree `LevelUp-wt-v2-web-modele`, branche
+`feat/v2-web-modele`), reprise apres l'arret propre du second temps. Quatre items :
+la decision utilisateur 4 (seuil R5 en lignes de CODE et arborescence par responsabilite),
+le constat M6 (lint couleur canonique hors CI, remplace par 9 copies partielles), le constat
+N4 (allowlist `match-view=>match-replay` dementie par quatre imports) et le merge du lot C
+suivi du gating de la route de rejeu par la capability `replay`. Contrainte produit absolue :
+aucun changement visuel ni de comportement voulu.
+
+**Decision technique.** (1) `max-lines` ESLint a 500 avec `skipComments` + `skipBlankLines`,
+en `error` sur `apps/web/src` ; le cliquet de lignes BRUTES du canvas (<= 665) disparait avec
+son journal de 17 extractions, et les 26 en-tetes qui le citaient nomment la regle qui le
+remplace. 22 exemptions datees en tete de fichier (tables de donnees, suites de tests,
+composants hors perimetre), 4 par la config (3 fichiers generes + le fichier gele pour le
+merge du lot C) — aucune silencieuse. (2) Les 370 fichiers du rejeu se rangent en huit
+dossiers de responsabilite (`i18n`, `sound`, `export`, `settings`, `layers`, `ui`, `hooks`,
+`model`), un commit par dossier, deplacements PURS par `git mv` ; la regle de classement est
+un ORDRE ecrit dans `features/match-replay/README.md` et son seul critere lisible dans le
+code — « qui recoit un `CanvasRenderingContext2D` vit dans `layers/` » — est tenu par un
+garde. (3) Onze garde-rails balayaient `readdirSync(__dirname)` : l'arborescence les aurait
+rendus VERTS ET INERTES en ne leur montrant plus qu'un huitieme du rejeu ; ils prennent leur
+liste, leurs ancres et leurs fichiers a `test/featureFiles.ts`. (4) Le lint couleur canonique
+devient `npm run lint:colors` et un step du job `frontend` ; cinq copies qui relisaient la
+SOURCE partent. (5) Sept modules (document, normalisation, logique de lecture, roster,
+chargement) descendent dans `lib/replay/` apres verification de leur fermeture, et l'allowlist
+du ratchet P8.5 accepte desormais une exception AU NIVEAU DU MODULE. (6) La route de rejeu
+porte deux portes de titre imbriquees, `matchmaking` puis `replay`.
+
+**Resultats.** Douze commits (`929fa368d` a `d21998b85`) plus le merge `b093fe6fc` du lot C
+(un seul conflit, `thought_log.md`, resolu en gardant les deux entrees). Gate final vert :
+`npx tsc -b --force` (exit 0), `npm run lint` (0 error, 27 warnings de baseline),
+`npm run lint:colors` (0 violation), `node tools/lint-cross-feature-imports.mjs` (7 <= 7),
+vitest complet `6376 passed | 14 skipped`, `npm run build` (2 207 modules, 1,84 s), temoin de
+rasterisation `3 passed` — rejoue apres CHACUN des douze commits. Quatre gardes neufs ou
+refondus ont ete eprouves par MUTATION (defaut plante, garde rouge, defaut retire) ; la
+suppression des copies couleur est appuyee sur une mesure : un hex plante dans chacun des
+20 fichiers cibles fait rougir le lint canonique, 20 sur 20. Imports croises du rejeu hors
+tests : 9 avant, 4 apres, chacun nomme avec sa raison.
+
+**Conclusion / prochaine etape.** Le lot D est clos cote items : D.1 a D.14 statues, deux
+reports connus et documentes (D.10 « faux hooks », bloque sur une question au superviseur —
+le NOM ou la STRUCTURE ; D.15 differe hors chantier). Quatre decouvertes hors perimetre au
+journal du lot (`.ai/V7.5/v2/LOT_D.md`), dont l'absence de tout lint de frontiere
+`lib/ -> features/` : la fermeture des sept modules descendus a du etre verifiee a la main.
+Ecart assume et argumente au perimetre litteral : les quatre assertions de couleur sur le
+RENDU restent (un lint statique ne voit pas une couleur qui arrive par la donnee), et l'etat
+« ce titre ne propose pas de rejeu » n'est pas recopie dans le dictionnaire du rejeu (le lot C
+porte deja ce libelle FR/EN). Prochaine etape : verification CI par le superviseur (surveillance
+non faite, consigne du lot), revue adversariale, puis integration dans `feat/v75`.
+
+## [2026-09-06] Lot D — corrections apres revue adversariale R1 — Complete
+
+**Contexte.** La revue R1 du lot D (plan v2 du rejeu et du film) valide l'invariant de calcul —
+25/25 calques identiques en ordre ET en condition, jointure des treize memos, replis d'horloge,
+canoniques, magasin de lecture — et releve onze points : deux CABLAGES NEUFS sans aucun temoin
+(le `t0Ms` qui porte la correction P0-7, la table de liaison des 25 peintres), cinq affirmations
+du journal inexactes, un cinquieme changement visible hors du contrat des exceptions, et douze
+commentaires orphelins. Chaque constat etait accompagne de sa mutation, jouee par la revue.
+
+**Decision technique.** Deux reponses de nature differente selon le constat. Pour les deux
+cablages : (1) quatre cas de test couvrent les trois lignes de `t0Ms`, au niveau du CABLAGE
+(espions sur l'onglet et sur les deux lectures du score) et de l'EFFET (sur le graphe reel, la
+marque recule du countdown quand la prop disparait) ; (2) les onze calques cables par un hook
+portent desormais leur `id` a cote de leur `paint` et `bindPainters` en derive la liaison — la
+faute mesuree (peindre le crane sous l'identite de la couronne) n'est plus ECRIVABLE, et le
+type de retour porte l'union exacte des ids, donc un oubli fait rougir le compilateur. Les
+quatorze fermetures restantes sont confrontees a une table ecrite a la main. Pour les
+affirmations inexactes : l'oracle des 25 ids remplace la tautologie ; le lint couleur gagne les
+fonctions CSS (`oklch`, `rgba`, `hsl`...) et le balayage de `lib/replay/`, sans quoi il ne
+couvrait PAS la moitie de deux gardes supprimes ; le garde d'horloge attrape la lecture
+qualifiee ; la citation du contrat Go et la mesure des six fenetres de
+`SynthesisBipolaireChart` sont corrigees ; l'exemption `max-lines` de l'Explorer quitte la
+config pour la tete de son fichier, avec un critere de retrait mesurable. Les douze JSDoc
+orphelins partent sans remplacement : leur contenu vit dans le foyer canonique.
+
+**Resultats.** Huit commits (`28d850866` a `1cb46136e`). CHAQUE correction est prouvee par la
+mutation du verdict rejouee rouge puis verte : M4 (`expected undefined to be 30000`, aux deux
+sites du cablage), M3 (`expected 339 to be -1`) plus une seconde mutation sur les fermetures,
+M2 (swap `chaleur`/`zones-nommees`), M8 (conversion property-form), M10 (`oklch` et `rgba`
+plantes dans une feature ET dans `lib/replay/`). Gate final vert : `tsc -b --force` exit 0,
+lint 0 error (27 warnings de baseline), `lint:colors` 0 violation, imports croises 7 <= 7,
+vitest `6385 passed | 14 skipped` (+9 cas), build 2 207 modules, rasterisation 3 passed —
+rejouee apres chacun des huit commits.
+
+**Conclusion / prochaine etape.** Les onze points de la revue sont statues. Le contrat des
+exceptions VISIBLES du lot passe de quatre a SIX, les deux nouvelles etant nommees a l'endroit
+ou elles se produisent (l'infobulle de la frise qui tronque, le « 1m00s » de la synthese sous
+la minute). Trois decouvertes nouvelles au journal du lot, dont un flake de suite non
+reproductible (un run sur trois, sous charge) et deux libelles FR en dur preexistants dans
+`MatchCadenceChart`. Prochaine etape : seconde ronde de revue sur ces corrections, puis
+integration dans `feat/v75`.
+
+## [2026-09-06] Lot D — retouches apres la ronde 2 de revue — Complete
+
+**Contexte.** La ronde 2 ferme dix des onze points de R1, mesure C6 comme PARTIEL et releve
+qu'une correction avait ouvert un defaut : la tolerance `/*` ajoutee au lint couleur laissait
+passer `/* rien */ const c = '#ff00aa'`, alors que le gate d'AVANT cette correction l'attrapait
+— un elargissement qui retrecissait le perimetre historique.
+
+**Decision technique.** La tolerance disparait et les deux lignes de PROSE qu'elle protegeait
+portent un `color-allow` date, comme les dix-sept autres exceptions du lot (N1). Le motif du
+garde d'horloge accepte desormais une CHAINE de qualifications, chacune pouvant porter `!` ou
+`?`, plus un segment parenthese pour le cast (N4) : l'assertion non-null est l'idiome courant
+pour cet objet, `matchClock()` rendant `MatchClock | null`. La justification dupliquee de
+l'exclusion de `color(` est ramenee a une (N2), et les quatre `color-allow` recopies sur des
+sites qu'ils ne decrivaient pas portent leur vraie raison (N3) — gris de repli d'une carte de
+match, helper de conversion et son repli.
+
+**Resultats.** Un commit. N1 prouve par la mutation du verdict, rouge puis verte : `rgba(` ET
+`#ff00aa` derriere un bloc de commentaire ferme font desormais rougir le lint. N4 prouve sur
+CINQ graphies plantees tour a tour dans `_scoreCurve.ts` (`clock!.`, `data.clock.`,
+`(clock as MatchClock).`, `doc?.`, forme nue), toutes rouges, arbre restaure vert. Gate :
+`lint:colors` 0 violation, `tsc -b --force` exit 0, vitest des trois dossiers du lot
+`2892 passed`, lint 0 error (27 warnings de baseline), rasterisation `3 passed`. Le decompte du
+journal est corrige : 17 marqueurs sur 11 fichiers en ronde 1 (« onze » comptait les fichiers),
+19 sur 13 apres N1.
+
+**Conclusion / prochaine etape.** Les quatre retouches sont closes ; C6 passe de PARTIEL a
+ferme. Un orphelin de la famille C9 subsiste (`replayMarkers.ts:173`) mais il est ANTERIEUR au
+lot, laisse en l'etat (regle 7). Prochaine etape : verification du diff par le superviseur,
+puis integration dans `feat/v75`.

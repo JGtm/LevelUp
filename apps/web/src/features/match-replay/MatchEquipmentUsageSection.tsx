@@ -69,18 +69,18 @@ import {
   buildUsageShares,
   usageGroupColor,
   type UsageShareRow,
-} from './equipmentUsageChart'
+} from './model/equipmentUsageChart'
 import {
   equipmentFamilyLabel,
   partitionUsageGroups,
   uniqueUsageGroups,
   usageColumnGroups,
   type UsageColumnGroup,
-} from './equipmentUsageColumns'
-import { buildEquipmentUsage, tallyTotal, type EquipmentUsage } from './equipmentUsageLogic'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import type { ReplayText } from './i18nContract'
-import { useMatchReplay } from './queries'
+} from './model/equipmentUsageColumns'
+import { buildEquipmentUsage, tallyTotal, type EquipmentUsage } from './model/equipmentUsageLogic'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
+import type { ReplayText } from './i18n/i18nContract'
+import { useMatchReplay } from '../../lib/replay/queries'
 
 interface Props {
   playerSlug: string

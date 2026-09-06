@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : suite de cas d'un meme module, qui partagent leur montage : la decouper separerait des cas que le lecteur lit ensemble. */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
