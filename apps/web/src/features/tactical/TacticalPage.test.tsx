@@ -8,7 +8,10 @@
  *   - une carte ouvrable est un bouton qui DIT ce qu'il fait, et son clic écrit la carte
  *     choisie dans l'URL (aucun lien mort vers la route de la phase 5, qui n'existe pas) ;
  *   - aucune carte -> `EmptyState`, jamais une grille vide muette ;
- *   - le pied de carte sert la couverture ET la phrase du plancher.
+ *   - le pied de carte sert la couverture ET la phrase du plancher ;
+ *   - LE PERIMETRE : la barre produit un contexte de filtre, `/filters/match-ids` le
+ *     resout, et la grille poste les `match_id` obtenus (phase 4 bis). Sans ces
+ *     assertions, une grille qui ignorerait le filtre resterait verte.
  *
  * La garde de capability (`replay`) est testée là où elle vit : `TacticalTab.test.tsx`
  * (la porte de route) et `features/ascension/AscensionLayout.test.tsx` (la porte d'onglet).
@@ -17,9 +20,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
-import type { TacticalMapsPage } from '@/lib/api/types'
+import type { FilterContextInput, TacticalMapsPage } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useSoloFilterStore } from '@/stores/soloFilterStore'
 
 import { TacticalPage } from './TacticalPage'
 
@@ -31,12 +33,13 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   return {
     ...actual,
     useNavigate: () => navigate,
-    useParams: () => ({ playerSlug: 'JGtm' }),
+    useParams: () => ({ playerSlug: 'JGtm', titleSlug: 'halo_infinite' }),
     useSearch: () => searchCourant,
   }
 })
 
 const get = vi.fn()
+const post = vi.fn()
 const getBlob = vi.fn()
 vi.mock('@/lib/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/client')>()
@@ -45,10 +48,26 @@ vi.mock('@/lib/api/client', async (importOriginal) => {
     api: {
       ...actual.api,
       get: (path: string) => get(path),
+      post: (path: string, body: unknown) => post(path, body),
       getBlob: (path: string) => getBlob(path),
     },
   }
 })
+
+/** Les match_id que `/filters/match-ids` rend par defaut dans ces tests. */
+const PERIMETRE = ['m1', 'm2', 'm3']
+
+/** Le corps poste a `/tactical/maps`, ou `undefined` si la grille n'a rien demande. */
+function corpsGrille(): { match_ids: string[]; coequipiers: string[] } | undefined {
+  const appel = post.mock.calls.find((c) => (c[0] as string).endsWith('/tactical/maps'))
+  return appel?.[1] as { match_ids: string[]; coequipiers: string[] } | undefined
+}
+
+/** Le contexte envoye a `/filters/match-ids`. */
+function contexteResolu(): FilterContextInput | undefined {
+  const appel = post.mock.calls.find((c) => (c[0] as string).endsWith('/filters/match-ids'))
+  return appel?.[1] as FilterContextInput | undefined
+}
 
 const page: TacticalMapsPage = {
   plancher_matchs: 10,
@@ -76,11 +95,23 @@ const page: TacticalMapsPage = {
 
 beforeEach(() => {
   useAppShellStore.setState({ locale: 'fr' })
-  useSoloFilterStore.setState({ filterContext: {} as never })
   searchCourant = {}
+  localStorage.clear()
   navigate.mockReset()
   get.mockReset()
-  get.mockResolvedValue(page)
+  // La liste des coequipiers proposes (avec leur xuid) : c'est elle qui traduit une
+  // composition d'URL en identifiants.
+  get.mockResolvedValue({
+    teammates: [{ gamertag: 'Ami', xuid: 'xuid(42)', match_count: 30, as_teammate: 30, as_enemy: 0, avg_kda: null }],
+    enemies: [],
+    total: 1,
+  })
+  post.mockReset()
+  post.mockImplementation((path: string) => {
+    if (path.endsWith('/filters/match-ids')) return Promise.resolve({ match_ids: PERIMETRE })
+    if (path.endsWith('/tactical/maps')) return Promise.resolve(page)
+    return Promise.reject(new Error(`appel inattendu : ${path}`))
+  })
   getBlob.mockReset()
   // Défaut : la carte n'a pas de fond. La grille doit s'afficher quand même.
   getBlob.mockRejectedValue(new Error('pas de fond'))
@@ -137,7 +168,7 @@ describe('TacticalPage — la grille des cartes', () => {
     const arg = navigate.mock.calls[0][0] as {
       search: (p: Record<string, unknown>) => Record<string, unknown>
     }
-    expect(arg.search({})).toEqual({ carte: 'streets' })
+    expect(arg.search({}).carte).toBe('streets')
   })
 
   it('une carte sous le plancher ne navigue nulle part', async () => {
@@ -163,67 +194,93 @@ describe('TacticalPage — la grille des cartes', () => {
   })
 
   it('aucune carte : état vide explicite, jamais une grille muette', async () => {
-    get.mockResolvedValue({ cartes: [], plancher_matchs: 10 })
+    post.mockImplementation((path: string) =>
+      path.endsWith('/filters/match-ids')
+        ? Promise.resolve({ match_ids: PERIMETRE })
+        : Promise.resolve({ cartes: [], plancher_matchs: 10 }),
+    )
     renderWithProviders(<TacticalPage />)
     expect(await screen.findByText('Aucune carte jouée')).toBeInTheDocument()
     expect(screen.queryByTestId('tactical-couverture')).toBeNull()
   })
 
   it('cartes nulles au contrat (slice Go vide) : même état vide, aucun plantage', async () => {
-    get.mockResolvedValue({ cartes: null, plancher_matchs: 10 })
+    post.mockImplementation((path: string) =>
+      path.endsWith('/filters/match-ids')
+        ? Promise.resolve({ match_ids: PERIMETRE })
+        : Promise.resolve({ cartes: null, plancher_matchs: 10 }),
+    )
     renderWithProviders(<TacticalPage />)
     expect(await screen.findByText('Aucune carte jouée')).toBeInTheDocument()
   })
 
   it('lecture en échec : on le dit, on ne rend pas une grille vide', async () => {
-    get.mockRejectedValue(new Error('503'))
+    post.mockImplementation((path: string) =>
+      path.endsWith('/filters/match-ids')
+        ? Promise.resolve({ match_ids: PERIMETRE })
+        : Promise.reject(new Error('503')),
+    )
     renderWithProviders(<TacticalPage />)
     expect(await screen.findByTestId('tactical-erreur')).toBeInTheDocument()
     expect(screen.queryByText('Aucune carte jouée')).toBeNull()
   })
 
-  // ─── W1 — LE FILTRE COURANT DOIT ARRIVER JUSQU'A LA REQUETE ────────────────────────
+  // ─── LE PERIMETRE (phase 4 bis) ───────────────────────────────────────────────────
   //
-  // Sans ces assertions, figer la clé de cache ou retirer le suffixe de l'URL laissait
-  // TOUS les autres tests verts : `api.get` est doublé et personne ne regardait le chemin.
-  // Conséquence à l'écran : changer de période resservait la grille précédente.
+  // La barre L2 produit un contexte de filtre, `/filters/match-ids` le resout sur la
+  // base JOUEUR, et la grille poste les `match_id`. Sans ces assertions, une grille qui
+  // enverrait une liste vide — ou qui ignorerait la session epinglee — resterait verte.
 
-  it('envoie le filtre global dans l’URL, et le porte dans la clé de cache', async () => {
-    useSoloFilterStore.setState({
-      filterContext: {
-        cascade: { playlists: ['Ranked Arena'], modes: ['Slayer'] },
-        period: { start_date: '2026-01-01', end_date: '2026-02-01' },
-      } as never,
-    })
+  it('poste a la grille les match_id obtenus de la resolution', async () => {
     renderWithProviders(<TacticalPage />)
     await screen.findByTestId('tactical-map-streets')
 
-    const url = get.mock.calls[0][0] as string
-    expect(url.startsWith('/players/JGtm/tactical/maps?')).toBe(true)
-    const params = new URLSearchParams(url.slice(url.indexOf('?') + 1))
-    expect(params.get('playlist')).toBe('Ranked Arena')
-    expect(params.get('mode')).toBe('Slayer')
-    expect(params.get('from')).toBe('2026-01-01T00:00:00Z')
-    expect(params.get('to')).toBe('2026-02-01T23:59:59Z')
+    const appelGrille = post.mock.calls.find((c) => (c[0] as string).endsWith('/tactical/maps'))
+    expect(appelGrille?.[0]).toBe('/players/JGtm/tactical/maps')
+    expect(corpsGrille()?.match_ids).toEqual(PERIMETRE)
   })
 
-  it('n’envoie JAMAIS la session : l’onglet ne l’honore pas (T11)', async () => {
-    useSoloFilterStore.setState({
-      filterContext: {
-        filter_mode: 'sessions',
-        sessions: { picked_session_label: 'Session du 3 mars' },
-        cascade: { playlists: ['Ranked Arena'] },
-      } as never,
-    })
+  it('une session epinglee part en filter_mode « sessions », avec son label', async () => {
+    searchCourant = { ses: 'Session du 3 mars' }
     renderWithProviders(<TacticalPage />)
     await screen.findByTestId('tactical-map-streets')
-    expect(get.mock.calls[0][0]).not.toContain('session')
+
+    const ctx = contexteResolu()
+    expect(ctx?.filter_mode).toBe('sessions')
+    expect(ctx?.sessions?.picked_sessions).toEqual(['Session du 3 mars'])
   })
 
-  it('sans filtre : l’URL est nue, aucun point d’interrogation orphelin', async () => {
+  it('sans session : filter_mode « period », et les bornes de la barre', async () => {
+    searchCourant = { de: '2026-01-01', a: '2026-02-01', pl: 'Ranked Arena', md: 'Slayer' }
     renderWithProviders(<TacticalPage />)
     await screen.findByTestId('tactical-map-streets')
-    expect(get.mock.calls[0][0]).toBe('/players/JGtm/tactical/maps')
+
+    const ctx = contexteResolu()
+    expect(ctx?.filter_mode).toBe('period')
+    expect(ctx?.period).toEqual({ start_date: '2026-01-01', end_date: '2026-02-01' })
+    expect(ctx?.cascade?.playlists).toEqual(['Ranked Arena'])
+    expect(ctx?.cascade?.modes).toEqual(['Slayer'])
+  })
+
+  it('la vue solo/escouade descend en match_context', async () => {
+    searchCourant = { vue: 'squad' }
+    renderWithProviders(<TacticalPage />)
+    await screen.findByTestId('tactical-map-streets')
+    expect(contexteResolu()?.match_context).toBe('squad')
+  })
+
+  it('la composition part en XUIDS, jamais en gamertags', async () => {
+    searchCourant = { eq: 'Ami' }
+    renderWithProviders(<TacticalPage />)
+    await screen.findByTestId('tactical-map-streets')
+    expect(corpsGrille()?.coequipiers).toEqual(['xuid(42)'])
+  })
+
+  it('un coequipier introuvable ARRETE la grille — jamais un perimetre elargi', async () => {
+    searchCourant = { eq: 'Inconnu' }
+    renderWithProviders(<TacticalPage />)
+    expect(await screen.findByText('Coéquipier introuvable')).toBeInTheDocument()
+    expect(corpsGrille()).toBeUndefined()
   })
 
   // ─── W2 — LE CHEMIN NOMINAL DU FOND ────────────────────────────────────────────────

@@ -173,6 +173,12 @@ export const queryKeys = {
   // période resservirait la grille de la période précédente.
   tacticalMaps: (playerSlug: string, titleSlug: string, filterHash: string) =>
     ['tactical-maps', playerSlug, titleSlug, filterHash] as const,
+  // Le PÉRIMÈTRE de l'onglet : les match_id que la barre L2 fait résoudre par
+  // /filters/match-ids. Clé DISTINCTE de la grille (2026-09-06) parce que la
+  // résolution est partagée par toutes les lectures de l'onglet — la grille
+  // aujourd'hui, la vue par carte demain — et qu'une seule requête doit la servir.
+  tacticalMatchIDs: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['tactical-match-ids', playerSlug, titleSlug, filterHash] as const,
   // Le FOND d'une carte : propre à la CARTE, indépendant du filtre, figé entre deux
   // cuissons — d'où une clé distincte de la grille (même raison que
   // `matchReplayBackgroundImage` vis-à-vis de `matchReplay`), et un staleTime infini.

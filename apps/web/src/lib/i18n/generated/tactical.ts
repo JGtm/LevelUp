@@ -2,6 +2,21 @@
 // Source : apps/web/src/lib/i18n/manifests/tactical.toml
 
 export const tacticalManifest = {
+  "tactical.filter.experience": { fr: "Expérience", en: "Experience" },
+  "tactical.filter.experience_all": { fr: "Toutes", en: "All" },
+  "tactical.filter.experience_ranked": { fr: "Classé", en: "Ranked" },
+  "tactical.filter.experience_unranked": { fr: "Non classé", en: "Unranked" },
+  "tactical.filter.modes": { fr: "Modes", en: "Modes" },
+  "tactical.filter.playlists": { fr: "Playlists", en: "Playlists" },
+  "tactical.filter.reset": { fr: "Réinitialiser les filtres", en: "Reset filters" },
+  "tactical.filter.sessions": { fr: "Sessions", en: "Sessions" },
+  "tactical.filter.squad_placeholder": { fr: "Coéquipiers ({n})", en: "Teammates ({n})" },
+  "tactical.filter.unknown_teammate_description": { fr: "Impossible d'identifier {names} parmi tes coéquipiers. Retire ce nom de la composition pour voir les cartes.", en: "{names} could not be identified among your teammates. Remove that name from the squad to see the maps." },
+  "tactical.filter.unknown_teammate_title": { fr: "Coéquipier introuvable", en: "Teammate not found" },
+  "tactical.filter.view": { fr: "Vue", en: "View" },
+  "tactical.filter.view_all": { fr: "Tous les matchs", en: "All matches" },
+  "tactical.filter.view_solo": { fr: "Solo", en: "Solo" },
+  "tactical.filter.view_squad": { fr: "En escouade", en: "With a squad" },
   "tactical.maps.coverage": { fr: "{maps, plural, one {# carte jouée} other {# cartes jouées}}, {matches, plural, one {# match} other {# matchs}}", en: "{maps, plural, one {# map played} other {# maps played}}, {matches, plural, one {# match} other {# matches}}" },
   "tactical.maps.empty_description": { fr: "Aucun match ne correspond aux filtres en cours. Élargis la période ou retire un filtre.", en: "No match matches the current filters. Widen the period or remove a filter." },
   "tactical.maps.empty_title": { fr: "Aucune carte jouée", en: "No map played" },

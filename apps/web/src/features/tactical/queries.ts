@@ -1,44 +1,120 @@
 /**
  * queries — les lectures TanStack Query de l'onglet Tactique.
  *
- * DEUX LECTURES, DEUX CLÉS, et elles ne s'invalident pas ensemble : la GRILLE dépend du
- * filtre courant (quelles cartes, combien de matchs) ; le FOND d'une carte n'en dépend pas
- * du tout — il est figé entre deux cuissons. Même partage que
- * `matchReplay` / `matchReplayBackgroundImage`.
+ * TROIS LECTURES, TROIS CLÉS, et elles ne s'invalident pas ensemble :
+ *   - le PÉRIMÈTRE (les `match_id` de la sélection) dépend de la barre L2 ;
+ *   - la GRILLE dépend du périmètre et de la composition ;
+ *   - le FOND d'une carte ne dépend de rien : il est figé entre deux cuissons.
+ *
+ * ─── LE PÉRIMÈTRE EST RÉSOLU CÔTÉ CLIENT, COMME L'EXPLORATEUR ────────────────
+ *
+ * La barre produit un `FilterContextInput` ; `/filters/match-ids` le résout sur la
+ * base JOUEUR (période OU sessions épinglées, contexte solo/escouade, cascade) et
+ * rend les `match_id` ; l'onglet les poste en LISTE BLANCHE. Une seule définition du
+ * périmètre dans l'app — et c'est la seule qui sache lire les sessions, que les
+ * requêtes shared du lecteur tactique ne joignent pas.
  */
-import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
-import type { TacticalMapsPage } from '@/lib/api/types'
+import type {
+  CareerEncountersResponse,
+  FilterContextInput,
+  FilterMatchIdsResponse,
+  TacticalMapsPage,
+  TeammateOption,
+} from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useSoloFilterStore } from '@/stores/soloFilterStore'
 
-import { tacticalFilterQuery } from './tacticalLogic'
+/** FNV-1a 32 bits — même algorithme que `useFiltersPreview` et `computeHash`. */
+export function hashFiltre(valeur: unknown): string {
+  const s = JSON.stringify(valeur) ?? ''
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
+}
 
 /**
- * useTacticalMaps — la grille des cartes jouées sous le FILTRE GLOBAL de l'omnibar.
+ * useTacticalMatchIDs — le PÉRIMÈTRE : les `match_id` de la sélection courante.
  *
- * L'onglet n'a AUCUN filtre propre (décision de la phase 4) : il lit le même contexte que
- * les autres surfaces solo, via `useSoloFilterStore`. Un second vocabulaire de filtre
- * donnerait deux comptes de matchs différents pour la même question.
+ * Même endpoint et même pipeline que le bouton « Voir les matchs » de l'omnibar :
+ * `match_context`, sessions, période et cascade y sont tous honorés. Une liste VIDE
+ * est une réponse légitime (le filtre ne retient rien) et NON une absence de
+ * réponse : les lectures qui la consomment servent alors une grille vide.
  */
-export function useTacticalMaps(playerSlug: string) {
+export function useTacticalMatchIDs(playerSlug: string, contexte: FilterContextInput) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const filterContext = useSoloFilterStore((s) => s.filterContext)
-  // La chaîne de requête EST l'empreinte de cache : deux filtres différents la rendent
-  // différente, et c'est précisément ce que la clé doit distinguer.
-  const query = useMemo(() => tacticalFilterQuery(filterContext), [filterContext])
   return useQuery({
-    queryKey: queryKeys.tacticalMaps(playerSlug, titleSlug, query),
+    queryKey: queryKeys.tacticalMatchIDs(playerSlug, titleSlug, hashFiltre(contexte)),
     queryFn: () =>
-      api.get<TacticalMapsPage>(
-        `/players/${playerSlug}/tactical/maps${query ? `?${query}` : ''}`,
-      ),
+      api.post<FilterMatchIdsResponse>(`/players/${playerSlug}/filters/match-ids`, contexte),
     enabled: !!playerSlug,
     staleTime: 2 * 60 * 1000,
   })
+}
+
+/**
+ * useTacticalMaps — la grille des cartes jouées DANS LE PÉRIMÈTRE.
+ *
+ * POST : la liste de `match_id` ne tient pas dans une query string. La clé de cache
+ * porte l'empreinte du périmètre ET de la composition — deux périmètres différents
+ * ne doivent jamais se resservir l'un l'autre.
+ *
+ * `matchIDs` à `null` = le périmètre n'est pas encore résolu (ou une composition
+ * n'est pas traduisible) : la requête N'EST PAS lancée. Envoyer une liste vide en
+ * attendant afficherait « aucune carte » le temps d'un aller-retour, ce qui se lit
+ * comme un résultat.
+ */
+export function useTacticalMaps(
+  playerSlug: string,
+  matchIDs: string[] | null,
+  coequipiers: string[],
+) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const corps = { match_ids: matchIDs ?? [], coequipiers }
+  return useQuery({
+    queryKey: queryKeys.tacticalMaps(playerSlug, titleSlug, hashFiltre(corps)),
+    queryFn: () => api.post<TacticalMapsPage>(`/players/${playerSlug}/tactical/maps`, corps),
+    enabled: !!playerSlug && matchIDs !== null,
+    staleTime: 2 * 60 * 1000,
+  })
+}
+
+/**
+ * useCoequipierOptions — les coéquipiers proposés au sélecteur de composition,
+ * AVEC LEUR XUID (le serveur ne connaît que celui-là).
+ *
+ * Source : `/pages/career/encounters`, la liste des joueurs croisés le plus souvent
+ * COMME COÉQUIPIERS — amis compris, contrairement à `top-encounters` qui les exclut
+ * par construction et qui serait donc la mauvaise liste pour choisir une escouade.
+ *
+ * MÊME CLÉ DE CACHE QUE LA PAGE CARRIÈRE (`queryKeys.careerEncounters`) : c'est le
+ * même endpoint et la même réponse, donc UNE seule entrée de cache et jamais deux
+ * requêtes pour une seule liste. Le hook de la carrière n'est pas importé — ce
+ * serait une dépendance croisée entre features pour trois lignes de projection.
+ */
+export function useCoequipierOptions(playerSlug: string): {
+  options: TeammateOption[]
+  chargees: boolean
+} {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const { data, isSuccess } = useQuery({
+    queryKey: queryKeys.careerEncounters(playerSlug, titleSlug),
+    queryFn: () =>
+      api.get<CareerEncountersResponse>(`/players/${playerSlug}/pages/career/encounters`),
+    enabled: !!playerSlug,
+    staleTime: 5 * 60 * 1000,
+  })
+  const options = (data?.teammates ?? []).map((t) => ({
+    gamertag: t.gamertag,
+    xuid: t.xuid,
+    encounter_count: t.match_count,
+  }))
+  return { options, chargees: isSuccess }
 }
 
 /**

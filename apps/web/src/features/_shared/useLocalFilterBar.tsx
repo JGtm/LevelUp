@@ -5,11 +5,26 @@
  * cascade locale (expérience, playlists, modes), barre période/saison, et
  * useFiltersPreview pour les counts cascade-aware.
  *
- * Consommé par Citations, SessionDetail, SessionCompare. Chaque page consomme
- * le hook, l'utilise pour ses requêtes et rend `bar` au sommet de son layout.
+ * Consommé par Citations, SessionDetail, SessionCompare et l'onglet Tactique.
+ * Chaque page consomme le hook, l'utilise pour ses requêtes et rend `bar` au
+ * sommet de son layout.
  *
  * Le hook n'écrit dans AUCUN store global — l'état reste 100% local à la page,
  * cohérent avec le pattern « 1 page = 1 scope de filtres ».
+ *
+ * ─── ÉTAT COMMITTED PILOTABLE PAR L'APPELANT (option `committed`) ────────────
+ *
+ * Ajout 2026-09-06 (onglet Tactique) : une page qui persiste son scope dans
+ * l'URL (`usePageScope`) doit pouvoir POSSÉDER l'état committed — sinon l'URL et
+ * la barre portent deux vérités, et le retour navigateur remet les pills sans
+ * changer les requêtes. L'option lève l'état committed chez l'appelant ; le
+ * PENDING, lui, reste interne (il est éphémère par nature : ce que l'utilisateur
+ * est en train de régler avant « Analyser »).
+ *
+ * Le pending est un CALQUE sur le committed (`overlay`), pas une copie : sans
+ * modification en cours, il SUIT le committed — donc un retour navigateur qui
+ * change l'URL remet aussi les pills, sans le moindre effet de synchronisation.
+ * Une copie initialisée au montage serait restée figée sur l'état d'arrivée.
  */
 import { useMemo, useState, type ReactNode } from 'react'
 import { useFiltersPreview } from '@/features/filters/queries'
@@ -18,7 +33,7 @@ import { ViewDropdown } from '@/features/_shared/ViewDropdown'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
 import { ExperienceDropdown, type Experience } from '@/features/_shared/ExperienceDropdown'
-import type { CascadeInput, FilterContextInput, PeriodInput } from '@/lib/api/types'
+import type { CascadeInput, FilterContextInput, PeriodInput, SessionOption } from '@/lib/api/types'
 import { EXPERIENCE_TO_CASCADE, setsEqual } from '@/features/_shared/experienceCascade'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
@@ -49,11 +64,54 @@ export interface LocalFilterBarViewLabels {
 /** Vue match_context côté UI ('all' = les deux). Partagé avec ViewDropdown. */
 export type MatchView = 'all' | 'solo' | 'squad'
 
+/** État COMMITTED de la barre — tout ce qu'un clic sur « Analyser » applique.
+ *  Nommé pour être portable : c'est ce qu'une page persiste dans son URL. */
+export interface LocalFilterBarState {
+  period: PeriodInput
+  experience: Experience
+  playlists: string[]
+  modes: string[]
+  view: MatchView
+}
+
+/** L'état committed vu de l'extérieur : sa valeur et le seul moyen de la changer. */
+export interface LocalFilterBarCommitted {
+  value: LocalFilterBarState
+  onCommit: (next: LocalFilterBarState) => void
+}
+
 interface UseLocalFilterBarOptions {
   playerSlug: string
   labels: LocalFilterBarLabels
   /** Active le contrôle Vue solo/escouade (mappé sur cascade match_context). */
   viewLabels?: LocalFilterBarViewLabels
+  /** État committed PILOTÉ par l'appelant (URL, store…). Absent = état interne. */
+  committed?: LocalFilterBarCommitted
+  /** Contrôles insérés dans la barre, après les filtres de cascade (sessions,
+   *  composition…). Rendus dans la MÊME ligne sticky : une seconde barre en
+   *  dessous donnerait deux zones de filtres pour un seul scope.
+   *
+   *  C'est une FONCTION et non un `ReactNode` : ces contrôles ont besoin de ce que
+   *  le hook vient de charger (les sessions disponibles). Un nœud construit par
+   *  l'appelant AVANT l'appel ne pourrait pas les lire — il les capturerait avant
+   *  qu'elles existent. */
+  extras?: (ctx: LocalFilterBarExtrasContext) => ReactNode
+}
+
+/** Ce que le hook met à disposition des contrôles supplémentaires. */
+export interface LocalFilterBarExtrasContext {
+  /** Sessions disponibles sous le contexte en cours de réglage. */
+  sessionOptions: SessionOption[]
+}
+
+/** L'état par défaut : aucun filtre. Une seule définition, partagée par
+ *  l'initialisation et par « Réinitialiser ». */
+export const LOCAL_FILTER_BAR_DEFAUT: LocalFilterBarState = {
+  period: DEFAULT_PERIOD,
+  experience: 'all',
+  playlists: [],
+  modes: [],
+  view: 'all',
 }
 
 const MATCH_VIEW_TO_CONTEXT: Record<MatchView, 'solo' | 'squad' | 'all'> = {
@@ -71,6 +129,11 @@ interface UseLocalFilterBarResult {
   committedHash: string
   /** true si l'utilisateur a au moins un filtre actif. */
   hasActiveFilters: boolean
+  /** Sessions disponibles sous le contexte EN COURS de réglage — la réponse de
+   *  `/filters/resolve` que le hook interroge déjà pour ses counts. Exposées
+   *  plutôt que refetchées par l'appelant : deux requêtes pour une seule liste
+   *  donneraient deux comptes de sessions sur la même page. */
+  sessionOptions: SessionOption[]
   /** Élément JSX de la barre sticky à rendre dans le layout de la page. */
   bar: ReactNode
 }
@@ -99,23 +162,43 @@ function hashContext(ctx: FilterContextInput): string {
   return h.toString(16).padStart(8, '0')
 }
 
-export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFilterBarOptions): UseLocalFilterBarResult {
+export function useLocalFilterBar({ playerSlug, labels, viewLabels, committed, extras }: UseLocalFilterBarOptions): UseLocalFilterBarResult {
   // Défaut i18n du bouton « Analyser » quand l'appelant ne fournit pas de libellé
   // (le littéral FR figé cassait le bilinguisme — I2, 2026-07-05).
   const locale = useAppShellStore((s) => s.locale)
   const analyserLabel = labels.analyser ?? formatMessage(commonManifest, 'common.filter.analyser', locale)
-  // States pending / committed
-  const [pendingPeriod, setPendingPeriod] = useState<PeriodInput>(DEFAULT_PERIOD)
-  const [pendingExperience, setPendingExperience] = useState<Experience>('all')
-  const [pendingPlaylists, setPendingPlaylists] = useState<Set<string>>(() => new Set())
-  const [pendingModes, setPendingModes] = useState<Set<string>>(() => new Set())
-  const [pendingView, setPendingView] = useState<MatchView>('all')
+  // ÉTAT COMMITTED : interne par défaut, PILOTÉ par l'appelant si `committed` est
+  // fourni (page qui persiste son scope dans l'URL).
+  const [committedLocal, setCommittedLocal] = useState<LocalFilterBarState>(LOCAL_FILTER_BAR_DEFAUT)
+  const etatCommitted = committed?.value ?? committedLocal
+  const appliquer = committed?.onCommit ?? setCommittedLocal
 
-  const [committedPeriod, setCommittedPeriod] = useState<PeriodInput>(DEFAULT_PERIOD)
-  const [committedExperience, setCommittedExperience] = useState<Experience>('all')
-  const [committedPlaylists, setCommittedPlaylists] = useState<Set<string>>(() => new Set())
-  const [committedModes, setCommittedModes] = useState<Set<string>>(() => new Set())
-  const [committedView, setCommittedView] = useState<MatchView>('all')
+  // PENDING = un CALQUE sur le committed. `null` = rien en cours de réglage, donc
+  // le pending SUIT le committed (retour navigateur, reset externe) sans effet de
+  // synchronisation.
+  const [calque, setCalque] = useState<Partial<LocalFilterBarState> | null>(null)
+  const pending: LocalFilterBarState = useMemo(
+    () => ({ ...etatCommitted, ...(calque ?? {}) }),
+    [etatCommitted, calque],
+  )
+  const regler = (patch: Partial<LocalFilterBarState>) =>
+    setCalque((prev) => ({ ...(prev ?? {}), ...patch }))
+
+  const pendingPeriod = pending.period
+  const pendingExperience = pending.experience
+  const pendingView = pending.view
+  const pendingPlaylists = useMemo(() => new Set(pending.playlists), [pending.playlists])
+  const pendingModes = useMemo(() => new Set(pending.modes), [pending.modes])
+
+  const committedPeriod = etatCommitted.period
+  const committedExperience = etatCommitted.experience
+  const committedView = etatCommitted.view
+  const committedPlaylists = useMemo(() => new Set(etatCommitted.playlists), [etatCommitted.playlists])
+  const committedModes = useMemo(() => new Set(etatCommitted.modes), [etatCommitted.modes])
+
+  const setPendingPeriod = (p: PeriodInput) => regler({ period: p })
+  const setPendingExperience = (e: Experience) => regler({ experience: e })
+  const setPendingView = (v: MatchView) => regler({ view: v })
 
   const [activePopover, setActivePopover] = useState<'periode' | 'saison' | null>(null)
   const togglePopover = (which: 'periode' | 'saison') =>
@@ -189,6 +272,10 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
       .filter((o) => o.count > 0 || pendingModes.has(o.value))
   }, [available?.modes, pendingModes])
 
+  // Les sessions disponibles sous le contexte EN COURS de réglage : elles viennent du
+  // preview que le hook interroge déjà pour ses counts.
+  const sessionOptions = previewData?.session_options?.all_sessions ?? []
+
   const hasActiveFilters =
     !!(committedPeriod.start_date || committedPeriod.end_date) ||
     committedExperience !== 'all' ||
@@ -205,25 +292,14 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
     !setsEqual(pendingModes, committedModes)
 
   function handleAnalyser() {
-    setCommittedPeriod(pendingPeriod)
-    setCommittedExperience(pendingExperience)
-    setCommittedPlaylists(new Set(pendingPlaylists))
-    setCommittedModes(new Set(pendingModes))
-    setCommittedView(pendingView)
+    appliquer(pending)
+    setCalque(null)
     closeAll()
   }
 
   function handleResetAll() {
-    setPendingPeriod(DEFAULT_PERIOD)
-    setCommittedPeriod(DEFAULT_PERIOD)
-    setPendingExperience('all')
-    setCommittedExperience('all')
-    setPendingPlaylists(new Set())
-    setCommittedPlaylists(new Set())
-    setPendingModes(new Set())
-    setCommittedModes(new Set())
-    setPendingView('all')
-    setCommittedView('all')
+    appliquer(LOCAL_FILTER_BAR_DEFAUT)
+    setCalque(null)
   }
 
   const bar = (
@@ -262,14 +338,7 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
         <MultiSelectFilter
           options={playlistOptions}
           selected={pendingPlaylists}
-          toggle={(v) => {
-            setPendingPlaylists((prev) => {
-              const next = new Set(prev)
-              if (next.has(v)) next.delete(v)
-              else next.add(v)
-              return next
-            })
-          }}
+          toggle={(v) => regler({ playlists: basculer(pending.playlists, v) })}
           placeholder={labels.playlists}
           alwaysShow
           dense
@@ -278,14 +347,7 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
         <MultiSelectFilter
           options={modeOptions}
           selected={pendingModes}
-          toggle={(v) => {
-            setPendingModes((prev) => {
-              const next = new Set(prev)
-              if (next.has(v)) next.delete(v)
-              else next.add(v)
-              return next
-            })
-          }}
+          toggle={(v) => regler({ modes: basculer(pending.modes, v) })}
           placeholder={labels.modes}
           alwaysShow
           dense
@@ -294,6 +356,7 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
         {viewLabels && (
           <ViewDropdown value={pendingView} onChange={setPendingView} labels={viewLabels} />
         )}
+        {extras?.({ sessionOptions })}
         <div className="flex-1" />
         <button
           type="button"
@@ -326,6 +389,12 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
     committedPeriod,
     committedHash,
     hasActiveFilters,
+    sessionOptions,
     bar,
   }
+}
+
+/** basculer : ajoute ou retire une valeur d'une liste, sans la muter. */
+function basculer(liste: string[], valeur: string): string[] {
+  return liste.includes(valeur) ? liste.filter((v) => v !== valeur) : [...liste, valeur]
 }

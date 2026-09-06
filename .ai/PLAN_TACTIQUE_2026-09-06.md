@@ -80,10 +80,10 @@ chacune · phase 7 : lourd (autant que 1 a 6) · phase 8 : petit.
 | Cellule jamais atteinte | VIDE, jamais peinte en froid |
 | Plancher par cellule | 3 matchs distincts (calibration mesuree de `mappos-build`) |
 | Plancher par carte | 10 matchs ; en dessous, desaturee et non ouvrable |
-| Axe QUI | `Moi / Escouade / Adversaires`. **Escouade = LA COMPOSITION CHOISIE** dans le selecteur de coequipiers de la barre L2 (le meme que la page Escouade) — arrete par l utilisateur le 2026-09-06, REMPLACE « mes coequipiers du match » (phase 2). `Adversaires` = l autre equipe du match. Le KPI d echange « sur cette carte » reste sur MON CAMP entier (coherent avec la page Escouade : KPI = camp, matrice = roster). |
+| Axe QUI | `Moi / Escouade / Adversaires`. **Escouade = LA COMPOSITION CHOISIE** dans le selecteur de coequipiers de la barre L2 (le meme que la page Escouade) — arrete par l utilisateur le 2026-09-06, REMPLACE « mes coequipiers du match » (phase 2). `Adversaires` = l autre equipe du match. **Sans composition, l axe `escouade` est REFUSE** (400 type `tactical_squad_axis_without_composition`) et le client ne le propose pas : retomber sur « mes coequipiers du match » repondrait a une AUTRE question sous le meme nom. Le KPI d echange « sur cette carte » reste sur MON CAMP entier (coherent avec la page Escouade : KPI = camp, matrice = roster) — deux perimetres voisins, deux predicats. |
 | Spawn : depart vs reapparition | Filtre « spawn de depart » = **premiere vie** seulement. Lecture « routes » = 15 premieres secondes de **toutes** les vies. |
 | Algorithme de grappes | Densite des premiers points sur la grille de 0,5 m ; composantes connexes (8-voisinage) au-dessus du plancher de 3 matchs distincts ; nommage par le callout le plus proche du barycentre. Aucun catalogue manuel. |
-| Filtres | **Barre L2 de l onglet = un MIX de l Explorateur et de l Escouade, sans rien inventer** (utilisateur, 2026-09-06) : periode/saison + playlists + modes par `features/_shared/useLocalFilterBar` (perimetre LOCAL a la page, jamais le store global) ; sessions par `SessionMultiSelect` (composition-aware, comme `SquadLayout`) ; solo/escouade/mixte comme l Explorateur ; **selecteur de composition** `GamertagCombobox` comme l Escouade. Perimetre de matchs resolu par `service.FilteredMatchIDs` (base joueur) et passe aux requetes shared en LISTE BLANCHE — le filtre de session MARCHE (utilisateur, 2026-09-06). Etat de la barre dans l URL via `usePageScope`. |
+| Filtres | **Barre L2 de l onglet = un MIX de l Explorateur et de l Escouade, sans rien inventer** (utilisateur, 2026-09-06) : periode/saison + playlists + modes par `features/_shared/useLocalFilterBar` (perimetre LOCAL a la page, jamais le store global) ; sessions par `SessionMultiSelect` (elles suivent la composition, comme `SquadLayout`) ; solo/escouade/mixte comme l Explorateur ; **selecteur de composition** `GamertagCombobox` comme l Escouade. **RESOLUTION COTE CLIENT, PUIS LISTE BLANCHE** (arbitrage superviseur, phase 4 bis) : la barre produit un `FilterContextInput`, le client le fait resoudre par le endpoint de resolution existant (`POST /filters/match-ids` -> `service.FilteredMatchIDs`, base JOUEUR — la seule qui porte les sessions), et **les deux endpoints tactiques passent en POST** avec `{ match_ids, coequipiers?, question?, qui? }`. Les parametres plats de filtre (playlist, mode, from, to, outcome...) DISPARAISSENT du contrat tactique : la resolution les a deja appliques. Liste vide = AUCUN match, jamais « tous ». Le filtre de session MARCHE (utilisateur, 2026-09-06). Etat de la barre dans l URL via `usePageScope` (`tacticalScope.ts`). |
 | Controles | `select` pour la question (forme `MediaToolbar`) ; segmentes pour les axes courts. **La question courante est reprise dans le titre de la carte.** |
 | Stockage des rasters | **Un raster par match, calcule UNE FOIS a la cuisson** (etape post-sync `replayartifacts`, precedent `usage.go`), sidecar via `PathResolver`. La page en somme N. Aucun cache d'agregat, aucune invalidation. |
 | Rattrapage | CLI `levelup tactical-rasters --backfill` : LIT les artefacts existants, ne cuit RIEN. |
@@ -621,30 +621,108 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   tombe ; `<img>` rendue inconditionnelle -> les deux tests du fond tombent ;
   `&& !isTactical` retire -> le test « un seul onglet selectionne » tombe.
 - **Gate** : typecheck + test-web ; couleurs ; parite FR/EN.
-### Phase 4 bis — Barre L2 et perimetre de matchs (items 4.5 et 4.6) — EXECUTABLE, avant la 6
+### Phase 4 bis — Barre L2 et perimetre de matchs (items 4.5 et 4.6) — CLOSE 2026-09-06
 > Arbitrages utilisateur du 2026-09-06 : le filtre de session doit MARCHER ; la barre L2 est un
 > mix Explorateur + Escouade ; « Escouade » = la composition choisie.
-- [ ] 4.5 **Perimetre de matchs par liste blanche** : `domain.TacticalQuery` gagne `MatchIDs` ;
-      les requetes `QTacticalUnivers` / `QTacticalEvents` / `QTacticalPositions` acceptent un
-      `IN (...)` lie (parametre neutre quand vide, meme technique que la carte optionnelle ;
-      ratchet Campagne conserve) ; le service Tactique resout le perimetre par
-      `service.FilteredMatchIDs` (periode, sessions epinglees, contexte solo/escouade/mixte,
-      composition) depuis la base joueur — REUTILISER le chargeur de lignes du FiltersService,
-      jamais une seconde requete ; le handler accepte les memes parametres que l Explorateur +
-      `coequipiers` (xuids de la composition) ; la porte data-level et l univers MESURE (G2)
-      restent tels quels. Tests : une session epinglee restreint la grille ET le raster aux
-      matchs de la session (repo :memory: + service mock) ; liste vide = aucun match (pas
-      « tous ») ; contrat regenere.
-- [ ] 4.6 **Barre L2 de l onglet** (`features/tactical/TacticalFilterBar.tsx` +
-      `tacticalScope.ts` via `usePageScope`) : `useLocalFilterBar` (periode/saison, experience,
-      playlists, modes) + `SessionMultiSelect` (sessions de la composition, comme `SquadLayout`)
-      + segmentation solo/escouade/mixte (Explorateur) + `GamertagCombobox` (composition, comme
-      `SquadLayout`) ; barre collante en tete de l onglet ; AUCUN nouveau composant de filtre
-      (les pieces existent, on les assemble) ; la grille et, plus tard, la vue d analyse lisent
-      ce scope ; l axe « Escouade » des rasters = la composition choisie (xuids passes au
-      service) ; `adv` = autre equipe. Tests : le scope se serialise dans l URL et se restaure ;
-      les sessions proposees suivent la composition ; sans composition, l axe Escouade n est
-      pas propose.
+> Architecture tranchee par le superviseur : **resolution du perimetre COTE CLIENT** par le
+> endpoint de resolution existant, puis **POST avec liste blanche de match_id** — les deux
+> endpoints tactiques perdent leurs parametres plats de filtre.
+- [x] 4.5 **Perimetre de matchs par liste blanche** — `domain.ListeBlancheMatchs`
+      (`domain/tactical.go:114-141`, type NOMME plutot qu'un `[]string` : le zero-value est
+      « aucune restriction », et TOUTE liste — vide comprise — vient de `RestreindreAux`,
+      parce qu'avec un slice nu « liste vide » et « pas de liste » sont le meme `len() == 0`
+      et qu'un appelant qui oublie la sienne servirait l'historique ENTIER en silence).
+      `TacticalQuery` perd `Filtre`, gagne `Matchs` + `Coequipiers` ;
+      `TacticalScope` / `TacticalRasterRequest` cotes service ;
+      `ErrTacticalEscouadeSansComposition`.
+      **Repo** : `platform/duckdb/tactical_repo_univers.go` (NOUVEAU, 175 L — le fichier
+      d'origine etait a 486 et le perimetre l'aurait pousse au-dela de 500) porte
+      `QTacticalUnivers`, `clausePerimetre` et `chargerUnivers`. La liste blanche est liee
+      par `Placeholders`/`ToAnySlice` (les helpers canoniques du paquet, pas une 5e copie du
+      motif) ; la composition est UN `EXISTS` PAR XUID sur `match_participants` avec
+      `c.team_id = mp.team_id` — donc un ET, et un coequipier qui jouait EN FACE ce jour-la
+      exclut le match. Liste vide -> `AND FALSE`. Ratchet Campagne, parametre neutre de
+      carte et drapeau `Mesure` (G2) conserves. Taxonomie de modes RETIREE du lecteur (il
+      ne classe plus rien) : `WithModeTaxonomy` et `logIgnoredFilters` supprimes avec leurs
+      deux call sites (`registry_pages.go:167`, `registry_pages_home.go:225`).
+      **Service** : `service/tactical_service_perimetre.go` (NOUVEAU, 149 L) porte
+      `validerLecture`, `requeteDuScope`, `compositionNettoyee` et les predicats d'axe.
+      `escouade` = LA COMPOSITION CHOISIE (appartenance a la liste de xuids), refusee sans
+      elle ; `adv` inchange ; **le KPI d'echange garde `campDuMatch`** — mon camp ENTIER,
+      qui ne doit PAS retrecir parce qu'on a nomme deux coequipiers dans la barre.
+      `MatchsFiltres` = taille de la liste blanche recue (documente comme tel : ce n'est
+      PAS « M matchs de cette carte », et le pied de carte ne doit pas en faire un rapport).
+      **API** : les deux lectures passent en POST ; corps `{ match_ids, coequipiers?,
+      question?, qui? }` ; `MapIDValide` reste EN TETE de chemin ; nouveau code
+      `tactical_squad_axis_without_composition` (400) — distinct de l'axe inconnu, parce que
+      l'axe EXISTE et que c'est la composition qui manque. **`/tactical/` entre dans
+      `middleware.readOnlyPostPrefixes`** : sans cette entree la garde d'ecriture du groupe
+      joueur refusait en 401 une lecture que la meme personne obtenait en GET la veille
+      (verifie par inversion). **Huma ne met PAS a plat une struct EMBARQUEE dans un corps**
+      (il en fait une propriete a part, et le corps aplati part en 422 — piege mesure ici) :
+      les deux champs de perimetre sont ecrits dans chacun des deux corps, la conversion
+      vers le domaine restant unique (`scopeDepuis`). Contrat + `generated.ts` regeneres.
+- [x] 4.6 **Barre L2 de l onglet** — `features/tactical/TacticalFilterBar.tsx` (152 L) +
+      `tacticalScope.ts` (129 L) via `usePageScope`. AUCUN nouveau composant de filtre :
+      `useLocalFilterBar` (periode/saison, experience, playlists, modes, `viewLabels` pour
+      solo/escouade/mixte), `SessionMultiSelect` et `GamertagCombobox` — les trois existants,
+      assembles dans UNE seule ligne collante (une seconde ligne aurait donne deux zones de
+      filtres pour un seul scope).
+      **`useLocalFilterBar` ETENDU plutot que recopie** (option `committed`) : l'etat
+      committed est LEVE chez l'appelant quand il le demande, le pending restant interne.
+      Le pending est un CALQUE sur le committed, pas une copie — donc un retour navigateur
+      qui change l'URL remet aussi les pills, sans effet de synchronisation ; une copie
+      initialisee au montage serait restee figee. Le hook expose aussi `sessionOptions` (la
+      reponse de `/filters/resolve` qu'il interroge DEJA pour ses counts : deux requetes
+      auraient donne deux comptes de sessions sur la meme page) et un `extras` en FONCTION
+      (les controles ajoutes ont besoin de ces sessions, donc elles ne peuvent pas etre
+      capturees avant l'appel). Les TROIS consommateurs existants (Citations, SessionDetail,
+      SessionCompare/Synthesis) sont inchanges — 18 fichiers de tests verts.
+      **Perimetre** : `contexteFiltre(scope)` (pur) -> `POST /filters/match-ids` ->
+      `match_ids` postes a la grille. `filter_mode` suit la SELECTION (`sessions` des qu'une
+      session est epinglee), comme `splitTemporalFiltered` cote Go.
+      **La composition voyage en GAMERTAGS dans l'URL** (vocabulaire du selecteur, de la page
+      Escouade et le seul lisible dans un lien) et se traduit en XUIDS a la requete, par la
+      liste de coequipiers (`/pages/career/encounters` — celle-la inclut les amis,
+      contrairement a `top-encounters` qui les exclut par construction ; MEME cle de cache
+      que la page Carriere, donc jamais deux requetes pour une seule liste). **Un nom non
+      traduisible ARRETE la lecture** au lieu d'etre ignore : l'ignorer ELARGIRAIT le
+      perimetre et rendrait une grille plus fournie que demandee sans rien dire.
+      `validateSearch` de la route declare tout le scope (un parametre non declare serait
+      efface par le routeur au premier `navigate`). 14 cles i18n FR+EN de plus.
+- [~] 4.6bis **« Sans composition, l'axe Escouade n'est pas propose » — la moitie CLIENT
+      releve de la phase 5, GELEE.** Il n'existe aujourd'hui AUCUN selecteur d'axe a
+      l'ecran : les axes sont ceux des RASTERS (`?question=` / `?qui=`), c'est-a-dire la vue
+      d'analyse par carte, item 5.2. Poser ici un helper « axes disponibles » que personne
+      n'appelle serait du code mort (CLAUDE.md n 7). La regle EST appliquee et testee cote
+      Go — refus type `ErrTacticalEscouadeSansComposition`, 400 propre, aucune lecture de
+      base declenchee (`service/tactical_service_perimetre_test.go`,
+      `api/handlers/tactical_test.go`) — et la phase 5 lira ce refus pour griser l'axe.
+- **Gate PASSE le 2026-09-06** (avant-plan, une commande `go` a la fois,
+  `GOCACHE=...\go-build-tactique`, `CGO_ENABLED=1`). Go : `go vet` propre sur les 8 arbres
+  (10,4 s) ; `go test -count=1` sur `./internal/service/... ./internal/api/...
+  ./internal/domain/... ./internal/port/... ./internal/platform/duckdb/...
+  ./internal/archlint/... ./contracttest/... ./cmd/...` : **aucun `FAIL`**, tous paquets
+  `ok` (duckdb 43,4 s ; api 23,3 s ; service 9,4 s ; handlers 8,5 s ; cmd/server 7,6 s ;
+  contracttest 0,6 s) ; `golangci-lint run --timeout 5m --new-from-merge-base=origin/main` :
+  **0 issue** (13 `gofmt` corriges avant) ; `openapi-gen -check` : a jour.
+  Web (depuis `apps/web`, `node_modules/.tmp` purge) : `typecheck` propre ; `lint` **0
+  erreur** (30 warnings preexistants) ; **suite vitest COMPLETE** `vitest run --pool=forks` :
+  **606 fichiers, 6390 tests passes, 14 skip, 0 fail** (86,5 s) ;
+  `lint-no-hardcoded-colors` 0 violation ; garde anti-anglicismes vert ;
+  `lint-cross-feature-imports` **7/7 INCHANGE** (la feature n'importe que `@/lib`,
+  `@/components` et `features/_shared`) ; manifestes regeneres sans diff residuel ;
+  `routeTree.gen.ts` NON touche (aucune route ajoutee).
+  **HUIT INVERSIONS JOUEES.** Go : liste vide traitee comme « aucune restriction » -> le
+  test des trois lectures tombe (2 matchs / 2 points au lieu de 0) ; `EXISTS` sans
+  `c.team_id = mp.team_id` -> le match ou l'ami jouait EN FACE entre dans l'univers ; axe
+  escouade rendu a « meme equipe que moi » -> les deux coequipiers hors composition se
+  peignent ; `/tactical/` retire de `readOnlyPostPrefixes` -> les quatre cas de la garde
+  d'ecriture tombent. Web : `filter_mode` fige a `period` -> le test de session tombe (page
+  ET logique pure) ; `sessionsProposees` sans predicat -> les quatre tests de composition
+  tombent (barre ET logique) ; nom introuvable IGNORE -> les trois tests de resolution
+  tombent ; plafond de composition et `vue=all` ecrits dans l'URL -> les deux tests de
+  scope tombent.
 - **Gate** : Go vet + test (service, api, duckdb, archlint, contracttest) ; openapi-gen -check ;
   typecheck, lint, vitest `tactical`, couleurs, imports croises (plafond 7/7 : les helpers
   d Explorateur/Escouade necessaires descendent dans `lib/` ou `features/_shared/`), manifestes.
@@ -691,6 +769,7 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **phase 4 bis CLOSE (items 4.5 et 4.6) — le filtre de session MARCHE.** Le perimetre de l'onglet est desormais une LISTE BLANCHE de match_id, resolue cote client par le endpoint de filtres (base JOUEUR, la seule qui porte les sessions) et postee aux deux endpoints tactiques, qui perdent leurs parametres plats de filtre. Barre L2 assemblee de trois controles existants, etat dans l'URL. Gate complet vert (Go : 0 issue lint, contrat a jour ; web : suite vitest COMPLETE, 606 fichiers / 6390 tests / 0 fail), HUIT inversions jouees. Deux pieges rencontres et documentes sur place : Huma ne met pas a plat une struct embarquee dans un corps (422 silencieux), et un POST de lecture sous /players/ doit entrer dans `readOnlyPostPrefixes` sous peine de 401 pour un visiteur anonyme.
 - 2026-09-06 : **second rouge du meme run CI, cote Go cette fois (job « Go Coverage + Baseline », qui joue `./...` COMPLET, donc aussi `cmd/**`).** Le garde-rail de source `TestInventaireEtProductionResolventPareil` (`apps/go-api/cmd/mapfond-inventaire/resolution_test.go`) lisait le corps de `resolveBackgroundKey` — devenue une simple enveloppe (`replay_map_background.go:126`) apres la phase 4, qui a deplace la cascade et ses deux `return <ident>, nil` dans `resolveBackgroundKeyDepuis` (`:151`). Le garde comptait donc 0 chemin de resolution dans une fonction vide au lieu de 2. Corrige en faisant lire au garde `resolveBackgroundKeyDepuis` (la fonction qui PORTE la cascade), commentaires mis a jour pour nommer les deux enveloppes qui l'appellent ; commentaire ajoute a `resoutFond` (`main.go:169`) sur `cleDeFondSure` (sans objet ici : les map_id de l'inventaire viennent de `match_registry`, jamais d'une entree hostile). Inversion jouee : remise temporaire de `resolveBackgroundKey(` dans le garde -> memes deux echecs qu'en CI (0 chemin, -1/-1) ; restaure. Gate vert : `./cmd/mapfond-inventaire/`, `./cmd/... ./internal/service/...` (aucun `--- FAIL`), `go vet`. Lecon : **le job coverage joue `./...` dont `cmd/`** — un gate local scope a `internal/` ne l'aurait pas revele.
 - 2026-09-06 : **CI Frontend rouge (run 34031528843) : titre de route manquant, garde-rail
   `pageTitle.test.ts`.** La 5e route Ascension `/ascension/tactique` (commit `tactique(4.6)`)
@@ -997,6 +1076,28 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-06 (phase 4 bis) — **LES SESSIONS PROPOSEES NE SONT PAS CELLES DE LA COMPOSITION
+  EXACTE, et l'ecart est dans le sens de la prudence.** La barre de l'Escouade propose
+  `composition_sessions`, que seule la requete de page teammates sait calculer (intersection
+  serveur sur la composition exacte). L'onglet Tactique, lui, prend la liste de
+  `/filters/resolve` et la coupe sur `is_squad` — donc les sessions d'ESCOUADE du joueur, pas
+  celles de la composition. Consequence : une session proposee peut ne porter AUCUN match de
+  la composition (le serveur resserre ensuite, la grille est alors vide) ; l'inverse — masquer
+  une session que la composition a jouee — ne peut pas se produire. Aller chercher la liste
+  exacte imposerait la requete de page Escouade (lourde) et un import croise
+  `tactical => squad` au plafond de 7/7. NON TRAITE, a revoir si la V1 montre le cas.
+- 2026-09-06 (phase 4 bis) — **`matchs_filtres` A CHANGE DE SENS, et la phase 5 doit le
+  savoir.** Il valait « les matchs du filtre SUR CETTE CARTE » ; il vaut desormais « la taille
+  de la liste blanche recue », toutes cartes confondues (decision superviseur). Le pied de
+  carte de la phase 5 ne doit donc PAS en faire un rapport (« N sur M ») : les deux grandeurs
+  n'ont pas le meme denominateur. Le champ le dit dans sa doc, en toutes lettres.
+- 2026-09-06 (phase 4 bis) — **LE MOTIF `strings.TrimRight(strings.Repeat("?,", n), ",")` A
+  AU MOINS SIX COPIES dans `platform/duckdb`** (`career_repo_encounters.go:28`,
+  `citations_repo.go:415`, `explorer_repo.go:116/191/456/572`,
+  `highlight_events_repo.go:126/186`, ...) alors que le helper canonique `Placeholders(n)`
+  existe depuis la migration sharedprovider, dans le meme paquet, avec sa doc d'usage. Le
+  lecteur tactique consomme le helper ; les copies preexistantes ne sont PAS touchees (hors
+  perimetre). Une passe de centralisation + garde-rail grep serait un petit lot a part.
 - 2026-09-06 (fix CI hors phase, hors perimetre Tactique) — **AVERTISSEMENT REACT « Hooks
   order changed » sur `SquadSynergiesPage`, vu dans le run CI 34031528843, NON CORRIGE :
   non reproduit.** Le run affichait, pendant le test `SquadSynergiesPage.test.tsx >

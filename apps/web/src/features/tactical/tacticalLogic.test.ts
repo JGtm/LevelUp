@@ -7,10 +7,14 @@
  *   - la barre victoires / défaites quand V + D est INFÉRIEUR aux matchs (le cas nominal :
  *     nuls, abandons, résultat inconnu) — la barre ne doit jamais remplir le cadre ;
  *   - les deux protections d'affichage (zéro match, contrat incohérent) ;
- *   - le filtre envoyé au serveur, dont la session est retirée (T11).
+ *   - LE PÉRIMÈTRE (phase 4 bis) : le contexte de filtre que la barre L2 fait résoudre,
+ *     les sessions proposées selon la composition, et la traduction gamertag → xuid —
+ *     dont le refus de traduire, qui est ce qui empêche un filtre d'être élargi en
+ *     silence.
  */
 import { describe, expect, it } from 'vitest'
 
+import { EXPERIENCE_TO_CASCADE } from '@/features/_shared/experienceCascade'
 import type { TacticalMapCard } from '@/lib/api/types'
 
 import {
@@ -18,9 +22,12 @@ import {
   couvertureGrille,
   estOuvrable,
   nomCarte,
-  tacticalFilterQuery,
   trierCartes,
+  contexteFiltre,
+  resoudreComposition,
+  sessionsProposees,
 } from './tacticalLogic'
+import { TACTICAL_SCOPE_DEFAUT, type TacticalScope } from './tacticalScope'
 
 function carte(over: Partial<TacticalMapCard> = {}): TacticalMapCard {
   return {
@@ -148,31 +155,91 @@ describe('nomCarte', () => {
   })
 })
 
-describe('tacticalFilterQuery', () => {
-  it('traduit le contexte global dans le vocabulaire de l’Explorateur', () => {
-    const q = tacticalFilterQuery({
-      cascade: { playlists: ['Ranked Arena'], modes: ['Slayer'] },
-      period: { start_date: '2026-01-01', end_date: '2026-02-01' },
-    } as never)
-    const params = new URLSearchParams(q)
-    expect(params.get('playlist')).toBe('Ranked Arena')
-    expect(params.get('mode')).toBe('Slayer')
-    expect(params.get('from')).toBe('2026-01-01T00:00:00Z')
-    expect(params.get('to')).toBe('2026-02-01T23:59:59Z')
+// ─── LE PERIMETRE ET LA COMPOSITION (phase 4 bis) ─────────────────────────────
+
+describe('contexteFiltre', () => {
+  const base: TacticalScope = { ...TACTICAL_SCOPE_DEFAUT }
+
+  it('sans session : mode « period », les bornes et la cascade de la barre', () => {
+    const ctx = contexteFiltre({
+      ...base,
+      debut: '2026-01-01',
+      fin: '2026-02-01',
+      playlists: ['Ranked Arena'],
+      modes: ['Slayer'],
+      experience: 'ranked',
+    })
+    expect(ctx.filter_mode).toBe('period')
+    expect(ctx.period).toEqual({ start_date: '2026-01-01', end_date: '2026-02-01' })
+    expect(ctx.cascade?.playlists).toEqual(['Ranked Arena'])
+    expect(ctx.cascade?.modes).toEqual(['Slayer'])
+    expect(ctx.cascade?.experience_types).toEqual(EXPERIENCE_TO_CASCADE.ranked)
+    expect(ctx.match_context).toBeUndefined()
   })
 
-  it('RETIRE la session : l’onglet ne l’honore pas, donc ne la demande pas (T11)', () => {
-    const q = tacticalFilterQuery({
-      filter_mode: 'sessions',
-      sessions: { picked_session_label: 'Session du 3 mars' },
-      cascade: { playlists: ['Ranked Arena'] },
-    } as never)
-    expect(q).not.toContain('session')
-    expect(new URLSearchParams(q).get('playlist')).toBe('Ranked Arena')
+  it('avec une session epinglee : mode « sessions », et le label transmis', () => {
+    const ctx = contexteFiltre({ ...base, sessions: ['Session du 3 mars'], debut: '2026-01-01' })
+    expect(ctx.filter_mode).toBe('sessions')
+    expect(ctx.sessions?.picked_sessions).toEqual(['Session du 3 mars'])
+    // La periode reste PUBLIEE (le backend l'ignore tant qu'une session est pickee) :
+    // la retirer ferait perdre la borne au retour en mode periode.
+    expect(ctx.period?.start_date).toBe('2026-01-01')
   })
 
-  it('aucun filtre : chaîne vide (et donc aucune interrogation superflue)', () => {
-    expect(tacticalFilterQuery(null)).toBe('')
-    expect(tacticalFilterQuery({} as never)).toBe('')
+  it('la vue ne descend en match_context que si elle n’est pas « all »', () => {
+    expect(contexteFiltre({ ...base, vue: 'squad' }).match_context).toBe('squad')
+    expect(contexteFiltre({ ...base, vue: 'all' }).match_context).toBeUndefined()
+  })
+
+  it('un label de session vide n’ouvre PAS le mode sessions', () => {
+    const ctx = contexteFiltre({ ...base, sessions: ['  '] })
+    expect(ctx.filter_mode).toBe('period')
+    expect(ctx.sessions?.picked_sessions).toEqual([])
+  })
+})
+
+describe('sessionsProposees', () => {
+  const options = [
+    { label: 'Solo 1', session_id: 's1', match_count: 4, match_count_filtered: 4, is_squad: false, started_at_utc: 'A', ended_at_utc: 'B' },
+    { label: 'Escouade 1', session_id: 's2', match_count: 6, match_count_filtered: 6, is_squad: true, started_at_utc: 'C', ended_at_utc: 'D' },
+  ]
+
+  it('sans composition : les sessions SOLO', () => {
+    const out = sessionsProposees(options, false)
+    expect(out.map((s) => s.label)).toEqual(['Solo 1'])
+  })
+
+  it('avec une composition : les sessions d’ESCOUADE', () => {
+    const out = sessionsProposees(options, true)
+    expect(out.map((s) => s.label)).toEqual(['Escouade 1'])
+    // La forme attendue par SessionMultiSelect, pas celle de /filters/resolve.
+    expect(out[0].started_at).toBe('C')
+    expect(out[0].ended_at).toBe('D')
+    expect(out[0].match_count).toBe(6)
+  })
+})
+
+describe('resoudreComposition', () => {
+  const options = [
+    { gamertag: 'Ami', xuid: 'xuid(1)', encounter_count: 10 },
+    { gamertag: 'SansXuid', encounter_count: 3 },
+  ]
+
+  it('traduit les gamertags en xuids, dans l’ordre de la composition', () => {
+    expect(resoudreComposition(['Ami'], options)).toEqual({ xuids: ['xuid(1)'], inconnus: [] })
+  })
+
+  it('la casse ne compte pas — un gamertag se saisit comme il se prononce', () => {
+    expect(resoudreComposition(['ami'], options).xuids).toEqual(['xuid(1)'])
+  })
+
+  it('un nom introuvable est SIGNALE, jamais ignore', () => {
+    const { xuids, inconnus } = resoudreComposition(['Ami', 'Fantome'], options)
+    expect(xuids).toEqual(['xuid(1)'])
+    expect(inconnus).toEqual(['Fantome'])
+  })
+
+  it('une option SANS xuid ne resout rien : elle ne peut pas filtrer', () => {
+    expect(resoudreComposition(['SansXuid'], options).inconnus).toEqual(['SansXuid'])
   })
 })
