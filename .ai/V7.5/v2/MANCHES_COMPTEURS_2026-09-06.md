@@ -19,6 +19,7 @@ joueur qui en a **5** a la feuille de match.
 | Schema | **43 -> 44**, chronique ecrite dans `document.go` et dans le ratchet `structure_test.go` |
 | Regression trouvee en cours de route | une premiere version du correctif cassait `a4083bd2` (24 compteurs de joueur en baisse) ; corrigee, prouvee par mutation, mesuree |
 | Revue MANCHES-R1 | close, 15/15 conditions, aucun P0/P1 ; trois constats traites au § 7 bis (garde par slot, definition unique du debut de manche, fourchette nominale a une seule ecriture) — **parc inchange**, schema toujours 44 |
+| Revue MANCHES-R2 | close, aucun P0/P1 ; trois constats soldes au § 7 ter — **garde-rail du correctif C2** (sa neutralisation laissait 23/23 paquets verts), journal des bornes qui ne se contredit plus, fichier de test scinde. Aucune cuisson, schema toujours 44 |
 
 ---
 
@@ -387,6 +388,79 @@ Une cuisson de `24dbb67d` a ete interrompue par la sentinelle memoire a **3,83 G
 re-cuit a **0,217 Gio** quinze minutes plus tard, meme binaire et meme film. Cause : contention
 machine (un autre agent decodait en parallele) — `filmproc.Footprint` mesure le tas Go retenu, que
 le nettoyeur ne rend pas assez vite sous pression. La sentinelle a joue son role ; rien a corriger.
+
+---
+
+## 7 ter. Ronde 2 (revue MANCHES-R2, 2026-09-07)
+
+C1/C2/C3 juges exacts, aucun P0/P1. Trois P2/P3 demontres et soldes ; `SchemaVersion` reste **44**
+et aucune cuisson n'a ete necessaire — les trois portent sur les garde-rails et le journal.
+
+### N2 — le correctif C2 n'avait AUCUN garde-rail
+
+**Le defaut, demontre par le relecteur.** Neutraliser `consensus := RoundStartsMS(recs)`
+(`slotidentity_rounds.go:156`) — retour au minimum pur d'avant C2 — laissait **23 paquets sur 23
+verts**. Le seul test qui touchait `roundStartsOf` (`slotidentity_rounds_order_test.go`) travaille
+sur des fixtures SANS train de score de mode : `RealRounds` n'y reconnait aucune manche, donc
+`consensus` y est toujours vide, avec ou sans le correctif. La preuve de C2 reposait entierement
+sur deux cuissons manuelles, non rejouables par la CI.
+
+**Le garde-rail.** `TestIdentiteParMancheSuitLeDebutConsensuel`
+(`manches_segments_test.go`) : film a deux manches AVEC train de score de mode par manche, un slot
+minoritaire declarant la manche 1 des **85 s** quand la majorite l'ouvre a **298 s** (la forme de
+`24dbb67d`, 85 193 contre 298 909 ms), et surtout **un slot REATTRIBUE** d'une manche a l'autre —
+c'est lui qui rend l'erreur observable : se tromper de manche rend un AUTRE xuid. Le test verifie
+la divergence elle-meme (consensus 298 000 contre minimum declare 85 000), que le slot est nomme
+dans les deux manches, puis que `RoundIdentity.At` rend l'occupant de la MANCHE 0 en trois points
+de l'intervalle litigieux (85 000, 150 000, 297 999 ms) et celui de la manche 1 apres.
+
+**Mutation, jouee :**
+
+```
+MUTATION : consensus := RoundStartsMS(recs) -> consensus := map[int]int{}
+--- FAIL: TestIdentiteParMancheSuitLeDebutConsensuel
+    a 85000 ms (manche 0 en cours, la manche 1 ne commence qu'a 298000) le slot 22 est attribue
+    a "9022" au lieu de "1022" : l'identite suit le MINIMUM declare (85000), pas le debut consensuel
+    ... idem a 150000 ms et 297999 ms
+RESTAURATION : ok
+```
+
+### N1 — le journal des bornes se contredisait
+
+Sur la fixture de C1, `logRoundBounds` emettait trois `WARN bloc de manche GARDE` puis un
+`WARN AUCUNE borne de manche posee ... les compteurs restent ceux d'avant` — faux, puisque ce sont
+justement des bornes qui ont permis de detecter ces blocs, et que le correctif venait au contraire
+de changer activement le resultat.
+
+**Cause.** Le message de repli se decidait sur le COMPTE D'ECARTES. Or zero ecarte se lit de deux
+facons : « aucune borne n'etait posable » (`a4083bd2`) ou « des bornes sont posees et tout ce qui
+tombe hors fenetre appartient a un bloc exempte » — exactement le cas que la garde par slot
+eclaire.
+
+**Correctif.** `RoundBounds.Posed()` repond a la vraie question (« des bornes ont-elles ete
+posees »), et `logRoundBounds` tranche dessus ; la ligne INFO publie en plus `blocs_gardes`. Deux
+tests de journal (capture du handler `slog`) :
+`TestLeJournalDeBornesNeSeContreditPas` (trois blocs gardes, aucun message de repli, la ligne des
+bornes presente) et `TestLeJournalDitQuandAucuneBorneNEstPosee` (le pendant : le repli DOIT sortir
+quand aucune borne n'est posable, sans quoi la correction aurait supprime un signal utile).
+Mutation `!bornes.Posed()` -> `n == 0` : **rouge**.
+
+### N3 — fichier de test scinde
+
+`manches_compteurs_test.go` etait a 529 L. Coupe par RESPONSABILITE, pas a la ligne :
+`manches_compteurs_test.go` (413 L) garde la decoupe par manche et les fixtures partagees ;
+`manches_segments_test.go` (278 L) porte ce qui concerne le BLOC (slot, manche) — garde par slot,
+journal des bornes, source unique du debut de manche.
+
+### Gates de la ronde 2
+
+| gate | resultat |
+|---|---|
+| `go test -count=1 ./internal/analysis/... ./internal/replaybuild/... ./internal/archlint/... ./contracttest/...` | **23 paquets ok** |
+| `go build ./...` | OK |
+| `CGO_ENABLED=0 go vet ./internal/domain/... ./internal/analysis/...` | OK |
+| `golangci-lint run --new-from-merge-base=origin/main ./...` | **0 issues** |
+| `SchemaVersion` | **44**, inchange |
 
 ---
 
