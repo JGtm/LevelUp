@@ -251,6 +251,14 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       `matchs_defaite` publies au niveau du raster signe. **T11** : `session` RETIRE
       du contrat (jamais applique par `BuildNeighborsWhereClause` — on n'accepte pas
       ce qu'on n'honore pas).
+      **AMENDE PAR G2 (revue ronde 1 de la PHASE 3, 2026-09-06)** : l'univers passe aux
+      `Rasterise*` est desormais celui des matchs MESURES, et le contrat publie
+      `matchs_filtres` (tous les matchs du filtre) A COTE de `matchs_retenus` (les
+      mesures). Un match dont le film n'a jamais ete decode ne peut alimenter aucune
+      cellule : le garder au denominateur faisait varier l'intensite avec la COUVERTURE DE
+      FILM au lieu du jeu. L'exemple de reference 12 V / 8 D reste VALIDE — ses 20 matchs
+      sont mesures, 10 sont seulement muets DE MOI (le zero LEGITIME de la phase 1, a ne
+      pas confondre avec l'ILLISIBLE de G2).
 - [x] 2.5 `slog.InfoContext` sur chaque calcul : `tactical_service.go:93` (cartes),
       `:133` (`player`, `titleSlug`, `map_id`, `question`, `qui`, `matchs_retenus`,
       `cellules`, `points_ignores`, `duration`), `:275` (echange).
@@ -289,7 +297,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   `make generate-types` puis `git diff --exit-code apps/web/src/lib/api/generated.ts`
   ne montre que les nouveaux types.
 
-### Phase 3 — L'ECHANGE SUR LA PAGE ESCOUADE — CLOSE 2026-09-06 (3.7 reporte au lot C)
+### Phase 3 — L'ECHANGE SUR LA PAGE ESCOUADE — CLOSE 2026-09-06, revue ronde 1 SOLDEE (3.7 reporte au lot C)
 - [x] 3.1 Service Escouade : `service/teammates/teammates_squad_echange.go` (279 L) +
       `domain/squad_echange.go` (122 L, tags snake_case), branche dans
       `teammates_service.go` (`WithEchange`) et `GetPage`. L'echange entre dans le
@@ -314,6 +322,18 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       vengeur. `domain.MortSuivie` ajoute a la liste blanche du garde-rail du taux nu,
       justification datee sur place. Contrat : `openapi-gen` + `generated.ts` (+40 L,
       additions pures).
+      **REVUE R1 — G2 (touche AUSSI la phase 2)** : le denominateur « par match » ne
+      compte plus que les matchs MESURES (journal des morts lisible). Le numerateur ne
+      peut venir que d'eux, et les films Theater EXPIRENT : diviser par tous les matchs du
+      filtre faisait varier la grandeur avec la COUVERTURE DE FILM au lieu du jeu
+      (20 matchs sur 20 decodes contre 2 sur 20 -> 0,20 et 0,02 pour le meme jeu).
+      Escouade : `Couverture.ParMatch` et les cases se divisent par `matchs_mesures`,
+      `matchs_total` reste publie. Le lecteur rend le drapeau par match (EXISTS sur
+      `match_kill_events_latest`, `publishable` exige comme dans les deux lectures,
+      parametre neutre et ratchet Campagne conserves).
+      **REVUE R1 — G1** : `bucketDelai` PARCOURT `bornesDelaiMs` au lieu de recopier le
+      decoupage en arithmetique ; intervalles semi-ouverts sauf celui qui ferme la fenetre
+      (5 000 ms reste un echange). Test de PROPRIETE sur 13 delais poses a la main.
 - [x] 3.2 Onglet **Synergies** : `SquadEchangeMatrixCard.tsx` — `SectionCard` « Qui
       echange pour qui » + `Heatmap2DChart` (ligne = vengeur, colonne = venge,
       orientation `SquadAssistPairsTable`), palette `frequency` mono-teinte, diagonale
@@ -321,18 +341,33 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       narrative. Deux `NarrativeBadge` « le plus / le moins couvert », rendus seulement
       a >= 2 joueurs, plancher de 30 morts atteint ET >= 3 vengeances d'ecart.
       `Heatmap2DChart` gagne `paletteMode='frequency'` + `formatTooltip` /
-      `formatLabel` (son libelle par defaut parle de taux de victoire) — appelants
+      `formatTooltip` (son libelle par defaut parle de taux de victoire) — appelants
       existants inchanges.
+      **REVUE R1 — W1 (P0)** : le wrapper deduit ses axes de l'ORDRE D'APPARITION des
+      points ; sauter la diagonale decalait l'axe X d'un cran (roster [A,B,C,D] ->
+      colonnes B,C,D,A), et sur un duo les deux axes sortaient inverses. `matriceSeries`
+      emet desormais TOUTES les cases dans l'ordre du roster, diagonale comprise avec une
+      valeur VIDE (`value: number | null`). **W4** : la prop morte `formatLabel` est
+      supprimee. **W5** : les branches neuves du wrapper sont testees.
 - [x] 3.3 Onglet **Dynamique** : `SquadEchangeDelaiCard.tsx` — `SectionCard` « Delai
       d'echange » + `HistogramChart`, 5 barres dans la fenetre en couleur de serie,
       2 hors fenetre en `divergent-neutral` (la palette n'a pas de token `muted`).
       Fenetre marquee dans le pied de carte ET en suffixe d'etiquette (`markLine` non
       exposee par le wrapper). Pied = definition en une phrase + couverture.
-      `HistogramChart` gagne `binColorToken` (il ne peint que `series[0]` : deux
+      `HistogramChart` gagne `binAttenuated` (il ne peint que `series[0]` : deux
       series auraient ete ignorees en silence).
+      **REVUE R1 — W2** : `divergent-neutral` vaut #60A5FA (blue-400) dans la palette PAR
+      DEFAUT — plus soutenu que la serie —, et AUCUN token semantique du depot n'est
+      achromatique dans les quatre palettes (mesure sur pieces). L'attenuation passe donc
+      par la COULEUR DE SERIE en opacite reduite + liseré tireté, sans dependance de
+      palette. La doc qui disait « le gris neutre de la maison » etait inversee.
 - [x] 3.4 KPI « Taux d'echange » : `SquadEchangeKpi.tsx` (`KPIStrip`, monte dans
       `SquadLayout.tsx`) — valeur + « N vengees sur M » + ecart en points
       (`formatSignedPoints`) + fleche `KPITrend`, masque si `isFullHistoryScope`.
+      **REVUE R1 — W3** : l'ecart, son arrondi et le masquage plein-historique quittent le
+      composant pour `squadEchange.logic.ecartEchange` (pure, consommee aussi par
+      `capDuMoment`) ; `SquadEchangeKpi.test.tsx` cree — la tuile n'avait AUCUN test, et
+      supprimer le masquage ou inverser le signe passait.
       **Les deux helpers ont ETE DEPLACES** dans `apps/web/src/lib/baseline.ts` (avec
       leurs tests) et l'Explorateur pointe dessus : `tools/lint-cross-feature-imports.mjs`
       est a son plafond (7/7), un `squad -> explorer` de plus l'aurait franchi, et une
@@ -344,12 +379,23 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       d'equipe ET >= 5 points d'ecart ; sinon PAS rendue (aucun etat vide). Troisieme
       refus ajoute et documente : sans reference mesuree (habituel a N=0) il n'y a pas
       d'ecart.
+      **REVUE R1 — W6** : la phrase porte deja la direction (« de moins » / « de plus ») ;
+      le nombre est donc une MAGNITUDE (`lib/baseline.formatPoints`). `formatSignedPoints`
+      sur une valeur absolue forcait un « + » dans une phrase qui disait « de moins ».
+      **W9** : la borne exacte des badges (`n === 30`) est posee a cote de son voisin a 29.
 - [x] 3.6 Toutes les chaines dans `manifests/squad.toml` (34 cles `squad.echange.*`,
       FR + EN), regen `build_i18n_manifests.mjs`, acces par `squadEchangeStrings.ts`
       (modele `squadFocusStrings`). Zero chaine en dur dans les composants, zero hex,
       zero classe Tailwind couleur (`lint-no-hardcoded-colors` : 0 violation).
       Garde-rail dedie `squadEchange.i18n.test.ts` : FR et EN non vides, aucune cle
       orpheline, aucune cle non resolue, et aucun anglicisme de ce chantier en FR.
+      **REVUE R1 — W8** : le garde s'arretait a l'ACCESSEUR et annoncait « aucune
+      orpheline » a tort (`squad.echange.empty_description` etait declaree, exposee, et
+      affichee par personne). La cle est supprimee (FR + EN) et le garde va desormais
+      jusqu'au COMPOSANT, inversion jouee. **W7** : les fixtures dupliquees — et deja
+      divergentes — du test de logique sont supprimees au profit de
+      `squadEchange.fixtures`. **W9** : la borne exacte des badges (`n === 30`) est
+      posee a cote de son voisin a 29.
 - [!] 3.7 **Gate web des sections par `useDataCapability('film.kill_source')` — NON
       TRAITE, reference : lot C de l'audit v2, `useDataCapability`.** Le hook N'EXISTE
       PAS dans le depot (verifie sur pieces le 2026-09-06 : aucune occurrence hors du
@@ -434,6 +480,66 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **revue adversariale ronde 1 de la phase 3 — 12 constats, TOUS corriges** en
+  5 commits `tactique(3.7)`. Gate rejoue integralement, cinq inversions jouees.
+  - **W1 (P0) — LA MATRICE SE LISAIT DE TRAVERS.** `Heatmap2DChart` deduit ses categories
+    d'axe de l'ORDRE D'APPARITION des points ; `matriceSeries` sautait la diagonale, donc
+    la premiere COLONNE rencontree etait le DEUXIEME joueur : roster [A,B,C,D] -> lignes
+    A,B,C,D, colonnes B,C,D,A ; sur un duo, l'axe X sortait exactement inverse. Chaque case
+    designait le mauvais couple. Correction : TOUTES les cases roster x roster, dans
+    l'ordre, diagonale COMPRISE avec une valeur VIDE (`value: number | null` -> `'-'`
+    ECharts, hors visualMap, sans etiquette ni infobulle ; les vides sont ecartes AVANT le
+    calcul de l'echelle). INVERSION : diagonale re-sautee -> 3 tests tombent, dont un qui
+    rend litteralement `['B','C','D','A']`.
+  - **W2 (P1) — les barres « attenuees » etaient BLEUES, et la doc disait le contraire.**
+    `divergent-neutral` vaut #60A5FA (blue-400) dans la palette PAR DEFAUT, plus soutenu
+    que la serie (blue-300) ; il n'est gris que sous okabe-ito / cividis / tol-bright.
+    MESURE SUR PIECES sur les 4 palettes : AUCUN token semantique n'est achromatique
+    partout (seuls 3 tokens de TEXTE de badge le sont, noirs ou blancs). Il n'y avait donc
+    pas de « token gris » a prendre : l'attenuation passe par la COULEUR DE SERIE en
+    opacite reduite + liseré tireté — les « barres hachurees » du plan d'origine, sans
+    aucune dependance de palette. La prop du wrapper devient `binAttenuated` (predicat).
+  - **W3 (P1) — le KPI n'avait aucun test et calculait.** L'ecart, son arrondi et le
+    masquage plein-historique etaient inlines : supprimer le masquage ou inverser le signe
+    passait. Sortis dans `squadEchange.logic.ecartEchange`, pure, consommee AUSSI par
+    `capDuMoment`. `SquadEchangeKpi.test.tsx` cree (7 cas).
+  - **W4 (P1)** — `formatLabel` etait une prop MORTE du wrapper partage : supprimee
+    (regle 7). **W5 (P1)** — les branches neuves des deux wrappers sont testees, inversions
+    jouees (sans `formatTooltip`, la matrice annonce « Win Rate: 400.0% » pour 4
+    vengeances ; sans `binAttenuated`, `data` reste `[3, 5, 2]`).
+  - **W6 (P1)** — « +20 pts de moins que d'habitude » se contredisait tout seul :
+    `formatSignedPoints(Math.abs(...))` forcait le `+` dans une phrase qui portait deja la
+    direction. `lib/baseline.formatPoints` (magnitude non signee) ajoutee a cote de la
+    signee. **W7 (P2)** — fixtures dupliquees et deja divergentes, supprimees au profit de
+    `squadEchange.fixtures`. **W8 (P2)** — cle i18n orpheline `empty_description`
+    supprimee, et le garde va desormais jusqu'au COMPOSANT (il annoncait « aucune
+    orpheline » a tort ; INVERSION jouee). **W9 (P2)** — borne exacte des badges
+    (`n === 30`) posee a cote de son voisin a 29.
+  - **G1 (P2)** — `bucketDelai` recopiait le decoupage en arithmetique (`delai / 1000`,
+    bornage a 4) a cote de la tranche `bornesDelaiMs` qui le definit : deux definitions,
+    dont une invisible. Il PARCOURT desormais la tranche. Consequence assumee : les
+    intervalles sont SEMI-OUVERTS partout sauf celui qui ferme la fenetre (5 000 ms reste
+    un echange). Test de PROPRIETE sur 13 delais. INVERSION : arithmetique restauree +
+    borne deplacee -> le test nomme les deux divergences.
+  - **G2 (P1, requalifie) — LE DENOMINATEUR « PAR MATCH » COMPTAIT DES MATCHS ILLISIBLES.**
+    Le numerateur ne peut venir que des matchs dont le journal a ete lu ; le denominateur
+    comptait tous les matchs du filtre. Les films Theater EXPIRENT : deux filtres a 20/20 et
+    a 2/20 matchs decodes rendaient 0,20 et 0,02 pour EXACTEMENT le meme jeu — la grandeur
+    que le contrat annonce « comparable d'un filtre a l'autre » ne l'etait pas. C'est le
+    pendant du P0 de la phase 1 : le zero LEGITIME compte, l'ILLISIBLE est compte A PART.
+    Corrige sur LES DEUX SURFACES. Escouade : `Couverture.ParMatch` et les cases de la
+    matrice se divisent par `matchs_mesures`, `matchs_total` reste publie (le bandeau dit
+    « N mesures sur M »). Tactique : l'univers passe aux `Rasterise*` est celui des matchs
+    MESURES, et le contrat publie `matchs_filtres` (tous) a cote de `matchs_retenus`
+    (mesures) ; l'exemple de reference 12 V / 8 D reste valide — ses 20 matchs sont mesures,
+    10 sont seulement muets DE MOI. Le lecteur rend le drapeau par match (EXISTS sur
+    `match_kill_events_latest`, `publishable` exige comme dans les deux lectures, parametre
+    neutre et ratchet Campagne conserves). INVERSIONS jouees des DEUX cotes (Escouade :
+    0,05 au lieu de 0,50 ; Tactique : `MatchsRetenus` 10 au lieu de 3 et valeur 0,30 au lieu
+    de 1,00). Docs de `domain/tactical.go` et `domain/squad_echange.go` mises a jour dans le
+    meme commit.
+  - **Sans suite** : le dernier intervalle ouvert (> 7 s agrege 7,1 s et 400 s) est un choix
+    produit remonte au decideur, pas un defaut.
 - 2026-09-06 : **phase 3 CLOSE** — l'echange est mesure, servi et affiche, en 6 commits
   `tactique(3.1)` a `(3.6)`. Items 3.1-3.6 `[x]`, 3.7 `[!]` (le hook `useDataCapability`
   n'existe pas dans le depot : il arrive avec le lot C de l'audit v2 ; aucune gate de

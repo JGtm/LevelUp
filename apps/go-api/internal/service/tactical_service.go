@@ -120,11 +120,18 @@ func (s *TacticalService) Raster(ctx context.Context, carte, question, qui strin
 	if len(lecture.Univers.Matchs) == 0 {
 		return out, fmt.Errorf("%w (%q)", domain.ErrTacticalCarteInconnue, carte)
 	}
-	out.MatchsRetenus = len(lecture.Univers.Matchs)
+	out.MatchsFiltres = len(lecture.Univers.Matchs)
+
+	// L'UNIVERS DE LA LECTURE, C'EST LES MATCHS MESURES (correction G2, 2026-09-06).
+	// Un match du filtre dont le film n'a jamais ete decode ne peut alimenter aucune
+	// cellule : le garder au denominateur ferait varier l'intensite avec la
+	// couverture de film au lieu du jeu. Il reste publie a part, dans MatchsFiltres.
+	mesure := universMesure(lecture.Univers)
+	out.MatchsRetenus = len(mesure.Matchs)
 
 	points := projeter(lecture, question, qui, s.xuid)
 	out.EvenementsLocalises = len(points)
-	raster, err := rasteriser(lecture.Univers, question, points)
+	raster, err := rasteriser(mesure, question, points)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: rasterisage en echec",
 			"player", s.xuid, "map_id", carte, "question", question, "err", err)
@@ -135,12 +142,31 @@ func (s *TacticalService) Raster(ctx context.Context, carte, question, qui strin
 
 	s.logger.InfoContext(ctx, "tactique: lecture de placement",
 		"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "map_id", carte,
-		"question", question, "qui", qui, "matchs_retenus", out.MatchsRetenus,
+		"question", question, "qui", qui,
+		"matchs_filtres", out.MatchsFiltres, "matchs_retenus", out.MatchsRetenus,
 		"cellules", len(out.Cellules), "points_ignores", out.PointsIgnores,
 		"evenements_journal", out.EvenementsJournal,
 		"evenements_localises", out.EvenementsLocalises,
 		"duration", time.Since(debut))
 	return out, nil
+}
+
+// universMesure ne garde que les matchs dont le journal des morts est LISIBLE.
+//
+// Les EQUIPES sont conservees telles quelles : elles servent au predicat « qui »,
+// qui interroge des matchs presents dans les points — donc mesures par construction
+// (une position n'existe qu'accrochee a un kill-event publiable).
+func universMesure(u domain.TacticalUnivers) domain.TacticalUnivers {
+	out := domain.TacticalUnivers{
+		Matchs:  make([]domain.TacticalMatch, 0, len(u.Matchs)),
+		Equipes: u.Equipes,
+	}
+	for _, m := range u.Matchs {
+		if m.Mesure {
+			out.Matchs = append(out.Matchs, m)
+		}
+	}
+	return out
 }
 
 // validerLecture refuse une demande hors vocabulaire AVANT toute lecture de base.
@@ -321,9 +347,12 @@ func (s *TacticalService) mesurerEchange(ctx context.Context, carte string, lect
 			vengees++
 		}
 	}
-	c := coordination.Mesurer(vengees, vengeables, len(lecture.Univers.Matchs))
+	// Denominateur « par match » : les matchs MESURES, jamais tous les matchs du
+	// filtre (correction G2) — le numerateur ne peut venir que d'eux.
+	mesures := len(universMesure(lecture.Univers).Matchs)
+	c := coordination.Mesurer(vengees, vengeables, mesures)
 	s.logger.InfoContext(ctx, "tactique: echange sur cette carte",
-		"player", s.xuid, "map_id", carte, "matchs_retenus", len(lecture.Univers.Matchs),
+		"player", s.xuid, "map_id", carte, "matchs_retenus", mesures,
 		"morts_vengeables", c.N, "morts_vengees", c.Brut, "echantillon_faible", c.EchantillonFaible)
 	return &c
 }

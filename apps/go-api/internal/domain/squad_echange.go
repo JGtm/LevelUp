@@ -44,9 +44,16 @@ type SquadEchangeCell struct {
 	// Nombre est le compte BRUT d'echanges de ce couple sur le perimetre filtre.
 	Nombre int `json:"nombre"`
 
-	// ParMatch est ce meme compte ramene au match — la grandeur qui se compare d'un
-	// filtre a l'autre (doctrine « jamais un compte sans son denominateur »). Ce n'est
-	// PAS un taux : c'est une quantite par match, sans borne haute.
+	// ParMatch est ce meme compte ramene aux matchs MESURES — la grandeur qui se
+	// compare d'un filtre a l'autre (doctrine « jamais un compte sans son
+	// denominateur »). Ce n'est PAS un taux : c'est une quantite par match, sans
+	// borne haute.
+	//
+	// LE DENOMINATEUR EST `MatchsMesures`, PAS `MatchsTotal` (correction G2,
+	// 2026-09-06). Le numerateur ne peut venir que des matchs dont le journal des
+	// morts est lisible ; diviser par tous les matchs du filtre ferait varier la
+	// grandeur avec la COUVERTURE DE FILM au lieu du jeu — deux filtres a 20/20 et
+	// a 2/20 matchs decodes rendraient 0,20 et 0,02 pour exactement le meme jeu.
 	ParMatch float64 `json:"par_match"`
 }
 
@@ -99,7 +106,8 @@ type SquadEchange struct {
 
 	// Couverture est le taux d'echange de MON CAMP sur le perimetre filtre, sous la seule
 	// forme dont un taux sort du domaine (taux + brut + par match + N + echantillon
-	// faible).
+	// faible). Sa quantite PAR MATCH se divise par MatchsMesures (cf. G2), jamais par
+	// MatchsTotal.
 	Couverture Couverture `json:"couverture"`
 
 	// Habituel est la MEME mesure sur tout l'historique de la composition — la reference

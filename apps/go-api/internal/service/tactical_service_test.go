@@ -9,6 +9,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"testing"
 
@@ -69,10 +70,16 @@ func capsPositionsSeules() games.CapabilityMap {
 	return games.CapabilityMap{games.CapFilmKillPositions: games.CapSupported}
 }
 
-// universUnMatch : un match, une composition (moi + ami contre deux adversaires).
+// universUnMatch : un match MESURE (journal des morts lisible), une composition (moi +
+// ami contre deux adversaires).
+//
+// `Mesure: true` depuis la correction G2 (2026-09-06) : seuls les matchs mesures entrent
+// au denominateur de la lecture. Tous les matchs de reference de ces tests le sont — un
+// match mesure SANS kill a moi reste au denominateur, et c'est justement ce que
+// l'exemple de reference 12 V / 8 D verifie.
 func universUnMatch(matchID string, outcome int) domain.TacticalUnivers {
 	return domain.TacticalUnivers{
-		Matchs: []domain.TacticalMatch{{MatchID: matchID, Outcome: outcome}},
+		Matchs: []domain.TacticalMatch{{MatchID: matchID, Outcome: outcome, Mesure: true}},
 		Equipes: domain.EquipesParMatch{matchID: {
 			tsMoi: 0, tsAmi: 0, tsAdv: 1, tsAdv2: 1,
 		}},
@@ -230,8 +237,13 @@ func TestTacticalService_GagneCelluleNeutre(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Raster(gagne): %v", err)
 	}
-	if got.MatchsRetenus != 20 {
-		t.Fatalf("MatchsRetenus = %d, want 20 (les 12 V et 8 D, muettes comprises)", got.MatchsRetenus)
+	// Les 20 matchs sont MESURES (leur journal est lisible) ; 10 d'entre eux n'ont
+	// simplement aucune position DE MOI. C'est bien le zero LEGITIME de la phase 1, a
+	// ne pas confondre avec le match ILLISIBLE de la correction G2 : celui-la sort du
+	// denominateur, celui-ci y reste.
+	if got.MatchsRetenus != 20 || got.MatchsFiltres != 20 {
+		t.Fatalf("MatchsRetenus/MatchsFiltres = %d/%d, want 20/20 (les 12 V et 8 D, muettes comprises)",
+			got.MatchsRetenus, got.MatchsFiltres)
 	}
 	c := celluleEn(got.Cellules, 2.1, 2.1)
 	if c == nil {
@@ -419,5 +431,57 @@ func TestTacticalService_VocabulaireRefuse(t *testing.T) {
 	}
 	if repo.vuPos.MapID != "" {
 		t.Error("un refus de vocabulaire ne doit ouvrir aucune lecture de base")
+	}
+}
+
+// TestTacticalService_MatchNonMesure_HorsDenominateur — CORRECTION G2 (2026-09-06).
+//
+// Un match RETENU PAR LE FILTRE dont le journal des morts n'a jamais ete lu (film
+// jamais decode, ou EXPIRE cote serveur) ne peut alimenter aucune cellule. Le laisser
+// au denominateur ferait varier l'intensite avec la COUVERTURE DE FILM au lieu du jeu :
+// le meme joueur, le meme placement, deux filtres a couverture differente, deux
+// intensites.
+//
+// Il reste publie a part — MatchsFiltres — pour que le pied de carte puisse dire
+// « N mesures sur M » plutot que de faire disparaitre en silence ce que le joueur a
+// joue.
+func TestTacticalService_MatchNonMesure_HorsDenominateur(t *testing.T) {
+	repo := &mockTacticalRepo{}
+	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
+	// Dix matchs retenus par le filtre ; TROIS seulement portent un journal lisible
+	// (trois, c'est le plancher de rarete par cellule : en dessous, rien ne se peint).
+	for i := 0; i < 10; i++ {
+		id := fmt.Sprintf("m%02d", i)
+		u := universUnMatch(id, domain.OutcomeWin)
+		u.Matchs[0].Mesure = i < 3
+		repo.pos.Univers.Matchs = append(repo.pos.Univers.Matchs, u.Matchs...)
+		repo.pos.Univers.Equipes[id] = u.Equipes[id]
+		if i < 3 {
+			repo.pos.Points = append(repo.pos.Points, domain.TacticalKillPosition{
+				MatchID: id, KillerXUID: tsMoi, VictimXUID: tsAdv,
+				KillerX: 2.1, KillerY: 2.1, VictimX: 30.0, VictimY: 30.0,
+			})
+		}
+	}
+
+	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
+	got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionKills, domain.TacticalQuiMoi, nil)
+	if err != nil {
+		t.Fatalf("Raster(kills): %v", err)
+	}
+	if got.MatchsFiltres != 10 {
+		t.Errorf("MatchsFiltres = %d, want 10 (le filtre a bien retenu 10 matchs)", got.MatchsFiltres)
+	}
+	if got.MatchsRetenus != 3 {
+		t.Errorf("MatchsRetenus = %d, want 3 (trois journaux lisibles)", got.MatchsRetenus)
+	}
+	c := celluleEn(got.Cellules, 2.1, 2.1)
+	if c == nil {
+		t.Fatalf("cellule (2.1, 2.1) absente : %+v", got.Cellules)
+	}
+	// 3 occurrences sur 3 matchs MESURES = 1,00. Sur les 10 matchs du filtre, on
+	// lirait 0,30 — une intensite trois fois plus faible pour exactement le meme jeu.
+	if c.Valeur != 1 {
+		t.Errorf("valeur = %v, want 1 (3 occurrences / 3 matchs MESURES, pas / 10 filtres)", c.Valeur)
 	}
 }

@@ -95674,3 +95674,48 @@ L'item 3.7 (`useDataCapability('film.kill_source')`) reste `[!]` : le hook n'exi
 le depot, aucune gate de substitution n'a ete inventee, et la degradation est deja cote Go
 (section OMISE du contrat -> composants non montes, comportement verifie par test). Le
 cablage revient au lot C de l'audit v2. Les phases 4-7 restent GELEES.
+
+---
+
+## [2026-09-06] Tactique phase 3 — revue adversariale ronde 1, 12 constats soldes
+
+**Statut** : Complete (5 commits `tactique(3.7)`, gate rejoue integralement, cinq inversions
+jouees).
+
+**Decision technique principale** — G2, requalifie P1 par le superviseur, est le constat qui
+a change une regle de mesure sur DEUX surfaces : le denominateur « par match » comptait des
+matchs ILLISIBLES. Le numerateur ne peut venir que des matchs dont le journal des morts a ete
+lu ; le denominateur comptait tous les matchs du filtre. Or les films Theater EXPIRENT cote
+serveur : deux filtres sur le meme jeu, l'un a 20 matchs decodes sur 20 et l'autre a 2 sur 20,
+rendaient 0,20 et 0,02 — la grandeur que le contrat annonce « comparable d'un filtre a
+l'autre » ne l'etait pas. C'est le PENDANT EXACT du defaut P0 de la phase 1, et la nuance
+tient en une phrase : le zero LEGITIME compte au denominateur (un match joue ou je n'ai pas
+tue), l'ILLISIBLE est compte A PART (un match dont on ne sait rien). Le lecteur rend donc un
+drapeau `Mesure` par match (EXISTS sur `match_kill_events_latest`, `publishable` exige comme
+dans les deux lectures — sans quoi un match compterait comme mesure sur une page et pas sur
+l'autre), et les deux contrats publient les DEUX comptes.
+
+**PIEGE RETENU, et il valait un P0** — un wrapper de chart qui DEDUIT ses categories d'axe de
+l'ordre d'apparition des points impose une contrainte silencieuse a tous ses appelants :
+emettre les cases DANS L'ORDRE, sans trou. `matriceSeries` sautait la diagonale (« personne ne
+se venge soi-meme ») ; la premiere COLONNE rencontree etait donc le DEUXIEME joueur, et la
+matrice sortait avec ses colonnes decalees d'un cran — sur un duo, les deux axes exactement
+inverses. Rien ne le signalait : la grille etait pleine, les nombres justes, les etiquettes
+presentes. Une case impossible doit etre EMISE et dite vide, jamais omise.
+
+**Deuxieme piege, du meme genre** — une couleur « neutre » n'existe pas par decret. Mesure sur
+les quatre palettes d'accessibilite : AUCUN token semantique du depot n'est achromatique
+partout, et `divergent-neutral` — le candidat evident, celui que la doc du composant
+proclamait « le gris neutre de la maison » — vaut #60A5FA (blue-400) dans la palette PAR
+DEFAUT, soit PLUS soutenu que la serie qu'il devait accompagner. L'attenuation passe donc par
+la couleur de serie elle-meme (opacite + liseré tireté), qui n'a aucune dependance de palette.
+
+**Resultats observes** — Go : `go vet` propre sur 9 arbres, `go test -count=1` vert sur tous
+(duckdb 65,9 s ; api 24,8 s ; service 11,8 s ; teammates 0,38 s ; archlint 13,3 s),
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue, `openapi-gen -check` a jour. Web :
+typecheck propre, lint 0 erreur, vitest 82 fichiers / 743 tests verts,
+`lint-no-hardcoded-colors` 0 violation, `lint-cross-feature-imports` toujours a 7/7.
+
+**Conclusion / prochaine etape** — les 12 constats sont soldes, aucun report. L'item 3.7 reste
+`[!]` (le hook `useDataCapability` arrive avec le lot C). Non pousse : le superviseur pousse
+apres verification et lance la ronde 2 sur ces corrections.

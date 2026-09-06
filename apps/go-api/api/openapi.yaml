@@ -25681,6 +25681,9 @@ components:
         matchs_defaite:
           format: int64
           type: integer
+        matchs_filtres:
+          format: int64
+          type: integer
         matchs_retenus:
           format: int64
           type: integer
@@ -25701,6 +25704,7 @@ components:
         - map_id
         - question
         - qui
+        - matchs_filtres
         - matchs_retenus
         - matchs_victoire
         - matchs_defaite

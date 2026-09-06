@@ -3,6 +3,7 @@ package teammates
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -75,9 +76,26 @@ func equipesDeuxContreDeux(matchs ...string) domain.EquipesParMatch {
 func universDe(matchs ...string) domain.TacticalUnivers {
 	u := domain.TacticalUnivers{Equipes: equipesDeuxContreDeux(matchs...)}
 	for _, id := range matchs {
-		u.Matchs = append(u.Matchs, domain.TacticalMatch{MatchID: id, Outcome: domain.OutcomeWin})
+		u.Matchs = append(u.Matchs,
+			domain.TacticalMatch{MatchID: id, Outcome: domain.OutcomeWin, Mesure: true})
 	}
 	return u
+}
+
+// universAvecMuets : `mesures` matchs portant un journal, puis `muets` matchs
+// RETENUS PAR LE FILTRE dont le film n'a jamais ete decode.
+func universAvecMuets(mesures, muets int) ([]string, domain.TacticalUnivers) {
+	ids := make([]string, 0, mesures+muets)
+	for i := 0; i < mesures+muets; i++ {
+		ids = append(ids, fmt.Sprintf("m%02d", i))
+	}
+	u := domain.TacticalUnivers{Equipes: equipesDeuxContreDeux(ids...)}
+	for i, id := range ids {
+		u.Matchs = append(u.Matchs, domain.TacticalMatch{
+			MatchID: id, Outcome: domain.OutcomeWin, Mesure: i < mesures,
+		})
+	}
+	return ids, u
 }
 
 func svcEchange(repo *mockTacticalRepo, caps games.CapabilityMap) *TeammatesService {
@@ -334,30 +352,46 @@ func TestBuildSquadEchange_CampEtHabituel(t *testing.T) {
 	}
 }
 
-// TestBuildSquadEchange_MatchMuetAuDenominateur : un match RETENU sans aucune mort
-// mesuree reste au denominateur « par match » de la matrice — le deduire des evenements
-// l'effacerait (defaut mesure en phase 1 du plan tactique).
-func TestBuildSquadEchange_MatchMuetAuDenominateur(t *testing.T) {
+// TestBuildSquadEchange_ParMatchSurLesMesures — CORRECTION G2, et c'est LE test du lot.
+//
+// Vingt matchs retenus par le filtre, DEUX seulement dont le film a ete decode. Le
+// numerateur ne peut venir que de ces deux-la : le denominateur « par match » doit donc
+// etre 2, pas 20. Sinon la grandeur que le contrat annonce « comparable d'un filtre a
+// l'autre » varie avec la COUVERTURE DE FILM — les films Theater expirent, et deux
+// filtres sur le meme jeu rendraient 0,50 et 0,05.
+//
+// Le compte du filtre reste publie a part : le bandeau dit « 2 mesures sur 20 ».
+func TestBuildSquadEchange_ParMatchSurLesMesures(t *testing.T) {
+	ids, univers := universAvecMuets(2, 18)
 	repo := &mockTacticalRepo{lecture: domain.TacticalKillEvents{
-		Univers: universDe("m1", "m2"),
+		Univers: univers,
 		Events: []domain.KillEvent{
-			{MatchID: "m1", KillerXUID: "x_adv1", VictimXUID: "x_main", TimeMs: 1000},
-			{MatchID: "m1", KillerXUID: "x_Ami", VictimXUID: "x_adv1", TimeMs: 2000},
+			{MatchID: ids[0], KillerXUID: "x_adv1", VictimXUID: "x_main", TimeMs: 1000},
+			{MatchID: ids[0], KillerXUID: "x_Ami", VictimXUID: "x_adv1", TimeMs: 2000},
+			{MatchID: ids[1], KillerXUID: "x_adv1", VictimXUID: "x_main", TimeMs: 1000},
 		},
 	}}
+	rows := echangeRows(ids...)
 	got := svcEchange(repo, capsFiables()).buildSquadEchange(context.Background(),
-		echangeRows("m1", "m2"), echangeRows("m1", "m2"), "main", "x_main", echangeMates("Ami"))
+		rows, rows, "main", "x_main", echangeMates("Ami"))
 	if got == nil {
 		t.Fatal("section attendue, obtenu nil")
 	}
-	if got.MatchsTotal != 2 || got.MatchsMesures != 1 {
-		t.Errorf("couverture = %d/%d, attendue 1 mesure sur 2", got.MatchsMesures, got.MatchsTotal)
+	if got.MatchsTotal != 20 || got.MatchsMesures != 2 {
+		t.Fatalf("bandeau = %d mesures sur %d, attendu 2 sur 20",
+			got.MatchsMesures, got.MatchsTotal)
 	}
+	// Une seule vengeance, sur DEUX matchs mesures.
 	if len(got.Cellules) != 1 || got.Cellules[0].ParMatch != 0.5 {
-		t.Errorf("par_match = %+v, attendu 0,5 (1 echange sur 2 matchs RETENUS)", got.Cellules)
+		t.Errorf("par_match de la matrice = %+v, attendu 0,5 (1 echange / 2 matchs MESURES)",
+			got.Cellules)
+	}
+	if got.Couverture.Brut != 1 || got.Couverture.N != 2 {
+		t.Errorf("couverture = %d/%d, attendue 1/2", got.Couverture.Brut, got.Couverture.N)
 	}
 	if got.Couverture.ParMatch != 0.5 {
-		t.Errorf("couverture par match = %v, attendue 0,5", got.Couverture.ParMatch)
+		t.Errorf("couverture par match = %v, attendue 0,5 — pas 0,05 (le denominateur "+
+			"n'est PAS les 20 matchs du filtre)", got.Couverture.ParMatch)
 	}
 }
 

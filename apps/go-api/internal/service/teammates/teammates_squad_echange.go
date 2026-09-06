@@ -118,16 +118,23 @@ func (s *TeammatesService) buildSquadEchange(
 		MatchsMesures: mesures,
 		MatchsTotal:   len(scopeIDs),
 	}
+	// LE DENOMINATEUR « PAR MATCH », C'EST LES MATCHS MESURES (correction G2,
+	// 2026-09-06). Le numerateur ne peut venir que des matchs dont le journal des
+	// morts est lisible ; diviser par TOUS les matchs du filtre ferait varier la
+	// grandeur avec la couverture de film au lieu du jeu — 20 matchs sur 20 decodes
+	// et 2 sur 20 rendraient 0,20 et 0,02 pour exactement le meme jeu. Le compte du
+	// filtre reste publie a part (MatchsTotal), et le bandeau dit « N mesures sur M ».
 	bilan := coordination.Echanges(scope.Events, scope.Univers.Equipes)
 	campScope := campDuJoueur(scope.Univers.Equipes, mainXUID)
-	out.Couverture = couvertureDuCamp(bilan.Morts, campScope, len(scopeIDs))
-	out.Cellules = cellulesDuRoster(bilan.Paires, gtByXUID, len(scopeIDs))
+	out.Couverture = couvertureDuCamp(bilan.Morts, campScope, mesures)
+	out.Cellules = cellulesDuRoster(bilan.Paires, gtByXUID, mesures)
 	out.Delais = distributionDesDelais(scope, campScope)
 
 	habituel := restreindreAuxMatchs(lecture, habituelIDs)
 	bilanHabituel := coordination.Echanges(habituel.Events, habituel.Univers.Equipes)
 	out.Habituel = couvertureDuCamp(
-		bilanHabituel.Morts, campDuJoueur(habituel.Univers.Equipes, mainXUID), len(habituelIDs))
+		bilanHabituel.Morts, campDuJoueur(habituel.Univers.Equipes, mainXUID),
+		matchsMesures(habituel))
 	out.MatchsHabituel = len(habituelIDs)
 
 	slog.InfoContext(ctx, "teammates_echange",
@@ -200,9 +207,12 @@ func campDuJoueur(equipes domain.EquipesParMatch, moi string) func(matchID, xuid
 	}
 }
 
-// couvertureDuCamp mesure le taux d'echange sur les morts de mon camp. Le denominateur
-// exclut les morts NON VENGEABLES (tueur inconnu, equipes inconnues) : compter comme un
-// echec une mort que personne ne pouvait venger fausserait la mesure.
+// couvertureDuCamp mesure le taux d'echange sur les morts de mon camp.
+//
+// Le denominateur du TAUX exclut les morts NON VENGEABLES (tueur inconnu, equipes
+// inconnues) : compter comme un echec une mort que personne ne pouvait venger
+// fausserait la mesure. `matchs` est le denominateur de la quantite PAR MATCH, et
+// c'est le nombre de matchs MESURES — cf. G2.
 func couvertureDuCamp(morts []domain.MortSuivie, camp func(string, string) bool, matchs int) domain.Couverture {
 	vengeables, vengees := 0, 0
 	for _, m := range morts {
@@ -227,7 +237,8 @@ func joueursDuRoster(xuidsOrdered []string, gtByXUID map[string]string) []domain
 	return out
 }
 
-// cellulesDuRoster garde les couples dont LES DEUX cotes sont au roster.
+// cellulesDuRoster garde les couples dont LES DEUX cotes sont au roster. `matchs` est
+// le nombre de matchs MESURES : c'est le denominateur de la quantite par match (G2).
 //
 // Un vengeur de passage (allie non selectionne) compte bien au KPI — il est de mon camp —
 // mais n'a aucune ligne dans la matrice : la page ne sait pas le nommer, et afficher un
