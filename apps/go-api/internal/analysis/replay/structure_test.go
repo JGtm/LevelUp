@@ -824,14 +824,14 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CONTENU de `skullCarries` (et, latent, de `bombCarries`) qui change. Le gate de présence
 	//   de `af89b091b` (2026-08-30) n'indexait que les vies NOMMÉES et lisait « aucune vie nommée
 	//   de X ne couvre l'intervalle » comme « X est absent de la carte » — alors que le pont
-	//   laisse des vies anonymes (18 slots sur 142 sur `d9781168`). Mesure par une chaîne
-	//   INDÉPENDANTE : en Oddball le score EST le temps de portage, et la feuille de match donne
-	//   191 s / 196 s par équipe sur `d9781168` ; l'artefact publiait 60,1 s / 147,4 s, contre
-	//   172,5 s / 158,8 s pour l'artefact du parc au schéma 23. Le gate écartait 6 portages sur
-	//   36 (32,6 s) et en rognait 4 autres (91,2 s). Touche aussi `51ebbc0f` (7 portages sur 14)
-	//   et `24dbb67d` (3 sur 20). La version monte pour la raison des montées v39/v40/v41 : un
-	//   artefact 23 à 42 est appauvri sans que sa forme le dise, et `backfill-replay` saute un
-	//   artefact qui porte la version courante.
+	//   laisse des vies anonymes (18 slots sur 160 sur `d9781168` — 142 portent au moins une vie
+	//   nommée, ces 18-là aucune). Mesure par une chaîne INDÉPENDANTE : en Oddball le score EST le
+	//   temps de portage, et la feuille de match donne 191 s / 196 s par équipe sur `d9781168` ;
+	//   l'artefact publiait 60,1 s / 147,4 s, contre 172,5 s / 158,8 s pour l'artefact du parc au
+	//   schéma 23. Le gate écartait 6 portages sur 36 (32,6 s) et en rognait 4 autres (91,2 s).
+	//   Touche aussi `51ebbc0f` (7 portages sur 14) et `24dbb67d` (3 sur 20). La version monte
+	//   pour la raison des montées v39/v40/v41 : un artefact 23 à 42 est appauvri sans que sa
+	//   forme le dise, et `backfill-replay` saute un artefact qui porte la version courante.
 	//   42 EST RÉSERVÉ au complément des ports de drapeau, en cours sur une autre branche : deux
 	//   chantiers parallèles ne peuvent pas revendiquer le même numéro, celui-ci prend 43.
 	//   Détail : internal/analysis/replay/skull_carries.go (carrierPresence.gate) et

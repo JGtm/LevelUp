@@ -127,3 +127,49 @@ func TestBombCarriesGuards(t *testing.T) {
 		t.Fatalf("pont vide : couverture %+v, attendu {BombFilm, Events 1, Carries 0}", cov)
 	}
 }
+
+// TestBombCarriesVieAnonymeNEstPasUneAbsence — le PENDANT BOMBE du test du crane, sur le gate
+// MUTUALISE (`carrierPresence.gate`). Memes evenements et meme presence nommee que
+// TestBombCarriesBridgeAndPresence, plus UNE vie anonyme qui recouvre les deux portages : le
+// fantome n'en est plus un et le rognage ne s'applique plus. Une vie sans nom est une presence
+// sans identite, pas une absence — et ce calque-la doit le savoir aussi.
+//
+// Le pont, lui, est INTOUCHE : le slot 9 reste `NoBridge`. L'abstention porte sur la PRESENCE,
+// jamais sur l'identite.
+func TestBombCarriesVieAnonymeNEstPasUneAbsence(t *testing.T) {
+	slotXUID := map[uint32]uint64{3: 111, 7: 222}
+	evs := []HeldObjectEvent{
+		{TimeMS: 1_000, Slot: 3, Pickup: true}, {TimeMS: 3_000, Slot: 3, Pickup: false},
+		{TimeMS: 4_000, Slot: 9, Pickup: true}, {TimeMS: 5_000, Slot: 9, Pickup: false}, // non ponte
+		{TimeMS: 6_000, Slot: 7, Pickup: true}, {TimeMS: 9_000, Slot: 7, Pickup: false},
+	}
+	presence := carrierPresence{
+		named: map[string][]presenceSpan{
+			"111": {{f0: 0, f1: 2_000}},       // sans la vie anonyme : rognage de [1000,3000] a 2000
+			"222": {{f0: 12_000, f1: 15_000}}, // sans la vie anonyme : [6000,9000] ecarte en fantome
+		},
+		unnamed: []presenceSpan{{f0: 500, f1: 11_000}}, // recouvre les DEUX portages
+	}
+	carries, cov := buildBombCarries(bombTestCarry(evs, slotXUID, nil),
+		matchClock{origin: 0, step: 1000, frames: 20_000}, presence)
+
+	if len(carries) != 2 {
+		t.Fatalf("portages = %d, attendu 2 (aucun ecarte) : %+v", len(carries), carries)
+	}
+	if cov.CarrierAbsent != 0 {
+		t.Errorf("CarrierAbsent = %d, attendu 0 : une vie anonyme couvre l'intervalle", cov.CarrierAbsent)
+	}
+	// Le portage de 111 garde ses bornes : le rognage s'abstient lui aussi.
+	if carries[0].XUID != "111" || carries[0].T0 != 1_000 || carries[0].T1 != 3_000 {
+		t.Errorf("portage 111 = %+v, attendu {111 1000 3000} NON rogne", carries[0])
+	}
+	if carries[1].XUID != "222" || carries[1].T0 != 6_000 || carries[1].T1 != 9_000 {
+		t.Errorf("portage 222 = %+v, attendu {222 6000 9000} publie", carries[1])
+	}
+	if cov.NoBridge != 1 || cov.Periods != 3 {
+		t.Errorf("couverture = %+v, attendu NoBridge 1 (le pont est intouche), Periods 3", cov)
+	}
+	if !cov.Balanced() {
+		t.Errorf("couverture desequilibree : %+v", cov)
+	}
+}

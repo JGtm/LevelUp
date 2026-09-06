@@ -149,11 +149,12 @@ type presenceSpan struct{ f0, f1 int }
 // POURQUOI DEUX CHAMPS ET PAS UNE SEULE MAP. Le gate de presence (2026-08-30) a d'abord indexe
 // les seules vies NOMMEES, et lu « aucune vie nommee de X ne couvre l'intervalle » comme « X est
 // ABSENT de la carte ». C'est un faux syllogisme : le pont d'identite laisse des vies ANONYMES
-// (18 slots sur 142 sur `d9781168`), et une vie anonyme est une PRESENCE SANS IDENTITE, pas une
-// absence. Mesure du 2026-09-06, chaine independante : en Oddball le score EST le temps de
-// portage, et la feuille de match donne 191 s / 196 s par equipe sur `d9781168` ; le gate publiait
-// 60,1 s / 147,4 s. Il ecartait deux tiers du temps de portage d'une equipe, en croyant ecarter
-// des fantomes. Le champ `unnamed` est ce qui rend l'ignorance VISIBLE au gate.
+// (18 slots sur 160 sur `d9781168` — 142 portent au moins une vie nommee, ces 18-la aucune), et
+// une vie anonyme est une PRESENCE SANS IDENTITE, pas une absence. Mesure du 2026-09-06, chaine
+// independante : en Oddball le score EST le temps de portage, et la feuille de match donne
+// 191 s / 196 s par equipe sur `d9781168` ; le gate publiait 60,1 s / 147,4 s. Il ecartait deux
+// tiers du temps de portage d'une equipe, en croyant ecarter des fantomes. Le champ `unnamed`
+// est ce qui rend l'ignorance VISIBLE au gate.
 type carrierPresence struct {
 	// named : les vies publiees et NOMMEES, groupees par xuid.
 	named map[string][]presenceSpan
