@@ -231,14 +231,26 @@ func livraisonVotesDe(dossier string, votes []livraisonVote) []livraisonVote {
 	return out
 }
 
+// livraisonFichierDuVote rend le fichier designe par un vote — port de
+// livraison.py:fichierDuVote ET du `if f:` que ses DEUX appelants lui appliquent, reunis
+// dans le booleen rendu.
+//
+// UNE CHAINE VIDE EST UNE VALEUR FAUSSE, PAS UN FICHIER. Python rend `ret[0]` des que
+// `exemples_retenus` est non vide — meme si ce premier element vaut `""` — et ce sont les
+// appelants qui l'ecartent : le vote est saute, et l'on passe au SUIVANT (jamais un repli
+// sur `exemples_proposes` du meme vote). Rendre `("", true)` faisait construire une source
+// `"<dossier>/"`, que `os.Stat` accepte (c'est un repertoire) et que la troncature refuse :
+// le run entier avortait — apres que le miroir avait deja efface les `hinf_*.wav` (constat
+// C7 de la revue R1).
 func livraisonFichierDuVote(v livraisonVote) (string, bool) {
-	if len(v.ExemplesRetenus) > 0 {
-		return v.ExemplesRetenus[0], true
+	f := ""
+	switch {
+	case len(v.ExemplesRetenus) > 0:
+		f = v.ExemplesRetenus[0]
+	case len(v.ExemplesProposes) > 0:
+		f = v.ExemplesProposes[0]
 	}
-	if len(v.ExemplesProposes) > 0 {
-		return v.ExemplesProposes[0], true
-	}
-	return "", false
+	return f, f != ""
 }
 
 var clefCoupRe = regexp.MustCompile(`^_coup_m(\d+)_(1p|3p)$`)
