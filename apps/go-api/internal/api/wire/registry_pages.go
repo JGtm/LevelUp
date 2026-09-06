@@ -162,14 +162,15 @@ func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayServ
 // sur les capabilities HI du boot). JAMAIS une comparaison de slug. Un titre qui
 // n'expose pas les positions rend ErrCapabilityNotSupported → 503 propre.
 //
-// La taxonomie de modes est celle du MatchViewRepo et du MediaRepo : sans elle, le
-// filtre `mode` du vocabulaire de l'Explorateur serait ignoré en silence.
+// AUCUNE TAXONOMIE DE MODES (retrait phase 4 bis, 2026-09-06) : le lecteur tactique
+// ne filtre plus par mode. Son périmètre est une liste blanche de match_id, résolue
+// en amont par le pipeline de filtres sur la base joueur.
 func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.TacticalService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
-	repo := duckdb.NewTacticalRepo(pdb).WithModeTaxonomy(haloInfiniteModeTaxonomy())
+	repo := duckdb.NewTacticalRepo(pdb)
 	return service.NewTacticalService(repo, r.capabilitiesForPDB(pdb), pdb.XUID), nil
 }
 

@@ -222,9 +222,7 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		// morts que l'onglet Tactique, et les capabilities du titre du joueur pour sa
 		// seule porte data-level. Titre qui ne nomme pas le tueur de chaque mort →
 		// section absente du contrat (jamais des zéros). Jamais une comparaison de slug.
-		WithEchange(
-			duckdb.NewTacticalRepo(pdb).WithModeTaxonomy(haloInfiniteModeTaxonomy()),
-			r.capabilitiesForPDB(pdb))
+		WithEchange(duckdb.NewTacticalRepo(pdb), r.capabilitiesForPDB(pdb))
 	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
 	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
 	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.

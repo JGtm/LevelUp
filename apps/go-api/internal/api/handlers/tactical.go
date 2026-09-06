@@ -1,17 +1,28 @@
 // Package handlers — tactical.go : les endpoints de l'onglet Tactique.
 //
-//	GET /players/{player_slug}/tactical/maps
-//	GET /players/{player_slug}/tactical/{map_id}/raster?question=&qui=&<filtre>
-//	GET /players/{player_slug}/tactical/{map_id}/background      (calage du fond)
-//	GET /players/{player_slug}/tactical/{map_id}/background.png  (image du fond)
+//	POST /players/{player_slug}/tactical/maps                    (corps : perimetre)
+//	POST /players/{player_slug}/tactical/{map_id}/raster          (corps : perimetre + lecture)
+//	GET  /players/{player_slug}/tactical/{map_id}/background      (calage du fond)
+//	GET  /players/{player_slug}/tactical/{map_id}/background.png  (image du fond)
 //
 // Montes sur le sous-routeur /players/{player_slug} — ownership (ADR 0029) et
 // titre herites du groupe, comme /replay et /matches/{id}/events.
 //
-// ZERO LOGIQUE ICI. Le handler decode, delegue, traduit un refus en statut. Le
-// vocabulaire de filtre est celui de l'Explorateur (playlist, mode, from, to,
-// session, outcome, with_player) et sa validation reutilise les predicats deja
-// poses par match_view.go — meme paquet, aucune regex recopiee.
+// ─── DEUX POST DE LECTURE, ET C'EST LE MOTIF DU DEPOT ──────────────────────────
+//
+// Les deux lectures prennent un CORPS parce que leur perimetre est une LISTE DE
+// match_id : elle ne tient pas dans une query string (phase 4 bis, 2026-09-06). Meme
+// forme que /pages/*, /filters/* et /engagement/timeseries — des POST qui ne mutent
+// rien, declares comme tels dans middleware.readOnlyPostPrefixes (sans quoi la garde
+// d'ecriture du groupe joueur refuserait un visiteur anonyme sur une simple lecture).
+//
+// LES ANCIENS PARAMETRES PLATS DE FILTRE ONT DISPARU du contrat (playlist, mode,
+// from, to, outcome, with_player) : le client fait resoudre sa selection par
+// /filters/match-ids — le MEME pipeline que le compteur de l'omnibar, base joueur,
+// donc sessions comprises — et envoie le resultat. Une seule definition du perimetre
+// dans l'app.
+//
+// ZERO LOGIQUE ICI. Le handler decode, delegue, traduit un refus en statut.
 package handlers
 
 import (
@@ -22,12 +33,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/replaydoc"
@@ -64,9 +73,9 @@ func NewTacticalHandler(
 // proteger.
 func (h *TacticalHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/tactical/maps", h.handleGetMaps,
+	huma.Post(api, "/tactical/maps", h.handleGetMaps,
 		humacore.Op("getTacticalMaps", "Cartes jouees, pour la grille d'entree de l'onglet Tactique", "tactical"))
-	huma.Get(api, "/tactical/{map_id}/raster", h.handleGetRaster,
+	huma.Post(api, "/tactical/{map_id}/raster", h.handleGetRaster,
 		humacore.Op("getTacticalRaster", "Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne)", "tactical"))
 	huma.Get(api, "/tactical/{map_id}/background", h.handleGetMapBackground,
 		humacore.Op("getTacticalMapBackground", "Calage du fond d'une carte de l'onglet Tactique", "tactical"))
@@ -74,34 +83,46 @@ func (h *TacticalHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	r.Get("/tactical/{map_id}/background.png", h.handleGetMapBackgroundImage)
 }
 
-// TacticalFilterQuery porte le vocabulaire de filtre de l'Explorateur, et lui
-// seul. Struct EMBARQUEE dans les deux entrees : les deux ecrans filtrent la meme
-// chose, et deux declarations divergeraient au premier axe ajoute.
+// LE PERIMETRE, et il est le meme pour les deux lectures.
 //
-// PAS DE `session` (retrait du 2026-09-06, T11) : `MatchFilterSpec` porte bien un
-// `SessionID`, mais `analysis.BuildNeighborsWhereClause` le range dans
-// `IgnoredFilters` sans jamais l'appliquer — les sessions vivent dans la base
-// JOUEUR (`player_match_enrichment`), que ces requetes shared ne joignent pas. Un
-// parametre accepte, documente au contrat, et silencieusement sans effet est pire
-// qu'un parametre absent : l'appelant croit avoir filtre. On n'accepte pas ce
-// qu'on n'honore pas.
+// UNE LISTE BLANCHE, PAS DES AXES DE FILTRE (phase 4 bis, 2026-09-06). Le client
+// resout sa selection par POST /filters/match-ids — periode OU sessions epinglees,
+// contexte solo/escouade/mixte, cascade, sur la base JOUEUR — et poste les match_id.
+// C'est ce qui fait MARCHER le filtre de session ici : les sessions vivent dans la
+// base joueur, que les requetes shared du lecteur tactique ne joignent pas.
 //
-// EXPORTEE, et c'est OBLIGATOIRE : Huma lie les parametres par reflexion, et un
-// champ embarque de type NON exporte n'est pas assignable — les filtres arrivaient
-// alors tous vides, sans erreur (piege verifie par
-// TestTacticalHandler_FiltreExplorateur).
-type TacticalFilterQuery struct {
-	Playlist   string `query:"playlist" doc:"Playlists, separees par une virgule."`
-	Mode       string `query:"mode" doc:"Categories de mode, separees par une virgule."`
-	From       string `query:"from" doc:"Borne basse (RFC3339)."`
-	To         string `query:"to" doc:"Borne haute (RFC3339)."`
-	Outcome    string `query:"outcome" doc:"Issue : win | loss | draw | dnf."`
-	WithPlayer string `query:"with_player" doc:"XUID (entier decimal) devant avoir participe au match."`
+// `match_ids` ABSENT VAUT LISTE VIDE, DONC AUCUN MATCH. Le contraire — « pas de
+// liste, donc tout l'historique » — servirait la totalite a un client qui a rate son
+// corps, et l'ecart ne se verrait qu'a la lecture des chiffres.
+//
+// LES DEUX CHAMPS SONT ECRITS DEUX FOIS, ET C'EST HUMA QUI L'IMPOSE : il ne met pas a
+// plat une struct EMBARQUEE dans un corps (il en fait une propriete a part entiere,
+// et le corps aplati est alors refuse en 422 — piege mesure ici meme). Une struct
+// partagee par embarquement etait la premiere ecriture ; elle rendait les deux routes
+// inutilisables. La conversion vers le domaine, elle, reste UNE seule fonction
+// (scopeDepuis) : c'est la partie qui pourrait diverger en silence.
+type tacticalMapsBody struct {
+	MatchIDs    []string `json:"match_ids,omitempty" doc:"Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match."`
+	Coequipiers []string `json:"coequipiers,omitempty" doc:"XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe."`
+}
+
+// tacticalRasterBody : le meme perimetre, plus ce qu'on lit dessus.
+type tacticalRasterBody struct {
+	MatchIDs    []string `json:"match_ids,omitempty" doc:"Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match."`
+	Coequipiers []string `json:"coequipiers,omitempty" doc:"XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade »."`
+	Question    string   `json:"question,omitempty" doc:"Lecture : morts | kills | gagne. Defaut : morts."`
+	Qui         string   `json:"qui,omitempty" doc:"Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers."`
+}
+
+// scopeDepuis : LA traduction du corps vers le perimetre de service, pour les deux
+// routes.
+func scopeDepuis(matchIDs, coequipiers []string) domain.TacticalScope {
+	return domain.TacticalScope{MatchIDs: matchIDs, Coequipiers: coequipiers}
 }
 
 type tacticalMapsInput struct {
 	PlayerSlug string `path:"player_slug"`
-	TacticalFilterQuery
+	Body       tacticalMapsBody
 }
 
 type tacticalMapsOutput struct{ Body domain.TacticalMapsPage }
@@ -109,9 +130,7 @@ type tacticalMapsOutput struct{ Body domain.TacticalMapsPage }
 type tacticalRasterInput struct {
 	PlayerSlug string `path:"player_slug"`
 	MapID      string `path:"map_id"`
-	Question   string `query:"question" doc:"Lecture : morts | kills | gagne. Defaut : morts."`
-	Qui        string `query:"qui" doc:"Axe : moi | escouade | adv. Defaut : moi."`
-	TacticalFilterQuery
+	Body       tacticalRasterBody
 }
 
 type tacticalRasterOutput struct{ Body domain.TacticalRaster }
@@ -122,7 +141,7 @@ func (h *TacticalHandler) handleGetMaps(ctx context.Context, in *tacticalMapsInp
 	if err != nil {
 		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
-	page, err := svc.MapsPlayed(ctx, in.spec(ctx))
+	page, err := svc.MapsPlayed(ctx, scopeDepuis(in.Body.MatchIDs, in.Body.Coequipiers))
 	if err != nil {
 		return nil, mapTacticalError(ctx, err, "tactical.maps")
 	}
@@ -147,10 +166,12 @@ func (h *TacticalHandler) handleGetRaster(ctx context.Context, in *tacticalRaste
 	if err != nil {
 		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
-	raster, err := svc.Raster(ctx, mapID,
-		defautSiVide(in.Question, domain.TacticalQuestionMorts),
-		defautSiVide(in.Qui, domain.TacticalQuiMoi),
-		in.spec(ctx))
+	raster, err := svc.Raster(ctx, domain.TacticalRasterRequest{
+		MapID:    mapID,
+		Question: defautSiVide(in.Body.Question, domain.TacticalQuestionMorts),
+		Qui:      defautSiVide(in.Body.Qui, domain.TacticalQuiMoi),
+		Scope:    scopeDepuis(in.Body.MatchIDs, in.Body.Coequipiers),
+	})
 	if err != nil {
 		return nil, mapTacticalError(ctx, err, "tactical.raster")
 	}
@@ -325,61 +346,15 @@ func mapTacticalError(ctx context.Context, err error, probe string) error {
 		return humacore.NewError(http.StatusBadRequest, "tactical_question_unknown", err.Error())
 	case errors.Is(err, domain.ErrTacticalQuiInconnu):
 		return humacore.NewError(http.StatusBadRequest, "tactical_axis_unknown", err.Error())
+	case errors.Is(err, domain.ErrTacticalEscouadeSansComposition):
+		// Code PROPRE, distinct de l'axe inconnu : l'axe demande EXISTE, c'est la
+		// composition qui manque. Un `tactical_axis_unknown` enverrait le client
+		// corriger le mauvais parametre.
+		return humacore.NewError(http.StatusBadRequest, "tactical_squad_axis_without_composition", err.Error())
 	}
 	if mapped, ok := MapCapabilityError(ctx, err, probe); ok {
 		return mapped
 	}
 	slog.ErrorContext(ctx, "tactique: lecture en echec", "probe", probe, "err", err)
 	return humacore.NewError(http.StatusInternalServerError, "tactical_error", err.Error())
-}
-
-// spec assemble le MatchFilterSpec de l'Explorateur.
-//
-// Un axe invalide est IGNORE avec un log (jamais un 400) — meme politique que
-// parseNeighborsFilterSpec, dont ce code reutilise les predicats
-// (playlistOrSessionPattern, xuidPattern, parseCsvFilterParam). Un filtre
-// d'affichage qui ferait echouer la page pour une valeur mal formee rendrait un
-// lien partage inutilisable.
-func (f TacticalFilterQuery) spec(ctx context.Context) *domain.MatchFilterSpec {
-	spec := &domain.MatchFilterSpec{
-		PlaylistNames:  parseCsvFilterParam(ctx, f.Playlist, "playlist"),
-		ModeCategories: parseCsvFilterParam(ctx, f.Mode, "mode"),
-	}
-	if v := strings.TrimSpace(f.Outcome); v != "" {
-		affecterSiValide(ctx, "outcome", v, analysis.IsValidOutcomeLabel, &spec.Outcome)
-	}
-	if v := strings.TrimSpace(f.WithPlayer); v != "" {
-		affecterSiValide(ctx, "with_player", v, xuidPattern.MatchString, &spec.WithPlayerXuid)
-	}
-	spec.DateFrom = parseBorneDate(ctx, f.From, "from")
-	spec.DateTo = parseBorneDate(ctx, f.To, "to")
-	if spec.IsEmpty() {
-		return nil
-	}
-	return spec
-}
-
-// affecterSiValide pose la valeur si elle passe le predicat, journalise sinon.
-func affecterSiValide(ctx context.Context, param, valeur string, valide func(string) bool, cible **string) {
-	if !valide(valeur) {
-		slog.WarnContext(ctx, "tactique: filtre invalide ignore", "param", param, "value", valeur)
-		return
-	}
-	v := valeur
-	*cible = &v
-}
-
-// parseBorneDate lit une borne RFC3339 ; nil (avec log) si elle ne se lit pas.
-func parseBorneDate(ctx context.Context, raw, param string) *time.Time {
-	v := strings.TrimSpace(raw)
-	if v == "" {
-		return nil
-	}
-	t, err := time.Parse(time.RFC3339, v)
-	if err != nil {
-		slog.WarnContext(ctx, "tactique: filtre invalide ignore",
-			"param", param, "value", v, "err", err)
-		return nil
-	}
-	return &t
 }

@@ -31,11 +31,13 @@
 // Une passe non publiable est donc ECARTEE ici, comme dans KillDistanceRepo, et
 // contrairement a KillSourceClassRepo (qui, lui, ne produit que des cumuls).
 //
-// ─── AUCUN FILTRE, AUCUN SCAN ──────────────────────────────────────────────────
+// ─── AUCUN SCAN ────────────────────────────────────────────────────────────────
 //
 // Toute lecture est bornee par le joueur (`mp.xuid = ?`). La lecture SPATIALE
 // (KillPositions) l'est en plus par une CARTE : un xuid vide ou une carte vide y
-// sont un REFUS, jamais un balayage de `shared.kill_positions` en entier.
+// sont un REFUS, jamais un balayage de `shared.kill_positions` en entier. Le
+// PERIMETRE (liste blanche de match_id, composition) vient de l'appelant et se pose
+// au meme endroit pour les trois lectures — cf. tactical_repo_univers.go.
 //
 // KillEvents, elle, accepte une carte VIDE depuis le 2026-09-06 (phase 3) : la
 // page Escouade lit le journal des morts d'une COMPOSITION, qui n'a pas de carte,
@@ -50,10 +52,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 )
@@ -63,14 +63,13 @@ import (
 const tacticalReadTimeout = 30 * time.Second
 
 // TacticalRepo implemente port.TacticalRepository.
+//
+// AUCUNE TAXONOMIE DE MODES ICI (retrait phase 4 bis, 2026-09-06) : ce lecteur ne
+// classe plus rien, il applique une liste blanche de match_id. La cascade
+// playlists / modes est resolue en amont, sur la base joueur, par le meme
+// pipeline que l'Explorateur.
 type TacticalRepo struct {
 	pdb *PlayerDB
-
-	// modeTax resout les prefixes `pair_name` d'une categorie de mode du filtre.
-	// Zero-value = aucune classification : le filtre `mode` est alors IGNORE
-	// (degradation gracieuse, cf. analysis.BuildNeighborsWhereClause) plutot
-	// qu'une comparaison de slug.
-	modeTax analysis.ModeTaxonomy
 }
 
 // NewTacticalRepo cree un TacticalRepo lie a un PlayerDB.
@@ -78,117 +77,9 @@ func NewTacticalRepo(pdb *PlayerDB) *TacticalRepo {
 	return &TacticalRepo{pdb: pdb}
 }
 
-// WithModeTaxonomy injecte la taxonomie de modes du titre (chainable).
-func (r *TacticalRepo) WithModeTaxonomy(t analysis.ModeTaxonomy) *TacticalRepo {
-	r.modeTax = t
-	return r
-}
-
-// ─── L'UNIVERS ─────────────────────────────────────────────────────────────────
-
-// QTacticalUnivers est le SELECT des matchs RETENUS : ceux du joueur, sur la
-// carte demandee quand il y en a une, qui passent le filtre.
-//
-// LA CARTE EST OPTIONNELLE, ET C'EST UN PARAMETRE, PAS UNE CONCATENATION (ajout
-// 2026-09-06, phase 3) : `? = ” OR mr.map_id = ?` neutralise le predicat quand
-// l'appelant ne vise aucune carte (page Escouade). Assembler la clause en Go
-// aurait fait DEUX chaines SQL pour un seul univers — et le garde-rail structurel
-// campaign_exclusion_guard_test ne balaye qu'une constante, pas un assemblage.
-//
-// Le fragment de filtre est produit par
-// analysis.BuildNeighborsWhereClause (aliases `mr` et `mp`), source unique du
-// vocabulaire de filtre du depot — et donc du fragment timezone canonique pour
-// les bornes de date.
-//
-// LE DRAPEAU `mesure` (ajout 2026-09-06, correction G2) dit si le journal des morts
-// de ce match est LISIBLE : au moins une ligne publiable dans
-// `match_kill_events_latest`. Un match dont le film n'a jamais ete decode — ou dont le
-// film Theater a EXPIRE cote serveur — n'est pas un match a zero mort, c'est un match
-// ILLISIBLE : il ne peut alimenter aucun numerateur, et le laisser au denominateur
-// « par match » ferait varier la grandeur avec la couverture de film au lieu du jeu.
-//
-// `publishable` est exige ICI comme dans les deux lectures : sans lui, un match dont
-// toutes les lignes sont ecartees compterait comme mesure sur cette page et pas sur la
-// page Escouade, qui lit le meme journal filtre pareil.
-//
-// PREFIXE `Q` ET TOKEN CAMPAGNE (correction R2, revue du 2026-09-06) : le
-// garde-rail structurel campaign_exclusion_guard_test ne balaye QUE les constantes
-// nommees `Q<...>`. Sans le prefixe, un lecteur per-player passait sous son radar ;
-// sans le token, les ~287 matchs Campagne d'un joueur Halo 5 entraient dans
-// l'univers des rasters alors que l'Explorateur les masque. Le token est resolu au
-// call site par resolveCampaignExclusion, qui connait le titre du joueur (no-op
-// pour Infinite, qui n'a aucun match Campagne au registre).
-const QTacticalUnivers = `
-SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome,
-       EXISTS (SELECT 1 FROM match_kill_events_latest e
-               WHERE e.match_id = mr.match_id AND e.publishable) AS mesure
-FROM match_registry mr
-JOIN match_participants mp ON mp.match_id = mr.match_id
-WHERE mp.xuid = ? AND (? = '' OR mr.map_id = ?)` + campaignExclusionToken
-
-// universSQL assemble le SELECT de l'univers et ses arguments, token Campagne
-// resolu pour le titre du joueur. `q.MapID` vide = toutes les cartes.
-func (r *TacticalRepo) universSQL(q domain.TacticalQuery) (string, []any) {
-	clause := analysis.BuildNeighborsWhereClause(q.Filtre, r.modeTax.Prefixes)
-	args := append([]any{domain.OutcomeUnknown, q.PlayerXUID, q.MapID, q.MapID}, clause.Args...)
-	return resolveCampaignExclusion(QTacticalUnivers, r.pdb.TitleSlug, "mr") + clause.SQL, args
-}
-
-// chargerUnivers lit les matchs retenus PUIS la composition de leurs equipes.
-//
-// Les equipes sont lues par une SECONDE requete qui re-selectionne l'univers en
-// sous-requete, plutot que par une liste `IN (?, ?, ...)` construite en Go : une
-// fenetre de plusieurs centaines de matchs ferait autant de parametres lies, et
-// le predicat serait alors ecrit a deux endroits au lieu d'un.
-func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.TacticalQuery) (domain.TacticalUnivers, error) {
-	univ := domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
-
-	selectSQL, args := r.universSQL(q)
-	rows, err := db.QueryContext(ctx, selectSQL+" ORDER BY mr.match_id", args...)
-	if err != nil {
-		return univ, fmt.Errorf("univers: %w", err)
-	}
-	if err := scanRows(ctx, rows, "univers", func(sc rowScanner) error {
-		var m domain.TacticalMatch
-		if err := sc.Scan(&m.MatchID, &m.Outcome, &m.Mesure); err != nil {
-			return err
-		}
-		univ.Matchs = append(univ.Matchs, m)
-		return nil
-	}); err != nil {
-		return univ, err
-	}
-	if len(univ.Matchs) == 0 {
-		return univ, nil
-	}
-
-	equipesSQL := `SELECT p.match_id, p.xuid, p.team_id FROM match_participants p
-		WHERE p.match_id IN (SELECT u.match_id FROM (` + selectSQL + `) u)
-		  AND p.xuid IS NOT NULL AND p.xuid <> '' AND p.team_id IS NOT NULL`
-	rows, err = db.QueryContext(ctx, equipesSQL, args...)
-	if err != nil {
-		return univ, fmt.Errorf("equipes: %w", err)
-	}
-	err = scanRows(ctx, rows, "equipes", func(sc rowScanner) error {
-		var matchID, xuid string
-		var team int
-		if err := sc.Scan(&matchID, &xuid, &team); err != nil {
-			return err
-		}
-		parMatch := univ.Equipes[matchID]
-		if parMatch == nil {
-			parMatch = make(map[string]int)
-			univ.Equipes[matchID] = parMatch
-		}
-		parMatch[xuid] = team
-		return nil
-	})
-	return univ, err
-}
-
 // ─── LES TROIS LECTURES ────────────────────────────────────────────────────────
 
-// QTacticalMaps : les cartes JOUEES par le joueur sous le filtre.
+// QTacticalMaps : les cartes JOUEES par le joueur dans le perimetre.
 //
 // Les codes d'issue sont des PARAMETRES LIES (domain.OutcomeWin / OutcomeLoss),
 // jamais des litteraux dans la chaine SQL — un `outcome = 2` en dur est
@@ -222,10 +113,9 @@ func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) (
 	}
 	defer release()
 
-	clause := analysis.BuildNeighborsWhereClause(q.Filtre, r.modeTax.Prefixes)
-	logIgnoredFilters(ctx, "TacticalRepo.MapsPlayed", clause.IgnoredFilters)
-	args := append([]any{domain.OutcomeWin, domain.OutcomeLoss, q.PlayerXUID}, clause.Args...)
-	query := resolveCampaignExclusion(QTacticalMaps, r.pdb.TitleSlug, "mr") + clause.SQL +
+	perim, perimArgs := clausePerimetre(q)
+	args := append([]any{domain.OutcomeWin, domain.OutcomeLoss, q.PlayerXUID}, perimArgs...)
+	query := resolveCampaignExclusion(QTacticalMaps, r.pdb.TitleSlug, "mr") + perim +
 		` GROUP BY mr.map_id, mr.map_name ORDER BY matchs DESC, mr.map_id`
 
 	rows, err := db.QueryContext(ctx, query, args...)
@@ -425,9 +315,6 @@ func (r *TacticalRepo) ouvrir(ctx context.Context, q domain.TacticalQuery, op st
 	if q.PlayerXUID == "" {
 		return nil, nil, fmt.Errorf("TacticalRepo.%s: xuid vide", op)
 	}
-	clause := analysis.BuildNeighborsWhereClause(q.Filtre, r.modeTax.Prefixes)
-	logIgnoredFilters(ctx, "TacticalRepo."+op, clause.IgnoredFilters)
-
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "TacticalRepo: shared reader", "op", op, "err", err)
@@ -447,17 +334,6 @@ func (r *TacticalRepo) degrader(ctx context.Context, op string, err error) error
 	}
 	slog.ErrorContext(ctx, "TacticalRepo: requete en echec", "op", op, "err", err)
 	return fmt.Errorf("TacticalRepo.%s: %w", op, err)
-}
-
-// logIgnoredFilters signale les axes de filtre ecartes (categorie de mode
-// inconnue du titre, issue hors liste blanche). Ecarter en silence donnerait un
-// compte de matchs inexplicable a l'ecran.
-func logIgnoredFilters(ctx context.Context, op string, ignored []string) {
-	if len(ignored) == 0 {
-		return
-	}
-	slog.WarnContext(ctx, "TacticalRepo: filtres ignores",
-		"op", op, "filtres", strings.Join(ignored, ","))
 }
 
 // rowScanner : la seule surface de *sql.Rows dont les lecteurs ci-dessus ont

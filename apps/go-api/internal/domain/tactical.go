@@ -14,6 +14,12 @@ var (
 	ErrTacticalQuestionInconnue = errors.New("tactique: question inconnue")
 	// ErrTacticalQuiInconnu : axe « qui » hors du vocabulaire servi.
 	ErrTacticalQuiInconnu = errors.New("tactique: axe qui inconnu")
+	// ErrTacticalEscouadeSansComposition : l'axe `escouade` a ete demande sans
+	// composition. Depuis le 2026-09-06 (arbitrage utilisateur), « Escouade » designe
+	// LA COMPOSITION CHOISIE, pas « mes coequipiers du match » : sans elle, l'axe n'a
+	// aucun contenu. Retomber en silence sur les coequipiers du match repondrait a une
+	// AUTRE question que celle posee — 400, et le client ne propose pas l'axe.
+	ErrTacticalEscouadeSansComposition = errors.New("tactique: axe escouade demande sans composition")
 )
 
 // Types de l'onglet Tactique — lectures de PLACEMENT agregees par carte (ou je meurs, ou
@@ -111,12 +117,46 @@ type EchelleTactique struct {
 // forme de sortie fige son appelant sur son implementation).
 // ---------------------------------------------------------------------------
 
+// ListeBlancheMatchs est le PERIMETRE de matchs d'une lecture tactique.
+//
+// POURQUOI UN TYPE ET PAS UN `[]string` (phase 4 bis, 2026-09-06). Deux appelants
+// ont des besoins OPPOSES sur la meme absence de valeur :
+//
+//	l'onglet Tactique   passe la liste resolue par service.FilteredMatchIDs — et une
+//	                    liste VIDE veut dire AUCUN MATCH (le filtre n'a rien retenu),
+//	                    jamais « tous » ;
+//	la page Escouade    ne passe AUCUNE liste : elle lit le journal des morts sur tout
+//	                    l'historique du joueur, puis resserre en Go.
+//
+// Avec un `[]string` nu, ces deux etats sont le meme `len() == 0` — et le jour ou un
+// appelant oublie sa liste, il obtient l'historique ENTIER en silence. Le zero-value
+// de ce type-ci est l'absence de restriction (le seul etat qu'on peut construire par
+// accident) et TOUTE liste, vide comprise, vient de RestreindreAux.
+type ListeBlancheMatchs struct {
+	restreint bool
+	ids       []string
+}
+
+// RestreindreAux borne une lecture aux match_id donnes. `ids` VIDE = aucun match.
+func RestreindreAux(ids []string) ListeBlancheMatchs {
+	return ListeBlancheMatchs{restreint: true, ids: ids}
+}
+
+// Restreint dit si une liste blanche a ete posee (fut-elle vide).
+func (l ListeBlancheMatchs) Restreint() bool { return l.restreint }
+
+// IDs rend les match_id de la liste blanche (nil si aucune n'a ete posee).
+func (l ListeBlancheMatchs) IDs() []string { return l.ids }
+
 // TacticalQuery est la demande adressee au lecteur tactique.
 //
-// Le FILTRE est un `MatchFilterSpec` — le vocabulaire de l'Explorateur, et le seul
-// du depot. Aucun axe nouveau n'est invente ici : une page qui filtrerait
-// autrement que l'Explorateur donnerait deux comptes de matchs differents pour la
-// meme question.
+// LE PERIMETRE EST UNE LISTE BLANCHE DE match_id, pas un jeu d'axes de filtre
+// (phase 4 bis, 2026-09-06). Les axes de l'Explorateur — periode, sessions epinglees,
+// contexte solo/escouade, cascade — sont resolus EN AMONT par
+// `service.FilteredMatchIDs`, sur la base JOUEUR, qui est la seule a porter les
+// sessions. Le lecteur, lui, ne connait que des identifiants. C'est ce qui fait
+// MARCHER le filtre de session sur cet onglet (arbitrage utilisateur du 2026-09-06),
+// la ou un `MatchFilterSpec` le rangeait dans les filtres IGNORES.
 type TacticalQuery struct {
 	// PlayerXUID est le joueur dont on lit les matchs. L'univers est TOUJOURS le
 	// sien : la portee « tout le monde » n'existe pas en V1.
@@ -129,8 +169,32 @@ type TacticalQuery struct {
 	// 0,5 m n'a de sens que carte par carte.
 	MapID string
 
-	// Filtre : nil = aucun filtre (tout l'historique du joueur).
-	Filtre *MatchFilterSpec
+	// Matchs est la liste blanche du perimetre (cf. ListeBlancheMatchs).
+	Matchs ListeBlancheMatchs
+
+	// Coequipiers restreint aux matchs ou TOUS ces xuids etaient dans MON equipe —
+	// la COMPOSITION choisie dans la barre de filtres, meme notion que la page
+	// Escouade. Vide = aucune contrainte de composition.
+	Coequipiers []string
+}
+
+// TacticalScope est le perimetre demande par la PAGE : les match_id que le client
+// a fait resoudre, et la composition choisie. Un struct plutot que deux `[]string`
+// adjacents — deux listes de chaines de suite s'inversent sans que le compilateur
+// le voie.
+type TacticalScope struct {
+	// MatchIDs : la liste blanche resolue par le client. VIDE = aucun match.
+	MatchIDs []string
+	// Coequipiers : les xuids de la composition (0 a 3). Vide = pas de composition.
+	Coequipiers []string
+}
+
+// TacticalRasterRequest est la demande d'une lecture de placement.
+type TacticalRasterRequest struct {
+	MapID    string
+	Question string
+	Qui      string
+	Scope    TacticalScope
 }
 
 // TacticalMatch est un match RETENU par le filtre : l'unite de l'univers.
@@ -270,10 +334,16 @@ type TacticalRaster struct {
 	Question string `json:"question"`
 	Qui      string `json:"qui"`
 
-	// MatchsFiltres est le nombre de matchs que le FILTRE a retenus, mesures ou
-	// non. Publie pour que le pied de carte puisse dire « N mesures sur M » — sans
-	// lui, l'ecart entre ce que le joueur a joue et ce que la carte peut montrer
-	// serait invisible.
+	// MatchsFiltres est le nombre de match_id que le FILTRE a retenus — la taille de
+	// la liste blanche recue, TOUTES CARTES CONFONDUES (phase 4 bis, 2026-09-06).
+	// C'est la definition du perimetre cote client : ce que la barre de filtres a
+	// selectionne, avant meme de regarder cette carte-ci.
+	//
+	// ⚠ IL NE SE LIT PAS « M matchs de cette carte ». L'intersection avec la carte
+	// (et avec la composition) est faite ensuite ; le denominateur de la lecture,
+	// c'est MatchsRetenus ci-dessous. Le pied de carte doit donc dire les deux
+	// grandeurs pour ce qu'elles sont — « N matchs mesures sur cette carte, sur M
+	// matchs filtres » — et jamais les presenter comme un rapport.
 	MatchsFiltres int `json:"matchs_filtres"`
 
 	// MatchsRetenus est le DENOMINATEUR de la lecture : les matchs du filtre dont le
@@ -359,9 +429,15 @@ const (
 	TacticalQuestionGagne = "gagne"
 )
 
-// L'axe QUI. `escouade` designe mes coequipiers DU MATCH (meme `team_id` que moi
-// dans `match_participants`, moi exclu) : la composition change d'un match a
-// l'autre, et une liste figee melangerait deux escouades.
+// L'axe QUI.
+//
+// `escouade` designe LA COMPOSITION CHOISIE dans la barre de filtres — les xuids que
+// l'utilisateur a nommes, et eux seuls (arbitrage utilisateur du 2026-09-06, qui
+// REMPLACE « mes coequipiers du match »). Le perimetre de matchs garantit deja que ces
+// joueurs etaient dans mon equipe (cf. TacticalQuery.Coequipiers) ; sans composition,
+// l'axe est REFUSE (ErrTacticalEscouadeSansComposition) plutot que redefini en douce.
+//
+// `adv` reste l'autre equipe DU MATCH : elle change a chaque partie et ne se nomme pas.
 const (
 	TacticalQuiMoi         = "moi"
 	TacticalQuiEscouade    = "escouade"

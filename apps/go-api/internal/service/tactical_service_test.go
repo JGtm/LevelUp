@@ -55,6 +55,17 @@ func (m *mockTacticalRepo) KillEvents(_ context.Context, q domain.TacticalQuery)
 	return m.ev, m.errEv
 }
 
+// tsDemande assemble une demande de lecture. Le PERIMETRE (liste blanche) est vide
+// par defaut : le mock du port sert un jeu pose a la main et ne le relit pas, mais il
+// traverse le service et decide de `MatchsFiltres` — les deux tests qui l'affirment
+// posent donc leurs identifiants explicitement.
+func tsDemande(carte, question, qui string, coequipiers ...string) domain.TacticalRasterRequest {
+	return domain.TacticalRasterRequest{
+		MapID: carte, Question: question, Qui: qui,
+		Scope: domain.TacticalScope{Coequipiers: coequipiers},
+	}
+}
+
 // capsCompletes : profil Halo Infinite — positions capturees du film ET source du
 // degat fatal.
 func capsCompletes() games.CapabilityMap {
@@ -124,7 +135,7 @@ func TestTacticalService_TroisQuestions_TroisProjections(t *testing.T) {
 	}
 	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
 
-	morts, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
+	morts, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 	if err != nil {
 		t.Fatalf("Raster(morts): %v", err)
 	}
@@ -132,7 +143,7 @@ func TestTacticalService_TroisQuestions_TroisProjections(t *testing.T) {
 		t.Fatalf("morts : attendu la SEULE cellule (10,10) — la ou JE tombe : %+v", morts.Cellules)
 	}
 
-	kills, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionKills, domain.TacticalQuiMoi, nil)
+	kills, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionKills, domain.TacticalQuiMoi))
 	if err != nil {
 		t.Fatalf("Raster(kills): %v", err)
 	}
@@ -151,7 +162,7 @@ func TestTacticalService_TroisQuestions_TroisProjections(t *testing.T) {
 		}
 	}
 
-	gagne, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionGagne, domain.TacticalQuiMoi, nil)
+	gagne, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionGagne, domain.TacticalQuiMoi))
 	if err != nil {
 		t.Fatalf("Raster(gagne): %v", err)
 	}
@@ -185,7 +196,8 @@ func TestTacticalService_AxeQui(t *testing.T) {
 	}
 	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
 
-	esc, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiEscouade, nil)
+	esc, err := svc.Raster(context.Background(),
+		tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiEscouade, tsAmi))
 	if err != nil {
 		t.Fatalf("Raster(escouade): %v", err)
 	}
@@ -193,7 +205,7 @@ func TestTacticalService_AxeQui(t *testing.T) {
 		t.Fatalf("escouade : attendu la seule cellule (4,4) — mon ami, moi EXCLU : %+v", esc.Cellules)
 	}
 
-	adv, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiAdversaires, nil)
+	adv, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiAdversaires))
 	if err != nil {
 		t.Fatalf("Raster(adv): %v", err)
 	}
@@ -214,7 +226,9 @@ func TestTacticalService_GagneCelluleNeutre(t *testing.T) {
 	repo := &mockTacticalRepo{}
 	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
 
+	var ids []string
 	ajouter := func(id string, outcome int, avecPoint bool) {
+		ids = append(ids, id)
 		u := universUnMatch(id, outcome)
 		repo.pos.Univers.Matchs = append(repo.pos.Univers.Matchs, u.Matchs...)
 		repo.pos.Univers.Equipes[id] = u.Equipes[id]
@@ -233,7 +247,9 @@ func TestTacticalService_GagneCelluleNeutre(t *testing.T) {
 	}
 
 	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
-	got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionGagne, domain.TacticalQuiMoi, nil)
+	req := tsDemande(tsCarte, domain.TacticalQuestionGagne, domain.TacticalQuiMoi)
+	req.Scope.MatchIDs = ids // les 20 matchs du filtre : c'est eux que MatchsFiltres compte
+	got, err := svc.Raster(context.Background(), req)
 	if err != nil {
 		t.Fatalf("Raster(gagne): %v", err)
 	}
@@ -299,7 +315,7 @@ func TestTacticalService_GagneFaceVictime(t *testing.T) {
 	}
 
 	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
-	got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionGagne, domain.TacticalQuiMoi, nil)
+	got, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionGagne, domain.TacticalQuiMoi))
 	if err != nil {
 		t.Fatalf("Raster(gagne): %v", err)
 	}
@@ -338,7 +354,8 @@ func TestTacticalService_JoueurHorsComposition_AucunAxe(t *testing.T) {
 	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
 
 	for _, qui := range []string{domain.TacticalQuiEscouade, domain.TacticalQuiAdversaires} {
-		got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, qui, nil)
+		got, err := svc.Raster(context.Background(),
+			tsDemande(tsCarte, domain.TacticalQuestionMorts, qui, tsAmi))
 		if err != nil {
 			t.Fatalf("Raster(%s): %v", qui, err)
 		}
@@ -373,7 +390,7 @@ func TestTacticalService_CouvertureDeLocalisation(t *testing.T) {
 	}
 	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
 
-	got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
+	got, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 	if err != nil {
 		t.Fatalf("Raster: %v", err)
 	}
@@ -392,28 +409,9 @@ func TestTacticalService_CouvertureDeLocalisation(t *testing.T) {
 // filtre — 404, jamais une lecture vide qui se lirait comme « rien ne s'y passe ».
 func TestTacticalService_UniversVide_CarteInconnue(t *testing.T) {
 	svc := NewTacticalService(&mockTacticalRepo{}, capsCompletes(), tsMoi)
-	_, err := svc.Raster(context.Background(), "map_absente", domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
+	_, err := svc.Raster(context.Background(), tsDemande("map_absente", domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 	if !errors.Is(err, domain.ErrTacticalCarteInconnue) {
 		t.Errorf("err = %v, want ErrTacticalCarteInconnue", err)
-	}
-}
-
-// TestTacticalService_FiltreTransmis : le filtre de l'Explorateur descend TEL QUEL
-// au lecteur — le service n'en invente ni n'en retire aucun axe.
-func TestTacticalService_FiltreTransmis(t *testing.T) {
-	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
-	gagne := "win"
-	spec := &domain.MatchFilterSpec{Outcome: &gagne, PlaylistNames: []string{"Ranked Arena"}}
-
-	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
-	if _, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionKills, domain.TacticalQuiMoi, spec); err != nil {
-		t.Fatalf("Raster: %v", err)
-	}
-	if repo.vuPos.Filtre != spec || repo.vuPos.MapID != tsCarte || repo.vuPos.PlayerXUID != tsMoi {
-		t.Errorf("demande transmise = %+v, want carte/joueur/filtre inchanges", repo.vuPos)
-	}
-	if repo.vuEv.Filtre != spec || repo.vuEv.MapID != tsCarte {
-		t.Errorf("demande d'echange = %+v, want le MEME filtre que les positions", repo.vuEv)
 	}
 }
 
@@ -423,10 +421,10 @@ func TestTacticalService_VocabulaireRefuse(t *testing.T) {
 	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
 	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
 
-	if _, err := svc.Raster(context.Background(), tsCarte, "temps", domain.TacticalQuiMoi, nil); !errors.Is(err, domain.ErrTacticalQuestionInconnue) {
+	if _, err := svc.Raster(context.Background(), tsDemande(tsCarte, "temps", domain.TacticalQuiMoi)); !errors.Is(err, domain.ErrTacticalQuestionInconnue) {
 		t.Errorf("question inconnue: err = %v, want ErrTacticalQuestionInconnue", err)
 	}
-	if _, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, "tout-le-monde", nil); !errors.Is(err, domain.ErrTacticalQuiInconnu) {
+	if _, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, "tout-le-monde")); !errors.Is(err, domain.ErrTacticalQuiInconnu) {
 		t.Errorf("axe inconnu: err = %v, want ErrTacticalQuiInconnu", err)
 	}
 	if repo.vuPos.MapID != "" {
@@ -450,8 +448,10 @@ func TestTacticalService_MatchNonMesure_HorsDenominateur(t *testing.T) {
 	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
 	// Dix matchs retenus par le filtre ; TROIS seulement portent un journal lisible
 	// (trois, c'est le plancher de rarete par cellule : en dessous, rien ne se peint).
+	var ids []string
 	for i := 0; i < 10; i++ {
 		id := fmt.Sprintf("m%02d", i)
+		ids = append(ids, id)
 		u := universUnMatch(id, domain.OutcomeWin)
 		u.Matchs[0].Mesure = i < 3
 		repo.pos.Univers.Matchs = append(repo.pos.Univers.Matchs, u.Matchs...)
@@ -465,7 +465,9 @@ func TestTacticalService_MatchNonMesure_HorsDenominateur(t *testing.T) {
 	}
 
 	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
-	got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionKills, domain.TacticalQuiMoi, nil)
+	req := tsDemande(tsCarte, domain.TacticalQuestionKills, domain.TacticalQuiMoi)
+	req.Scope.MatchIDs = ids
+	got, err := svc.Raster(context.Background(), req)
 	if err != nil {
 		t.Fatalf("Raster(kills): %v", err)
 	}
