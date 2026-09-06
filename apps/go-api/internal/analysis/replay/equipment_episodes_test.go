@@ -176,3 +176,89 @@ func TestEquipmentEpisodesSansDonneesRendNil(t *testing.T) {
 		t.Errorf("sans trajectoire publiée, rien n'est publié : %+v", eps)
 	}
 }
+
+// TestEpisodeDUneVieAnterieureEstPublie — LA RÉGRESSION DU BALAYAGE DU PARC, FIGÉE AVEC SA
+// PROVENANCE (instruction des régressions, candidate 3, 2026-09-06).
+//
+// LE CAS RÉEL. `82f29378` (Oasis) et `13d92593` (Dredge) perdaient leur UNIQUE épisode de
+// surbouclier (1 -> 0) et `084a804d` (Fortitude Heavies) 2 épisodes de camouflage sur 21, à
+// partir de `48cf4905d` (schéma 36, « une track = une vie »). `trackFrameWindows` n'indexait
+// qu'UNE fenêtre par slot — la dernière vie — et `close` bornait l'épisode d'une vie
+// antérieure à une fenêtre postérieure, ce qui le rendait vide (`t1 < t0`) donc muet.
+//
+// CE QUE LE TEST VERROUILLE : chaque vie du slot garde SES épisodes.
+func TestEpisodeDUneVieAnterieureEstPublie(t *testing.T) {
+	// Deux vies du même slot, disjointes ; un épisode de camouflage dans chacune.
+	tracks := []Track{
+		{Slot: 512, StartFrame: 0, EndFrame: 50},
+		{Slot: 512, StartFrame: 200, EndFrame: 260},
+	}
+	camo := []filmdec.CamoRead{
+		camoRead(512, 10, filmdec.CamoActiveQ), camoRead(512, 20, filmdec.CamoInactiveQ),
+		camoRead(512, 210, filmdec.CamoActiveQ), camoRead(512, 230, filmdec.CamoInactiveQ),
+	}
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks)
+	if len(eps) != 2 {
+		t.Fatalf("%d épisode(s), attendu 2 — celui de la vie ANTÉRIEURE a été jeté : %+v", len(eps), eps)
+	}
+	if eps[0].T0 != 10 || eps[0].T1 != 20 {
+		t.Errorf("épisode de la première vie [%d..%d], attendu [10..20]", eps[0].T0, eps[0].T1)
+	}
+	if eps[1].T0 != 210 || eps[1].T1 != 230 {
+		t.Errorf("épisode de la seconde vie [%d..%d], attendu [210..230]", eps[1].T0, eps[1].T1)
+	}
+	cov := equipmentCoverage(eps, tracks)
+	if cov.CamoEpisodes != 2 || cov.CamoLives != 2 {
+		t.Errorf("couverture %+v, attendu camoEpisodes=2 et camoLives=2 — deux VIES du même "+
+			"slot (constat C2 de la revue REG-R1 : le compteur indexait par slot)", cov)
+	}
+}
+
+// TestEpisodeOuvertEnFinDeVieAnterieureSeFermeSurSaPropreVie — la fermeture « à la mort »
+// suit la vie de l'ouverture, pas la dernière du slot.
+//
+// Sans cela, un camouflage ouvert dans la première vie et jamais éteint se serait fermé à la
+// fin de la SECONDE vie : un épisode de 25 secondes traversant une réapparition.
+func TestEpisodeOuvertEnFinDeVieAnterieureSeFermeSurSaPropreVie(t *testing.T) {
+	tracks := []Track{
+		{Slot: 512, StartFrame: 0, EndFrame: 50},
+		{Slot: 512, StartFrame: 200, EndFrame: 260},
+	}
+	camo := []filmdec.CamoRead{camoRead(512, 40, filmdec.CamoActiveQ)}
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks)
+	if len(eps) != 1 {
+		t.Fatalf("%d épisode(s), attendu 1 : %+v", len(eps), eps)
+	}
+	if eps[0].T0 != 40 || eps[0].T1 != 50 || eps[0].EndRead {
+		t.Errorf("épisode [%d..%d] endRead=%v, attendu [40..50] endRead=false — la fermeture "+
+			"doit suivre la vie de l'ouverture", eps[0].T0, eps[0].T1, eps[0].EndRead)
+	}
+}
+
+// TestCouvertureDesEpisodesCompteDesViesPasDesSlots — CONSTAT C2 DE LA REVUE REG-R1
+// (2026-09-06) : `camoLives` / `overshieldLives` comptaient des SLOTS sous un commentaire qui
+// parle de vies — le défaut symétrique de celui corrigé le même jour pour
+// `coverage.grapple.pullLives`. Le cas ne pouvait pas se produire avant ce correctif (seuls les
+// épisodes de la dernière vie survivaient, donc slot == vie trivialement) : c'est lui qui le rend
+// atteignable, à lui de compter juste.
+func TestCouvertureDesEpisodesCompteDesViesPasDesSlots(t *testing.T) {
+	tracks := []Track{
+		{Slot: 512, StartFrame: 0, EndFrame: 50},
+		{Slot: 512, StartFrame: 200, EndFrame: 260},
+	}
+	eps := []EquipmentEpisode{
+		{Slot: 512, Fam: EquipFamilyCamo, T0: 10, T1: 20},
+		{Slot: 512, Fam: EquipFamilyCamo, T0: 210, T1: 230},
+		{Slot: 512, Fam: EquipFamilyOvershield, T0: 30, T1: 40},
+		{Slot: 512, Fam: EquipFamilyOvershield, T0: 240, T1: 250},
+	}
+	cov := equipmentCoverage(eps, tracks)
+	if cov.CamoEpisodes != 2 || cov.CamoLives != 2 {
+		t.Errorf("camo : %d épisodes / %d vies, attendu 2 / 2 — deux vies du MÊME slot",
+			cov.CamoEpisodes, cov.CamoLives)
+	}
+	if cov.OvershieldEpisodes != 2 || cov.OvershieldLives != 2 {
+		t.Errorf("surbouclier : %d épisodes / %d vies, attendu 2 / 2",
+			cov.OvershieldEpisodes, cov.OvershieldLives)
+	}
+}

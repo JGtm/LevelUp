@@ -329,3 +329,141 @@ func TestVerdictDuPontRefuseUneSourceNonComptee(t *testing.T) {
 		t.Fatal("une entrée non justifiée doit rendre le pont NON PUBLIABLE")
 	}
 }
+
+// TestFermetureBNommeLaVieDesigneeQuandLeSlotEnPorteDeux — LA RÉGRESSION DU BALAYAGE DU PARC,
+// FIGÉE AVEC SA PROVENANCE (instruction des régressions, candidate 4, 2026-09-06).
+//
+// LE CAS RÉEL. Match `145908d1` (BTB:CTF, Breaker), slot 562 : deux vies anonymes — [1439..1452]
+// et [1578..2080] en images de 100 ms —, le pont attribue le slot par la fermeture B, et le
+// document publiait 17 TIRS de ce slot sur une piste SANS NOM. Le nommage cherchait « l'unique
+// vie anonyme du slot » et s'abstenait dès qu'il y en avait deux ; la fermeture, elle, avait
+// désigné la première. Mesure de bout en bout sur ce film : 53 slots au pont, 53 pistes nommées
+// au schéma 35, 51 aux schémas 36 à 40, 53 de nouveau avec ce correctif — et 24 identités
+// distinctes sur les pistes, contre 23 pendant la régression.
+//
+// CE QUE LE TEST VERROUILLE : la vie DÉSIGNÉE est nommée, l'AUTRE reste anonyme (nommer les deux
+// serait l'héritage de slot que le schéma 36 a précisément supprimé).
+func TestFermetureBNommeLaVieDesigneeQuandLeSlotEnPorteDeux(t *testing.T) {
+	// Une vie nommée (slot 1) calibre la fenêtre de réapparition à 8 000 ms. Le slot 2 porte
+	// DEUX vies anonymes : la première commence 8 s après la mort de 222, la seconde 10 s plus
+	// tard — aucune mort ne tombe dans SA fenêtre, elle ne revendique donc personne.
+	tracks := tracksOf(at(1, 9_000_000), at(2, 20_000_000), at(2, 30_000_000))
+	lives := []lifeSpan{
+		{slot: 1, from: 9_000_000, to: 10_000_000, xuid: 111},
+		{slot: 2, from: 20_000_000, to: 21_000_000},
+		{slot: 2, from: 30_000_000, to: 31_000_000},
+	}
+	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
+	owner := map[uint32]int{1: 0}
+	var rep closureReport
+	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0, 222: 1}, &rep)
+	if owner[2] != 1 || rep.byRespawn != 1 {
+		t.Fatalf("la fermeture B devait attribuer le slot 2 au joueur 1, pont = %v, rapport %+v",
+			owner, rep)
+	}
+	if got, ok := rep.closedLife[2]; !ok || got != 1 {
+		t.Fatalf("la fermeture devait DÉSIGNER la vie d'indice 1 (celle qui suit la mort), "+
+			"obtenu %v (présent : %v)", got, ok)
+	}
+	nameClosedLives(lives, owner, rep.closedLife, map[uint64]int{111: 0, 222: 1})
+	if lives[1].xuid != 222 {
+		t.Fatalf("la vie désignée devait porter le xuid 222, obtenu %d", lives[1].xuid)
+	}
+	if lives[2].xuid != 0 {
+		t.Fatalf("la SECONDE vie du même slot n'est pas désignée : elle doit rester anonyme, "+
+			"obtenu %d", lives[2].xuid)
+	}
+	// Bout en bout : la piste de la vie désignée porte le nom, l'autre non.
+	trs := []Track{{Slot: 2, StartFrame: 200, EndFrame: 210}, {Slot: 2, StartFrame: 300, EndFrame: 310}}
+	nameTracksByLives(trs, lives, 0, 100_000)
+	if trs[0].XUID != "222" || trs[1].XUID != "" {
+		t.Fatalf("la piste de la vie désignée devait être nommée et l'autre rester anonyme, "+
+			"obtenu %q puis %q", trs[0].XUID, trs[1].XUID)
+	}
+}
+
+// TestFermetureANeTranchePasEntreDeuxViesDuMemeSlot — LA GARDE D'AMBIGUÏTÉ, ET ELLE EST TESTÉE.
+//
+// Le pont ne retient qu'UN propriétaire par slot ; quand deux vies distinctes du même slot ont
+// été désignées (deux tirs, deux instants, un candidat unique à chaque fois), rien ne dit
+// LAQUELLE est la sienne. `closedLife` vaut alors -1 et AUCUNE vie n'est nommée — l'attribution
+// du slot au pont, elle, reste acquise.
+//
+// Sans cette garde, la dernière désignation écrite gagnerait, c'est-à-dire l'ORDRE DES TIRS :
+// exactement le genre d'arbitrage par l'ordre que les fermetures refusent partout ailleurs.
+func TestFermetureANeTranchePasEntreDeuxViesDuMemeSlot(t *testing.T) {
+	// Le joueur 3 a un corps connu (slot 1) qui s'achève à 0,6 s — l'ancrage exigé par la
+	// corroboration. Le slot 2 porte deux vies libres, séparées par plus de lifeGapUS ; le
+	// joueur 3 tire une fois dans chacune, et il est seul candidat aux deux instants.
+	tracks := tracksOf(at(1, 400_000), at(1, 600_000),
+		at(2, 900_000), at(2, 1_100_000), at(2, 20_000_000), at(2, 20_200_000))
+	owner := map[uint32]int{1: 3}
+	lives := []lifeSpan{
+		{slot: 1, from: 400_000, to: 600_000, xuid: 111},
+		{slot: 2, from: 900_000, to: 1_100_000},
+		{slot: 2, from: 20_000_000, to: 20_200_000},
+	}
+	var rep closureReport
+	closeByAvailableBody(tracks, owner, lives, []FireEventRef{
+		{FilmIndex: 3, TimestampUS: 1_000_000},
+		{FilmIndex: 3, TimestampUS: 20_100_000},
+	}, &rep)
+	if owner[2] != 3 || rep.byShot != 1 {
+		t.Fatalf("le slot 2 devait revenir au joueur 3, pont = %v, rapport %+v", owner, rep)
+	}
+	if got := rep.closedLife[2]; got != -1 {
+		t.Fatalf("deux vies désignées pour un même slot : la désignation doit valoir -1, "+
+			"obtenu %d", got)
+	}
+	nameClosedLives(lives, owner, rep.closedLife, map[uint64]int{111: 0, 222: 3})
+	if lives[1].xuid != 0 || lives[2].xuid != 0 {
+		t.Fatalf("aucune des deux vies ne doit être nommée, obtenu %d et %d",
+			lives[1].xuid, lives[2].xuid)
+	}
+}
+
+// TestNameClosedLivesNeReecritJamaisUneVieLue — la lecture prime sur la déduction.
+//
+// Une vie que le fil des morts a nommée garde SON identité même si une fermeture a désigné le
+// même indice : le pont est fait de lectures d'abord, de déductions ensuite (cf. owners.go).
+func TestNameClosedLivesNeReecritJamaisUneVieLue(t *testing.T) {
+	lives := []lifeSpan{{slot: 2, from: 0, to: 1_000_000, xuid: 111}}
+	nameClosedLives(lives, map[uint32]int{2: 1}, map[uint32]int{2: 0}, map[uint64]int{111: 0, 222: 1})
+	if lives[0].xuid != 111 {
+		t.Fatalf("la vie lue devait garder son xuid 111, obtenu %d", lives[0].xuid)
+	}
+}
+
+// TestFermetureBNeTranchePasQuandDeuxMortsDesignentLeMemeSlot — la garde d'ambiguïté du
+// RAPPORT (`closureReport.noteLife`), qui double celle du dépouillement des tirs sur l'autre
+// chemin : deux vies du même slot, chacune seule à revendiquer SA victime.
+//
+// Le pont n'a qu'un propriétaire par slot ; ici deux joueurs y sont écrits l'un après l'autre.
+// Rien ne permet de dire à laquelle des deux vies appartient le nom retenu : `closedLife` vaut
+// -1, et aucune vie n'est nommée. (Que le pont lui-même se laisse écraser dans ce cas est une
+// faiblesse ANTÉRIEURE, notée au registre des reports du 2026-09-06 et NON traitée ici : ce
+// correctif ne touche à aucune décision du pont.)
+func TestFermetureBNeTranchePasQuandDeuxMortsDesignentLeMemeSlot(t *testing.T) {
+	tracks := tracksOf(at(1, 9_000_000), at(2, 20_000_000), at(2, 30_000_000))
+	lives := []lifeSpan{
+		{slot: 1, from: 9_000_000, to: 10_000_000, xuid: 111},
+		{slot: 2, from: 20_000_000, to: 21_000_000},
+		{slot: 2, from: 30_000_000, to: 31_000_000},
+	}
+	// Fenêtre calibrée à 8 000 ms par la vie nommée ; 222 puis 333 meurent 8 s avant chacune
+	// des deux vies libres du slot 2.
+	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}, {XUID: 333, TimeMS: 22_000}}
+	owner := map[uint32]int{1: 0}
+	var rep closureReport
+	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0, 222: 1, 333: 2}, &rep)
+	if rep.byRespawn != 2 {
+		t.Fatalf("les deux vies devaient être attribuées au pont (pré-requis du test), rapport %+v", rep)
+	}
+	if got := rep.closedLife[2]; got != -1 {
+		t.Fatalf("deux vies désignées pour un même slot : la désignation doit valoir -1, obtenu %d", got)
+	}
+	nameClosedLives(lives, owner, rep.closedLife, map[uint64]int{111: 0, 222: 1, 333: 2})
+	if lives[1].xuid != 0 || lives[2].xuid != 0 {
+		t.Fatalf("aucune des deux vies ne doit être nommée, obtenu %d et %d", lives[1].xuid, lives[2].xuid)
+	}
+}
