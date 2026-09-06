@@ -97,7 +97,24 @@ func passeSpecialisee(e *Empreinte, doc map[string]any) {
 // drapeau, les echantillons d'un vehicule) et s'arrete la : plus bas, la mesure ne porterait
 // plus de sens produit.
 func mesurerTableau(e *Empreinte, axe, prefixe string, items []any, profondeur int) {
-	e.num(axe, prefixe+"/n", float64(len(items)))
+	// AU NIVEAU RACINE (profondeur 0), mesurerTableau n'est appele QU'UNE FOIS pour ce
+	// prefixe (une clef de premier niveau du document, cf. passeSpecialisee) : e.num pose
+	// la valeur, elle ne doit pas s'accumuler a celle deja posee par passeGenerique pour le
+	// MEME prefixe (meme calque, meme compte).
+	//
+	// AU NIVEAU IMBRIQUE (profondeur > 0), la fonction est appelee PLUSIEURS FOIS sur le
+	// MEME prefixe — une fois par element du tableau PARENT (flagCarries[].spans[],
+	// vehicles[].rides[]...). e.num y ECRASERAIT a chaque appel : la mesure finale serait
+	// celle du DERNIER groupe itere (ex. la derniere equipe de flagCarries), pas la somme
+	// sur tous les groupes — e.incr accumule.
+	//
+	// Bug mesure le 2026-09-06 (cmd/replay-corpus-gate, temoin 084a804d :
+	// flagCarries.spans/n rendait 1 alors que 15 portages etaient fermes) — corrige ici.
+	if profondeur == 0 {
+		e.num(axe, prefixe+"/n", float64(len(items)))
+	} else {
+		e.incr(axe, prefixe+"/n", float64(len(items)))
+	}
 	if profondeur > 1 {
 		return
 	}
