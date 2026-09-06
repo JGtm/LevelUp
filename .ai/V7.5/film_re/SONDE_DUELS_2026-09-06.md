@@ -101,14 +101,99 @@ la fenêtre d'engagement ?** Si oui, la victime lui a rendu des coups, et c'est 
 mesure exige le pont slot -> xuid (`ResolveSlotXUID`) et donc le roster, donc la base. Elle
 n'a pas été faite ici. C'est le gate du lot 1 du plan.
 
+## Validation du proxy d'entame (lot 2, item 2.5 — 2026-09-06)
+
+> Instrument : `internal/analysis/replay/duels_ouverture_research_test.go`
+> (`TestSondeDuelsOuverture`). Il réutilise TOUS les helpers de la sonde n°1 — population de
+> morts, calibration de base, distance — pour que les deux notes parlent des mêmes films lus
+> de la même façon. Aucune base, aucun roster, aucune cuisson d'artefact.
+
+### Ce qui est validé, et pourquoi il faut le valider
+
+La décision D5 du plan `.ai/PLAN_DUELS_PORTEE_2026-09-06.md` publie une DISTANCE D'ENTAME. La
+vraie ouverture exigerait le PREMIER dégât de l'échange, que le film ne porte que pour une
+minorité des morts (cette même note : 91 à 428 enregistrements de dégât pour 90 à 117 morts).
+Le proxy est donc un décalage d'horloge sur les trajectoires — la distance à `T - 1,5 s`, un
+temps-pour-tuer avant la fin de vie (`replay.OpeningLeadMS`).
+
+La validation confronte le proxy à l'événement LÀ OÙ L'ÉVÉNEMENT EXISTE : sur les morts dont
+le premier dégât de l'échange est capturé et dont la distance se résout à cet instant.
+
+**Gate écrit avant la mesure : écart médian <= 2 m.** Deux mètres, c'est l'ordre de grandeur
+d'un pas de côté : en dessous, les deux mesures décrivent la même situation tactique. Le gate
+est TENU PAR LE CODE (`t.Errorf`) et non par une lecture de log.
+
+### Résultats
+
+| film | carte | population de validation | délai 1er dégât -> fin de vie | n proxy | écart médian | p90 | proxy à moins de 2 m |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 000d5950 | Cliffhanger | 30/90 = 33,3 % | 551 ms (p90 1 651) | 28/30 | **1,29 m** | 3,28 m | 18/28 = 64,3 % |
+| 01e1f945 | Catalyst | 8/97 = 8,2 % | 1 335 ms (p90 1 802) | 8/8 | **0,40 m** | 0,46 m | 8/8 = 100 % |
+| 00502e52 | Bazaar | 41/94 = 43,6 % | 884 ms (p90 2 219) | 40/41 | **1,22 m** | 3,21 m | 26/40 = 65,0 % |
+| 7344d24f | Vagabond | 12/117 = 10,3 % | 750 ms (p90 2 268) | 11/12 | **1,61 m** | 3,71 m | 8/11 = 72,7 % |
+| **cumul** | 4 cartes | 91/398 = 22,9 % | — | **87** | **1,24 m** | **3,28 m** | **60/87 = 69,0 %** |
+
+Le cumul est calculé sur les 87 écarts BRUTS mis bout à bout (l'instrument les journalise,
+ligne `O1bis`) : un film par process interdit un agrégat en mémoire, et une médiane de
+médianes n'est pas une médiane.
+
+**VERDICT : GATE TENU sur les quatre films et sur le cumul.** L'écart médian vaut 1,24 m
+contre un seuil de 2 m. La distance de référence médiane est de 6,3 à 6,9 m selon la carte —
+l'écart représente donc environ 20 % de la portée mesurée. L'item 2.4 du plan
+(`replay.OpeningLeadMS` + `replay.ShiftKillRefs`) est CONSERVÉ, et D5 reste GO.
+
+### Sensibilité — et pourquoi elle ne dit PAS de descendre à 1,0 s
+
+| avance | Cliffhanger | Catalyst | Bazaar | Vagabond |
+|---|---:|---:|---:|---:|
+| 1,0 s | 0,51 m | 0,29 m | 0,67 m | 1,12 m |
+| **1,5 s (production)** | **1,29 m** | **0,40 m** | **1,22 m** | **1,61 m** |
+| 2,0 s | 3,30 m | 0,32 m | 1,72 m | 1,64 m |
+
+L'écart croît avec l'avance sur trois films sur quatre, et 1,0 s mesure partout mieux. **Ce
+n'est pas un argument pour changer la constante**, et le nombre qui l'explique est dans le
+tableau des résultats : le délai médian entre le premier dégât CAPTURÉ et la fin de vie vaut
+551 à 1 335 ms. La population de validation est donc biaisée vers les échanges COURTS — ceux
+dont le premier dégât tombe assez tard pour survivre à l'échantillonnage. Sur cette
+population, tout proxy qui remonte plus loin que la référence s'en écarte MÉCANIQUEMENT ;
+l'écart mesuré à 2,0 s ne dit rien d'un vrai engagement de deux secondes, il dit que la
+référence n'était pas là.
+
+Autrement dit : la sensibilité mesure la forme de la population de validation, pas la qualité
+du proxy sur la population complète. `OpeningLeadMS` reste à 1,5 s, la valeur de D5, choisie
+sur un argument de jeu (le temps-pour-tuer mesuré à 1,2-1,5 s au fusil de combat) et non sur
+un ajustement au résultat.
+
+### Réserves écrites
+
+1. **Le sous-ensemble de validation n'est pas la population complète** (8 à 44 % des morts
+   selon le film). Il est constitué des échanges dont le premier dégât a survécu à
+   l'échantillonnage, c'est-à-dire plutôt les échanges longs et proches. Le biais va dans le
+   sens d'une validation OPTIMISTE ; il n'y a pas de moyen de le lever avec ce film.
+2. **L'écart n'est pas nul, et la queue est longue** : p90 à 3,28 m sur le cumul, avec des cas
+   à plus de 5 m. Le proxy est un ordre de grandeur, jamais une mesure du premier tir. Tout
+   libellé produit doit dire « distance d'entame » et non « distance du premier tir ».
+3. **Catalyst tient le gate avec n = 8.** Sa médiane de 0,40 m est la meilleure des quatre et
+   repose sur le plus petit échantillon — elle ne prouve rien seule ; c'est le cumul qui
+   décide.
+
 ## Reproduire
 
 ```bash
 cd apps/go-api
+# sonde n°1 (M0 a M5)
 CGO_ENABLED=0 \
   DUELS_FILM=<repo>/data/cache/film_chunks/000d5950 DUELS_MAP=Cliffhanger \
   go test ./internal/analysis/replay -run TestSondeDuels -v -timeout 900s
+# validation du proxy d'entame (item 2.5) — meme jeu de variables, un film par process
+CGO_ENABLED=0 \
+  DUELS_FILM=<repo>/data/cache/film_chunks/000d5950 DUELS_MAP=Cliffhanger \
+  go test ./internal/analysis/replay -run TestSondeDuelsOuverture -v -timeout 900s
 ```
 
 Un film par process (verrou `filmdec.LockProcessDecode` pris par la sonde). Coût mesuré :
-1,6 à 3,3 s par film, RAM négligeable — aucune cuisson d'artefact n'est déclenchée.
+1,6 à 3,3 s par film pour la sonde n°1, 1,4 à 2,4 s pour la validation d'entame, RAM
+négligeable — aucune cuisson d'artefact n'est déclenchée.
+
+Les quatre cartes de référence : `000d5950` Cliffhanger, `01e1f945` Catalyst, `00502e52`
+Bazaar, `7344d24f` Vagabond.
