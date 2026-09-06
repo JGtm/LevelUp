@@ -1,7 +1,9 @@
-// Package handlers — tactical.go : les deux endpoints de l'onglet Tactique.
+// Package handlers — tactical.go : les endpoints de l'onglet Tactique.
 //
 //	GET /players/{player_slug}/tactical/maps
 //	GET /players/{player_slug}/tactical/{map_id}/raster?question=&qui=&<filtre>
+//	GET /players/{player_slug}/tactical/{map_id}/background      (calage du fond)
+//	GET /players/{player_slug}/tactical/{map_id}/background.png  (image du fond)
 //
 // Montes sur le sous-routeur /players/{player_slug} — ownership (ADR 0029) et
 // titre herites du groupe, comme /replay et /matches/{id}/events.
@@ -17,6 +19,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,26 +29,48 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/port"
 )
 
-// TacticalHandler sert l'onglet Tactique via un TacticalService resolu par joueur.
+// TacticalHandler sert l'onglet Tactique.
+//
+// DEUX SERVICES, ET C'EST VOULU. Les lectures tactiques viennent du TacticalService ; le
+// FOND DE CARTE vient du ReplayService, qui possede deja la resolution carte -> image (une
+// seule cascade dans le depot, cf. service/replay_map_background.go). Faire transiter le
+// fond par le TacticalService aurait ete un service qui en appelle un autre — l'anti-pattern
+// de couplage horizontal de `arch-rules`.
 type TacticalHandler struct {
-	newSvc ServiceFactory[port.TacticalService]
+	newSvc    ServiceFactory[port.TacticalService]
+	newReplay ServiceFactory[port.ReplayService]
 }
 
-// NewTacticalHandler construit le handler avec sa factory de service.
-func NewTacticalHandler(newSvc ServiceFactory[port.TacticalService]) *TacticalHandler {
-	return &TacticalHandler{newSvc: newSvc}
+// NewTacticalHandler construit le handler avec ses deux factories de service.
+func NewTacticalHandler(
+	newSvc ServiceFactory[port.TacticalService],
+	newReplay ServiceFactory[port.ReplayService],
+) *TacticalHandler {
+	return &TacticalHandler{newSvc: newSvc, newReplay: newReplay}
 }
 
-// Mount enregistre les deux routes via Huma sur le sous-routeur chi.
+// Mount enregistre les routes de l'onglet sur le sous-routeur chi.
+//
+// LE FOND DE CARTE N'EST PAS SOUS LE GARDE LOCAL DU REJEU (`LocalOnlyReplay`), et c'est
+// deliberé : ce garde protege les TRAJECTOIRES decodees du film, dont la couverture n'est
+// pas encore productionnalisable (cf. replay_local_gate.go). Une image de fond est une
+// donnee de REFERENCE versionnee, extraite des fichiers de carte et non d'un film : la
+// masquer hors localhost rendrait la grille des cartes vide en production sans rien
+// proteger.
 func (h *TacticalHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/tactical/maps", h.handleGetMaps,
 		humacore.Op("getTacticalMaps", "Cartes jouees, pour la grille d'entree de l'onglet Tactique", "tactical"))
 	huma.Get(api, "/tactical/{map_id}/raster", h.handleGetRaster,
 		humacore.Op("getTacticalRaster", "Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne)", "tactical"))
+	huma.Get(api, "/tactical/{map_id}/background", h.handleGetMapBackground,
+		humacore.Op("getTacticalMapBackground", "Calage du fond d'une carte de l'onglet Tactique", "tactical"))
+	// Route chi nue : la charge utile est binaire, comme le fond du rejeu par match.
+	r.Get("/tactical/{map_id}/background.png", h.handleGetMapBackgroundImage)
 }
 
 // TacticalFilterQuery porte le vocabulaire de filtre de l'Explorateur, et lui
@@ -121,6 +146,85 @@ func (h *TacticalHandler) handleGetRaster(ctx context.Context, in *tacticalRaste
 		return nil, mapTacticalError(ctx, err, "tactical.raster")
 	}
 	return &tacticalRasterOutput{Body: raster}, nil
+}
+
+type tacticalMapInput struct {
+	PlayerSlug string `path:"player_slug"`
+	MapID      string `path:"map_id"`
+}
+
+type tacticalMapBackgroundOutput struct{ Body replaydoc.MapBackground }
+
+// handleGetMapBackground retourne le CALAGE du fond d'une carte : metres par pixel, origine
+// monde, taille de l'image. 404 quand la carte n'a pas de fond fige — absence NORMALE
+// (toutes les cartes n'en ont pas), que le client traduit par une vignette sans image.
+func (h *TacticalHandler) handleGetMapBackground(
+	ctx context.Context, in *tacticalMapInput,
+) (*tacticalMapBackgroundOutput, error) {
+	svc, mapID, err := h.replayPourCarte(ctx, in.PlayerSlug, in.MapID)
+	if err != nil {
+		return nil, err
+	}
+	bg, err := svc.MapBackgroundForMap(ctx, mapID)
+	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+		return nil, humacore.NewError(http.StatusNotFound, "map_background_not_available",
+			"aucun fond de carte pour cette carte")
+	}
+	if err != nil {
+		return nil, mapTacticalError(ctx, err, "tactical.map_background")
+	}
+	return &tacticalMapBackgroundOutput{Body: *bg}, nil
+}
+
+// handleGetMapBackgroundImage sert le PNG du fond d'une carte, avec le meme cache que le
+// fond par match : donnee de REFERENCE versionnee, qui ne change qu'a une re-cuisson.
+// `private` parce que la route est derriere l'ownership joueur.
+func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	slug := chi.URLParam(r, "player_slug")
+	mapID := strings.TrimSpace(chi.URLParam(r, "map_id"))
+	if mapID == "" {
+		writeError(ctx, w, http.StatusBadRequest, "missing_map_id", "map_id est requis")
+		return
+	}
+	svc, err := h.newReplay(ctx, slug)
+	if err != nil {
+		writeError(ctx, w, http.StatusNotFound, "player_not_found", err.Error())
+		return
+	}
+	blob, err := svc.MapBackgroundImageForMap(ctx, mapID)
+	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
+			"aucun fond de carte pour cette carte")
+		return
+	}
+	if err != nil {
+		slog.ErrorContext(ctx, "tactique: image de fond en echec", "err", err, "map_id", mapID)
+		writeError(ctx, w, http.StatusInternalServerError, "tactical_error", err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Content-Length", strconv.Itoa(len(blob)))
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	if _, err := w.Write(blob); err != nil {
+		slog.WarnContext(ctx, "tactique: ecriture de l'image de fond interrompue",
+			"err", err, "map_id", mapID, "player", slug)
+	}
+}
+
+// replayPourCarte resout le service de rejeu du joueur et valide le map_id.
+func (h *TacticalHandler) replayPourCarte(
+	ctx context.Context, playerSlug, rawMapID string,
+) (port.ReplayService, string, error) {
+	svc, err := h.newReplay(ctx, playerSlug)
+	if err != nil {
+		return nil, "", humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	mapID := strings.TrimSpace(rawMapID)
+	if mapID == "" {
+		return nil, "", humacore.NewError(http.StatusBadRequest, "missing_map_id", "map_id est requis")
+	}
+	return svc, mapID, nil
 }
 
 // defautSiVide applique le defaut d'un parametre absent. Un parametre PRESENT mais

@@ -3472,6 +3472,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/tactical/{map_id}/background": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Calage du fond d'une carte de l'onglet Tactique */
+        get: operations["getTacticalMapBackground"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/tactical/{map_id}/background.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sert l'image du fond d'une carte de l'onglet Tactique
+         * @description Image vue du dessus d'une carte (PNG), cuite hors ligne par `cmd/mapfond-build`.
+         *     C'est la MÊME donnée que le fond du rejeu 2D, résolue par la même cascade, mais
+         *     adressée par `map_id` : la grille des cartes ne connaît pas de match. Son CALAGE
+         *     est servi par `GET .../tactical/{map_id}/background`. Contrairement au rejeu,
+         *     cette route n'est PAS restreinte à la boucle locale : une image de carte est une
+         *     donnée de référence versionnée, pas une trajectoire décodée d'un film.
+         */
+        get: operations["getTacticalMapBackgroundImage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/tactical/{map_id}/raster": {
         parameters: {
             query?: never;
@@ -19556,6 +19598,66 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiError"];
                 };
+            };
+        };
+    };
+    getTacticalMapBackground: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapBackground"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTacticalMapBackgroundImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Image PNG du fond de carte */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour cette carte */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

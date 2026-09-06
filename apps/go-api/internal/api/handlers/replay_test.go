@@ -30,6 +30,14 @@ type mockReplayService struct {
 	// callouts / calloutsErr : les zones nommées, indépendantes du fond ET de l'artefact.
 	callouts    *replaydoc.MapCalloutsEntry
 	calloutsErr error
+	// bgMap / imageMap / bgMapErr : le fond servi PAR CARTE (grille de l'onglet Tactique).
+	// Champs DISTINCTS de ceux par match, et c'est le point : si les deux entrées
+	// partageaient leur double, rien ne prouverait que le handler appelle la bonne.
+	// `vuMapID` retient ce que le handler a transmis au service.
+	bgMap    *replaydoc.MapBackground
+	imageMap []byte
+	bgMapErr error
+	vuMapID  string
 }
 
 func (m *mockReplayService) GetReplay(_ context.Context, _ string) (replaydoc.ReplayDocument, error) {
@@ -42,6 +50,16 @@ func (m *mockReplayService) MapBackground(_ context.Context, _ string) (*replayd
 
 func (m *mockReplayService) MapBackgroundImage(_ context.Context, _ string) ([]byte, error) {
 	return m.image, m.bgErr
+}
+
+func (m *mockReplayService) MapBackgroundForMap(_ context.Context, mapID string) (*replaydoc.MapBackground, error) {
+	m.vuMapID = mapID
+	return m.bgMap, m.bgMapErr
+}
+
+func (m *mockReplayService) MapBackgroundImageForMap(_ context.Context, mapID string) ([]byte, error) {
+	m.vuMapID = mapID
+	return m.imageMap, m.bgMapErr
 }
 
 func (m *mockReplayService) MapCallouts(_ context.Context, _ string) (*replaydoc.MapCalloutsEntry, error) {

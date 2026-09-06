@@ -65,6 +65,10 @@ func (s staticMapNames) MapKeysForMatch(context.Context, string) (port.MatchMapK
 	return port.MatchMapKeys{Names: s.names}, nil
 }
 
+func (s staticMapNames) MapKeysForMap(context.Context, string) (port.MatchMapKeys, error) {
+	return port.MatchMapKeys{Names: s.names}, nil
+}
+
 // TestKillSourcePositionsFilmReelEtRelitParLaVue — meme film et meme gate que
 // TestKillSourceCollecteFilmReelEtRelitParLaVue (collector_test.go), positions en plus : le pont
 // disque, les quatre lectures hors ligne et le pont slot->xuid s emboitent sur du binaire REEL,

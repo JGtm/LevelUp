@@ -78,6 +78,9 @@ func isKnownChiBrut(path string) bool {
 	brutSuffixes := []string{
 		"/media/upload", "/media/files/*", "/pages/match-history/export",
 		"/replay/background.png",
+		// Le MÊME fond, keyé par carte (grille de l'onglet Tactique) : même charge utile
+		// binaire, donc même traitement — documenté dans le fragment manuel.
+		"/tactical/{map_id}/background.png",
 	}
 	for _, s := range brutSuffixes {
 		if strings.HasSuffix(path, s) {

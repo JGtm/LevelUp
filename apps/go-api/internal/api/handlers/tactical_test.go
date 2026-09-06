@@ -41,12 +41,27 @@ func (f *fakeTacticalSvc) Raster(_ context.Context, carte, question, qui string,
 	return f.raster, f.errRast
 }
 
+// newTacticalRouter monte l'onglet avec un service de rejeu qui n'a AUCUN fond : les tests
+// des lectures tactiques ne doivent rien devoir au fond de carte. Les tests du fond
+// utilisent newTacticalRouterAvecFond (tactical_background_test.go).
 func newTacticalRouter(factory handlers.ServiceFactory[port.TacticalService]) *chi.Mux {
+	return newTacticalRouterAvecFond(factory,
+		tacticalReplayFactory(&mockReplayService{bgMapErr: port.ErrMapBackgroundNotAvailable}, nil))
+}
+
+func newTacticalRouterAvecFond(
+	factory handlers.ServiceFactory[port.TacticalService],
+	replay handlers.ServiceFactory[port.ReplayService],
+) *chi.Mux {
 	r := chi.NewRouter()
 	r.Route("/players/{player_slug}", func(sub chi.Router) {
-		handlers.NewTacticalHandler(factory).Mount(sub)
+		handlers.NewTacticalHandler(factory, replay).Mount(sub)
 	})
 	return r
+}
+
+func tacticalReplayFactory(svc port.ReplayService, err error) handlers.ServiceFactory[port.ReplayService] {
+	return func(context.Context, string) (port.ReplayService, error) { return svc, err }
 }
 
 func tacticalFactory(svc port.TacticalService, err error) handlers.ServiceFactory[port.TacticalService] {

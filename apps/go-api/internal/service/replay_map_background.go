@@ -72,6 +72,41 @@ func (s *replayService) MapBackgroundImage(ctx context.Context, matchID string) 
 	if err != nil {
 		return nil, err
 	}
+	return s.readBackgroundImage(ctx, key)
+}
+
+// MapBackgroundForMap retourne le calage du fond d'une CARTE, désignée par son map_id.
+//
+// MÊME FOND, AUTRE CLÉ D'ENTRÉE. La grille de l'onglet Tactique liste des cartes, pas des
+// matchs : elle n'a aucun match_id sous la main. Tout ce qui suit la résolution des
+// identités est partagé avec le chemin par match — la cascade de clés comme la lecture du
+// sidecar — pour qu'il n'existe jamais deux réponses à « où est le fond de cette carte ».
+func (s *replayService) MapBackgroundForMap(ctx context.Context, mapID string) (*replaydoc.MapBackground, error) {
+	key, err := s.resolveBackgroundKeyForMap(ctx, mapID)
+	if err != nil {
+		return nil, err
+	}
+	bg, err := s.loadMapBackground(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	return replayview.MapBackgroundOf(bg), nil
+}
+
+// MapBackgroundImageForMap retourne les octets PNG du fond d'une CARTE.
+//
+// Comme sa jumelle par match, l'image n'est servie QUE si son sidecar de calage est
+// lisible : une image sans calage ne se superpose à rien.
+func (s *replayService) MapBackgroundImageForMap(ctx context.Context, mapID string) ([]byte, error) {
+	key, err := s.resolveBackgroundKeyForMap(ctx, mapID)
+	if err != nil {
+		return nil, err
+	}
+	return s.readBackgroundImage(ctx, key)
+}
+
+// readBackgroundImage lit le PNG d'une clé de fond, après avoir exigé son calage.
+func (s *replayService) readBackgroundImage(ctx context.Context, key string) ([]byte, error) {
 	if _, err := s.loadMapBackground(ctx, key); err != nil {
 		return nil, err
 	}
@@ -86,24 +121,44 @@ func (s *replayService) MapBackgroundImage(ctx context.Context, matchID string) 
 	return blob, nil
 }
 
-// resolveBackgroundKey traduit le match en clé de fond : le map_id du match quand un fond
-// existe sous cette clé (cartes Forge encore publiées sous leur asset du jour), sinon la clé
-// que l'index des fonds attache à l'une des identités candidates (cartes natives, et cartes
-// republiées depuis la cuisson de leur fond).
+// resolveBackgroundKey traduit le match en clé de fond.
 func (s *replayService) resolveBackgroundKey(ctx context.Context, matchID string) (string, error) {
 	if s.maps == nil {
 		return "", port.ErrMapBackgroundNotAvailable
 	}
 	keys, err := s.maps.MapKeysForMatch(ctx, matchID)
+	return s.resolveBackgroundKeyDepuis(ctx, keys, err, "match_id", matchID)
+}
+
+// resolveBackgroundKeyForMap traduit une CARTE (map_id) en clé de fond.
+func (s *replayService) resolveBackgroundKeyForMap(ctx context.Context, mapID string) (string, error) {
+	if s.maps == nil {
+		return "", port.ErrMapBackgroundNotAvailable
+	}
+	keys, err := s.maps.MapKeysForMap(ctx, mapID)
+	return s.resolveBackgroundKeyDepuis(ctx, keys, err, "map_id", mapID)
+}
+
+// resolveBackgroundKeyDepuis choisit la clé de fond à partir des identités de carte : le
+// map_id quand un fond existe sous cette clé (cartes Forge encore publiées sous leur asset
+// du jour), sinon la clé que l'index des fonds attache à l'une des identités candidates
+// (cartes natives, et cartes republiées depuis la cuisson de leur fond).
+//
+// LA CASCADE N'EXISTE QU'ICI. Les deux entrées (par match, par carte) ne diffèrent que par
+// la LIGNE qui les alimente ; en recopier une donnerait deux fonds possibles pour la même
+// carte selon la page qui la demande.
+func (s *replayService) resolveBackgroundKeyDepuis(
+	ctx context.Context, keys port.MatchMapKeys, err error, refCle, ref string,
+) (string, error) {
 	if err != nil || (keys.MapID == "" && len(keys.Names) == 0) {
 		// Journalisé, jamais avalé : une carte qu'on ne sait pas nommer est une donnée
 		// manquante, et c'est elle qu'on ira chercher si un fond manque à l'écran.
-		slog.DebugContext(ctx, "rejeu 2D : carte du match non résolue — pas de fond",
-			"err", err, "match_id", matchID, "titleSlug", s.titleSlug)
+		slog.DebugContext(ctx, "rejeu 2D : carte non résolue — pas de fond",
+			"err", err, refCle, ref, "titleSlug", s.titleSlug)
 		return "", port.ErrMapBackgroundNotAvailable
 	}
 	// 1. La clé map_id — celle des cartes Forge. La PRÉSENCE du sidecar décide : un fond
-	// sous cette clé désigne la carte exacte du match, jamais son canevas.
+	// sous cette clé désigne la carte exacte, jamais son canevas.
 	if keys.MapID != "" {
 		p := title.NewPathResolver(s.repoRoot).MapBackgroundMetaPath(s.titleSlug, keys.MapID)
 		if _, statErr := os.Stat(p); statErr == nil {
@@ -126,7 +181,7 @@ func (s *replayService) resolveBackgroundKey(ctx context.Context, matchID string
 		}
 	}
 	slog.DebugContext(ctx, "rejeu 2D : aucun fond pour les identités de carte candidates",
-		"match_id", matchID, "map_id", keys.MapID, "candidats", keys.Names, "titleSlug", s.titleSlug)
+		refCle, ref, "map_id", keys.MapID, "candidats", keys.Names, "titleSlug", s.titleSlug)
 	return "", port.ErrMapBackgroundNotAvailable
 }
 
