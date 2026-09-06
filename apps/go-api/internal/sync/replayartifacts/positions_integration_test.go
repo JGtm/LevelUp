@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/replaybuild"
 )
 
 // artefactDeuxCamps ecrit un artefact dont DEUX vies portent des xuids differents, aucune
@@ -103,5 +104,50 @@ func TestPersisterPositions_EquipeJointeDepuisLaBase(t *testing.T) {
 		if parEquipe[team] != n {
 			t.Errorf("equipe %d : %d ligne(s), attendu %d", team, parEquipe[team], n)
 		}
+	}
+}
+
+// TestDeriver_CampsIllisibles_NeMarquePas — constat N1 de la revue A-R2.
+//
+// Quand `FactsForMatch` echoue (table absente apres une migration partielle, erreur DuckDB
+// transitoire, jointure cassee), les positions partent en base a -1 : c'est la degradation
+// voulue, elle est journalisee. Ce qui ne l'est pas : POSER LA MARQUE. `DerivationsUpToDate`
+// rendrait `true`, le rattrapage exclurait le match, et l'equipe serait perdue DEFINITIVEMENT
+// jusqu'au prochain bump de `DerivationsRev` — la classe de defaut que le constat C1 vient de
+// fermer, reintroduite par C5 sur un autre chemin.
+func TestDeriver_CampsIllisibles_NeMarquePas(t *testing.T) {
+	db := baseRegistre(t)
+	dir := t.TempDir()
+	ctx := context.Background()
+	const matchID = "mcampsko"
+
+	inscrireAuRegistre(t, db, matchID, time.Now().UTC().Add(-time.Hour), 0)
+	// LA PANNE : la table des participants disparait. `registryFacts` passe, `playerFacts`
+	// echoue, donc `FactsForMatch` rend une erreur — exactement le declenchement du constat.
+	if _, err := db.ExecContext(ctx, `DROP TABLE match_participants`); err != nil {
+		t.Fatalf("drop match_participants: %v", err)
+	}
+
+	acquis, relaches := 0, 0
+	d := depsUsage(t, db, "halo_infinite", &acquis, &relaches)
+	chemin := artefactDeuxCamps(t, dir, matchID)
+	Deriver(ctx, DerivationsDeps{
+		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
+		AcquireWriter: d.AcquireWriter,
+	}, []ArtefactRange{{MatchID: matchID, Path: chemin}})
+
+	// Les positions SONT ecrites — mieux vaut des positions sans camp que rien.
+	var n int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM match_player_positions_latest WHERE match_id = ?`, matchID).Scan(&n); err != nil {
+		t.Fatalf("lecture _latest: %v", err)
+	}
+	if n != 3 {
+		t.Errorf("%d position(s) ecrite(s), attendu 3 — la degradation ne doit pas tout jeter", n)
+	}
+	// Mais le match RESTE candidat au rattrapage : ses equipes seront posees au cycle suivant.
+	if replaybuild.DerivationsUpToDate(chemin) {
+		t.Fatalf("marque posee alors que les camps n'ont pas pu etre lus : le match sort du " +
+			"rattrapage et ses equipes sont perdues definitivement (constat N1)")
 	}
 }
