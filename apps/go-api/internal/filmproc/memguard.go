@@ -151,8 +151,17 @@ func (g *Guard) sample() uint64 {
 	return Footprint()
 }
 
-// Peak rend le maximum observe, en octets.
-func (g *Guard) Peak() uint64 { return g.peak.Load() }
+// Peak rend le maximum observe, en octets, EN INCLUANT L'INSTANT PRESENT.
+//
+// LA RE-MESURE N'EST PAS UN LUXE. L'echantillonnage periodique est a 250 ms : un processus qui
+// meurt avant le premier tick — verrou de decodage refuse, constructeur indisponible, toute
+// sortie tres precoce — n'a JAMAIS ete echantillonne. Sans elle, il emet un pic de ZERO et le
+// recap de la passe imprime « (pic inconnu) » ; l'ancienne sentinelle copiee dans les deux
+// `main` (picObserve, supprimee au lot v2 G.1) faisait deja exactement ceci.
+func (g *Guard) Peak() uint64 {
+	g.notePeak(g.sample())
+	return g.peak.Load()
+}
 
 // notePeak retient le maximum observe.
 func (g *Guard) notePeak(v uint64) {
