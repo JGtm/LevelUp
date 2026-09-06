@@ -1,10 +1,30 @@
 # RECETTE — sons d'armes Halo Infinite, de l'extraction a la livraison
 
-> Document de reference FINAL (2026-08-16). Le travail est livre une fois ; toute reprise
-> (mise a jour du jeu, arme nouvelle, erreur decouverte) REJOUE cette recette, elle ne
-> l'amende pas a la main. L'historique et les preuves sont au plan
+> Document de reference FINAL (2026-08-16, mis a jour 2026-09-06). Le travail est livre une
+> fois ; toute reprise (mise a jour du jeu, arme nouvelle, erreur decouverte) REJOUE cette
+> recette, elle ne l'amende pas a la main. L'historique et les preuves sont au plan
 > (`PLAN_EXTRACTION_SONS_ARMES.md`) et au handoff (`HANDOFF_SONS_ARMES_2026-08-15.md`) ;
 > ce fichier ne contient que le COMMENT refaire.
+>
+> **ETAT DES SIX SCRIPTS DE `_outils/` (lot v2 G.3, 2026-09-06)** — deux des six sont
+> desormais portes en Go, dans le depot, avec une sortie prouvee octet a octet contre le
+> script qu'ils remplacent (jeu d'entrees synthetique : les dossiers d'armes avec leurs
+> `.wav` sources de la machine d'origine ont disparu depuis la livraison du 2026-08-16,
+> seuls `_donnees/*.json` et les scripts eux-memes restent) :
+>
+> | Script | Etape | Etat |
+> |---|---|---|
+> | `akpk_unpack.py` | 1 (.pck -> .wem) | **Porte** — `weapon-sounds -mode pck-dump` (2026-09-02) |
+> | `conv_lot.py` | 1 (.wem -> .wav) | hors depot (vgmstream) |
+> | `coups_lot.py` | 2/3/5 (analyse banks, rendu des coups) | hors depot |
+> | `manifeste2.py` | 6 (manifeste de triage) | hors depot |
+> | `reinjecte.py` | 6 (injection dans tri.html) | hors depot |
+> | `livraison.py` | 7 (fusion moteur sonore) | **Porte** — `weapon-sounds -mode livrer` (2026-09-06) |
+>
+> Quatre scripts restent hors depot : ils ne produisent pas les assets versionnes finaux
+> (`static/sounds/`, `weaponSoundVariations.ts`) mais les etapes intermediaires du triage
+> humain (banks -> candidats, vote, manifeste HTML) — hors perimetre du constat H2 qui visait
+> la reproductibilite des SEULS assets livres.
 
 ## 0. Ou vivent les choses
 
@@ -25,7 +45,9 @@ Prerequis de build : CGO (`internal/ooz`, decompression Kraken) — gcc msys64 u
 
 ## 1. Extraire les sources audio
 
-	# .pck -> .wem (un dossier par arme)
+	# .pck -> .wem (un dossier par arme) — PORTE EN GO (2026-09-02), preferer cette voie :
+	cd apps/go-api && go run ./cmd/weapon-sounds -mode pck-dump -pck <fichier.pck> -out <dossier> [-wem id1,id2,...]
+	# equivalent Python historique (hors depot), garde pour memoire :
 	python _outils/akpk_unpack.py           # cf. en-tete du script pour les arguments
 
 	# .wem -> .wav (vgmstream ; ffmpeg NE decode PAS le Vorbis Wwise)
@@ -106,11 +128,31 @@ non valide — seul trou de preuve ; symptome possible : « pan... clic », pist
 Le marquage « a revoter » compare l'EMPREINTE (evenement + couches + gains) a la
 generation effectivement votee — comparer moins que ca rate les changements de mixage.
 
-## 7. Livraison — FUSION avec le moteur sonore du rejeu (etat final, 2026-08-16)
+## 7. Livraison — FUSION avec le moteur sonore du rejeu (etat final, 2026-09-06)
 
 Le rejeu 2D possede son moteur sonore (branche v75 : `replaySound.ts` regles pures,
 `replayAudio.ts` lecture, `useReplaySound.ts` couture React — tirs, kills, grenades,
 melee, equipements, filtres par categorie, plafond de voix). La livraison s'y FOND :
+
+	cd apps/go-api
+	go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <chantier>] [-depot <depot>]
+
+`-sons` par defaut = le parent de `-donnees` (les dossiers d'armes et `_donnees` sont
+SIBLINGS sous la racine du chantier, comme dans l'archive Desktop d'origine). `-depot` par
+defaut = la racine du depot courant (`title.FindRepoRoot`). PORTAGE FIDELE de
+`_outils/livraison.py` (lot v2 G.3, 2026-09-06 — detail dans `cmd/weapon-sounds/livraison.go`
+et ses fichiers voisins `livraison_audio.go`/`livraison_variation.go`/
+`livraison_orchestrate.go`/`livraison_mt19937.go`) : meme algorithme, memes structures de
+donnees, meme generateur pseudo-aleatoire (Mersenne Twister graine 20260816, port verifie
+bit a bit contre CPython) pour l'unique arme rendue par evenement plutot que copiee depuis un
+fichier vote (Covenant_provoker -> hinf_ravager). Preuve octet a octet contre le script
+Python sur un jeu d'entrees synthetique (les quatre chemins de decision : role rendre-evenement,
+role copie-directe, vote de coup, vote d'evenement en repli), journal
+`.ai/V7.5/v2/LOT_G.md` — les dossiers d'armes avec leurs `.wav` sources reels ont disparu de
+ce poste depuis la livraison du 2026-08-16 : la preuve sur les VRAIS sons du jeu n'a pas pu
+etre rejouee, seule la fidelite algorithmique est prouvee.
+
+Script Python historique (hors depot, garde pour memoire — NE PLUS L'UTILISER) :
 
 	python _outils/livraison.py <racine du depot>
 

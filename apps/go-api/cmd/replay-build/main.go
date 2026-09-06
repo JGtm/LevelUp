@@ -162,7 +162,12 @@ func armerProtections(cacheRoot, matchID string, memGiB int, arreterProfil func(
 	})
 	return func() {
 		g.Disarm()
-		slog.Info("pic memoire de la cuisson", "octets", g.Peak(), "gio", float64(g.Peak())/(1<<30))
+		// UNE SEULE LECTURE POUR LES DEUX CHAMPS : depuis que `Peak()` re-echantillonne
+		// l'empreinte a l'appel (correctif C4 de la revue R1), deux appels dans la meme
+		// instruction rendent deux mesures differentes et `gio` cesse d'etre la conversion
+		// d'`octets` (defaut N2 de la revue R2).
+		pic := g.Peak()
+		slog.Info("pic memoire de la cuisson", "octets", pic, "gio", float64(pic)/(1<<30))
 		lock.Release()
 	}
 }

@@ -1,14 +1,15 @@
 package main
 
-// memlimit_test.go — le plafond mémoire par job, et le motif explicite qu'il produit.
+// memlimit_test.go — le motif explicite que produit un dépassement du plafond mémoire par
+// job.
 //
-// NOTE (même parti pris que cmd/levelup/backfill_memlimit_test.go) : ces tests n'arment
-// jamais un vrai plafond avec les seuils par défaut, et aucun n'appelle
-// reportMemoryExceeded (qui se termine par os.Exit) — l'armer pour de bon avec les seuils
-// réels, ou appeler la fonction qui sort, donnerait à un test le pouvoir de tuer le binaire
-// de test. On teste donc les pièces : le déclenchement déterministe via newMemoryGuard (seuil
-// minuscule, réponse en quelques millisecondes) et le compte rendu HTTP via
-// completeMemoryExceeded (qui n'appelle jamais os.Exit).
+// La sentinelle elle-même (armement, échantillonnage, plafond dur, Disarm) est
+// internal/filmproc.Arm depuis le lot v2 G.1 (2026-09-05) — ses propres tests vivent dans
+// internal/filmproc (filmproc_test.go) et ne sont pas dupliqués ici. ATTENTION : aucun test
+// ci-dessous n'appelle reportMemoryExceeded (qui se termine par os.Exit) — l'appeler pour de
+// bon donnerait à un test le pouvoir de tuer le binaire de test. On teste donc les pièces
+// LOCALES à ce paquet : le motif explicite (memoryExceededRequest/memoryExceededMessage) et
+// le compte rendu HTTP via completeMemoryExceeded (qui n'appelle jamais os.Exit).
 
 import (
 	"context"
@@ -17,93 +18,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/filmproc"
 )
-
-func TestMemGuardMargeDure(t *testing.T) {
-	// Le plafond dur se pose 25 % au-dessus du souple : sous cette marge, le GC a le droit
-	// de travailler dur sans être abattu — c'est son rôle.
-	if got := memGuardMargeDure(4 * memGuardOctetsParGiB); got != 5*memGuardOctetsParGiB {
-		t.Fatalf("memGuardMargeDure(4 GiB) = %d, veut 5 GiB", got)
-	}
-	if got := memGuardMargeDure(0); got != 0 {
-		t.Fatalf("memGuardMargeDure(0) = %d, veut 0 (désarmé reste désarmé)", got)
-	}
-}
-
-// TestMemGuardEmpreinte_Mesure : la mesure doit rendre un chiffre plausible, sinon la
-// sentinelle surveillerait le vide et ne couperait jamais.
-func TestMemGuardEmpreinte_Mesure(t *testing.T) {
-	v := memGuardEmpreinte()
-	if v == 0 {
-		t.Fatal("memGuardEmpreinte() = 0 — les compteurs runtime ne répondent pas")
-	}
-	if v < 128*1024 {
-		t.Fatalf("memGuardEmpreinte() = %d octets — invraisemblablement bas", v)
-	}
-}
-
-func TestMemoryGuard_NotePic(t *testing.T) {
-	g := &memoryGuard{stop: make(chan struct{})}
-	for _, v := range []uint64{10, 500, 42, 500, 3} {
-		g.noterPic(v)
-	}
-	if got := g.pic.Load(); got != 500 {
-		t.Fatalf("pic = %d, veut 500 (le maximum, jamais la dernière valeur)", got)
-	}
-}
-
-// TestArmMemoryGuard_Desarme : giB <= 0 est l'échappatoire de l'opérateur (mesurer un
-// film-bombe sans coupure). Elle doit désarmer la COUPURE : onExceeded ne doit jamais être
-// invoqué, quel que soit le nombre d'échantillons pris.
-func TestArmMemoryGuard_Desarme(t *testing.T) {
-	g := armMemoryGuard(0, func(uint64) {
-		t.Fatal("onExceeded appelé alors que le plafond est désarmé (giB<=0)")
-	})
-	defer g.disarm()
-	if g.plafondDur != 0 {
-		t.Fatalf("plafondDur = %d, veut 0 (giB<=0 désarme la coupure)", g.plafondDur)
-	}
-}
-
-// TestNewMemoryGuard_DeclencheAuDelaDuPlafondDur : avec un plafond dur d'UN octet, la toute
-// première mesure (empreinte réelle du processus de test, forcément > 1 octet) doit
-// déclencher onExceeded. Déterministe : pas besoin d'allouer des gigaoctets pour tester la
-// coupure, seulement de poser un seuil qu'un processus vivant franchit trivialement.
-func TestNewMemoryGuard_DeclencheAuDelaDuPlafondDur(t *testing.T) {
-	declenche := make(chan uint64, 1)
-	g := newMemoryGuard(1, 5*time.Millisecond, func(peak uint64) {
-		declenche <- peak
-	})
-	defer g.disarm()
-
-	select {
-	case peak := <-declenche:
-		if peak == 0 {
-			t.Fatal("le pic rendu au déclenchement est 0")
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("onExceeded jamais appelé malgré un plafond dur d'un octet")
-	}
-}
-
-// TestNewMemoryGuard_DisarmAvantDeclenchementNAppelleJamais : un job qui se termine
-// normalement AVANT tout dépassement ne doit jamais voir onExceeded s'exécuter après coup —
-// sans quoi un job réussi pourrait être suivi d'un rapport d'échec fantôme.
-func TestNewMemoryGuard_DisarmAvantDeclenchementNAppelleJamais(t *testing.T) {
-	appele := false
-	// Plafond minuscule mais période large : disarm() doit gagner la course contre le
-	// premier tick, exactement comme processJob désarme dès que buildAndSend revient.
-	g := newMemoryGuard(1, time.Hour, func(uint64) { appele = true })
-	g.disarm()
-	time.Sleep(20 * time.Millisecond)
-	if appele {
-		t.Fatal("onExceeded appelé après disarm()")
-	}
-}
 
 func TestMemoryExceededMessage_ContientMatchIDPicEtMention(t *testing.T) {
 	const matchID = "51101d1d-aca8-4c95-a431-2012114b87be"
@@ -219,7 +138,7 @@ func TestProcessJob_EchecOrdinaire_GardeSonMotif(t *testing.T) {
 	w := &worker{
 		identity:    workerIdentity{workerID: "worker-test"},
 		client:      newProtocolClient(srv.URL, "test-token"),
-		memLimitGiB: memGuardDefaultGiB, // plafond réel, jamais approché par cet échec instantané
+		memLimitGiB: filmproc.DefaultLimitGiB, // plafond réel, jamais approché par cet échec instantané
 	}
 	// Payload nil : buildAndSend échoue IMMÉDIATEMENT ("job sans travail résolu"), avant
 	// tout téléchargement ou décodage — un échec ordinaire, réel, pas simulé.

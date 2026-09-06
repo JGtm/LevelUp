@@ -131,26 +131,209 @@ go run ./cmd/levelup migrate              # migre les données vers le namespace
 go run ./cmd/levelup add-title --name "Halo MCC" [--slug s] [--capabilities matchmaking,media] [--xbox-id X] [--steam-id S]
 ```
 
-### Extraction d'assets du jeu (hors ligne, Halo Infinite installé requis)
+### Chaînes de fabrication des assets versionnés
 
-Régénère des images versionnées depuis les archives `.module` du jeu. Lecture seule sur les
-fichiers du jeu, écriture uniquement dans le dossier de sortie. cgo requis (décompression
-Kraken).
+Onze chaînes hors ligne, toutes sous `apps/go-api/cmd/`, produisent des fichiers commités
+(`data/titles/{slug}/reference/`, `static/`, ou un fichier Go généré). Aucune n'est câblée
+dans `cmd/server` — le décodage du jeu et le code GPLv3 (`internal/himap`, `internal/ooz`,
+Kraken/Oodle) restent isolés dans ces binaires. Lancées depuis `apps/go-api` sauf mention
+contraire. `--title`/`-title` vaut `halo_infinite` par défaut partout.
+
+#### weapon-icons (build + table)
 
 ```bash
-cd apps/go-api
 go run ./cmd/weapon-icons-build                      # racine du jeu auto-détectée
 go run ./cmd/weapon-icons-build -deploy "D:/SteamLibrary/.../Halo Infinite/deploy"
 # flags : -out DIR  -max N (images par atlas)  -probe N (profondeur de recalage descripteur→ressource)
+go run ./cmd/weapon-icons-table                      # derive la table Go depuis index.json
 ```
 
-Sortie : `static/weapons-assets/halo_infinite/jeu/` — 168 PNG (icônes d'armes en contour et en
-silhouette, plus l'atlas du kill feed) et `index.json`, qui porte pour chaque icône la clé
-d'arme et le nom interne du jeu. À rejouer après une mise à jour de contenu : ces tables
-GRANDISSENT.
+- Sortie : `static/weapons-assets/halo_infinite/jeu/` — 168 PNG (icônes d'armes en contour et
+  en silhouette, plus l'atlas du kill feed) + `index.json` (build) ;
+  `internal/games/halo_infinite/weapon_icons_table.go`, généré — NE PAS ÉDITER (table).
+- Prérequis : jeu installé + cgo (Kraken) pour `weapon-icons-build`. `weapon-icons-table` n'a
+  besoin ni de l'un ni de l'autre — il ne lit que `index.json`, déjà versionné : il tourne
+  partout, y compris en CI.
+- À rejouer : après une mise à jour de contenu qui fait grandir les tables (build) ; après
+  chaque exécution de `weapon-icons-build`, pour garder la table à jour (table).
+- Chaîne complète, tables de correspondance et pistes réfutées :
+  `.ai/V7.5/icones/ETAT_DE_L_ART_ICONES.md`.
 
-Chaîne complète, tables de correspondance et pistes réfutées :
-`.ai/V7.5/icones/ETAT_DE_L_ART_ICONES.md`.
+#### mapquant-build
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapquant-build [--levels DIR] [--title slug] [--out FILE]
+```
+
+- Sortie : `data/titles/{slug}/reference/map_quant_bounds.json` — les bornes monde par carte
+  qui transforment les coordonnées quantifiées du film en coordonnées monde.
+- Prérequis : jeu installé (sauf `--levels` explicite) + cgo. Le lien nom affiché -> module est
+  une table codée en dur dans l'outil : une carte absente de cette table est absente du
+  catalogue par construction (refus de publier une coordonnée devinée).
+- À rejouer : quand le lien module d'une nouvelle carte est établi, ou si le jeu change ses
+  modules/BSP.
+
+#### mapcallouts-build
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapcallouts-build                            # passe native seule
+CGO_ENABLED=1 go run ./cmd/mapcallouts-build --forge-only --forge-fetch # passe Forge seule
+CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only     # + lexique de chaînes
+```
+
+- Sortie : `data/titles/{slug}/reference/map_callouts.json` (zones nommées natives + Forge) ;
+  `--lexique` écrit en plus `callouts_lexique.csv` à côté. Lit en entrée le
+  `callouts_i18n.csv` versionné (816 libellés).
+- Prérequis : jeu installé pour la passe native et pour `--lexique` ; cgo dans tous les cas
+  (pour compiler) ; réseau uniquement avec `--forge-fetch` (récupération anonyme des `.mvar`
+  UGC, sans jeton). Un garde-fou bloque l'écriture d'une carte qui perdrait des sommets par
+  rapport au fichier déjà commité (`--accepte-perte` pour outrepasser).
+- À rejouer : mise à jour du jeu (passe native, ou `--lexique`, qui « ne se rejoue qu'à une
+  mise à jour du jeu » selon son propre en-tête) ; une nouvelle carte Forge a besoin de ses
+  callouts (`--forge-fetch`).
+
+#### mapfond-build
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--title slug] \
+  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE]
+```
+
+- Sortie : `data/titles/{slug}/reference/map_backgrounds/{cle}.png` + `{cle}.json` (sidecar de
+  calage) par carte — 218 fichiers aujourd'hui.
+- Prérequis : jeu installé — TOUJOURS, aucun flag ne permet de l'éviter, même en Forge seul ;
+  chaîne cgo/GPLv3 (`internal/himap` -> `internal/himodule` -> `internal/ooz`, jamais liée
+  dans `cmd/server`) ; exige `map_objectives.json` déjà construit (dépendance dure, échoue
+  sans lui) ; utilise `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json`
+  / `map_fond_reglages.json` s'ils existent, dégrade avec un avertissement sinon.
+- À rejouer : non documenté dans l'outil lui-même ; en pratique, une nouvelle carte (native ou
+  Forge) a besoin de son fond cuit.
+
+#### mapobj-build
+
+```bash
+go run ./cmd/mapobj-build --player <Gamertag> --map-id <uuid> [--map-id <uuid>...]
+go run ./cmd/mapobj-build --player <Gamertag> --all                # tout match_registry
+go run ./cmd/mapobj-build --from-file <chemin.mvar> --map-id <uuid> # hors ligne
+go run ./cmd/mapobj-build --refresh-from <dossier de .mvar>         # hors ligne, tout le catalogue
+```
+
+- Sortie : `data/titles/{slug}/reference/map_objectives.json`, écriture atomique (fichier
+  temporaire + renommage). `map_objects.csv` et `forge_object_types.csv`
+  (`data/titles/{slug}/reference/map_geometry/`) ne sont produits par AUCUN outil — vérifié :
+  zéro producteur dans `cmd/` — ils ont été importés à la main et n'ont pas de commande de
+  rejeu.
+- Prérequis : jeu installé NON requis ; réseau requis sauf `--from-file`/`--refresh-from`
+  (authentification Xbox Live/Halo selon l'ADR 0023 — jamais de re-capture de jeton) ;
+  `--all` ouvre en plus `shared_matches_v2.duckdb` en lecture seule ; cgo nécessaire pour
+  compiler (driver DuckDB).
+- À rejouer : une nouvelle carte est jouée en matchmaking (un `--map-id`) ; `--all` pour
+  resynchroniser tout le registre ; `--refresh-from` après un dépôt local de `.mvar`,
+  entièrement hors ligne.
+
+#### mapopads-build
+
+```bash
+go run ./cmd/mapopads-build --from <dossier de .mvar> [--title slug] [--dry-run]
+go run ./cmd/mapopads-build --from <dossier> --refresh-drifted   # re-valide contre des .mvar frais
+```
+
+- Sortie : `data/titles/{slug}/reference/map_weapon_pads.json` (socles d'arme et de
+  power-up), écriture atomique via le même helper `mapcatalog.WriteAtomic` que le chemin de
+  rattrapage Forge de la synchro écrit dans ce même fichier
+  (`.ai/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 — suivi séparément, hors de cette chaîne).
+- Prérequis : ni jeu installé, ni réseau, ni cgo ; exige `map_objectives.json` (lien map_id ->
+  nom de fichier) et un dépôt local de `.mvar` (`--from`).
+- À rejouer : `--refresh-drifted` — le `.mvar` d'une carte UGC ne concorde plus avec le
+  catalogue commité (dérive mesurée ; c'est la voie normale de re-validation depuis la
+  décision du 2026-09-01).
+
+#### mapstruct-build
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapstruct-build [--levels DIR] [--maps "Cliffhanger,Streets"] \
+  [--title slug] [--out-dir DIR]
+```
+
+- Sortie : `data/titles/{slug}/reference/map_structure/{module}.json` (2 fichiers
+  aujourd'hui — le `--maps` par défaut ne couvre que les deux cartes à 100 % de couverture
+  mesurée, pas « toutes »).
+- Prérequis : jeu installé (variante deploy `pc`, pas `ds`) sauf `--levels` ; cgo ; exige
+  `map_quant_bounds.json` (lien module <-> nom affiché).
+- À rejouer : quand le décodage des instances de maillage d'une autre carte atteint 100 % de
+  couverture. **Avertissement** : le champ `structure` de l'artefact est sous une décision de
+  retrait DIFFÉRÉ (`.ai/V7.5/REGISTRE_REPORTS.md`) — encore lu par deux fichiers web —
+  vérifier cette entrée avant de supposer cet outil sans risque à supprimer.
+
+#### mappos-build
+
+```bash
+go run ./cmd/mappos-build --cle <mapId> [--carte NOM] [--title slug] [--pas M] \
+  [--min-matchs N] [--min-occurrences N] <rejeu.json>...
+```
+
+- Sortie : `data/titles/{slug}/reference/map_positions_jouees.json` (fusionne dans le
+  catalogue existant, une clé de carte à la fois).
+- Prérequis : ni jeu installé, ni cgo — post-traitement pur sur des artefacts de rejeu déjà
+  décodés (`data/cache/replays/{title}/{matchId}.json`), passés en arguments positionnels.
+- À rejouer : quand plus ou de plus récents matchs doivent affiner le masque de positions
+  jouées d'une carte.
+
+#### mapnav-fetch
+
+```bash
+go run ./cmd/mapnav-fetch -toutes [-out-dir DIR] [-rate-ms N] [-refaire]
+go run ./cmd/mapnav-fetch -map-id <uuid> [-map-id <uuid>...] [-dry-run]
+```
+
+- Sortie : `<out-dir, defaut .ai/re_dump/navmesh>/<mapID>.blob` — **pas un asset versionné en
+  soi** : `.ai/re_dump/` est ignoré par git. C'est le cache de travail local que la passe
+  Forge de `mapfond-build` relit (`cuisson.go`) ; cité ici parce qu'il alimente une chaîne
+  versionnée.
+- Prérequis : PAS le jeu installé — une requête HTTP anonyme vers les pages UGC publiques de
+  halowaypoint.com (deux requêtes, sans authentification) ; reprenable (saute les blobs déjà
+  présents) et limité en débit.
+- À rejouer : une nouvelle carte Forge a besoin de son navmesh avant que `mapfond-build` ne
+  puisse cuire son fond ; `-refaire` force un nouveau téléchargement.
+
+#### vehicle-sprite
+
+CLI à sous-commandes (`inventaire`/`render`/`variantes`/`diag`/`assemble`/`compose2d`), pas
+une invocation unique. Fragment vérifié de la recette derrière le jeu actuel (couvre 13 des
+18 véhicules ; des passes ultérieures ont ajouté le reste — vérifier
+`.ai/V7.5/film_re/*.md` pour l'état courant avant de rejouer) :
+
+```bash
+go build -o v4tool.exe ./cmd/vehicle-sprite
+v4tool.exe render -variant=any -cote=256 -out=<dir> \
+  -modules="pc:globals-rtx-new.module,globals-rtx-new.module,common-rtx-new.module,multiplayer-rtx-new.module" \
+  -curate="0x00002705:warthog,0x000025aa:mongoose,0x0000d3db:scorpion,0xb65b3b4a:wasp"
+```
+
+- Sortie : `static/vehicles-assets/halo_infinite/replay/` — 20 fichiers (18 PNG +
+  `index.json` + `files_list.txt`), consommés par `useReplayVehicles.ts`. Rien ne passe par
+  le `PathResolver` — les chemins sont de simples flags `-out`/`-curate`.
+- Prérequis : jeu installé, cgo/GPLv3 (jamais lié dans `cmd/server`) ; aucun réseau.
+- À rejouer : un nouveau véhicule pilotable sort. Recette complète :
+  `.ai/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md` §9 et les notes suivantes du même
+  dossier.
+
+#### weapon-sounds (mode `livrer`, dernière étape d'une recette plus large)
+
+```bash
+go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <chantier>] [-depot <depot>]
+```
+
+- Sortie : `static/sounds/halo_infinite/hinf_*.wav` (26 fichiers) +
+  `apps/web/src/features/match-replay/weaponSoundVariations.ts`.
+- Prérequis : les étapes antérieures de la recette, encore hors dépôt (extraction, analyse
+  des banks, vote humain), doivent déjà avoir produit `_donnees/*.json` et l'arborescence de
+  `.wav` sources/rendus par arme. Aucun jeu installé n'est nécessaire pour cette étape finale
+  (le mode n'ouvre aucun module du jeu), mais cgo EST requis pour COMPILER le binaire :
+  `cmd/weapon-sounds` importe `internal/himap` -> `internal/himodule` -> `internal/ooz`
+  (décompression Kraken) pour ses autres modes.
+- À rejouer : un vote d'arme est finalisé, ou la recette complète est rejouée (mise à jour du
+  jeu, nouvelle arme). Recette complète : `.ai/V7.5/RECETTE_SONS_ARMES.md`.
 
 ### Médias
 

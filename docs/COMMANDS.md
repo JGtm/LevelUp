@@ -129,24 +129,196 @@ go run ./cmd/levelup migrate              # migrate data into the multi-title na
 go run ./cmd/levelup add-title --name "Halo MCC" [--slug s] [--capabilities matchmaking,media] [--xbox-id X] [--steam-id S]
 ```
 
-### Game-asset extraction (offline, needs Halo Infinite installed)
+### Asset production chains (versioned outputs)
 
-Regenerates versioned image assets from the game's own `.module` archives. Read-only on the
-game files; writes only to the output directory. Requires cgo (Kraken decompression).
+Eleven offline chains, all under `apps/go-api/cmd/`, produce files committed to the repo
+(`data/titles/{slug}/reference/`, `static/`, or a generated Go file). None is wired into
+`cmd/server` — game decoding and GPLv3 code (`internal/himap`, `internal/ooz`, Kraken/Oodle)
+stay isolated to these binaries. Run from `apps/go-api` unless noted. `--title`/`-title`
+defaults to `halo_infinite` throughout.
+
+#### weapon-icons (build + table)
 
 ```bash
-cd apps/go-api
 go run ./cmd/weapon-icons-build                      # game root auto-detected
 go run ./cmd/weapon-icons-build -deploy "D:/SteamLibrary/.../Halo Infinite/deploy"
 # flags: -out DIR  -max N (images per atlas)  -probe N (descriptor→resource re-sync depth)
+go run ./cmd/weapon-icons-table                      # derives the Go table from index.json
 ```
 
-Output: `static/weapons-assets/halo_infinite/jeu/` — 168 PNG (weapon icons in outline and
-silhouette, plus the kill-feed atlas) and `index.json`, which carries the weapon key and the
-game's internal name per icon. Re-run after a game content update: these tables GROW.
+- Output: `static/weapons-assets/halo_infinite/jeu/` — 168 PNG (weapon icons in outline and
+  silhouette, plus the kill-feed atlas) + `index.json` (build) ;
+  `internal/games/halo_infinite/weapon_icons_table.go`, generated — DO NOT EDIT (table).
+- Prereq: game installed + cgo (Kraken) for `weapon-icons-build`. `weapon-icons-table` needs
+  neither — it only reads the versioned `index.json`, so it runs anywhere, including CI.
+- Replay when: a game content update grows the icon set (build) ; after every
+  `weapon-icons-build` run, so the table stays in sync (table).
+- Full chain, correspondence tables and refuted leads:
+  `.ai/V7.5/icones/ETAT_DE_L_ART_ICONES.md`.
 
-Full chain, correspondence tables and refuted leads:
-`.ai/V7.5/icones/ETAT_DE_L_ART_ICONES.md`.
+#### mapquant-build
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapquant-build [--levels DIR] [--title slug] [--out FILE]
+```
+
+- Output: `data/titles/{slug}/reference/map_quant_bounds.json` — per-map world-bounds used to
+  turn the film's quantized coordinates into world coordinates.
+- Prereq: game installed (unless `--levels` points elsewhere) + cgo. The display-name → module
+  link is a hardcoded table in the tool: a map missing from it is absent from the catalog by
+  design (refuses to publish a guessed coordinate).
+- Replay when: a new map's module link is established, or the game changes its modules/BSP.
+
+#### mapcallouts-build
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapcallouts-build                          # native pass only
+CGO_ENABLED=1 go run ./cmd/mapcallouts-build --forge-only --forge-fetch  # Forge pass only
+CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only      # + string lexicon
+```
+
+- Output: `data/titles/{slug}/reference/map_callouts.json` (native + Forge callout zones) ;
+  `--lexique` also writes `callouts_lexique.csv` next to it. Reads the versioned
+  `callouts_i18n.csv` (816 labels) as an input.
+- Prereq: game installed for the native pass and for `--lexique` ; cgo always (to build) ;
+  network only with `--forge-fetch` (anonymous UGC blob fetch, no token). A loss guard blocks
+  writing a map that would lose vertices vs. the committed file (`--accepte-perte` overrides).
+- Replay when: game update (native pass, or `--lexique`, which "only replays on a game
+  update" per its own header) ; a new Forge map needs its callouts (`--forge-fetch`).
+
+#### mapfond-build
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--title slug] \
+  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE]
+```
+
+- Output: `data/titles/{slug}/reference/map_backgrounds/{key}.png` + `{key}.json` sidecar per
+  map (218 files today) — the top-down background image and its calibration.
+- Prereq: game installed — **always**, no flag bypasses it, even a Forge-only run ; cgo/GPLv3
+  chain (`internal/himap` → `internal/himodule` → `internal/ooz`, never linked into
+  `cmd/server`) ; requires `map_objectives.json` already built (hard dependency, fails
+  without it) ; uses `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json`
+  / `map_fond_reglages.json` when present, degrades with a warning otherwise.
+- Replay when: not documented in the tool itself ; in practice, a new native or Forge map
+  needs its background cooked.
+
+#### mapobj-build
+
+```bash
+go run ./cmd/mapobj-build --player <Gamertag> --map-id <uuid> [--map-id <uuid>...]
+go run ./cmd/mapobj-build --player <Gamertag> --all                    # whole match_registry
+go run ./cmd/mapobj-build --from-file <path.mvar> --map-id <uuid>      # offline
+go run ./cmd/mapobj-build --refresh-from <dir of .mvar>                # offline, whole catalog
+```
+
+- Output: `data/titles/{slug}/reference/map_objectives.json`, written atomically
+  (temp file + rename). `map_objects.csv` and `forge_object_types.csv`
+  (`data/titles/{slug}/reference/map_geometry/`) are **not** produced by this or any other
+  tool — verified zero producer in `cmd/`; they were imported manually and have no replay
+  command.
+- Prereq: game install **not** required ; network required unless `--from-file`/
+  `--refresh-from` (Xbox Live/Halo auth per ADR 0023 — never re-capture a token) ; `--all`
+  additionally opens `shared_matches_v2.duckdb` read-only ; cgo needed to build (DuckDB driver).
+- Replay when: a new map is played in matchmaking (one `--map-id`) ; `--all` to resync the
+  whole registry ; `--refresh-from` after a local `.mvar` dump, fully offline.
+
+#### mapopads-build
+
+```bash
+go run ./cmd/mapopads-build --from <dir of .mvar> [--title slug] [--dry-run]
+go run ./cmd/mapopads-build --from <dir> --refresh-drifted   # re-validate against fresh .mvar
+```
+
+- Output: `data/titles/{slug}/reference/map_weapon_pads.json` (weapon/power-up spawn pads),
+  written atomically via the same `mapcatalog.WriteAtomic` helper used by the sync runtime's
+  own Forge catch-up path into this file (`.ai/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 —
+  tracked separately, not part of this chain).
+- Prereq: no game install, no network, no cgo ; requires `map_objectives.json` (map_id →
+  filename link) and a local dump of `.mvar` files (`--from`).
+- Replay when: `--refresh-drifted` — a UGC map's `.mvar` no longer matches the committed
+  catalog (measured drift; this is the normal re-validation path since the 2026-09-01 decision).
+
+#### mapstruct-build
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapstruct-build [--levels DIR] [--maps "Cliffhanger,Streets"] \
+  [--title slug] [--out-dir DIR]
+```
+
+- Output: `data/titles/{slug}/reference/map_structure/{module}.json` (2 files today — the
+  default `--maps` list covers only the two maps with 100% measured coverage, not "all").
+- Prereq: game installed (deploy variant `pc`, not `ds`) unless `--levels` ; cgo ; requires
+  `map_quant_bounds.json` (module ↔ display-name link).
+- Replay when: another map's mesh-instance decoding reaches full coverage. **Caveat**: the
+  artifact's `structure` field is under a deferred-removal decision
+  (`.ai/V7.5/REGISTRE_REPORTS.md`) — still read by two web files — check that entry before
+  assuming this tool is safe to drop.
+
+#### mappos-build
+
+```bash
+go run ./cmd/mappos-build --cle <mapId> [--carte NAME] [--title slug] [--pas M] \
+  [--min-matchs N] [--min-occurrences N] <replay.json>...
+```
+
+- Output: `data/titles/{slug}/reference/map_positions_jouees.json` (merges into the existing
+  catalog, one map key at a time).
+- Prereq: no game install, no cgo — pure post-processing over already-decoded replay
+  artifacts (`data/cache/replays/{title}/{matchId}.json`), passed as positional arguments.
+- Replay when: more or newer matches should refine a map's played-positions mask.
+
+#### mapnav-fetch
+
+```bash
+go run ./cmd/mapnav-fetch -toutes [-out-dir DIR] [-rate-ms N] [-refaire]
+go run ./cmd/mapnav-fetch -map-id <uuid> [-map-id <uuid>...] [-dry-run]
+```
+
+- Output: `<out-dir, default .ai/re_dump/navmesh>/<mapID>.blob` — **not itself a versioned
+  asset**: `.ai/re_dump/` is gitignored. It's the local working cache that `mapfond-build`'s
+  Forge pass reads (`cuisson.go`) ; listed here because it feeds a versioned chain.
+- Prereq: **not** the game install — an anonymous HTTP fetch from halowaypoint.com's public
+  UGC pages (two requests, no auth) ; resumable (skips existing blobs) and rate-limited.
+- Replay when: a new Forge map needs its navmesh before `mapfond-build` can cook its
+  background ; `-refaire` forces a re-fetch.
+
+#### vehicle-sprite
+
+Multi-subcommand CLI (`inventaire`/`render`/`variantes`/`diag`/`assemble`/`compose2d`), not a
+single fixed invocation. Verified fragment of the recipe behind the current set (covers 13 of
+the 18 vehicles ; later passes added the rest — check `.ai/V7.5/film_re/*.md` for the current
+state before re-running):
+
+```bash
+go build -o v4tool.exe ./cmd/vehicle-sprite
+v4tool.exe render -variant=any -cote=256 -out=<dir> \
+  -modules="pc:globals-rtx-new.module,globals-rtx-new.module,common-rtx-new.module,multiplayer-rtx-new.module" \
+  -curate="0x00002705:warthog,0x000025aa:mongoose,0x0000d3db:scorpion,0xb65b3b4a:wasp"
+```
+
+- Output: `static/vehicles-assets/halo_infinite/replay/` — 20 files (18 PNG + `index.json` +
+  `files_list.txt`), consumed by `useReplayVehicles.ts`. None of it goes through
+  `PathResolver` — paths are plain `-out`/`-curate` flags.
+- Prereq: game installed, cgo/GPLv3 (never linked into `cmd/server`) ; no network.
+- Replay when: a new pilotable vehicle ships. Full recipe: `.ai/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md`
+  §9 and later notes in the same directory.
+
+#### weapon-sounds (mode `livrer`, final step of a larger recipe)
+
+```bash
+go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <chantier>] [-depot <repo>]
+```
+
+- Output: `static/sounds/halo_infinite/hinf_*.wav` (26 files) +
+  `apps/web/src/features/match-replay/weaponSoundVariations.ts`.
+- Prereq: the recipe's earlier, still-external steps (extraction, banks analysis, human vote)
+  must already have produced `_donnees/*.json` and the per-weapon source/rendered `.wav`
+  tree. No game install is needed for this final step (the mode opens no game module), but
+  cgo IS required to BUILD the binary: `cmd/weapon-sounds` imports `internal/himap` ->
+  `internal/himodule` -> `internal/ooz` (Kraken decompression) for its other modes.
+- Replay when: a weapon vote is finalized, or the full recipe is redone (game update, new
+  weapon). Full recipe: `.ai/V7.5/RECETTE_SONS_ARMES.md`.
 
 ### Media
 

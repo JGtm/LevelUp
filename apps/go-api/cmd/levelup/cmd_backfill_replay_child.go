@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	"levelup/go-api/internal/config"
@@ -47,10 +48,28 @@ const attenteVerrouPasse = 10 * time.Minute
 // IL NE REND JAMAIS D'ERREUR A `main` : le code de sortie EST le canal de retour. Une erreur
 // rendue a main sortirait en 1, que le protocole reserve aux morts hors categorie.
 func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRoot string) int {
-	sentinelle := armerPlafondMemoire(o.memLimitGiB)
+	// SENTINELLE CANONIQUE (internal/filmproc.Arm) : memes deux plafonds qu'avant (souple +
+	// 25 % dur, echantillonnage 250 ms) — le calcul vit desormais dans un seul endroit
+	// (memguard.go). onExceeded applique LA DOCTRINE DE CET ENFANT : emettre le pic sur le
+	// protocole stdout puis mourir avec le code memoire, comme avant la centralisation.
+	//
+	// LES DEUX LIGNES DE JOURNAL SONT CELLES D'AVANT, MOT POUR MOT (constat C5 de la revue
+	// R1) : le texte d'armement est impose a la sentinelle canonique, et la ligne fatale
+	// porte de nouveau le PLAFOND FRANCHI a cote de l'empreinte atteinte — sans lui, le
+	// journal disait jusqu'ou on etait monte mais plus ce qu'on avait depasse.
+	plafondDur := filmproc.HardLimitFor(o.memLimitGiB)
+	g := filmproc.Arm(outilBackfillReplay, o.memLimitGiB, func(peak uint64) {
+		slog.Error("backfill-replay (enfant): PLAFOND MEMOIRE DEPASSE — arret du processus",
+			"empreinte_octets", peak, "plafond_dur_octets", plafondDur, "match_id", o.one)
+		filmproc.EmitPeak(peak)
+		os.Exit(filmproc.CodeMemory)
+	}, filmproc.WithArmMessage("plafond memoire arme"))
 	// Le pic part sur TOUTES les sorties ordinaires. La sortie par la sentinelle, elle,
 	// l'emet elle-meme : `os.Exit` ne joue pas les differes.
-	defer func() { filmproc.EmitPeak(sentinelle.picObserve()) }()
+	defer func() {
+		g.Disarm()
+		filmproc.EmitPeak(g.Peak())
+	}()
 
 	ctx := context.Background()
 	// LE VERROU SOLO, EN ATTENTE BORNEE (PLAN_CUISSON_PERF §3 D7). Une PASSE n'a pas de cycle
