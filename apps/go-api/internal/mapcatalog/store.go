@@ -80,17 +80,45 @@ const (
 
 // prendreVerrou pose un verrou consultatif a cote du catalogue et rend sa fonction de retrait.
 //
-// Il ne rend JAMAIS d'erreur : au pire il force le passage apres `dureeAttenteVerrou` en le
-// journalisant. Faire echouer une ecriture parce qu'un `.lock` traine serait transformer un
-// garde-fou en panne.
+// # LE DOSSIER SE CREE AVANT LE VERROU (constat C3 de la revue A-R1, 2026-09-06)
+//
+// L'overlay d'un titre vit sous `reference/generated/`, un dossier IGNORE PAR GIT : il n'existe
+// donc pas sur un checkout neuf ni sur une instance fraichement deployee — c'est l'etat NOMINAL
+// du tout premier rattrapage. `os.OpenFile(..., O_CREATE|O_EXCL)` y echouait ENOENT, et la
+// boucle ci-dessous ne distinguait pas cette erreur d'un verrou tenu : elle attendait
+// `dureeAttenteVerrou` pour rien, journalisait un « verrou tenu trop longtemps » qui MENTAIT
+// sur la cause, puis ecrivait SANS exclusion mutuelle. Mesure : 8 ecrivains concurrents sur un
+// dossier absent ne conservaient qu'UNE carte sur 8, avec quatre `rename` en echec dur.
+//
+// # UN VERROU TENU EST UN `EEXIST`, ET RIEN D'AUTRE
+//
+// Toute autre erreur d'ouverture (droits, dossier disparu entre-temps) n'est pas une attente :
+// la reessayer pendant deux secondes puis se tromper de diagnostic est pire que de le dire tout
+// de suite. Ces cas passent en force IMMEDIATEMENT, avec un journal qui nomme l'erreur reelle.
+//
+// Il ne rend JAMAIS d'erreur : au pire il force le passage en le journalisant. Faire echouer
+// une ecriture parce qu'un `.lock` traine serait transformer un garde-fou en panne.
 func prendreVerrou(chemin string) func() {
 	verrou := chemin + ".lock"
+	dossier := filepath.Dir(chemin)
+	if err := os.MkdirAll(dossier, 0o755); err != nil {
+		slog.Warn("mapcatalog: dossier du catalogue non creable — passage force, ecriture sans verrou",
+			"dossier", dossier, "err", err,
+			"consequence", "une ecriture concurrente pourrait perdre une entree")
+		return func() {}
+	}
 	fin := time.Now().Add(dureeAttenteVerrou)
 	for {
 		f, err := os.OpenFile(verrou, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 		if err == nil {
 			_ = f.Close()
 			return func() { _ = os.Remove(verrou) }
+		}
+		if !errors.Is(err, fs.ErrExist) {
+			slog.Warn("mapcatalog: verrou d'ecriture impossible a poser — passage force",
+				"verrou", verrou, "err", err,
+				"consequence", "une ecriture concurrente pourrait perdre une entree")
+			return func() {}
 		}
 		if time.Now().After(fin) {
 			slog.Warn("mapcatalog: verrou d'ecriture tenu trop longtemps — passage force",
