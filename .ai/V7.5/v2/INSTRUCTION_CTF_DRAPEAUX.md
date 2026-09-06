@@ -253,3 +253,154 @@ Note d'environnement : `go build ./...` a d'abord échoué en « No space left o
    de juin compressés. `filmsource.inflate` absorbe les deux, mais toute génération de fixture par
    recompression uniforme re-fabriquera le même défaut. Un générateur de fixture devrait normaliser
    à « une couche », comme le fait désormais le garde-rail.
+
+---
+
+## 9. La vraie instruction : où sont passées les actions `flag_captures` / `flag_steals` ? (2026-09-06)
+
+Ouverte par le constat 3 de la revue CTF-R1. Instruite ici de bout en bout.
+
+### 9.1 Les deux états, joueur par joueur
+
+Artefact du parc `data/cache/replays/halo_infinite/c0a82e88.json` (schéma 20, cuit le 2026-08-26,
+lecture seule) contre la cuisson du **film complet du cache** au HEAD (`cmd/replay-build`,
+`--map Corpo`, faits du fixture, `LEVELUP_REPO_ROOT` sur le worktree pour ne rien écraser).
+
+| xuid | nom | courbe de score, parc | actions, parc (schéma 20) | courbe, HEAD | actions, HEAD (avant correctif) |
+|---|---|---|---|---|---|
+| 2533274823110022 | JGtm | non | — | non | `kills=2 assists=1` |
+| 2533275001554469 | GEK XD | oui | `kills=1 assists=2` | oui | `kills=1 assists=2` |
+| 2535429692041611 | LostYeti71 | oui | `kills=1` | oui | `kills=1` |
+| 2535432531943478 | TheBackwoodBoss | oui | `kills=2` | oui | `kills=2` |
+| **2535463878425995** | **SweatyYeti75** | oui | **`kills=7 assists=1 flag_captures=1 flag_steals=1`** | oui | **—** |
+| 2535465632069522 | DiegoGamer8K | oui | `assists=1` | oui | **—** |
+| 2535465779546251 | EwN1W | non | — | non | `kills=2 assists=1` |
+
+Totaux : **17 actions au parc** (11 `kills`, 4 `assists`, 1 `flag_captures`, 1 `flag_steals`)
+contre **12 au HEAD** (8 `kills`, 4 `assists`, **aucune famille `flag`**). La couverture du
+drapeau, elle, est **identique** aux deux états (bursts/captures/steals/openings/noBridge/spawns/
+objectLives = 3/3/3/3/3/2/4) : c'est bien le calque `objectives` qui a bougé, pas `flagCarries`.
+
+Les deux actions de drapeau du match sont **toutes deux à SweatyYeti75** : `flag_steals` à
+t=99 002 ms, `flag_captures` à t=105 526 ms.
+
+### 9.2 Bissection — commit fautif et ligne
+
+`git log` sur `objectiveevents/slotidentity*.go` et `replaybuild/matchfacts.go` entre les deux
+états désigne **`d173b1a8c`** (2026-08-28, « obj-parmanche(1) : calque Objectives identifié PAR
+MANCHE (fil des morts) »). Cuisson du même film complet de part et d'autre, **même schéma 23** :
+
+| commit | actions | familles | joueurs porteurs d'actions |
+|---|---|---|---|
+| `d173b1a8c^` (`ed5c378b8`) | **17** | `kills=11 assists=4 flag_captures=1 flag_steals=1` | GEK XD, LostYeti71, TheBackwoodBoss, **SweatyYeti75**, DiegoGamer8K |
+| **`d173b1a8c`** | **12** | `kills=8 assists=4` | JGtm, GEK XD, LostYeti71, TheBackwoodBoss, EwN1W |
+
+**Ligne** : `apps/go-api/internal/replaybuild/matchfacts.go`, `identifiedEvents` — l'appel
+`objectiveevents.SlotIdentityFrom(recs, lines)` (pont par **TRIPLET**, exige les lignes de match)
+remplacé par `objectiveevents.ResolveRoundIdentity(recs, deaths)` (pont par **MORTS**).
+
+### 9.3 La cause, sur pièces
+
+Les deux ponts, mesurés **sur le même film**, slot par slot :
+
+| slot | pont TRIPLET | pont MORTS | verdict |
+|---|---|---|---|
+| 10 | TheBackwoodBoss | TheBackwoodBoss | accord |
+| 14 | — | JGtm | le triplet se tait |
+| 16 | GEK XD | GEK XD | accord |
+| 18 | LostYeti71 | LostYeti71 | accord |
+| 20 | DiegoGamer8K | — | **les morts se taisent** |
+| 22 | **SweatyYeti75** | — | **les morts se taisent** |
+| 24 | — | EwN1W | le triplet se tait |
+
+**ZÉRO CONTRADICTION.** Chacun nomme 5 slots, 3 en commun et à l'identique ; chacun nomme 2 slots
+que l'autre laisse tomber. Ce ne sont pas deux réponses concurrentes, ce sont **deux couvertures
+complémentaires** — et `d173b1a8c` a remplacé l'une par l'autre au lieu de les additionner.
+
+**Pourquoi le pont par morts se tait sur les slots 20 et 22** : `deathInstantMin = 3`
+(`objectiveevents/slotidentity_deaths.go`). Un slot n'est nommé que s'il aligne au moins **trois**
+instants de mort coïncidents. SweatyYeti75 meurt **2** fois, DiegoGamer8K **1** fois. Ils sont
+hors de portée **par construction** — et ce sont, par définition, les joueurs qui meurent le
+moins, c'est-à-dire les meilleurs, c'est-à-dire ceux qui portent le drapeau.
+
+**Contrôle croisé, deux chaînes disjointes** (les totaux du match d'un côté, les instants du film
+de l'autre) :
+
+```
+slot 20 : 1 progression de mort [59881]        -> 2535465632069522 (DiegoGamer8K)  1 sur 1, et LUI SEUL
+slot 22 : 2 progressions de mort [46451 70141] -> 2535463878425995 (SweatyYeti75)  2 sur 2, et LUI SEUL
+```
+
+Les instants de mort de ces deux slots coïncident **exclusivement** avec le xuid que le triplet
+désigne. Le pont par morts ne se tait pas parce qu'il doute : il se tait parce qu'il **n'a pas
+assez d'ancres** pour que sa marge s'applique.
+
+### 9.4 Régression ou décision documentée ? — RÉGRESSION
+
+Le message de `d173b1a8c` annonce : « Neutralité mono-manche prouvée par construction (une manche
+= pont plat par morts) ». Cette phrase est **vraie contre le pont PLAT PAR MORTS**
+(`SlotIdentityByDeaths`), qui alimentait déjà la couronne VIP, le drapeau et le crâne — pour ces
+calques-là, la neutralité tient. Mais **le calque `objectives` n'était pas sur ce pont-là** : il
+était sur le TRIPLET. La neutralité a donc été prouvée **contre le mauvais témoin**, et sur un
+film à UNE MANCHE le calque a perdu deux joueurs sur cinq. Aucun ADR, aucun plan, aucune entrée du
+registre des reports ne mentionne ce renoncement : ce n'est pas un arbitrage, c'est un angle mort.
+
+### 9.5 Le correctif
+
+`objectiveevents.RoundIdentity.CompletedByLines(recs, lines)` — complète l'identité par manche
+avec le pont par triplet, sur les **seuls slots que le pont par morts n'a pas nommés**, sous
+**trois gardes non négociables** :
+
+1. **mono-manche seulement** — le triplet apparie des TOTAUX de match ; en multi-manche le slot est
+   réattribué et le compteur repart de zéro, ce qui est exactement le défaut que `d173b1a8c` a
+   corrigé et qu'il n'est pas question de réintroduire ;
+2. **compléter, jamais contredire** — un slot déjà nommé par les morts garde son nom ;
+3. **aucun xuid deux fois** — même règle que la seconde passe de `SlotIdentityFrom`.
+
+`lines` vide rend l'identité **inchangée** : le calque reste publiable hors ligne, sans base — la
+propriété que `d173b1a8c` avait gagnée est conservée.
+
+Câblé dans `replaybuild.identifiedEvents`, qui recevait déjà les faits pour la courbe de score.
+
+**Résultat mesuré sur le film complet** : **23 actions**, **7 joueurs pontés sur 7 présents au
+film**, et chacun publie **EXACTEMENT sa ligne de la feuille de match** (JGtm 2/1, GEK XD 1/2,
+LostYeti71 1/0, TheBackwoodBoss 2/0, SweatyYeti75 7/1, DiegoGamer8K 0/1, EwN1W 2/1 — total
+15 `kills`, 6 `assists`, conforme à l'API). Les deux actions de drapeau sont revenues, sur
+SweatyYeti75, aux mêmes instants qu'au parc. Le 8e joueur de la feuille (5 frags, 0 mort) n'a
+aucune trajectoire dans le film : il n'a pas de slot à nommer.
+
+### 9.6 Tests de non-régression
+
+- `objectiveevents/slotidentity_completion_test.go` — quatre tests : le rattrapage du joueur qui
+  meurt deux fois, la neutralité sans lignes, **le refus du multi-manche**, et le refus d'un xuid
+  déjà pris.
+- `wire/build_queue_worker_binary_integration_test.go` — sur la cuisson E2E réelle : 7 joueurs
+  pontés, chacun **à égalité** avec la feuille de match, et `flag_captures = 1` / `flag_steals = 1`
+  au porteur `2535463878425995`. **Vérifié par MUTATION** : correctif débranché, le test rougit
+  avec « joueurs pontés = 5, attendu 7 » et les deux actions de drapeau à 0.
+
+### 9.7 Périmètre sur le parc, et bump de schéma
+
+- **Artefacts concernés** : tous ceux cuits depuis le **2026-08-28** (`d173b1a8c`) sur un film
+  **mono-manche** où au moins un joueur meurt moins de trois fois — ses actions d'objectif y sont
+  absentes. Ce n'est pas propre au CTF ni à Husky Raid : le pont est title-agnostic et sert toutes
+  les familles (`kills`, `assists`, `zone_*`, `flag_*`, `bomb_detonations`). Relevé du parc local :
+  16 artefacts à calque `objectives` ont été cuits après la bascule ; sept d'entre eux nomment
+  8 joueurs sur 8 (les matchs où tout le monde meurt au moins 3 fois), les autres en perdent.
+  Les films **multi-manche** ne sont pas concernés : la complétion s'y abstient, à dessein.
+- **Bump de `SchemaVersion` : NON.** La convention du dépôt, posée par `d173b1a8c` lui-même
+  (« la forme du document est INCHANGÉE (contrat stable) → aucun bump de schéma »), réserve le
+  bump aux changements de FORME. Ici la forme ne bouge pas, seul le CONTENU s'enrichit. La
+  propagation passe donc par la re-cuisson de release (`backfill-replay`), déjà inscrite au
+  registre des reports pour les autres correctifs de contenu — entrée ajoutée pour celui-ci.
+
+### 9.8 Découverte, notée et NON traitée
+
+`flagCarries` reste à 0 sur ce film, et le correctif n'y change rien : le calque du drapeau
+construit sa propre identité **dans `analysis/replay`** (`build_objectives_live.go`), paquet
+title-agnostic qui ne reçoit **aucun fait de match** — c'est une frontière délibérée
+(« publiable hors ligne »). Mesure : les 3 prises `noBridge` se répartissent en **2 sur un slot 12
+agrégé** (jamais nommable : ses compteurs ne correspondent à aucun joueur) et **1 sur le slot 22**
+(SweatyYeti75). Faire descendre les lignes jusqu'à ce calque ferait donc passer `flagCarries` de
+0 à 1 portage sur ce film — gain réel mais modeste, au prix du franchissement d'une frontière
+d'architecture. **Décision produit, hors mandat** : portée au registre des reports.

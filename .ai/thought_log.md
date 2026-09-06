@@ -95493,3 +95493,54 @@ contredite par le parc, ou ses actions de drapeau sont nommees. Instruction en c
 **Conclusion / prochaine etape.** Bissection du pont d'identite entre le schema 20 et le
 schema 38 (suspect designe : `d173b1a8c`, qui remplace le pont par TOTAUX par un pont PAR
 MANCHE), puis cause sur pieces, correctif ou decision citee.
+
+## [2026-09-06] La vraie derive : le pont par MORTS perd les joueurs qui meurent peu
+
+**Statut** : Complete (branche `feat/v2-ctf-drapeaux`, lot 2, suite du correctif CTF-R1).
+
+**Decision technique principale.** La revue CTF-R1 avait rouvert le fond : sur `c0a82e88`, le
+calque `objectives` passe de 17 actions (artefact du parc, schema 20) a 12 au HEAD, les familles
+`flag_captures` et `flag_steals` disparaissent, et les joueurs pontes sont ECHANGES. Instruit et
+tranche.
+
+**Commit fautif** : `d173b1a8c` (2026-08-28, « obj-parmanche(1) »), ligne
+`replaybuild/matchfacts.go`, `identifiedEvents` — `SlotIdentityFrom(recs, lines)` (pont par
+TRIPLET) remplace par `ResolveRoundIdentity(recs, deaths)` (pont par MORTS). Bissection sur le
+film complet, meme schema 23 de part et d'autre : 17 actions avant, 12 apres.
+
+**Cause, sur pieces.** Les deux ponts, mesures slot par slot sur le meme film, ne se contredisent
+NULLE PART : 3 slots nommes par les deux a l'identique, 2 que seul le triplet nomme, 2 que seul le
+pont par morts nomme. Ce sont deux couvertures COMPLEMENTAIRES, et le commit a remplace l'une par
+l'autre au lieu de les additionner. Le pont par morts exige `deathInstantMin` = 3 instants
+coincidents : SweatyYeti75 (2 morts, 7 frags, auteur de LA capture et DU vol de drapeau du match)
+et DiegoGamer8K (1 mort) lui echappent PAR CONSTRUCTION — ce sont, par definition, les joueurs qui
+meurent le moins. Controle croise independant : les progressions de mort du slot 22 coincident
+avec le fil de SweatyYeti75 et de LUI SEUL (2 sur 2), celles du slot 20 avec DiegoGamer8K et lui
+seul (1 sur 1). Verdict : REGRESSION, pas arbitrage. Le commit annoncait une « neutralite
+mono-manche prouvee par construction » — vraie contre le pont PLAT PAR MORTS, mais ce calque-la
+n'etait pas sur ce pont : il etait sur le triplet. La neutralite a ete prouvee contre le mauvais
+temoin.
+
+**Correctif** : `objectiveevents.RoundIdentity.CompletedByLines(recs, lines)` — complete
+l'identite par manche avec le triplet sur les SEULS slots que le pont par morts n'a pas nommes,
+sous trois gardes : mono-manche uniquement (le triplet apparie des TOTAUX ; en multi-manche c'est
+exactement le defaut que `d173b1a8c` a corrige), completer jamais contredire, et aucun xuid deux
+fois. `lines` vide rend l'identite inchangee : le calque reste publiable hors ligne.
+
+**Resultats observes.** Film complet : 23 actions, 7 joueurs pontes sur 7 presents au film, chacun
+publiant EXACTEMENT sa ligne de la feuille de match (15 frags, 6 assistances au total, conforme a
+l'API). Les deux actions de drapeau reviennent sur SweatyYeti75, aux memes instants qu'au parc.
+Tests : quatre unitaires sur `CompletedByLines` (dont le refus du multi-manche) et des assertions
+E2E figees (7 pontes, egalite avec la feuille, `flag_captures`/`flag_steals` = 1), VERIFIEES PAR
+MUTATION (correctif debranche : « joueurs pontes = 5, attendu 7 » et les deux actions a 0). Gates
+verts : build, objectiveevents/replay/replaybuild/filmdec, integration wire, goldens killsource,
+archlint, filmsource, golangci-lint 0 issue.
+
+**Conclusion / prochaine etape.** AUCUN bump de `SchemaVersion` : la forme du document ne change
+pas, seul le contenu s'enrichit — meme convention que `d173b1a8c`. Le parc cuit entre le
+2026-08-28 et aujourd'hui porte un calque `objectives` incomplet ; la propagation passe par la
+passe `backfill-replay` de la release, portee au registre des reports. Decouverte non traitee et
+portee au registre : `flagCarries` subit le meme plafond sans avoir le triplet pour le completer
+(1 des 3 prises de ce film est nommable, les 2 autres sont sur un slot agrege) — le corriger
+demande de faire descendre des lignes de match dans `analysis/replay`, frontiere delibree, donc
+decision produit.
