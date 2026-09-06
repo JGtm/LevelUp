@@ -322,6 +322,68 @@ lot — aucun test supprimé par G.1/G.2 n'apparaît dans `.ai/baselines/tests_p
   complet du lot. Le lot qui touchera ce fichier peut mettre à jour ce commentaire au passage
   (même correction que celle déjà faite dans `cmd/replay-worker/job.go`).
 
+## Réparation CI (2026-09-06) — `TestJoliDossier` rouge sous ubuntu-latest
+
+**Signalement du coordinateur** : job `Go Coverage + Baseline` du run `33997437532` rouge —
+`TestJoliDossier` échoue sous Linux avec `joliDossier("C:\Steam\SFX\sb_010_wea_un_
+assaultrifle.pck") = "C:\Steam\SFX\wea_un_assaultrifle"` au lieu de `"UNSC_assaultrifle"`
+(et 3 cas semblables — les 4 entrées de la table de test).
+
+**Cause, vérifiée sur pièces** : `joliDossier` construisait le nom de fichier nu via
+`strings.TrimSuffix(filepath.Base(pck), filepath.Ext(pck))`. `path/filepath` de la stdlib Go
+est dépendant de l'OS DE COMPILATION : sous Linux, `filepath.Base` ne coupe que sur `/`, pas
+sur `\`. Or les chemins de `lot1.json`/`lot2.json` sont TOUJOURS des chemins Windows (machine
+d'extraction du chantier, confirmé par un `jq` sur les fixtures réelles :
+`"C:\Program Files (x86)\Steam\...\sb_010_tur_bt_gatlingmortar.pck"`), quelle que soit la
+plateforme qui exécute le binaire. Sous Linux, `filepath.Base` rendait donc le chemin ENTIER
+non coupé, la regex `sb_010_(wea|tur|whizby)_...` ne matchait jamais, et le repli
+`strings.ReplaceAll(base, "sb_010_", "")` laissait le préfixe de répertoire Windows dans le
+résultat — bug latent RÉEL (pas seulement un artefact de test) : le mode `livrer` aurait
+produit un catalogue faux sur toute machine Linux traitant les vraies données du chantier.
+
+**Correctif** : nouvelle fonction `joliBaseSansExt` qui coupe sur le DERNIER `/` OU `\`
+(`strings.LastIndexAny`) puis sur le dernier `.`, INDÉPENDAMMENT de l'OS de compilation — port
+fidèle de `os.path.basename`/`splitext` tels qu'ils se comportent sous Windows (module
+`ntpath` : les deux séparateurs sont valides), le seul OS sur lequel `_outils/livraison.py` a
+jamais tourné. `joliDossier` délègue à cette fonction ; `path/filepath` reste importé dans
+`livraison.go` (toujours utilisé par `livraisonChoixParRole` pour `filepath.Rel`/`ToSlash` sur
+de VRAIS chemins du système de fichiers local, un cas différent qui n'a pas ce défaut).
+Nouveau test permanent `TestJoliDossier_IndependantDuSeparateur` (séparateurs mixtes, nom nu
+sans répertoire, forme `/` et forme `\` côte à côte) — le test original (entrées `\` telles
+quelles) n'a pas eu besoin d'être modifié, seule la fonction sous-jacente était en cause.
+
+**Vérifications** : `GOOS=linux go vet ./cmd/weapon-sounds/...` n'a pas pu être joué
+jusqu'au bout sur ce poste — `cmd/weapon-sounds` importe transitivement `internal/ooz`
+(décompression Kraken, CGO), et ce Windows ne dispose d'aucune chaîne de cross-compilation
+vers Linux (`CGO_ENABLED=1 GOOS=linux` échoue sur des en-têtes POSIX manquantes dans le gcc
+MinGW local — limite d'environnement, pas un défaut de code). `go vet` n'aurait de toute
+façon pas pu détecter cette classe de bug (différence de COMPORTEMENT runtime d'un paquet
+stdlib selon l'OS, pas une construction suspecte). Preuve retenue à la place : test unitaire
+explicite avec des chemins `/` ET `\` mélangés, qui passe sur CE poste (Windows) exactement
+comme il passerait sur Linux — la fonction ne dépend plus de `path/filepath` du tout pour cette
+opération, donc plus d'aucun comportement spécifique à l'OS de compilation.
+`grep -n '\\' cmd/weapon-sounds/*_test.go cmd/levelup/*_test.go internal/himap/*_test.go` :
+les seules occurrences pertinentes sont les deux tests `TestJoliDossier*` (désormais corrects
+sur les deux séparateurs) ; le reste est soit un faux positif (`\n`, `\s`, `\"` dans des
+chaînes/regex sans rapport), soit un fichier `*_gamefiles_test.go` PRÉEXISTANT et hors
+périmètre du lot (`internal/himap/sonde_locs_gamefiles_test.go`, un chemin Windows codé en
+dur pour une machine de développement spécifique, derrière le tag `gamefiles` donc jamais
+exécuté en CI).
+
+Gates rejoués (avant-plan, `GOCACHE`/`GOLANGCI_LINT_CACHE` dédiés au lot) :
+`go build ./cmd/weapon-sounds/...` propre ; `go test ./cmd/weapon-sounds/... -run
+"TestJoliDossier|TestLivraison|TestMT19937"` → 12 tests PASS ; `go test -count=1
+./internal/himap/... ./internal/archlint/... ./internal/filmproc/... ./cmd/levelup/...
+./cmd/replay-worker/... ./cmd/weapon-sounds/...` → `ok` sur les 6 paquets ;
+`golangci-lint run --new-from-merge-base=origin/main` sur ces 6 paquets (avec
+`GOLANGCI_LINT_CACHE=/c/Users/Guillaume/AppData/Local/golangci-v2-outils`) → `0 issues.` ;
+`go build ./...` a échoué une fois sur une erreur de linker sans rapport avec ce lot
+(`cmd/rebuild_shared_social`, `cmd/rebuild_pme_art`, `cmd/refresh-metadata`... — collision de
+répertoire de travail du linker, probablement des builds Go concurrents d'autres agents du
+même poste), propre au second essai.
+
+Commit : `df896e5b1` — `v2(G.3-fix): joliDossier portable, independant de l OS de compilation`.
+
 ## Questions ouvertes
 
 - Aucune question bloquante identifiée. Point d'attention pour un lecteur futur de
