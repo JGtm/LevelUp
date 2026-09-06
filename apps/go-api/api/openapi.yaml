@@ -6204,13 +6204,6 @@ paths:
           schema:
             description: Borne haute (RFC3339).
             type: string
-        - description: Identifiant de session.
-          explode: false
-          in: query
-          name: session
-          schema:
-            description: Identifiant de session.
-            type: string
         - description: 'Issue : win | loss | draw | dnf.'
           explode: false
           in: query
@@ -6277,13 +6270,6 @@ paths:
           name: to
           schema:
             description: Borne haute (RFC3339).
-            type: string
-        - description: Identifiant de session.
-          explode: false
-          in: query
-          name: session
-          schema:
-            description: Identifiant de session.
             type: string
         - description: 'Issue : win | loss | draw | dnf.'
           explode: false
@@ -9175,26 +9161,26 @@ components:
     BornesMonde:
       additionalProperties: false
       properties:
-        MaxX:
+        max_x:
           format: double
           type: number
-        MaxY:
+        max_y:
           format: double
           type: number
-        MinX:
+        min_x:
           format: double
           type: number
-        MinY:
+        min_y:
           format: double
           type: number
-        Valide:
+        valide:
           type: boolean
       required:
-        - MinX
-        - MinY
-        - MaxX
-        - MaxY
-        - Valide
+        - min_x
+        - min_y
+        - max_x
+        - max_y
+        - valide
       type: object
     Bounds:
       additionalProperties: false
@@ -10486,43 +10472,43 @@ components:
     CelluleTactique:
       additionalProperties: false
       properties:
-        Brut:
+        brut:
           format: double
           type: number
-        CentreX:
+        centre_x:
           format: double
           type: number
-        CentreY:
+        centre_y:
           format: double
           type: number
-        Col:
+        col:
           format: int64
           type: integer
-        Lig:
+        lig:
           format: int64
           type: integer
-        Matchs:
+        matchs:
           format: int64
           type: integer
-        MatchsDefaite:
+        matchs_defaite:
           format: int64
           type: integer
-        MatchsVictoire:
+        matchs_victoire:
           format: int64
           type: integer
-        Valeur:
+        valeur:
           format: double
           type: number
       required:
-        - Col
-        - Lig
-        - CentreX
-        - CentreY
-        - Valeur
-        - Brut
-        - Matchs
-        - MatchsVictoire
-        - MatchsDefaite
+        - col
+        - lig
+        - centre_x
+        - centre_y
+        - valeur
+        - brut
+        - matchs
+        - matchs_victoire
+        - matchs_defaite
       type: object
     Challenge:
       additionalProperties: false
@@ -11216,26 +11202,26 @@ components:
     Couverture:
       additionalProperties: false
       properties:
-        Brut:
+        brut:
           format: int64
           type: integer
-        EchantillonFaible:
+        echantillon_faible:
           type: boolean
-        "N":
+        "n":
           format: int64
           type: integer
-        ParMatch:
+        par_match:
           format: double
           type: number
-        Taux:
+        taux:
           format: double
           type: number
       required:
-        - Taux
-        - Brut
-        - ParMatch
-        - "N"
-        - EchantillonFaible
+        - taux
+        - brut
+        - par_match
+        - "n"
+        - echantillon_faible
       type: object
     Coverage:
       additionalProperties: false
@@ -11653,26 +11639,26 @@ components:
     EchelleTactique:
       additionalProperties: false
       properties:
-        Borne:
+        borne:
           format: double
           type: number
-        NCellules:
+        n_cellules:
           format: int64
           type: integer
-        P50:
+        p50:
           format: double
           type: number
-        P95:
+        p95:
           format: double
           type: number
-        Symetrique:
+        symetrique:
           type: boolean
       required:
-        - P50
-        - P95
-        - Borne
-        - Symetrique
-        - NCellules
+        - p50
+        - p95
+        - borne
+        - symetrique
+        - n_cellules
       type: object
     EncounterDTO:
       additionalProperties: false
@@ -25577,9 +25563,21 @@ components:
           $ref: '#/components/schemas/Couverture'
         echelle:
           $ref: '#/components/schemas/EchelleTactique'
+        evenements_journal:
+          format: int64
+          type: integer
+        evenements_localises:
+          format: int64
+          type: integer
         map_id:
           type: string
+        matchs_defaite:
+          format: int64
+          type: integer
         matchs_retenus:
+          format: int64
+          type: integer
+        matchs_victoire:
           format: int64
           type: integer
         pas_m:
@@ -25597,11 +25595,15 @@ components:
         - question
         - qui
         - matchs_retenus
+        - matchs_victoire
+        - matchs_defaite
         - pas_m
         - bornes
         - cellules
         - echelle
         - points_ignores
+        - evenements_journal
+        - evenements_localises
       type: object
     TeamHold:
       additionalProperties: false

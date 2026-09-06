@@ -123,6 +123,7 @@ func (s *TacticalService) Raster(ctx context.Context, carte, question, qui strin
 	out.MatchsRetenus = len(lecture.Univers.Matchs)
 
 	points := projeter(lecture, question, qui, s.xuid)
+	out.EvenementsLocalises = len(points)
 	raster, err := rasteriser(lecture.Univers, question, points)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: rasterisage en echec",
@@ -130,12 +131,14 @@ func (s *TacticalService) Raster(ctx context.Context, carte, question, qui strin
 		return out, fmt.Errorf("tactique: rasterisage: %w", err)
 	}
 	remplirRaster(&out, raster, question)
-	out.Echange = s.echange(ctx, carte, filtre)
+	s.lireLeJournal(ctx, &out, filtre)
 
 	s.logger.InfoContext(ctx, "tactique: lecture de placement",
 		"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "map_id", carte,
 		"question", question, "qui", qui, "matchs_retenus", out.MatchsRetenus,
 		"cellules", len(out.Cellules), "points_ignores", out.PointsIgnores,
+		"evenements_journal", out.EvenementsJournal,
+		"evenements_localises", out.EvenementsLocalises,
 		"duration", time.Since(debut))
 	return out, nil
 }
@@ -166,8 +169,7 @@ func validerLecture(carte, question, qui string) error {
 //	gagne  -> LES DEUX (l'engagement a deux faces, cf. domain.TacticalQuestionGagne).
 func projeter(lecture domain.TacticalPositions, question, qui, moi string) []domain.PositionSample {
 	cible := ciblePar(lecture.Univers.Equipes, qui, moi)
-	prendVictime := question != domain.TacticalQuestionKills
-	prendTueur := question != domain.TacticalQuestionMorts
+	prendVictime, prendTueur := facesDeLaQuestion(question)
 
 	points := make([]domain.PositionSample, 0, len(lecture.Points))
 	for _, p := range lecture.Points {
@@ -179,6 +181,14 @@ func projeter(lecture domain.TacticalPositions, question, qui, moi string) []dom
 		}
 	}
 	return points
+}
+
+// facesDeLaQuestion dit quelles FACES d'une mort la question regarde. Source unique
+// des deux lectures qui en dependent — le rasterisage (projeter) et le comptage de
+// couverture (compterJournal) — pour qu'un « ou je gagne » qui cesserait de compter
+// les morts ne puisse pas le faire d'un seul cote.
+func facesDeLaQuestion(question string) (prendVictime, prendTueur bool) {
+	return question != domain.TacticalQuestionKills, question != domain.TacticalQuestionMorts
 }
 
 // ciblePar rend le predicat d'appartenance a l'axe demande, PAR MATCH.
@@ -230,6 +240,11 @@ func remplirRaster(out *domain.TacticalRaster, raster *tactical.Raster, question
 	if question == domain.TacticalQuestionGagne {
 		out.Cellules = raster.CellulesSignees()
 		out.Echelle = tactical.EchelleSymetrique(out.Cellules)
+		// Les DEUX denominateurs de la lecture signee, sur l'univers entier : ils ne
+		// valent pas MatchsRetenus, et leur somme lui est en general inferieure (les
+		// nuls et les resultats inconnus ne participent a aucun cote).
+		out.MatchsVictoire = raster.NbMatchsResultat(domain.OutcomeWin)
+		out.MatchsDefaite = raster.NbMatchsResultat(domain.OutcomeLoss)
 	} else {
 		out.Cellules = raster.Cellules()
 		out.Echelle = tactical.Echelle(out.Cellules)
@@ -239,21 +254,54 @@ func remplirRaster(out *domain.TacticalRaster, raster *tactical.Raster, question
 	out.PointsIgnores = raster.PointsIgnores()
 }
 
-// echange mesure le taux de morts vengees DE MON EQUIPE sur cette carte.
+// lireLeJournal fait UN SEUL passage sur le journal des morts, et en tire DEUX
+// choses de nature differente :
 //
-// nil (et non une Couverture a zero) quand le titre ne sait pas lire la source des
-// morts, ou quand la lecture echoue : la lecture de placement, elle, reste servie.
-// Un echec est journalise avant la degradation, jamais avale.
-func (s *TacticalService) echange(ctx context.Context, carte string, filtre *domain.MatchFilterSpec) *domain.Couverture {
-	if !journalDesMortsFiable(s.caps) {
-		return nil
-	}
-	lecture, err := s.repo.KillEvents(ctx, domain.TacticalQuery{PlayerXUID: s.xuid, MapID: carte, Filtre: filtre})
+//  1. la COUVERTURE de la carte — combien d'evenements de la cible le journal
+//     compte, face aux positions effectivement localisees. Elle est servie quelle
+//     que soit la capability : c'est une propriete de la mesure, pas un KPI ;
+//  2. le KPI d'ECHANGE, lui, seulement si le journal est FIABLE ligne a ligne
+//     (journalDesMortsFiable). Sinon il reste nil — jamais un zero, qui se lirait
+//     comme une contre-performance.
+//
+// Un echec de lecture est journalise puis degrade : la lecture de placement, elle,
+// reste servie. Aucune erreur avalee.
+func (s *TacticalService) lireLeJournal(ctx context.Context, out *domain.TacticalRaster, filtre *domain.MatchFilterSpec) {
+	lecture, err := s.repo.KillEvents(ctx, domain.TacticalQuery{
+		PlayerXUID: s.xuid, MapID: out.MapID, Filtre: filtre,
+	})
 	if err != nil {
-		s.logger.ErrorContext(ctx, "tactique: journal des morts en echec (KPI d'echange non servi)",
-			"player", s.xuid, "map_id", carte, "err", err)
-		return nil
+		s.logger.ErrorContext(ctx, "tactique: journal des morts en echec (couverture et echange non servis)",
+			"player", s.xuid, "map_id", out.MapID, "err", err)
+		return
 	}
+	out.EvenementsJournal = compterJournal(lecture, out.Question, out.Qui, s.xuid)
+	if journalDesMortsFiable(s.caps) {
+		out.Echange = s.mesurerEchange(ctx, out.MapID, lecture)
+	}
+}
+
+// compterJournal compte les evenements de la cible dans le journal — le
+// DENOMINATEUR de la couverture. Memes faces que le rasterisage
+// (facesDeLaQuestion) : ce qui est compte ici est exactement ce qui aurait ete
+// peint si toutes les positions existaient.
+func compterJournal(lecture domain.TacticalKillEvents, question, qui, moi string) int {
+	cible := ciblePar(lecture.Univers.Equipes, qui, moi)
+	prendVictime, prendTueur := facesDeLaQuestion(question)
+	n := 0
+	for _, e := range lecture.Events {
+		if prendVictime && cible(e.MatchID, e.VictimXUID) {
+			n++
+		}
+		if prendTueur && cible(e.MatchID, e.KillerXUID) {
+			n++
+		}
+	}
+	return n
+}
+
+// mesurerEchange rend le taux de morts vengees DE MON EQUIPE sur cette carte.
+func (s *TacticalService) mesurerEchange(ctx context.Context, carte string, lecture domain.TacticalKillEvents) *domain.Couverture {
 	bilan := coordination.Echanges(lecture.Events, lecture.Univers.Equipes)
 	monCamp := ciblePar(lecture.Univers.Equipes, domain.TacticalQuiEscouade, s.xuid)
 

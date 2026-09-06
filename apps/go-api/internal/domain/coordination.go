@@ -12,25 +12,29 @@ package domain
 // force donc les trois grandeurs a voyager ensemble — le taux, le compte brut, et la
 // quantite par match — et porte le drapeau d'echantillon faible avec elles (doctrine
 // SquadAssistPairsTable, plan tactique 2026-09-05).
+//
+// Les tags JSON sont poses le 2026-09-06 (correction R4) : ce type traverse le contrat
+// HTTP de l'onglet Tactique, et un `Brut` / `EchantillonFaible` en PascalCase a cote des
+// `map_id` / `matchs_retenus` de ses voisins ferait un contrat qui parle deux langues.
 type Couverture struct {
 	// Taux est en unite 0..1 (ADR 0006), jamais en pourcentage : la mise en forme est un
 	// choix d'affichage, pas une propriete de la mesure.
-	Taux float64
+	Taux float64 `json:"taux"`
 
 	// Brut est le numerateur : le nombre d'evenements comptes (morts vengees, ...).
-	Brut int
+	Brut int `json:"brut"`
 
 	// ParMatch est la quantite brute ramenee au match. C'est ce qui rend deux joueurs
 	// comparables quand ils n'ont pas joue le meme nombre de matchs.
-	ParMatch float64
+	ParMatch float64 `json:"par_match"`
 
 	// N est le denominateur : la taille de l'echantillon (morts examinees, ...).
-	N int
+	N int `json:"n"`
 
 	// EchantillonFaible dit que N est sous le plancher (cf.
 	// coordination.SeuilEchantillonFaible). L'affichage doit alors poser la reserve
 	// `explorer.briefing.low_sample` — et ne classer personne.
-	EchantillonFaible bool
+	EchantillonFaible bool `json:"echantillon_faible"`
 }
 
 // KillEvent est l'entree minimale de la mesure d'echange : une mort, son tueur quand il est

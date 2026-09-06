@@ -4776,14 +4776,14 @@ export interface components {
         };
         BornesMonde: {
             /** Format: double */
-            MaxX: number;
+            max_x: number;
             /** Format: double */
-            MaxY: number;
+            max_y: number;
             /** Format: double */
-            MinX: number;
+            min_x: number;
             /** Format: double */
-            MinY: number;
-            Valide: boolean;
+            min_y: number;
+            valide: boolean;
         };
         Bounds: {
             /** Format: float */
@@ -5261,23 +5261,23 @@ export interface components {
         };
         CelluleTactique: {
             /** Format: double */
-            Brut: number;
+            brut: number;
             /** Format: double */
-            CentreX: number;
+            centre_x: number;
             /** Format: double */
-            CentreY: number;
+            centre_y: number;
             /** Format: int64 */
-            Col: number;
+            col: number;
             /** Format: int64 */
-            Lig: number;
+            lig: number;
             /** Format: int64 */
-            Matchs: number;
+            matchs: number;
             /** Format: int64 */
-            MatchsDefaite: number;
+            matchs_defaite: number;
             /** Format: int64 */
-            MatchsVictoire: number;
+            matchs_victoire: number;
             /** Format: double */
-            Valeur: number;
+            valeur: number;
         };
         Challenge: {
             /** Format: date-time */
@@ -5577,14 +5577,14 @@ export interface components {
         };
         Couverture: {
             /** Format: int64 */
-            Brut: number;
-            EchantillonFaible: boolean;
+            brut: number;
+            echantillon_faible: boolean;
             /** Format: int64 */
-            N: number;
+            n: number;
             /** Format: double */
-            ParMatch: number;
+            par_match: number;
             /** Format: double */
-            Taux: number;
+            taux: number;
         };
         Coverage: {
             abilityCharges?: components["schemas"]["AbilityChargeCoverage"];
@@ -5773,14 +5773,14 @@ export interface components {
         };
         EchelleTactique: {
             /** Format: double */
-            Borne: number;
+            borne: number;
             /** Format: int64 */
-            NCellules: number;
+            n_cellules: number;
             /** Format: double */
-            P50: number;
+            p50: number;
             /** Format: double */
-            P95: number;
-            Symetrique: boolean;
+            p95: number;
+            symetrique: boolean;
         };
         EncounterDTO: {
             /** Format: int64 */
@@ -11565,9 +11565,17 @@ export interface components {
             cellules: components["schemas"]["CelluleTactique"][] | null;
             echange?: components["schemas"]["Couverture"];
             echelle: components["schemas"]["EchelleTactique"];
+            /** Format: int64 */
+            evenements_journal: number;
+            /** Format: int64 */
+            evenements_localises: number;
             map_id: string;
             /** Format: int64 */
+            matchs_defaite: number;
+            /** Format: int64 */
             matchs_retenus: number;
+            /** Format: int64 */
+            matchs_victoire: number;
             /** Format: double */
             pas_m: number;
             /** Format: int64 */
@@ -19524,8 +19532,6 @@ export interface operations {
                 from?: string;
                 /** @description Borne haute (RFC3339). */
                 to?: string;
-                /** @description Identifiant de session. */
-                session?: string;
                 /** @description Issue : win | loss | draw | dnf. */
                 outcome?: string;
                 /** @description XUID (entier decimal) devant avoir participe au match. */
@@ -19571,8 +19577,6 @@ export interface operations {
                 from?: string;
                 /** @description Borne haute (RFC3339). */
                 to?: string;
-                /** @description Identifiant de session. */
-                session?: string;
                 /** @description Issue : win | loss | draw | dnf. */
                 outcome?: string;
                 /** @description XUID (entier decimal) devant avoir participe au match. */
