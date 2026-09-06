@@ -64,6 +64,25 @@ func artefactADeriver(t *testing.T, dir, matchID string) string {
 	return path
 }
 
+// artefactSansRienADeriver ecrit un artefact qui n'a RIEN a deriver : ni coup d'envoi mesure,
+// ni trajectoire. Sur un titre sans clef `film.*`, aucune des quatre familles n'a de travail —
+// c'est le cas qui doit rester marque (derivation JOUEE) et n'ouvrir aucun segment d'ecriture.
+func artefactSansRienADeriver(t *testing.T, dir, matchID string) string {
+	t.Helper()
+	doc := replay.ReplayDocument{
+		SchemaVersion: replay.SchemaVersion, MatchID: matchID, FrameIntervalMS: 100,
+	}
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("marshal artefact: %v", err)
+	}
+	path := filepath.Join(dir, matchID+".json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatalf("write artefact: %v", err)
+	}
+	return path
+}
+
 // TestDeriver_WriterIndisponible_NeMarquePas — LE test du constat C1, dans ses deux
 // sous-cas : aucun writer cable, et acquisition en erreur.
 func TestDeriver_WriterIndisponible_NeMarquePas(t *testing.T) {
@@ -98,18 +117,9 @@ func TestDeriver_WriterIndisponible_NeMarquePas(t *testing.T) {
 // ecarter le lot par les familles usage et Assaut. C'est un ECHEC, pas un silence — et un match
 // en echec ne se marque pas, meme quand le segment d'ecriture, lui, allait bien.
 func TestDeriver_FamilleEnEchec_NeMarquePas(t *testing.T) {
-	dir := t.TempDir()
 	// Ni coup d'envoi ni trajectoire : les deux familles qui ecrivent sans capability (T0 et
 	// positions) n'ont rien a faire, et le writer n'est donc jamais sollicite.
-	doc := replay.ReplayDocument{SchemaVersion: replay.SchemaVersion, MatchID: "marqueC", FrameIntervalMS: 100}
-	raw, err := json.Marshal(doc)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
-	chemin := filepath.Join(dir, "marqueC.json")
-	if err := os.WriteFile(chemin, raw, 0o600); err != nil {
-		t.Fatalf("write: %v", err)
-	}
+	chemin := artefactSansRienADeriver(t, t.TempDir(), "marqueC")
 	Deriver(context.Background(), DerivationsDeps{
 		RepoRoot: t.TempDir(), TitleSlug: "halo_infinite", Gamertag: "testeur",
 	}, []ArtefactRange{{MatchID: "marqueC", Path: chemin}})
@@ -124,16 +134,7 @@ func TestDeriver_FamilleEnEchec_NeMarquePas(t *testing.T) {
 // sans capability film et un document sans coup d'envoi ni trajectoire n'ont RIEN a ecrire.
 // C'est une derivation JOUEE ; la rejouer a chaque cycle serait du travail pur perte.
 func TestDeriver_RienAEcrire_MarqueQuandMeme(t *testing.T) {
-	dir := t.TempDir()
-	doc := replay.ReplayDocument{SchemaVersion: replay.SchemaVersion, MatchID: "marqueB", FrameIntervalMS: 100}
-	raw, err := json.Marshal(doc)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
-	chemin := filepath.Join(dir, "marqueB.json")
-	if err := os.WriteFile(chemin, raw, 0o600); err != nil {
-		t.Fatalf("write: %v", err)
-	}
+	chemin := artefactSansRienADeriver(t, t.TempDir(), "marqueB")
 	// halo_5 ne declare aucune clef `film.*` : les familles usage et Assaut se taisent
 	// proprement, et le document ne porte ni t0FilmMs ni trajectoire.
 	Deriver(context.Background(), DerivationsDeps{
