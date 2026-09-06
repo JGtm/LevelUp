@@ -63,6 +63,12 @@ type SynthesisService struct {
 	// weapon_accuracy (Halo 5 natif). Quand nil OU titre sans table (Infinite),
 	// le champ WeaponAccuracy est omis de la réponse.
 	weaponAccuracyRepo port.WeaponAccuracyRepository
+	// weaponRangeRepo : charge les frags MESURÉS (position des deux joueurs connue) des
+	// deux côtés, pour la section « Portée par arme » — où je frague, où je meurs, et d'en
+	// haut ou d'en bas. Câblé INCONDITIONNELLEMENT (jamais slug==) : c'est le repo qui dit
+	// « ce titre ne sait pas faire » par games.ErrCapabilityNotSupported, et le service qui
+	// dégrade en omettant le champ. Cf. synthesis_weapon_range.go.
+	weaponRangeRepo port.WeaponRangeRepository
 	// vehicleDestructionRepo : source ALTERNATIVE (par titre) des compteurs
 	// « véhicules détruits » / « vol à la tire ». Câblé UNIQUEMENT pour les titres à
 	// commendations NATIVES (Halo 5, capability commendations.native — cf. registry
@@ -125,6 +131,13 @@ func (s *SynthesisService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) 
 // WithWeaponAccuracyRepo injecte le loader pour le classement précision par arme.
 func (s *SynthesisService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyRepository) *SynthesisService {
 	s.weaponAccuracyRepo = repo
+	return s
+}
+
+// WithWeaponRangeRepo injecte le loader de la section « Portée par arme » (frags et morts
+// MESURÉS, distance et dénivelé). Voir le champ pour le contrat de dégradation.
+func (s *SynthesisService) WithWeaponRangeRepo(repo port.WeaponRangeRepository) *SynthesisService {
+	s.weaponRangeRepo = repo
 	return s
 }
 
@@ -229,6 +242,10 @@ func (s *SynthesisService) GetSynthesisPage(
 	// titre sans table weapon_accuracy (Infinite) → champ omis.
 	weaponAccuracy := s.loadWeaponAccuracy(ctx, filteredCanon)
 
+	// Portée et dénivelé des engagements (frags ET morts mesurés) : best-effort, nil si
+	// repo absent, titre sans positions par kill, ou scope non décodé → section omise.
+	weaponRange := s.loadWeaponRange(ctx, filteredCanon)
+
 	// KPI objectifs (cumul CTF/Zones/Oddball sur le scope) : best-effort, nil si repo
 	// absent (capability match.objective.stats non déclarée — Halo 5) ou scope sans
 	// match à objectif → bloc omis.
@@ -267,6 +284,7 @@ func (s *SynthesisService) GetSynthesisPage(
 		TopWeaponKills:    topWeaponKills,
 		FragDistribution:  fragDistribution,
 		WeaponAccuracy:    weaponAccuracy,
+		WeaponRange:       weaponRange,
 		CombatProfile:     combatProfile,
 		ObjectiveStats:    objectiveStats,
 	}, nil
