@@ -117,6 +117,14 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	if len(lus) == 0 {
 		return
 	}
+	// UN SEUL SEGMENT D'ECRITURE POUR LES QUATRE FAMILLES (constat C7 de la revue A-R1) : la
+	// source d'acquisition est memoisee ici, et relachee ici. Le nil reste nil — un chemin sans
+	// writer cable doit continuer de degrader famille par famille, avec ses journaux.
+	if dd.AcquireWriter != nil {
+		w := &writerUnique{source: dd.AcquireWriter}
+		defer w.fermer()
+		d.AcquireWriter = w.acquerir
+	}
 	b := &bilanDerivations{}
 	// LE REPORT DU COUP D'ENVOI EN PREMIER, puis les deux projections. L'ordre est celui
 	// d'avant (artifacts.go) et il n'est pas indifferent : le T0 ecrit `match_registry`, une
@@ -131,6 +139,63 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	// donnees les moins couteuses a rejouer qui manquent.
 	persisterPositions(ctx, d, b, lus)
 	marquerDerivations(ctx, b, lus)
+}
+
+// writerUnique memoise l'acquisition du segment d'ecriture pour UNE passe de derivations.
+//
+// # LE DEFAUT QU'IL FERME (constat C7 de la revue A-R1, 2026-09-06)
+//
+// Chacune des quatre familles acquerait le writer POUR SON COMPTE : quatre acquisitions
+// successives, chacune bornee a 60 s cote wire (`acquireWriterTimeout`). Sur le chemin du DEPOT
+// D'OUVRIER, ces acquisitions vivent dans un handler HTTP dont le serveur ferme l'ecriture a
+// 30 s (`cmd/server/main.go`, `WriteTimeout`) : un depot pendant qu'un cycle de sync tient le
+// lease pouvait tourner jusqu'a 4 x 60 s, voir sa connexion coupee, et faire enregistrer a
+// l'ouvrier un ECHEC DE DEPOT pour un artefact pourtant range. Rejoue, ce depot rejouait les
+// quatre derivations et ecrivait une passe de plus dans chaque table append-only. Le commentaire
+// du site d'appel justifiait le choix synchrone par « un segment writer COURT, relache
+// aussitot » — ce qui decrit UNE acquisition, pas quatre en file derriere un lease.
+//
+// # PARESSEUX, ET C'EST LA PROPRIETE A NE PAS PERDRE
+//
+// La source n'est appelee qu'a la PREMIERE famille qui a quelque chose a ecrire. Une passe sans
+// rien a ecrire — titre sans capability film, document sans coup d'envoi ni trajectoire —
+// n'ouvre donc aucun segment, exactement comme avant le regroupement.
+//
+// # L'ERREUR EST MEMOISEE ELLE AUSSI
+//
+// Une acquisition en echec n'est pas reessayee par les trois familles suivantes : elles
+// journalisent leur degradation sur la MEME erreur, et le bilan (cf. [bilanDerivations]) retient
+// que rien n'a pu etre ecrit.
+type writerUnique struct {
+	// source : l'acquisition reelle (`DerivationsDeps.AcquireWriter`). Jamais nil ici.
+	source func(ctx context.Context) (*sql.DB, func(), error)
+	// fait : la source a deja ete appelee (succes ou echec).
+	fait    bool
+	db      *sql.DB
+	relache func()
+	err     error
+}
+
+// acquerir rend le segment PARTAGE de la passe.
+//
+// LA FONCTION DE RETRAIT RENDUE A LA FAMILLE EST UN NO-OP, et c'est le coeur du regroupement :
+// le segment appartient a la passe, pas a la famille. Le vrai retrait est [writerUnique.fermer],
+// pose en `defer` par [Deriver] — sans quoi la premiere famille a rendre la main relacherait le
+// lease sous les pieds des trois suivantes.
+func (w *writerUnique) acquerir(ctx context.Context) (*sql.DB, func(), error) {
+	if !w.fait {
+		w.fait = true
+		w.db, w.relache, w.err = w.source(ctx)
+	}
+	return w.db, func() {}, w.err
+}
+
+// fermer relache le segment s'il a ete acquis. Idempotent par construction : [Deriver] ne
+// l'appelle qu'une fois, en `defer`.
+func (w *writerUnique) fermer() {
+	if w.relache != nil {
+		w.relache()
+	}
 }
 
 // bilanDerivations enregistre, PAR MATCH, ce que les familles n'ont PAS pu ecrire.
