@@ -600,3 +600,7 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   (`sync/replayartifacts`) enrôlées par F et supprimées par A avec leur fonction (dérivation T0
   refondue en A.4) → entrées retirées de `.ai/baselines/tests_pre_migration.jsonl` (9 795 → 9 786),
   suppression volontaire documentée. Aucun test en échec dans la suite Go.
+- 2026-09-06 13:50 : CI encore rouge sur `beeb6f3ee` : `TestEnTeteTSVersionneeSuitLeGabarit`
+  (lot G) lisait `weaponSoundVariations.ts` à l'ancien emplacement, déplacé sous `sound/` par le
+  lot D (D.11) — troisième conflit sémantique entre lots parallèles ; chemin de sortie du mode
+  `livrer`, test d'en-tête et golden alignés sur `features/match-replay/sound/`.
