@@ -14,7 +14,7 @@
 // de matchs (une carte, un filtre) et rend des positions brutes : pas de
 // classificateur d'arme, pas de source de degat, donc pas de garde d'unanimite
 // sur `source_tag`. La garde d'ambiguite reste, sous une autre forme (cf.
-// tacticalPositionsQuery).
+// QTacticalPositions).
 //
 // ─── POURQUOI `publishable` EST EXIGE DES DEUX COTES ───────────────────────────
 //
@@ -79,22 +79,31 @@ func (r *TacticalRepo) WithModeTaxonomy(t analysis.ModeTaxonomy) *TacticalRepo {
 
 // ─── L'UNIVERS ─────────────────────────────────────────────────────────────────
 
-// tacticalUniversSQL est le SELECT des matchs RETENUS : ceux du joueur, sur la
+// QTacticalUnivers est le SELECT des matchs RETENUS : ceux du joueur, sur la
 // carte demandee, qui passent le filtre. Le fragment de filtre est produit par
 // analysis.BuildNeighborsWhereClause (aliases `mr` et `mp`), source unique du
 // vocabulaire de filtre du depot — et donc du fragment timezone canonique pour
 // les bornes de date.
-const tacticalUniversSQL = `
+//
+// PREFIXE `Q` ET TOKEN CAMPAGNE (correction R2, revue du 2026-09-06) : le
+// garde-rail structurel campaign_exclusion_guard_test ne balaye QUE les constantes
+// nommees `Q<...>`. Sans le prefixe, un lecteur per-player passait sous son radar ;
+// sans le token, les ~287 matchs Campagne d'un joueur Halo 5 entraient dans
+// l'univers des rasters alors que l'Explorateur les masque. Le token est resolu au
+// call site par resolveCampaignExclusion, qui connait le titre du joueur (no-op
+// pour Infinite, qui n'a aucun match Campagne au registre).
+const QTacticalUnivers = `
 SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
-WHERE mp.xuid = ? AND mr.map_id = ?`
+WHERE mp.xuid = ? AND mr.map_id = ?` + campaignExclusionToken
 
-// universSQL assemble le SELECT de l'univers et ses arguments.
+// universSQL assemble le SELECT de l'univers et ses arguments, token Campagne
+// resolu pour le titre du joueur.
 func (r *TacticalRepo) universSQL(q domain.TacticalQuery) (string, []any) {
 	clause := analysis.BuildNeighborsWhereClause(q.Filtre, r.modeTax.Prefixes)
 	args := append([]any{domain.OutcomeUnknown, q.PlayerXUID, q.MapID}, clause.Args...)
-	return tacticalUniversSQL + clause.SQL, args
+	return resolveCampaignExclusion(QTacticalUnivers, r.pdb.TitleSlug, "mr") + clause.SQL, args
 }
 
 // chargerUnivers lit les matchs retenus PUIS la composition de leurs equipes.
@@ -151,12 +160,16 @@ func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.
 
 // ─── LES TROIS LECTURES ────────────────────────────────────────────────────────
 
-// tacticalMapsQuery : les cartes JOUEES par le joueur sous le filtre.
+// QTacticalMaps : les cartes JOUEES par le joueur sous le filtre.
 //
 // Les codes d'issue sont des PARAMETRES LIES (domain.OutcomeWin / OutcomeLoss),
 // jamais des litteraux dans la chaine SQL — un `outcome = 2` en dur est
 // exactement ce que le ratchet no_raw_outcome_literal interdit.
-const tacticalMapsQuery = `
+//
+// Meme token Campagne que QTacticalUnivers, et pour la meme raison : sans lui, la
+// grille d'entree d'un joueur Halo 5 affichait ses cartes de Campagne a cote de
+// ses cartes d'arene.
+const QTacticalMaps = `
 SELECT mr.map_id,
        COALESCE(mr.map_name, '')    AS map_name,
        COALESCE(mr.map_name_fr, '') AS map_name_fr,
@@ -165,7 +178,7 @@ SELECT mr.map_id,
        COUNT(*) FILTER (WHERE mp.outcome = ?) AS defaites
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
-WHERE mp.xuid = ? AND mr.map_id IS NOT NULL AND mr.map_id <> ''`
+WHERE mp.xuid = ? AND mr.map_id IS NOT NULL AND mr.map_id <> ''` + campaignExclusionToken
 
 // MapsPlayed liste les cartes jouees, matchs decroissants puis map_id.
 func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) ([]domain.TacticalMapRow, error) {
@@ -185,7 +198,7 @@ func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) (
 	clause := analysis.BuildNeighborsWhereClause(q.Filtre, r.modeTax.Prefixes)
 	logIgnoredFilters(ctx, "TacticalRepo.MapsPlayed", clause.IgnoredFilters)
 	args := append([]any{domain.OutcomeWin, domain.OutcomeLoss, q.PlayerXUID}, clause.Args...)
-	query := tacticalMapsQuery + clause.SQL +
+	query := resolveCampaignExclusion(QTacticalMaps, r.pdb.TitleSlug, "mr") + clause.SQL +
 		` GROUP BY mr.map_id, mr.map_name, mr.map_name_fr ORDER BY matchs DESC, mr.map_id`
 
 	rows, err := db.QueryContext(ctx, query, args...)
@@ -205,7 +218,7 @@ func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) (
 	return out, err
 }
 
-// tacticalPositionsQuery : les morts MESUREES des matchs de l'univers — position
+// QTacticalPositions : les morts MESUREES des matchs de l'univers — position
 // connue des DEUX cotes (tueur ET victime), passe publiable, et pas d'ambiguite.
 //
 // LA GARDE D'AMBIGUITE. `kill_positions_latest` porte UNE ligne par
@@ -219,7 +232,7 @@ func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) (
 // Une victime BOT (`victim_xuid` NULL) reste servie, en identite VIDE : c'est bien
 // une position ou le joueur a tue, et l'ecarter sous-compterait ses kills. C'est
 // l'appelant qui decide ce qu'une identite vide vaut pour son axe.
-const tacticalPositionsQuery = `
+const QTacticalPositions = `
 SELECT kp.match_id,
        COALESCE(kp.killer_xuid, '')     AS killer_xuid,
        COALESCE(min(e.victim_xuid), '') AS victim_xuid,
@@ -259,7 +272,7 @@ func (r *TacticalRepo) KillPositions(ctx context.Context, q domain.TacticalQuery
 	}
 
 	selectSQL, args := r.universSQL(q)
-	rows, err := db.QueryContext(ctx, fmt.Sprintf(tacticalPositionsQuery, selectSQL), args...)
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalPositions, selectSQL), args...)
 	if err != nil {
 		return out, r.degrader(ctx, "KillPositions", err)
 	}
@@ -275,12 +288,12 @@ func (r *TacticalRepo) KillPositions(ctx context.Context, q domain.TacticalQuery
 	return out, err
 }
 
-// tacticalEventsQuery : le journal des morts des matchs de l'univers.
+// QTacticalEvents : le journal des morts des matchs de l'univers.
 //
 // Aucune jointure sur les positions : l'echange se mesure sur des INSTANTS et des
 // IDENTITES, pas sur des coordonnees — exiger une position mesuree ecarterait les
 // morts d'un match non decode et gonflerait le taux.
-const tacticalEventsQuery = `
+const QTacticalEvents = `
 SELECT e.match_id,
        COALESCE(e.feed_killer_xuid, '') AS killer_xuid,
        COALESCE(e.victim_xuid, '')      AS victim_xuid,
@@ -311,7 +324,7 @@ func (r *TacticalRepo) KillEvents(ctx context.Context, q domain.TacticalQuery) (
 	}
 
 	selectSQL, args := r.universSQL(q)
-	rows, err := db.QueryContext(ctx, fmt.Sprintf(tacticalEventsQuery, selectSQL), args...)
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalEvents, selectSQL), args...)
 	if err != nil {
 		return out, r.degrader(ctx, "KillEvents", err)
 	}
