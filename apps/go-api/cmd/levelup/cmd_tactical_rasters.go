@@ -127,11 +127,14 @@ func suffixeDryRun(dryRun bool) string {
 
 // artefactsDuTitre enumere les artefacts presents, par LE lecteur d'artefacts du depot.
 //
-// UN SEUL LECTEUR (ratchet archlint/no_second_artifact_sink_test.go et doctrine du lot B) :
-// `AvailableSet` fait UN listing de dossier et ne compte que les `{short}.json` de premier
-// niveau — le sous-dossier `rasters/` que cette passe remplit en est donc exclu par
-// construction. Le service est monte SANS repo de cartes (`nil`, cas servi) : cette passe
-// n'a besoin d'aucune base.
+// UN SEUL LECTEUR (doctrine du lot B) : `AvailableSet` fait UN listing de dossier et ne
+// compte que les `{short}.json` de premier niveau — le sous-dossier `rasters/` que cette
+// passe remplit en est donc exclu par construction. C'est un COMPORTEMENT, garde par un
+// test de comportement (`cmd_tactical_rasters_test.go`, « l'enumeration ne se compte pas
+// elle-meme ») : le ratchet `no_second_artifact_sink_test.go` ne garde PAS cela — il
+// compte les cablages de `SetArtifactStoredSink`, c'est-a-dire le puits d'ECRITURE.
+// Le service est monte SANS repo de cartes (`nil`, cas servi) : cette passe n'a besoin
+// d'aucune base.
 //
 // L'ordre est stable (tri des cles) : une passe interrompue reprend au meme endroit, et
 // deux passes se comparent ligne a ligne.
@@ -161,7 +164,7 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 		}
 		b.lus++
 		cible := pr.TacticalRasterPath(o.titleSlug, short)
-		if sidecarAJour(cible) {
+		if sidecarAJour(ctx, cible) {
 			b.sautes++
 			continue
 		}
@@ -173,7 +176,7 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 			b.echecs++
 			continue
 		}
-		if dejaProjete(cible, s.ArtifactSchemaVersion) {
+		if dejaProjete(ctx, cible, s.ArtifactSchemaVersion) {
 			b.sautes++
 			continue
 		}
@@ -205,30 +208,48 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 //
 // Tous les autres cas — sidecar absent, illisible, d'un autre format, ou projete d'un
 // artefact plus ancien — retombent sur la comparaison complete (dejaProjete).
-func sidecarAJour(path string) bool {
-	s, ok := lireSidecarRaster(path)
+func sidecarAJour(ctx context.Context, path string) bool {
+	s, ok := lireSidecarRaster(ctx, path)
 	return ok && s.ArtifactSchemaVersion == replay.SchemaVersion
 }
 
 // dejaProjete compare le sidecar en place au schema de l'artefact qui vient d'etre lu.
-func dejaProjete(path string, schemaArtefact int) bool {
-	s, ok := lireSidecarRaster(path)
+func dejaProjete(ctx context.Context, path string, schemaArtefact int) bool {
+	s, ok := lireSidecarRaster(ctx, path)
 	return ok && s.ArtifactSchemaVersion == schemaArtefact
 }
 
-// lireSidecarRaster lit le sidecar en place. Absent, illisible ou d'un AUTRE format : (_,
-// faux) — il sera refait, ce qui est la degradation sure (un sidecar qu'on ne sait pas
-// relire ne doit pas passer pour a jour).
-func lireSidecarRaster(path string) (domain.TacticalRasterSidecar, bool) {
+// lireSidecarRaster lit le sidecar en place et dit s'il est exploitable EN L'ETAT.
+//
+// LE PREDICAT DE FRAICHEUR EST CELUI DU SERVICE (`domain.SidecarRasterCourant`) : format,
+// grille et unite de temps. Cette passe y AJOUTE la comparaison a l'artefact
+// (`artifact_schema_version`), qu'elle seule peut faire — elle a l'artefact en main. En
+// deux definitions, le remede que le service prescrit dans son WARN restait un no-op sur
+// un sidecar au bon schema mais a un autre pas (constat C3 de la revue).
+//
+// Absent : silence, c'est le cas NOMINAL d'un artefact jamais projete. Illisible ou d'un
+// autre format : (_, faux) ET une ligne de journal — un fichier corrompu n'est pas une
+// absence, et le taire ferait disparaitre un incident derriere une reecriture muette
+// (CLAUDE.md n 3, anti-patron n 10).
+func lireSidecarRaster(ctx context.Context, path string) (domain.TacticalRasterSidecar, bool) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
+		if !os.IsNotExist(err) {
+			slog.WarnContext(ctx, "rasters tactiques : sidecar illisible, il sera reecrit",
+				"path", path, "raison", "lecture", "err", err)
+		}
 		return domain.TacticalRasterSidecar{}, false
 	}
 	var s domain.TacticalRasterSidecar
 	if err := json.Unmarshal(raw, &s); err != nil {
+		slog.WarnContext(ctx, "rasters tactiques : sidecar illisible, il sera reecrit",
+			"path", path, "raison", "parse", "err", err)
 		return domain.TacticalRasterSidecar{}, false
 	}
-	if s.SchemaVersion != domain.TacticalRasterSchemaVersion {
+	if !domain.SidecarRasterCourant(&s) {
+		slog.DebugContext(ctx, "rasters tactiques : sidecar d'un autre temps, il sera reecrit",
+			"path", path, "schema_version", s.SchemaVersion, "pas_m", s.PasM,
+			"pas_echantillon_ms", s.PasEchantillonMs)
 		return domain.TacticalRasterSidecar{}, false
 	}
 	return s, true

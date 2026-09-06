@@ -16,12 +16,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 )
 
@@ -126,7 +129,7 @@ func TestTacticalRasters_SidecarPerime(t *testing.T) {
 		t.Fatalf("passe = %+v, attendu 1 ecrit (le sidecar etait projete du schema 20)", b)
 	}
 	// Et il porte desormais des joueurs, ce que le sidecar perime n'avait pas.
-	s, ok := lireSidecarRaster(cible)
+	s, ok := lireSidecarRaster(context.Background(), cible)
 	if !ok || len(s.Joueurs) != 2 || s.ArtifactSchemaVersion != 39 {
 		t.Fatalf("sidecar refait = %+v (ok=%v)", s, ok)
 	}
@@ -146,7 +149,7 @@ func TestTacticalRasters_SidecarDUnAutreFormat(t *testing.T) {
 	if err := os.WriteFile(cible, []byte(`{"schema_version":99,"artifact_schema_version":39}`), 0o644); err != nil {
 		t.Fatalf("ecrire: %v", err)
 	}
-	if sidecarAJour(cible) {
+	if sidecarAJour(context.Background(), cible) {
 		t.Fatal("un sidecar d'un autre format a ete pris pour a jour")
 	}
 	b := projeterCorpusRasters(context.Background(), &config.AppConfig{RepoRoot: root},
@@ -212,5 +215,122 @@ func TestTacticalRasters_DossierAbsent(t *testing.T) {
 	}
 	if len(shorts) != 0 {
 		t.Fatalf("artefacts = %v, attendu aucun", shorts)
+	}
+}
+
+// trSidecarAuBonSchema pose un sidecar au FORMAT courant et projete de l'artefact
+// COURANT — donc « a jour » pour la seule cle de schema —, que l'appelant deregle ensuite
+// sur une unite.
+func trSidecarAuBonSchema(t *testing.T, root, short string) string {
+	t.Helper()
+	cible := titlePkg.NewPathResolver(root).TacticalRasterPath(titlePkg.DefaultSlug, short)
+	if err := os.MkdirAll(filepath.Dir(cible), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	return cible
+}
+
+// trEcrireSidecar serialise un sidecar pose a la main.
+func trEcrireSidecar(t *testing.T, path string, sc domain.TacticalRasterSidecar) {
+	t.Helper()
+	raw, err := json.Marshal(sc)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if err := os.WriteFile(path, raw, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+}
+
+// trSidecarCourant : un sidecar que RIEN ne deregle — le point de depart des deux cas
+// d'unites ci-dessous.
+func trSidecarCourant(short string) domain.TacticalRasterSidecar {
+	return domain.TacticalRasterSidecar{
+		SchemaVersion:         domain.TacticalRasterSchemaVersion,
+		MatchID:               short,
+		ShortID:               short,
+		ArtifactSchemaVersion: replay.SchemaVersion,
+		PasM:                  domain.TacticalRasterPasM,
+		FrameIntervalMs:       100,
+		PasEchantillonMs:      domain.TacticalRasterPasEchantillonMs,
+		Joueurs:               []domain.TacticalRasterJoueur{},
+	}
+}
+
+// TestTacticalRasters_UnitesPerimees — C3 : LE REMEDE PRESCRIT DOIT REPARER CE QU'IL
+// PROMET.
+//
+// Le service ecarte un sidecar dont `pas_m` ou `pas_echantillon_ms` ne sont plus courants,
+// et son avertissement prescrit `levelup tactical-rasters --backfill`. Tant que la CLI ne
+// regardait que `schema_version` et `artifact_schema_version`, ce remede etait un NO-OP
+// sur exactement ces sidecars-la : le match restait non mesure A DEMEURE.
+func TestTacticalRasters_UnitesPerimees(t *testing.T) {
+	cas := map[string]func(*domain.TacticalRasterSidecar){
+		"pas d echantillonnage d un autre temps": func(sc *domain.TacticalRasterSidecar) {
+			sc.PasEchantillonMs = 1000
+		},
+		"grille d un autre temps": func(sc *domain.TacticalRasterSidecar) {
+			sc.PasM = 1.0
+		},
+	}
+	for nom, deregler := range cas {
+		t.Run(nom, func(t *testing.T) {
+			root := t.TempDir()
+			trPoserArtefacts(t, root, "aaaaaaaa")
+			sc := trSidecarCourant("aaaaaaaa")
+			deregler(&sc)
+			trEcrireSidecar(t, trSidecarAuBonSchema(t, root, "aaaaaaaa"), sc)
+
+			b := projeterCorpusRasters(context.Background(), &config.AppConfig{RepoRoot: root},
+				trOptions(false), []string{"aaaaaaaa"})
+			if b.ecrits != 1 || b.sautes != 0 {
+				t.Fatalf("passe = %+v, attendu 1 ecrit : le sidecar est au bon schema mais a "+
+					"une autre unite, et c'est justement ce que le service demande de refaire", b)
+			}
+			relu, ok := lireSidecarRaster(context.Background(),
+				titlePkg.NewPathResolver(root).TacticalRasterPath(titlePkg.DefaultSlug, "aaaaaaaa"))
+			if !ok {
+				t.Fatal("le sidecar reecrit n'est toujours pas courant")
+			}
+			if relu.PasM != domain.TacticalRasterPasM || relu.PasEchantillonMs != domain.TacticalRasterPasEchantillonMs {
+				t.Fatalf("sidecar reecrit avec de mauvaises unites : %+v", relu)
+			}
+		})
+	}
+}
+
+// TestTacticalRasters_SidecarCorrompu — C6 : un fichier present mais illisible n'est pas
+// une absence. Il est refait, et il se DIT (l'erreur de parse etait jetee sans un mot).
+func TestTacticalRasters_SidecarCorrompu(t *testing.T) {
+	root := t.TempDir()
+	trPoserArtefacts(t, root, "aaaaaaaa")
+	cible := trSidecarAuBonSchema(t, root, "aaaaaaaa")
+	if err := os.WriteFile(cible, []byte(`{"schema_version":`), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	b := projeterCorpusRasters(context.Background(), &config.AppConfig{RepoRoot: root},
+		trOptions(false), []string{"aaaaaaaa"})
+	if b.ecrits != 1 || b.echecs != 0 {
+		t.Fatalf("passe = %+v, attendu 1 ecrit et 0 echec", b)
+	}
+	if _, ok := lireSidecarRaster(context.Background(), cible); !ok {
+		t.Fatal("le sidecar corrompu n'a pas ete remplace par un fichier valide")
+	}
+}
+
+// TestTacticalRasters_Limite — C10 : `--limit` borne les artefacts EXAMINES.
+func TestTacticalRasters_Limite(t *testing.T) {
+	root := t.TempDir()
+	trPoserArtefacts(t, root, "aaaaaaaa", "bbbbbbbb", "cccccccc")
+	o := trOptions(false)
+	o.limit = 2
+	b := projeterCorpusRasters(context.Background(), &config.AppConfig{RepoRoot: root},
+		o, []string{"aaaaaaaa", "bbbbbbbb", "cccccccc"})
+	if b.lus != 2 || b.ecrits != 2 {
+		t.Fatalf("passe = %+v, attendu 2 lus / 2 ecrits sous --limit 2", b)
+	}
+	if _, err := os.Stat(titlePkg.NewPathResolver(root).
+		TacticalRasterPath(titlePkg.DefaultSlug, "cccccccc")); !os.IsNotExist(err) {
+		t.Fatalf("le troisieme artefact a ete projete malgre --limit 2 (err = %v)", err)
 	}
 }

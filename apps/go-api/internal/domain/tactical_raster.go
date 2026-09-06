@@ -146,3 +146,44 @@ type TacticalRasterEntree struct {
 // L'UNITE EST LA SECONDE PAR MATCH : `CelluleTactique.Valeur` porte des secondes,
 // `Brut` le compte d'echantillons qui les a produites.
 const TacticalQuestionTemps = "temps"
+
+// SidecarRasterCourant dit si un sidecar est exploitable EN L'ETAT : bon format, bonne
+// grille, bonne unite de temps.
+//
+// # POURQUOI CE PREDICAT EST UNIQUE, ET C'EST UN CONSTAT DE REVUE
+//
+// Le service et le rattrapage n'appliquaient pas la MEME regle. Le service ecartait un
+// sidecar dont `pas_m` ou `pas_echantillon_ms` n'etaient plus courants — en prescrivant
+// `levelup tactical-rasters --backfill` dans son WARN — pendant que la CLI, elle, ne
+// regardait que `schema_version` et `artifact_schema_version` : sur un sidecar au bon
+// schema mais a un autre pas, le remede prescrit etait un NO-OP, et le match restait non
+// mesure a demeure. Deux definitions de « courant » pour un seul fichier, dont l'une
+// promettait de reparer ce que l'autre refusait de refaire.
+//
+// Il vit dans `domain` parce que c'est la couche la plus basse des deux appelants (un
+// service et un `main` ne peuvent pas s'importer l'un l'autre). Garde-rail :
+// archlint/no_local_sidecar_freshness_test.go interdit toute comparaison directe de ces
+// trois champs hors de ce paquet.
+//
+// LA FRAICHEUR VIS-A-VIS DE L'ARTEFACT N'EST PAS ICI : `artifact_schema_version` ne se
+// compare qu'a un artefact, que seul le rattrapage tient en main. Le service, lui, n'a
+// aucune raison de refuser une mesure tiree d'un decodage plus ancien — elle est vraie,
+// elle est simplement moins riche.
+func SidecarRasterCourant(sc *TacticalRasterSidecar) bool {
+	return sc != nil &&
+		sc.SchemaVersion == TacticalRasterSchemaVersion &&
+		sc.PasM == TacticalRasterPasM &&
+		sc.PasEchantillonMs == TacticalRasterPasEchantillonMs
+}
+
+// TacticalRasterPasM et TacticalRasterPasEchantillonMs sont les unites COURANTES d'un
+// sidecar, dupliquees ici depuis `analysis/tactical` — et cette duplication-la est voulue.
+//
+// `domain` est la couche BASSE : lui faire importer `analysis/tactical` inverserait la
+// dependance (c'est `tactical` qui importe `domain`), et le cycle serait immediat. Les
+// deux valeurs sont donc figees ici, et un test du paquet `tactical` — le proprietaire des
+// constantes — verifie qu'elles n'ont pas diverge.
+const (
+	TacticalRasterPasM             = 0.5
+	TacticalRasterPasEchantillonMs = 250
+)
