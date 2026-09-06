@@ -593,6 +593,31 @@ Fichier de mutation supprimé, répertoire vide retiré, `git status` propre. Co
 `ci.yml:374-376` (invocation du script de baseline) → **`ci.yml:412-414`** : F.6 a inséré
 33 lignes en amont dans le même fichier. Corrigé au paragraphe F.2(c).
 
+### [x] F-R2-a et F-R2-b (P3, documentaires) — seconde ronde, 2026-09-06
+
+La seconde ronde ferme les trois constats de F-R1 (chacun prouvé en rejouant la mutation qui
+l'avait ouvert) et lève deux défauts P3, tous deux purement documentaires, aucun gate affaibli.
+
+- **F-R2-a** — l'en-tête corrigé sur-généralisait d'une phrase : « une régression du décodeur ne
+  produit PAS un écart de valeur ». Ce qui est égal par construction est le TRIPLET-CLÉ
+  (`countsOf`), pas la série publiée : une régression EN AVAL de la clé (grille de frames, cumul
+  par manche, `scoreTicksOf`) déplace bien la série sans déplacer la clé — c'est exactement ce
+  que la mutation 4 produit, et ce que la comparaison de valeurs attrape. Phrase resserrée : la
+  distinction clé / aval de la clé est maintenant écrite, avec renvoi au point 2 de
+  `assertCompteursJoueurs` (qui, lui, était déjà exact).
+- **F-R2-b** — `node_modules` figurait dans les répertoires sautés au motif que « l'outil Go les
+  ignore ». C'est FAUX et la revue l'a mesuré : `go list ./...` liste
+  `levelup/go-api/node_modules/zzrevue` et `go test ./node_modules/...` l'exécute. Le sauter
+  rouvrait à la marge le trou que F-R1-2 venait de fermer. Entrée RETIRÉE (plutôt que
+  requalifiée en garde de performance : le trou aurait subsisté). Le commentaire dit désormais
+  ce que chaque entrée restante vaut, et pourquoi `node_modules` n'en est pas.
+
+Recompte après retrait, inchangé comme attendu : **2 464 `_test.go`** balayés, **62**
+`*_gamefiles_test.go`, plancher exact (aucun `node_modules` n'existe sous `apps/go-api`).
+
+Gate : `go test -count=1 ./internal/archlint/... ./internal/api/wire/...` →
+`ok internal/archlint 77.518s` · `ok internal/api/wire 6.009s`.
+
 ### Gate des corrections (avant-plan)
 
 ```

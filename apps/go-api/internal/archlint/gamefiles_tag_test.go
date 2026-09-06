@@ -75,9 +75,17 @@ var horsCorpusAutorises = map[string]bool{
 	"internal/archlint/gamefiles_tag_test.go": true,
 }
 
-// dossiersInvisiblesAuGo : les répertoires que l'outil Go lui-même ignore quand il charge des
-// paquets — un `_test.go` posé là n'est jamais compilé, donc jamais exécuté, donc hors sujet.
-// C'est le SEUL filtre du balayage : tout le reste du module est parcouru.
+// dossiersInvisiblesAuGo : les répertoires que le CHARGEUR DE PAQUETS Go n'ouvre jamais — un
+// `_test.go` posé là n'est ni compilé ni exécuté par `go test ./...`, donc hors sujet pour un
+// ratchet qui protège le build par défaut. C'est le SEUL filtre du balayage : tout le reste du
+// module est parcouru.
+//
+// `node_modules` N'EN FAIT PAS PARTIE, ET C'EST MESURÉ (revue F-R2-b du 2026-09-06). Il figurait
+// ici « par évidence » ; la sonde a montré que `go list ./...` liste bien
+// `levelup/go-api/node_modules/zzrevue` et que `go test ./node_modules/...` l'EXÉCUTE. Le sauter
+// rouvrait donc, à la marge, le trou que la correction précédente venait de fermer. Retiré : un
+// `node_modules` sous un module Go serait de toute façon aberrant, et s'il apparaissait un jour
+// le ratchet doit le voir comme le reste.
 //
 // LA LISTE DES RACINES N'EST PAS ÉCRITE, ELLE EST DÉRIVÉE (revue F-R1-2 du 2026-09-06). La
 // version précédente balayait la constante `{"internal", "cmd"}` alors que l'en-tête promettait
@@ -87,9 +95,8 @@ var horsCorpusAutorises = map[string]bool{
 // balayage part désormais de la racine du module : une racine neuve est couverte le jour où
 // elle apparaît, sans que personne ait à y penser.
 var dossiersInvisiblesAuGo = map[string]bool{
-	"testdata":     true, // ignoré par le chargeur de paquets Go
-	"vendor":       true,
-	"node_modules": true,
+	"testdata": true, // hors de `./...` : le chargeur de paquets Go ne l'ouvre jamais
+	"vendor":   true, // idem en mode module (et `-mod=vendor` compile depuis le module, pas depuis ici)
 }
 
 // TestCorpusGamefilesEstTague — chaque `*_gamefiles_test.go` du MODULE porte le tag.

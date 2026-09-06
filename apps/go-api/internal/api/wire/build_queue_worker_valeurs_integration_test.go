@@ -27,9 +27,13 @@
 //   - LES COMPTEURS DE JOUEUR, NON. Le pont d'identité apparie un slot d'entité à un xuid par
 //     ÉGALITÉ EXACTE du triplet frags/morts/assistances contre la ligne de l'API
 //     (`objectiveevents/slotidentity.go` : `l.Kills == kills[slot] && l.Deaths == ... && ...`).
-//     Tout joueur publié dans `ScoreTimeline.Players` porte donc, PAR CONSTRUCTION, le triplet
-//     de l'API. Une régression du décodeur ne produit PAS un écart de valeur : elle fait
-//     DISPARAÎTRE le joueur du calque, parce que son triplet ne désigne plus une ligne unique.
+//     Le TRIPLET-CLÉ de tout joueur publié dans `ScoreTimeline.Players` égale donc, PAR
+//     CONSTRUCTION, celui de l'API. C'EST LA CLÉ, PAS LA SÉRIE PUBLIÉE : une régression DE LA
+//     CLÉ (le compte d'incréments) ne produit pas un écart de valeur, elle fait DISPARAÎTRE le
+//     joueur du calque, parce que son triplet ne désigne plus une ligne unique. Une régression
+//     EN AVAL de la clé — grille de frames, cumul par manche, `scoreTicksOf` — déplace la série
+//     publiée SANS déplacer la clé, et c'est justement ce que la comparaison de valeurs attrape
+//     (cf. `assertCompteursJoueurs`, point 2).
 //     La première version de cet en-tête annonçait « 15 compteurs sur 15 exactement égaux à
 //     ceux de l'API » comme une confrontation : c'était une propriété que le pont IMPOSE.
 //
