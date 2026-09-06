@@ -90,17 +90,16 @@ export default defineConfig([
       'max-lines': ['error', { max: 500, skipComments: true, skipBlankLines: true }],
     },
   },
-  // Les deux seules exemptions qui ne peuvent PAS vivre en tete de leur fichier.
-  //  - Fichiers GENERES (`npm run generate-types`, `scripts/build_i18n_manifests.mjs`) :
-  //    un `eslint-disable` ecrit dedans serait efface a la prochaine generation.
-  //  - `ExplorerMatchesTable.tsx` : gele le 2026-09-06 pour le merge du lot C (v2 D.14),
-  //    qui l'edite en parallele — l'exemption revient en tete du fichier apres integration,
-  //    ou le fichier se decoupe, au choix du lot qui le touchera.
+  // La seule famille d'exemptions qui ne peut PAS vivre en tete de son fichier : les
+  // fichiers GENERES (`npm run generate-types`, `scripts/build_i18n_manifests.mjs`), ou un
+  // `eslint-disable` serait efface a la prochaine generation. Toutes les autres exemptions
+  // `max-lines` sont en tete de fichier, datees et motivees — y compris celle de
+  // `ExplorerMatchesTable.tsx`, revenue chez elle le 2026-09-06 une fois le lot C fusionne
+  // (revue R1, constat C8 : la justification « gele pour le merge » avait survecu au merge).
   {
     files: [
       'src/lib/api/generated.ts',
       'src/lib/i18n/generated/**/*.ts',
-      'src/features/explorer/ExplorerMatchesTable.tsx',
     ],
     rules: {
       'max-lines': 'off',
