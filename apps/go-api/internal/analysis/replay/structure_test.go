@@ -849,8 +849,37 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   forme le dise, et `backfill-replay` saute un artefact qui porte la version courante.
 	//   Détail : internal/analysis/replay/skull_carries.go (carrierPresence.gate) et
 	//   .ai/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
-	if SchemaVersion != 43 {
-		t.Fatalf("SchemaVersion = %d, attendu 43 : incrémenter exige une raison écrite ci-dessus "+
+	// v45 — UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE (2026-09-06). Aucun champ
+	//   ajouté : c'est le CONTENU de `equipmentEpisodes` et de `flagCarries` qui change, sur la
+	//   même cause que les montées v41 et v43 — le découpage « une track = une vie » du v36, dont
+	//   deux consommateurs de plus supposaient encore qu'un slot ne porte qu'une piste NOMMÉE.
+	//   Deux pertes de DURÉE, invisibles à tout comptage d'éléments, trouvées par le nouvel axe
+	//   « somme des durées » du comparateur (`cmd/replay-corpus-gate`, première exécution) :
+	//   épisodes  L'état actif se lit PAR SLOT (i28 camo, i5 surbouclier) : ses deux bornes sont
+	//             des transitions LUES. `close` bornait l'épisode à la vie de recouvrement
+	//             MAXIMAL, donc jetait la part couverte par une AUTRE vie du même slot — dont
+	//             l'instant d'activation. Et pour le camouflage, l'état actif est justement ce
+	//             qui PROVOQUE le trou de réplication : un porteur invisible et immobile cesse
+	//             d'être répliqué. `084a804d`, slot 620 : camo lu [3105..3672] (568 frames),
+	//             publié [3173..3672] (500) — 68 frames perdues dont 16 À L'INTÉRIEUR d'une vie
+	//             publiée, activation sonnée 6,8 s en retard (`replaySound.ts` sonne chaque
+	//             `t0`). Le bornage passe à l'UNION des vies recouvertes (`spanFor`).
+	//   drapeaux  `attachFlagCarryPositions` n'indexait que les pistes NOMMÉES : une prise que
+	//             seule la vie ANONYME du porteur recouvre sortait `NoTrack`, et le portage
+	//             disparaissait. `bcb6d393` : 9 prises sur 16 perdues (toutes celles du slot 536
+	//             après sa mort à la frame 2736), `carries` 16 -> 7 ; l'élagage déplaçait de
+	//             surcroît l'attribution de drapeau d'un dixième portage (`dropsRepositioned`
+	//             4 -> 1). L'identité de la vie anonyme vient du PONT CANONIQUE
+	//             (`ResolveSlotXUID`, celui des marques de portage), jamais d'une déduction
+	//             locale : un slot que le pont ne nomme pas reste écarté.
+	//   POURQUOI LA VERSION MONTE : un artefact 36 à 44 est amputé de durée sans que sa forme le
+	//   dise, et `backfill-replay` saute un artefact qui porte la version courante.
+	//   LE 44 EST SAUTÉ ET RÉSERVÉ au lot des manches, en cours sur une autre branche : deux
+	//   chantiers parallèles ne peuvent pas revendiquer le même numéro (même règle qu'au v42).
+	//   Détail : internal/analysis/replay/{equipment_episodes.go (spanFor), flag_carries.go
+	//   (tracksByXUID)} et .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
+	if SchemaVersion != 45 {
+		t.Fatalf("SchemaVersion = %d, attendu 45 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

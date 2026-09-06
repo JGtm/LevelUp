@@ -120,6 +120,10 @@ func trackFrameWindows(tracks []Track) map[uint32][][2]int {
 // windowFor rend la vie du slot qui recouvre le plus l'intervalle d'un épisode. ok=false
 // quand aucune ne l'intersecte : l'épisode n'a alors aucune fiche où s'afficher.
 //
+// DEUX APPELANTS, ET C'EST TOUT : `finish` (la vie qui contient l'OUVERTURE, celle dont la fin
+// date la mort) et `equipmentCoverage` (la clé de vie du dénominateur). Le BORNAGE de l'épisode,
+// lui, passe par `spanFor` — cf. sa raison ci-dessous.
+//
 // LE RECOUVREMENT PLUTÔT QUE L'APPARTENANCE : une lecture peut tomber dans un trou de
 // réplication (les vies d'un slot ne se touchent pas), et exiger que `from` soit DANS une
 // fenêtre y perdrait l'épisode. Le recouvrement maximal ne dépend d'aucun ordre.
@@ -138,6 +142,49 @@ func windowFor(windows [][2]int, from, to int) ([2]int, bool) {
 		}
 	}
 	return best, found
+}
+
+// spanFor rend les bornes de l'UNION des vies du slot que l'intervalle mesuré recouvre.
+// ok=false quand aucune ne l'intersecte : l'épisode n'a alors aucune fiche où s'afficher, et
+// il est écarté comme avant.
+//
+// POURQUOI L'UNION, ET PAS LA VIE QUI RECOUVRE LE PLUS. Un état actif se mesure PAR SLOT (i28
+// pour le camo, i5 pour le surbouclier) : ses deux bornes sont des transitions LUES, elles ne
+// savent rien du découpage en vies. Depuis le schéma 36 (« une track = une vie ») un trou de
+// réplication de plus de `lifeGapUS` coupe une piste en deux — et un état actif est
+// précisément ce qui PROVOQUE ce trou pour le camouflage : un porteur invisible et immobile
+// cesse d'être répliqué. Borner à la seule vie de recouvrement maximal jetait alors la part de
+// l'épisode couverte par l'autre vie, DONT SON INSTANT D'ACTIVATION MESURÉ. Mesure du corpus
+// témoin : `084a804d`, slot 620, camo [3105..3672] lu (568 frames), publié [3173..3672] (500) —
+// 68 frames perdues dont 16 à l'intérieur d'une vie publiée, l'activation sonnée 6,8 s en
+// retard. L'union ne publie jamais hors des vies du slot : elle refuse seulement de laisser un
+// trou de réplication amputer une mesure qui l'enjambe.
+func spanFor(windows [][2]int, from, to int) ([2]int, bool) {
+	span, found := [2]int{}, false
+	for _, w := range windows {
+		lo, hi := from, to
+		if lo < w[0] {
+			lo = w[0]
+		}
+		if hi > w[1] {
+			hi = w[1]
+		}
+		if hi < lo {
+			continue // cette vie ne recouvre pas l'intervalle
+		}
+		switch {
+		case !found:
+			span, found = w, true
+		default:
+			if w[0] < span[0] {
+				span[0] = w[0]
+			}
+			if w[1] > span[1] {
+				span[1] = w[1]
+			}
+		}
+	}
+	return span, found
 }
 
 // episodeAccum accumule les épisodes d'UNE famille pour UN slot : machine à deux états
@@ -164,11 +211,12 @@ func (a *episodeAccum) sample(frame int, active bool) {
 	}
 }
 
-// close émet l'épisode borné à la fenêtre de la vie. Un épisode entièrement hors de la
-// fenêtre publiée est écarté : il n'a aucune fiche où s'afficher.
+// close émet l'épisode borné aux vies publiées du slot qu'il recouvre (leur UNION, cf.
+// spanFor). Un épisode entièrement hors des fenêtres publiées est écarté : il n'a aucune fiche
+// où s'afficher.
 func (a *episodeAccum) close(endFrame int, endRead bool) {
 	a.open = false
-	w, ok := windowFor(a.windows, a.openFrame, endFrame)
+	w, ok := spanFor(a.windows, a.openFrame, endFrame)
 	if !ok {
 		return // aucune vie publiée ne recouvre l'épisode
 	}

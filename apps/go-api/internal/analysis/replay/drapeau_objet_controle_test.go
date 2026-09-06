@@ -164,7 +164,10 @@ func objDrapeauRefs(t *testing.T, id string, d objDoc, step uint64) []objDrapeau
 	for _, s := range objDrapeauSocles(t, id) {
 		out = append(out, objDrapeauRef{x: float32(s.Center.X), y: float32(s.Center.Y)})
 	}
-	idx := tracksByXUID(d.doc.Tracks)
+	// PONT NIL, ET C'EST VOULU : ce controle part du document PUBLIE, qui ne porte pas le pont
+	// slot -> xuid (OwnerReport ne survit pas a la serialisation). Il ne voit donc que les
+	// pistes NOMMEES, exactement comme avant — la mesure de reference ne change pas.
+	idx := tracksByXUID(d.doc.Tracks, nil)
 	for _, f := range d.doc.FlagCarries {
 		for _, s := range f.Spans {
 			if !flagStateCarrying(s.State) || s.XUID == nil {

@@ -314,7 +314,7 @@ func closeByCarrierKills(raws []flagCarryRaw, evs []objectiveevents.NamedEvent,
 // ecarte ce qui n'en a pas. C'est le seul endroit qui rejette apres le pont : les compteurs de
 // cause y sont.
 func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, cov *FlagCarriesCoverage) []flagCarryRaw {
-	idx := tracksByXUID(ctx.tracks)
+	idx := tracksByXUID(ctx.tracks, ctx.slotXUID)
 	out := raws[:0:0]
 	for _, r := range raws {
 		f0 := ctx.frameOfMatchMS(r.t0)
@@ -335,36 +335,6 @@ func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, cov *FlagCa
 		out = append(out, r)
 	}
 	return out
-}
-
-// tracksByXUID range les pistes publiees par joueur.
-func tracksByXUID(tracks []Track) map[string][]Track {
-	out := map[string][]Track{}
-	for _, t := range tracks {
-		if t.XUID != "" {
-			out[t.XUID] = append(out[t.XUID], t)
-		}
-	}
-	return out
-}
-
-// pointOfXUIDAt rend le point PUBLIE le plus proche de la frame demandee, parmi les pistes d'un
-// joueur. Rend (_, false) si aucune piste n'a de point a moins d'une frame — le drapeau n'aurait
-// alors pas de position a dessiner, et on prefere ne rien poser.
-func pointOfXUIDAt(tracks []Track, frame int) (Point, bool) {
-	best, bd, found := Point{}, 0, false
-	for _, tr := range tracks {
-		for _, p := range tr.Points {
-			d := p.T - frame
-			if d < 0 {
-				d = -d
-			}
-			if !found || d < bd {
-				best, bd, found = p, d, true
-			}
-		}
-	}
-	return best, found && bd <= 1
 }
 
 // assignFlags attribue chaque portage a un drapeau (index dans la liste des socles).
