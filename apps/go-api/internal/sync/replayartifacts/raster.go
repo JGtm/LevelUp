@@ -84,13 +84,9 @@ const permSidecarRaster = 0o644
 // et la passe hors ligne DOIVENT projeter a l'identique, et deux ecritures de la meme
 // regle divergeraient au premier ajustement.
 func ProjeterRasterTactique(path string) (domain.TacticalRasterSidecar, error) {
-	raw, err := os.ReadFile(path)
+	doc, err := lireDocumentRange(path)
 	if err != nil {
-		return domain.TacticalRasterSidecar{}, fmt.Errorf("lecture artefact: %w", err)
-	}
-	var doc replay.ReplayDocument
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		return domain.TacticalRasterSidecar{}, fmt.Errorf("parse artefact: %w", err)
+		return domain.TacticalRasterSidecar{}, err
 	}
 	if doc.MatchID == "" {
 		// Sans identifiant de match, le raster n'a pas de cle : le plancher de rarete se

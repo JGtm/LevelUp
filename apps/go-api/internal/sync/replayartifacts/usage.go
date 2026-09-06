@@ -46,10 +46,7 @@ package replayartifacts
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
-	"os"
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/ctxkeys"
@@ -99,15 +96,11 @@ func capabilityUsageArmee(ctx context.Context, d Deps) (armee, incident bool) {
 // projeterResumeUsage lit UN artefact rangé et le projette. Une erreur est un échec de
 // CE match, jamais du cycle.
 func projeterResumeUsage(path string) (replay.UsageSummary, error) {
-	raw, err := os.ReadFile(path)
+	doc, err := lireDocumentRange(path)
 	if err != nil {
-		return replay.UsageSummary{}, fmt.Errorf("lecture artefact: %w", err)
+		return replay.UsageSummary{}, err
 	}
-	var doc replay.ReplayDocument
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		return replay.UsageSummary{}, fmt.Errorf("parse artefact: %w", err)
-	}
-	return replay.BuildUsageSummary(&doc), nil
+	return replay.BuildUsageSummary(doc), nil
 }
 
 // persisterResumesUsage projette puis écrit les résumés des artefacts cuits du cycle.
