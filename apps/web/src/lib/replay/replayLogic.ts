@@ -306,7 +306,20 @@ export function msToFrames(ms: number, doc: ReplayDocumentReady): number {
   return interval > 0 ? ms / interval : (ms / 1000) * FALLBACK_FPS
 }
 
-/** formatClock formate une durée en `m:ss` (chronomètre du rejeu). */
+/**
+ * formatClock formate une durée en `m:ss` (chronomètre du rejeu). IL TRONQUE, et c'est la
+ * convention d'un lecteur : « 1:05 » vaut « on est dans la 66e seconde », pas « on en est à
+ * 66 s arrondi ». Toutes les surfaces visibles du rejeu le partagent (horloge, fil des
+ * éliminations, marques de la frise) — garde-rail `replayClockFormat.guard.test.ts`.
+ *
+ * CE QUE CE PARTAGE A CHANGÉ À L'ÉCRAN, et c'est assumé (2026-09-06, revue R1, constat C4 —
+ * cinquième exception du lot v2 D) : l'INFOBULLE NATIVE des marques de la frise
+ * (`ui/ReplayTimelineTracks.tsx`, `title={m.clock}`) affichait une seconde de PLUS avant ce
+ * lot, sur environ une marque sur deux — elle appelait le formateur d'INSTANT de
+ * `lib/formatters`, qui ARRONDIT au lieu de tronquer. Le décalage n'était pas un détail
+ * d'affichage : la même mort se datait « 1:06 » dans l'infobulle et « 1:05 » dans le fil,
+ * sur le même écran. C'est la résolution du résidu P0-6, pas une régression.
+ */
 export function formatClock(ms: number): string {
   const total = Math.max(Math.floor(ms / 1000), 0)
   const sec = total % 60
