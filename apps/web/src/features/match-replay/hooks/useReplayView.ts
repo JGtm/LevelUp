@@ -25,10 +25,10 @@ import { useMemo } from 'react'
 
 import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
-import { coversPlayedArea } from './layers/mapBackground'
-import { frameBounds, sceneBounds, usefulHeight, visibleBounds } from './replayLogic'
-import { type CanvasView } from './replayView'
-import type { ReplayDocumentReady } from './replayNormalize'
+import { coversPlayedArea } from '../layers/mapBackground'
+import { frameBounds, sceneBounds, usefulHeight, visibleBounds } from '../replayLogic'
+import { type CanvasView } from '../replayView'
+import type { ReplayDocumentReady } from '../replayNormalize'
 import { useReplayZoom, type ReplayZoom } from './useReplayZoom'
 
 // LA HAUTEUR DE DESSIN N'EST PLUS FIXE (2026-09-02) : elle est le moindre de ce que l'écran

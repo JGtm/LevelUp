@@ -66,7 +66,7 @@ import {
 import type { ReplayDocumentReady } from '../replayNormalize'
 import { EXPORT_FPS, canExportVideo, openVideoExport, type VideoExportSink } from './replayVideoEncoder'
 import { displayClockMs, type ReplayWindowBounds } from '../replayWindow'
-import { exportRenderScale, exportScaleFor } from '../useReplayView'
+import { exportRenderScale, exportScaleFor } from '../hooks/useReplayView'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplaySoundEvent } from '../sound/replaySoundVariants'
 import type { EnginePlan } from '../sound/vehicleEngineSound'

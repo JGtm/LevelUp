@@ -28,7 +28,7 @@ import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { allyOfTeamId } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
+import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
 /**
  * Ce que la piste DOMINANCE reçoit sur les équipes : de quel côté est un camp, et son nom.
