@@ -96497,3 +96497,54 @@ composition, l'axe Escouade n'est pas propose » releve de la phase 5 (il n'exis
 selecteur d'axe a l'ecran tant que la vue par carte est gelee) ; la regle est appliquee et
 testee cote Go. Trois decouvertes hors perimetre consignees au §7 du plan, dont un
 `matchs_filtres` qui a change de sens et que la phase 5 devra lire correctement.
+
+---
+
+## [2026-09-06] Tactique phase 4 bis, revue ronde 1 — 17 constats : une frontiere juste peut rester fausse a l'usage
+
+**Statut** : Complété (3 commits `tactique(4.7)`, branche `feat/tactique`, non poussés).
+
+**Décision technique principale** — les deux relecteurs n'ont trouvé ni accès indu, ni
+injection, ni résultat faux côté Go. Les 17 constats retenus portent tous sur l'USAGE :
+un code correct qui, à l'écran, dit ou fait autre chose que ce qu'il mesure.
+
+Le plus coûteux (W1) mérite d'être retenu au-delà de ce chantier : **en TanStack Query
+v5, `isLoading` vaut `isPending && isFetching`, donc il est FAUX sur une requête
+désactivée.** Notre grille est suspendue tant que le périmètre n'est pas résolu — elle
+affichait donc « Aucune carte jouée » au premier montage, à chaque clic sur « Analyser »
+(nouvelle clé, aucune donnée en cache) et définitivement quand la résolution échouait,
+l'échec étant en plus avalé. La règle qui en sort : un état vide est une RÉPONSE, il
+exige que toutes les lectures dont il dépend aient répondu ; on lit `isPending`, pas
+`isLoading`, dès qu'une requête peut être désactivée.
+
+Les trois autres P1 web disent la même chose sous d'autres formes :
+- **le sélecteur proposait ce qu'il allait refuser** (W2) — quatre sources de gamertags
+  dont une seule traduisible en XUID ; `GamertagCombobox` gagne une prop `sources`
+  rétro-compatible, et l'onglet n'offre que ce qu'il sait résoudre ;
+- **le label de session persisté devenait un zombie** (W3) — il embarque son compte de
+  matchs, le backend filtre par égalité stricte : deux matchs de plus et le lien partagé
+  rend une grille vide. La réconciliation de la page Escouade descend dans
+  `lib/sessions/sessionLabels.ts` (deux consommateurs, une définition) ;
+- **« Réinitialiser les filtres » n'en réinitialisait que la moitié** (W4) — en mode
+  contrôlé, le hook ne patche que ses cinq champs ; sessions et composition survivaient,
+  et `hasActiveFilters` les ignorait, donc le bouton n'était même pas rendu.
+
+Côté Go : la composition n'était bornée par rien (5 000 chaînes → 5 000 `EXISTS`
+corrélés, 30 s puis 500) — bornée à 3 et validée sur le motif XUID, refus typé en 400 ;
+`matchs_filtres` redevient PAR CARTE sur décision du superviseur (sa version « taille de
+la liste blanche » donnait deux grandeurs sans dénominateur commun sous des noms qui
+invitent à en faire un rapport) ; et un commentaire de montage annonçait « GET » sur des
+routes passées en POST, au seul endroit où l'on voit la pile de middlewares.
+
+**Résultats observés** — Go : `gofmt` propre, `go vet` propre sur 8 arbres, `go test`
+sans aucun `FAIL`, `golangci-lint --new-from-merge-base=origin/main` à 0 issue,
+`openapi-gen -check` à jour et `generated.ts` inchangé. Web : typecheck propre, lint 0
+erreur, suite vitest COMPLÈTE 606 fichiers / 6402 tests / 14 skip / 0 fail, couleurs 0
+violation, imports croisés 7/7 inchangé, manifestes sans diff. SEPT inversions jouées,
+chacune faisant tomber le test qu'elle vise.
+
+**Conclusion / prochaine étape** — ronde 1 soldée, aucun report. Deux fixtures ont été
+corrigées au passage parce qu'elles fabriquaient une forme absente de la production
+(`xuid(1234)` au lieu de l'entier nu que `sync.extractXUID` écrit en base) : c'est le
+défaut R3 de la phase 2, et il revient dès qu'on écrit une fixture de mémoire. Le
+superviseur vérifie sur pièces, lance la ronde 2, puis pousse.

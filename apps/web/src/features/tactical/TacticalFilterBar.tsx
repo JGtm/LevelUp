@@ -21,17 +21,24 @@
  * Tout l'état committed vit dans l'URL (`usePageScope`) : le retour navigateur, le
  * rechargement et le lien partagé restaurent la même lecture.
  */
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 
-import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
+import {
+  GamertagCombobox,
+  type GamertagSuggestionSource,
+} from '@/components/ui/GamertagCombobox'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
 import { useLocalFilterBar, type LocalFilterBarState } from '@/features/_shared/useLocalFilterBar'
-import type { TeammateOption } from '@/lib/api/types'
+import type { SessionOption, TeammateOption } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
+import { reconcileSquadSessionLabels } from '@/lib/sessions/sessionLabels'
 
 import type { TacticalText } from './i18n'
 import { sessionsProposees } from './tacticalLogic'
 import { MAX_COEQUIPIERS, type TacticalScope } from './tacticalScope'
+
+/** La SEULE source de composition que cette page sait traduire en XUID. */
+const SOURCES_COEQUIPIERS: readonly GamertagSuggestionSource[] = ['frequent']
 
 export interface TacticalFilterBarProps {
   playerSlug: string
@@ -82,6 +89,12 @@ export function TacticalFilterBar({
     labels: t.filterLabels,
     viewLabels: t.viewLabels,
     committed,
+    // Sessions et composition sont des filtres A PART ENTIERE : ils comptent dans
+    // « y a-t-il un filtre actif ? » (sinon le bouton ↺ n'apparaît même pas quand
+    // seule une session filtre) et ils sont vidés par le même ↺ — `carte` ne l'est
+    // PAS : c'est une SÉLECTION dans la grille, pas un filtre.
+    extrasActifs: scope.sessions.length > 0 || scope.coequipiers.length > 0,
+    onResetExtras: () => setScope({ sessions: [], coequipiers: [] }),
     // Fonction, et pas un nœud : les sessions proposées viennent de ce que le hook
     // charge pour ses propres counts — donc elles n'existent pas encore ici.
     extras: ({ sessionOptions }) => (
@@ -118,7 +131,7 @@ function BarreExtras({
   scope: TacticalScope
   setScope: (patch: Partial<TacticalScope>) => void
   avecComposition: boolean
-  sessions: Parameters<typeof sessionsProposees>[0]
+  sessions: readonly SessionOption[]
   coequipierOptions: TeammateOption[]
 }) {
   // Les sessions proposées SUIVENT la composition : escouade dès qu'un coéquipier
@@ -128,6 +141,43 @@ function BarreExtras({
     [sessions, avecComposition],
   )
 
+  // Le COMPTE de chaque session SOUS LES FILTRES COURANTS (`match_count_filtered`),
+  // comme la barre de l'Escouade : sans lui, `SessionMultiSelect` affiche le compte
+  // FIGÉ du label et propose des sessions qui ne portent aucun match sous la sélection.
+  const comptes = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const s of sessions) m.set(s.label, s.match_count_filtered)
+    return m
+  }, [sessions])
+
+  // ─── LE LABEL ZOMBIE ────────────────────────────────────────────────────────
+  //
+  // Un label de session embarque son compte de matchs et le backend filtre par égalité
+  // stricte : deux matchs de plus à la prochaine synchronisation, et le label épinglé
+  // dans l'URL (ou dans le miroir localStorage) ne désigne plus rien — la case à cocher
+  // disparaît et la grille revient vide sans rien dire. On le remappe sur sa forme
+  // courante dès que la liste arrive, et on retire ce qui ne se remappe pas.
+  //
+  // MÊME MÉCANIQUE ET MÊME JUSTIFICATION QUE `SquadLayout` (ré-ancrage des labels à
+  // l'arrivée asynchrone des sessions) : l'écriture ne peut pas se faire au rendu, elle
+  // dépend d'une donnée qui arrive après.
+  useEffect(() => {
+    if (scope.sessions.length === 0 || proposees.length === 0) return
+    const reconcilies = reconcileSquadSessionLabels(scope.sessions, proposees)
+    const inchange =
+      reconcilies.length === scope.sessions.length &&
+      reconcilies.every((l, i) => l === scope.sessions[i])
+    if (inchange) return
+    if (reconcilies.length < scope.sessions.length) {
+      console.warn(
+        '[tactique] session épinglée introuvable dans les sessions courantes — retirée du filtre',
+        { epinglees: scope.sessions, retenues: reconcilies },
+      )
+    }
+    setScope({ sessions: reconcilies })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- déclencheur unique : l'arrivée (ou le changement) de la liste de sessions
+  }, [proposees])
+
   return (
     <>
       <SessionMultiSelect
@@ -136,14 +186,22 @@ function BarreExtras({
         onChange={(labels) => setScope({ sessions: labels })}
         locale={locale}
         placeholder={t.sessions}
+        getMatchCount={(label) => comptes.get(label)}
         triggerClassName="flex items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted whitespace-nowrap transition-colors"
       />
+      {/* LE SÉLECTEUR NE PROPOSE QUE CE QUE LA PAGE SAIT RÉSOUDRE : la composition
+          part au serveur en XUIDS, et le seul endroit où cette page les connaît est
+          la liste des coéquipiers fréquents. Laisser le popover offrir l'annuaire, le
+          repli Xbox ou la saisie libre revenait à accepter un nom pour le refuser une
+          seconde plus tard, la grille bloquée sur « Coéquipier introuvable ». */}
       <GamertagCombobox
         compact
         selected={scope.coequipiers}
         onChange={(gts) => setScope({ coequipiers: gts.slice(0, MAX_COEQUIPIERS) })}
         max={MAX_COEQUIPIERS}
         frequentOptions={coequipierOptions}
+        sources={SOURCES_COEQUIPIERS}
+        allowFreeInput={false}
         excludeGamertag={playerSlug}
         placeholder={t.squadPlaceholder(coequipierOptions.length)}
       />

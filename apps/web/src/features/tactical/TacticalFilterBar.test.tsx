@@ -13,7 +13,7 @@
  *     sans cela, la sélection ne survivrait ni au retour navigateur ni au partage.
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -24,7 +24,9 @@ import { TACTICAL_SCOPE_DEFAUT, type TacticalScope } from './tacticalScope'
 
 const sessions = [
   {
-    label: 'Session solo',
+    // Les labels PORTENT leur compte de matchs, comme ceux du backend
+    // (`buildSessionLabel`) : c'est ce suffixe volatil qui fabrique les zombies.
+    label: 'Session solo (6)',
     session_id: 's1',
     match_count: 4,
     match_count_filtered: 4,
@@ -33,7 +35,7 @@ const sessions = [
     ended_at_utc: '2026-03-01T12:00:00Z',
   },
   {
-    label: 'Session escouade',
+    label: 'Session escouade (7)',
     session_id: 's2',
     match_count: 7,
     match_count_filtered: 7,
@@ -98,15 +100,15 @@ describe('TacticalFilterBar', () => {
   it('sans composition : le sélecteur propose les sessions SOLO', () => {
     monter()
     fireEvent.click(screen.getByText('Sessions'))
-    expect(screen.getByText('Session solo')).toBeInTheDocument()
-    expect(screen.queryByText('Session escouade')).toBeNull()
+    expect(screen.getByText(/Session solo/)).toBeInTheDocument()
+    expect(screen.queryByText(/Session escouade/)).toBeNull()
   })
 
   it('avec une composition : il propose les sessions d’ESCOUADE', () => {
     monter({ coequipiers: ['Ami'] })
     fireEvent.click(screen.getByText('Sessions'))
-    expect(screen.getByText('Session escouade')).toBeInTheDocument()
-    expect(screen.queryByText('Session solo')).toBeNull()
+    expect(screen.getByText(/Session escouade/)).toBeInTheDocument()
+    expect(screen.queryByText(/Session solo/)).toBeNull()
   })
 
   it('le clic sur « Analyser » écrit la période et la cascade dans le scope', () => {
@@ -121,5 +123,92 @@ describe('TacticalFilterBar', () => {
     // La vue committed est celle du scope : le contrôle l'affiche sans qu'on ait
     // cliqué sur quoi que ce soit (c'est ce qui rend le retour navigateur correct).
     expect(screen.getByRole('button', { name: /Vue\s*: En escouade/ })).toBeInTheDocument()
+  })
+
+  // ─── W2 — LE SELECTEUR NE PROPOSE QUE CE QU'ON SAIT RESOUDRE ─────────────────────
+  //
+  // La composition part au serveur en XUIDS, connus seulement pour les coequipiers
+  // frequents. Proposer l'annuaire, le repli Xbox ou la saisie libre revenait a accepter
+  // un nom pour le refuser une seconde plus tard, grille bloquee sur « introuvable ».
+
+  it('propose les coequipiers frequents, et EUX SEULS', async () => {
+    monter()
+    const champ = screen.getByPlaceholderText(/Coéquipiers/)
+    fireEvent.change(champ, { target: { value: 'Ami' } })
+    expect(await screen.findByText('Ami')).toBeInTheDocument()
+    // Aucun groupe « Autres joueurs », aucun repli Xbox, aucune option de saisie libre.
+    expect(screen.queryByText('Autres joueurs')).toBeNull()
+    expect(screen.queryByText(/Rechercher sur Xbox/i)).toBeNull()
+  })
+
+  it('un gamertag hors des options traduisibles n’est PAS proposable', async () => {
+    monter()
+    const champ = screen.getByPlaceholderText(/Coéquipiers/)
+    fireEvent.change(champ, { target: { value: 'Inconnu42' } })
+    // Ni option de saisie libre (« Ajouter … »), ni suggestion : rien a cliquer.
+    expect(screen.queryByText(/Ajouter/)).toBeNull()
+    expect(screen.queryByText('Inconnu42')).toBeNull()
+    // …et la composition reste vide : rien n'a pu etre choisi.
+    expect(setScope).not.toHaveBeenCalledWith(expect.objectContaining({ coequipiers: ['Inconnu42'] }))
+  })
+
+  // ─── W3 — LE LABEL DE SESSION ZOMBIE ────────────────────────────────────────────
+  //
+  // Le label embarque son compte de matchs, le backend filtre par egalite stricte, et le
+  // scope le persiste (URL + miroir). Deux matchs de plus et le label ne designe plus
+  // rien : la case disparait et la lecture revient vide sans rien dire.
+
+  it('remappe un label epingle dont le compte a change', async () => {
+    // Le meme label, un compte perime : c'est exactement ce que rend une URL partagee
+    // apres une synchronisation.
+    monter({ sessions: ['Session solo (4)'] })
+    await waitFor(() => expect(setScope).toHaveBeenCalled())
+    expect(setScope).toHaveBeenCalledWith({ sessions: ['Session solo (6)'] })
+  })
+
+  it('retire un label epingle introuvable, et le DIT', async () => {
+    const avert = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      monter({ sessions: ['Session effacee (9)'] })
+      await waitFor(() => expect(setScope).toHaveBeenCalledWith({ sessions: [] }))
+      expect(avert).toHaveBeenCalled()
+    } finally {
+      avert.mockRestore()
+    }
+  })
+
+  it('ne re-ecrit RIEN quand le label epingle est deja a jour', async () => {
+    monter({ sessions: ['Session solo (6)'] })
+    await waitFor(() => expect(screen.getByText(/1 session/)).toBeInTheDocument())
+    expect(setScope).not.toHaveBeenCalled()
+  })
+
+  // ─── W4 — « REINITIALISER » REINITIALISE TOUT LE SCOPE ──────────────────────────
+
+  it('le bouton ↺ est RENDU quand seuls les extras filtrent', () => {
+    monter({ sessions: ['Session solo (6)'] })
+    expect(screen.getByTitle('Réinitialiser les filtres')).toBeInTheDocument()
+  })
+
+  it('↺ vide aussi les sessions et la composition (jamais la carte selectionnee)', () => {
+    monter({ sessions: ['Session escouade (7)'], coequipiers: ['Ami'], carte: 'streets' })
+    fireEvent.click(screen.getByTitle('Réinitialiser les filtres'))
+    const patchs = setScope.mock.calls.map((c) => c[0] as Record<string, unknown>)
+    expect(patchs).toContainEqual({ sessions: [], coequipiers: [] })
+    // La carte est une SELECTION, pas un filtre : aucun patch ne l'efface.
+    for (const p of patchs) expect(p).not.toHaveProperty('carte')
+  })
+
+  // ─── W6 — LA PERIODE ARRIVE JUSQU'AU SCOPE ──────────────────────────────────────
+
+  it('« Analyser » ecrit la periode reglee, dans le bon sens', () => {
+    monter()
+    fireEvent.click(screen.getByRole('button', { name: /Toutes les périodes/ }))
+    fireEvent.change(screen.getByLabelText('Du'), { target: { value: '2026-01-01' } })
+    fireEvent.change(screen.getByLabelText('Au'), { target: { value: '2026-02-01' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyser' }))
+    expect(setScope).toHaveBeenCalledWith(
+      expect.objectContaining({ debut: '2026-01-01', fin: '2026-02-01' }),
+    )
   })
 })

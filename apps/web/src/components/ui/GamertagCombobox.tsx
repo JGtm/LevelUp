@@ -84,7 +84,30 @@ export interface GamertagComboboxProps {
    * chaîne CSS prête à l'emploi (ex. tokenCssVar('compare-a')).
    */
   leadingPill?: { label: string; color: string }
+  /**
+   * Sources de suggestion PROPOSÉES. Par défaut : les quatre.
+   *
+   * Un appelant qui ne sait pas TRADUIRE toutes les sources doit pouvoir n'offrir que
+   * celles qu'il traite : l'onglet Tactique envoie au serveur des XUIDs qu'il ne connaît
+   * que pour ses coéquipiers fréquents, et proposer un joueur de l'annuaire l'aurait
+   * conduit à refuser ensuite ce qu'il venait d'accepter. Accepter puis refuser est
+   * toujours pire que ne pas proposer.
+   *
+   * Rétro-compatible : omettre la prop garde le comportement complet (SquadLayout,
+   * Compare, Settings, Admin sont inchangés).
+   */
+  sources?: readonly GamertagSuggestionSource[]
 }
+
+/** Les quatre sources du popover, dans leur ordre d'affichage. */
+export type GamertagSuggestionSource = 'configured' | 'frequent' | 'remote' | 'live'
+
+const TOUTES_SOURCES: readonly GamertagSuggestionSource[] = [
+  'configured',
+  'frequent',
+  'remote',
+  'live',
+]
 
 // ─── Composant ──────────────────────────────────────────────────────────────────
 
@@ -97,6 +120,7 @@ export function GamertagCombobox({
   excludeGamertag,
   placeholder = 'Rechercher un gamertag…',
   allowFreeInput = true,
+  sources,
   onAddAsFriend,
   compact = false,
   presetGroups,
@@ -142,18 +166,33 @@ export function GamertagCombobox({
   const excludeGamertags = excludeGamertag ? [...selected, excludeGamertag] : selected
 
   const {
-    configured,
-    frequent,
-    remote,
-    isRemoteLoading,
-    hasAnyResult,
+    configured: configuredTous,
+    frequent: frequentTous,
+    remote: remoteTous,
+    isRemoteLoading: isRemoteLoadingBrut,
+    hasAnyResult: hasAnyResultBrut,
     remoteAttempted,
-    liveResults,
+    liveResults: liveResultsTous,
     isLiveLoading,
     liveAttempted,
-    liveEmpty,
+    liveEmpty: liveEmptyBrut,
     triggerLiveSearch,
   } = useGamertagSuggestions({ query, frequentOptions, excludeGamertags })
+
+  // Filtrage par SOURCE : une source non proposée n'apparaît pas, ne compte pas dans
+  // « a-t-on trouvé quelque chose », et ne déclenche ni le repli Xbox ni ses messages.
+  const sourcesActives = sources ?? TOUTES_SOURCES
+  const configured = sourcesActives.includes('configured') ? configuredTous : []
+  const frequent = sourcesActives.includes('frequent') ? frequentTous : []
+  const remote = sourcesActives.includes('remote') ? remoteTous : []
+  const liveResults = sourcesActives.includes('live') ? liveResultsTous : []
+  const rechercheServeurProposee = sourcesActives.includes('remote')
+  const repliXboxPropose = sourcesActives.includes('live')
+  const isRemoteLoading = rechercheServeurProposee && isRemoteLoadingBrut
+  const liveEmpty = repliXboxPropose && liveEmptyBrut
+  const hasAnyResult = rechercheServeurProposee
+    ? hasAnyResultBrut
+    : configured.length > 0 || frequent.length > 0
 
   const trimmed = query.trim()
   const allSuggestedGts = new Set([
@@ -175,11 +214,15 @@ export function GamertagCombobox({
     !allSuggestedGts.has(trimmed)
 
   const showEmptyMessage =
-    trimmed.length > 0 && remoteAttempted && !isRemoteLoading && !hasAnyResult
+    trimmed.length > 0 &&
+    (rechercheServeurProposee ? remoteAttempted : true) &&
+    !isRemoteLoading &&
+    !hasAnyResult
 
   // Bouton « Rechercher sur Xbox » (V72-24) : proposé quand la recherche locale a
   // répondu sans surfacer le joueur tapé, tant que le repli live n'a pas été lancé.
   const canSearchLive =
+    repliXboxPropose &&
     trimmed.length > 0 &&
     !selected.includes(trimmed) &&
     !allSuggestedGts.has(trimmed) &&

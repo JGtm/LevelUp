@@ -16,6 +16,7 @@ import {
   encodeTacticalScope,
   MAX_COEQUIPIERS,
   TACTICAL_SCOPE_DEFAUT,
+  TACTICAL_URL_KEYS,
   type TacticalScope,
 } from './tacticalScope'
 
@@ -58,6 +59,18 @@ describe('tacticalScope', () => {
     const s = decodeTacticalScope({ eq: 'A,B,C,D,E' })
     expect(s.coequipiers).toHaveLength(MAX_COEQUIPIERS)
     expect(s.coequipiers).toEqual(['A', 'B', 'C'])
+  })
+
+  // W11 — LA LISTE DES CLES D'URL EST COMPAREE A QUELQUE CHOSE.
+  //
+  // `TACTICAL_URL_KEYS` sert a `usePageScope` pour deux choses : detecter un
+  // atterrissage « vierge » (sinon le miroir localStorage ECRASE un lien partage qui ne
+  // porte que la cle oubliee) et purger le scope au reset. Une cle qui manque a la liste
+  // ne casse aucun test d'aller-retour — elle casse le partage d'URL, en silence.
+  it('TACTICAL_URL_KEYS couvre TOUTES les cles encodables', () => {
+    // L'encodage d'un scope COMPLET produit exactement les cles du contrat.
+    const clesEncodees = Object.keys(encodeTacticalScope(scopeComplet)).sort()
+    expect([...TACTICAL_URL_KEYS].sort()).toEqual(clesEncodees)
   })
 
   it('les listes vides ne laissent aucun param orphelin', () => {
