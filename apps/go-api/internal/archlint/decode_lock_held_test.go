@@ -36,6 +36,14 @@ package archlint
 // `go build ./...` compile. La liste se calcule desormais en balayant `internal` et `cmd` avec la
 // fonction `balayageFilmdec` elle-meme : une regle et sa liste ne peuvent plus diverger.
 //
+// LE QUALIFICATEUR EST RESOLU PAR L'IMPORT, PAS DEVINE (D-2 de la revue E-R2, 2026-09-06). La
+// regle comparait le prefixe d'appel au litteral « filmdec » : un paquet qui ecrivait
+// `fd "levelup/go-api/internal/analysis/filmdec"` puis `fd.DecodeFrameRecords(...)` sans verrou
+// laissait le ratchet vert ET n'entrait pas dans la liste derivee — la derivation heritait du trou
+// de la regle, et depuis qu'elle est la SEULE source de la liste, plus rien ne le rattrapait a la
+// main. `nomLocalDeFilmdec` lit desormais le nom local de l'import dans chaque fichier : nom par
+// defaut, alias, import point (appels NUS) ou import muet (aucun appel possible).
+//
 // LA RECIPROQUE EST AUSSI IMPORTANTE : le mutex N'EST PAS REENTRANT. Prendre le verrou dans une
 // fonction dont l'appelant le tient deja bloquerait le process. La regle n'exige donc PAS que
 // chaque balayeur le prenne — elle exige qu'il soit couvert.
@@ -51,9 +59,11 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -85,12 +95,50 @@ var paquetsAttendus = []string{
 //
 // C'EST CETTE FONCTION, ET ELLE SEULE, QUI DEFINIT « decoder ». La liste des paquets mesures en
 // est derivee (`paquetsQuiDecodent`) : une regle et sa liste ne peuvent plus diverger.
-func balayageFilmdec(pkg, fun string) bool {
-	if pkg != "filmdec" {
+func balayageFilmdec(local, pkg, fun string) bool {
+	if local == "" || pkg != local {
 		return false
 	}
+	return nomDeBalayageFilmdec(fun)
+}
+
+// nomDeBalayageFilmdec est la regle de NOM, isolee du qualificateur : elle sert aussi bien a un
+// appel qualifie (`filmdec.ScanX`, `fd.ScanX`) qu'a un appel nu sous import point.
+func nomDeBalayageFilmdec(fun string) bool {
 	return strings.HasPrefix(fun, "Scan") || strings.HasPrefix(fun, "DecodeFrame") ||
 		strings.HasPrefix(fun, "TraverseEntity")
+}
+
+// cheminDuDecodeur est le chemin d'import du paquet qui porte les balayages.
+const cheminDuDecodeur = "levelup/go-api/" + paquetDuDecodeur
+
+// importPoint est le nom local d'un import point (`. "…/filmdec"`) : les appels y sont NUS.
+const importPoint = "."
+
+// nomLocalDeFilmdec rend le nom sous lequel CE FICHIER-CI designe le paquet du decodeur, et s'il
+// l'importe. C'est le dernier segment du chemin par defaut, l'ALIAS quand il y en a un, `.` sous
+// import point.
+//
+// POURQUOI CE DETOUR (D-2 de la revue E-R2, 2026-09-06). La regle comparait le qualificateur au
+// litteral « filmdec ». Un paquet qui ecrivait `fd "levelup/go-api/internal/analysis/filmdec"`
+// puis `fd.DecodeFrameRecords(...)` sans verrou laissait le ratchet VERT, et — depuis que la liste
+// des paquets mesures est DERIVEE de cette meme regle — n'entrait meme pas dans la liste. Une
+// omission de la regle ne peut plus etre rattrapee a la main : elle doit etre fermee ici.
+func nomLocalDeFilmdec(f *ast.File) (string, bool) {
+	for _, imp := range f.Imports {
+		chemin, err := strconv.Unquote(imp.Path.Value)
+		if err != nil || chemin != cheminDuDecodeur {
+			continue
+		}
+		if imp.Name == nil {
+			return path.Base(chemin), true // `filmdec`
+		}
+		if imp.Name.Name == "_" {
+			return "", false // import muet : aucun appel possible
+		}
+		return imp.Name.Name, true // alias, ou `.`
+	}
+	return "", false
 }
 
 // paquetDuDecodeur est le paquet qui PORTE les balayages : il est hors mesure (il ne s'appelle pas
@@ -118,7 +166,9 @@ func paquetsQuiDecodent(t *testing.T, racine string) []string {
 			if err != nil {
 				return err
 			}
-			if !bytes.Contains(src, []byte("filmdec.")) {
+			// PREFILTRE SUR LE CHEMIN D'IMPORT, PAS SUR LE QUALIFICATEUR : un fichier qui ecrit
+			// `fd "…/internal/analysis/filmdec"` ne contient nulle part la chaine « filmdec. ».
+			if !bytes.Contains(src, []byte(paquetDuDecodeur)) {
 				return nil
 			}
 			f, err := parser.ParseFile(fset, chemin, src, 0)
@@ -151,6 +201,10 @@ func paquetsQuiDecodent(t *testing.T, racine string) []string {
 
 // fichierBalaieUnFilm dit si une source appelle au moins un balayage `filmdec`.
 func fichierBalaieUnFilm(f *ast.File) bool {
+	local, importe := nomLocalDeFilmdec(f)
+	if !importe {
+		return false
+	}
 	trouve := false
 	ast.Inspect(f, func(n ast.Node) bool {
 		if trouve {
@@ -160,12 +214,20 @@ func fichierBalaieUnFilm(f *ast.File) bool {
 		if !ok {
 			return true
 		}
+		if id, nu := call.Fun.(*ast.Ident); nu {
+			// appel NU : c'est un balayage seulement sous import point.
+			if local == importPoint && nomDeBalayageFilmdec(id.Name) {
+				trouve = true
+				return false
+			}
+			return true
+		}
 		sel, ok := call.Fun.(*ast.SelectorExpr)
 		if !ok {
 			return true
 		}
 		pkg, estIdent := sel.X.(*ast.Ident)
-		if estIdent && balayageFilmdec(pkg.Name, sel.Sel.Name) {
+		if estIdent && balayageFilmdec(local, pkg.Name, sel.Sel.Name) {
 			trouve = true
 			return false
 		}
@@ -295,13 +357,14 @@ func lireFonctionsDuPaquet(t *testing.T, dir string) map[string]*fonctionDuPaque
 		if err != nil {
 			t.Fatalf("analyse de %s : %v", nom, err)
 		}
+		local, _ := nomLocalDeFilmdec(f) // "" quand ce fichier-ci n'importe pas le decodeur
 		for _, d := range f.Decls {
 			fd, ok := d.(*ast.FuncDecl)
 			if !ok || fd.Body == nil {
 				continue
 			}
 			fn := &fonctionDuPaquet{nom: fd.Name.Name, fichier: nom, ligne: fset.Position(fd.Pos()).Line}
-			remplirAppels(fd.Body, fn)
+			remplirAppels(fd.Body, fn, local)
 			out[fn.nom] = fn
 		}
 	}
@@ -310,24 +373,31 @@ func lireFonctionsDuPaquet(t *testing.T, dir string) map[string]*fonctionDuPaque
 
 // remplirAppels parcourt un corps et note : prise du verrou, balayage filmdec, et les appels
 // aux fonctions ou methodes du meme paquet.
-func remplirAppels(body *ast.BlockStmt, fn *fonctionDuPaquet) {
+func remplirAppels(body *ast.BlockStmt, fn *fonctionDuPaquet, local string) {
 	ast.Inspect(body, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
 		if !ok {
 			return true
 		}
 		switch f := call.Fun.(type) {
-		case *ast.Ident: // appel d'une fonction du meme paquet
-			fn.appelles = append(fn.appelles, f.Name)
+		case *ast.Ident: // fonction du meme paquet — ou de `filmdec` sous import point
+			switch {
+			case local == importPoint && f.Name == verrouDuDecodeur:
+				fn.prend = true
+			case local == importPoint && nomDeBalayageFilmdec(f.Name):
+				fn.balaie = true
+			default:
+				fn.appelles = append(fn.appelles, f.Name)
+			}
 		case *ast.SelectorExpr:
 			pkg, estIdent := f.X.(*ast.Ident)
 			switch {
 			case !estIdent:
 				// appel sur une expression (`c.x.y()`) : le recepteur n'est pas resoluble
 				// syntaxiquement, on ne le compte pas.
-			case pkg.Name == "filmdec" && f.Sel.Name == "LockProcessDecode":
+			case local != "" && pkg.Name == local && f.Sel.Name == verrouDuDecodeur:
 				fn.prend = true
-			case balayageFilmdec(pkg.Name, f.Sel.Name):
+			case balayageFilmdec(local, pkg.Name, f.Sel.Name):
 				fn.balaie = true
 			default:
 				// methode d'un recepteur du paquet : `c.collectPositions()` -> on tente les deux
@@ -338,6 +408,9 @@ func remplirAppels(body *ast.BlockStmt, fn *fonctionDuPaquet) {
 		return true
 	})
 }
+
+// verrouDuDecodeur est le nom de la fonction qui prend le verrou de decodage.
+const verrouDuDecodeur = "LockProcessDecode"
 
 // nomsTries rend les cles triees, pour un message d'echec deterministe.
 func nomsTries(fns map[string]*fonctionDuPaquet) []string {

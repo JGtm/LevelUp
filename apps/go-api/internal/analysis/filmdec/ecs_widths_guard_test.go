@@ -72,7 +72,9 @@ type ecsEcartAdmis struct {
 //
 // AUCUN N'EST UN BOGUE DE DECODAGE, et aucun n'est silencieux : chacun est ici avec sa raison, et
 // le controle echoue si un ecart de plus apparait — ou si l'un de ceux-ci se resorbe sans qu'on
-// retire sa ligne.
+// retire sa ligne, que la resorption vienne du CODE (`largeur != e.Mesure`) ou de la TABLE
+// (`e.Table != r.BitsTyp`). LES DEUX SENS sont controles depuis le 2026-09-06 : le second manquait,
+// et c'etait exactement la manoeuvre de l'item E.9 (D-3 de la revue E-R2).
 //
 // CHRONIQUE. 2026-09-06 (item E.7) : TROIS ecarts. 2026-09-06 (item E.9, decision utilisateur 10) :
 // **DEUX** — `ti=35 i=50 biped-map-editor-flag-component` en sort, parce que la table a ete
@@ -129,8 +131,21 @@ func TestG4LargeursEntieresSuiventLeCode(t *testing.T) {
 			vus[cle] = true
 			if largeur != e.Mesure {
 				t.Errorf("G4 : ligne %d (ti=%d i=%d %s) est un ecart ADMIS a %d bits, mais le code "+
-					"en consomme maintenant %d — l'ecart a bouge, sa justification est a revoir :\n  %s",
+					"en consomme maintenant %d — l'ecart a bouge par le CODE, sa justification est a revoir :\n  %s",
 					r.LineNo, r.TI, r.I, r.Component, e.Mesure, largeur, e.Pourquoi)
+			}
+			// L'ECART PEUT AUSSI SE RESORBER PAR LA TABLE, et c'est la manoeuvre que l'item E.9
+			// vient d'executer sur `ti=35 i=50` : corriger `bits_typ` a la valeur mesuree rend
+			// l'entree d'allowlist sans objet, et son champ `Table` devient un mensonge. Sans ce
+			// controle, rien n'obligeait a retirer la ligne (D-3 de la revue E-R2, 2026-09-06).
+			if e.Table != r.BitsTyp {
+				t.Errorf("G4 : ligne %d (ti=%d i=%d %s) est un ecart ADMIS declare contre une table a "+
+					"%d bits, mais la table annonce maintenant %d.\n"+
+					"Si elle a ete CORRIGEE a la valeur mesuree (%d), l'ecart n'existe plus : RETIRER "+
+					"sa ligne d'`ecsEcartsAdmis`, une allowlist sans objet est du code mort.\n"+
+					"Si elle a ete changee pour autre chose, mettre a jour le champ `Table` avec la "+
+					"raison datee.",
+					r.LineNo, r.TI, r.I, r.Component, e.Table, r.BitsTyp, largeur)
 			}
 			continue
 		}

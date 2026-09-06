@@ -1038,3 +1038,99 @@ et de journal.
    melange qui oblige `ecsEcartsAdmis` a exister. Les distinguer (par exemple en prefixant les
    nominales) est une reecriture de la table, hors du perimetre de l'item E.9 qui corrige entree
    par entree sur mesure.
+
+## Retouches apres ronde 2 (E-R2) — 2026-09-06
+
+Verdict E-R2 : les six constats de E-R1 sont **FERMES** et l'item E.9 juge **prudent** (12 mutations
+rejouees, tous les temoins retrouves au chiffre pres). Trois residus P3, traites ici en un commit.
+Aucune ligne de code du decodeur touchee : le diff est fait de trois fichiers de garde-rail.
+
+### [x] D-3 — un ecart admis resorbe par la TABLE n'etait pas detecte
+
+`filmdec/ecs_widths_guard_test.go`. L'en-tete d'`ecsEcartsAdmis` promettait un echec « si l'un de
+ceux-ci se resorbe sans qu'on retire sa ligne ». C'etait vrai dans UN sens seulement : la branche
+`admis` ne comparait que `largeur != e.Mesure` (resorption par le CODE). Corriger `bits_typ` a la
+valeur mesuree en gardant l'entree — **exactement la manoeuvre que E.9 vient d'executer sur
+`ti=35 i=50`** — laissait G1/G3/G4/G5 tous verts, l'entree morte et son champ `Table` mensonger.
+
+Le controle `e.Table != r.BitsTyp` est ajoute, avec son message : retirer la ligne si la table a ete
+corrigee, mettre a jour `Table` avec une raison datee sinon. La prose dit desormais que **les deux
+sens** sont controles.
+
+PREUVE — `ecs_table.tsv` ligne 331 (`ti=13 i=1`), `bits_typ` 28 -> 4 (la mesure), entree conservee :
+
+```
+AVANT : G1, G3, G4, G5 -> les quatre PASS
+APRES : --- FAIL: TestG4LargeursEntieresSuiventLeCode
+        G4 : ligne 331 (ti=13 i=1 managed-object-property-component) est un ecart ADMIS declare
+        contre une table a 28 bits, mais la table annonce maintenant 4.
+```
+
+Table restauree, `git diff` vide.
+
+### [x] D-2 — un import ALIASE de `filmdec` echappait entierement a la liste derivee
+
+`archlint/decode_lock_held_test.go`. `balayageFilmdec` comparait le qualificateur au litteral
+« filmdec ». Un paquet ecrivant `fd "levelup/go-api/internal/analysis/filmdec"` puis
+`fd.DecodeFrameRecords(...)` sans verrou laissait le ratchet VERT **et n'entrait pas dans la liste
+derivee** — la derivation heritait du trou de la regle, et depuis qu'elle en est la SEULE source
+(correction 4 de la ronde 1), plus rien ne le rattrapait a la main.
+
+Le qualificateur est desormais RESOLU par l'import, jamais devine. `nomLocalDeFilmdec(f)` lit le
+nom local du chemin `levelup/go-api/internal/analysis/filmdec` dans chaque fichier et couvre les
+quatre formes : nom par defaut, alias, import point (appels NUS — traites), import muet (`_`, aucun
+appel possible). La prise du verrou (`LockProcessDecode`) suit la meme resolution. Le prefiltre
+textuel de la derivation cherche maintenant le CHEMIN d'import et non la chaine « filmdec. », qui
+n'apparait nulle part dans un fichier a import aliase.
+
+PREUVE — paquet jetable `cmd/sonde_alias_er2` appelant `DecodeFrameRecords` sans verrou :
+
+```
+import fd "…/filmdec"   AVANT : VERT, paquet absent de la liste
+                        APRES : --- FAIL: .../cmd/sonde_alias_er2
+                                cmd/sonde_alias_er2/main.go:5 main
+import . "…/filmdec"    APRES : --- FAIL, meme site  (appels nus, forme couverte aussi)
+```
+
+Sonde supprimee, arbre propre. Les quatre paquets reels restent PASS.
+
+### [x] D-1 — la liste des angles morts du garde AST se donnait pour une enumeration
+
+`filmdec/event_preamble_guard_test.go`. La prose listait deux formes d'evasion ; la revue en a
+exhibe deux autres. Traitement en deux temps, parce que les deux formes ne se valent pas :
+
+- **`Skip(0)` intercale — FERME POUR DE BON.** `br.Skip(1); br.ReadBit(); br.Skip(0);
+  br.ReadBits(7)` echappait parce qu'une operation de largeur nulle rompait la consecutivite. Elle
+  ne consomme AUCUN bit : `opDeLAppel` ne la retient plus du tout. Aucun faux positif introduit
+  (le paquet reste vert).
+- **`ReadBits(9)` puis masque — ANGLE MORT ASSUME.** L'ancre du motif est la lecture de SEPT bits.
+  Fermer cette forme demanderait de traiter toute lecture de 9 bits comme suspecte, alors que la
+  largeur 9 n'a rien de propre au preambule : le controle deviendrait bruyant sur des grammaires de
+  composant. C'est un arbitrage, il est ecrit comme tel.
+
+La prose ne se donne plus pour complete : elle s'annonce « LISTE OUVERTE, TENUE A JOUR, JAMAIS
+PRESENTEE COMME COMPLETE », enumere les **quatre** formes connues et marque chacune FERME ou NON
+FERME, avec sa raison.
+
+PREUVE — les deux sondes de la revue ajoutees a `zoom_events.go` :
+
+```
+copieM3ZeroLargeur  AVANT : VERT   APRES : FAIL — zoom_events.go:197-200 recopie le preambule
+copieM3NeufBits     AVANT : VERT   APRES : VERT — angle mort n°4, assume et documente
+```
+
+Sondes retirees, `git diff` vide sur `zoom_events.go`.
+
+### Gate des retouches
+
+| commande | derniere ligne |
+|---|---|
+| `go test -count=1 ./internal/analysis/filmdec/... ./internal/archlint/... -p 1 -parallel 1` | `ok …/internal/archlint 18.912s` — les deux paquets **ok** |
+| `go build ./...` | exit 0 |
+| `gofmt -l ./internal/analysis/filmdec/ ./internal/archlint/` | (vide) |
+| `golangci-lint run --timeout 10m --new-from-merge-base=origin/main ./...` | **`0 issues.`**, exit 0 |
+| md5 du golden des familles | `e396143919281fde5f92a56d0af03d86` — **inchange** |
+| `git diff --stat -- internal/analysis/filmdec/testdata/` | (vide) — aucune sortie figee touchee |
+
+Aucun ratchet n'a monte. `ecsEcartsAdmis` reste a 2, `ecsLargeursFixes`/`Gardees` a 114/65, le
+plancher `paquetsAttendus` a 4 : les trois retouches RESSERRENT les regles sans deplacer un seuil.
