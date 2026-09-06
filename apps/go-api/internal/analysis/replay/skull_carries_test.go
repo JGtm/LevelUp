@@ -198,10 +198,10 @@ func TestSkullCarrierPresence(t *testing.T) {
 	if len(p.named["A"]) != 2 || len(p.named["B"]) != 1 {
 		t.Errorf("A=%d vies, B=%d vies, attendu 2 et 1", len(p.named["A"]), len(p.named["B"]))
 	}
-	if _, ok := bestOverlap(p.named["A"], 20, 25); !ok {
+	if _, ok := unionOverlap(p.named["A"], 20, 25); !ok {
 		t.Errorf("[20,25] devrait recouvrir la vie A [10,40]")
 	}
-	if _, ok := bestOverlap(p.named["A"], 60, 90); ok {
+	if _, ok := unionOverlap(p.named["A"], 60, 90); ok {
 		t.Errorf("[60,90] ne devrait recouvrir aucune vie A (trou entre [10,40] et [100,130])")
 	}
 }
@@ -295,5 +295,55 @@ func TestSkullCarrySecondsByXUID(t *testing.T) {
 	}
 	if best != "A" {
 		t.Errorf("porteur principal = %q, attendu \"A\"", best)
+	}
+}
+
+// TestPortageAChevalSurDeuxViesNommeesGardeSesBornes — LE RESIDU A, instruit le 2026-09-06.
+//
+// VERDICT : CONFIRME, l'exemption « lecteur deja rattrape » ne le couvrait PAS. Le correctif du
+// schema 43 a traite le REJET (« l'ignorance passe avant le rognage ») ; le ROGNAGE, lui, est
+// reste sur `bestOverlap` — la vie de recouvrement MAXIMAL. C'est exactement le defaut que
+// `windowFor` portait avant le schema 45 et que `spanFor` a ferme pour les episodes
+// d'equipement : un portage qu'un trou de replication de plus de `lifeGapUS` coupe en deux vies
+// NOMMEES du meme porteur etait tronque a la moitie la plus longue, l'instant de PRISE compris.
+//
+// LE CAS : le porteur a deux vies nommees, [10..30] et [80..120], separees par un trou. Le
+// portage mesure court de 20 a 100 : il enjambe le trou. L'union rend [10..120], le clamp
+// ramene a [20..100] — les bornes MESUREES, intactes.
+//
+// MUTATION : revenir a `bestOverlap` rougit — le portage sort [80..100], ampute de 60 frames
+// (la vie [80..120] recouvre 21 frames du portage contre 11 pour [10..30]).
+func TestPortageAChevalSurDeuxViesNommeesGardeSesBornes(t *testing.T) {
+	p := carrierPresence{named: map[string][]presenceSpan{
+		"A": {{f0: 10, f1: 30}, {f0: 80, f1: 120}},
+	}}
+	f0, f1, ok := p.gate("A", 20, 100)
+	if !ok {
+		t.Fatal("portage ecarte : deux vies nommees le recouvrent")
+	}
+	if f0 != 20 || f1 != 100 {
+		t.Errorf("bornes publiees [%d..%d], attendu [20..100] — un trou de replication ne doit "+
+			"pas amputer une duree mesuree", f0, f1)
+	}
+}
+
+// TestPortageResteRogneHorsDesViesNommees — LA CONTRE-EPREUVE : l'union ne deborde JAMAIS les
+// vies du porteur. Un portage qui commence avant sa premiere vie et finit apres la derniere est
+// toujours ramene a ce que les pistes rendent compte.
+func TestPortageResteRogneHorsDesViesNommees(t *testing.T) {
+	p := carrierPresence{named: map[string][]presenceSpan{
+		"A": {{f0: 10, f1: 30}, {f0: 80, f1: 120}},
+	}}
+	f0, f1, ok := p.gate("A", 0, 200)
+	if !ok {
+		t.Fatal("portage ecarte a tort")
+	}
+	if f0 != 10 || f1 != 120 {
+		t.Errorf("bornes publiees [%d..%d], attendu [10..120] — l'union est bornee par les vies", f0, f1)
+	}
+	// Et un portage qu'AUCUNE vie nommee ne recouvre reste un FANTOME : la regle de rejet ne
+	// bouge pas.
+	if _, _, ok := p.gate("A", 300, 400); ok {
+		t.Error("portage hors de toute vie nommee : il devait rester ecarte")
 	}
 }
