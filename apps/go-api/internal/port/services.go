@@ -9,9 +9,9 @@ import (
 	"errors"
 
 	"levelup/go-api/internal/analysis/positions"
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -160,7 +160,7 @@ var ErrReplayNotAvailable = errors.New("replay: aucun artefact disponible pour c
 // ReplayService sert l'artefact de rejeu 2D pré-construit d'un match (trajectoires
 // joueurs vue du dessus, produit hors ligne par cmd/replay-build).
 type ReplayService interface {
-	GetReplay(ctx context.Context, matchID string) (replay.ReplayDocument, error)
+	GetReplay(ctx context.Context, matchID string) (replaydoc.ReplayDocument, error)
 	// IsAvailable dit si l'artefact du match existe, SANS le lire. La Match View
 	// s'en sert pour ne poser un lien « Rejeu 2D » que là où il mène quelque part :
 	// un lien vers une page vide serait pire que pas de lien.
@@ -178,14 +178,14 @@ type ReplayService interface {
 	// dans le repère monde, celui-là même où vivent les trajectoires. Retourne
 	// ErrMapBackgroundNotAvailable quand la carte du match n'a pas d'image figée —
 	// 21 cartes en ont, pas toutes : le rejeu retombe alors sur son sol structurel.
-	MapBackground(ctx context.Context, matchID string) (*replay.MapBackground, error)
+	MapBackground(ctx context.Context, matchID string) (*replaydoc.MapBackground, error)
 	// MapBackgroundImage retourne les octets PNG du fond, même sentinelle d'absence.
 	MapBackgroundImage(ctx context.Context, matchID string) ([]byte, error)
 	// MapCallouts retourne les ZONES NOMMÉES officielles de la carte du match
 	// (polygones monde + libellés FR/EN, catalogue de référence versionné). Retourne
 	// ErrMapCalloutsNotAvailable quand la carte n'en a pas — cas nominal des cartes
 	// Forge : leur canevas ne porte aucune zone nommée, par construction.
-	MapCallouts(ctx context.Context, matchID string) (*replay.MapCalloutsEntry, error)
+	MapCallouts(ctx context.Context, matchID string) (*replaydoc.MapCalloutsEntry, error)
 }
 
 // ErrMapBackgroundNotAvailable est renvoyé quand aucun fond de carte figé n'existe pour la

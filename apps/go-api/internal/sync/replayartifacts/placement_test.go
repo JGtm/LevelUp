@@ -72,7 +72,12 @@ func TestRun_Off_NeTouchePasLaBase(t *testing.T) {
 // applique la fenêtre de rétention) avant de mettre en file.
 func TestRun_Worker_SelectionnePuisEnfile(t *testing.T) {
 	lu := false
+	// RepoRoot/TitleSlug RENSEIGNES : la porte `film.replay_artifact` est en tete de Run
+	// depuis le 2026-09-05 (capability.go) et halo_infinite la declare — ce test parle de
+	// l'ORDRE selection/mise en file, pas du gate (cf. TestRun_TitreSansCapability_*).
 	Run(context.Background(), Deps{
+		RepoRoot:  racineDepot(t),
+		TitleSlug: titlePkg.DefaultSlug,
 		Placement: replaybuild.PlacementWorker,
 		Enqueue:   noopEnqueue,
 		WithRead:  func(context.Context, string, func(*sql.DB)) { lu = true },

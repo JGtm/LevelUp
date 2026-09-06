@@ -77,13 +77,14 @@ func executerPasseReplay(
 // `--dry-run`) : ces arbitrages sont deja rendus par le parent, et les repasser ouvrirait la
 // porte a un enfant qui saute le film qu'on vient justement de decider de cuire.
 func argsEnfantReplay(o replayBackfillOptions, cacheRoot string, c replayCandidat) []string {
-	args := []string{
+	args := make([]string, 0, 9+2*len(c.mapNames))
+	args = append(args,
 		"backfill-replay",
 		"--one", c.matchID,
 		"--cache", cacheRoot,
 		"--title", o.titleSlug,
 		"--mem-limit-gib", strconv.Itoa(o.memLimitGiB),
-	}
+	)
 	for _, n := range c.mapNames {
 		args = append(args, "--map-name", n)
 	}
@@ -138,6 +139,12 @@ func libelleIssue(i filmproc.Issue) string {
 		return "MORT SUBITE (crash / tue par l'OS)"
 	}
 }
+
+// octetsParGiB : la conversion, nommee pour ne pas semer des 1<<30 dans le code. Sert
+// uniquement a la mise en forme humaine (libelleOctets) — la sentinelle memoire elle-meme
+// est armee par internal/filmproc.Arm (cf. cmd_backfill_replay_child.go), qui porte sa
+// propre constante interne.
+const octetsParGiB = 1 << 30
 
 // libellePlafond : le plafond memoire, ou son absence.
 func libellePlafond(gib int) string {

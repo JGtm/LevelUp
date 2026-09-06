@@ -95719,3 +95719,461 @@ typecheck propre, lint 0 erreur, vitest 82 fichiers / 743 tests verts,
 **Conclusion / prochaine etape** — les 12 constats sont soldes, aucun report. L'item 3.7 reste
 `[!]` (le hook `useDataCapability` arrive avec le lot C). Non pousse : le superviseur pousse
 apres verification et lance la ronde 2 sur ces corrections.
+## [2026-09-06] Chantier v2 rejeu/film — lancement et rendu des sept lots (pilotage) — En cours
+
+**Contexte.** Suite de l'audit du 05/09 : le user a tranche les six escalades (positions =
+projection persist ; document servi separe MAINTENANT ; `film.replay_artifact` gouverne la
+production ; R5 web en lignes de code ; deplacement du decodeur APRES v7.5.0, inscrit dans la
+sequence de release Notion ; « heatmap » banni, « lobby » assimile) et demande de piloter le
+plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md` avec des agents paralleles.
+
+**Decision technique.** Sept lots en sept worktrees `LevelUp-wt-v2-*` (branches `feat/v2-*`,
+seul prefixe qui declenche la CI), cache Go et cache golangci par lot, jonctions node_modules
+pour les lots web, briefs fermes avec fichiers interdits par lot. Directives user en cours de
+route : revues adversariales reportees a la fin de tous les lots ; surveillance CI abandonnee
+(verification par le superviseur a l'integration) ; pause de D et E a 01:05 pour le quota,
+reprise programmee 03:21 (tache planifiee de session). Un executeur D remplace par un frais sur
+saturation de contexte (868 k tokens), depuis son journal.
+
+**Resultats.** Les sept lots rendus et pousses : A (P0-1 bump + empreinte, gardes ART, overlay
+de catalogue, derivations sur « artefact range », rattrapage a digest, positions en
+projection append-only) ; B (99 types servis miroir, projection pure, ratchet archlint,
+contrat et types web strictement inchanges, equivalence octet pour octet prouvee sur 106
+artefacts par la revue) ; C (clé `film.replay_artifact` + `CapReplay`, 503 reels, client web
+des cles fines, deux portes sur trois surfaces, vocabulaire) ; D (matchClock P0-7, replayClock
+P0-5, modele joint, composition en donnee, playbackStore, 5 canoniques, max-lines 500 code,
+arborescence 8 dossiers, lint couleur en CI, allowlist par modules, porte de route) ; E (1 300
+lignes de decodeur retirees a temoins identiques, preambule et marcheur uniques, verrou
+garde-raille, golden 30 familles, controle table ECS 179 largeurs, ratchet 118 -> 96) ; F
+(assertions de valeur e2e, baseline +1 209, purge testee, tag gamefiles module, lint sur
+binaires prod, specs raster en CI — elles etaient rouges) ; G (sentinelle unique, heightfield
+mort supprime, `livrer` porte en Go dont MT19937, doc des 11 chaines). Deux revues du lot B
+faites avant la directive : 1 P1 (parite aveugle a la classe zero/nil) + 5 P2. Decouvertes a
+instruire : calque CTF vide au schema 39 sur le fixture Husky Raid (flagCarries 0 contre 92
+au schema 37) ; golangci-lint a un cache GLOBAL qui ment entre worktrees.
+
+**Conclusion / prochaine etape.** Verification CI des sept branches, revues adversariales en
+bloc, corrections (dont B-R2 C1), integration dans l'ordre C -> A -> B -> F -> G -> E -> D avec
+CLAUDE.md corrige (garde-rail gamefiles deplace sous archlint), baseline rejouee au merge de E,
+temoin de rasterisation du lot D prime sur celui du lot F. Item D.15 (transport et tiroir freres
+du canvas) differe a un gate visuel valide par le user.
+## [2026-09-05] Lot B du plan v2 — le document de rejeu SERVI separe du document STOCKE — Complete
+
+**Contexte.** Decision utilisateur ferme n2 du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`
+(constat C7 du registre d'audit, annexes G2/G3) : le format du FICHIER d'artefact de rejeu
+(`internal/analysis/replay.ReplayDocument`) etait aussi le contrat public — 99 de ses types
+atteignables sont des `components.schemas` d'`api/openapi.yaml`, donc autant de types
+TypeScript. Consequence mesuree : 43 montees de `SchemaVersion` en cinq semaines, chacune
+regenerant le contrat pour un champ que le client ne lisait pas ; et aucun renommage cote
+client possible sans invalider le parc d'artefacts cuits. Exigence du lot : separer
+MAINTENANT, avec une forme de fil strictement inchangee (`openapi.yaml` et `generated.ts`
+sans diff). Worktree dedie `LevelUp-wt-v2-docservi`, branche `feat/v2-docservi`.
+
+**Decision technique.** Trois pieces. (1) `internal/domain/replaydoc` porte la forme de fil et
+rien d'autre : 99 structs + 3 scalaires nommes, memes noms de types (Huma en derive les noms
+de schemas), memes tags, meme ordre de champs (il gouverne la liste `required`), zero import
+du monde stocke ; `ContractVersion = 39`, distincte de la version stockee qui, elle, pilote la
+re-cuisson. (2) `internal/service/replayview` projette, une fonction pure par type, sans E/S,
+en preservant la nullite des tranches (sur les champs sans `omitempty`, `null` et `[]` sont
+deux corps differents). Projection EXPLICITE et non aller-retour JSON ni copie par reflexion :
+le but de la separation est qu'un champ non servi soit une decision visible au diff.
+(3) Le port, le service et le handler passent aux types servis ; un ratchet `archlint` (scan
+AST d'`internal/api/`, champs `Body`/`RawBody` et structs `*Input`/`*Output`) interdit le
+retour d'un type `analysis` en corps de route. Prealable verifie sur pieces avant d'ecrire :
+`huma@v2.39.1/registry.go` ignore le paquet dans le nom de schema et fait `panic` sur deux
+types NOMMES homonymes — le suffixe numerique ne concerne que les types anonymes.
+
+**Resultats.** Contrat INCHANGE : `go run ./cmd/openapi-gen` reecrit 676 077 octets et
+`git diff --exit-code` est vide sur `api/openapi.yaml` comme sur `generated.ts`. Controle
+prealable par programme jetable : les 99 schemas Huma des trois racines sont identiques octet
+pour octet des deux cotes. Trois garde-rails prouves par MUTATION (mutation posee, echec
+constate et cite, mutation annulee, suite re-jouee verte) : retirer un champ du seul
+convertisseur, le retirer aussi du type servi, remettre un type `analysis` en corps de route.
+`TestReplayDocumentFieldCountIsFrozen` change de nature — il porte desormais sur le contrat
+servi, chronique mise a jour dans le meme commit — et la garantie qu'il portait implicitement
+(« la cuisson ecrit tout ce que le contrat promet ») passe au test de parite, qui exige une
+decision ecrite par champ stocke, liste `champsNonServis` vide au 2026-09-05. Gates verts :
+suites `api`/`service`/`domain`/`archlint`/`contracttest`, `make go-api-test`, `go build ./...`,
+`golangci-lint` (0 issue sur les paquets crees ; les 19 restantes sont de la dette anterieure
+gelee dans `handlers/`), typecheck web. Quatre commits (`40667b2c2`, `1d32a6356`, `fac6d2c07`,
+`28b3e4ce1`). Decouverte hors perimetre, non traitee et inscrite a l'allowlist datee du
+ratchet : `handlers/patterns.go` sert `analysis/patterns.PatternReport` (4 schemas), meme
+defaut, anterieur au lot — cible de retrait 2026-11-01, critere mesurable ecrit. Deuxieme
+decouverte : le « 100 schemas » du registre en vaut 99, `Vec3` venant de `games/canonical`.
+
+**Conclusion / prochaine etape.** Lot B clos, 4 items sur 4 statues `[x]`, journal
+`.ai/V7.5/v2/LOT_B.md`. Ajouter un calque a la cuisson ne touche plus le contrat public.
+Prochaine etape : revue adversariale du diff par le superviseur, puis integration dans
+`feat/v75` selon l'ordre du plan (C -> A -> B -> F -> G -> E -> D).
+
+## [2026-09-06] Lot B du plan v2 — corrections apres revue adversariale (six constats) — Complete
+
+**Contexte.** Deux relecteurs adversariaux ont relu le lot B (`feat/v2-docservi`,
+a21fd77f4..fa9fdae54) sous deux lentilles : L3 (anti-patterns CLAUDE.md, correction de la
+projection) et L6 (ce que les tests ne couvrent pas). Le coeur du lot tient, prouve sur
+pieces : equivalence de fil OCTET POUR OCTET avec l'encodeur reel du depot
+(`humacore.JSONFormat`) sur 106 artefacts, 109 sidecars de fond, 86 entrees de callouts et
+1 000 documents de fuzz nil/vide/zero ; 228 paires de types visitees sans ecart de nom,
+d'ordre, de tag ni de marshaler ; `openapi.yaml` et `generated.ts` regeneres a l'identique.
+Six constats recevables (1 P1, 5 P2), aucun bloquant, tous traites ici.
+
+**Decision technique.** Le constat P1 est le seul qui touche la valeur du lot : le lot
+remplace une contrainte de COMPILATION (les deux documents etaient le meme type) par des
+tests ecrits, et la classe de divergence la plus probable — celle du zero et de la nullite —
+passait entiere. Le remplisseur du test de parite ne produisait ni zero ni nil (entiers a
+partir de 1, tranches de longueur 2, pointeurs toujours alloues), si bien que deux mutations
+restaient vertes sur les quatre tests ET sur le golden : un `int` devenu `*int` cote servi (la
+valeur 0 se tait sous `omitempty` et parle sous un pointeur) et une tranche nulle normalisee
+en tranche vide (`null` devient `[]` sur un champ sans `omitempty`). Correction : deux boutons
+sur le remplisseur (`zero` pour les scalaires, `frontiere`/`bord` pour l'etat des conteneurs)
+et un BALAYAGE de la frontiere de 0 a 12. Le balayage n'est pas decoratif — une tranche nulle
+a la racine ne dit rien d'une tranche nulle au troisieme niveau, et c'est la que la mutation
+a ete jouee. Les cinq P2 : le ratchet se contournait en une ligne par un alias de type (meme
+type pour reflect, donc meme schema Huma, donc golden muet) — troisieme voie ajoutee au scan,
+alias ET type defini ; le plancher du ratchet etait calibre sur 104 quand le scan en voit 226
+(le 104 venait d'un grep preparatoire qui ignorait les corps declares sur une ligne) — porte
+a 180 avec chronique datee ; `ContractVersion` n'avait aucun lecteur et son test etait une
+tautologie — retiree, avec dans `doc.go` ce qui tient reellement la forme servie ;
+`champsNonServis` ne pouvait pas couvrir un TYPE stocke neuf, soit le cas majoritaire des
+calques du rejeu — seconde liste datee `typesNonServis`, consultee avant le controle du jumeau
+et par le parcours ; cinq doc-comments recopies du producteur decrivaient autre chose que le
+type servi, dont deux faux (un « sidecar » qui n'est ecrit nulle part, un « rendu tel quel »
+que le lot venait justement d'abolir — doc inversee dans un fichier neuf).
+
+**Resultats.** Six points statues, six commits (`128cbe785`, `5d132eb4a`, `cda395c83`,
+`138eb2518`, `b7ec4e50c`, `063c1f6b8`). Chaque garde-rail prouve par MUTATION, posee puis
+annulee : les deux mutations du verdict P1 rougissent desormais en nommant le chemin
+(`.tracks[0].startFrame : present cote servi, absent cote stocke` ;
+`.tracks[0].points : <nil> cote stocke, [] cote servi`), l'alias et le type defini rougissent
+en nommant la forme du relais, un type stocke neuf non inscrit rougit et devient vert une fois
+inscrit a `typesNonServis`, une exemption orpheline rougit des deux cotes, et le filtre des
+champs non exportes a sa contre-epreuve. Gates verts apres corrections : `openapi-gen -check`
+« est a jour (676077 octets) », les deux `git diff --exit-code` vides, 16 paquets `ok`,
+`go build ./...`, et `golangci-lint run --new-from-merge-base=origin/main ./...` a 0 issue.
+Decouverte de methode remontee au pilote : les deux relecteurs ont travaille dans le MEME
+worktree et se sont pollues mutuellement (une mutation concurrente ne peut produire qu'un faux
+echec, jamais un faux succes, donc les verdicts restent surs — mais deux revues simultanees
+demandent deux worktrees).
+
+**Conclusion / prochaine etape.** Lot B clos apres revue, journal `.ai/V7.5/v2/LOT_B.md`
+complete d'une section « Corrections apres revue » avec les six points, les huit mutations et
+les gates. Prochaine etape : integration dans `feat/v75` par le superviseur, selon l'ordre du
+plan (C -> A -> B -> F -> G -> E -> D).
+## [2026-09-06] Plan v2 du rejeu — LOT F : tests, garde-rails et CI — Complete
+
+**Contexte.** Lot F du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, worktree dedie
+`LevelUp-wt-v2-tests-ci`, branche `feat/v2-tests-ci` sur base `a21fd77f4`. Six items issus du
+registre d'audit du 2026-09-05 : G1 (aucune assertion de VALEUR en CI sur un ReplayDocument
+obtenu d'un film), G3 (la baseline de presence des tests ignore tout le chantier v7.5 et son
+controle « par paquet » est une doc inversee), G7 (RunOnce du cron de purge, seul cron qui
+supprime des fichiers, sans aucun test), I1 (deux tests ouvrent le jeu hors du tag `gamefiles`
+et le ratchet ne regarde qu'un paquet), H7 (l'exemption `^cmd/` du lint couvre les binaires
+deployes), M1 (les deux seules preuves de rendu du rejeu n'ont jamais tourne en CI).
+
+**Decision technique.** Mesurer avant de figer, et prouver chaque test neuf par mutation.
+F.1 : le fixture e2e porte deja un oracle INDEPENDANT du film (la feuille de match de l'API) —
+le differentiel etait gratuit et n'existait pas ; mesure d'abord (15 compteurs sur 15 EXACTS
+pour les 5 joueurs apparies), puis gel des grandeurs sans oracle exterieur (originMs 34 870,
+t0FilmMs 35 170, grille 781 x 100 ms, 22 vies, courbe d'equipe 195:1 485:2 706:3). L'oracle est
+RECOPIE A LA MAIN et confronte au fichier a chaque execution, sans quoi l'assertion serait
+auto-validante. F.2 : 1 209 entrees ajoutees a la baseline depuis un vrai run, et le controle
+« par paquet » rendu reel des DEUX cotes (bilan de presence groupe par paquet ; comparaison de
+couverture paquet par paquet, avec sa limite ecrite — `-func` ne publie pas les comptes
+d'instructions). F.3 : une couture d'horloge ajoutee au cron (nil en production), sans quoi la
+FRONTIERE de la fenetre de retention n'est pas testable. F.4 : le garde-rail du tag promu de
+`internal/himap` vers `internal/archlint`, balayage WalkDir de `internal/` et `cmd/`. F.5 :
+`path` + `path-except` sur la meme regle est REFUSE par golangci-lint v2.12.2 (et `config
+verify` ne l'attrape pas) — `path-except` seul porte toute la condition negative, RE2 n'ayant
+pas de lookahead. F.6 : les deux specs n'ouvrent aucun serveur, elles rejoignent le job
+`frontend` qui tourne a chaque push.
+
+**Resultats.** Six items `[x]` (dont un sous-item `[~]` : la CI invoquait deja le script de
+baseline, verifie sur pieces). Treize mutations manuelles, toutes rattrapees, toutes annulees.
+Deux decouvertes majeures faites PAR les mutations : (a) deux leurres du test de purge ne
+prouvaient rien (leur nom tronque n'etant dans aucun registre, une AUTRE garde les epargnait) —
+remplaces par un fichier sans extension et un repertoire vide nommes comme un artefact
+purgeable ; (b) les deux specs de rasterisation etaient ROUGES au premier rejeu (2 echecs sur
+3), leur harnais perime de deux refactorings du chantier v7.5 — la demonstration exacte du
+constat M1. Consigne aussi : le calque des actions d'objectif ne rend plus AUCUNE action de la
+famille drapeau sur un film CTF (12 actions kills/assists au schema 39 contre « 92, famille
+flag » ecrit au schema 37) ; cause non traitee, elle releve des lots A et E. Le ratchet de lint
+passait de 0 a 9 issues en appliquant F.5 : les 9 sont reparees dans `cmd/levelup` (six
+descriptions d'aide repliees, deux parametres inutilises retires en cascade, un prealloc, un
+ST1005). Gate final sur l'etat complet de la branche, tout en avant-plan : suite ciblee verte,
+`-tags=integration -p 1` sur `api/wire` vert, `go build ./...` OK, ratchet golangci-lint
+`0 issues`, baseline `EXIT=0` sur un JSONL de suite COMPLETE (315 paquets, 100 906 lignes, 0
+echec, produit en 6 groupes sous 10 min chacun), specs Playwright `3 passed`, typecheck et lint
+web sans erreur.
+
+**Conclusion / prochaine etape.** Six commits `v2(F.n)` pousses sur `feat/v2-tests-ci`. La CI
+n'a PAS ete surveillee (consigne utilisateur en cours de lot, quota) : elle sera verifiee par
+le superviseur a l'integration. Trois points a trancher par lui, tous consignes au journal du
+lot `.ai/V7.5/v2/LOT_F.md` : la ligne de `CLAUDE.md` qui cite le fichier supprime
+`internal/himap/corpus_tag_test.go` (je n'ai pas le droit de modifier `CLAUDE.md`), les deux
+exemptions fines de `.golangci.yml` supprimees alors que leur premisse a change sous l'effet du
+meme commit, et le fait que le lot E devra rejouer la baseline de presence dans le meme commit
+que ses suppressions de tests.
+
+## [2026-09-06] LOT F — correctif apres revue adversariale F-R1 — Complete
+
+**Contexte.** Revue adversariale du lot F (lentille L6, « ce que les tests ne couvrent pas ») :
+25 conditions tiennent, 19 mutations jouees, 2 constats recevables. CORRECTIF A L'ENTREE
+PRECEDENTE du meme jour, qui n'est PAS reecrite : elle affirmait « les 5 joueurs apparies ont
+leurs 15 compteurs EXACTEMENT egaux a ceux de l'API », presente comme un differentiel de deux
+chaines independantes. C'est faux, et la revue l'a etabli sur pieces.
+
+**Decision technique.** Verifie avant de corriger : `objectiveevents/slotidentity.go:97`
+apparie un slot d'entite a un xuid par EGALITE EXACTE du triplet frags/morts/assistances contre
+la ligne de match de l'API. Tout joueur publie dans `ScoreTimeline.Players` porte donc le
+triplet de l'API PAR CONSTRUCTION : une regression du decodeur ne produit pas un ecart de
+valeur, elle fait DISPARAITRE le joueur du calque. La documentation est reecrite pour dire ce
+que l'assertion garde reellement — (1) la liste FIGEE des 5 apparies, vrai detecteur de
+regression du pont ; (2) la coherence INTERNE a la chaine du film entre le NOMBRE D'INCREMENTS
+(cle d'appariement, `objectiveevents.countsOf`) et la DERNIERE VALEUR de la serie posee sur la
+grille de frames (`replay.scoreTicksOf`, qui ecarte les emissions hors fenetre et aplatit les
+paliers) : rien n'oblige les deux a coincider. Le message d'echec `DIFFERENTIEL film <-> API`
+devient `SERIE PUBLIEE != CLE D'APPARIEMENT`. Le SECOND fait des deux chaines — le roster nomme
+du film = les joueurs que l'API donne morts au moins une fois — est GARDE : la revue l'a
+verifie independamment (`analysis/replay/deaths_source.go:52-77`, le fil des morts est decode du
+chunk highlight, aucune base n'intervient). Second constat (P2) : le ratchet `gamefiles` de
+`internal/archlint` balayait la constante `{"internal", "cmd"}` alors que son en-tete promettait
+« tout le module » — un `_test.go` non tague sous `tests/` passait vert. La constante disparait :
+le balayage part de la racine du module et ne saute que les repertoires que l'outil Go lui-meme
+n'ouvre pas (`testdata`, `vendor`, `node_modules`, prefixes `.` et `_`). La liste des racines est
+DERIVEE du systeme de fichiers, plus ecrite.
+
+**Resultats.** Les deux mutations du verdict rejouees apres correction. Mutation 1
+(`fixture.json` kills 7->6 + recopie alignee) : rouge par « 4 joueurs publies, attendu 5 » et
+« joueur 2535463878425995 apparie le 2026-09-05 mais plus publie », AUCUNE ligne de comparaison
+de valeurs — exactement ce que la nouvelle documentation annonce. Mutation 4
+(`score_timeline.go:136 V: v+1`) : quatre lignes `SERIE PUBLIEE != CLE D'APPARIEMENT`. Mutation
+14 (`tests/golden/zz_review_ouvre_le_jeu_test.go` non tague), VERTE avant, desormais ROUGE sur
+ses deux appels. Cout du balayage elargi : `TestCorpusGamefilesEstTague` 13,6 s -> 15,7 s
+(2 464 `_test.go` au lieu de 2 454) ; plancher de 62 fichiers inchange et toujours exact.
+Reference `ci.yml:374-376` du journal corrigee en `ci.yml:412-414` (F.6 avait insere 33 lignes
+en amont). Gate : `go test ./internal/archlint/... ./internal/api/wire/...` vert,
+`-tags=integration -p 1 ./internal/api/wire/...` vert, `go build ./...` OK, ratchet
+golangci-lint `0 issues`.
+
+**Conclusion / prochaine etape.** Deux commits `v2(F.fix-n)` sur `feat/v2-tests-ci`. CI toujours
+NON surveillee (consigne utilisateur). Les quatre points « non recevables » du verdict sont
+laisses en l'etat sur son propre argument. Les trois points a trancher par le superviseur
+(ligne de `CLAUDE.md` qui cite le fichier supprime, exemptions fines de `.golangci.yml`,
+baseline a rejouer par le lot E) restent ouverts, inchanges.
+## [2026-09-05] Lot C v2 — capabilities du rejeu et vocabulaire — Complété
+
+**Contexte.** Premier lot execute du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md` (worktree
+dedie `LevelUp-wt-v2-capabilities`, branche `feat/v2-capabilities`). Il ferme les constats
+D1/D2/D3 (aucune cle de capability ne gouvernait la chaine du rejeu ; doc inversee promettant
+un 503 sur `/positions` et `/objective-events` ; mise en file avant la sonde de titre) et
+L3/L4/L5 (surfaces web sans porte de titre), sous les decisions utilisateur n°3
+(`film.replay_artifact` gouverne la PRODUCTION, l'affichage suit) et n°6 (« heatmap » banni,
+« lobby » assimile).
+
+**Decision technique.** DEUX cles, deux roles, sur le modele `match.objective.stats` /
+`objective_stats` : `games.CapFilmReplayArtifact` (data-level) gouverne la production de
+l'artefact et, par voie de consequence, les deux projections servies a la Match View ;
+`title.CapReplay` gouverne l'acces et l'affichage (routes `/replay*` sous
+`RequireCapability`, filtre et colonnes « Rejeu »). La porte de production est en TETE de
+`replayartifacts.Run`, avant la selection, le rattrapage des cartes et `enqueueAll` — la
+seule sonde existante etait une degradation par absence de donnee, apres la mise en file.
+Cote web, le canal `GET /titles/{slug}/capabilities` existait sans client : ajout de
+`useDataCapability` jumeau de `useCapability` et d'un `FeatureGate` unique acceptant les
+deux portes (decoupe en deux sous-composants pour que les gates title-level n'exigent pas de
+QueryClientProvider). Regle des deux portes appliquee : capability du titre PUIS presence de
+donnee du match. `synthetic_title_b` declare les six cles `film.*` avec UN cas `supported` —
+la fixture qui prouve que ces cles sont fines.
+
+**Resultats.** 4 commits (`b2f536c14`, `ee58a81c5`, `fc4307c0c`, `2ddca8291`). Tests neufs
+joues sur les fichiers LIVRES, jamais sur des fixtures fabriquees : `Run` sur halo_5 ne lit
+meme pas la base ; `/objective-events` et `/positions` rendent 503 `capability_not_supported`
+sans appeler de loader, 200 sur halo_infinite ; les quatre routes `/replay*` rendent 503
+`capability_unavailable` sur halo_5. Garde-rail neuf `capabilities_front_parity_test.go`
+(jumeau data-level du garde title-level) : un litteral de gating errone fermerait une porte
+pour toujours sans erreur. « heatmap » entre dans FORBIDDEN_PATTERNS avec preuve de morsure
+jouee ; trois chaines FR corrigees en « carte de chaleur » ; « lobby » documente comme mot
+assimile. Gates : suite Go complete verte, `go build` OK, ratchet golangci-lint
+`--new-from-merge-base=origin/main` a 0 issue, `make generate-types` sans diff, typecheck web
+OK, lint web 0 erreur, vitest COMPLET 591 fichiers / 6249 tests verts.
+
+**Deux reparations apres CI.** Le job `Go Coverage + Baseline` (le seul qui joue
+`-tags=integration` sur ./... complet) a revele que deux tests d integration du rattrapage
+passaient `RepoRoot: t.TempDir()` — une racine vide n est plus neutre depuis que la porte est
+en tete de Run. Helper neuf `racineIsoleeAvecManifestes` (TempDir + copie des manifestes du
+titre) : isolation preservee, titre resolvable. Le job `Go Lint` a ensuite rougi (le helper,
+declare sans tag et utilise sous tag, etait `unused` en build par defaut) : il descend sous
+le tag avec ses appelants. Lecon : le gate du plan (go test sans tag) ne voyait ni l un ni l
+autre ; `-tags=integration -p 1` + le ratchet golangci-lint sont desormais au journal du lot.
+
+**Conclusion / prochaine etape.** Deux ecarts au plan constates sur pieces et documentes :
+halo_infinite n'a PAS de `title.toml` (descripteur built-in, un manifeste y serait ignore),
+et les manifestes « heatmap » vivent sous `apps/web/src/lib/i18n/manifests/`, pas sous
+`config/titles/`. Trois decouvertes hors perimetre au journal du lot
+(`.ai/V7.5/v2/LOT_C.md`), dont la carte de chaleur des positions de la Match View, seule
+surface `film.*` non nommee au lot et qui affichera un etat vide sur un titre sans film.
+Surveillance CI ARRETEE sur consigne du superviseur (quota API) avant la fin du dernier run :
+6 jobs verts au dernier releve dont le lint repare, 2 encore en cours (Frontend, Coverage).
+Prochaine etape : verification CI par le superviseur, revue adversariale, puis integration
+dans `feat/v75` (le lot C est le premier de l'ordre d'integration).
+
+## [2026-09-06] Lot C v2 — corrections apres revue adversariale — Complété
+
+**Contexte.** Revue adversariale C-R1 du lot C (capabilities du rejeu) : 21 conditions
+tiennent et le comportement livre est le bon, mais TROIS PORTES n'avaient aucun test qui
+morde et la fixture censee prouver la finesse des cles ne prouvait rien. Le relecteur l'a
+etabli par mutation : retirer la porte des routes `/replay*` du montage reel, basculer ou
+supprimer les cles `film.*` du titre synthetique, retirer l'une quelconque des trois portes
+de colonne — tout restait vert. S'y ajoutaient deux defauts d'interface sur halo_5 (un flash
+de carte, un filtre invisible mais actif) et une condition du lot qui ne tenait pas (deux
+requetes de film emises malgre l'absence de capability).
+
+**Decision technique.** Chaque correction est prouvee par la mutation du verdict, rouge puis
+vert — c'est le contrat que je me suis donne, et il a servi : la premiere version du test de
+colonne comptait 23 colonnes au lieu de 19 parce que les deux rendus compares differaient
+aussi par `team_mmr` et `waypoint_match_url`. Les portes se testent LA OU ELLES VIVENT : un
+ratchet AST pour le montage reel des routes (`mountAPIV1` prend tout le serveur, le
+construire coûterait des bases DuckDB pour ne rien prouver de plus), un fichier de test par
+niveau pour la fixture (contenu du TOML asserte a la main, semantique de `Has`, portes
+reelles exercees AVEC ce titre), un fichier propre a `MatchReplayLink` dont les deux portes
+se couvraient mutuellement. Deux choix de conception : `useTitleDataCapabilities` rend TROIS
+etats (`loading`/`known`/`error`) au lieu d'une map nullable qui confondait « pas encore » et
+« jamais » — fail-CLOSED pendant le chargement, fail-open sur erreur ; et la prop
+`FeatureGate.dataCapability`, sans aucun appelant de production, est RETIREE plutot que dotee
+d'un appelant de circonstance (regle n°7).
+
+**Resultats.** 8 corrections, 8 commits (`f0c357585`, `a715f2031`, `0e5cf2e96`, `33d27ee35`,
+`bc551762b`, `406396856`, `86227ab4b`, + journal). Mutations rejouees : M5 rouge (montage des
+routes), M3/M4 rouges sur 3 paquets (fixture), M8/M9/M10 rouges chacune sur SA porte
+(colonnes), « fail-open pendant loading » 4 tests rouges (flash), neutralisation retiree
+(filtre), « toujours INFO » 2 assertions rouges (bruit de journal), garde `enabled` retiree
+(requetes). Gates : Go du lot + integration API + integration replayartifacts verts avec
+`-count=1` (obligatoire : le cache `go test` ne voit pas les mutations de `config/titles/**`),
+`go build` OK, ratchet golangci-lint 0 issue, `make generate-types` sans diff, typecheck et
+lint web exit 0, vitest ciblé 128 fichiers / 1109 tests, vitest COMPLET 593 fichiers / 6257
+tests verts. Le refus de production passe en INFO au premier refus par titre puis DEBUG
+(halo_5 est actif et n'aura jamais la cle : c'etait du bruit permanent).
+
+**Conclusion / prochaine etape.** La condition « sur halo_5, aucune requete de film n'est
+emise » tient enfin, et la decouverte n°1 du journal est corrigee : la carte de chaleur ne
+montrait PAS de bloc vide (`return null` sur liste vide), le residu se reduisait aux deux
+requetes — desormais gatees. Une decouverte de gate consignee, hors perimetre : le filet Go
+COMPLET fait tomber `mapcatalog.TestAddEntryConcurrentNePerdPasDEntree`, flake de contention
+(vert 3/3 en isolation, verrou de fichier a 2 s sature par la suite entiere ; paquet du lot A,
+la CI joue `-p 1`). Prochaine etape : ronde 2 de la revue sur ces corrections, puis
+integration dans `feat/v75`.
+## [2026-09-06] Lot G (outils et catalogues) — v2 rejeu/film — Complete
+
+**Contexte.** Execution du lot G du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, worktree
+dedie `LevelUp-wt-v2-outils` (branche `feat/v2-outils`). Quatre items fermes : G.1 (H5,
+sentinelle memoire dupliquee), G.2 (I2, code mort `himap/heightfield.go`), G.3 (H2, portage Go
+du dernier maillon Python de la chaine des sons d'armes), G.4 (H3, documentation des onze
+chaines de fabrication d'assets versionnes).
+
+**Decision technique.** G.1 : les deux copies de la sentinelle memoire (`cmd/levelup`,
+`cmd/replay-worker`) remplacees par `internal/filmproc.Arm`, deja importe par les deux
+fichiers pour d'autres besoins (aucun cout de dependance) ; le garde `archlint` qui entérinait
+la duplication (`sentinelleTokens` acceptait `debug.SetMemoryLimit(` brut) ne l'accepte plus.
+G.2 : suppression cible du code mort apres verification qu'une partie du fichier
+(`borne`/`altitudeAuPoint`) etait en realite partagee par quatre autres fichiers — un premier
+essai de suppression totale avait casse la compilation, restaure puis retraite correctement.
+G.3 : portage fidele de `_outils/livraison.py` (hors depot) en mode `livrer` de
+`cmd/weapon-sounds`, avec un port BIT A BIT du generateur pseudo-aleatoire de CPython
+(Mersenne Twister, verifie contre la sortie reelle de `random.Random`) pour l'unique arme
+rendue par evenement. G.4 : chaque chaine documentee verifiee sur pieces (lecture directe des
+`main.go`, comptage des fichiers commites), pas recopiee depuis l'annexe d'audit — deux
+imprecisions de cette annexe corrigees en route (deux CSV sans producteur automatise,
+sortie de `mapnav-fetch` gitignoree et non versionnee).
+
+**Resultats.** Preuve de fidelite du mode `livrer` : jeu d'entrees synthetique construit dans
+le scratchpad (les vraies sources `.wav` du chantier ont disparu du poste depuis la livraison
+du 2026-08-16), sortie comparee octet a octet (`cmp` + `md5sum`) contre les DEUX scripts
+Python d'origine (copies non modifiees) executes sur le meme jeu : IDENTIQUE sur les 4 fichiers
+`.wav` produits, y compris celui qui depend du generateur aleatoire ; execute aussi contre les
+vraies donnees `_donnees` de production (sans les sources manquantes) : le port Go et le
+script Python echouent au meme point avec le meme message. Gate G au complet : `go build
+./...` propre ; `go test ./internal/himap/... ./internal/archlint/... ./internal/filmproc/...
+./cmd/levelup/... ./cmd/replay-worker/... ./cmd/weapon-sounds/...` tous `ok` ;
+`golangci-lint run --new-from-merge-base=origin/main` sur ces six paquets : 0 issues. Quatre
+commits (un correctif de staging git sur G.2, decouverte consignee : `git add` multi-chemins
+avorte en bloc sur un pathspec deja supprime).
+
+**Conclusion / prochaine etape.** Lot G ferme, journal `.ai/V7.5/v2/LOT_G.md`. Push de
+`feat/v2-outils` et surveillance CI a suivre. Integration dans `feat/v75` par le superviseur
+apres revue adversariale, dans l'ordre prevu par le plan (C, A, B, F, G, E, D).
+
+## [2026-09-06] Lot G — cloture ajustee (arret de la surveillance CI sur consigne) — Complete
+
+**Contexte.** Pendant la surveillance CI de cloture du lot G, consigne du coordinateur
+(contrainte de quota) : abandonner la surveillance CI, ne pas reparer de job rouge (le
+superviseur verifie la CI a l'integration), rendre le rapport immediatement. Un fichier hors
+perimetre avait deja ete detecte et corrige avant cette consigne (voir entree precedente et
+`.ai/V7.5/v2/LOT_G.md`, section Decouvertes) : `internal/domain/build_queue.go` (reserve aux
+lots B/C) avait ete touche par erreur dans le commit G.1, reverte dans un commit dedie
+(`132967520`) des que l'exécuteur l'a repere en relisant le diff complet du lot.
+
+**Decision technique.** Arret immediat de tout `gh run list`/`gh run watch`. Etat CI constate
+avant l'arret consigne dans le journal du lot : 9 jobs verts (Go Lint, OpenAPI Lint, Go
+Build+Test windows/ubuntu, Frontend, Go Lease Enforcement, Go Contract Test, Secrets
+gitleaks, Deploy Pre-Check), 2 non conclus au moment de l'arret (Go Coverage + Baseline,
+E2E React). Risque de regression du ratchet de couverture evalue par grep sur les fichiers
+de baseline (aucune reference aux fichiers du lot ni aux tests supprimes) : juge faible mais
+non confirme par une execution CI complete.
+
+**Resultats.** Push final `2b9afd7af` confirme sur origin (verifie par `git fetch` +
+`rev-parse`, independamment du rate limit API GitHub qui a bloque `gh` pendant ~14 minutes
+plus tot dans la session — resolu de lui-meme avant la consigne d'arret).
+
+**Conclusion / prochaine etape.** Lot G clos du point de vue de l'executeur : gates locaux
+verts, perimetre verifie propre, journal a jour. Verdict CI complet (couverture, E2E) a la
+charge du superviseur au moment de l'integration dans `feat/v75`.
+## [2026-09-06] Lot G — corrections de la revue adversariale R1 (dix constats) — Complété
+
+**Contexte.** Revue adversariale ronde 1 du lot G (`feat/v2-outils`, diff `a21fd77f4...c0b403898`) :
+dix constats recevables, aucun P0, trois P1 (prérequis documentés faux du mode `livrer`, en-tête
+« GENERE PAR » du fichier généré resté sur le producteur retiré, fidélité octet à octet gardée
+par aucun test) et sept P2. Périmètre fermé à ces dix points, exécuteur précédent à saturation de
+contexte.
+
+**Décision technique principale.** Chaque correction est prouvée par la mutation ou la sonde
+nommée par le verdict — rouge d'abord, verte ensuite — et livrée dans son propre commit
+(`v2(G.fix-n)`). Trois choix méritent d'être retenus :
+
+1. **La preuve de fidélité vit désormais dans le dépôt.** `TestLivrerOctetPourOctet` génère un
+   chantier miniature (les `.wav` sources du chantier réel ont disparu de la machine) et le
+   confronte à `testdata/livraison/goldens/` — 301 Ko produits UNE FOIS par le script Python
+   d'origine sur cette même arborescence, jamais par le code Go : régénérer un golden avec Go
+   annulerait la preuve, et le test le dit en tête. La sortie console est comparée elle aussi,
+   parce qu'elle attrape ce que les octets ne disent pas (ordre de livraison, source retenue,
+   colonnage). Mutation M3 du verdict rejouée : rouge sur les deux fichiers exacts annoncés.
+2. **Le portage d'une fonction de bibliothèque se prouve contre la bibliothèque, pas de
+   mémoire.** `joliBaseSansExt` promettait `ntpath` sans porter le préfixe de lecteur ni la règle
+   du point de tête ; `livraisonFormatNombrePy` promettait `str()` de Python avec un
+   `FormatFloat(v,'g',-1,64)` qui diverge sur 144 littéraux de 480. Les deux tables de test sont
+   maintenant des relevés de la sortie RÉELLE de CPython 3.12, pas des attentes reconstituées.
+3. **Une promesse de garde-fou écrite dans un journal n'est pas un garde-fou.** Le journal du lot
+   annonçait qu'un `debug.SetMemoryLimit(` brut hors `internal/filmproc` violait le ratchet ;
+   c'était faux (mutation M2 verte). `TestPasDeSentinelleBruteHorsFilmproc` le rend vrai, avec
+   allowlist datée vide, auto-exclusion assumée (le fichier porte le jeton en clair) et garde
+   contre la vacuité (rouge aussi si le paquet canonique cesse de poser un plafond souple).
+
+**Résultats observés.** Bout en bout sur le jeu synthétique, le mode `livrer` produit désormais
+une sortie console identique caractère pour caractère à celle du script Python, six `.wav`
+identiques octet pour octet, et un `weaponSoundVariations.ts` qui ne diffère plus que sur ses
+trois lignes d'en-tête (divergence voulue, elle-même comparée au gabarit). Le mode tourne sur un
+poste sans Halo installé (`LEVELUP_HALO_DEPLOY` faux) ; le prérequis cgo, lui, est réel et la
+documentation EN/FR le dit désormais au lieu de le nier. La publication est devenue tout ou rien :
+plus aucune erreur de production ne peut laisser `static/sounds/halo_infinite/` à moitié vidé.
+Gate : `go build ./...` propre ; `go test -count=1` vert sur `cmd/weapon-sounds`, `cmd/levelup`,
+`cmd/replay-worker`, `internal/filmproc`, `internal/archlint` ;
+`golangci-lint run --new-from-merge-base=origin/main ./...` → `0 issues.`
+
+**Découvertes consignées (non traitées).** `//nolint:gosec` désigne un linter NON activé par
+`.golangci.yml` — cinq et quelques directives inertes dans le dépôt, à l'origine du warning
+« Found unknown linters » à chaque exécution. `golangci-lint` prend un verrou GLOBAL malgré des
+`GOLANGCI_LINT_CACHE` distincts : deux worktrees qui lintent en même temps se bloquent, il faut
+réessayer. Deux autres modes de `weapon-sounds` (`pck-dump`, `mesurer-wav`) paient encore la
+résolution de la racine `deploy` sans en avoir besoin.
+
+**Conclusion / prochaine étape.** Les dix constats sont statués `[x]` avec preuve écrite dans
+`.ai/V7.5/v2/LOT_G.md`, section « Corrections après revue ». Ronde 2 de la revue (sur les
+corrections seules) à la main du superviseur, puis intégration dans `feat/v75`.

@@ -695,10 +695,19 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		mv.Mount(r, playerOpt)
 
 		// Rejeu 2D (vue du dessus) — artefact pré-construit servi tel quel ; 404 si
-		// absent. Hors sous-groupe capability : la disponibilité EST la présence
-		// d'artefact, pas une déclaration de titre. Le garde local est un middleware
-		// (cf. handlers/replay_local_gate.go, qui porte sa date de retrait).
+		// absent POUR CE MATCH. DEUX PORTES, et elles disent deux choses différentes
+		// (décision utilisateur du 2026-09-05, registre D1/L2) :
+		//   - CapReplay : « ce TITRE a-t-il un rejeu ? » — un titre sans décodeur de
+		//     film ne produit aucun artefact, donc ses quatre routes /replay* rendent
+		//     un 503 capability_unavailable, jamais un 404 qui se lirait « ce match-là
+		//     n'en a pas » ;
+		//   - la présence d'artefact : « CE MATCH en a-t-il un ? » — 404, inchangé.
+		// La porte de PRODUCTION est sa jumelle data-level `film.replay_artifact`
+		// (capabilities.toml) : pas de clé, pas de cuisson (sync/replayartifacts).
+		// Le garde local reste un middleware de transport (cf. handlers/replay_local_gate.go,
+		// qui porte sa date de retrait).
 		r.Group(func(r chi.Router) {
+			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapReplay))
 			r.Use(handlers.LocalOnlyReplay)
 			handlers.NewReplayHandler(reg.Replay).Mount(r, playerOpt)
 		})
