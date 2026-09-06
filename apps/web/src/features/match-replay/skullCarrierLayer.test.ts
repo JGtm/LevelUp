@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView } from './replayView'
 import type { ReplaySkullCarry } from './replayNormalize'
 import { drawSkullCarrier, skullCarrierActiveAt, type SkullCarrierInput } from './skullCarrierLayer'
 

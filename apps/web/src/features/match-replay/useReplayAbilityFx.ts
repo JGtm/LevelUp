@@ -28,8 +28,8 @@ import {
   buildThrusterDashFx,
   drawThrusterDashLayer,
   THRUSTER_DASH_HEADING_MS,
-  type CanvasView,
 } from './thrusterDashFx'
+import { type CanvasView } from './replayView'
 
 export interface AbilityFxHookInput {
   doc: ReplayDocumentReady

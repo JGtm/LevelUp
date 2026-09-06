@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { bombCarrierActiveAt, bombGroundAt, drawBombCarrier, type BombCarrierInput } from './bombCarrierLayer'
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView } from './replayView'
 import type { ReplayBombCarry } from './replayNormalize'
 
 const carry = (over: Partial<ReplayBombCarry>): ReplayBombCarry => ({

@@ -39,8 +39,8 @@
  */
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
-import type { CanvasView } from './objectivesLayer'
-import { worldToCanvas, type XY } from './replayLogic'
+import { type CanvasView, projectTo } from './replayView'
+import { type XY } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 
 /**
@@ -148,7 +148,7 @@ export function drawBombBlastFx(
     const age = win.frame - f.frame
     if (age < 0 || age > win.hold) continue
     const k = age / Math.max(win.hold, 1)
-    const c = worldToCanvas(f, view.bounds, view.width, view.height, view.pad)
+    const c = projectTo(view, f)
     const ink = style.inkOf(f.xuid)
     ctx.fillStyle = ink
     ctx.strokeStyle = ink

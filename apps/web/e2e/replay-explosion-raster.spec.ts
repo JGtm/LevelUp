@@ -113,7 +113,12 @@ function moduleSource(fichier: string, importsDeValeurAutorises = 0): string {
 function harnais(): string {
   return `
     const LOGIC = (function(){ ${moduleSource('replayLogic.ts')}
-      return { worldToCanvas } })()
+      return { worldToCanvas, canvasScale } })()
+    const VIEW = (function(){
+      const worldToCanvas = LOGIC.worldToCanvas
+      const canvasScale = LOGIC.canvasScale
+      ${moduleSource('replayView.ts', 1)}
+      return { projectTo } })()
     const EXPLO = (function(){ ${moduleSource('explosionFx.ts')}
       return { EXPLOSION_MS, drawExplosion, drawFlash, drawEmbers, drawWave, drawSparks, drawDust } })()
     const GREN = (function(){
@@ -121,7 +126,7 @@ function harnais(): string {
       ${moduleSource('grenadeFx.ts', 1)}
       return { restKindOf, explosionTintOf } })()
     const DRAW = (function(){
-      const worldToCanvas = LOGIC.worldToCanvas
+      const projectTo = VIEW.projectTo
       const restKindOf = GREN.restKindOf
       const explosionTintOf = GREN.explosionTintOf
       const drawExplosion = EXPLO.drawExplosion

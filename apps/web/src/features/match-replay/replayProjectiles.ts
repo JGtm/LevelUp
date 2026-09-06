@@ -5,9 +5,9 @@
  * visée : un vol de grenade n'est pas un marqueur de joueur, il ne partage avec eux que le
  * cadrage. Le fichier d'origine dépassait le seuil de taille du dépôt.
  */
-import { worldToCanvas, type XY } from './replayLogic'
+import { type XY } from './replayLogic'
 import type { ReplayProjectileReady } from './replayNormalize'
-import type { CanvasView } from './replayMarkers'
+import { type CanvasView, projectTo } from './replayView'
 
 
 const PROJECTILE_ALPHA = 0.5
@@ -54,5 +54,5 @@ export function drawProjectilesLayer(
 }
 
 function project(p: XY, view: CanvasView): XY {
-  return worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
+  return projectTo(view, p)
 }

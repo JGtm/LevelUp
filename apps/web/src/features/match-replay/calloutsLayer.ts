@@ -17,10 +17,11 @@
  *   version haute ET basse (« Fer à cheval » / « Fer à cheval inférieur ») et les étages
  *   se confondent en 2D.
  */
-import type { ReplayBounds, ReplayCalloutZone, ReplayMapCallouts } from '@/lib/api/types'
+import type { ReplayCalloutZone, ReplayMapCallouts } from '@/lib/api/types'
 
 import type { ReplayLocale } from './i18n'
-import { worldToCanvas, type XY } from './replayLogic'
+import { type XY } from './replayLogic'
+import { type CanvasView, projectTo } from './replayView'
 
 /** Une zone prête à dessiner : nullabilité du transport résolue, ancre de libellé posée. */
 export interface CalloutZoneReady {
@@ -124,13 +125,6 @@ export function calloutLabel(zone: CalloutZoneReady, locale: ReplayLocale): stri
 }
 
 /** Cadrage du canvas (les mêmes paramètres que worldToCanvas, forme de replayDraw). */
-interface CanvasView {
-  bounds: ReplayBounds
-  width: number
-  height: number
-  pad: number
-}
-
 /** Style du calque : couleurs déjà RÉSOLUES par l'appelant (règle color-tokens). */
 export interface CalloutsStyle {
   /** Une couleur par grande zone (série cyclée) — la rotation de teinte du POC. */
@@ -175,7 +169,7 @@ export function drawCalloutsLayer(
   view: CanvasView,
   style: CalloutsStyle,
 ): void {
-  const px = (p: XY) => worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
+  const px = (p: XY) => projectTo(view, p)
 
   // Les zones FINES, sous les grandes : contour pointillé, teinte neutre, aplat quasi nul.
   for (const c of zones) {

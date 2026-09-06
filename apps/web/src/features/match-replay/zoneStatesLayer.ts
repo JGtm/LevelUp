@@ -72,12 +72,13 @@
  * conséquence : il autorise LE glyphe d'une lettre A-C, et continue d'interdire tout AUTRE texte.
  * Le verdict « ce sont bien les lettres du jeu » appartient au relevé Theater de l'utilisateur.
  */
-import type { CanvasView, ObjectiveElementReady } from './objectivesLayer'
-import { canvasScale, worldToCanvas, type XY } from './replayLogic'
+import type { ObjectiveElementReady } from './objectivesLayer'
+import { type XY } from './replayLogic'
 import { paintZoneState, type ZoneStateNow } from './zoneStatesPaint'
 
 import type { ReplayGaugePoint } from '@/lib/api/types'
 import type { ReplayZoneStateReady } from './replayNormalize'
+import { type CanvasView, projectTo, scaleOf } from './replayView'
 
 /**
  * ZONE_GAUGE_HOLD_MS — combien de temps le DERNIER point de la série reste affiché, en TEMPS RÉEL
@@ -265,8 +266,8 @@ export function drawZoneStates(
 ): void {
   if (!zones.joinable || states.length === 0) return
   const { style } = zones
-  const px = (p: XY) => worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
-  const scale = canvasScale(view.bounds, view.width, view.height, view.pad)
+  const px = (p: XY) => projectTo(view, p)
+  const scale = scaleOf(view)
   const letters: { at: XY; text: string }[] = []
   zones.zoneElements.forEach((e, ref) => {
     const st = states.find((s) => s.zoneRef === ref)

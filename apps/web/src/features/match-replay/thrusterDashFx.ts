@@ -34,19 +34,13 @@
  * `grappleLayer.ts` et `replayDraw.ts`). Les encres arrivent DÉJÀ RÉSOLUES depuis les tokens
  * sémantiques — aucun littéral de couleur ici.
  */
-import type { ReplayBounds, ReplayPoint } from '@/lib/api/types'
+import type { ReplayPoint } from '@/lib/api/types'
 
-import { isAliveAt, positionAt, worldToCanvas, type XY } from './replayLogic'
+import { isAliveAt, positionAt, type XY } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import { type CanvasView, projectTo } from './replayView'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
-export interface CanvasView {
-  bounds: ReplayBounds
-  width: number
-  height: number
-  pad: number
-}
-
 /**
  * LES FAMILLES QUI SE DESSINENT EN DASH. Ce ne sont PAS toutes les familles du calque : une
  * famille absente de cette table ne dessine RIEN, jamais la forme d'une voisine (même règle
@@ -319,5 +313,5 @@ function drawDash(
 }
 
 function project(p: XY, view: CanvasView): XY {
-  return worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
+  return projectTo(view, p)
 }

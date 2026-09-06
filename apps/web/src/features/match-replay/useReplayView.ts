@@ -27,7 +27,7 @@ import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/typ
 
 import { coversPlayedArea } from './mapBackground'
 import { frameBounds, sceneBounds, usefulHeight, visibleBounds } from './replayLogic'
-import type { CanvasView } from './replayDraw'
+import { type CanvasView } from './replayView'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { useReplayZoom, type ReplayZoom } from './useReplayZoom'
 

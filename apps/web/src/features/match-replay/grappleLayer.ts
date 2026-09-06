@@ -18,19 +18,13 @@
  *
  * Pas de React : géométrie pure + un CanvasRenderingContext2D (même règle que replayDraw).
  */
-import type { ReplayBounds, ReplayPoint } from '@/lib/api/types'
+import type { ReplayPoint } from '@/lib/api/types'
 
-import { isAliveAt, positionAt, worldToCanvas, type XY } from './replayLogic'
+import { isAliveAt, positionAt, type XY } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import { type CanvasView, projectTo } from './replayView'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
-interface CanvasView {
-  bounds: ReplayBounds
-  width: number
-  height: number
-  pad: number
-}
-
 /** Une traction prête à dessiner : la fenêtre, l'ancre, et les points de SA vie. */
 export interface GrappleFxEntry {
   t0: number
@@ -99,8 +93,8 @@ export function drawGrappleLayer(
     if (frame < e.t0 || frame > e.t1) continue
     const pos = positionAt(e.points, frame)
     if (!pos) continue
-    const p = worldToCanvas(pos, view.bounds, view.width, view.height, view.pad)
-    const a = worldToCanvas(e.anchor, view.bounds, view.width, view.height, view.pad)
+    const p = projectTo(view, pos)
+    const a = projectTo(view, e.anchor)
     ctx.save()
     ctx.globalAlpha = GRAPPLE_ALPHA
     ctx.strokeStyle = ink

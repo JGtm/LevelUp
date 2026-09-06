@@ -15,8 +15,7 @@
 import { drawExplosion } from './explosionFx'
 import type { FxInk } from './fxInk'
 import { explosionTintOf, restKindOf, type GrenadeRestFx } from './grenadeFx'
-import { worldToCanvas } from './replayLogic'
-import type { CanvasView } from './replayDraw'
+import { type CanvasView, projectTo } from './replayView'
 
 /** Fenêtres du calque de fin de vol : la nappe électrique persiste plus que le halo. */
 export interface RestWindow {
@@ -54,7 +53,7 @@ export function drawGrenadeRestLayer(
     const hold = kind === 'nappe' ? win.holdDynamo : win.holdHalo
     const age = win.frame - e.frame
     if (age < 0 || age > hold) continue
-    const c = worldToCanvas(e, view.bounds, view.width, view.height, view.pad)
+    const c = projectTo(view, e)
     if (kind === 'explosion') {
       drawExplosion(
         ctx,

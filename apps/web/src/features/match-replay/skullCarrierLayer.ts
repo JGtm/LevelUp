@@ -24,10 +24,10 @@
  * pas cuite dans le document) vivent dans l'en-tête de `skullGlyph.ts`. Aucun texte : le porteur
  * est déjà nommé par son marqueur.
  */
-import { worldToCanvas, type XY } from './replayLogic'
+import { type XY } from './replayLogic'
 import { drawSkullGlyph } from './skullGlyph'
 
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView, projectTo } from './replayView'
 import type { ReplaySkullCarry } from './replayNormalize'
 
 /** Style du calque : les encres sont RÉSOLUES par l'appelant (règle color-tokens). */
@@ -106,7 +106,7 @@ export function drawSkullCarrier(
   for (const c of skullCarrierActiveAt(carries, frame)) {
     const w = layer.posOf(c.xuid, frame)
     if (!w) continue
-    const at = worldToCanvas(w, view.bounds, view.width, view.height, view.pad)
+    const at = projectTo(view, w)
     // Le crâne se pose AU-DESSUS du marqueur (celui-ci occupe le point) : le décalage est appliqué
     // ICI, le glyphe partagé ne connaît que son centre.
     const center: XY = { x: at.x, y: at.y - SKULL_OFFSET_Y }

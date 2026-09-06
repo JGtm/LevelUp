@@ -40,8 +40,9 @@
 import { hexToRgba } from '@/components/charts/_utils'
 import type { ReplayBounds } from '@/lib/api/types'
 
-import { canvasScale, frameToMs, msToFrames, worldToCanvas, type XY } from './replayLogic'
+import { frameToMs, msToFrames, type XY } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { type CanvasView, projectTo, scaleOf as viewScale } from './replayView'
 
 /** Les deux lectures proposées. `kills` = les morts, à la position des victimes. */
 export type HeatmapMode = 'presence' | 'kills'
@@ -401,13 +402,6 @@ export function heatRamp(stops: readonly string[]): string[] {
 }
 
 /** Cadrage du canvas (les mêmes paramètres que worldToCanvas, forme de replayDraw). */
-interface CanvasView {
-  bounds: ReplayBounds
-  width: number
-  height: number
-  pad: number
-}
-
 /** Style du calque : rampe DÉJÀ résolue, et le rapport de pixels de l'écran. */
 export interface HeatmapStyle {
   ramp: readonly string[]
@@ -434,15 +428,9 @@ export function drawHeatmapLayer(
 ): void {
   const last = style.ramp.length - 1
   if (grid.filled === 0 || last < 0) return
-  const step = grid.cell * canvasScale(view.bounds, view.width, view.height, view.pad)
+  const step = grid.cell * viewScale(view)
   if (!(step > 0)) return
-  const topLeft = worldToCanvas(
-    { x: grid.minX, y: grid.minY + grid.ny * grid.cell },
-    view.bounds,
-    view.width,
-    view.height,
-    view.pad,
-  )
+  const topLeft = projectTo(view, { x: grid.minX, y: grid.minY + grid.ny * grid.cell })
   const snap = (v: number) => Math.round(v * style.k) / style.k
   for (let j = 0; j < grid.ny; j++) {
     const row = j * grid.nx
