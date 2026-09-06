@@ -96714,3 +96714,35 @@ journal est corrige : 17 marqueurs sur 11 fichiers en ronde 1 (« onze » compta
 ferme. Un orphelin de la famille C9 subsiste (`replayMarkers.ts:173`) mais il est ANTERIEUR au
 lot, laisse en l'etat (regle 7). Prochaine etape : verification du diff par le superviseur,
 puis integration dans `feat/v75`.
+
+## [2026-09-06] Chantier v2 rejeu/film — revues, corrections et integration des sept lots — Complete (CI en cours)
+
+**Contexte.** Suite du lancement du 05/09 : tous les lots rendus, le user donne le go pour CI,
+revues et integration, et signale la gravite de la perte des ports de drapeau.
+
+**Decision technique.** Revues adversariales en deux rondes, un relecteur par worktree (deux
+relecteurs dans le meme worktree se polluent par leurs mutations) ; corrections par les
+executeurs (trois frais sur saturation de contexte) ; integration `--no-ff` par le superviseur
+dans l'ordre B, F, C, G, E, CTF, A, D, chaque conflit resolu a la main (journal concatene ;
+conflits SEMANTIQUES attrapes par le hook go-vet-cgo : tests F.1 et CTF types sur le document
+stocke alors que B fait servir `replaydoc` ; `Run` de replayartifacts = porte de capability (C)
+puis rattrapage en `defer` (A) ; `racineDepot` en double). Enquete CTF : la revue R1 a infirme le
+volet « CI aveugle » (le telechargeur de l'ouvrier pele deja une couche zlib) mais revele le
+fond ; la bissection a nomme `d173b1a8c` (28/08) : pont d'identite par triplet REMPLACE par le
+pont par morts au lieu d'etre complete — les joueurs a moins de 3 morts (les porteurs) sortaient
+du pont, actions d'objectif perdues sur tout match mono-manche, toutes familles. Correctif
+`RoundIdentity.CompletedByLines` confirme par CTF-R2 (0 contradiction sur 8 films, multi-manche
+identique octet pour octet, additif strict sur 11 films), SchemaVersion 39 -> 40 (tout artefact
+< 40 a re-cuire), Notion mis a jour. Disque : cache go-build principal de 69 Go vide apres deux
+« No space left on device ».
+
+**Resultats.** 86 constats de revue de ronde 1 (13 P1), tous fermes en ronde 2 ; `feat/v75` =
+`920e093f0` avec les sept lots et le correctif CTF ; CI verte sur B, F, C, G, E, en cours sur
+CTF, A, D ; gates rejoues sur l'etat fusionne a chaque merge (wire integration, contrat,
+generate-types sans diff, vitest 6 393 verts, build). Balayage de non-regression du parc en
+cours (worktree `LevelUp-wt-v2-balayage`, un film a la fois, outil `cmd/replay-diff`).
+
+**Conclusion / prochaine etape.** Attendre la CI des trois derniers merges et le rapport du
+balayage ; rejouer le balayage « apres » sur `feat/v75` integre ; decision user sur `flagCarries`
+(completer dans replaybuild) ; puis tag v7.5.0 selon la sequence de release Notion (re-cuisson
+du parc au schema 40).
