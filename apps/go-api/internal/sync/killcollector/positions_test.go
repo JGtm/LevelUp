@@ -254,6 +254,10 @@ func (f fakeMapNames) MapKeysForMatch(context.Context, string) (port.MatchMapKey
 	return f.keys, f.err
 }
 
+func (f fakeMapNames) MapKeysForMap(context.Context, string) (port.MatchMapKeys, error) {
+	return f.keys, f.err
+}
+
 func testMapQuantCatalog() *filmdec.MapQuantCatalog {
 	return &filmdec.MapQuantCatalog{
 		SchemaVersion: filmdec.MapQuantSchemaVersion,

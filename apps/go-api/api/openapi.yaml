@@ -6148,6 +6148,65 @@ paths:
       summary: Sync delta par joueur
       tags:
         - sync
+  /players/{player_slug}/tactical/{map_id}/background:
+    get:
+      operationId: getTacticalMapBackground
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: map_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MapBackground'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Calage du fond d'une carte de l'onglet Tactique
+      tags:
+        - tactical
+  /players/{player_slug}/tactical/{map_id}/background.png:
+    get:
+      description: |
+        Image vue du dessus d'une carte (PNG), cuite hors ligne par `cmd/mapfond-build`.
+        C'est la MÊME donnée que le fond du rejeu 2D, résolue par la même cascade, mais
+        adressée par `map_id` : la grille des cartes ne connaît pas de match. Son CALAGE
+        est servi par `GET .../tactical/{map_id}/background`. Contrairement au rejeu,
+        cette route n'est PAS restreinte à la boucle locale : une image de carte est une
+        donnée de référence versionnée, pas une trajectoire décodée d'un film.
+      operationId: getTacticalMapBackgroundImage
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: map_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Image PNG du fond de carte
+        "404":
+          description: Aucun fond de carte figé pour cette carte
+      summary: Sert l'image du fond d'une carte de l'onglet Tactique
+      tags:
+        - tactical
   /players/{player_slug}/tactical/{map_id}/raster:
     get:
       operationId: getTacticalRaster

@@ -77,9 +77,68 @@ func (r *ReplayMapRepo) MapKeysForMatch(ctx context.Context, matchID string) (po
 
 	// pair_name voyage BRUT (il peut être un UUID) : c'est le service qui le normalise —
 	// la clé des rôles d'objectif du rejeu (lot 4), lue dans la même ligne que la carte.
+	return r.assemblerIdentites(ctx, identitesBrutes{
+		MapID:    assetID.String,
+		RawName:  rawName.String,
+		PairName: pairName.String,
+		Ref:      matchID,
+	})
+}
+
+// MapKeysForMap retourne les identités de carte à partir du SEUL map_id — la surface qui
+// raisonne par CARTE (grille de l'onglet Tactique) n'a aucun match sous la main.
+//
+// La cascade est celle de MapKeysForMatch, à une nuance près : le nom BRUT ne peut plus
+// venir de la ligne du match, il est cherché sur n'importe quel match du registre portant
+// ce map_id. `map_name` est NULL sur une partie du registre — d'où le filtre : une ligne
+// muette ne vaut pas moins qu'une autre, elle n'apporte simplement rien.
+//
+// PAS DE PairName : il qualifie un MATCH (le mode joué), jamais une carte.
+//
+// Un map_id absent du registre reste exploitable si le catalogue d'assets le nomme : la
+// carte peut n'avoir jamais été jouée par CE joueur tout en existant dans le titre.
+func (r *ReplayMapRepo) MapKeysForMap(ctx context.Context, mapID string) (port.MatchMapKeys, error) {
+	mapID = strings.TrimSpace(mapID)
+	if r == nil || r.shared == nil || mapID == "" {
+		return port.MatchMapKeys{}, ErrMatchMapUnknown
+	}
+	db, release, err := r.shared.Get(ctx)
+	if err != nil {
+		return port.MatchMapKeys{}, fmt.Errorf("replay map: lecteur shared indisponible: %w", err)
+	}
+	defer release()
+
+	var rawName sql.NullString
+	err = db.QueryRowContext(ctx,
+		`SELECT map_name FROM match_registry WHERE map_id = ? AND map_name IS NOT NULL LIMIT 1`, mapID,
+	).Scan(&rawName)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return port.MatchMapKeys{}, fmt.Errorf("replay map: lecture match_registry par carte: %w", err)
+	}
+	return r.assemblerIdentites(ctx, identitesBrutes{MapID: mapID, RawName: rawName.String, Ref: mapID})
+}
+
+// identitesBrutes porte ce que la base a rendu, avant résolution des noms.
+type identitesBrutes struct {
+	MapID    string
+	RawName  string
+	PairName string
+	// Ref n'entre dans AUCUNE clé : c'est la référence journalisée (match_id ou map_id)
+	// quand la résolution d'un nom d'asset échoue.
+	Ref string
+}
+
+// assemblerIdentites construit les MatchMapKeys : map_id, puis les noms candidats du plus
+// fiable (catalogue d'assets, en anglais — la langue du catalogue de modules) au moins
+// fiable (libellé brut du registre), sans doublon.
+//
+// UNE SEULE COPIE, et c'est délibéré : les deux entrées (par match, par carte) ne diffèrent
+// que par la façon d'obtenir la ligne brute. Recopier la cascade donnerait deux définitions
+// de « quels noms désignent cette carte », qui divergeraient au premier ajustement.
+func (r *ReplayMapRepo) assemblerIdentites(ctx context.Context, brut identitesBrutes) (port.MatchMapKeys, error) {
 	keys := port.MatchMapKeys{
-		MapID:    strings.TrimSpace(assetID.String),
-		PairName: strings.TrimSpace(pairName.String),
+		MapID:    strings.TrimSpace(brut.MapID),
+		PairName: strings.TrimSpace(brut.PairName),
 	}
 	add := func(s string) {
 		s = strings.TrimSpace(s)
@@ -98,12 +157,12 @@ func (r *ReplayMapRepo) MapKeysForMatch(ctx context.Context, matchID string) (po
 		name, _, ok, resErr := meta.ResolveAssetName(ctx, "map", keys.MapID, PreferredLangsForLocale("en"))
 		if resErr != nil {
 			slog.WarnContext(ctx, "replay map: résolution du nom d'asset échouée",
-				"err", resErr, "match_id", matchID, "map_id", keys.MapID)
+				"err", resErr, "ref", brut.Ref, "map_id", keys.MapID)
 		} else if ok {
 			add(name)
 		}
 	}
-	add(rawName.String)
+	add(brut.RawName)
 	if keys.MapID == "" && len(keys.Names) == 0 {
 		return port.MatchMapKeys{}, ErrMatchMapUnknown
 	}
