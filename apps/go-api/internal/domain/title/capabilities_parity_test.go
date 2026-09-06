@@ -135,40 +135,15 @@ func TestCapabilityLiteralsInFrontAreDeclaredInGo(t *testing.T) {
 
 // orphanCapabilityAllowlist — capabilities Go volontairement NON déclarées par un
 // titre public, ou NON consommées. Chaque entrée est datée + justifiée (règle
-// CLAUDE.md n°11). VIDE du 2026-07-26 au 2026-09-06 ; UNE entrée depuis, datée et
-// bornée ci-dessous. L'allowlist est DÉCROISSANTE :
-// `TestOrphanCapabilityAllowlistIsCurrent` fait échouer la suite dès qu'une entrée
-// n'a plus lieu d'être.
+// CLAUDE.md n°11). VIDE au 2026-09-06 : les capabilities déclarées sont toutes
+// accordées par Halo Infinite ou Halo 5, et toutes lues par au moins un consommateur.
+// L'allowlist est DÉCROISSANTE : `TestOrphanCapabilityAllowlistIsCurrent` fait échouer
+// la suite dès qu'une entrée n'a plus lieu d'être.
 var orphanCapabilityAllowlist = map[string]string{
-	// ENTRÉE TEMPORAIRE, POSÉE LE 2026-09-06 — À RETIRER AU LOT 5, PAS PLUS TARD.
-	//
-	// ELLE NE SERT QU'À UN SEUL DES DEUX TESTS : `TestCapabilitiesReferencedByAConsumer`.
-	// `weapon_range` EST accordée par Halo Infinite, donc
-	// `TestCapabilitiesGrantedByAPublicTitle` ne la consulte jamais (correction du
-	// 2026-09-06, constat F10 : la justification d'origine invoquait les deux axes, dont un
-	// sans objet).
-	//
-	// Le backend sert déjà son bloc (`SynthesisPageV2Response.WeaponRange`), mais le SEUL
-	// consommateur prévu est le gate d'affichage `useCapability('weapon_range')` de la
-	// section Synthèse, écrit au lot 5 du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md
-	// (item 5.5). Le câblage Go est INCONDITIONNEL par décision du plan (item 4.1) — c'est
-	// le repo qui dit « ce titre ne sait pas faire », pas un `if capability` : il n'y a donc
-	// aucun consommateur Go à écrire, et ce test ne peut voir la capability branchée qu'au
-	// lot 5. Le miroir TS (`capabilities.ts`) et son libellé (`FeatureUnavailable.tsx`) ne
-	// comptent PAS comme consommateurs : le scan ne retient que les appels de gating.
-	//
-	// CRITÈRE DE RETRAIT, MESURABLE ET TENU PAR UN TEST QUI ÉCHOUE — ce n'est PAS un
-	// `t.Logf` sans effet (ce que le commentaire d'origine annonçait à tort : dans
-	// `TestCapabilitiesReferencedByAConsumer`, un consommateur existant fait `continue`
-	// AVANT toute lecture de l'allowlist, donc rien n'y est journalisé). C'est
-	// `TestOrphanCapabilityAllowlistIsCurrent` qui tient l'hygiène : la capability étant
-	// déjà accordée par un titre public, la première occurrence de
-	// `useCapability('weapon_range')` dans apps/web/src le fait passer en `t.Errorf`
-	// (« exception périmée, la retirer »). Le lot 5 supprime donc cette entrée dans le
-	// commit même qui monte la section, sous peine de suite rouge.
-	"weapon_range": "consommateur = le gate d'affichage du lot 5 (item 5.5), posé le " +
-		"2026-09-06 ; câblage Go inconditionnel par décision 4.1, donc aucun consommateur " +
-		"Go n'existe. Retrait au lot 5, imposé par TestOrphanCapabilityAllowlistIsCurrent.",
+	// VIDE au 2026-09-06 : l'entrée temporaire `weapon_range`, posée le même jour en
+	// attendant son gate d'affichage, a été retirée par le lot 5 du plan
+	// .ai/PLAN_DUELS_PORTEE_2026-09-06.md — `useCapability('weapon_range')` existe
+	// désormais dans apps/web/src (SynthesisPage.tsx), la capability a son consommateur.
 }
 
 // TestCapabilitiesGrantedByAPublicTitle — toute capability déclarée côté Go doit

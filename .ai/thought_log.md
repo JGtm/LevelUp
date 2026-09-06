@@ -1,3 +1,103 @@
+## [2026-09-06] Lot 5 duels/portee — revue adversariale ronde 1, les 14 correctifs (F1-F14) — Complete
+
+**Decision technique principale.** Le constat structurel de la ronde n est pas un bug de rendu
+mais un TROU DE PREUVE : `useWeaponRangeOptions` s executait pendant les tests de composant sans
+que son resultat soit jamais regarde (echarts-for-react etait mocke en div muette), et les tests
+purs des deux constructeurs ne prouvaient que ceci — ils honorent ce qu on leur INJECTE. Entre
+les deux, personne ne verifiait le cablage : echanger les encres des frags et des morts, les
+libelles d infobulle, ou passer `tc.axisLabel` la ou `tc.card` est attendu laissait toute la
+suite verte. Le correctif est un fichier de test qui CAPTURE la prop `option` reellement passee
+a ECharts et applique la vraie palette d accessibilite — sans `applyPalette`, `resolveToken`
+rend la chaine vide et deux couleurs echangees restent egales, le test serait decoratif.
+
+Deuxieme decision, `cssColorToHex` : la conversion de couleur est faite PAR LE NAVIGATEUR
+(aller-retour sur `fillStyle` d un contexte 2D), jamais par une table oklch->sRGB ecrite a la
+main. Motif : `--muted-foreground` est un `oklch(...)` que le canvas peint correctement mais que
+le parseur de zrender ne connait pas — au survol, `lift()` rend `undefined` et le segment « a
+niveau » perdait son remplissage. Ecart assume avec la maquette : DOUBLE SENTINELLE (noir puis
+blanc avant chaque lecture) au lieu d une seule, parce qu une couleur invalide sortait sinon en
+noir — un rendu faux silencieux, pire que la valeur d origine. `getEChartsThemeColors` n est PAS
+etendue : elle a de nombreux appelants dont beaucoup passent ces valeurs a des proprietes que
+zrender ne derive jamais.
+
+**Resultats observes.** Quatorze constats statues `[x]`, chacun avec sa mutation prouvee rouge
+puis restauree — dont six pour le seul F7. Trois d entre eux valent d etre retenus. (1) La tuile
+« Portee mediane de mes frags » s affichait « 0,0 m » sur un scope ou le joueur n a frague
+personne : le service ne retire le bloc que si les DEUX cotes sont vides, et le lot appliquait
+la doctrine anti-zero (D5) a l entame seulement. (2) `weaponRange={undefined}` dans
+`SynthesisPage.tsx` aurait laisse la section invisible en production sans qu un seul test bouge
+— trois tests au niveau page ferment ce trou (bloc servi + capability, sans bloc, sans
+capability). (3) Le miroir `WEAPON_RANGE_MIN_MEASURED = 8` n avait aucun garde-rail : un test
+lit desormais `analysis/weapon_range.go` et compare, et il ECHOUE si la source est illisible
+plutot que de se skipper.
+
+Gates : typecheck RC 0 ; lint RC 0 (0 erreur, 28 warnings preexistants, aucun sur un fichier du
+lot) ; suite web complete 595 fichiers / 6 297 tests RC 0 ; `lint:fields` sans violation ; grep
+hex vide sur `features/synthesis/` hors tests. `buildWeaponRangeOption` repasse de 107 a 67
+lignes par extraction, sans qu aucun des 16 tests existants ne change.
+
+**Conclusion / prochaine etape.** Ronde 1 close sur `feat/duels-lot5-fix` (worktree
+`LevelUp-wt-duels-fix5`), rien de pousse. Deux decouvertes consignees au plan et NON traitees :
+le meme piege `oklch` frappe `MatchScoreCurveChart.tsx:176` et
+`squad/charts/squadEfficiencyChart.ts:211` (preexistant) ; et aucun script npm ni etape de CI ne
+rejoue `build_i18n_manifests.mjs`, donc une derive toml <-> generated n est vue par rien. Suite :
+fusion de la branche par le superviseur, puis lot 6 (livraison).
+
+## [2026-09-06] Lot 5 duels/portee — la section web « Portee des engagements » (5.1-5.6) — Complete
+
+**Decision technique principale.** La maquette validee par l utilisateur est transposee telle
+quelle, y compris son choix technique : une serie ECharts `custom` avec `renderItem` plutot que
+le couple bar+scatter du graphe de match. La raison est mesurable — sur un axe de CATEGORIES un
+`scatter` se pose au centre de la bande et ne sait pas se decaler d un demi-baton ; avec deux
+batons par ligne, le losange de la mediane des morts tomberait ENTRE les deux. Le `renderItem`
+place les quatre formes aux coordonnees que l API ECharts rend elle-meme : la position est
+exacte, pas approchee. Un test la verifie contre une API factice, coordonnee par coordonnee.
+
+Deuxieme decision : le TRI NE SE REJOUE PAS cote front. Il vient du backend (mediane des frags
+croissante, `mergeWeaponSides`) et la projection le CONSERVE ; l axe Y est simplement lu a l
+envers au montage. Deux tris du meme fait divergeraient au premier changement de doctrine — la
+maquette, elle, triait parce qu elle portait ses propres donnees d illustration.
+
+**Resultats observes.** Deux consignes du pilote sont arrivees pendant le lot et ont change le
+contrat de rendu. (1) `weapons: []` avec des compteurs NON NULS est un cas NOMINAL — le joueur
+dont toutes les armes restent sous le seuil de 8 mesures. La section reste alors entiere (tuiles,
+armes ecartees nommees, note de couverture) et les deux graphes cedent la place a une phrase qui
+dit POURQUOI : un canevas vide sans mot se lit « bug », jamais « rien a montrer ». Seule l ABSENCE
+de bloc retire la section. (2) `delta_median_m` / `closing_share_pct` / `n` passent dans un
+sous-objet OPTIONNEL `opening.delta` : la tuile « Distance d entame » suit `opening`, la tuile
+« Entame -> frag » suit `opening.delta`. Les deux absences disent deux choses differentes —
+entame non mesuree d un cote, entame non appariee a son frag de l autre — et un zero dirait « la
+distance ne bouge pas ». `generated.ts` porte encore la forme PLATE (la regeneration arrive par
+`feat/duels-lot4-fix`) : le front lit le bloc par une vue LOCALE datee, volontairement identique
+a la forme servie, dont le `Omit<>` fera rougir le typecheck si la regeneration diverge.
+
+Trois constats sur pieces. `getEChartsThemeColors()` ne rendait pas `--card`, dont la grammaire
+validee se sert comme ENCRE DE SEPARATION dans le canvas (contour du losange sur son baton, bord
+d un segment empile) : le champ a ete ajoute, additif, aucun appelant existant touche.
+`muted-foreground` n est PAS un `SemanticToken` — la classe « a niveau » emprunte donc le gris
+des libelles d axe cote canvas et `bg-muted-foreground` cote DOM, deux chemins vers la MEME
+variable CSS. Et le seuil de publication (8) n est pas dans le contrat alors que le rendu doit l
+ECRIRE : le front porte une constante miroir, commentee, jamais utilisee pour filtrer. Les trois
+sont au registre des decouvertes du plan.
+
+`AccentCard` et `SectionSubtitle` ont ete DEPLACES de `SynthesisPage.tsx` vers
+`SynthesisCards.tsx` (rendu inchange ; `AccentCard` gagne un `sub?` pour porter le denominateur
+d une mesure partielle). Les recopier aurait fait deux gabarits pour la meme chose dans la meme
+page, et l import inverse — la section important depuis la page qui la monte — aurait ferme un
+cycle. `weapon_range` est SORTIE de `orphanCapabilityAllowlist` dans le commit qui monte la
+section, mutation prouvee rouge avant restauration.
+
+**Gates.** `npm run typecheck` RC 0 · `npm run lint` RC 0 (0 erreur, 28 warnings tous
+preexistants) · `npm test -- --run` 593 fichiers / 6 271 tests RC 0 · `npm run lint:fields`
+aucune violation · grep hex et grep classes Tailwind de couleur VIDES sur `features/synthesis/`
+hors tests · `go test ./internal/domain/title/...` ok, `gofmt -l` vide. A savoir : le worktree n
+avait aucun `node_modules`, `npm ci` a du etre lance avant tout gate web.
+
+**Conclusion / prochaine etape.** Lot 5 clos, items 5.1 a 5.6 tous `[x]`. Restent : le GATE
+VISUEL (capture de la section soumise a l utilisateur — c est le lot 6.4, pilote), et la
+substitution de la vue locale `WeaponRangeBlock` par le type genere des la fusion de
+`feat/duels-lot4-fix`.
+
 ## [2026-09-06] Lot 4 duels/portee — correctifs de revue adversariale ronde 1 (F1-F10) — Complete
 
 **Decision technique principale.** Les dix constats retenus par le pilote (deux relecteurs :
