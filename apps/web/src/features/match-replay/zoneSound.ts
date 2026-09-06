@@ -46,6 +46,7 @@
 import type { ReplayDocumentReady } from './replayNormalize'
 import { frameToMs, msToFrames } from './replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
+import { covers } from './replaySpans'
 
 /** Le camp d'un état de zone, vu de la page — la même notion que dans `objectiveSound.ts`. */
 export type ZoneSide = 'ally' | 'enemy'
@@ -329,7 +330,7 @@ function intervallesDeDomination(
 function proprietaireCommun(zones: readonly ZoneStateLike[], t: number): number | null {
   let owner: number | null = null
   for (const z of zones) {
-    const s = z.spans.find((x) => x.t0 <= t && t <= x.t1)
+    const s = z.spans.find((x) => covers(x, t))
     if (!s || s.owner === null || s.owner === undefined) return null
     if (owner === null) owner = s.owner
     else if (owner !== s.owner) return null
@@ -341,7 +342,7 @@ function proprietaireCommun(zones: readonly ZoneStateLike[], t: number): number 
 function finDeDomination(zones: readonly ZoneStateLike[], t: number, owner: number): number {
   let fin = Number.MAX_SAFE_INTEGER
   for (const z of zones) {
-    const s = z.spans.find((x) => x.t0 <= t && t <= x.t1)
+    const s = z.spans.find((x) => covers(x, t))
     if (!s || s.owner !== owner) return t
     fin = Math.min(fin, s.t1)
   }

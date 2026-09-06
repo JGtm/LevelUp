@@ -33,6 +33,7 @@ import { objectiveObjectAt } from './objectiveObjectsLayer'
 
 import type { XY } from './replayLogic'
 import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from './replayNormalize'
+import { covers } from './replaySpans'
 
 /** SkullPresence — ce que le crâne montre à une image donnée, en une seule réponse. */
 export type SkullPresence =
@@ -61,7 +62,7 @@ export function skullPresenceAt(
   socle: XY | null = null,
 ): SkullPresence {
   for (const carry of carries) {
-    if (carry.t0 <= frame && frame <= carry.t1) return { state: 'carried' }
+    if (covers(carry, frame)) return { state: 'carried' }
   }
   for (const life of lives) {
     const now = objectiveObjectAt(life, frame)

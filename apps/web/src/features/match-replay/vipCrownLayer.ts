@@ -24,6 +24,8 @@ import { type XY } from './replayLogic'
 
 import { type CanvasView, projectTo } from './replayView'
 import type { ReplayVipPeriod } from './replayNormalize'
+import { carriedGlyphAlpha } from './carriedGlyphPulse'
+import { covers } from './replaySpans'
 
 /** Style du calque : l'encre de la couronne est RÉSOLUE par l'appelant (règle color-tokens). */
 export interface VipCrownStyle {
@@ -55,12 +57,6 @@ const CROWN_STROKE_WIDTH = 1.4
 /** Rayon de SURVOL potentiel, en pixels : exporté pour un futur survol, non consommé ici. */
 export const VIP_CROWN_HIT_RADIUS = 10
 
-/** Opacité pleine : un fait daté ferme le port (mort du VIP, ou sélection suivante). */
-const ALPHA_SOLID = 0.95
-/** Bornes de la pulsation d'une couronne « ouverte » (`closed` faux), et sa période en images. */
-const PULSE_MIN = 0.42
-const PULSE_MAX = 0.78
-const PULSE_PERIOD_FRAMES = 26
 
 /**
  * vipActiveAt rend les périodes qui COUVRENT l'image demandée — au plus une par VIP courant, mais
@@ -72,19 +68,12 @@ export function vipActiveAt(
 ): ReplayVipPeriod[] {
   const out: ReplayVipPeriod[] = []
   for (const p of periods) {
-    if (frame >= p.t0 && frame <= p.t1) out.push(p)
+    if (covers(p, frame)) out.push(p)
   }
   return out
 }
 
 /** Opacité du glyphe pour une période — la pulsation de la couronne « ouverte » comprise. */
-function alphaOf(closed: boolean, frame: number, reducedMotion: boolean): number {
-  if (closed) return ALPHA_SOLID
-  if (reducedMotion) return (PULSE_MIN + PULSE_MAX) / 2
-  const phase = (2 * Math.PI * frame) / PULSE_PERIOD_FRAMES
-  return PULSE_MIN + (PULSE_MAX - PULSE_MIN) * (0.5 + 0.5 * Math.sin(phase))
-}
-
 /**
  * drawVipCrown peint, PAR-DESSUS les marqueurs, la couronne sur le VIP courant de chaque camp.
  *
@@ -105,7 +94,7 @@ export function drawVipCrown(
     const at = projectTo(view, w)
     drawCrownGlyph(ctx, at, {
       ink: layer.style.ink,
-      alpha: alphaOf(p.closed, frame, layer.style.reducedMotion),
+      alpha: carriedGlyphAlpha(p.closed, frame, layer.style.reducedMotion),
     })
   }
   ctx.globalAlpha = 1

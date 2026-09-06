@@ -66,6 +66,7 @@ import type { ReplayVehicleRide } from '@/lib/api/types'
 import { CORE_RADIUS } from './replayMarkers'
 import { lastIndexAt, positionAt, type XY } from './replayLogic'
 import type { ReplayVehicleTrackReady } from './replayNormalize'
+import { covers } from './replaySpans'
 
 // --- FAMILLES REFUSÉES ------------------------------------------------------------------------
 
@@ -392,7 +393,7 @@ export function vehicleActiveRides(
   frame: number,
 ): ReplayVehicleRide[] {
   return track.rides
-    .filter((r) => frame >= r.t0 && frame <= r.t1)
+    .filter((r) => covers(r, frame))
     .sort((a, b) => (a.seat ?? Number.POSITIVE_INFINITY) - (b.seat ?? Number.POSITIVE_INFINITY))
 }
 
@@ -496,7 +497,7 @@ export function buildEmbarkedPredicate(
   return (slot, frame) => {
     const list = bySlot.get(slot)
     if (!list) return false
-    return list.some((r) => frame >= r.t0 && frame <= r.t1)
+    return list.some((r) => covers(r, frame))
   }
 }
 

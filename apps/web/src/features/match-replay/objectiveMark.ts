@@ -47,6 +47,7 @@ import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
 import { msToFrames } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { covers } from './replaySpans'
 
 /**
  * Les six marques, nommées par l'OBJET porté, l'endroit tenu ou le geste qui vient d'être fait
@@ -107,7 +108,7 @@ function markFromPeriods(
   frame: number,
 ): boolean {
   for (const p of periods) {
-    if (p.xuid === xuid && p.t0 <= frame && frame <= p.t1) return true
+    if (p.xuid === xuid && covers(p, frame)) return true
   }
   return false
 }
@@ -141,7 +142,7 @@ function flagCarriedBy(doc: ReplayDocumentReady, xuid: string, frame: number): b
     for (const sp of carry.spans) {
       if (sp.xuid !== xuid) continue
       if (!CARRIED_STATES.has(sp.state)) continue
-      if (sp.t0 <= frame && frame <= sp.t1) return true
+      if (covers(sp, frame)) return true
     }
   }
   return false
