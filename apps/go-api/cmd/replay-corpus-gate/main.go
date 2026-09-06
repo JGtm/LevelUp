@@ -7,42 +7,51 @@
 // dix-neuf schemas de suite, faute d'un differentiel sur des FILMS REELS. Le balayage
 // retroactif du parc local (119 matchs, .ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md) les a
 // finalement trouvees — mais APRES coup, par une mesure manuelle. Ce gate industrialise CETTE
-// MEME METHODE sur un corpus TEMOIN restreint et versionne (config/replay_corpus.toml) : cuire
-// chaque temoin au HEAD et le confronter a l'artefact deja cuit dans le parc local, AVANT tout
-// merge qui toucherait au decodeur ou au constructeur de rejeu.
+// MEME METHODE sur un corpus TEMOIN restreint et versionne (config/replay_corpus.toml).
 //
-// # CE QUE CE GATE NE FAIT PAS
+// # DEUX MODES DE REFERENCE (decision superviseur, 2026-09-06)
 //
-// Il ne bumpe AUCUN schema — il COMPARE. Si le parc local est a un schema plus ancien que le
-// HEAD teste, les ecarts attendus sont des GAINS (nouveaux calques, corrections documentees) ;
-// toute PERTE est un fait a rapporter au journal, jamais a masquer en resserrant le manifeste
-// ou en filtrant le rapport.
+// --reference=base (DEFAUT) : cuit chaque temoin DEUX FOIS — avec le code du HEAD, et avec
+// le code d'une revision de BASE (defaut : origin/feat/v75 si le HEAD en differe, sinon
+// HEAD^ — cf. base.go) — puis compare les deux cuissons fraiches. Toute perte = code 1. C'est
+// le gate a lancer avant merge : le signal est binaire, une perte est necessairement due au
+// diff en cours de revue, jamais a l'age d'un parc jamais a jour.
+//
+// --reference=parc : compare le HEAD a l'artefact DEJA CUIT dans le parc local (methode
+// historique, balayage de release). INFORMATIF par defaut (imprime le tableau, sort en 0) —
+// --strict le rend bloquant. Un gate qui rendrait PERTE sur tous les temoins au meilleur etat
+// connu ne gaterait rien : le parc n'est jamais a jour, cf. le tableau §1 de
+// BALAYAGE_PARC_2026-09-06.md.
+//
+// Dans les deux modes, aucun schema n'est bumpe — le gate COMPARE.
 //
 // # CE QU'IL EXIGE
 //
-// Le PARC LOCAL de developpement (chunks de film + artefacts deja cuits sous
-// data/cache/film_chunks|film_manifests|replays) ET l'acces en lecture a la base partagee du
-// titre (pour les faits du match, via `levelup replay-facts-export` en sous-processus — la
-// SEULE etape qui exige CGO/gcc). PAS le jeu installe : la cuisson elle-meme (`replaybuild`)
-// ne lit que des catalogues VERSIONNES (data/titles/{slug}/reference), jamais l'installation —
-// contrairement au tag `gamefiles` dont ce gate ne partage que l'ESPRIT (ressource locale
-// volumineuse, absente en CI, degradation propre plutot qu'echec).
+// Le PARC LOCAL de developpement (chunks de film ; + artefacts deja cuits en mode parc) ET
+// l'acces en lecture a la base partagee du titre (pour les faits du match, via
+// `levelup replay-facts-export` en sous-processus — la SEULE etape qui exige CGO/gcc). PAS le
+// jeu installe : la cuisson elle-meme (`cmd/replay-build`, compile a la volee pour le HEAD et,
+// en mode base, pour la revision de base) ne lit que des catalogues VERSIONNES
+// (data/titles/{slug}/reference), jamais l'installation — contrairement au tag `gamefiles`
+// dont ce gate ne partage que l'ESPRIT (ressource locale volumineuse, absente en CI,
+// degradation propre plutot qu'echec).
 //
 // # USAGE
 //
 //	cd apps/go-api && go run ./cmd/replay-corpus-gate \
+//	  [--reference=base|parc] [--base REV] [--strict] \
 //	  [--manifest config/replay_corpus.toml] [--parc-root DIR] [--lock-root DIR] \
 //	  [--source-root DIR] [--work-root DIR] [--keep-work] [--json rapport.json]
 //
-// Racines (cf. roots.go pour le detail et les variables d'environnement equivalentes) :
-// `--source-root` = le depot ou ce binaire tourne (code + config au HEAD teste, defaut
-// title.FindRepoRoot) ; `--parc-root` = le parc de developpement (chunks, artefacts de
-// reference, defaut auto-detecte par le `.git` commun) ; `--lock-root` = ou poser le verrou de
-// decodage PARTAGE avec tout autre outil de cuisson de ce depot (defaut CacheRootDir du parc).
+// Racines (cf. roots.go et base.go pour le detail) : --source-root = le depot ou ce binaire
+// tourne (code + config au HEAD teste, defaut title.FindRepoRoot) ; --parc-root = le parc de
+// developpement (chunks, artefacts de reference en mode parc, defaut auto-detecte par le
+// .git commun) ; --lock-root = ou poser le verrou de decodage PARTAGE avec tout autre outil
+// de cuisson de ce depot (defaut CacheRootDir du parc).
 //
-// Codes de sortie : 0 = aucune perte, 1 = au moins un temoin porte une perte ou une erreur de
-// cuisson/comparaison, 2 = usage ou manifeste invalide. Un temoin ABSENT du parc local est un
-// avertissement `slog`, jamais un echec (cf. codeSortie).
+// Codes de sortie : 0 = aucune perte bloquante, 1 = au moins un temoin porte une perte
+// bloquante ou une erreur de cuisson/comparaison, 2 = usage ou manifeste invalide. Un temoin
+// ABSENT est un avertissement slog, jamais un echec (cf. codeSortie).
 package main
 
 import (
@@ -51,12 +60,15 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/replaybuild"
 )
 
 func main() {
+	reference := flag.String("reference", "base", "reference de comparaison : base (cuisson a une revision anterieure, defaut) ou parc (artefact deja cuit, informatif sauf --strict)")
+	baseFlag := flag.String("base", "", "revision de base explicite (mode --reference=base ; defaut : origin/feat/v75 si HEAD en differe, sinon HEAD^)")
+	strict := flag.Bool("strict", false, "en mode --reference=parc, une perte fait sortir en code 1 (sans effet en mode base, deja bloquant)")
 	manifestPath := flag.String("manifest", "", "chemin du manifeste (defaut : <source-root>/config/replay_corpus.toml)")
 	parcRootFlag := flag.String("parc-root", "", "racine du parc de developpement (defaut : auto-detecte par git)")
 	lockRootFlag := flag.String("lock-root", "", "racine du verrou de decodage partage (defaut : CacheRootDir du parc)")
@@ -66,20 +78,39 @@ func main() {
 	sortieJSON := flag.String("json", "", "fichier ou ecrire le rapport JSON complet (vide = aucun)")
 	flag.Parse()
 
-	if err := executer(*manifestPath, *parcRootFlag, *lockRootFlag, *sourceRootFlag, *workRootFlag, *keepWork, *sortieJSON); err != nil {
+	opts := executerOptions{
+		Reference: *reference, Base: *baseFlag, Strict: *strict,
+		ManifestPath: *manifestPath, ParcRootFlag: *parcRootFlag, LockRootFlag: *lockRootFlag,
+		SourceRootFlag: *sourceRootFlag, WorkRootFlag: *workRootFlag, KeepWork: *keepWork,
+		SortieJSON: *sortieJSON,
+	}
+	if err := executer(opts); err != nil {
 		slog.Error("replay-corpus-gate", "err", err)
 		os.Exit(2)
 	}
 }
 
+// executerOptions porte les options de la ligne de commande — un struct plutot qu'une
+// signature a onze parametres (CLAUDE.md n°5).
+type executerOptions struct {
+	Reference, Base                                                                    string
+	Strict, KeepWork                                                                   bool
+	ManifestPath, ParcRootFlag, LockRootFlag, SourceRootFlag, WorkRootFlag, SortieJSON string
+}
+
 // executer orchestre le gate de bout en bout : resolution des racines, chargement du
-// manifeste, preparation de la reference, une cuisson-comparaison par temoin, impression et
-// verdict.
-func executer(manifestPath, parcRootFlag, lockRootFlag, sourceRootFlag, workRootFlag string, keepWork bool, sortieJSON string) error {
-	sourceRoot, err := resolveSourceRoot(sourceRootFlag)
+// manifeste, compilation du ou des binaires de cuisson, une cuisson-comparaison par temoin,
+// impression et verdict.
+func executer(o executerOptions) error {
+	if o.Reference != "base" && o.Reference != "parc" {
+		return fmt.Errorf("--reference invalide %q : attendu \"base\" ou \"parc\"", o.Reference)
+	}
+
+	sourceRoot, err := resolveSourceRoot(o.SourceRootFlag)
 	if err != nil {
 		return fmt.Errorf("racine source : %w", err)
 	}
+	manifestPath := o.ManifestPath
 	if manifestPath == "" {
 		manifestPath = filepath.Join(sourceRoot, "config", "replay_corpus.toml")
 	}
@@ -91,11 +122,11 @@ func executer(manifestPath, parcRootFlag, lockRootFlag, sourceRootFlag, workRoot
 
 	// La resolution du parc a besoin du titre pour VALIDER l'auto-detection (presence de sa
 	// base partagee) — d'ou l'ordre : manifeste avant parc.
-	parcRoot, err := resolveParcRoot(parcRootFlag, titleSlug)
+	parcRoot, err := resolveParcRoot(o.ParcRootFlag, titleSlug)
 	if err != nil {
 		return fmt.Errorf("racine du parc : %w", err)
 	}
-	lockRoot := resolveLockRoot(lockRootFlag, parcRoot)
+	lockRoot := resolveLockRoot(o.LockRootFlag, parcRoot)
 
 	caps, err := games.LoadCapabilityMap(sourceRoot, titleSlug)
 	if err != nil {
@@ -106,96 +137,104 @@ func executer(manifestPath, parcRootFlag, lockRootFlag, sourceRootFlag, workRoot
 			titleSlug, games.CapFilmReplayArtifact)
 	}
 
-	workRoot, cleanup, err := prepareWorkRoot(workRootFlag, keepWork)
+	workRoot, cleanup, err := prepareWorkRoot(o.WorkRootFlag, o.KeepWork)
 	if err != nil {
 		return fmt.Errorf("racine de travail : %w", err)
 	}
 	defer cleanup()
 
 	slog.Info("replay-corpus-gate: racines resolues",
-		"source", sourceRoot, "parc", parcRoot, "verrou", lockRoot, "travail", workRoot,
-		"manifeste", manifestPath, "temoins", len(manifest.Temoins))
+		"reference", o.Reference, "source", sourceRoot, "parc", parcRoot, "verrou", lockRoot,
+		"travail", workRoot, "manifeste", manifestPath, "temoins", len(manifest.Temoins))
 
+	goAPIDirHead := filepath.Join(sourceRoot, "apps", "go-api")
 	if err := stageReferenceOnce(sourceRoot, workRoot, titleSlug); err != nil {
-		return fmt.Errorf("catalogues de reference : %w", err)
+		return fmt.Errorf("catalogues de reference (HEAD) : %w", err)
+	}
+	binHead := filepath.Join(workRoot, "bin", "replay-build-head"+exeSuffix())
+	if err := compilerReplayBuild(goAPIDirHead, filepath.Join(workRoot, "gocache-head"), binHead); err != nil {
+		return fmt.Errorf("compilation replay-build (HEAD) : %w", err)
+	}
+
+	ctx := temoinContexte{
+		ParcRoot: parcRoot, WorkRoot: workRoot, BinHead: binHead,
+		LockRoot: lockRoot, TitleSlug: titleSlug, Reference: o.Reference,
+	}
+	refLabel := "parc"
+
+	if o.Reference == "base" {
+		refLabel, err = preparerReferenceBase(sourceRoot, workRoot, titleSlug, o.Base, &ctx, &cleanup)
+		if err != nil {
+			return err
+		}
 	}
 
 	factsDir := filepath.Join(workRoot, "facts")
+	ctx.FactsDir = factsDir
 	ids := make([]string, len(manifest.Temoins))
 	for i, t := range manifest.Temoins {
 		ids[i] = t.ID
 	}
-	goAPIDir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("repertoire courant : %w", err)
-	}
-	if err := exportFacts(goAPIDir, parcRoot, titleSlug, factsDir, ids); err != nil {
+	if err := exportFacts(goAPIDirHead, parcRoot, titleSlug, factsDir, ids); err != nil {
 		return fmt.Errorf("export des faits : %w", err)
 	}
 
 	lignes := make([]ligneRapport, 0, len(manifest.Temoins))
 	for _, t := range manifest.Temoins {
-		lignes = append(lignes, traiterTemoin(t, parcRoot, workRoot, lockRoot, titleSlug, factsDir))
+		lignes = append(lignes, traiterTemoin(t, ctx))
 	}
 
-	imprimerTableau(os.Stdout, lignes)
+	imprimerTableau(os.Stdout, lignes, refLabel)
 	imprimerDetailPertes(os.Stdout, lignes)
-	if sortieJSON != "" {
-		if err := ecrireRapportJSON(sortieJSON, lignes); err != nil {
+	if o.SortieJSON != "" {
+		if err := ecrireRapportJSON(o.SortieJSON, lignes); err != nil {
 			return err
 		}
 	}
 
-	code := codeSortie(lignes)
-	if code != 0 {
+	pertesBloquent := o.Reference == "base" || o.Strict
+	if code := codeSortie(lignes, pertesBloquent); code != 0 {
 		os.Exit(code)
 	}
 	return nil
 }
 
-// traiterTemoin cuit et compare UN temoin ; ne rend JAMAIS d'erreur — un temoin absent ou en
-// echec produit une ligne qui le dit, pour que les autres temoins du manifeste soient traites
-// quand meme (CLAUDE.md : un rapport partiel muet vaut moins qu'un rapport complet nomme).
-func traiterTemoin(t Temoin, parcRoot, workRoot, lockRoot, titleSlug, factsDir string) ligneRapport {
-	base := ligneRapport{Temoin: t}
-
-	filmDir, err := stageFilm(parcRoot, workRoot, t.ID)
+// preparerReferenceBase resout la revision de base, cree son worktree detache (nettoye a la
+// fin de `executer` via le `cleanup` compose dans `*previousCleanup`), y compile replay-build,
+// et peuple les champs base de `ctx`. Rend le libelle de colonne a afficher.
+func preparerReferenceBase(sourceRoot, workRoot, titleSlug, baseFlag string, ctx *temoinContexte, previousCleanup *func()) (string, error) {
+	baseRev, err := resolveBaseRevision(baseFlag, sourceRoot)
 	if err != nil {
-		slog.Warn("replay-corpus-gate: temoin absent du parc local — ignore, pas un echec",
-			"temoin", t.ID, "famille", t.Famille, "err", err)
-		base.Absent, base.AbsentCause = true, err.Error()
-		return base
+		return "", fmt.Errorf("resolution de la base : %w", err)
 	}
-
-	factsPath := filepath.Join(factsDir, t.ID+".facts.json")
-	facts, err := replaybuild.ReadFactsFile(factsPath)
+	wtBase, cleanupWt, err := creerWorktreeBase(sourceRoot, workRoot, baseRev)
 	if err != nil {
-		base.Erreur = fmt.Errorf("faits du match : %w", err)
-		return base
+		return "", fmt.Errorf("worktree de base (%s) : %w", baseRev, err)
+	}
+	dejaLa := *previousCleanup
+	*previousCleanup = func() { cleanupWt(); dejaLa() }
+
+	workRootBase := filepath.Join(workRoot, "cuisson-base")
+	if err := stageReferenceOnce(wtBase.Chemin, workRootBase, titleSlug); err != nil {
+		return "", fmt.Errorf("catalogues de reference (base) : %w", err)
+	}
+	binBase := filepath.Join(workRoot, "bin", "replay-build-base"+exeSuffix())
+	if err := compilerReplayBuild(wtBase.GoAPIDir, filepath.Join(workRoot, "gocache-base"), binBase); err != nil {
+		return "", fmt.Errorf("compilation replay-build (base %s) : %w", baseRev, err)
 	}
 
-	refPath := referenceArtifactPath(parcRoot, titleSlug, facts.MatchID)
-	if _, statErr := os.Stat(refPath); statErr != nil {
-		slog.Warn("replay-corpus-gate: aucun artefact de reference au parc — temoin ignore",
-			"temoin", t.ID, "chemin", refPath, "err", statErr)
-		base.Absent, base.AbsentCause = true, "aucun artefact de reference au parc : "+statErr.Error()
-		return base
-	}
+	ctx.WorkRootBase, ctx.BinBase = workRootBase, binBase
+	slog.Info("replay-corpus-gate: base resolue", "revision", baseRev, "worktree", wtBase.Chemin)
+	return "base(" + baseRev + ")", nil
+}
 
-	cuisson, err := bakeTemoin(workRoot, lockRoot, titleSlug, facts, filmDir)
-	if err != nil {
-		base.Erreur = fmt.Errorf("cuisson : %w", err)
-		return base
+// exeSuffix rend ".exe" sur Windows, "" ailleurs — le seul endroit qui le sait, pour ne pas
+// le repeter aux deux sites qui nomment un binaire compile a la volee.
+func exeSuffix() string {
+	if runtime.GOOS == "windows" {
+		return ".exe"
 	}
-	base.Duree = cuisson.Duree
-
-	rap, err := compareTemoin(refPath, cuisson.Sortie.ArtifactPath)
-	if err != nil {
-		base.Erreur = fmt.Errorf("comparaison : %w", err)
-		return base
-	}
-	base.SchemaParc, base.SchemaHEAD, base.Gains, base.Pertes, base.PertesDetail = bilanDepuisRapport(rap)
-	return base
+	return ""
 }
 
 // ecrireRapportJSON depose le detail des lignes, pour un consommateur automatique (CI, un
@@ -209,22 +248,22 @@ func ecrireRapportJSON(path string, lignes []ligneRapport) error {
 		Nouveau  string `json:"nouveau,omitempty"`
 	}
 	type ligneJSON struct {
-		ID         string       `json:"id"`
-		Famille    string       `json:"famille"`
-		Absent     bool         `json:"absent,omitempty"`
-		Erreur     string       `json:"erreur,omitempty"`
-		SchemaParc int          `json:"schemaParc,omitempty"`
-		SchemaHEAD int          `json:"schemaHead,omitempty"`
-		Gains      int          `json:"gains"`
-		Pertes     int          `json:"pertes"`
-		DureeMS    int64        `json:"dureeMs"`
-		Detail     []detailJSON `json:"pertesDetail,omitempty"`
+		ID              string       `json:"id"`
+		Famille         string       `json:"famille"`
+		Absent          bool         `json:"absent,omitempty"`
+		Erreur          string       `json:"erreur,omitempty"`
+		SchemaReference int          `json:"schemaReference,omitempty"`
+		SchemaHEAD      int          `json:"schemaHead,omitempty"`
+		Gains           int          `json:"gains"`
+		Pertes          int          `json:"pertes"`
+		DureeMS         int64        `json:"dureeMs"`
+		Detail          []detailJSON `json:"pertesDetail,omitempty"`
 	}
 	out := make([]ligneJSON, len(lignes))
 	for i, l := range lignes {
 		lj := ligneJSON{
 			ID: l.Temoin.ID, Famille: l.Temoin.Famille, Absent: l.Absent,
-			SchemaParc: l.SchemaParc, SchemaHEAD: l.SchemaHEAD,
+			SchemaReference: l.SchemaReference, SchemaHEAD: l.SchemaHEAD,
 			Gains: l.Gains, Pertes: l.Pertes, DureeMS: l.Duree.Milliseconds(),
 		}
 		if l.Erreur != nil {
