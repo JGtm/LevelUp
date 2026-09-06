@@ -273,6 +273,30 @@ golangci-lint run --new-from-merge-base=origin/main ./...         # 0 issues
 par rien. Le contrat OpenAPI declare `schemaVersion` sans `enum`/`const`/`default` : un bump ne le
 deplace pas ; aucun champ n'est ajoute au document.
 
+## 8 bis. Un rouge de CI REPARE, apporte par le merge des corrections DUREES-R1
+
+Le job « Go Coverage + Baseline non-regression » (`./...` complet, seul endroit ou la CI
+execute `internal/service/replayview`) est sorti ROUGE apres le merge de `feat/v2-durees` :
+**25 tests en echec, tous dans ce paquet, une seule cause**.
+
+```
+--- FAIL: TestChaqueChampStockeAUneDecision
+    FlagCarriesCoverage.AmbiguousSlot est publie par l artefact et ABSENT du document servi,
+    sans entree dans champsNonServis — soit le contrat le porte, soit la decision s ecrit
+```
+
+Le correctif C1 de DUREES-R1 ajoute le compteur `AmbiguousSlot` a
+`replay.FlagCarriesCoverage` (les slots dont la vie anonyme est refusee au repli) sans le
+miroiter dans le document SERVI. Le garde-rail de parite fait exactement son travail : un
+compteur de couverture qui n atteint pas le client sortirait du contrat par omission.
+
+**Repare ici** (directive « tout rouge se repare, meme prealable ») et par le cote QUI SERT,
+pas par une exemption : les vingt-huit autres compteurs de ce bloc sont servis, celui-ci n a
+aucune raison de ne pas l etre. Trois pas, sans decision de produit :
+`replaydoc.FlagCarriesCoverage` gagne le champ a la MEME place, `toFlagCarriesCoverage` le
+recopie, et `openapi.yaml` puis `generated.ts` sont REGENERES (jamais edites a la main) —
+diff : 4 lignes au contrat, 2 aux types web. Paquet vert, contrat vert.
+
 ## 9. Decouvertes, notees et NON traitees
 
 1. **`64e8adfa` garde 7 portages sur leur propre drapeau (13 avant).** Le film a **2 manches** et

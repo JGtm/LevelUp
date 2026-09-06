@@ -19,6 +19,7 @@ type FlagCarriesCoverage struct {
 	NoBridge              int  `json:"noBridge"`
 	NoTrack               int  `json:"noTrack"`
 	OutOfWindow           int  `json:"outOfWindow"`
+	AmbiguousSlot         int  `json:"ambiguousSlot"`
 	MarkerObserved        int  `json:"markerObserved"`
 	MarkerConfirmed       int  `json:"markerConfirmed"`
 	OpenObserved          int  `json:"openObserved"`
