@@ -493,3 +493,314 @@ go test ./internal/sync/ -run 'ART|AppendOnly|Mutation|Allowlist|Delete|Bulk'
   prendre en charge les 106 artefacts du cache local, cinq par cycle, jusqu'à convergence (~21
   cycles). Chacun ouvre un writer shared court et écrit jusqu'à ~900 positions. C'est borné et
   voulu, mais c'est un régime transitoire qu'il vaut mieux avoir vu venir.
+
+## Corrections après revue (A-R1, 2026-09-06)
+
+> Verdict de revue : sept constats recevables (C1, C2 en P1 ; C3 à C7 en P2), douze mutations
+> jouées, vingt et une conditions vérifiées qui tiennent. Chaque correction ci-dessous est
+> prouvée par la mutation ou le test que le verdict prescrivait : **rouge d'abord, vert
+> ensuite**, la mesure du rouge est citée.
+
+### [x] Correction 1 (C1, P1) — la marque de dérivation ne se pose que sur ce qui a été écrit
+
+**Vérification sur pièces.** `derivations.go:132` appelait `marquerDerivations` en fin de passe,
+sans condition, et le commentaire de la fonction ne justifiait que les cas « rien à écrire »
+(match hors Assaut, document sans `t0FilmMs`, titre sans capability) — jamais le cas « writer
+indisponible ». `registry_build_queue.go:250-252` documentait pourtant l'inverse (« le rattrapage
+les rejouera »).
+
+**Le défaut, mesuré.** Test jetable du verdict rejoué en test permanent : `Deriver` avec
+`AcquireWriter == nil`, puis avec un `AcquireWriter` en erreur → les quatre projections
+journalisent, incrémentent leurs compteurs `*Echecs`, écrivent **zéro ligne**, et la marque se
+pose quand même. `DerivationsUpToDate` rend alors `true` **à jamais** et `candidatsDerivations`
+exclut ce match définitivement.
+
+**Fait.** `bilanDerivations` (derivations.go) enregistre PAR MATCH ce que les familles n'ont pas
+pu écrire, et distingue trois états :
+
+| État | Conduite |
+|---|---|
+| writer indisponible (nil, ou acquisition en erreur) | **aucune marque sur tout le lot**, WARN avec le compte d'échecs |
+| échec d'un match (capabilities illisibles, INSERT refusé, état du T0 illisible) | **ce match seul** n'est pas marqué, WARN nominatif |
+| rien à écrire (titre sans clé `film.*`, document sans `t0FilmMs` ni trajectoire) | dérivation JOUÉE, **marquée** — la rejouer serait du travail pur perte |
+
+Les quatre familles alimentent le bilan (`echecT0`, `echecUsage`, `echecBombe`,
+`echecPositions` pour l'indisponibilité ; `b.echec(matchID)` pour un échec unitaire). Le rejeu
+d'un match non marqué reste sûr : trois familles sont append-only (une passe neuve supersède) et
+le report du T0 porte sa garde « déjà à la même valeur ».
+
+**Preuve** (`derivations_marque_test.go`, rouge avant / vert après) :
+
+```
+go test ./internal/sync/replayartifacts/ -run TestDeriver_
+  AVANT -> FAIL  aucun_writer_cable    : marque posee sans ecriture (constat C1)
+           FAIL  acquisition_en_erreur : marque posee sans ecriture (constat C1)
+  APRES -> ok  levelup/go-api/internal/sync/replayartifacts  0.150s
+```
+
+Trois tests : les deux sous-cas du writer indisponible, une famille en échec (capabilities
+illisibles) qui ne marque pas SON match, et la contre-épreuve « rien à écrire se marque quand
+même » — sans elle, le rattrapage rejouerait ces matchs à chaque cycle indéfiniment.
+
+### [x] Correction 2 (C2, P1) — le rattrapage tourne même quand il n'y a rien à cuire
+
+**Vérification sur pièces.** `artifacts.go` : `if len(work) == 0 { … return }` précédait bien les
+DEUX seuls appels à `rattraperDerivations` (chemin ouvrier après `enqueueAll`, chemin local après
+`buildAll`).
+
+**Le défaut, mesuré.** C'est **exactement l'état converge** que le constat A2 vise : une instance
+dont les artefacts ont été cuits AVANT ce lot, donc sans marque. Test jetable du verdict rejoué
+en test permanent (2 matchs au registre, artefact posé pour chacun, aucune marque) :
+
+```
+travail de cuisson selectionne = 0
+candidats a la derivation      = 2
+marques posees par Run         = 0 / 2
+```
+
+`JaugeDerivationsRetard` n'était pas publiée non plus : « tout est dérivé » et « le rattrapage ne
+tourne pas » redevenaient indistinguables — l'ambiguïté exacte que la jauge dit fermer.
+
+**Fait.** `Run` pose `defer rattraperDerivations(ctx, d)` juste après la garde `armee`, et délègue
+la cuisson à `cuireLeCycle`. Le `defer` n'est pas une commodité : c'est ce qui rend le rattrapage
+**total sur toutes les sorties** (sélection vide, titre sans catalogue de bornes, chemin ouvrier,
+chemin local) au lieu de deux points d'appel qu'une troisième sortie contournerait à nouveau. Les
+deux appels internes disparaissent — un seul site.
+
+**Preuve** (`backlog_integration_test.go`, `TestRun_SelectionDeCuissonVide_RattrapeQuandMeme`) :
+
+```
+go test -tags=integration -p 1 ./internal/sync/replayartifacts/ -run TestRun_SelectionDeCuissonVide
+  AVANT -> FAIL  cuittout1 : aucune marque posee par Run (constat C2)
+                 cuittout2 : aucune marque posee par Run (constat C2)
+  APRES -> ok  levelup/go-api/internal/sync/replayartifacts  10.269s
+```
+
+Le test passe **par `Run`**, là où les tests du lot appelaient `candidatsDerivations` directement
+et ne pouvaient donc pas voir le trou. Il vérifie aussi que rien n'est mis en file : le rattrapage
+ne cuit pas.
+
+### [x] Correction 3 (C3, P2) — le verrou du catalogue crée son dossier et ne confond plus ENOENT
+
+**Vérification sur pièces.** `mapcatalog/store.go` `prendreVerrou` ouvrait `<overlay>.lock` en
+`O_CREATE|O_EXCL` sans `MkdirAll`. Or l'overlay vit sous `reference/generated/`, ignoré par git
+(`.gitignore:152`) : il n'existe pas sur un checkout neuf ni sur une instance fraîchement
+déployée — l'état NOMINAL du premier rattrapage.
+
+**Le défaut, mesuré** (mutation `j` du verdict, rejouée avant correction) :
+
+```
+go test ./internal/mapcatalog/ -run 'Verrou|DossierAbsent'
+  -> WARN mapcatalog: verrou d'ecriture tenu trop longtemps — passage force  attente=2s  (x5)
+  -> FAIL 1 carte(s) conservee(s) sur 8
+     + 3 renames en « Acces refuse »
+```
+
+Deux secondes d'attente inutile, un WARN qui **ment sur la cause**, puis une écriture sans
+exclusion mutuelle — précisément le trou que `TestAddOverlayEntryConcurrentNePerdPasDEntree`
+prétend fermer, sauf qu'il travaille sur un dossier déjà créé.
+
+**Fait.** `MkdirAll` du dossier avant le verrou ; un verrou tenu est désormais un `EEXIST` **et
+rien d'autre** — toute autre erreur (droits, dossier disparu) passe en force IMMÉDIATEMENT avec
+un journal qui nomme l'erreur réelle, au lieu d'attendre deux secondes pour se tromper de
+diagnostic.
+
+**Preuve** (`internal/mapcatalog/verrou_test.go`, deux tests) : le verrou EXISTE réellement sur
+dossier absent (c'est la différence entre « posé » et « passage forcé ») et se prend en quelques
+millisecondes ; 8 rattrapages simultanés sur dossier absent conservent 8 cartes. Mesures après
+correction :
+
+```
+--- PASS: TestAddOverlayEntryCreeLOverlayAbsent (0.01s)        [2,06 s avant]
+--- PASS: TestPrendreVerrouCreeLeDossierEtNAttendPas (0.00s)
+--- PASS: TestAddOverlayEntryConcurrentDossierAbsentNePerdRien (0.19s)   8/8 cartes
+ok  levelup/go-api/internal/mapcatalog  0.700s   — aucun WARN dans la sortie
+```
+
+### [x] Correction 4 (C4, P2) — la conversion append-only des positions a enfin un garde-rail
+
+**Vérification sur pièces.** `steps_shared_player_positions_appendonly.go` n'avait aucun fichier
+de test, alors que toutes les autres conversions append-only en ont un
+(`steps_shared_bomb_stats_test.go`, `steps_player_append_only_csr_snapshots_test.go`,
+`games/halo_infinite/migrations/shared_kill_positions_appendonly_test.go`).
+
+**Fait.** `steps_shared_player_positions_appendonly_test.go`, trois tests sur DuckDB. La table de
+départ est créée par la **migration réelle** — `shared_match_player_positions_v1`, résolue par son
+nom dans le registre (`All()`) : aucune DDL recopiée, qui aurait dérivé le jour où la vraie aurait
+bougé (leçon du dépôt : « DDL de test recopiées = dérive indétectable »). Base sur fichier
+temporaire (`openTmpDB`, la convention des autres tests de migration) et non `:memory:` :
+`database/sql` gère un POOL et une base DuckDB en mémoire est propre à chaque connexion — le CTAS
+et la relecture pourraient tomber sur deux bases différentes.
+
+Les trois propriétés : trois lignes legacy écrites à trois instants **différents** survivent en
+UNE passe et sont les trois servies par la vue ; le DDL est idempotent ; une passe neuve supersède
+toute la génération legacy sans effacer une ligne (5 brutes, 2 servies).
+
+**Preuve par la mutation du verdict** (mutation `i`, jouée puis annulée) :
+
+```
+SyntheticCols: `'legacy-diag' AS positions_pass`  ->  `CAST(written_at AS VARCHAR) AS positions_pass`
+go test ./internal/migration/ -run TestPositionsAppendOnly
+  -> FAIL  1 ligne(s) servie(s) par match_player_positions_latest, attendu 3
+     FAIL  1 ligne(s) servie(s) apres deux passages, attendu 3
+(retour)
+  -> ok  levelup/go-api/internal/migration  49.274s
+```
+
+C'est la mutation qui laissait **toute la suite verte** avant ce test, pendant qu'en production la
+carte de chaleur de chaque match déjà rempli se serait réduite à un point.
+
+### [x] Correction 5 (C5, P2) — l'équipe des positions projetées, jointe depuis la base
+
+**Vérification sur pièces — et elle a réfuté l'hypothèse de la revue.** Le verdict suggérait que
+« le roster / l'identité de slot du document donne l'équipe de chaque trajectoire ». Ce n'est pas
+le cas : `analysis/replay/document.go:1172-1175` documente `Track.Team` comme valant -1 parce que
+**l'équipe n'est pas dans le film**, et `RosterEntry.Name` le redit (« ce qu'il ne donne PAS, et
+que seule la base porte : l'équipe »). `build.go:502` pose `Team: -1` sans condition. Il n'y a
+donc **aucun champ d'équipe à lire dans l'artefact** — consigne respectée : ne pas l'inventer.
+
+**Les deux moitiés du constat, traitées :**
+
+1. **La doc était inversée** (anti-pattern n°9). L'en-tête affirmait que -1 était « la même valeur
+   non attribuée que l'ancien décodeur produisait ». Faux : `analysis/positions/positions.go:74`
+   appelait `assignTeamsBestEffort`, qui attribue 0/1 dès qu'un écart franc sépare deux groupes
+   sur l'axe X (`positions/team.go:19-45`) — un **devinement spatial**, jamais l'équipe réelle,
+   mais pas -1 non plus. L'en-tête dit désormais ce qui est, et nomme la mesure.
+2. **Le filtre serait devenu du code mort.** `MatchPositionsHeatmap.tsx:119-133,148-158` ne rend le
+   filtre Global / Équipe A / Équipe B que si au moins une position porte `team != -1`.
+
+**Fait.** L'équipe est **jointe**, par le xuid que le document nomme sur chaque vie, contre
+`match_participants` — la même jointure que celle que le client fait déjà. Le lecteur est
+`port.ReplayFactsRepo`, qui EST le lecteur de « ce que la base sait du match » pour le rejeu,
+camps compris (règle 14 : réutiliser l'existant). La lecture se fait sur le handle **writer**,
+dans le même segment court — même règle et même raison que le report du coup d'envoi (t0film.go).
+
+La projection reste **pure et hors writer** : `projeterPositions` emporte le porteur de chaque
+ligne (`passePositionsPrete.porteurs`, jamais écrit en base — la table est match-level par
+schéma), et `appliquerEquipes` fait la jointure ensuite. L'équipe publiée par le film **prime**
+quand elle existe ; `EquipeInconnue` (-1) reste pour une vie anonyme ou un xuid hors participants.
+
+**Preuves.** Trois tests unitaires (`TestPoserEquipes_DeuxSlotsDeuxCamps` : deux slots, deux camps
+→ lignes à 0 et 1, anonyme et xuid inconnu restent à -1 ; `…EquipeDuDocumentPrime` ; la parité
+porteurs/lignes) plus un test d'intégration de bout en bout sur base migrée. Mutation jouée :
+
+```
+situees := appliquerEquipes(ctx, db, prets)   ->   debranche
+go test -tags=integration -p 1 ./internal/sync/replayartifacts/ -run TestPersisterPositions_EquipeJointeDepuisLaBase
+  -> FAIL  repartition = map[-1:3], attendue map[-1:1 0:1 1:1]
+(retour) -> PASS (2.44s)
+```
+
+### [x] Correction 6 (C6, P2) — les marques ne sont plus prises pour des artefacts
+
+**Vérification sur pièces.** `<short8>.derived.json` est déposée dans `ReplayArtifactsDir`, à côté
+de `<short8>.json`, et finit par `.json` : les deux consommateurs qui filtrent sur ce suffixe la
+comptaient comme un artefact.
+
+| Consommateur | Effet mesuré |
+|---|---|
+| `scheduler/replay_purge_cron.go:152-160` | `short = "<short8>.derived"`, absent du registre → `unknown++` : une ligne INFO à CHAQUE passage dès qu'une dérivation existe, et une marque qui SURVIT à la purge de son artefact |
+| `cmd/backfill_t0_film/artefacts.go:103` | chaque marque tombe en « sans match_id » : jusqu'à 2× le corpus en entrées fantômes, alors que la propriété AFFICHÉE du bilan est « chaque artefact tombe dans EXACTEMENT une catégorie — c'est ce qui rend le total vérifiable » |
+
+**Fait.** Un prédicat **commun** — `replaybuild.EstMarqueDerivations(nom)`, à côté du suffixe
+désormais exporté — plutôt qu'un littéral recopié dans chaque appelant (règle des ≤ 2 copies : ce
+serait le troisième exemplaire, et la première évolution du suffixe en aurait laissé un en
+arrière). Le cron ignore les marques ET supprime celle de l'artefact qu'il purge ; celles des
+artefacts conservés restent, sinon le rattrapage rejouerait leurs dérivations.
+
+**Preuve par mutation** (les deux gardes débranchées, puis rétablies) :
+
+```
+go test ./cmd/backfill_t0_film/ ./internal/scheduler/ -run 'Marques|Scanner'
+  -> FAIL  4 verdict(s) [aaaa0001.derived.json aaaa0001.json bbbb0002.derived.json bbbb0002.json], attendu 2
+  -> FAIL  purge = (purged 1, kept 1, unknown 4), attendu (1, 1, 1)
+           + la marque de l'artefact purge a survecu
+(retour)
+  -> ok  levelup/go-api/cmd/backfill_t0_film  1.192s
+     ok  levelup/go-api/internal/scheduler    1.855s
+```
+
+### [x] Correction 7 (C7, P2) — une seule acquisition du writer pour les quatre familles
+
+**Vérification sur pièces.** Les quatre sites d'acquisition (`t0film.go:108`, `usage.go:118`,
+`bombstats.go:150`, `positions.go:133`), `acquireWriterTimeout = 60 s`
+(`registry_actions.go:49`), `WriteTimeout: 30 * time.Second` (`cmd/server/main.go:1457`) —
+confirmés à la ligne près. Le commentaire de `deriverArtefactRange` justifiait le synchrone par
+« un segment writer COURT, relâché aussitôt » : cela décrit UNE acquisition, pas quatre en file
+derrière un lease.
+
+**Fait, deux pièces.**
+
+1. **`writerUnique`** (derivations.go) mémoïse la source pour la passe : au plus UNE acquisition,
+   un seul retrait. La fonction de retrait rendue aux familles est un **no-op** — sinon la
+   première à rendre la main relâcherait le lease sous les pieds des trois suivantes ; le vrai
+   retrait est posé en `defer` par `Deriver`. L'acquisition reste **paresseuse** : une passe sans
+   rien à écrire n'ouvre aucun segment (propriété qu'un regroupement naïf aurait perdue).
+   L'erreur est mémoïsée elle aussi — pas de réessai par les trois familles suivantes.
+2. **`acquireWriterDepot` = 8 s** remplace `acquireWriterTimeout` (60 s) **sur le seul chemin du
+   dépôt d'ouvrier**. Le temps de réponse du dépôt est donc majoré par 8 s plus les écritures d'UN
+   match, très en dessous des 30 s du serveur.
+
+**Le choix du synchrone borné plutôt que de l'asynchrone après réponse est documenté** sur
+`deriverArtefactRange` : une goroutine détachée demanderait un `context.WithoutCancel` (le
+contexte de la requête meurt avec elle), une borne sur le nombre de dérivations en vol et un arrêt
+propre au shutdown — trois états à surveiller pour la même garantie de réponse. L'abandon sur
+délai est **sûr par la correction 1** : la marque n'est pas posée, donc le rattrapage rejoue.
+
+**Preuves.**
+
+```
+go test ./internal/sync/replayartifacts/ -run TestDeriver_UnSeulSegmentWriterPourLesQuatreFamilles
+  AVANT -> FAIL  writer acquis 3 fois pour UNE passe de derivations, attendu 1
+  APRES -> PASS
+```
+
+Plus : « rien à écrire » → 0 acquisition (la propriété à ne pas perdre) ; et sur base réelle,
+`TestDeriver_UnSegmentAcquisEtRelacheUneFois` — 1 acquisition, 1 retrait, et les écritures des
+trois familles vérifiées EN BASE (un `release` prématuré les aurait fait échouer en silence).
+
+Le budget HTTP a son propre garde-rail, `build_queue_writer_budget_test.go` : il lit le
+`WriteTimeout` dans `cmd/server/main.go` (les deux paquets ne peuvent pas s'importer) et exige que
+`acquireWriterDepot` en laisse la moitié pour les écritures et la réponse.
+
+```
+const acquireWriterDepot = 8 * time.Second  ->  20 * time.Second
+  -> FAIL  acquireWriterDepot = 20s pour un WriteTimeout serveur de 30s (constat C7)
+(retour) -> PASS
+```
+
+## Gates des corrections (tous joués en avant-plan, dans ce worktree)
+
+`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-faits`,
+`GOLANGCI_LINT_CACHE=/c/Users/Guillaume/AppData/Local/golangci-v2-faits`, `CGO_ENABLED=1`, depuis
+`apps/go-api`.
+
+| # | Commande | Dernière ligne |
+|---|---|---|
+| 1 | `go build ./...` | (aucune sortie) — EXIT=0 |
+| 2 | `go test -count=1 ./internal/sync/... ./internal/replaybuild/... ./internal/mapcatalog/... ./internal/migration/... ./internal/persist/... ./internal/platform/duckdb/... ./internal/api/wire/... ./internal/scheduler/... ./cmd/backfill_t0_film/...` | `ok levelup/go-api/cmd/backfill_t0_film 0.262s` — EXIT=0 |
+| 3 | `go test -tags=integration -p 1 -count=1 ./internal/sync/... ./internal/persist/... ./internal/migration/... ./internal/api/...` | `ok levelup/go-api/internal/api/wire 18.698s` — EXIT=0 |
+| 4 | `go test ./internal/sync/ -run 'ART\|AppendOnly\|Mutation\|Allowlist\|Delete\|Bulk' -v` | `ok levelup/go-api/internal/sync 55.970s` — 11 tests PASS, 0 SKIP |
+| 5 | `golangci-lint run --timeout 10m --new-from-merge-base=origin/main ./...` | `0 issues.` — EXIT=0 |
+
+Allowlists anti-ART revérifiées **vides** après corrections : `allowlistArtPatterns`,
+`allowlistRawDelete`, `allowlistMediaMutation`. Aucun test skippé, aucune variable de film posée,
+aucune cuisson d'artefact.
+
+## Découvertes de la passe de corrections (hors périmètre, NON traitées)
+
+- **D-8** — Le lint global émet un avertissement permanent : « Found unknown linters in //nolint
+  directives: gosec — limit/placeholders maîtrisés, plr0913 — coordinator function ». Deux
+  directives préexistantes écrivent `//nolint:gosec — raison` avec un tiret cadratin au lieu du
+  séparateur `//` : `internal/api/wire/registry_weapon_coverage.go:109` et
+  `internal/platform/duckdb/explorer_repo.go:579`. Le linter lit alors la raison comme un nom de
+  linter, donc **ces deux `nolint` ne suppriment rien** — elles sont décoratives. Hors périmètre
+  des sept corrections ; correction attendue triviale (remplacer `—` par `//`).
+- **D-9** — `golangci-lint` laisse un verrou `%TEMP%\golangci-lint.lock` qui survit à l'arrêt du
+  processus : deux invocations rapprochées se refusent l'une l'autre (« parallel golangci-lint is
+  running »). Rencontré une fois pendant cette passe ; contourné en attendant la fin du processus.
+  À signaler si le gate CI le rencontre.
+- **D-10** — La table locale `match_player_positions` est toujours **vide** (0 ligne) : la
+  jointure d'équipe de la correction 5 n'a donc aucun effet rétroactif observable localement. Elle
+  se remplira au fil de l'eau, et le rattrapage des dérivés (correction 2) prendra les 106
+  artefacts du cache en ~21 cycles.

@@ -95492,3 +95492,54 @@ la cadence des positions (`GrainPositionsMS`) est le seul parametre produit tran
 l executeur, reversible d une constante ; le rattrapage des derives traitera les 106 artefacts
 locaux en ~21 cycles. Risque d integration signale : A-I a touche
 `internal/domain/title/registry.go`, que le lot C touchera aussi.
+
+## [2026-09-06] Lot A (v2 rejeu/film) — corrections apres revue adversariale A-R1 — Complete
+
+**Decision technique principale.** Sept constats de la revue A-R1 traites, chacun prouve par la
+mutation ou le test que le verdict prescrivait, rouge d abord. Les deux P1 se tenaient : la
+marque de derivation se posait meme quand RIEN n avait ete ecrit (writer nil ou acquisition en
+erreur), ce qui excluait le match du rattrapage A JAMAIS ; et `Run` sortait sur « rien a cuire »
+AVANT les deux seuls appels au rattrapage, c est-a-dire exactement dans l etat converge que le
+rattrapage vise. Les deux ensemble annulaient la promesse du constat A2.
+
+(C1) `bilanDerivations` enregistre PAR MATCH ce que les familles n ont pas pu ecrire, et distingue
+trois etats : writer indisponible (aucune marque du lot), echec d un match (ce match seul), rien a
+ecrire (derivation JOUEE, marquee). (C2) `Run` pose `defer rattraperDerivations` apres la garde
+`armee` et delegue a `cuireLeCycle` — le `defer` rend le rattrapage TOTAL sur toutes les sorties,
+au lieu de deux points d appel qu une troisieme sortie contournerait a nouveau. (C3) le verrou du
+catalogue cree son dossier avant de se poser, et un verrou tenu est desormais un EEXIST et rien d
+autre. (C4) la conversion append-only des positions a enfin un test, sur la migration REELLE
+resolue par son nom dans le registre. (C5) l equipe des positions est JOINTE depuis
+`match_participants` par le xuid du porteur. (C6) un predicat commun `EstMarqueDerivations` sort
+les marques des deux consommateurs qui balaient `*.json`. (C7) `writerUnique` memoise l acquisition
+— une par passe, paresseuse, relachee une fois — et `acquireWriterDepot` (8 s) borne le chemin HTTP
+sous le WriteTimeout du serveur.
+
+**Point de methode, C5.** L hypothese du verdict etait que l artefact porte l equipe (« le roster /
+l identite de slot du document la donne »). Verification sur pieces : FAUX. `Track.Team` est
+documente « -1 : l equipe n est pas dans le film » et `RosterEntry` le redit (« ce qu il ne donne
+PAS, et que seule la base porte : l equipe »). Consigne « ne l invente pas » respectee : l equipe
+vient de la base, par la meme jointure que celle que le client fait deja, via `port.ReplayFactsRepo`
+qui EST le lecteur de ce que la base sait du match pour le rejeu. La doc inversee, elle, etait bien
+la : l ancien decodeur appelait `assignTeamsBestEffort`, un devinement SPATIAL sur l axe X, pas -1.
+
+**Resultats observes.** Mesures du rouge, toutes rejouees : marque posee sans ecriture dans les
+DEUX sous-cas du writer ; 0 marque sur 2 posees par `Run` a selection vide ; 1 carte conservee sur
+8 pour 8 ecrivains concurrents sur dossier absent, plus trois renames en « Acces refuse », apres
+2,06 s d attente et un WARN qui mentait ; `SyntheticCols` mute -> 1 ligne servie par
+`match_player_positions_latest` au lieu de 3 (la mutation qui laissait TOUTE la suite verte) ;
+repartition des equipes map[-1:3] au lieu de map[-1:1 0:1 1:1] ; 4 verdicts au lieu de 2 et
+`unknown 4` au lieu de 1 pour les marques ; 3 acquisitions du writer pour UNE passe. Toutes vertes
+apres correction. `TestAddOverlayEntryCreeLOverlayAbsent` passe de 2,06 s a 0,01 s, sans WARN.
+Gates joues en avant-plan : build, tests unitaires des neuf familles de paquets, integration
+`-p 1` sur sync/persist/migration/api, les 11 gardes anti-ART (0 SKIP, allowlists revérifiées
+vides), ratchet `golangci-lint --new-from-merge-base=origin/main ./...` a 0 issue.
+
+**Conclusion / prochaine etape.** Sept points statues `[x]`, section « Corrections apres revue »
+au journal `.ai/V7.5/v2/LOT_A.md` avec les mesures du rouge et les gates. Sept commits
+`v2(A.fix-1..7)` sur `feat/v2-faits`, pousses. Trois decouvertes nouvelles consignees et NON
+traitees : deux directives `//nolint:gosec —` preexistantes (tiret cadratin au lieu de `//`) qui
+ne suppriment rien et font avertir le lint global ; un verrou `%TEMP%\golangci-lint.lock` qui
+survit au processus et refuse deux invocations rapprochees ; la table `match_player_positions`
+locale toujours vide, donc aucun effet retroactif observable de la jointure d equipe. Reste au
+superviseur : ronde 2 sur ces corrections, puis integration dans `feat/v75`.
