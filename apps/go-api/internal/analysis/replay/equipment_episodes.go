@@ -99,9 +99,16 @@ type EquipmentCoverage struct {
 // UN SLOT PORTE TOUTES SES VIES, PAS SEULEMENT LA DERNIÈRE. Depuis le schéma 36 (« une
 // track = une vie ») un slot recyclé publie plusieurs pistes ; n'en garder qu'une bornait
 // les épisodes des vies antérieures hors de leur fenêtre, et `close` les jetait
-// (`t1 < t0`). Mesure du balayage du parc : `82f29378` et `13d92593` perdaient leur
-// UNIQUE épisode de surbouclier, `084a804d` 2 épisodes de camouflage sur 21.
+// (`t1 < t0`). Mesure du balayage du parc : `82f29378` perdait son UNIQUE épisode de
+// surbouclier — il est revenu —, `084a804d` 2 épisodes de camouflage sur 21.
 // Correctif du 2026-09-06.
+//
+// `13d92593` PERDAIT AUSSI SON ÉPISODE DE SURBOUCLIER, ET IL NE REVIENT PAS : ce n'est pas
+// le même défaut. Il durait zéro image (t0 = t1 = 3603) et s'ancrait sur le seul point de
+// trajectoire qui plaçait le joueur à 267 u de sa position précédente — celui-là même qui
+// donnait au document des bornes de scène fausses, et que l'assainissement a supprimé.
+// Cuisson de contrôle : 0 épisode, document identique à la base hors `schemaVersion`.
+// (Constat C4 de la revue REG-R1 : ce commentaire le citait parmi les films restitués.)
 func trackFrameWindows(tracks []Track) map[uint32][][2]int {
 	out := make(map[uint32][][2]int, len(tracks))
 	for _, t := range tracks {
@@ -299,25 +306,39 @@ func buildOvershieldEpisodes(
 	}
 }
 
-// equipmentCoverage compte, par famille, les vies porteuses et les épisodes. Les
-// ensembles de slots sont des sets struct{} : ce ne sont PAS des ensembles de slots
-// publiés (published_tracks.go reste le seul constructeur de ceux-là), ce sont les vies
-// PORTEUSES d'épisodes.
+// equipmentCoverage compte, par famille, les VIES porteuses et les épisodes. Ce ne sont
+// PAS des ensembles de slots publiés (published_tracks.go reste le seul constructeur de
+// ceux-là), ce sont les vies PORTEUSES d'épisodes.
+//
+// LA CLÉ EST (slot, image de début de la vie), PAS LE SLOT. Le compteur indexait par slot
+// sous ce commentaire-ci : tant que seuls les épisodes de la DERNIÈRE vie survivaient, un
+// slot valait une vie et l'écart ne se voyait pas ; le correctif du 2026-09-06, qui publie
+// les épisodes de toutes les vies, le rend visible — deux épisodes d'un même slot recyclé
+// comptaient pour une seule vie. C'est le défaut symétrique de celui corrigé le même jour
+// pour `coverage.grapple.pullLives` (constat C2 de la revue REG-R1).
 func equipmentCoverage(eps []EquipmentEpisode, tracks []Track) *EquipmentCoverage {
 	cov := &EquipmentCoverage{TracksTotal: len(tracks)}
-	camoSlots := map[uint32]struct{}{}
-	osSlots := map[uint32]struct{}{}
+	windows := trackFrameWindows(tracks)
+	camoLives := map[[2]int]struct{}{}
+	osLives := map[[2]int]struct{}{}
 	for _, e := range eps {
+		// À défaut de fenêtre (épisode d'un slot sans piste publiée — impossible par
+		// construction, l'assembleur les écarte), le slot lui-même sert de clé : mieux vaut
+		// compter une vie de trop que perdre l'épisode dans le dénominateur.
+		cle := [2]int{int(e.Slot), -1}
+		if w, ok := windowFor(windows[e.Slot], e.T0, e.T1); ok {
+			cle[1] = w[0]
+		}
 		switch e.Fam {
 		case EquipFamilyCamo:
 			cov.CamoEpisodes++
-			camoSlots[e.Slot] = struct{}{}
+			camoLives[cle] = struct{}{}
 		case EquipFamilyOvershield:
 			cov.OvershieldEpisodes++
-			osSlots[e.Slot] = struct{}{}
+			osLives[cle] = struct{}{}
 		}
 	}
-	cov.CamoLives = len(camoSlots)
-	cov.OvershieldLives = len(osSlots)
+	cov.CamoLives = len(camoLives)
+	cov.OvershieldLives = len(osLives)
 	return cov
 }

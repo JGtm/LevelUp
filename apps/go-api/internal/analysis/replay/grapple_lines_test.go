@@ -155,3 +155,57 @@ func TestBuildGrappleLines_UneTractionDUneVieAnterieureEstPubliee(t *testing.T) 
 		t.Errorf("couverture %+v, attendu pulls=2 pullLives=2", cov)
 	}
 }
+
+// TestBuildGrappleLines_AucuneFenetreCouvranteRattacheALaVieLaPlusProche — CONSTAT C1 DE LA
+// REVUE REG-R1 (2026-09-06) : le correctif « une track = une vie » ne doit JAMAIS publier moins
+// que l'état d'avant.
+//
+// LE CAS. Quand ni l'image de l'accroche ni celle du tir ne tombe dans une fenêtre publiée du
+// slot, `lifeCovering` rendait nil et la traction était jetée — alors que la base, qui prenait
+// la (seule) piste du slot sans se demander si elle couvrait quoi que ce soit, la publiait. Les
+// deux configurations sont atteignables avec UNE SEULE vie, donc sans aucun rapport avec le
+// découpage : la revue les a mesurées contre les deux états du fichier.
+//
+// LA RÈGLE : à défaut de fenêtre couvrante, la traction se rattache à la vie la PLUS PROCHE de
+// l'accroche, et reste bornée exactement comme avant (clamp aux frames de la vie, refus si la
+// fenêtre est vide). Elle n'est pas inventée : l'accroche est lue dans le film, et le slot est
+// celui de la vie.
+func TestBuildGrappleLines_AucuneFenetreCouvranteRattacheALaVieLaPlusProche(t *testing.T) {
+	cas := []struct {
+		nom            string
+		track          Track
+		tirUS, accroUS uint64
+		t0, t1         int
+	}{
+		{
+			// (a) la vie tout entière est comprise ENTRE le tir et l'accroche : deux images
+			// suffisent à publier une piste (`DefaultMinPoints` = 2).
+			nom: "vie entre le tir et l'accroche",
+			track: Track{Slot: 7, StartFrame: 102, EndFrame: 103, Points: []Point{
+				{T: 102, X: 10, Y: 10}, {T: 103, X: 20, Y: 20}}},
+			tirUS: 10_000_000, accroUS: 10_400_000, t0: 102, t1: 103,
+		},
+		{
+			// (b) tir et accroche PRÉCÈDENT la vie de moins de grapplePullCapUS (2,5 s).
+			nom: "tir et accroche avant le début de la vie",
+			track: Track{Slot: 7, StartFrame: 110, EndFrame: 140, Points: []Point{
+				{T: 110, X: 10, Y: 10}, {T: 120, X: 99, Y: 99}, {T: 140, X: 10, Y: 10}}},
+			tirUS: 10_000_000, accroUS: 10_200_000, t0: 110, t1: 120,
+		},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			reads := []filmdec.GrappleRead{
+				grappleRead(7, c.tirUS, false), grappleRead(7, c.accroUS, true),
+			}
+			lines, cov := buildGrappleLines(reads, grappleEntry(), 0, grappleStep, []Track{c.track})
+			if len(lines) != 1 {
+				t.Fatalf("%d traction(s), attendu 1 — la base en publiait une (cov=%+v)", len(lines), cov)
+			}
+			if lines[0].T0 != c.t0 || lines[0].T1 != c.t1 {
+				t.Errorf("traction [%d..%d], attendu [%d..%d] — le rattachement doit borner "+
+					"exactement comme avant", lines[0].T0, lines[0].T1, c.t0, c.t1)
+			}
+		})
+	}
+}

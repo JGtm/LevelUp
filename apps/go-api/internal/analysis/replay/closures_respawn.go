@@ -4,10 +4,24 @@ import "sort"
 
 // closures_respawn.go — LA FERMETURE B, ET ELLE SEULE.
 //
-// Sortie de closures.go le 2026-09-06, sans changement de logique : le fichier franchissait les
-// 500 lignes en gagnant la DÉSIGNATION DE LA VIE (cf. `closureReport.closedLife`). La doctrine
-// et les garde-fous des deux fermetures restent écrits en tête de closures.go, qui porte la
-// fermeture A et le rapport commun.
+// Sortie de closures.go le 2026-09-06, quand ce fichier a franchi les 500 lignes en gagnant la
+// DÉSIGNATION DE LA VIE (cf. `closureReport.closedLife`). La doctrine et les garde-fous des deux
+// fermetures restent écrits en tête de closures.go, qui porte la fermeture A et le rapport commun.
+//
+// CE N'EST PAS UN DÉPLACEMENT PUR, et le dire faussement ferait sauter au relecteur le cœur du
+// correctif (constat C3 de la revue REG-R1). Ce qui a changé en même temps que le déplacement,
+// et rien d'autre :
+//
+//	closeByRespawn   `claims` passe de `map[uint64][]uint32` (des SLOTS) à `map[uint64][]int`
+//	                 (des INDICES DE VIE) ; la boucle parcourt `free` en indices et lit
+//	                 `lives[i].from` ; le slot se relit par `lives[vies[0]].slot` ; et surtout
+//	                 **`rep.noteLife(slot, vies[0])` est AJOUTÉ** — la ligne qui fait fonctionner
+//	                 le correctif pour cette fermeture.
+//	sortedVictims    signature accordée au nouveau type de `claims`.
+//	respawnWindow, victimsInWindow, overlapsNamedLife, containsXUID : identiques à l'octet près.
+//
+// La logique de DÉCISION, elle, est inchangée : mêmes gardes, mêmes refus, mêmes compteurs —
+// vérifié sur données, `coverage.bridge` est identique avant et après sur les films témoins.
 
 // respawnHalfWidthUS : demi-largeur de la fenêtre de réapparition, en microsecondes.
 //

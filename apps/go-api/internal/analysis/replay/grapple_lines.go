@@ -190,7 +190,18 @@ func grappleLine(r filmdec.GrappleRead, startUS uint64, entry filmdec.MapQuantEn
 		track = lifeCovering(vies, t0) // l'accroche tombe dans un trou : le tir décide
 	}
 	if track == nil {
-		return GrappleLine{}, false // vie non publiée : aucune fiche où poser la traction
+		// AUCUNE FENÊTRE NE COUVRE NI L'ACCROCHE NI LE TIR : la traction se rattache à la vie
+		// la PLUS PROCHE, ce que faisait l'état d'avant le découpage (il prenait la piste du
+		// slot sans se demander si elle couvrait quoi que ce soit). Deux configurations
+		// l'atteignent avec UNE SEULE vie — la vie comprise entre le tir et l'accroche, et un
+		// couple tir/accroche antérieur à la vie de moins de `grapplePullCapUS` —, donc sans
+		// aucun rapport avec le découpage : ce calque ne doit JAMAIS publier moins qu'avant
+		// (constat C1 de la revue REG-R1, 2026-09-06). Le clamp ci-dessous borne exactement
+		// comme avant et refuse toujours une fenêtre vide.
+		track = lifeNearest(vies, tAttach)
+	}
+	if track == nil {
+		return GrappleLine{}, false // aucune vie publiée : aucune fiche où poser la traction
 	}
 	t1 := grappleArrival(track, tAttach, int(grapplePullCapUS/step), ax, ay, az)
 	if t0 < track.StartFrame {
@@ -217,6 +228,35 @@ func lifeCovering(vies []*Track, frame int) *Track {
 		}
 	}
 	return nil
+}
+
+// lifeNearest rend la vie du slot dont la fenêtre est la plus proche de cette frame — distance
+// nulle si elle la contient, sinon l'écart au bord le plus proche. nil quand le slot n'a aucune
+// vie publiée : il n'y a alors rien à quoi rattacher.
+//
+// À ÉGALITÉ, LA PREMIÈRE GAGNE, et cela ne dépend d'aucun ordre d'itération : les vies d'un slot
+// sont disjointes et rangées chronologiquement (cf. decimateTracks), donc deux d'entre elles ne
+// peuvent pas être à la même distance d'une frame sans l'encadrer — auquel cas la précédente est
+// celle qui vient de s'achever, et c'est bien elle qui portait le geste.
+func lifeNearest(vies []*Track, frame int) *Track {
+	var best *Track
+	bestD := 0
+	for _, t := range vies {
+		if t == nil {
+			continue
+		}
+		d := 0
+		switch {
+		case frame < t.StartFrame:
+			d = t.StartFrame - frame
+		case frame > t.EndFrame:
+			d = frame - t.EndFrame
+		}
+		if best == nil || d < bestD {
+			best, bestD = t, d
+		}
+	}
+	return best
 }
 
 // grappleArrival rend la frame d'ARRIVÉE : celle, entre l'accroche et la borne de

@@ -324,3 +324,118 @@ comparaison reference/HEAD ne porte plus **aucun** ecart sur ce match. Le correc
    ci-dessus refuse au moins de nommer une vie dans ce cas (`closedLife = -1`), mais la faiblesse du
    pont est anterieure et n'est pas traitee : elle demande de decider si un slot peut legitimement
    changer de proprietaire en cours de match.
+
+---
+
+## Corrections apres la revue adversariale REG-R1 (2026-09-06)
+
+La revue confirme le diagnostic sur pieces (les trois lignes fautives relues a la base),
+l'additivite element par element sur quatre films cuits, les sept mutations, et 22 conditions
+verifiees. Cinq constats sont traites ci-dessous, **chacun prouve rouge puis vert**.
+
+### C1 — une traction publiee par la base etait jetee, meme sur un slot MONO-VIE
+
+**Le constat, et il refute une de mes conditions.** Quand ni l'image de l'accroche ni celle du
+tir ne tombe dans une fenetre publiee du slot, `lifeCovering` rendait nil et la traction
+disparaissait — alors que la base la publiait. Deux configurations, atteignables avec **une seule
+vie** (donc sans rapport avec le decoupage) : la vie entierement comprise entre le tir et
+l'accroche, et un couple tir/accroche anterieur a la vie de moins de `grapplePullCapUS` (2,5 s).
+Ma condition « sur un film ou chaque slot n'a qu'une piste, sortie identique octet pour octet »
+etait donc **fausse en general** ; elle ne tenait que sur les deux films ou elle a ete mesuree.
+
+**Correctif** : a defaut de fenetre couvrante, la traction se rattache a la vie la **plus proche**
+de l'accroche (`lifeNearest`) et reste bornee exactement comme avant — clamp aux frames de la vie,
+refus si la fenetre est vide. Ce calque ne publie donc jamais moins qu'avant.
+
+**Preuve** : `TestBuildGrappleLines_AucuneFenetreCouvranteRattacheALaVieLaPlusProche`, les deux
+scenarios du verdict en sous-tests. Rouge avant correctif (« 0 traction(s), attendu 1 » sur les
+deux), vert apres, aux memes intervalles que la base (`[102..103]` et `[110..120]`).
+
+### C2 — `camoLives` / `overshieldLives` comptaient des SLOTS
+
+Defaut symetrique de celui que j'avais corrige pour `pullLives`, dans le fichier meme que je
+modifiais : `equipmentCoverage` indexait par `e.Slot` sous un commentaire parlant de vies. Le cas
+n'etait pas atteignable avant ce chantier (seuls les episodes de la derniere vie survivaient) —
+c'est mon correctif qui le rend possible, a lui de compter juste.
+
+**Correctif** : la cle devient (slot, image de debut de la vie qui recouvre l'episode), via
+`windowFor`. **Preuve** : `TestCouvertureDesEpisodesCompteDesViesPasDesSlots` (rouge : « 2
+episodes / 1 vies »), et le test livre precedemment assure desormais aussi `camoLives = 2`.
+
+**Sur le chiffre du journal** : la revue lisait « 15 camo sur 9 vies » (section 3.4) comme un
+compte de slots. Verifie en recomptant les vies porteuses sur l'artefact cuit de `084a804d` :
+**9 vies ET 9 slots** — aucun slot n'y porte deux episodes de camouflage sur deux vies
+differentes. Le chiffre etait donc juste, mais par coincidence : c'est le COMPTEUR qui mesurait
+des slots.
+
+### C3 — la scission n'etait pas un deplacement pur
+
+`git diff -M` ne detecte aucun renommage, et `closures_respawn.go:75` porte
+`rep.noteLife(slot, vies[0])` — la ligne qui fait fonctionner le correctif pour la fermeture B.
+L'en-tete du fichier annoncait « sans changement de logique » : un relecteur qui la croyait
+sautait le coeur du changement, ce qui est l'anti-pattern « doc inversee » que ce meme journal
+reproche a `48cf4905d`.
+
+**Correctif** : l'en-tete enumere desormais ce qui a change (`claims` en indices de vie, lecture
+de `lives[i].from`, slot relu par `lives[vies[0]].slot`, ajout de `noteLife`, signature de
+`sortedVictims`) et ce qui est identique a l'octet pres (`respawnWindow`, `victimsInWindow`,
+`overlapsNamedLife`, `containsXUID`) — liste etablie par diff fonction par fonction contre
+`9e73368e8`. **La section 4.5 ci-dessus doit se lire avec cette correction** : la scission
+s'accompagne du correctif de la fermeture B ; seule la logique de DECISION est inchangee.
+
+### C4 — le commentaire du calque des episodes annoncait un gain que le correctif ne produit pas
+
+`equipment_episodes.go` citait `13d92593` parmi les films dont l'episode revient, quand la
+chronique de `document.go` et la mesure disent l'inverse. **Correctif** : le commentaire dit
+maintenant que cet episode ne revient pas et **pourquoi** (duree nulle, ancre sur le point
+aberrant qui faussait les bornes de scene), avec la cuisson de controle a l'appui.
+
+### C5 — un quatrieme consommateur, qui n'a jamais JETE mais qui ATTRIBUE a tort
+
+`usage_summary.go` resolvait le proprietaire d'un geste par un agregat **slot -> joueur, dernier
+gagnant** : sur un slot recycle, les tractions, episodes et poses du PREMIER occupant etaient
+credites au SECOND. La faiblesse est anterieure a ce chantier, mais il l'**elargit** — les gestes
+des vies non dernieres n'existaient pas avant pour etre mal attribues. Le cas existe au parc :
+`879a4dba` porte `coverage.bridge.slotCollisions = 1` (slot 610).
+
+**Correctif** : `usageOwners.at(slot, frame)` resout par la VIE qui couvre l'instant du geste,
+avec repli sur le dernier occupant quand aucune ne le couvre. Les trois sites d'appel ont deja
+leur instant (`GrappleLine.T0`, `EquipmentEpisode.T0`, `EquipmentPlacement.T0`) : il n'y avait
+rien a deviner. **`UsageSummaryRev` passe de `us1` a `us2`** — la doc de cette constante l'exige
+(« changer une regle d'attribution ici DOIT incrementer cette revision »), et c'est ce qui fera
+re-resumer les matchs deja projetes.
+
+**Preuve** : `TestUsageSummary_SlotRecycleCrediteChaqueOccupant` — un slot a deux identites, un
+geste de chaque famille sur chaque vie. Rouge avant (« 111 : 0/0/0 » et « 222 : 2/2/2 »), vert
+apres (1/1/1 chacun). Le test d'attribution existant reste vert, et son commentaire — qui
+justifiait le « dernier gagnant » comme une dette web assumee — est corrige.
+
+**Consequence a assumer** : le web (`rosterLogic.ts`, `indexBySlot`) garde sa regle par slot, donc
+Go et web peuvent differer sur un slot a deux identites. C'est l'ecart JUSTE contre l'ecart
+copie ; il est inscrit au registre des reports.
+
+### Recensement corrige
+
+« Aucun quatrieme calque » etait vrai des calques qui JETTENT de la donnee — la revue l'a
+reverifie sur 31 consommateurs de `[]Track` et 20 de `[]lifeSpan`. Il etait faux comme enonce
+absolu : **deux compteurs indexaient par slot une grandeur devenue par vie**
+(`equipmentCoverage`, C2) et **un consommateur ATTRIBUE par slot** (`usageSlotOwners`, C5).
+Les trois sont corriges ici.
+
+### Gates apres corrections (tous verts, 2026-09-06)
+
+```
+go test -count=1 ./internal/analysis/replay/... ./internal/replaybuild/... ./internal/archlint/...  ok (x4)
+go test -tags=integration -p 1 -count=1 ./internal/api/wire/...                                     ok 20,4 s
+go build ./...                                                                                      exit 0
+golangci-lint run --new-from-merge-base=origin/main ./...                                           0 issues
+goldens inconditionnels (mini-bobine familles, equivalence mini-film, assemblage + 3 satellites,
+  incertitude du golden, distribution des durees de camo)                                           PASS
+```
+
+**Cuisson de controle** : `879a4dba` re-cuit seul (pic 0,23 Gio, faits lus, 23 tractions pour
+23 accroches). `replay-diff` contre la cuisson precedente : **1 seul ecart, `schemaVersion`
+40 -> 41**. Les deux artefacts sont **identiques a l'octet pres** une fois ce numero neutralise
+(md5 `62f4f22c...` des deux cotes) : les cinq corrections ne changent la sortie d'aucune cuisson
+de ce film — C1 ne s'y declenche pas, C2 y compte le meme nombre (9 vies = 9 slots), et C5 ne
+touche pas l'artefact mais le resume d'usage.

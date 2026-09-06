@@ -208,8 +208,9 @@ func TestEpisodeDUneVieAnterieureEstPublie(t *testing.T) {
 		t.Errorf("épisode de la seconde vie [%d..%d], attendu [210..230]", eps[1].T0, eps[1].T1)
 	}
 	cov := equipmentCoverage(eps, tracks)
-	if cov.CamoEpisodes != 2 {
-		t.Errorf("couverture %+v, attendu camoEpisodes=2", cov)
+	if cov.CamoEpisodes != 2 || cov.CamoLives != 2 {
+		t.Errorf("couverture %+v, attendu camoEpisodes=2 et camoLives=2 — deux VIES du même "+
+			"slot (constat C2 de la revue REG-R1 : le compteur indexait par slot)", cov)
 	}
 }
 
@@ -231,5 +232,33 @@ func TestEpisodeOuvertEnFinDeVieAnterieureSeFermeSurSaPropreVie(t *testing.T) {
 	if eps[0].T0 != 40 || eps[0].T1 != 50 || eps[0].EndRead {
 		t.Errorf("épisode [%d..%d] endRead=%v, attendu [40..50] endRead=false — la fermeture "+
 			"doit suivre la vie de l'ouverture", eps[0].T0, eps[0].T1, eps[0].EndRead)
+	}
+}
+
+// TestCouvertureDesEpisodesCompteDesViesPasDesSlots — CONSTAT C2 DE LA REVUE REG-R1
+// (2026-09-06) : `camoLives` / `overshieldLives` comptaient des SLOTS sous un commentaire qui
+// parle de vies — le défaut symétrique de celui corrigé le même jour pour
+// `coverage.grapple.pullLives`. Le cas ne pouvait pas se produire avant ce correctif (seuls les
+// épisodes de la dernière vie survivaient, donc slot == vie trivialement) : c'est lui qui le rend
+// atteignable, à lui de compter juste.
+func TestCouvertureDesEpisodesCompteDesViesPasDesSlots(t *testing.T) {
+	tracks := []Track{
+		{Slot: 512, StartFrame: 0, EndFrame: 50},
+		{Slot: 512, StartFrame: 200, EndFrame: 260},
+	}
+	eps := []EquipmentEpisode{
+		{Slot: 512, Fam: EquipFamilyCamo, T0: 10, T1: 20},
+		{Slot: 512, Fam: EquipFamilyCamo, T0: 210, T1: 230},
+		{Slot: 512, Fam: EquipFamilyOvershield, T0: 30, T1: 40},
+		{Slot: 512, Fam: EquipFamilyOvershield, T0: 240, T1: 250},
+	}
+	cov := equipmentCoverage(eps, tracks)
+	if cov.CamoEpisodes != 2 || cov.CamoLives != 2 {
+		t.Errorf("camo : %d épisodes / %d vies, attendu 2 / 2 — deux vies du MÊME slot",
+			cov.CamoEpisodes, cov.CamoLives)
+	}
+	if cov.OvershieldEpisodes != 2 || cov.OvershieldLives != 2 {
+		t.Errorf("surbouclier : %d épisodes / %d vies, attendu 2 / 2",
+			cov.OvershieldEpisodes, cov.OvershieldLives)
 	}
 }

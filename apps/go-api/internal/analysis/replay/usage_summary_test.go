@@ -196,8 +196,10 @@ func TestUsageSummary_AttributionSlotEtIndexDeFilm(t *testing.T) {
 			{Bot: true, Name: "Recrue [bot]", FilmIndex: 2},
 		},
 		Tracks: []Track{
-			// Le slot 5 est RECYCLÉ : 111 puis 222 — l'agrégat de match crédite le
-			// DERNIER propriétaire (dette web assumée, reproduite pour comparer).
+			// Le slot 5 est RECYCLÉ : 111 puis 222. Depuis le 2026-09-06 (constat C5 de la
+			// revue REG-R1) le geste revient à la vie qui COUVRE son instant ; la traction
+			// ci-dessous est datée 250, donc dans la vie de 222 — le résultat ne change pas,
+			// mais il ne tient plus au « dernier gagnant ».
 			{Slot: 5, XUID: "111", StartFrame: 0, EndFrame: 100},
 			{Slot: 5, XUID: "222", StartFrame: 200, EndFrame: 400},
 			// Le slot 6 appartient à un BOT : ses gestes n'entrent dans aucune ligne.
@@ -305,5 +307,52 @@ func TestUsageSummary_FixtureFigee(t *testing.T) {
 	}
 	if grenades > len(doc.Grenades) {
 		t.Errorf("lancers attribués (%d) > lancers du document (%d)", grenades, len(doc.Grenades))
+	}
+}
+
+// TestUsageSummary_SlotRecycleCrediteChaqueOccupant — CONSTAT C5 DE LA REVUE REG-R1
+// (2026-09-06) : le résumé d'usage attribuait les gestes AU SLOT, « dernier gagnant », donc au
+// second occupant d'un slot recyclé — y compris pour les gestes de la vie du premier.
+//
+// LE CAS EXISTE AU PARC : `879a4dba` porte `coverage.bridge.slotCollisions = 1` (slot 610). La
+// faiblesse est antérieure au correctif « une track = une vie », mais celui-ci l'ÉLARGIT : les
+// épisodes et tractions des vies non dernières n'existaient pas avant pour être mal attribués.
+//
+// LA RÈGLE : le propriétaire se résout par PISTE — la vie qui couvre l'instant du geste —, et
+// le « dernier gagnant » ne sert plus que de repli quand aucune vie ne le couvre.
+func TestUsageSummary_SlotRecycleCrediteChaqueOccupant(t *testing.T) {
+	doc := &ReplayDocument{
+		SchemaVersion: SchemaVersion, FrameIntervalMS: 100, FrameCount: 1000,
+		Roster: []RosterEntry{{XUID: "111", FilmIndex: 0}, {XUID: "222", FilmIndex: 1}},
+		Tracks: []Track{
+			{Slot: 5, XUID: "111", StartFrame: 0, EndFrame: 100},
+			{Slot: 5, XUID: "222", StartFrame: 200, EndFrame: 400},
+		},
+		GrappleLines: []GrappleLine{
+			{Slot: 5, T0: 10, T1: 20},   // vie de 111
+			{Slot: 5, T0: 250, T1: 260}, // vie de 222
+		},
+		EquipmentEpisodes: []EquipmentEpisode{
+			{Slot: 5, Fam: EquipFamilyCamo, T0: 10, T1: 20},         // vie de 111
+			{Slot: 5, Fam: EquipFamilyCamo, T0: 250, T1: 260},       // vie de 222
+			{Slot: 5, Fam: EquipFamilyOvershield, T0: 30, T1: 40},   // vie de 111
+			{Slot: 5, Fam: EquipFamilyOvershield, T0: 300, T1: 310}, // vie de 222
+		},
+	}
+	s := BuildUsageSummary(doc)
+	byXUID := map[string]UsagePlayerSummary{}
+	for _, p := range s.Players {
+		byXUID[p.XUID] = p
+	}
+	for _, c := range []struct {
+		xuid                    string
+		pulls, camo, overshield int
+	}{{"111", 1, 1, 1}, {"222", 1, 1, 1}} {
+		p := byXUID[c.xuid]
+		if p.GrapplePulls != c.pulls || p.CamoEpisodes != c.camo || p.OvershieldEpisodes != c.overshield {
+			t.Errorf("%s : %d traction(s) / %d camo / %d surbouclier, attendu %d/%d/%d — "+
+				"chaque occupant du slot recyclé garde SES gestes", c.xuid,
+				p.GrapplePulls, p.CamoEpisodes, p.OvershieldEpisodes, c.pulls, c.camo, c.overshield)
+		}
 	}
 }
