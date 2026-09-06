@@ -50,7 +50,14 @@ const (
 	tacCarteB = "map_recharge"
 )
 
-// newTacticalTestPlayerDB : shared `:memory:` migre (vues `_latest` comprises).
+// newTacticalTestPlayerDB : shared `:memory:` migre (vues `_latest` comprises) +
+// une metadata portant `asset_translations`.
+//
+// LA METADATA N'EST PAS UN ORNEMENT (correction R3) : `match_registry.map_name_fr`
+// est SYSTEMATIQUEMENT NULLE en prod, et le nom FR d'une carte se resout par
+// `metadata.asset_translations`. Semer la colonne du registre — ce que faisait la
+// fixture d'origine — fabriquait une donnee qui n'existe nulle part et rendait le
+// test aveugle au defaut qu'il etait cense couvrir.
 func newTacticalTestPlayerDB(t *testing.T) *PlayerDB {
 	t.Helper()
 	sharedSQL, err := sql.Open("duckdb", ":memory:")
@@ -66,9 +73,44 @@ func newTacticalTestPlayerDB(t *testing.T) *PlayerDB {
 	return &PlayerDB{
 		Shared:       shared,
 		SharedReader: LegacySharedReader(shared),
+		Metadata:     newTacticalTestMetadata(t),
 		XUID:         tacXUIDMoi,
 		TitleSlug:    titlepkg.DefaultSlug,
 	}
+}
+
+// newTacticalTestMetadata : metadata `:memory:` portant `asset_translations`, la
+// SEULE source FR fiable des noms de carte. Meme forme de table et meme facon de
+// semer que engagement_map_fr_test.go.
+func newTacticalTestMetadata(t *testing.T) *DB {
+	t.Helper()
+	meta, err := OpenReadWrite(":memory:")
+	if err != nil {
+		t.Fatalf("OpenReadWrite metadata: %v", err)
+	}
+	t.Cleanup(func() { _ = meta.Close() })
+	ctx := context.Background()
+	seed := []string{
+		`CREATE TABLE asset_translations (
+			asset_id    VARCHAR,
+			asset_type  VARCHAR,
+			lang        VARCHAR,
+			name        VARCHAR,
+			description VARCHAR,
+			fetched_at  TIMESTAMP
+		)`,
+		`INSERT INTO asset_translations VALUES ('` + tacCarteA + `','map','fr-FR','Les Rues','',now())`,
+		// Bruit : une playlist du meme asset_id ne doit PAS matcher asset_type='map'.
+		`INSERT INTO asset_translations VALUES ('` + tacCarteA + `','playlist','fr-FR','NE PAS PRENDRE','',now())`,
+		// tacCarteB n'a AUCUNE traduction : son nom FR doit rester vide, et c'est
+		// l'etat NOMINAL d'une carte non traduite — pas une panne.
+	}
+	for _, q := range seed {
+		if _, err := meta.Exec(ctx, q); err != nil {
+			t.Fatalf("seed metadata %q: %v", q, err)
+		}
+	}
+	return meta
 }
 
 // tacExec joue une commande sur le shared de test.
@@ -89,10 +131,12 @@ func tacMatch(t *testing.T, pdb *PlayerDB, matchID, mapID string, start time.Tim
 // un mode ordinaire, un GUID de Campagne pour exercer le masquage read-side.
 func tacMatchVariant(t *testing.T, pdb *PlayerDB, matchID, mapID string, start time.Time, variantID any) {
 	t.Helper()
+	// map_name_fr N'EST PAS SEMEE : elle est systematiquement NULLE en prod, et le
+	// nom FR se resout par metadata.asset_translations (cf. newTacticalTestMetadata).
 	tacExec(t, pdb, `INSERT INTO match_registry
-		(match_id, map_id, map_name, map_name_fr, start_time, start_time_utc, playlist_name, pair_name, game_variant_id)
-		VALUES (?, ?, ?, ?, ?, ?, 'Ranked Arena', 'Arena:Slayer', ?)`,
-		matchID, mapID, mapID+"_en", mapID+"_fr", start, start, variantID)
+		(match_id, map_id, map_name, start_time, start_time_utc, playlist_name, pair_name, game_variant_id)
+		VALUES (?, ?, ?, ?, ?, 'Ranked Arena', 'Arena:Slayer', ?)`,
+		matchID, mapID, mapID+"_en", start, start, variantID)
 }
 
 // tacParticipant pose un participant (equipe + issue) sur un match.
@@ -406,11 +450,38 @@ func TestTacticalRepo_MapsPlayed(t *testing.T) {
 	if rows[0].Victoires != 1 || rows[0].Defaites != 1 {
 		t.Errorf("carte A = %d V / %d D, want 1/1", rows[0].Victoires, rows[0].Defaites)
 	}
-	if rows[0].MapName != tacCarteA+"_en" || rows[0].MapNameFR != tacCarteA+"_fr" {
-		t.Errorf("libelles de carte = %q / %q", rows[0].MapName, rows[0].MapNameFR)
+	if rows[0].MapName != tacCarteA+"_en" {
+		t.Errorf("libelle EN = %q, want %q", rows[0].MapName, tacCarteA+"_en")
+	}
+	// LE nom FR vient de metadata.asset_translations, jamais de match_registry
+	// (colonne systematiquement NULLE en prod) — R3.
+	if rows[0].MapNameFR != "Les Rues" {
+		t.Errorf("libelle FR = %q, want %q (resolu par asset_translations)", rows[0].MapNameFR, "Les Rues")
 	}
 	if rows[1].MapID != tacCarteB || rows[1].Matchs != 1 || rows[1].Victoires != 1 {
 		t.Errorf("seconde carte = %+v, want %s a 1 match / 1 V", rows[1], tacCarteB)
+	}
+	// Carte sans traduction : nom FR VIDE, sans erreur. L'appelant retombera sur l'EN.
+	if rows[1].MapNameFR != "" {
+		t.Errorf("carte sans traduction : MapNameFR = %q, want vide", rows[1].MapNameFR)
+	}
+}
+
+// TestTacticalRepo_SansMetadata_NomFRVide : une metadata absente (ou une lecture en
+// echec) laisse le nom FR vide sans faire echouer la grille — best-effort assume.
+func TestTacticalRepo_SansMetadata_NomFRVide(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	seedTacticalCorpus(t, pdb)
+	pdb.Metadata = nil
+
+	rows, err := NewTacticalRepo(pdb).MapsPlayed(context.Background(),
+		domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+	if err != nil {
+		t.Fatalf("MapsPlayed sans metadata: %v", err)
+	}
+	if len(rows) != 2 || rows[0].MapNameFR != "" {
+		t.Errorf("sans metadata : %d cartes, FR = %q — want 2 cartes servies, FR vide",
+			len(rows), rows[0].MapNameFR)
 	}
 }
 
