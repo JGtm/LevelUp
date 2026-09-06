@@ -94,6 +94,22 @@ const (
 	// son artefact ne porte simplement aucun calque de bombe, et c est le cas majoritaire.
 	CompteurBombStatsEcrits = "postsync_replay_bomb_stats_ecrits_total"
 	CompteurBombStatsEchecs = "postsync_replay_bomb_stats_echecs_total"
+	// Positions joueurs projetees des artefacts ranges, ecrites dans `match_player_positions`
+	// (cf. positions.go, decision utilisateur 1). CompteurPositionsEcrites : passes persistees ;
+	// CompteurPositionsEchecs : writer indisponible, absent du cablage, ou INSERT refuse — un
+	// defaut, jamais un etat normal. UN ARTEFACT SANS TRAJECTOIRE NE COMPTE NI DANS L UN NI
+	// DANS L AUTRE : il n y a rien a projeter, et c est dit en DEBUG.
+	CompteurPositionsEcrites = "postsync_replay_positions_ecrites_total"
+	CompteurPositionsEchecs  = "postsync_replay_positions_echecs_total"
+	// Rattrapage des DERIVES (derivations_backlog.go, constat A2) : artefacts DEJA RANGES dont
+	// les derivations manquaient ou dataient d une revision anterieure, et qu on vient de
+	// rejouer. CompteurDerivationsRattrapees compte les artefacts PRIS EN CHARGE, pas les
+	// lignes ecrites — ce que chaque famille a ecrit se lit dans SES compteurs ci-dessus.
+	CompteurDerivationsRattrapees = "postsync_replay_derivations_rattrapees_total"
+	// JaugeDerivationsRetard : JAUGE du reste a rattraper APRES le cycle, dans l horizon lu.
+	// Publiee MEME A ZERO — « tout est derive » et « le rattrapage ne tourne pas » s ecriraient
+	// autrement pareil (meme regle que CompteurRetard).
+	JaugeDerivationsRetard = "postsync_replay_derivations_retard"
 )
 
 // SignalerClientSansChunks journalise et compte l'échec de l'assertion `ChunksFetcher` faite

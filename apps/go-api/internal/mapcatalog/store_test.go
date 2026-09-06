@@ -51,12 +51,24 @@ func mcCatalogue(t *testing.T, dir string, ids ...string) string {
 	return chemin
 }
 
-// TestAddEntryRefuseUneCleExistante — LA promesse de l'ajout-seul.
+// mcOverlay pose un OVERLAY (meme forme que le catalogue) et rend son chemin. Le nom de
+// dossier `generated` reproduit celui du PathResolver — ces tests ne cablent pas le resolver,
+// mais ils ne doivent pas non plus donner l'illusion que l'overlay vit a cote du versionne.
+func mcOverlay(t *testing.T, dir string, ids ...string) string {
+	t.Helper()
+	sous := filepath.Join(dir, "generated")
+	if err := os.MkdirAll(sous, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	return mcCatalogue(t, sous, ids...)
+}
+
+// TestAddOverlayEntryRefuseUneCleExistante — LA promesse de l'ajout-seul.
 //
-// Supprimer le garde de `AddEntry` fait tomber ce test : sans lui, un rattrapage automatique
-// pourrait REECRIRE une entree que des chemins livres consomment.
-func TestAddEntryRefuseUneCleExistante(t *testing.T) {
-	chemin := mcCatalogue(t, t.TempDir(), "deja")
+// Supprimer le garde de `AddOverlayEntry` fait tomber ce test : sans lui, un rattrapage
+// automatique pourrait REECRIRE une entree que des chemins livres consomment.
+func TestAddOverlayEntryRefuseUneCleExistante(t *testing.T) {
+	chemin := mcOverlay(t, t.TempDir(), "deja")
 	avant, err := os.ReadFile(chemin)
 	if err != nil {
 		t.Fatal(err)
@@ -66,25 +78,25 @@ func TestAddEntryRefuseUneCleExistante(t *testing.T) {
 	neuve.ObjectsN = 999
 	neuve.Pads = []replay.MapWeaponPadSpot{mcSocle(42, "0x6253CFC0", "rack")}
 
-	err = AddEntry(chemin, "deja", neuve)
+	err = AddOverlayEntry(chemin, "halo_infinite", "deja", neuve)
 	if !errors.Is(err, ErrEntryExists) {
-		t.Fatalf("AddEntry sur une cle existante = %v, attendu ErrEntryExists", err)
+		t.Fatalf("AddOverlayEntry sur une cle existante = %v, attendu ErrEntryExists", err)
 	}
 	apres, err := os.ReadFile(chemin)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(avant) != string(apres) {
-		t.Error("le catalogue a ete REECRIT alors que la cle existait deja — c'est exactement " +
+		t.Error("l'overlay a ete REECRIT alors que la cle existait deja — c'est exactement " +
 			"ce que l'ajout-seul doit rendre impossible")
 	}
 }
 
-// TestAddEntryAjouteUneCleNeuve — le pendant : la fonction fait bien son travail.
-func TestAddEntryAjouteUneCleNeuve(t *testing.T) {
-	chemin := mcCatalogue(t, t.TempDir(), "deja")
-	if err := AddEntry(chemin, "neuve", mcEntree("neuve")); err != nil {
-		t.Fatalf("AddEntry sur une cle neuve = %v, attendu nil", err)
+// TestAddOverlayEntryAjouteUneCleNeuve — le pendant : la fonction fait bien son travail.
+func TestAddOverlayEntryAjouteUneCleNeuve(t *testing.T) {
+	chemin := mcOverlay(t, t.TempDir(), "deja")
+	if err := AddOverlayEntry(chemin, "halo_infinite", "neuve", mcEntree("neuve")); err != nil {
+		t.Fatalf("AddOverlayEntry sur une cle neuve = %v, attendu nil", err)
 	}
 	cat, err := replay.LoadMapWeaponPads(chemin)
 	if err != nil {
@@ -101,25 +113,97 @@ func TestAddEntryAjouteUneCleNeuve(t *testing.T) {
 	}
 }
 
-// TestAddEntryEchoueSurCatalogueIllisible — la 4e forme du contrat, jamais couverte.
-func TestAddEntryEchoueSurCatalogueIllisible(t *testing.T) {
-	dir := t.TempDir()
-	// Catalogue ABSENT : `AddEntry` doit rendre une erreur, pas creer un catalogue de rien.
-	absent := filepath.Join(dir, "map_weapon_pads.json")
-	if err := AddEntry(absent, "x", mcEntree("x")); err == nil {
-		t.Error("AddEntry sur un catalogue absent doit ECHOUER — en creer un de zero effacerait " +
-			"silencieusement toutes les cartes du titre")
+// TestAddOverlayEntryCreeLOverlayAbsent — LE CAS NOMINAL DU PREMIER RATTRAPAGE.
+//
+// C'est le renversement de contrat du 2026-09-05 (constat A0) : l'ancienne `AddEntry` DEVAIT
+// echouer sur un fichier absent (en creer un de zero aurait efface toutes les cartes du titre,
+// puisqu'elle ecrivait le catalogue VERSIONNE). L'overlay, lui, ne porte que ce que le runtime
+// a rattrape : le creer ne perd rien, et le refuser bloquerait le tout premier rattrapage.
+func TestAddOverlayEntryCreeLOverlayAbsent(t *testing.T) {
+	absent := filepath.Join(t.TempDir(), "generated", "map_weapon_pads.json")
+	if err := AddOverlayEntry(absent, "halo_infinite", "neuve", mcEntree("neuve")); err != nil {
+		t.Fatalf("AddOverlayEntry sur un overlay absent = %v, attendu nil (premier rattrapage)", err)
 	}
-	if _, err := os.Stat(absent); err == nil {
-		t.Error("aucun fichier ne doit etre cree quand le catalogue de depart est illisible")
+	cat, err := replay.LoadMapWeaponPads(absent)
+	if err != nil {
+		t.Fatalf("overlay cree illisible : %v", err)
 	}
-	// Catalogue CORROMPU.
-	corrompu := filepath.Join(dir, "corrompu.json")
+	if cat.SchemaVersion != replay.MapWeaponPadsSchemaVersion {
+		t.Errorf("schema_version = %d, attendu %d — un overlay qu'aucun lecteur n'accepte est "+
+			"un overlay mort", cat.SchemaVersion, replay.MapWeaponPadsSchemaVersion)
+	}
+	if cat.TitleSlug != "halo_infinite" {
+		t.Errorf("title_slug = %q, attendu halo_infinite", cat.TitleSlug)
+	}
+	if _, ok := cat.Maps["neuve"]; !ok || len(cat.Maps) != 1 {
+		t.Errorf("overlay cree avec %d carte(s), attendu la seule carte rattrapee", len(cat.Maps))
+	}
+}
+
+// TestAddOverlayEntryEchoueSurOverlayCorrompu — on n'ECRASE PAS un overlay qu'on ne sait pas
+// lire : les cartes deja rattrapees disparaitraient en silence.
+func TestAddOverlayEntryEchoueSurOverlayCorrompu(t *testing.T) {
+	corrompu := filepath.Join(t.TempDir(), "map_weapon_pads.json")
 	if err := os.WriteFile(corrompu, []byte("{ pas du json"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := AddEntry(corrompu, "x", mcEntree("x")); err == nil {
-		t.Error("AddEntry sur un catalogue corrompu doit ECHOUER")
+	if err := AddOverlayEntry(corrompu, "halo_infinite", "x", mcEntree("x")); err == nil {
+		t.Error("AddOverlayEntry sur un overlay corrompu doit ECHOUER")
+	}
+	blob, err := os.ReadFile(corrompu)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(blob) != "{ pas du json" {
+		t.Error("l'overlay corrompu a ete REECRIT — il doit rester tel quel pour etre diagnostique")
+	}
+}
+
+// TestAddOverlayEntryNeTouchePasLeCatalogueVersionne — LE TEST DU CONSTAT A0 LUI-MEME.
+//
+// Le catalogue versionne est un fichier SUIVI PAR GIT : le runtime ne doit pas le toucher, pas
+// meme d'un octet. Ce test le pose cote a cote avec l'overlay et verifie qu'il ressort
+// BYTE-IDENTIQUE apres un rattrapage — c'est le seul niveau ou « le runtime n'ecrit plus le
+// fichier versionne » se verifie sans lire le code.
+func TestAddOverlayEntryNeTouchePasLeCatalogueVersionne(t *testing.T) {
+	dir := t.TempDir()
+	versionne := mcCatalogue(t, dir, "carte_relue")
+	avant, err := os.ReadFile(versionne)
+	if err != nil {
+		t.Fatal(err)
+	}
+	statAvant, err := os.Stat(versionne)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	overlay := filepath.Join(dir, "generated", "map_weapon_pads.json")
+	if err := AddOverlayEntry(overlay, "halo_infinite", "carte_rattrapee", mcEntree("carte_rattrapee")); err != nil {
+		t.Fatalf("AddOverlayEntry = %v", err)
+	}
+
+	apres, err := os.ReadFile(versionne)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(avant) != string(apres) {
+		t.Error("LE CATALOGUE VERSIONNE A ETE MODIFIE par un rattrapage runtime — c'est le " +
+			"constat A0 (un deploiement l'efface, un commit local l'avale sans relecture)")
+	}
+	statApres, err := os.Stat(versionne)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !statAvant.ModTime().Equal(statApres.ModTime()) {
+		t.Error("le catalogue versionne a ete REECRIT (mtime differente) meme a contenu egal")
+	}
+	// Et l'overlay, lui, porte bien la carte rattrapee et RIEN d'autre.
+	sur, err := replay.LoadMapWeaponPads(overlay)
+	if err != nil {
+		t.Fatalf("overlay illisible : %v", err)
+	}
+	if _, ok := sur.Maps["carte_rattrapee"]; !ok || len(sur.Maps) != 1 {
+		t.Errorf("overlay = %d carte(s), attendu la seule carte rattrapee", len(sur.Maps))
 	}
 }
 
@@ -249,13 +333,13 @@ func TestChoisirFichierVariante(t *testing.T) {
 	}
 }
 
-// TestAddEntryConcurrentNePerdPasDEntree — ITEM 7 : la perte de mise a jour.
+// TestAddOverlayEntryConcurrentNePerdPasDEntree — ITEM 7 : la perte de mise a jour.
 //
-// `AddEntry` fait un LIRE-MODIFIER-ECRIRE. Deux ecrivains — la CLI lancee a la main pendant
-// qu'un cycle de sync rattrape une carte — pouvaient lire le meme etat et publier chacun un
-// fichier SANS la carte de l'autre. C'est le trou que ce lot comble qui se rouvrait.
-func TestAddEntryConcurrentNePerdPasDEntree(t *testing.T) {
-	chemin := mcCatalogue(t, t.TempDir(), "socle")
+// L'ajout fait un LIRE-MODIFIER-ECRIRE. Deux ecrivains — deux cycles de sync, ou un cycle et un
+// outil — pouvaient lire le meme etat et publier chacun un fichier SANS la carte de l'autre.
+// C'est le trou que ce lot comble qui se rouvrait.
+func TestAddOverlayEntryConcurrentNePerdPasDEntree(t *testing.T) {
+	chemin := mcOverlay(t, t.TempDir(), "socle")
 	const n = 8
 	var wg sync.WaitGroup
 	wg.Add(n)
@@ -263,8 +347,8 @@ func TestAddEntryConcurrentNePerdPasDEntree(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			id := "carte" + strconv.Itoa(i)
-			if err := AddEntry(chemin, id, mcEntree(id)); err != nil {
-				t.Errorf("AddEntry(%s) = %v", id, err)
+			if err := AddOverlayEntry(chemin, "halo_infinite", id, mcEntree(id)); err != nil {
+				t.Errorf("AddOverlayEntry(%s) = %v", id, err)
 			}
 		}(i)
 	}

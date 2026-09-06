@@ -566,3 +566,11 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   d'objectif typé sur `replaydoc` (lot B), et les valeurs figées par F.1 remesurées au schéma 40
   (15 frags, 6 assistances, 1 capture, 1 vol = sommes des lignes des 7 pontés). Intégration wire,
   contrat et `generate-types` verts et sans diff. Intégrés : B, F, C, G, E, CTF.
+- 2026-09-06 14:10 : A retouches rendues (`cb33d8ea8` : lecture d'équipe en échec = pas de marque,
+  jauge non publiée sur horizon illisible, marques orphelines ramassées, docs inversées corrigées ;
+  N2 modes > 2 camps consigné, décision produit pour le lot D) et A FUSIONNÉ dans `feat/v75`.
+  Conflits résolus par le superviseur : `replayartifacts.Run` = porte de capability (C) PUIS
+  compteur + `defer` rattrapage + `cuireLeCycle` (A) ; `racineDepot` en double (C dans
+  `capability_test.go`, A dans `helpers_test.go`) → le fichier de A supprimé ; journal concaténé.
+  Tests unitaires + intégration replayartifacts/persist/sync verts. Intégrés : B, F, C, G, E,
+  CTF, A. Reste D.

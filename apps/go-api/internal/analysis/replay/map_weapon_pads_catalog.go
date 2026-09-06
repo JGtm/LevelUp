@@ -25,7 +25,10 @@ package replay
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
+	"log/slog"
 	"os"
 	"time"
 
@@ -140,6 +143,60 @@ func LoadMapWeaponPads(path string) (*MapWeaponPadsCatalog, error) {
 			c.SchemaVersion, MapWeaponPadsSchemaVersion, path)
 	}
 	return &c, nil
+}
+
+// LoadMapWeaponPadsMerged lit le catalogue VERSIONNÉ puis y superpose l'OVERLAY NON VERSIONNÉ
+// des cartes rattrapées par le runtime (cf. PathResolver.MapWeaponPadsOverlayPath).
+//
+// L'ENTRÉE VERSIONNÉE PRIME, TOUJOURS. Une carte présente des deux côtés garde la version du
+// fichier suivi par git : elle a été produite à la main par `cmd/mapopads-build` et relue, alors
+// que l'overlay est une sortie de runtime que personne n'a regardée. Le sens de la préséance
+// n'est pas un détail — l'inverser ferait remplacer une donnée relue par une donnée automatique.
+//
+// LES TROIS ÉTATS DE L'OVERLAY, ET CE QU'ILS VALENT :
+//
+//	ABSENT      cas NOMINAL — rien n'a encore été rattrapé sur ce titre. Le catalogue versionné
+//	            est rendu tel quel, sans un mot.
+//	ILLISIBLE   on JOURNALISE puis on dégrade au seul catalogue versionné. Un overlay corrompu
+//	            est un fichier jetable : il ne doit jamais faire perdre les 72+ cartes relues.
+//	LISIBLE     ses cartes ABSENTES du versionné sont ajoutées, et ça se journalise en Debug.
+//
+// Le catalogue VERSIONNÉ, lui, reste obligatoire : son absence est une installation incomplète,
+// et l'erreur remonte à l'appelant comme avant (les deux appelants la dégradent, chacun avec sa
+// trace).
+func LoadMapWeaponPadsMerged(versionne, overlay string) (*MapWeaponPadsCatalog, error) {
+	cat, err := LoadMapWeaponPads(versionne)
+	if err != nil {
+		return nil, err
+	}
+	sur, err := LoadMapWeaponPads(overlay)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return cat, nil
+	case err != nil:
+		slog.Warn("catalogue des socles : overlay illisible — seules les cartes versionnees "+
+			"sont servies ; le rattrapage au fetch de film les rajoutera",
+			"err", err, "overlay", overlay)
+		return cat, nil
+	}
+	if cat.Maps == nil {
+		cat.Maps = map[string]MapWeaponPadsEntry{}
+	}
+	ajoutees := 0
+	for id, e := range sur.Maps {
+		if _, deja := cat.Maps[id]; deja {
+			// L'entrée versionnée prime : on ne la remplace pas, et ce n'est pas une anomalie
+			// (la carte a pu être promue au fichier versionné après son rattrapage).
+			continue
+		}
+		cat.Maps[id] = e
+		ajoutees++
+	}
+	if ajoutees > 0 {
+		slog.Debug("catalogue des socles : cartes rattrapees superposees au catalogue versionne",
+			"ajoutees", ajoutees, "versionnees", len(cat.Maps)-ajoutees, "overlay", overlay)
+	}
+	return cat, nil
 }
 
 // Lookup rend l'entrée d'une carte par son map_id (asset UGC). ErrUnknownMap est le cas

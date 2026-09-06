@@ -132,7 +132,7 @@ func nomsDeCarte(ctx context.Context, metaDB *sql.DB, c candidatARattraper) []st
 func lireQueueRecente(ctx context.Context, sharedDB *sql.DB, d Deps, deja map[string]bool) []candidatARattraper {
 	args := []any{bitFilmAbsent}
 	if d.RetentionMonths > 0 {
-		args = append(args, time.Now().UTC().AddDate(0, -d.RetentionMonths, 0))
+		args = append(args, fenetreRetention(d.RetentionMonths))
 	}
 	rows, err := sharedDB.QueryContext(ctx, requeteQueueRecente(d.RetentionMonths), append(args, BacklogHorizon)...)
 	if err != nil {
@@ -181,10 +181,21 @@ func requeteQueueRecente(months int) string {
 }
 
 // artefactPresent : le prédicat le moins cher qui existe. Il répond à « ce match a-t-il UN
-// rejeu », pas à « son rejeu est-il au bon schéma » — cf. l'en-tête du fichier.
+// rejeu », pas à « son rejeu est-il au bon schéma », ni à « ses dérivés sont-ils écrits » —
+// cf. l'en-tête du fichier. La question des DÉRIVÉS a son propre prédicat, tout aussi bon
+// marché : `replaybuild.DerivationsUpToDate` (derivations_backlog.go, constat A2).
 func artefactPresent(path string) bool {
 	st, err := os.Stat(path)
 	return err == nil && !st.IsDir() && st.Size() > 0
+}
+
+// fenetreRetention rend la borne basse de la fenêtre de rétention, en UTC.
+//
+// UNE SEULE ÉCRITURE POUR LES DEUX RATTRAPAGES (cuisson et dérivés) : le même calcul écrit deux
+// fois se serait décalé au premier ajustement, et les deux passes n'auraient plus regardé le
+// même corpus sans que rien ne le dise.
+func fenetreRetention(months int) time.Time {
+	return time.Now().UTC().AddDate(0, -months, 0)
 }
 
 // budgetDuCycle rend le budget de durée effectif.

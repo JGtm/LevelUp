@@ -67,6 +67,17 @@ func artefactUsage(t *testing.T, dir, matchID string) string {
 }
 
 // depsUsage : le cablage minimal de la persistance, writer compte.
+// lus rejoue la LECTURE de production (une ouverture par artefact, partagée par toutes les
+// dérivations — cf. derivations.go) et rend ce que les projections consomment.
+//
+// LES TESTS PASSENT PAR ELLE, ET C'EST LE POINT : depuis le 2026-09-06 les projections ne lisent
+// plus le disque. Leur fabriquer des documents en mémoire aurait éprouvé un chemin que la
+// production n'emprunte pas — un artefact absent ou illisible doit continuer de dégrader CE
+// match seul, et c'est ici que ça se joue.
+func lus(d Deps, ranges ...ArtefactRange) []artefactLu {
+	return lireArtefacts(context.Background(), d, ranges)
+}
+
 func depsUsage(t *testing.T, db *sql.DB, slug string, acquis, relaches *int) Deps {
 	t.Helper()
 	return Deps{
@@ -89,11 +100,11 @@ func TestPersisterResumesUsage_BurstUniqueEtVuesLatest(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_infinite", &acquis, &relaches)
 
-	rapports := []artefactCuit{
-		{matchID: "m-usage-1", path: artefactUsage(t, dir, "m-usage-1")},
-		{matchID: "m-usage-2", path: artefactUsage(t, dir, "m-usage-2")},
-	}
-	persisterResumesUsage(context.Background(), d, rapports)
+	rapports := lus(d,
+		ArtefactRange{MatchID: "m-usage-1", Path: artefactUsage(t, dir, "m-usage-1")},
+		ArtefactRange{MatchID: "m-usage-2", Path: artefactUsage(t, dir, "m-usage-2")},
+	)
+	persisterResumesUsage(context.Background(), d, &bilanDerivations{}, rapports)
 
 	if acquis != 1 || relaches != 1 {
 		t.Fatalf("writer acquis %d fois, relache %d fois — attendu 1 et 1 (burst unique)", acquis, relaches)
@@ -141,7 +152,7 @@ func TestPersisterResumesUsage_LotVideNAcquiertAucunWriter(t *testing.T) {
 		acquis++
 		return nil, func() { relaches++ }, nil
 	}}
-	persisterResumesUsage(context.Background(), d, nil)
+	persisterResumesUsage(context.Background(), d, &bilanDerivations{}, nil)
 	if acquis != 0 {
 		t.Fatalf("writer acquis %d fois sur un lot vide, attendu 0", acquis)
 	}
@@ -156,9 +167,9 @@ func TestPersisterResumesUsage_TitreSansCapability(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_5", &acquis, &relaches)
 
-	persisterResumesUsage(context.Background(), d, []artefactCuit{
-		{matchID: "m-h5", path: artefactUsage(t, dir, "m-h5")},
-	})
+	persisterResumesUsage(context.Background(), d, &bilanDerivations{}, lus(d,
+		ArtefactRange{MatchID: "m-h5", Path: artefactUsage(t, dir, "m-h5")},
+	))
 	if acquis != 0 {
 		t.Fatalf("writer acquis %d fois pour un titre sans capability, attendu 0", acquis)
 	}
@@ -180,10 +191,10 @@ func TestPersisterResumesUsage_ArtefactIllisibleNArretePasLeLot(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_infinite", &acquis, &relaches)
 
-	persisterResumesUsage(context.Background(), d, []artefactCuit{
-		{matchID: "m-absent", path: filepath.Join(dir, "inexistant.json")},
-		{matchID: "m-ok", path: artefactUsage(t, dir, "m-ok")},
-	})
+	persisterResumesUsage(context.Background(), d, &bilanDerivations{}, lus(d,
+		ArtefactRange{MatchID: "m-absent", Path: filepath.Join(dir, "inexistant.json")},
+		ArtefactRange{MatchID: "m-ok", Path: artefactUsage(t, dir, "m-ok")},
+	))
 	if acquis != 1 {
 		t.Fatalf("writer acquis %d fois, attendu 1 (le lot valide s'ecrit)", acquis)
 	}
