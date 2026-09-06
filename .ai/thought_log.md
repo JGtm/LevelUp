@@ -95636,3 +95636,45 @@ RENDU restent (un lint statique ne voit pas une couleur qui arrive par la donnee
 « ce titre ne propose pas de rejeu » n'est pas recopie dans le dictionnaire du rejeu (le lot C
 porte deja ce libelle FR/EN). Prochaine etape : verification CI par le superviseur (surveillance
 non faite, consigne du lot), revue adversariale, puis integration dans `feat/v75`.
+
+## [2026-09-06] Lot D — corrections apres revue adversariale R1 — Complete
+
+**Contexte.** La revue R1 du lot D (plan v2 du rejeu et du film) valide l'invariant de calcul —
+25/25 calques identiques en ordre ET en condition, jointure des treize memos, replis d'horloge,
+canoniques, magasin de lecture — et releve onze points : deux CABLAGES NEUFS sans aucun temoin
+(le `t0Ms` qui porte la correction P0-7, la table de liaison des 25 peintres), cinq affirmations
+du journal inexactes, un cinquieme changement visible hors du contrat des exceptions, et douze
+commentaires orphelins. Chaque constat etait accompagne de sa mutation, jouee par la revue.
+
+**Decision technique.** Deux reponses de nature differente selon le constat. Pour les deux
+cablages : (1) quatre cas de test couvrent les trois lignes de `t0Ms`, au niveau du CABLAGE
+(espions sur l'onglet et sur les deux lectures du score) et de l'EFFET (sur le graphe reel, la
+marque recule du countdown quand la prop disparait) ; (2) les onze calques cables par un hook
+portent desormais leur `id` a cote de leur `paint` et `bindPainters` en derive la liaison — la
+faute mesuree (peindre le crane sous l'identite de la couronne) n'est plus ECRIVABLE, et le
+type de retour porte l'union exacte des ids, donc un oubli fait rougir le compilateur. Les
+quatorze fermetures restantes sont confrontees a une table ecrite a la main. Pour les
+affirmations inexactes : l'oracle des 25 ids remplace la tautologie ; le lint couleur gagne les
+fonctions CSS (`oklch`, `rgba`, `hsl`...) et le balayage de `lib/replay/`, sans quoi il ne
+couvrait PAS la moitie de deux gardes supprimes ; le garde d'horloge attrape la lecture
+qualifiee ; la citation du contrat Go et la mesure des six fenetres de
+`SynthesisBipolaireChart` sont corrigees ; l'exemption `max-lines` de l'Explorer quitte la
+config pour la tete de son fichier, avec un critere de retrait mesurable. Les douze JSDoc
+orphelins partent sans remplacement : leur contenu vit dans le foyer canonique.
+
+**Resultats.** Huit commits (`28d850866` a `1cb46136e`). CHAQUE correction est prouvee par la
+mutation du verdict rejouee rouge puis verte : M4 (`expected undefined to be 30000`, aux deux
+sites du cablage), M3 (`expected 339 to be -1`) plus une seconde mutation sur les fermetures,
+M2 (swap `chaleur`/`zones-nommees`), M8 (conversion property-form), M10 (`oklch` et `rgba`
+plantes dans une feature ET dans `lib/replay/`). Gate final vert : `tsc -b --force` exit 0,
+lint 0 error (27 warnings de baseline), `lint:colors` 0 violation, imports croises 7 <= 7,
+vitest `6385 passed | 14 skipped` (+9 cas), build 2 207 modules, rasterisation 3 passed —
+rejouee apres chacun des huit commits.
+
+**Conclusion / prochaine etape.** Les onze points de la revue sont statues. Le contrat des
+exceptions VISIBLES du lot passe de quatre a SIX, les deux nouvelles etant nommees a l'endroit
+ou elles se produisent (l'infobulle de la frise qui tronque, le « 1m00s » de la synthese sous
+la minute). Trois decouvertes nouvelles au journal du lot, dont un flake de suite non
+reproductible (un run sur trois, sous charge) et deux libelles FR en dur preexistants dans
+`MatchCadenceChart`. Prochaine etape : seconde ronde de revue sur ces corrections, puis
+integration dans `feat/v75`.
