@@ -25,8 +25,8 @@ package replay
 //	manche PARASITE  declaree par UN seul slot (`a4083bd2` manche 1 : 1 enregistrement) ou par
 //	                 AUCUN (`fb1a1a72` et `72b0a25e` manche 1, admises par la tolerance de trou
 //	                 de `RealRounds`) ;
-//	ecartes          5 a 27 par film sur les neuf films a etiquetage sain ; ZERO sur les trois
-//	                 films dont l'etiquetage ne suit pas l'horloge, ou aucune borne n'est posee.
+//	ecartes          fourchette nominale : `objectiveevents.OutliersNominalMax` (seule ecriture) ;
+//	                 ZERO sur les films dont l'etiquetage ne suit pas l'horloge (aucune borne posable).
 //
 // REGIME : garde `MANCHES_CACHE` (racine du cache film) + `MANCHES_FILMS` (liste de prefixes de
 // match, separes par des virgules). Aucune base, aucun reseau, un film a la fois.
@@ -78,9 +78,13 @@ func mbReleveFilm(t *testing.T, film string, recs []objectiveevents.StatRecord, 
 		}
 	}
 	sort.Ints(rounds)
-	ecartes := objectiveevents.ResolveRoundBounds(recs).Outliers(recs)
-	t.Logf("FILM %s : %d enregistrements, tronque=%v, manches reelles=%v, ECARTES=%d",
-		film, len(recs), tronque, rounds, ecartes)
+	bornes := objectiveevents.ResolveRoundBounds(recs)
+	t.Logf("FILM %s : %d enregistrements, tronque=%v, manches reelles=%v, ECARTES=%d, EXEMPTES=%d",
+		film, len(recs), tronque, rounds, bornes.Outliers(recs), len(bornes.KeptSegments()))
+	for _, s := range bornes.KeptSegments() {
+		t.Logf("  EXEMPTE slot %d manche %d : [%d..%d] %d enr., ecart %d ms",
+			s.Slot, s.Round, s.FromMS, s.ToMS, s.Records, s.GapMS)
+	}
 	for _, round := range rounds {
 		debuts, instants := mbColonnes(recs, round)
 		t.Logf("  manche %d : slots=%d mediane des debuts=%d milieu=%d debuts=%v",

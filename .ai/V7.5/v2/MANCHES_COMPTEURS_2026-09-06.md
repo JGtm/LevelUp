@@ -18,6 +18,7 @@ joueur qui en a **5** a la feuille de match.
 | Temoins | 15 films re-cuits : **11 identiques hors numero de schema**, 4 corriges, **zero perte reelle, zero disparition** |
 | Schema | **43 -> 44**, chronique ecrite dans `document.go` et dans le ratchet `structure_test.go` |
 | Regression trouvee en cours de route | une premiere version du correctif cassait `a4083bd2` (24 compteurs de joueur en baisse) ; corrigee, prouvee par mutation, mesuree |
+| Revue MANCHES-R1 | close, 15/15 conditions, aucun P0/P1 ; trois constats traites au § 7 bis (garde par slot, definition unique du debut de manche, fourchette nominale a une seule ecriture) — **parc inchange**, schema toujours 44 |
 
 ---
 
@@ -286,6 +287,106 @@ trois gardes.
 | `go test -tags=integration -p 1 -count=1 ./internal/api/wire/...` | ok (29,9 s) |
 | `golangci-lint run --new-from-merge-base=origin/main ./...` | **0 issues** |
 | golden d'assemblage regenere | UNE ligne changee (`schema 43` -> `schema 44`), sur 605 |
+
+---
+
+## 7 bis. Corrections R1 (revue MANCHES-R1, 2026-09-06)
+
+Revue close : correctif exact, 15/15 conditions, aucun P0/P1. Trois constats traites ci-dessous.
+`SchemaVersion` reste **44** : aucune des trois corrections ne change le document sur le parc.
+
+### C1 (requalifie P1) — un segment par slot n'est jamais jete
+
+**Le defaut.** Les trois gardes des bornes comparent des medianes GLOBALES ; aucune ne verifiait
+qu'une borne ne coupe pas au milieu, ou apres la fin, du bloc contigu d'un slot donne. Fixture du
+relecteur — 8 slots, 3 ouvrant la manche 1 a 40 s et 5 a 70 s : la mediane basse pose la borne a
+70 s, **12 enregistrements legitimes jetes**, `rounds[1]` VIDE pour trois joueurs, total
+d'assistances **8 -> 5** (moins 37 %).
+
+**Le correctif, et sa doctrine.** *Une lecture vraie n'est jamais jetee — on n'ecarte que ce qui
+est CONTREDIT.* La granularite passe du film au bloc (slot, manche) :
+
+| le bloc d'un slot pour une manche | decision |
+|---|---|
+| une PARTIE dans la fenetre | les emissions hors fenetre sont ecartees — elles sont contredites par celles du meme slot pour la meme manche (`51ebbc0f` slot 12 : 1 hors fenetre contre 24 dedans) |
+| ENTIEREMENT hors fenetre | garde dans sa manche declaree, et journalise `slog.Warn` (match, slot, manche, bornes du bloc, ecart, nombre d'enregistrements) — rien ne le contredit |
+
+`RoundBounds.KeptSegments()` expose ces blocs ; `analysis/replay/build_score.go` les journalise.
+
+**Effet sur le parc : AUCUN.** Releve sur les douze films multi-manche + un mono-manche, apres
+correctif :
+
+```
+51ebbc0f ECARTES=13 EXEMPTES=0    d9781168 ECARTES=20 EXEMPTES=0    24dbb67d ECARTES=19 EXEMPTES=0
+43716616 ECARTES=19 EXEMPTES=0    9f57c612 ECARTES=24 EXEMPTES=0    c75f33b8 ECARTES=27 EXEMPTES=0
+cde26226 ECARTES=6  EXEMPTES=0    7fce3219 ECARTES=9  EXEMPTES=0    64e8adfa ECARTES=6  EXEMPTES=0
+fb1a1a72 ECARTES=0  EXEMPTES=0    72b0a25e ECARTES=0  EXEMPTES=0    a4083bd2 ECARTES=0  EXEMPTES=0
+000d5950 ECARTES=0  EXEMPTES=0
+```
+
+Les comptes d'ecartes sont IDENTIQUES a ceux d'avant C1, et aucun bloc n'est exempte : la garde
+est une SURETE, pas un cas nominal. Le parc ne bouge pas.
+
+**Tests.** Trois, dont la mutation inverse exigee :
+
+| test | ce qu'il fige | mutation qui le tue |
+|---|---|---|
+| `TestSegmentEntierDUnSlotNEstJamaisJete` | fixture du relecteur : 0 ecarte, 3 blocs exemptes de 4 enregistrements, `rounds[1]` pleine a 3 assistances | retrait de l'exemption dans `Excludes` |
+| `TestSegmentEntierExemptePubliePourLeJoueur` | le total du joueur precoce vaut 6 (3 par manche), pas 3 | idem |
+| `TestEgareSeulResteEcarteMalgreLaGardeParSlot` | **la mutation inverse** : l'egare de `51ebbc0f` a un bloc DANS la fenetre, il reste contredit donc ecarte (0 exempte, 1 ecarte, manche 0 a 3 assistances) | exempter des qu'UN enregistrement est hors fenetre au lieu de TOUS |
+
+Mesure de la mutation « exemption retiree » : **2 tests tues**.
+
+### C2 — une seule definition du debut d'une manche
+
+**Le defaut.** `slotidentity_rounds.go:roundStartsOf` prenait le MINIMUM des instants declares la
+ou la decoupe prend la mediane des premiers instants par slot. Sur `24dbb67d`, manche 1 :
+**85 193 ms** (minimum, un faux positif) contre **298 909 ms** (consensus) — **213 s** pendant
+lesquelles `RoundIdentity.At` resolvait la manche suivante.
+
+**Le correctif.** `RoundStartsMS(recs)` devient la source unique du paquet, batie sur
+`chainedRounds` ; `roundStartsOf` la consomme. Repli documente : une manche que le consensus ne
+sait pas fixer (sans majorite de slots) garde le minimum de ses instants declares — faute de
+mieux, et sur une manche que la decoupe ne borne de toute facon pas.
+
+**Effet mesure, element par element** (`137ae05f4` contre HEAD, un film par processus) :
+
+| film | debut de manche : avant -> apres | `objectives` | `flagCarries` | `skullCarries` | `vipCrown` | artefact |
+|---|---|---|---|---|---|---|
+| `24dbb67d` (Ranked:Oddball, 2 manches) | manche 1 : **85 193 -> 298 909 ms** | 0 -> 0 | 0 -> 0 | 20 -> 20 | 0 -> 0 | **IDENTIQUE A L'OCTET** |
+| `fb1a1a72` (CTF, 3 manches declarees) | manche 2 : **66 671 -> 66 805 ms** | 3 -> 3 | 0 -> 0 | 0 -> 0 | 0 -> 0 | **IDENTIQUE A L'OCTET** |
+
+`objectives` par (xuid, statistique), les deux films, avant et apres :
+`2533274795950878/kills=1  2535408981717353/assists=1  2535473461033821/kills=1` — identique.
+
+**Aucune variation, donc aucune variation qui s'eloigne de la feuille.** L'ecart a la feuille de
+match est inchange et se lit ainsi :
+
+| film | compteurs K/D/A publies contre la feuille |
+|---|---|
+| `24dbb67d` | **8 joueurs sur 8 EXACTS** (9/10/4, 7/11/12, 5/12/5, 20/11/3, 15/12/4, 14/10/6, 10/12/0, 8/10/5) |
+| `fb1a1a72` | court de 1 a 2 sur six joueurs — c'est la troncature de grille de la decouverte n° 1 (`coverage.originResolved = false`), etrangere a ce lot et identique des deux cotes |
+
+Pourquoi aucun consommateur n'est expose sur ces deux films : `RoundIdentity.At` sert
+`flag_carries.go` et `vip_crown.go` ; `24dbb67d` est un Oddball (ni drapeau ni couronne) et
+`fb1a1a72` ne publie aucun portage de drapeau. L'incoherence etait reelle, sa surface
+d'exposition sur le parc est nulle — le correctif la ferme avant qu'un film CTF multi-manche ne
+l'ouvre.
+
+### C3 — la fourchette nominale n'est plus ecrite qu'une fois
+
+`objectiveevents.OutliersNominalMax = 27` porte la mesure et le releve des douze films. Les deux
+autres ecritures (`round_bounds.go` « 5 a 24 », `build_score.go` « 5 a 27 ») sont supprimees et
+remplacees par une reference ; l'instrument de releve y renvoie aussi. La constante est VIVANTE :
+au-dela, le journal de cuisson passe de INFO a WARN — « son explosion signalerait un etiquetage
+de manche qui ne tient plus » devient une mesure au lieu d'une prose.
+
+### Observation de conduite (aucun defaut)
+
+Une cuisson de `24dbb67d` a ete interrompue par la sentinelle memoire a **3,83 Gio** puis a
+re-cuit a **0,217 Gio** quinze minutes plus tard, meme binaire et meme film. Cause : contention
+machine (un autre agent decodait en parallele) — `filmproc.Footprint` mesure le tas Go retenu, que
+le nettoyeur ne rend pas assez vite sous pression. La sentinelle a joue son role ; rien a corriger.
 
 ---
 
