@@ -213,7 +213,8 @@ func TestWeaponRangeTriDeterministe(t *testing.T) {
 }
 
 // TestWeaponRangeAggregateEntreeVideEtSeuilAbsurde : aucune entrée = aucune ligne ; un seuil
-// nul ou négatif est remonté à 1 plutôt que de publier une ligne sans mesure.
+// nul publie la ligne d'un groupe d'UNE mesure — jamais une ligne sans mesure, un groupe
+// naissant toujours d'au moins un frag.
 func TestWeaponRangeAggregateEntreeVideEtSeuilAbsurde(t *testing.T) {
 	rows, sum := WeaponRangeAggregate(nil, WeaponRangeMinMeasured)
 	if len(rows) != 0 || sum.BelowThreshold != 0 {
@@ -222,6 +223,42 @@ func TestWeaponRangeAggregateEntreeVideEtSeuilAbsurde(t *testing.T) {
 	rows, _ = WeaponRangeAggregate([]MeasuredKill{kilFrag("br75", SideKiller, 4, 0)}, 0)
 	if len(rows) != 1 || rows[0].Measured != 1 {
 		t.Fatalf("seuil 0 : une mesure publie une ligne, obtenu %+v", rows)
+	}
+}
+
+// TestWeaponRangeAggregateDistancesNonTriees : LES PERCENTILES EXIGENT UNE SÉRIE TRIÉE, et
+// rien ne garantit que les frags arrivent dans l'ordre des distances — ils arrivent dans
+// l'ordre du kill-feed. Le groupe reçoit donc ici des distances volontairement mêlées et les
+// trois attendus sont calculés À LA MAIN (convention « type 7 », celle de `quantile_cont`) :
+//
+//	série triée : 2, 4, 7, 9, 12, 15, 30, 40   (n = 8, donc n-1 = 7 intervalles)
+//	p10 : rang 0,7  -> 2 + 0,7 x (4 - 2)   = 3,4
+//	p50 : rang 3,5  -> 9 + 0,5 x (12 - 9)  = 10,5
+//	p90 : rang 6,3  -> 30 + 0,3 x (40 - 30) = 33,0
+//
+// Sans le tri, les trois valeurs seraient 13,4 · 9,5 · 8,5 : le test rougit à la première
+// disparition de `sort.Float64s` (revue du 2026-09-06 — la mutation passait inaperçue).
+func TestWeaponRangeAggregateDistancesNonTriees(t *testing.T) {
+	var kills []MeasuredKill
+	for _, d := range []float64{40, 2, 9, 15, 4, 30, 7, 12} {
+		kills = append(kills, kilFrag("sniper", SideKiller, d, 0))
+	}
+	rows, sum := WeaponRangeAggregate(kills, WeaponRangeMinMeasured)
+	if len(rows) != 1 || sum.BelowThreshold != 0 {
+		t.Fatalf("une ligne attendue au seuil exact : %+v / %+v", rows, sum)
+	}
+	for _, c := range []struct {
+		nom  string
+		got  float64
+		want float64
+	}{
+		{"p10", rows[0].P10, 3.4},
+		{"médiane", rows[0].Median, 10.5},
+		{"p90", rows[0].P90, 33.0},
+	} {
+		if math.Abs(c.got-c.want) > epsPortee {
+			t.Errorf("%s = %v, attendu %v (série non triée à l'entrée)", c.nom, c.got, c.want)
+		}
 	}
 }
 
