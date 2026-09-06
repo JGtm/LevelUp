@@ -6,7 +6,7 @@
  * Mode legacy (defaultPageSize undefined) : PAGE_SIZE=20 par page.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 
 // TanStack Router : <Link> exige un RouterProvider, absent en test unitaire. On le
 // remplace par un <a> qui INTERPOLE les params dans le template de route — ce que le
@@ -410,12 +410,28 @@ describe('ExplorerMatchesTable — colonne « Rejeu »', () => {
   // PORTE DE TITRE (2026-09-05, registre L5) : un titre sans décodeur de film n'aura
   // jamais d'artefact — la colonne entière disparaît, pas seulement ses icônes. Sa
   // voisine Waypoint était gatée depuis le 2026-07-24 ; celle-ci ne l'était pas.
+  // LA COLONNE, PAS SEULEMENT LE LIEN (revue C-R1, constat C2). Asserter l'absence du lien
+  // ne prouve rien : `MatchReplayLink` le masque deja tout seul, donc les deux portes se
+  // couvraient mutuellement et aucune n'etait testee. On compte les colonnes : sans la
+  // capability, le tableau en a UNE de moins — plus d'en-tete fantome ni de cellules vides.
   it("masquée quand le titre courant ne déclare pas la capability replay", () => {
+    // Les deux rendus ne different QUE par `replay` : sinon `team_mmr` et
+    // `waypoint_match_url` feraient varier le compte pour une autre raison.
+    setTitleCaps(['team_mmr', 'waypoint_match_url', 'replay'])
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: true })]} playerSlug="me" />,
+    )
+    const avecColonne = screen.getAllByRole('columnheader').length
+    const cellulesAvec = screen.getAllByRole('row')[1].querySelectorAll('td').length
+    cleanup()
+
     setTitleCaps(['team_mmr', 'waypoint_match_url'])
     renderWithProviders(
       <ExplorerMatchesTable rows={[makeRow(1, { has_replay: true })]} playerSlug="me" />,
     )
     expect(screen.queryByRole('link', { name: REPLAY_LABEL })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('columnheader')).toHaveLength(avecColonne - 1)
+    expect(screen.getAllByRole('row')[1].querySelectorAll('td')).toHaveLength(cellulesAvec - 1)
   })
 
   it('rendue quand le titre déclare `replay` ET que la ligne porte un artefact', () => {
