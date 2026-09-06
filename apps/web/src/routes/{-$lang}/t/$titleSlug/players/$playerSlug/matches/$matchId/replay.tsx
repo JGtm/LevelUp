@@ -5,8 +5,16 @@
  * Trajectoires des joueurs décodées du film, servies par l'API comme artefact
  * pré-construit (GET .../replay). La disponibilité est PAR MATCH : 404 → état vide.
  * Ce n'est donc pas un drapeau global — le stub `REJEU_2D_ENABLED` qui occupait cette
- * route est remplacé par l'implémentation réelle. La garde de capability est conservée :
- * sans `matchmaking`, le match n'existe pas pour ce titre, donc son rejeu non plus.
+ * route est remplacé par l'implémentation réelle.
+ *
+ * DEUX PORTES DE TITRE, ET ELLES NE DISENT PAS LA MÊME CHOSE (2026-09-06, v2 D.14) :
+ *  - `matchmaking` : sans elle, le match n'existe pas pour ce titre, donc son rejeu non plus ;
+ *  - `replay` : le titre a des matchs, mais aucune chaîne de rejeu (capability title-level du
+ *    lot C, servie par le bootstrap). Halo 5 est dans ce cas.
+ * La porte est posée AU-DESSUS du composant : la page n'est pas montée, donc aucun de ses
+ * hooks de chargement ne tourne — ni l'artefact (1,5 à 2,7 Mio), ni la vue match, ni le fond
+ * de carte. Un titre sans rejeu ne paie aucune requête, et lit un état qui le dit
+ * (`FeatureUnavailable`, libellé `replay` FR/EN).
  */
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useCallback, useMemo } from 'react'
@@ -47,7 +55,9 @@ export const Route = createFileRoute(
 )({
   component: () => (
     <RouteCapabilityGate capability="matchmaking">
-      <ReplayPage />
+      <RouteCapabilityGate capability="replay">
+        <ReplayPage />
+      </RouteCapabilityGate>
     </RouteCapabilityGate>
   ),
 })
