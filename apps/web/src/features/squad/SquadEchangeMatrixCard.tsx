@@ -21,7 +21,7 @@
  */
 import { useMemo } from 'react'
 
-import { Heatmap2DChart } from '@/components/charts/Heatmap2DChart'
+import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
@@ -63,9 +63,11 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
 
   // Tooltip PROPRE à cette lecture : le libellé par défaut du wrapper parle de taux
   // de victoire et de matchs, ce qu'une case de cette matrice n'est pas.
+  // Le wrapper n'appelle ce formateur que sur une case REMPLIE (une case vide n'a pas
+  // d'infobulle) ; `value ?? 0` n'est là que pour satisfaire le type nullable.
   const formatTooltip = useMemo(
-    () => (p: { x: string; y: string; value: number; detail?: Record<string, unknown> }) =>
-      t.matrixTooltip(p.y, p.x, p.value, perMatchFmt.format(Number(p.detail?.perMatch ?? 0))),
+    () => (p: ChartPointHeatmap) =>
+      t.matrixTooltip(p.y, p.x, p.value ?? 0, perMatchFmt.format(Number(p.detail?.perMatch ?? 0))),
     [t, perMatchFmt],
   )
 

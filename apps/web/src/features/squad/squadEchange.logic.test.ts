@@ -181,7 +181,13 @@ describe('extremesCouverture — badges « le plus / le moins couvert »', () =>
 
 // ─── LA MATRICE ───────────────────────────────────────────────────────────────
 
-describe('matriceSeries — orientation et complétude', () => {
+describe('matriceSeries — orientation, complétude, et AXES', () => {
+  const quatre = [
+    { xuid: 'x1', gamertag: 'A' },
+    { xuid: 'x2', gamertag: 'B' },
+    { xuid: 'x3', gamertag: 'C' },
+    { xuid: 'x4', gamertag: 'D' },
+  ]
   const e = echangeDe({
     cellules: [
       { vengeur_xuid: 'x2', vengeur_gamertag: 'Ami', venge_xuid: 'x1', venge_gamertag: 'Moi', nombre: 4, par_match: 0.4 },
@@ -194,10 +200,40 @@ describe('matriceSeries — orientation et complétude', () => {
     expect(case42?.value).toBe(4)
   })
 
-  it('émet les cases à zéro (pas de trou dans la grille) mais JAMAIS la diagonale', () => {
+  // W1 (revue ronde 1, 2026-09-06) — LA MATRICE SE LISAIT DE TRAVERS.
+  //
+  // Le wrapper déduit ses catégories d'axe de l'ORDRE D'APPARITION des points. Tant
+  // que `matriceSeries` sautait la diagonale, la première COLONNE rencontrée était le
+  // DEUXIÈME joueur : lignes [A,B,C,D] mais colonnes [B,C,D,A]. Sur un duo, l'axe X
+  // sortait exactement inversé par rapport à l'axe Y. Ces deux tests dérivent les axes
+  // COMME LE WRAPPER, et tombent si la diagonale disparaît à nouveau.
+  const axesDerives = (dp: { x: string; y: string }[]) => ({
+    xs: [...new Set(dp.map((d) => d.x))],
+    ys: [...new Set(dp.map((d) => d.y))],
+  })
+
+  it('rend des axes IDENTIQUES et dans l’ordre du roster (4 joueurs)', () => {
+    const { xs, ys } = axesDerives(matriceSeries(echangeDe({ joueurs: quatre }))[0].datapoints)
+    expect(ys).toEqual(['A', 'B', 'C', 'D'])
+    expect(xs).toEqual(ys)
+  })
+
+  it('rend des axes identiques sur un DUO (le cas où l’inversion était totale)', () => {
+    const { xs, ys } = axesDerives(matriceSeries(e)[0].datapoints)
+    expect(ys).toEqual(['Moi', 'Ami'])
+    expect(xs).toEqual(ys)
+  })
+
+  it('émet TOUTES les cases, diagonale COMPRISE, celle-ci VIDE', () => {
+    const dp = matriceSeries(echangeDe({ joueurs: quatre }))[0].datapoints
+    expect(dp).toHaveLength(16) // 4 x 4, rien d'omis
+    const diagonale = dp.filter((d) => d.x === d.y)
+    expect(diagonale).toHaveLength(4)
+    expect(diagonale.every((d) => d.value === null)).toBe(true)
+  })
+
+  it('émet les cases hors diagonale à zéro : un 0 mesuré n’est pas une case absente', () => {
     const dp = matriceSeries(e)[0].datapoints
-    expect(dp).toHaveLength(2) // 2 joueurs → 2 cases hors diagonale
-    expect(dp.some((d) => d.x === d.y)).toBe(false)
     expect(dp.find((d) => d.y === 'Moi' && d.x === 'Ami')?.value).toBe(0)
   })
 

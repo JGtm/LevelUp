@@ -87,3 +87,65 @@ describe('buildHistogramOption', () => {
     expect(opt.yAxis?.name).toBe('Matchs')
   })
 })
+
+// ─── BARRES ATTÉNUÉES (correction W2/W5, revue ronde 1 du 2026-09-06) ─────────
+//
+// « Montrées, jamais comptées » : les barres hors périmètre gardent la COULEUR DE
+// SÉRIE et perdent en opacité, avec un liseré tireté. Pas de seconde teinte — aucun
+// token sémantique du dépôt n'est achromatique dans les quatre palettes
+// (`divergent-neutral` vaut blue-400 dans la palette par défaut), et une seconde
+// couleur aurait donc dépendu de la palette pour rester neutre.
+
+interface StyledBar {
+  value: number
+  itemStyle: { color?: string; opacity?: number; borderType?: string }
+}
+
+function barres(opt: unknown): Array<number | StyledBar> {
+  return (opt as { series: Array<{ data: Array<number | StyledBar> }> }).series[0].data
+}
+
+const troisBins: ChartPointHistogram[] = [
+  { binStart: 0, binEnd: 1, count: 3 },
+  { binStart: 1, binEnd: 2, count: 5 },
+  { binStart: 2, binEnd: 3, count: 2 },
+]
+
+describe('buildHistogramOption — binAttenuated', () => {
+  it('atténue les barres désignées et laisse les autres intactes', () => {
+    const opt = buildHistogramOption(makeSeries(troisBins), {
+      binAttenuated: (p) => p.binStart >= 2,
+    })
+    const data = barres(opt)
+    expect(typeof data[0]).toBe('number')
+    expect(typeof data[1]).toBe('number')
+    const attenuee = data[2] as StyledBar
+    expect(attenuee.value).toBe(2)
+    expect(attenuee.itemStyle.opacity).toBeLessThan(1)
+    expect(attenuee.itemStyle.borderType).toBe('dashed')
+  })
+
+  it('n’introduit AUCUNE seconde teinte : la barre atténuée porte la couleur de série', () => {
+    const opt = buildHistogramOption(makeSeries(troisBins), {
+      colorToken: 'chart-series-1',
+      binAttenuated: (p) => p.binStart >= 2,
+    })
+    const data = barres(opt)
+    const attenuee = data[2] as StyledBar
+    const serie = (opt as { series: Array<{ itemStyle: { color: string } }> }).series[0]
+    expect(attenuee.itemStyle.color).toBe(serie.itemStyle.color)
+  })
+
+  it('RÉTRO-COMPAT : sans la prop, `data` reste un tableau de nombres nus', () => {
+    // INVERSION JOUÉE : en emballant systématiquement chaque valeur en objet, ce test
+    // tombe — c'est ce qui garantit que les appelants historiques ne changent pas de
+    // rendu d'un iota.
+    const opt = buildHistogramOption(makeSeries(troisBins))
+    expect(barres(opt)).toEqual([3, 5, 2])
+  })
+
+  it('un prédicat toujours faux équivaut à l’absence de prop', () => {
+    const opt = buildHistogramOption(makeSeries(troisBins), { binAttenuated: () => false })
+    expect(barres(opt)).toEqual([3, 5, 2])
+  })
+})
