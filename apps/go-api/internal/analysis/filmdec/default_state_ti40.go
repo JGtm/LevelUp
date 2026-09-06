@@ -56,7 +56,10 @@ const VehicleTypeIndex = 40
 //
 // Le reglage public `SetVehicleMediaFrameBits` a ete supprime le 2026-09-05 (lot E, item E.2) :
 // aucun appelant. La largeur reste 0, c'est-a-dire le bloc modelise absent.
-var vehicleMediaFrameBits = 0
+// PROVENANCE : largeur MESUREE du bloc quaternion de la feuille 4 de ti=40 — 0, c est-a-dire le
+// bloc modelise ABSENT, ce qui est bit-exact sur le chemin nominal (bVar14 == 0, le cas d un
+// spawn). Constante depuis le 2026-09-06 (lot E, item E.8).
+const vehicleMediaFrameBits = 0
 
 // consumeDefaultStateTI40 porte FUN_1410a5a74 (archetype 40, « vehicule »).
 //

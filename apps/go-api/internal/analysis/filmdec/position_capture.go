@@ -184,7 +184,10 @@ const (
 // absDequantMode : forme de déquant des chemins absolus i0 (défaut = range Cliffhanger historique).
 // Le réglage public `SetAbsDequantMode` (harnais de calibration) a été supprimé le 2026-09-05
 // (lot E, item E.2) : aucun appelant. La valeur de production est celle du défaut ci-dessous.
-var absDequantMode = AbsDequantRange
+// PROVENANCE : forme de dequant MESUREE du chemin absolu i0 sur le film 000d5950 (Cliffhanger).
+// Constante depuis le 2026-09-06 (lot E, item E.8) : plus aucun ecrivain depuis le retrait des
+// 22 reglages morts, et c est la valeur que la production decode.
+const absDequantMode = AbsDequantRange
 
 // absoluteAxisW, si > 0, OVERRIDE la largeur d'axe des CHEMINS ABSOLUS i0 (consumeAbsoluteWithGate
 // + predFlag==1) — distincte de pd.AxisW (qui garde 6/6/6 pour le default-state et le delta
@@ -240,7 +243,9 @@ func absAxisW(i int) uint {
 	return WorldObjectPrecision.AxisW[i]
 }
 
-// absPerIndexAxisW — LARGEURS D'AXE PAR INDEX DE PLAGE DE REPLICATION (7ter.54 axe 3).
+// absAxisWFor retourne la largeur de l axe i pour l index de plage idx.
+//
+// LARGEURS D AXE PAR INDEX DE PLAGE DE REPLICATION (7ter.54 axe 3) — LE SAVOIR, GARDE ICI.
 //
 // SOURCE, DESASSEMBLAGE : `FUN_14076e524(out, reader, outIndexPtr, LEVEL)` choisit ses trois
 // largeurs dans DEUX tables distinctes selon l'index lu au flux :
@@ -254,20 +259,14 @@ func absAxisW(i int) uint {
 // Les trois largeurs ne sont donc PAS uniformes et PAS les memes pour tous les index — ce que
 // l'override uniforme `absoluteAxisW` suppose.
 //
-// nil = comportement historique (largeur uniforme). Cle -1 = chemin sans index.
-// Le reglage public `SetAbsPerIndexAxisW` a ete supprime le 2026-09-05 (lot E, item E.2) :
-// aucun appelant. La table reste nil, c'est-a-dire le comportement historique.
-var absPerIndexAxisW map[int][3]uint
-
-// absAxisWFor retourne la largeur de l'axe i pour l'index de plage idx (repli : largeur uniforme).
+// LA TABLE `absPerIndexAxisW` QUI PORTAIT CE MODELE A ETE SUPPRIMEE le 2026-09-06 (lot E, item
+// E.8) : elle etait nil et le restait — son unique installateur, le reglage public
+// `SetAbsPerIndexAxisW`, n avait aucun appelant et est parti au lot E.2. Elle ne portait AUCUNE
+// valeur mesuree, seulement le modele ci-dessus, qui reste donc ecrit ici, a l endroit ou un
+// futur portage viendra le lire. La largeur rendue est celle du chemin uniforme, comme avant.
 func absAxisWFor(idx, i int) uint {
 	if i == 0 {
 		absIdxHist[idx]++
-	}
-	if absPerIndexAxisW != nil {
-		if w, ok := absPerIndexAxisW[idx]; ok && w[i] > 0 {
-			return w[i]
-		}
 	}
 	return absAxisW(i)
 }

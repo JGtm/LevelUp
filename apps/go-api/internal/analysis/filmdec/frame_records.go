@@ -662,7 +662,9 @@ func boundDeltaCleanAt(buf []byte, p int, w *World, cfg FrameConfig) bool {
 // (stops), it does NOT fabricate a biped position (unlike the resync scan). Le reglage public
 // `SetInferStrict` a ete supprime le 2026-09-05 (lot E, item E.2) : aucun appelant. La
 // confirmation forte reste active, comme en production.
-var inferRequireBoundSuccessor = true
+// PROVENANCE : la confirmation forte est le comportement de production, et le seul mesure.
+// Constante depuis le 2026-09-06 (lot E, item E.8).
+const inferRequireBoundSuccessor = true
 
 // inferChain routes unbound-slot inference through the recursive CHAIN resolver
 // (frame_chain_infer.go), which sees through sequences of transients that block the
@@ -677,7 +679,9 @@ func SetInferChain(v bool) { inferChain = v }
 // rescues non-biped transients (its true value is the per-component width observations
 // it accumulates for porting). Requires inferChain. Le reglage public `SetInferRepair` a ete
 // supprime le 2026-09-05 (lot E, item E.2) : aucun appelant. La reparation reste desactivee.
-var inferRepair = false
+// JAMAIS ACTIVE : aucun chemin ne l a jamais mis a vrai. Constante depuis le 2026-09-06
+// (lot E, item E.8).
+const inferRepair = false
 
 func inferUnboundArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (uint32, int, bool) {
 	saved := posCaptureHook
