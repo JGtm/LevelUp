@@ -1,4 +1,4 @@
-package main
+package replaydiff
 
 // comparaison_test.go — LES DEUX INVARIANTS SANS LESQUELS L'OUTIL MENT.
 //
