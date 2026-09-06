@@ -97165,3 +97165,49 @@ découpe par manche des compteurs par joueur (63 assistances créditées à 5 jo
 mort du comparateur `replay-diff` sur les intervalles rognés (invisible à l'axe des comptes).
 Prochaine étape : Notion (re-cuisson du parc 41 → 43, à faire par le superviseur), corpus
 témoin à rejouer à chaque bump de schéma.
+
+## [2026-09-06] Gate local de non-régression du rejeu sur corpus témoin — Complété
+
+**Contexte.** Répond aux deux items laissés ouverts par l'intégration de feat/v2-residus :
+« l'angle mort du comparateur `replay-diff` sur les intervalles rognés » et « corpus témoin à
+rejouer à chaque bump de schéma ». Trois régressions (28/08, 30/08, 02/09) ont traversé des
+goldens synthétiques pendant dix-neuf schémas faute d'un différentiel sur films réels ; ce
+chantier industrialise la méthode du balayage ponctuel (`BALAYAGE_PARC_2026-09-06.md`) en gate
+répétable. Worktree `LevelUp-wt-v2-corpus`, branche `feat/v2-corpus`.
+
+**Décision technique.** (1) Extraction de la logique de `cmd/replay-diff` (un `package main`,
+non importable) vers `internal/replaydiff`, partagée par le CLI historique (comportement
+externe inchangé, test de fumée vérifié) et le nouveau gate — règle des ≤ 2 copies. (2) Axe
+« somme des durées » : descend récursivement dans tout calque à intervalles `[t0,t1]`
+(n'importe lequel, sans câblage en dur), ventile par xuid ou par slot selon la clé que la
+source utilise déjà. Preuve par mutation : l'appel désactivé fait rougir 6/8 tests, restauré
+et revérifié vert. (3) `cmd/replay-corpus-gate`, binaire séparé : trois racines distinctes
+(source = code au HEAD, parc = chunks + référence, travail = jetable) — l'auto-détection du
+parc par `.git` commun s'est révélée FAUSSE sur ce dépôt (`LevelUp-go-migration` est lui-même
+un worktree d'un ancêtre `LevelUp` au `data/` périmé) et a dû être validée par la présence de
+la base partagée avant d'être acceptée. Verrou `filmproc.AcquireSolo` sur `CacheRootDir()` du
+PARC (pas de la racine de travail) — partagé avec tout autre outil de cuisson de la machine.
+Ratchet `no_unbounded_film_loop_test.go` étendu (nouveau site déclaré, régime « un film à la
+fois, verrou partagé, sentinelle par témoin »).
+
+**Résultats.** Manifeste `config/replay_corpus.toml`, 7 témoins (un par famille de mode,
+recensés sur les 106 matchs du parc via `replay-facts-export`). Gate exécuté au HEAD
+(`a059caefc`, schéma 43) : 7/7 cuits sans échec, pic mémoire 0,44 Gio. 75 pertes brutes
+analysées une à une : 61 (81 %) expliquées par la chronique existante (bornes assainies,
+reclassements, compteurs de défaut, réattributions déjà documentées — plusieurs avec les
+CHIFFRES EXACTS cités par le balayage), 7 (9 %) un bug de mesure PRÉEXISTANT découvert en
+chemin (`<calque>.spans/n` compte le dernier groupe itéré, pas la somme — l'axe durée, non
+affecté, a permis de le voir), 7 (9 %) deux faits nouveaux non expliqués (perte de durée de
+portage de drapeau sur `bcb6d393`, perte de durée d'épisode d'équipement sur `084a804d`).
+Aucune régression massive. Les trois découvertes consignées au registre
+(`REGISTRE_REPORTS.md`), pas traitées ici (hors périmètre : ce chantier détecte, il
+n'instruit pas). Gates : `go test` (4 paquets), `go build ./...` (CGO 0 et 1), `go vet`,
+`golangci-lint --new-from-merge-base=origin/main` (0 issue après correctif de 15 issues
+révélées par le déplacement vers `internal/replaydiff` — dette du paquet neuf sur
+`origin/main`, pas introduite par ce chantier, mais corrigée pour tenir le ratchet à 0).
+
+**Conclusion / prochaine étape.** `make replay-corpus-gate` documenté (bilingue) comme geste
+avant tout merge touchant `analysis/replay`/`replaybuild`/`filmdec` ou bumpant `SchemaVersion`.
+Prochaine étape : instruire les deux faits nouveaux (`bcb6d393` flagCarries, `084a804d`
+equipmentEpisodes) et le bug de mesure `spans/n`, tous trois au registre avec condition de
+reprise écrite.
