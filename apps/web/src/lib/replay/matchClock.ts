@@ -24,8 +24,14 @@
  *
  * LES DEUX SOUSTRACTIONS, ET RIEN D'AUTRE.
  *
- *     msFilm     = event_time_ms + t0_ms − originMs          (le contrat Go, mot pour mot)
+ *     msFilm     = event_time_ms + t0_ms − originMs
  *     msGameplay = frame × frameIntervalMs + originMs − t0_ms
+ *
+ * LE GO N'ÉCRIT QUE LA MOITIÉ DE LA PREMIÈRE, et la nuance vaut d'être dite (revue R1) :
+ * `match_view.go` pose `msFilm = event_time_ms + t0_ms`, c'est-à-dire le retour sur l'axe du
+ * MATCH — il ignore le film, qu'il ne voit pas. Le `− originMs` est la part de ce module :
+ * elle ramène ensuite sur l'axe des IMAGES, que seul l'artefact connaît. La formule est donc
+ * juste, mais elle n'est pas une citation.
  *
  * La seconde est l'inverse de la première ; les poser toutes deux ici est ce qui empêche
  * qu'une surface en applique une et sa voisine aucune.
