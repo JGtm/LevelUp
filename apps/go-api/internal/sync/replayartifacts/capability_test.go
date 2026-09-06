@@ -81,6 +81,9 @@ func TestTitreProduitDesArtefacts_CapabilitiesIllisibles(t *testing.T) {
 // file. La porte etant desormais en tete de Run, la BASE N'EST MEME PAS LUE : c'est la
 // preuve la plus economique que rien n'a commence.
 func TestRun_TitreSansCapability_NeSelectionneRien(t *testing.T) {
+	// Le niveau du refus depend du memo par titre (cf. capability.go) : sans cette remise a
+	// zero, l'ordre d'execution des tests du paquet deciderait si la ligne est INFO ou DEBUG.
+	oublierRefusDits()
 	buf := capturerJournal(t)
 	lu := false
 	enfile := false
@@ -103,5 +106,49 @@ func TestRun_TitreSansCapability_NeSelectionneRien(t *testing.T) {
 	}
 	if !aDit(t, buf, "INFO", "titre sans la capability") {
 		t.Errorf("le refus est muet.\nJournal :\n%s", buf.String())
+	}
+}
+
+// TestTitreProduitDesArtefacts_RefusDitUneFoisEnINFOPuisEnDEBUG — observation C7 de la revue
+// adversariale (2026-09-06) fermee.
+//
+// Le refus se disait en INFO a CHAQUE cycle : sur halo_5 — titre ACTIF qui n'aura jamais de
+// decodeur de film — c'etait du bruit permanent sur un etat statique. Il se dit desormais une
+// fois par titre et par process, puis en DEBUG. Le test fige les DEUX niveaux : sans le
+// second volet, un retour au « toujours INFO » passerait inapercu.
+func TestTitreProduitDesArtefacts_RefusDitUneFoisEnINFOPuisEnDEBUG(t *testing.T) {
+	oublierRefusDits()
+	root := racineDepot(t)
+	d := Deps{RepoRoot: root, TitleSlug: "halo_5"}
+
+	premier := capturerJournal(t)
+	if titreProduitDesArtefacts(context.Background(), d) {
+		t.Fatal("halo_5 : la porte s'est ouverte")
+	}
+	if !aDit(t, premier, "INFO", "titre sans la capability") {
+		t.Errorf("premier refus : attendu une ligne INFO.\nJournal :\n%s", premier.String())
+	}
+
+	suivant := capturerJournal(t)
+	if titreProduitDesArtefacts(context.Background(), d) {
+		t.Fatal("halo_5 : la porte s'est ouverte au second appel")
+	}
+	if aDit(t, suivant, "INFO", "titre sans la capability") {
+		t.Errorf("second refus du MEME titre : encore INFO — le memo par titre ne tient pas, "+
+			"le journal se remplit d'une configuration qui ne changera jamais.\nJournal :\n%s",
+			suivant.String())
+	}
+	if !aDit(t, suivant, "DEBUG", "titre sans la capability") {
+		t.Errorf("second refus : la ligne DEBUG manque — le refus doit rester tracable, "+
+			"seulement moins fort.\nJournal :\n%s", suivant.String())
+	}
+
+	// UN AUTRE titre parle a son tour : le memo est PAR TITRE, pas global.
+	autre := capturerJournal(t)
+	if titreProduitDesArtefacts(context.Background(), Deps{RepoRoot: root, TitleSlug: "titre_sans_config"}) {
+		t.Fatal("titre inconnu : la porte s'est ouverte")
+	}
+	if !aDit(t, autre, "WARN", "capabilities illisibles") {
+		t.Errorf("titre inconnu : attendu un WARN d'incident.\nJournal :\n%s", autre.String())
 	}
 }
