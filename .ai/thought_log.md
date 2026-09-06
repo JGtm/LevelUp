@@ -96959,3 +96959,49 @@ d'invocation. `UsageSummaryRev` reste `us2`. Gates verts, `replayartifacts` en i
 **Conclusion / prochaine etape.** C5 est ferme pour de bon, les cinq constats de R1 et les quatre
 de R2 sont soldes. Le diff reste additif sur les films cuits ; la propagation attend toujours la
 re-cuisson de release (schema 41) et la reprise des resumes d'usage (`us2`).
+
+## [2026-09-06] Balayage FINAL du parc au schema 41 — le parc peut etre re-cuit sans rien perdre
+
+**Statut** : Complete (branche `feat/v2-balayage`, worktree `LevelUp-wt-v2-balayage`).
+
+**Decision technique principale.** Troisieme et derniere passe, apres le correctif « une piste =
+une vie » (SchemaVersion 41, `UsageSummaryRev` us2). La mesure qui tranche reste la meme :
+**la cuisson d'avant contre la cuisson d'apres, film par film** — memes films, memes faits, meme
+chemin borne, deux HEAD — parce que c'est la seule ou tout ecart est imputable au correctif et a
+rien d'autre. Le merge a ete un fast-forward (la passe precedente etait deja integree) et
+`cmd/replay-diff` a compile et passe ses six tests **sans une ligne de modification pour le
+troisieme merge d'affilee** : le choix de lire l'artefact en `map[string]any` plutot que de le
+deserialiser dans les types du jour est ce qui rend l'outil reutilisable a chaque bump.
+
+**Resultats observes.** Cuisson 119/119, zero echec, 37,9 min, pic 0,563 Gio (19 % du plafond),
+0 cuisson sans faits, aucune ecriture hors du repertoire de travail (quatre temoins mtime sur le
+principal : INCHANGES). (a) `apres2/` (40) contre `apres3/` (41) : 466 ecarts sur 119 paires,
+ZERO disparition et **deux « pertes » qui sont des compteurs de DEFAUT en baisse**
+(`coverage.flagCarries.noTrack` : `b8a44fe8` 11 -> 6, `bcb6d393` 10 -> 9). `entete` = 119 fois
+`schemaVersion 40 -> 41` et rien d'autre ; les axes touches sont exactement les trois annonces
+(vies nommees, grappin, episodes d'equipement) plus la couverture qui en decoule — **et un
+quatrieme que la consigne ne nommait pas, `ports` (`flagCarries`)** : deux matchs regagnent des
+intervalles de drapeau (`b8a44fe8` 115 -> 125, `bcb6d393` 15 -> 17), et ce sont les deux memes
+dont `noTrack` baisse. Meme cause, cinquieme consommateur. Les douze autres axes sont
+strictement identiques sur les 119 films. Retrouve : **+52 tractions de grappin (16 matchs),
++28 vies nommees (18 matchs), +15 episodes camo/surbouclier (9 matchs), +12 intervalles de
+drapeau (2 matchs)**, et trois matchs retrouvent un joueur aux pistes (`11de8353` remonte
+au-DESSUS de sa reference : 18 -> 19).
+(b) Contre la reference : candidate 2 (grappin) **18 paires -> 0**, candidate 4 (xuids)
+**3 -> 0**, candidate 3 (episodes) **11 -> 2** dont `13d92593` qui est la reserve connue
+(0 episode a raison) — reste `2cf24f30` s31 (7 -> 6). Vies nommees : 19 paires -> 3.
+
+**Controle croise sur les trois passes.** Pertes distinctes 1 783 (ref->39) -> 1 483 (ref->40)
+-> **1 160** (ref->41), avec **0 perte NOUVELLE** a chaque passe et 300 puis 323 resorbees :
+chaque jeu est un sous-ensemble strict du precedent. Aucun des huit lots ni des deux correctifs
+n'a casse quoi que ce soit. Les 1 160 pertes restantes sont les familles deja classees EXPLIQUE
+(points aberrants supprimes et bornes qui se resserrent, compteurs de defaut, reclassement des
+poses, drapeau neutre du schema 35, scores d'equipe echanges a somme constante) plus **quinze
+faits residuels nommes un a un dans le rapport, tous anterieurs au chantier v2**.
+
+**Conclusion / prochaine etape.** Section « Balayage FINAL (schema 41) » ajoutee a
+`.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`, avec le recapitulatif par axe des trois passes et le
+verdict en tete du document. **Le parc peut etre re-cuit au schema 41 sans rien perdre.** Un
+residu non instruit merite son propre examen si l'utilisateur veut fermer a zero : `d9781168`
+(s23) perd 6 portages de crane d'Oddball (36 -> 30) — il n'entrait dans aucune des quatre
+candidates.
