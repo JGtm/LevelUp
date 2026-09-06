@@ -102,7 +102,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	grenCov.warnIfLossy("grenades")
 
 	clock := replayScoreClock(&doc, interval, matchID)
-	objCov := attachObjectiveActions(&doc, opt.Objectives, clock)
+	objCov := attachObjectiveActions(&doc, opt, own, clock)
 	scoreCov := attachScoreTimeline(&doc, opt.Score, opt.Deaths, clock, matchID)
 
 	// L'ETAT ACTIF des deux familles mesurees (camo, surbouclier) : episodes dates par
@@ -274,7 +274,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// Les morts sans revendication ne sont publiées que pour les joueurs dont une trajectoire
 	// l'est : le client déduit ces lignes DE SES PISTES, une entrée sans piste ne rencontrerait
 	// jamais de ligne à décorer (même règle que les tirs, lancers et actions d'objectif).
-	doc.NeutralDeaths = keepNeutralDeathsOfPublishedTracks(opt.NeutralDeaths, doc.Tracks)
+	doc.NeutralDeaths = keepNeutralDeathsOfPublishedTracks(opt.NeutralDeaths, doc.Tracks, own.SlotXUID)
 	builtInv, invDroppedOrigin := buildInventory(opt.Inventory, origin, step)
 	doc.Inventory = keepInventoryOfPublishedTracks(builtInv, doc.Tracks)
 	// COUVERTURE DU CALQUE INVENTAIRE (audit AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 5),

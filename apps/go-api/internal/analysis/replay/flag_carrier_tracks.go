@@ -1,7 +1,5 @@
 package replay
 
-import "strconv"
-
 // flag_carrier_tracks.go — LA POSITION DU PORTEUR SUR LES PISTES PUBLIEES.
 //
 // Deux helpers, et une seule question : ou dessiner l objet porte a un instant donne ? Ils sont
@@ -27,15 +25,15 @@ import "strconv"
 // (flag_carries_marker.go), les ramassages et les frags sous equipement actif ; sa regle de
 // collision refuse deja un slot que deux joueurs se partagent. Une piste anonyme dont le pont
 // ne nomme pas le slot reste ecartee : on n'invente aucun porteur.
+//
+// LA RESOLUTION ELLE-MEME VIT DANS `published_tracks.go` (`xuidOfPublishedTrack`), avec les deux
+// autres lecteurs qui la partagent (le filtre des actions d'objectif et celui des morts neutres) :
+// trois copies de la meme regle, c'est trois occasions de la faire diverger — et c'est deja
+// arrive une fois (regle n°6 du depot, garde-rail dans `published_tracks_guard_test.go`).
 func tracksByXUID(tracks []Track, slotXUID map[uint32]uint64) map[string][]Track {
 	out := map[string][]Track{}
 	for _, t := range tracks {
-		xuid := t.XUID
-		if xuid == "" {
-			if x, ok := slotXUID[t.Slot]; ok && x != 0 {
-				xuid = strconv.FormatUint(x, 10)
-			}
-		}
+		xuid := xuidOfPublishedTrack(t, slotXUID)
 		if xuid == "" {
 			continue
 		}
