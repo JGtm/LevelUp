@@ -35,6 +35,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/replaybuild"
 )
 
 const (
@@ -101,6 +102,14 @@ func scannerArtefacts(dir string) ([]verdictArtefact, error) {
 		// Suffixe EXACT : le dossier porte des sauvegardes manuelles (`.json.ancien-11juillet`)
 		// qui ne sont pas des artefacts courants et ne doivent rien reparer.
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		// LA MARQUE DE DERIVATION N'EST PAS UN ARTEFACT (constat C6 de la revue A-R1).
+		// `<short8>.derived.json` vit dans le MEME dossier et finit par `.json` : scannee, elle
+		// tombait en « sans match_id » et gonflait le bilan jusqu'a 2x le corpus, avec autant
+		// d'entrees fantomes — alors que la propriete AFFICHEE du bilan est « chaque artefact
+		// tombe dans EXACTEMENT une categorie, c'est ce qui rend le total verifiable ».
+		if replaybuild.EstMarqueDerivations(e.Name()) {
 			continue
 		}
 		out = append(out, lireUnArtefact(filepath.Join(dir, e.Name())))

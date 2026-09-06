@@ -57,8 +57,21 @@ import (
 // servi avec l'ancienne — sans compteur et sans reprise possible.
 const DerivationsRev = "derivations-2026-09-06"
 
-// suffixeMarque : l'extension du fichier de marque, posee a la place de `.json`.
-const suffixeMarque = ".derived.json"
+// SuffixeMarqueDerivations : l'extension du fichier de marque, posee a la place de `.json`.
+//
+// ELLE EST EXPORTEE PARCE QUE LA MARQUE PARTAGE LE DOSSIER DES ARTEFACTS, et que deux
+// consommateurs y balaient `*.json` (constat C6 de la revue A-R1) : le cron de purge
+// (`scheduler/replay_purge_cron.go`) et le bilan du backfill (`cmd/backfill_t0_film`). Sans un
+// predicat COMMUN, chacun aurait recopie le litteral — troisieme exemplaire, et la premiere
+// evolution du suffixe en aurait laisse un en arriere.
+const SuffixeMarqueDerivations = ".derived.json"
+
+// EstMarqueDerivations dit si ce NOM DE FICHIER est une marque de derivation et non un artefact.
+//
+// Le nom, pas le chemin : les deux appelants balaient un `os.ReadDir` et n'ont que l'entree.
+func EstMarqueDerivations(name string) bool {
+	return strings.HasSuffix(name, SuffixeMarqueDerivations)
+}
 
 // DerivationsMark est l'etat « derive » d'UN artefact, tel qu'il est sur disque.
 type DerivationsMark struct {
@@ -82,7 +95,7 @@ type DerivationsMark struct {
 // l'artefact vient de `PathResolver.ReplayArtifactPath`, et un second calcul du dossier
 // deriverait le jour ou elle bougerait.
 func DerivationsMarkPath(artifactPath string) string {
-	return strings.TrimSuffix(artifactPath, ".json") + suffixeMarque
+	return strings.TrimSuffix(artifactPath, ".json") + SuffixeMarqueDerivations
 }
 
 // ReadDerivationsMark lit la marque d'un artefact. ok=false quand elle est absente ou
