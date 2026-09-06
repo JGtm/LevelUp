@@ -23,6 +23,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken, tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { cssColorToHex } from '@/lib/echarts/cssColorToHex'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
@@ -70,24 +71,33 @@ function RangeTiles({ range, t, f }: { range: WeaponRangeBlock; t: Translate; f:
   const opening = range.opening
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <AccentCard
-        label={t('synthesis.weapon_range.tile_median_kills')}
-        value={f.distance(range.median_kills_m)}
-        accent={KILLS_TOKEN}
-        sub={t('synthesis.weapon_range.tile_median_kills_sub', {
-          measured: range.measured_kills,
-          total: range.total_kills,
-        })}
-      />
-      <AccentCard
-        label={t('synthesis.weapon_range.tile_median_deaths')}
-        value={f.distance(range.median_deaths_m)}
-        accent={DEATHS_TOKEN}
-        sub={t('synthesis.weapon_range.tile_median_deaths_sub', {
-          measured: range.measured_deaths,
-          total: range.total_deaths,
-        })}
-      />
+      {/* MÊME DOCTRINE QUE L'ENTAME (décision D5) : une tuile de portée n'existe QUE si son
+          côté est mesuré. Le service ne retire le bloc que si AUCUN des deux côtés n'a de
+          frag mesuré ; un côté vide arrive donc avec `median_*_m: 0` et `measured_*: 0`, et
+          « 0,0 m » en gros se lirait « ce joueur frague au contact » au lieu de « on ne sait
+          pas ». Un scope « morts seulement » n'affiche qu'une tuile de portée. */}
+      {range.measured_kills > 0 && (
+        <AccentCard
+          label={t('synthesis.weapon_range.tile_median_kills')}
+          value={f.distance(range.median_kills_m)}
+          accent={KILLS_TOKEN}
+          sub={t('synthesis.weapon_range.tile_median_kills_sub', {
+            measured: range.measured_kills,
+            total: range.total_kills,
+          })}
+        />
+      )}
+      {range.measured_deaths > 0 && (
+        <AccentCard
+          label={t('synthesis.weapon_range.tile_median_deaths')}
+          value={f.distance(range.median_deaths_m)}
+          accent={DEATHS_TOKEN}
+          sub={t('synthesis.weapon_range.tile_median_deaths_sub', {
+            measured: range.measured_deaths,
+            total: range.total_deaths,
+          })}
+        />
+      )}
       {/* Les deux tuiles d'entame n'existent QUE si l'entame est mesurée : le bloc est nil
           tant que le backfill de `kill_openings` n'a pas tourné, et un zéro se lirait
           « ce joueur engage au contact » au lieu de « on ne sait pas » (décision D5). */}
@@ -125,17 +135,24 @@ function RangeTiles({ range, t, f }: { range: WeaponRangeBlock; t: Translate; f:
  *
  * `swatchClass` sert la seule classe qui n'a pas de token d'accessibilité : « à niveau »
  * emprunte le gris des libellés d'axe (`--muted-foreground`), la MÊME encre que le graphe.
+ *
+ * `emphasis` suit la maquette validée : seule la légende de PORTÉE met son libellé en avant
+ * (deux séries à distinguer, chacune suivie de sa position entre parenthèses) ; celle du
+ * dénivelé rend ses trois noms NUS, dans le gris du texte secondaire — trois classes d'une
+ * même mesure, qu'aucune ne doit dominer.
  */
 function LegendItem({
   color,
   swatchClass,
   name,
   hint,
+  emphasis,
 }: {
   color?: string
   swatchClass?: string
   name: string
   hint?: string
+  emphasis?: boolean
 }) {
   return (
     <li className="inline-flex items-center gap-1.5">
@@ -144,7 +161,7 @@ function LegendItem({
         className={`inline-block h-2 w-3 rounded-sm ${swatchClass ?? ''}`}
         style={color ? { backgroundColor: color } : undefined}
       />
-      <b className="font-medium text-foreground">{name}</b>
+      {emphasis ? <b className="font-medium text-foreground">{name}</b> : <span>{name}</span>}
       {hint && <span>{' '}{hint}</span>}
     </li>
   )
@@ -176,11 +193,13 @@ function RangeLegend({ t }: { t: Translate }) {
       className="flex flex-wrap gap-3.5 text-3xs text-muted-foreground"
     >
       <LegendItem
+        emphasis
         color={tokenCssVar(KILLS_TOKEN)}
         name={t('synthesis.weapon_range.side_kills')}
         hint={t('synthesis.weapon_range.side_kills_position')}
       />
       <LegendItem
+        emphasis
         color={tokenCssVar(DEATHS_TOKEN)}
         name={t('synthesis.weapon_range.side_deaths')}
         hint={t('synthesis.weapon_range.side_deaths_position')}
@@ -198,7 +217,7 @@ function ElevationLegend({ t }: { t: Translate }) {
   }
   return (
     <ul
-      aria-label={t('synthesis.weapon_range.legend_label')}
+      aria-label={t('synthesis.weapon_range.legend_elevation_label')}
       className="flex flex-wrap gap-3.5 text-3xs text-muted-foreground"
     >
       {ELEVATION_KEYS.map((key) => (
@@ -292,9 +311,15 @@ function useWeaponRangeOptions(lines: WeaponRangeLine[], f: RangeFormats, t: Tra
       tc,
       // La couleur NE JUGE PAS : une seule teinte du clair (d'en bas) au foncé (d'en haut),
       // et le gris des libellés d'axe pour « à niveau » — la MÊME encre que sa pastille.
+      //
+      // `cssColorToHex` SUR CETTE SEULE COULEUR, et c'est délibéré : les deux autres viennent
+      // de la palette d'accessibilité, dont les valeurs sont déjà des hex (`palettes/*.ts`),
+      // tandis que `--muted-foreground` est un `oklch(...)` que le parseur de zrender ne sait
+      // pas lire — au survol, `lift()` rendait `undefined` et le segment « à niveau » perdait
+      // son remplissage. Normalisation par le navigateur, cf. `lib/echarts/cssColorToHex.ts`.
       colors: {
         above: resolveToken(DEATHS_TOKEN),
-        level: tc.axisLabel,
+        level: cssColorToHex(tc.axisLabel),
         below: resolveToken(KILLS_TOKEN),
       },
       cardColor: tc.card,

@@ -461,6 +461,10 @@ en = "— where you killed from, where you were killed from, to within ±1 m"
 fr = "Légende"
 en = "Legend"
 
+[synthesis.weapon_range.legend_elevation_label]
+fr = "Légende du dénivelé"
+en = "Elevation legend"
+
 [synthesis.weapon_range.side_kills]
 fr = "Mes frags"
 en = "My kills"

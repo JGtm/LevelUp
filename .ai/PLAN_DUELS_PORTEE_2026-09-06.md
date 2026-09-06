@@ -830,6 +830,104 @@ lancé d'abord — ce worktree n'avait aucun `node_modules`), code de retour vé
 Aucun `go test` sur `platform/duckdb` : ce lot ne touche au Go que par la SUPPRESSION d'une
 entrée d'allowlist dans `capabilities_parity_test.go`.
 
+
+### Revue adversariale — ronde 1 (2026-09-06, branche `feat/duels-lot5-fix`)
+
+Deux relecteurs à contexte frais (front, puis tests) ; quatorze constats retenus par le
+pilote, tous corrigés dans ce lot. Worktree `LevelUp-wt-duels-fix5`. Chaque correctif de
+comportement porte sa MUTATION PROUVÉE ROUGE, puis restaurée (liste en fin de bloc).
+
+- [x] F1 **Une tuile de portée ne s'affiche que si son côté est mesuré** (doctrine D5).
+      Le service ne retire le bloc que si AUCUN des deux côtés n'a de frag mesuré ; un scope
+      « morts seulement » arrive donc avec `median_kills_m: 0, measured_kills: 0` et la tuile
+      affichait « 0,0 m » en gros — le zéro-qui-se-lit-comme-une-mesure que le lot interdit
+      déjà pour l'entame. `SynthesisWeaponRangeSection.tsx` : chaque tuile est conditionnée à
+      `measured_kills > 0` / `measured_deaths > 0`. Deux tests (un par côté vide), dont
+      l'assertion « aucun 0,0 m dans le DOM ».
+- [x] F2 **`cssColorToHex` — la couleur « à niveau » normalisée par le NAVIGATEUR.**
+      `--muted-foreground` est un `oklch(...)` : le canvas le peint, mais `zrender.lift()`
+      (emphase au survol) le passe à un parseur qui ne connaît pas oklch et rend `undefined`
+      — le segment perdait son remplissage au survol. Nouveau module
+      `lib/echarts/cssColorToHex.ts` (aller-retour `fillStyle` sur un contexte 2D, technique
+      de la maquette), 7 tests, repli = valeur d'entrée sans `document`/canvas (jsdom rend
+      `null` : vérifié par sonde). DOUBLE SENTINELLE plutôt que la seule de la maquette : une
+      couleur invalide sortait en noir, elle sort maintenant inchangée. `getEChartsThemeColors`
+      n'est PAS étendue (appelants nombreux) — le même piège ailleurs va aux « Découvertes ».
+- [x] F3 **`buildWeaponRangeOption` repassée sous le seuil de 80 lignes** (107 -> 67) :
+      `makeRangeRenderItem` (49 L) et `rangeTooltipSideLine` (12 L) extraits au niveau module.
+      Aucun changement de rendu — les 16 tests de `_weaponRangeChart.test.ts` sont verts
+      INCHANGÉS, c'est le critère.
+- [x] F4 **Deux légendes, deux noms accessibles.** Les deux `<ul>` portaient la même clé
+      `legend_label` (« Légende ») ; la maquette distingue « Légende » et « Légende du
+      dénivelé ». Clé `synthesis.weapon_range.legend_elevation_label` (FR + EN), manifest
+      régénéré. Test : les deux listes se trouvent par leur nom accessible.
+- [x] F5 **L'emphase du libellé suit la maquette.** `LegendItem` gagne `emphasis?: boolean` :
+      la légende de portée met ses deux noms en avant (ils portent une position entre
+      parenthèses), celle du dénivelé rend ses trois classes NUES dans le gris secondaire.
+- [x] F6 **`<table>` natif CONSERVÉ, exemption datée écrite dans l'en-tête du fichier**
+      (arbitrage du pilote). Le skill `frontend-patterns` tolère le natif « < 10 lignes, pas
+      de tri » et ce tableau peut dépasser dix armes ; il n'a en revanche AUCUNE des
+      interactions que la règle vise, et son ordre est celui du graphe qu'il redit — un tri
+      TanStack contredirait la lecture « du contact à la longue portée ». Critère de
+      réouverture écrit : la première interaction ajoutée.
+- [x] F7 **Le CÂBLAGE de la section vers ECharts est enfin testé** (constat structurel).
+      `useWeaponRangeOptions` s'exécutait pendant les tests de composant sans que son résultat
+      soit jamais inspecté : échanger les encres, les libellés d'infobulle ou passer
+      `tc.axisLabel` là où `tc.card` est attendu laissait tout vert. Nouveau fichier
+      `SynthesisWeaponRangeSection.options.test.tsx` (8 tests) : la prop `option` réellement
+      passée à `echarts-for-react` est capturée, la palette d'accessibilité est APPLIQUÉE
+      (sans quoi `resolveToken` rend la chaîne vide et deux couleurs échangées restent
+      égales), et le `renderItem` est exécuté contre une API factice. Couvre les six points
+      (a)-(f) : encres des deux bâtons, libellés d'infobulle, encres du dénivelé, `cardColor`,
+      hauteur `48 + 34 × n`, série non vide.
+- [x] F8 **Les pastilles du dénivelé portent l'encre de leur classe** — assertion sur la
+      couleur de fond dans le DOM (« d'en haut » = `chart-series-3`, « d'en bas » =
+      `chart-series-1`, « à niveau » = la classe sémantique `bg-muted-foreground`, sans style
+      inline).
+- [x] F9 **Les tuiles de portée assertent leur VALEUR**, pas seulement leur libellé et leur
+      dénominateur (« 7,4 m » côté frags, « 11,8 m » côté morts).
+- [x] F10 **Le montage de la section est testé au niveau de la page.** `weaponRange={undefined}`
+      dans `SynthesisPage.tsx` laissait toute la suite verte alors que la section ne se
+      monterait jamais en prod. Trois tests sur `SynthesisPage` (fixture MSW réémise enrichie
+      d'un bloc — `synthesisFixture` est exportée pour cela) : bloc servi + capability active
+      -> région présente ; sans bloc -> absente ; sans la capability du titre -> absente.
+- [x] F11 **Le signe + d'une entame qui ÉLOIGNE** : aucune fixture n'avait de delta positif,
+      `signDisplay: 'exceptZero'` n'était donc pincé que du côté négatif.
+- [x] F12 **Une DISTANCE en locale EN** (« 7.4 m ») : le test anglais n'assertait que des
+      libellés et des effectifs, un formateur figé sur `fr-FR` y passait.
+- [x] F13 **L'ordre des en-têtes de groupe du tableau** (« Mes frags » au-dessus des six
+      premières colonnes, « Mes morts » ensuite).
+- [x] F14 **Garde-rail inter-langages du seuil miroir.** `WEAPON_RANGE_MIN_MEASURED = 8` est un
+      miroir de `analysis.WeaponRangeMinMeasured` que rien ne surveillait — une dérive rendait
+      la phrase « sous le seuil de N mesures » fausse en silence. Le test LIT le fichier Go et
+      compare, avec un message qui nomme les deux valeurs ; il ÉCHOUE (jamais de skip) si la
+      source est illisible ou la constante renommée.
+
+**Gates de la ronde 1** (worktree `LevelUp-wt-duels-fix5`, `npm ci` d'abord ; code de retour
+vérifié à chaque fois) :
+
+- `rm -rf node_modules/.tmp && npm run typecheck` -> RC 0.
+- `npm run lint` -> RC 0, **0 erreur / 28 warnings**, tous préexistants (grep sur les chemins :
+  aucun ne porte sur un fichier de ce lot).
+- `npm test -- --run src/features/synthesis src/lib/echarts` -> 10 fichiers, 107 tests, RC 0.
+- `npm test -- --run` -> 595 fichiers, 6 297 tests, 14 skippés, RC 0. (Un premier passage avait
+  rendu un échec ISOLÉ sur un garde-rail qui balaie le système de fichiers ; non reproduit sur
+  deux passages complets suivants ni sur les trois garde-rails de ce type lancés seuls.)
+- `npm run lint:fields` -> « aucune violation », RC 0.
+- grep hex `#RRGGBB` sur `src/features/synthesis/` hors tests -> VIDE. Sur `src/lib/echarts/` :
+  les seules occurrences hors tests sont les replis PRÉEXISTANTS de `themeColors.ts` et deux
+  mentions en COMMENTAIRE dans `cssColorToHex.ts` (aucune valeur dans le code — les sentinelles
+  de la sonde sont `black` / `white`).
+
+**Mutations prouvées rouges puis restaurées** : tuile de frags rendue inconditionnellement
+(F1) ; `cssColorToHex` retiré (F2) ; les deux légendes ramenées à la même clé (F4, 3 rouges) ;
+`emphasis` posé sur la légende du dénivelé (F5) ; encres des deux bâtons échangées, libellés
+d'infobulle échangés, encres du dénivelé échangées, `cardColor` -> `tc.axisLabel` (2 rouges),
+`weaponRangeChartHeight(0)`, `series = []` (6 rouges) (F7 a-f) ; pastilles du dénivelé
+échangées (F8) ; valeurs des deux tuiles échangées (F9, 3 rouges) ; `weaponRange={undefined}`
+dans `SynthesisPage.tsx` (F10) ; `signDisplay` retiré (F11) ; locale figée `fr-FR` (F12) ;
+en-têtes de groupe du tableau échangées (F13) ; miroir du seuil porté à 12 (F14, message
+« seuil Go = 8, miroir front = 12 »).
 ---
 
 ## Lot 6 — Livraison
@@ -887,6 +985,23 @@ répliqué, ou source hors film »).
 
 ## Découvertes (à ne PAS traiter)
 
+- (lot 5 ronde 1, 2026-09-06) **Le piège `oklch` de zrender existe AILLEURS, non traité.**
+  `getEChartsThemeColors()` rend la valeur BRUTE des variables sémantiques : sur
+  `--muted-foreground` (et toute var en `oklch`/`lab`), le canvas peint juste mais
+  `zrender.lift()` — l'emphase au survol — parse la chaîne et rend `undefined`, donc une forme
+  sans remplissage. Deux appelants sont dans ce cas aujourd'hui :
+  `features/match-view/MatchScoreCurveChart.tsx:176` et `features/squad/charts/squadEfficiencyChart.ts:211`
+  (`tc.axisLabel` posé en couleur de série). PRÉEXISTANT, hors périmètre de cette ronde. Le
+  correctif est en place et réutilisable (`lib/echarts/cssColorToHex.ts`) ; la question ouverte
+  est de savoir si `getEChartsThemeColors` doit normaliser à la source — elle a de NOMBREUX
+  appelants, et certains passent ces valeurs à des propriétés que zrender ne dérive jamais
+  (libellés d'axe, fonds d'infobulle), où la conversion serait inutile.
+- (lot 5 ronde 1, 2026-09-06) **Aucun script npm ni aucune étape de CI ne rejoue
+  `apps/web/scripts/build_i18n_manifests.mjs`.** Une dérive entre un `manifests/*.toml` et le
+  `generated/*.ts` correspondant (clé ajoutée au TOML sans régénération, ou l'inverse) n'est vue
+  par RIEN : le typage garantit la parité FR/EN À L'INTÉRIEUR du fichier généré, pas sa
+  fraîcheur vis-à-vis de sa source. PRÉEXISTANT, non traité. Le correctif tiendrait en une
+  étape « régénérer puis `git diff --exit-code` ».
 - (lot 4, 2026-09-06) **DuckDB matérialise une vue `_latest` lue deux fois en UNE `CTE`
   partagée** — la jointure mesurée n'a donc qu'UN balayage de `match_kill_events`, pas deux. Le
   corollaire compte pour la suite : le filtre ne descend jusqu'à ce balayage que si TOUTES les
