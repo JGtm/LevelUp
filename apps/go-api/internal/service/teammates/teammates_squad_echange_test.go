@@ -206,7 +206,11 @@ func TestBuildSquadEchange_BucketsDelai(t *testing.T) {
 		{"4 999 ms : DANS la fenetre", 4999, 4, true},
 		{"5 000 ms : borne INCLUSE", 5000, 4, true},
 		{"5 001 ms : HORS fenetre", 5001, 5, false},
-		{"7 000 ms : dernier intervalle borne", 7000, 5, false},
+		{"6 999 ms : dernier intervalle borne", 6999, 5, false},
+		// Les intervalles sont SEMI-OUVERTS ([debut, fin[), sauf celui qui ferme la
+		// fenetre : 7 000 ms ouvre donc l'intervalle non borne, comme son etiquette
+		// (« au-dela de 7 s ») l'annonce.
+		{"7 000 ms : ouvre l'intervalle non borne", 7000, 6, false},
 		{"7 001 ms : intervalle ouvert", 7001, 6, false},
 	}
 	for _, c := range cas {

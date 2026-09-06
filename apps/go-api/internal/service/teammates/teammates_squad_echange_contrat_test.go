@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/domain"
 )
 
@@ -59,5 +60,46 @@ func TestSquadEchange_GardeRailNonVide(t *testing.T) {
 	if champs["ParMatch"] != "float64" {
 		t.Fatalf("SquadEchangeCell.ParMatch = %q : le garde-rail n'inspecte plus la bonne "+
 			"structure", champs["ParMatch"])
+	}
+}
+
+// TestBucketDelai_IntervalleServiContientLeDelai — PROPRIETE, correction G1.
+//
+// Le decoupage est derive de `bornesDelaiMs` et de rien d'autre. Ce test verifie sur
+// une dizaine de delais poses a la main que le delai tombe TOUJOURS dans l'intervalle
+// que le contrat publie pour lui : [DebutMs, FinMs[ partout, sauf l'intervalle qui
+// FERME la fenetre, ou la borne haute est incluse (c'est elle qui decide du taux, et
+// coordination.chercheVengeur la traite pareil).
+//
+// Sans lui, changer une borne dans `bornesDelaiMs` laisserait le rangement suivre
+// l'ancienne — c'est exactement ce que faisait la version arithmetique (division par
+// 1 000, bornage a 4) que cette correction remplace.
+func TestBucketDelai_IntervalleServiContientLeDelai(t *testing.T) {
+	delais := []int64{0, 1, 999, 1000, 3200, 3999, 4000, 4999, 5000, 5001, 6999, 7000, 40_000}
+	fenetre := coordination.FenetreEchangeMs
+
+	for _, d := range delais {
+		i := bucketDelai(d)
+		if i < 0 || i >= len(bornesDelaiMs) {
+			t.Fatalf("delai %d ms : indice %d hors des %d intervalles", d, i, len(bornesDelaiMs))
+		}
+		debut := bornesDelaiMs[i]
+		if d < debut {
+			t.Errorf("delai %d ms range dans l'intervalle %d qui commence a %d ms", d, i, debut)
+		}
+		if i == len(bornesDelaiMs)-1 {
+			continue // intervalle OUVERT : aucune borne haute a verifier
+		}
+		fin := bornesDelaiMs[i+1]
+		fermeLaFenetre := fin == fenetre
+		if (fermeLaFenetre && d > fin) || (!fermeLaFenetre && d >= fin) {
+			t.Errorf("delai %d ms range dans l'intervalle [%d, %d%s : il n'y tombe pas",
+				d, debut, fin, map[bool]string{true: "]", false: "["}[fermeLaFenetre])
+		}
+	}
+
+	// Sentinelle anti-vacuite : le decoupage doit couvrir les deux populations.
+	if bucketDelai(fenetre) == bucketDelai(fenetre+1) {
+		t.Fatal("la borne de la fenetre ne separe plus rien : le garde ne garde rien")
 	}
 }

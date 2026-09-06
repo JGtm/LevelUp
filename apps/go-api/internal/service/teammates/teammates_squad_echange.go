@@ -36,31 +36,37 @@ import (
 	"levelup/go-api/internal/games"
 )
 
-// bornesDelaiMs decoupe la distribution du delai. Les cinq premieres bornes couvrent la
-// fenetre d'echange, la sixieme ouvre le premier intervalle HORS fenetre, et la derniere
-// ouvre l'intervalle non borne.
+// bornesDelaiMs decoupe la distribution du delai : chaque valeur ouvre un intervalle,
+// le dernier n'a pas de borne haute. Les cinq premieres couvrent la fenetre d'echange,
+// les deux dernieres sont HORS fenetre.
 //
-// LA BORNE DE 5 s EST INCLUSE DANS LA FENETRE, comme dans coordination.chercheVengeur
-// (`delai > fenetre` sort) : une riposte a 5 000 ms exactement est un echange, a 5 001 ms
-// n'en est pas un. Le rangement ci-dessous (bucketDelai) respecte cette asymetrie — un
-// simple `delai / 1000` la perdrait.
+// C'EST LA SEULE DEFINITION DES INTERVALLES. bucketDelai la PARCOURT au lieu de la
+// recopier en arithmetique : la version precedente divisait par 1 000 et bornait a 4,
+// et changer une borne ici l'aurait laissee ranger les delais selon l'ancienne
+// (correction G1, revue du 2026-09-06).
 var bornesDelaiMs = []int64{0, 1000, 2000, 3000, 4000, 5000, 7000}
 
 // bucketDelai rend l'indice d'intervalle d'un delai de riposte.
+//
+// LA BORNE DE LA FENETRE EST INCLUSE, comme dans coordination.chercheVengeur
+// (`delai > fenetre` sort) : une riposte a 5 000 ms exactement est un echange, a
+// 5 001 ms n'en est pas un. C'est la SEULE asymetrie de ce decoupage, et elle porte sur
+// la borne qui decide du taux — d'ou son traitement explicite plutot qu'un `<=` glisse
+// dans la boucle, qui rendrait tous les intervalles fermes des deux cotes.
 func bucketDelai(delaiMs int64) int {
-	if delaiMs <= coordination.FenetreEchangeMs {
-		i := int(delaiMs / 1000)
-		if i > 4 {
-			// Le cas du delai EGAL a la fenetre (5 000 ms) : il appartient au dernier
-			// intervalle DANS la fenetre, pas au premier hors fenetre.
-			i = 4
+	dernier := len(bornesDelaiMs) - 1
+	for i := 0; i < dernier; i++ {
+		haut := bornesDelaiMs[i+1]
+		if delaiMs < haut {
+			return i
 		}
-		return i
+		// Le delai EGAL a la fenetre appartient au dernier intervalle qui la termine,
+		// pas au premier qui la depasse.
+		if delaiMs == haut && haut == coordination.FenetreEchangeMs {
+			return i
+		}
 	}
-	if delaiMs <= bornesDelaiMs[6] {
-		return 5
-	}
-	return 6
+	return dernier
 }
 
 // buildSquadEchange assemble la section « echange ».
