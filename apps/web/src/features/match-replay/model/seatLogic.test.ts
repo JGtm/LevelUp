@@ -9,8 +9,8 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayDocumentReady } from './replayNormalize'
-import type { ReplayPlayer } from './rosterLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { buildSeats, seatOccupantAt } from './seatLogic'
 
 const DOC = { frameIntervalMs: 100, frameCount: 6_000, originMs: 0 } as ReplayDocumentReady

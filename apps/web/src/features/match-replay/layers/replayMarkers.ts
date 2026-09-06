@@ -30,10 +30,10 @@
  * Aucun littéral de couleur : les teintes d'équipe arrivent résolues depuis les tokens, les
  * encres de lisibilité depuis le thème (cf. canvasInk.ts).
  */
-import type { PlayerMarkKind } from '../model/playerMarks'
+import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { drawAimCone } from './replayAimCone'
 import { drawNameLabel } from './replayLabels'
-import type { ReplayTrackReady } from '../model/replayNormalize'
+import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 
 import {
   altitudeAt,
@@ -43,7 +43,7 @@ import {
   trackWindow,
   trailAt,
   type XY,
-} from '../model/replayLogic'
+} from '../../../lib/replay/replayLogic'
 import { type CanvasView, projectTo } from '../model/replayView'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */

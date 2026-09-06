@@ -24,11 +24,11 @@
  * pas cuite dans le document) vivent dans l'en-tête de `skullGlyph.ts`. Aucun texte : le porteur
  * est déjà nommé par son marqueur.
  */
-import { type XY } from '../model/replayLogic'
+import { type XY } from '../../../lib/replay/replayLogic'
 import { drawSkullGlyph } from './skullGlyph'
 
 import { type CanvasView, projectTo } from '../model/replayView'
-import type { ReplaySkullCarry } from '../model/replayNormalize'
+import type { ReplaySkullCarry } from '../../../lib/replay/replayNormalize'
 import { carriedGlyphAlpha } from './carriedGlyphPulse'
 import { covers } from '../model/replaySpans'
 

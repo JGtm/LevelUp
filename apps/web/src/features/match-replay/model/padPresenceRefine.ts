@@ -35,7 +35,7 @@
  *
  * Pur : aucune dépendance React, aucun canvas. La mémoïsation est chez l'appelant.
  */
-import type { ReplayTrackReady, ReplayWeaponPadReady } from './replayNormalize'
+import type { ReplayTrackReady, ReplayWeaponPadReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * LE RAYON D'APPROCHE, en mètres monde, et d'où il vient.

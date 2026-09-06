@@ -20,10 +20,10 @@
  * LE PORTEUR SE RELIT DANS SES TRAJECTOIRES (`posOf`), comme le drapeau : sans position, la
  * couronne ne se dessine pas — elle n'a pas de position propre (elle est TOUJOURS sur le joueur).
  */
-import { type XY } from '../model/replayLogic'
+import { type XY } from '../../../lib/replay/replayLogic'
 
 import { type CanvasView, projectTo } from '../model/replayView'
-import type { ReplayVipPeriod } from '../model/replayNormalize'
+import type { ReplayVipPeriod } from '../../../lib/replay/replayNormalize'
 import { carriedGlyphAlpha } from './carriedGlyphPulse'
 import { covers } from '../model/replaySpans'
 

@@ -50,8 +50,8 @@ import {
   selectedGrenadeFrom,
 } from '../model/inventoryReading'
 import { ReplayAbilityCell, StateMark } from './ReplayAbilityCell'
-import { formatSeconds, frameToMs, freshness, READING_FADE } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { formatSeconds, frameToMs, freshness, READING_FADE } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { familyOf } from '../layers/shotEffects'
 
 /** Vignette d'un TYPE DE GRENADE : 14 px (option 2a — la boîte de 56 px est taillée dessus). */

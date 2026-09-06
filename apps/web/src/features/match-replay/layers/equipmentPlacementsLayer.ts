@@ -62,7 +62,7 @@ import { drawWall, wallHeading, WALL_PANEL_IDS } from './placementWall'
 // réexport ne met rien dans la portée locale. L'import inverse, lui, ne porte que des TYPES —
 // il n'y a donc aucun cycle à l'exécution.
 import { isPlacementActive } from '../model/placementWindow'
-import type { ReplayTrackReady } from '../model/replayNormalize'
+import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import {
   SENSOR_FILL_ALPHA,
   SENSOR_PING_WIDTH,

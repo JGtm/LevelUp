@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { ReplayTrackReady } from './replayNormalize'
-import { testReplayDoc as doc } from '../test/testDoc'
+import { testReplayDoc as doc } from '../../features/match-replay/test/testDoc'
 import {
   buildPlayers,
   buildSlotOwnership,

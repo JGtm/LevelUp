@@ -11,7 +11,7 @@ import { render, screen } from '@testing-library/react'
 import { normalizeScoreTimeline } from '@/lib/replay/scoreTimeline'
 
 import { ReplayRoundBreakOverlay, ROUND_BREAK_WINDOW_MS } from './ReplayRoundBreakOverlay'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /** Une manche : numéro et paliers `[frame, valeur]`. */
 function manche(round: number, points: Array<[number, number]>) {

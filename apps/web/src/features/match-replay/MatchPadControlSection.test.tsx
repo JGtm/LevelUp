@@ -29,7 +29,7 @@ import { testReplayDoc } from './test/testDoc'
 // le reste (agrégation, colonnes, libellés) reste le vrai code. Même patron que
 // `MatchEquipmentUsageSection.test.tsx`.
 const artefact = vi.hoisted(() => ({ current: undefined as unknown }))
-vi.mock('./queries', () => ({ useMatchReplay: () => ({ data: artefact.current }) }))
+vi.mock('../../lib/replay/queries', () => ({ useMatchReplay: () => ({ data: artefact.current }) }))
 
 const t = REPLAY_TEXT.fr
 const SNIPER = '0xAAAA1111'

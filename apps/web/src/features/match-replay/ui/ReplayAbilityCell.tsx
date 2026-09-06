@@ -30,9 +30,9 @@ import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { abilityChargesAt, type AbilityChargeDisplay } from '../model/abilityChargeLogic'
 import { catalogText, type CatalogLabel } from '../i18n/catalogLabel'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { formatSeconds, frameToMs, freshness, READING_FADE } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
-import { abilityAt } from '../model/rosterLogic'
+import { formatSeconds, frameToMs, freshness, READING_FADE } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { abilityAt } from '../../../lib/replay/rosterLogic'
 
 /** Boîte de la vignette de CAPACITÉ : la hauteur de la ligne. */
 const HUD_ICON_PX = 16

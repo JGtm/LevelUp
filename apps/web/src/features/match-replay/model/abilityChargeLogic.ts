@@ -44,8 +44,8 @@
  * Tout ce fichier est PUR : aucun React, aucun réseau — même partage que `equippedLogic.ts`
  * et `changeRefine.ts`, testé sans rien monter.
  */
-import { isAliveAt } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import { isAliveAt } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * LES FAMILLES MESURÉES PAR LE CANAL DES CHARGES, reconnues par la racine de leur libellé.

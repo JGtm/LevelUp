@@ -45,8 +45,8 @@
  */
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
-import { msToFrames } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import { msToFrames } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
 
 /**

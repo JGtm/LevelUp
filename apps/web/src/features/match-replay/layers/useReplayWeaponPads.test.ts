@@ -22,8 +22,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { createRef, type RefObject } from 'react'
 
 import { REPLAY_TEXT } from '../i18n/i18n'
-import { worldToCanvas } from '../model/replayLogic'
-import type { ReplayDocumentReady, ReplayWeaponPadReady } from '../model/replayNormalize'
+import { worldToCanvas } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady, ReplayWeaponPadReady } from '../../../lib/replay/replayNormalize'
 import { testReplayDoc } from '../test/testDoc'
 import { count, diamondCentres, recordingContext } from '../test/recordingContext'
 import {

@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { riftStations, riftStationsAt } from './riftStations'
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { testReplayDoc } from '../test/testDoc'
 
 type Translocation = ReplayDocumentReady['translocations'][number]

@@ -22,7 +22,7 @@
  */
 import type { ReplayBounds } from '@/lib/api/types'
 
-import { type XY } from '../model/replayLogic'
+import { type XY } from '../../../lib/replay/replayLogic'
 import {
   REVEAL_FILL_ALPHA,
   REVEAL_RADIUS_PX,

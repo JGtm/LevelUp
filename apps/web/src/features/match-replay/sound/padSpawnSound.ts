@@ -26,8 +26,8 @@
  * Le calque, lui, ne publie QUE des socles : `doc.weaponPads` est la liste des socles du match,
  * les râteliers n'y sont pas. La restriction est donc tenue par la source, pas par un filtre.
  */
-import type { ReplayDocumentReady } from '../model/replayNormalize'
-import { frameToMs } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { frameToMs } from '../../../lib/replay/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 import { padEquipmentFamilyOf } from '../model/weaponPadFamilies'
 

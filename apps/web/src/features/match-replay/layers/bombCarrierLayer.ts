@@ -25,10 +25,10 @@
  * seule sa place change, exactement comme le crâne libre et le crâne porté.
  */
 import { drawBombGlyph } from './bombGlyph'
-import { type XY } from '../model/replayLogic'
+import { type XY } from '../../../lib/replay/replayLogic'
 
 import { type CanvasView, projectTo } from '../model/replayView'
-import type { ReplayBombCarry } from '../model/replayNormalize'
+import type { ReplayBombCarry } from '../../../lib/replay/replayNormalize'
 import { carriedGlyphAlpha } from './carriedGlyphPulse'
 import { covers } from '../model/replaySpans'
 

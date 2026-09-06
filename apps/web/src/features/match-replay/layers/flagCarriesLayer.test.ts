@@ -29,7 +29,7 @@ import {
   homeAnchorOf,
   type FlagCarriesInput,
 } from './flagCarriesLayer'
-import type { ReplayFlagCarryReady } from '../model/replayNormalize'
+import type { ReplayFlagCarryReady } from '../../../lib/replay/replayNormalize'
 
 const VIEW = {
   bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 },

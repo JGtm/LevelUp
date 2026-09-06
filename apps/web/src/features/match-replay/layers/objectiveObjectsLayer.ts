@@ -27,11 +27,11 @@
  *
  * AUCUN TEXTE, comme les calques voisins : ce qui se dit se dit dans l'infobulle.
  */
-import { type XY } from '../model/replayLogic'
+import { type XY } from '../../../lib/replay/replayLogic'
 import { drawSkullGlyph } from './skullGlyph'
 
 import { type CanvasView, projectTo } from '../model/replayView'
-import type { ReplayObjectiveObjectReady } from '../model/replayNormalize'
+import type { ReplayObjectiveObjectReady } from '../../../lib/replay/replayNormalize'
 
 /** Le rayon de SURVOL : plus généreux que le tracé, comme pour le drapeau. */
 export const OBJECTIVE_OBJECT_HIT_RADIUS = 11

@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { activeEquipmentAt } from './equipmentFx'
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 function docWith(episodes: ReplayDocumentReady['equipmentEpisodes']): ReplayDocumentReady {
   return { equipmentEpisodes: episodes } as ReplayDocumentReady

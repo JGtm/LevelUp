@@ -11,7 +11,7 @@
  * vie d'un éliminé définitif (mode à manches) s'arrête exactement comme celle d'un
  * partant, et le film ne les distingue pas. L'infobulle porte cette réserve.
  */
-import type { PlayerMarkKind } from '../model/playerMarks'
+import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { PresenceEvent } from '../model/presenceFeed'
 import { FeedClock, FEED_ROW } from './ReplayKillFeed'

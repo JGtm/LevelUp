@@ -58,7 +58,7 @@ import {
 } from './endMatchSound'
 import type { ReplayLocale } from '../i18n/i18n'
 import { ReplayAudioPlayer } from './replayAudio'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { distanceChain, drawVariation } from './weaponSoundLogic'
 import { WEAPON_SOUND_VARIATIONS } from './weaponSoundVariations'
 import {

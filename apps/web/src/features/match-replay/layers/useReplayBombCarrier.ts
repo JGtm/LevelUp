@@ -28,7 +28,7 @@ import { BOMB_DETONATION_STAT } from './bombBlastFx'
 import { drawBombCarrier, type BombCarrierInput } from './bombCarrierLayer'
 import { useCarrierPosAt } from '../model/carrierPosition'
 import { type CanvasView } from '../model/replayView'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 interface UseReplayBombCarrierArgs {
   doc: ReplayDocumentReady

@@ -41,7 +41,7 @@
  * refus que le calque et les moteurs : rien ne les détruit dans une partie), une famille NON
  * RÉSOLUE (chaîne vide) ou SANS JEU DE SONS — silence propre, jamais la banque d'une voisine.
  */
-import type { ReplayVehicleTrackReady } from '../model/replayNormalize'
+import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { vehicleDestructionFrame, vehicleIsDecor } from '../model/vehiclesLayer'
 
 /**

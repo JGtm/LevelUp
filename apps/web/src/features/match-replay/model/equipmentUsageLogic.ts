@@ -58,9 +58,9 @@ import { displayPlayerName } from '@/lib/players/displayName'
 import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
 import { PLACEMENT_RENDER, placementIsDeployedObject } from '../layers/equipmentPlacementsLayer'
 import { placementIsDroppedPower, PLACEMENT_DROPPED_FAMILIES } from './placementDropped'
-import type { ReplayDocumentReady } from './replayNormalize'
-import { frameToMs } from './replayLogic'
-import { buildPlayers, groupByTeam, indexBySlot, playerName, type ReplayPlayer } from './rosterLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { frameToMs } from '../../../lib/replay/replayLogic'
+import { buildPlayers, groupByTeam, indexBySlot, playerName, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { padEquipmentFamilyOf, type PadEquipmentFamilyKey } from './weaponPadFamilies'
 
 /** Les deux familles dont l'ÉTAT ACTIF est mesuré (identifiants stables du document). */

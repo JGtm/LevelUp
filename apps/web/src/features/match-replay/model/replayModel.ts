@@ -39,13 +39,13 @@ import {
   type MedalEvent,
   type ReplayFeedEntry,
 } from './killFeedLogic'
-import { buildPlayerMarks, type PlayerMarkKind } from './playerMarks'
+import { buildPlayerMarks, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { mergeFeedWithPresence, presenceEntries } from './presenceFeed'
 import { buildReplayMedia } from './replayMediaLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayMediaItem } from './replayTimelineTracksLogic'
 import { replayWindow, type ReplayWindowBounds } from './replayWindow'
-import { buildPlayers, type ReplayPlayer } from './rosterLogic'
+import { buildPlayers, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { finalScoreFromHeader, type FinalScoreReading } from './victoryLogic'
 import { replayClock, type ReplayClock } from './replayClock'
 

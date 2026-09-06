@@ -22,7 +22,7 @@
 import { describe, expect, it } from 'vitest'
 import { resolve } from 'node:path'
 
-import { cheminCourt, featureRoot, fichierNomme, fichiersSous, lire, nomDe, tousLesFichiers } from '../test/featureFiles'
+import { cheminCourt, featureRoot, fichiersSous, lire, nomDe, racineWeb, tousLesFichiers } from '../test/featureFiles'
 
 /** La signature du défaut : le formateur d'arrondi importé dans la feature du rejeu. */
 const FORMATEUR_ARRONDI = /\bformatClockMMSS\b/
@@ -39,7 +39,7 @@ describe('garde-rail : une seule horloge visible dans le rejeu', () => {
   })
 
   it('et le formateur du rejeu, lui, TRONQUE — sans quoi ce garde ne garderait rien', () => {
-    const src = lire(fichierNomme('replayLogic.ts'))
+    const src = lire(resolve(racineWeb(), 'src/lib/replay/replayLogic.ts'))
     expect(src).toMatch(/export function formatClock\(/)
     expect(src).toMatch(/Math\.floor\(ms \/ 1000\)/)
   })
@@ -47,6 +47,17 @@ describe('garde-rail : une seule horloge visible dans le rejeu', () => {
   it('la route du rejeu non plus', () => {
     const routes = resolve(featureRoot(), '..', '..', 'routes')
     const fautifs = fichiersSous(routes).filter((f) => FORMATEUR_ARRONDI.test(lire(f)))
+    expect(fautifs).toEqual([])
+  })
+
+  it('ni le modele partage du document (lib/replay/), ou le formateur vit desormais', () => {
+    // D.13 (2026-09-06) : le document, sa normalisation, le roster et le chargement sont
+    // descendus dans `lib/replay/`. Le garde les suit — sans quoi son perimetre aurait
+    // retreci le jour meme ou son foyer changeait de dossier.
+    const partage = resolve(racineWeb(), 'src/lib/replay')
+    const fautifs = fichiersSous(partage).filter(
+      (f) => !AUTORISES.has(nomDe(f)) && FORMATEUR_ARRONDI.test(lire(f)),
+    )
     expect(fautifs).toEqual([])
   })
 })

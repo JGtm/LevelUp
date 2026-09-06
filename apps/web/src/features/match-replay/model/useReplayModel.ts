@@ -15,7 +15,7 @@ import { useMemo } from 'react'
 
 import type { MatchViewResponse } from '@/lib/api/types'
 
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { buildReplayModel, type ReplayModel, type ReplayModelSettings } from './replayModel'
 
 export function useReplayModel(

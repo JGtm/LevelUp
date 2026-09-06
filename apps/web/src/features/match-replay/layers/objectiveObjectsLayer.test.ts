@@ -19,7 +19,7 @@ import {
 import { SKULL_GLYPH_RADIUS } from './skullGlyph'
 
 import { type CanvasView } from '../model/replayView'
-import type { ReplayObjectiveObjectReady } from '../model/replayNormalize'
+import type { ReplayObjectiveObjectReady } from '../../../lib/replay/replayNormalize'
 
 /** Une vie qui roule de (0,0) à (2,0) entre les images 10 et 12. */
 const vieQuiRoule: ReplayObjectiveObjectReady = {

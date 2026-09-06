@@ -40,7 +40,7 @@
  */
 import { matchClock, type MatchClock, type MatchClockHeader } from '@/lib/replay/matchClock'
 
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /** Ce que l'horloge lit de l'en-tête du match : le countdown, et lui seul. */
 export type ReplayClockHeader = MatchClockHeader

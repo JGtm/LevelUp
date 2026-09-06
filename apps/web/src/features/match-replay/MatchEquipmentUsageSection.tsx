@@ -80,7 +80,7 @@ import {
 import { buildEquipmentUsage, tallyTotal, type EquipmentUsage } from './model/equipmentUsageLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayText } from './i18n/i18nContract'
-import { useMatchReplay } from './queries'
+import { useMatchReplay } from '../../lib/replay/queries'
 
 interface Props {
   playerSlug: string

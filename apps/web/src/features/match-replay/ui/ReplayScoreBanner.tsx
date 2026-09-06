@@ -39,7 +39,7 @@ import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { scoreTimelineOf, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import { formatClock } from '../model/replayLogic'
+import { formatClock } from '../../../lib/replay/replayLogic'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { readHillHold, type HillHoldDocument } from '../model/hillHoldLogic'
 import { readScoreBanner, type ScoreBannerSide } from '../model/scoreBannerLogic'

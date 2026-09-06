@@ -28,7 +28,7 @@
  * jointure EN SILENCE). La brancher proprement demande un lot Go qui publie l'URL dans le
  * document ; d'ici là, ce glyphe canvas tient le rôle, exactement comme pour le drapeau.
  */
-import type { XY } from '../model/replayLogic'
+import type { XY } from '../../../lib/replay/replayLogic'
 
 /**
  * SKULL_GLYPH_RADIUS — rayon du disque (le crâne), en pixels canvas.

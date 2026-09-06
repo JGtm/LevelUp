@@ -33,7 +33,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { HUD_BAND_CLASS, hudBandStyle } from '../model/hudBand'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import type { ReplayPlayer } from '../model/rosterLogic'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 
 /**
  * allyOfGroup dit de quel côté est un groupe : `true` allié, `false` adverse, `null` quand

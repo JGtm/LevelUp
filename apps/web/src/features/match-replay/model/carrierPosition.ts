@@ -39,8 +39,8 @@
 import { useMemo } from 'react'
 
 import { buildPlayerPosAt, type PlayerPosAt } from './livesPosition'
-import type { XY } from './replayLogic'
-import type { ReplayDocumentReady, ReplayVehicleTrackReady } from './replayNormalize'
+import type { XY } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { vehicleCanEmbark, vehiclePositionAt } from './vehiclesLayer'
 
 /** La position d'un joueur EMBARQUÉ à une image, ou `null` (il ne l'est pas, ou on l'ignore). */

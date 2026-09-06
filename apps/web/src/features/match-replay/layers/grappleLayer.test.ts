@@ -16,8 +16,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
-import { worldToCanvas } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { worldToCanvas } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { recordingContext } from '../test/recordingContext'
 
 const VIEW = {

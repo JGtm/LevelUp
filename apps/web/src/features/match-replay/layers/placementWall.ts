@@ -50,8 +50,8 @@ import {
   UNCERTAIN_DASH,
   viewScale,
 } from './placementShapes'
-import type { XY } from '../model/replayLogic'
-import type { ReplayTrackReady } from '../model/replayNormalize'
+import type { XY } from '../../../lib/replay/replayLogic'
+import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * LES PANNEAUX DU MUR — les deux identifiants sur lesquels l'arc se dessine.

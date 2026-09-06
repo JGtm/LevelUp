@@ -13,9 +13,9 @@ import type { CSSProperties } from 'react'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { formatSeconds, frameToMs, freshness, READING_FADE } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
-import type { PlayerState } from '../model/rosterLogic'
+import { formatSeconds, frameToMs, freshness, READING_FADE } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { PlayerState } from '../../../lib/replay/rosterLogic'
 
 /**
  * La PISTE des deux jauges : l'encre du thème à 10 % (option 2a du handoff 2026-08-27) —

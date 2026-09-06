@@ -37,7 +37,7 @@ import { useCallback, useMemo, useState } from 'react'
 
 import type { ReplayBounds } from '@/lib/api/types'
 
-import { ZOOM_LEVELS, clampCenter, sceneCenter, zoomTowards, type ZoomLevel } from '../model/replayLogic'
+import { ZOOM_LEVELS, clampCenter, sceneCenter, zoomTowards, type ZoomLevel } from '../../../lib/replay/replayLogic'
 
 /** Un indice de palier, ramene dans la liste. Un seul endroit ou cette borne s ecrit. */
 function clampIndex(i: number): number {

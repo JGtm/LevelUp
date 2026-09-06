@@ -34,8 +34,8 @@
 import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import type { ReplayLocale } from '../i18n/i18n'
-import { frameToMs } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 import { roundTransitions } from '../model/roundsLogic'
 

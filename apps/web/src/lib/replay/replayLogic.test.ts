@@ -30,7 +30,7 @@ import {
   worldToCanvas,
 } from './replayLogic'
 import type { ReplayTrackReady } from './replayNormalize'
-import { testReplayDoc as makeDoc } from '../test/testDoc'
+import { testReplayDoc as makeDoc } from '../../features/match-replay/test/testDoc'
 
 const pts = [
   { t: 0, x: 0, y: 0 },

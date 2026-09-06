@@ -31,8 +31,8 @@
  */
 import { objectiveObjectAt } from '../layers/objectiveObjectsLayer'
 
-import type { XY } from './replayLogic'
-import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from './replayNormalize'
+import type { XY } from '../../../lib/replay/replayLogic'
+import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
 
 /** SkullPresence — ce que le crâne montre à une image donnée, en une seule réponse. */

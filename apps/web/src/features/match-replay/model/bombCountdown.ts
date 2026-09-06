@@ -23,8 +23,8 @@
  */
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
-import { frameToMs, msToFrames } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { soundEvent, type ReplaySoundEvent } from '../sound/replaySoundVariants'
 import { ZONE_SOUND_STEMS } from '../sound/zoneSound'
 

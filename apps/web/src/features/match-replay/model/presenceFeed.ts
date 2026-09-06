@@ -28,10 +28,10 @@ import { stripBotSuffix } from '@/lib/players/displayName'
 
 import type { ReplayFeedEntry } from './killFeedLogic'
 import { replayClock, type ReplayClock } from './replayClock'
-import { frameToMs, trackWindow } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import { frameToMs, trackWindow } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayWindowBounds } from './replayWindow'
-import { playerName, type ReplayPlayer } from './rosterLogic'
+import { playerName, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
 
 /** REPLI FILM : première vie qui commence au-delà = un arrivant (flottement du départ). */
 export const PRESENCE_ARRIVE_MS = 10_000

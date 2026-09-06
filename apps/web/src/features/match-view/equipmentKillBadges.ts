@@ -24,8 +24,8 @@ import {
   EPISODE_FAMILIES,
   type EquipmentEpisodeFamily,
 } from '@/features/match-replay/model/equipmentUsageLogic'
-import { buildPlayers, indexBySlot, playerName } from '@/features/match-replay/model/rosterLogic'
-import type { ReplayDocumentReady } from '@/features/match-replay/model/replayNormalize'
+import { buildPlayers, indexBySlot, playerName } from '@/lib/replay/rosterLogic'
+import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
 
 /**
  * EQUIPMENT_KILL_BADGE_THRESHOLD — le seuil ÉCRIT D'AVANCE. NE PAS L'AJUSTER À LA SORTIE : la

@@ -24,8 +24,8 @@
  */
 import type { ReplayVehicleAim, ReplayVehicleRide } from '@/lib/api/types'
 
-import { lastIndexAt } from './replayLogic'
-import type { ReplayVehicleTrackReady } from './replayNormalize'
+import { lastIndexAt } from '../../../lib/replay/replayLogic'
+import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { vehicleAimAngle, vehicleHeadingAt } from './vehiclesLayer'
 
 /**

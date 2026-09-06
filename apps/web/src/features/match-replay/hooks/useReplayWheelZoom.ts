@@ -31,7 +31,7 @@
  */
 import { useEffect, useRef, type RefObject } from 'react'
 
-import { canvasToWorld } from '../model/replayLogic'
+import { canvasToWorld } from '../../../lib/replay/replayLogic'
 import { type CanvasView } from '../model/replayView'
 import type { ReplayZoom } from './useReplayZoom'
 

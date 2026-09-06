@@ -16,9 +16,9 @@
  */
 import { catalogText, type CatalogLabel } from '../i18n/catalogLabel'
 import type { REPLAY_TEXT, ReplayLocale } from '../i18n/i18n'
-import { formatSeconds, frameToMs } from './replayLogic'
-import type { ReplayDocumentReady, ReplayInventoryReady } from './replayNormalize'
-import { nearestReading } from './rosterLogic'
+import { formatSeconds, frameToMs } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady, ReplayInventoryReady } from '../../../lib/replay/replayNormalize'
+import { nearestReading } from '../../../lib/replay/rosterLogic'
 
 /**
  * InventoryEmptyKind — POURQUOI la lecture qui couvre cette image ne rend rien.

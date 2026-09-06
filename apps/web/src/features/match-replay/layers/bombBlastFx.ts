@@ -40,8 +40,8 @@
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
 import { type CanvasView, projectTo } from '../model/replayView'
-import { type XY } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { type XY } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * La stat d'une explosion, telle que le serveur la nomme (`objectiveevents/named.go`). En

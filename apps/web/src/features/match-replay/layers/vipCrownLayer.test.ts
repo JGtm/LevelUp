@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { type CanvasView } from '../model/replayView'
-import type { ReplayVipPeriod } from '../model/replayNormalize'
+import type { ReplayVipPeriod } from '../../../lib/replay/replayNormalize'
 import { drawVipCrown, vipActiveAt, type VipCrownInput } from './vipCrownLayer'
 
 const period = (over: Partial<ReplayVipPeriod>): ReplayVipPeriod => ({

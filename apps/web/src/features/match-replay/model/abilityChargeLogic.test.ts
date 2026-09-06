@@ -18,7 +18,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { abilityChargesAt, hasAbilityChargeLayer, measuredChargeFamilyOf } from './abilityChargeLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { testReplayDoc } from '../test/testDoc'
 
 /** La palette du document : grappin et propulseur mesurés, répulseur jamais (pas de canal). */

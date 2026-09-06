@@ -23,8 +23,8 @@
  * un effet VISUEL, pas un son : le muet de ce fichier ne concerne que l'audio, et il tient —
  * aucun stem n'est désigné pour la translocation (même règle que le crâne).
  */
-import type { ReplayDocumentReady } from '../model/replayNormalize'
-import { frameToMs } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { frameToMs } from '../../../lib/replay/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 
 /**

@@ -22,7 +22,7 @@ import {
   translocatorRanks,
   type TranslocationMoment,
 } from './placementTeleport'
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { testReplayDoc } from '../test/testDoc'
 
 type Translocation = ReplayDocumentReady['translocations'][number]

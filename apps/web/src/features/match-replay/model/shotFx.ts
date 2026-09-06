@@ -34,8 +34,8 @@
  */
 import { fxTintOf, type FxTint } from '../layers/fxInk'
 import { familyOf, type ShotFamily } from '../layers/shotEffects'
-import { heldReading } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import { heldReading } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { vehicleHeadingAt } from './vehiclesLayer'
 import { vehicleWeaponMountOf, type VehicleWeaponMount } from './vehicleWeaponMounts'
 import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'

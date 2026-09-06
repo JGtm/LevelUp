@@ -15,8 +15,8 @@
 import { describe, expect, it } from "vitest";
 
 import { drawTracksLayer, type MarkerStyle } from "./replayMarkers";
-import type { ReplayTrackReady } from "../model/replayNormalize";
-import type { PlayerMarkKind } from "../model/playerMarks";
+import type { ReplayTrackReady } from "../../../lib/replay/replayNormalize";
+import type { PlayerMarkKind } from "../../../lib/replay/playerMarks";
 import {
   count,
   recordingContext,

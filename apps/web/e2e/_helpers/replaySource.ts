@@ -24,6 +24,13 @@ export const REPO = resolve(ICI, '..', '..', '..', '..')
 /** La feature du rejeu. */
 export const FEATURE = resolve(REPO, 'apps/web/src/features/match-replay')
 
+/**
+ * Le modèle PARTAGÉ du rejeu (2026-09-06, v2 D.13) : le document, sa normalisation, sa logique
+ * de lecture et le roster vivent dans `lib/replay/` depuis que la Match View les lit aussi.
+ * Un module du rejeu peut donc vivre des deux côtés, et le témoin visuel doit les voir tous.
+ */
+export const PARTAGE = resolve(REPO, 'apps/web/src/lib/replay')
+
 function walk(dir: string): string[] {
   const out: string[] = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -36,7 +43,9 @@ function walk(dir: string): string[] {
 
 /** Le chemin absolu du module du rejeu qui porte ce nom, où qu'il vive dans la feature. */
 export function moduleDuRejeu(nom: string): string {
-  const trouves = walk(FEATURE).filter((f) => f.split(/[\\/]/).pop() === nom)
+  const trouves = [...walk(FEATURE), ...walk(PARTAGE)].filter(
+    (f) => f.split(/[\\/]/).pop() === nom,
+  )
   if (trouves.length !== 1) {
     throw new Error(`replaySource: ${trouves.length} fichier(s) nommé(s) ${nom} dans le rejeu`)
   }

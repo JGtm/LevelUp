@@ -19,7 +19,7 @@
  * pas ce fichier de `ReplayTimelineTracks.tsx`, et TypeScript refuse alors les deux dans le
  * même programme (TS1149). C'est aussi le patron du dépôt (killFeedLogic, victoryLogic).
  */
-import type { PlayerMarkKind } from './playerMarks'
+import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import type { ReplayWindowBounds } from './replayWindow'
 
 /**

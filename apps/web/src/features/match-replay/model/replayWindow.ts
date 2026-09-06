@@ -65,8 +65,8 @@
 import type { MatchViewHeader } from '@/lib/api/types'
 
 import { replayClock } from './replayClock'
-import { frameToMs } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import { frameToMs } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /** Ce que la fenêtre lit de l'en-tête du match : les deux bornes de l'axe du MATCH. */
 export type ReplayWindowHeader = Pick<MatchViewHeader, 't0_ms' | 'playable_duration_seconds'>

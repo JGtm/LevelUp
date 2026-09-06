@@ -16,7 +16,7 @@
  */
 import { EXPLOSION_MS } from '../layers/explosionFx'
 import type { FxTint } from '../layers/fxInk'
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /** Rang du type Shock/Dynamo dans GrenadeLabels — l'ordre des rangs est LA donnée
  *  (établi par deux chaînes indépendantes, cf. replay_labels.toml). */

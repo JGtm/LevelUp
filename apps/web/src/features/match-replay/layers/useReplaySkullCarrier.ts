@@ -18,7 +18,7 @@ import { useCallback, useMemo } from 'react'
 
 import { useCarrierPosAt } from '../model/carrierPosition'
 import { type CanvasView } from '../model/replayView'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { drawSkullCarrier, type SkullCarrierInput } from './skullCarrierLayer'
 
 interface UseReplaySkullCarrierArgs {
