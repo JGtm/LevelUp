@@ -185,12 +185,17 @@ func (s *TacticalService) lectureOccupation(ctx context.Context, out *domain.Tac
 // sidecarExploitable dit si un sidecar peut entrer dans la somme, et DIT POURQUOI quand
 // la reponse est non.
 //
-// LES DEUX VERIFICATIONS SONT DES UNITES, PAS DE LA PARANOIA. Sommer des rasters de pas
+// LES VERIFICATIONS SONT DES UNITES, PAS DE LA PARANOIA. Sommer des rasters de pas
 // differents melangerait deux resolutions de grille ; sommer des comptes echantillonnes a
 // deux pas differents melangerait deux unites de temps sous le meme nom. Dans les deux
 // cas le resultat serait faux SANS RIEN CASSER — le pire mode de defaillance. Un sidecar
 // ecarte n'est pas une erreur de lecture : c'est un match non mesure, qui sera refait par
 // `levelup tactical-rasters --backfill`.
+//
+// LE PREDICAT EST CELUI DU RATTRAPAGE (`domain.SidecarRasterCourant`), et pas une seconde
+// ecriture : le remede prescrit dans le WARN ci-dessous ne repare que ce qu'il sait
+// reconnaitre. En deux exemplaires, ce message promettait une reparation qui n'arrivait
+// jamais (constat C3 de la revue).
 func (s *TacticalService) sidecarExploitable(ctx context.Context,
 	sc *domain.TacticalRasterSidecar, matchID string) bool {
 	if sc == nil {
@@ -199,9 +204,7 @@ func (s *TacticalService) sidecarExploitable(ctx context.Context,
 		// matchs_retenus la dit deja, en clair, au pied de la carte.
 		return false
 	}
-	if sc.SchemaVersion != domain.TacticalRasterSchemaVersion ||
-		sc.PasM != tactical.PasParDefautM ||
-		sc.PasEchantillonMs != tactical.PasOccupationMs {
+	if !domain.SidecarRasterCourant(sc) {
 		s.logger.WarnContext(ctx, "tactique: sidecar de raster ecarte (format ou unites d'un autre temps)",
 			"match_id", matchID, "schema_version", sc.SchemaVersion, "pas_m", sc.PasM,
 			"pas_echantillon_ms", sc.PasEchantillonMs,

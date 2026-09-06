@@ -35,11 +35,28 @@ import (
 
 // motifsDeCuisson : ce qu'aucun fichier tactique ne doit nommer.
 //
-//	replaybuild     le paquet de cuisson (construction d'artefact, spawn d'enfant) ;
-//	BuildFromFilm   l'entree de decodage d'un film ;
-//	filmcache       le pont disque des chunks — telecharger un film est le prealable
-//	                d'une cuisson, et n'a rien a faire dans une lecture.
-var motifsDeCuisson = []string{"replaybuild", "BuildFromFilm", "filmcache"}
+//	replaybuild      le paquet de cuisson (construction d'artefact, spawn d'enfant) ;
+//	BuildFromFilm    l'entree de decodage d'un film ;
+//	filmcache        le pont disque des chunks — telecharger un film est le prealable
+//	                 d'une cuisson, et n'a rien a faire dans une lecture ;
+//	SpawnBuildOne    le spawn de l'enfant decodeur (`replayartifacts/buildone.go`) ;
+//	replayartifacts.Run(   le cycle post-sync COMPLET, qui cuit ;
+//	replaychild      le binaire enfant de cuisson ;
+//	filmproc         le verrou process du decodage (`filmproc.AcquireSolo`).
+//
+// # POURQUOI LES QUATRE DERNIERS ONT ETE AJOUTES (constat C2 de la revue)
+//
+// Le rattrapage IMPORTE deja `internal/sync/replayartifacts`, pour `ProjeterRasterTactique`
+// et `EcrireSidecarRaster` — et c'est legitime : ce sont des projections pures d'un fichier
+// deja range. Mais ce meme paquet EXPORTE `SpawnBuildOne` et `Run`. Remplacer la branche
+// d'echec de `projeterCorpusRasters` par un `replayartifacts.SpawnBuildOne(...)` laissait
+// donc le ratchet VERT tout en faisant de la CLI une cuisson EN LOT : bombe RAM x4 et
+// verrou `filmproc.AcquireSolo` pris sur toute la passe. Le nom de paquet nu reste
+// autorise ; ce sont les points d'entree de cuisson qui sont fermes.
+var motifsDeCuisson = []string{
+	"replaybuild", "BuildFromFilm", "filmcache",
+	"SpawnBuildOne", "replayartifacts.Run(", "replaychild", "filmproc",
+}
 
 // fichiersTactiquesSansCuisson : les fichiers gardes, relatifs a apps/go-api.
 // `internal/service/tactical` est un PREFIXE — tout fichier tactique du service y entre,
@@ -66,6 +83,11 @@ func TestAucuneCuissonDepuisLeTactique(t *testing.T) {
 	// PLUSIEURS fichiers, si bien qu'un total suffisant aurait pu masquer la disparition
 	// complete de l'autre cible.
 	vues := make(map[string]bool, len(fichiersTactiquesSansCuisson))
+	// SELF-CHECK PAR MOTIF : chaque motif interdit doit EXISTER quelque part dans le
+	// depot, hors des fichiers gardes. Un motif mort — une fonction renommee, un paquet
+	// deplace — ne garde plus rien, et le ratchet resterait vert en n'interdisant que du
+	// vocabulaire disparu.
+	motifsVivants := make(map[string]bool, len(motifsDeCuisson))
 	err := filepath.WalkDir(apiRoot, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -83,15 +105,22 @@ func TestAucuneCuissonDepuisLeTactique(t *testing.T) {
 		// `mustRel` est le helper deja pose par tactical_background_local_gate_test.go :
 		// un troisieme chemin relatif recopie dans ce paquet serait la copie de trop.
 		rel := filepath.ToSlash(mustRel(apiRoot, path))
-		cible, garde := cibleDuFichierTactique(rel)
-		if !garde {
-			return nil
-		}
-		vues[cible] = true
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return readErr
 		}
+		cible, garde := cibleDuFichierTactique(rel)
+		if !garde {
+			// Fichier HORS perimetre : il ne sert qu'au self-check des motifs (le
+			// vocabulaire interdit doit exister quelque part, sans quoi il ne garde rien).
+			for _, motif := range motifsDeCuisson {
+				if strings.Contains(string(data), motif) {
+					motifsVivants[motif] = true
+				}
+			}
+			return nil
+		}
+		vues[cible] = true
 		for i, line := range strings.Split(string(data), "\n") {
 			// Les commentaires PARLENT de la regle (« ne cuit rien, aucun appel a
 			// replaybuild ») : c'est le code qu'on garde, pas la prose qui l'explique.
@@ -114,6 +143,12 @@ func TestAucuneCuissonDepuisLeTactique(t *testing.T) {
 		if !vues[cible] {
 			t.Fatalf("aucun fichier ne correspond a la cible %q : elle a ete renommee ou "+
 				"deplacee, et le ratchet ne garde plus rien de ce cote-la", cible)
+		}
+	}
+	for _, motif := range motifsDeCuisson {
+		if !motifsVivants[motif] {
+			t.Fatalf("le motif interdit %q n'existe plus nulle part dans le depot : il a ete "+
+				"renomme ou supprime, et le ratchet n'interdit plus qu'un vocabulaire mort", motif)
 		}
 	}
 	if len(violations) > 0 {
