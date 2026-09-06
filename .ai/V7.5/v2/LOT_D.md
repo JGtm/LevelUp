@@ -47,6 +47,8 @@ branche `feat/v2-web-modele`, base `a21fd77f4`. Contrat : skill `plan-execution`
 | Vitest (suite web entière) | `cd apps/web && node_modules/.bin/vitest run --pool=forks` | `Tests  6287 passed \| 14 skipped (6301)` |
 | Couleurs | `node tools/lint-no-hardcoded-colors.mjs` | `lint-no-hardcoded-colors: clean (0 violation)` |
 | Imports croisés | `node tools/lint-cross-feature-imports.mjs` | `Info : 7 <= plafond P8.5 (7). Pas d'échec` |
+| Build de production | `npm --prefix apps/web run build` | `✓ built in 2.73s` (2 198 modules) |
+| Vitest + couverture | `cd apps/web && node_modules/.bin/vitest run --pool=forks --coverage` | `Lines : 78.03% ( 19263/24685 )` |
 
 Les 27 avertissements de lint sont préexistants (`react-hooks/incompatible-library` sur les
 tableaux TanStack, `squad/` et `explorer/`) ; il y en avait 28 au commit de base — le lot en
@@ -67,6 +69,36 @@ e2e/replay-muzzle-raster.spec.ts --reporter=line` → **`2 failed`, `1 passed`**
   `pull_request`). **Non traité ici** : le fichier relève de F.6, qui les met en CI (règle 7,
   périmètre fermé). Correctif d'une ligne : passer `moduleSource('replayDraw.ts', 7)` à `6`
   après avoir vérifié que les dépendances injectées par `harnais()` suffisent encore.
+
+**Pouvoir de détection des garde-rails, vérifié sur pièces.** Un garde qui ne rougirait sur
+rien ne garderait rien : chacun a été confronté aux fichiers du commit de BASE, où le défaut
+qu'il vise existait.
+
+- `matchClock.guard.test.ts` : le motif de conversion trouve les **5** sites de
+  `git show a21fd77f4:…/_scoreCurve.ts` et `_scoreEvents.ts` (lignes 86, 102, 123 et 85, 118),
+  et **0** à HEAD.
+- `model/replayClock.guard.test.ts` : le motif `(?<![Cc]lock)\.originMs` **ATTRAPE** les cinq
+  fichiers de base (`killFeedLogic`, `presenceFeed`, `replayMediaLogic`, `replayWindow`,
+  `seatLogic`) et **aucun** à HEAD.
+- `clockMShort.guard.test.ts` : le littéral `MmSSs` **ATTRAPE** les quatre fichiers de base
+  (`MatchImpactBadgesBar`, `MatchKDCumulChart`, `_chartSeries`, `SynthesisBipolaireChart`),
+  **pas** `components/ui/match-card.tsx` (format « 2m 05s », avec une espace — exclusion
+  voulue), et **aucun** à HEAD.
+- `replayClockFormat.guard.test.ts` : son second cas ré-affirme que le formateur du rejeu
+  TRONQUE (`Math.floor(ms / 1000)` présent dans `replayLogic.ts`), sans quoi l'arbitrage
+  n'aurait plus d'objet.
+
+**Surveillance CI : ABANDONNÉE sur consigne du superviseur.** La branche est poussée
+(`158138ded`). Le quota GitHub étant épuisé (403 secondaire sur l'API Actions, partagé avec les
+lots exécutés en parallèle), le verdict par job sera constaté par le superviseur. Dernière
+observation avant la coupure, sur le run `33996542564` : **8 jobs verts sur 9** — `Go Build +
+Test` (ubuntu et windows), `Go Lease Enforcement (ADR 0013)`, `OpenAPI Lint`, `Go Contract
+Test`, `Frontend (TypeScript + Vite build)` (toutes ses étapes ✓, y compris `Ratchet knip`,
+`Lint multi-titres` et `Run tests (Vitest) + coverage`), `Go Lint (golangci-lint)` — le neuvième
+(`Go Coverage + Baseline`) était encore `in_progress`, et `E2E React (Playwright)` `skipped`
+(job gaté `pull_request`, cf. M1). Le lot ne touche **aucun** fichier Go
+(`git diff a21fd77f4 --name-only | grep -c "^apps/go-api/"` → `0`), donc rien de ce qu'il change
+ne peut peser sur le job restant.
 
 ---
 
