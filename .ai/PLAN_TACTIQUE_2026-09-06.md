@@ -1046,7 +1046,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 - **Gate** : projection sur fixture (comptes exacts) ; schema ancien (v20) projete ;
   idempotence ; aucun chemin de la page n'ecrit ni ne cuit ; `no_second_artifact_sink_test`.
 
-### Phase 7 — Occupation, spawns, routes, isolement — 7A CLOSE 2026-09-06 (Go + contrat), 7B EN ATTENTE
+### Phase 7 — Occupation, spawns, routes, isolement — 7A CLOSE 2026-09-06, revue ronde 1 SOLDEE (16 constats) ; 7B EN ATTENTE
 > DECOUPEE EN DEUX SOUS-LOTS par le superviseur : **7A** (Go pur + sidecar v3 + service +
 > contrat) est livre et rendu pour revue adversariale ; **7B** (7.7, le nuage Escouade) ne
 > commence qu'apres.
@@ -1108,6 +1108,68 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       sidecars v2.
 - [ ] 7.7 Escouade Synergies : nuage isolement x couverture — **7B, non commence** (rendu de
       main pour revue adversariale entre les deux sous-lots).
+- [x] 7.8 **Revue adversariale ronde 1 de 7A — 3 P0, 5 P1, 8 P2 : TOUS corriges** en
+      3 commits `tactique(7.8.<n>)`, plus la table du radar completee. Aucun report.
+      **P0-1 — UN COEQUIPIER INVISIBLE ETAIT COMPTE MORT.** Un occupant de vehicule (la
+      primitive n'attribue que 15,6 a 21,1 % des vies) et un survivant de fin de partie (sa
+      derniere vie n'est close par aucune mort, donc anonyme) sont VIVANTS et invisibles.
+      Les deux tombaient sous « toute l'equipe a terre », et une mort survenue a trois
+      metres d'un coequipier en Warthog sortait « isolee ». Le sidecar porte un STATUT a
+      trois valeurs (`vivant` + distance / `mort` / `inconnu`) ; a la lecture, un coequipier
+      VU A PORTEE tranche AVANT tout (sinon une mesure certaine serait perdue pour une
+      incertitude sans effet), sinon un `inconnu` rend la mort INDETERMINEE — ecartee et
+      comptee (`morts_indeterminees`) ; « equipe a terre » exige que TOUS soient `mort`.
+      **P0-2 — LES MATCHS SANS RAYON RESTAIENT AU DENOMINATEUR**, troisieme occurrence du
+      defaut deja corrige deux fois sous « correction G2 ». L'univers mesurable de la
+      lecture « isole » est desormais « mesure ET ayant un rayon », et `matchs_sans_rayon`
+      se compte AU NIVEAU DU MATCH — un match sans rayon ou le joueur ne meurt pas n'etait
+      jamais signale.
+      **P0-3 — LE REPLI DE LA MORT EN VEHICULE ETAIT UNE INVENTION** : une mort sans lieu
+      etait peinte au point de MONTEE. Elle porte `position_inconnue`, n'est ni peinte ni
+      examinee, et se compte.
+      **P1-1 — LE FILTRE `spawn` ETAIT IGNORE PAR LES LECTURES SQL** : `{"question":
+      "morts","spawn":"..."}` rendait 200 sur l'univers ENTIER sous un libelle de grappe.
+      La restriction est resolue EN AMONT du dispatch et porte sur la LISTE BLANCHE — donc
+      sur morts/kills/gagne et sur le KPI d'echange autant que sur les sidecars.
+      **P1-2 — LE GARDE `EndFrame > StartFrame` ETAIT INERTE** (le producteur ecrit toujours
+      les deux bornes) : supprime, le vrai mecanisme — le NOMMAGE — est ecrit.
+      **P1-3** route A -> B -> A ; **P1-4** erreur de `MapKeysForMap` journalisee.
+      **HUIT P2** : id de grappe + nombre de cellules (deux amas concentriques partageaient
+      un identifiant) ; `nom_fr` ET `nom_en` (un nom de lieu vient du catalogue du JEU, le
+      client ne peut pas le traduire) ; `RadarRangeM` supprimee (code mort teste, et son
+      rognage donnait l'illusion que le chemin reel rognait) ; `MortAExaminer.Frame` retire ;
+      helper unique du spawn de depart + ratchet ; fixture par les VRAIES migrations ;
+      arrondi a 2 decimales du sidecar ; distance 2D documentee.
+      **TABLE DU RADAR** : `[radar_range_m]` couvre les 48 variantes connues des autres
+      tables (BTB = 24, le reste = 18), avec un TEST DE COUVERTURE qui a morde a l'ecriture
+      — 13 variantes manquaient.
+      **CE QUI A RENDU P1-1 INVISIBLE, ET QUI EST CORRIGE AUSSI** : le double du port
+      IGNORAIT la liste blanche. Le vrai lecteur l'applique dans son SELECT ; le mock rendait
+      son univers entier quoi qu'on demande, si bien qu'aucun test ne pouvait voir un defaut
+      de perimetre. Deux fixtures que cette fidelite a revelees ont ete corrigees.
+      Schema du sidecar 3 -> 4.
+- **Gate REJOUE apres la ronde 1, le 2026-09-07** (avant-plan, en serie, codes verifies).
+  Go : `gofmt` propre ; `go vet ./internal/... ./cmd/... ./contracttest/...` : EXIT 0 ;
+  `go test -count=1` sur les memes arbres : **aucun `FAIL`, EXIT 0** ;
+  **`go test -count=1 -tags=integration -p 1` sur replayartifacts / persist / scheduler :
+  `ok` x3, EXIT 0** (12,3 s / 49,5 s / 18,1 s) ;
+  `golangci-lint --new-from-merge-base=origin/main` : **0 issue, EXIT 0** ;
+  `golangci-lint --enable funlen` sur les 8 arbres touches : **aucun fichier du lot
+  signale** ; `openapi-gen -check` a jour ; `generate-types` SANS DERIVE ; `typecheck`
+  propre ; **vitest COMPLET 606 fichiers / 6405 tests / 14 skip / 0 fail, EXIT 0**.
+  `git status` : 0 fichier sous `data/`. Fichiers du lot <= 486 L.
+  **ONZE MUTATIONS JOUEES.** P0-1 : `inconnu` replie sur `mort` -> le test du coequipier
+  embarque tombe ; indetermine compte comme isole -> le test P0-1 tombe. P0-2 : univers
+  ramene aux mesures -> `matchs_retenus` 2 au lieu de 1. P0-3 : repli sur le dernier point
+  du bipede -> la mort est peinte au point de montee. P1-1 : filtre limite aux lectures
+  d'artefact, puis liste non posee -> les deux font tomber le test SQL. P1-3 : ensemble
+  « deja vue » -> l'aller-retour rend 2 cases au lieu de 3. P2 : id sans le nombre de
+  cellules -> les amas concentriques partagent un identifiant ; une seule langue servie ->
+  le test de repli tombe ; cle du radar non rognee -> la table sort avec des blancs ;
+  `PremiereVie` relu hors du helper -> le ratchet le nomme.
+  **UNE MUTATION A SURVECU ET LE TEST A ETE AJOUTE** : la bilinguite passait parce que le
+  double du service court-circuite `zonesNommees` — un test unitaire couvre desormais le
+  repli PAR LANGUE.
 - **Gate 7A PASSE le 2026-09-06** (avant-plan, en serie, `GOCACHE=...go-build-tactique`,
   `CGO_ENABLED=1`). Go : `gofmt` propre ; `go vet ./internal/... ./cmd/...` propre ;
   `go test -count=1 ./internal/... ./contracttest/... ./cmd/...` : **aucun `FAIL`, code 0** ;
@@ -1143,6 +1205,7 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-07 : **revue adversariale ronde 1 de la phase 7A — 16 constats, TOUS corriges** en 3 commits `tactique(7.8.<n>)`. Les trois P0 disent la meme chose sous trois formes : **on affirmait ce qu'on ne savait pas**. Un coequipier INVISIBLE — en vehicule non attribue, ou survivant de fin de partie dont la derniere vie est anonyme — etait compte MORT, si bien qu'une mort survenue a trois metres d'un coequipier sortait « isolee » sous l'etiquette « toute l'equipe a terre » ; une mort dont le film ne dit pas le lieu etait peinte au point de MONTEE dans le vehicule ; et les matchs dont la variante n'a pas de rayon restaient au denominateur, divisant la mesure par des matchs qu'on avait refuse de lire (troisieme occurrence du defaut deja corrige deux fois sous « correction G2 »). Le sidecar porte desormais un STATUT a trois valeurs par voisin, et la lecture distingue quatre sorties qui ne se confondent plus : accompagnee, isolee, indeterminee, equipe a terre. **Le second fil du lot est un garde qui ne gardait rien** : `EndFrame > StartFrame` etait vrai de toute piste de deux frames (le producteur ecrit toujours les bornes) — ce qui garantit qu'une vie est close par une mort, c'est le NOMMAGE, verifie sur pieces ; et le filtre `spawn` ne vivait que dans la branche des sidecars, rendant 200 sur l'univers entier sous un libelle de grappe pour les lectures SQL. **Et ce qui rendait ce dernier defaut invisible etait le double lui-meme** : le mock du port ignorait la liste blanche que le vrai lecteur applique dans son SELECT. Le rendre fidele a immediatement revele deux fixtures fausses. Table du radar completee aux 48 variantes connues, avec un test de couverture qui a mordu a l'ecriture. Gate complet rejoue (integration `-p 1`, EXIT 0 ; vitest complet 606/6405/0), ONZE mutations jouees, dont une SURVIVANTE corrigee.
 - 2026-09-06 : **phase 7A CLOSE (Go pur + sidecar v3 + service + contrat) ; 7B rendue pour revue.** La verification sur pieces a decide de toute la forme : le document de rejeu ne publie AUCUNE liste de morts datees par joueur (`neutralDeaths` ne couvre que les morts non revendiquees), si bien que la seule source hors ligne de « ce joueur est mort a cet instant » est la fin d'une vie NOMMEE — fiable par construction, puisque c'est le fil des morts qui pose l'identite de la victime sur la vie que sa mort termine, et que les survivants restent anonymes. Et parce que le film NE PORTE PAS LES EQUIPES, l'isolement se calcule en DEUX TEMPS : la cuisson mesure la distance a chaque autre joueur nomme vivant, la lecture joint les camps et applique le rayon du match. Trois decisions de mesure portent le lot. (1) **Le plancher des grappes porte sur l'AMAS, pas sur la cellule** : a 0,5 m, trois reapparitions de trois matchs tombent dans trois cellules voisines — un plancher par cellule aurait fait disparaitre tous les spawns du jeu. (2) **L'identifiant d'une grappe est une POSITION, pas un rang** : un index change des qu'un match entre dans le filtre, et le lien `?spawn=` d'un utilisateur designerait un autre amas. (3) **Les routes comptent des PASSAGES, pas du temps**, sans quoi elles rendraient la carte de « ou je passe mon temps » simplement bornee a 15 s. Le rayon du radar entre dans `regulation.toml [radar_range_m]` (18 m Arene / 24 m BTB, source utilisateur du 2026-09-05), avec le chargeur existant et la convention de cle des quatre tables voisines ; une variante absente ne rend PAS de lecture et se compte. Deux seuils corriges que le ratchet CI ne peut pas voir — complexite du chargeur (les quatre tables d'entiers se validaient pareil) et `domain/tactical.go` scinde, la coupure que le §7 de la phase 6 avait deja identifiee. Gate complet vert, ONZE mutations jouees, dont une SURVIVANTE corrigee (le test de stabilite de l'identifiant ne prouvait pas ce qu'il annoncait).
 - 2026-09-06 : **revue adversariale ronde 1 de la phase 6 — 14 constats, TOUS corriges** en 4 commits `tactique(6.5.<n>)`. Le P1 qui compte est un defaut de MESURE, pas de code : **le temps passe en vehicule n'entrait nulle part, sur des matchs comptes comme MESURES**. La cuisson coupe une vie des qu'un trou depasse 5 s ; un occupant embarque cesse de repliquer son bipede, et ces episodes durent 13 a 36 s en mediane — le reechantillonnage ne pouvait donc structurellement pas les voir, et l'en-tete justifiait le mecanisme par un cas (« immobile quinze secondes ») que la coupe des vies rend INATTEIGNABLE : doc inversee sur la lacune meme qu'elle masquait. Corrige en ATTRIBUANT sans inventer — pendant un episode l'occupant est a la position du vehicule, un episode sans point de vehicule n'attribue rien, et un embarquement ne cree jamais de spawn. Schema du sidecar 1 -> 2, lacune residuelle (15,6 a 21,1 % des vies attribuees) ECRITE dans le contrat. Les quatre autres P1 disent la meme chose autrement : **un garde qui ne garde pas ce qu'il croit**. Le ratchet anti-cuisson ignorait `SpawnBuildOne`, que la CLI pouvait deja appeler ; le remede que le service PRESCRIT dans son avertissement etait un no-op sur exactement les sidecars qu'il ecartait ; l'echange sous `temps` etait une decision jamais prouvee ; et la ligne de cablage qui fait naitre les sidecars a la cuisson n'etait traversee par aucun test. Une mesure a corrige une croyance au passage : `points_ignores` est structurellement NUL aujourd'hui, `replay.Point` etant en float32 et JSON ne pouvant exprimer aucune valeur non finie — le fait est fige par un test plutot que redecouvert comme un bug. Decision produit prise : un artefact purge emporte son sidecar. Gate complet rejoue (integration `-p 1` sur trois arbres, code 0 ; vitest complet 606/6405/0), VINGT mutations jouees.
 - 2026-09-06 : **phase 6 CLOSE — les rasters d'occupation sont cuits UNE FOIS, la page n'en somme que des fichiers.** Un sidecar par match (`rasters/{short}.json`), depose par la quatrieme projection post-cuisson et rattrape hors ligne par `levelup tactical-rasters --backfill`. Quatre proprietes portent tout le lot. (1) **UN ECHANTILLON = 250 ms DE PRESENCE, PAS UN POINT DE FILM** : le film ne replique une position que lorsqu'elle change assez, donc compter les points bruts aurait mesure le mouvement et non le temps passe ; la fenetre est demi-ouverte, 2 s font huit quarts de seconde. (2) **LE PLANCHER DE RARETE APPARTIENT A L'AGREGAT** : ecrit avec `Cellules()`, un sidecar de match aurait ete vide par construction (une cellule d'un match compte un match distinct) — d'ou `CellulesBrutes()`, la forme qu'on stocke. (3) **UN SIDECAR ABSENT EST UN MATCH NON MESURE**, pas un match a zero : meme regle que le drapeau `Mesure` de la correction G2, appliquee a l'autre substrat, sans quoi l'intensite aurait varie avec la couverture de film au lieu du jeu. (4) **RIEN NE CUIT, ET C'EST GARDE PAR RATCHET** : ni la page ni le rattrapage ne peuvent nommer `replaybuild`/`BuildFromFilm`/`filmcache`, avec self-check par cible. Deux pieges rencontres et fermes sur place : le sous-dossier `rasters/` n'est pas un choix de rangement mais la condition de cohabitation (les deux parcours du dossier d'artefacts ne comptent que les `.json` de premier niveau — a plat, un sidecar aurait ete lu comme un match par `AvailableSet` et supprime par la purge) ; et deux tests existants employaient « temps » comme exemple de question INCONNUE, ce que l'ouverture du vocabulaire a invalide. Gate complet vert, integration `-p 1` comprise (code de sortie 0), suite vitest complete (606 fichiers / 6405 tests / 0 fail), ONZE inversions jouees.
@@ -1455,6 +1518,31 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-07 (phase 7A, revue) — **LA DISTANCE D'ISOLEMENT EST HORIZONTALE : DEUX ETAGES
+  LISENT 0 m.** Toutes les distances du sidecar sont des `math.Hypot(dx, dy)` — Z est ignore,
+  comme dans toutes les lectures de l'onglet, qui sont des vues du dessus. Un coequipier
+  situe juste au-dessus ou au-dessous, separe par une dalle, est donc mesure a 0 m et compte
+  « a portee » : la lecture « ou je meurs isole » SOUS-ESTIME l'isolement sur les cartes a
+  etages. NON TRAITE (decision superviseur) : corriger demanderait une notion d'etage que la
+  grille n'a pas. La limite est ECRITE dans `domain/tactical_raster.go`, dans
+  `analysis/tactical/vies.go` et dans le TOML du rayon, pour qu'aucun lecteur ne la
+  redecouvre comme un defaut.
+- 2026-09-07 (phase 7A, revue) — **UN SURVIVANT DE FIN DE PARTIE SORT EN `inconnu`, JAMAIS
+  EN `vivant`.** Sa derniere vie n'est close par aucune mort, donc le fil des morts ne la
+  nomme pas, et le depot INTERDIT de s'en remettre au slot pour l'identifier : le nommage par
+  slot a ete supprime parce qu'un slot RECYCLE donnait tout son intervalle a son premier
+  porteur nomme (`identity.go`), et `ownersFromLives` compte les collisions plutot que de
+  trancher. Consequence mesurable : les morts de fin de partie tombent en `indeterminees`
+  plutot qu'en `isolees` ou `accompagnees`. C'est le bon defaut — on n'affirme pas —, mais la
+  fin de match est donc moins mesuree que le reste. NON TRAITE : il faudrait une preuve
+  d'identite que le film ne donne pas.
+- 2026-09-07 (phase 7A, revue) — **L'IDENTIFIANT D'UNE GRAPPE EST DETERMINISTE, PAS
+  ETERNEL.** Il derive du barycentre et du nombre de cellules de l'amas : un univers qui
+  bouge (periode elargie, session epinglee, nouveau match) peut faire grossir l'amas, donc
+  changer son identifiant — et un lien `?spawn=` partage devient alors un 404
+  `tactical_spawn_unknown`. C'est assume et ecrit dans la doc de `spawn.go` ; le client
+  recharge la liste. Un identifiant VRAIMENT stable exigerait de figer les grappes par carte
+  et par joueur, donc un cache d'agregat — exactement ce que ce chantier refuse. NON TRAITE.
 - 2026-09-06 (phase 7A) — **LA SUITE VITEST A ECHOUE 2 FOIS SUR 7 SANS QUE LE DIFF WEB
   PUISSE EN ETRE LA CAUSE.** Sept passages complets ont ete joues : cinq verts (606 fichiers,
   6405 tests, 0 fail), dont les TROIS derniers d'affilee, et deux rouges — le premier a
