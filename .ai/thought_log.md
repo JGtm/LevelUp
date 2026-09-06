@@ -1,3 +1,60 @@
+## [2026-09-06] Un joueur portait son propre drapeau — DEFAUT du calque, corrige a la source (schema 46) — Complete
+
+**Le mandat.** Instruire la decouverte n° 1 du lot des durees, laissee non traitee : sur
+`bcb6d393` (CTF:Arena, 3-0, les QUATRE porteurs de l equipe 0) le document publie 15 portages sur
+le drapeau etiquete « equipe 1 » et un seizieme sur celui etiquete « equipe 0 » — impossible, un
+joueur ne porte jamais son propre drapeau (decision utilisateur). Le parc fait pareil : ce n est
+donc pas une regression du chantier. Worktree dedie `LevelUp-wt-v2-drapeaux`, branche
+`feat/v2-drapeaux` basee sur `feat/v2-durees` (revue DUREES-R1 close avant toute modification de
+code, comme prescrit).
+
+**Decision technique principale.** VERDICT : DEFAUT DU CALQUE, pas donnee ambigue — et
+l ETIQUETTE n est pas en cause. Preuve independante par la geometrie de la livraison : les trois
+captures de l equipe 0 se terminent a 0,50 / 0,62 / 0,67 m du socle que le catalogue de carte
+etiquette `team_index = 0` ; on livre le drapeau adverse a SA PROPRE base, donc le catalogue et la
+feuille de match coincident. Le defaut est dans `assignFlags`, et il a DEUX causes cumulees.
+(1) ORDRE : l etat « ou git chaque drapeau » se tenait a jour en parcourant les PRISES, si bien
+que la position de LACHER d un portage y etait inscrite des son attribution — avant d avoir eu
+lieu. Une sonde temporaire posee dans la boucle (puis retiree, fichier verifie identique) le
+montre a la ligne pres : le portage ouvert a 171 941 ms ne se ferme qu a 325 913 ms, et son lacher
+(-6,53 · -2,19) chassait du sol la position (33,61 · 2,48) que la prise suivante venait chercher
+a 0 m. (2) REGLE : le repli sur le socle le plus proche, juste pour un VOL (qui se fait a un socle
+par definition), est FAUX pour une PRISE — elle se fait la ou l objet est tombe, souvent pres du
+socle adverse, c est-a-dire du socle du porteur : ici 10,4 m contre 41,1 m. Correctif :
+`flag_assign.go` (deplacement pur de `assignFlags`/`nearestSpawn`/`nearestDroppedFlag`, plus les
+deux changements) — parcours par EVENEMENTS DATES, fin avant prise a instant egal comme dans
+`assembleFlagLives` ; et troisieme regle « une prise que le sol ne rattache a rien va au SEUL
+drapeau en jeu », qui SE TAIT quand les deux drapeaux sont dehors. On retrecit le repli, on ne le
+supprime pas.
+
+**Resultats observes.** `bcb6d393` : 15 + 1 portages deviennent 16 + 0, les TROIS captures se
+publient sur le drapeau adverse (une l etait sur celui du camp qui marquait), et
+`homeByObject` 2 -> 1 — la capture, fait DATE, remplace une rentree d objet inferee. Trois
+hypotheses refutees sur pieces : retour de drapeau (un `flag_returns` n ouvre aucun portage),
+joueur entre ou sorti en cours de partie (les six sont de l equipe 1, aucun ne porte le drapeau),
+slot re-attribue (`noBridge` = 0, film mono-manche). La premisse « une seule capture est liee »
+est corrigee : les trois portages portaient deja `captured = true`, l un d eux etait simplement
+publie sur le mauvais drapeau. Cinq films re-cuits des deux cotes, un par processus sous verrou :
+`e94163af` (drapeau neutre, 33 portages), `c0a82e88` et `cde26226` sont IDENTIQUES hors ligne de
+schema (`replay-diff` : 1 ecart sur 645 / 569 / 660 mesures, `changements = 0` partout) ;
+`64e8adfa` passe de 13 a 7 fautes. Quatre tests neufs, quatre mutations jouees rouge puis vert.
+Gates verts : 23 paquets unitaires, integration `api/wire`, `go build`, lint 0 issue. Golden
+d assemblage regenere : une seule ligne de diff, la version.
+
+**Conclusion / prochaine etape.** Schema 45 -> 46 (44 reserve aux manches, 45 aux durees) :
+un artefact 45 attribue un portage — et sa capture — au mauvais drapeau sans que sa forme le dise,
+et `backfill-replay` saute un artefact a la version courante. TROIS decouvertes portees au
+registre et NON traitees : (a) les 7 fautes residuelles de `64e8adfa` (film a 2 manches, les deux
+drapeaux dehors, ou `enJeu` perime parce que les retours credites et les rentrees d objet ne sont
+pas visibles a cet endroit) — la reprise demande de PARTAGER la machine a etats de
+`assembleFlagLives` au lieu d en ecrire une copie, et une regle tentante y est deja refutee sur
+pieces ; (b) un portage ferme par la prise SUIVANTE DU MEME JOUEUR se publie `dropped` alors qu il
+est porte (10 sur 16 sur `bcb6d393`, avant comme apres — la fin est datee une frame APRES
+l ouverture suivante), defaut preexistant dont ce lot subit une consequence mesuree : la duree
+publiee de `2533274858283686` passe de 358 a 282 frames, le portage etant desormais au milieu du
+trafic du bon drapeau ; (c) aucun compteur de couverture ne publie ce que la troisieme regle a
+decide. Detail : `.ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md`.
+
 ## [2026-09-06] Instruction des deux pertes de DUREE du corpus temoin — les deux sont des regressions, corrigees (schema 45) — Complete
 
 **Le mandat.** Instruire les deux faits nouveaux isoles par la premiere execution de
