@@ -1111,15 +1111,80 @@ traités EN TÊTE du lot 6, avant 6.1 :**
       mutation des accents des tuiles (:83/:94) -> 1 rouge, celui des tuiles. Composant
       restauré à l'identique après les deux mutations.
 
-- [ ] 6.1 Skill `delivery-checklist`.
-- [ ] 6.2 `cd apps/go-api && go test -count=1 ./... && go vet ./...` puis
+**Reprise d'intégration (2026-09-06, seconde session — la première a été coupée par une limite
+de session).** Les quatre résidus 6.0a-6.0d ont été RE-VÉRIFIÉS SUR PIÈCES sur `485467037`, sans
+se fier aux cases : `grep -rn 'WeaponRangeBlock\|WeaponRangeOpening' apps/web/src` rend VIDE
+(6.0a) ; `synthesis_weapon_range_test.go` = 477 L et `synthesis_weapon_range_build_test.go`
+= 136 L existent (6.0b) ; `kill_measured_scope_test.go:147` cherche bien
+`strings.Contains(filtre, "match_id")` sans alias (6.0c) ; les deux assertions d'encre (pastilles
+de la légende de PORTÉE, accents des deux tuiles) sont présentes dans
+`SynthesisWeaponRangeSection.test.tsx` (6.0d). Rien à refaire.
+
+- [x] 6.1 Skill `delivery-checklist` — §0 complétude, §2 frontend, §3/§4 greps, §6 couleurs et
+      i18n, §7 journal. **Go (§1, §3, §4, §5) : gates exécutés par le pilote, voir journal** —
+      deux builds Go concurrents dans le même worktree corrompent le cache, l'exécuteur web n'a
+      donc lancé AUCUNE commande `go` ni `make go-api-*`.
+      §0 : les items 6.0a-6.0d sont statués et re-vérifiés ci-dessus ; aucun `TODO`/`FIXME`
+      introduit (`git diff cec38d474...HEAD -- apps | grep '^+' | grep -E 'TODO|FIXME'` VIDE) ;
+      aucun report exécutable maintenant. AUCUN RUN CI : la branche `feat/duels` n'a pas
+      d'upstream et n'a jamais été poussée — l'item 6.6 porte cette dette, le lot n'est pas clos.
+      §3 : `git diff cec38d474...HEAD -- apps/go-api | grep '^+' | grep -E 'fmt\.Println|log\.Printf|log\.Println'`
+      VIDE. §4 : même diff, `filepath\.Join.*"data"` VIDE.
+      §6 : aucun hex `#RRGGBB` ni classe Tailwind couleur dans les dix fichiers non-test du
+      chantier sous `features/` et `lib/capabilities/` ; la règle eslint `@levelup/no-hardcoded-strings`
+      est PROUVÉE ARMÉE sur un fichier du chantier (l'`aria-label` de `RangeLegend` remplacé par
+      un littéral FR -> `1 error @levelup/no-hardcoded-strings` sur
+      `SynthesisWeaponRangeSection.tsx:220`, fichier restauré ; sa liste blanche ne couvre que
+      les fichiers de test et `src/test/handlers.ts`). Parité FR/EN garantie par le typage
+      `Record<Locale, T>` du manifeste régénéré.
+- [x] 6.2 **Volet WEB** — sept gates, code de retour vérifié à chaque fois, dans
+      `LevelUp-wt-duels/apps/web` (`node_modules` emprunté au worktree principal par jonction,
+      retirée en fin de session) :
+      `rm -rf node_modules/.tmp && npm run typecheck` -> RC 0 (cache incrémental purgé) ;
+      `npm run lint` -> RC 0, **0 erreur / 28 warnings** répartis sur 20 fichiers dont AUCUN
+      n'appartient au chantier (baseline préexistante : `react-hooks/incompatible-library` de
+      TanStack Table, `react-refresh/only-export-components`) ;
+      `npm test -- --run` -> **RC 0, 595 fichiers, 6 299 tests, 14 skippés** ;
+      `npm run lint:fields` -> « aucune violation », 1 687 fichiers scannés, RC 0 ;
+      `node tools/check-generated-types-fresh.mjs` -> « generated.ts dérive bien de
+      openapi.yaml », RC 0 (le script vit à la RACINE du dépôt, pas sous `apps/web/tools/`) ;
+      `node apps/web/scripts/build_i18n_manifests.mjs` -> 21 manifestes, 3 049 clés, RC 0 et
+      **`git diff` VIDE sur `src/lib/i18n/generated/`** (la régénération est un no-op).
+      FLAKE ÉCARTÉ : un PREMIER passage complet a rendu 2 rouges, tous deux dans
+      `src/features/admin/lab-removal.guard.test.ts` (« Test timed out in 5000ms »). Ce fichier
+      lit SYNCHRONEMENT les ~1 700 `.ts`/`.tsx` de `src/` avec le `testTimeout` par défaut de
+      5 s ; le passage tournait pendant les gates Go du pilote sur le même disque. Relancé SEUL
+      trois fois -> 3 × RC 0 ; second passage COMPLET -> RC 0. Hors chantier (garde-rail A3.5 du
+      retrait du Lab), préexistant — le gate du lot 5 avait déjà consigné le même flake sur
+      « un garde-rail qui balaie le système de fichiers ».
+- [ ] 6.2bis **Volet GO** — `go test -count=1 ./... && go vet ./...` puis
       `go test -tags=integration -p 1 -count=1 ./...`. **LE RUN NU NE VAUT PAS GATE POUR
       `platform/duckdb`** : toute la famille de tests de ce paquet est derrière
       `//go:build integration`, un run sans le tag rend « no tests to run ». C'est la SECONDE
       commande qui fait foi pour ce paquet ; `-p 1` non négociable (DuckDB mono-writer) ; code
       de sortie vérifié (`$?`), jamais un filtre sur « FAIL » — il attrape des logs applicatifs.
+      EN COURS chez le pilote au moment de cette écriture ; verdict à inscrire par lui.
 - [ ] 6.3 `make go-api-lint` — baseline non accrue.
 - [ ] 6.4 Gate visuel : capture de la section Synthèse soumise à l'utilisateur, témoins nommés.
+      **Procédure depuis ce worktree (relevée 2026-09-06, NON exécutée).** `LevelUp-wt-duels/data`
+      existe mais ne porte que le SUIVI git (`data/cache/**`, `metadata-prebuilt.zip`) : aucune
+      `*.duckdb`. Ne PAS y poser de jonction `data` — le dossier est tracké, le remplacer
+      supprimerait des fichiers versionnés. La voie propre est la variable prévue par le
+      `Makefile` : `LEVELUP_DATA_ROOT` alimente `LEVELUP_REPO_ROOT`, qui pilote à la fois
+      `PathResolver`, `config/titles/` ET le chargement de `.env.local`
+      (`config.go:207/218`) — or ce worktree n'a pas de `.env.local`. Un seul serveur à la fois
+      sur les DuckDB (mono-writer) et `make dev` REFUSE de démarrer si `:8000` répond déjà.
+      Donc, dans l'ordre : (1) `make stop` (tue par PORT, donc valable depuis n'importe quel
+      worktree) ; (2) depuis `LevelUp-wt-duels` :
+      `make dev LEVELUP_DATA_ROOT="C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration"`
+      — l'API Go est COMPILÉE depuis ce worktree (donc porte `CapWeaponRange` et le service de
+      portée) mais LIT les données, la config et les secrets du worktree principal ; (3) ouvrir
+      `http://localhost:5173` (Vite, proxy `/api` et `/static` -> `127.0.0.1:8000`) ; (4) en fin
+      de gate, `make stop` puis relancer le serveur du worktree principal. La jonction
+      `apps/web/node_modules` doit être re-posée pour l'étape Vite (elle est retirée en fin de
+      session d'intégration). Le seul écart de config assumé : `capabilities.toml` du chantier
+      n'a qu'un diff de COMMENTAIRE, la capability produit `weapon_range` vit dans
+      `registry.go`, compilé — le binaire l'emporte donc avec lui.
 - [ ] 6.5 Entrée `thought_log.md` ; `.ai/project_map.md` si la carto bouge.
 - [ ] 6.6 Commit + push + **CI surveillée jusqu'au niveau JOB** (`gh run list --branch feat/duels`) ;
       tout rouge se répare, même préexistant.
