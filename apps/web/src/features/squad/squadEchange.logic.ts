@@ -157,10 +157,17 @@ export function trendEcart(ecartPoints: number): KPITrend {
  * page — deux orientations opposées dans la même colonne se liraient à l'envers une
  * fois sur deux.
  *
- * Toutes les cases du produit roster × roster sont émises, y compris à zéro : une
- * case absente laisserait un trou dans la grille. La DIAGONALE est exclue —
- * personne ne se venge soi-même, et une case grise sur la diagonale suggérerait
- * qu'il manque une mesure.
+ * TOUTES LES CASES SONT ÉMISES, DIAGONALE COMPRISE, DANS L'ORDRE DU ROSTER. Le
+ * wrapper DÉDUIT ses catégories d'axe de l'ordre d'apparition des points : sauter la
+ * diagonale décalait l'axe X d'un cran par rapport à l'axe Y (roster [A,B,C,D] →
+ * lignes A,B,C,D mais colonnes B,C,D,A), et sur un duo les deux axes sortaient
+ * inversés. La matrice se lisait alors de travers, sans que rien ne le signale.
+ * Défaut mesuré et corrigé le 2026-09-06 (revue ronde 1, W1).
+ *
+ * La diagonale porte donc une valeur VIDE (`null`), que le wrapper ne peint ni
+ * n'étiquette : personne ne se venge soi-même, et un « 0 » y suggérerait qu'il manque
+ * une mesure. Les cases hors diagonale sans échange, elles, valent bien 0 — c'est un
+ * fait mesuré.
  */
 export function matriceSeries(echange: SquadEchange): ChartSeries<ChartPointHeatmap>[] {
   const joueurs = echange.joueurs ?? []
@@ -171,7 +178,10 @@ export function matriceSeries(echange: SquadEchange): ChartSeries<ChartPointHeat
   const datapoints: ChartPointHeatmap[] = []
   for (const vengeur of joueurs) {
     for (const venge of joueurs) {
-      if (vengeur.xuid === venge.xuid) continue
+      if (vengeur.xuid === venge.xuid) {
+        datapoints.push({ x: venge.gamertag, y: vengeur.gamertag, value: null })
+        continue
+      }
       const c = parCouple.get(`${vengeur.xuid}>${venge.xuid}`)
       datapoints.push({
         x: venge.gamertag,

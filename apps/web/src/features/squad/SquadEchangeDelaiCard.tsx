@@ -54,17 +54,18 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
     [buckets, t],
   )
 
-  // Deux teintes : couleur de série dans la fenêtre, teinte NEUTRE au-delà.
+  // ATTÉNUATION, pas seconde teinte : les barres hors fenêtre gardent la couleur de
+  // série, en opacité réduite et liseré tireté (les « barres hachurées » du plan).
   //
-  // `divergent-neutral` et non un « muted » : la palette d'accessibilité n'a pas de
-  // token de ce nom (cf. `lib/accessibility/semantic-tokens.ts`), et celui-ci EST le
-  // gris neutre de la maison — remappé avec les autres par chaque palette CVD, donc
-  // toujours distinct de la couleur de série sans jamais devenir un jugement.
-  const binColorToken = useMemo(
-    () => (point: ChartPointHistogram) => {
-      const b = buckets.find((x) => x.debut_ms / 1000 === point.binStart)
-      return b?.hors_fenetre ? ('divergent-neutral' as const) : undefined
-    },
+  // MESURÉ SUR PIÈCES le 2026-09-06 (revue W2) : AUCUN token sémantique du dépôt
+  // n'est achromatique dans les quatre palettes. `divergent-neutral` — le candidat
+  // évident — vaut #60A5FA (blue-400) dans la palette PAR DÉFAUT, soit un bleu PLUS
+  // SOUTENU que la série (`chart-series-1` = blue-300) ; il n'est gris que sous
+  // okabe-ito, cividis et tol-bright. Un token « neutre » aurait donc peint ces
+  // barres en bleu appuyé pour la majorité des utilisateurs.
+  const binAttenuated = useMemo(
+    () => (point: ChartPointHistogram) =>
+      buckets.find((x) => x.debut_ms / 1000 === point.binStart)?.hors_fenetre === true,
     [buckets],
   )
 
@@ -95,7 +96,7 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
               xAxisLabel={t.delayXAxis}
               yAxisLabel={t.delayYAxis}
               formatBin={formatBin}
-              binColorToken={binColorToken}
+              binAttenuated={binAttenuated}
             />
           </>
         )}
