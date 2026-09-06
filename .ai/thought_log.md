@@ -96746,3 +96746,99 @@ cours (worktree `LevelUp-wt-v2-balayage`, un film a la fois, outil `cmd/replay-d
 balayage ; rejouer le balayage « apres » sur `feat/v75` integre ; decision user sur `flagCarries`
 (completer dans replaybuild) ; puis tag v7.5.0 selon la sequence de release Notion (re-cuisson
 du parc au schema 40).
+
+## [2026-09-06] Balayage de non-regression du parc de rejeux — 119 films re-cuits, 161 paires comparees
+
+**Statut** : Complete (branche `feat/v2-balayage`, worktree `LevelUp-wt-v2-balayage`).
+
+**Decision technique principale.** Comparer un artefact d'il y a quarante bumps de schema au
+document d'aujourd'hui interdit de deserialiser `replay.ReplayDocument` : `encoding/json` ignore
+en silence tout champ que la structure courante ne declare plus, si bien qu'un calque SUPPRIME
+disparaitrait des DEUX cotes et que l'outil rendrait « aucune difference » sur la regression la
+plus grave. `cmd/replay-diff` lit donc en `map[string]any` et reduit chaque artefact a une
+EMPREINTE de mesures nommees : passe generique (taille de chaque calque, presence de chaque
+champ, repartition des champs de famille, compte par xuid — elle ne connait aucun nom de champ,
+donc un calque neuf ou disparu entre au rapport sans qu'on l'y inscrive) et passe specialisee
+(joueur x famille d'action, dernieres valeurs des series de score, vies nommees, aplatissement
+de `coverage` et `bombStats`). Cuisson par le chemin EXACT de la production
+(`cmd/replay-build` = ce que fait l'enfant de `backfill-replay`), un film par processus borne
+(verrou solo, plafond `filmproc` 3 Gio, priorite basse), dans une racine de travail ou seuls
+`film_chunks`, `film_manifests`, `mvar` et `data/titles` sont des jonctions.
+
+**Resultats observes.** Inventaire : 465 fichiers, 161 contenus distincts, 119 matchs, 19
+schemas (1 a 38, aucun 39) — parc principal, 6 worktrees, cle PNY (archive `E:\replays` classee
+par version) ; 119/119 cuisables. Cuisson : 119/119, zero echec, 36 min cumulees, pic memoire
+0,56 Gio (19 % du plafond). 26 098 ecarts sur 161 paires. REGRESSION n° 1, generale et non
+isolee : les actions d'objectif de CTF ne sont plus attribuees — 297 actions perdues sur 14
+matchs (20 captures, 44 prises, 18 vols de drapeau), `145908d1` passe de 7 a 0. Le film NOMME
+toujours autant d'evenements (`nommees=60 identifiees=11`) : c'est le PONT D'IDENTITE qui tombe.
+Cause : `d173b1a8c` (2026-08-28), pont par manche via les instants de mort au lieu des totaux du
+match ; son message affirme « neutralite mono-manche prouvee par construction » — les 14 matchs
+touches sont TOUS a une seule manche, la preuve etait synthetique et aucun bump de schema n'a
+force la re-cuisson qui l'aurait dementie. Candidates suivantes : tractions de grappin −10 a
+−40 % sur 16 matchs (coincide avec les usages d'equipement du schema 38, nature non tranchee) ;
+episodes camo/surbouclier −1 a −2 sur 11 matchs ; 3 matchs ou un joueur perd toutes ses vies
+nommees. Tout le reste est explique sur pieces : drapeau neutre a un seul drapeau (schema 35,
+`document.go:428-433`), fusion des vies de vehicule en relais (`89a67a48f`), reclassement des
+familles de pose, `kind` des ramassages (schema 31), identite des camps enfin resolue (29
+paires `unresolved` -> `a`/`b`, scores echanges a somme constante 14/14), et surtout la
+SUPPRESSION DE 1 A 4 POINTS ABERRANTS par match qui resserre les bornes de scene d'un facteur
+100 (`4577fcc4` maxX 217,30 -> 1,50) — un gain, pas une perte.
+
+**Piege de methode, consigne pour la suite.** La premiere serie de 119 cuissons a tourne SANS
+les faits du match : le chemin Windows du fichier `--facts` etait construit dans une chaine bash
+(`"$SPW\facts\$s8.facts.json"`), ou `\$` mange l'expansion de la variable. Le rapport
+intermediaire annoncait alors « 89 matchs ont perdu leur courbe de score », ce qui etait FAUX.
+Meme famille : une racine de travail sans `data/cache/film_manifests` fait tomber la courbe de
+score en silence (journal INFO). Sur ce poste, tout chemin Windows passe par `cygpath -w`.
+
+**Conclusion / prochaine etape.** Outil `cmd/replay-diff` (6 fichiers, 1 049 L, 6 tests dont la
+morsure est prouvee par mutation, `golangci-lint 0 issues`) et rapport
+`.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md` livres. Le parc de reference n'a pas bouge (temoins
+mtime avant/apres sur `replays`, `reference`, `film_chunks` du checkout principal). A trancher
+par le superviseur : reparer le pont d'identite des actions d'objectif (candidate n° 1) AVANT la
+re-cuisson du parc, sans quoi la re-cuisson gravera la perte dans les 951 artefacts.
+
+## [2026-09-06] Balayage APRES du parc de rejeux — les sept lots ne changent QUE ce qu'ils promettaient
+
+**Statut** : Complete (branche `feat/v2-balayage`, worktree `LevelUp-wt-v2-balayage`).
+
+**Decision technique principale.** Seconde passe du balayage, apres merge de `feat/v75` integre
+(`beeb6f3ee`, schema 40). La mesure decisive n'est pas « le parc contre le HEAD » mais
+**la cuisson d'avant contre la cuisson d'apres, film par film** : memes films, memes faits, meme
+chemin de cuisson, deux HEAD — tout ecart est alors imputable aux lots et a rien d'autre. Le
+merge n'a demande aucune adaptation de `cmd/replay-diff` : sa lecture generique
+(`map[string]any`) le rend insensible aux types `replaydoc` du lot B, ce qui etait le pari de
+conception de la premiere passe et se verifie ici.
+
+**Resultats observes.** Cuisson 119/119, zero echec, 34,8 min, pic 0,538 Gio (18 % du plafond),
+0 cuisson sans faits, aucune ecriture hors du repertoire de travail (temoins mtime sur
+`replays`, `reference`, `film_chunks`, `film_manifests` du principal : INCHANGES).
+(a) `apres/` (39) contre `apres2/` (40) : **491 ecarts sur 119 paires, dont ZERO perte et ZERO
+disparition**. `entete` = 119 fois `schemaVersion 39 -> 40` et rien d'autre ; `objectifs` et
+`coverage.objectives` = 19 matchs, tous en gain ; **les 15 autres axes n'apparaissent pas du
+tout** — pistes, armes, grenades, vehicules, equipement, ports, score, joueurs, roster, carte,
+horloges, objets d'objectif, assaut, morts sont strictement identiques sur les 119 films.
+100 matchs sur 119 sont identiques hors numero de schema. C'est la verification independante
+des trois promesses (lot E a comportement identique, lot A hors document, lot D web seul).
+**+438 actions d'objectif retrouvees sur 17 matchs** (`4f77afc1` +86, `008e1bba` +49,
+`a17e61a2` +34...), dont `flag_captures` +23 et `flag_steals` +20.
+(b) `reference/` contre `apres2/` : l'axe objectifs passe de 14 matchs / 106 pertes / 153
+disparus a **1 match / 0 perte / 4 disparus**. Les neuf familles d'action perdues au premier
+balayage (−130 kills, −64 assists, −44 grabs, −20 captures, −18 vols...) sont TOUTES a zero.
+Controle croise cle a cle : **0 perte nouvelle, 300 pertes resorbees**, les 1 483 pertes du
+second balayage etant un sous-ensemble strict des 1 783 du premier. Candidates 2 a 4 inchangees
+(18 / 11 / 3), laissees a l'enqueteur dedie.
+
+**Piege ecarte, et il valait la peine d'etre verifie.** Le HEAD de `feat/v75` a bouge pendant la
+passe (`9e73368e8` -> `beeb6f3ee`). Plutot que de re-cuire par principe ou d'ignorer par
+confort : le delta ne touche que deux fichiers `.ai/` (plan et baseline de tests), et le binaire
+`replay-build` recompile au nouveau HEAD est **byte-identique** (md5 `b5faf967...`) a celui qui
+a cuit les 119 films. La mesure vaut donc pour `beeb6f3ee` sans re-cuisson.
+
+**Conclusion / prochaine etape.** Section « Balayage APRES » ajoutee a
+`.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md` (renvoi pose en tete : les sections 1 a 9 sont le
+diagnostic AVANT et restent au passe). Residu unique a nommer : `bcb6d393` perd 3 actions
+`kills` sur deux joueurs alors que le match gagne sur toutes les familles (67 -> 76) — une
+re-attribution dans un gain, a fermer si l'instruction des candidates veut le zero. Le parc peut
+etre re-cuit au schema 40 : la mesure dit qu'il n'y perdra rien.
