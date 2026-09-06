@@ -104,7 +104,7 @@ describe('garde-rail : la liaison id -> peintre', () => {
     for (const [id, hook] of CABLES_PAR_HOOK) {
       const src = lire(fichierNomme(hook))
       expect(src, `${hook} ne déclare pas l'id ${id}`).toContain(`id: '${id}'`)
-      expect(src, `${hook} ne rend pas son id`).toMatch(new RegExp(`return \{ id: '${id}',`))
+      expect(src, `${hook} ne rend pas son id`).toContain(`return { id: '${id}',`)
     }
   })
 

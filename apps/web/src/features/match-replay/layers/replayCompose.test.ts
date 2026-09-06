@@ -79,10 +79,52 @@ function peints(s: ReplayScene, frame = 42, dpr = 2): string[] {
   return rendus
 }
 
+/**
+ * L'ORDRE ATTENDU, ÉCRIT À LA MAIN — l'oracle de ce fichier.
+ *
+ * Il ne dérive PAS de `LAYER_ORDER` (2026-09-06, revue R1, constat C3) : l'assertion
+ * précédente comparait `layers.map((l) => l.id)` à `LAYER_ORDER`, c'est-à-dire la sortie d'un
+ * `map` SUR la liste à la liste elle-même. Une tautologie : intervertir `chaleur` et
+ * `zones-nommees` dans la source la laissait verte, alors que les zones nommées se seraient
+ * peintes SOUS la nappe de chaleur — le renversement que l'en-tête du module dit figer.
+ *
+ * Chaque ligne ci-dessous est donc une DÉCISION de lisibilité, recopiée depuis l'ancien
+ * `draw` : le sol, le terrain lu, les objets, les joueurs, les événements, les morts.
+ */
+const ORDRE_ATTENDU = [
+  'fond-carte',
+  'sol-forge',
+  'chaleur',
+  'zones-nommees',
+  'objectifs-cuits',
+  'projectiles',
+  'socles-armes',
+  'armes-au-sol',
+  'poses-equipement',
+  'vehicules',
+  'trajectoires',
+  'marques-de-tir',
+  'gestes-capacite',
+  'tirs',
+  'grenades',
+  'fin-de-vol',
+  'etat-zones',
+  'drapeaux',
+  'objets-objectif',
+  'couronne-vip',
+  'crane-porte',
+  'bombe-portee',
+  'deflagration',
+  'pulses-objectif',
+  'morts',
+] as const
+
 describe('sceneLayers — l’ordre de la scène', () => {
-  it('rend les vingt-cinq calques, dans l’ordre déclaré, sans doublon ni oubli', () => {
+  it('rend les vingt-cinq calques, dans l’ordre attendu, sans doublon ni oubli', () => {
     const layers = sceneLayers(scene())
-    expect(layers.map((l) => l.id)).toEqual([...LAYER_ORDER])
+    expect(layers.map((l) => l.id)).toEqual([...ORDRE_ATTENDU])
+    // La table de la source ne s'écarte pas de l'oracle : le second garde le premier.
+    expect([...LAYER_ORDER]).toEqual([...ORDRE_ATTENDU])
     expect(new Set(LAYER_ORDER).size).toBe(LAYER_ORDER.length)
   })
 
