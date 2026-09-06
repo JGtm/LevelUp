@@ -2,7 +2,7 @@ package objectiveevents
 
 import "sort"
 
-// round_windows.go — LES BORNES DE MANCHE, ET LA QUESTION QU'ELLES TRANCHENT : « cet
+// round_bounds.go — LES BORNES DE MANCHE, ET LA QUESTION QU'ELLES TRANCHENT : « cet
 // enregistrement peut-il appartenir a la manche qu'il DECLARE ? »
 //
 // # LE DEFAUT, MESURE
@@ -62,9 +62,9 @@ import "sort"
 // + `MANCHES_FILMS`). Mutations qui prouvent chaque garde :
 // `analysis/replay/manches_compteurs_test.go`.
 
-// roundWindow est l'intervalle de temps d'une manche, demi-ouvert : `[fromMS, toMS)`. Les
-// bords non contraints valent [roundWindowOpenFrom] / [roundWindowOpenTo].
-type roundWindow struct {
+// roundSpan est l'intervalle de temps d'une manche, demi-ouvert : `[fromMS, toMS)`. Les
+// bords non contraints valent [roundSpanOpenFrom] / [roundSpanOpenTo].
+type roundSpan struct {
 	fromMS int
 	toMS   int
 }
@@ -72,8 +72,8 @@ type roundWindow struct {
 // Les bords ouverts d'une fenetre : la premiere manche n'a pas de borne gauche, la derniere
 // pas de borne droite, et une borne jugee non credible laisse son bord ouvert.
 const (
-	roundWindowOpenFrom = -1 << 62
-	roundWindowOpenTo   = 1<<62 - 1
+	roundSpanOpenFrom = -1 << 62
+	roundSpanOpenTo   = 1<<62 - 1
 )
 
 // roundMark est ce qu'on mesure d'une manche pour en tirer une borne : son DEBUT (consensus des
@@ -84,22 +84,22 @@ type roundMark struct {
 	middleMS int
 }
 
-// RoundWindows porte l'intervalle de temps de chaque manche REELLE d'un film. Une manche
+// RoundBounds porte l'intervalle de temps de chaque manche REELLE d'un film. Une manche
 // absente de la table n'est jamais contredite : la structure ne sait rien d'elle.
-type RoundWindows struct {
-	byRound map[int]roundWindow
+type RoundBounds struct {
+	byRound map[int]roundSpan
 }
 
-// ResolveRoundWindows mesure l'intervalle de chaque manche du film (cf. l'en-tete de fichier
+// ResolveRoundBounds mesure l'intervalle de chaque manche du film (cf. l'en-tete de fichier
 // pour la regle et les mesures qui la fondent).
-func ResolveRoundWindows(recs []StatRecord) RoundWindows {
+func ResolveRoundBounds(recs []StatRecord) RoundBounds {
 	marks := chainedRounds(recs)
 	if len(marks) < 2 || !increasingStarts(marks) {
-		return RoundWindows{}
+		return RoundBounds{}
 	}
-	out := make(map[int]roundWindow, len(marks))
+	out := make(map[int]roundSpan, len(marks))
 	for _, m := range marks {
-		out[m.round] = roundWindow{fromMS: roundWindowOpenFrom, toMS: roundWindowOpenTo}
+		out[m.round] = roundSpan{fromMS: roundSpanOpenFrom, toMS: roundSpanOpenTo}
 	}
 	for i := 0; i+1 < len(marks); i++ {
 		prev, next := marks[i], marks[i+1]
@@ -115,7 +115,7 @@ func ResolveRoundWindows(recs []StatRecord) RoundWindows {
 		w.fromMS = next.startMS
 		out[next.round] = w
 	}
-	return RoundWindows{byRound: out}
+	return RoundBounds{byRound: out}
 }
 
 // increasingStarts dit que les debuts croissent avec le numero de manche — l'invariant « les
@@ -201,18 +201,18 @@ func medianOfSlice(v []int) int {
 //
 // Une manche inconnue de la table (manche fantome, manche sans consensus, film mono-manche)
 // n'est jamais contredite.
-func (w RoundWindows) Excludes(r StatRecord) bool {
-	win, ok := w.byRound[r.Round]
+func (w RoundBounds) Excludes(r StatRecord) bool {
+	span, ok := w.byRound[r.Round]
 	if !ok {
 		return false
 	}
-	return r.TimeMS < win.fromMS || r.TimeMS >= win.toMS
+	return r.TimeMS < span.fromMS || r.TimeMS >= span.toMS
 }
 
 // Outliers compte les enregistrements qu'[Excludes] ecarte. Sert au journal de cuisson : le
 // compte est le NOMINAL d'un film multi-manche (5 a 24 sur les temoins mesures), et son
 // explosion signalerait un etiquetage de manche qui ne tient plus.
-func (w RoundWindows) Outliers(recs []StatRecord) int {
+func (w RoundBounds) Outliers(recs []StatRecord) int {
 	if len(w.byRound) == 0 {
 		return 0
 	}

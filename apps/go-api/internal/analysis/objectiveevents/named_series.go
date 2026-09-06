@@ -126,7 +126,7 @@ func (b *eventBudget) resume() {
 // Les emplacements redondants sont ecartes ICI : ils n'emettent aucun evenement, et les
 // grouper serait du travail jete.
 func rawSeriesByKey(recs []StatRecord, table map[statSlotKey]statSlot) map[statSlotKey]map[int]map[int][]ScorePoint {
-	windows := ResolveRoundWindows(recs)
+	bornes := ResolveRoundBounds(recs)
 	out := make(map[statSlotKey]map[int]map[int][]ScorePoint, len(table))
 	for key, slot := range table {
 		if !slot.Redundant {
@@ -137,7 +137,7 @@ func rawSeriesByKey(recs []StatRecord, table map[statSlotKey]statSlot) map[statS
 		// Seuls les slots de JOUEUR nomment des evenements ; et la manche declaree doit
 		// s'accorder au temps, comme dans [rawSeriesByRound] (les deux marches rendent les
 		// memes series, `named_onepass_test.go` en est le garde-rail).
-		if IsTeamSlot(r.Slot) || windows.Excludes(r) {
+		if IsTeamSlot(r.Slot) || bornes.Excludes(r) {
 			continue
 		}
 		for key, raw := range out {
@@ -187,16 +187,16 @@ func seriesBySlot(recs []StatRecord, key statSlotKey) map[int][]ScorePoint {
 // rawSeriesByRound groupe les emissions par slot puis par manche, en jetant les ancrages
 // parasites. teams choisit les slots d'equipe plutot que ceux de joueur.
 //
-// LA MANCHE DECLAREE EST CONFRONTEE AU TEMPS (2026-09-06, cf. round_windows.go) : les manches
+// LA MANCHE DECLAREE EST CONFRONTEE AU TEMPS (2026-09-06, cf. round_bounds.go) : les manches
 // se jouent dans l'ordre, donc un enregistrement date hors de l'intervalle de la manche qu'il
 // declare a une manche mal lue et n'alimente aucune serie. C'est le filtre qui manquait pour
 // que [longestRun] ne soit pas trompe — une valeur mal lue mais PLUS GRANDE prolonge la suite
 // non decroissante au lieu de la rompre.
 func rawSeriesByRound(recs []StatRecord, key statSlotKey, teams bool) map[int]map[int][]ScorePoint {
-	windows := ResolveRoundWindows(recs)
+	bornes := ResolveRoundBounds(recs)
 	raw := map[int]map[int][]ScorePoint{}
 	for _, r := range recs {
-		if IsTeamSlot(r.Slot) != teams || windows.Excludes(r) {
+		if IsTeamSlot(r.Slot) != teams || bornes.Excludes(r) {
 			continue
 		}
 		v, ok := r.Comps[key.Comp]
@@ -279,7 +279,7 @@ func cumulateRounds(raw map[int]map[int][]ScorePoint, real map[int]bool) map[int
 // manches EST celui du temps — c'est-a-dire si la decoupe par manche est juste. Elle ne l'etait
 // pas : un enregistrement de la manche 1 range en manche 0 faisait rendre `{3167, 60}` puis
 // `{3057, 61}` sur `51ebbc0f`, une courbe qui RECULE dans le temps (mesure du 2026-09-06). La
-// cause est corrigee a la source (cf. round_windows.go) ; ce controle est le filet qui interdit
+// cause est corrigee a la source (cf. round_bounds.go) ; ce controle est le filet qui interdit
 // a une courbe non chronologique d'etre publiee en silence si une autre cause apparait.
 //
 // Le point ecarte est le point TARDIF-DANS-LA-LISTE mais PRECOCE-DANS-LE-TEMPS : il vient

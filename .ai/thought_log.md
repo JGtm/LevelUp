@@ -97190,7 +97190,7 @@ regardait. Le MÊME motif (`slot 12`, `comp 3 A = 60`) existe sur `d9781168` : 6
 publiées pour 11 à la feuille.
 
 **Décision technique.** Correctif à la SOURCE, dans la découpe :
-`objectiveevents.ResolveRoundWindows` (nouveau fichier `round_windows.go`) mesure l'intervalle de
+`objectiveevents.ResolveRoundBounds` (nouveau fichier `round_bounds.go`) mesure l'intervalle de
 chaque manche et les deux marches de groupement (`rawSeriesByRound` pour les compteurs,
 `rawSeriesByKey` pour les actions d'objectif) écartent tout enregistrement daté hors de
 l'intervalle de la manche qu'il déclare. Trois gardes, **aucune constante ajustée** — début =
@@ -97225,3 +97225,16 @@ restée ouverte au registre** (« aucune des 8 courbes de `51ebbc0f` ne colle à
 `51ebbc0f` et `fb1a1a72` ; (2) `RealRounds` retient des manches sur des modes qui n'en ont pas
 (Slayer, 3 films sur 119) — le correctif s'en protège sans corriger la cause ; (3) le journal du
 filet de chronologie est répétitif sur ces trois films.
+
+**Correctif de suite (même jour, `feat/v2-manches`).** La CI a attrapé un piège que le poste
+Windows ne pouvait pas voir : le fichier neuf s'appelait `round_windows.go` (« les FENÊTRES de
+manche ») et Go applique une contrainte de compilation IMPLICITE au NOM — `*_windows.go` n'est
+compilé que sur Windows. En local (CGO_ENABLED=1, Windows) tout passait ; sur le runner Linux,
+`go vet ./internal/analysis/...` rendait `undefined: ResolveRoundWindows`. Renommé en
+`round_bounds.go` (type `RoundBounds`, `ResolveRoundBounds`, `roundSpan`), et un ratchet posé —
+`internal/archlint/no_accidental_goos_suffix_test.go` refuse tout `.go` du module dont le nom se
+termine par un suffixe GOOS/GOARCH, avec une allowlist de cinq adaptateurs système Windows
+vérifiés un à un (priorité de processus, projection mémoire, espace disque, purge de sessions).
+Prouvé par mutation : un `sonde_linux.go` vide fait échouer le ratchet. Gate local ajouté à la
+liste : `CGO_ENABLED=0 go vet ./internal/domain/... ./internal/analysis/...` — c'est l'étape
+exacte de la CI, et elle est le seul moyen de voir cette classe de faute depuis Windows.

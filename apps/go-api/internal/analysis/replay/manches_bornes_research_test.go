@@ -5,7 +5,7 @@ package replay
 //
 // # Ce qu'il imprime, et pourquoi ces trois colonnes
 //
-// Il rend, par manche REELLE d'un film, ce dont `objectiveevents.ResolveRoundWindows` a besoin
+// Il rend, par manche REELLE d'un film, ce dont `objectiveevents.ResolveRoundBounds` a besoin
 // et rien d'autre :
 //
 //	SLOTS + DEBUTS   le premier instant ou CHAQUE slot declare la manche. C'est la table qui a
@@ -78,7 +78,7 @@ func mbReleveFilm(t *testing.T, film string, recs []objectiveevents.StatRecord, 
 		}
 	}
 	sort.Ints(rounds)
-	ecartes := objectiveevents.ResolveRoundWindows(recs).Outliers(recs)
+	ecartes := objectiveevents.ResolveRoundBounds(recs).Outliers(recs)
 	t.Logf("FILM %s : %d enregistrements, tronque=%v, manches reelles=%v, ECARTES=%d",
 		film, len(recs), tronque, rounds, ecartes)
 	for _, round := range rounds {

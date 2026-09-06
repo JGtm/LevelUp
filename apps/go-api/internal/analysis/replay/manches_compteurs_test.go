@@ -120,7 +120,7 @@ func dernierPoint(pts []objectiveevents.ScorePoint) (int, int64) {
 
 // TestEchantillonEgareNAlimentePasSaMancheDeclaree — LE TEST QUI FONDE LE CORRECTIF.
 //
-// MUTATION : retirer `windows.Excludes(r)` de `rawSeriesByRound` (named_series.go) fait
+// MUTATION : retirer `bornes.Excludes(r)` de `rawSeriesByRound` (named_series.go) fait
 // remonter la manche 0 du slot 12 a 60 assistances, et le test echoue.
 func TestEchantillonEgareNAlimentePasSaMancheDeclaree(t *testing.T) {
 	sain := assistsDuSlot(deuxManchesFixture(false), 12)
@@ -146,7 +146,7 @@ func TestEchantillonEgareNAlimentePasSaMancheDeclaree(t *testing.T) {
 // Sans le correctif le total valait 63 (60 de decalage + 3) ; avec, il vaut 6, la somme des deux
 // manches. Le test prouve aussi que le total publie reste CHRONOLOGIQUE.
 //
-// MUTATION : retirer `windows.Excludes(r)` de `rawSeriesByRound` porte le total a 63.
+// MUTATION : retirer `bornes.Excludes(r)` de `rawSeriesByRound` porte le total a 63.
 func TestEchantillonEgareNeGonflePasLeTotalDuJoueur(t *testing.T) {
 	tl, cov := buildScoreTimeline(&ScoreInput{Records: deuxManchesFixture(true)},
 		manchesMorts(), multiRoundClock())
@@ -239,7 +239,7 @@ func TestMonoMancheInchangeParLesBornes(t *testing.T) {
 	tardif := statRec(20_000, 12, 0, map[int]objectiveevents.StatValue{3: {A: 60}})
 	recs = append(recs, tardif)
 
-	if objectiveevents.ResolveRoundWindows(recs).Excludes(tardif) {
+	if objectiveevents.ResolveRoundBounds(recs).Excludes(tardif) {
 		t.Fatal("une borne de manche a ete posee sur un film MONO-MANCHE")
 	}
 	_, v := dernierPoint(assistsDuSlot(recs, 12)[0])
@@ -273,7 +273,7 @@ func TestMancheSansConsensusNeFixeAucuneBorne(t *testing.T) {
 	recs = append(recs, statRec(20_000, 10, 1, map[int]objectiveevents.StatValue{3: {A: 7}}))
 	recs = append(recs, manchesCorps(2, 40_000)...)
 
-	if n := objectiveevents.ResolveRoundWindows(recs).Outliers(recs); n != 0 {
+	if n := objectiveevents.ResolveRoundBounds(recs).Outliers(recs); n != 0 {
 		t.Fatalf("une manche declaree par UN SEUL slot a fixe une borne : %d enregistrements ecartes", n)
 	}
 	if _, v := dernierPoint(assistsDuSlot(recs, 12)[0]); v != 4 {
@@ -290,7 +290,7 @@ func TestMancheSansConsensusNeFixeAucuneBorne(t *testing.T) {
 // ses emissions est precoce, si bien que sa mediane d'instants tombe avant le debut de la
 // manche 1. Une borne 0 -> 1 y passerait le test de credibilite tout en remontant le temps.
 //
-// MUTATION : retirer `!increasingStarts(marks)` de `ResolveRoundWindows` fait poser cette borne,
+// MUTATION : retirer `!increasingStarts(marks)` de `ResolveRoundBounds` fait poser cette borne,
 // et les emissions tardives de la manche 0 sont jetees.
 func TestDebutsNonCroissantsNePosentAucuneBorne(t *testing.T) {
 	precoces, tardifs := manchesSlots[:3], manchesSlots[3:]
@@ -301,7 +301,7 @@ func TestDebutsNonCroissantsNePosentAucuneBorne(t *testing.T) {
 	// Manche 1 : les huit slots l'ouvrent a 20 000 ms — AVANT le debut consensuel de la manche 0.
 	recs = append(recs, manchesCorps(1, 20_000)...)
 
-	if n := objectiveevents.ResolveRoundWindows(recs).Outliers(recs); n != 0 {
+	if n := objectiveevents.ResolveRoundBounds(recs).Outliers(recs); n != 0 {
 		t.Fatalf("des bornes ont ete posees sur un etiquetage de manche qui ne suit pas l'horloge : "+
 			"%d enregistrements ecartes", n)
 	}
@@ -317,14 +317,14 @@ func TestDebutsNonCroissantsNePosentAucuneBorne(t *testing.T) {
 // aurait suivi l'egare a 85 193 ms et fait jeter 3 612 enregistrements legitimes de la manche 0
 // (la mediane en jette 16).
 //
-// MUTATION : retirer `r.TimeMS < win.fromMS` de `RoundWindows.Excludes` fait ouvrir la manche 1
+// MUTATION : retirer `r.TimeMS < win.fromMS` de `RoundBounds.Excludes` fait ouvrir la manche 1
 // du slot 10 a 5 000 ms.
 func TestEchantillonPrecoceNAlimentePasSaMancheDeclaree(t *testing.T) {
 	recs := deuxManchesFixture(false)
 	precoce := statRec(5_000, 10, 1, map[int]objectiveevents.StatValue{3: {A: 0}})
 	recs = append(recs, precoce)
 
-	if !objectiveevents.ResolveRoundWindows(recs).Excludes(precoce) {
+	if !objectiveevents.ResolveRoundBounds(recs).Excludes(precoce) {
 		t.Fatal("un enregistrement date AVANT le debut de la manche qu'il declare n'est pas ecarte")
 	}
 	pts := assistsDuSlot(recs, 10)[1]
@@ -343,14 +343,14 @@ func TestEchantillonPrecoceNAlimentePasSaMancheDeclaree(t *testing.T) {
 // (sur `fb1a1a72`, environ 900 enregistrements sur 1 017).
 //
 // MUTATION : retirer le test `prev.middleMS >= next.startMS || next.middleMS < next.startMS` de
-// `ResolveRoundWindows` fait poser la borne, et `Outliers` cesse d'etre nul.
+// `ResolveRoundBounds` fait poser la borne, et `Outliers` cesse d'etre nul.
 func TestBorneNonCredibleNestPasPosee(t *testing.T) {
 	recs := modeRamp(6, 0, 1_000, 500, 1, 2, 3)
 	recs = append(recs, manchesBloc(0, 1_000, 10, manchesSlots)...) // manche 0 : tout le film
 	recs = append(recs, modeRamp(6, 1, 5_000, 500, 1, 2, 3)...)
 	recs = append(recs, manchesBloc(1, 5_000, 3, manchesSlots)...) // manche 1 : ouverte tot
 
-	if n := objectiveevents.ResolveRoundWindows(recs).Outliers(recs); n != 0 {
+	if n := objectiveevents.ResolveRoundBounds(recs).Outliers(recs); n != 0 {
 		t.Errorf("une borne qui ne separe pas les deux manches a ete posee : %d enregistrements ecartes", n)
 	}
 }
@@ -362,7 +362,7 @@ func TestBorneNonCredibleNestPasPosee(t *testing.T) {
 // spectaculaire — sur `51ebbc0f` (Oddball, donc SANS drapeau) un enregistrement egare portant
 // `comp 24 A = 58` faisait publier 58 vols de drapeau, et 994 sur `24dbb67d`.
 //
-// MUTATION : retirer `windows.Excludes(r)` de `rawSeriesByKey` (named_series.go) fait renaitre
+// MUTATION : retirer `bornes.Excludes(r)` de `rawSeriesByKey` (named_series.go) fait renaitre
 // les 58 vols.
 func TestEchantillonEgareNeNommeAucuneAction(t *testing.T) {
 	recs := deuxManchesFixture(false)
@@ -396,7 +396,7 @@ func TestMedianeBasseNeCoupePasLOuvertureDUneManche(t *testing.T) {
 	recs = append(recs, ouverture)
 	recs = append(recs, coreLine(12, 1, 20_050, 1, 1, 1, 10)...)
 
-	if objectiveevents.ResolveRoundWindows(recs).Excludes(ouverture) {
+	if objectiveevents.ResolveRoundBounds(recs).Excludes(ouverture) {
 		t.Error("l'ouverture de la manche 1 par le PREMIER slot (20 000 ms) est jugee hors de sa " +
 			"propre manche : la borne a ete prise a la mediane haute des debuts (20 050 ms)")
 	}
