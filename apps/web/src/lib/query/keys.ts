@@ -167,6 +167,18 @@ export const queryKeys = {
    *  Title-agnostic PAR DESIGN (balaie tous les joueurs/titres). */
   teammatesAll: ['teammates'] as const,
 
+  // Onglet Tactique (Ascension) — la grille des cartes jouées.
+  // `filterHash` : le filtre courant entre dans la clé parce qu'il change la POPULATION
+  // servie (quelles cartes, et combien de matchs sur chacune). Sans lui, changer de
+  // période resservirait la grille de la période précédente.
+  tacticalMaps: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['tactical-maps', playerSlug, titleSlug, filterHash] as const,
+  // Le FOND d'une carte : propre à la CARTE, indépendant du filtre, figé entre deux
+  // cuissons — d'où une clé distincte de la grille (même raison que
+  // `matchReplayBackgroundImage` vis-à-vis de `matchReplay`), et un staleTime infini.
+  tacticalMapBackground: (playerSlug: string, titleSlug: string, mapId: string) =>
+    ['tactical-map-background', playerSlug, titleSlug, mapId] as const,
+
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
   synthesis: (playerSlug: string, titleSlug: string, scopeHash: string) =>
     ['synthesis', playerSlug, titleSlug, scopeHash] as const,

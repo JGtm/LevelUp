@@ -1,0 +1,73 @@
+# Manifest i18n de l'onglet TACTIQUE (Ascension) — grille des cartes jouées.
+# Chaque clé DOIT porter fr ET en (contrôlé par build_i18n_manifests.mjs).
+#
+# VOCABULAIRE FR ARRÊTÉ : « carte », « matchs », « victoires », « défaites »,
+# « plancher ». Jamais « map », jamais « heatmap » (ce dernier est interdit par
+# lib/i18n/no-anglicisms.guard.test.ts, où ce manifeste est scanné).
+
+# ── Section « Cartes jouées » ─────────────────────────────────────────────────
+[tactical.maps.title]
+fr = "Cartes jouées"
+en = "Maps played"
+
+[tactical.maps.label]
+fr = "Cartes jouées"
+en = "Maps played"
+
+[tactical.maps.loading]
+fr = "Chargement des cartes…"
+en = "Loading maps…"
+
+[tactical.maps.error]
+fr = "Les cartes n'ont pas pu être chargées."
+en = "Maps could not be loaded."
+
+# ── État vide ─────────────────────────────────────────────────────────────────
+[tactical.maps.empty_title]
+fr = "Aucune carte jouée"
+en = "No map played"
+
+[tactical.maps.empty_description]
+fr = "Aucun match ne correspond aux filtres en cours. Élargis la période ou retire un filtre."
+en = "No match matches the current filters. Widen the period or remove a filter."
+
+# ── Vignette d'une carte ──────────────────────────────────────────────────────
+[tactical.maps.matches]
+fr = "{n, plural, one {# match} other {# matchs}}"
+en = "{n, plural, one {# match} other {# matches}}"
+
+# Barre victoires / défaites : le compte brut, jamais un taux seul.
+[tactical.maps.record]
+fr = "{wins, plural, one {# victoire} other {# victoires}} · {losses, plural, one {# défaite} other {# défaites}}"
+en = "{wins, plural, one {# win} other {# wins}} · {losses, plural, one {# loss} other {# losses}}"
+
+# Nom accessible de la barre : les deux comptes ET leur dénominateur, parce que
+# victoires + défaites peut être inférieur au nombre de matchs (nuls, résultat inconnu).
+[tactical.maps.record_label]
+fr = "{wins, plural, one {# victoire} other {# victoires}} et {losses, plural, one {# défaite} other {# défaites}} sur {n, plural, one {# match} other {# matchs}}"
+en = "{wins, plural, one {# win} other {# wins}} and {losses, plural, one {# loss} other {# losses}} out of {n, plural, one {# match} other {# matches}}"
+
+# Bouton d'une carte ouvrable : ce que le clic FAIT, dit sans ambiguïté.
+[tactical.maps.select]
+fr = "Sélectionner {map}"
+en = "Select {map}"
+
+[tactical.maps.selected]
+fr = "Carte sélectionnée"
+en = "Selected map"
+
+# ── Plancher par carte ────────────────────────────────────────────────────────
+# Raison affichée EN CLAIR sur une vignette désaturée : le joueur doit voir qu'il a
+# joué la carte, et pourquoi elle ne s'ouvre pas.
+[tactical.maps.floor_reason]
+fr = "{n, plural, one {# match} other {# matchs}} sur {floor} requis"
+en = "{n, plural, one {# match} other {# matches}} of {floor} required"
+
+[tactical.maps.floor_note]
+fr = "Une carte s'ouvre à partir de {floor} matchs : en dessous, une lecture de placement ne mesure que du bruit."
+en = "A map opens from {floor} matches on: below that, a positioning reading measures nothing but noise."
+
+# ── Pied de carte : couverture ────────────────────────────────────────────────
+[tactical.maps.coverage]
+fr = "{maps, plural, one {# carte jouée} other {# cartes jouées}}, {matches, plural, one {# match} other {# matchs}}"
+en = "{maps, plural, one {# map played} other {# maps played}}, {matches, plural, one {# match} other {# matches}}"

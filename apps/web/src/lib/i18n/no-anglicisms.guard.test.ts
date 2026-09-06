@@ -15,9 +15,13 @@
  * périmètre, cf. rapports I15/I15-bis) :
  *   - 5 dictionnaires hand-written (features/<feature>/i18n.ts) : notifications,
  *     ascension, match-view, squad, _shared/SessionBriefing.
- *   - 9 manifests TOML (lib/i18n/manifests/*.toml) : profile, squad, common,
+ *   - 10 manifests TOML (lib/i18n/manifests/*.toml) : profile, squad, common,
  *     palmares, admin, match_view, timeseries, explorer, session (les 3
- *     derniers ajoutés par I15-bis — anciennement exclus, dette résorbée).
+ *     derniers ajoutés par I15-bis — anciennement exclus, dette résorbée),
+ *     tactical (2026-09-06, phase 4 du plan Tactique : manifeste NEUF, entré
+ *     dans le périmètre dès sa création plutôt qu'après coup — c'est aussi
+ *     celui où « heatmap » serait le plus tentant, ses lectures de placement
+ *     étant des cartes de chaleur).
  *
  * EXCLU DÉLIBÉRÉMENT — `coaching_tips.toml` (~80 entrées, registre esport) :
  * relecture éditoriale dédiée faite le 2026-07-24 (hors I15/I15-bis, périmètre
@@ -234,7 +238,7 @@ describe('garde-rail anti-anglicismes FR (I15 + I15-bis, périmètre = fichiers 
     expect(offenders, `Anglicismes détectés :\n${formatOffenders(offenders)}`).toEqual([])
   })
 
-  it('manifests TOML (profile/squad/common/palmares/admin/match_view/timeseries/explorer/session) : aucun anglicisme interdit côté FR', () => {
+  it('manifests TOML (profile/squad/common/palmares/admin/match_view/timeseries/explorer/session/tactical) : aucun anglicisme interdit côté FR', () => {
     const offenders = [
       ...scanManifest('profile.toml'),
       ...scanManifest('squad.toml'),
@@ -245,6 +249,12 @@ describe('garde-rail anti-anglicismes FR (I15 + I15-bis, périmètre = fichiers 
       ...scanManifest('timeseries.toml'),
       ...scanManifest('explorer.toml'),
       ...scanManifest('session.toml'),
+      // Onglet Tactique (2026-09-06, phase 4) : manifeste NEUF, donc aucune dette à
+      // résorber — il entre dans le périmètre dès sa création. C'est aussi le manifeste
+      // où « heatmap » serait le plus tentant : ses lectures de placement sont des cartes
+      // de chaleur, et le mot anglais est interdit par la décision utilisateur du
+      // 2026-09-05.
+      ...scanManifest('tactical.toml'),
     ]
     expect(offenders, `Anglicismes détectés :\n${formatOffenders(offenders)}`).toEqual([])
   })
