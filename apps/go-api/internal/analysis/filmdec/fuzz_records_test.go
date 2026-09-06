@@ -35,7 +35,8 @@ import (
 	"testing"
 )
 
-var updateFuzzSeeds = flag.Bool("update", false, "reecrire le corpus de graines de testdata/fuzz/")
+var updateGoldens = flag.Bool("update", false,
+	"reecrire les sorties figees de testdata/ (corpus de graines du fuzz, golden des familles)")
 
 // fuzzSeedDir est le corpus natif Go : `go test` charge automatiquement les fichiers qui s y
 // trouvent comme graines de la cible du meme nom.
@@ -98,7 +99,7 @@ func FuzzFilmRecordReaders(f *testing.F) {
 // []byte) : c est ce format que le moteur relit, et l ecrire depuis le code plutot qu a la main
 // est ce qui rend le corpus REGENERABLE — un corpus edite a la main est un binaire sans source.
 func TestFuzzSeedsRegenerate(t *testing.T) {
-	if !*updateFuzzSeeds {
+	if !*updateGoldens {
 		t.Skip("regeneration du corpus de graines : passer -update")
 	}
 	seeds, err := collectFuzzSeeds()
