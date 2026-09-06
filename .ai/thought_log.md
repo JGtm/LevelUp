@@ -95498,3 +95498,64 @@ exportees inspectees. Cinq inversions rapportees : `domain.TauxEchange` refuse,
 `[]domain.Couverture` accepte, `func() (domain.Couverture, float64)` refuse, `map[float64]int`
 refuse, garde d'inspection neutralisee -> sentinelle. Gate rejoue : vet propre, `test -count=1`
 vert sur 8 paquets en 10,7 s, `golangci-lint` a 0 issue.
+
+## [2026-09-06] Onglet Tactique — phase 2 : port, lecteur DuckDB, service, handler (Complete)
+
+**Decision technique principale : l'univers des matchs est une ENTREE DU LECTEUR, pas une
+deduction des points.** `TacticalRepository.KillPositions` et `KillEvents` ne rendent pas des
+points, ils rendent un `domain.TacticalPositions` / `TacticalKillEvents` qui porte L'UNIVERS
+(les matchs retenus par le filtre, avec leur issue et la composition des equipes) ET les points
+par-dessus. C'est la traduction, au niveau du port, du defaut P0 corrige en phase 1 : un match
+retenu qui n'a AUCUNE position mesuree doit compter au denominateur « par match », faute de quoi
+la lecture signee peint une zone gagnante la ou il n'y a que des matchs muets d'un cote. Le test
+de service pose le cas chiffre — 12 victoires dont 6 muettes, 8 defaites dont 4 muettes, une
+cellule vue en 6 V et 4 D vaut 6/12 - 4/8 = 0,00 et non 6/10 - 4/8 = +0,10.
+
+**Ce qui a ete livre**, en quatre commits `tactique(2.1)` a `(2.4)` sur `feat/tactique`
+(worktree dedie `LevelUp-wt-tactique`, non pousse) : l'interface `TacticalRepository` a cote de
+`KillDistanceRepository` ; le lecteur `platform/duckdb/tactical_repo.go` calque sur la jointure
+`kill_positions_latest x match_kill_events_latest` de `kill_distance_repo.go` ; le service
+`TacticalService` (trois questions, trois axes, deux portes de capability) ; les deux endpoints
+Huma `GET /players/{slug}/tactical/maps` et `.../tactical/{map_id}/raster`, cables en un seul
+endroit (`ServiceRegistry.Tactical`), contrat OpenAPI et `generated.ts` regeneres en additions
+pures. Aucun artefact de rejeu lu, aucune capability creee, aucun fichier web ecrit.
+
+**Trois gardes de prudence, chacune parce qu'une attribution PAR LIGNE est en jeu.** Le filtre
+`publishable` est exige des deux cotes : une passe non publiable est juste en agregat et fausse
+ligne a ligne (bijection nom -> xuid a marge nulle), or l'axe « moi / escouade / adversaires »
+et le « qui a venge qui » decident ligne par ligne — une identite permutee peint le point du
+mauvais cote de l'axe, sans que rien ne le signale. La garde d'ambiguite `HAVING count(*) = 1`
+ecarte le double kill au meme (tueur, instant) : `kill_positions_latest` ne porte qu'UNE
+position de victime par cle et aucune colonne `victim_xuid`, la position devient donc
+inattribuable des que deux morts partagent l'instant. Enfin une position PARTIELLE (un seul cote
+connu) n'est jamais approchee.
+
+**Deux portes de capability, deux effets differents, et c'est delibere.** `film.kill_positions`
+absente rend `ErrCapabilityNotSupported` — 503 propre, il n'y a pas de lecture de placement sans
+positions. `film.kill_source` absente rend le KPI d'echange SILENCIEUX (champ omis) et laisse la
+lecture de placement servie : publier un zero se lirait comme une contre-performance, alors que
+l'absence dit ce qui est vrai — ce titre ne mesure pas cela. Les deux se lisent sur la
+`CapabilityMap` de l'adapter du titre du joueur (`capabilitiesForPDB`), jamais sur un slug.
+
+**Deux decisions produit prises faute de tranche du plan, consignees en §7 et A CONFIRMER** :
+« ou je gagne » se lit sur les ENGAGEMENTS (mes kills ET mes morts) — le plan tranche la forme du
+raster signe mais pas son substrat, et la seule presence mesurable avant les rasters d'occupation
+est le combat, qui a deux faces ; et le KPI d'echange d'une carte porte sur les morts de MON CAMP
+(coequipiers et moi).
+
+**Deux pieges rencontres, tous deux silencieux.** Un champ EMBARQUE de type NON EXPORTE dans une
+entree Huma n'est pas lie par reflexion : tous les filtres arrivaient vides, sans erreur ni log
+(type renomme `TacticalFilterQuery`, piege garde par un test). Et le ratchet
+`no_raw_kill_scope_literal` a MORDU sur la fixture de test, ou `read_path` etait ecrit en clair —
+corrige en `killscope.ReadPathFilmWalk`. Le test du lecteur est volontairement SANS tag de build,
+contrairement a `kill_distance_repo_test.go` : le gate de la phase ne pose pas
+`-tags=integration`, et un test derriere un tag que le gate ne pose pas ne garde rien.
+
+**Gate joue en avant-plan, une commande `go` a la fois** : `go vet` propre sur les sept arbres
+(1,9 s) ; `go test -count=1` vert sur 22 paquets en 42,3 s ; `golangci-lint run
+--new-from-merge-base=origin/main` — LE ratchet de la CI — a **0 issue** ; `openapi-gen -check` a
+jour ; ratchets `no_slug_comparison`, `no_data_path_join`, `no_raw_start_time_literal`,
+`no_raw_outcome_literal`, `no_inline_objective_latest_view` et `tactical_pure` verts.
+
+**Prochaine etape** : revue adversariale du superviseur, puis phase 3 (l'echange sur la page
+Escouade). Les deux decisions produit ci-dessus attendent l'arbitrage de l'utilisateur.

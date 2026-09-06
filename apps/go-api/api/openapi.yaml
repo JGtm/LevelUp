@@ -6148,6 +6148,173 @@ paths:
       summary: Sync delta par joueur
       tags:
         - sync
+  /players/{player_slug}/tactical/{map_id}/raster:
+    get:
+      operationId: getTacticalRaster
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: map_id
+          required: true
+          schema:
+            type: string
+        - description: 'Lecture : morts | kills | gagne. Defaut : morts.'
+          explode: false
+          in: query
+          name: question
+          schema:
+            description: 'Lecture : morts | kills | gagne. Defaut : morts.'
+            type: string
+        - description: 'Axe : moi | escouade | adv. Defaut : moi.'
+          explode: false
+          in: query
+          name: qui
+          schema:
+            description: 'Axe : moi | escouade | adv. Defaut : moi.'
+            type: string
+        - description: Playlists, separees par une virgule.
+          explode: false
+          in: query
+          name: playlist
+          schema:
+            description: Playlists, separees par une virgule.
+            type: string
+        - description: Categories de mode, separees par une virgule.
+          explode: false
+          in: query
+          name: mode
+          schema:
+            description: Categories de mode, separees par une virgule.
+            type: string
+        - description: Borne basse (RFC3339).
+          explode: false
+          in: query
+          name: from
+          schema:
+            description: Borne basse (RFC3339).
+            type: string
+        - description: Borne haute (RFC3339).
+          explode: false
+          in: query
+          name: to
+          schema:
+            description: Borne haute (RFC3339).
+            type: string
+        - description: Identifiant de session.
+          explode: false
+          in: query
+          name: session
+          schema:
+            description: Identifiant de session.
+            type: string
+        - description: 'Issue : win | loss | draw | dnf.'
+          explode: false
+          in: query
+          name: outcome
+          schema:
+            description: 'Issue : win | loss | draw | dnf.'
+            type: string
+        - description: XUID (entier decimal) devant avoir participe au match.
+          explode: false
+          in: query
+          name: with_player
+          schema:
+            description: XUID (entier decimal) devant avoir participe au match.
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TacticalRaster'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne)
+      tags:
+        - tactical
+  /players/{player_slug}/tactical/maps:
+    get:
+      operationId: getTacticalMaps
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - description: Playlists, separees par une virgule.
+          explode: false
+          in: query
+          name: playlist
+          schema:
+            description: Playlists, separees par une virgule.
+            type: string
+        - description: Categories de mode, separees par une virgule.
+          explode: false
+          in: query
+          name: mode
+          schema:
+            description: Categories de mode, separees par une virgule.
+            type: string
+        - description: Borne basse (RFC3339).
+          explode: false
+          in: query
+          name: from
+          schema:
+            description: Borne basse (RFC3339).
+            type: string
+        - description: Borne haute (RFC3339).
+          explode: false
+          in: query
+          name: to
+          schema:
+            description: Borne haute (RFC3339).
+            type: string
+        - description: Identifiant de session.
+          explode: false
+          in: query
+          name: session
+          schema:
+            description: Identifiant de session.
+            type: string
+        - description: 'Issue : win | loss | draw | dnf.'
+          explode: false
+          in: query
+          name: outcome
+          schema:
+            description: 'Issue : win | loss | draw | dnf.'
+            type: string
+        - description: XUID (entier decimal) devant avoir participe au match.
+          explode: false
+          in: query
+          name: with_player
+          schema:
+            description: XUID (entier decimal) devant avoir participe au match.
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TacticalMapsPage'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Cartes jouees, pour la grille d'entree de l'onglet Tactique
+      tags:
+        - tactical
   /players/{player_slug}/templates/suggest:
     get:
       operationId: suggestPrestigeTemplates
@@ -9005,6 +9172,30 @@ components:
         - oauth_code_flow_enabled
         - demo_mode
       type: object
+    BornesMonde:
+      additionalProperties: false
+      properties:
+        MaxX:
+          format: double
+          type: number
+        MaxY:
+          format: double
+          type: number
+        MinX:
+          format: double
+          type: number
+        MinY:
+          format: double
+          type: number
+        Valide:
+          type: boolean
+      required:
+        - MinX
+        - MinY
+        - MaxX
+        - MaxY
+        - Valide
+      type: object
     Bounds:
       additionalProperties: false
       properties:
@@ -10292,6 +10483,47 @@ components:
         - maps
         - game_variants
       type: object
+    CelluleTactique:
+      additionalProperties: false
+      properties:
+        Brut:
+          format: double
+          type: number
+        CentreX:
+          format: double
+          type: number
+        CentreY:
+          format: double
+          type: number
+        Col:
+          format: int64
+          type: integer
+        Lig:
+          format: int64
+          type: integer
+        Matchs:
+          format: int64
+          type: integer
+        MatchsDefaite:
+          format: int64
+          type: integer
+        MatchsVictoire:
+          format: int64
+          type: integer
+        Valeur:
+          format: double
+          type: number
+      required:
+        - Col
+        - Lig
+        - CentreX
+        - CentreY
+        - Valeur
+        - Brut
+        - Matchs
+        - MatchsVictoire
+        - MatchsDefaite
+      type: object
     Challenge:
       additionalProperties: false
       properties:
@@ -10981,6 +11213,30 @@ components:
         - y_value
         - outcome
       type: object
+    Couverture:
+      additionalProperties: false
+      properties:
+        Brut:
+          format: int64
+          type: integer
+        EchantillonFaible:
+          type: boolean
+        "N":
+          format: int64
+          type: integer
+        ParMatch:
+          format: double
+          type: number
+        Taux:
+          format: double
+          type: number
+      required:
+        - Taux
+        - Brut
+        - ParMatch
+        - "N"
+        - EchantillonFaible
+      type: object
     Coverage:
       additionalProperties: false
       properties:
@@ -11393,6 +11649,30 @@ components:
         - bucket_lower
         - bucket_upper
         - count
+      type: object
+    EchelleTactique:
+      additionalProperties: false
+      properties:
+        Borne:
+          format: double
+          type: number
+        NCellules:
+          format: int64
+          type: integer
+        P50:
+          format: double
+          type: number
+        P95:
+          format: double
+          type: number
+        Symetrique:
+          type: boolean
+      required:
+        - P50
+        - P95
+        - Borne
+        - Symetrique
+        - NCellules
       type: object
     EncounterDTO:
       additionalProperties: false
@@ -25236,6 +25516,92 @@ components:
         - name
         - exists
         - rows
+      type: object
+    TacticalMapCard:
+      additionalProperties: false
+      properties:
+        defaites:
+          format: int64
+          type: integer
+        map_id:
+          type: string
+        map_name:
+          type: string
+        map_name_fr:
+          type: string
+        matchs:
+          format: int64
+          type: integer
+        sous_plancher:
+          type: boolean
+        victoires:
+          format: int64
+          type: integer
+      required:
+        - map_id
+        - map_name
+        - map_name_fr
+        - matchs
+        - victoires
+        - defaites
+        - sous_plancher
+      type: object
+    TacticalMapsPage:
+      additionalProperties: false
+      properties:
+        cartes:
+          items:
+            $ref: '#/components/schemas/TacticalMapCard'
+          type:
+            - array
+            - "null"
+        plancher_matchs:
+          format: int64
+          type: integer
+      required:
+        - cartes
+        - plancher_matchs
+      type: object
+    TacticalRaster:
+      additionalProperties: false
+      properties:
+        bornes:
+          $ref: '#/components/schemas/BornesMonde'
+        cellules:
+          items:
+            $ref: '#/components/schemas/CelluleTactique'
+          type:
+            - array
+            - "null"
+        echange:
+          $ref: '#/components/schemas/Couverture'
+        echelle:
+          $ref: '#/components/schemas/EchelleTactique'
+        map_id:
+          type: string
+        matchs_retenus:
+          format: int64
+          type: integer
+        pas_m:
+          format: double
+          type: number
+        points_ignores:
+          format: int64
+          type: integer
+        question:
+          type: string
+        qui:
+          type: string
+      required:
+        - map_id
+        - question
+        - qui
+        - matchs_retenus
+        - pas_m
+        - bornes
+        - cellules
+        - echelle
+        - points_ignores
       type: object
     TeamHold:
       additionalProperties: false

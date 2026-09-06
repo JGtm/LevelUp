@@ -3472,6 +3472,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/tactical/{map_id}/raster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne) */
+        get: operations["getTacticalRaster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/tactical/maps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cartes jouees, pour la grille d'entree de l'onglet Tactique */
+        get: operations["getTacticalMaps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/templates/suggest": {
         parameters: {
             query?: never;
@@ -4740,6 +4774,17 @@ export interface components {
             /** @enum {string} */
             setup_state: "no_halo_link" | "halo_linked_no_profile" | "profile_ready_no_sync" | "ready";
         };
+        BornesMonde: {
+            /** Format: double */
+            MaxX: number;
+            /** Format: double */
+            MaxY: number;
+            /** Format: double */
+            MinX: number;
+            /** Format: double */
+            MinY: number;
+            Valide: boolean;
+        };
         Bounds: {
             /** Format: float */
             maxX: number;
@@ -5214,6 +5259,26 @@ export interface components {
             /** Format: int64 */
             playlists: number;
         };
+        CelluleTactique: {
+            /** Format: double */
+            Brut: number;
+            /** Format: double */
+            CentreX: number;
+            /** Format: double */
+            CentreY: number;
+            /** Format: int64 */
+            Col: number;
+            /** Format: int64 */
+            Lig: number;
+            /** Format: int64 */
+            Matchs: number;
+            /** Format: int64 */
+            MatchsDefaite: number;
+            /** Format: int64 */
+            MatchsVictoire: number;
+            /** Format: double */
+            Valeur: number;
+        };
         Challenge: {
             /** Format: date-time */
             abandoned_at?: string;
@@ -5510,6 +5575,17 @@ export interface components {
             /** Format: double */
             y_value: number;
         };
+        Couverture: {
+            /** Format: int64 */
+            Brut: number;
+            EchantillonFaible: boolean;
+            /** Format: int64 */
+            N: number;
+            /** Format: double */
+            ParMatch: number;
+            /** Format: double */
+            Taux: number;
+        };
         Coverage: {
             abilityCharges?: components["schemas"]["AbilityChargeCoverage"];
             abilityImpulses?: components["schemas"]["AbilityImpulseCoverage"];
@@ -5694,6 +5770,17 @@ export interface components {
             bucket_upper: number;
             /** Format: int64 */
             count: number;
+        };
+        EchelleTactique: {
+            /** Format: double */
+            Borne: number;
+            /** Format: int64 */
+            NCellules: number;
+            /** Format: double */
+            P50: number;
+            /** Format: double */
+            P95: number;
+            Symetrique: boolean;
         };
         EncounterDTO: {
             /** Format: int64 */
@@ -11455,6 +11542,38 @@ export interface components {
             name: string;
             /** Format: int64 */
             rows: number;
+        };
+        TacticalMapCard: {
+            /** Format: int64 */
+            defaites: number;
+            map_id: string;
+            map_name: string;
+            map_name_fr: string;
+            /** Format: int64 */
+            matchs: number;
+            sous_plancher: boolean;
+            /** Format: int64 */
+            victoires: number;
+        };
+        TacticalMapsPage: {
+            cartes: components["schemas"]["TacticalMapCard"][] | null;
+            /** Format: int64 */
+            plancher_matchs: number;
+        };
+        TacticalRaster: {
+            bornes: components["schemas"]["BornesMonde"];
+            cellules: components["schemas"]["CelluleTactique"][] | null;
+            echange?: components["schemas"]["Couverture"];
+            echelle: components["schemas"]["EchelleTactique"];
+            map_id: string;
+            /** Format: int64 */
+            matchs_retenus: number;
+            /** Format: double */
+            pas_m: number;
+            /** Format: int64 */
+            points_ignores: number;
+            question: string;
+            qui: string;
         };
         TeamHold: {
             /** Format: int64 */
@@ -19377,6 +19496,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AsyncJobStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTacticalRaster: {
+        parameters: {
+            query?: {
+                /** @description Lecture : morts | kills | gagne. Defaut : morts. */
+                question?: string;
+                /** @description Axe : moi | escouade | adv. Defaut : moi. */
+                qui?: string;
+                /** @description Playlists, separees par une virgule. */
+                playlist?: string;
+                /** @description Categories de mode, separees par une virgule. */
+                mode?: string;
+                /** @description Borne basse (RFC3339). */
+                from?: string;
+                /** @description Borne haute (RFC3339). */
+                to?: string;
+                /** @description Identifiant de session. */
+                session?: string;
+                /** @description Issue : win | loss | draw | dnf. */
+                outcome?: string;
+                /** @description XUID (entier decimal) devant avoir participe au match. */
+                with_player?: string;
+            };
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TacticalRaster"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTacticalMaps: {
+        parameters: {
+            query?: {
+                /** @description Playlists, separees par une virgule. */
+                playlist?: string;
+                /** @description Categories de mode, separees par une virgule. */
+                mode?: string;
+                /** @description Borne basse (RFC3339). */
+                from?: string;
+                /** @description Borne haute (RFC3339). */
+                to?: string;
+                /** @description Identifiant de session. */
+                session?: string;
+                /** @description Issue : win | loss | draw | dnf. */
+                outcome?: string;
+                /** @description XUID (entier decimal) devant avoir participe au match. */
+                with_player?: string;
+            };
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TacticalMapsPage"];
                 };
             };
             /** @description Error */
