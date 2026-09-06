@@ -95,19 +95,67 @@ func (r *Registry) Archetype(idx int) (Archetype, bool) {
 	return r.Archetypes[idx], true
 }
 
+// registryError : une erreur sentinelle CONSTANTE de ce fichier.
+//
+// POURQUOI UN `const` ET PAS UN `var errors.New(...)`. Le ratchet
+// `archlint/TestFilmdecPackageVarsNeCroitPas` gele l'etat global de `filmdec` : ce paquet porte
+// son etat de reglage dans des variables de paquet, et c'est ce qui oblige tout le decodage a
+// passer sous `LockProcessDecode`. Le ratchet vise cet etat MUTABLE — une valeur constante n'en
+// est pas, elle ne peut ni etre reassignee ni etre partagee entre deux decodages. La sentinelle
+// est donc posee en `const` : l'intention du ratchet est respectee, pas contournee, et
+// `errors.Is` fonctionne (la valeur est comparable et unique).
+type registryError string
+
+// Error implemente error.
+func (e registryError) Error() string { return string(e) }
+
+// ErrRegistryStillCompressed : le tampon remis a [ParseRegistryChunk] porte encore son en-tete
+// zlib — l'appelant a saute la decompression, ou le chunk en porte DEUX couches.
+//
+// POURQUOI CETTE ERREUR EXISTE, ET CE QU'ELLE A COUTE DE NE PAS EXISTER. Du 2026-09-02
+// (c17f4941f, lot 1a de PLAN_CUISSON_PERF, qui a retire l'inflate de cette fonction) au
+// 2026-09-06, un tampon encore compresse rendait un registre VIDE et une erreur NULLE. Rien ne
+// disait « tu ne m'as pas decompresse » : chaque lecteur d'archetype rendait ensuite « archetype
+// N absent du registre », un message qui accuse le BUILD DU JEU d'un defaut de l'APPELANT. Le
+// fixture E2E `film_e2e/c0a82e88` en portait exactement le cas (ses chunks 00 et 07 avaient deux
+// couches zlib) : la seule cuisson reelle de la CI decodait sans registre — donc sans biped 35,
+// sans arme au sol 42, sans equipement 37, sans vehicule 40, sans objet d'objectif — et restait
+// verte pendant quatre jours.
+const ErrRegistryStillCompressed = registryError(
+	"filmdec: chunk_00 (registre) encore compresse — decompresser avant ParseRegistryChunk")
+
 // ParseRegistryChunk parses every fixed-size archetype block of an ALREADY-INFLATED chunk_00.
 //
 // IT NO LONGER INFLATES (lot 1 of PLAN_CUISSON_PERF, 2026-09-02). Decompression happens once per
 // film, in `filmsource`: the cooking path hands over `film.Chunk(<registre>)`, and the single-chunk
 // readers (research tools, tests) hand over `filmdec.ReadFilmChunk(dir, 0)`, which inflates
-// through the same decompressor. Feeding it a still-compressed buffer now yields an EMPTY registry
-// rather than an error — callers must inflate first; `internal/archlint` forbids a second
-// `zlib.NewReader` inside `filmdec` so the rule cannot silently come back.
+// through the same decompressor. A still-compressed buffer is REFUSED ([ErrRegistryStillCompressed])
+// — the caller must inflate first; `internal/archlint` forbids a second `zlib.NewReader` inside
+// `filmdec`, so this function DETECTE l'en-tete sans jamais le decompresser.
 //
 // The error return is kept: the signature is used in a dozen files, and the parse itself will grow
 // error cases (a registry whose block size does not divide the buffer is already suspicious).
 func ParseRegistryChunk(data []byte) (*Registry, error) {
+	if looksZlib(data) {
+		return nil, ErrRegistryStillCompressed
+	}
 	return parseRegistry(data), nil
+}
+
+// looksZlib dit si `data` commence par un EN-TETE ZLIB (RFC 1950), sans rien decompresser.
+//
+// LE TEST EST CELUI DE LA RFC, PAS LE SEUL PREMIER OCTET. `filmsource.inflate` se contente de
+// `raw[0] == 0x78` parce qu'un faux positif y est inoffensif (le `zlib.NewReader` echoue et le
+// tampon traverse tel quel) ; ici un faux positif REFUSERAIT un registre valide. Les deux octets
+// de l'en-tete portent donc leurs trois conditions : methode DEFLATE (CM=8, quartet bas de
+// l'octet 0), pas de dictionnaire preset (bit 5 de l'octet 1), et somme de controle
+// `(octet0<<8 | octet1) % 31 == 0`. Un registre inflate commence par le `kind` u32 LE de son
+// premier slot (0x00000029 sur le build de reference) : son premier octet vaut 0x29, jamais 0x78.
+func looksZlib(data []byte) bool {
+	if len(data) < 2 || data[0]&0x0f != 0x08 || data[1]&0x20 != 0 {
+		return false
+	}
+	return (uint16(data[0])<<8|uint16(data[1]))%31 == 0
 }
 
 // parseRegistry lit les blocs d'archetype et S'ARRETE A LA FIN STRUCTURELLE du registre : un

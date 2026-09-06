@@ -127,7 +127,7 @@ func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
 
 	// ── L'artefact rangé = celui construit (empreinte sha256 déclarée par l'ouvrier dans son
 	//    compte rendu), lisible par le service, et NON APPAUVRI ─────────────────────────────
-	assertArtefactLivreEtComplet(t, serveurRepo, vue.Jobs, job.JobID)
+	assertArtefactLivreEtComplet(t, serveurRepo, vue.Jobs, job.JobID, fx)
 
 	// ── L'ouvrier n'a rien gardé : ses morceaux sont effacés ─────────────────────────────
 	if _, err := os.Stat(filepath.Join(travail, "film_chunks", fixtureShort)); !os.IsNotExist(err) {
@@ -152,9 +152,23 @@ func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
 // APPAUVRI (mesuré : 0 joueur de courbe de score, camps `unresolved`) qui porte pourtant le bon
 // numéro de schéma. La présence de compteurs de joueur est LA ligne qui distingue « livré » de
 // « livré vide » — exactement l'appauvrissement que le transport des faits (via EnqueueReplayBuild)
-// doit supprimer. Ici, AVEC faits : 5 joueurs de courbe de score et 92 actions d'objectif nommées
-// (famille flag), contre 0 sans.
-func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domain.BuildQueueJob, jobID string) {
+// doit supprimer. Ici, AVEC faits : 5 joueurs de courbe de score et 12 actions d'objectif publiées
+// (8 `kills`, 4 `assists`), contre 0 sans.
+//
+// CE QUE « 92 » ÉTAIT, ET POURQUOI CETTE LIGNE A MENTI HUIT JOURS. Elle a dit jusqu'au 2026-09-06
+// « 92 actions d'objectif nommées (famille flag) ». Le 92 est bien réel, mais c'est le compteur de
+// JOURNAL `nommees` — les émissions d'emplacement de statistique que `objectiveevents.NamedEvents`
+// reconnaît, AVANT le pont d'identité. Le document, lui, n'en portait alors AUCUNE (le calque
+// `objectives` était vide en production à cette date). Confondre le compteur amont avec le contenu
+// publié a fait passer pour une régression, le 2026-09-05, un chiffre qui n'avait jamais été celui
+// du document. Mesure sur pièces (2026-09-06, films complet ET fixture, schémas 38 et 39
+// confondus) : 92 nommées, 12 identifiées, 12 publiées.
+//
+// LES VALEURS SONT VÉRIFIÉES ICI, contre l'oracle INDÉPENDANT du fixture (la feuille de match de
+// l'API, `facts`) quand il existe — cf. `assertCalquesDObjectif`.
+func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domain.BuildQueueJob,
+	jobID string, fx filmFixture,
+) {
 	t.Helper()
 	var resultJSON string
 	trouve := false
@@ -212,6 +226,76 @@ func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domai
 	// propriété de ce film. La ligne dure ci-dessus (joueurs présents) porte la preuve.
 	t.Logf("artefact COMPLET : %d joueurs de courbe de score, identité des camps = %q (informatif)",
 		len(doc.ScoreTimeline.Players), doc.Coverage.Score.TeamIdentity)
+
+	assertCalquesDObjectif(t, doc, fx)
+}
+
+// assertCalquesDObjectif fige CE QUE LE FILM REND SUR LES OBJECTIFS, et le confronte à l'oracle
+// indépendant quand il existe.
+//
+// POURQUOI CES TROIS FAMILLES DE CHIFFRES ET PAS D'AUTRES :
+//
+//	les CAPTURES        elles ont un ORACLE EXTÉRIEUR — le score d'équipe de la feuille de match,
+//	                    que le décodeur ne lit jamais. Trois bursts, trois captures, trois points.
+//	les ACTIONS         le contenu réel du calque `objectives`, par famille. C'est ce chiffre-là
+//	                    que la ligne « 92, famille flag » désignait à tort (cf. l'en-tête de
+//	                    `assertArtefactLivreEtComplet`).
+//	les VIES DE L'OBJET `coverage.flagCarries.objectLives` est la SIGNATURE DU REGISTRE ECS : cette
+//	                    lecture passe par l'archétype de l'objet drapeau. Elle est tombée à zéro le
+//	                    2026-09-02 quand le fixture a cessé d'avoir un registre lisible, et rien ne
+//	                    l'a vu. Elle vaut 4 sur ce film, mesurée identique aux schémas 38 et 39 et
+//	                    sur le film COMPLET du cache — donc elle ne dépend ni du schéma ni du
+//	                    fixture, seulement du décodage.
+//
+// CE QUI N'EST PAS UN CRITÈRE, ET POURQUOI. `flagCarries` est VIDE sur ce film, et c'est une
+// PROPRIÉTÉ MESURÉE, pas un défaut : ses 3 prises sont toutes `noBridge` — le slot statborg du
+// porteur n'est pas résolu en xuid, et le pont se tait plutôt que d'attribuer le drapeau au mauvais
+// joueur. Vérifié identique à TOUS les schémas essayés (18, 20 sur l'artefact du parc, 38, 39).
+// L'assertion porte donc sur `openings == noBridge`, qui dit POURQUOI c'est vide — une future
+// amélioration du pont fera tomber ce test, et c'est exactement ce qu'on veut d'elle.
+func assertCalquesDObjectif(t *testing.T, doc replay.ReplayDocument, fx filmFixture) {
+	t.Helper()
+	fc := doc.Coverage.FlagCarries
+	if fc == nil {
+		t.Fatal("artefact sans couverture du drapeau : le film est un CTF, le calque doit se prononcer")
+	}
+	if !fc.FlagFilm {
+		t.Fatalf("film NON reconnu comme CTF (bursts=%d captures=%d steals=%d)", fc.Bursts, fc.Captures, fc.Steals)
+	}
+	// ORACLE INDÉPENDANT : le score du camp gagnant vient de la feuille de match de l'API, jamais
+	// du film. Les captures reconstruites doivent le valoir exactement.
+	if fx.Facts.TeamScores == nil {
+		t.Fatal("fixture sans scores d'équipe : plus d'oracle pour les captures")
+	}
+	if attendu := fx.Facts.TeamScores[0]; fc.Captures != attendu || fc.Bursts != attendu {
+		t.Errorf("captures reconstruites = %d (bursts %d), l'API dit %d — le décodage du film et la "+
+			"feuille de match doivent tomber d'accord", fc.Captures, fc.Bursts, attendu)
+	}
+	// Les vies libres de l'objet drapeau : la lecture qui EXIGE le registre ECS.
+	if fc.ObjectLives != 4 {
+		t.Errorf("vies libres de l'objet drapeau = %d, attendu 4 — zéro signifie que l'archétype de "+
+			"l'objet n'a pas été lu (registre ECS absent ou illisible)", fc.ObjectLives)
+	}
+	// Le silence de `flagCarries` est EXPLIQUÉ, pas subi.
+	if fc.Carries != 0 || fc.NoBridge != fc.Openings || fc.Openings == 0 {
+		t.Errorf("portages=%d prises=%d sansPont=%d : le film ne publiait aucun portage parce que "+
+			"CHAQUE prise est sans pont ; si ce n'est plus vrai, cette attente doit être remesurée",
+			fc.Carries, fc.Openings, fc.NoBridge)
+	}
+	// Le contenu du calque `objectives`, par famille.
+	parFamille := map[string]int{}
+	for _, a := range doc.Objectives {
+		parFamille[a.Stat]++
+	}
+	for famille, attendu := range map[string]int{"kills": 8, "assists": 4} {
+		if parFamille[famille] != attendu {
+			t.Errorf("actions d'objectif `%s` = %d, attendu %d (mesure du 2026-09-06, films complet "+
+				"et fixture, schémas 38 et 39)", famille, parFamille[famille], attendu)
+		}
+	}
+	if len(doc.Objectives) != 12 {
+		t.Errorf("actions d'objectif publiées = %d, attendu 12 — familles lues : %v", len(doc.Objectives), parFamille)
+	}
 }
 
 // chargerFixture lit le mini-film versionné (fixture.json + chunks) résolu PAR LE PAQUET
