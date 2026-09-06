@@ -11612,6 +11612,8 @@ export interface components {
             /** Format: int64 */
             matchs_defaite: number;
             /** Format: int64 */
+            matchs_filtres: number;
+            /** Format: int64 */
             matchs_retenus: number;
             /** Format: int64 */
             matchs_victoire: number;

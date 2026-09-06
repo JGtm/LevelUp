@@ -100,6 +100,17 @@ func (r *TacticalRepo) WithModeTaxonomy(t analysis.ModeTaxonomy) *TacticalRepo {
 // vocabulaire de filtre du depot — et donc du fragment timezone canonique pour
 // les bornes de date.
 //
+// LE DRAPEAU `mesure` (ajout 2026-09-06, correction G2) dit si le journal des morts
+// de ce match est LISIBLE : au moins une ligne publiable dans
+// `match_kill_events_latest`. Un match dont le film n'a jamais ete decode — ou dont le
+// film Theater a EXPIRE cote serveur — n'est pas un match a zero mort, c'est un match
+// ILLISIBLE : il ne peut alimenter aucun numerateur, et le laisser au denominateur
+// « par match » ferait varier la grandeur avec la couverture de film au lieu du jeu.
+//
+// `publishable` est exige ICI comme dans les deux lectures : sans lui, un match dont
+// toutes les lignes sont ecartees compterait comme mesure sur cette page et pas sur la
+// page Escouade, qui lit le meme journal filtre pareil.
+//
 // PREFIXE `Q` ET TOKEN CAMPAGNE (correction R2, revue du 2026-09-06) : le
 // garde-rail structurel campaign_exclusion_guard_test ne balaye QUE les constantes
 // nommees `Q<...>`. Sans le prefixe, un lecteur per-player passait sous son radar ;
@@ -108,7 +119,9 @@ func (r *TacticalRepo) WithModeTaxonomy(t analysis.ModeTaxonomy) *TacticalRepo {
 // call site par resolveCampaignExclusion, qui connait le titre du joueur (no-op
 // pour Infinite, qui n'a aucun match Campagne au registre).
 const QTacticalUnivers = `
-SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome
+SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome,
+       EXISTS (SELECT 1 FROM match_kill_events_latest e
+               WHERE e.match_id = mr.match_id AND e.publishable) AS mesure
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
 WHERE mp.xuid = ? AND (? = '' OR mr.map_id = ?)` + campaignExclusionToken
@@ -137,7 +150,7 @@ func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.
 	}
 	if err := scanRows(ctx, rows, "univers", func(sc rowScanner) error {
 		var m domain.TacticalMatch
-		if err := sc.Scan(&m.MatchID, &m.Outcome); err != nil {
+		if err := sc.Scan(&m.MatchID, &m.Outcome, &m.Mesure); err != nil {
 			return err
 		}
 		univ.Matchs = append(univ.Matchs, m)

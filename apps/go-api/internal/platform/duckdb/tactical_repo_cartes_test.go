@@ -310,3 +310,56 @@ func TestTacticalRepo_KillPositions_ExigeUneCarte(t *testing.T) {
 		t.Fatal("KillPositions sans carte doit etre un REFUS, pas un balayage")
 	}
 }
+
+// TestTacticalRepo_UniversDrapeauMesure : l'univers dit, MATCH PAR MATCH, si son
+// journal des morts est LISIBLE (correction G2, revue du 2026-09-06).
+//
+// Dans la fixture, m1 porte deux kill-events publiables et m2 aucun : m2 est bien
+// RETENU par le filtre (le joueur y a joue) et n'est PAS mesure. C'est ce drapeau
+// qui empeche le service de compter un match jamais decode au denominateur
+// « par match » — sans quoi l'intensite d'une carte varierait avec la couverture de
+// film au lieu du jeu.
+func TestTacticalRepo_UniversDrapeauMesure(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	seedTacticalCorpus(t, pdb)
+
+	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(), tacQuery(tacCarteA))
+	if err != nil {
+		t.Fatalf("KillEvents: %v", err)
+	}
+	mesure := map[string]bool{}
+	for _, m := range got.Univers.Matchs {
+		mesure[m.MatchID] = m.Mesure
+	}
+	if want := map[string]bool{"m1": true, "m2": false}; len(mesure) != 2 ||
+		mesure["m1"] != want["m1"] || mesure["m2"] != want["m2"] {
+		t.Fatalf("drapeaux = %v, want %v", mesure, want)
+	}
+}
+
+// TestTacticalRepo_MesureExigePublishable : une passe NON PUBLIABLE ne rend pas un
+// match mesure.
+//
+// C'est la meme exigence que les deux lectures (`e.publishable` des deux cotes) :
+// sans elle, un match dont toutes les lignes sont ecartees compterait comme mesure
+// sur l'onglet Tactique et pas sur la page Escouade, qui lit le meme journal filtre
+// de la meme facon — deux denominateurs pour la meme notion.
+func TestTacticalRepo_MesureExigePublishable(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	base := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	tacMatch(t, pdb, "np", tacCarteA, base)
+	tacParticipant(t, pdb, "np", tacXUIDMoi, 0, domain.OutcomeWin)
+	tacParticipant(t, pdb, "np", tacXUIDAdv, 1, domain.OutcomeLoss)
+	tacKill(t, pdb, "np", tacXUIDMoi, tacXUIDAdv, 1000, false) // passe non publiable
+
+	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(), tacQuery(tacCarteA))
+	if err != nil {
+		t.Fatalf("KillEvents: %v", err)
+	}
+	if len(got.Univers.Matchs) != 1 {
+		t.Fatalf("univers = %v, want [np]", matchIDs(got.Univers.Matchs))
+	}
+	if got.Univers.Matchs[0].Mesure {
+		t.Error("un match dont la seule passe est non publiable ne doit pas compter comme mesure")
+	}
+}

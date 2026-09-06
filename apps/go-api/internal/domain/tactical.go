@@ -137,6 +137,19 @@ type TacticalQuery struct {
 type TacticalMatch struct {
 	MatchID string
 
+	// Mesure dit que le journal des morts de ce match est LISIBLE (au moins une
+	// ligne publiable dans match_kill_events_latest).
+	//
+	// UN MATCH NON MESURE N'EST PAS UN MATCH A ZERO MORT, c'est un match ILLISIBLE :
+	// son film n'a jamais ete decode, ou il a EXPIRE cote serveur. Il ne peut
+	// alimenter aucun numerateur ; le compter au denominateur « par match » ferait
+	// varier la grandeur avec la COUVERTURE DE FILM au lieu du jeu — deux filtres a
+	// couverture differente (20 matchs sur 20 decodes contre 2 sur 20) rendraient
+	// 0,20 et 0,02 pour exactement le meme jeu. C'est le pendant du defaut P0 de la
+	// phase 1 : le zero LEGITIME compte au denominateur, l'ILLISIBLE est compte a
+	// part (correction G2, revue du 2026-09-06).
+	Mesure bool
+
 	// Outcome porte OutcomeWin / OutcomeLoss / OutcomeDraw / OutcomeDNF, ou
 	// OutcomeUnknown quand le substrat ne le sait pas. Un resultat inconnu compte
 	// au denominateur « par match » et dans aucun des deux cotes de la lecture
@@ -257,10 +270,18 @@ type TacticalRaster struct {
 	Question string `json:"question"`
 	Qui      string `json:"qui"`
 
-	// MatchsRetenus est la taille de l'univers : TOUS les matchs que le filtre a
-	// retenus, y compris ceux qui n'ont alimente aucune cellule. Publie AVEC les
-	// cellules — une intensite sans son denominateur ne se compare pas d'un filtre
-	// a l'autre.
+	// MatchsFiltres est le nombre de matchs que le FILTRE a retenus, mesures ou
+	// non. Publie pour que le pied de carte puisse dire « N mesures sur M » — sans
+	// lui, l'ecart entre ce que le joueur a joue et ce que la carte peut montrer
+	// serait invisible.
+	MatchsFiltres int `json:"matchs_filtres"`
+
+	// MatchsRetenus est le DENOMINATEUR de la lecture : les matchs du filtre dont le
+	// journal des morts est LISIBLE (cf. TacticalMatch.Mesure). Un match jamais
+	// decode n'y entre pas — il ne peut alimenter aucune cellule, et l'y compter
+	// ferait varier l'intensite avec la couverture de film au lieu du jeu
+	// (correction G2, 2026-09-06). Publie AVEC les cellules : une intensite sans son
+	// denominateur ne se compare pas d'un filtre a l'autre.
 	//
 	// ⚠ CE N'EST LE DENOMINATEUR DIRECT QUE DE LA LECTURE NON SIGNEE. La lecture
 	// signee normalise CHAQUE COTE par le sien (occV/nbV - occD/nbD, cf.
