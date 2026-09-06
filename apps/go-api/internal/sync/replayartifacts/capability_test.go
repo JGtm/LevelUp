@@ -45,6 +45,11 @@ func TestTitreProduitDesArtefacts_SurLesTOMLLivres(t *testing.T) {
 	}{
 		{"halo_infinite", true},
 		{"halo_5", false},
+		// LE TITRE SYNTHETIQUE : il declare `film.replay_artifact` = supported et ses cinq
+		// derives `not_exposed`. La porte de PRODUCTION doit donc s'ouvrir pour lui — c'est
+		// le chemin nominal d'un titre qui produit l'artefact sans qu'aucun derive soit
+		// cable. Sans ce cas, la fixture ne prouvait rien (revue C-R1, constat C3, M3/M4).
+		{"synthetic_title_b", true},
 	}
 	for _, c := range cas {
 		got := titreProduitDesArtefacts(context.Background(), Deps{RepoRoot: root, TitleSlug: c.slug})

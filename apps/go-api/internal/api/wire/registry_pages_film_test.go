@@ -86,6 +86,36 @@ func routeurMatchView(svc port.MatchViewService) *chi.Mux {
 	return r
 }
 
+// TestFilmArtifactRepos_CleAbsente_503 : une cle ABSENTE de la CapabilityMap ferme la porte
+// comme un `not_exposed` explicite.
+//
+// Les deux « non » se distinguent dans le MANIFESTE (halo_5 declare son refus, la plupart des
+// titres n'en diraient rien) mais doivent se comporter pareil dans le CODE : `Has` est faux
+// dans les deux cas. Ce test le fige sur la porte reelle, sans passer par un TOML — c'est le
+// seul moyen d'exercer l'absence pure, qu'aucun titre livre ne produit aujourd'hui.
+func TestFilmArtifactRepos_CleAbsente_503(t *testing.T) {
+	for _, chemin := range []string{"objective-events", "positions"} {
+		objAppele, posAppele := false, false
+		svc := withFilmArtifactRepos(
+			service.NewMatchViewService(nil, ""),
+			games.CapabilityMap{games.CapMatchHistory: games.CapSupported}, // aucune cle film.*
+			loaderTemoin{appele: &objAppele},
+			loaderPositionsTemoin{appele: &posAppele},
+		)
+
+		req := httptest.NewRequest(http.MethodGet, "/players/p/matches/abc123/"+chemin, nil)
+		w := httptest.NewRecorder()
+		routeurMatchView(svc).ServeHTTP(w, req)
+
+		if w.Code != http.StatusServiceUnavailable {
+			t.Fatalf("/%s sans la cle : status = %d, attendu 503 (corps : %s)", chemin, w.Code, w.Body.String())
+		}
+		if objAppele || posAppele {
+			t.Errorf("/%s : un loader du film a ete appele alors que la cle est absente", chemin)
+		}
+	}
+}
+
 // TestFilmArtifactRepos_TitreSansCapability_503 : halo_5 ne declare pas
 // `film.replay_artifact` -> les deux routes rendent 503 capability_not_supported, et aucun
 // loader n'est appele.
@@ -114,30 +144,38 @@ func TestFilmArtifactRepos_TitreSansCapability_503(t *testing.T) {
 	}
 }
 
-// TestFilmArtifactRepos_TitreAvecCapability_200 : halo_infinite declare la cle -> les deux
+// TestFilmArtifactRepos_TitreAvecCapability_200 : un titre qui declare la cle -> les deux
 // loaders sont câbles et servent (200). Sans ce volet, une porte qui refuserait TOUT passerait
 // le test precedent.
+//
+// DEUX TITRES, et le second n'est pas decoratif : `synthetic_title_b` declare
+// `film.replay_artifact` = supported ET ses cinq derives `not_exposed`. Il prouve donc que
+// c'est bien CETTE cle-la qui ouvre les deux loaders, et non « le titre a quelque chose du
+// film » (revue C-R1, constat C3 : la fixture ne prouvait rien).
 func TestFilmArtifactRepos_TitreAvecCapability_200(t *testing.T) {
 	cas := []struct {
+		slug   string
 		chemin string
 		lu     func(obj, pos bool) bool
 	}{
-		{"objective-events", func(obj, _ bool) bool { return obj }},
-		{"positions", func(_, pos bool) bool { return pos }},
+		{"halo_infinite", "objective-events", func(obj, _ bool) bool { return obj }},
+		{"halo_infinite", "positions", func(_, pos bool) bool { return pos }},
+		{"synthetic_title_b", "objective-events", func(obj, _ bool) bool { return obj }},
+		{"synthetic_title_b", "positions", func(_, pos bool) bool { return pos }},
 	}
 	for _, c := range cas {
 		objAppele, posAppele := false, false
-		svc := serviceAvecPorte(t, "halo_infinite", &objAppele, &posAppele)
+		svc := serviceAvecPorte(t, c.slug, &objAppele, &posAppele)
 
 		req := httptest.NewRequest(http.MethodGet, "/players/p/matches/abc123/"+c.chemin, nil)
 		w := httptest.NewRecorder()
 		routeurMatchView(svc).ServeHTTP(w, req)
 
 		if w.Code != http.StatusOK {
-			t.Fatalf("/%s sur halo_infinite : status = %d, attendu 200 (corps : %s)", c.chemin, w.Code, w.Body.String())
+			t.Fatalf("/%s sur %s : status = %d, attendu 200 (corps : %s)", c.chemin, c.slug, w.Code, w.Body.String())
 		}
 		if !c.lu(objAppele, posAppele) {
-			t.Errorf("/%s sur halo_infinite : le loader n'a pas ete appele — la porte s'est fermee a tort", c.chemin)
+			t.Errorf("/%s sur %s : le loader n'a pas ete appele — la porte s'est fermee a tort", c.chemin, c.slug)
 		}
 	}
 }
