@@ -14,9 +14,28 @@ package analysis
 // divergerait viendrait du repo DuckDB (un `WHERE kp.killer_z - kp.victim_z > 1.0` écrit en
 // SQL) ou du service, jamais d'ici.
 //
-// CE QU'IL NE COUVRE PAS, ET C'EST ASSUMÉ : le TypeScript de `apps/web` (hors module Go) et
-// les `_test.go`. Les fixtures d'un test portent légitimement +1,0 et -1,0 EXACTEMENT —
-// c'est ainsi que les bornes de la classe « à niveau » se testent (weapon_range_test.go).
+// IL PORTE SON PROPRE CONTRÔLE POSITIF (`TestSeuilsPorteeDetecteUneCopie`). Un garde-rail qui
+// n'affirme que « zéro fautif » est vrai aussi d'un détecteur mort : la mutation
+// `if false && fautifPortee(...)` le laissait vert (revue du 2026-09-06). Le détecteur prend
+// donc sa RACINE en paramètre, et le contrôle positif lui plante de vraies copies dans un
+// répertoire temporaire.
+//
+// CE QU'IL NE CAPTE PAS, ET C'EST CONSIGNÉ PLUTÔT QUE CORRIGÉ — les motifs sont des regex de
+// LIGNE, elles ne comprennent pas le SQL :
+//
+//   - une requête MULTILIGNE qui coupe entre la colonne et sa comparaison
+//     (`... kp.killer_z - kp.victim_z\n    > 1.0 ...`) : les 80 caractères de contexte ne
+//     franchissent pas le retour à la ligne ;
+//   - un ALIAS qui masque la colonne (`SELECT killer_z - victim_z AS dz ... WHERE dz > 1.0`) —
+//     le motif `delta_?z` ne connaît pas `dz`, et l'élargir à deux lettres ferait tomber la
+//     moitié du dépôt ;
+//   - le seuil de publication écrit sans son nom (`HAVING count(*) >= 8`).
+//
+// Ces trois trous sont ACCEPTÉS parce que le lot 3 a pour consigne de n'écrire AUCUN seuil ni
+// comparaison de dénivelé en SQL : le repo rend les frags MESURÉS, l'agrégat et ses seuils
+// restent ici. Le jour où cette consigne bougerait, ce commentaire dit ce qu'il faudrait
+// renforcer — et un garde-rail de nommage (`kill_measured.go`, lot 3.2) le couvrira mieux
+// qu'une regex de littéral.
 
 import (
 	"io/fs"
@@ -30,6 +49,9 @@ import (
 // weaponRangeOwner : le fichier qui a le droit d'écrire les deux seuils, vu depuis la
 // racine de la marche (`..` = `internal/`).
 const weaponRangeOwner = "analysis/weapon_range.go"
+
+// racineInterne : la racine marchée par le garde-rail réel.
+const racineInterne = ".."
 
 // bandeDeniveleInline matche une COMPARAISON entre un dénivelé et un littéral d'un mètre,
 // dans les deux sens d'écriture. Le motif vise la comparaison et non la mention : une DDL
@@ -47,7 +69,8 @@ var seuilPublicationInline = regexp.MustCompile(`(?i)min_?measured[^\n]{0,60}\b8
 // TestSeuilsPorteeDefinisUneSeuleFois : les deux constantes vivent dans weapon_range.go, et
 // aucun autre fichier Go de `internal/` ne réécrit leur littéral.
 func TestSeuilsPorteeDefinisUneSeuleFois(t *testing.T) {
-	offenders := scanSeuilsPortee(t)
+	verifierProprietairePortee(t)
+	offenders := scanSeuilsPortee(t, racineInterne)
 	if len(offenders) > 0 {
 		t.Fatalf("seuil de portée RÉÉCRIT hors de %s : %v.\n"+
 			"Utiliser analysis.WeaponRangeMinMeasured (D9) et analysis.WeaponRangeLevelBandM (D4) —"+
@@ -55,12 +78,55 @@ func TestSeuilsPorteeDefinisUneSeuleFois(t *testing.T) {
 	}
 }
 
-// scanSeuilsPortee marche `internal/` et rend les fichiers fautifs. Il échoue tout de suite
-// si le propriétaire ne porte plus les constantes : un garde-rail qui ne garde plus rien est
-// pire qu'aucun garde-rail.
-func scanSeuilsPortee(t *testing.T) []string {
+// TestSeuilsPorteeDetecteUneCopie est le CONTRÔLE POSITIF : sans lui, le test ci-dessus reste
+// vert même si le détecteur ne détecte plus rien. Chacun des deux littéraux interdits est
+// planté dans un fichier `.go` non-test d'un répertoire temporaire, qui doit sortir fautif ;
+// un troisième fichier, licite, ne doit PAS sortir — sinon le garde-rail crierait sur des
+// DDL et des commentaires, et finirait désactivé.
+//
+// Le répertoire est celui de `t.TempDir()`, supprimé par le framework à la fin du test : rien
+// n'est écrit dans l'arbre du dépôt, donc rien ne peut y rester si le test échoue en cours de
+// route.
+func TestSeuilsPorteeDetecteUneCopie(t *testing.T) {
+	racine := t.TempDir()
+	fautifs := map[string]string{
+		"copie_denivele.go": "package faux\n\nfunc f(row struct{ deltaZ float64 }) bool {\n" +
+			"\treturn row.deltaZ > 1.0\n}\n",
+		"copie_seuil.go": "package faux\n\nconst minMeasured = 8\n",
+	}
+	licite := "ddl_innocente.go"
+	contenus := map[string]string{
+		licite: "package faux\n\n// Le dénivelé se lit chez analysis, pas ici.\n" +
+			"const ddl = `CREATE TABLE kill_positions (killer_z DOUBLE, victim_z DOUBLE)`\n",
+	}
+	for nom, src := range fautifs {
+		contenus[nom] = src
+	}
+	for nom, src := range contenus {
+		if err := os.WriteFile(filepath.Join(racine, nom), []byte(src), 0o600); err != nil {
+			t.Fatalf("écriture de la copie %s : %v", nom, err)
+		}
+	}
+
+	vus := map[string]bool{}
+	for _, f := range scanSeuilsPortee(t, racine) {
+		vus[f] = true
+	}
+	for nom := range fautifs {
+		if !vus[nom] {
+			t.Errorf("copie NON DÉTECTÉE : %s — le détecteur ne détecte plus rien", nom)
+		}
+	}
+	if vus[licite] {
+		t.Errorf("%s est licite (DDL + commentaire) et ne doit pas être signalé", licite)
+	}
+}
+
+// verifierProprietairePortee échoue tout de suite si le propriétaire ne porte plus les
+// constantes : un garde-rail qui ne garde plus rien est pire qu'aucun garde-rail.
+func verifierProprietairePortee(t *testing.T) {
 	t.Helper()
-	owner, err := os.ReadFile(filepath.Clean(filepath.Join("..", weaponRangeOwner)))
+	owner, err := os.ReadFile(filepath.Clean(filepath.Join(racineInterne, weaponRangeOwner)))
 	if err != nil {
 		t.Fatalf("lecture du propriétaire %s : %v", weaponRangeOwner, err)
 	}
@@ -70,15 +136,22 @@ func scanSeuilsPortee(t *testing.T) []string {
 				decl, weaponRangeOwner)
 		}
 	}
+}
+
+// scanSeuilsPortee marche la racine donnée et rend les fichiers fautifs, en chemin RELATIF à
+// cette racine. La racine est un paramètre pour que le contrôle positif puisse lui soumettre
+// de vraies copies sans les écrire dans le dépôt.
+func scanSeuilsPortee(t *testing.T, racine string) []string {
+	t.Helper()
 	var offenders []string
-	err = filepath.WalkDir("..", func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(racine, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
 			return skipDirPorteee(d.Name())
 		}
-		rel := filepath.ToSlash(strings.TrimPrefix(path, ".."+string(filepath.Separator)))
+		rel := filepath.ToSlash(strings.TrimPrefix(path, racine+string(filepath.Separator)))
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") ||
 			rel == weaponRangeOwner {
 			return nil
@@ -89,7 +162,7 @@ func scanSeuilsPortee(t *testing.T) []string {
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("marche de internal/ : %v", err)
+		t.Fatalf("marche de %s : %v", racine, err)
 	}
 	return offenders
 }
