@@ -46,7 +46,6 @@ import {
 } from '../../../lib/replay/replayLogic'
 import { type CanvasView, projectTo } from '../model/replayView'
 
-/** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 // --- Durées, en frames, converties par l'appelant depuis le temps réel ---------------------
 
 /**

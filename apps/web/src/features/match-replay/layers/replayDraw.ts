@@ -17,7 +17,6 @@ import { altitudeRatio, footprint } from '../../../lib/replay/replayLogic'
 import { vehicleShotOrigin, type VehicleMountSpriteSize } from '../model/vehicleWeaponMounts'
 import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 
-/** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 /** Amplitude verticale utilisée pour l'indication d'étage. */
 interface ZRange {
   min: number

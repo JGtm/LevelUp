@@ -27,7 +27,6 @@ import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/
 import { type CanvasView, projectTo } from '../model/replayView'
 import { buildLivesBySlot, lifeOfSlotAt } from '../model/livesPosition'
 
-/** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 /** Un tir prêt à marquer : son instant, et la VIE qui le porte. */
 export interface FireMarkEntry {
   /** Frame du tir sur la grille du rejeu. */

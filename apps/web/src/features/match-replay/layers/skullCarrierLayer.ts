@@ -77,7 +77,6 @@ export function skullCarrierActiveAt(
   return out
 }
 
-/** Opacité du glyphe pour un portage — la pulsation d'un portage « ouvert » comprise. */
 /**
  * drawSkullCarrier peint, PAR-DESSUS les marqueurs, le crâne sur son porteur courant.
  *

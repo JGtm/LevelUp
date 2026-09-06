@@ -401,7 +401,6 @@ export function heatRamp(stops: readonly string[]): string[] {
   return out
 }
 
-/** Cadrage du canvas (les mêmes paramètres que worldToCanvas, forme de replayDraw). */
 /** Style du calque : rampe DÉJÀ résolue, et le rapport de pixels de l'écran. */
 export interface HeatmapStyle {
   ramp: readonly string[]
