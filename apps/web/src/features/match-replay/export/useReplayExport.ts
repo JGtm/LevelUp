@@ -43,7 +43,7 @@ import type { ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 
 
 
-import { readInk } from './canvasInk'
+import { readInk } from '../canvasInk'
 import { yieldToEvents } from './eventLoopYield'
 import {
   buildOverlayPanelSource,
@@ -51,10 +51,10 @@ import {
   type OverlayPanelSource,
 } from './exportOverlayPanels'
 import { paintOverlayPanel, type OverlayFonts, type OverlayInk } from './overlayPaint'
-import { mixReplayAudio, soundUrlOf, type MixedTracks, type SoundFamily } from './sound/replayAudioMix'
-import { formatClock, frameToMs } from './replayLogic'
+import { mixReplayAudio, soundUrlOf, type MixedTracks, type SoundFamily } from '../sound/replayAudioMix'
+import { formatClock, frameToMs } from '../replayLogic'
 import { buildCaptureFilename, triggerDownload } from './replayCapture'
-import { tintedIconCanvas } from './replayDraw'
+import { tintedIconCanvas } from '../replayDraw'
 import {
   END_HOLD_MS,
   buildExportPlan,
@@ -63,14 +63,14 @@ import {
   type ExportBounds,
   type ExportPlan,
 } from './replayExportPlan'
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../replayNormalize'
 import { EXPORT_FPS, canExportVideo, openVideoExport, type VideoExportSink } from './replayVideoEncoder'
-import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
-import { exportRenderScale, exportScaleFor } from './useReplayView'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
-import type { ReplaySoundEvent } from './sound/replaySoundVariants'
-import type { EnginePlan } from './sound/vehicleEngineSound'
-import { readVictory } from './victoryLogic'
+import { displayClockMs, type ReplayWindowBounds } from '../replayWindow'
+import { exportRenderScale, exportScaleFor } from '../useReplayView'
+import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+import type { ReplaySoundEvent } from '../sound/replaySoundVariants'
+import type { EnginePlan } from '../sound/vehicleEngineSound'
+import { readVictory } from '../victoryLogic'
 
 /** Cadence de publication de la progression, en images encodées. */
 const PROGRESS_EVERY = 15

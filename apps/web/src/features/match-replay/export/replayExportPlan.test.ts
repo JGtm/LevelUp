@@ -14,7 +14,7 @@ import {
   etaLabel,
   exportProgressPct,
 } from './replayExportPlan'
-import { testReplayDoc } from './test/testDoc'
+import { testReplayDoc } from '../test/testDoc'
 
 /** Un film à 20 images par seconde : 50 ms par image, 200 images, soit 10 s de match. */
 const DOC = testReplayDoc({ frameIntervalMs: 50, frameCount: 200 })

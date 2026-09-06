@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { captureCanvasImage, triggerDownload } from './replayCapture'
 import { pickVideoMimeType } from './replayRecording'
-import { testReplayDoc } from './test/testDoc'
+import { testReplayDoc } from '../test/testDoc'
 import { useReplayCapture } from './useReplayCapture'
 
 vi.mock('./replayCapture', async (importOriginal) => {

@@ -12,9 +12,9 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useReplayExport } from './useReplayExport'
-import type { ReplayWindowBounds } from './replayWindow'
-import { EXPORT_SUPERSAMPLE, exportRenderScale } from './useReplayView'
-import { testReplayDoc } from './test/testDoc'
+import type { ReplayWindowBounds } from '../replayWindow'
+import { EXPORT_SUPERSAMPLE, exportRenderScale } from '../useReplayView'
+import { testReplayDoc } from '../test/testDoc'
 
 // La SIGNATURE est portee par le TYPE du mock, pas par des parametres nommes : sans elle,
 // `mock.calls` est un tuple vide et l'assertion sur l'indice d'image ne compile pas ; avec des
@@ -37,8 +37,8 @@ vi.mock('./replayVideoEncoder', async (orig) => ({
     return { addFrame, addAudioTracks, finish, abort, audioEnabled: audioOk.value }
   },
 }))
-vi.mock('./sound/replayAudioMix', async (orig) => {
-  const vrai = await orig<typeof import('./sound/replayAudioMix')>()
+vi.mock('../sound/replayAudioMix', async (orig) => {
+  const vrai = await orig<typeof import('../sound/replayAudioMix')>()
   return { ...vrai, mixReplayAudio: vi.fn(async () => null) }
 })
 vi.mock('./replayCapture', async (orig) => ({
@@ -47,7 +47,7 @@ vi.mock('./replayCapture', async (orig) => ({
 }))
 
 import { triggerDownload } from './replayCapture'
-import { mixReplayAudio } from './sound/replayAudioMix'
+import { mixReplayAudio } from '../sound/replayAudioMix'
 
 const DOC = testReplayDoc({ frameIntervalMs: 50, frameCount: 200 })
 

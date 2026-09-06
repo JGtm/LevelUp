@@ -19,7 +19,7 @@ import userEvent from '@testing-library/user-event'
 import { ReplayTransport } from './ReplayTransport'
 import type { ReplayTimeline } from './useReplayTimeline'
 import type { ReplaySound } from './sound/useReplaySound'
-import type { ReplayExport } from './useReplayExport'
+import type { ReplayExport } from './export/useReplayExport'
 
 function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
   return {
