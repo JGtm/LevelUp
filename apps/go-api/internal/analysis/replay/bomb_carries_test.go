@@ -54,7 +54,7 @@ func TestBombCarriesDeathClosesWithoutEmission(t *testing.T) {
 	deaths := []Death{{XUID: 111, TimeMS: 4_000}}
 	// step = 1000 µs/frame => 1 frame par ms.
 	carries, cov := buildBombCarries(bombTestCarry(evs, slotXUID, deaths),
-		matchClock{origin: 0, step: 1000, frames: 20_000}, nil)
+		matchClock{origin: 0, step: 1000, frames: 20_000}, carrierPresence{})
 	if cov == nil || !cov.BombFilm {
 		t.Fatalf("couverture absente ou BombFilm faux : %+v", cov)
 	}
@@ -86,10 +86,10 @@ func TestBombCarriesBridgeAndPresence(t *testing.T) {
 		{TimeMS: 4_000, Slot: 9, Pickup: true}, {TimeMS: 5_000, Slot: 9, Pickup: false}, // non ponte
 		{TimeMS: 6_000, Slot: 7, Pickup: true}, {TimeMS: 9_000, Slot: 7, Pickup: false},
 	}
-	presence := map[string][]presenceSpan{
+	presence := carrierPresence{named: map[string][]presenceSpan{
 		"111": {{f0: 0, f1: 2_000}},       // vie plus courte que le portage [1000, 3000] : rognage
 		"222": {{f0: 12_000, f1: 15_000}}, // aucune vie ne couvre [6000, 9000] : fantome
-	}
+	}}
 	carries, cov := buildBombCarries(bombTestCarry(evs, slotXUID, nil),
 		matchClock{origin: 0, step: 1000, frames: 20_000}, presence)
 	if len(carries) != 1 {

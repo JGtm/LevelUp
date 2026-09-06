@@ -97029,3 +97029,35 @@ dont `d9781168` -6 portages de crane d'Oddball. `feat/v75` = tout integre.
 Notion). Restent : CI des derniers merges, decision user sur `flagCarries` (completer dans
 replaybuild), instruction optionnelle des quinze faits residuels (Oddball d'abord), nettoyage
 des dix worktrees `LevelUp-wt-v2-*` et des caches, tag v7.5.0.
+
+## [2026-09-06] Quinze faits residuels du balayage du parc — instruits, un seul etait une regression — Complete
+
+**Contexte.** Cloture du chantier v2 : le balayage listait quinze faits residuels, tous
+anterieurs au chantier, qu'aucune chronique de schema n'expliquait. Branche
+`feat/v2-residus`, worktree dedie, base schema 41.
+
+**Decision technique.** Treize faits instruits SANS re-cuisson, sur les artefacts du balayage
+(`reference/`, `apres3/`) et la feuille de match de l'API. Un seul est une regression :
+`d9781168`, 36 portages de crane -> 30. Cause : le gate de presence (`af89b091b`, 30/08)
+n'indexait que les vies NOMMEES et lisait « aucune vie nommee de X » comme « X absent » — or
+18 slots sur 142 n'ont aucune vie nommee sur ce film. Correctif : `carrierPresence` retient
+aussi les vies ANONYMES et le gate S'ABSTIENT quand l'une d'elles recouvre le portage (ni
+rejet ni rognage) ; il ne rejette plus que ce que les pistes publiees DEMENTENT. La copie du
+gate dans `bomb_carries.go` est supprimee au profit du meme code.
+
+**Resultats.** Verite terrain independante du film : en Oddball le score EST le temps de
+portage. Feuille de match 191 s / 196 s par equipe ; artefact au schema 41 : 60,1 s / 147,4 s ;
+avec le correctif : 172,5 s / 158,8 s — exactement l'artefact du parc. L'axe `ports` passe de
+8 pertes a ZERO contre la reference. Cuisson temoin `replay-diff` : 12 ecarts, tous des gains
+(la seule « perte » est `carrierAbsent` 6 -> 0, compteur de defaut). Deux tests prouves par
+mutation, dont une contre-epreuve qui garde le gate actif sur le vrai fantome. Piege attrape
+par le test : le rognage doit passer APRES le test d'ignorance — il coute 91,2 s contre 32,6 s
+pour le rejet. Les quatorze autres faits : anciens artefacts faux (points aberrants, code
+d'arme atteste nulle part, capacite hors piste, dictionnaire mort), reclassements dans un gain
+(catalogue de socles etabli, pont d'identite par manche) ou decouverte deja au registre
+(corps immobile coupe par `lifeGapUS`).
+
+**Conclusion / prochaine etape.** Schema 41 -> **43** (42 reserve au complement des ports de
+drapeau, autre branche) : la re-cuisson de release doit repartir de 43. Trois decouvertes
+notees et non traitees, dont `51ebbc0f` qui publie 63 assistances pour 5 a la feuille, et
+l'angle mort du comparateur sur les intervalles ROGNES (invisibles a l'axe des comptes).
