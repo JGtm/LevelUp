@@ -147,6 +147,16 @@ type SpawnPiste struct {
 	Frame int     `json:"frame"`
 	X     float64 `json:"x"`
 	Y     float64 `json:"y"`
+	// PremiereVie marque le spawn de DEPART — celui de la premiere vie du joueur sur le
+	// match, et le seul que la lecture « ou je spawne » regarde (decision produit du plan :
+	// les reapparitions suivantes dependent de ou l'on vient de mourir, pas du placement
+	// d'ouverture).
+	//
+	// C'est la premiere vie NOMMEE : une vie que le fil des morts n'a pas nommee n'a pas de
+	// porteur, et les premieres vies d'un film sont parfois anterieures au debut reel du
+	// match. La borne est donc « la plus precoce que le film sache attribuer », pas « la
+	// premiere du film ».
+	PremiereVie bool `json:"premiere_vie,omitempty"`
 }
 
 // EntreeCellule est la PREMIERE entree d'un joueur dans une cellule, sur l'ensemble de
@@ -174,6 +184,14 @@ type OccupationJoueur struct {
 	// PremieresEntrees : par cellule atteinte, la frame de la premiere fois. Trie par
 	// colonne puis ligne, comme les cellules d'un raster.
 	PremieresEntrees []EntreeCellule
+
+	// Morts : la fin de chacune de ses vies NOMMEES, avec les voisins vivants a cet
+	// instant (cf. vies.go). Triees par frame.
+	Morts []MortMesuree
+
+	// Routes : les 15 premieres secondes de chacune de ses vies, en cellules ordonnees
+	// (cf. vies.go). Triees par frame de debut.
+	Routes []Route
 }
 
 // Occupation reechantillonne les pistes et les embarquements d'un match a pas fixe et
@@ -214,6 +232,10 @@ func Occupation(g Grille, e EntreeOccupation, pasMs int) []OccupationJoueur {
 			ech.embarquement(em, j, vues)
 		}
 	}
+	// LES MORTS ET LES ROUTES, sur les MEMES pistes (cf. vies.go) : elles n'ont pas la
+	// maille de l'occupation — deux instants et une fenetre de 15 s — et partager sa boucle
+	// aurait fait un parcours que personne ne relit.
+	ech.enrichirVies(etat)
 	return etat.assembler()
 }
 
@@ -248,6 +270,12 @@ func (s *etatOccupation) assembler() []OccupationJoueur {
 	out := make([]OccupationJoueur, 0, len(s.parJoueur))
 	for xuid, j := range s.parJoueur {
 		sort.Slice(j.Spawns, func(a, b int) bool { return j.Spawns[a].Frame < j.Spawns[b].Frame })
+		if len(j.Spawns) > 0 {
+			// LE SPAWN DE DEPART EST LE PLUS PRECOCE, et il se marque APRES le tri : le
+			// deduire de l'ordre d'arrivee des pistes aurait dependu de l'ordre du
+			// document, qui n'est pas chronologique.
+			j.Spawns[0].PremiereVie = true
+		}
 		entrees := make([]EntreeCellule, 0, len(s.vues[xuid]))
 		for c, frame := range s.vues[xuid] {
 			entrees = append(entrees, EntreeCellule{Col: c.Col, Lig: c.Lig, Frame: frame})
