@@ -49,9 +49,11 @@ const (
 //
 // D'OÙ VIENT LA VALEUR : 8 est le plus petit effectif sur lequel un p10 et un p90 ne sont
 // pas le minimum et le maximum déguisés — en dessous, l'interpolation retombe sur les deux
-// valeurs extrêmes de l'échantillon et le bâton décrirait deux accidents (cf. D6). Les
-// armes écartées ne sont pas cachées en silence : leur NOMBRE est rendu par
-// `WeaponRangeSummary`, pour que la section puisse dire « N armes sous le seuil ».
+// valeurs extrêmes de l'échantillon et le bâton décrirait deux accidents (cf. D6). Ce qui est
+// écarté n'est pas caché en silence : `WeaponRangeSummary` le rend. ATTENTION À LA
+// FORMULATION — `BelowThreshold` compte des COUPLES (arme, côté), donc la même arme sous le
+// seuil des deux côtés y pèse DEUX fois : il ne se lit pas « N armes ». C'est
+// `BelowThresholdBySide` qui porte la phrase publiée (« frags : N · morts : M »).
 //
 // ELLE EST DÉFINIE ICI ET NULLE PART AILLEURS (garde-rail : weapon_range_guard_test.go).
 const WeaponRangeMinMeasured = 8
@@ -133,16 +135,15 @@ type weaponSideKey struct {
 // triée ni réordonnée : le tri porte sur des copies des distances).
 //
 // Les couples sous `minMeasured` ne sont pas publiés et sont comptés dans le résumé rendu.
+// UN SEUIL NUL OU NÉGATIF N'EST PAS RECALÉ, et il n'a besoin de l'être : un groupe naît d'un
+// frag, il en porte donc toujours au moins un — aucune ligne « mesurée sur zéro frag » n'est
+// atteignable. Le clamp qui vivait ici jusqu'au 2026-09-06 était du code mort (revue : sa
+// suppression ne changeait aucun test).
 // Le tri de sortie est DÉTERMINISTE — médiane croissante, puis clé d'arme, puis côté : le
 // graphe se lit alors comme un continuum du contact à la longue portée (D6), et deux appels
 // sur les mêmes données rendent le même ordre, y compris à médianes égales.
 func WeaponRangeAggregate(kills []MeasuredKill, minMeasured int) ([]WeaponRange, WeaponRangeSummary) {
 	sum := WeaponRangeSummary{BelowThresholdBySide: map[Side]int{}}
-	if minMeasured < 1 {
-		// Une portée « mesurée » sur zéro frag n'existe pas : un seuil nul ou négatif
-		// publierait des lignes vides. On le remonte à 1 plutôt que de rendre un p10 de rien.
-		minMeasured = 1
-	}
 	groups := map[weaponSideKey][]MeasuredKill{}
 	order := make([]weaponSideKey, 0, len(kills))
 	for _, k := range kills {
@@ -246,10 +247,10 @@ func percentileLinear(sorted []float64, p float64) float64 {
 	if p >= 100 {
 		return sorted[n-1]
 	}
+	// Ici n >= 2 et 0 < p < 100 (les deux bornes ont déjà rendu la main), donc pos < n-1 et
+	// lo <= n-2 : `sorted[lo+1]` existe. La garde `lo >= n-1` qui vivait là était inatteignable
+	// — code mort supprimé le 2026-09-06 après revue.
 	pos := p / 100 * float64(n-1)
 	lo := int(pos)
-	if lo >= n-1 {
-		return sorted[n-1]
-	}
 	return sorted[lo] + (pos-float64(lo))*(sorted[lo+1]-sorted[lo])
 }

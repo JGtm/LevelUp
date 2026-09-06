@@ -116,6 +116,13 @@ type KillPosReport struct {
 	// NoBridge compte les morts dont un xuid n'a aucun slot au pont — un sous-cas de Dropped,
 	// isolé parce qu'il désigne le chantier du PONT et non celui des positions.
 	NoBridge int
+	// OpeningOutOfLife n'est renseigné QUE par `BuildKillOpenings`. Il compte les CÔTÉS — pas
+	// les morts : une mort dont les deux joueurs ont réapparu en compte deux — dont la
+	// position d'entame a été écartée parce que l'instant décalé ne tombait pas dans la MÊME
+	// VIE que le coup fatal. `BuildKillPositions` le laisse toujours à zéro : elle ne connaît
+	// aucune frontière de vie, et c'est précisément pour cela que l'entame a besoin d'une
+	// fonction dédiée (voir killpos_opening.go).
+	OpeningOutOfLife int
 }
 
 // BuildKillPositions rend les positions monde des deux joueurs de chaque mort.
@@ -123,38 +130,80 @@ type KillPosReport struct {
 // PUR : aucune I/O, aucune base. `offsetUS` est le décalage entre l'horloge du fil des morts et
 // celle du film, résolu par mesure (cf. bestDeathOffset) — le passer en paramètre évite que ce
 // producteur ne refasse un calage que le pont a déjà fait.
+//
+// ELLE NE CONNAÎT AUCUNE FRONTIÈRE DE VIE, et c'est licite ICI : l'instant demandé est celui du
+// coup fatal, donc à l'intérieur des deux vies concernées par construction. Pour un instant
+// DÉCALÉ — l'entame — cette ignorance devient un piège, d'où `BuildKillOpenings`.
 func BuildKillPositions(pos []filmdec.BipedPosition, slotXUID map[uint32]uint64,
 	kills []KillRef, offsetUS int64) ([]KillPosition, KillPosReport) {
-	rep := KillPosReport{Kills: len(kills)}
+	p := placeKillPositions(pos, slotXUID, kills, offsetUS)
+	return p.positions, p.report
+}
+
+// killSides porte le SLOT retenu de chaque côté d'une mort placée. Un slot n'a de sens que si
+// la position correspondante est non nil ; sinon il vaut 0, qui est un slot parfaitement
+// possible — d'où la règle : ne jamais lire ce champ sans avoir vérifié la position.
+type killSides struct{ killer, victim uint32 }
+
+// killPlacement est le résultat INTERNE du placement. `BuildKillPositions` n'en publie que
+// deux morceaux ; `BuildKillOpenings` a besoin des deux autres — les slots retenus et l'index
+// des trajectoires — pour vérifier les vies. Une seule fonction place, deux la lisent : la
+// règle « deux décodeurs du même fait divergeraient » interdit d'en écrire une seconde.
+type killPlacement struct {
+	positions []KillPosition
+	slots     []killSides // parallèle à positions : même index, même mort
+	tracks    map[uint32]slotTrack
+	report    KillPosReport
+}
+
+// placeKillPositions est LE placement, et le seul.
+func placeKillPositions(pos []filmdec.BipedPosition, slotXUID map[uint32]uint64,
+	kills []KillRef, offsetUS int64) killPlacement {
+	out := killPlacement{report: KillPosReport{Kills: len(kills)}}
 	if len(pos) == 0 || len(slotXUID) == 0 || len(kills) == 0 {
-		rep.Dropped = len(kills)
-		return nil, rep
+		out.report.Dropped = len(kills)
+		return out
 	}
-	tracks := indexBySlot(pos)
+	out.tracks = indexBySlot(pos)
 	byXUID := slotsByXUID(slotXUID)
-	out := make([]KillPosition, 0, len(kills))
+	out.positions = make([]KillPosition, 0, len(kills))
+	out.slots = make([]killSides, 0, len(kills))
 	for _, k := range kills {
 		tUS := uint64(k.TimeMS*1000 + offsetUS)
 		kp := KillPosition{KillRef: k}
-		kp.Killer = positionOf(tracks, byXUID[k.KillerXUID], tUS)
-		kp.Victim = positionOf(tracks, byXUID[k.VictimXUID], tUS)
+		var sides killSides
+		kp.Killer, sides.killer = positionOf(out.tracks, byXUID[k.KillerXUID], tUS)
+		kp.Victim, sides.victim = positionOf(out.tracks, byXUID[k.VictimXUID], tUS)
 		if len(byXUID[k.KillerXUID]) == 0 || len(byXUID[k.VictimXUID]) == 0 {
-			rep.NoBridge++
+			out.report.NoBridge++
 		}
-		switch {
-		case kp.Killer != nil && kp.Victim != nil:
-			rep.Both++
-		case kp.Killer != nil:
-			rep.KillerOnly++
-		case kp.Victim != nil:
-			rep.VictimOnly++
-		default:
-			rep.Dropped++
-			continue // aucune des deux positions : on n'écrit rien plutôt qu'une ligne vide
+		if !countKillPosition(&out.report, kp) {
+			continue
 		}
-		out = append(out, kp)
+		out.positions = append(out.positions, kp)
+		out.slots = append(out.slots, sides)
 	}
-	return out, rep
+	return out
+}
+
+// countKillPosition ventile une mort placée dans le rapport et dit si elle s'écrit.
+//
+// Elle est PARTAGÉE avec `BuildKillOpenings`, qui doit RECOMPTER la ventilation après avoir
+// retiré les côtés hors vie : deux comptages écrits séparément divergeraient au premier ajout
+// de classe.
+func countKillPosition(rep *KillPosReport, kp KillPosition) bool {
+	switch {
+	case kp.Killer != nil && kp.Victim != nil:
+		rep.Both++
+	case kp.Killer != nil:
+		rep.KillerOnly++
+	case kp.Victim != nil:
+		rep.VictimOnly++
+	default:
+		rep.Dropped++ // aucune des deux positions : on n'écrit rien plutôt qu'une ligne vide
+		return false
+	}
+	return true
 }
 
 // slotsByXUID inverse le pont : un joueur possède plusieurs slots au cours d'un match (un par
@@ -170,23 +219,29 @@ func slotsByXUID(slotXUID map[uint32]uint64) map[uint64][]uint32 {
 	return out
 }
 
-// positionOf rend la position du joueur à l'instant tUS, ou nil.
+// positionOf rend la position du joueur à l'instant tUS ET LE SLOT qui l'a fournie, ou nil.
+//
+// LE SLOT EST RENDU parce que l'appelant qui vérifie les vies (killpos_opening.go) a besoin de
+// savoir DE QUELLE trajectoire vient la position : un joueur en possède une par vie, et la
+// question « cette position vient-elle de la même vie que le kill ? » ne se pose que sur
+// celle-là.
 //
 // L'AMBIGUÏTÉ EST TRAITÉE COMME AILLEURS : si DEUX slots du même joueur portent un échantillon
 // dans la tolérance, on ne tranche pas — deux corps pour un joueur signifie que le découpage des
 // vies est faux à cet instant, et poser la mort sur l'un des deux serait un coup de dé.
-func positionOf(tracks map[uint32]slotTrack, slots []uint32, tUS uint64) *Vec3 {
+func positionOf(tracks map[uint32]slotTrack, slots []uint32, tUS uint64) (*Vec3, uint32) {
 	var found filmdec.BipedPosition
+	var slot uint32
 	n := 0
 	for _, s := range slots {
 		p, d := tracks[s].at(tUS)
 		if d > killPosToleranceUS || !p.HasWorld {
 			continue
 		}
-		found, n = p, n+1
+		found, slot, n = p, s, n+1
 	}
 	if n != 1 {
-		return nil
+		return nil, 0
 	}
-	return &Vec3{X: float64(found.X), Y: float64(found.Y), Z: float64(found.Z)}
+	return &Vec3{X: float64(found.X), Y: float64(found.Y), Z: float64(found.Z)}, slot
 }
