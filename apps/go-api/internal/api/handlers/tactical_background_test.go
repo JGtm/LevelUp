@@ -9,8 +9,9 @@ package handlers_test
 //     fond d'une AUTRE carte est indetectable a l'oeil) ;
 //   - une carte sans fond et une carte inconnue rendent toutes deux un 404 PROPRE : les
 //     deux sont des absences normales, jamais une panne de page ;
-//   - le fond N'EST PAS derriere le garde local du rejeu (une requete depuis une adresse
-//     non locale est servie) — sans quoi la grille serait vide en production.
+//   - le handler ne branche sur AUCUNE adresse d'appel (le fond n'est pas derriere le garde
+//     local du rejeu). Attention : le MONTAGE, lui, n'est pas testable ici — il l'est par
+//     `archlint/tactical_background_local_gate_test.go`.
 
 import (
 	"errors"
@@ -121,17 +122,32 @@ func TestTacticalBackgroundImage_JoueurInconnu(t *testing.T) {
 	}
 }
 
-// TestTacticalBackgroundImage_HorsBoucleLocale : le fond de la grille N'EST PAS sous le
-// garde local du rejeu. Ce garde protege les trajectoires decodees du film ; l'image d'une
-// carte est une donnee de reference versionnee. Monter la route dans le groupe garde
-// aurait vide la grille en production sans rien proteger — d'ou ce test, qui appelle
-// depuis une adresse NON locale et attend 200.
-func TestTacticalBackgroundImage_HorsBoucleLocale(t *testing.T) {
-	mock := &mockReplayService{imageMap: []byte{1, 2, 3}}
-	w := appelDepuis(t, routeurFond(mock),
+// TestTacticalBackgroundImage_AucunGardeDAdresseDansLeHandler — le handler ne regarde PAS
+// l'adresse d'appel.
+//
+// CE TEST NE COUVRE QUE LE HANDLER, et son nom le dit maintenant. La version precedente
+// s'appelait « hors boucle locale » et pretendait garantir que les routes tactiques ne sont
+// pas montees sous `LocalOnlyReplay` — ce qu'un test de handler NE PEUT PAS dire : il
+// reconstruit son propre routeur, sans middleware, et `httptest.NewRequest` part deja d'une
+// adresse non locale (192.0.2.1). Deplacer la ligne de montage de `server_apiv1.go` dans le
+// groupe garde le laissait vert (defaut G2 de la revue R1). Le MONTAGE est desormais garde
+// par `archlint/tactical_background_local_gate_test.go`, qui lit le site reel.
+//
+// Ce qui reste ici, et qui a sa valeur propre : le handler lui-meme ne doit jamais brancher
+// sur `r.RemoteAddr`. Une adresse explicitement DISTANTE obtient la meme reponse qu'une
+// adresse locale.
+func TestTacticalBackgroundImage_AucunGardeDAdresseDansLeHandler(t *testing.T) {
+	png := []byte{1, 2, 3}
+	local := appelDepuis(t, routeurFond(&mockReplayService{imageMap: png}),
+		"/players/JGtm/tactical/streets/background.png", "127.0.0.1:54321")
+	distant := appelDepuis(t, routeurFond(&mockReplayService{imageMap: png}),
 		"/players/JGtm/tactical/streets/background.png", "203.0.113.7:4242")
-	if w.Code != http.StatusOK {
-		t.Fatalf("status=%d, attendu 200 hors boucle locale — body=%s", w.Code, w.Body.String())
+	if local.Code != http.StatusOK || distant.Code != http.StatusOK {
+		t.Fatalf("statuts : local=%d distant=%d, attendu 200 des deux cotes", local.Code, distant.Code)
+	}
+	if local.Body.String() != distant.Body.String() {
+		t.Errorf("le handler branche sur l'adresse d'appel : local=%q distant=%q",
+			local.Body.String(), distant.Body.String())
 	}
 }
 
