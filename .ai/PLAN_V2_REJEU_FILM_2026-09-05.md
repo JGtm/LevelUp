@@ -651,3 +651,8 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   toutes les vies, commentaires exacts, registre corrigé) et REG FUSIONNÉ dans `feat/v75` sans
   conflit (SchemaVersion 41, UsageSummaryRev us2). Gates rejoués sur l'état fusionné. Suite :
   balayage final au schéma 41, Notion 40 → 41, nettoyage des worktrees.
+- 2026-09-06 17:20 (correctif de journal) : la ligne de 17:00 annonçait le merge REG « sans
+  conflit » avant qu'il ait eu lieu — la première tentative n'avait rien fusionné ; le merge réel
+  est `b696c7b11` (conflit thought_log concaténé), SchemaVersion 41 vérifié sur pièces, build,
+  tests unitaires et intégration verts, poussé. Notion : re-cuisson du parc portée à 41. Balayage
+  FINAL au schéma 41 lancé (`apres3/`). Intégrés : B, F, C, G, E, CTF, A, D, balayage, REG.
