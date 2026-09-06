@@ -216,6 +216,16 @@ type FlagCarriesCoverage struct {
 	// OutOfWindow : la prise tombe hors de l'axe de temps publie (fins de partie que le film
 	// prolonge au-dela de la derniere position rendue).
 	OutOfWindow int `json:"outOfWindow"`
+	// AmbiguousSlot : nombre de SLOTS dont les vies ANONYMES ont ete refusees au repli par le
+	// pont, parce que leurs vies nommees ne s'accordent pas avec lui (deux occupants nommes, ou
+	// un occupant nomme qui n'est pas celui que le pont designe) — cf. flag_carrier_tracks.go.
+	//
+	// CE N'EST PAS UNE PARTITION DES PRISES, et il n'entre donc pas dans `Balanced()` : il compte
+	// de la MATIERE QUE LE CALQUE RENONCE A LIRE, en amont de toute prise. Un slot compte ici
+	// meme si aucune prise ne tombe dans sa fenetre anonyme — c'est le denominateur du risque,
+	// pas son realise. Publie parce que sans lui, un portage manquant faute d'identite
+	// disponible serait indistinguable d'un portage qui n'a jamais eu lieu.
+	AmbiguousSlot int `json:"ambiguousSlot"`
 	// MarkerObserved / MarkerConfirmed : le CONTROLE INDEPENDANT, SUR LES SEULS PORTAGES FERMES.
 	// MarkerObserved compte ceux qui contiennent au moins une image-cle (le denominateur : sans
 	// image-cle, le marqueur ne peut rien confirmer) ; MarkerConfirmed ceux dont au moins une

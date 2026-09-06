@@ -314,7 +314,11 @@ func closeByCarrierKills(raws []flagCarryRaw, evs []objectiveevents.NamedEvent,
 // ecarte ce qui n'en a pas. C'est le seul endroit qui rejette apres le pont : les compteurs de
 // cause y sont.
 func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, cov *FlagCarriesCoverage) []flagCarryRaw {
-	idx := tracksByXUID(ctx.tracks, ctx.slotXUID)
+	// LE REFUS DU REPLI EST COMPTE ET DIT : la matiere existe, le calque renonce a s'en servir
+	// parce que le slot est partage (cf. flag_carrier_tracks.go, garde du constat C1).
+	idx, ambigus := tracksByXUID(ctx.tracks, ctx.slotXUID)
+	cov.AmbiguousSlot = len(ambigus)
+	logFlagAmbiguousSlots(ambigus)
 	out := raws[:0:0]
 	for _, r := range raws {
 		f0 := ctx.frameOfMatchMS(r.t0)
