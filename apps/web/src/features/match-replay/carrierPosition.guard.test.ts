@@ -17,25 +17,39 @@
  *  2. une deuxième lecture de la position d'un véhicule (`vehiclePositionAt`) hors des trois
  *     écritures légitimes : sa définition, le tracé du sprite, et le résolveur.
  *
- * CE QU'IL NE PRÉTEND PAS : un huitième lecteur qui naîtrait sans jamais nommer aucune de ces
- * fonctions passerait — aucun test grep ne remplace une revue. Il bloque la copie la plus
- * probable, celle qui part du code existant.
+ * SA LISTE EST DÉRIVÉE DE LA SOURCE DEPUIS LE 2026-09-06 (registre, M4). Elle était ÉCRITE À
+ * LA MAIN — cinq calques nommés un par un — et un SIXIÈME calque de porteur y échappait donc
+ * par construction : il suffisait de l'oublier. La règle se lit maintenant dans le code
+ * lui-même : tout module qui se donne un résolveur de position (`const posOf = …`) est un
+ * lecteur de porteur, et doit le prendre du résolveur commun. Un calque neuf entre dans la
+ * liste le jour où il écrit sa première ligne.
+ *
+ * CE QU'IL NE PRÉTEND PAS : un lecteur qui nommerait sa variable autrement passerait — aucun
+ * test grep ne remplace une revue. Il bloque la copie la plus probable, celle qui part du code
+ * existant, et il ne peut plus rater un calque par simple oubli.
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-/** Les cinq HOOKS de calque, qui prennent la version mémoïsée. */
-const CALQUES_PORTEURS = [
-  'useReplayBombCarrier.ts',
-  'useReplayVipCrown.ts',
-  'useReplaySkullCarrier.ts',
-  'useReplayFlagCarries.ts',
-  'useReplayBombBlast.ts',
-]
+/**
+ * LA SIGNATURE D'UN LECTEUR DE PORTEUR : il se donne un résolveur de position. C'est de là que
+ * la liste se DÉRIVE — aucun nom de fichier n'est écrit ici.
+ */
+const RESOLVEUR = /const posOf = /
 
-/** Les deux lecteurs PURS, hors React, qui prennent le constructeur. */
-const LECTEURS_PURS = ['killFx.ts', 'objectivesLayer.ts']
+/** Tous les fichiers de la feature, hors tests. */
+function sources(): string[] {
+  return readdirSync(__dirname).filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f))
+}
+
+/** Les lecteurs de porteur, dérivés : ceux qui se donnent un résolveur de position. */
+function lecteurs(): string[] {
+  return sources().filter((f) => RESOLVEUR.test(lire(f)))
+}
+
+/** Un lecteur monté dans React prend la version mémoïsée ; un lecteur pur, le constructeur. */
+const EN_REACT = /^use[A-Z]/
 
 /** Les seules écritures autorisées de la position d'un VÉHICULE (hors tests). */
 const LECTEURS_POSITION_VEHICULE = new Set([
@@ -49,26 +63,27 @@ function lire(fichier: string): string {
 }
 
 describe('garde-rail : un seul chemin pour la position d’un joueur embarqué', () => {
-  it('les cinq calques de porteur passent par useCarrierPosAt', () => {
-    const fautifs = CALQUES_PORTEURS.filter((f) => !lire(f).includes('useCarrierPosAt(doc)'))
+  it('la liste des lecteurs de porteur se dérive bien de la source, et n’est pas vide', () => {
+    // Sept aujourd'hui : cinq hooks de calque et deux lecteurs purs. Le nombre n'est pas figé
+    // — c'est la DÉRIVATION qui l'est : un calque neuf y entre tout seul.
+    expect(lecteurs().length).toBeGreaterThanOrEqual(7)
+  })
+
+  it('tout lecteur de porteur passe par le résolveur commun', () => {
+    const fautifs = lecteurs().filter((f) => {
+      const src = lire(f)
+      const attendu = EN_REACT.test(f) ? 'useCarrierPosAt(doc)' : 'buildCarrierPosAt(doc)'
+      return !src.includes(attendu)
+    })
     expect(
       fautifs,
-      `ces calques ne lisent plus la position par le résolveur commun : [${fautifs.join(', ')}]. ` +
+      `ces lecteurs ne prennent plus la position au résolveur commun : [${fautifs.join(', ')}]. ` +
         `Un porteur embarqué y retraverserait le décor en ligne droite (carrierPosition.ts).`,
     ).toEqual([])
   })
 
-  it('les deux lecteurs purs passent par buildCarrierPosAt', () => {
-    const fautifs = LECTEURS_PURS.filter((f) => !lire(f).includes('buildCarrierPosAt(doc)'))
-    expect(
-      fautifs,
-      `ces lecteurs ne passent plus par le résolveur commun : [${fautifs.join(', ')}]. ` +
-        `Un effet de mort ou un pulse d'objectif s'y poserait là où personne n'était.`,
-    ).toEqual([])
-  })
-
   it('aucun d’eux ne reprend la position de bipède seule, ni ne relit un véhicule lui-même', () => {
-    const fautifs = [...CALQUES_PORTEURS, ...LECTEURS_PURS].filter((f) => {
+    const fautifs = lecteurs().filter((f) => {
       const src = lire(f)
       return src.includes('buildPlayerPosAt') || src.includes('vehiclePositionAt')
     })
