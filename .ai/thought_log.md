@@ -96282,3 +96282,185 @@ traiter, chacun prouve par la mutation du verdict.
 re-cuisson du parc (tout artefact < 40) a la passe `backfill-replay` de la release v7.5.0, et la
 decision produit sur `flagCarries` (faire descendre des lignes de match dans `analysis/replay`
 pour nommer un porteur qui meurt moins de trois fois).
+## [2026-09-05] Lot A tache A-I (v2 rejeu/film) — revision du decodeur, gardes ART, catalogue versionne — Complete
+
+**Contexte.** Lot A du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, tache A-I : trois constats
+du registre d'audit a fermer avant le tag v7.5.0. P0-1 `KillSourceDecoderRev` fige alors que le
+decodeur a bouge 14 fois depuis v7.3.0 ; G4 deux tables du film absentes des deux listes
+anti-ART ; A0 le runtime ecrit un catalogue de reference SUIVI PAR GIT. Worktree dedie
+`LevelUp-wt-v2-faits`, branche `feat/v2-faits`, un commit par item.
+
+**Decision technique.** Chaque correction est doublee d'un garde-rail dont la MORSURE est
+prouvee par mutation, parce que les trois constats ont la meme cause : une consigne ecrite dans
+un commentaire ne se tient pas toute seule.
+(A.1) Revision bumpee a `killsource-2026-09-05` et empreinte sha256 des 20 sources non-test du
+paquet decodeur figee A COTE de la constante ; un test compare les deux et dit, en cas d'ecart,
+les deux gestes a faire. Fins de ligne normalisees pour que le gate soit identique CI Linux /
+poste Windows.
+(A.2) `kill_positions` et `match_weapon_hit_distance` enrolees dans `tablesProtegees` et
+`appendOnlyStateTables` apres verification sur pieces de leur forme append-only et de leur vue
+`_latest`. Aucune allowlist agrandie : les trois restent vides.
+(A.3) Separation entree/sortie : le fichier versionne reste produit a la main par
+`cmd/mapopads-build`, le runtime ecrit un OVERLAY non versionne
+(`reference/generated/map_weapon_pads.json`, resolu par `PathResolver`, ignore par git) et
+`replay.LoadMapWeaponPadsMerged` recolle les deux a la lecture, le versionne primant.
+`mapcatalog.AddEntry` devient `AddOverlayEntry` et ne connait plus le chemin versionne. Le
+garde-rail est une analyse AST avec SUIVI DE VALEUR (pas un grep) : elle refuse que le resultat
+de `MapWeaponPadsPath` atteigne un verbe d'ecriture, verbes FRANCAIS compris — sans eux le
+ratchet aurait ete vert sur `ajouterCarteAuCatalogue`, c'est-a-dire sur le defaut meme.
+
+**Resultats.** Trois preuves de morsure ecrites au journal du lot : un octet ajoute a
+`killsource/doc.go` rougit l'empreinte (b272f221 -> 2f29297b) ; un `DELETE FROM kill_positions`
+et un `ON CONFLICT DO UPDATE` sur `match_weapon_hit_distance` injectes dans les persisters font
+rougir les trois tests ART ; le retour de `overlayPath` a `catPath` dans le rattrapage fait
+rougir le ratchet AST. Toutes annulees, tout revert au vert. Mesure documentee au passage : les
+familles tirs / distance / positions n'ont AUCUN predicat de reprise propre — les deux seuls du
+depot lisent `match_kill_events.decoder_rev` ; deux d'entre elles portent une revision qui n'est
+lue nulle part, la troisieme n'en a pas. Gates joues en avant-plan : `go build ./...`,
+`go test ./internal/sync/... ./internal/analysis/replay/... ./internal/domain/...
+./internal/archlint/...`, les paquets touches en plus (mapcatalog, replaybuild, service),
+`go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...`, ratchet
+`golangci-lint --new-from-merge-base=origin/main` — tous verts, zero test skippe.
+
+**Conclusion / prochaine etape.** Trois items statues `[x]`, journal `.ai/V7.5/v2/LOT_A.md`.
+La tache A-II (A.4 point d'entree unique des derivations, A.5 rattrapage par digest, A.6
+`match_player_positions` en projection persist) NE DEMARRE PAS : le plan prescrit une revue
+adversariale entre les deux taches. Une question ouverte pour le superviseur : le bump de
+revision rend tout le parc a nouveau candidat au backlog de redecodage (1 325 films), effet
+voulu du constat mais charge de fond a arbitrer au merge.
+
+## [2026-09-06] Lot A tache A-II (v2 rejeu/film) — derivations sur rangement, rattrapage des derives, positions en projection — Complete
+
+**Contexte.** Suite du lot A du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, tache A-II, apres
+validation sur pieces de A-I par le superviseur. Trois items : A.4 (constat A1 — les derivations
+post-cuisson ne se declenchaient que sur la branche « construction locale »), A.5 (constat A2 —
+les derives n avaient aucun rattrapage), A.6 (decision utilisateur 1 — `match_player_positions`
+devient une projection de l artefact). Meme worktree, meme branche `feat/v2-faits`.
+
+**Decision technique.** (A.4) Un point d entree unique `replayartifacts.Deriver`, declenche par
+le FAIT « un artefact vient d etre range » et non par « je viens de cuire » : appele par la
+cuisson locale ET par `StoreBuildArtifact` (depot d ouvrier). Le puits `SetArtifactStoredSink` ne
+pouvait pas le porter — mono-emplacement, deja pris par la notification Discord, second cablage
+interdit par archlint. Gain collateral : les trois derivations ouvraient chacune l artefact
+(3 lectures + 2 deserialisations d un document de ~2 Mo par match) ; Deriver lit une fois.
+(A.5) Un index des derivations a cote du digest de l artefact (`<artefact>.derived.json` :
+revision + taille du document), et un rattrapage borne par l horizon et le plafond EXISTANTS qui
+ne cuit rien. Le predicat « deja derive » remplace « le fichier existe » — c est ce qui le fait
+CONVERGER. La re-cuisson du corpus perime reste l arbitrage utilisateur date du 02/09.
+(A.6) Table convertie append-only (id PK + `positions_pass` + vue `_latest` PAR PASSE), persister
+INSERT-only sur le patron exact de `bomb_stats_persister`, `WriteMatch` (DELETE+INSERT sur le
+handle de LECTURE) et le `-write` positions du diagnostic supprimes avec leurs tests et
+`write_conn.go` entier. La lecture passe sur la vue.
+
+**Resultats.** Preuve de morsure A.4 : l appel debranche de `StoreBuildArtifact` fait rougir le
+test du chemin ouvrier (« derivations appelees 0 fois pour UN artefact range »), le rebrancher le
+remet au vert. MESURE qui a tranche A.6, sur les 106 artefacts du cache local : trajectoires
+brutes 31 051 positions par match en moyenne (max 129 096) contre 215 apres decimation a la
+granularite de 20 s que le schema de la table declare depuis sa creation (max 895) — projeter
+brut aurait multiplie par ~145 le volume d une table qui alimente une carte de chaleur binnee en
+20x20. Piege paye : `FilmShortMatchID` coupe au premier tiret, donc des identifiants de test
+`m-1`, `m-2` ecrivent tous le meme fichier d artefact ; un test passait par coincidence.
+`match_player_positions` enrolee dans les deux listes anti-ART, aucune allowlist agrandie. Gates
+joues en avant-plan : build, tests des sept familles de paquets, integration `-p 1` sur sync,
+persist, migration et api, ratchet `golangci-lint --new-from-merge-base` — tous verts.
+
+**Conclusion / prochaine etape.** Six items du lot A statues `[x]`, journal
+`.ai/V7.5/v2/LOT_A.md` (mesures, preuves, gates, sept decouvertes, trois questions). Surveillance
+CI abandonnee sur consigne utilisateur (quota) : le superviseur verifiera a l integration. Trois
+questions lui reviennent : le bump de revision rouvre le backlog de redecodage sur tout le parc ;
+la cadence des positions (`GrainPositionsMS`) est le seul parametre produit tranche par
+l executeur, reversible d une constante ; le rattrapage des derives traitera les 106 artefacts
+locaux en ~21 cycles. Risque d integration signale : A-I a touche
+`internal/domain/title/registry.go`, que le lot C touchera aussi.
+
+## [2026-09-06] Lot A (v2 rejeu/film) — corrections apres revue adversariale A-R1 — Complete
+
+**Decision technique principale.** Sept constats de la revue A-R1 traites, chacun prouve par la
+mutation ou le test que le verdict prescrivait, rouge d abord. Les deux P1 se tenaient : la
+marque de derivation se posait meme quand RIEN n avait ete ecrit (writer nil ou acquisition en
+erreur), ce qui excluait le match du rattrapage A JAMAIS ; et `Run` sortait sur « rien a cuire »
+AVANT les deux seuls appels au rattrapage, c est-a-dire exactement dans l etat converge que le
+rattrapage vise. Les deux ensemble annulaient la promesse du constat A2.
+
+(C1) `bilanDerivations` enregistre PAR MATCH ce que les familles n ont pas pu ecrire, et distingue
+trois etats : writer indisponible (aucune marque du lot), echec d un match (ce match seul), rien a
+ecrire (derivation JOUEE, marquee). (C2) `Run` pose `defer rattraperDerivations` apres la garde
+`armee` et delegue a `cuireLeCycle` — le `defer` rend le rattrapage TOTAL sur toutes les sorties,
+au lieu de deux points d appel qu une troisieme sortie contournerait a nouveau. (C3) le verrou du
+catalogue cree son dossier avant de se poser, et un verrou tenu est desormais un EEXIST et rien d
+autre. (C4) la conversion append-only des positions a enfin un test, sur la migration REELLE
+resolue par son nom dans le registre. (C5) l equipe des positions est JOINTE depuis
+`match_participants` par le xuid du porteur. (C6) un predicat commun `EstMarqueDerivations` sort
+les marques des deux consommateurs qui balaient `*.json`. (C7) `writerUnique` memoise l acquisition
+— une par passe, paresseuse, relachee une fois — et `acquireWriterDepot` (8 s) borne le chemin HTTP
+sous le WriteTimeout du serveur.
+
+**Point de methode, C5.** L hypothese du verdict etait que l artefact porte l equipe (« le roster /
+l identite de slot du document la donne »). Verification sur pieces : FAUX. `Track.Team` est
+documente « -1 : l equipe n est pas dans le film » et `RosterEntry` le redit (« ce qu il ne donne
+PAS, et que seule la base porte : l equipe »). Consigne « ne l invente pas » respectee : l equipe
+vient de la base, par la meme jointure que celle que le client fait deja, via `port.ReplayFactsRepo`
+qui EST le lecteur de ce que la base sait du match pour le rejeu. La doc inversee, elle, etait bien
+la : l ancien decodeur appelait `assignTeamsBestEffort`, un devinement SPATIAL sur l axe X, pas -1.
+
+**Resultats observes.** Mesures du rouge, toutes rejouees : marque posee sans ecriture dans les
+DEUX sous-cas du writer ; 0 marque sur 2 posees par `Run` a selection vide ; 1 carte conservee sur
+8 pour 8 ecrivains concurrents sur dossier absent, plus trois renames en « Acces refuse », apres
+2,06 s d attente et un WARN qui mentait ; `SyntheticCols` mute -> 1 ligne servie par
+`match_player_positions_latest` au lieu de 3 (la mutation qui laissait TOUTE la suite verte) ;
+repartition des equipes map[-1:3] au lieu de map[-1:1 0:1 1:1] ; 4 verdicts au lieu de 2 et
+`unknown 4` au lieu de 1 pour les marques ; 3 acquisitions du writer pour UNE passe. Toutes vertes
+apres correction. `TestAddOverlayEntryCreeLOverlayAbsent` passe de 2,06 s a 0,01 s, sans WARN.
+Gates joues en avant-plan : build, tests unitaires des neuf familles de paquets, integration
+`-p 1` sur sync/persist/migration/api, les 11 gardes anti-ART (0 SKIP, allowlists revérifiées
+vides), ratchet `golangci-lint --new-from-merge-base=origin/main ./...` a 0 issue.
+
+**Conclusion / prochaine etape.** Sept points statues `[x]`, section « Corrections apres revue »
+au journal `.ai/V7.5/v2/LOT_A.md` avec les mesures du rouge et les gates. Sept commits
+`v2(A.fix-1..7)` sur `feat/v2-faits`, pousses. Trois decouvertes nouvelles consignees et NON
+traitees : deux directives `//nolint:gosec —` preexistantes (tiret cadratin au lieu de `//`) qui
+ne suppriment rien et font avertir le lint global ; un verrou `%TEMP%\golangci-lint.lock` qui
+survit au processus et refuse deux invocations rapprochees ; la table `match_player_positions`
+locale toujours vide, donc aucun effet retroactif observable de la jointure d equipe. Reste au
+superviseur : ronde 2 sur ces corrections, puis integration dans `feat/v75`.
+
+## [2026-09-06] Lot A (v2 rejeu/film) — retouches apres ronde 2 (A-R2) — Complete
+
+**Decision technique principale.** La ronde 2 ferme les sept constats de A-R1 et en leve quatre
+nouveaux, tous NES DES CORRECTIONS elles-memes — c'est la lecon de la passe. Le plus instructif
+est N1 : la jointure d'equipe (correction C5) a reintroduit, sur un autre chemin, la classe de
+defaut exacte que C1 venait de fermer — marquer « fait » une projection partielle. Quand
+`FactsForMatch` echouait, `appliquerEquipes` faisait `continue` : les positions partaient a -1,
+la marque se posait, le match sortait du rattrapage et son equipe etait perdue definitivement.
+Une correction qui ferme une classe de defaut doit etre relue CONTRE les corrections voisines,
+pas seulement contre son propre constat.
+
+(N1) Une lecture de camps en echec est desormais un echec de la famille positions POUR CE MATCH :
+`b.echec(matchID)`, les positions restent ecrites (mieux vaut sans camp que rien), le rattrapage
+rejoue. (N3) `lireHorizonRegistre` rend un second retour « j'ai lu », non redondant avec une liste
+vide — un registre vide est une MESURE, une requete en echec une ABSENCE de mesure : la jauge de
+retard n'est publiee que sur une lecture reussie, sinon la derniere valeur connue reste. Le
+`defer` de C2 avait rendu ce cas courant. (N4) le cron ramasse les marques orphelines, via
+`replaybuild.ArtefactDeLaMarque`, inverse EXACT de `DerivationsMarkPath` — la relation n'est
+ecrite qu'a un endroit, sinon le cron croirait orpheline une marque qui ne l'est pas et
+l'effacerait. (doc) l'en-tete du createur de `match_player_positions` decrivait encore au present
+le DELETE-then-INSERT et « ecriture HORS chemin live » : trois affirmations que la decision 1 a
+rendues fausses.
+
+**Resultats observes.** Mesures du rouge, rejouees puis vertes : `match_participants` supprimee ->
+positions ecrites mais MARQUE POSEE = true (N1) ; cycle au contexte annule -> jauge = 0 au lieu de
+la sentinelle 7 (N3) ; marque orpheline encore la apres un passage complet du cron (N4). Methode
+notable sur N3 : une valeur SENTINELLE publiee avant le cycle, parce que `LoadCounter` seul ne
+distingue pas « pas publiee » de « publiee a zero » ; plus une contre-epreuve (registre vide
+effectivement lu -> jauge publiee a 0) pour que « ne pas publier sur echec » ne degenere pas en
+« ne jamais publier ». Cinq gates verts, allowlists anti-ART toujours vides, garde anti-ART non
+modifie par le diff du lot.
+
+**Conclusion / prochaine etape.** Quatre points statues au journal (section « Retouches apres
+ronde 2 »), deux commits `v2(A.fix-8)` et `v2(A.fix-9)`, pousses. Une decouverte consignee et
+NON traitee sur consigne explicite du verdict (decision produit) : D-11 — les modes a plus de
+deux camps ecrivent des `team_id` que la carte de chaleur ne sait pas filtrer (4 matchs sur
+1 959 en base locale, valeurs jusqu'a 30 ; deux boutons en dur cote web). Nee de la correction
+C5 : avant, toutes les lignes valaient -1 et aucun bouton n'apparaissait. Traitement attendu au
+lot D (web). Le corollaire documentaire, lui, est traite : le persister n'annonce plus « 0 / 1 »
+mais l'identifiant d'equipe de la base.

@@ -118,15 +118,15 @@ type bilanCuisson struct {
 	sansFilm     int
 	echecs       int
 	budgetEpuise bool
-	// t0Film : les coups d'envoi mesurés par les artefacts CUITS DANS CE CYCLE, à reporter au
-	// registre une fois toute cuisson terminée (cf. t0film.go). Ils voyagent dans le bilan
-	// plutôt que d'être écrits ici : un burst writer au milieu d'une boucle de décodage est
-	// exactement ce que le découpage du paquet interdit.
-	t0Film []rapportT0Film
-	// usage : les artefacts cuits dans ce cycle, à projeter (résumé d'usage, statistiques
-	// d'Assaut) puis à écrire une fois TOUTE cuisson terminée (cf. usage.go, bombstats.go)
-	// — même règle de voyage que t0Film.
-	usage []artefactCuit
+	// ranges : les artefacts RANGÉS par ce cycle, à dériver une fois TOUTE cuisson terminée
+	// (cf. derivations.go). Ils voyagent dans le bilan plutôt que d'être dérivés ici : un
+	// burst writer au milieu d'une boucle de décodage est exactement ce que le découpage du
+	// paquet interdit.
+	//
+	// UNE SEULE LISTE POUR LES QUATRE DÉRIVATIONS (2026-09-06) : elles lisent le MÊME
+	// document rangé. Deux listes séparées auraient divergé au premier crochet ajouté — c'est
+	// déjà ce que disait l'ancien champ `usage`, qui servait aussi les statistiques d'Assaut.
+	ranges []ArtefactRange
 }
 
 // DeadlineParFilm : la borne DURE de la cuisson d'UN film, quand le budget du cycle en laisse
@@ -303,15 +303,11 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 		return
 	}
 	b.construits++
-	// Le coup d'envoi est lu sur l'artefact TEL QU'IL EST SUR DISQUE après rangement, et
-	// mis de côté : l'écriture en base attend la fin du lot (cf. t0film.go).
-	if t0 := lireT0FilmArtefact(out.stored.Path); t0 != nil {
-		b.t0Film = append(b.t0Film, rapportT0Film{matchID: w.matchID, t0FilmMs: *t0})
-	}
-	// Le résumé d'usage suit la même règle : projeté depuis le FICHIER RANGÉ (jamais les
-	// octets candidats, que `StoreArtifact` peut refuser), écrit en base une fois toute
-	// cuisson terminée (cf. usage.go).
-	b.usage = append(b.usage, artefactCuit{matchID: w.matchID, path: out.stored.Path})
+	// L'ARTEFACT EST RANGÉ : c'est le seul fait qui déclenche les dérivations (cf.
+	// derivations.go). Il est mis de côté, jamais dérivé ici — les projections lisent le
+	// FICHIER RANGÉ (jamais les octets candidats, que `StoreArtifact` peut refuser) et
+	// écrivent en base une fois TOUTE cuisson terminée.
+	b.ranges = append(b.ranges, ArtefactRange{MatchID: w.matchID, Path: out.stored.Path})
 	// LA DUREE ET LE PIC VIENNENT DE L'ENFANT (cf. buildone.go) : c'est la seule ligne du
 	// cycle qui dit ce qu'a coute un film. Un pic a zero signifie « non mesure » — un enfant
 	// mort avant de se mesurer —, jamais « aucune memoire ».

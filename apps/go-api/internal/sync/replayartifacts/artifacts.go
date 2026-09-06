@@ -291,16 +291,36 @@ func etatArtefact(path string, facts port.MatchFacts) (aJour, complet bool) {
 // LA FENÊTRE DE RÉTENTION S'APPLIQUE AVANT LES DEUX : on n'enfile pas ce que la
 // purge effacera, et un travail hors fenêtre coûterait un décodage pour rien.
 // Best-effort de bout en bout : aucun retour, aucune erreur ne remonte au cycle.
+//
+// LE RATTRAPAGE DES DÉRIVÉS TOURNE À CHAQUE CYCLE ARMÉ, quel que soit le chemin pris par la
+// cuisson — c'est le constat C2 de la revue A-R1, et c'est un `defer` pour que ce soit VRAI
+// SUR TOUTES LES SORTIES. Avant, il n'était appelé qu'après `enqueueAll` ou après `buildAll` :
+// un cycle dont la sélection de cuisson était vide sortait AVANT, c'est-à-dire exactement dans
+// l'état que le rattrapage vise (une instance dont tout est déjà cuit, mais dont rien n'est
+// dérivé). Sur ces instances aucune dérivation n'était jamais rattrapée, et
+// `JaugeDerivationsRetard` n'était jamais publiée — « tout est dérivé » et « le rattrapage ne
+// tourne pas » redevenaient indistinguables. Il ne cuit rien : voir derivations_backlog.go.
 func Run(ctx context.Context, d Deps, insertedIDs []string) {
 	if !armee(ctx, d) {
 		return
 	}
-	// LA PORTE DE PRODUCTION, AVANT TOUT LE RESTE (cf. capability.go).
+	// LA PORTE DE PRODUCTION, AVANT TOUT LE RESTE (cf. capability.go) : un titre sans
+	// `film.replay_artifact` ne cuit rien ET ne rattrape rien (lot C, décision utilisateur 3).
 	if !titreProduitDesArtefacts(ctx, d) {
 		return
 	}
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), CompteurCycles)
+	defer rattraperDerivations(ctx, d)
+	cuireLeCycle(ctx, d, insertedIDs)
+}
+
+// cuireLeCycle est le travail de CUISSON du cycle : sélection, rattrapage du catalogue de
+// cartes, puis mise en file (placement « ouvrier ») ou construction locale.
+//
+// SÉPARÉ DE [Run] POUR UNE SEULE RAISON : que le rattrapage des dérivés y soit posé en `defer`,
+// donc joué sur TOUTES les sorties de la cuisson — y compris la sortie « rien à cuire ».
+func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 	titre := ctxkeys.TitleSlug(ctx)
-	observability.IncCounterT(titre, CompteurCycles)
 	work, retard := selectionnerLeTravail(ctx, d, insertedIDs)
 	observability.AddIntT(titre, CompteurSelectionnes, int64(len(work)))
 	// JAUGE, PAS COMPTEUR : ce qui reste à rattraper APRÈS ce cycle. Publiée MÊME À ZÉRO —
@@ -323,6 +343,9 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 	// Il ne peut pas faire echouer le cycle : voir mvar_rattrapage.go.
 	rattraperCartesAbsentes(ctx, d, work, d.MvarFetcher)
 	if d.Placement == replaybuild.PlacementWorker {
+		// EN PLACEMENT « OUVRIER » CE PROCESS NE CUIT RIEN, mais les artefacts que l'ouvrier a
+		// déposés sont bien sur le disque : leur rattrapage est posé en `defer` par [Run], et
+		// il vaut donc pour cette sortie-ci comme pour toutes les autres.
 		enqueueAll(ctx, d, work)
 		return
 	}
@@ -343,17 +366,13 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 		return
 	}
 	b := buildAll(ctx, d, work)
-	// LE REPORT DU COUP D'ENVOI VIENT APRÈS TOUTE CUISSON, jamais entre deux : c'est ce qui
-	// garantit que le burst writer ne recouvre aucun décodage (cf. t0film.go).
-	reporterT0Film(ctx, d, b.t0Film)
-	// LE RÉSUMÉ D'USAGE SUIT LA MÊME RÈGLE (cf. usage.go) : projeté depuis les artefacts
-	// rangés de CE cycle, écrit dans un second burst court, gate par capability.
-	persisterResumesUsage(ctx, d, b.usage)
-	// LES STATISTIQUES D'ASSAUT, TROISIÈME ET DERNIER BURST, même règle encore (cf.
-	// bombstats.go) : projetées depuis les MÊMES artefacts rangés, écrites après toute
-	// cuisson, gatées par `film.bomb_stats`. Un cycle sans match d'Assaut n'ouvre aucun
-	// writer — la projection le voit avant, sur le document.
-	persisterStatsBombe(ctx, d, b.usage)
+	// LES DÉRIVATIONS VIENNENT APRÈS TOUTE CUISSON, jamais entre deux : c'est ce qui garantit
+	// que les bursts writer ne recouvrent aucun décodage. UN SEUL POINT D'ENTRÉE, le même que
+	// celui du dépôt d'ouvrier (cf. derivations.go — constat A1).
+	Deriver(ctx, DerivationsDeps{
+		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
+		AcquireWriter: d.AcquireWriter,
+	}, b.ranges)
 	publierBilan(ctx, d, b, len(work))
 }
 

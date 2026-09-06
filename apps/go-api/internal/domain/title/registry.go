@@ -818,6 +818,29 @@ func (p *PathResolver) MapWeaponPadsPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_weapon_pads.json")
 }
 
+// MapWeaponPadsOverlayPath retourne le chemin de l'OVERLAY NON VERSIONNÉ du catalogue des
+// emplacements de socle : les cartes que le RUNTIME a rattrapées au fetch d'un film
+// (`sync/replayartifacts/mvar_rattrapage.go`).
+//
+// POURQUOI IL EXISTE, ET POURQUOI IL N'EST PAS LE FICHIER VERSIONNÉ. Le rattrapage écrivait
+// jusqu'au 2026-09-05 dans `map_weapon_pads.json`, un fichier SUIVI PAR GIT. Deux dégâts, un
+// par environnement : en local, un commit avalait +332 lignes de données de référence sans
+// relecture ; en production, `scripts/deploy.sh` fait `git reset --hard origin/main` — chaque
+// déploiement aurait effacé tout ce que le runtime avait rattrapé, silencieusement.
+//
+// LA RÈGLE QUI EN DÉCOULE : le fichier versionné est une ENTRÉE, produite à la main par
+// `cmd/mapopads-build` et relue en revue ; l'overlay est une SORTIE de runtime, jetable et
+// reconstructible. Les deux se fusionnent À LA LECTURE (`replay.LoadMapWeaponPadsMerged`), et
+// c'est l'entrée VERSIONNÉE qui prime en cas de doublon — une carte relue en revue ne peut pas
+// être remplacée par une carte rattrapée automatiquement.
+//
+// `reference/generated/` est ignoré par git (.gitignore) : c'est ce qui rend la règle vraie et
+// pas seulement écrite.
+// Ex: data/titles/halo_infinite/reference/generated/map_weapon_pads.json
+func (p *PathResolver) MapWeaponPadsOverlayPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "generated", "map_weapon_pads.json")
+}
+
 // MapCalloutsPath retourne le chemin du catalogue des CALLOUTS (zones nommées
 // officielles) par carte : polygones monde, tranche verticale et libellés FR/EN, extraits
 // du tag levl des modules du jeu par cmd/mapcallouts-build. Donnée de RÉFÉRENCE

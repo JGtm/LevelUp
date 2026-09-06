@@ -144,7 +144,7 @@ func TestReporterT0Film_BurstWriterCourt(t *testing.T) {
 			return db, func() { relaches++ }, nil
 		},
 	}
-	reporterT0Film(context.Background(), d, []rapportT0Film{
+	reporterT0Film(context.Background(), d, &bilanDerivations{}, []rapportT0Film{
 		{matchID: "m1", t0FilmMs: 26304}, {matchID: "m2", t0FilmMs: 31862},
 	})
 	if acquis != 1 || relaches != 1 {
@@ -167,7 +167,7 @@ func TestReporterT0Film_LotVideNAcquiertAucunWriter(t *testing.T) {
 		acquis++
 		return nil, func() {}, nil
 	}}
-	reporterT0Film(context.Background(), d, nil)
+	reporterT0Film(context.Background(), d, &bilanDerivations{}, nil)
 	if acquis != 0 {
 		t.Fatalf("writer acquis %d fois sur un lot vide, attendu 0", acquis)
 	}

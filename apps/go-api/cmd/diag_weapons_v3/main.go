@@ -94,18 +94,23 @@ type runConfig struct {
 // run ouvre la DB (RW si write, sinon RO), résout la liste de matchs à traiter,
 // puis délègue à processMatch pour chacun.
 func run(ctx context.Context, cfg runConfig) error {
-	conn, toTemp, err := openRunConn(cfg)
+	// LE MODE POSITIONS N'ÉCRIT PLUS (décision utilisateur 1, 2026-09-06) : la table est une
+	// projection de l'artefact de rejeu. Un `-write` silencieusement ignoré laisserait croire
+	// à une écriture qui n'a pas lieu — on REFUSE, en disant où le travail se fait désormais.
+	if cfg.positions && cfg.write {
+		return fmt.Errorf("le mode -positions n'écrit plus : `match_player_positions` est " +
+			"projetée de l'artefact de rejeu par le fil de l'eau post-sync " +
+			"(sync/replayartifacts/positions.go). Relancer sans -write pour l'inspection")
+	}
+	conn, err := openRunConn(cfg)
 	if err != nil {
 		return err
 	}
 	defer conn.close()
 
 	if cfg.write {
-		if err := ensureWriteTables(conn.sqlDB, cfg); err != nil {
+		if err := ensureWriteTables(conn.sqlDB); err != nil {
 			return fmt.Errorf("ensure tables: %w", err)
-		}
-		if toTemp {
-			fmt.Println("[NOTE] DB verrouillée (serveur up) -> écriture sur une COPIE temp jetable (vraie DB intacte).")
 		}
 	}
 
@@ -140,25 +145,22 @@ func run(ctx context.Context, cfg runConfig) error {
 }
 
 // openRunConn ouvre la connexion adaptée au run. Lecture seule par défaut
-// (OpenReadForQuery, safe serveur up). Le -write POSITIONS passe par
-// openShadowWriteConn (RW exclusif, ou copie temp si la DB est verrouillée) ; le
-// -write objective-events garde le RW direct de openConn. toTemp signale une copie
-// temp jetable.
-func openRunConn(cfg runConfig) (c *conn, toTemp bool, err error) {
-	// Le -write POSITIONS écrit sur une table shadow/additive : copie temp si la DB
-	// est verrouillée par le serveur.
-	if cfg.positions && cfg.write {
-		return openShadowWriteConn(cfg.dbPath)
-	}
-	c, err = openConn(cfg.dbPath, cfg.write)
-	return c, false, err
+// (OpenReadForQuery, safe serveur up) ; le -write objective-events garde le RW direct de
+// openConn.
+//
+// LE `-write` DU MODE POSITIONS A ÉTÉ SUPPRIMÉ le 2026-09-06 (décision utilisateur 1) :
+// `match_player_positions` n'est plus écrite par cet outil mais PROJETÉE de l'artefact de
+// rejeu, en INSERT purs sous le lease RW (`sync/replayartifacts/positions.go`). Le mode
+// positions reste utile en LECTURE — il montre ce que le décodeur keyframe tire du film, ce
+// qu'aucun autre outil ne fait.
+func openRunConn(cfg runConfig) (c *conn, err error) {
+	return openConn(cfg.dbPath, cfg.write)
 }
 
-// ensureWriteTables applique la migration des tables shadow nécessaires au -write :
-// positions, sinon shared_objective_events_v1.
-func ensureWriteTables(db *sql.DB, cfg runConfig) error {
-	if cfg.positions {
-		return ensureMigration(db, "shared_match_player_positions_v1")
-	}
+// ensureWriteTables applique la migration des tables nécessaires au -write.
+//
+// Seul le mode objective-events écrit désormais ; le mode positions refuse `-write` en amont
+// (cf. run), donc cette fonction n'a plus qu'une branche.
+func ensureWriteTables(db *sql.DB) error {
 	return ensureObjectiveEventsTables(db)
 }

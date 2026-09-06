@@ -188,11 +188,14 @@ var canonicalOrder = []string{
 	// Placée AVANT from_pairs parce que l'ordre d'init() suit le nom de fichier — from_pairs
 	// ne trouve alors plus rien à reprendre, et c'est correct : la reprise credit-base couvre
 	// tout ce qu'elle couvrait, dédupliqué sur l'identité (cf. §10-2 de la conception).
-	"shared_kill_events_credit_base_v1",                // shared
-	"shared_kill_events_from_pairs_v1",                 // shared (J4 : reprise dédupliquée de killer_victim_pairs -> match_kill_events + drop v_killer_victim_full ; la table source RESTE)
-	"shared_objective_events_v1",                       // shared
-	"shared_objective_score_v1_drop",                   // shared (v7.5 lot 3 : DROP match_objective_score_timeline ; remplace shared_objective_score_v1, dont le créateur est supprimé)
-	"shared_match_player_positions_v1",                 // shared
+	"shared_kill_events_credit_base_v1", // shared
+	"shared_kill_events_from_pairs_v1",  // shared (J4 : reprise dédupliquée de killer_victim_pairs -> match_kill_events + drop v_killer_victim_full ; la table source RESTE)
+	"shared_objective_events_v1",        // shared
+	"shared_objective_score_v1_drop",    // shared (v7.5 lot 3 : DROP match_objective_score_timeline ; remplace shared_objective_score_v1, dont le créateur est supprimé)
+	"shared_match_player_positions_v1",  // shared
+	// Conversion append-only de la table ci-dessus (decision 1 du plan v2, 2026-09-06) :
+	// APRES son createur, evidemment — le rebuild CTAS lit la table qu'il convertit.
+	"shared_match_player_positions_appendonly_v1",      // shared
 	"shared_pve_append_only_v1",                        // shared_pve
 	"rebuild_match_participants_defeat_art_corruption", // shared
 	// Phase 1.5 b27 (reorder escaladé) : skill_v2 (créateur de lusr_hyperparams_v2)

@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 )
@@ -75,6 +76,12 @@ func mrDeps(t *testing.T, cartesAuCatalogue []string, cartesAuxObjectifs []strin
 		filepath.Join(dir, "map_weapon_pads.json")
 }
 
+// mrOverlayPath rend le chemin de l'overlay PAR LE RESOLVER, pas par un littéral recopie : le
+// jour ou l'emplacement bouge, les tests suivent la production au lieu de la contredire.
+func mrOverlayPath(d Deps) string {
+	return title.NewPathResolver(d.RepoRoot).MapWeaponPadsOverlayPath(d.TitleSlug)
+}
+
 func mrEcrire(t *testing.T, path string, v any) {
 	t.Helper()
 	b, err := json.MarshalIndent(v, "", "  ")
@@ -124,9 +131,14 @@ func TestRattrapageCarteConnueNeFaitAucunAppel(t *testing.T) {
 	}
 }
 
-// TestRattrapageCarteInconnueAjouteSansToucherLesAutres — promesse 2.
+// TestRattrapageCarteInconnueAjouteSansToucherLesAutres — promesse 2, ET la promesse A0 :
+// l'ajout va dans l'OVERLAY, le catalogue VERSIONNE ne bouge pas d'un octet.
 func TestRattrapageCarteInconnueAjouteSansToucherLesAutres(t *testing.T) {
 	d, catPath := mrDeps(t, []string{"connue"}, []string{"connue", "inconnue"})
+	avantOctets, err := os.ReadFile(catPath)
+	if err != nil {
+		t.Fatal(err)
+	}
 	avant := mrLire(t, catPath)
 	mrAvecEntreeFactice(t, nil)
 	esp := &mrFetcherEspion{blob: []byte("peu importe"), base: "inconnue.mvar"}
@@ -137,19 +149,74 @@ func TestRattrapageCarteInconnueAjouteSansToucherLesAutres(t *testing.T) {
 	if b.ajoutees != 1 {
 		t.Fatalf("bilan = %+v, attendu ajoutees 1", b)
 	}
-	apres := mrLire(t, catPath)
-	if _, ok := apres.Maps["inconnue"]; !ok {
-		t.Error("la carte inconnue n'a pas ete ajoutee au catalogue")
+	// LE FICHIER VERSIONNE EST INTACT — c'est le constat A0 : `scripts/deploy.sh` fait
+	// `git reset --hard origin/main`, tout ce que le runtime y ecrirait serait efface au
+	// deploiement suivant, et un commit local l'avalerait sans relecture.
+	apresOctets, err := os.ReadFile(catPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(avantOctets) != string(apresOctets) {
+		t.Error("LE CATALOGUE VERSIONNE A ETE ECRIT par le rattrapage runtime (constat A0)")
+	}
+	// L'AJOUT EST DANS L'OVERLAY, et l'overlay ne porte QUE lui.
+	sur := mrLire(t, mrOverlayPath(d))
+	if _, ok := sur.Maps["inconnue"]; !ok {
+		t.Error("la carte inconnue n'a pas ete ajoutee a l overlay")
+	}
+	if len(sur.Maps) != 1 {
+		t.Errorf("overlay = %d carte(s), attendu la seule carte rattrapee", len(sur.Maps))
 	}
 	// L'ENTREE EXISTANTE EST BYTE-IDENTIQUE : c'est la promesse de l'ajout-seul.
 	a, _ := json.Marshal(avant.Maps["connue"])
-	z, _ := json.Marshal(apres.Maps["connue"])
+	z, _ := json.Marshal(mrLire(t, catPath).Maps["connue"])
 	if string(a) != string(z) {
 		t.Errorf("l'entree existante a CHANGE :\navant %s\napres %s", a, z)
 	}
 	// LE `.mvar` EST DEPOSE au cache, pour que la passe soit rejouable hors ligne.
 	if _, err := os.Stat(filepath.Join(d.CacheRoot, "mvar", "inconnue", "inconnue.mvar")); err != nil {
 		t.Errorf("le .mvar n'a pas ete depose au cache : %v", err)
+	}
+}
+
+// TestRattrapageCarteDejaDansLOverlayNeRetelechargePas — LA CONTREPARTIE DE LA SEPARATION.
+//
+// Si la lecture ne portait que sur le fichier VERSIONNE, une carte rattrapee au cycle
+// precedent serait absente de ce fichier — donc re-telechargee a CHAQUE cycle, pour toujours.
+// Le rattrapage lit la FUSION versionne + overlay ; ce test le prouve par le compteur d'appels.
+func TestRattrapageCarteDejaDansLOverlayNeRetelechargePas(t *testing.T) {
+	d, catPath := mrDeps(t, []string{"connue"}, []string{"connue", "rattrapee"})
+	mrAvecEntreeFactice(t, nil)
+
+	// Cycle 1 : la carte est absente partout, elle est telechargee.
+	esp := &mrFetcherEspion{blob: []byte("peu importe"), base: "rattrapee.mvar"}
+	if b := rattraperCartesAbsentes(context.Background(), d, mrTravail("rattrapee"), esp); b.ajoutees != 1 {
+		t.Fatalf("cycle 1 : bilan = %+v, attendu ajoutees 1", b)
+	}
+	avant, err := os.ReadFile(mrOverlayPath(d))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Cycle 2 : elle n'est QUE dans l'overlay — zero appel, zero ecriture.
+	esp2 := &mrFetcherEspion{blob: []byte("peu importe"), base: "rattrapee.mvar"}
+	b := rattraperCartesAbsentes(context.Background(), d, mrTravail("rattrapee"), esp2)
+	if esp2.appels != 0 {
+		t.Errorf("cycle 2 : %d appel(s) reseau, attendu 0 — sans la lecture FUSIONNEE, chaque "+
+			"cycle re-telechargerait toutes les cartes deja rattrapees", esp2.appels)
+	}
+	if b.dejaLa != 1 || b.ajoutees != 0 {
+		t.Errorf("cycle 2 : bilan = %+v, attendu dejaLa 1 et ajoutees 0", b)
+	}
+	apres, err := os.ReadFile(mrOverlayPath(d))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(avant) != string(apres) {
+		t.Error("cycle 2 : l overlay a ete reecrit alors qu'il n'y avait rien a ajouter")
+	}
+	if _, err := os.Stat(catPath); err != nil {
+		t.Errorf("le catalogue versionne a disparu : %v", err)
 	}
 }
 
