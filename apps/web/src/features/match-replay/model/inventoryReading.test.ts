@@ -209,6 +209,49 @@ describe('inventoryAt — borné à la VIE EN COURS du slot (correctif P0-2)', (
     expect(r?.state.g).toEqual([])
     expect(r?.substituted).toBe(false)
   })
+
+  it('une vie ANTÉRIEURE sans lecture propre ne capte JAMAIS l’inventaire d’une vie ULTÉRIEURE (borne haute, revue WEB-R1 C1)', () => {
+    // Symétrique du premier cas de ce bloc : la SEULE lecture existante appartient à la vie 2
+    // [60,150] (t=70), la requête tombe dans la vie 1 [0,50], qui n'a AUCUNE lecture propre.
+    // Sans la moitié HAUTE de la borne (`s.t > life.end`), `ahead` capterait à tort cette
+    // lecture future comme repli « à venir » de la vie 1 — potentiellement l'inventaire d'un
+    // AUTRE joueur. TEST PAR MUTATION : retirer `|| s.t > life.end` du filtre de
+    // `nearestReading` rend une lecture non nulle (âge -50) au lieu de `null`.
+    const futureLifeOnly = doc({
+      tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)],
+      inventory: [{ t: 70, slot: 512, g: [1, 0, 0, 0] }],
+    })
+    expect(inventoryAt(futureLifeOnly, 512, 20)).toBeNull()
+  })
+
+  /**
+   * `lastFullBefore` N'A PAS DE BORNE HAUTE QUI LUI SOIT PROPRE, ET C'EST UNE PREUVE, PAS UNE
+   * LACUNE (revue WEB-R1, C1 — vérifié par mutation avant de l'écrire, pas seulement raisonné).
+   *
+   * Quand `frame` couvre une vie V, toute lecture d'une vie ULTÉRIEURE a nécessairement
+   * `s.t >= vie_suivante.start > V.end >= t` (où `t` est le timestamp — déjà borné par
+   * `nearestReading` — de la lecture vide que `lastFullBefore` cherche à combler). Son propre
+   * filtre `s.t < t` exclut donc structurellement TOUTE lecture d'une vie ultérieure, avant même
+   * `lifeStart` : il n'existe aucune ligne « borne haute » à retirer dans `lastFullBefore` pour
+   * observer un rougissement — vérifié en retirant `|| s.t > life.end` de `nearestReading`
+   * (la seule borne haute réelle de la chaîne) : le test ci-dessous reste VERT, parce que `best`
+   * (la lecture VIDE propre à la vie courante, t=30) l'emporte déjà sur toute lecture future
+   * candidate à `ahead`, quelle que soit la borne. Ce test verrouille donc le COMPORTEMENT
+   * (aucune fuite observable), pas une ligne de code précise à mutation-tester : il n'y en a pas.
+   */
+  it('lastFullBefore ne remonte jamais à une lecture PLEINE d’une vie ULTÉRIEURE, même présente', () => {
+    const d = doc({
+      tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)],
+      inventory: [
+        { t: 30, slot: 512, empty: 'dead' }, // vie 1, propre — devient `best` sans ambiguïté
+        { t: 70, slot: 512, g: [2, 0, 0, 0] }, // vie 2, PLEINE — ne doit jamais être vue depuis la vie 1
+      ],
+    })
+    const r = inventoryAt(d, 512, 40)
+    expect(r?.empty).toEqual({ kind: 'dead', age: 10 })
+    expect(r?.substituted).toBe(false)
+    expect(r?.state.g).toEqual([])
+  })
 })
 
 /**
@@ -257,6 +300,18 @@ describe('grenadeReadingAt', () => {
       grenadeReads: [{ t: 10, slot: 512, g: [0, 2, 0, 0], src: 'kf' }],
     })
     expect(grenadeReadingAt(d, 512, 100)).toBeNull()
+  })
+
+  it('une vie ANTÉRIEURE sans lecture propre ne capte JAMAIS les grenades d’une vie ULTÉRIEURE (borne haute, revue WEB-R1 C1)', () => {
+    // Symétrique du cas ci-dessus : la SEULE lecture existante appartient à la vie 2 [60,150]
+    // (t=70), la requête tombe dans la vie 1 [0,50], sans lecture propre. TEST PAR MUTATION :
+    // retirer `|| s.t > life.end` du filtre de `nearestReading` rend une lecture non nulle
+    // (âge -50) au lieu de `null`.
+    const futureLifeOnly = doc({
+      tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)],
+      grenadeReads: [{ t: 70, slot: 512, g: [0, 2, 0, 0], src: 'kf' }],
+    })
+    expect(grenadeReadingAt(futureLifeOnly, 512, 20)).toBeNull()
   })
 })
 
