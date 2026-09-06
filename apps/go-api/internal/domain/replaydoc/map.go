@@ -81,7 +81,10 @@ type Surface struct {
 	Poly [][2]float32 `json:"poly,omitempty"`
 }
 
-// MapBackground est le sidecar JSON qui accompagne `{module}.png`.
+// MapBackground est le CALAGE du fond de carte servi par
+// `GET /players/{slug}/matches/{id}/replay/background` : ou l'image se pose dans le repere
+// monde, celui-la meme ou vivent les trajectoires, plus ce que sa fabrication a mesure. Il
+// va toujours avec l'image PNG servie par la route soeur `.../background.png`.
 type MapBackground struct {
 	SchemaVersion int                      `json:"schemaVersion"`
 	Module        string                   `json:"module"`
@@ -105,7 +108,9 @@ type MapBackgroundCalibration struct {
 	Convention     string  `json:"convention"`
 }
 
-// MapBackgroundStats chiffre la cuisson.
+// MapBackgroundStats chiffre la fabrication du fond : sur quoi le calage s'appuie, ce qui a
+// ete substitue ou rogne. Publie pour que le client puisse dire « fond approximatif » plutot
+// que d'afficher une superposition fausse en silence.
 type MapBackgroundStats struct {
 	Anchors                  int      `json:"anchors"`
 	AnchorsInFrame           int      `json:"anchorsInFrame"`
@@ -130,8 +135,11 @@ type MapBackgroundStats struct {
 	ForgeDeathVolumes        int      `json:"forgeDeathVolumes,omitempty"`
 }
 
-// MapCalloutsEntry est l'entrée d'une carte — c'est aussi la charge utile servie au
-// rejeu 2D (le service la rend telle quelle, résolue par module comme le fond de carte).
+// MapCalloutsEntry porte les ZONES NOMMEES d'une carte : le corps de
+// `GET /players/{slug}/matches/{id}/replay/callouts`. Le service resout la carte du match
+// (par module, comme le fond) puis PROJETTE l'entree du catalogue versionne sur cette forme.
+// 404 quand la carte n'en a pas — cas nominal d'une carte Forge, dont le canevas n'en porte
+// aucune.
 type MapCalloutsEntry struct {
 	Module     string        `json:"module"`
 	Provenance string        `json:"provenance"`
