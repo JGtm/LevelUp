@@ -21,9 +21,9 @@
  *    exigés) et le champ EXISTE au contrat : un rendu peut le lire sans voir qu'il est vide.
  *    C'est la clause la plus facile à violer par inadvertance — ce test interdit la lecture.
  */
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+
+import { fichierNomme, lire } from './test/featureFiles'
 
 import { REPLAY_TEXT } from './i18n/i18n'
 import { PAD_EQUIPMENT_FAMILIES } from './weaponPadFamilies'
@@ -42,7 +42,7 @@ const FICHIERS = [
   'ReplayWeaponPadTip.tsx',
 ]
 
-const source = (f: string) => readFileSync(resolve(__dirname, f), 'utf8')
+const source = (f: string) => lire(fichierNomme(f))
 
 describe('garde-rail : aucune couleur écrite en dur dans le calque des socles', () => {
   it('aucun hexadécimal de couleur', () => {

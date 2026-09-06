@@ -19,9 +19,9 @@
  * Purement présentationnel : l'état, le porteur et la durée sont calculés au survol
  * (useReplayFlagCarries), la géométrie dans flagCarriesLayer.
  */
-import type { FlagState } from './flagCarriesLayer'
+import type { FlagState } from './layers/flagCarriesLayer'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
-import type { FlagHover } from './useReplayFlagCarries'
+import type { FlagHover } from './layers/useReplayFlagCarries'
 
 /** Décalage de l'infobulle sous le pointeur, en pixels (même valeur que celle des socles). */
 const TIP_OFFSET = 12

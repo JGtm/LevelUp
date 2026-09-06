@@ -24,7 +24,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
-import { type PlacementTime } from './equipmentPlacementsLayer'
+import { type PlacementTime } from './layers/equipmentPlacementsLayer'
 import { DEVICE_ID, OVERSHIELD_ID, painted, PANEL_ID, SENSOR_ID, TIME } from './test/placementFixtures'
 
 /** Un recensement : `famille/origine` -> nombre de poses, tel que relevé sur l'artefact. */

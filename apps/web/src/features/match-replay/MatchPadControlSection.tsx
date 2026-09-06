@@ -63,7 +63,7 @@ import {
   type PadControl,
 } from './padControlLogic'
 import { useMatchReplay } from './queries'
-import { padNameFor } from './useReplayWeaponPads'
+import { padNameFor } from './layers/useReplayWeaponPads'
 
 /** Largeur de la colonne des noms d'arme, et de l'annotation de droite (px). */
 const NAME_WIDTH = 148

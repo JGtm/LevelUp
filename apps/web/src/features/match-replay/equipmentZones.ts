@@ -33,8 +33,8 @@ import {
   type PlacementKind,
   type PlacementToggles,
   type PlacementWindowTime,
-} from './equipmentPlacementsLayer'
-import { REPAIR_FIELD_RADIUS_M, SHROUD_RADIUS_M } from './placementShapes'
+} from './layers/equipmentPlacementsLayer'
+import { REPAIR_FIELD_RADIUS_M, SHROUD_RADIUS_M } from './layers/placementShapes'
 import { SENSOR_RADIUS_M, sensorPingAgeMs } from './threatSensor'
 
 /** Ce que la fiche a besoin de LIRE : les poses, et le camp de la vie qui occupe un slot À UNE

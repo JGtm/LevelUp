@@ -165,7 +165,7 @@
  */
 import type { KillEvent } from '@/features/match-view/_momentum'
 
-import { placementIsDeployedObject } from '../equipmentPlacementsLayer'
+import { placementIsDeployedObject } from '../layers/equipmentPlacementsLayer'
 import { grenadeSoundEvents } from './grenadeSound'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplayKill } from '../killFeedLogic'

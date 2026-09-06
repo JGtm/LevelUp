@@ -33,7 +33,7 @@
  * (useReplayWeaponPads), la géométrie dans weaponPadsLayer.
  */
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
-import type { WeaponPadHover } from './useReplayWeaponPads'
+import type { WeaponPadHover } from './layers/useReplayWeaponPads'
 
 /** Décalage de l'infobulle sous le pointeur, en pixels (même valeur que celle des poses). */
 const TIP_OFFSET = 12

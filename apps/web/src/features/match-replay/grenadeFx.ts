@@ -14,8 +14,8 @@
  *
  * Pas de React, pas de canvas : logique pure, testée (grenadeFx.test.ts).
  */
-import { EXPLOSION_MS } from './explosionFx'
-import type { FxTint } from './fxInk'
+import { EXPLOSION_MS } from './layers/explosionFx'
+import type { FxTint } from './layers/fxInk'
 import type { ReplayDocumentReady } from './replayNormalize'
 
 /** Rang du type Shock/Dynamo dans GrenadeLabels — l'ordre des rangs est LA donnée

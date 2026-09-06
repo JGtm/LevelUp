@@ -28,7 +28,7 @@ import type { ReplayFeedEntry } from './killFeedLogic'
 import type { ReplayLocale } from './i18n/i18n'
 import type { PlayerMarkKind } from './playerMarks'
 import { formatClock } from './replayLogic'
-import { EMPTY_MEDIA, SKIP_SECONDS } from './replayCanvasConfig'
+import { EMPTY_MEDIA, SKIP_SECONDS } from './layers/replayCanvasConfig'
 import type { ReplayTimelineTracks } from './ReplayTimelineTracks'
 import {
   buildEventTracks,

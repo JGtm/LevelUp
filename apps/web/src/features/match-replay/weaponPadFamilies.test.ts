@@ -16,6 +16,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
+import { racineDuDepot } from './test/featureFiles'
 import {
   PAD_EQUIPMENT_FAMILIES,
   POWER_PAD_KEYS,
@@ -24,7 +25,7 @@ import {
   padScaleOf,
 } from './weaponPadFamilies'
 
-const REPO = resolve(__dirname, '..', '..', '..', '..', '..')
+const REPO = racineDuDepot()
 const WEAPON_NAMES = resolve(REPO, 'config/titles/halo_infinite/mappings/weapon_names.toml')
 const REPLAY_LABELS = resolve(REPO, 'config/titles/halo_infinite/mappings/replay_labels.toml')
 const HUD_DIR = resolve(REPO, 'static/weapons-assets/halo_infinite/hud')

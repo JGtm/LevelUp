@@ -28,7 +28,9 @@ import {
 } from './gameChangers'
 import { PAD_EQUIPMENT_FAMILIES, POWER_PAD_KEYS } from './weaponPadFamilies'
 
-const REPO = resolve(__dirname, '..', '..', '..', '..', '..')
+import { racineDuDepot } from './test/featureFiles'
+
+const REPO = racineDuDepot()
 const WEAPON_NAMES = resolve(REPO, 'config/titles/halo_infinite/mappings/weapon_names.toml')
 const REPLAY_LABELS = resolve(REPO, 'config/titles/halo_infinite/mappings/replay_labels.toml')
 

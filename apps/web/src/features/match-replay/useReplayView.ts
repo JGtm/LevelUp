@@ -25,7 +25,7 @@ import { useMemo } from 'react'
 
 import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
-import { coversPlayedArea } from './mapBackground'
+import { coversPlayedArea } from './layers/mapBackground'
 import { frameBounds, sceneBounds, usefulHeight, visibleBounds } from './replayLogic'
 import { type CanvasView } from './replayView'
 import type { ReplayDocumentReady } from './replayNormalize'

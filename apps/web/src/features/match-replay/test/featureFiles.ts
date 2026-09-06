@@ -28,6 +28,20 @@ export function featureRoot(): string {
   return resolve(dirname(__filename), '..')
 }
 
+/**
+ * `apps/web/`. Plusieurs gardes lisent la feuille de style (`src/styles/globals.css`) ou la
+ * route du rejeu : ils comptaient leurs `..` depuis `__dirname`, ce qu'un déplacement d'un
+ * seul dossier suffit à fausser. L'ancre est ici, et elle ne se compte qu'une fois.
+ */
+export function racineWeb(): string {
+  return resolve(featureRoot(), '..', '..', '..')
+}
+
+/** La racine du dépôt : les gardes qui lisent un fichier Go ou un manifeste TOML partent d'ici. */
+export function racineDuDepot(): string {
+  return resolve(racineWeb(), '..', '..')
+}
+
 function walk(dir: string): string[] {
   const out: string[] = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

@@ -9,7 +9,7 @@
  */
 import { SettingsSegments, SettingsToggle } from './settings/ReplaySettingsToggle'
 
-import type { HeatmapMode, HeatmapSpan } from './heatmapLayer'
+import type { HeatmapMode, HeatmapSpan } from './layers/heatmapLayer'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { HEATMAP_MODES, HEATMAP_SPANS } from './settings/useReplaySettings'
 

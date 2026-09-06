@@ -39,7 +39,7 @@ import { useState } from 'react'
 
 import { ReplayExportDialog, isExportBusy } from './export/ReplayExportDialog'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
-import { SKIP_SECONDS } from './replayCanvasConfig'
+import { SKIP_SECONDS } from './layers/replayCanvasConfig'
 import { ReplaySoundControls } from './sound/ReplaySoundControls'
 import { ReplaySpeedMenu } from './ReplaySpeedMenu'
 import { ReplayTimelineTracks } from './ReplayTimelineTracks'

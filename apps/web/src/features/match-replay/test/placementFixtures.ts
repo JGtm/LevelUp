@@ -20,8 +20,8 @@ import {
   type PlacementInk,
   type PlacementScene,
   type PlacementTime,
-} from '../equipmentPlacementsLayer'
-import { WALL_PANEL_IDS } from '../placementWall'
+} from '../layers/equipmentPlacementsLayer'
+import { WALL_PANEL_IDS } from '../layers/placementWall'
 import { worldToCanvas } from '../replayLogic'
 import type { ReplayTrackReady } from '../replayNormalize'
 import { recordingContext } from './recordingContext'

@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocument } from '@/lib/api/types'
 
-import { EXPLOSION_MS } from './explosionFx'
+import { EXPLOSION_MS } from './layers/explosionFx'
 import {
   buildGrenadeRestFx,
   DYNAMO_RANK,

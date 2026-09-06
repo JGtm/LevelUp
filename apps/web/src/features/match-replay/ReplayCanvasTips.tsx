@@ -20,9 +20,9 @@ import { ReplayPlacementTip } from './ReplayPlacementTip'
 import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
 import type { ReplayLocale } from './i18n/i18n'
 import type { ReplayWindowBounds } from './replayWindow'
-import type { FlagHover } from './useReplayFlagCarries'
-import type { PlacementHover } from './usePlacementHover'
-import type { WeaponPadHover } from './useReplayWeaponPads'
+import type { FlagHover } from './layers/useReplayFlagCarries'
+import type { PlacementHover } from './layers/usePlacementHover'
+import type { WeaponPadHover } from './layers/useReplayWeaponPads'
 
 interface ReplayCanvasTipsProps {
   locale: ReplayLocale

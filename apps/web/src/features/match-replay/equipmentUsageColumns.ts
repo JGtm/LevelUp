@@ -17,7 +17,7 @@
 import { formatDurationMMSS } from '@/lib/formatters/duration'
 
 import { catalogText } from './i18n/catalogLabel'
-import { PLACEMENT_RENDER } from './equipmentPlacementsLayer'
+import { PLACEMENT_RENDER } from './layers/equipmentPlacementsLayer'
 import type { EquipmentUsage, EquipmentUsageTally } from './equipmentUsageLogic'
 import { isGameChangerFamily } from './gameChangers'
 import type { ReplayLocale } from './i18n/i18n'

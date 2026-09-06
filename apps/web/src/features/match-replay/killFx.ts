@@ -30,7 +30,7 @@
 import { buildCarrierPosAt } from './carrierPosition'
 import type { ReplayKill } from './killFeedLogic'
 import { buildLivesByXuid, deathWindowFrames } from './livesPosition'
-import { familyOf, type ShotFamily } from './shotEffects'
+import { familyOf, type ShotFamily } from './layers/shotEffects'
 import { isAliveAt, msToFrames, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
 

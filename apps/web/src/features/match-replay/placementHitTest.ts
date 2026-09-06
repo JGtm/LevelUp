@@ -16,12 +16,12 @@
  */
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
-import { RIFT_HALF_HEIGHT_PX } from './placementRift'
+import { RIFT_HALF_HEIGHT_PX } from './layers/placementRift'
 import {
   type PlacementHoverTime,
   type PlacementKind,
   placementKind,
-} from './equipmentPlacementsLayer'
+} from './layers/equipmentPlacementsLayer'
 import {
   DROPPED_RADIUS_PX,
   type PlacementView,
@@ -31,8 +31,8 @@ import {
   SEEKER_IMPULSE_RADIUS_PX,
   UNNAMED_DOT_RADIUS_PX,
   viewScale,
-} from './placementShapes'
-import { wallRadiusM } from './placementWall'
+} from './layers/placementShapes'
+import { wallRadiusM } from './layers/placementWall'
 import { isPlacementActive, placementShows } from './placementWindow'
 import type { XY } from './replayLogic'
 import { SENSOR_RADIUS_M } from './threatSensor'

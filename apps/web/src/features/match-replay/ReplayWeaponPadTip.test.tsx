@@ -13,8 +13,8 @@ import { render, screen } from '@testing-library/react'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
 import type { ReplayWeaponPadReady } from './replayNormalize'
-import { padNameFor } from './useReplayWeaponPads'
-import type { WeaponPadHover } from './useReplayWeaponPads'
+import { padNameFor } from './layers/useReplayWeaponPads'
+import type { WeaponPadHover } from './layers/useReplayWeaponPads'
 
 function pad(weapon: string): ReplayWeaponPadReady {
   return { x: 0.26, y: 0, weapon, spawns: [0], presence: [{ t0: 0, tLow: 100, tHigh: 120 }] }

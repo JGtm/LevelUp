@@ -20,7 +20,7 @@ import {
   PLACEMENT_ORIGIN_DROPPED,
   placementIsDroppedPower,
 } from './placementDropped'
-import { PLACEMENT_ORIGIN_DEPLOYED } from './equipmentPlacementsLayer'
+import { PLACEMENT_ORIGIN_DEPLOYED } from './layers/equipmentPlacementsLayer'
 import { OVERSHIELD_ID, pose } from './test/placementFixtures'
 
 /** Une pose LÂCHÉE d'une famille donnée — le cas nominal de ce fichier. */

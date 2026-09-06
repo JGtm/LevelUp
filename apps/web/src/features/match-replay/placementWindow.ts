@@ -16,9 +16,9 @@ import type {
   PlacementHoverTime,
   PlacementKind,
   PlacementWindowTime,
-} from './equipmentPlacementsLayer'
-import { seekerImpulseActive } from './placementShapes'
-import { WALL_DURATION_MS } from './placementWall'
+} from './layers/equipmentPlacementsLayer'
+import { seekerImpulseActive } from './layers/placementShapes'
+import { WALL_DURATION_MS } from './layers/placementWall'
 import { SENSOR_DURATION_MS } from './threatSensor'
 
 /**

@@ -32,8 +32,8 @@
  *
  * Pas de React, pas de canvas : logique pure, testée (shotFx.test.ts).
  */
-import { fxTintOf, type FxTint } from './fxInk'
-import { familyOf, type ShotFamily } from './shotEffects'
+import { fxTintOf, type FxTint } from './layers/fxInk'
+import { familyOf, type ShotFamily } from './layers/shotEffects'
 import { heldReading } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { vehicleHeadingAt } from './vehiclesLayer'
