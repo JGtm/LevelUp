@@ -79,16 +79,17 @@ func TestGrappes_LePlancherPorteSurLAMAS_PasSurLaCellule(t *testing.T) {
 // barycentre, jamais d'un catalogue manuel.
 func TestGrappes_NommageParLeCalloutLePlusProche(t *testing.T) {
 	zones := []ZoneNommee{
-		{Nom: "Base rouge", X: 0, Y: 0},
-		{Nom: "Rampe", X: 40, Y: 40},
-		{Nom: "Base bleue", X: 100, Y: 100},
+		{NomFR: "Base rouge", NomEN: "Red base", X: 0, Y: 0},
+		{NomFR: "Rampe", NomEN: "Ramp", X: 40, Y: 40},
+		{NomFR: "Base bleue", NomEN: "Blue base", X: 100, Y: 100},
 	}
 	out := GrappesDeSpawn(GrilleParDefaut(), pointsAutour(50.25, 50.25, "m1", "m2", "m3"), zones)
 	if len(out) != 1 {
 		t.Fatalf("grappes = %+v, attendu 1", out)
 	}
-	if out[0].Nom != "Rampe" {
-		t.Fatalf("nom = %q, attendu « Rampe » (le callout le plus proche du barycentre)", out[0].Nom)
+	if out[0].NomFR != "Rampe" || out[0].NomEN != "Ramp" {
+		t.Fatalf("noms = %q / %q, attendu « Rampe » / « Ramp » (le callout le plus proche du "+
+			"barycentre, DANS LES DEUX LANGUES)", out[0].NomFR, out[0].NomEN)
 	}
 }
 
@@ -96,13 +97,13 @@ func TestGrappes_NommageParLeCalloutLePlusProche(t *testing.T) {
 // MUETTES. Un nom de repli afficherait un lieu que le jeu ne prononce pas.
 func TestGrappes_SansCallout_AucunNomInvente(t *testing.T) {
 	out := GrappesDeSpawn(GrilleParDefaut(), pointsAutour(0.25, 0.25, "m1", "m2", "m3"), nil)
-	if len(out) != 1 || out[0].Nom != "" {
+	if len(out) != 1 || out[0].NomFR != "" || out[0].NomEN != "" {
 		t.Fatalf("grappes = %+v, attendu une grappe sans nom", out)
 	}
 	// Une zone SANS libelle ne nomme rien non plus (le catalogue en porte : Forge).
-	muettes := []ZoneNommee{{Nom: "", X: 0, Y: 0}}
+	muettes := []ZoneNommee{{X: 0, Y: 0}}
 	out = GrappesDeSpawn(GrilleParDefaut(), pointsAutour(0.25, 0.25, "m1", "m2", "m3"), muettes)
-	if len(out) != 1 || out[0].Nom != "" {
+	if len(out) != 1 || out[0].NomFR != "" || out[0].NomEN != "" {
 		t.Fatalf("grappes = %+v, attendu une grappe sans nom", out)
 	}
 }
@@ -172,5 +173,45 @@ func TestGrappes_PositionNonFinie(t *testing.T) {
 	}
 	if out := GrappesDeSpawn(GrilleParDefaut(), pts, nil); len(out) != 0 {
 		t.Fatalf("grappes = %+v, attendu aucune", out)
+	}
+}
+
+// TestGrappes_DeuxAmasConcentriques_DeuxIdentifiants — LE BARYCENTRE SEUL NE SUFFIT PAS
+// (revue P2).
+//
+// Un ANNEAU et la cellule qu'il entoure ont le MEME centre de masse : un identifiant derive
+// du seul barycentre les confondait, et `amasParID` rendait alors le premier venu — donc un
+// filtre `?spawn=` pouvait designer l'autre amas. Le nombre de cellules les separe.
+func TestGrappes_DeuxAmasConcentriques_DeuxIdentifiants(t *testing.T) {
+	g := GrilleParDefaut()
+	// UN anneau de 8 cellules autour de (0,0), et un amas isole loin de la, dont le
+	// barycentre coincide avec le centre de l'anneau une fois arrondi.
+	var pts []PointSpawn
+	for _, d := range [][2]float64{{-0.5, -0.5}, {0, -0.5}, {0.5, -0.5}, {-0.5, 0},
+		{0.5, 0}, {-0.5, 0.5}, {0, 0.5}, {0.5, 0.5}} {
+		for _, m := range []string{"m1", "m2", "m3"} {
+			pts = append(pts, PointSpawn{MatchID: m, X: 0.25 + d[0], Y: 0.25 + d[1]})
+		}
+	}
+	anneau := GrappesDeSpawn(g, pts, nil)
+	if len(anneau) != 1 {
+		t.Fatalf("anneau = %+v, attendu une seule grappe", anneau)
+	}
+	// Le meme barycentre, mais UNE seule cellule : trois points dans la case centrale.
+	centre := GrappesDeSpawn(g, []PointSpawn{
+		{MatchID: "m1", X: 0.25, Y: 0.25},
+		{MatchID: "m2", X: 0.26, Y: 0.26},
+		{MatchID: "m3", X: 0.27, Y: 0.27},
+	}, nil)
+	if len(centre) != 1 {
+		t.Fatalf("centre = %+v, attendu une seule grappe", centre)
+	}
+	if anneau[0].X != centre[0].X || anneau[0].Y != centre[0].Y {
+		t.Fatalf("la fixture ne teste rien : les barycentres different (%v,%v) vs (%v,%v)",
+			anneau[0].X, anneau[0].Y, centre[0].X, centre[0].Y)
+	}
+	if anneau[0].ID == centre[0].ID {
+		t.Fatalf("deux amas concentriques partagent l'identifiant %q : un filtre `spawn` "+
+			"designerait l'un pour l'autre", anneau[0].ID)
 	}
 }

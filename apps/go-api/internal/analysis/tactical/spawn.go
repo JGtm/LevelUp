@@ -22,13 +22,21 @@ package tactical
 // la lecture qui rend vraie la regle produit « sous le plancher, la grappe n'existe pas » :
 // ce qui est rare est un amas rare, pas une cellule rare.
 //
-// # L'IDENTIFIANT EST UNE POSITION, PAS UN RANG
+// # L'IDENTIFIANT EST UNE FORME, PAS UN RANG
 //
 // Un index de tableau change des qu'un match entre dans le filtre — et le lien
 // `?spawn=<id>` d'un utilisateur designerait alors une autre grappe. L'identifiant est donc
-// derive du BARYCENTRE arrondi au decimetre : deux lectures du meme amas rendent le meme
-// identifiant, et deux amas distincts ne peuvent pas le partager (ils sont separes par au
-// moins une cellule vide de 0,5 m, soit cinq decimetres).
+// derive du BARYCENTRE arrondi au decimetre ET du nombre de cellules de l'amas.
+//
+// POURQUOI LE NOMBRE DE CELLULES (revue P2). Le barycentre seul ne distingue PAS deux amas
+// concentriques — un anneau et la cellule qu'il entoure ont le meme centre de masse —, et
+// `amasParID` rendait alors le premier venu. Le compte de cellules les separe, et il ne
+// coute rien.
+//
+// IL EST DETERMINISTE POUR UN JEU DE POINTS DONNE, PAS ETERNEL : un univers qui bouge
+// (periode elargie, session epinglee) peut faire grossir un amas, donc changer son
+// identifiant. C'est assume — le 404 `tactical_spawn_unknown` le dit a l'appelant, qui
+// recharge la liste.
 //
 // PUR : aucune I/O. Les zones nommees sont une ENTREE — c'est le service qui les resout
 // depuis le catalogue de callouts versionne (`analysis/replay`, que ce paquet n'importe
@@ -49,10 +57,12 @@ type PointSpawn struct {
 	X, Y    float64
 }
 
-// ZoneNommee est un callout : un nom de lieu et son point de reference, en metres monde.
+// ZoneNommee est un callout : un nom de lieu (dans les deux langues) et son point de
+// reference, en metres monde.
 type ZoneNommee struct {
-	Nom  string
-	X, Y float64
+	NomFR string
+	NomEN string
+	X, Y  float64
 }
 
 // GrappeSpawn est un amas de reapparitions : la ou le jeu fait naitre les joueurs.
@@ -60,10 +70,11 @@ type GrappeSpawn struct {
 	// ID est stable entre deux lectures du meme amas (cf. l'en-tete). C'est lui que le
 	// filtre `?spawn=` transporte.
 	ID string
-	// Nom est le callout le plus proche du barycentre. VIDE quand la carte n'a aucune zone
-	// nommee au catalogue : on ne fabrique pas de nom de repli — le jeu ne le prononcerait
-	// pas (meme regle que le rendu des zones du rejeu).
-	Nom string
+	// NomFR / NomEN : le callout le plus proche du barycentre, dans chaque langue. VIDES
+	// quand la carte n'a aucune zone nommee au catalogue : on ne fabrique pas de nom de
+	// repli — le jeu ne le prononcerait pas (meme regle que le rendu des zones du rejeu).
+	NomFR string
+	NomEN string
 	// X, Y : le barycentre de l'amas, en metres monde.
 	X, Y float64
 	// Matchs est le nombre de matchs DISTINCTS ayant alimente l'amas — sa solidite.
@@ -105,9 +116,11 @@ func GrappesDeSpawn(g Grille, points []PointSpawn, zones []ZoneNommee) []GrappeS
 			continue
 		}
 		x, y := barycentre(g, comp)
+		z := calloutLePlusProche(zones, x, y)
 		out = append(out, GrappeSpawn{
-			ID:       identifiantDeGrappe(x, y),
-			Nom:      calloutLePlusProche(zones, x, y),
+			ID:       identifiantDeGrappe(x, y, len(comp)),
+			NomFR:    z.NomFR,
+			NomEN:    z.NomEN,
 			X:        x,
 			Y:        y,
 			Matchs:   len(matchs),
@@ -193,28 +206,26 @@ func barycentre(g Grille, comp []Cellule) (x, y float64) {
 	return sx / n, sy / n
 }
 
-// identifiantDeGrappe derive un identifiant STABLE du barycentre, arrondi au decimetre.
-//
-// Deux amas distincts ne peuvent pas le partager : ils sont separes par au moins une
-// cellule vide de 0,5 m, donc leurs barycentres different d'au moins cinq decimetres.
-func identifiantDeGrappe(x, y float64) string {
-	return fmt.Sprintf("s%+06d%+06d", int(math.Round(x*10)), int(math.Round(y*10)))
+// identifiantDeGrappe derive un identifiant du barycentre (au decimetre) ET du nombre de
+// cellules. Cf. l'en-tete pour les deux raisons.
+func identifiantDeGrappe(x, y float64, cellules int) string {
+	return fmt.Sprintf("s%+06d%+06d+c%02d", int(math.Round(x*10)), int(math.Round(y*10)), cellules)
 }
 
-// calloutLePlusProche rend le nom de la zone la plus proche d'un point, en distance 2D.
-// Aucune zone, ou aucune zone nommee : chaine vide — jamais un nom invente.
-func calloutLePlusProche(zones []ZoneNommee, x, y float64) string {
-	meilleur := ""
+// calloutLePlusProche rend la zone la plus proche d'un point, en distance 2D. Aucune zone
+// nommee : zone vide — jamais un nom invente.
+func calloutLePlusProche(zones []ZoneNommee, x, y float64) ZoneNommee {
+	var meilleure ZoneNommee
 	best := math.Inf(1)
 	for _, z := range zones {
-		if z.Nom == "" {
+		if z.NomFR == "" && z.NomEN == "" {
 			continue
 		}
 		if d := math.Hypot(z.X-x, z.Y-y); d < best {
-			best, meilleur = d, z.Nom
+			best, meilleure = d, z
 		}
 	}
-	return meilleur
+	return meilleure
 }
 
 // trierCellulesBrutes ordonne des cellules par colonne puis ligne.

@@ -436,7 +436,9 @@ func TestTacticalHandler_GrappesEtIsolementTraversent(t *testing.T) {
 	svc := &fakeTacticalSvc{raster: domain.TacticalRaster{
 		MapID: "streets", Question: domain.TacticalQuestionIsole, Qui: domain.TacticalQuiMoi,
 		MatchsFiltres: 5, MatchsRetenus: 4, MatchsSansRayon: 1, Isolement: &cov,
-		Grappes: []domain.TacticalGrappe{{ID: "s+1+1", Nom: "Base rouge", X: 1, Y: 1, Matchs: 4}},
+		Grappes: []domain.TacticalGrappe{{
+			ID: "s+1+1+c03", NomFR: "Base rouge", NomEN: "Red base", X: 1, Y: 1, Matchs: 4,
+		}},
 	}}
 	r := newTacticalRouter(tacticalFactory(svc, nil))
 	w := appelPost(t, r, "/players/JGtm/tactical/streets/raster",
@@ -448,7 +450,10 @@ func TestTacticalHandler_GrappesEtIsolementTraversent(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(got.Grappes) != 1 || got.Grappes[0].Nom != "Base rouge" {
+	// LES DEUX LANGUES TRAVERSENT : un nom de lieu vient du catalogue du JEU, et le client
+	// ne peut pas le traduire — n'en servir qu'une figerait la moitie des joueurs sur
+	// l'autre.
+	if len(got.Grappes) != 1 || got.Grappes[0].NomFR != "Base rouge" || got.Grappes[0].NomEN != "Red base" {
 		t.Fatalf("grappes = %+v", got.Grappes)
 	}
 	if got.MatchsSansRayon != 1 {

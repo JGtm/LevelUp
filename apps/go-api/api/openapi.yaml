@@ -25591,7 +25591,9 @@ components:
         matchs:
           format: int64
           type: integer
-        nom:
+        nom_en:
+          type: string
+        nom_fr:
           type: string
         x:
           format: double
@@ -25601,7 +25603,8 @@ components:
           type: number
       required:
         - id
-        - nom
+        - nom_fr
+        - nom_en
         - x
         - "y"
         - matchs
@@ -25713,6 +25716,12 @@ components:
           format: int64
           type: integer
         matchs_victoire:
+          format: int64
+          type: integer
+        morts_indeterminees:
+          format: int64
+          type: integer
+        morts_position_inconnue:
           format: int64
           type: integer
         pas_m:

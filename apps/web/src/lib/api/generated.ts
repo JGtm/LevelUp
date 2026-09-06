@@ -11628,7 +11628,8 @@ export interface components {
             id: string;
             /** Format: int64 */
             matchs: number;
-            nom: string;
+            nom_en: string;
+            nom_fr: string;
             /** Format: double */
             x: number;
             /** Format: double */
@@ -11679,6 +11680,10 @@ export interface components {
             matchs_sans_rayon?: number;
             /** Format: int64 */
             matchs_victoire: number;
+            /** Format: int64 */
+            morts_indeterminees?: number;
+            /** Format: int64 */
+            morts_position_inconnue?: number;
             /** Format: double */
             pas_m: number;
             /** Format: int64 */

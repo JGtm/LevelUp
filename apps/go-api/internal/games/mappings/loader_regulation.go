@@ -112,20 +112,6 @@ func (s *RegulationSet) ScoreTarget(gameVariantName string) (int, bool) {
 	return v, ok
 }
 
-// RadarRangeM retourne la PORTEE DU RADAR de la variante, en metres, et true si elle est
-// connue.
-//
-// nil-safe et variante inconnue → (0, false) : l'appelant N'A PAS DE LECTURE pour ce match
-// et doit le dire (jamais un rayon de repli). C'est ce qui distingue « il est mort
-// accompagne » de « on ne sait pas a quelle distance on se voit sur ce mode ».
-func (s *RegulationSet) RadarRangeM(gameVariantName string) (int, bool) {
-	if s == nil {
-		return 0, false
-	}
-	v, ok := s.radarRange[strings.TrimSpace(gameVariantName)]
-	return v, ok
-}
-
 // RadarRangeMap retourne une COPIE de la table complete, pour le câblage par titre (même
 // forme que RoundsDecideMap).
 func (s *RegulationSet) RadarRangeMap() map[string]int {

@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/migration"
 )
 
 // TestTacticalRepo_MapsPlayed : cartes jouees, comptes et decomposition V/D, dans
@@ -196,22 +197,28 @@ func TestTacticalRepo_TablesAbsentes_Capability(t *testing.T) {
 		t.Fatalf("open shared mem: %v", err)
 	}
 	t.Cleanup(func() { _ = sharedSQL.Close() })
-	// Le strict minimum pour que l'univers se lise : pas de kill_positions, pas de
-	// match_kill_events — exactement la situation d'un titre sans decodeur de film.
-	for _, ddl := range []string{
-		// `game_variant_name` est dans le schema REEL (la portee du radar s'y declare, cf.
-		// regulation.toml) : cette DDL recopiee l'avait manquee, et c'est le piege connu du
-		// depot — une fixture ecrite a la main derive du schema qu'elle est censee doubler.
-		`CREATE TABLE match_registry (match_id VARCHAR, map_id VARCHAR, map_name VARCHAR,
-			map_name_fr VARCHAR, start_time TIMESTAMP, start_time_utc TIMESTAMPTZ,
-			playlist_name VARCHAR, pair_name VARCHAR, game_variant_name VARCHAR)`,
-		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR,
-			team_id INTEGER, outcome INTEGER)`,
-		`INSERT INTO match_registry VALUES ('m1', 'map_streets', 'a', 'a', NULL, NULL, NULL, NULL, 'Slayer:Arena')`,
-		`INSERT INTO match_participants VALUES ('m1', '` + tacXUIDMoi + `', 'moi', 0, 2)`,
+	// LES VRAIES MIGRATIONS, PUIS ON RETIRE CE QU'ON VEUT ABSENT (revue P2). La DDL
+	// recopiee a la main derivait du schema reel — elle avait deja manque
+	// `game_variant_name`, et rien ne le signalait tant qu'aucune requete n'y touchait.
+	// Ici on part du schema LIVRE et on supprime les tables du film : c'est exactement la
+	// situation d'un titre sans decodeur, et elle ne peut plus diverger.
+	_ = migration.All()
+	if err := migration.RunForDB(sharedSQL, migration.TargetShared); err != nil {
+		t.Fatalf("migrations shared: %v", err)
+	}
+	for _, tbl := range []string{"kill_positions", "match_kill_events"} {
+		if _, err := sharedSQL.Exec("DROP TABLE IF EXISTS " + tbl + " CASCADE"); err != nil {
+			t.Fatalf("drop %s: %v", tbl, err)
+		}
+	}
+	for _, ins := range []string{
+		`INSERT INTO match_registry (match_id, map_id, game_variant_name)
+			VALUES ('m1', 'map_streets', 'Slayer:Arena')`,
+		`INSERT INTO match_participants (match_id, xuid, team_id, outcome)
+			VALUES ('m1', '` + tacXUIDMoi + `', 0, 2)`,
 	} {
-		if _, err := sharedSQL.Exec(ddl); err != nil {
-			t.Fatalf("ddl minimale: %v", err)
+		if _, err := sharedSQL.Exec(ins); err != nil {
+			t.Fatalf("seed: %v", err)
 		}
 	}
 	shared := newTestDB(sharedSQL, ":memory:")

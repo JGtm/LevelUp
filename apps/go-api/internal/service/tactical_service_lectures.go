@@ -158,7 +158,9 @@ func grappesDeLUnivers(sidecars map[string]*domain.TacticalRasterSidecar,
 		spawnsDeDepart(sidecars, xuid), zonesPures(zones))
 	out := make([]domain.TacticalGrappe, 0, len(amas))
 	for _, a := range amas {
-		out = append(out, domain.TacticalGrappe{ID: a.ID, Nom: a.Nom, X: a.X, Y: a.Y, Matchs: a.Matchs})
+		out = append(out, domain.TacticalGrappe{
+			ID: a.ID, NomFR: a.NomFR, NomEN: a.NomEN, X: a.X, Y: a.Y, Matchs: a.Matchs,
+		})
 	}
 	return out
 }
@@ -167,7 +169,7 @@ func grappesDeLUnivers(sidecars map[string]*domain.TacticalRasterSidecar,
 func zonesPures(zones []domain.ZoneNommee) []tactical.ZoneNommee {
 	out := make([]tactical.ZoneNommee, 0, len(zones))
 	for _, z := range zones {
-		out = append(out, tactical.ZoneNommee{Nom: z.Nom, X: z.X, Y: z.Y})
+		out = append(out, tactical.ZoneNommee{NomFR: z.NomFR, NomEN: z.NomEN, X: z.X, Y: z.Y})
 	}
 	return out
 }

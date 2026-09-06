@@ -10,10 +10,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/port"
 )
 
 // mockCallouts double le lecteur de zones nommees.
@@ -337,16 +340,23 @@ func grappesFixture() (*mockRasterStore, domain.TacticalUnivers, []string) {
 func TestGrappes_ServiesAvecLaLecture(t *testing.T) {
 	store, univ, ids := grappesFixture()
 	svc := svcIsole(univ, store).WithCalloutsStore(&mockCallouts{zones: []domain.ZoneNommee{
-		{Nom: "Base rouge", X: 0, Y: 0},
-		{Nom: "Base bleue", X: 51, Y: 51},
+		{NomFR: "Base rouge", NomEN: "Red base", X: 0, Y: 0},
+		{NomFR: "Base bleue", NomEN: "Blue base", X: 51, Y: 51},
 	}})
 	out := lireTemps(t, svc, "", ids...)
 	if len(out.Grappes) != 2 {
 		t.Fatalf("grappes = %+v, attendu 2", out.Grappes)
 	}
-	noms := map[string]bool{out.Grappes[0].Nom: true, out.Grappes[1].Nom: true}
+	noms := map[string]bool{out.Grappes[0].NomFR: true, out.Grappes[1].NomFR: true}
 	if !noms["Base rouge"] || !noms["Base bleue"] {
 		t.Fatalf("grappes nommees %v, attendu les deux bases", noms)
+	}
+	// LES DEUX LANGUES VOYAGENT : un nom de lieu vient du catalogue du JEU, et le client ne
+	// peut pas le traduire.
+	for _, g := range out.Grappes {
+		if g.NomEN == "" {
+			t.Fatalf("grappe %s sans nom EN : %+v", g.ID, g)
+		}
 	}
 	for _, g := range out.Grappes {
 		if g.Matchs != 3 {
@@ -557,5 +567,114 @@ func TestFiltreSpawn_SansLecteurDArtefact(t *testing.T) {
 	})
 	if err == nil || err.Error() != games.ErrCapabilityNotSupported.Error() {
 		t.Fatalf("err = %v, attendu ErrCapabilityNotSupported", err)
+	}
+}
+
+// mapsEnErreur double le lecteur d'identites de carte, toujours en echec.
+type mapsEnErreur struct{}
+
+func (mapsEnErreur) MapKeysForMatch(context.Context, string) (port.MatchMapKeys, error) {
+	return port.MatchMapKeys{}, errors.New("shared indisponible")
+}
+func (mapsEnErreur) MapKeysForMap(context.Context, string) (port.MatchMapKeys, error) {
+	return port.MatchMapKeys{}, errors.New("shared indisponible")
+}
+
+// TestCallouts_ErreurNonAvalee — une PANNE de lecture ne doit pas se confondre avec une
+// carte hors catalogue (revue P1-4).
+//
+// Les deux donnent des grappes muettes a l'ecran ; seul le journal les distingue. Le test
+// tient ce qui est verifiable sans lire les logs : la degradation est PROPRE (aucune
+// erreur remontee, la lecture reste servie) et les grappes sortent sans nom.
+func TestCallouts_ErreurNonAvalee(t *testing.T) {
+	store := NewTacticalCalloutsStore(t.TempDir(), "halo_infinite", mapsEnErreur{})
+	if zones := store.ZonesDeLaCarte(context.Background(), "streets"); zones != nil {
+		t.Fatalf("zones = %+v, attendu aucune : la lecture des identites a echoue", zones)
+	}
+	// Et un magasin sans lecteur de cartes degrade pareil, sans paniquer.
+	muet := NewTacticalCalloutsStore(t.TempDir(), "halo_infinite", nil)
+	if zones := muet.ZonesDeLaCarte(context.Background(), "streets"); zones != nil {
+		t.Fatalf("zones = %+v, attendu aucune", zones)
+	}
+}
+
+// TestIsole_UnCoequipierInvisible_RendLaMortIndeterminee — LE DEFAUT P0-1, VU DU SERVICE.
+//
+// L'algorithme a ses propres cas ; ce qui se verifie ICI est la CHAINE COMPLETE : le
+// sidecar porte un statut `inconnu` (coequipier en vehicule non attribue, ou survivant
+// anonyme), le service joint les equipes, et la mort sort du denominateur en se comptant
+// dans `morts_indeterminees` — jamais en « isolee ».
+func TestIsole_UnCoequipierInvisible_RendLaMortIndeterminee(t *testing.T) {
+	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
+		// Le seul coequipier (tsAmi) est INVISIBLE ; l'adversaire, lui, est vu de pres —
+		// et il n'accompagne personne.
+		"m1": sidecarPose("m1", joueurMorts(tsMoi,
+			mortAvec(10, 2, 3, vInconnu(tsAmi), vVu(tsAdv, 2)))),
+	}}
+	svc := svcIsole(universVariantes(map[string]string{"m1": "Slayer:Arena"}), store)
+	out := lireIsole(t, svc, "m1")
+
+	if out.MortsIndeterminees != 1 {
+		t.Fatalf("morts_indeterminees = %d, attendu 1 — un coequipier INVISIBLE n'est pas un "+
+			"coequipier MORT", out.MortsIndeterminees)
+	}
+	if out.Isolement.N != 0 || out.Isolement.Brut != 0 {
+		t.Fatalf("couverture = %+v : la mort ne doit etre ni examinee ni comptee isolee",
+			out.Isolement)
+	}
+	if len(out.Cellules) != 0 {
+		t.Fatalf("cellules = %+v : une mort indeterminee ne se peint pas", out.Cellules)
+	}
+}
+
+// TestIsole_MortSansPosition_NiPeinteNiExaminee — la mort d'un occupant dont le vehicule
+// n'a aucun point : elle a eu lieu, mais le film ne dit pas ou (revue P0-3).
+func TestIsole_MortSansPosition_NiPeinteNiExaminee(t *testing.T) {
+	sansLieu := mortAvec(10, 0, 0, vVu(tsAmi, 40))
+	sansLieu.PositionInconnue = true
+	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
+		"m1": sidecarPose("m1", joueurMorts(tsMoi, sansLieu)),
+	}}
+	svc := svcIsole(universVariantes(map[string]string{"m1": "Slayer:Arena"}), store)
+	out := lireIsole(t, svc, "m1")
+
+	if out.MortsPositionInconnue != 1 {
+		t.Fatalf("morts_position_inconnue = %d, attendu 1", out.MortsPositionInconnue)
+	}
+	if out.Isolement.N != 0 || len(out.Cellules) != 0 {
+		t.Fatalf("sortie = %+v : une mort sans lieu ne se mesure ni ne se peint", out)
+	}
+}
+
+// TestZonesNommees_LesDeuxLanguesEtLeurRepli — LE NOM D'UN LIEU N'EST PAS UNE CHAINE
+// D'INTERFACE (revue P2).
+//
+// Il vient du catalogue du JEU, et le client ne peut pas le traduire : n'en servir qu'une
+// langue figerait la moitie des joueurs sur l'autre. Le repli est PAR LANGUE — chacune
+// retombe sur le nom de CONCEPTION quand son libelle manque (le lexique FR ne couvre pas
+// encore tout le vocabulaire Forge).
+func TestZonesNommees_LesDeuxLanguesEtLeurRepli(t *testing.T) {
+	out := zonesNommees([]replay.CalloutZone{
+		{Name: "design_a", FR: "Base rouge", EN: "Red base", X: 1, Y: 2},
+		{Name: "design_b", EN: "Ramp", X: 3, Y: 4},  // FR manquant
+		{Name: "design_c", FR: "Rampe", X: 5, Y: 6}, // EN manquant
+		{Name: "design_d", X: 7, Y: 8},              // les deux manquants
+		{X: 9, Y: 10},                               // muette des trois cotes
+	})
+	if len(out) != 4 {
+		t.Fatalf("zones = %+v, attendu 4 : la zone muette des TROIS cotes est ecartee", out)
+	}
+	if out[0].NomFR != "Base rouge" || out[0].NomEN != "Red base" {
+		t.Fatalf("zone complete = %+v", out[0])
+	}
+	if out[1].NomFR != "design_b" || out[1].NomEN != "Ramp" {
+		t.Fatalf("FR manquant = %+v, attendu le repli sur le nom de conception POUR LE FR SEUL",
+			out[1])
+	}
+	if out[2].NomFR != "Rampe" || out[2].NomEN != "design_c" {
+		t.Fatalf("EN manquant = %+v, attendu le repli pour l'EN SEUL", out[2])
+	}
+	if out[3].NomFR != "design_d" || out[3].NomEN != "design_d" {
+		t.Fatalf("les deux manquants = %+v, attendu le nom de conception des deux cotes", out[3])
 	}
 }
