@@ -790,3 +790,46 @@ CE QUE LA DERIVATION MESURE EN PLUS, ET QUI N'A RIEN CHANGE : le balayage couvre
 fichiers a contrainte de compilation (`parser.ParseFile` ignore les tags). Aucun paquet
 supplementaire n'en ressort sur l'arbre du jour — les quatre trouves sont exactement les quatre
 que la commande de re-mesure corrigee rend.
+
+## [x] Correction 5 (C5, P2) — deux sorties figees, deux portes de regeneration
+
+Commit `v2(E.fix-5)`. `filmdec/fuzz_records_test.go`, `filmdec/golden_minibobine_test.go`.
+
+LE TROU. Un seul drapeau `-update` (`updateGoldens`) pilotait DEUX sorties figees : le corpus de
+graines du fuzz et le golden des familles. La commande qu'on tape pour regenerer les graines,
+`go test ./internal/analysis/filmdec/ -update` SANS `-run`, reecrivait donc le golden au passage
+avec ce que le decodeur rendait a cet instant — et le paquet repondait `ok`. Le fichier ecrit
+pourtant lui-meme « Un golden ne s'edite JAMAIS a la main. Il ne se regenere qu'apres un changement
+de decodage DECLARE ».
+
+CE QUI EST FAIT. Deux portes NOMMEES, chacune ne regenerant que sa sortie :
+
+| sortie figee | porte | ou |
+|---|---|---|
+| `testdata/fuzz/FuzzFilmRecordReaders/` | `-update` (`updateGrainesFuzz`) | `fuzz_records_test.go` |
+| `testdata/golden_minibobine_familles.tsv` | `-update-golden-familles` (`updateGoldenFamilles`) | `golden_minibobine_test.go` |
+
+La section « REGENERATION » de l'en-tete du golden porte la commande exacte et la note datee qui
+explique le defaut d'avant ; la declaration du drapeau du fuzz porte la sienne.
+
+PREUVE (M11 du verdict, rejouee le 2026-09-06). `br.Skip(2)` -> `br.Skip(3)` dans `readZoomRef`
+(`zoom_events.go:163`, largeur de generation qu'aucun autre test n'epingle), puis la commande
+exacte du constat :
+
+```
+go test ./internal/analysis/filmdec/ -count=1 -p 1 -parallel 1 -update
+  AVANT : ok levelup/go-api/internal/analysis/filmdec 22.527s  + golden REECRIT
+  APRES : FAIL levelup/go-api/internal/analysis/filmdec 3.784s + golden INTACT
+
+go test ./internal/analysis/filmdec/ -run TestGoldenMiniBobineFamilles -update
+  --- FAIL: TestGoldenMiniBobineFamilles
+      famille 26 a change :
+        fige  : zoomEvents 37 d2686333... {TimestampUS:4551203771 Slot:517 Level:1}
+        obtenu: zoomEvents 37 2a1eb1fc... {TimestampUS:4551203771 Slot:517 Level:2}
+
+md5 du golden, avant et apres les deux commandes : e396143919281fde5f92a56d0af03d86 (INCHANGE)
+```
+
+LES DEUX PORTES MARCHENT ENCORE, verifie apres retour de la mutation : `-update-golden-familles`
+reecrit le golden a l'octet pres (meme md5, 35 familles) et `-update` reecrit les 5 graines sans
+rien changer sur disque. Une porte qu'on ferme sans la reverifier est une porte cassee.

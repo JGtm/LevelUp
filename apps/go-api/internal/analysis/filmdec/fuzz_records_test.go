@@ -35,8 +35,18 @@ import (
 	"testing"
 )
 
-var updateGoldens = flag.Bool("update", false,
-	"reecrire les sorties figees de testdata/ (corpus de graines du fuzz, golden des familles)")
+// updateGrainesFuzz est la porte de regeneration DU CORPUS DE GRAINES, et de rien d'autre.
+//
+// IL A PILOTE DEUX SORTIES, ET C'ETAIT UN DEFAUT (correction C5 de la revue E-R1, 2026-09-06).
+// Sous le nom `updateGoldens`, ce drapeau ouvrait AUSSI la reecriture du golden des familles
+// (`golden_minibobine_test.go`) : `go test ./internal/analysis/filmdec/ -update` SANS `-run`
+// reecrivait le golden avec ce que le decodeur rendait a cet instant, et le paquet repondait
+// `ok`. Mesure : avec `br.Skip(2)` -> `br.Skip(3)` dans `readZoomRef`, la commande rendait
+// `ok` et le golden partait avec la valeur derivee. Une porte de regeneration doit nommer CE
+// qu'elle regenere ; le golden des familles a la sienne, `-update-golden-familles`.
+var updateGrainesFuzz = flag.Bool("update", false,
+	"reecrire le corpus de graines du fuzz (testdata/fuzz/) — le golden des familles a sa "+
+		"propre porte, -update-golden-familles")
 
 // fuzzSeedDir est le corpus natif Go : `go test` charge automatiquement les fichiers qui s y
 // trouvent comme graines de la cible du meme nom.
@@ -99,7 +109,7 @@ func FuzzFilmRecordReaders(f *testing.F) {
 // []byte) : c est ce format que le moteur relit, et l ecrire depuis le code plutot qu a la main
 // est ce qui rend le corpus REGENERABLE — un corpus edite a la main est un binaire sans source.
 func TestFuzzSeedsRegenerate(t *testing.T) {
-	if !*updateGoldens {
+	if !*updateGrainesFuzz {
 		t.Skip("regeneration du corpus de graines : passer -update")
 	}
 	seeds, err := collectFuzzSeeds()
