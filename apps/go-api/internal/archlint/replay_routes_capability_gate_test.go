@@ -12,6 +12,25 @@
 // Ce ratchet ferme ce trou-la, et lui seul : il n'exerce aucun comportement HTTP (le test de
 // handler garde ce role), il verifie que le SITE DE MONTAGE porte bien sa porte.
 //
+// # LA REGLE EXACTE : LA PORTE DOIT ETRE POSEE SUR UN ANCETRE DU MONTAGE
+//
+// Premiere version (2026-09-06) : « chercher la porte dans le plus petit bloc englobant »,
+// avec une recherche RECURSIVE dans ce bloc. La seconde ronde de revue (C-R2, defaut N1) l'a
+// prise en defaut DANS LES DEUX SENS, parce que « le plus petit bloc » et « recherche
+// recursive » ne parlent pas de la meme chose :
+//
+//   - FAUX NEGATIF — sortir le montage du groupe gate, en gardant a cote un autre `r.Group`
+//     gate (pour d'autres routes) : la recherche recursive descendait dans ce groupe FRERE et
+//     y trouvait la porte. Quatre routes /replay* de nouveau servies sur halo_5, ratchet vert.
+//   - FAUX POSITIF — montage imbrique dans un sous-groupe, porte posee sur le groupe PARENT :
+//     refuse a tort, alors que chi propage le middleware d'un groupe a ses groupes imbriques
+//     (verifie par sonde en revue).
+//
+// D'ou la regle appliquee ici : on remonte la chaine des blocs qui CONTIENNENT le montage
+// (son bloc, puis le bloc de celui-ci, etc.), et a chaque niveau on cherche la porte SANS
+// descendre dans les fonctions litterales imbriquees — c'est-a-dire sans jamais regarder chez
+// un frere. Un ancetre garde le montage (chi propage) ; un frere, jamais.
+//
 // POURQUOI UN RATCHET ET PAS UN TEST DU ROUTEUR REEL. `mountAPIV1` prend l'integralite des
 // dependances du serveur (registre de services, session, settings, ownership) : le construire
 // exigerait des bases DuckDB et un boot complet. Le cout serait sans commune mesure avec ce
@@ -86,7 +105,7 @@ func TestReplayRoutesMountedUnderCapabilityGate(t *testing.T) {
 		}
 		for _, site := range sitesDeMontageReplay(fichier) {
 			sitesTrouves++
-			if !blocInstalleLaPorte(site.bloc) {
+			if !unAncetreInstalleLaPorte(site.ancetres) {
 				violations = append(violations,
 					rel+":"+strconv.Itoa(fset.Position(site.appel.Pos()).Line))
 			}
@@ -104,8 +123,9 @@ func TestReplayRoutesMountedUnderCapabilityGate(t *testing.T) {
 	}
 
 	for _, v := range violations {
-		t.Errorf("les routes /replay* sont montees SANS porte de titre (%s) : le bloc de montage "+
-			"n'installe pas %s(..., %s). Sans elle, les quatre routes /replay* sont servies par un "+
+		t.Errorf("les routes /replay* sont montees SANS porte de titre (%s) : ni leur bloc de "+
+			"montage ni aucun bloc qui le contient n'installe %s(..., %s). Sans elle, les quatre "+
+			"routes /replay* sont servies par un "+
 			"titre qui n'a aucun decodeur de film (halo_5 est ACTIF en production) : 404 « ce match "+
 			"n'a pas de rejeu » au lieu de 503 « ce titre n'a pas de rejeu ». Remettre "+
 			"`r.Use(middleware.RequireCapability(titleRegistry, titlePkg.%s))` dans le groupe qui "+
@@ -113,17 +133,16 @@ func TestReplayRoutesMountedUnderCapabilityGate(t *testing.T) {
 	}
 }
 
-// siteMontageReplay : un appel a NewReplayHandler et le bloc qui l'englobe.
+// siteMontageReplay : un appel a NewReplayHandler et la CHAINE des blocs qui le contiennent,
+// du plus proche au plus lointain. Ce sont ses ancetres, et eux seuls : aucun frere.
 type siteMontageReplay struct {
-	appel *ast.CallExpr
-	bloc  ast.Node
+	appel    *ast.CallExpr
+	ancetres []*ast.BlockStmt
 }
 
-// sitesDeMontageReplay rend, pour chaque appel a NewReplayHandler, le plus PETIT bloc qui le
-// contient — c'est-a-dire, au montage reel, le corps du `r.Group(func(r chi.Router) { ... })`.
-// Chercher la porte dans ce bloc-la et non dans la fonction entiere est ce qui rend le
-// ratchet exact : un `RequireCapability` pose sur un AUTRE groupe de la meme fonction ne
-// garde pas ces routes.
+// sitesDeMontageReplay rend, pour chaque appel a NewReplayHandler, la chaine de ses blocs
+// englobants — au montage reel : le corps du `r.Group(func(r chi.Router) { ... })`, puis
+// celui de `mountAPIV1`, etc.
 func sitesDeMontageReplay(fichier *ast.File) []siteMontageReplay {
 	var out []siteMontageReplay
 	var pile []ast.Node
@@ -144,16 +163,16 @@ func sitesDeMontageReplay(fichier *ast.File) []siteMontageReplay {
 		if !appelNomme(appel, replayHandlerCtor) {
 			return true
 		}
-		// Le bloc englobant le plus proche, en remontant la pile (le dernier element est
-		// l'appel lui-meme).
-		var bloc ast.Node = fichier
+		// On remonte la pile (le dernier element est l'appel lui-meme) et on retient TOUS les
+		// blocs traverses : ce sont exactement les blocs dont un middleware s'appliquerait au
+		// montage.
+		var ancetres []*ast.BlockStmt
 		for i := len(pile) - 2; i >= 0; i-- {
 			if b, estBloc := pile[i].(*ast.BlockStmt); estBloc {
-				bloc = b
-				break
+				ancetres = append(ancetres, b)
 			}
 		}
-		out = append(out, siteMontageReplay{appel: appel, bloc: bloc})
+		out = append(out, siteMontageReplay{appel: appel, ancetres: ancetres})
 		return true
 	})
 	return out
@@ -170,11 +189,35 @@ func appelNomme(appel *ast.CallExpr, nom string) bool {
 	return false
 }
 
-// blocInstalleLaPorte dit si le bloc contient un appel `RequireCapability(...)` dont l'un des
-// arguments nomme `CapReplay`.
+// unAncetreInstalleLaPorte dit si LA PORTE est posee sur l'un des blocs qui contiennent le
+// montage. Vrai des le premier ancetre qui la porte : chi propage le middleware d'un groupe a
+// tout ce qu'il contient, y compris aux groupes imbriques.
+func unAncetreInstalleLaPorte(ancetres []*ast.BlockStmt) bool {
+	for _, bloc := range ancetres {
+		if blocInstalleLaPorte(bloc) {
+			return true
+		}
+	}
+	return false
+}
+
+// blocInstalleLaPorte dit si CE bloc-ci installe la porte, SANS DESCENDRE dans les fonctions
+// litterales qu'il contient.
+//
+// C'est cette coupure qui distingue un ancetre d'un frere. Un `r.Group(func(r chi.Router){
+// r.Use(RequireCapability(..., CapReplay)); ... })` voisin est, pour l'AST, un `FuncLit` a
+// l'interieur du meme bloc : descendre dedans reviendrait a créditer le montage d'une porte
+// qui ne le garde pas (defaut N1, faux negatif). Les `r.Use(...)` qui gardent reellement un
+// bloc y sont, eux, des instructions DIRECTES.
 func blocInstalleLaPorte(bloc ast.Node) bool {
 	trouve := false
 	ast.Inspect(bloc, func(n ast.Node) bool {
+		if trouve {
+			return false
+		}
+		if _, estFuncLit := n.(*ast.FuncLit); estFuncLit {
+			return false // frontiere : au-dela, c'est un frere (ou un descendant), pas nous
+		}
 		appel, ok := n.(*ast.CallExpr)
 		if !ok || !appelNomme(appel, replayGateCall) {
 			return true
