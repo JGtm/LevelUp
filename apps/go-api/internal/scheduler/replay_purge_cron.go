@@ -31,6 +31,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/replaybuild"
 )
 
 // DefaultReplayPurgeInterval : 1×/jour suffit — la fenêtre est en MOIS.
@@ -153,6 +154,14 @@ func purgeReplayArtifactsForTitle(
 		if e.IsDir() || !strings.HasSuffix(name, ".json") {
 			continue // on ne touche QUE des artefacts {short8}.json
 		}
+		// LA MARQUE DE DÉRIVATION N'EST PAS UN ARTEFACT (constat C6 de la revue A-R1).
+		// `<short8>.derived.json` vit dans le MÊME dossier et finit par `.json` : elle donnait
+		// `short = "<short8>.derived"`, absent du registre, donc `unknown++` — une ligne INFO à
+		// CHAQUE passage dès qu'une dérivation existait, et une marque qui SURVIVAIT à la purge
+		// de son propre artefact. Elle se traite avec lui, plus bas, jamais pour elle-même.
+		if replaybuild.EstMarqueDerivations(name) {
+			continue
+		}
 		short := strings.TrimSuffix(name, ".json")
 		at, ok := dates[short]
 		if !ok || at.IsZero() {
@@ -163,10 +172,17 @@ func purgeReplayArtifactsForTitle(
 			kept++
 			continue
 		}
-		if rmErr := os.Remove(filepath.Join(artifactsDir, name)); rmErr != nil {
+		chemin := filepath.Join(artifactsDir, name)
+		if rmErr := os.Remove(chemin); rmErr != nil {
 			slog.WarnContext(ctx, "replay_purge_cron: suppression échouée",
 				"artifact", name, "err", rmErr)
 			continue
+		}
+		// LA MARQUE SUIT SON ARTEFACT : sans cette ligne elle resterait indéfiniment, à
+		// décrire des dérivations d'un fichier qui n'existe plus.
+		if rmErr := replaybuild.RemoveDerivationsMark(chemin); rmErr != nil {
+			slog.WarnContext(ctx, "replay_purge_cron: marque de dérivation non supprimée",
+				"artifact", name, "err", rmErr)
 		}
 		purged++
 	}
