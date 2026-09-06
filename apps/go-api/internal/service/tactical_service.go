@@ -164,6 +164,19 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 	if s.repo == nil {
 		return out, games.ErrCapabilityNotSupported
 	}
+	// LE FILTRE DE SPAWN S'APPLIQUE AVANT LE DISPATCH, ET C'EST TOUT L'OBJET DE P1-1 : il
+	// restreint la LISTE BLANCHE DE MATCHS, donc il vaut pour les lectures SQL
+	// (morts/kills/gagne) et pour le KPI d'echange autant que pour les lectures d'artefact.
+	// Applique dans la seule branche des sidecars, il rendait 200 sur l'univers ENTIER sous
+	// un libelle de grappe.
+	if scope.Spawn != "" {
+		grappes, ids, err := s.perimetreDuSpawn(ctx, carte, scope)
+		if err != nil {
+			return out, err
+		}
+		out.Grappes = grappes
+		scope.MatchIDs = ids
+	}
 	if lectureDArtefact(question) {
 		// L'OCCUPATION A SA PROPRE PORTE ET SON PROPRE SUBSTRAT (cf.
 		// tactical_service_rasters.go) : elle ne lit pas `kill_positions` du tout, elle

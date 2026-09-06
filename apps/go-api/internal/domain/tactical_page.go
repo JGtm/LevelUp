@@ -52,6 +52,9 @@ type TacticalRaster struct {
 	// MatchsFiltres. Une version intermediaire y avait mis la taille de la liste
 	// blanche recue — toutes cartes confondues —, ce qui donnait deux grandeurs sans
 	// denominateur commun sous des noms qui invitaient a en faire un rapport.
+	// SOUS UN FILTRE `spawn`, C'EST L'UNIVERS DEJA RESTREINT : les matchs dont la premiere
+	// vie du joueur part de la grappe demandee. Ils sont mesures par construction — un
+	// spawn de depart ne se connait que par un sidecar.
 	MatchsFiltres int `json:"matchs_filtres"`
 
 	// MatchsRetenus est le DENOMINATEUR de la lecture : les matchs du filtre dont le

@@ -32,9 +32,17 @@ type mockTacticalRepo struct {
 
 // Univers : la lecture d'OCCUPATION (phase 6) n'a besoin que de l'univers — ses valeurs
 // viennent des sidecars, pas de la base.
+//
+// IL HONORE LA LISTE BLANCHE, et ce n'est pas un detail de double : le vrai lecteur
+// l'applique dans son SELECT, et un mock qui l'ignorait rendait INVISIBLE tout defaut de
+// perimetre — le filtre de spawn a ainsi pu etre servi sur l'univers entier sans qu'aucun
+// test ne rougisse (revue P1-1).
 func (m *mockTacticalRepo) Univers(_ context.Context, q domain.TacticalQuery) (domain.TacticalUnivers, error) {
 	m.vuUniv = q
-	return m.univ, m.errUniv
+	if m.errUniv != nil || !perimetreAFiltrer(q) {
+		return m.univ, m.errUniv
+	}
+	return universFiltre(m.univ, gardeDuPerimetre(q)), nil
 }
 
 func (m *mockTacticalRepo) MapsPlayed(_ context.Context, q domain.TacticalQuery) ([]domain.TacticalMapRow, error) {
@@ -44,10 +52,64 @@ func (m *mockTacticalRepo) MapsPlayed(_ context.Context, q domain.TacticalQuery)
 
 func (m *mockTacticalRepo) KillPositions(_ context.Context, q domain.TacticalQuery) (domain.TacticalPositions, error) {
 	m.vuPos = q
-	return m.pos, m.errPos
+	if m.errPos != nil || !perimetreAFiltrer(q) {
+		return m.pos, m.errPos
+	}
+	garde := gardeDuPerimetre(q)
+	out := domain.TacticalPositions{Univers: universFiltre(m.pos.Univers, garde)}
+	for _, p := range m.pos.Points {
+		if garde[p.MatchID] {
+			out.Points = append(out.Points, p)
+		}
+	}
+	return out, nil
 }
 
 func (m *mockTacticalRepo) KillEvents(_ context.Context, q domain.TacticalQuery) (domain.TacticalKillEvents, error) {
 	m.vuEv = q
-	return m.ev, m.errEv
+	if m.errEv != nil || !perimetreAFiltrer(q) {
+		return m.ev, m.errEv
+	}
+	garde := gardeDuPerimetre(q)
+	out := domain.TacticalKillEvents{Univers: universFiltre(m.ev.Univers, garde)}
+	for _, e := range m.ev.Events {
+		if garde[e.MatchID] {
+			out.Events = append(out.Events, e)
+		}
+	}
+	return out, nil
+}
+
+// perimetreAFiltrer dit si le double doit appliquer la liste blanche.
+//
+// UNE LISTE VIDE N'EST PAS FILTREE PAR CE DOUBLE, et c'est un partage de responsabilite
+// ASSUME, pas un oubli. Le VRAI lecteur traduit « liste vide » par `AND FALSE`, donc par
+// AUCUN match — et c'est teste la ou cela se joue, sur `:memory:`
+// (platform/duckdb/tactical_repo_test.go). Ici, les fixtures posent leur univers a la main
+// et ne passent pas de liste : filtrer les viderait toutes sans rien prouver de plus.
+// Ce que ce double garde, c'est l'autre moitie : une liste NON VIDE est appliquee.
+func perimetreAFiltrer(q domain.TacticalQuery) bool {
+	return q.Matchs.Restreint() && len(q.Matchs.IDs()) > 0
+}
+
+// gardeDuPerimetre / universFiltre : LE DOUBLE APPLIQUE LA LISTE BLANCHE, comme le vrai
+// lecteur le fait dans son SELECT. Un mock qui l'ignore rend INVISIBLE tout defaut de
+// perimetre — c'est ainsi que le filtre de spawn a pu etre servi sur l'univers entier sans
+// qu'aucun test ne rougisse (revue P1-1).
+func gardeDuPerimetre(q domain.TacticalQuery) map[string]bool {
+	out := make(map[string]bool, len(q.Matchs.IDs()))
+	for _, id := range q.Matchs.IDs() {
+		out[id] = true
+	}
+	return out
+}
+
+func universFiltre(u domain.TacticalUnivers, garde map[string]bool) domain.TacticalUnivers {
+	out := domain.TacticalUnivers{Equipes: u.Equipes}
+	for _, m := range u.Matchs {
+		if garde[m.MatchID] {
+			out.Matchs = append(out.Matchs, m)
+		}
+	}
+	return out
 }

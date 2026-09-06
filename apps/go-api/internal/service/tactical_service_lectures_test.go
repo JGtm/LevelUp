@@ -449,3 +449,113 @@ func TestLecturesDArtefact_MemePorte(t *testing.T) {
 		}
 	}
 }
+
+// ─── LE FILTRE DE SPAWN VAUT POUR TOUTES LES LECTURES (revue P1-1) ─────────────
+
+// posEtEvents pose des positions de kill et un journal des morts sur les mêmes matchs, pour
+// que les lectures SQL et le KPI d'échange aient de quoi mesurer.
+func posEtEvents(univ domain.TacticalUnivers) (domain.TacticalPositions, domain.TacticalKillEvents) {
+	pos := domain.TacticalPositions{Univers: univ}
+	ev := domain.TacticalKillEvents{Univers: univ}
+	for _, m := range univ.Matchs {
+		pos.Points = append(pos.Points, domain.TacticalKillPosition{
+			MatchID: m.MatchID, KillerXUID: tsAdv, VictimXUID: tsMoi,
+			KillerX: 9, KillerY: 9, VictimX: 2.25, VictimY: 3.25,
+		})
+		ev.Events = append(ev.Events,
+			domain.KillEvent{MatchID: m.MatchID, VictimXUID: tsMoi, KillerXUID: tsAdv, TimeMs: 10_000},
+			domain.KillEvent{MatchID: m.MatchID, VictimXUID: tsAdv, KillerXUID: tsAmi, TimeMs: 12_000},
+		)
+	}
+	return pos, ev
+}
+
+// TestFiltreSpawn_SappliqueAuxLecturesSQL — LE DEFAUT P1-1.
+//
+// `{"question":"morts","spawn":"s+..."}` rendait 200 sur l'univers ENTIER sous un libelle
+// de grappe : la restriction ne vivait que dans la branche des sidecars. Elle porte
+// desormais sur la LISTE BLANCHE, donc sur tout ce qui en descend.
+func TestFiltreSpawn_SappliqueAuxLecturesSQL(t *testing.T) {
+	store, univ, ids := grappesFixture()
+	pos, ev := posEtEvents(univ)
+	caps := games.CapabilityMap{
+		games.CapFilmReplayArtifact: games.CapSupported,
+		games.CapFilmKillPositions:  games.CapSupported,
+		games.CapFilmKillSource:     games.CapSupported,
+	}
+	repo := &mockTacticalRepo{univ: univ, pos: pos, ev: ev}
+	svc := NewTacticalService(repo, caps, tsMoi).WithRasterStore(store)
+
+	complet, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
+		MapID: "streets", Question: domain.TacticalQuestionMorts, Qui: domain.TacticalQuiMoi,
+		Scope: domain.TacticalScope{MatchIDs: ids},
+	})
+	if err != nil {
+		t.Fatalf("lecture morts: %v", err)
+	}
+	if complet.MatchsFiltres != 6 {
+		t.Fatalf("sans filtre : matchs_filtres = %d, attendu 6", complet.MatchsFiltres)
+	}
+	// Les grappes ne sont PAS calculees hors filtre sur une lecture SQL : elles couteraient
+	// un chargement de sidecars que la lecture n'a pas besoin de faire.
+	grappes := grappesDeLUnivers(store.sidecars, tsMoi, nil)
+	if len(grappes) != 2 {
+		t.Fatalf("grappes = %+v, attendu 2", grappes)
+	}
+
+	restreint, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
+		MapID: "streets", Question: domain.TacticalQuestionMorts, Qui: domain.TacticalQuiMoi,
+		Scope: domain.TacticalScope{MatchIDs: ids, Spawn: grappes[0].ID},
+	})
+	if err != nil {
+		t.Fatalf("lecture morts filtree: %v", err)
+	}
+	if restreint.MatchsFiltres != 3 {
+		t.Fatalf("matchs_filtres = %d, attendu 3 : le filtre de spawn doit valoir pour les "+
+			"lectures SQL aussi", restreint.MatchsFiltres)
+	}
+	// LES GRAPPES SONT SERVIES AVEC, et elles restent les DEUX : la liste que la page
+	// propose ne se reduit pas a la selection courante.
+	if len(restreint.Grappes) != 2 {
+		t.Fatalf("grappes = %+v, attendu 2 sous filtre", restreint.Grappes)
+	}
+	// LE KPI D'ECHANGE SUIT : son denominateur est l'univers RESTREINT.
+	if restreint.Echange == nil {
+		t.Fatal("l'echange n'est pas servi")
+	}
+	if complet.Echange.N != 6 || restreint.Echange.N != 3 {
+		t.Fatalf("morts vengeables : %d sans filtre, %d avec — attendu 6 puis 3 (le KPI "+
+			"recevait le scope NON restreint)", complet.Echange.N, restreint.Echange.N)
+	}
+}
+
+// TestFiltreSpawn_InconnuSurUneLectureSQL — 404 typé, pas une lecture non filtrée.
+func TestFiltreSpawn_InconnuSurUneLectureSQL(t *testing.T) {
+	store, univ, ids := grappesFixture()
+	pos, ev := posEtEvents(univ)
+	repo := &mockTacticalRepo{univ: univ, pos: pos, ev: ev}
+	svc := NewTacticalService(repo, capsOccupation(), tsMoi).WithRasterStore(store)
+	_, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
+		MapID: "streets", Question: domain.TacticalQuestionMorts, Qui: domain.TacticalQuiMoi,
+		Scope: domain.TacticalScope{MatchIDs: ids, Spawn: "s+999999+999999+c01"},
+	})
+	if err == nil || err.Error() != domain.ErrTacticalSpawnInconnu.Error() {
+		t.Fatalf("err = %v, attendu ErrTacticalSpawnInconnu — jamais une lecture non filtree", err)
+	}
+}
+
+// TestFiltreSpawn_SansLecteurDArtefact — un titre qui ne produit pas d'artefact ne peut PAS
+// honorer le filtre : 503, jamais un silence qui servirait l'univers entier.
+func TestFiltreSpawn_SansLecteurDArtefact(t *testing.T) {
+	_, univ, ids := grappesFixture()
+	pos, ev := posEtEvents(univ)
+	repo := &mockTacticalRepo{univ: univ, pos: pos, ev: ev}
+	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
+	_, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
+		MapID: "streets", Question: domain.TacticalQuestionMorts, Qui: domain.TacticalQuiMoi,
+		Scope: domain.TacticalScope{MatchIDs: ids, Spawn: "s+00008+00003+c02"},
+	})
+	if err == nil || err.Error() != games.ErrCapabilityNotSupported.Error() {
+		t.Fatalf("err = %v, attendu ErrCapabilityNotSupported", err)
+	}
+}
