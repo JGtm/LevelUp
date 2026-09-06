@@ -354,6 +354,11 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 	// cuisson, gatées par `film.bomb_stats`. Un cycle sans match d'Assaut n'ouvre aucun
 	// writer — la projection le voit avant, sur le document.
 	persisterStatsBombe(ctx, d, b.usage)
+	// LES RASTERS TACTIQUES, QUATRIEME PROJECTION — mêmes artefacts rangés, même place
+	// (après toute cuisson). La seule qui n'écrit AUCUNE base : son résultat est un
+	// fichier posé à côté de son artefact (cf. raster.go). Elle est gouvernée par la
+	// porte de l'étape elle-même, `film.replay_artifact`, déjà franchie en tête de Run.
+	projeterRastersTactiques(ctx, d, b.usage)
 	publierBilan(ctx, d, b, len(work))
 }
 

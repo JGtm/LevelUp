@@ -3,6 +3,7 @@ package tactical
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	"levelup/go-api/internal/domain"
 )
@@ -157,4 +158,48 @@ func (r *Raster) Bornes() domain.BornesMonde {
 		b = UnionBornes(b, r.grille.BornesDe(c))
 	}
 	return b
+}
+
+// CelluleBrute est une cellule ALIMENTEE d'un raster, avec son compte NON NORMALISE et
+// SANS aucun plancher.
+type CelluleBrute struct {
+	Cellule
+	Occurrences int
+}
+
+// CellulesBrutes rend toutes les cellules alimentees, sans plancher et sans division —
+// la forme qu'on STOCKE, pas celle qu'on affiche.
+//
+// # POURQUOI ELLE EXISTE A COTE DE Cellules()
+//
+// `Cellules()` est la forme de LECTURE : elle applique le plancher de rarete (trois
+// matchs distincts) et la valeur par match. Sur un raster d'UN SEUL match, ce plancher
+// vide tout par construction — une cellule d'un match compte un match distinct. Un
+// sidecar par match ecrit avec `Cellules()` serait donc TOUJOURS vide, et le plancher se
+// serait applique deux fois : une fois a l'ecriture, ou il n'a aucun sens, et une fois a
+// la somme, ou il en a un.
+//
+// LE PLANCHER APPARTIENT A L'AGREGAT, JAMAIS AU MATCH. C'est toute la doctrine du
+// stockage par match : chaque fichier porte une mesure BRUTE et complete, et les regles
+// de lecture (rarete, normalisation, echelle) s'appliquent une seule fois, sur la somme.
+//
+// Trie par colonne puis ligne : la sortie d'un parcours de map est aleatoire, et un
+// sidecar qui change d'octets sans que rien n'ait change se re-ecrirait a chaque passe de
+// rattrapage.
+func (r *Raster) CellulesBrutes() []CelluleBrute {
+	out := make([]CelluleBrute, 0, len(r.cellules))
+	for c, parMatch := range r.cellules {
+		occ := 0
+		for _, n := range parMatch {
+			occ += n
+		}
+		out = append(out, CelluleBrute{Cellule: c, Occurrences: occ})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Col != out[j].Col {
+			return out[i].Col < out[j].Col
+		}
+		return out[i].Lig < out[j].Lig
+	})
+	return out
 }
