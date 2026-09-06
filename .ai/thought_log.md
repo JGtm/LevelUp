@@ -97165,3 +97165,46 @@ découpe par manche des compteurs par joueur (63 assistances créditées à 5 jo
 mort du comparateur `replay-diff` sur les intervalles rognés (invisible à l'axe des comptes).
 Prochaine étape : Notion (re-cuisson du parc 41 → 43, à faire par le superviseur), corpus
 témoin à rejouer à chaque bump de schéma.
+
+## [2026-09-07] P0-2 — la fiche du rejeu ne lit que la vie en cours du slot — Complété
+
+**Contexte.** Constat P0-2 du registre d'audit `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`
+(branche `feat/v2-audit-vies`, cherry-pick `370955a35` sur `feat/v2-web-vies`, worktree
+`LevelUp-wt-v2-web-vies`, base `feat/v75`). `nearestReading` (`rosterLogic.ts`) cherchait « la
+dernière lecture du SLOT » sans borne de vie : sur un slot recyclé (réapparition, remplaçant,
+multi-manche), la fiche affichait les armes/munitions/capacité de la vie PRÉCÉDENTE — parfois
+celles d'un AUTRE joueur — sous une infobulle qui affirmait « Lu il y a X s ».
+
+**Décision technique.** `currentLifeOf` (nouvelle fonction, `rosterLogic.ts`) — jumelle de
+`lifeOfSlotAt` (`features/match-replay/model/livesPosition.ts`) non importable depuis `lib/`
+(sens unique du dépôt) — désigne la vie qui couvre `(slot, frame)` par balayage direct de
+`doc.tracks`. `nearestReading` prend cette fenêtre en 4e paramètre et n'admet plus aucun
+échantillon hors de ses bornes. `loadoutAt`/`abilityAt`/`inventoryAt`/`grenadeReadingAt`
+s'abstiennent sans vie couvrante. Site frère corrigé de même : `refineAbilityReading`
+(`changeRefine.ts`, 5e paramètre `lifeStart`) et `lastFullBefore` (`inventoryReading.ts`).
+Décision produit reçue EN COURS de lot (2026-09-06, ferme) : « une vie est un humain ou un bot,
+jamais une entité anonyme » (nommage corrigé à la source côté Go, autre lot) — le repli sur
+absence de lecture n'affiche donc aucun mot « inconnu », seulement un état neutre (« pas encore
+de lecture », `abilityUnread`/`ammoUnread`, i18n FR/EN), gardé par la présence documentaire de
+l'axe (même doctrine que `VitalityPresence`) pour ne pas afficher une lacune permanente sur un
+artefact qui ne le porte jamais.
+
+**Résultats.** Tests par mutation sur les quatre consommateurs (`loadoutAt`, `abilityAt`,
+`inventoryAt`, `grenadeReadingAt`) et sur `refineAbilityReading` : deux vies sur un slot,
+lecture dans la vie 1, instant dans la vie 2 → `null`, vérifié ROUGE en neutralisant
+temporairement la borne puis VERT restaurée. Tous les appelants de production recensés par grep
+(`equippedLogic.ts`, `ReplayAbilityCell.tsx`, `ReplayInventoryRow.tsx`, `ReplayTeams.tsx`) —
+aucun ne contourne, signatures publiques inchangées. Régression détectée et corrigée avant
+commit : le nouveau repli affichait un glyphe même sur un artefact sans axe ability/inventory
+(`ReplayTeams.test.tsx` « colonne muette », `equippedLogic.test.ts`), fermée par la garde de
+présence documentaire. Gates : `tsc --noEmit` propre, `eslint src/lib/replay
+src/features/match-replay` 0 erreur (8 warnings préexistants hors périmètre), `vitest run
+src/lib/replay` 9/203 verts, `vitest run src/lib/replay src/features/match-replay` 170/2529
+verts. Commit `61fb96a60`.
+
+**Conclusion / prochaine étape.** Hors périmètre, noté et non traité : `drawnSwapAt`
+(`equippedLogic.ts`) partage le même patron non borné (détection de bascule du sélecteur
+d'emplacement) mais n'est ni nommé par l'audit ni un « report de dernière lecture » au même
+sens — impact visuel mineur (animation), à signaler si un futur audit du même axe l'atteint.
+P1-9 (dessin des vies anonymes) reste en attente d'une décision utilisateur, non traité. Détail
+complet : `.ai/V7.5/v2/WEB_VIES_2026-09-06.md`. Registre d'audit mis à jour (ligne d'état P0-2).

@@ -134,6 +134,20 @@ pistes anonymes par slot.
   prémisse. (3) `rosterLogic.guard.test.ts` ne garde que l'unicité d'écriture du repli, pas sa
   justesse. (4) `refineWeaponsReading` ne rattrape rien : il refuse les prises sur emplacement
   vide (`changeRefine.ts:31`), c'est-à-dire exactement le cas du spawn.
+- **État — CORRIGÉ, branche `feat/v2-web-vies`, commit `61fb96a60`** (2026-09-06/07).
+  `nearestReading` prend désormais la fenêtre de la vie couvrante (`currentLifeOf`, jumelle de
+  `lifeOfSlotAt` pour `lib/replay/` qui ne peut pas importer `features/`) et ne considère plus
+  que les lectures dans ses bornes ; `loadoutAt`/`abilityAt`/`inventoryAt`/`grenadeReadingAt`
+  s'abstiennent sans vie couvrante. Site frère `refineAbilityReading` (`changeRefine.ts`) et
+  `lastFullBefore` (`inventoryReading.ts`) bornés de même. Tests par mutation (deux vies sur un
+  slot recyclé, lecture dans la vie 1, instant dans la vie 2 → `null`) vérifiés rouges en
+  neutralisant temporairement la borne, verts restaurée. Décision produit du 2026-09-06 reçue
+  en cours de lot : « une vie est un humain ou un bot, jamais une entité anonyme » (le nommage
+  se corrige à la source côté Go, hors de ce lot web) — le repli sur absence de lecture
+  n'affiche donc AUCUN mot « inconnu », seulement un état neutre (« pas encore de lecture »,
+  `abilityUnread`/`ammoUnread`), gardé par la présence documentaire de l'axe (`doc.abilities` /
+  `doc.inventory`) pour ne pas afficher une lacune permanente sur un artefact qui ne le porte
+  jamais. Détail : `.ai/V7.5/v2/WEB_VIES_2026-09-06.md`.
 
 ### [P1-1] `dropUnpublishedActions` supprime une action d'objectif VRAIE et IDENTIFIÉE parce qu'aucune piste ne porte le nom de son auteur — et la classe « sans trajectoire publiée »
 
