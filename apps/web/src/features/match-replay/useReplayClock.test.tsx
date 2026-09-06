@@ -29,41 +29,41 @@ const WINDOW: ReplayWindowBounds = {
   endMs: 50_000,
 }
 
-function mount(playWindow: ReplayWindowBounds | null, onFrameChange: (f: number) => void) {
-  return renderHook(() => useReplayClock({ doc: DOC, playWindow, onFrameChange })).result.current
+function mount(playWindow: ReplayWindowBounds | null, publish: (f: number) => void) {
+  return renderHook(() => useReplayClock({ doc: DOC, playWindow, publish })).result.current
 }
 
 describe('useReplayClock — la publication de l’image', () => {
   it('bride le flux : deux images coup sur coup ne publient qu’une fois', () => {
-    const onFrameChange = vi.fn()
-    const { tick } = mount(WINDOW, onFrameChange)
+    const publish = vi.fn()
+    const { tick } = mount(WINDOW, publish)
     tick(100)
     tick(101)
-    expect(onFrameChange).toHaveBeenCalledTimes(1)
-    expect(onFrameChange).toHaveBeenCalledWith(100)
+    expect(publish).toHaveBeenCalledTimes(1)
+    expect(publish).toHaveBeenCalledWith(100)
   })
 
   it('publie la BORNE DE FIN sans attendre le bridage (l’écran de fin en dépend)', () => {
-    const onFrameChange = vi.fn()
-    const { tick } = mount(WINDOW, onFrameChange)
+    const publish = vi.fn()
+    const { tick } = mount(WINDOW, publish)
     tick(100)
     tick(WINDOW.endFrame)
-    expect(onFrameChange).toHaveBeenLastCalledWith(WINDOW.endFrame)
+    expect(publish).toHaveBeenLastCalledWith(WINDOW.endFrame)
   })
 
   it('publie aussi AU-DELÀ de la borne (frise tirée au bout)', () => {
-    const onFrameChange = vi.fn()
-    const { tick } = mount(WINDOW, onFrameChange)
+    const publish = vi.fn()
+    const { tick } = mount(WINDOW, publish)
     tick(100)
     tick(WINDOW.endFrame + 20)
-    expect(onFrameChange).toHaveBeenLastCalledWith(WINDOW.endFrame + 20)
+    expect(publish).toHaveBeenLastCalledWith(WINDOW.endFrame + 20)
   })
 
   it('sans fenêtre, aucune image n’échappe au bridage : il n’y a pas de borne à annoncer', () => {
-    const onFrameChange = vi.fn()
-    const { tick } = mount(null, onFrameChange)
+    const publish = vi.fn()
+    const { tick } = mount(null, publish)
     tick(100)
     tick(599)
-    expect(onFrameChange).toHaveBeenCalledTimes(1)
+    expect(publish).toHaveBeenCalledTimes(1)
   })
 })

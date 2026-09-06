@@ -30,6 +30,7 @@ import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { CalloutZoneReady } from './calloutsLayer'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
+import type { PlaybackStore } from './model/playbackStore'
 import { ReplayTransport } from './ReplayTransport'
 import { ReplayZoomControl } from './ReplayZoomControl'
 import { useTeamCascades } from './useTeamCascades'
@@ -106,8 +107,11 @@ interface ReplayCanvasProps {
    * sans origine, en-tête sans durée jouable) : le film se lit entier, comme avant.
    */
   playWindow: ReplayWindowBounds | null
-  /** Appelé à cadence réduite avec l'image courante : sert aux panneaux hors canvas. */
-  onFrameChange?: (frame: number) => void
+  /**
+   * LE MAGASIN DE LECTURE (`model/playbackStore`) : le canvas y ECRIT la position, tout le
+   * reste de la page l'y LIT. C'est la seule representation de « quelle image on regarde ».
+   */
+  playbackStore: PlaybackStore
   /**
    * Fond de carte figé. Absent = pas d'image CALÉE pour cette carte, et le rejeu retombe sur
    * le sol reconstruit. C'est une LACUNE, pas un mode : `map_structure` ne contient que DEUX
@@ -153,7 +157,7 @@ interface ReplayCanvasProps {
 }
 
 export function ReplayCanvas({
-  doc, locale, playWindow, onFrameChange, background, callouts, scoreboard, xuidMeta, marks,
+  doc, locale, playWindow, playbackStore, background, callouts, scoreboard, xuidMeta, marks,
   endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
 }: ReplayCanvasProps) {
   // LES KILLS VIENNENT DU FIL, DÉJÀ RECALÉS (2026-09-05, J2) : la carte et la piste sonore
@@ -163,9 +167,12 @@ export function ReplayCanvas({
   const feedKills = useMemo(() => killsOfFeed(feedEntries), [feedEntries])
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  // LA CELLULE DE DESSIN : la boucle l'avance a la cadence de l'ecran et les calques
+  // survolables la lisent sans rendu. C'est la SOURCE de la position ; ce que la page qui
+  // entoure le canvas en voit passe par `playbackStore.publish` (cf. model/playbackStore).
   const frameRef = useRef(0)
   // L'HORLOGE AFFICHÉE et la publication bridée vivent dans useReplayClock (dixième extraction).
-  const { clockRef, tick: clockTick } = useReplayClock({ doc, playWindow, onFrameChange })
+  const { clockRef, tick: clockTick } = useReplayClock({ doc, playWindow, publish: playbackStore.publish })
 
   // CE QUE L'ÉCRAN OFFRE (useReplayViewport) ; ce que la carte en retient, c'est useReplayView.
   const { width, freeHeight } = useReplayViewport(containerRef, canvasRef)
