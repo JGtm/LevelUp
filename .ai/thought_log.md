@@ -95457,3 +95457,49 @@ Surveillance CI ARRETEE sur consigne du superviseur (quota API) avant la fin du 
 6 jobs verts au dernier releve dont le lint repare, 2 encore en cours (Frontend, Coverage).
 Prochaine etape : verification CI par le superviseur, revue adversariale, puis integration
 dans `feat/v75` (le lot C est le premier de l'ordre d'integration).
+
+## [2026-09-06] Lot C v2 — corrections apres revue adversariale — Complété
+
+**Contexte.** Revue adversariale C-R1 du lot C (capabilities du rejeu) : 21 conditions
+tiennent et le comportement livre est le bon, mais TROIS PORTES n'avaient aucun test qui
+morde et la fixture censee prouver la finesse des cles ne prouvait rien. Le relecteur l'a
+etabli par mutation : retirer la porte des routes `/replay*` du montage reel, basculer ou
+supprimer les cles `film.*` du titre synthetique, retirer l'une quelconque des trois portes
+de colonne — tout restait vert. S'y ajoutaient deux defauts d'interface sur halo_5 (un flash
+de carte, un filtre invisible mais actif) et une condition du lot qui ne tenait pas (deux
+requetes de film emises malgre l'absence de capability).
+
+**Decision technique.** Chaque correction est prouvee par la mutation du verdict, rouge puis
+vert — c'est le contrat que je me suis donne, et il a servi : la premiere version du test de
+colonne comptait 23 colonnes au lieu de 19 parce que les deux rendus compares differaient
+aussi par `team_mmr` et `waypoint_match_url`. Les portes se testent LA OU ELLES VIVENT : un
+ratchet AST pour le montage reel des routes (`mountAPIV1` prend tout le serveur, le
+construire coûterait des bases DuckDB pour ne rien prouver de plus), un fichier de test par
+niveau pour la fixture (contenu du TOML asserte a la main, semantique de `Has`, portes
+reelles exercees AVEC ce titre), un fichier propre a `MatchReplayLink` dont les deux portes
+se couvraient mutuellement. Deux choix de conception : `useTitleDataCapabilities` rend TROIS
+etats (`loading`/`known`/`error`) au lieu d'une map nullable qui confondait « pas encore » et
+« jamais » — fail-CLOSED pendant le chargement, fail-open sur erreur ; et la prop
+`FeatureGate.dataCapability`, sans aucun appelant de production, est RETIREE plutot que dotee
+d'un appelant de circonstance (regle n°7).
+
+**Resultats.** 8 corrections, 8 commits (`f0c357585`, `a715f2031`, `0e5cf2e96`, `33d27ee35`,
+`bc551762b`, `406396856`, `86227ab4b`, + journal). Mutations rejouees : M5 rouge (montage des
+routes), M3/M4 rouges sur 3 paquets (fixture), M8/M9/M10 rouges chacune sur SA porte
+(colonnes), « fail-open pendant loading » 4 tests rouges (flash), neutralisation retiree
+(filtre), « toujours INFO » 2 assertions rouges (bruit de journal), garde `enabled` retiree
+(requetes). Gates : Go du lot + integration API + integration replayartifacts verts avec
+`-count=1` (obligatoire : le cache `go test` ne voit pas les mutations de `config/titles/**`),
+`go build` OK, ratchet golangci-lint 0 issue, `make generate-types` sans diff, typecheck et
+lint web exit 0, vitest ciblé 128 fichiers / 1109 tests, vitest COMPLET 593 fichiers / 6257
+tests verts. Le refus de production passe en INFO au premier refus par titre puis DEBUG
+(halo_5 est actif et n'aura jamais la cle : c'etait du bruit permanent).
+
+**Conclusion / prochaine etape.** La condition « sur halo_5, aucune requete de film n'est
+emise » tient enfin, et la decouverte n°1 du journal est corrigee : la carte de chaleur ne
+montrait PAS de bloc vide (`return null` sur liste vide), le residu se reduisait aux deux
+requetes — desormais gatees. Une decouverte de gate consignee, hors perimetre : le filet Go
+COMPLET fait tomber `mapcatalog.TestAddEntryConcurrentNePerdPasDEntree`, flake de contention
+(vert 3/3 en isolation, verrou de fichier a 2 s sature par la suite entiere ; paquet du lot A,
+la CI joue `-p 1`). Prochaine etape : ronde 2 de la revue sur ces corrections, puis
+integration dans `feat/v75`.
