@@ -4785,6 +4785,8 @@ export interface components {
             slots: number;
             /** Format: int64 */
             unnamedLives: number;
+            /** Format: int64 */
+            unnamedLivesContested: number;
         };
         BucketInfo: {
             label: string;

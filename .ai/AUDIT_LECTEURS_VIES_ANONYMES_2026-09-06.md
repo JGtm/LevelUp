@@ -84,7 +84,7 @@ piste sous l'identité résolue de son slot ».
 | **P2-1** à **P2-5** | **NON TRAITÉS** — au registre des reports (zéro fix hors périmètre) | — |
 | Résidu `carrierPresence.gate` | **CONFIRMÉ et CORRIGÉ** — l'exemption « déjà rattrapé » ne le couvrait pas ; `unionOverlap` | `skull_carries.go` |
 | Résidu `usage_summary.go` | **CONFIRMÉ et CORRIGÉ** — l'exemption ne le couvrait pas ; la vie sans nom occupe son slot avec un xuid vide ; `UsageSummaryRev` us3 | `usage_summary.go` |
-| **P0-0** (AJOUTÉ, hors audit) | **LIVRÉ** — nommage final par l'occupation du slot dans le temps ; 305 → 200 vies sans nom sur 9 témoins ; résidu publié (`bridge.unnamedLives`) et alarmé | `unnamed_lives.go` |
+| **P0-0** (AJOUTÉ, hors audit) | **LIVRÉ** — nommage final par l'occupation du slot dans le temps ; 305 → 201 vies sans nom sur 9 témoins ; résidu publié (`bridge.unnamedLives`) et alarmé | `unnamed_lives.go` |
 
 Journal d'exécution : `.ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md`.
 

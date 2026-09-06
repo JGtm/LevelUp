@@ -82,20 +82,22 @@ Comparaison par `cmd/replay-diff`, axe des durées inclus.
 
 Neuf témoins cuits des deux côtés. « Sans nom » = piste publiée sans `xuid` ET sans `bot`.
 
-| témoin | pistes | sans nom AVANT | sans nom APRÈS | par vie préc. | par vie suiv. | par le pont |
-|---|---|---|---|---|---|---|
-| `1b2d9e08` (bots) | 94 | 3 | **0** | 0 | 3 | 0 |
-| `bf15f7ab` (slayer) | 91 | 9 | **1** | 0 | 8 | 0 |
-| `af13e2b2` (zones) | 53 | 14 | **6** | 0 | 8 | 0 |
-| `d9781168` (oddball) | 174 | 32 | **19** | 0 | 13 | 0 |
-| `084a804d` (véhicules) | 344 | 142 | **79** | 10 | 52 | 0 |
-| `3372e7eb` (objectifs) | 42 | 10 | **8** | 0 | 2 | 0 |
-| `7344d24f` (zones) | 123 | 6 | **5** | 0 | 1 | 0 |
-| `696a9d7c` (zones) | 110 | 3 | **3** | 0 | 0 | 0 |
-| `51ebbc0f` (2 manches) | 86 | 75 | **73** | 0 | 2 | 0 |
-| `000d5950` (golden) | 104 | 11 | **6** | — | — | — |
+| témoin | pistes | sans nom AVANT | sans nom APRÈS | par vie préc. | par vie suiv. | par le pont | frontières indécidables |
+|---|---|---|---|---|---|---|---|
+| `1b2d9e08` (bots) | 94 | 3 | **0** | 0 | 3 | 0 | 0 |
+| `bf15f7ab` (slayer) | 91 | 9 | **1** | 0 | 8 | 0 | 0 |
+| `af13e2b2` (zones) | 53 | 14 | **6** | 0 | 8 | 0 | 0 |
+| `d9781168` (oddball) | 174 | 32 | **19** | 0 | 13 | 0 | 0 |
+| `084a804d` (véhicules) | 344 | 142 | **80** | 9 | 52 | 0 | **1** |
+| `3372e7eb` (objectifs) | 42 | 10 | **8** | 0 | 2 | 0 | 0 |
+| `7344d24f` (zones) | 123 | 6 | **5** | 0 | 1 | 0 | 0 |
+| `696a9d7c` (zones) | 110 | 3 | **3** | 0 | 0 | 0 | 0 |
+| `51ebbc0f` (2 manches) | 86 | 75 | **73** | 0 | 2 | 0 | 0 |
+| `000d5950` (golden) | 104 | 11 | **6** | — | — | — | — |
 
-**Total sur les témoins : 305 vies sans nom → 200.** 105 réparées, aucune inventée.
+**Total sur les témoins : 305 vies sans nom → 201.** 104 réparées, **aucune inventée** — et la
+seule frontière indécidable du corpus (`084a804d` slot 734) est refusée ET comptée plutôt que
+tranchée au hasard, cf. le complément ci-dessous.
 
 ### Les causes, sur pièces
 
@@ -113,7 +115,7 @@ Neuf témoins cuits des deux côtés. « Sans nom » = piste publiée sans `xuid
    n'a presque rien à quoi s'accrocher — 73 restent. **Ce n'est pas un défaut de la passe, c'est
    un défaut du pont EN AMONT**, et il est porté au registre des reports comme fait à instruire
    pour lui-même.
-4. **`084a804d`** garde 79 vies sans nom sur 344 : c'est un film à 344 pistes pour 201 slots au
+4. **`084a804d`** garde 80 vies sans nom sur 344 : c'est un film à 344 pistes pour 201 slots au
    pont, dont beaucoup de vies très courtes de slots jamais nommés. Même famille que (2).
 
 ### Le correctif
@@ -152,8 +154,51 @@ de présence — sous son xuid, car c'est bien sa présence à lui, ET parmi les
 l'absence de personne. **Une déduction ajoute une présence, elle n'en retire jamais une.** Les
 indices des pistes déduites voyagent dans `unnamedLivesReport.deduced`.
 
+### Le complément : une frontière entre deux occupants ne se tranche pas au hasard
+
+Signalé par la revue du lot des durées, **vérifié sur pièces et corrigé** : `ownersFromLives`
+(`lives.go`) publiait un slot en COLLISION sous le nom de son **PREMIER occupant nommé**, par
+ordre des vies, et `SlotCollisions` n'en était qu'un TOTAL de match — aucun consommateur ne
+pouvait savoir QUEL slot était concerné. Les marques de portage, les ramassages, les frags sous
+équipement actif et les calques d'objectif héritaient donc d'un nom arbitraire sur ces slots.
+
+**Le témoin, sur pièces** : `084a804d` slot 734 — A `2535430265968559` `[5872..6981]`, une vie non
+résolue `[7123..7158]`, B `2535456423427614` `[7457..7591]`. La première version de la passe
+nommait la vie du milieu à **A**, par la règle « l'occupant précédent ». C'est un choix par
+l'ORDRE, pas par le temps : rien dans le film ne dit de quel côté de la relève elle tombe.
+
+Trois corrections, à la source :
+
+1. **`ownersFromLives` MARQUE le slot** (`OwnerReport.SlotAmbiguous`) au lieu de seulement
+   compter ; `SlotCollisions` en devient le cardinal.
+2. **Le repli par le pont s'abstient sur un slot ambigu**, dans les deux lecteurs qui l'emploient
+   (`OwnerReport.xuidAt` et la passe de nommage) : servir `SlotXUID` à un instant que sa vie ne
+   couvre pas publierait le nom arbitraire.
+3. **La frontière est REFUSÉE et COMPTÉE** : quand la vie tombe entre deux vies nommées
+   d'occupants DIFFÉRENTS, `occupantContested` — publié sous `bridge.unnamedLivesContested`.
+   Ce qui pourrait la dater serait une SUCCESSION, mais `attributeSuccessions` a déjà couru et ne
+   date que les relèves de BOT ; une relève entre deux humains n'est datée par rien de disponible
+   ici. C'est écrit au code plutôt que deviné.
+
+**Mesure après correction** : slot 734 laisse sa vie du milieu **sans nom**, et `084a804d` publie
+`unnamedLives: 80` dont `unnamedLivesContested: 1`, `slotCollisions: 3` — les 3 slots à
+plusieurs occupants sont désormais MARQUÉS, là où seul leur nombre était publié.
+
+**Ce que cela déplace, et c'est une correction, pas une perte** : la ride du slot 734
+`[7158..7384]` (227 frames, elle commence exactement à la fin de la vie non résolue) était
+créditée à **A** par le pont ; elle sort désormais **sans occupant**. Elle reste PUBLIÉE — 74
+rides des deux côtés, et le contrat le prévoit explicitement (« l'épisode reste publié — le
+véhicule EST occupé, c'est son occupant qui est inconnu ») —, et ses 227 frames réapparaissent au
+grain du slot (`rides/duree-totale/par-slot/734`). `ridesNamed` fait le bilan : 51 → **52** (+2
+par la résolution dans le temps de P1-7, −1 par cette abstention honnête).
+
 ### Mutations
 
+- `TestUneFrontiereEntreDeuxOccupantsNeSeTranchePasAuHASARD` — rouge sans le refus : la vie prend
+  l'identité de A sans preuve. **Contre-épreuves** :
+  `TestUneFrontiereEntreDEUXVIESDuMemeJoueurSeTrancheBien` (deux vies du MÊME joueur ne créent
+  aucune ambiguïté) et `TestLePontNeSertPasDeRepliSurUnSlotAMBIGU` (le repli joue toujours sur un
+  slot non ambigu).
 - `TestUneVieNommableParLeTempsNeResteJamaisSansNom` — rouge sans la voie par le temps.
 - `TestLeTempsTRANCHEEntreDeuxOccupantsDunMemeSlot` — rouge : `SlotXUID` dirait 111, le temps dit 222.
 - `TestUneVieAnterieureAuPremierDecesPrendLOccupantSUIVANT` — rouge (voie b).
@@ -318,14 +363,14 @@ Neuf films, les deux côtés cuits par le même outil, seul le code diffère.
 | `7344d24f` | zones (Vagabond) | 5 | **0** | 4 | 669 |
 | `af13e2b2` | zones (Origin) | 19 | **0** | 3 | 578 |
 | `3372e7eb` | objectifs (Isolation) | 7 | **0** | 2 | 624 |
-| `084a804d` | véhicules (Fortitude) | 68 | **4** (instruites ci-dessous) | 4 | 987 |
+| `084a804d` | véhicules (Fortitude) | 68 | **6** (instruites ci-dessous) | 6 | 987 |
 | `1b2d9e08` | bots (Dynasty) | 9 | **0** | 1 | 581 |
 | `bf15f7ab` | slayer (Perilous) — non concerné | 13 | **0** | 2 | 578 |
 | `d9781168` | oddball (Dredge) | 15 | **0** | 2 | 589 |
 | `51ebbc0f` | deux manches | 5 | **0** | 2 | 588 |
-| **total** | | **142** | **4** | 23 | |
+| **total** | | **142** | **6** | 25 | |
 
-### Les quatre lignes de `084a804d`, instruites une par une — toutes sont des GAINS
+### Les six lignes de `084a804d`, instruites une par une — aucune n'est une perte
 
 | ligne | lecture | contre-partie |
 |---|---|---|
@@ -333,9 +378,11 @@ Neuf films, les deux côtés cuits par le même outil, seul le code diffère.
 | `coverage.shots.noSlot` 2785 → 2768 | 17 tirs de moins sans slot | `shots.attached` 3193 → **3204** (+11) et `shots.ambiguous` 36 → 42 (+6) — somme exacte |
 | `coverage.vehicles.shotsNoRide` 2785 → 2768 | miroir du précédent | `vehicles.shots` 290 → **295**, `shotsVehicleWeapon` 27 → **32** |
 | `coverage.t0Film.burst` 21 → 20 | un partant de moins dans la rafale | **déduplication** : `t0FilmMs` = 44910 et `marginMs` = 22600 **identiques des deux côtés** — deux pistes comptées séparément partagent désormais une identité. Le verdict du coup d'envoi ne bouge pas. |
-| `vehicles.rides/duree-totale/par-slot/590` 282 → *(disparue)* | la ride quitte le seau NON ATTRIBUÉ | `par-xuid/2535467063146739` 171 → **453** (+282 exactement), `ridesNamed` 51 → **53** (P1-7) |
+| `vehicles.rides/duree-totale/par-slot/590` 282 → *(disparue)* | la ride quitte le seau NON ATTRIBUÉ | `par-xuid/2535467063146739` 171 → **453** (+282 exactement) (P1-7) |
+| `vehicles.rides/par-xuid/2535430265968559` 5 → 4 et sa durée 794 → 567 | la ride du slot 734 n'est plus créditée à A par un nom ARBITRAIRE du pont | elle reste PUBLIÉE (74 rides des deux côtés) et ses 227 frames réapparaissent en `par-slot/734` — **correction**, cf. le complément de P0-0 ci-dessus. Bilan : `ridesNamed` 51 → **52** |
 
-**Aucune perte réelle sur les neuf témoins.** Le témoin non concerné (`bf15f7ab`, slayer) ne perd
+**Aucune perte réelle sur les neuf témoins** : quatre lignes sont des gains lus à l'envers, et
+les deux dernières sont une attribution ARBITRAIRE retirée. Le témoin non concerné (`bf15f7ab`, slayer) ne perd
 rien et gagne 13 mesures, toutes de nommage.
 
 ### Oracles

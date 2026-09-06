@@ -105,9 +105,9 @@ func TestOwnersFromLivesRefusesToPickOnCollision(t *testing.T) {
 		{slot: 512, from: 0, to: 1_000_000, xuid: 111},
 		{slot: 512, from: 10_000_000, to: 11_000_000, xuid: 222},
 	}
-	owners, byXUID, collisions := ownersFromLives(lives, map[uint64]int{111: 0, 222: 1})
-	if collisions != 1 {
-		t.Errorf("attendu 1 collision comptee, obtenu %d", collisions)
+	owners, byXUID, ambigus := ownersFromLives(lives, map[uint64]int{111: 0, 222: 1})
+	if len(ambigus) != 1 || !ambigus[512] {
+		t.Errorf("attendu le slot 512 MARQUE ambigu, obtenu %v", ambigus)
 	}
 	if _, published := owners[512]; !published {
 		t.Errorf("la premiere lecture doit rester ; seule la contradictoire est ecartee")

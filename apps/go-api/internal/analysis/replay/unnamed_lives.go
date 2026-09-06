@@ -59,6 +59,10 @@ type unnamedLivesReport struct {
 	byPrevious, byNext, byBridge int
 	// remaining : vies qu'aucune des trois voies n'a nommées. C'est le résidu publié.
 	remaining int
+	// contested : la part du résidu qui tombe sur une FRONTIÈRE entre deux occupants nommés
+	// différents, que rien ne date. Comptée à part parce qu'elle n'appelle pas le même
+	// chantier : ici l'identité n'est pas absente, elle est INDÉCIDABLE en l'état des pièces.
+	contested int
 	// deduced : les INDICES, dans `doc.Tracks`, des pistes que cette passe a nommées.
 	//
 	// POURQUOI ILS VOYAGENT. Leur identité est une DÉDUCTION, pas une lecture : elle établit
@@ -80,7 +84,7 @@ func (r unnamedLivesReport) total() int {
 // Les pistes de BOT ne sont pas touchées : `Track.Bot` EST une identité (un bot n'a pas de
 // xuid — contrat de `Track.Bot`, document.go).
 func nameRemainingLives(tracks []Track, lives []lifeSpan, slotXUID map[uint32]uint64,
-	origin, step uint64) unnamedLivesReport {
+	ambigus map[uint32]bool, origin, step uint64) unnamedLivesReport {
 	rep := unnamedLivesReport{deduced: map[int]bool{}}
 	named := namedLivesBySlot(lives)
 	for i := range tracks {
@@ -88,7 +92,8 @@ func nameRemainingLives(tracks []Track, lives []lifeSpan, slotXUID map[uint32]ui
 			continue
 		}
 		from, to := trackSpanUS(tracks[i], origin, step)
-		xuid, cause := slotOccupantAround(named[tracks[i].Slot], from, to, slotXUID, tracks[i].Slot)
+		xuid, cause := slotOccupantAround(named[tracks[i].Slot], from, to,
+			bridgeOfSlot(slotXUID, ambigus, tracks[i].Slot))
 		switch cause {
 		case occupantPrevious:
 			tracks[i].XUID, rep.byPrevious = xuid, rep.byPrevious+1
@@ -99,6 +104,8 @@ func nameRemainingLives(tracks []Track, lives []lifeSpan, slotXUID map[uint32]ui
 		case occupantBridge:
 			tracks[i].XUID, rep.byBridge = xuid, rep.byBridge+1
 			rep.deduced[i] = true
+		case occupantContested:
+			rep.contested, rep.remaining = rep.contested+1, rep.remaining+1
 		case occupantNone:
 			rep.remaining++
 		}
@@ -114,7 +121,25 @@ const (
 	occupantPrevious
 	occupantNext
 	occupantBridge
+	// occupantContested : la vie tombe ENTRE deux vies nommées d'occupants DIFFÉRENTS, et rien
+	// ne date la frontière. On refuse, et on compte.
+	occupantContested
 )
+
+// bridgeOfSlot rend le xuid que le pont donne à ce slot — vide si le slot est AMBIGU.
+//
+// Le pont garde le PREMIER occupant nommé d'un slot que deux joueurs se partagent : le servir
+// ici publierait un nom arbitraire sur une vie que la lecture n'a pas nommée. C'est la même
+// abstention que `OwnerReport.xuidAt`, et pour la même raison.
+func bridgeOfSlot(slotXUID map[uint32]uint64, ambigus map[uint32]bool, slot uint32) string {
+	if ambigus[slot] {
+		return ""
+	}
+	if x, ok := slotXUID[slot]; ok && x != 0 {
+		return strconv.FormatUint(x, 10)
+	}
+	return ""
+}
 
 // slotOccupantAround rend le joueur qui occupait ce slot autour de [fromUS, toUS].
 //
@@ -122,7 +147,7 @@ const (
 // vie nommée qui PRÉCÈDE, puis celle qui SUIT, puis le pont par slot. Chacune est bornée au MÊME
 // slot : on ne traverse jamais la frontière d'un slot pour nommer une vie.
 func slotOccupantAround(named []lifeSpan, fromUS, toUS int64,
-	slotXUID map[uint32]uint64, slot uint32) (string, occupantCause) {
+	pont string) (string, occupantCause) {
 	var prev, next *lifeSpan
 	for i := range named {
 		l := &named[i]
@@ -137,14 +162,25 @@ func slotOccupantAround(named []lifeSpan, fromUS, toUS int64,
 			}
 		}
 	}
+	// UNE FRONTIÈRE ENTRE DEUX OCCUPANTS NE SE TRANCHE PAS AU HASARD (2026-09-07). Quand la vie
+	// tombe ENTRE deux vies nommées de joueurs DIFFÉRENTS, « la précédente » n'est pas une
+	// preuve : c'est un choix par l'ordre, exactement ce que le pont fait déjà et que ce fichier
+	// existe pour corriger. Mesuré sur `084a804d` slot 734 — A `[5872..6981]`, la vie non
+	// résolue `[7123..7158]`, B `[7457..7591]` : rien dans le film ne dit de quel côté de la
+	// relève elle tombe. Ce qui pourrait la dater, ce serait une SUCCESSION (l'instant de
+	// bascule lu dans la base) — mais `attributeSuccessions` a déjà couru, et il ne date que les
+	// relèves de BOT ; une relève entre deux humains n'est datée par rien de disponible ici. On
+	// refuse donc, et on compte.
 	switch {
+	case prev != nil && next != nil && prev.xuid != next.xuid:
+		return "", occupantContested
 	case prev != nil:
 		return strconv.FormatUint(prev.xuid, 10), occupantPrevious
 	case next != nil:
 		return strconv.FormatUint(next.xuid, 10), occupantNext
 	}
-	if x, ok := slotXUID[slot]; ok && x != 0 {
-		return strconv.FormatUint(x, 10), occupantBridge
+	if pont != "" {
+		return pont, occupantBridge
 	}
 	return "", occupantNone
 }
@@ -178,7 +214,8 @@ func logUnnamedLives(matchID string, tracks []Track, rep unnamedLivesReport) {
 	if rep.total() > 0 {
 		slog.Info("rejeu : nommage final des vies restantes",
 			"match_id", matchID, "traitees", rep.total(), "parViePrecedente", rep.byPrevious,
-			"parVieSuivante", rep.byNext, "parPont", rep.byBridge, "residu", rep.remaining)
+			"parVieSuivante", rep.byNext, "parPont", rep.byBridge, "residu", rep.remaining,
+			"frontieresIndecidables", rep.contested)
 	}
 	if rep.remaining == 0 {
 		return
