@@ -450,3 +450,70 @@ func TestFlagCarriesVieAnonymeSansPontResteEcartee(t *testing.T) {
 		})
 	}
 }
+
+// TestFlagCarriesSlotPartageRefuseLeRepli — LA GARDE DU CONSTAT C1 (revue DUREES-R1). Le pont
+// canonique NE REFUSE PAS un slot que deux joueurs se partagent : `ownersFromLives` compte la
+// collision puis `continue`, et le PREMIER nomme reste publie dans `SlotXUID`. Preter les vies
+// ANONYMES d'un tel slot au joueur que le pont designe reviendrait a dessiner un portage a la
+// position d'un autre — un resultat FAUX la ou l'ancien code rendait un resultat ABSENT.
+//
+// Declenchement mesure au parc : `084a804d` slot 734 — `[5872..6981]` nommee A, `[7123..7158]`
+// ANONYME, `[7457..7591]` nommee B ; 9 artefacts sur 106 portent au moins un slot en collision.
+func TestFlagCarriesSlotPartageRefuseLeRepli(t *testing.T) {
+	const porteur, autre = "2535429985869093", "2533274823110022"
+	// Le slot 536 est partage : A, puis une vie ANONYME, puis B. Le pont nomme A.
+	tracks := []Track{
+		flagTestTrack(536, porteur, 0, 40, 30, 40),
+		flagTestTrack(536, "", 60, 99, 30, 40), // la vie ambigue : elle couvre la prise
+		flagTestTrack(536, autre, 100, 120, 30, 40),
+	}
+	scan := FlagCarryScan{
+		Scanned: true, Signals: flagTestSignals(),
+		Events: []objectiveevents.NamedEvent{
+			{TimeMS: 7000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+			{TimeMS: 9000, Slot: 12, Stat: objectiveevents.StatFlagCaptures},
+		},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: porteur}),
+		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
+	}
+	ctx := flagTestCtx(tracks, nil, 130)
+	ctx.slotXUID = map[uint32]uint64{536: 2535429985869093}
+
+	_, cov := buildFlagCarries(scan, ctx)
+	if cov.Carries != 0 || cov.NoTrack != 1 {
+		t.Errorf("couverture %+v : attendu 0 portage et 1 sansPiste — deux joueurs se partagent "+
+			"le slot 536, la vie anonyme n'appartient a personne", *cov)
+	}
+	if cov.AmbiguousSlot != 1 {
+		t.Errorf("ambiguousSlot = %d, attendu 1 — le refus doit se COMPTER, sinon un portage "+
+			"manquant faute d'identite est indistinguable d'un portage qui n'a jamais eu lieu",
+			cov.AmbiguousSlot)
+	}
+}
+
+// TestFlagCarriesSlotNonPartageAccepteEtNeCompteRien — la CONTRE-EPREUVE de la garde ci-dessus :
+// le meme slot avec UN SEUL occupant nomme prete bien sa vie anonyme, et ne compte aucun refus.
+func TestFlagCarriesSlotNonPartageAccepteEtNeCompteRien(t *testing.T) {
+	const porteur = "2535429985869093"
+	tracks := []Track{
+		flagTestTrack(536, porteur, 0, 40, 30, 40),
+		flagTestTrack(536, "", 60, 99, 30, 40),
+	}
+	scan := FlagCarryScan{
+		Scanned: true, Signals: flagTestSignals(),
+		Events: []objectiveevents.NamedEvent{
+			{TimeMS: 7000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+			{TimeMS: 9000, Slot: 12, Stat: objectiveevents.StatFlagCaptures},
+		},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: porteur}),
+		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
+	}
+	ctx := flagTestCtx(tracks, nil, 130)
+	ctx.slotXUID = map[uint32]uint64{536: 2535429985869093}
+
+	_, cov := buildFlagCarries(scan, ctx)
+	if cov.Carries != 1 || cov.NoTrack != 0 || cov.AmbiguousSlot != 0 {
+		t.Errorf("couverture %+v : attendu 1 portage, 0 sansPiste, 0 slot ambigu — un seul "+
+			"occupant nomme ne contredit pas le pont", *cov)
+	}
+}
