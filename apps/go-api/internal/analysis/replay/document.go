@@ -841,7 +841,7 @@ package replay
 // La version monte pour la raison des montées v39 à v43 : un artefact 1 à 43 d'un film
 // multi-manche porte des compteurs gonflés sans que sa forme le dise, et `backfill-replay` saute
 // un artefact à la version courante. Détail :
-// internal/analysis/objectiveevents/round_windows.go et .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
+// internal/analysis/objectiveevents/round_bounds.go et .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
 const SchemaVersion = 44
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.

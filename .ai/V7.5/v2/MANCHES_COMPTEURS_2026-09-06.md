@@ -117,7 +117,7 @@ Aucun des deux ne verifiait cette supposition. C'est ce que le relecteur a vu.
 
 ## 3. Le correctif, a la source
 
-### 3.1 Les bornes de manche (`objectiveevents/round_windows.go`, nouveau)
+### 3.1 Les bornes de manche (`objectiveevents/round_bounds.go`, nouveau)
 
 **La regle** : les manches se jouent dans l'ordre ; une manche occupe un intervalle de temps ; un
 enregistrement date hors de l'intervalle de la manche qu'il declare n'en est pas.

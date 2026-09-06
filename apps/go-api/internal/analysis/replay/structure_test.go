@@ -866,7 +866,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact 1 à 43 d'un film multi-manche porte des compteurs
 	//   gonflés sans que sa forme le dise, et `backfill-replay` saute un artefact à la version
 	//   courante.
-	//   Détail : internal/analysis/objectiveevents/round_windows.go et
+	//   Détail : internal/analysis/objectiveevents/round_bounds.go et
 	//   .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
 	if SchemaVersion != 44 {
 		t.Fatalf("SchemaVersion = %d, attendu 44 : incrémenter exige une raison écrite ci-dessus "+
