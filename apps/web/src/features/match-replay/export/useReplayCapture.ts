@@ -42,12 +42,12 @@ import {
   isVideoTypeSupported,
   pickVideoMimeType,
 } from './replayRecording'
-import { frameToMs } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import { frameToMs } from '../replayLogic'
+import type { ReplayDocumentReady } from '../replayNormalize'
 import { useReplayExport, type ReplayExport, type ReplayExportOptions } from './useReplayExport'
 import type { ExportOutcome } from './exportOverlayPanels'
-import type { ReplayWindowBounds } from './replayWindow'
-import type { ReplayLocale } from './i18n/i18n'
+import type { ReplayWindowBounds } from '../replayWindow'
+import type { ReplayLocale } from '../i18n/i18n'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
