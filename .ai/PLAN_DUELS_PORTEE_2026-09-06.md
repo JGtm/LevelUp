@@ -858,39 +858,206 @@ source versionnée `.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`, à ou
 DEUX bâtons par ligne (frags en haut, morts en bas), même axe — l'utilisateur a demandé la
 fusion des deux graphes jumeaux. C'est la référence de rendu du lot.
 
-- [ ] 5.1 `features/synthesis/_weaponRangeChart.ts` — logique PURE, testée hors composant.
+**Exécuté le 2026-09-06** sur la branche `feat/duels-lot5` (worktree `LevelUp-wt-duels-lot5`).
+Tous les items sont statués. DEUX CONSIGNES DU PILOTE sont arrivées en cours de lot et sont
+intégrées : (a) l'état vide « toutes les armes sous le seuil » — la section reste, les graphes
+cèdent la place à leur raison ; (b) le passage de `delta_median_m` / `closing_share_pct` / `n`
+dans un sous-objet OPTIONNEL `opening.delta`.
+
+- [x] 5.1 `features/synthesis/_weaponRangeChart.ts` — logique PURE, testée hors composant.
       Série ECharts `custom` (`renderItem`) : par ligne, deux rectangles arrondis p10->p90
       (hauteur 7 px, écart 4 px, décalés de part et d'autre du centre de bande) et un losange
-      sur chaque médiane. POURQUOI `custom` ET PAS bar+scatter comme `_killDistanceChart.ts` :
-      sur un axe de catégories un `scatter` ne se décale pas d'un demi-bâton, le losange
-      tomberait entre les deux bâtons. Bande de 34 px par ligne (`48 + 34 × n`). Tri par
-      médiane de frags croissante ; une arme mesurée d'un seul côté n'a qu'un bâton, l'infobulle
-      dit « aucune mesure » pour l'autre. Libellé de ligne « Arme ×frags/morts ».
-- [ ] 5.2 `_weaponElevationChart.ts` — deux barres empilées 100 % par ligne (piles `frags` et
-      `morts`, `barGap` 55 %), trois segments d'en haut / à niveau / d'en bas ; MÊMES catégories
-      et MÊME ordre que la portée ; pourcentage inscrit dans le segment à partir de 18 %.
-      Couleurs : une seule teinte du clair (`chart-series-1`, d'en bas) au foncé
-      (`chart-series-3`, d'en haut), `muted-foreground` à niveau — la couleur ne juge pas.
-- [ ] 5.3 `SynthesisWeaponRangeSection.tsx` (`SectionCard`) : bandeau « Portée par arme — mes
-      frags et mes morts » + compte ; sous-titre + légende HTML (deux entrées, position ET
-      libellé) ; graphe de portée ; sous-titre + légende ; graphe de dénivelé ; ligne « Sous le
-      seuil de 8 mesures — frags : … · morts : … » ; note de couverture ; `<details>` « Voir en
-      tableau » (les deux côtés). Au-dessus, quatre `AccentCard` : médiane frags, médiane morts,
-      distance d'entame, entame -> frag (avec la part de frags où la distance se ferme). Aucune
-      logique métier dans le composant.
-- [ ] 5.4 Strings FR **et** EN dans `i18n.ts` (parité typée `Record<Locale, T>`). FR sans
-      anglicismes : « portée », « portée basse / haute », « frags mesurés », « d'en haut »,
-      « à niveau », « d'en bas », « distance d'entame ».
-- [ ] 5.5 Zéro hex, zéro classe Tailwind couleur ; tokens sémantiques uniquement. Query key
-      dans `lib/query/keys.ts`. Montage dans `SynthesisPage.tsx` à côté de
-      `SynthesisWeaponAccuracyChart`, gate `useCapability('weapon_range')`.
-- [ ] 5.6 Tests : logique de projection (`_weaponRangeChart.test.ts`, `_weaponElevationChart.test.ts`),
-      rendu de la section avec et sans données, état « sous seuil ».
+      sur chaque médiane. Bande de 34 px (`48 + 34 × n`). Une arme mesurée d'un seul côté n'a
+      qu'un bâton, l'infobulle dit « aucune mesure ».
+      FAIT — LE TRI N'EST PAS REJOUÉ CÔTÉ FRONT : il vient du backend (`mergeWeaponSides`,
+      médiane des frags croissante) et la projection le CONSERVE ; l'axe Y est simplement lu à
+      l'envers au montage (ECharts empile du bas vers le haut), comme `_killDistanceChart.ts`.
+      Deux tris du même fait divergeraient au premier changement de doctrine.
+      Le libellé de ligne écrit TOUJOURS les deux effectifs (`Arme ×281/402`, `Arme ×64/—`) :
+      « ×39 » seul ne dirait pas QUEL côté manque. `weaponRangeAxisMax` rend une borne COMMUNE
+      aux deux côtés (plus grand p90, arrondi aux 5 m, plancher 5 m) — un axe par côté rendrait
+      les deux bâtons d'une ligne incomparables, c'est-à-dire l'inverse de ce que la fusion
+      demandée par l'utilisateur cherchait.
+- [x] 5.2 `_weaponElevationChart.ts` — deux barres empilées 100 % par ligne (piles `kills` et
+      `deaths`, `barGap` 55 %), trois segments d'en haut / à niveau / d'en bas ; MÊMES
+      catégories et MÊME ordre que la portée ; pourcentage inscrit à partir de 18 %.
+      FAIT — un test pince l'égalité des catégories AVEC celles du graphe de portée (les deux
+      options sont construites côte à côte et comparées) plutôt que de les redire à la main.
+      Un côté absent rend une barre VIDE (trois zéros), jamais un segment inventé. Couleurs :
+      `chart-series-3` d'en haut, `chart-series-1` d'en bas, et le gris des libellés d'axe
+      (`tc.axisLabel` = `--muted-foreground`) à niveau — vérifié sur pièces, `muted-foreground`
+      n'est PAS un `SemanticToken` (`semantic-tokens.ts`), il n'a donc pas de `resolveToken` ;
+      la pastille HTML correspondante emprunte la classe sémantique `bg-muted-foreground`,
+      la MÊME encre.
+- [x] 5.3 `SynthesisWeaponRangeSection.tsx` (`SectionCard`) : bandeau + compte ; sous-titre +
+      légende HTML ; graphe de portée ; sous-titre + légende ; graphe de dénivelé ; ligne
+      « Sous le seuil de 8 mesures — frags : … · morts : … » ; note de couverture ; `<details>`
+      « Voir en tableau ». Au-dessus, quatre `AccentCard`. Aucune logique métier dans le composant.
+      FAIT — le composant ne calcule RIEN : projection et options dans `_weaponRange*.ts`,
+      décisions de lecture dans `weaponRange_logic.ts`, formateurs et traducteur typé dans
+      `weaponRangeText.ts`, tableau dans `SynthesisWeaponRangeTable.tsx` — ce découpage tient
+      les seuils du dépôt (fichier <= 500 L, fonction <= 80 L), il n'est pas cosmétique.
+      DEUX ÉCARTS ASSUMÉS À LA MAQUETTE, tous deux issus de consignes du pilote reçues pendant
+      le lot : (a) `weapons: []` avec des compteurs non nuls est un cas NOMINAL (toutes les
+      armes sous le seuil) — la section reste, les tuiles et la ligne « sous le seuil » restent,
+      et à la place des deux graphes une phrase FR/EN dit pourquoi ; le `<details>` disparaît
+      (il n'aurait aucune ligne à redire). Seule l'ABSENCE de bloc retire la section.
+      (b) La tuile « Entame -> frag » suit `opening.delta` et non `opening` : une entame
+      mesurée sans frag apparié n'a pas de delta, et un zéro dirait « la distance ne bouge pas ».
+      `AccentCard` et `SectionSubtitle` ont été DÉPLACÉS de `SynthesisPage.tsx` vers
+      `SynthesisCards.tsx` (aucun changement de rendu ; `AccentCard` gagne un `sub?` optionnel
+      pour porter le dénominateur) : les recopier aurait fait deux gabarits pour la même chose
+      dans la même page, et l'import inverse aurait fermé un cycle.
+- [x] 5.4 Strings FR **et** EN, parité typée. FR sans anglicismes.
+      FAIT — 34 clés `synthesis.weapon_range.*` dans le manifest `synthesis.toml` (jamais un
+      `i18n.ts` : la Synthèse est une page à manifest), régénérées par
+      `node apps/web/scripts/build_i18n_manifests.mjs` — le script ÉCHOUE sur une clé sans `fr`
+      ou sans `en`, la parité est donc tenue par le build et non par relecture.
+      Formats par `Intl.NumberFormat` sur `intlLocale(locale)` : distances « 7,4 m » / « 7.4 m »,
+      delta signé (`signDisplay: 'exceptZero'` — le signe DIT que la distance se ferme), et
+      pourcentages en `style: 'percent'`, qui place l'espace insécable du français et le colle
+      en anglais sans qu'aucune string ne porte l'unité.
+- [x] 5.5 Zéro hex, zéro classe Tailwind couleur ; query key ; montage + gate capability ;
+      retrait de `weapon_range` de `orphanCapabilityAllowlist`.
+      FAIT — grep hex et grep classes Tailwind couleur VIDES sur `features/synthesis/` hors
+      fichiers de test (où les hex sont des sentinelles qui prouvent le CHEMIN d'une couleur,
+      pas un choix de teinte). AUCUNE query key ajoutée, vérifié sur pièces : la section lit
+      `data.weapon_range` de la réponse Synthèse DÉJÀ chargée (`useSynthesisPage`) — une seconde
+      requête aurait rechargé le même scope pour deux médianes.
+      L'entrée `weapon_range` de `orphanCapabilityAllowlist` est SUPPRIMÉE dans le même commit
+      que le montage ; MUTATION PROUVÉE ROUGE (entrée réintroduite ->
+      `TestOrphanCapabilityAllowlistIsCurrent` : « exception périmée, la retirer »), puis
+      restaurée. `go test ./internal/domain/title/...` vert.
+- [x] 5.6 Tests : projection, rendu avec et sans données, état « sous seuil ».
+      FAIT — 4 fichiers, 46 tests : `_weaponRangeChart.test.ts` (projection, libellé de ligne,
+      hauteur, borne d'axe, géométrie EXACTE du `renderItem` contre une API factice, un seul
+      côté, bâton plancher de 2 px, infobulle et échappement HTML d'un nom d'arme hostile),
+      `_weaponElevationChart.test.ts` (six séries, catégories identiques à la portée, barre vide
+      d'un côté absent, seuil d'inscription à 18 %), `weaponRange_logic.test.ts` (dont le repli
+      EN sans `label_en` sur la CLÉ, jamais le libellé français), et
+      `SynthesisWeaponRangeSection.test.tsx` (nominal, tuiles avec dénominateurs, légendes
+      position + libellé, seuil nommé des deux côtés, tableau et ses tirets, entame sans delta,
+      sans entame du tout, un seul côté sous le seuil, TOUTES les armes sous le seuil, bloc
+      absent, locale EN).
 
 **Gate** : `Remove-Item -Recurse -Force apps/web/node_modules/.tmp ; make check-types && make test-web`
 — lot WEB : aucun `go test` ici. Si le lot devait toucher au Go (il ne le doit pas), toute
 commande visant `./internal/platform/duckdb/` porterait `-tags=integration -p 1`.
 
+Gates réellement exécutés le 2026-09-06 (worktree `LevelUp-wt-duels-lot5` ; `npm ci` a dû être
+lancé d'abord — ce worktree n'avait aucun `node_modules`), code de retour vérifié à chaque fois :
+
+- `npm run typecheck` (après purge de `node_modules/.tmp`) -> RC 0.
+- `npm run lint` -> RC 0, **0 erreur** / 28 warnings, tous PRÉEXISTANTS (aucun ne porte sur un
+  fichier de ce lot — vérifié par grep sur les chemins).
+- `npm test -- --run` -> 593 fichiers, 6 271 tests, RC 0.
+- `npm run lint:fields` (`tools/lint-no-hardcoded-fields.mjs`) -> « aucune violation », RC 0.
+- grep hex `#RRGGBB` sur `apps/web/src/features/synthesis/` hors tests -> VIDE ; grep des
+  classes Tailwind de couleur -> VIDE.
+- `cd apps/go-api && CGO_ENABLED=0 GOCACHE=<worktree>/.gocache-lot5 go test -count=1
+  ./internal/domain/title/...` -> `ok`, RC 0 ; `gofmt -l internal/domain/title/` -> vide.
+
+Aucun `go test` sur `platform/duckdb` : ce lot ne touche au Go que par la SUPPRESSION d'une
+entrée d'allowlist dans `capabilities_parity_test.go`.
+
+
+### Revue adversariale — ronde 1 (2026-09-06, branche `feat/duels-lot5-fix`)
+
+Deux relecteurs à contexte frais (front, puis tests) ; quatorze constats retenus par le
+pilote, tous corrigés dans ce lot. Worktree `LevelUp-wt-duels-fix5`. Chaque correctif de
+comportement porte sa MUTATION PROUVÉE ROUGE, puis restaurée (liste en fin de bloc).
+
+- [x] F1 **Une tuile de portée ne s'affiche que si son côté est mesuré** (doctrine D5).
+      Le service ne retire le bloc que si AUCUN des deux côtés n'a de frag mesuré ; un scope
+      « morts seulement » arrive donc avec `median_kills_m: 0, measured_kills: 0` et la tuile
+      affichait « 0,0 m » en gros — le zéro-qui-se-lit-comme-une-mesure que le lot interdit
+      déjà pour l'entame. `SynthesisWeaponRangeSection.tsx` : chaque tuile est conditionnée à
+      `measured_kills > 0` / `measured_deaths > 0`. Deux tests (un par côté vide), dont
+      l'assertion « aucun 0,0 m dans le DOM ».
+- [x] F2 **`cssColorToHex` — la couleur « à niveau » normalisée par le NAVIGATEUR.**
+      `--muted-foreground` est un `oklch(...)` : le canvas le peint, mais `zrender.lift()`
+      (emphase au survol) le passe à un parseur qui ne connaît pas oklch et rend `undefined`
+      — le segment perdait son remplissage au survol. Nouveau module
+      `lib/echarts/cssColorToHex.ts` (aller-retour `fillStyle` sur un contexte 2D, technique
+      de la maquette), 7 tests, repli = valeur d'entrée sans `document`/canvas (jsdom rend
+      `null` : vérifié par sonde). DOUBLE SENTINELLE plutôt que la seule de la maquette : une
+      couleur invalide sortait en noir, elle sort maintenant inchangée. `getEChartsThemeColors`
+      n'est PAS étendue (appelants nombreux) — le même piège ailleurs va aux « Découvertes ».
+- [x] F3 **`buildWeaponRangeOption` repassée sous le seuil de 80 lignes** (107 -> 67) :
+      `makeRangeRenderItem` (49 L) et `rangeTooltipSideLine` (12 L) extraits au niveau module.
+      Aucun changement de rendu — les 16 tests de `_weaponRangeChart.test.ts` sont verts
+      INCHANGÉS, c'est le critère.
+- [x] F4 **Deux légendes, deux noms accessibles.** Les deux `<ul>` portaient la même clé
+      `legend_label` (« Légende ») ; la maquette distingue « Légende » et « Légende du
+      dénivelé ». Clé `synthesis.weapon_range.legend_elevation_label` (FR + EN), manifest
+      régénéré. Test : les deux listes se trouvent par leur nom accessible.
+- [x] F5 **L'emphase du libellé suit la maquette.** `LegendItem` gagne `emphasis?: boolean` :
+      la légende de portée met ses deux noms en avant (ils portent une position entre
+      parenthèses), celle du dénivelé rend ses trois classes NUES dans le gris secondaire.
+- [x] F6 **`<table>` natif CONSERVÉ, exemption datée écrite dans l'en-tête du fichier**
+      (arbitrage du pilote). Le skill `frontend-patterns` tolère le natif « < 10 lignes, pas
+      de tri » et ce tableau peut dépasser dix armes ; il n'a en revanche AUCUNE des
+      interactions que la règle vise, et son ordre est celui du graphe qu'il redit — un tri
+      TanStack contredirait la lecture « du contact à la longue portée ». Critère de
+      réouverture écrit : la première interaction ajoutée.
+- [x] F7 **Le CÂBLAGE de la section vers ECharts est enfin testé** (constat structurel).
+      `useWeaponRangeOptions` s'exécutait pendant les tests de composant sans que son résultat
+      soit jamais inspecté : échanger les encres, les libellés d'infobulle ou passer
+      `tc.axisLabel` là où `tc.card` est attendu laissait tout vert. Nouveau fichier
+      `SynthesisWeaponRangeSection.options.test.tsx` (8 tests) : la prop `option` réellement
+      passée à `echarts-for-react` est capturée, la palette d'accessibilité est APPLIQUÉE
+      (sans quoi `resolveToken` rend la chaîne vide et deux couleurs échangées restent
+      égales), et le `renderItem` est exécuté contre une API factice. Couvre les six points
+      (a)-(f) : encres des deux bâtons, libellés d'infobulle, encres du dénivelé, `cardColor`,
+      hauteur `48 + 34 × n`, série non vide.
+- [x] F8 **Les pastilles du dénivelé portent l'encre de leur classe** — assertion sur la
+      couleur de fond dans le DOM (« d'en haut » = `chart-series-3`, « d'en bas » =
+      `chart-series-1`, « à niveau » = la classe sémantique `bg-muted-foreground`, sans style
+      inline).
+- [x] F9 **Les tuiles de portée assertent leur VALEUR**, pas seulement leur libellé et leur
+      dénominateur (« 7,4 m » côté frags, « 11,8 m » côté morts).
+- [x] F10 **Le montage de la section est testé au niveau de la page.** `weaponRange={undefined}`
+      dans `SynthesisPage.tsx` laissait toute la suite verte alors que la section ne se
+      monterait jamais en prod. Trois tests sur `SynthesisPage` (fixture MSW réémise enrichie
+      d'un bloc — `synthesisFixture` est exportée pour cela) : bloc servi + capability active
+      -> région présente ; sans bloc -> absente ; sans la capability du titre -> absente.
+- [x] F11 **Le signe + d'une entame qui ÉLOIGNE** : aucune fixture n'avait de delta positif,
+      `signDisplay: 'exceptZero'` n'était donc pincé que du côté négatif.
+- [x] F12 **Une DISTANCE en locale EN** (« 7.4 m ») : le test anglais n'assertait que des
+      libellés et des effectifs, un formateur figé sur `fr-FR` y passait.
+- [x] F13 **L'ordre des en-têtes de groupe du tableau** (« Mes frags » au-dessus des six
+      premières colonnes, « Mes morts » ensuite).
+- [x] F14 **Garde-rail inter-langages du seuil miroir.** `WEAPON_RANGE_MIN_MEASURED = 8` est un
+      miroir de `analysis.WeaponRangeMinMeasured` que rien ne surveillait — une dérive rendait
+      la phrase « sous le seuil de N mesures » fausse en silence. Le test LIT le fichier Go et
+      compare, avec un message qui nomme les deux valeurs ; il ÉCHOUE (jamais de skip) si la
+      source est illisible ou la constante renommée.
+
+**Gates de la ronde 1** (worktree `LevelUp-wt-duels-fix5`, `npm ci` d'abord ; code de retour
+vérifié à chaque fois) :
+
+- `rm -rf node_modules/.tmp && npm run typecheck` -> RC 0.
+- `npm run lint` -> RC 0, **0 erreur / 28 warnings**, tous préexistants (grep sur les chemins :
+  aucun ne porte sur un fichier de ce lot).
+- `npm test -- --run src/features/synthesis src/lib/echarts` -> 10 fichiers, 107 tests, RC 0.
+- `npm test -- --run` -> 595 fichiers, 6 297 tests, 14 skippés, RC 0. (Un premier passage avait
+  rendu un échec ISOLÉ sur un garde-rail qui balaie le système de fichiers ; non reproduit sur
+  deux passages complets suivants ni sur les trois garde-rails de ce type lancés seuls.)
+- `npm run lint:fields` -> « aucune violation », RC 0.
+- grep hex `#RRGGBB` sur `src/features/synthesis/` hors tests -> VIDE. Sur `src/lib/echarts/` :
+  les seules occurrences hors tests sont les replis PRÉEXISTANTS de `themeColors.ts` et deux
+  mentions en COMMENTAIRE dans `cssColorToHex.ts` (aucune valeur dans le code — les sentinelles
+  de la sonde sont `black` / `white`).
+
+**Mutations prouvées rouges puis restaurées** : tuile de frags rendue inconditionnellement
+(F1) ; `cssColorToHex` retiré (F2) ; les deux légendes ramenées à la même clé (F4, 3 rouges) ;
+`emphasis` posé sur la légende du dénivelé (F5) ; encres des deux bâtons échangées, libellés
+d'infobulle échangés, encres du dénivelé échangées, `cardColor` -> `tc.axisLabel` (2 rouges),
+`weaponRangeChartHeight(0)`, `series = []` (6 rouges) (F7 a-f) ; pastilles du dénivelé
+échangées (F8) ; valeurs des deux tuiles échangées (F9, 3 rouges) ; `weaponRange={undefined}`
+dans `SynthesisPage.tsx` (F10) ; `signDisplay` retiré (F11) ; locale figée `fr-FR` (F12) ;
+en-têtes de groupe du tableau échangées (F13) ; miroir du seuil porté à 12 (F14, message
+« seuil Go = 8, miroir front = 12 »).
 ---
 
 ## Lot 6 — Livraison
@@ -969,6 +1136,23 @@ répliqué, ou source hors film »).
   (« Could not convert string 'tag' to UINT32 »). NON TRAITÉ : hors périmètre de cette revue,
   qui ne portait que sur le diff du lot 4.
 
+- (lot 5 ronde 1, 2026-09-06) **Le piège `oklch` de zrender existe AILLEURS, non traité.**
+  `getEChartsThemeColors()` rend la valeur BRUTE des variables sémantiques : sur
+  `--muted-foreground` (et toute var en `oklch`/`lab`), le canvas peint juste mais
+  `zrender.lift()` — l'emphase au survol — parse la chaîne et rend `undefined`, donc une forme
+  sans remplissage. Deux appelants sont dans ce cas aujourd'hui :
+  `features/match-view/MatchScoreCurveChart.tsx:176` et `features/squad/charts/squadEfficiencyChart.ts:211`
+  (`tc.axisLabel` posé en couleur de série). PRÉEXISTANT, hors périmètre de cette ronde. Le
+  correctif est en place et réutilisable (`lib/echarts/cssColorToHex.ts`) ; la question ouverte
+  est de savoir si `getEChartsThemeColors` doit normaliser à la source — elle a de NOMBREUX
+  appelants, et certains passent ces valeurs à des propriétés que zrender ne dérive jamais
+  (libellés d'axe, fonds d'infobulle), où la conversion serait inutile.
+- (lot 5 ronde 1, 2026-09-06) **Aucun script npm ni aucune étape de CI ne rejoue
+  `apps/web/scripts/build_i18n_manifests.mjs`.** Une dérive entre un `manifests/*.toml` et le
+  `generated/*.ts` correspondant (clé ajoutée au TOML sans régénération, ou l'inverse) n'est vue
+  par RIEN : le typage garantit la parité FR/EN À L'INTÉRIEUR du fichier généré, pas sa
+  fraîcheur vis-à-vis de sa source. PRÉEXISTANT, non traité. Le correctif tiendrait en une
+  étape « régénérer puis `git diff --exit-code` ».
 - (lot 4, 2026-09-06) **DuckDB matérialise une vue `_latest` lue deux fois en UNE `CTE`
   partagée** — la jointure mesurée n'a donc qu'UN balayage de `match_kill_events`, pas deux. Le
   corollaire compte pour la suite : le filtre ne descend jusqu'à ce balayage que si TOUTES les
@@ -1070,3 +1254,31 @@ répliqué, ou source hors film »).
   absente » ne l'est pas. Ronde 2 : 0 P0, 0 P1 (contre 3 P1 en ronde 1), 12 conditions tenues,
   7 mutations dont 6 rouges. Équivalence de `BuildKillPositions` prouvée par test différentiel
   sur 20 000 tirages.
+- (lot 5, 2026-09-06) **Le seuil de publication `WeaponRangeMinMeasured = 8` n'est PAS servi
+  par le contrat.** Le bloc publie les armes retenues et la liste NOMMÉE de celles écartées,
+  jamais le seuil lui-même ; or le rendu doit ÉCRIRE « sous le seuil de 8 mesures ». Le front
+  porte donc une constante miroir (`weaponRange_logic.ts`, commentée, jamais utilisée pour
+  filtrer). Si le seuil Go bouge, le libellé devient faux sans que rien ne rougisse. NON TRAITÉ
+  ici (le contrat est figé au lot 4) : le porter dans `SynthesisWeaponRange` le rendrait
+  auto-cohérent.
+- (lot 5, 2026-09-06) **`getEChartsThemeColors()` ne rendait pas `--card`.** La grammaire
+  validée s'en sert comme ENCRE DE SÉPARATION dans le canvas (contour du losange sur son bâton,
+  bord d'un segment empilé) : une couleur de fond détache une forme posée sur une autre sans
+  introduire de teinte nouvelle. Le champ `card` a été AJOUTÉ à `EChartsThemeColors` — additif,
+  aucun appelant existant touché (vérifié : le seul littéral complet du type est le fallback
+  jsdom du module lui-même). Les autres graphes pourront s'en servir ; aucun n'a été modifié.
+- (lot 5, 2026-09-06) **`muted-foreground` n'est pas un `SemanticToken`.** La classe « à
+  niveau » du dénivelé emprunte donc le gris des libellés d'axe côté canvas (`tc.axisLabel`) et
+  la classe utilitaire `bg-muted-foreground` côté DOM — deux chemins pour la MÊME variable CSS.
+  C'est cohérent aujourd'hui ; ça se désynchroniserait si l'un des deux changeait. NON TRAITÉ :
+  ajouter un token « neutre de série » à `semantic-tokens.ts` dépasse le périmètre d'un lot web.
+- (lot 5, 2026-09-06) **`generated.ts` porte encore la forme PLATE de `opening`.** Le sous-objet
+  `opening.delta` décidé pendant ce lot arrive par la fusion de `feat/duels-lot4-fix` ; le front
+  lit le bloc par une vue LOCALE datée (`WeaponRangeBlock` / `WeaponRangeOpening`,
+  `weaponRange_logic.ts`), volontairement identique à la forme servie. À REMPLACER par le type
+  généré dès la fusion — la substitution sera un no-op de rendu, et le `Omit<>` du type local
+  fera rougir le typecheck si la régénération n'aligne pas les deux formes.
+- (lot 5, 2026-09-06) **Le worktree n'avait aucun `node_modules`** : `npm ci` (507 paquets,
+  14 s) a été lancé avant tout gate web. À savoir pour tout lot web ouvert dans un worktree
+  neuf — un `npm run typecheck` y échoue sinon sur `Cannot find package`, ce qui ressemble à
+  une erreur de code.
