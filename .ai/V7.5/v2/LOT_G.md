@@ -625,6 +625,79 @@ ensemble).
   `startswith and endswith` pour la suppression). Deux prédicats voisins mais distincts,
   volontairement non fusionnés.
 
+## Retouches apres ronde 2 (revue R2, 2026-09-06)
+
+> Verdict R2 : les dix constats de R1 sont FERMES, et les goldens de C3 ont ete REPRODUITS
+> INDEPENDAMMENT par le relecteur (vrai `_outils/livraison.py` + `coups_lot.py`, copies verifiees
+> au `cmp`, executes sous CPython 3.12.10 sur l'arborescence que `livraisonEcrireJeuSynthetique`
+> ecrit) : six `.wav`, `weaponSoundVariations.ts` et `console.txt` identiques octet pour octet aux
+> fichiers versionnes. Deux defauts NOUVEAUX, tous deux P3, tous deux introduits par la correction
+> qu'ils accompagnent, ni l'un ni l'autre atteignable sur les donnees ou les chemins de production
+> d'aujourd'hui.
+
+### N1 (P3) — le prefixe etendu `\\?\UNC\` etait compare AVEC la casse — [x]
+
+`livraison.go` comparait ce prefixe par `strings.HasPrefix`, la ou `ntpath.splitroot` teste
+`normp[:8].upper()` — les prefixes de chemin Windows sont insensibles a la casse. Consequence :
+le meme chemin ecrit en minuscules (`\\?\unc\serveur\partage.pck`) rendait `partage`, et
+`\\?\unc\s\p` rendait `p`, la ou `ntpath` rend `""` : cle de dossier differente, donc
+arme perdue ou livree sous une autre cle — exactement
+la consequence produit que C8 decrivait. `strings.EqualFold(norm[:8], ...)` avec la garde de
+longueur.
+
+La table de `TestJoliBaseSansExt_FideleANtpath` passe de 30 a 32 entrees ; les deux ajouts sont la
+sortie reelle de `ntpath.splitext(ntpath.basename(p))[0]` sous CPython 3.12.10, relevee sur ce
+poste.
+
+Preuve : les deux nouvelles entrees rouges avec la comparaison sensible a la casse — `= "p", veut
+""` et `= "partage", veut ""`, exactement les valeurs mesurees par le relecteur — vertes apres.
+
+### N2 (P3) — deux `Peak()` dans la meme ligne de journal — [x]
+
+`cmd/replay-build/main.go` : `slog.Info("pic memoire de la cuisson", "octets", g.Peak(), "gio",
+float64(g.Peak())/(1<<30))`. Avant le correctif C4, `Peak()` etait un simple `peak.Load()` et les
+deux appels rendaient la meme valeur ; depuis qu'il re-echantillonne, chaque appel mesure a
+nouveau et `gio` cesse d'etre la conversion d'`octets`. Le pic est lu UNE FOIS dans une variable.
+
+Preuve : sonde jetable dans `internal/filmproc` — une allocation de 64 Mio placee entre deux
+`Peak()` consecutifs donne `4 589 816` puis `72 542 456`, soit 67 952 640 octets d'ecart pour ce
+qui devrait etre une seule mesure (le relecteur, lui, avait mesure 2 divergences sur 200
+iterations en allocation continue). Le correctif est vrai par construction : une variable ne peut
+pas differer d'elle-meme, aucun test permanent n'est pose sur un ecart qui depend du moment ou le
+runtime cartographie de nouvelles spans.
+
+Les six autres appels a `Peak()` hors tests sont deja des lectures uniques par ligne (verifie par
+grep : ils sont tous de la forme `filmproc.EmitPeak(g.Peak())`) — `cmd/replay-build` etait le seul
+site a en faire deux sur une meme instruction.
+
+### Gate des retouches
+
+```
+go build ./cmd/weapon-sounds/ ./cmd/replay-build/ ./internal/filmproc/
+```
+-> sortie vide (succes).
+
+```
+go test -count=1 ./cmd/weapon-sounds/... ./cmd/replay-build/... ./internal/filmproc/...
+```
+->
+```
+ok  	levelup/go-api/cmd/weapon-sounds	0.229s
+?   	levelup/go-api/cmd/replay-build	[no test files]
+ok  	levelup/go-api/internal/filmproc	2.317s
+```
+
+```
+golangci-lint run --timeout 15m --new-from-merge-base=origin/main ./...
+```
+-> `0 issues.`
+
+### Note de R2 conservee (pas un defaut)
+
+Le champ `outil` ajoute par G.1 est place AVANT `souple_gib`/`dur_octets` : l'ordre des attributs
+de l'enregistrement differe donc de celui d'avant, meme si le message est mot pour mot le meme.
+Consigne ici pour que personne ne le redecouvre.
+
 ## Questions ouvertes
 
 - Aucune question bloquante identifiée. Point d'attention pour un lecteur futur de

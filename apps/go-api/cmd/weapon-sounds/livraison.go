@@ -207,7 +207,11 @@ func livraisonNTSplitDrive(p string) (string, string) {
 	// UNC (`\\serveur\partage`), peripherique (`\\.\device`) ou prefixe etendu
 	// (`\\?\UNC\serveur\partage`) : le « lecteur » va jusqu'au DEUXIEME separateur qui suit.
 	debut := 2
-	if strings.HasPrefix(norm, `\\?\UNC\`) {
+	// LE PREFIXE ETENDU SE COMPARE SANS LA CASSE : `ntpath.splitroot` teste
+	// `normp[:8].upper()`, comme tous les prefixes de chemin Windows. Compare avec la
+	// casse, `\\?\unc\serveur\partage.pck` rendait `partage` la ou ntpath rend `""`
+	// (defaut N1 de la revue R2) — une cle de dossier fausse, donc une arme perdue.
+	if len(norm) >= 8 && strings.EqualFold(norm[:8], `\\?\UNC\`) {
 		debut = 8
 	}
 	i := strings.Index(norm[debut:], `\`)

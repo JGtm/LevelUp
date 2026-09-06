@@ -55,6 +55,10 @@ func TestJoliBaseSansExt_FideleANtpath(t *testing.T) {
 		{`\\\x`, ""},
 		{"//serveur/partage/sb_010_wea_un_unc2.pck", "sb_010_wea_un_unc2"},
 		{`\\?\UNC\s\p\x.pck`, "x"},
+		// Le prefixe etendu est reconnu SANS LA CASSE (`normp[:8].upper()` chez ntpath) :
+		// sans cela, le nom de partage passait pour un nom de fichier.
+		{`\\?\unc\s\p`, ""},
+		{`\\?\unc\serveur\partage.pck`, ""},
 		{`\\.\device\x.pck`, "x"},
 	}
 	for _, c := range cas {
