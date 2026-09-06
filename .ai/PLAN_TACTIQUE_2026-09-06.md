@@ -96,6 +96,8 @@ chacune · phase 7 : lourd (autant que 1 a 6) · phase 8 : petit.
 | Rayon d'isolement | **Portee du radar** : 18 m en Arene, 24 m en BTB — utilisateur, 2026-09-05. Table mesuree dans `config/titles/{slug}/mappings/` (doctrine `regulation.toml`) ; variante non listee = pas de lecture ; rayon **par match**. |
 | Cas limite de l'isolement | Tous les coequipiers deja morts -> mort **exclue du denominateur**. |
 | Deux taux d'echange | Tactique : par carte, libelle « sur cette carte ». Escouade : par session et composition. |
+| **Substrat de « Ou je gagne » (V1)** | **Les ENGAGEMENTS du joueur** : la position de ses kills ET de ses morts (les deux faces, sinon la lecture se confond avec « ou je tue »). Arrete par l utilisateur le 2026-09-06. A re-decider en phase 7 quand l occupation existera ; le libelle UI dit ce qu il mesure. |
+| **Perimetre du KPI d echange par carte** | **Les morts de MON CAMP** (moi + mes coequipiers du match), jamais mes seules morts : meme definition que la page Escouade, denominateur le moins biaise. Arrete par l utilisateur le 2026-09-06. La lecture par joueur vit sur la page Escouade (matrice, nuage). |
 | Instant contributeur | Morts / kills : l'horodatage. Occupation : premiere entree dans la cellule. Routes : debut de la vie. |
 | Seuil du « Cap du moment » | Rendu seulement si au moins **30 morts d'equipe** ET (ecart d'au moins **5 points** au taux d'echange habituel OU part de morts isolees d'au moins **50 %**). Sinon non rendu. |
 | Couleurs V/D | `outcome-win` / `outcome-loss` — jamais `compare-a/b`. |
@@ -367,6 +369,7 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : les deux decisions produit ouvertes en phase 2 (substrat de « ou je gagne » = engagements ; KPI d echange par carte = mon camp) sont ARRETEES par l utilisateur — inscrites au §1.
 - 2026-09-06 : **revue adversariale ronde 1 de la phase 2 — 16 constats, TOUS corriges** en
   6 commits `tactique(2.5)`. Gate rejoue integralement, quatre inversions jouees.
   - **T12** — `TacticalRepository` quitte `repository_data.go` (deja > 500 L, porte a 651
