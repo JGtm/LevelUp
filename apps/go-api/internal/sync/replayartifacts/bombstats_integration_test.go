@@ -87,7 +87,7 @@ func TestPersisterStatsBombe_UnMatchDAssautEcritSesLignesEtSesFaits(t *testing.T
 	d := depsUsage(t, db, "halo_infinite", &acquis, &relaches)
 	ctx := context.Background()
 
-	persisterStatsBombe(ctx, d, lus(d,
+	persisterStatsBombe(ctx, d, &bilanDerivations{}, lus(d,
 		ArtefactRange{MatchID: "m-bombe", Path: artefactBombe(t, dir, "m-bombe")},
 	))
 
@@ -153,7 +153,7 @@ func TestPersisterStatsBombe_ModeHorsAssautNEcritRien(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_infinite", &acquis, &relaches)
 
-	persisterStatsBombe(context.Background(), d, lus(d,
+	persisterStatsBombe(context.Background(), d, &bilanDerivations{}, lus(d,
 		ArtefactRange{MatchID: "m-slayer", Path: artefactHorsAssaut(t, dir, "m-slayer")},
 	))
 
@@ -179,7 +179,7 @@ func TestPersisterStatsBombe_TitreSansCapability(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_5", &acquis, &relaches)
 
-	persisterStatsBombe(context.Background(), d, lus(d,
+	persisterStatsBombe(context.Background(), d, &bilanDerivations{}, lus(d,
 		ArtefactRange{MatchID: "m-h5", Path: artefactBombe(t, dir, "m-h5")},
 	))
 
@@ -204,7 +204,7 @@ func TestPersisterStatsBombe_ArtefactIllisibleNArretePasLeLot(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_infinite", &acquis, &relaches)
 
-	persisterStatsBombe(context.Background(), d, lus(d,
+	persisterStatsBombe(context.Background(), d, &bilanDerivations{}, lus(d,
 		ArtefactRange{MatchID: "m-absent", Path: filepath.Join(dir, "inexistant.json")},
 		ArtefactRange{MatchID: "m-ok", Path: artefactBombe(t, dir, "m-ok")},
 	))

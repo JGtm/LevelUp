@@ -27,20 +27,8 @@ import (
 	"levelup/go-api/internal/analysis/replay"
 )
 
-// racineDepot remonte du package au depot (apps/go-api/internal/sync/replayartifacts -> racine)
-// pour que capabilityUsageArmee lise les capabilities.toml LIVRES.
-func racineDepot(t *testing.T) string {
-	t.Helper()
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Getwd: %v", err)
-	}
-	root := filepath.Join(wd, "..", "..", "..", "..", "..")
-	if _, err := os.Stat(filepath.Join(root, "config", "titles")); err != nil {
-		t.Fatalf("racine du depot introuvable depuis %s: %v", wd, err)
-	}
-	return root
-}
+// `racineDepot` vit dans helpers_test.go (SANS tag de build) : les tests unitaires du paquet en
+// ont besoin eux aussi, et la recopier en aurait fait un second exemplaire.
 
 // artefactUsage forge un artefact minimal mais COMPLET pour la projection : un joueur, un
 // socle d'ARME (prise nommee) et un socle de BONUS (occupation anonyme) — le piege central
@@ -115,7 +103,7 @@ func TestPersisterResumesUsage_BurstUniqueEtVuesLatest(t *testing.T) {
 		ArtefactRange{MatchID: "m-usage-1", Path: artefactUsage(t, dir, "m-usage-1")},
 		ArtefactRange{MatchID: "m-usage-2", Path: artefactUsage(t, dir, "m-usage-2")},
 	)
-	persisterResumesUsage(context.Background(), d, rapports)
+	persisterResumesUsage(context.Background(), d, &bilanDerivations{}, rapports)
 
 	if acquis != 1 || relaches != 1 {
 		t.Fatalf("writer acquis %d fois, relache %d fois — attendu 1 et 1 (burst unique)", acquis, relaches)
@@ -163,7 +151,7 @@ func TestPersisterResumesUsage_LotVideNAcquiertAucunWriter(t *testing.T) {
 		acquis++
 		return nil, func() { relaches++ }, nil
 	}}
-	persisterResumesUsage(context.Background(), d, nil)
+	persisterResumesUsage(context.Background(), d, &bilanDerivations{}, nil)
 	if acquis != 0 {
 		t.Fatalf("writer acquis %d fois sur un lot vide, attendu 0", acquis)
 	}
@@ -178,7 +166,7 @@ func TestPersisterResumesUsage_TitreSansCapability(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_5", &acquis, &relaches)
 
-	persisterResumesUsage(context.Background(), d, lus(d,
+	persisterResumesUsage(context.Background(), d, &bilanDerivations{}, lus(d,
 		ArtefactRange{MatchID: "m-h5", Path: artefactUsage(t, dir, "m-h5")},
 	))
 	if acquis != 0 {
@@ -202,7 +190,7 @@ func TestPersisterResumesUsage_ArtefactIllisibleNArretePasLeLot(t *testing.T) {
 	acquis, relaches := 0, 0
 	d := depsUsage(t, db, "halo_infinite", &acquis, &relaches)
 
-	persisterResumesUsage(context.Background(), d, lus(d,
+	persisterResumesUsage(context.Background(), d, &bilanDerivations{}, lus(d,
 		ArtefactRange{MatchID: "m-absent", Path: filepath.Join(dir, "inexistant.json")},
 		ArtefactRange{MatchID: "m-ok", Path: artefactUsage(t, dir, "m-ok")},
 	))

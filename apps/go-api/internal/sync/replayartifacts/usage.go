@@ -89,7 +89,7 @@ func capabilityUsageArmee(ctx context.Context, d Deps) (armee, incident bool) {
 // persisterResumesUsage projette puis écrit les résumés des artefacts rangés du lot.
 // Best-effort de bout en bout, comme toute l'étape : aucun échec ne remonte au cycle,
 // mais aucun ne se tait non plus.
-func persisterResumesUsage(ctx context.Context, d Deps, lus []artefactLu) {
+func persisterResumesUsage(ctx context.Context, d Deps, b *bilanDerivations, lus []artefactLu) {
 	if len(lus) == 0 {
 		return
 	}
@@ -97,8 +97,10 @@ func persisterResumesUsage(ctx context.Context, d Deps, lus []artefactLu) {
 	if armee, incident := capabilityUsageArmee(ctx, d); !armee {
 		if incident {
 			// Capabilities illisibles : le lot entier du cycle est écarté — un DÉFAUT,
-			// compté comme tel (le WARN seul ne nourrit aucun monitoring).
+			// compté comme tel (le WARN seul ne nourrit aucun monitoring), et AUCUN de ces
+			// matchs n'est marqué dérivé (constat C1).
 			observability.AddIntT(titre, CompteurUsageEchecs, int64(len(lus)))
+			b.echecLot(lus)
 		}
 		return
 	}
@@ -113,6 +115,7 @@ func persisterResumesUsage(ctx context.Context, d Deps, lus []artefactLu) {
 		slog.WarnContext(ctx, "post-sync: résumé d'usage NON persisté (aucun writer shared câblé sur ce chemin)",
 			"gamertag", d.Gamertag, "matchs", len(prets))
 		observability.AddIntT(titre, CompteurUsageEchecs, int64(echecs+len(prets)))
+		echecUsage(b, prets)
 		return
 	}
 	db, release, err := d.AcquireWriter(ctx)
@@ -120,6 +123,7 @@ func persisterResumesUsage(ctx context.Context, d Deps, lus []artefactLu) {
 		slog.WarnContext(ctx, "post-sync: writer shared indisponible, résumé d'usage non persisté",
 			"gamertag", d.Gamertag, "matchs", len(prets), "err", err)
 		observability.AddIntT(titre, CompteurUsageEchecs, int64(echecs+len(prets)))
+		echecUsage(b, prets)
 		return
 	}
 	defer release()
@@ -130,6 +134,7 @@ func persisterResumesUsage(ctx context.Context, d Deps, lus []artefactLu) {
 			slog.WarnContext(ctx, "post-sync: écriture du résumé d'usage échouée",
 				"match_id", prets[i].matchID, "err", err)
 			echecs++
+			b.echec(prets[i].matchID)
 			continue
 		}
 		ecrits++
@@ -138,6 +143,16 @@ func persisterResumesUsage(ctx context.Context, d Deps, lus []artefactLu) {
 	observability.AddIntT(titre, CompteurUsageEchecs, int64(echecs))
 	slog.InfoContext(ctx, "post-sync: résumé d'usage persisté",
 		"gamertag", d.Gamertag, "ecrits", ecrits, "echecs", echecs)
+}
+
+// echecUsage enregistre au bilan que ces résumés n'ont pas été persistés faute de writer :
+// sans cette trace, la marque de dérivation se poserait sur un match dont RIEN n'a été écrit
+// (constat C1 de la revue A-R1).
+func echecUsage(b *bilanDerivations, prets []resumeUsagePret) {
+	b.writerIndisponible()
+	for i := range prets {
+		b.echec(prets[i].matchID)
+	}
 }
 
 // projeterResumesUsage projette tous les documents du lot, AVANT tout writer.

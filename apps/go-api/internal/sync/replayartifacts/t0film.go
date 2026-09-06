@@ -91,7 +91,7 @@ const (
 //
 // Best-effort de bout en bout, comme toute l'etape : aucun echec ne remonte au cycle, mais
 // aucun ne se tait non plus.
-func reporterT0Film(ctx context.Context, d Deps, rapports []rapportT0Film) {
+func reporterT0Film(ctx context.Context, d Deps, b *bilanDerivations, rapports []rapportT0Film) {
 	if len(rapports) == 0 {
 		return
 	}
@@ -103,6 +103,7 @@ func reporterT0Film(ctx context.Context, d Deps, rapports []rapportT0Film) {
 			"(aucun writer shared cable sur ce chemin)",
 			"gamertag", d.Gamertag, "matchs", len(rapports))
 		observability.AddIntT(titre, CompteurT0FilmEchecs, int64(len(rapports)))
+		echecT0(b, rapports)
 		return
 	}
 	db, release, err := d.AcquireWriter(ctx)
@@ -110,6 +111,7 @@ func reporterT0Film(ctx context.Context, d Deps, rapports []rapportT0Film) {
 		slog.WarnContext(ctx, "post-sync: rejeu 2D — writer shared indisponible, coup d'envoi non reporte",
 			"gamertag", d.Gamertag, "matchs", len(rapports), "err", err)
 		observability.AddIntT(titre, CompteurT0FilmEchecs, int64(len(rapports)))
+		echecT0(b, rapports)
 		return
 	}
 	defer release()
@@ -123,6 +125,7 @@ func reporterT0Film(ctx context.Context, d Deps, rapports []rapportT0Film) {
 			dejaLa++
 		case t0FilmEchec:
 			echecs++
+			b.echec(r.matchID)
 		}
 	}
 	observability.AddIntT(titre, CompteurT0FilmReportes, int64(ecrits))
@@ -130,6 +133,16 @@ func reporterT0Film(ctx context.Context, d Deps, rapports []rapportT0Film) {
 	observability.AddIntT(titre, CompteurT0FilmEchecs, int64(echecs))
 	slog.InfoContext(ctx, "post-sync: rejeu 2D — coup d'envoi du film reporte au registre",
 		"gamertag", d.Gamertag, "reportes", ecrits, "deja_a_jour", dejaLa, "echecs", echecs)
+}
+
+// echecT0 enregistre au bilan que le coup d'envoi de ces matchs n'a pas ete reporte, ET que
+// c'est faute de writer : sans cette trace, la marque de derivation se poserait sur un match
+// dont RIEN n'a ete ecrit (constat C1).
+func echecT0(b *bilanDerivations, rapports []rapportT0Film) {
+	b.writerIndisponible()
+	for _, r := range rapports {
+		b.echec(r.matchID)
+	}
 }
 
 // ecrireUnT0Film lit l'etat courant du T0 du match puis le corrige si besoin. La lecture et

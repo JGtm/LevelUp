@@ -127,14 +127,17 @@ func bombBatchDuDocument(matchID string, stats *replay.BombMatchStats,
 
 // persisterStatsBombe projette puis écrit les statistiques d'Assaut des artefacts rangés du
 // lot. Best-effort de bout en bout : aucun échec ne remonte au cycle, aucun ne se tait.
-func persisterStatsBombe(ctx context.Context, d Deps, lus []artefactLu) {
+func persisterStatsBombe(ctx context.Context, d Deps, b *bilanDerivations, lus []artefactLu) {
 	if len(lus) == 0 {
 		return
 	}
 	titre := ctxkeys.TitleSlug(ctx)
 	if armee, incident := capabilityBombeArmee(ctx, d); !armee {
 		if incident {
+			// Capabilities illisibles : un DÉFAUT, compté comme tel — et aucun de ces matchs
+			// n'est marqué dérivé (constat C1).
 			observability.AddIntT(titre, CompteurBombStatsEchecs, int64(len(lus)))
+			b.echecLot(lus)
 		}
 		return
 	}
@@ -150,6 +153,7 @@ func persisterStatsBombe(ctx context.Context, d Deps, lus []artefactLu) {
 		slog.WarnContext(ctx, "post-sync: stats d'Assaut NON persistées (aucun writer shared câblé sur ce chemin)",
 			"gamertag", d.Gamertag, "matchs", len(prets))
 		observability.AddIntT(titre, CompteurBombStatsEchecs, int64(echecs+len(prets)))
+		echecBombe(b, prets)
 		return
 	}
 	db, release, err := d.AcquireWriter(ctx)
@@ -157,6 +161,7 @@ func persisterStatsBombe(ctx context.Context, d Deps, lus []artefactLu) {
 		slog.WarnContext(ctx, "post-sync: writer shared indisponible, stats d'Assaut non persistées",
 			"gamertag", d.Gamertag, "matchs", len(prets), "err", err)
 		observability.AddIntT(titre, CompteurBombStatsEchecs, int64(echecs+len(prets)))
+		echecBombe(b, prets)
 		return
 	}
 	defer release()
@@ -167,6 +172,7 @@ func persisterStatsBombe(ctx context.Context, d Deps, lus []artefactLu) {
 			slog.ErrorContext(ctx, "post-sync: écriture des stats d'Assaut échouée",
 				"match_id", prets[i].matchID, "err", err)
 			echecs++
+			b.echec(prets[i].matchID)
 			continue
 		}
 		ecrits++
@@ -175,6 +181,16 @@ func persisterStatsBombe(ctx context.Context, d Deps, lus []artefactLu) {
 	observability.AddIntT(titre, CompteurBombStatsEchecs, int64(echecs))
 	slog.InfoContext(ctx, "post-sync: stats d'Assaut persistées",
 		"gamertag", d.Gamertag, "ecrits", ecrits, "echecs", echecs)
+}
+
+// echecBombe enregistre au bilan que ces passes n'ont pas été persistées faute de writer :
+// sans cette trace, la marque de dérivation se poserait sur un match dont RIEN n'a été écrit
+// (constat C1 de la revue A-R1).
+func echecBombe(b *bilanDerivations, prets []passeBombePrete) {
+	b.writerIndisponible()
+	for i := range prets {
+		b.echec(prets[i].matchID)
+	}
 }
 
 // projeterStatsBombeDuLot projette tous les documents du lot, AVANT tout writer. Rend les

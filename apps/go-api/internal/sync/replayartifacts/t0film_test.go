@@ -89,7 +89,7 @@ func TestRapportsT0_FichierAbsent(t *testing.T) {
 // prétend pas avoir reporté. La dégradation est explicite (WARN + compteur d'échecs) ; ce test
 // couvre le fait qu'elle n'appelle rien d'autre.
 func TestReporterT0Film_SansWriter(t *testing.T) {
-	reporterT0Film(context.Background(), Deps{Gamertag: "t"},
+	reporterT0Film(context.Background(), Deps{Gamertag: "t"}, &bilanDerivations{},
 		[]rapportT0Film{{matchID: "m1", t0FilmMs: 26304}})
 	// Rien à assert au-delà de l'absence de panique : sans writer, la fonction ne peut avoir
 	// touché aucune base. Le cas nominal est en test d'intégration.

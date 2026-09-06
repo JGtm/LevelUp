@@ -113,7 +113,7 @@ func positionsDeLaTrajectoire(t *replay.Track, cadenceMS int) []persist.PlayerPo
 
 // persisterPositions projette puis ecrit les positions des artefacts ranges du lot.
 // Best-effort de bout en bout : aucun echec ne remonte au cycle, aucun ne se tait.
-func persisterPositions(ctx context.Context, d Deps, lus []artefactLu) {
+func persisterPositions(ctx context.Context, d Deps, b *bilanDerivations, lus []artefactLu) {
 	if len(lus) == 0 {
 		return
 	}
@@ -128,6 +128,7 @@ func persisterPositions(ctx context.Context, d Deps, lus []artefactLu) {
 		slog.WarnContext(ctx, "post-sync: positions NON persistees (aucun writer shared cable sur ce chemin)",
 			"gamertag", d.Gamertag, "matchs", len(prets))
 		observability.AddIntT(titre, CompteurPositionsEchecs, int64(len(prets)))
+		echecPositions(b, prets)
 		return
 	}
 	db, release, err := d.AcquireWriter(ctx)
@@ -135,6 +136,7 @@ func persisterPositions(ctx context.Context, d Deps, lus []artefactLu) {
 		slog.WarnContext(ctx, "post-sync: writer shared indisponible, positions non persistees",
 			"gamertag", d.Gamertag, "matchs", len(prets), "err", err)
 		observability.AddIntT(titre, CompteurPositionsEchecs, int64(len(prets)))
+		echecPositions(b, prets)
 		return
 	}
 	defer release()
@@ -145,6 +147,7 @@ func persisterPositions(ctx context.Context, d Deps, lus []artefactLu) {
 			slog.ErrorContext(ctx, "post-sync: ecriture des positions echouee",
 				"match_id", prets[i].matchID, "err", err)
 			echecs++
+			b.echec(prets[i].matchID)
 			continue
 		}
 		ecrits++
@@ -154,6 +157,16 @@ func persisterPositions(ctx context.Context, d Deps, lus []artefactLu) {
 	observability.AddIntT(titre, CompteurPositionsEchecs, int64(echecs))
 	slog.InfoContext(ctx, "post-sync: positions persistees",
 		"gamertag", d.Gamertag, "ecrits", ecrits, "echecs", echecs, "lignes", lignes)
+}
+
+// echecPositions enregistre au bilan que ces passes n'ont pas ete persistees faute de writer :
+// sans cette trace, la marque de derivation se poserait sur un match dont RIEN n'a ete ecrit
+// (constat C1 de la revue A-R1).
+func echecPositions(b *bilanDerivations, prets []passePositionsPrete) {
+	b.writerIndisponible()
+	for i := range prets {
+		b.echec(prets[i].matchID)
+	}
 }
 
 // projeterPositionsDuLot projette tous les documents du lot, AVANT tout writer. Rend les passes

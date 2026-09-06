@@ -124,6 +124,6 @@ func TestProjeterPositions_ValeursTransportees(t *testing.T) {
 // prétend pas avoir écrit.
 func TestPersisterPositions_SansWriter(t *testing.T) {
 	doc := replay.ReplayDocument{FrameIntervalMS: 100, Tracks: []replay.Track{trajectoire(0, 3)}}
-	persisterPositions(context.Background(), Deps{Gamertag: "t"},
+	persisterPositions(context.Background(), Deps{Gamertag: "t"}, &bilanDerivations{},
 		[]artefactLu{{matchID: "m-1", path: "peu-importe", doc: &doc}})
 }
