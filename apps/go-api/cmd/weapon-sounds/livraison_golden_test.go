@@ -65,7 +65,7 @@ func TestLivrerOctetPourOctet(t *testing.T) {
 	}
 
 	livraisonComparerArmes(t, filepath.Join(depot, "static", "sounds", "halo_infinite"))
-	livraisonComparerTS(t, filepath.Join(depot, "apps", "web", "src", "features", "match-replay",
+	livraisonComparerTS(t, filepath.Join(depot, "apps", "web", "src", "features", "match-replay", "sound",
 		"weaponSoundVariations.ts"))
 	livraisonComparerConsole(t, console)
 }
