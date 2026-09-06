@@ -19,7 +19,7 @@ import { describe, expect, it } from 'vitest'
 
 import { squadManifest } from '@/lib/i18n/generated/squad'
 
-import capCardSource from './SquadEchangeCapCard?raw'
+import capCardSource from './SquadEchangeConstatCard?raw'
 import delaiCardSource from './SquadEchangeDelaiCard?raw'
 import kpiSource from './SquadEchangeKpi?raw'
 import matrixCardSource from './SquadEchangeMatrixCard?raw'

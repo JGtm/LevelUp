@@ -8,7 +8,7 @@
  * POURQUOI ILS VIVENT DANS `lib/` ET PLUS DANS `features/explorer/` (2026-09-06,
  * phase 3 du plan tactique). Le bandeau de briefing de l'Explorateur les a écrits ;
  * la page Escouade en a besoin pour son KPI d'échange (« +7 pts vs habituel ») et
- * pour son « cap du moment ». Un import `squad -> explorer` de plus aurait dépassé
+ * pour son « constat du moment ». Un import `squad -> explorer` de plus aurait dépassé
  * le plafond du ratchet `tools/lint-cross-feature-imports.mjs` (7, atteint), et une
  * COPIE aurait donné deux définitions du même écart — exactement ce que la règle des
  * ≤ 2 copies interdit. Ils sont donc DÉPLACÉS, et l'Explorateur pointe ici.

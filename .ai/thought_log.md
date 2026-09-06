@@ -95675,6 +95675,21 @@ le depot, aucune gate de substitution n'a ete inventee, et la degradation est de
 (section OMISE du contrat -> composants non montes, comportement verifie par test). Le
 cablage revient au lot C de l'audit v2. Les phases 4-7 restent GELEES.
 
+**AJOUT DU 2026-09-06 (cloture `tactique(3.8)`, apres la fusion de `feat/v75`)** — l'item 3.7
+passe de `[!]` a `[~]`, et c'est le lot C lui-meme qui l'y met : le hook `useDataCapability`
+existe desormais, et sa doctrine REFUSE ce branchement. `dataCapabilities.ts` n'accepte dans
+`DATA_CAPABILITIES` qu'une cle effectivement gatee cote UI, et documente sur place — avec
+`film.usage_summary` — qu'une porte deja presente dans le payload ne se relit pas (« deux
+sources de verite pour une seule question, plus une requete inutile »). Notre section EST
+omise du `pageData` quand la porte Go se ferme. Et le gate serait FAUX pour Halo 5 : la porte
+Go est un OU sur deux provenances, et Halo 5 est servi par son kill-feed natif SANS
+`film.kill_source` — exactement le defaut que la correction R1 de la phase 2 avait deja
+elimine cote Go. La lecon a retenir : **un hook qui arrive ne rend pas automatiquement dû le
+branchement qu'on avait reporte** ; il faut relire sa doctrine avant de s'y accrocher. Meme
+commit : la carte « Cap du moment » devient « **Constat du moment** » (decision utilisateur) —
+la page portait deja un « Cap d'escouade » prospectif et l'onglet Entrainement un « Cap du
+moment », et trois « Cap » cote a cote dont un retrospectif se marchaient dessus.
+
 ---
 
 ## [2026-09-06] Tactique phase 3 — revue adversariale ronde 1, 12 constats soldes

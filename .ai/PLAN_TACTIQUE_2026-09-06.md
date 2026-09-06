@@ -297,7 +297,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   `make generate-types` puis `git diff --exit-code apps/web/src/lib/api/generated.ts`
   ne montre que les nouveaux types.
 
-### Phase 3 — L'ECHANGE SUR LA PAGE ESCOUADE — CLOSE 2026-09-06, revue ronde 1 SOLDEE (3.7 reporte au lot C)
+### Phase 3 — L'ECHANGE SUR LA PAGE ESCOUADE — CLOSE 2026-09-06, revue ronde 1 SOLDEE, cloture 3.8 (tous les items statues)
 - [x] 3.1 Service Escouade : `service/teammates/teammates_squad_echange.go` (279 L) +
       `domain/squad_echange.go` (122 L, tags snake_case), branche dans
       `teammates_service.go` (`WithEchange`) et `GetPage`. L'echange entre dans le
@@ -396,17 +396,35 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       divergentes — du test de logique sont supprimees au profit de
       `squadEchange.fixtures`. **W9** : la borne exacte des badges (`n === 30`) est
       posee a cote de son voisin a 29.
-- [!] 3.7 **Gate web des sections par `useDataCapability('film.kill_source')` — NON
-      TRAITE, reference : lot C de l'audit v2, `useDataCapability`.** Le hook N'EXISTE
-      PAS dans le depot (verifie sur pieces le 2026-09-06 : aucune occurrence hors du
-      plan de l'audit). Aucun hook n'a ete invente, aucune gate de substitution n'a ete
-      posee. **La degradation est deja cote Go** : porte fermee -> section absente du
+- [~] 3.7 **Gate web des sections par `useDataCapability('film.kill_source')` — COUVERT
+      PAR LA DEGRADATION GO, et le lot C tranche CONTRE ce gate.** Statut revu de `[!]`
+      a `[~]` le 2026-09-06, apres l'integration du lot C de l'audit v2 (merge
+      `741e1731f`) qui apporte le hook : `apps/web/src/lib/capabilities/dataCapabilities.ts`.
+      Le hook EXISTE desormais — mais sa doctrine, lue sur pieces, refuse ce branchement
+      pour DEUX raisons, chacune suffisante :
+      **(a) N'ENTRE DANS `DATA_CAPABILITIES` QU'UNE CLE EFFECTIVEMENT GATEE COTE UI.**
+      C'est un sous-ensemble VOLONTAIRE du vocabulaire Go ; une cle listee « pour plus
+      tard » serait du vocabulaire mort (CLAUDE.md n 7). `film.kill_source` n'y figure
+      pas, et n'a aucune raison d'y entrer pour une section qui ne se gate pas ici.
+      **(b) UNE PORTE QUI ARRIVE DEJA DANS LE PAYLOAD NE SE RELIT PAS.** Le fichier
+      documente exactement ce cas avec `film.usage_summary`, ABSENT de la liste parce que
+      sa porte de titre arrive deja en clair dans la reponse : « la lire une seconde fois
+      ici ferait deux sources de verite pour une seule question, plus une requete
+      inutile ». Notre section est dans la meme situation, en plus tranche : elle est
+      OMISE du `pageData` par le Go quand `games.JournalDesMortsFiable` est fermee
+      (`internal/games/kill_journal_gate.go`), et l'absence EST la reponse.
+      **ET IL SERAIT FAUX POUR HALO 5.** La porte Go est un OU sur DEUX provenances :
+      `film.kill_source` (Infinite, decodage du film) OU `match.killfeed.per_kill`
+      a `supported` STRICTEMENT (Halo 5, kill-feed natif). Un
+      `useDataCapability('film.kill_source')` cote web fermerait la section pour un
+      joueur Halo 5 dont le serveur SERT pourtant la mesure — le defaut exact que la
+      correction R1 de la phase 2 avait deja elimine cote Go.
+      **CE QUI TIENT LIEU DE GATE, ET IL EST TESTE** : porte fermee -> section absente du
       `pageData` -> les trois composants ne sont pas montes (`SquadSynergiesPage`,
-      `SquadDynamiquePage`, `SquadEchangeKpi` : `if (!echange) return null`), et un
-      contrat present mais vide rend un `EmptyState`. Comportement VERIFIE PAR TEST
-      (`SquadEchangeCapCard.test.tsx` : « ne rend RIEN quand la section est absente du
-      contrat » ; `SquadEchangeMatrixCard.test.tsx` : etat vide sans paire). Le
-      superviseur cable le hook a l'integration du lot C.
+      `SquadDynamiquePage`, `SquadEchangeKpi` : `if (!echange) return null`) ; contrat
+      present mais vide -> `EmptyState`. Verifie par
+      `SquadEchangeConstatCard.test.tsx` (« ne rend RIEN quand la section est absente du
+      contrat ») et `SquadEchangeMatrixCard.test.tsx` (etat vide sans paire).
 - **Gate PASSE le 2026-09-06** (avant-plan, une commande `go` a la fois,
   `GOCACHE=...\go-build-tactique`, `CGO_ENABLED=1`). Go : `go vet` propre sur les
   9 arbres, `go test -count=1` vert, `golangci-lint run --new-from-merge-base=origin/main`
@@ -480,6 +498,21 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **cloture de la phase 3 — deux retouches** (`tactique(3.8)`), sur le HEAD
+  d'apres la fusion de `feat/v75` (lots C, B, F ; merge `741e1731f`). **(1) RENOMMAGE**
+  decide par l'utilisateur : notre carte « Cap du moment » devient « **Constat du moment** »
+  (EN « Current reading »). La page portait DEJA un « Cap d'escouade » (`SquadFocusStrip`,
+  prospectif) et l'onglet Entrainement un « Cap du moment » (`CoachFocusCard`,
+  `profile.coach.title`) : trois « Cap » a quelques centimetres, dont deux qui regardent
+  devant et un qui regarde les matchs affiches. Cles de manifeste, accesseurs, symboles de
+  logique, fichiers du composant et `data-testid` renommes d'un bloc — le seul « Cap » qui
+  survit chez nous est celui des voisins, qui le meritent. **(2) ITEM 3.7 passe de `[!]` a
+  `[~]`** : le lot C apporte `useDataCapability`, et sa doctrine tranche CONTRE un gate web
+  ici (une cle qui n'est pas gatee cote UI n'entre pas dans `DATA_CAPABILITIES` ; une porte
+  deja presente dans le payload ne se relit pas — precedent `film.usage_summary`). Il serait
+  en outre FAUX pour Halo 5, servi par son kill-feed natif sans `film.kill_source`. La
+  degradation Go (section omise) tient lieu de gate, et elle est testee. Aucun code pour ce
+  volet.
 - 2026-09-06 : **revue adversariale ronde 1 de la phase 3 — 12 constats, TOUS corriges** en
   5 commits `tactique(3.7)`. Gate rejoue integralement, cinq inversions jouees.
   - **W1 (P0) — LA MATRICE SE LISAIT DE TRAVERS.** `Heatmap2DChart` deduit ses categories
@@ -661,9 +694,14 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `[]domain.MortSuivie` a impose une ligne datee dans la liste blanche de
   `no_naked_rate_test.go` (le type ne porte aucun quotient). Invariant teste : sous la
   fenetre, `Ripostes` et `Echanges` rendent le MEME vengeur et le MEME delai.
-- 2026-09-06 (phase 3) — **`useDataCapability` N'EXISTE PAS** (verifie sur pieces : aucune
-  occurrence dans `apps/web/src` hors du plan de l'audit v2). L'item 3.7 est statue `[!]` ;
-  aucun hook n'a ete invente. Le cablage revient au lot C. NON TRAITE.
+- 2026-09-06 (phase 3) — ~~`useDataCapability` N'EXISTE PAS~~ **SOLDE par le lot C
+  (integre le 2026-09-06, merge `741e1731f`) : le hook existe, et sa doctrine tranche CONTRE
+  ce gate chez nous.** `dataCapabilities.ts` n'accepte dans `DATA_CAPABILITIES` qu'une cle
+  EFFECTIVEMENT gatee cote UI, et refuse de relire une porte deja presente dans le payload
+  (precedent `film.usage_summary`, documente sur place) — or notre section est OMISE du
+  `pageData` quand la porte est fermee. Un `useDataCapability('film.kill_source')` serait
+  la seconde source de verite ET faux pour Halo 5, servi par son kill-feed natif sans cette
+  cle. Item 3.7 statue `[~]`. RIEN A FAIRE.
 - 2026-09-06 (phase 3) — **DEUX WRAPPERS DE CHART ETAIENT TROP ETROITS POUR UN SECOND
   USAGE, et c'etait invisible.** `Heatmap2DChart` cablait en dur un tooltip « Win Rate /
   Matchs » (donc faux pour toute autre donnee) ; `HistogramChart` ne peint que `series[0]`

@@ -776,20 +776,27 @@ en = "{brut, number} avenged out of {n, number}"
 fr = "{delta} vs habituel"
 en = "{delta} vs usual"
 
-# ─── Cap du moment ──────────────────────────────────────────────────────────
+# ─── Constat du moment ──────────────────────────────────────────────────────
+#
+# « CONSTAT », et surtout PAS « Cap » (décision utilisateur du 2026-09-06). La page
+# Escouade porte déjà un « Cap d'escouade » (SquadFocusStrip), qui regarde DEVANT — les
+# objectifs de la composition —, et l'onglet Entraînement un « Cap du moment »
+# (CoachFocusCard, profile.coach.title). Trois « Cap » à quelques centimètres, dont deux
+# prospectifs et un rétrospectif, se marchaient dessus. Cette carte-ci ne propose aucune
+# direction : elle CONSTATE ce que disent les matchs affichés.
 
-[squad.echange.cap_title]
-fr = "Cap du moment"
-en = "Current focus"
+[squad.echange.constat_title]
+fr = "Constat du moment"
+en = "Current reading"
 
-[squad.echange.cap_consolidate]
+[squad.echange.constat_consolidate]
 fr = "Vous consolidez : votre camp échange {delta} de plus que d'habitude ({rate} contre {usual})."
 en = "You are consolidating: your side trades {delta} more than usual ({rate} vs {usual})."
 
-[squad.echange.cap_attention]
+[squad.echange.constat_attention]
 fr = "L'échange mérite votre attention : votre camp échange {delta} de moins que d'habitude ({rate} contre {usual})."
 en = "Trading deserves your attention: your side trades {delta} less than usual ({rate} vs {usual})."
 
-[squad.echange.cap_basis]
+[squad.echange.constat_basis]
 fr = "Sur {n, plural, one {# mort} other {# morts}} de votre camp, {matches, plural, one {# match} other {# matchs}}."
 en = "Based on {n, plural, one {# death} other {# deaths}} on your side, {matches, plural, one {# match} other {# matches}}."

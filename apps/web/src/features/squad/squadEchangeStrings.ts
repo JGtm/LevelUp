@@ -60,12 +60,12 @@ export function getSquadEchangeText(locale: Locale) {
     kpiSecondary: (brut: number, n: number) => m('squad.echange.kpi_secondary', { brut, n }),
     kpiVsUsual: (delta: string) => m('squad.echange.kpi_vs_usual', { delta }),
 
-    capTitle: m('squad.echange.cap_title'),
-    capConsolidate: (delta: string, rate: string, usual: string) =>
-      m('squad.echange.cap_consolidate', { delta, rate, usual }),
-    capAttention: (delta: string, rate: string, usual: string) =>
-      m('squad.echange.cap_attention', { delta, rate, usual }),
-    capBasis: (n: number, matches: number) => m('squad.echange.cap_basis', { n, matches }),
+    constatTitle: m('squad.echange.constat_title'),
+    constatConsolidate: (delta: string, rate: string, usual: string) =>
+      m('squad.echange.constat_consolidate', { delta, rate, usual }),
+    constatAttention: (delta: string, rate: string, usual: string) =>
+      m('squad.echange.constat_attention', { delta, rate, usual }),
+    constatBasis: (n: number, matches: number) => m('squad.echange.constat_basis', { n, matches }),
   }
 }
 
