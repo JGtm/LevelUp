@@ -18,7 +18,7 @@ import { useMemo } from 'react'
 import { DYNAMO_REST_HOLD_MS, GRENADE_REST_HOLD_MS } from './grenadeFx'
 import { framesPerSecond, msToFrames } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
-import type { MarkerTiming } from './replayMarkers'
+import type { MarkerTiming } from './layers/replayMarkers'
 
 /**
  * Rémanences des événements ponctuels, en temps réel — celles du POC, et elles DIFFÈRENT :

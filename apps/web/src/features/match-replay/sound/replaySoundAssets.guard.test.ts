@@ -64,6 +64,8 @@ import {
 import { allEngineStems, VEHICLE_ENGINE_STEMS } from './vehicleEngineSound'
 import { VEHICLE_SHOT_SOUND_STEMS, VEHICLE_SHOT_SOUND_VARIANTS } from './vehicleShotSound'
 
+import { racineDuDepot } from '../test/featureFiles'
+
 /**
  * Les stems de TIR DE VÉHICULE (lot du 2026-09-04) : des ARMES au sens de la règle de durée
  * (coupe 1,2 s), pas des équipements — mais ils entrent dans `SOUND_VARIANTS` pour le tirage
@@ -85,7 +87,7 @@ function stemsZone(): string[] {
   )
 }
 
-const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..', '..', '..')
+const REPO_ROOT = racineDuDepot()
 const SOUNDS_DIR = resolve(REPO_ROOT, 'static', 'sounds', 'halo_infinite')
 const KILLICON_RULES = resolve(
   REPO_ROOT,

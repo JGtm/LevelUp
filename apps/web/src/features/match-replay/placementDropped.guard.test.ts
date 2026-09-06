@@ -21,11 +21,11 @@
  * ET LA GARDE DES COULEURS, qui vaut pour tout ce lot : aucune valeur littérale de couleur ne
  * doit entrer dans les fichiers du lâcher — l'encre arrive du thème par le calque appelant.
  */
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { PLACEMENT_RENDER, type PlacementKind } from './equipmentPlacementsLayer'
+import { fichierNomme, lire } from './test/featureFiles'
+
+import { PLACEMENT_RENDER, type PlacementKind } from './layers/equipmentPlacementsLayer'
 import {
   DROPPED_EQUIPMENT_FAMILIES,
   PLACEMENT_DROPPED_FAMILIES,
@@ -98,7 +98,7 @@ describe('garde-rail : la liste des lâchers suit la table de rendu', () => {
 describe('garde-rail : aucune couleur écrite dans les fichiers du lâcher', () => {
   it('l’encre arrive du thème, jamais d’un littéral', () => {
     for (const f of ['placementDropped.ts', 'placementShapes.ts', 'placementHitTest.ts']) {
-      const src = readFileSync(resolve(__dirname, f), 'utf8')
+      const src = lire(fichierNomme(f))
       expect(/#[0-9a-fA-F]{6}\b/.test(src), `${f} porte une valeur hex`).toBe(false)
       expect(/oklch\(|rgba?\(/.test(src), `${f} porte une couleur littérale`).toBe(false)
     }
@@ -107,8 +107,8 @@ describe('garde-rail : aucune couleur écrite dans les fichiers du lâcher', () 
   it('le tiroir et l’infobulle n’emploient que des classes SÉMANTIQUES', () => {
     // Tailwind de couleur brute (`text-red-500`, `bg-blue-900`…) : interdit dans `features/`.
     const brut = /\b(?:text|bg|border|fill|stroke)-(?:red|blue|green|yellow|orange|purple|pink|gray|grey|slate|zinc|neutral|stone|amber|lime|emerald|teal|cyan|sky|indigo|violet|fuchsia|rose)-\d{2,3}\b/
-    for (const f of ['./settings/ReplaySettingsDrawer.tsx', 'ReplayPlacementTip.tsx']) {
-      const src = readFileSync(resolve(__dirname, f), 'utf8')
+    for (const f of ['ReplaySettingsDrawer.tsx', 'ReplayPlacementTip.tsx']) {
+      const src = lire(fichierNomme(f))
       expect(brut.test(src), `${f} porte une classe Tailwind de couleur`).toBe(false)
       expect(/#[0-9a-fA-F]{6}\b/.test(src), `${f} porte une valeur hex`).toBe(false)
     }

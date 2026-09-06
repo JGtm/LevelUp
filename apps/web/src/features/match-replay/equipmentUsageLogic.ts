@@ -56,7 +56,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
 
 import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
-import { PLACEMENT_RENDER, placementIsDeployedObject } from './equipmentPlacementsLayer'
+import { PLACEMENT_RENDER, placementIsDeployedObject } from './layers/equipmentPlacementsLayer'
 import { placementIsDroppedPower, PLACEMENT_DROPPED_FAMILIES } from './placementDropped'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { frameToMs } from './replayLogic'

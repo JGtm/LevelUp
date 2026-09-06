@@ -14,7 +14,9 @@ import { resolve } from 'node:path'
 
 import { weaponFullIcon } from './weaponFullIcon'
 
-const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..', '..')
+import { racineDuDepot } from './test/featureFiles'
+
+const REPO_ROOT = racineDuDepot()
 const JEU_DIR = resolve(REPO_ROOT, 'static', 'weapons-assets', 'halo_infinite', 'jeu')
 
 interface SpriteEntry {

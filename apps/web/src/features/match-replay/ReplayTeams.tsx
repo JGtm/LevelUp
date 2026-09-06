@@ -25,7 +25,7 @@ import { stripBotSuffix } from '@/lib/players/displayName'
 
 import { ReplayTeamHeader } from './ReplayTeamHeader'
 import { activeEquipmentAt } from './equipmentFx'
-import type { PlacementWindowTime } from './equipmentPlacementsLayer'
+import type { PlacementWindowTime } from './layers/equipmentPlacementsLayer'
 import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from './equipmentZones'
 import { objectiveMarkAt } from './objectiveMark'
 import { ReplayObjectiveMark } from './ReplayObjectiveMark'

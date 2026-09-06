@@ -29,7 +29,7 @@
  * jamais un repos → le maintien ne se déclenche pas → la présence retombe EXACTEMENT sur le
  * comportement historique (vie active seule, muet ailleurs).
  */
-import { objectiveObjectAt } from './objectiveObjectsLayer'
+import { objectiveObjectAt } from './layers/objectiveObjectsLayer'
 
 import type { XY } from './replayLogic'
 import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from './replayNormalize'

@@ -19,7 +19,7 @@
 import { heatmapRampTokens } from '@/components/charts/heatmapColors'
 import { tokenCssVar } from '@/lib/accessibility'
 
-import type { HeatmapMode } from './heatmapLayer'
+import type { HeatmapMode } from './layers/heatmapLayer'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 
 interface ReplayHeatmapLegendProps {

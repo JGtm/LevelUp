@@ -43,7 +43,7 @@ import type { ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 
 
 
-import { readInk } from '../canvasInk'
+import { readInk } from '../layers/canvasInk'
 import { yieldToEvents } from './eventLoopYield'
 import {
   buildOverlayPanelSource,
@@ -54,7 +54,7 @@ import { paintOverlayPanel, type OverlayFonts, type OverlayInk } from './overlay
 import { mixReplayAudio, soundUrlOf, type MixedTracks, type SoundFamily } from '../sound/replayAudioMix'
 import { formatClock, frameToMs } from '../replayLogic'
 import { buildCaptureFilename, triggerDownload } from './replayCapture'
-import { tintedIconCanvas } from '../replayDraw'
+import { tintedIconCanvas } from '../layers/replayDraw'
 import {
   END_HOLD_MS,
   buildExportPlan,

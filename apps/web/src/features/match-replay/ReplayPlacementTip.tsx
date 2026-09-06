@@ -24,12 +24,12 @@
  * Purement présentationnel : aucune donnée n'est calculée ici (le survol vit dans
  * usePlacementHover, la géométrie dans equipmentPlacementsLayer).
  */
-import { PLACEMENT_RENDER, type PlacementKind } from './equipmentPlacementsLayer'
+import { PLACEMENT_RENDER, type PlacementKind } from './layers/equipmentPlacementsLayer'
 import { PLACEMENT_ORIGIN_DROPPED } from './placementDropped'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { formatClock } from './replayLogic'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
-import type { PlacementHover } from './usePlacementHover'
+import type { PlacementHover } from './layers/usePlacementHover'
 import { padEquipmentFamilyOf } from './weaponPadFamilies'
 
 /** Décalage de l'infobulle sous le pointeur, en pixels. */

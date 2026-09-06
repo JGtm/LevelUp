@@ -52,7 +52,7 @@ import {
 import { ReplayAbilityCell, StateMark } from './ReplayAbilityCell'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
-import { familyOf } from './shotEffects'
+import { familyOf } from './layers/shotEffects'
 
 /** Vignette d'un TYPE DE GRENADE : 14 px (option 2a — la boîte de 56 px est taillée dessus). */
 const GRENADE_ICON_PX = 14

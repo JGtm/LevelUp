@@ -26,13 +26,11 @@
  */
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 import ts from 'typescript'
 
-const ICI = dirname(fileURLToPath(import.meta.url))
-const REPO = resolve(ICI, '..', '..', '..')
-const FEATURE = resolve(REPO, 'apps/web/src/features/match-replay')
+import { REPO, sourceDuRejeu } from './_helpers/replaySource'
+
 const CSS = resolve(REPO, 'apps/web/src/styles/globals.css')
 
 /** Écart minimal par composante pour qu'un pixel compte comme réellement changé. */
@@ -84,7 +82,7 @@ const TYPES: { nom: string; teinte: string }[] = [
  * aucune fonction privée homonyme n'en écrase une autre.
  */
 function moduleSource(fichier: string, importsDeValeurAutorises = 0): string {
-  const src = readFileSync(resolve(FEATURE, fichier), 'utf8')
+  const src = sourceDuRejeu(fichier)
   const valueImports = [...src.matchAll(/^import\s+(?!type\b)/gm)]
   expect(
     valueImports.length,
