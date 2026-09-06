@@ -13,7 +13,7 @@ func TestCodeSortieZeroSansPerte(t *testing.T) {
 		{Temoin: Temoin{ID: "a"}, Gains: 3, Pertes: 0},
 		{Temoin: Temoin{ID: "b"}, Gains: 0, Pertes: 0},
 	}
-	if got := codeSortie(lignes); got != 0 {
+	if got := codeSortie(lignes, true); got != 0 {
 		t.Fatalf("code = %d, attendu 0", got)
 	}
 }
@@ -26,7 +26,7 @@ func TestCodeSortieUnDesQuUnAxePerteSuffit(t *testing.T) {
 		{Temoin: Temoin{ID: "b"}, Pertes: 1},
 		{Temoin: Temoin{ID: "c"}, Pertes: 0},
 	}
-	if got := codeSortie(lignes); got != 1 {
+	if got := codeSortie(lignes, true); got != 1 {
 		t.Fatalf("code = %d, attendu 1 (b porte une perte)", got)
 	}
 }
@@ -35,7 +35,7 @@ func TestCodeSortieUnDesQuUnAxePerteSuffit(t *testing.T) {
 // faire echouer le gate : un rapport incomplet n'est pas un rapport vert.
 func TestCodeSortieErreurDeCuissonEstUnEchec(t *testing.T) {
 	lignes := []ligneRapport{{Temoin: Temoin{ID: "a"}, Erreur: errTest("cuisson cassee")}}
-	if got := codeSortie(lignes); got != 1 {
+	if got := codeSortie(lignes, true); got != 1 {
 		t.Fatalf("code = %d, attendu 1 (erreur de cuisson)", got)
 	}
 }
@@ -47,7 +47,7 @@ func TestCodeSortieAbsentNEstPasUnEchec(t *testing.T) {
 	lignes := []ligneRapport{
 		{Temoin: Temoin{ID: "a"}, Absent: true, AbsentCause: "aucun chunk"},
 	}
-	if got := codeSortie(lignes); got != 0 {
+	if got := codeSortie(lignes, true); got != 0 {
 		t.Fatalf("code = %d, attendu 0 (absent != echec)", got)
 	}
 }
@@ -80,12 +80,12 @@ func TestImprimerTableauNommeLeStatut(t *testing.T) {
 		{Temoin: Temoin{ID: "bbbb2222", Famille: "oddball"}, Pertes: 1},
 		{Temoin: Temoin{ID: "cccc3333", Famille: "slayer"}, Absent: true, AbsentCause: "aucun chunk"},
 		{Temoin: Temoin{ID: "dddd4444", Famille: "assaut"}, Erreur: errTest("carte hors catalogue")},
-	})
+	}, "base(origin/feat/v75)")
 	out := b.String()
 	for _, attendu := range []string{
 		"aaaa1111", "ok",
 		"bbbb2222", "PERTE",
-		"cccc3333", "ABSENT DU PARC", "aucun chunk",
+		"cccc3333", "ABSENT", "aucun chunk",
 		"dddd4444", "ERREUR", "carte hors catalogue",
 	} {
 		if !strings.Contains(out, attendu) {
@@ -152,5 +152,25 @@ func TestImprimerDetailPertesVideNEcritRien(t *testing.T) {
 	imprimerDetailPertes(&b, []ligneRapport{{Temoin: Temoin{ID: "aaaa1111"}, Pertes: 0}})
 	if b.String() != "" {
 		t.Fatalf("aucun temoin en perte : sortie attendue vide, obtenu %q", b.String())
+	}
+}
+
+// TestCodeSortiePertesNonBloquantesEnModeInformatif — LE COMPORTEMENT DEMANDE : en mode
+// --reference=parc SANS --strict, une perte n'est qu'informative (code 0) — le parc n'est
+// jamais a jour, un gate qui echouerait dessus a chaque fois ne gaterait rien.
+func TestCodeSortiePertesNonBloquantesEnModeInformatif(t *testing.T) {
+	lignes := []ligneRapport{{Temoin: Temoin{ID: "a"}, Pertes: 5}}
+	if got := codeSortie(lignes, false); got != 0 {
+		t.Fatalf("code = %d, attendu 0 (pertesBloquent=false, mode parc informatif)", got)
+	}
+}
+
+// TestCodeSortieErreurBloqueMemeEnModeInformatif — une ERREUR de cuisson/comparaison reste
+// TOUJOURS bloquante, meme en mode informatif : le gate n'a alors pas pu faire son travail,
+// ce qui est distinct d'une perte mesuree.
+func TestCodeSortieErreurBloqueMemeEnModeInformatif(t *testing.T) {
+	lignes := []ligneRapport{{Temoin: Temoin{ID: "a"}, Erreur: errTest("cuisson cassee")}}
+	if got := codeSortie(lignes, false); got != 1 {
+		t.Fatalf("code = %d, attendu 1 (une erreur bloque toujours, meme pertesBloquent=false)", got)
 	}
 }

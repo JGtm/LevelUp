@@ -210,20 +210,21 @@ go-api-test:
 go-api-test-gamefiles:
 	cd $(GO_API_DIR) && go test -tags=gamefiles -count=1 -timeout 3600s ./internal/himap/ -v
 
-## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin (EXIGE le parc
-## local de developpement — chunks de film + artefacts deja cuits sous data/cache/, ET
-## l'acces en lecture a la base partagee du titre pour les faits du match ; PAS le jeu
-## installe).
+## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin. DEFAUT
+## (--reference=base) : cuit chaque temoin DEUX FOIS (code du HEAD, code d'une revision de
+## base — origin/feat/v75 ou HEAD^) dans deux racines de travail jetables (jamais le parc), et
+## compare les deux artefacts frais par TOUS les axes de cmd/replay-diff (dont la somme des
+## durees par calque). Toute perte sort en code 1 : le signal est binaire, une perte ne peut
+## venir que du diff en cours de revue. Mode --reference=parc (balayage de release, contre
+## l'artefact deja cuit) disponible mais INFORMATIF sauf --strict — cf. docs/COMMANDS.md.
 ##
 ## A LANCER AVANT tout merge qui touche analysis/replay, replaybuild, filmdec, ou qui bumpe
-## SchemaVersion (cf. docs/COMMANDS.md). Cuit chaque temoin de config/replay_corpus.toml au
-## HEAD dans une racine de travail jetable (jamais le parc), compare a l'artefact deja cuit
-## par TOUS les axes de cmd/replay-diff (dont la somme des durees par calque), imprime un
-## tableau et sort en code 1 des qu'un axe montre une perte. Duree mesuree (7 temoins,
-## 2026-09-06) : cf. docs/COMMANDS.md.
+## SchemaVersion. EXIGE le parc local de developpement (chunks de film) ET l'acces en lecture
+## a la base partagee du titre pour les faits du match ; PAS le jeu installe. Duree mesuree
+## (7 temoins, 2026-09-06, les deux modes) : cf. docs/COMMANDS.md.
 ##
-## Un temoin absent du parc local est un avertissement (`slog`), jamais un echec silencieux —
-## la cible reste utilisable sur un poste sans parc (elle ne compare alors rien).
+## Un temoin absent est un avertissement (`slog`), jamais un echec silencieux — la cible reste
+## utilisable sur un poste sans parc (elle ne compare alors rien).
 replay-corpus-gate:
 	cd $(GO_API_DIR) && CGO_ENABLED=0 go run ./cmd/replay-corpus-gate
 

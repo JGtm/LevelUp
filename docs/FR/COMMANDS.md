@@ -554,36 +554,55 @@ utilisé pour le balayage ponctuel du parc, `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-0
 un gate répétable : `config/replay_corpus.toml` fige un film témoin par famille de mode (CTF
 mono- et multi-manche, Oddball, Assaut, Slayer, un match à deux manches, un match riche en
 véhicules), chacun choisi parce qu'il porte déjà un calque ou un défaut mesuré (portages de
-crâne, pont d'identité multi-manche, forte occupation de véhicules...). Le gate cuit chaque
-témoin au HEAD dans une racine de travail jetable (entrées copiées, jamais une jonction ;
-config/catalogues depuis la branche extraite, chunks de film depuis le parc de développement —
-**jamais d'écriture dans le parc**), le compare à l'artefact déjà cuit là-bas par tous les axes
-que connaît `cmd/replay-diff` (dont le nouvel axe « somme des durées par calque », qui attrape
-un intervalle rogné qu'un simple compte d'éléments ne voit pas), imprime un tableau, et sort en
-code 1 dès qu'un axe montre une perte.
+crâne, pont d'identité multi-manche, forte occupation de véhicules...). Tous les axes que
+connaît `cmd/replay-diff` sont comparés (dont l'axe « somme des durées par calque », qui
+attrape un intervalle rogné qu'un simple compte d'éléments ne voit pas).
+
+**Deux modes de référence** (décidé le 2026-09-06, après une première version qui comparait le
+HEAD au parc de développement et rendait PERTE sur les 7 témoins au meilleur état connu — un
+gate qui échoue toujours ne gate rien) :
+
+- `--reference=base` (**défaut**) : cuit chaque témoin DEUX FOIS — une fois avec le code du
+  HEAD, une fois avec le code d'une **révision de base** (défaut : `origin/feat/v75` si le
+  HEAD en diffère, sinon `HEAD^` — un worktree détaché temporaire est créé pour la révision de
+  base et retiré ensuite, même en échec) — puis compare les deux artefacts frais. Toute perte
+  sort en code 1. C'est le gate à lancer avant tout merge : le signal est binaire, une perte ne
+  peut venir que du diff en cours de revue, jamais de l'âge du parc.
+- `--reference=parc` : compare le HEAD à l'artefact déjà cuit dans le parc local (méthode
+  historique, balayage de release). **Informatif par défaut** (imprime le tableau, sort en 0) —
+  `--strict` le rend aussi bloquant sur une perte.
+
+Dans les deux modes, la racine de travail est jetable (entrées copiées, config/catalogues
+depuis la branche extraite ou le worktree de base, chunks de film depuis le parc de
+développement — **jamais d'écriture dans le parc**), et le gate ne bumpe jamais un schéma — il
+ne fait que comparer.
 
 ```bash
-make replay-corpus-gate                              # manifeste complet
-cd apps/go-api && go run ./cmd/replay-corpus-gate     # idem, avec les options --manifest/--parc-root/...
+make replay-corpus-gate                                      # defaut : mode base, manifeste complet
+cd apps/go-api && go run ./cmd/replay-corpus-gate             # idem, toutes les options disponibles
+cd apps/go-api && go run ./cmd/replay-corpus-gate \
+  --reference=parc                                            # balayage informatif contre le parc
+cd apps/go-api && go run ./cmd/replay-corpus-gate \
+  --base=HEAD~3                                               # revision de base explicite
 ```
 
 **À exécuter avant tout merge qui touche** `analysis/replay`, `replaybuild`, `filmdec`, ou qui
-bumpe `SchemaVersion`. **Exige** : le parc local de développement (chunks de film + artefacts
-déjà cuits sous `data/cache/film_chunks|film_manifests|replays`) et l'accès en lecture à la base
+bumpe `SchemaVersion`. **Exige** : le parc local de développement (chunks de film ; + artefacts
+déjà cuits sous `data/cache/replays` en mode `--reference=parc`) et l'accès en lecture à la base
 partagée du titre (pour les faits du match, via `levelup replay-facts-export` lancé en
 sous-processus — la seule étape qui exige CGO/gcc). **N'exige PAS le jeu installé** : la cuisson
-elle-même (`internal/replaybuild`) ne lit que des catalogues versionnés
-(`data/titles/{slug}/reference`), contrairement au corpus `gamefiles` ci-dessus — le gate n'en
-partage que l'ESPRIT (une ressource locale volumineuse, absente en CI, qui dégrade proprement
-plutôt que d'échouer). Un témoin absent du parc local est un avertissement `slog`, jamais un
-échec silencieux ou fatal — le gate reste utilisable sur un poste sans parc (il ne compare alors
-rien et sort en code 0). Mesuré le 2026-09-06 sur le manifeste à 7 témoins : **cf.
-`.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** pour l'exécution exacte et sa durée.
+elle-même (un binaire `cmd/replay-build`, compilé à la volée pour le HEAD et, en mode base, pour
+la révision de base) ne lit que des catalogues versionnés (`data/titles/{slug}/reference`),
+contrairement au corpus `gamefiles` ci-dessus — le gate n'en partage que l'ESPRIT (une ressource
+locale volumineuse, absente en CI, qui dégrade proprement plutôt que d'échouer). Un témoin
+absent (du parc, ou de la révision de base) est un avertissement `slog`, jamais un échec
+silencieux ou fatal. Mesuré le 2026-09-06 sur le manifeste à 7 témoins, dans les deux modes :
+**cf. `.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** pour l'exécution exacte et sa durée.
 
-Le gate ne bumpe jamais un schéma — il ne fait que comparer. Si le parc local est plus ancien
-que le HEAD, les écarts attendus sont des GAINS (calques neufs, correctifs documentés) ; toute
-PERTE est un fait à rapporter, jamais à masquer en resserrant le manifeste ou en filtrant le
-rapport.
+Si le parc local est plus ancien que le HEAD, les écarts attendus en `--reference=parc` sont des
+GAINS (calques neufs, correctifs documentés) ; toute PERTE est un fait à rapporter, jamais à
+masquer en resserrant le manifeste ou en filtrant le rapport.
+
 
 ### Frontend (`apps/web`)
 
