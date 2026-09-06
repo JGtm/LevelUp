@@ -48,10 +48,18 @@ var (
 	// porte AUCUN quotient — MatchID, deux xuids, un instant, trois booleens et un delai en
 	// int64 : il n'y a rien dedans qu'un lecteur puisse prendre pour un taux, et le seul
 	// taux de ce paquet reste celui de Mesurer.
+	// `domain.BilanIsolement` AJOUTE LE 2026-09-06 (phase 7, lecture « ou je meurs
+	// isole »). JUSTIFICATION : `Isolement` le rend parce que la lecture a besoin de
+	// TROIS choses que le taux seul ne porte pas — les morts isolees (la carte les
+	// peint), les morts ECARTEES faute de coequipier vivant, et les matchs dont la
+	// variante n'a pas de rayon mesure. Son unique taux est `Couverture`, du type
+	// canonique : le reste sont des comptes entiers et des positions. Un lecteur ne peut
+	// prendre aucun de ses champs pour un quotient.
 	typesQualifiesAutorises = map[string]bool{
-		"domain.Couverture":    true,
-		"domain.BilanEchanges": true,
-		"domain.MortSuivie":    true,
+		"domain.Couverture":     true,
+		"domain.BilanEchanges":  true,
+		"domain.MortSuivie":     true,
+		"domain.BilanIsolement": true,
 	}
 )
 
