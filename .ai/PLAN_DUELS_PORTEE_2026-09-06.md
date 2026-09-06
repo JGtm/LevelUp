@@ -261,6 +261,58 @@ Gates réellement exécutés le 2026-09-06 (`CGO_ENABLED=0`, `GOCACHE` isolé), 
 `go vet ./internal/analysis/ ./internal/analysis/replay/` · `gofmt -l` (sortie vide) ·
 `TestSondeDuelsOuverture` sur les 4 films, un par process.
 
+### Revue adversariale ronde 1 (2026-09-06, branche `feat/duels-lot2-fix`)
+
+Deux relecteurs indépendants ; sept constats retenus par le pilote, tous corrigés. Le lot 2
+n'était PAS livrable en l'état : F1 publiait des points de réapparition comme des entames.
+
+- [x] **F1 (P1) — la position d'entame pouvait être un POINT DE RÉAPPARITION.** Le décalage
+      seul ne suffit pas : `BuildKillPositions` ne connaît aucune frontière de vie et rend
+      l'échantillon le plus proche à 120 ms près. Reproduit par les deux relecteurs (mort à
+      1 550 ms, apparitions à t = 0 : entame « résolue » sur les deux spawns, 1 131 m d'écart
+      pour une mort à 5 m). CORRIGÉ par `replay.BuildKillOpenings(pos, slotXUID, kills,
+      offsetUS) ([]KillPosition, KillPosReport)` — décale par `ShiftKillRefs`, place par LA
+      fonction de placement (aucune seconde), puis ne garde un côté que si le slot qui a fourni
+      la position porte l'instant du KILL dans la MÊME vie (`buildLifeSpans`, trou `lifeGapUS`).
+      L'instant rendu est celui du KILL (clé de jointure `time_ms`). Compteur dédié
+      `KillPosReport.OpeningOutOfLife` (compte des CÔTÉS). Le placement est factorisé dans
+      `placeKillPositions`, qui rend en plus le SLOT retenu (`positionOf` rend désormais la
+      position ET son slot) : `BuildKillPositions` en reste la façade publique, inchangée.
+      En-tête de `killpos_opening.go` réécrit — il affirmait l'inverse de la vérité.
+- [x] **F2 (P1) — le test « instant négatif » passait pour la mauvaise raison** (échantillons
+      hors tolérance ; clamper l'instant à 0 laissait la suite verte). RÉÉCRIT avec un
+      `offsetUS` non nul : l'instant de match négatif devient un instant de film POSITIF, DANS
+      la tolérance — un témoin vérifie que le placement nu tombe dans le piège. Ce qui refuse
+      est désormais la frontière de vie, plus un débordement `uint64`.
+- [x] **F3 (P1) — le tri des distances n'était couvert par aucun test** (`sort.Float64s`
+      remplacé par un no-op : suite verte). `TestWeaponRangeAggregateDistancesNonTriees` :
+      distances 40, 2, 9, 15, 4, 30, 7, 12 ; p10 = 3,4 · médiane = 10,5 · p90 = 33,0, calculés
+      à la main. Sans tri : 13,4 · 9,5 · 8,5 — mutation prouvée rouge.
+- [x] **F4 (P2) — garde-rail sans contrôle positif** (`if false && fautifPortee(...)` laissait
+      le test vert). Le détecteur prend sa RACINE en paramètre ;
+      `TestSeuilsPorteeDetecteUneCopie` plante deux copies fautives et un fichier licite (DDL +
+      commentaire) dans un `t.TempDir()` et vérifie les trois verdicts. En-tête complété par ce
+      que les regex NE captent PAS (SQL multiligne, alias `dz`, `HAVING count(*) >= 8`) —
+      consigné, non corrigé : le lot 3 n'écrit aucun seuil en SQL.
+- [x] **F5 (P2) — doc inversée** : `WeaponRangeMinMeasured` promettait « N armes sous le
+      seuil » alors que `BelowThreshold` compte des COUPLES (arme, côté). Doc corrigée, la
+      formulation publiée renvoie à `BelowThresholdBySide`.
+- [x] **F6 (P2) — code mort** : le clamp `if minMeasured < 1` était inatteignable (un groupe
+      porte toujours >= 1 frag). Supprimé ; le pourquoi est écrit dans la doc de
+      `WeaponRangeAggregate` pour qu'il ne revienne pas. Test conservé (il asserte encore vrai),
+      commentaire corrigé.
+- [x] **F7 (P2) — code mort** : la garde `if lo >= n-1` de `percentileLinear` était
+      inatteignable (`p >= 100` a déjà rendu la main). Supprimée ; les gardes `p <= 0` et
+      `p >= 100` restent (leur suppression conjointe panique).
+
+Gates de la ronde (`CGO_ENABLED=0`, `GOCACHE` isolé `.gocache-fix2`) : `go test -count=1
+./internal/analysis/ ./internal/analysis/replay/ -timeout 900s` (ok 37,4 s / 23,9 s) ·
+`go vet` (0) · `gofmt -l internal/analysis` (vide) · `go build ./internal/sync/killcollector/`
+avec CGO (le consommateur de `KillPosReport` compile). Mutations prouvées rouges puis
+restaurées : filtre de vie neutralisé -> 3 tests d'entame rouges ; `sort.Float64s` retiré ->
+`TestWeaponRangeAggregateDistancesNonTriees` rouge ; détecteur du garde-rail neutralisé ->
+`TestSeuilsPorteeDetecteUneCopie` rouge.
+
 ---
 
 ## Lot 3 — Port + repo DuckDB, avec l'extraction de la jointure
@@ -444,6 +496,19 @@ répliqué, ou source hors film »).
   tout `internal/` et lit chaque `.go`. C'est le prix d'un garde-rail qui couvre les couches
   aval. À surveiller si d'autres garde-rails adoptent la même marche — à la troisième, il
   faudra un index partagé plutôt que trois marches complètes.
+- (lot 2 — revue ronde 1, 2026-09-06) **Ce que les regex de `weapon_range_guard_test.go` ne
+  captent PAS**, consigné et NON corrigé : une comparaison SQL MULTILIGNE (les 80 caractères de
+  contexte ne franchissent pas le retour à la ligne), un ALIAS qui masque la colonne
+  (`... AS dz ... WHERE dz > 1.0` — élargir `delta_?z` à `dz` ferait tomber la moitié du dépôt),
+  et le seuil de publication écrit sans son nom (`HAVING count(*) >= 8`). Accepté parce que le
+  lot 3 a pour consigne de n'écrire AUCUN seuil ni comparaison de dénivelé en SQL : le repo rend
+  les frags MESURÉS, les seuils restent en `analysis`. Si cette consigne bougeait, le garde-rail
+  de NOMMAGE du lot 3.2 (`kill_measured.go`) couvrirait mieux le motif qu'une regex de littéral.
+- (lot 2 — revue ronde 1, 2026-09-06) La formulation de **D9** ci-dessus (« leur NOMBRE est
+  publié — N armes sous le seuil ») a le même défaut que la doc corrigée en F5 : le compteur
+  porte des COUPLES (arme, côté), pas des armes. La doc de `WeaponRangeMinMeasured` fait foi ;
+  le rendu du lot 5.3 dit déjà « frags : N · morts : M ». Non corrigé ici : D9 est un relevé de
+  décision daté, on ne réécrit pas une décision passée.
 - (lot 2, 2026-09-06) **Le délai médian entre le premier dégât CAPTURÉ et la fin de vie vaut
   551 à 1 335 ms** sur les quatre films. C'est un second angle sur le constat de la sonde n°1
   (« la riposte vit dans les deux premières secondes ou n'existe pas ») et c'est aussi ce qui
