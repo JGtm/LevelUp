@@ -57,8 +57,8 @@ func comptesDesRoutes(sc *domain.TacticalRasterSidecar, matchID string,
 	return out
 }
 
-// mortsAExaminer projette les morts de la cible en morts examinables : chaque distance de
-// VOISIN est gardee si et seulement si le voisin est un COEQUIPIER du mort DANS CE MATCH.
+// mortsAExaminer projette les morts de la cible en morts examinables : chaque voisin est
+// garde avec son STATUT si et seulement si c'est un COEQUIPIER du mort DANS CE MATCH.
 //
 // L'EQUIPE SE LIT PAR MATCH, jamais globalement : les numeros d'equipe se reattribuent a
 // chaque partie, et une table globale melangerait deux compositions au premier joueur ayant
@@ -79,39 +79,42 @@ func mortsAExaminer(sc *domain.TacticalRasterSidecar, m domain.TacticalMatch,
 		}
 		for _, mort := range j.Morts {
 			out = append(out, domain.MortAExaminer{
-				MatchID:              m.MatchID,
-				Frame:                mort.Frame,
-				X:                    mort.X,
-				Y:                    mort.Y,
-				DistancesCoequipiers: distancesDesCoequipiers(mort.Voisins, duMatch, son),
+				MatchID:          m.MatchID,
+				X:                mort.X,
+				Y:                mort.Y,
+				PositionInconnue: mort.PositionInconnue,
+				Coequipiers:      statutsDesCoequipiers(mort.Voisins, duMatch, son),
 			})
 		}
 	}
 	return out
 }
 
-// distancesDesCoequipiers ne garde que les voisins du MEME camp.
+// statutsDesCoequipiers ne garde que les voisins du MEME camp, avec leur statut.
 //
 // UN ADVERSAIRE PROCHE N'ACCOMPAGNE PERSONNE : la question porte sur le soutien. Un voisin
 // dont l'equipe est inconnue est ecarte lui aussi — lui en preter une serait une invention.
-func distancesDesCoequipiers(voisins []domain.TacticalRasterVoisin,
-	duMatch map[string]int, monEquipe int) []float64 {
-	out := make([]float64, 0, len(voisins))
+func statutsDesCoequipiers(voisins []domain.TacticalRasterVoisin,
+	duMatch map[string]int, monEquipe int) []domain.StatutCoequipier {
+	out := make([]domain.StatutCoequipier, 0, len(voisins))
 	for _, v := range voisins {
 		son, connu := duMatch[v.XUID]
 		if !connu || son != monEquipe {
 			continue
 		}
-		out = append(out, v.DistanceM)
+		out = append(out, domain.StatutCoequipier{Statut: v.Statut, DistanceM: v.DistanceM})
 	}
 	return out
 }
 
 // rayonsParMatch resout la portee du radar de chaque match MESURE, par sa variante.
 //
-// UN MATCH DONT LA VARIANTE N'EST PAS DANS LA TABLE N'ENTRE PAS DANS LA TABLE DE SORTIE :
-// `coordination.Isolement` l'ecartera et le comptera. C'est la seule facon de distinguer
-// « il est mort accompagne » de « on ne sait pas a quelle distance on se voit sur ce mode ».
+// UN MATCH DONT LA VARIANTE N'EST PAS DANS LA TABLE N'ENTRE PAS DANS LA TABLE DE SORTIE, et
+// il sort donc de l'UNIVERS de la lecture — pas seulement de ses numerateurs (correction
+// P0-2). Le laisser au denominateur divisait la mesure par des matchs qu'on avait refuse de
+// lire : deux matchs dont un Husky Raid rendaient 0,5 mort isolee par match au lieu de 1.
+// C'est la seule facon de distinguer « il est mort accompagne » de « on ne sait pas a
+// quelle distance on se voit sur ce mode ».
 func (s *TacticalService) rayonsParMatch(matchs []domain.TacticalMatch) map[string]float64 {
 	out := make(map[string]float64, len(matchs))
 	for _, m := range matchs {
@@ -217,8 +220,23 @@ func matchsDeLaGrappe(sidecars map[string]*domain.TacticalRasterSidecar, xuid st
 }
 
 // mesurerIsolement assemble la lecture « ou je meurs isole ».
+//
+// L'UNIVERS MESURABLE EST « MESURE *ET* AYANT UN RAYON » (correction P0-2), et il est rendu
+// pour que la somme des cellules soit normalisee sur LUI. `matchsSansRayon` se compte AU
+// NIVEAU DU MATCH : compter au fil des morts laissait invisible un match dont la variante
+// n'a pas de rayon mais ou le joueur n'est pas mort.
 func (s *TacticalService) mesurerIsolement(sidecars map[string]*domain.TacticalRasterSidecar,
-	univers domain.TacticalUnivers, dans predicatQui, mesures []string) domain.BilanIsolement {
+	univers domain.TacticalUnivers, dans predicatQui, mesures []string) (domain.BilanIsolement, []string) {
+	rayons := s.rayonsParMatch(univers.Matchs)
+	avecRayon := make([]string, 0, len(mesures))
+	sansRayon := 0
+	for _, id := range mesures {
+		if _, ok := rayons[id]; ok {
+			avecRayon = append(avecRayon, id)
+			continue
+		}
+		sansRayon++
+	}
 	morts := make([]domain.MortAExaminer, 0, 64)
 	for _, m := range univers.Matchs {
 		sc := sidecars[m.MatchID]
@@ -227,5 +245,7 @@ func (s *TacticalService) mesurerIsolement(sidecars map[string]*domain.TacticalR
 		}
 		morts = append(morts, mortsAExaminer(sc, m, univers.Equipes, dans)...)
 	}
-	return coordination.Isolement(morts, s.rayonsParMatch(univers.Matchs), len(mesures))
+	bilan := coordination.Isolement(morts, rayons, len(avecRayon))
+	bilan.MatchsSansRayon = sansRayon
+	return bilan, avecRayon
 }

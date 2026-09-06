@@ -17,6 +17,29 @@ package tactical
 // c'est juste. Un joueur dont la derniere vie n'a pas ete appariee non plus, et c'est une
 // LACUNE — comptee nulle part, parce qu'elle est indistinguable de la premiere.
 //
+// # ON NE COMPTE MORT QUE CE QU'ON SAIT MORT (correction P0-1, revue du 2026-09-06)
+//
+// Un voisin dont on n'observe aucune position a l'instant d'une mort N'EST PAS un voisin
+// mort. Deux situations le produisent en permanence, et les confondre avec un deces rendait
+// des morts « isolees » alors qu'un coequipier etait a trois metres :
+//
+//	EN VEHICULE      un occupant ne replique plus son bipede, et la primitive d'episodes
+//	                 n'attribue que 15,6 a 21,1 % des vies de vehicule ;
+//	SURVIVANT        la derniere vie d'un joueur qui finit le match n'est close par aucune
+//	                 mort, donc le fil des morts ne la nomme pas.
+//
+// Chaque voisin porte donc un STATUT a trois valeurs — `vivant` (position connue, avec sa
+// distance), `mort` (une vie nommee de ce joueur a ete close a d <= t, et rien n'a ete
+// observe depuis), `inconnu` (aucune position observable, aucune preuve de mort). C'est le
+// service qui en tire un verdict d'isolement.
+//
+// # LA DISTANCE EST HORIZONTALE, ET DEUX ETAGES LISENT ZERO
+//
+// `math.Hypot(dx, dy)` ignore Z : un coequipier situe juste au-dessus ou au-dessous, separe
+// par une dalle, est mesure a 0 m et compte comme « a portee ». C'est une LIMITE CONNUE de
+// la mesure, pas un defaut a chercher — toutes les lectures de l'onglet sont des vues du
+// dessus, et corriger cela demanderait une notion d'etage que la grille n'a pas.
+//
 // # LES VOISINS SONT MESURES ICI, L'ISOLEMENT SE DECIDE AILLEURS
 //
 // Le film NE PORTE PAS LES EQUIPES (`Track.Team` vaut -1 pour tout le monde : le camp vit
@@ -50,11 +73,30 @@ import (
 // quoi changer si elle se revele fausse.
 const FenetreRouteMs = 15_000
 
-// VoisinVivant est un autre joueur NOMME, vivant a l'instant d'une mort, et sa distance a
-// elle. Ni equipe ni camp : le film ne les porte pas.
-type VoisinVivant struct {
-	XUID      string  `json:"xuid"`
-	DistanceM float64 `json:"distance_m"`
+// Les trois STATUTS d'un voisin a l'instant d'une mort.
+//
+// ILS NE SE REPLIENT PAS L'UN SUR L'AUTRE : `inconnu` n'est pas un `mort` prudent, c'est une
+// absence de mesure — et c'est precisement la distinction qui manquait (revue P0-1).
+const (
+	// StatutVivant : position CONNUE a cet instant (vie nommee couvrant l'instant, ou
+	// episode d'embarquement dont le vehicule a un point). `DistanceM` vaut alors.
+	StatutVivant = "vivant"
+	// StatutMort : une vie NOMMEE de ce joueur a ete close par une mort a d <= t, et rien
+	// n'a ete observe de lui depuis. `DistanceM` est nulle et sans objet.
+	StatutMort = "mort"
+	// StatutInconnu : aucune position observable a cet instant, ET aucune preuve de mort.
+	// C'est le cas d'un occupant de vehicule non attribue et d'un survivant de fin de
+	// partie. `DistanceM` est nulle et sans objet.
+	StatutInconnu = "inconnu"
+)
+
+// Voisin est un autre joueur NOMME, avec son statut a l'instant d'une mort. Ni equipe ni
+// camp : le film ne les porte pas.
+type Voisin struct {
+	XUID   string `json:"xuid"`
+	Statut string `json:"statut"`
+	// DistanceM n'a de sens que sous StatutVivant.
+	DistanceM float64 `json:"distance_m,omitempty"`
 }
 
 // MortMesuree est la fin d'une vie nommee : ou, quand, et qui etait encore debout autour.
@@ -64,10 +106,15 @@ type MortMesuree struct {
 	// X, Y : la position de la victime, en metres monde.
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
-	// Voisins : TOUS les autres joueurs nommes vivants a cet instant, tries par xuid.
-	// Vide = le film ne montre personne d'autre debout — ce qui n'est PAS « il etait seul
-	// avec ses adversaires » : c'est le service qui, connaissant les equipes, tranchera.
-	Voisins []VoisinVivant `json:"voisins"`
+	// PositionInconnue : la mort a eu lieu, mais le film ne dit pas OU (embarquement sans
+	// point de vehicule). Elle n'est alors ni peinte ni examinee — et elle se compte. Lui
+	// preter le point de montee serait l'invention que ce fichier interdit partout ailleurs.
+	PositionInconnue bool `json:"position_inconnue,omitempty"`
+
+	// Voisins : TOUS les autres joueurs nommes, avec leur STATUT a cet instant, tries par
+	// xuid. Vide quand la position de la mort est inconnue — sans elle, aucune distance
+	// n'est mesurable.
+	Voisins []Voisin `json:"voisins"`
 }
 
 // Route est la sortie de spawn d'une vie : les cellules traversees pendant FenetreRouteMs.
@@ -127,8 +174,8 @@ func (e echantillonneur) routeDeLaVie(xuid string, points []PointPiste, pos posi
 	for tMs := debut * intervalle; tMs < finMs; tMs += e.pasMs {
 		// LA POSITION VIENT DE L'INDEX, donc l'embarquement gagne sur le bipede : une
 		// sortie de spawn en vehicule est une route comme une autre.
-		p, ok := pos.positionA(xuid, tMs/intervalle)
-		if !ok {
+		p, st := pos.statutA(xuid, tMs/intervalle)
+		if st != StatutVivant {
 			continue
 		}
 		c, ok := e.grille.Cellule(p.X, p.Y)
@@ -143,40 +190,55 @@ func (e echantillonneur) routeDeLaVie(xuid string, points []PointPiste, pos posi
 	return r
 }
 
-// mortDeLaVie rend la mort qui clot cette vie, et les voisins vivants a cet instant.
+// mortDeLaVie rend la mort qui clot cette vie, et le statut de chaque autre joueur nomme.
 //
-// SANS FENETRE DECLAREE, PAS DE MORT : `EndFrame` est optionnel dans l'artefact, et un
-// artefact ancien ne le porte pas. Deduire la mort du dernier point confondrait une mort
-// avec la fin du film — donc avec un survivant.
+// # CE QUI GARANTIT QU'UNE VIE NOMMEE EST UNE MORT, ET CE N'EST PAS `EndFrame`
 //
-//nolint:unparam // `points` sert de repli quand l'index ne rend rien (vie hors fenetre).
-func (e echantillonneur) mortDeLaVie(p Piste, points []PointPiste, pos positionsParJoueur) (MortMesuree, bool) {
-	if p.EndFrame <= p.StartFrame {
-		return MortMesuree{}, false
-	}
+// Une version precedente exigeait `EndFrame > StartFrame` « pour ne pas confondre une mort
+// avec la fin du film ». CE GARDE ETAIT INERTE (revue P1-2) : le producteur ecrit TOUJOURS
+// `StartFrame`/`EndFrame` = premier/dernier point de la piste (`replay/build.go`), si bien
+// que la condition est vraie de toute piste de deux frames ou plus.
+//
+// LE VRAI MECANISME EST LE NOMMAGE, verifie sur pieces : `replay/lives.go:191` est la SEULE
+// assignation d'un xuid a une vie, et elle vient de `nameLivesByDeaths` — la vie prend
+// l'identite de la victime dont la mort la termine. Les traces heritent ensuite de ce nom
+// par RECOUVREMENT DE VIE (`identity.go:nameTracksByLives`), jamais par leur slot. Une piste
+// NOMMEE est donc close par une mort, et un survivant de fin de partie reste anonyme : c'est
+// le filtre `XUID != ""` de `Occupation` qui fait tout le travail.
+func (e echantillonneur) mortDeLaVie(p Piste, points []PointPiste,
+	pos positionsParJoueur) (MortMesuree, bool) {
+	// L'INSTANT DE LA MORT EST LA FIN DE LA VIE. `EndFrame` la porte pour tout artefact
+	// produit par ce depot (`build.go` l'ecrit toujours) ; un artefact qui ne la porterait
+	// pas retombe sur le dernier point, qui est la MEME valeur — ce n'est pas un garde,
+	// c'est une resolution d'instant.
 	frame := p.EndFrame
-	dernier, ok := pos.positionA(p.XUID, frame)
-	if !ok {
-		dernier = points[len(points)-1]
+	if frame <= p.StartFrame && len(points) > 0 {
+		frame = points[len(points)-1].T
 	}
-	m := MortMesuree{Frame: frame, X: dernier.X, Y: dernier.Y, Voisins: []VoisinVivant{}}
-	if !finie(dernier.X, dernier.Y) {
-		// Position non finie : la mort existe, mais elle n'est nulle part. On ne mesure
-		// aucune distance depuis un point qui n'en est pas un.
+	m := MortMesuree{Frame: frame, Voisins: []Voisin{}}
+	moi, statut := pos.statutA(p.XUID, frame)
+	if statut != StatutVivant || !finie(moi.X, moi.Y) {
+		// AUCUN REPLI : une mort dont on ignore la position ne se peint pas au dernier point
+		// de bipede connu — ce serait la peindre au point de MONTEE dans le vehicule,
+		// c'est-a-dire inventer un stationnement la ou il y a eu un trajet (revue P0-3).
+		m.PositionInconnue = true
 		return m, true
 	}
+	m.X, m.Y = moi.X, moi.Y
 	for _, autre := range pos.xuids {
 		if autre == p.XUID {
 			continue
 		}
-		q, vivant := pos.positionA(autre, frame)
-		if !vivant || !finie(q.X, q.Y) {
-			continue
+		q, st := pos.statutA(autre, frame)
+		v := Voisin{XUID: autre, Statut: st}
+		switch {
+		case st == StatutVivant && finie(q.X, q.Y):
+			v.DistanceM = math.Hypot(q.X-moi.X, q.Y-moi.Y)
+		case st == StatutVivant:
+			// On le sait vivant, on ne sait pas ou : c'est une absence de mesure.
+			v.Statut = StatutInconnu
 		}
-		m.Voisins = append(m.Voisins, VoisinVivant{
-			XUID:      autre,
-			DistanceM: math.Hypot(q.X-dernier.X, q.Y-dernier.Y),
-		})
+		m.Voisins = append(m.Voisins, v)
 	}
 	return m, true
 }
@@ -232,29 +294,53 @@ func (e echantillonneur) indexerPositions() positionsParJoueur {
 	return idx
 }
 
-// positionA rend la position d'un joueur a une frame, et s'il etait vivant.
+// statutA rend la position d'un joueur a une frame ET son statut (cf. les trois constantes).
 //
 // L'EMBARQUEMENT GAGNE SUR LE BIPEDE, comme partout : pendant un episode, la derniere
 // position de bipede connue ne dit plus ou est le joueur.
-func (p positionsParJoueur) positionA(xuid string, frame int) (PointPiste, bool) {
+//
+// LES SEGMENTS NON NOMMES DU MEME SLOT NE SERVENT PAS, et c'est verifie sur pieces : le
+// depot a SUPPRIME le nommage par slot parce qu'un slot RECYCLE donnait tout son intervalle
+// a son premier porteur nomme — « le remplacant (arrivant, bot) n'existait pas et l'ancien
+// vivait a sa place » (`identity.go`) —, et `ownersFromLives` compte les collisions plutot
+// que de trancher. Un slot n'est donc pas une identite : s'en servir pour prouver qu'un
+// joueur est vivant rattacherait a lui la position de quelqu'un d'autre. Le prix de ce refus
+// est ecrit : un survivant de fin de partie sort en `inconnu`, jamais en `vivant`.
+func (p positionsParJoueur) statutA(xuid string, frame int) (PointPiste, string) {
 	for _, em := range p.embs[xuid] {
 		if frame < em.T0 || frame > em.T1 {
 			continue
 		}
 		if pt, ok := dernierPointAvant(em.Points, frame); ok {
-			return pt, true
+			return pt, StatutVivant
 		}
-		// Embarque mais sans point de vehicule : VIVANT, position inconnue. On ne retombe
-		// pas sur le bipede — il ne replique plus.
-		return PointPiste{}, false
+		// Embarque, donc VIVANT — mais sans point de vehicule, on ne sait pas ou. On ne
+		// retombe pas sur le bipede : il ne replique plus.
+		return PointPiste{}, StatutInconnu
 	}
 	for _, v := range p.vies[xuid] {
 		if frame < v.debut || frame > v.fin {
 			continue
 		}
-		return dernierPointAvantOuPremier(v.points, frame)
+		if pt, ok := dernierPointAvantOuPremier(v.points, frame); ok {
+			return pt, StatutVivant
+		}
+		return PointPiste{}, StatutInconnu
 	}
-	return PointPiste{}, false
+	// AUCUNE OBSERVATION A CET INSTANT. Mort seulement si une vie NOMMEE de ce joueur a ete
+	// close avant : la derniere fin retenue etant la PLUS TARDIVE, « rien observe depuis »
+	// est acquis par construction (une vie posterieure couvrirait cet instant, ou finirait
+	// plus tard et serait celle-la).
+	derniereFin := -1
+	for _, v := range p.vies[xuid] {
+		if v.fin <= frame && v.fin > derniereFin {
+			derniereFin = v.fin
+		}
+	}
+	if derniereFin >= 0 {
+		return PointPiste{}, StatutMort
+	}
+	return PointPiste{}, StatutInconnu
 }
 
 // dernierPointAvant rend le dernier point a ou avant `frame`.

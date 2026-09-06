@@ -50,6 +50,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -262,11 +263,27 @@ func mortsDeLOccupation(morts []tactical.MortMesuree) []domain.TacticalRasterMor
 	for _, m := range morts {
 		voisins := make([]domain.TacticalRasterVoisin, 0, len(m.Voisins))
 		for _, v := range m.Voisins {
-			voisins = append(voisins, domain.TacticalRasterVoisin{XUID: v.XUID, DistanceM: v.DistanceM})
+			voisins = append(voisins, domain.TacticalRasterVoisin{
+				XUID: v.XUID, Statut: v.Statut, DistanceM: arrondi2(v.DistanceM),
+			})
 		}
-		out = append(out, domain.TacticalRasterMort{Frame: m.Frame, X: m.X, Y: m.Y, Voisins: voisins})
+		out = append(out, domain.TacticalRasterMort{
+			Frame: m.Frame, X: arrondi2(m.X), Y: arrondi2(m.Y),
+			PositionInconnue: m.PositionInconnue, Voisins: voisins,
+		})
 	}
 	return out
+}
+
+// arrondi2 arrondit a deux decimales, la MEME convention que les coordonnees de l'artefact
+// (`replay.round2`).
+//
+// POURQUOI ICI : les positions du document sont des `float32` deja arrondis a 2 decimales ;
+// les promouvoir en `float64` puis les serialiser en pleine precision ecrivait des
+// « 12.340000152587891 » et pres du double d'octets pour le bloc des morts, sans un chiffre
+// de mesure en plus.
+func arrondi2(v float64) float64 {
+	return math.Round(v*100) / 100
 }
 
 // routesDeLOccupation transporte les chemins de sortie de spawn.

@@ -116,6 +116,16 @@ type TacticalRaster struct {
 	// amputee ressemblerait a une lecture complete.
 	MatchsSansRayon int `json:"matchs_sans_rayon,omitempty"`
 
+	// MortsIndeterminees : les morts ECARTEES de la lecture « isole » parce qu'au moins un
+	// coequipier etait INVISIBLE a cet instant (en vehicule non attribue, ou survivant
+	// anonyme) et qu'aucun coequipier vu n'etait a portee. Ni isolees ni accompagnees :
+	// les compter isolees rendait des morts « seules » a trois metres d'un coequipier.
+	MortsIndeterminees int `json:"morts_indeterminees,omitempty"`
+
+	// MortsPositionInconnue : les morts dont le film ne dit pas OU elles ont eu lieu
+	// (embarquement sans point de vehicule). Ni peintes ni examinees.
+	MortsPositionInconnue int `json:"morts_position_inconnue,omitempty"`
+
 	// Isolement est la part des morts SANS coequipier vivant a portee, sous la forme
 	// canonique (taux + brut + par match + N + echantillon faible). nil hors de la lecture
 	// « isole ».
