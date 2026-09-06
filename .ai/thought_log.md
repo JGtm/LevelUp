@@ -1,3 +1,48 @@
+## [2026-09-06] Plan Tactique phase 6 — revue adversariale ronde 1, 14 constats corriges — Complete
+
+**Decision technique principale.** Le constat qui porte le lot n'est pas un bug de code mais
+un TROU DE MESURE : **le temps passe en vehicule n'entrait nulle part, sur des matchs comptes
+comme MESURES**. La cuisson coupe une piste en nouvelle vie des qu'un trou depasse 5 s
+(`replay.lifeGapUS`) ; or un occupant embarque cesse de repliquer son bipede — ce sont
+precisement ses trous qui portent les episodes d'occupation — et ces episodes durent 13 a
+36 s en mediane. Le reechantillonnage ne pouvait donc structurellement pas les voir, et
+l'en-tete justifiait tout le mecanisme par un cas (« un joueur immobile derriere un mur
+pendant quinze secondes ») que la coupe des vies rend INATTEIGNABLE : une doc inversee sur la
+lacune meme qu'elle masquait. Correction : on ATTRIBUE sans inventer — pendant un episode
+[T0,T1] d'un occupant nomme, l'occupant est a la position du VEHICULE (le lien est une
+imbrication, `VehicleRide` dans `VehicleTrack.Rides` a cote de `Samples`, verifie sur pieces
+avant de coder) ; un episode sans point de vehicule n'attribue RIEN ; un embarquement ne cree
+JAMAIS de spawn ; deux episodes chevauchants d'un meme xuid ne sont pas sommes. Schema du
+sidecar 1 -> 2, et la lacune residuelle — la primitive n'apparie que 15,6 a 21,1 % des vies
+de vehicule — est ECRITE dans le contrat.
+
+**Resultats observes.** Les quatre autres P1 disent la meme chose sous d'autres formes : UN
+GARDE QUI NE GARDE PAS CE QU'IL CROIT. Le ratchet anti-cuisson ignorait `SpawnBuildOne`, que
+la CLI pouvait deja appeler (elle importe le paquet pour deux projections pures) — un
+remplacement de branche d'echec en aurait fait une cuisson en lot, ratchet vert. Le remede
+que le service PRESCRIT dans son avertissement (`--backfill`) etait un no-op sur exactement
+les sidecars qu'il ecartait, les deux cotes n'appliquant pas le meme predicat de fraicheur.
+L'echange servi sous `temps` etait une decision jamais prouvee (les huit cas montaient un
+titre sans `film.kill_source`). Et la ligne de cablage qui fait naitre les sidecars a la
+cuisson n'etait traversee par AUCUN test. Une mesure a corrige une croyance au passage :
+`points_ignores` est structurellement NUL aujourd'hui — `replay.Point` est en float32 et
+JSON ne peut exprimer aucune valeur non finie, une coordonnee hors bornes faisant echouer la
+deserialisation de tout l'artefact ; le fait est FIGE par un test plutot que redecouvert plus
+tard comme un bug. Gate complet rejoue en serie : `go test` sur dix arbres sans un `FAIL`,
+integration `-p 1` sur trois arbres (code 0), `golangci-lint --new-from-merge-base` a 0 issue,
+`funlen` ne signalant aucun fichier du lot, contrat a jour, suite vitest COMPLETE
+(606 fichiers / 6405 tests / 0 fail). VINGT mutations jouees, toutes mordantes.
+
+**Conclusion / prochaine etape.** Quatre commits `tactique(6.5.<n>)` sur `feat/tactique`, non
+pousses. Decision produit appliquee : un artefact purge emporte son sidecar (et le
+court-circuit « dossier vide » de la purge compte desormais les ARTEFACTS, sans quoi chaque
+tick ouvrait la shared pour rien). Trois decouvertes ajoutees au §7, aucune traitee : la
+lecture unique du document par cycle (les quatre projections relisent le meme fichier), le
+FAUX SPAWN a la sortie d'un vehicule — une vie rouverte par un trou > 5 s juste apres un `T1`
+d'embarquement n'est pas une reapparition, a trancher en phase 7 avec les grappes de spawn —
+et la couverture partielle des episodes. Suite : phase 7, qui consomme ces sidecars ; phase 5
+toujours GELEE jusqu'au lot D.
+
 ## [2026-09-06] Plan Tactique phase 6 — les rasters d'occupation cuits une fois, sommes a la lecture — Complete
 
 **Decision technique principale.** L'occupation (« ou je passe mon temps ») est desormais
