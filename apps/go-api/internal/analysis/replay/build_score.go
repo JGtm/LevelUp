@@ -47,9 +47,13 @@ func attachScoreTimeline(doc *ReplayDocument, in *ScoreInput, deaths []Death, c 
 	return cov
 }
 
-// logRoundBounds publie ce que la confrontation de la MANCHE DECLAREE AU TEMPS a ecarte (cf.
-// objectiveevents/round_bounds.go). Un compte NON NUL est le nominal d'un film multi-manche
-// (5 a 27 enregistrements sur les temoins mesures le 2026-09-06).
+// logRoundBounds publie ce que la confrontation de la MANCHE DECLAREE AU TEMPS a ecarte, et ce
+// qu'elle a EXEMPTE (cf. objectiveevents/round_bounds.go).
+//
+// LA FOURCHETTE NOMINALE N'EST PAS ECRITE ICI : elle vit en une seule place,
+// [objectiveevents.OutliersNominalMax], avec le releve qui la fonde. Au-dela, la ligne passe en
+// WARN — c'est le « son explosion signalerait un etiquetage qui ne tient plus » du contrat, rendu
+// mesurable au lieu d'etre laisse en prose.
 //
 // LE SILENCE SUR UN FILM A PLUSIEURS MANCHES EST LUI AUSSI UN SIGNAL, et c'est pour cela qu'il
 // est ecrit : il dit qu'AUCUNE borne n'a pu etre posee, donc que le numero de manche du film ne
@@ -60,15 +64,38 @@ func logRoundBounds(matchID string, in *ScoreInput, cov *ScoreCoverage) {
 	if in == nil || len(in.Records) == 0 || cov == nil || cov.Rounds < 2 {
 		return
 	}
-	if n := objectiveevents.ResolveRoundBounds(in.Records).Outliers(in.Records); n > 0 {
+	bornes := objectiveevents.ResolveRoundBounds(in.Records)
+	logKeptSegments(matchID, bornes)
+	n := bornes.Outliers(in.Records)
+	switch {
+	case n == 0:
+		slog.Warn("rejeu : AUCUNE borne de manche posee sur un film a plusieurs manches — le numero "+
+			"de manche ne suit pas l'horloge, les compteurs restent ceux d'avant",
+			"match_id", matchID, "manches", cov.Rounds, "enregistrements", len(in.Records))
+	case n > objectiveevents.OutliersNominalMax:
+		slog.Warn("rejeu : enregistrements hors de la fenetre de leur manche declaree AU-DELA DU "+
+			"NOMINAL — l'etiquetage de manche de ce film est a regarder",
+			"match_id", matchID, "ecartes", n, "nominal_max", objectiveevents.OutliersNominalMax,
+			"enregistrements", len(in.Records), "manches", cov.Rounds)
+	default:
 		slog.Info("rejeu : enregistrements hors de la fenetre de leur manche declaree, ecartes",
 			"match_id", matchID, "ecartes", n, "enregistrements", len(in.Records),
 			"manches", cov.Rounds)
-		return
 	}
-	slog.Warn("rejeu : AUCUNE borne de manche posee sur un film a plusieurs manches — le numero "+
-		"de manche ne suit pas l'horloge, les compteurs restent ceux d'avant",
-		"match_id", matchID, "manches", cov.Rounds, "enregistrements", len(in.Records))
+}
+
+// logKeptSegments nomme les blocs (slot, manche) que la GARDE PAR SLOT a exemptes : leur bloc
+// tombe entierement hors de la fenetre consensuelle, donc il est garde dans sa manche declaree
+// plutot que jete (doctrine « une lecture vraie n'est jamais jetee », revue MANCHES-R1). Aucun
+// bloc n'est dans ce cas sur les douze films multi-manche du parc : une ligne ici veut dire que
+// le consensus et ce slot ne s'accordent pas sur les bornes de la manche.
+func logKeptSegments(matchID string, bornes objectiveevents.RoundBounds) {
+	for _, s := range bornes.KeptSegments() {
+		slog.Warn("rejeu : bloc de manche GARDE hors de la fenetre consensuelle — le slot et le "+
+			"consensus ne s'accordent pas sur les bornes de cette manche",
+			"match_id", matchID, "slot", s.Slot, "manche", s.Round,
+			"debut_ms", s.FromMS, "fin_ms", s.ToMS, "ecart_ms", s.GapMS, "enregistrements", s.Records)
+	}
 }
 
 // logScoreCoverage journalise ce que le calque a publie — et ce qu'il n'a pas resolu.

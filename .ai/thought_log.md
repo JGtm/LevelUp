@@ -97238,3 +97238,30 @@ vérifiés un à un (priorité de processus, projection mémoire, espace disque,
 Prouvé par mutation : un `sonde_linux.go` vide fait échouer le ratchet. Gate local ajouté à la
 liste : `CGO_ENABLED=0 go vet ./internal/domain/... ./internal/analysis/...` — c'est l'étape
 exacte de la CI, et elle est le seul moyen de voir cette classe de faute depuis Windows.
+
+**Corrections de la revue MANCHES-R1 (même jour, `feat/v2-manches`).** Revue close, 15/15
+conditions, aucun P0/P1 ; trois constats traités, `SchemaVersion` reste 44 car aucun ne change le
+document sur le parc. **C1** (requalifié P1, doctrine « une lecture vraie n'est jamais jetée ») :
+les trois gardes des bornes comparaient des médianes GLOBALES, si bien qu'une borne pouvait tomber
+après la fin du bloc d'un slot minoritaire et faire disparaître sa manche entière — fixture du
+relecteur (3 slots ouvrant la manche 1 à 40 s, 5 à 70 s) : 12 enregistrements légitimes jetés,
+`rounds[1]` vide pour trois joueurs, assistances 8 → 5. La granularité passe du film au bloc
+(slot, manche) : on n'écarte que ce qui est CONTREDIT — un bloc dont une partie tombe dans la
+fenêtre voit ses égarés écartés, un bloc entièrement hors fenêtre est GARDÉ dans sa manche
+déclarée et journalisé (`slog.Warn` avec match, slot, manche, bornes, écart, nombre). Effet parc :
+**nul** — sur les 13 films mesurés, EXEMPTÉS = 0 partout et les comptes d'écartés sont identiques
+à ceux d'avant C1. Trois tests dont la mutation inverse exigée (l'égaré de `51ebbc0f`, qui a un
+bloc dans la fenêtre, reste écarté). **C2** : `roundStartsOf` prenait le MINIMUM des instants
+déclarés là où la découpe prend la médiane — sur `24dbb67d`, manche 1 à 85 193 ms contre
+298 909 ms, 213 s pendant lesquelles `RoundIdentity.At` résolvait la mauvaise manche. Source
+unique `RoundStartsMS` ; repli documenté pour une manche sans consensus. Mesuré élément par
+élément sur les deux films les plus exposés, `24dbb67d` et `fb1a1a72` : artefacts **identiques à
+l'octet**, `objectives` par (xuid, statistique) identiques, `flagCarries`/`skullCarries`/`vipCrown`
+identiques — aucune variation, donc aucune qui s'éloigne de la feuille ; au passage `24dbb67d`
+est **8 joueurs sur 8 exacts** en K/D/A contre sa feuille. **C3** : la fourchette nominale des
+écartés n'a plus qu'une écriture, `objectiveevents.OutliersNominalMax = 27`, et elle est VIVANTE
+(au-delà, le journal passe de INFO à WARN). Gates rejoués : build, `CGO_ENABLED=0 go vet`
+(l'étape qui avait attrapé le piège `_windows.go`), tests replay/objectiveevents/replaybuild/
+archlint/contracttest, intégration `api/wire`, `golangci-lint --new-from-merge-base` 0 issue,
+golden inchangé. Observation sans défaut : une cuisson de `24dbb67d` coupée par la sentinelle
+mémoire à 3,83 Gio puis re-cuite à 0,217 Gio — contention machine, la sentinelle a joué son rôle.
