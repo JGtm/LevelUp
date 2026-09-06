@@ -208,3 +208,67 @@ func TestZoneStatesTientLeVolumeDUnVraiFilm(t *testing.T) {
 	t.Logf("volume : %d lectures, %d slots, %d captures -> %d zone(s), %d intervalle(s)",
 		len(reads), cov.Slots, cov.Captures, len(states), cov.Spans)
 }
+
+// TestZonesCouverturePublieLaCauseDesCapturesPerdues — LE CORRECTIF P1-5 (audit du 2026-09-06).
+//
+// La couverture d'attribution etait jetee a la ligne d'appel (`att, _ := AttributeZones(...)`)
+// et `ZonesCoverage` n'avait aucun champ pour l'accueillir : `captures - attributed` donnait un
+// total muet. Il etait impossible, sur un artefact du parc, de distinguer « le joueur n'etait
+// pas dans la zone » (`Outside`, une MESURE) de « le pont ne nomme pas son slot »
+// (`NoPosition`, une IGNORANCE) — la distinction meme sur laquelle coverage.go fonde sa
+// doctrine. Sur les trois films mesures, 11, 12 et 5 captures disparaissaient sans qu'aucune
+// ligne du journal ni aucun champ de l'artefact ne dise pourquoi.
+//
+// MUTATION : revenir a `att, _ :=` rougit sur les trois causes (toutes a zero).
+func TestZonesCouverturePublieLaCauseDesCapturesPerdues(t *testing.T) {
+	in, c := bastionCase()
+	// Une cinquieme capture, LOIN des deux zones : cause `Outside`, une mesure.
+	c.actions = append(c.actions, action("2533", 250))
+	c.tracks = append(c.tracks, track("2533", pointAt(250, 900, 900, 900)))
+	// Une sixieme capture dont le capteur n'a AUCUNE piste : cause `NoPosition`, une ignorance.
+	c.actions = append(c.actions, action("9999", 260))
+
+	_, cov := buildZoneStates(in, c)
+	if cov == nil {
+		t.Fatal("couverture nulle")
+	}
+	if cov.Captures != 6 {
+		t.Fatalf("captures = %d, attendu 6", cov.Captures)
+	}
+	if cov.NoPosition != 1 {
+		t.Errorf("noPosition = %d, attendu 1 — l'IGNORANCE doit se publier", cov.NoPosition)
+	}
+	if cov.Outside != 1 {
+		t.Errorf("outside = %d, attendu 1 — la MESURE doit se publier", cov.Outside)
+	}
+	// INVARIANT publie : attribuees + sansPosition + dehors + ambigues == captures.
+	if somme := cov.Attributed + cov.NoPosition + cov.Outside + cov.AmbiguousZone; somme != cov.Captures {
+		t.Errorf("invariant rompu : %d + %d + %d + %d = %d, attendu %d",
+			cov.Attributed, cov.NoPosition, cov.Outside, cov.AmbiguousZone, somme, cov.Captures)
+	}
+}
+
+// TestZonesAttribueLesCapturesDesViesNonNommees — LE CORRECTIF P0-1 VU DEPUIS LE CALQUE : le
+// pont descend jusqu'a l'attribution geometrique, donc une capture couverte par une piste dont
+// le nommage a echoue vote de nouveau a l'appariement jauge <-> proprietaire.
+//
+// MUTATION : ne pas passer `c.slotXUID` a `AttributeZones` rougit — aucune capture attribuee,
+// donc AUCUNE zone publiee (le calque entier disparait, exactement le symptome mesure).
+func TestZonesAttribueLesCapturesDesViesNonNommees(t *testing.T) {
+	in, c := bastionCase()
+	// Les memes quatre captures, mais AUCUNE piste n'est nommee : seul le pont les rattache.
+	c.tracks = []Track{
+		{Slot: 536, Points: []Point{pointAt(100, -19.5, 0, 0), pointAt(400, 20.5, 0, 0)}},
+		{Slot: 537, Points: []Point{pointAt(200, 20.5, 0, 0), pointAt(300, -19.5, 0, 0)}},
+	}
+	c.slotXUID = map[uint32]uint64{536: 2533, 537: 2535}
+
+	states, cov := buildZoneStates(in, c)
+	if cov.Attributed != 4 {
+		t.Fatalf("attribuees = %d, attendu 4 (couverture %+v)", cov.Attributed, cov)
+	}
+	if len(states) != 2 {
+		t.Fatalf("%d zone(s) publiee(s), attendu 2 : sans le pont, le calque ENTIER disparait",
+			len(states))
+	}
+}

@@ -197,7 +197,7 @@ func printPerMatch(res []result, tune runTuning) {
 // attribute est le croisement d'un match a un seuil donne.
 func (r result) attribute(actions []replay.ObjectiveAction, zones []replay.Zone,
 	maxGap int, maxDist float64) ([]replay.ZoneAttribution, replay.ZoneCoverage) {
-	return replay.AttributeZones(actions, r.tracks, zones,
+	return replay.AttributeZones(actions, r.tracks, zones, r.slotXUID,
 		replay.AttributeOptions{MaxGapFrames: maxGap, MaxDistanceM: maxDist})
 }
 

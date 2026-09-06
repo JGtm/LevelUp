@@ -321,7 +321,7 @@ func lettresPaires(t *testing.T, dir string, film lettresFilm, doc ReplayDocumen
 		actions = append(actions, ObjectiveAction{T: f, XUID: e.XUID, Stat: e.Stat, TimeMS: e.TimeMS})
 	}
 	m.posees = len(actions)
-	att, _ := AttributeZones(actions, doc.Tracks, cat,
+	att, _ := AttributeZones(actions, doc.Tracks, cat, nil,
 		AttributeOptions{MaxDistanceM: zoneCaptureDistanceM})
 	pairs := zonePairsOf(att)
 	m.attribues = len(pairs)

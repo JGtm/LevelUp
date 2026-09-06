@@ -246,7 +246,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	attachObjectiveObjects(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// L'ETAT DES ZONES, sur la MEME horloge que les positions et sur les captures DEJA posees
 	// (`doc.Objectives`) — cf. build_zones.go.
-	attachZoneStates(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	attachZoneStates(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// L'ARMEMENT DE LA BOMBE, sur la meme horloge que les actions d'objectif et confronte aux
 	// explosions DEJA posees (`doc.Objectives`) — garde de mode par l'appelant
 	// (opt.Bomb.Scanned), cf. bomb_armings.go.
