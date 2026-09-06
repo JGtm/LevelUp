@@ -57,7 +57,6 @@ export const squadManifest = {
   "squad.echange.delay_window": { fr: "Fenêtre d'échange : {seconds, number} s — les deux dernières barres sont hors fenêtre, montrées mais jamais comptées.", en: "Trade window: {seconds, number} s — the last two bars are outside the window, shown but never counted." },
   "squad.echange.delay_x_axis": { fr: "Délai avant la riposte", en: "Delay before the counter-kill" },
   "squad.echange.delay_y_axis": { fr: "Morts vengées", en: "Avenged deaths" },
-  "squad.echange.empty_description": { fr: "Aucun match de la sélection ne porte de journal des morts exploitable.", en: "No match in the selection carries a usable death log." },
   "squad.echange.empty_title": { fr: "Aucun échange mesuré", en: "No trade measured" },
   "squad.echange.kpi_label": { fr: "Taux d'échange", en: "Trade rate" },
   "squad.echange.kpi_secondary": { fr: "{brut, number} vengées sur {n, number}", en: "{brut, number} avenged out of {n, number}" },

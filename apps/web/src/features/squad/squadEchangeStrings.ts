@@ -41,7 +41,6 @@ export function getSquadEchangeText(locale: Locale) {
     badgeCoveredDetail: (n: number) => m('squad.echange.badge_covered_detail', { n }),
     noPairs: m('squad.echange.no_pairs'),
     emptyTitle: m('squad.echange.empty_title'),
-    emptyDescription: m('squad.echange.empty_description'),
     matrixTooltip: (avenger: string, avenged: string, n: number, perMatch: string) =>
       m('squad.echange.matrix_tooltip', { avenger, avenged, n, perMatch }),
 

@@ -17,12 +17,12 @@
 import { useMemo } from 'react'
 
 import { KPIStrip, type KPICardData } from '@/components/layout/KPIStrip'
-import { formatSignedPoints, isFullHistoryScope } from '@/lib/baseline'
+import { formatSignedPoints } from '@/lib/baseline'
 import { intlLocale } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { useSquadContext } from './SquadContext'
-import { trendEcart } from './squadEchange.logic'
+import { ecartEchange, trendEcart } from './squadEchange.logic'
 import { getSquadEchangeText } from './squadEchangeStrings'
 
 export function SquadEchangeKpi() {
@@ -44,8 +44,9 @@ export function SquadEchangeKpi() {
   const echange = pageData?.echange
   if (!echange) return null
 
-  const pleinHistorique = isFullHistoryScope(echange.matchs_total, echange.matchs_habituel)
-  const ecart = echange.couverture.taux - echange.habituel.taux
+  // L'écart, son arrondi et la condition de masquage vivent dans la logique pure
+  // (`ecartEchange`), pas ici : inlinés, ils n'étaient couverts par aucun test.
+  const { ecart, ecartPoints, pleinHistorique } = ecartEchange(echange)
   // La réserve d'échantillon faible s'affiche AVEC la valeur : elle ne la cache pas,
   // elle interdit de la comparer.
   const secondaire = echange.couverture.echantillon_faible
@@ -57,7 +58,7 @@ export function SquadEchangeKpi() {
     label: t.kpiLabel,
     primary: pctFmt.format(echange.couverture.taux),
     secondary: secondaire,
-    trend: pleinHistorique ? 'none' : trendEcart(Math.round(ecart * 100)),
+    trend: pleinHistorique ? 'none' : trendEcart(ecartPoints),
     custom: pleinHistorique ? undefined : (
       <span className="text-2xs text-muted-foreground" data-testid="squad-echange-kpi-delta">
         {t.kpiVsUsual(formatSignedPoints(ecart))}

@@ -19,7 +19,7 @@
 import { useMemo } from 'react'
 
 import { KpiCard } from '@/components/cards/KpiCard'
-import { formatSignedPoints } from '@/lib/baseline'
+import { formatPoints } from '@/lib/baseline'
 import { intlLocale } from '@/lib/formatters'
 import type { SquadEchange } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -49,7 +49,9 @@ export function SquadEchangeCapCard({ echange }: SquadEchangeCapCardProps) {
   const cap = capDuMoment(echange)
   if (!cap) return null
 
-  const delta = formatSignedPoints(Math.abs(cap.ecart))
+  // MAGNITUDE, pas grandeur signée : la phrase porte déjà la direction (« de moins »
+  // / « de plus »), et un « +10 pts de moins que d'habitude » se contredit tout seul.
+  const delta = formatPoints(cap.ecart)
   const phrase =
     cap.ton === 'consolide'
       ? t.capConsolidate(delta, pctFmt.format(cap.taux), pctFmt.format(cap.habituel))

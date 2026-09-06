@@ -33,6 +33,22 @@ export function formatSignedPoints(v: number | null | undefined): string {
 }
 
 /**
+ * Formate une MAGNITUDE d'écart en points de pourcentage, SANS SIGNE
+ * (ex. -0.10 → "10 pts").
+ *
+ * POURQUOI ELLE EXISTE À CÔTÉ DE `formatSignedPoints` (correction W6, revue du
+ * 2026-09-06) : une phrase qui porte déjà la direction en toutes lettres — « votre
+ * camp échange … DE MOINS que d'habitude » — ne doit pas recevoir un « +10 pts »
+ * par-dessus. `formatSignedPoints(Math.abs(v))` forçait exactement ce « + » : la
+ * valeur absolue est positive, et le formateur signé lui collait donc son préfixe.
+ * Quand la direction est dans les mots, le nombre est une magnitude.
+ */
+export function formatPoints(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return ''
+  return `${Math.abs(Math.round(v * 100))} pts`
+}
+
+/**
  * Vrai quand le périmètre affiché couvre TOUT l'historique (aucun filtre narrowing).
  *
  * Le périmètre est toujours un SOUS-ENSEMBLE de la référence (un filtre ne peut que

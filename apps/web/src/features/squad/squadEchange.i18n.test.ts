@@ -19,6 +19,10 @@ import { describe, expect, it } from 'vitest'
 
 import { squadManifest } from '@/lib/i18n/generated/squad'
 
+import capCardSource from './SquadEchangeCapCard?raw'
+import delaiCardSource from './SquadEchangeDelaiCard?raw'
+import kpiSource from './SquadEchangeKpi?raw'
+import matrixCardSource from './SquadEchangeMatrixCard?raw'
 import accesseurSource from './squadEchangeStrings?raw'
 import { getSquadEchangeText } from './squadEchangeStrings'
 
@@ -67,7 +71,7 @@ describe('manifest squad.echange.*', () => {
     expect(clesNonResolues, `clés absentes du manifest : ${clesNonResolues.join(', ')}`).toEqual([])
   })
 
-  it('ne déclare aucune clé ORPHELINE (déclarée au manifest, servie par personne)', () => {
+  it('ne déclare aucune clé ORPHELINE (déclarée au manifest, exposée par personne)', () => {
     // Une clé que `squadEchangeStrings` n'expose pas est une chaîne traduite deux
     // fois que personne ne verra jamais — et qui survivra à la suppression du
     // composant qui la justifiait.
@@ -75,5 +79,22 @@ describe('manifest squad.echange.*', () => {
       .map(([k]) => k)
       .filter((k) => !accesseurSource.includes(`'${k}'`))
     expect(orphelines, `clés déclarées mais non servies : ${orphelines.join(', ')}`).toEqual([])
+  })
+
+  it('n’expose aucun accesseur que RIEN N’AFFICHE (correction W8)', () => {
+    // Le volet precedent s'arretait a l'accesseur : `squad.echange.empty_description`
+    // y passait — declaree, exposee par `emptyDescription`, et affichee par AUCUN
+    // composant. Le garde annoncait donc « aucune orpheline » a tort. Il va desormais
+    // jusqu'au bout de la chaine : manifest -> accesseur -> composant.
+    const composants = [matrixCardSource, delaiCardSource, kpiSource, capCardSource].join(String.fromCharCode(10))
+    const accesseurs = [...accesseurSource.matchAll(/^\s{4}([A-Za-z][A-Za-z0-9]*):/gm)].map(
+      (m) => m[1],
+    )
+    expect(accesseurs.length, 'aucun accesseur détecté : le garde ne garde rien').toBeGreaterThan(20)
+    const jamaisAffiches = accesseurs.filter((a) => !composants.includes(`t.${a}`))
+    expect(
+      jamaisAffiches,
+      `accesseurs exposés mais affichés nulle part : ${jamaisAffiches.join(', ')}`,
+    ).toEqual([])
   })
 })

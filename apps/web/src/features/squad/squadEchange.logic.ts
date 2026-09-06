@@ -10,6 +10,7 @@
  *   3. un échantillon faible s'affiche AVEC sa réserve et ne classe personne.
  */
 import type { SquadEchange, SquadEchangeBucket, SquadEchangeCell } from '@/lib/api/types'
+import { isFullHistoryScope } from '@/lib/baseline'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
 import type { ChartPointHistogram } from '@/components/charts/HistogramChart'
@@ -35,6 +36,39 @@ export const ECART_CAP_POINTS = 5
  * 3 vengeances. Une vengeance d'écart entre deux coéquipiers ne désigne personne.
  */
 export const ECART_BADGE_VENGEANCES = 3
+
+/** L'écart d'un périmètre à son habituel — la grandeur commune au KPI et au cap. */
+export interface EcartEchange {
+  /** Écart brut en unité 0..1 (taux du périmètre moins taux de la référence). */
+  ecart: number
+  /** Le même, arrondi en POINTS entiers signés — la grandeur affichée. */
+  ecartPoints: number
+  /**
+   * Vrai quand le périmètre couvre tout l'historique : l'écart est alors nul par
+   * construction et NE DOIT PAS s'afficher (« ±0 pts vs habituel » ferait croire à
+   * une mesure là où il n'y a qu'une tautologie).
+   */
+  pleinHistorique: boolean
+}
+
+/**
+ * ecartEchange calcule l'écart au taux habituel ET dit s'il doit se taire.
+ *
+ * IL VIT ICI ET PAS DANS LE COMPOSANT (correction W3, revue du 2026-09-06) : la
+ * soustraction, son arrondi et la condition de masquage étaient inlinés dans
+ * `SquadEchangeKpi`, hors de portée de tout test — supprimer le masquage ou inverser
+ * le signe passait sans qu'aucune assertion ne bouge. `capDuMoment` consomme la même
+ * fonction : deux surfaces qui affichent « l'écart à l'habituel » ne peuvent pas le
+ * calculer chacune de leur côté.
+ */
+export function ecartEchange(echange: SquadEchange): EcartEchange {
+  const ecart = echange.couverture.taux - echange.habituel.taux
+  return {
+    ecart,
+    ecartPoints: Math.round(ecart * 100),
+    pleinHistorique: isFullHistoryScope(echange.matchs_total, echange.matchs_habituel),
+  }
+}
 
 /** Le cap du moment, quand il y a lieu de le rendre. */
 export interface CapDuMoment {
@@ -70,8 +104,7 @@ export function capDuMoment(echange: SquadEchange | null | undefined): CapDuMome
   // zéro mort donnerait un « écart » qui n'est que l'absence de la référence.
   if (habituel.n <= 0) return null
 
-  const ecart = couverture.taux - habituel.taux
-  const ecartPoints = Math.round(ecart * 100)
+  const { ecart, ecartPoints } = ecartEchange(echange)
   if (Math.abs(ecartPoints) < ECART_CAP_POINTS) return null
 
   return {
