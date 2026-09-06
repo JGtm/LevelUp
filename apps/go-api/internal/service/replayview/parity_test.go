@@ -112,11 +112,40 @@ func TestChaqueChampServiAUneSource(t *testing.T) {
 	})
 }
 
-// TestProjectionCopieChaqueChamp : la projection est exhaustive, prouvee sur un document
-// dont CHAQUE feuille porte une valeur distincte. Un `to*` qui oublie un champ rend un zero
-// la ou la source portait une valeur, et la comparaison des deux corps JSON le nomme.
+// TestProjectionCopieChaqueChamp : la projection est exhaustive, sur les TROIS classes de
+// documents. Une seule ne suffit pas, et la revue adversariale du 2026-09-05 l'a prouve en
+// jouant deux mutations que le filet d'origine laissait passer :
+//
+//   - un champ `int` devenu `*int` cote servi (`StartFrame: &v.StartFrame`) : la valeur ZERO
+//     se tait sous `omitempty` cote stocke et parle sous un pointeur cote servi. Le document
+//     peuple ne porte aucun zero, il ne pouvait pas le voir ;
+//   - une tranche nulle normalisee en tranche vide (`append([]T{}, sliceOf(...)...)`, ce
+//     qu'ecrirait une boucle a la main) : `null` devient `[]`, visible du client sur les
+//     champs sans `omitempty`. Le document peuple n'a aucune tranche nulle.
+//
+// D'ou les trois classes, et le BALAYAGE de la frontiere : une tranche nulle a la racine ne
+// dit rien d'une tranche nulle au troisieme niveau, et c'est au troisieme niveau que la
+// mutation a ete jouee.
 func TestProjectionCopieChaqueChamp(t *testing.T) {
-	f := &remplisseur{}
+	t.Run("peuple", func(t *testing.T) { comparerLesTroisRacines(t, peuple()) })
+
+	// Frontiere 0 = le document ZERO au sens strict : tout scalaire a zero, toute tranche,
+	// toute map et tout pointeur a nil. Les frontieres suivantes descendent d'un cran a
+	// chaque tour, jusqu'au squelette complet a feuilles zero.
+	for d := 0; d <= profondeurMax; d++ {
+		t.Run(fmt.Sprintf("nul_sous_%d", d), func(t *testing.T) {
+			comparerLesTroisRacines(t, aPlat(d, conteneurNul))
+		})
+		t.Run(fmt.Sprintf("vide_sous_%d", d), func(t *testing.T) {
+			comparerLesTroisRacines(t, aPlat(d, conteneurVide))
+		})
+	}
+}
+
+// comparerLesTroisRacines construit les trois corps de route avec ce remplisseur et confronte
+// chacun a sa projection.
+func comparerLesTroisRacines(t *testing.T, f *remplisseur) {
+	t.Helper()
 	doc := reflect.New(racines[0].stocke).Elem()
 	f.remplir(doc, 0)
 	bg := reflect.New(racines[1].stocke).Elem()
@@ -374,61 +403,167 @@ func premierEcart(a, b any, chemin string) string {
 }
 
 // ---------------------------------------------------------------------------
-// Remplissage : chaque feuille porte une valeur DISTINCTE
+// Remplissage : trois classes de documents, et pourquoi il en faut trois
 // ---------------------------------------------------------------------------
 
-type remplisseur struct{ n int }
+// etatConteneur : l'etat que prennent tranches, maps et pointeurs A LA FRONTIERE.
+type etatConteneur int
+
+const (
+	conteneurPeuple etatConteneur = iota // un element (deux pour la classe peuplee)
+	conteneurNul                         // nil
+	conteneurVide                        // longueur 0, NON nil
+)
+
+// profondeurMax borne la recursion. Profondeur REELLE mesuree du graphe stocke : 10
+// (`ReplayDocument.ScoreTimeline[].Players[].Score.Rounds[].Points[].T`) — deux niveaux de
+// marge. Un calque a deux imbrications de plus rendrait le filet aveugle EN SILENCE : si la
+// mesure remonte, ce nombre monte avec elle.
+const profondeurMax = 12
+
+// remplisseur construit un document de test. Deux boutons, et c'est leur COMBINAISON qui
+// donne au filet sa portee :
+//
+//   - `zero` : les scalaires restent a leur valeur zero au lieu de porter une valeur
+//     distincte. C'est ce bouton qui rend visible un `int` devenu `*int` — la valeur 0 se
+//     tait sous `omitempty` cote stocke et parle sous un pointeur cote servi.
+//   - `frontiere` + `bord` : jusqu'a `frontiere` les conteneurs portent `elements` entrees
+//     (le parcours descend), a partir d'elle ils prennent l'etat `bord`. Balayer la
+//     frontiere de 0 a profondeurMax place tour a tour CHAQUE niveau du graphe au bord :
+//     c'est la seule facon de mettre une tranche nulle SOUS un conteneur qui existe, donc
+//     d'attraper une normalisation `nil` -> `[]` ailleurs qu'a la racine.
+type remplisseur struct {
+	n         int
+	zero      bool
+	frontiere int
+	bord      etatConteneur
+	elements  int
+}
+
+// peuple rend le remplisseur de la classe historique : chaque feuille porte une valeur
+// distincte, chaque conteneur deux entrees, aucun pointeur nil.
+func peuple() *remplisseur {
+	return &remplisseur{frontiere: profondeurMax + 1, bord: conteneurPeuple, elements: 2}
+}
+
+// aPlat rend un remplisseur a scalaires ZERO dont les conteneurs prennent `bord` a partir de
+// `frontiere`.
+func aPlat(frontiere int, bord etatConteneur) *remplisseur {
+	return &remplisseur{zero: true, frontiere: frontiere, bord: bord, elements: 1}
+}
 
 func (r *remplisseur) suivant() int { r.n++; return r.n }
 
+// auBord dit si un conteneur rencontre a cette profondeur prend l'etat `bord`.
+func (r *remplisseur) auBord(profondeur int) bool { return profondeur >= r.frontiere }
+
 func (r *remplisseur) remplir(v reflect.Value, profondeur int) {
-	if profondeur > 12 {
+	if profondeur > profondeurMax {
 		return
 	}
 	switch v.Kind() {
 	case reflect.Bool:
-		v.SetBool(true)
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		v.SetInt(int64(r.suivant()))
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		v.SetUint(uint64(r.suivant()))
-	case reflect.Float32, reflect.Float64:
-		v.SetFloat(float64(r.suivant()) + 0.5)
-	case reflect.String:
-		v.SetString(fmt.Sprintf("v%d", r.suivant()))
-	case reflect.Pointer:
-		p := reflect.New(v.Type().Elem())
-		r.remplir(p.Elem(), profondeur+1)
-		v.Set(p)
-	case reflect.Slice:
-		s := reflect.MakeSlice(v.Type(), 2, 2)
-		for i := 0; i < s.Len(); i++ {
-			r.remplir(s.Index(i), profondeur+1)
+		if !r.zero {
+			v.SetBool(true)
 		}
-		v.Set(s)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if !r.zero {
+			v.SetInt(int64(r.suivant()))
+		}
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if !r.zero {
+			v.SetUint(uint64(r.suivant()))
+		}
+	case reflect.Float32, reflect.Float64:
+		if !r.zero {
+			v.SetFloat(float64(r.suivant()) + 0.5)
+		}
+	case reflect.String:
+		if !r.zero {
+			v.SetString(fmt.Sprintf("v%d", r.suivant()))
+		}
+	case reflect.Pointer:
+		r.remplirPointeur(v, profondeur)
+	case reflect.Slice:
+		r.remplirTranche(v, profondeur)
 	case reflect.Array:
 		for i := 0; i < v.Len(); i++ {
 			r.remplir(v.Index(i), profondeur+1)
 		}
 	case reflect.Map:
-		m := reflect.MakeMap(v.Type())
-		for i := 0; i < 2; i++ {
-			k := reflect.New(v.Type().Key()).Elem()
-			r.remplir(k, profondeur+1)
-			e := reflect.New(v.Type().Elem()).Elem()
-			r.remplir(e, profondeur+1)
-			m.SetMapIndex(k, e)
-		}
-		v.Set(m)
+		r.remplirMap(v, profondeur)
 	case reflect.Struct:
-		if v.Type() == reflect.TypeOf(time.Time{}) {
-			v.Set(reflect.ValueOf(time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)))
-			return
+		r.remplirStruct(v, profondeur)
+	}
+}
+
+// remplirPointeur : nil au bord quand le bord est `nul`, alloue sinon. Un pointeur n'a pas
+// d'etat « vide » — `conteneurVide` l'alloue donc sur une valeur zero, ce qui est
+// precisement la forme qui distingue un scalaire nu d'un scalaire pointe.
+func (r *remplisseur) remplirPointeur(v reflect.Value, profondeur int) {
+	if r.auBord(profondeur) && r.bord == conteneurNul {
+		return // deja nil
+	}
+	p := reflect.New(v.Type().Elem())
+	r.remplir(p.Elem(), profondeur+1)
+	v.Set(p)
+}
+
+func (r *remplisseur) remplirTranche(v reflect.Value, profondeur int) {
+	n := r.elements
+	if r.auBord(profondeur) {
+		switch r.bord {
+		case conteneurNul:
+			return // laisser nil : le corps porte `null`
+		case conteneurVide:
+			n = 0 // longueur 0 mais NON nil : le corps porte `[]`
+		case conteneurPeuple:
 		}
-		for i := 0; i < v.NumField(); i++ {
-			if v.Field(i).CanSet() {
-				r.remplir(v.Field(i), profondeur+1)
-			}
+	}
+	s := reflect.MakeSlice(v.Type(), n, n)
+	for i := 0; i < s.Len(); i++ {
+		r.remplir(s.Index(i), profondeur+1)
+	}
+	v.Set(s)
+}
+
+func (r *remplisseur) remplirMap(v reflect.Value, profondeur int) {
+	n := r.elements
+	if r.auBord(profondeur) {
+		switch r.bord {
+		case conteneurNul:
+			return
+		case conteneurVide:
+			n = 0
+		case conteneurPeuple:
+		}
+	}
+	m := reflect.MakeMap(v.Type())
+	for i := 0; i < n; i++ {
+		k := reflect.New(v.Type().Key()).Elem()
+		r.remplir(k, profondeur+1)
+		if r.zero {
+			// Cles toutes vides : une map a une entree suffit, et le corps reste
+			// deterministe des deux cotes.
+			k.SetString(fmt.Sprintf("k%d", i))
+		}
+		e := reflect.New(v.Type().Elem()).Elem()
+		r.remplir(e, profondeur+1)
+		m.SetMapIndex(k, e)
+	}
+	v.Set(m)
+}
+
+func (r *remplisseur) remplirStruct(v reflect.Value, profondeur int) {
+	if v.Type() == reflect.TypeOf(time.Time{}) {
+		if !r.zero {
+			v.Set(reflect.ValueOf(time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)))
+		}
+		return
+	}
+	for i := 0; i < v.NumField(); i++ {
+		if v.Field(i).CanSet() {
+			r.remplir(v.Field(i), profondeur+1)
 		}
 	}
 }
