@@ -454,13 +454,96 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 > phase 4), `film.replay_artifact` (porte data-level des sidecars, phase 6),
 > `useDataCapability` (cote web, regle des deux portes — voir la case 3.7).
 
-### Phase 4 — Grille des cartes — EXECUTABLE
-- [ ] 4.1 Route `ascension/tactique` ; onglet dans `AscensionLayout.tsx` ;
-      `FeatureGate capability="replay"`
-- [ ] 4.2 `manifests/tactical.toml` + regen ; query keys (`titleSlug` en 2e segment)
-- [ ] 4.3 `TacticalPage.tsx` : `SectionCard` « Cartes jouees » ; vignette = fond + nom + nb de
-      matchs + barre `outcome-win` / `outcome-loss` ; carte sous plancher desaturee ; `EmptyState`
-- [ ] 4.4 Endpoint image par CARTE (`MapBackgroundPath`)
+### Phase 4 — Grille des cartes — CLOSE 2026-09-06
+> ORDRE D'EXECUTION : 4.4, puis 4.2, puis 4.3+4.1 — l'ordre des DEPENDANCES, pas celui de
+> la liste. La vignette de 4.3 consomme l'endpoint de 4.4 et les cles de 4.2 ; la route de
+> 4.1 importe la page de 4.3 ET type l'ecriture de `?carte=` que cette page fait. Chaque
+> commit compile ; l'inverse aurait impose des commits morts.
+- [x] 4.1 Route file-based `routes/.../players/$playerSlug/ascension/tactique.tsx`
+      (`validateSearch` : `carte`) ; 5e onglet « Tactique » / « Tactics » dans
+      `AscensionLayout.tsx:128-138`, libelles `tabTactical` dans le dictionnaire
+      d'Ascension (`features/ascension/i18n.ts:20,194,429`) comme les quatre autres.
+      DEUX PORTES : `FeatureGate capability="replay"` masque l'onglet ;
+      `RouteCapabilityGate` (via `features/tactical/TacticalTab.tsx`) rend l'etat
+      « indisponible pour ce titre » A LA PLACE de la page — qui n'est donc pas montee et
+      n'emet aucune requete. Une URL s'ouvre sans passer par la barre d'onglets : une seule
+      porte n'aurait garde que le chemin nominal.
+      **ECART ASSUME AU BRIEF, sur pieces** : le brief demandait `PageUnavailable`. Ce
+      gabarit-la est celui d'ADR 0029 (ressource EXISTANTE mais inaccessible au joueur :
+      match non participe, acces refuse) et exige des libelles et des actions. Le gabarit du
+      depot pour « capability absente au niveau route » est `RouteCapabilityGate` ->
+      `FeatureUnavailable` -> `EmptyStateCard`, deja utilise par la route Ascension parente
+      (`ascension.tsx`, capability `lusr`) et porteur du libelle FR/EN de `replay`. Prendre
+      `PageUnavailable` aurait recopie ce libelle et fabrique un second gabarit pour le meme
+      etat. Aucun chrome maison : `EmptyStateCard` est un gabarit de la liste.
+      **Livre dans le meme commit que 4.3** (`tactique(4.3+4.1)`) : dependance mutuelle
+      (la route importe la page ; le schema de recherche de la route type l'ecriture de
+      `?carte=` par la page), les separer donnait un commit qui ne compile pas.
+      `routeTree.gen.ts` REGENERE par le build (`npm run build`), jamais edite : 26 lignes
+      ajoutees, toutes relatives a cette route — verifie ligne a ligne.
+- [x] 4.2 `lib/i18n/manifests/tactical.toml` (14 cles, FR + EN, vocabulaire arrete :
+      carte / matchs / victoires / defaites / plancher) + regen
+      (`lib/i18n/generated/tactical.ts`) ; accesseurs types dans
+      `features/tactical/i18n.ts`. Le manifeste entre dans
+      `lib/i18n/no-anglicisms.guard.test.ts:253` DES SA CREATION — c'est celui ou
+      « heatmap » serait le plus tentant. Query keys `lib/query/keys.ts:171-180`
+      (`tacticalMaps(playerSlug, titleSlug, filterHash)` et `tacticalMapBackground(...)`,
+      `titleSlug` en 2e segment), declarees title-scopees dans
+      `keys.title-slug.guard.test.ts:78-81` — le volet COMPLETUDE reste vert.
+- [x] 4.3 `features/tactical/` : `tacticalLogic.ts` (PUR — tri par nombre de matchs, depart
+      stable par le nom, lecture du verdict de plancher, barre V/D, couverture, traduction
+      du filtre global), `queries.ts`, `i18n.ts`, `TacticalPage.tsx` (une `SectionCard`
+      « Cartes jouees », `footer` = couverture + phrase du plancher, `EmptyState` sans
+      carte), `TacticalMapTile.tsx` (fond + nom FR du contrat + « N matchs » + barre
+      `outcome-win` / `outcome-loss`).
+      **LE PLANCHER N'EST PAS RECALCULE COTE CLIENT** : le serveur publie `sous_plancher`
+      par carte et `plancher_matchs` pour la page ; le client LIT le verdict et NOMME le
+      seuil. Carte sous le plancher : affichee (le joueur doit voir qu'il y a joue),
+      desaturee par des utilitaires SANS couleur (`opacity-60 grayscale`), bouton
+      DESACTIVE (`aria-disabled`), raison en clair « N matchs sur 10 requis ».
+      **DECISION — LE CLIC SELECTIONNE, IL N'OUVRE PAS ENCORE, ET IL LE DIT.** La vue par
+      carte est la phase 5, gelee jusqu'au lot D : sa route n'existe pas. Un `Link` vers
+      elle ne compilerait pas ; un `navigate` vers une chaine construite serait un lien
+      MORT (404). Le bouton ecrit donc `?carte=<map_id>` dans l'URL — nom accessible
+      « Selectionner <carte> », etat `aria-pressed`, selection visible, URL partageable —
+      et c'est exactement l'etat que la phase 5 consommera.
+      **La SESSION est retiree du filtre envoye** (coherence avec T11 : aucune requete
+      shared de cet onglet ne l'honore ; transmettre un filtre sans effet ferait croire a
+      l'appelant qu'il a filtre).
+- [x] 4.4 Endpoint image par CARTE : `GET /players/{slug}/tactical/{map_id}/background.png`
+      (route chi nue) + son CALAGE `.../background` (Huma), `api/handlers/tactical.go:130-200`.
+      AUCUNE SECONDE RESOLUTION : la cascade de cles quitte `resolveBackgroundKey` pour
+      `resolveBackgroundKeyDepuis` (`service/replay_map_background.go:150`), la lecture du
+      PNG pour `readBackgroundImage` (`:82`), la cascade des noms candidats pour
+      `assemblerIdentites` (`platform/duckdb/replay_map_repo.go:130`) — les DEUX entrees
+      (par match, par carte) les consomment. `PathResolver.MapBackgroundPath` inchange.
+      Le handler porte DEUX factories (Tactical + Replay) : faire transiter le fond par le
+      service Tactique aurait ete un service qui en appelle un autre.
+      **LE FOND N'EST PAS SOUS `LocalOnlyReplay`** : ce garde protege les trajectoires
+      decodees du film ; une image de carte est une donnee de REFERENCE versionnee, et sous
+      le garde la grille aurait ete vide en production sans que rien ne soit protege
+      (teste : appel depuis une adresse non locale -> 200). Contrat : fragment manuel pour
+      la route binaire (comme le PNG par match), allowlist chi-brut du garde-rail du
+      document partage, `openapi.yaml` et `generated.ts` regeneres.
+- **Gate PASSE le 2026-09-06** (avant-plan, une commande `go` a la fois,
+  `GOCACHE=...go-build-tactique`, `CGO_ENABLED=1`). Go : `go vet` propre sur 8 arbres
+  (1,1 s) ; `go test -count=1` vert sur 25 paquets (duckdb 42,6 s ; api 22,7 s ; service
+  10,2 s ; handlers 10,0 s ; archlint 7,5 s ; contracttest 0,5 s) ;
+  `golangci-lint run --timeout 5m --new-from-merge-base=origin/main` : **0 issue** ;
+  `openapi-gen -check` : a jour. Web (depuis `apps/web`, `node_modules/.tmp` purge) :
+  `typecheck` propre ; `lint` **0 erreur** (30 warnings, tous preexistants — le seul que ce
+  lot avait introduit, un `setState` dans un effet pour l'URL d'objet du fond, a ete
+  supprime en faisant de l'URL l'entree de cache elle-meme) ;
+  `vitest run --pool=forks tactical ascension keys capabilities` : 21 fichiers, 171 tests
+  verts ; garde anti-anglicismes vert ; `lint-no-hardcoded-colors` 0 violation ;
+  `lint-cross-feature-imports` a **7/7 INCHANGE** (la feature n'importe que `@/lib` et
+  `@/components`) ; manifestes regeneres sans diff residuel.
+  **SIX INVERSIONS JOUEES** : branche « cle map_id d'abord » neutralisee ->
+  `TestMapBackgroundForMap_ParMapID` tombe ; garde de session retiree du filtre -> le test
+  T11 tombe ; `disabled` et desaturation retires de la vignette -> le test du plancher
+  tombe ; `FeatureGate` retire de la barre d'onglets -> le test « pas d'onglet sans
+  replay » tombe ; `RouteCapabilityGate` retire de `TacticalTab` -> les deux tests de la
+  seconde porte tombent.
 - **Gate** : typecheck + test-web ; couleurs ; parite FR/EN.
 
 ### Phase 5 — Vue d'analyse, lectures SQL, drilldown — GELEE JUSQU'AU LOT D
@@ -505,6 +588,26 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **phase 4 CLOSE — l'onglet Tactique apparait sous Ascension**, en 3 commits
+  (`tactique(4.4)`, `(4.2)`, `(4.3+4.1)`). Items 4.1-4.4 `[x]`, gate joue en avant-plan des
+  deux cotes, six inversions jouees. Non pousse : revue du superviseur.
+  - **ORDRE DES DEPENDANCES, PAS DE LA LISTE** : 4.4 (le contrat) precede 4.2 (les cles et
+    le vocabulaire), qui precede 4.3+4.1 (la page et sa route). Chaque commit compile.
+  - **4.3 ET 4.1 SONT UN SEUL COMMIT** : la route importe la page, et le schema de
+    recherche de la route TYPE l'ecriture de `?carte=` que la page fait. Les separer donnait
+    un commit qui ne compile pas, dans un sens comme dans l'autre.
+  - **DECISION PRODUIT — le clic SELECTIONNE.** La route de la phase 5 n'existe pas (gelee
+    jusqu'au lot D). Un `Link` vers elle ne compile pas ; un `navigate` vers une chaine
+    construite est un lien mort. Le bouton ecrit `?carte=<map_id>` : le nom accessible dit
+    « Selectionner <carte> », l'etat est `aria-pressed`, la selection se voit et se partage,
+    et c'est l'etat que la phase 5 consommera. Aucun bouton qui ne fait rien sans le dire.
+  - **ECART ASSUME AU BRIEF** : `PageUnavailable` (ADR 0029, ressource inaccessible)
+    remplace par `RouteCapabilityGate` -> `FeatureUnavailable` -> `EmptyStateCard`, le
+    gabarit que le depot reserve deja a « capability absente au niveau route » et qui porte
+    le libelle FR/EN de `replay`. Justification detaillee dans la case 4.1.
+  - **LE FOND DE CARTE SORT DU GARDE LOCAL DU REJEU**, et c'est le seul choix qui rendait la
+    grille utilisable en production : ce garde protege les trajectoires decodees du film,
+    pas une image de carte versionnee. Teste depuis une adresse non locale.
 - 2026-09-06 : **revue adversariale ronde 2 de la phase 3 — DERNIERE salve, 3 constats P2,
   tous corriges** en 1 commit `tactique(3.9)`. Aucun P0, aucun P1. Trois garde-fous qui
   PROMETTAIENT plus qu'ils ne tenaient — c'est le fil commun des trois.
@@ -711,6 +814,40 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-06 (phase 4) — **LE CALAGE PAR CARTE N'A AUCUN CONSOMMATEUR WEB EN PHASE 4.**
+  `GET /players/{slug}/tactical/{map_id}/background` (Huma) est servi parce que le contrat
+  PAR MATCH en sert un et que le depot a pose la regle « l'image et son calage vont toujours
+  ensemble » (`handlers/replay.go`, `MapBackgroundImage` refuse de servir une image dont le
+  sidecar est illisible). La vignette de la grille n'a besoin que de l'image ; c'est la
+  phase 5 (le plan de la carte, en coordonnees monde) qui lira le calage. Surface publiee un
+  lot en avance, ASSUMEE et signalee ici : si la phase 5 devait etre abandonnee, cette route
+  serait a retirer avec elle.
+- 2026-09-06 (phase 4) — **LE FILTRE DE SESSION DE L'OMNIBAR EST IGNORE PAR L'ONGLET, EN
+  SILENCE.** Le contrat de l'onglet n'accepte pas `session` (retrait T11 : aucune requete
+  shared ne l'honore), et le client le retire donc avant d'envoyer. Consequence produit : un
+  joueur qui epingle une session dans l'omnibar voit une grille qui porte sur la periode
+  entiere, sans que rien ne le lui dise. Trois issues possibles (joindre la base joueur,
+  faire descendre des `match_id`, ou afficher une reserve dans le pied de carte) ; aucune ne
+  releve de la phase 4. NON TRAITE.
+- 2026-09-06 (phase 4) — **LA VIGNETTE CHARGE L'IMAGE PLEINE RESOLUTION.** Un fond de carte
+  pese jusqu'a 1,4 Mio (chiffre de `match-replay/queries.ts`) et la vignette l'affiche dans
+  un cadre de quelques centaines de pixels. Une grille de trente cartes telecharge donc
+  plusieurs dizaines de Mio pour un rendu de miniatures. Il n'existe aucun pipeline de
+  miniatures dans le depot ; en creer un (cuisson d'une variante reduite a cote du fond,
+  meme sidecar) est un lot a part. NON TRAITE.
+- 2026-09-06 (phase 4) — **LA CONSIGNE `git checkout -- routeTree.gen.ts` NE VAUT QUE POUR
+  UN LOT QUI N'AJOUTE PAS DE ROUTE.** Le fichier est VERSIONNE et les commits qui ajoutent
+  une route l'incluent (precedent : `4cc6e4b97`, la route du rejeu 2D). La regle du depot est
+  « ne jamais l'EDITER a la main » — il se regenere par le plugin de routeur, ici via
+  `npm run build`. Le diff a ete verifie ligne a ligne (26 lignes, toutes relatives a
+  `ascension/tactique`) avant d'etre stage.
+- 2026-09-06 (phase 4) — **`react-hooks/set-state-in-effect` interdit le motif « URL d'objet
+  creee au montage, revoquee au demontage ».** La premiere version du chargeur de fond
+  posait l'URL dans un `useState` depuis un `useEffect` : lint (warning) et cascade de
+  rendus. Retenu : l'URL d'objet EST l'entree de cache (`staleTime` et `gcTime` infinis),
+  bornee par le nombre de cartes du titre. Contrepartie assumee : aucune revocation avant la
+  fermeture de l'onglet. `match-replay` evite le probleme autrement (il decode vers un
+  `HTMLImageElement` et revoque aussitot), mais ce motif ne se rend pas dans un `<img src>`.
 - 2026-09-06 (phase 3) — **DECISION PRODUIT : la MATRICE s'arrete au ROSTER quand le KPI
   porte sur le CAMP.** Le plan tranche le perimetre du taux (mon camp entier, decision
   utilisateur du 2026-09-06) mais pas celui de la matrice. Retenu : les axes de la matrice

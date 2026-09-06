@@ -3070,3 +3070,10 @@ export type ReplayMapWeaponPad = components['schemas']['MapWeaponPadDTO']
 // `name` est le gamertag TEL QUE LE FILM L'ÉCRIT — ce n'est pas une résolution, rien n'est
 // allé le chercher ailleurs, donc rien ne peut l'avoir mal apparié.
 export type ReplayRosterEntry = components['schemas']['RosterEntry']
+
+// L'onglet TACTIQUE — l'écran d'entrée : les cartes JOUÉES sous le filtre courant, avec
+// leur bilan et le verdict de lisibilité du serveur (`sous_plancher`). Le plancher par
+// carte est publié AVEC les cartes (`plancher_matchs`) parce que l'écran doit pouvoir le
+// NOMMER à l'utilisateur — jamais le recopier côté client, ce qui en ferait deux vérités.
+export type TacticalMapsPage = components['schemas']['TacticalMapsPage']
+export type TacticalMapCard = components['schemas']['TacticalMapCard']

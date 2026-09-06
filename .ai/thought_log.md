@@ -96240,3 +96240,78 @@ regeneres sans diff.
 **Conclusion / prochaine etape** — pas de ronde 3 : le superviseur verifie sur pieces puis
 pousse. Les phases 4 et 6 sont degelees depuis l'integration des lots C, B et F ; la 5
 attend le lot D.
+
+---
+
+## [2026-09-06] Tactique phase 4 — la grille des cartes, et l'onglet qui la porte
+
+**Statut** : Complete (phase 4 close, non poussee — revue du superviseur)
+
+**Decision technique principale** — l'onglet Tactique existe : 5e onglet d'Ascension, une
+grille des cartes JOUEES triee par nombre de matchs, un endpoint de fond de carte servi PAR
+CARTE. Trois commits (`tactique(4.4)`, `(4.2)`, `(4.3+4.1)`), executes dans l'ordre des
+DEPENDANCES et non dans celui de la liste du plan : le contrat d'abord, le vocabulaire
+ensuite, la page et sa route en dernier. 4.3 et 4.1 sont un SEUL commit parce que la
+dependance est mutuelle — la route importe la page, et le schema de recherche de la route
+TYPE l'ecriture de `?carte=` que la page fait ; les separer donnait, dans un sens comme dans
+l'autre, un commit qui ne compile pas.
+
+**Ce qui a demande une decision**
+
+1. **Le clic SELECTIONNE, il n'ouvre pas encore, et il le dit.** La vue d'analyse par carte
+   est la phase 5, gelee jusqu'au lot D de l'audit du rejeu : sa route n'existe pas. Un
+   `Link` vers une route inexistante ne compile pas ; un `navigate` vers une chaine
+   construite mene a un 404 — un lien MORT. Le bouton ecrit donc la carte choisie dans
+   l'URL (`?carte=<map_id>`), son nom accessible dit « Selectionner <carte> », son etat est
+   `aria-pressed`, la selection se voit et se partage. C'est a la fois honnete et
+   exactement l'etat que la phase 5 consommera.
+2. **Le fond de carte SORT du garde local du rejeu.** `LocalOnlyReplay` protege les
+   trajectoires decodees du film, dont la couverture n'est pas productionnalisable. Une
+   image de carte est une donnee de REFERENCE versionnee, extraite des fichiers de jeu.
+   Monter la route sous le garde aurait vide la grille en production sans rien proteger :
+   un test appelle depuis une adresse non locale et exige 200.
+3. **Aucune seconde resolution carte -> fond.** La cascade (cle map_id d'abord pour les
+   cartes Forge, index des noms ensuite pour les natives) a ete extraite de
+   `resolveBackgroundKey` vers `resolveBackgroundKeyDepuis`, la lecture du PNG vers
+   `readBackgroundImage`, et la cascade des noms candidats vers `assemblerIdentites` cote
+   DuckDB. Les deux entrees — par match, par carte — les consomment. Recopier l'une
+   d'elles aurait donne deux fonds possibles pour la meme carte selon la page qui la
+   demande.
+4. **Le plancher n'est pas recalcule cote client.** Le serveur publie `sous_plancher` par
+   carte et `plancher_matchs` pour la page. Le client LIT le verdict et NOMME le seuil ;
+   refaire la comparaison aurait donne deux verites sur « cette carte est-elle lisible »,
+   qui divergeraient au premier ajustement.
+
+**PIEGE RETENU — un gabarit demande n'est pas forcement le gabarit du cas.** Le brief
+demandait `PageUnavailable` pour un titre sans `replay`. Ce gabarit-la est celui d'ADR 0029
+— une ressource qui EXISTE mais que le joueur courant n'a pas le droit de voir — et il
+exige des libelles et des actions qu'il aurait fallu ecrire. Le depot a deja un gabarit pour
+« capability absente au niveau route » : `RouteCapabilityGate` -> `FeatureUnavailable` ->
+`EmptyStateCard`, utilise par la route Ascension parente pour `lusr`, et qui porte deja le
+libelle FR/EN de `replay`. Prendre l'autre aurait recopie ce libelle et fabrique un second
+gabarit pour le meme etat. L'ecart est assume et documente dans la case 4.1 du plan.
+
+**Second piege, cote React** : le motif naturel pour une image binaire — creer l'URL
+d'objet au montage, la revoquer au demontage — passe par un `setState` dans un `useEffect`,
+que le lint du depot signale (cascade de rendus). Retenu : l'URL d'objet EST l'entree de
+cache (`staleTime` et `gcTime` infinis), bornee par le nombre de cartes du titre.
+Contrepartie assumee et ecrite sur place : rien n'est revoque avant la fermeture de
+l'onglet.
+
+**Resultats observes** — Go : `go vet` propre sur 8 arbres, `go test -count=1` vert sur
+25 paquets, `golangci-lint --new-from-merge-base=origin/main` a 0 issue, `openapi-gen
+-check` a jour. Web : `typecheck` propre, `lint` 0 erreur (30 warnings tous preexistants —
+celui que ce lot avait introduit a ete supprime), 21 fichiers et 171 tests verts sur le
+filtre `tactical ascension keys capabilities`, garde anti-anglicismes vert (le manifeste
+`tactical.toml` y entre des sa creation), 0 couleur en dur, `lint-cross-feature-imports`
+INCHANGE a 7/7, manifestes regeneres sans diff. SIX inversions jouees : branche map_id
+neutralisee, garde de session retiree, `disabled` et desaturation retires, `FeatureGate`
+retire, `RouteCapabilityGate` retire.
+
+**Conclusion / prochaine etape** — phase 4 close, non poussee. Quatre decouvertes hors
+perimetre consignees au §7 : le calage par carte n'a pas encore de consommateur web (il est
+pour la phase 5) ; le filtre de session de l'omnibar est ignore EN SILENCE par cet onglet ;
+la vignette charge l'image pleine resolution (jusqu'a 1,4 Mio par carte, aucun pipeline de
+miniatures dans le depot) ; la consigne « git checkout routeTree.gen.ts » ne vaut que pour
+un lot qui n'ajoute pas de route. Suite prevue par le plan : phase 6 (rasters a la
+cuisson) ; la 5 attend toujours le lot D.
