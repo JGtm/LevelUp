@@ -281,7 +281,7 @@ func logFlagCarriesCoverage(cov *FlagCarriesCoverage) {
 		"ouverts", cov.Open, "viesLibres", cov.ObjectLives,
 		"fermesParLObjet", cov.ClosedByObject, "lachersRepositionnes", cov.DropsRepositioned,
 		"sansPont", cov.NoBridge, "sansPiste", cov.NoTrack,
-		"horsFenetre", cov.OutOfWindow, "marqueurConfirme", cov.MarkerConfirmed,
+		"horsFenetre", cov.OutOfWindow, "slotsAmbigus", cov.AmbiguousSlot, "marqueurConfirme", cov.MarkerConfirmed,
 		"marqueurObserve", cov.MarkerObserved, "socles", cov.Spawns,
 		"simultaneite", cov.Overlaps, "porteursTuesAmbigus", cov.AmbiguousCarrierKills,
 		"retoursAmbigus", cov.AmbiguousReturns, "rentreesParLObjet", cov.HomeByObject,

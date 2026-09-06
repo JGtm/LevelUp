@@ -121,9 +121,16 @@ deux côtés, et il disparaît avec le correctif. C'est lui qui explique les −
 `tracksByXUID` accepte désormais une piste ANONYME quand le **pont canonique** `slotXUID`
 (`ResolveSlotXUID` / `OwnerReport`) nomme son slot. Ce n'est pas une déduction locale : c'est le
 MÊME pont qui nomme déjà les marques de portage (`flag_carries_marker.go`), les ramassages
-(`document_pickups.go`) et les frags sous équipement actif, et sa règle de collision refuse déjà
-un slot que deux joueurs se partagent. Une piste anonyme dont le pont ne nomme pas le slot **reste
-écartée** : on n'invente aucun porteur.
+(`document_pickups.go`) et les frags sous équipement actif. Une piste anonyme dont le pont ne
+nomme pas le slot **reste écartée** : on n'invente aucun porteur.
+
+> **CORRIGÉ LE 2026-09-06 (revue DUREES-R1, constat C1).** Cette section a d'abord ajouté, à tort,
+> que « sa règle de collision refuse déjà un slot que deux joueurs se partagent ». **C'est FAUX sur
+> pièces** : `ownersFromLives` (`lives.go:229-232`) compte la collision puis `continue`, et le
+> PREMIER nommé reste publié dans `SlotXUID` — choisi par l'ordre des vies, pas par la proximité
+> temporelle (`owners.go` le dit : « première nommée, collisions comptées »). De surcroît
+> `SlotCollisions` ne voit que les conflits entre vies NOMMÉES : une vie anonyme y est invisible.
+> La garde manquante est posée en §R1.C1 ci-dessous.
 
 Les deux appelants de l'index en profitent — `attachFlagCarryPositions` (position de prise et de
 lâcher) et `closeByFreeLives` (lâcher volontaire daté par la vie libre de l'objet). Les deux
@@ -304,3 +311,139 @@ n'est touché par aucun des deux correctifs. Le contrat OpenAPI déclare `schema
    bombe au 43 ; épisodes-durée et drapeaux ici). Aucun inventaire systématique des lecteurs qui
    supposent encore « un slot = une piste nommée » n'existe — un balayage `grep` des index par
    `XUID != ""` serait le point de départ.
+
+---
+
+## Corrections R1 — les trois constats de la revue adversariale
+
+Revue `DUREES-R1` (contexte frais, HEAD `7e5c454bc`, 22/22 conditions tenues) : **les deux
+correctifs sont exacts, additifs et prouvés**, aucun ne remet en cause la livraison. Trois
+constats à traiter, tous traités ci-dessous, périmètre strict.
+
+### R1.C1 (MOYENNE) — la garde invoquée pour autoriser le repli n'existait pas
+
+**Le constat, et il est juste.** Le commentaire de `flag_carrier_tracks.go` — et §A.3 de ce
+journal, mot pour mot — justifiaient le repli par « la règle de collision du pont refuse déjà un
+slot que deux joueurs se partagent ». `lives.go:229-232` dit le contraire : la collision est
+COMPTÉE puis `continue`, et `out[l.slot]` / `byXUID[l.slot]` **conservent le PREMIER nommé**. Le
+slot reste donc publié dans `SlotXUID` — nommé par l'ordre des vies, jamais par la proximité
+temporelle (`owners.go` l'écrit : « première nommée, collisions comptées »). Faiblesse
+redoublée : `SlotCollisions` ne compte que les conflits entre vies **NOMMÉES**, or une vie
+ANONYME — la population exacte que le repli croit — y est **invisible**.
+
+**Déclenchement, mesuré au parc** : `084a804d` slot 734 — `[5872..6981]` nommée A,
+`[7123..7158]` **ANONYME**, `[7457..7591]` nommée B ; 9 artefacts sur 106 portent au moins un slot
+en collision. Non matérialisé sur ce corpus (aucune prise ne tombe dans ces 36 frames), mais
+c'est un résultat **FAUX** là où l'ancien code rendait un résultat **ABSENT**.
+
+**Le correctif.** La garde est posée là où la matière existe — sur les vies PUBLIÉES, seules à
+dire qui a occupé le slot et quand. Le repli est REFUSÉ dès que les vies nommées du slot ne
+s'accordent pas avec le pont :
+
+| cas | verdict |
+|---|---|
+| deux xuid nommés distincts sur le slot | **refus** — la vie anonyme peut être de l'un ou de l'autre |
+| le pont nomme un joueur que les vies nommées du slot ne portent pas | **refus** — pont et document se contredisent, on ne choisit pas |
+| aucune vie nommée sur le slot | accepté — rien ne contredit le pont |
+
+Le refus est **compté** (`coverage.flagCarries.ambiguousSlot`, un compteur de SLOTS, hors de
+`Balanced()` puisqu'il ne partitionne pas les prises) et **journalisé** (`slog.Warn` structuré,
+liste des slots). Publié parce que sans lui, un portage manquant faute d'identité disponible
+serait indistinguable d'un portage qui n'a jamais eu lieu.
+
+**Ce que la garde ne peut PAS attraper, et c'est écrit dans le code pour que personne ne le
+croie** : un slot occupé par A (vie nommée) puis par B dont AUCUNE vie n'est nommée sort avec un
+seul xuid nommé, et la vie de B est rangée sous A. Le document publié ne porte rien qui distingue
+ce cas d'une vie de A coupée par un trou de réplication ; le trancher demanderait de DATER le
+pont, ce qu'`OwnerReport` ne fait pas.
+
+**Tests, prouvés par mutation** — `TestFlagCarriesSlotPartageRefuseLeRepli` (slot A / anonyme / B,
+pont nommant A : 0 portage, `noTrack = 1`, `ambiguousSlot = 1`). **Rouge sans la garde** :
+`Carries:1 NoTrack:0 AmbiguousSlot:0`. Contre-épreuve
+`TestFlagCarriesSlotNonPartageAccepteEtNeCompteRien` (A / anonyme seuls : 1 portage, 0 refus).
+
+### R1.C2 (FAIBLE) — l'union ne franchit plus une mort
+
+**Le constat.** `spanFor` ne recevait aucune information de mort : l'union unissait toutes les
+vies recouvertes, qu'une mort les sépare ou non. Sonde de la revue : trois vies NOMMÉES
+`[0..50]`, `[60..300]`, `[400..500]`, camo actif à 20 et inactif à 450 → épisode `[20..450]`,
+**enjambant deux morts**. `equipmentFx.ts` aurait peint l'effet sur des vies où rien ne l'a lu.
+L'invariant ne tenait que par la mesure (un seul épisode franchit une frontière de vie sur les
+trois films recuits, et c'est la frontière ANONYME visée), pas par construction.
+
+**Le correctif.** `trackFrameWindows` rend désormais des `lifeWindow` **triées** portant
+`named` — la vie porte-t-elle une identité ? L'identité d'une vie vient de la mort qui la
+TERMINE (`nameLivesByDeaths`) ; une vie ANONYME est au contraire une vie coupée par un trou de
+réplication. `spanFor` part de l'ancre (la vie qui contient l'ouverture) et n'étend l'union
+qu'à travers les frontières qu'**aucune identité ne date**.
+
+**La lecture est CONSERVATRICE, et c'est assumé** : les fermetures nomment aussi des vies
+(`nameClosedLives`) sans qu'une mort les termine, si bien qu'une couture légitime peut être
+refusée — jamais l'inverse. Un épisode trop court est une mesure incomplète ; un épisode qui
+enjambe une mort est une mesure FAUSSE.
+
+**Tests, prouvés par mutation** — `TestEpisodeNEnjambePasUneMort` (trois vies nommées, activation
+dans la PREMIÈRE : attendu `[20..50]`) et `TestEpisodeFranchitUnTrouAnonymeMaisPasLaMortSuivante`
+(vie ANONYME puis vie NOMMÉE : la couture traverse le trou et s'arrête à la mort — `[45..300]`).
+**Rouges sans la borne** : `[20..450]` et `[45..450]`, exactement la valeur de la sonde de la
+revue. La mutation prescrite au premier correctif n'exerçait pas ce risque (activation dans la
+SECONDE vie, où le clamp ne peut que rétrécir).
+
+### R1.C3 (FAIBLE) — le contrôle indépendant réaligné sur la production
+
+**Le constat.** `drapeau_objet_controle_test.go` passait `nil` en guise de pont : depuis le
+correctif, la production était strictement plus large que son contrôle. Pire, un porteur dont
+toutes les vies sont anonymes produisait `objDrapeauRef{porteur: nil, x: 0, y: 0}`, que
+`objDrapeauPres` lit comme un **SOCLE fantôme à l'origine du monde** — toute création à moins de
+1,5 m de (0,0) aurait été comptée « née à un socle ». Le contrôle se serait dégradé en silence,
+dans le sens qui l'assouplit. Test opt-in, donc dormant.
+
+**Le correctif, ses deux moitiés.** (a) Le pont est RECONSTRUIT depuis les seules vies publiées
+(`objDrapeauPontDuDocument` : un slot dont les vies nommées désignent un seul joueur), ce qui
+applique au contrôle exactement la garde de la production ; (b) un portage dont le porteur n'a
+malgré tout aucune piste est **sauté**, jamais transformé en référence vide — la position par
+défaut (0,0) n'est celle d'aucun socle.
+
+### Sortie des témoins, et pourquoi le schéma reste 45
+
+Re-cuisson des deux témoins après R1, comparée à la re-cuisson d'avant R1 (mêmes racines, même
+parc, même exécuteur) :
+
+| témoin | gains | pertes | lignes de perte |
+|---|---|---|---|
+| `bcb6d393` | 211 → **211** | 9 → **9** | **identiques, ligne pour ligne** |
+| `084a804d` | 482 → **483** | 19 → **19** | **identiques, ligne pour ligne** |
+
+**Aucune valeur existante ne bouge, aucune perte n'apparaît.** Le seul écart est la mesure NEUVE
+demandée par C1 : `coverage.flagCarries.ambiguousSlot` — **1 sur `084a804d`** (le slot 734
+exactement, celui que la revue avait mesuré : la garde se déclenche là où elle devait, et le
+calque n'en perd rien) et **0 sur `bcb6d393`**.
+
+Substance vérifiée à l'identique : `084a804d` 21 épisodes / 3 697 frames, slot 620 `[3105..3672]` ;
+`bcb6d393` `carries` 16, `noTrack` 0, durées par joueur 441 / 358 / 96 / 53 (total 948).
+
+**`SchemaVersion` reste donc 45.** Le contenu des calques est strictement inchangé, et le ratchet
+l'écrit lui-même : « un champ optionnel de plus n'en est pas une [raison] ». Golden d'assemblage
+inchangé.
+
+### Gates rejoués après R1
+
+```
+go test -count=1 ./internal/analysis/replay/... ./internal/replaybuild/... \
+        ./internal/replaydiff/... ./internal/archlint/... ./contracttest/...   # ok
+go test -count=1 -tags=integration -p 1 ./internal/api/wire/...                # ok (49,9 s)
+go build ./...                                                                 # ok
+golangci-lint run --new-from-merge-base=origin/main ./...                      # 0 issues
+```
+
+Seuils : `equipment_episodes.go` 442 L, `flag_carries.go` 455 L, `flag_carrier_tracks.go` 148 L,
+`flag_objects.go` 426 L, `document_objectives_live.go` 320 L — tous sous 500.
+
+### Découverte R1, notée et NON traitée
+
+`OwnerReport.SlotXUID` publie un slot en collision sous le nom de son PREMIER occupant nommé,
+sans que rien à la lecture ne dise que ce slot est disputé (`SlotCollisions` est un compteur
+global, pas un marqueur par slot). La garde ci-dessus le contourne pour le seul calque drapeau,
+en relisant les vies publiées ; **les autres consommateurs du pont** (marques de portage,
+ramassages, frags sous équipement actif) n'ont pas été inventoriés. Un pont qui MARQUERAIT ses
+slots disputés — ou qui les daterait — fermerait la question à la source pour tous.
