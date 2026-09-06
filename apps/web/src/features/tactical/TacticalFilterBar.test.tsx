@@ -166,15 +166,45 @@ describe('TacticalFilterBar', () => {
     expect(setScope).toHaveBeenCalledWith({ sessions: ['Session solo (6)'] })
   })
 
-  it('retire un label epingle introuvable, et le DIT', async () => {
+  it('retire un label zombie INDIVIDUEL, et garde l’autre', async () => {
     const avert = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
-      monter({ sessions: ['Session effacee (9)'] })
-      await waitFor(() => expect(setScope).toHaveBeenCalledWith({ sessions: [] }))
+      monter({ sessions: ['Session solo (4)', 'Session effacee (9)'] })
+      await waitFor(() =>
+        expect(setScope).toHaveBeenCalledWith({ sessions: ['Session solo (6)'] }),
+      )
       expect(avert).toHaveBeenCalled()
     } finally {
       avert.mockRestore()
     }
+  })
+
+  // ─── W1 DE LA RONDE 2 — L'ELARGISSEMENT SILENCIEUX ────────────────────────────────
+  //
+  // Session SOLO epinglee, puis un coequipier ajoute : la liste bascule sur les sessions
+  // d'escouade et le label solo n'y figure plus. L'ecrire a vide faisait retomber
+  // `filter_mode` en `period` SANS DATES — la lecture passait d'une soiree a l'HISTORIQUE
+  // ENTIER, pour seul signal un avertissement de console.
+
+  it('AUCUN label retrouve : le scope n’est pas touche, et la barre le DIT', async () => {
+    monter({ sessions: ['Session solo (6)'], coequipiers: ['Ami'] })
+    // La note remplace l'ecriture silencieuse.
+    expect(await screen.findByTestId('tactical-sessions-hors-liste')).toHaveTextContent(
+      /Session solo \(6\)/,
+    )
+    expect(screen.getByTestId('tactical-sessions-hors-liste').textContent).toContain(
+      'Le filtre reste appliqué',
+    )
+    // …et surtout : AUCUN patch de sessions n'est parti.
+    for (const appel of setScope.mock.calls) {
+      expect(appel[0] as Record<string, unknown>).not.toHaveProperty('sessions')
+    }
+  })
+
+  it('aucune note quand toutes les sessions epinglees sont proposees', async () => {
+    monter({ sessions: ['Session solo (6)'] })
+    await waitFor(() => expect(screen.getByText(/1 session/)).toBeInTheDocument())
+    expect(screen.queryByTestId('tactical-sessions-hors-liste')).toBeNull()
   })
 
   it('ne re-ecrit RIEN quand le label epingle est deja a jour', async () => {

@@ -38,14 +38,23 @@ var (
 // de 30 s puis un 500 — sur ses propres donnees, mais avec la machine de tout le monde.
 const MaxCoequipiers = 3
 
-// motifXUID : un XUID de `match_participants` est un entier decimal.
+// motifXUID : un XUID est un entier decimal (32 chiffres au plus).
 //
-// MEME MOTIF que `handlers.xuidPattern` (`api/handlers/match_view.go:35`), qui garde le
-// parametre `with_player` de l'Explorateur — et pour la meme raison : la colonne stocke
-// le NOMBRE NU (`sync.extractXUID` deballe `xuid(1234)` en `1234` a l'ingestion). Le
-// motif vit ICI parce que la regle de composition est une regle de domaine, lue par le
-// service ET par le handler ; une seconde definition par couche divergerait.
+// LA SEULE DEFINITION DU DEPOT (unification 2026-09-06, ronde 2). La colonne
+// `match_participants.xuid` stocke le NOMBRE NU — `sync.extractXUID` deballe le
+// `xuid(1234)` de l'API en `1234` a l'ingestion —, et deux frontieres le verifient : la
+// composition de l'onglet Tactique et le parametre `with_player` de l'Explorateur
+// (`handlers.parseNeighborsFilterSpec`). Elles lisent toutes deux `XUIDValide` : le motif
+// vivait en double, sans rien pour empecher les deux copies de diverger.
+//
+// Il vit dans `domain` parce que c'est la couche la plus basse des deux appelants — un
+// handler ne peut pas etre importe par un service. Garde-rail :
+// archlint/no_local_xuid_pattern_test.go interdit un second `regexp.MustCompile` du motif
+// hors de ce paquet.
 var motifXUID = regexp.MustCompile(`^\d{1,32}$`)
+
+// XUIDValide dit si `s` a la forme d'un XUID stocke en base.
+func XUIDValide(s string) bool { return motifXUID.MatchString(s) }
 
 // ValiderComposition refuse une composition hors bornes ou mal formee.
 //
@@ -59,7 +68,7 @@ func ValiderComposition(xuids []string) error {
 			ErrTacticalCompositionInvalide, len(xuids), MaxCoequipiers)
 	}
 	for _, x := range xuids {
-		if !motifXUID.MatchString(x) {
+		if !XUIDValide(x) {
 			return fmt.Errorf("%w: %q n'est pas un XUID", ErrTacticalCompositionInvalide, x)
 		}
 	}

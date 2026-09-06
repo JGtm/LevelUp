@@ -621,7 +621,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   tombe ; `<img>` rendue inconditionnelle -> les deux tests du fond tombent ;
   `&& !isTactical` retire -> le test « un seul onglet selectionne » tombe.
 - **Gate** : typecheck + test-web ; couleurs ; parite FR/EN.
-### Phase 4 bis — Barre L2 et perimetre de matchs (items 4.5 et 4.6) — CLOSE 2026-09-06, revue ronde 1 SOLDEE (17 constats)
+### Phase 4 bis — Barre L2 et perimetre de matchs (items 4.5 et 4.6) — CLOSE 2026-09-06, revues rondes 1 ET 2 SOLDEES (20 constats)
 > Arbitrages utilisateur du 2026-09-06 : le filtre de session doit MARCHER ; la barre L2 est un
 > mix Explorateur + Escouade ; « Escouade » = la composition choisie.
 > Architecture tranchee par le superviseur : **resolution du perimetre COTE CLIENT** par le
@@ -758,6 +758,57 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
     d'URL en silence), W12 (assertion sur l'objet ENTIER), W13 (liste de consommateurs
     fausse en tete de `useLocalFilterBar`), G2 (commentaire d'inversion citant une
     fonction supprimee).
+- **REVUE ADVERSARIALE RONDE 2 — 3 constats, TOUS corriges** (2026-09-06, commit
+  `tactique(4.8)`). Derniere salve : W1, W2, W4-W6, W8-W11, G1, G2 et G4 de la ronde 1
+  tiennent, et les composants partages ont ete verifies consommateur par consommateur
+  (combobox bit-a-bit identique sans `sources`, helpers de session byte-identiques, hook
+  inchange en mode non controle).
+  - **P1 — LA COPIE AVAIT PERDU LA GARDE DE L'ORIGINAL, ET C'EST UN ELARGISSEMENT
+    SILENCIEUX.** Session SOLO epinglee, puis un coequipier ajoute : `avecComposition`
+    passe a vrai, la liste proposee bascule sur les sessions d'ESCOUADE, la reconciliation
+    ne retrouve plus le label solo et rendait `[]` — l'effet ecrivait alors
+    `setScope({ sessions: [] })`, `filter_mode` retombait en `period` SANS DATES, et la
+    lecture passait d'une soiree a l'HISTORIQUE ENTIER pour seul signal un `console.warn`.
+    `SquadLayout.tsx:452` porte exactement la garde qui manquait
+    (`if (reconciled.length === 0) return`, « si TOUS les labels sont des zombies pour la
+    composition courante, on ne fait rien ») : elle est reprise telle quelle. Le remappage
+    `(4)` -> `(6)` et le retrait d'un zombie INDIVIDUEL restent.
+    **ET LA SITUATION SE VOIT** : `sessionsHorsListe` (pur, meme notion d'identite que la
+    reconciliation) alimente une note sous la barre — gabarit du depot (`role="status"`,
+    tint `warning`, `text-warning`), cle i18n FR+EN — qui dit ce qui est vrai : ces
+    sessions ne sont pas dans la liste courante, ET le filtre reste applique.
+  - **P2 — LE MOTIF XUID EXISTAIT EN DEUX EXEMPLAIRES.** `domain.motifXUID` et
+    `handlers.xuidPattern` gardaient deux frontieres (composition tactique,
+    `with_player` de l'Explorateur) sous deux definitions, alors que le contrat de la
+    ronde 1 disait REUTILISER. Source unique `domain.XUIDValide` ; `handlers.xuidPattern`
+    SUPPRIMEE, son appelant migre ; garde-rail
+    `archlint/no_local_xuid_pattern_test.go` (patron des `no_local_*`) interdisant toute
+    autre compilation du motif dans `internal/`, y compris ecrite `[0-9]{1,32}`.
+    Le ratchet porte un SELF-CHECK POSITIF — il doit reconnaitre la source unique
+    elle-meme — et c'est lui qui a fait tomber la premiere version du garde-rail, dont le
+    motif de detection etait faux : elle ne detectait plus rien, y compris ce qu'elle
+    devait interdire.
+  - **P2 — CE QU'ON NE PROPOSE PAS, ON NE L'INTERROGEAIT QUAND MEME PAS.** Le filtrage
+    par `sources` s'appliquait au RESULTAT : avec `sources={['frequent']}`, chaque frappe
+    de deux caracteres partait vers `/directory/gamertags/search` pour une reponse jetee.
+    `useGamertagSuggestions` gagne `rechercheDistante` (defaut : vrai — les cinq
+    consommateurs existants sont bit-a-bit identiques), desarmant la requete ET son repli
+    Xbox. Le test PROUVE UN NON-EVENEMENT en montant les deux comboboxes cote a cote :
+    l'arrivee de la requete du combobox libre etablit que la fenetre de debounce est
+    passee pour les deux.
+- **Gate REJOUE apres la ronde 2, le 2026-09-06** (avant-plan, en serie). Go : `gofmt`
+  propre ; `go vet` propre ; `go test -count=1 ./internal/domain/... ./internal/api/...
+  ./internal/archlint/... ./internal/service/...` : **15 paquets `ok`, aucun `FAIL`**
+  (api 23,9 s ; service 10,6 s ; handlers 9,7 s ; archlint 9,9 s ; title 11,2 s) ;
+  `golangci-lint run --new-from-merge-base=origin/main` : **0 issue** ;
+  `openapi-gen -check` : a jour. Web : `typecheck` propre ; `lint` **0 erreur** (30
+  warnings preexistants) ; **suite vitest COMPLETE : 606 fichiers, 6405 tests passes,
+  14 skip, 0 fail** ; couleurs 0 violation ; imports croises **7/7 inchange** ; garde
+  anti-anglicismes + fraicheur des types generes verts ; manifestes regeneres.
+  **TROIS INVERSIONS** : garde `length === 0` retiree -> le test de l'elargissement
+  silencieux tombe ; seconde definition du motif reintroduite dans `handlers` -> le
+  garde-rail tombe en la nommant (`api/handlers/match_view.go:32`) ; requete distante
+  reactivee -> le test du non-evenement tombe.
 - **Gate REJOUE apres la ronde 1, le 2026-09-06** (avant-plan, en serie). Go : `gofmt`
   propre, `go vet` propre sur les 8 arbres, `go test -count=1` **sans aucun `FAIL`**,
   `golangci-lint run --new-from-merge-base=origin/main` : **0 issue**, `openapi-gen -check`
@@ -843,6 +894,7 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **revue adversariale ronde 2 de la phase 4 bis — 3 constats, TOUS corriges** en 1 commit `tactique(4.8)` ; pas de ronde 3. Le P1 est le meme defaut que la ronde 1 avait deja nomme, une couche plus bas : **une copie qui perd la garde de l'original**. La reconciliation des labels de session avait ete reprise de `SquadLayout` SANS son `if (reconciled.length === 0) return` — et cette garde-la ne protege pas d'un zombie, elle protege d'un CHANGEMENT DE CONTEXTE : ajouter un coequipier bascule la liste proposee de « solo » a « escouade », la session epinglee n'y figure plus, et l'ecrire a vide faisait passer la lecture d'une soiree a l'historique entier, en silence. Garde reprise, et la situation est desormais AFFICHEE plutot que muette. Les deux P2 ferment ce que la ronde 1 avait laisse a moitie : une seule definition du motif XUID (+ garde-rail archlint, dont le self-check positif a rattrape un ratchet faux) et une requete d'annuaire qui n'est plus emise quand sa source n'est pas proposee. Gate complet rejoue, trois inversions.
 - 2026-09-06 : **revue adversariale ronde 1 de la phase 4 bis — 17 constats, TOUS corriges** en 3 commits `tactique(4.7)`. Aucun acces indu, aucune injection, aucun resultat faux cote Go : les defauts etaient d'USAGE. Le plus couteux (W1) : « Aucune carte jouee » s'affichait PENDANT l'attente, parce qu'en TanStack v5 `isLoading` est faux sur une requete desactivee — au premier montage, a chaque clic sur Analyser, et definitivement si la resolution echouait. Les trois autres P1 web disent la meme chose autrement : le selecteur proposait des noms qu'il allait refuser (W2), le label de session persiste devenait un zombie a la synchronisation suivante (W3), et « Reinitialiser les filtres » n'en reinitialisait que la moitie (W4). Cote Go : composition non bornee (5 000 `EXISTS` possibles) desormais bornee et typee, `matchs_filtres` redevenu PAR CARTE sur decision du superviseur, et un commentaire de montage qui annoncait « GET » sur des routes en POST. Gate rejoue en entier, sept inversions.
 - 2026-09-06 : **phase 4 bis CLOSE (items 4.5 et 4.6) — le filtre de session MARCHE.** Le perimetre de l'onglet est desormais une LISTE BLANCHE de match_id, resolue cote client par le endpoint de filtres (base JOUEUR, la seule qui porte les sessions) et postee aux deux endpoints tactiques, qui perdent leurs parametres plats de filtre. Barre L2 assemblee de trois controles existants, etat dans l'URL. Gate complet vert (Go : 0 issue lint, contrat a jour ; web : suite vitest COMPLETE, 606 fichiers / 6390 tests / 0 fail), HUIT inversions jouees. Deux pieges rencontres et documentes sur place : Huma ne met pas a plat une struct embarquee dans un corps (422 silencieux), et un POST de lecture sous /players/ doit entrer dans `readOnlyPostPrefixes` sous peine de 401 pour un visiteur anonyme.
 - 2026-09-06 : **second rouge du meme run CI, cote Go cette fois (job « Go Coverage + Baseline », qui joue `./...` COMPLET, donc aussi `cmd/**`).** Le garde-rail de source `TestInventaireEtProductionResolventPareil` (`apps/go-api/cmd/mapfond-inventaire/resolution_test.go`) lisait le corps de `resolveBackgroundKey` — devenue une simple enveloppe (`replay_map_background.go:126`) apres la phase 4, qui a deplace la cascade et ses deux `return <ident>, nil` dans `resolveBackgroundKeyDepuis` (`:151`). Le garde comptait donc 0 chemin de resolution dans une fonction vide au lieu de 2. Corrige en faisant lire au garde `resolveBackgroundKeyDepuis` (la fonction qui PORTE la cascade), commentaires mis a jour pour nommer les deux enveloppes qui l'appellent ; commentaire ajoute a `resoutFond` (`main.go:169`) sur `cleDeFondSure` (sans objet ici : les map_id de l'inventaire viennent de `match_registry`, jamais d'une entree hostile). Inversion jouee : remise temporaire de `resolveBackgroundKey(` dans le garde -> memes deux echecs qu'en CI (0 chemin, -1/-1) ; restaure. Gate vert : `./cmd/mapfond-inventaire/`, `./cmd/... ./internal/service/...` (aucun `--- FAIL`), `go vet`. Lecon : **le job coverage joue `./...` dont `cmd/`** — un gate local scope a `internal/` ne l'aurait pas revele.

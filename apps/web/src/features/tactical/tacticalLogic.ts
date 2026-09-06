@@ -20,6 +20,7 @@ import type {
   TeammateOption,
 } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
+import { stripSessionCountSuffix } from '@/lib/sessions/sessionLabels'
 
 import type { TacticalScope } from './tacticalScope'
 
@@ -161,6 +162,28 @@ export function sessionsProposees(
       ended_at: o.ended_at_utc,
       match_count: o.match_count,
     }))
+}
+
+/**
+ * sessionsHorsListe — les sessions ÉPINGLÉES que la liste courante ne propose pas.
+ *
+ * Le cas qui compte n'est pas le zombie de synchronisation (un compte de matchs qui a
+ * bougé, remappé par `reconcileSquadSessionLabels`) : c'est le CHANGEMENT DE CONTEXTE.
+ * Une session SOLO épinglée, puis un coéquipier ajouté, et la liste proposée devient
+ * celle des sessions d'escouade — le label épinglé n'y figure plus, sans avoir rien
+ * perdu de sa validité. Le dire est la seule sortie honnête : le retirer élargirait le
+ * périmètre d'une soirée à l'historique entier, en silence.
+ *
+ * L'identité d'un label est sa forme SANS le compte (`stripSessionCountSuffix`), la même
+ * que celle de la réconciliation — deux notions d'identité donneraient deux verdicts.
+ */
+export function sessionsHorsListe(
+  epinglees: readonly string[],
+  proposees: readonly SessionLabelEntry[],
+): string[] {
+  if (epinglees.length === 0 || proposees.length === 0) return []
+  const cles = new Set(proposees.map((s) => stripSessionCountSuffix(s.label)))
+  return epinglees.filter((l) => !cles.has(stripSessionCountSuffix(l)))
 }
 
 /** Résultat de la traduction gamertags → xuids de la composition. */

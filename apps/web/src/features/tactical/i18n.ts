@@ -48,6 +48,8 @@ export function getTacticalText(locale: Locale) {
       viewSquad: m('tactical.filter.view_squad'),
     },
     sessions: m('tactical.filter.sessions'),
+    sessionsHorsListe: (n: number, names: string) =>
+      m('tactical.filter.sessions_off_list', { n, names }),
     squadPlaceholder: (n: number) => m('tactical.filter.squad_placeholder', { n }),
     unknownTeammateTitle: m('tactical.filter.unknown_teammate_title'),
     unknownTeammateDescription: (names: string) =>
