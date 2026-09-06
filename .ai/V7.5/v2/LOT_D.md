@@ -281,7 +281,127 @@ avec le lot F, qui met ces specs en CI (F.6).
 6. **`e2e/replay-explosion-raster.spec.ts` portait DEUX dérives, pas une** (détail au gate).
    Le correctif d'une ligne annoncé n'aurait pas suffi.
 
+---
+
+## Tâche D-II, second temps — PARTIEL, arrêté après D.10 le 2026-09-06
+
+### Items
+
+- [x] **D.9 — cinq canoniques, cinq garde-rails, toutes les copies migrées.** Quatre commits.
+  - `32607ff66` **K3, `replayView.ts`** : le type du cadrage était redéclaré 8 fois, et le
+    passage monde → canvas réécrit en dépaquetant ses quatre champs — 29 sites dans 22
+    fichiers, plus 7 pour l'échelle. `CanvasView`, `projectTo(view, p)` et `scaleOf(view)`
+    prennent le cadrage ENTIER : il n'y a plus d'ordre à retenir entre `width` et `height`,
+    deux nombres du même type que le compilateur ne peut pas départager. 36 sites migrés.
+    Exception structurelle : `replayLogic.layerOffset` garde l'écriture longue (il DÉFINIT
+    `worldToCanvas`, passer par `replayView` ferait un cycle).
+  - `15613a2b7` **K1, `buildLivesBySlot` / `lifeOfSlotAt`** : quatre calques réécrivaient
+    byte pour byte l'index des vies par slot et la relecture « la vie qui couvre l'image ».
+    Les deux rejoignent `buildLivesByXuid` dans `livesPosition.ts` ; le garde-rail existant
+    couvre désormais les deux index.
+  - `bc57c117c` **K2, `matchSides.ts`** : « quelle est MON équipe » était écrite quatre fois
+    — trois copies, plus une canonique cachée dans le module des SONS d'objectif, un foyer
+    que personne ne va chercher pour peindre une onde ; « l'équipe de chaque xuid » deux
+    fois. Le garde est resserré sur la FORMULE et non sur ses ingrédients : chercher la ligne
+    `is_me` reste permis pour en lire autre chose.
+  - `803daf16a` **K4, `carriedGlyphPulse.ts` et K5, `replaySpans.ts`** : la respiration des
+    trois glyphes portés (le risque n'était pas la désynchronisation — les trois modes ne
+    co-occurrent jamais — mais la dérive silencieuse) ; et le prédicat « cet intervalle
+    couvre cette image », écrit DOUZE fois en deux orthographes (et non dix : `zoneSound.ts`
+    en portait deux de plus que le registre n'en comptait).
+- [x] **D.10 (M4) — le garde du porteur dérive sa liste de la source.** `commit 5fe9d1957`.
+  Il nommait cinq calques à la main ; il lit maintenant le code — tout module qui se donne un
+  résolveur de position (`const posOf = …`) est un lecteur de porteur et doit le prendre au
+  résolveur commun, la version mémoïsée s'il est monté dans React, le constructeur sinon.
+- [x] **D.10 (M5) — le garde des encres dérive sa liste du type.** `commit 5fe9d1957`. Il
+  promettait « chaque `InkVar` » et n'en vérifiait QU'UNE sur six. Deux exigences désormais
+  distinguées : toute encre du type doit être déclarée (sans quoi `readInk` rend `''` et le
+  canvas peint avec l'encre précédente), et celles propres au rejeu doivent l'être dans les
+  DEUX thèmes — elles n'ont pas de valeur héritée sur laquelle retomber.
+- [!] **D.10 (les « 11 faux hooks ») — NON TRAITÉ, et la mesure invite à trancher avant.**
+  Le décompte d'abord : ils sont QUINZE, pas onze, à ne porter ni état ni effet
+  (`useReplayAbilityFx`, `useReplayBombBlast`, `useReplayBombCarrier`, `useReplayFx`,
+  `useReplayGrenadeRest`, `useReplayInks`, `useReplayObjectiveObjects`, `useReplayPlacements`,
+  `useReplaySkullCarrier`, `useReplayTiming`, `useReplayView`, `useReplayVipCrown`,
+  `useSlotIdentity`, `useTeamCascades`, et `useReplayTimeline` qui, lui, appelle bien deux
+  vrais hooks). Le fond ensuite : **leur logique est DÉJÀ pure et déjà testée ailleurs.**
+  Témoin mesuré, `useReplayVipCrown` (66 L, 3 mémos) — il ne contient qu'un `useCarrierPosAt`,
+  un objet de style mémoïsé et un `useCallback` qui appelle `drawVipCrown`, fonction pure
+  testée dans `vipCrownLayer.test.ts` ; `useSlotIdentity` (211 L, 11 mémos) ne porte que deux
+  boucles. Ce que ces hooks contiennent, c'est de la MÉMOÏSATION et du câblage.
+  Les convertir en fonctions pures aurait donc trois effets, et aucun n'est celui visé :
+  (1) aucune testabilité gagnée — la logique est déjà hors React ; (2) une quinzaine de
+  `useMemo` déplacés dans `ReplayCanvas`, qui est à 651 lignes pour un plafond de 665 et que
+  D.11 veut faire maigrir ; (3) un risque de perte de mémoïsation sur une boucle à 60 images
+  par seconde, sous une contrainte « aucun changement de comportement » qu'aucun gate ne
+  mesure.
+  **Question au superviseur** : le constat vise-t-il le NOM (`use*` promet un état qu'ils
+  n'ont pas — on renommerait alors en `buildX` + `useX` mince, patron de D.6) ou la
+  STRUCTURE (les convertir vraiment) ? Le premier est un déplacement de mémo sans risque ; le
+  second est celui que la mesure déconseille.
+- [ ] **D.11, D.12, D.13, D.14 — non commencés.** Arrêt propre demandé par le superviseur en
+  cas de saturation de contexte plutôt qu'un travail bâclé (cf. « Reste à faire »).
+
+### Gate du second temps (partiel)
+
+| Gate | Commande exacte | Dernière ligne |
+|---|---|---|
+| Typecheck (cache forcé) | `cd apps/web && npx tsc -b --force` | (aucune sortie) `TSC_EXIT=0` |
+| Lint | `npm --prefix apps/web run lint` | `✖ 27 problems (0 errors, 27 warnings)` |
+| Vitest (suite web entière) | `cd apps/web && node_modules/.bin/vitest run --pool=forks` | `Tests  6354 passed \| 14 skipped (6368)` |
+| Couleurs | `node tools/lint-no-hardcoded-colors.mjs` | `lint-no-hardcoded-colors: clean (0 violation)` |
+| Imports croisés | `node tools/lint-cross-feature-imports.mjs` | `Info : 7 <= plafond P8.5 (7). Pas d'échec` |
+| Build de production | `npm --prefix apps/web run build` | `✓ built in 1.94s` |
+| Rasterisation (témoin) | `cd apps/web && npx playwright test e2e/replay-explosion-raster.spec.ts e2e/replay-muzzle-raster.spec.ts --reporter=line` | `3 passed` |
+
+`lint:colors` n'existe pas encore comme script npm : c'est l'objet de D.12, non commencé. Le
+lint canonique est joué directement, avec sa commande, ci-dessus.
+
+**Le témoin de rasterisation est vert APRÈS CHAQUE ITEM** (K3, K1, K2, K4+K5, M4+M5). Il a
+fallu l'étendre une fois : K3 change les imports de `grenadeRestLayer`, donc le harnais reçoit
+désormais `replayView` dans sa portée — deux lignes de plus au correctif local, à réconcilier
+avec le lot F.
+
+### Décisions prises (second temps)
+
+15. **`projectTo(view, p)` plutôt qu'un projecteur pré-lié (D.9, K3).** Une seule forme, prise
+    à 36 sites, sans allocation de closure dans une boucle de dessin. Les cinq calques qui
+    projettent en boucle gardent un raccourci local `const px = (p) => projectTo(view, p)` :
+    c'est de la brièveté au point d'appel, pas une seconde règle de projection.
+16. **Les gardes de K2 et K5 visent la FORMULE, pas ses ingrédients (D.9).** La première
+    version interdisait `find((r) => r.is_me)` et `new Map<string, number>()` : elle attrapait
+    quatre usages parfaitement légitimes (lire l'issue du match sur la ligne « moi », indexer
+    l'indice de film d'un siège). Un garde qui crie faux se désactive ; les motifs ont été
+    resserrés sur la formule entière.
+17. **`covers` est fermé aux DEUX bouts, et le module le dit (D.9, K5).** `t1` est la dernière
+    image où l'état vaut, pas la première où il ne vaut plus : un portage d'une seule image a
+    `t0 === t1` et doit se peindre. C'est la convention du film, et l'écrire est ce qui rend
+    la treizième copie impossible à écrire faux.
+18. **Un garde dérivé vérifie AUSSI qu'il dérive quelque chose (D.10).** Les deux gardes
+    refondus portent un cas qui échoue si la dérivation rend une liste vide — sans quoi une
+    union renommée ou une convention abandonnée les rendrait verts et inertes, ce qui est
+    exactement le défaut qu'ils corrigent.
+
+### Découvertes (second temps)
+
+7. **Le prédicat d'intervalle était écrit DOUZE fois, pas dix** : `zoneSound.ts` en portait
+   deux que le registre n'avait pas comptées (K5).
+8. **`MatchPadControlSection.tsx` lit le camp du joueur SANS le parser** (`board.find((r) =>
+   r.is_me)?.team_side ?? null`, un `team_side` brut) : une troisième lecture du tableau de
+   score, dans un composant de la Match View hébergé sous `match-replay/`. Hors du périmètre
+   de K2 (qui vise le camp NUMÉRIQUE), non traitée — elle relève du même nettoyage que N4/D.13.
+9. **`heatmapLayer.ts` porte déjà une fonction locale `scaleOf`** qui prend une grandeur du
+   monde, pas le cadrage : l'import de la canonique s'y qualifie (`scaleOf as viewScale`)
+   plutôt que de renommer une fonction dont le nom est juste chez elle.
+
 ## Reste à faire
 
-- Tâche D-II, second temps (D.9 à D.14) : non commencé. Il démarre sur message du superviseur.
+- **D.10 (les faux hooks)** : bloqué sur la question ci-dessus — le NOM ou la STRUCTURE.
+- **D.11** (max-lines 500 `skipComments`, retrait du cliquet de lignes brutes, arborescence par
+  responsabilité, `README.md`), **D.12** (`lint:colors` en CI, 9 copies partielles supprimées),
+  **D.13** (les modules que l'allowlist croisée dément descendent dans `lib/replay/`),
+  **D.14** (merge de `feat/v2-capabilities`, route gatée par la capability `replay`) : non
+  commencés. **Prochain item : D.11.**
+- **D.15** (promotion de `ReplayTransport` et `ReplaySettingsDrawer` en frères du canvas) :
+  différé hors chantier par le superviseur, après un gate visuel validé par l'utilisateur.
 

@@ -95491,3 +95491,40 @@ positionne en absolute par rapport a la div racine du canvas, donc changer son p
 position sous une contrainte « aucun changement visuel » que les specs de rasterisation ne
 couvrent pas. Question au superviseur : rattacher a D.9/D.10, ou item propre avec gate visuel ?
 Le second temps (D.9 a D.14) ne demarre qu'apres son message.
+
+## [2026-09-06] Lot D tache D-II second temps — canoniques et gardes derives — Partiel (D.9 et D.10 M4/M5)
+
+**Contexte.** Plan v2 du rejeu et du film, lot D, second temps de la tache D-II : D.9 (cinq
+canoniques du registre, constats K1 a K5) puis D.10 (les faux hooks, plus les deux gardes M4 et
+M5 a deriver de la source), D.11 a D.14 ensuite. Le superviseur a explicitement autorise l'arret
+propre apres l'item en cours plutot qu'un travail bacle, avec relance d'un executeur frais sur
+le journal. Contrainte inchangee : aucun changement visuel ni de comportement, rasterisation
+3/3 identique apres chaque item.
+
+**Decision technique.** Cinq canoniques livrees chacune avec son garde-rail dans le meme commit,
+et toutes leurs copies migrees : le cadrage qui sait projeter (`replayView`, 36 sites), l'index
+des vies par slot (`livesPosition`, 4 copies byte-identiques), les camps du match
+(`matchSides`, 4 + 2 copies dont une canonique cachee dans le module des sons), la respiration
+des glyphes portes (`carriedGlyphPulse`, 3 copies) et le predicat d'intervalle (`replaySpans`,
+12 copies en deux orthographes). Puis les deux gardes de D.10 : celui du porteur derive sa liste
+du code (« tout module qui se donne un resolveur de position est un lecteur de porteur ») et
+celui des encres derive la sienne de l'union `InkVar`. Chaque garde refondu porte un cas qui
+echoue si sa derivation rend une liste vide — sans quoi une convention abandonnee le rendrait
+vert et inerte, exactement le defaut qu'il corrige.
+
+**Resultats.** Cinq commits (32607ff66, 15613a2b7, bc57c117c, 803daf16a, 5fe9d1957). Gates
+verts : `tsc -b --force`, lint a 27 avertissements (la baseline exacte), 6 354 tests web,
+couleurs propres, cliquet d'imports croises a 7/7, build. Le temoin de rasterisation est vert
+APRES CHAQUE ITEM ; K3 a impose de lui ajouter la portee `replayView`. Deux mesures corrigent le
+registre : le predicat d'intervalle etait ecrit douze fois et non dix (`zoneSound.ts` en portait
+deux de plus), et les « 11 faux hooks » sont quinze.
+
+**Conclusion / prochaine etape.** ARRET PROPRE apres D.10, D.11 a D.14 non commences. Un item
+non traite, avec sa mesure : les faux hooks. Leur logique est DEJA pure et deja testee ailleurs
+— temoin `useReplayVipCrown`, 66 lignes dont trois memos et un appel a `drawVipCrown`, fonction
+pure testee dans son propre fichier. Les convertir ne gagnerait aucune testabilite, deplacerait
+une quinzaine de memos dans `ReplayCanvas` (651 lignes pour un plafond de 665, que D.11 veut
+faire maigrir) et risquerait une perte de memoisation sur une boucle a 60 images par seconde,
+sous une contrainte « aucun changement de comportement » qu'aucun gate ne mesure. Question au
+superviseur : le constat vise-t-il le NOM (renommer en `buildX` + `useX` mince, patron de D.6)
+ou la STRUCTURE ? Prochain item : D.11.
