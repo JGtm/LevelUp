@@ -97005,3 +97005,27 @@ verdict en tete du document. **Le parc peut etre re-cuit au schema 41 sans rien 
 residu non instruit merite son propre examen si l'utilisateur veut fermer a zero : `d9781168`
 (s23) perd 6 portages de crane d'Oddball (36 -> 30) — il n'entrait dans aucune des quatre
 candidates.
+
+## [2026-09-06] Chantier v2 rejeu/film — cloture : balayage final, schema 41, parc re-cuisable — Complete
+
+**Contexte.** Apres l'integration des sept lots, deux regressions de donnees anterieures au
+chantier ont ete trouvees par le balayage du parc (119 matchs, 161 artefacts, 19 schemas) et
+corrigees : pont d'identite (`d173b1a8c`, 28/08, schema 40) et « une piste = une vie »
+(`48cf4905d`, 02/09, schema 41, quatre consommateurs + un cinquieme beneficiaire).
+
+**Decision technique.** Trois balayages (reference -> 39 -> 40 -> 41) avec l'outil
+`cmd/replay-diff` (lecture generique, versionne), un film a la fois par l'executeur borne,
+parc de reference intact ; chaque correctif relu en deux rondes adverses avec cuissons
+temoins ; bumps de schema pour forcer la re-cuisson (regle : un artefact vN doit se voir
+comme a re-cuire) ; Notion mis a jour (re-cuisson au schema 41).
+
+**Resultats.** Pertes distinctes 1 783 -> 1 483 -> 1 160, ZERO perte nouvelle sur les trois
+passes ; candidates 1, 2, 4 a zero, candidate 3 a deux residus ; +438 actions d'objectif,
++52 tractions, +28 vies nommees, +15 episodes, +12 intervalles de drapeau retrouves. Quinze
+faits anterieurs restent listes match par match (`.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`),
+dont `d9781168` -6 portages de crane d'Oddball. `feat/v75` = tout integre.
+
+**Conclusion / prochaine etape.** Le parc peut etre re-cuit au schema 41 (etape de release
+Notion). Restent : CI des derniers merges, decision user sur `flagCarries` (completer dans
+replaybuild), instruction optionnelle des quinze faits residuels (Oddball d'abord), nettoyage
+des dix worktrees `LevelUp-wt-v2-*` et des caches, tag v7.5.0.

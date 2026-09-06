@@ -656,3 +656,11 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   est `b696c7b11` (conflit thought_log concaténé), SchemaVersion 41 vérifié sur pièces, build,
   tests unitaires et intégration verts, poussé. Notion : re-cuisson du parc portée à 41. Balayage
   FINAL au schéma 41 lancé (`apres3/`). Intégrés : B, F, C, G, E, CTF, A, D, balayage, REG.
+- 2026-09-06 18:10 : BALAYAGE FINAL (schéma 41) RENDU ET FUSIONNÉ : 119/119, 37,9 min, pic 0,56 Gio.
+  40 → 41 : zéro disparition, +52 tractions (16 matchs), +28 vies nommées (18), +15 épisodes (9),
+  +12 intervalles de drapeau (2 matchs : `flagCarries` était un CINQUIÈME consommateur du défaut,
+  bénéficiaire du correctif), douze axes strictement identiques. Référence → 41 : candidates 1,
+  2, 4 à ZÉRO, candidate 3 à 2 (`13d92593` connu, `2cf24f30` s31 7 → 6 résidu réel). Trois
+  passes : pertes distinctes 1 783 → 1 483 → 1 160, ZÉRO perte nouvelle (sous-ensembles stricts).
+  Restent quinze faits, tous antérieurs au chantier, dont `d9781168` (s23) −6 portages de crâne
+  d'Oddball (36 → 30), à instruire à part. VERDICT : le parc peut être re-cuit au schéma 41.
