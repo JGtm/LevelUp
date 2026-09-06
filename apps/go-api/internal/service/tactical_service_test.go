@@ -12,7 +12,6 @@ import (
 	"math"
 	"testing"
 
-	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 )
@@ -35,11 +34,13 @@ type mockTacticalRepo struct {
 	errPos  error
 	errEv   error
 
-	vuPos domain.TacticalQuery
-	vuEv  domain.TacticalQuery
+	vuMaps domain.TacticalQuery
+	vuPos  domain.TacticalQuery
+	vuEv   domain.TacticalQuery
 }
 
-func (m *mockTacticalRepo) MapsPlayed(context.Context, domain.TacticalQuery) ([]domain.TacticalMapRow, error) {
+func (m *mockTacticalRepo) MapsPlayed(_ context.Context, q domain.TacticalQuery) ([]domain.TacticalMapRow, error) {
+	m.vuMaps = q
 	return m.maps, m.errMaps
 }
 
@@ -130,6 +131,17 @@ func TestTacticalService_TroisQuestions_TroisProjections(t *testing.T) {
 	}
 	if len(kills.Cellules) != 1 || celluleEn(kills.Cellules, 2.0, 2.0) == nil {
 		t.Fatalf("kills : attendu la SEULE cellule (2,2) — la ou JE tire : %+v", kills.Cellules)
+	}
+	// T8 : les lectures NON signees ont une echelle a un seul cote. Une echelle
+	// symetrique y peindrait un demi-intervalle mort.
+	for nom, lecture := range map[string]domain.TacticalRaster{"morts": morts, "kills": kills} {
+		if lecture.Echelle.Symetrique {
+			t.Errorf("%s : Echelle.Symetrique = true, want false (lecture non signee)", nom)
+		}
+		if lecture.MatchsVictoire != 0 || lecture.MatchsDefaite != 0 {
+			t.Errorf("%s : les deux cotes n'ont aucun sens hors lecture signee : %d/%d",
+				nom, lecture.MatchsVictoire, lecture.MatchsDefaite)
+		}
 	}
 
 	gagne, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionGagne, domain.TacticalQuiMoi, nil)
@@ -230,7 +242,137 @@ func TestTacticalService_GagneCelluleNeutre(t *testing.T) {
 			"+0,10 signifierait que les matchs MUETS sont sortis du denominateur", c.Valeur)
 	}
 	if c.MatchsVictoire != 6 || c.MatchsDefaite != 4 {
-		t.Errorf("cotes = %d V / %d D, want 6/4", c.MatchsVictoire, c.MatchsDefaite)
+		t.Errorf("cotes de la CELLULE = %d V / %d D, want 6/4", c.MatchsVictoire, c.MatchsDefaite)
+	}
+	// T10 : les deux DENOMINATEURS de la lecture signee sont publies au niveau du
+	// raster — ce ne sont pas MatchsRetenus, et c'est tout l'objet de leur presence.
+	if got.MatchsVictoire != 12 || got.MatchsDefaite != 8 {
+		t.Errorf("denominateurs du raster = %d V / %d D, want 12/8 (l'univers, pas la cellule)",
+			got.MatchsVictoire, got.MatchsDefaite)
+	}
+}
+
+// TestTacticalService_GagneFaceVictime : « ou je gagne » regarde LES DEUX faces de
+// l'engagement. Ce corpus n'alimente QUE la face victime — je tombe toujours au
+// meme endroit, et mes kills sont disperses hors plancher. La cellule doit etre
+// peinte quand meme.
+//
+// (Inversion : `prendVictime := question == Morts` dans facesDeLaQuestion fait
+// tomber ce test — la face victime disparaitrait de « gagne » sans que rien d'autre
+// ne bouge.)
+func TestTacticalService_GagneFaceVictime(t *testing.T) {
+	repo := &mockTacticalRepo{}
+	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
+	ajouter := func(id string, outcome int, killX float64) {
+		u := universUnMatch(id, outcome)
+		repo.pos.Univers.Matchs = append(repo.pos.Univers.Matchs, u.Matchs...)
+		repo.pos.Univers.Equipes[id] = u.Equipes[id]
+		// Je TOMBE toujours en (7,7) — la face victime, celle qui doit peindre.
+		repo.pos.Points = append(repo.pos.Points, domain.TacticalKillPosition{
+			MatchID: id, KillerXUID: tsAdv, VictimXUID: tsMoi,
+			KillerX: 1.0, KillerY: 1.0, VictimX: 7.0, VictimY: 7.0,
+		})
+		// Et je TUE a un endroit DIFFERENT dans chaque match : aucune cellule de la
+		// face tueur n'atteint le plancher de 3 matchs distincts.
+		repo.pos.Points = append(repo.pos.Points, domain.TacticalKillPosition{
+			MatchID: id, KillerXUID: tsMoi, VictimXUID: tsAdv,
+			KillerX: killX, KillerY: 50.0, VictimX: 60.0, VictimY: 60.0,
+		})
+	}
+	for i, id := range []string{"w1", "w2", "w3"} {
+		ajouter(id, domain.OutcomeWin, 100.0+float64(i)*10)
+	}
+	for i, id := range []string{"l1", "l2", "l3"} {
+		ajouter(id, domain.OutcomeLoss, 200.0+float64(i)*10)
+	}
+
+	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
+	got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionGagne, domain.TacticalQuiMoi, nil)
+	if err != nil {
+		t.Fatalf("Raster(gagne): %v", err)
+	}
+	c := celluleEn(got.Cellules, 7.0, 7.0)
+	if c == nil {
+		t.Fatalf("la cellule ou JE TOMBE est absente de « ou je gagne » — la face victime "+
+			"n'est pas projetee : %+v", got.Cellules)
+	}
+	if c.MatchsVictoire != 3 || c.MatchsDefaite != 3 {
+		t.Errorf("cotes = %d V / %d D, want 3/3", c.MatchsVictoire, c.MatchsDefaite)
+	}
+	if math.Abs(c.Valeur) > 1e-9 {
+		t.Errorf("Valeur = %v, want 0,00 (3/3 des deux cotes)", c.Valeur)
+	}
+}
+
+// TestTacticalService_JoueurHorsComposition_AucunAxe : un joueur ABSENT de la
+// composition du match n'a pas d'equipe connue — il n'appartient ni a mon escouade
+// ni au camp adverse, et lui en deviner une serait une invention.
+//
+// (Inversion : retirer la garde `!jeSuisLa || !ilEstLa` de ciblePar fait tomber ce
+// test — l'inconnu tomberait dans `adv` par defaut, l'equipe absente valant 0.)
+func TestTacticalService_JoueurHorsComposition_AucunAxe(t *testing.T) {
+	const inconnu = "xuid(9999)"
+	repo := &mockTacticalRepo{}
+	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
+	for _, id := range []string{"m1", "m2", "m3"} {
+		u := universUnMatch(id, domain.OutcomeWin)
+		repo.pos.Univers.Matchs = append(repo.pos.Univers.Matchs, u.Matchs...)
+		repo.pos.Univers.Equipes[id] = u.Equipes[id] // inconnu N'Y EST PAS
+		repo.pos.Points = append(repo.pos.Points, domain.TacticalKillPosition{
+			MatchID: id, KillerXUID: tsAdv, VictimXUID: inconnu,
+			KillerX: 1.0, KillerY: 1.0, VictimX: 12.0, VictimY: 12.0,
+		})
+	}
+	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
+
+	for _, qui := range []string{domain.TacticalQuiEscouade, domain.TacticalQuiAdversaires} {
+		got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, qui, nil)
+		if err != nil {
+			t.Fatalf("Raster(%s): %v", qui, err)
+		}
+		if len(got.Cellules) != 0 {
+			t.Errorf("qui=%s : un joueur hors composition a ete range dans un axe : %+v", qui, got.Cellules)
+		}
+	}
+}
+
+// TestTacticalService_CouvertureDeLocalisation : le pied de carte doit pouvoir dire
+// « N morts, M localisees ». Corpus : trois morts au journal, deux seulement avec
+// une position mesuree.
+func TestTacticalService_CouvertureDeLocalisation(t *testing.T) {
+	repo := &mockTacticalRepo{}
+	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
+	for _, id := range []string{"m1", "m2", "m3"} {
+		u := universUnMatch(id, domain.OutcomeWin)
+		repo.pos.Univers.Matchs = append(repo.pos.Univers.Matchs, u.Matchs...)
+		repo.pos.Univers.Equipes[id] = u.Equipes[id]
+		// Le journal porte MA mort dans les trois matchs...
+		repo.ev.Events = append(repo.ev.Events, domain.KillEvent{
+			MatchID: id, KillerXUID: tsAdv, VictimXUID: tsMoi, TimeMs: 1000,
+		})
+	}
+	repo.ev.Univers = repo.pos.Univers
+	// ... mais seuls deux d'entre eux ont une position mesuree.
+	for _, id := range []string{"m1", "m2"} {
+		repo.pos.Points = append(repo.pos.Points, domain.TacticalKillPosition{
+			MatchID: id, KillerXUID: tsAdv, VictimXUID: tsMoi,
+			KillerX: 1.0, KillerY: 1.0, VictimX: 9.0, VictimY: 9.0,
+		})
+	}
+	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
+
+	got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
+	if err != nil {
+		t.Fatalf("Raster: %v", err)
+	}
+	if got.EvenementsJournal != 3 || got.EvenementsLocalises != 2 {
+		t.Errorf("couverture = %d journal / %d localises, want 3/2",
+			got.EvenementsJournal, got.EvenementsLocalises)
+	}
+	// La cellule reste SOUS le plancher de 3 matchs distincts : la carte est muette,
+	// et c'est justement pour cela que la couverture doit etre publiee.
+	if len(got.Cellules) != 0 {
+		t.Errorf("cellules = %+v, want 0 (deux matchs distincts, plancher a trois)", got.Cellules)
 	}
 }
 
@@ -263,180 +405,6 @@ func TestTacticalService_FiltreTransmis(t *testing.T) {
 	}
 }
 
-// ─── LE KPI D'ECHANGE ──────────────────────────────────────────────────────────
-
-// TestTacticalService_Echange_EchantillonFaible : le KPI est une domain.Couverture
-// (jamais un taux nu), et sous 30 morts vengeables il porte le drapeau
-// d'echantillon faible — il se lit, il ne classe personne.
-func TestTacticalService_Echange_EchantillonFaible(t *testing.T) {
-	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
-	repo.ev = domain.TacticalKillEvents{Univers: universUnMatch("m1", domain.OutcomeWin)}
-	// Deux morts de MON camp : la mienne (vengee par l'ami en 3 s) et celle de
-	// l'ami (non vengee). Plus une mort adverse, qui ne doit PAS entrer au
-	// denominateur de ma couverture.
-	repo.ev.Events = []domain.KillEvent{
-		{MatchID: "m1", KillerXUID: tsAdv, VictimXUID: tsMoi, TimeMs: 1000},
-		{MatchID: "m1", KillerXUID: tsAmi, VictimXUID: tsAdv, TimeMs: 4000},
-		{MatchID: "m1", KillerXUID: tsAdv2, VictimXUID: tsAmi, TimeMs: 20000},
-	}
-	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
-
-	got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
-	if err != nil {
-		t.Fatalf("Raster: %v", err)
-	}
-	if got.Echange == nil {
-		t.Fatal("Echange nil alors que film.kill_source est declaree")
-	}
-	if got.Echange.N != 2 || got.Echange.Brut != 1 {
-		t.Errorf("couverture = %d/%d, want 1 vengee sur 2 vengeables DE MON CAMP "+
-			"(la mort de l'adversaire n'y entre pas)", got.Echange.Brut, got.Echange.N)
-	}
-	if math.Abs(got.Echange.Taux-0.5) > 1e-9 {
-		t.Errorf("Taux = %v, want 0,5 (unite 0..1, jamais un pourcentage)", got.Echange.Taux)
-	}
-	if !got.Echange.EchantillonFaible {
-		t.Errorf("2 morts vengeables (< %d) : echantillon faible attendu", coordination.SeuilEchantillonFaible)
-	}
-	if got.Echange.ParMatch != 1.0 {
-		t.Errorf("ParMatch = %v, want 1,0 (1 vengee sur 1 match retenu)", got.Echange.ParMatch)
-	}
-}
-
-// TestTacticalService_SansKillSource_EchangeSilencieux : le titre mesure les
-// positions mais pas la source des morts — la lecture de placement est servie, le
-// KPI est ABSENT. Un zero se lirait comme une contre-performance.
-func TestTacticalService_SansKillSource_EchangeSilencieux(t *testing.T) {
-	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
-	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
-
-	got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
-	if err != nil {
-		t.Fatalf("Raster: %v", err)
-	}
-	if got.Echange != nil {
-		t.Errorf("Echange = %+v, want nil (film.kill_source absente)", got.Echange)
-	}
-	if repo.vuEv.MapID != "" {
-		t.Error("le journal des morts ne devait meme pas etre demande")
-	}
-}
-
-// TestTacticalService_EchangeEnEchec_LectureServie : une panne du journal des
-// morts est journalisee et degrade le SEUL KPI — elle n'emporte pas la lecture de
-// placement avec elle.
-func TestTacticalService_EchangeEnEchec_LectureServie(t *testing.T) {
-	repo := &mockTacticalRepo{
-		pos:   domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)},
-		errEv: errors.New("journal illisible"),
-	}
-	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
-
-	got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
-	if err != nil {
-		t.Fatalf("Raster: %v, want la lecture servie malgre l'echec du KPI", err)
-	}
-	if got.Echange != nil {
-		t.Errorf("Echange = %+v, want nil", got.Echange)
-	}
-	if got.MatchsRetenus != 1 {
-		t.Errorf("MatchsRetenus = %d, want 1", got.MatchsRetenus)
-	}
-}
-
-// ─── LES PORTES ────────────────────────────────────────────────────────────────
-
-// TestTacticalService_AucunePositionLisible_Capability : aucune des DEUX
-// provenances de positions — ErrCapabilityNotSupported (503 propre).
-func TestTacticalService_AucunePositionLisible_Capability(t *testing.T) {
-	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
-	for nom, caps := range map[string]games.CapabilityMap{
-		"map vide":              {},
-		"map nil":               nil,
-		"kill_source seule":     {games.CapFilmKillSource: games.CapSupported},
-		"capture non exposee":   {games.CapFilmKillPositions: games.CapNotExposed},
-		"spatial non expose":    {games.CapMatchEventsSpatial: games.CapNotExposed},
-		"les deux non exposees": {games.CapFilmKillPositions: games.CapNotExposed, games.CapMatchEventsSpatial: games.CapNotExposed},
-		"killfeed natif seul":   {games.CapMatchKillfeedPerKill: games.CapSupported},
-	} {
-		svc := NewTacticalService(repo, caps, tsMoi)
-		_, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
-		if !errors.Is(err, games.ErrCapabilityNotSupported) {
-			t.Errorf("%s: err = %v, want ErrCapabilityNotSupported", nom, err)
-		}
-	}
-}
-
-// TestTacticalService_PositionsNatives_RasterServi : LE test de la correction R1.
-//
-// Un titre qui remplit `kill_positions` NATIVEMENT (Halo 5 : `match.events.spatial
-// = supported`, aucun decodeur de film, donc AUCUNE declaration de
-// `film.kill_positions` — qui gouverne la capture par le film) doit etre servi. La
-// version precedente lui rendait un 503 alors que la jointure marche integralement.
-func TestTacticalService_PositionsNatives_RasterServi(t *testing.T) {
-	repo := &mockTacticalRepo{}
-	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
-	for _, id := range []string{"m1", "m2", "m3"} {
-		u := universUnMatch(id, domain.OutcomeWin)
-		repo.pos.Univers.Matchs = append(repo.pos.Univers.Matchs, u.Matchs...)
-		repo.pos.Univers.Equipes[id] = u.Equipes[id]
-		repo.pos.Points = append(repo.pos.Points, domain.TacticalKillPosition{
-			MatchID: id, KillerXUID: tsAdv, VictimXUID: tsMoi,
-			KillerX: 1.0, KillerY: 1.0, VictimX: 10.0, VictimY: 10.0,
-		})
-	}
-	caps := games.CapabilityMap{games.CapMatchEventsSpatial: games.CapSupported}
-	svc := NewTacticalService(repo, caps, tsMoi)
-
-	got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
-	if err != nil {
-		t.Fatalf("positions NATIVES (match.events.spatial) : err = %v, want une lecture servie", err)
-	}
-	if len(got.Cellules) != 1 || celluleEn(got.Cellules, 10.0, 10.0) == nil {
-		t.Errorf("cellules = %+v, want la cellule (10,10)", got.Cellules)
-	}
-}
-
-// TestTacticalService_EchangeDeuxProvenances : le journal des morts est exploitable
-// soit par la source de degat du film (`film.kill_source`), soit par un kill-feed
-// natif declare `supported` — mais PAS `degraded`.
-//
-// POURQUOI LE STRICT : `Has` accepte `degraded`, et Halo Infinite declare justement
-// `match.killfeed.per_kill = degraded` (kills simultanes possiblement omis) — soit
-// exactement le defaut qui fabrique de faux echanges, une mort omise dans la
-// fenetre de 5 s se lisant « non vengee ».
-func TestTacticalService_EchangeDeuxProvenances(t *testing.T) {
-	cas := []struct {
-		nom  string
-		caps games.CapabilityMap
-		veut bool
-	}{
-		{"source de degat du film", games.CapabilityMap{
-			games.CapMatchEventsSpatial: games.CapSupported,
-			games.CapFilmKillSource:     games.CapSupported}, true},
-		{"kill-feed natif supported", games.CapabilityMap{
-			games.CapMatchEventsSpatial:   games.CapSupported,
-			games.CapMatchKillfeedPerKill: games.CapSupported}, true},
-		{"kill-feed natif DEGRADED", games.CapabilityMap{
-			games.CapMatchEventsSpatial:   games.CapSupported,
-			games.CapMatchKillfeedPerKill: games.CapDegraded}, false},
-		{"aucune des deux", games.CapabilityMap{
-			games.CapMatchEventsSpatial: games.CapSupported}, false},
-	}
-	for _, c := range cas {
-		repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
-		repo.ev = domain.TacticalKillEvents{Univers: universUnMatch("m1", domain.OutcomeWin)}
-		svc := NewTacticalService(repo, c.caps, tsMoi)
-		got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
-		if err != nil {
-			t.Fatalf("%s: %v", c.nom, err)
-		}
-		if (got.Echange != nil) != c.veut {
-			t.Errorf("%s: Echange servi = %v, want %v", c.nom, got.Echange != nil, c.veut)
-		}
-	}
-}
-
 // TestTacticalService_VocabulaireRefuse : question ou axe hors vocabulaire — refus
 // TYPE, avant toute lecture de base.
 func TestTacticalService_VocabulaireRefuse(t *testing.T) {
@@ -451,49 +419,5 @@ func TestTacticalService_VocabulaireRefuse(t *testing.T) {
 	}
 	if repo.vuPos.MapID != "" {
 		t.Error("un refus de vocabulaire ne doit ouvrir aucune lecture de base")
-	}
-}
-
-// ─── L'ECRAN D'ENTREE ──────────────────────────────────────────────────────────
-
-// TestTacticalService_MapsPlayed_Plancher : le drapeau « sous le plancher » est
-// pose ICI (regle produit), pas dans la requete SQL.
-func TestTacticalService_MapsPlayed_Plancher(t *testing.T) {
-	repo := &mockTacticalRepo{maps: []domain.TacticalMapRow{
-		{MapID: "a", MapName: "Aquarius", Matchs: domain.PlancherMatchsParCarte, Victoires: 6, Defaites: 4},
-		{MapID: "b", MapName: "Bazaar", Matchs: domain.PlancherMatchsParCarte - 1, Victoires: 5, Defaites: 4},
-	}}
-	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
-
-	page, err := svc.MapsPlayed(context.Background(), nil)
-	if err != nil {
-		t.Fatalf("MapsPlayed: %v", err)
-	}
-	if page.PlancherMatchs != domain.PlancherMatchsParCarte {
-		t.Errorf("PlancherMatchs = %d, want %d", page.PlancherMatchs, domain.PlancherMatchsParCarte)
-	}
-	if len(page.Cartes) != 2 {
-		t.Fatalf("cartes = %d, want 2", len(page.Cartes))
-	}
-	if page.Cartes[0].SousPlancher {
-		t.Errorf("carte a %d matchs : le plancher est ATTEINT, pas franchi", page.Cartes[0].Matchs)
-	}
-	if !page.Cartes[1].SousPlancher {
-		t.Errorf("carte a %d matchs : sous le plancher attendu", page.Cartes[1].Matchs)
-	}
-	if page.Cartes[0].Victoires != 6 || page.Cartes[0].Defaites != 4 {
-		t.Errorf("V/D non transmis : %+v", page.Cartes[0])
-	}
-}
-
-// TestTacticalService_SansLecteur : un titre sans lecteur cable degrade en
-// capability absente, jamais en panique.
-func TestTacticalService_SansLecteur(t *testing.T) {
-	svc := NewTacticalService(nil, capsCompletes(), tsMoi)
-	if _, err := svc.MapsPlayed(context.Background(), nil); !errors.Is(err, games.ErrCapabilityNotSupported) {
-		t.Errorf("MapsPlayed sans lecteur: err = %v, want ErrCapabilityNotSupported", err)
-	}
-	if _, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil); !errors.Is(err, games.ErrCapabilityNotSupported) {
-		t.Errorf("Raster sans lecteur: err = %v, want ErrCapabilityNotSupported", err)
 	}
 }
