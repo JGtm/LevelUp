@@ -73,18 +73,22 @@ func TestProjeterPositions_Decimation(t *testing.T) {
 	}
 	for nom, c := range cas {
 		t.Run(nom, func(t *testing.T) {
-			b := projeterPositions("m-1", &c.doc)
+			p := projeterPositions("m-1", &c.doc)
 			if c.attendu == 0 {
-				if b.MatchID != "" || len(b.Rows) != 0 {
-					t.Fatalf("passe = %+v, attendue VIDE (rien à écrire n'est pas un défaut)", b)
+				if p.matchID != "" || len(p.batch.Rows) != 0 {
+					t.Fatalf("passe = %+v, attendue VIDE (rien à écrire n'est pas un défaut)", p.batch)
 				}
 				return
 			}
-			if b.MatchID != "m-1" {
-				t.Fatalf("MatchID = %q, attendu m-1", b.MatchID)
+			if p.batch.MatchID != "m-1" {
+				t.Fatalf("MatchID = %q, attendu m-1", p.batch.MatchID)
 			}
-			if len(b.Rows) != c.attendu {
-				t.Fatalf("%d position(s) retenue(s), attendu %d", len(b.Rows), c.attendu)
+			if len(p.batch.Rows) != c.attendu {
+				t.Fatalf("%d position(s) retenue(s), attendu %d", len(p.batch.Rows), c.attendu)
+			}
+			if len(p.porteurs) != len(p.batch.Rows) {
+				t.Fatalf("%d porteur(s) pour %d ligne(s) — la jointure d'équipe poserait le "+
+					"camp du mauvais joueur", len(p.porteurs), len(p.batch.Rows))
 			}
 		})
 	}
@@ -102,7 +106,7 @@ func TestProjeterPositions_ValeursTransportees(t *testing.T) {
 			},
 		}},
 	}
-	b := projeterPositions("m-1", &doc)
+	b := projeterPositions("m-1", &doc).batch
 	if len(b.Rows) != 2 {
 		t.Fatalf("%d position(s), attendu 2", len(b.Rows))
 	}
@@ -113,10 +117,71 @@ func TestProjeterPositions_ValeursTransportees(t *testing.T) {
 	if b.Rows[0].X != 1.5 || b.Rows[0].Y != -2.5 || b.Rows[0].Z != 3.5 {
 		t.Errorf("position = (%v,%v,%v), attendu (1.5,-2.5,3.5)", b.Rows[0].X, b.Rows[0].Y, b.Rows[0].Z)
 	}
-	// L'ÉQUIPE N'EST PAS INVENTÉE : le film ne la porte pas, -1 est une valeur PLEINE.
-	if b.Rows[0].Team != -1 {
-		t.Errorf("team = %d, attendu -1 (non attribuée) — le film ne porte pas l'équipe",
-			b.Rows[0].Team)
+	// L'ÉQUIPE N'EST PAS INVENTÉE À LA PROJECTION : le film ne la porte pas. Elle est JOINTE
+	// depuis la base par le xuid du porteur, dans le segment writer (appliquerEquipes).
+	if b.Rows[0].Team != EquipeInconnue {
+		t.Errorf("team = %d, attendu %d avant jointure — la projection n'invente rien",
+			b.Rows[0].Team, EquipeInconnue)
+	}
+}
+
+// TestProjeterPositions_EquipeDuDocumentPrime : un titre dont le film REPLIQUE l'équipe la voit
+// transportée telle quelle, et la base ne sera pas consultée pour ces lignes-là.
+func TestProjeterPositions_EquipeDuDocumentPrime(t *testing.T) {
+	doc := replay.ReplayDocument{
+		FrameIntervalMS: 100,
+		Tracks: []replay.Track{
+			{Team: 0, XUID: "111", Points: []replay.Point{{T: 0}}},
+			{Team: 1, XUID: "222", Points: []replay.Point{{T: 0}}},
+		},
+	}
+	p := projeterPositions("m-1", &doc)
+	if len(p.batch.Rows) != 2 {
+		t.Fatalf("%d ligne(s), attendu 2", len(p.batch.Rows))
+	}
+	if p.batch.Rows[0].Team != 0 || p.batch.Rows[1].Team != 1 {
+		t.Fatalf("équipes projetées = [%d, %d], attendu [0, 1] — la projection TRANSPORTE ce "+
+			"que le document porte", p.batch.Rows[0].Team, p.batch.Rows[1].Team)
+	}
+	// Et la jointure ne les retouche pas, même si la base dit autre chose.
+	if n := poserEquipes(&p, map[string]int{"111": 1, "222": 0}); n != 0 {
+		t.Errorf("%d ligne(s) retouchée(s) — une équipe publiée par le film prime sur la base", n)
+	}
+	if p.batch.Rows[0].Team != 0 || p.batch.Rows[1].Team != 1 {
+		t.Errorf("équipes après jointure = [%d, %d], attendu [0, 1] inchangées",
+			p.batch.Rows[0].Team, p.batch.Rows[1].Team)
+	}
+}
+
+// TestPoserEquipes_DeuxSlotsDeuxCamps — LA propriété du constat C5 : deux vies dont les xuids
+// appartiennent à des camps DIFFÉRENTS donnent des lignes projetées à 0 et à 1. Sans elle, le
+// filtre Global / Équipe A / Équipe B de la carte de chaleur (`MatchPositionsHeatmap.tsx`, qui
+// ne s'affiche que si une position porte une équipe) serait du code mort pour toute donnée
+// projetée.
+func TestPoserEquipes_DeuxSlotsDeuxCamps(t *testing.T) {
+	doc := replay.ReplayDocument{
+		FrameIntervalMS: 100,
+		Tracks: []replay.Track{
+			{Team: EquipeInconnue, XUID: "111", Points: []replay.Point{{T: 0}, {T: 400}}},
+			{Team: EquipeInconnue, XUID: "222", Points: []replay.Point{{T: 0}}},
+			// Une vie que le fil des morts n'a pas nommée : elle RESTE non située.
+			{Team: EquipeInconnue, XUID: "", Points: []replay.Point{{T: 0}}},
+			// Un xuid absent de la table (bot importé, joueur hors participants) : idem.
+			{Team: EquipeInconnue, XUID: "999", Points: []replay.Point{{T: 0}}},
+		},
+	}
+	p := projeterPositions("m-1", &doc)
+	if n := poserEquipes(&p, map[string]int{"111": 0, "222": 1}); n != 3 {
+		t.Fatalf("%d ligne(s) située(s), attendu 3 (deux points de 111, un de 222)", n)
+	}
+	attendu := []int{0, 0, 1, EquipeInconnue, EquipeInconnue}
+	if len(p.batch.Rows) != len(attendu) {
+		t.Fatalf("%d ligne(s), attendu %d", len(p.batch.Rows), len(attendu))
+	}
+	for i, want := range attendu {
+		if p.batch.Rows[i].Team != want {
+			t.Errorf("ligne %d : team = %d, attendu %d", i, p.batch.Rows[i].Team, want)
+		}
 	}
 }
 
