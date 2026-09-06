@@ -434,8 +434,107 @@ goldens inconditionnels (mini-bobine familles, equivalence mini-film, assemblage
 ```
 
 **Cuisson de controle** : `879a4dba` re-cuit seul (pic 0,23 Gio, faits lus, 23 tractions pour
-23 accroches). `replay-diff` contre la cuisson precedente : **1 seul ecart, `schemaVersion`
-40 -> 41**. Les deux artefacts sont **identiques a l'octet pres** une fois ce numero neutralise
-(md5 `62f4f22c...` des deux cotes) : les cinq corrections ne changent la sortie d'aucune cuisson
-de ce film — C1 ne s'y declenche pas, C2 y compte le meme nombre (9 vies = 9 slots), et C5 ne
-touche pas l'artefact mais le resume d'usage.
+23 accroches).
+
+CE QUE J'AI COMPARE, ET CE QUE CELA NE PROUVAIT PAS. Ma premiere comparaison opposait cette
+cuisson a `apres/879a4dba_fix.json`, cuit AVANT le bump de schema : son unique ecart
+(`schemaVersion` 40 -> 41) etait donc attendu par construction et ne disait rien des cinq
+corrections. La comparaison juste est celle contre l'artefact cuit au commit PRECEDENT
+(`13c0336b6^` = `79bf2e6d2`), deja au schema 41 ; elle a ete faite par la seconde ronde REG-R2 et
+rend **zero ecart** : md5 egaux (`ec083886d1bc98d7947fcc6d67ed53d4`) une fois neutralise le seul
+champ qui differe, `matchId` — la cuisson de reference avait reçu l'UUID complet en argument, la
+mienne l'identifiant court, artefact d'INVOCATION et non de code (`cmp` : premier ecart au
+caractere 253 851, dans ce champ). `coverage.grapple` et `coverage.equipment` identiques des deux
+cotes.
+
+Les cinq corrections ne changent donc la sortie d'aucune cuisson de ce film : C1 ne s'y declenche
+pas (les 23 tractions ont toutes un `t0` a l'interieur d'une fenetre publiee), C2 y compte le meme
+nombre (9 vies = 9 slots), et C5 ne touche pas l'artefact mais le resume d'usage.
+
+---
+
+## Corrections apres la seconde ronde REG-R2 (2026-09-06)
+
+La seconde ronde ferme C1, C2, C3 et C4, et laisse **C5 PARTIEL** : la correction que j'avais
+livree pour lui ne couvrait pas le canal des POSES. Quatre defauts nouveaux, tous a l'interieur
+du perimetre de C1 et C5, dont **un seul touche la donnee**. Traites ci-dessous.
+
+### N-3 — C5 restait OUVERT pour les poses, sur le chemin MAJORITAIRE du canal
+
+**Le constat.** Un objet lache a la mort porte `t0 = finVie + 1` — le poseur n'occupe deja plus le
+slot —, et rien cote Go ne borne `EquipmentPlacement.T0` a une fenetre publiee. Mon `at` retombait
+donc sur le repli « dernier occupant du match » et creditait le lacher au joueur SUIVANT sur un
+slot repris : **exactement la regle que mon commit declarait avoir supprimee**. Et ce n'est pas un
+residu, contrairement a ce que disait mon commentaire : la revue a mesure la part des poses dont
+le `T0` tombe hors de toute fenetre publiee — **153/351 (44 %), 443/466 (95 %), 34/105 (32 %)** sur
+trois films.
+
+**Correctif** : `usageOwners.atOrJustBefore`, jumeau d'`ownerAtFrameOrLast` (`rosterLogic.ts`) —
+la vie qui couvre l'instant, sinon celle qui vient de s'y achever. Seules les poses l'empruntent ;
+les tractions et les episodes gardent `at`, dont la mesure montre que le repli n'y joue jamais
+(23/23 et 31/31 tractions, 7/7 et 15/15 episodes ont leur `T0` dans une fenetre). Quand AUCUNE vie
+ne precede — une pose datee avant la premiere vie publiee du slot —, c'est la premiere vie qui
+repond : sur un slot mono-identite c'est le meme joueur qu'avant, sur un slot recycle c'est son
+premier occupant, jamais le dernier ; ce canal ne perd donc aucune ligne au passage.
+
+**Preuve** : `TestUsageSummary_LacherALaMortRevientAuLacheur` — slot a deux identites, un objet
+lache a `finVie + 1` de chacune. Rouge avant (« 111 : 0 lacher(s), attendu 1 » et « 222 : 2 »),
+vert apres (1 chacun). Le commentaire qui presentait le repli comme un residu est corrige, et
+l'en-tete du fichier distingue desormais les deux resolveurs.
+
+### N-4 — un joueur dont l'unique vie est sur un slot repris perdait TOUS ses lancers
+
+`usageFilmIndexOwners` construisait sa garde « au moins une vie publiee » depuis `dernier` — le
+seul dernier occupant de chaque slot. Un joueur dont toutes les vies sont sur des slots repris
+ensuite n'y figurait pas et ne recevait aucune grenade, alors que l'en-tete de la fonction lui en
+promet. Defaut **anterieur** au chantier (byte-identique a l'ancienne map), mais ma correction
+avait touche cette ligne en conservant le vieux critere, trois lignes sous son jumeau corrige.
+
+**Correctif** : la garde se lit sur `parVie`, c'est-a-dire sur toutes les vies.
+**Preuve** : `TestUsageSummary_UneVieSurUnSlotReprisNePerdPasSesLancers`, rouge avant
+(« 111 : 0 lancer(s), attendu 2 »), vert apres.
+
+### N-1 et N-2 — deux commentaires qui affirmaient plus que ce qui est garanti
+
+- **N-1** : « ce calque ne doit JAMAIS publier moins qu'avant » est faux, et la revue l'a mesure :
+  une accroche tombant sur la DERNIERE image d'une vie a bien une vie couvrante, dont la fenetre
+  est vide (`t1 <= t0`), et la traction est refusee la ou l'ancien code la posait sur la vie
+  SUIVANTE (base 1, HEAD 0). **Le comportement du HEAD est le bon** — dater sur sa vie suivante la
+  traction d'un joueur qui vient de mourir serait faux —, c'est l'invariant absolu qui etait trop
+  large. Le commentaire dit maintenant ce qui est garanti : quand aucune vie ne couvre l'accroche,
+  la traction est publiee comme avant ; et il nomme l'exception.
+- **N-2** : « cela ne depend d'aucun ordre d'iteration » est faux pour `lifeNearest` — deux vies a
+  egale distance de l'accroche (accroche au milieu du trou) donnent un resultat qui s'inverse avec
+  l'ordre. Aucun impact donnee : l'ordre de production EST chronologique (`decimateTracks` emet
+  les vies closes puis la courante, rien ne retrie `doc.Tracks` avant ce calque), donc « la
+  premiere » vaut « la precedente », ce que la regle veut dire. Le commentaire enonce desormais la
+  dependance a un ordre GARANTI plutot qu'une independance fausse, et signale qu'un futur tri de
+  `doc.Tracks` inverserait ce cas.
+
+Aucune ligne de code touchee pour ces deux points.
+
+### N-5 — la condition de reprise du registre decrivait du travail deja fait
+
+`buildSlotOwnership` / `ownerAtFrame` / `ownerAtFrameOrLast` existent deja
+(`lib/replay/rosterLogic.ts:184-230`) : il ne reste pas a « porter `at` cote TS » mais a basculer
+**deux appelants** encore sur `indexBySlot` (`equipmentUsageLogic.ts:258`,
+`equipmentKillBadges.ts:56`). L'entree du registre est corrigee en ce sens, avec la precision que
+les poses prennent `ownerAtFrameOrLast` et le reste `ownerAtFrame`.
+
+### Ce qui NE change pas
+
+`UsageSummaryRev` reste **`us2`** : une seule regle d'attribution a change dans ce chantier, et la
+montee la couvre entierement — N-3 et N-4 la precisent, ils n'en ouvrent pas une seconde.
+
+### Gates apres la seconde ronde (tous verts, 2026-09-06)
+
+```
+go test -count=1 ./internal/analysis/replay/... ./internal/replaybuild/... ./internal/archlint/...  ok (x4)
+go test -tags=integration -p 1 -count=1 ./internal/api/wire/... ./internal/sync/replayartifacts/... ok
+go build ./...                                                                                      exit 0
+golangci-lint run --new-from-merge-base=origin/main ./...                                           0 issues
+```
+
+Aucune cuisson n'etait requise : `BuildUsageSummary` ne participe pas a l'artefact de rejeu (il le
+PROJETTE apres coup), et les deux commentaires de `grapple_lines.go` ne touchent aucune ligne de
+code. La cuisson de controle de la ronde precedente reste la piece.

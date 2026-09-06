@@ -195,9 +195,16 @@ func grappleLine(r filmdec.GrappleRead, startUS uint64, entry filmdec.MapQuantEn
 		// slot sans se demander si elle couvrait quoi que ce soit). Deux configurations
 		// l'atteignent avec UNE SEULE vie — la vie comprise entre le tir et l'accroche, et un
 		// couple tir/accroche antérieur à la vie de moins de `grapplePullCapUS` —, donc sans
-		// aucun rapport avec le découpage : ce calque ne doit JAMAIS publier moins qu'avant
-		// (constat C1 de la revue REG-R1, 2026-09-06). Le clamp ci-dessous borne exactement
-		// comme avant et refuse toujours une fenêtre vide.
+		// aucun rapport avec le découpage (constat C1 de la revue REG-R1, 2026-09-06). Le clamp
+		// ci-dessous borne exactement comme avant et refuse toujours une fenêtre vide.
+		//
+		// CE QUI EST GARANTI, ET RIEN DE PLUS : quand aucune vie ne couvre l'accroche, la
+		// traction est publiée comme avant. Ce n'est PAS « ce calque ne publie jamais moins
+		// qu'avant » — une accroche tombant sur la DERNIÈRE image d'une vie a bien une vie
+		// couvrante, dont la fenêtre est alors vide (`t1 <= t0`), et la traction est refusée
+		// là où l'ancien code la posait sur la vie SUIVANTE. Ce refus-là est le bon : dater
+		// sur sa vie suivante la traction d'un joueur qui vient de mourir serait faux
+		// (constat N-1 de la seconde ronde REG-R2).
 		track = lifeNearest(vies, tAttach)
 	}
 	if track == nil {
@@ -234,10 +241,14 @@ func lifeCovering(vies []*Track, frame int) *Track {
 // nulle si elle la contient, sinon l'écart au bord le plus proche. nil quand le slot n'a aucune
 // vie publiée : il n'y a alors rien à quoi rattacher.
 //
-// À ÉGALITÉ, LA PREMIÈRE GAGNE, et cela ne dépend d'aucun ordre d'itération : les vies d'un slot
-// sont disjointes et rangées chronologiquement (cf. decimateTracks), donc deux d'entre elles ne
-// peuvent pas être à la même distance d'une frame sans l'encadrer — auquel cas la précédente est
-// celle qui vient de s'achever, et c'est bien elle qui portait le geste.
+// À ÉGALITÉ, LA PREMIÈRE DE LA LISTE GAGNE (comparaison stricte `d < bestD`), et c'est LA VIE
+// PRÉCÉDENTE parce que l'ordre de production est chronologique : `decimateTracks` émet les vies
+// closes puis la courante, et rien ne retrie `doc.Tracks` avant l'assemblage de ce calque. Le
+// cas d'égalité est réel — une accroche au milieu du trou entre deux vies est à la même distance
+// des deux —, et le choix est alors celui de la vie qui vient de s'achever, celle qui portait le
+// geste. Ce n'est donc PAS une indépendance à l'ordre : c'est une dépendance à un ordre GARANTI
+// par la production, et un futur tri de `doc.Tracks` inverserait ce cas (constat N-2 de la
+// seconde ronde REG-R2).
 func lifeNearest(vies []*Track, frame int) *Track {
 	var best *Track
 	bestD := 0

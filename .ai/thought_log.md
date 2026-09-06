@@ -96832,3 +96832,35 @@ neutralise.
 Une divergence Go/web est desormais assumee et inscrite au registre : la page Sessions attribue
 juste, la vue match garde l'agregat par slot — a aligner au prochain lot web. Le bump de schema
 41 et la montee `us2` restent les deux conditions de la propagation a la release.
+
+## [2026-09-06] Seconde ronde REG-R2 : C5 se fermait a 44-95 % pres sur le canal des poses
+
+**Statut** : Complete (branche `feat/v2-regressions`, meme worktree).
+
+**Decision technique principale.** La seconde ronde ferme C1 a C4 et declare C5 **partiel** : ma
+resolution par vie ne couvrait pas les POSES. Un objet lache a la mort porte `t0 = finVie + 1`,
+aucune vie ne couvre cet instant, et mon repli « dernier occupant » creditait le lacher au
+repreneur du slot — la regle meme que le commit annonçait avoir supprimee. Mon commentaire
+presentait ce repli comme un residu ; la mesure de la revue dit l'inverse : **44 %, 95 % et 32 %
+des poses** de trois films tombent hors de toute fenetre publiee. Correctif : `atOrJustBefore`,
+jumeau d'`ownerAtFrameOrLast` du web (vie couvrante, sinon celle qui vient de s'achever, sinon la
+premiere du slot pour ne rien perdre) ; seules les poses l'empruntent, les tractions et episodes
+gardent `at` ou le repli ne joue jamais (23/23 et 31/31 tractions, 7/7 et 15/15 episodes ont leur
+`T0` dans une fenetre). Second correctif (N-4, defaut anterieur mais touche par mon diff) : la
+garde « au moins une vie publiee » de `usageFilmIndexOwners` se lisait sur le dernier occupant de
+chaque slot et effaçait tous les lancers d'un joueur dont l'unique vie est sur un slot repris.
+
+**Resultats observes.** Deux tests neufs, rouges puis verts : « 111 : 0 lacher(s), attendu 1 » et
+« 111 : 0 lancer(s), attendu 2 ». Deux commentaires de `grapple_lines.go` reecrits sans toucher au
+code : l'invariant « ne publie JAMAIS moins qu'avant » etait faux (une accroche a la derniere image
+d'une vie a une vie couvrante a fenetre vide — et le refus du HEAD est le BON), et « ne depend
+d'aucun ordre » etait faux pour `lifeNearest` a egalite de distance (l'ordre de production est
+chronologique, la dependance est reelle mais garantie). Registre corrige : le resolveur TS existe
+deja, il reste a basculer deux appelants. Journal corrige : ma « cuisson de controle, 1 seul ecart
+schemaVersion » comparait un artefact cuit AVANT le bump, donc ne prouvait rien ; la comparaison
+juste (contre `13c0336b6^`, deja au schema 41) rend **zero ecart**, md5 egaux hors `matchId`
+d'invocation. `UsageSummaryRev` reste `us2`. Gates verts, `replayartifacts` en integration ajoute.
+
+**Conclusion / prochaine etape.** C5 est ferme pour de bon, les cinq constats de R1 et les quatre
+de R2 sont soldes. Le diff reste additif sur les films cuits ; la propagation attend toujours la
+re-cuisson de release (schema 41) et la reprise des resumes d'usage (`us2`).
