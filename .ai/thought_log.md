@@ -97265,3 +97265,24 @@ est **8 joueurs sur 8 exacts** en K/D/A contre sa feuille. **C3** : la fourchett
 archlint/contracttest, intégration `api/wire`, `golangci-lint --new-from-merge-base` 0 issue,
 golden inchangé. Observation sans défaut : une cuisson de `24dbb67d` coupée par la sentinelle
 mémoire à 3,83 Gio puis re-cuite à 0,217 Gio — contention machine, la sentinelle a joué son rôle.
+
+**Ronde 2 de la revue (MANCHES-R2, 2026-09-07, `feat/v2-manches`).** C1/C2/C3 jugés exacts, aucun
+P0/P1 ; trois P2/P3 soldés sans cuisson, `SchemaVersion` reste 44. **N2, le plus important** : le
+relecteur a démontré que le correctif C2 n'avait AUCUN garde-rail — neutraliser
+`consensus := RoundStartsMS(recs)` laissait 23 paquets sur 23 verts, parce que le seul test qui
+touchait `roundStartsOf` travaille sur des fixtures sans train de score de mode (donc `RealRounds`
+n'y voit aucune manche et `consensus` y est toujours vide). Ajouté
+`TestIdentiteParMancheSuitLeDebutConsensuel` : film à deux manches AVEC train de score de mode, un
+slot minoritaire déclarant la manche 1 dès 85 s quand la majorité l'ouvre à 298 s (forme de
+`24dbb67d`), et surtout un slot RÉATTRIBUÉ d'une manche à l'autre — c'est lui qui rend l'erreur
+observable, se tromper de manche rendant un autre xuid. Mutation jouée : rouge sur les trois points
+de l'intervalle litigieux (85 000, 150 000, 297 999 ms), vert après restauration. **N1** : sur la
+fixture de C1, `logRoundBounds` émettait trois `WARN bloc de manche GARDÉ` puis un
+`WARN AUCUNE borne posée … les compteurs restent ceux d'avant` — faux, puisque ce sont des bornes
+qui ont permis de détecter ces blocs. Le message se décidait sur le compte d'écartés, qui ne
+distingue pas « aucune borne posable » de « bornes posées, tout l'excédent exempté » ; ajouté
+`RoundBounds.Posed()` et deux tests de journal (capture du handler `slog`), dont le pendant qui
+vérifie que le repli sort bien quand aucune borne n'est posable. **N3** : `manches_compteurs_test.go`
+(529 L) scindé par responsabilité — 413 L pour la découpe et les fixtures, 278 L dans
+`manches_segments_test.go` pour ce qui concerne le bloc (slot, manche). Gates : 23 paquets ok,
+build, `CGO_ENABLED=0 go vet`, `golangci-lint --new-from-merge-base` 0 issue.

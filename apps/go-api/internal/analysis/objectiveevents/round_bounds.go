@@ -399,3 +399,13 @@ func RoundStartsMS(recs []StatRecord) map[int]int {
 	}
 	return out
 }
+
+// Posed dit que des bornes de manche ONT ete posees sur ce film.
+//
+// Elle repond a une question que le COMPTE D'ECARTES ne repond pas (constat N1 de la revue
+// MANCHES-R2) : zero ecarte se lit aussi bien « aucune borne n'etait posable » (le numero de
+// manche ne suit pas l'horloge — `a4083bd2`) que « des bornes sont posees et rien ne les
+// contredit », y compris le cas ou tout ce qui tombe hors fenetre appartient a un bloc EXEMPTE
+// par la garde par slot. Confondre les deux faisait affirmer « aucune borne posee, les compteurs
+// restent ceux d'avant » juste apres avoir journalise trois blocs gardes PAR une borne.
+func (w RoundBounds) Posed() bool { return len(w.byRound) > 0 }

@@ -66,22 +66,28 @@ func logRoundBounds(matchID string, in *ScoreInput, cov *ScoreCoverage) {
 	}
 	bornes := objectiveevents.ResolveRoundBounds(in.Records)
 	logKeptSegments(matchID, bornes)
-	n := bornes.Outliers(in.Records)
-	switch {
-	case n == 0:
+	// LA QUESTION EST « DES BORNES ONT-ELLES ETE POSEES », PAS « COMBIEN A-T-ON ECARTE » (constat
+	// N1 de la revue MANCHES-R2). Zero ecarte arrive AUSSI avec des bornes posees — quand tout ce
+	// qui tombe hors fenetre appartient a un bloc exempte par la garde par slot, ce qui est
+	// exactement le cas que `logKeptSegments` vient de nommer. Trancher sur le compte faisait
+	// alors emettre « aucune borne posee » a la ligne suivante, contredisant le diagnostic fin.
+	if !bornes.Posed() {
 		slog.Warn("rejeu : AUCUNE borne de manche posee sur un film a plusieurs manches — le numero "+
 			"de manche ne suit pas l'horloge, les compteurs restent ceux d'avant",
 			"match_id", matchID, "manches", cov.Rounds, "enregistrements", len(in.Records))
-	case n > objectiveevents.OutliersNominalMax:
+		return
+	}
+	n := bornes.Outliers(in.Records)
+	if n > objectiveevents.OutliersNominalMax {
 		slog.Warn("rejeu : enregistrements hors de la fenetre de leur manche declaree AU-DELA DU "+
 			"NOMINAL — l'etiquetage de manche de ce film est a regarder",
 			"match_id", matchID, "ecartes", n, "nominal_max", objectiveevents.OutliersNominalMax,
 			"enregistrements", len(in.Records), "manches", cov.Rounds)
-	default:
-		slog.Info("rejeu : enregistrements hors de la fenetre de leur manche declaree, ecartes",
-			"match_id", matchID, "ecartes", n, "enregistrements", len(in.Records),
-			"manches", cov.Rounds)
+		return
 	}
+	slog.Info("rejeu : enregistrements hors de la fenetre de leur manche declaree, ecartes",
+		"match_id", matchID, "ecartes", n, "enregistrements", len(in.Records),
+		"manches", cov.Rounds, "blocs_gardes", len(bornes.KeptSegments()))
 }
 
 // logKeptSegments nomme les blocs (slot, manche) que la GARDE PAR SLOT a exemptes : leur bloc
