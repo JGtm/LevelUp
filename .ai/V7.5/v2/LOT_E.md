@@ -209,9 +209,25 @@ Plusieurs mesurent une grammaire candidate avec une porte deliberement different
 passer par le marcheur les ferait mentir sur ce qu'ils mesurent. Le garde-rail est donc borne aux
 sources de production, et le dit.
 
-**Gate E.4** — c'est l'item ou le TEMOIN DE MARCHE DELTA est l'oracle : il chiffre paquets,
-records rendus et traversees abouties sur les 12 premiers chunks de trois films. Les trois
-mesures sont IDENTIQUES a la reference E.1, au record pres.
+**Gate E.4** — CORRECTION DU 2026-09-06 (revue E-R1, constat C2, P1). Ce paragraphe disait :
+« c'est l'item ou le TEMOIN DE MARCHE DELTA est l'oracle ». **C'ETAIT FAUX, ET MESURABLEMENT.**
+`TestDeltaWalkWitness` (`delta_walk_witness_test.go:167`) chiffre `DecodeFrameRecords`
+(`frame_records.go`), un marcheur DIFFERENT de `walkDeltaBiped*` : neutraliser entierement
+`walkDeltaBipedPayload` laisse ses trois chiffres inchanges, au record pres. Ses mesures
+identiques ne prouvaient donc rien sur E.4 — elles prouvaient l'invariance d'un autre chemin, ce
+qui reste utile mais n'est pas l'oracle annonce.
+
+L'ORACLE REEL DE E.4, ce sont :
+
+- le **golden des familles** (E.6, `golden_minibobine_test.go`) — neutraliser le marcheur rougit
+  13 familles (mutation M7 du verdict). Il n'existait pas quand E.4 a ete cloture, ce qui explique
+  qu'un oracle ait ete cherche ailleurs ;
+- le **temoin synthetique de l'avance**
+  (`TestMarcheurDeltaBipedeNeRebalaiePasUnRecordPublie`, correction 1 ci-dessous) — le seul qui
+  attrape `p = i0 + 1`, que le golden laisse passer.
+
+Le temoin de marche delta reste joue et compare a chaque item : il est un temoin d'INVARIANCE du
+paquet, pas la preuve de cet item-la. Les commandes du gate, elles, sont inchangees :
 
 ```
 gofmt -l ./internal/analysis/filmdec/                               -> (vide)
@@ -651,3 +667,25 @@ liste des familles : il expose bien `Records`, mais il n'ancre PAS par le marche
 (`matchWorldObjectRecord`, `equipment_state.go:310`, sur la bande des slots d'equipement). Il a ete
 retire : le compter ici aurait ete une doc inversee de plus. Son denominateur (5 282 sur la
 bobine) reste non fige — il releve du marcheur d'objets du monde, pas de celui-ci.
+
+## [x] Correction 2 (C2, P1) — le journal designait un oracle qui ne traverse pas E.4
+
+Commit `v2(E.fix-2)`. `.ai/V7.5/v2/LOT_E.md` (gate E.4), `.ai/thought_log.md` (correctif date).
+
+LE TROU. Le gate E.4 ecrivait « c'est l'item ou le TEMOIN DE MARCHE DELTA est l'oracle ».
+`TestDeltaWalkWitness` (`delta_walk_witness_test.go:167`) appelle `DecodeFrameRecords`
+(`frame_records.go`) : un marcheur DIFFERENT de `walkDeltaBiped*`. Mutation M7 du verdict —
+`walkDeltaBipedPayload` neutralise (`return` en tete) — laisse ses trois mesures EXACTEMENT
+identiques : `{paquets 14350, records 38883, aboutis 30089}`. La phrase du gate etait vraie et ne
+prouvait rien.
+
+CE QUI EST FAIT. Le paragraphe du gate E.4 porte desormais la correction datee, en clair : ce qu'il
+disait, pourquoi c'etait faux, et quel est l'oracle REEL — le golden des familles (E.6, mutation M7
+rougit 13 familles ; il n'existait pas quand E.4 a ete cloture, ce qui explique l'erreur) plus le
+temoin synthetique de l'avance ajoute par la correction 1. Un correctif date est ajoute a l'entree
+`[2026-09-06] Lot E-I` du thought_log, SANS reecrire l'entree : elle est datee, le correctif aussi.
+
+CE QUI N'A PAS CHANGE, ET IL FAUT LE DIRE : l'item E.4 lui-meme reste bon. La revue a confirme sur
+pieces que les neuf sites sont migres, que la borne, l'avance et le pas d'echec sont ceux d'origine
+a la ligne pres, et que le golden des familles rougit quand le marcheur est neutralise. C'est la
+DESIGNATION de la preuve qui etait fausse, pas le refacto.

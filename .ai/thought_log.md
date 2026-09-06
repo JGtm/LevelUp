@@ -95452,6 +95452,18 @@ golden `fccc61cd` (une ligne, « 3 propose(s) » fige contre « 2 » mesure, com
 le temoin de marche delta sur les trois films. Ce sont la preuve mesuree du constat P0-1 ; le lot E
 ne les repare pas (c'est le lot A) et ne les masque pas.
 
+**CORRECTIF DU 2026-09-06 (revue adversariale E-R1, constat C2, P1) — l'oracle annonce pour E.4
+n'en etait pas un.** Le journal du lot ecrivait que le TEMOIN DE MARCHE DELTA etait l'oracle de
+l'item E.4. C'est faux et c'est mesurable : `TestDeltaWalkWitness` chiffre `DecodeFrameRecords`
+(`frame_records.go`), un marcheur DIFFERENT de `walkDeltaBiped*` — neutraliser entierement
+`walkDeltaBipedPayload` laisse ses trois chiffres inchanges, au record pres. L'oracle reel de E.4
+est le golden des familles (E.6, qui n'existait pas encore quand E.4 a ete cloture : 13 familles
+rougissent quand le marcheur est neutralise) plus le temoin synthetique de l'avance ajoute le
+2026-09-06. Le temoin de marche delta reste un temoin d'INVARIANCE du paquet, pas la preuve de cet
+item. Le fait que l'item E.4 soit lui-meme bon n'a pas change : c'est sa PREUVE qui etait mal
+designee. Correction ecrite au journal du lot (`.ai/V7.5/v2/LOT_E.md`, gate E.4). L'entree
+ci-dessus n'est pas reecrite : elle est datee, ce correctif l'est aussi.
+
 Decouverte de methode a retenir : `golangci-lint` tient son cache de RESULTATS globalement a la
 machine, independamment de `GOCACHE`, et l'indexe par fichier — il sert donc des verdicts calcules
 dans un autre jeu de fichiers du meme paquet, alors que `goconst` et `unparam` sont des analyses de
