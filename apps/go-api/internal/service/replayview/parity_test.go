@@ -34,6 +34,25 @@ import (
 // se justifie ici, pas dans un commit qui retire silencieusement un champ du corps.
 var champsNonServis = map[string]string{}
 
+// typesNonServis liste les TYPES du document stocke que l'API ne publie pas du tout, par nom
+// de type, avec la DATE de la decision et son motif. Vide au 2026-09-06.
+//
+// POURQUOI UNE SECONDE LISTE, et pourquoi `champsNonServis` ne suffit pas. La revue
+// adversariale du 2026-09-05 a montre que l'echappatoire ne couvrait PAS le cas majoritaire :
+// un calque ajoute a la cuisson arrive presque toujours avec son propre type
+// (`Translocation`, `AbilityImpulse`, `AbilityCharge`, `BombEvent`, `BombPlayerStats` sont
+// tous nes ainsi). Ecrire `champsNonServis["ReplayDocument.Medals"]` ne suffisait pas : le
+// controle « jumeau servi » se fait AU NIVEAU DU TYPE, en amont, et echouait toujours sur
+// `MedalEvent`. Il n'existait donc aucune facon d'ajouter un type stocke sans le servir — ce
+// qui contredisait frontalement la promesse du lot (« ajouter un calque a la cuisson ne
+// touche plus le contrat public ») et ne laissait au mainteneur que deux mauvais choix :
+// miroiter dans `replaydoc` un type que le contrat ne veut pas, ou affaiblir le garde-rail.
+//
+// Un type inscrit ici est VISITE (pour que la decision soit lue et datee) mais le parcours
+// ne DESCEND PAS dedans : les types atteignables par lui seul ne sont pas servis non plus,
+// et ce n'est pas un oubli.
+var typesNonServis = map[string]string{}
+
 // racines : les trois corps de route derives du monde `analysis/replay`.
 var racines = []struct {
 	nom    string
@@ -49,11 +68,20 @@ var racines = []struct {
 func TestChaqueChampStockeAUneDecision(t *testing.T) {
 	servis := indexerTypes(racines[0].servi, racines[1].servi, racines[2].servi)
 	vus := map[string]bool{}
-	parcourir(racinesStockees(), func(ts reflect.Type) {
+	typesVus := map[string]bool{}
+	parcourir(racinesStockees(), typesNonServis, func(ts reflect.Type) {
+		typesVus[ts.Name()] = true
+		if motif, exclu := typesNonServis[ts.Name()]; exclu {
+			if strings.TrimSpace(motif) == "" {
+				t.Errorf("le type %q est inscrit non servi SANS justification datee", ts.Name())
+			}
+			return // decision ecrite : ni jumeau ni champs a confronter
+		}
 		jumeau, ok := servis[ts.Name()]
 		if !ok {
 			t.Errorf("type stocke %q : AUCUN jumeau servi — un calque entier sortirait du "+
-				"contrat sans qu'aucun test ne le dise", ts.Name())
+				"contrat sans qu'aucun test ne le dise. Si c'est voulu, l'ecrire dans "+
+				"typesNonServis avec sa date et son motif", ts.Name())
 			return
 		}
 		for i := 0; i < ts.NumField(); i++ {
@@ -87,12 +115,18 @@ func TestChaqueChampStockeAUneDecision(t *testing.T) {
 				"exception qui survit a son champ finit par en couvrir un autre", cle)
 		}
 	}
+	for nom := range typesNonServis {
+		if !typesVus[nom] {
+			t.Errorf("typesNonServis cite %q, que le document stocke ne porte plus — meme "+
+				"raison : une exemption qui survit a son type finit par en couvrir un autre", nom)
+		}
+	}
 }
 
 // TestChaqueChampServiAUneSource : le contrat ne promet rien que la cuisson n'ecrive.
 func TestChaqueChampServiAUneSource(t *testing.T) {
 	stockes := indexerTypes(racinesStockees()...)
-	parcourir([]reflect.Type{racines[0].servi, racines[1].servi, racines[2].servi}, func(ts reflect.Type) {
+	parcourir([]reflect.Type{racines[0].servi, racines[1].servi, racines[2].servi}, nil, func(ts reflect.Type) {
 		source, ok := stockes[ts.Name()]
 		if !ok {
 			t.Errorf("type servi %q : AUCUNE source stockee — le contrat promet une forme que "+
@@ -212,7 +246,13 @@ func racinesStockees() []reflect.Type {
 }
 
 // parcourir visite chaque type STRUCT nomme atteignable depuis les racines, une seule fois.
-func parcourir(racines []reflect.Type, visite func(reflect.Type)) {
+//
+// `exclus` (nil cote servi) nomme les types que le contrat ne publie pas : ils sont VISITES
+// — la decision doit etre lue — mais le parcours ne descend pas dedans. Les champs NON
+// EXPORTES ne sont pas suivis non plus : ils ne sont jamais serialises, et un champ de cache
+// non exporte de type struct ferait echouer le garde-rail sur un type qui n'atteint aucun
+// client.
+func parcourir(racines []reflect.Type, exclus map[string]string, visite func(reflect.Type)) {
 	vus := map[reflect.Type]bool{}
 	var walk func(t reflect.Type)
 	walk = func(t reflect.Type) {
@@ -230,7 +270,13 @@ func parcourir(racines []reflect.Type, visite func(reflect.Type)) {
 		}
 		vus[t] = true
 		visite(t)
+		if _, exclu := exclus[t.Name()]; exclu {
+			return // type non servi : ce qu'il porte ne l'est pas davantage
+		}
 		for i := 0; i < t.NumField(); i++ {
+			if t.Field(i).PkgPath != "" {
+				continue // champ non exporte : jamais serialise
+			}
 			walk(t.Field(i).Type)
 		}
 	}
@@ -242,7 +288,7 @@ func parcourir(racines []reflect.Type, visite func(reflect.Type)) {
 // indexerTypes nomme chaque type struct atteignable depuis les racines.
 func indexerTypes(racines ...reflect.Type) map[string]reflect.Type {
 	out := map[string]reflect.Type{}
-	parcourir(racines, func(t reflect.Type) { out[t.Name()] = t })
+	parcourir(racines, nil, func(t reflect.Type) { out[t.Name()] = t })
 	return out
 }
 
