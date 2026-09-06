@@ -32,7 +32,7 @@ import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { HUD_BAND_CLASS, hudBandStyle } from './hudBand'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayPlayer } from './rosterLogic'
 
 /**

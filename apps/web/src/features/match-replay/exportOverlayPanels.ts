@@ -32,7 +32,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { scoreTimelineOf, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 
 import { ROUND_BREAK_WINDOW_MS } from './ReplayRoundBreakOverlay'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { OverlayInk, OverlayPanel, OverlayStatusStyle } from './overlayPaint'
 import { neutralStatusStyle } from './overlayPaint'
 import { msToFrames } from './replayLogic'

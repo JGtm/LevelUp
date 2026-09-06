@@ -44,8 +44,8 @@ import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import { readHillHold, type HillHoldDocument } from './hillHoldLogic'
 import { readScoreBanner, type ScoreBannerSide } from './scoreBannerLogic'
 import { roundsTally, type RoundDot } from './roundsLogic'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import type { ReplayText } from './i18nContract'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
+import type { ReplayText } from './i18n/i18nContract'
 
 interface Props {
   /**

@@ -39,7 +39,7 @@ import { createPortal } from 'react-dom'
 
 import { InfoMark, SettingsChoice, SettingsToggle } from './ReplaySettingsToggle'
 import { useAnchoredPanel } from './useAnchoredPanel'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { HeatmapSection, type ReplayHeatmapControls } from './ReplayHeatmapSection'
 import { LayersSection } from './ReplaySettingsLayers'
 import { SOUND_CATEGORIES } from './replaySound'

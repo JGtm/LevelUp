@@ -38,7 +38,7 @@ import type { ComponentProps, RefObject } from 'react'
 import { useState } from 'react'
 
 import { ReplayExportDialog, isExportBusy } from './ReplayExportDialog'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { SKIP_SECONDS } from './replayCanvasConfig'
 import { ReplaySoundControls } from './ReplaySoundControls'
 import { ReplaySpeedMenu } from './ReplaySpeedMenu'

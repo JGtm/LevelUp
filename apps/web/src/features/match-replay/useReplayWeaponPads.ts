@@ -33,10 +33,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, t
 import { staticAssetURL } from '@/lib/staticAssets'
 import { useTitleSlug } from '@/lib/title-routing'
 
-import { catalogText } from './catalogLabel'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { catalogText } from './i18n/catalogLabel'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { refinePadPresence } from './padPresenceRefine'
-import type { ReplayText } from './i18nContract'
+import type { ReplayText } from './i18n/i18nContract'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
 import { weaponFullIcon } from './weaponFullIcon'

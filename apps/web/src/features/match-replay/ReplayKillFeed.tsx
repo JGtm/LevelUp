@@ -71,7 +71,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
 import { displayPlayerName, normalizeGamertagKey } from '@/lib/players/displayName'
 
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 
 /** Réexporté pour `assistMarkIcon.guard.test.ts` : le stem a déménagé, sa surface non. */
 export { ASSIST_ICON_STEM }

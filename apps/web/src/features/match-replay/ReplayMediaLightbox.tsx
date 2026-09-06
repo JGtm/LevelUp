@@ -30,7 +30,7 @@ import { useEffect, useRef, useState } from 'react'
 import { formatClockMMSS } from '@/lib/formatters'
 import { useHlsVideo } from '@/lib/media/useHlsVideo'
 
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { clipFrameCount, type ReplayMediaItem } from './replayTimelineTracksLogic'
 
 interface ReplayMediaLightboxProps {

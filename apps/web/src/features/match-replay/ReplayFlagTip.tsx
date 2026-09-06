@@ -20,7 +20,7 @@
  * (useReplayFlagCarries), la géométrie dans flagCarriesLayer.
  */
 import type { FlagState } from './flagCarriesLayer'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { FlagHover } from './useReplayFlagCarries'
 
 /** Décalage de l'infobulle sous le pointeur, en pixels (même valeur que celle des socles). */

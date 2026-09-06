@@ -25,7 +25,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { REPLAY_TEXT } from './i18n'
+import { REPLAY_TEXT } from './i18n/i18n'
 import { PAD_EQUIPMENT_FAMILIES } from './weaponPadFamilies'
 
 /**

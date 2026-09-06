@@ -21,7 +21,7 @@ import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { createRef, type RefObject } from 'react'
 
-import { REPLAY_TEXT } from './i18n'
+import { REPLAY_TEXT } from './i18n/i18n'
 import { worldToCanvas } from './replayLogic'
 import type { ReplayDocumentReady, ReplayWeaponPadReady } from './replayNormalize'
 import { testReplayDoc } from './test/testDoc'

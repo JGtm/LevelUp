@@ -10,7 +10,7 @@
 import { SettingsSegments, SettingsToggle } from './ReplaySettingsToggle'
 
 import type { HeatmapMode, HeatmapSpan } from './heatmapLayer'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { HEATMAP_MODES, HEATMAP_SPANS } from './useReplaySettings'
 
 /** Ce que le tiroir sait de la carte de chaleur : son état, et ce qu'elle peut mesurer. */

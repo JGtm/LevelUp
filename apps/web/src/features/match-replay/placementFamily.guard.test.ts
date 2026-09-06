@@ -39,7 +39,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { PLACEMENT_RENDER, type PlacementKind } from './equipmentPlacementsLayer'
-import { REPLAY_TEXT } from './i18n'
+import { REPLAY_TEXT } from './i18n/i18n'
 
 const REPO = resolve(__dirname, '..', '..', '..', '..', '..')
 const GO_LOADER = resolve(

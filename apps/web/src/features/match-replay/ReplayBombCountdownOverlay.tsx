@@ -21,7 +21,7 @@
 import { activeBombCountdown } from './bombCountdown'
 import { formatSeconds } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 
 interface Props {
   /** Le document du rejeu — armements par le calque, cadence par `frameIntervalMs`. */

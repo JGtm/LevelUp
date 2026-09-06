@@ -13,7 +13,7 @@ import { formatKDA } from '@/lib/formatters/number'
 
 import type { PlayerCounters } from '@/lib/replay/scoreTimeline'
 
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 
 /**
  * Part du token d'état dans le fond du triplet, en pour-cent. La même graduation que les

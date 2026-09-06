@@ -12,7 +12,7 @@ import type { CSSProperties } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import type { PlayerState } from './rosterLogic'

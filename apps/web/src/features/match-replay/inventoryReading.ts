@@ -14,8 +14,8 @@
  *
  * Tout ce fichier est PUR : aucun React, aucun canvas, donc testable.
  */
-import { catalogText, type CatalogLabel } from './catalogLabel'
-import type { REPLAY_TEXT, ReplayLocale } from './i18n'
+import { catalogText, type CatalogLabel } from './i18n/catalogLabel'
+import type { REPLAY_TEXT, ReplayLocale } from './i18n/i18n'
 import { formatSeconds, frameToMs } from './replayLogic'
 import type { ReplayDocumentReady, ReplayInventoryReady } from './replayNormalize'
 import { nearestReading } from './rosterLogic'

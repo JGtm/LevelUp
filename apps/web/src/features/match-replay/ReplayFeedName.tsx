@@ -27,7 +27,7 @@
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { PlayerMarkKind } from './playerMarks'
 
 interface Props {

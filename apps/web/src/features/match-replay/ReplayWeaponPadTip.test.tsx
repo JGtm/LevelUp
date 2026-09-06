@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
 import type { ReplayWeaponPadReady } from './replayNormalize'
 import { padNameFor } from './useReplayWeaponPads'

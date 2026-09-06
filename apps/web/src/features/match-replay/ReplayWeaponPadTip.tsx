@@ -32,7 +32,7 @@
  * Purement présentationnel : l'état et le compte à rebours sont calculés au survol
  * (useReplayWeaponPads), la géométrie dans weaponPadsLayer.
  */
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { WeaponPadHover } from './useReplayWeaponPads'
 
 /** Décalage de l'infobulle sous le pointeur, en pixels (même valeur que celle des poses). */

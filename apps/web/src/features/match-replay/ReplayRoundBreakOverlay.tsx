@@ -37,7 +37,7 @@ import { msToFrames } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { OVERLAY_STATUS_NEUTRAL } from './replayOverlayStyles'
 import { activeRoundTransition, roundTransitions } from './roundsLogic'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 
 /**
  * LA DURÉE D'AFFICHAGE, en millisecondes de MATCH (convertie en frames par le film) : assez

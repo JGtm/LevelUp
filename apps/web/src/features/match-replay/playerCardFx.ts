@@ -33,7 +33,7 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { ActiveEquipment } from './equipmentFx'
 import type { ObjectiveMarkKind } from './objectiveMark'
 import type { ZonePresence } from './equipmentZones'
-import type { ReplayText } from './i18nContract'
+import type { ReplayText } from './i18n/i18nContract'
 
 /**
  * Durées CSS des animations d'éclat (cf. globals.css) — le délai négatif s'y rapporte.

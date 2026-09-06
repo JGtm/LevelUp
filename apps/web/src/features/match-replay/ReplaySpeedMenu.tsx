@@ -15,7 +15,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 
-import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { soundPlaysAtSpeed } from './replaySoundCursor'
 import { SPEED_MULTIPLIERS } from './useReplaySettings'
 
