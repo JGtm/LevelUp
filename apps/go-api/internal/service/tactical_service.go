@@ -356,27 +356,13 @@ func positionsDeKillLisibles(caps games.CapabilityMap) bool {
 	return caps.Has(games.CapFilmKillPositions) || caps.Has(games.CapMatchEventsSpatial)
 }
 
-// journalDesMortsFiable dit si `match_kill_events` de ce titre nomme le tueur de
-// chaque mort de facon exploitable LIGNE A LIGNE — ce qu'exige l'echange (« qui a
-// venge qui »), et rien de moins.
+// journalDesMortsFiable est le predicat PARTAGE games.JournalDesMortsFiable.
 //
-// LES DEUX PROVENANCES, et elles ne se lisent PAS de la meme facon :
-//
-//	film.kill_source              la source du degat fatal, decodee du film
-//	                              (Halo Infinite : supported). `Has` suffit.
-//	match.killfeed.per_kill       le kill-feed natif de l'API du titre. Exige ici
-//	                              `supported` STRICTEMENT, pas `Has`.
-//
-// POURQUOI `supported` STRICTEMENT SUR LA SECONDE. `CapabilityMap.Has` accepte
-// aussi `degraded`, et Halo Infinite declare justement `match.killfeed.per_kill =
-// degraded` (kills simultanes possiblement omis, cf. capabilities.toml) — soit
-// exactement le defaut qui fabriquerait de faux echanges : une mort omise dans la
-// fenetre de 5 s se lit comme « non vengee ». Infinite passe deja par
-// `film.kill_source` ; le exiger `supported` ici n'ote donc rien a personne, et
-// protege le jour ou un titre ne declarerait QUE ce kill-feed la, en degrade.
-// Halo 5 declare `supported` (mesure sur pieces, capabilities.toml du titre) et
-// remplit `match_kill_events` par la reprise de `killer_victim_pairs`.
+// Il a quitte ce fichier le 2026-09-06 (phase 3 du plan tactique) : la page Escouade
+// applique EXACTEMENT la meme porte pour sa matrice d'echange et sa distribution de delais,
+// et une seconde copie ici aurait donne deux verdicts au premier titre ajoute. Le corps, ses
+// deux provenances et la raison du `supported` STRICT vivent desormais dans
+// internal/games/kill_journal_gate.go.
 func journalDesMortsFiable(caps games.CapabilityMap) bool {
-	return caps.Has(games.CapFilmKillSource) ||
-		caps[games.CapMatchKillfeedPerKill] == games.CapSupported
+	return games.JournalDesMortsFiable(caps)
 }

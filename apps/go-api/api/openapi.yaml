@@ -23814,6 +23814,113 @@ components:
             - array
             - "null"
       type: object
+    SquadEchange:
+      additionalProperties: false
+      properties:
+        cellules:
+          items:
+            $ref: '#/components/schemas/SquadEchangeCell'
+          type:
+            - array
+            - "null"
+        couverture:
+          $ref: '#/components/schemas/Couverture'
+        delais:
+          items:
+            $ref: '#/components/schemas/SquadEchangeBucket'
+          type:
+            - array
+            - "null"
+        fenetre_ms:
+          format: int64
+          type: integer
+        habituel:
+          $ref: '#/components/schemas/Couverture'
+        joueurs:
+          items:
+            $ref: '#/components/schemas/SquadEchangeJoueur'
+          type:
+            - array
+            - "null"
+        matchs_habituel:
+          format: int64
+          type: integer
+        matchs_mesures:
+          format: int64
+          type: integer
+        matchs_total:
+          format: int64
+          type: integer
+      required:
+        - joueurs
+        - cellules
+        - delais
+        - fenetre_ms
+        - couverture
+        - habituel
+        - matchs_habituel
+        - matchs_mesures
+        - matchs_total
+      type: object
+    SquadEchangeBucket:
+      additionalProperties: false
+      properties:
+        debut_ms:
+          format: int64
+          type: integer
+        fin_ms:
+          format: int64
+          type: integer
+        hors_fenetre:
+          type: boolean
+        nombre:
+          format: int64
+          type: integer
+        ouvert:
+          type: boolean
+      required:
+        - debut_ms
+        - fin_ms
+        - ouvert
+        - hors_fenetre
+        - nombre
+      type: object
+    SquadEchangeCell:
+      additionalProperties: false
+      properties:
+        nombre:
+          format: int64
+          type: integer
+        par_match:
+          format: double
+          type: number
+        venge_gamertag:
+          type: string
+        venge_xuid:
+          type: string
+        vengeur_gamertag:
+          type: string
+        vengeur_xuid:
+          type: string
+      required:
+        - vengeur_xuid
+        - vengeur_gamertag
+        - venge_xuid
+        - venge_gamertag
+        - nombre
+        - par_match
+      type: object
+    SquadEchangeJoueur:
+      additionalProperties: false
+      properties:
+        gamertag:
+          type: string
+        xuid:
+          type: string
+      required:
+        - xuid
+        - gamertag
+      type: object
     SquadEngagementSession:
       additionalProperties: false
       properties:
@@ -25774,6 +25881,8 @@ components:
           type:
             - array
             - "null"
+        echange:
+          $ref: '#/components/schemas/SquadEchange'
         first_blood:
           items:
             $ref: '#/components/schemas/FirstBloodPlayerSeries'

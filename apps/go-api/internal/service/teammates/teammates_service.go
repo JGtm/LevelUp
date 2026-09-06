@@ -29,6 +29,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
@@ -73,6 +74,16 @@ type TeammatesService struct {
 	// suivis) pour l'axe « Objectifs » par opportunité du radar synergie. Câblé
 	// gated par la capability match.objective.stats ; nil → axe retiré du radar.
 	objectiveIndex port.ObjectiveIndexRepository
+	// tacticalRepo (optionnel) : le journal des morts (port.TacticalRepository.KillEvents),
+	// source de la section « échange ». Le MÊME lecteur que l'onglet Tactique — une
+	// seconde requête aurait donné deux définitions du journal des morts d'un joueur.
+	// Nil → section omise. Le service ne consomme JAMAIS le service Tactique : il lit le
+	// port et mesure par analysis/coordination, comme lui.
+	tacticalRepo port.TacticalRepository
+	// caps : les capabilities du titre du joueur, lues pour la seule porte de l'échange
+	// (games.JournalDesMortsFiable). Nil → CapabilityMap.Has rend faux, donc section
+	// omise : une map non chargée ne vaut pas une capability présente.
+	caps games.CapabilityMap
 	// replaySvc (optionnel) : service de rejeu 2D, appelé UNE FOIS par requête pour
 	// lister les matchs ayant un artefact (colonne « Rejeu » du tableau historique de
 	// l'escouade). Nil → aucune ligne ne porte de rejeu (dégradation gracieuse).
@@ -144,6 +155,18 @@ func (s *TeammatesService) WithObjectiveIndexRepo(repo port.ObjectiveIndexReposi
 // Sans injection : has_replay reste faux sur toutes les lignes.
 func (s *TeammatesService) WithReplay(svc port.ReplayService) *TeammatesService {
 	s.replaySvc = svc
+	return s
+}
+
+// WithEchange injecte le lecteur du journal des morts et les capabilities du titre —
+// les deux entrées de la section « échange » (matrice, distribution des délais, KPI).
+//
+// Sans injection, ou sur un titre qui ne nomme pas le tueur de chaque mort, la section est
+// ABSENTE du contrat : la page ne montre alors ni matrice ni KPI, plutôt qu'un taux nul
+// qui se lirait comme une contre-performance.
+func (s *TeammatesService) WithEchange(repo port.TacticalRepository, caps games.CapabilityMap) *TeammatesService {
+	s.tacticalRepo = repo
+	s.caps = caps
 	return s
 }
 
@@ -316,6 +339,7 @@ func (s *TeammatesService) GetPage(
 	var nativeKillMechanics *domain.SquadKillMechanics
 	var firstBlood []domain.FirstBloodPlayerSeries
 	var assistPairs *domain.SquadAssistPairs
+	var echange *domain.SquadEchange
 	var medalDigest []domain.MedalDigestEntry
 	if len(allSquadRows) > 0 {
 		// Résout map/playlist/mode FR sur les rows (mode via la cascade
@@ -355,6 +379,12 @@ func (s *TeammatesService) GetPage(
 		nativeKillMechanics = s.buildSquadKillMechanics(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		firstBlood = s.buildSquadFirstBlood(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		assistPairs = s.buildSquadAssistPairs(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
+		// L'échange compare DEUX périmètres : les matchs filtrés (allSquadRows) et
+		// l'historique complet de la composition (allSquadRowsForTimeline, non filtré
+		// par session/période) — la baseline « habituelle », dont le périmètre filtré
+		// est toujours un sous-ensemble. Même mécanique que buildBriefingBaseline.
+		echange = s.buildSquadEchange(
+			ctx, allSquadRows, allSquadRowsForTimeline, s.gamertag, playerXUID, teammates)
 		medalDigest = s.buildMedalDigest(ctx, allSquadRows, s.gamertag, playerXUID, teammates, req.Locale)
 	}
 
@@ -418,6 +448,7 @@ func (s *TeammatesService) GetPage(
 		NativeKillMechanics: nativeKillMechanics,
 		FirstBlood:          firstBlood,
 		AssistPairs:         assistPairs,
+		Echange:             echange,
 		Header:              header,
 		MainPlayer:          s.gamertag,
 		MedalDigest:         medalDigest,

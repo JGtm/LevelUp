@@ -39,12 +39,19 @@ var (
 
 	// typesQualifiesAutorises : les types de resultat rendus AUJOURD'HUI par ce paquet,
 	// verifies sur pieces le 2026-09-06 — `Mesurer` rend domain.Couverture, `Echanges` rend
-	// domain.BilanEchanges. `domain.MortSuivie` et `domain.PaireEchange` n'y figurent PAS :
-	// ils voyagent a l'interieur du bilan, aucune fonction exportee ne les rend directement.
-	// Le jour ou l'une le fera, la ligne s'ajoute ici, datee et justifiee.
+	// domain.BilanEchanges. `domain.PaireEchange` n'y figure PAS : il voyage a l'interieur
+	// du bilan, aucune fonction exportee ne le rend directement.
+	//
+	// `domain.MortSuivie` AJOUTE LE 2026-09-06 (phase 3, histogramme du delai d'echange de
+	// la page Escouade). JUSTIFICATION : `Ripostes` le rend pour que l'appelant puisse
+	// BINNER des DELAIS (des millisecondes, ADR 0010 : pre-binning serveur). Le type ne
+	// porte AUCUN quotient — MatchID, deux xuids, un instant, trois booleens et un delai en
+	// int64 : il n'y a rien dedans qu'un lecteur puisse prendre pour un taux, et le seul
+	// taux de ce paquet reste celui de Mesurer.
 	typesQualifiesAutorises = map[string]bool{
 		"domain.Couverture":    true,
 		"domain.BilanEchanges": true,
+		"domain.MortSuivie":    true,
 	}
 )
 

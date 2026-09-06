@@ -10866,6 +10866,45 @@ export interface components {
             radar?: unknown[] | null;
             timeline_multi_player?: components["schemas"]["ChartSeriesChartPoint2D"][] | null;
         };
+        SquadEchange: {
+            cellules: components["schemas"]["SquadEchangeCell"][] | null;
+            couverture: components["schemas"]["Couverture"];
+            delais: components["schemas"]["SquadEchangeBucket"][] | null;
+            /** Format: int64 */
+            fenetre_ms: number;
+            habituel: components["schemas"]["Couverture"];
+            joueurs: components["schemas"]["SquadEchangeJoueur"][] | null;
+            /** Format: int64 */
+            matchs_habituel: number;
+            /** Format: int64 */
+            matchs_mesures: number;
+            /** Format: int64 */
+            matchs_total: number;
+        };
+        SquadEchangeBucket: {
+            /** Format: int64 */
+            debut_ms: number;
+            /** Format: int64 */
+            fin_ms: number;
+            hors_fenetre: boolean;
+            /** Format: int64 */
+            nombre: number;
+            ouvert: boolean;
+        };
+        SquadEchangeCell: {
+            /** Format: int64 */
+            nombre: number;
+            /** Format: double */
+            par_match: number;
+            venge_gamertag: string;
+            venge_xuid: string;
+            vengeur_gamertag: string;
+            vengeur_xuid: string;
+        };
+        SquadEchangeJoueur: {
+            gamertag: string;
+            xuid: string;
+        };
         SquadEngagementSession: {
             durations_seconds: number[] | null;
             labels: string[] | null;
@@ -11647,6 +11686,7 @@ export interface components {
             assist_pairs?: components["schemas"]["SquadAssistPairs"];
             composition_sessions?: components["schemas"]["SessionLabelEntry"][] | null;
             data_issues?: components["schemas"]["DataIssue"][] | null;
+            echange?: components["schemas"]["SquadEchange"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             frag_classes?: {
                 [key: string]: components["schemas"]["FragClassEntry"][] | null;

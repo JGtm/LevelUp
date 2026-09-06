@@ -33,9 +33,16 @@
 //
 // ─── AUCUN FILTRE, AUCUN SCAN ──────────────────────────────────────────────────
 //
-// Toute lecture est bornee par le joueur (`mp.xuid = ?`) et, pour les deux
-// lectures spatiales, par une carte. Un xuid vide ou une carte vide sont un REFUS,
-// jamais un balayage de `shared.kill_positions` en entier.
+// Toute lecture est bornee par le joueur (`mp.xuid = ?`). La lecture SPATIALE
+// (KillPositions) l'est en plus par une CARTE : un xuid vide ou une carte vide y
+// sont un REFUS, jamais un balayage de `shared.kill_positions` en entier.
+//
+// KillEvents, elle, accepte une carte VIDE depuis le 2026-09-06 (phase 3) : la
+// page Escouade lit le journal des morts d'une COMPOSITION, qui n'a pas de carte,
+// et le perimetre de matchs y est resserre en Go. Ecrire une seconde requete pour
+// ce seul predicat aurait donne deux definitions de « le journal des morts du
+// joueur » ; le SELECT est donc le meme, la carte devenant un parametre neutre
+// (`? = ” OR mr.map_id = ?`). La borne reste le joueur, jamais la table entiere.
 package duckdb
 
 import (
@@ -80,7 +87,15 @@ func (r *TacticalRepo) WithModeTaxonomy(t analysis.ModeTaxonomy) *TacticalRepo {
 // ─── L'UNIVERS ─────────────────────────────────────────────────────────────────
 
 // QTacticalUnivers est le SELECT des matchs RETENUS : ceux du joueur, sur la
-// carte demandee, qui passent le filtre. Le fragment de filtre est produit par
+// carte demandee quand il y en a une, qui passent le filtre.
+//
+// LA CARTE EST OPTIONNELLE, ET C'EST UN PARAMETRE, PAS UNE CONCATENATION (ajout
+// 2026-09-06, phase 3) : `? = ” OR mr.map_id = ?` neutralise le predicat quand
+// l'appelant ne vise aucune carte (page Escouade). Assembler la clause en Go
+// aurait fait DEUX chaines SQL pour un seul univers — et le garde-rail structurel
+// campaign_exclusion_guard_test ne balaye qu'une constante, pas un assemblage.
+//
+// Le fragment de filtre est produit par
 // analysis.BuildNeighborsWhereClause (aliases `mr` et `mp`), source unique du
 // vocabulaire de filtre du depot — et donc du fragment timezone canonique pour
 // les bornes de date.
@@ -96,13 +111,13 @@ const QTacticalUnivers = `
 SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
-WHERE mp.xuid = ? AND mr.map_id = ?` + campaignExclusionToken
+WHERE mp.xuid = ? AND (? = '' OR mr.map_id = ?)` + campaignExclusionToken
 
 // universSQL assemble le SELECT de l'univers et ses arguments, token Campagne
-// resolu pour le titre du joueur.
+// resolu pour le titre du joueur. `q.MapID` vide = toutes les cartes.
 func (r *TacticalRepo) universSQL(q domain.TacticalQuery) (string, []any) {
 	clause := analysis.BuildNeighborsWhereClause(q.Filtre, r.modeTax.Prefixes)
-	args := append([]any{domain.OutcomeUnknown, q.PlayerXUID, q.MapID}, clause.Args...)
+	args := append([]any{domain.OutcomeUnknown, q.PlayerXUID, q.MapID, q.MapID}, clause.Args...)
 	return resolveCampaignExclusion(QTacticalUnivers, r.pdb.TitleSlug, "mr") + clause.SQL, args
 }
 
@@ -297,6 +312,12 @@ ORDER BY kp.match_id, kp.time_ms`
 // KillPositions rend l'univers ET les positions mesurees de ses matchs.
 func (r *TacticalRepo) KillPositions(ctx context.Context, q domain.TacticalQuery) (domain.TacticalPositions, error) {
 	var out domain.TacticalPositions
+	// La lecture SPATIALE exige une carte : sans elle, la requete balaierait
+	// `kill_positions` sur tout l'historique du joueur pour une grille qui n'a de
+	// sens que carte par carte.
+	if q.MapID == "" {
+		return out, fmt.Errorf("TacticalRepo.KillPositions: map_id vide")
+	}
 	ctx, cancel := context.WithTimeout(ctx, tacticalReadTimeout)
 	defer cancel()
 	db, release, err := r.ouvrir(ctx, q, "KillPositions")
@@ -384,13 +405,12 @@ func (r *TacticalRepo) KillEvents(ctx context.Context, q domain.TacticalQuery) (
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
 
-// ouvrir valide la demande spatiale et prend le lecteur shared.
+// ouvrir valide la demande et prend le lecteur shared. La CARTE n'est pas exigee
+// ici : seule la lecture spatiale en a besoin, et c'est elle qui la reclame
+// (KillPositions) — le journal des morts se lit aussi sur toutes les cartes.
 func (r *TacticalRepo) ouvrir(ctx context.Context, q domain.TacticalQuery, op string) (*sql.DB, func(), error) {
 	if q.PlayerXUID == "" {
 		return nil, nil, fmt.Errorf("TacticalRepo.%s: xuid vide", op)
-	}
-	if q.MapID == "" {
-		return nil, nil, fmt.Errorf("TacticalRepo.%s: map_id vide", op)
 	}
 	clause := analysis.BuildNeighborsWhereClause(q.Filtre, r.modeTax.Prefixes)
 	logIgnoredFilters(ctx, "TacticalRepo."+op, clause.IgnoredFilters)
