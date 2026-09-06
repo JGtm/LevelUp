@@ -39,12 +39,12 @@ import { createPortal } from 'react-dom'
 
 import { InfoMark, SettingsChoice, SettingsToggle } from './ReplaySettingsToggle'
 import { useAnchoredPanel } from './useAnchoredPanel'
-import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
-import { HeatmapSection, type ReplayHeatmapControls } from './ReplayHeatmapSection'
+import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+import { HeatmapSection, type ReplayHeatmapControls } from '../ReplayHeatmapSection'
 import { LayersSection } from './ReplaySettingsLayers'
-import { SOUND_CATEGORIES } from './sound/replaySound'
+import { SOUND_CATEGORIES } from '../sound/replaySound'
 import { MARKER_COLORS_MODES, type MarkerColorsMode } from './useReplaySettings'
-import type { ReplaySound } from './sound/useReplaySound'
+import type { ReplaySound } from '../sound/useReplaySound'
 
 /**
  * LA LARGEUR DU PANNEAU, en px et pas en classe : le hook de placement en a besoin pour le
@@ -55,7 +55,7 @@ import type { ReplaySound } from './sound/useReplaySound'
 const PANEL_WIDTH = 416
 
 /** Réexportés : les sections ont déménagé, la surface d'appel du tiroir n'a pas bougé. */
-export type { ReplayHeatmapControls } from './ReplayHeatmapSection'
+export type { ReplayHeatmapControls } from '../ReplayHeatmapSection'
 export type {
   ReplayBombCarrierControls,
   ReplayFlagControls,

@@ -7,7 +7,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
-import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
+import { ReplayHeatmapLegend } from '../ReplayHeatmapLegend'
 import {
   ReplaySettingsDrawer,
   type ReplayHeatmapControls,
@@ -15,7 +15,7 @@ import {
   type ReplayFlagControls,
   type ReplayWeaponPadControls,
 } from './ReplaySettingsDrawer'
-import type { ReplaySound } from './sound/useReplaySound'
+import type { ReplaySound } from '../sound/useReplaySound'
 
 function makePlacements(over: Partial<ReplayPlacementControls> = {}): ReplayPlacementControls {
   return {

@@ -12,8 +12,7 @@
  * CE QU'IL DÉTECTE : les deux orthographes de la comparaison, sous leur forme littérale.
  */
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { cheminCourt, fichierNomme, lire, nomDe, tousLesFichiers } from './test/featureFiles'
 
 /** `frame >= s.t0 && frame <= s.t1` et sa jumelle `s.t0 <= frame && frame <= s.t1`. */
 const PREDICAT = [
@@ -24,12 +23,13 @@ const PREDICAT = [
 const AUTORISES = new Set(['replaySpans.ts', 'replaySpans.guard.test.ts'])
 
 function fautifs(): string[] {
-  return readdirSync(__dirname)
-    .filter((n) => /\.(ts|tsx)$/.test(n) && !AUTORISES.has(n))
-    .filter((n) => {
-      const src = readFileSync(join(__dirname, n), 'utf8')
+  return tousLesFichiers()
+    .filter((f) => !AUTORISES.has(nomDe(f)))
+    .filter((f) => {
+      const src = lire(f)
       return PREDICAT.some((re) => re.test(src))
     })
+    .map(cheminCourt)
 }
 
 describe('garde-rail : un seul prédicat d’intervalle', () => {
@@ -38,7 +38,7 @@ describe('garde-rail : un seul prédicat d’intervalle', () => {
   })
 
   it('et `replaySpans` la porte bien — sans quoi ce test ne garderait rien', () => {
-    const src = readFileSync(join(__dirname, 'replaySpans.ts'), 'utf8')
+    const src = lire(fichierNomme('replaySpans.ts'))
     expect(PREDICAT.some((re) => re.test(src))).toBe(true)
   })
 })

@@ -20,8 +20,9 @@
  * ce que ce garde veut voir se généraliser.
  */
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { resolve } from 'node:path'
+
+import { cheminCourt, featureRoot, fichiersSous, lire, nomDe, tousLesFichiers } from '../test/featureFiles'
 
 /**
  * La signature du défaut : une lecture de `originMs` sur autre chose qu'une horloge. La
@@ -36,38 +37,23 @@ const LECTURE_BRUTE = /(?<![Cc]lock\??)\.originMs/
  */
 const AUTORISES = new Set(['replayClock.ts', 'replayNormalize.ts', 'replayClock.guard.test.ts'])
 
-function walk(dir: string): string[] {
-  const out: string[] = []
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name)
-    if (entry.isDirectory()) {
-      if (entry.name === 'node_modules') continue
-      out.push(...walk(full))
-    } else if (/\.(ts|tsx)$/.test(entry.name)) {
-      out.push(full)
-    }
-  }
-  return out
-}
-
 function fautif(fichier: string): boolean {
-  const base = fichier.split(/[\\/]/).pop() ?? ''
-  if (AUTORISES.has(base)) return false
-  return LECTURE_BRUTE.test(readFileSync(fichier, 'utf8'))
+  if (AUTORISES.has(nomDe(fichier))) return false
+  return LECTURE_BRUTE.test(lire(fichier))
 }
 
 describe('garde-rail : une seule lecture de l’origine du film', () => {
   it('aucun fichier de features/match-replay/ ne lit originMs hors de l’horloge', () => {
-    expect(walk(resolve(__dirname, '..')).filter(fautif)).toEqual([])
+    expect(tousLesFichiers().filter(fautif).map(cheminCourt)).toEqual([])
   })
 
   it('la route du rejeu non plus', () => {
-    const routes = resolve(__dirname, '..', '..', '..', 'routes')
-    expect(walk(routes).filter(fautif)).toEqual([])
+    const routes = resolve(featureRoot(), '..', '..', 'routes')
+    expect(fichiersSous(routes).filter(fautif)).toEqual([])
   })
 
   it('et matchClock.ts, lui, la lit bien — sans quoi ce test ne garderait rien', () => {
-    const foyer = resolve(__dirname, '..', '..', '..', 'lib', 'replay', 'matchClock.ts')
-    expect(LECTURE_BRUTE.test(readFileSync(foyer, 'utf8'))).toBe(true)
+    const foyer = resolve(featureRoot(), '..', '..', 'lib', 'replay', 'matchClock.ts')
+    expect(LECTURE_BRUTE.test(lire(foyer))).toBe(true)
   })
 })

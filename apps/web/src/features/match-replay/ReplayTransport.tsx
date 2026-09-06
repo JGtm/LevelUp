@@ -43,7 +43,7 @@ import { SKIP_SECONDS } from './replayCanvasConfig'
 import { ReplaySoundControls } from './sound/ReplaySoundControls'
 import { ReplaySpeedMenu } from './ReplaySpeedMenu'
 import { ReplayTimelineTracks } from './ReplayTimelineTracks'
-import { SlidersIcon } from './SlidersIcon'
+import { SlidersIcon } from './settings/SlidersIcon'
 import type { ReplayCapture } from './export/useReplayCapture'
 import type { ReplaySound } from './sound/useReplaySound'
 

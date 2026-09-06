@@ -14,8 +14,7 @@
  * CE QU'IL DÉTECTE : la sinusoïde, et la période de pulsation redéclarée.
  */
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { cheminCourt, fichierNomme, lire, nomDe, tousLesFichiers } from './test/featureFiles'
 
 /** La respiration elle-même : la sinusoïde normalisée entre 0 et 1. */
 const SINUSOIDE = /0\.5 \+ 0\.5 \* Math\.sin\(/
@@ -26,9 +25,10 @@ const PERIODE = /PULSE_PERIOD_FRAMES\s*=/
 const AUTORISES = new Set(['carriedGlyphPulse.ts', 'carriedGlyphPulse.guard.test.ts'])
 
 function fautifs(motif: RegExp): string[] {
-  return readdirSync(__dirname)
-    .filter((n) => /\.(ts|tsx)$/.test(n) && !AUTORISES.has(n))
-    .filter((n) => motif.test(readFileSync(join(__dirname, n), 'utf8')))
+  return tousLesFichiers()
+    .filter((f) => !AUTORISES.has(nomDe(f)))
+    .filter((f) => motif.test(lire(f)))
+    .map(cheminCourt)
 }
 
 describe('garde-rail : une seule pulsation de glyphe porté', () => {
@@ -41,7 +41,7 @@ describe('garde-rail : une seule pulsation de glyphe porté', () => {
   })
 
   it('et `carriedGlyphPulse` porte bien les deux — sans quoi ce test ne garderait rien', () => {
-    const src = readFileSync(join(__dirname, 'carriedGlyphPulse.ts'), 'utf8')
+    const src = lire(fichierNomme('carriedGlyphPulse.ts'))
     expect(SINUSOIDE.test(src)).toBe(true)
     expect(PERIODE.test(src)).toBe(true)
   })

@@ -13,8 +13,7 @@
  * au lieu de passer par la fixture.
  */
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { cheminCourt, fichierNomme, lire, nomDe, testsDeLaFeature } from './test/featureFiles'
 
 // La signature de la copie : normaliser soi-même un document dans un fichier de test.
 const REBUILD = /normalizeReplayDocument\s*\(/
@@ -24,13 +23,14 @@ const ALLOWED = new Set(['testDoc.guard.test.ts', 'replayContract.test.ts'])
 
 describe('garde-rail : une seule fixture de document de rejeu', () => {
   it('aucun test de la feature ne renormalise un document à la main', () => {
-    const fautifs = readdirSync(__dirname)
-      .filter((f) => /\.test\.(ts|tsx)$/.test(f) && !ALLOWED.has(f))
-      .filter((f) => REBUILD.test(readFileSync(join(__dirname, f), 'utf8')))
+    const fautifs = testsDeLaFeature()
+      .filter((f) => !ALLOWED.has(nomDe(f)))
+      .filter((f) => REBUILD.test(lire(f)))
+      .map(cheminCourt)
     expect(fautifs).toEqual([])
   })
 
   it('et la fixture, elle, passe bien par la frontière — sans quoi ce test ne garderait rien', () => {
-    expect(REBUILD.test(readFileSync(join(__dirname, 'test', 'testDoc.ts'), 'utf8'))).toBe(true)
+    expect(REBUILD.test(lire(fichierNomme('testDoc.ts')))).toBe(true)
   })
 })

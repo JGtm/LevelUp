@@ -7,11 +7,11 @@
  * de choix (ce qu'on mesure, sur quelle durée) : elle pèse à elle seule autant que les
  * quatre autres, et c'est la seule dont l'affichage dépend de ce que le film porte.
  */
-import { SettingsSegments, SettingsToggle } from './ReplaySettingsToggle'
+import { SettingsSegments, SettingsToggle } from './settings/ReplaySettingsToggle'
 
 import type { HeatmapMode, HeatmapSpan } from './heatmapLayer'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
-import { HEATMAP_MODES, HEATMAP_SPANS } from './useReplaySettings'
+import { HEATMAP_MODES, HEATMAP_SPANS } from './settings/useReplaySettings'
 
 /** Ce que le tiroir sait de la carte de chaleur : son état, et ce qu'elle peut mesurer. */
 export interface ReplayHeatmapControls {

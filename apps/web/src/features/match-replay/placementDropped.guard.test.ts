@@ -107,7 +107,7 @@ describe('garde-rail : aucune couleur écrite dans les fichiers du lâcher', () 
   it('le tiroir et l’infobulle n’emploient que des classes SÉMANTIQUES', () => {
     // Tailwind de couleur brute (`text-red-500`, `bg-blue-900`…) : interdit dans `features/`.
     const brut = /\b(?:text|bg|border|fill|stroke)-(?:red|blue|green|yellow|orange|purple|pink|gray|grey|slate|zinc|neutral|stone|amber|lime|emerald|teal|cyan|sky|indigo|violet|fuchsia|rose)-\d{2,3}\b/
-    for (const f of ['ReplaySettingsDrawer.tsx', 'ReplayPlacementTip.tsx']) {
+    for (const f of ['./settings/ReplaySettingsDrawer.tsx', 'ReplayPlacementTip.tsx']) {
       const src = readFileSync(resolve(__dirname, f), 'utf8')
       expect(brut.test(src), `${f} porte une classe Tailwind de couleur`).toBe(false)
       expect(/#[0-9a-fA-F]{6}\b/.test(src), `${f} porte une valeur hex`).toBe(false)

@@ -12,26 +12,17 @@
  * même ». Une re-inline du littéral casse CE test, pas le rendu.
  */
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { cheminCourt, lire, nomDe, sourcesDeLaFeature } from './test/featureFiles'
 
 import { OVERLAY_STATUS_BLOCK } from './replayOverlayStyles'
 
-const FEATURE_DIR = __dirname
 const STYLES_FILE = 'replayOverlayStyles.ts'
-
-/** Les fichiers de la feature où un littéral de classe pourrait se recopier (hors tests). */
-function sourceFiles(): string[] {
-  return readdirSync(FEATURE_DIR).filter(
-    (f) => (f.endsWith('.ts') || f.endsWith('.tsx')) && !f.endsWith('.test.ts') && !f.endsWith('.test.tsx'),
-  )
-}
 
 describe('garde-rail : le bloc de statut des overlays est centralisé', () => {
   it('le littéral exact du bloc ne vit QUE dans replayOverlayStyles.ts', () => {
-    const coupables = sourceFiles().filter(
-      (f) => f !== STYLES_FILE && readFileSync(resolve(FEATURE_DIR, f), 'utf8').includes(OVERLAY_STATUS_BLOCK),
-    )
+    const coupables = sourcesDeLaFeature()
+      .filter((f) => nomDe(f) !== STYLES_FILE && lire(f).includes(OVERLAY_STATUS_BLOCK))
+      .map(cheminCourt)
     expect(coupables).toEqual([])
   })
 

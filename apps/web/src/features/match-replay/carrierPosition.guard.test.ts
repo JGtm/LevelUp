@@ -28,9 +28,9 @@
  * test grep ne remplace une revue. Il bloque la copie la plus probable, celle qui part du code
  * existant, et il ne peut plus rater un calque par simple oubli.
  */
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+
+import { cheminCourt, lire, nomDe, sourcesDeLaFeature } from './test/featureFiles'
 
 /**
  * LA SIGNATURE D'UN LECTEUR DE PORTEUR : il se donne un résolveur de position. C'est de là que
@@ -38,9 +38,9 @@ import { describe, expect, it } from 'vitest'
  */
 const RESOLVEUR = /const posOf = /
 
-/** Tous les fichiers de la feature, hors tests. */
+/** Tous les fichiers de la feature, hors tests (chemins absolus, toute l'arborescence). */
 function sources(): string[] {
-  return readdirSync(__dirname).filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f))
+  return sourcesDeLaFeature()
 }
 
 /** Les lecteurs de porteur, dérivés : ceux qui se donnent un résolveur de position. */
@@ -58,10 +58,6 @@ const LECTEURS_POSITION_VEHICULE = new Set([
   'carrierPosition.ts', // la position d'un joueur embarqué
 ])
 
-function lire(fichier: string): string {
-  return readFileSync(join(__dirname, fichier), 'utf8')
-}
-
 describe('garde-rail : un seul chemin pour la position d’un joueur embarqué', () => {
   it('la liste des lecteurs de porteur se dérive bien de la source, et n’est pas vide', () => {
     // Sept aujourd'hui : cinq hooks de calque et deux lecteurs purs. Le nombre n'est pas figé
@@ -72,12 +68,12 @@ describe('garde-rail : un seul chemin pour la position d’un joueur embarqué',
   it('tout lecteur de porteur passe par le résolveur commun', () => {
     const fautifs = lecteurs().filter((f) => {
       const src = lire(f)
-      const attendu = EN_REACT.test(f) ? 'useCarrierPosAt(doc)' : 'buildCarrierPosAt(doc)'
+      const attendu = EN_REACT.test(nomDe(f)) ? 'useCarrierPosAt(doc)' : 'buildCarrierPosAt(doc)'
       return !src.includes(attendu)
     })
     expect(
       fautifs,
-      `ces lecteurs ne prennent plus la position au résolveur commun : [${fautifs.join(', ')}]. ` +
+      `ces lecteurs ne prennent plus la position au résolveur commun : [${fautifs.map(cheminCourt).join(', ')}]. ` +
         `Un porteur embarqué y retraverserait le décor en ligne droite (carrierPosition.ts).`,
     ).toEqual([])
   })
@@ -90,19 +86,18 @@ describe('garde-rail : un seul chemin pour la position d’un joueur embarqué',
     expect(
       fautifs,
       `la règle « embarqué -> véhicule » se recopie hors de carrierPosition.ts : ` +
-        `[${fautifs.join(', ')}].`,
+        `[${fautifs.map(cheminCourt).join(', ')}].`,
     ).toEqual([])
   })
 
   it('la position d’un véhicule n’est lue que par ses trois écritures légitimes', () => {
-    const fautifs = readdirSync(__dirname)
-      .filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f))
-      .filter((f) => !LECTEURS_POSITION_VEHICULE.has(f))
+    const fautifs = sources()
+      .filter((f) => !LECTEURS_POSITION_VEHICULE.has(nomDe(f)))
       .filter((f) => lire(f).includes('vehiclePositionAt'))
     expect(
       fautifs,
       `nouvelle lecture de la position d'un véhicule hors des trois autorisées : ` +
-        `[${fautifs.join(', ')}].`,
+        `[${fautifs.map(cheminCourt).join(', ')}].`,
     ).toEqual([])
   })
 })
