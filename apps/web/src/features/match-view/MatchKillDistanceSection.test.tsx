@@ -127,7 +127,33 @@ describe('MatchKillDistanceSection', () => {
     }
   })
 
-  // PORTE 1 (le TITRE) : rien à espérer, jamais — la section n'existe pas.
+  // PAS DE FLASH (revue C-R1, constat C4) : sur un titre qui declare la cle `not_exposed`,
+  // la carte ne doit pas etre peinte PUIS retiree. L assertion est SYNCHRONE, juste apres le
+  // rendu, donc avant que la reponse des capabilities arrive : c est exactement la sonde qui
+  // passait avant la correction (fail-open pendant le chargement) et qui echoue depuis.
+  it('titre sans la cle : la carte n est JAMAIS peinte, pas meme le temps de la requete', async () => {
+    titreMesureLesPositions('not_exposed')
+    render(
+      <MatchKillDistanceSection players={PLAYERS} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
+    )
+    expect(screen.queryByText('Distance par arme')).not.toBeInTheDocument()
+    await waitFor(() => expect(apiGet).toHaveBeenCalled())
+    expect(screen.queryByText('Distance par arme')).not.toBeInTheDocument()
+  })
+
+  // MEME REGLE SUR UN TITRE SUPPORTE : rien pendant la requete, tout apres. Le cout du
+  // fail-closed est symetrique et borne (une requete par titre et par session), et ce volet
+  // interdit de « corriger » le flash en re-ouvrant la porte pendant le chargement.
+  it('titre AVEC la cle : rien au premier rendu, la carte apres la reponse', async () => {
+    titreMesureLesPositions('supported')
+    render(
+      <MatchKillDistanceSection players={PLAYERS} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
+    )
+    expect(screen.queryByText('Distance par arme')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Distance par arme')).toBeInTheDocument())
+  })
+
+  // PORTE 1 (le TITRE) : rien a esperer, jamais — la section n existe pas.
   it("titre sans film.kill_positions : RIEN n'est rendu, pas même l'état vide", async () => {
     titreMesureLesPositions('not_exposed')
     render(

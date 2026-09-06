@@ -63,22 +63,34 @@ interface TitleCapabilitiesResponse {
 const STALE_MS = 5 * 60 * 1000
 
 /**
- * useTitleDataCapabilities — les capabilities data-level du titre COURANT, ou `null`
- * tant qu'elles ne sont pas connues (chargement, erreur, pas de titre résolu).
+ * TROIS états, et ils ne se confondent pas :
+ *   - `loading` : la réponse est en vol (ou aucun titre n'est encore résolu) ;
+ *   - `known`   : le serveur a répondu, `caps` fait foi ;
+ *   - `error`   : la requête a échoué — on ne saura pas.
+ */
+export type DataCapabilitiesState =
+  | { kind: 'loading' }
+  | { kind: 'known'; caps: Record<string, DataCapabilityStatus> }
+  | { kind: 'error' }
+
+/**
+ * useTitleDataCapabilities — l'état des capabilities data-level du titre COURANT.
  *
  * Une seule requête par titre pour toute l'application : la clé de cache est le slug,
  * et le résultat est partagé par tous les appelants de {@link useDataCapability}.
  */
-export function useTitleDataCapabilities(): Record<string, DataCapabilityStatus> | null {
+export function useTitleDataCapabilities(): DataCapabilitiesState {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const { data } = useQuery({
+  const { data, isError } = useQuery({
     queryKey: queryKeys.titleDataCapabilities(titleSlug),
     queryFn: () =>
       api.get<TitleCapabilitiesResponse>(`/titles/${encodeURIComponent(titleSlug)}/capabilities`),
     enabled: !!titleSlug,
     staleTime: STALE_MS,
   })
-  return data?.capabilities ?? null
+  if (data?.capabilities) return { kind: 'known', caps: data.capabilities }
+  if (isError) return { kind: 'error' }
+  return { kind: 'loading' }
 }
 
 /**
@@ -87,25 +99,34 @@ export function useTitleDataCapabilities(): Record<string, DataCapabilityStatus>
  * `supported` et `degraded` valent OUI (même sémantique que `games.CapabilityMap.Has` :
  * dégradé = partiel mais utilisable) ; `not_exposed` et l'absence valent NON.
  *
- * `caps === null` (pas encore chargées / erreur) ⇒ `true` : FAIL-OPEN, comme
- * {@link useCapability} côté title-level. Masquer pendant le chargement ferait
- * clignoter les sections du titre courant à chaque montage, et une panne du seul
- * endpoint de capabilities ne doit pas amputer l'application. Le masquage n'intervient
- * que sur une réponse REÇUE où la clé est absente ou `not_exposed`.
+ * LES TROIS ÉTATS NE SE TRAITENT PAS PAREIL (revue adversariale du 2026-09-06, constat
+ * C4). Le fail-open uniforme d'origine avait un défaut visible sur le titre où il est le
+ * plus trompeur : sur halo_5, pendant que la requête est en vol — donc à CHAQUE chargement
+ * à froid —, `MatchKillDistanceSection` peignait sa carte et son état vide, puis les
+ * retirait. Un bloc qui apparaît et disparaît, plus un saut de mise en page, pour promettre
+ * une donnée qui n'existera jamais.
+ *
+ *   - `loading` ⇒ NON : fail-closed, le temps d'UNE requête. Le coût est symétrique et
+ *     borné — sur un titre supporté la surface apparaît une fraction de seconde plus tard,
+ *     une seule fois par titre et par session (la réponse est ensuite en cache, `staleTime`
+ *     5 min aligné sur le `Cache-Control` du serveur). Rien n'apparaît puis ne disparaît.
+ *   - `error` ⇒ OUI : fail-open. Une panne de ce seul endpoint ne doit pas amputer
+ *     l'application ; on retombe sur le comportement d'avant les portes data-level.
  */
 export function hasDataCapabilityIn(
-  caps: Record<string, DataCapabilityStatus> | null,
+  state: DataCapabilitiesState,
   key: DataCapabilityKey,
 ): boolean {
-  if (caps == null) return true
-  const status = caps[key]
+  if (state.kind === 'loading') return false
+  if (state.kind === 'error') return true
+  const status = state.caps[key]
   return status === 'supported' || status === 'degraded'
 }
 
 /**
  * useDataCapability — jumeau data-level de `useCapability` : `true` si le titre courant
- * déclare `key` (`supported` ou `degraded`). Fail-open tant que la réponse n'est pas là
- * (cf. {@link hasDataCapabilityIn}).
+ * déclare `key` (`supported` ou `degraded`). Fail-CLOSED pendant le chargement, fail-open
+ * sur erreur (cf. {@link hasDataCapabilityIn}).
  */
 export function useDataCapability(key: DataCapabilityKey): boolean {
   return hasDataCapabilityIn(useTitleDataCapabilities(), key)
