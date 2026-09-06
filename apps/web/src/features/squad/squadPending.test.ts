@@ -11,11 +11,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   deriveSquadPending,
-  reconcileSquadSessionLabels,
-  stripSessionCountSuffix,
   decideCompositionReanchor,
   mergeSessionCounts,
 } from './squadPending'
+import {
+  reconcileSquadSessionLabels,
+  stripSessionCountSuffix,
+} from '@/lib/sessions/sessionLabels'
 import type { FilterContextInput, SessionLabelEntry } from '@/lib/api/types'
 
 function session(label: string): SessionLabelEntry {

@@ -28,6 +28,10 @@ import { useFiltersPreview, useFiltersResolve } from '@/features/filters/queries
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
+import {
+  reconcileSquadSessionLabels,
+  stripSessionCountSuffix,
+} from '@/lib/sessions/sessionLabels'
 import { AddFriendModal } from '@/features/friends/AddFriendFlow'
 import { tokenCssVar } from '@/lib/accessibility'
 import { getSquadText } from './i18n'
@@ -45,9 +49,7 @@ import type { KPIStats as V2KPIStats } from './v2/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 import {
   deriveSquadPending,
-  reconcileSquadSessionLabels,
   decideCompositionReanchor,
-  stripSessionCountSuffix,
   mergeSessionCounts,
 } from './squadPending'
 import { formatDataIssues } from './squadDataIssues'

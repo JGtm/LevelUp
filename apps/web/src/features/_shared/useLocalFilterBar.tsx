@@ -5,9 +5,10 @@
  * cascade locale (expérience, playlists, modes), barre période/saison, et
  * useFiltersPreview pour les counts cascade-aware.
  *
- * Consommé par Citations, SessionDetail, SessionCompare et l'onglet Tactique.
- * Chaque page consomme le hook, l'utilise pour ses requêtes et rend `bar` au
- * sommet de son layout.
+ * Consommé par `UnifiedCitationsPage` (features/citations), `PalmaresRelationsPage`
+ * (features/palmares) et `TacticalPage` (features/tactical) — liste vérifiée le
+ * 2026-09-06 ; celle d'avant nommait trois pages qui ne l'appellent pas. Chaque page
+ * consomme le hook, l'utilise pour ses requêtes et rend `bar` au sommet de son layout.
  *
  * Le hook n'écrit dans AUCUN store global — l'état reste 100% local à la page,
  * cohérent avec le pattern « 1 page = 1 scope de filtres ».
@@ -96,6 +97,14 @@ interface UseLocalFilterBarOptions {
    *  l'appelant AVANT l'appel ne pourrait pas les lire — il les capturerait avant
    *  qu'elles existent. */
   extras?: (ctx: LocalFilterBarExtrasContext) => ReactNode
+  /** true si les `extras` portent eux aussi un filtre actif. Sans cela, le bouton
+   *  « Réinitialiser » n'est même pas rendu quand SEULS les extras filtrent — la
+   *  barre annonce « aucun filtre actif » sur une lecture pourtant restreinte. */
+  extrasActifs?: boolean
+  /** Vide les filtres portés par les `extras`. Appelé PAR le bouton
+   *  « Réinitialiser », en plus de la remise à zéro des champs du hook : sinon ↺
+   *  laisse la moitié du scope en place, et la lecture reste filtrée. */
+  onResetExtras?: () => void
 }
 
 /** Ce que le hook met à disposition des contrôles supplémentaires. */
@@ -162,7 +171,15 @@ function hashContext(ctx: FilterContextInput): string {
   return h.toString(16).padStart(8, '0')
 }
 
-export function useLocalFilterBar({ playerSlug, labels, viewLabels, committed, extras }: UseLocalFilterBarOptions): UseLocalFilterBarResult {
+export function useLocalFilterBar({
+  playerSlug,
+  labels,
+  viewLabels,
+  committed,
+  extras,
+  extrasActifs,
+  onResetExtras,
+}: UseLocalFilterBarOptions): UseLocalFilterBarResult {
   // Défaut i18n du bouton « Analyser » quand l'appelant ne fournit pas de libellé
   // (le littéral FR figé cassait le bilinguisme — I2, 2026-07-05).
   const locale = useAppShellStore((s) => s.locale)
@@ -281,7 +298,8 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels, committed, e
     committedExperience !== 'all' ||
     committedPlaylists.size > 0 ||
     committedModes.size > 0 ||
-    committedView !== 'all'
+    committedView !== 'all' ||
+    !!extrasActifs
 
   const isDirty =
     pendingPeriod.start_date !== committedPeriod.start_date ||
@@ -292,14 +310,24 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels, committed, e
     !setsEqual(pendingModes, committedModes)
 
   function handleAnalyser() {
-    appliquer(pending)
-    setCalque(null)
+    // L'ORDRE COMPTE EN MODE CONTRÔLÉ : `appliquer` peut être un `navigate` (URL), donc
+    // asynchrone du point de vue du rendu. Fermer le calque d'abord aurait rendu un
+    // cadre intermédiaire sur l'ANCIEN scope — les pills revenant à leur valeur
+    // précédente le temps d'une frame. On applique, PUIS on ferme le calque : tant que
+    // le scope commis n'est pas revenu, le calque continue d'afficher ce qui vient
+    // d'être demandé (il porte exactement les mêmes valeurs).
+    const demande = pending
+    appliquer(demande)
+    queueMicrotask(() => setCalque(null))
     closeAll()
   }
 
   function handleResetAll() {
     appliquer(LOCAL_FILTER_BAR_DEFAUT)
     setCalque(null)
+    // Les filtres des `extras` sont remis à zéro dans le MÊME geste : « Réinitialiser
+    // les filtres » qui n'en réinitialiserait qu'une partie serait un libellé faux.
+    onResetExtras?.()
   }
 
   const bar = (
