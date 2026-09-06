@@ -439,7 +439,16 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   parite FR/EN ; garde anti-anglicismes.
 - **Livrable** : push par le superviseur + CI verte au niveau job.
 
-### Phases 4-7 — etat au 2026-09-06 apres integration des lots C, B et F dans `feat/v75` (fusionnes dans `feat/tactique`, 741e1731f)> **Phases 4 et 6 : EXECUTABLES.** La 6 ne dependait que de B (`ReplayService` / `domain/replaydoc`)> et de C (porte `film.replay_artifact` dans `replayartifacts`) — tous deux integres. La 4 ne> touche que des routes, des manifestes et des cles de requete. Ordre : **4 puis 6**.> **Phase 5 : GELEE jusqu'au lot D** (modele web) : elle touche `replay.tsx` (refondu par D.6,> D.8) et extrait le peintre de `heatmapLayer.ts` (arbre reorganise par D.11, D.13). La faire> avant = la faire deux fois. A la reprise : refusionner `feat/v75`, relire D.13 (`lib/replay/`)> pour y loger le peintre.> **Phase 7 : apres la 6** (elle en consomme les sidecars) ; sa surface Escouade (nuage> isolement x couverture) ne depend pas de D.> Ce que C apporte et que ce plan consomme : `CapReplay` (gate title-level de l'onglet, phase 4),> `film.replay_artifact` (porte data-level des sidecars, phase 6), `useDataCapability` (cote web,> regle des deux portes — voir la case 3.7).
+### Phases 4-7 — etat au 2026-09-06 apres integration des lots C, B et F dans `feat/v75` (fusionnes dans `feat/tactique`, 741e1731f)
+> **Phases 4 et 6 : EXECUTABLES.** La 6 ne dependait que de B (`ReplayService` / `domain/replaydoc`)
+> et de C (porte `film.replay_artifact` dans `replayartifacts`) — tous deux integres. La 4 ne> touche que des routes, des manifestes et des cles de requete. Ordre : **4 puis 6**.
+> **Phase 5 : GELEE jusqu'au lot D** (modele web) : elle touche `replay.tsx` (refondu par D.6,
+> D.8) et extrait le peintre de `heatmapLayer.ts` (arbre reorganise par D.11, D.13). La faire> avant = la faire deux fois. A la reprise : refusionner `feat/v75`, relire D.13 (`lib/replay/`)
+> pour y loger le peintre.
+> **Phase 7 : apres la 6** (elle en consomme les sidecars) ; sa surface Escouade (nuage> isolement x couverture) ne depend pas de D.
+> Ce que C apporte et que ce plan consomme : `CapReplay` (gate title-level de l'onglet, phase 4),
+> `film.replay_artifact` (porte data-level des sidecars, phase 6), `useDataCapability` (cote web,
+> regle des deux portes — voir la case 3.7).
 
 ### Phase 4 — Grille des cartes — EXECUTABLE
 - [ ] 4.1 Route `ascension/tactique` ; onglet dans `AscensionLayout.tsx` ;
