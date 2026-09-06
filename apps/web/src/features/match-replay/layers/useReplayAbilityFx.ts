@@ -43,6 +43,12 @@ export interface AbilityFxHookInput {
 
 export interface ReplayAbilityFx {
   /**
+   * LE NOM DU CALQUE, porté par le calque et non par la table de liaison du canvas
+   * (2026-09-06, revue R1 constat C2) : c'est ce qui rend impossible de peindre ce geste
+   * sous l'identité d'un autre calque.
+   */
+  id: 'gestes-capacite'
+  /**
    * Peint les gestes de capacité actifs à l'image demandée. No-op quand il n'y en a aucun.
    *
    * PAS DE DRAPEAU `available` ICI, à la différence de `useReplayVipCrown` / `bombBlast` : leur
@@ -89,5 +95,5 @@ export function useReplayAbilityFx({
     [grappleFx, dashFx, view, grappleInk, frameMs, reducedMotion, colorOfSlot],
   )
 
-  return { paint }
+  return { id: 'gestes-capacite', paint }
 }

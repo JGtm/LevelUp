@@ -39,6 +39,12 @@ export interface GrenadeRestHookInput {
 }
 
 export interface ReplayGrenadeRest {
+  /**
+   * LE NOM DU CALQUE, porté par le calque et non par la table de liaison du canvas
+   * (2026-09-06, revue R1 constat C2) : c'est ce qui rend impossible de peindre ce geste
+   * sous l'identité d'un autre calque.
+   */
+  id: 'fin-de-vol'
   /** Peint les fins de vol de l'image demandée. No-op quand il n'y en a aucune. */
   paint: (ctx: CanvasRenderingContext2D, frame: number, dpr: number) => void
 }
@@ -74,5 +80,5 @@ export function useReplayGrenadeRest({
     },
     [fx, view, window.holdHalo, window.holdDynamo, doc, ink, smoke, halo, reducedMotion],
   )
-  return { paint }
+  return { id: 'fin-de-vol', paint }
 }

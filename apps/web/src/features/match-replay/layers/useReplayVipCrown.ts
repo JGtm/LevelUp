@@ -32,6 +32,12 @@ interface UseReplayVipCrownArgs {
 export interface ReplayVipCrown {
   /** Le film porte-t-il des périodes VIP ? Une bascule qui ne commande rien ne s'affiche pas. */
   available: boolean
+  /**
+   * LE NOM DU CALQUE, porté par le calque et non par la table de liaison du canvas
+   * (2026-09-06, revue R1 constat C2) : c'est ce qui rend impossible de peindre ce geste
+   * sous l'identité d'un autre calque.
+   */
+  id: 'couronne-vip'
   /** Peint la couronne à l'image demandée. No-op quand il n'y en a aucune, ou qu'elle est éteinte. */
   paint: (ctx: CanvasRenderingContext2D, frame: number) => void
 }
@@ -62,5 +68,5 @@ export function useReplayVipCrown({
     [enabled, periods, layer, view],
   )
 
-  return { available: periods.length > 0, paint }
+  return { id: 'couronne-vip', available: periods.length > 0, paint }
 }

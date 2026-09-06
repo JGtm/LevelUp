@@ -122,6 +122,38 @@ export interface ReplayScene {
   paint: Record<ReplayLayerId, LayerPaint>
 }
 
+/**
+ * Un CALQUE QUI SE NOMME LUI-MÊME : le hook qui le câble porte son identité à côté de son
+ * geste, et la table de liaison du canvas n'a plus à la réécrire.
+ *
+ * POURQUOI (2026-09-06, revue R1, constat C2). La table de `buildScene` associait 25 ids à
+ * 25 peintres, à la main. Les 25 valeurs ont le même type (`LayerPaint`) : intervertir
+ * `'couronne-vip': skullCarrier.paint` et `'crane-porte': vipCrown.paint` compilait, passait
+ * les 2 350 tests du rejeu, et remplaçait la couronne du VIP par le crâne d'Oddball à l'écran.
+ * Un hook qui porte son `id` rend cette faute INÉCRIVABLE pour les onze calques câblés par
+ * hook : l'id ne vient plus de la table, il vient du calque.
+ */
+export interface NamedLayerPainter<Id extends ReplayLayerId = ReplayLayerId> {
+  /** Le nom du calque, tel qu'il figure dans `LAYER_ORDER`. */
+  id: Id
+  paint: LayerPaint
+}
+
+/**
+ * bindPainters DÉRIVE la liaison id -> peintre des calques eux-mêmes.
+ *
+ * Le type de retour porte l'union EXACTE des ids passés : un calque oublié fait rougir le
+ * compilateur chez l'appelant (la table `paint` de `ReplayScene` exige ses 25 clés), et un id
+ * ne peut plus être écrit en face du mauvais peintre puisqu'il n'est plus écrit du tout.
+ */
+export function bindPainters<const L extends readonly NamedLayerPainter[]>(
+  ...calques: L
+): Record<L[number]['id'], LayerPaint> {
+  const out = {} as Record<L[number]['id'], LayerPaint>
+  for (const c of calques) out[c.id as L[number]['id']] = c.paint
+  return out
+}
+
 /** Un calque prêt à peindre : son nom, sa condition, son geste. */
 export interface ReplayLayer {
   id: ReplayLayerId
