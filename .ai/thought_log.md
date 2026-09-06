@@ -1,3 +1,105 @@
+## [2026-09-07] Lot « vies anonymes » — decision produit, nommage a la source, 9 constats corriges (schema 47) — Complete
+
+**Le mandat.** Corriger cote Go les 9 constats Go de l audit adversarial des lecteurs de vies
+(`.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`, 2 P0 + 7 P1, cherry-pick `370955a35`) plus les
+deux residus que l auditeur avait ecartes sous l exemption « lecteur deja rattrape ». Worktree
+dedie `LevelUp-wt-v2-vies`, branche `feat/v2-vies-anonymes` basee sur `feat/v2-durees`.
+
+**DECISION PRODUIT ARRIVEE EN COURS DE LOT (utilisateur, 2026-09-07)** : « les vies anonymes
+n existent pas ; une vie est un humain ou un bot, point ». Elle change la doctrine du chantier :
+une piste publiee sans identite n est plus une categorie de donnee legitime a proteger, c est un
+DEFAUT DE NOMMAGE du pont — a reparer a la source, jamais a afficher. Les correctifs de lecteurs
+restent tous necessaires comme DEFENSE (un lecteur ne jette jamais une lecture vraie parce qu un
+nom manque), mais leur formulation parle desormais de « lecture de la piste sous l identite
+resolue de son slot ». Un item **P0-0** a ete ajoute en tete du lot en consequence.
+
+**Decision technique principale.** Trois familles.
+(1) **Le nommage a la source** (`unnamed_lives.go`) : apres les quatre passes existantes (fil des
+morts, fermetures, sieges de bot, relais), une passe finale nomme ce qui reste par l OCCUPATION
+DU SLOT DANS LE TEMPS — vie nommee du MEME slot qui precede, sinon qui suit, sinon le pont
+canonique. La regle de collision est respectee par construction : quand deux joueurs se partagent
+un slot, c est le TEMPS qui tranche, jamais « le premier » (ce que `SlotXUID` retient, et le
+defaut meme du constat P1-7). Ce qui resiste n est PAS devine : `coverage.bridge.unnamedLives`
+publie + `slog.Error` portant match, slot et bornes.
+(2) **Un helper canonique par regle, avec son garde-rail** : `xuidOfPublishedTrack` /
+`publishedXUIDs` (la resolution nom-lu-sinon-pont, partagee par les trois lecteurs qui la
+copiaient), `OwnerReport.xuidAt(slot, instant)` (par vie d abord, pont en repli), `unionOverlap`
+(l union des vies recouvertes, doctrine `spanFor` du schema 45).
+(3) **Ce que le code ne savait pas qu il perdait devient PUBLIE** : le compte des actions que le
+pont d identite n a pas nommees descend jusqu au denominateur ET sous `noSlot` ; les trois causes
+d une capture de zone non attribuee sont publiees ; `warnIfLossy` surveille enfin `Unpublished`.
+
+**Resultats observes.** Neuf temoins cuits des DEUX cotes par le meme outil (`cmd/replay-build`,
+un film a la fois, verrou solo + verrou inter-agents, parc en lecture seule par jonctions), seul
+le code differant : **142 gains, 0 perte reelle**, 23 mesures apparues. Les 4 lignes « perte » de
+`084a804d` sont instruites une par une et sont toutes des GAINS (une deduction rendue au pont ;
+17 tirs de moins sans slot pour 11 attaches + 6 ambigus, somme exacte ; une ride qui quitte le
+seau non attribue pour le seau par-xuid a 282 frames pres ; une deduplication de partants qui ne
+deplace ni `t0FilmMs` ni `marginMs`). Vies sans nom sur les 9 temoins : **305 -> 200** ; golden
+`000d5950` : 93 pistes nommees -> **98** sur 104.
+
+**Ce que la cuisson a attrape, et que les tests seuls n auraient pas vu.** Le nommage final vidait
+la population des vies sans nom, donc l abstention n 2 de `carrierPresence.gate` — la moitie la
+plus couteuse du correctif du schema 43 — mourait avec elle, et `d9781168` perdait un portage et
+101 frames. **L ORACLE a tranche** : en Oddball le score EST le temps de portage (387 s a la
+feuille de match) ; 331,3 s publiees avec l abstention contre 321,2 s sans. D ou la regle ecrite
+au code : **une identite DEDUITE ajoute une presence, elle n en retire jamais une** — les pistes
+nommees par deduction entrent dans les DEUX tables de presence.
+
+**Refutations sur pieces, ecrites plutot que contournees.** L echange d ordre entre
+`nameBotTracks` et `attributeSuccessions` (envisage pour liberer les sieges de bot ambigus) est
+REFUTE : `candidateIn` ne restreint pas ses candidates au slot du remplacant, les relais
+prendraient des vies correctement attribuees. L abstention sur les seuls sieges ambigus fait le
+travail sans l effet de bord. Le garde-rail des ensembles publies a du etre ANCRE sur
+`range tracks` : sans cela il attrapait `rosterFromDeaths`, un autre espace de cles — un
+garde-rail qui crie sur du code juste finit desactive.
+
+**Conclusion / prochaine etape.** Schema 45 -> **47** (44, 45 et 46 pris par les lots manches,
+durees et drapeaux). Sept champs de contrat ajoutes, `openapi.yaml` et `generated.ts` regeneres.
+`UsageSummaryRev` us2 -> us3. Trois entrees au registre des reports : le pont GLOBALEMENT MUET
+sur certains films (73 vies sans nom sur 86 pour `51ebbc0f` — defaut EN AMONT, pas de la passe),
+les cinq P2 non traites, et la re-cuisson du parc a < 47. Journal complet :
+`.ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md`.
+
+## [2026-09-06] Audit adversarial — les lecteurs qui supposent encore « un slot = une piste nommee » — Complete
+
+*(entree ecrite le 2026-09-07 par l executeur du lot correctif : l auditeur n a pas pu la
+deposer, son mandat s arretant au registre.)*
+
+**Le mandat.** Auditer le CODE EXISTANT (pas un diff) sur un AXE UNIQUE : l hypothese « un slot =
+une piste nommee », fausse depuis le schema 36 (`48cf4905d`, 2026-09-02) ou une `Track` publiee
+est UNE VIE, un slot recycle en publie plusieurs, et une vie que le fil des morts ne nomme pas
+reste sans identite. Perimetre : `analysis/replay/` (116 fichiers de production),
+`analysis/objectiveevents/`, `replaybuild/`, `service/replayview/`, `domain/replaydoc/`, plus
+`features/match-replay/` et son foyer `lib/replay/` cote web. Branche `feat/v2-audit-vies`, base
+`7e5c454bc` (schema 45). Skill `adversarial-audit` : **l audit ne corrige pas**, le registre est
+sa seule sortie.
+
+**Methode.** Six formes du defaut cherchees explicitement (index bati sur `XUID != ""` ;
+selection de « LA piste du slot » au singulier ; bornage d une mesure a UNE vie ; jointure
+joueur<->piste par xuid seul sans repli sur le pont ; denominateur par SLOT face a un numerateur
+par VIE ; compteur qui classe en « absent » un cas ou l identite est INCONNUE). Cinq auditeurs a
+contexte frais, un par tranche de fichiers, aveugles les uns aux autres, plus une passe du
+superviseur sur les fichiers d assemblage. **Chaque P0/P1 rouvert et verifie sur pieces**, avec
+recherche active de ce qui le refuterait : un appelant qui pre-filtre, un test qui couvre, une
+garantie amont.
+
+**Resultats observes. 14 constats retenus — 2 P0, 7 P1, 5 P2 — et 21 ECARTES**, chacun avec son
+motif ecrit (refute comme perte UI, defaut inatteignable faute d appelant de production, dette
+assumee par le cadrage, multi-vies deja correct verifie ligne a ligne, consequence non
+demontrable). Les plus lourds : `samplesByXUID` pouvait faire disparaitre le calque `zoneStates`
+ENTIER (11, 12 et 5 captures perdues sur trois films du parc) ; `dropUnpublishedActions`
+supprimait TOUTES les actions d un joueur dont aucune vie n est nommee (35 sur 76 sur
+`3372e7eb`, 7 artefacts du parc sur 111) ; `coverage.objectives.noSlot` valait **0 sur les 111
+artefacts du parc, sans une seule exception** — le champ etait structurellement inatteignable.
+Deux zones sans constat (`replayview/`, `replaydoc/`), et deux residus SIGNALES au superviseur
+plutot qu ecartes en silence.
+
+**Conclusion / prochaine etape.** Le registre a ete cherry-picke dans le lot correctif
+`feat/v2-vies-anonymes`, qui a corrige les 9 constats Go et instruit les 2 residus (les deux
+CONFIRMES : l exemption « lecteur deja rattrape » ne les couvrait pas). Aucun constat P0/P1 n a
+ete refute a l execution. Les 5 P2 sont au registre des reports.
+
 ## [2026-09-06] Instruction des deux pertes de DUREE du corpus temoin — les deux sont des regressions, corrigees (schema 45) — Complete
 
 **Le mandat.** Instruire les deux faits nouveaux isoles par la premiere execution de
