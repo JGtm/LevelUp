@@ -127,3 +127,71 @@ describe('finalScoreFromHeader', () => {
     ).toEqual({ ally: 2, enemy: 0 })
   })
 })
+
+/**
+ * AJOUT DU 2026-09-06 (lot L2b) — le SUJET : par les yeux de qui cette fin se lit.
+ *
+ * Ajouts seulement : les cas ci-dessus fixent le comportement à deux arguments, qui est celui
+ * de la fin de partie SONORE (décision 3 — elle reste ancrée sur le joueur de la page).
+ *
+ * CE QUE CES CAS PROTÈGENT : `outcome_code` est le verdict DU JOUEUR DE LA PAGE, et il n'en
+ * existe pas d'autre. Lu depuis un adversaire sans permutation, l'écran annoncerait « Victoire »
+ * aux couleurs du camp qui a PERDU — un écran faux, en plein cadre, et parfaitement silencieux.
+ */
+describe('readVictory — vu par les yeux d’un point de vue (3e argument)', () => {
+  /** Le même lobby que `DEUX_CAMPS`, mais nommé : le sujet se cherche par xuid. */
+  const NOMME = [
+    { xuid: 'me-1', team_side: 't0', is_me: true },
+    { xuid: 'ally-2', team_side: 't0', is_me: false },
+    { xuid: 'foe-1', team_side: 't1', is_me: false },
+    { xuid: 'nomad-9', team_side: null, is_me: false },
+  ]
+
+  it('sujet = le joueur de la page : rigoureusement la lecture d’origine', () => {
+    expect(readVictory(NOMME, 2, 'me-1')).toEqual(readVictory(NOMME, 2))
+    expect(readVictory(NOMME, 3, 'me-1')).toEqual(readVictory(NOMME, 3))
+  })
+
+  it('sujet = un coéquipier : identique aussi — même camp, même verdict', () => {
+    expect(readVictory(NOMME, 3, 'ally-2')).toEqual(readVictory(NOMME, 3))
+  })
+
+  it('sujet ADVERSE sur une victoire du joueur de la page : chez lui, c’est une DÉFAITE', () => {
+    expect(readVictory(NOMME, 2, 'foe-1')).toEqual({
+      outcome: 'loss',
+      mine: { teamID: 1, teamSide: 't1', ally: true },
+      winner: { teamID: 0, teamSide: 't0', ally: false },
+    })
+  })
+
+  it('sujet ADVERSE sur une défaite du joueur de la page : c’est une VICTOIRE', () => {
+    expect(readVictory(NOMME, 3, 'foe-1')).toEqual({
+      outcome: 'win',
+      mine: { teamID: 1, teamSide: 't1', ally: true },
+      winner: { teamID: 1, teamSide: 't1', ally: true },
+    })
+  })
+
+  it('égalité : elle l’est pour tout le monde, rien à permuter', () => {
+    expect(readVictory(NOMME, 1, 'foe-1')).toEqual({ outcome: 'tie', mine: null, winner: null })
+  })
+
+  it('sujet sans camp transmis : null — aucun écran plutôt qu’un écran faux', () => {
+    expect(readVictory(NOMME, 2, 'nomad-9')).toBeNull()
+  })
+
+  it('sujet absent du tableau de score : null', () => {
+    expect(readVictory(NOMME, 2, 'xuid-jamais-vu')).toBeNull()
+  })
+
+  it('sujet à null : le comportement d’origine, le joueur de la page', () => {
+    expect(readVictory(NOMME, 2, null)).toEqual(readVictory(NOMME, 2))
+  })
+
+  it('sans ligne « moi », un sujet situable ne suffit pas : le pont d’issue manque', () => {
+    // `outcome_code` n'est interprétable que RELATIVEMENT au joueur de la page. Sans sa ligne,
+    // on ne sait pas de quel camp part la permutation — donc pas d'écran, sujet ou pas.
+    const sansMoi = NOMME.map((r) => ({ ...r, is_me: false }))
+    expect(readVictory(sansMoi, 2, 'foe-1')).toBeNull()
+  })
+})

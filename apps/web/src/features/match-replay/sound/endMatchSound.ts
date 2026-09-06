@@ -122,12 +122,20 @@ export interface EndMatchSoundSpec {
  *
  * `null` = rien ne sonne : match non conclu (en-tête pas encore chargé, code hors contrat),
  * abandon, ou fin sans équipes que la voix ne saurait annoncer (FFA perdu ou à égalité).
+ *
+ * IL N'A PAS DE SUJET, ET C'EST VOULU (décision 3 du plan « frise, point de vue », 2026-09-06).
+ * `readVictory` accepte désormais un troisième argument — par les yeux de qui la fin se lit — et
+ * l'écran de fin, lui, y passe le POINT DE VUE. Le SON reste ancré sur le JOUEUR DE LA PAGE :
+ * inspecter un adversaire ne doit pas faire retentir « Défaite » sur un match qu'on a gagné. Les
+ * deux appels divergent donc exprès. Ne pas « harmoniser » : voir aussi le commentaire de la
+ * route, à l'appel d'`endMatchSoundSpec`.
  */
 export function endMatchSoundSpec(
   scoreboard: ReadonlyArray<Pick<MatchScoreboardRow, 'team_side' | 'is_me'>>,
   outcomeCode: number | null | undefined,
   locale: ReplayLocale,
 ): EndMatchSoundSpec | null {
+  // DEUX ARGUMENTS, PAS TROIS : le sujet omis vaut « le joueur de la page » (décision 3).
   const reading = readVictory(scoreboard, outcomeCode)
   if (reading) return { outcome: reading.outcome, ffa: false, locale }
   // Sans deux camps lisibles, seule la VICTOIRE a une réplique : « Vainqueur » se passe

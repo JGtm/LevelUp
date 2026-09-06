@@ -77,6 +77,12 @@ export interface OverlayPanelDeps {
   xuidMeta?: XuidMeta
   playWindow: ReplayWindowBounds | null
   outcome: ExportOutcome | null
+  /**
+   * LE POINT DE VUE de la page (2026-09-06) : l'export rend CE QUE L'ÉCRAN MONTRE (décision 12
+   * du plan « frise, point de vue ») — panneau de victoire compris. La personne qui exporte a
+   * choisi ce qu'elle regarde. Absent : le joueur de la page.
+   */
+  viewpoint?: string | null
   locale: ReplayLocale
   ink: OverlayInk
   /**
@@ -110,7 +116,7 @@ export function buildOverlayPanelSource(deps: OverlayPanelDeps): OverlayPanelSou
   const timeline = scoreTimelineOf(deps.doc)
   const transitions = roundTransitions(timeline)
   const breakFrames = Math.max(1, Math.round(msToFrames(ROUND_BREAK_WINDOW_MS, deps.doc)))
-  const victory = readVictory(deps.scoreboard, deps.outcome?.code)
+  const victory = readVictory(deps.scoreboard, deps.outcome?.code, deps.viewpoint)
   // LE SCORE SE LIT À LA BORNE DE FIN, pas à l'image courante (décision D-B4 du DOM) : la
   // lecture peut être allée au-delà, et le panneau n'a plus rien à dire après la fin.
   const finalScore = deps.playWindow

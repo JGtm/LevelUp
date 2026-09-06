@@ -127,3 +127,49 @@ describe('teamOfXuidFromScoreboard — la table xuid → équipe, en entier', ()
     expect(teamOfXuidFromScoreboard([]).size).toBe(0)
   })
 })
+
+/**
+ * AJOUT DU 2026-09-06 (lot L2b) — le SUJET, c'est-à-dire le point de vue de la page de rejeu.
+ *
+ * Ajouts seulement : aucun cas ci-dessus n'a bougé. Ce que ces cas fixent, c'est la bascule
+ * groupée de quatre calques (bombe, drapeaux, zones, sons d'objectif) : ils lisent tous cette
+ * seule valeur, donc ils suivent le point de vue ou aucun ne le suit.
+ */
+describe('allyTeamFromScoreboard — avec un sujet (le point de vue)', () => {
+  it('sujet = la ligne « moi » : identique à l’appel sans sujet', () => {
+    expect(allyTeamFromScoreboard(BOARD, 'me-1')).toBe(allyTeamFromScoreboard(BOARD))
+  })
+
+  it('sujet = un adversaire : SON camp devient le camp de référence', () => {
+    expect(allyTeamFromScoreboard(BOARD, 'foe-1')).toBe(1)
+  })
+
+  it('sujet = un bot rangé dans un camp : ce camp (décision 7 du plan)', () => {
+    expect(allyTeamFromScoreboard(BOARD, 'bid(1.0)')).toBe(1)
+  })
+
+  it('sujet sans camp transmis : null — et surtout pas un repli sur la ligne « moi »', () => {
+    // Le repli serait le pire des comportements : le calque prendrait le camp de quelqu'un
+    // d'autre que celui qu'on regarde, sans que rien ne le dise.
+    expect(allyTeamFromScoreboard(BOARD, 'nomad-9')).toBeNull()
+  })
+
+  it('sujet absent du tableau de score : null, pas de repli non plus', () => {
+    expect(allyTeamFromScoreboard(BOARD, 'xuid-jamais-vu')).toBeNull()
+  })
+
+  it('sujet situable alors qu’aucune ligne « moi » n’existe : son camp quand même', () => {
+    expect(allyTeamFromScoreboard(BOARD_SANS_MOI, 'foe-2')).toBe(1)
+  })
+
+  it('sujet à null ou undefined : le comportement d’origine, la ligne « moi »', () => {
+    expect(allyTeamFromScoreboard(BOARD, null)).toBe(0)
+    expect(allyTeamFromScoreboard(BOARD, undefined)).toBe(0)
+  })
+
+  it('tableau de score absent : null, sujet ou pas', () => {
+    expect(allyTeamFromScoreboard(null, 'me-1')).toBeNull()
+    expect(allyTeamFromScoreboard(undefined, 'me-1')).toBeNull()
+    expect(allyTeamFromScoreboard([], 'me-1')).toBeNull()
+  })
+})

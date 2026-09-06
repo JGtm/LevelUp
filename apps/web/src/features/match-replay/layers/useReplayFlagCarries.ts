@@ -75,6 +75,12 @@ export interface FlagCarriesHookInput {
   /** Faux quand le calque est éteint : rien n'est dessiné, rien ne se survole. */
   enabled: boolean
   scoreboard: MatchScoreboardRow[] | null | undefined
+  /**
+   * LE POINT DE VUE de la page (2026-09-06, plan « frise, point de vue ») : le camp de
+   * référence est celui de CE joueur, pas nécessairement celui de la ligne « moi ». Absent :
+   * la ligne « moi », comportement d'origine.
+   */
+  viewpoint?: string | null
   /** Encre d'un camp vu de la page (tokens déjà résolus par l'appelant). */
   teamColorOf: (ally: boolean) => string
   /** Encre servie quand le camp est inconnu : ni équipe inventée, ni glyphe invisible. */
@@ -110,6 +116,7 @@ export function useReplayFlagCarries({
   frameRef,
   enabled,
   scoreboard,
+  viewpoint,
   teamColorOf,
   neutral,
   outline,
@@ -122,7 +129,10 @@ export function useReplayFlagCarries({
   // sinon celle du bipède.
   const posOf = useCarrierPosAt(doc)
 
-  const allyTeamID = useMemo(() => allyTeamFromScoreboard(scoreboard), [scoreboard])
+  const allyTeamID = useMemo(
+    () => allyTeamFromScoreboard(scoreboard, viewpoint),
+    [scoreboard, viewpoint],
+  )
   // UN DRAPEAU SANS ÉQUIPE N'EST PAS « ADVERSE ». Deux cas le produisent : la carte est hors du
   // catalogue d'objectifs (aucun socle, donc aucun camp), et — depuis le schéma 35 — la variante
   // À DRAPEAU NEUTRE, où l'unique drapeau n'appartient à personne. Sans cette garde, le premier
