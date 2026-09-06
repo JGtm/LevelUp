@@ -64,7 +64,8 @@ type BridgeHealth struct {
 	ClosedRefused      int `json:"closedRefused"`
 }
 
-// T0FilmCoverage est le VERDICT du detecteur, publie dans l'artefact a cote du champ.
+// T0FilmCoverage est le VERDICT du detecteur de coup d'envoi, servi a cote du champ
+// `t0FilmMs` : dit-il avoir trouve, sinon pourquoi, et sur quels denominateurs.
 type T0FilmCoverage struct {
 	Detected bool   `json:"detected"`
 	Reason   string `json:"reason,omitempty"`
@@ -176,9 +177,10 @@ type AbilityImpulseCoverage struct {
 }
 
 // AbilityChargeCoverage dit ce que le calque a lu et ce qu'il a écarté — l'entonnoir
-// complet, sans lequel « N lectures » ne se juge pas. La somme des six cases
-// (published + beforeOrigin + unpublished + noIdentity + otherFamily + noResolver) vaut
-// EXACTEMENT reads — l'invariant est testé.
+// complet, sans lequel « N lectures » ne se juge pas. Le producteur maintient la somme des
+// six cases (published + beforeOrigin + unpublished + noIdentity + otherFamily + noResolver)
+// EGALE a reads, et c'est de son cote que l'invariant est teste : ce type ne fait que
+// republier les compteurs, il n'en verifie aucun.
 type AbilityChargeCoverage struct {
 	Reads           int  `json:"reads"`
 	Published       int  `json:"published"`
