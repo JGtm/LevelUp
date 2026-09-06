@@ -18,8 +18,15 @@
  * tout le monde, et son exception avec. Une allowlist qui rétrécit est le seul mouvement qu'on
  * accepte sans justification datée.
  *
- * CE QU'IL DÉTECTE : toute nouvelle écriture de `livesByXuid` hors de `livesPosition.ts` (la
- * canonique). Un appelant qui a besoin de la relecture importe `useCarrierPosAt` /
+ * IL COUVRE AUSSI L'INDEX PAR SLOT DEPUIS LE 2026-09-06 (registre, K1). Quatre calques —
+ * l'éclair de bouche, le « ! » du tireur, le câble de grappin, le dash de propulseur — le
+ * réécrivaient BYTE POUR BYTE, avec la relecture « la vie qui couvre l'image » juste après :
+ * quatre copies d'une règle dont l'erreur (prendre la première vie venue) place un geste
+ * ailleurs sur la carte, sans qu'aucun type ne s'en aperçoive. `buildLivesBySlot` et
+ * `lifeOfSlotAt` sont désormais dans la canonique, et ce garde interdit la cinquième copie.
+ *
+ * CE QU'IL DÉTECTE : toute nouvelle écriture de `livesByXuid`, ou de l'index par slot
+ * (`new Map<number, ReplayTrackReady[]>`), hors de `livesPosition.ts` (la canonique). Un appelant qui a besoin de la relecture importe `useCarrierPosAt` /
  * `buildCarrierPosAt` (carrierPosition.ts — la porte des lecteurs de production, véhicule
  * compris) ou `buildPlayerPosAt` (le bipède seul), jamais la formule.
  *
@@ -50,5 +57,28 @@ describe('livesPosition — unique écriture du bloc de position', () => {
         `Importer useCarrierPosAt / buildCarrierPosAt (carrierPosition.ts) ou buildPlayerPosAt ` +
         `(le bipède seul), jamais la formule.`,
     ).toEqual([])
+  })
+
+  it("aucune nouvelle copie de l'index des vies PAR SLOT", () => {
+    const dir = resolve(__dirname)
+    const fautifs: string[] = []
+    for (const f of readdirSync(dir)) {
+      if (!f.endsWith('.ts') && !f.endsWith('.tsx')) continue
+      if (AUTORISES.has(f)) continue
+      const src = readFileSync(resolve(dir, f), 'utf8')
+      if (/new Map<number, ReplayTrackReady\[\]>/.test(src)) fautifs.push(f)
+    }
+    expect(
+      fautifs,
+      `l'index des vies par slot est RÉÉCRIT hors de livesPosition.ts : [${fautifs.join(', ')}]. ` +
+        `Importer buildLivesBySlot, et lifeOfSlotAt pour la vie qui couvre l'image.`,
+    ).toEqual([])
+  })
+
+  it('et la canonique porte bien les deux index — sans quoi ce garde ne garderait rien', () => {
+    const src = readFileSync(resolve(__dirname, 'livesPosition.ts'), 'utf8')
+    expect(src).toMatch(/export function buildLivesByXuid\(/)
+    expect(src).toMatch(/export function buildLivesBySlot\(/)
+    expect(src).toMatch(/export function lifeOfSlotAt\(/)
   })
 })

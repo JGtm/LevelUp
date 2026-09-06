@@ -89,6 +89,43 @@ export function buildLivesByXuid(tracks: readonly ReplayTrackReady[]): Map<strin
   return map
 }
 
+/**
+ * buildLivesBySlot — l'index des vies par SLOT, construit UNE fois par document.
+ *
+ * POURQUOI PAR SLOT ET PAS PAR XUID (registre 2026-09-05, K1). Les EFFETS attachés à un geste
+ * — éclair de bouche, « ! » du tireur, câble de grappin, dash de propulseur — sont datés par
+ * le film avec un numéro de SLOT, pas un xuid : c'est la vie du bipède qui tire, et un même
+ * joueur en a plusieurs. Cet index était réécrit byte pour byte dans les quatre calques
+ * concernés ; il n'a désormais qu'une écriture.
+ */
+export function buildLivesBySlot(
+  tracks: readonly ReplayTrackReady[],
+): Map<number, ReplayTrackReady[]> {
+  const map = new Map<number, ReplayTrackReady[]>()
+  for (const t of tracks) {
+    const lives = map.get(t.slot)
+    if (lives) lives.push(t)
+    else map.set(t.slot, [t])
+  }
+  return map
+}
+
+/**
+ * lifeOfSlotAt — LA VIE d'un slot qui couvre une image donnée, ou `undefined`.
+ *
+ * PRENDRE LA PREMIÈRE VENUE SERAIT UNE FAUTE, et c'est tout l'objet de cette fonction : un
+ * joueur a plusieurs vies dans le film, et lire le regard ou la position de la MAUVAISE vie
+ * place le geste ailleurs sur la carte. Un slot sans vie à cet instant ne rend rien — jamais
+ * une vie voisine.
+ */
+export function lifeOfSlotAt(
+  bySlot: ReadonlyMap<number, ReplayTrackReady[]>,
+  slot: number,
+  frame: number,
+): ReplayTrackReady | undefined {
+  return (bySlot.get(slot) ?? []).find((l) => isAliveAt(l, frame))
+}
+
 /** deathWindowFrames — la fenêtre après-mort en images (au moins une). */
 export function deathWindowFrames(doc: ReplayDocumentReady): number {
   return Math.max(1, Math.round(msToFrames(KILLPOS_WINDOW_MS, doc)))

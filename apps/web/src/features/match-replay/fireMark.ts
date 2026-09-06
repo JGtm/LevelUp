@@ -25,6 +25,7 @@ import { familyOf } from './shotEffects'
 import { isAliveAt, positionAt } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
 import { type CanvasView, projectTo } from './replayView'
+import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 /** Un tir prêt à marquer : son instant, et la VIE qui le porte. */
@@ -42,16 +43,11 @@ export interface FireMarkEntry {
  */
 export function buildFireMarks(doc: ReplayDocumentReady): FireMarkEntry[] {
   if (doc.shots.length === 0) return []
-  const bySlot = new Map<number, ReplayTrackReady[]>()
-  for (const t of doc.tracks) {
-    const lives = bySlot.get(t.slot)
-    if (lives) lives.push(t)
-    else bySlot.set(t.slot, [t])
-  }
+  const bySlot = buildLivesBySlot(doc.tracks)
   const out: FireMarkEntry[] = []
   for (const s of doc.shots) {
     if (familyOf(doc.weaponLabels?.[s.w ?? '']?.fx) === 'melee') continue
-    const track = (bySlot.get(s.slot) ?? []).find((l) => isAliveAt(l, s.t))
+    const track = lifeOfSlotAt(bySlot, s.slot, s.t)
     if (track) out.push({ frame: s.t, track })
   }
   return out
