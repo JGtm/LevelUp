@@ -202,12 +202,18 @@ export interface MarkerStyle {
 
 /**
  * La FORME dit l'identité, la couleur dit le camp (décision D5) : un ami se repère sans lire
- * son nom, le joueur de la page aussi, et aucune des deux marques ne touche à la couleur qui
+ * son nom, celui qu'on regarde aussi, et aucune des deux marques ne touche à la couleur qui
  * porte déjà l'équipe.
+ *
+ * « CELUI QU'ON REGARDE » ET NON PLUS « LE JOUEUR DE LA PAGE » (2026-09-06, décision 13 du plan
+ * « frise, point de vue ») : le disque cerclé suit le POINT DE VUE, qui vaut le joueur de la
+ * page par défaut. La table des marques est construite par `buildPlayerMarks`, à qui la page
+ * passe désormais ce point de vue — ce calque ne lit toujours que la marque, pas le tableau de
+ * score.
  */
 export type MarkerShape = 'circle' | 'diamond' | 'ring'
 
-/** shapeOfMark : ami = losange, joueur de la page = disque cerclé, tout le monde = disque. */
+/** shapeOfMark : ami = losange, celui qu'on regarde = disque cerclé, tout le monde = disque. */
 function shapeOfMark(mark: PlayerMarkKind | undefined): MarkerShape {
   if (mark === 'friend') return 'diamond'
   if (mark === 'me') return 'ring'

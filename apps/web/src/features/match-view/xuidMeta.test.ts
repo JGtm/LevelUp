@@ -139,3 +139,62 @@ describe('meXUIDOf — le joueur de la page vient de la ligne marquée par le ba
     expect(meXUIDOf(undefined)).toBeNull()
   })
 })
+
+/**
+ * AJOUT DU 2026-09-06 (lot L2b) — le TROISIÈME argument, celui du rejeu 2D.
+ *
+ * Ces cas ne touchent à aucun de ceux du dessus : ils décrivent un régime qui n'existait pas.
+ * Le contrat de la caractérisation tient donc dans les deux sens — à deux arguments, rien n'a
+ * bougé ; à trois, le court-circuit `is_me` n'existe plus.
+ */
+describe('resolveXuidMeta — vu par les yeux d’un point de vue (3e argument)', () => {
+  it('vu depuis un adversaire : UN SEUL camp allié, et la ligne « moi » N’EN EST PAS', () => {
+    // Le contraire exact du cas (c) à deux arguments, qui rendait `me-1` allié EN PLUS du camp
+    // adverse. C'est ce défaut-là que le point de vue corrige, et seulement chez lui.
+    const meta = resolveXuidMeta(BOARD, 'me-1', 'foe-1')
+    expect(carte(meta)).toEqual(attendu('foe-1', 'foe-2', 'bid(1.0)'))
+    expect(meta.get('me-1')?.ally).toBe(false)
+    expect(meta.size).toBe(6)
+  })
+
+  it('vu depuis le joueur de la page : identique à l’appel à deux arguments', () => {
+    expect(carte(resolveXuidMeta(BOARD, 'me-1', 'me-1'))).toEqual(carte(resolveXuidMeta(BOARD, 'me-1')))
+  })
+
+  it('vu depuis un coéquipier : le même camp allié, la ligne « moi » comprise', () => {
+    expect(carte(resolveXuidMeta(BOARD, 'me-1', 'ally-2'))).toEqual(attendu('me-1', 'ally-2'))
+  })
+
+  it('vu depuis un BOT rangé dans un camp : ce camp est l’allié (décision 7 du plan)', () => {
+    expect(carte(resolveXuidMeta(BOARD, 'me-1', 'bid(1.0)'))).toEqual(
+      attendu('foe-1', 'foe-2', 'bid(1.0)'),
+    )
+  })
+
+  it('vu depuis une ligne SANS camp transmis : personne n’est allié — aucun camp deviné', () => {
+    expect(carte(resolveXuidMeta(BOARD, 'me-1', 'nomad-9'))).toEqual(attendu())
+  })
+
+  it('point de vue ABSENT du tableau de score : personne n’est allié, « moi » compris', () => {
+    // Le court-circuit est mort dès qu'un point de vue est passé : même introuvable, il ne
+    // laisse pas la ligne « moi » se rattraper toute seule.
+    expect(carte(resolveXuidMeta(BOARD, 'me-1', 'xuid-jamais-vu'))).toEqual(attendu())
+  })
+
+  it('le point de vue PRIME sur meXUID quand les deux sont donnés', () => {
+    expect(carte(resolveXuidMeta(BOARD, 'ally-2', 'foe-2'))).toEqual(
+      attendu('foe-1', 'foe-2', 'bid(1.0)'),
+    )
+  })
+
+  it('point de vue à `null` : la fonction retombe sur son régime à deux arguments', () => {
+    // `null` veut dire « pas de point de vue distinct », pas « point de vue introuvable » :
+    // c'est ce que passe le modèle quand le tableau de score ne nomme personne.
+    expect(carte(resolveXuidMeta(BOARD, 'me-1', null))).toEqual(carte(resolveXuidMeta(BOARD, 'me-1')))
+  })
+
+  it('les gamertags ne dépendent JAMAIS du point de vue', () => {
+    const noms = (m: XuidMeta) => Object.fromEntries([...m].map(([k, v]) => [k, v.gamertag]))
+    expect(noms(resolveXuidMeta(BOARD, 'me-1', 'foe-1'))).toEqual(noms(resolveXuidMeta(BOARD, 'me-1')))
+  })
+})

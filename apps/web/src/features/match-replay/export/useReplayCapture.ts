@@ -79,6 +79,12 @@ export interface ReplayCaptureOptions {
   xuidMeta?: XuidMeta
   /** Le verdict du backend : sans lui, pas d'ecran de fin dans le clip (parite DOM). */
   outcome?: ExportOutcome | null
+  /**
+   * LE POINT DE VUE de la page (2026-09-06) : l'export rend CE QUE L'ÉCRAN MONTRE (décision 12
+   * du plan « frise, point de vue ») — panneau de victoire compris. La personne qui exporte a
+   * choisi ce qu'elle regarde. Absent : le joueur de la page.
+   */
+  viewpoint?: string | null
   locale?: ReplayLocale
   /** La piste sonore du rejeu et son volume, pour le mixage hors ligne (`useReplaySound`). */
   soundTrack?: ReplayExportOptions['soundTrack']
@@ -286,6 +292,7 @@ function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
     scoreboard: o.scoreboard ?? [],
     xuidMeta: o.xuidMeta,
     outcome: o.outcome ?? null,
+    viewpoint: o.viewpoint,
     titleSlug: doc.titleSlug ?? '',
     locale: o.locale ?? 'fr',
     soundTrack: o.soundTrack,

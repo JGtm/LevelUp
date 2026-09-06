@@ -24,6 +24,7 @@ import { endMatchSoundSpec } from '@/features/match-replay/sound/endMatchSound'
 import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
 import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/model/playbackStore'
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
+import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
 import {
   useMatchReplay,
   useReplayMapBackground,
@@ -104,7 +105,12 @@ function ReplayPage() {
   // ne fait que la mémoïser. La page n'en garde que ce qui dépend de la LANGUE ou de
   // l'affichage, plus bas.
   const { data: settings } = useSettings()
-  const model = useReplayModel(data, matchView, settings)
+  // PAR LES YEUX DE QUI (2026-09-06, L2b) : un seul foyer, ici, et sa valeur descend en
+  // PARAMÈTRE à tout ce qui en dépend — modèle, calques d'objectif, écran de fin, export.
+  // Le défaut est le joueur de la page ; le menu qui permettra d'en choisir un autre est le
+  // lot suivant, et il n'aura qu'à appeler `viewpoint.select`.
+  const viewpoint = useReplayViewpoint(matchView?.team_tab.scoreboard)
+  const model = useReplayModel(data, matchView, settings, viewpoint.xuid)
   const { scoreboard, identity: xuidMeta, marks, window: playWindow, feed: feedEntries } = model
   // LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : sur le rejeu, les points, les titres de
   // colonnes et les noms du fil prennent les MÊMES tokens d'accessibilité — allié / adverse,
@@ -120,6 +126,12 @@ function ReplayPage() {
   // de la LANGUE (voix d'annonceur), que le modèle ne connaît pas. C'est la MÊME lecture que
   // l'écran de fin ci-dessous — `endMatchSoundSpec` s'appuie sur `readVictory`, il ne
   // re-décode pas `outcome_code`.
+  //
+  // ET C'EST LA SEULE SURFACE QUI NE SUIT PAS LE POINT DE VUE (décision 3 du plan, 2026-09-06) :
+  // aucun sujet ne lui est passé, donc elle lit le résultat du JOUEUR DE LA PAGE. Inspecter un
+  // adversaire ne doit pas faire jouer « Défaite » sur un match gagné. L'écran, lui, suit ce
+  // qu'on regarde — l'incohérence apparente entre les deux appels est voulue, ne pas la
+  // « corriger ».
   const endMatchSound = useMemo(
     () => endMatchSoundSpec(scoreboard, matchView?.header.outcome_code, locale),
     [scoreboard, matchView?.header.outcome_code, locale],
@@ -238,6 +250,7 @@ function ReplayPage() {
               xuidMeta={xuidMeta}
               marks={marks}
               endMatch={endMatchSound}
+              viewpoint={viewpoint.xuid}
               outcome={{
                 // LE VERDICT, POUR L'EXPORT SEUL : l'écran de fin monté juste en dessous est du
                 // DOM, qu'aucun encodeur vidéo ne voit. L'export le repeint DANS la toile, et
@@ -258,6 +271,7 @@ function ReplayPage() {
               xuidMeta={xuidMeta}
               outcomeCode={matchView?.header.outcome_code}
               outcomeLabel={matchView?.header.outcome_label}
+              viewpoint={viewpoint.xuid}
               finalScore={model.score}
               playWindow={playWindow}
               frame={frame}

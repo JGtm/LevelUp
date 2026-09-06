@@ -133,13 +133,19 @@ export function objectiveSoundStem(stat: string, side: ObjectiveSide): string | 
  * donne l'équipe de son joueur (`parseTeamSideID`, partagé avec `useReplayFlagCarries`).
  *
  * ELLE VIT ICI ET PAS DANS LE COMPOSANT (règle « pas de logique métier dans un composant ») :
- * `ReplayCanvas` n'a qu'à la brancher. Sans ligne « moi », ou pour un xuid absent du tableau,
- * elle rend `unknown` — et le son se tait plutôt que d'affirmer un camp.
+ * `ReplayCanvas` n'a qu'à la brancher. Sans camp de référence, ou pour un xuid absent du
+ * tableau, elle rend `unknown` — et le son se tait plutôt que d'affirmer un camp.
+ *
+ * ELLE SUIT LE POINT DE VUE (décision 11 du plan, 2026-09-06) : les sons d'objectif EN COURS de
+ * match — tics de zone alliée/adverse, voix d'objectif — sont des rendus de la perspective
+ * courante, au même titre que les couleurs. Seul le VERDICT de fin de partie reste ancré sur le
+ * joueur de la page (décision 3, cf. `endMatchSound`). Sans point de vue : la ligne « moi ».
  */
 export function sideResolverFromScoreboard(
   scoreboard: readonly ScoreboardSide[] | undefined,
+  viewpoint?: string | null,
 ): (xuid: string) => ObjectiveSide {
-  const allyTeam = allyTeamFromScoreboard(scoreboard)
+  const allyTeam = allyTeamFromScoreboard(scoreboard, viewpoint)
   const teamOf = teamOfXuidFromScoreboard(scoreboard)
   return (xuid: string): ObjectiveSide => {
     if (allyTeam === null) return 'unknown'

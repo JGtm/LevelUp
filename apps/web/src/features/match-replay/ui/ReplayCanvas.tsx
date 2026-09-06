@@ -137,6 +137,14 @@ interface ReplayCanvasProps {
   /** Marques d'identité par xuid (« moi », « ami ») : elles décident de la FORME du point. */
   marks?: ReadonlyMap<string, PlayerMarkKind>
   /**
+   * PAR LES YEUX DE QUI (2026-09-06, plan « frise, point de vue ») : le joueur dont le camp
+   * fait référence. La page le résout une fois (`model.viewpoint`) et le canvas le RELAIE,
+   * sans jamais le redécouvrir — aux calques d'objectif (bombe, drapeaux, zones), à la piste
+   * sonore (tics de zone, voix d'objectif — décision 11) et à l'export (décision 12). Absent :
+   * la ligne « moi » du tableau de score, c'est-à-dire le comportement d'origine.
+   */
+  viewpoint?: string | null
+  /**
    * LE FIL ALIGNÉ ET LES MÉDIAS, assemblés une fois par la page (`buildFeedEntries`,
    * `buildReplayMedia`) : un second recalage ici divergerait de ce qu'on lit à côté.
    */
@@ -159,7 +167,7 @@ interface ReplayCanvasProps {
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, background, callouts, scoreboard, xuidMeta, marks,
-  endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
+  viewpoint, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
 }: ReplayCanvasProps) {
   // LES KILLS VIENNENT DU FIL, DÉJÀ RECALÉS (2026-09-05, J2) : la carte et la piste sonore
   // lisaient les kills BRUTS et rejouaient chacune `alignFeed` — quatre exécutions du même
@@ -188,7 +196,7 @@ export function ReplayCanvas({
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
   // objectiveSound.ts, fin endMatch, « manche terminée » locale-aware — la `locale` ne sert qu'à lui).
-  const sound = useReplaySound(doc, feedKills, multiplier, scoreboard, endMatch ?? null, locale)
+  const sound = useReplaySound(doc, feedKills, multiplier, scoreboard, endMatch ?? null, locale, viewpoint)
 
   const paletteVersion = useColorPaletteVersion()
   // TOUTES LES ENCRES DU REJEU, résolues une fois par palette — voir l'en-tête d'useReplayInks.
@@ -240,7 +248,7 @@ export function ReplayCanvas({
   // la requête) : normalisés une fois, comme les callouts. Absents = pas de calque.
   const mapObjectives = useMemo(() => normalizeMapObjectives(doc.mapObjectives), [doc.mapObjectives])
   // L'ÉTAT VIVANT DES ZONES (schémas 16-18) : encres, jointure du catalogue, tenue de la jauge (useZoneStates).
-  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc)
+  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc, viewpoint)
 
   const teamCascades = useTeamCascades(scoreboard, xuidMeta, locale)
 
@@ -321,7 +329,7 @@ export function ReplayCanvas({
   // calque statique, le drapeau porté suit son porteur image par image.
   const flags = useReplayFlagCarries({
     doc, view: canvasView, frameRef, enabled: showFlagCarries,
-    scoreboard, teamColorOf, neutral: floorStyle.edge, outline: markInk.outline, reducedMotion,
+    scoreboard, viewpoint, teamColorOf, neutral: floorStyle.edge, outline: markInk.outline, reducedMotion,
   })
 
   const objectiveObjects = useReplayObjectiveObjects({
@@ -336,7 +344,7 @@ export function ReplayCanvas({
   // LA FIN DE VOL des grenades (dix-septième extraction — elle paie la déflagration ci-dessous).
   const grenadeRest = useReplayGrenadeRest({ doc, view: canvasView, fx: grenadeRestFx, window: restWindow, ink: fxInk, smoke: floorStyle.edge, halo: grenadeColor, reducedMotion })
   // LA DÉFLAGRATION D'ASSAUT, où et quand elle a eu lieu — seul un match d'Assaut publie la stat.
-  const bombBlast = useReplayBombBlast({ doc, view: canvasView, scoreboard, teamColorOf, neutral: floorStyle.edge, reducedMotion })
+  const bombBlast = useReplayBombBlast({ doc, view: canvasView, scoreboard, viewpoint, teamColorOf, neutral: floorStyle.edge, reducedMotion })
 
   /**
    * buildScene LIE chaque calque a l'etat courant du canvas.
@@ -595,7 +603,7 @@ export function ReplayCanvas({
   const capture = useReplayCapture({
     canvasRef, doc, frameRef, playing: playback.playing, play: playback.togglePlay,
     audioTrack: sound.recordingTrack, soundTrack: sound.exportTrack, soundVolume: sound.volume,
-    redraw, playWindow, scoreboard, xuidMeta, outcome, locale,
+    redraw, playWindow, scoreboard, xuidMeta, outcome, viewpoint, locale,
   })
 
   return (

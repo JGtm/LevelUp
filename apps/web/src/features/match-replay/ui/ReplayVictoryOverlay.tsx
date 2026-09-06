@@ -76,6 +76,14 @@ interface Props {
   xuidMeta?: XuidMeta
   /** Verdict du joueur de la page (`header.outcome_code`) — la source de l'issue (D-B2). */
   outcomeCode: number | null | undefined
+  /**
+   * LE POINT DE VUE (2026-09-06) : l'écran de fin suit ce qu'on REGARDE (décision 3 du plan
+   * « frise, point de vue »), pas forcément le joueur de la page. Vu depuis un adversaire, un
+   * match gagné devient donc une défaite à l'écran, aux couleurs de SON camp — c'est la
+   * lecture juste : `outcomeCode` reste le verdict du joueur de la page, et `readVictory`
+   * permute. Absent (`null`) : la lecture d'origine, celle du joueur de la page.
+   */
+  viewpoint?: string | null
   /** Le verdict ÉCRIT (`header.outcome_label`), déjà localisé par le backend. */
   outcomeLabel: string | null | undefined
   /** La fenêtre de gameplay : sa borne de fin déclenche l'écran. `null` → pas d'écran. */
@@ -99,6 +107,7 @@ export function ReplayVictoryOverlay({
   scoreboard,
   xuidMeta,
   outcomeCode,
+  viewpoint,
   outcomeLabel,
   playWindow,
   frame,
@@ -107,7 +116,10 @@ export function ReplayVictoryOverlay({
   locale,
 }: Props) {
   const t = REPLAY_TEXT[locale]
-  const reading = useMemo(() => readVictory(scoreboard, outcomeCode), [scoreboard, outcomeCode])
+  const reading = useMemo(
+    () => readVictory(scoreboard, outcomeCode, viewpoint),
+    [scoreboard, outcomeCode, viewpoint],
+  )
   // LE SCORE SE LIT À LA BORNE DE FIN, pas à l'image courante (D-B4) : la lecture peut être
   // allée au-delà (frise tirée au bout), et le calque n'a plus rien à dire après la fin.
   const score = useMemo(

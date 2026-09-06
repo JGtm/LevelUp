@@ -1,5 +1,12 @@
 /**
- * victoryLogic — COMMENT CE MATCH S'EST TERMINÉ POUR LE JOUEUR DE LA PAGE.
+ * victoryLogic — COMMENT CE MATCH S'EST TERMINÉ POUR CELUI QU'ON REGARDE.
+ *
+ * POUR QUI, EXACTEMENT : par défaut le joueur de la page, et depuis le 2026-09-06 le POINT DE
+ * VUE quand l'appelant en passe un (plan « frise, point de vue », décisions 3 et 12). L'écran
+ * de fin et l'export vidéo suivent ce qu'on regarde ; le SON et la voix de fin, eux, restent
+ * ancrés sur le joueur de la page — inspecter un adversaire ne doit pas jouer « Défaite » sur
+ * un match gagné. Les deux surfaces partagent donc cette lecture, mais lui passent un sujet
+ * DIFFÉRENT et explicite : voir `readVictory`.
  *
  * L'ÉCRAN DE FIN EST LE SIEN, PAS CELUI DU VAINQUEUR (amendement utilisateur du 2026-08-26,
  * en cours de lot). Comme dans le jeu, l'écran de fin porte les couleurs et le logo de VOTRE
@@ -45,8 +52,13 @@ import { outcomeCodeToValue } from '@/lib/outcome'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-/** Ce que ce module lit d'une ligne de scoreboard : le camp, et si c'est le joueur de la page. */
-type VictoryRows = ReadonlyArray<Pick<MatchScoreboardRow, 'team_side' | 'is_me'>>
+/**
+ * Ce que ce module lit d'une ligne de scoreboard : le camp, si c'est le joueur de la page, et
+ * — seulement quand un point de vue est passé — le xuid qui permet de situer CE joueur-là.
+ * `xuid` est optionnel exprès : les appelants qui n'emploient pas de point de vue (la fin de
+ * partie sonore, les cas de la caractérisation) n'ont rien à fournir de plus qu'avant.
+ */
+type VictoryRows = ReadonlyArray<Pick<MatchScoreboardRow, 'team_side' | 'is_me'> & { xuid?: string }>
 
 /** L'issue du match DU POINT DE VUE du joueur de la page. */
 export type VictoryOutcome = 'win' | 'loss' | 'tie'
@@ -80,10 +92,24 @@ interface Camp {
  * readVictory rend la lecture de fin de match, ou `null` quand aucun écran ne doit s'afficher :
  * match qui n'oppose pas exactement deux camps, résultat non publié ou hors contrat, abandon,
  * ou joueur de la page introuvable au scoreboard (cf. l'en-tête du module).
+ *
+ * `subject` (2026-09-06, plan « frise, point de vue ») : PAR LES YEUX DE QUI cette fin se lit.
+ *
+ * ATTENTION À L'ASYMÉTRIE DES DEUX ENTRÉES, c'est tout le sujet. `outcomeCode` est le verdict
+ * DU JOUEUR DE LA PAGE, servi par l'en-tête — il n'en existe pas d'autre, l'API ne publie pas
+ * le résultat vu d'un adversaire. Quand `subject` désigne quelqu'un de l'AUTRE camp, la lecture
+ * se retourne donc : ce que le joueur de la page a gagné, lui l'a perdu. On calcule la lecture
+ * de la page, puis on la permute. Sujet du même camp : rigoureusement identique. Égalité : elle
+ * l'est pour tout le monde, rien à permuter. Sujet non situable : `null` — aucun écran plutôt
+ * qu'un écran faux.
+ *
+ * `subject` absent : le joueur de la page, comportement d'origine — c'est ce que passe la fin
+ * de partie SONORE (décision 3), qui reste ancrée sur lui.
  */
 export function readVictory(
   scoreboard: VictoryRows,
   outcomeCode: number | null | undefined,
+  subject?: string | null,
 ): VictoryReading | null {
   const camps = identifiedCamps(scoreboard)
   if (camps.length !== 2) return null
@@ -92,14 +118,37 @@ export function readVictory(
   if (outcome !== 'win' && outcome !== 'loss') return null
   const mineIndex = myCampIndex(scoreboard, camps)
   if (mineIndex === null) return null
-  const won = outcome === 'win'
-  const mine = camps[mineIndex]
-  const winner = won ? mine : camps[1 - mineIndex]
+  const vu = subjectCampIndex(scoreboard, camps, subject, mineIndex)
+  if (vu === null) return null
+  const won = vu === mineIndex ? outcome === 'win' : outcome === 'loss'
+  const mine = camps[vu]
+  const winner = won ? mine : camps[1 - vu]
   return {
-    outcome,
+    outcome: won ? 'win' : 'loss',
     mine: { teamID: mine.id, teamSide: mine.side, ally: true },
     winner: { teamID: winner.id, teamSide: winner.side, ally: won },
   }
+}
+
+/**
+ * subjectCampIndex dit dans lequel des deux camps se trouve le point de vue, ou `null` quand il
+ * n'est pas situable (xuid absent du tableau, camp non transmis, camp hors des deux retenus).
+ *
+ * Sans sujet, la réponse est le camp du joueur de la page, déjà calculé : on ne le recherche
+ * pas deux fois, et surtout on ne peut pas diverger de lui.
+ */
+function subjectCampIndex(
+  scoreboard: VictoryRows,
+  camps: readonly Camp[],
+  subject: string | null | undefined,
+  defaut: 0 | 1,
+): 0 | 1 | null {
+  if (subject == null) return defaut
+  const id = parseTeamSideID(scoreboard.find((r) => r.xuid === subject)?.team_side)
+  if (id == null) return null
+  if (camps[0].id === id) return 0
+  if (camps[1].id === id) return 1
+  return null
 }
 
 /**

@@ -302,11 +302,27 @@ export function useReplaySound(
   // La LANGUE de l'interface : elle ne sert QU'au son « manche terminée » (voix d'annonceur,
   // `roundOverSound.ts`), la seule entrée locale-aware de la piste. Absente, ce son se tait.
   locale?: ReplayLocale,
+  // LE POINT DE VUE de la page (2026-09-06) : « allié » et « adverse » se disent par rapport à
+  // CE joueur (décision 11 — les sons d'objectif en cours de match suivent ce qu'on regarde ;
+  // seule la fin de partie, `endMatch` ci-dessus, reste ancrée sur le joueur de la page).
+  // Absent : la ligne « moi », comportement d'origine.
+  //
+  // SEPTIÈME PARAMÈTRE, EN CONNAISSANCE DE CAUSE (seuil du dépôt : 5). Les six premiers sont
+  // déjà là ; les regrouper en objet toucherait les huit appels du hook — dont sept tests —
+  // dans un lot dont le contrat est « rien ne change ». À faire au prochain passage sur ce
+  // fichier, pas ici.
+  viewpoint?: string | null,
 ): ReplaySound {
-  const sideOfXuid = useMemo(() => sideResolverFromScoreboard(scoreboard), [scoreboard])
+  const sideOfXuid = useMemo(
+    () => sideResolverFromScoreboard(scoreboard, viewpoint),
+    [scoreboard, viewpoint],
+  )
   // Le camp allié EN NUMÉRO : les sons d'état de zone joignent sur le propriétaire d'une zone,
   // pas sur le xuid d'un joueur. Même lecture du tableau de score que le résolveur ci-dessus.
-  const allyTeam = useMemo(() => allyTeamFromScoreboard(scoreboard), [scoreboard])
+  const allyTeam = useMemo(
+    () => allyTeamFromScoreboard(scoreboard, viewpoint),
+    [scoreboard, viewpoint],
+  )
   const [on, setOn] = useState(() => readStoredFlag(SOUND_ON_KEY, false))
   const [volume, setVolumeState] = useState(() =>
     readStoredNumber(SOUND_VOLUME_KEY, SOUND_VOLUME_DEFAULT, (v) => v > 0 && v <= 1),
