@@ -220,15 +220,17 @@ finale revient au superviseur à l'intégration.
 
 ## Découvertes (hors périmètre, non traitées)
 
-1. **`MatchPositionsHeatmap` et les hooks du film de la Match View.** Le verdict V-GO-B2
-   relève que `features/match-view/queries.ts:22-26` et `:47-51` promettent un 503 que le
-   serveur ne rendait pas ; C.2 rend cette doc VRAIE (rien à corriger). Reste que
-   `useMatchObjectiveEvents` / `useMatchPositions` n'ont pas de garde de capability dans
-   leur `enabled` : sur un titre sans film, les deux requêtes partent et prennent
-   désormais un 503 au lieu d'un 200 `[]`. La carte de chaleur des positions
-   (`MatchPositionsHeatmap`) affichera alors son état vide « Aucune position décodée pour
-   ce match » — la règle des deux portes voudrait qu'elle ne soit pas rendue. Trois
-   surfaces étaient nommées au lot C ; celle-ci ne l'était pas.
+1. ~~**`MatchPositionsHeatmap` et les hooks du film de la Match View.**~~ **CORRIGÉE le
+   2026-09-06** (point 8 des corrections après revue), et l'énoncé d'origine était INEXACT :
+   la carte de chaleur ne montrait PAS de bloc vide — `MatchPositionsHeatmap.tsx:142` fait
+   `if (all.length === 0) return null`, et `matchPositions` vaut `undefined` sur 503. Le
+   résidu réel se réduisait à DEUX REQUÊTES vouées au 503 à chaque ouverture de l'onglet
+   Chronologie sur halo_5 : `useMatchObjectiveEvents` et `useMatchPositions` n'avaient pas de
+   garde de capability dans leur `enabled`. Les deux la portent désormais
+   (`film.replay_artifact` — ce sont les deux projections de l'artefact, pas les positions
+   par kill). La condition n°2 du lot (« sur halo_5, aucune requête de film n'est émise »)
+   tient enfin.
+
 2. **Dictionnaires i18n inline hors du garde anti-anglicismes.** `MatchPositionsHeatmap.tsx`
    porte son propre dictionnaire `TEXT = { fr, en }` : le garde ne scanne que les cinq
    dicts de features listés et les neuf manifestes. Sa chaîne est corrigée à la main ici,

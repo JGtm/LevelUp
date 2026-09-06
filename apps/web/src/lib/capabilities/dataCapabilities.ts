@@ -46,7 +46,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
  * `FeatureGate` — ne correspond à AUCUNE CapabilityKey déclarée côté serveur. Une
  * typo fermerait la porte pour toujours, sans la moindre erreur visible.
  */
-export const DATA_CAPABILITIES = ['film.kill_positions'] as const
+export const DATA_CAPABILITIES = ['film.kill_positions', 'film.replay_artifact'] as const
 
 export type DataCapabilityKey = (typeof DATA_CAPABILITIES)[number]
 
