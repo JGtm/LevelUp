@@ -142,22 +142,34 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		return out, games.ErrCapabilityNotSupported
 	}
 	if question == domain.TacticalQuestionTemps {
-		// L'OCCUPATION A SA PROPRE PORTE, ET CE N'EST PAS CELLE DES POSITIONS DE KILL :
-		// elle ne lit pas `kill_positions` du tout, elle somme des sidecars tires des
-		// PISTES du film. Exiger la porte des positions ici fermerait la lecture a un
-		// titre qui produit des artefacts sans publier de positions de kill, et
-		// l'inverse — servir l'occupation d'un titre sans artefact — rendrait une carte
-		// vide qui se lirait « il ne se passe rien ici ».
+		// L'OCCUPATION A SA PROPRE PORTE ET SON PROPRE SUBSTRAT (cf.
+		// tactical_service_rasters.go) : elle ne lit pas `kill_positions` du tout, elle
+		// somme des sidecars tires des PISTES du film.
 		// L'ERREUR EST CAPTUREE AVANT LE RETOUR : `return out, f(&out)` laisserait
 		// l'ordre d'evaluation des operandes decider si la reponse rendue est celle
 		// d'avant ou d'apres le remplissage.
 		err := s.rasterOccupation(ctx, &out, scope)
 		return out, err
 	}
+	err := s.rasterDeKills(ctx, &out, scope)
+	return out, err
+}
+
+// rasterDeKills sert les trois lectures qui se lisent sur les POSITIONS MESUREES de
+// `kill_positions` : ou je meurs, ou je tue, ou je gagne.
+//
+// EXTRAITE DE `Raster` (constat C8 de la revue) : celle-ci depassait le seuil de 80 lignes
+// au sens de `funlen`, et le ratchet de la CI ne pouvait pas le voir — la position d'une
+// fonction n'est pas une ligne AJOUTEE, donc `--new-from-merge-base` ne la signale pas. La
+// coupure suit la seule frontiere naturelle du service : ce qui vient de la BASE ici, ce
+// qui vient des SIDECARS a cote.
+func (s *TacticalService) rasterDeKills(ctx context.Context, out *domain.TacticalRaster,
+	scope domain.TacticalScope) error {
+	carte, question, qui := out.MapID, out.Question, out.Qui
 	if !positionsDeKillLisibles(s.caps) {
 		s.logger.WarnContext(ctx, "tactique: aucune position de kill lisible pour ce titre",
 			"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "map_id", carte, "question", question)
-		return out, games.ErrCapabilityNotSupported
+		return games.ErrCapabilityNotSupported
 	}
 	debut := time.Now()
 
@@ -165,7 +177,7 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: lecture des positions en echec",
 			"player", s.xuid, "map_id", carte, "question", question, "err", err)
-		return out, err
+		return err
 	}
 	if len(lecture.Univers.Matchs) == 0 {
 		// LA SENTINELLE NUE, ET LE DETAIL AU JOURNAL (revue R2, P1). Le message de cette
@@ -176,7 +188,7 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		// oracle par le libelle, apres celui qu'on venait de fermer par le code.
 		s.logger.InfoContext(ctx, "tactique: carte sans match retenu",
 			"player", s.xuid, "map_id", carte, "question", question, "qui", qui)
-		return out, domain.ErrTacticalCarteInconnue
+		return domain.ErrTacticalCarteInconnue
 	}
 	// MATCHS FILTRES = L'UNIVERS DE CETTE CARTE : les matchs du perimetre que le joueur
 	// y a joues, mesures ou non. MatchsRetenus en est un SOUS-ENSEMBLE (les mesures),
@@ -196,10 +208,10 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: rasterisage en echec",
 			"player", s.xuid, "map_id", carte, "question", question, "err", err)
-		return out, fmt.Errorf("tactique: rasterisage: %w", err)
+		return fmt.Errorf("tactique: rasterisage: %w", err)
 	}
-	remplirRaster(&out, raster, question)
-	s.lireLeJournal(ctx, &out, scope)
+	remplirRaster(out, raster, question)
+	s.lireLeJournal(ctx, out, scope)
 
 	s.logger.InfoContext(ctx, "tactique: lecture de placement",
 		"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "map_id", carte,
@@ -210,7 +222,7 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		"evenements_journal", out.EvenementsJournal,
 		"evenements_localises", out.EvenementsLocalises,
 		"duration", time.Since(debut))
-	return out, nil
+	return nil
 }
 
 // universMesure ne garde que les matchs dont le journal des morts est LISIBLE.

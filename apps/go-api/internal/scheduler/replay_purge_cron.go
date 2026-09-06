@@ -155,7 +155,11 @@ func purgeReplayArtifactsForTitle(
 	if rerr != nil {
 		return 0, 0, 0, fmt.Errorf("lecture du dossier d'artefacts %s: %w", artifactsDir, rerr)
 	}
-	if len(entries) == 0 {
+	// LE COURT-CIRCUIT COMPTE LES ARTEFACTS, PAS LES ENTREES (correction C12, 2026-09-06).
+	// Depuis que les sidecars de raster tactique vivent dans un SOUS-DOSSIER `rasters/`, un
+	// titre sans le moindre artefact rendait tout de meme une entree — le repertoire —, et
+	// chaque tick du cron ouvrait alors la shared pour n'y trouver rien a purger.
+	if !contientUnArtefact(entries) {
 		return 0, 0, 0, nil
 	}
 	dates, derr := matchDatesByShortID(ctx, sharedPath)
@@ -182,9 +186,39 @@ func purgeReplayArtifactsForTitle(
 				"artifact", name, "err", rmErr)
 			continue
 		}
+		// UN ARTEFACT PURGE EMPORTE SON SIDECAR (décision produit, 2026-09-06). Le raster
+		// tactique est un DÉRIVÉ de l'artefact : sans lui il ne peut plus être ni relu
+		// utilement (le match sort de la fenêtre de rétention, donc du périmètre) ni
+		// refait. Le laisser en place accumulerait des orphelins que rien ne collecterait
+		// jamais.
+		supprimerSidecarRaster(ctx, artifactsDir, short)
 		purged++
 	}
 	return purged, kept, unknown, nil
+}
+
+// contientUnArtefact dit si le dossier porte au moins un `{short8}.json` de PREMIER
+// NIVEAU. Les répertoires — dont `rasters/` — n'en sont pas.
+func contientUnArtefact(entries []os.DirEntry) bool {
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+			return true
+		}
+	}
+	return false
+}
+
+// supprimerSidecarRaster efface le sidecar d'occupation d'un match purgé.
+//
+// BEST-EFFORT ET JAMAIS BLOQUANT : l'absence est le cas NOMINAL (la grande majorité des
+// artefacts n'ont pas encore été projetés), et toute autre erreur est un WARN — la purge
+// de l'artefact, elle, a déjà réussi, et la rejouer n'est pas possible.
+func supprimerSidecarRaster(ctx context.Context, artifactsDir, short string) {
+	path := filepath.Join(artifactsDir, titlePkg.SousDossierRasters, short+".json")
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		slog.WarnContext(ctx, "replay_purge_cron: sidecar de raster non supprimé",
+			"sidecar", path, "err", err)
+	}
 }
 
 // matchDatesByShortID lit (forme courte -> start_time canonique) de tout le registre.

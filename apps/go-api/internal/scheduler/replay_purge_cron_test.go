@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -83,5 +84,74 @@ func TestPurgeReplayArtifacts_DossierAbsent(t *testing.T) {
 		context.Background(), sharedPath, filepath.Join(t.TempDir(), "inexistant"), time.Now())
 	if err != nil || purged != 0 || kept != 0 || unknown != 0 {
 		t.Errorf("dossier absent = (%d, %d, %d, %v), attendu (0, 0, 0, nil)", purged, kept, unknown, err)
+	}
+}
+
+// TestPurge_ArtefactPurgeEmporteSonSidecar — DECISION PRODUIT DU 2026-09-06 (constat C12).
+//
+// Le raster tactique est un DERIVE de l'artefact : sans lui il ne peut plus etre ni relu
+// utilement (le match sort de la fenetre de retention, donc du perimetre) ni refait. Le
+// laisser en place accumulerait des orphelins que rien ne collecterait jamais — la purge
+// saute les repertoires, et `rasters/` en est un.
+//
+// Le sidecar d'un artefact GARDE, lui, reste : c'est la moitie qui prouve que la
+// suppression suit la purge et n'est pas un balayage.
+func TestPurge_ArtefactPurgeEmporteSonSidecar(t *testing.T) {
+	sharedPath, artifactsDir := prepareReplayPurgeFixture(t)
+	rasters := filepath.Join(artifactsDir, titlePkg.SousDossierRasters)
+	if err := os.MkdirAll(rasters, 0o755); err != nil {
+		t.Fatalf("mkdir rasters: %v", err)
+	}
+	purgeable := filepath.Join(rasters, "aaaa0001.json") // artefact date AVANT le seuil
+	garde := filepath.Join(rasters, "bbbb0002.json")     // artefact date APRES le seuil
+	for _, p := range []string{purgeable, garde} {
+		if err := os.WriteFile(p, []byte(`{"schema_version":2}`), 0o644); err != nil {
+			t.Fatalf("write sidecar: %v", err)
+		}
+	}
+
+	purged, kept, _, err := purgeReplayArtifactsForTitle(
+		context.Background(), sharedPath, artifactsDir, time.Now().UTC().AddDate(0, -6, 0))
+	if err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	if purged != 1 || kept != 1 {
+		t.Fatalf("purged=%d kept=%d, attendu 1 et 1", purged, kept)
+	}
+	if _, err := os.Stat(purgeable); !os.IsNotExist(err) {
+		t.Fatalf("le sidecar de l'artefact purge survit (err = %v) : il est orphelin a jamais", err)
+	}
+	if _, err := os.Stat(garde); err != nil {
+		t.Fatalf("le sidecar d'un artefact GARDE a ete supprime : %v", err)
+	}
+}
+
+// TestPurge_DossierSansArtefactNOuvrePasLaBase — le court-circuit compte les ARTEFACTS,
+// pas les entrees.
+//
+// Depuis que les sidecars vivent dans un sous-dossier, un titre sans le moindre artefact
+// rend tout de meme une entree — le repertoire `rasters/`. Le court-circuit d'origine
+// (`len(entries) == 0`) ne mordait donc plus, et chaque tick du cron ouvrait la shared
+// pour n'y trouver rien a purger. LA PREUVE EST QUE LA BASE N'EXISTE MEME PAS : si elle
+// etait ouverte, la passe rendrait une erreur au lieu de (0,0,0,nil).
+func TestPurge_DossierSansArtefactNOuvrePasLaBase(t *testing.T) {
+	artifactsDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(artifactsDir, titlePkg.SousDossierRasters), 0o755); err != nil {
+		t.Fatalf("mkdir rasters: %v", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(artifactsDir, titlePkg.SousDossierRasters, "aaaa0001.json"),
+		[]byte(`{}`), 0o644); err != nil {
+		t.Fatalf("write sidecar: %v", err)
+	}
+	sharedInexistant := filepath.Join(t.TempDir(), "pas_de_shared.duckdb")
+
+	purged, kept, unknown, err := purgeReplayArtifactsForTitle(
+		context.Background(), sharedInexistant, artifactsDir, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("un dossier sans aucun artefact ne doit rien ouvrir : %v", err)
+	}
+	if purged != 0 || kept != 0 || unknown != 0 {
+		t.Fatalf("(%d, %d, %d), attendu (0, 0, 0)", purged, kept, unknown)
 	}
 }
