@@ -379,3 +379,45 @@ func TestWeaponRange_SourceHorsRegistre_Ecartee(t *testing.T) {
 		t.Errorf("source hors registre publiée à tort : %+v", rows)
 	}
 }
+
+// TestWeaponRange_ResolveWeaponLabels — la traduction des clés d'arme (port.WeaponLabelResolver),
+// ajoutée au lot 4 : le service n'a pas d'autre chemin vers la metadata du titre, et il ne doit
+// surtout pas en inventer un (aucun libellé FR/EN en dur côté Go).
+//
+// TROIS CAS DANS UN SEUL TEST, PARCE QU'ILS SE JUGENT ENSEMBLE : une clé connue rend ses deux
+// libellés, une clé INCONNUE est ABSENTE de la map (jamais une entrée vide fabriquée, que
+// l'appelant prendrait pour un nom résolu à vide), et une demande vide n'interroge rien.
+func TestWeaponRange_ResolveWeaponLabels(t *testing.T) {
+	pdb := newKillSourceTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Metadata.Exec(ctx, `CREATE TABLE weapon_name_labels (
+		title_slug VARCHAR, weapon_key VARCHAR, name_en VARCHAR, name_fr VARCHAR,
+		PRIMARY KEY (title_slug, weapon_key))`); err != nil {
+		t.Fatalf("create weapon_name_labels: %v", err)
+	}
+	if _, err := pdb.Metadata.Exec(ctx,
+		"INSERT INTO weapon_name_labels VALUES ('halo_infinite', 'hinf_br75', 'BR75 Battle Rifle', 'Fusil de combat BR75')"); err != nil {
+		t.Fatalf("seed weapon_name_labels: %v", err)
+	}
+
+	repo := NewWeaponRangeRepo(pdb, fakeKillSourceClassifier{})
+	labels, err := repo.ResolveWeaponLabels(ctx, []string{"hinf_br75", "hinf_inconnue"})
+	if err != nil {
+		t.Fatalf("ResolveWeaponLabels: %v", err)
+	}
+	got, ok := labels["hinf_br75"]
+	if !ok {
+		t.Fatalf("hinf_br75 absente de la résolution : %+v", labels)
+	}
+	if got.Label != "Fusil de combat BR75" || got.LabelEN != "BR75 Battle Rifle" {
+		t.Errorf("libellés = %q / %q, attendu FR-first puis EN-first", got.Label, got.LabelEN)
+	}
+	if _, present := labels["hinf_inconnue"]; present {
+		t.Errorf("une clé inconnue de la metadata a produit une entrée : %+v", labels)
+	}
+
+	vide, err := repo.ResolveWeaponLabels(ctx, nil)
+	if err != nil || len(vide) != 0 {
+		t.Errorf("demande vide : %v / %+v, attendu une map vide sans erreur", err, vide)
+	}
+}

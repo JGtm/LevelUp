@@ -248,3 +248,112 @@ func TestSynthesisHandler_OverviewInResponse(t *testing.T) {
 		t.Errorf("overview.total_matches = %d, want 5", overview.TotalMatches)
 	}
 }
+
+// TestSynthesisHandler_WeaponRangeInResponse — la section « Portée par arme » traverse le
+// handler et se sérialise telle quelle (lot 4 du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md).
+//
+// CE QUE CE TEST VÉRIFIE ET QU'AUCUN TEST DE SERVICE NE PEUT VOIR : la forme JSON servie au
+// front. Un côté d'arme est un POINTEUR — nil doit disparaître de la charge utile (« aucune
+// mesure »), jamais s'y écrire en zéro (« mesuré, à zéro mètre »), et le bloc d'entame obéit à
+// la même règle (D5).
+func TestSynthesisHandler_WeaponRangeInResponse(t *testing.T) {
+	resp := &domain.SynthesisPageV2Response{
+		Scope: domain.SynthesisScope{Period: "all", MatchCount: 3, ComputedAt: time.Now().UTC()},
+		WeaponRange: &domain.SynthesisWeaponRange{
+			Weapons: []domain.WeaponRangeRow{
+				{
+					WeaponKey: "hinf_shotgun", Label: "Fusil à pompe",
+					Deaths: &domain.WeaponRangeSide{
+						Measured: 9, P10: 1, Median: 3, P90: 6,
+						AbovePct: 10, LevelPct: 60, BelowPct: 30,
+					},
+				},
+				{
+					WeaponKey: "hinf_br75", Label: "Fusil de combat BR75",
+					Kills: &domain.WeaponRangeSide{
+						Measured: 12, P10: 7, Median: 13, P90: 25,
+						AbovePct: 37, LevelPct: 49, BelowPct: 14,
+					},
+				},
+			},
+			MedianKillsM: 13, MedianDeathsM: 3,
+			MeasuredKills: 12, TotalKills: 20,
+			MeasuredDeaths: 9, TotalDeaths: 15,
+			BelowThresholdKills: []domain.WeaponBelowThreshold{
+				{WeaponKey: "hinf_hydra", Label: "Hydra", Measured: 6},
+			},
+			Opening: &domain.SynthesisOpening{
+				MedianM: 19, MeasuredKills: 8, DeltaMedianM: -6, ClosingSharePct: 75, N: 8,
+			},
+		},
+	}
+	router := newSynthesisTestRouter(synthesisContextFactory(&mockSynthesisService{resp: resp}, nil))
+
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/synthesis", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var got domain.SynthesisPageV2Response
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if got.WeaponRange == nil {
+		t.Fatal("weapon_range absent de la réponse")
+	}
+	if len(got.WeaponRange.Weapons) != 2 {
+		t.Fatalf("%d arme(s), attendu 2", len(got.WeaponRange.Weapons))
+	}
+	if got.WeaponRange.Weapons[0].Kills != nil {
+		t.Errorf("le fusil à pompe ne porte aucun frag : kills = %+v, attendu absent",
+			got.WeaponRange.Weapons[0].Kills)
+	}
+	if got.WeaponRange.Weapons[0].Deaths == nil || got.WeaponRange.Weapons[0].Deaths.Measured != 9 {
+		t.Errorf("côté morts perdu : %+v", got.WeaponRange.Weapons[0].Deaths)
+	}
+	if got.WeaponRange.MeasuredKills != 12 || got.WeaponRange.TotalKills != 20 {
+		t.Errorf("couverture = %d/%d, attendu 12/20",
+			got.WeaponRange.MeasuredKills, got.WeaponRange.TotalKills)
+	}
+	if got.WeaponRange.Opening == nil || got.WeaponRange.Opening.N != 8 {
+		t.Errorf("bloc d'entame = %+v, attendu 8 frags appariés", got.WeaponRange.Opening)
+	}
+	// La forme brute, parce que c'est elle que le front lit : un côté absent ne doit PAS
+	// apparaître, et un côté présent porte bien ses trois parts de dénivelé.
+	brut := w.Body.String()
+	if strings.Contains(brut, `"kills":null`) || strings.Contains(brut, `"opening":null`) {
+		t.Errorf("un champ optionnel est sérialisé à null au lieu d'être omis :\n%s", brut)
+	}
+	if !strings.Contains(brut, `"above_pct":37`) {
+		t.Errorf("la ventilation du dénivelé n'est pas dans la charge utile :\n%s", brut)
+	}
+}
+
+// TestSynthesisHandler_SansWeaponRange_ReponseValide — la dégradation. Un titre sans positions
+// par kill (ou un scope non décodé) rend une réponse SANS la clé `weapon_range` : le front la
+// lit comme « pas de section », jamais comme une section vide.
+func TestSynthesisHandler_SansWeaponRange_ReponseValide(t *testing.T) {
+	resp := &domain.SynthesisPageV2Response{
+		Scope: domain.SynthesisScope{Period: "all", MatchCount: 3, ComputedAt: time.Now().UTC()},
+	}
+	router := newSynthesisTestRouter(synthesisContextFactory(&mockSynthesisService{resp: resp}, nil))
+
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/synthesis", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if strings.Contains(w.Body.String(), "weapon_range") {
+		t.Errorf("la clé weapon_range est présente alors que la section est absente :\n%s", w.Body.String())
+	}
+	var got domain.SynthesisPageV2Response
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if got.WeaponRange != nil {
+		t.Errorf("weapon_range = %+v, attendu nil", got.WeaponRange)
+	}
+}

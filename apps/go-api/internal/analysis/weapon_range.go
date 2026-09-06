@@ -121,6 +121,22 @@ type WeaponRangeSummary struct {
 	// combien de mesures réelles la publication laisse de côté, ce que le seul compte
 	// d'armes ne dit pas.
 	MeasuredBelowThreshold int
+	// BelowThresholdRows NOMME les couples écartés, avec leur effectif.
+	//
+	// AJOUTÉ AU LOT 4 (2026-09-06) parce qu'un compte ne se lit pas : « 3 armes sous le
+	// seuil » n'apprend rien, « Hydra (6) · Disrupteur (4) · Marteau (2) » dit à quoi le
+	// joueur a touché sans y rester. Les compteurs ci-dessus sont conservés tels quels —
+	// c'est un ENRICHISSEMENT du même fait, pas une seconde source. Ordre déterministe :
+	// effectif décroissant, puis clé d'arme, puis côté.
+	BelowThresholdRows []WeaponRangeBelow
+}
+
+// WeaponRangeBelow est UN couple (arme, côté) écarté par le seuil de publication.
+type WeaponRangeBelow struct {
+	WeaponKey string
+	Side      Side
+	// Measured est le nombre de frags mesurés — strictement inférieur au seuil.
+	Measured int
 }
 
 // weaponSideKey est la clé de groupement — le couple, jamais l'arme seule.
@@ -160,12 +176,32 @@ func WeaponRangeAggregate(kills []MeasuredKill, minMeasured int) ([]WeaponRange,
 			sum.BelowThreshold++
 			sum.BelowThresholdBySide[g.side]++
 			sum.MeasuredBelowThreshold += len(grp)
+			sum.BelowThresholdRows = append(sum.BelowThresholdRows, WeaponRangeBelow{
+				WeaponKey: g.weapon, Side: g.side, Measured: len(grp),
+			})
 			continue
 		}
 		out = append(out, weaponRangeOf(g, grp))
 	}
 	sortWeaponRanges(out)
+	sortWeaponRangeBelow(sum.BelowThresholdRows)
 	return out, sum
+}
+
+// sortWeaponRangeBelow impose l'ordre des couples écartés : effectif décroissant (l'arme la
+// plus proche du seuil d'abord, c'est celle dont l'absence surprend le plus), puis clé, puis
+// côté. Déterministe : le groupement passe par une map, sans tri deux appels sur les mêmes
+// données rendraient deux ordres.
+func sortWeaponRangeBelow(rs []WeaponRangeBelow) {
+	sort.Slice(rs, func(i, j int) bool {
+		if rs[i].Measured != rs[j].Measured {
+			return rs[i].Measured > rs[j].Measured
+		}
+		if rs[i].WeaponKey != rs[j].WeaponKey {
+			return rs[i].WeaponKey < rs[j].WeaponKey
+		}
+		return rs[i].Side < rs[j].Side
+	})
 }
 
 // weaponRangeOf calcule la ligne d'un couple (arme, côté) non vide.
@@ -253,4 +289,28 @@ func percentileLinear(sorted []float64, p float64) float64 {
 	pos := p / 100 * float64(n-1)
 	lo := int(pos)
 	return sorted[lo] + (pos-float64(lo))*(sorted[lo+1]-sorted[lo])
+}
+
+// WeaponRangeSideTotals rend la médiane des distances mesurées d'UN côté et leur effectif.
+//
+// SUR TOUS LES FRAGS MESURÉS, SEUIL DE PUBLICATION NON APPLIQUÉ — et c'est le point. Les deux
+// nombres affichés en tête de section (« portée médiane de mes frags », « N frags mesurés »)
+// décrivent le JOUEUR, pas la sélection d'armes publiables : les exclure ferait bouger la
+// médiane globale au gré du seuil, et le total annoncé ne correspondrait plus à la couverture
+// réelle. C'est aussi pourquoi ce n'est PAS une moyenne des médianes par arme, qui pèserait
+// autant un couteau à trois frags qu'un fusil à trois cents.
+//
+// PUR : l'entrée n'est ni triée ni mutée (le tri porte sur une copie des distances).
+func WeaponRangeSideTotals(kills []MeasuredKill, side Side) (medianM float64, measured int) {
+	dist := make([]float64, 0, len(kills))
+	for _, k := range kills {
+		if k.Side == side {
+			dist = append(dist, k.DistanceM)
+		}
+	}
+	if len(dist) == 0 {
+		return 0, 0
+	}
+	sort.Float64s(dist)
+	return percentileLinear(dist, 50), len(dist)
 }

@@ -588,23 +588,104 @@ registre du bas de ce fichier). La base a d'abord été fusionnée depuis `feat/
       **FAIT (2026-09-06)** — les deux pertes de LECTURE sont extraites dans `publishOpeningsReadCounters(rep)`, appelée par les DEUX chemins de sortie de `persistOpenings` (succès et échec d'écriture), chacun exactement une fois ; `matchs_couverts` / `lignes_ecrites` restent conditionnés au succès. La trace d'erreur porte désormais les trois nombres de la lecture. Test `TestPersistOpenings_EchecDEcriture_CompteQuandMemeLaLecture` ; MUTATION PROUVÉE ROUGE (appel retiré -> les deux compteurs bougent de 0, attendu 3 et 5). La doc de `publishOpeningsPass` est corrigée : elle décrivait un comportement que le code n'avait pas.
 
 
-- [ ] 4.1 `SynthesisService.WithWeaponRangeRepo(repo)` ; câblage INCONDITIONNEL dans
+- [x] 4.1 `SynthesisService.WithWeaponRangeRepo(repo)` ; câblage INCONDITIONNEL dans
       `SynthesisCtx` (jamais `slug ==`), sur le modèle de `WithWeaponAccuracyRepo`.
-- [ ] 4.2 `loadWeaponRange` calqué sur `loadWeaponAccuracy` (synthesis_service.go) : scope par
+      **FAIT** — `registry_pages_home.go`, à la suite immédiate de `WithWeaponAccuracyRepo` :
+      `WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))`.
+      Le classificateur est CELUI de `killDistanceRepoFor` (`killSourceClassifierFor`, gaté sur
+      `film.kill_source` + assertion d'interface) : les deux lecteurs lisent la même colonne
+      `source_tag`, un second résolveur les ferait nommer la même arme différemment. Aucun
+      `if capability` ici : c'est le repo qui dit « ce titre ne sait pas faire »
+      (`ErrCapabilityNotSupported`), le service qui omet le champ — un gate ici prendrait la
+      même décision DEUX fois, à deux endroits qui divergeraient.
+- [x] 4.2 `loadWeaponRange` calqué sur `loadWeaponAccuracy` (synthesis_service.go) : scope par
       `MatchIDs`, `ErrCapabilityNotSupported` -> Debug, autre erreur -> Warn, best-effort nil.
       Appelle `analysis.WeaponRangeAggregate` sur les deux lectures du repo (kill, et si D5 est
       GO, entame) ; le delta entame -> kill se calcule en analysis, par frag apparié
       (`match_id, killer_xuid, time_ms`), jamais entre deux médianes.
-- [ ] 4.3 `domain.Synthesis.WeaponRange *SynthesisWeaponRange` : `Kills []WeaponRangeEntry`,
+      **FAIT** — `service/synthesis_weapon_range.go` (chargement, régime d'échec, hydratation
+      des libellés) + `service/synthesis_weapon_range_build.go` (assemblage pur).
+      `synthesis_service.go` frôlait le plafond de 500 lignes : le lot n'y ajoute que le champ,
+      le wither et l'appel. NUANCE DE RÉGIME, décidée et écrite : l'échec de `LoadWeaponOpening`
+      n'emporte PAS la section — l'entame est un proxy par-dessus un enrichissement, sa
+      couverture est partielle par construction (D5) ; seul l'échec de `LoadWeaponRange` rend
+      nil. Zéro frag mesuré rend nil aussi (Debug) : pas de section plutôt qu'une section vide.
+      Le delta est `analysis.WeaponOpeningDelta(kills, openings, side)` — appariement par la clé
+      du frag, testé contre l'erreur qu'il interdit (fixture où les DEUX médianes sont égales et
+      le delta apparié vaut -5 m : une soustraction de médianes rendrait 0).
+- [x] 4.3 `domain.Synthesis.WeaponRange *SynthesisWeaponRange` : `Kills []WeaponRangeEntry`,
       `Deaths []WeaponRangeEntry`, `BelowThreshold int` (D9), `MedianKillsM`, `MedianDeathsM`,
       et si D5 GO `MedianOpeningM` + `MedianDeltaM`.
-- [ ] 4.4 Capability DONNÉE : réutiliser `games.CapFilmKillPositions` (`film.kill_positions`,
+      **FAIT, AVEC UNE FORME DIFFÉRENTE DE CELLE ÉCRITE ICI — et la maquette validée du
+      2026-09-06 fait foi** (`.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`, fusion des
+      deux graphes jumeaux demandée par l'utilisateur). Deux listes parallèles `Kills`/`Deaths`
+      obligeraient le front à réapparier les armes pour dessiner UNE ligne à deux bâtons :
+      `domain.SynthesisWeaponRange` porte donc `Weapons []WeaponRangeRow`, une ligne par arme,
+      ses deux côtés en POINTEURS (`*WeaponRangeSide` — nil dit « aucune mesure », un zéro
+      dirait « mesuré, à zéro mètre », et l'infobulle du graphe distingue les deux).
+      `BelowThreshold int` devient DEUX LISTES NOMMÉES (`BelowThresholdKills` /
+      `BelowThresholdDeaths`, `{WeaponKey, Label, LabelEN, Measured}`) : la maquette écrit
+      « frags : Hydra (6), Disrupteur (4) », qu'un compte ne permet pas de rendre. Ajouts que
+      la maquette exige aussi : `MeasuredKills`/`TotalKills`, `MeasuredDeaths`/`TotalDeaths`
+      (les totaux viennent du scope CANONIQUE, jamais de la table de positions — sinon la
+      couverture vaudrait toujours 100 %), et les trois parts de dénivelé par côté
+      (`AbovePct`/`LevelPct`/`BelowPct`, 0..100, convention `*Pct` du dépôt). L'entame est un
+      bloc `*SynthesisOpening{MedianM, MeasuredKills, DeltaMedianM, ClosingSharePct, N}`, NIL
+      tant qu'aucune entame n'est mesurée (D5) — jamais un zéro.
+      DEUX AJOUTS ADDITIFS EN AMONT, sans lesquels ce contrat n'était pas calculable :
+      `analysis.WeaponRangeSummary.BelowThresholdRows` (les couples écartés NOMMÉS ; les trois
+      compteurs d'origine sont conservés) et `analysis.WeaponRangeSideTotals` (médiane et
+      effectif d'un côté, seuil NON appliqué). Aucun comportement existant modifié.
+- [x] 4.4 Capability DONNÉE : réutiliser `games.CapFilmKillPositions` (`film.kill_positions`,
       déjà `supported` dans `capabilities.toml`). Capability PRODUIT `CapWeaponRange = "weapon_range"`
       dans `title.registry.go` (Infinite oui ; Halo 5 non) + clé miroir dans
       `config/titles/halo_infinite/mappings/capabilities.toml`.
-- [ ] 4.5 Contrat `openapi.yaml` + `make generate-types`.
-- [ ] 4.6 Tests service (mock `port.WeaponRangeRepository`) : nominal, capability absente, repo
+      **FAIT pour la capability produit ; LA « CLÉ MIROIR » DANS `capabilities.toml` EST
+      IMPOSSIBLE, et le plan se trompait sur ce point.** Ce fichier ne porte QUE le vocabulaire
+      data-level de `games/adapter.go` : `games.CapabilityMapFromMappings` REJETTE au boot toute
+      clé hors `AllCapabilityKeys()`, et `weapon_range` est une capability PRODUIT
+      (`title.Capability`), dont le miroir est le TypeScript. Ce qui a été fait à la place :
+      (a) `CapWeaponRange` dans `title/registry.go` + `knownCapabilities` + la liste d'Infinite ;
+      (b) la clé `weapon_range` dans `apps/web/src/lib/capabilities/capabilities.ts` et son
+      libellé FR/EN dans `FeatureUnavailable.tsx` (garde-rail `TestCapabilitiesGoTSMirror`) ;
+      (c) le commentaire de `film.kill_positions` corrigé — il affirmait qu'« aucun consommateur
+      ne lit kill_positions pour ce titre », ce qui est faux depuis le POC G.3 (doc inversée,
+      anti-pattern n°9) — et il renvoie désormais à `CapWeaponRange`.
+      **HALO 5, VÉRIFIÉ SUR PIÈCES, ET LA RAISON N'EST PAS CELLE DU PLAN.** Halo 5 PEUPLE bien
+      `kill_positions`, nativement (`games/halo_5/ingest/positions.go`, `MapKillPositions`
+      appelée par `collect.go`) : la moitié spatiale existe. Ce qui manque est l'ARME — ses
+      lignes `match_kill_events` n'ont AUCUN `source_tag` (le producteur live ne l'écrit pas,
+      cf. l'en-tête de `persist/kill_events_credit.go`) et il ne déclare pas `film.kill_source`,
+      donc aucun classificateur ne lui est câblé. La jointure mesurée exige
+      `e.source_tag IS NOT NULL` : elle rendrait ZÉRO ligne. Déclarer la capability lui ouvrirait
+      une section vide, pire que pas de section. Le raisonnement est écrit dans la doc de
+      `CapWeaponRange`, avec sa condition de réouverture.
+      REPORT ASSUMÉ, DATÉ ET BORNÉ : `weapon_range` est inscrite à `orphanCapabilityAllowlist`
+      (`capabilities_parity_test.go`), jusqu'ici VIDE. Le seul consommateur prévu est le gate
+      d'affichage `useCapability('weapon_range')` du lot 5 (item 5.5) — le câblage Go étant
+      inconditionnel par décision 4.1, aucun consommateur Go n'existe ni ne doit exister.
+      **Le lot 5 SUPPRIME cette entrée dans le commit qui monte la section** ; le critère est
+      mesurable (l'appel existe dans `apps/web/src`).
+- [x] 4.5 Contrat `openapi.yaml` + `make generate-types`.
+      **FAIT** — le contrat est GÉNÉRÉ, jamais édité à la main : `go run ./cmd/openapi-gen`
+      (+142 lignes : `SynthesisWeaponRange`, `SynthesisOpening`, `WeaponRangeRow`,
+      `WeaponRangeSide`, `WeaponBelowThreshold`, et `weapon_range` dans
+      `SynthesisPageV2Response`), puis `npm run generate-types` (+61 lignes dans
+      `generated.ts`). `openapi-gen -check` vert (aucun drift), `npm run typecheck` vert.
+- [x] 4.6 Tests service (mock `port.WeaponRangeRepository`) : nominal, capability absente, repo
       nil, scope vide. Tests `httptest` sur la page Synthèse : la section absente ne casse rien.
+      **FAIT** — `service/synthesis_weapon_range_test.go` : nominal deux côtés + entame (avec la
+      vérification que l'inversion de point de vue du dénivelé TRAVERSE le service : dénivelé
+      brut +2 -> 100 % « d'en haut » côté frags, 100 % « d'en bas » côté morts), entame absente
+      -> bloc nil, entame en échec -> la portée survit, sous le seuil nommé par côté, libellés
+      non résolus -> repli sur la clé, et cinq dégradations en table (repo non câblé, scope vide,
+      capability absente, erreur SQL, scope non décodé) plus le gamertag vide (le repo n'est
+      même pas appelé). `analysis/weapon_opening_delta_test.go` : six tests purs, dont celui qui
+      distingue l'appariement d'une soustraction de médianes.
+      `api/handlers/synthesis_handler_test.go` : deux `httptest` — la section traverse le
+      handler avec ses champs optionnels OMIS (jamais un `null`), et une réponse SANS la section
+      reste valide. `platform/duckdb/weapon_range_repo_test.go` : `ResolveWeaponLabels` (clé
+      connue, clé inconnue ABSENTE de la map, demande vide).
 
 **Gate** : `make go-api-test && cd apps/go-api && go test ./internal/api/... ./internal/service/...`
 puis, parce que le lot branche le repo DuckDB du lot 3 :
@@ -613,6 +694,27 @@ puis, parce que le lot branche le repo DuckDB du lot 3 :
 tests de ce paquet est derrière ce tag, un run nu rend « no tests to run » et c'est un FAUX
 VERT (constaté au lot 3, cf. « Découvertes »). Vérifier le CODE DE RETOUR, jamais un filtre
 sur « FAIL » (il attrape des logs applicatifs).
+
+Gates réellement exécutés le 2026-09-06 (`CGO_ENABLED=1` — DuckDB exige CGO ; `GOCACHE` et
+`GOLANGCI_LINT_CACHE` isolés dans le worktree), code de retour vérifié à chaque fois :
+
+- `go test -tags=integration -p 1 -count=1 ./internal/platform/duckdb/` -> ok 205,6 s, RC 0.
+- `go test -count=1 ./internal/analysis/ ./internal/service/... ./internal/api/... ./internal/domain/...`
+  -> RC 0 (aucune ligne non-`ok`).
+- `go test -tags=integration -p 1 -count=1 ./internal/sync/killcollector/` -> ok 11,9 s, RC 0.
+- `go vet ./internal/analysis/ ./internal/service/... ./internal/api/... ./internal/platform/duckdb/
+  ./internal/sync/killcollector/` -> silencieux, RC 0.
+- `gofmt -l internal` -> sortie vide.
+- `make go-api-test` (domain/analysis/contracttest) -> RC 0.
+- `go run ./cmd/openapi-gen -check` -> « api/openapi.yaml est à jour », RC 0.
+- `npm run typecheck` (après purge de `node_modules/.tmp`) -> RC 0.
+- `npm test -- --run` -> 589 fichiers, 6 227 tests, RC 0.
+- `golangci-lint run --new-from-merge-base=origin/main` -> **0 issues** (baseline non accrue).
+
+MUTATIONS PROUVÉES ROUGES puis restaurées : `fragScope` ramené à `TRUE` (4.0a) ->
+« balayage 2/2 : Filters = "" », les douze tests de résultat WeaponRange restant VERTS ;
+`publishOpeningsReadCounters` retirée du chemin d'échec (4.0d) -> les deux compteurs bougent
+de 0 au lieu de 3 et 5.
 
 ---
 
@@ -716,6 +818,38 @@ répliqué, ou source hors film »).
 
 ## Découvertes (à ne PAS traiter)
 
+- (lot 4, 2026-09-06) **DuckDB matérialise une vue `_latest` lue deux fois en UNE `CTE`
+  partagée** — la jointure mesurée n'a donc qu'UN balayage de `match_kill_events`, pas deux. Le
+  corollaire compte pour la suite : le filtre ne descend jusqu'à ce balayage que si TOUTES les
+  branches le portent. Une branche non bornée ne coûte pas « un scan de plus », elle CASSE le
+  partage de la CTE (le plan repasse à deux balayages, dont un complet). Toute future
+  sous-requête sur ces vues doit donc porter le même scope que la requête externe.
+- (lot 4, 2026-09-06) **Le plan textuel de DuckDB (`EXPLAIN` sans `FORMAT JSON`) COUPE le texte
+  des filtres à 27 caractères** dans ses boîtes ASCII. Un garde-rail de plan posé dessus rate
+  silencieusement les filtres longs — c'est-à-dire justement ceux d'un scope multi-matchs. Tout
+  test de plan à venir doit lire `EXPLAIN (FORMAT JSON)`. NON TRAITÉ ailleurs : aucun autre test
+  de plan n'existe dans le dépôt aujourd'hui.
+- (lot 4, 2026-09-06) **`config/titles/*/mappings/capabilities.toml` ne peut PAS porter une
+  capability PRODUIT.** `games.CapabilityMapFromMappings` rejette au boot toute clé hors
+  `games.AllCapabilityKeys()` (vocabulaire data-level). Le miroir d'une `title.Capability` est le
+  TypeScript (`apps/web/src/lib/capabilities/capabilities.ts` + `FeatureUnavailable.tsx`), pas ce
+  fichier — deux garde-rails l'imposent déjà (`TestCapabilitiesGoTSMirror`,
+  `TestCapabilitiesReferencedByAConsumer`). Le plan demandait une « clé miroir » qui aurait fait
+  tomber le boot ; l'item 4.4 le consigne.
+- (lot 4, 2026-09-06) **Halo 5 peuple `kill_positions` NATIVEMENT** (`games/halo_5/ingest/positions.go`),
+  ce que la doctrine « troisième famille de données du film » laisse oublier : la moitié spatiale
+  de la portée par arme existe déjà pour ce titre. Ce qui manque est le `source_tag` de ses
+  `match_kill_events` (producteur live, jamais renseigné). Si la voie « arme du kill » de Halo 5
+  (weapon_kills natif, 550 926 lignes autoritaires) était un jour reliée à ses positions, la
+  section deviendrait servable pour lui — c'est un chemin de données à écrire, pas un câblage à
+  ajouter. NON TRAITÉ, hors périmètre.
+- (lot 4, 2026-09-06) **Le service n'avait AUCUN chemin vers les libellés d'armes.** Trois pages
+  en affichent (frags par arme, précision par arme, distance par arme d'un match) et les trois
+  les reçoivent DÉJÀ RÉSOLUS par leur repo respectif ; le port de la portée, lui, rend des clés
+  de registre. Ce lot a ajouté `port.WeaponLabelResolver` (embarqué dans
+  `WeaponRangeRepository`), implémenté par délégation à `resolveWeaponKeyLabelsAny` — l'unique
+  passage du dépôt. À surveiller : si un quatrième lecteur en a besoin, ce contrat mérite d'être
+  extrait de `WeaponRangeRepository` et injecté seul.
 - `hypot3D` (`platform/duckdb`) et `dist3` (`analysis/replay`) sont la même formule dans deux
   paquets. Deux copies, dans la limite ; à surveiller si un troisième paquet en a besoin.
 - (lot 2, 2026-09-06) **Le mot « percentile » recouvre DEUX conventions dans le dépôt.**

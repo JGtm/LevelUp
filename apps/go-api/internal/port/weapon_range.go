@@ -58,7 +58,34 @@ func (f WeaponRangeFilters) Validate() error {
 	return nil
 }
 
-// WeaponRangeRepository expose les deux lectures de frags mesurés.
+// WeaponLabel est le nom d'affichage d'une clé d'arme, dans les deux ordres de langue.
+//
+// Deux champs et non un, pour la même raison que `MatchKillDistanceWeapon` : la réponse sert
+// les deux locales et la résolution est UNE seule requête. Vides tous les deux quand la
+// metadata du titre ne connaît pas la clé — l'appelant retombe alors sur la clé elle-même,
+// jamais sur un libellé inventé côté Go.
+type WeaponLabel struct {
+	Label   string `json:"label,omitempty"`
+	LabelEN string `json:"label_en,omitempty"`
+}
+
+// WeaponLabelResolver traduit des clés de registre en noms d'affichage.
+//
+// POURQUOI C'EST UN CONTRAT SÉPARÉ, PORTÉ PAR LE MÊME REPO. La traduction est une lecture de
+// METADATA (`weapon_name_labels` / `weapon_labels`), pas une lecture de frags : elle n'a ni
+// le même scope, ni la même base, ni le même régime d'échec. Mais elle vit chez le même
+// implémenteur, parce que la résolution canonique du dépôt est déjà écrite là
+// (`resolveWeaponKeyLabelsAny`, partagée avec KillDistanceRepo) et qu'aucune couche au-dessus
+// de `platform/` n'a le droit de toucher DuckDB.
+type WeaponLabelResolver interface {
+	// ResolveWeaponLabels rend le libellé de chaque clé connue. BEST-EFFORT : une clé
+	// absente de la metadata est simplement absente de la map (jamais une entrée vide
+	// fabriquée), et une metadata non migrée rend une map vide sans erreur.
+	ResolveWeaponLabels(ctx context.Context, weaponKeys []string) (map[string]WeaponLabel, error)
+}
+
+// WeaponRangeRepository expose les deux lectures de frags mesurés, et la traduction des clés
+// d'arme qu'elles rendent.
 //
 // Capability gating : les deux méthodes retournent games.ErrCapabilityNotSupported quand
 // leur table de positions est ABSENTE (titre sans décodeur de film, base non migrée) —
@@ -81,4 +108,10 @@ type WeaponRangeRepository interface {
 	// (décision utilisateur, jamais lancé d'office) : la section publie « N frags
 	// mesurés », jamais un zéro.
 	LoadWeaponOpening(ctx context.Context, slug string, filters WeaponRangeFilters) ([]analysis.MeasuredKill, error)
+
+	// WeaponLabelResolver : les deux lectures ci-dessus rendent des CLÉS de registre
+	// (`analysis.MeasuredKill.WeaponKey`), jamais des noms. Le service n'a pas d'autre
+	// chemin vers la metadata du titre, et il ne doit surtout pas en inventer un : un
+	// libellé FR/EN écrit en Go serait un adaptateur de titre déguisé.
+	WeaponLabelResolver
 }

@@ -174,6 +174,37 @@ func buildWeaponRangeQuery(
 	return measuredKillsQuery(table, fragScope, sb.String()), args
 }
 
+// ResolveWeaponLabels traduit des clés de registre en noms d'affichage (port.WeaponLabelResolver).
+//
+// LA MÊME RÉSOLUTION QUE `KillDistanceRepo.resolveRows`, ET PAS UNE SECONDE : elle passe par
+// `resolveWeaponKeyLabelsAny`, l'unique passage du paquet pour cette traduction (source de nom
+// keyée par weapon_key, cf. weapon_resolver.go). Une copie ici divergerait sur l'ordre de
+// priorité FR/EN, et deux pages nommeraient la même arme différemment.
+//
+// BEST-EFFORT, SANS ERREUR REMONTÉE : le résolveur sous-jacent journalise ses pannes (registre
+// absent, requête en échec) et rend ce qu'il a. La signature garde `error` pour que ce contrat
+// puisse un jour dire non — aujourd'hui elle vaut toujours nil, et l'appelant qui la teste ne
+// fait rien d'inutile : il se protège d'un futur implémenteur qui échouerait vraiment.
+func (r *WeaponRangeRepo) ResolveWeaponLabels(
+	ctx context.Context, weaponKeys []string,
+) (map[string]port.WeaponLabel, error) {
+	out := make(map[string]port.WeaponLabel, len(weaponKeys))
+	if len(weaponKeys) == 0 {
+		return out, nil
+	}
+	for key, meta := range resolveWeaponKeyLabelsAny(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponKeys) {
+		// Une entrée sans aucun nom n'en est pas une : la laisser passer ferait publier un
+		// libellé vide là où l'appelant sait retomber sur la clé.
+		if meta.label == "" && meta.labelEN == "" {
+			continue
+		}
+		out[key] = port.WeaponLabel{Label: meta.label, LabelEN: meta.labelEN}
+	}
+	slog.DebugContext(ctx, "WeaponRangeRepo: weapon labels resolved",
+		"slug", r.pdb.TitleSlug, "demandees", len(weaponKeys), "resolues", len(out))
+	return out, nil
+}
+
 // toMeasuredKills traduit `source_tag` -> `weapon_key` et habille chaque mesure de son côté.
 //
 // Une source hors registre est ÉCARTÉE (jamais devinée) ; leur nombre est journalisé, pour

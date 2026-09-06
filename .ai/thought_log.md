@@ -1,3 +1,41 @@
+## [2026-09-06] Lot 4 duels/portee — service, capability produit, contrat API (4.1-4.6) — Complete
+
+**Decision technique principale.** Le contrat publie UNE LIGNE PAR ARME portant ses DEUX COTES
+en pointeurs (`Weapons []WeaponRangeRow`, `Kills`/`Deaths *WeaponRangeSide`), et non les deux
+listes paralleles que le plan avait ecrites : la maquette validee le 2026-09-06 fusionne les
+deux graphes jumeaux, et deux listes obligeraient le front a reapparier les armes pour dessiner
+une seule ligne. Le pointeur porte une distinction que le rendu doit faire : nil = « aucune
+mesure de ce cote », un zero dirait « mesure, a zero metre ». Meme regle pour le bloc d entame,
+NIL tant qu aucune entame n est mesuree (D5) — c est l etat NOMINAL tant que le backfill de
+`kill_openings` n a pas tourne, et un bloc a zero se lirait « ce joueur engage au contact ».
+
+Le delta entame -> coup fatal se calcule PAR FRAG APPARIE (`analysis.WeaponOpeningDelta`, clé
+`match_id, killer_xuid, time_ms`). Le test qui le garde est construit pour que l erreur interdite
+soit visible : les medianes des deux populations y sont EGALES alors que le delta apparie vaut
+-5 m — une soustraction de medianes rendrait 0 et raconterait que le joueur ne ferme jamais la
+distance.
+
+**Resultats observes.** Deux constats ont corrige le plan sur pieces. (1) La « cle miroir dans
+capabilities.toml » demandee par 4.4 est IMPOSSIBLE : ce fichier ne porte que le vocabulaire
+data-level, et `games.CapabilityMapFromMappings` rejette au boot toute clé hors
+`AllCapabilityKeys()` — le miroir d une capability PRODUIT est le TypeScript, ce que deux
+garde-rails imposaient deja. (2) Halo 5 PEUPLE `kill_positions` nativement (`MapKillPositions`) :
+la moitie spatiale existe. Ce qui lui manque est l ARME — ses `match_kill_events` n ont aucun
+`source_tag` — donc la jointure mesuree rendrait zero ligne et la capability lui ouvrirait une
+section VIDE. Le raisonnement, et sa condition de reouverture, sont ecrits dans la doc de
+`CapWeaponRange` plutot que dans un ticket.
+
+Un report assume, date et borne : `weapon_range` entre a `orphanCapabilityAllowlist` (jusqu ici
+VIDE) parce que son seul consommateur prevu est le gate d affichage du lot 5 — le cablage Go est
+inconditionnel par decision 4.1, aucun consommateur Go n existe ni ne doit exister. Le lot 5
+supprime l entree dans le commit qui monte la section ; le critere est mesurable.
+
+**Conclusion / prochaine etape.** Gates verts, codes de retour verifies : duckdb integration
+(205,6 s), analysis/service/api/domain, killcollector integration, `go vet`, `gofmt`,
+`make go-api-test`, `openapi-gen -check`, `npm run typecheck`, `npm test` (6 227 tests),
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue. Le lot 5 consomme
+`SynthesisPageV2Response.weapon_range` et retire l entree d allowlist.
+
 ## [2026-09-06] Lot 4 duels/portee — les quatre residus du lot 3 (4.0a-4.0d) — Complete
 
 **Decision technique principale.** `fragSolo` porte desormais SON scope (`measuredKillsQuery(table,
