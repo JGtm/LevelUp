@@ -1062,6 +1062,55 @@ en-têtes de groupe du tableau échangées (F13) ; miroir du seuil porté à 12 
 
 ## Lot 6 — Livraison
 
+**Fusions d'intégration (2026-09-06)** — `feat/duels` porte les deux lots :
+`958ed0050` (lot 4, sans conflit) puis `fcb76ceb1` (lot 5, trois conflits résolus :
+`.ai/thought_log.md` et le plan gardent LES DEUX côtés ; `capabilities_parity_test.go` garde
+l'allowlist VIDE du lot 5 avec la phrase du lot 4-fix sur son caractère DÉCROISSANT).
+`generated.ts` n'a PAS conflicté (le lot 5 ne le touche pas) et porte bien `opening.delta` :
+`node tools/check-generated-types-fresh.mjs` vert.
+
+**Résidus des rondes 2 des lots 4 et 5 (trois P2 statués par le pilote) + la vue locale —
+traités EN TÊTE du lot 6, avant 6.1 :**
+
+- [x] 6.0a `features/synthesis/weaponRange_logic.ts` — la vue locale datée
+      `WeaponRangeBlock`/`WeaponRangeOpening`/`WeaponRangeOpeningDelta` (écrite au lot 5 avant
+      la régénération du contrat) est SUPPRIMÉE, avec son `Omit<>` de transition. Le contrat
+      généré porte désormais `SynthesisOpening.delta` : `lib/api/types.ts` ré-exporte
+      `SynthesisOpening` et `SynthesisOpeningDelta` à côté des quatre re-exports du lot 4, et
+      les cinq consommateurs (`SynthesisPage.tsx`, `SynthesisWeaponRangeSection.tsx` et ses
+      deux fichiers de test, `weaponRange_logic.ts`) lisent `SynthesisWeaponRange` depuis
+      `@/lib/api/types`. Les deux commentaires de transition (« pas encore dans generated.ts »)
+      sont retirés — une doc inversée sur un contrat régénéré est l'anti-pattern n°9. 0 code
+      mort : `grep -rn 'WeaponRangeBlock\|WeaponRangeOpening' apps/web/src` ne rend plus rien.
+      PREUVE : `npm run typecheck` RC 0 (cache `.tsbuildinfo` purgé), `npm run lint` RC 0.
+- [x] 6.0b `internal/service/synthesis_weapon_range_test.go` (579 L, seuil 500) scindé en deux
+      fichiers qui suivent la coupure du CODE testé : le service (`loadWeaponRange`, port
+      mocké, dégradations, régime de log) reste dans `synthesis_weapon_range_test.go` (477 L),
+      les fonctions pures de `synthesis_weapon_range_build.go` (`mergeWeaponSides`,
+      `buildOpening`) passent dans `synthesis_weapon_range_build_test.go` (136 L) — quatre
+      tests déplacés (les deux `TestMergeWeaponSides_*` et les deux tests d'entame, dont le nom
+      `TestLoadWeaponRange_*` est CONSERVÉ : aucun test n'a été modifié, seulement déplacé).
+      Les deux en-têtes de fichier disent la nouvelle frontière. PREUVE :
+      `go test ./internal/service/ -run 'WeaponRange|MergeWeaponSides|BuildOpening' -v` rend
+      21 `=== RUN` avant ET après, `diff` des noms triés VIDE, RC 0 ; `gofmt -l` vide.
+- [x] 6.0c `platform/duckdb/kill_measured_scope_test.go` — le motif cherché dans la clause
+      WHERE de `fragSolo` passe de `"s.match_id"` à `"match_id"` : l'ALIAS n'est pas le
+      contrat, et une réécriture neutre du scope sans qualifier la colonne (`match_id IN (...)`,
+      légale — la sous-requête n'a qu'une table) faisait rougir l'assertion sans qu'aucun
+      balayage n'ait bougé. Le commentaire du helper dit pourquoi. PREUVE, les deux sens :
+      `fragScope` réécrit en `match_id IN (...)` -> RC 0 (le faux rouge a disparu) ;
+      `fragScope` muté en `TRUE` -> `--- FAIL: TestFragSolo_ScopeBorneLeBalayageDuKillFeed`
+      + `--- FAIL: TestWeaponRange_HorsScope_NonLu`, message « la clause WHERE de fragSolo ne
+      porte AUCUN filtre sur match_id ... : "WHERE TRUE\n AND s.feed_killer_xuid IS NOT NULL" ».
+      La discrimination est donc intacte. Fichier restauré après chaque mutation.
+- [x] 6.0d `SynthesisWeaponRangeSection.test.tsx` — deux assertions ajoutées, calquées sur
+      celles des pastilles du dénivelé : (i) les deux pastilles de la légende de PORTÉE portent
+      `chart-series-1` (frags) et `chart-series-3` (morts) ; (ii) les deux tuiles de portée
+      portent le même accent sur leur filet de 3 px. PREUVE : suite verte (21 tests) ;
+      mutation des encres de `RangeLegend` (:197/:203) -> 1 rouge, celui de la légende ;
+      mutation des accents des tuiles (:83/:94) -> 1 rouge, celui des tuiles. Composant
+      restauré à l'identique après les deux mutations.
+
 - [ ] 6.1 Skill `delivery-checklist`.
 - [ ] 6.2 `cd apps/go-api && go test -count=1 ./... && go vet ./...` puis
       `go test -tags=integration -p 1 -count=1 ./...`. **LE RUN NU NE VAUT PAS GATE POUR

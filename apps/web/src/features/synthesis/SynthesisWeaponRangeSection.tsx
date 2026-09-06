@@ -23,6 +23,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken, tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import type { SynthesisWeaponRange } from '@/lib/api/types'
 import { cssColorToHex } from '@/lib/echarts/cssColorToHex'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
@@ -46,7 +47,6 @@ import {
   WEAPON_RANGE_MIN_MEASURED,
   belowThresholdNames,
   hasWeaponRangeRows,
-  type WeaponRangeBlock,
 } from './weaponRange_logic'
 import { useRangeFormats, type RangeFormats, type Translate } from './weaponRangeText'
 
@@ -67,7 +67,7 @@ function elevationLabels(t: Translate): Record<ElevationKey, string> {
 
 // ─── Tuiles de tête ───────────────────────────────────────────────────────────
 
-function RangeTiles({ range, t, f }: { range: WeaponRangeBlock; t: Translate; f: RangeFormats }) {
+function RangeTiles({ range, t, f }: { range: SynthesisWeaponRange; t: Translate; f: RangeFormats }) {
   const opening = range.opening
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -236,7 +236,7 @@ function RangeFooter({
   t,
   f,
 }: {
-  range: WeaponRangeBlock
+  range: SynthesisWeaponRange
   lines: WeaponRangeLine[]
   locale: ManifestLocale
   t: Translate
@@ -400,7 +400,7 @@ function RangeCardBody({
 // ─── Section ──────────────────────────────────────────────────────────────────
 
 export interface SynthesisWeaponRangeSectionProps {
-  range: WeaponRangeBlock | null | undefined
+  range: SynthesisWeaponRange | null | undefined
 }
 
 export function SynthesisWeaponRangeSection({ range }: SynthesisWeaponRangeSectionProps) {

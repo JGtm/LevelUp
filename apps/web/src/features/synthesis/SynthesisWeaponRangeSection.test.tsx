@@ -15,11 +15,10 @@ import { screen, within } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import { tokenCssVar } from '@/lib/accessibility'
-import type { WeaponRangeSide } from '@/lib/api/types'
+import type { SynthesisWeaponRange, WeaponRangeSide } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { SynthesisWeaponRangeSection } from './SynthesisWeaponRangeSection'
-import type { WeaponRangeBlock } from './weaponRange_logic'
 
 vi.mock('echarts-for-react', () => ({
   default: () => <div data-testid="echarts-mock" />,
@@ -36,7 +35,7 @@ const side = (o: Partial<WeaponRangeSide>): WeaponRangeSide => ({
   ...o,
 })
 
-const RANGE: WeaponRangeBlock = {
+const RANGE: SynthesisWeaponRange = {
   weapons: [
     {
       weapon_key: 'hinf_br75',
@@ -162,6 +161,33 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     const level = swatch('à niveau') as HTMLElement
     expect(level.className).toContain('bg-muted-foreground')
     expect(level.style.backgroundColor).toBe('')
+  })
+
+  it('les pastilles de la légende de PORTÉE portent l’encre de leur côté', () => {
+    // Symétrique du test précédent, pour la légende du HAUT (lot 6, item 6.0d). Sans lui,
+    // échanger les deux `tokenCssVar` de `RangeLegend` laissait la suite verte : la légende
+    // aurait annoncé les frags à l'encre des morts, et rien n'aurait mordu — alors que c'est
+    // la légende qui dit au lecteur quel bâton est lequel.
+    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    const legend = screen.getByRole('list', { name: 'Légende' })
+    const swatch = (name: string) =>
+      within(legend).getByText(name).parentElement!.querySelector(
+        'span[aria-hidden="true"]',
+      ) as HTMLElement
+    expect(swatch('Mes frags').style.backgroundColor).toBe(tokenCssVar('chart-series-1'))
+    expect(swatch('Mes morts').style.backgroundColor).toBe(tokenCssVar('chart-series-3'))
+  })
+
+  it('les deux tuiles de portée portent l’accent de leur côté', () => {
+    // Le filet de 3 px en tête de tuile est le SEUL rappel de couleur entre la tuile et son
+    // bâton : les valeurs sont déjà épinglées, l'ENCRE ne l'était pas (lot 6, item 6.0d).
+    // Échanger `accent={KILLS_TOKEN}` et `accent={DEATHS_TOKEN}` laissait la suite verte.
+    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    const accentOf = (label: string) =>
+      (screen.getByText(label).closest('div.rounded-lg')!.firstElementChild as HTMLElement).style
+        .backgroundColor
+    expect(accentOf('Portée médiane de mes frags')).toBe(tokenCssVar('chart-series-1'))
+    expect(accentOf('Portée médiane de mes morts')).toBe(tokenCssVar('chart-series-3'))
   })
 
   it('le tableau groupe ses colonnes : mes frags D’ABORD, mes morts ensuite', () => {

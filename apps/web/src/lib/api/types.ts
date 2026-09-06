@@ -1503,9 +1503,11 @@ export type SynthesisWeaponRange = components['schemas']['SynthesisWeaponRange']
 export type WeaponRangeRow = components['schemas']['WeaponRangeRow']
 export type WeaponRangeSide = components['schemas']['WeaponRangeSide']
 export type WeaponBelowThreshold = components['schemas']['WeaponBelowThreshold']
-// `SynthesisOpening` n'est PAS ré-exporté : le contrat généré en porte encore la forme plate,
-// alors que le service sert `opening.delta` (décision du 2026-09-06). La forme lue vit dans
-// `features/synthesis/weaponRange_logic.ts` jusqu'à la régénération.
+// Le proxy d'entame et son delta apparié : `opening` est OMIS quand aucune entame n'est
+// mesurée, `opening.delta` quand aucun frag n'a pu être apparié à la sienne. Les deux
+// absences disent deux choses différentes et l'UI les distingue (cf. plan, D5).
+export type SynthesisOpening = components['schemas']['SynthesisOpening']
+export type SynthesisOpeningDelta = components['schemas']['SynthesisOpeningDelta']
 
 // Répartition hiérarchique des frags v2 (sunburst classe→rôle) — title-agnostic,
 // partagé par Synthesis/Match view/Timeseries/Sessions. Cf. domain/frag_distribution.go.

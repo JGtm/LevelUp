@@ -19,9 +19,6 @@ import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
 import { SynthesisWeaponAccuracyChart } from './SynthesisWeaponAccuracyChart'
 import { AccentCard, SectionSubtitle } from './SynthesisCards'
 import { SynthesisWeaponRangeSection } from './SynthesisWeaponRangeSection'
-// La forme SERVIE de `opening` (sous-objet `delta`) n'est pas encore dans `generated.ts` :
-// le front lit le bloc par sa vue locale, alignée sur le contrat et datée (weaponRange_logic).
-import type { WeaponRangeBlock } from './weaponRange_logic'
 import { useSynthesisFragCharts } from './useSynthesisFragCharts'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
@@ -50,6 +47,7 @@ import type {
   SynthesisQueryRequest,
   SynthesisWeaponKillEntry,
   SynthesisWeaponAccuracyEntry,
+  SynthesisWeaponRange,
   ObjectiveAggregate,
 } from '@/lib/api/types'
 import { formatDurationMMSS } from '@/lib/formatters/duration'
@@ -121,7 +119,7 @@ interface SynthesisOverviewSectionProps {
   topWeaponKills?: SynthesisWeaponKillEntry[]
   fragDistribution?: FragDistribution | null
   weaponAccuracy?: SynthesisWeaponAccuracyEntry[]
-  weaponRange?: WeaponRangeBlock
+  weaponRange?: SynthesisWeaponRange
   combatProfile?: CombatProfileBlock | null
   objectiveStats?: ObjectiveAggregate | null
   playerSlug: string
