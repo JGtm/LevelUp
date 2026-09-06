@@ -68,36 +68,36 @@ type ecsEcartAdmis struct {
 	Pourquoi      string
 }
 
-// ecsEcartsAdmis : LES TROIS ECARTS CONNUS, dates du 2026-09-06 (lot E, item E.7).
+// ecsEcartsAdmis : LES ECARTS CONNUS, dates.
 //
 // AUCUN N'EST UN BOGUE DE DECODAGE, et aucun n'est silencieux : chacun est ici avec sa raison, et
-// le controle echoue si un QUATRIEME apparait — ou si l'un de ceux-ci se resorbe sans qu'on
+// le controle echoue si un ecart de plus apparait — ou si l'un de ceux-ci se resorbe sans qu'on
 // retire sa ligne.
 //
-// RETRAIT : ces trois lignes tombent le jour ou la colonne `bits_typ` distingue une largeur FIXE
-// d'une largeur NOMINALE (par exemple en prefixant les nominales). C'est une reecriture de la
-// table, hors du perimetre du lot E, qui ne touche pas aux mesures de retro-ingenierie.
+// CHRONIQUE. 2026-09-06 (item E.7) : TROIS ecarts. 2026-09-06 (item E.9, decision utilisateur 10) :
+// **DEUX** — `ti=35 i=50 biped-map-editor-flag-component` en sort, parce que la table a ete
+// corrigee (`bits_typ` 1 -> 8) et que le code et la table s'accordent desormais. C'etait le seul
+// des trois dont la mesure donnait UNE largeur : les deux qui restent sont des largeurs GARDEES,
+// dont aucun entier unique ne peut rendre compte.
+//
+// RETRAIT DES DEUX DERNIERES : le jour ou la colonne `bits_typ` distingue une largeur FIXE d'une
+// largeur NOMINALE (par exemple en prefixant les nominales). C'est une reecriture de la table,
+// hors du perimetre de l'item E.9, qui corrige entree par entree sur mesure.
 var ecsEcartsAdmis = []ecsEcartAdmis{
 	{
 		TI: 13, I: 1, Component: "managed-object-property-component", Table: 28, Mesure: 4,
 		Pourquoi: "largeur gardee par le TAG, et la table le dit elle-meme dans ses notes : " +
 			"« largeur totale 4/5/8/28/36 selon le tag ». Les trois motifs tombent sur des tags " +
 			"a charge nulle (t0, t10, t15), d'ou 4 bits — le R(4) du tag seul. `bits_typ` fige " +
-			"ici le cas t3, pas une largeur fixe.",
-	},
-	{
-		TI: 35, I: 50, Component: "biped-map-editor-flag-component", Table: 1, Mesure: 8,
-		Pourquoi: "C'EST LA TABLE QUI EST PERIMEE, pas le code. `consumeBipedMapEditorFlag` lit " +
-			"un R(8) plat, « CONFIRMED bit-exact from the decompile » (FUN_142f02854, refill " +
-			"8 bits unique). La correction de la colonne appartient a un lot qui revise la " +
-			"table ; la signaler est le role de ce controle.",
+			"ici le cas t3, pas une largeur fixe. Mesure tenue par le controle G5.",
 	},
 	{
 		TI: 37, I: 14, Component: "object-dissolver-component", Table: 4, Mesure: 113,
 		Pourquoi: "largeur gardee par la VALEUR lue, pas par un bit de porte : " +
 			"`consumeObjectDissolver` lit R(4) puis, SI la valeur n'est pas 13, R(96)+R(12)+R(1). " +
 			"Les trois motifs manquent la valeur 13, d'ou 113. La table fige le cas nominal " +
-			"(« champ court », 4 bits), qui est le cas v==13.",
+			"(« champ court », 4 bits), qui est le cas v==13 — et sa colonne `notes` le dit " +
+			"depuis le 2026-09-06 (item E.9), avec la mesure que tient le controle G5.",
 	},
 }
 
@@ -189,3 +189,108 @@ func ecsCle(ti, i int, component string) string {
 
 // itoaECS evite d'elargir la portee de strconv a un seul usage de plus.
 func itoaECS(n int) string { return strconv.Itoa(n) }
+
+// --- G5 : LES MESURES CITEES PAR LA TABLE SONT TENUES PAR UN TEST ----------------------------
+//
+// (item E.9 du PLAN_V2_REJEU_FILM, decision utilisateur 10 du 2026-09-06.)
+//
+// # POURQUOI CE CONTROLE EXISTE
+//
+// La revision de `ecs_table.tsv` demandee par la decision 10 exige que « chaque entree corrigee
+// soit adossee a une mesure ». Une note dans une colonne de prose n'est pas une mesure : c'est une
+// affirmation, et le lot E a deja montre ce que devient une affirmation que personne ne rejoue
+// (« 25 familles sur 30 », « un rendu %+v »). Les lignes de la table dont la colonne `notes` CITE
+// une largeur mesuree la voient donc figee ici, motif par motif.
+//
+// # CE QU'IL MESURE, EXACTEMENT
+//
+// La largeur consommee par `consumeByName` sur CHACUN des trois motifs de tampon, separement —
+// la ou G4 ne retient que l'accord ou le desaccord des trois. C'est ce detail qui donne son sens
+// a une note comme « 45 ou 60 selon le motif » : sans lui, on ne saurait pas laquelle des deux
+// branches chaque motif visite.
+
+// ecsMesureCitee fige les trois largeurs d'une ligne dont la table cite la mesure.
+type ecsMesureCitee struct {
+	TI, I     int
+	Component string
+	// Largeurs sont les bits consommes sur `ecsBitsPatterns`, dans l'ordre : 0x00, 0xFF, 0xAA.
+	Largeurs [3]int
+	Pourquoi string
+}
+
+// ecsMesuresCitees : les quatre lignes dont la colonne `notes` porte une largeur mesuree.
+//
+// TROIS Y SONT PARCE QUE LEUR `bits_typ` NE PEUT PAS DIRE LA VERITE A LUI SEUL (la largeur depend
+// du flux), et une parce que sa correction du 2026-09-06 s'appuie sur cette mesure.
+var ecsMesuresCitees = []ecsMesureCitee{
+	{
+		TI: 13, I: 1, Component: "managed-object-property-component", Largeurs: [3]int{4, 4, 4},
+		Pourquoi: "largeur gardee par le TAG : 4/5/8/28/36 selon lui. Les trois motifs tombent " +
+			"sur des tags a charge nulle (t0, t10, t15), d'ou le R(4) du tag seul.",
+	},
+	{
+		TI: 35, I: 50, Component: "biped-map-editor-flag-component", Largeurs: [3]int{8, 8, 8},
+		Pourquoi: "R(8) plat, sans porte : `consumeBipedMapEditorFlag` (FUN_142f02854), " +
+			"« CONFIRMED bit-exact from the decompile ». C'est la mesure sur laquelle la colonne " +
+			"`bits_typ` a ete corrigee de 1 a 8 le 2026-09-06.",
+	},
+	{
+		TI: 37, I: 14, Component: "object-dissolver-component", Largeurs: [3]int{113, 113, 113},
+		Pourquoi: "largeur gardee par la VALEUR lue : `consumeObjectDissolver` lit R(4) puis, SI " +
+			"cette valeur n'est pas 13, R(96)+R(12)+R(1). Les trois motifs manquent la valeur 13.",
+	},
+	{
+		TI: 43, I: 0, Component: "object-position-component", Largeurs: [3]int{45, 60, 60},
+		Pourquoi: "largeur gardee par le bit precHigh de tete, ET propre a la CARTE : le chemin " +
+			"dominant vaut 3 de porte + AxisW + 2 de queue (45 bits avec le defaut Cliffhanger " +
+			"13/13/14, cf. `WorldObjectPrecision`), l'autre branche en consomme davantage.",
+	},
+}
+
+// TestG5MesuresCiteesParLaTable — les largeurs que la table cite en prose sont celles que le
+// deser consomme, motif par motif.
+func TestG5MesuresCiteesParLaTable(t *testing.T) {
+	rows := loadECSTable(t)
+	release := LockProcessDecode()
+	defer release()
+
+	index := map[string]ecsRow{}
+	for _, r := range rows {
+		index[ecsCle(r.TI, r.I, r.Component)] = r
+	}
+	for _, m := range ecsMesuresCitees {
+		cle := ecsCle(m.TI, m.I, m.Component)
+		r, ok := index[cle]
+		if !ok {
+			t.Errorf("G5 : la ligne citee ti=%d i=%d %s n'existe plus dans la table : retirer son "+
+				"entree, une mesure sans cible est du code mort", m.TI, m.I, m.Component)
+			continue
+		}
+		got := ecsLargeursParMotif(r)
+		if got != m.Largeurs {
+			t.Errorf("G5 : ti=%d i=%d %s consomme %v bits sur les motifs %v, fige a %v "+
+				"(mesure du 2026-09-06).\nLa colonne `notes` de la table cite ces largeurs : les "+
+				"deux se corrigent ensemble, jamais l'une sans l'autre.\n  %s",
+				m.TI, m.I, m.Component, got, ecsBitsPatterns, m.Largeurs, m.Pourquoi)
+		}
+	}
+}
+
+// ecsLargeursParMotif rend les bits consommes par le deser de production sur chacun des trois
+// motifs, sans les confondre. Une largeur vaut -1 quand le composant n'est pas porte.
+func ecsLargeursParMotif(r ecsRow) [3]int {
+	var out [3]int
+	for k, motif := range ecsBitsPatterns {
+		buf := make([]byte, ecsProbeBytes)
+		for i := range buf {
+			buf[i] = motif
+		}
+		br := NewBitReader(buf)
+		if _, _, ported := consumeByName(br, r.Component, uint32(r.TI), r.Level); !ported {
+			out[k] = -1
+			continue
+		}
+		out[k] = br.BitPos()
+	}
+	return out
+}

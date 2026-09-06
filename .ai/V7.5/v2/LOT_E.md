@@ -872,3 +872,87 @@ l'etaient pas.
 
 VERIFICATION : `TestGoldenMiniBobineFamilles` PASS, md5 du golden inchange
 (`e396143919281fde5f92a56d0af03d86`) — cette correction ne touche que de la prose.
+
+## [x] Correction 7 = item E.9 (decision utilisateur 10) — la table des largeurs, entree par entree
+
+Commit `v2(E.9)`. `filmdec/testdata/ecs_table.tsv` (3 lignes), `filmdec/ecs_widths_guard_test.go`.
+
+CE QUI REND CETTE CORRECTION SANS RISQUE, VERIFIE AVANT DE TOUCHER UNE SEULE LIGNE : **la table
+n'a AUCUN lecteur applicatif.** Son unique lecteur est `loadECSTable` dans
+`ecs_table_guard_test.go`, et l'en-tete de ce fichier l'ecrit deja (« un `ecs_table.go` serait du
+code mort »). Aucune valeur de cette table n'entre dans un chemin de decodage : la corriger ne peut
+pas changer un bit servi. **Zero ligne de code du decodeur n'a ete touchee.**
+
+### La mesure d'abord : un controle G5 qui TIENT les largeurs citees
+
+Une note dans une colonne de prose n'est pas une mesure — c'est une affirmation, et ce lot vient de
+montrer trois fois ce que devient une affirmation que personne ne rejoue. Avant de corriger quoi
+que ce soit, `TestG5MesuresCiteesParLaTable` (`ecs_widths_guard_test.go`) fige la largeur consommee
+par le deser de production sur CHACUN des trois motifs, separement — la ou G4 ne retient que
+l'accord ou le desaccord des trois :
+
+| ligne | 0x00 | 0xFF | 0xAA | ce que ca dit |
+|---|---|---|---|---|
+| `ti=13 i=1` managed-object-property | 4 | 4 | 4 | les trois motifs tombent sur des tags a charge nulle |
+| `ti=35 i=50` biped-map-editor-flag | 8 | 8 | 8 | R(8) PLAT, aucune porte |
+| `ti=37 i=14` object-dissolver | 113 | 113 | 113 | les trois manquent la valeur 13 |
+| `ti=43 i=0` object-position | **45** | **60** | **60** | garde par le bit precHigh de tete |
+
+Les 45/60/60 sont donc RE-MESURES ici par le depot, pas repris de la sonde jetable de la revue.
+Chaque note de la table cite ce controle par son nom : la note et la mesure se corrigent ensemble.
+
+### Les trois entrees, une par une
+
+**`ti=35 i=50 biped-map-editor-flag-component` — `bits_typ` 1 -> 8, CORRIGEE.**
+`consumeBipedMapEditorFlag` (`components_biped_ability.go:145-147`) est un `br.ReadBits(8)` plat,
+sans porte ni largeur de runtime, annote « CONFIRMED bit-exact from the decompile » (FUN_142f02854,
+refill 8 bits unique). C'etait la TABLE qui etait perimee. La ligne **quitte l'allowlist**
+`ecsEcartsAdmis` : elle est desormais tenue par G4 comme n'importe quelle largeur fixe.
+
+**`ti=43 i=0 object-position-component` — NOTE, PAS DE NOMBRE.** `bits_typ = 15` (« R(14) + R(1) »)
+ne correspond a AUCUN chemin du code. Aucun entier ne serait juste : la mesure donne 45 ou 60 selon
+le motif, et le chemin dominant (45 = 3 de porte + AxisW + 2 de queue) est **PROPRE A LA CARTE** —
+`AxisW` vaut 13/13/14 sur Cliffhanger et autre chose ailleurs (`WorldObjectPrecision`,
+`traverse.go`). Le nombre est donc laisse tel quel et la colonne `notes` porte la mesure, sa
+provenance et la raison pour laquelle aucun entier ne peut la remplacer — comme le fait deja
+`ti=13 i=1`. La ligne est de categorie GARDEE : elle n'etait pas dans l'allowlist, elle n'y entre
+pas.
+
+**`ti=37 i=14 object-dissolver-component` — NOTE, PAS DE NOMBRE.** `consumeObjectDissolver` lit
+R(4) puis, SI la valeur n'est pas 13, R(96)+R(12)+R(1) : 4 bits ou 113, garde par la VALEUR lue et
+non par un bit de porte. `bits_typ = 4` fige le cas v==13 et reste tel quel ; la colonne `notes`
+porte l'explication et la mesure. La ligne **reste dans l'allowlist**, comme le mandat le demande
+pour une entree dont aucune valeur unique n'est etablie.
+
+### ECART ASSUME AVEC LE MANDAT, ECRIT PARCE QU'IL EST VOLONTAIRE
+
+Le mandat proposait la note « 45 ou 60 selon le motif (mesure 2026-09-06, **trois films**) ». La
+mesure n'a PAS ete faite sur trois films : elle est faite sur les **trois motifs de tampon**
+synthetiques du controle G4/G5 (`0x00`, `0xFF`, `0xAA`), sans un octet de film. Ecrire « trois
+films » aurait invente une provenance — exactement la classe de defaut que les corrections 2 et 6
+de cette meme session viennent de reparer. La note dit ce qui a ete mesure, et par quel controle.
+
+### Ratchet
+
+| ratchet | avant | apres | sens |
+|---|---|---|---|
+| `ecsEcartsAdmis` | 3 ecarts admis | **2** | REDESCEND (la ligne corrigee sort de l'allowlist) |
+| `ecsLargeursFixes` / `ecsLargeursGardees` | 114 / 65 | 114 / 65 | inchange (aucune ligne ne change de categorie) |
+| `filmdec/ecs_widths_guard_test.go` (G5) | (n'existait pas) | 4 lignes, 12 largeurs figees | NOUVEAU (E.9) |
+
+### Preuves par mutation (les deux, rejouees le 2026-09-06)
+
+```
+1) la TABLE re-perimee : bits_typ remis a 1 sur ti=35 i=50, allowlist videe de cette ligne
+   --- FAIL: TestG4LargeursEntieresSuiventLeCode
+       G4 : ligne 739 (ti=35 i=50 biped-map-editor-flag-component) : la table annonce 1 bits,
+       le deser de production en consomme 8 (largeur FIXE : les trois motifs s'accordent)
+
+2) le CODE mute : consumeBipedMapEditorFlag R(8) -> R(9)
+   --- FAIL: TestG4LargeursEntieresSuiventLeCode
+       G4 : ... la table annonce 8 bits, le deser de production en consomme 9
+   --- FAIL: TestG5MesuresCiteesParLaTable
+       G5 : ti=35 i=50 ... consomme [9 9 9] bits sur les motifs [0 255 170], fige a [8 8 8]
+```
+
+Les deux mutations sont annulees ; G1, G3, G4, G5 passent, le paquet `filmdec` est vert.
