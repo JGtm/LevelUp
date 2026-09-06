@@ -40,6 +40,11 @@ describe('SquadEchangeCapCard', () => {
     )
     const phrase = screen.getByTestId('squad-echange-cap-phrase').textContent ?? ''
     expect(phrase).toMatch(/mérite votre attention/i)
+    // W6 : la direction est DANS LES MOTS (« de moins ») — le nombre est une
+    // magnitude. « +20 pts de moins que d'habitude » se contredisait tout seul.
+    expect(phrase).toContain('20 pts')
+    expect(phrase.includes('+')).toBe(false)
+    expect(phrase.includes('−')).toBe(false)
   })
 
   it('cadre l’écart positif en CONSOLIDATION', () => {
@@ -48,6 +53,10 @@ describe('SquadEchangeCapCard', () => {
         echange={echangeDe({ couverture: couverture(27, 45), habituel: couverture(40, 100) })}
       />,
     )
-    expect(screen.getByTestId('squad-echange-cap-phrase').textContent).toMatch(/consolidez/i)
+    const phrase = screen.getByTestId('squad-echange-cap-phrase').textContent ?? ''
+    expect(phrase).toMatch(/consolidez/i)
+    // Même règle dans l'autre sens : « de plus » porte déjà la direction.
+    expect(phrase).toContain('20 pts')
+    expect(phrase.includes('+')).toBe(false)
   })
 })

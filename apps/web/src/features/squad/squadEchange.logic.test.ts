@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 
 import type { SquadEchange } from '@/lib/api/types'
 
+import { couverture, echangeDe } from './squadEchange.fixtures'
 import {
   ECART_BADGE_VENGEANCES,
   ECART_CAP_POINTS,
@@ -9,6 +10,7 @@ import {
   capDuMoment,
   couvertureParJoueur,
   delaisSeries,
+  ecartEchange,
   extremesCouverture,
   matriceSeries,
   matriceVide,
@@ -16,35 +18,9 @@ import {
   trendEcart,
 } from './squadEchange.logic'
 
-// ─── DÉCOR ────────────────────────────────────────────────────────────────────
-
-function couverture(brut: number, n: number, matchs = 10) {
-  return {
-    taux: n > 0 ? brut / n : 0,
-    brut,
-    par_match: matchs > 0 ? brut / matchs : 0,
-    n,
-    echantillon_faible: n < PLANCHER_MORTS,
-  }
-}
-
-function echangeDe(over: Partial<SquadEchange> = {}): SquadEchange {
-  return {
-    joueurs: [
-      { xuid: 'x1', gamertag: 'Moi' },
-      { xuid: 'x2', gamertag: 'Ami' },
-    ],
-    cellules: [],
-    delais: [],
-    fenetre_ms: 5000,
-    couverture: couverture(15, 40),
-    habituel: couverture(15, 40),
-    matchs_habituel: 10,
-    matchs_mesures: 10,
-    matchs_total: 10,
-    ...over,
-  } as SquadEchange
-}
+// Le DÉCOR vit dans `squadEchange.fixtures` : ce fichier en avait une COPIE, déjà
+// divergente (12 matchs par défaut ici, autre valeur là-bas), ce qui rendait deux
+// tests du même invariant incomparables. Correction W7 (revue du 2026-09-06).
 
 // ─── LE CAP DU MOMENT : DEUX SEUILS, TOUS LES DEUX NÉCESSAIRES ────────────────
 
@@ -169,6 +145,27 @@ describe('extremesCouverture — badges « le plus / le moins couvert »', () =>
     expect(parJoueur.find((j) => j.gamertag === 'Ami')?.vengeances).toBe(9)
   })
 
+  it('pose les badges EXACTEMENT au plancher d’échantillon (30 morts)', () => {
+    // W9 (revue du 2026-09-06) : la borne n'était testée que par le dessous. Un
+    // `<` mué en `<=` dans `extremesCouverture` passait inaperçu.
+    const auPlancher = echangeDe({
+      joueurs: troisJoueurs,
+      couverture: couverture(10, PLANCHER_MORTS),
+      cellules: [
+        { vengeur_xuid: 'x2', vengeur_gamertag: 'Ami', venge_xuid: 'x1', venge_gamertag: 'Moi', nombre: 5, par_match: 0 },
+        { vengeur_xuid: 'x1', vengeur_gamertag: 'Moi', venge_xuid: 'x3', venge_gamertag: 'Autre', nombre: 1, par_match: 0 },
+      ],
+    })
+    expect(extremesCouverture(auPlancher)).not.toBeNull()
+
+    const justeEnDessous = echangeDe({
+      joueurs: troisJoueurs,
+      couverture: couverture(10, PLANCHER_MORTS - 1),
+      cellules: (auPlancher.cellules ?? []).slice(),
+    })
+    expect(extremesCouverture(justeEnDessous)).toBeNull()
+  })
+
   it('rien avec un seul joueur au roster : « le plus couvert » d’un seul ne veut rien dire', () => {
     const solo = echangeDe({
       joueurs: [{ xuid: 'x1', gamertag: 'Moi' }],
@@ -188,16 +185,13 @@ describe('matriceSeries — orientation, complétude, et AXES', () => {
     { xuid: 'x3', gamertag: 'C' },
     { xuid: 'x4', gamertag: 'D' },
   ]
-  const e = echangeDe({
-    cellules: [
-      { vengeur_xuid: 'x2', vengeur_gamertag: 'Ami', venge_xuid: 'x1', venge_gamertag: 'Moi', nombre: 4, par_match: 0.4 },
-    ],
-  })
+  // Le décor partagé : roster [Alice, Bob], une seule case (Bob venge Alice).
+  const e = echangeDe()
 
   it('LIGNE = vengeur (y), COLONNE = vengé (x) — l’orientation de SquadAssistPairsTable', () => {
     const dp = matriceSeries(e)[0].datapoints
-    const case42 = dp.find((d) => d.y === 'Ami' && d.x === 'Moi')
-    expect(case42?.value).toBe(4)
+    const case42 = dp.find((d) => d.y === 'Bob' && d.x === 'Alice')
+    expect(case42?.value).toBe(6)
   })
 
   // W1 (revue ronde 1, 2026-09-06) — LA MATRICE SE LISAIT DE TRAVERS.
@@ -220,7 +214,7 @@ describe('matriceSeries — orientation, complétude, et AXES', () => {
 
   it('rend des axes identiques sur un DUO (le cas où l’inversion était totale)', () => {
     const { xs, ys } = axesDerives(matriceSeries(e)[0].datapoints)
-    expect(ys).toEqual(['Moi', 'Ami'])
+    expect(ys).toEqual(['Alice', 'Bob'])
     expect(xs).toEqual(ys)
   })
 
@@ -234,11 +228,11 @@ describe('matriceSeries — orientation, complétude, et AXES', () => {
 
   it('émet les cases hors diagonale à zéro : un 0 mesuré n’est pas une case absente', () => {
     const dp = matriceSeries(e)[0].datapoints
-    expect(dp.find((d) => d.y === 'Moi' && d.x === 'Ami')?.value).toBe(0)
+    expect(dp.find((d) => d.y === 'Alice' && d.x === 'Bob')?.value).toBe(0)
   })
 
   it('matriceVide dit qu’il n’y a aucune vengeance interne à montrer', () => {
-    expect(matriceVide(echangeDe())).toBe(true)
+    expect(matriceVide(echangeDe({ cellules: [] }))).toBe(true)
     expect(matriceVide(e)).toBe(false)
   })
 })
@@ -275,7 +269,11 @@ describe('délais — les deux barres hors fenêtre sont montrées et jamais com
   })
 
   it('rend zéro partout sur une section sans riposte', () => {
-    expect(resumeDelais(echangeDe())).toEqual({ dansLaFenetre: 0, horsFenetre: 0, total: 0 })
+    expect(resumeDelais(echangeDe({ delais: [] }))).toEqual({
+      dansLaFenetre: 0,
+      horsFenetre: 0,
+      total: 0,
+    })
   })
 })
 
@@ -286,5 +284,29 @@ describe('trendEcart', () => {
     expect(trendEcart(7)).toBe('above')
     expect(trendEcart(-7)).toBe('below')
     expect(trendEcart(0)).toBe('near')
+  })
+})
+
+// ─── L'ÉCART À L'HABITUEL (correction W3) ─────────────────────────────────────
+
+describe('ecartEchange', () => {
+  it('rend l’écart signé et son arrondi en points', () => {
+    const e = echangeDe({ couverture: couverture(27, 45), habituel: couverture(40, 100) })
+    const r = ecartEchange(e)
+    expect(r.ecartPoints).toBe(20) // 60,0 % − 40,0 %
+    expect(r.ecart).toBeCloseTo(0.2, 6)
+    expect(r.pleinHistorique).toBe(false)
+  })
+
+  it('rend un écart NÉGATIF quand le périmètre est sous son habituel', () => {
+    // Inverser le signe de la soustraction fait tomber ce test — c'est ce qui était
+    // impossible tant que le calcul vivait inliné dans le composant.
+    const e = echangeDe({ couverture: couverture(9, 45), habituel: couverture(40, 100) })
+    expect(ecartEchange(e).ecartPoints).toBe(-20)
+  })
+
+  it('signale le plein historique : périmètre == référence', () => {
+    const e = echangeDe({ matchs_total: 60, matchs_habituel: 60 })
+    expect(ecartEchange(e).pleinHistorique).toBe(true)
   })
 })

@@ -716,10 +716,6 @@ en = "No avenging kill between squad members in this selection."
 fr = "Aucun échange mesuré"
 en = "No trade measured"
 
-[squad.echange.empty_description]
-fr = "Aucun match de la sélection ne porte de journal des morts exploitable."
-en = "No match in the selection carries a usable death log."
-
 [squad.echange.matrix_tooltip]
 fr = "{avenger} a vengé {avenged} {n, plural, one {# fois} other {# fois}} ({perMatch} par match)."
 en = "{avenger} avenged {avenged} {n, plural, one {# time} other {# times}} ({perMatch} per match)."
