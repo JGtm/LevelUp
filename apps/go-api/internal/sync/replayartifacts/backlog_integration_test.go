@@ -190,7 +190,7 @@ func TestRun_RattrapeSansAucuneInsertion(t *testing.T) {
 	db := baseRegistre(t)
 	// Racine ISOLEE mais qui porte les manifestes du titre : depuis le 2026-09-05, Run
 	// passe la porte `film.replay_artifact` avant toute selection (capability.go).
-	repoRoot := racineIsoleeAvecManifestes(t, titlePkg.DefaultSlug)
+	repoRoot := racineAvecTitres(t, titlePkg.DefaultSlug)
 	t0 := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
 	inscrireAuRegistre(t, db, "aaaaaaaa-1111-4000-8000-000000000000", t0, 0)
 	inscrireAuRegistre(t, db, "bbbbbbbb-2222-4000-8000-000000000000", t0.Add(time.Hour), 0)
@@ -225,7 +225,7 @@ func TestRun_RattrapeSansAucuneInsertion(t *testing.T) {
 func TestRun_LaJaugeDecroitSurDeuxCycles(t *testing.T) {
 	db := baseRegistre(t)
 	// Racine ISOLEE + manifestes du titre, cf. TestRun_RattrapeSansAucuneInsertion.
-	repoRoot := racineIsoleeAvecManifestes(t, titlePkg.DefaultSlug)
+	repoRoot := racineAvecTitres(t, titlePkg.DefaultSlug)
 	t0 := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
 	for i := 0; i < 9; i++ {
 		inscrireAuRegistre(t, db, fmt.Sprintf("%08d-1111-4000-8000-000000000000", i),
@@ -283,47 +283,4 @@ type fetcherComptant struct{ n *int }
 func (f fetcherComptant) GetFilmChunks(context.Context, string) ([]haloclient.FilmChunk, bool, error) {
 	*f.n++
 	return nil, false, nil
-}
-
-// racineIsoleeAvecManifestes rend un TempDir qui porte une COPIE des manifestes du titre
-// (config/titles/{slug}/mappings/), pour les tests qui ecrivent dans leur racine — la
-// cuisson y depose des artefacts, on ne peut donc pas leur passer la racine du depot.
-//
-// IL VIT SOUS LE TAG `integration`, avec ses deux seuls appelants : declare dans un fichier
-// sans tag, il serait du code mort en build par defaut (`unused`, ratchet golangci-lint).
-// Son voisin `racineDepot` (capability_test.go), lui, sert dans les DEUX modes.
-//
-// Depuis que Run passe la porte `film.replay_artifact` (capability.go), une racine vide
-// n'est plus neutre : elle ferme la porte et l'etape ne fait rien. Ce helper rend a ces
-// tests le titre qu'ils croyaient avoir.
-func racineIsoleeAvecManifestes(t *testing.T, slug string) string {
-	t.Helper()
-	racine := t.TempDir()
-	src := filepath.Join(racineDepot(t), "config", "titles", slug, "mappings")
-	dst := filepath.Join(racine, "config", "titles", slug, "mappings")
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		t.Fatalf("MkdirAll(%s): %v", dst, err)
-	}
-	entrees, err := os.ReadDir(src)
-	if err != nil {
-		t.Fatalf("ReadDir(%s): %v", src, err)
-	}
-	copies := 0
-	for _, e := range entrees {
-		if e.IsDir() {
-			continue
-		}
-		octets, err := os.ReadFile(filepath.Join(src, e.Name()))
-		if err != nil {
-			t.Fatalf("lecture de %s: %v", e.Name(), err)
-		}
-		if err := os.WriteFile(filepath.Join(dst, e.Name()), octets, 0o644); err != nil {
-			t.Fatalf("ecriture de %s: %v", e.Name(), err)
-		}
-		copies++
-	}
-	if copies == 0 {
-		t.Fatalf("aucun manifeste copie depuis %s — le titre serait muet", src)
-	}
-	return racine
 }
