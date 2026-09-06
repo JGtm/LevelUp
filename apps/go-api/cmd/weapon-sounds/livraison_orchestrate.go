@@ -35,18 +35,29 @@ func livrer(donneesDir, sonsRacine, depotCible string) error {
 	}
 	ordre := livraisonOrdre(livraisonCandidats(d), d.Manifeste)
 
-	ch := livraisonChemins{
-		SonsRacine: sonsRacine,
-		Cible:      filepath.Join(depotCible, "static", "sounds", "halo_infinite"),
-		Tmp:        filepath.Join(os.TempDir(), fmt.Sprintf("weapon-sounds-livrer-%d.wav", os.Getpid())),
-	}
-	if err := os.MkdirAll(ch.Cible, 0o755); err != nil {
-		return err
-	}
-	if err := livraisonNettoyerArmes(ch.Cible); err != nil {
+	cible := filepath.Join(depotCible, "static", "sounds", "halo_infinite")
+	if err := os.MkdirAll(cible, 0o755); err != nil {
 		return err
 	}
 
+	// ECRITURE ATOMIQUE DU LOT. Le script Python vidait la cible de ses `hinf_*.wav` AVANT de
+	// produire quoi que ce soit : toute erreur en cours de route (source illisible, vote mal
+	// forme, disque plein) laissait la cible A MOITIE VIDEE, avec un `weaponSoundVariations.ts`
+	// jamais reecrit — un depot casse pour un accident de donnees (constat C7 de la revue R1).
+	// Tout est donc produit d'abord dans un repertoire d'attente, VOISIN de la cible pour que
+	// la publication se fasse par renommage sur le meme volume ; rien n'est efface tant que le
+	// lot n'est pas complet.
+	attente, err := os.MkdirTemp(filepath.Dir(cible), ".livrer-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(attente)
+
+	ch := livraisonChemins{
+		SonsRacine: sonsRacine,
+		Cible:      attente,
+		Tmp:        filepath.Join(attente, "_rendu.wav"),
+	}
 	e := &livraisonEtat{Livres: map[string]string{}, Variations: map[string]*livraisonVariationOut{}}
 	for _, dossier := range ordre {
 		if err := livraisonTraiterUnDossier(dossier, ch, d, e); err != nil {
@@ -54,6 +65,9 @@ func livrer(donneesDir, sonsRacine, depotCible string) error {
 		}
 	}
 
+	if err := livraisonPublier(attente, cible); err != nil {
+		return err
+	}
 	tsvar := filepath.Join(depotCible, "apps", "web", "src", "features", "match-replay", "weaponSoundVariations.ts")
 	if err := livraisonEcrireTS(tsvar, e.Variations); err != nil {
 		return err
@@ -61,7 +75,33 @@ func livrer(donneesDir, sonsRacine, depotCible string) error {
 	for _, l := range e.Lignes {
 		fmt.Println(l)
 	}
-	return livraisonRapportFinal(ch.Cible, e.Variations)
+	return livraisonRapportFinal(cible, e.Variations)
+}
+
+// livraisonPublier fait passer le lot complet du repertoire d'attente a la cible, PUIS retire
+// les `hinf_*.wav` que le nouveau lot ne remplace pas.
+//
+// L'ORDRE EST L'INVERSE DE CELUI DU SCRIPT PYTHON, ET C'EST VOULU : deplacer d'abord fait
+// passer la cible de l'ancien lot a « ancien PLUS nouveau » puis au nouveau seul, sans jamais
+// la vider. L'etat final est le meme — miroir strict du PERIMETRE ARMES : les fichiers
+// d'evenements du pack utilisateur ne portent pas le prefixe et ne sont jamais touches.
+func livraisonPublier(attente, cible string) error {
+	entrees, err := os.ReadDir(attente)
+	if err != nil {
+		return err
+	}
+	publies := map[string]bool{}
+	for _, en := range entrees {
+		n := en.Name()
+		if !livraisonEstFichierArme(n) {
+			continue
+		}
+		if err := os.Rename(filepath.Join(attente, n), filepath.Join(cible, n)); err != nil {
+			return err
+		}
+		publies[n] = true
+	}
+	return livraisonNettoyerArmes(cible, publies)
 }
 
 // livraisonTraiterUnDossier livre (ou refuse) UN dossier candidat, dans l'ordre de
@@ -121,17 +161,22 @@ func livraisonRendreEtTronquer(dossier, source, dst string, ch livraisonChemins,
 	return livraisonTronquer(ch.Tmp, dst, livraisonDureeLivreeS)
 }
 
-// livraisonNettoyerArmes efface les `hinf_*.wav` deja presents — MIROIR, PERIMETRE ARMES
-// UNIQUEMENT : les fichiers d'evenements du pack utilisateur ne portent jamais ce prefixe et
-// ne sont donc jamais touches.
-func livraisonNettoyerArmes(cible string) error {
+// livraisonEstFichierArme : le PERIMETRE du miroir, et rien d'autre. Les sons d'evenements du
+// pack utilisateur (melee_kill, camo_*, overshield_*...) ne portent pas ce prefixe.
+func livraisonEstFichierArme(nom string) bool {
+	return strings.HasPrefix(nom, "hinf_") && strings.HasSuffix(nom, ".wav")
+}
+
+// livraisonNettoyerArmes efface les `hinf_*.wav` de la cible qui ne font pas partie du lot
+// qu'on vient de publier — MIROIR, PERIMETRE ARMES UNIQUEMENT.
+func livraisonNettoyerArmes(cible string, publies map[string]bool) error {
 	entries, err := os.ReadDir(cible)
 	if err != nil {
 		return err
 	}
 	for _, e := range entries {
 		n := e.Name()
-		if strings.HasPrefix(n, "hinf_") && strings.HasSuffix(n, ".wav") {
+		if livraisonEstFichierArme(n) && !publies[n] {
 			if err := os.Remove(filepath.Join(cible, n)); err != nil {
 				return err
 			}

@@ -211,4 +211,42 @@ func TestLivraisonFormatNombrePy(t *testing.T) {
 	}
 }
 
+// TestLivraisonChoixDossier_ExempleVideSauteLeVote — constat C7 de la revue R1.
+//
+// Python rend `exemples_retenus[0]` des que la liste est non vide, MEME si cet element vaut
+// `""`, et ce sont ses appelants qui l'ecartent par leur `if f:` : le vote est saute et l'on
+// passe au SUIVANT — jamais un repli sur `exemples_proposes` DU MEME VOTE. Rendre ("", true)
+// construisait la source "<dossier>/", que os.Stat accepte (c'est un repertoire) et que la
+// troncature refuse : le run entier avortait.
+func TestLivraisonChoixDossier_ExempleVideSauteLeVote(t *testing.T) {
+	votes := []livraisonVote{
+		{Arme: "Arme", Groupe: "_coup_m0_1p", Vote: "garder",
+			ExemplesRetenus: []string{""}, ExemplesProposes: []string{"jamais_lu.wav"}},
+		{Arme: "Arme", Groupe: "_coup_m1_1p", Vote: "garder", ExemplesRetenus: []string{"suivant.wav"}},
+	}
+	choix, err := livraisonChoixDossier("Arme", "/racine", map[string]livraisonCoupsEntree{}, votes)
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if choix.Source != "Arme/suivant.wav" {
+		t.Fatalf("Source = %q, veut %q (l'exemple vide saute le vote, sans repli sur "+
+			"exemples_proposes du meme vote)", choix.Source, "Arme/suivant.wav")
+	}
+}
+
+// Meme regle sur le repli par evenement : `if f and not f.startswith("_")`.
+func TestLivraisonChoixDossier_ExempleVideSauteLeVoteDEvenement(t *testing.T) {
+	votes := []livraisonVote{
+		{Arme: "Arme", Groupe: "ev_cafebabe", Vote: "garder", ExemplesRetenus: []string{""}},
+		{Arme: "Arme", Groupe: "ev_00c0ffee", Vote: "garder", ExemplesRetenus: []string{"suivant.wav"}},
+	}
+	choix, err := livraisonChoixDossier("Arme", "/racine", map[string]livraisonCoupsEntree{}, votes)
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if choix.Source != "Arme/suivant.wav" || choix.EvHex != "00c0ffee" {
+		t.Fatalf("choix = %+v, veut la source du second vote (00c0ffee)", choix)
+	}
+}
+
 func strPtr(s string) *string { return &s }
