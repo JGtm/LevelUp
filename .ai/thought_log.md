@@ -1,5 +1,7 @@
 ## [2026-09-06] Lot 2 duels — revue adversariale ronde 1 : l entame pouvait etre un point de reapparition — Complete
 
+**Ronde 2 (relecteur frais, corrections seules).** 0 P0, 0 P1, 1 P2 consigne (marge aval de `coversInstant` sans test « absence »). Equivalence de `BuildKillPositions` avant/apres refactor prouvee par test differentiel (20 000 tirages, DeepEqual positions + rapport). F3 recalcule a la main : 3,4 / 10,5 / 33,0 justes. Fusionne dans feat/duels (`e300e1492`).
+
 **Decision technique principale.** Deux relecteurs independants ont relu le lot 2 du
 `.ai/PLAN_DUELS_PORTEE_2026-09-06.md` ; sept constats retenus, tous corriges sur
 `feat/duels-lot2-fix` (worktree `LevelUp-wt-duels-fix2`). Le constat qui rendait le lot non

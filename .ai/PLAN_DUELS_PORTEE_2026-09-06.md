@@ -514,3 +514,11 @@ répliqué, ou source hors film »).
   (« la riposte vit dans les deux premières secondes ou n'existe pas ») et c'est aussi ce qui
   biaise la population de validation du proxy d'entame vers les échanges courts. Utile au lot 7
   s'il s'ouvre ; rien à traiter ici.
+- **Revue lot 2, ronde 2 (2026-09-06) — P2 consigné, non corrigé (borne de boucle : pas de
+  ronde 3)** : `replay/killpos_opening.go:170`, la marge AVAL de 120 ms de `coversInstant`
+  (après la fin de vie) n'est couverte par aucun test — la supprimer laisse la suite verte,
+  alors que sans elle aucune entame de victime ne passerait. La direction « marge trop grande »
+  est couverte (`lifeGapUS` fait rougir `RefuseUnPointDApparition`), la direction « marge
+  absente » ne l'est pas. Ronde 2 : 0 P0, 0 P1 (contre 3 P1 en ronde 1), 12 conditions tenues,
+  7 mutations dont 6 rouges. Équivalence de `BuildKillPositions` prouvée par test différentiel
+  sur 20 000 tirages.
