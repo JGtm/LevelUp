@@ -849,8 +849,27 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   forme le dise, et `backfill-replay` saute un artefact qui porte la version courante.
 	//   Détail : internal/analysis/replay/skull_carries.go (carrierPresence.gate) et
 	//   .ai/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
-	if SchemaVersion != 43 {
-		t.Fatalf("SchemaVersion = %d, attendu 43 : incrémenter exige une raison écrite ci-dessus "+
+	// v44 — LA MANCHE DÉCLARÉE EST CONFRONTÉE AU TEMPS (2026-09-06). Aucun champ ajouté : c'est le
+	//   CONTENU de `scoreTimeline` (les quatre compteurs par joueur, les courbes d'équipe) et des
+	//   actions d'objectif qui change, sur les films À PLUSIEURS MANCHES seulement. La manche d'un
+	//   enregistrement est lue dans deux en-têtes de 5 bits, et le résidu de faux positifs que
+	//   l'assertion d'en-tête laisse passer en porte une quelconque. La découpe la croyait sur
+	//   parole ; la plus longue sous-suite non décroissante ne pouvait pas l'écarter, une valeur
+	//   mal lue mais PLUS GRANDE prolongeant la suite au lieu de la rompre.
+	//   Mesuré : `51ebbc0f` publiait 63 assistances (feuille : 5) pour `2535439712156981` à cause
+	//   d'un enregistrement daté 57 s après le début de la manche 1 et déclarant la manche 0 avec
+	//   `comp 3 A = 60` ; frags 0 -> 1 au passage. Le MÊME enregistrement sur `d9781168` : 69 -> 11
+	//   assistances, exactement la feuille. Vols de drapeau fantômes sur deux films d'Oddball :
+	//   58 -> 0 (`51ebbc0f`), 994 -> 0 (`24dbb67d`). Onze des quinze témoins re-cuits sont
+	//   IDENTIQUES À L'OCTET, dont les trois films dont l'étiquetage de manche ne suit pas
+	//   l'horloge et tous les mono-manche.
+	//   POURQUOI LA VERSION MONTE : un artefact 1 à 43 d'un film multi-manche porte des compteurs
+	//   gonflés sans que sa forme le dise, et `backfill-replay` saute un artefact à la version
+	//   courante.
+	//   Détail : internal/analysis/objectiveevents/round_windows.go et
+	//   .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
+	if SchemaVersion != 44 {
+		t.Fatalf("SchemaVersion = %d, attendu 44 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
