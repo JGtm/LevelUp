@@ -44,6 +44,10 @@
 //	eqip-arbre  module `pc/globals` : la STRUCTURE des evenements d'une banque
 //	            (couches simultanees vs variantes, gains, delais, couverture). Detail
 //	            dans `eqip_arbre.go` — c'est ce qui manque pour RECONSTRUIRE un son.
+//	livrer      AUCUN module : fusionne les sons d'armes extraits et votes avec le moteur
+//	            sonore du rejeu (etape 7 de RECETTE_SONS_ARMES.md). Detail dans
+//	            livraison.go — portage fidele de `_outils/livraison.py` (archive Desktop,
+//	            hors depot), au meme titre que pck-dump a ferme `akpk_unpack.py`.
 //
 // ATTENTION MEMOIRE : `himodule.Open` lit le module ENTIER en memoire. Le module qui porte
 // les `sbnk` fait 7,24 Go, celui qui porte les `snd!`/`weap` 0,62 Go. Ne jamais charger les
@@ -118,14 +122,10 @@ func main() {
 	tirages := flag.Int("tirages", 3, "nombre de tirages complets a rendre (mode rendu-event)")
 	graine := flag.Int64("graine", 1, "graine du tirage de variantes (mode rendu-event)")
 	dureeBoucle := flag.Float64("duree", 0, "duree de boucle en secondes ; 0 = one-shot (mode rendu-event)")
+	donneesDir := flag.String("donnees", "", "dossier _donnees du chantier sons (lot1.json, lot2.json, manifeste.json, coups.json, votes-final.json) (mode livrer)")
+	sonsRacine := flag.String("sons", "", "racine du chantier sons armes (dossiers d'armes avec leurs .wav sources) ; defaut : parent de -donnees (mode livrer)")
+	depotCible := flag.String("depot", "", "racine du depot cible ; defaut : title.FindRepoRoot (mode livrer)")
 	flag.Parse()
-
-	racine, err := resoudreDeploy(*deploy)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "racine deploy introuvable:", err)
-		os.Exit(1)
-	}
-	chemin := filepath.Join(racine, filepath.FromSlash(*module))
 
 	temoins, err := parserWem(*wem)
 	if err != nil {
@@ -133,21 +133,37 @@ func main() {
 		os.Exit(1)
 	}
 
-	// INDEX LARGE. Sans lui, un `sourceID` n'est accepte que s'il appartient au pack de
-	// l'arme — ce qui faisait disparaitre les couches partagees entre armes, precisement
-	// celles qui manquaient a l'oreille. Les garde-fous STRUCTURELS (listes d'enfants et
-	// d'actions validees contre les objets de la bank) restent inchanges.
-	if !*etroit {
-		dossier := *sfx
-		if dossier == "" {
-			dossier = dossierSFXParDefaut(racine)
+	// RESOLUTION PARESSEUSE DE LA RACINE `deploy`. Elle etait faite AVANT le switch, donc
+	// pour TOUS les modes : `livrer`, qui n'ouvre aucun module et ne lit que des `.json` et
+	// des `.wav` du chantier sons, echouait « racine deploy introuvable » sur un poste sans
+	// jeu installe — alors que le script Python qu'il remplace n'a jamais rien exige de tel
+	// (constat C1 de la revue R1 du lot v2 G). L'index large des `.pck`, lui aussi construit
+	// avant le switch, lui coutait en plus une indexation de 15 798 identifiants inutiles.
+	var racine, chemin string
+	if !modesSansJeu[*mode] {
+		racine, err = resoudreDeploy(*deploy)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "racine deploy introuvable:", err)
+			os.Exit(1)
 		}
-		idx, errIdx := indexTousPcks(dossier)
-		if errIdx != nil {
-			fmt.Fprintln(os.Stderr, "index large indisponible, validation etroite:", errIdx)
-		} else {
-			indexLarge = idx
-			fmt.Printf("index large : %d identifiants .wem sur tous les packs\n", len(indexLarge))
+		chemin = filepath.Join(racine, filepath.FromSlash(*module))
+
+		// INDEX LARGE. Sans lui, un `sourceID` n'est accepte que s'il appartient au pack de
+		// l'arme — ce qui faisait disparaitre les couches partagees entre armes, precisement
+		// celles qui manquaient a l'oreille. Les garde-fous STRUCTURELS (listes d'enfants et
+		// d'actions validees contre les objets de la bank) restent inchanges.
+		if !*etroit {
+			dossier := *sfx
+			if dossier == "" {
+				dossier = dossierSFXParDefaut(racine)
+			}
+			idx, errIdx := indexTousPcks(dossier)
+			if errIdx != nil {
+				fmt.Fprintln(os.Stderr, "index large indisponible, validation etroite:", errIdx)
+			} else {
+				indexLarge = idx
+				fmt.Printf("index large : %d identifiants .wem sur tous les packs\n", len(indexLarge))
+			}
 		}
 	}
 
@@ -327,6 +343,12 @@ func main() {
 			}
 		}
 		err = extrairePck(*pck, *sortieTir, filtre)
+	case "livrer":
+		if *donneesDir == "" {
+			err = fmt.Errorf("le mode livrer exige -donnees (dossier _donnees)")
+			break
+		}
+		err = livrer(*donneesDir, *sonsRacine, *depotCible)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}
@@ -335,6 +357,16 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+// modesSansJeu : les modes qui n'ouvrent AUCUN module du jeu et n'indexent aucun `.pck`.
+// Pour eux, resoudre la racine `deploy` avant le switch etait un prerequis fantome : ils
+// tournent sur un poste ou Halo n'est pas installe (cf. modesSansJeu dans main, et les
+// prerequis documentes de `weapon-sounds -mode livrer` dans docs/COMMANDS.md).
+//
+// Le BINAIRE, lui, reste lie a cgo : `internal/himap` -> `internal/himodule` -> `internal/ooz`
+// (decompression Kraken) est un import du paquet, pas du mode. Le retirer demanderait de
+// scinder ce `main` — hors du perimetre de cette correction, et la documentation le dit.
+var modesSansJeu = map[string]bool{"livrer": true}
 
 // resoudreDeploy rend la racine `deploy`, explicite ou auto-detectee.
 func resoudreDeploy(explicite string) (string, error) {

@@ -1,7 +1,7 @@
 /**
- * weaponSoundVariations.ts — GENERE PAR `_outils/livraison.py` (archive Desktop du
- * chantier sons-armes), NE PAS EDITER A LA MAIN : toute reprise rejoue la recette
- * (`.ai/V7.5/RECETTE_SONS_ARMES.md`) et reecrit ce fichier avec les sons.
+ * weaponSoundVariations.ts — GENERE PAR `weapon-sounds -mode livrer` (cmd/weapon-sounds,
+ * recette `.ai/V7.5/RECETTE_SONS_ARMES.md`), NE PAS EDITER A LA MAIN : toute reprise
+ * rejoue la recette et reecrit ce fichier avec les sons.
  *
  * Les fourchettes RANGED extraites des banks Wwise du jeu, par stem d'arme : ce que le
  * moteur du jeu fait varier a CHAQUE lecture (volume en dB, hauteur en centiemes).

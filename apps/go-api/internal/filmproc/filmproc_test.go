@@ -20,9 +20,30 @@ import (
 
 // newGuardForTest arme une sentinelle sur une sonde controlee, sans toucher au tas reel.
 func newGuardForTest(hard uint64, probe func() uint64, onExceeded func(uint64)) *Guard {
+	return newGuardForTestPeriode(hard, time.Millisecond, probe, onExceeded)
+}
+
+// newGuardForTestPeriode : la meme chose, mais la PERIODE est choisie par le test — une
+// periode assez longue pour qu'aucun tick ne survienne isole ce que la sentinelle rend AVANT
+// son premier echantillonnage.
+func newGuardForTestPeriode(hard uint64, periode time.Duration, probe func() uint64, onExceeded func(uint64)) *Guard {
 	g := &Guard{hardLimit: hard, stop: make(chan struct{}), probe: probe}
-	go g.watch(time.Millisecond, onExceeded)
+	go g.watch(periode, onExceeded)
 	return g
+}
+
+// LE PIC INCLUT L'INSTANT PRESENT. L'echantillonnage est a 250 ms : un processus qui meurt
+// avant le premier tick (verrou refuse, builder indisponible, toute sortie tres precoce) n'a
+// JAMAIS ete echantillonne. Sans re-mesure a l'appel, il emet un pic de ZERO et le recap de
+// la passe imprime « (pic inconnu) » la ou l'ancienne sentinelle (picObserve, supprimee au
+// lot v2 G.1) rendait toujours un chiffre vivant — constat C4 de la revue R1.
+func TestPeakReechantillonneALAppel(t *testing.T) {
+	g := newGuardForTestPeriode(1<<40, time.Hour, func() uint64 { return 4242 }, nil)
+	defer g.Disarm()
+	if p := g.Peak(); p != 4242 {
+		t.Errorf("pic rendu avant le premier echantillonnage = %d, attendu 4242 "+
+			"(la mesure doit inclure l'instant present)", p)
+	}
 }
 
 func TestGuardDeclencheAuDelaDuPlafond(t *testing.T) {

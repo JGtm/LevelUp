@@ -95744,3 +95744,119 @@ COMPLET fait tomber `mapcatalog.TestAddEntryConcurrentNePerdPasDEntree`, flake d
 (vert 3/3 en isolation, verrou de fichier a 2 s sature par la suite entiere ; paquet du lot A,
 la CI joue `-p 1`). Prochaine etape : ronde 2 de la revue sur ces corrections, puis
 integration dans `feat/v75`.
+## [2026-09-06] Lot G (outils et catalogues) — v2 rejeu/film — Complete
+
+**Contexte.** Execution du lot G du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, worktree
+dedie `LevelUp-wt-v2-outils` (branche `feat/v2-outils`). Quatre items fermes : G.1 (H5,
+sentinelle memoire dupliquee), G.2 (I2, code mort `himap/heightfield.go`), G.3 (H2, portage Go
+du dernier maillon Python de la chaine des sons d'armes), G.4 (H3, documentation des onze
+chaines de fabrication d'assets versionnes).
+
+**Decision technique.** G.1 : les deux copies de la sentinelle memoire (`cmd/levelup`,
+`cmd/replay-worker`) remplacees par `internal/filmproc.Arm`, deja importe par les deux
+fichiers pour d'autres besoins (aucun cout de dependance) ; le garde `archlint` qui entérinait
+la duplication (`sentinelleTokens` acceptait `debug.SetMemoryLimit(` brut) ne l'accepte plus.
+G.2 : suppression cible du code mort apres verification qu'une partie du fichier
+(`borne`/`altitudeAuPoint`) etait en realite partagee par quatre autres fichiers — un premier
+essai de suppression totale avait casse la compilation, restaure puis retraite correctement.
+G.3 : portage fidele de `_outils/livraison.py` (hors depot) en mode `livrer` de
+`cmd/weapon-sounds`, avec un port BIT A BIT du generateur pseudo-aleatoire de CPython
+(Mersenne Twister, verifie contre la sortie reelle de `random.Random`) pour l'unique arme
+rendue par evenement. G.4 : chaque chaine documentee verifiee sur pieces (lecture directe des
+`main.go`, comptage des fichiers commites), pas recopiee depuis l'annexe d'audit — deux
+imprecisions de cette annexe corrigees en route (deux CSV sans producteur automatise,
+sortie de `mapnav-fetch` gitignoree et non versionnee).
+
+**Resultats.** Preuve de fidelite du mode `livrer` : jeu d'entrees synthetique construit dans
+le scratchpad (les vraies sources `.wav` du chantier ont disparu du poste depuis la livraison
+du 2026-08-16), sortie comparee octet a octet (`cmp` + `md5sum`) contre les DEUX scripts
+Python d'origine (copies non modifiees) executes sur le meme jeu : IDENTIQUE sur les 4 fichiers
+`.wav` produits, y compris celui qui depend du generateur aleatoire ; execute aussi contre les
+vraies donnees `_donnees` de production (sans les sources manquantes) : le port Go et le
+script Python echouent au meme point avec le meme message. Gate G au complet : `go build
+./...` propre ; `go test ./internal/himap/... ./internal/archlint/... ./internal/filmproc/...
+./cmd/levelup/... ./cmd/replay-worker/... ./cmd/weapon-sounds/...` tous `ok` ;
+`golangci-lint run --new-from-merge-base=origin/main` sur ces six paquets : 0 issues. Quatre
+commits (un correctif de staging git sur G.2, decouverte consignee : `git add` multi-chemins
+avorte en bloc sur un pathspec deja supprime).
+
+**Conclusion / prochaine etape.** Lot G ferme, journal `.ai/V7.5/v2/LOT_G.md`. Push de
+`feat/v2-outils` et surveillance CI a suivre. Integration dans `feat/v75` par le superviseur
+apres revue adversariale, dans l'ordre prevu par le plan (C, A, B, F, G, E, D).
+
+## [2026-09-06] Lot G — cloture ajustee (arret de la surveillance CI sur consigne) — Complete
+
+**Contexte.** Pendant la surveillance CI de cloture du lot G, consigne du coordinateur
+(contrainte de quota) : abandonner la surveillance CI, ne pas reparer de job rouge (le
+superviseur verifie la CI a l'integration), rendre le rapport immediatement. Un fichier hors
+perimetre avait deja ete detecte et corrige avant cette consigne (voir entree precedente et
+`.ai/V7.5/v2/LOT_G.md`, section Decouvertes) : `internal/domain/build_queue.go` (reserve aux
+lots B/C) avait ete touche par erreur dans le commit G.1, reverte dans un commit dedie
+(`132967520`) des que l'exécuteur l'a repere en relisant le diff complet du lot.
+
+**Decision technique.** Arret immediat de tout `gh run list`/`gh run watch`. Etat CI constate
+avant l'arret consigne dans le journal du lot : 9 jobs verts (Go Lint, OpenAPI Lint, Go
+Build+Test windows/ubuntu, Frontend, Go Lease Enforcement, Go Contract Test, Secrets
+gitleaks, Deploy Pre-Check), 2 non conclus au moment de l'arret (Go Coverage + Baseline,
+E2E React). Risque de regression du ratchet de couverture evalue par grep sur les fichiers
+de baseline (aucune reference aux fichiers du lot ni aux tests supprimes) : juge faible mais
+non confirme par une execution CI complete.
+
+**Resultats.** Push final `2b9afd7af` confirme sur origin (verifie par `git fetch` +
+`rev-parse`, independamment du rate limit API GitHub qui a bloque `gh` pendant ~14 minutes
+plus tot dans la session — resolu de lui-meme avant la consigne d'arret).
+
+**Conclusion / prochaine etape.** Lot G clos du point de vue de l'executeur : gates locaux
+verts, perimetre verifie propre, journal a jour. Verdict CI complet (couverture, E2E) a la
+charge du superviseur au moment de l'integration dans `feat/v75`.
+## [2026-09-06] Lot G — corrections de la revue adversariale R1 (dix constats) — Complété
+
+**Contexte.** Revue adversariale ronde 1 du lot G (`feat/v2-outils`, diff `a21fd77f4...c0b403898`) :
+dix constats recevables, aucun P0, trois P1 (prérequis documentés faux du mode `livrer`, en-tête
+« GENERE PAR » du fichier généré resté sur le producteur retiré, fidélité octet à octet gardée
+par aucun test) et sept P2. Périmètre fermé à ces dix points, exécuteur précédent à saturation de
+contexte.
+
+**Décision technique principale.** Chaque correction est prouvée par la mutation ou la sonde
+nommée par le verdict — rouge d'abord, verte ensuite — et livrée dans son propre commit
+(`v2(G.fix-n)`). Trois choix méritent d'être retenus :
+
+1. **La preuve de fidélité vit désormais dans le dépôt.** `TestLivrerOctetPourOctet` génère un
+   chantier miniature (les `.wav` sources du chantier réel ont disparu de la machine) et le
+   confronte à `testdata/livraison/goldens/` — 301 Ko produits UNE FOIS par le script Python
+   d'origine sur cette même arborescence, jamais par le code Go : régénérer un golden avec Go
+   annulerait la preuve, et le test le dit en tête. La sortie console est comparée elle aussi,
+   parce qu'elle attrape ce que les octets ne disent pas (ordre de livraison, source retenue,
+   colonnage). Mutation M3 du verdict rejouée : rouge sur les deux fichiers exacts annoncés.
+2. **Le portage d'une fonction de bibliothèque se prouve contre la bibliothèque, pas de
+   mémoire.** `joliBaseSansExt` promettait `ntpath` sans porter le préfixe de lecteur ni la règle
+   du point de tête ; `livraisonFormatNombrePy` promettait `str()` de Python avec un
+   `FormatFloat(v,'g',-1,64)` qui diverge sur 144 littéraux de 480. Les deux tables de test sont
+   maintenant des relevés de la sortie RÉELLE de CPython 3.12, pas des attentes reconstituées.
+3. **Une promesse de garde-fou écrite dans un journal n'est pas un garde-fou.** Le journal du lot
+   annonçait qu'un `debug.SetMemoryLimit(` brut hors `internal/filmproc` violait le ratchet ;
+   c'était faux (mutation M2 verte). `TestPasDeSentinelleBruteHorsFilmproc` le rend vrai, avec
+   allowlist datée vide, auto-exclusion assumée (le fichier porte le jeton en clair) et garde
+   contre la vacuité (rouge aussi si le paquet canonique cesse de poser un plafond souple).
+
+**Résultats observés.** Bout en bout sur le jeu synthétique, le mode `livrer` produit désormais
+une sortie console identique caractère pour caractère à celle du script Python, six `.wav`
+identiques octet pour octet, et un `weaponSoundVariations.ts` qui ne diffère plus que sur ses
+trois lignes d'en-tête (divergence voulue, elle-même comparée au gabarit). Le mode tourne sur un
+poste sans Halo installé (`LEVELUP_HALO_DEPLOY` faux) ; le prérequis cgo, lui, est réel et la
+documentation EN/FR le dit désormais au lieu de le nier. La publication est devenue tout ou rien :
+plus aucune erreur de production ne peut laisser `static/sounds/halo_infinite/` à moitié vidé.
+Gate : `go build ./...` propre ; `go test -count=1` vert sur `cmd/weapon-sounds`, `cmd/levelup`,
+`cmd/replay-worker`, `internal/filmproc`, `internal/archlint` ;
+`golangci-lint run --new-from-merge-base=origin/main ./...` → `0 issues.`
+
+**Découvertes consignées (non traitées).** `//nolint:gosec` désigne un linter NON activé par
+`.golangci.yml` — cinq et quelques directives inertes dans le dépôt, à l'origine du warning
+« Found unknown linters » à chaque exécution. `golangci-lint` prend un verrou GLOBAL malgré des
+`GOLANGCI_LINT_CACHE` distincts : deux worktrees qui lintent en même temps se bloquent, il faut
+réessayer. Deux autres modes de `weapon-sounds` (`pck-dump`, `mesurer-wav`) paient encore la
+résolution de la racine `deploy` sans en avoir besoin.
+
+**Conclusion / prochaine étape.** Les dix constats sont statués `[x]` avec preuve écrite dans
+`.ai/V7.5/v2/LOT_G.md`, section « Corrections après revue ». Ronde 2 de la revue (sur les
+corrections seules) à la main du superviseur, puis intégration dans `feat/v75`.

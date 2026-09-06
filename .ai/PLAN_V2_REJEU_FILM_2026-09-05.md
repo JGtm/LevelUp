@@ -518,3 +518,26 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   (worktree `LevelUp-wt-v2-balayage`, outil `cmd/replay-diff`, rapport
   `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md` attendu). Intégrés : B, F, C. Restent : A (corrections),
   G et E (ronde 2), D (prêt, en dernier), CTF (enquête rouverte).
+- 2026-09-06 11:45 : ENQUÊTE CTF — VRAIE CAUSE ÉTABLIE (`feat/v2-ctf-drapeaux`, `91296072c` erratum
+  + `eb5585109` correctif) : le commit `d173b1a8c` (2026-08-28, `replaybuild/matchfacts.go`,
+  `identifiedEvents`) a REMPLACÉ le pont d'identité par triplet (`SlotIdentityFrom`) par le pont
+  par morts (`ResolveRoundIdentity`, `deathInstantMin = 3`) alors que les deux couvertures sont
+  complémentaires : les joueurs qui meurent moins de 3 fois (les meilleurs, donc les porteurs)
+  sortaient du pont → actions d'objectif perdues (17 → 12 sur `c0a82e88`, captures et vols de
+  SweatyYeti75 disparus). Régression, pas décision (« neutralité prouvée » contre le mauvais
+  témoin). Correctif : `RoundIdentity.CompletedByLines` (mono-manche, compléter sans contredire,
+  aucun xuid deux fois) → 7/7 pontés, 23 actions, chaque joueur = sa ligne de feuille de match.
+  Impact : tout artefact cuit depuis le 2026-08-28 sur film mono-manche avec un joueur à < 3
+  morts, toutes familles ; pas de bump de schéma (contenu enrichi) ; propagation par le
+  `backfill-replay` de la release (inscrit au registre). Revue adverse CTF-R2 lancée. DÉCISION
+  USER EN ATTENTE : `flagCarries` subit le même plafond mais son identité est construite dans
+  `analysis/replay` sans faits de match (frontière délibérée) — recommandation superviseur :
+  compléter dans `replaybuild` après cuisson (comme les actions), sans franchir la frontière.
+- 2026-09-06 12:10 : E-R2 : six constats FERMÉS, E.9 jugé prudent (3 lignes du TSV, zéro code du
+  décodeur, chaque note vérifiée), 3 P3 en retouche (résorption par la table non détectée, import
+  aliasé invisible au ratchet du verrou, liste d'angles morts non exhaustive). G-R2 : dix constats
+  FERMÉS, goldens reproduits indépendamment par le vrai Python (six `.wav` + `.ts` + console
+  identiques), 2 P3 en retouche (préfixe UNC sensible à la casse, double `Peak()` sur une ligne de
+  log). A-R2 en cours ; CTF-R2 (correctif du pont d'identité) en cours ; balayage en cours.
+- 2026-09-06 12:30 : G retouches vérifiées sur pièces (`6effae3ac` : `EqualFold` sur le préfixe UNC,
+  table à 32 entrées ; `Peak()` lu une fois) et G FUSIONNÉ dans `feat/v75`. Intégrés : B, F, C, G.
