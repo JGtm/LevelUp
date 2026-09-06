@@ -578,3 +578,126 @@ aussi (3/3 éprouvés). Le gate global couvre donc strictement plus que ce qu'il
   STRUCTURE.
 - **D.15** (promotion de `ReplayTransport` et `ReplaySettingsDrawer` en frères du canvas) :
   différé hors chantier par le superviseur, après un gate visuel validé par l'utilisateur.
+
+---
+
+## Corrections après revue adversariale R1 — CLOSES le 2026-09-06
+
+Verdict R1 (HEAD relu `bb379d10b`) : l'invariant de calcul tient — 25/25 calques identiques en
+ordre ET en condition, jointure des 13 mémos, replis d'horloge, canoniques, magasin de lecture.
+Ce qui ne tenait pas : **deux câblages neufs sans témoin** (C1, C2), **cinq affirmations
+inexactes** (C3, C5, C6, C7, C8), **un cinquième changement visible hors contrat** (C4), et
+**douze commentaires orphelins** (C9). Onze points, tous statués ci-dessous, chacun prouvé par
+la mutation du verdict rejouée ROUGE puis VERTE.
+
+### Points statués
+
+- [x] **C1 (P1) — le câblage de l'axe commun a un témoin.** `commit 28d850866`. La correction
+  P0-7 tenait à trois lignes (`t0Ms={header.t0_ms}` dans la page, `t0Ms={t0Ms}` sur les deux
+  lectures du bloc de score) que la revue a retirées une à une sans un seul rouge.
+  `MatchViewTabChronology.t0.test.tsx` (3 cas) et `MatchViewPage.t0.test.tsx` (1 cas) couvrent
+  les deux niveaux : le CÂBLAGE (espions sur l'onglet et sur les deux graphes) et l'EFFET (sur
+  le graphe RÉEL, la marque de l'image 400 tombe à 22 000 ms — `400 × 100 − 18 000`, calculé à
+  la main — et recule du countdown entier quand la prop disparaît).
+  **Mutation M4, rouge puis verte** : `expected undefined to be 30000`, aux deux sites.
+- [x] **C2 (P1) — les calques se nomment eux-mêmes.** `commit a3cd9d85d`. Les ONZE calques
+  câblés par un hook portent leur `id` à côté de leur `paint` (`NamedLayerPainter`), et
+  `bindPainters` dérive la liaison : le canvas ne nomme plus aucun d'eux, la faute mesurée par
+  la revue n'est plus ÉCRIVABLE. Le type de retour porte l'union exacte des ids passés — un
+  calque oublié fait rougir le compilateur. Les QUATORZE fermetures restantes sont confrontées
+  à une table écrite à la main (`sceneBinding.guard.test.ts`, 5 cas), découpée depuis `paint: {`
+  et non depuis le fichier — le bloc `has:` juste au-dessus porte les mêmes clés pour des
+  booléens.
+  **Mutations rouges puis vertes** : le swap couronne/crâne de la revue (M3,
+  `expected 339 to be -1`) et l'interversion de deux cuissons (`l'entrée chaleur ne peint pas
+  cuit(heatRef.current)`).
+- [x] **C3 (P2) — l'ordre des calques est confronté à un oracle.** `commit 9169fcb94`. Les 25
+  ids sont écrits à la main dans le test ; la table de la source leur est confrontée.
+  **Mutation M2, rouge puis verte** : le swap `chaleur` / `zones-nommees`.
+- [x] **C4 (P2, décision du superviseur) — cinquième exception documentée, code inchangé.**
+  `commit f3aa5aa05`. L'infobulle native des marques de la frise affiche l'instant TRONQUÉ
+  (« 1:05 » là où la base écrivait « 1:06 »), sur environ une marque sur deux. C'est la
+  résolution du résidu P0-6 : la même mort se datait autrement dans l'infobulle et dans le fil,
+  sur le même écran. Consignée en tête de `formatClock` (`lib/replay/replayLogic.ts`) et dans
+  la liste des exceptions ci-dessous.
+- [x] **C5 (P2) — le lint couleur voit `oklch`/`rgba`, et balaie `lib/replay/`.**
+  `commit ec5a4f391`. Troisième motif (oklch, oklab, lch, rgb/rgba, hsl/hsla, hwb) ;
+  `src/lib/replay/**` ajouté au balayage ; ouverture de bloc de commentaire (`/*`, `/**`)
+  tolérée comme l'étaient déjà `//` et `*`. `color(` est VOLONTAIREMENT absent du motif : c'est
+  aussi un nom de variable de rendu du dépôt (`valueGridModel.ts`), et un motif qui crie faux
+  se désactive. Les onze littéraux préexistants que le motif révèle portent une exception
+  nommée et datée ligne à ligne (dix voiles neutres d'ombre ou de contour — exception déjà
+  prévue par la doctrine `color-tokens` — et un helper qui convertit en `rgba` une couleur déjà
+  résolue). Aucun rendu ne change : ce sont des commentaires.
+  **Mutation M10, rouge puis verte** : `oklch(...)` + `rgba(...)` dans `layers/fxInk.ts`
+  (2 violations) ; `oklch(...)` dans `lib/replay/rosterLogic.ts` (1 violation).
+- [x] **C6 (P2) — le garde d'horloge attrape la lecture qualifiée.** `commit bc16a9b04`. Le
+  motif exigeait que `frameIntervalMs` suive immédiatement l'opérateur : il attrapait la forme
+  historique et laissait passer `paliers[0].t * clock.frameIntervalMs`, la seule que le nouveau
+  code rend naturelle. **Mutation M8, rouge puis verte.**
+- [x] **C7 (P2, décision du superviseur) — la mesure exacte remplace l'approximation du
+  journal.** `commit f3aa5aa05`. L'arrondi avant conversion change **30 valeurs en SIX fenêtres
+  d'une demi-seconde** (`[59,5;60)`, `[119,5;120)`, `[179,5;180)`, `[239,5;240)`, `[299,5;300)`,
+  `[359,5;360)`), et non « un intervalle d'une demi-seconde » comme l'écrivait la découverte 2
+  du D-I — **cette affirmation du journal était fausse et est corrigée ici**. Cinq fenêtres font
+  disparaître une sortie invalide (« 1m60s ») ; la première change de FORME (« 60s » →
+  « 1m00s »). Consignée au site de la conversion.
+- [x] **C8 (P2) — l'exemption `max-lines` de l'Explorer rentre chez elle.** `commit d943b485e`.
+  Sa justification (« gelé pour le merge du lot C ») avait survécu au merge, présent dans la
+  branche depuis D.14 le même jour. Elle passe en tête de fichier, datée, avec un critère de
+  retrait mesurable (la table de colonnes sort dans un `_columns.ts`). La config ne garde que
+  les fichiers GÉNÉRÉS, qui ne peuvent pas porter de commentaire durable.
+- [x] **C9 (P2) — douze JSDoc orphelins supprimés.** `commit 1cb46136e`. Chacun décrivait une
+  déclaration rendue canonique par D.9 (`CanvasView` local ×11, `alphaOf` ×3, `ScoreboardSide`)
+  et se retrouvait collé au-dessus de la déclaration suivante. Aucun n'est remplacé : leur
+  contenu vit dans le foyer canonique.
+- [x] **Réserve 9 — la citation du contrat Go.** `commit bc16a9b04`. `matchClock.ts` présentait
+  `msFilm = event_time_ms + t0_ms − originMs` comme « le contrat Go, mot pour mot ». Le Go
+  n'écrit que `msFilm = event_time_ms + t0_ms` : il ramène sur l'axe du MATCH, il ne voit pas le
+  film. La formule reste (elle ramène en plus sur l'axe des IMAGES), la citation disparaît.
+- [x] **Note hors constat — consignée, non corrigée.** `MatchCadenceChart.tsx` porte deux
+  libellés FR en dur (`name: 'Temps'`, `formatter: 'Pic'`), préexistants et inchangés sur le
+  fond : découverte 14 ci-dessous.
+
+### Gate de clôture des corrections
+
+| Gate | Commande exacte | Dernière ligne |
+|---|---|---|
+| Typecheck (cache forcé) | `cd apps/web && npx tsc -b --force` | (aucune sortie) `TSC_EXIT=0` |
+| Lint | `npm --prefix apps/web run lint` | `✖ 27 problems (0 errors, 27 warnings)` |
+| Couleurs (motif étendu) | `npm --prefix apps/web run lint:colors` | `lint-no-hardcoded-colors: clean (0 violation)` |
+| Imports croisés | `node tools/lint-cross-feature-imports.mjs` | `Info : 7 <= plafond P8.5 (7). Pas d'échec` |
+| Vitest (suite web entière) | `cd apps/web && node_modules/.bin/vitest run --pool=forks` | `Tests  6385 passed \| 14 skipped (6399)` |
+| Build de production | `npm --prefix apps/web run build` | `✓ built in 18.37s` (2 207 modules) |
+| Rasterisation (témoin) | `cd apps/web && npx playwright test e2e/replay-explosion-raster.spec.ts e2e/replay-muzzle-raster.spec.ts --reporter=line` | `3 passed` |
+
+La suite est passée de 6 376 à 6 385 tests (+9 : 4 pour C1, 5 pour C2). Les 27 avertissements
+de lint sont ceux de la baseline. Rasterisation 3/3 après chacun des huit commits.
+
+### Les SIX exceptions du lot (le contrat en comptait quatre)
+
+1. `SynthesisBipolaireChart` ne rend plus « 1m60s » (sortie invalide corrigée).
+2. Les quatre sites `MmSSs` passent par le formateur canonique (sorties identiques, vérifié).
+3. Le bloc « Score dans le temps » ne rend rien sans origine publiée (5 artefacts du parc, déjà
+   écartés en amont par `filmClockTrusted` — aucune carte ne disparaît).
+4. La piste Médias se tait sur un artefact sans origine, au lieu de poser ses captures à zéro.
+5. **(C4, nouvelle)** L'infobulle native des marques de la frise TRONQUE l'instant au lieu de
+   l'arrondir : une seconde de moins sur environ une marque sur deux.
+6. **(C7, nouvelle)** `SynthesisBipolaireChart` écrit « 1m00s » au lieu de « 60s » sur
+   `[59,5;60)` — changement de forme, et non correction d'une invalidité, dans une des six
+   fenêtres mesurées.
+
+### Découvertes (revue R1, hors périmètre, non traitées)
+
+14. **`MatchCadenceChart.tsx` porte deux libellés FR en dur** (`name: 'Temps'` sur l'axe X,
+    `formatter: 'Pic'` sur l'étiquette du markPoint). Préexistants ; le lot les a re-écrits en
+    les déplaçant dans `cadenceOption`/`cadenceSeries`, sans changer le fond. Manquement à la
+    règle n° 1 (parité FR/EN) à traiter par le lot qui touchera ce graphe.
+15. **Un flake de la suite web, non reproductible.** Un run complet sur trois a rendu
+    `1 failed | 6384 passed` sans nommer le cas dans la sortie capturée ; les deux runs suivants
+    (dont celui du gate ci-dessus) sont verts à `6385 passed`. La machine était chargée (184 s
+    contre 115 s). Signalé pour surveillance, aucune cause identifiée.
+16. **Onze littéraux de couleur préexistants** portent désormais une exception `color-allow`
+    nommée : dix voiles neutres (ombres d'infobulle ECharts, contours de lisibilité) et un
+    helper de conversion. Ils deviennent visibles au gate, ce qui est le point ; les porter sur
+    un token de voile, quand il existera, reste à faire.
