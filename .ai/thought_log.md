@@ -1,3 +1,51 @@
+## [2026-09-06] Sonde duels — la reciprocite du degat est le bon critere, le film n'en porte pas assez — Complete
+
+**Decision technique principale.** Demande utilisateur : compter les duels, les duels gagnes et
+ceux devenus des trios. Critere retenu avec lui : la RECIPROCITE DU DEGAT (le degat circule dans
+les deux sens), jamais une geometrie de visee — un tir dans le dos n'est pas un duel, une riposte
+qui touche en est un, et ca se mesure sans modeliser la reaction du joueur. Sonde ecrite dans
+`internal/analysis/replay/duels_sonde_research_test.go` (+ `_mesures_test.go`), composee
+UNIQUEMENT de decodeurs de production (ScanFilmWeaponDamages, ScanBipedPositions, ScanDeaths,
+buildLifeSpans, bestDeathOffset, nameLivesByDeaths), hors ligne, quatre films d'arene, seuils
+ecrits AVANT la mesure. Apport de methode : la base d'atterrissage se calibre sur « le slot
+etait-il VIVANT a l'instant du degat », pas sur « le slot existe » — l'existence est satisfaite
+par presque toute base et ne note que la densite des slots ; la vivacite date, donc elle
+discrimine.
+
+**Resultats observes.** M1 ECHOUE : reciprocite 0 a 12,8 % contre un seuil de 40 %. Cause
+quantifiee : le film n'emet que 91 a 428 `damage_aftermath` pour 90 a 117 morts (0,8 a 4,8 par
+mort), et le sous-type 0xC0 non decode n'ouvre aucun reservoir (40 a 124 paquets de plus). Voir un
+duel exige que DEUX degats survivent a l'echantillonnage : avec P(degat fatal capture) mesuree a
+0,40 et 0,50, l'attendu est 0,16 et 0,25, on mesure 0,11 et 0,13 — l'arithmetique de la perte se
+referme. Le temoin decale rend 0 faux positif sur les quatre films : le critere est juste, c'est
+le RAPPEL qui manque, pas la precision. Acquis durables : base 512 confirmee, detachee d'un
+facteur 2,1 a 2,6 ; jointure degat fatal -> fin de vie reelle (ecart median 231 et 433 ms) ;
+distance de l'engagement resolue a 95,7-100 % ; portee mediane des eliminations stable a 5,8-6,9 m
+sur quatre cartes ; denivele |dz| median 0,4-0,9 m et 16-40 % des engagements a plus d un metre — l axe vertical
+est REEL (une premiere mesure « 3D moins plan », aveugle au denivele, avait conclu a tort au nul ;
+corrigee le meme jour). Voie bouclier (M5) : deux a dix fois plus dense mais oracle de validite plafonne a
+44-76 % et discrimination degradee la ou la densite est bonne.
+
+**Conclusion / prochaine etape.** Plan `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`, note de mesure
+`.ai/V7.5/film_re/SONDE_DUELS_2026-09-06.md`, branche `feat/duels` (worktree dedie). Le comptage
+de duels n'est pas livrable sur le flux de degats ; UNE mesure peut le rouvrir et fait le lot 1 du
+plan (gate chiffre) : le bouclier DU TUEUR chute-t-il pendant la fenetre, le tueur etant connu par
+le kill-feed a 97,6 % et non par le film. Livrable inconditionnel : l'agregat multi-matchs de la
+portee par arme — exactement l'item que le POC G.3 du 2026-08-30 avait ferme par cadrage — sur
+`kill_positions_latest` x `match_kill_events_latest`, zero re-cuisson, grammaire graphique deja
+validee par l'utilisateur le 2026-09-02 (baton par arme, losange sur la valeur centrale) transposee
+en p10/mediane/p90. REVISION du meme jour apres revue critique (demande utilisateur) : lot 3 extrait
+l helper de jointure kills x positions (3e copie -> centralisation + garde-rail), lot 1 lit la base
+en OpenReadForQuery et normalise son gate par l oracle victime (fenetre 2 s, mesuree), Nmin=8
+defini une fois (verifie : la constante du chantier precision n est pas sur feat/v75), filtres =
+ceux de la Synthese (MatchIDs, aucun filtre temporel SQL), cote VICTIME promu dans les lots
+(« ou je meurs, et a quelle arme »), denivele signe ajoute (decision utilisateur ; |dz| median
+0,4-0,9 m, 16-40 % au-dela d un metre), proxy d entame T-1,5 s calcule dans la passe positions
+de killcollector et persiste append-only (`kill_openings`) — PAS dans l artefact de rejeu, purge
+par cron, 107 artefacts pour 1 380 films — avec gate de validation (ecart median <= 2 m sur les
+morts ou le premier degat est capture) et backfill soumis a l utilisateur. Rien n est commite :
+accord utilisateur requis.
+
 ## [2026-09-05] Integration des branches actives dans l'architecture cuisson-perf — CLOSE, merge feat/v75 — Complete
 
 **Decision technique principale.** Tout ce qui devait rejoindre `feat/v75` a ete rejoue DANS
