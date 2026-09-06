@@ -541,3 +541,6 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   log). A-R2 en cours ; CTF-R2 (correctif du pont d'identité) en cours ; balayage en cours.
 - 2026-09-06 12:30 : G retouches vérifiées sur pièces (`6effae3ac` : `EqualFold` sur le préfixe UNC,
   table à 32 entrées ; `Peak()` lu une fois) et G FUSIONNÉ dans `feat/v75`. Intégrés : B, F, C, G.
+- 2026-09-06 12:45 : E retouches vérifiées (`60072d717`, 3 gardes, zéro code du décodeur, golden
+  intact) ; aucun test supprimé par E ne figure dans la baseline (vérifié) ; E FUSIONNÉ dans
+  `feat/v75`. Intégrés : B, F, C, G, E. Restent : A (ronde 2), D (dernier), CTF (revue R2).

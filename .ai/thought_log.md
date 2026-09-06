@@ -95860,3 +95860,239 @@ résolution de la racine `deploy` sans en avoir besoin.
 **Conclusion / prochaine étape.** Les dix constats sont statués `[x]` avec preuve écrite dans
 `.ai/V7.5/v2/LOT_G.md`, section « Corrections après revue ». Ronde 2 de la revue (sur les
 corrections seules) à la main du superviseur, puis intégration dans `feat/v75`.
+## [2026-09-06] Lot E-I du plan v2 — le decodeur de film refondu a comportement identique — Complete
+
+**Contexte.** Tache E-I du `PLAN_V2_REJEU_FILM_2026-09-05.md` (constats E1 a E6 du registre
+d'audit) : retirer le code mort de `internal/analysis/filmdec`, ramener a un seul lecteur la
+grammaire du preambule d'evenement et la table des domaines, remplacer neuf copies du marcheur
+de records delta bipede, generaliser le garde-rail du verrou de decodage. Contrainte non
+negociable : comportement STRICTEMENT identique, sur un decodeur binaire ou une largeur inversee
+decale tout ce qui suit. Worktree dedie `LevelUp-wt-v2-decodeur`, branche `feat/v2-decodeur`,
+base `a21fd77f4`.
+
+**Decision technique.** L'item E.1 pose la reference AVANT tout changement, et c'est lui qui rend
+le reste verifiable : goldens inconditionnels, sept digests de la mini-bobine, puis les temoins
+sur FILMS REELS sous garde de variable d'environnement (goldens killsource sur 4 films, temoin de
+marche delta sur 3 films, empreinte de registre, table ECS, integration killcollector), un film
+par process. Chaque item suivant rejoue ces memes commandes et compare ligne a ligne. Verification
+demandee par le mandat : les « 49 etapes d'equivalence en local » du registre appartiennent a
+`cmd/replay-equiv`, qui CUIT un artefact par film — interdit par le mandat ; le gate repose donc
+sur ce qui existe reellement sous garde d'environnement, et `REPLAY_FILM_DIR` (porte de
+REGENERATION des goldens) est laissee vide a dessein.
+
+Trois choix de conception meritent d'etre ecrits. (1) Le plan dit « supprimer les 22 reglages
+`Set*` » — pas « et leurs variables » : les 17 variables qu'ils ecrivaient sont LUES par le
+decodage avec leur valeur de production, les supprimer changerait le comportement et les figer
+serait la de-globalisation D10, hors plan. (2) `readPacketHead` lit TOUJOURS les neuf bits du
+preambule et rend `{Config, More, Type}` : c'est ce qui rend la factorisation bit-exacte pour les
+DEUX conventions d'origine — trois sites testaient la continuation, trois la sautaient derriere un
+filtre d'octet de tete qui la pose. Uniformiser aurait exige d'editer une fixture pour que le
+refacto passe. (3) Le ratchet du verrou exige la COUVERTURE, pas la prise : le mutex n'est pas
+reentrant, et `BuildFromFilm` appelle une trentaine de balayeurs sous un seul verrou.
+
+**Resultats.** Cinq commits, 43 fichiers de code, +517 / -1317 lignes. E.2 : `entity.go` +
+`entity_quant.go` supprimes (586 L, deux decodeurs sans appelant dont le depot ecrit lui-meme que
+la cible RE etait fausse), les 22 reglages morts, cinq variables de paquet (`dynPrecHook` et
+`repTraceHook` prouvablement toujours nils, les deux bascules A/B sans date, `defaultStateBitsByTI`
+jamais peuplee), `frame_debug.go`, neuf sondes de `probe_export.go` ; `consumeObjectAngularVelocity`
+RESTE (deser correct d'i3 pour ti=40). E.3 : `readPacketHead` et `refDomWidth` uniques, `dom3 = 7`
+(valeur mesuree contre `3: 8` dans deux copies). E.4 : `walkDeltaBipedPayload` /
+`walkDeltaBipedRecords` remplacent les neuf triples boucles. E.5 : `buildPositionRows` prend le
+verrou, ratchet AST par point fixe sur le graphe d'appel intra-paquet.
+
+Les trois nouveaux garde-rails ont ete verifies par MUTATION (largeur inversee, preambule recopie,
+table recopiee, verrou retire : chacun echoue, puis retour). Ratchets : `filmdecVarsGeles` 118 ->
+111, l'exemption morte de `no_local_longest_run` retiree — aucun ne monte, une allowlist retrecit.
+Gate de cloture rejoue integralement : `go build ./...` exit 0, gofmt propre, les 10 paquets verts,
+`golangci-lint --new-from-merge-base=origin/main ./...` = **0 issues**. AUCUN chiffre des temoins
+n'a bouge, y compris les DEUX echecs ANTERIEURS au lot que la reference E.1 avait captures — le
+golden `fccc61cd` (une ligne, « 3 propose(s) » fige contre « 2 » mesure, compte publie inchange) et
+le temoin de marche delta sur les trois films. Ce sont la preuve mesuree du constat P0-1 ; le lot E
+ne les repare pas (c'est le lot A) et ne les masque pas.
+
+**CORRECTIF DU 2026-09-06 (revue adversariale E-R1, constat C2, P1) — l'oracle annonce pour E.4
+n'en etait pas un.** Le journal du lot ecrivait que le TEMOIN DE MARCHE DELTA etait l'oracle de
+l'item E.4. C'est faux et c'est mesurable : `TestDeltaWalkWitness` chiffre `DecodeFrameRecords`
+(`frame_records.go`), un marcheur DIFFERENT de `walkDeltaBiped*` — neutraliser entierement
+`walkDeltaBipedPayload` laisse ses trois chiffres inchanges, au record pres. L'oracle reel de E.4
+est le golden des familles (E.6, qui n'existait pas encore quand E.4 a ete cloture : 13 familles
+rougissent quand le marcheur est neutralise) plus le temoin synthetique de l'avance ajoute le
+2026-09-06. Le temoin de marche delta reste un temoin d'INVARIANCE du paquet, pas la preuve de cet
+item. Le fait que l'item E.4 soit lui-meme bon n'a pas change : c'est sa PREUVE qui etait mal
+designee. Correction ecrite au journal du lot (`.ai/V7.5/v2/LOT_E.md`, gate E.4). L'entree
+ci-dessus n'est pas reecrite : elle est datee, ce correctif l'est aussi.
+
+Decouverte de methode a retenir : `golangci-lint` tient son cache de RESULTATS globalement a la
+machine, independamment de `GOCACHE`, et l'indexe par fichier — il sert donc des verdicts calcules
+dans un autre jeu de fichiers du meme paquet, alors que `goconst` et `unparam` sont des analyses de
+PAQUET. La premiere mesure de reference annoncait « 0 issues. » sur `filmdec` ; avec un
+`GOLANGCI_LINT_CACHE` propre au lot, l'etat de base en rend SIX, et l'etat final rend exactement
+les six memes.
+
+**Conclusion / prochaine etape.** Tache E-I close : cinq items `[x]`, aucun `[!]`, aucun test
+desactive, aucun golden regenere. Journal `.ai/V7.5/v2/LOT_E.md`, reference
+`.ai/V7.5/v2/LOT_E_digests_avant.md`. Sept decouvertes consignees et non traitees, dont la cloture
+morte laissee par les reglages supprimes (14 variables sans ecrivain, plusieurs portant une largeur
+MESUREE d'un chemin non nominal — a trancher par le superviseur) et le skip de
+`TestKillSourcePositionsFilmReelEtRelitParLaVue`, seul test de bout en bout de `buildPositionRows`
+sur film reel. Prochaine etape : revue adversariale du superviseur, puis la tache E-II (E.6 goldens
+inconditionnels des ~26 familles `Scan*`, E.7 controle code contre `ecs_table.tsv`), qui ne demarre
+pas sans son message. Surveillance CI non effectuee : consigne du coordinateur, verification par le
+superviseur.
+
+## [2026-09-06] Lot E-II du plan v2 — le decodeur de film prouve en CI — Complete
+
+**Contexte.** Tache E-II du `PLAN_V2_REJEU_FILM_2026-09-05.md`, apres la tache E-I close le meme
+jour. Trois items : un golden inconditionnel sur octets reels pour les familles de balayage que la
+CI ne couvrait pas (constat F3 : 4 sur ~34), un controle code contre `ecs_table.tsv` sur les
+largeurs entieres (F4), et le traitement des variables sans ecrivain que E-I avait laissees
+(decouverte 2). Meme contrainte qu'en E-I : comportement identique, temoins E.1 comme gate.
+
+**Decision technique.** Le golden lit la mini-bobine de `killsource`, pas celle du rejeu : c'est un
+PREFIXE CONTIGU du film 000d5950 (chunks 00 a 05 + highlight), donc elle porte le REGISTRE et la
+continuite que le decodeur exige pour construire son monde par accumulation — mesure : 28 005
+records delta, 17 slots bipedes, contre aucun record de canal delta dans la bobine du rejeu. Il
+appelle les POINTS D'ENTREE de famille, jamais les enveloppes `ScanFilm*(dir)` ; deux exceptions
+assumees (`weaponShots`, `weaponDamages`) parce que leur point d'entree n'a pas d'autre forme.
+
+Deux pieges ont ete trouves en l'ecrivant, et c'est ce qui fait la valeur de l'item. (1) UN ZERO
+DE MAUVAIS APPEL N'EST PAS UNE POPULATION VIDE : `ScanKeyframeLoadouts` et
+`ScanKeyframeGroundWeapons` filtrent sur un catalogue de familles d'arme et rendent 0 avec `nil` ;
+figer ce 0 aurait verrouille du vide. Le catalogue est donc DERIVE DU FILM (identifiants d'arme
+des tirs et des changements d'arme portee) et les deux rendent 30 et 28. Idem pour
+`ScanFilmWeaponShots(dir, n)`, qui balaie les chunks 1..n. (2) LE DIGEST NE PEUT PAS PASSER PAR
+`%+v` : plusieurs structures portent des POINTEURS dont `%+v` imprime l'ADRESSE — deux passes
+consecutives donnaient deux empreintes differentes. `rendreStable` descend par reflexion,
+dereference, trie les cles de carte, et lit AUSSI les champs non exportes ou vit la moitie de ce
+qui distingue deux decodages.
+
+Pour E.7, la cle est de mesurer sur TROIS motifs de tampon (`0x00`, `0xFF`, `0xAA`) : beaucoup de
+composants sont gardes, et seul l'accord des trois motifs prouve une largeur FIXE — la seule
+categorie ou un ecart avec la table est une faute.
+
+Pour E.8, le traitement suit ce que chaque variable PORTE : une largeur mesuree devient une
+constante avec sa provenance, une instrumentation sans valeur mesuree disparait, et un modele de
+retro-ingenierie sans valeur (la table `absPerIndexAxisW`, nil) est supprime en DEPLACANT son
+desassemblage a l'endroit ou un futur portage viendra le lire.
+
+**Resultats.** Trois commits. E.6 : 35 lignes figees dont 30 familles, avec compte, digest et une
+valeur NOMMEE lisible par famille ; six lignes a zero ou en erreur d'etat sont figees telles
+quelles et expliquees une par une au journal (ce film est une Fiesta d'arene : pas de vehicule,
+pas d'objectif ti=11, pas de porteur, pas de translocateur). `registry_test.go` pointait un chemin
+ABSOLU de la machine de l'auteur et se `t.Skipf` ailleurs — il ne gardait rien ; il lit maintenant
+la bobine versionnee et `t.Fatal`. E.7 : 179 lignes classees, 114 a largeur fixe (111 d'accord
+avec la table) et 65 gardees, comptes GELES, TROIS ecarts dates et justifies — dont un ou c'est LA
+TABLE qui est perimee (`biped-map-editor-flag-component` : table 1 bit, code R(8) confirme
+bit-exact au decompile). E.8 : 10 constantes datees, 4 suppressions (instrumentation i63, annotee
+« a retirer apres » par son auteur), 1 suppression avec modele deplace ; ratchet 111 -> 96.
+
+Chaque garde-rail a ete verifie PAR MUTATION : `dom4RefWidth` 9->10 rougit exactement
+`zoomEvents` ; `bipedIndexBits` 6->7 rougit QUATORZE familles ; `tacmap-fasttravelstate` R(1)->R(3)
+fait designer a G4 la ligne 678 avec les deux largeurs. Gate de cloture : `go build ./...` exit 0,
+gofmt propre, les 10 paquets verts SANS aucune variable d'environnement,
+`golangci-lint --new-from-merge-base=origin/main ./...` = **0 issues**. Les temoins E.1 (goldens
+killsource sur 4 films reels, temoin de marche delta sur 3 films, table ECS, integration
+killcollector) sont IDENTIQUES sur les trois items.
+
+**Conclusion / prochaine etape.** Lot E complet : E-I (E.1 a E.5) et E-II (E.6 a E.8), huit items
+`[x]`, aucun `[!]`. Journal `.ai/V7.5/v2/LOT_E.md`, reference `.ai/V7.5/v2/LOT_E_digests_avant.md`.
+Quatre decouvertes consignees et non traitees, dont `ti=43 i=0 object-position-component` (la table
+dit 15 bits, le code en consomme 45 ou 60 — aucune des trois mesures) et les deux interrupteurs de
+mecanisme restes sans ecrivain (`accumWorld`, `inferResyncTargets`), dont le retrait est une
+decision produit. Prochaine etape : revue adversariale du superviseur puis integration dans
+`feat/v75`. Surveillance CI non effectuee : consigne du coordinateur, verification par le
+superviseur.
+
+## [2026-09-06] Lot E — corrections de la revue adversariale E-R1 + item E.9 (table ECS) — Complete
+
+**Contexte.** Reprise du lot E apres sa revue adversariale (verdict E-R1 : comportement identique
+confirme sur TOUS les temoins, mais **les preuves neuves trouees** — 2 P1, 4 P2, 21 conditions qui
+tiennent, 13 mutations). S'y ajoute l'item E.9, ouvert par la decision utilisateur 10 du jour :
+corriger PRUDEMMENT `ecs_table.tsv`, chaque entree adossee a une mesure, sans toucher le decodeur.
+Meme worktree `LevelUp-wt-v2-decodeur`, branche `feat/v2-decodeur`, base `98df0b00c`. Contrainte
+inchangee : comportement du decodeur STRICTEMENT identique, temoins de `LOT_E_digests_avant.md`
+comme gate.
+
+**Decision technique.** Le fil conducteur des six constats est le meme : un garde-rail qui NOMME ce
+qu'il protege sans le TOUCHER. Trois formes ont ete corrigees, chacune a sa racine.
+
+(1) UN TEMOIN QUI N'EXECUTE PAS LA LIGNE QU'IL PRETEND COUVRIR. L'avance du marcheur delta
+(`p = i0 + i0Bits`) etait « couverte » par un test qui marchait un payload A ZERO : aucun record
+publie, donc l'instruction jamais executee, et `p = i0 + 1` passait tout — golden compris. Le
+correctif construit un payload de deux records colles dont le composant i0 du premier PORTE un
+en-tete de record valide (un leurre). Un marcheur qui reprend son balayage a l'interieur d'un record
+deja publie le trouve ; celui qui avance correctement ne le voit jamais. Sous la mutation :
+3 records au lieu de 2, le leurre a i0=77.
+
+(2) UN GARDE QUI CHERCHE UN LITTERAL LA OU LA REGLE EST STRUCTURELLE. Le garde du preambule
+d'evenement cherchait `Skip([12])` puis `ReadBits(7)` dans les trois lignes suivantes : il ne voyait
+ni une copie etalee sur cinq lignes, ni la copie la plus probable de toutes — le copier-coller du
+corps du lecteur unique, qui n'emploie aucun `Skip`. Il COMPTE desormais DES BITS sur l'AST : par
+lecteur, dans chaque suite de statements, « deux bits consommes puis une lecture de sept » sur des
+operations consecutives. La borne « meme suite de statements » n'est pas un choix esthetique, elle
+est MESUREE : sans elle, deux faux positifs (`consumeObjectLowFrequency`, un R(7) dans un `if` ;
+`consumeByName`, deux branches exclusives d'un `switch`) auraient exige une allowlist des le premier
+jour, et une allowlist du premier jour est une allowlist qui grandit.
+
+(3) UNE LISTE ECRITE A LA MAIN A COTE DE LA REGLE QUI DEVRAIT LA PRODUIRE. Le ratchet du verrou de
+decodage portait trois paquets en dur, entretenus par une commande documentee qui cherchait
+`filmdec.Scan` alors que la regle codee couvre aussi `DecodeFrame*` et `TraverseEntity*` — et
+`cmd/rdata_weapon_scan` passait dans l'ecart, decodant sans verrou dans un binaire que
+`go build ./...` compile. La liste est maintenant DERIVEE en balayant `internal` et `cmd` avec la
+fonction de regle elle-meme, avec un plancher date pour qu'une derivation cassee ne puisse pas
+rendre une liste vide en annoncant vert.
+
+S'y ajoutent trois defauts de VERITE ECRITE, tous corriges a la source et dates : le gate E.4
+designait comme oracle un temoin qui mesure un AUTRE marcheur (neutraliser `walkDeltaBipedPayload`
+ne bouge pas ses trois chiffres) ; un unique `-update` regenerait DEUX sorties figees, si bien que
+la commande tapee pour les graines de fuzz reecrivait le golden des familles en repondant `ok` ;
+et l'en-tete du golden annoncait « 25 familles sur 30 », « cinq a zero » et un digest « %+v »
+alors que le fichier fige 35 lignes (33 familles + 2 mesures derivees, 29 peuplees, 4 a zero, 2 en
+erreur) et que le digest passe par `rendreStable`, qui existe PRECISEMENT parce que `%+v` imprimait
+des adresses.
+
+Pour E.9, le prealable a ete de verifier que `ecs_table.tsv` **n'a aucun lecteur applicatif** (son
+seul lecteur est le garde-rail lui-meme) : la corriger ne peut donc pas changer un bit servi. Puis
+un controle neuf, G5, fige la largeur consommee sur CHACUN des trois motifs de tampon, separement,
+pour les lignes dont la table cite une mesure — parce qu'une note en colonne de prose n'est pas une
+mesure, c'est une affirmation, et cette session vient de montrer trois fois ce que devient une
+affirmation que personne ne rejoue.
+
+**Resultats.** Sept commits, 11 fichiers, +1163 / -82 lignes, **zero ligne de code du decodeur**.
+`ti=35 i=50 biped-map-editor-flag-component` corrigee 1 -> 8 bits et sortie de l'allowlist (R(8)
+plat, « CONFIRMED bit-exact from the decompile ») ; `ti=43 i=0` et `ti=37 i=14` recoivent une note
+et leur mesure, sans nombre unique, parce que leur largeur est gardee — et celle d'i0 est en plus
+PROPRE A LA CARTE (45 sur Cliffhanger, autre chose ailleurs), donc aucun entier de cette colonne ne
+peut etre juste partout. G5 mesure 45/60/60, re-mesures par le depot et non repris de la sonde
+jetable de la revue.
+
+MESURE QUI CONTREDIT UNE HYPOTHESE DU MANDAT, ecrite parce qu'elle est vraie : « un compte de
+records par famille qui change si l'avance change » N'EXISTE PAS sur la mini-bobine. Les comptes ont
+ete pris SOUS la mutation avant d'etre figes — 28 005, identiques. Reprendre le balayage dans un
+record deja publie n'y produit aucun ancrage de plus : la porte d'en-tete est trop stricte. Aucun
+doublon n'etait donc absorbe par un dedoublonnage aval, il n'y avait pas de doublon, et le golden ne
+bougeait pas pour cette raison-la autant que parce qu'il jette les denominateurs. L'oracle de
+l'avance est le temoin synthetique, et le journal du lot ne dit plus autre chose.
+
+Ecart assume avec le mandat, ecrit : la note de `ti=43 i=0` ne dit pas « trois films » mais « trois
+motifs de tampon », parce que c'est ce qui a ete mesure — inventer une provenance aurait ete la
+classe de defaut que les corrections 2 et 6 viennent de reparer.
+
+Chaque correction est prouvee ROUGE PUIS VERT par la mutation du verdict (M6, M1, M2, M11, plus le
+ratchet du verrou et deux mutations neuves sur la table ECS). Gate rejoue integralement :
+`go build ./...` exit 0, `go vet ./...` exit 0, les 10 paquets verts, `TestEquivalenceMiniFilm`
+PASS, goldens killsource sur 4 films **identiques echec anterieur `fccc61cd` compris**, temoin de
+marche delta `{14350, 38883, 30089}` avec son meme echec anterieur, empreinte de registre
+`0x61e492dd4de7fd4e` concordante, table ECS G1-G5 les cinq PASS, golden des familles PASS sur deux
+passes avec md5 inchange, integration `killcollector` 67 PASS,
+`golangci-lint --new-from-merge-base=origin/main ./...` = **0 issues**. Aucun ratchet n'a monte :
+deux allowlists retrecissent (`ecsEcartsAdmis` 3 -> 2, exemption du preambule passee du fichier a la
+fonction) et la liste fermee du verrou devient derivee.
+
+**Conclusion / prochaine etape.** Les sept points sont `[x]`, aucun `[~]`, aucun `[!]`. Journal
+`.ai/V7.5/v2/LOT_E.md`, section « Corrections apres revue adversariale (E-R1) + item E.9 ». Quatre
+decouvertes consignees et non traitees, dont deux qui appellent un successeur : le golden des
+familles jette tous les denominateurs des balayages, et `ScanEquipmentState` ancre par un marcheur
+d'objets du monde qui n'a jamais eu son item E.4. Prochaine etape : ronde 2 de la revue sur ces
+corrections, puis integration dans `feat/v75`. Surveillance CI non effectuee : consigne du
+coordinateur, verification par le superviseur.

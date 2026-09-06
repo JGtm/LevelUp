@@ -121,18 +121,10 @@ func ScanInventoryDeltas(fc *FilmContext) ([]InventoryDelta, InventoryDeltaStats
 	restore := sc.installHooks()
 	defer restore()
 
-	for _, c := range sc.chunks {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta {
-				continue
-			}
-			sc.scanPacket(c, pk, pk.Payload(data))
-		}
-	}
+	walkDeltaBipedRecords(fc, sc.chunks, sc.slots, sc.lay, func(r deltaBipedRecord) {
+		sc.st.Records++
+		sc.readRecord(r.Chunk, r.Packet, r.Payload, r.I0, r.Total, r.Slot, r.Mask)
+	})
 	sc.refuseAmmoIfContaminated()
 	return sc.out, sc.st, nil
 }
@@ -140,11 +132,10 @@ func ScanInventoryDeltas(fc *FilmContext) ([]InventoryDelta, InventoryDeltaStats
 // invDeltaScanner porte l'état d'un balayage : la configuration résolue une fois (bande de
 // slots, découpage i0, archétype, index des deux composants) et l'accumulateur.
 type invDeltaScanner struct {
-	chunks    []int
-	slots     SlotBand
-	lay       I0Layout
-	arch      Archetype
-	minRecord int
+	chunks []int
+	slots  SlotBand
+	lay    I0Layout
+	arch   Archetype
 	// role dit, pour un index de composant du masque, CE QU'IL EST pour l'inventaire — et,
 	// pour les munitions, DE QUEL emplacement d'arme il parle. C'est la seule table câblée du
 	// balayage, et elle est construite depuis les NOMS du registre du film, jamais depuis des
@@ -219,8 +210,7 @@ func newInvDeltaScanner(fc *FilmContext) (*invDeltaScanner, error) {
 	}
 	sc := &invDeltaScanner{
 		chunks: chunks, slots: slots, lay: lay, arch: arch,
-		role:      invDeltaRoles(arch),
-		minRecord: bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits(),
+		role: invDeltaRoles(arch),
 	}
 	if len(sc.role) == 0 {
 		return nil, fmt.Errorf("aucun composant d'inventaire dans l'archétype biped du film")
@@ -291,20 +281,8 @@ func (sc *invDeltaScanner) installHooks() func() {
 	}
 }
 
-// scanPacket ancre et marche tous les records bipèdes d'un paquet delta.
-func (sc *invDeltaScanner) scanPacket(chunk int, pk FilmPacket, pay []byte) {
-	total := len(pay) * 8
-	for p := 0; p+sc.minRecord <= total; {
-		i0, slot, idx, ok := matchBipedHeader(pay, p, total, sc.slots, true, sc.lay)
-		if !ok {
-			p++
-			continue
-		}
-		sc.st.Records++
-		sc.readRecord(chunk, pk, pay, i0, total, slot, idx)
-		p = i0 + sc.lay.TotalBits()
-	}
-}
+// (L'ancrage des records d'un paquet vivait ici, en copie de huit autres. Il est passé dans
+// `walkDeltaBipedRecords` le 2026-09-05, lot E, item E.4.)
 
 // readRecord marche UNE SEULE FOIS le record et récolte au passage tous les composants
 // d'inventaire que son masque annonce.

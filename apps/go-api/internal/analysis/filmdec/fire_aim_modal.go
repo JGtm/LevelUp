@@ -55,8 +55,10 @@ func modalAimBit(pay []byte) (int, bool) {
 // lisent en 0 (pas de panique) ; l'appelant borne la lecture de visée elle-même.
 func modalPostCountsBit(pay []byte) (int, bool) {
 	br := NewBitReader(pay)
-	br.Skip(2) // préfixe config / continuation
-	if br.ReadBits(7) != modalRecordType {
+	// Préambule de 9 bits, lu par le SEUL lecteur du paquet (`readPacketHead`, event_list.go).
+	// La continuation n'est PAS testée ici — comme avant le 2026-09-05 : ce chemin est atteint
+	// derrière un filtre sur l'octet de tête (0xD2), dont le bit 1 vaut 1 par construction.
+	if readPacketHead(br).Type != modalRecordType {
 		return 0, false
 	}
 	if br.ReadBit() { // ref0 dom1 (FUN_141fcf670)

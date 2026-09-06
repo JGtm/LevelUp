@@ -60,6 +60,53 @@ package archlint
 // Le ratchet ne monte QUE de ces deux-la : l integration n a ajoute aucune variable de son fait
 // (la seule erreur sentinelle qu elle a failli poser a ete rendue locale a son site).
 //
+// RESSERRAGE DU 2026-09-05 (lot E, item E.2 du PLAN_V2_REJEU_FILM) : 118 -> 113. CINQ
+// variables de paquet ont ete SUPPRIMEES, et aucune n etait un reglage vivant :
+//
+//   - `dynPrecHook` (components_movement.go) et `repTraceHook` (default_state.go) : deux
+//     crochets de capture PROUVABLEMENT toujours nil — aucun site du depot ne les installait
+//     non-nil, tests compris — que huit blocs de sauvegarde/restauration promenaient.
+//   - `useLegacyAngularVel` et `useBipedDefaultStateDeser` (traverse.go) : deux bascules A/B
+//     sans date ni critere (regle 11), dont le setter n avait aucun appelant : la branche
+//     opposee au defaut etait donc inatteignable dans les deux cas.
+//   - `defaultStateBitsByTI` (traverse.go) : table de surcharge peuplee par le seul
+//     `SetDefaultStateBitsForTI`, sans appelant — vide a jamais, deux branches mortes.
+//
+// Les 22 reglages `Set*` sans appelant ont disparu dans le meme lot ; les 17 variables qu ils
+// ecrivaient RESTENT, avec leur valeur de production, parce qu elles sont lues par le decodage
+// et que leur retrait serait une de-globalisation (D10), pas un retrait de code mort.
+//
+// SECOND RESSERRAGE DU 2026-09-05 (meme lot, item E.3) : 113 -> 111. Les DEUX copies de la table
+// des largeurs de reference par domaine — `lot1RefDomWidths` (weapon_hits_decode.go) et
+// `zoomRefWidth` (zoom_events.go) — sont remplacees par la fonction `refDomWidth`
+// (event_list.go), qui ne porte AUCUN etat : une table de grammaire deguisee en `var` redevient
+// ce qu elle est, du code. Garde-rail : `filmdec/event_preamble_guard_test.go`.
+//
+// TROISIEME RESSERRAGE DU 2026-09-06 (lot E, item E.8) : 111 -> 96. QUINZE noms de moins, et
+// aucun n avait d ecrivain : ils gardaient tous leur valeur initiale depuis que les 22 reglages
+// publics morts sont partis (E.2). Trois traitements, selon ce que la variable PORTAIT :
+//
+//   - DIX sont devenues des CONSTANTES NOMMEES, avec leur provenance ecrite au-dessus
+//     (`absDequantMode`, `bipedActionLoop2Count`, `bipedDefaultStateDecodeMovement`,
+//     `bipedDefaultStateTailBits`, `bipedMediaFramePresent`, `deadStatePreSkip`,
+//     `deadStateVelocityPresent`, `inferRepair`, `inferRequireBoundSuccessor`,
+//     `vehicleMediaFrameBits`). Plusieurs portent une LARGEUR MESUREE d un chemin non nominal —
+//     un savoir de retro-ingenierie ne se jette pas, il se fige et se date.
+//   - QUATRE ont ete SUPPRIMEES : l instrumentation i63 (`biDebug`, `biCurSeq`, `BiBadSeqs`,
+//     `BiOkSeqs`), annotee « a retirer apres » par son auteur, sans activateur depuis E.2 et sans
+//     aucun lecteur de ses deux tranches exportees. Elle ne portait aucune valeur mesuree.
+//   - UNE a ete SUPPRIMEE en gardant son modele : `absPerIndexAxisW`, table nil dont le seul
+//     installateur avait disparu. Le desassemblage qu elle documentait (les deux tables du moteur,
+//     l immediat LEVEL) est deplace sur `absAxisWFor`, la ou un futur portage viendra le lire.
+//
+// DEUX VARIABLES SANS ECRIVAIN RESTENT, et c est deliberé : `accumWorld` (avec `accumSlot`) et
+// `inferResyncTargets`. Elles ne sont ni des largeurs ni des valeurs — ce sont les INTERRUPTEURS
+// de deux mecanismes entiers (l accumulation de position par World, la recuperation par resync
+// valide). Les retirer supprimerait ces mecanismes et leur cloture — `setAccumSlot` et ses sites
+// d appel dans les decodeurs, `validatedResync`, `scanForTargetDelta` et l unique installateur de
+// production de `posCaptureHook`. C est une suppression de FONCTIONNALITE, pas un pliage de
+// constante : elle se decide, elle ne se glisse pas dans un lot a comportement identique.
+//
 // RETRAIT CIBLE : le jour ou `filmdec` est de-globalise (hors de ce plan, cf. §7). Critere
 // mesurable de ce jour-la : `LockProcessDecode` n'a plus de raison d'etre.
 
@@ -77,7 +124,7 @@ import (
 
 // filmdecVarsGeles : le compte GELE des variables de paquet de `filmdec` (cf. l'en-tete pour la
 // convention de comptage et la date de mesure).
-const filmdecVarsGeles = 118
+const filmdecVarsGeles = 96
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

@@ -13,15 +13,16 @@ package filmdec
 //   - la resolution slot base-512 des index bruts vers les slots bipedes (lot1chBases,
 //     lot1chIsBiped, lot1ArgmaxBase).
 
-// lot1RefDomWidths : largeur de l'index R(w) par domaine (table 0x1451f98d0, lot B1/E2).
-var lot1RefDomWidths = map[int]int{0: 13, 1: 13, 2: 8, 3: 8, 4: 9, 5: 8, 6: 9, 7: 13, 8: 13}
+// (La table des largeurs par domaine `lot1RefDomWidths` vivait ici en copie de celle du
+// descripteur 0x1451f98d0, avec `3: 8` la ou la mesure dit 7. Supprimee le 2026-09-05, lot E,
+// item E.3 : `refDomWidth` d'event_list.go est la seule table du paquet.)
 
 // lot1RefDom consomme une reference gardee du domaine dom (sans sonde). Rend (index, presente).
 func lot1RefDom(br *BitReader, dom int) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
 	}
-	idx := br.ReadBits(uint(lot1RefDomWidths[dom]))
+	idx := br.ReadBits(refDomWidth(dom))
 	br.Skip(2)
 	return idx, true
 }

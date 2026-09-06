@@ -135,45 +135,26 @@ func ScanCamoStates(fc *FilmContext) ([]CamoRead, CamoStateStats, error) {
 	defer SetCamoStateHook(prev)
 
 	var out []CamoRead
-	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
-	for _, c := range chunks {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
+	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
+		st.Records++
+		if !maskHas(r.Mask, i28idx) {
+			return
 		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta {
-				continue
-			}
-			pay := pk.Payload(data)
-			total := len(pay) * 8
-			for p := 0; p+minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, p, total, slots, true, lay)
-				if !ok {
-					p++
-					continue
-				}
-				st.Records++
-				if maskHas(idx, i28idx) {
-					st.WithI28++
-					last.got = false
-					switch {
-					case !walkRecordTo(pay, i0, total, idx, lay, arch, i28idx) || !last.got:
-						st.Unread++
-					case !last.channel:
-						st.Read++
-						st.NoChannel++
-					default:
-						st.Read++
-						out = append(out, CamoRead{
-							Slot: slot, Chunk: c, PacketIndex: pk.Index,
-							TimestampUS: pk.TimestampUS, Q: last.q,
-						})
-					}
-				}
-				p = i0 + lay.TotalBits()
-			}
+		st.WithI28++
+		last.got = false
+		switch {
+		case !walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, lay, arch, i28idx) || !last.got:
+			st.Unread++
+		case !last.channel:
+			st.Read++
+			st.NoChannel++
+		default:
+			st.Read++
+			out = append(out, CamoRead{
+				Slot: r.Slot, Chunk: r.Chunk, PacketIndex: r.Packet.Index,
+				TimestampUS: r.Packet.TimestampUS, Q: last.q,
+			})
 		}
-	}
+	})
 	return out, st, nil
 }
