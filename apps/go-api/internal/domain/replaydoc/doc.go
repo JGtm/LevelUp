@@ -28,16 +28,22 @@
 // `domain/`, et c'est ce qui garantit que le contrat ne suive pas le format de stockage
 // par simple alias. Les chroniques de schema (pourquoi tel champ est ne, ce que la mesure
 // a refuse d'y mettre) restent du cote stocke, ou elles decrivent le producteur.
-package replaydoc
-
-// ContractVersion est la version de la FORME SERVIE. Elle ne bouge que si le contrat
-// public change (champ retire ou renomme, type change) — jamais parce que la cuisson a
-// ajoute un calque.
 //
-// C'est la version STOCKEE (`analysis/replay.SchemaVersion`, publiee dans le champ
-// `schemaVersion` du corps) qui gouverne la RE-CUISSON du parc d'artefacts : un artefact
-// dont la version stockee est inferieure a celle du producteur se lit « a re-cuire ».
-// Les deux nombres partent de la meme valeur au 2026-09-05 (39, l'etat du contrat au
-// moment de la separation) et sont destines a diverger : la version stockee monte a
-// chaque calque, celle-ci reste stable tant que le client n'a rien a changer.
-const ContractVersion = 39
+// PAS DE NUMERO DE VERSION DANS CE PAQUET, et c'est une decision. La premiere version en
+// portait un (`ContractVersion = 39`) ; la revue adversariale du 2026-09-05 a montre qu'on
+// pouvait lui donner n'importe quelle valeur positive sans qu'aucun gate ne bouge — aucun
+// code de production ne le lisait, et son seul test affirmait qu'il etait positif. C'etait
+// une promesse de versionnage que rien n'observait, tenue verte par un test tautologique.
+// Retire (regle 7, zero code mort).
+//
+// CE QUI TIENT LA FORME SERVIE, a la place :
+//   - le golden `api/openapi.yaml`, regenere depuis ces types et compare octet pour octet
+//     (`TestOpenAPIYAMLIsUpToDate`) — tout changement de forme y est visible ;
+//   - `TestReplayDocumentFieldCountIsFrozen` (`contracttest/`), qui confronte le nombre de
+//     champs de `ReplayDocument` a une constante ECRITE et a sa chronique datee.
+//
+// CE QUI VERSIONNE, a la place : le champ `schemaVersion` du corps, qui porte la version de
+// l'ARTEFACT LU (`analysis/replay.SchemaVersion` au moment de la cuisson). C'est elle, et
+// elle seule, qui dit au parc « a re-cuire » ; la projection la recopie telle quelle et ne
+// la remplace jamais (verrouille par `replayview/parity_test.go`).
+package replaydoc

@@ -4,8 +4,9 @@ package replaydoc
 // contexte : trajectoires, tirs, grenades, projectiles, libelles.
 //
 // `ReplayDocument` est le corps de `GET /players/{slug}/matches/{id}/replay`. Son champ
-// `schemaVersion` porte la version STOCKEE de l'artefact lu (pas ContractVersion) : c'est
-// elle qui dit au parc « a re-cuire », et le client la lit telle quelle.
+// `schemaVersion` porte la version de l'ARTEFACT LU, celle du producteur au moment de la
+// cuisson : c'est elle qui dit au parc « a re-cuire », et le client la lit telle quelle. Le
+// paquet servi ne porte, lui, aucun numero de version (cf. doc.go).
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

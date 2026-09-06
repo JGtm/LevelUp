@@ -187,22 +187,18 @@ func TestProjectionPreserveLaNullite(t *testing.T) {
 	}
 }
 
-// TestContractVersionEstUneConstantePropre : les deux versions (servie et stockee) sont
-// parties de la meme valeur le 2026-09-05 et ont vocation a diverger. Ce test ne verrouille
-// PAS leur egalite — ce serait annuler la separation. Il verrouille deux choses : la version
-// servie est un nombre POSE, et le champ `schemaVersion` du corps continue de porter la
-// version de l'ARTEFACT LU, celle qui pilote la re-cuisson du parc.
-func TestContractVersionEstUneConstantePropre(t *testing.T) {
-	if replaydoc.ContractVersion <= 0 {
-		t.Fatalf("ContractVersion = %d : une version de contrat se pose, elle ne s'improvise pas",
-			replaydoc.ContractVersion)
-	}
-	// Le champ `schemaVersion` du corps porte la version STOCKEE de l'artefact lu, pas
-	// ContractVersion : c'est elle qui dit au parc « a re-cuire ».
+// TestSchemaVersionServieEstCelleDeLArtefact : le champ `schemaVersion` du corps porte la
+// version de l'ARTEFACT LU, jamais un numero de contrat.
+//
+// C'est elle, et elle seule, qui dit au parc « a re-cuire ». Une projection qui la
+// remplacerait par une constante du paquet servi ferait passer 106 artefacts perimes pour
+// des artefacts a jour. Le paquet servi ne porte d'ailleurs plus aucun numero de version :
+// la premiere version en avait un que rien ne lisait (cf. `domain/replaydoc/doc.go`).
+func TestSchemaVersionServieEstCelleDeLArtefact(t *testing.T) {
 	out := replayview.FromArtifact(replay.ReplayDocument{SchemaVersion: 7})
 	if out.SchemaVersion != 7 {
 		t.Errorf("schemaVersion servi = %d, attendu 7 (la version de l'ARTEFACT LU) : le champ "+
-			"pilote la re-cuisson, il ne doit jamais etre remplace par la version de contrat",
+			"pilote la re-cuisson, il ne doit jamais etre remplace par un numero de contrat",
 			out.SchemaVersion)
 	}
 }
