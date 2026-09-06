@@ -35,6 +35,29 @@ export function trackLeft(ratio: number): string {
   return `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * ${r})`
 }
 
+/**
+ * LA MÊME POSITION, MAIS SUR UNE VARIABLE CSS que le navigateur résout tout seul (2026-09-06).
+ *
+ * POURQUOI UNE SECONDE FORME PLUTÔT QU'UN SECOND CALCUL. Ce qui suit la LECTURE — la bulle de
+ * temps, le trait de lecture — ne connaît pas son ratio au rendu : il change soixante fois par
+ * seconde, et le passer en prop coûterait un rendu de la frise entière par image. Ces
+ * objets-là sont donc positionnés par une variable écrite en impératif
+ * (`useReplayPlayback.writeCursor`, `--played-r`). Ils ont pourtant besoin de la MÊME géométrie
+ * que les marques, sans quoi le trait de lecture passe jusqu'à 8 px à côté du kill qu'il
+ * désigne — c'est le défaut exact que la bulle de temps portait, invisible faute de repère.
+ *
+ * La formule ne vit donc qu'ICI, sous deux formes : `trackLeft` pour une valeur connue au
+ * rendu, `trackLeftVar` pour une position qui vit dans une variable. Le garde-rail
+ * `ui/timelineGeometry.guard.test.ts` interdit d'en recopier les littéraux ailleurs.
+ *
+ * LE REPLI À ZÉRO N'EST PAS DÉCORATIF : tant que la lecture n'a pas posé le curseur une
+ * première fois, la variable n'existe pas — et un `var()` sans repli rend tout le `calc()`
+ * invalide, donc la position `auto`. L'objet sauterait de l'origine à sa place au premier pas.
+ */
+export function trackLeftVar(cssVar: string): string {
+  return `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * var(${cssVar}, 0))`
+}
+
 /** Largeur CSS d'un intervalle [a..b] de ratios sur la même piste. */
 export function trackWidth(from: number, to: number): string {
   const span = Math.min(1, Math.max(0, to)) - Math.min(1, Math.max(0, from))
