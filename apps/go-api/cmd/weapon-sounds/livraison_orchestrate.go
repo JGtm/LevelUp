@@ -194,20 +194,31 @@ func livraisonRapportFinal(cible string, variations map[string]*livraisonVariati
 	if err != nil {
 		return err
 	}
-	var nArmes, nAutres int
-	var octetsArmes int64
+	var armes []string
+	var nAutres int
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name(), "hinf_") {
-			nArmes++
-			if info, ierr := e.Info(); ierr == nil {
-				octetsArmes += info.Size()
-			}
+			armes = append(armes, e.Name())
 			continue
 		}
 		nAutres++
 	}
 	fmt.Printf("\n%d fichiers d'armes livres, %d variations ; %d fichiers d'evenements du pack INTACTS\n",
-		nArmes, len(variations), nAutres)
+		len(armes), len(variations), nAutres)
+
+	// LA TAILLE EST MESUREE APRES LA LIGNE DE COMPTE, ET UNE MESURE QUI ECHOUE REMONTE. La
+	// version precedente faisait `if info, ierr := e.Info(); ierr == nil` : un fichier disparu
+	// entre le listage et la mesure comptait pour ZERO octet, sans log ni compteur — erreur
+	// avalee (CLAUDE.md, anti-pattern n°10 ; constat C10 de la revue R1). Le script Python
+	// remonte, lui : `sum(os.path.getsize(...))` leve.
+	var octetsArmes int64
+	for _, n := range armes {
+		info, ierr := os.Stat(filepath.Join(cible, n))
+		if ierr != nil {
+			return fmt.Errorf("livraison: taille de %s illisible: %w", n, ierr)
+		}
+		octetsArmes += info.Size()
+	}
 	fmt.Printf("taille armes : %.1f Mo\n", float64(octetsArmes)/1e6)
 	return nil
 }
