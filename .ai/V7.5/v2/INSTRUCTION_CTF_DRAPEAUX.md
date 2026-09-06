@@ -2,6 +2,58 @@
 
 Branche `feat/v2-ctf-drapeaux`, worktree `LevelUp-wt-v2-ctf`, base `a21fd77f4` (= `feat/v75`).
 
+---
+
+## ERRATUM du 2026-09-06 (revue adversariale CTF-R1) — À LIRE AVANT LE RESTE
+
+Le corps de ce journal (§0 à §8) est conservé **tel qu'écrit** ; trois de ses affirmations sont
+**infirmées** par la revue, sur pièces. Ne pas se fier aux passages listés ci-dessous sans lire
+la correction.
+
+**E1. « La seule cuisson réelle de la CI décodait sans registre » est FAUX** (touche §0, §4.2,
+§5, §7 et le message du commit `086a15f62`). Le téléchargeur de l'ouvrier **pèle déjà une couche
+zlib** (`cmd/replay-worker/job.go`, `downloadChunk`) et `filmsource.Load` pèle la seconde : les
+deux couches du fixture étaient absorbées par **deux étages différents**, et le registre arrivait
+INTACT. Mesure de la revue : fixture d'origine (deux couches) remis au HEAD, l'épreuve E2E est
+**verte**, assertions de valeur comprises, artefact de **283 260 octets — exactement la taille
+obtenue avec le fixture corrigé**. Les « onze calques tombés », les « quatre jours de CI verte à
+tort » et la phrase « l'artefact passe de 262 535 à 283 260 octets » viennent de mon outil
+jetable, qui lisait `testdata/.../chunk_00.bin` **en direct** — un chemin qu'aucun test ni aucun
+code de production n'emprunte. **Aucun sinistre n'a eu lieu.**
+
+**Ce qui reste vrai et pourquoi le correctif reste bon** : les deux couches sont avérées, le
+fixture corrigé est octet pour octet celui du cache, `c17f4941f` a bien retiré le repli zlib, la
+détection RFC 1950 est sans faux positif (0 sur 1 378 registres du cache), et un tampon compressé
+rendait bien un **registre vide en silence**. Un fixture doit dire la vérité sur ce que le CDN
+sert, et un refus explicite vaut mieux qu'un registre vide muet — le défaut était **latent**, il
+est désormais fermé.
+
+**E2. `objectLives` n'est pas « la signature du registre ECS »** (touche §5 et le commentaire de
+`assertCalquesDObjectif`) : elle vaut 4 même avec le fixture mal généré, puisque la chaîne E2E
+pelait les deux couches. C'est une épingle de caractérisation. Le seul garde-rail qui attrape
+réellement le double pelage est `film_fixture_integrite_cgo_test.go`. Justification corrigée dans
+le code.
+
+**E3. « Le porteur de drapeau n'est structurellement pas pontable sur ce film » est CONTREDIT par
+le parc** (touche §4.4, §8.1, et les épingles 8/4/12 du test E2E). L'artefact du parc au schéma 20
+**nomme** les actions de drapeau de SweatyYeti75. Le calque `objectives` a donc DÉRIVÉ entre le
+schéma 20 et aujourd'hui, et cette dérive est instruite au **§9 ci-dessous**. Les épingles 8/4/12
+et la liste des joueurs pontés ont été **retirées** du test E2E : on ne sanctuarise pas un état
+non compris. L'oracle des captures, qui comparait `TeamScores[0]` seul alors que
+`coverage.flagCarries.captures` compte les DEUX camps, compare désormais la **somme** (constat 4
+de la revue).
+
+**E4. Deux affirmations de commentaire démenties par la mesure**, corrigées dans le code : le
+premier octet d'un registre inflaté n'est `0x29` que sur 1 117 des 1 378 films du cache (204 en
+`0x28`, qui passent la condition CM=8 — seule la somme de contrôle les écarte) ; et ce fixture
+n'est pas « le seul film que la CI décode » (`TestGoldenMiniBobine` et `TestEquivalenceMiniFilm`
+décodent des films réels versionnés, sans condition).
+
+Les découvertes du §8 sont désormais portées au registre du chantier
+(`.ai/V7.5/REGISTRE_REPORTS.md`), ce qui n'avait pas été fait.
+
+---
+
 ## 0. Verdict en une ligne
 
 **La régression annoncée n'existe pas en production.** Sur le film COMPLET du cache, la cuisson

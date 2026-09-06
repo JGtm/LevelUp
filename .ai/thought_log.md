@@ -95453,3 +95453,43 @@ versionnees sont saines, leurs goldens passent avec le refus actif). Journal det
 (`4cf807d64`, lot F.1) a fige comme oracle les valeurs du fixture CASSE — elle doit etre re-mesuree
 sur le fixture corrige avant merge, et sa decouverte « 92 que le decodeur ne rend plus » requalifiee.
 Le seul chemin vers `flagCarries > 0` sur ce match est le pont d'identite par manche, hors perimetre.
+
+## [2026-09-06] CORRECTIF a l'entree precedente — la revue CTF-R1 infirme le recit, pas le correctif
+
+**Statut** : En cours (meme branche `feat/v2-ctf-drapeaux`, lot 2 : correction du diagnostic +
+instruction de la vraie derive).
+
+**Decision technique principale.** La revue adversariale de `086a15f62` a mesure ce que je
+n'avais pas mesure : le telechargeur de l'ouvrier PELE DEJA UNE COUCHE ZLIB
+(`cmd/replay-worker/job.go`, `downloadChunk`), et `filmsource.Load` pele la seconde. Les deux
+couches du fixture E2E etaient donc absorbees par DEUX ETAGES DIFFERENTS et le registre arrivait
+intact. Preuve : fixture d'origine remis au HEAD, l'epreuve E2E est VERTE, assertions de valeur
+comprises, artefact de 283 260 octets — exactement la taille obtenue avec le fixture corrige.
+Mon affirmation « la seule cuisson reelle de la CI decodait sans registre pendant quatre jours »
+est donc FAUSSE : elle venait d'une sonde jetable qui lisait `testdata` en direct, chemin
+qu'aucun test n'emprunte. Aucun sinistre n'a eu lieu ; le defaut etait LATENT.
+
+Le correctif reste bon pour ce qu'il est : le fixture doit dire la verite sur ce que le CDN sert
+(il est desormais octet pour octet celui du cache), et `ParseRegistryChunk` doit refuser un
+tampon compresse au lieu de rendre un registre vide en silence — la detection RFC 1950 est sans
+faux positif sur les 1 378 registres du cache. Ce qui etait faux, c'est la GRAVITE que je lui
+attribuais, pas la reparation.
+
+**Corrections portees** : ERRATUM date en tete de `.ai/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md` (le
+corps est conserve tel quel) ; commentaires faux retires de `filmdec/registry.go` (« premier
+octet 0x29 » — vrai sur 1 117 films seulement, 204 sont en `0x28` et passent la condition CM=8),
+de `registry_compressed_test.go` et de `film_fixture_integrite_cgo_test.go` (« le SEUL film que
+la CI decode » — `TestGoldenMiniBobine` et `TestEquivalenceMiniFilm` decodent aussi) ; oracle des
+captures corrige (il comparait `TeamScores[0]` seul quand `coverage.flagCarries.captures` compte
+les DEUX camps) ; epingles 8/4/12 et liste des pontes RETIREES du test E2E ; decouvertes portees
+au `.ai/V7.5/REGISTRE_REPORTS.md`.
+
+**Ce que la revue rouvre, et qui est la vraie instruction.** Le calque `objectives` de
+`c0a82e88` a DERIVE : 17 actions au parc (schema 20) contre 12 au HEAD, les familles
+`flag_captures` et `flag_steals` ont disparu, et les joueurs qui recoivent des actions sont
+ECHANGES. Ma conclusion « le porteur n'est structurellement pas pontable sur ce film » est donc
+contredite par le parc, ou ses actions de drapeau sont nommees. Instruction en cours.
+
+**Conclusion / prochaine etape.** Bissection du pont d'identite entre le schema 20 et le
+schema 38 (suspect designe : `d173b1a8c`, qui remplace le pont par TOTAUX par un pont PAR
+MANCHE), puis cause sur pieces, correctif ou decision citee.

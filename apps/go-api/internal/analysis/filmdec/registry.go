@@ -112,15 +112,22 @@ func (e registryError) Error() string { return string(e) }
 // ErrRegistryStillCompressed : le tampon remis a [ParseRegistryChunk] porte encore son en-tete
 // zlib — l'appelant a saute la decompression, ou le chunk en porte DEUX couches.
 //
-// POURQUOI CETTE ERREUR EXISTE, ET CE QU'ELLE A COUTE DE NE PAS EXISTER. Du 2026-09-02
-// (c17f4941f, lot 1a de PLAN_CUISSON_PERF, qui a retire l'inflate de cette fonction) au
-// 2026-09-06, un tampon encore compresse rendait un registre VIDE et une erreur NULLE. Rien ne
-// disait « tu ne m'as pas decompresse » : chaque lecteur d'archetype rendait ensuite « archetype
-// N absent du registre », un message qui accuse le BUILD DU JEU d'un defaut de l'APPELANT. Le
-// fixture E2E `film_e2e/c0a82e88` en portait exactement le cas (ses chunks 00 et 07 avaient deux
-// couches zlib) : la seule cuisson reelle de la CI decodait sans registre — donc sans biped 35,
-// sans arme au sol 42, sans equipement 37, sans vehicule 40, sans objet d'objectif — et restait
-// verte pendant quatre jours.
+// POURQUOI CETTE ERREUR EXISTE. Du 2026-09-02 (c17f4941f, lot 1a de PLAN_CUISSON_PERF, qui a
+// retire l'inflate de cette fonction) au 2026-09-06, un tampon encore compresse rendait un
+// registre VIDE et une erreur NULLE. Rien ne disait « tu ne m'as pas decompresse » : chaque
+// lecteur d'archetype rendait ensuite « archetype N absent du registre », un message qui accuse
+// le BUILD DU JEU d'un defaut de l'APPELANT. C'est un refus silencieux, pas une lecture.
+//
+// CE QUE CE COMMENTAIRE A DIT DE FAUX, ET QUI EST CORRIGE ICI (revue CTF-R1, 2026-09-06). Il
+// affirmait que « la seule cuisson reelle de la CI decodait sans registre pendant quatre
+// jours », a cause des deux couches zlib du fixture `film_e2e/c0a82e88`. C'EST FAUX : le
+// telechargeur de l'ouvrier pele deja une couche (`cmd/replay-worker/job.go`, `downloadChunk`),
+// `filmsource.Load` pele la seconde — les deux couches etaient donc absorbees par deux etages
+// differents et le registre arrivait INTACT. Mesure : fixture d'origine remis, l'epreuve E2E est
+// verte et rend le meme artefact de 283 260 octets. Aucun sinistre de production ni de CI n'est
+// attribuable a ce defaut ; il n'a ete observe que par une sonde jetable lisant `testdata` en
+// direct, chemin qu'aucun test n'emprunte. La sentinelle reste justifiee pour elle-meme : un
+// registre vide rendu en silence est un piege, quel que soit l'appelant qui tombe dedans.
 const ErrRegistryStillCompressed = registryError(
 	"filmdec: chunk_00 (registre) encore compresse — decompresser avant ParseRegistryChunk")
 
@@ -149,8 +156,14 @@ func ParseRegistryChunk(data []byte) (*Registry, error) {
 // tampon traverse tel quel) ; ici un faux positif REFUSERAIT un registre valide. Les deux octets
 // de l'en-tete portent donc leurs trois conditions : methode DEFLATE (CM=8, quartet bas de
 // l'octet 0), pas de dictionnaire preset (bit 5 de l'octet 1), et somme de controle
-// `(octet0<<8 | octet1) % 31 == 0`. Un registre inflate commence par le `kind` u32 LE de son
-// premier slot (0x00000029 sur le build de reference) : son premier octet vaut 0x29, jamais 0x78.
+// `(octet0<<8 | octet1) % 31 == 0`.
+//
+// LA SOMME DE CONTROLE EST PORTEUSE, ET C'EST MESURE (revue CTF-R1, 2026-09-06, balayage des
+// 1 378 `chunk_00` du cache). Un registre inflate commence par le `kind` u32 LE de son premier
+// slot : `0x29` sur 1 117 films, mais aussi `0x28` (204 films), `0x27` (34), `0x25` (13),
+// `0x26`/`0x1f`/`0x21` (3 chacun), `0x22` (1) — le premier octet n'est donc PAS constant, et les
+// 204 films en `0x28` passent la condition CM=8 : seule la somme de controle les sauve
+// (`0x2800 % 31 = 10`). « Jamais 0x78 » tient sur tout le corpus : 0 faux positif.
 func looksZlib(data []byte) bool {
 	if len(data) < 2 || data[0]&0x0f != 0x08 || data[1]&0x20 != 0 {
 		return false

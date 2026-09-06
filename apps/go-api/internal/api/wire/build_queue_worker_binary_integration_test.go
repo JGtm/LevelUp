@@ -230,29 +230,33 @@ func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domai
 	assertCalquesDObjectif(t, doc, fx)
 }
 
-// assertCalquesDObjectif fige CE QUE LE FILM REND SUR LES OBJECTIFS, et le confronte à l'oracle
-// indépendant quand il existe.
+// assertCalquesDObjectif confronte les calques d'objectif à l'ORACLE INDÉPENDANT du fixture — la
+// feuille de match de l'API, que le décodeur ne lit jamais.
 //
-// POURQUOI CES TROIS FAMILLES DE CHIFFRES ET PAS D'AUTRES :
+// CE QU'IL ASSERTE, ET POURQUOI CHAQUE LIGNE EST JUSTIFIABLE :
 //
-//	les CAPTURES        elles ont un ORACLE EXTÉRIEUR — le score d'équipe de la feuille de match,
-//	                    que le décodeur ne lit jamais. Trois bursts, trois captures, trois points.
-//	les ACTIONS         le contenu réel du calque `objectives`, par famille. C'est ce chiffre-là
-//	                    que la ligne « 92, famille flag » désignait à tort (cf. l'en-tête de
-//	                    `assertArtefactLivreEtComplet`).
-//	les VIES DE L'OBJET `coverage.flagCarries.objectLives` est la SIGNATURE DU REGISTRE ECS : cette
-//	                    lecture passe par l'archétype de l'objet drapeau. Elle est tombée à zéro le
-//	                    2026-09-02 quand le fixture a cessé d'avoir un registre lisible, et rien ne
-//	                    l'a vu. Elle vaut 4 sur ce film, mesurée identique aux schémas 38 et 39 et
-//	                    sur le film COMPLET du cache — donc elle ne dépend ni du schéma ni du
-//	                    fixture, seulement du décodage.
+//	les CAPTURES        `coverage.flagCarries.captures` compte les captures des DEUX camps ; son
+//	                    oracle est donc la SOMME des scores d'équipe, pas le score du gagnant.
+//	                    L'égalité avec `TeamScores[0]` seul ne tenait sur ce fixture que parce que
+//	                    le perdant a marqué 0 — invariant arithmétiquement faux, corrigé le
+//	                    2026-09-06 (revue CTF-R1, constat 4).
+//	les COMPTEURS       chaque joueur que le pont d'identité nomme publie ses actions `kills` et
+//	                    `assists` ; elles ne peuvent pas dépasser ce que la feuille de match lui
+//	                    donne. C'est vrai QUELS QUE SOIENT les joueurs pontés, donc c'est un
+//	                    invariant et non une épingle.
+//	les VIES DE L'OBJET `objectLives` = 4 : épingle de caractérisation, mesurée identique sur le
+//	                    film complet du cache aux schémas 20, 38 et 39. Elle n'est PAS la
+//	                    « signature du registre ECS » que la première version de ce commentaire
+//	                    annonçait : la revue CTF-R1 a montré qu'elle vaut 4 même avec le fixture
+//	                    mal généré (la chaîne E2E pelait ses deux couches). Le seul garde-rail qui
+//	                    attrape ce défaut-là est `film_fixture_integrite_cgo_test.go`.
 //
-// CE QUI N'EST PAS UN CRITÈRE, ET POURQUOI. `flagCarries` est VIDE sur ce film, et c'est une
-// PROPRIÉTÉ MESURÉE, pas un défaut : ses 3 prises sont toutes `noBridge` — le slot statborg du
-// porteur n'est pas résolu en xuid, et le pont se tait plutôt que d'attribuer le drapeau au mauvais
-// joueur. Vérifié identique à TOUS les schémas essayés (18, 20 sur l'artefact du parc, 38, 39).
-// L'assertion porte donc sur `openings == noBridge`, qui dit POURQUOI c'est vide — une future
-// amélioration du pont fera tomber ce test, et c'est exactement ce qu'on veut d'elle.
+// CE QUI N'EST DÉLIBÉRÉMENT PAS FIGÉ ICI, ET LE RESTERA TANT QUE CE NE SERA PAS INSTRUIT. Le
+// COMPTE d'actions par famille (12 : 8 `kills` + 4 `assists`) et la LISTE des joueurs pontés ne
+// sont PAS des attentes de ce test. L'artefact du parc pour ce même match (schéma 20) porte
+// 17 actions, dont un `flag_captures` et un `flag_steals` qui ont disparu depuis, et un ensemble
+// de joueurs pontés DIFFÉRENT. Figer l'état d'aujourd'hui sanctifierait une dérive non expliquée
+// (revue CTF-R1, constat 3) — un test ne sanctuarise pas ce qu'on n'a pas compris.
 func assertCalquesDObjectif(t *testing.T, doc replay.ReplayDocument, fx filmFixture) {
 	t.Helper()
 	fc := doc.Coverage.FlagCarries
@@ -262,40 +266,54 @@ func assertCalquesDObjectif(t *testing.T, doc replay.ReplayDocument, fx filmFixt
 	if !fc.FlagFilm {
 		t.Fatalf("film NON reconnu comme CTF (bursts=%d captures=%d steals=%d)", fc.Bursts, fc.Captures, fc.Steals)
 	}
-	// ORACLE INDÉPENDANT : le score du camp gagnant vient de la feuille de match de l'API, jamais
-	// du film. Les captures reconstruites doivent le valoir exactement.
 	if fx.Facts.TeamScores == nil {
 		t.Fatal("fixture sans scores d'équipe : plus d'oracle pour les captures")
 	}
-	if attendu := fx.Facts.TeamScores[0]; fc.Captures != attendu || fc.Bursts != attendu {
-		t.Errorf("captures reconstruites = %d (bursts %d), l'API dit %d — le décodage du film et la "+
-			"feuille de match doivent tomber d'accord", fc.Captures, fc.Bursts, attendu)
+	// ORACLE INDÉPENDANT : les captures des deux camps réunies valent la somme des scores.
+	attendu := fx.Facts.TeamScores[0] + fx.Facts.TeamScores[1]
+	if fc.Captures != attendu || fc.Bursts != attendu {
+		t.Errorf("captures reconstruites = %d (bursts %d), la feuille de match en donne %d "+
+			"(%d + %d) — le décodage du film et l'API doivent tomber d'accord",
+			fc.Captures, fc.Bursts, attendu, fx.Facts.TeamScores[0], fx.Facts.TeamScores[1])
 	}
-	// Les vies libres de l'objet drapeau : la lecture qui EXIGE le registre ECS.
+	// ÉPINGLE DE CARACTÉRISATION (pas un oracle) : les vies libres de l'objet drapeau.
 	if fc.ObjectLives != 4 {
-		t.Errorf("vies libres de l'objet drapeau = %d, attendu 4 — zéro signifie que l'archétype de "+
-			"l'objet n'a pas été lu (registre ECS absent ou illisible)", fc.ObjectLives)
+		t.Errorf("vies libres de l'objet drapeau = %d, attendu 4 (mesure du 2026-09-06 sur le film "+
+			"complet du cache, schémas 20, 38 et 39 confondus)", fc.ObjectLives)
 	}
-	// Le silence de `flagCarries` est EXPLIQUÉ, pas subi.
-	if fc.Carries != 0 || fc.NoBridge != fc.Openings || fc.Openings == 0 {
-		t.Errorf("portages=%d prises=%d sansPont=%d : le film ne publiait aucun portage parce que "+
-			"CHAQUE prise est sans pont ; si ce n'est plus vrai, cette attente doit être remesurée",
-			fc.Carries, fc.Openings, fc.NoBridge)
+	// ORACLE INDÉPENDANT : aucun joueur ne peut publier plus d'actions que la feuille ne lui en
+	// donne, et toute action publiée appartient à un joueur du match.
+	feuille := map[string]port.MatchPlayerFact{}
+	for _, p := range fx.Facts.Players {
+		feuille[p.XUID] = p
 	}
-	// Le contenu du calque `objectives`, par famille.
-	parFamille := map[string]int{}
+	parJoueur := map[string]map[string]int{}
 	for _, a := range doc.Objectives {
-		parFamille[a.Stat]++
+		if _, connu := feuille[a.XUID]; !connu {
+			t.Errorf("action d'objectif `%s` attribuée au xuid %s, absent de la feuille de match", a.Stat, a.XUID)
+			continue
+		}
+		if parJoueur[a.XUID] == nil {
+			parJoueur[a.XUID] = map[string]int{}
+		}
+		parJoueur[a.XUID][a.Stat]++
 	}
-	for famille, attendu := range map[string]int{"kills": 8, "assists": 4} {
-		if parFamille[famille] != attendu {
-			t.Errorf("actions d'objectif `%s` = %d, attendu %d (mesure du 2026-09-06, films complet "+
-				"et fixture, schémas 38 et 39)", famille, parFamille[famille], attendu)
+	for xuid, actions := range parJoueur {
+		p := feuille[xuid]
+		if actions["kills"] > p.Kills {
+			t.Errorf("joueur %s : %d actions `kills` publiées pour %d frags à la feuille de match",
+				xuid, actions["kills"], p.Kills)
+		}
+		if actions["assists"] > p.Assists {
+			t.Errorf("joueur %s : %d actions `assists` publiées pour %d assistances à la feuille de match",
+				xuid, actions["assists"], p.Assists)
 		}
 	}
-	if len(doc.Objectives) != 12 {
-		t.Errorf("actions d'objectif publiées = %d, attendu 12 — familles lues : %v", len(doc.Objectives), parFamille)
+	if len(parJoueur) == 0 {
+		t.Error("aucune action d'objectif attribuée : le pont d'identité n'a nommé personne")
 	}
+	t.Logf("calque objectifs : %d actions, %d joueurs pontés (compte NON figé — cf. l'en-tête)",
+		len(doc.Objectives), len(parJoueur))
 }
 
 // chargerFixture lit le mini-film versionné (fixture.json + chunks) résolu PAR LE PAQUET

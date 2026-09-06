@@ -3,27 +3,32 @@
 // Package api — film_fixture_integrite_cgo_test.go : LE MINI-FILM VERSIONNÉ EST-IL CE QUE LE CDN
 // SERT ?
 //
-// POURQUOI CE GARDE-RAIL EXISTE. Le fixture `testdata/film_e2e/c0a82e88` est le SEUL film que la
-// CI décode réellement (`TestOuvrierReel_ConstruitEtLivre`). Il n'a de valeur que s'il reproduit
-// ce que l'ouvrier reçoit en production : des morceaux servis par le CDN Azure, chacun sous UNE
-// couche zlib, que `filmsource` décompresse une fois.
+// POURQUOI CE GARDE-RAIL EXISTE. Le fixture `testdata/film_e2e/c0a82e88` est le film que la
+// cuisson de bout en bout décode (`TestOuvrierReel_ConstruitEtLivre`) — l'un des films réels
+// versionnés du dépôt, aux côtés des mini-bobines de `killsource` (`TestGoldenMiniBobine`) et de
+// `replay` (`TestEquivalenceMiniFilm`), qui décodent elles aussi sans condition. Il n'a de valeur
+// que s'il reproduit ce que l'ouvrier reçoit en production : des morceaux servis par le CDN
+// Azure, chacun sous UNE couche zlib.
 //
 // IL NE LE REPRODUISAIT PAS. Généré le 2026-08-25 en compressant chaque fichier du cache local,
 // il a hérité d'un cache HÉTÉROGÈNE : ses morceaux de jeu (1 à 6) y étaient stockés DÉJÀ
 // décompressés — les compresser une fois était juste — mais ses morceaux 00 (registre ECS) et 07
 // (pied) y étaient stockés compressés, et les compresser à leur tour leur a mis DEUX couches.
 //
-// CELA N'A RIEN CASSÉ PENDANT HUIT JOURS parce que `filmdec.ParseRegistryChunk` décompressait
-// elle-même au besoin. Le 2026-09-02, `c17f4941f` (lot 1a de PLAN_CUISSON_PERF) lui a retiré cet
-// inflate — décision juste, la décompression se fait une fois par film — et le registre du
-// fixture est devenu VIDE : plus d'archétype biped 35, arme au sol 42, équipement 37, véhicule
-// 40, objet d'objectif. Onze calques du rejeu sont tombés d'un coup SUR CE FILM, et la CI est
-// restée verte parce que l'épreuve E2E n'assertait que la forme du document.
+// CE QUE ÇA N'A PAS CASSÉ, et il faut le dire ici parce que la première version de ce
+// commentaire prétendait le contraire (corrigé le 2026-09-06, revue CTF-R1) : la chaîne E2E
+// absorbait les DEUX couches, à deux étages différents — le téléchargeur de l'ouvrier en pèle
+// une (`cmd/replay-worker/job.go`, `downloadChunk`), `filmsource.Load` pèle l'autre. Mesure :
+// avec les morceaux d'origine remis, l'épreuve E2E est verte et rend le MÊME artefact, à l'octet
+// près. Le défaut était donc latent, pas actif.
 //
-// Ce test fige donc la propriété qui manquait : UNE couche zlib par morceau, et un registre qui
-// se lit et porte l'empreinte de référence. Il est DÉLIBÉRÉMENT autonome (il ne partage rien avec
-// l'épreuve E2E, qui est derrière le tag `integration`) pour tourner dès que CGO est actif —
-// c'est-à-dire bien plus souvent que la cuisson qu'il protège.
+// IL RESTE À CORRIGER, ET CE TEST À EXISTER, pour deux raisons : le fixture doit dire la vérité
+// sur ce que le CDN sert (sinon il ment à quiconque le relit ou le régénère), et le double pelage
+// ne survit qu'à une chaîne qui pèle deux fois — depuis `c17f4941f`, un consommateur qui ne pèle
+// qu'une fois obtiendrait un registre vide. Le test fige donc la propriété : UNE couche zlib par
+// morceau, et un registre qui se lit et porte l'empreinte de référence. Il est DÉLIBÉRÉMENT
+// autonome (il ne partage rien avec l'épreuve E2E, qui est derrière le tag `integration`) pour
+// tourner dès que CGO est actif.
 package wire
 
 import (
