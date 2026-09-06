@@ -95401,3 +95401,71 @@ demander avant). Prochaine etape : decision utilisateur sur les 6 escalades, pui
 plan `.ai/PLAN_V2_REJEU_FILM_<date>.md` sous `plan-review`, lot 0 (trois P0 + les deux items
 actifs au merge : catalogue ecrit par le runtime, projections sur « artefact range ») avant le
 tag v7.5.0.
+
+## [2026-09-06] Lot E-I du plan v2 — le decodeur de film refondu a comportement identique — Complete
+
+**Contexte.** Tache E-I du `PLAN_V2_REJEU_FILM_2026-09-05.md` (constats E1 a E6 du registre
+d'audit) : retirer le code mort de `internal/analysis/filmdec`, ramener a un seul lecteur la
+grammaire du preambule d'evenement et la table des domaines, remplacer neuf copies du marcheur
+de records delta bipede, generaliser le garde-rail du verrou de decodage. Contrainte non
+negociable : comportement STRICTEMENT identique, sur un decodeur binaire ou une largeur inversee
+decale tout ce qui suit. Worktree dedie `LevelUp-wt-v2-decodeur`, branche `feat/v2-decodeur`,
+base `a21fd77f4`.
+
+**Decision technique.** L'item E.1 pose la reference AVANT tout changement, et c'est lui qui rend
+le reste verifiable : goldens inconditionnels, sept digests de la mini-bobine, puis les temoins
+sur FILMS REELS sous garde de variable d'environnement (goldens killsource sur 4 films, temoin de
+marche delta sur 3 films, empreinte de registre, table ECS, integration killcollector), un film
+par process. Chaque item suivant rejoue ces memes commandes et compare ligne a ligne. Verification
+demandee par le mandat : les « 49 etapes d'equivalence en local » du registre appartiennent a
+`cmd/replay-equiv`, qui CUIT un artefact par film — interdit par le mandat ; le gate repose donc
+sur ce qui existe reellement sous garde d'environnement, et `REPLAY_FILM_DIR` (porte de
+REGENERATION des goldens) est laissee vide a dessein.
+
+Trois choix de conception meritent d'etre ecrits. (1) Le plan dit « supprimer les 22 reglages
+`Set*` » — pas « et leurs variables » : les 17 variables qu'ils ecrivaient sont LUES par le
+decodage avec leur valeur de production, les supprimer changerait le comportement et les figer
+serait la de-globalisation D10, hors plan. (2) `readPacketHead` lit TOUJOURS les neuf bits du
+preambule et rend `{Config, More, Type}` : c'est ce qui rend la factorisation bit-exacte pour les
+DEUX conventions d'origine — trois sites testaient la continuation, trois la sautaient derriere un
+filtre d'octet de tete qui la pose. Uniformiser aurait exige d'editer une fixture pour que le
+refacto passe. (3) Le ratchet du verrou exige la COUVERTURE, pas la prise : le mutex n'est pas
+reentrant, et `BuildFromFilm` appelle une trentaine de balayeurs sous un seul verrou.
+
+**Resultats.** Cinq commits, 43 fichiers de code, +517 / -1317 lignes. E.2 : `entity.go` +
+`entity_quant.go` supprimes (586 L, deux decodeurs sans appelant dont le depot ecrit lui-meme que
+la cible RE etait fausse), les 22 reglages morts, cinq variables de paquet (`dynPrecHook` et
+`repTraceHook` prouvablement toujours nils, les deux bascules A/B sans date, `defaultStateBitsByTI`
+jamais peuplee), `frame_debug.go`, neuf sondes de `probe_export.go` ; `consumeObjectAngularVelocity`
+RESTE (deser correct d'i3 pour ti=40). E.3 : `readPacketHead` et `refDomWidth` uniques, `dom3 = 7`
+(valeur mesuree contre `3: 8` dans deux copies). E.4 : `walkDeltaBipedPayload` /
+`walkDeltaBipedRecords` remplacent les neuf triples boucles. E.5 : `buildPositionRows` prend le
+verrou, ratchet AST par point fixe sur le graphe d'appel intra-paquet.
+
+Les trois nouveaux garde-rails ont ete verifies par MUTATION (largeur inversee, preambule recopie,
+table recopiee, verrou retire : chacun echoue, puis retour). Ratchets : `filmdecVarsGeles` 118 ->
+111, l'exemption morte de `no_local_longest_run` retiree — aucun ne monte, une allowlist retrecit.
+Gate de cloture rejoue integralement : `go build ./...` exit 0, gofmt propre, les 10 paquets verts,
+`golangci-lint --new-from-merge-base=origin/main ./...` = **0 issues**. AUCUN chiffre des temoins
+n'a bouge, y compris les DEUX echecs ANTERIEURS au lot que la reference E.1 avait captures — le
+golden `fccc61cd` (une ligne, « 3 propose(s) » fige contre « 2 » mesure, compte publie inchange) et
+le temoin de marche delta sur les trois films. Ce sont la preuve mesuree du constat P0-1 ; le lot E
+ne les repare pas (c'est le lot A) et ne les masque pas.
+
+Decouverte de methode a retenir : `golangci-lint` tient son cache de RESULTATS globalement a la
+machine, independamment de `GOCACHE`, et l'indexe par fichier — il sert donc des verdicts calcules
+dans un autre jeu de fichiers du meme paquet, alors que `goconst` et `unparam` sont des analyses de
+PAQUET. La premiere mesure de reference annoncait « 0 issues. » sur `filmdec` ; avec un
+`GOLANGCI_LINT_CACHE` propre au lot, l'etat de base en rend SIX, et l'etat final rend exactement
+les six memes.
+
+**Conclusion / prochaine etape.** Tache E-I close : cinq items `[x]`, aucun `[!]`, aucun test
+desactive, aucun golden regenere. Journal `.ai/V7.5/v2/LOT_E.md`, reference
+`.ai/V7.5/v2/LOT_E_digests_avant.md`. Sept decouvertes consignees et non traitees, dont la cloture
+morte laissee par les reglages supprimes (14 variables sans ecrivain, plusieurs portant une largeur
+MESUREE d'un chemin non nominal — a trancher par le superviseur) et le skip de
+`TestKillSourcePositionsFilmReelEtRelitParLaVue`, seul test de bout en bout de `buildPositionRows`
+sur film reel. Prochaine etape : revue adversariale du superviseur, puis la tache E-II (E.6 goldens
+inconditionnels des ~26 familles `Scan*`, E.7 controle code contre `ecs_table.tsv`), qui ne demarre
+pas sans son message. Surveillance CI non effectuee : consigne du coordinateur, verification par le
+superviseur.

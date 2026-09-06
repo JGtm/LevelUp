@@ -18,7 +18,9 @@ Archive complete : `.ai/V7.5/v2/LOT_E_digests_avant.md` (commandes exactes, verd
 comptes, digests). Resume :
 
 - Etage inconditionnel : `filmdec` / `film/*` / `replay` / `killcollector` / `archlint` VERTS ;
-  `go build ./...` exit 0 ; `golangci-lint run ./internal/analysis/filmdec/...` -> `0 issues.` ;
+  `go build ./...` exit 0 ; `golangci-lint run ./internal/analysis/filmdec/...` -> **6 issues**
+  (4 `goconst`, 2 `unparam` — dette anterieure ; la premiere mesure annoncait « 0 issues. » et
+  c'etait un artefact de cache, cf. la correction datee du fichier de digests) ;
   les 7 digests de la mini-bobine (`minifilm.tsv`, grammaire 2) confirmes par
   `TestEquivalenceMiniFilm` PASS ; ratchet `filmdecVarsGeles = 118` vert.
 - Etage films reels : goldens `killsource` sur 4 films, temoin de marche delta sur 3 films,
@@ -121,3 +123,236 @@ avec `GOLANGCI_LINT_CACHE` propre au lot, l'etat de base rend **6 issues** (4 `g
 2 `unparam`), et l'etat apres E.2 rend **exactement les 6 memes** (memes linters, memes comptes,
 diff vide). Le fichier de digests est corrige. Tout lot qui mesure une reference de lint doit
 isoler ce cache.
+
+### [x] E.3 — un seul lecteur de preambule, une seule table de domaines (E3)
+
+Commit `ff89b4625`. 10 fichiers, +145 / -50 lignes.
+
+| item du plan | statut | ce qui a ete fait |
+|---|---|---|
+| les six lectures passent par le canonique | `[x]` | `readPacketHead(br)` (event_list.go) est le lecteur unique ; `PacketHeadEventType([]byte)` en est l'enveloppe. Les six sites migres : `event_list.go`, `zoom_events.go`, `transloc_events.go`, `biped_pickups.go`, `fire_aim_modal.go`, `weapon_hits.go` (deux balayages). |
+| une seule table de domaines, `dom3 = 7` | `[x]` | `refDomWidth(dom)` (event_list.go), composee des quatre constantes nommees. Les deux copies de production disparaissent (`lot1RefDomWidths`, `zoomRefWidth`), ainsi que la largeur locale de `transloc_events.go` (devenue `refDomWidth(translocRefDomain)`). |
+| test qui confronte les tables recopiees | `[x]` | `event_preamble_guard_test.go`, trois controles : la table rend les largeurs mesurees (dom3 = 7) et 0 hors table ; aucune source de production ne recopie une table domaine vers largeur ; aucune ne recopie la SEQUENCE saut-de-tete + R(7). |
+| justification perimee de `biped_pickups.go` | `[x]` | Remplacee : elle disait que la constante « n'avait aucun lecteur et la CI l'a relevee », alors que `eventPayloadStartBit` en a deux depuis le portage des evenements vehicule. |
+
+COMMENT LA FACTORISATION RESTE BIT-EXACTE, alors que les six sites suivaient DEUX conventions.
+`readPacketHead` lit TOUJOURS les neuf bits et rend `{Config, More, Type}` ; c'est l'appelant qui
+applique sa politique :
+
+- TROIS sites testaient la continuation et sortaient SANS lire le type (`decodeZoomHead`,
+  `decodeTranslocHead`, `decodeBipedPickup`). Ils abandonnent leur lecteur au meme instant : les
+  7 bits lus en trop ne sont observes par personne.
+- TROIS la SAUTAIENT (`Skip(2)`) et lisaient le type quoi qu'il arrive (`modalPostCountsBit`, les
+  deux balayages de `weapon_hits.go`). Chacun est derriere un filtre sur l'OCTET DE TETE — 0xD2
+  pour le type 36, 0xC0 pour le type 0 — dont le bit 1 vaut 1 par construction.
+
+FAIRE TESTER LA CONTINUATION AUX TROIS DERNIERS AURAIT CHANGE LE COMPORTEMENT, et le journal doit
+le dire : le harnais `writeModalHeader` (fire_aim_modal_test.go) ecrit `bits(0, 2)` en prefixe,
+continuation comprise. Ses temoins synthetiques passeraient de « lus » a « refuses », et il aurait
+fallu editer la fixture pour que le refacto passe — exactement ce que le paragraphe 6 du plan
+master interdit. Le choix est donc de FACTORISER SANS UNIFORMISER, et d'ecrire la divergence a UN
+endroit (l'en-tete de `readPacketHead`) au lieu de six.
+
+VERIFICATION DEMANDEE — « la production ne lit pas le domaine 3 aujourd'hui, verifie que ca reste
+vrai ». VERIFIE : les domaines effectivement lus sont 1, 2, 4, 7, 8 (`lot1RefDom(br, 7)` a
+`weapon_hits.go:288`, `zoomRefDomains = {4, 8, 7}`, `boardRefs` en 2/3/7). Le SEUL lecteur du
+domaine 3 est `boardRefs`, qui portait DEJA la valeur mesuree 7. Passer les deux copies de 8 a 7
+ne change donc AUCUNE lecture servie — confirme par l'invariance des goldens.
+
+DECOUVERTE (consignee, NON traitee) — DEUX INSTRUMENTS DE RECHERCHE gardent leur propre table
+avec `3: 8` : `bpkDomWidths` (biped_pickup_research_test.go) et `r7DomWidth`
+(r7_grammaire_research_test.go). Le second LIT le domaine 3 : `r7Domains[8] = {2, 3, 7}`,
+l'embarquement. Les migrer changerait une largeur DANS UNE MESURE DATEE — hors du perimetre
+« comportement strictement identique » de E-I. La portee du garde-rail le dit explicitement.
+
+**Gate E.3** — mutation d'abord (`dom3RefWidth = 8`, un preambule recopie, une table recopiee :
+les TROIS controles echouent, puis retour), puis :
+
+```
+go build ./...                                                     -> exit 0
+go test ./internal/analysis/filmdec/... ./internal/games/halo_infinite/film/...
+     ./internal/analysis/replay/... ./internal/sync/killcollector/...
+     ./internal/archlint/... -p 1 -parallel 1 -count=1              -> les 10 paquets ok
+goldens killsource, 4 films reels                                   -> IDENTIQUE a l'avant
+temoin de marche delta, 3 films (un par process)                    -> IDENTIQUE a l'avant
+table ECS G1/G2/G3 sur film reel                                    -> IDENTIQUE
+integration killcollector (-tags=integration)                       -> IDENTIQUE
+golangci-lint --new-from-merge-base=origin/main .../filmdec/...     -> 0 issues.
+```
+
+Ratchet `filmdecVarsGeles` resserre 113 vers **111** (les deux tables de grammaire deguisees en
+`var` redeviennent du code).
+
+### [x] E.4 — un seul marcheur de records delta bipede (E4)
+
+Commit `5a9c86e82`. 11 fichiers, +109 / -274 lignes.
+
+| item du plan | statut | ce qui a ete fait |
+|---|---|---|
+| `walkDeltaBipedRecords(fc, visit)` remplace les neuf triples boucles | `[x]` | `delta_biped_walk.go`, DEUX etages : `walkDeltaBipedPayload` (un payload en main, l'etage PUR — c'est celui que `ScanBipedRecords` utilise) et `walkDeltaBipedRecords` (chunks du contexte + paquets delta, delegue au premier). Les neuf sites migres : ability_charges, ability_impulses, ability_rank, camo_state, grapple_state, held_weapon_changes, inventory_delta, offline_biped, unit_equipment_scan. |
+| garde-rail sur le litteral du seuil | `[x]` | `delta_biped_walk_guard_test.go` : aucune source de production hors du marcheur ne compose `bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt` ni n'appelle `matchBipedHeader` (`offline_biped.go` exempte : elle le DECLARE). |
+
+POURQUOI DEUX ETAGES ET NON UN. Le plan cite `offline_biped.go` parmi les neuf, mais son balayage
+(`ScanBipedRecords`) est PUR : il marche un payload deja en main, sans film ni chunk, et c'est le
+coeur testable du decodeur. Un marcheur unique a un seul etage l'aurait force a inventer un
+contexte de film. Les deux etages partagent la boucle de curseur, la borne et l'avance ; seules
+les deux boucles externes appartiennent au second.
+
+La borne (`deltaBipedMinRecord`), l'avance sans chevauchement (`i0 + lay.TotalBits()`) et le pas
+d'echec d'un bit sont ceux d'origine, a la ligne pres. Le cas `DropSaturated` de
+`ScanBipedRecords` devient un `return` du visiteur : l'avance qui le suivait etait deja celle du
+marcheur.
+
+DECOUVERTE (consignee, NON traitee) — une VINGTAINE d'instruments de recherche ancrent encore
+leurs propres records (`i22_delta`, `i48_rank`, `i56_energy`, `r8_*`, `r9_*`, `r11_*`, `r12_*`...).
+Plusieurs mesurent une grammaire candidate avec une porte deliberement differente ; les faire
+passer par le marcheur les ferait mentir sur ce qu'ils mesurent. Le garde-rail est donc borne aux
+sources de production, et le dit.
+
+**Gate E.4** — c'est l'item ou le TEMOIN DE MARCHE DELTA est l'oracle : il chiffre paquets,
+records rendus et traversees abouties sur les 12 premiers chunks de trois films. Les trois
+mesures sont IDENTIQUES a la reference E.1, au record pres.
+
+```
+gofmt -l ./internal/analysis/filmdec/                               -> (vide)
+go build ./...                                                      -> exit 0
+les 10 paquets du gate                                              -> ok
+goldens killsource, 4 films reels                                   -> IDENTIQUE
+temoin de marche delta, 3 films : 000d5950 {14350, 38883, 30089},
+     06dfe6d9 {6606, 10610, 8489}, 64e8adfa {14357, 39818, 31990}   -> IDENTIQUE
+table ECS, integration killcollector                                -> IDENTIQUE
+golangci-lint --new-from-merge-base=origin/main .../filmdec/...      -> 0 issues.
+```
+
+### [x] E.5 — le verrou de decodage, ratchet AST (E5)
+
+Commit `9d01c9733`.
+
+| item du plan | statut | ce qui a ete fait |
+|---|---|---|
+| garde-rail du verrou generalise en ratchet AST dans `archlint` | `[x]` | `archlint/decode_lock_held_test.go`. Regle par POINT FIXE sur le graphe d'appel intra-paquet : une fonction est SOUS VERROU si elle prend `LockProcessDecode`, ou si TOUS ses appelants du paquet le sont ; toute fonction qui appelle un balayage filmdec (`Scan*`, `DecodeFrame*`, `TraverseEntity*`) doit etre sous verrou. Trois paquets mesures : `analysis/replay`, `film/killsource`, `sync/killcollector`. |
+| `killcollector/positions.go` mis en conformite | `[x]` | `buildPositionRows` prend le verrou en tete. Non-reentrance VERIFIEE sur pieces : `killsource.Decode` (`decode.go:78-79`) le relache avant de rendre, et `collectPositions` est appele APRES lui dans `collect()` — jamais dedans. |
+
+POURQUOI LA REGLE N'EXIGE PAS QUE CHAQUE BALAYEUR PRENNE LE VERROU. Le mutex n'est pas reentrant :
+l'exiger de chaque fonction bloquerait le process des le premier chemin a deux niveaux (dans
+`analysis/replay`, `BuildFromFilm` le prend et appelle une trentaine de balayeurs). La regle exige
+donc la COUVERTURE, pas la prise — ce qui est exactement le contrat de `decode_gate.go` (« pour
+TOUTE la duree du decodage d'un film — jamais par sous-appel »).
+
+**Gate E.5** — mutation d'abord : le verrou retire de `buildPositionRows`, le ratchet designe
+`internal/sync/killcollector/positions.go:182 buildPositionRows` et rien d'autre ; remis, il
+passe. Puis les 10 paquets verts, `go build ./...` exit 0, gofmt propre, et les quatre temoins de
+films reels IDENTIQUES a la reference E.1.
+
+## Gate de cloture de la tache E-I — rejoue INTEGRALEMENT le 2026-09-06
+
+Toutes les commandes ci-dessous ont tourne EN AVANT-PLAN, en serie, sur l'arbre a `9d01c9733`
+(les cinq items commites), avec le prefixe du lot :
+`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-decodeur CGO_ENABLED=1`, depuis
+`apps/go-api`, `-p 1 -parallel 1 -count=1`.
+
+| commande | derniere ligne / verdict |
+|---|---|
+| `go build ./...` | exit 0 |
+| `gofmt -l ./internal/ ./cmd/` | (aucune sortie) |
+| `go test ./internal/analysis/filmdec/... ./internal/games/halo_infinite/film/... ./internal/analysis/replay/... ./internal/sync/killcollector/... ./internal/archlint/...` | `ok levelup/go-api/internal/archlint 5.891s` — **les 10 paquets ok**, exit 0 |
+| `go test .../killsource/ -run TestGoldenMiniBobine + TestGoldenPhrasesJustes -v` | `ok ... 0.469s` |
+| `go test .../replay/ -run <les 11 goldens inconditionnels> -v` | `ok ... 6.766s` — 20 PASS, 1 SKIP (la porte de REGENERATION `TestGoldenInputsRegenerate`, voulue) |
+| `KILLSOURCE_FIXTURES=<film_chunks> go test .../killsource/ -run TestGoldenFilms + TestReferenceFilms + TestLigneDiscriminante... -v` | `FAIL ... 41.8s` — **identique a la reference E.1, echec anterieur `fccc61cd` compris** |
+| `DELTA_WITNESS_FILM=<film> go test .../filmdec/ -run TestDeltaWalkWitness + TestRegistryFingerprintOnFilm -v` (x3, un film par process) | les trois sorties **identiques** a la reference E.1 |
+| `ECS_TABLE_FILM=<film> go test .../filmdec/ -run TestG1... + TestG2... + TestG3... -v` | `ok` — **identique** (50 blocs, 49 porteurs, 1067/1067 lignes, +14 alias ; G3 : 27 references / 1479 champs) |
+| `KILLSOURCE_FIXTURES=<film_chunks> go test -tags=integration .../killcollector/ -v` | `ok` — 67 PASS / 2 SKIP / 0 FAIL, **verdicts identiques** |
+| `golangci-lint run --timeout 5m ./internal/analysis/filmdec/...` (cache propre au lot) | 6 issues — **memes linters, memes comptes que l'etat de base** (diff vide) |
+| `golangci-lint run --timeout 5m --new-from-merge-base=origin/main ./...` (la commande EXACTE de la CI) | **`0 issues.`**, exit 0 |
+
+### Le tableau des digests, AVANT et APRES
+
+| temoin | reference E.1 (2026-09-05, avant tout changement) | apres E.2 a E.5 (2026-09-06) | verdict |
+|---|---|---|---|
+| mini-bobine `fire` | 519 / `f4923e82...aebaa6` | idem (`TestEquivalenceMiniFilm` PASS) | IDENTIQUE |
+| mini-bobine `grenades` | 70 / `813221b5...326511` | idem | IDENTIQUE |
+| mini-bobine `loadouts` | 150 / `e5dadc04...67a79e` | idem | IDENTIQUE |
+| mini-bobine `inventory` | 184 / `a2b99e97...8df936` | idem | IDENTIQUE |
+| mini-bobine `deaths` | 93 / `66ade085...4d1aa62e` | idem | IDENTIQUE |
+| mini-bobine `playerIndices` | 1 / `b5cd498a...be4f2a` | idem | IDENTIQUE |
+| mini-bobine `projectiles` | 22 / `f5c17800...a2eb61` | idem | IDENTIQUE |
+| golden killsource `000d5950` | PASS | PASS | IDENTIQUE |
+| golden killsource `9b191a7f` | PASS | PASS | IDENTIQUE |
+| golden killsource `78919882` | PASS | PASS | IDENTIQUE |
+| golden killsource `fccc61cd` | FAIL, 1 ligne (`3 propose(s)` fige contre `2` mesure) | FAIL, LA MEME ligne | IDENTIQUE |
+| `TestReferenceFilms` x4 (calibration, couverture, gate (b), concordance) | 16 lignes chiffrees | les 16 memes | IDENTIQUE |
+| temoin delta `000d5950` | paquets 14350, records 38883, aboutis 30089 (77,383 %) | idem | IDENTIQUE |
+| temoin delta `06dfe6d9` | paquets 6606, records 10610, aboutis 8489 (80,009 %) | idem | IDENTIQUE |
+| temoin delta `64e8adfa` | paquets 14357, records 39818, aboutis 31990 (80,341 %) | idem | IDENTIQUE |
+| empreinte de registre x3 | `0x61e492dd4de7fd4e` (x2, concordantes) et `0x5827362c37d2adb3` | idem | IDENTIQUE |
+| table ECS G2 sur `000d5950` | 50 blocs, 49 porteurs, 1067 = 1067 (+14 alias) | idem | IDENTIQUE |
+| integration killcollector | 67 PASS / 2 SKIP / 0 FAIL | idem | IDENTIQUE |
+
+Les empreintes sont tronquees dans ce tableau ; le fichier fige
+`testdata/equivalence/minifilm.tsv` en porte la forme complete, et `TestEquivalenceMiniFilm` les
+RECALCULE a chaque passe — son PASS est donc la preuve, pas le fichier.
+
+**AUCUN CHIFFRE N'A BOUGE.** Les deux echecs anterieurs au lot (golden `fccc61cd`, temoin delta
+sur les trois films) sont retrouves a l'identique : le lot E ne les repare pas — c'est le lot A
+qui traite leur cause (P0-1) — et ne les masque pas non plus.
+
+## Ratchets, apres le lot
+
+| ratchet | avant | apres | sens |
+|---|---|---|---|
+| `archlint/filmdec_package_vars_test.go` | 118 | **111** | REDESCEND (E.2 : -5, E.3 : -2) |
+| `archlint/no_local_longest_run_test.go` | 2 exemptions | **1** | REDESCEND (E.2 : `frame_debug.go` supprime) |
+| `archlint/no_unbounded_film_loop_test.go` | vert | vert | inchange |
+| `archlint/decode_lock_held_test.go` | (n'existait pas) | vert sur 3 paquets | NOUVEAU (E.5) |
+| `filmdec/event_preamble_guard_test.go` | (n'existait pas) | vert, 3 controles | NOUVEAU (E.3) |
+| `filmdec/delta_biped_walk_guard_test.go` | (n'existait pas) | vert, 2 controles | NOUVEAU (E.4) |
+
+Aucun ratchet n'a monte. Aucune allowlist n'a grandi ; une a retreci.
+
+## Chiffres du lot
+
+| item | fichiers | lignes |
+|---|---|---|
+| E.2 code mort | 20 | +218 / -992 |
+| E.3 preambule et domaines | 10 | +145 / -50 |
+| E.4 marcheur delta | 11 | +109 / -274 |
+| E.5 verrou | 2 | +45 / -1 |
+| **total code** | **43 touches** | **+517 / -1317** |
+
+## Decouvertes du lot — consignees, NON traitees
+
+1. **Le golden `fccc61cd` et le temoin de marche delta etaient DEJA rouges** sur l'arbre
+   d'arrivee. C'est la preuve mesuree du constat P0-1 (« `KillSourceDecoderRev` fige alors que le
+   decodeur a change ») que le lot A traite. Le lot E les garde comme temoins d'invariance et ne
+   regenere rien.
+2. **La cloture morte laissee par les 22 reglages supprimes** : 14 variables de paquet n'ont plus
+   aucun ecrivain et gardent leur valeur initiale ; les branches qu'elles gardent sont
+   inatteignables. Plusieurs portent une largeur MESUREE d'un chemin non nominal
+   (`vehicleMediaFrameBits`, `bipedDefaultStateTailBits`) : c'est de la connaissance de
+   retro-ingenierie, pas du code mort ordinaire. A trancher par le superviseur.
+3. **Deux instruments de recherche portent encore une table de domaines avec `3: 8`**, et l'un
+   LIT le domaine 3 (`r7Domains[8] = {2, 3, 7}`). Les migrer changerait une mesure datee.
+4. **Une vingtaine d'instruments de recherche ancrent leurs propres records delta bipede**,
+   plusieurs avec une porte deliberement differente.
+5. **`golangci-lint` ment sans cache propre.** Son cache de RESULTATS est global a la machine
+   (`%LocalAppData%\golangci-lint`, independant de `GOCACHE`) et indexe par fichier : il sert des
+   verdicts calcules dans un AUTRE jeu de fichiers du meme paquet, alors que `goconst` et
+   `unparam` sont des analyses de PAQUET. Toute mesure de lint de reference doit isoler
+   `GOLANGCI_LINT_CACHE` — sinon elle annonce « 0 issues. » sur un paquet qui en a 6.
+6. **`TestKillSourcePositionsFilmReelEtRelitParLaVue` se SKIPPE** : son film code en dur
+   (`9b191a7f`) est joue sur une carte absente du catalogue de bornes, donc 0 ligne de position.
+   C'est le seul test de bout en bout de `buildPositionRows` sur film reel — celui que E.5 vient
+   de mettre en conformite. Le fichier est hors du perimetre ferme du lot E (seul `positions.go`
+   y entre) ; il releve du lot F (baseline de presence des tests).
+7. **Les « 49 etapes d'equivalence en local » du registre appartiennent a `cmd/replay-equiv`**,
+   qui cuit un artefact par film — interdit par le mandat du lot. Le gate de films reels du lot E
+   repose donc sur ce qui existe sous garde de variable d'environnement, liste au fichier de
+   digests.
+
+## Statut de la tache E-I
+
+Les cinq items sont `[x]`, faits et verifies sur pieces. Aucun `[~]`, aucun `[!]`.
+Aucun test desactive, aucun skip ajoute, aucun golden regenere, aucune allowlist agrandie.
+
+Prochaine etape : revue adversariale du superviseur, puis la tache E-II (E.6, E.7) — qui ne
+demarre PAS sans son message.
