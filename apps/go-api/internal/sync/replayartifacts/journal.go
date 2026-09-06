@@ -94,6 +94,14 @@ const (
 	// son artefact ne porte simplement aucun calque de bombe, et c est le cas majoritaire.
 	CompteurBombStatsEcrits = "postsync_replay_bomb_stats_ecrits_total"
 	CompteurBombStatsEchecs = "postsync_replay_bomb_stats_echecs_total"
+	// Rasters tactiques projetes des artefacts cuits dans le cycle, deposes en SIDECAR a
+	// cote de leur artefact (cf. raster.go). CompteurRastersEcrits : sidecars deposes ;
+	// CompteurRastersEchecs : artefact illisible, sans matchId, ou ecriture refusee — un
+	// defaut, jamais un etat normal. UN ARTEFACT SANS PISTE NOMMEE COMPTE POUR ECRIT :
+	// son sidecar existe et vaut zero, ce qui n'est pas la meme chose qu'un match sans
+	// sidecar (celui-la est NON MESURE pour la lecture d'occupation).
+	CompteurRastersEcrits = "postsync_replay_rasters_ecrits_total"
+	CompteurRastersEchecs = "postsync_replay_rasters_echecs_total"
 )
 
 // SignalerClientSansChunks journalise et compte l'échec de l'assertion `ChunksFetcher` faite
