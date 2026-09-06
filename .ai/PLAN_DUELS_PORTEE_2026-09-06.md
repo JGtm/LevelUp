@@ -128,18 +128,29 @@ résolue en amont.
 Sonde n°2, côté base. Instrument : `internal/sync/killcollector/duels_bouclier_research_test.go`
 (seul paquet qui atteint déjà film + base + pont d'identité).
 
-- [ ] 1.1 **Lecture de la base en `OpenReadForQuery` UNIQUEMENT** — le serveur peut tenir le
+- [x] 1.1 **Lecture de la base en `OpenReadForQuery` UNIQUEMENT** — le serveur peut tenir le
       fichier en RW ; jamais `OpenReadOnly` forcé, jamais RW (modèle mono-process, ADR 0013/0016).
-- [ ] 1.2 Composer sur 4 matchs : `match_kill_events_latest` (tueur, victime, `time_ms`) ×
+      → `duelsBOuvrirBase` ; chemin par `title.NewPathResolver(DUELS_DATA_ROOT).SharedDBPath`.
+- [x] 1.2 Composer sur 4 matchs : `match_kill_events_latest` (tueur, victime, `time_ms`) ×
       `ResolveSlotXUID` × `ScanBipedPositions` avec `CaptureDirs` (bouclier).
-- [ ] 1.3 Mesurer **A** : part des kills du feed dont le slot du TUEUR est résolu.
-- [ ] 1.4 Mesurer **O** (oracle) : part des kills où le bouclier de la VICTIME chute dans
-      [T-2 s, T] — le plafond de capture du canal.
-- [ ] 1.5 Mesurer **B** : part des kills où le bouclier du TUEUR chute dans [T-2 s, T].
-- [ ] 1.6 Mesurer le **témoin** : B avec la fenêtre déplacée de 37 s vers le passé.
-- [ ] 1.7 Mesurer la **discrimination** : parmi les adversaires vivants ayant chuté dans la
-      fenêtre, la victime est-elle la seule ?
-- [ ] 1.8 Note `.ai/V7.5/film_re/SONDE_DUELS_BOUCLIER_2026-09-XX.md`, quatre nombres + verdict.
+      → 409 kills du feed exploitables sur les 4 films ; horloge posée par `ScanClockOrigin`,
+      comme `buildPositionRows` (positions.go) — aucun calage réinventé.
+- [x] 1.3 Mesurer **A** : part des kills du feed dont le slot du TUEUR est résolu.
+      → **370/409 = 90,5 %** (par `BuildKillPositions` elle-même) ; 409/409 = 100 % des tueurs
+      ont au moins un slot au pont.
+- [x] 1.4 Mesurer **O** (oracle) : part des kills où le bouclier de la VICTIME chute dans
+      [T-2 s, T] — le plafond de capture du canal. → **237/409 = 57,9 %**.
+- [x] 1.5 Mesurer **B** : part des kills où le bouclier du TUEUR chute dans [T-2 s, T].
+      → **135/409 = 33,0 %**, soit **B/O = 0,57**.
+- [x] 1.6 Mesurer le **témoin** : B avec la fenêtre déplacée de 37 s vers le passé.
+      → **22/376 = 5,9 %** contre B = 123/376 sur la même population : **B/témoin = 5,59**.
+      Dénominateur borné au domaine observable (un kill des 39 premières secondes verrait sa
+      fenêtre reculée tomber avant la première lecture de bouclier — durcissement par rapport
+      à la sonde n°1, justifié dans la note).
+- [x] 1.7 Mesurer la **discrimination** : parmi les adversaires vivants ayant chuté dans la
+      fenêtre, la victime est-elle la seule ? → **71/135 = 52,6 %**, contre un seuil de 60 %.
+      **C'est le gate qui échoue.** L'équipe vient de `match_participants.team_id`.
+- [x] 1.8 Note `.ai/V7.5/film_re/SONDE_DUELS_BOUCLIER_2026-09-06.md`, quatre nombres + verdict.
 
 **Gate chiffré, écrit maintenant** — le lot 7 s'exécute si et seulement si :
 `A >= 80 %` **ET** `B / O` compris entre 0,35 et 0,90 (la réciprocité normalisée : hors de cet
@@ -147,13 +158,26 @@ intervalle le signal est absent ou constant, donc muet) **ET** `B / témoin >= 3
 victime est l'unique candidate dans **>= 60 %** des fenêtres.
 
 ```bash
-cd apps/go-api && CGO_ENABLED=0 go test ./internal/sync/killcollector \
-  -run TestSondeDuelsBouclier -v -timeout 900s
+cd apps/go-api && CGO_ENABLED=1 \
+  DUELS_DATA_ROOT=<racine des donnees> DUELS_MATCH=000d5950 DUELS_MAP=Cliffhanger \
+  go test ./internal/sync/killcollector -run TestSondeDuelsBouclier -v -timeout 900s -count=1
 ```
+
+⚠ `CGO_ENABLED=0` (valeur écrite dans le plan avant exécution) était FAUX : cette sonde ouvre
+DuckDB, qui exige CGO. Un match par process (verrou `filmdec.LockProcessDecode`).
 
 **Clos quand** : les nombres et le verdict (GO / NO-GO lot 7) sont dans la note, l'entrée
 `thought_log.md` est posée. Si NO-GO : report au `.ai/V7.5/REGISTRE_REPORTS.md` avec sa
 condition de reprise, et le lot 7 se statue `[!]`.
+
+**RÉSULTAT (2026-09-06) — NO-GO.** Trois gates sur quatre passent, et nettement : A = 90,5 %,
+B/O = 0,57 (centre de la bande), B/témoin = 5,59. **D = 52,6 % contre 60 % : ÉCHOUE.** Dans
+47,4 % des fenêtres où le bouclier du tueur chute, un AUTRE adversaire chute aussi : le signal
+dit « le tueur a pris des coups », jamais « de sa victime ». Et D varie de 40,0 % (Catalyst) à
+64,5 % (Bazaar) — un biais qui rend deux matchs incomparables. Les deux canaux du film sont
+exactement complémentaires dans ce qu'ils manquent : la sonde n°1 avait le lien sans le rappel,
+la n°2 a le rappel sans le lien. Détail, réserves et condition de reprise :
+`.ai/V7.5/film_re/SONDE_DUELS_BOUCLIER_2026-09-06.md`.
 
 ---
 
@@ -314,20 +338,27 @@ fusion des deux graphes jumeaux. C'est la référence de rendu du lot.
 
 ---
 
-## Lot 7 — Duels — CONDITIONNÉ au gate du lot 1
+## Lot 7 — Duels — **FERMÉ, NO-GO du gate du lot 1 (2026-09-06)**
 
-À n'ouvrir QUE si le lot 1 rend GO. Périmètre fermé d'avance :
+À n'ouvrir QUE si le lot 1 rend GO. **Le lot 1 rend NO-GO** (D = 52,6 % contre 60 %) : les cinq
+items ci-dessous sont statués `[!]` — non traités, aucun code écrit.
 
-- [ ] 7.1 Table append-only `match_engagements` + vue `_latest` (recette ADR 0026).
-- [ ] 7.2 Producteur dans `killcollector` (INSERT-only via `BatchBuilder.Submit` — ADR 0019/0030).
-- [ ] 7.3 Classification : duel / élimination / non conclu ; effectif à la résolution
+- [!] 7.1 Table append-only `match_engagements` + vue `_latest` (recette ADR 0026).
+      NON TRAITÉ : gate du lot 1 échoué, cf. `.ai/V7.5/film_re/SONDE_DUELS_BOUCLIER_2026-09-06.md`.
+- [!] 7.2 Producteur dans `killcollector` (INSERT-only via `BatchBuilder.Submit` — ADR 0019/0030).
+      NON TRAITÉ : même cause. Rien à produire tant qu'une chute de bouclier ne désigne personne.
+- [!] 7.3 Classification : duel / élimination / non conclu ; effectif à la résolution
       (tête-à-tête, 2v1, 1v2) — l'équipe vient du roster, disponible côté base.
-- [ ] 7.4 Lecture, service, capability `duels`, chart.
-- [ ] 7.5 Gate de vérité terrain : l'utilisateur visionne 15 à 20 engagements dans Theater et
-      tranche. Aucune publication avant ce gate.
+      NON TRAITÉ : c'est exactement l'affirmation que la mesure interdit de publier — dans
+      47,4 % des fenêtres, plusieurs adversaires sont candidats.
+- [!] 7.4 Lecture, service, capability `duels`, chart. NON TRAITÉ : rien à servir.
+- [!] 7.5 Gate de vérité terrain : l'utilisateur visionne 15 à 20 engagements dans Theater et
+      tranche. NON TRAITÉ : on ne soumet pas à l'utilisateur une classification dont on a
+      mesuré qu'elle se trompe d'adversaire une fois sur deux.
 
-Si NO-GO : statuer `[!]` avec renvoi à la note du lot 1, et report au registre avec sa
-condition de reprise (« un flux de dégâts dense, ou un compteur d'état ECS répliqué »).
+Report inscrit au `.ai/V7.5/REGISTRE_REPORTS.md` avec sa condition de reprise (« un canal qui
+porte l'AUTEUR du dégât à la densité du bouclier : flux de dégâts dense, compteur d'état ECS
+répliqué, ou source hors film »).
 
 ---
 
