@@ -4774,9 +4774,17 @@ export interface components {
             /** Format: int64 */
             livesTotal: number;
             /** Format: int64 */
+            namedByNextLife: number;
+            /** Format: int64 */
+            namedByPreviousLife: number;
+            /** Format: int64 */
+            namedBySlotBridge: number;
+            /** Format: int64 */
             slotCollisions: number;
             /** Format: int64 */
             slots: number;
+            /** Format: int64 */
+            unnamedLives: number;
         };
         BucketInfo: {
             label: string;

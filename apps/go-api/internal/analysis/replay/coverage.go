@@ -351,6 +351,18 @@ type BridgeHealth struct {
 	// SlotCollisions : slots dont les vies nommées désignent des joueurs différents. Non
 	// nul, la table slot -> joueur n'est pas représentable et le verdict le dit.
 	SlotCollisions int `json:"slotCollisions"`
+	// NamedByPreviousLife / NamedByNextLife / NamedBySlotBridge : ce que le NOMMAGE FINAL a
+	// réparé, par voie (cf. unnamed_lives.go). Depuis la décision produit du 2026-09-07 — « les
+	// vies anonymes n'existent pas » — une piste publiée sans identité est un DÉFAUT du pont ;
+	// ces trois compteurs disent par quelle preuve il a été comblé, et `UnnamedLives` ce qui a
+	// résisté. Trois champs plutôt qu'un total : les voies n'ont pas la même force de preuve.
+	NamedByPreviousLife int `json:"namedByPreviousLife"`
+	NamedByNextLife     int `json:"namedByNextLife"`
+	NamedBySlotBridge   int `json:"namedBySlotBridge"`
+	// UnnamedLives : les pistes PUBLIÉES qu'aucune voie n'a su nommer. C'est le RÉSIDU, et il
+	// doit tendre vers zéro — un artefact non nul porte un défaut de nommage à instruire, pas
+	// une population « inconnue » à afficher. Doublé d'un `slog.Error` à la cuisson.
+	UnnamedLives int `json:"unnamedLives"`
 	// ClosedByShot : entrées ajoutées par la fermeture A (le corps disponible).
 	ClosedByShot int `json:"closedByShot"`
 	// ClosedByRespawn : entrées ajoutées par la fermeture B (la réapparition).

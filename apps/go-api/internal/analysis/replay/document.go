@@ -837,7 +837,48 @@ package replay
 // que sa forme le dise. **44 EST SAUTÉ ET RÉSERVÉ** au lot des manches, en cours sur une autre
 // branche. Détail : internal/analysis/replay/{equipment_episodes.go, flag_carries.go} et
 // .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
-const SchemaVersion = 45
+// v47 (2026-09-07) : AUCUNE VIE PUBLIEE NE RESTE SANS NOM, ET LES LECTEURS LISENT LA PISTE SOUS
+// L'IDENTITE RESOLUE DE SON SLOT. Quatre champs de couverture s'ajoutent (`bridge.
+// namedByPreviousLife/namedByNextLife/namedBySlotBridge/unnamedLives`, `zones.noPosition/
+// outside/ambiguousZone`) ; le reste est un changement de CONTENU.
+//
+// DECISION PRODUIT (utilisateur, 2026-09-07) : « les vies anonymes n'existent pas ; une vie est
+// un humain ou un bot, point ». Une piste publiee sans identite n'est PAS une categorie de
+// donnee, c'est un DEFAUT DE NOMMAGE du pont — a reparer a la source, jamais a afficher.
+//
+//	nommage       Apres les quatre passes existantes (fil des morts, fermetures, sieges de bot,
+//	              relais), une passe finale nomme ce qui reste par l'OCCUPATION DU SLOT DANS LE
+//	              TEMPS : vie nommee du meme slot qui PRECEDE, sinon celle qui SUIT, sinon le
+//	              pont canonique. Le residu se compte (`unnamedLives`) et s'alarme (slog.Error) ;
+//	              il ne se devine jamais. unnamed_lives.go.
+//	objectifs     Le denominateur comptait les seuls RESCAPES du pont d'identite : `noSlot`
+//	              valait 0 sur les 111 artefacts du parc, sans exception. Et le filtre « piste
+//	              publiee » cadencait sur le seul nom LU — un joueur dont aucune vie n'est nommee
+//	              perdait TOUTES ses actions (35 sur 76 sur `3372e7eb`). objectives.go,
+//	              published_tracks.go, coverage.go (`warnIfLossy` voit `Unpublished`).
+//	zones         `samplesByXUID` n'indexait que les pistes NOMMEES : une capture couverte par
+//	              une vie non resolue sortait `NoPosition`, ne votait plus, et quand plus aucune
+//	              n'etait attribuee le calque `zoneStates` ENTIER disparaissait. `696a9d7c` 11
+//	              captures perdues sur 77, `7344d24f` 12 sur 71, `af13e2b2` 5 sur 19. La cause
+//	              d'une capture perdue est desormais PUBLIEE. zone_attribution.go, zone_states.go.
+//	fermetures    Les deux garde-fous jugeaient sur le nuage du slot ENTIER la ou le code venait
+//	              de DESIGNER une vie : sur un slot a deux vies eloignees, l intervalle teste
+//	              couvrait le trou qui les separe. closures.go, closures_respawn.go.
+//	vehicules     L occupant d une ride venait de `SlotXUID`, identite UNIQUE par slot pour tout
+//	              le match : sur un slot recycle, l episode sortait avec le PREMIER occupant, et
+//	              c'est lui qui donne sa COULEUR au vehicule. `OwnerReport.xuidAt(slot, instant)`.
+//	bots          Deux bots d un meme siege s ecrasaient dans une `map[siege]nom` : le dernier
+//	              balaye gagnait, sans rapport avec la chronologie du remplacement. identity.go.
+//	portages      Le rognage de `carrierPresence.gate` tronquait a la vie de recouvrement
+//	              MAXIMAL un portage qu un trou de replication coupe en deux — meme cause que
+//	              celle qui a produit `spanFor` au v45. `unionOverlap`. skull_carries.go.
+//
+// La version monte pour la raison des montees v39 a v45 : un artefact 36 a 46 est appauvri sans
+// que sa forme le dise, et `backfill-replay` saute un artefact a la version courante. **44, 45 et
+// 46 SONT PRIS** par les lots des manches, des durees et des drapeaux, en cours sur d'autres
+// branches : deux chantiers paralleles ne peuvent pas revendiquer le meme numero.
+// Detail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
+const SchemaVersion = 47
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

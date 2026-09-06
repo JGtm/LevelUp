@@ -354,9 +354,11 @@ func renderTracks(p func(string, ...any), doc ReplayDocument) {
 	}
 	p("## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)")
 	p("%d trace(s) · %d point(s) de grille", len(doc.Tracks), points)
-	p("%d trace(s) NOMMEE(S) par le pont (fil des morts, puis fermetures) · %d anonyme(s) — une vie que le film ne clot",
-		named, len(doc.Tracks)-named)
-	p("par aucun evenement reste sans identite, et c est une LIMITE, pas une erreur")
+	p("%d trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis",
+		named)
+	p("occupation du slot dans le TEMPS) · %d sans identite — un DEFAUT de nommage a instruire,",
+		len(doc.Tracks)-named)
+	p("jamais une categorie de donnee (decision produit du 2026-09-07)")
 	p("%d point(s) portent un cap de visee · %d une elevation de visee · %d un bouclier · %d une fraction de vie",
 		countPoints(doc, func(pt Point) bool { return pt.H != 0 }),
 		// ELEVATION : `p` non nul. Le compte est un PLANCHER et le golden le dit —

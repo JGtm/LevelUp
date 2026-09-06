@@ -179,29 +179,33 @@ func TestSkullCarriesCarrierAbsent(t *testing.T) {
 }
 
 // TestSkullCarrierPresence — l'index de presence groupe les vies bipedes NOMMEES par xuid et
-// RETIENT les anonymes a part : elles ne sont pas jetees, elles sont la trace de l'ignorance.
+// RETIENT a part celles qui ne prouvent l'absence de personne : une vie sans identite, et une
+// vie dont l'identite est DEDUITE (cf. carrierPresenceOf). Elles ne sont pas jetees, elles sont
+// la trace de l'ignorance.
 func TestSkullCarrierPresence(t *testing.T) {
 	tracks := []Track{
-		{XUID: "A", StartFrame: 10, EndFrame: 40},
-		{XUID: "A", StartFrame: 100, EndFrame: 130},
-		{XUID: "", StartFrame: 0, EndFrame: 999},                  // anonyme : RETENUE dans `unnamed`
-		{XUID: "", Bot: "Ciri [bot]", StartFrame: 5, EndFrame: 8}, // bot : IDENTIFIE, donc nulle part
-		{XUID: "B", StartFrame: 50, EndFrame: 70},
+		{Slot: 1, XUID: "1", StartFrame: 10, EndFrame: 40},
+		{Slot: 1, XUID: "1", StartFrame: 100, EndFrame: 130},
+		{Slot: 3, XUID: "", StartFrame: 0, EndFrame: 999},                  // sans identite : RETENUE
+		{Slot: 4, XUID: "", Bot: "Ciri [bot]", StartFrame: 5, EndFrame: 8}, // bot : IDENTIFIE
+		{Slot: 2, XUID: "2", StartFrame: 50, EndFrame: 70},
 	}
-	p := carrierPresenceOf(tracks)
+	// Aucune identite deduite ici : les quatre xuids viennent de la lecture.
+	deduites := map[int]bool{}
+	p := carrierPresenceOf(tracks, deduites)
 	if len(p.named) != 2 {
 		t.Fatalf("xuids indexes = %d, attendu 2 : %+v", len(p.named), p.named)
 	}
 	if len(p.unnamed) != 1 || p.unnamed[0] != (presenceSpan{0, 999}) {
 		t.Errorf("vies anonymes = %+v, attendu une seule [0,999]", p.unnamed)
 	}
-	if len(p.named["A"]) != 2 || len(p.named["B"]) != 1 {
-		t.Errorf("A=%d vies, B=%d vies, attendu 2 et 1", len(p.named["A"]), len(p.named["B"]))
+	if len(p.named["1"]) != 2 || len(p.named["2"]) != 1 {
+		t.Errorf("A=%d vies, B=%d vies, attendu 2 et 1", len(p.named["1"]), len(p.named["2"]))
 	}
-	if _, ok := unionOverlap(p.named["A"], 20, 25); !ok {
+	if _, ok := unionOverlap(p.named["1"], 20, 25); !ok {
 		t.Errorf("[20,25] devrait recouvrir la vie A [10,40]")
 	}
-	if _, ok := unionOverlap(p.named["A"], 60, 90); ok {
+	if _, ok := unionOverlap(p.named["1"], 60, 90); ok {
 		t.Errorf("[60,90] ne devrait recouvrir aucune vie A (trou entre [10,40] et [100,130])")
 	}
 }
@@ -345,5 +349,61 @@ func TestPortageResteRogneHorsDesViesNommees(t *testing.T) {
 	// bouge pas.
 	if _, _, ok := p.gate("A", 300, 400); ok {
 		t.Error("portage hors de toute vie nommee : il devait rester ecarte")
+	}
+}
+
+// TestUneIdentiteDEDUITENeProuveLAbsenceDePersonne — L'INTERACTION P0-0 x GATE DE PRESENCE
+// (2026-09-07), attrapee par la cuisson des temoins.
+//
+// Depuis le nommage final (unnamed_lives.go), plus aucune vie n'est publiee sans identite :
+// `carrierPresence.unnamed` serait donc VIDE, et l'abstention n 2 du gate — la moitie la plus
+// couteuse du correctif du schema 43 — mourrait avec elle. Une vie nommee PAR DEDUCTION
+// (l'occupation du slot dans le temps) etablit qu'un joueur etait probablement la ; elle
+// n'etablit JAMAIS qu'un autre n'y etait pas. La compter comme une preuve d'absence
+// transformerait une deduction en refutation.
+//
+// MESURE : sur `d9781168` (Oddball, dont le score EST le temps de portage), la compter coutait
+// un portage et 101 frames, en S'ELOIGNANT de la feuille de match — 387 s reelles, 331,3 s
+// publiees avec cette garde contre 321,2 s sans.
+//
+// MUTATION : retirer la branche `if !identityIsRead(...)` rougit (« portage ecarte »).
+func TestUneIdentiteDEDUITENeProuveLAbsenceDePersonne(t *testing.T) {
+	// Le slot 7 porte une vie NOMMEE PAR LECTURE (joueur B, fil des morts) et une vie que seul
+	// le nommage final a nommee — a B aussi, par occupation.
+	tracks := []Track{
+		{Slot: 7, StartFrame: 0, EndFrame: 50, XUID: "2"},
+		{Slot: 7, StartFrame: 100, EndFrame: 200, XUID: "2"}, // identite DEDUITE
+		{Slot: 9, StartFrame: 0, EndFrame: 300, XUID: "1"},
+	}
+	// La piste d'indice 1 est celle que le nommage final a nommee.
+	p := carrierPresenceOf(tracks, map[int]bool{1: true})
+	if len(p.unnamed) != 1 {
+		t.Fatalf("vies sans identite LUE = %d, attendu 1 (la vie deduite du slot 7)", len(p.unnamed))
+	}
+
+	// Un portage de A sur [120..180] : la vie deduite le recouvre. Le gate doit S'ABSTENIR,
+	// pas rejeter — la deduction ne refute rien.
+	f0, f1, ok := p.gate("1", 120, 180)
+	if !ok || f0 != 120 || f1 != 180 {
+		t.Errorf("portage [%d..%d] ok=%v ; attendu [120..180] conserve : une identite DEDUITE "+
+			"ne prouve l'absence de personne", f0, f1, ok)
+	}
+}
+
+// TestUneIdentiteLUEProuveToujoursUnePresence — LA CONTRE-EPREUVE : le gate garde ses dents.
+// Une vie nommee PAR LECTURE rend compte de l'occupation du slot, et un portage attribue a un
+// joueur qu'aucune de SES vies ne recouvre reste un fantome.
+func TestUneIdentiteLUEProuveToujoursUnePresence(t *testing.T) {
+	tracks := []Track{
+		{Slot: 7, StartFrame: 100, EndFrame: 200, XUID: "2"},
+		{Slot: 9, StartFrame: 0, EndFrame: 50, XUID: "1"},
+	}
+	p := carrierPresenceOf(tracks, nil) // aucune identite deduite : tout vient de la lecture
+	if len(p.unnamed) != 0 {
+		t.Fatalf("aucune identite deduite ici : unnamed = %d, attendu 0", len(p.unnamed))
+	}
+	if _, _, ok := p.gate("1", 120, 180); ok {
+		t.Error("portage de A sur un intervalle que seule une vie LUE de B recouvre : " +
+			"il devait rester ecarte")
 	}
 }

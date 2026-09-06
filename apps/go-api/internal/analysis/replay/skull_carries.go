@@ -172,13 +172,29 @@ type carrierPresence struct {
 // est nommee sans en avoir un, cf. [Track.Bot]), donc elle ne peut pas porter un portage ; mais
 // elle est IDENTIFIEE, donc elle ne cree aucun doute sur ou se trouve un joueur. La ranger avec
 // les anonymes ferait abstenir le gate sur les 20 films a bots du parc sans raison.
-func carrierPresenceOf(tracks []Track) carrierPresence {
+//
+// UNE IDENTITE DEDUITE AJOUTE UNE PRESENCE, ELLE N'EN RETIRE JAMAIS UNE (2026-09-07). Depuis le
+// nommage final (unnamed_lives.go), plus aucune vie n'est publiee sans identite : `unnamed`
+// serait donc VIDE, et l'abstention n° 2 du gate — celle qui coute le plus, cf. son en-tete —
+// mourrait avec elle. Or la voie qui a nomme ces vies-la est une DEDUCTION (l'occupation du slot
+// dans le temps), pas une lecture : elle etablit qu'un joueur etait PROBABLEMENT la, jamais
+// qu'un AUTRE n'y etait pas. Les faire compter comme une preuve d'absence transformerait une
+// deduction en refutation — et la mesure le dit : sur `d9781168`, l'Oddball dont le score EST le
+// temps de portage, cela coutait un portage et 101 frames, EN S'ELOIGNANT de la feuille de match
+// (387 s reelles ; 331,3 s publiees contre 321,2 s).
+//
+// Une vie dont l'identite est deduite entre donc DANS LES DEUX : sous son xuid (c'est sa
+// presence a lui) ET parmi les vies qui ne prouvent l'absence de personne.
+func carrierPresenceOf(tracks []Track, deduced map[int]bool) carrierPresence {
 	p := carrierPresence{named: map[string][]presenceSpan{}}
-	for _, t := range tracks {
+	for i, t := range tracks {
 		span := presenceSpan{t.StartFrame, t.EndFrame}
 		switch {
 		case t.XUID != "":
 			p.named[t.XUID] = append(p.named[t.XUID], span)
+			if deduced[i] {
+				p.unnamed = append(p.unnamed, span)
+			}
 		case t.Bot == "":
 			p.unnamed = append(p.unnamed, span)
 		}
@@ -337,7 +353,8 @@ func skullGrabCount(recs []objectiveevents.StatRecord) int {
 // LE PONT D'IDENTITE (slot statborg -> xuid) SE FAIT ICI, comme pour la couronne et le drapeau,
 // par les seuls INSTANTS DE MORT et PAR MANCHE — aucune base. `own.DeathOffsetMS` cale l'horloge
 // des enregistrements (meme horloge que le fil des morts) sur l'axe des frames.
-func attachSkullCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock replayClock) {
+func attachSkullCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock replayClock,
+	deduced map[int]bool) {
 	in := opt.Skull
 	if !in.Scanned {
 		return
@@ -350,7 +367,7 @@ func attachSkullCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock
 	carries, cov := buildSkullCarries(scan, matchClock{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
 		deathOffsetMS: own.DeathOffsetMS,
-	}, carrierPresenceOf(doc.Tracks))
+	}, carrierPresenceOf(doc.Tracks, deduced))
 	doc.SkullCarries = carries
 	if doc.Coverage != nil {
 		doc.Coverage.SkullCarries = cov
