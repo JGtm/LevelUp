@@ -112,6 +112,7 @@ export const synthesisManifest = {
   "synthesis.weapon_range.empty_below_threshold": { fr: "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les portées mesurées restent trop rares pour être publiées arme par arme.", en: "No weapon reaches the {min, number} measurement threshold over this period: measured ranges are still too rare to publish weapon by weapon." },
   "synthesis.weapon_range.heading": { fr: "Portée des engagements", en: "Engagement range" },
   "synthesis.weapon_range.lede": { fr: "À quelle distance vous fraguez, à quelle distance vous mourez — par arme, sur la période filtrée. Une portée d'usage : la vôtre, pas celle de l'arme.", en: "How far away you get your kills, how far away you die — by weapon, over the filtered period. A range of use: yours, not the weapon's." },
+  "synthesis.weapon_range.legend_elevation_label": { fr: "Légende du dénivelé", en: "Elevation legend" },
   "synthesis.weapon_range.legend_label": { fr: "Légende", en: "Legend" },
   "synthesis.weapon_range.no_measure": { fr: "aucune mesure", en: "no measurement" },
   "synthesis.weapon_range.percentiles": { fr: "p10 · médiane · p90", en: "p10 · median · p90" },

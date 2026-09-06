@@ -1,3 +1,48 @@
+## [2026-09-06] Lot 5 duels/portee — revue adversariale ronde 1, les 14 correctifs (F1-F14) — Complete
+
+**Decision technique principale.** Le constat structurel de la ronde n est pas un bug de rendu
+mais un TROU DE PREUVE : `useWeaponRangeOptions` s executait pendant les tests de composant sans
+que son resultat soit jamais regarde (echarts-for-react etait mocke en div muette), et les tests
+purs des deux constructeurs ne prouvaient que ceci — ils honorent ce qu on leur INJECTE. Entre
+les deux, personne ne verifiait le cablage : echanger les encres des frags et des morts, les
+libelles d infobulle, ou passer `tc.axisLabel` la ou `tc.card` est attendu laissait toute la
+suite verte. Le correctif est un fichier de test qui CAPTURE la prop `option` reellement passee
+a ECharts et applique la vraie palette d accessibilite — sans `applyPalette`, `resolveToken`
+rend la chaine vide et deux couleurs echangees restent egales, le test serait decoratif.
+
+Deuxieme decision, `cssColorToHex` : la conversion de couleur est faite PAR LE NAVIGATEUR
+(aller-retour sur `fillStyle` d un contexte 2D), jamais par une table oklch->sRGB ecrite a la
+main. Motif : `--muted-foreground` est un `oklch(...)` que le canvas peint correctement mais que
+le parseur de zrender ne connait pas — au survol, `lift()` rend `undefined` et le segment « a
+niveau » perdait son remplissage. Ecart assume avec la maquette : DOUBLE SENTINELLE (noir puis
+blanc avant chaque lecture) au lieu d une seule, parce qu une couleur invalide sortait sinon en
+noir — un rendu faux silencieux, pire que la valeur d origine. `getEChartsThemeColors` n est PAS
+etendue : elle a de nombreux appelants dont beaucoup passent ces valeurs a des proprietes que
+zrender ne derive jamais.
+
+**Resultats observes.** Quatorze constats statues `[x]`, chacun avec sa mutation prouvee rouge
+puis restauree — dont six pour le seul F7. Trois d entre eux valent d etre retenus. (1) La tuile
+« Portee mediane de mes frags » s affichait « 0,0 m » sur un scope ou le joueur n a frague
+personne : le service ne retire le bloc que si les DEUX cotes sont vides, et le lot appliquait
+la doctrine anti-zero (D5) a l entame seulement. (2) `weaponRange={undefined}` dans
+`SynthesisPage.tsx` aurait laisse la section invisible en production sans qu un seul test bouge
+— trois tests au niveau page ferment ce trou (bloc servi + capability, sans bloc, sans
+capability). (3) Le miroir `WEAPON_RANGE_MIN_MEASURED = 8` n avait aucun garde-rail : un test
+lit desormais `analysis/weapon_range.go` et compare, et il ECHOUE si la source est illisible
+plutot que de se skipper.
+
+Gates : typecheck RC 0 ; lint RC 0 (0 erreur, 28 warnings preexistants, aucun sur un fichier du
+lot) ; suite web complete 595 fichiers / 6 297 tests RC 0 ; `lint:fields` sans violation ; grep
+hex vide sur `features/synthesis/` hors tests. `buildWeaponRangeOption` repasse de 107 a 67
+lignes par extraction, sans qu aucun des 16 tests existants ne change.
+
+**Conclusion / prochaine etape.** Ronde 1 close sur `feat/duels-lot5-fix` (worktree
+`LevelUp-wt-duels-fix5`), rien de pousse. Deux decouvertes consignees au plan et NON traitees :
+le meme piege `oklch` frappe `MatchScoreCurveChart.tsx:176` et
+`squad/charts/squadEfficiencyChart.ts:211` (preexistant) ; et aucun script npm ni etape de CI ne
+rejoue `build_i18n_manifests.mjs`, donc une derive toml <-> generated n est vue par rien. Suite :
+fusion de la branche par le superviseur, puis lot 6 (livraison).
+
 ## [2026-09-06] Lot 5 duels/portee — la section web « Portee des engagements » (5.1-5.6) — Complete
 
 **Decision technique principale.** La maquette validee par l utilisateur est transposee telle

@@ -139,31 +139,31 @@ export interface WeaponRangeOptionInput {
   labels: { kills: string; deaths: string; percentiles: string; noMeasure: string }
 }
 
+/** Les quatre encres du `renderItem`, plus les lignes déjà retournées pour l'axe. */
+interface RangeRenderInput {
+  ordered: readonly WeaponRangeLine[]
+  killsColor: string
+  deathsColor: string
+  medianColor: string
+  cardColor: string
+}
+
 /**
- * buildWeaponRangeOption — l'option ECharts du graphe de portée.
+ * makeRangeRenderItem — le `renderItem` de la série `custom`, fabriqué à part.
  *
- * Contrat de rendu, ligne par ligne : deux rectangles arrondis p10 → p90 décalés de part et
- * d'autre du centre de bande (frags AU-DESSUS, morts en dessous — l'ordre de la légende), et
- * un losange par médiane. Un côté absent ne dessine RIEN de son côté ; l'infobulle le dit
- * (« aucune mesure »), elle n'invente pas un zéro.
+ * Extrait de `buildWeaponRangeOption` le 2026-09-06 (revue adversariale du lot 5, seuil de
+ * 80 lignes par fonction) : la GÉOMÉTRIE et l'ASSEMBLAGE de l'option sont deux sujets, et le
+ * test de géométrie pince déjà cette fonction à travers une API `renderItem` factice.
+ * Aucun changement de rendu — les mêmes formes, aux mêmes pixels.
  */
-export function buildWeaponRangeOption({
-  lines,
-  tc,
+function makeRangeRenderItem({
+  ordered,
   killsColor,
   deathsColor,
   medianColor,
   cardColor,
-  fmtDistance,
-  labels,
-}: WeaponRangeOptionInput): EChartsCoreOption {
-  // Premier du backend = plus courte portée = EN HAUT : l'axe Y d'ECharts empile du bas
-  // vers le haut, donc la liste se lit à l'envers au montage.
-  const ordered = [...lines].reverse()
-  const xMax = weaponRangeAxisMax(lines)
-  const axis = getAxisBase(tc)
-
-  const renderItem = (params: RenderItemParams, api: RenderItemApi) => {
+}: RangeRenderInput) {
+  return (params: RenderItemParams, api: RenderItemApi) => {
     const line = ordered[params.dataIndex]
     const children: RenderItemChild[] = []
     if (!line) return { type: 'group', children }
@@ -204,13 +204,60 @@ export function buildWeaponRangeOption({
     push(line.deaths, deathsColor, +offset)
     return { type: 'group', children }
   }
+}
 
+/**
+ * rangeTooltipSideLine — une ligne d'infobulle pour un côté : « Mes frags — 281 : 7,1 m ·
+ * 13,6 m · 24,9 m », ou « Mes frags — aucune mesure ».
+ *
+ * Le nom de l'arme comme les nombres formatés passent par `escapeHtml` : l'infobulle d'ECharts
+ * est du HTML, et un libellé de registre n'est pas une source de confiance.
+ */
+function rangeTooltipSideLine(
+  name: string,
+  side: WeaponRangeSide | null,
+  fmtDistance: (m: number) => string,
+  noMeasure: string,
+): string {
+  if (!side) return `${escapeHtml(name)} — ${escapeHtml(noMeasure)}`
+  const low = escapeHtml(fmtDistance(side.p10))
+  const median = escapeHtml(fmtDistance(side.median))
+  const high = escapeHtml(fmtDistance(side.p90))
+  return `${escapeHtml(name)} — ${side.measured} : ${low} · <b>${median}</b> · ${high}`
+}
+
+/**
+ * buildWeaponRangeOption — l'option ECharts du graphe de portée.
+ *
+ * Contrat de rendu, ligne par ligne : deux rectangles arrondis p10 → p90 décalés de part et
+ * d'autre du centre de bande (frags AU-DESSUS, morts en dessous — l'ordre de la légende), et
+ * un losange par médiane. Un côté absent ne dessine RIEN de son côté ; l'infobulle le dit
+ * (« aucune mesure »), elle n'invente pas un zéro.
+ */
+export function buildWeaponRangeOption({
+  lines,
+  tc,
+  killsColor,
+  deathsColor,
+  medianColor,
+  cardColor,
+  fmtDistance,
+  labels,
+}: WeaponRangeOptionInput): EChartsCoreOption {
+  // Premier du backend = plus courte portée = EN HAUT : l'axe Y d'ECharts empile du bas
+  // vers le haut, donc la liste se lit à l'envers au montage.
+  const ordered = [...lines].reverse()
+  const xMax = weaponRangeAxisMax(lines)
+  const axis = getAxisBase(tc)
+  const renderItem = makeRangeRenderItem({
+    ordered,
+    killsColor,
+    deathsColor,
+    medianColor,
+    cardColor,
+  })
   const sideLine = (name: string, side: WeaponRangeSide | null) =>
-    side
-      ? `${escapeHtml(name)} — ${side.measured} : ${escapeHtml(fmtDistance(side.p10))} · <b>${escapeHtml(
-          fmtDistance(side.median),
-        )}</b> · ${escapeHtml(fmtDistance(side.p90))}`
-      : `${escapeHtml(name)} — ${escapeHtml(labels.noMeasure)}`
+    rangeTooltipSideLine(name, side, fmtDistance, labels.noMeasure)
 
   return {
     backgroundColor: CHART_BG,

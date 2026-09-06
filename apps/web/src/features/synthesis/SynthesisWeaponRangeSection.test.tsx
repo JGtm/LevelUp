@@ -14,6 +14,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, within } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
+import { tokenCssVar } from '@/lib/accessibility'
 import type { WeaponRangeSide } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -73,6 +74,14 @@ const RANGE: WeaponRangeBlock = {
 /** Espaces fines/insécables des formats FR : on compare sur du texte normalisé. */
 const flat = (s: string | null | undefined) => (s ?? '').replace(/[\s\u00A0\u202F]+/g, ' ').trim()
 
+/** Le texte de la tuile (`AccentCard`) dont le LIBELLÉ est `label` — valeur et dénominateur
+ *  compris. Remonter au conteneur est la seule façon de lier une valeur à SA tuile. */
+function flatCardOf(label: string): string {
+  const card = screen.getByText(label).closest('div.rounded-lg')
+  expect(card).not.toBeNull()
+  return flat(card!.textContent)
+}
+
 function textOf(re: RegExp): string[] {
   return screen
     .getAllByText((_, node) => (node ? re.test(flat(node.textContent)) : false))
@@ -99,6 +108,10 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     expect(textOf(/^1 214 frags mesurés sur 1 602$/).length).toBeGreaterThan(0)
     expect(screen.getByText('Portée médiane de mes morts')).toBeInTheDocument()
     expect(textOf(/^1 087 morts mesurées sur 1 455$/).length).toBeGreaterThan(0)
+    // LA VALEUR, PAS SEULEMENT SON LIBELLÉ : chaque tuile porte SA médiane. Sans ces deux
+    // lignes, deux valeurs échangées (frags <-> morts) passeraient inaperçues.
+    expect(flatCardOf('Portée médiane de mes frags')).toContain('7,4 m')
+    expect(flatCardOf('Portée médiane de mes morts')).toContain('11,8 m')
     expect(screen.getByText("Distance d'entame médiane")).toBeInTheDocument()
     expect(textOf(/^1,5 s avant le frag · 618 frags mesurés$/).length).toBeGreaterThan(0)
     expect(screen.getByText('Entame → frag')).toBeInTheDocument()
@@ -114,6 +127,50 @@ describe('SynthesisWeaponRangeSection — rendu nominal', () => {
     expect(screen.getByText("d'en haut (> +1 m)")).toBeInTheDocument()
     expect(screen.getByText('à niveau')).toBeInTheDocument()
     expect(screen.getByText("d'en bas (< −1 m)")).toBeInTheDocument()
+  })
+
+  it('les deux légendes portent des noms accessibles DISTINCTS', () => {
+    // Deux listes nommées « Légende » ne se distinguent pas au lecteur d'écran : la seconde
+    // qualifie ce qu'elle légende (maquette du 2026-09-06).
+    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    expect(screen.getByRole('list', { name: 'Légende' })).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Légende du dénivelé' })).toBeInTheDocument()
+  })
+
+  it('la légende de portée met ses libellés en avant, celle du dénivelé les rend nus', () => {
+    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    const range = screen.getByRole('list', { name: 'Légende' })
+    const elevation = screen.getByRole('list', { name: 'Légende du dénivelé' })
+    expect(within(range).getByText('Mes frags').tagName).toBe('B')
+    expect(within(elevation).getByText('à niveau').tagName).toBe('SPAN')
+  })
+
+  it('les pastilles du dénivelé portent l’encre de leur classe', () => {
+    // La pastille et le segment du graphe lisent le MÊME token : « d'en haut » emprunte
+    // l'encre des morts, « d'en bas » celle des frags, et « à niveau » le gris des libellés
+    // d'axe — qui n'a pas de token d'accessibilité, d'où la classe sémantique.
+    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    const legend = screen.getByRole('list', { name: 'Légende du dénivelé' })
+    const swatch = (name: string) =>
+      within(legend).getByText(name).parentElement!.querySelector('span[aria-hidden="true"]')!
+    expect((swatch("d'en haut (> +1 m)") as HTMLElement).style.backgroundColor).toBe(
+      tokenCssVar('chart-series-3'),
+    )
+    expect((swatch("d'en bas (< −1 m)") as HTMLElement).style.backgroundColor).toBe(
+      tokenCssVar('chart-series-1'),
+    )
+    const level = swatch('à niveau') as HTMLElement
+    expect(level.className).toContain('bg-muted-foreground')
+    expect(level.style.backgroundColor).toBe('')
+  })
+
+  it('le tableau groupe ses colonnes : mes frags D’ABORD, mes morts ensuite', () => {
+    renderWithProviders(<SynthesisWeaponRangeSection range={RANGE} />)
+    const groups = Array.from(
+      screen.getByRole('table').querySelectorAll('thead tr:first-child th'),
+    ).map((th) => flat(th.textContent))
+    // La première cellule est le coin vide au-dessus de la colonne « Arme ».
+    expect(groups).toEqual(['', 'Mes frags', 'Mes morts'])
   })
 
   it('nomme les armes écartées par le seuil, des deux côtés, et publie la note de couverture', () => {
@@ -161,6 +218,59 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
     expect(screen.queryByText('Entame → frag')).not.toBeInTheDocument()
     // Les deux tuiles de portée, elles, restent : la portée ne dépend pas de l'entame.
     expect(screen.getByText('Portée médiane de mes frags')).toBeInTheDocument()
+  })
+
+  it('un côté sans aucune mesure : sa tuile de portée DISPARAÎT, jamais « 0,0 m »', () => {
+    // Scope « morts seulement » (un filtre où le joueur n'a fragué personne) : le service ne
+    // retire le bloc que si les DEUX côtés sont vides, et sert le côté absent à zéro. Une
+    // tuile « 0,0 m » se lirait « il frague au contact » — la MÊME doctrine que l'entame (D5).
+    const { container } = renderWithProviders(
+      <SynthesisWeaponRangeSection
+        range={{
+          ...RANGE,
+          weapons: [{ ...RANGE.weapons![0], kills: undefined }],
+          median_kills_m: 0,
+          measured_kills: 0,
+          total_kills: 0,
+          below_threshold_kills: [],
+          opening: undefined,
+        }}
+      />,
+    )
+    expect(screen.queryByText('Portée médiane de mes frags')).not.toBeInTheDocument()
+    expect(screen.getByText('Portée médiane de mes morts')).toBeInTheDocument()
+    expect(flat(container.textContent)).not.toContain('0,0 m')
+  })
+
+  it('l’autre côté vide : la tuile des morts disparaît, celle des frags reste', () => {
+    renderWithProviders(
+      <SynthesisWeaponRangeSection
+        range={{
+          ...RANGE,
+          weapons: [{ ...RANGE.weapons![0], deaths: undefined }],
+          median_deaths_m: 0,
+          measured_deaths: 0,
+          total_deaths: 0,
+          below_threshold_deaths: [],
+        }}
+      />,
+    )
+    expect(screen.getByText('Portée médiane de mes frags')).toBeInTheDocument()
+    expect(screen.queryByText('Portée médiane de mes morts')).not.toBeInTheDocument()
+  })
+
+  it('entame qui ÉLOIGNE : le signe + est écrit, il n’est pas décoratif', () => {
+    // Miroir du cas nominal (delta négatif) : `signDisplay: 'exceptZero'` doit écrire le
+    // signe des DEUX côtés, sans quoi « 1,7 m » ne dirait pas si la distance s'ouvre ou se ferme.
+    renderWithProviders(
+      <SynthesisWeaponRangeSection
+        range={{
+          ...RANGE,
+          opening: { median_m: 9.1, measured_kills: 618, delta: { median_m: 1.7, closing_share_pct: 38.6, n: 574 } },
+        }}
+      />,
+    )
+    expect(flatCardOf('Entame → frag')).toContain('+1,7 m')
   })
 
   it('sans arme sous le seuil, la ligne « sous le seuil » n’est pas rendue', () => {
@@ -228,5 +338,9 @@ describe('SynthesisWeaponRangeSection — dégradations', () => {
     expect(screen.getByText('Median range of my kills')).toBeInTheDocument()
     expect(textOf(/^1,214 measured kills out of 1,602$/).length).toBeGreaterThan(0)
     expect(screen.getByText('BR75 Battle Rifle')).toBeInTheDocument()
+    // LES DISTANCES AUSSI suivent la locale : « 7.4 m » et non « 7,4 m ». Sans cette ligne,
+    // un formateur figé sur fr-FR passerait le test anglais.
+    expect(flatCardOf('Median range of my kills')).toContain('7.4 m')
+    expect(flatCardOf('Median range of my deaths')).toContain('11.8 m')
   })
 })

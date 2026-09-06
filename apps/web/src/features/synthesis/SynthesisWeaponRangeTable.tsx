@@ -4,6 +4,18 @@
  * Déplié depuis le `<details>` de la carte « Portée par arme ». Extrait de la section pour
  * la garder sous le plafond de 500 lignes : c'est une vue complète (douze colonnes, deux
  * côtés) qui n'a rien à voir avec la mise en page de la carte.
+ *
+ * EXEMPTION DATÉE — `<table>` NATIF PLUTÔT QUE TANSTACK TABLE (2026-09-06, arbitrage du
+ * pilote en revue adversariale du lot 5). Le skill `frontend-patterns` écrit : « tout tableau
+ * interactif (tri, filtre, pagination, colonnes) utilise TanStack Table. Un `<table>` HTML
+ * natif est toléré uniquement pour du rendu statique sans interaction (< 10 lignes, pas de
+ * tri). » Ce tableau peut dépasser dix lignes (une par arme publiée), mais il n'a AUCUNE des
+ * interactions que la règle vise : ni tri, ni filtre, ni pagination, ni sélection de colonnes.
+ * Son ordre est celui du graphe qu'il redit, chiffre par chiffre — l'ordre du backend, du
+ * contact vers la longue portée. Le rendre triable le DÉSYNCHRONISERAIT de cette lecture,
+ * qui est le sujet de la section ; l'appareillage TanStack n'apporterait ici qu'un état
+ * inutile. Décision à rouvrir SI ce tableau gagne un jour la moindre interaction — c'est le
+ * critère, et le seul.
  */
 import type { WeaponRangeSide } from '@/lib/api/types'
 
