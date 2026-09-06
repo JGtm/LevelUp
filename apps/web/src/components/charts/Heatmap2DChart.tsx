@@ -163,7 +163,7 @@ export function buildHeatmap2DOption(
           },
         },
         emphasis: {
-          itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' },
+          itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' }, // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
         },
       },
     ],

@@ -174,7 +174,7 @@ function cadenceSeries(
           position: 'top',
           color: colorPic,
           fontSize: 10,
-          backgroundColor: 'rgba(0,0,0,0.5)',
+          backgroundColor: 'rgba(0,0,0,0.5)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
           padding: [2, 4],
         },
         data: model.peak.total > 0 ? [{ coord: [model.peak.index, model.peak.total] }] : [],

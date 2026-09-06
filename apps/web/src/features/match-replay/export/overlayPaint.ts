@@ -130,7 +130,7 @@ const LOGO_ALPHA = 0.2
  */
 const SHADOW_BLUR = 15
 const SHADOW_OFFSET_Y = 10
-const SHADOW_COLOR = 'rgba(0, 0, 0, 0.1)'
+const SHADOW_COLOR = 'rgba(0, 0, 0, 0.1)' // color-allow: 2026-09-06 (revue R1, C5) — couleur STRUCTURELLE de trace (ombre / contour de lisibilite), pas une couleur qui dit quelque chose : exception de la doctrine color-tokens, deja documentee en tete
 
 /** Les capitales du DOM (`uppercase`) sont une décision de style : elle se refait ici. */
 function upper(text: string): string {
