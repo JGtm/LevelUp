@@ -218,6 +218,151 @@ Baseline** — le job long qui avait révélé le premier trou). Les deux runs v
 précédent (`Secrets (gitleaks)`, `Deploy Pre-Check`) étaient `success`. La vérification
 finale revient au superviseur à l'intégration.
 
+## Corrections après revue adversariale (C-R1, 2026-09-06)
+
+Verdict : 21 conditions tiennent, le comportement livré est le bon ; ce qui ne tenait pas
+était presque entièrement du côté des GARDE-RAILS (trois portes sans test qui morde, une
+fixture qui ne prouvait rien), plus deux défauts d'interface sur halo_5. Les huit points
+demandés sont traités, chacun prouvé par la mutation du verdict, rouge puis vert.
+
+| # | Constat | Statut | Commit |
+|---|---|---|---|
+| 1 | C1 (P1) montage réel des routes `/replay*` non gardé | `[x]` | `f0c357585` |
+| 2 | C3 (P1) `synthetic_title_b` ne prouve rien | `[x]` | `a715f2031` |
+| 3 | C2 (P2) les tests de colonne testent le lien | `[x]` | `bc551762b` |
+| 4 | C4 (P2) flash de contenu sur halo_5 | `[x]` | `33d27ee35` |
+| 5 | C5 (P2) filtre masqué mais actif et envoyé | `[x]` | `406396856` |
+| 6 | C6 (P2) branche data-level de `FeatureGate` sans appelant | `[x]` | `33d27ee35` |
+| 7 | C7 (obs.) INFO à chaque cycle | `[x]` | `0e5cf2e96` |
+| 8 | Condition n°2 : requêtes de film sur halo_5 | `[x]` | `86227ab4b` |
+
+### 1 — Le montage réel des routes `/replay*` (C1)
+
+Ratchet AST `internal/archlint/replay_routes_capability_gate_test.go` : pour chaque appel à
+`NewReplayHandler` dans les sources non-test, le PLUS PETIT bloc englobant — le corps du
+`r.Group(func(r chi.Router){...})` — doit installer `RequireCapability(..., CapReplay)`. Le
+plus petit bloc, et non la fonction entière : une porte posée sur un AUTRE groupe de
+`mountAPIV1` ne garderait pas ces routes-là. Il échoue aussi si plus aucun site de montage
+n'est trouvé (ratchet mort par renommage).
+
+Pas de test du routeur réel : `mountAPIV1` prend l'intégralité des dépendances du serveur
+(registre de services, session, settings, ownership) — le construire exigerait des bases
+DuckDB et un boot complet, pour ne rien prouver de plus que ce ratchet plus le test de
+handler existant.
+
+**Preuve** — M5 (`sed -i '710d' server_apiv1.go`) :
+`--- FAIL: TestReplayRoutesMountedUnderCapabilityGate`, « les routes /replay* sont montées
+SANS porte de titre (internal/api/server_apiv1.go:711) ». Restaurée : vert.
+
+### 2 — La fixture synthétique (C3)
+
+Trois niveaux, chacun là où il vit :
+
+- **contenu** — `games/synthetic_title_b/film_capabilities_test.go` asserte les six clés une
+  à une contre un tableau écrit À LA MAIN (le dériver du fichier reviendrait à comparer le
+  fichier à lui-même), plus une symétrie : toute famille `film.*` ajoutée au vocabulaire sans
+  être déclarée par la fixture fait rougir ;
+- **sémantique** — `Has` ouvre pour l'artefact, ferme pour les cinq dérivés ;
+- **portes réelles** — la porte de production (`replayartifacts`) et les deux loaders
+  (`api/wire`) sont désormais exercés AVEC ce titre : il prouve que c'est bien
+  `film.replay_artifact` qui ouvre, et non « ce titre a quelque chose du film ».
+
+S'y ajoute le cas de la clé ABSENTE (CapabilityMap sans aucune `film.*`) : elle ferme comme
+un `not_exposed` explicite. Les deux « non » se distinguent dans le manifeste, jamais dans
+le code — aucun titre livré ne produit l'absence pure.
+
+**Preuves** — M3 (clé basculée) : 4 tests rouges sur 3 paquets, dont « /objective-events sur
+synthetic_title_b : status = 503, attendu 200 ». M4 (six lignes supprimées) : 6 messages
+nommant chaque famille manquante. Restaurées : vert.
+
+### 3 — Les colonnes (C2)
+
+Les deux tests comptent maintenant les COLONNES (en-têtes et cellules), entre deux rendus qui
+ne diffèrent QUE par `replay` — première version prise en défaut à 23 colonnes contre 19,
+parce que `team_mmr` et `waypoint_match_url` faisaient varier le compte pour une autre
+raison. `MatchReplayLink` reçoit son propre fichier de test, où ses deux portes sont
+exercées SÉPARÉMENT : c'est la seule manière de couvrir la carte de match, qui n'a aucune
+colonne à masquer.
+
+**Preuves** — M8, M9 et M10 rouges, chacune sur le seul test de la porte qu'elle retire.
+
+### 4 — Le flash (C4)
+
+`useTitleDataCapabilities` rend TROIS états (`loading` / `known` / `error`) au lieu d'une map
+nullable qui confondait « pas encore » et « jamais ». `loading` implique fail-CLOSED, le
+temps d'UNE requête : coût symétrique et borné (une requête par titre et par session,
+`staleTime` 5 min aligné sur le `Cache-Control` du serveur), et plus rien n'apparaît puis ne
+disparaît. `error` implique fail-open, inchangé et documenté.
+
+**Preuve** — mutation « fail-open pendant loading » : 4 tests rouges (prédicat, hook, et les
+deux de la section : « la carte n'est JAMAIS peinte », « rien au premier rendu »).
+
+### 5 — Le filtre neutralisé (C5)
+
+La neutralisation est au point de LECTURE de la portée (`ExplorerPage.tsx`), pas au montage
+du `<select>` : c'est le seul endroit qui couvre à la fois le miroir localStorage — scopé par
+JOUEUR, pas par titre —, l'URL, la charge utile envoyée au backend et le bandeau « filtres
+actifs ». La valeur mémorisée n'est pas effacée : elle redevient active si le joueur repasse
+sur un titre qui a le rejeu.
+
+**Preuve** — neutralisation retirée : le test rougit sur le bandeau « Réinitialiser les
+filtres ». Note de méthode : un `vi.mock` du module `@/lib/api/client` entier cassait le test
+« Aucun match trouvé » préexistant — l'espion est LOCAL (`vi.spyOn(api, 'post')`).
+
+### 6 — `FeatureGate.dataCapability` (C6) — DÉCISION : retiré
+
+Entre lui donner un appelant de circonstance et le retirer, j'ai retiré. Les trois surfaces
+du lot ne l'utilisaient pas et n'en avaient pas besoin : `MatchKillDistanceSection` appelle
+le hook en direct, `SessionUsageSection` passe par `usageAvailability`, l'Explorer par
+`useCapability` + rendu conditionnel. Un composant qui a déjà des retours conditionnels lit
+plus clair avec `if (!useDataCapability(k)) return null` qu'enveloppé dans un gate ; et la
+prop faisait vivre un sous-composant entier sans usage (règle CLAUDE.md n°7). La doc de
+`FeatureGate` porte la décision et sa date, pour qu'on ne la refasse pas à l'aveugle. Le
+garde de parité Go continue de mordre : il scanne aussi les appels `useDataCapability(...)`.
+
+### 7 — Le niveau du refus de production (C7)
+
+INFO au PREMIER refus de chaque titre dans la vie du process (mémo par titre sous mutex),
+DEBUG ensuite. Un redémarrage rend une ligne INFO par titre : assez pour lire l'état au
+démarrage, jamais assez pour saturer. Le WARN du TOML illisible reste à chaque fois — c'est
+un incident, pas une configuration.
+
+**Preuve** — mutation « toujours INFO » : deux assertions rouges (« encore INFO — le mémo par
+titre ne tient pas », « la ligne DEBUG manque »).
+
+### 8 — Les deux requêtes de film sur halo_5
+
+`useMatchObjectiveEvents` et `useMatchPositions` portent la porte `film.replay_artifact` dans
+leur `enabled` — ce sont les deux projections de l'artefact, pas les positions par kill. La
+porte s'AJOUTE au paramètre `enabled` existant (onglet actif). Le traitement du 503 reste :
+la capability peut être connue trop tard, et un match non backfillé d'un titre qui A la clé
+rend une réponse vide.
+
+**Preuve** — garde retirée : « titre sans film.replay_artifact : AUCUNE des deux requêtes ne
+part » rouge.
+
+### Gates rejoués (tous en avant-plan, `-count=1`)
+
+| Gate | Commande | Dernière ligne |
+|---|---|---|
+| Tests Go du lot | `go test -count=1 ./internal/domain/title/... ./internal/games/... ./internal/api/... ./internal/sync/replayartifacts/... ./contracttest/... ./internal/archlint/...` | aucune ligne hors `ok` / `no test files` |
+| Intégration API | `go test -count=1 -tags=integration -p 1 ./internal/api/...` | idem |
+| Intégration replayartifacts | `go test -count=1 -tags=integration -p 1 ./internal/sync/replayartifacts/...` | `ok levelup/go-api/internal/sync/replayartifacts 12.762s` |
+| Build | `go build ./...` | `build OK` |
+| Lint Go (ratchet CI) | `golangci-lint run --timeout 5m --new-from-merge-base=origin/main ./...` | `0 issues.` |
+| Types OpenAPI | `make generate-types` | `openapi.yaml -> generated.ts [477.4ms]` — **aucun diff** |
+| Typecheck web | `npm --prefix apps/web run typecheck` | `typecheck exit=0` |
+| Lint web | `npm --prefix apps/web run lint` | `28 problems (0 errors, 28 warnings)` puis `exit=0` |
+| Vitest ciblé | `vitest run --pool=forks src/lib/capabilities src/features/{match-view,session-detail,explorer,squad}` | `Test Files 128 passed (128)` / `Tests 1109 passed (1109)` |
+| Vitest complet (filet) | `vitest run --pool=forks` | `Test Files 593 passed (593)` / `Tests 6257 passed, 14 skipped` |
+
+**Découverte de gate, hors périmètre** : le filet Go complet (`go test -count=1 ./internal/...`,
+au-delà du gate demandé) fait tomber `mapcatalog.TestAddEntryConcurrentNePerdPasDEntree` —
+« 6 cartes au catalogue, attendu 9 ». C'est un FLAKE de contention : le test passe 3 fois sur
+3 en isolation (`-count=3`), et son verrou de fichier expire à 2 s sous la charge de la suite
+entière. Paquet non touché par ce lot (il relève du constat A0, lot A) ; la CI joue `-p 1`,
+moins contendu. Consigné, pas traité.
+
 ## Découvertes (hors périmètre, non traitées)
 
 1. ~~**`MatchPositionsHeatmap` et les hooks du film de la Match View.**~~ **CORRIGÉE le
