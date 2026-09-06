@@ -52,6 +52,14 @@ func (h *TacticalHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 // seul. Struct EMBARQUEE dans les deux entrees : les deux ecrans filtrent la meme
 // chose, et deux declarations divergeraient au premier axe ajoute.
 //
+// PAS DE `session` (retrait du 2026-09-06, T11) : `MatchFilterSpec` porte bien un
+// `SessionID`, mais `analysis.BuildNeighborsWhereClause` le range dans
+// `IgnoredFilters` sans jamais l'appliquer — les sessions vivent dans la base
+// JOUEUR (`player_match_enrichment`), que ces requetes shared ne joignent pas. Un
+// parametre accepte, documente au contrat, et silencieusement sans effet est pire
+// qu'un parametre absent : l'appelant croit avoir filtre. On n'accepte pas ce
+// qu'on n'honore pas.
+//
 // EXPORTEE, et c'est OBLIGATOIRE : Huma lie les parametres par reflexion, et un
 // champ embarque de type NON exporte n'est pas assignable — les filtres arrivaient
 // alors tous vides, sans erreur (piege verifie par
@@ -61,7 +69,6 @@ type TacticalFilterQuery struct {
 	Mode       string `query:"mode" doc:"Categories de mode, separees par une virgule."`
 	From       string `query:"from" doc:"Borne basse (RFC3339)."`
 	To         string `query:"to" doc:"Borne haute (RFC3339)."`
-	Session    string `query:"session" doc:"Identifiant de session."`
 	Outcome    string `query:"outcome" doc:"Issue : win | loss | draw | dnf."`
 	WithPlayer string `query:"with_player" doc:"XUID (entier decimal) devant avoir participe au match."`
 }
@@ -159,9 +166,6 @@ func (f TacticalFilterQuery) spec(ctx context.Context) *domain.MatchFilterSpec {
 	spec := &domain.MatchFilterSpec{
 		PlaylistNames:  parseCsvFilterParam(ctx, f.Playlist, "playlist"),
 		ModeCategories: parseCsvFilterParam(ctx, f.Mode, "mode"),
-	}
-	if v := strings.TrimSpace(f.Session); v != "" {
-		affecterSiValide(ctx, "session", v, playlistOrSessionPattern.MatchString, &spec.SessionID)
 	}
 	if v := strings.TrimSpace(f.Outcome); v != "" {
 		affecterSiValide(ctx, "outcome", v, analysis.IsValidOutcomeLabel, &spec.Outcome)

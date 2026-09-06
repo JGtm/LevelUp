@@ -41,9 +41,12 @@ type PositionSample struct {
 // BornesMonde est le rectangle englobant d'une lecture, en metres monde. `Valide` est faux
 // tant qu'aucun point n'a ete vu : un rectangle vide n'est pas un rectangle a l'origine.
 type BornesMonde struct {
-	MinX, MinY float64
-	MaxX, MaxY float64
-	Valide     bool
+	MinX float64 `json:"min_x"`
+	MinY float64 `json:"min_y"`
+	MaxX float64 `json:"max_x"`
+	MaxY float64 `json:"max_y"`
+
+	Valide bool `json:"valide"`
 }
 
 // CelluleTactique est une cellule ALIMENTEE d'une lecture agregee. Une cellule jamais
@@ -54,25 +57,27 @@ type CelluleTactique struct {
 	// MONDE (et non sur les bornes de la lecture) — deux lectures filtrees differemment
 	// nomment donc la meme cellule pareil, et deux rasters de matchs differents se
 	// somment sans re-projection.
-	Col, Lig int
+	Col int `json:"col"`
+	Lig int `json:"lig"`
 
 	// CentreX, CentreY : le centre de la cellule en metres monde, pour le peintre.
-	CentreX, CentreY float64
+	CentreX float64 `json:"centre_x"`
+	CentreY float64 `json:"centre_y"`
 
 	// Valeur est la valeur PAR MATCH (decision produit : jamais un cumul brut, qui ne se
 	// compare pas d'un filtre a l'autre). Lecture simple : occurrences / nombre de matchs
 	// retenus. Lecture signee : taux du cote victoire moins taux du cote defaite.
-	Valeur float64
+	Valeur float64 `json:"valeur"`
 
 	// Brut est le cumul non normalise qui a produit `Valeur` — servi AVEC elle, jamais a
 	// sa place (doctrine « jamais un taux seul »).
-	Brut float64
+	Brut float64 `json:"brut"`
 
 	// Matchs est le nombre de matchs DISTINCTS ayant alimente la cellule ; MatchsVictoire
 	// et MatchsDefaite le detaillent par cote (non nuls seulement en lecture signee).
-	Matchs         int
-	MatchsVictoire int
-	MatchsDefaite  int
+	Matchs         int `json:"matchs"`
+	MatchsVictoire int `json:"matchs_victoire"`
+	MatchsDefaite  int `json:"matchs_defaite"`
 }
 
 // EchelleTactique porte les reperes de coloration d'une lecture. Les quantiles sont
@@ -82,18 +87,19 @@ type EchelleTactique struct {
 	// P50, P95 : les quantiles des valeurs des cellules. En lecture signee, ils portent
 	// sur la VALEUR ABSOLUE — un quantile sur le signe n'a pas de sens (il depend de la
 	// proportion de cellules favorables, pas de l'intensite).
-	P50, P95 float64
+	P50 float64 `json:"p50"`
+	P95 float64 `json:"p95"`
 
 	// Borne est le haut de l'echelle. En lecture signee, l'echelle est SYMETRIQUE et va
 	// de -Borne a +Borne : sans cela, un cote parait plus intense que l'autre a valeur
 	// egale.
-	Borne float64
+	Borne float64 `json:"borne"`
 
 	// Symetrique dit laquelle des deux lectures ci-dessus s'applique.
-	Symetrique bool
+	Symetrique bool `json:"symetrique"`
 
 	// NCellules est le nombre de cellules ayant servi au calcul.
-	NCellules int
+	NCellules int `json:"n_cellules"`
 }
 
 // ---------------------------------------------------------------------------
@@ -160,9 +166,23 @@ type TacticalUnivers struct {
 type TacticalKillPosition struct {
 	MatchID string
 
-	// KillerXUID est vide quand personne ne revendique la mort (chute, hors-limites,
-	// environnement) ou quand le tueur est un bot. VictimXUID est vide pour une
-	// victime bot.
+	// KillerXUID et VictimXUID peuvent etre VIDES, et ce sont deux cas TRES
+	// inegalement probables — la doc d'origine les mettait sur le meme plan, a tort.
+	//
+	//	KillerXUID vide  N'ARRIVE PAS en sortie de KillPositions. La jointure est une
+	//	                 EGALITE sur `kill_positions.killer_xuid`, et le persister
+	//	                 REFUSE toute ligne sans tueur (persist/kill_position_persister.go).
+	//	                 Le champ reste defensif : un scan qui rendrait une chaine vide
+	//	                 ne doit pas etre range dans un axe par accident.
+	//	VictimXUID vide  ARRIVE. Le collecteur du film n'ecrit de position que pour les
+	//	                 morts dont LES DEUX identites sont resolues
+	//	                 (sync/killcollector/positions.go, killRefsFromDeaths), mais le
+	//	                 producteur NATIF de Halo 5 ne pose que le tueur
+	//	                 (games/halo_5/ingest/positions.go) : sa ligne peut donc joindre
+	//	                 un kill-event dont la victime est un BOT (victim_xuid NULL).
+	//
+	// Dans les deux cas, une identite vide n'appartient a AUCUN axe « qui » : elle n'a
+	// pas d'equipe, et lui en deviner une serait une invention.
 	KillerXUID string
 	VictimXUID string
 
@@ -233,10 +253,26 @@ type TacticalRaster struct {
 	Question string `json:"question"`
 	Qui      string `json:"qui"`
 
-	// MatchsRetenus est la taille de l'univers — le denominateur de la valeur
-	// « par match » de chaque cellule. Publie AVEC les cellules : une intensite
-	// sans son denominateur ne se compare pas d'un filtre a l'autre.
+	// MatchsRetenus est la taille de l'univers : TOUS les matchs que le filtre a
+	// retenus, y compris ceux qui n'ont alimente aucune cellule. Publie AVEC les
+	// cellules — une intensite sans son denominateur ne se compare pas d'un filtre
+	// a l'autre.
+	//
+	// ⚠ CE N'EST LE DENOMINATEUR DIRECT QUE DE LA LECTURE NON SIGNEE. La lecture
+	// signee normalise CHAQUE COTE par le sien (occV/nbV - occD/nbD, cf.
+	// analysis/tactical.CellulesSignees) : ses deux denominateurs sont
+	// MatchsVictoire et MatchsDefaite ci-dessous, et leur somme est en general
+	// INFERIEURE a MatchsRetenus (les nuls et les matchs de resultat inconnu
+	// comptent dans l'univers, dans aucun des deux cotes).
 	MatchsRetenus int `json:"matchs_retenus"`
+
+	// MatchsVictoire et MatchsDefaite sont les deux denominateurs de la lecture
+	// SIGNEE, sur l'univers entier. Nuls sur une lecture non signee, ou ils
+	// n'auraient aucun role. Publies parce que le pied de carte doit pouvoir dire
+	// sur quoi la difference est calculee — « 12 victoires contre 8 defaites » — au
+	// lieu de laisser croire que c'est MatchsRetenus des deux cotes.
+	MatchsVictoire int `json:"matchs_victoire"`
+	MatchsDefaite  int `json:"matchs_defaite"`
 
 	// PasM est le pas de la grille en metres, et Bornes le rectangle englobant les
 	// cellules LISIBLES — le cadre que le peintre doit couvrir.
@@ -249,6 +285,23 @@ type TacticalRaster struct {
 	// PointsIgnores : les positions ecartees faute de coordonnees finies. Publie
 	// plutot qu'avale — un decodage qui derape se voit ici.
 	PointsIgnores int `json:"points_ignores"`
+
+	// EvenementsJournal et EvenementsLocalises disent CE QUE LA CARTE NE MONTRE PAS
+	// (ajout 2026-09-06) : combien d'evenements de la cible le journal des morts
+	// compte sur l'univers (morts pour « ou je meurs », kills pour « ou je tue »,
+	// les deux pour « ou je gagne »), et combien d'entre eux ont une position
+	// mesuree. Le pied de carte les rend en clair — « N morts, M localisees ».
+	//
+	// POURQUOI C'EST OBLIGATOIRE. Une position n'existe que si le producteur a su
+	// resoudre les deux identites et si l'instant n'etait pas ambigu (double kill) ;
+	// une carte muette sur un pan entier de la partie ressemble sinon a un pan de
+	// terrain ou il ne se passe rien. L'ecart est une PROPRIETE DE LA MESURE, pas
+	// un detail d'implementation.
+	//
+	// EvenementsJournal vaut 0 quand le journal n'a pas pu etre lu : le pied de
+	// carte doit alors taire la couverture plutot qu'annoncer 0 sur M.
+	EvenementsJournal   int `json:"evenements_journal"`
+	EvenementsLocalises int `json:"evenements_localises"`
 
 	// Echange est le taux de morts vengees de mon equipe SUR CETTE CARTE. nil quand
 	// le titre ne sait pas lire la source des morts (capability `film.kill_source`
