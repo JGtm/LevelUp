@@ -1,3 +1,46 @@
+## [2026-09-06] Lot 1 duels — le bouclier DU TUEUR : signal reel, attribution impossible — NO-GO lot 7 — Complete
+
+**Decision technique principale.** Sonde n°2 du `.ai/PLAN_DUELS_PORTEE_2026-09-06.md` (lot 1),
+cote BASE cette fois : la n°1 s interdisait la base et ignorait donc QUI etait le tueur pour 50 a
+90 % des morts. Le tueur est connu hors film, par `match_kill_events_latest`. Question decisive :
+pour les morts dont le kill-feed nomme le tueur, le BOUCLIER DU TUEUR chute-t-il dans la fenetre
+d engagement ? Instrument `internal/sync/killcollector/duels_bouclier_research_test.go`
+(+ `_mesures_test.go`), compose des decodeurs et du PONT DE PRODUCTION — `ScanBipedPositions`
+avec `CaptureDirs`, `ScanClockOrigin`, `ScanDeaths`, `ScanPlayerIndices`, `ResolveSlotXUID`,
+`BuildKillPositions` : la mesure A passe par la fonction que le lot 7 utiliserait, pas par une
+resolution locale. Base ouverte en `OpenReadForQuery` (item 1.1 — le serveur peut tenir le fichier
+en RW). Seuils du gate ecrits AVANT la mesure et JAMAIS ajustes au resultat. Un durcissement
+ajoute en cours de mesure : l eligibilite du temoin est bornee au domaine observable (un kill des
+39 premieres secondes verrait sa fenetre reculee de 37 s tomber avant la premiere lecture de
+bouclier, la ou personne ne peut chuter — sans cette borne, `B/temoin` serait un artefact de bord).
+
+**Resultats observes** (409 kills du feed, 4 films d arene, cumul des entiers bruts). Trois gates
+sur quatre passent, et nettement : **A = 370/409 = 90,5 %** (et 100 % des tueurs ont au moins un
+slot au pont — les 9,5 % perdus sont des morts sans echantillon de position dans la tolerance,
+pas des tueurs inconnus) ; **B/O = 135/237 = 0,57**, au centre de [0,35 ; 0,90] ; **B/temoin =
+123/22 = 5,59** pour un seuil de 3, avec 4,50 a 12,00 sur chacun des quatre films — le signal est
+REEL, ce n est pas une densite d evenements. **Le quatrieme echoue : D = 71/135 = 52,6 % contre
+60 %.** Dans 47,4 % des fenetres ou le bouclier du tueur chute, au moins un AUTRE adversaire du
+tueur chute aussi : le signal dit « le tueur a pris des coups », jamais « de sa victime ». Et D
+varie de 40,0 % (Catalyst) a 64,5 % (Bazaar, seul film qui passe) — le meme facteur non uniforme
+qui invalidait deja le comptage par reciprocite, et un biais qui varie rend deux matchs
+incomparables. Qualite du pont lue et non supposee : 0 desaccord d index, 0 collision de slot,
+26 a 31 chunks concordants, 90 a 117 morts appariees. Densite 3,3 a 9,2 chutes par kill.
+
+**Conclusion / prochaine etape.** **NO-GO lot 7**, statue `[!]` sur ses 5 items, aucun code ecrit.
+Le mur se nomme precisement, et c est ce qui dit ce qu il faudrait pour le franchir : la sonde n°1
+avait le LIEN (le degat nomme son auteur) sans le RAPPEL (0,8 a 4,8 evenements par mort) ; la n°2
+a le RAPPEL sans le LIEN (une chute de bouclier est anonyme). Les deux canaux du film sont
+exactement complementaires dans ce qui leur manque — aucune combinaison ne referme l ecart, il n y
+a pas de troisieme reglage a essayer sur ces deux canaux. Note
+`.ai/V7.5/film_re/SONDE_DUELS_BOUCLIER_2026-09-06.md` ; report inscrit au
+`.ai/V7.5/REGISTRE_REPORTS.md` avec sa condition de reprise (un canal portant l AUTEUR du degat a
+la densite du bouclier : flux de degats dense — refute par mesure ; compteur d etat ECS replique —
+piste ouverte, aucune sonde faite ; source hors film — aucune connue). Les lots 2 a 6 du plan (la
+portee par arme des deux cotes, le denivele signe, le proxy d entame) ne dependent PAS de ce gate
+et restent entierement ouverts. Ecart releve au plan : sa commande de gate portait `CGO_ENABLED=0`,
+faux — la sonde ouvre DuckDB, qui exige CGO ; corrige dans le plan.
+
 ## [2026-09-06] Sonde duels — la reciprocite du degat est le bon critere, le film n'en porte pas assez — Complete
 
 **Decision technique principale.** Demande utilisateur : compter les duels, les duels gagnes et
