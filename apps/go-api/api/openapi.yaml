@@ -25583,6 +25583,29 @@ components:
         - exists
         - rows
       type: object
+    TacticalGrappe:
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        matchs:
+          format: int64
+          type: integer
+        nom:
+          type: string
+        x:
+          format: double
+          type: number
+        "y":
+          format: double
+          type: number
+      required:
+        - id
+        - nom
+        - x
+        - "y"
+        - matchs
+      type: object
     TacticalMapCard:
       additionalProperties: false
       properties:
@@ -25667,6 +25690,14 @@ components:
         evenements_localises:
           format: int64
           type: integer
+        grappes:
+          items:
+            $ref: '#/components/schemas/TacticalGrappe'
+          type:
+            - array
+            - "null"
+        isolement:
+          $ref: '#/components/schemas/Couverture'
         map_id:
           type: string
         matchs_defaite:
@@ -25676,6 +25707,9 @@ components:
           format: int64
           type: integer
         matchs_retenus:
+          format: int64
+          type: integer
+        matchs_sans_rayon:
           format: int64
           type: integer
         matchs_victoire:
@@ -25725,10 +25759,13 @@ components:
             - array
             - "null"
         question:
-          description: 'Lecture : morts | kills | gagne | temps. Defaut : morts. « temps » (occupation) exige film.replay_artifact.'
+          description: 'Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. « temps », « routes » et « isole » exigent film.replay_artifact.'
           type: string
         qui:
           description: 'Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers.'
+          type: string
+        spawn:
+          description: 'Identifiant d''une grappe de reapparition (champ grappes[].id) : restreint l''univers aux matchs dont MA premiere vie en part. Vide = aucune restriction.'
           type: string
       type: object
     TeamHold:

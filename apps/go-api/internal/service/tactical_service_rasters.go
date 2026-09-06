@@ -82,24 +82,34 @@ func (s *tacticalRasterStore) Charger(_ context.Context, matchID string) (*domai
 
 // ─── LA LECTURE ────────────────────────────────────────────────────────────────
 
-// rasterOccupation orchestre la lecture « ou je passe mon temps » : sa porte, son
-// univers, sa somme, son journal.
+// rasterArtefact orchestre les TROIS lectures qui viennent des sidecars — « ou je passe
+// mon temps », « par ou je sors du spawn », « ou je meurs isole » — plus les GRAPPES de
+// reapparition, qui accompagnent les trois.
 //
-// ELLE NE PASSE PAS PAR `KillPositions` (contrairement aux trois autres questions) : ses
+// ELLE NE PASSE PAS PAR `KillPositions` (contrairement aux lectures de placement) : ses
 // valeurs ne viennent pas de la base, seulement son univers. Scanner les positions de kill
-// de toute la carte pour en jeter le resultat aurait ete payer la lecture qu'on ne fait
-// pas.
-func (s *TacticalService) rasterOccupation(ctx context.Context, out *domain.TacticalRaster,
+// de toute la carte pour en jeter le resultat aurait ete payer la lecture qu'on ne fait pas.
+func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.TacticalRaster,
 	scope domain.TacticalScope) error {
 	if !s.caps.Has(games.CapFilmReplayArtifact) {
-		s.logger.WarnContext(ctx, "tactique: occupation indisponible — le titre ne produit pas d'artefact de rejeu",
-			"player", s.xuid, "map_id", out.MapID, "capability", string(games.CapFilmReplayArtifact))
+		s.logger.WarnContext(ctx, "tactique: lecture d'artefact indisponible — le titre ne produit pas d'artefact de rejeu",
+			"player", s.xuid, "map_id", out.MapID, "question", out.Question,
+			"capability", string(games.CapFilmReplayArtifact))
+		return games.ErrCapabilityNotSupported
+	}
+	if s.rasters == nil {
+		// DEFAUT DE CABLAGE, PAS UN ETAT DE TITRE : la capability est declaree, mais aucun
+		// lecteur de sidecars n'a ete injecte. Il se dit fort, et la lecture degrade
+		// proprement plutot que de rendre une carte vide qui se lirait « il ne se passe
+		// rien ici ».
+		s.logger.ErrorContext(ctx, "tactique: lecture d'artefact demandee sans lecteur de sidecars cable",
+			"player", s.xuid, "map_id", out.MapID, "question", out.Question)
 		return games.ErrCapabilityNotSupported
 	}
 	debut := time.Now()
 	univers, err := s.repo.Univers(ctx, requeteDuScope(s.xuid, out.MapID, scope))
 	if err != nil {
-		s.logger.ErrorContext(ctx, "tactique: univers de l'occupation en echec",
+		s.logger.ErrorContext(ctx, "tactique: univers de la lecture d'artefact en echec",
 			"player", s.xuid, "map_id", out.MapID, "err", err)
 		return err
 	}
@@ -107,49 +117,62 @@ func (s *TacticalService) rasterOccupation(ctx context.Context, out *domain.Tact
 		// SENTINELLE NUE, meme raison que la lecture de placement : le message est publie
 		// tel quel, et y citer la carte distinguerait ce 404 de celui d'un map_id refuse
 		// par la validation du handler.
-		s.logger.InfoContext(ctx, "tactique: carte sans match retenu (occupation)",
-			"player", s.xuid, "map_id", out.MapID, "qui", out.Qui)
+		s.logger.InfoContext(ctx, "tactique: carte sans match retenu (lecture d'artefact)",
+			"player", s.xuid, "map_id", out.MapID, "qui", out.Qui, "question", out.Question)
 		return domain.ErrTacticalCarteInconnue
 	}
-	// MATCHS FILTRES = L'UNIVERS DE CETTE CARTE ; MatchsRetenus (pose par
-	// lectureOccupation) en est le SOUS-ENSEMBLE MESURE — ceux dont le sidecar existe.
+	sidecars, ignores := s.chargerSidecars(ctx, univers, out.MapID)
+
+	// LES GRAPPES SE CALCULENT AVANT LE FILTRE DE SPAWN, sur l'univers ENTIER : ce sont
+	// elles que la page propose, et une liste qui se reduirait a la grappe deja choisie
+	// enfermerait l'utilisateur dans sa selection.
+	out.Grappes = grappesDeLUnivers(ctx, sidecars, s.xuid, s.zonesDeLaCarte(ctx, out.MapID))
+	if scope.Spawn != "" {
+		univers, sidecars = restreindreAuSpawn(univers, sidecars, s.xuid, scope.Spawn, out.Grappes)
+		if len(univers.Matchs) == 0 {
+			s.logger.InfoContext(ctx, "tactique: aucun match parti de cette grappe",
+				"player", s.xuid, "map_id", out.MapID, "spawn", scope.Spawn)
+			return domain.ErrTacticalSpawnInconnu
+		}
+	}
+	// MATCHS FILTRES = L'UNIVERS DE CETTE CARTE (apres le filtre de spawn, qui est un
+	// filtre d'univers) ; MatchsRetenus en est le SOUS-ENSEMBLE MESURE.
 	out.MatchsFiltres = len(univers.Matchs)
-	if err := s.lectureOccupation(ctx, out, univers, scope); err != nil {
+	if err := s.remplirLectureArtefact(ctx, out, univers, sidecars, scope, ignores); err != nil {
 		return err
 	}
 	// LE KPI D'ECHANGE EST CELUI DE LA CARTE, PAS CELUI DE LA QUESTION : il est servi sous
-	// les quatre lectures, avec le meme perimetre (mon camp entier). La couverture
-	// d'evenements, elle, rend 0 ici — l'occupation ne lit aucun journal des morts, et
+	// toutes les lectures, avec le meme perimetre (mon camp entier). La couverture
+	// d'evenements, elle, rend 0 ici — ces lectures ne lisent aucun journal des morts, et
 	// `facesDeLaQuestion` le dit.
 	s.lireLeJournal(ctx, out, scope)
-	s.logger.InfoContext(ctx, "tactique: lecture d'occupation",
-		"player", s.xuid, "map_id", out.MapID, "qui", out.Qui,
+	s.logger.InfoContext(ctx, "tactique: lecture d'artefact",
+		"player", s.xuid, "map_id", out.MapID, "question", out.Question, "qui", out.Qui,
+		"spawn", scope.Spawn, "grappes", len(out.Grappes),
 		"matchs_filtres", out.MatchsFiltres, "matchs_retenus", out.MatchsRetenus,
+		"matchs_sans_rayon", out.MatchsSansRayon,
 		"coequipiers", len(scope.Coequipiers), "cellules", len(out.Cellules),
 		"duration", time.Since(debut))
 	return nil
 }
 
-// lectureOccupation remplit `out` avec la somme des sidecars de l'univers.
-//
-// LE DENOMINATEUR EST LE NOMBRE DE MATCHS MESURES, c'est-a-dire ceux dont le sidecar est
-// present ET exploitable. Il est passe a `RasteriseComptes` comme univers, exactement
-// comme les points le sont pour les trois autres lectures : un match mesure dont la cible
-// n'a produit aucune cellule est un zero LEGITIME et compte au denominateur.
-func (s *TacticalService) lectureOccupation(ctx context.Context, out *domain.TacticalRaster,
-	univers domain.TacticalUnivers, scope domain.TacticalScope) error {
-	if s.rasters == nil {
-		// DEFAUT DE CABLAGE, PAS UN ETAT DE TITRE : la capability est declaree, mais
-		// aucun lecteur de sidecars n'a ete injecte. Il se dit fort, et la lecture
-		// degrade proprement plutot que de rendre une carte vide qui se lirait
-		// « il ne se passe rien ici ».
-		s.logger.ErrorContext(ctx, "tactique: occupation demandee sans lecteur de sidecars cable",
-			"player", s.xuid, "map_id", out.MapID)
-		return games.ErrCapabilityNotSupported
+// zonesDeLaCarte rend les callouts de la carte, ou rien. Un magasin non cable est un titre
+// sans catalogue : les grappes sortent MUETTES, la lecture reste servie.
+func (s *TacticalService) zonesDeLaCarte(ctx context.Context, mapID string) []domain.ZoneNommee {
+	if s.callouts == nil {
+		return nil
 	}
-	dans := cible(univers.Equipes, out.Qui, s.xuid, scope.Coequipiers)
-	mesures := make([]string, 0, len(univers.Matchs))
-	comptes := make([]tactical.CompteCellule, 0, len(univers.Matchs)*32)
+	return s.callouts.ZonesDeLaCarte(ctx, mapID)
+}
+
+// chargerSidecars lit UNE FOIS les sidecars de l'univers et rend, avec eux, le total des
+// points ecartes a la cuisson.
+//
+// Les trois lectures d'artefact et les grappes s'en servent : les charger par lecture aurait
+// relu les memes fichiers jusqu'a quatre fois par requete.
+func (s *TacticalService) chargerSidecars(ctx context.Context, univers domain.TacticalUnivers,
+	mapID string) (map[string]*domain.TacticalRasterSidecar, int) {
+	out := make(map[string]*domain.TacticalRasterSidecar, len(univers.Matchs))
 	ignores := 0
 	for _, m := range univers.Matchs {
 		sc, err := s.rasters.Charger(ctx, m.MatchID)
@@ -157,28 +180,133 @@ func (s *TacticalService) lectureOccupation(ctx context.Context, out *domain.Tac
 			// Sidecar present mais illisible : signale PUIS degrade en « non mesure ».
 			// Une erreur avalee ferait passer un fichier corrompu pour une absence.
 			s.logger.ErrorContext(ctx, "tactique: sidecar de raster illisible",
-				"player", s.xuid, "map_id", out.MapID, "match_id", m.MatchID, "err", err)
+				"player", s.xuid, "map_id", mapID, "match_id", m.MatchID, "err", err)
 			continue
 		}
 		if !s.sidecarExploitable(ctx, sc, m.MatchID) {
 			continue
 		}
-		mesures = append(mesures, m.MatchID)
-		// LES POINTS IGNORES VIENNENT DU FICHIER, ils ne se recalculent pas : la somme
-		// part de comptes deja groupes par cellule, et un point ecarte n'a jamais eu de
-		// cellule. Ils sont comptes PAR MATCH MESURE — un sidecar qu'on n'a pas retenu ne
-		// doit pas alourdir la statistique d'un decodage qu'on n'a pas lu.
+		// LES POINTS IGNORES VIENNENT DU FICHIER, ils ne se recalculent pas : la somme part
+		// de comptes deja groupes par cellule, et un point ecarte n'a jamais eu de cellule.
+		// Ils sont comptes PAR MATCH MESURE — un sidecar qu'on n'a pas retenu ne doit pas
+		// alourdir la statistique d'un decodage qu'on n'a pas lu.
 		ignores += sc.PointsIgnores
-		comptes = append(comptes, comptesDuSidecar(sc, m.MatchID, dans)...)
+		out[m.MatchID] = sc
+	}
+	return out, ignores
+}
+
+// restreindreAuSpawn ne garde que les matchs dont la PREMIERE vie du joueur part de la
+// grappe demandee.
+//
+// LE FILTRE PORTE SUR L'UNIVERS, PAS SUR LES POINTS PEINTS : garder au denominateur des
+// matchs partis d'un autre spawn ferait repondre « je passe peu de temps ici » a une carte
+// ou l'on n'a simplement pas commence.
+func restreindreAuSpawn(univers domain.TacticalUnivers,
+	sidecars map[string]*domain.TacticalRasterSidecar, xuid, spawnID string,
+	grappes []domain.TacticalGrappe) (domain.TacticalUnivers, map[string]*domain.TacticalRasterSidecar) {
+	amas, ok := amasParID(sidecars, xuid, spawnID, grappes)
+	if !ok {
+		return domain.TacticalUnivers{Equipes: univers.Equipes}, nil
+	}
+	garde := matchsDeLaGrappe(sidecars, xuid, amas)
+	out := domain.TacticalUnivers{
+		Matchs:  make([]domain.TacticalMatch, 0, len(garde)),
+		Equipes: univers.Equipes,
+	}
+	filtres := make(map[string]*domain.TacticalRasterSidecar, len(garde))
+	for _, m := range univers.Matchs {
+		if !garde[m.MatchID] {
+			continue
+		}
+		out.Matchs = append(out.Matchs, m)
+		if sc := sidecars[m.MatchID]; sc != nil {
+			filtres[m.MatchID] = sc
+		}
+	}
+	return out, filtres
+}
+
+// amasParID retrouve l'amas COMPLET (avec ses cellules) derriere un identifiant publie.
+//
+// Les grappes publiees ne portent pas leurs cellules — le contrat n'en a pas besoin — mais
+// le filtre, lui, en depend : c'est l'emprise mesuree qui definit l'appartenance, jamais un
+// rayon autour du barycentre. On recalcule donc les amas, ce qui est pur et borne.
+func amasParID(sidecars map[string]*domain.TacticalRasterSidecar, xuid, spawnID string,
+	grappes []domain.TacticalGrappe) (tactical.GrappeSpawn, bool) {
+	connu := false
+	for _, gr := range grappes {
+		if gr.ID == spawnID {
+			connu = true
+			break
+		}
+	}
+	if !connu {
+		return tactical.GrappeSpawn{}, false
+	}
+	points := make([]tactical.PointSpawn, 0, len(sidecars))
+	for matchID, sc := range sidecars {
+		for _, j := range sc.Joueurs {
+			if j.XUID != xuid {
+				continue
+			}
+			for _, sp := range j.Spawns {
+				if sp.PremiereVie {
+					points = append(points, tactical.PointSpawn{MatchID: matchID, X: sp.X, Y: sp.Y})
+				}
+			}
+		}
+	}
+	for _, a := range tactical.GrappesDeSpawn(tactical.GrilleParDefaut(), points, nil) {
+		if a.ID == spawnID {
+			return a, true
+		}
+	}
+	return tactical.GrappeSpawn{}, false
+}
+
+// remplirLectureArtefact somme les sidecars selon la QUESTION posee.
+//
+// LE DENOMINATEUR EST LE NOMBRE DE MATCHS MESURES, c'est-a-dire ceux dont le sidecar est
+// present ET exploitable. Il est passe a `RasteriseComptes` comme univers, exactement comme
+// les points le sont pour les lectures de placement : un match mesure dont la cible n'a rien
+// produit est un zero LEGITIME et compte au denominateur.
+func (s *TacticalService) remplirLectureArtefact(ctx context.Context, out *domain.TacticalRaster,
+	univers domain.TacticalUnivers, sidecars map[string]*domain.TacticalRasterSidecar,
+	scope domain.TacticalScope, ignores int) error {
+	dans := cible(univers.Equipes, out.Qui, s.xuid, scope.Coequipiers)
+	mesures := make([]string, 0, len(univers.Matchs))
+	for _, m := range univers.Matchs {
+		if sidecars[m.MatchID] != nil {
+			mesures = append(mesures, m.MatchID)
+		}
 	}
 	out.MatchsRetenus = len(mesures)
+
+	comptes := make([]tactical.CompteCellule, 0, len(mesures)*32)
+	switch out.Question {
+	case domain.TacticalQuestionRoutes:
+		for _, id := range mesures {
+			comptes = append(comptes, comptesDesRoutes(sidecars[id], id, dans)...)
+		}
+	case domain.TacticalQuestionIsole:
+		bilan := s.mesurerIsolement(sidecars, univers, dans, mesures)
+		out.MatchsSansRayon = bilan.MatchsSansRayon
+		out.Isolement = &bilan.Couverture
+		comptes = comptesDesMortsIsolees(tactical.GrilleParDefaut(), bilan.Isolees)
+	default: // domain.TacticalQuestionTemps
+		for _, id := range mesures {
+			comptes = append(comptes, comptesDuSidecar(sidecars[id], id, dans)...)
+		}
+	}
+
 	raster, err := tactical.RasteriseComptes(tactical.GrilleParDefaut(), mesures, comptes)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: somme des rasters en echec",
-			"player", s.xuid, "map_id", out.MapID, "err", err)
+			"player", s.xuid, "map_id", out.MapID, "question", out.Question, "err", err)
 		return fmt.Errorf("tactique: somme des rasters: %w", err)
 	}
-	remplirOccupation(out, raster, ignores)
+	remplirDepuisSidecars(out, raster, ignores)
 	return nil
 }
 
@@ -237,7 +365,7 @@ func comptesDuSidecar(sc *domain.TacticalRasterSidecar, matchID string,
 	return out
 }
 
-// remplirOccupation habille la reponse : cellules EN SECONDES, echelle, cadre.
+// remplirDepuisSidecars habille la reponse : cellules, echelle, cadre.
 //
 // L'ORDRE COMPTE : l'echelle se calcule APRES la conversion, sur les valeurs qui seront
 // peintes. Des quantiles calcules sur des comptes d'echantillons puis affiches en face de
@@ -245,8 +373,14 @@ func comptesDuSidecar(sc *domain.TacticalRasterSidecar, matchID string,
 //
 // LE COMPTE BRUT RESTE EN ECHANTILLONS : c'est la mesure, la seconde n'en est que l'unite
 // de lecture (doctrine « jamais un taux seul » — la valeur est servie AVEC son brut).
-func remplirOccupation(out *domain.TacticalRaster, raster *tactical.Raster, ignores int) {
-	out.Cellules = tactical.EnSecondes(raster.Cellules(), tactical.PasOccupationMs)
+func remplirDepuisSidecars(out *domain.TacticalRaster, raster *tactical.Raster, ignores int) {
+	out.Cellules = raster.Cellules()
+	if out.Question == domain.TacticalQuestionTemps {
+		// SEULE L'OCCUPATION SE LIT EN SECONDES : ses comptes sont des echantillons de
+		// 250 ms. Les routes comptent des PASSAGES et les morts isolees des MORTS — les
+		// convertir en temps leur donnerait une unite qu'elles n'ont pas.
+		out.Cellules = tactical.EnSecondes(out.Cellules, tactical.PasOccupationMs)
+	}
 	out.Echelle = tactical.Echelle(out.Cellules)
 	out.PasM = raster.PasM()
 	out.Bornes = raster.Bornes()

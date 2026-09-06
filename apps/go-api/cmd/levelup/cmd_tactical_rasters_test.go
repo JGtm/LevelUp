@@ -334,3 +334,39 @@ func TestTacticalRasters_Limite(t *testing.T) {
 		t.Fatalf("le troisieme artefact a ete projete malgre --limit 2 (err = %v)", err)
 	}
 }
+
+// TestTacticalRasters_SidecarV2Reecrit — LE PARC EXISTANT EST REECRIT PAR LE RATTRAPAGE.
+//
+// Le schema 3 ajoute les morts, les routes et le spawn de depart : la FORMULE change, donc
+// tout sidecar v2 est perime. C'est le rattrapage qui doit s'en apercevoir — sans quoi la
+// lecture « ou je meurs isole » resterait vide sur tout le corpus deja projete, sans une
+// erreur pour le dire.
+func TestTacticalRasters_SidecarV2Reecrit(t *testing.T) {
+	root := t.TempDir()
+	trPoserArtefacts(t, root, "aaaaaaaa")
+	cible := trSidecarAuBonSchema(t, root, "aaaaaaaa")
+	// Un sidecar de l'ancien schema, projete de l'artefact COURANT : seule sa version de
+	// format le trahit.
+	v2 := `{"schema_version":2,"match_id":"aaaaaaaa","short_id":"aaaaaaaa",
+	  "artifact_schema_version":39,"pas_m":0.5,"frame_interval_ms":100,
+	  "pas_echantillon_ms":250,"points_ignores":0,"joueurs":[]}`
+	if err := os.WriteFile(cible, []byte(v2), 0o644); err != nil {
+		t.Fatalf("ecrire sidecar v2: %v", err)
+	}
+	if _, ok := lireSidecarRaster(context.Background(), cible); ok {
+		t.Fatal("un sidecar v2 a ete lu comme courant : le parc ne serait jamais reecrit")
+	}
+	b := projeterCorpusRasters(context.Background(), &config.AppConfig{RepoRoot: root},
+		trOptions(false), []string{"aaaaaaaa"})
+	if b.ecrits != 1 || b.sautes != 0 {
+		t.Fatalf("passe = %+v, attendu 1 ecrit", b)
+	}
+	relu, ok := lireSidecarRaster(context.Background(), cible)
+	if !ok || relu.SchemaVersion != domain.TacticalRasterSchemaVersion {
+		t.Fatalf("sidecar reecrit = %+v (ok=%v), attendu le schema courant %d",
+			relu, ok, domain.TacticalRasterSchemaVersion)
+	}
+	if len(relu.Joueurs) != 2 {
+		t.Fatalf("sidecar reecrit sans joueurs : %+v", relu)
+	}
+}

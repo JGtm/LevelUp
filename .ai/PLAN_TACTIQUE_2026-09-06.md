@@ -1046,12 +1046,90 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 - **Gate** : projection sur fixture (comptes exacts) ; schema ancien (v20) projete ;
   idempotence ; aucun chemin de la page n'ecrit ni ne cuit ; `no_second_artifact_sink_test`.
 
-### Phase 7 — Occupation, spawns, routes, isolement — APRES LA 6 (le lot lourd)
-- [ ] 7.1 `tracks.go` (250 ms, position tenue) ; 7.2 `spawn.go` (composantes connexes,
-      premieres vies, callouts) ; 7.3 table du rayon de radar + chargeur ; 7.4 `isolation.go`
-      (rayon en parametre, tous-morts exclu) ; 7.5 `dispersion.go` ; 7.6 filtre spawn de
-      depart, lectures routes / isole / temps / gagne ; 7.7 Escouade Synergies : nuage
-      isolement x couverture (quadrants nommes, sessions, taille = morts)
+### Phase 7 — Occupation, spawns, routes, isolement — 7A CLOSE 2026-09-06 (Go + contrat), 7B EN ATTENTE
+> DECOUPEE EN DEUX SOUS-LOTS par le superviseur : **7A** (Go pur + sidecar v3 + service +
+> contrat) est livre et rendu pour revue adversariale ; **7B** (7.7, le nuage Escouade) ne
+> commence qu'apres.
+- [~] 7.1 `tracks.go` — **COUVERT PAR LA PHASE 6** (case 6.0, avancee de la phase 7) et
+      complete par la correction C1 de la revue (6.5.1 : le temps en vehicule, que la coupe
+      des vies a 5 s faisait perdre en silence). Rien a refaire.
+- [x] 7.2 `analysis/tactical/spawn.go` (228 L, PUR) : composantes connexes 8-voisinage,
+      nommage par le callout le plus proche du barycentre, aucun catalogue manuel.
+      **LE PLANCHER PORTE SUR L'AMAS, PAS SUR LA CELLULE**, et c'est la seule lecture qui
+      mesure quelque chose : sur une grille de 0,5 m, trois reapparitions de trois matchs
+      tombent dans trois cellules VOISINES — un plancher par cellule les compterait a un
+      match chacune, et TOUS les spawns du jeu disparaitraient. **L'ID EST UNE POSITION**
+      (barycentre arrondi au decimetre), jamais un rang : un index change des qu'un match
+      entre dans le filtre, et le lien `?spawn=` d'un utilisateur designerait un autre amas.
+      Carte hors catalogue -> grappes MUETTES, jamais un nom de repli.
+- [x] 7.3 Table du rayon de radar : `regulation.toml [radar_range_m]` (schema 6), clé =
+      `game_variant_name` EXACT — la convention des quatre tables voisines, pas celle de
+      `[score_timeline]` (jeton de mode), parce qu'une variante absente doit se taire.
+      18 m Arene / 24 m BTB, source « utilisateur, 2026-09-05 », ecrite dans le fichier.
+      **CHARGEUR REUTILISE** (`mappings.RegulationSet`, accesseurs `RadarRangeM` /
+      `RadarRangeMap`), cable par titre au boot comme `roundsDecide`.
+      **LA VARIANTE VOYAGE AVEC LE MATCH** : `QTacticalUnivers` publie
+      `game_variant_name` et `domain.TacticalMatch` le porte — la regle du mode ne se lit
+      nulle part ailleurs, l'artefact ne la connait pas.
+- [x] 7.4 `analysis/coordination/isolation.go` (80 L, PUR) : rayon PAR MATCH, borne
+      INCLUSIVE (le rayon est la portee du radar : se voir juste a la limite, c'est se
+      voir). Deux exclusions distinctes et COMPTEES — tous coequipiers morts -> hors
+      denominateur ; variante sans rayon -> match hors lecture, `MatchsSansRayon` publie.
+      Types de resultat dans `domain` + liste blanche du ratchet `no_naked_rate_test`.
+- [!] 7.5 `dispersion.go` — **NON TRAITE, decision du superviseur.** Aucune lecture de la V1
+      ne la consomme : la case 7.6 liste routes / isole / temps / gagne, et le §0 arrete six
+      questions dont aucune n'est une dispersion. Le depot interdit le code sans consommateur
+      (CLAUDE.md n 7, « 0 code mort ») : l'ecrire aurait produit un algo teste que personne
+      n'appelle. Verification faite sur pieces avant de statuer — ni le §1, ni le §4, ni le
+      §5 du plan ne la nomment ailleurs que dans cette enumeration.
+- [x] 7.6 Sidecar v3 + les deux lectures + le filtre de spawn.
+      **SIDECAR v3** : morts (instant, position, et la distance a CHAQUE autre joueur nomme
+      VIVANT), routes par vie (15 s, cellules ordonnees, doublons consecutifs fusionnes),
+      `premiere_vie` sur les spawns. Verifie sur pieces AVANT de coder : le document ne
+      publie AUCUNE liste de morts datees par joueur — la seule source hors ligne est la fin
+      d'une vie NOMMEE, et elle est fiable par construction (`replay.nameLivesByDeaths` pose
+      l'identite de la victime sur la vie que sa mort termine ; les survivants restent
+      anonymes). **L'ISOLEMENT SE CALCULE EN DEUX TEMPS** parce que le film ne porte pas les
+      equipes (`Track.Team` = -1) : distances a la cuisson, jointure des camps + rayon du
+      match a la lecture.
+      **LECTURES** `routes` (des PASSAGES, jamais du temps — sans quoi elle rendrait la carte
+      de `temps` bornee a 15 s) et `isole` (raster des morts isolees + `domain.Couverture`),
+      sous la meme porte `film.replay_artifact` et la meme semantique
+      `matchs_filtres`/`matchs_retenus` que `temps`. `temps` et `gagne` inchanges.
+      **FILTRE `spawn`** : filtre d'UNIVERS, pas de points — garder au denominateur les
+      matchs partis d'une autre base ferait repondre « je passe peu de temps ici » a une
+      carte ou l'on n'a pas commence. Les grappes sont calculees a la LECTURE (jamais
+      stockees : elles dependent de l'univers) et la liste servie ne se reduit PAS sous
+      filtre, sinon l'utilisateur serait enferme dans sa selection.
+      **CALLOUTS : AUCUNE SECONDE CASCADE** — `zonesPourIdentites` est extraite de
+      `replay_map_callouts.go` et partagee par le rejeu (par MATCH) et l'onglet (par CARTE,
+      via `MapKeysForMap` pose en phase 4.4). Contrat + `generated.ts` regeneres (additions
+      pures) ; `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` disent que le schema 3 perime les
+      sidecars v2.
+- [ ] 7.7 Escouade Synergies : nuage isolement x couverture — **7B, non commence** (rendu de
+      main pour revue adversariale entre les deux sous-lots).
+- **Gate 7A PASSE le 2026-09-06** (avant-plan, en serie, `GOCACHE=...go-build-tactique`,
+  `CGO_ENABLED=1`). Go : `gofmt` propre ; `go vet ./internal/... ./cmd/...` propre ;
+  `go test -count=1 ./internal/... ./contracttest/... ./cmd/...` : **aucun `FAIL`, code 0** ;
+  **`go test -tags=integration -p 1` sur replayartifacts / persist / scheduler : `ok` x3,
+  CODE 0** ; `golangci-lint --new-from-merge-base=origin/main` : **0 issue** ;
+  `openapi-gen -check` a jour. Web : `typecheck` propre ; **vitest COMPLET 606 fichiers /
+  6405 tests / 14 skip / 0 fail**. `git status` : 0 fichier sous `data/`.
+  **DEUX SEUILS CORRIGES QUE LE RATCHET CI NE VOIT PAS** (meme classe que C8) :
+  `LoadRegulationFromBytes` passait a une complexite de 20 (> 15) — les QUATRE tables
+  d'entiers se validaient pareil, la quatrieme a franchi le seuil, un helper les remplace ;
+  et `domain/tactical.go` passait de 504 a 539 L — « ce que la page publie » descend dans
+  `domain/tactical_page.go`, la coupure que le fichier annoncait deja par un commentaire de
+  section (et que le §7 de la phase 6 avait identifiee).
+  **ONZE MUTATIONS JOUEES.** Grappes : plancher applique a la CELLULE -> deux tests tombent ;
+  4-voisinage -> l'amas diagonal se scinde ; id = rang -> l'identifiant bouge. Isolement :
+  borne exclusive -> la mort a 18 m bascule ; tous-morts compte comme isolee -> denominateur
+  a 2. Service : filtre de spawn perdu dans le scope -> 6 au lieu de 3 ; rayon unique ->
+  la mort de BTB devient isolee ; adversaires comptes comme coequipiers -> la mort isolee
+  disparait ; routes converties en secondes -> valeur au tiers ; reapparitions comptees comme
+  spawns de depart -> 4 grappes au lieu de 2. UNE MUTATION A SURVECU ET LE TEST A ETE
+  CORRIGE : « id = rang » passait parce que l'amas ajoute triait APRES l'original, qui
+  gardait le rang 0 — le second amas est desormais en coordonnees negatives.
 - **Gate** : trajectoires posees a la main ; rayon par match (18/24 dans le meme filtre) ;
   variante absente -> pas de lecture ; tous-morts exclu ; premiere vie seule ; session < 5
   morts exclue ; aucune cuisson.
@@ -1065,6 +1143,7 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **phase 7A CLOSE (Go pur + sidecar v3 + service + contrat) ; 7B rendue pour revue.** La verification sur pieces a decide de toute la forme : le document de rejeu ne publie AUCUNE liste de morts datees par joueur (`neutralDeaths` ne couvre que les morts non revendiquees), si bien que la seule source hors ligne de « ce joueur est mort a cet instant » est la fin d'une vie NOMMEE — fiable par construction, puisque c'est le fil des morts qui pose l'identite de la victime sur la vie que sa mort termine, et que les survivants restent anonymes. Et parce que le film NE PORTE PAS LES EQUIPES, l'isolement se calcule en DEUX TEMPS : la cuisson mesure la distance a chaque autre joueur nomme vivant, la lecture joint les camps et applique le rayon du match. Trois decisions de mesure portent le lot. (1) **Le plancher des grappes porte sur l'AMAS, pas sur la cellule** : a 0,5 m, trois reapparitions de trois matchs tombent dans trois cellules voisines — un plancher par cellule aurait fait disparaitre tous les spawns du jeu. (2) **L'identifiant d'une grappe est une POSITION, pas un rang** : un index change des qu'un match entre dans le filtre, et le lien `?spawn=` d'un utilisateur designerait un autre amas. (3) **Les routes comptent des PASSAGES, pas du temps**, sans quoi elles rendraient la carte de « ou je passe mon temps » simplement bornee a 15 s. Le rayon du radar entre dans `regulation.toml [radar_range_m]` (18 m Arene / 24 m BTB, source utilisateur du 2026-09-05), avec le chargeur existant et la convention de cle des quatre tables voisines ; une variante absente ne rend PAS de lecture et se compte. Deux seuils corriges que le ratchet CI ne peut pas voir — complexite du chargeur (les quatre tables d'entiers se validaient pareil) et `domain/tactical.go` scinde, la coupure que le §7 de la phase 6 avait deja identifiee. Gate complet vert, ONZE mutations jouees, dont une SURVIVANTE corrigee (le test de stabilite de l'identifiant ne prouvait pas ce qu'il annoncait).
 - 2026-09-06 : **revue adversariale ronde 1 de la phase 6 — 14 constats, TOUS corriges** en 4 commits `tactique(6.5.<n>)`. Le P1 qui compte est un defaut de MESURE, pas de code : **le temps passe en vehicule n'entrait nulle part, sur des matchs comptes comme MESURES**. La cuisson coupe une vie des qu'un trou depasse 5 s ; un occupant embarque cesse de repliquer son bipede, et ces episodes durent 13 a 36 s en mediane — le reechantillonnage ne pouvait donc structurellement pas les voir, et l'en-tete justifiait le mecanisme par un cas (« immobile quinze secondes ») que la coupe des vies rend INATTEIGNABLE : doc inversee sur la lacune meme qu'elle masquait. Corrige en ATTRIBUANT sans inventer — pendant un episode l'occupant est a la position du vehicule, un episode sans point de vehicule n'attribue rien, et un embarquement ne cree jamais de spawn. Schema du sidecar 1 -> 2, lacune residuelle (15,6 a 21,1 % des vies attribuees) ECRITE dans le contrat. Les quatre autres P1 disent la meme chose autrement : **un garde qui ne garde pas ce qu'il croit**. Le ratchet anti-cuisson ignorait `SpawnBuildOne`, que la CLI pouvait deja appeler ; le remede que le service PRESCRIT dans son avertissement etait un no-op sur exactement les sidecars qu'il ecartait ; l'echange sous `temps` etait une decision jamais prouvee ; et la ligne de cablage qui fait naitre les sidecars a la cuisson n'etait traversee par aucun test. Une mesure a corrige une croyance au passage : `points_ignores` est structurellement NUL aujourd'hui, `replay.Point` etant en float32 et JSON ne pouvant exprimer aucune valeur non finie — le fait est fige par un test plutot que redecouvert comme un bug. Decision produit prise : un artefact purge emporte son sidecar. Gate complet rejoue (integration `-p 1` sur trois arbres, code 0 ; vitest complet 606/6405/0), VINGT mutations jouees.
 - 2026-09-06 : **phase 6 CLOSE — les rasters d'occupation sont cuits UNE FOIS, la page n'en somme que des fichiers.** Un sidecar par match (`rasters/{short}.json`), depose par la quatrieme projection post-cuisson et rattrape hors ligne par `levelup tactical-rasters --backfill`. Quatre proprietes portent tout le lot. (1) **UN ECHANTILLON = 250 ms DE PRESENCE, PAS UN POINT DE FILM** : le film ne replique une position que lorsqu'elle change assez, donc compter les points bruts aurait mesure le mouvement et non le temps passe ; la fenetre est demi-ouverte, 2 s font huit quarts de seconde. (2) **LE PLANCHER DE RARETE APPARTIENT A L'AGREGAT** : ecrit avec `Cellules()`, un sidecar de match aurait ete vide par construction (une cellule d'un match compte un match distinct) — d'ou `CellulesBrutes()`, la forme qu'on stocke. (3) **UN SIDECAR ABSENT EST UN MATCH NON MESURE**, pas un match a zero : meme regle que le drapeau `Mesure` de la correction G2, appliquee a l'autre substrat, sans quoi l'intensite aurait varie avec la couverture de film au lieu du jeu. (4) **RIEN NE CUIT, ET C'EST GARDE PAR RATCHET** : ni la page ni le rattrapage ne peuvent nommer `replaybuild`/`BuildFromFilm`/`filmcache`, avec self-check par cible. Deux pieges rencontres et fermes sur place : le sous-dossier `rasters/` n'est pas un choix de rangement mais la condition de cohabitation (les deux parcours du dossier d'artefacts ne comptent que les `.json` de premier niveau — a plat, un sidecar aurait ete lu comme un match par `AvailableSet` et supprime par la purge) ; et deux tests existants employaient « temps » comme exemple de question INCONNUE, ce que l'ouverture du vocabulaire a invalide. Gate complet vert, integration `-p 1` comprise (code de sortie 0), suite vitest complete (606 fichiers / 6405 tests / 0 fail), ONZE inversions jouees.
 - 2026-09-06 : **revue adversariale ronde 2 de la phase 4 bis — 3 constats, TOUS corriges** en 1 commit `tactique(4.8)` ; pas de ronde 3. Le P1 est le meme defaut que la ronde 1 avait deja nomme, une couche plus bas : **une copie qui perd la garde de l'original**. La reconciliation des labels de session avait ete reprise de `SquadLayout` SANS son `if (reconciled.length === 0) return` — et cette garde-la ne protege pas d'un zombie, elle protege d'un CHANGEMENT DE CONTEXTE : ajouter un coequipier bascule la liste proposee de « solo » a « escouade », la session epinglee n'y figure plus, et l'ecrire a vide faisait passer la lecture d'une soiree a l'historique entier, en silence. Garde reprise, et la situation est desormais AFFICHEE plutot que muette. Les deux P2 ferment ce que la ronde 1 avait laisse a moitie : une seule definition du motif XUID (+ garde-rail archlint, dont le self-check positif a rattrape un ratchet faux) et une requete d'annuaire qui n'est plus emise quand sa source n'est pas proposee. Gate complet rejoue, trois inversions.
@@ -1376,6 +1455,33 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-06 (phase 7A) — **LA SUITE VITEST A ECHOUE 2 FOIS SUR 7 SANS QUE LE DIFF WEB
+  PUISSE EN ETRE LA CAUSE.** Sept passages complets ont ete joues : cinq verts (606 fichiers,
+  6405 tests, 0 fail), dont les TROIS derniers d'affilee, et deux rouges — le premier a
+  12 fichiers en echec, le second sorti en code 1 sans qu'aucune ligne d'echec n'ait pu etre
+  capturee. Les noms des tests tombes n'ont PAS pu etre releves : les passages de capture
+  suivants sont tous passes. Le seul fichier de `apps/web` touche par ce lot est
+  `generated.ts` (types purs, additions), et `typecheck` est propre — une causalite est donc
+  tres improbable. La duree des passages varie de 220 a 252 s, ce qui evoque une contention
+  de forks sur ce poste. NON TRAITE : rien a corriger sur preuves, et un correctif sans repro
+  serait un fix a l'aveugle. A RAPPROCHER de la decouverte du 2026-09-06 sur l'avertissement
+  React « Hooks order changed » vu en CI et non reproduit — meme famille : instabilite de la
+  suite complete sous charge, jamais reproduite isolement. A surveiller au prochain rouge CI.
+- 2026-09-06 (phase 7A) — **UNE FIXTURE A DDL RECOPIEE AVAIT MANQUE UNE COLONNE DU SCHEMA
+  REEL.** `TestTacticalRepo_TablesAbsentes_Capability` monte un `match_registry` ecrit a la
+  main, sans `game_variant_name` — colonne pourtant presente dans le schema migre (les autres
+  tests du meme fichier, montes par les VRAIES migrations, passent). L'ajout de la variante a
+  l'univers l'a fait tomber. Corrige DANS LE PERIMETRE (la fixture gagne la colonne), mais
+  c'est le piege deja connu du depot : une DDL de test recopiee derive du schema qu'elle est
+  censee doubler, et rien ne le signale tant qu'une requete ne touche pas la colonne
+  manquante. Un lot de dette dediee remplacerait ces fixtures par les migrations reelles.
+- 2026-09-06 (phase 7A) — **LE SPAWN DE DEPART EST LA PREMIERE VIE *NOMMEE*, PAS LA PREMIERE
+  DU FILM.** Une vie que le fil des morts n'a pas nommee n'a pas de porteur, et les premieres
+  vies d'un film sont parfois anterieures au debut reel du match (4 sur 105 sur le film de
+  reference). La borne est donc « la plus precoce que le film sache attribuer ». Consequence :
+  sur un match ou la premiere vie du joueur n'a pas ete appariee, la grappe de depart est
+  celle de sa DEUXIEME vie — indistinguable d'un vrai depart. NON TRAITE : la lacune vient de
+  l'appariement amont, et la mesurer exigerait un compteur que le sidecar ne porte pas.
 - 2026-09-06 (phase 6, revue) — **LE DOCUMENT EST RELU TROIS A QUATRE FOIS PAR ARTEFACT ET
   PAR CYCLE.** Les quatre projections post-cuisson (T0 du film, resume d'usage, stats
   d'Assaut, raster tactique) appellent chacune `lireDocumentRange` sur le MEME fichier —

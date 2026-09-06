@@ -43,6 +43,12 @@ import (
 // `clausePerimetre` : sa longueur depend de l'appel, donc il ne peut pas vivre dans
 // une constante. Ses valeurs sont des PARAMETRES LIES, jamais des litteraux.
 //
+// LA VARIANTE VOYAGE AVEC LE MATCH (ajout 2026-09-06, phase 7) : la portee du radar, qui
+// borne la lecture « ou je meurs isole », est declaree PAR VARIANTE dans `regulation.toml`.
+// Elle ne peut se lire nulle part ailleurs — l'artefact, lui, ne connait pas les regles du
+// mode. `COALESCE(..., ”)` parce qu'un registre peut ne pas la nommer : la lecture ECARTE
+// alors le match et le compte, plutot que de deviner un rayon.
+//
 // LE DRAPEAU `mesure` (ajout 2026-09-06, correction G2) dit si le journal des morts
 // de ce match est LISIBLE : au moins une ligne publiable dans
 // `match_kill_events_latest`. Un match dont le film n'a jamais ete decode — ou dont le
@@ -63,6 +69,7 @@ import (
 // pour Infinite, qui n'a aucun match Campagne au registre).
 const QTacticalUnivers = `
 SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome,
+       COALESCE(mr.game_variant_name, '') AS game_variant_name,
        EXISTS (SELECT 1 FROM match_kill_events_latest e
                WHERE e.match_id = mr.match_id AND e.publishable) AS mesure
 FROM match_registry mr
@@ -136,7 +143,7 @@ func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.
 	}
 	if err := scanRows(ctx, rows, "univers", func(sc rowScanner) error {
 		var m domain.TacticalMatch
-		if err := sc.Scan(&m.MatchID, &m.Outcome, &m.Mesure); err != nil {
+		if err := sc.Scan(&m.MatchID, &m.Outcome, &m.GameVariantName, &m.Mesure); err != nil {
 			return err
 		}
 		univ.Matchs = append(univ.Matchs, m)

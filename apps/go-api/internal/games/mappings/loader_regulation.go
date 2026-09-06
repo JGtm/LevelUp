@@ -41,6 +41,13 @@ type RegulationSet struct {
 	// de dénominateur, donc aucune jauge de progression — jamais une jauge au jugé.
 	// Consommateur : le constructeur d'artefact (ScoreTimeline.HoldTicksPerPoint).
 	holdTicks map[string]int
+	// radarRange : game_variant_name → PORTEE DU RADAR en metres, c'est-a-dire la distance
+	// a laquelle deux joueurs se voient sur le radar du jeu. Meme doctrine que les quatre
+	// tables ci-dessus : valeur arretee et datee, variante inconnue → PAS DE LECTURE. Elle
+	// borne l'isolement (« mourir sans coequipier a portee ») : un rayon devine rendrait une
+	// mesure d'apparence normale sur une regle de jeu qu'on n'a pas etablie.
+	// Consommateur : le service Tactique (lecture « ou je meurs isole »).
+	radarRange map[string]int
 	// scoreTimeline : JETON DE MODE → comment le score se montre dans le temps
 	// (`hidden` / `events` / `curve`). Contrairement aux quatre tables ci-dessus, la clé
 	// n'est PAS un game_variant_name mais un jeton de mode apparié comme dans
@@ -81,6 +88,7 @@ type regulationTOML struct {
 	Targets       map[string]int    `toml:"score_target"`
 	RoundsDecide  map[string]bool   `toml:"rounds_decide"`
 	HoldTicks     map[string]int    `toml:"hold_ticks_per_point"`
+	RadarRange    map[string]int    `toml:"radar_range_m"`
 	ScoreTimeline map[string]string `toml:"score_timeline"`
 }
 
@@ -102,6 +110,33 @@ func (s *RegulationSet) ScoreTarget(gameVariantName string) (int, bool) {
 	}
 	v, ok := s.targets[strings.TrimSpace(gameVariantName)]
 	return v, ok
+}
+
+// RadarRangeM retourne la PORTEE DU RADAR de la variante, en metres, et true si elle est
+// connue.
+//
+// nil-safe et variante inconnue → (0, false) : l'appelant N'A PAS DE LECTURE pour ce match
+// et doit le dire (jamais un rayon de repli). C'est ce qui distingue « il est mort
+// accompagne » de « on ne sait pas a quelle distance on se voit sur ce mode ».
+func (s *RegulationSet) RadarRangeM(gameVariantName string) (int, bool) {
+	if s == nil {
+		return 0, false
+	}
+	v, ok := s.radarRange[strings.TrimSpace(gameVariantName)]
+	return v, ok
+}
+
+// RadarRangeMap retourne une COPIE de la table complete, pour le câblage par titre (même
+// forme que RoundsDecideMap).
+func (s *RegulationSet) RadarRangeMap() map[string]int {
+	if s == nil {
+		return nil
+	}
+	out := make(map[string]int, len(s.radarRange))
+	for k, v := range s.radarRange {
+		out[k] = v
+	}
+	return out
 }
 
 // HoldTicksPerPoint retourne le nombre de secondes de GARDE qui valent un point sur la
@@ -248,38 +283,26 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 	if doc.Meta.SchemaVersion <= 0 {
 		return nil, fmt.Errorf("%s: [meta].schema_version doit être > 0 (reçu %d)", path, doc.Meta.SchemaVersion)
 	}
-	seconds := make(map[string]int, len(doc.Seconds))
-	for rawName, secs := range doc.Seconds {
-		key := strings.TrimSpace(rawName)
-		if key == "" {
-			return nil, fmt.Errorf("%s: game_variant_name vide", path)
-		}
-		if secs <= 0 {
-			return nil, fmt.Errorf("%s: variante %q : temps réglementaire doit être > 0 (reçu %d)", path, key, secs)
-		}
-		seconds[key] = secs
+	// LES QUATRE TABLES D'ENTIERS SE VALIDENT PAREIL — clé non vide, valeur > 0 — et ce
+	// contrôle vivait en QUATRE exemplaires. La quatrième (la portée du radar, 2026-09-06)
+	// a fait franchir à cette fonction le seuil de complexité : le dépôt impose alors un
+	// helper (CLAUDE.md n°6, « ≤ 2 copies d'un même pattern »). Chaque table garde son nom
+	// de section et son libellé de grandeur, donc ses messages d'erreur restent nominatifs.
+	seconds, err := tableEntiereValidee(path, "regulation_seconds", "temps réglementaire", doc.Seconds)
+	if err != nil {
+		return nil, err
 	}
-	targets := make(map[string]int, len(doc.Targets))
-	for rawName, target := range doc.Targets {
-		key := strings.TrimSpace(rawName)
-		if key == "" {
-			return nil, fmt.Errorf("%s: [score_target] game_variant_name vide", path)
-		}
-		if target <= 0 {
-			return nil, fmt.Errorf("%s: variante %q : cible de victoire doit être > 0 (reçu %d)", path, key, target)
-		}
-		targets[key] = target
+	targets, err := tableEntiereValidee(path, "score_target", "cible de victoire", doc.Targets)
+	if err != nil {
+		return nil, err
 	}
-	holds := make(map[string]int, len(doc.HoldTicks))
-	for rawName, secs := range doc.HoldTicks {
-		key := strings.TrimSpace(rawName)
-		if key == "" {
-			return nil, fmt.Errorf("%s: [hold_ticks_per_point] game_variant_name vide", path)
-		}
-		if secs <= 0 {
-			return nil, fmt.Errorf("%s: variante %q : secondes de garde par point doit être > 0 (reçu %d)", path, key, secs)
-		}
-		holds[key] = secs
+	holds, err := tableEntiereValidee(path, "hold_ticks_per_point", "secondes de garde par point", doc.HoldTicks)
+	if err != nil {
+		return nil, err
+	}
+	radar, err := tableEntiereValidee(path, "radar_range_m", "portée du radar", doc.RadarRange)
+	if err != nil {
+		return nil, err
 	}
 	rounds := make(map[string]bool, len(doc.RoundsDecide))
 	for rawName, decides := range doc.RoundsDecide {
@@ -306,9 +329,33 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 		targets:             targets,
 		roundsDecide:        rounds,
 		holdTicks:           holds,
+		radarRange:          radar,
 		scoreTimeline:       timeline,
 		scoreTimelineTokens: timelineTokens,
 	}, nil
+}
+
+// tableEntiereValidee lit une table `game_variant_name → entier` et la valide : clé non
+// vide après rognage, valeur strictement positive.
+//
+// UNE VALEUR NULLE OU NÉGATIVE EST UNE ERREUR DE CHARGEMENT, JAMAIS UN SILENCE. Chaque
+// grandeur de ce fichier se lit « absent = pas de lecture » ; un zéro, lui, se lirait comme
+// une VALEUR — une portée de radar à 0 ferait « personne n'est jamais à portée », donc
+// « tout le monde meurt isolé », sur une simple faute de frappe.
+func tableEntiereValidee(path, section, grandeur string, brut map[string]int) (map[string]int, error) {
+	out := make(map[string]int, len(brut))
+	for rawName, v := range brut {
+		key := strings.TrimSpace(rawName)
+		if key == "" {
+			return nil, fmt.Errorf("%s: [%s] game_variant_name vide", path, section)
+		}
+		if v <= 0 {
+			return nil, fmt.Errorf("%s: [%s] variante %q : %s doit être > 0 (reçu %d)",
+				path, section, key, grandeur, v)
+		}
+		out[key] = v
+	}
+	return out, nil
 }
 
 // parseScoreTimeline valide la table `[score_timeline]` : jeton non vide, lecture DANS la

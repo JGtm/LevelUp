@@ -114,7 +114,9 @@ go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--titl
 Pass (4) is idempotent: a sidecar is only rewritten when it is missing, when its own
 `schema_version` is no longer current, or when its `artifact_schema_version` no longer
 matches the artifact it was projected from (so, after a re-bake). A second immediate pass
-writes zero files.
+writes zero files. **Sidecar schema 3** adds deaths (with the distance to every other named
+player alive at that instant), spawn-exit routes and the starting-spawn flag: every v2
+sidecar is stale and this pass rewrites it.
 
 Running (3) before (1) is a **silent no-op**: artifacts older than schema 39 carry no
 `bombStats`, so nothing is written and every match lands in the `sans calque` counter. Both
