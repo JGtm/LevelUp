@@ -1,3 +1,50 @@
+## [2026-09-06] Instruction des deux pertes de DUREE du corpus temoin — les deux sont des regressions, corrigees (schema 45) — Complete
+
+**Le mandat.** Instruire les deux faits nouveaux isoles par la premiere execution de
+`cmd/replay-corpus-gate` (`.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md` §3.3), tous deux detectes par
+le NOUVEL axe « somme des durees » et par lui seul : (A) `bcb6d393` perd 86 frames de portage de
+drapeau sur 2 joueurs ; (B) `084a804d` perd 68 frames d episodes d equipement SANS perdre
+d episode. Worktree dedie `LevelUp-wt-v2-durees`, branche `feat/v2-durees` basee sur
+`feat/v2-corpus`.
+
+**Decision technique principale.** Les deux faits ont LA MEME RACINE : le decoupage « une track =
+une vie » du schema 36, dont trois consommateurs avaient ete rattrapes au schema 41 et un
+quatrieme au 43. Ceux-ci sont les cinquieme et sixieme, et les premiers que seule une mesure de
+DUREE pouvait reveler. (A) `tracksByXUID` n indexait que les pistes NOMMEES : les 9 dernieres
+prises de `2535429985869093` tombaient dans la vie ANONYME de son slot 536 et sortaient
+`NoTrack` — une vie sans nom est une PRESENCE SANS IDENTITE, pas une absence (meme principe qu au
+schema 43). Correctif : l identite de la piste anonyme vient du PONT CANONIQUE `ResolveSlotXUID`,
+celui qui nomme deja les marques de portage — jamais d une deduction locale, et un slot que le
+pont ne nomme pas reste ecarte. (B) `close` bornait un episode a la vie de recouvrement MAXIMAL :
+un camouflage lu `[3105..3672]` etait publie `[3173..3672]`, son instant d ACTIVATION jete. Le
+camouflage est d ailleurs la CAUSE du trou de replication qui coupe la piste (porteur invisible et
+immobile). Correctif : bornage a l UNION des vies recouvertes (`spanFor`), regle de rejet
+inchangee.
+
+**Resultats observes.** Preuves : memes 1943 et 835 points de part et d autre (seule la
+segmentation change, rien n est perdu a la lecture) ; la vie coupee est ANONYME donc aucune mort
+ne la nomme ; le corps est a 0,55 unite de sa position 5,3 s plus tard ; le canal i28 ne repasse
+jamais a 0. Les deux hypotheses de depart du fait B sont REFUTEES sur pieces (aucun point du slot
+620 assaini — les 9 points perdus sont le fait n° 5 des residus, slot 539 ; aucun gate ajoute
+depuis le 25/08 — `79bf2e6d2` est au contraire le correctif PARTIEL du meme defaut, qui a rendu le
+COMPTE sans la duree). Celle du fait A (« re-attribution entre joueurs, total d equipe inchange »)
+est refutee aussi : le total d equipe baissait. Apres correctif, les deux calques redeviennent
+EGAUX a l artefact du parc element par element (`carries` 16 / `noTrack` 0 / 441-358-96-53 frames
+par joueur ; 21 episodes / 3697 frames, diff d ensemble vide). Corpus complet re-cuit : pertes
+75 -> 55, et les CINQ familles non concernees sont identiques au chiffre pres. Trois tests dont
+deux prouves par mutation et un en contre-epreuve a trois sous-cas. Gates : suite replay +
+replaybuild + replaydiff + archlint + contracttest, integration `api/wire` (`-p 1`), `go build`,
+`golangci-lint --new-from-merge-base=origin/main` 0 issue. Golden regenere, unique ecart = la
+ligne de version (1 sur 606).
+
+**Conclusion / prochaine etape.** `SchemaVersion` 43 -> **45** ; **44 est saute et RESERVE** au lot
+des manches en cours sur une autre branche (a l heure du commit `feat/v75` ne le porte pas encore).
+Les deux entrees du registre passent a CLOS avec leur verdict. Quatre decouvertes notees et NON
+traitees, dont deux qui meritent une decision : l attribution du drapeau a une EQUIPE ne se
+recoupe pas avec la feuille de match sur `bcb6d393` (parc comme HEAD — ce n est pas une
+regression), et aucun inventaire systematique des lecteurs qui supposent encore « un slot = une
+piste nommee » n existe. Journal complet : `.ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md`.
+
 ## [2026-09-05] Integration des branches actives dans l'architecture cuisson-perf — CLOSE, merge feat/v75 — Complete
 
 **Decision technique principale.** Tout ce qui devait rejoindre `feat/v75` a ete rejoue DANS
