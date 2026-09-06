@@ -126,12 +126,27 @@ func TestAucuneTableDeDomainesRecopiee(t *testing.T) {
 // `switch`). Un garde-rail qui exige une allowlist des le premier jour ne tient pas : la bonne
 // borne est le flot, pas une liste.
 //
-// CE QU'IL NE VOIT PAS, ET C'EST ECRIT. (1) Une copie dont les neuf bits seraient repartis entre
-// deux suites imbriquees (`br.Skip(2)` puis `if x { br.ReadBits(7) }`) — c'est le prix de la borne
-// ci-dessus, et aucune des six copies d'origine n'avait cette forme. (2) Une copie qui
-// n'utiliserait pas de lecteur mais l'arithmetique d'offset (`readBitsAt(pay, p+2, 7)`) : la
-// suivre demanderait de suivre la valeur de `p`, et le controle mentirait plus souvent qu'il
-// n'attraperait. Le jour ou l'une des deux apparait, c'est ici qu'elle s'ajoute.
+// CE QU'IL NE VOIT PAS — LISTE OUVERTE, TENUE A JOUR, JAMAIS PRESENTEE COMME COMPLETE. La revue
+// E-R2 a exhibe deux formes d'evasion que la version du 2026-09-06 ne listait pas (D-1) : la prose
+// se donnait pour une enumeration alors qu'elle n'en etait pas une. Ce qui suit est l'etat CONNU
+// des angles morts, et rien de plus — une forme qui n'y figure pas peut exister.
+//
+//  1. UNE COPIE REPARTIE ENTRE DEUX SUITES IMBRIQUEES (`br.Skip(2)` puis
+//     `if x { br.ReadBits(7) }`). C'est le prix de la borne ci-dessus ; aucune des six copies
+//     d'origine n'avait cette forme. NON FERME.
+//  2. UNE COPIE PAR ARITHMETIQUE D'OFFSET, sans lecteur (`readBitsAt(pay, p+2, 7)`). La suivre
+//     demanderait de suivre la valeur de `p`, et le controle mentirait plus souvent qu'il
+//     n'attraperait. NON FERME.
+//  3. UNE OPERATION DE LARGEUR NULLE INTERCALEE (`br.Skip(1); br.ReadBit(); br.Skip(0);
+//     br.ReadBits(7)`) : elle ne consomme aucun bit mais rompait la consecutivite.
+//     **FERME le 2026-09-06** — `opDeLAppel` ne retient plus les operations a zero bit.
+//  4. LE PREAMBULE LU EN UN SEUL COUP PUIS MASQUE (`v := br.ReadBits(9)` puis `v&0x100`, `v&0x7F`).
+//     L'ancre du motif est la lecture de SEPT bits ; une lecture de neuf n'en est pas une. La
+//     fermer demanderait de traiter toute lecture de 9 bits comme suspecte, alors que la largeur
+//     9 n'a rien de propre au preambule — le controle deviendrait bruyant sur des grammaires de
+//     composant. NON FERME, et c'est un arbitrage, pas un oubli.
+//
+// Le jour ou l'une des formes non fermees apparait, c'est ici qu'elle se traite.
 
 // lecteurUniqueDuPreambule est la SEULE fonction autorisee a lire le preambule d'evenement.
 const lecteurUniqueDuPreambule = "readPacketHead"
@@ -269,6 +284,12 @@ func opDeLAppel(fset *token.FileSet, src []byte, n ast.Node) (opBit, string, boo
 	bits, estLecture := bitsConsommes(sel, call.Args)
 	lecteur := nomDuReceveur(sel.X)
 	if !estLecture || lecteur == "" {
+		return opBit{}, "", false
+	}
+	// UNE OPERATION DE LARGEUR NULLE NE ROMPT PAS LA SUITE, parce qu'elle ne consomme rien : un
+	// `br.Skip(0)` glisse entre deux lectures laissait echapper la copie en cassant la
+	// consecutivite (D-1 de la revue E-R2, 2026-09-06). On ne la retient pas du tout.
+	if bits == 0 {
 		return opBit{}, "", false
 	}
 	pos := fset.Position(call.Pos())
