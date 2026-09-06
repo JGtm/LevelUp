@@ -135,26 +135,13 @@ func TestCapabilityLiteralsInFrontAreDeclaredInGo(t *testing.T) {
 
 // orphanCapabilityAllowlist — capabilities Go volontairement NON déclarées par un
 // titre public, ou NON consommées. Chaque entrée est datée + justifiée (règle
-// CLAUDE.md n°11). VIDE au 2026-07-26 : les 21 capabilities sont toutes déclarées
-// par Halo Infinite ou Halo 5, et toutes lues par au moins un consommateur.
+// CLAUDE.md n°11). VIDE au 2026-09-06 : les capabilities déclarées sont toutes
+// accordées par Halo Infinite ou Halo 5, et toutes lues par au moins un consommateur.
 var orphanCapabilityAllowlist = map[string]string{
-	// ENTRÉE TEMPORAIRE, POSÉE LE 2026-09-06 — À RETIRER AU LOT 5, PAS PLUS TARD.
-	//
-	// `weapon_range` est accordée par Halo Infinite et le backend sert déjà son bloc
-	// (`SynthesisPageV2Response.WeaponRange`), mais le SEUL consommateur prévu est le gate
-	// d'affichage `useCapability('weapon_range')` de la section Synthèse, écrit au lot 5
-	// du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md (item 5.5). Le câblage Go est
-	// INCONDITIONNEL par décision du plan (item 4.1) — c'est le repo qui dit « ce titre ne
-	// sait pas faire », pas un `if capability` : il n'y a donc aucun consommateur Go à
-	// écrire, et ce test ne peut voir la capability branchée qu'au lot 5.
-	//
-	// CRITÈRE DE RETRAIT, MESURABLE : dès que `useCapability('weapon_range')` existe dans
-	// apps/web/src, cette entrée devient inutile — le test la signale alors en `t.Logf`
-	// (exception documentée, sans effet) et sa suppression est un no-op. Le lot 5 la
-	// supprime dans le commit qui monte la section.
-	"weapon_range": "consommateur = le gate d'affichage du lot 5 (item 5.5), posé le " +
-		"2026-09-06 ; câblage Go inconditionnel par décision 4.1, donc aucun consommateur " +
-		"Go n'existe. Retrait au lot 5.",
+	// VIDE au 2026-09-06 : l'entrée temporaire `weapon_range`, posée le même jour en
+	// attendant son gate d'affichage, a été retirée par le lot 5 du plan
+	// .ai/PLAN_DUELS_PORTEE_2026-09-06.md — `useCapability('weapon_range')` existe
+	// désormais dans apps/web/src (SynthesisPage.tsx), la capability a son consommateur.
 }
 
 // TestCapabilitiesGrantedByAPublicTitle — toute capability déclarée côté Go doit
