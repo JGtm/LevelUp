@@ -1,6 +1,10 @@
 package replay
 
-import "log/slog"
+import (
+	"log/slog"
+
+	"levelup/go-api/internal/analysis/objectiveevents"
+)
 
 // build_score.go — LE CABLAGE DU CALQUE DE SCORE DANS L'ASSEMBLAGE.
 //
@@ -39,7 +43,32 @@ func attachScoreTimeline(doc *ReplayDocument, in *ScoreInput, deaths []Death, c 
 	tl, cov := buildScoreTimeline(in, deaths, c)
 	doc.ScoreTimeline = tl
 	logScoreCoverage(matchID, cov, tl)
+	logRoundWindows(matchID, in, cov)
 	return cov
+}
+
+// logRoundWindows publie ce que la confrontation de la MANCHE DECLAREE AU TEMPS a ecarte (cf.
+// objectiveevents/round_windows.go). Un compte NON NUL est le nominal d'un film multi-manche
+// (5 a 27 enregistrements sur les temoins mesures le 2026-09-06).
+//
+// LE SILENCE SUR UN FILM A PLUSIEURS MANCHES EST LUI AUSSI UN SIGNAL, et c'est pour cela qu'il
+// est ecrit : il dit qu'AUCUNE borne n'a pu etre posee, donc que le numero de manche du film ne
+// suit pas l'horloge (trois films du parc : `fb1a1a72`, `72b0a25e`, `a4083bd2`). C'est la
+// condition dans laquelle le controle de chronologie du total peut encore avoir a mordre.
+// Rien n'est publie sur un film mono-manche : il n'a pas de borne de manche.
+func logRoundWindows(matchID string, in *ScoreInput, cov *ScoreCoverage) {
+	if in == nil || len(in.Records) == 0 || cov == nil || cov.Rounds < 2 {
+		return
+	}
+	if n := objectiveevents.ResolveRoundWindows(in.Records).Outliers(in.Records); n > 0 {
+		slog.Info("rejeu : enregistrements hors de la fenetre de leur manche declaree, ecartes",
+			"match_id", matchID, "ecartes", n, "enregistrements", len(in.Records),
+			"manches", cov.Rounds)
+		return
+	}
+	slog.Warn("rejeu : AUCUNE borne de manche posee sur un film a plusieurs manches — le numero "+
+		"de manche ne suit pas l'horloge, les compteurs restent ceux d'avant",
+		"match_id", matchID, "manches", cov.Rounds, "enregistrements", len(in.Records))
 }
 
 // logScoreCoverage journalise ce que le calque a publie — et ce qu'il n'a pas resolu.
