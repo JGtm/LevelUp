@@ -48,8 +48,14 @@ export interface HistogramChartProps {
    * Barres ATTÉNUÉES : montrées, mais hors du périmètre que le graphe compte
    * (ajout 2026-09-06, distribution du délai d'échange de l'escouade).
    *
-   * L'atténuation est une OPACITÉ + un liseré tireté sur la COULEUR DE SÉRIE, jamais
-   * une seconde teinte, et c'est mesuré : aucun token sémantique du dépôt n'est
+   * L'atténuation est une OPACITÉ sur la COULEUR DE SÉRIE — UN seul indice visuel, et
+   * c'est délibéré (correction R2 du 2026-09-06 : la version précédente ajoutait un
+   * liseré tireté que PERSONNE ne voyait, sa couleur étant celle du remplissage et
+   * l'opacité de 0,35 s'appliquant à l'élément entier ; la doc promettait deux indices,
+   * l'écran n'en montrait qu'un). Le SECOND indice n'est pas graphique : c'est le mot,
+   * porté par l'étiquette d'axe et le pied de carte de l'appelant.
+   *
+   * Jamais une seconde teinte, et c'est mesuré : aucun token sémantique du dépôt n'est
    * achromatique dans les QUATRE palettes d'accessibilité (`divergent-neutral` vaut
    * #60A5FA — blue-400 — dans la palette par défaut, et n'est gris que sous
    * okabe-ito / cividis / tol-bright). Prendre un token « neutre » aurait donc peint
@@ -105,8 +111,9 @@ interface BuildOpts {
 }
 
 /**
- * Opacité d'une barre ATTÉNUÉE. Assez basse pour se distinguer d'un coup d'œil d'une
- * barre pleine, assez haute pour rester lisible sur les deux thèmes.
+ * Opacité d'une barre ATTÉNUÉE — le SEUL indice graphique de l'atténuation. Assez basse
+ * pour se distinguer d'un coup d'œil d'une barre pleine, assez haute pour rester lisible
+ * sur les deux thèmes.
  */
 const ATTENUATION_OPACITE = 0.35
 
@@ -144,14 +151,7 @@ export function buildHistogramOption(
     binAttenuated?.(d, i)
       ? {
           value: d.count,
-          itemStyle: {
-            color,
-            opacity: ATTENUATION_OPACITE,
-            borderColor: color,
-            borderWidth: 1,
-            borderType: 'dashed' as const,
-            borderRadius: 2,
-          },
+          itemStyle: { color, opacity: ATTENUATION_OPACITE },
         }
       : d.count,
   )

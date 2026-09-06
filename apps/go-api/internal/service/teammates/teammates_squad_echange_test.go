@@ -182,7 +182,9 @@ func TestBuildSquadEchange_MatriceEcarteHorsRoster(t *testing.T) {
 	}}
 	repo := &mockTacticalRepo{lecture: domain.TacticalKillEvents{
 		Univers: domain.TacticalUnivers{
-			Matchs:  []domain.TacticalMatch{{MatchID: "m1", Outcome: domain.OutcomeWin}},
+			// Mesure: true — ce match porte des kill-events ; l'omettre declarait un
+			// match illisible qui parle, et c'est ce que la correction R2 elimine.
+			Matchs:  []domain.TacticalMatch{{MatchID: "m1", Outcome: domain.OutcomeWin, Mesure: true}},
 			Equipes: equipes,
 		},
 		Events: []domain.KillEvent{
@@ -476,12 +478,87 @@ func TestBuildSquadEchange_DegradationsSilencieuses(t *testing.T) {
 			t.Fatalf("section = %+v, attendue absente", got)
 		}
 	})
-	t.Run("aucun match mesure", func(t *testing.T) {
-		// L'univers connait le match, le journal n'en dit rien : le film a expire.
-		repo := &mockTacticalRepo{lecture: domain.TacticalKillEvents{Univers: universDe("m1")}}
+	t.Run("aucun match lisible", func(t *testing.T) {
+		// L'univers connait le match, mais son film a EXPIRE : le lecteur le rend
+		// `Mesure: false`. C'est ce drapeau — et lui seul — qui dit « illisible »
+		// (correction R2). A ne pas confondre avec un match lisible et MUET, qui lui
+		// compte au denominateur : cf. TestBuildSquadEchange_MesureVientDuDrapeau.
+		univers := domain.TacticalUnivers{Equipes: equipesDeuxContreDeux("m1")}
+		univers.Matchs = []domain.TacticalMatch{{MatchID: "m1", Outcome: domain.OutcomeWin}}
+		repo := &mockTacticalRepo{lecture: domain.TacticalKillEvents{Univers: univers}}
 		if got := svcEchange(repo, capsFiables()).buildSquadEchange(
 			context.Background(), rows, rows, "main", "x_main", mates); got != nil {
-			t.Fatalf("section = %+v, attendue absente (aucun journal sur le perimetre)", got)
+			t.Fatalf("section = %+v, attendue absente (aucun journal lisible)", got)
 		}
 	})
+}
+
+// TestBuildSquadEchange_MesureVientDuDrapeau — CORRECTION R2 (2026-09-06).
+//
+// « Mesure » a UNE definition, celle du lecteur : le drapeau `TacticalMatch.Mesure`
+// (EXISTS + publishable). Compter les match_id presents dans les evenements en etait une
+// SECONDE, qui tombait juste par accident.
+//
+// Les deux cas que le comptage par evenements ne savait pas distinguer :
+//
+//	m1  MESURE et MUET      son journal est lisible, il ne porte simplement aucune mort
+//	                        de mon camp sur ce perimetre. C'est un ZERO LEGITIME : il
+//	                        compte au denominateur « par match ».
+//	m2  ILLISIBLE           film jamais decode, ou expire. Il ne compte pas, meme si un
+//	                        evenement residuel le mentionnait.
+//
+// Le comptage par evenements rendait 1 (seul m3 a des morts) ; le drapeau rend 2.
+func TestBuildSquadEchange_MesureVientDuDrapeau(t *testing.T) {
+	univers := domain.TacticalUnivers{Equipes: equipesDeuxContreDeux("m1", "m2", "m3")}
+	univers.Matchs = []domain.TacticalMatch{
+		{MatchID: "m1", Outcome: domain.OutcomeWin, Mesure: true},  // lisible, aucune mort
+		{MatchID: "m2", Outcome: domain.OutcomeWin, Mesure: false}, // illisible
+		{MatchID: "m3", Outcome: domain.OutcomeWin, Mesure: true},  // lisible, deux morts
+	}
+	repo := &mockTacticalRepo{lecture: domain.TacticalKillEvents{
+		Univers: univers,
+		Events: []domain.KillEvent{
+			{MatchID: "m3", KillerXUID: "x_adv1", VictimXUID: "x_main", TimeMs: 1000},
+			{MatchID: "m3", KillerXUID: "x_Ami", VictimXUID: "x_adv1", TimeMs: 2000},
+		},
+	}}
+	rows := echangeRows("m1", "m2", "m3")
+	got := svcEchange(repo, capsFiables()).buildSquadEchange(context.Background(),
+		rows, rows, "main", "x_main", echangeMates("Ami"))
+	if got == nil {
+		t.Fatal("section attendue, obtenu nil")
+	}
+	if got.MatchsTotal != 3 {
+		t.Errorf("MatchsTotal = %d, want 3 (le filtre en a retenu trois)", got.MatchsTotal)
+	}
+	if got.MatchsMesures != 2 {
+		t.Fatalf("MatchsMesures = %d, want 2 (m1 lisible et muet + m3) — le comptage par "+
+			"evenements rendait 1", got.MatchsMesures)
+	}
+	// Le denominateur « par match » suit le drapeau : 1 echange sur 2 matchs LISIBLES.
+	if len(got.Cellules) != 1 || got.Cellules[0].ParMatch != 0.5 {
+		t.Errorf("par_match = %+v, want 0,5 (1 echange / 2 matchs mesures)", got.Cellules)
+	}
+	if got.Couverture.ParMatch != 0.5 {
+		t.Errorf("couverture par match = %v, want 0,5", got.Couverture.ParMatch)
+	}
+}
+
+// TestBuildSquadEchange_TousIllisibles_SectionOmise : aucun match lisible -> section
+// ABSENTE, meme si des evenements trainent dans la lecture. Le drapeau fait foi ; sous
+// l'ancien comptage, ces evenements auraient suffi a declarer le perimetre mesure.
+func TestBuildSquadEchange_TousIllisibles_SectionOmise(t *testing.T) {
+	univers := domain.TacticalUnivers{Equipes: equipesDeuxContreDeux("m1")}
+	univers.Matchs = []domain.TacticalMatch{{MatchID: "m1", Outcome: domain.OutcomeWin}}
+	repo := &mockTacticalRepo{lecture: domain.TacticalKillEvents{
+		Univers: univers,
+		Events: []domain.KillEvent{
+			{MatchID: "m1", KillerXUID: "x_adv1", VictimXUID: "x_main", TimeMs: 1000},
+		},
+	}}
+	if got := svcEchange(repo, capsFiables()).buildSquadEchange(context.Background(),
+		echangeRows("m1"), echangeRows("m1"), "main", "x_main", echangeMates("Ami"),
+	); got != nil {
+		t.Fatalf("section = %+v, attendue absente (aucun match lisible)", got)
+	}
 }

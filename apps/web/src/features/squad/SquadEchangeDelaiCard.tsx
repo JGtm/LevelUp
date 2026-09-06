@@ -55,7 +55,13 @@ export function SquadEchangeDelaiCard({ echange }: SquadEchangeDelaiCardProps) {
   )
 
   // ATTÉNUATION, pas seconde teinte : les barres hors fenêtre gardent la couleur de
-  // série, en opacité réduite et liseré tireté (les « barres hachurées » du plan).
+  // série et perdent en OPACITÉ — un seul indice graphique.
+  //
+  // Le plan disait « barres hachurées » ; le liseré tireté qui traduisait ce mot n'était
+  // pas visible (même couleur que le remplissage, sous la même opacité globale), et il a
+  // été retiré le 2026-09-06 plutôt que maquillé. LE SECOND INDICE EST LE MOT : chaque
+  // étiquette d'axe concernée porte le suffixe « hors fenêtre », et le pied de carte le
+  // redit. Un indice qu'on lit vaut mieux qu'un indice qu'on prétend peindre.
   //
   // MESURÉ SUR PIÈCES le 2026-09-06 (revue W2) : AUCUN token sémantique du dépôt
   // n'est achromatique dans les quatre palettes. `divergent-neutral` — le candidat

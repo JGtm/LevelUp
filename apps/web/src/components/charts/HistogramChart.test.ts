@@ -91,14 +91,14 @@ describe('buildHistogramOption', () => {
 // ─── BARRES ATTÉNUÉES (correction W2/W5, revue ronde 1 du 2026-09-06) ─────────
 //
 // « Montrées, jamais comptées » : les barres hors périmètre gardent la COULEUR DE
-// SÉRIE et perdent en opacité, avec un liseré tireté. Pas de seconde teinte — aucun
+// SÉRIE et perdent en opacité — UN seul indice graphique. Pas de seconde teinte — aucun
 // token sémantique du dépôt n'est achromatique dans les quatre palettes
 // (`divergent-neutral` vaut blue-400 dans la palette par défaut), et une seconde
 // couleur aurait donc dépendu de la palette pour rester neutre.
 
 interface StyledBar {
   value: number
-  itemStyle: { color?: string; opacity?: number; borderType?: string }
+  itemStyle: { color?: string; opacity?: number }
 }
 
 function barres(opt: unknown): Array<number | StyledBar> {
@@ -121,8 +121,11 @@ describe('buildHistogramOption — binAttenuated', () => {
     expect(typeof data[1]).toBe('number')
     const attenuee = data[2] as StyledBar
     expect(attenuee.value).toBe(2)
+    // L'opacité est le SEUL indice graphique : le liseré tireté qu'assertait cette
+    // ligne n'a jamais été visible (même couleur que le remplissage, sous la même
+    // opacité globale). Cadenasser une promesse que l'écran ne tient pas est pire que
+    // ne rien cadenasser — correction R2 du 2026-09-06.
     expect(attenuee.itemStyle.opacity).toBeLessThan(1)
-    expect(attenuee.itemStyle.borderType).toBe('dashed')
   })
 
   it('n’introduit AUCUNE seconde teinte : la barre atténuée porte la couleur de série', () => {
