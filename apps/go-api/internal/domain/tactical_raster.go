@@ -311,8 +311,12 @@ const (
 // consomme pour nommer ses grappes. Le paquet d'algo en a un type JUMEAU, et c'est voulu —
 // il reste PUR, donc il ne connait aucun port.
 type ZoneNommee struct {
-	Nom  string
-	X, Y float64
+	// NomFR / NomEN : le libelle du lieu dans chaque langue, avec repli sur le nom de
+	// CONCEPTION quand l'un manque. Un nom de lieu vient du catalogue du JEU, pas de
+	// l'i18n du produit : le client ne peut pas le traduire, donc les deux voyagent.
+	NomFR string
+	NomEN string
+	X, Y  float64
 }
 
 // TacticalGrappe est une grappe de reapparition, telle que la page la recoit.
@@ -320,9 +324,12 @@ type TacticalGrappe struct {
 	// ID est STABLE entre deux lectures du meme amas — il est derive du barycentre, jamais
 	// d'un rang. C'est lui que le filtre `spawn` transporte.
 	ID string `json:"id"`
-	// Nom est le callout le plus proche du barycentre. VIDE quand la carte n'a aucune zone
-	// au catalogue : aucun nom n'est invente.
-	Nom string `json:"nom"`
+	// NomFR / NomEN : le callout le plus proche du barycentre, dans chaque langue. VIDES
+	// quand la carte n'a aucune zone au catalogue — aucun nom n'est invente. Le web choisit
+	// selon sa locale : ce sont des noms de LIEU du jeu, que l'i18n du produit ne connait
+	// pas et ne peut pas traduire.
+	NomFR string `json:"nom_fr"`
+	NomEN string `json:"nom_en"`
 	// X, Y : le barycentre, en metres monde.
 	X float64 `json:"x"`
 	Y float64 `json:"y"`

@@ -14,6 +14,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain"
@@ -47,6 +48,11 @@ func (s *tacticalCalloutsStore) ZonesDeLaCarte(ctx context.Context, mapID string
 	}
 	keys, err := s.maps.MapKeysForMap(ctx, mapID)
 	if err != nil {
+		// JAMAIS AVALEE : sans ce journal, des grappes muettes par PANNE de lecture sont
+		// indiscernables de grappes muettes parce que la carte est hors catalogue (revue
+		// P1-4). Les deux se degradent pareil a l'ecran, pas dans les logs.
+		slog.WarnContext(ctx, "tactique: identites de carte illisibles — grappes sans nom",
+			"err", err, "map_id", mapID, "titleSlug", s.titleSlug)
 		return nil
 	}
 	entry, ok := zonesPourIdentites(ctx, s.repoRoot, s.titleSlug, keys)
@@ -56,26 +62,32 @@ func (s *tacticalCalloutsStore) ZonesDeLaCarte(ctx context.Context, mapID string
 	return zonesNommees(entry.Zones)
 }
 
-// zonesNommees projette les zones du catalogue, en preferant le libelle FR.
+// zonesNommees projette les zones du catalogue en gardant LES DEUX LANGUES.
 //
-// L'ORDRE DES REPLIS EST UN CHOIX, ET IL EST DOCUMENTE : FR (la langue du produit), puis EN
-// (le libelle joueur officiel quand le lexique FR ne couvre pas encore le lieu), puis le nom
-// de CONCEPTION. Une zone muette des trois cotes est ECARTEE : elle ne peut nommer personne,
-// et la garder ferait d'elle la « plus proche » d'une grappe qu'elle laisserait sans nom.
+// LE NOM D'UN LIEU N'EST PAS UNE CHAINE D'INTERFACE : il vient du catalogue du jeu, pas de
+// l'i18n du produit, et le client ne peut pas le traduire. Servir une seule langue aurait
+// donc fige la moitie des joueurs sur l'autre. Les deux voyagent, le web choisit (revue P2).
+//
+// LE REPLI EST PAR LANGUE : chacune retombe sur le nom de CONCEPTION quand son libelle
+// manque (le lexique FR ne couvre pas encore tout le vocabulaire Forge). Une zone muette
+// des trois cotes est ECARTEE : elle ne peut nommer personne, et la garder ferait d'elle la
+// « plus proche » d'une grappe qu'elle laisserait sans nom.
 func zonesNommees(zones []replay.CalloutZone) []domain.ZoneNommee {
 	out := make([]domain.ZoneNommee, 0, len(zones))
 	for _, z := range zones {
-		nom := z.FR
-		if nom == "" {
-			nom = z.EN
-		}
-		if nom == "" {
-			nom = z.Name
-		}
-		if nom == "" {
+		fr, en := repliDeNom(z.FR, z.Name), repliDeNom(z.EN, z.Name)
+		if fr == "" && en == "" {
 			continue
 		}
-		out = append(out, domain.ZoneNommee{Nom: nom, X: z.X, Y: z.Y})
+		out = append(out, domain.ZoneNommee{NomFR: fr, NomEN: en, X: z.X, Y: z.Y})
 	}
 	return out
+}
+
+// repliDeNom rend le libelle, ou le nom de conception a defaut.
+func repliDeNom(libelle, conception string) string {
+	if libelle != "" {
+		return libelle
+	}
+	return conception
 }

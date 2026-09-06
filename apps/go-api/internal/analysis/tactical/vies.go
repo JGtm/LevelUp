@@ -145,9 +145,10 @@ func (e echantillonneur) enrichirVies(etat *etatOccupation) {
 		}
 		j, _ := etat.joueur(p.XUID)
 		j.Routes = append(j.Routes, e.routeDeLaVie(p.XUID, points, pos))
-		if m, ok := e.mortDeLaVie(p, points, pos); ok {
-			j.Morts = append(j.Morts, m)
-		}
+		// TOUTE PISTE NOMMEE PRODUIT UNE MORT, sans condition : c'est le NOMMAGE qui le
+		// garantit (cf. la doc de mortDeLaVie), et le filtre `XUID != ""` ci-dessus l'a
+		// deja applique. Un second retour « est-ce bien une mort » serait toujours vrai.
+		j.Morts = append(j.Morts, e.mortDeLaVie(p, points, pos))
 	}
 	for _, j := range etat.parJoueur {
 		sort.Slice(j.Morts, func(a, b int) bool { return j.Morts[a].Frame < j.Morts[b].Frame })
@@ -206,7 +207,7 @@ func (e echantillonneur) routeDeLaVie(xuid string, points []PointPiste, pos posi
 // NOMMEE est donc close par une mort, et un survivant de fin de partie reste anonyme : c'est
 // le filtre `XUID != ""` de `Occupation` qui fait tout le travail.
 func (e echantillonneur) mortDeLaVie(p Piste, points []PointPiste,
-	pos positionsParJoueur) (MortMesuree, bool) {
+	pos positionsParJoueur) MortMesuree {
 	// L'INSTANT DE LA MORT EST LA FIN DE LA VIE. `EndFrame` la porte pour tout artefact
 	// produit par ce depot (`build.go` l'ecrit toujours) ; un artefact qui ne la porterait
 	// pas retombe sur le dernier point, qui est la MEME valeur — ce n'est pas un garde,
@@ -222,7 +223,7 @@ func (e echantillonneur) mortDeLaVie(p Piste, points []PointPiste,
 		// de bipede connu — ce serait la peindre au point de MONTEE dans le vehicule,
 		// c'est-a-dire inventer un stationnement la ou il y a eu un trajet (revue P0-3).
 		m.PositionInconnue = true
-		return m, true
+		return m
 	}
 	m.X, m.Y = moi.X, moi.Y
 	for _, autre := range pos.xuids {
@@ -240,7 +241,7 @@ func (e echantillonneur) mortDeLaVie(p Piste, points []PointPiste,
 		}
 		m.Voisins = append(m.Voisins, v)
 	}
-	return m, true
+	return m
 }
 
 // finie dit si une position est exploitable (ni NaN ni Inf).

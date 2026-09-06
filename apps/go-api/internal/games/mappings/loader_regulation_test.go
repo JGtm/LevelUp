@@ -444,42 +444,42 @@ func TestScoreTimelineFromRepo(t *testing.T) {
 	}
 }
 
-// TestRadarRangeM — LA PORTEE DU RADAR, ET SON ABSENCE.
+// TestRadarRange_CheminReel — LA TABLE EST LUE COMME LA PRODUCTION LA LIT.
 //
-// Elle borne l'isolement : « un coequipier etait-il a portee ». Une variante absente n'a
-// PAS de rayon de repli — c'est ce refus qui distingue « il est mort accompagne » de « on
-// ne sait pas a quelle distance on se voit sur ce mode ».
-func TestRadarRangeM(t *testing.T) {
+// L'accesseur `RadarRangeM` n'avait AUCUN appelant de production (le service resout par
+// `map[game_variant_name]`) : c'etait du code mort teste, et son rognage de cle donnait
+// l'illusion que le chemin reel rognait aussi. Il est supprime ; ce test porte desormais
+// sur `RadarRangeMap`, la seule sortie que le cablage consomme, ET sur la resolution telle
+// que le service la fait.
+func TestRadarRange_CheminReel(t *testing.T) {
 	set, err := LoadRegulationFromBytes("t.toml", []byte(`
 [meta]
 title_slug = "halo_infinite"
 schema_version = 6
 
 [radar_range_m]
-"Slayer:Arena" = 18
-"BTB:Slayer"   = 24
+"  Slayer:Arena  " = 18
+"BTB:Slayer"       = 24
 `))
 	if err != nil {
 		t.Fatalf("chargement: %v", err)
 	}
-	if m, ok := set.RadarRangeM("Slayer:Arena"); !ok || m != 18 {
-		t.Fatalf("Arene = (%d, %v), attendu (18, true)", m, ok)
+	table := set.RadarRangeMap()
+	// LA CLE EST ROGNEE AU CHARGEMENT : le service resout par `table[variante]` sans
+	// rogner, donc une cle a blancs dans le TOML serait introuvable a l'execution.
+	if m, ok := table["Slayer:Arena"]; !ok || m != 18 {
+		t.Fatalf("table = %v : la cle du TOML n'a pas ete rognee au chargement", table)
 	}
-	if m, ok := set.RadarRangeM("BTB:Slayer"); !ok || m != 24 {
-		t.Fatalf("BTB = (%d, %v), attendu (24, true)", m, ok)
+	if m, ok := table["BTB:Slayer"]; !ok || m != 24 {
+		t.Fatalf("BTB = (%d, %v), attendu 24", m, ok)
 	}
-	// La cle est ROGNEE comme celle des quatre autres tables.
-	if m, ok := set.RadarRangeM("  Slayer:Arena  "); !ok || m != 18 {
-		t.Fatalf("cle avec blancs = (%d, %v), attendu (18, true)", m, ok)
-	}
-	// VARIANTE INCONNUE : pas de rayon, donc pas de lecture.
-	if m, ok := set.RadarRangeM("Husky Raid:CTF"); ok || m != 0 {
-		t.Fatalf("variante inconnue = (%d, %v), attendu (0, false) — jamais un rayon de repli", m, ok)
+	if _, ok := table["Husky Raid:CTF"]; ok {
+		t.Fatal("une variante absente ne doit pas apparaitre dans la table")
 	}
 	// nil-safe, comme tous les accesseurs de ce type.
 	var nul *RegulationSet
-	if m, ok := nul.RadarRangeM("Slayer:Arena"); ok || m != 0 {
-		t.Fatalf("set nil = (%d, %v), attendu (0, false)", m, ok)
+	if nul.RadarRangeMap() != nil {
+		t.Fatal("set nil : attendu une table nulle")
 	}
 }
 
@@ -509,10 +509,26 @@ func TestRadarRangeM_TableLivree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("chargement de la table livree: %v", err)
 	}
-	if m, ok := set.RadarRangeM("Slayer:Arena"); !ok || m != 18 {
-		t.Fatalf("Arene livree = (%d, %v), attendu 18 m", m, ok)
+	table := set.RadarRangeMap()
+	if table["Slayer:Arena"] != 18 {
+		t.Fatalf("Arene livree = %d, attendu 18 m", table["Slayer:Arena"])
 	}
-	if m, ok := set.RadarRangeM("BTB:Slayer"); !ok || m != 24 {
-		t.Fatalf("BTB livre = (%d, %v), attendu 24 m", m, ok)
+	if table["BTB:Slayer"] != 24 {
+		t.Fatalf("BTB livre = %d, attendu 24 m", table["BTB:Slayer"])
+	}
+	// TOUTE VARIANTE CONNUE DES AUTRES TABLES A UNE PORTEE (decision superviseur du
+	// 2026-09-06) : sans cela, une variante parfaitement identifiee par ailleurs sortait de
+	// la lecture « isole » sans que rien ne l'explique.
+	for variante := range set.targets {
+		if table[variante] == 0 {
+			t.Errorf("variante %q connue de [score_target] mais absente de [radar_range_m]",
+				variante)
+		}
+	}
+	for variante := range set.seconds {
+		if table[variante] == 0 {
+			t.Errorf("variante %q connue de [regulation_seconds] mais absente de [radar_range_m]",
+				variante)
+		}
 	}
 }

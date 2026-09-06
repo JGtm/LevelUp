@@ -314,29 +314,65 @@ schema_version = 6
 # on n'a pas établi la règle : c'est exactement le faux positif que ce fichier refuse
 # partout ailleurs.
 #
-# PÉRIMÈTRE — ce qui est volontairement absent : les variantes dont on ne sait pas dire si
-# elles relèvent de l'Arène ou du BTB (Husky Raid, Fiesta sur grande carte...). Ne rien
-# ajouter ici « au jugé ».
+# COUVERTURE — décision superviseur du 2026-09-06 : cette table couvre TOUTES les variantes
+# connues des autres tables de ce fichier. La règle d'affectation est celle de l'utilisateur
+# (2026-09-05) : famille BTB (`BTB:*`, `BTB Heavies:*`, `*:BTB`) = 24 m, tout le reste = 18 m.
+# Un test le vérifie (`TestRadarRangeM_TableLivree`) : une variante identifiée par
+# `score_target` ou `regulation_seconds` et absente d'ici sortirait de la lecture « où je
+# meurs isolé » sans que rien ne l'explique.
+#
+# UNE VARIANTE ABSENTE DE TOUTES LES TABLES RESTE SANS LECTURE : on ne l'ajoute pas « au
+# jugé » ici juste pour combler un trou.
 #
 # Consommation : mappings.RegulationSet.RadarRangeM → wiring par titre → service Tactique
 # → coordination.Isolement (rayon PAR MATCH).
 
 [radar_range_m]
-"CTF:Arena"                   = 18
-"CTF:Arena Neutral Flag"      = 18
-"Team Slayer:Arena"           = 18
-"Slayer:Arena"                = 18
-"Slayer:Arena Super Fiesta"   = 18
-"Slayer:Arena Tactical"       = 18
-"Strongholds:Arena"           = 18
-"Arena:Slayer"                = 18
-"Arena:Team Slayer"           = 18
-"Arena:Oddball"               = 18
-"Ranked:Oddball"              = 18
-"Oddball:Arena"               = 18
-"BTB:Slayer"                  = 24
-"BTB:Team Slayer"             = 24
-"BTB:CTF"                     = 24
-"BTB:Total Control"           = 24
-"BTB:Stockpile"               = 24
-"BTB:Team Snipers"            = 24
+"Arena:CTF"                       = 18
+"Arena:Escalation Slayer"         = 18
+"Arena:Oddball"                   = 18
+"Arena:One Flag CTF"              = 18
+"Arena:Slayer"                    = 18
+"Arena:Strongholds"               = 18
+"Arena:Team Slayer"               = 18
+"Arena:Team Snipers"              = 18
+"Arena:VIP"                       = 18
+"Assault:Neutral Bomb"            = 18
+"Assault:One Bomb"                = 18
+"BTB Heavies:CTF"                 = 24
+"BTB Heavies:Slayer"              = 24
+"BTB Heavies:Total Control"       = 24
+"BTB:CTF"                         = 24
+"BTB:Fiesta CTF"                  = 24
+"BTB:Fiesta Slayer"               = 24
+"BTB:Fiesta Total Control"        = 24
+"BTB:One Flag CTF"                = 24
+"BTB:Slayer"                      = 24
+"BTB:Stockpile"                   = 24
+"BTB:Team Snipers"                = 24
+"BTB:Total Control"               = 24
+"CTF:Arena"                       = 18
+"CTF:Arena Neutral Flag"          = 18
+"CTF:BTB"                         = 24
+"Event:Escalation Slayer"         = 18
+"Fiesta:Slayer"                   = 18
+"Husky Raid:CTF"                  = 18
+"Husky Raid:Super CTF"            = 18
+"KOTH:Arena"                      = 18
+"Oddball:Arena"                   = 18
+"Ranked:CTF"                      = 18
+"Ranked:CTF 3 Captures"           = 18
+"Ranked:King of the Hill"         = 18
+"Ranked:Oddball"                  = 18
+"Ranked:Slayer"                   = 18
+"Ranked:Strongholds"              = 18
+"Slayer:Arena"                    = 18
+"Slayer:Arena Fiesta"             = 18
+"Slayer:Arena Super Fiesta"       = 18
+"Slayer:Arena Tactical"           = 18
+"Strongholds:Arena"               = 18
+"Super Fiesta:Slayer"             = 18
+"Super Husky Raid:CTF"            = 18
+"Tactical:Slayer"                 = 18
+"Team Slayer:Arena"               = 18
+"Team Snipers:Arena"              = 18
