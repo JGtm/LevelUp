@@ -25,6 +25,7 @@ import { MapPerfVsHistoryChart } from './MapPerfVsHistoryChart'
 import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
 import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
 import { SquadAssistPairsTable } from './SquadAssistPairsTable'
+import { SquadEchangeCapCard } from './SquadEchangeCapCard'
 import { SquadEchangeMatrixCard } from './SquadEchangeMatrixCard'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
@@ -111,6 +112,10 @@ export function SquadSynergiesPage() {
 
   return (
     <div className="space-y-4">
+      {/* « Cap du moment » EN TÊTE de l'onglet. La carte se rend d'elle-même sous ses
+          deux seuils (30 morts d'équipe ET 5 points d'écart) : rien à passer ici, et
+          rien du tout à l'écran quand elle n'a rien à dire. */}
+      <SquadEchangeCapCard echange={echange} />
       {/* Graphes toujours montés : ChartCard affiche son état vide (titre +
           message) au lieu de faire disparaître le bloc quand mapBreakdown
           est vide ou sans champs de performance. */}
