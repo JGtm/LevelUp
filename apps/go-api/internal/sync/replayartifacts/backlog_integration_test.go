@@ -304,7 +304,7 @@ func TestCandidatsDerivations_SelectionneLesRangesSansDerives(t *testing.T) {
 	poserArtefact(t, repoRoot, "dejaderi")
 	marquerArtefactCommeDerive(t, repoRoot, "dejaderi")
 
-	work, restant := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
+	work, restant, _ := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
 
 	if restant != 0 {
 		t.Errorf("restant = %d, attendu 0 (trois matchs, un seul candidat)", restant)
@@ -327,7 +327,7 @@ func TestCandidatsDerivations_ConvergeApresDerivation(t *testing.T) {
 	poserArtefact(t, repoRoot, "unmatch1")
 	d := depsRattrapage(repoRoot, 0)
 
-	work, _ := candidatsDerivations(context.Background(), db, d)
+	work, _, _ := candidatsDerivations(context.Background(), db, d)
 	if len(work) != 1 {
 		t.Fatalf("cycle 1 : %d candidat(s), attendu 1", len(work))
 	}
@@ -337,7 +337,7 @@ func TestCandidatsDerivations_ConvergeApresDerivation(t *testing.T) {
 	marquerDerivations(context.Background(), &bilanDerivations{},
 		lireArtefacts(context.Background(), d, work))
 
-	work2, restant := candidatsDerivations(context.Background(), db, d)
+	work2, restant, _ := candidatsDerivations(context.Background(), db, d)
 	if len(work2) != 0 || restant != 0 {
 		t.Fatalf("cycle 2 : %d candidat(s) et %d restant(s), attendu 0 et 0 — le rattrapage "+
 			"ne converge pas, il rejouerait les mêmes artefacts à chaque cycle", len(work2), restant)
@@ -356,7 +356,7 @@ func TestCandidatsDerivations_PlafondEtRestant(t *testing.T) {
 		poserArtefact(t, repoRoot, id)
 	}
 
-	work, restant := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
+	work, restant, _ := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
 
 	if len(work) != maxPerCycle {
 		t.Errorf("lot = %d, attendu le plafond %d", len(work), maxPerCycle)
@@ -375,7 +375,7 @@ func TestCandidatsDerivations_ArtefactPerimeEstDeriveTelQuel(t *testing.T) {
 	inscrireAuRegistre(t, db, "perimeee", time.Now().UTC().Add(-time.Hour), 0)
 	poserArtefactPerime(t, repoRoot, "perimeee")
 
-	work, _ := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
+	work, _, _ := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
 	if len(work) != 1 || work[0].MatchID != "perimeee" {
 		t.Fatalf("candidats = %+v, attendu l'artefact périmé (dérivé tel quel, JAMAIS re-cuit ici)", work)
 	}
@@ -486,4 +486,59 @@ func racineAvecConfigDuTitre(t *testing.T, slug string) string {
 		t.Fatalf("copie de config/titles/%s: %v", slug, err)
 	}
 	return racine
+}
+
+// TestRattraperDerivations_HorizonIllisible_NePubliePasLaJauge — constat N3 de la revue A-R2.
+//
+// `lireHorizonRegistre` journalise et rend `nil` quand la lecture echoue (contexte annule ou
+// expire, requete en erreur) : `restant` valait alors 0, et la jauge publiait « tout est
+// derive » sur un cycle qui n'avait RIEN LU. C'est l'ambiguite exacte que le commentaire de la
+// jauge dit fermer.
+//
+// LE `defer` DE C2 A RENDU CE CAS COURANT : avant, un cycle au contexte annule sortait de `Run`
+// sur la selection vide sans jamais atteindre le rattrapage ; il y passe desormais a tous les
+// coups.
+//
+// METHODE : une valeur SENTINELLE est publiee avant le cycle. Si la jauge est republiee, elle
+// est ecrasee — c'est ce qui distingue « pas publiee » de « publiee a zero », que
+// `LoadCounter` seul ne saurait pas separer.
+func TestRattraperDerivations_HorizonIllisible_NePubliePasLaJauge(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := racineAvecConfigDuTitre(t, titlePkg.DefaultSlug)
+	const sentinelle = 7
+	observability.SetIntT(titlePkg.DefaultSlug, JaugeDerivationsRetard, sentinelle)
+
+	ctx, annuler := context.WithCancel(context.Background())
+	annuler()
+	d := Deps{
+		RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug, Gamertag: "testeur",
+		WithRead: func(_ context.Context, _ string, fn func(*sql.DB)) { fn(db) },
+	}
+	rattraperDerivations(ctx, d)
+
+	if got := observability.LoadCounterT(titlePkg.DefaultSlug, JaugeDerivationsRetard); got != sentinelle {
+		t.Fatalf("jauge = %d apres un cycle dont l'horizon est ILLISIBLE, attendu %d (inchangee) "+
+			"— publier 0 revient a dire « tout est derive » sur un cycle qui n'a rien lu "+
+			"(constat N3)", got, sentinelle)
+	}
+}
+
+// TestRattraperDerivations_HorizonLu_PublieLaJauge — la contre-epreuve : un cycle qui a bien lu
+// publie la jauge, MEME A ZERO. Sans elle, « ne pas publier sur echec » degenererait en « ne
+// jamais publier », et l'etape redeviendrait muette.
+func TestRattraperDerivations_HorizonLu_PublieLaJauge(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := racineAvecConfigDuTitre(t, titlePkg.DefaultSlug)
+	observability.SetIntT(titlePkg.DefaultSlug, JaugeDerivationsRetard, 7)
+
+	d := Deps{
+		RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug, Gamertag: "testeur",
+		WithRead: func(_ context.Context, _ string, fn func(*sql.DB)) { fn(db) },
+	}
+	rattraperDerivations(context.Background(), d)
+
+	if got := observability.LoadCounterT(titlePkg.DefaultSlug, JaugeDerivationsRetard); got != 0 {
+		t.Fatalf("jauge = %d sur un registre VIDE effectivement lu, attendu 0 — la jauge doit "+
+			"etre publiee meme a zero", got)
+	}
 }

@@ -167,17 +167,26 @@ func positionsDeLaTrajectoire(t *replay.Track, cadenceMS int) []persist.PlayerPo
 // vol. Un `port.ReplayFactsRepo`, pas une requete de plus : c'est deja LE lecteur de « ce que
 // la base sait du match » pour le rejeu, camps compris.
 //
-// Rend le nombre de lignes effectivement situees — c'est ce que le journal publie. Une lecture
-// qui echoue degrade CE match seul : ses positions restent a [EquipeInconnue], ce qui vaut
-// exactement ce qu'elles valaient avant.
-func appliquerEquipes(ctx context.Context, db *sql.DB, prets []passePositionsPrete) int {
+// Rend le nombre de lignes effectivement situees — c'est ce que le journal publie.
+//
+// UNE LECTURE QUI ECHOUE EST UN ECHEC DE LA FAMILLE POUR CE MATCH (constat N1 de la revue
+// A-R2), pas une simple degradation silencieuse. Les positions partent bien en base a
+// [EquipeInconnue] — mieux vaut des positions sans camp que rien —, mais le match entre au
+// [bilanDerivations] : sans cela la marque se posait, `DerivationsUpToDate` rendait `true`, le
+// rattrapage excluait le match, et son equipe etait perdue DEFINITIVEMENT jusqu'au prochain
+// bump de `DerivationsRev`. C'est la classe de defaut que le constat C1 a fermee, et elle se
+// rouvrait ici par un autre chemin.
+func appliquerEquipes(ctx context.Context, db *sql.DB, b *bilanDerivations,
+	prets []passePositionsPrete) int {
 	var repo port.ReplayFactsRepo = duckdbpkg.NewReplayFactsRepo(db)
 	situees := 0
 	for i := range prets {
 		facts, err := repo.FactsForMatch(ctx, prets[i].matchID)
 		if err != nil {
-			slog.WarnContext(ctx, "post-sync: positions — camps illisibles, equipes non attribuees",
+			slog.WarnContext(ctx, "post-sync: positions — camps illisibles, equipes non "+
+				"attribuees ; le match reste candidat au rattrapage",
 				"match_id", prets[i].matchID, "err", err)
+			b.echec(prets[i].matchID)
 			continue
 		}
 		equipes := make(map[string]int, len(facts.Players))
@@ -239,7 +248,7 @@ func persisterPositions(ctx context.Context, d Deps, b *bilanDerivations, lus []
 	// L'EQUIPE, AVANT L'ECRITURE ET DANS LE MEME SEGMENT (constat C5) : le film ne la porte
 	// pas, la base si, et le filtre Global / Equipe A / Equipe B de la carte de chaleur ne
 	// s'affiche que si au moins une position en porte une.
-	situees := appliquerEquipes(ctx, db, prets)
+	situees := appliquerEquipes(ctx, db, b, prets)
 	p := persist.NewPlayerPositionsPersister(db)
 	ecrits, echecs, lignes := 0, 0, 0
 	for i := range prets {

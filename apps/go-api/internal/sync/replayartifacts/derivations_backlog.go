@@ -57,13 +57,23 @@ func rattraperDerivations(ctx context.Context, d Deps) {
 	}
 	var candidats []ArtefactRange
 	var restant int
+	var lu bool
 	d.WithRead(ctx, "replay_derivations_backlog", func(sharedDB *sql.DB) {
-		candidats, restant = candidatsDerivations(ctx, sharedDB, d)
+		candidats, restant, lu = candidatsDerivations(ctx, sharedDB, d)
 	})
 	titre := ctxkeys.TitleSlug(ctx)
-	// JAUGE PUBLIEE MEME A ZERO : « tout est derive » et « le rattrapage ne tourne pas »
-	// s'ecriraient autrement pareil, c'est-a-dire rien (meme regle que CompteurRetard).
-	observability.SetIntT(titre, JaugeDerivationsRetard, int64(restant))
+	// JAUGE PUBLIEE MEME A ZERO — mais SEULEMENT si l'horizon a ete lu (constat N3 de la revue
+	// A-R2). « Tout est derive » et « le rattrapage ne tourne pas » s'ecriraient autrement
+	// pareil, c'est-a-dire rien (meme regle que CompteurRetard) ; mais publier 0 sur un cycle
+	// qui n'a RIEN LU — contexte annule, requete en erreur — dit « tout est derive » sur une
+	// mesure qui n'existe pas, c'est-a-dire la meme ambiguite a l'envers. La derniere valeur
+	// connue reste alors en place, et le WARN de `lireHorizonRegistre` dit pourquoi.
+	//
+	// LE `defer` DE `Run` (constat C2) A RENDU CE CAS COURANT : avant, un cycle au contexte
+	// annule sortait sur la selection de cuisson vide sans jamais atteindre le rattrapage.
+	if lu {
+		observability.SetIntT(titre, JaugeDerivationsRetard, int64(restant))
+	}
 	if len(candidats) == 0 {
 		return
 	}
@@ -81,8 +91,14 @@ func rattraperDerivations(ctx context.Context, d Deps) {
 //
 // L'ORDRE EST CELUI DU REGISTRE (du plus recent au plus vieux), pour la meme raison que partout
 // ailleurs : ce sont les matchs que l'utilisateur regarde.
-func candidatsDerivations(ctx context.Context, sharedDB *sql.DB, d Deps) (work []ArtefactRange, restant int) {
-	ids := lireHorizonRegistre(ctx, sharedDB, d)
+//
+// `lu` DIT SI L'HORIZON A ETE LU. Faux = la mesure n'existe pas, et le retard rendu ne veut rien
+// dire : l'appelant ne doit alors PAS publier la jauge (constat N3).
+func candidatsDerivations(ctx context.Context, sharedDB *sql.DB, d Deps) (work []ArtefactRange, restant int, lu bool) {
+	ids, lu := lireHorizonRegistre(ctx, sharedDB, d)
+	if !lu {
+		return nil, 0, false
+	}
 	paths := titlePkg.NewPathResolver(d.RepoRoot)
 	for _, id := range ids {
 		p := paths.ReplayArtifactPath(d.TitleSlug, id)
@@ -100,13 +116,18 @@ func candidatsDerivations(ctx context.Context, sharedDB *sql.DB, d Deps) (work [
 		}
 		restant++
 	}
-	return work, restant
+	return work, restant, true
 }
 
 // lireHorizonRegistre rend les identifiants de la queue recente du registre — MEME REQUETE que
 // le rattrapage de cuisson (`requeteQueueRecente`), et c'est voulu : deux requetes pour la meme
 // question auraient diverge au premier ajustement de la fenetre ou du marqueur terminal.
-func lireHorizonRegistre(ctx context.Context, sharedDB *sql.DB, d Deps) []string {
+//
+// LE SECOND RETOUR DIT « J'AI LU », et il n'est pas redondant avec une liste vide : un registre
+// vide et une requete en echec rendent tous deux zero identifiant, mais le premier est une
+// MESURE (rien a rattraper) et le second une ABSENCE de mesure. Sans cette distinction, la
+// jauge de retard publiait « tout est derive » sur un cycle qui n'avait rien lu (constat N3).
+func lireHorizonRegistre(ctx context.Context, sharedDB *sql.DB, d Deps) ([]string, bool) {
 	args := []any{bitFilmAbsent}
 	if d.RetentionMonths > 0 {
 		args = append(args, fenetreRetention(d.RetentionMonths))
@@ -115,7 +136,7 @@ func lireHorizonRegistre(ctx context.Context, sharedDB *sql.DB, d Deps) []string
 		append(args, BacklogHorizon)...)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: rejeu 2D — horizon des derives illisible", "err", err)
-		return nil
+		return nil, false
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -125,12 +146,13 @@ func lireHorizonRegistre(ctx context.Context, sharedDB *sql.DB, d Deps) []string
 		var rawName, mapID sql.NullString
 		if err := rows.Scan(&id, &rawName, &mapID); err != nil {
 			slog.WarnContext(ctx, "post-sync: rejeu 2D — horizon des derives (scan)", "err", err)
-			return out
+			return out, false
 		}
 		out = append(out, id)
 	}
 	if err := rows.Err(); err != nil {
 		slog.WarnContext(ctx, "post-sync: rejeu 2D — horizon des derives (rows)", "err", err)
+		return out, false
 	}
-	return out
+	return out, true
 }
