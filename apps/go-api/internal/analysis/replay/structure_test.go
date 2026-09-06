@@ -810,8 +810,18 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   re-cuire »), pas l'exception du lot P5, qui ne valait que parce qu'aucun artefact 38
 	//   n'existait alors hors témoins de gate.
 	//   Détail : internal/analysis/objectiveevents/slotidentity_rounds.go (CompletedByLines).
-	if SchemaVersion != 40 {
-		t.Fatalf("SchemaVersion = %d, attendu 40 : incrémenter exige une raison écrite ci-dessus "+
+	// v41 — TROIS CALQUES RATTRAPENT « UNE TRACK = UNE VIE » (2026-09-06). Aucun champ ajouté.
+	//   `48cf4905d` a découpé les pistes à `lifeGapUS` ; trois consommateurs supposaient encore
+	//   « un slot = une piste » et ne gardaient que la DERNIÈRE : le nommage des vies fermées
+	//   (`145908d1` : 51 pistes nommées pour 53 slots au pont, 29 tirs sur des pistes anonymes),
+	//   les tractions de grappin (`879a4dba` : 23 accroches lues, 15 tractions publiées) et les
+	//   épisodes de camo/surbouclier (`82f29378` : son unique surbouclier perdu). La version
+	//   monte pour la raison des montées v39/v40 : un artefact 36 à 40 est appauvri sans que sa
+	//   forme le dise, et `backfill-replay` saute un artefact à la version courante.
+	//   Détail : internal/analysis/replay/{closures.go, grapple_lines.go, equipment_episodes.go}
+	//   et .ai/V7.5/v2/INSTRUCTION_REGRESSIONS_2_4.md.
+	if SchemaVersion != 41 {
+		t.Fatalf("SchemaVersion = %d, attendu 41 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
