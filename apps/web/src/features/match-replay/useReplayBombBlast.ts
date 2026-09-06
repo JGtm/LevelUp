@@ -28,7 +28,7 @@ import {
   type BombBlastStyle,
 } from './bombBlastFx'
 import { useCarrierPosAt } from './carrierPosition'
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView } from './replayView'
 import type { ReplayDocumentReady } from './replayNormalize'
 
 export interface BombBlastHookInput {

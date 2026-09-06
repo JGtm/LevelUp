@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView } from './replayView'
 import type { ReplayVipPeriod } from './replayNormalize'
 import { drawVipCrown, vipActiveAt, type VipCrownInput } from './vipCrownLayer'
 

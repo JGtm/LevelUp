@@ -20,7 +20,7 @@ import { useCallback } from 'react'
 import type { FxInk } from './fxInk'
 import type { GrenadeRestFx } from './grenadeFx'
 import { drawGrenadeRestLayer } from './grenadeRestLayer'
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView } from './replayView'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 

@@ -24,7 +24,7 @@ import { useCallback, useMemo } from 'react'
 import { drawFreeSkull, type ObjectiveObjectsInput } from './objectiveObjectsLayer'
 import { skullPresenceAt, skullSocle } from './skullPresence'
 
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView } from './replayView'
 import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from './replayNormalize'
 
 interface UseReplayObjectiveObjectsArgs {

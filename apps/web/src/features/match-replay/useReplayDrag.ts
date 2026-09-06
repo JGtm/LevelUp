@@ -35,8 +35,7 @@
  */
 import { useCallback, useRef, useState, type PointerEvent } from 'react'
 
-import { canvasScale } from './replayLogic'
-import type { CanvasView } from './replayDraw'
+import { type CanvasView, scaleOf } from './replayView'
 import type { ReplayZoom } from './useReplayZoom'
 
 export interface ReplayDrag {
@@ -67,7 +66,7 @@ export function useReplayDrag(zoom: ReplayZoom, view: CanvasView): ReplayDrag {
     (e: PointerEvent<HTMLCanvasElement>) => {
       const from = last.current
       if (!from) return
-      const k = canvasScale(view.bounds, view.width, view.height, view.pad)
+      const k = scaleOf(view)
       if (!(k > 0)) return
       last.current = { x: e.clientX, y: e.clientY }
       zoom.panBy(-(e.clientX - from.x) / k, (e.clientY - from.y) / k)

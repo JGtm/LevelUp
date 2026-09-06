@@ -27,7 +27,7 @@ import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 import { BOMB_DETONATION_STAT } from './bombBlastFx'
 import { drawBombCarrier, type BombCarrierInput } from './bombCarrierLayer'
 import { useCarrierPosAt } from './carrierPosition'
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView } from './replayView'
 import type { ReplayDocumentReady } from './replayNormalize'
 
 interface UseReplayBombCarrierArgs {

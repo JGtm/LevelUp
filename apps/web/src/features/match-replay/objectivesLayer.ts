@@ -37,13 +37,14 @@
  * losange (apparition/socle), doublé d'un anneau pour une livraison — jamais un disque
  * de zone inventé (règle shape.go).
  */
-import type { ReplayBounds, ReplayMapObjectives } from '@/lib/api/types'
+import type { ReplayMapObjectives } from '@/lib/api/types'
 
 import { buildCarrierPosAt } from './carrierPosition'
-import { canvasScale, worldToCanvas, type XY } from './replayLogic'
+import { type XY } from './replayLogic'
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
 import type { ReplayDocumentReady } from './replayNormalize'
+import { type CanvasView, projectTo, scaleOf } from './replayView'
 
 /** Valeur « aucun camp » du team_index — celle du fichier de carte, servie telle quelle. */
 export const OBJECTIVE_TEAM_NEUTRAL = -1
@@ -123,13 +124,6 @@ function unit2D(x: number | undefined, y: number | undefined): XY {
 }
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas, forme de replayDraw). */
-export interface CanvasView {
-  bounds: ReplayBounds
-  width: number
-  height: number
-  pad: number
-}
-
 /** Style du calque : la couleur d'équipe est RÉSOLUE par l'appelant (règle color-tokens). */
 export interface ObjectivesStyle {
   /** Couleur d'un index d'équipe ; -1 (neutre) rend l'encre neutre du thème. */
@@ -155,8 +149,8 @@ export function drawObjectivesLayer(
   view: CanvasView,
   style: ObjectivesStyle,
 ): void {
-  const px = (p: XY) => worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
-  const scale = canvasScale(view.bounds, view.width, view.height, view.pad)
+  const px = (p: XY) => projectTo(view, p)
+  const scale = scaleOf(view)
 
   for (const e of elements) {
     const color = style.colorOfTeam(e.team)
@@ -337,7 +331,7 @@ export function drawObjectivePulses(
     const age = win.frame - p.frame
     if (age < 0 || age > win.hold) continue
     const k = age / Math.max(win.hold, 1)
-    const c = worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
+    const c = projectTo(view, p)
     ctx.strokeStyle = style.colorOfTeam(p.team)
     ctx.lineWidth = 2
     ctx.globalAlpha = reducedMotion ? 0.6 : 0.9 * (1 - k)

@@ -48,9 +48,9 @@ import {
   FLAG_CAPTURE_HOLD_FRAMES,
   type FlagCaptureStyle,
 } from './flagCaptureFx'
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView, projectTo, scaleOf } from './replayView'
 import { buildFlagReturnDrops, drawFlagReturnZones } from './flagReturnZone'
-import { canvasScale, frameToMs, worldToCanvas, type XY } from './replayLogic'
+import { frameToMs, type XY } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 
 /** Le camp d'un drapeau VU DE LA PAGE — `unknown` quand la ligne « moi » manque. */
@@ -223,8 +223,8 @@ export function useReplayFlagCarries({
       drawFlagReturnZones(
         ctx,
         returnDrops,
-        (p) => worldToCanvas(p, view.bounds, view.width, view.height, view.pad),
-        canvasScale(view.bounds, view.width, view.height, view.pad),
+        (p) => projectTo(view, p),
+        scaleOf(view),
         frame,
         { colorOfTeam: inkOfTeam },
       )

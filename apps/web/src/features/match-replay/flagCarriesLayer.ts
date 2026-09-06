@@ -49,9 +49,9 @@
  *
  * AUCUN TEXTE, comme les deux calques voisins : ce qui se dit se dit dans l'infobulle.
  */
-import { worldToCanvas, type XY } from './replayLogic'
+import { type XY } from './replayLogic'
 
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView, projectTo } from './replayView'
 import type { ReplayFlagCarryReady } from './replayNormalize'
 
 /** Les quatre états publiés par `flagCarries[].spans[].state` (schéma 15). */
@@ -257,7 +257,7 @@ export function drawFlagCarries(
   view: CanvasView,
   frame: number,
 ): void {
-  const px = (p: XY) => worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
+  const px = (p: XY) => projectTo(view, p)
   for (const carry of carries) {
     const now = flagSpanAt(carry, frame)
     if (!now) continue
@@ -439,7 +439,7 @@ export function flagAt(
     const now = flagSpanAt(carry, frame)
     if (!now) continue
     const w = flagPointAt(now, frame, layer.posOf)
-    const c = worldToCanvas(w, view.bounds, view.width, view.height, view.pad)
+    const c = projectTo(view, w)
     const cx = c.x + FLAG_OFFSET_X
     const cy = c.y - FLAG_OFFSET_Y - FLAG_POLE_H / 2
     const d = (cx - at.x) * (cx - at.x) + (cy - at.y) * (cy - at.y)

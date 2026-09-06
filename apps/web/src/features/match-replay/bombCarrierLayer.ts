@@ -25,9 +25,9 @@
  * seule sa place change, exactement comme le crâne libre et le crâne porté.
  */
 import { drawBombGlyph } from './bombGlyph'
-import { worldToCanvas, type XY } from './replayLogic'
+import { type XY } from './replayLogic'
 
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView, projectTo } from './replayView'
 import type { ReplayBombCarry } from './replayNormalize'
 
 /** Style du calque : les encres sont RÉSOLUES par l'appelant (règle color-tokens). */
@@ -135,7 +135,7 @@ export function drawBombCarrier(
   for (const c of bombCarrierActiveAt(carries, frame)) {
     const w = layer.posOf(c.xuid, frame)
     if (!w) continue
-    const at = worldToCanvas(w, view.bounds, view.width, view.height, view.pad)
+    const at = projectTo(view, w)
     // La bombe se pose AU-DESSUS du marqueur (celui-ci occupe le point) : le décalage est
     // appliqué ICI, le glyphe partagé ne connaît que son centre.
     drawBombGlyph(ctx, { x: at.x, y: at.y - BOMB_OFFSET_Y }, {
@@ -152,7 +152,7 @@ export function drawBombCarrier(
     // relit pas à l'image courante, la bombe ne suit pas un joueur qui ne la porte plus.
     const w = layer.posOf(ground.xuid, ground.t1)
     if (w) {
-      const at = worldToCanvas(w, view.bounds, view.width, view.height, view.pad)
+      const at = projectTo(view, w)
       drawBombGlyph(ctx, at, {
         ink: layer.style.ink,
         outline: layer.style.outline,

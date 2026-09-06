@@ -20,9 +20,9 @@
  * LE PORTEUR SE RELIT DANS SES TRAJECTOIRES (`posOf`), comme le drapeau : sans position, la
  * couronne ne se dessine pas — elle n'a pas de position propre (elle est TOUJOURS sur le joueur).
  */
-import { worldToCanvas, type XY } from './replayLogic'
+import { type XY } from './replayLogic'
 
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView, projectTo } from './replayView'
 import type { ReplayVipPeriod } from './replayNormalize'
 
 /** Style du calque : l'encre de la couronne est RÉSOLUE par l'appelant (règle color-tokens). */
@@ -102,7 +102,7 @@ export function drawVipCrown(
   for (const p of vipActiveAt(periods, frame)) {
     const w = layer.posOf(p.xuid, frame)
     if (!w) continue
-    const at = worldToCanvas(w, view.bounds, view.width, view.height, view.pad)
+    const at = projectTo(view, w)
     drawCrownGlyph(ctx, at, {
       ink: layer.style.ink,
       alpha: alphaOf(p.closed, frame, layer.style.reducedMotion),

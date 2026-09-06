@@ -22,17 +22,11 @@
  * Pas de React : logique pure + un CanvasRenderingContext2D (même règle que grappleLayer).
  */
 import { familyOf } from './shotEffects'
-import { isAliveAt, positionAt, worldToCanvas } from './replayLogic'
+import { isAliveAt, positionAt } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import { type CanvasView, projectTo } from './replayView'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
-interface CanvasView {
-  bounds: { minX: number; minY: number; maxX: number; maxY: number }
-  width: number
-  height: number
-  pad: number
-}
-
 /** Un tir prêt à marquer : son instant, et la VIE qui le porte. */
 export interface FireMarkEntry {
   /** Frame du tir sur la grille du rejeu. */
@@ -111,7 +105,7 @@ export function drawFireMarks(
     if (!style.colorOfSlot(e.track.slot, style.frame)) continue
     const head = positionAt(e.track.points, style.frame)
     if (!head) continue
-    const c = worldToCanvas(head, view.bounds, view.width, view.height, view.pad)
+    const c = projectTo(view, head)
     const k = style.k
     ctx.strokeStyle = style.ink
     ctx.fillStyle = style.ink

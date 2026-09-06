@@ -42,18 +42,11 @@ import {
   positionAt,
   trackWindow,
   trailAt,
-  worldToCanvas,
   type XY,
 } from './replayLogic'
+import { type CanvasView, projectTo } from './replayView'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
-export interface CanvasView {
-  bounds: { minX: number; minY: number; maxX: number; maxY: number }
-  width: number
-  height: number
-  pad: number
-}
-
 // --- Durées, en frames, converties par l'appelant depuis le temps réel ---------------------
 
 /**
@@ -522,7 +515,7 @@ function corePath(ctx: CanvasRenderingContext2D, c: XY, r: number, shape: Marker
 }
 
 function project(p: XY, view: CanvasView): XY {
-  return worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
+  return projectTo(view, p)
 }
 
 function floorIndex(track: ReplayTrackReady, style: MarkerStyle): number {

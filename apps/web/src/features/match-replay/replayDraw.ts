@@ -5,7 +5,7 @@
  * (replayLogic.ts). Les couleurs arrivent DÉJÀ RÉSOLUES depuis les tokens sémantiques
  * (getSeriesColors / resolveToken) — aucun littéral de couleur ici (règle color-tokens).
  */
-import type { ReplayBounds, ReplayGrenade, ReplayMapObject } from '@/lib/api/types'
+import type { ReplayGrenade, ReplayMapObject } from '@/lib/api/types'
 
 import type { FxInk } from './fxInk'
 import { drawMuzzleFlash } from './muzzleFlash'
@@ -13,17 +13,11 @@ import type { ShotFxEntry } from './shotFx'
 import { drawDeathMarker, drawShotEffect } from './shotEffects'
 import { MELEE_LINK_MAX_M, type KillFxEntry } from './killFx'
 import { drawMeleeStar, meleeStarProgress } from './meleeStar'
-import { altitudeRatio, canvasScale, footprint, worldToCanvas } from './replayLogic'
+import { altitudeRatio, footprint } from './replayLogic'
 import { vehicleShotOrigin, type VehicleMountSpriteSize } from './vehicleWeaponMounts'
+import { type CanvasView, projectTo, scaleOf } from './replayView'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
-export interface CanvasView {
-  bounds: ReplayBounds
-  width: number
-  height: number
-  pad: number
-}
-
 /** Amplitude verticale utilisée pour l'indication d'étage. */
 interface ZRange {
   min: number
@@ -52,7 +46,7 @@ export function drawGeometryLayer(
   view: CanvasView,
   style: GeometryStyle,
 ): void {
-  const scale = canvasScale(view.bounds, view.width, view.height, view.pad)
+  const scale = scaleOf(view)
   ctx.fillStyle = style.color
   for (const o of objects) {
     ctx.globalAlpha =
@@ -62,7 +56,7 @@ export function drawGeometryLayer(
     if (corners.length === 4 && wide) {
       ctx.beginPath()
       corners.forEach((w, i) => {
-        const c = worldToCanvas(w, view.bounds, view.width, view.height, view.pad)
+        const c = projectTo(view, w)
         if (i === 0) ctx.moveTo(c.x, c.y)
         else ctx.lineTo(c.x, c.y)
       })
@@ -70,7 +64,7 @@ export function drawGeometryLayer(
       ctx.fill()
       continue
     }
-    const c = worldToCanvas(o, view.bounds, view.width, view.height, view.pad)
+    const c = projectTo(view, o)
     ctx.fillRect(c.x - OBJECT_MIN_PX / 2, c.y - OBJECT_MIN_PX / 2, OBJECT_MIN_PX, OBJECT_MIN_PX)
   }
   ctx.globalAlpha = 1
@@ -137,7 +131,7 @@ export function drawShotsLayer(
   for (const s of shots) {
     const age = win.frame - s.frame
     if (age < 0 || age > win.hold) continue
-    const c = worldToCanvas(s, view.bounds, view.width, view.height, view.pad)
+    const c = projectTo(view, s)
     const { origin, angle } = vehicleShotOrigin({
       h: s.h, vehicleShot: s.vehicleShot, center: c, sizeOf: style.vehicleSizeOf, k: style.k,
     })
@@ -214,14 +208,14 @@ export function drawKillFxLayer(
     const age = win.frame - e.frame
     if (age < 0 || age > win.hold) continue
     const fade = 1 - age / (win.hold + 1)
-    const c = worldToCanvas(e, view.bounds, view.width, view.height, view.pad)
+    const c = projectTo(view, e)
     const color = (e.slot !== null ? style.colorOfSlot(e.slot, e.frame) : null) ?? style.fallback
     if (e.fam === 'melee') {
       // AU LIEU DE LA MORT : la victime quand elle est relue, l'origine sinon (elle vaut
       // alors la position du tueur, à un pas de corps près — c'est un corps à corps).
       const mort =
         e.deathX !== null && e.deathY !== null
-          ? worldToCanvas({ x: e.deathX, y: e.deathY }, view.bounds, view.width, view.height, view.pad)
+          ? projectTo(view, { x: e.deathX, y: e.deathY })
           : c
       const p = meleeStarProgress(age * win.frameMs, style.reducedMotion)
       if (p !== null) drawMeleeStar(ctx, mort, p, style.k, color)
@@ -230,7 +224,7 @@ export function drawKillFxLayer(
     let angle: number | null = null
     let length = 0
     if (e.vx !== null && e.vy !== null) {
-      const v = worldToCanvas({ x: e.vx, y: e.vy }, view.bounds, view.width, view.height, view.pad)
+      const v = projectTo(view, { x: e.vx, y: e.vy })
       const dx = v.x - c.x
       const dy = v.y - c.y
       const d = Math.hypot(dx, dy)
@@ -364,7 +358,7 @@ export function drawGrenadesLayer(
     const age = win.frame - g.t
     if (age < 0 || age > win.hold) continue
     const fade = 1 - age / Math.max(win.hold, 1)
-    const c = worldToCanvas(g, view.bounds, view.width, view.height, view.pad)
+    const c = projectTo(view, g)
     ctx.globalAlpha = fade
     ctx.beginPath()
     ctx.arc(c.x, c.y, GRENADE_RADIUS, 0, Math.PI * 2)

@@ -27,10 +27,10 @@
  *
  * AUCUN TEXTE, comme les calques voisins : ce qui se dit se dit dans l'infobulle.
  */
-import { worldToCanvas, type XY } from './replayLogic'
+import { type XY } from './replayLogic'
 import { drawSkullGlyph } from './skullGlyph'
 
-import type { CanvasView } from './objectivesLayer'
+import { type CanvasView, projectTo } from './replayView'
 import type { ReplayObjectiveObjectReady } from './replayNormalize'
 
 /** Le rayon de SURVOL : plus généreux que le tracé, comme pour le drapeau. */
@@ -118,7 +118,7 @@ export function drawFreeSkull(
   view: CanvasView,
   rolling: boolean,
 ): void {
-  const p = worldToCanvas(at, view.bounds, view.width, view.height, view.pad)
+  const p = projectTo(view, at)
   drawSkullGlyph(ctx, p, {
     ink: layer.style.ink,
     outline: layer.style.outline,
@@ -147,7 +147,7 @@ export function objectiveObjectHitAt(
   point: XY,
 ): ObjectiveObjectHit | null {
   for (const now of objectiveObjectsAt(lives, frame)) {
-    const at = worldToCanvas(now.at, view.bounds, view.width, view.height, view.pad)
+    const at = projectTo(view, now.at)
     const dx = at.x - point.x
     const dy = at.y - point.y
     if (dx * dx + dy * dy <= OBJECTIVE_OBJECT_HIT_RADIUS * OBJECTIVE_OBJECT_HIT_RADIUS) {

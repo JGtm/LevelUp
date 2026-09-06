@@ -32,7 +32,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 
 import { canvasToWorld } from './replayLogic'
-import type { CanvasView } from './replayDraw'
+import { type CanvasView } from './replayView'
 import type { ReplayZoom } from './useReplayZoom'
 
 /** Le delta cumulé qui vaut un palier. Calé sur un cran de molette classique (~100). */

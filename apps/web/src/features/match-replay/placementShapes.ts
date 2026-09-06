@@ -22,7 +22,7 @@
  */
 import type { ReplayBounds } from '@/lib/api/types'
 
-import { canvasScale, worldToCanvas, type XY } from './replayLogic'
+import { type XY } from './replayLogic'
 import {
   REVEAL_FILL_ALPHA,
   REVEAL_RADIUS_PX,
@@ -31,6 +31,7 @@ import {
   SENSOR_PING_ALPHA,
   SENSOR_SWEEP_MS,
 } from './threatSensor'
+import { projectTo, scaleOf } from './replayView'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 export interface PlacementView {
@@ -42,12 +43,12 @@ export interface PlacementView {
 
 /** project — un point monde vers les pixels du canvas (la chaîne des tracks). */
 export function project(p: XY, view: PlacementView): XY {
-  return worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
+  return projectTo(view, p)
 }
 
 /** viewScale — le facteur pixels par mètre du cadrage courant (0 si le cadrage est dégénéré). */
 export function viewScale(view: PlacementView): number {
-  return canvasScale(view.bounds, view.width, view.height, view.pad)
+  return scaleOf(view)
 }
 
 /**
