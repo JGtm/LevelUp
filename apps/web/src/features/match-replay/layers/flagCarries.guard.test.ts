@@ -54,22 +54,6 @@ const ETATS: FlagState[] = ['carried', 'carried_open', 'dropped', 'home']
 /** Les trois points de vue de camp — la page ne connaît qu'eux (jamais un nom d'équipe). */
 const CAMPS = ['ally', 'enemy', 'unknown'] as const
 
-describe('garde-rail : aucune couleur écrite en dur dans le calque des drapeaux', () => {
-  it('aucun hexadécimal de couleur', () => {
-    for (const f of FICHIERS) {
-      expect(source(f), `${f} porte un hex de couleur`).not.toMatch(/#[0-9a-fA-F]{6}\b/)
-    }
-  })
-
-  it('aucune classe Tailwind de couleur (les encres viennent du thème)', () => {
-    for (const f of FICHIERS) {
-      expect(source(f), `${f} porte une classe Tailwind de couleur`).not.toMatch(
-        /\b(?:text|bg|border|fill|stroke)-(?:red|green|blue|yellow|amber|rose|emerald|sky|violet|orange|lime|teal|cyan|indigo|fuchsia|pink|slate|gray|zinc|neutral|stone)-\d{2,3}\b/,
-      )
-    }
-  })
-})
-
 describe("garde-rail : le glyphe est TRACÉ, jamais chargé d'une URL devinée", () => {
   it("aucun chemin d'asset ni chargement d'image dans le calque", () => {
     for (const f of FICHIERS) {

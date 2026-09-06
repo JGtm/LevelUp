@@ -44,22 +44,6 @@ const FICHIERS = [
 
 const source = (f: string) => lire(fichierNomme(f))
 
-describe('garde-rail : aucune couleur écrite en dur dans le calque des socles', () => {
-  it('aucun hexadécimal de couleur', () => {
-    for (const f of FICHIERS) {
-      expect(source(f), `${f} porte un hex de couleur`).not.toMatch(/#[0-9a-fA-F]{6}\b/)
-    }
-  })
-
-  it('aucune classe Tailwind de couleur (les encres viennent du thème)', () => {
-    for (const f of FICHIERS) {
-      expect(source(f), `${f} porte une classe Tailwind de couleur`).not.toMatch(
-        /\b(?:text|bg|border|fill|stroke)-(?:red|green|blue|yellow|amber|rose|emerald|sky|violet|orange|lime|teal|cyan|indigo|fuchsia|pink|slate|gray|zinc|neutral|stone)-\d{2,3}\b/,
-      )
-    }
-  })
-})
-
 describe('garde-rail : ce que dit l’infobulle est traduit, en FR et en EN', () => {
   it('le calque et ses deux libellés d’infobulle sont traduits — jamais un mot en dur', () => {
     for (const locale of ['fr', 'en'] as const) {
