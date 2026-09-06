@@ -8,6 +8,8 @@ package filmdec
 //	G2 film <-> table   : archetypes, composants ET niveaux de la table = ceux du registre
 //	                      (chunk_00) des films temoins. Garde ECS_TABLE_FILM, SKIP sans film.
 //	G3 table <-> doc    : chaque champ cite en `doc_field` existe dans replay/document.go.
+//	G4 largeurs         : les 179 lignes a `bits_typ` ENTIER, confrontees a la largeur que le
+//	                      deser de production consomme. Zero fixture, toujours joue.
 //
 // Le lecteur du TSV vit ici et non dans un fichier de production : la table n a aucun
 // lecteur applicatif, un `ecs_table.go` serait du code mort.
@@ -30,10 +32,13 @@ const ecsTableFilmEnv = "ECS_TABLE_FILM"
 
 // ecsRow est une ligne de la table. Les colonnes de prose ne servent a aucun controle.
 type ecsRow struct {
-	TI, I      int
-	Component  string
-	Level      uint32
-	Status     string
+	TI, I     int
+	Component string
+	Level     uint32
+	Status    string
+	// BitsTyp est la colonne `bits_typ` quand elle porte un ENTIER, -1 sinon (« variable »,
+	// « inconnu », « 11-30 », vide...). Seul l entier se confronte au code (controle G4).
+	BitsTyp    int
 	CodeSource string
 	DocField   string
 	Notes      string
@@ -77,7 +82,11 @@ func loadECSTable(t *testing.T) []ecsRow {
 			}
 			seen[key] = n + 2
 		}
-		out = append(out, ecsRow{TI: ti, I: i, Component: c[3], Level: uint32(lv), Status: c[5],
+		bits := -1
+		if n, err := strconv.Atoi(c[8]); err == nil {
+			bits = n
+		}
+		out = append(out, ecsRow{TI: ti, I: i, Component: c[3], Level: uint32(lv), Status: c[5], BitsTyp: bits,
 			CodeSource: c[9], DocField: c[10], Notes: c[15], LineNo: n + 2})
 	}
 	for k := 1; k < len(out); k++ {

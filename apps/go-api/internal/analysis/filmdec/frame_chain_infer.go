@@ -73,9 +73,9 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 	if _, preset := unportedStubWidth[name]; preset {
 		return tr, 0, false // an external harness already stubs it; do not fight it
 	}
-	savedPos, savedDP, savedRef := posCaptureHook, dynPrecHook, unitRefHook
-	posCaptureHook, dynPrecHook, unitRefHook = nil, nil, nil
-	defer func() { posCaptureHook, dynPrecHook, unitRefHook = savedPos, savedDP, savedRef }()
+	savedPos, savedRef := posCaptureHook, unitRefHook
+	posCaptureHook, unitRefHook = nil, nil
+	defer func() { posCaptureHook, unitRefHook = savedPos, savedRef }()
 
 	frameLen := len(buf) * 8
 	redecode := func() EntityTrace {
@@ -346,9 +346,9 @@ func (c *chainCtx) chainDelta(br *BitReader, depth, recs int) bool {
 // several archetypes share the winning alignment — the skip is still exact, but the
 // slot must not be soft-bound to an arbitrary pick), the body end bit, and ok.
 func inferChainArchetype(buf []byte, bitpos int, w *World, cfg FrameConfig) (ti uint32, end int, uniqueTi, ok bool) {
-	savedPos, savedDP := posCaptureHook, dynPrecHook
-	posCaptureHook, dynPrecHook = nil, nil
-	defer func() { posCaptureHook, dynPrecHook = savedPos, savedDP }()
+	savedPos := posCaptureHook
+	posCaptureHook = nil
+	defer func() { posCaptureHook = savedPos }()
 
 	frameLen := len(buf) * 8
 	byEnd := map[int][]uint32{}

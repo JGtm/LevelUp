@@ -203,7 +203,7 @@ func (p BipedPosition) VelocityVector() ([3]float32, bool) {
 // recordMaskHook (DEBUG) reçoit, pour chaque record biped ÉMIS, la liste des index de
 // composants de son masque, le payload du paquet et le bit qui suit i0. Sert au
 // diagnostic « quel champ, à quel offset, porte la direction » ; nil en production (même
-// convention que dynPrecHook / repTraceHook). Les appels sont dans le MÊME ordre que les
+// convention que `unitRefHook`). Les appels sont dans le MÊME ordre que les
 // positions renvoyées (filtres de post-traitement mis à part).
 var recordMaskHook func(idx []int, payload []byte, afterI0 int)
 

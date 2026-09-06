@@ -124,54 +124,36 @@ func ScanHeldWeaponChanges(
 	}
 	prevFam, seen := map[key]uint32{}, map[key]bool{}
 	var out []HeldWeaponChange
-	for _, c := range cfg.chunks {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
+	walkDeltaBipedRecords(fc, cfg.chunks, cfg.slots, cfg.lay, func(r deltaBipedRecord) {
+		st.Records++
+		if !heldWeaponMaskHas(r.Mask, cfg.weaponIdx) {
+			return
 		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta {
-				continue
+		st.WithComponent++
+		walkRecordComponents(r.Payload, r.I0, r.Total, r.Mask, cfg.lay, cfg.arch, func(id int) bool {
+			if !cfg.weaponIdx[id] || !last.got {
+				last.got = false
+				return true
 			}
-			pay := pk.Payload(data)
-			total := len(pay) * 8
-			for p := 0; p+cfg.minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, p, total, cfg.slots, true, cfg.lay)
-				if !ok {
-					p++
-					continue
-				}
-				st.Records++
-				if heldWeaponMaskHas(idx, cfg.weaponIdx) {
-					st.WithComponent++
-					walkRecordComponents(pay, i0, total, idx, cfg.lay, cfg.arch, func(id int) bool {
-						if !cfg.weaponIdx[id] || !last.got {
-							last.got = false
-							return true
-						}
-						last.got = false
-						st.Emissions++
-						k := key{slot, id}
-						ch := HeldWeaponChange{
-							TimestampUS: pk.TimestampUS, Chunk: c, Slot: slot, SlotIndex: id,
-							Family: last.high, Low: last.low, Previous: noVariant,
-						}
-						if seen[k] {
-							ch.Previous = prevFam[k]
-							if prevFam[k] == last.high {
-								st.Repeats++
-							}
-						}
-						ch.Kind = classifyHeldWeaponChange(ch, seen[k], spawnSet)
-						out = append(out, ch)
-						seen[k], prevFam[k] = true, last.high
-						return true
-					})
-				}
-				p = i0 + cfg.lay.TotalBits()
+			last.got = false
+			st.Emissions++
+			k := key{r.Slot, id}
+			ch := HeldWeaponChange{
+				TimestampUS: r.Packet.TimestampUS, Chunk: r.Chunk, Slot: r.Slot, SlotIndex: id,
+				Family: last.high, Low: last.low, Previous: noVariant,
 			}
-		}
-	}
+			if seen[k] {
+				ch.Previous = prevFam[k]
+				if prevFam[k] == last.high {
+					st.Repeats++
+				}
+			}
+			ch.Kind = classifyHeldWeaponChange(ch, seen[k], spawnSet)
+			out = append(out, ch)
+			seen[k], prevFam[k] = true, last.high
+			return true
+		})
+	})
 	return out, st, nil
 }
 
@@ -205,7 +187,6 @@ type heldWeaponScan struct {
 	lay       I0Layout
 	arch      Archetype
 	weaponIdx map[int]bool
-	minRecord int
 }
 
 // newHeldWeaponScan résout la configuration. Les index d'emplacement d'arme viennent des NOMS
@@ -239,7 +220,6 @@ func newHeldWeaponScan(fc *FilmContext) (heldWeaponScan, error) {
 	if len(s.weaponIdx) == 0 {
 		return s, fmt.Errorf("aucun %s dans l'archétype biped du film", compWeaponStateTypeInfo)
 	}
-	s.minRecord = bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	return s, nil
 }
 

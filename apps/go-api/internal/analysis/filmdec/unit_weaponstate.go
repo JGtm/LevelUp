@@ -90,11 +90,10 @@ func readVarWidthInt(br *BitReader, rangeMax uint32, probe bool) (val uint64, ta
 	return val, tail
 }
 
-var defaultReplRange uint32 = 0x1FFF // DAT_144706100 (config du header film ; calibrable)
-
-// SetDefaultReplRange règle la largeur du var-width-int (DAT_144706100) pour la
-// calibration (cherche la bonne largeur de config du header film).
-func SetDefaultReplRange(v uint32) { defaultReplRange = v }
+// defaultReplRange : DAT_144706100, la plage de config du header film. Le réglage public
+// `SetDefaultReplRange` a été supprimé le 2026-09-05 (lot E, item E.2) : aucun appelant.
+// La valeur reste 0x1FFF, celle qui donne W = bitLen(0x1FFF) = 13 sur tous les films mesurés.
+var defaultReplRange uint32 = 0x1FFF
 
 // consume1408f0ac4 mirrors FUN_1408f0ac4 (a gated variable-width id field used by
 // unit-low-frequency / unit-command-tick / unit-actor-state slot loops). These
@@ -371,7 +370,9 @@ func consume140c9e738(br *BitReader, recordStateIsOne bool) {
 }
 
 // consumeQuatBlock1431a0cbc models FUN_1431a0cbc's confirmed core (gate + isExact +
-// index), identical to entity.go's decodeQuatBlock. Delta branch unverified.
+// index). Delta branch unverified. (Une copie de ce coeur vivait dans `entity.go` sous le
+// nom `decodeQuatBlock` ; ce fichier a ete supprime le 2026-09-05, lot E, item E.2 : il
+// portait deux decodeurs de record sans appelant. Celui-ci est le seul restant.)
 func consumeQuatBlock1431a0cbc(br *BitReader) {
 	if br.ReadBit() {
 		return
