@@ -73,6 +73,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   // Onglet Tactique : une carte n'existe que dans son titre, et la grille compte les
   // matchs du titre courant.
   tacticalMaps: () => queryKeys.tacticalMaps(P, T, 'h'),
+  tacticalMatchIDs: () => queryKeys.tacticalMatchIDs(P, T, 'h'),
   // Le fond d'une carte est title-scopé par le 1er argument (comme `assetMaps` ou
   // `presence`) : c'est une donnée de référence du titre, la même pour tous les joueurs.
   tacticalMapBackground: () => queryKeys.tacticalMapBackground(T, 'map-1'),

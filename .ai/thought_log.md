@@ -96435,3 +96435,65 @@ paquets (api 23,3 s ; archlint 15,5 s ; service 9,9 s ; handlers 9,0 s) ;
 **Conclusion / prochaine etape** — ronde 2 soldee, pas de ronde 3 : le superviseur verifie
 sur pieces puis pousse. La phase 4 est close, revues comprises ; la suite prevue par le plan
 est la phase 6 (rasters a la cuisson), la 5 attendant toujours le lot D.
+
+---
+
+## [2026-09-06] Tactique phase 4 bis — le perimetre devient une liste blanche, et le filtre de session marche enfin
+
+**Statut** : Complété (items 4.5 et 4.6 du plan `.ai/PLAN_TACTIQUE_2026-09-06.md`, branche
+`feat/tactique`, worktree dedie).
+
+**Décision technique principale** — le perimetre de l'onglet Tactique n'est plus un jeu
+d'axes de filtre passes en query string, mais une LISTE BLANCHE de `match_id` resolue COTE
+CLIENT par le endpoint de filtres existant (`POST /filters/match-ids` ->
+`service.FilteredMatchIDs`, base JOUEUR). Les deux lectures tactiques passent en POST avec
+`{ match_ids, coequipiers?, question?, qui? }` et perdent playlist/mode/from/to/outcome. La
+raison est structurelle : les SESSIONS vivent dans la base joueur
+(`player_match_enrichment`), que les requetes shared du lecteur tactique ne joignent pas —
+`BuildNeighborsWhereClause` les rangeait donc dans ses filtres IGNORES, et l'onglet servait
+la periode entiere sans le dire. Une seule definition du perimetre dans l'app, celle qui
+sait lire les sessions.
+
+Trois choix de conception qui ont demande de l'attention :
+
+1. **`domain.ListeBlancheMatchs` est un TYPE, pas un `[]string`.** Deux appelants ont des
+   besoins opposes sur la meme absence de valeur : l'onglet passe une liste (vide = AUCUN
+   match), la page Escouade n'en passe aucune (= tout l'historique). Avec un slice nu, ces
+   deux etats sont le meme `len() == 0`, et le jour ou un appelant oublie sa liste il obtient
+   l'historique entier en silence. Le zero-value du type est « aucune restriction » (le seul
+   etat constructible par accident) et toute liste vient de `RestreindreAux`.
+2. **« Escouade » = la composition choisie, mais PAS pour le KPI d'echange.** L'axe des
+   rasters cible les xuids nommes dans la barre (arbitrage utilisateur) ; le taux d'echange
+   reste sur MON CAMP ENTIER (autre arbitrage utilisateur, du meme jour). Deux perimetres
+   voisins, donc DEUX predicats (`cible` / `campDuMatch`) : les faire partager un seul les
+   aurait fusionnes sans que rien ne le montre a l'ecran — le denominateur du taux aurait
+   retreci quand on nomme un coequipier.
+3. **La composition voyage en gamertags dans l'URL, en xuids dans la requete.** Un nom qu'on
+   ne sait pas traduire ARRETE la lecture au lieu d'etre ignore : l'ignorer ELARGIT le
+   perimetre et rend une grille plus fournie que demandee, sans rien dire.
+
+Cote web, `useLocalFilterBar` a ete ETENDU (option `committed`) au lieu d'etre recopie : la
+page Tactique possede l'etat committed via `usePageScope` (URL), le pending restant interne
+et calcule comme un CALQUE sur le committed — une copie initialisee au montage serait restee
+figee au retour navigateur. Ses trois consommateurs existants sont inchanges.
+
+**Résultats observés** — Go : `go vet` propre sur 8 arbres ; `go test -count=1` sans aucun
+`FAIL` sur service/api/domain/port/duckdb/archlint/contracttest/cmd ;
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue ; `openapi-gen -check` a jour.
+Web : typecheck propre, lint 0 erreur, **suite vitest COMPLETE** (606 fichiers, 6390 tests,
+14 skip, 0 fail), couleurs 0 violation, imports croises 7/7 inchange, manifestes regeneres.
+HUIT inversions jouees, chacune faisant tomber le test qu'elle vise.
+
+Deux pieges rencontres, tous deux invisibles sans test : **Huma ne met pas a plat une struct
+EMBARQUEE dans un corps** (il en fait une propriete a part, et le corps aplati part en 422),
+et **un POST de LECTURE sous `/players/` doit entrer dans `middleware.readOnlyPostPrefixes`**
+— sans quoi la garde d'ecriture du groupe refuse en 401 une lecture que la meme personne
+obtenait en GET la veille.
+
+**Conclusion / prochaine étape** — phase 4 bis close, deux commits (`tactique(4.5)`,
+`tactique(4.6)`), non pousses : le superviseur verifie sur pieces, joue la revue
+adversariale, puis pousse. Report unique et documente : la moitie CLIENT de « sans
+composition, l'axe Escouade n'est pas propose » releve de la phase 5 (il n'existe aucun
+selecteur d'axe a l'ecran tant que la vue par carte est gelee) ; la regle est appliquee et
+testee cote Go. Trois decouvertes hors perimetre consignees au §7 du plan, dont un
+`matchs_filtres` qui a change de sens et que la phase 5 devra lire correctement.

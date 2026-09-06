@@ -11,10 +11,17 @@
  * vérités sur « cette carte est-elle lisible ? », qui divergeraient au premier ajustement
  * du seuil. Le client LIT le verdict et NOMME le seuil, il n'en juge pas.
  */
-import type { FilterContextInput, TacticalMapCard } from '@/lib/api/types'
+import { EXPERIENCE_TO_CASCADE } from '@/features/_shared/experienceCascade'
+import type {
+  FilterContextInput,
+  SessionLabelEntry,
+  SessionOption,
+  TacticalMapCard,
+  TeammateOption,
+} from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
-import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
-import { filterSpecToQueryString, type MatchFilterSpec } from '@/lib/match-nav/navContext'
+
+import type { TacticalScope } from './tacticalScope'
 
 /** Parts de la barre de résultats, en fraction de 0 à 1. Leur somme vaut au plus 1. */
 export interface BarreResultats {
@@ -91,22 +98,104 @@ function nomCarteBrut(carte: TacticalMapCard): string {
 }
 
 /**
- * tacticalFilterQuery — le filtre GLOBAL de l'omnibar, traduit dans le vocabulaire de
- * requête de l'Explorateur (playlist, mode, from, to, outcome, with_player).
+ * contexteFiltre — le `FilterContextInput` que la barre L2 produit, et que le
+ * client fait résoudre en `match_ids` par `/filters/match-ids`.
  *
- * `session` EST RETIRÉ, et ce n'est pas un oubli : `analysis.BuildNeighborsWhereClause` le
- * range dans ses filtres IGNORÉS — les sessions vivent dans la base JOUEUR, que les
- * requêtes shared de cet onglet ne joignent pas. Le contrat de l'onglet ne l'accepte donc
- * pas (retrait T11, 2026-09-06). L'envoyer quand même ferait croire, côté clé de cache
- * comme côté serveur, à un filtre appliqué qui ne l'est pas.
+ * C'EST LA MÊME RÉSOLUTION QUE L'OMNIBAR ET QUE L'EXPLORATEUR, et c'est tout
+ * l'intérêt : le périmètre de l'onglet est calculé par le pipeline qui sait lire les
+ * SESSIONS (base joueur), là où les requêtes shared du lecteur tactique ne le
+ * peuvent pas. C'est ce qui fait MARCHER le filtre de session ici.
  *
- * La chaîne rendue sert AUSSI d'empreinte de cache : deux filtres différents produisent
- * deux chaînes différentes, et c'est exactement ce que la clé de requête doit distinguer.
+ * `filter_mode` suit la SÉLECTION, pas un réglage : dès qu'une session est épinglée,
+ * le mode est `sessions` et la période cesse de décider — exactement la règle du
+ * backend (`splitTemporalFiltered` applique le filtre de session dès qu'il y en a
+ * une, quel que soit `filter_mode`). Les deux doivent dire la même chose, sinon
+ * l'écran annonce une période que le serveur n'applique pas.
  */
-export function tacticalFilterQuery(ctx: FilterContextInput | null | undefined): string {
-  const spec = filterContextToMatchFilterSpec(ctx)
-  if (!spec) return ''
-  const sansSession: MatchFilterSpec = { ...spec }
-  delete sansSession.session_id
-  return filterSpecToQueryString(sansSession)
+export function contexteFiltre(scope: TacticalScope): FilterContextInput {
+  const sessions = scope.sessions.filter((s) => s.trim() !== '')
+  const ctx: FilterContextInput = {
+    filter_mode: sessions.length > 0 ? 'sessions' : 'period',
+    period: {
+      start_date: scope.debut || null,
+      end_date: scope.fin || null,
+    },
+    sessions: { picked_sessions: sessions, gap_minutes: 120 },
+    cascade: {
+      experience_types: EXPERIENCE_TO_CASCADE[scope.experience],
+      playlists: scope.playlists,
+      modes: scope.modes,
+      maps: [],
+    },
+  }
+  if (scope.vue !== 'all') ctx.match_context = scope.vue
+  return ctx
+}
+
+/**
+ * sessionsProposees — les sessions offertes au sélecteur, DANS LE SENS DE LA
+ * COMPOSITION (même mécanique que la barre de l'Escouade) : dès qu'un coéquipier
+ * est choisi, on propose les sessions d'ESCOUADE ; sinon les sessions SOLO.
+ *
+ * ÉCART ASSUMÉ AVEC LA PAGE ESCOUADE, et il est dans le sens de la prudence : elle
+ * propose les sessions de la COMPOSITION EXACTE, que seule sa requête de page sait
+ * calculer (`composition_sessions`). Ici la liste vient de `/filters/resolve`, donc
+ * des sessions d'escouade du joueur — et c'est le SERVEUR qui resserre ensuite sur
+ * la composition (liste blanche × `coequipiers`). Une session proposée peut donc ne
+ * porter aucun match de la composition ; l'inverse — masquer une session que la
+ * composition a jouée — serait la faute grave, et il ne peut pas se produire.
+ *
+ * La forme change aussi : `/filters/resolve` rend des `SessionOption`
+ * (`started_at_utc`), `SessionMultiSelect` attend des `SessionLabelEntry`
+ * (`started_at`). La projection est ici, pas dans le composant partagé.
+ */
+export function sessionsProposees(
+  options: readonly SessionOption[],
+  avecComposition: boolean,
+): SessionLabelEntry[] {
+  return options
+    .filter((o) => o.is_squad === avecComposition)
+    .map((o) => ({
+      label: o.label,
+      started_at: o.started_at_utc,
+      ended_at: o.ended_at_utc,
+      match_count: o.match_count,
+    }))
+}
+
+/** Résultat de la traduction gamertags → xuids de la composition. */
+export interface CompositionResolue {
+  /** Les xuids à envoyer, dans l'ordre de la composition. */
+  xuids: string[]
+  /** Les gamertags qu'on n'a pas su traduire — la requête ne doit PAS partir. */
+  inconnus: string[]
+}
+
+/**
+ * resoudreComposition — traduit les gamertags de la composition en xuids.
+ *
+ * POURQUOI UN NOM NON RÉSOLU ARRÊTE TOUT plutôt que d'être ignoré : l'ignorer
+ * ÉLARGIT le périmètre (le serveur ne resserrerait plus sur ce joueur) et rendrait
+ * une grille plus fournie que demandé, sans que rien ne le dise. Un filtre qu'on ne
+ * sait pas appliquer se signale, il ne se retire pas tout seul.
+ *
+ * Le cas normal est transitoire : la liste des coéquipiers arrive de façon
+ * asynchrone. Le cas durable est une URL bricolée — la page le dit alors en clair.
+ */
+export function resoudreComposition(
+  gamertags: readonly string[],
+  options: readonly TeammateOption[],
+): CompositionResolue {
+  const parGamertag = new Map<string, string>()
+  for (const o of options) {
+    if (o.xuid) parGamertag.set(o.gamertag.toLowerCase(), o.xuid)
+  }
+  const xuids: string[] = []
+  const inconnus: string[] = []
+  for (const gt of gamertags) {
+    const xuid = parGamertag.get(gt.trim().toLowerCase())
+    if (xuid) xuids.push(xuid)
+    else inconnus.push(gt)
+  }
+  return { xuids, inconnus }
 }

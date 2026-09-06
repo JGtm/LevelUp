@@ -71,3 +71,71 @@ en = "A map opens from {floor} matches on: below that, a positioning reading mea
 [tactical.maps.coverage]
 fr = "{maps, plural, one {# carte jouée} other {# cartes jouées}}, {matches, plural, one {# match} other {# matchs}}"
 en = "{maps, plural, one {# map played} other {# maps played}}, {matches, plural, one {# match} other {# matches}}"
+
+# ── Barre de filtres L2 (phase 4 bis) ─────────────────────────────────────────
+# Vocabulaire ARRÊTÉ : « expérience », « playlists », « modes », « vue »,
+# « sessions », « escouade ». Jamais « squad », jamais « filter ».
+[tactical.filter.experience]
+fr = "Expérience"
+en = "Experience"
+
+[tactical.filter.experience_all]
+fr = "Toutes"
+en = "All"
+
+[tactical.filter.experience_ranked]
+fr = "Classé"
+en = "Ranked"
+
+[tactical.filter.experience_unranked]
+fr = "Non classé"
+en = "Unranked"
+
+[tactical.filter.playlists]
+fr = "Playlists"
+en = "Playlists"
+
+[tactical.filter.modes]
+fr = "Modes"
+en = "Modes"
+
+[tactical.filter.reset]
+fr = "Réinitialiser les filtres"
+en = "Reset filters"
+
+[tactical.filter.view]
+fr = "Vue"
+en = "View"
+
+[tactical.filter.view_all]
+fr = "Tous les matchs"
+en = "All matches"
+
+[tactical.filter.view_solo]
+fr = "Solo"
+en = "Solo"
+
+[tactical.filter.view_squad]
+fr = "En escouade"
+en = "With a squad"
+
+# Sélecteur de sessions : le libellé du bouton quand rien n'est épinglé.
+[tactical.filter.sessions]
+fr = "Sessions"
+en = "Sessions"
+
+# Sélecteur de composition (coéquipiers). {n} = nombre de coéquipiers proposés.
+[tactical.filter.squad_placeholder]
+fr = "Coéquipiers ({n})"
+en = "Teammates ({n})"
+
+# ── Composition non résolue ───────────────────────────────────────────────────
+# Un gamertag de l'URL qu'on ne sait pas traduire en identifiant : la grille n'est
+# PAS servie (l'ignorer élargirait le périmètre en silence).
+[tactical.filter.unknown_teammate_title]
+fr = "Coéquipier introuvable"
+en = "Teammate not found"
+
+[tactical.filter.unknown_teammate_description]
+fr = "Impossible d'identifier {names} parmi tes coéquipiers. Retire ce nom de la composition pour voir les cartes."
+en = "{names} could not be identified among your teammates. Remove that name from the squad to see the maps."

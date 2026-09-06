@@ -30,6 +30,28 @@ export function getTacticalText(locale: Locale) {
     floorNote: (floor: number) => m('tactical.maps.floor_note', { floor }),
     coverage: (maps: number, matches: number) =>
       m('tactical.maps.coverage', { maps, matches }),
+
+    // ── Barre de filtres L2 ─────────────────────────────────────────────────
+    filterLabels: {
+      experience: m('tactical.filter.experience'),
+      experienceAll: m('tactical.filter.experience_all'),
+      experienceRanked: m('tactical.filter.experience_ranked'),
+      experienceUnranked: m('tactical.filter.experience_unranked'),
+      playlists: m('tactical.filter.playlists'),
+      modes: m('tactical.filter.modes'),
+      reset: m('tactical.filter.reset'),
+    },
+    viewLabels: {
+      view: m('tactical.filter.view'),
+      viewAll: m('tactical.filter.view_all'),
+      viewSolo: m('tactical.filter.view_solo'),
+      viewSquad: m('tactical.filter.view_squad'),
+    },
+    sessions: m('tactical.filter.sessions'),
+    squadPlaceholder: (n: number) => m('tactical.filter.squad_placeholder', { n }),
+    unknownTeammateTitle: m('tactical.filter.unknown_teammate_title'),
+    unknownTeammateDescription: (names: string) =>
+      m('tactical.filter.unknown_teammate_description', { names }),
   }
 }
 
