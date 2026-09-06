@@ -32,6 +32,10 @@ export const TITLE_CAPABILITIES = [
   'expected_stats',
   'waypoint_match_url',
   'objective_stats',
+  // Portée et dénivelé mesurés des engagements (section « Portée par arme » de la
+  // Synthèse). Absente ⇒ la section est masquée. Miroir de title.CapWeaponRange
+  // (registry.go), qui documente pourquoi Halo 5 ne l'obtient pas.
+  'weapon_range',
 ] as const
 
 export type TitleCapability = (typeof TITLE_CAPABILITIES)[number]

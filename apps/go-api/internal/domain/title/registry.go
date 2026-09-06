@@ -132,6 +132,30 @@ const (
 	// (games/adapter.go) qui gouverne le chemin de données ; celle-ci gouverne
 	// l'AFFICHAGE (useCapability). Cf. PLAN_V72_OBJECTIVE_STATS.md.
 	CapObjectiveStats Capability = "objective_stats"
+
+	// CapWeaponRange — le titre expose la PORTÉE ET LE DÉNIVELÉ MESURÉS des engagements,
+	// par arme et des deux côtés (« où je frague », « où je meurs »). Absente ⇒ le front
+	// masque la section « Portée par arme » de la Synthèse (useCapability), et le bloc
+	// `weapon_range` de la réponse est de toute façon omis.
+	//
+	// HALO INFINITE : OUI. La mesure exige DEUX données du film décodé, et il les a toutes
+	// les deux — les positions monde par kill (`film.kill_positions`) ET la source du dégât
+	// traduisible en arme (`film.kill_source` + son classificateur).
+	//
+	// HALO 5 : NON, ET LA RAISON N'EST PAS CELLE QU'ON CROIT. Halo 5 peuple bien
+	// `kill_positions`, nativement, depuis les events de sa timeline
+	// (games/halo_5/ingest/positions.go, `MapKillPositions`) : la moitié spatiale existe.
+	// Ce qui manque est l'ARME : ses lignes `match_kill_events` n'ont pas de `source_tag`
+	// (le producteur live ne l'écrit pas — cf. persist/kill_events_credit.go), et il ne
+	// déclare pas `film.kill_source`, donc aucun classificateur ne lui est câblé. La
+	// jointure mesurée exige `source_tag IS NOT NULL` : elle rendrait zéro ligne. Déclarer
+	// la capability y ouvrirait une section vide, ce qui est pire que pas de section.
+	// Rouvrir SI la voie « arme du kill » de Halo 5 (weapon_kills natif) est un jour reliée
+	// à ses positions — c'est un autre chemin de données, pas un simple câblage.
+	//
+	// Pendant PRODUIT des capabilities DONNÉE `film.kill_positions` + `film.kill_source`
+	// (games/adapter.go) : celles-là gouvernent la production, celle-ci l'affichage.
+	CapWeaponRange Capability = "weapon_range"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -311,6 +335,9 @@ func NewRegistry() *Registry {
 			// Stats objectifs par match (CTF/Zones/Oddball) — section scoreboard +
 			// KPI Synthèse/Escouade (PLAN_V72_OBJECTIVE_STATS).
 			CapObjectiveStats,
+			// Portée et dénivelé mesurés des engagements, par arme et des deux côtés —
+			// section « Portée par arme » de la Synthèse (PLAN_DUELS_PORTEE_2026-09-06).
+			CapWeaponRange,
 			// Précision par arme (CapWeaponAccuracy) : REMISÉE le 2026-09-01 — NON déclarée
 			// par Infinite. Elle avait été ajoutée au Lot 3 pour allumer les charts a/c depuis
 			// un numérateur reconstruit du film, mais ce numérateur s'est révélé NON FIABLE au

@@ -70,6 +70,20 @@ func (fakeKillSourceClassifier) KillSourceClassName(tag uint32) (string, bool) {
 	return "ARME", true
 }
 
+// borneAUneConnexion : UNE SEULE CONNEXION PAR BASE, COMME EN PRODUCTION.
+//
+// Sur un DSN `:memory:`, duckdb-go n'a pas d'InstanceCache : chaque connexion supplementaire
+// que le pool `database/sql` ouvre est UNE BASE MEMOIRE NEUVE, sans les migrations ni le
+// registre. Le symptome est INTERMITTENT et deroutant — « Could not convert string 'tag' to
+// UINT32 », « NOT NULL constraint failed: decoder_rev » — parce qu'il depend de la
+// concurrence du pool, pas du test. La production borne deja (`applyConnLimits`, db.go), les
+// tests de stress aussi ; cette fixture ne le faisait pas (constat F8, revue adversariale du
+// lot 4, 2026-09-06).
+func borneAUneConnexion(db *sql.DB) {
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+}
+
 // newKillSourceTestPlayerDB : shared migre (vue `_latest` incluse) + metadata portant le
 // VRAI registre d'armes et ses libelles.
 func newKillSourceTestPlayerDB(t *testing.T) *PlayerDB {
@@ -78,6 +92,7 @@ func newKillSourceTestPlayerDB(t *testing.T) *PlayerDB {
 	if err != nil {
 		t.Fatalf("open shared mem: %v", err)
 	}
+	borneAUneConnexion(sharedSQL)
 	t.Cleanup(func() { _ = sharedSQL.Close() })
 	if err := migration.RunForDB(sharedSQL, migration.TargetShared); err != nil {
 		t.Fatalf("RunForDB(Shared): %v", err)
@@ -87,6 +102,7 @@ func newKillSourceTestPlayerDB(t *testing.T) *PlayerDB {
 	if err != nil {
 		t.Fatalf("open meta mem: %v", err)
 	}
+	borneAUneConnexion(metaSQL)
 	t.Cleanup(func() { _ = metaSQL.Close() })
 	if err := weapons.ApplyRegistry(metaSQL); err != nil {
 		t.Fatalf("ApplyRegistry: %v", err)

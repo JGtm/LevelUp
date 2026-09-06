@@ -1,3 +1,139 @@
+## [2026-09-06] Lot 4 duels/portee — correctifs de revue adversariale ronde 1 (F1-F10) — Complete
+
+**Decision technique principale.** Les dix constats retenus par le pilote (deux relecteurs :
+axe TESTS, axe COUCHES/MULTI-TITRE) sont traites sur la branche `feat/duels-lot4-fix`. Deux
+d entre eux ont change de forme apres verification sur pieces, et c est l essentiel de la
+session.
+
+(1) **F1 — le test de plan ne pouvait PAS etre rendu rouge par la mutation demandee, et la
+raison est un comportement d optimiseur mesure ce jour.** Sur la forme `e.match_id = ?` (le POC
+KillDistanceRepo), DuckDB PROPAGE l egalite a travers les cles de jointure : le balayage de
+`match_kill_events` porte son filtre meme quand la sous-requete `fragSolo` ne demande rien
+(1 balayage, `Filters="match_id='...'"`). Sur la forme `IN (...)` du lecteur de Synthese, il ne
+le fait pas — la meme mutation y rend 2 balayages, le second nu, et le test vire rouge. Le
+correctif structurel demande est fait (`killDistanceQueryFor` est l UNIQUE site de composition,
+appele par `queryMeasuredKills` ET par le test, plus de recomposition a partir des constantes),
+mais il fallait une seconde assertion pour que la mutation morde : `verifieFragSoloPorteLeScope`
+juge la requete COMPOSEE PAR LA PRODUCTION — la clause `WHERE` de `fragSolo` (et pas la
+sous-requete entiere, dont la projection cite `s.match_id`, ce qui rendait ma premiere version
+toujours verte) plus le nombre de parametres lies. Lecon generale, consignee au plan : un
+garde-rail de PLAN sur une requete a egalite ne discrimine pas la presence d un scope dans une
+branche ; et un scope de branche ne doit jamais reposer sur cette propagation, qui est un choix
+d optimiseur, pas un contrat.
+
+(2) **F10 — le critere de retrait de l entree d allowlist `weapon_range` etait bien mesurable,
+mais tenu par un AUTRE test que celui que le commentaire nommait.** Le commentaire annoncait un
+signalement « en `t.Logf` » : faux — `TestCapabilitiesReferencedByAConsumer` fait `continue` sur
+un consommateur existant AVANT de lire l allowlist. C est
+`TestOrphanCapabilityAllowlistIsCurrent` qui tient l hygiene, en `t.Errorf`, des qu une entree
+est accordee ET consommee. Verifie par mutation : un `useCapability('weapon_range')` temporaire
+depose dans `apps/web/src` fait rougir la suite (« exception perimee, la retirer »). Le pilote
+demandait d AJOUTER un `t.Errorf` dans le premier test ; NON FAIT, delibere et justifie au plan :
+l assertion existe deja complete ailleurs (la dupliquer serait une seconde doctrine du meme
+fait), et posee sur le seul axe « consommateur » elle serait FAUSSE pour une capability consommee
+mais accordee par aucun titre public, dont l entree reste necessaire a l autre axe.
+
+**Resultats observes.** F9 change la forme du contrat : les trois nombres du delta d entame
+passent dans un sous-objet OPTIONNEL `opening.delta` (`median_m`, `closing_share_pct`, `n`),
+omis quand `Paired == 0` — cas atteignable, `kill_positions` et `kill_openings` s ecrivant sous
+deux leases independants, et un `closing_share_pct: 0` requis se lisant « ce joueur ne ferme
+jamais la distance ». C est la doctrine D5 un cran plus bas. Contrat REGENERE (openapi-gen +
+generate-types), jamais edite a la main ; le lot 5 est prevenu. F8 corrige une cause reelle de
+flakiness : la fixture `newKillSourceTestPlayerDB` n appliquait pas `SetMaxOpenConns(1)` alors
+que la production le fait — sur un DSN `:memory:`, chaque connexion supplementaire du pool est
+une base VIDE, d ou des echecs intermittents et deroutants. La suite d integration a ete rejouee
+3 fois : 3/3 verte. La seconde demande de F8 (« reduire le seed de 50 000 lignes ») est SANS
+OBJET, verifie sur pieces : `seedDeuxCotes` insere DEUX morts et aucun seed massif n existe dans
+ce paquet.
+
+SIX MUTATIONS PROUVEES ROUGES puis restaurees : F1 (scope `fragSolo` -> `TRUE` : « la clause
+WHERE de fragSolo ne porte AUCUN filtre » + « 1 parametre lie, attendu 2 »), F2 (garde
+`Self.Kills != nil` retiree -> `panic: nil pointer dereference`), F4 (« la mediane des frags
+prime » rendue inconditionnelle -> ordre inverse), F5 (tri des couples ecartes retire -> rang 0
+faux), F6 (regime de log inverse -> « presence d un WARN = true, attendu false »), F7
+(`KillerXUID` retire de la cle du frag -> `MedianDeltaM = -26 au lieu de -36`, `ClosingShare =
+0.5 au lieu de 1`), plus les deux mutations de F9 (`if st.Paired > 0` inconditionnel ->
+sous-bloc a zero publie ; `omitempty` retire -> `"delta":null` dans la charge utile) et celle de
+F10.
+
+**Conclusion / prochaine etape.** Gates verts, codes de retour verifies :
+`-tags=integration -p 1 ./internal/platform/duckdb/` RC 0 (4 executions, dont 3 consecutives
+pour F8) ; `./internal/analysis/ ./internal/service/... ./internal/api/... ./internal/domain/...`
+RC 0 ; `go vet` silencieux ; `gofmt -l internal` vide ; `synthesis_service.go` toujours a 500
+lignes EXACTEMENT (aucune ligne ajoutee) ; `openapi-gen -check` a jour ;
+`check-generated-types-fresh` OK ; `make go-api-test` RC 0 ; `npm run typecheck` RC 0. Trois
+decouvertes hors perimetre sont consignees au plan sans etre traitees, dont
+`weapon_resolver.go:243-247` qui avale l erreur de `rows.Scan` (prexistant). Prochaine etape :
+merge de `feat/duels-lot4-fix` dans `feat/duels-lot4` par le superviseur, puis lot 5 (web) — qui
+doit RETIRER l entree `weapon_range` de `orphanCapabilityAllowlist` dans le commit meme qui monte
+la section, sous peine de suite rouge.
+
+## [2026-09-06] Lot 4 duels/portee — service, capability produit, contrat API (4.1-4.6) — Complete
+
+**Decision technique principale.** Le contrat publie UNE LIGNE PAR ARME portant ses DEUX COTES
+en pointeurs (`Weapons []WeaponRangeRow`, `Kills`/`Deaths *WeaponRangeSide`), et non les deux
+listes paralleles que le plan avait ecrites : la maquette validee le 2026-09-06 fusionne les
+deux graphes jumeaux, et deux listes obligeraient le front a reapparier les armes pour dessiner
+une seule ligne. Le pointeur porte une distinction que le rendu doit faire : nil = « aucune
+mesure de ce cote », un zero dirait « mesure, a zero metre ». Meme regle pour le bloc d entame,
+NIL tant qu aucune entame n est mesuree (D5) — c est l etat NOMINAL tant que le backfill de
+`kill_openings` n a pas tourne, et un bloc a zero se lirait « ce joueur engage au contact ».
+
+Le delta entame -> coup fatal se calcule PAR FRAG APPARIE (`analysis.WeaponOpeningDelta`, clé
+`match_id, killer_xuid, time_ms`). Le test qui le garde est construit pour que l erreur interdite
+soit visible : les medianes des deux populations y sont EGALES alors que le delta apparie vaut
+-5 m — une soustraction de medianes rendrait 0 et raconterait que le joueur ne ferme jamais la
+distance.
+
+**Resultats observes.** Deux constats ont corrige le plan sur pieces. (1) La « cle miroir dans
+capabilities.toml » demandee par 4.4 est IMPOSSIBLE : ce fichier ne porte que le vocabulaire
+data-level, et `games.CapabilityMapFromMappings` rejette au boot toute clé hors
+`AllCapabilityKeys()` — le miroir d une capability PRODUIT est le TypeScript, ce que deux
+garde-rails imposaient deja. (2) Halo 5 PEUPLE `kill_positions` nativement (`MapKillPositions`) :
+la moitie spatiale existe. Ce qui lui manque est l ARME — ses `match_kill_events` n ont aucun
+`source_tag` — donc la jointure mesuree rendrait zero ligne et la capability lui ouvrirait une
+section VIDE. Le raisonnement, et sa condition de reouverture, sont ecrits dans la doc de
+`CapWeaponRange` plutot que dans un ticket.
+
+Un report assume, date et borne : `weapon_range` entre a `orphanCapabilityAllowlist` (jusqu ici
+VIDE) parce que son seul consommateur prevu est le gate d affichage du lot 5 — le cablage Go est
+inconditionnel par decision 4.1, aucun consommateur Go n existe ni ne doit exister. Le lot 5
+supprime l entree dans le commit qui monte la section ; le critere est mesurable.
+
+**Conclusion / prochaine etape.** Gates verts, codes de retour verifies : duckdb integration
+(205,6 s), analysis/service/api/domain, killcollector integration, `go vet`, `gofmt`,
+`make go-api-test`, `openapi-gen -check`, `npm run typecheck`, `npm test` (6 227 tests),
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue. Le lot 5 consomme
+`SynthesisPageV2Response.weapon_range` et retire l entree d allowlist.
+
+## [2026-09-06] Lot 4 duels/portee — les quatre residus du lot 3 (4.0a-4.0d) — Complete
+
+**Decision technique principale.** `fragSolo` porte desormais SON scope (`measuredKillsQuery(table,
+fragSoloScope, where)`, parametres dupliques, scope lie AVANT le WHERE). La preuve exigee par le
+plan a demande de changer de format : le plan textuel de DuckDB coupe le texte des filtres a 27
+caracteres dans ses boites ASCII, un detecteur pose dessus raterait justement les filtres longs
+d un scope multi-matchs — `kill_measured_scope_test.go` decode donc `EXPLAIN (FORMAT JSON)` et
+verifie que TOUT `SEQ_SCAN` de `match_kill_events` porte un `Filters` sur `match_id`.
+
+**Resultats observes.** Forme reelle du plan, decouverte a l EXPLAIN : DuckDB materialise
+`match_kill_events_latest` en UNE `CTE` que les deux branches relisent (`CTE_SCAN`) — il n y a
+donc pas deux balayages a filtrer mais UN SEUL, et il ne peut porter le filtre que si les DEUX
+branches le demandent. Sans le scope de la sous-requete, la CTE n est plus partagee : le plan
+repasse a deux balayages, dont un non filtre. Mutation prouvee rouge (`fragScope` = `TRUE` ->
+« balayage 2/2 : Filters = "" ») pendant que les douze tests de resultat WeaponRange restent
+verts — ce qui est exactement la raison d etre d un test de PLAN. 4.0b : la retractation par
+`decode_pass` exige que la passe suivante ecrive au moins une ligne (une passe vide n ecrit
+aucune generation) ; comportement assume, en-tete de migration corrige et cas asserte tel quel.
+4.0c : l enonce du durcissement `count(*) = 1` est ecrit sur `killDistanceWhere`. 4.0d : les deux
+compteurs de LECTURE (`morts_sans_position`, `cotes_hors_vie`) sortent desormais aussi sur echec
+d ecriture — la doc promettait « il compte MEME quand rien n est ecrit », le code ne le faisait
+pas ; mutation rouge.
+
+**Conclusion / prochaine etape.** Gates verts : `go test -tags=integration -p 1 -count=1
+./internal/platform/duckdb/` (138 s), `./internal/sync/killcollector/ ./internal/persist/
+./internal/games/halo_infinite/migrations/`. Suite du lot 4 : service, capability produit,
+contrat API (4.1-4.6).
+
 ## [2026-09-06] Lot 3 duels — revue adversariale a trois relecteurs, correctifs, ronde 2, fusion — Complete
 
 **Decision technique principale.** Revue L1 (anti-ART) + L3 (anti-patterns) + L6 (tests) en parallele et aveugles ; deux relecteurs ont converge independamment sur la vue `kill_openings_latest` arbitree par cle et non par passe ; decision pilote soumise a l utilisateur : `decode_pass` sur `kill_openings` (table jamais creee nulle part, migration modifiee en place, commit separe `ed3b323f3` retirable). Les deux P1 de L6 (signe du decalage et passe d entames non couverts par les tests) sont elimines structurellement par la bascule sur `replay.BuildKillOpenings` et pinces par des tests dont les mutations ont ete vues rouges.
