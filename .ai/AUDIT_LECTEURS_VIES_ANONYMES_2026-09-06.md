@@ -61,6 +61,33 @@ pistes anonymes par slot.
 
 **2 P0, 7 P1, 5 P2.**
 
+### Décision / état — mise à jour du 2026-09-07 (lot `feat/v2-vies-anonymes`, schéma 47)
+
+**Décision produit de l'utilisateur, 2026-09-07 : « les vies anonymes n'existent pas ; une vie est
+un humain ou un bot, point. »** Une piste publiée sans identité est un DÉFAUT DE NOMMAGE du pont,
+pas une catégorie de donnée : elle se répare à la source, et ce qui résiste se compte et s'alarme.
+Les constats ci-dessous restent tous valides — comme DÉFENSE (un lecteur ne jette jamais une
+lecture vraie parce qu'un nom manque) — mais leur formulation parle désormais de « lecture de la
+piste sous l'identité résolue de son slot ».
+
+| Constat | Décision / état | Où |
+|---|---|---|
+| **P0-1** `samplesByXUID` | **CORRIGÉ** — `AttributeZones` exige le pont canonique ; couverture publiée | `zone_attribution.go`, `zone_states.go`, `build_zones.go` |
+| **P0-2** report de lecture des fiches (web) | **HORS PÉRIMÈTRE de ce lot** — traité côté web | — |
+| **P1-1** `dropUnpublishedActions` | **CORRIGÉ** — `publishedXUIDs` + garde-rail étendu au motif par XUID ; `neutral_deaths.go` idem | `objectives.go`, `neutral_deaths.go`, `published_tracks.go` |
+| **P1-2** couverture aveugle aux deux bouts | **CORRIGÉ** — le pont rend son compte d'écartés ; `warnIfLossy` voit `Unpublished` | `slotidentity.go`, `matchfacts.go`, `options.go`, `coverage.go` |
+| **P1-3** `ZoneCoverage` jetée | **CORRIGÉ** — `noPosition`/`outside`/`ambiguousZone` publiés + journal | `zone_states.go`, `document_zones.go` |
+| **P1-4** garde-fous des fermetures | **CORRIGÉ** — bornés à la vie DÉSIGNÉE ; l'autre côté reste le slot, justifié | `closures.go`, `closures_respawn.go` |
+| **P1-5** occupant de véhicule | **CORRIGÉ** — `OwnerReport.xuidAt(slot, instant)` | `owners.go`, `vehicle_rides*.go` |
+| **P1-6** deux bots d'un même siège | **CORRIGÉ** — `botNamesBySeat` s'abstient sur un siège ambigu ; l'échange d'ordre avec les relais est RÉFUTÉ sur pièces (`candidateIn` ne borne pas au slot) | `identity.go` |
+| **P1-7** une vie anonyme n'est dessinée nulle part (escalade) | **TRANCHÉ PAR L'UTILISATEUR le 2026-09-07** — la question disparaît : il n'y a plus de vie anonyme à dessiner. Le résidu est un défaut à instruire, jamais un affichage | `unnamed_lives.go` |
+| **P2-1** à **P2-5** | **NON TRAITÉS** — au registre des reports (zéro fix hors périmètre) | — |
+| Résidu `carrierPresence.gate` | **CONFIRMÉ et CORRIGÉ** — l'exemption « déjà rattrapé » ne le couvrait pas ; `unionOverlap` | `skull_carries.go` |
+| Résidu `usage_summary.go` | **CONFIRMÉ et CORRIGÉ** — l'exemption ne le couvrait pas ; la vie sans nom occupe son slot avec un xuid vide ; `UsageSummaryRev` us3 | `usage_summary.go` |
+| **P0-0** (AJOUTÉ, hors audit) | **LIVRÉ** — nommage final par l'occupation du slot dans le temps ; 305 → 200 vies sans nom sur 9 témoins ; résidu publié (`bridge.unnamedLives`) et alarmé | `unnamed_lives.go` |
+
+Journal d'exécution : `.ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md`.
+
 ### [P0-1] `samplesByXUID` n'indexe que les pistes NOMMÉES — le défaut corrigé au schéma 45 pour le drapeau, intact sur le chemin des zones
 
 - **Où** : `apps/go-api/internal/analysis/replay/zone_attribution.go:207-214`, consommé en
