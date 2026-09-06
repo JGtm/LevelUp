@@ -174,13 +174,16 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	openings := flagOpenings(scan.Events, scan.Identity)
 	cov.Openings = len(openings)
 	named := openings[:0:0]
+	var sansPont []int
 	for _, o := range openings {
 		if o.xuid == "" {
 			cov.NoBridge++
+			sansPont = append(sansPont, o.slot)
 			continue
 		}
 		named = append(named, o)
 	}
+	logFlagOpeningsWithoutBridge(sansPont, len(openings))
 	raws := boundFlagCarries(named, scan.Events, ctx)
 	raws, cov.AmbiguousCarrierKills = closeByCarrierKills(raws, scan.Events, scan.Identity)
 	// LE LACHER VOLONTAIRE SE FERME ICI, ET AVANT LES POSITIONS : c'est lui qui deplace `t1`,

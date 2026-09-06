@@ -739,7 +739,57 @@ package replay
 // il n'est pas revenu, il ne doit pas revenir.
 // Détail : internal/analysis/replay/{closures.go, closures_respawn.go, owners.go,
 // grapple_lines.go, equipment_episodes.go} et .ai/V7.5/v2/INSTRUCTION_REGRESSIONS_2_4.md.
-const SchemaVersion = 41
+//
+// v42 (2026-09-06) : LE DRAPEAU A ENFIN DES PORTEURS. Aucun champ n'est ajouté, aucune clé ne
+// bouge — c'est le CONTENU de `flagCarries` qui change, exactement comme aux montées v14 et v15
+// du même calque, et la version monte pour la raison de toujours : la reprise du backfill se lit
+// par `SchemaVersion`, et un artefact 41 est AMPUTÉ de portages sans que rien dans sa forme ne le
+// dise.
+//
+// LE PLAFOND, ET IL FRAPPAIT LES MEILLEURS JOUEURS. Le calque nommait son porteur par le pont
+// d'identité PAR MORTS (`objectiveevents.ResolveRoundIdentity`), qui exige `deathInstantMin` = 3
+// instants de mort coïncidents pour attribuer un slot d'entité. Un joueur qui MEURT MOINS DE
+// TROIS FOIS lui échappe PAR CONSTRUCTION — et ce sont, par définition, ceux qui portent le
+// drapeau. Leurs prises étaient comptées `coverage.flagCarries.noBridge` et AUCUN intervalle
+// n'était publié pour elles : le drapeau restait dessiné à sa base pendant qu'un joueur le
+// portait. Le pont par TRIPLET, lui, les nomme — il apparie les totaux (frags, morts,
+// assistances) du statborg aux lignes de match — mais il exige la base, que `analysis/replay`
+// n'ouvre pas.
+//
+// LA CORRECTION EST UN CÂBLAGE, PAS UNE RÈGLE NEUVE. Le pont COMPLÉTÉ
+// (`RoundIdentity.CompletedByLines`, mono-manche, compléter sans jamais contredire, aucun xuid
+// deux fois) existait déjà depuis le schéma 40 : il servait les ACTIONS d'objectif, résolu dans
+// `replaybuild` — la couche qui reçoit les faits du match. Il descend désormais jusqu'au calque
+// du drapeau par `replay.FlagInput.Identity`, et les deux calques partagent LE MÊME pont, résolu
+// une seule fois par cuisson. `analysis/replay` ne voit toujours AUCUN fait de match : il reçoit
+// une table slot -> xuid. Sans lignes de match (CLI hors ligne, ouvrier distant), le champ reste
+// à zéro, le paquet résout comme avant, et l'artefact est identique — la propriété « publiable
+// hors ligne » est intacte.
+//
+// MESURE, TROIS FILMS MONO-MANCHE ET UN MULTI-MANCHE (2026-09-06) :
+//
+//	c0a82e88  3 prises, 0 portage -> 1 portage. Le porteur publié est 2535463878425995
+//	          (7 frags, 2 morts) — le MÊME xuid, aux MÊMES instants, que les deux actions
+//	          `flag_steals` / `flag_captures` du calque `objectives`, par une chaîne
+//	          indépendante. Le marqueur de portage des images-clés le confirme (1/1). Les
+//	          2 prises restantes sont sur un slot 12 AGRÉGÉ, que le triplet refuse de nommer.
+//	e94163af  33 prises, 16 portages -> 33, `noBridge` 17 -> 0, marqueur confirmé 6/7.
+//	51101d1d  12 prises, 10 portages -> 11, `noBridge` 1 -> 0, marqueur confirmé 4/4.
+//	fb1a1a72  3 manches : artefact IDENTIQUE OCTET POUR OCTET. La garde mono-manche du
+//	          triplet s'abstient, et c'est voulu (un slot y est réattribué d'une manche à
+//	          l'autre).
+//
+// CE QUE LA VERSION EMPORTE AVEC ELLE, ET CE N'EST PAS UNE PERTE. `coverage.flagCarries.
+// homeByObject` baisse (4 -> 0 sur `e94163af`) et un état `home` disparaît : la RENTRÉE PAR
+// L'OBJET n'agit que sur un drapeau AU SOL (`applyFlagHomecoming`), et ces drapeaux-là étaient
+// « au sol » uniquement parce que le portage qui les tenait n'était pas publié. La règle de
+// retour du mode (`flagReturnZone`), elle, APPARAÎT sur les matchs qui ne publiaient aucun
+// portage : elle n'est servie que s'il y a un drapeau à entourer.
+// Détail : internal/analysis/replay/build_objectives_live.go (`FlagInput.Identity`,
+// `flagIdentityOf`), internal/replaybuild/matchfacts.go (`pontParManche`),
+// internal/analysis/objectiveevents/slotidentity_rounds.go (`CompletedByLines`) et
+// .ai/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md.
+const SchemaVersion = 42
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
