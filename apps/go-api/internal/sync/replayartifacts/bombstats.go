@@ -41,10 +41,7 @@ package replayartifacts
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
-	"os"
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/ctxkeys"
@@ -82,13 +79,9 @@ func capabilityBombeArmee(ctx context.Context, d Deps) (armee, incident bool) {
 // tout match hors famille bomb), ou film d'Assaut dont aucune source n'a rien rendu. Ni l'un
 // ni l'autre n'est un défaut, et aucun ne doit se journaliser comme tel.
 func projeterStatsBombe(matchID, path string) (persist.BombStatsBatch, error) {
-	raw, err := os.ReadFile(path)
+	doc, err := lireDocumentRange(path)
 	if err != nil {
-		return persist.BombStatsBatch{}, fmt.Errorf("lecture artefact: %w", err)
-	}
-	var doc replay.ReplayDocument
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		return persist.BombStatsBatch{}, fmt.Errorf("parse artefact: %w", err)
+		return persist.BombStatsBatch{}, err
 	}
 	if doc.BombStats == nil {
 		return persist.BombStatsBatch{}, nil
