@@ -33,9 +33,14 @@ package filmdec
 // qui prendrait le parametre — pas une septieme copie.
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -91,44 +96,248 @@ func TestAucuneTableDeDomainesRecopiee(t *testing.T) {
 	}
 }
 
-// sautDePreambule reconnait le saut de tete d'un preambule d'evenement : `Skip(1)` (convention
-// « bit de config saute, continuation testee ») ou `Skip(2)` (convention « les deux sautes »).
-var sautDePreambule = regexp.MustCompile(`\.Skip\(\s*[12]\s*\)`)
-
-// lectureDuType reconnait la lecture du R(7) de type.
-var lectureDuType = regexp.MustCompile(`\.ReadBits\(\s*(?:7|eventTypeBits)\s*\)`)
-
-// preambuleFenetre : nombre de lignes de code apres le saut ou la lecture du type doit tomber
-// pour que la sequence soit reconnue comme un preambule. Trois suffisent : les six copies
-// d'origine tenaient toutes en trois lignes (saut, test de continuation, lecture du type).
-const preambuleFenetre = 3
-
-// TestPreambuleNaQuUnSeulLecteur — la SEQUENCE du preambule (saut de tete puis R(7) de type) ne
-// s'ecrit que dans `readPacketHead`. Les six copies en ligne d'avant le 2026-09-05 sont
-// interdites de retour.
+// --- LE PREAMBULE N'A QU'UN SEUL LECTEUR : DETECTION PAR AST -----------------------------------
 //
-// LE MOTIF EST LA SEQUENCE, PAS LE `ReadBits(7)` SEUL : le paquet lit legitimement 7 bits a une
-// vingtaine d'endroits (dequantifications, champs de composant). Ce qui est interdit, c'est de
-// les lire JUSTE APRES un saut de un ou deux bits de tete.
-func TestPreambuleNaQuUnSeulLecteur(t *testing.T) {
-	for _, nom := range sourcesDeProductionDuPaquet(t) {
-		if nom == "event_list.go" {
-			continue // la declaration de readPacketHead, et elle seule
+// POURQUOI L'AST ET PLUS LE GREP (correction C3 de la revue E-R1, 2026-09-06). La premiere version
+// de ce controle cherchait un `Skip(1)` ou `Skip(2)` puis un `ReadBits(7)` dans les TROIS lignes
+// suivantes. Elle avait deux trous demontres par mutation :
+//
+//   - M1 — trois des six copies d'origine s'etalaient sur QUATRE OU CINQ lignes de code
+//     (`biped_pickups.go:212-216`, `transloc_events.go:168-172`, `zoom_events.go:136-140` a la base
+//     `a21fd77f4`) : elles tombaient hors de la fenetre de trois lignes. La prose qui affirmait
+//     « les six copies tenaient toutes en trois lignes » etait fausse, et mesurable.
+//   - M2 — la copie la PLUS PROBABLE, celle qu'on obtient en copiant-collant le corps du lecteur
+//     unique (`br.ReadBit(); br.ReadBit(); br.ReadBits(7)`), n'utilise NI `Skip(1)` NI `Skip(2)` :
+//     le motif ne la voyait pas du tout.
+//
+// La detection ci-dessous ne regarde plus des lignes : elle compte des BITS. Pour chaque lecteur,
+// dans chaque SUITE DE STATEMENTS, elle ordonne les operations de bits (`Skip(n)`, `ReadBit()`,
+// `ReadBits(n)`) et cherche « exactement deux bits consommes, puis une lecture de sept », sur des
+// operations CONSECUTIVES. Les trois conventions du depot y tombent : `Skip(2)+R(7)`,
+// `Skip(1)+ReadBit()+R(7)` et `ReadBit()+ReadBit()+R(7)`, quel que soit le nombre de lignes qui
+// les separent — une lecture placee dans la CONDITION d'un `if` appartient a la suite qui porte ce
+// `if`, exactement comme les trois copies d'origine l'ecrivaient.
+//
+// POURQUOI « MEME SUITE DE STATEMENTS » ET PAS « MEME FONCTION ». Mesure du 2026-09-06 : sans cette
+// borne, le controle rend DEUX faux positifs, et ce ne sont pas des copies du preambule mais des
+// grammaires de composant que le flot de controle separe —
+// `consumeObjectLowFrequency` (`R(2)` de tete puis `R(7)` DANS le `if f < 2`, FUN_1407ef088) et
+// `consumeByName` (un `ReadBit()` et un `ReadBits(7)` dans DEUX branches exclusives du meme
+// `switch`). Un garde-rail qui exige une allowlist des le premier jour ne tient pas : la bonne
+// borne est le flot, pas une liste.
+//
+// CE QU'IL NE VOIT PAS, ET C'EST ECRIT. (1) Une copie dont les neuf bits seraient repartis entre
+// deux suites imbriquees (`br.Skip(2)` puis `if x { br.ReadBits(7) }`) — c'est le prix de la borne
+// ci-dessus, et aucune des six copies d'origine n'avait cette forme. (2) Une copie qui
+// n'utiliserait pas de lecteur mais l'arithmetique d'offset (`readBitsAt(pay, p+2, 7)`) : la
+// suivre demanderait de suivre la valeur de `p`, et le controle mentirait plus souvent qu'il
+// n'attraperait. Le jour ou l'une des deux apparait, c'est ici qu'elle s'ajoute.
+
+// lecteurUniqueDuPreambule est la SEULE fonction autorisee a lire le preambule d'evenement.
+const lecteurUniqueDuPreambule = "readPacketHead"
+
+// opBit est UNE operation de lecture de bits sur un lecteur, telle que l'AST la donne.
+type opBit struct {
+	bits   int // bits consommes ; -1 quand la largeur n'est pas un litteral connu
+	offset int // position dans la source, pour ordonner
+	ligne  int
+	texte  string
+}
+
+// suiteDOps est la suite des operations d'UN lecteur dans UNE suite de statements.
+type suiteDOps struct {
+	lecteur string
+	ops     []opBit
+}
+
+// bitsConsommes rend le nombre de bits qu'un appel consomme sur son lecteur, et s'il en est un.
+func bitsConsommes(sel *ast.SelectorExpr, args []ast.Expr) (int, bool) {
+	switch sel.Sel.Name {
+	case "ReadBit":
+		if len(args) == 0 {
+			return 1, true
 		}
-		lignes := lignesDeCode(t, nom)
-		for i, ligne := range lignes {
-			if ligne == "" || !sautDePreambule.MatchString(ligne) {
+	case "Skip", "ReadBits":
+		if len(args) == 1 {
+			return largeurLitterale(args[0]), true
+		}
+	}
+	return 0, false
+}
+
+// largeurLitterale rend la largeur d'un argument quand elle est connue a la lecture (entier
+// litteral ou la constante nommee du type d'evenement), -1 sinon.
+func largeurLitterale(a ast.Expr) int {
+	switch v := a.(type) {
+	case *ast.BasicLit:
+		if v.Kind != token.INT {
+			return -1
+		}
+		n, err := strconv.Atoi(v.Value)
+		if err != nil {
+			return -1
+		}
+		return n
+	case *ast.Ident:
+		if v.Name == "eventTypeBits" {
+			return eventTypeBits
+		}
+	}
+	return -1
+}
+
+// nomDuReceveur rend le receveur d'un appel sous forme textuelle (`br`, `s.br`), ou "" si
+// l'expression n'est pas une chaine d'identifiants — auquel cas deux appels ne sont pas
+// comparables et on ne les rapproche pas.
+func nomDuReceveur(e ast.Expr) string {
+	switch v := e.(type) {
+	case *ast.Ident:
+		return v.Name
+	case *ast.SelectorExpr:
+		if prefixe := nomDuReceveur(v.X); prefixe != "" {
+			return prefixe + "." + v.Sel.Name
+		}
+	}
+	return ""
+}
+
+// porteUneSuiteDeStatements dit si un noeud ouvre une suite de statements : un bloc, ou le corps
+// d'une clause de `switch` / `select`, qui n'est pas un bloc mais en tient lieu.
+func porteUneSuiteDeStatements(n ast.Node) bool {
+	switch n.(type) {
+	case *ast.BlockStmt, *ast.CaseClause, *ast.CommClause:
+		return true
+	}
+	return false
+}
+
+// suitesDuCorps rend les suites d'operations de bits d'un corps, une par couple
+// (suite de statements, lecteur), ordonnees par leur premiere operation.
+func suitesDuCorps(fset *token.FileSet, src []byte, body *ast.BlockStmt) []suiteDOps {
+	type cle struct {
+		suite   ast.Node
+		lecteur string
+	}
+	groupes := map[cle][]opBit{}
+	var pile []ast.Node
+	ast.Inspect(body, func(n ast.Node) bool {
+		if n == nil {
+			pile = pile[:len(pile)-1]
+			return false
+		}
+		if op, lecteur, ok := opDeLAppel(fset, src, n); ok {
+			k := cle{suite: suiteEnglobante(pile), lecteur: lecteur}
+			groupes[k] = append(groupes[k], op)
+		}
+		pile = append(pile, n)
+		return true
+	})
+	out := make([]suiteDOps, 0, len(groupes))
+	for k, ops := range groupes {
+		sort.Slice(ops, func(i, j int) bool { return ops[i].offset < ops[j].offset })
+		out = append(out, suiteDOps{lecteur: k.lecteur, ops: ops})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].ops[0].offset != out[j].ops[0].offset {
+			return out[i].ops[0].offset < out[j].ops[0].offset
+		}
+		return out[i].lecteur < out[j].lecteur
+	})
+	return out
+}
+
+// suiteEnglobante rend la suite de statements la plus proche dans la pile d'ancetres.
+func suiteEnglobante(pile []ast.Node) ast.Node {
+	for i := len(pile) - 1; i >= 0; i-- {
+		if porteUneSuiteDeStatements(pile[i]) {
+			return pile[i]
+		}
+	}
+	return nil
+}
+
+// opDeLAppel reconnait une operation de bits et rend son lecteur.
+func opDeLAppel(fset *token.FileSet, src []byte, n ast.Node) (opBit, string, bool) {
+	call, ok := n.(*ast.CallExpr)
+	if !ok {
+		return opBit{}, "", false
+	}
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return opBit{}, "", false
+	}
+	bits, estLecture := bitsConsommes(sel, call.Args)
+	lecteur := nomDuReceveur(sel.X)
+	if !estLecture || lecteur == "" {
+		return opBit{}, "", false
+	}
+	pos := fset.Position(call.Pos())
+	return opBit{
+		bits: bits, offset: pos.Offset, ligne: pos.Line, texte: texteSource(src, fset, call),
+	}, lecteur, true
+}
+
+// texteSource rend le texte source d'un noeud, pour que le message d'echec montre la ligne fautive.
+func texteSource(src []byte, fset *token.FileSet, n ast.Node) string {
+	d, f := fset.Position(n.Pos()).Offset, fset.Position(n.End()).Offset
+	if d < 0 || f > len(src) || d >= f {
+		return ""
+	}
+	return strings.Join(strings.Fields(string(src[d:f])), " ")
+}
+
+// preambuleRecopie cherche, dans la suite d'operations d'UN lecteur, « deux bits consommes puis
+// une lecture de sept » sur des operations CONSECUTIVES. Rend l'indice ou la sequence commence et
+// celui de la lecture de sept bits.
+func preambuleRecopie(ops []opBit) (debut, fin int, trouve bool) {
+	for i, o := range ops {
+		if o.bits != eventTypeBits {
+			continue
+		}
+		switch {
+		case i >= 1 && ops[i-1].bits == 2:
+			return i - 1, i, true
+		case i >= 2 && ops[i-1].bits == 1 && ops[i-2].bits == 1:
+			return i - 2, i, true
+		}
+	}
+	return 0, 0, false
+}
+
+// TestPreambuleNaQuUnSeulLecteur — la SEQUENCE du preambule (deux bits de tete puis R(7) de type)
+// ne s'ecrit que dans `readPacketHead`. Les six copies en ligne d'avant le 2026-09-05 sont
+// interdites de retour, et les trois conventions du depot le sont avec elles.
+//
+// L'EXEMPTION EST LA FONCTION, PAS LE FICHIER. La version d'avant exemptait `event_list.go` en
+// entier ; ici seule la declaration de `readPacketHead` sort du controle, donc une septieme copie
+// ecrite dans le fichier du lecteur unique serait vue.
+func TestPreambuleNaQuUnSeulLecteur(t *testing.T) {
+	fset := token.NewFileSet()
+	for _, nom := range sourcesDeProductionDuPaquet(t) {
+		src, err := os.ReadFile(nom)
+		if err != nil {
+			t.Fatalf("lecture de %s : %v", nom, err)
+		}
+		f, err := parser.ParseFile(fset, nom, src, 0)
+		if err != nil {
+			t.Fatalf("analyse de %s : %v", nom, err)
+		}
+		for _, d := range f.Decls {
+			fd, ok := d.(*ast.FuncDecl)
+			if !ok || fd.Body == nil || fd.Name.Name == lecteurUniqueDuPreambule {
 				continue
 			}
-			for j := i + 1; j <= i+preambuleFenetre && j < len(lignes); j++ {
-				if lectureDuType.MatchString(lignes[j]) {
-					t.Errorf("%s:%d-%d recopie le preambule d'evenement :\n\t%s\n\t%s\n"+
-						"Le preambule de 9 bits se lit par `readPacketHead` (event_list.go). "+
-						"Six copies en ligne, sous deux conventions, ont ete ramenees a ce "+
-						"lecteur unique le 2026-09-05 (lot E, item E.3).",
-						nom, i+1, j+1, ligne, lignes[j])
-					break
+			for _, s := range suitesDuCorps(fset, src, fd.Body) {
+				debut, fin, trouve := preambuleRecopie(s.ops)
+				if !trouve {
+					continue
 				}
+				t.Errorf("%s:%d-%d (%s) recopie le preambule d'evenement sur `%s` :\n\t%s\n\t%s\n"+
+					"Le preambule de 9 bits se lit par `%s` (event_list.go). Six copies en ligne, "+
+					"sous deux conventions, ont ete ramenees a ce lecteur unique le 2026-09-05 "+
+					"(lot E, item E.3).",
+					nom, s.ops[debut].ligne, s.ops[fin].ligne, fd.Name.Name, s.lecteur,
+					s.ops[debut].texte, s.ops[fin].texte, lecteurUniqueDuPreambule)
 			}
 		}
 	}

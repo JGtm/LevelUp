@@ -689,3 +689,56 @@ CE QUI N'A PAS CHANGE, ET IL FAUT LE DIRE : l'item E.4 lui-meme reste bon. La re
 pieces que les neuf sites sont migres, que la borne, l'avance et le pas d'echec sont ceux d'origine
 a la ligne pres, et que le golden des familles rougit quand le marcheur est neutralise. C'est la
 DESIGNATION de la preuve qui etait fausse, pas le refacto.
+
+## [x] Correction 3 (C3, P2) — le garde du preambule passe du grep a l'AST
+
+Commit `v2(E.fix-3)`. `filmdec/event_preamble_guard_test.go`.
+
+LE TROU. Le controle cherchait `\.Skip\(\s*[12]\s*\)` puis un `ReadBits(7)` dans les TROIS lignes
+suivantes. Deux copies passaient :
+
+- **M1** — la forme d'avant le lot, etalee sur 4-5 lignes. La prose du fichier affirmait que « les
+  six copies d'origine tenaient toutes en trois lignes » : c'etait FAUX et mesurable — trois
+  d'entre elles (`biped_pickups.go:212-216`, `transloc_events.go:168-172`, `zoom_events.go:136-140`
+  a la base `a21fd77f4`) s'etalaient sur quatre ou cinq lignes.
+- **M2** — la copie la plus probable de toutes, le copier-coller du corps du lecteur unique
+  (`br.ReadBit(); br.ReadBit(); br.ReadBits(7)`), qui n'emploie ni `Skip(1)` ni `Skip(2)`.
+
+CE QUI EST FAIT. Le controle ne regarde plus des lignes, il COMPTE DES BITS. Pour chaque lecteur,
+dans chaque SUITE DE STATEMENTS, les operations de bits (`Skip(n)`, `ReadBit()`, `ReadBits(n)`)
+sont ordonnees par position de source, puis on cherche « exactement deux bits consommes, puis une
+lecture de sept » sur des operations CONSECUTIVES. Les trois conventions y tombent —
+`Skip(2)+R(7)`, `Skip(1)+ReadBit()+R(7)`, `ReadBit()+ReadBit()+R(7)` — quel que soit le nombre de
+lignes, une lecture placee dans la CONDITION d'un `if` appartenant a la suite qui porte ce `if`.
+L'exemption est desormais la FONCTION `readPacketHead`, plus le fichier `event_list.go` entier.
+
+POURQUOI « MEME SUITE DE STATEMENTS » ET PAS « MEME FONCTION » — MESURE. Sans cette borne, le
+controle rend DEUX faux positifs, et ils ne sont pas des copies du preambule mais des grammaires de
+composant que le flot de controle separe :
+
+| site | ce que le controle voyait | ce que c'est vraiment |
+|---|---|---|
+| `components_object_state.go:253-255 consumeObjectLowFrequency` | `R(2)` puis `R(7)` | FUN_1407ef088 : le `R(7)` est DANS le `if f < 2`, il n'est pas consecutif |
+| `traverse.go:577-585 consumeByName` | `ReadBit()` puis `R(7)` | DEUX branches exclusives du meme `switch` (`nav-cutscene-flag` et `player-desired-respawn-seat`) |
+
+Un garde-rail qui exige une allowlist des le premier jour ne tient pas : la bonne borne est le
+flot, pas une liste. Aucune allowlist n'a donc ete creee.
+
+PREUVES PAR MUTATION (les deux, rejouees le 2026-09-06) :
+
+```
+M1  decodeZoomHead remis a sa forme d'avant le lot (Skip(1) + ReadBit + R(7), 5 lignes)
+    --- FAIL: TestPreambuleNaQuUnSeulLecteur
+        zoom_events.go:136-140 (decodeZoomHead) recopie le preambule d'evenement sur `br`
+
+M2  septieme copie en convention CANONIQUE ajoutee a zoom_events.go
+    --- FAIL: TestPreambuleNaQuUnSeulLecteur
+        zoom_events.go:197-199 (copieDuPreambuleM2) recopie le preambule d'evenement sur `br`
+```
+
+Les deux mutations sont annulees (`git checkout -- zoom_events.go`), le controle repasse au vert.
+
+CE QU'IL NE VOIT TOUJOURS PAS, ECRIT DANS L'EN-TETE DU FICHIER : (1) une copie dont les neuf bits
+seraient repartis entre deux suites imbriquees — c'est le prix de la borne ci-dessus, et aucune des
+six copies d'origine n'avait cette forme ; (2) une copie par arithmetique d'offset
+(`readBitsAt(pay, p+2, 7)`), qui demanderait de suivre la valeur de `p`.
