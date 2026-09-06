@@ -89,7 +89,9 @@ func TestIdentifiedEventsSansFamilleNeNommeRien(t *testing.T) {
 		"variante inconnue":            "",
 	} {
 		t.Run(nom, func(t *testing.T) {
-			got := identifiedEvents(context.Background(), "m", filmDeaths{err: errors.New("film absent")}, recs, variant)
+			got := identifiedEvents(context.Background(), "m",
+				filmDeaths{err: errors.New("film absent")}, recs,
+				port.MatchFacts{GameVariantName: variant})
 			if got != nil {
 				t.Errorf("%d action(s), attendu nil : un mode sans table nommee ne nomme rien", len(got))
 			}
@@ -151,7 +153,10 @@ func TestIdentifyRoundEventsMultiManche(t *testing.T) {
 		t.Fatalf("la fixture ne nomme aucune capture de drapeau sur le slot 22 : %+v", named)
 	}
 
-	got := identifyRoundEvents(named, recs, deaths)
+	// `nil` lignes : ce test porte sur le pont PAR MANCHE seul. La complétion par le triplet
+	// (`CompletedByLines`) refuse de toute façon le multi-manche — cf.
+	// `objectiveevents.TestCompletedByLinesRefuseLeMultiManche`, qui le prouve à sa source.
+	got := identifyRoundEvents(named, recs, deaths, nil)
 	var capX string
 	for _, e := range got {
 		if e.Stat == objectiveevents.StatFlagCaptures {

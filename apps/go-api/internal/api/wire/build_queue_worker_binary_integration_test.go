@@ -53,6 +53,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"testing"
 	"time"
 
@@ -251,12 +252,17 @@ func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domai
 //	                    mal généré (la chaîne E2E pelait ses deux couches). Le seul garde-rail qui
 //	                    attrape ce défaut-là est `film_fixture_integrite_cgo_test.go`.
 //
-// CE QUI N'EST DÉLIBÉRÉMENT PAS FIGÉ ICI, ET LE RESTERA TANT QUE CE NE SERA PAS INSTRUIT. Le
-// COMPTE d'actions par famille (12 : 8 `kills` + 4 `assists`) et la LISTE des joueurs pontés ne
-// sont PAS des attentes de ce test. L'artefact du parc pour ce même match (schéma 20) porte
-// 17 actions, dont un `flag_captures` et un `flag_steals` qui ont disparu depuis, et un ensemble
-// de joueurs pontés DIFFÉRENT. Figer l'état d'aujourd'hui sanctifierait une dérive non expliquée
-// (revue CTF-R1, constat 3) — un test ne sanctuarise pas ce qu'on n'a pas compris.
+//	les ACTIONS `flag`  la dérive INSTRUITE le 2026-09-06. Ce film porte exactement UNE prise et
+//	                    UNE capture nommées, toutes deux au slot 22 (SweatyYeti75, 7 frags,
+//	                    2 morts). Elles avaient disparu du document entre le schéma 20 et
+//	                    aujourd'hui parce que `d173b1a8c` a basculé ce calque sur un pont
+//	                    d'identité qui exige TROIS instants de mort — hors de portée d'un joueur
+//	                    qui meurt deux fois. `CompletedByLines` les rend. C'est le seul film CTF
+//	                    du dépôt qui porte des actions de drapeau nommées : les figer ici est la
+//	                    seule protection contre une seconde disparition silencieuse.
+//	le PONTAGE          les 7 joueurs présents au film sont nommés, chacun avec EXACTEMENT les
+//	                    compteurs de la feuille de match. Le 8e (5 frags, 0 mort) n'a aucune
+//	                    trajectoire dans le film : il n'a pas de slot à nommer.
 func assertCalquesDObjectif(t *testing.T, doc replay.ReplayDocument, fx filmFixture) {
 	t.Helper()
 	fc := doc.Coverage.FlagCarries
@@ -300,20 +306,39 @@ func assertCalquesDObjectif(t *testing.T, doc replay.ReplayDocument, fx filmFixt
 	}
 	for xuid, actions := range parJoueur {
 		p := feuille[xuid]
-		if actions["kills"] > p.Kills {
-			t.Errorf("joueur %s : %d actions `kills` publiées pour %d frags à la feuille de match",
-				xuid, actions["kills"], p.Kills)
-		}
-		if actions["assists"] > p.Assists {
-			t.Errorf("joueur %s : %d actions `assists` publiées pour %d assistances à la feuille de match",
-				xuid, actions["assists"], p.Assists)
+		// ÉGALITÉ, pas inégalité : sur ce film chaque joueur ponté publie EXACTEMENT sa ligne.
+		if actions["kills"] != p.Kills || actions["assists"] != p.Assists {
+			t.Errorf("joueur %s : %d frags / %d assistances publiés, la feuille de match dit %d / %d",
+				xuid, actions["kills"], actions["assists"], p.Kills, p.Assists)
 		}
 	}
-	if len(parJoueur) == 0 {
-		t.Error("aucune action d'objectif attribuée : le pont d'identité n'a nommé personne")
+	// LE PONTAGE : les 7 joueurs du film, pas 5. Le 8e (5 frags, 0 mort) n'a pas de trajectoire.
+	if len(parJoueur) != 7 {
+		t.Errorf("joueurs pontés = %d, attendu 7 — un pont qui en perd deux perd avec eux leurs "+
+			"actions d'objectif (régression `d173b1a8c`, corrigée le 2026-09-06). Pontés : %v",
+			len(parJoueur), clesTriees(parJoueur))
 	}
-	t.Logf("calque objectifs : %d actions, %d joueurs pontés (compte NON figé — cf. l'en-tête)",
-		len(doc.Objectives), len(parJoueur))
+	// LES ACTIONS `flag` : la régression instruite. Elles vivent toutes deux sur le slot du
+	// joueur qui meurt DEUX fois — celui que le pont par instants de mort ne peut pas nommer seul.
+	const porteurDeDrapeau = "2535463878425995" // SweatyYeti75, 7 frags / 2 morts / 1 assistance
+	for stat, attendu := range map[string]int{"flag_captures": 1, "flag_steals": 1} {
+		if got := parJoueur[porteurDeDrapeau][stat]; got != attendu {
+			t.Errorf("action `%s` du porteur de drapeau %s : %d, attendu %d — c'est exactement ce "+
+				"que l'artefact du parc au schéma 20 publiait, et ce que le pont par morts seul perdait",
+				stat, porteurDeDrapeau, got, attendu)
+		}
+	}
+	t.Logf("calque objectifs : %d actions, %d joueurs pontés", len(doc.Objectives), len(parJoueur))
+}
+
+// clesTriees rend les clés d'une table, triées — pour un message d'échec reproductible.
+func clesTriees[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // chargerFixture lit le mini-film versionné (fixture.json + chunks) résolu PAR LE PAQUET
