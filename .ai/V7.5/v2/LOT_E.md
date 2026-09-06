@@ -381,13 +381,13 @@ Meme worktree, meme branche, memes regles. Les temoins de E.1 restent le gate de
 `GOLANGCI_LINT_CACHE=/c/Users/Guillaume/AppData/Local/golangci-v2-decodeur` isole desormais la
 mesure de lint (lecon du lot E-I : ce cache est global a la machine et sert des verdicts perimes).
 
-## [x] E.6 — golden inconditionnel des 30 familles de balayage (F3, residu F1)
+## [x] E.6 — golden inconditionnel des familles de balayage (F3, residu F1)
 
 Commit `8a65d0969`. `filmdec/golden_minibobine_test.go` + `testdata/golden_minibobine_familles.tsv`.
 
 | item | statut | ce qui a ete fait |
 |---|---|---|
-| golden inconditionnel sur la mini-bobine versionnee | `[x]` | 35 lignes figees, dont 30 familles. Il appelle les POINTS D'ENTREE (`ScanCamoStates`, `ScanAbilityCharges`, `ScanZoomEvents`, `ScanTranslocatorTeleports`, `ScanBipedPickups`, `ScanInventoryDeltas`, `ScanHeldWeaponChanges`, ...), JAMAIS les enveloppes `ScanFilm*(dir)`. Deux exceptions assumees, `weaponShots` et `weaponDamages` : leur point d'entree N'A PAS de forme `film`, il prend le repertoire — c'est donc bien le point d'entree, pas une enveloppe. |
+| golden inconditionnel sur la mini-bobine versionnee | `[x]` | 35 lignes figees, dont **33 familles** et 2 mesures derivees (compte corrige le 2026-09-06, correction C6 : ce journal ecrivait « 30 familles »). Il appelle les POINTS D'ENTREE (`ScanCamoStates`, `ScanAbilityCharges`, `ScanZoomEvents`, `ScanTranslocatorTeleports`, `ScanBipedPickups`, `ScanInventoryDeltas`, `ScanHeldWeaponChanges`, ...), JAMAIS les enveloppes `ScanFilm*(dir)`. Deux exceptions assumees, `weaponShots` et `weaponDamages` : leur point d'entree N'A PAS de forme `film`, il prend le repertoire — c'est donc bien le point d'entree, pas une enveloppe. |
 | comptes + digest par famille | `[x]` | `nom \| compte \| digest \| premier`. |
 | une valeur nommee lisible par famille | `[x]` | Le premier element, champs NOMMES, tronque a 140 caracteres. Exemple : `zoomEvents 37 ... {TimestampUS:4551203771 Slot:517 Level:1}`. Un rouge se lit dans le diff, sans outil. |
 | `t.Fatal` si la bobine manque | `[x]` | Aucun `t.Skip` : la bobine est versionnee, son absence est une panne du depot. |
@@ -400,7 +400,13 @@ decodeur exige pour construire son monde par accumulation. Celle du rejeu est fa
 choisis : elle ne decode AUCUN record de canal delta. Mesure : cette bobine-ci rend 28 005 records
 delta et 17 slots bipedes.
 
-### Les 30 familles et leur population, une par une
+### Les 33 familles et les 2 mesures derivees, une par une
+
+CORRECTION DU 2026-09-06 (revue E-R1, constat C6) — ce titre disait « les 30 familles » et
+l'en-tete du fichier de test annoncait « une population non vide dans 25 familles sur 30 » et
+« cinq familles rendent 0 ». Le fichier fige en realite **35 lignes** : 33 familles + 2 mesures
+derivees, dont **29 peuplees**, **4 a zero** et **2 en erreur d'etat**. Le tableau ci-dessous
+etait deja juste ligne par ligne — c'etaient les TOTAUX qui ne l'etaient pas.
 
 | famille | population sur la mini-bobine |
 |---|---|
@@ -570,7 +576,7 @@ AUCUN chiffre des temoins E.1 n'a bouge sur les trois items.
 |---|---|---|---|
 | `archlint/filmdec_package_vars_test.go` | 111 | **96** | REDESCEND (E.8 : -15) |
 | `filmdec/ecs_widths_guard_test.go` (G4) | (n'existait pas) | 114 fixes / 65 gardees, 3 ecarts admis | NOUVEAU (E.7) |
-| `filmdec/golden_minibobine_test.go` | (n'existait pas) | 35 lignes figees, 30 familles | NOUVEAU (E.6) |
+| `filmdec/golden_minibobine_test.go` | (n'existait pas) | 35 lignes figees : 33 familles + 2 mesures derivees | NOUVEAU (E.6) |
 | `filmdec/registry_test.go` | chemin absolu + `t.Skipf` | mini-bobine versionnee + `t.Fatal` | DURCI (E.6) |
 
 ## Decouvertes de la tache E-II — consignees, NON traitees
@@ -833,3 +839,36 @@ md5 du golden, avant et apres les deux commandes : e396143919281fde5f92a56d0af03
 LES DEUX PORTES MARCHENT ENCORE, verifie apres retour de la mutation : `-update-golden-familles`
 reecrit le golden a l'octet pres (meme md5, 35 familles) et `-update` reecrit les 5 graines sans
 rien changer sur disque. Une porte qu'on ferme sans la reverifier est une porte cassee.
+
+## [x] Correction 6 (C6, P2) — l'en-tete du golden decrivait un autre fichier
+
+Commit `v2(E.fix-6)`. `filmdec/golden_minibobine_test.go`, section E.6 de ce journal.
+
+LE TROU — TROIS AFFIRMATIONS FAUSSES, toutes verifiables en comptant :
+
+| l'en-tete disait | le fichier fige / le code dit |
+|---|---|
+| « une population non vide dans 25 familles sur 30 » | 35 lignes : 33 familles + 2 mesures derivees, dont 29 peuplees |
+| « Cinq familles rendent 0 sur ce prefixe » | QUATRE : `navpointRadial`, `translocatorTeleports`, `vehicleEvents`, `carrierMarks` |
+| « `digest` est le sha256 d'un rendu `%+v` de TOUT le resultat » | c'est `rendreStable`, qui existe PRECISEMENT parce que `%+v` imprimait des ADRESSES |
+
+La troisieme est la plus dangereuse : un mainteneur qui « simplifie » `rendreStable` en `%+v` sur
+la foi de cette ligne reintroduit l'instabilite que le fichier venait d'eliminer — la
+demonstration est ecrite 300 lignes plus bas dans le meme fichier.
+
+CE QUI EST FAIT. L'en-tete est reecrit d'apres le TSV et d'apres `rendreStable` : les comptes
+exacts (35 lignes, 33 familles + 2 mesures derivees, 29 peuplees, 4 a zero, 2 en erreur, chacune
+nommee), le vrai rendu du digest avec la raison de ne pas revenir a `%+v`, et une note datee qui
+dit ce que l'en-tete affirmait avant. S'y ajoute ce que la revue a mesure et que l'en-tete taisait :
+**une population vide ne verrouille rien** — les deux lignes a zero d'une famille qui rend une
+tranche portent le MEME digest de tranche vide (`4f53cda18c2baa0c0354...`, verifie sur le TSV) et
+les deux lignes en erreur ne figent que la chaine du refus. La couverture reelle est de 29 lignes
+sur 35, et c'est ecrit noir sur blanc.
+
+LES COMPTES DE CE JOURNAL SONT CORRIGES AVEC : la section E.6 disait « 30 familles » aux trois
+endroits ou elle les comptait (titre d'item, tableau, ligne de ratchet), alors que son propre
+tableau ligne par ligne en listait 35. Les lignes du tableau etaient justes ; les totaux ne
+l'etaient pas.
+
+VERIFICATION : `TestGoldenMiniBobineFamilles` PASS, md5 du golden inchange
+(`e396143919281fde5f92a56d0af03d86`) — cette correction ne touche que de la prose.
