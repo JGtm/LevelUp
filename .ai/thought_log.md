@@ -96378,3 +96378,60 @@ perimetre au §7 : la meme branche morte `missing_match_id` survit dans `handler
 (lot B/D) ; et aucune AUTRE route du depot ne fabrique un chemin de fichier a partir d'un
 parametre d'URL, verifie sur pieces — si une seconde apparait, elle reutilise `MapIDValide`
 plutot que d'en recopier le motif.
+
+---
+
+## [2026-09-06] Tactique phase 4 — ronde 2 : l'oracle avait survecu dans le libelle
+
+**Statut** : Complete (3 constats, tous corriges — non pousse, revue du superviseur)
+
+**Decision technique principale** — fermer la frontiere aux DEUX couches, et rendre
+discriminants deux tests qui ne l'etaient pas.
+
+**Le defaut qui comptait (P1)** — la ronde 1 avait rendu indiscernables les CODES d'erreur
+d'un `map_id` hostile et d'une carte legitime jamais jouee. Le corps, lui, differait : le
+service enrobait sa sentinelle avec la carte demandee (`fmt.Errorf("%w (%q)", ...)`) et le
+handler publiait `err.Error()`, tandis que le refus de validation publiait la sentinelle nue.
+La presence de l'identifiant entre parentheses disait a l'appelant laquelle des deux
+frontieres il avait heurtee. **On avait ferme la porte et laisse la fenetre ouverte.**
+
+Corrige aux deux couches, chacune avec son test et son inversion : le service rend la
+sentinelle nue et met le detail au journal ; le handler publie le message canonique quoi
+qu'on lui donne. Les deux 400 sur `question` et `qui` continuent de nommer la valeur
+refusee, et c'est un choix argumente : ce sont des parametres de requete a validation
+unique, il n'existe aucune seconde frontiere dont il faudrait les rendre indiscernables, et
+nommer la valeur rejetee est ce qui rend un 400 utile. La regle du message canonique ne vaut
+que pour le 404 de carte, qui a DEUX producteurs.
+
+**PIEGE RETENU — un double infidele valide le handler contre une realite qui n'existe pas.**
+Le test de la ronde 1 comparait deja les deux reponses octet pour octet, et il passait : son
+double rendait la sentinelle NUE, forme que le service reel ne produisait jamais. Le test
+etait juste, la fixture etait fausse, et l'ecart entre les deux etait exactement le defaut.
+Le correctif ne consiste donc pas seulement a corriger le code : le fichier de tests porte
+maintenant DEUX doubles opposes — l'un qui reproduit la forme reelle (et tombe si le service
+regresse), l'autre qui ENROBE volontairement (et tombe si le handler regresse). Aucun des
+deux ne suffit seul.
+
+**Second piege — un test peut etre vert pour la mauvaise raison, et seulement sur une
+plate-forme.** Le test de la garde d'index posait sa cle hostile via `MapBackgroundMetaPath`,
+dont le `filepath.Join` nettoyait le `..\` : le sidecar sortait du repertoire des fonds, qui
+n'etait alors jamais cree, `os.ReadDir` echouait, et la fonction sortait AVANT la garde
+testee. Sous Linux il mordait, sous Windows non. Reecrit avec un nom de fichier `..evade.json`
+— legal, present dans le repertoire, dont seul le STEM porte `..` — et un decor VERIFIE avant
+l'assertion : l'index doit resoudre vers la cle hostile et son sidecar doit etre lisible,
+faute de quoi un refus ne prouverait rien. La lecon generale : quand un test verifie un
+refus, il faut d'abord prouver que sans la garde ca PASSERAIT.
+
+**Troisieme correctif (P2)** — la fabrique de service, qui ouvre la base du joueur,
+s'executait avant la validation sur la route raster. Remontee ; et le double compte
+desormais les appels a la FABRIQUE, pas seulement ceux au service — l'assertion etait posee
+un cran trop tard.
+
+**Resultats observes** — `go vet` propre sur 3 arbres ; `go test -count=1` vert sur 12
+paquets (api 23,3 s ; archlint 15,5 s ; service 9,9 s ; handlers 9,0 s) ;
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue ; `openapi-gen -check` a jour
+(690129 octets, contrat inchange). Quatre inversions jouees, chacune faisant tomber son test.
+
+**Conclusion / prochaine etape** — ronde 2 soldee, pas de ronde 3 : le superviseur verifie
+sur pieces puis pousse. La phase 4 est close, revues comprises ; la suite prevue par le plan
+est la phase 6 (rasters a la cuisson), la 5 attendant toujours le lot D.

@@ -15,10 +15,12 @@ package service
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
@@ -54,18 +56,78 @@ func TestResolveBackgroundKey_RefuseUnMapIDHostile(t *testing.T) {
 }
 
 // TestResolveBackgroundKey_RefuseUneCleDIndexHostile — meme garde sur la branche de repli.
-// La cle vient alors du CONTENU d'un sidecar : un fichier, donc une donnee, donc quelque
-// chose qui se remplace. Une seule regle pour les deux branches.
+// La cle vient alors du CONTENU d'un repertoire : des fichiers, donc des donnees, donc
+// quelque chose qui se remplace. Une seule regle pour les deux branches.
+//
+// LA PREMIERE VERSION DE CE TEST NE MORDAIT PAS SOUS WINDOWS (revue R2, P2), et c'est
+// instructif : elle posait la cle hostile en passant `..\evade` a `MapBackgroundMetaPath`,
+// dont le `filepath.Join` NETTOYAIT le `..\` — le sidecar atterrissait hors de
+// `map_backgrounds/`, qui n'etait donc jamais cree, `MapBackgroundIndexFor` echouait sur
+// `os.ReadDir` et la fonction sortait AVANT la garde d'index. Le test passait pour la
+// mauvaise raison, et retirer la garde le laissait vert sur ce poste.
+//
+// LA VERSION QUI MORD, sur les deux plates-formes : le repertoire des fonds EXISTE et
+// contient deux sidecars ecrits a des noms de fichier CHOISIS (`os.WriteFile` sur un chemin
+// que ce test construit lui-meme, jamais `filepath.Join` de la cle) —
+//
+//   - `ridgeline.json`, legitime, pour que l'index soit constructible ;
+//   - `..evade.json`, dont le STEM (`..evade`, la cle rendue par l'index) contient `..`.
+//     C'est un nom de fichier parfaitement legal : il vit BIEN dans `map_backgrounds/`, et
+//     `MapBackgroundMetaPath` le retrouve. Rien d'autre que la garde ne peut donc le
+//     refuser — sans elle, la resolution ABOUTIT.
+//
+// Une cle d'index ne peut pas, aujourd'hui, porter un separateur : elle vient d'un nom de
+// fichier rendu par `os.ReadDir`. La garde est donc CONSERVATRICE sur cette branche, et
+// c'est voulu — la regle porte sur la CLE, pas sur sa provenance, et une provenance ne
+// reste sure que tant que personne ne la change.
 func TestResolveBackgroundKey_RefuseUneCleDIndexHostile(t *testing.T) {
-	// `fondDeCarte` ecrit un sidecar dont `module` (= la cle) est `ridgeline` et dont
-	// `mapNames` porte « cliffhanger ». On rejoue la meme forme avec un module hostile.
-	root := fondDeCarte(t, title.DefaultSlug, "cliffhanger", `..\evade`, true)
-	repo := &mapNamesStub{names: []string{"cliffhanger"}}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	root := t.TempDir()
+	dir := title.NewPathResolver(root).MapBackgroundDir(title.DefaultSlug)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", dir, err)
+	}
+	// Sidecar legitime : sans lui l'index serait vide et le test ne prouverait rien de la
+	// branche de repli.
+	ecrire(t, filepath.Join(dir, "ridgeline.json"), sidecarNomme("ridgeline", "cliffhanger"))
+	// Sidecar HOSTILE, pose par son NOM DE FICHIER : le stem porte `..`.
+	ecrire(t, filepath.Join(dir, "..evade.json"), sidecarNomme("..evade", "piege"))
+	ecrire(t, filepath.Join(dir, "..evade.png"), "\x89PNG\r\n\x1a\nfaux")
 
+	// Le decor est bien celui qu'on croit : l'index resout « piege » vers la cle hostile,
+	// et le sidecar de cette cle est LISIBLE. Sans ces deux verifications, un test vert ne
+	// dirait pas si c'est la garde qui a refuse ou le decor qui a manque.
+	idx, err := replay.MapBackgroundIndexFor(dir)
+	if err != nil {
+		t.Fatalf("MapBackgroundIndexFor: %v", err)
+	}
+	cle, ok := idx.Lookup("piege")
+	if !ok || cle != "..evade" {
+		t.Fatalf("index : Lookup(piege) = %q, %v — attendu la cle hostile", cle, ok)
+	}
+	if _, err := replay.LoadMapBackground(
+		title.NewPathResolver(root).MapBackgroundMetaPath(title.DefaultSlug, cle)); err != nil {
+		t.Fatalf("le sidecar de la cle hostile doit etre lisible, sinon le refus est trivial : %v", err)
+	}
+
+	repo := &mapNamesStub{names: []string{"piege"}}
+	svc := NewReplayService(title.DefaultSlug, root, repo)
 	if _, err := svc.MapBackgroundForMap(context.Background(), "asset-x"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Fatalf("err = %v, attendu ErrMapBackgroundNotAvailable", err)
 	}
+	if _, err := svc.MapBackgroundImageForMap(context.Background(), "asset-x"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+		t.Fatalf("err image = %v, attendu ErrMapBackgroundNotAvailable", err)
+	}
+}
+
+// sidecarNomme rend un sidecar de calage minimal mais de la MEME forme que la cuisson :
+// `module` et `mapNames` sont les deux champs dont l'index tire ses identites.
+func sidecarNomme(module, nom string) string {
+	return `{"schemaVersion":1,"module":"` + strings.ReplaceAll(module, `\`, `\`) + `",` +
+		`"mapNames":["` + nom + `"],"image":"` + nom + `.png",` +
+		`"source":"test","generatedAt":"2026-09-06T10:00:00Z","style":"jeu",` +
+		`"calibration":{"metersPerPixel":0.092,"originX":0,"originY":0,` +
+		`"widthPx":100,"heightPx":100,"convention":"x = originX + (px+0.5)*mpp"},` +
+		`"stats":{"anchors":4,"anchorsInFrame":4,"anchorsWithGround":4}}`
 }
 
 // TestResolveBackgroundKey_AucuneLectureHorsDuRepertoire — la preuve par le chemin.

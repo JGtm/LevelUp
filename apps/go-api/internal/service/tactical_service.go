@@ -118,7 +118,15 @@ func (s *TacticalService) Raster(ctx context.Context, carte, question, qui strin
 		return out, err
 	}
 	if len(lecture.Univers.Matchs) == 0 {
-		return out, fmt.Errorf("%w (%q)", domain.ErrTacticalCarteInconnue, carte)
+		// LA SENTINELLE NUE, ET LE DETAIL AU JOURNAL (revue R2, P1). Le message de cette
+		// erreur est PUBLIE par le handler : y citer la carte demandee faisait differer le
+		// corps d'une carte legitime inconnue de celui d'un map_id refuse par
+		// `MapIDValide` (qui n'a rien a citer). La presence de l'identifiant suffisait
+		// alors a dire a l'appelant laquelle des deux frontieres il avait heurtee — un
+		// oracle par le libelle, apres celui qu'on venait de fermer par le code.
+		s.logger.InfoContext(ctx, "tactique: carte sans match retenu",
+			"player", s.xuid, "map_id", carte, "question", question, "qui", qui)
+		return out, domain.ErrTacticalCarteInconnue
 	}
 	out.MatchsFiltres = len(lecture.Univers.Matchs)
 
@@ -172,7 +180,9 @@ func universMesure(u domain.TacticalUnivers) domain.TacticalUnivers {
 // validerLecture refuse une demande hors vocabulaire AVANT toute lecture de base.
 func validerLecture(carte, question, qui string) error {
 	if carte == "" {
-		return fmt.Errorf("%w (carte vide)", domain.ErrTacticalCarteInconnue)
+		// Sentinelle NUE, meme raison : ce message est publie tel quel, et « (carte vide) »
+		// distinguerait ce refus-ci des deux autres 404 de la meme famille.
+		return domain.ErrTacticalCarteInconnue
 	}
 	switch question {
 	case domain.TacticalQuestionMorts, domain.TacticalQuestionKills, domain.TacticalQuestionGagne:

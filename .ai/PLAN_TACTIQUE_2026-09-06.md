@@ -454,7 +454,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 > phase 4), `film.replay_artifact` (porte data-level des sidecars, phase 6),
 > `useDataCapability` (cote web, regle des deux portes — voir la case 3.7).
 
-### Phase 4 — Grille des cartes — CLOSE 2026-09-06, revue ronde 1 SOLDEE (8 constats)
+### Phase 4 — Grille des cartes — CLOSE 2026-09-06, revues rondes 1 ET 2 SOLDEES (11 constats)
 > ORDRE D'EXECUTION : 4.4, puis 4.2, puis 4.3+4.1 — l'ordre des DEPENDANCES, pas celui de
 > la liste. La vignette de 4.3 consomme l'endpoint de 4.4 et les cles de 4.2 ; la route de
 > 4.1 importe la page de 4.3 ET type l'ecriture de `?carte=` que cette page fait. Chaque
@@ -691,6 +691,46 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **revue adversariale ronde 2 de la phase 4 — DERNIERE salve, 3 constats, tous
+  corriges** en 1 commit `tactique(4.6)`. G2, G3 et W1-W5 de la ronde 1 tiennent ; G1 etait
+  PARTIEL. Le fil commun des trois : **une frontiere fermee par le CODE reste ouverte par le
+  LIBELLE, par l'ORDRE, ou par un test qui la contourne.**
+  - **P1 — L'ORACLE AVAIT SURVECU DANS LE MESSAGE.** La ronde 1 avait rendu le CODE du
+    refus identique a celui d'une carte inconnue. Restait le corps : sur
+    `/tactical/zzz/raster`, le service enrobait sa sentinelle avec la carte demandee
+    (`fmt.Errorf("%w (%q)", ...)`) et `mapTacticalError` publiait `err.Error()` — le corps
+    CITAIT l'identifiant. Sur un map_id hostile, le handler publiait la sentinelle nue, donc
+    SANS l'identifiant. La presence des parentheses suffisait a dire laquelle des deux
+    frontieres avait ete heurtee. Le test de la ronde 1 ne le voyait pas : son double rendait
+    la sentinelle NUE, forme que le service reel ne produisait jamais — **un double infidele
+    valide le handler contre une realite qui n'existe pas.**
+    Corrige AUX DEUX COUCHES, chacune avec son propre test et sa propre inversion : le
+    service rend la sentinelle nue et met le detail au JOURNAL
+    (`service/tactical_service.go:129`, `:185` ; test
+    `service/tactical_service_carte_test.go`) ; le handler publie le message CANONIQUE quoi
+    que le service lui donne (`api/handlers/tactical.go:305-318` ; ceinture eprouvee par
+    `api/handlers/tactical_oracle_test.go`, avec un double qui ENROBE). Les deux 400
+    (`question`, `qui`) continuent, EUX, de nommer la valeur refusee : parametres de requete
+    a validation unique, aucune seconde frontiere dont les rendre indiscernables, et nommer
+    la valeur est ce qui rend le 400 utile. La comparaison octet pour octet porte desormais
+    aussi sur les EN-TETES, et couvre les trois routes (raster, image, calage).
+  - **P2 — L'ORDRE.** `h.newSvc` (qui resout le joueur et OUVRE sa base) s'executait avant
+    `MapIDValide` sur la route raster, alors que les deux routes du fond validaient d'abord
+    et que l'en-tete du fichier de tests affirmait le contraire. Validation remontee
+    (`tactical.go:132-143`) ; le double COMPTE desormais les appels a la fabrique, pas
+    seulement ceux au service — avec sa sentinelle anti-vacuite (sur une entree legitime, la
+    fabrique EST appelee).
+  - **P2 — UN TEST VERT POUR LA MAUVAISE RAISON, ET SEULEMENT SOUS WINDOWS.** Le test de la
+    garde d'index posait sa cle hostile en la passant a `MapBackgroundMetaPath`, dont le
+    `filepath.Join` NETTOYAIT le `..\` : le sidecar atterrissait hors de `map_backgrounds/`,
+    qui n'etait donc jamais cree, `MapBackgroundIndexFor` echouait sur `os.ReadDir`, et la
+    fonction sortait AVANT la garde. Retirer la garde laissait le test vert sur ce poste (il
+    mordait sous Linux). Reecrit : le repertoire EXISTE, deux sidecars y sont poses par des
+    noms de fichier choisis (`os.WriteFile`, jamais `filepath.Join` de la cle), dont
+    `..evade.json` — un nom parfaitement legal dont le STEM porte `..`. Le decor est
+    verifie AVANT l'assertion (l'index resout bien vers la cle hostile, et son sidecar est
+    lisible), de sorte que seule la garde puisse expliquer le refus. Inversion rejouee ICI,
+    sous Windows : garde retiree -> `err = <nil>`, la resolution ABOUTISSAIT.
 - 2026-09-06 : arbitrages utilisateur — filtre de session a faire MARCHER (liste blanche `FilteredMatchIDs`), barre L2 = mix Explorateur + Escouade, « Escouade » = composition choisie. Items 4.5 / 4.6 ajoutes (phase 4 bis, avant la 6).
 - 2026-09-06 : **revue adversariale ronde 1 de la phase 4 — 8 constats, TOUS corriges** en
   2 commits `tactique(4.5)`. Gate rejoue integralement, six inversions/mutations jouees.
