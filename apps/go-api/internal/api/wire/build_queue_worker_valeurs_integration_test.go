@@ -11,19 +11,32 @@
 // décale l'origine de l'horloge, qui divise par dix le nombre de trajectoires, qui perd un
 // joueur du pont d'identité ou qui inverse un camp passait VERTE.
 //
-// # LES DEUX CHAÎNES INDÉPENDANTES (PLAN_MASTER §6.5)
+// # CE QUE L'ORACLE DE L'API PROUVE, ET CE QU'IL NE PROUVE PAS
 //
 // Le fixture porte son propre ORACLE : `facts.players[]` (frags, morts, assistances par xuid) et
-// `facts.teamScores` viennent du SERVICE HALO, pas du film. Les compteurs du document, eux, sont
-// décodés des OCTETS de la bobine (`document_score.go`). Les deux chaînes ne partagent aucune
-// pièce — c'est exactement le différentiel que le chantier exige, et il était gratuit : les deux
-// valeurs sont dans le même processus de test depuis le 2026-08-25 sans que rien ne les compare.
+// `facts.teamScores` viennent du SERVICE HALO, pas du film.
 //
-// MESURE DU 2026-09-05, AVANT DE FIGER : sur ce film, les 5 joueurs que le pont d'identité
-// apparie ont leurs 15 compteurs (5 × frags/morts/assistances) EXACTEMENT égaux à ceux de l'API.
-// Aucune tolérance n'est donc nommée ici : l'égalité est la règle, et un écart est un défaut.
-// Les 3 joueurs restants ne sont pas publiés du tout (le pont refuse plutôt que de deviner) —
-// leur liste est figée, un 4e refus doit se voir.
+// UNE SEULE DES DEUX CONFRONTATIONS EST UN DIFFÉRENTIEL DE DEUX CHAÎNES INDÉPENDANTES, et la
+// distinction a été payée par la revue adversariale du 2026-09-06 (F-R1-1) :
+//
+//   - LE ROSTER, OUI. `assertRoster` vérifie que le film ne NOMME que les joueurs auxquels
+//     l'API donne au moins une mort. Les noms de vies sont lus du fil des morts du chunk
+//     highlight (`analysis/replay/deaths_source.go` : « aucune base n'intervient ») ; ils ne
+//     passent pas par `facts`. Les deux chaînes sont bien indépendantes, et l'égalité des deux
+//     ensembles est un fait, pas une définition.
+//   - LES COMPTEURS DE JOUEUR, NON. Le pont d'identité apparie un slot d'entité à un xuid par
+//     ÉGALITÉ EXACTE du triplet frags/morts/assistances contre la ligne de l'API
+//     (`objectiveevents/slotidentity.go` : `l.Kills == kills[slot] && l.Deaths == ... && ...`).
+//     Tout joueur publié dans `ScoreTimeline.Players` porte donc, PAR CONSTRUCTION, le triplet
+//     de l'API. Une régression du décodeur ne produit PAS un écart de valeur : elle fait
+//     DISPARAÎTRE le joueur du calque, parce que son triplet ne désigne plus une ligne unique.
+//     La première version de cet en-tête annonçait « 15 compteurs sur 15 exactement égaux à
+//     ceux de l'API » comme une confrontation : c'était une propriété que le pont IMPOSE.
+//
+// D'OÙ LE VRAI DÉTECTEUR DE RÉGRESSION DU PONT : la LISTE FIGÉE des 5 joueurs appariés. Les 3
+// joueurs restants ne sont pas publiés du tout (le pont refuse plutôt que de deviner) ; un 4e
+// refus, comme un 6e appariement, fait rougir. Ce que la comparaison de valeurs garde en plus
+// est décrit sur `assertCompteursJoueurs` : elle est INTERNE à la chaîne du film.
 //
 // # CE QUI EST FIGÉ COMME MESURE, ET POURQUOI C'EST LÉGITIME
 //
@@ -52,8 +65,12 @@ type oracleJoueur struct {
 	TeamID  int
 }
 
-// oracleAPI : l'oracle INDÉPENDANT du film — la feuille de match du service Halo, recopiée à la
-// main de `testdata/film_e2e/c0a82e88/fixture.json` (`facts.players[]`).
+// oracleAPI : la feuille de match du SERVICE HALO, recopiée à la main de
+// `testdata/film_e2e/c0a82e88/fixture.json` (`facts.players[]`).
+//
+// ELLE N'EST UN ORACLE INDÉPENDANT QUE POUR LE ROSTER ET LE SCORE DE CAMP. Les triplets
+// frags/morts/assistances, eux, servent de CLÉ au pont d'identité (`slotidentity.go`) : un
+// joueur publié les porte par construction — cf. l'en-tête et `assertCompteursJoueurs`.
 //
 // LA RECOPIE EST VOLONTAIREMENT REDONDANTE avec le fichier : `assertOracleFideleAuFixture`
 // confronte les deux à chaque exécution, de sorte qu'une retouche du fixture ne puisse pas
@@ -230,12 +247,27 @@ func assertRoster(t *testing.T, doc replay.ReplayDocument) {
 	}
 }
 
-// assertCompteursJoueurs EST LE DIFFÉRENTIEL : frags, morts et assistances décodés du film contre
-// ceux de l'API, joueur par joueur. Égalité stricte (mesure du 2026-09-05 : 15/15).
+// assertCompteursJoueurs garde DEUX choses, et aucune des deux n'est un différentiel film ↔ API
+// (cf. l'en-tête : le pont d'identité impose l'égalité des triplets).
+//
+//  1. LA LISTE DES JOUEURS APPARIÉS, figée. C'est le détecteur de régression du pont : un
+//     décodage qui change les compteurs d'un joueur ne décale pas sa valeur, il le fait
+//     DISPARAÎTRE du calque (son triplet ne désigne plus une ligne de match unique). Mesuré le
+//     2026-09-06 : décaler d'un frag le film rend « 4 joueurs publiés, attendu 5 ».
+//
+//  2. LA COHÉRENCE INTERNE À LA CHAÎNE DU FILM entre les DEUX dérivations du même compteur :
+//     la clé d'appariement est le NOMBRE D'INCRÉMENTS lus des enregistrements
+//     (`objectiveevents.countsOf` → `len(incrementTimes(...))`), tandis que la valeur publiée
+//     est la DERNIÈRE de la série posée sur la grille de frames (`replay.scoreTicksOf`, qui
+//     écarte les émissions hors fenêtre et aplatit les paliers). Rien n'oblige ces deux
+//     dérivations à coïncider : un point de score perdu par la fenêtre, une origine décalée ou
+//     un palier mal filtré les sépare. Le triplet de l'API sert ici de VALEUR ATTENDUE COMMUNE
+//     — pas d'oracle indépendant, mais la seule écriture qui les confronte l'une à l'autre.
+//     Mesuré le 2026-09-05 : les deux dérivations coïncident sur les 15 compteurs.
 func assertCompteursJoueurs(t *testing.T, doc replay.ReplayDocument) {
 	t.Helper()
 	if doc.ScoreTimeline == nil {
-		t.Fatal("aucun calque de score : le différentiel film ↔ API n'a rien à confronter")
+		t.Fatal("aucun calque de score : ni la liste des appariés ni les séries publiées n'existent")
 	}
 	publies := map[string]replay.PlayerScore{}
 	for _, p := range doc.ScoreTimeline.Players {
@@ -256,8 +288,10 @@ func assertCompteursJoueurs(t *testing.T, doc replay.ReplayDocument) {
 		}
 		k, d, a := valeurFinale(p.Kills), valeurFinale(p.Deaths), valeurFinale(p.Assists)
 		if k != o.Kills || d != o.Deaths || a != o.Assists {
-			t.Errorf("DIFFÉRENTIEL film ↔ API pour %s : le film décode %d frags / %d morts / %d assistances, "+
-				"l'API en donne %d / %d / %d", o.XUID, k, d, a, o.Kills, o.Deaths, o.Assists)
+			t.Errorf("SÉRIE PUBLIÉE ≠ CLÉ D'APPARIEMENT pour %s : la série finit à %d frags / %d morts / "+
+				"%d assistances, alors que le pont l'a apparié sur %d / %d / %d incréments — un point de "+
+				"score est perdu par la grille de frames, ou un palier est mal filtré",
+				o.XUID, k, d, a, o.Kills, o.Deaths, o.Assists)
 		}
 	}
 }
