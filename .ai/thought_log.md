@@ -95543,3 +95543,44 @@ ne suppriment rien et font avertir le lint global ; un verrou `%TEMP%\golangci-l
 survit au processus et refuse deux invocations rapprochees ; la table `match_player_positions`
 locale toujours vide, donc aucun effet retroactif observable de la jointure d equipe. Reste au
 superviseur : ronde 2 sur ces corrections, puis integration dans `feat/v75`.
+
+## [2026-09-06] Lot A (v2 rejeu/film) — retouches apres ronde 2 (A-R2) — Complete
+
+**Decision technique principale.** La ronde 2 ferme les sept constats de A-R1 et en leve quatre
+nouveaux, tous NES DES CORRECTIONS elles-memes — c'est la lecon de la passe. Le plus instructif
+est N1 : la jointure d'equipe (correction C5) a reintroduit, sur un autre chemin, la classe de
+defaut exacte que C1 venait de fermer — marquer « fait » une projection partielle. Quand
+`FactsForMatch` echouait, `appliquerEquipes` faisait `continue` : les positions partaient a -1,
+la marque se posait, le match sortait du rattrapage et son equipe etait perdue definitivement.
+Une correction qui ferme une classe de defaut doit etre relue CONTRE les corrections voisines,
+pas seulement contre son propre constat.
+
+(N1) Une lecture de camps en echec est desormais un echec de la famille positions POUR CE MATCH :
+`b.echec(matchID)`, les positions restent ecrites (mieux vaut sans camp que rien), le rattrapage
+rejoue. (N3) `lireHorizonRegistre` rend un second retour « j'ai lu », non redondant avec une liste
+vide — un registre vide est une MESURE, une requete en echec une ABSENCE de mesure : la jauge de
+retard n'est publiee que sur une lecture reussie, sinon la derniere valeur connue reste. Le
+`defer` de C2 avait rendu ce cas courant. (N4) le cron ramasse les marques orphelines, via
+`replaybuild.ArtefactDeLaMarque`, inverse EXACT de `DerivationsMarkPath` — la relation n'est
+ecrite qu'a un endroit, sinon le cron croirait orpheline une marque qui ne l'est pas et
+l'effacerait. (doc) l'en-tete du createur de `match_player_positions` decrivait encore au present
+le DELETE-then-INSERT et « ecriture HORS chemin live » : trois affirmations que la decision 1 a
+rendues fausses.
+
+**Resultats observes.** Mesures du rouge, rejouees puis vertes : `match_participants` supprimee ->
+positions ecrites mais MARQUE POSEE = true (N1) ; cycle au contexte annule -> jauge = 0 au lieu de
+la sentinelle 7 (N3) ; marque orpheline encore la apres un passage complet du cron (N4). Methode
+notable sur N3 : une valeur SENTINELLE publiee avant le cycle, parce que `LoadCounter` seul ne
+distingue pas « pas publiee » de « publiee a zero » ; plus une contre-epreuve (registre vide
+effectivement lu -> jauge publiee a 0) pour que « ne pas publier sur echec » ne degenere pas en
+« ne jamais publier ». Cinq gates verts, allowlists anti-ART toujours vides, garde anti-ART non
+modifie par le diff du lot.
+
+**Conclusion / prochaine etape.** Quatre points statues au journal (section « Retouches apres
+ronde 2 »), deux commits `v2(A.fix-8)` et `v2(A.fix-9)`, pousses. Une decouverte consignee et
+NON traitee sur consigne explicite du verdict (decision produit) : D-11 — les modes a plus de
+deux camps ecrivent des `team_id` que la carte de chaleur ne sait pas filtrer (4 matchs sur
+1 959 en base locale, valeurs jusqu'a 30 ; deux boutons en dur cote web). Nee de la correction
+C5 : avant, toutes les lignes valaient -1 et aucun bouton n'apparaissait. Traitement attendu au
+lot D (web). Le corollaire documentaire, lui, est traite : le persister n'annonce plus « 0 / 1 »
+mais l'identifiant d'equipe de la base.

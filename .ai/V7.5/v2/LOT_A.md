@@ -804,3 +804,151 @@ aucune cuisson d'artefact.
   jointure d'équipe de la correction 5 n'a donc aucun effet rétroactif observable localement. Elle
   se remplira au fil de l'eau, et le rattrapage des dérivés (correction 2) prendra les 106
   artefacts du cache en ~21 cycles.
+
+## Retouches après ronde 2 (A-R2, 2026-09-06)
+
+> Verdict de seconde ronde : **les sept constats de A-R1 sont FERMÉS**. Quatre défauts nouveaux,
+> tous **nés des corrections elles-mêmes** (un P2, trois P3), plus une doc inversée hors des sept
+> points. Traités ci-dessous, chacun rouge d'abord.
+
+### [x] Retouche N1 (P2) — une lecture de camps en échec ne se marque plus « dérivée »
+
+**Ce qui s'était passé.** La correction C5 (jointure de l'équipe) a réintroduit, sur un autre
+chemin, **exactement la classe de défaut que C1 venait de fermer** : marquer « fait » une
+projection partielle. `appliquerEquipes` faisait `continue` quand `FactsForMatch` échouait
+(`match_participants` absente après une migration partielle, erreur DuckDB transitoire, jointure
+cassée) — les positions partaient en base à `team = -1`, **et la marque se posait**.
+`DerivationsUpToDate` rendait `true`, `candidatsDerivations` excluait le match, et son équipe
+était perdue **définitivement** jusqu'au prochain bump de `DerivationsRev`.
+
+Mesure du verdict (`match_participants` supprimée) :
+
+```
+WARN post-sync: positions — camps illisibles, equipes non attribuees  match_id=mfacts
+INFO post-sync: positions persistees  ecrits=1 echecs=0 lignes=2 lignes_situees=0
+RESULTAT: lignes=2 dont team=-1 : 2 | MARQUE POSEE = true
+```
+
+**Fait.** Une lecture de camps en échec est un **échec de la famille positions POUR CE MATCH** :
+`appliquerEquipes` reçoit le `bilanDerivations` et appelle `b.echec(matchID)`. Les positions
+restent écrites — mieux vaut des positions sans camp que rien — mais le match reste candidat au
+rattrapage, qui posera ses équipes au cycle suivant. Le WARN nomme le match et dit désormais la
+conséquence.
+
+**Preuve** (`positions_integration_test.go`, `TestDeriver_CampsIllisibles_NeMarquePas`) :
+
+```
+go test -tags=integration -p 1 ./internal/sync/replayartifacts/ -run TestDeriver_CampsIllisibles
+  AVANT -> FAIL  marque posee alors que les camps n'ont pas pu etre lus (constat N1)
+  APRES -> PASS  3 positions ecrites, marque ABSENTE
+```
+
+### [x] Retouche N3 (P3) — la jauge de retard ne publie plus sur une mesure qui n'existe pas
+
+**Ce qui s'était passé.** `lireHorizonRegistre` journalise et rend `nil` quand la lecture échoue :
+`restant` valait alors 0 et la jauge publiait « tout est dérivé » sur un cycle qui n'avait **rien
+lu** — l'ambiguïté exacte que le commentaire de la jauge dit fermer, à l'envers. **Le `defer` de
+C2 a rendu ce cas courant** : avant, un cycle au contexte annulé sortait de `Run` sur la sélection
+de cuisson vide sans jamais atteindre le rattrapage.
+
+Mesure du verdict (huit matchs en retard, mêmes `Deps`, deux cycles) :
+
+```
+cycle normal                     -> JaugeDerivationsRetard = 3   (artefacts=5 restant=3)
+cycle ANNULE (horizon illisible) -> JaugeDerivationsRetard = 0
+   WARN post-sync: rejeu 2D — horizon des derives illisible  err="context canceled"
+```
+
+**Fait.** `lireHorizonRegistre` rend un second retour « j'ai lu », que `candidatsDerivations`
+propage. Il n'est **pas redondant avec une liste vide** : un registre vide est une MESURE (rien à
+rattraper), une requête en échec une **absence** de mesure. La jauge n'est publiée que sur une
+lecture réussie ; sinon la dernière valeur connue reste en place et le WARN dit pourquoi.
+
+**Preuve** (`backlog_integration_test.go`, deux tests). La méthode compte : une valeur
+**sentinelle** est publiée avant le cycle, car `LoadCounter` seul ne distingue pas « pas publiée »
+de « publiée à zéro ».
+
+```
+go test -tags=integration -p 1 ./internal/sync/replayartifacts/ -run TestRattraperDerivations_Horizon
+  AVANT -> FAIL  jauge = 0 apres un cycle dont l'horizon est ILLISIBLE, attendu 7 (inchangee)
+  APRES -> PASS  ...HorizonIllisible_NePubliePasLaJauge  +  ...HorizonLu_PublieLaJauge
+```
+
+La contre-épreuve est là exprès : sans elle, « ne pas publier sur échec » dégénérerait en « ne
+jamais publier », et l'étape redeviendrait muette.
+
+### [x] Retouche N4 (P3) — la marque orpheline est ramassée
+
+**Ce qui s'était passé.** Depuis que le cron ignore les marques (C6), le `continue` intervient
+**avant toute datation** : une marque n'était plus jamais examinée POUR ELLE-MÊME. Un
+`<short8>.derived.json` dont l'artefact a disparu — toute instance dont le cron a purgé des
+artefacts avant le commit `6a1498202`, ou une suppression manuelle d'opérateur — devenait
+invisible pour ses deux consommateurs, et **aucune reprise ne l'aurait enlevée**. Aucun effet
+fonctionnel (`DerivationsUpToDate` fait un `os.Stat` de l'artefact d'abord et rend `false`), mais
+quelques centaines d'octets par artefact disparu, à demeure.
+
+**Fait.** `supprimerMarqueOrpheline` : le cron supprime toute marque dont l'artefact n'existe
+plus, en la nommant au journal (un fichier supprimé ne part jamais en silence). Elle ne compte
+dans **aucune** catégorie du bilan — le bilan compte des ARTEFACTS, et sa propriété affichée
+(« chacun tombe dans exactement une catégorie ») ne doit pas être diluée.
+
+`replaybuild.ArtefactDeLaMarque` est l'**inverse exact** de `DerivationsMarkPath` : la relation
+marque ↔ artefact n'est écrite qu'à un seul endroit. Son test verrouille l'aller-retour — si
+l'une bougeait sans l'autre, le cron croirait orpheline une marque qui ne l'est pas, **et
+l'effacerait**.
+
+**Preuve** (`replay_purge_cron_test.go`, `TestPurgeReplayArtifacts_MarqueOrpheline`) :
+
+```
+go test ./internal/scheduler/ -run TestPurgeReplayArtifacts_MarqueOrpheline
+  AVANT -> FAIL  la marque orpheline est toujours la — aucune reprise ne l'enlevera jamais
+  APRES -> PASS  orpheline supprimee ; celle d'un artefact CONSERVE intacte ; bilan (1, 1, 1)
+```
+
+### [x] Retouche doc — deux affirmations que la décision 1 avait rendues fausses
+
+`internal/migration/steps_shared_player_positions.go` (le créateur de la table) décrivait encore
+**au présent** « l'écriture est un DELETE-then-INSERT par match » et « écriture HORS chemin live
+(backfill diagnostic sérialisé) → pas de pression concurrente ART ». Les trois affirmations sont
+fausses depuis que la table est une projection de l'artefact : le **producteur** (les
+trajectoires de l'artefact, plus le décodeur keyframe du diagnostic), le **régime** (append-only,
+INSERT purs, lecture par `_latest`), le **chemin** (le cycle de sync sous le lease — exactement
+le régime pour lequel la conversion append-only existe). L'en-tête dit désormais ce qui est, dit
+ce qui a changé et pourquoi, et garde ce qui n'a pas changé (pas de PK contraignante, table
+match-level).
+
+`internal/persist/player_positions_persister.go` annonçait « Team : 0 / 1, ou -1 ». Corrigé en
+« l'identifiant d'équipe de la base », avec la mesure de la découverte D-11 ci-dessous.
+
+### [~] N2 (P3) — modes à plus de deux camps : consigné, non corrigé
+
+Le verdict demandait explicitement de **ne pas corriger** : c'est une décision produit. Voir la
+découverte D-11. Seul le corollaire documentaire a été traité (commentaire du persister).
+
+## Gates des retouches (tous joués en avant-plan)
+
+| # | Commande | Dernière ligne |
+|---|---|---|
+| 1 | `go build ./...` | (aucune sortie) — EXIT=0 |
+| 2 | `go test -count=1 ./internal/sync/... ./internal/replaybuild/... ./internal/scheduler/... ./internal/persist/... ./internal/migration/...` | `ok levelup/go-api/internal/migration 17.422s` — EXIT=0 |
+| 3 | `go test -tags=integration -p 1 -count=1 ./internal/sync/... ./internal/persist/...` | `ok levelup/go-api/internal/persist 33.353s` — EXIT=0 |
+| 4 | `go test ./internal/sync/ -run 'ART\|AppendOnly\|Mutation\|Allowlist\|Delete\|Bulk' -v` | `ok levelup/go-api/internal/sync 39.191s` — 11 PASS, 0 SKIP |
+| 5 | `golangci-lint run --timeout 10m --new-from-merge-base=origin/main ./...` | `0 issues.` — EXIT=0 |
+
+Allowlists anti-ART toujours vides ; `internal/sync/no_art_patterns_test.go` toujours non modifié
+par le diff du lot.
+
+## Découverte supplémentaire (hors périmètre, NON traitée)
+
+- **D-11 (N2 du verdict, décision produit)** — Les modes à **plus de deux camps** écrivent
+  désormais des équipes que l'interface ne sait pas filtrer. Mesure du verdict sur la base locale
+  (`shared_matches_v2.duckdb`, lecture seule) : **4 matchs sur 1 959** portent plus de deux
+  `team_id` distincts, avec des valeurs allant **jusqu'à 30**. Côté web,
+  `MatchPositionsHeatmap.tsx:119-121` affiche les boutons dès qu'une position porte une équipe,
+  mais `:148-158` n'en propose que deux (`0` et `1`, en dur) : les camps ≥ 2 ne sont visibles que
+  dans « Global », et la répartition A/B annoncée est partielle **sans le dire**. Avant la
+  correction C5 toutes les lignes valaient -1 et aucun bouton n'apparaissait — le défaut est donc
+  né de la correction, sur ~0,2 % du corpus. Le traitement (boutons dérivés des équipes
+  réellement présentes, ou masquage du filtre au-delà de deux camps) est une décision produit et
+  appartient au web : **lot D**. Le commentaire du persister, lui, a été corrigé — il annonçait
+  « 0 / 1 ».
