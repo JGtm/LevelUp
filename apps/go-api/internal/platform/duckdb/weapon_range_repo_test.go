@@ -188,6 +188,39 @@ func TestWeaponRange_UnanimiteViolee_Exclue(t *testing.T) {
 	}
 }
 
+// TestWeaponRange_DoubleFragMemeArme_ExcluDesDeuxCotes — LE constat C1 de la revue
+// adversariale du 2026-09-06.
+//
+// Deux morts au MÊME (match, tueur, instant) et à la MÊME arme : l'unanimité de `source_tag`
+// est vérifiée, mais la ligne de positions — clée par ce seul triplet — ne dit pas LAQUELLE
+// des deux victimes elle place. Une distance en sortirait, plausible et potentiellement
+// fausse d'un joueur entier.
+//
+// ET LE FILTRE DE CÔTÉ PASSAIT AUTOUR DE LA GARDE : `WHERE e.victim_xuid = ?` s'applique AVANT
+// le `GROUP BY`, donc la lecture côté victime ne voyait qu'UNE ligne et jugeait l'unanimité
+// d'un singleton — toujours vérifiée. La garde vit désormais dans la sous-requête `fragSolo`,
+// qui compte le groupe sur la vue ENTIÈRE. Le test lit les DEUX côtés : côté victime, il
+// rougirait sur la version d'avant.
+func TestWeaponRange_DoubleFragMemeArme_ExcluDesDeuxCotes(t *testing.T) {
+	pdb := newKillSourceTestPlayerDB(t)
+	// wrAdverse tue wrJoueur ET un tiers, au même instant, à la même arme.
+	insertKillEvent(t, pdb, killEventFixture{pass: kscDecodeV1, publishable: true,
+		killerXUID: wrAdverse, victimXUID: wrJoueur, tag: kscTagRifle, timeMS: 6000})
+	insertKillEvent(t, pdb, killEventFixture{pass: kscDecodeV1, publishable: true,
+		killerXUID: wrAdverse, victimXUID: "xuid(2533274000000065)", tag: kscTagRifle, timeMS: 6000})
+	insertKillPos(t, pdb, kscMatchID, wrAdverse, 6000, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0)
+	// Et le symétrique, pour que le côté TUEUR soit couvert par le même test.
+	insertKillEvent(t, pdb, killEventFixture{pass: kscDecodeV1, publishable: true,
+		killerXUID: wrJoueur, victimXUID: wrAdverse, tag: kscTagRifle, timeMS: 7000})
+	insertKillEvent(t, pdb, killEventFixture{pass: kscDecodeV1, publishable: true,
+		killerXUID: wrJoueur, victimXUID: "xuid(2533274000000066)", tag: kscTagRifle, timeMS: 7000})
+	insertKillPos(t, pdb, kscMatchID, wrJoueur, 7000, 0.0, 0.0, 0.0, 4.0, 0.0, 0.0)
+
+	if rows := loadRange(t, pdb, wrFilters()); len(rows) != 0 {
+		t.Errorf("double frag publié à tort (la victime placée est indéterminée) : %+v", rows)
+	}
+}
+
 // TestWeaponRange_PositionAbsenteOuPartielle_Exclue : une mort sans ligne de positions, et
 // une ligne dont un seul côté est localisé, sont écartées — jamais approchées.
 func TestWeaponRange_PositionAbsenteOuPartielle_Exclue(t *testing.T) {

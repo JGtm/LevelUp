@@ -89,11 +89,6 @@ type SharedBatch struct {
 	// Infinite plus tard). Jointes au kill par (match_id, killer_xuid, time_ms).
 	KillPositions []KillPositionInsert `json:"kill_positions,omitempty"`
 
-	// KillOpenings : positions monde tueur/victime UN TEMPS-POUR-TUER AVANT le
-	// coup fatal (proxy d'entame, D5). Même clé de jointure que KillPositions —
-	// le time_ms porté est celui DU KILL, les coordonnées sont celles d'avant.
-	KillOpenings []KillOpeningInsert `json:"kill_openings,omitempty"`
-
 	// XUIDAliases : nouveaux mappings xuid→gamertag observés dans le match.
 	XUIDAliases []XUIDAliasInsert `json:"xuid_aliases,omitempty"`
 

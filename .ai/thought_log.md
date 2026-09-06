@@ -1,3 +1,53 @@
+## [2026-09-06] Lot 3 duels/portee — revue adversariale ronde 1 : le filtre de vie branche, et trois tests qui ne mordaient pas — Complete
+
+**Decision technique principale.** Trois relecteurs independants ont relu le lot 3 ; onze constats
+retenus par le pilote, tous corriges sur `feat/duels-lot3` apres fusion de `feat/duels` (qui
+apporte `replay.BuildKillOpenings`). Le geste central est la BASCULE de l entame : le producteur
+appelle desormais `BuildKillOpenings(positions, slotXUID, kills, originUS)` — decalage, placement
+ET filtre « meme vie » — et `toKillOpeningRows` cesse de readditionner `OpeningLeadMS`. Les deux
+gestes etaient indissociables : l un sans l autre decalait toutes les lignes de 1,5 s. Item 3.10
+bis ferme, entree du registre des reports CLOSE.
+
+Trois constats P1/P2 disaient la meme chose sous trois angles : **le lot livrait du code correct
+que rien ne tenait**. (1) Aucun test ne pincait l accord entre le DECALAGE de l entame et l
+INSTANT persiste — inverser le signe laissait la suite verte, avec des coordonnees prises 1,5 s
+APRES la mort et un `time_ms` decale, donc une jointure vide POUR TOUJOURS sans une seule erreur.
+(2) Supprimer l appel `persistOpenings` laissait la suite verte : la passe n etait exercee par
+aucun test. (3) Le garde-rail de la jointure etait satisfait par le COMMENTAIRE de doc du fichier
+proprietaire (qui cite la clause entre backticks) et non par la requete : retirer
+`HAVING count(DISTINCT e.source_tag) = 1` du SQL laissait le test vert. Les trois sont fermes par
+des tests dont la rougeur est PROUVEE par mutation, et le pin des gardes porte desormais sur la
+VALEUR de `measuredKillsSQLTemplate`, plus sur les octets du fichier.
+
+Deux corrections de fond au-dela des tests. **C1** : le `WHERE` d un filtre de cote s applique
+AVANT le `GROUP BY`, donc une lecture cote victime jugeait l unanimite d un SINGLETON — la garde
+existait, le filtre passait autour. Le groupe complet est desormais calcule par une sous-requete
+`fragSolo` sur la vue entiere, avec `count(*) = 1` en plus de l unanimite : un double frag ne
+publie plus rien des deux cotes (durcissement, 0 groupe multi-victimes sur 138 293 evenements).
+**C7** : un echec d ecriture des positions coupait la passe d entames par un `return`, alors que
+`writeOpenings` promet en doc un lease SEPARE — le code disait le contraire de sa doc ; les deux
+passes sont maintenant independantes.
+
+**Resultats observes.** Gates verts, codes de retour verifies (jamais un filtre sur « FAIL ») :
+`go test -tags=integration -p 1 -count=1 ./internal/platform/duckdb/ ./internal/persist/...
+./internal/sync/... ./internal/migration/... ./internal/games/...` -> 0 ; le run nu equivalent
+-> 0 ; `go vet` sur les memes paquets (+ `-tags=integration`) -> silencieux ; `gofmt -l internal`
+-> vide. Cinq mutations rouges puis restaurees : signe du decalage inverse (B1), appel
+`persistOpenings` retire (B2), garde d unanimite retiree de la REQUETE seule (C5b), copie de la
+table BRUTE dans un lecteur (C5a), erreur d INSERT avalee par le persister (C6). Dette :
+`shared_persister.go` revient de 679 a 650 lignes (le chemin builder mort de `kill_openings` est
+supprime : 0 appelant, no-op inconditionnel) ; `positions.go` passe sous le plafond de 500 lignes
+en cedant la passe d entames a `positions_openings.go`.
+
+**Conclusion / prochaine etape.** Un COMMIT SEPARE, le dernier de la branche, ajoute `decode_pass`
+a `kill_openings` : la vue arbitrait par CLE, donc un re-decodage qui ne resout PLUS une entame —
+ce que le filtre de vie fait regulierement — laissait la ligne precedente servie a jamais. La
+table n existant nulle part (ni prod ni backfill), la migration est modifiee EN PLACE et la vue
+devient « derniere passe ENTIERE par match », sur le modele de `match_kill_events_latest`. Isole
+pour pouvoir etre retire d un `git reset` si l utilisateur refuse. Decouverte consignee au plan et
+NON traitee : `kill_positions` porte exactement le meme defaut de vue, mais elle est PEUPLEE en
+prod — lui ajouter `decode_pass` exigerait une reconstruction, donc une decision utilisateur.
+
 ## [2026-09-06] Lot 3 duels/portee — jointure mesuree centralisee, port et repo de portee, table `kill_openings` — Complete
 
 **Decision technique principale.** Lot 3 du `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`, execute sur

@@ -26,19 +26,35 @@
 //	                     (tueur, instant) qui ne s'accorde pas sur l'arme ne publie RIEN.
 //	                     Accrocher une position à la mauvaise arme serait indétectable à
 //	                     l'écran. Même doctrine que Q21b (queries_match.go).
+//	frag unique        — `count(*) = 1` sur le groupe COMPLET (sous-requête `fragSolo`) :
+//	                     deux morts au même (match, tueur, instant), MÊME à la même arme,
+//	                     ne publient rien non plus. La ligne de positions est unique pour
+//	                     ce triplet : elle ne dit pas laquelle des deux victimes elle place.
 //
 // # LE GROUPEMENT SUIT LA CLÉ DE LA TABLE DE POSITIONS, PAS L'INVERSE
 //
 // `kill_positions` (et sa sœur `kill_openings`) est clé par (match_id, killer_xuid, time_ms) :
 // un double kill au même instant n'y a qu'UNE ligne. Le GROUP BY reprend donc cette clé —
-// ce n'est pas un choix d'agrégation, c'est la forme de la donnée. Conséquence assumée,
-// héritée du POC et laissée telle quelle : un double kill à la MÊME arme compte pour une
-// mesure, pas deux.
+// ce n'est pas un choix d'agrégation, c'est la forme de la donnée.
+//
+// # POURQUOI LES DEUX GARDES SE JUGENT DANS UNE SOUS-REQUÊTE, ET PAS DANS LE `HAVING`
 //
 // La clause `WHERE` s'applique AVANT le groupement. Une lecture côté victime
-// (`e.victim_xuid = ?`) ne voit donc que la ligne de CETTE victime, et l'unanimité s'y juge
-// sur elle seule — c'est plus fin que la lecture côté tueur, et c'est correct : la mort
-// dont on parle est identifiée, il n'y a plus d'ambiguïté à lever.
+// (`e.victim_xuid = ?`) ne voit donc qu'UNE ligne — celle de cette victime — et un `HAVING`
+// posé sur ce groupe-là juge l'unanimité d'un singleton : il la trouve toujours vérifiée.
+// Autrement dit, la garde EXISTAIT mais le filtre de côté PASSAIT AUTOUR. Une doc antérieure
+// affirmait ici que c'était « plus fin, et correct » ; c'était faux, et c'est corrigé le
+// 2026-09-06 (revue adversariale du lot 3, constat C1).
+//
+// La sous-requête `fragSolo` calcule donc le groupe (match_id, feed_killer_xuid, time_ms) sur
+// la vue ENTIÈRE, AVANT tout filtre de côté ou de scope, et n'en garde que les triplets à
+// exactement UNE mort unanime sur l'arme. Le `HAVING` de la requête externe est CONSERVÉ : il
+// ne peut plus rien écarter que la sous-requête n'ait déjà écarté, mais il documente et
+// verrouille la garde là où un lecteur la cherche (garde-rail : kill_measured_guard_test.go).
+//
+// POPULATION MESURÉE AVANT DE DURCIR (2026-09-06) : 0 groupe multi-victimes sur les 138 293
+// événements du corpus. C'est un durcissement contre un cas futur, pas une correction de
+// chiffres publiés — et c'est pour ça qu'il est acceptable de le poser sans backfill.
 //
 // # AUCUNE DISTANCE N'EST STOCKÉE (doctrine G.0)
 //
@@ -79,8 +95,6 @@ type killMeasured struct {
 	matchID    string
 	killerXUID string
 	timeMS     int64
-	// victimXUID peut être vide : un bot n'a pas de xuid, et la mort reste mesurable.
-	victimXUID string
 	// sourceTag est la source du dégât, à traduire par un port.KillSourceClassifier.
 	sourceTag uint32
 	// distanceM est la distance 3D tueur <-> victime, en mètres.
@@ -104,12 +118,14 @@ func measuredKillsQuery(table measuredPositionsTable, where string) string {
 // Les six NULL-checks ne sont pas décoratifs : une ligne de positions PARTIELLE (un seul
 // côté localisé) existe réellement en base, et une distance calculée sur un côté manquant
 // serait un nombre plausible et faux. Elle est écartée, jamais approchée.
+//
+// `fragSolo` est la garde qui ne peut PAS vivre dans le `HAVING` (cf. en-tête du fichier) :
+// elle voit la vue entière, avant tout filtre de côté ou de scope.
 const measuredKillsSQLTemplate = `
 SELECT
     e.match_id,
     e.feed_killer_xuid,
     e.time_ms,
-    min(e.victim_xuid) AS victim_xuid,
     min(e.source_tag) AS source_tag,
     min(kp.killer_x) AS killer_x, min(kp.killer_y) AS killer_y, min(kp.killer_z) AS killer_z,
     min(kp.victim_x) AS victim_x, min(kp.victim_y) AS victim_y, min(kp.victim_z) AS victim_z
@@ -118,6 +134,16 @@ JOIN %s kp
     ON kp.match_id = e.match_id
    AND kp.killer_xuid = e.feed_killer_xuid
    AND kp.time_ms = e.time_ms
+JOIN (
+    SELECT s.match_id, s.feed_killer_xuid, s.time_ms
+    FROM match_kill_events_latest s
+    WHERE s.feed_killer_xuid IS NOT NULL
+    GROUP BY s.match_id, s.feed_killer_xuid, s.time_ms
+    HAVING count(*) = 1 AND count(DISTINCT s.source_tag) = 1
+) fragSolo
+    ON fragSolo.match_id = e.match_id
+   AND fragSolo.feed_killer_xuid = e.feed_killer_xuid
+   AND fragSolo.time_ms = e.time_ms
 WHERE %s
   AND e.publishable
   AND e.source_tag IS NOT NULL
@@ -164,15 +190,13 @@ func queryMeasuredKills(
 func scanMeasuredKill(dbRows *sql.Rows) (killMeasured, error) {
 	var (
 		m                         killMeasured
-		victim                    sql.NullString
 		killerX, killerY, killerZ float64
 		victimX, victimY, victimZ float64
 	)
-	if err := dbRows.Scan(&m.matchID, &m.killerXUID, &m.timeMS, &victim, &m.sourceTag,
+	if err := dbRows.Scan(&m.matchID, &m.killerXUID, &m.timeMS, &m.sourceTag,
 		&killerX, &killerY, &killerZ, &victimX, &victimY, &victimZ); err != nil {
 		return killMeasured{}, err
 	}
-	m.victimXUID = victim.String
 	m.distanceM = hypot3D(killerX, killerY, killerZ, victimX, victimY, victimZ)
 	m.deltaZ = killerZ - victimZ
 	return m, nil

@@ -4,8 +4,16 @@
 // POURQUOI UN PERSISTER DEDIE, ET PAS `SharedPersister` : meme raison que
 // [KillPositionPersister] (cf. kill_position_persister.go) — `SharedPersister.Persist` est un
 // no-op des que le match existe deja dans `match_registry`, et une passe de decodage de film
-// arrive TOUJOURS sur un match deja insere. Le chemin builder (`Shared.KillOpenings`) reste
-// disponible pour un titre dont les positions seraient natives et connues des le sync primaire.
+// arrive TOUJOURS sur un match deja insere.
+//
+// ET C EST LE SEUL CHEMIN D ECRITURE DE LA TABLE. Le lot 3 avait double ce persister d un chemin
+// builder (`BatchBuilder.AddKillOpenings` -> `Shared.KillOpenings` -> `persistKillOpenings` dans
+// shared_persister.go) « qui resterait disponible pour un titre dont les positions seraient
+// natives » : AUCUN appelant, jamais. C etait le « au cas ou » de l anti-pattern n°1 du depot
+// (dead code museum), avec en prime un no-op inconditionnel dans le chemin chaud du batch. Il a
+// ete SUPPRIME le 2026-09-06 (revue adversariale, constat C3) ; l INSERT vit desormais ici, a
+// cote de son unique appelant. Si un titre a un jour des entames natives au sync primaire, le
+// chemin builder se reecrira alors — avec son appelant.
 //
 // CE QU IL ECRIT, ET CE QU IL N ECRIT PAS. Une ligne d entame porte le `time_ms` DU COUP FATAL
 // (la cle du frag, celle par laquelle le kill-feed se joint) et des coordonnees prises un
@@ -26,6 +34,7 @@ package persist
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -71,6 +80,32 @@ func (p *KillOpeningPersister) PersistPass(ctx context.Context, matchID string, 
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("persist: Commit kill_openings %s: %w", matchID, err)
+	}
+	return nil
+}
+
+// persistKillOpenings ecrit les positions d ENTAME (D5) — INSERT purs, meme doctrine append-only
+// que persistKillPositions (shared_persister.go). Deux fonctions et non une paramétrée par le nom
+// de table : les deux types de row sont distincts A DESSEIN (cf. KillOpeningInsert), et une
+// fonction qui prendrait la table en parametre rouvrirait precisement la confusion que ces types
+// ferment.
+func persistKillOpenings(ctx context.Context, tx *sql.Tx, rows []KillOpeningInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	for _, r := range rows {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO kill_openings (
+				match_id, killer_xuid, time_ms,
+				killer_x, killer_y, killer_z, victim_x, victim_y, victim_z
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			r.MatchID, r.KillerXUID, r.TimeMS,
+			r.KillerX, r.KillerY, r.KillerZ, r.VictimX, r.VictimY, r.VictimZ,
+		)
+		if err != nil {
+			return fmt.Errorf("persist: INSERT kill_openings %s/%s/%d: %w",
+				r.MatchID, r.KillerXUID, r.TimeMS, err)
+		}
 	}
 	return nil
 }
