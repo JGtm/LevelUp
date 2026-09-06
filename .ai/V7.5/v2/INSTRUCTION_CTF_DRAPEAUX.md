@@ -404,3 +404,114 @@ agrégé** (jamais nommable : ses compteurs ne correspondent à aucun joueur) et
 (SweatyYeti75). Faire descendre les lignes jusqu'à ce calque ferait donc passer `flagCarries` de
 0 à 1 portage sur ce film — gain réel mais modeste, au prix du franchissement d'une frontière
 d'architecture. **Décision produit, hors mandat** : portée au registre des reports.
+
+---
+
+## 10. Corrections après la revue R2 (2026-09-06)
+
+La revue CTF-R2 **confirme** le diagnostic et le correctif du §9 : complémentarité établie slot par
+slot avec **0 contradiction sur 8 films mono-manche**, invariant multi-manche vérifié **octet pour
+octet** sur `9f57c612`, enrichissement **strictement additif** (0 action perdue, 0 déplacée) sur
+11 films. Cinq points restaient à traiter ; chacun est prouvé ci-dessous par la mutation du
+verdict, rouge puis vert.
+
+### 10.1 (constat 1) La garde mono-manche n'était pas testée
+
+`TestCompletedByLinesRefuseLeMultiManche` s'appuyait sur `twoRoundReassignedFixture`, dont les
+slots 20 et 22 portent le **même** triplet (0,6,0) : les deux revendiquent la même ligne, la
+seconde passe de `SlotIdentityFrom` les écarte, le triplet rend une table **vide**, et
+`CompletedByLines` sortait au garde **précédent** (`len(triplet) == 0`). La garde mono-manche
+n'était jamais atteinte — la retirer laissait tout vert, alors que sur le film réel `9f57c612`
+(4 manches) elle **déplace une détonation** vers le mauvais joueur.
+
+Nouvelle fixture `deuxManchesTripletResoluFixture` : deux manches réelles, slot 22 réattribué, et
+un **slot 24 que le triplet résout sans ambiguïté** (9 frags, 2 morts, 4 assistances — compteurs
+qui **repartent de zéro par manche**, comme dans le film, `cumulateRounds` les additionnant 5+4,
+1+1, 2+2) mais que le pont par morts ne peut pas nommer (2 morts < `deathInstantMin`). Le test
+`TestCompletedByLinesRefuseLeMultiMancheQuandLeTripletAUneReponse` vérifie **son propre
+pré-requis** (`triplet[24] == "E"`, ≥ 2 manches) avant d'asserter.
+
+**Preuve, mutation D4** (`|| len(ri.byRound) != 1` retiré) :
+
+```
+--- FAIL: TestCompletedByLinesRefuseLeMultiMancheQuandLeTripletAUneReponse
+    manche 0, slot 24 = "E" : le triplet apparie des TOTAUX DE MATCH, il n'a aucun sens
+                              sur un film multi-manche
+    manches apres completion : [0], attendu [0 1] — la completion a effondre l'identite
+                              par manche sur une seule table
+    manche 1, slot 20 : "C" -> "", la completion a modifie un film multi-manche
+    manche 1, slot 22 : "B" -> "", la completion a modifie un film multi-manche
+```
+
+### 10.2 (constat 2) La garde « compléter, jamais contredire » n'avait aucun test
+
+Le terme `deja ||` ne tirait dans aucune suite : la garde 3 (`pris[xuid]`) le doublait partout où
+les deux ponts sont d'accord. Le seul cas où `deja` agit seul est celui où **les deux ponts
+désignent le même slot avec des joueurs différents et le joueur du triplet est libre**.
+
+`contradictionFixture` : film mono-manche, slot 20 nommé « P » par les morts et « Q » par le
+triplet, « Q » revendiqué par personne d'autre.
+`TestCompletedByLinesNeContreditJamaisLePontParMorts` vérifie ses deux pré-requis puis assert.
+
+**Preuve, mutation D5** (`if _, deja := fusion[slot]; deja || pris[xuid]` → `if pris[xuid]`) :
+
+```
+--- FAIL: TestCompletedByLinesNeContreditJamaisLePontParMorts
+    slot 20 = "Q" apres completion, attendu "P" — le pont par morts a la PRIORITE :
+    la completion ajoute, elle ne remplace jamais
+```
+
+### 10.3 (constat 3) La justification du « 7 joueurs pontés » était fausse
+
+Le commentaire disait « le 8e (5 frags, 0 mort) n'a aucune trajectoire dans le film : il n'a pas de
+slot à nommer ». **Faux** : `2535458702376288` occupe le **slot 12**, dont les compteurs de film
+valent (5, 0, **60**). Ses frags et ses morts sont exactement ceux de sa feuille ; c'est le
+compteur d'assistances, lu à 60 contre 0, qui fait refuser le triplet — et le pont par morts ne
+peut évidemment pas voir un joueur qui ne meurt jamais. La vraie raison est écrite, et elle est
+désormais cohérente avec le §9.8 (« slot 12 agrégé »). Le commentaire dit aussi ce qu'il faudra
+lire si ce slot devient nommable : **un progrès, pas une régression**.
+
+### 10.4 (constat 4) `SchemaVersion` monte de 39 à 40
+
+Décision du superviseur, et elle corrige un raisonnement fautif du §9.7 : j'y invoquais « la forme
+ne change pas », alors que la règle du dépôt — écrite aux montées v3, v4, v5, v14, v22, v25 et 39 —
+est qu'« **un artefact vN doit se voir comme À RE-CUIRE, pas comme à jour** ». Sans montée, tout
+artefact 39 cuit d'ici la release (témoin de gate, passe partielle, fil de l'eau) serait **sauté**
+par `backfill-replay` (`cmd_backfill_replay.go` : un artefact qui porte la version courante est
+sauté) et garderait définitivement son calque appauvri. L'exception du lot P5 (schéma 38 maintenu)
+ne s'applique pas : elle ne valait que parce qu'aucun artefact 38 n'existait alors hors témoins.
+
+Réconciliations faites : chronique `document.go` (entrée v40, motif écrit) ; ratchet
+`structure_test.go` (`SchemaVersion != 40`, raison écrite au-dessus) ; golden d'assemblage
+régénéré — **son unique écart était la ligne de version** (`schema 39` → `schema 40`, 1 ligne sur
+606, vérifiée avant régénération) ; entrée du `REGISTRE_REPORTS.md` corrigée (« aucun bump » →
+« re-cuisson de tout artefact < 40 »).
+
+**Contrat OpenAPI** : `schemaVersion` y est déclaré comme un `integer` **sans** `enum`, `const`,
+`default` ni `example` — la valeur n'y figure pas, un bump ne peut donc pas le déplacer.
+`git diff --exit-code apps/web/src/lib/api/generated.ts` : **inchangé**. À signaler sans le
+masquer : `make generate-types` **n'a pas pu tourner dans ce worktree** (`openapi-typescript` non
+installé, `node_modules` absent) ; le contrôle repose donc sur la lecture directe du contrat et sur
+le diff nul de `generated.ts`, pas sur une régénération.
+
+### 10.5 (constat 5) Le fichier de test repassé sous le seuil
+
+`build_queue_worker_binary_integration_test.go` était monté de 537 à **562** lignes, sur un fichier
+dont la dette était gelée (seuil 500, règle 5 de CLAUDE.md). Les assertions d'objectif sont
+déplacées **telles quelles** dans `build_queue_worker_objectifs_integration_test.go` (nouveau,
+tags `integration && cgo`) : l'original retombe à **451** lignes, sous le seuil ; le nouveau en
+fait 131. Seule la justification du §10.3 a été récrite au passage.
+
+### 10.6 Gates du lot
+
+```
+go test -count=1 ./internal/replaybuild/... ./internal/analysis/objectiveevents/...
+        ./internal/analysis/replay/... ./internal/archlint/... ./contracttest/...   ok (6)
+go test -tags=integration -p 1 -count=1 ./internal/api/wire/...                     ok 16,7 s
+go build ./...                                                                      exit 0
+golangci-lint run --new-from-merge-base=origin/main ./...                           0 issues
+```
+
+Goldens inconditionnels vérifiés **PASS** (et non SKIP) nommément : `TestGoldenMiniBobine`,
+`TestEquivalenceMiniFilm`, `TestGoldenAssembly` (+ ses trois variantes),
+`TestGoldenInputsRoundTrip`, `TestZeroDisqueBuildFromFilm`, `TestZeroDisqueBalayagesSupportes`.

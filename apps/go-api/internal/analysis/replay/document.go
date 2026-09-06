@@ -677,7 +677,33 @@ package replay
 // `Options.MatchKills` ; `Read=false` (source non lue) le laisse absent chez TOUS les joueurs —
 // « on n'a pas regardé », jamais un zéro qui se lirait comme une mesure.
 // Détail : internal/analysis/replay/bomb_stats.go et bomb_stats_document.go.
-const SchemaVersion = 39
+//
+// v40 (2026-09-06) : LE PONT D'IDENTITÉ EST COMPLÉTÉ PAR LE TRIPLET, et la version monte pour
+// la SEULE raison qui fait monter une version dans ce fichier — la reprise du backfill se lit
+// par `SchemaVersion`. AUCUN CHAMP N'EST AJOUTÉ : c'est le CONTENU de `objectives` qui change.
+//
+// Ce qui a été réparé : depuis `d173b1a8c` (2026-08-28), le calque des actions d'objectif
+// résolvait l'identité slot -> joueur par les seuls INSTANTS DE MORT, qui en exigent trois
+// (`objectiveevents.deathInstantMin`). Un joueur qui meurt moins de trois fois — c'est-à-dire
+// le meilleur du match, celui qui porte le drapeau — n'était plus nommé, et ses actions
+// disparaissaient du document. Mesuré sur `c0a82e88` : 17 actions avant la bascule, 12 après,
+// les DEUX seules actions de famille `flag` du match perdues avec leur auteur (7 frags,
+// 2 morts). `RoundIdentity.CompletedByLines` complète l'identité par le pont par TRIPLET sur
+// les seuls slots restés anonymes, et seulement sur un film mono-manche : 23 actions, 7 joueurs
+// pontés sur 7, chacun publiant exactement sa ligne de la feuille de match.
+//
+// POURQUOI LA VERSION MONTE ALORS QUE LA FORME NE BOUGE PAS. Un artefact au schéma 39 cuit
+// AVANT ce correctif peut manquer des actions d'objectif sur un match mono-manche, et rien dans
+// sa forme ne le dit. Sans montée, `backfill-replay` le SAUTERAIT (« un artefact présent qui
+// porte la version de schéma courante est sauté ») et il garderait définitivement son calque
+// appauvri. La règle du dépôt, écrite aux montées v3, v4, v5, v14, v22, v25 et 39, est
+// qu'« un artefact vN doit se voir comme À RE-CUIRE, pas comme à jour » — c'est elle qui
+// s'applique, et non l'exception du lot P5 (schéma 38 maintenu), qui ne valait que parce
+// qu'AUCUN artefact 38 n'existait alors hors témoins de gate. Ici la reprise doit re-cuire tout
+// artefact < 40.
+// Détail : internal/analysis/objectiveevents/slotidentity_rounds.go (CompletedByLines) et
+// .ai/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md section 9.
+const SchemaVersion = 40
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
