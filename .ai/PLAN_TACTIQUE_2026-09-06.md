@@ -691,6 +691,20 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **CI Frontend rouge (run 34031528843) : titre de route manquant, garde-rail
+  `pageTitle.test.ts`.** La 5e route Ascension `/ascension/tactique` (commit `tactique(4.6)`)
+  n'avait pas d'entree dans `PLAYER_SUFFIX_OVERRIDES` (`apps/web/src/lib/pageTitle.ts`) :
+  le garde-rail I18 exige un titre FR+EN non-fallback pour CHAQUE route reelle balayee sous
+  `src/routes/**`. Ajoute `{ pattern: '/ascension/tactique', title: { fr: 'Ascension —
+  Tactique', en: 'Ascension — Tactics' } }` sur le meme patron que les 3 voisins
+  (objectifs/coaching/realisations). Lecon : **la CI joue TOUTE la suite vitest** — un
+  `vitest run` filtre sur un seul fichier de test ne l'aurait pas revele si le filtre avait
+  exclu `pageTitle.test.ts`. Gate complet rejoue en avant-plan apres correctif : typecheck,
+  lint (0 erreur, 30 warnings preexistants), `vitest run --pool=forks` (604 fichiers, 6369
+  tests, 14 skip, 0 fail), `lint-no-hardcoded-colors` (0 violation), manifestes i18n a jour
+  (aucun regenere : titre hors TOML). Investigation associee (avertissement React « Hooks
+  order changed » sur `SquadSynergiesPage` vu dans le meme run) : § 7:2026-09-06,
+  NON CORRIGE (non reproduit).
 - 2026-09-06 : **revue adversariale ronde 2 de la phase 4 — DERNIERE salve, 3 constats, tous
   corriges** en 1 commit `tactique(4.6)`. G2, G3 et W1-W5 de la ronde 1 tiennent ; G1 etait
   PARTIEL. Le fil commun des trois : **une frontiere fermee par le CODE reste ouverte par le
@@ -982,6 +996,30 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-06 (fix CI hors phase, hors perimetre Tactique) — **AVERTISSEMENT REACT « Hooks
+  order changed » sur `SquadSynergiesPage`, vu dans le run CI 34031528843, NON CORRIGE :
+  non reproduit.** Le run affichait, pendant le test `SquadSynergiesPage.test.tsx >
+  capability expected_stats presente...`, un avertissement « An update to SquadSynergiesPage
+  inside a test was not wrapped in act(...) » suivi de « React has detected a change in the
+  order of Hooks called by SquadSynergiesPage » (position 1 : `useCallback` -> `useContext`).
+  Verifie sur pieces : `SquadSynergiesPage.tsx:36-49` (les 5 hooks propres —
+  `useSquadContext`/`useContext`, `useFieldMappings`, `useAppShellStore`, `useCapability`,
+  `useMemo` — sont TOUS inconditionnels, avant les deux retours anticipes `!hasSelection` /
+  `!hasRows`, lignes ~52 et ~63) ; `SquadEchangeConstatCard.tsx` (son unique retour anticipe
+  `if (!cap) return null` vient APRES `useAppShellStore` et `useMemo`) ; et
+  `SquadEchangeMatrixCard.tsx` (aucun retour anticipe, tous les hooks inconditionnels) —
+  les trois composants nommes dans la consigne sont propres. Le mismatch rapporte
+  (`useCallback` en position 1) ne correspond a AUCUN hook reellement declare dans
+  `SquadSynergiesPage` : dans ce test, `useSquadContext` est integralement mocke
+  (`vi.spyOn(squadContextModule, 'useSquadContext').mockReturnValue(...)`, aucun hook interne
+  reel appele) — incompatible avec une violation structurelle de ce fichier, compatible avec
+  une mise a jour hors `act()` d'un composant tiers de l'arbre (react-query/zustand) qui
+  brouille l'attribution du fiber en fin de test. NON REPRODUIT : `vitest run
+  SquadSynergiesPage.test.tsx` isole (7/7 verts, aucun avertissement) et `vitest run
+  --pool=forks` suite complete x2 (604 fichiers, 6369 tests, 0 avertissement « Hooks »).
+  Aucune correction appliquee (rien a corriger sur preuves ; un correctif sans repro serait
+  un fix a l'aveugle, interdit par la regle de verification sur pieces). A surveiller au
+  prochain run CI rouge sur ce fichier.
 - 2026-09-06 (phase 4, revue R1) — **LA MEME BRANCHE MORTE SURVIT DANS `handlers/replay.go`.**
   Les deux `if in.MatchID == "" { 400 missing_match_id }` (`replay.go:79-81`, `:105-107`,
   et le pendant chi `:157-160`) sont inatteignables pour la meme raison que les
