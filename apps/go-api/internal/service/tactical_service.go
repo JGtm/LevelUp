@@ -18,15 +18,17 @@
 //
 // ─── DEUX PORTES DE CAPABILITY, DEUX EFFETS DIFFERENTS ─────────────────────────
 //
-//	film.kill_positions  ABSENTE -> ErrCapabilityNotSupported -> 503 propre. Sans
-//	                     positions il n'y a pas de lecture de placement du tout.
-//	film.kill_source     ABSENTE -> le KPI d'echange est SILENCIEUX (nil), la
-//	                     lecture de placement reste servie. Publier un zero se
-//	                     lirait comme une contre-performance ; ne rien publier dit
-//	                     ce qui est vrai : ce titre ne sait pas mesurer ca.
+//	positions LISIBLES  ABSENTES -> ErrCapabilityNotSupported -> 503 propre. Sans
+//	                    positions il n'y a pas de lecture de placement du tout.
+//	journal FIABLE      ABSENT -> le KPI d'echange est SILENCIEUX (nil), la lecture
+//	                    de placement reste servie. Publier un zero se lirait comme
+//	                    une contre-performance ; ne rien publier dit ce qui est
+//	                    vrai : ce titre ne sait pas mesurer ca.
 //
 // Les deux se lisent sur la CapabilityMap de l'adapter du titre du joueur — jamais
-// une comparaison de slug (ratchet no_slug_comparison_test).
+// une comparaison de slug (ratchet no_slug_comparison_test). Chacune accepte DEUX
+// PROVENANCES, et c'est le fond de la correction R1 (revue du 2026-09-06) :
+// cf. positionsDeKillLisibles et journalDesMortsFiable ci-dessous.
 package service
 
 import (
@@ -102,9 +104,9 @@ func (s *TacticalService) Raster(ctx context.Context, carte, question, qui strin
 	if err := validerLecture(carte, question, qui); err != nil {
 		return out, err
 	}
-	if s.repo == nil || !s.caps.Has(games.CapFilmKillPositions) {
-		s.logger.WarnContext(ctx, "tactique: positions de kill non mesurees par ce titre",
-			"player", s.xuid, "map_id", carte, "question", question)
+	if s.repo == nil || !positionsDeKillLisibles(s.caps) {
+		s.logger.WarnContext(ctx, "tactique: aucune position de kill lisible pour ce titre",
+			"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "map_id", carte, "question", question)
 		return out, games.ErrCapabilityNotSupported
 	}
 	debut := time.Now()
@@ -243,7 +245,7 @@ func remplirRaster(out *domain.TacticalRaster, raster *tactical.Raster, question
 // morts, ou quand la lecture echoue : la lecture de placement, elle, reste servie.
 // Un echec est journalise avant la degradation, jamais avale.
 func (s *TacticalService) echange(ctx context.Context, carte string, filtre *domain.MatchFilterSpec) *domain.Couverture {
-	if !s.caps.Has(games.CapFilmKillSource) {
+	if !journalDesMortsFiable(s.caps) {
 		return nil
 	}
 	lecture, err := s.repo.KillEvents(ctx, domain.TacticalQuery{PlayerXUID: s.xuid, MapID: carte, Filtre: filtre})
@@ -276,4 +278,57 @@ func (s *TacticalService) echange(ctx context.Context, carte string, filtre *dom
 		"player", s.xuid, "map_id", carte, "matchs_retenus", len(lecture.Univers.Matchs),
 		"morts_vengeables", c.N, "morts_vengees", c.Brut, "echantillon_faible", c.EchantillonFaible)
 	return &c
+}
+
+// ─── LES DEUX PORTES DE LECTURE ────────────────────────────────────────────────
+
+// positionsDeKillLisibles dit si la table `kill_positions` de ce titre est LISIBLE,
+// quelle que soit la main qui l'a remplie (correction R1, revue du 2026-09-06).
+//
+// LE DEFAUT CORRIGE : la version precedente gatait sur `film.kill_positions` seule.
+// Or cette cle GOUVERNE LA CAPTURE, pas la lecture — son propre commentaire le dit
+// (`games/adapter.go`, doc de CapFilmKillPositions). Halo 5 ne la declare pas et
+// n'a aucune raison de le faire : il n'a pas de decodeur de film, il remplit la
+// MEME table NATIVEMENT depuis le carnage (`games/halo_5/ingest/positions.go`,
+// `match.events.spatial = supported`). Un joueur Halo 5 recevait donc un 503 alors
+// que la jointure aurait rendu toutes ses positions.
+//
+// LES DEUX PROVENANCES, donc :
+//
+//	film.kill_positions   la CAPTURE par decodage de film (Halo Infinite) ;
+//	match.events.spatial  les positions NATIVES de l'API du titre (Halo 5).
+//
+// L'une ou l'autre suffit : ce qui est lu est la meme table, par la meme jointure.
+//
+// A TERME (consigne au §7 du plan) : une cle FINE de LECTURE — « positions de kill
+// lisibles » — dirait cela d'un seul mot, au lieu d'un OU sur deux cles qui
+// repondent chacune a une autre question. Elle releve du vocabulaire de
+// capabilities du lot C de l'audit, pas de ce lot.
+func positionsDeKillLisibles(caps games.CapabilityMap) bool {
+	return caps.Has(games.CapFilmKillPositions) || caps.Has(games.CapMatchEventsSpatial)
+}
+
+// journalDesMortsFiable dit si `match_kill_events` de ce titre nomme le tueur de
+// chaque mort de facon exploitable LIGNE A LIGNE — ce qu'exige l'echange (« qui a
+// venge qui »), et rien de moins.
+//
+// LES DEUX PROVENANCES, et elles ne se lisent PAS de la meme facon :
+//
+//	film.kill_source              la source du degat fatal, decodee du film
+//	                              (Halo Infinite : supported). `Has` suffit.
+//	match.killfeed.per_kill       le kill-feed natif de l'API du titre. Exige ici
+//	                              `supported` STRICTEMENT, pas `Has`.
+//
+// POURQUOI `supported` STRICTEMENT SUR LA SECONDE. `CapabilityMap.Has` accepte
+// aussi `degraded`, et Halo Infinite declare justement `match.killfeed.per_kill =
+// degraded` (kills simultanes possiblement omis, cf. capabilities.toml) — soit
+// exactement le defaut qui fabriquerait de faux echanges : une mort omise dans la
+// fenetre de 5 s se lit comme « non vengee ». Infinite passe deja par
+// `film.kill_source` ; le exiger `supported` ici n'ote donc rien a personne, et
+// protege le jour ou un titre ne declarerait QUE ce kill-feed la, en degrade.
+// Halo 5 declare `supported` (mesure sur pieces, capabilities.toml du titre) et
+// remplit `match_kill_events` par la reprise de `killer_victim_pairs`.
+func journalDesMortsFiable(caps games.CapabilityMap) bool {
+	return caps.Has(games.CapFilmKillSource) ||
+		caps[games.CapMatchKillfeedPerKill] == games.CapSupported
 }

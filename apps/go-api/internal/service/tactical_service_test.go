@@ -53,7 +53,8 @@ func (m *mockTacticalRepo) KillEvents(_ context.Context, q domain.TacticalQuery)
 	return m.ev, m.errEv
 }
 
-// capsCompletes : le titre mesure les positions ET la source des morts.
+// capsCompletes : profil Halo Infinite — positions capturees du film ET source du
+// degat fatal.
 func capsCompletes() games.CapabilityMap {
 	return games.CapabilityMap{
 		games.CapFilmKillPositions: games.CapSupported,
@@ -61,8 +62,8 @@ func capsCompletes() games.CapabilityMap {
 	}
 }
 
-// capsPositionsSeules : positions mesurees, source des morts NON — le KPI
-// d'echange doit alors etre silencieux, pas nul.
+// capsPositionsSeules : positions lisibles, journal des morts NON exploitable — le
+// KPI d'echange doit alors etre silencieux, pas nul.
 func capsPositionsSeules() games.CapabilityMap {
 	return games.CapabilityMap{games.CapFilmKillPositions: games.CapSupported}
 }
@@ -345,20 +346,93 @@ func TestTacticalService_EchangeEnEchec_LectureServie(t *testing.T) {
 
 // ─── LES PORTES ────────────────────────────────────────────────────────────────
 
-// TestTacticalService_SansKillPositions_Capability : sans positions mesurees il
-// n'y a pas de lecture du tout — ErrCapabilityNotSupported (503 propre).
-func TestTacticalService_SansKillPositions_Capability(t *testing.T) {
+// TestTacticalService_AucunePositionLisible_Capability : aucune des DEUX
+// provenances de positions — ErrCapabilityNotSupported (503 propre).
+func TestTacticalService_AucunePositionLisible_Capability(t *testing.T) {
 	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
 	for nom, caps := range map[string]games.CapabilityMap{
 		"map vide":              {},
 		"map nil":               nil,
 		"kill_source seule":     {games.CapFilmKillSource: games.CapSupported},
-		"positions non exposee": {games.CapFilmKillPositions: games.CapNotExposed},
+		"capture non exposee":   {games.CapFilmKillPositions: games.CapNotExposed},
+		"spatial non expose":    {games.CapMatchEventsSpatial: games.CapNotExposed},
+		"les deux non exposees": {games.CapFilmKillPositions: games.CapNotExposed, games.CapMatchEventsSpatial: games.CapNotExposed},
+		"killfeed natif seul":   {games.CapMatchKillfeedPerKill: games.CapSupported},
 	} {
 		svc := NewTacticalService(repo, caps, tsMoi)
 		_, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
 		if !errors.Is(err, games.ErrCapabilityNotSupported) {
 			t.Errorf("%s: err = %v, want ErrCapabilityNotSupported", nom, err)
+		}
+	}
+}
+
+// TestTacticalService_PositionsNatives_RasterServi : LE test de la correction R1.
+//
+// Un titre qui remplit `kill_positions` NATIVEMENT (Halo 5 : `match.events.spatial
+// = supported`, aucun decodeur de film, donc AUCUNE declaration de
+// `film.kill_positions` — qui gouverne la capture par le film) doit etre servi. La
+// version precedente lui rendait un 503 alors que la jointure marche integralement.
+func TestTacticalService_PositionsNatives_RasterServi(t *testing.T) {
+	repo := &mockTacticalRepo{}
+	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
+	for _, id := range []string{"m1", "m2", "m3"} {
+		u := universUnMatch(id, domain.OutcomeWin)
+		repo.pos.Univers.Matchs = append(repo.pos.Univers.Matchs, u.Matchs...)
+		repo.pos.Univers.Equipes[id] = u.Equipes[id]
+		repo.pos.Points = append(repo.pos.Points, domain.TacticalKillPosition{
+			MatchID: id, KillerXUID: tsAdv, VictimXUID: tsMoi,
+			KillerX: 1.0, KillerY: 1.0, VictimX: 10.0, VictimY: 10.0,
+		})
+	}
+	caps := games.CapabilityMap{games.CapMatchEventsSpatial: games.CapSupported}
+	svc := NewTacticalService(repo, caps, tsMoi)
+
+	got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
+	if err != nil {
+		t.Fatalf("positions NATIVES (match.events.spatial) : err = %v, want une lecture servie", err)
+	}
+	if len(got.Cellules) != 1 || celluleEn(got.Cellules, 10.0, 10.0) == nil {
+		t.Errorf("cellules = %+v, want la cellule (10,10)", got.Cellules)
+	}
+}
+
+// TestTacticalService_EchangeDeuxProvenances : le journal des morts est exploitable
+// soit par la source de degat du film (`film.kill_source`), soit par un kill-feed
+// natif declare `supported` — mais PAS `degraded`.
+//
+// POURQUOI LE STRICT : `Has` accepte `degraded`, et Halo Infinite declare justement
+// `match.killfeed.per_kill = degraded` (kills simultanes possiblement omis) — soit
+// exactement le defaut qui fabrique de faux echanges, une mort omise dans la
+// fenetre de 5 s se lisant « non vengee ».
+func TestTacticalService_EchangeDeuxProvenances(t *testing.T) {
+	cas := []struct {
+		nom  string
+		caps games.CapabilityMap
+		veut bool
+	}{
+		{"source de degat du film", games.CapabilityMap{
+			games.CapMatchEventsSpatial: games.CapSupported,
+			games.CapFilmKillSource:     games.CapSupported}, true},
+		{"kill-feed natif supported", games.CapabilityMap{
+			games.CapMatchEventsSpatial:   games.CapSupported,
+			games.CapMatchKillfeedPerKill: games.CapSupported}, true},
+		{"kill-feed natif DEGRADED", games.CapabilityMap{
+			games.CapMatchEventsSpatial:   games.CapSupported,
+			games.CapMatchKillfeedPerKill: games.CapDegraded}, false},
+		{"aucune des deux", games.CapabilityMap{
+			games.CapMatchEventsSpatial: games.CapSupported}, false},
+	}
+	for _, c := range cas {
+		repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
+		repo.ev = domain.TacticalKillEvents{Univers: universUnMatch("m1", domain.OutcomeWin)}
+		svc := NewTacticalService(repo, c.caps, tsMoi)
+		got, err := svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
+		if err != nil {
+			t.Fatalf("%s: %v", c.nom, err)
+		}
+		if (got.Echange != nil) != c.veut {
+			t.Errorf("%s: Echange servi = %v, want %v", c.nom, got.Echange != nil, c.veut)
 		}
 	}
 }
