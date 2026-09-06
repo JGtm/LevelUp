@@ -95456,3 +95456,50 @@ lot `.ai/V7.5/v2/LOT_F.md` : la ligne de `CLAUDE.md` qui cite le fichier supprim
 exemptions fines de `.golangci.yml` supprimees alors que leur premisse a change sous l'effet du
 meme commit, et le fait que le lot E devra rejouer la baseline de presence dans le meme commit
 que ses suppressions de tests.
+
+## [2026-09-06] LOT F — correctif apres revue adversariale F-R1 — Complete
+
+**Contexte.** Revue adversariale du lot F (lentille L6, « ce que les tests ne couvrent pas ») :
+25 conditions tiennent, 19 mutations jouees, 2 constats recevables. CORRECTIF A L'ENTREE
+PRECEDENTE du meme jour, qui n'est PAS reecrite : elle affirmait « les 5 joueurs apparies ont
+leurs 15 compteurs EXACTEMENT egaux a ceux de l'API », presente comme un differentiel de deux
+chaines independantes. C'est faux, et la revue l'a etabli sur pieces.
+
+**Decision technique.** Verifie avant de corriger : `objectiveevents/slotidentity.go:97`
+apparie un slot d'entite a un xuid par EGALITE EXACTE du triplet frags/morts/assistances contre
+la ligne de match de l'API. Tout joueur publie dans `ScoreTimeline.Players` porte donc le
+triplet de l'API PAR CONSTRUCTION : une regression du decodeur ne produit pas un ecart de
+valeur, elle fait DISPARAITRE le joueur du calque. La documentation est reecrite pour dire ce
+que l'assertion garde reellement — (1) la liste FIGEE des 5 apparies, vrai detecteur de
+regression du pont ; (2) la coherence INTERNE a la chaine du film entre le NOMBRE D'INCREMENTS
+(cle d'appariement, `objectiveevents.countsOf`) et la DERNIERE VALEUR de la serie posee sur la
+grille de frames (`replay.scoreTicksOf`, qui ecarte les emissions hors fenetre et aplatit les
+paliers) : rien n'oblige les deux a coincider. Le message d'echec `DIFFERENTIEL film <-> API`
+devient `SERIE PUBLIEE != CLE D'APPARIEMENT`. Le SECOND fait des deux chaines — le roster nomme
+du film = les joueurs que l'API donne morts au moins une fois — est GARDE : la revue l'a
+verifie independamment (`analysis/replay/deaths_source.go:52-77`, le fil des morts est decode du
+chunk highlight, aucune base n'intervient). Second constat (P2) : le ratchet `gamefiles` de
+`internal/archlint` balayait la constante `{"internal", "cmd"}` alors que son en-tete promettait
+« tout le module » — un `_test.go` non tague sous `tests/` passait vert. La constante disparait :
+le balayage part de la racine du module et ne saute que les repertoires que l'outil Go lui-meme
+n'ouvre pas (`testdata`, `vendor`, `node_modules`, prefixes `.` et `_`). La liste des racines est
+DERIVEE du systeme de fichiers, plus ecrite.
+
+**Resultats.** Les deux mutations du verdict rejouees apres correction. Mutation 1
+(`fixture.json` kills 7->6 + recopie alignee) : rouge par « 4 joueurs publies, attendu 5 » et
+« joueur 2535463878425995 apparie le 2026-09-05 mais plus publie », AUCUNE ligne de comparaison
+de valeurs — exactement ce que la nouvelle documentation annonce. Mutation 4
+(`score_timeline.go:136 V: v+1`) : quatre lignes `SERIE PUBLIEE != CLE D'APPARIEMENT`. Mutation
+14 (`tests/golden/zz_review_ouvre_le_jeu_test.go` non tague), VERTE avant, desormais ROUGE sur
+ses deux appels. Cout du balayage elargi : `TestCorpusGamefilesEstTague` 13,6 s -> 15,7 s
+(2 464 `_test.go` au lieu de 2 454) ; plancher de 62 fichiers inchange et toujours exact.
+Reference `ci.yml:374-376` du journal corrigee en `ci.yml:412-414` (F.6 avait insere 33 lignes
+en amont). Gate : `go test ./internal/archlint/... ./internal/api/wire/...` vert,
+`-tags=integration -p 1 ./internal/api/wire/...` vert, `go build ./...` OK, ratchet
+golangci-lint `0 issues`.
+
+**Conclusion / prochaine etape.** Deux commits `v2(F.fix-n)` sur `feat/v2-tests-ci`. CI toujours
+NON surveillee (consigne utilisateur). Les quatre points « non recevables » du verdict sont
+laisses en l'etat sur son propre argument. Les trois points a trancher par le superviseur
+(ligne de `CLAUDE.md` qui cite le fichier supprime, exemptions fines de `.golangci.yml`,
+baseline a rejouer par le lot E) restent ouverts, inchanges.

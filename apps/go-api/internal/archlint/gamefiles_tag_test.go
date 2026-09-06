@@ -8,7 +8,11 @@ package archlint
 // les voyait — `cmd/mapstruct-build/equivalence_gamefiles_test.go` (nommé « gamefiles » mais
 // SANS la ligne de tag, donc compilé par défaut) et `cmd/mapfond-build/reglages_test.go`
 // (`TestModuleGeometrieExisteDansLInstallation`, depuis isolé sous son propre fichier tagué).
-// Ce fichier-ci balaie `internal/` ET `cmd/`, et remplace l'original.
+// Ce fichier-ci balaie LA RACINE DU MODULE, et remplace l'original. La première version de ce
+// balayage nommait deux racines (`internal`, `cmd`) dans une constante alors que l'en-tête
+// promettait déjà « tout le module » : la revue F-R1-2 du 2026-09-06 a montré qu'un `_test.go`
+// non tagué sous `tests/` passait vert. La liste des racines est désormais DÉRIVÉE du système de
+// fichiers (cf. `balayerTests`), pas écrite.
 //
 // CE QUE LE TAG PAIE. Le 2026-09-05, `go test ./internal/himap/` ne terminait plus sur un poste
 // où Halo Infinite est installé : le paquet mélangeait deux populations de tests sans rien pour
@@ -71,8 +75,22 @@ var horsCorpusAutorises = map[string]bool{
 	"internal/archlint/gamefiles_tag_test.go": true,
 }
 
-// racinesBalayees : les deux arbres de code du module.
-var racinesBalayees = []string{"internal", "cmd"}
+// dossiersInvisiblesAuGo : les répertoires que l'outil Go lui-même ignore quand il charge des
+// paquets — un `_test.go` posé là n'est jamais compilé, donc jamais exécuté, donc hors sujet.
+// C'est le SEUL filtre du balayage : tout le reste du module est parcouru.
+//
+// LA LISTE DES RACINES N'EST PAS ÉCRITE, ELLE EST DÉRIVÉE (revue F-R1-2 du 2026-09-06). La
+// version précédente balayait la constante `{"internal", "cmd"}` alors que l'en-tête promettait
+// « tout le module » : un `_test.go` non tagué sous `contracttest/`, `pkg/`, `scripts/` ou
+// `tests/` qui ouvrait l'installation restait invisible — l'angle mort EXACT de l'ancien ratchet
+// de `himap` (un `filepath.Glob` d'un seul répertoire) que ce fichier prétend fermer. Le
+// balayage part désormais de la racine du module : une racine neuve est couverte le jour où
+// elle apparaît, sans que personne ait à y penser.
+var dossiersInvisiblesAuGo = map[string]bool{
+	"testdata":     true, // ignoré par le chargeur de paquets Go
+	"vendor":       true,
+	"node_modules": true,
+}
 
 // TestCorpusGamefilesEstTague — chaque `*_gamefiles_test.go` du MODULE porte le tag.
 //
@@ -122,8 +140,10 @@ func TestAucunTestNonTagueNeLitLInstallation(t *testing.T) {
 	})
 }
 
-// balayerTests appelle `visiter` pour chaque `*_test.go` de `internal/` et `cmd/`, avec son
-// chemin relatif à `apps/go-api` (en slash) et son contenu.
+// balayerTests appelle `visiter` pour CHAQUE `*_test.go` du module, où qu'il soit, avec son
+// chemin relatif à `apps/go-api` (en slash) et son contenu. Seuls sont sautés les répertoires
+// que l'outil Go n'ouvre pas lui-même (cf. `dossiersInvisiblesAuGo`, plus les `.foo` et `_foo`
+// que le chargeur de paquets ignore par convention).
 func balayerTests(t *testing.T, visiter func(rel, texte string)) {
 	t.Helper()
 	_, ici, _, ok := runtime.Caller(0)
@@ -131,25 +151,30 @@ func balayerTests(t *testing.T, visiter func(rel, texte string)) {
 		t.Fatal("runtime.Caller a échoué")
 	}
 	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici))) // .../apps/go-api
-	for _, sous := range racinesBalayees {
-		racine := filepath.Join(goAPIRoot, sous)
-		err := filepath.WalkDir(racine, func(chemin string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() || !strings.HasSuffix(chemin, "_test.go") {
-				return nil
-			}
-			buf, rerr := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
-			if rerr != nil {
-				return rerr
-			}
-			rel, _ := filepath.Rel(goAPIRoot, chemin)
-			visiter(filepath.ToSlash(rel), string(buf))
-			return nil
-		})
+	err := filepath.WalkDir(goAPIRoot, func(chemin string, d fs.DirEntry, err error) error {
 		if err != nil {
-			t.Fatalf("parcours de %s : %v", sous, err)
+			return err
 		}
+		if d.IsDir() {
+			nom := d.Name()
+			if chemin != goAPIRoot && (dossiersInvisiblesAuGo[nom] ||
+				strings.HasPrefix(nom, ".") || strings.HasPrefix(nom, "_")) {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(chemin, "_test.go") {
+			return nil
+		}
+		buf, rerr := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
+		if rerr != nil {
+			return rerr
+		}
+		rel, _ := filepath.Rel(goAPIRoot, chemin)
+		visiter(filepath.ToSlash(rel), string(buf))
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("parcours du module (%s) : %v", goAPIRoot, err)
 	}
 }
