@@ -275,9 +275,16 @@ func TestTacticalService_MatchsFiltres_ParCarte(t *testing.T) {
 	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
 
 	req := tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi)
-	req.Scope.MatchIDs = make([]string, 20) // 20 identifiants dans la liste blanche
-	for i := range req.Scope.MatchIDs {
-		req.Scope.MatchIDs[i] = "m" + string(rune('a'+i))
+	// 20 identifiants dans la liste blanche, dont LES 8 DE CETTE CARTE : les matchs de la
+	// carte sont un SOUS-ENSEMBLE du filtre, jamais un ensemble disjoint. La fixture
+	// d'origine posait 20 identifiants etrangers, ce qui ne pouvait tenir que parce que le
+	// double ignorait la liste blanche.
+	req.Scope.MatchIDs = make([]string, 0, 20)
+	for i := 0; i < 8; i++ {
+		req.Scope.MatchIDs = append(req.Scope.MatchIDs, "c"+string(rune('a'+i)))
+	}
+	for i := 0; i < 12; i++ {
+		req.Scope.MatchIDs = append(req.Scope.MatchIDs, "m"+string(rune('a'+i)))
 	}
 	got, err := svc.Raster(context.Background(), req)
 	if err != nil {

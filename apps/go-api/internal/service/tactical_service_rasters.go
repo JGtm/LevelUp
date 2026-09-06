@@ -123,20 +123,14 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 	}
 	sidecars, ignores := s.chargerSidecars(ctx, univers, out.MapID)
 
-	// LES GRAPPES SE CALCULENT AVANT LE FILTRE DE SPAWN, sur l'univers ENTIER : ce sont
-	// elles que la page propose, et une liste qui se reduirait a la grappe deja choisie
-	// enfermerait l'utilisateur dans sa selection.
-	out.Grappes = grappesDeLUnivers(ctx, sidecars, s.xuid, s.zonesDeLaCarte(ctx, out.MapID))
-	if scope.Spawn != "" {
-		univers, sidecars = restreindreAuSpawn(univers, sidecars, s.xuid, scope.Spawn, out.Grappes)
-		if len(univers.Matchs) == 0 {
-			s.logger.InfoContext(ctx, "tactique: aucun match parti de cette grappe",
-				"player", s.xuid, "map_id", out.MapID, "spawn", scope.Spawn)
-			return domain.ErrTacticalSpawnInconnu
-		}
+	// LES GRAPPES SONT DEJA LA quand un filtre de spawn a ete applique en amont (cf.
+	// `Raster`) : les recalculer sur l'univers DEJA RESTREINT reduirait la liste a la seule
+	// grappe choisie, et enfermerait l'utilisateur dans sa selection.
+	if out.Grappes == nil {
+		out.Grappes = grappesDeLUnivers(sidecars, s.xuid, s.zonesDeLaCarte(ctx, out.MapID))
 	}
-	// MATCHS FILTRES = L'UNIVERS DE CETTE CARTE (apres le filtre de spawn, qui est un
-	// filtre d'univers) ; MatchsRetenus en est le SOUS-ENSEMBLE MESURE.
+	// MATCHS FILTRES = L'UNIVERS DE CETTE CARTE — deja restreint par le filtre de spawn,
+	// qui est un filtre d'univers ; MatchsRetenus en est le SOUS-ENSEMBLE MESURE.
 	out.MatchsFiltres = len(univers.Matchs)
 	if err := s.remplirLectureArtefact(ctx, out, univers, sidecars, scope, ignores); err != nil {
 		return err
@@ -194,75 +188,6 @@ func (s *TacticalService) chargerSidecars(ctx context.Context, univers domain.Ta
 		out[m.MatchID] = sc
 	}
 	return out, ignores
-}
-
-// restreindreAuSpawn ne garde que les matchs dont la PREMIERE vie du joueur part de la
-// grappe demandee.
-//
-// LE FILTRE PORTE SUR L'UNIVERS, PAS SUR LES POINTS PEINTS : garder au denominateur des
-// matchs partis d'un autre spawn ferait repondre « je passe peu de temps ici » a une carte
-// ou l'on n'a simplement pas commence.
-func restreindreAuSpawn(univers domain.TacticalUnivers,
-	sidecars map[string]*domain.TacticalRasterSidecar, xuid, spawnID string,
-	grappes []domain.TacticalGrappe) (domain.TacticalUnivers, map[string]*domain.TacticalRasterSidecar) {
-	amas, ok := amasParID(sidecars, xuid, spawnID, grappes)
-	if !ok {
-		return domain.TacticalUnivers{Equipes: univers.Equipes}, nil
-	}
-	garde := matchsDeLaGrappe(sidecars, xuid, amas)
-	out := domain.TacticalUnivers{
-		Matchs:  make([]domain.TacticalMatch, 0, len(garde)),
-		Equipes: univers.Equipes,
-	}
-	filtres := make(map[string]*domain.TacticalRasterSidecar, len(garde))
-	for _, m := range univers.Matchs {
-		if !garde[m.MatchID] {
-			continue
-		}
-		out.Matchs = append(out.Matchs, m)
-		if sc := sidecars[m.MatchID]; sc != nil {
-			filtres[m.MatchID] = sc
-		}
-	}
-	return out, filtres
-}
-
-// amasParID retrouve l'amas COMPLET (avec ses cellules) derriere un identifiant publie.
-//
-// Les grappes publiees ne portent pas leurs cellules — le contrat n'en a pas besoin — mais
-// le filtre, lui, en depend : c'est l'emprise mesuree qui definit l'appartenance, jamais un
-// rayon autour du barycentre. On recalcule donc les amas, ce qui est pur et borne.
-func amasParID(sidecars map[string]*domain.TacticalRasterSidecar, xuid, spawnID string,
-	grappes []domain.TacticalGrappe) (tactical.GrappeSpawn, bool) {
-	connu := false
-	for _, gr := range grappes {
-		if gr.ID == spawnID {
-			connu = true
-			break
-		}
-	}
-	if !connu {
-		return tactical.GrappeSpawn{}, false
-	}
-	points := make([]tactical.PointSpawn, 0, len(sidecars))
-	for matchID, sc := range sidecars {
-		for _, j := range sc.Joueurs {
-			if j.XUID != xuid {
-				continue
-			}
-			for _, sp := range j.Spawns {
-				if sp.PremiereVie {
-					points = append(points, tactical.PointSpawn{MatchID: matchID, X: sp.X, Y: sp.Y})
-				}
-			}
-		}
-	}
-	for _, a := range tactical.GrappesDeSpawn(tactical.GrilleParDefaut(), points, nil) {
-		if a.ID == spawnID {
-			return a, true
-		}
-	}
-	return tactical.GrappeSpawn{}, false
 }
 
 // remplirLectureArtefact somme les sidecars selon la QUESTION posee.
