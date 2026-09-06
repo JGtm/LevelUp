@@ -141,3 +141,33 @@ func itoa(n int) string {
 	}
 	return string(b)
 }
+
+// TestArtefactDeLaMarque — l'aller-retour marque <-> artefact, la SEULE ecriture de cette
+// relation (constat N4 de la revue A-R2 : le cron doit pouvoir dire si une marque est
+// orpheline, sans reconstruire le nom de son cote).
+func TestArtefactDeLaMarque(t *testing.T) {
+	cas := map[string]struct{ entree, attendu string }{
+		"nom nu":                     {"aaaa0001" + suffixeMarqueTest, "aaaa0001.json"},
+		"chemin complet":             {"/data/replays/aaaa0001" + suffixeMarqueTest, "/data/replays/aaaa0001.json"},
+		"ce n'est pas une marque":    {"aaaa0001.json", "aaaa0001.json"},
+		"ni une sauvegarde manuelle": {"aaaa0001.json.ancien", "aaaa0001.json.ancien"},
+	}
+	for nom, c := range cas {
+		t.Run(nom, func(t *testing.T) {
+			if got := ArtefactDeLaMarque(c.entree); got != c.attendu {
+				t.Errorf("ArtefactDeLaMarque(%q) = %q, attendu %q", c.entree, got, c.attendu)
+			}
+		})
+	}
+	// LA PROPRIETE QUI COMPTE : c'est l'inverse EXACT de DerivationsMarkPath. Si l'une bouge
+	// sans l'autre, le cron croira orpheline une marque qui ne l'est pas — et l'effacera.
+	const artefact = "/data/replays/halo_infinite/bbbb0002.json"
+	if got := ArtefactDeLaMarque(DerivationsMarkPath(artefact)); got != artefact {
+		t.Errorf("aller-retour = %q, attendu %q", got, artefact)
+	}
+}
+
+// suffixeMarqueTest : le suffixe ECRIT EN TOUTES LETTRES dans le test, exprès — si la constante
+// change, l'aller-retour ci-dessus reste vrai mais ces cas-ci rougissent, et c'est ce qui
+// signale aux deux consommateurs qu'ils balaient désormais un autre nom.
+const suffixeMarqueTest = ".derived.json"

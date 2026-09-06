@@ -73,6 +73,23 @@ func EstMarqueDerivations(name string) bool {
 	return strings.HasSuffix(name, SuffixeMarqueDerivations)
 }
 
+// ArtefactDeLaMarque rend le chemin (ou le nom) de l'ARTEFACT que cette marque decrit —
+// l'inverse exact de [DerivationsMarkPath].
+//
+// ELLE EXISTE POUR QUE LA RELATION MARQUE <-> ARTEFACT NE SOIT ECRITE QU'ICI. Le cron de purge
+// doit pouvoir dire si une marque est ORPHELINE (son artefact a disparu : purge anterieure a la
+// suppression des marques, ou geste d'operateur), et reconstruire le nom de son cote en aurait
+// fait un second detenteur de la regle — le premier ajustement du suffixe en aurait laisse un
+// en arriere. Constat N4 de la revue A-R2.
+//
+// Un chemin qui n'est PAS une marque est rendu tel quel : la fonction ne devine rien.
+func ArtefactDeLaMarque(markPath string) string {
+	if !EstMarqueDerivations(markPath) {
+		return markPath
+	}
+	return strings.TrimSuffix(markPath, SuffixeMarqueDerivations) + ".json"
+}
+
 // DerivationsMark est l'etat « derive » d'UN artefact, tel qu'il est sur disque.
 type DerivationsMark struct {
 	// Rev : la revision des derivations jouees (cf. [DerivationsRev]).

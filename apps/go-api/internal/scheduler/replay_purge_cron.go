@@ -157,9 +157,10 @@ func purgeReplayArtifactsForTitle(
 		// LA MARQUE DE DÉRIVATION N'EST PAS UN ARTEFACT (constat C6 de la revue A-R1).
 		// `<short8>.derived.json` vit dans le MÊME dossier et finit par `.json` : elle donnait
 		// `short = "<short8>.derived"`, absent du registre, donc `unknown++` — une ligne INFO à
-		// CHAQUE passage dès qu'une dérivation existait, et une marque qui SURVIVAIT à la purge
-		// de son propre artefact. Elle se traite avec lui, plus bas, jamais pour elle-même.
+		// CHAQUE passage dès qu'une dérivation existait. Elle n'entre donc dans AUCUNE des trois
+		// catégories du bilan ; celle d'un artefact vivant se traite avec lui, plus bas.
 		if replaybuild.EstMarqueDerivations(name) {
+			supprimerMarqueOrpheline(ctx, artifactsDir, name)
 			continue
 		}
 		short := strings.TrimSuffix(name, ".json")
@@ -187,6 +188,33 @@ func purgeReplayArtifactsForTitle(
 		purged++
 	}
 	return purged, kept, unknown, nil
+}
+
+// supprimerMarqueOrpheline efface une marque de dérivation dont l'ARTEFACT n'existe plus.
+//
+// LE CAS EST RÉEL, PAS THÉORIQUE (constat N4 de la revue A-R2) : toute instance dont le cron a
+// purgé des artefacts AVANT que la suppression des marques n'existe en porte, et une
+// suppression manuelle d'artefact par un opérateur en produit une de plus. Depuis que le cron
+// ignore les marques, plus rien ne les examinait POUR ELLES-MÊMES : elles étaient devenues
+// invisibles pour leurs deux consommateurs, et aucune reprise ne les aurait enlevées.
+//
+// Aucun effet fonctionnel — `replaybuild.DerivationsUpToDate` fait un `os.Stat` de l'artefact
+// d'abord et rend `false` — mais quelques centaines d'octets par artefact disparu, à demeure.
+//
+// Elle ne compte dans AUCUNE catégorie du bilan : le bilan compte des ARTEFACTS, et sa propriété
+// vérifiable (« chacun tombe dans exactement une catégorie ») ne doit pas être diluée. Le
+// journal, lui, la nomme — un fichier supprimé ne part jamais en silence.
+func supprimerMarqueOrpheline(ctx context.Context, artifactsDir, name string) {
+	if _, err := os.Stat(filepath.Join(artifactsDir, replaybuild.ArtefactDeLaMarque(name))); err == nil {
+		return // l'artefact est là : la marque le décrit toujours, elle partira avec lui
+	}
+	if err := os.Remove(filepath.Join(artifactsDir, name)); err != nil {
+		slog.WarnContext(ctx, "replay_purge_cron: marque de dérivation orpheline non supprimée",
+			"marque", name, "err", err)
+		return
+	}
+	slog.InfoContext(ctx, "replay_purge_cron: marque de dérivation orpheline supprimée",
+		"marque", name, "raison", "son artefact n'existe plus")
 }
 
 // matchDatesByShortID lit (forme courte -> start_time canonique) de tout le registre.
