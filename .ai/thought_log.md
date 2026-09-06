@@ -95401,3 +95401,55 @@ demander avant). Prochaine etape : decision utilisateur sur les 6 escalades, pui
 plan `.ai/PLAN_V2_REJEU_FILM_<date>.md` sous `plan-review`, lot 0 (trois P0 + les deux items
 actifs au merge : catalogue ecrit par le runtime, projections sur « artefact range ») avant le
 tag v7.5.0.
+
+## [2026-09-06] Instruction « CTF drapeaux » — la regression etait dans le FIXTURE, pas en production
+
+**Statut** : Complete (branche `feat/v2-ctf-drapeaux`, worktree dedie `LevelUp-wt-v2-ctf`).
+
+**Decision technique principale.** Le constat remonte le 2026-09-05 (« au schema 39 le fixture
+`film_e2e/c0a82e88` rend `flagCarries=0`, `objectiveObjects=0` et 12 actions la ou la doc du
+schema 37 disait 92, famille flag ») a ete re-mesure puis bissecte. Deux conclusions, toutes deux
+sur pieces :
+
+1. **Aucune regression de production.** Sur le film COMPLET du cache, la cuisson au HEAD
+   (schema 39, `a21fd77f4`) rend EXACTEMENT la meme chose qu'avant le merge `736ccf3c3`
+   (schema 38) : `flagCarries=0`, 12 actions (8 kills + 4 assists), `objectLives=4`, couverture
+   identique ligne a ligne. Et `flagCarries=0` avec `noBridge=3` est deja vrai sur l'artefact du
+   parc au schema 20 : ce n'est pas une perte, c'est une propriete de ce match (les 3 prises sont
+   toutes sans pont d'identite).
+2. **La vraie perte est dans le FIXTURE E2E.** Ses morceaux 00 (registre ECS) et 07 (pied) portent
+   DEUX couches zlib au lieu d'une — genere le 2026-08-25 en recompressant un cache film
+   heterogene, ou ces deux-la etaient deja compresses. Invisible jusqu'au 2026-09-02, ou
+   `c17f4941f` (cuisson-perf L1a) a retire l'inflate de `ParseRegistryChunk` : depuis, le registre
+   du fixture est VIDE, et biped 35 / arme au sol 42 / equipement 37 / vehicule 40 / objet
+   d'objectif tombent tous. Onze calques du rejeu disparaissaient de la seule cuisson reelle de la
+   CI, qui restait verte parce qu'elle n'assertait que la FORME du document.
+
+Le « 92 » enfin : c'est le compteur de journal `nommees` (evenements nommes AVANT le pont
+d'identite), pas le contenu du document — mesure au commit qui a ecrit la ligne (schema 18) :
+`nommees=92 identifiees=17` et `doc.objectives = 0`. Il vaut toujours 92 au HEAD. La ligne
+confondait l'amont et le publie.
+
+**Correctif.** (a) Les deux morceaux du fixture sont peles d'une couche — ils sont desormais octet
+a octet ceux du cache, donc ce que le CDN sert. (b) `ParseRegistryChunk` REFUSE un tampon encore
+compresse (`ErrRegistryStillCompressed`, sentinelle en `const` typee pour ne pas faire monter le
+ratchet des vars de `filmdec`) au lieu de rendre un registre vide et une erreur nulle — detection
+de l'en-tete RFC 1950 sur deux octets, sans aucune decompression, garde-rail `archlint` intact.
+Trois tests de non-regression : le refus (unitaire), l'integrite du fixture (une seule couche zlib
+par morceau + registre d'empreinte de reference + archetypes 35/37/40/42), et des assertions de
+VALEUR sur la cuisson E2E (captures = 3 = le score de la feuille de match, `objectLives = 4`,
+8 kills + 4 assists, `openings == noBridge` pour expliquer le silence de `flagCarries`).
+
+**Resultats observes.** Gates verts : `go build ./...` ; `go test` sur objectiveevents, replay,
+replaybuild, filmdec ; `go test -tags=integration -p 1 ./internal/api/wire/...` ; goldens
+killsource et archlint ; `golangci-lint --new-from-merge-base=origin/main` = 0 issue. Le garde-rail
+a ete verifie NEGATIVEMENT (morceau d'origine remis : les deux tests echouent avec le bon message).
+L'artefact E2E passe de 262 535 a 283 260 octets — les calques a archetype sont revenus.
+
+**Conclusion / prochaine etape.** Aucun bump de `SchemaVersion` : la sortie de production ne change
+pas, et aucun artefact du parc n'a ete cuit sans registre (les trois autres mini-bobines
+versionnees sont saines, leurs goldens passent avec le refus actif). Journal detaille :
+`.ai/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md`. A remonter : la branche `feat/v2-tests-ci`
+(`4cf807d64`, lot F.1) a fige comme oracle les valeurs du fixture CASSE — elle doit etre re-mesuree
+sur le fixture corrige avant merge, et sa decouverte « 92 que le decodeur ne rend plus » requalifiee.
+Le seul chemin vers `flagCarries > 0` sur ce match est le pont d'identite par manche, hors perimetre.
