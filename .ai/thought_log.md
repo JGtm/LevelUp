@@ -40,6 +40,49 @@ piste ouverte, aucune sonde faite ; source hors film — aucune connue). Les lot
 portee par arme des deux cotes, le denivele signe, le proxy d entame) ne dependent PAS de ce gate
 et restent entierement ouverts. Ecart releve au plan : sa commande de gate portait `CGO_ENABLED=0`,
 faux — la sonde ouvre DuckDB, qui exige CGO ; corrige dans le plan.
+## [2026-09-06] Duels lot 2 — agregat de portee pur, et le proxy d'entame VALIDE sur pieces — Complete
+
+**Decision technique principale.** Lot 2 du plan `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`, branche
+`feat/duels-lot2` (worktree dedie). Trois choses. (1) `internal/analysis/weapon_range.go` :
+`WeaponRangeAggregate(kills []MeasuredKill, minMeasured int) ([]WeaponRange, WeaponRangeSummary)`,
+PUR, aucune I/O. Le resume est un SECOND RETOUR et non un champ de sortie : une arme sous le seuil
+n'a precisement pas de ligne, et un appelant qui ignore ce retour ne doit pas pouvoir prendre le
+silence pour un zero (D9). (2) La convention de signe du denivele est tranchee ici et une seule
+fois : `MeasuredKill.DeltaZ` porte la grandeur PHYSIQUE `killer_z - victim_z`, sans point de vue ;
+c'est l'agregat qui la ramene au point de vue du cote demande — cote victime, l'oppose. Sans cette
+inversion, « ou je meurs, d'en haut ou d'en bas » repondrait la position du TUEUR, l'inverse de la
+question. Le lot 3 ne doit donc PAS inverser le signe en SQL : deux inversions s'annulent. (3) Le
+proxy d'entame ne se suppose pas, il se valide : instrument
+`replay/duels_ouverture_research_test.go`, gate ecrit avant la mesure et TENU PAR LE CODE
+(`t.Errorf`), pas par une lecture de log.
+
+**Resultats observes.** GATE 2.5 TENU sur les quatre films et sur le cumul. Sur les morts dont le
+PREMIER degat de l'echange est capture, l'ecart entre la distance a cet instant et la distance a
+T-1,5 s vaut, en mediane : Cliffhanger 1,29 m (n=28), Catalyst 0,40 m (n=8), Bazaar 1,22 m (n=40),
+Vagabond 1,61 m (n=11) ; cumul sur les 87 ecarts bruts mis bout a bout : mediane 1,24 m, p90
+3,28 m, 69,0 % des cas a moins de 2 m — contre un seuil de 2 m ecrit avant la mesure. La
+population de validation couvre 91 des 398 morts (22,9 %). Sensibilite mesuree a 1,0 s et 2,0 s :
+l'ecart croit avec l'avance et 1,0 s mesure partout mieux — ce N'EST PAS un argument pour changer
+la constante, et le nombre qui l'explique a ete ajoute a l'instrument : le delai median entre le
+premier degat CAPTURE et la fin de vie vaut 551 a 1 335 ms. La population de validation est donc
+biaisee vers les echanges COURTS ; sur elle, tout proxy qui remonte plus loin que la reference
+s'en ecarte mecaniquement. La sensibilite mesure la forme de la population, pas la qualite du
+proxy. `OpeningLeadMS` reste a 1 500 ms, la valeur de D5, choisie sur un argument de jeu.
+Garde-rail 2.2 : `weapon_range_guard_test.go` marche TOUT `internal/` (la copie qui divergerait
+viendrait du repo DuckDB, pas du paquet) et echoue aussi si les deux constantes disparaissent du
+proprietaire. Percentiles : verifie avant d'ecrire — `internal/analysis` n'avait aucun percentile
+interpole ; les cinq implementations du depot vivent dans cinq sous-paquets, toutes non exportees,
+et suivent DEUX conventions incompatibles (interpolee vs rang le plus proche). Non traite, inscrit
+aux Decouvertes du plan.
+
+**Conclusion / prochaine etape.** Items 2.1 a 2.6 tous statues `[x]` ; D5 reste GO, l'item 2.4 est
+CONSERVE, donc la table `kill_openings` du lot 3 (3.8 a 3.12) reste au programme. Gates verts :
+`go test ./internal/analysis/` et `./internal/analysis/replay/` (suites entieres), `go vet` sur les
+deux paquets, `gofmt -l` vide, et `TestSondeDuelsOuverture` sur les quatre films, un par process.
+Aucune base ouverte, aucune cuisson d'artefact, aucun reseau. Section « Validation du proxy
+d'entame » ajoutee a `.ai/V7.5/film_re/SONDE_DUELS_2026-09-06.md`, avec ses trois reserves ecrites
+(sous-ensemble non representatif et biais optimiste, queue longue a p90 3,28 m, Catalyst tient a
+n=8). Suite pour le pilote : lot 3, en respectant la convention de signe ci-dessus.
 
 ## [2026-09-06] Sonde duels — la reciprocite du degat est le bon critere, le film n'en porte pas assez — Complete
 
