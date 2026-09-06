@@ -155,11 +155,11 @@ apps/go-api/internal/
     tactical_service.go           (phase 2) ; squad : consomme analysis/coordination (phase 3)
   api/handlers/
     tactical.go
-  sync/replayartifacts/raster.go  (phase 6, GELEE)
-  cmd/levelup/cmd_tactical_rasters.go (phase 6, GELEE)
+  sync/replayartifacts/raster.go  (phase 6)
+  cmd/levelup/cmd_tactical_rasters.go (phase 6)
 apps/web/src/
   features/squad/                 (phase 3) sections Synergies + Dynamique, Cap du moment
-  features/tactical/              (phases 4-5, GELEES)
+  features/tactical/              (phase 4 ; phase 5 gelee jusqu'au lot D)
   components/charts/heatPaint.ts  (phase 5, GELEE — extrait de heatmapLayer.ts apres le lot D)
 ```
 
@@ -439,15 +439,9 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   parite FR/EN ; garde anti-anglicismes.
 - **Livrable** : push par le superviseur + CI verte au niveau job.
 
-### Phases 4-7 — GELEES. Condition de reprise : lots C, B et D de l'audit integres dans `feat/v75`.
-> Motif : la phase 4 n'a pas de valeur sans la 5 ; la 5 touche `replay.tsx` (refondu par D.6,
-> D.8), extrait le peintre de `heatmapLayer.ts` (arbre reorganise par D.11, D.13) ; la 6
-> lit les artefacts par `ReplayService` (refondu par B) et se branche dans `replayartifacts`
-> (modifie par C) ; la 7 depend de la 6. Les faire avant = les faire deux fois.
-> A la reprise : rebaser `feat/tactique` sur `feat/v75`, relire D.13 (`lib/replay/`) pour y
-> loger le peintre, relire B.1 (`domain/replaydoc`) pour le type lu par la projection.
+### Phases 4-7 — etat au 2026-09-06 apres integration des lots C, B et F dans `feat/v75` (fusionnes dans `feat/tactique`, 741e1731f)> **Phases 4 et 6 : EXECUTABLES.** La 6 ne dependait que de B (`ReplayService` / `domain/replaydoc`)> et de C (porte `film.replay_artifact` dans `replayartifacts`) — tous deux integres. La 4 ne> touche que des routes, des manifestes et des cles de requete. Ordre : **4 puis 6**.> **Phase 5 : GELEE jusqu'au lot D** (modele web) : elle touche `replay.tsx` (refondu par D.6,> D.8) et extrait le peintre de `heatmapLayer.ts` (arbre reorganise par D.11, D.13). La faire> avant = la faire deux fois. A la reprise : refusionner `feat/v75`, relire D.13 (`lib/replay/`)> pour y loger le peintre.> **Phase 7 : apres la 6** (elle en consomme les sidecars) ; sa surface Escouade (nuage> isolement x couverture) ne depend pas de D.> Ce que C apporte et que ce plan consomme : `CapReplay` (gate title-level de l'onglet, phase 4),> `film.replay_artifact` (porte data-level des sidecars, phase 6), `useDataCapability` (cote web,> regle des deux portes — voir la case 3.7).
 
-### Phase 4 — Grille des cartes (GELEE)
+### Phase 4 — Grille des cartes — EXECUTABLE
 - [ ] 4.1 Route `ascension/tactique` ; onglet dans `AscensionLayout.tsx` ;
       `FeatureGate capability="replay"`
 - [ ] 4.2 `manifests/tactical.toml` + regen ; query keys (`titleSlug` en 2e segment)
@@ -456,7 +450,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 - [ ] 4.4 Endpoint image par CARTE (`MapBackgroundPath`)
 - **Gate** : typecheck + test-web ; couleurs ; parite FR/EN.
 
-### Phase 5 — Vue d'analyse, lectures SQL, drilldown (GELEE)
+### Phase 5 — Vue d'analyse, lectures SQL, drilldown — GELEE JUSQU'AU LOT D
 - [ ] 5.1 Peintre partage dans `lib/replay/` (selon D.13), extrait de `heatmapLayer.ts`,
       garde-rail grep contre une seconde implementation du noyau
 - [ ] 5.2 `tacticalScope.ts` (usePageScope) ; barre d'outils ; titre « Plan de <carte> — <question> »
@@ -468,7 +462,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 - **Gate** : typecheck + vitest ; test pur de `tacticalLogic.ts` ; smoke canvas ; garde-rail
   du peintre ; filtrage d'acces ; `?frame=` positionne le rejeu ; couleurs.
 
-### Phase 6 — Rasters par match a la cuisson + rattrapage (GELEE)
+### Phase 6 — Rasters par match a la cuisson + rattrapage — EXECUTABLE (apres la 4)
 - [ ] 6.1 `PathResolver.TacticalRasterPath(slug, shortID)`
 - [ ] 6.2 `sync/replayartifacts/raster.go` : projection artefact -> rasters par match ;
       `platform/atomicfile` ; meme declencheur et journal que `usage.go` ; sous la porte
@@ -479,7 +473,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 - **Gate** : projection sur fixture (comptes exacts) ; schema ancien (v20) projete ;
   idempotence ; aucun chemin de la page n'ecrit ni ne cuit ; `no_second_artifact_sink_test`.
 
-### Phase 7 — Occupation, spawns, routes, isolement (GELEE — le lot lourd)
+### Phase 7 — Occupation, spawns, routes, isolement — APRES LA 6 (le lot lourd)
 - [ ] 7.1 `tracks.go` (250 ms, position tenue) ; 7.2 `spawn.go` (composantes connexes,
       premieres vies, callouts) ; 7.3 table du rayon de radar + chargeur ; 7.4 `isolation.go`
       (rayon en parametre, tous-morts exclu) ; 7.5 `dispersion.go` ; 7.6 filtre spawn de
@@ -498,6 +492,7 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : lots C, B, F de l audit integres dans `feat/v75` et FUSIONNES dans `feat/tactique` (741e1731f, seul conflit : thought_log, union). Phases 4 et 6 degelees, 5 attend D, 7 suit 6. Item 3.7 statue `[~]` (porte deja dans le payload, doctrine `dataCapabilities.ts`). « Cap du moment » renomme « Constat du moment » (decision utilisateur).
 - 2026-09-06 : **cloture de la phase 3 — deux retouches** (`tactique(3.8)`), sur le HEAD
   d'apres la fusion de `feat/v75` (lots C, B, F ; merge `741e1731f`). **(1) RENOMMAGE**
   decide par l'utilisateur : notre carte « Cap du moment » devient « **Constat du moment** »
