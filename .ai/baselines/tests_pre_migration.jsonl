@@ -61952,15 +61952,6 @@
 {"Time":"2026-09-05T23:47:33.5873213+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestEcrireUnT0Film_MatchAbsentDuRegistre","Elapsed":4.9}
 {"Time":"2026-09-05T23:47:35.564776+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestReporterT0Film_BurstWriterCourt","Elapsed":1.98}
 {"Time":"2026-09-05T23:47:35.564776+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestReporterT0Film_LotVideNAcquiertAucunWriter","Elapsed":0}
-{"Time":"2026-09-05T23:47:35.5709121+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestLireT0FilmArtefact/champ_explicitement_a_null","Elapsed":0.01}
-{"Time":"2026-09-05T23:47:35.5782264+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestLireT0FilmArtefact/coup_d_envoi_mesure","Elapsed":0.01}
-{"Time":"2026-09-05T23:47:35.5848244+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestLireT0FilmArtefact/coup_d_envoi_a_zero","Elapsed":0.01}
-{"Time":"2026-09-05T23:47:35.5907154+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestLireT0FilmArtefact/champ_absent_(refus)","Elapsed":0.01}
-{"Time":"2026-09-05T23:47:35.5996572+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestLireT0FilmArtefact/schema_anterieur_au_champ","Elapsed":0.01}
-{"Time":"2026-09-05T23:47:35.6085745+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestLireT0FilmArtefact/artefact_illisible","Elapsed":0.01}
-{"Time":"2026-09-05T23:47:35.6093015+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestLireT0FilmArtefact/artefact_vide","Elapsed":0}
-{"Time":"2026-09-05T23:47:35.6093015+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestLireT0FilmArtefact","Elapsed":0.05}
-{"Time":"2026-09-05T23:47:35.6123122+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestLireT0FilmArtefact_FichierAbsent","Elapsed":0}
 {"Time":"2026-09-05T23:47:35.6123122+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestReporterT0Film_SansWriter","Elapsed":0}
 {"Time":"2026-09-05T23:47:37.6106441+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestPersisterResumesUsage_BurstUniqueEtVuesLatest","Elapsed":2}
 {"Time":"2026-09-05T23:47:37.6133216+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/replayartifacts","Test":"TestPersisterResumesUsage_LotVideNAcquiertAucunWriter","Elapsed":0}
