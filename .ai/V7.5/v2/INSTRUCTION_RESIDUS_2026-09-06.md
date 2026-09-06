@@ -91,10 +91,11 @@ for _, t := range tracks {
 ```
 
 et `buildSkullCarries` lisait « aucune vie nommee de X ne recouvre l'intervalle » comme « X est
-absent ». Or le pont d'identite laisse des vies ANONYMES : sur `d9781168`, **18 slots sur 142**
-n'ont aucune vie nommee (`livesNamed=140`, `livesTotal=176`). Verification faite portage par
-portage : **les 6 portages ecartes sont TOUS recouverts par au moins une vie anonyme**, et les 4
-prefixes rognes aussi. Une vie sans nom est une PRESENCE SANS IDENTITE, pas une absence.
+absent ». Or le pont d'identite laisse des vies ANONYMES : sur `d9781168`, **18 slots sur 160**
+n'ont aucune vie nommee (142 en portent au moins une ; 174 vies publiees, dont 32 anonymes).
+Verification faite portage par portage : **les 6 portages ecartes sont TOUS recouverts par au
+moins une vie anonyme**, et les 4 prefixes rognes aussi. Une vie sans nom est une PRESENCE SANS
+IDENTITE, pas une absence.
 
 L'ironie est dans le commentaire d'origine, qui enonçait deja le bon principe — « une presence
 inconnue ne doit pas se faire passer pour une absence » — juste au-dessus du `continue` qui
@@ -140,8 +141,27 @@ porteur n'y est pas : le seul cas ou « absent » est une mesure et non une igno
 d'abord et ne recuperait qu'un quart du manque ; le test l'a attrapee.
 
 Le gate de la BOMBE (`bomb_carries.go`) portait la meme dizaine de lignes copiees : elle est
-supprimee au profit du meme `gate`. Une seule copie, plus de derive possible. Aucun artefact du
-parc ne porte `bombCarries.carrierAbsent > 0` — le defaut y etait latent, il est ferme.
+supprimee au profit du meme `gate`. Une seule copie, plus de derive possible.
+
+**LA BOMBE CHANGE AUSSI A LA RE-CUISSON, et pas seulement en latence.** Aucun des 4 artefacts du
+parc qui portent des `bombCarries` n'a de rejet (`carrierAbsent = 0` partout) — sur ce point le
+defaut etait bien latent. Mais le ROGNAGE, lui, s'y applique : **6 portages** ont une borne
+exactement egale a celle d'une vie nommee ALORS qu'une vie anonyme recouvre l'intervalle —
+`3d58eb37` (4 portages) et `c75f33b8` (2). Ils sortiront donc avec leurs bornes d'origine apres
+re-cuisson. Benin en volume, mais ce n'est pas « rien » : le bump de schema force la re-cuisson,
+c'est ce qui le propage.
+
+**L'ABSTENTION EST GROSSIERE, et c'est assume.** Elle ne demande pas que la vie anonyme soit
+plausiblement celle du porteur : une seule qui recouvre l'intervalle suffit. Sur un film ou
+presque toutes les vies sont anonymes, le gate devient donc INERTE — `51ebbc0f` (75 vies
+anonymes sur 86 publiees) : 14 portages, 3 dont le porteur n'est jamais nomme, **11 abstentions,
+0 rognage**. Sur `d9781168` il reste actif sur **11** portages sur 36. Ce choix est le bon parce
+que l'ORACLE tranche : sur les deux films, la duree publiee se rapproche du score officiel, qui
+EST le temps de portage — 207,5 s -> **331,3 s** pour 387 s reelles sur `d9781168`, et
+65,6 s -> **224,6 s** pour 255 s sur `51ebbc0f` (cuisson de controle : 14 portages contre 7,
+14 ecarts tous en gain). Un critere plus fin (exiger que la vie anonyme soit compatible avec le
+porteur) demanderait d'ameliorer le pont d'identite — c'est-a-dire de resoudre la cause plutot
+que de mieux deviner autour d'elle.
 
 ### 1.6 Tests, prouves par mutation
 

@@ -744,9 +744,10 @@ package replay
 // CONTENU de `skullCarries` — et, latent, de `bombCarries` — qui change. Le gate de présence
 // (`af89b091b`, 2026-08-30) écartait un portage dont le porteur n'avait aucune vie NOMMÉE sur
 // l'intervalle, et rognait celui qui en débordait. Or le pont d'identité laisse des vies
-// ANONYMES (18 slots sur 142 sur `d9781168`) : « aucune vie nommée » n'y veut pas dire « absent »,
-// mais « on ne sait pas ». Le gate ne s'applique donc plus quand une vie anonyme recouvre le
-// portage — il ne rejette que ce que les pistes publiées DÉMENTENT.
+// ANONYMES (18 slots sur 160 sur `d9781168` — 142 portent au moins une vie nommée, ces 18-là
+// aucune) : « aucune vie nommée » n'y veut pas dire « absent », mais « on ne sait pas ». Le gate
+// ne s'applique donc plus quand une vie anonyme recouvre le portage — il ne rejette que ce que
+// les pistes publiées DÉMENTENT.
 //
 //	mesure   En Oddball le score EST le temps de portage : chaîne de contrôle INDÉPENDANTE du
 //	         film. `d9781168`, feuille de match 191 s / 196 s par équipe ; artefact du parc au
