@@ -331,8 +331,11 @@ func TestCandidatsDerivations_ConvergeApresDerivation(t *testing.T) {
 	if len(work) != 1 {
 		t.Fatalf("cycle 1 : %d candidat(s), attendu 1", len(work))
 	}
-	// La dérivation pose la marque (marquerDerivations, appelé par Deriver).
-	marquerDerivations(context.Background(), lireArtefacts(context.Background(), d, work))
+	// La dérivation pose la marque (marquerDerivations, appelé par Deriver). Bilan VIERGE :
+	// aucune famille n'a échoué, donc la marque se pose — c'est la seule condition depuis le
+	// constat C1 de la revue A-R1.
+	marquerDerivations(context.Background(), &bilanDerivations{},
+		lireArtefacts(context.Background(), d, work))
 
 	work2, restant := candidatsDerivations(context.Background(), db, d)
 	if len(work2) != 0 || restant != 0 {

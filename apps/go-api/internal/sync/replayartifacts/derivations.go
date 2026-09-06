@@ -117,34 +117,104 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	if len(lus) == 0 {
 		return
 	}
+	b := &bilanDerivations{}
 	// LE REPORT DU COUP D'ENVOI EN PREMIER, puis les deux projections. L'ordre est celui
 	// d'avant (artifacts.go) et il n'est pas indifferent : le T0 ecrit `match_registry`, une
 	// table match-of-record, et il vaut mieux qu'il passe avant les tables derivees si le
 	// writer devient indisponible en cours de route.
-	reporterT0Film(ctx, d, rapportsT0(lus))
-	persisterResumesUsage(ctx, d, lus)
-	persisterStatsBombe(ctx, d, lus)
+	reporterT0Film(ctx, d, b, rapportsT0(lus))
+	persisterResumesUsage(ctx, d, b, lus)
+	persisterStatsBombe(ctx, d, b, lus)
 	// LES POSITIONS EN DERNIER (decision utilisateur 1) : c'est la projection la plus VOLUMINEUSE
 	// du lot (~215 lignes par match apres decimation, cf. positions.go). La passer apres les
 	// trois autres garantit que si le writer devient indisponible en cours de route, ce sont les
 	// donnees les moins couteuses a rejouer qui manquent.
-	persisterPositions(ctx, d, lus)
-	marquerDerivations(ctx, lus)
+	persisterPositions(ctx, d, b, lus)
+	marquerDerivations(ctx, b, lus)
 }
+
+// bilanDerivations enregistre, PAR MATCH, ce que les familles n'ont PAS pu ecrire.
+//
+// # LE DEFAUT QU'IL FERME (constat C1 de la revue A-R1, 2026-09-06)
+//
+// La marque se posait EN FIN DE PASSE, sans condition. Un writer indisponible — aucun writer
+// cable sur le chemin, ou acquisition en echec (lease shared tenu, B-swap en cours) — faisait
+// journaliser les quatre familles, ecrire ZERO ligne, et poser la marque quand meme.
+// `DerivationsUpToDate` rendait alors `true` A JAMAIS et `candidatsDerivations` excluait ce
+// match DEFINITIVEMENT : `real_start_time`, `match_usage_*`, `match_bomb_stats` et
+// `match_player_positions` restaient vides, sans autre reprise que la suppression manuelle du
+// fichier de marque — l'inverse exact de ce que le rattrapage promet.
+//
+// # CE QU'IL DISTINGUE, ET POURQUOI CE N'EST PAS LA MEME CHOSE
+//
+//	WRITER INDISPONIBLE  aucune famille n'a pu ouvrir de segment d'ecriture : AUCUNE marque
+//	                     n'est posee sur tout le lot. C'est le cas de panne, il est global.
+//	ECHEC D'UN MATCH     une famille a refuse ou rate CE match (capabilities illisibles, INSERT
+//	                     en erreur, etat du T0 illisible) : ce match seul n'est pas marque, et
+//	                     le rattrapage rejouera ses quatre familles au prochain cycle.
+//	RIEN A ECRIRE        un titre sans capability film, un document sans `t0FilmMs` ni
+//	                     trajectoire, un match hors Assaut : ce sont des derivations JOUEES.
+//	                     Elles se marquent — les rejouer a chaque cycle serait du travail
+//	                     pur perte.
+//
+// LE REJEU EST TOUJOURS SUR — les quatre familles se rejouent au complet pour un match non
+// marque : trois d'entre elles sont append-only (une passe neuve supersede), et le report du T0
+// porte sa propre garde « deja a la meme valeur ».
+type bilanDerivations struct {
+	// sansWriter : le segment d'ecriture n'a pas pu etre ouvert. Etat GLOBAL a la passe.
+	sansWriter bool
+	// echecs : les matchs qu'au moins une famille n'a pas pu ecrire.
+	echecs map[string]bool
+}
+
+// writerIndisponible enregistre qu'aucun segment d'ecriture n'a pu etre ouvert.
+func (b *bilanDerivations) writerIndisponible() {
+	b.sansWriter = true
+}
+
+// echec enregistre qu'une famille n'a pas pu ecrire CE match.
+func (b *bilanDerivations) echec(matchID string) {
+	if b.echecs == nil {
+		b.echecs = make(map[string]bool, 4)
+	}
+	b.echecs[matchID] = true
+}
+
+// echecLot enregistre l'echec de TOUS les artefacts du lot — le cas d'une famille ecartee en
+// bloc (capabilities illisibles) ou d'un writer indisponible.
+func (b *bilanDerivations) echecLot(lus []artefactLu) {
+	for _, a := range lus {
+		b.echec(a.matchID)
+	}
+}
+
+// aEchoue dit si ce match doit etre rejoue au prochain cycle.
+func (b *bilanDerivations) aEchoue(matchID string) bool { return b.echecs[matchID] }
 
 // marquerDerivations inscrit, dans l'index des artefacts, que CE contenu a ete derive a la
 // revision courante. C'est ce qui permet au rattrapage de distinguer « artefact present » de
 // « artefact derive », et c'est ce qui le fait CONVERGER (cf. derivations_backlog.go et
 // replaybuild.DerivationsMark).
 //
-// LA MARQUE SE POSE MEME QUAND RIEN N'A ETE ECRIT, et c'est voulu : un match hors Assaut, un
-// document sans `t0FilmMs`, un titre sans la capability — ce sont des derivations JOUEES, pas
-// des derivations manquantes. Les rejouer a chaque cycle serait du travail pur perte.
+// ON NE MARQUE QUE CE QU'ON A PU ECRIRE (cf. [bilanDerivations]) : writer indisponible = aucune
+// marque du lot ; sinon, une marque par match dont aucune famille n'a echoue.
 //
 // UNE MARQUE QUI ECHOUE NE FAIT RIEN ECHOUER : les derives sont deja ecrits, la seule
 // consequence est que le rattrapage les rejouera. C'est journalise, jamais avale.
-func marquerDerivations(ctx context.Context, lus []artefactLu) {
+func marquerDerivations(ctx context.Context, b *bilanDerivations, lus []artefactLu) {
+	if b.sansWriter {
+		slog.WarnContext(ctx, "post-sync: derivations NON marquees — aucun segment d'ecriture "+
+			"shared n'a pu etre ouvert, le rattrapage rejouera tout le lot",
+			"artefacts", len(lus), "echecs", len(b.echecs))
+		return
+	}
 	for _, a := range lus {
+		if b.aEchoue(a.matchID) {
+			slog.WarnContext(ctx, "post-sync: derivation NON marquee — au moins une famille n'a "+
+				"pas pu ecrire ce match, le rattrapage la rejouera",
+				"match_id", a.matchID, "path", a.path)
+			continue
+		}
 		if err := replaybuild.WriteDerivationsMark(a.path, a.doc.SchemaVersion, a.octets); err != nil {
 			slog.WarnContext(ctx, "post-sync: marque de derivation non ecrite — le rattrapage "+
 				"rejouera ces derivations au prochain cycle",
