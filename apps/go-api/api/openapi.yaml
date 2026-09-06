@@ -13180,6 +13180,9 @@ components:
         ambiguousReturns:
           format: int64
           type: integer
+        ambiguousSlot:
+          format: int64
+          type: integer
         bursts:
           format: int64
           type: integer
@@ -13265,6 +13268,7 @@ components:
         - noBridge
         - noTrack
         - outOfWindow
+        - ambiguousSlot
         - markerObserved
         - markerConfirmed
         - openObserved
