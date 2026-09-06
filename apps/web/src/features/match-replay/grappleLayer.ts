@@ -20,9 +20,10 @@
  */
 import type { ReplayPoint } from '@/lib/api/types'
 
-import { isAliveAt, positionAt, type XY } from './replayLogic'
-import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import { positionAt, type XY } from './replayLogic'
+import type { ReplayDocumentReady } from './replayNormalize'
 import { type CanvasView, projectTo } from './replayView'
+import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 /** Une traction prête à dessiner : la fenêtre, l'ancre, et les points de SA vie. */
@@ -54,16 +55,11 @@ export interface GrappleFxEntry {
  */
 export function buildGrappleFx(doc: ReplayDocumentReady): GrappleFxEntry[] {
   if (doc.grappleLines.length === 0) return []
-  const bySlot = new Map<number, ReplayTrackReady[]>()
-  for (const t of doc.tracks) {
-    const lives = bySlot.get(t.slot)
-    if (lives) lives.push(t)
-    else bySlot.set(t.slot, [t])
-  }
+  const bySlot = buildLivesBySlot(doc.tracks)
   const out: GrappleFxEntry[] = []
   for (const l of doc.grappleLines) {
     if (l.t1 <= l.t0) continue
-    const track = (bySlot.get(l.slot) ?? []).find((v) => isAliveAt(v, l.t0))
+    const track = lifeOfSlotAt(bySlot, l.slot, l.t0)
     if (!track || track.points.length === 0) continue
     out.push({ t0: l.t0, t1: l.t1, anchor: { x: l.ax, y: l.ay }, points: track.points })
   }

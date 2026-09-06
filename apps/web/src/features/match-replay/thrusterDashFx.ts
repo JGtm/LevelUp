@@ -36,9 +36,10 @@
  */
 import type { ReplayPoint } from '@/lib/api/types'
 
-import { isAliveAt, positionAt, type XY } from './replayLogic'
-import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import { positionAt, type XY } from './replayLogic'
+import type { ReplayDocumentReady } from './replayNormalize'
 import { type CanvasView, projectTo } from './replayView'
+import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 /**
@@ -134,16 +135,11 @@ export function buildThrusterDashFx(
   spanFrames: number,
 ): ThrusterDashFx[] {
   if (doc.abilityImpulses.length === 0) return []
-  const bySlot = new Map<number, ReplayTrackReady[]>()
-  for (const t of doc.tracks) {
-    const lives = bySlot.get(t.slot)
-    if (lives) lives.push(t)
-    else bySlot.set(t.slot, [t])
-  }
+  const bySlot = buildLivesBySlot(doc.tracks)
   const out: ThrusterDashFx[] = []
   for (const imp of doc.abilityImpulses) {
     if (!DASH_FAMILIES.has(imp.family)) continue
-    const track = (bySlot.get(imp.slot) ?? []).find((l) => isAliveAt(l, imp.t))
+    const track = lifeOfSlotAt(bySlot, imp.slot, imp.t)
     if (!track || track.points.length === 0) continue
     const heading = dashHeading(track.points, imp.t, spanFrames)
     if (!heading) continue

@@ -34,10 +34,11 @@
  */
 import { fxTintOf, type FxTint } from './fxInk'
 import { familyOf, type ShotFamily } from './shotEffects'
-import { heldReading, isAliveAt } from './replayLogic'
-import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import { heldReading } from './replayLogic'
+import type { ReplayDocumentReady } from './replayNormalize'
 import { vehicleHeadingAt } from './vehiclesLayer'
 import { vehicleWeaponMountOf, type VehicleWeaponMount } from './vehicleWeaponMounts'
+import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 
 /**
  * VehicleShotSource — CE QU'IL FAUT, EN PLUS DU CENTRE, POUR PLACER L'EFFET AU BON MONTAGE
@@ -87,18 +88,13 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
   // UNE TRACE = UNE VIE, et le slot de biped est réattribué à chaque réapparition : on
   // groupe donc par slot, puis on retient la vie QUI COUVRE l'instant du tir. Prendre la
   // première venue lirait le regard d'une autre vie du même joueur.
-  const bySlot = new Map<number, ReplayTrackReady[]>()
-  for (const t of doc.tracks) {
-    const lives = bySlot.get(t.slot)
-    if (lives) lives.push(t)
-    else bySlot.set(t.slot, [t])
-  }
+  const bySlot = buildLivesBySlot(doc.tracks)
   const out: ShotFxEntry[] = []
   for (const s of doc.shots) {
     const label = s.w ? doc.weaponLabels?.[s.w] : undefined
     const fam = familyOf(label?.fx)
     if (fam === 'melee') continue
-    const track = (bySlot.get(s.slot) ?? []).find((l) => isAliveAt(l, s.t))
+    const track = lifeOfSlotAt(bySlot, s.slot, s.t)
     const read = track ? heldReading(track.points, s.t, (p) => p.h, aimHoldFrames) : null
     out.push({
       frame: s.t,
