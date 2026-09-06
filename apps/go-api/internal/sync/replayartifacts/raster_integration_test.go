@@ -158,9 +158,9 @@ func TestRun_ProjectionEnEchecNArretePasLeCycle(t *testing.T) {
 	inscrireAuRegistre(t, db, sain, time.Date(2026, 6, 2, 12, 0, 0, 0, time.UTC), 0)
 	inscrireAuRegistre(t, db, casse, time.Date(2026, 6, 2, 13, 0, 0, 0, time.UTC), 0)
 
-	// L'enfant rend un document valide pour le premier match, des octets ILLISIBLES pour le
-	// second : `StoreArtifact` refuse ces derniers, donc rien n'est range — c'est la
-	// projection du lot qui doit rester saine pour l'autre match.
+	// L'enfant rend un document VALIDE pour les deux matchs : les deux artefacts sont ranges
+	// par `Run`. C'est l'ecriture explicite plus bas qui corrompt le second APRES rangement —
+	// la projection du lot doit compter cet echec ET rester saine pour l'autre match.
 	d := depsCuisson(t, racine, db, func(_ context.Context, req BuildOneRequest) (BuildOneResult, error) {
 		return BuildOneResult{Blob: documentCuit(t, req.MatchID)}, nil
 	})
