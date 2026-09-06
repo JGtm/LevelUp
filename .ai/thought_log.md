@@ -95584,3 +95584,55 @@ faire maigrir) et risquerait une perte de memoisation sur une boucle a 60 images
 sous une contrainte « aucun changement de comportement » qu'aucun gate ne mesure. Question au
 superviseur : le constat vise-t-il le NOM (renommer en `buildX` + `useX` mince, patron de D.6)
 ou la STRUCTURE ? Prochain item : D.11.
+
+## [2026-09-06] Lot D taches D.11 a D.14 — seuil en lignes de code, arborescence, frontieres, porte de titre — Complete
+
+**Contexte.** Fin du lot D du plan v2 du rejeu et du film
+(`.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, worktree `LevelUp-wt-v2-web-modele`, branche
+`feat/v2-web-modele`), reprise apres l'arret propre du second temps. Quatre items :
+la decision utilisateur 4 (seuil R5 en lignes de CODE et arborescence par responsabilite),
+le constat M6 (lint couleur canonique hors CI, remplace par 9 copies partielles), le constat
+N4 (allowlist `match-view=>match-replay` dementie par quatre imports) et le merge du lot C
+suivi du gating de la route de rejeu par la capability `replay`. Contrainte produit absolue :
+aucun changement visuel ni de comportement voulu.
+
+**Decision technique.** (1) `max-lines` ESLint a 500 avec `skipComments` + `skipBlankLines`,
+en `error` sur `apps/web/src` ; le cliquet de lignes BRUTES du canvas (<= 665) disparait avec
+son journal de 17 extractions, et les 26 en-tetes qui le citaient nomment la regle qui le
+remplace. 22 exemptions datees en tete de fichier (tables de donnees, suites de tests,
+composants hors perimetre), 4 par la config (3 fichiers generes + le fichier gele pour le
+merge du lot C) — aucune silencieuse. (2) Les 370 fichiers du rejeu se rangent en huit
+dossiers de responsabilite (`i18n`, `sound`, `export`, `settings`, `layers`, `ui`, `hooks`,
+`model`), un commit par dossier, deplacements PURS par `git mv` ; la regle de classement est
+un ORDRE ecrit dans `features/match-replay/README.md` et son seul critere lisible dans le
+code — « qui recoit un `CanvasRenderingContext2D` vit dans `layers/` » — est tenu par un
+garde. (3) Onze garde-rails balayaient `readdirSync(__dirname)` : l'arborescence les aurait
+rendus VERTS ET INERTES en ne leur montrant plus qu'un huitieme du rejeu ; ils prennent leur
+liste, leurs ancres et leurs fichiers a `test/featureFiles.ts`. (4) Le lint couleur canonique
+devient `npm run lint:colors` et un step du job `frontend` ; cinq copies qui relisaient la
+SOURCE partent. (5) Sept modules (document, normalisation, logique de lecture, roster,
+chargement) descendent dans `lib/replay/` apres verification de leur fermeture, et l'allowlist
+du ratchet P8.5 accepte desormais une exception AU NIVEAU DU MODULE. (6) La route de rejeu
+porte deux portes de titre imbriquees, `matchmaking` puis `replay`.
+
+**Resultats.** Douze commits (`929fa368d` a `d21998b85`) plus le merge `b093fe6fc` du lot C
+(un seul conflit, `thought_log.md`, resolu en gardant les deux entrees). Gate final vert :
+`npx tsc -b --force` (exit 0), `npm run lint` (0 error, 27 warnings de baseline),
+`npm run lint:colors` (0 violation), `node tools/lint-cross-feature-imports.mjs` (7 <= 7),
+vitest complet `6376 passed | 14 skipped`, `npm run build` (2 207 modules, 1,84 s), temoin de
+rasterisation `3 passed` — rejoue apres CHACUN des douze commits. Quatre gardes neufs ou
+refondus ont ete eprouves par MUTATION (defaut plante, garde rouge, defaut retire) ; la
+suppression des copies couleur est appuyee sur une mesure : un hex plante dans chacun des
+20 fichiers cibles fait rougir le lint canonique, 20 sur 20. Imports croises du rejeu hors
+tests : 9 avant, 4 apres, chacun nomme avec sa raison.
+
+**Conclusion / prochaine etape.** Le lot D est clos cote items : D.1 a D.14 statues, deux
+reports connus et documentes (D.10 « faux hooks », bloque sur une question au superviseur —
+le NOM ou la STRUCTURE ; D.15 differe hors chantier). Quatre decouvertes hors perimetre au
+journal du lot (`.ai/V7.5/v2/LOT_D.md`), dont l'absence de tout lint de frontiere
+`lib/ -> features/` : la fermeture des sept modules descendus a du etre verifiee a la main.
+Ecart assume et argumente au perimetre litteral : les quatre assertions de couleur sur le
+RENDU restent (un lint statique ne voit pas une couleur qui arrive par la donnee), et l'etat
+« ce titre ne propose pas de rejeu » n'est pas recopie dans le dictionnaire du rejeu (le lot C
+porte deja ce libelle FR/EN). Prochaine etape : verification CI par le superviseur (surveillance
+non faite, consigne du lot), revue adversariale, puis integration dans `feat/v75`.
