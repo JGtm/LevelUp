@@ -150,6 +150,7 @@ func (s *TacticalService) lectureOccupation(ctx context.Context, out *domain.Tac
 	dans := cible(univers.Equipes, out.Qui, s.xuid, scope.Coequipiers)
 	mesures := make([]string, 0, len(univers.Matchs))
 	comptes := make([]tactical.CompteCellule, 0, len(univers.Matchs)*32)
+	ignores := 0
 	for _, m := range univers.Matchs {
 		sc, err := s.rasters.Charger(ctx, m.MatchID)
 		if err != nil {
@@ -163,6 +164,11 @@ func (s *TacticalService) lectureOccupation(ctx context.Context, out *domain.Tac
 			continue
 		}
 		mesures = append(mesures, m.MatchID)
+		// LES POINTS IGNORES VIENNENT DU FICHIER, ils ne se recalculent pas : la somme
+		// part de comptes deja groupes par cellule, et un point ecarte n'a jamais eu de
+		// cellule. Ils sont comptes PAR MATCH MESURE — un sidecar qu'on n'a pas retenu ne
+		// doit pas alourdir la statistique d'un decodage qu'on n'a pas lu.
+		ignores += sc.PointsIgnores
 		comptes = append(comptes, comptesDuSidecar(sc, m.MatchID, dans)...)
 	}
 	out.MatchsRetenus = len(mesures)
@@ -172,7 +178,7 @@ func (s *TacticalService) lectureOccupation(ctx context.Context, out *domain.Tac
 			"player", s.xuid, "map_id", out.MapID, "err", err)
 		return fmt.Errorf("tactique: somme des rasters: %w", err)
 	}
-	remplirOccupation(out, raster)
+	remplirOccupation(out, raster, ignores)
 	return nil
 }
 
@@ -236,10 +242,13 @@ func comptesDuSidecar(sc *domain.TacticalRasterSidecar, matchID string,
 //
 // LE COMPTE BRUT RESTE EN ECHANTILLONS : c'est la mesure, la seconde n'en est que l'unite
 // de lecture (doctrine « jamais un taux seul » — la valeur est servie AVEC son brut).
-func remplirOccupation(out *domain.TacticalRaster, raster *tactical.Raster) {
+func remplirOccupation(out *domain.TacticalRaster, raster *tactical.Raster, ignores int) {
 	out.Cellules = tactical.EnSecondes(raster.Cellules(), tactical.PasOccupationMs)
 	out.Echelle = tactical.Echelle(out.Cellules)
 	out.PasM = raster.PasM()
 	out.Bornes = raster.Bornes()
-	out.PointsIgnores = raster.PointsIgnores()
+	// `raster.PointsIgnores()` vaudrait TOUJOURS 0 ici : `RasteriseComptes` ne recoit que
+	// des cellules, jamais un point qui aurait pu etre ecarte. Le compte vient donc des
+	// sidecars, qui l'ont mesure a la cuisson.
+	out.PointsIgnores = ignores
 }

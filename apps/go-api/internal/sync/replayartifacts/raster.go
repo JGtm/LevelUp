@@ -106,8 +106,9 @@ func ProjeterRasterTactique(path string) (domain.TacticalRasterSidecar, error) {
 		MatchID:           doc.MatchID,
 		IntervalleFrameMs: intervalle,
 		Pistes:            pistesDeLArtefact(doc.Tracks),
+		Embarquements:     embarquementsDeLArtefact(doc.Vehicles),
 	}
-	joueurs, err := rasteriserParJoueur(g, entree)
+	joueurs, ignores, err := rasteriserParJoueur(g, entree)
 	if err != nil {
 		return domain.TacticalRasterSidecar{}, err
 	}
@@ -119,6 +120,7 @@ func ProjeterRasterTactique(path string) (domain.TacticalRasterSidecar, error) {
 		PasM:                  g.PasM(),
 		FrameIntervalMs:       intervalle,
 		PasEchantillonMs:      tactical.PasOccupationMs,
+		PointsIgnores:         ignores,
 		Joueurs:               joueurs,
 	}, nil
 }
@@ -146,6 +148,60 @@ func pistesDeLArtefact(tracks []replay.Track) []tactical.Piste {
 	return out
 }
 
+// embarquementsDeLArtefact projette les EPISODES D'OCCUPATION de vehicule vers les types
+// purs du rasterisage.
+//
+// # POURQUOI CE CALQUE EXISTE, ET CE QU'IL REPARE
+//
+// Un occupant embarque CESSE de repliquer son bipede : ce sont ses TROUS qui portent les
+// episodes (`document.go`, calque `vehicles`). Or la cuisson COUPE une piste en nouvelle
+// vie des qu'un trou depasse 5 s (`replay.lifeGapUS`), et ces episodes durent 13 a 36 s en
+// mediane. Sans ce calque, le temps passe en vehicule ne serait mesure NULLE PART, alors
+// que le match compterait comme mesure.
+//
+// # LE LIEN EST UNE IMBRICATION, PAS UNE CLE
+//
+// `VehicleRide` vit DANS `VehicleTrack.Rides`, a cote de `VehicleTrack.Samples` : la
+// trajectoire a joindre est celle de la vie de vehicule qui porte l'episode. Aucun
+// appariement a faire, donc aucun appariement a rater.
+//
+// # ON ATTRIBUE, ON N'INVENTE PAS
+//
+// Un episode sans occupant NOMME est ecarte (le vehicule est occupe, son occupant est
+// inconnu — l'attribuer a quelqu'un serait une invention), et un vehicule sans echantillon
+// n'attribue rien. La lacune residuelle est ECRITE dans domain/tactical_raster.go.
+func embarquementsDeLArtefact(vehicules []replay.VehicleTrack) []tactical.Embarquement {
+	out := make([]tactical.Embarquement, 0, len(vehicules))
+	for _, v := range vehicules {
+		if len(v.Rides) == 0 {
+			continue
+		}
+		// La trajectoire est projetee UNE FOIS par vie de vehicule, puis partagee par ses
+		// episodes : une vie de Warthog peut en porter trois (trois occupants successifs),
+		// et recopier ses echantillons pour chacun triplerait la memoire pour rien. La
+		// tranche est lue seule, jamais modifiee.
+		points := pointsDuVehicule(v.Samples)
+		for _, r := range v.Rides {
+			if r.XUID == "" {
+				continue
+			}
+			out = append(out, tactical.Embarquement{
+				XUID: r.XUID, T0: r.T0, T1: r.T1, Points: points,
+			})
+		}
+	}
+	return out
+}
+
+// pointsDuVehicule projette les echantillons d'une vie de vehicule.
+func pointsDuVehicule(samples []replay.VehicleSample) []tactical.PointPiste {
+	out := make([]tactical.PointPiste, 0, len(samples))
+	for _, s := range samples {
+		out = append(out, tactical.PointPiste{T: s.T, X: float64(s.X), Y: float64(s.Y)})
+	}
+	return out
+}
+
 // rasteriserParJoueur reechantillonne puis compte, JOUEUR PAR JOUEUR.
 //
 // Le rasterisage passe par `tactical.Rasterise` sur l'univers d'UN SEUL match : la regle
@@ -153,16 +209,24 @@ func pistesDeLArtefact(tracks []replay.Track) []tactical.Piste {
 // celui-la meme qui la publiera a la lecture. Les comptes sont lus par `CellulesBrutes` —
 // SANS plancher de rarete : le plancher appartient a l'agregat, jamais au match (cf. sa
 // doc).
-func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation) ([]domain.TacticalRasterJoueur, error) {
+func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation) ([]domain.TacticalRasterJoueur, int, error) {
 	occ := tactical.Occupation(g, e, tactical.PasOccupationMs)
 	// VIDE MAIS PRESENT : un artefact sans piste nommee rend une liste vide, pas `null`.
 	// Le fichier existe donc, et « mesure a zero » ne se confond pas avec « non mesure ».
 	out := make([]domain.TacticalRasterJoueur, 0, len(occ))
+	ignores := 0
 	for _, j := range occ {
 		raster, err := tactical.Rasterise(g, []string{e.MatchID}, j.Echantillons)
 		if err != nil {
-			return nil, fmt.Errorf("rasterisage du joueur %s: %w", j.XUID, err)
+			return nil, 0, fmt.Errorf("rasterisage du joueur %s: %w", j.XUID, err)
 		}
+		// LES POSITIONS NON FINIES SE COMPTENT ICI, A LA CUISSON, et voyagent dans le
+		// sidecar : c'est le seul endroit ou elles existent encore. Le raster d'agregat,
+		// lui, part de comptes deja groupes par cellule — un point ecarte n'a jamais eu
+		// de cellule, il ne peut donc pas s'y retrouver. Sans ce transport, la lecture
+		// aurait publie 0 point ignore quoi qu'il arrive : un decodage qui derape se
+		// serait tu.
+		ignores += raster.PointsIgnores()
 		out = append(out, domain.TacticalRasterJoueur{
 			XUID:             j.XUID,
 			Cellules:         cellulesDuRaster(raster),
@@ -170,7 +234,7 @@ func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation) ([]doma
 			PremieresEntrees: entreesDeLOccupation(j.PremieresEntrees),
 		})
 	}
-	return out, nil
+	return out, ignores, nil
 }
 
 func cellulesDuRaster(r *tactical.Raster) []domain.TacticalRasterCellule {

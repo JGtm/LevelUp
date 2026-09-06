@@ -365,3 +365,117 @@ func TestOccupation_NePasseJamaisParKillPositions(t *testing.T) {
 		t.Fatalf("sidecars demandes = %v, attendu [m1]", store.vus)
 	}
 }
+
+// TestOccupation_PointsIgnoresSommes — C9 : le compte des positions ecartees vient des
+// SIDECARS, il ne se recalcule pas.
+//
+// La somme part de comptes deja groupes par cellule, et un point ecarte n'a jamais eu de
+// cellule : `raster.PointsIgnores()` vaudrait toujours 0 ici. Sans le transport, un
+// decodage qui derape se serait tu. Seuls les sidecars RETENUS comptent — un fichier qu'on
+// n'a pas lu ne doit pas alourdir la statistique d'un decodage qu'on n'a pas vu.
+func TestOccupation_PointsIgnoresSommes(t *testing.T) {
+	m1 := sidecarPose("m1", joueurEn(tsMoi, 2, 3, 8))
+	m1.PointsIgnores = 3
+	m2 := sidecarPose("m2", joueurEn(tsMoi, 2, 3, 4))
+	m2.PointsIgnores = 5
+	// Ecarte pour cause d'unites : ses points ignores ne doivent PAS entrer.
+	m3 := sidecarPose("m3", joueurEn(tsMoi, 2, 3, 6))
+	m3.PointsIgnores = 100
+	m3.PasEchantillonMs = 1000
+	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
+		"m1": m1, "m2": m2, "m3": m3,
+	}}
+	svc, _ := occupationSvc(universTroisMatchs("m1", "m2", "m3"), store)
+	out, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
+		MapID: "streets", Question: domain.TacticalQuestionTemps, Qui: domain.TacticalQuiMoi,
+		Scope: domain.TacticalScope{MatchIDs: []string{"m1", "m2", "m3"}},
+	})
+	if err != nil {
+		t.Fatalf("lecture: %v", err)
+	}
+	if out.PointsIgnores != 8 {
+		t.Fatalf("points_ignores = %d, attendu 8 (3 + 5 ; le sidecar ecarte n'y entre pas)",
+			out.PointsIgnores)
+	}
+}
+
+// TestOccupation_SidecarVideCompteAuDenominateur — C10 : un sidecar VIDE (`joueurs: []`)
+// est un match MESURE a zero, pas un match non mesure. Il entre donc au denominateur et
+// DILUE la valeur — c'est exactement ce qu'on veut : le joueur a joue ce match, il n'y a
+// simplement rien passe de mesurable sur cette cible.
+func TestOccupation_SidecarVideCompteAuDenominateur(t *testing.T) {
+	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
+		"m1": sidecarPose("m1", joueurEn(tsMoi, 2, 3, 8)),
+		"m2": sidecarPose("m2", joueurEn(tsMoi, 2, 3, 8)),
+		"m3": sidecarPose("m3", joueurEn(tsMoi, 2, 3, 8)),
+		"m4": sidecarPose("m4"), // present, aucun joueur
+	}}
+	svc, _ := occupationSvc(universTroisMatchs("m1", "m2", "m3", "m4"), store)
+	out, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
+		MapID: "streets", Question: domain.TacticalQuestionTemps, Qui: domain.TacticalQuiMoi,
+		Scope: domain.TacticalScope{MatchIDs: []string{"m1", "m2", "m3", "m4"}},
+	})
+	if err != nil {
+		t.Fatalf("lecture: %v", err)
+	}
+	if out.MatchsRetenus != 4 {
+		t.Fatalf("matchs_retenus = %d, attendu 4 : un sidecar VIDE est un match mesure a zero",
+			out.MatchsRetenus)
+	}
+	if len(out.Cellules) != 1 {
+		t.Fatalf("cellules = %+v, attendu 1", out.Cellules)
+	}
+	// 24 echantillons x 0,25 s / 4 matchs = 1,5 s. Avec 3 au denominateur ce serait 2,0.
+	if out.Cellules[0].Valeur != 1.5 {
+		t.Fatalf("valeur = %v s, attendu 1,5 (24 x 0,25 s / 4 matchs mesures)", out.Cellules[0].Valeur)
+	}
+}
+
+// TestOccupation_EchangeServiSousTemps — C4 : la decision « le KPI d'echange est celui de
+// la CARTE, pas de la question » n'etait prouvee nulle part — les huit cas d'occupation
+// montaient un titre sans `film.kill_source`, si bien que supprimer l'appel au journal
+// laissait la suite verte.
+//
+// Ce test tient les DEUX moities : l'echange EST servi sous `temps`, et la couverture
+// d'evenements reste a zero — l'occupation ne regarde aucune face d'une mort.
+func TestOccupation_EchangeServiSousTemps(t *testing.T) {
+	univ := universTroisMatchs("m1", "m2", "m3")
+	// Le journal des morts : deux morts de mon camp, une vengee dans la fenetre.
+	events := []domain.KillEvent{
+		{MatchID: "m1", VictimXUID: tsMoi, KillerXUID: tsAdv, TimeMs: 10_000},
+		{MatchID: "m1", VictimXUID: tsAdv, KillerXUID: tsAmi, TimeMs: 12_000},
+		{MatchID: "m2", VictimXUID: tsAmi, KillerXUID: tsAdv2, TimeMs: 30_000},
+	}
+	caps := games.CapabilityMap{
+		games.CapFilmReplayArtifact: games.CapSupported,
+		games.CapFilmKillPositions:  games.CapSupported,
+		games.CapFilmKillSource:     games.CapSupported,
+	}
+	repo := &mockTacticalRepo{univ: univ, ev: domain.TacticalKillEvents{Univers: univ, Events: events}}
+	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
+		"m1": sidecarPose("m1", joueurEn(tsMoi, 2, 3, 8)),
+		"m2": sidecarPose("m2", joueurEn(tsMoi, 2, 3, 8)),
+		"m3": sidecarPose("m3", joueurEn(tsMoi, 2, 3, 8)),
+	}}
+	svc := NewTacticalService(repo, caps, tsMoi).WithRasterStore(store)
+	out, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
+		MapID: "streets", Question: domain.TacticalQuestionTemps, Qui: domain.TacticalQuiMoi,
+		Scope: domain.TacticalScope{MatchIDs: []string{"m1", "m2", "m3"}},
+	})
+	if err != nil {
+		t.Fatalf("lecture: %v", err)
+	}
+	if out.Echange == nil {
+		t.Fatal("l'echange n'est PAS servi sous `temps` : c'est le KPI de la CARTE, pas celui " +
+			"de la question — supprimer l'appel au journal doit faire tomber ce test")
+	}
+	if out.Echange.N == 0 {
+		t.Fatalf("echange = %+v, attendu au moins une mort vengeable", out.Echange)
+	}
+	// ET la couverture d'evenements reste a zero : l'occupation ne lit aucune face d'une
+	// mort, son denominateur de couverture est l'ecart matchs_retenus / matchs_filtres.
+	if out.EvenementsJournal != 0 {
+		t.Fatalf("evenements_journal = %d, attendu 0 sous une lecture d'occupation",
+			out.EvenementsJournal)
+	}
+}
