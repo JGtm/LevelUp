@@ -1477,6 +1477,10 @@ export interface SynthesisPageResponse {
   // Précision par arme (Halo 5 natif) — toutes les armes tirées, accuracy 0..1.
   // Omis pour les titres qui ne peuplent pas weapon_accuracy (Infinite).
   weapon_accuracy?: SynthesisWeaponAccuracyEntry[]
+  // Portée et dénivelé mesurés des engagements (section « Portée par arme »).
+  // Omis quand la capability produit `weapon_range` manque ou quand rien n'est mesuré
+  // sur le scope — jamais un bloc à zéro (cf. .ai/PLAN_DUELS_PORTEE_2026-09-06.md, D5/D9).
+  weapon_range?: SynthesisWeaponRange
   // PLAN_COMBAT_PROFILE_WIRING Phase 1
   combat_profile?: CombatProfileBlock | null
   // KPI objectifs (cumul CTF/Zones/Oddball sur le scope) — omis pour un titre sans
@@ -1491,6 +1495,17 @@ export type SynthesisWeaponKillEntry = components['schemas']['SynthesisWeaponKil
 
 // Précision par arme — accuracy en unité 0..1 (le composant multiplie par 100).
 export type SynthesisWeaponAccuracyEntry = components['schemas']['SynthesisWeaponAccuracyEntry']
+
+// Portée par arme (frags ET morts) — le bloc entier, ses lignes, un côté, une arme sous
+// le seuil de publication, et le proxy d'entame. Re-exports du contrat OpenAPI : la forme
+// est celle du service (`domain.SynthesisWeaponRange`), jamais un mirror manuel.
+export type SynthesisWeaponRange = components['schemas']['SynthesisWeaponRange']
+export type WeaponRangeRow = components['schemas']['WeaponRangeRow']
+export type WeaponRangeSide = components['schemas']['WeaponRangeSide']
+export type WeaponBelowThreshold = components['schemas']['WeaponBelowThreshold']
+// `SynthesisOpening` n'est PAS ré-exporté : le contrat généré en porte encore la forme plate,
+// alors que le service sert `opening.delta` (décision du 2026-09-06). La forme lue vit dans
+// `features/synthesis/weaponRange_logic.ts` jusqu'à la régénération.
 
 // Répartition hiérarchique des frags v2 (sunburst classe→rôle) — title-agnostic,
 // partagé par Synthesis/Match view/Timeseries/Sessions. Cf. domain/frag_distribution.go.
