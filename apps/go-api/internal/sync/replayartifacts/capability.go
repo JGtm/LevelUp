@@ -28,6 +28,7 @@ package replayartifacts
 import (
 	"context"
 	"log/slog"
+	"sync"
 
 	"levelup/go-api/internal/games"
 )
@@ -37,11 +38,22 @@ import (
 //
 // Deux « non » distincts, comme pour les gates jumeaux du paquet (capabilityUsageArmee,
 // capabilityBombeArmee) : un TOML illisible est un INCIDENT (WARN — la configuration du titre
-// est cassée, quelqu'un doit le voir), une clé absente est une CONFIGURATION DE TITRE. Cette
-// dernière est journalisée en INFO, une seule ligne par cycle : contrairement aux gates des
-// projections — qui ne parlent que d'un dérivé — celle-ci éteint l'étape ENTIÈRE, et « le
-// rejeu ne tourne pas pour ce titre » ne doit pas se lire au même niveau que du bavardage de
-// boucle. Elle reste bornée : Run n'est appelée qu'une fois par cycle de sync et par joueur.
+// est cassée, quelqu'un doit le voir, à CHAQUE fois), une clé absente est une CONFIGURATION
+// DE TITRE.
+//
+// # POURQUOI LA CLÉ ABSENTE SE DIT UNE FOIS EN INFO, PUIS EN DEBUG
+//
+// Cette porte n'éteint pas un dérivé, elle éteint l'ÉTAPE ENTIÈRE : « le rejeu ne tourne pas
+// pour ce titre » mérite d'être vu une fois, pas noyé dans du DEBUG. Mais le répéter à chaque
+// cycle serait du bruit permanent sur un état qui ne changera jamais — halo_5 est un titre
+// ACTIF qui n'aura pas de décodeur de film, et `Run` est appelée à chaque cycle de sync et
+// par joueur (observation C7 de la revue adversariale du 2026-09-06). Les gates jumeaux ne
+// posent pas ce problème : ils ne sont atteints QUE si le cycle a effectivement cuit quelque
+// chose, donc sur un titre sans film ils ne parlent jamais.
+//
+// D'où le compromis : INFO au PREMIER refus de chaque titre dans la vie du process, DEBUG
+// ensuite. Un redémarrage rend une ligne INFO par titre — assez pour que l'état soit lisible
+// au démarrage, jamais assez pour saturer.
 //
 // Le TOML est relu à chaque cycle, comme pour les deux autres gates : c'est une petite lecture
 // de fichier, et elle suit les règles vivantes sans redémarrage.
@@ -53,10 +65,43 @@ func titreProduitDesArtefacts(ctx context.Context, d Deps) bool {
 		return false
 	}
 	if !caps.Has(games.CapFilmReplayArtifact) {
-		slog.InfoContext(ctx, "post-sync: rejeu 2D — titre sans la capability, aucune production",
+		niveau := slog.LevelDebug
+		if premierRefusDeCeTitre(d.TitleSlug) {
+			niveau = slog.LevelInfo
+		}
+		slog.Log(ctx, niveau, "post-sync: rejeu 2D — titre sans la capability, aucune production",
 			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug,
 			"capability", string(games.CapFilmReplayArtifact))
 		return false
 	}
 	return true
+}
+
+// refusDejaDits mémorise les titres dont le refus a déjà été journalisé en INFO, pour la vie
+// du process. Une map sous mutex, et non un sync.Once par titre : le nombre de titres est
+// borné par la configuration (deux aujourd'hui), et Run peut être appelée depuis les cycles
+// de plusieurs joueurs.
+var refusDejaDits = struct {
+	mu  sync.Mutex
+	vus map[string]bool
+}{vus: map[string]bool{}}
+
+// premierRefusDeCeTitre rend vrai UNE SEULE FOIS par titre et par process, et marque au
+// passage. Voir l'en-tête pour le pourquoi du changement de niveau.
+func premierRefusDeCeTitre(slug string) bool {
+	refusDejaDits.mu.Lock()
+	defer refusDejaDits.mu.Unlock()
+	if refusDejaDits.vus[slug] {
+		return false
+	}
+	refusDejaDits.vus[slug] = true
+	return true
+}
+
+// oublierRefusDits remet le mémo à zéro. RÉSERVÉ AUX TESTS : sans lui, l'ordre d'exécution
+// des tests du paquet déciderait du niveau de la ligne attendue.
+func oublierRefusDits() {
+	refusDejaDits.mu.Lock()
+	defer refusDejaDits.mu.Unlock()
+	refusDejaDits.vus = map[string]bool{}
 }
