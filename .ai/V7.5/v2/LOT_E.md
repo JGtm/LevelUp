@@ -575,3 +575,79 @@ AUCUN chiffre des temoins E.1 n'a bouge sur les trois items.
 
 Les trois items sont `[x]`, faits et verifies sur pieces. Aucun `[~]`, aucun `[!]`.
 Aucun test desactive, aucun skip ajoute, aucune allowlist agrandie sans justification datee.
+
+---
+
+# Corrections apres revue adversariale (E-R1) + item E.9 — 2026-09-06
+
+Verdict source : `E-R1` (6 constats : 2 P1, 4 P2 ; 21 conditions qui tiennent ; 13 mutations).
+Contrainte du mandat : **comportement du decodeur STRICTEMENT identique** — les temoins archives
+de `LOT_E_digests_avant.md` restent le gate. Perimetre ferme :
+`internal/analysis/filmdec/**`, `internal/archlint/decode_lock_held_test.go`,
+`cmd/rdata_weapon_scan/main.go` (verrou seulement), ce journal, `.ai/thought_log.md`.
+
+## [x] Correction 1 (C1, P1) — l'avance du marcheur delta, exercee pour de vrai
+
+Commit `v2(E.fix-1)`. `delta_biped_walk_guard_test.go`, `offline_biped_test.go`.
+
+LE TROU. `p = i0 + i0Bits` (`delta_biped_walk.go:83`) remplace par `p = i0 + 1` passait TOUT :
+les 10 paquets du gate, le golden des familles, le temoin de marche delta. Le temoin synthetique
+qui pretendait couvrir l'avance (`TestMarcheurDeltaBipedeAvanceCommeAvant`) marchait un payload
+de 64 octets A ZERO : il ne publiait aucun record, donc l'instruction d'avance n'y etait JAMAIS
+executee.
+
+CE QUI EST FAIT.
+
+1. `writeBipedHeaderEtMasque` extrait de `writeBipedRecord` (`offline_biped_test.go`) — l'ecrivain
+   partage du paquet, pour que le nouveau temoin ne re-decrive pas la grammaire d'en-tete.
+2. `TestMarcheurDeltaBipedeNeRebalaiePasUnRecordPublie` : un payload de 21 octets porte DEUX
+   records bipedes reconnus, colles l'un a l'autre, et le composant i0 du PREMIER porte un
+   LEURRE — un en-tete de record valide sur un autre slot, plante au premier bit de l'axe X
+   (`leurreDansLAxeDUnRecord`). Le marcheur doit publier exactement deux records, aux positions
+   i0 = 39 et i0 = 123, tous deux sur le slot vrai ; le test verifie aussi qu'aucun couple publie
+   ne se chevauche.
+3. `TestMarcheurDeltaBipedeAvanceCommeAvant` renomme `TestMarcheurDeltaBipedeSArreteSurLaBorne`,
+   et son en-tete dit desormais ce qu'il couvre reellement (la borne et la formule du seuil) et ce
+   qu'il NE couvre pas (l'avance) — doc inversee corrigee a la source.
+4. `TestMarcheurDeltaBipedeCompteSesRecordsSurLaMiniBobine` : le compte de records ANCRES par le
+   marcheur, sur octets reels, pour les huit familles qui exposent ce denominateur plus le
+   marcheur nu. 28 005 records pour les neuf entrees.
+
+PREUVE PAR MUTATION (M6 du verdict, rejouee) — `p = i0 + i0Bits` -> `p = i0 + 1` :
+
+```
+--- FAIL: TestMarcheurDeltaBipedeNeRebalaiePasUnRecordPublie (0.00s)
+    3 record(s) publie(s), attendu 2 :
+      record 1 : i0=39  slot=517 masque=[0 1 2]
+      record 2 : i0=77  slot=9   masque=[0 1]     <- le leurre, re-balaye en chevauchement
+      record 3 : i0=123 slot=517 masque=[0 1 2]
+```
+
+Mutation annulee, le test repasse au vert.
+
+MESURE QUI CONTREDIT LE MANDAT, ET QUI EST ECRITE PARCE QU'ELLE EST VRAIE — « un compte de
+records par famille qui change si l'avance change » N'EXISTE PAS sur cette bobine. Les comptes ont
+ete mesures SOUS la mutation avant d'etre figes : **28 005, identiques**, pour les neuf entrees.
+Reprendre le balayage a l'interieur d'un record deja publie ne produit AUCUN ancrage de plus sur
+la mini-bobine : la porte d'en-tete (prefixe, slot dans la bande de 17 slots sur 8 192, tag = 1,
+deux bits nuls, masque strictement croissant depuis zero, gate d'i0 nul) est trop stricte pour
+qu'un i0 de position la franchisse par hasard.
+
+POURQUOI LE GOLDEN NE BOUGEAIT PAS, LA REPONSE COMPLETE. Deux raisons, et la seconde n'etait pas
+soupconnee :
+
+1. il n'y a AUCUN doublon a absorber — le jeu de records publie est le MEME avec et sans la
+   mutation (mesure ci-dessus). Aucun dedoublonnage aval n'a donc rien masque, et rien n'est a
+   corriger de ce cote ;
+2. le golden des familles fige la LISTE de lectures de chaque famille et **jette les
+   denominateurs** : `ajouterSlice(r, "camoStates", camo, err)` ignore le `st` du milieu, qui
+   porte pourtant `Records`, le seul chiffre qui compte le travail du marcheur. Ce trou-la est
+   ferme par le temoin de comptes, meme s'il ne suffit pas a attraper M6.
+
+L'ORACLE DE L'AVANCE EST DONC LE TEMOIN SYNTHETIQUE, et le journal ne dit plus autre chose.
+
+DECOUVERTE (consignee, NON traitee) — `ScanEquipmentState` figurait dans mon premier jet de la
+liste des familles : il expose bien `Records`, mais il n'ancre PAS par le marcheur delta bipede
+(`matchWorldObjectRecord`, `equipment_state.go:310`, sur la bande des slots d'equipement). Il a ete
+retire : le compter ici aurait ete une doc inversee de plus. Son denominateur (5 282 sur la
+bobine) reste non fige — il releve du marcheur d'objets du monde, pas de celui-ci.
