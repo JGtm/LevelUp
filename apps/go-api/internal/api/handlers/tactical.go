@@ -131,17 +131,21 @@ func (h *TacticalHandler) handleGetMaps(ctx context.Context, in *tacticalMapsInp
 
 // handleGetRaster retourne la lecture de placement d'une carte.
 func (h *TacticalHandler) handleGetRaster(ctx context.Context, in *tacticalRasterInput) (*tacticalRasterOutput, error) {
+	// L'ORDRE COMPTE (revue R2). On valide AVANT de resoudre le service : la fabrique
+	// OUVRE la base du joueur, et une entree hors vocabulaire ne doit rien faire ouvrir.
+	// Les deux routes du fond validaient deja d'abord (`replayPourCarte`) ; celle-ci ne le
+	// faisait pas, alors que ses tests affirmaient qu'aucun service n'etait appele.
+	mapID, ok := MapIDValide(in.MapID)
+	if !ok {
+		// MEME 404, MEME CODE, MEME MESSAGE que « cette carte, ce joueur ne l'a pas
+		// jouee » : un code — ou un libelle — distinct pour un refus de VALIDATION dirait
+		// a l'appelant que son entree a franchi le routeur mais pas le filtre.
+		return nil, humacore.NewError(http.StatusNotFound, "tactical_map_unknown",
+			domain.ErrTacticalCarteInconnue.Error())
+	}
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
-	}
-	mapID, ok := MapIDValide(in.MapID)
-	if !ok {
-		// MEME 404 que « cette carte, ce joueur ne l'a pas jouee » : un code distinct pour
-		// un refus de VALIDATION dirait a l'appelant que son entree a franchi le routeur
-		// mais pas le filtre — un oracle gratuit sur la frontiere.
-		return nil, humacore.NewError(http.StatusNotFound, "tactical_map_unknown",
-			domain.ErrTacticalCarteInconnue.Error())
 	}
 	raster, err := svc.Raster(ctx, mapID,
 		defautSiVide(in.Question, domain.TacticalQuestionMorts),
@@ -303,7 +307,20 @@ func defautSiVide(v, defaut string) string {
 func mapTacticalError(ctx context.Context, err error, probe string) error {
 	switch {
 	case errors.Is(err, domain.ErrTacticalCarteInconnue):
-		return humacore.NewError(http.StatusNotFound, "tactical_map_unknown", err.Error())
+		// LE MESSAGE CANONIQUE, JAMAIS `err.Error()` (revue R2, P1). Ce 404 a DEUX
+		// producteurs — le refus de `MapIDValide` (qui n'a rien a citer) et la carte
+		// legitime que le joueur n'a pas jouee — et le corps doit etre le meme pour les
+		// deux. Publier l'erreur enrobee laissait le detail du service decider du libelle :
+		// il suffisait qu'il cite la carte demandee pour rouvrir, par le message, l'oracle
+		// qu'on venait de fermer par le code. Le detail vit au JOURNAL, cote service.
+		//
+		// Les deux 400 ci-dessous publient, EUX, l'erreur telle quelle : `question` et
+		// `qui` sont des parametres de requete a validation unique — il n'existe aucune
+		// seconde frontiere dont les rendre indiscernables, et nommer la valeur refusee
+		// est ce qui rend le 400 utile.
+		slog.InfoContext(ctx, "tactique: carte refusee", "probe", probe, "err", err)
+		return humacore.NewError(http.StatusNotFound, "tactical_map_unknown",
+			domain.ErrTacticalCarteInconnue.Error())
 	case errors.Is(err, domain.ErrTacticalQuestionInconnue):
 		return humacore.NewError(http.StatusBadRequest, "tactical_question_unknown", err.Error())
 	case errors.Is(err, domain.ErrTacticalQuiInconnu):
