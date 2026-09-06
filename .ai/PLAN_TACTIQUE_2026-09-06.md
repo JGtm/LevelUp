@@ -203,29 +203,52 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   `Couverture` avec 8 morts -> echantillon faible ; `go vet` propre ; fichiers <= 500 L,
   fonctions <= 80 L.
 
-### Phase 2 — Port, repo, service, handler (aucun artefact, aucune capability creee) — CLOSE 2026-09-06
-- [x] 2.1 `port/repository_data.go:183-215` : `TacticalRepository` (`MapsPlayed`,
+### Phase 2 — Port, repo, service, handler (aucun artefact, aucune capability creee) — CLOSE 2026-09-06, revue ronde 1 SOLDEE
+- [x] 2.1 `port/tactical.go:33-73` : `TacticalRepository` (`MapsPlayed`,
       `KillPositions`, `KillEvents`) a cote de `KillDistanceRepository`. Les deux lectures
       spatiales rendent L'UNIVERS AVEC les points (`domain.TacticalPositions` /
       `TacticalKillEvents`) : un match retenu sans position doit compter au denominateur, et
       le deduire des points l'effacerait (defaut P0 de la phase 1). Types dans
-      `domain/tactical.go`, contrat du service dans `port/tactical.go`.
+      `domain/tactical.go`, a cote du contrat du service. Deplace de
+      `repository_data.go` par T12 : ce fichier depassait deja 500 L, la phase 2
+      l'avait porte a 651, et `port/tactical.go` existait deja pour cette raison.
 - [x] 2.2 `platform/duckdb/tactical_repo.go` (397 L) + `_test.go` (475 L, SANS tag de build —
       le gate ne pose pas `-tags=integration`, et un test derriere un tag que le gate ne pose
       pas ne garde rien ; vraies migrations shared sur `:memory:`, aucune DDL recopiee).
       Filtre par `analysis.BuildNeighborsWhereClause` : le fragment timezone canonique en
       vient, aucun litteral recopie. `publishable` exige des deux cotes (attribution PAR
-      LIGNE) ; garde d'ambiguite `HAVING count(*) = 1` sur le double kill
-      (`tactical_repo.go:238`) ; codes d'issue en parametres LIES.
-- [x] 2.3 `service/tactical_service.go:74,100` + `_test.go` (mock du port). Trois questions,
-      trois axes (`moi` / `escouade` = meme `team_id` DU MATCH moi exclu / `adv`) ;
-      `film.kill_positions` absente -> `ErrCapabilityNotSupported` (503) ; `film.kill_source`
-      absente -> KPI d'echange SILENCIEUX, lecture servie. `CapabilityMap.Has`, jamais un slug.
-      Test de reference : 12 V dont 6 muettes / 8 D dont 4 muettes, cellule 6 V-4 D -> 0,00.
+      LIGNE) ; garde d'ambiguite `HAVING count(*) = 1` sur le double kill ; codes
+      d'issue en parametres LIES. **R2** : les constantes prennent le prefixe `Q`
+      (le garde-rail `campaign_exclusion_guard_test` ne balaye QUE les `Q*` — sous
+      leurs anciens noms mes lecteurs per-player passaient sous son radar) et
+      portent le token d'exclusion Campagne, resolu au call site.
+      **R3** : le nom FR d'une carte vient de `metadata.asset_translations` (helper
+      de paquet `mapNameFRFromAssetTranslations`, promu depuis
+      `EngagementScoreRepo.resolveMapNameFR`), jamais de `match_registry.map_name_fr`
+      qui est systematiquement NULLE. Tests scindes en `tactical_repo_test.go` (470 L)
+      et `tactical_repo_cartes_test.go` (242 L).
+- [x] 2.3 `service/tactical_service.go` + `_test.go` / `_echange_test.go` (mock du port).
+      Trois questions, trois axes (`moi` / `escouade` = meme `team_id` DU MATCH moi
+      exclu / `adv`). Test de reference : 12 V dont 6 muettes / 8 D dont 4 muettes,
+      cellule 6 V-4 D -> 0,00.
+      **R1 — LES PORTES SONT DES CLES DE LECTURE, plus des cles d'ecriture** :
+      `positionsDeKillLisibles` = `film.kill_positions` (capture Infinite) OU
+      `match.events.spatial` (natif Halo 5) ; `journalDesMortsFiable` =
+      `film.kill_source` OU `match.killfeed.per_kill == supported` STRICTEMENT
+      (`Has` accepte `degraded`, et c'est justement ce que declare Infinite pour ce
+      kill-feed). Sans cela un joueur Halo 5 recevait un 503 sur une jointure qui
+      marche integralement. **T9** : la couverture de localisation
+      (`evenements_journal` / `evenements_localises`) est servie pour TOUS les titres —
+      c'est une propriete de la mesure, pas un KPI.
 - [x] 2.4 `api/handlers/tactical.go` (2 routes Huma) + `_test.go` httptest ; cablage
       `api/wire/registry_pages.go:165` (`ServiceRegistry.Tactical`) et
       `api/server_apiv1.go:715` — un seul endroit de construction ; `openapi.yaml` et
-      `generated.ts` regeneres (+366 / +216 lignes, AUCUNE suppression).
+      `generated.ts` regeneres. **R4** : tags JSON snake_case sur `BornesMonde`,
+      `CelluleTactique`, `EchelleTactique` et `Couverture` — le contrat melangeait
+      `map_id` et `MinX`/`Brut`/`EchantillonFaible`. **T10** : `matchs_victoire` /
+      `matchs_defaite` publies au niveau du raster signe. **T11** : `session` RETIRE
+      du contrat (jamais applique par `BuildNeighborsWhereClause` — on n'accepte pas
+      ce qu'on n'honore pas).
 - [x] 2.5 `slog.InfoContext` sur chaque calcul : `tactical_service.go:93` (cartes),
       `:133` (`player`, `titleSlug`, `map_id`, `question`, `qui`, `matchs_retenus`,
       `cellules`, `points_ignores`, `duration`), `:275` (echange).
@@ -244,6 +267,20 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   ecrit en clair dans la fixture, corrige en `killscope.ReadPathFilmWalk`). Seuils : fichiers
   neufs <= 475 L, fonctions <= 45 L, <= 5 parametres. `internal/sync/` et `internal/persist/`
   NON touches : pas de passe `-tags=integration`.
+- **Gate REJOUE apres la revue ronde 1, le 2026-09-06** (avant-plan, en serie) :
+  `go vet` propre sur les 9 arbres (2,7 s) ; `go test -count=1` vert sur 24 paquets en
+  43,5 s (duckdb 40,0 s ; api 22,5 s ; service 10,0 s ; handlers 10,0 s ; archlint 6,8 s ;
+  tactical 0,23 s ; coordination 0,24 s ; contracttest 0,46 s) ;
+  `golangci-lint run --new-from-merge-base=origin/main` : **0 issue** ;
+  `openapi-gen -check` : a jour. Seuils reverifies APRES ajouts : les deux fichiers de
+  test avaient franchi 500 L, scindes comme `merge_test.go` en phase 1
+  (`tactical_repo_test.go` 470 / `tactical_repo_cartes_test.go` 242 ;
+  `tactical_service_test.go` 423 / `tactical_service_echange_test.go` 267).
+  Quatre INVERSIONS jouees : R1 (predicat reduit a `film.kill_positions` -> le test des
+  positions natives tombe), R2 (token retire de `QTacticalUnivers` -> le garde-rail
+  structurel tombe en le nommant), T1 (`prendVictime := question == Morts` -> la face
+  victime de « ou je gagne » disparait), T5 (garde de composition retiree -> un joueur
+  inconnu tombe dans `adv`).
 - **Gate** : `go test ./internal/platform/duckdb/... ./internal/service/... ./internal/api/...`
   vert ; repo en DuckDB `:memory:` ; handler `httptest` ; titre sans `film.kill_positions`
   -> 503 ; ratchets `no_slug_comparison_test`, `no_data_path_join_test` verts ;
@@ -330,6 +367,30 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **revue adversariale ronde 1 de la phase 2 — 16 constats, TOUS corriges** en
+  6 commits `tactique(2.5)`. Gate rejoue integralement, quatre inversions jouees.
+  - **T12** — `TacticalRepository` quitte `repository_data.go` (deja > 500 L, porte a 651
+    par la phase 2) pour `port/tactical.go`, cree pour cette raison exacte cote service.
+  - **R1 (P1 multi-titre)** — la porte de lecture etait une cle d'ECRITURE.
+    `film.kill_positions` gouverne la CAPTURE (sa propre doc le dit) ; Halo 5 remplit la
+    MEME table nativement (`match.events.spatial`) et recevait un 503. Deux predicats
+    nommes, chacun a deux provenances ; le kill-feed natif est exige `supported`
+    STRICTEMENT parce que `Has` accepte `degraded` — ce que declare Infinite, et c'est
+    exactement le defaut qui fabriquerait de faux echanges.
+  - **R2 (P1)** — les ~287 matchs de Campagne d'un joueur Halo 5 entraient dans la grille
+    et dans l'univers. Token d'exclusion + prefixe `Q` sur les constantes : le garde-rail
+    structurel existait, il ne voyait pas mes lecteurs faute du prefixe.
+  - **R3 (P1)** — `match_registry.map_name_fr` est systematiquement NULLE ; toutes les
+    cartes sortaient avec un nom FR vide, et la fixture semait une valeur qui n'existe pas
+    en prod. Resolution par `asset_translations`, en REUTILISANT une des deux copies du
+    paquet (promue en helper), jamais une troisieme.
+  - **R4 + T9 + T10 + T11** — contrat : tags snake_case sur les quatre types nus, couverture
+    de localisation publiee (`evenements_journal` / `evenements_localises`), les deux
+    denominateurs de la lecture signee publies, `session` retire (jamais applique).
+  - **T1-T8** — huit tests manquants, dont la face VICTIME de « ou je gagne » (P0 de test),
+    `MapsPlayed` sous filtre aux trois couches, la borne `to`, la victime bot, le joueur hors
+    composition, la mort non vengeable, la position de TUEUR partielle, l'echelle non
+    symetrique. Deux docs inversees corrigees sur pieces (identites vides, `MatchsRetenus`).
 - 2026-09-06 : phase 2 CLOSE — port, lecteur DuckDB, service et handler livres en 4 commits
   (`tactique(2.1)` a `(2.4)`), items 2.1-2.5 `[x]`, gate joue en avant-plan (vet propre,
   22 paquets verts en 42,3 s, ratchet de lint de la CI a 0 issue, contrat OpenAPI a jour,
@@ -402,13 +463,9 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   sur les morts de MON CAMP** (mes coequipiers ET moi), pas sur les miennes seules ni sur
   toutes les morts du match (`tactical_service.go:245`). Le plan dit « par carte, libelle
   sur cette carte » sans nommer le perimetre.
-- 2026-09-06 (phase 2) — **`port/repository_data.go` passe de 614 a 651 lignes.** Le fichier
-  depassait DEJA le seuil de 500 L (produit d'un god-file split de 2026-05-27) et le plan
-  demande explicitement l'interface « a cote de `KillDistanceRepository` ». Aucun linter ne
-  garde la taille de fichier (seuil CLAUDE.md, pas regle golangci) : la dette est donc
-  accrue de 37 lignes en connaissance de cause. Un decoupage par sujet — que le paquet
-  `port` pratique deja (achievements.go, medals.go, tactical.go...) — est le candidat.
-  NON TRAITE (hors perimetre).
+- 2026-09-06 (phase 2) — ~~`port/repository_data.go` passe de 614 a 651 lignes~~ **SOLDE
+  par T12** (revue ronde 1) : l'interface est allee dans `port/tactical.go`, le fichier est
+  revenu a 614 L.
 - 2026-09-06 (phase 2) — **le vocabulaire de filtre de l'Explorateur a maintenant DEUX
   lecteurs Go** : `handlers.parseNeighborsFilterSpec` (sur `*http.Request`) et
   `handlers.TacticalFilterQuery.spec` (sur une entree typee Huma). Les PREDICATS sont
@@ -429,6 +486,27 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `openapi-typescript` 7.13.0 du checkout principal (meme version que `package.json`), lu en
   seule lecture. `tools/check-generated-types-fresh.mjs` passe en SILENCE (exit 0) quand le
   CLI manque — un garde-rail qui ne peut pas mordre en local ; la CI, elle, l'exercera.
+- 2026-09-06 (revue R1) — **une cle FINE de LECTURE manque au vocabulaire des
+  capabilities.** La porte des rasters est aujourd'hui un OU sur deux cles qui repondent
+  chacune a une AUTRE question : `film.kill_positions` dit « ce titre CAPTURE des positions
+  en decodant son film », `match.events.spatial` dit « ce titre expose des positions
+  NATIVES ». Aucune des deux ne dit ce que le lecteur veut savoir — « la table
+  `kill_positions` est-elle lisible pour ce titre ? ». Une cle du genre
+  `match.kill_positions.readable` le dirait d'un mot et retirerait le OU. Elle releve du
+  VOCABULAIRE DE CAPABILITIES, chantier du lot C de l'audit v2 — pas de ce lot, qui a pour
+  consigne de n'en creer aucune. NON TRAITE.
+- 2026-09-06 (revue R3) — **la resolution du nom FR d'une carte existe en DEUX copies dans
+  `platform/duckdb`** : `mapNameFRFromAssetTranslations` (par `map_id`, promue en helper de
+  paquet pour ce lot) et `FiltersRepo.applyMapFRTranslations` (par NOM EN, faute de map_id
+  sous la main — elle resout d'abord nom -> id). Le lecteur tactique est le DEUXIEME
+  consommateur de la premiere, la regle des <= 2 copies tient donc encore ; un troisieme
+  consommateur exigera un helper canonique unique + garde-rail. NON TRAITE.
+- 2026-09-06 (revue T11) — **le filtre de SESSION n'est applicable par aucune requete
+  shared.** `MatchFilterSpec.SessionID` existe, mais `BuildNeighborsWhereClause` le range
+  dans `IgnoredFilters` : les sessions vivent dans `player_match_enrichment` (base JOUEUR),
+  que ces requetes ne joignent pas. Le parametre a ete retire du contrat de l'onglet plutot
+  que laisse en decor. S'il devient necessaire, il faudra soit joindre la base joueur, soit
+  faire descendre des `match_id` depuis la page. NON TRAITE.
 - 2026-09-06 (phase 2) — **`internal/contracttest` n'existe pas** : le paquet est a
   `apps/go-api/contracttest`. Le gate a ete joue sur `./contracttest/...`.
 - 2026-09-06 (phase 1) — **TROIS implementations de quantile dans le depot, deux conventions

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -84,12 +85,50 @@ func TestTacticalHandler_Maps(t *testing.T) {
 	}
 }
 
+// TestTacticalHandler_MapsFiltre : la grille d'entree lit le MEME vocabulaire de
+// filtre que la lecture de placement, et le transmet au service.
+func TestTacticalHandler_MapsFiltre(t *testing.T) {
+	svc := &fakeTacticalSvc{}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+	w := appel(t, r, "/players/JGtm/tactical/maps?playlist=Ranked%20Arena&outcome=loss&to=2026-08-31T00:00:00Z")
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	f := svc.vuFiltre
+	if f == nil {
+		t.Fatal("filtre non transmis a MapsPlayed")
+	}
+	if len(f.PlaylistNames) != 1 || f.PlaylistNames[0] != "Ranked Arena" {
+		t.Errorf("playlists = %v", f.PlaylistNames)
+	}
+	if f.Outcome == nil || *f.Outcome != "loss" {
+		t.Errorf("outcome = %v", f.Outcome)
+	}
+	if f.DateTo == nil || !f.DateTo.Equal(time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("to = %v", f.DateTo)
+	}
+}
+
+// TestTacticalHandler_MapsSansFiltre : aucun parametre -> aucun filtre (nil), pas
+// un spec vide qui couterait un assemblage de clauses pour rien.
+func TestTacticalHandler_MapsSansFiltre(t *testing.T) {
+	svc := &fakeTacticalSvc{}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+	if w := appel(t, r, "/players/JGtm/tactical/maps"); w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	if svc.vuFiltre != nil {
+		t.Errorf("filtre = %+v, want nil", svc.vuFiltre)
+	}
+}
+
 // TestTacticalHandler_RasterNominal : 200, et les parametres arrivent au service
 // tels qu'ils ont ete demandes.
 func TestTacticalHandler_RasterNominal(t *testing.T) {
 	svc := &fakeTacticalSvc{raster: domain.TacticalRaster{
 		MapID: "streets", Question: domain.TacticalQuestionKills, Qui: domain.TacticalQuiEscouade,
 		MatchsRetenus: 20, PasM: 0.5,
+		EvenementsJournal: 30, EvenementsLocalises: 24,
 		Cellules: []domain.CelluleTactique{{Col: 4, Lig: 4, Valeur: 0.5, Brut: 10, Matchs: 5}},
 	}}
 	r := newTacticalRouter(tacticalFactory(svc, nil))
@@ -107,6 +146,18 @@ func TestTacticalHandler_RasterNominal(t *testing.T) {
 	}
 	if got.MatchsRetenus != 20 || len(got.Cellules) != 1 || got.PasM != 0.5 {
 		t.Errorf("payload inattendu: %+v", got)
+	}
+	// La couverture de localisation traverse le contrat : sans elle le pied de carte
+	// ne peut pas dire « 30 evenements, 24 localises ».
+	if got.EvenementsJournal != 30 || got.EvenementsLocalises != 24 {
+		t.Errorf("couverture = %d/%d, want 30/24", got.EvenementsJournal, got.EvenementsLocalises)
+	}
+	// Les tags JSON sont snake_case sur TOUT le contrat (R4) — un PascalCase isole
+	// se verrait ici.
+	for _, cle := range []string{`"matchs_retenus"`, `"evenements_journal"`, `"centre_x"`, `"n_cellules"`} {
+		if !strings.Contains(w.Body.String(), cle) {
+			t.Errorf("clef %s absente du JSON servi : %s", cle, w.Body.String())
+		}
 	}
 	if got.Echange != nil {
 		t.Errorf("Echange absent doit etre OMIS du JSON, pas rendu a zero: %+v", got.Echange)
@@ -137,7 +188,7 @@ func TestTacticalHandler_FiltreExplorateur(t *testing.T) {
 	r := newTacticalRouter(tacticalFactory(svc, nil))
 	w := appel(t, r, "/players/JGtm/tactical/streets/raster?"+
 		"playlist=Ranked%20Arena,Quick%20Play&mode=Assassin&outcome=win"+
-		"&from=2026-08-01T00:00:00Z&with_player=pas-un-xuid")
+		"&from=2026-08-01T00:00:00Z&to=2026-08-31T23:59:59Z&with_player=pas-un-xuid")
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
 	}
@@ -157,8 +208,44 @@ func TestTacticalHandler_FiltreExplorateur(t *testing.T) {
 	if f.DateFrom == nil || !f.DateFrom.Equal(time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)) {
 		t.Errorf("from = %v", f.DateFrom)
 	}
+	if f.DateTo == nil || !f.DateTo.Equal(time.Date(2026, 8, 31, 23, 59, 59, 0, time.UTC)) {
+		t.Errorf("to = %v, want la borne haute lue et transmise", f.DateTo)
+	}
 	if f.WithPlayerXuid != nil {
 		t.Errorf("with_player mal forme doit etre IGNORE, pas transmis: %v", *f.WithPlayerXuid)
+	}
+}
+
+// TestTacticalHandler_BorneDateIllisible_Ignoree : une date mal formee est ignoree
+// avec un log, jamais un 400 — un lien partage ne doit pas casser sur une valeur
+// douteuse.
+func TestTacticalHandler_BorneDateIllisible_Ignoree(t *testing.T) {
+	svc := &fakeTacticalSvc{}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+	w := appel(t, r, "/players/JGtm/tactical/streets/raster?from=hier&to=demain&outcome=win")
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	if svc.vuFiltre == nil {
+		t.Fatal("le filtre `outcome` valide devait survivre aux deux dates illisibles")
+	}
+	if svc.vuFiltre.DateFrom != nil || svc.vuFiltre.DateTo != nil {
+		t.Errorf("dates illisibles transmises : %v / %v", svc.vuFiltre.DateFrom, svc.vuFiltre.DateTo)
+	}
+}
+
+// TestTacticalHandler_SessionRetireeDuContrat : `session` n'est plus un parametre —
+// `BuildNeighborsWhereClause` ne l'applique jamais (les sessions vivent dans la base
+// JOUEUR, que ces requetes shared ne joignent pas). Le passer ne doit donc RIEN
+// filtrer, et surtout pas remplir un `SessionID` que personne n'honore.
+func TestTacticalHandler_SessionRetireeDuContrat(t *testing.T) {
+	svc := &fakeTacticalSvc{}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+	if w := appel(t, r, "/players/JGtm/tactical/streets/raster?session=s-42"); w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	if svc.vuFiltre != nil {
+		t.Errorf("filtre = %+v, want nil : `session` n'est plus lu", svc.vuFiltre)
 	}
 }
 

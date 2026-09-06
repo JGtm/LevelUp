@@ -1,0 +1,242 @@
+// Package duckdb — tactical_repo_cartes_test.go : la GRILLE D'ENTREE de l'onglet
+// Tactique (MapsPlayed) et ce qui la conditionne — resolution du nom FR par
+// `metadata.asset_translations`, filtre de l'Explorateur, masquage Campagne — plus
+// les DEGRADATIONS du lecteur (aucune donnee, entrees vides, tables absentes).
+//
+// Scinde de tactical_repo_test.go le 2026-09-06 : celui-ci avait franchi les 500
+// lignes sous les ajouts de la revue (meme discipline que la scission de
+// merge_test.go en phase 1). La fixture partagee reste chez le voisin, meme paquet.
+package duckdb
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"testing"
+	"time"
+
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
+	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
+)
+
+// TestTacticalRepo_MapsPlayed : cartes jouees, comptes et decomposition V/D, dans
+// l'ordre matchs decroissants. m4 (joue par un tiers) n'y figure pas.
+func TestTacticalRepo_MapsPlayed(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	seedTacticalCorpus(t, pdb)
+
+	rows, err := NewTacticalRepo(pdb).MapsPlayed(context.Background(),
+		domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+	if err != nil {
+		t.Fatalf("MapsPlayed: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("cartes = %d, want 2 : %+v", len(rows), rows)
+	}
+	if rows[0].MapID != tacCarteA || rows[0].Matchs != 2 {
+		t.Fatalf("premiere carte = %+v, want %s a 2 matchs (tri matchs decroissants)", rows[0], tacCarteA)
+	}
+	if rows[0].Victoires != 1 || rows[0].Defaites != 1 {
+		t.Errorf("carte A = %d V / %d D, want 1/1", rows[0].Victoires, rows[0].Defaites)
+	}
+	if rows[0].MapName != tacCarteA+"_en" {
+		t.Errorf("libelle EN = %q, want %q", rows[0].MapName, tacCarteA+"_en")
+	}
+	// LE nom FR vient de metadata.asset_translations, jamais de match_registry
+	// (colonne systematiquement NULLE en prod) — R3.
+	if rows[0].MapNameFR != "Les Rues" {
+		t.Errorf("libelle FR = %q, want %q (resolu par asset_translations)", rows[0].MapNameFR, "Les Rues")
+	}
+	if rows[1].MapID != tacCarteB || rows[1].Matchs != 1 || rows[1].Victoires != 1 {
+		t.Errorf("seconde carte = %+v, want %s a 1 match / 1 V", rows[1], tacCarteB)
+	}
+	// Carte sans traduction : nom FR VIDE, sans erreur. L'appelant retombera sur l'EN.
+	if rows[1].MapNameFR != "" {
+		t.Errorf("carte sans traduction : MapNameFR = %q, want vide", rows[1].MapNameFR)
+	}
+}
+
+// TestTacticalRepo_SansMetadata_NomFRVide : une metadata absente (ou une lecture en
+// echec) laisse le nom FR vide sans faire echouer la grille — best-effort assume.
+func TestTacticalRepo_SansMetadata_NomFRVide(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	seedTacticalCorpus(t, pdb)
+	pdb.Metadata = nil
+
+	rows, err := NewTacticalRepo(pdb).MapsPlayed(context.Background(),
+		domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+	if err != nil {
+		t.Fatalf("MapsPlayed sans metadata: %v", err)
+	}
+	if len(rows) != 2 || rows[0].MapNameFR != "" {
+		t.Errorf("sans metadata : %d cartes, FR = %q — want 2 cartes servies, FR vide",
+			len(rows), rows[0].MapNameFR)
+	}
+}
+
+// TestTacticalRepo_MapsPlayed_Filtre : la grille d'entree est filtree par le meme
+// vocabulaire que le reste. Une issue « defaite » ne laisse qu'un match sur la
+// carte A, et fait disparaitre la carte B (jouee en victoire seulement).
+func TestTacticalRepo_MapsPlayed_Filtre(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	seedTacticalCorpus(t, pdb)
+
+	perdu := "loss"
+	rows, err := NewTacticalRepo(pdb).MapsPlayed(context.Background(), domain.TacticalQuery{
+		PlayerXUID: tacXUIDMoi,
+		Filtre:     &domain.MatchFilterSpec{Outcome: &perdu},
+	})
+	if err != nil {
+		t.Fatalf("MapsPlayed: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("cartes = %+v, want la seule carte A (B n'a qu'une victoire)", rows)
+	}
+	if rows[0].MapID != tacCarteA || rows[0].Matchs != 1 {
+		t.Errorf("carte = %+v, want %s a 1 match", rows[0], tacCarteA)
+	}
+	if rows[0].Victoires != 0 || rows[0].Defaites != 1 {
+		t.Errorf("V/D sous filtre = %d/%d, want 0/1", rows[0].Victoires, rows[0].Defaites)
+	}
+}
+
+// TestTacticalRepo_Campagne_Masquee : les matchs de Campagne d'un joueur Halo 5
+// (~287 lignes historiques en prod) n'entrent NI dans la grille des cartes NI dans
+// l'univers des rasters — l'Explorateur les masque deja, l'onglet Tactique ne peut
+// pas dire autre chose du meme historique.
+//
+// Le masquage est title-aware et pilote par la DONNEE du titre (ses game_variant_id
+// de Campagne, `analysis.CampaignExcludedVariantIDs`), jamais par une comparaison de
+// slug : c'est pour cela que la fixture ouvre un PlayerDB au titre `halo_5`.
+func TestTacticalRepo_Campagne_Masquee(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	pdb.TitleSlug = "halo_5"
+	base := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	campagne := analysis.CampaignExcludedVariantIDs("halo_5")
+	if len(campagne) == 0 {
+		t.Fatal("aucun game_variant_id de Campagne pour halo_5 : la source unique a bouge")
+	}
+
+	// Un match d'arene, avec une mort mesuree.
+	tacMatch(t, pdb, "m1", tacCarteA, base)
+	tacParticipant(t, pdb, "m1", tacXUIDMoi, 0, domain.OutcomeWin)
+	tacParticipant(t, pdb, "m1", tacXUIDAdv, 1, domain.OutcomeLoss)
+	tacKill(t, pdb, "m1", tacXUIDMoi, tacXUIDAdv, 1000, true)
+	tacPos(t, pdb, "m1", tacXUIDMoi, 1000, 2.0, 2.0, 4.0, 4.0)
+
+	// Un match de CAMPAGNE, sur la MEME carte, avec lui aussi une mort mesuree.
+	tacMatchVariant(t, pdb, "mc", tacCarteA, base.Add(time.Hour), campagne[0])
+	tacParticipant(t, pdb, "mc", tacXUIDMoi, 0, domain.OutcomeWin)
+	tacKill(t, pdb, "mc", tacXUIDMoi, tacXUIDAdv, 1000, true)
+	tacPos(t, pdb, "mc", tacXUIDMoi, 1000, 40.0, 40.0, 42.0, 42.0)
+
+	// Un match de Campagne sur une carte QUE LA CAMPAGNE SEULE utilise : la carte
+	// entiere doit disparaitre de la grille.
+	tacMatchVariant(t, pdb, "mc2", "map_campagne", base.Add(2*time.Hour), campagne[0])
+	tacParticipant(t, pdb, "mc2", tacXUIDMoi, 0, domain.OutcomeWin)
+
+	repo := NewTacticalRepo(pdb)
+
+	rows, err := repo.MapsPlayed(context.Background(), domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+	if err != nil {
+		t.Fatalf("MapsPlayed: %v", err)
+	}
+	if len(rows) != 1 || rows[0].MapID != tacCarteA || rows[0].Matchs != 1 {
+		t.Fatalf("cartes = %+v, want la seule carte A a 1 match (les deux matchs de Campagne masques)", rows)
+	}
+
+	pos, err := repo.KillPositions(context.Background(), tacQuery(tacCarteA))
+	if err != nil {
+		t.Fatalf("KillPositions: %v", err)
+	}
+	if want := []string{"m1"}; !egales(matchIDs(pos.Univers.Matchs), want) {
+		t.Fatalf("univers = %v, want %v (le match de Campagne est hors univers)", matchIDs(pos.Univers.Matchs), want)
+	}
+	for _, p := range pos.Points {
+		if p.MatchID == "mc" {
+			t.Errorf("position d'un match de Campagne servie : %+v", p)
+		}
+	}
+
+	// Contre-epreuve title-aware : le MEME corpus, lu comme Halo Infinite (titre sans
+	// aucun match Campagne au registre), ne masque rien — la clause est un no-op, pas
+	// un filtre en dur.
+	pdb.TitleSlug = titlepkg.DefaultSlug
+	rows, err = NewTacticalRepo(pdb).MapsPlayed(context.Background(), domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+	if err != nil {
+		t.Fatalf("MapsPlayed (infinite): %v", err)
+	}
+	if len(rows) != 2 {
+		t.Errorf("cartes (infinite) = %+v, want 2 : le masquage doit etre no-op pour un titre sans Campagne", rows)
+	}
+}
+
+// TestTacticalRepo_AucuneDonnee_ZeroLigneZeroErreur : un joueur sans aucun match
+// est l'etat NOMINAL d'un compte neuf, pas une panne.
+func TestTacticalRepo_AucuneDonnee_ZeroLigneZeroErreur(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	repo := NewTacticalRepo(pdb)
+
+	rows, err := repo.MapsPlayed(context.Background(), domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+	if err != nil || len(rows) != 0 {
+		t.Errorf("MapsPlayed = %+v / %v, want 0 ligne, nil", rows, err)
+	}
+	pos, err := repo.KillPositions(context.Background(), tacQuery(tacCarteA))
+	if err != nil || len(pos.Univers.Matchs) != 0 || len(pos.Points) != 0 {
+		t.Errorf("KillPositions = %+v / %v, want vide, nil", pos, err)
+	}
+}
+
+// TestTacticalRepo_EntreesVides_Refus : jamais de scan complet — un xuid ou une
+// carte vides sont un refus, pas un balayage de shared.kill_positions.
+func TestTacticalRepo_EntreesVides_Refus(t *testing.T) {
+	repo := NewTacticalRepo(newTacticalTestPlayerDB(t))
+	if _, err := repo.MapsPlayed(context.Background(), domain.TacticalQuery{}); err == nil {
+		t.Error("MapsPlayed sans xuid : attendu un refus")
+	}
+	if _, err := repo.KillPositions(context.Background(), domain.TacticalQuery{MapID: tacCarteA}); err == nil {
+		t.Error("KillPositions sans xuid : attendu un refus")
+	}
+	if _, err := repo.KillEvents(context.Background(), domain.TacticalQuery{PlayerXUID: tacXUIDMoi}); err == nil {
+		t.Error("KillEvents sans carte : attendu un refus")
+	}
+}
+
+// TestTacticalRepo_TablesAbsentes_Capability : un shared sans les tables du film
+// (titre sans decodeur) rend ErrCapabilityNotSupported — 503 propre en bout de
+// chaine, jamais un 500.
+func TestTacticalRepo_TablesAbsentes_Capability(t *testing.T) {
+	sharedSQL, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open shared mem: %v", err)
+	}
+	t.Cleanup(func() { _ = sharedSQL.Close() })
+	// Le strict minimum pour que l'univers se lise : pas de kill_positions, pas de
+	// match_kill_events — exactement la situation d'un titre sans decodeur de film.
+	for _, ddl := range []string{
+		`CREATE TABLE match_registry (match_id VARCHAR, map_id VARCHAR, map_name VARCHAR,
+			map_name_fr VARCHAR, start_time TIMESTAMP, start_time_utc TIMESTAMPTZ,
+			playlist_name VARCHAR, pair_name VARCHAR)`,
+		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR,
+			team_id INTEGER, outcome INTEGER)`,
+		`INSERT INTO match_registry VALUES ('m1', 'map_streets', 'a', 'a', NULL, NULL, NULL, NULL)`,
+		`INSERT INTO match_participants VALUES ('m1', '` + tacXUIDMoi + `', 'moi', 0, 2)`,
+	} {
+		if _, err := sharedSQL.Exec(ddl); err != nil {
+			t.Fatalf("ddl minimale: %v", err)
+		}
+	}
+	shared := newTestDB(sharedSQL, ":memory:")
+	pdb := &PlayerDB{Shared: shared, SharedReader: LegacySharedReader(shared),
+		XUID: tacXUIDMoi, TitleSlug: titlepkg.DefaultSlug}
+
+	repo := NewTacticalRepo(pdb)
+	if _, err := repo.KillPositions(context.Background(), tacQuery(tacCarteA)); !errors.Is(err, games.ErrCapabilityNotSupported) {
+		t.Errorf("KillPositions sur schema sans film: err = %v, want ErrCapabilityNotSupported", err)
+	}
+	if _, err := repo.KillEvents(context.Background(), tacQuery(tacCarteA)); !errors.Is(err, games.ErrCapabilityNotSupported) {
+		t.Errorf("KillEvents sur schema sans film: err = %v, want ErrCapabilityNotSupported", err)
+	}
+}

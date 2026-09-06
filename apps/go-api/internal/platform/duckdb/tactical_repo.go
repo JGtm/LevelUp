@@ -256,9 +256,25 @@ func (r *TacticalRepo) habillerNomsFR(ctx context.Context, rows []domain.Tactica
 // indetectable a l'ecran. `HAVING count(*) = 1` ecarte le groupe entier — meme
 // prudence que la garde d'unanimite de Q21b / KillDistanceRepo.
 //
-// Une victime BOT (`victim_xuid` NULL) reste servie, en identite VIDE : c'est bien
-// une position ou le joueur a tue, et l'ecarter sous-compterait ses kills. C'est
-// l'appelant qui decide ce qu'une identite vide vaut pour son axe.
+// LES DEUX IDENTITES VIDES, ET ELLES NE SE VALENT PAS (doc corrigee le 2026-09-06,
+// verifiee sur pieces cote PRODUCTEURS) :
+//
+//	killer_xuid vide   DEFENSIF. Le collecteur du film ne garde que les morts dont
+//	                   LES DEUX identites sont resolues
+//	                   (sync/killcollector/positions.go, killRefsFromDeaths) et le
+//	                   persister REFUSE toute ligne sans tueur
+//	                   (persist/kill_position_persister.go). La jointure ci-dessous
+//	                   est en outre une EGALITE sur cette colonne. Aucun producteur
+//	                   connu n'en ecrit ; le COALESCE reste pour qu'un scan douteux
+//	                   ne range pas une chaine vide dans un axe par accident.
+//	victim_xuid vide   REEL, et servi. Le producteur NATIF de Halo 5 ne pose que le
+//	                   tueur (games/halo_5/ingest/positions.go) : sa ligne peut donc
+//	                   joindre un kill-event dont la victime est un BOT
+//	                   (`victim_xuid` NULL). C'est bien une position ou le joueur a
+//	                   tue, et l'ecarter sous-compterait ses kills.
+//
+// Dans les deux cas c'est l'appelant qui tranche : une identite vide n'appartient a
+// aucun axe « qui », faute d'equipe connue.
 const QTacticalPositions = `
 SELECT kp.match_id,
        COALESCE(kp.killer_xuid, '')     AS killer_xuid,

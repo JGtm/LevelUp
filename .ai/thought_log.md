@@ -95557,5 +95557,64 @@ contrairement a `kill_distance_repo_test.go` : le gate de la phase ne pose pas
 jour ; ratchets `no_slug_comparison`, `no_data_path_join`, `no_raw_start_time_literal`,
 `no_raw_outcome_literal`, `no_inline_objective_latest_view` et `tactical_pure` verts.
 
-**Prochaine etape** : revue adversariale du superviseur, puis phase 3 (l'echange sur la page
-Escouade). Les deux decisions produit ci-dessus attendent l'arbitrage de l'utilisateur.
+**Revue adversariale ronde 1 : 16 constats, tous corriges** en 6 commits `tactique(2.5)`.
+Trois etaient des P1 de fond, et les trois disent la meme chose sous trois formes — un lecteur
+ne verifie pas ce qu'il croit verifier.
+
+**R1, la porte de lecture etait une cle d'ECRITURE.** Les rasters etaient gates sur
+`film.kill_positions`, dont la propre documentation dit « CETTE CLE GOUVERNE LA CAPTURE, PAS LA
+LECTURE ». Halo 5 ne la declare pas et n'a aucune raison de le faire : sans decodeur de film, il
+remplit la MEME table nativement depuis le carnage (`match.events.spatial = supported`), et
+`match_kill_events` par la reprise de `killer_victim_pairs`. Un joueur Halo 5 recevait donc un
+503 sur une jointure qui aurait rendu toutes ses positions. Deux predicats nommes remplacent les
+deux `Has` : `positionsDeKillLisibles` accepte la capture Infinite OU le natif Halo 5 ;
+`journalDesMortsFiable` accepte la source de degat du film OU un kill-feed natif declare
+`supported` STRICTEMENT. Ce strict n'est pas une coquetterie : `Has` accepte aussi `degraded`,
+et Infinite declare justement `match.killfeed.per_kill = degraded` (kills simultanes
+possiblement omis) — soit exactement le defaut qui fabriquerait de faux echanges, une mort omise
+dans la fenetre de 5 s se lisant « non vengee ». Le vrai correctif tient en une cle FINE de
+lecture qui n'existe pas encore dans le vocabulaire des capabilities ; elle est consignee au §7
+comme relevant du lot C de l'audit, pas de ce lot.
+
+**R2, un garde-rail qui ne voit pas ce qu'il garde.** Les ~287 matchs de Campagne d'un joueur
+Halo 5 entraient dans la grille des cartes et dans l'univers des rasters, alors que l'Explorateur
+les masque. Le depot a pourtant un garde-rail structurel pour exactement cela — mais il ne balaye
+que les constantes nommees `Q<...>`, et mes constantes s'appelaient `tacticalUniversSQL`. Le
+garde-rail existait, il ne les voyait pas. Prefixe `Q` + token d'exclusion resolu au call site, et
+l'inversion (token retire) le fait bien tomber en nommant `QTacticalUnivers`.
+
+**R3, une fixture qui invente sa donnee.** `match_registry.map_name_fr` est systematiquement
+NULLE — le constat etait deja pose DEUX FOIS dans le meme paquet. Toutes les cartes sortaient
+donc avec un nom FR vide, et le test ne le voyait pas parce qu'il semait dans cette colonne une
+valeur qui n'existe nulle part en prod. C'est la lecon « DDL de test recopiee = derive
+indetectable » sous une autre forme : ici ce n'est pas la forme de la table qui derive, c'est son
+CONTENU PLAUSIBLE. La fixture seme desormais `asset_translations`, comme les tests voisins, et le
+lecteur passe par le helper promu depuis `EngagementScoreRepo` — pas une troisieme copie.
+
+**Le contrat, avant qu'il n'ait un consommateur.** `TacticalRaster` portait des tags snake_case,
+ses quatre voisins n'en avaient aucun : le contrat melangeait `map_id` et
+`MinX`/`Brut`/`EchantillonFaible`. Corrige maintenant, parce que le web n'a encore rien branche.
+Trois ajouts de fond au passage : la COUVERTURE DE LOCALISATION (`evenements_journal` /
+`evenements_localises`), parce qu'une carte muette sur un pan de la partie ressemble sinon a un
+pan de terrain ou il ne se passe rien — l'ecart entre ce que le journal compte et ce qui est
+localise est une propriete de la mesure, servie pour tous les titres ; les DEUX denominateurs de
+la lecture signee, que `MatchsRetenus` ne represente pas ; et le retrait du parametre `session`,
+que `BuildNeighborsWhereClause` n'applique jamais — on n'accepte pas ce qu'on n'honore pas.
+
+**Huit tests manquants**, dont un P0 : la face VICTIME de « ou je gagne » n'etait exercee nulle
+part, si bien qu'un `prendVictime` inverse serait passe vert. Les trois autres inversions
+demandees ont ete jouees et tombent : R1 (predicat reduit a la cle de capture), R2 (token
+retire), T5 (garde de composition retiree — un joueur inconnu tombe alors dans `adv`, l'equipe
+absente valant 0). Deux docs inversees corrigees SUR PIECES cote producteurs : un `killer_xuid`
+vide n'arrive pas (le collecteur exige les deux identites, le persister refuse la ligne) tandis
+qu'un `victim_xuid` vide arrive bel et bien, par le producteur natif de Halo 5 qui ne pose que
+le tueur.
+
+**Seuils reverifies APRES les ajouts** : les deux fichiers de test avaient franchi 500 lignes et
+ont ete scindes, meme discipline que `merge_test.go` en phase 1. Gate rejoue en entier : `go vet`
+propre sur 9 arbres, `go test -count=1` vert sur 24 paquets en 43,5 s, ratchet de lint de la CI a
+0 issue, `openapi-gen -check` a jour.
+
+**Prochaine etape** : ronde 2 de la revue sur ces corrections, puis phase 3 (l'echange sur la
+page Escouade). Les deux decisions produit de la phase 2 — « ou je gagne » lu sur les engagements,
+et le KPI d'echange porte sur mon camp — attendent toujours l'arbitrage de l'utilisateur.
