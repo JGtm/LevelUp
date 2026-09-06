@@ -119,6 +119,11 @@ totalité du corpus, dans un `shared_matches_v2` de 289 Mo. Ce qui ferait grossi
 un rien de temps », ce sont les TRAJECTOIRES (48 000 points par match) — elles restent dans
 l'artefact, et l'artefact reste régénérable depuis le cache de films, qui est la vraie source.
 
+**D12 — `decode_pass` sur `kill_openings`, VALIDÉ par l utilisateur le 2026-09-06.** Vue « dernière passe
+entière par match », modèle exact de `match_kill_events_latest` (ADR 0026). Commit `ed3b323f3`,
+fusionné. Limites assumées : une passe qui n écrit aucune ligne ne rétracte rien (4.0b) ;
+`kill_positions` reste par clé (dette consignée, décision séparée).
+
 **D10 — les filtres sont ceux de la Synthèse.** Le scope arrive par `MatchIDs` (déjà filtré
 par période côté service, cf. `loadWeaponAccuracy`) + `Gamertag`/`XUIDs`, avec `Validate()`
 qui refuse un scan complet. AUCUN filtre temporel en SQL dans ce repo : la période est déjà
