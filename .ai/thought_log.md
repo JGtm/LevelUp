@@ -1,3 +1,47 @@
+## [2026-09-07] Plan Tactique 7A — revue adversariale ronde 1, 16 constats corriges — Complete
+
+**Decision technique principale.** Les trois P0 disent la meme chose sous trois formes : ON
+AFFIRMAIT CE QU'ON NE SAVAIT PAS. Un coequipier INVISIBLE — occupant de vehicule non
+attribue (la primitive n'apparie que 15,6 a 21,1 % des vies) ou survivant de fin de partie
+(derniere vie anonyme) — etait compte MORT, si bien qu'une mort survenue a trois metres d'un
+coequipier sortait « isolee » sous l'etiquette « toute l'equipe a terre ». Le sidecar porte
+desormais un STATUT a trois valeurs par voisin (`vivant` avec sa distance, `mort`,
+`inconnu`), et la lecture distingue QUATRE sorties qui ne se confondent plus : accompagnee,
+isolee, indeterminee, equipe a terre — avec une priorite qui compte, un coequipier VU A
+PORTEE tranchant avant tout le reste, sans quoi une mesure certaine serait perdue pour une
+incertitude sans effet. Deux branches ont ete tranchees SUR PIECES avant de coder : le slot
+n'est PAS une identite stable (le depot a supprime le nommage par slot parce qu'un slot
+recycle donnait son intervalle au premier porteur nomme), donc les segments non nommes ne
+prouvent rien ; et une vie ne peut etre nommee QUE par la mort qui la clot
+(`lives.go:191` est la seule assignation), donc le garde `EndFrame > StartFrame` etait
+inerte et le vrai mecanisme est le NOMMAGE.
+
+**Resultats observes.** Le second fil du lot est le meme que celui des rondes precedentes :
+UN GARDE QUI NE GARDE PAS. Le filtre `spawn` ne vivait que dans la branche des sidecars et
+rendait 200 sur l'univers ENTIER sous un libelle de grappe pour les lectures SQL ; les
+matchs sans rayon restaient au denominateur (troisieme occurrence du defaut deja corrige
+deux fois sous « correction G2 ») ; une mort sans lieu etait peinte au point de MONTEE dans
+le vehicule. ET CE QUI RENDAIT LE PREMIER INVISIBLE ETAIT LE DOUBLE LUI-MEME : le mock du
+port ignorait la liste blanche que le vrai lecteur applique dans son SELECT — le rendre
+fidele a immediatement fait tomber deux fixtures fausses (20 identifiants disjoints des 8 de
+la carte, et une DDL recopiee qui avait manque une colonne). Table du radar completee aux 48
+variantes connues des autres tables, avec un test de couverture qui a mordu a l'ecriture :
+13 manquaient. Gate complet rejoue en serie, tous codes de sortie verifies : `go vet` et
+`go test` sur `internal/`, `cmd/` et `contracttest/` sans un `FAIL` ; integration `-p 1` sur
+trois arbres ; `golangci-lint --new-from-merge-base` a 0 issue ; `funlen` ne signalant aucun
+fichier du lot ; contrat a jour et `generate-types` sans derive ; vitest complet
+606/6405/0. ONZE mutations jouees, dont UNE SURVIVANTE corrigee — la bilinguite des noms de
+grappe passait parce que le double du service court-circuitait `zonesNommees`.
+
+**Conclusion / prochaine etape.** Trois commits `tactique(7.8.<n>)` sur `feat/tactique`, non
+pousses ; schema du sidecar 3 -> 4. **7B (item 7.7, le nuage Escouade) N'EST TOUJOURS PAS
+COMMENCE** : main rendue pour la ronde 2. Trois decouvertes ajoutees au §7, aucune traitee :
+la distance d'isolement est HORIZONTALE (deux etages lisent 0 m — limite assumee, ecrite en
+trois endroits), un survivant de fin de partie sort en `inconnu` et non en `vivant` (donc la
+fin de match est moins mesuree que le reste, faute d'une preuve d'identite que le film ne
+donne pas), et l'identifiant d'une grappe est deterministe mais PAS eternel (un univers qui
+bouge peut le changer ; le 404 le dit).
+
 ## [2026-09-06] Plan Tactique phase 7A — spawns, routes, isolement : le Go et le contrat — Complete
 
 **Decision technique principale.** La verification sur pieces, faite AVANT de coder, a decide
