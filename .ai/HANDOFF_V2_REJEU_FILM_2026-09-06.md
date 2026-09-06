@@ -83,3 +83,15 @@ gouverne la production + `CapReplay` ; R5 web en lignes de code ; déplacement d
 tiroir : ON NE TOUCHE PAS ; table ECS corrigée prudemment (fait, E.9) ; mécanismes de resync
 gardés. 12 (06/09) : `flagCarries` à compléter dans `replaybuild` (en cours) ; quinze faits
 résiduels à instruire (en cours) ; nettoyage OK (fait).
+
+## 6. Mise à jour (soir, après le rapport flagCarries)
+
+- `feat/v2-flagcarries` rendu : HEAD `9ab4436a9`, SchemaVersion 42, contrat inchangé ;
+  conception : `replaybuild` résout le pont une fois (`pontParManche`) et passe une table
+  résolue `slot → xuid` à `analysis/replay` via `FlagInput.Identity` (pas de faits de match
+  dans la couche pure) ; résultats `c0a82e88` 0 → 1, `e94163af` 16 → 33, `51101d1d` 10 → 11,
+  `fb1a1a72` (3 manches) identique ; ouverts au registre : CTF multi-manche, calques VIP/crâne.
+- Revue adverse FLAG-R1 lancée : agent `ad8c104824ac39741`, verdict attendu dans
+  `scratchpad/review/FLAG-R1.md`. Ensuite : corrections par `ae58e9a0d3e519fb1`, ronde 2 si
+  besoin, merge, Notion 41 → 42, seuil de re-cuisson < 42.
+- Faits résiduels : agent `a77fcfb0cbaa9cb92` toujours en cours (`feat/v2-residus`).
