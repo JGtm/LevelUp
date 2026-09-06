@@ -96795,3 +96795,40 @@ re-cuisson de release, que le bump 41 rend obligatoire — trois entrees au regi
 (re-cuisson, vie coupee par un trou de replication a corps immobile, pont ecrase par deux morts sur
 un meme slot). Verifie en passant : la candidate 1 est bien close (`145908d1` publie de nouveau ses
 7 actions d'objectif, zero ecart sur l'axe `objectifs`).
+
+## [2026-09-06] Revue REG-R1 : cinq constats traites, dont une perte que mon correctif introduisait
+
+**Statut** : Complete (branche `feat/v2-regressions`, meme worktree).
+
+**Decision technique principale.** La revue adverse confirme le diagnostic et l'additivite sur
+quatre films, mais **refute deux de mes conditions** et en nuance une troisieme. La plus serieuse
+(C1) : quand ni l'accroche ni le tir d'un grappin ne tombe dans une fenetre publiee du slot, mon
+`lifeCovering` rendait nil et JETAIT une traction que la base publiait — sur un slot MONO-VIE,
+donc sans aucun rapport avec le decoupage. Le calque ne doit jamais publier moins qu'avant : a
+defaut de fenetre couvrante, la traction se rattache desormais a la vie la plus proche
+(`lifeNearest`), bornee exactement comme avant. Les quatre autres : `camoLives`/`overshieldLives`
+comptaient des SLOTS sous un commentaire parlant de vies — le defaut symetrique de celui que je
+venais de corriger pour `pullLives`, dans le fichier meme que je modifiais (C2) ; l'en-tete de
+`closures_respawn.go` annoncait une « scission pure » alors qu'il porte `rep.noteLife`, le coeur
+du correctif de la fermeture B (C3, doc inversee — exactement ce que je reprochais a
+`48cf4905d`) ; un commentaire citait `13d92593` parmi les films restitues quand la chronique et la
+mesure disent l'inverse (C4) ; et surtout `usage_summary.go` ATTRIBUE les gestes par slot
+« dernier gagnant », donc au second occupant d'un slot recycle — faiblesse anterieure que mon
+correctif ELARGIT puisque les gestes des vies non dernieres existent desormais (C5).
+
+**Resultats observes.** Cinq correctifs, chacun prouve ROUGE puis VERT : C1 (deux scenarios du
+verdict en sous-tests, « 0 traction, attendu 1 » avant) ; C2 (« 2 episodes / 1 vies » avant) ;
+C5 (« 111 : 0/0/0 » et « 222 : 2/2/2 » avant, 1/1/1 chacun apres). `UsageSummaryRev` passe de
+`us1` a `us2`, comme sa propre doc l'exige des qu'une regle d'attribution change — sans quoi le
+backfill sauterait les resumes a refaire. Le recensement « aucun quatrieme calque » est corrige :
+vrai des calques qui JETTENT, faux comme absolu (deux compteurs et un attributeur indexaient par
+slot une grandeur devenue par vie). Gates verts : replay + replaybuild + archlint, wire en
+integration `-p 1`, `go build ./...`, `golangci-lint --new-from-merge-base` a 0 issue, goldens
+inconditionnels. Cuisson de controle `879a4dba` (pic 0,23 Gio) : **1 seul ecart avec la cuisson
+precedente, `schemaVersion` 40 -> 41**, artefacts identiques a l'octet pres une fois ce numero
+neutralise.
+
+**Conclusion / prochaine etape.** L'instruction des regressions 2/3/4 est close revue comprise.
+Une divergence Go/web est desormais assumee et inscrite au registre : la page Sessions attribue
+juste, la vue match garde l'agregat par slot — a aligner au prochain lot web. Le bump de schema
+41 et la montee `us2` restent les deux conditions de la propagation a la release.
