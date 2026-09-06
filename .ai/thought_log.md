@@ -95450,3 +95450,44 @@ l'etat exact publie. Decouverte non traitee (perimetre ferme) :
 7 imports de valeur dans `replayDraw.ts`, qui en porte 6, mesure identique au commit de base ;
 c'est le pendant de M1 (ces specs n'ont jamais tourne en CI) et cela releve de F.6. La tache
 D-II (modele, calques, arborescence) ne demarre qu'apres la revue adversariale de D-I.
+
+## [2026-09-06] Lot D tache D-II premier temps — modele, calques, position de lecture — Complete
+
+**Contexte.** Plan v2 du rejeu et du film, lot D, tache D-II scindee en deux temps par le
+superviseur pour menager le contexte. Premier temps : D.6 (le modele de la page), D.7 (le
+contrat de calque et la composition), D.8 (la position de lecture hors de React). Trois
+constats du registre du 2026-09-05 : W1 (la jointure dans douze memos d'une route, et trois
+representations de la position de lecture) et M3 (la composition de la scene sans aucun test,
+son seul « test » comptant les lignes du fichier). Refonte INTERNE : aucun changement visuel
+ni de comportement voulu.
+
+**Decision technique.** Trois foyers, chacun teste sans React. `model/replayModel.ts` porte la
+jointure ARTEFACT x VUE MATCH en fonction pure ; `useReplayModel` ne fait que la memoiser.
+`replayCompose.ts` porte l'ordre des vingt-cinq calques EN DONNEE (`LAYER_ORDER`), la condition
+d'ouverture de chacun (`sceneLayers`) et la boucle (`composeScene`, qui rend la liste de ce
+qu'elle a peint) ; le contrat de calque n'invente rien — c'est la signature la plus large des
+onze `paint` que les hooks exposaient deja. `model/playbackStore.ts` porte la position PUBLIEE
+hors de React : le canvas publie, la page lit par `useSyncExternalStore`. Le magasin retient la
+valeur au lieu de lire la cellule vivante, et c'est une contrainte de React, pas un confort —
+un instantane qui change a chaque appel se signale comme une boucle.
+
+**Resultats.** Trois commits (0ff61938d, 246f3bbf2, 20c8abe9e) et 59 cas neufs a oracle ecrit a
+la main. La route passe de 395 a 316 lignes et de treize memos a trois. La fonction `draw` du
+canvas passe de 222 a 22 lignes ; le fichier de 661 a 651, les justifications d'ordre ayant
+migre dans `LAYER_ORDER` ou elles ont desormais leur seul foyer — le cliquet de taille a
+d'ailleurs morde en cours de route (666 > 665), ce qui a impose la deduplication. La copie
+React de la position et la prop de rappel `onFrameChange` disparaissent. Gates verts :
+`tsc -b --force`, lint a 27 avertissements (la baseline exacte), 6 339 tests web, couleurs
+propres, cliquet d'imports croises inchange a 7/7, build de production. TEMOIN VISUEL : les
+deux specs de rasterisation rendent les memes captures avant et apres chaque item (3 passed) —
+il a fallu reparer leur harnais pour cela, et la derive etait double et non simple
+(`drawGrenadeRestLayer` avait change de fichier), correctif local a reconcilier avec le lot F.
+
+**Conclusion / prochaine etape.** Premier temps clos et pousse. Un item non traite, avec sa
+raison mesuree : « `ReplayTransport` et `ReplaySettingsDrawer` remontent freres » exige de
+faire remonter neuf hooks de calque (les `available.*` du tiroir) et six hooks de transport,
+c'est-a-dire de demonter le composant-dieu — le contenu de D.9 et D.10 — et le tiroir est
+positionne en absolute par rapport a la div racine du canvas, donc changer son parent change sa
+position sous une contrainte « aucun changement visuel » que les specs de rasterisation ne
+couvrent pas. Question au superviseur : rattacher a D.9/D.10, ou item propre avec gate visuel ?
+Le second temps (D.9 a D.14) ne demarre qu'apres son message.
