@@ -168,7 +168,120 @@ ne peut peser sur le job restant.
 
 ---
 
+---
+
+## Tâche D-II, premier temps (D.6, D.7, D.8) — CLOS le 2026-09-06
+
+### Items
+
+- [x] **D.6 — la jointure devient une fonction pure testée.** `commit 0ff61938d`.
+  `model/replayModel.ts` porte `buildReplayModel(doc, matchView, settings)` (identité, marques,
+  horloge, fenêtre de gameplay, roster, fil recalé, médias, score final, countdown) ;
+  `model/useReplayModel.ts` ne fait que la mémoïser. La route passe de **395 à 316 lignes** et
+  de **treize `useMemo` à trois** — restent le fond de carte et les zones nommées (trois AUTRES
+  requêtes, hors de cette jointure) et le son de fin de partie (locale-aware). 20 cas à oracle
+  écrit à la main.
+- [x] **D.7 — l'ordre des calques devient une donnée testée.** `commit 246f3bbf2`.
+  `replayCompose.ts` porte `LAYER_ORDER` (les 25 calques, du sol vers le sujet), `sceneLayers`
+  (la condition de chacun : interrupteur du tiroir OU absence de matière) et `composeScene` (la
+  boucle, qui rend la liste de ce qu'elle a PEINT). 25 cas au contexte enregistreur. Côté
+  canvas, `draw` passe de **222 à 22 lignes** ; la table de liaison devient `buildScene`.
+- [x] **D.8 — la position de lecture publiée sort de l'arbre React.** `commit 20c8abe9e`.
+  `model/playbackStore.ts` : le canvas publie, la page lit (`usePlaybackFrame`,
+  `useSyncExternalStore`), un magasin par page. La copie React de la route et la prop de
+  rappel `onFrameChange` disparaissent. 14 cas.
+- [x] **D.8 — `useReplayDrawer` : vérifié, il RESTE.** Son unique consommateur est
+  `ReplayCanvas` (`grep -rn useReplayDrawer apps/web/src` : une importation, un appel, deux
+  mentions dans le garde de taille). Il groupe ~120 lignes que le canvas ne peut pas absorber —
+  il est à 651 lignes pour un plafond de 665. La condition de l'item (« disparaît si plus rien
+  ne le justifie ») est donc vérifiée et NON remplie : le justificatif tient.
+- [!] **D.8 — « `ReplayTransport` et `ReplaySettingsDrawer` remontent frères » : NON TRAITÉ,
+  bloqué sur une dépendance mesurée.** Les deux sont déjà frères dans le DOM (enfants de la
+  même `div` racine du canvas) ; les promouvoir en frères de `<ReplayCanvas/>`, montés par la
+  route, exige de faire remonter avec eux l'état dont ils vivent :
+  - `ReplaySettingsDrawer` reçoit `drawer.panel`, dont les neuf `available.*` viennent de neuf
+    hooks de CALQUE qui vivent dans le canvas (`calloutZones`, `placements`, `weaponPads`,
+    `groundWeapons`, `flags`, `vipCrown`, `skullCarrier`, `bombCarrier`, `vehicles`) ;
+  - `ReplayTransport` reçoit `playback`, `timeline`, `sound`, `capture`, `settings` et
+    `clockRef`, tous produits par des hooks du canvas.
+  Les faire remonter, c'est démonter le composant-dieu — le contenu de D.9 et D.10, pas d'un
+  item de câblage. Et le tiroir est positionné en `absolute` par rapport à la `div` racine du
+  canvas : changer son parent change son bloc conteneur, donc sa position à l'écran, sous une
+  contrainte « aucun changement visuel » que les deux specs de rasterisation ne couvrent pas
+  (elles peignent des primitives hors DOM). **Question ouverte pour le superviseur** : est-ce à
+  rattacher à D.9/D.10, ou à traiter comme un item propre avec un gate visuel dédié ?
+
+### Gate du premier temps de D-II
+
+| Gate | Commande exacte | Dernière ligne |
+|---|---|---|
+| Typecheck (cache forcé) | `cd apps/web && npx tsc -b --force` | (aucune sortie) `TSC_EXIT=0` |
+| Lint | `npm --prefix apps/web run lint` | `✖ 27 problems (0 errors, 27 warnings)` |
+| Vitest (dossiers du lot) | `cd apps/web && node_modules/.bin/vitest run --pool=forks src/features/match-replay src/features/match-view src/lib/replay` | `Tests  2871 passed (2871)` |
+| Vitest (suite web entière) | `cd apps/web && node_modules/.bin/vitest run --pool=forks` | `Tests  6339 passed \| 14 skipped (6353)` |
+| Couleurs | `node tools/lint-no-hardcoded-colors.mjs` | `lint-no-hardcoded-colors: clean (0 violation)` |
+| Imports croisés | `node tools/lint-cross-feature-imports.mjs` | `Info : 7 <= plafond P8.5 (7). Pas d'échec` |
+| Build de production | `npm --prefix apps/web run build` | `✓ built in 4.11s` |
+| Rasterisation (témoin) | `cd apps/web && npx playwright test e2e/replay-explosion-raster.spec.ts e2e/replay-muzzle-raster.spec.ts --reporter=line` | `3 passed` |
+
+Les 27 avertissements de lint sont ceux de la baseline : le premier temps en a introduit puis
+retiré deux familles (voir « Décisions »), il n'en laisse aucun.
+
+**Le témoin de rasterisation est vert AVANT et APRÈS chaque item.** Il a fallu réparer son
+harnais pour cela, et la dérive était double, pas simple : `drawGrenadeRestLayer` avait quitté
+`replayDraw.ts` pour `grenadeRestLayer.ts` (3 imports de valeur, et non 7). Le correctif local
+est dans `apps/web/e2e/replay-explosion-raster.spec.ts` — deux lignes, à réconcilier au merge
+avec le lot F, qui met ces specs en CI (F.6).
+
+### Décisions prises
+
+8. **Le modèle est la jointure ARTEFACT × VUE MATCH, et rien d'autre (D.6).** Le fond de carte
+   et les zones nommées viennent de trois autres requêtes : les y faire entrer aurait demandé
+   d'élargir la signature à des données qui ne participent pas de cette jointure. Le son de fin
+   de partie dépend de la LANGUE (voix d'annonceur) : il reste à la page.
+9. **Une seule mémo pour toute la jointure (D.6).** Les trois entrées sont des résultats de
+   requêtes dont l'identité ne change qu'au chargement ; la page se re-rend ~6,7 fois par
+   seconde pendant la lecture et aucun de ces rendus ne refait le calcul — exactement comme les
+   treize mémos remplacés.
+10. **`players` est exposé par le modèle bien que `ReplayTeams` en rebâtisse un (D.6).** Le
+    champ a un consommateur interne (les lignes d'entrée/sortie) ; la seconde construction est
+    la même fonction pure sur les mêmes entrées, donc le même résultat — mesuré en vérification
+    adverse (V-WEB-1 constat 2), et sa migration relève du lot des canoniques.
+11. **Le contrat de calque n'invente pas une troisième convention (D.7).**
+    `LayerPaint = (ctx, frame, dpr)` est la signature la plus large des onze `paint` que les
+    hooks exposent déjà : cinq lisent la densité de pixels, six l'ignorent, et TypeScript
+    accepte les seconds là où le premier est attendu. Les dix calques restants sont des
+    fonctions libres à signature riche (`drawTracksLayer`, `drawShotsLayer`…) : le canvas les
+    LIE à cette convention plutôt que de les réécrire — leur signature est ce qui les rend
+    testables une par une, et l'uniformiser aurait coûté leurs tests sans rien apporter.
+12. **`buildScene` porte une exemption R5 assumée (D.7).** 179 lignes, mais c'est une TABLE :
+    une entrée par calque, aucun embranchement, aucun ordre. La découper par famille donnerait
+    trois listes de vingt liaisons à tenir en phase pour la même table. Le cliquet de taille du
+    canvas a d'ailleurs mordu pendant le lot (666 > 665) : les justifications d'ORDRE ont alors
+    migré dans `LAYER_ORDER`, où elles ont désormais leur seul foyer — le fichier retombe à
+    651 lignes.
+13. **Le magasin RETIENT la position publiée au lieu de lire la cellule vivante (D.8), et ce
+    n'est pas un doublon.** `useSyncExternalStore` exige un instantané STABLE entre deux
+    notifications : lire la cellule que la boucle avance à 60 Hz ferait lire à React une valeur
+    différente à chaque appel, ce qu'il signale comme une boucle. « Où en est le tracé » et
+    « ce que la page affiche » sont deux grandeurs, séparées par un bridage à 150 ms qui vit
+    chez celui qui peint.
+14. **La cellule de dessin reste un `useRef` du canvas (D.8).** La faire porter par le magasin
+    et la passer en prop a été essayé : le compilateur React refuse de mémoïser un composant
+    qui reçoit une cellule de ref par prop (14 avertissements neufs, `Cannot access refs during
+    render`). Le magasin ne porte donc que la publication — ce qui est aussi ce que le point 13
+    impose.
+
+### Découvertes (premier temps de D-II)
+
+5. **La position de lecture ne se remet pas à zéro d'un match à l'autre.** Ni avant ce lot (la
+   route gardait `useState(0)`, le canvas son `frameRef`), ni après. Naviguer d'un rejeu à un
+   autre sans démonter la route laisserait la position précédente. Non traité : le corriger
+   serait un changement de comportement, hors de la contrainte de ce lot.
+6. **`e2e/replay-explosion-raster.spec.ts` portait DEUX dérives, pas une** (détail au gate).
+   Le correctif d'une ligne annoncé n'aurait pas suffi.
+
 ## Reste à faire
 
-- Tâche D-II (D.6 à D.14) : non commencée. Elle démarre sur message du superviseur, après la
-  revue adversariale de D-I.
+- Tâche D-II, second temps (D.9 à D.14) : non commencé. Il démarre sur message du superviseur.
+
