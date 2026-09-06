@@ -789,7 +789,33 @@ package replay
 // `flagIdentityOf`), internal/replaybuild/matchfacts.go (`pontParManche`),
 // internal/analysis/objectiveevents/slotidentity_rounds.go (`CompletedByLines`) et
 // .ai/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md.
-const SchemaVersion = 42
+//
+// v43 (2026-09-06) : UNE VIE ANONYME N'EST PAS UNE ABSENCE. Aucun champ n'est ajouté ; c'est le
+// CONTENU de `skullCarries` — et, latent, de `bombCarries` — qui change. Le gate de présence
+// (`af89b091b`, 2026-08-30) écartait un portage dont le porteur n'avait aucune vie NOMMÉE sur
+// l'intervalle, et rognait celui qui en débordait. Or le pont d'identité laisse des vies
+// ANONYMES (18 slots sur 160 sur `d9781168` — 142 portent au moins une vie nommée, ces 18-là
+// aucune) : « aucune vie nommée » n'y veut pas dire « absent », mais « on ne sait pas ». Le gate
+// ne s'applique donc plus quand une vie anonyme recouvre le portage — il ne rejette que ce que
+// les pistes publiées DÉMENTENT.
+//
+//	mesure   En Oddball le score EST le temps de portage : chaîne de contrôle INDÉPENDANTE du
+//	         film. `d9781168`, feuille de match 191 s / 196 s par équipe ; artefact du parc au
+//	         schéma 23 : 172,5 s / 158,8 s ; artefact au schéma 41 : 60,1 s / 147,4 s. Le gate
+//	         écartait 6 portages sur 36 (32,6 s) et en rognait 4 (91,2 s) — il éloignait
+//	         l'artefact de la vérité au lieu de l'en rapprocher. Aussi `51ebbc0f` (7 sur 14) et
+//	         `24dbb67d` (3 sur 20).
+//	rendu    Un portage écarté ne rendait pas le crâne visible : il faisait retomber
+//	         `skullPresenceAt` (web) sur la règle du repos, qui pose le crâne à sa dernière
+//	         position connue PENDANT qu'un joueur court avec — le fantôme même que l'invariant
+//	         d'`objectiveObjectsLayer` interdit. Le calque du porteur, lui, ne dessine déjà rien
+//	         sans position : le symptôme d'origine (« icône absente ») était honnête.
+//
+// La version monte pour la raison des montées v39/v40/v41/v42 : un artefact 23 à 42 est appauvri
+// sans que sa forme le dise, et `backfill-replay` saute un artefact à la version courante.
+// Détail : internal/analysis/replay/skull_carries.go (carrierPresence.gate) et
+// .ai/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
+const SchemaVersion = 43
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
