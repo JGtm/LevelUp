@@ -68,7 +68,11 @@ export function TacticalPage() {
 
   // ── Périmètre ──────────────────────────────────────────────────────────────
   const contexte = useMemo(() => contexteFiltre(scope), [scope])
-  const { data: perimetre } = useTacticalMatchIDs(playerSlug, contexte)
+  const {
+    data: perimetre,
+    isPending: perimetreEnCours,
+    isError: perimetreEnEchec,
+  } = useTacticalMatchIDs(playerSlug, contexte)
 
   const { options: coequipierOptions, chargees } = useCoequipierOptions(playerSlug)
   const composition = useMemo(
@@ -82,13 +86,27 @@ export function TacticalPage() {
   const matchIDs =
     perimetre && composition.inconnus.length === 0 ? perimetre.match_ids : null
 
-  const { data, isLoading, isError } = useTacticalMaps(playerSlug, matchIDs, composition.xuids)
+  const grille = useTacticalMaps(playerSlug, matchIDs, composition.xuids)
+  const data = grille.data
 
   const cartes = useMemo(() => trierCartes(data?.cartes ?? []), [data])
   const couverture = useMemo(() => couvertureGrille(cartes), [cartes])
   const plancher = data?.plancher_matchs ?? 0
 
-  const enChargement = isLoading && !compositionImpossible
+  // ─── TROIS ÉTATS, ET L'ÉTAT VIDE EST LE DERNIER ───────────────────────────
+  //
+  // La grille est SUSPENDUE tant que le périmètre n'est pas résolu, et une requête
+  // suspendue n'est pas « chargée » : en TanStack v5, `isLoading` vaut
+  // `isPending && isFetching`, donc FAUX sur une requête désactivée. S'y fier faisait
+  // rendre « Aucune carte jouée » au premier montage, à chaque clic sur « Analyser »
+  // (nouvelle clé, aucune donnée en cache) et DÉFINITIVEMENT si la résolution
+  // échouait. On lit donc `isPending`, qui reste vrai tant qu'aucune donnée n'existe.
+  //
+  // L'ORDRE COMPTE : composition impossible, puis échec, puis attente, puis état vide.
+  // « Aucune carte jouée » est une RÉPONSE — elle exige une liste de matchs résolue et
+  // une grille servie, jamais l'absence de l'une des deux.
+  const enEchec = perimetreEnEchec || grille.isError
+  const enChargement = !compositionImpossible && !enEchec && (perimetreEnCours || grille.isPending)
 
   return (
     <>
@@ -124,15 +142,15 @@ export function TacticalPage() {
           {!compositionImpossible && enChargement && (
             <p className="text-sm text-muted-foreground">{t.loading}</p>
           )}
-          {!compositionImpossible && !enChargement && isError && (
+          {!compositionImpossible && !enChargement && enEchec && (
             <p className="text-sm text-muted-foreground" data-testid="tactical-erreur">
               {t.error}
             </p>
           )}
-          {!compositionImpossible && !enChargement && !isError && cartes.length === 0 && (
+          {!compositionImpossible && !enChargement && !enEchec && cartes.length === 0 && (
             <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
           )}
-          {!compositionImpossible && !enChargement && !isError && cartes.length > 0 && (
+          {!compositionImpossible && !enChargement && !enEchec && cartes.length > 0 && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {cartes.map((carte) => (
                 <TacticalMapTile

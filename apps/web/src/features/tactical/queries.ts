@@ -21,6 +21,7 @@ import type {
   CareerEncountersResponse,
   FilterContextInput,
   FilterMatchIdsResponse,
+  TacticalMapsBody,
   TacticalMapsPage,
   TeammateOption,
 } from '@/lib/api/types'
@@ -45,13 +46,26 @@ export function hashFiltre(valeur: unknown): string {
  * `match_context`, sessions, période et cascade y sont tous honorés. Une liste VIDE
  * est une réponse légitime (le filtre ne retient rien) et NON une absence de
  * réponse : les lectures qui la consomment servent alors une grille vide.
+ *
+ * UN ÉCHEC N'EST PAS AVALÉ. Il est journalisé ici puis propagé : l'appelant doit
+ * pouvoir DIRE que la lecture a échoué, là où une résolution muette laissait la page
+ * afficher « aucune carte » pour toujours.
  */
 export function useTacticalMatchIDs(playerSlug: string, contexte: FilterContextInput) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.tacticalMatchIDs(playerSlug, titleSlug, hashFiltre(contexte)),
-    queryFn: () =>
-      api.post<FilterMatchIdsResponse>(`/players/${playerSlug}/filters/match-ids`, contexte),
+    queryFn: async () => {
+      try {
+        return await api.post<FilterMatchIdsResponse>(
+          `/players/${playerSlug}/filters/match-ids`,
+          contexte,
+        )
+      } catch (err) {
+        console.error('[tactique] résolution du périmètre en échec', err)
+        throw err
+      }
+    },
     enabled: !!playerSlug,
     staleTime: 2 * 60 * 1000,
   })
@@ -65,9 +79,11 @@ export function useTacticalMatchIDs(playerSlug: string, contexte: FilterContextI
  * ne doivent jamais se resservir l'un l'autre.
  *
  * `matchIDs` à `null` = le périmètre n'est pas encore résolu (ou une composition
- * n'est pas traduisible) : la requête N'EST PAS lancée. Envoyer une liste vide en
- * attendant afficherait « aucune carte » le temps d'un aller-retour, ce qui se lit
- * comme un résultat.
+ * n'est pas traduisible) : la requête N'EST PAS lancée, et l'appelant rend un état
+ * d'ATTENTE — jamais un état vide, qui se lirait comme un résultat.
+ *
+ * Le corps est typé par le CONTRAT GÉNÉRÉ (`TacticalMapsBody`) : renommer un champ
+ * côté Go doit casser `tsc` ici, pas se découvrir à l'exécution.
  */
 export function useTacticalMaps(
   playerSlug: string,
@@ -75,7 +91,7 @@ export function useTacticalMaps(
   coequipiers: string[],
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const corps = { match_ids: matchIDs ?? [], coequipiers }
+  const corps: TacticalMapsBody = { match_ids: matchIDs ?? [], coequipiers }
   return useQuery({
     queryKey: queryKeys.tacticalMaps(playerSlug, titleSlug, hashFiltre(corps)),
     queryFn: () => api.post<TacticalMapsPage>(`/players/${playerSlug}/tactical/maps`, corps),

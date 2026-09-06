@@ -3077,3 +3077,10 @@ export type ReplayRosterEntry = components['schemas']['RosterEntry']
 // NOMMER à l'utilisateur — jamais le recopier côté client, ce qui en ferait deux vérités.
 export type TacticalMapsPage = components['schemas']['TacticalMapsPage']
 export type TacticalMapCard = components['schemas']['TacticalMapCard']
+
+// Les CORPS des deux lectures tactiques — elles sont en POST parce que leur périmètre est
+// une LISTE de match_id, qui ne tient pas dans une query string. Typer le corps sur le
+// contrat généré (et non sur un objet littéral) fait qu'un renommage côté Go casse `tsc`
+// ici, au lieu de se découvrir à l'exécution sur une grille vide.
+export type TacticalMapsBody = components['schemas']['TacticalMapsBody']
+export type TacticalRasterBody = components['schemas']['TacticalRasterBody']
