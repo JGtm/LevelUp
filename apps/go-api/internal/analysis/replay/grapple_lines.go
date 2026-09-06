@@ -82,9 +82,15 @@ func buildGrappleLines(reads []filmdec.GrappleRead, entry filmdec.MapQuantEntry,
 	if len(reads) == 0 || step == 0 {
 		return nil, cov
 	}
-	byTrack := make(map[uint32]*Track, len(tracks))
+	// UN SLOT PORTE PLUSIEURS VIES DEPUIS LE SCHÉMA 36 (« une track = une vie »), et ce calque
+	// l'ignorait : la map slot -> track ne retenait que la DERNIÈRE vie du slot, si bien qu'une
+	// traction d'une vie antérieure se voyait ramenée hors de sa fenêtre puis JETÉE.
+	// Mesure sur `879a4dba` (Fortitude) : 23 accroches lues dans le film, 23 tractions publiées
+	// au schéma 34, **15** dès `48cf4905d` — les 8 perdues appartenaient toutes à une vie qui
+	// n'était pas la dernière de son slot (543, 584 x4, 587, 631 x2). Correctif du 2026-09-06.
+	byTrack := make(map[uint32][]*Track, len(tracks))
 	for i := range tracks {
-		byTrack[tracks[i].Slot] = &tracks[i]
+		byTrack[tracks[i].Slot] = append(byTrack[tracks[i].Slot], &tracks[i])
 	}
 	bySlot := map[uint32][]filmdec.GrappleRead{}
 	for _, r := range reads {
@@ -101,13 +107,18 @@ func buildGrappleLines(reads []filmdec.GrappleRead, entry filmdec.MapQuantEntry,
 	}
 	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
 	var out []GrappleLine
-	lives := map[uint32]struct{}{}
+	// LES VIES SE COMPTENT PAR VIE, PAS PAR SLOT (même correctif, 2026-09-06) : la clé était le
+	// slot, ce qui confondait deux occupations successives d'un même siège de réplication en une
+	// seule « vie de grappin ». Le nom du compteur disait déjà ce qu'il devait mesurer.
+	lives := map[[2]int]struct{}{}
 	for _, s := range slots {
 		list := bySlot[s]
 		sort.SliceStable(list, func(i, j int) bool { return list[i].TimestampUS < list[j].TimestampUS })
 		for _, l := range grappleLinesOfLife(list, entry, origin, step, byTrack[s], cov) {
 			out = append(out, l)
-			lives[s] = struct{}{}
+			if tr := lifeCovering(byTrack[s], l.T0); tr != nil {
+				lives[[2]int{int(l.Slot), tr.StartFrame}] = struct{}{}
+			}
 		}
 	}
 	cov.Pulls, cov.PullLives = len(out), len(lives)
@@ -127,7 +138,7 @@ func buildGrappleLines(reads []filmdec.GrappleRead, entry filmdec.MapQuantEntry,
 // traction (fenêtre ouverte au tir apparié, sinon à l'accroche), chaque tir resté sans
 // accroche est un raté compté.
 func grappleLinesOfLife(list []filmdec.GrappleRead, entry filmdec.MapQuantEntry,
-	origin, step uint64, track *Track, cov *GrappleCoverage) []GrappleLine {
+	origin, step uint64, vies []*Track, cov *GrappleCoverage) []GrappleLine {
 	var out []GrappleLine
 	pendingFire := -1
 	for i, r := range list {
@@ -147,7 +158,7 @@ func grappleLinesOfLife(list []filmdec.GrappleRead, entry filmdec.MapQuantEntry,
 			}
 			pendingFire = -1
 		}
-		if l, ok := grappleLine(r, startUS, entry, origin, step, track); ok {
+		if l, ok := grappleLine(r, startUS, entry, origin, step, vies); ok {
 			out = append(out, l)
 		}
 	}
@@ -160,11 +171,13 @@ func grappleLinesOfLife(list []filmdec.GrappleRead, entry filmdec.MapQuantEntry,
 // grappleLine construit UNE traction : ancre déquantifiée, fenêtre [tir, arrivée] bornée
 // à la fenêtre de la vie publiée. ok=false si la vie n'est pas publiée ou si la fenêtre
 // est vide (mort à l'accroche) : rien à tracer.
+//
+// LA VIE EST CELLE QUI COUVRE L'ACCROCHE, parmi les vies du slot — le slot en porte
+// plusieurs depuis le schéma 36, et prendre la dernière jetait toutes les tractions des
+// précédentes (cf. buildGrappleLines). L'accroche fait foi plutôt que le tir : c'est elle
+// qui atteste la traction, et c'est sur elle que le calque est daté.
 func grappleLine(r filmdec.GrappleRead, startUS uint64, entry filmdec.MapQuantEntry,
-	origin, step uint64, track *Track) (GrappleLine, bool) {
-	if track == nil {
-		return GrappleLine{}, false // vie non publiée : aucune fiche où poser la traction
-	}
+	origin, step uint64, vies []*Track) (GrappleLine, bool) {
 	lay := filmdec.I0Layout{AxisW: entry.AxisWidths}
 	wr := entry.Range()
 	ax := filmdec.DequantBipedAxis(r.PosQ[0], 0, lay, wr)
@@ -172,6 +185,31 @@ func grappleLine(r filmdec.GrappleRead, startUS uint64, entry filmdec.MapQuantEn
 	az := filmdec.DequantBipedAxis(r.PosQ[2], 2, lay, wr)
 	t0 := frameOf(startUS, origin, step)
 	tAttach := frameOf(r.TimestampUS, origin, step)
+	track := lifeCovering(vies, tAttach)
+	if track == nil {
+		track = lifeCovering(vies, t0) // l'accroche tombe dans un trou : le tir décide
+	}
+	if track == nil {
+		// AUCUNE FENÊTRE NE COUVRE NI L'ACCROCHE NI LE TIR : la traction se rattache à la vie
+		// la PLUS PROCHE, ce que faisait l'état d'avant le découpage (il prenait la piste du
+		// slot sans se demander si elle couvrait quoi que ce soit). Deux configurations
+		// l'atteignent avec UNE SEULE vie — la vie comprise entre le tir et l'accroche, et un
+		// couple tir/accroche antérieur à la vie de moins de `grapplePullCapUS` —, donc sans
+		// aucun rapport avec le découpage (constat C1 de la revue REG-R1, 2026-09-06). Le clamp
+		// ci-dessous borne exactement comme avant et refuse toujours une fenêtre vide.
+		//
+		// CE QUI EST GARANTI, ET RIEN DE PLUS : quand aucune vie ne couvre l'accroche, la
+		// traction est publiée comme avant. Ce n'est PAS « ce calque ne publie jamais moins
+		// qu'avant » — une accroche tombant sur la DERNIÈRE image d'une vie a bien une vie
+		// couvrante, dont la fenêtre est alors vide (`t1 <= t0`), et la traction est refusée
+		// là où l'ancien code la posait sur la vie SUIVANTE. Ce refus-là est le bon : dater
+		// sur sa vie suivante la traction d'un joueur qui vient de mourir serait faux
+		// (constat N-1 de la seconde ronde REG-R2).
+		track = lifeNearest(vies, tAttach)
+	}
+	if track == nil {
+		return GrappleLine{}, false // aucune vie publiée : aucune fiche où poser la traction
+	}
 	t1 := grappleArrival(track, tAttach, int(grapplePullCapUS/step), ax, ay, az)
 	if t0 < track.StartFrame {
 		t0 = track.StartFrame
@@ -183,6 +221,53 @@ func grappleLine(r filmdec.GrappleRead, startUS uint64, entry filmdec.MapQuantEn
 		return GrappleLine{}, false // mort à l'accroche ou fenêtre hors de la vie publiée
 	}
 	return GrappleLine{Slot: r.Slot, T0: t0, T1: t1, AX: round2(ax), AY: round2(ay), AZ: round2(az)}, true
+}
+
+// lifeCovering rend la vie du slot dont la fenêtre publiée contient cette frame, nil si aucune.
+//
+// UNE FRAME N'APPARTIENT QU'À UNE VIE : la découpe des tracks applique `lifeGapUS` et leurs
+// fenêtres ne se chevauchent pas (cf. decimateTracks / buildLifeSpans). La première trouvée est
+// donc LA bonne, et l'ordre d'itération n'entre pas dans le résultat.
+func lifeCovering(vies []*Track, frame int) *Track {
+	for _, t := range vies {
+		if t != nil && frame >= t.StartFrame && frame <= t.EndFrame {
+			return t
+		}
+	}
+	return nil
+}
+
+// lifeNearest rend la vie du slot dont la fenêtre est la plus proche de cette frame — distance
+// nulle si elle la contient, sinon l'écart au bord le plus proche. nil quand le slot n'a aucune
+// vie publiée : il n'y a alors rien à quoi rattacher.
+//
+// À ÉGALITÉ, LA PREMIÈRE DE LA LISTE GAGNE (comparaison stricte `d < bestD`), et c'est LA VIE
+// PRÉCÉDENTE parce que l'ordre de production est chronologique : `decimateTracks` émet les vies
+// closes puis la courante, et rien ne retrie `doc.Tracks` avant l'assemblage de ce calque. Le
+// cas d'égalité est réel — une accroche au milieu du trou entre deux vies est à la même distance
+// des deux —, et le choix est alors celui de la vie qui vient de s'achever, celle qui portait le
+// geste. Ce n'est donc PAS une indépendance à l'ordre : c'est une dépendance à un ordre GARANTI
+// par la production, et un futur tri de `doc.Tracks` inverserait ce cas (constat N-2 de la
+// seconde ronde REG-R2).
+func lifeNearest(vies []*Track, frame int) *Track {
+	var best *Track
+	bestD := 0
+	for _, t := range vies {
+		if t == nil {
+			continue
+		}
+		d := 0
+		switch {
+		case frame < t.StartFrame:
+			d = t.StartFrame - frame
+		case frame > t.EndFrame:
+			d = frame - t.EndFrame
+		}
+		if best == nil || d < bestD {
+			best, bestD = t, d
+		}
+	}
+	return best
 }
 
 // grappleArrival rend la frame d'ARRIVÉE : celle, entre l'accroche et la borne de

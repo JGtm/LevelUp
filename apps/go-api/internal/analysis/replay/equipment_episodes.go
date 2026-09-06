@@ -95,20 +95,59 @@ type EquipmentCoverage struct {
 // trackFrameWindows indexe les fenêtres [StartFrame, EndFrame] des vies publiées. Ce
 // n'est PAS l'ensemble booléen des slots publiés (published_tracks.go reste son seul
 // constructeur) : la fenêtre sert à FERMER un épisode à la mort et à borner ses frames.
-func trackFrameWindows(tracks []Track) map[uint32][2]int {
-	out := make(map[uint32][2]int, len(tracks))
+//
+// UN SLOT PORTE TOUTES SES VIES, PAS SEULEMENT LA DERNIÈRE. Depuis le schéma 36 (« une
+// track = une vie ») un slot recyclé publie plusieurs pistes ; n'en garder qu'une bornait
+// les épisodes des vies antérieures hors de leur fenêtre, et `close` les jetait
+// (`t1 < t0`). Mesure du balayage du parc : `82f29378` perdait son UNIQUE épisode de
+// surbouclier — il est revenu —, `084a804d` 2 épisodes de camouflage sur 21.
+// Correctif du 2026-09-06.
+//
+// `13d92593` PERDAIT AUSSI SON ÉPISODE DE SURBOUCLIER, ET IL NE REVIENT PAS : ce n'est pas
+// le même défaut. Il durait zéro image (t0 = t1 = 3603) et s'ancrait sur le seul point de
+// trajectoire qui plaçait le joueur à 267 u de sa position précédente — celui-là même qui
+// donnait au document des bornes de scène fausses, et que l'assainissement a supprimé.
+// Cuisson de contrôle : 0 épisode, document identique à la base hors `schemaVersion`.
+// (Constat C4 de la revue REG-R1 : ce commentaire le citait parmi les films restitués.)
+func trackFrameWindows(tracks []Track) map[uint32][][2]int {
+	out := make(map[uint32][][2]int, len(tracks))
 	for _, t := range tracks {
-		out[t.Slot] = [2]int{t.StartFrame, t.EndFrame}
+		out[t.Slot] = append(out[t.Slot], [2]int{t.StartFrame, t.EndFrame})
 	}
 	return out
+}
+
+// windowFor rend la vie du slot qui recouvre le plus l'intervalle d'un épisode. ok=false
+// quand aucune ne l'intersecte : l'épisode n'a alors aucune fiche où s'afficher.
+//
+// LE RECOUVREMENT PLUTÔT QUE L'APPARTENANCE : une lecture peut tomber dans un trou de
+// réplication (les vies d'un slot ne se touchent pas), et exiger que `from` soit DANS une
+// fenêtre y perdrait l'épisode. Le recouvrement maximal ne dépend d'aucun ordre.
+func windowFor(windows [][2]int, from, to int) ([2]int, bool) {
+	best, bestOv, found := [2]int{}, 0, false
+	for _, w := range windows {
+		lo, hi := from, to
+		if lo < w[0] {
+			lo = w[0]
+		}
+		if hi > w[1] {
+			hi = w[1]
+		}
+		if ov := hi - lo + 1; ov > 0 && (!found || ov > bestOv) {
+			best, bestOv, found = w, ov, true
+		}
+	}
+	return best, found
 }
 
 // episodeAccum accumule les épisodes d'UNE famille pour UN slot : machine à deux états
 // (ouvert / fermé), fermeture à la fin de vie si rien ne l'a mesurée.
 type episodeAccum struct {
-	slot      uint32
-	fam       string
-	window    [2]int
+	slot uint32
+	fam  string
+	// windows porte TOUTES les vies publiées du slot : l'épisode est borné à celle qu'il
+	// recouvre, jamais à la dernière du slot (cf. trackFrameWindows).
+	windows   [][2]int
 	openFrame int
 	open      bool
 	out       *[]EquipmentEpisode
@@ -129,12 +168,16 @@ func (a *episodeAccum) sample(frame int, active bool) {
 // fenêtre publiée est écarté : il n'a aucune fiche où s'afficher.
 func (a *episodeAccum) close(endFrame int, endRead bool) {
 	a.open = false
-	t0, t1 := a.openFrame, endFrame
-	if t0 < a.window[0] {
-		t0 = a.window[0]
+	w, ok := windowFor(a.windows, a.openFrame, endFrame)
+	if !ok {
+		return // aucune vie publiée ne recouvre l'épisode
 	}
-	if t1 > a.window[1] {
-		t1 = a.window[1]
+	t0, t1 := a.openFrame, endFrame
+	if t0 < w[0] {
+		t0 = w[0]
+	}
+	if t1 > w[1] {
+		t1 = w[1]
 	}
 	if t1 < t0 {
 		return
@@ -143,11 +186,17 @@ func (a *episodeAccum) close(endFrame int, endRead bool) {
 }
 
 // finish ferme un épisode resté ouvert À LA FIN DE LA VIE : la fin de piste date la mort
-// (EndRead=false — rien n'a mesuré une désactivation).
+// (EndRead=false — rien n'a mesuré une désactivation). La vie est celle qui contient
+// l'ouverture, pas la dernière du slot.
 func (a *episodeAccum) finish() {
-	if a.open {
-		a.close(a.window[1], false)
+	if !a.open {
+		return
 	}
+	if w, ok := windowFor(a.windows, a.openFrame, a.openFrame); ok {
+		a.close(w[1], false)
+		return
+	}
+	a.open = false
 }
 
 // frameOf projette un horodatage film sur la grille, en SIGNÉ (division plancher) : une
@@ -194,7 +243,7 @@ func buildEquipmentEpisodes(
 // regroupées par slot puis rejouées en ordre de temps — l'ordre du balayage suit déjà les
 // chunks, le tri est là pour que la machine ne dépende pas d'un ordre d'itération.
 func buildCamoEpisodes(
-	camo []filmdec.CamoRead, origin, step uint64, windows map[uint32][2]int, out *[]EquipmentEpisode,
+	camo []filmdec.CamoRead, origin, step uint64, windows map[uint32][][2]int, out *[]EquipmentEpisode,
 ) int {
 	bySlot := map[uint32][]filmdec.CamoRead{}
 	for _, r := range camo {
@@ -212,7 +261,7 @@ func buildCamoEpisodes(
 	for _, s := range slots {
 		list := bySlot[s]
 		sort.SliceStable(list, func(i, j int) bool { return list[i].TimestampUS < list[j].TimestampUS })
-		acc := episodeAccum{slot: s, fam: EquipFamilyCamo, window: windows[s], out: out}
+		acc := episodeAccum{slot: s, fam: EquipFamilyCamo, windows: windows[s], out: out}
 		for _, r := range list {
 			switch r.Q {
 			case filmdec.CamoActiveQ:
@@ -232,7 +281,7 @@ func buildCamoEpisodes(
 // balayage que les positions (le quantum brut voyage dans BipedPosition.Shield.Q). Les
 // positions arrivent DÉJÀ triées par temps (BuildFromPositions trie avant d'assembler).
 func buildOvershieldEpisodes(
-	sorted []filmdec.BipedPosition, origin, step uint64, windows map[uint32][2]int, out *[]EquipmentEpisode,
+	sorted []filmdec.BipedPosition, origin, step uint64, windows map[uint32][][2]int, out *[]EquipmentEpisode,
 ) {
 	accs := map[uint32]*episodeAccum{}
 	var order []uint32
@@ -246,7 +295,7 @@ func buildOvershieldEpisodes(
 		}
 		a := accs[p.Slot]
 		if a == nil {
-			a = &episodeAccum{slot: p.Slot, fam: EquipFamilyOvershield, window: w, out: out}
+			a = &episodeAccum{slot: p.Slot, fam: EquipFamilyOvershield, windows: w, out: out}
 			accs[p.Slot] = a
 			order = append(order, p.Slot)
 		}
@@ -257,25 +306,39 @@ func buildOvershieldEpisodes(
 	}
 }
 
-// equipmentCoverage compte, par famille, les vies porteuses et les épisodes. Les
-// ensembles de slots sont des sets struct{} : ce ne sont PAS des ensembles de slots
-// publiés (published_tracks.go reste le seul constructeur de ceux-là), ce sont les vies
-// PORTEUSES d'épisodes.
+// equipmentCoverage compte, par famille, les VIES porteuses et les épisodes. Ce ne sont
+// PAS des ensembles de slots publiés (published_tracks.go reste le seul constructeur de
+// ceux-là), ce sont les vies PORTEUSES d'épisodes.
+//
+// LA CLÉ EST (slot, image de début de la vie), PAS LE SLOT. Le compteur indexait par slot
+// sous ce commentaire-ci : tant que seuls les épisodes de la DERNIÈRE vie survivaient, un
+// slot valait une vie et l'écart ne se voyait pas ; le correctif du 2026-09-06, qui publie
+// les épisodes de toutes les vies, le rend visible — deux épisodes d'un même slot recyclé
+// comptaient pour une seule vie. C'est le défaut symétrique de celui corrigé le même jour
+// pour `coverage.grapple.pullLives` (constat C2 de la revue REG-R1).
 func equipmentCoverage(eps []EquipmentEpisode, tracks []Track) *EquipmentCoverage {
 	cov := &EquipmentCoverage{TracksTotal: len(tracks)}
-	camoSlots := map[uint32]struct{}{}
-	osSlots := map[uint32]struct{}{}
+	windows := trackFrameWindows(tracks)
+	camoLives := map[[2]int]struct{}{}
+	osLives := map[[2]int]struct{}{}
 	for _, e := range eps {
+		// À défaut de fenêtre (épisode d'un slot sans piste publiée — impossible par
+		// construction, l'assembleur les écarte), le slot lui-même sert de clé : mieux vaut
+		// compter une vie de trop que perdre l'épisode dans le dénominateur.
+		cle := [2]int{int(e.Slot), -1}
+		if w, ok := windowFor(windows[e.Slot], e.T0, e.T1); ok {
+			cle[1] = w[0]
+		}
 		switch e.Fam {
 		case EquipFamilyCamo:
 			cov.CamoEpisodes++
-			camoSlots[e.Slot] = struct{}{}
+			camoLives[cle] = struct{}{}
 		case EquipFamilyOvershield:
 			cov.OvershieldEpisodes++
-			osSlots[e.Slot] = struct{}{}
+			osLives[cle] = struct{}{}
 		}
 	}
-	cov.CamoLives = len(camoSlots)
-	cov.OvershieldLives = len(osSlots)
+	cov.CamoLives = len(camoLives)
+	cov.OvershieldLives = len(osLives)
 	return cov
 }

@@ -96842,3 +96842,120 @@ diagnostic AVANT et restent au passe). Residu unique a nommer : `bcb6d393` perd 
 `kills` sur deux joueurs alors que le match gagne sur toutes les familles (67 -> 76) — une
 re-attribution dans un gain, a fermer si l'instruction des candidates veut le zero. Le parc peut
 etre re-cuit au schema 40 : la mesure dit qu'il n'y perdra rien.
+---
+
+## [2026-09-06] Regressions 2, 3 et 4 du balayage du parc : une seule cause, trois calques
+
+**Statut** : Complete (branche `feat/v2-regressions`, worktree dedie, base `9e73368e8`).
+
+**Question posee.** Le balayage du parc (161 paires, 119 films re-cuits) laissait trois
+regressions candidates non instruites apres le correctif CTF : grappin −10 a −40 % sur 16 matchs
+(faux positifs elimines ou tractions perdues ? non tranche), episodes camo/surbouclier −1 a −2 sur
+11 matchs (sans explication dans la chronique), et un joueur perdant TOUTES ses vies nommees sur
+3 matchs.
+
+**Decision technique principale.** Les trois ont **la meme cause racine**, nommee par bissection
+sur film reel : `48cf4905d` (2026-09-02, schema 36, « une track = une vie ») a decoupe les pistes a
+`lifeGapUS`, et trois consommateurs ont continue de supposer qu'un slot ne porte qu'UNE piste,
+n'en retenant que la derniere. Le message du commit annoncait pourtant « les fermetures nomment la
+vie qu'elles closent » — meme ecart message/mesure que `d173b1a8c` pour la candidate 1.
+(1) `nameClosedLives` re-devinait « l'unique vie anonyme du slot » au lieu d'utiliser la vie que la
+fermeture avait DESIGNEE, et s'abstenait des qu'il y en avait deux : le nouveau champ
+`closureReport.closedLife` transporte cette designation, sans toucher a aucune decision du pont.
+(2) `buildGrappleLines` bornait chaque traction a la derniere vie du slot, la rendant vide puis la
+supprimant : la traction se pose desormais sur la vie qui couvre son ACCROCHE, et `pullLives`
+compte des vies. (3) `trackFrameWindows` n'indexait qu'une fenetre par slot : elle les porte toutes,
+et l'episode est borne a celle qu'il recouvre.
+
+**Resultats observes** (cuissons par le chemin de production, un film a la fois, faits fournis et
+verifies, pic max 0,55 Gio). `145908d1` : pistes nommees 51 -> **53** et identites 23 -> **24**
+(53/24 avant le schema 36) ; le pont, lui, etait INCHANGE a 53 slots — le document publiait 29 tirs
+sur deux pistes anonymes. `879a4dba` : tractions 15 -> **23** pour **23 accroches lues dans le
+film** (`heavyReads` identique des deux cotes : tractions PERDUES, pas faux positifs elimines) ;
+`084a804d` 61 -> **71**. Episodes : `82f29378` retrouve son surbouclier (3 -> 4 episodes),
+`084a804d` ses 15 camo sur 9 vies. En revanche `13d92593` est un **GAIN documente, pas une
+regression** : son episode de duree nulle etait ancre sur le point de trajectoire aberrant qui
+donnait au document `minX -227,27` au lieu de `-18,57` — il ne revient pas, et c'est voulu.
+Sept tests de non-regression, chacun **prouve par mutation** (rouge sans le correctif).
+`SchemaVersion` 40 -> 41 avec chronique : la sortie de cuisson change, un artefact 36-40 doit se
+lire « a re-cuire » ; golden d'assemblage regenere, unique ecart = la ligne de version (1/606).
+Gates verts : filmdec + replay + replaybuild + archlint, wire en integration `-p 1`, `go build ./...`,
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue. `closures.go` franchissait les
+500 lignes : fermeture B sortie dans `closures_respawn.go` (deplacement pur).
+
+**Conclusion / prochaine etape.** Les trois candidates sont soldees (2 et 4 : regressions
+corrigees ; 3 : corrigee pour 10 matchs sur 11, le onzieme etant un gain). Impact parc : 16 matchs
+(54 tractions), 11 matchs (17 episodes), 18 matchs (vies nommees). La propagation passe par la
+re-cuisson de release, que le bump 41 rend obligatoire — trois entrees au registre des reports
+(re-cuisson, vie coupee par un trou de replication a corps immobile, pont ecrase par deux morts sur
+un meme slot). Verifie en passant : la candidate 1 est bien close (`145908d1` publie de nouveau ses
+7 actions d'objectif, zero ecart sur l'axe `objectifs`).
+
+## [2026-09-06] Revue REG-R1 : cinq constats traites, dont une perte que mon correctif introduisait
+
+**Statut** : Complete (branche `feat/v2-regressions`, meme worktree).
+
+**Decision technique principale.** La revue adverse confirme le diagnostic et l'additivite sur
+quatre films, mais **refute deux de mes conditions** et en nuance une troisieme. La plus serieuse
+(C1) : quand ni l'accroche ni le tir d'un grappin ne tombe dans une fenetre publiee du slot, mon
+`lifeCovering` rendait nil et JETAIT une traction que la base publiait — sur un slot MONO-VIE,
+donc sans aucun rapport avec le decoupage. Le calque ne doit jamais publier moins qu'avant : a
+defaut de fenetre couvrante, la traction se rattache desormais a la vie la plus proche
+(`lifeNearest`), bornee exactement comme avant. Les quatre autres : `camoLives`/`overshieldLives`
+comptaient des SLOTS sous un commentaire parlant de vies — le defaut symetrique de celui que je
+venais de corriger pour `pullLives`, dans le fichier meme que je modifiais (C2) ; l'en-tete de
+`closures_respawn.go` annoncait une « scission pure » alors qu'il porte `rep.noteLife`, le coeur
+du correctif de la fermeture B (C3, doc inversee — exactement ce que je reprochais a
+`48cf4905d`) ; un commentaire citait `13d92593` parmi les films restitues quand la chronique et la
+mesure disent l'inverse (C4) ; et surtout `usage_summary.go` ATTRIBUE les gestes par slot
+« dernier gagnant », donc au second occupant d'un slot recycle — faiblesse anterieure que mon
+correctif ELARGIT puisque les gestes des vies non dernieres existent desormais (C5).
+
+**Resultats observes.** Cinq correctifs, chacun prouve ROUGE puis VERT : C1 (deux scenarios du
+verdict en sous-tests, « 0 traction, attendu 1 » avant) ; C2 (« 2 episodes / 1 vies » avant) ;
+C5 (« 111 : 0/0/0 » et « 222 : 2/2/2 » avant, 1/1/1 chacun apres). `UsageSummaryRev` passe de
+`us1` a `us2`, comme sa propre doc l'exige des qu'une regle d'attribution change — sans quoi le
+backfill sauterait les resumes a refaire. Le recensement « aucun quatrieme calque » est corrige :
+vrai des calques qui JETTENT, faux comme absolu (deux compteurs et un attributeur indexaient par
+slot une grandeur devenue par vie). Gates verts : replay + replaybuild + archlint, wire en
+integration `-p 1`, `go build ./...`, `golangci-lint --new-from-merge-base` a 0 issue, goldens
+inconditionnels. Cuisson de controle `879a4dba` (pic 0,23 Gio) : **1 seul ecart avec la cuisson
+precedente, `schemaVersion` 40 -> 41**, artefacts identiques a l'octet pres une fois ce numero
+neutralise.
+
+**Conclusion / prochaine etape.** L'instruction des regressions 2/3/4 est close revue comprise.
+Une divergence Go/web est desormais assumee et inscrite au registre : la page Sessions attribue
+juste, la vue match garde l'agregat par slot — a aligner au prochain lot web. Le bump de schema
+41 et la montee `us2` restent les deux conditions de la propagation a la release.
+
+## [2026-09-06] Seconde ronde REG-R2 : C5 se fermait a 44-95 % pres sur le canal des poses
+
+**Statut** : Complete (branche `feat/v2-regressions`, meme worktree).
+
+**Decision technique principale.** La seconde ronde ferme C1 a C4 et declare C5 **partiel** : ma
+resolution par vie ne couvrait pas les POSES. Un objet lache a la mort porte `t0 = finVie + 1`,
+aucune vie ne couvre cet instant, et mon repli « dernier occupant » creditait le lacher au
+repreneur du slot — la regle meme que le commit annonçait avoir supprimee. Mon commentaire
+presentait ce repli comme un residu ; la mesure de la revue dit l'inverse : **44 %, 95 % et 32 %
+des poses** de trois films tombent hors de toute fenetre publiee. Correctif : `atOrJustBefore`,
+jumeau d'`ownerAtFrameOrLast` du web (vie couvrante, sinon celle qui vient de s'achever, sinon la
+premiere du slot pour ne rien perdre) ; seules les poses l'empruntent, les tractions et episodes
+gardent `at` ou le repli ne joue jamais (23/23 et 31/31 tractions, 7/7 et 15/15 episodes ont leur
+`T0` dans une fenetre). Second correctif (N-4, defaut anterieur mais touche par mon diff) : la
+garde « au moins une vie publiee » de `usageFilmIndexOwners` se lisait sur le dernier occupant de
+chaque slot et effaçait tous les lancers d'un joueur dont l'unique vie est sur un slot repris.
+
+**Resultats observes.** Deux tests neufs, rouges puis verts : « 111 : 0 lacher(s), attendu 1 » et
+« 111 : 0 lancer(s), attendu 2 ». Deux commentaires de `grapple_lines.go` reecrits sans toucher au
+code : l'invariant « ne publie JAMAIS moins qu'avant » etait faux (une accroche a la derniere image
+d'une vie a une vie couvrante a fenetre vide — et le refus du HEAD est le BON), et « ne depend
+d'aucun ordre » etait faux pour `lifeNearest` a egalite de distance (l'ordre de production est
+chronologique, la dependance est reelle mais garantie). Registre corrige : le resolveur TS existe
+deja, il reste a basculer deux appelants. Journal corrige : ma « cuisson de controle, 1 seul ecart
+schemaVersion » comparait un artefact cuit AVANT le bump, donc ne prouvait rien ; la comparaison
+juste (contre `13c0336b6^`, deja au schema 41) rend **zero ecart**, md5 egaux hors `matchId`
+d'invocation. `UsageSummaryRev` reste `us2`. Gates verts, `replayartifacts` en integration ajoute.
+
+**Conclusion / prochaine etape.** C5 est ferme pour de bon, les cinq constats de R1 et les quatre
+de R2 sont soldes. Le diff reste additif sur les films cuits ; la propagation attend toujours la
+re-cuisson de release (schema 41) et la reprise des resumes d'usage (`us2`).

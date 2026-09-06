@@ -19,12 +19,18 @@ package replay
 // Deux écritures d'une même règle divergeraient : chaque canal reprend donc ici la
 // jointure exacte du web —
 //
-//   - grappleLines / equipmentEpisodes / equipmentPlacements : par SLOT, via
-//     l'agrégat « dernier gagnant » (indexBySlot côté web) : ce qui appartient au
-//     joueur redescend sur chacune de ses vies, effondré en une valeur par slot.
-//     C'est un agrégat de MATCH, pas une lecture par image — en multi-manche, un
-//     slot réattribué crédite son dernier propriétaire (dette connue et assumée
-//     par le web, reproduite pour rester comparable) ;
+//   - grappleLines / equipmentEpisodes : par la VIE qui couvre l'instant du geste
+//     (`usageOwners.at`) ; equipmentPlacements par la vie qui le couvre OU qui vient
+//     de s'achever (`atOrJustBefore`, jumeau d'`ownerAtFrameOrLast` du web), parce
+//     qu'un objet lâché à la mort porte `t0 = finVie + 1`. L'agrégat « dernier
+//     gagnant » (indexBySlot de rosterLogic.ts) créditait tout au SECOND occupant
+//     d'un slot recyclé, gestes de la vie du premier compris — corrigé ici le
+//     2026-09-06 (constat C5 de la revue REG-R1, complété par N-3 en seconde ronde) :
+//     l'instant est publié à chacun des trois sites, il n'y avait rien à deviner.
+//     LE WEB RESTE LE MIROIR pour la formule, mais deux de ses appelants
+//     (equipmentUsageLogic.ts, equipmentKillBadges.ts) sont encore sur `indexBySlot`
+//     alors que `ownerAtFrame`/`ownerAtFrameOrLast` existent : l'écart est inscrit au
+//     registre des reports, et c'est la règle d'ici qui est juste ;
 //   - grenades : par INDEX DE FILM (`grenades[].i`), jamais par slot — mesuré côté
 //     web : joindre par slot perd la quasi-totalité des lancers ;
 //   - padPickups : par le XUID PUBLIÉ (`padPickups[].xuid`, événement natif daté) —
@@ -56,7 +62,12 @@ import "sort"
 // dont la passe courante porte (UsageSummaryRev, SchemaVersion) est à jour ; changer
 // une règle d'attribution ici DOIT incrémenter cette révision, sinon le backfill
 // sautera des matchs à re-résumer.
-const UsageSummaryRev = "us1"
+//
+// us2 (2026-09-06) : l'attribution passe du SLOT (« dernier gagnant ») à la VIE qui couvre
+// l'instant du geste. Sur un slot recyclé, les tractions, épisodes et poses du premier
+// occupant lui reviennent au lieu d'être créditées au second (constat C5 de la revue REG-R1).
+// Tout résumé produit sous `us1` doit donc être refait, et cette montée est ce qui le déclenche.
+const UsageSummaryRev = "us2"
 
 // UsagePlayerSummary — les usages d'UN joueur sur UN match, prêt à persister.
 type UsagePlayerSummary struct {
@@ -159,7 +170,8 @@ func BuildUsageSummary(doc *ReplayDocument) UsageSummary {
 	filmIndexOwner := usageFilmIndexOwners(doc, slotOwner)
 
 	for i := range doc.GrappleLines {
-		if t := players.of(slotOwner[doc.GrappleLines[i].Slot]); t != nil {
+		gl := &doc.GrappleLines[i]
+		if t := players.of(slotOwner.at(gl.Slot, gl.T0)); t != nil {
 			t.GrapplePulls++
 		}
 	}
@@ -176,14 +188,91 @@ func BuildUsageSummary(doc *ReplayDocument) UsageSummary {
 	return out
 }
 
-// usageSlotOwners — l'agrégat « dernier gagnant » slot -> propriétaire, copie
-// conforme de la construction web (buildPlayers + indexBySlot de rosterLogic.ts) :
-// l'ordre des joueurs est celui du roster du film puis des pistes, les vies de
-// chacun sont triées par frame de début, et le dernier propriétaire d'un slot
-// contesté gagne. La clé rendue est le xuid, ou "" pour une vie de BOT ou anonyme
-// (un bot n'a pas de xuid : ses gestes n'entrent dans aucune ligne persistée, mais
-// il OCCUPE ses slots — les attribuer au précédent occupant humain serait faux).
-func usageSlotOwners(doc *ReplayDocument) map[uint32]string {
+// usageOwners répond « à qui était ce slot À CET INSTANT ».
+//
+// POURQUOI PAS UNE SIMPLE TABLE slot -> joueur (constat C5 de la revue REG-R1, 2026-09-06).
+// L'agrégat « dernier gagnant » créditait TOUS les gestes d'un slot recyclé à son SECOND
+// occupant, y compris ceux de la vie du premier. Le cas existe au parc (`879a4dba`,
+// `slotCollisions = 1`), et le correctif « une track = une vie » l'élargit : les épisodes et
+// les tractions des vies non dernières n'existaient pas avant pour être mal attribués.
+// L'instant est disponible à chacun des trois sites d'appel (`GrappleLine.T0`,
+// `EquipmentEpisode.T0`, `EquipmentPlacement.T0`) : il n'y avait rien à deviner.
+type usageOwners struct {
+	// parVie : pour chaque slot, ses vies dans l'ordre chronologique.
+	parVie map[uint32][]usageVie
+	// dernier : le repli « dernier gagnant », pour un instant qu'aucune vie ne couvre.
+	dernier map[uint32]string
+}
+
+// usageVie est une vie publiée réduite à ce que l'attribution consomme.
+type usageVie struct {
+	from, to int
+	xuid     string // "" pour un bot ou une vie anonyme
+}
+
+// at rend le propriétaire du slot à cette image : la vie qui la couvre, sinon le dernier
+// occupant connu.
+//
+// LE REPLI NE JOUE PAS SUR LES DEUX CANAUX QUI L'APPELLENT : les `T0` des tractions et des
+// épisodes sont bornés à la fenêtre de leur vie par leurs assembleurs, et la mesure le
+// confirme — 23/23 et 31/31 tractions, 7/7 et 15/15 épisodes tombent DANS une fenêtre publiée
+// sur les films cuits. Il reste pour ne rien perdre si un jour un `T0` sortait, et il vaut
+// alors exactement ce que rendait la table d'avant.
+//
+// LES POSES, ELLES, PASSENT PAR `atOrJustBefore` : leur `T0` n'est borné à aucune fenêtre.
+func (o usageOwners) at(slot uint32, frame int) string {
+	for _, v := range o.parVie[slot] {
+		if frame >= v.from && frame <= v.to {
+			return v.xuid
+		}
+	}
+	return o.dernier[slot]
+}
+
+// atOrJustBefore rend le propriétaire du slot à cette image, ou À DÉFAUT celui de la vie qui
+// vient de s'y achever. Jumeau exact d'`ownerAtFrameOrLast` (rosterLogic.ts).
+//
+// POURQUOI IL EXISTE (constat N-3 de la revue REG-R2, 2026-09-06). Un objet LÂCHÉ à la mort
+// porte `t0 = finVie + 1` — le poseur n'occupe déjà plus le slot —, et rien côté Go ne borne
+// `EquipmentPlacement.T0` à une fenêtre publiée. Le repli « dernier occupant du match » de `at`
+// créditait donc ces poses au joueur SUIVANT sur un slot repris, ce qui est précisément la
+// règle que le correctif du 2026-09-06 déclare avoir supprimée. Et ce n'est pas un cas de bord :
+// 32 à 95 % des poses d'un film tombent hors de toute fenêtre publiée (153/351, 443/466,
+// 34/105 sur trois films).
+//
+// L'ORDRE EST CHRONOLOGIQUE (`usageSlotOwners` trie), donc « la dernière vie vue avant l'image »
+// est bien la plus récente qui s'est achevée. Si AUCUNE ne précède — une pose datée avant la
+// première vie publiée du slot —, la PREMIÈRE vie du slot répond : sur un slot mono-identité
+// c'est le même joueur qu'avant ce correctif, et sur un slot recyclé c'est son premier occupant,
+// jamais le dernier. Ainsi ce canal ne perd aucune ligne au passage.
+func (o usageOwners) atOrJustBefore(slot uint32, frame int) string {
+	vies := o.parVie[slot]
+	dernierVu, vu := "", false
+	for _, v := range vies {
+		if frame < v.from {
+			break // triées : ni celle-ci ni les suivantes ne couvrent ni ne précèdent
+		}
+		if frame <= v.to {
+			return v.xuid
+		}
+		dernierVu, vu = v.xuid, true
+	}
+	if vu {
+		return dernierVu
+	}
+	if len(vies) > 0 {
+		return vies[0].xuid
+	}
+	return o.dernier[slot]
+}
+
+// usageSlotOwners construit ce résolveur. L'ordre des joueurs reste celui de la construction
+// web (buildPlayers + indexBySlot de rosterLogic.ts) : roster du film puis pistes, vies de
+// chacun triées par frame de début — c'est lui qui décide du repli « dernier gagnant ». La clé
+// rendue est le xuid, ou "" pour une vie de BOT ou anonyme (un bot n'a pas de xuid : ses gestes
+// n'entrent dans aucune ligne persistée, mais il OCCUPE ses slots — les attribuer au précédent
+// occupant humain serait faux).
+func usageSlotOwners(doc *ReplayDocument) usageOwners {
 	type joueur struct {
 		xuid  string // "" pour un bot : identité non persistable
 		lives []*Track
@@ -221,26 +310,40 @@ func usageSlotOwners(doc *ReplayDocument) map[uint32]string {
 		}
 		j.lives = append(j.lives, tr)
 	}
-	owners := make(map[uint32]string)
+	out := usageOwners{parVie: map[uint32][]usageVie{}, dernier: map[uint32]string{}}
 	for _, j := range ordre {
 		sort.SliceStable(j.lives, func(a, b int) bool {
 			return j.lives[a].StartFrame < j.lives[b].StartFrame
 		})
 		for _, tr := range j.lives {
-			owners[tr.Slot] = j.xuid
+			out.parVie[tr.Slot] = append(out.parVie[tr.Slot],
+				usageVie{from: tr.StartFrame, to: tr.EndFrame, xuid: j.xuid})
+			out.dernier[tr.Slot] = j.xuid
 		}
 	}
-	return owners
+	for slot := range out.parVie {
+		vies := out.parVie[slot]
+		sort.SliceStable(vies, func(a, b int) bool { return vies[a].from < vies[b].from })
+	}
+	return out
 }
 
 // usageFilmIndexOwners — index de film -> xuid, via le roster. Même garde que le
 // web : seul un joueur dont AU MOINS UNE VIE est publiée reçoit des lancers (une
 // entrée de roster sans piste n'a été mesurée sur aucun canal).
-func usageFilmIndexOwners(doc *ReplayDocument, slotOwner map[uint32]string) map[int]string {
-	avecVie := make(map[string]bool, len(slotOwner))
-	for _, xuid := range slotOwner {
-		if xuid != "" {
-			avecVie[xuid] = true
+//
+// LA GARDE SE LIT SUR TOUTES LES VIES, PAS SUR LE DERNIER OCCUPANT DE CHAQUE SLOT
+// (constat N-4 de la revue REG-R2, 2026-09-06). Bâtie sur `dernier`, elle effaçait un joueur
+// dont TOUTES les vies sont sur des slots repris ensuite par un autre : il perdait la totalité
+// de ses lancers alors que l'en-tête ci-dessus lui en promet — il a bien une vie publiée. Le
+// défaut est antérieur au correctif par vie, mais celui-ci apporte la table qui le ferme.
+func usageFilmIndexOwners(doc *ReplayDocument, slotOwner usageOwners) map[int]string {
+	avecVie := make(map[string]bool, len(slotOwner.dernier))
+	for _, vies := range slotOwner.parVie {
+		for _, v := range vies {
+			if v.xuid != "" {
+				avecVie[v.xuid] = true
+			}
 		}
 	}
 	out := make(map[int]string, len(doc.Roster))
@@ -256,10 +359,10 @@ func usageFilmIndexOwners(doc *ReplayDocument, slotOwner map[uint32]string) map[
 // tallyUsageEpisodes cumule les épisodes camo/surbouclier par propriétaire de slot.
 // La durée est convertie en millisecondes RÉELLES (frameToMs côté web) ; un
 // artefact sans échelle de temps rend 0 ms — le compte d'épisodes reste.
-func tallyUsageEpisodes(doc *ReplayDocument, players *usageTallies, slotOwner map[uint32]string) {
+func tallyUsageEpisodes(doc *ReplayDocument, players *usageTallies, slotOwner usageOwners) {
 	for i := range doc.EquipmentEpisodes {
 		e := &doc.EquipmentEpisodes[i]
-		t := players.of(slotOwner[e.Slot])
+		t := players.of(slotOwner.at(e.Slot, e.T0))
 		if t == nil {
 			continue
 		}
@@ -285,13 +388,13 @@ func tallyUsageEpisodes(doc *ReplayDocument, players *usageTallies, slotOwner ma
 // tallyUsagePlacements ventile les poses : déploiements par famille, lâchers hors
 // grenades. `owner` -1 = aucun bipède contemporain assez proche : la pose est
 // réelle, son auteur ne l'est pas — elle n'entre dans aucune ligne.
-func tallyUsagePlacements(doc *ReplayDocument, players *usageTallies, slotOwner map[uint32]string) {
+func tallyUsagePlacements(doc *ReplayDocument, players *usageTallies, slotOwner usageOwners) {
 	for i := range doc.EquipmentPlacements {
 		p := &doc.EquipmentPlacements[i]
 		if p.Owner < 0 {
 			continue
 		}
-		t := players.of(slotOwner[uint32(p.Owner)])
+		t := players.of(slotOwner.atOrJustBefore(uint32(p.Owner), p.T0))
 		if t == nil {
 			continue
 		}

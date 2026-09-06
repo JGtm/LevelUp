@@ -130,40 +130,37 @@ func buildOwners(tracks map[uint32]slotTrack, deaths []Death, idx PlayerIndexTab
 	rep.SlotXUID = extendSlotXUID(byXUID, rep.Owner, idx.ByXUID)
 	// LES FERMETURES NOMMENT AUSSI LA VIE (lot identité des vies, 2026-09-02) : le nommage des
 	// tracks se fait désormais PAR VIE, et une vie fermée sans identité redeviendrait anonyme à
-	// l'écran alors que le pont la connaît. Un slot fermé qui porte PLUSIEURS vies anonymes
-	// s'abstient — la fermeture a désigné un corps, pas tous.
-	nameClosedLives(rep.lives, owners, rep.Owner, idx.ByXUID)
+	// l'écran alors que le pont la connaît. C'est LA VIE QUE LA FERMETURE A DÉSIGNÉE qui est
+	// nommée (`closureReport.closedLife`), pas « l'unique vie anonyme du slot » : cette
+	// re-déduction s'abstenait sur tout slot qui en portait plusieurs, et le document publiait
+	// alors les tirs d'un slot dont la piste restait sans nom (correctif du 2026-09-06).
+	nameClosedLives(rep.lives, rep.Owner, rep.Closures.closedLife, idx.ByXUID)
 	return rep
 }
 
-// nameClosedLives pose l'identité d'une fermeture sur l'UNIQUE vie anonyme du slot fermé.
-// `before` est la table AVANT fermetures : seuls les slots qu'elles ont ajoutés sont parcourus.
-func nameClosedLives(lives []lifeSpan, before, after map[uint32]int, xuidToIndex map[uint64]int) {
+// nameClosedLives pose l'identité d'une fermeture sur LA VIE QU'ELLE A DÉSIGNÉE.
+//
+// `closed` vient des fermetures elles-mêmes (slot -> indice de vie ; -1 = deux vies désignées,
+// donc abstention). Une vie déjà nommée par le fil des morts n'est jamais réécrite : la lecture
+// prime sur la déduction, comme partout dans ce pont.
+func nameClosedLives(lives []lifeSpan, after, closed map[uint32]int, xuidToIndex map[uint64]int) {
+	if len(closed) == 0 {
+		return
+	}
 	indexToXUID := make(map[int]uint64, len(xuidToIndex))
 	for x, i := range xuidToIndex {
 		indexToXUID[i] = x
 	}
-	for slot, pi := range after {
-		if _, wasNamed := before[slot]; wasNamed {
+	for slot, life := range closed {
+		if life < 0 || life >= len(lives) || lives[life].xuid != 0 {
 			continue
 		}
-		x, ok := indexToXUID[pi]
-		if !ok {
+		pi, known := after[slot]
+		if !known {
 			continue
 		}
-		anon := -1
-		for i := range lives {
-			if lives[i].slot != slot || lives[i].xuid != 0 {
-				continue
-			}
-			if anon >= 0 {
-				anon = -2 // plusieurs vies anonymes : on ne tranche pas
-				break
-			}
-			anon = i
-		}
-		if anon >= 0 {
-			lives[anon].xuid = x
+		if x, ok := indexToXUID[pi]; ok {
+			lives[life].xuid = x
 		}
 	}
 }
