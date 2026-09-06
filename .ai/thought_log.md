@@ -97073,3 +97073,27 @@ c'est le pont par manche qui ne tient pas, pas la completion) et les calques VIP
 subissent le meme plafond et pour lesquels le patron est desormais pose. Le seuil de re-cuisson
 de la release passe de `< 40` a `< 42`. Detail :
 `.ai/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md`.
+
+## [2026-09-06] Intégration feat/v2-flagcarries (schéma 42) — Complété
+
+**Contexte.** Fusion de `feat/v2-flagcarries` (`9ab4436a9`) dans `feat/v75` après clôture de la
+revue adverse FLAG-R1 (aucun constat recevable sur le diff). Merge `e9adb36f5`, sans conflit.
+
+**Décision technique.** Le pont d'identité slot → xuid est résolu UNE seule fois par cuisson
+dans `replaybuild` (mémo paresseux `pontParManche`) et servi aux deux calques consommateurs
+(actions d'objectif et `flagCarries`) ; `analysis/replay` reçoit la table déjà résolue via
+`FlagInput.Identity` et ne voit toujours aucun fait de match — la frontière canonical/semantic
+est préservée.
+
+**Résultats.** Verdict FLAG-R1 : aucun constat recevable, 11 conditions tiennent. Trois cuissons
+témoins à `changements = 0` : `c0a82e88` 0 → 1 portage, `e94163af` 16 → 33 (`noBridge` 17 → 0),
+`51101d1d` 10 → 11, `fb1a1a72` (3 manches) identique au numéro de schéma près — 0 portage perdu
+ni déplacé, accord joueur par joueur 33/33 avec le calque des actions. `SchemaVersion` 42
+vérifié sur pièces (`document.go:792`). Gates rejoués sur l'état fusionné : `go build ./...`,
+tests unitaires (`analysis/replay`, `replaybuild`, `archlint`, `contracttest`,
+`sync/replayartifacts`), intégration `-tags=integration ./internal/api/wire/...`,
+`make generate-types` + `git diff --exit-code generated.ts` — tous verts.
+
+**Conclusion / prochaine étape.** Ouverts au registre : CTF multi-manche (le pont par manche ne
+tient pas sur `fb1a1a72`) et calques VIP/crâne (même plafond). Prochaine étape : intégration de
+`feat/v2-residus` (schéma 43) après revue RES-R1, avec corpus témoin à chaque bump de schéma.

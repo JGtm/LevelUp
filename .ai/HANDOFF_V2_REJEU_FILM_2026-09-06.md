@@ -95,3 +95,10 @@ résiduels à instruire (en cours) ; nettoyage OK (fait).
   `scratchpad/review/FLAG-R1.md`. Ensuite : corrections par `ae58e9a0d3e519fb1`, ronde 2 si
   besoin, merge, Notion 41 → 42, seuil de re-cuisson < 42.
 - Faits résiduels : agent `a77fcfb0cbaa9cb92` toujours en cours (`feat/v2-residus`).
+
+## 7. Mise à jour (flagcarries intégré)
+
+- Merge `e9adb36f5` : `feat/v2-flagcarries` (`9ab4436a9`) intégré dans `feat/v75`, SchemaVersion 42.
+- CI à surveiller sur `feat/v75` après ce push : `gh run list --branch feat/v75 --workflow CI --limit 2`.
+- Reste : résidus (`feat/v2-residus`, RES-R1 en cours, agent `a77fcfb0cbaa9cb92`).
+- Notion : re-cuisson du parc à porter de 41 au dernier schéma intégré — à faire par le superviseur.

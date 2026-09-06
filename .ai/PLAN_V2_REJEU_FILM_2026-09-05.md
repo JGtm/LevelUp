@@ -664,3 +664,12 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   passes : pertes distinctes 1 783 → 1 483 → 1 160, ZÉRO perte nouvelle (sous-ensembles stricts).
   Restent quinze faits, tous antérieurs au chantier, dont `d9781168` (s23) −6 portages de crâne
   d'Oddball (36 → 30), à instruire à part. VERDICT : le parc peut être re-cuit au schéma 41.
+- 2026-09-06 17:45 : INTÉGRATION FLAGCARRIES : `feat/v2-flagcarries` (`9ab4436a9`) fusionné dans
+  `feat/v75` sans conflit (merge `e9adb36f5`), SchemaVersion 42 vérifié sur pièces. Revue FLAG-R1 :
+  aucun constat recevable, 11 conditions tiennent, trois cuissons témoins `changements = 0` (0
+  portage perdu ni déplacé), accord joueur par joueur 33/33 avec le calque des actions. Gates
+  rejoués sur l'état fusionné : build, tests unitaires (`analysis/replay`, `replaybuild`,
+  `archlint`, `contracttest`, `sync/replayartifacts`), intégration `api/wire`, contrat OpenAPI
+  régénéré identique — tous verts. Ouverts au registre : CTF multi-manche (`fb1a1a72`, le pont
+  par manche ne tient pas) et calques VIP/crâne (même plafond, patron désormais posé). Suite :
+  intégration `feat/v2-residus` (schéma 43) après revue RES-R1.
