@@ -673,3 +673,20 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   régénéré identique — tous verts. Ouverts au registre : CTF multi-manche (`fb1a1a72`, le pont
   par manche ne tient pas) et calques VIP/crâne (même plafond, patron désormais posé). Suite :
   intégration `feat/v2-residus` (schéma 43) après revue RES-R1.
+- 2026-09-06 18:24 : INTÉGRATION RESIDUS : `feat/v2-residus` (`cd5302ebf`) fusionné dans
+  `feat/v75` (merge `dd8004e90`), conflits admis résolus (chronique des schémas 42→43 dans
+  `document.go` et `structure_test.go`, golden `assembly_000d5950.golden` régénéré par
+  `-update`, `thought_log.md` concaténé). SchemaVersion 43 vérifié sur pièces. Revue RES-R1 :
+  17/17 conditions, trois constats mineurs corrigés (`cd5302ebf`). Une régression corrigée par
+  abstention : le gate de présence des porteurs de crâne (`af89b091b`) traitait une vie
+  anonyme comme une absence ; `carrierPresence` retient désormais les vies ANONYMES, le gate
+  ne rejette plus que ce que les pistes publiées DÉMENTENT. Deux témoins Oddball (vérité
+  terrain = temps de portage) : `d9781168` feuille 191 s / 196 s, artefact schéma 41
+  60,1 s / 147,4 s, corrigé 172,5 s / 158,8 s (quasi la feuille) ; `51ebbc0f` 66 s → 225 s.
+  Quatorze autres faits résiduels : anciens artefacts faux, reclassements ou normalisations.
+  Gates rejoués sur l'état fusionné : build, tests unitaires (`analysis/replay`,
+  `replaybuild`, `archlint`, `contracttest`, `sync/replayartifacts`), intégration `api/wire`,
+  `golangci-lint --new-from-merge-base=origin/main` (0 issue), contrat OpenAPI régénéré
+  identique — tous verts. Ouverts au registre : `51ebbc0f` découpe par manche des compteurs
+  par joueur (63 assistances pour 5, déjà au `REGISTRE_REPORTS.md`) et l'angle mort du
+  comparateur sur les intervalles rognés.
