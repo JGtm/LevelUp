@@ -45,16 +45,25 @@ package filmdec
 // Le test `t.Fatal` — c'est la lecon du 2026-08-02, ou un `t.Skip` avait laisse passer une derive
 // du decodeur sur quatre films en annoncant « golden vert ».
 //
-// # REGENERATION
+// # REGENERATION — UNE PORTE QUI NE SERT QU'A CE GOLDEN
 //
-//	go test ./internal/analysis/filmdec/ -run GoldenMiniBobineFamilles -update
+//	go test ./internal/analysis/filmdec/ -run GoldenMiniBobineFamilles -update-golden-familles
 //
 // Un golden ne s'edite JAMAIS a la main. Il ne se regenere qu'apres un changement de decodage
 // DECLARE, et le diff des comptes se relit dans le journal du lot.
+//
+// LE DRAPEAU EST DEDIE, ET IL L'EST DEPUIS LE 2026-09-06 (correction C5 de la revue E-R1). Ce
+// golden partageait le `-update` du corpus de graines du fuzz (`fuzz_records_test.go`) : la
+// commande `go test ./internal/analysis/filmdec/ -update` SANS `-run`, qui est celle qu'on tape
+// pour regenerer les graines, le reecrivait au passage avec ce que le decodeur rendait a cet
+// instant — et le paquet repondait `ok`. Mesure a l'appui : `br.Skip(2)` -> `br.Skip(3)` dans
+// `readZoomRef` (une largeur de generation qu'aucun autre test n'epingle) suffisait a le faire
+// partir en silence. Une porte de regeneration nomme desormais CE qu'elle regenere.
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"os"
 	"reflect"
@@ -75,6 +84,10 @@ const bobineChunks = 6
 
 // goldenFamillesPath est la sortie figee.
 const goldenFamillesPath = "testdata/golden_minibobine_familles.tsv"
+
+// updateGoldenFamilles est LA porte de regeneration de ce golden, et elle ne regenere que lui.
+var updateGoldenFamilles = flag.Bool("update-golden-familles", false,
+	"reecrire testdata/golden_minibobine_familles.tsv apres un changement de decodage DECLARE")
 
 // premierMax borne la valeur lisible d'une ligne : assez pour l'instant, le slot et les premiers
 // champs, pas assez pour qu'une trace de projectile noie le fichier.
@@ -303,7 +316,7 @@ func catalogueDuFilm(fc *FilmContext, film *filmsource.Film) map[uint32]bool {
 func comparerGoldenFamilles(t *testing.T, lignes []string) {
 	t.Helper()
 	contenu := strings.Join(lignes, "\n") + "\n"
-	if *updateGoldens {
+	if *updateGoldenFamilles {
 		if err := os.WriteFile(goldenFamillesPath, []byte(contenu), 0o600); err != nil {
 			t.Fatalf("ecriture de %s : %v", goldenFamillesPath, err)
 		}
