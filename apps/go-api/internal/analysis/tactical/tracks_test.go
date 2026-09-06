@@ -280,3 +280,220 @@ func TestEnSecondesNeTouchePasLeBrut(t *testing.T) {
 		t.Fatalf("l'entree a ete modifiee : %v", in[0].Valeur)
 	}
 }
+
+// ─── LE TEMPS EN VEHICULE ──────────────────────────────────────────────────────
+//
+// Ce que ces cas gardent : sans eux, un occupant embarque disparait de la mesure pendant
+// tout son trajet (son bipede cesse de repliquer, et un trou > 5 s coupe deja sa vie en
+// amont), alors meme que le match compte comme mesure.
+
+// vehiculeQuiTraverse : une trajectoire de vehicule qui va de la cellule (0,0) a la
+// cellule (40,0), a mi-parcours de la fenetre.
+func vehiculeQuiTraverse(t0, t1 int) []PointPiste {
+	return []PointPiste{
+		{T: t0, X: 0.25, Y: 0.25},
+		{T: (t0 + t1) / 2, X: 20.25, Y: 0.25},
+	}
+}
+
+// TestOccupationEmbarquement_SuitLeVehicule — CAS (a) : un episode de 4 s sur un vehicule
+// qui traverse deux cellules rend 16 echantillons SUR LES CELLULES DU VEHICULE, et zero
+// sur la cellule d'embarquement.
+func TestOccupationEmbarquement_SuitLeVehicule(t *testing.T) {
+	g := GrilleParDefaut()
+	// Le bipede n'a qu'un point, a la cellule (100,100) : c'est la ou il monte. Sa vie ne
+	// produit aucun echantillon (fenetre de duree nulle), mais elle le NOMME.
+	piste := Piste{XUID: "111", StartFrame: 0, EndFrame: 0, Points: []PointPiste{{T: 0, X: 50.25, Y: 50.25}}}
+	e := EntreeOccupation{
+		MatchID: "m1", IntervalleFrameMs: intervalleTest, Pistes: []Piste{piste},
+		// 4 s a 100 ms/frame = frames 0 a 40.
+		Embarquements: []Embarquement{{XUID: "111", T0: 0, T1: 40, Points: vehiculeQuiTraverse(0, 40)}},
+	}
+	out := Occupation(g, e, PasOccupationMs)
+	if len(out) != 1 {
+		t.Fatalf("joueurs = %d, attendu 1", len(out))
+	}
+	j := out[0]
+	if len(j.Echantillons) != 16 {
+		t.Fatalf("echantillons = %d, attendu 16 (4 s / 250 ms) — le temps en vehicule est PERDU",
+			len(j.Echantillons))
+	}
+	// Deux cellules, celles du VEHICULE : (0,0) puis (40,0).
+	depart, _ := g.Cellule(0.25, 0.25)
+	arrivee, _ := g.Cellule(20.25, 0.25)
+	embarquement, _ := g.Cellule(50.25, 50.25)
+	vues := map[Cellule]int{}
+	for _, c := range j.PremieresEntrees {
+		vues[Cellule{Col: c.Col, Lig: c.Lig}] = c.Frame
+	}
+	if len(vues) != 2 {
+		t.Fatalf("cellules atteintes = %+v, attendu les 2 du vehicule", j.PremieresEntrees)
+	}
+	if _, ok := vues[depart]; !ok {
+		t.Fatalf("la cellule de depart du vehicule est absente : %+v", j.PremieresEntrees)
+	}
+	if frame, ok := vues[arrivee]; !ok {
+		t.Fatalf("la cellule d'arrivee du vehicule est absente : %+v", j.PremieresEntrees)
+	} else if frame != 20 {
+		t.Fatalf("premiere entree dans la cellule d'arrivee a la frame %d, attendu 20", frame)
+	}
+	if _, ok := vues[embarquement]; ok {
+		t.Fatalf("la cellule D'EMBARQUEMENT du bipede a ete peinte : %+v", j.PremieresEntrees)
+	}
+}
+
+// TestOccupationEmbarquement_SansPointDeVehicule — CAS (b) : un episode dont le vehicule
+// n'a aucun point n'attribue RIEN. On ATTRIBUE, on n'invente pas — lui preter la position
+// d'embarquement fabriquerait un stationnement la ou il y a eu un trajet.
+func TestOccupationEmbarquement_SansPointDeVehicule(t *testing.T) {
+	piste := Piste{XUID: "111", StartFrame: 0, EndFrame: 0, Points: []PointPiste{{T: 0, X: 50.25, Y: 50.25}}}
+	e := EntreeOccupation{
+		MatchID: "m1", IntervalleFrameMs: intervalleTest, Pistes: []Piste{piste},
+		Embarquements: []Embarquement{{XUID: "111", T0: 0, T1: 40}},
+	}
+	out := Occupation(GrilleParDefaut(), e, PasOccupationMs)
+	if len(out) != 1 {
+		t.Fatalf("joueurs = %d, attendu 1", len(out))
+	}
+	if len(out[0].Echantillons) != 0 {
+		t.Fatalf("echantillons = %d, attendu 0 : rien n'est mesure, donc rien n'est attribue",
+			len(out[0].Echantillons))
+	}
+	// Le spawn de la vie, lui, est inchange.
+	if len(out[0].Spawns) != 1 || out[0].Spawns[0].Frame != 0 {
+		t.Fatalf("spawns = %+v, attendu celui de la vie, intact", out[0].Spawns)
+	}
+}
+
+// TestOccupationEmbarquement_NeCreeAucunSpawn — CAS (c) : monter dans un vehicule n'est
+// pas reapparaitre. Un episode seul (aucune vie nommee) donne un joueur mesure, sans
+// spawn — sans quoi les grappes de reapparition de la phase 7 seraient polluees par des
+// points de montee en vehicule.
+func TestOccupationEmbarquement_NeCreeAucunSpawn(t *testing.T) {
+	e := EntreeOccupation{
+		MatchID: "m1", IntervalleFrameMs: intervalleTest,
+		Embarquements: []Embarquement{{XUID: "111", T0: 0, T1: 40, Points: vehiculeQuiTraverse(0, 40)}},
+	}
+	out := Occupation(GrilleParDefaut(), e, PasOccupationMs)
+	if len(out) != 1 {
+		t.Fatalf("joueurs = %d, attendu 1 (l'occupant est nomme par l'episode)", len(out))
+	}
+	if len(out[0].Spawns) != 0 {
+		t.Fatalf("spawns = %+v, attendu aucun : un embarquement n'est pas une reapparition",
+			out[0].Spawns)
+	}
+	if len(out[0].Echantillons) != 16 {
+		t.Fatalf("echantillons = %d, attendu 16", len(out[0].Echantillons))
+	}
+}
+
+// TestOccupationEmbarquement_LeVehiculeGagneSurLeBipede — CAS (d) : un point de bipede
+// DANS la fenetre de l'episode est ignore au profit du vehicule. Pendant l'episode le
+// bipede ne replique plus : sa derniere position connue ne dit plus ou est le joueur, et
+// la tenir peindrait un stationnement au point de montee.
+func TestOccupationEmbarquement_LeVehiculeGagneSurLeBipede(t *testing.T) {
+	g := GrilleParDefaut()
+	// Une vie qui couvre TOUTE la fenetre de l'episode, immobile en (50,25 ; 50,25).
+	piste := pisteImmobile("111", 40, 50.25, 50.25)
+	e := EntreeOccupation{
+		MatchID: "m1", IntervalleFrameMs: intervalleTest, Pistes: []Piste{piste},
+		Embarquements: []Embarquement{{XUID: "111", T0: 0, T1: 40, Points: vehiculeQuiTraverse(0, 40)}},
+	}
+	out := Occupation(g, e, PasOccupationMs)
+	if len(out) != 1 {
+		t.Fatalf("joueurs = %d", len(out))
+	}
+	j := out[0]
+	// La vie couvre [0, 4000 ms) et l'episode [0, 40] frames : TOUS ses instants sont
+	// couverts, donc seuls les 16 echantillons du vehicule subsistent.
+	if len(j.Echantillons) != 16 {
+		t.Fatalf("echantillons = %d, attendu 16 : le bipede a ete compte EN PLUS du vehicule",
+			len(j.Echantillons))
+	}
+	embarquement, _ := g.Cellule(50.25, 50.25)
+	for _, c := range j.PremieresEntrees {
+		if c.Col == embarquement.Col && c.Lig == embarquement.Lig {
+			t.Fatalf("la cellule du bipede a ete peinte pendant l'episode : %+v", j.PremieresEntrees)
+		}
+	}
+}
+
+// TestOccupationEmbarquement_ChevauchementDuMemeJoueur — le document PUBLIE l'ambiguite :
+// conducteur et passager ne se departagent pas par la geometrie, et une vie de vehicule
+// peut porter deux episodes chevauchants. Pour un MEME xuid, les sommer compterait deux
+// fois le temps d'une seule personne.
+func TestOccupationEmbarquement_ChevauchementDuMemeJoueur(t *testing.T) {
+	pts := vehiculeQuiTraverse(0, 40)
+	e := EntreeOccupation{
+		MatchID: "m1", IntervalleFrameMs: intervalleTest,
+		Embarquements: []Embarquement{
+			{XUID: "111", T0: 0, T1: 40, Points: pts},
+			{XUID: "111", T0: 20, T1: 60, Points: pts}, // chevauche le premier
+		},
+	}
+	out := Occupation(GrilleParDefaut(), e, PasOccupationMs)
+	if len(out) != 1 || len(out[0].Echantillons) != 16 {
+		t.Fatalf("echantillons = %+v, attendu 16 : le second episode chevauchant doit etre ecarte", out)
+	}
+}
+
+// TestOccupationEmbarquement_SansOccupantNomme — un episode dont le pont du fil des morts
+// n'a pas nomme le slot n'attribue ce temps a personne.
+func TestOccupationEmbarquement_SansOccupantNomme(t *testing.T) {
+	e := EntreeOccupation{
+		MatchID: "m1", IntervalleFrameMs: intervalleTest,
+		Embarquements: []Embarquement{{T0: 0, T1: 40, Points: vehiculeQuiTraverse(0, 40)}},
+	}
+	if out := Occupation(GrilleParDefaut(), e, PasOccupationMs); len(out) != 0 {
+		t.Fatalf("occupation = %+v, attendu personne", out)
+	}
+}
+
+// ─── DEUX MUTATIONS QUI PASSAIENT (C10) ────────────────────────────────────────
+
+// TestOccupationFrameDEntreeEstCelleDeLEchantillon — la frame publiee est celle de
+// L'ECHANTILLON, pas celle du point tenu. Elles different des que le point precede la
+// frontiere d'echantillon : ici le point est a T=3 (300 ms) et le premier echantillon qui
+// le voit est a 500 ms, soit la frame 5. La mutation `frame := p.T` publierait 3 — et le
+// clic sur la cellule ouvrirait le rejeu 200 ms avant que le joueur n'y soit.
+func TestOccupationFrameDEntreeEstCelleDeLEchantillon(t *testing.T) {
+	pts := []PointPiste{
+		{T: 0, X: 0.25, Y: 0.25},
+		{T: 3, X: 10.25, Y: 0.25}, // 300 ms : entre l'echantillon de 250 ms et celui de 500 ms
+		{T: 20, X: 10.25, Y: 0.25},
+	}
+	out := Occupation(GrilleParDefaut(),
+		entree(Piste{XUID: "111", Points: pts, StartFrame: 0, EndFrame: 20}), PasOccupationMs)
+	if len(out) != 1 {
+		t.Fatalf("joueurs = %d", len(out))
+	}
+	arrivee, _ := GrilleParDefaut().Cellule(10.25, 0.25)
+	for _, c := range out[0].PremieresEntrees {
+		if c.Col == arrivee.Col && c.Lig == arrivee.Lig {
+			if c.Frame != 5 {
+				t.Fatalf("premiere entree a la frame %d, attendu 5 (500 ms) : la frame publiee "+
+					"est celle de l'echantillon, pas celle du point tenu (T=3)", c.Frame)
+			}
+			return
+		}
+	}
+	t.Fatalf("cellule d'arrivee absente : %+v", out[0].PremieresEntrees)
+}
+
+// TestOccupationVieAUnSeulPoint — une vie d'un seul point couvre une duree NULLE : zero
+// echantillon, mais un spawn. La mutation `if len(points) < 2 { continue }` supprimerait
+// le spawn — et les grappes de reapparition de la phase 7 perdraient les vies les plus
+// courtes, celles ou le joueur meurt aussitot ne.
+func TestOccupationVieAUnSeulPoint(t *testing.T) {
+	out := Occupation(GrilleParDefaut(),
+		entree(Piste{XUID: "111", Points: []PointPiste{{T: 7, X: 1.25, Y: 1.25}}}), PasOccupationMs)
+	if len(out) != 1 {
+		t.Fatalf("joueurs = %d, attendu 1", len(out))
+	}
+	if len(out[0].Echantillons) != 0 {
+		t.Fatalf("echantillons = %d, attendu 0 (duree nulle)", len(out[0].Echantillons))
+	}
+	if len(out[0].Spawns) != 1 || out[0].Spawns[0].Frame != 7 {
+		t.Fatalf("spawns = %+v, attendu un seul a la frame 7", out[0].Spawns)
+	}
+}

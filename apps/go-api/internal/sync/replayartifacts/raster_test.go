@@ -221,3 +221,135 @@ func TestProjeterRastersTactiques_LotVide(t *testing.T) {
 		t.Fatalf("dossier des rasters cree sans aucun artefact a projeter (err = %v)", err)
 	}
 }
+
+// ─── LE TEMPS EN VEHICULE, DE BOUT EN BOUT ─────────────────────────────────────
+
+// artefactAvecVehicule : un joueur dont le bipede s'arrete a la frame 10, puis qui roule
+// de la frame 10 a la frame 50 (4 s a 100 ms/frame) dans un Warthog qui traverse la carte.
+//
+// C'EST LA FORME REELLE DU DEFAUT : le trou de 4 s du bipede est ici volontairement court
+// (une vie unique) pour que le cas reste lisible ; en production ces trous durent 13 a 36 s
+// et coupent la vie en deux, ce qui rend le calque des episodes INDISPENSABLE — sans lui,
+// aucune de ces secondes n'est mesuree.
+const artefactAvecVehicule = `{
+  "schemaVersion": 39,
+  "matchId": "cafe0001-0000-0000-0000-000000000000",
+  "frameCount": 51,
+  "frameIntervalMs": 100,
+  "tracks": [
+    {"slot":1,"team":-1,"xuid":"111","startFrame":0,"endFrame":10,
+     "points":[{"t":0,"x":0.25,"y":0.25},{"t":10,"x":0.25,"y":0.25}]}
+  ],
+  "vehicles": [
+    {"slot":771,"gen":1,"family":"warthog","t0":0,"t1":50,"t1max":50,"end":"unknown",
+     "samples":[{"t":10,"x":30.25,"y":0.25},{"t":30,"x":60.25,"y":0.25}],
+     "rides":[{"t0":10,"t1":50,"slot":1,"xuid":"111","src":"event"}]}
+  ]
+}`
+
+// TestProjeterRasterTactique_TempsEnVehicule — LE CONSTAT C1 DE LA REVUE.
+//
+// Sans le calque des episodes, ce match sortait avec les seuls echantillons du bipede : le
+// trajet en vehicule etait perdu en silence, et le match comptait pourtant comme MESURE.
+func TestProjeterRasterTactique_TempsEnVehicule(t *testing.T) {
+	s, err := ProjeterRasterTactique(ecrireFichier(t, "vehicule.json", artefactAvecVehicule))
+	if err != nil {
+		t.Fatalf("projection: %v", err)
+	}
+	if len(s.Joueurs) != 1 {
+		t.Fatalf("joueurs = %+v, attendu 1", s.Joueurs)
+	}
+	total := 0
+	parCellule := map[[2]int]int{}
+	for _, c := range s.Joueurs[0].Cellules {
+		total += c.Echantillons
+		parCellule[[2]int{c.Col, c.Lig}] = c.Echantillons
+	}
+	// Le bipede couvre [0, 1000 ms) = 4 echantillons en cellule (0,0) ; l'episode couvre
+	// [1000, 5000 ms) = 16 echantillons sur les cellules du VEHICULE.
+	if total != 20 {
+		t.Fatalf("echantillons = %d, attendu 20 (4 de bipede + 16 de vehicule) : le temps "+
+			"en vehicule est perdu", total)
+	}
+	if parCellule[[2]int{0, 0}] != 4 {
+		t.Fatalf("cellule du bipede = %d echantillons, attendu 4", parCellule[[2]int{0, 0}])
+	}
+	// x=30,25 -> col 60 ; x=60,25 -> col 120.
+	if parCellule[[2]int{60, 0}] == 0 || parCellule[[2]int{120, 0}] == 0 {
+		t.Fatalf("les cellules du vehicule ne sont pas peintes : %+v", s.Joueurs[0].Cellules)
+	}
+	// UN EMBARQUEMENT NE CREE AUCUN SPAWN : il ne doit y en avoir qu'un, celui de la vie.
+	if len(s.Joueurs[0].Spawns) != 1 || s.Joueurs[0].Spawns[0].Frame != 0 {
+		t.Fatalf("spawns = %+v, attendu le seul spawn de la vie", s.Joueurs[0].Spawns)
+	}
+}
+
+// TestProjeterRasterTactique_VehiculeSansOccupantNomme — un episode dont le film n'a pas
+// nomme l'occupant n'attribue ce temps a personne : le vehicule EST occupe, son occupant
+// est inconnu.
+func TestProjeterRasterTactique_VehiculeSansOccupantNomme(t *testing.T) {
+	const anonyme = `{"schemaVersion":39,"matchId":"abc","frameCount":51,"frameIntervalMs":100,
+      "tracks":[],
+      "vehicles":[{"slot":771,"gen":1,"t0":0,"t1":50,"t1max":50,"end":"unknown",
+        "samples":[{"t":10,"x":30.25,"y":0.25}],
+        "rides":[{"t0":10,"t1":50,"slot":1,"src":"gap"}]}]}`
+	s, err := ProjeterRasterTactique(ecrireFichier(t, "anon.json", anonyme))
+	if err != nil {
+		t.Fatalf("projection: %v", err)
+	}
+	if len(s.Joueurs) != 0 {
+		t.Fatalf("joueurs = %+v, attendu aucun", s.Joueurs)
+	}
+}
+
+// TestProjeterRasterTactique_PointsIgnoresEstStructurellementNul — C9, ET CE QUE LA
+// MESURE A REVELE.
+//
+// Le sidecar TRANSPORTE `points_ignores` (les positions non finies ecartees), parce que la
+// lecture ne peut pas le recalculer : elle somme des comptes deja groupes PAR CELLULE, et
+// un point ecarte n'a jamais eu de cellule.
+//
+// MAIS IL VAUT TOUJOURS 0 AUJOURD'HUI, ET C'EST STRUCTUREL : `replay.Point.X/Y` et
+// `replay.VehicleSample.X/Y` sont des `float32`, et JSON ne peut exprimer aucune valeur non
+// finie — une coordonnee qui deborde float32 fait echouer la DESERIALISATION DE TOUT
+// L'ARTEFACT (mesure : `json: cannot unmarshal number 1e39 into ... float32`), donc la
+// projection entiere echoue avant d'ecarter quoi que ce soit. Le garde de
+// `Grille.Cellule` et ce transport restent : ils tiennent le contrat du champ, et le jour
+// ou un producteur autre que ce JSON alimenterait le sidecar, la mesure serait vraie sans
+// rien changer. Ce test-ci FIGE le fait, pour qu'il ne soit pas redecouvert comme un bug.
+func TestProjeterRasterTactique_PointsIgnoresEstStructurellementNul(t *testing.T) {
+	s, err := ProjeterRasterTactique(ecrireFichier(t, "artefact.json", artefactImmobile))
+	if err != nil {
+		t.Fatalf("projection: %v", err)
+	}
+	if s.PointsIgnores != 0 {
+		t.Fatalf("points_ignores = %d : un artefact JSON ne peut porter aucune position "+
+			"non finie (float32), ce compte ne peut pas etre non nul", s.PointsIgnores)
+	}
+	// LA PREUVE DE L'IMPOSSIBILITE, jouee : une coordonnee non finie n'est pas « un point
+	// ecarte », c'est un artefact ILLISIBLE — et cela se compte en echec, pas en silence.
+	const horsBornes = `{"schemaVersion":39,"matchId":"abc","frameCount":21,"frameIntervalMs":100,
+      "tracks":[{"slot":1,"team":-1,"xuid":"111","startFrame":0,"endFrame":20,
+        "points":[{"t":0,"x":1e39,"y":0.25}]}]}`
+	if _, err := ProjeterRasterTactique(ecrireFichier(t, "hb.json", horsBornes)); err == nil {
+		t.Fatal("une coordonnee hors bornes float32 doit faire echouer la projection entiere")
+	}
+}
+
+// TestSidecarSchemaVersion_SuitLaFormule — la version du FORMAT couvre la FORMULE : le
+// calque des embarquements change ce que `echantillons` compte, donc tout sidecar
+// anterieur est perime et doit etre reecrit par le rattrapage. La laisser a 1 aurait
+// laisse coexister deux mesures differentes sous le meme nom.
+func TestSidecarSchemaVersion_SuitLaFormule(t *testing.T) {
+	if domain.TacticalRasterSchemaVersion < 2 {
+		t.Fatalf("schema du sidecar = %d : l'ajout du temps en vehicule change la formule, "+
+			"la version doit avoir bouge", domain.TacticalRasterSchemaVersion)
+	}
+	s, err := ProjeterRasterTactique(ecrireFichier(t, "artefact.json", artefactImmobile))
+	if err != nil {
+		t.Fatalf("projection: %v", err)
+	}
+	if s.SchemaVersion != domain.TacticalRasterSchemaVersion {
+		t.Fatalf("schema_version ecrit = %d", s.SchemaVersion)
+	}
+}

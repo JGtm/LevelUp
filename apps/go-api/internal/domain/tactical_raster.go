@@ -34,7 +34,17 @@ package domain
 // traduction en secondes depend de ce pas. Changer analysis/tactical.PasOccupationMs sans
 // incrementer cette version rendrait tous les sidecars du parc silencieusement faux d'un
 // facteur — d'ou le champ PasEchantillonMs ci-dessous, que la lecture verifie.
-const TacticalRasterSchemaVersion = 1
+// # LA LACUNE RESIDUELLE, ECRITE PLUTOT QUE TUE
+//
+// Le temps passe en VEHICULE est attribue par les episodes d'occupation du document
+// (`replay.VehicleRide`), et cette primitive n'attribue que **15,6 a 21,1 % des vies de
+// vehicule** (limite mesuree et publiee dans `analysis/replay/document_vehicles.go`, doc
+// de `VehicleTrack.Rides`). Le reste du temps embarque n'est donc PAS mesure : il
+// n'apparait ni dans les cellules, ni au denominateur. Une lecture « ou je passe mon
+// temps » sous-estime le temps en vehicule, et c'est une propriete connue de la mesure —
+// pas un defaut a chercher. Elle ne peut pas se corriger ici : elle se corrigerait en
+// amont, dans la primitive d'attribution des episodes.
+const TacticalRasterSchemaVersion = 2
 
 // TacticalRasterSidecar est le fichier depose a cote de l'artefact
 // (title.PathResolver.TacticalRasterPath).
@@ -67,6 +77,15 @@ type TacticalRasterSidecar struct {
 	// comptes. C'est L'UNITE de `echantillons` : sans lui, un compte de 8 ne dit pas
 	// s'il vaut 2 s ou 4 s. Verifie a la lecture.
 	PasEchantillonMs int `json:"pas_echantillon_ms"`
+
+	// PointsIgnores est le nombre d'echantillons ECARTES faute de position finie (NaN /
+	// Inf), comptes A LA CUISSON.
+	//
+	// IL VOYAGE DANS LE FICHIER PARCE QU'IL N'EXISTE PLUS APRES. La lecture somme des
+	// comptes deja groupes PAR CELLULE, et un point ecarte n'a jamais eu de cellule : il
+	// ne peut donc pas se retrouver dans l'agregat. Sans ce champ, la reponse aurait
+	// publie 0 point ignore quoi qu'il arrive, et un decodage qui derape se serait tu.
+	PointsIgnores int `json:"points_ignores"`
 
 	// Joueurs est trie par xuid. VIDE mais PRESENT quand l'artefact n'a aucune piste
 	// nommee : le fichier existe, donc le match est MESURE et il est mesure a zero — ce
