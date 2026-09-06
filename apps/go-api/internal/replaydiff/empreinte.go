@@ -1,4 +1,4 @@
-package main
+package replaydiff
 
 // empreinte.go — REDUIRE UN ARTEFACT A UN JEU DE MESURES NOMMEES.
 //
@@ -62,10 +62,10 @@ func (e *Empreinte) incr(axe, metrique string, v float64) {
 	e.Mesures[cle(axe, metrique)] = Mesure{Num: m.Num + v, EstNum: true}
 }
 
-// lireDocument lit un artefact SANS le typer. `UseNumber` garde les entiers exacts : un
+// LireDocument lit un artefact SANS le typer. `UseNumber` garde les entiers exacts : un
 // compteur de 2 533 274 815 845 110 passe par `float64` sans perte visible, mais un xuid lu
 // comme nombre flottant deviendrait une identite fausse.
-func lireDocument(path string) (map[string]any, error) {
+func LireDocument(path string) (map[string]any, error) {
 	f, err := os.Open(path) //nolint:gosec // chemin fourni par l'operateur du CLI
 	if err != nil {
 		return nil, err
@@ -150,17 +150,6 @@ func nombre(v any) (float64, bool) {
 func chaine(v any) string {
 	s, _ := v.(string)
 	return s
-}
-
-// compte additionne un champ numerique sur tous les elements d'un tableau.
-func compte(items []any, champ string) float64 {
-	var total float64
-	for _, it := range items {
-		if n, ok := nombre(objet(it)[champ]); ok {
-			total += n
-		}
-	}
-	return total
 }
 
 // compteLongueurs additionne la longueur d'un champ tableau sur tous les elements.

@@ -1,4 +1,4 @@
-package main
+package replaydiff
 
 // comparaison.go — CONFRONTER DEUX EMPREINTES ET NOMMER LE SENS DE CHAQUE ECART.
 //
