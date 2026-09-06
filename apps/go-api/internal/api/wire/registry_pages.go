@@ -150,6 +150,27 @@ func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayServ
 	return service.NewReplayService(pdb.TitleSlug, r.cfg.RepoRoot, maps)
 }
 
+// Tactical retourne un TacticalService pour le joueur : l'onglet Tactique
+// (lectures de placement par carte + KPI d'echange). UN SEUL endroit de
+// construction, comme replayServiceFor.
+//
+// Multi-titre : les deux portes data-level (`film.kill_positions` pour les
+// rasters, `film.kill_source` pour l'echange) sont lues sur la CapabilityMap de
+// l'adapter du titre du joueur (capabilitiesForPDB → dataAdapterForPDB, avec repli
+// sur les capabilities HI du boot). JAMAIS une comparaison de slug. Un titre qui
+// n'expose pas les positions rend ErrCapabilityNotSupported → 503 propre.
+//
+// La taxonomie de modes est celle du MatchViewRepo et du MediaRepo : sans elle, le
+// filtre `mode` du vocabulaire de l'Explorateur serait ignoré en silence.
+func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.TacticalService, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	repo := duckdb.NewTacticalRepo(pdb).WithModeTaxonomy(haloInfiniteModeTaxonomy())
+	return service.NewTacticalService(repo, r.capabilitiesForPDB(pdb), pdb.XUID), nil
+}
+
 // MatchEvents retourne un MatchEventsService pour le joueur : timeline canonique
 // d'events (kill-feed / timeline) servie par l'adapter du titre, avec résolution
 // des gamertags via le chokepoint canonique (v_gamertag_lookup).

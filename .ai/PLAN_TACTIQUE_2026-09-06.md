@@ -203,20 +203,47 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   `Couverture` avec 8 morts -> echantillon faible ; `go vet` propre ; fichiers <= 500 L,
   fonctions <= 80 L.
 
-### Phase 2 — Port, repo, service, handler (aucun artefact, aucune capability creee) — EXECUTABLE
-- [ ] 2.1 `port/repository_data.go` : `TacticalRepository` (`KillPositions(filtre)`,
-      `KillEvents(filtre)`, `MapsPlayed(filtre)`) a cote de `KillDistanceRepository`
-- [ ] 2.2 `platform/duckdb/tactical_repo.go`, calque sur la jointure de `kill_distance_repo.go:122` ;
-      filtre temporel par le fragment canonique `COALESCE(start_time_utc, ...)`
-- [ ] 2.3 `service/tactical_service.go` : lectures `morts`, `kills`, `gagne` (rasters SQL) +
-      `Couverture` d'echange **par carte** ; gates data-level existantes (`film.kill_positions`,
-      `film.kill_source`) via le mecanisme `CapabilityMap` en place ; `ErrCapabilityNotSupported`
-      -> 503 propre
-- [ ] 2.4 `api/handlers/tactical.go` : `GET /players/{slug}/tactical/maps`,
-      `GET /players/{slug}/tactical/{mapId}/raster` ; enregistrement dans le registry ;
-      OpenAPI regenere (`make generate-types`)
-- [ ] 2.5 `slog.InfoContext` sur chaque calcul (carte, question, matchs retenus, cellules) ;
-      `slog.ErrorContext(ctx, ..., "err", err)` sur toute erreur
+### Phase 2 — Port, repo, service, handler (aucun artefact, aucune capability creee) — CLOSE 2026-09-06
+- [x] 2.1 `port/repository_data.go:183-215` : `TacticalRepository` (`MapsPlayed`,
+      `KillPositions`, `KillEvents`) a cote de `KillDistanceRepository`. Les deux lectures
+      spatiales rendent L'UNIVERS AVEC les points (`domain.TacticalPositions` /
+      `TacticalKillEvents`) : un match retenu sans position doit compter au denominateur, et
+      le deduire des points l'effacerait (defaut P0 de la phase 1). Types dans
+      `domain/tactical.go`, contrat du service dans `port/tactical.go`.
+- [x] 2.2 `platform/duckdb/tactical_repo.go` (397 L) + `_test.go` (475 L, SANS tag de build —
+      le gate ne pose pas `-tags=integration`, et un test derriere un tag que le gate ne pose
+      pas ne garde rien ; vraies migrations shared sur `:memory:`, aucune DDL recopiee).
+      Filtre par `analysis.BuildNeighborsWhereClause` : le fragment timezone canonique en
+      vient, aucun litteral recopie. `publishable` exige des deux cotes (attribution PAR
+      LIGNE) ; garde d'ambiguite `HAVING count(*) = 1` sur le double kill
+      (`tactical_repo.go:238`) ; codes d'issue en parametres LIES.
+- [x] 2.3 `service/tactical_service.go:74,100` + `_test.go` (mock du port). Trois questions,
+      trois axes (`moi` / `escouade` = meme `team_id` DU MATCH moi exclu / `adv`) ;
+      `film.kill_positions` absente -> `ErrCapabilityNotSupported` (503) ; `film.kill_source`
+      absente -> KPI d'echange SILENCIEUX, lecture servie. `CapabilityMap.Has`, jamais un slug.
+      Test de reference : 12 V dont 6 muettes / 8 D dont 4 muettes, cellule 6 V-4 D -> 0,00.
+- [x] 2.4 `api/handlers/tactical.go` (2 routes Huma) + `_test.go` httptest ; cablage
+      `api/wire/registry_pages.go:165` (`ServiceRegistry.Tactical`) et
+      `api/server_apiv1.go:715` — un seul endroit de construction ; `openapi.yaml` et
+      `generated.ts` regeneres (+366 / +216 lignes, AUCUNE suppression).
+- [x] 2.5 `slog.InfoContext` sur chaque calcul : `tactical_service.go:93` (cartes),
+      `:133` (`player`, `titleSlug`, `map_id`, `question`, `qui`, `matchs_retenus`,
+      `cellules`, `points_ignores`, `duration`), `:275` (echange).
+      `ErrorContext(..., "err", err)` sur toute erreur (service, repo `degrader` /
+      `scanRows`, handler `mapTacticalError`). Aucune erreur avalee : une ligne SQL
+      illisible est signalee PUIS propagee, et un filtre ecarte est journalise.
+- **Gate PASSE le 2026-09-06** (avant-plan, une commande `go` a la fois,
+  `GOCACHE=...\go-build-tactique`, `CGO_ENABLED=1`, depuis `apps/go-api`) : `go vet` propre
+  sur les 7 arbres (1,9 s) ; `go test -count=1` vert sur 22 paquets en 42,3 s (duckdb
+  39,1 s ; api 22,7 s ; service 10,1 s ; handlers 9,2 s ; archlint 6,9 s ; contracttest
+  0,4 s) ; `golangci-lint run --new-from-merge-base=origin/main` (LE ratchet de la CI) :
+  **0 issue** ; `go run ./cmd/openapi-gen -check` : a jour. Ratchets verts :
+  `no_slug_comparison_test`, `no_data_path_join_test`, `no_raw_start_time_literal_test`,
+  `no_inline_objective_latest_view_test`, `no_raw_outcome_literal_test`,
+  `tactical_pure_test`, et `no_raw_kill_scope_literal_test` — celui-ci a MORDU (`read_path`
+  ecrit en clair dans la fixture, corrige en `killscope.ReadPathFilmWalk`). Seuils : fichiers
+  neufs <= 475 L, fonctions <= 45 L, <= 5 parametres. `internal/sync/` et `internal/persist/`
+  NON touches : pas de passe `-tags=integration`.
 - **Gate** : `go test ./internal/platform/duckdb/... ./internal/service/... ./internal/api/...`
   vert ; repo en DuckDB `:memory:` ; handler `httptest` ; titre sans `film.kill_positions`
   -> 503 ; ratchets `no_slug_comparison_test`, `no_data_path_join_test` verts ;
@@ -303,6 +330,13 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : phase 2 CLOSE — port, lecteur DuckDB, service et handler livres en 4 commits
+  (`tactique(2.1)` a `(2.4)`), items 2.1-2.5 `[x]`, gate joue en avant-plan (vet propre,
+  22 paquets verts en 42,3 s, ratchet de lint de la CI a 0 issue, contrat OpenAPI a jour,
+  `generated.ts` en additions pures). DEUX DECISIONS PRODUIT prises faute de tranche du plan,
+  consignees en §7 et A CONFIRMER : « ou je gagne » se lit sur les ENGAGEMENTS (mes kills ET
+  mes morts), et le KPI d'echange d'une carte porte sur les morts de MON CAMP. Non pousse :
+  revue du superviseur.
 - 2026-09-06 : branche renommee `wt/tactique` -> `feat/tactique` par le superviseur : le filtre `push.branches` de `ci.yml` ne couvre pas `wt/**` (seulement `feat/**`, `fix/**`, ...), aucun run ne se declenchait. Meme convention que les lots `feat/v2-*` de l audit.
 - 2026-09-06 : revision 4, worktree `LevelUp-wt-tactique` cree, phase 1 lancee.
 - 2026-09-06 : **revue adversariale ronde 2 (derniere salve) — 3 constats, tous corriges** en
@@ -356,6 +390,47 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-06 (phase 2) — **DECISION PRODUIT A CONFIRMER : « ou je gagne » se lit sur les
+  ENGAGEMENTS.** Le plan tranche la FORME (raster signe, echelle symetrique, plancher par
+  cote) mais pas le SUBSTRAT. Retenu : mes kills ET mes morts
+  (`domain.TacticalQuestionGagne`, `service/tactical_service.go:165`). Motif : la question
+  demande ou ma presence correle avec la victoire ; la seule presence mesurable avant les
+  rasters d'occupation (phases 6-7) est le combat, et il a deux faces — ne garder que les
+  kills confondrait « ou je gagne » avec « ou je tue », qui est deja une question a part.
+  Substitution prevue par l'occupation quand elle existera.
+- 2026-09-06 (phase 2) — **DECISION PRODUIT A CONFIRMER : le KPI d'echange d'une carte porte
+  sur les morts de MON CAMP** (mes coequipiers ET moi), pas sur les miennes seules ni sur
+  toutes les morts du match (`tactical_service.go:245`). Le plan dit « par carte, libelle
+  sur cette carte » sans nommer le perimetre.
+- 2026-09-06 (phase 2) — **`port/repository_data.go` passe de 614 a 651 lignes.** Le fichier
+  depassait DEJA le seuil de 500 L (produit d'un god-file split de 2026-05-27) et le plan
+  demande explicitement l'interface « a cote de `KillDistanceRepository` ». Aucun linter ne
+  garde la taille de fichier (seuil CLAUDE.md, pas regle golangci) : la dette est donc
+  accrue de 37 lignes en connaissance de cause. Un decoupage par sujet — que le paquet
+  `port` pratique deja (achievements.go, medals.go, tactical.go...) — est le candidat.
+  NON TRAITE (hors perimetre).
+- 2026-09-06 (phase 2) — **le vocabulaire de filtre de l'Explorateur a maintenant DEUX
+  lecteurs Go** : `handlers.parseNeighborsFilterSpec` (sur `*http.Request`) et
+  `handlers.TacticalFilterQuery.spec` (sur une entree typee Huma). Les PREDICATS sont
+  partages (`playlistOrSessionPattern`, `xuidPattern`, `parseCsvFilterParam`,
+  `analysis.IsValidOutcomeLabel`), seul l'assemblage est double. La regle des <= 2 copies
+  tient ; un TROISIEME lecteur exigera un helper canonique + garde-rail. NON TRAITE.
+- 2026-09-06 (phase 2) — **PIEGE HUMA : un champ EMBARQUE de type non exporte n'est pas lie.**
+  `tacticalFilterInput` embarque dans l'entree rendait TOUS les filtres vides, sans erreur ni
+  log — la reflexion de Huma ne peut pas assigner un champ non exporte. Type renomme
+  `TacticalFilterQuery` (exporte) ; le piege est garde par
+  `TestTacticalHandler_FiltreExplorateur`. Aucun autre handler du depot n'embarque de struct
+  d'entree : rien d'autre a verifier.
+- 2026-09-06 (phase 2) — **`make generate-types` ne regenere PAS `openapi.yaml`.** La cible
+  n'appelle qu'`openapi-typescript` sur le yaml existant ; c'est `make openapi-gen` qui ecrit
+  `apps/go-api/api/openapi.yaml` (et non `apps/go-api/openapi.yaml`). Les deux ont ete
+  jouees, dans cet ordre. Par ailleurs ce worktree n'a PAS de `apps/web/node_modules` :
+  `make generate-types` echoue, et la generation a ete faite avec le binaire
+  `openapi-typescript` 7.13.0 du checkout principal (meme version que `package.json`), lu en
+  seule lecture. `tools/check-generated-types-fresh.mjs` passe en SILENCE (exit 0) quand le
+  CLI manque — un garde-rail qui ne peut pas mordre en local ; la CI, elle, l'exercera.
+- 2026-09-06 (phase 2) — **`internal/contracttest` n'existe pas** : le paquet est a
+  `apps/go-api/contracttest`. Le gate a ete joue sur `./contracttest/...`.
 - 2026-09-06 (phase 1) — **TROIS implementations de quantile dans le depot, deux conventions
   differentes.** `analysis/replay.gwPadsQuantile` tronque l'index (`s[int(q*(n-1))]`),
   `analysis/temporal.quantileSorted` interpole lineairement ; `analysis/tactical.quantile`

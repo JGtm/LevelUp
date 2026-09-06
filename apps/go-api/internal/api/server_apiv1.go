@@ -707,6 +707,13 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// timeline d'events on-demand (kill-feed/timeline), capability-gated.
 		handlers.NewMatchEventsHandler(reg.MatchEvents).Mount(r, playerOpt)
 
+		// Onglet Tactique : GET .../tactical/maps + .../tactical/{map_id}/raster.
+		// Hors sous-groupe capability de TITRE : le gating est DATA-LEVEL
+		// (film.kill_positions / film.kill_source, lues par le service sur la
+		// CapabilityMap de l'adapter) — un titre sans positions mesurées reçoit un
+		// 503 propre, et la grille des cartes reste servie.
+		handlers.NewTacticalHandler(reg.Tactical).Mount(r, playerOpt)
+
 		// Phase 4 plan engagement : score + courbe par match + profil + timeseries + squad
 		// + admin recompute. Toutes les routes sont gated par CapEngagement
 		// (titre doit declarer la capability — halo_infinite=oui, autres=non
