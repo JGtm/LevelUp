@@ -19,25 +19,44 @@ package filmdec
 // compris, plus le chunk highlight — donc elle porte le REGISTRE (chunk_00) et la continuite que
 // le decodeur exige pour construire son monde par accumulation. Celle du rejeu est faite de
 // paquets choisis : elle n'y decode aucun record de canal delta. Mesure a l'appui, cette
-// bobine-ci rend 28 005 records delta, 17 slots bipedes et une population non vide dans 25
-// familles sur 30.
+// bobine-ci rend 28 005 records delta et 17 slots bipedes.
 //
 // # CE QUE LE GOLDEN FIGE, ET SOUS QUELLE FORME
+//
+// CET EN-TETE A DECRIT UN AUTRE FICHIER JUSQU'AU 2026-09-06 (correction C6 de la revue E-R1) : il
+// annoncait « 25 familles sur 30 » peuplees, « cinq familles a 0 » et un digest calcule sur un
+// rendu `%+v`. Les trois etaient faux — comptes et implementation. Ce qui suit est mesure sur le
+// fichier fige et sur `rendreStable`.
 //
 // Une ligne par famille : `nom <TAB> compte <TAB> digest <TAB> premier`.
 //
 //   - `compte` est la POPULATION (ou -1 quand la famille rend une erreur, cf. ci-dessous) ;
-//   - `digest` est le sha256 d'un rendu `%+v` de TOUT le resultat : c'est lui qui attrape une
-//     valeur qui bouge sans que le compte change (une largeur inversee, typiquement) ;
+//   - `digest` est le sha256 du rendu de `rendreStable` sur TOUT le resultat — surtout PAS un
+//     `%+v`, qui imprime l'ADRESSE des pointeurs et rendait le digest instable d'une passe a
+//     l'autre (la demonstration est a `rendreStable`, en bas de ce fichier). C'est le digest qui
+//     attrape une valeur qui bouge sans que le compte change (une largeur inversee, typiquement) ;
 //   - `premier` est UNE VALEUR NOMMEE LISIBLE — le premier element, champs nommes, tronque.
 //     Sans elle, un rouge se lirait « le digest a change » et il faudrait un outil pour savoir
 //     quoi. Avec elle, l'instant, le slot et la valeur du premier evenement sont dans le diff.
 //
-// UNE POPULATION VIDE EST UNE INFORMATION, PAS UN ECHEC. Cinq familles rendent 0 sur ce prefixe
-// (le film n'en porte pas), et deux rendent une ERREUR d'etat documentee (« aucun slot
-// d'archetype ti=11 / ti=40 »). Le golden fige les deux cas TELS QUELS : si un jour l'une se
-// remplit, le golden rougit et c'est exactement ce qu'on veut savoir. Le detail famille par
-// famille est au journal du lot (`.ai/V7.5/v2/LOT_E.md`).
+// CE QUE LE FICHIER FIGE CONTIENT, LIGNE POUR LIGNE (mesure du 2026-09-06) : **35 lignes**, soit
+// 33 familles de balayage et 2 MESURES DERIVEES etiquetees comme telles dans le journal du lot
+// (`catalogueFamillesDuFilm`, le catalogue d'armes derive du film, et `weaponDamagesBaseSlot`).
+// Sur ces 35 lignes, **29 sont peuplees**, **4 sont a zero** (`navpointRadial`,
+// `translocatorTeleports`, `vehicleEvents`, `carrierMarks`) et **2 portent une erreur d'etat**,
+// comptees -1 (`vehicleCreations` et `objectives_ti11` : « aucun slot d'archetype ti=40 / ti=11 »).
+//
+// UNE POPULATION VIDE EST UNE INFORMATION, PAS UN ECHEC : ce film est une Fiesta d'arene, sans
+// vehicule, sans objectif ti=11, sans porteur et sans translocateur. Le golden fige les deux cas
+// TELS QUELS : si un jour l'une se remplit, le golden rougit et c'est exactement ce qu'on veut
+// savoir. Le detail famille par famille est au journal du lot (`.ai/V7.5/v2/LOT_E.md`).
+//
+// CE QU'UNE LIGNE VIDE NE VERROUILLE PAS, ET IL FAUT LE SAVOIR EN LISANT CE GOLDEN : les deux
+// lignes a zero d'une famille qui rend une tranche portent le digest de la tranche VIDE
+// (`4f53cda18c2baa0c...`, le meme pour les deux) et les deux lignes en erreur ne figent que la
+// chaine du refus. Une largeur inversee dans une famille vide ne fait donc rougir personne — la
+// mesure est au verdict E-R1 (mutation M5, `vehicleSeatBits` 6 -> 5 : tout le gate reste vert).
+// La couverture reelle de ce golden est de 29 lignes sur 35.
 //
 // # PAS DE SKIP
 //
