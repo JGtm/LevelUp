@@ -108,8 +108,15 @@ bornes de carte sont des dequantifications).
 | `LevelUp-go-migration/data/cache/replays/_backup_2026-09-03` | 2 | 2 |
 | Cle PNY `E:\replays\halo_infinite\v01..v31` (archive par version) | 76 | 47 |
 | Cle PNY `E:\replays\_ancien_halo_infinite_2026-09-06` | 56 | 0 (doublons du parc) |
-| 105 worktrees (`git worktree list`) + ancien principal `Downloads\Scripts\LevelUp` | 222 | 5 |
+| 105 worktrees (`git worktree list`) + ancien principal `Downloads\Scripts\LevelUp` | 224 | 5 |
 | **Total** | **465** | **161** |
+
+Les 5 retenus des worktrees : `000d5950` et `01e1f945` au schema 29 (`wt-biped-pickup`),
+`01e1f945` au 32 (`wt-origine-equipement`), `1b2d9e08` au 38 (`wt-lecture-equipement`),
+`696a9d7c` au schema 1 (`re-mode-score`) — cinq etats que ni le parc ni la cle ne portaient.
+Sur les 224 fichiers vus cote worktrees, 218 sont des doublons du parc principal (109 par la
+jonction `LevelUp-wt-cuisson-perf/data`, 109 par le principal lui-meme, qui figure dans
+`git worktree list`).
 
 `LevelUp-wt-cuisson-perf/data` est une jonction vers le `data` du principal (contenus
 strictement identiques, verifie par md5) — compte une seule fois. Six worktrees seulement
