@@ -83,6 +83,12 @@ func (c *LayerCoverage) count(r rejectReason) {
 // warnIfLossy émet un avertissement ÉCHANTILLONNÉ — un par calque, pas un par événement —
 // quand une catégorie de rejet dépasse le seuil. Le nom du calque est passé en clair pour
 // que le journal désigne le chantier concerné.
+//
+// LES QUATRE CATÉGORIES DE REJET SONT SURVEILLÉES, `Unpublished` COMPRISE (correctif du
+// 2026-09-06). Elle en était absente, et c'est précisément la seule qui BOUGE sur le parc : sur
+// `3372e7eb`, 46 % des actions d'objectif disparaissaient sans une seule ligne de journal, pour
+// un seuil de 10 %. Une catégorie de rejet sans alarme est un rejet avalé — l'anti-patron que
+// l'en-tête de ce fichier existe pour interdire.
 func (c LayerCoverage) warnIfLossy(layer string) {
 	if c.Available == 0 {
 		return
@@ -90,7 +96,8 @@ func (c LayerCoverage) warnIfLossy(layer string) {
 	for _, cat := range []struct {
 		name string
 		n    int
-	}{{"slotIntrouvable", c.NoSlot}, {"slotAmbigu", c.Ambiguous}, {"horsFenetre", c.OutOfWindow}} {
+	}{{"slotIntrouvable", c.NoSlot}, {"slotAmbigu", c.Ambiguous}, {"horsFenetre", c.OutOfWindow},
+		{"sansTrajectoirePubliee", c.Unpublished}} {
 		if float64(cat.n)/float64(c.Available) < rejectSampleThreshold {
 			continue
 		}
