@@ -96746,3 +96746,52 @@ cours (worktree `LevelUp-wt-v2-balayage`, un film a la fois, outil `cmd/replay-d
 balayage ; rejouer le balayage « apres » sur `feat/v75` integre ; decision user sur `flagCarries`
 (completer dans replaybuild) ; puis tag v7.5.0 selon la sequence de release Notion (re-cuisson
 du parc au schema 40).
+
+---
+
+## [2026-09-06] Regressions 2, 3 et 4 du balayage du parc : une seule cause, trois calques
+
+**Statut** : Complete (branche `feat/v2-regressions`, worktree dedie, base `9e73368e8`).
+
+**Question posee.** Le balayage du parc (161 paires, 119 films re-cuits) laissait trois
+regressions candidates non instruites apres le correctif CTF : grappin −10 a −40 % sur 16 matchs
+(faux positifs elimines ou tractions perdues ? non tranche), episodes camo/surbouclier −1 a −2 sur
+11 matchs (sans explication dans la chronique), et un joueur perdant TOUTES ses vies nommees sur
+3 matchs.
+
+**Decision technique principale.** Les trois ont **la meme cause racine**, nommee par bissection
+sur film reel : `48cf4905d` (2026-09-02, schema 36, « une track = une vie ») a decoupe les pistes a
+`lifeGapUS`, et trois consommateurs ont continue de supposer qu'un slot ne porte qu'UNE piste,
+n'en retenant que la derniere. Le message du commit annoncait pourtant « les fermetures nomment la
+vie qu'elles closent » — meme ecart message/mesure que `d173b1a8c` pour la candidate 1.
+(1) `nameClosedLives` re-devinait « l'unique vie anonyme du slot » au lieu d'utiliser la vie que la
+fermeture avait DESIGNEE, et s'abstenait des qu'il y en avait deux : le nouveau champ
+`closureReport.closedLife` transporte cette designation, sans toucher a aucune decision du pont.
+(2) `buildGrappleLines` bornait chaque traction a la derniere vie du slot, la rendant vide puis la
+supprimant : la traction se pose desormais sur la vie qui couvre son ACCROCHE, et `pullLives`
+compte des vies. (3) `trackFrameWindows` n'indexait qu'une fenetre par slot : elle les porte toutes,
+et l'episode est borne a celle qu'il recouvre.
+
+**Resultats observes** (cuissons par le chemin de production, un film a la fois, faits fournis et
+verifies, pic max 0,55 Gio). `145908d1` : pistes nommees 51 -> **53** et identites 23 -> **24**
+(53/24 avant le schema 36) ; le pont, lui, etait INCHANGE a 53 slots — le document publiait 29 tirs
+sur deux pistes anonymes. `879a4dba` : tractions 15 -> **23** pour **23 accroches lues dans le
+film** (`heavyReads` identique des deux cotes : tractions PERDUES, pas faux positifs elimines) ;
+`084a804d` 61 -> **71**. Episodes : `82f29378` retrouve son surbouclier (3 -> 4 episodes),
+`084a804d` ses 15 camo sur 9 vies. En revanche `13d92593` est un **GAIN documente, pas une
+regression** : son episode de duree nulle etait ancre sur le point de trajectoire aberrant qui
+donnait au document `minX -227,27` au lieu de `-18,57` — il ne revient pas, et c'est voulu.
+Sept tests de non-regression, chacun **prouve par mutation** (rouge sans le correctif).
+`SchemaVersion` 40 -> 41 avec chronique : la sortie de cuisson change, un artefact 36-40 doit se
+lire « a re-cuire » ; golden d'assemblage regenere, unique ecart = la ligne de version (1/606).
+Gates verts : filmdec + replay + replaybuild + archlint, wire en integration `-p 1`, `go build ./...`,
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue. `closures.go` franchissait les
+500 lignes : fermeture B sortie dans `closures_respawn.go` (deplacement pur).
+
+**Conclusion / prochaine etape.** Les trois candidates sont soldees (2 et 4 : regressions
+corrigees ; 3 : corrigee pour 10 matchs sur 11, le onzieme etant un gain). Impact parc : 16 matchs
+(54 tractions), 11 matchs (17 episodes), 18 matchs (vies nommees). La propagation passe par la
+re-cuisson de release, que le bump 41 rend obligatoire — trois entrees au registre des reports
+(re-cuisson, vie coupee par un trou de replication a corps immobile, pont ecrase par deux morts sur
+un meme slot). Verifie en passant : la candidate 1 est bien close (`145908d1` publie de nouveau ses
+7 actions d'objectif, zero ecart sur l'axe `objectifs`).

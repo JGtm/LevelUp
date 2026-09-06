@@ -75,24 +75,42 @@ import "sort"
 // Détail, méthode et échec de réglage : `.ai/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md` §7.5, §7.5bis
 // et §7.5ter.
 
-// respawnHalfWidthUS : demi-largeur de la fenêtre de réapparition, en microsecondes.
-//
-// LA RÉAPPARITION EST DÉTERMINISTE, et c'est une constante DU MATCH, pas du jeu : mesurée sur les
-// vies déjà nommées, l'écart entre le centile 5 et la médiane vaut de 2 ms à 202 ms sur les sept
-// films (8,09 s sur trois d'entre eux, 10,18 s sur quatre). 750 ms couvre donc largement la
-// dispersion réelle tout en restant vingt fois plus étroit que l'intervalle entre deux morts.
-//
-// LE RÉGLAGE PRÉCÉDENT ÉTAIT [p05, p95] ET IL A ÉCHOUÉ, ce qui vaut d'être conservé : le
-// centile 95 monte à 51,7 s et 67,7 s sur deux films (les vies dont la mort précédente du même
-// joueur n'est PAS celle qui les a fait réapparaître), rendant 13 vies sur 13 contestées et le
-// gain NUL là où il était le plus nécessaire.
-const respawnHalfWidthUS = 750_000
-
 // closureReport compte ce que les fermetures ont attribué ET refusé. Publier l'un sans l'autre
 // laisserait croire que la déduction ne se trompe jamais.
 type closureReport struct {
 	byShot, byRespawn  int
 	contested, refused int
+	// closedLife retient, pour chaque slot attribué, l'INDICE de la vie que la fermeture a
+	// désignée — jamais le slot seul. -1 = deux vies distinctes désignées, on ne tranche pas.
+	//
+	// POURQUOI LA VIE ET PAS LE SLOT (2026-09-06, instruction des régressions du balayage du
+	// parc). Les deux fermetures raisonnent sur UNE VIE : A désigne « l'unique corps libre qui
+	// couvre l'instant du tir », B « la vie qui commence une réapparition après cette mort ». Ne
+	// rendre que le slot jetait cette désignation, et le nommage des vies devait la RE-DEVINER
+	// (« l'unique vie anonyme du slot ») : sur un slot qui en porte plusieurs il s'abstenait, et
+	// la piste restait anonyme alors que le document publiait déjà les TIRS de ce même slot.
+	// Mesure sur `145908d1` au schéma 40 : 53 slots au pont, 51 pistes nommées, 29 tirs posés
+	// sur deux pistes sans nom (slots 562 et 570).
+	closedLife map[uint32]int
+}
+
+// noteLife enregistre la vie qu'une fermeture vient de désigner pour ce slot.
+//
+// LA MAP S'ALLOUE ICI, pas au constructeur : les fermetures s'appellent aussi depuis les tests
+// avec un `closureReport` nu, et un rapport partiellement construit ne doit pas paniquer.
+//
+// DEUX VIES DIFFÉRENTES POUR UN MÊME SLOT NE SE TRANCHENT PAS. Le cas existe (deux corps libres
+// du même slot, chacun seul candidat à un instant distinct) ; le pont n'en retient qu'un
+// propriétaire, mais rien ne dit LAQUELLE des deux vies est la sienne. -1 vaut abstention.
+func (r *closureReport) noteLife(slot uint32, life int) {
+	if r.closedLife == nil {
+		r.closedLife = map[uint32]int{}
+	}
+	if prev, seen := r.closedLife[slot]; seen && prev != life {
+		r.closedLife[slot] = -1
+		return
+	}
+	r.closedLife[slot] = life
 }
 
 // closeBridge applique les deux fermetures, dans l'ordre mesuré (A puis B), et rend le pont
@@ -133,56 +151,72 @@ func closeByAvailableBody(tracks map[uint32]slotTrack, owner map[uint32]int,
 	if len(free) == 0 {
 		return
 	}
-	claims, blocked := claimsFromShots(tracks, owner, free, fire)
-	attributeClaimedBodies(tracks, owner, claims, rep)
+	c := claimsFromShots(tracks, owner, lives, free, fire)
+	attributeClaimedBodies(tracks, owner, c, rep)
 	// Une vie contestée à un instant peut être seule candidate à un autre : seules celles qui
 	// n'ont JAMAIS été revendiquées sont des déductions abandonnées. Le comptage ne dépend pas
 	// de l'ordre d'itération de la map, donc rien à trier ici.
-	for slot := range blocked {
-		if _, claimed := claims[slot]; !claimed {
+	for slot := range c.blocked {
+		if _, claimed := c.byBody[slot]; !claimed {
 			rep.contested++
 		}
 	}
 }
 
+// shotClaims est le dépouillement des tirs orphelins de la fermeture A.
+//
+// `byBody` et `blocked` portent la DÉCISION (qui revendique quel corps, et quels corps sont
+// écartés faute d'unicité) ; `life` porte la DÉSIGNATION — l'indice de la vie que les tirs ont
+// pointée pour ce slot, -1 quand ils en pointent plusieurs. Les deux se séparent parce que la
+// décision se prend PAR SLOT (un slot n'a qu'un propriétaire) tandis que la désignation est PAR
+// VIE : c'est cette seconde information que l'ancien code jetait.
+type shotClaims struct {
+	byBody  map[uint32]map[int]int
+	blocked map[uint32]bool
+	life    map[uint32]int
+}
+
 // claimsFromShots dépouille les tirs ORPHELINS — ceux dont l'auteur n'a aucun corps rattachable
-// à cet instant — et rend qui revendique quel corps libre. Le second retour retient les corps
-// écartés faute d'unicité : sans lui, l'abstention la plus fréquente de la fermeture A ne serait
-// comptée nulle part.
-func claimsFromShots(tracks map[uint32]slotTrack, owner map[uint32]int, free []lifeSpan,
-	fire []FireEventRef) (map[uint32]map[int]int, map[uint32]bool) {
-	claims := map[uint32]map[int]int{}
-	blocked := map[uint32]bool{}
+// à cet instant — et rend qui revendique quel corps libre. Les corps écartés faute d'unicité y
+// figurent aussi : sans eux, l'abstention la plus fréquente de la fermeture A ne serait comptée
+// nulle part.
+func claimsFromShots(tracks map[uint32]slotTrack, owner map[uint32]int, lives []lifeSpan,
+	free []int, fire []FireEventRef) shotClaims {
+	c := shotClaims{byBody: map[uint32]map[int]int{}, blocked: map[uint32]bool{}, life: map[uint32]int{}}
 	for _, e := range fire {
 		if _, r := slotFor(tracks, owner, e.FilmIndex, e.TimestampUS); r == reasonAttached {
 			continue
 		}
-		cand := livesCoveringAt(free, e.TimestampUS)
+		cand := livesCoveringAt(lives, free, e.TimestampUS)
 		if len(cand) != 1 { // plusieurs corps possibles : on ne tranche pas
-			for _, l := range cand {
-				blocked[l.slot] = true
+			for _, i := range cand {
+				c.blocked[lives[i].slot] = true
 			}
 			continue
 		}
-		if claims[cand[0].slot] == nil {
-			claims[cand[0].slot] = map[int]int{}
+		slot := lives[cand[0]].slot
+		if c.byBody[slot] == nil {
+			c.byBody[slot] = map[int]int{}
+			c.life[slot] = cand[0]
+		} else if c.life[slot] != cand[0] {
+			c.life[slot] = -1 // deux vies du même slot revendiquées : la vie ne se tranche pas
 		}
-		claims[cand[0].slot][e.FilmIndex]++
+		c.byBody[slot][e.FilmIndex]++
 	}
-	return claims, blocked
+	return c
 }
 
 // attributeClaimedBodies pose au pont les corps qu'UN SEUL tireur revendique, que ce tireur ne
 // revendique QU'UNE FOIS, et qu'il peut PROLONGER. Chacun des trois refus est compté.
 func attributeClaimedBodies(tracks map[uint32]slotTrack, owner map[uint32]int,
-	claims map[uint32]map[int]int, rep *closureReport) {
-	twice := shootersClaimingTwoBodies(claims)
-	for _, slot := range sortedClaimSlots(claims) {
-		if len(claims[slot]) != 1 { // deux joueurs pour un même corps
+	c shotClaims, rep *closureReport) {
+	twice := shootersClaimingTwoBodies(c.byBody)
+	for _, slot := range sortedClaimSlots(c.byBody) {
+		if len(c.byBody[slot]) != 1 { // deux joueurs pour un même corps
 			rep.contested++
 			continue
 		}
-		pi := onlyPlayerIndex(claims[slot])
+		pi := onlyPlayerIndex(c.byBody[slot])
 		if twice[pi] { // deux corps pour un même joueur
 			rep.contested++
 			continue
@@ -192,6 +226,7 @@ func attributeClaimedBodies(tracks map[uint32]slotTrack, owner map[uint32]int,
 			continue
 		}
 		owner[slot] = pi
+		rep.noteLife(slot, c.life[slot])
 		rep.byShot++
 	}
 }
@@ -276,117 +311,21 @@ func bodyExtendsShooter(tracks map[uint32]slotTrack, owner map[uint32]int, slot 
 	return anchored
 }
 
-// closeByRespawn — FERMETURE B. Une vie commence une réapparition après la mort qui l'a causée ;
-// si une seule mort du fil tombe dans la fenêtre, la vie est celle de sa victime.
-//
-// L'EXCLUSION JOUE DANS LES DEUX SENS, et il a manqué le second. Refuser la vie qui voit deux
-// morts ne suffit pas : il faut aussi refuser la MORT que deux vies revendiquent. Une mort ne
-// rend qu'un corps ; deux vies qui la réclament chacune sans concurrente ne sont pas deux
-// déductions, c'est une déduction impossible — et sans ce contrôle, l'ordre de parcours des slots
-// décidait laquelle des deux gagnait, l'autre héritant du même joueur quelques instants plus tard.
-// Le comptage des revendications est donc symétrique de la map `claims` de la fermeture A.
-func closeByRespawn(tracks map[uint32]slotTrack, owner map[uint32]int, lives []lifeSpan,
-	deaths []Death, off int64, byXUID map[uint64]int, rep *closureReport) {
-	free := freeLives(owner, lives)
-	if len(free) == 0 || len(deaths) == 0 {
-		return
-	}
-	lo, hi := respawnWindow(lives, deaths, off)
-	if lo == 0 && hi == 0 {
-		return // aucune vie nommée : rien à calibrer, donc rien à déduire
-	}
-	claims := map[uint64][]uint32{} // victime -> slots des vies qui la revendiquent
-	for _, l := range free {
-		cand := victimsInWindow(deaths, off, l.from, lo, hi)
-		if len(cand) == 0 {
-			continue
-		}
-		if len(cand) > 1 {
-			rep.contested++
-			continue
-		}
-		claims[cand[0]] = append(claims[cand[0]], l.slot)
-	}
-	for _, xuid := range sortedVictims(claims) {
-		slots := claims[xuid]
-		if len(slots) != 1 { // une mort, deux corps : les deux déductions tombent
-			rep.contested += len(slots)
-			continue
-		}
-		pi, ok := byXUID[xuid]
-		if !ok {
-			// L'identité n'est dans aucune table d'index : la déduction est REJETÉE, pas
-			// silencieusement perdue. Un rejet non compté ferait mentir la somme publiée.
-			rep.refused++
-			continue
-		}
-		if overlapsNamedLife(tracks, owner, slots[0], pi) {
-			rep.refused++
-			continue
-		}
-		owner[slots[0]] = pi
-		rep.byRespawn++
-	}
-}
-
-// respawnWindow calibre la fenêtre de réapparition SUR LE FILM TRAITÉ : la médiane de l'écart
-// entre le début d'une vie nommée et la mort précédente de son propre joueur, plus ou moins
-// respawnHalfWidthUS. Une constante importée d'un autre film serait une supposition.
-func respawnWindow(lives []lifeSpan, deaths []Death, off int64) (int64, int64) {
-	var d []int64
-	for _, l := range lives {
-		if l.xuid == 0 {
-			continue
-		}
-		best := int64(-1)
-		for _, dd := range deaths {
-			if dd.XUID != l.xuid {
-				continue
-			}
-			if t := dd.TimeMS + off; t < l.from/1000 && (best < 0 || t > best) {
-				best = t
-			}
-		}
-		if best >= 0 {
-			d = append(d, l.from/1000-best)
-		}
-	}
-	if len(d) == 0 {
-		return 0, 0
-	}
-	sort.Slice(d, func(i, j int) bool { return d[i] < d[j] })
-	med := d[len(d)/2] * 1000 // en microsecondes
-	return med - respawnHalfWidthUS, med + respawnHalfWidthUS
-}
-
-// victimsInWindow rend les xuids DISTINCTS des morts dont la réapparition tomberait dans la
-// fenêtre du début de vie fromUS.
-func victimsInWindow(deaths []Death, off int64, fromUS, lo, hi int64) []uint64 {
-	var out []uint64
-	for _, d := range deaths {
-		delta := fromUS - (d.TimeMS+off)*1000
-		if delta < lo || delta > hi {
-			continue
-		}
-		if !containsXUID(out, d.XUID) {
-			out = append(out, d.XUID)
-		}
-	}
-	return out
-}
-
 // freeLives rend les vies sans identité dont le slot n'est pas DÉJÀ au pont : un slot nommé par
 // une autre de ses vies n'a rien à déduire.
-func freeLives(owner map[uint32]int, lives []lifeSpan) []lifeSpan {
-	var out []lifeSpan
-	for _, l := range lives {
+//
+// CE SONT DES INDICES, pas des copies : la vie désignée doit rester nommable en fin de course
+// (cf. `closureReport.closedLife`), et une copie n'est plus reliée à rien.
+func freeLives(owner map[uint32]int, lives []lifeSpan) []int {
+	var out []int
+	for i, l := range lives {
 		if l.xuid != 0 {
 			continue
 		}
 		if _, known := owner[l.slot]; known {
 			continue
 		}
-		out = append(out, l)
+		out = append(out, i)
 	}
 	return out
 }
@@ -397,44 +336,16 @@ func freeLives(owner map[uint32]int, lives []lifeSpan) []lifeSpan {
 // C'EST VOLONTAIREMENT PLUS LARGE QUE LE RATTACHEMENT. Filtrer ici sur la présence d'un
 // échantillon rendrait INVISIBLES les candidats en trou de réplication, et une candidature
 // invisible ne conteste rien : la fermeture croirait n'avoir qu'un candidat là où elle en a deux.
-func livesCoveringAt(free []lifeSpan, tUS uint64) []lifeSpan {
-	var out []lifeSpan
+func livesCoveringAt(lives []lifeSpan, free []int, tUS uint64) []int {
+	var out []int
 	t := int64(tUS)
-	for _, l := range free {
-		if t < l.from || t > l.to {
+	for _, i := range free {
+		if t < lives[i].from || t > lives[i].to {
 			continue
 		}
-		out = append(out, l)
+		out = append(out, i)
 	}
 	return out
-}
-
-// overlapsNamedLife — LE GARDE-FOU QUI PEUT RÉFUTER UNE DÉDUCTION DE LA FERMETURE B. Un joueur
-// n'a qu'un corps : si le slot déduit porte des positions en même temps qu'un slot déjà attribué
-// au même joueur, l'attribution est IMPOSSIBLE, et on la rejette plutôt que de la publier.
-//
-// LA FERMETURE A NE L'APPELLE PLUS : sa corroboration (`bodyExtendsShooter`) exige davantage — non
-// pas l'absence de contradiction, mais la preuve que le corps PROLONGE le tireur. B n'en a pas
-// besoin : son identité vient du fil des morts, pas de l'unicité d'un candidat.
-func overlapsNamedLife(tracks map[uint32]slotTrack, owner map[uint32]int, slot uint32, pi int) bool {
-	cand := tracks[slot].pts
-	if len(cand) == 0 {
-		return false
-	}
-	from, to := cand[0].TimestampUS, cand[len(cand)-1].TimestampUS
-	for s, p := range owner {
-		if p != pi || s == slot {
-			continue
-		}
-		pts := tracks[s].pts
-		if len(pts) == 0 {
-			continue
-		}
-		if pts[0].TimestampUS <= to && from <= pts[len(pts)-1].TimestampUS {
-			return true
-		}
-	}
-	return false
 }
 
 func copyOwners(in map[uint32]int) map[uint32]int {
@@ -454,32 +365,4 @@ func sortedClaimSlots(m map[uint32]map[int]int) []uint32 {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
 	return out
-}
-
-// sortedVictims rend les victimes revendiquées dans un ordre STABLE. La raison est la même que
-// pour `sortedClaimSlots` : le garde-fou de recouvrement lit le pont EN COURS de construction,
-// donc l'ordre d'attribution est observable dans le résultat.
-func sortedVictims(m map[uint64][]uint32) []uint64 {
-	out := make([]uint64, 0, len(m))
-	for x := range m {
-		out = append(out, x)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
-	return out
-}
-
-func onlyPlayerIndex(m map[int]int) int {
-	for k := range m {
-		return k
-	}
-	return -1
-}
-
-func containsXUID(xs []uint64, x uint64) bool {
-	for _, v := range xs {
-		if v == x {
-			return true
-		}
-	}
-	return false
 }

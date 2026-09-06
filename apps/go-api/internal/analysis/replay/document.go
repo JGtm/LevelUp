@@ -703,7 +703,43 @@ package replay
 // artefact < 40.
 // Détail : internal/analysis/objectiveevents/slotidentity_rounds.go (CompletedByLines) et
 // .ai/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md section 9.
-const SchemaVersion = 40
+//
+// v41 (2026-09-06) : TROIS CALQUES RATTRAPENT « UNE TRACK = UNE VIE ». Aucun champ n'est
+// ajouté, aucune forme ne change : trois calques publient de nouveau ce qu'ils publiaient
+// avant le schéma 36, et la version monte pour la raison des montées v39/v40 — la reprise du
+// backfill se lit par `SchemaVersion`, et un artefact 36 à 40 est APPAUVRI sans que rien dans
+// sa forme ne le dise.
+//
+// LE DÉFAUT, UN SEUL, EN TROIS ENDROITS. `48cf4905d` (2026-09-02) a découpé les pistes à
+// `lifeGapUS` : un slot recyclé publie désormais PLUSIEURS pistes. Trois consommateurs
+// supposaient encore « un slot = une piste » et ne retenaient que la DERNIÈRE, jetant en
+// silence tout ce qui appartenait aux vies antérieures :
+//
+//	pistes      `nameClosedLives` cherchait « l'unique vie anonyme du slot » pour y poser
+//	            l'identité d'une fermeture, et s'abstenait dès qu'il y en avait deux. Le
+//	            document publiait alors les TIRS d'un slot dont la piste restait sans nom.
+//	            `145908d1` : 53 slots au pont, 51 pistes nommées, 29 tirs orphelins — 24
+//	            identités distinctes retombées à 23. Les fermetures DÉSIGNENT une vie
+//	            (`closureReport.closedLife`), c'est elle qui est nommée.
+//	grappin     `buildGrappleLines` bornait chaque traction à la dernière vie du slot, ce qui
+//	            la rendait vide (`t1 <= t0`) puis la supprimait. `879a4dba` : 23 accroches LUES
+//	            dans le film, 23 tractions publiées au schéma 34, 15 dès le 36 — `heavyReads`
+//	            inchangé à 23, la lecture n'avait donc rien perdu. `084a804d` : 71 -> 61 -> 71.
+//	            `coverage.grapple.pullLives` compte désormais des VIES, non des slots.
+//	épisodes    `trackFrameWindows` n'indexait qu'une fenêtre par slot : un épisode de camo ou
+//	            de surbouclier d'une vie antérieure tombait hors fenêtre et disparaissait.
+//	            `82f29378` retrouve son unique épisode de surbouclier, `084a804d` ses 15
+//	            épisodes de camouflage sur 9 vies (13 sur 8 aux schémas 36 à 40).
+//
+// CE QUE LA VERSION NE PRÉTEND PAS RÉPARER : un épisode ancré sur un point de trajectoire
+// ABERRANT reste écarté, et c'est voulu — `13d92593` perdait un épisode de surbouclier de
+// durée nulle (t0 = t1 = 3603) posé sur le seul point qui plaçait le joueur à 267 u de sa
+// position précédente, celui-là même qui donnait au document des bornes de scène fausses
+// (minX -227,27 -> -18,57). L'assainissement des trajectoires l'a supprimé : c'est un gain,
+// il n'est pas revenu, il ne doit pas revenir.
+// Détail : internal/analysis/replay/{closures.go, closures_respawn.go, owners.go,
+// grapple_lines.go, equipment_episodes.go} et .ai/V7.5/v2/INSTRUCTION_REGRESSIONS_2_4.md.
+const SchemaVersion = 41
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
