@@ -39,6 +39,12 @@ interface UseReplayObjectiveObjectsArgs {
 }
 
 export interface ReplayObjectiveObjects {
+  /**
+   * LE NOM DU CALQUE, porté par le calque et non par la table de liaison du canvas
+   * (2026-09-06, revue R1 constat C2) : c'est ce qui rend impossible de peindre ce geste
+   * sous l'identité d'un autre calque.
+   */
+  id: 'objets-objectif'
   /** Peint le crâne libre si sa présence est `free` à cette image. No-op sinon (porté / absent). */
   paint: (ctx: CanvasRenderingContext2D, frame: number) => void
 }
@@ -59,5 +65,5 @@ export function useReplayObjectiveObjects({
     },
     [lives, carries, socle, layer, view],
   )
-  return { paint }
+  return { id: 'objets-objectif', paint }
 }

@@ -83,6 +83,7 @@ import {
   drawShotsLayer,
 } from '../layers/replayDraw'
 import {
+  bindPainters,
   composeScene,
   sceneLayers,
   type LayerPaint,
@@ -383,6 +384,23 @@ export function ReplayCanvas({
           killFx: killFx.length > 0,
         },
         paint: {
+          // LES ONZE CALQUES CABLES PAR HOOK SE NOMMENT EUX-MEMES (revue R1, C2) : leur `id`
+          // vit dans le hook, a cote de son `paint`, et `bindPainters` en derive la liaison.
+          // Ecrire ici `'couronne-vip': skullCarrier.paint` n'est plus possible : cette table
+          // ne nomme plus aucun d'eux.
+          ...bindPainters(
+            weaponPads,
+            groundWeapons,
+            vehicles,
+            abilityFx,
+            grenadeRest,
+            flags,
+            objectiveObjects,
+            vipCrown,
+            skullCarrier,
+            bombCarrier,
+            bombBlast,
+          ),
           // L'image ENTIERE sur son emprise monde, le canvas rogne le debord : projection
           // affine sans rotation, donc deux coins suffisent (mapBackground.ts).
           'fond-carte': () => {
@@ -397,8 +415,6 @@ export function ReplayCanvas({
           'objectifs-cuits': cuit(objectivesRef.current),
           projectiles: (_c, fr) =>
             drawProjectilesLayer(ctx, doc.projectiles ?? [], view, fr, grenadeColor),
-          'socles-armes': weaponPads.paint,
-          'armes-au-sol': groundWeapons.paint,
           // La fenetre d'une pose n'est PAS [t0, t1] : `t1` date la mise au repos, pas la
           // disparition (placementEndFrame) ; le ping bat en TEMPS de match, pas en images.
           'poses-equipement': (_c, fr, k) =>
@@ -413,7 +429,6 @@ export function ReplayCanvas({
               // FRONTIERE : objet lache a la mort, `t0 = finVie+1` — `colorOfSlotOrLast`.
               { colorOfSlot: colorOfSlotOrLast, neutral: floorStyle.edge, wall: wallInk, rift: riftInk },
             ),
-          vehicules: vehicles.paint,
           trajectoires: (_c, fr, k) =>
             drawTracksLayer(ctx, doc.tracks, view, {
               colorOfSlot,
@@ -434,7 +449,6 @@ export function ReplayCanvas({
             drawFireMarks(ctx, fireMarks, view, {
               frame: fr, hold: shotHoldFrames, colorOfSlot, ink: labelStroke || floorStyle.edge, k,
             }),
-          'gestes-capacite': abilityFx.paint,
           // vehicleSizeOf : origine des tirs en vehicule sur LA MEME source de tailles que le
           // calque vehicules (`useReplayVehicles.sizeOf`), jamais un second chargement.
           tirs: (_c, _fr, k) =>
@@ -446,14 +460,7 @@ export function ReplayCanvas({
               color: grenadeColor,
               iconOf: (rank) => grenadeIconsRef.current.get(rank) ?? null,
             }),
-          'fin-de-vol': grenadeRest.paint,
           'etat-zones': (_c, fr) => drawZoneStates(ctx, zones, doc.zoneStates, view, fr),
-          drapeaux: flags.paint,
-          'objets-objectif': objectiveObjects.paint,
-          'couronne-vip': vipCrown.paint,
-          'crane-porte': skullCarrier.paint,
-          'bombe-portee': bombCarrier.paint,
-          deflagration: bombBlast.paint,
           'pulses-objectif': () =>
             drawObjectivePulses(ctx, objectivePulses, view, win, { colorOfTeam: zones.colorOfTeam }, reducedMotion),
           morts: (_c, _fr, k) =>

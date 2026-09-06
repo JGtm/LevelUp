@@ -60,6 +60,12 @@ export interface GroundWeaponsInput {
 export interface GroundWeapons {
   /** Le film porte-t-il des armes au sol ? Une bascule qui ne commande rien ne s'affiche pas. */
   available: boolean
+  /**
+   * LE NOM DU CALQUE, porté par le calque et non par la table de liaison du canvas
+   * (2026-09-06, revue R1 constat C2) : c'est ce qui rend impossible de peindre ce geste
+   * sous l'identité d'un autre calque.
+   */
+  id: 'armes-au-sol'
   /** Trace le calque à l'image demandée ; ne fait rien quand il est éteint. */
   paint: (ctx: CanvasRenderingContext2D, frame: number, k: number) => void
 }
@@ -118,5 +124,5 @@ export function useReplayGroundWeapons({
     [enabled, items, view],
   )
 
-  return { available: items.length > 0, paint }
+  return { id: 'armes-au-sol', available: items.length > 0, paint }
 }

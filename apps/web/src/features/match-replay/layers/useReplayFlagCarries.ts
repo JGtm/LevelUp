@@ -91,6 +91,12 @@ export interface FlagCarriesHookInput {
 export interface ReplayFlagCarries {
   /** Le film porte-t-il des drapeaux ? Une bascule qui ne commande rien ne s'affiche pas. */
   available: boolean
+  /**
+   * LE NOM DU CALQUE, porté par le calque et non par la table de liaison du canvas
+   * (2026-09-06, revue R1 constat C2) : c'est ce qui rend impossible de peindre ce geste
+   * sous l'identité d'un autre calque.
+   */
+  id: 'drapeaux'
   /** Trace le calque à l'image demandée ; ne fait rien quand il est éteint. */
   paint: (ctx: CanvasRenderingContext2D, frame: number) => void
   hover: FlagHover | null
@@ -270,5 +276,5 @@ export function useReplayFlagCarries({
     setHover((prev) => (prev === null ? prev : null))
   }, [])
 
-  return { available: carries.length > 0, paint, hover, onPointerMove, onPointerLeave }
+  return { id: 'drapeaux', available: carries.length > 0, paint, hover, onPointerMove, onPointerLeave }
 }

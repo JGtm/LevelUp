@@ -36,6 +36,12 @@ interface UseReplaySkullCarrierArgs {
 export interface ReplaySkullCarrier {
   /** Le film porte-t-il des portages ? Une bascule qui ne commande rien ne s'affiche pas. */
   available: boolean
+  /**
+   * LE NOM DU CALQUE, porté par le calque et non par la table de liaison du canvas
+   * (2026-09-06, revue R1 constat C2) : c'est ce qui rend impossible de peindre ce geste
+   * sous l'identité d'un autre calque.
+   */
+  id: 'crane-porte'
   /** Peint le crâne à l'image demandée. No-op quand il n'y en a aucun, ou qu'il est éteint. */
   paint: (ctx: CanvasRenderingContext2D, frame: number) => void
 }
@@ -67,5 +73,5 @@ export function useReplaySkullCarrier({
     [enabled, carries, layer, view],
   )
 
-  return { available: carries.length > 0, paint }
+  return { id: 'crane-porte', available: carries.length > 0, paint }
 }

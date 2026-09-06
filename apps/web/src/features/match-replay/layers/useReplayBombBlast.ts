@@ -45,6 +45,12 @@ export interface BombBlastHookInput {
 export interface ReplayBombBlast {
   /** Le film porte-t-il des explosions ? Sert au canvas à ne rien peindre pour rien. */
   available: boolean
+  /**
+   * LE NOM DU CALQUE, porté par le calque et non par la table de liaison du canvas
+   * (2026-09-06, revue R1 constat C2) : c'est ce qui rend impossible de peindre ce geste
+   * sous l'identité d'un autre calque.
+   */
+  id: 'deflagration'
   /** Peint les déflagrations de l'image demandée. No-op quand il n'y en a aucune. */
   paint: (ctx: CanvasRenderingContext2D, frame: number) => void
 }
@@ -91,5 +97,5 @@ export function useReplayBombBlast({
     [blasts, view, style],
   )
 
-  return { available: blasts.length > 0, paint }
+  return { id: 'deflagration', available: blasts.length > 0, paint }
 }
