@@ -190,8 +190,15 @@ func WeaponRangeAggregate(kills []MeasuredKill, minMeasured int) ([]WeaponRange,
 
 // sortWeaponRangeBelow impose l'ordre des couples écartés : effectif décroissant (l'arme la
 // plus proche du seuil d'abord, c'est celle dont l'absence surprend le plus), puis clé, puis
-// côté. Déterministe : le groupement passe par une map, sans tri deux appels sur les mêmes
-// données rendraient deux ordres.
+// côté.
+//
+// D'OÙ VIENT LE DÉSORDRE, ET CE N'EST PAS LA MAP (correction du 2026-09-06, constat F5 de la
+// revue adversariale du lot 4 — le commentaire précédent invoquait le parcours d'une map,
+// alors que la boucle itère la tranche `order`, donc l'ordre de PREMIÈRE APPARITION). Cet
+// ordre-là est celui des lignes lues, et la requête du repo n'a PAS d'`ORDER BY` : ce que
+// DuckDB rend dépend de son plan, il n'est stable ni entre deux versions ni entre deux
+// scopes. Sans ce tri, la ligne « sous le seuil » de la Synthèse changerait d'ordre d'un
+// chargement à l'autre. C'est ce tri qui la rend déterministe, pas le groupement.
 func sortWeaponRangeBelow(rs []WeaponRangeBelow) {
 	sort.Slice(rs, func(i, j int) bool {
 		if rs[i].Measured != rs[j].Measured {

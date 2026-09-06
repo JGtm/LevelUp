@@ -135,16 +135,27 @@ func belowThresholdOfSide(s analysis.WeaponRangeSummary, side analysis.Side) []d
 // NIL ET JAMAIS UN BLOC À ZÉRO (D5) : tant que le backfill de `kill_openings` n'a pas tourné —
 // et il ne tournera que sur décision utilisateur — la couverture est nulle ou partielle. Un
 // bloc à zéro se lirait « ce joueur engage au contact » ; l'absence se lit « on ne sait pas ».
+//
+// LA MÊME RÈGLE S'APPLIQUE UN CRAN PLUS BAS, AU DELTA (2026-09-06, constat F9). Les deux
+// tables s'écrivent sous deux leases indépendants : un scope peut porter des entames sans
+// aucune position de coup fatal, et `Paired` vaut alors zéro alors que `MeasuredOpenings` ne
+// l'est pas. Le sous-bloc est OMIS dans ce cas — un `closing_share_pct: 0` publié dirait « ce
+// joueur ne ferme jamais la distance », ce qu'aucune mesure ne soutient.
 func buildOpening(kills, openings []analysis.MeasuredKill) *domain.SynthesisOpening {
 	st := analysis.WeaponOpeningDelta(kills, openings, analysis.SideKiller)
 	if st.MeasuredOpenings == 0 {
 		return nil
 	}
-	return &domain.SynthesisOpening{
-		MedianM:         st.MedianOpeningM,
-		MeasuredKills:   st.MeasuredOpenings,
-		DeltaMedianM:    st.MedianDeltaM,
-		ClosingSharePct: 100 * st.ClosingShare,
-		N:               st.Paired,
+	block := &domain.SynthesisOpening{
+		MedianM:       st.MedianOpeningM,
+		MeasuredKills: st.MeasuredOpenings,
 	}
+	if st.Paired > 0 {
+		block.Delta = &domain.SynthesisOpeningDelta{
+			MedianM:         st.MedianDeltaM,
+			ClosingSharePct: 100 * st.ClosingShare,
+			N:               st.Paired,
+		}
+	}
+	return block
 }

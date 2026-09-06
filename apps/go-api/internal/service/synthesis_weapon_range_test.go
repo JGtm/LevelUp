@@ -9,15 +9,23 @@
 //  2. les deux côtés vivent sur la MÊME ligne d'arme, chacun optionnel ;
 //  3. les totaux viennent du scope canonique, pas de la table de positions (sans quoi la
 //     couverture afficherait toujours 100 %) ;
-//  4. les armes sous le seuil sont NOMMÉES et ventilées par côté ;
+//  4. les armes sous le seuil sont NOMMÉES et ventilées par côté, et quand elles le sont
+//     TOUTES la section reste PRÉSENTE avec zéro arme (les deux médianes et les couvertures
+//     restent l'information) ;
 //  5. capability absente / repo nil / scope vide / erreur SQL : section absente, jamais de
-//     panique et jamais une page cassée.
+//     panique et jamais une page cassée — et un match canonique SANS compteur ne fait
+//     paniquer ni le scope ni la page ;
+//  6. le régime de journalisation : capability absente en DEBUG, panne en WARN. Un WARN
+//     permanent sur un titre sans décodeur noierait les vraies pannes.
 package service
 
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log/slog"
 	"math"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/analysis"
@@ -85,6 +93,13 @@ func wrKills(weapon string, side analysis.Side, n int, dist, dz float64) []analy
 		out = append(out, wrKill(weapon, side, base+int64(i), dist, dz))
 	}
 	return out
+}
+
+// wrCanonRowSansCompteur : un match canonique SANS compteur de frags ni de morts (les deux
+// pointeurs nils). C'est un état réel : une ligne canonique dont l'API n'a pas rendu le
+// scoreboard porte un Self vide, et le scope de la Synthèse la contient comme les autres.
+func wrCanonRowSansCompteur(matchID string) canonical.PlayerMatchRow {
+	return canonical.PlayerMatchRow{Summary: canonical.MatchSummary{MatchID: matchID}}
 }
 
 // wrCanonRows : un scope canonique de `matchs` matchs portant chacun kills/deaths.
@@ -182,18 +197,53 @@ func TestLoadWeaponRange_Nominal_DeuxCotesEtEntame(t *testing.T) {
 	if block.Opening == nil {
 		t.Fatal("bloc d'entame nil alors que 10 entames sont mesurées")
 	}
-	if block.Opening.MeasuredKills != 10 || block.Opening.N != 10 {
+	if block.Opening.Delta == nil {
+		t.Fatal("sous-bloc delta nil alors que les 10 frags sont appariés")
+	}
+	if block.Opening.MeasuredKills != 10 || block.Opening.Delta.N != 10 {
 		t.Errorf("entame : mesurées=%d appariées=%d, attendu 10 et 10",
-			block.Opening.MeasuredKills, block.Opening.N)
+			block.Opening.MeasuredKills, block.Opening.Delta.N)
 	}
 	if math.Abs(block.Opening.MedianM-18) > epsRange {
 		t.Errorf("entame médiane = %v, attendu 18", block.Opening.MedianM)
 	}
-	if math.Abs(block.Opening.DeltaMedianM-(-6)) > epsRange {
-		t.Errorf("delta médian = %v, attendu -6 (l'engagement se ferme)", block.Opening.DeltaMedianM)
+	if math.Abs(block.Opening.Delta.MedianM-(-6)) > epsRange {
+		t.Errorf("delta médian = %v, attendu -6 (l'engagement se ferme)", block.Opening.Delta.MedianM)
 	}
-	if math.Abs(block.Opening.ClosingSharePct-100) > epsRange {
-		t.Errorf("part de fermeture = %v, attendu 100", block.Opening.ClosingSharePct)
+	if math.Abs(block.Opening.Delta.ClosingSharePct-100) > epsRange {
+		t.Errorf("part de fermeture = %v, attendu 100", block.Opening.Delta.ClosingSharePct)
+	}
+}
+
+// TestLoadWeaponRange_EntamesSansCoupFatalMesure_DeltaOmis — le sous-bloc `delta` est NIL
+// quand aucun frag ne porte les DEUX mesures (constat F9, revue adversariale du lot 4,
+// 2026-09-06).
+//
+// LE CAS EST ATTEIGNABLE : `kill_positions` et `kill_openings` s'écrivent sous deux leases
+// indépendants, et un scope peut porter des entames dont aucun coup fatal n'est placé. À plat,
+// il publiait `closing_share_pct: 0` — un champ requis, donc toujours présent — qui se lit
+// « ce joueur ne ferme jamais la distance » alors qu'aucune mesure ne le dit. La couverture de
+// l'entame, elle, reste publiée : c'est un fait mesuré.
+func TestLoadWeaponRange_EntamesSansCoupFatalMesure_DeltaOmis(t *testing.T) {
+	kills := wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)
+	// Les entames portent des instants qu'AUCUN coup fatal mesuré ne porte : rien n'apparie.
+	openings := wrKills("hinf_br75", analysis.SideKiller, 9, 30, 0)
+	for i := range openings {
+		openings[i].TimeMS += 500000
+	}
+	repo := &mockWeaponRangeRepo{kills: kills, openings: openings}
+
+	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 9, 5))
+	if block == nil || block.Opening == nil {
+		t.Fatalf("bloc d'entame absent : %+v — 9 entames sont pourtant mesurées", block)
+	}
+	if block.Opening.MeasuredKills != 9 || math.Abs(block.Opening.MedianM-30) > epsRange {
+		t.Errorf("entame = %d mesures à %v m, attendu 9 à 30 m (la couverture reste publiée)",
+			block.Opening.MeasuredKills, block.Opening.MedianM)
+	}
+	if block.Opening.Delta != nil {
+		t.Errorf("sous-bloc delta = %+v, attendu nil : aucun frag ne porte les deux mesures, "+
+			"et un zéro publié se lirait « la distance ne bouge jamais »", *block.Opening.Delta)
 	}
 }
 
@@ -366,5 +416,164 @@ func TestMergeWeaponSides_TriEtCoteUnique(t *testing.T) {
 	}
 	if block.Weapons[0].Deaths == nil {
 		t.Error("le fusil à pompe doit porter son côté morts")
+	}
+}
+
+// TestLoadWeaponRange_MatchSansCompteur_NiPaniqueNiZeroCompte — les gardes `Self.Kills != nil`
+// / `Self.Deaths != nil` de `weaponRangeScope`.
+//
+// POURQUOI CE TEST EXISTE (constat F2, revue adversariale du lot 4, 2026-09-06) : les deux
+// gardes n'étaient épinglées par rien — les retirer laissait toute la suite verte, alors qu'un
+// seul match canonique sans scoreboard ferait paniquer le chemin PRINCIPAL de
+// `GetSynthesisPage`, sans recover, donc en 500 sur la page ENTIÈRE (pas seulement sur la
+// section). Le match sans compteur reste dans le SCOPE (ses frags mesurés comptent, ils
+// viennent de la table de positions) mais n'ajoute rien aux TOTAUX : l'absence de donnée n'est
+// pas une performance nulle.
+//
+// MUTATION : retirer l'une des deux gardes -> panique de déréférencement, ce test rouge.
+func TestLoadWeaponRange_MatchSansCompteur_NiPaniqueNiZeroCompte(t *testing.T) {
+	rows := append(wrCanonRows(1, 9, 5), wrCanonRowSansCompteur("m_sans_scoreboard"))
+	repo := &mockWeaponRangeRepo{kills: wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)}
+
+	block := wrService(repo).loadWeaponRange(context.Background(), rows)
+	if block == nil {
+		t.Fatal("section nil : un match sans compteur ne doit pas emporter la section")
+	}
+	// Le match sans compteur est dans le scope lu...
+	if len(repo.lastFilters.MatchIDs) != 2 {
+		t.Errorf("scope = %d match(s), attendu 2 (le match sans compteur est lu comme les autres)",
+			len(repo.lastFilters.MatchIDs))
+	}
+	// ...mais il ne pèse pas sur les dénominateurs de couverture.
+	if block.TotalKills != 9 || block.TotalDeaths != 5 {
+		t.Errorf("totaux = %d frags / %d morts, attendu 9 et 5 (le match sans compteur "+
+			"n'ajoute rien, il n'ajoute pas non plus zéro)", block.TotalKills, block.TotalDeaths)
+	}
+	if block.MeasuredKills != 9 {
+		t.Errorf("frags mesurés = %d, attendu 9", block.MeasuredKills)
+	}
+}
+
+// TestLoadWeaponRange_ToutSousLeSeuil_SectionPresenteAvecZeroArme — le cas « des mesures, mais
+// TOUTES sous le seuil » (constat F3, revue adversariale du lot 4 ; décision du pilote,
+// 2026-09-06).
+//
+// LA SECTION EST PRÉSENTE, AVEC UNE LISTE D'ARMES VIDE. Ce n'est pas une section vide : les
+// deux médianes, les deux couvertures et les listes NOMMÉES d'armes écartées portent toute
+// l'information — « tu as tué à 10 m en médiane, sur 7 frags mesurés, répartis sur des armes
+// trop peu jouées pour qu'un bâton p10-p90 veuille dire quelque chose ». La faire disparaître
+// se lirait « aucune mesure », ce qui est faux.
+func TestLoadWeaponRange_ToutSousLeSeuil_SectionPresenteAvecZeroArme(t *testing.T) {
+	kills := wrKills("hinf_hydra", analysis.SideKiller, 4, 10, 0)
+	kills = append(kills, wrKills("hinf_ravager", analysis.SideKiller, 3, 20, 0)...)
+	kills = append(kills, wrKills("hinf_shotgun", analysis.SideVictim, 2, 3, 0)...)
+	repo := &mockWeaponRangeRepo{kills: kills}
+
+	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 20, 9))
+	if block == nil {
+		t.Fatal("section nil alors que 9 frags sont mesurés : la couverture et les médianes " +
+			"restent publiables, seul le graphe par arme est vide")
+	}
+	if block.Weapons == nil {
+		t.Error("Weapons = nil, attendu une liste VIDE : le contrat sérialise `weapons: []`, " +
+			"jamais `null` (le front itère sans garde)")
+	}
+	if len(block.Weapons) != 0 {
+		t.Errorf("armes publiées = %+v, attendu aucune (toutes sont sous le seuil)", block.Weapons)
+	}
+	// Les médianes et la couverture sont calculées sur TOUS les frags mesurés, seuil compris.
+	if math.Abs(block.MedianKillsM-10) > epsRange {
+		t.Errorf("médiane des frags = %v, attendu 10 (médiane de 4x10 m et 3x20 m)", block.MedianKillsM)
+	}
+	if math.Abs(block.MedianDeathsM-3) > epsRange {
+		t.Errorf("médiane des morts = %v, attendu 3", block.MedianDeathsM)
+	}
+	if block.MeasuredKills != 7 || block.TotalKills != 20 {
+		t.Errorf("couverture frags = %d/%d, attendu 7/20", block.MeasuredKills, block.TotalKills)
+	}
+	if block.MeasuredDeaths != 2 || block.TotalDeaths != 9 {
+		t.Errorf("couverture morts = %d/%d, attendu 2/9", block.MeasuredDeaths, block.TotalDeaths)
+	}
+	// Ce qui est écarté est NOMMÉ et ventilé par côté (D9) — c'est ce qui rend la section utile.
+	if len(block.BelowThresholdKills) != 2 || len(block.BelowThresholdDeaths) != 1 {
+		t.Errorf("sous le seuil = %d frags / %d morts, attendu 2 et 1",
+			len(block.BelowThresholdKills), len(block.BelowThresholdDeaths))
+	}
+}
+
+// TestMergeWeaponSides_LaMedianeDesFragsPrimeSurCelleDesMorts — la règle de tri de
+// `mergeWeaponSides` (constat F4, revue adversariale du lot 4, 2026-09-06).
+//
+// Une arme mesurée DES DEUX CÔTÉS se range à la médiane de ses FRAGS, jamais à celle de ses
+// morts : le graphe se lit « où je frague », les morts en sont le contrepoint. La règle
+// n'était épinglée par rien — le témoin `if out[i].Kills == nil` remplacé par `if true`
+// restait vert, et le tri basculait silencieusement sur le dernier côté rencontré.
+//
+// FIXTURE CONSTRUITE POUR QUE LA MUTATION SE VOIE : le BR75 frague à 12 m et tue son porteur à
+// 20 m, l'Hydra ne frague qu'à 15 m. Par la médiane des frags -> BR75 (12) puis Hydra (15) ;
+// par celle des morts -> Hydra (15) puis BR75 (20). L'ordre s'inverse.
+func TestMergeWeaponSides_LaMedianeDesFragsPrimeSurCelleDesMorts(t *testing.T) {
+	kills := wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)
+	kills = append(kills, wrKills("hinf_br75", analysis.SideVictim, 9, 20, 0)...)
+	kills = append(kills, wrKills("hinf_hydra", analysis.SideKiller, 9, 15, 0)...)
+	repo := &mockWeaponRangeRepo{kills: kills}
+
+	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 30, 12))
+	if block == nil || len(block.Weapons) != 2 {
+		t.Fatalf("armes = %+v, attendu 2 lignes", block)
+	}
+	if block.Weapons[0].WeaponKey != "hinf_br75" || block.Weapons[1].WeaponKey != "hinf_hydra" {
+		t.Fatalf("ordre = [%s %s], attendu [hinf_br75 hinf_hydra] : le BR75 se range à la "+
+			"médiane de ses FRAGS (12 m), pas à celle de ses morts (20 m)",
+			block.Weapons[0].WeaponKey, block.Weapons[1].WeaponKey)
+	}
+	if block.Weapons[0].Kills == nil || block.Weapons[0].Deaths == nil {
+		t.Errorf("le BR75 doit porter ses deux côtés : %+v", block.Weapons[0])
+	}
+}
+
+// TestLogWeaponRangeFailure_RegimeDesNiveaux — capability absente -> DEBUG, tout le reste ->
+// WARN (constat F6, revue adversariale du lot 4, 2026-09-06).
+//
+// POURQUOI C'EST UN TEST ET PAS UN COMMENTAIRE : inverser la condition laissait toute la suite
+// verte. Or le régime a une conséquence d'exploitation directe — un titre sans décodeur de
+// film émettrait un WARN à CHAQUE lecture de Synthèse, et ce bruit permanent noierait les
+// vraies pannes SQL, qui sont exactement ce que ce log doit faire remonter.
+//
+// Pas de `t.Parallel` : le test remplace le logger PAR DÉFAUT du process.
+func TestLogWeaponRangeFailure_RegimeDesNiveaux(t *testing.T) {
+	var buf threadSafeBuffer
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+
+	cas := []struct {
+		nom      string
+		err      error
+		niveau   string
+		veutWarn bool
+	}{
+		{"capability absente -> DEBUG", games.ErrCapabilityNotSupported, "DEBUG", false},
+		{"capability absente emballee -> DEBUG",
+			fmt.Errorf("LoadWeaponRange: %w", games.ErrCapabilityNotSupported), "DEBUG", false},
+		{"erreur SQL -> WARN", errors.New("Catalog Error: table does not exist"), "WARN", true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			buf.Reset()
+			repo := &mockWeaponRangeRepo{killsErr: c.err}
+			block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 9, 5))
+			if block != nil {
+				t.Fatalf("section = %+v, attendu nil", block)
+			}
+			out := buf.String()
+			if !strings.Contains(out, `"level":"`+c.niveau+`"`) {
+				t.Errorf("aucun log de niveau %s emis :\n%s", c.niveau, out)
+			}
+			if aWarn := strings.Contains(out, `"level":"WARN"`); aWarn != c.veutWarn {
+				t.Errorf("presence d'un WARN = %v, attendu %v — un titre sans decodeur ne doit "+
+					"pas alerter, une panne SQL doit alerter :\n%s", aWarn, c.veutWarn, out)
+			}
+		})
 	}
 }

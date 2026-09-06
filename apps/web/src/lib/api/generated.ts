@@ -11350,12 +11350,15 @@ export interface components {
             wins: number;
         };
         SynthesisOpening: {
-            /** Format: double */
-            closing_share_pct: number;
-            /** Format: double */
-            delta_median_m: number;
+            delta?: components["schemas"]["SynthesisOpeningDelta"];
             /** Format: int64 */
             measured_kills: number;
+            /** Format: double */
+            median_m: number;
+        };
+        SynthesisOpeningDelta: {
+            /** Format: double */
+            closing_share_pct: number;
             /** Format: double */
             median_m: number;
             /** Format: int64 */

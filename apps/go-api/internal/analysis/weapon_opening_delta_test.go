@@ -186,3 +186,43 @@ func TestWeaponRangeSideTotals_IgnoreLeSeuilEtLAutreCote(t *testing.T) {
 		t.Errorf("entrée vide : measured = %d, attendu 0", nz)
 	}
 }
+
+// TestWeaponOpeningDelta_LeTueurFaitPartieDeLaCle — la TROISIÈME composante de la clé
+// d'appariement (constat F7, revue adversariale du lot 4, 2026-09-06 : retirer `KillerXUID`
+// de `measuredKillKey` laissait toute la suite verte).
+//
+// LE CAS EST ATTEIGNABLE, ET IL N'EST PAS EXOTIQUE : `port.WeaponRangeFilters` porte une
+// LISTE de xuids, donc un scope peut couvrir plusieurs joueurs, et deux d'entre eux fraguent
+// couramment dans le même match à la même milliseconde. Sans le tueur dans la clé, les deux
+// frags s'écrasent dans la table d'appariement : le dernier lu fournit sa distance aux DEUX
+// entames, et le delta publié décrit un engagement qui n'a jamais eu lieu.
+//
+// FIXTURE CONSTRUITE POUR QUE L'ERREUR SOIT VISIBLE : même match, même instant, deux tueurs.
+// Apparié correctement -> deux deltas négatifs (-2 et -70), part de fermeture 100 %. Avec la
+// collision -> le frag de kB (30 m) sert aussi à kA, dont le delta devient +18 : la part de
+// fermeture tombe à 50 % et la médiane change de signe. La MÉDIANE SEULE ne suffirait pas à
+// distinguer les deux cas, la part de fermeture le fait.
+func TestWeaponOpeningDelta_LeTueurFaitPartieDeLaCle(t *testing.T) {
+	kills := []MeasuredKill{
+		mk("m1", "kA", 1000, SideKiller, 10),
+		mk("m1", "kB", 1000, SideKiller, 30),
+	}
+	openings := []MeasuredKill{
+		mk("m1", "kA", 1000, SideKiller, 12),  // kA ferme de 2 m
+		mk("m1", "kB", 1000, SideKiller, 100), // kB ferme de 70 m
+	}
+
+	st := WeaponOpeningDelta(kills, openings, SideKiller)
+	if st.Paired != 2 {
+		t.Fatalf("Paired = %d, attendu 2 (deux tueurs distincts au même instant)", st.Paired)
+	}
+	if math.Abs(st.MedianDeltaM-(-36)) > epsDelta {
+		t.Errorf("MedianDeltaM = %v, attendu -36 (médiane de -2 et -70) — la valeur -26 "+
+			"signalerait que le frag de kB a été apparié à l'entame de kA", st.MedianDeltaM)
+	}
+	if math.Abs(st.ClosingShare-1) > epsDelta {
+		t.Errorf("ClosingShare = %v, attendu 1 : les DEUX engagements se ferment. Une part de "+
+			"0,5 signalerait que la clé confond les deux tueurs (l'entame de kA appariée à la "+
+			"distance de kB rendrait un delta positif)", st.ClosingShare)
+	}
+}

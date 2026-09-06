@@ -24983,15 +24983,24 @@ components:
     SynthesisOpening:
       additionalProperties: false
       properties:
-        closing_share_pct:
-          format: double
-          type: number
-        delta_median_m:
-          format: double
-          type: number
+        delta:
+          $ref: '#/components/schemas/SynthesisOpeningDelta'
         measured_kills:
           format: int64
           type: integer
+        median_m:
+          format: double
+          type: number
+      required:
+        - median_m
+        - measured_kills
+      type: object
+    SynthesisOpeningDelta:
+      additionalProperties: false
+      properties:
+        closing_share_pct:
+          format: double
+          type: number
         median_m:
           format: double
           type: number
@@ -25000,8 +25009,6 @@ components:
           type: integer
       required:
         - median_m
-        - measured_kills
-        - delta_median_m
         - closing_share_pct
         - "n"
       type: object
