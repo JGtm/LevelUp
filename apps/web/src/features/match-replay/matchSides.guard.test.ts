@@ -14,8 +14,7 @@
  * la main, et la table `xuid -> équipe` reconstruite à la main.
  */
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { cheminCourt, fichierNomme, lire, nomDe, tousLesFichiers } from './test/featureFiles'
 
 /**
  * « MON équipe » : la FORMULE entière — la ligne « moi » cherchée à la main, puis son camp
@@ -34,9 +33,10 @@ const TABLE_XUID = /map\.set\(\w+\.xuid, team\)/
 const AUTORISES = new Set(['matchSides.ts', 'matchSides.guard.test.ts'])
 
 function fautifs(motif: RegExp): string[] {
-  return readdirSync(__dirname)
-    .filter((n) => /\.(ts|tsx)$/.test(n) && !AUTORISES.has(n))
-    .filter((n) => motif.test(readFileSync(join(__dirname, n), 'utf8')))
+  return tousLesFichiers()
+    .filter((f) => !AUTORISES.has(nomDe(f)))
+    .filter((f) => motif.test(lire(f)))
+    .map(cheminCourt)
 }
 
 describe('garde-rail : un seul foyer pour les camps du match', () => {
@@ -49,7 +49,7 @@ describe('garde-rail : un seul foyer pour les camps du match', () => {
   })
 
   it('et `matchSides` porte bien les deux — sans quoi ce test ne garderait rien', () => {
-    const src = readFileSync(join(__dirname, 'matchSides.ts'), 'utf8')
+    const src = lire(fichierNomme('matchSides.ts'))
     expect(CAMP_ALLIE.test(src)).toBe(true)
     expect(TABLE_XUID.test(src)).toBe(true)
   })

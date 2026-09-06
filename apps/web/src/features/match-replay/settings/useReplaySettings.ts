@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 
-import type { HeatmapMode, HeatmapSpan } from './heatmapLayer'
+import type { HeatmapMode, HeatmapSpan } from '../heatmapLayer'
 import {
   persistPreference,
   readStoredChoice,

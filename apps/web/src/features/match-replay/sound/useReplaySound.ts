@@ -47,7 +47,7 @@ import { useSettings } from '@/features/settings/queries'
 import type { ReplayKill } from '../killFeedLogic'
 import { seededRandom, soundUrlOf } from './replayAudioMix'
 
-import { persistPreference, readStoredFlag, readStoredNumber } from '../replayPreferences'
+import { persistPreference, readStoredFlag, readStoredNumber } from '../settings/replayPreferences'
 import {
   END_FFA_WIN_VOICE_STEMS,
   END_MUSIC_STEMS,

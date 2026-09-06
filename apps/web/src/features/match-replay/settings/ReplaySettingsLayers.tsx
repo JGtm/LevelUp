@@ -19,7 +19,7 @@ import type { ReactNode } from 'react'
 
 import { SettingsToggle } from './ReplaySettingsToggle'
 
-import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
+import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
 /**
  * Ce que le tiroir sait des POSES d'équipement : les deux bascules, et ce que le film porte.

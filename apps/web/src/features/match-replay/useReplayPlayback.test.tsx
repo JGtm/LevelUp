@@ -27,7 +27,7 @@ import { createRef, type RefObject } from 'react'
 import type { ReplayWindowBounds } from './replayWindow'
 import { testReplayDoc } from './test/testDoc'
 import { useReplayPlayback } from './useReplayPlayback'
-import { AUTOPLAY_KEY } from './useReplaySettings'
+import { AUTOPLAY_KEY } from './settings/useReplaySettings'
 
 /** Un document de 51 images (`endFrame` = 50) à la cadence par défaut. */
 const DOC = testReplayDoc({ frameCount: 51 })

@@ -35,21 +35,18 @@
  * existant.
  */
 
-import { readdirSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+
+import { cheminCourt, fichierNomme, lire, nomDe, sourcesDeLaFeature } from './test/featureFiles'
 
 const AUTORISES = new Set(['livesPosition.ts', 'livesPosition.guard.test.ts'])
 
 describe('livesPosition — unique écriture du bloc de position', () => {
   it("aucune nouvelle copie de l'index livesByXuid", () => {
-    const dir = resolve(__dirname)
     const fautifs: string[] = []
-    for (const f of readdirSync(dir)) {
-      if (!f.endsWith('.ts') && !f.endsWith('.tsx')) continue
-      if (AUTORISES.has(f)) continue
-      const src = readFileSync(resolve(dir, f), 'utf8')
-      if (src.includes('livesByXuid')) fautifs.push(f)
+    for (const f of sourcesDeLaFeature()) {
+      if (AUTORISES.has(nomDe(f))) continue
+      if (lire(f).includes('livesByXuid')) fautifs.push(cheminCourt(f))
     }
     expect(
       fautifs,
@@ -60,13 +57,10 @@ describe('livesPosition — unique écriture du bloc de position', () => {
   })
 
   it("aucune nouvelle copie de l'index des vies PAR SLOT", () => {
-    const dir = resolve(__dirname)
     const fautifs: string[] = []
-    for (const f of readdirSync(dir)) {
-      if (!f.endsWith('.ts') && !f.endsWith('.tsx')) continue
-      if (AUTORISES.has(f)) continue
-      const src = readFileSync(resolve(dir, f), 'utf8')
-      if (/new Map<number, ReplayTrackReady\[\]>/.test(src)) fautifs.push(f)
+    for (const f of sourcesDeLaFeature()) {
+      if (AUTORISES.has(nomDe(f))) continue
+      if (/new Map<number, ReplayTrackReady\[\]>/.test(lire(f))) fautifs.push(cheminCourt(f))
     }
     expect(
       fautifs,
@@ -76,7 +70,7 @@ describe('livesPosition — unique écriture du bloc de position', () => {
   })
 
   it('et la canonique porte bien les deux index — sans quoi ce garde ne garderait rien', () => {
-    const src = readFileSync(resolve(__dirname, 'livesPosition.ts'), 'utf8')
+    const src = lire(fichierNomme('livesPosition.ts'))
     expect(src).toMatch(/export function buildLivesByXuid\(/)
     expect(src).toMatch(/export function buildLivesBySlot\(/)
     expect(src).toMatch(/export function lifeOfSlotAt\(/)

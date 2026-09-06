@@ -49,7 +49,7 @@ import {
 import { roundTransitions } from './roundsLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
-import { usePersistedFlag, TIMELINE_EXPANDED_KEY } from './useReplaySettings'
+import { usePersistedFlag, TIMELINE_EXPANDED_KEY } from './settings/useReplaySettings'
 import { useReplayShortcuts, type ReplayShortcutHandlers } from './useReplayShortcuts'
 
 /** Ce que le canvas prête à la frise : le document, le cadrage, le fil et la lecture. */

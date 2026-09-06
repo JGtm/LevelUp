@@ -14,20 +14,20 @@
  * centraliser). Autorisée nommément plutôt qu'ignorée en silence.
  */
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { cheminCourt, lire, nomDe, sourcesDeLaFeature } from '../test/featureFiles'
 
 const DIRECT_ACCESS = /\blocalStorage\.(getItem|setItem|removeItem)\(/
 
 // replayPreferences.ts EST le patron (légitime) ; useReplaySound.ts porte l'exception JSON
 // documentée ci-dessus.
-const ALLOWED = new Set(['replayPreferences.ts', './sound/useReplaySound.ts'])
+const ALLOWED = new Set(['replayPreferences.ts', 'useReplaySound.ts'])
 
 describe('garde-rail : localStorage des préférences du rejeu passe par replayPreferences.ts', () => {
   it('aucun accès direct ailleurs dans la feature (hors tests, hors patron, hors exception nommée)', () => {
-    const offenders = readdirSync(__dirname)
-      .filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f) && !ALLOWED.has(f))
-      .filter((f) => DIRECT_ACCESS.test(readFileSync(join(__dirname, f), 'utf8')))
+    const offenders = sourcesDeLaFeature()
+      .filter((f) => !ALLOWED.has(nomDe(f)))
+      .filter((f) => DIRECT_ACCESS.test(lire(f)))
+      .map(cheminCourt)
     expect(offenders).toEqual([])
   })
 })

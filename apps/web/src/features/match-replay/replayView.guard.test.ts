@@ -16,8 +16,7 @@
  * (`layerOffset`) garde donc l'écriture longue, et c'est la seule exception.
  */
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { cheminCourt, fichierNomme, lire, nomDe, tousLesFichiers } from './test/featureFiles'
 
 /** La signature du défaut : les quatre champs du cadrage dépaquetés un par un. */
 const DEPAQUETAGE = /view\.bounds,\s*view\.width,\s*view\.height,\s*view\.pad/
@@ -29,15 +28,13 @@ const DECLARATION = /(?:export )?interface CanvasView \{/
 const AUTORISES = new Set(['replayView.ts', 'replayLogic.ts', 'replayView.guard.test.ts'])
 
 function fichiers(): string[] {
-  return readdirSync(__dirname)
-    .filter((n) => /\.(ts|tsx)$/.test(n) && !AUTORISES.has(n))
-    .map((n) => join(__dirname, n))
+  return tousLesFichiers().filter((f) => !AUTORISES.has(nomDe(f)))
 }
 
 function fautifs(motif: RegExp): string[] {
   return fichiers()
-    .filter((f) => motif.test(readFileSync(f, 'utf8')))
-    .map((f) => f.split(/[\\/]/).pop() as string)
+    .filter((f) => motif.test(lire(f)))
+    .map(cheminCourt)
 }
 
 describe('garde-rail : un seul cadrage, une seule projection', () => {
@@ -50,7 +47,7 @@ describe('garde-rail : un seul cadrage, une seule projection', () => {
   })
 
   it('et `replayView` porte bien les deux — sans quoi ce test ne garderait rien', () => {
-    const src = readFileSync(join(__dirname, 'replayView.ts'), 'utf8')
+    const src = lire(fichierNomme('replayView.ts'))
     expect(DECLARATION.test(src)).toBe(true)
     expect(DEPAQUETAGE.test(src)).toBe(true)
   })

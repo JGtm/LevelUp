@@ -20,8 +20,9 @@
  * la DURÉE d'un clip vidéo et la position dans ce clip — une autre horloge, celle du média.
  */
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { resolve } from 'node:path'
+
+import { cheminCourt, featureRoot, fichierNomme, fichiersSous, lire, nomDe, tousLesFichiers } from './test/featureFiles'
 
 /** La signature du défaut : le formateur d'arrondi importé dans la feature du rejeu. */
 const FORMATEUR_ARRONDI = /\bformatClockMMSS\b/
@@ -29,39 +30,23 @@ const FORMATEUR_ARRONDI = /\bformatClockMMSS\b/
 /** Cf. l'en-tête : la visionneuse de médias date un CLIP, pas le match. */
 const AUTORISES = new Set(['ReplayMediaLightbox.tsx', 'replayClockFormat.guard.test.ts'])
 
-function walk(dir: string): string[] {
-  const out: string[] = []
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name)
-    if (entry.isDirectory()) {
-      if (entry.name === 'node_modules') continue
-      out.push(...walk(full))
-    } else if (/\.(ts|tsx)$/.test(entry.name)) {
-      out.push(full)
-    }
-  }
-  return out
-}
-
 describe('garde-rail : une seule horloge visible dans le rejeu', () => {
   it('aucun fichier de features/match-replay/ n’appelle le formateur d’arrondi', () => {
-    const fautifs = walk(__dirname).filter((f) => {
-      const base = f.split(/[\\/]/).pop() ?? ''
-      if (AUTORISES.has(base)) return false
-      return FORMATEUR_ARRONDI.test(readFileSync(f, 'utf8'))
-    })
+    const fautifs = tousLesFichiers()
+      .filter((f) => !AUTORISES.has(nomDe(f)) && FORMATEUR_ARRONDI.test(lire(f)))
+      .map(cheminCourt)
     expect(fautifs).toEqual([])
   })
 
   it('et le formateur du rejeu, lui, TRONQUE — sans quoi ce garde ne garderait rien', () => {
-    const src = readFileSync(join(__dirname, 'replayLogic.ts'), 'utf8')
+    const src = lire(fichierNomme('replayLogic.ts'))
     expect(src).toMatch(/export function formatClock\(/)
     expect(src).toMatch(/Math\.floor\(ms \/ 1000\)/)
   })
 
   it('la route du rejeu non plus', () => {
-    const routes = resolve(__dirname, '..', '..', 'routes')
-    const fautifs = walk(routes).filter((f) => FORMATEUR_ARRONDI.test(readFileSync(f, 'utf8')))
+    const routes = resolve(featureRoot(), '..', '..', 'routes')
+    const fautifs = fichiersSous(routes).filter((f) => FORMATEUR_ARRONDI.test(lire(f)))
     expect(fautifs).toEqual([])
   })
 })
