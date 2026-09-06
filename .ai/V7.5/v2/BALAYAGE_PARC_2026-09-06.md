@@ -4,6 +4,12 @@
 > (schema 39, HEAD `f1c7b411f`) produit du MEME film, qu'est-ce qui a ete PERDU ? La perte des
 > actions de capture et de vol de drapeau d'un match CTF (`c0a82e88`) etait le point de depart ;
 > l'objet de ce balayage est de dire si elle est isolee ou generale, et de chercher les autres.
+>
+> **CE DOCUMENT PORTE DEUX PASSES.** Les sections 1 a 9 sont le balayage AVANT (parc contre
+> `f1c7b411f`, lots B et F seuls) : elles etablissent le diagnostic et **restent au passe**. La
+> section « Balayage APRES » (en fin de document) rejoue la meme mesure contre `feat/v75`
+> integre au schema 40 : la regression n° 1 y est **resolue et chiffree**, et aucune perte
+> nouvelle n'apparait sur le parc.
 
 ## 1. Verdict en une page
 
@@ -375,3 +381,155 @@ ecrase le parc de reference.
 Artefacts de la mesure (hors depot, repertoire de travail de la session) : `reference/` (161
 anciens artefacts, 306 Mio), `apres/` (119 re-cuits), `rapport/` (161 rapports JSON de paire),
 `inventaire.tsv`, `cuisson_journal.tsv`, `diffs.tsv` (26 098 ecarts a plat).
+
+---
+
+# Balayage APRES — le parc re-cuit sur la branche d'integration
+
+> Seconde passe, meme methode et memes bornes. La premiere mesurait le parc contre
+> `f1c7b411f` (lots B et F seuls) ; celle-ci le mesure contre `feat/v75` integre
+> (`beeb6f3ee` : les sept lots, le correctif du pont d'identite CTF, **SchemaVersion 40**).
+> Deux confrontations : ce que les lots ont change sur TOUT le parc, et ce qu'il reste des
+> quatre regressions candidates.
+
+## A. Ce qui a ete joue
+
+| | |
+|---|---|
+| Merge | `origin/feat/v75` dans `feat/v2-balayage`, **un seul conflit** (`.ai/thought_log.md`, resolu par concatenation) ; `cmd/replay-diff` compile et passe ses 6 tests **sans modification** — sa lecture generique le rend insensible aux types `replaydoc` du lot B |
+| Cuisson | **119 / 119**, zero echec, **34,8 min** cumulees, plus long `084a804d` **111 s** |
+| **Pic memoire max** | **0,538 Gio** (`4f77afc1`) = 18 % du plafond `filmproc` |
+| Faits du match | **0 cuisson sans faits** (controle sur les 119 journaux), temoin verifie AVANT la serie sur `c0a82e88` : `lignes=8`, courbe de score presente, `identifiees` 12 -> **23** |
+| Ecriture hors perimetre | **aucune** — `replays`, `reference`, `film_chunks` et `film_manifests` du checkout principal INCHANGES (temoins mtime avant/apres), `git status` du worktree vide |
+
+**Le HEAD a bouge pendant la passe (`9e73368e8` -> `beeb6f3ee`) et cela ne change RIEN a la
+mesure, preuve a l'appui** : le delta ne touche que `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md` et
+`.ai/baselines/tests_pre_migration.jsonl` (aucun `.go`, aucun `.toml`, aucun catalogue), et le
+binaire `replay-build` recompile au nouveau HEAD est **byte-identique** (md5
+`b5faf9677f3eb36578f4e4ff67c44686`) a celui qui a cuit les 119 films.
+
+## B. Confrontation (a) — `apres/` (schema 39) contre `apres2/` (schema 40)
+
+C'est la mesure de ce que les sept lots ont change sur le parc entier : meme film, memes faits,
+meme chemin de cuisson, deux HEAD.
+
+**491 ecarts sur 119 paires — et parmi eux, ZERO perte et ZERO disparition.**
+
+| Axe | pertes | disparus | gains | apparus | changements |
+|---|---|---|---|---|---|
+| entete | 0 | 0 | **119** | 0 | 0 |
+| objectifs | **0** | **0** | 139 | 180 | 0 |
+| couverture | **0** | **0** | 49 | 0 | 4 |
+| *tous les autres axes* | — | — | — | — | — |
+
+- **`entete`** : les 119 ecarts sont `schemaVersion 39 -> 40`, et **rien d'autre** (verifie :
+  la seule metrique de cet axe qui differe est `schemaVersion`).
+- **`objectifs` et `couverture`** : 19 matchs concernes, tous en gain.
+- **Les 15 autres axes n'apparaissent PAS dans le rapport** : pistes, armes, grenades,
+  vehicules, equipement, ports, score, joueurs, roster, carte, horloges, objets d'objectif,
+  assaut, morts — **strictement identiques sur les 119 films**. C'est la verification
+  independante des trois promesses : le lot E a bien rendu un decodeur a comportement
+  identique, le lot A n'a pas touche le document, le lot D n'a touche que le web.
+- **100 matchs sur 119 sont strictement identiques hors numero de schema.**
+
+### Actions d'objectif retrouvees, match par match
+
+| Match | Variante | avant | apres | delta |
+|---|---|---|---|---|
+| `4f77afc1` | BTB:CTF | 153 | 239 | **+86** |
+| `008e1bba` | CTF:Arena | 11 | 60 | **+49** |
+| `a17e61a2` | CTF:Arena | 22 | 56 | +34 |
+| `e94163af` | CTF:Arena Neutral Flag | 76 | 108 | +32 |
+| `846044ba` | CTF:Arena Neutral Flag | 7 | 37 | +30 |
+| `66aa5f0b` | BTB:Total Control | 29 | 57 | +28 |
+| `4ecdf3e7` | CTF:Arena Neutral Flag | 60 | 86 | +26 |
+| `cf040013` | CTF:Arena Neutral Flag | 5 | 30 | +25 |
+| `06dfe6d9` | BTB:Fiesta CTF | 114 | 136 | +22 |
+| `51101d1d` | CTF:Arena Neutral Flag | 49 | 67 | +18 |
+| `04023f8a` | BTB:Fiesta CTF | 12 | 29 | +17 |
+| `b8d1fe0c` | CTF:Arena Neutral Flag | 61 | 77 | +16 |
+| `bf5ced1b` | CTF:Arena | 26 | 41 | +15 |
+| `af13e2b2` | Arena:Strongholds | 66 | 79 | +13 |
+| `c0a82e88` | Husky Raid:CTF | 12 | 23 | +11 |
+| `0f9550e5` | CTF:Arena Neutral Flag | 77 | 86 | +9 |
+| `145908d1` | BTB:CTF | **0** | 7 | +7 |
+| **Total** | **17 matchs** | | | **+438 actions** |
+
+Par famille : `kills` +173, `flag_grabs` +121, `assists` +74, **`flag_captures` +23**,
+**`flag_steals` +20**, `flag_carriers_killed` +11, `zone_captures` +6, `flag_returns` +5,
+`flag_capture_assists` +5.
+
+`145908d1` sort de `coverage.verdict.objectives = aucune donnee` pour revenir a `nominal`.
+
+### Les quatre `changement` de couverture, expliques
+
+Trois matchs (`06dfe6d9`, `3372e7eb`, `82f29378`) passent de `nominal` a
+`partiel : moins des deux tiers rattaches`. **Ce n'est pas une degradation** : c'est un RATIO
+dont le denominateur monte plus vite que le numerateur — `06dfe6d9` passe de 114 a **136**
+actions attribuees pendant que `available` passe de 159 a **213**. Le quatrieme changement est
+`145908d1`, `aucune donnee -> nominal`. Le verdict merite d'etre relu a la lumiere de ce cas :
+il descend quand le film devient PLUS lisible.
+
+## C. Confrontation (b) — `reference/` (161 anciens artefacts) contre `apres2/`
+
+| Axe | matchs avec perte : 1er balayage -> 2e | pertes | disparus |
+|---|---|---|---|
+| **objectifs** | **14 -> 1** | 106 -> **0** | 153 -> **4** |
+| couverture | 95 -> 93 | 324 -> 279 | 91 -> 91 |
+| pistes | 78 -> 78 | 679 -> 679 | 8 -> 8 |
+| equipement | 50 -> 50 | 197 -> 197 | 43 -> 43 |
+| carte | 19 -> 19 | 26 -> 26 | 0 -> 0 |
+| ports | 16 -> 16 | 91 -> 91 | 1 -> 1 |
+| score | 13 -> 13 | 14 -> 14 | 2 -> 2 |
+| vehicules / joueurs / armes / grenades / horloges / objets d'objectif | inchanges | inchanges | inchanges |
+| roster / assaut / morts / entete | 0 perte | 0 | 0 |
+
+**Controle croise, et c'est le resultat qui compte : 0 perte NOUVELLE, 300 pertes RESORBEES.**
+Les jeux de pertes des deux balayages ont ete confrontes cle a cle (match, schema, metrique) :
+1 783 pertes distinctes au premier, 1 483 au second, **l'ensemble des 1 483 est un
+sous-ensemble strict des 1 783**. Aucun lot n'a casse quoi que ce soit.
+
+### Candidate 1 — RESOLUE, chiffree
+
+Perte de chaque famille d'action mesuree CONTRE LA REFERENCE :
+
+| Famille | 1er balayage | 2e balayage |
+|---|---|---|
+| `kills` | −130 | **0** |
+| `assists` | −64 | **0** |
+| `flag_grabs` | −44 | **0** |
+| `flag_captures` | −20 | **0** |
+| `flag_steals` | −18 | **0** |
+| `flag_carriers_killed` | −8 | **0** |
+| `zone_captures` | −6 | **0** |
+| `flag_returns` | −5 | **0** |
+| `flag_capture_assists` | −4 | **0** |
+
+Les 297 actions perdues sur 14 matchs sont **integralement recuperees**. Le correctif
+(`CompletedByLines`, complement du pont par morts par le pont par triplet sur les films
+mono-manche) tient sur tout le parc, pas seulement sur le film temoin.
+
+**Residu unique, a nommer** : `bcb6d393` (CTF:Arena, schema 20) — deux joueurs perdent
+3 actions de famille `kills` (2 et 1) pendant que le match GAGNE sur toutes les familles
+(`objectives/n` 67 -> 76, `flag_captures` 2 -> 3, `flag_steals` 2 -> 4, `flag_grabs` 11 -> 12,
+`kills` 39 -> 43). C'est une **re-attribution** a l'interieur d'un gain, pas une perte
+d'information ; les deux memes joueurs gagnent par ailleurs des ramassages nommes. A verifier
+si le lot d'instruction des candidates veut fermer le sujet a zero.
+
+### Candidates 2 a 4 — INCHANGEES (non traitees ici, par consigne)
+
+| # | Candidate | 1er balayage | 2e balayage |
+|---|---|---|---|
+| 2 | Tractions de grappin | 18 paires en perte | **18** |
+| 3 | Episodes camouflage / surbouclier | 11 paires | **11** |
+| 4 | Un joueur perd toutes ses vies nommees | `11de8353` 18->17, `145908d1` 24->23, `4f77afc1` 24->23 | **identique** |
+
+Elles sont instruites en parallele dans `LevelUp-wt-v2-regressions` ; ce balayage les constate
+et n'y touche pas.
+
+## D. Differences NON attendues
+
+**Aucune.** La consigne attendait `schemaVersion` 39 -> 40 et les actions d'objectif
+retrouvees, rien d'autre : c'est exactement, et exclusivement, ce que la confrontation (a)
+rend. Les quatre `changement` de verdict de couverture sont la consequence arithmetique du
+gain d'actions (section B), pas un ecart supplementaire.

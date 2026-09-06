@@ -96798,3 +96798,47 @@ morsure est prouvee par mutation, `golangci-lint 0 issues`) et rapport
 mtime avant/apres sur `replays`, `reference`, `film_chunks` du checkout principal). A trancher
 par le superviseur : reparer le pont d'identite des actions d'objectif (candidate n° 1) AVANT la
 re-cuisson du parc, sans quoi la re-cuisson gravera la perte dans les 951 artefacts.
+
+## [2026-09-06] Balayage APRES du parc de rejeux — les sept lots ne changent QUE ce qu'ils promettaient
+
+**Statut** : Complete (branche `feat/v2-balayage`, worktree `LevelUp-wt-v2-balayage`).
+
+**Decision technique principale.** Seconde passe du balayage, apres merge de `feat/v75` integre
+(`beeb6f3ee`, schema 40). La mesure decisive n'est pas « le parc contre le HEAD » mais
+**la cuisson d'avant contre la cuisson d'apres, film par film** : memes films, memes faits, meme
+chemin de cuisson, deux HEAD — tout ecart est alors imputable aux lots et a rien d'autre. Le
+merge n'a demande aucune adaptation de `cmd/replay-diff` : sa lecture generique
+(`map[string]any`) le rend insensible aux types `replaydoc` du lot B, ce qui etait le pari de
+conception de la premiere passe et se verifie ici.
+
+**Resultats observes.** Cuisson 119/119, zero echec, 34,8 min, pic 0,538 Gio (18 % du plafond),
+0 cuisson sans faits, aucune ecriture hors du repertoire de travail (temoins mtime sur
+`replays`, `reference`, `film_chunks`, `film_manifests` du principal : INCHANGES).
+(a) `apres/` (39) contre `apres2/` (40) : **491 ecarts sur 119 paires, dont ZERO perte et ZERO
+disparition**. `entete` = 119 fois `schemaVersion 39 -> 40` et rien d'autre ; `objectifs` et
+`coverage.objectives` = 19 matchs, tous en gain ; **les 15 autres axes n'apparaissent pas du
+tout** — pistes, armes, grenades, vehicules, equipement, ports, score, joueurs, roster, carte,
+horloges, objets d'objectif, assaut, morts sont strictement identiques sur les 119 films.
+100 matchs sur 119 sont identiques hors numero de schema. C'est la verification independante
+des trois promesses (lot E a comportement identique, lot A hors document, lot D web seul).
+**+438 actions d'objectif retrouvees sur 17 matchs** (`4f77afc1` +86, `008e1bba` +49,
+`a17e61a2` +34...), dont `flag_captures` +23 et `flag_steals` +20.
+(b) `reference/` contre `apres2/` : l'axe objectifs passe de 14 matchs / 106 pertes / 153
+disparus a **1 match / 0 perte / 4 disparus**. Les neuf familles d'action perdues au premier
+balayage (−130 kills, −64 assists, −44 grabs, −20 captures, −18 vols...) sont TOUTES a zero.
+Controle croise cle a cle : **0 perte nouvelle, 300 pertes resorbees**, les 1 483 pertes du
+second balayage etant un sous-ensemble strict des 1 783 du premier. Candidates 2 a 4 inchangees
+(18 / 11 / 3), laissees a l'enqueteur dedie.
+
+**Piege ecarte, et il valait la peine d'etre verifie.** Le HEAD de `feat/v75` a bouge pendant la
+passe (`9e73368e8` -> `beeb6f3ee`). Plutot que de re-cuire par principe ou d'ignorer par
+confort : le delta ne touche que deux fichiers `.ai/` (plan et baseline de tests), et le binaire
+`replay-build` recompile au nouveau HEAD est **byte-identique** (md5 `b5faf967...`) a celui qui
+a cuit les 119 films. La mesure vaut donc pour `beeb6f3ee` sans re-cuisson.
+
+**Conclusion / prochaine etape.** Section « Balayage APRES » ajoutee a
+`.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md` (renvoi pose en tete : les sections 1 a 9 sont le
+diagnostic AVANT et restent au passe). Residu unique a nommer : `bcb6d393` perd 3 actions
+`kills` sur deux joueurs alors que le match gagne sur toutes les familles (67 -> 76) — une
+re-attribution dans un gain, a fermer si l'instruction des candidates veut le zero. Le parc peut
+etre re-cuit au schema 40 : la mesure dit qu'il n'y perdra rien.
