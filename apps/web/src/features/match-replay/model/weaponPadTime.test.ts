@@ -14,7 +14,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayWeaponPadReady } from './replayNormalize'
+import type { ReplayWeaponPadReady } from '../../../lib/replay/replayNormalize'
 import { padOccupancyAt, padRespawnAt, padStateAt } from './weaponPadTime'
 
 /** Une image de 100 ms : 10 images = 1 s, ce qui rend les comptes lisibles à l'œil nu. */

@@ -33,11 +33,11 @@ vi.mock('echarts-for-react', () => ({
 }))
 
 const artefact = vi.hoisted(() => ({ current: undefined as unknown }))
-vi.mock('@/features/match-replay/queries', () => ({
+vi.mock('@/lib/replay/queries', () => ({
   useMatchReplay: () => ({ data: artefact.current }),
 }))
 
-const { normalizeReplayDocument } = await import('@/features/match-replay/model/replayNormalize')
+const { normalizeReplayDocument } = await import('@/lib/replay/replayNormalize')
 
 const t = MATCH_VIEW_TEXT.fr
 

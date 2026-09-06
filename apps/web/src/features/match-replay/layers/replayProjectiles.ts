@@ -5,8 +5,8 @@
  * visée : un vol de grenade n'est pas un marqueur de joueur, il ne partage avec eux que le
  * cadrage. Le fichier d'origine dépassait le seuil de taille du dépôt.
  */
-import { type XY } from '../model/replayLogic'
-import type { ReplayProjectileReady } from '../model/replayNormalize'
+import { type XY } from '../../../lib/replay/replayLogic'
+import type { ReplayProjectileReady } from '../../../lib/replay/replayNormalize'
 import { type CanvasView, projectTo } from '../model/replayView'
 
 

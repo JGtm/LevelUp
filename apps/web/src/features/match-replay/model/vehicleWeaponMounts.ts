@@ -54,7 +54,7 @@
  * millimètre.
  */
 import { vehicleAimAngle, vehicleScreenAngle, vehicleSpriteScale } from './vehiclesLayer'
-import type { XY } from './replayLogic'
+import type { XY } from '../../../lib/replay/replayLogic'
 
 /** `fixe` = solidaire du nez, vise où pointe le véhicule. `tourelle` = visée indépendante, inconnue. */
 export type VehicleMountClass = 'fixe' | 'tourelle'

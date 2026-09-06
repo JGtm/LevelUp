@@ -21,11 +21,11 @@ import {
   useReplayMapBackground,
   useReplayMapCallouts,
   useReplayMapImage,
-} from '@/features/match-replay/queries'
+} from '@/lib/replay/queries'
 import { ReplayCanvas } from '@/features/match-replay/ui/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ui/ReplayKillFeed'
 import { ReplayMatchRecall } from '@/features/match-replay/ui/ReplayMatchRecall'
-import { frameToMs } from '@/features/match-replay/model/replayLogic'
+import { frameToMs } from '@/lib/replay/replayLogic'
 import { ReplayBombCountdownOverlay } from '@/features/match-replay/ui/ReplayBombCountdownOverlay'
 import { ReplayRoundBreakOverlay } from '@/features/match-replay/ui/ReplayRoundBreakOverlay'
 import { ReplayScoreBanner } from '@/features/match-replay/ui/ReplayScoreBanner'

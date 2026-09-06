@@ -19,8 +19,8 @@
  * et aucune couleur d'équipe n'est affirmée (le canal ne connaît pas le camp de l'armeur).
  */
 import { activeBombCountdown } from '../model/bombCountdown'
-import { formatSeconds } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { formatSeconds } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
 interface Props {

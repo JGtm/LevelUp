@@ -42,8 +42,8 @@ import {
   isVideoTypeSupported,
   pickVideoMimeType,
 } from './replayRecording'
-import { frameToMs } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { useReplayExport, type ReplayExport, type ReplayExportOptions } from './useReplayExport'
 import type { ExportOutcome } from './exportOverlayPanels'
 import type { ReplayWindowBounds } from '../model/replayWindow'

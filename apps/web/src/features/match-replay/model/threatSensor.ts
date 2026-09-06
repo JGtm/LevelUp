@@ -68,8 +68,8 @@
  */
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
-import { isAliveAt, positionAt } from './replayLogic'
-import type { ReplayTrackReady } from './replayNormalize'
+import { isAliveAt, positionAt } from '../../../lib/replay/replayLogic'
+import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * Rayon du capteur, en mètres monde. VALEUR OFFICIELLE (« Sensor Radius: 4.25wu »), sous la

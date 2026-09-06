@@ -62,7 +62,7 @@ import {
   padControlMissing,
   type PadControl,
 } from './model/padControlLogic'
-import { useMatchReplay } from './queries'
+import { useMatchReplay } from '../../lib/replay/queries'
 import { padNameFor } from './layers/useReplayWeaponPads'
 
 /** Largeur de la colonne des noms d'arme, et de l'annotation de droite (px). */

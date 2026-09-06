@@ -16,8 +16,8 @@
 import { useMemo } from 'react'
 
 import { DYNAMO_REST_HOLD_MS, GRENADE_REST_HOLD_MS } from '../model/grenadeFx'
-import { framesPerSecond, msToFrames } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { framesPerSecond, msToFrames } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { MarkerTiming } from '../layers/replayMarkers'
 
 /**

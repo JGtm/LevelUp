@@ -24,8 +24,8 @@
  * CATÉGORIE ÉQUIPEMENT — le propulseur est une capacité d'équipement du joueur, au même titre
  * que le grappin, le camouflage et le surbouclier (cf. `buildSoundTimeline`).
  */
-import type { ReplayDocumentReady } from '../model/replayNormalize'
-import { frameToMs } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { frameToMs } from '../../../lib/replay/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 
 /**

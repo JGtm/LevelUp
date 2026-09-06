@@ -21,9 +21,9 @@
  *
  * Pas de React, pas de couleur, pas de canevas : de la géométrie datée, testable seule.
  */
-import { trackWindow } from './replayLogic'
+import { trackWindow } from '../../../lib/replay/replayLogic'
 import { identityIsUnknown, translocatorRanks } from './placementTeleport'
-import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
 
 /**

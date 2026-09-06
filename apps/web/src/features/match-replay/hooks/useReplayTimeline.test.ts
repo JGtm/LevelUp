@@ -14,7 +14,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ReplayDeath, ReplayFeedEntry, ReplayKill } from '../model/killFeedLogic'
-import type { PlayerMarkKind } from '../model/playerMarks'
+import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { reduceFeed } from './useReplayTimeline'
 
 const MARKS: ReadonlyMap<string, PlayerMarkKind> = new Map([

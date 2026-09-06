@@ -22,8 +22,8 @@
 import { useCallback, useMemo } from 'react'
 
 import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
-import { frameToMs, msToFrames } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   buildThrusterDashFx,
   drawThrusterDashLayer,

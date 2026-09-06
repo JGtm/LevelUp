@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayVehicleSample } from '@/lib/api/types'
 
-import type { ReplayVehicleRideReady, ReplayVehicleTrackReady } from './replayNormalize'
+import type { ReplayVehicleRideReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import {
   buildEmbarkedPredicate,
   vehicleActiveRides,

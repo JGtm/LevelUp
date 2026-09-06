@@ -40,8 +40,8 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
 
 import { isGameChangerFamily, isGameChangerWeaponKey } from './gameChangers'
-import type { ReplayDocumentReady } from './replayNormalize'
-import { buildPlayers, groupByTeam, playerName, type ReplayPlayer } from './rosterLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { buildPlayers, groupByTeam, playerName, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { padEquipmentFamilyOf } from './weaponPadFamilies'
 
 /** Les prises comptées, sans identité — la ligne d'un joueur comme le total d'un camp. */

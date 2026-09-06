@@ -48,7 +48,7 @@
  * reprise : une mesure du boost qui ne passe pas par la vitesse (un champ du film, ou un
  * échantillonnage plus fin).
  */
-import type { ReplayVehicleTrackReady } from '../model/replayNormalize'
+import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { vehicleIsDecor } from '../model/vehiclesLayer'
 
 /**

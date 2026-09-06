@@ -26,8 +26,8 @@ import { leaderStates, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import type { ReplayFeedEntry } from '../model/killFeedLogic'
 import type { ReplayLocale } from '../i18n/i18n'
-import type { PlayerMarkKind } from '../model/playerMarks'
-import { formatClock } from '../model/replayLogic'
+import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
+import { formatClock } from '../../../lib/replay/replayLogic'
 import { EMPTY_MEDIA, SKIP_SECONDS } from '../layers/replayCanvasConfig'
 import type { ReplayTimelineTracks } from '../ui/ReplayTimelineTracks'
 import {
@@ -47,7 +47,7 @@ import {
   type TrackScale,
 } from '../model/replayTimelineTracksLogic'
 import { roundTransitions } from '../model/roundsLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { usePersistedFlag, TIMELINE_EXPANDED_KEY } from '../settings/useReplaySettings'
 import { useReplayShortcuts, type ReplayShortcutHandlers } from './useReplayShortcuts'

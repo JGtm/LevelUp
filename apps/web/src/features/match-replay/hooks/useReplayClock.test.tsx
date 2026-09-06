@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
 import { useReplayClock } from './useReplayClock'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayWindowBounds } from '../model/replayWindow'
 
 /** Un document réduit à ce que l'horloge lui demande : la cadence et le nombre d'images. */

@@ -20,7 +20,7 @@ import type { ReplayGroundWeapon } from '@/lib/api/types'
 import { count, diamondCentres, recordingContext, valuesOf } from '../test/recordingContext'
 import { GROUND_WEAPON_ALPHA_FULL } from '../model/groundWeaponTime'
 import { drawGroundWeaponsLayer, type GroundWeaponStyle } from './groundWeaponsLayer'
-import { worldToCanvas } from '../model/replayLogic'
+import { worldToCanvas } from '../../../lib/replay/replayLogic'
 
 /** 10 m de côté sur 100 px : 10 px par mètre — le même cadrage que les tests de socles. */
 const VIEW = { bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 }, width: 100, height: 100, pad: 0 }

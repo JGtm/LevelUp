@@ -22,7 +22,7 @@
 import { describe, expect, it } from "vitest";
 
 import { drawTracksLayer, type MarkerStyle } from "./replayMarkers";
-import type { ReplayTrackReady } from "../model/replayNormalize";
+import type { ReplayTrackReady } from "../../../lib/replay/replayNormalize";
 import { recordingContext, type CanvasOp } from "../test/recordingContext";
 
 const VIEW = {

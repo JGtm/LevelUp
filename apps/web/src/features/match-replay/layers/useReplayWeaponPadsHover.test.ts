@@ -19,8 +19,8 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { createRef, type PointerEvent, type RefObject } from 'react'
 
-import { worldToCanvas } from '../model/replayLogic'
-import type { ReplayWeaponPadReady } from '../model/replayNormalize'
+import { worldToCanvas } from '../../../lib/replay/replayLogic'
+import type { ReplayWeaponPadReady } from '../../../lib/replay/replayNormalize'
 import { testReplayDoc } from '../test/testDoc'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
 

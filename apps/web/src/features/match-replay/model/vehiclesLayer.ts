@@ -64,8 +64,8 @@
 import type { ReplayVehicleRide } from '@/lib/api/types'
 
 import { CORE_RADIUS } from '../layers/replayMarkers'
-import { lastIndexAt, positionAt, type XY } from './replayLogic'
-import type { ReplayVehicleTrackReady } from './replayNormalize'
+import { lastIndexAt, positionAt, type XY } from '../../../lib/replay/replayLogic'
+import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
 
 // --- FAMILLES REFUSÉES ------------------------------------------------------------------------

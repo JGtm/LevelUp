@@ -14,7 +14,7 @@
  *
  * Pas de React, pas de canvas : logique pure, testée (equipmentFx.test.ts).
  */
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * Les deux familles publiées par le document. Identifiants STABLES du contrat (`fam`) —

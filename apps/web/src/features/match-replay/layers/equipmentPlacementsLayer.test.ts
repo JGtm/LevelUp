@@ -36,7 +36,7 @@ import {
   colorResolver,
   colorResolverOrLast,
   type ReplayPlayer,
-} from '../model/rosterLogic'
+} from '../../../lib/replay/rosterLogic'
 import {
   BEACON_ID,
   DEVICE_ID,

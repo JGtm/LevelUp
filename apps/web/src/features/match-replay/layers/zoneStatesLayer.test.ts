@@ -25,7 +25,7 @@ import type { ReplayMapObjectives } from '@/lib/api/types'
 
 import { normalizeMapObjectives, OBJECTIVE_TEAM_NEUTRAL } from './objectivesLayer'
 import { count, recordingContext, valuesOf, type CanvasOp } from '../test/recordingContext'
-import type { ReplayZoneStateReady } from '../model/replayNormalize'
+import type { ReplayZoneStateReady } from '../../../lib/replay/replayNormalize'
 import { drawZoneStates, zoneElementsOf, zoneGaugeAt } from './zoneStatesLayer'
 // L'échelle d'opacités vit avec la peinture (`zoneStatesPaint.ts`), pas avec la lecture d'état :
 // c'est de là qu'elle est importée, plutôt que ré-exportée par le calque pour la commodité d'un

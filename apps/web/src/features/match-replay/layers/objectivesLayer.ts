@@ -40,10 +40,10 @@
 import type { ReplayMapObjectives } from '@/lib/api/types'
 
 import { buildCarrierPosAt } from '../model/carrierPosition'
-import { type XY } from '../model/replayLogic'
+import { type XY } from '../../../lib/replay/replayLogic'
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 
 /** Valeur « aucun camp » du team_index — celle du fichier de carte, servie telle quelle. */

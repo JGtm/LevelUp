@@ -27,8 +27,8 @@
  * (négatif mesuré sur trois : R1 §1-3 et R6 §1.4) : on ne dessine donc rien avant lui — voir
  * `riftStations.ts`, qui porte cette partie.
  */
-import type { ReplayDocumentReady } from './replayNormalize'
-import type { XY } from './replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { XY } from '../../../lib/replay/replayLogic'
 
 /**
  * Rang du translocateur quantique dans la palette de capacités du film — FAMILLE A SEULEMENT.

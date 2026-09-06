@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayEquipmentPlacement, ReplayPoint } from '@/lib/api/types'
 
-import type { ReplayTrackReady } from './replayNormalize'
+import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import {
   REVEAL_ALPHA,
   SENSOR_DURATION_MS,

@@ -14,7 +14,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { PlayerMarkKind } from './playerMarks'
+import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import {
   buildEventTracks,
   buildFragDominance,

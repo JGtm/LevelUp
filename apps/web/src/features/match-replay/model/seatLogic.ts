@@ -29,8 +29,8 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { replayClock } from './replayClock'
 import type { PresenceHeader } from './presenceFeed'
-import type { ReplayDocumentReady } from './replayNormalize'
-import type { ReplayPlayer } from './rosterLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 
 /** Fenêtre d'appariement départ↔arrivée. Large à dessein : le jeu peut mettre du temps à
  * combler un siège, et deux relais simultanés restent départagés par la proximité. */

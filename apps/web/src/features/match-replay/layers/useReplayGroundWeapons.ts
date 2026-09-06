@@ -35,7 +35,7 @@ import {
   type GroundWeaponIcon,
   type GroundWeaponView,
 } from './groundWeaponsLayer'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { padIconRefFor } from './useReplayWeaponPads'
 
 export interface GroundWeaponsInput {

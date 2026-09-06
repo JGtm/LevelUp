@@ -20,7 +20,7 @@
  * porte. Ce module ne le lit pas : il ne calcule que des instants.
  * Aucune ligne de ce fichier ne le lit.
  */
-import type { ReplayWeaponPadReady } from './replayNormalize'
+import type { ReplayWeaponPadReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * L'état d'un socle à un instant : plein (présence prouvée), incertain (le film ne dit rien),

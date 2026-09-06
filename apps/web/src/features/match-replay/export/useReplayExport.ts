@@ -52,7 +52,7 @@ import {
 } from './exportOverlayPanels'
 import { paintOverlayPanel, type OverlayFonts, type OverlayInk } from './overlayPaint'
 import { mixReplayAudio, soundUrlOf, type MixedTracks, type SoundFamily } from '../sound/replayAudioMix'
-import { formatClock, frameToMs } from '../model/replayLogic'
+import { formatClock, frameToMs } from '../../../lib/replay/replayLogic'
 import { buildCaptureFilename, triggerDownload } from './replayCapture'
 import { tintedIconCanvas } from '../layers/replayDraw'
 import {
@@ -63,7 +63,7 @@ import {
   type ExportBounds,
   type ExportPlan,
 } from './replayExportPlan'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { EXPORT_FPS, canExportVideo, openVideoExport, type VideoExportSink } from './replayVideoEncoder'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { exportRenderScale, exportScaleFor } from '../hooks/useReplayView'

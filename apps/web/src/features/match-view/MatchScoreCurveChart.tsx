@@ -36,7 +36,7 @@ import {
   hoverRevealSymbol,
   type EChartsThemeColors,
 } from '@/components/charts/_utils'
-import { useMatchReplay } from '@/features/match-replay/queries'
+import { useMatchReplay } from '@/lib/replay/queries'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { parseTeamSideID } from '@/lib/halo/teamNames'

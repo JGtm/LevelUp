@@ -31,8 +31,8 @@ import { buildCarrierPosAt } from './carrierPosition'
 import type { ReplayKill } from './killFeedLogic'
 import { buildLivesByXuid, deathWindowFrames } from './livesPosition'
 import { familyOf, type ShotFamily } from '../layers/shotEffects'
-import { isAliveAt, msToFrames, trackWindow } from './replayLogic'
-import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import { isAliveAt, msToFrames, trackWindow } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * Seuil MÊLÉE, en mètres monde : en deçà, la victime est à portée du geste et l'arc de

@@ -9,8 +9,8 @@
  * (`h` et `p`) plutôt qu'une position.
  */
 import type { MarkerStyle } from "./replayMarkers";
-import { freshness, heldReading, type XY } from "../model/replayLogic";
-import type { ReplayTrackReady } from "../model/replayNormalize";
+import { freshness, heldReading, type XY } from "../../../lib/replay/replayLogic";
+import type { ReplayTrackReady } from "../../../lib/replay/replayNormalize";
 
 /** Longueur d'une visée À PLAT — la référence, pas le maximum : l'élévation joue autour d'elle. */
 const AIM_LENGTH = 52;

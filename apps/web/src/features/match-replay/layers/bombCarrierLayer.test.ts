@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { bombCarrierActiveAt, bombGroundAt, drawBombCarrier, type BombCarrierInput } from './bombCarrierLayer'
 import { type CanvasView } from '../model/replayView'
-import type { ReplayBombCarry } from '../model/replayNormalize'
+import type { ReplayBombCarry } from '../../../lib/replay/replayNormalize'
 
 const carry = (over: Partial<ReplayBombCarry>): ReplayBombCarry => ({
   xuid: '2533274806055812',

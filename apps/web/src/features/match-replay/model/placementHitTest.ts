@@ -34,7 +34,7 @@ import {
 } from '../layers/placementShapes'
 import { wallRadiusM } from '../layers/placementWall'
 import { isPlacementActive, placementShows } from './placementWindow'
-import type { XY } from './replayLogic'
+import type { XY } from '../../../lib/replay/replayLogic'
 import { SENSOR_RADIUS_M } from './threatSensor'
 
 /** Rayon minimal de la zone sensible au survol, en pixels : un point de 2,5 px ne se vise pas. */

@@ -91,8 +91,8 @@
  */
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type RefObject } from 'react'
 
-import { frameToMs } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { readStoredFlag } from '../settings/replayPreferences'
 import { AUTOPLAY_DEFAULT, AUTOPLAY_KEY } from '../settings/useReplaySettings'
 import type { ReplayWindowBounds } from '../model/replayWindow'

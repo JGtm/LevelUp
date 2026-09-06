@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   ZONE_SOUND_STEMS,
   ZONE_TICK_PERIOD_MS,

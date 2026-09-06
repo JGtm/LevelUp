@@ -32,8 +32,8 @@ import { useCallback, useMemo } from 'react'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { ObjectiveElementReady } from './objectivesLayer'
-import { msToFrames } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { msToFrames } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   ZONE_GAUGE_HOLD_MS,
   zoneCatalogMatches,

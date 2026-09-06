@@ -27,8 +27,8 @@
  * module reste la relecture DU BIPÈDE, écrite une fois — il ne connaît aucun véhicule.
  */
 
-import { isAliveAt, msToFrames, positionAt, trackWindow, type XY } from './replayLogic'
-import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import { isAliveAt, msToFrames, positionAt, trackWindow, type XY } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * Fenêtre d'acceptation d'une DERNIÈRE position après la fin d'une vie, en ms. La victime,

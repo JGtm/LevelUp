@@ -18,7 +18,7 @@ import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
 import type { PlacementView, PlacementWindowTime } from './equipmentPlacementsLayer'
 import { placementAt } from '../model/placementHitTest'
-import type { XY } from '../model/replayLogic'
+import type { XY } from '../../../lib/replay/replayLogic'
 
 /** Ce qui est survolé : la pose, l'endroit du canvas où poser son infobulle, et sa naissance. */
 export interface PlacementHover {

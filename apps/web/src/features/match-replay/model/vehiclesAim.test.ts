@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayVehicleAim } from '@/lib/api/types'
 
-import type { ReplayVehicleRideReady, ReplayVehicleTrackReady } from './replayNormalize'
+import type { ReplayVehicleRideReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { VEHICLE_AIM_HOLD_FRAMES, vehicleOccupantAimAt, vehicleRideAimReading } from './vehiclesAim'
 import { vehicleAimAngle } from './vehiclesLayer'
 

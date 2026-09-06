@@ -25,7 +25,7 @@ import { drawFreeSkull, type ObjectiveObjectsInput } from './objectiveObjectsLay
 import { skullPresenceAt, skullSocle } from '../model/skullPresence'
 
 import { type CanvasView } from '../model/replayView'
-import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from '../model/replayNormalize'
+import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from '../../../lib/replay/replayNormalize'
 
 interface UseReplayObjectiveObjectsArgs {
   /** Les vies libres publiées par l'artefact. Vide = rien à peindre, et c'est le cas nominal. */

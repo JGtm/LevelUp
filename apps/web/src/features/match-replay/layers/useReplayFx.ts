@@ -22,7 +22,7 @@ import { buildGrenadeRestFx } from '../model/grenadeFx'
 import type { ReplayKill } from '../model/killFeedLogic'
 import { buildKillFx } from '../model/killFx'
 import { buildObjectivePulses, type ObjectiveElementReady } from './objectivesLayer'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { buildShotFx } from '../model/shotFx'
 
 export function useReplayFx(

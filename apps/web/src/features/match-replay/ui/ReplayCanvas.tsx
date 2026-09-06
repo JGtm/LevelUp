@@ -59,7 +59,7 @@ import type { EndMatchSoundSpec } from '../sound/endMatchSound'
 import { killsOfFeed, type ReplayFeedEntry } from '../model/killFeedLogic'
 import type { ReplayMediaItem } from '../model/replayTimelineTracksLogic'
 import { useReplayFx } from '../layers/useReplayFx'
-import { NO_MARKS, type PlayerMarkKind } from '../model/playerMarks'
+import { NO_MARKS, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { useReplayDrawer } from '../settings/useReplayDrawer'
 import { useReplayTimeline } from '../hooks/useReplayTimeline'
 import { useSlotIdentity } from '../layers/useSlotIdentity'
@@ -75,7 +75,7 @@ import { useReplayStaticLayers } from '../layers/useReplayStaticLayers'
 import { useReplaySettings } from '../settings/useReplaySettings'
 import { useReplaySound } from '../sound/useReplaySound'
 import { backgroundRect } from '../layers/mapBackground'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   drawGeometryLayer,
   drawGrenadesLayer,
@@ -88,7 +88,7 @@ import {
   type LayerPaint,
   type ReplayScene,
 } from '../layers/replayCompose'
-import { frameToMs, layerOffset } from '../model/replayLogic'
+import { frameToMs, layerOffset } from '../../../lib/replay/replayLogic'
 import type { ReplayWindowBounds } from '../model/replayWindow'
 import { drawProjectilesLayer } from '../layers/replayProjectiles'
 import { drawTracksLayer } from '../layers/replayMarkers'

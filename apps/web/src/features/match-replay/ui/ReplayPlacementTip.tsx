@@ -27,7 +27,7 @@
 import { PLACEMENT_RENDER, type PlacementKind } from '../layers/equipmentPlacementsLayer'
 import { PLACEMENT_ORIGIN_DROPPED } from '../model/placementDropped'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { formatClock } from '../model/replayLogic'
+import { formatClock } from '../../../lib/replay/replayLogic'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import type { PlacementHover } from '../layers/usePlacementHover'
 import { padEquipmentFamilyOf } from '../model/weaponPadFamilies'

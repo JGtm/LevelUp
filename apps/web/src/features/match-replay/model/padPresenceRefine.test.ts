@@ -24,7 +24,7 @@ import {
   PAD_BETWEEN_FRAMES,
   refinePadPresence,
 } from './padPresenceRefine'
-import type { ReplayTrackReady, ReplayWeaponPadReady } from './replayNormalize'
+import type { ReplayTrackReady, ReplayWeaponPadReady } from '../../../lib/replay/replayNormalize'
 import { padStateAt } from './weaponPadTime'
 
 /** Le socle témoin : à l'origine, une occupation dont l'absence est prouvée à l'image 200. */

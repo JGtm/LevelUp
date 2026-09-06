@@ -20,8 +20,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { count, diamondCentres, recordingContext, valuesOf } from '../test/recordingContext'
-import type { ReplayWeaponPadReady } from '../model/replayNormalize'
-import { worldToCanvas } from '../model/replayLogic'
+import type { ReplayWeaponPadReady } from '../../../lib/replay/replayNormalize'
+import { worldToCanvas } from '../../../lib/replay/replayLogic'
 import { padStateAt } from '../model/weaponPadTime'
 import { drawWeaponPadsLayer, padAt, padRadiusPx, type PadStyle } from './weaponPadsLayer'
 

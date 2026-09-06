@@ -14,8 +14,8 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { soundUrlOf } from './replayAudioMix'
 import type { ReplayAudioPlayer } from './replayAudio'
-import { frameToMs } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { VehicleEnginePlayer } from './vehicleEnginePlayer'
 import {
   planVehicleEngines,

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { buildFlagReturnDrops, flagReturnAt, harmonic, type FlagReturnRule } from './flagReturnZone'
 
-import type { ReplayFlagCarryReady } from '../model/replayNormalize'
+import type { ReplayFlagCarryReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * flagReturnZone.test.ts — LES RÈGLES DE LA ZONE DE RETOUR, sans canvas.

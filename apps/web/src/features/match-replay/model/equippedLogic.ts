@@ -16,8 +16,8 @@
  * Tout ce fichier est PUR : aucun React, aucun canvas, donc testable.
  */
 import { inventoryAt } from './inventoryReading'
-import type { ReplayDocumentReady } from './replayNormalize'
-import { loadoutAt } from './rosterLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { loadoutAt } from '../../../lib/replay/rosterLogic'
 
 /** Une arme de la rangée : son identifiant de famille, et si elle est EN MAIN. */
 export interface EquippedWeapon {

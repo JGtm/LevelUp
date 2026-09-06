@@ -21,7 +21,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { buildFeedEntries, type MedalEvent } from '../model/killFeedLogic'
 import { ReplayKillFeed } from './ReplayKillFeed'
 import { testReplayDoc } from '../test/testDoc'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 vi.mock('@/lib/accessibility', () => ({
   resolveToken: (token: string) => `var(${token})`,

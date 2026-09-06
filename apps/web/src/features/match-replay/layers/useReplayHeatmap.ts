@@ -23,8 +23,8 @@ import {
   type HeatmapSpan,
 } from './heatmapLayer'
 import type { KillFxEntry } from '../model/killFx'
-import { msToFrames } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { msToFrames } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * PAS DE RECUISSON PAR IMAGE — le pas de la portée `live`, en millisecondes de MATCH.

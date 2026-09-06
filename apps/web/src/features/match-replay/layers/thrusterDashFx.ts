@@ -36,8 +36,8 @@
  */
 import type { ReplayPoint } from '@/lib/api/types'
 
-import { positionAt, type XY } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { positionAt, type XY } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { type CanvasView, projectTo } from '../model/replayView'
 import { buildLivesBySlot, lifeOfSlotAt } from '../model/livesPosition'
 

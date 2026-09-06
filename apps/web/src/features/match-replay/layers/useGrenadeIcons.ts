@@ -20,7 +20,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 
 import { tintedIconCanvas } from './replayDraw'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * useGrenadeIcons rend la table `rang -> vignette teinte`, remplie au fil des chargements.

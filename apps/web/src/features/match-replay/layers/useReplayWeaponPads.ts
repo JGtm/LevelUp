@@ -40,8 +40,8 @@ import type { ReplayText } from '../i18n/i18nContract'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
 import { weaponFullIcon } from '../model/weaponFullIcon'
-import { frameToMs, type XY } from '../model/replayLogic'
-import type { ReplayDocumentReady, ReplayWeaponPadReady } from '../model/replayNormalize'
+import { frameToMs, type XY } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady, ReplayWeaponPadReady } from '../../../lib/replay/replayNormalize'
 import {
   PAD_EQUIPMENT_FAMILIES,
   padEquipmentFamilyOf,

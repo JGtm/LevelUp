@@ -25,7 +25,7 @@
  */
 import type { ReplayBounds } from '@/lib/api/types'
 
-import { canvasScale, worldToCanvas, type XY } from './replayLogic'
+import { canvasScale, worldToCanvas, type XY } from '../../../lib/replay/replayLogic'
 
 /**
  * Le CADRAGE : quelle portion du monde on montre, dans quelle toile, avec quelle marge.

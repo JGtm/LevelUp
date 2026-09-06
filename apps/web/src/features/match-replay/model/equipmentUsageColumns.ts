@@ -22,7 +22,7 @@ import type { EquipmentUsage, EquipmentUsageTally } from './equipmentUsageLogic'
 import { isGameChangerFamily } from './gameChangers'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplayText } from '../i18n/i18nContract'
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { padEquipmentFamilyOf } from './weaponPadFamilies'
 
 

@@ -41,10 +41,10 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { normalizeReplayDocument } from './replayNormalize'
+import { normalizeReplayDocument } from '../../../lib/replay/replayNormalize'
 
 import type { ReplayDocument } from '@/lib/api/types'
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /** Égalité STRICTE de deux types (le double conditionnel différé est ce qui la rend stricte). */
 type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2

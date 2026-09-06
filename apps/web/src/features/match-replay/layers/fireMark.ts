@@ -22,8 +22,8 @@
  * Pas de React : logique pure + un CanvasRenderingContext2D (même règle que grappleLayer).
  */
 import { familyOf } from './shotEffects'
-import { isAliveAt, positionAt } from '../model/replayLogic'
-import type { ReplayDocumentReady, ReplayTrackReady } from '../model/replayNormalize'
+import { isAliveAt, positionAt } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import { type CanvasView, projectTo } from '../model/replayView'
 import { buildLivesBySlot, lifeOfSlotAt } from '../model/livesPosition'
 

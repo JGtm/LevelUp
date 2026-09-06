@@ -21,8 +21,8 @@ import type { FxInk } from './fxInk'
 import type { GrenadeRestFx } from '../model/grenadeFx'
 import { drawGrenadeRestLayer } from './grenadeRestLayer'
 import { type CanvasView } from '../model/replayView'
-import { frameToMs } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 export interface GrenadeRestHookInput {
   doc: ReplayDocumentReady

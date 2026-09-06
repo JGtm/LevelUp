@@ -10,9 +10,9 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayFeedEntry } from './killFeedLogic'
 import { mergeFeedWithPresence, presenceEntries } from './presenceFeed'
-import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayWindowBounds } from './replayWindow'
-import type { ReplayPlayer } from './rosterLogic'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 
 /**
  * Un document 10 Hz : frameToMs(t) = t * 100 ms. `originMs` est publié — sans lui, l'horloge

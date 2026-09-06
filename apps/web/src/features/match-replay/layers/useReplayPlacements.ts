@@ -30,8 +30,8 @@ import {
 import { translocationLinks } from '../model/placementTeleport'
 import type { RiftScene } from './placementRift'
 import { riftStations } from '../model/riftStations'
-import { frameToMs } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { usePlacementHover, type PlacementHoverHandlers } from './usePlacementHover'
 
 export interface ReplayPlacementsInput {

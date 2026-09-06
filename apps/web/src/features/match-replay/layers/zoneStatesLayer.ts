@@ -73,11 +73,11 @@
  * Le verdict « ce sont bien les lettres du jeu » appartient au relevé Theater de l'utilisateur.
  */
 import type { ObjectiveElementReady } from './objectivesLayer'
-import { type XY } from '../model/replayLogic'
+import { type XY } from '../../../lib/replay/replayLogic'
 import { paintZoneState, type ZoneStateNow } from './zoneStatesPaint'
 
 import type { ReplayGaugePoint } from '@/lib/api/types'
-import type { ReplayZoneStateReady } from '../model/replayNormalize'
+import type { ReplayZoneStateReady } from '../../../lib/replay/replayNormalize'
 import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 
 /**

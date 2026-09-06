@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest'
 
 import { skullPresenceAt, skullSocle } from './skullPresence'
 
-import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from './replayNormalize'
+import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from '../../../lib/replay/replayNormalize'
 
 /** La position réelle du socle dans l'artefact d9781168 : centre de carte. */
 const SOCLE = { x: 3.6, y: 0.97 }

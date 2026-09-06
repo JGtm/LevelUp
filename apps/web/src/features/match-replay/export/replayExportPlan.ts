@@ -25,8 +25,8 @@
  * consommée. Le calculer dans la boucle le rendrait invérifiable ; ici, il se teste sans
  * navigateur, sans encodeur et sans canvas.
  */
-import { frameToMs, msToFrames } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { EXPORT_FPS } from './replayVideoEncoder'
 import type { ReplayWindowBounds } from '../model/replayWindow'
 

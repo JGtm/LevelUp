@@ -23,7 +23,7 @@ import { EXPLOSION_MS } from './explosionFx'
 import type { FxInk } from './fxInk'
 import { count, recordingContext, type CanvasOp } from '../test/recordingContext'
 import { project, type PlacementView } from './placementShapes'
-import type { ReplayVehicleRideReady, ReplayVehicleTrackReady } from '../model/replayNormalize'
+import type { ReplayVehicleRideReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { drawVehiclesLayer, type VehicleStyle, type VehicleTime } from './vehiclesPaint'
 
 const VIEW: PlacementView = {

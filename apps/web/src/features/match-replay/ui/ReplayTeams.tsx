@@ -34,10 +34,10 @@ import { lastTeleportAge, teleportMoments, type TranslocationMoment } from '../m
 import { cardChrome, hasUnderLayer, playerCardFx } from '../model/playerCardFx'
 import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { frameToMs, msToFrames, positionAt, trackWindow } from '../model/replayLogic'
+import { frameToMs, msToFrames, positionAt, trackWindow } from '../../../lib/replay/replayLogic'
 import type { PresenceHeader } from '../model/presenceFeed'
 import { buildSeats, groupSeatsByTeam, seatOccupantAt } from '../model/seatLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { EliminatedBox, VitalityBar } from './ReplayVitality'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
@@ -50,7 +50,7 @@ import {
   vitalityPresence,
   type ReplayPlayer,
   type VitalityPresence,
-} from '../model/rosterLogic'
+} from '../../../lib/replay/rosterLogic'
 
 /**
  * Estompage COMPLET d'une lecture de vitalité à 6 s : la même graduation que le bouclier

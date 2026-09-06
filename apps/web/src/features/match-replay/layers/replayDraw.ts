@@ -13,7 +13,7 @@ import type { ShotFxEntry } from '../model/shotFx'
 import { drawDeathMarker, drawShotEffect } from './shotEffects'
 import { MELEE_LINK_MAX_M, type KillFxEntry } from '../model/killFx'
 import { drawMeleeStar, meleeStarProgress } from './meleeStar'
-import { altitudeRatio, footprint } from '../model/replayLogic'
+import { altitudeRatio, footprint } from '../../../lib/replay/replayLogic'
 import { vehicleShotOrigin, type VehicleMountSpriteSize } from '../model/vehicleWeaponMounts'
 import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 

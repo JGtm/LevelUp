@@ -21,8 +21,8 @@ import { project, type PlacementView } from './placementShapes'
 import { aimLengthScale, drawAimSector } from './replayAimCone'
 import { drawRotatedSprite } from './replayDraw'
 import { drawNameLabel, type LabelStyle } from './replayLabels'
-import type { XY } from '../model/replayLogic'
-import type { ReplayVehicleTrackReady } from '../model/replayNormalize'
+import type { XY } from '../../../lib/replay/replayLogic'
+import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { vehicleOccupantAimAt } from '../model/vehiclesAim'
 import {
   vehicleActiveRides,

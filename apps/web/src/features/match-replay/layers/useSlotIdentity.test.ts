@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildSlotOwnership, type ReplayPlayer } from '../model/rosterLogic'
+import { buildSlotOwnership, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { distinctColorResolver } from './useSlotIdentity'
 
 /** Un joueur avec des vies sur des slots (fenêtre par défaut [start, end], une par slot). */

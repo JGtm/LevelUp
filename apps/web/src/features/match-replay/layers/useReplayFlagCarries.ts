@@ -49,8 +49,8 @@ import {
 } from './flagCaptureFx'
 import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 import { buildFlagReturnDrops, drawFlagReturnZones } from './flagReturnZone'
-import { frameToMs, type XY } from '../model/replayLogic'
-import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs, type XY } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { allyTeamFromScoreboard, teamOfXuidFromScoreboard } from '../model/matchSides'
 
 /** Le camp d'un drapeau VU DE LA PAGE — `unknown` quand la ligne « moi » manque. */

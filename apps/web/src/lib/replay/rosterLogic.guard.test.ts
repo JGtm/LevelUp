@@ -21,7 +21,7 @@ const sources = import.meta.glob('/src/**/*.{ts,tsx}', {
   eager: true,
 }) as Record<string, string>
 
-const CANONICAL = '/src/features/match-replay/model/rosterLogic.ts'
+const CANONICAL = '/src/lib/replay/rosterLogic.ts'
 
 /**
  * Le littéral qui signe une ré-inline : le repli « la plus proche à venir » compare deux âges

@@ -56,8 +56,8 @@ import type { KillEvent } from '@/features/match-view/_momentum'
 import type { MatchHighlightEvent } from '@/lib/api/types'
 
 import { replayClock, type ReplayClock } from './replayClock'
-import { frameToMs, msToFrames, trackWindow } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
+import { frameToMs, msToFrames, trackWindow } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * Tolérance de rattachement d'une médaille au kill du même acteur, en ms. Mesuré sur
