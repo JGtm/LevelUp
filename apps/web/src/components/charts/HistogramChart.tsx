@@ -44,6 +44,17 @@ export interface HistogramChartProps {
    * décimales si non-entier.
    */
   formatBin?: (point: ChartPointHistogram) => string
+  /**
+   * Couleur PAR BARRE (ajout 2026-09-06, distribution du délai d'échange de
+   * l'escouade). Rendre `undefined` retombe sur `colorToken` / la couleur de série.
+   *
+   * POURQUOI UNE COULEUR PAR BARRE ET PAS DEUX SÉRIES : ce wrapper ne peint QUE
+   * `series[0]` (une seconde série serait ignorée en silence), et deux séries
+   * superposées sur les mêmes catégories décaleraient les barres. Le besoin réel est
+   * une distribution UNIQUE dont une partie est HORS PÉRIMÈTRE DE COMPTE — montrée,
+   * jamais additionnée — d'où une teinte atténuée sur les barres concernées.
+   */
+  binColorToken?: (point: ChartPointHistogram, index: number) => SemanticToken | undefined
 }
 
 export function HistogramChart({
@@ -57,11 +68,12 @@ export function HistogramChart({
   xAxisLabel,
   yAxisLabel,
   formatBin,
+  binColorToken,
 }: HistogramChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointHistogram>[]) =>
-      buildHistogramOption(s, { colorToken, xAxisLabel, yAxisLabel, formatBin }),
-    [colorToken, xAxisLabel, yAxisLabel, formatBin],
+      buildHistogramOption(s, { colorToken, xAxisLabel, yAxisLabel, formatBin, binColorToken }),
+    [colorToken, xAxisLabel, yAxisLabel, formatBin, binColorToken],
   )
 
   return (
@@ -82,6 +94,7 @@ interface BuildOpts {
   xAxisLabel?: string
   yAxisLabel?: string
   formatBin?: (point: ChartPointHistogram) => string
+  binColorToken?: (point: ChartPointHistogram, index: number) => SemanticToken | undefined
 }
 
 function defaultFormatBin(point: ChartPointHistogram): string {
@@ -98,6 +111,7 @@ export function buildHistogramOption(
   opts: BuildOpts = {},
 ): EChartsCoreOption {
   const { colorToken, xAxisLabel, yAxisLabel: yLabelOpt, formatBin = defaultFormatBin } = opts
+  const { binColorToken } = opts
   const yAxisLabel = yLabelOpt ?? 'Matchs'
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -109,8 +123,14 @@ export function buildHistogramOption(
   }
 
   const categories = dps.map((d) => formatBin(d))
-  const counts = dps.map((d) => d.count)
   const color = colorToken ? resolveToken(colorToken) : seriesColor(0)
+  // Une barre porte sa propre couleur SEULEMENT si l'appelant en demande une :
+  // sans `binColorToken`, chaque valeur reste un nombre nu et ECharts applique la
+  // couleur de série — le comportement historique, inchangé.
+  const counts = dps.map((d, i) => {
+    const token = binColorToken?.(d, i)
+    return token ? { value: d.count, itemStyle: { color: resolveToken(token) } } : d.count
+  })
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)

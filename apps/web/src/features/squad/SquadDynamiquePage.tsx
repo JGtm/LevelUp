@@ -23,6 +23,7 @@ import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSec
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import type { SquadTeammateEntry } from '@/features/engagement/queries'
 import { getSquadPlayerColors } from './colors'
+import { SquadEchangeDelaiCard } from './SquadEchangeDelaiCard'
 
 export function SquadDynamiquePage() {
   const { selectedRows, confirmedGamertags, pageData, playerSlug } = useSquadContext()
@@ -89,6 +90,10 @@ export function SquadDynamiquePage() {
           cartes tracent le TAUX « une vie » des indicateurs canoniques, quand
           l'explication partagée EfficiencyTooltipText décrit les dégâts bruts
           des charts Timeseries/Session. */}
+      {/* « Delai d'echange » : voisin immediat de « Premier frag / premiere mort »,
+          les deux lisent le meme journal des morts. Absent du contrat = non monte. */}
+      {pageData?.echange && <SquadEchangeDelaiCard echange={pageData.echange} />}
+
       <SquadEfficiencyChart
         rowsByPlayer={performanceSeries ?? {}}
         playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
