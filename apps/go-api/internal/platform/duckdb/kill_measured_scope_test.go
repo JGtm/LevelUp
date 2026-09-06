@@ -136,9 +136,15 @@ func filtreDeFragSolo(t *testing.T, query string) string {
 // `fragSolo` du POC n'est donc pas gratuit pour autant : il ne doit pas dépendre d'une
 // propagation d'optimiseur qui peut disparaître d'une version de DuckDB à l'autre. Cette
 // assertion-ci le tient, et elle est ROUGE sous la mutation que le plan laisse verte.
+//
+// LE MOTIF CHERCHÉ EST `match_id`, PAS `s.match_id` (lot 6, item 6.0c) : l'ALIAS n'est pas le
+// contrat. Une réécriture neutre du scope sans qualifier la colonne (`match_id = ?`, légale
+// car la sous-requête n'a qu'une table) faisait rougir cette assertion sans qu'aucun balayage
+// n'ait bougé. La discrimination est intacte sous la mutation visée : `fragScope` ramené à
+// `TRUE` rend `WHERE TRUE AND s.feed_killer_xuid IS NOT NULL`, où `match_id` n'apparaît pas.
 func verifieFragSoloPorteLeScope(t *testing.T, query string, args []any, attendus int) {
 	t.Helper()
-	if filtre := filtreDeFragSolo(t, query); !strings.Contains(filtre, "s.match_id") {
+	if filtre := filtreDeFragSolo(t, query); !strings.Contains(filtre, "match_id") {
 		t.Errorf("la clause WHERE de fragSolo ne porte AUCUN filtre sur match_id — elle juge "+
 			"l'unicité du frag sur la vue entière (résidu 4.0a) : %q", filtre)
 	}

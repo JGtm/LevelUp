@@ -19,13 +19,12 @@ import { screen } from '@testing-library/react'
 import { applyPalette, _resetActivePalette } from '@/lib/accessibility/applyPalette'
 import { defaultPalette } from '@/lib/accessibility/palettes/default'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
-import type { WeaponRangeSide } from '@/lib/api/types'
+import type { SynthesisWeaponRange, WeaponRangeSide } from '@/lib/api/types'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { SynthesisWeaponRangeSection } from './SynthesisWeaponRangeSection'
 import { WEAPON_RANGE_ROW_PX } from './_weaponRangeChart'
-import type { WeaponRangeBlock } from './weaponRange_logic'
 
 /** Les options passées à ECharts, dans l'ordre de montage : portée, puis dénivelé. */
 const captured: { option: EChartsOption; style: { height?: number } }[] = []
@@ -73,7 +72,7 @@ const side = (o: Partial<WeaponRangeSide>): WeaponRangeSide => ({
 })
 
 /** Deux armes : la première mesurée des DEUX côtés (c'est elle qu'on inspecte). */
-const RANGE: WeaponRangeBlock = {
+const RANGE: SynthesisWeaponRange = {
   weapons: [
     {
       weapon_key: 'hinf_br75',
@@ -100,7 +99,7 @@ const RANGE: WeaponRangeBlock = {
 }
 
 /** Monte la section et rend les deux options, dans l'ordre des graphes. */
-async function mountAndCapture(range: WeaponRangeBlock = RANGE) {
+async function mountAndCapture(range: SynthesisWeaponRange = RANGE) {
   renderWithProviders(<SynthesisWeaponRangeSection range={range} />)
   // Les deux graphes sont chargés en `lazy` : attendre les rend déterministes. S'ils
   // n'arrivent pas (série vide -> état « Aucune donnée »), ce `find` échoue, et c'est voulu.

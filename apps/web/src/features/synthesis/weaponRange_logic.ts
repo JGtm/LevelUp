@@ -22,36 +22,6 @@ import type { WeaponBelowThreshold, SynthesisWeaponRange } from '@/lib/api/types
  */
 export const WEAPON_RANGE_MIN_MEASURED = 8
 
-/**
- * LE BLOC D'ENTAME, VU PAR LE FRONT — type LOCAL, temporaire et daté (2026-09-06).
- *
- * Décision du pilote (revue du lot 4) : `delta_median_m`, `closing_share_pct` et `n` quittent
- * le niveau `opening` pour un sous-objet OPTIONNEL `opening.delta`, OMIS quand aucun frag n'a
- * pu être apparié à son entame. `opening` lui-même reste omis quand aucune entame n'est
- * mesurée. Les deux absences disent deux choses différentes, et l'UI les distingue : la tuile
- * « Distance d'entame » suit `opening`, la tuile « Entame → frag » suit `opening.delta`.
- *
- * POURQUOI UN TYPE LOCAL PLUTÔT QUE LE TYPE GÉNÉRÉ : `generated.ts` porte encore la forme
- * PLATE (le contrat régénéré arrive par la fusion de `feat/duels-lot4-fix` dans `feat/duels`).
- * Ce type-ci est la forme SERVIE, donc la seule sur laquelle le rendu puisse s'appuyer.
- * À REMPLACER par `components['schemas']['SynthesisOpening']` dès la fusion — la forme est
- * volontairement identique, la substitution sera un no-op de rendu.
- */
-export interface WeaponRangeOpeningDelta {
-  median_m: number
-  closing_share_pct: number
-  n: number
-}
-export interface WeaponRangeOpening {
-  median_m: number
-  measured_kills: number
-  delta?: WeaponRangeOpeningDelta
-}
-/** Le bloc publié, dont le seul écart au type généré est la forme de `opening` ci-dessus. */
-export type WeaponRangeBlock = Omit<SynthesisWeaponRange, 'opening'> & {
-  opening?: WeaponRangeOpening
-}
-
 /** Une entrée du contrat qui porte un libellé bilingue et une clé d'arme. */
 interface LabelledWeapon {
   weapon_key: string
@@ -95,6 +65,6 @@ export function belowThresholdNames(
  * d'un bloc servi sans arme publiable (toutes sous le seuil). Un graphe à zéro ligne est une
  * carte vide, pas une information.
  */
-export function hasWeaponRangeRows(range: WeaponRangeBlock | null | undefined): boolean {
+export function hasWeaponRangeRows(range: SynthesisWeaponRange | null | undefined): boolean {
   return (range?.weapons ?? []).length > 0
 }

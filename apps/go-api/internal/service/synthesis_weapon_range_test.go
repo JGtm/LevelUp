@@ -1,21 +1,24 @@
 // Package service — synthesis_weapon_range_test.go : la section « Portée par arme » vue du
 // service (lot 4 du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md).
 //
+// PÉRIMÈTRE : `loadWeaponRange` et son entourage — le port mocké, les dégradations, le régime
+// de journalisation. Les tests des DEUX FONCTIONS PURES qu'il appelle (`mergeWeaponSides` et
+// `buildOpening`, synthesis_weapon_range_build.go) vivent dans
+// `synthesis_weapon_range_build_test.go` : la coupure suit celle du code testé, posée au lot 6
+// (item 6.0b) quand ce fichier a franchi le seuil de 500 lignes du CLAUDE.md.
+//
 // Ce que ces tests verrouillent, dans l'ordre d'importance :
 //
-//  1. LE BLOC D'ENTAME EST NIL, JAMAIS UN ZÉRO (D5). Un `SynthesisOpening{}` publié se lirait
-//     « ce joueur engage au contact » alors que la vérité est « on ne sait pas » — et c'est
-//     l'état NOMINAL tant que le backfill de kill_openings n'a pas tourné.
-//  2. les deux côtés vivent sur la MÊME ligne d'arme, chacun optionnel ;
-//  3. les totaux viennent du scope canonique, pas de la table de positions (sans quoi la
+//  1. les deux côtés vivent sur la MÊME ligne d'arme, chacun optionnel ;
+//  2. les totaux viennent du scope canonique, pas de la table de positions (sans quoi la
 //     couverture afficherait toujours 100 %) ;
-//  4. les armes sous le seuil sont NOMMÉES et ventilées par côté, et quand elles le sont
+//  3. les armes sous le seuil sont NOMMÉES et ventilées par côté, et quand elles le sont
 //     TOUTES la section reste PRÉSENTE avec zéro arme (les deux médianes et les couvertures
 //     restent l'information) ;
-//  5. capability absente / repo nil / scope vide / erreur SQL : section absente, jamais de
+//  4. capability absente / repo nil / scope vide / erreur SQL : section absente, jamais de
 //     panique et jamais une page cassée — et un match canonique SANS compteur ne fait
 //     paniquer ni le scope ni la page ;
-//  6. le régime de journalisation : capability absente en DEBUG, panne en WARN. Un WARN
+//  5. le régime de journalisation : capability absente en DEBUG, panne en WARN. Un WARN
 //     permanent sur un titre sans décodeur noierait les vraies pannes.
 package service
 
@@ -215,53 +218,6 @@ func TestLoadWeaponRange_Nominal_DeuxCotesEtEntame(t *testing.T) {
 	}
 }
 
-// TestLoadWeaponRange_EntamesSansCoupFatalMesure_DeltaOmis — le sous-bloc `delta` est NIL
-// quand aucun frag ne porte les DEUX mesures (constat F9, revue adversariale du lot 4,
-// 2026-09-06).
-//
-// LE CAS EST ATTEIGNABLE : `kill_positions` et `kill_openings` s'écrivent sous deux leases
-// indépendants, et un scope peut porter des entames dont aucun coup fatal n'est placé. À plat,
-// il publiait `closing_share_pct: 0` — un champ requis, donc toujours présent — qui se lit
-// « ce joueur ne ferme jamais la distance » alors qu'aucune mesure ne le dit. La couverture de
-// l'entame, elle, reste publiée : c'est un fait mesuré.
-func TestLoadWeaponRange_EntamesSansCoupFatalMesure_DeltaOmis(t *testing.T) {
-	kills := wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)
-	// Les entames portent des instants qu'AUCUN coup fatal mesuré ne porte : rien n'apparie.
-	openings := wrKills("hinf_br75", analysis.SideKiller, 9, 30, 0)
-	for i := range openings {
-		openings[i].TimeMS += 500000
-	}
-	repo := &mockWeaponRangeRepo{kills: kills, openings: openings}
-
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 9, 5))
-	if block == nil || block.Opening == nil {
-		t.Fatalf("bloc d'entame absent : %+v — 9 entames sont pourtant mesurées", block)
-	}
-	if block.Opening.MeasuredKills != 9 || math.Abs(block.Opening.MedianM-30) > epsRange {
-		t.Errorf("entame = %d mesures à %v m, attendu 9 à 30 m (la couverture reste publiée)",
-			block.Opening.MeasuredKills, block.Opening.MedianM)
-	}
-	if block.Opening.Delta != nil {
-		t.Errorf("sous-bloc delta = %+v, attendu nil : aucun frag ne porte les deux mesures, "+
-			"et un zéro publié se lirait « la distance ne bouge jamais »", *block.Opening.Delta)
-	}
-}
-
-// TestLoadWeaponRange_SansEntame_BlocNilJamaisZero — D5. C'est l'état NOMINAL tant que le
-// backfill de kill_openings n'a pas tourné : la portée se publie, l'entame ne s'invente pas.
-func TestLoadWeaponRange_SansEntame_BlocNilJamaisZero(t *testing.T) {
-	repo := &mockWeaponRangeRepo{kills: wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)}
-
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 9, 5))
-	if block == nil {
-		t.Fatal("section nil : l'absence d'entame ne doit PAS emporter la portée")
-	}
-	if block.Opening != nil {
-		t.Errorf("bloc d'entame = %+v, attendu nil (un zéro se lirait « engage au contact »)",
-			*block.Opening)
-	}
-}
-
 // TestLoadWeaponRange_EntameEnEchec_LaPorteeSurvit — l'entame est un bonus par-dessus un
 // enrichissement : son échec de lecture dégrade le bloc, il ne supprime pas la section.
 func TestLoadWeaponRange_EntameEnEchec_LaPorteeSurvit(t *testing.T) {
@@ -392,33 +348,6 @@ func TestLoadWeaponRange_GamertagVide(t *testing.T) {
 	}
 }
 
-// TestMergeWeaponSides_TriEtCoteUnique — l'ordre de lecture du graphe (D6) : médiane des
-// FRAGS croissante, et une arme sans frag publié se range à la médiane de ses MORTS.
-func TestMergeWeaponSides_TriEtCoteUnique(t *testing.T) {
-	kills := wrKills("hinf_sniper", analysis.SideKiller, 9, 40, 0)                  // frags à 40 m
-	kills = append(kills, wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)...)   // frags à 12 m
-	kills = append(kills, wrKills("hinf_shotgun", analysis.SideVictim, 9, 3, 0)...) // morts seules, 3 m
-	repo := &mockWeaponRangeRepo{kills: kills}
-
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 30, 10))
-	if block == nil || len(block.Weapons) != 3 {
-		t.Fatalf("armes = %+v, attendu 3 lignes", block)
-	}
-	ordre := []string{block.Weapons[0].WeaponKey, block.Weapons[1].WeaponKey, block.Weapons[2].WeaponKey}
-	attendu := []string{"hinf_shotgun", "hinf_br75", "hinf_sniper"}
-	for i := range attendu {
-		if ordre[i] != attendu[i] {
-			t.Fatalf("ordre = %v, attendu %v (médiane croissante, morts seules incluses)", ordre, attendu)
-		}
-	}
-	if block.Weapons[0].Kills != nil {
-		t.Errorf("le fusil à pompe ne porte aucun frag : Kills = %+v, attendu nil", block.Weapons[0].Kills)
-	}
-	if block.Weapons[0].Deaths == nil {
-		t.Error("le fusil à pompe doit porter son côté morts")
-	}
-}
-
 // TestLoadWeaponRange_MatchSansCompteur_NiPaniqueNiZeroCompte — les gardes `Self.Kills != nil`
 // / `Self.Deaths != nil` de `weaponRangeScope`.
 //
@@ -498,37 +427,6 @@ func TestLoadWeaponRange_ToutSousLeSeuil_SectionPresenteAvecZeroArme(t *testing.
 	if len(block.BelowThresholdKills) != 2 || len(block.BelowThresholdDeaths) != 1 {
 		t.Errorf("sous le seuil = %d frags / %d morts, attendu 2 et 1",
 			len(block.BelowThresholdKills), len(block.BelowThresholdDeaths))
-	}
-}
-
-// TestMergeWeaponSides_LaMedianeDesFragsPrimeSurCelleDesMorts — la règle de tri de
-// `mergeWeaponSides` (constat F4, revue adversariale du lot 4, 2026-09-06).
-//
-// Une arme mesurée DES DEUX CÔTÉS se range à la médiane de ses FRAGS, jamais à celle de ses
-// morts : le graphe se lit « où je frague », les morts en sont le contrepoint. La règle
-// n'était épinglée par rien — le témoin `if out[i].Kills == nil` remplacé par `if true`
-// restait vert, et le tri basculait silencieusement sur le dernier côté rencontré.
-//
-// FIXTURE CONSTRUITE POUR QUE LA MUTATION SE VOIE : le BR75 frague à 12 m et tue son porteur à
-// 20 m, l'Hydra ne frague qu'à 15 m. Par la médiane des frags -> BR75 (12) puis Hydra (15) ;
-// par celle des morts -> Hydra (15) puis BR75 (20). L'ordre s'inverse.
-func TestMergeWeaponSides_LaMedianeDesFragsPrimeSurCelleDesMorts(t *testing.T) {
-	kills := wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)
-	kills = append(kills, wrKills("hinf_br75", analysis.SideVictim, 9, 20, 0)...)
-	kills = append(kills, wrKills("hinf_hydra", analysis.SideKiller, 9, 15, 0)...)
-	repo := &mockWeaponRangeRepo{kills: kills}
-
-	block := wrService(repo).loadWeaponRange(context.Background(), wrCanonRows(1, 30, 12))
-	if block == nil || len(block.Weapons) != 2 {
-		t.Fatalf("armes = %+v, attendu 2 lignes", block)
-	}
-	if block.Weapons[0].WeaponKey != "hinf_br75" || block.Weapons[1].WeaponKey != "hinf_hydra" {
-		t.Fatalf("ordre = [%s %s], attendu [hinf_br75 hinf_hydra] : le BR75 se range à la "+
-			"médiane de ses FRAGS (12 m), pas à celle de ses morts (20 m)",
-			block.Weapons[0].WeaponKey, block.Weapons[1].WeaponKey)
-	}
-	if block.Weapons[0].Kills == nil || block.Weapons[0].Deaths == nil {
-		t.Errorf("le BR75 doit porter ses deux côtés : %+v", block.Weapons[0])
 	}
 }
 
