@@ -102,3 +102,10 @@ résiduels à instruire (en cours) ; nettoyage OK (fait).
 - CI à surveiller sur `feat/v75` après ce push : `gh run list --branch feat/v75 --workflow CI --limit 2`.
 - Reste : résidus (`feat/v2-residus`, RES-R1 en cours, agent `a77fcfb0cbaa9cb92`).
 - Notion : re-cuisson du parc à porter de 41 au dernier schéma intégré — à faire par le superviseur.
+
+## 8. Mise à jour (residus intégré)
+
+- Merge `dd8004e90` : `feat/v2-residus` (`cd5302ebf`) intégré dans `feat/v75`, SchemaVersion 43.
+- CI à surveiller sur `feat/v75` après ce push : `gh run list --branch feat/v75 --workflow CI --limit 2`.
+- Reste : Notion à porter de 41 à 43 (superviseur), corpus témoin à rejouer à chaque bump de schéma.
+- Reste : découpe par manche des compteurs par joueur (`51ebbc0f`, 63 assistances pour 5, au registre).
