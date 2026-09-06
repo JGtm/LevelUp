@@ -95643,3 +95643,104 @@ NON surveillee (consigne utilisateur). Les quatre points « non recevables » du
 laisses en l'etat sur son propre argument. Les trois points a trancher par le superviseur
 (ligne de `CLAUDE.md` qui cite le fichier supprime, exemptions fines de `.golangci.yml`,
 baseline a rejouer par le lot E) restent ouverts, inchanges.
+## [2026-09-05] Lot C v2 — capabilities du rejeu et vocabulaire — Complété
+
+**Contexte.** Premier lot execute du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md` (worktree
+dedie `LevelUp-wt-v2-capabilities`, branche `feat/v2-capabilities`). Il ferme les constats
+D1/D2/D3 (aucune cle de capability ne gouvernait la chaine du rejeu ; doc inversee promettant
+un 503 sur `/positions` et `/objective-events` ; mise en file avant la sonde de titre) et
+L3/L4/L5 (surfaces web sans porte de titre), sous les decisions utilisateur n°3
+(`film.replay_artifact` gouverne la PRODUCTION, l'affichage suit) et n°6 (« heatmap » banni,
+« lobby » assimile).
+
+**Decision technique.** DEUX cles, deux roles, sur le modele `match.objective.stats` /
+`objective_stats` : `games.CapFilmReplayArtifact` (data-level) gouverne la production de
+l'artefact et, par voie de consequence, les deux projections servies a la Match View ;
+`title.CapReplay` gouverne l'acces et l'affichage (routes `/replay*` sous
+`RequireCapability`, filtre et colonnes « Rejeu »). La porte de production est en TETE de
+`replayartifacts.Run`, avant la selection, le rattrapage des cartes et `enqueueAll` — la
+seule sonde existante etait une degradation par absence de donnee, apres la mise en file.
+Cote web, le canal `GET /titles/{slug}/capabilities` existait sans client : ajout de
+`useDataCapability` jumeau de `useCapability` et d'un `FeatureGate` unique acceptant les
+deux portes (decoupe en deux sous-composants pour que les gates title-level n'exigent pas de
+QueryClientProvider). Regle des deux portes appliquee : capability du titre PUIS presence de
+donnee du match. `synthetic_title_b` declare les six cles `film.*` avec UN cas `supported` —
+la fixture qui prouve que ces cles sont fines.
+
+**Resultats.** 4 commits (`b2f536c14`, `ee58a81c5`, `fc4307c0c`, `2ddca8291`). Tests neufs
+joues sur les fichiers LIVRES, jamais sur des fixtures fabriquees : `Run` sur halo_5 ne lit
+meme pas la base ; `/objective-events` et `/positions` rendent 503 `capability_not_supported`
+sans appeler de loader, 200 sur halo_infinite ; les quatre routes `/replay*` rendent 503
+`capability_unavailable` sur halo_5. Garde-rail neuf `capabilities_front_parity_test.go`
+(jumeau data-level du garde title-level) : un litteral de gating errone fermerait une porte
+pour toujours sans erreur. « heatmap » entre dans FORBIDDEN_PATTERNS avec preuve de morsure
+jouee ; trois chaines FR corrigees en « carte de chaleur » ; « lobby » documente comme mot
+assimile. Gates : suite Go complete verte, `go build` OK, ratchet golangci-lint
+`--new-from-merge-base=origin/main` a 0 issue, `make generate-types` sans diff, typecheck web
+OK, lint web 0 erreur, vitest COMPLET 591 fichiers / 6249 tests verts.
+
+**Deux reparations apres CI.** Le job `Go Coverage + Baseline` (le seul qui joue
+`-tags=integration` sur ./... complet) a revele que deux tests d integration du rattrapage
+passaient `RepoRoot: t.TempDir()` — une racine vide n est plus neutre depuis que la porte est
+en tete de Run. Helper neuf `racineIsoleeAvecManifestes` (TempDir + copie des manifestes du
+titre) : isolation preservee, titre resolvable. Le job `Go Lint` a ensuite rougi (le helper,
+declare sans tag et utilise sous tag, etait `unused` en build par defaut) : il descend sous
+le tag avec ses appelants. Lecon : le gate du plan (go test sans tag) ne voyait ni l un ni l
+autre ; `-tags=integration -p 1` + le ratchet golangci-lint sont desormais au journal du lot.
+
+**Conclusion / prochaine etape.** Deux ecarts au plan constates sur pieces et documentes :
+halo_infinite n'a PAS de `title.toml` (descripteur built-in, un manifeste y serait ignore),
+et les manifestes « heatmap » vivent sous `apps/web/src/lib/i18n/manifests/`, pas sous
+`config/titles/`. Trois decouvertes hors perimetre au journal du lot
+(`.ai/V7.5/v2/LOT_C.md`), dont la carte de chaleur des positions de la Match View, seule
+surface `film.*` non nommee au lot et qui affichera un etat vide sur un titre sans film.
+Surveillance CI ARRETEE sur consigne du superviseur (quota API) avant la fin du dernier run :
+6 jobs verts au dernier releve dont le lint repare, 2 encore en cours (Frontend, Coverage).
+Prochaine etape : verification CI par le superviseur, revue adversariale, puis integration
+dans `feat/v75` (le lot C est le premier de l'ordre d'integration).
+
+## [2026-09-06] Lot C v2 — corrections apres revue adversariale — Complété
+
+**Contexte.** Revue adversariale C-R1 du lot C (capabilities du rejeu) : 21 conditions
+tiennent et le comportement livre est le bon, mais TROIS PORTES n'avaient aucun test qui
+morde et la fixture censee prouver la finesse des cles ne prouvait rien. Le relecteur l'a
+etabli par mutation : retirer la porte des routes `/replay*` du montage reel, basculer ou
+supprimer les cles `film.*` du titre synthetique, retirer l'une quelconque des trois portes
+de colonne — tout restait vert. S'y ajoutaient deux defauts d'interface sur halo_5 (un flash
+de carte, un filtre invisible mais actif) et une condition du lot qui ne tenait pas (deux
+requetes de film emises malgre l'absence de capability).
+
+**Decision technique.** Chaque correction est prouvee par la mutation du verdict, rouge puis
+vert — c'est le contrat que je me suis donne, et il a servi : la premiere version du test de
+colonne comptait 23 colonnes au lieu de 19 parce que les deux rendus compares differaient
+aussi par `team_mmr` et `waypoint_match_url`. Les portes se testent LA OU ELLES VIVENT : un
+ratchet AST pour le montage reel des routes (`mountAPIV1` prend tout le serveur, le
+construire coûterait des bases DuckDB pour ne rien prouver de plus), un fichier de test par
+niveau pour la fixture (contenu du TOML asserte a la main, semantique de `Has`, portes
+reelles exercees AVEC ce titre), un fichier propre a `MatchReplayLink` dont les deux portes
+se couvraient mutuellement. Deux choix de conception : `useTitleDataCapabilities` rend TROIS
+etats (`loading`/`known`/`error`) au lieu d'une map nullable qui confondait « pas encore » et
+« jamais » — fail-CLOSED pendant le chargement, fail-open sur erreur ; et la prop
+`FeatureGate.dataCapability`, sans aucun appelant de production, est RETIREE plutot que dotee
+d'un appelant de circonstance (regle n°7).
+
+**Resultats.** 8 corrections, 8 commits (`f0c357585`, `a715f2031`, `0e5cf2e96`, `33d27ee35`,
+`bc551762b`, `406396856`, `86227ab4b`, + journal). Mutations rejouees : M5 rouge (montage des
+routes), M3/M4 rouges sur 3 paquets (fixture), M8/M9/M10 rouges chacune sur SA porte
+(colonnes), « fail-open pendant loading » 4 tests rouges (flash), neutralisation retiree
+(filtre), « toujours INFO » 2 assertions rouges (bruit de journal), garde `enabled` retiree
+(requetes). Gates : Go du lot + integration API + integration replayartifacts verts avec
+`-count=1` (obligatoire : le cache `go test` ne voit pas les mutations de `config/titles/**`),
+`go build` OK, ratchet golangci-lint 0 issue, `make generate-types` sans diff, typecheck et
+lint web exit 0, vitest ciblé 128 fichiers / 1109 tests, vitest COMPLET 593 fichiers / 6257
+tests verts. Le refus de production passe en INFO au premier refus par titre puis DEBUG
+(halo_5 est actif et n'aura jamais la cle : c'etait du bruit permanent).
+
+**Conclusion / prochaine etape.** La condition « sur halo_5, aucune requete de film n'est
+emise » tient enfin, et la decouverte n°1 du journal est corrigee : la carte de chaleur ne
+montrait PAS de bloc vide (`return null` sur liste vide), le residu se reduisait aux deux
+requetes — desormais gatees. Une decouverte de gate consignee, hors perimetre : le filet Go
+COMPLET fait tomber `mapcatalog.TestAddEntryConcurrentNePerdPasDEntree`, flake de contention
+(vert 3/3 en isolation, verrou de fichier a 2 s sature par la suite entiere ; paquet du lot A,
+la CI joue `-p 1`). Prochaine etape : ronde 2 de la revue sur ces corrections, puis
+integration dans `feat/v75`.

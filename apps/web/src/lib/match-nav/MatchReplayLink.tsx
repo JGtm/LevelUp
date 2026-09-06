@@ -6,15 +6,23 @@
  * copies divergeraient sur la route ou sur la règle d'affichage, et une ligne qui
  * pointe vers un rejeu inexistant se lit comme une panne.
  *
- * Règle d'affichage : rien n'est rendu quand `available` est faux. La route répond 404
- * sans artefact — c'est le sens du champ `has_replay` servi par l'API, résolu en un seul
- * listing de dossier par requête (jamais un accès disque par ligne).
+ * DEUX PORTES (règle du 2026-09-05, registre L5) :
+ *   1. LE TITRE — capability `replay` : un titre sans décodeur de film n'a pas de page de
+ *      rejeu (ses routes /replay* rendent 503). Rien n'est rendu, nulle part.
+ *   2. LE MATCH — `available` (`has_replay`) : l'artefact existe-t-il pour CE match ? La
+ *      route répond 404 sans lui — c'est le sens du champ servi par l'API, résolu en un
+ *      seul listing de dossier par requête (jamais un accès disque par ligne).
+ *
+ * La porte 1 est ici parce que ce composant est LE point unique de l'icône (Explorer,
+ * Synergies escouade, carte de match) : les tableaux masquent EN PLUS leur colonne, pour
+ * ne pas laisser un en-tête sans contenu possible.
  *
  * Variante « bouton » de la page match : features/match-view/MatchHeader.replayLink.tsx
  * (même route, présentation différente : bouton avec libellé, pas une cellule).
  */
 import { Link } from '@tanstack/react-router'
 
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { themedIconSrc } from '@/lib/themedIcon'
 import { useTitleSlug } from '@/lib/title-routing'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
@@ -30,10 +38,11 @@ interface MatchReplayLinkProps {
 
 export function MatchReplayLink({ available, matchId, playerSlug, label }: MatchReplayLinkProps) {
   const titleSlug = useTitleSlug()
+  const titreARejeu = useCapability('replay')
   // Thème LOCAL déjà tranché par le store (`dark` | `light`) : l'icône est un raster à
   // deux variantes, elle ne peut pas se teinter en `currentColor`.
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
-  if (!available) return null
+  if (!titreARejeu || !available) return null
   return (
     <Link
       to="/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay"

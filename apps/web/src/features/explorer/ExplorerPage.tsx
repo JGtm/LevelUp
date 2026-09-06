@@ -27,6 +27,7 @@ import type { ContextDescriptor } from '@/lib/match-nav/navContext'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { usePageScope } from '@/lib/page-scope/usePageScope'
 import {
   EXPLORER_URL_KEYS,
@@ -97,7 +98,7 @@ export function ExplorerPage() {
     startDate,
     endDate,
     squadScope,
-    replayScope,
+    replayScope: replayScopeMemorise,
     matchIDSearch,
     expTypes,
     playlists,
@@ -107,6 +108,20 @@ export function ExplorerPage() {
     skillTiers,
     outcomeFilter,
   } = scope
+
+  // LE FILTRE « Avec rejeu / Sans rejeu » EST NEUTRALISE SUR UN TITRE SANS `replay`
+  // (revue C-R1, constat C5). Le masquer ne suffisait pas : la portee est memorisee dans
+  // `levelup-explorer-scope:{playerSlug}`, une cle scopee par JOUEUR et non par titre. Poser
+  // « Avec rejeu » sur halo_infinite puis basculer sur halo_5 reinjectait donc `replay=with`
+  // au chargement — liste filtree a zero match, contröle invisible, et rien pour le corriger
+  // sinon tout effacer. Meme chose pour une URL portant `?replay=with`.
+  //
+  // La neutralisation est ICI, au point de LECTURE, et pas au montage du <select> : c'est le
+  // seul endroit qui couvre a la fois le miroir, l'URL, la charge utile envoyee au backend et
+  // le bandeau « filtres actifs ». La valeur memorisee n'est pas effacee — elle redevient
+  // active telle quelle si le joueur repasse sur un titre qui a le rejeu.
+  const hasReplayCapability = useCapability('replay')
+  const replayScope = hasReplayCapability ? replayScopeMemorise : ''
 
   // saisonOpen reste local : pur état d'ouverture de dropdown (pas du scope).
   const [saisonOpen, setSaisonOpen] = useState(false)

@@ -191,7 +191,7 @@ en = "/match"
 # ─── Onglet Intensité ──────────────────────────────────────────────────────
 
 [timeseries.intensity.heatmap_title]
-fr = "Heatmap d'intensité (jour × heure)"
+fr = "Carte de chaleur d'intensité (jour × heure)"
 en = "Intensity heatmap (day × hour)"
 
 [timeseries.intensity.score_per_min_title]

@@ -513,3 +513,8 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   champs), `go vet` + intégration `api/wire` verts (`ok 18 s`). Décision user : feu vert au
   balayage du parc (un film par processus borné, jamais de bombe RAM) ; corpus élargi aux
   artefacts des autres worktrees et de la clé PNY (`E:\data\cache\replays\`, état du 31/07).
+- 2026-09-06 11:20 : C fusionné (ronde 2 close par `b13f36fe9` : porte cherchée sur un ANCÊTRE
+  du montage, mémo par titre prouvé) ; conflit thought_log concaténé. Balayage du parc lancé
+  (worktree `LevelUp-wt-v2-balayage`, outil `cmd/replay-diff`, rapport
+  `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md` attendu). Intégrés : B, F, C. Restent : A (corrections),
+  G et E (ronde 2), D (prêt, en dernier), CTF (enquête rouverte).
