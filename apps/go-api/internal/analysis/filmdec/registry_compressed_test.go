@@ -2,14 +2,20 @@ package filmdec
 
 // registry_compressed_test.go — UN TAMPON ENCORE COMPRESSE SE REFUSE, IL NE SE LIT PAS A VIDE.
 //
-// LE SINISTRE QUE CE TEST FERME. Le 2026-09-02, `c17f4941f` (lot 1a de PLAN_CUISSON_PERF) a
-// retire l'inflate de [ParseRegistryChunk] : la decompression se fait une fois par film, dans
+// CE QUE CE TEST FERME. Le 2026-09-02, `c17f4941f` (lot 1a de PLAN_CUISSON_PERF) a retire
+// l'inflate de [ParseRegistryChunk] : la decompression se fait une fois par film, dans
 // `filmsource`. Le retrait etait juste ; ce qui l'accompagnait ne l'etait pas — un tampon encore
 // compresse rendait un registre VIDE et une erreur NULLE. Chaque lecteur d'archetype rendait
 // ensuite « archetype N absent du registre », un message qui accuse le BUILD DU JEU d'un defaut
-// de l'APPELANT, et le fixture E2E `film_e2e/c0a82e88` (deux couches zlib sur ses chunks 00 et
-// 07) a decode quatre jours SANS registre — donc sans biped, sans arme au sol, sans equipement,
-// sans vehicule, sans objet d'objectif — CI verte comprise.
+// de l'APPELANT.
+//
+// AUCUN SINISTRE CONNU N'EN A DECOULE, et la premiere version de ce commentaire disait le
+// contraire (corrige le 2026-09-06, revue CTF-R1) : elle attribuait au fixture E2E
+// `film_e2e/c0a82e88` « quatre jours de decodage sans registre ». Le fixture portait bien deux
+// couches zlib sur ses morceaux 00 et 07, mais le chemin E2E les absorbait toutes les deux (le
+// telechargeur de l'ouvrier en pele une, `filmsource` l'autre) — l'epreuve reste verte avec le
+// fixture d'origine, meme artefact, meme taille. Ce test vaut donc pour ce qu'il est : un refus
+// explicite la ou il y avait un silence, pas la reparation d'un sinistre.
 
 import (
 	"bytes"
