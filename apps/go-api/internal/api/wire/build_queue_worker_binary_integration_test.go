@@ -158,9 +158,12 @@ func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
 // découverte du lot F), contre 0 sans.
 //
 // LES VALEURS, ELLES, SONT VÉRIFIÉES À CÔTÉ : `assertValeursDuDocument`
-// (build_queue_worker_valeurs_integration_test.go) confronte les compteurs décodés du film à
-// l'oracle INDÉPENDANT du fixture (la feuille de match de l'API) et fige l'horloge, le roster et
-// la courbe de score — constat G1 du registre d'audit du 2026-09-05.
+// (build_queue_worker_valeurs_integration_test.go) fige l'horloge, la grille, le roster, la
+// liste des joueurs appariés et la courbe de score, et confronte le roster nommé du film à la
+// feuille de match de l'API — constat G1 du registre d'audit du 2026-09-05. Ce que cette
+// confrontation prouve et ce qu'elle ne prouve pas est écrit dans l'en-tête de ce fichier-là
+// (revue F-R1 du 2026-09-06 : le pont d'identité impose l'égalité des triplets, seul le roster
+// est un fait de deux chaînes indépendantes).
 func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domain.BuildQueueJob, jobID string, fx filmFixture) {
 	t.Helper()
 	var resultJSON string
