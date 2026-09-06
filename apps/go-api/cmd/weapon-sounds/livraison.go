@@ -186,23 +186,84 @@ var joliFactions = map[string]string{
 
 var joliPrefixes = map[string]string{"wea": "", "tur": "Tourelle_", "whizby": "Whizby_"}
 
+// livraisonNTSplitDrive rend (prefixe de lecteur, reste) comme `ntpath.splitdrive` : "C:"
+// pour une lettre de lecteur, `\\serveur\partage` pour un chemin UNC, "" sinon. Les deux
+// separateurs sont valides des deux cotes, comme sous Windows.
+//
+// LE PREFIXE DE LECTEUR N'EST PAS UN DETAIL. `C:nom.pck` est un chemin RELATIF AU REPERTOIRE
+// COURANT DU LECTEUR C (pas de separateur apres le deux-points) : `ntpath` en tire le nom nu
+// `nom.pck`, une coupe sur le dernier separateur n'en tire rien du tout et laisse `C:nom`.
+func livraisonNTSplitDrive(p string) (string, string) {
+	norm := strings.ReplaceAll(p, "/", `\`)
+	if !strings.HasPrefix(norm, `\`) {
+		if len(p) >= 2 && p[1] == ':' {
+			return p[:2], p[2:]
+		}
+		return "", p
+	}
+	if !strings.HasPrefix(norm, `\\`) {
+		return "", p // chemin relatif a la racine du lecteur courant (`\Windows`)
+	}
+	// UNC (`\\serveur\partage`), peripherique (`\\.\device`) ou prefixe etendu
+	// (`\\?\UNC\serveur\partage`) : le « lecteur » va jusqu'au DEUXIEME separateur qui suit.
+	debut := 2
+	if strings.HasPrefix(norm, `\\?\UNC\`) {
+		debut = 8
+	}
+	i := strings.Index(norm[debut:], `\`)
+	if i < 0 {
+		return p, "" // rien apres le nom de serveur : tout le chemin est le lecteur
+	}
+	j := strings.Index(norm[debut+i+1:], `\`)
+	if j < 0 {
+		return p, "" // rien apres le nom de partage
+	}
+	coupe := debut + i + 1 + j
+	return p[:coupe], p[coupe:]
+}
+
+// livraisonNTBasename rend le nom de fichier nu, comme `ntpath.basename` : le prefixe de
+// lecteur est retire d'abord, puis tout ce qui precede le dernier separateur.
+func livraisonNTBasename(p string) string {
+	_, reste := livraisonNTSplitDrive(p)
+	if i := strings.LastIndexAny(reste, `/\`); i >= 0 {
+		return reste[i+1:]
+	}
+	return reste
+}
+
+// livraisonNTSansExtension retire l'extension d'un NOM DE FICHIER NU, comme
+// `os.path.splitext` : les points de TETE n'ouvrent pas d'extension. `.pck` reste `.pck`,
+// `..pck` reste `..pck`, `.a.pck` donne `.a`.
+func livraisonNTSansExtension(base string) string {
+	j := strings.LastIndex(base, ".")
+	if j < 0 {
+		return base
+	}
+	for k := 0; k < j; k++ {
+		if base[k] != '.' {
+			return base[:j]
+		}
+	}
+	return base
+}
+
 // joliBaseSansExt rend le nom de fichier nu (sans repertoire ni extension) d'un chemin
 // .pck — port fidele de os.path.basename/splitext TELS QU'ILS SE COMPORTENT SOUS WINDOWS
-// (module ntpath : "/" ET "\" sont deux separateurs valides), le SEUL OS sur lequel
+// (module ntpath : "/" ET "\" sont deux separateurs valides, un prefixe de lecteur est
+// retire avant la coupe, un point de tete n'est pas une extension), le SEUL OS sur lequel
 // `_outils/livraison.py` a jamais tourne. Les chemins de lot1.json/lot2.json sont TOUJOURS
 // des chemins Windows (ceux de la machine d'extraction), quelle que soit la plateforme de
 // compilation de ce binaire : filepath.Base/Ext de la stdlib Go sont, eux, dependants de
 // l'OS de COMPILATION et ne coupent que sur "/" sous Linux — bug constate en CI le
 // 2026-09-06 (TestJoliDossier rouge sous ubuntu-latest, cf. journal du lot v2 G).
+//
+// UNE CLE DE DOSSIER FAUSSE PERD UNE ARME : elle n'est plus retrouvee dans lot1/lot2 (sa
+// fourchette RANGED disparait du catalogue) ou elle est livree sous une autre cle. La
+// premiere version de cette fonction promettait `ntpath` sans porter ni le prefixe de
+// lecteur ni la regle du point de tete (constat C8 de la revue R1) ; elle les porte.
 func joliBaseSansExt(pck string) string {
-	base := pck
-	if i := strings.LastIndexAny(base, `/\`); i >= 0 {
-		base = base[i+1:]
-	}
-	if j := strings.LastIndex(base, "."); j >= 0 {
-		base = base[:j]
-	}
-	return base
+	return livraisonNTSansExtension(livraisonNTBasename(pck))
 }
 
 func joliDossier(pck string) string {
