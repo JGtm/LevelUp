@@ -1,5 +1,21 @@
 package domain
 
+import "errors"
+
+// Les trois refus de l'onglet Tactique. Ils sont dans `domain` parce que le
+// handler doit les TRADUIRE en statut HTTP (404 / 400) sans dependre du service.
+var (
+	// ErrTacticalCarteInconnue : aucune carte de ce nom dans les matchs retenus du
+	// joueur. Ce n'est pas une carte vide, c'est une carte qu'il n'a pas jouee
+	// SOUS CE FILTRE — 404, jamais une lecture a zero cellule qui se lirait comme
+	// « rien ne s'y passe ».
+	ErrTacticalCarteInconnue = errors.New("tactique: carte inconnue pour ce joueur")
+	// ErrTacticalQuestionInconnue : question hors du vocabulaire servi.
+	ErrTacticalQuestionInconnue = errors.New("tactique: question inconnue")
+	// ErrTacticalQuiInconnu : axe « qui » hors du vocabulaire servi.
+	ErrTacticalQuiInconnu = errors.New("tactique: axe qui inconnu")
+)
+
 // Types de l'onglet Tactique — lectures de PLACEMENT agregees par carte (ou je meurs, ou
 // je tue, ou je gagne). Structs purs : aucune I/O, aucun SQL, aucune dependance au
 // document de rejeu.
@@ -240,3 +256,41 @@ type TacticalRaster struct {
 	// silencieux — jamais un zero, qui se lirait comme une contre-performance.
 	Echange *Couverture `json:"echange,omitempty"`
 }
+
+// ---------------------------------------------------------------------------
+// Vocabulaire et bornes de l'onglet
+// ---------------------------------------------------------------------------
+
+// Les QUESTIONS servies par la phase 2. Elles se lisent toutes sur le meme
+// substrat — les positions mesurees de `kill_positions` — parce que c'est le seul
+// qui existe sans artefact de rejeu. Les questions d'occupation (ou je passe mon
+// temps, mes routes de spawn) arrivent avec les rasters de la cuisson.
+const (
+	// TacticalQuestionMorts : ou JE MEURS — la position de la VICTIME.
+	TacticalQuestionMorts = "morts"
+	// TacticalQuestionKills : ou JE TUE — la position du TUEUR.
+	TacticalQuestionKills = "kills"
+	// TacticalQuestionGagne : ou JE GAGNE — lecture SIGNEE, sur les ENGAGEMENTS
+	// (mes kills ET mes morts), chaque cote ramene a son propre nombre de matchs.
+	//
+	// POURQUOI LES ENGAGEMENTS ET PAS LES SEULS KILLS : la question demande ou ma
+	// presence correle avec la victoire. La seule presence mesurable avant les
+	// rasters d'occupation est le combat, et il a DEUX faces — ne garder que les
+	// kills confondrait « ou je gagne » avec « ou je tue », qui est deja une
+	// question a part. Substitution prevue : l'occupation, quand elle existera.
+	TacticalQuestionGagne = "gagne"
+)
+
+// L'axe QUI. `escouade` designe mes coequipiers DU MATCH (meme `team_id` que moi
+// dans `match_participants`, moi exclu) : la composition change d'un match a
+// l'autre, et une liste figee melangerait deux escouades.
+const (
+	TacticalQuiMoi         = "moi"
+	TacticalQuiEscouade    = "escouade"
+	TacticalQuiAdversaires = "adv"
+)
+
+// PlancherMatchsParCarte est le nombre de matchs en dessous duquel une carte
+// n'est pas ouvrable : 10 (plan tactique, 2026-09-05). Une lecture de placement
+// sur trois matchs ne mesure pas un placement, elle mesure trois parties.
+const PlancherMatchsParCarte = 10
