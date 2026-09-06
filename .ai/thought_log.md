@@ -1,3 +1,11 @@
+## [2026-09-06] Lot 3 duels — revue adversariale a trois relecteurs, correctifs, ronde 2, fusion — Complete
+
+**Decision technique principale.** Revue L1 (anti-ART) + L3 (anti-patterns) + L6 (tests) en parallele et aveugles ; deux relecteurs ont converge independamment sur la vue `kill_openings_latest` arbitree par cle et non par passe ; decision pilote soumise a l utilisateur : `decode_pass` sur `kill_openings` (table jamais creee nulle part, migration modifiee en place, commit separe `ed3b323f3` retirable). Les deux P1 de L6 (signe du decalage et passe d entames non couverts par les tests) sont elimines structurellement par la bascule sur `replay.BuildKillOpenings` et pinces par des tests dont les mutations ont ete vues rouges.
+
+**Resultats observes.** Ronde 1 : 2 P1, 8 P2 retenus. Ronde 2 (relecteur frais) : 0 P1, 4 P2 residuels, 14 conditions tenues, 7 mutations rouges. Mesures sur base reelle : `KillDistanceRepo` avant/apres helper identique au 6e chiffre ; 0 groupe multi-victimes sur 138 293 evenements (le P1 « double frag cote victime » a une population vide, retrograde en durcissement `count(*) = 1`) ; `fragSolo` non borne : x15,6 (192 ms vs 12 ms) — P2 reporte en tete du lot 4 avec preuve EXPLAIN exigee.
+
+**Conclusion / prochaine etape.** `feat/duels-lot3` fusionnee dans `feat/duels` (`059eb4c80`), `decode_pass` inclus (retirable). Les 4 P2 residuels sont des items 4.0a-4.0d en tete du lot 4. Decouvertes consignees : `kill_positions` (peuplee en prod) a le meme defaut de vue et n est pas inscrite a la liste append-only — decision utilisateur, hors chantier.
+
 ## [2026-09-06] Lot 3 duels/portee — revue adversariale ronde 1 : le filtre de vie branche, et trois tests qui ne mordaient pas — Complete
 
 **Decision technique principale.** Trois relecteurs independants ont relu le lot 3 ; onze constats

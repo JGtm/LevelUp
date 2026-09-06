@@ -576,6 +576,14 @@ registre du bas de ce fichier). La base a d'abord été fusionnée depuis `feat/
 
 ## Lot 4 — Service, capability, contrat API
 
+**Résidus de la ronde 2 du lot 3 (4 P2, statués par le pilote le 2026-09-06) — à traiter EN TÊTE du lot 4, avant 4.1, avec preuve dans le CR :**
+
+- [ ] 4.0a `platform/duckdb/kill_measured.go:137-146` — la sous-requête `fragSolo` n est bornée par aucun scope : sur la forme `e.match_id IN (...) AND <côté> IN (...)`, DuckDB ne pousse pas le filtre (SEQ_SCAN complet, mesuré ×15,6 : 192 ms contre 12 ms sur 140 000 événements). Borner `fragSolo` par le même `match_id IN (...)` que la requête principale (paramètres dupliqués), prouver par `EXPLAIN` que le SEQ_SCAN de la branche porte `Filters: match_id`, et vérifier que `KillDistanceRepo.LoadMatch` (forme `= ?`) reste identique.
+- [ ] 4.0b `games/halo_infinite/migrations/steps_shared_kill_openings.go:41-44` contredit `persist/kill_opening_persister.go:62-66` : une passe B qui ne résout AUCUNE entame sur tout le match n écrit aucune ligne, donc aucun `decode_pass` neuf, et la vue continue de servir la passe A entière. Comportement ASSUMÉ (consigné) ; corriger l en-tête de migration pour qu il dise ce que la vue fait réellement (rétractation seulement si la passe B écrit au moins une ligne) et ajouter le cas « passe B vide » au test `ReDecodeSupersede` en l ASSERTANT tel quel.
+- [ ] 4.0c `kill_measured.go:142` — `HAVING count(*) = 1` change le comportement du POC `KillDistanceRepo` sur un double frag à la MÊME arme (avant : 1 mesure sur une position arbitraire ; maintenant : exclu). Impact mesuré nul (0 groupe sur 138 293 événements). STATUÉ : changement accepté ; l écrire dans le commentaire de `kill_distance_repo.go` (ex-phrase « héritée du POC » retirée sans énoncé).
+- [ ] 4.0d `sync/killcollector/positions_openings.go:59` — sur échec d écriture, le `return` précède `publishOpeningsPass` : `cotes_hors_vie` et `morts_sans_position` ne bougent pas alors que la doc (:117-121) et le test (:159-160) promettent « il compte MÊME quand rien n est écrit ». Publier les compteurs de LECTURE avant le retour d échec, garder `matchs_couverts`/`lignes_ecrites` conditionnés au succès ; test.
+
+
 - [ ] 4.1 `SynthesisService.WithWeaponRangeRepo(repo)` ; câblage INCONDITIONNEL dans
       `SynthesisCtx` (jamais `slug ==`), sur le modèle de `WithWeaponAccuracyRepo`.
 - [ ] 4.2 `loadWeaponRange` calqué sur `loadWeaponAccuracy` (synthesis_service.go) : scope par
