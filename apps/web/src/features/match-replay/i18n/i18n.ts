@@ -292,6 +292,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityUnidentified: (rank) => `capacité non identifiée (rang ${rank})`,
     abilityAge: 'Capacité lue il y a',
     abilityAhead: 'Capacité lue dans',
+    abilityUnread: 'capacité non lue sur cette vie',
     abilityChargesFull: 'plein',
     abilityChargesFullHint:
       'Charges pleines — le film ne transmet une lecture qu’après le premier usage.',
@@ -414,6 +415,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     ammoDrawnHint:
       'Emplacement DÉGAINÉ selon le sélecteur du record : la même lecture qui place cette arme en tête de rangée.',
     drawnUnknown: 'dégainée ?',
+    ammoUnread: 'munitions non lues sur cette vie',
     inventoryDeadLabel: 'Mort',
     inventoryDeadHint:
       'Lecture vide, et le fil des éliminations donne le joueur pour mort — lue il y a',
@@ -696,6 +698,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityUnidentified: (rank) => `unidentified ability (rank ${rank})`,
     abilityAge: 'Ability read',
     abilityAhead: 'Ability read in',
+    abilityUnread: 'ability not read on this life',
     abilityChargesFull: 'full',
     abilityChargesFullHint:
       'Charges full — the film only transmits a reading after the first use.',
@@ -816,6 +819,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     ammoDrawnHint:
       'Slot DRAWN according to the record selector: the same reading that puts this weapon first in the row.',
     drawnUnknown: 'drawn ?',
+    ammoUnread: 'ammo not read on this life',
     inventoryDeadLabel: 'Dead',
     inventoryDeadHint:
       'Empty reading, and the player is dead according to the kill feed — taken',
