@@ -73,7 +73,6 @@ export function vipActiveAt(
   return out
 }
 
-/** Opacité du glyphe pour une période — la pulsation de la couronne « ouverte » comprise. */
 /**
  * drawVipCrown peint, PAR-DESSUS les marqueurs, la couronne sur le VIP courant de chaque camp.
  *

@@ -25,7 +25,6 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { type CanvasView, projectTo } from '../model/replayView'
 import { buildLivesBySlot, lifeOfSlotAt } from '../model/livesPosition'
 
-/** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 /** Une traction prête à dessiner : la fenêtre, l'ancre, et les points de SA vie. */
 export interface GrappleFxEntry {
   t0: number

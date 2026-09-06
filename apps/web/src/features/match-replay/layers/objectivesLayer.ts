@@ -123,7 +123,6 @@ function unit2D(x: number | undefined, y: number | undefined): XY {
   return { x: vx / n, y: vy / n }
 }
 
-/** Cadrage du canvas (mêmes paramètres que worldToCanvas, forme de replayDraw). */
 /** Style du calque : la couleur d'équipe est RÉSOLUE par l'appelant (règle color-tokens). */
 export interface ObjectivesStyle {
   /** Couleur d'un index d'équipe ; -1 (neutre) rend l'encre neutre du thème. */

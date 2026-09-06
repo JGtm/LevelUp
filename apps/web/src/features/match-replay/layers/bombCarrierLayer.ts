@@ -106,7 +106,6 @@ export function bombGroundAt(
   return last
 }
 
-/** Opacité du glyphe porté — la pulsation d'un portage « ouvert » comprise. */
 /**
  * drawBombCarrier peint la bombe de l'image : sur son porteur courant (par-dessus le marqueur),
  * ou au sol sur le dernier point de son lâcheur. Un joueur non localisable n'est PAS dessiné :

@@ -127,8 +127,6 @@ export function objectiveSoundStem(stat: string, side: ObjectiveSide): string | 
   return undefined
 }
 
-/** Une ligne de tableau de score, réduite à ce dont le camp a besoin (typage structurel :
- *  ce fichier n'a pas à connaître le DTO complet). */
 /**
  * sideResolverFromScoreboard — LA SEULE SOURCE DU CAMP, et c'est la même que celle des
  * calques : la ligne « moi » du tableau de score donne l'équipe alliée, chaque autre ligne

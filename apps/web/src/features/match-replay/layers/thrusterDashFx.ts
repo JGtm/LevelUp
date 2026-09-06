@@ -41,7 +41,6 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { type CanvasView, projectTo } from '../model/replayView'
 import { buildLivesBySlot, lifeOfSlotAt } from '../model/livesPosition'
 
-/** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 /**
  * LES FAMILLES QUI SE DESSINENT EN DASH. Ce ne sont PAS toutes les familles du calque : une
  * famille absente de cette table ne dessine RIEN, jamais la forme d'une voisine (même règle
