@@ -2,6 +2,10 @@
  * useReplayClock — L'HORLOGE AFFICHÉE du rejeu, et la publication de l'image courante aux
  * panneaux qui vivent hors du canvas.
  *
+ * LA PUBLICATION VA DANS LE MAGASIN DE LECTURE (`model/playbackStore`, 2026-09-06) et non
+ * plus dans un état React de la route : la position n'a qu'une cellule, celle que la boucle
+ * de dessin écrit. Ce fichier n'en décide que le RYTHME.
+ *
  * DIXIÈME EXTRACTION IMPOSÉE PAR LE CLIQUET DE TAILLE (`placementFamily.guard.test.ts`) : le
  * canvas était PILE à son plafond et le lot du cadrage (2026-08-26) y ajoutait la fenêtre de
  * gameplay. Les deux morceaux sortis ici n'appartiennent pas au DESSIN — ils disent OÙ ON EN
@@ -46,8 +50,12 @@ export interface ReplayClockOptions {
   doc: ReplayDocumentReady
   /** La fenêtre de gameplay ; `null` = horloge du film entier, comme avant le cadrage. */
   playWindow: ReplayWindowBounds | null
-  /** Appelé à cadence réduite avec l'image courante : sert aux panneaux hors canvas. */
-  onFrameChange?: (frame: number) => void
+  /**
+   * PUBLIE l'image courante, a cadence reduite, dans le magasin de lecture
+   * (`model/playbackStore`) : c'est de la que les panneaux hors canvas la lisent. Le bridage
+   * vit ICI et non dans le magasin — c'est celui qui peint qui connait le cout d'un rendu.
+   */
+  publish?: (frame: number) => void
 }
 
 export interface ReplayClock {
@@ -57,7 +65,7 @@ export interface ReplayClock {
   tick: (frame: number) => void
 }
 
-export function useReplayClock({ doc, playWindow, onFrameChange }: ReplayClockOptions): ReplayClock {
+export function useReplayClock({ doc, playWindow, publish }: ReplayClockOptions): ReplayClock {
   const clockRef = useRef<HTMLSpanElement>(null)
   const publishedAtRef = useRef(0)
   // LE TOTAL EST LA DURÉE DE JEU quand le match est cadré : la durée du film y ajouterait le
@@ -75,16 +83,16 @@ export function useReplayClock({ doc, playWindow, onFrameChange }: ReplayClockOp
         const nowMs = displayClockMs(frameToMs(frame, doc), playWindow)
         clockRef.current.textContent = `${formatClock(nowMs)} / ${totalLabel}`
       }
-      if (!onFrameChange) return
+      if (!publish) return
       const now = performance.now()
       // La borne de fin est publiée SANS DÉLAI (cf. l'en-tête) : c'est la dernière image que la
       // boucle peindra, personne ne repassera derrière pour rattraper une publication sautée.
       const atEnd = playWindow != null && frame >= playWindow.endFrame
       if (!atEnd && now - publishedAtRef.current < FRAME_PUBLISH_MS) return
       publishedAtRef.current = now
-      onFrameChange(Math.floor(frame))
+      publish(Math.floor(frame))
     },
-    [doc, playWindow, totalLabel, onFrameChange],
+    [doc, playWindow, totalLabel, publish],
   )
   return { clockRef, tick }
 }

@@ -9,11 +9,12 @@
  * sans `matchmaking`, le match n'existe pas pour ce titre, donc son rejeu non plus.
  */
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 
 import { normalizeCallouts } from '@/features/match-replay/calloutsLayer'
 import { endMatchSoundSpec } from '@/features/match-replay/endMatchSound'
 import { REPLAY_TEXT } from '@/features/match-replay/i18n'
+import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/model/playbackStore'
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
 import {
   useMatchReplay,
@@ -66,7 +67,11 @@ function ReplayPage() {
   // base porte qui sont les gens. L'artefact ne mélange pas les deux — la jointure se fait
   // ici, sur le xuid, qui est la seule clé qui ne suppose rien (surtout pas un ordre).
   const { data: matchView } = useMatchView(playerSlug, matchId)
-  const [frame, setFrame] = useState(0)
+  // LA POSITION DE LECTURE VIENT DU MAGASIN, la page n'en garde plus de copie (2026-09-06,
+  // W1) : le canvas ecrit, cette page lit. L'abonnement suit la cadence de PUBLICATION
+  // (150 ms), pas celle de l'ecran — cf. `model/playbackStore`.
+  const playbackStore = usePlaybackStore()
+  const frame = usePlaybackFrame(playbackStore)
 
   // LE FOND DE CARTE, en deux temps assumés : le CALAGE d'abord (quelques centaines
   // d'octets, il dit si la carte a une image et où elle se pose), l'IMAGE ensuite —
@@ -216,7 +221,7 @@ function ReplayPage() {
               doc={data}
               locale={locale}
               playWindow={playWindow}
-              onFrameChange={setFrame}
+              playbackStore={playbackStore}
               background={mapBackground}
               callouts={callouts}
               scoreboard={scoreboard}
