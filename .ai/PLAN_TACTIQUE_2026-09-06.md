@@ -814,6 +814,7 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-06 (arbitrage utilisateur) — **LOT « MINIATURES DE CARTES » ACCEPTE**, a ouvrir apres la V1 de Tactique : la vignette de la grille charge le PNG pleine resolution (jusqu a 1,4 Mo par carte, une quinzaine de cartes) faute de pipeline de miniatures dans le depot. Perimetre pressenti : generation d une miniature par fond (PathResolver, meme sidecar), endpoint `.../background/thumb.png`, la grille la consomme ; le rejeu garde la pleine resolution. Hors de ce plan.
 - 2026-09-06 (phase 4) — **LE CALAGE PAR CARTE N'A AUCUN CONSOMMATEUR WEB EN PHASE 4.**
   `GET /players/{slug}/tactical/{map_id}/background` (Huma) est servi parce que le contrat
   PAR MATCH en sert un et que le depot a pose la regle « l'image et son calage vont toujours
