@@ -27,20 +27,9 @@ import (
 	"levelup/go-api/internal/analysis/replay"
 )
 
-// racineDepot remonte du package au depot (apps/go-api/internal/sync/replayartifacts -> racine)
-// pour que capabilityUsageArmee lise les capabilities.toml LIVRES.
-func racineDepot(t *testing.T) string {
-	t.Helper()
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Getwd: %v", err)
-	}
-	root := filepath.Join(wd, "..", "..", "..", "..", "..")
-	if _, err := os.Stat(filepath.Join(root, "config", "titles")); err != nil {
-		t.Fatalf("racine du depot introuvable depuis %s: %v", wd, err)
-	}
-	return root
-}
+// racineDepot vit desormais dans capability_test.go (sans tag de build) : la porte de
+// production de Run en a besoin dans les tests ORDINAIRES aussi, et deux copies du meme
+// helper auraient diverge. Il reste visible ici — meme package.
 
 // artefactUsage forge un artefact minimal mais COMPLET pour la projection : un joueur, un
 // socle d'ARME (prise nommee) et un socle de BONUS (occupation anonyme) — le piege central

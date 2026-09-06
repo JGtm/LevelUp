@@ -360,10 +360,14 @@ describe('usageAvailability — états du bloc', () => {
     expect(usageAvailability(undefined, t)).toEqual({ kind: 'hidden' })
   })
 
-  it('indisponible → état vide avec la raison', () => {
+  // LES DEUX RAISONS DE N'AVOIR RIEN NE SE DISENT PAS PAREIL (2026-09-05, registre L4).
+  it("titre sans résumé d'usage (unsupported) → caché, pas de carte morte", () => {
     expect(
       usageAvailability({ ...base, available: false, unavailable_reason: 'unsupported' }, t),
-    ).toEqual({ kind: 'empty', message: t.unavailableUnsupported })
+    ).toEqual({ kind: 'hidden' })
+  })
+
+  it('lecture échouée (load_failed) → état vide AVEC la raison (transitoire, il faut le dire)', () => {
     expect(
       usageAvailability({ ...base, available: false, unavailable_reason: 'load_failed' }, t),
     ).toEqual({ kind: 'empty', message: t.unavailableLoadFailed })

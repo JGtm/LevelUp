@@ -110,15 +110,17 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		// inclus). Câblé ici comme Timeseries (parité), le pipeline route les events
 		// par timeline.CorrectEvents avant les builders narrative.
 		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb)).
-		// Timeline objectif v3 + positions joueurs keyframe v3 : deux loaders
-		// optionnels. Titre sans film / tables absentes → le repo remonte
-		// ErrCapabilityNotSupported et l'endpoint rend un 503 propre.
-		WithObjectiveEventsRepo(duckdb.NewObjectiveEventsRepo(pdb)).
-		WithPlayerPositionsRepo(duckdb.NewPlayerPositionsRepo(pdb)).
 		// Rejeu 2D : MÊME service que l'endpoint /replay (une seule résolution de
 		// chemin dans le dépôt). Seule IsAvailable est appelée par la Match View,
 		// pour publier `replay_available` sans lire l'artefact.
 		WithReplay(r.replayServiceFor(pdb))
+	// Timeline objectif v3 + positions joueurs keyframe v3 : les DEUX PROJECTIONS DE
+	// L'ARTEFACT DE REJEU servies à la Match View. Câblées SOUS CONDITION : un titre qui
+	// ne déclare pas `film.replay_artifact` n'obtient AUCUN des deux loaders, et ses deux
+	// endpoints (/objective-events, /positions) rendent alors un 503
+	// capability_not_supported — non plus un 200 [] indistinguable d'un match sans données.
+	// Le pourquoi et la chaîne complète : registry_pages_film.go.
+	svc = r.filmArtifactReposFor(svc, pdb)
 	if repo := r.killDistanceRepoFor(pdb); repo != nil {
 		svc = svc.WithKillDistanceRepo(repo)
 	}
