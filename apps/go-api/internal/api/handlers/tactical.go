@@ -19,6 +19,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -134,9 +135,13 @@ func (h *TacticalHandler) handleGetRaster(ctx context.Context, in *tacticalRaste
 	if err != nil {
 		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
-	mapID := strings.TrimSpace(in.MapID)
-	if mapID == "" {
-		return nil, humacore.NewError(http.StatusBadRequest, "missing_map_id", "map_id est requis")
+	mapID, ok := MapIDValide(in.MapID)
+	if !ok {
+		// MEME 404 que « cette carte, ce joueur ne l'a pas jouee » : un code distinct pour
+		// un refus de VALIDATION dirait a l'appelant que son entree a franchi le routeur
+		// mais pas le filtre — un oracle gratuit sur la frontiere.
+		return nil, humacore.NewError(http.StatusNotFound, "tactical_map_unknown",
+			domain.ErrTacticalCarteInconnue.Error())
 	}
 	raster, err := svc.Raster(ctx, mapID,
 		defautSiVide(in.Question, domain.TacticalQuestionMorts),
@@ -168,7 +173,7 @@ func (h *TacticalHandler) handleGetMapBackground(
 	bg, err := svc.MapBackgroundForMap(ctx, mapID)
 	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		return nil, humacore.NewError(http.StatusNotFound, "map_background_not_available",
-			"aucun fond de carte pour cette carte")
+			messageSansFond)
 	}
 	if err != nil {
 		return nil, mapTacticalError(ctx, err, "tactical.map_background")
@@ -182,9 +187,12 @@ func (h *TacticalHandler) handleGetMapBackground(
 func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	slug := chi.URLParam(r, "player_slug")
-	mapID := strings.TrimSpace(chi.URLParam(r, "map_id"))
-	if mapID == "" {
-		writeError(ctx, w, http.StatusBadRequest, "missing_map_id", "map_id est requis")
+	mapID, ok := MapIDValide(chi.URLParam(r, "map_id"))
+	if !ok {
+		// MEME message que l'absence de fond, pas seulement le meme code : un libelle
+		// distinct suffirait a distinguer un refus de validation d'une carte sans fond.
+		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
+			messageSansFond)
 		return
 	}
 	svc, err := h.newReplay(ctx, slug)
@@ -195,7 +203,7 @@ func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *
 	blob, err := svc.MapBackgroundImageForMap(ctx, mapID)
 	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
-			"aucun fond de carte pour cette carte")
+			messageSansFond)
 		return
 	}
 	if err != nil {
@@ -212,19 +220,68 @@ func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *
 	}
 }
 
-// replayPourCarte resout le service de rejeu du joueur et valide le map_id.
+// replayPourCarte VALIDE le map_id puis resout le service de rejeu du joueur.
+//
+// L'ORDRE COMPTE : on valide AVANT de resoudre le service, donc avant toute lecture. Une
+// entree hors vocabulaire ne doit toucher ni la base ni le disque.
 func (h *TacticalHandler) replayPourCarte(
 	ctx context.Context, playerSlug, rawMapID string,
 ) (port.ReplayService, string, error) {
+	mapID, ok := MapIDValide(rawMapID)
+	if !ok {
+		// MEME message que l'absence de fond (cf. handleGetMapBackgroundImage).
+		return nil, "", humacore.NewError(http.StatusNotFound, "map_background_not_available",
+			messageSansFond)
+	}
 	svc, err := h.newReplay(ctx, playerSlug)
 	if err != nil {
 		return nil, "", humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
-	mapID := strings.TrimSpace(rawMapID)
-	if mapID == "" {
-		return nil, "", humacore.NewError(http.StatusBadRequest, "missing_map_id", "map_id est requis")
-	}
 	return svc, mapID, nil
+}
+
+// motifMapID : le vocabulaire COMPLET d'un identifiant de carte.
+//
+// Un map_id est soit un asset UGC (uuid), soit la cle d'un module Forge : des lettres, des
+// chiffres, un tiret, un souligne. Rien d'autre. Le motif est une LISTE BLANCHE — le premier
+// caractere est alphanumerique (pas de nom cache, pas de tiret d'option), la longueur est
+// bornee.
+// messageSansFond : LE message des deux refus du fond — carte hors vocabulaire et carte
+// sans image figee. Un seul littéral, parce que deux libelles distincts sous le meme code
+// suffiraient a rendre la validation observable.
+const messageSansFond = "aucun fond de carte pour cette carte"
+
+var motifMapID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`)
+
+// MapIDValide valide un map_id venu de l'URL et rend sa forme nettoyee.
+//
+// POURQUOI CETTE VALIDATION EXISTE, ET POURQUOI ELLE EST STRICTE (revue R1, constat G1).
+// Le map_id est la PREMIERE cle de fond de carte entierement controlee par l'appelant : sur
+// le chemin par match, la cle venait de `match_registry`, donc de la base. Ici elle traverse
+// le handler, le service, puis `PathResolver.MapBackground{,Meta}Path`, qui la concatene par
+// `filepath.Join(dir, cle + ".json")`. Sous Windows, `..\..\x` passe chi comme UN SEUL
+// segment de chemin et `filepath.Join` traite l'antislash comme un separateur : le `os.Stat`
+// et le `os.ReadFile` sortaient alors du repertoire des fonds. Ce qui protegeait le depot
+// jusqu'ici n'etait pas une verification mais trois accidents de plate-forme (le schema du
+// sidecar exige, chi qui ne de-echappe pas, l'antislash non separateur sous Linux).
+//
+// UN REFUS EST UN 404, JAMAIS UN 400. Un statut distinct pour un refus de validation dirait
+// a l'appelant que son entree a franchi le routeur mais pas le filtre — un oracle gratuit
+// sur la frontiere. Chaque route rend donc SON code d'absence habituel : un map_id hostile
+// est indiscernable d'une carte que le joueur n'a jamais jouee.
+//
+// LE SERVICE NE FAIT PAS CONFIANCE A CE HELPER : `resolveBackgroundKeyDepuis` refuse a son
+// tour toute cle porteuse d'un separateur ou d'un `..`, juste avant le systeme de fichiers
+// (defense en profondeur — un futur appelant pourrait oublier cette porte-ci).
+// AUCUNE NORMALISATION : le motif s'applique a la valeur BRUTE. Un `TrimSpace` prealable
+// aurait fait de `carte%20` un `carte` valide — deux URL distinctes pour une meme
+// ressource, et une frontiere qui repare son entree au lieu de la refuser. Un map_id reel
+// ne porte jamais d'espacement.
+func MapIDValide(raw string) (string, bool) {
+	if !motifMapID.MatchString(raw) {
+		return "", false
+	}
+	return raw, true
 }
 
 // defautSiVide applique le defaut d'un parametre absent. Un parametre PRESENT mais
