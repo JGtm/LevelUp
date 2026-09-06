@@ -88,6 +88,12 @@ var filmBuildAllowedCallers = map[string]string{
 		"attente bornee, aucune base ouverte. Le PARENT (parent.go) lit le corpus et ne decode " +
 		"rien — il n'enchaine jamais deux films dans un processus, c'est le motif des quatre " +
 		"sinistres RAM que ce ratchet garde",
+	"cmd/replay-corpus-gate/bake.go": "2026-09-06 — gate de non-regression sur corpus TEMOIN " +
+		"(config/replay_corpus.toml, borne a quelques temoins, jamais le parc entier) : un film " +
+		"a la fois DANS ce processus (boucle sequentielle sur le manifeste), verrou solo PRIS " +
+		"PAR TEMOIN sur lockRoot = CacheRootDir() du PARC (pas de la racine de travail — " +
+		"s'exclut avec TOUT AUTRE outil de cuisson de la machine, cf. roots.go), priorite basse " +
+		"et sentinelle memoire (filmproc.Arm) armees et desarmees PAR TEMOIN dans bakeTemoin",
 }
 
 func TestNoUnboundedFilmLoop(t *testing.T) {
