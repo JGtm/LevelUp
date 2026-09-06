@@ -1,0 +1,35 @@
+abilityCharges	12	008f517f4be53ecb2f8c03e5e0077622ebb532f3f707f3fbdf88c68856c33e11	{Slot:516 Chunk:2 PacketIndex:1326 TimestampUS:4548900597 Emplacement:2 Charges:4 Low:0}
+abilityImpulses	12	5f9b29f11df21b62d53da9ca5123ba5e46575d5c147fca837ad16ca55ab6b9bc	{Slot:519 Chunk:2 PacketIndex:1424 TimestampUS:4549718048 Predicted:true}
+abilityRanks	15	796460e87a25cf3bc95865467a9fb3ec0738b3e9cb7065ee9b6c0c9fd3e4614c	{Slot:513 Chunk:1 PacketIndex:366 TimestampUS:4521507487 Counter:5 Rank:20}
+bipedAim	398	729727bd5d1b159024d537c4f03c9eda0faf503f662216e90ddcde473968a74b	{Slot:513 Chunk:2 PacketIndex:770 TimestampUS:4544262832 YawRaw:320 PitchRaw:1024}
+camoStates	126	4b513c57c1c67f9d8da8eb64992410d2b6387ecbfaaa3897f16abb639bb25ccd	{Slot:518 Chunk:2 PacketIndex:732 TimestampUS:4543944946 Q:0}
+grappleReads	9	e585e9a849606d0ad17cea6cc13d0f34c84af14f16a2024a3f450ca6bb4519f7	{Slot:516 Chunk:2 PacketIndex:1306 TimestampUS:4548734213 Heavy:false PosQ:[3756 4793 9922]}
+heldWeaponChanges	4	c3f9f1243d1993d4ffd1bbde068cead49f3a1708ee715912c6f2baec75156058	{TimestampUS:4566702642 Chunk:3 Slot:520 SlotIndex:44 Family:2216347109 Low:3637542049 Previous:4294967295 Kind:"taken"}
+inventoryDeltas	187	d3d5d0dcc3b7c8363ddf6a35669ea03a95e649612dff63a5968cd0ef83b4c05d	{Slot:516 Chunk:2 PacketIndex:1666 TimestampUS:4551737292 Grenades:[] Mask:0 Sel:0 SelRead:false Ammo:[{WeaponSlot:1 Mag:&6 FracQ:nil Res:ni...
+unitEquipment	11	d5c1d891ea6ec9166a3be4c217fc17146fabf3e624188d08eb185d5de883b70a	{Slot:517 TimestampUS:4551720527 Read:{Head:7 Entries:[{Val:972 Tail:1 Present:true}]}}
+equipmentChanges	17	9600ce9c98047c3b2ff7b7dca09d84e056b0de4e30182905e92e399ba2eba6b6	{TimestampUS:4521507487 Chunk:1 PacketIndex:366 Slot:513 Counter:5 Rank:20 Previous:-1 Kind:"taken" Recovered:false Gap:0}
+equipmentState	65	88f3e619a4a0b0fac9f4df3b6a5686632e7f9d5a727a1433f0f678ee60d63e9f	{Slot:1499 Gen:0 Chunk:1 PacketIndex:386 TimestampUS:4521673006 Seen:[false false false false true false] Present:[false false false false t...
+bipedPositions	28004	925b3cb96889896728cef51365f60c6ef55753ee1e467e0a57cdcb221edd34ac	{Slot:513 Chunk:1 PacketIndex:366 TimestampUS:4521507487 X:-4.3214555 Y:17.107574 Z:-1.2180053 HasWorld:true Q:[2661 5305 9904] componentDir...
+projectiles	53	8a1ca014948ec8b45dcb5ee24f127555e62fe3c3cd2638ea657e0875ffe4e5cb	{Slot:1024 Gen:1 Pts:[{TimestampUS:4547783005 Chunk:2 X:35.36936 Y:11.619446 Z:1.0403671 AtRest:false} {TimestampUS:4547799072 Chunk:2 X:34....
+worldObjects_ti42	46	7284b1187a51711f4fa34a496cf578df7742123f786360cc18077ad66ea27801	{Slot:1348 Gen:1 Pts:[{TimestampUS:4519395277 Chunk:1 X:5.28339 Y:28.959145 Z:-1.5034561 AtRest:false} {TimestampUS:4519406675 Chunk:1 X:5.2...
+equipmentCreations	38	f14e3ed2a7ee6f603d1db44ec1b5a03937e0e623c93a161aae31644380ceadbd	{Slot:1509 Gen:1 Chunk:2 PacketIndex:1530 TimestampUS:4550602717 BitPos:2 HasRef:false Ref:0 HasID:false AbilityID:0 MPPPresent:[true true f...
+groundWeaponCreations	28	aae93eb2f7372c10910f8653fb22ec6d26df327ed70d4ccd78e4269aa1f48aa6	{Slot:1346 Gen:1 Chunk:1 PacketIndex:8 TimestampUS:4517904166 BitPos:26324 HasRef:false Ref:0 HasID:false AbilityID:0 MPPPresent:[true true ...
+vehicleCreations	-1	cdf18e988eb87798ddf2ea1154516644288a6ee16fc3c173528bbfe7ce29a577	ERREUR: aucun slot d'archetype ti=40 dans les keyframes du film
+equipmentPlacements	35	a61146baf95a08fd37880bf988308da03cec219bbaeb08718669b9cda658e55b	{Life:{Slot:1509 Gen:1} T0US:4550602717 T1US:4551203771 X:8.641632 Y:12.494766 Z:-1.7805023 GlobalID:1385156166 Points:35}
+worldObjectKeyframes_ti35	17	aebfa0835bf11525be8795fec905c18479b386e5bd72c8684253ba8cf9e60433	[4517903407 4537898226 4557902392 4577905828 4597909111]
+managedProperties	141	ae860c480b97cb154624642a8a1d86ac2c121d325ff786432412615f196d1014	{Slot:1456 TimestampUS:4545479952 Field:1 FilmIndex:25 Tag:12 Value:10 HasValue:true Chained:false}
+objectives_ti11	-1	f7d5dbed66d7463ee2e5d71a9585905f9175625ea45a3759f1d67f3a621de46b	ERREUR: aucun slot d'archetype ti=11 dans les keyframes du film
+navpointRadial	0	f4eaa343056424dda79b2c76fd0643e4b071e8a079a9cfdcf480f4b2f06d8419	(population vide)
+fireEvents	45	0112a2bb8caa4c809dc3b5a847d3260609f4eaf2cafabf9b3159f36f00eae996	{Chunk:2 PacketIndex:1666 TimestampUS:4551737292 Variant:0 FilmIndex:4 ShooterIndex5:4 WeaponID:9564847282609285023 Flags:[0 1 1 1 0] HasAim...
+grenadeThrows	10	40158cec7a4d35b9b031b87cf766bfd6d9ebd26cdd1d2c0a5562953bbb29cc96	{TimestampUS:4554940701 Chunk:2 PacketIndex:2050 BitPos:195 FilmIndex:4 TypeID:3236121668}
+bipedPickups	21	47cccac009159d6193ee2fff1a12cb6782e877f4021fdbb91cbe76141ed2957e	{TimestampUS:4521524430 Chunk:1 Slot:512 CatalogID:31913 Class:0}
+zoomEvents	37	d2686333cb17a0d976c69cbaf1650eb000c84924a23c9562321c23d08e2dbf51	{TimestampUS:4551203771 Slot:517 Level:1}
+translocatorTeleports	0	4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945	(population vide)
+vehicleEvents	0	4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945	(population vide)
+carrierMarks	0	d6a65f97afe19919221450ba9c2d5c791a7c737a294df11d291c4c5de302d95d	(population vide)
+catalogueFamillesDuFilm	15	2b1b39c60ec667315a3442ffe5127dc3d6d7c93b6ccb665157edb399f7e7f66b	map[1120495519:true 169448124:true 1907034668:true 2157411237:true 220251241:true 2216347109:true 2226989549:true 2475141305:true 2694143646...
+keyframeLoadouts	30	1c6ac856b1cb74bef5271b0b29afe1071ca97ce04ee254bbf3ed78a86ce91a6c	{TimestampUS:4537898226 Chunk:2 PacketIndex:1 Slot:512 Families:[1120495519 2216347109 1120495519]}
+keyframeGroundWeapons	28	34845121e4ece6c4ee96b1d2fec2eef94b54fdccbd18d8b07675f16c70e6b306	{TimestampUS:4537898226 Chunk:2 PacketIndex:1 Slot:1346 Gen:1 Families:[3924295545]}
+weaponShots	45	d99cb487b59c4572da14279a0f94e3fe4b9f07b66d380f2a94b53dff96e62823	{TimestampUS:4551737292 Attacker:4 WeaponID:9564847282609285023 FilmIndex:4 HasPair:true}
+weaponDamages	46	ca6255f40deeda294486bd43bb7fa2339117d2c98bf44973775412dfcdbfbadd	{TimestampUS:4552522451 VictimIdx:3 ResponsibleIdx:4 Source:4004011046 HasSource:true Negative:false MagClear:4 MagRaw:8}
+weaponDamagesBaseSlot	512	94f8607915dff25f013e45fc0642fb9830b0fb25ab0ab46d477eaf1061def379	512
