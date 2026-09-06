@@ -56,8 +56,12 @@ type TacticalService struct {
 	repo port.TacticalRepository
 	caps games.CapabilityMap
 	// xuid est le joueur de la page : l'univers et l'axe « moi » sont les siens.
-	xuid   string
-	logger *slog.Logger
+	xuid string
+	// rasters lit les sidecars d'occupation (phase 6). NIL = la lecture `temps` degrade
+	// en 503 EN LE DISANT (cf. lectureOccupation) ; les trois autres questions, qui se
+	// lisent sur la base, n'en dependent pas.
+	rasters port.TacticalRasterStore
+	logger  *slog.Logger
 }
 
 // NewTacticalService construit le service.
@@ -67,6 +71,18 @@ type TacticalService struct {
 // degradation : une map non chargee ne vaut pas une capability presente.
 func NewTacticalService(repo port.TacticalRepository, caps games.CapabilityMap, playerXUID string) *TacticalService {
 	return &TacticalService{repo: repo, caps: caps, xuid: playerXUID, logger: slog.Default()}
+}
+
+// WithRasterStore injecte le lecteur de sidecars d'occupation. Chainable.
+//
+// UN `With*` PLUTOT QU'UN 4e PARAMETRE, et la raison n'est pas la commodite : ce lecteur
+// ne sert QU'A la lecture d'occupation, qui est la seule des quatre a ne pas venir de la
+// base. Le mettre au constructeur aurait fait porter une dependance de fichier a vingt
+// sites de test qui n'en ont aucun besoin. L'oubli de cablage, lui, ne peut pas passer
+// inapercu : il rend un 503 ET une ligne ERROR nominative (cf. lectureOccupation).
+func (s *TacticalService) WithRasterStore(store port.TacticalRasterStore) *TacticalService {
+	s.rasters = store
+	return s
 }
 
 // WithLogger injecte un logger (sinon slog.Default()). Chainable.
@@ -122,7 +138,23 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 	if err := validerLecture(carte, question, qui, scope.Coequipiers); err != nil {
 		return out, err
 	}
-	if s.repo == nil || !positionsDeKillLisibles(s.caps) {
+	if s.repo == nil {
+		return out, games.ErrCapabilityNotSupported
+	}
+	if question == domain.TacticalQuestionTemps {
+		// L'OCCUPATION A SA PROPRE PORTE, ET CE N'EST PAS CELLE DES POSITIONS DE KILL :
+		// elle ne lit pas `kill_positions` du tout, elle somme des sidecars tires des
+		// PISTES du film. Exiger la porte des positions ici fermerait la lecture a un
+		// titre qui produit des artefacts sans publier de positions de kill, et
+		// l'inverse — servir l'occupation d'un titre sans artefact — rendrait une carte
+		// vide qui se lirait « il ne se passe rien ici ».
+		// L'ERREUR EST CAPTUREE AVANT LE RETOUR : `return out, f(&out)` laisserait
+		// l'ordre d'evaluation des operandes decider si la reponse rendue est celle
+		// d'avant ou d'apres le remplissage.
+		err := s.rasterOccupation(ctx, &out, scope)
+		return out, err
+	}
+	if !positionsDeKillLisibles(s.caps) {
 		s.logger.WarnContext(ctx, "tactique: aucune position de kill lisible pour ce titre",
 			"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "map_id", carte, "question", question)
 		return out, games.ErrCapabilityNotSupported
@@ -225,6 +257,15 @@ func projeter(lecture domain.TacticalPositions, question string, cible predicatQ
 // couverture (compterJournal) — pour qu'un « ou je gagne » qui cesserait de compter
 // les morts ne puisse pas le faire d'un seul cote.
 func facesDeLaQuestion(question string) (prendVictime, prendTueur bool) {
+	if question == domain.TacticalQuestionTemps {
+		// L'OCCUPATION NE REGARDE AUCUNE FACE D'UNE MORT : elle se lit sur les pistes du
+		// film, pas sur le journal. Sa couverture est celle des SIDECARS — l'ecart entre
+		// `matchs_filtres` et `matchs_retenus` —, pas un compte d'evenements localises.
+		// Sans ce cas, la question serait tombee dans la branche par defaut et aurait
+		// compte les DEUX faces, comme « ou je gagne » : un denominateur de couverture
+		// qui ne decrit pas la mesure affichee.
+		return false, false
+	}
 	return question != domain.TacticalQuestionKills, question != domain.TacticalQuestionMorts
 }
 

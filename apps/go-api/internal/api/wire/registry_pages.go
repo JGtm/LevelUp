@@ -156,8 +156,9 @@ func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayServ
 // (lectures de placement par carte + KPI d'echange). UN SEUL endroit de
 // construction, comme replayServiceFor.
 //
-// Multi-titre : les deux portes data-level (`film.kill_positions` pour les
-// rasters, `film.kill_source` pour l'echange) sont lues sur la CapabilityMap de
+// Multi-titre : les trois portes data-level (`film.kill_positions` pour les
+// lectures de placement, `film.kill_source` pour l'echange, `film.replay_artifact`
+// pour l'occupation) sont lues sur la CapabilityMap de
 // l'adapter du titre du joueur (capabilitiesForPDB → dataAdapterForPDB, avec repli
 // sur les capabilities HI du boot). JAMAIS une comparaison de slug. Un titre qui
 // n'expose pas les positions rend ErrCapabilityNotSupported → 503 propre.
@@ -171,7 +172,12 @@ func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.Tacti
 		return nil, err
 	}
 	repo := duckdb.NewTacticalRepo(pdb)
-	return service.NewTacticalService(repo, r.capabilitiesForPDB(pdb), pdb.XUID), nil
+	// LE LECTEUR DE SIDECARS D'OCCUPATION (phase 6) : la seule source de l'onglet qui ne
+	// soit pas une base. Il est monte ici, au seul endroit de construction du service —
+	// sans lui, la lecture « ou je passe mon temps » degrade en 503 en le disant.
+	rasters := service.NewTacticalRasterStore(r.cfg.RepoRoot, pdb.TitleSlug)
+	return service.NewTacticalService(repo, r.capabilitiesForPDB(pdb), pdb.XUID).
+		WithRasterStore(rasters), nil
 }
 
 // MatchEvents retourne un MatchEventsService pour le joueur : timeline canonique

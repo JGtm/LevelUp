@@ -12,6 +12,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -316,5 +317,65 @@ func TestTacticalRepo_MesureExigePublishable(t *testing.T) {
 	}
 	if got.Univers.Matchs[0].Mesure {
 		t.Error("un match dont la seule passe est non publiable ne doit pas compter comme mesure")
+	}
+}
+
+// TestTacticalRepo_Univers_MemePopulationQueLesLecturesSpatiales — LA MEME DEFINITION,
+// exposee.
+//
+// La lecture d'OCCUPATION (phase 6) n'a besoin que de l'univers : ses valeurs viennent
+// des sidecars de raster, pas de la base. Ce test exige que l'univers rendu SEUL soit
+// EXACTEMENT celui que `KillPositions` rend avec ses points — matchs, resultats, drapeau
+// de mesure et equipes. Deux definitions de l'univers auraient mesure sur deux
+// populations differentes sous le meme nom de filtre, et l'ecart ne se serait vu qu'a la
+// lecture des chiffres.
+func TestTacticalRepo_Univers_MemePopulationQueLesLecturesSpatiales(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	seedTacticalCorpus(t, pdb)
+	repo := NewTacticalRepo(pdb)
+
+	seul, err := repo.Univers(context.Background(), tacQuery(tacCarteA))
+	if err != nil {
+		t.Fatalf("Univers: %v", err)
+	}
+	avecPoints, err := repo.KillPositions(context.Background(), tacQuery(tacCarteA))
+	if err != nil {
+		t.Fatalf("KillPositions: %v", err)
+	}
+	if !egales(matchIDs(seul.Matchs), matchIDs(avecPoints.Univers.Matchs)) {
+		t.Fatalf("univers seul = %v, univers de KillPositions = %v",
+			matchIDs(seul.Matchs), matchIDs(avecPoints.Univers.Matchs))
+	}
+	if !reflect.DeepEqual(seul.Matchs, avecPoints.Univers.Matchs) {
+		t.Fatalf("les matchs different au-dela de leurs identifiants :\n  seul  %+v\n  spat. %+v",
+			seul.Matchs, avecPoints.Univers.Matchs)
+	}
+	if !reflect.DeepEqual(seul.Equipes, avecPoints.Univers.Equipes) {
+		t.Fatalf("les equipes different :\n  seul  %+v\n  spat. %+v", seul.Equipes, avecPoints.Univers.Equipes)
+	}
+	// Le corpus contient m2, un match MUET (aucune position) mais RETENU : c'est le zero
+	// legitime, et il doit etre la aussi dans la lecture d'univers seul.
+	if len(seul.Matchs) < 2 {
+		t.Fatalf("univers = %v, attendu au moins m1 et le match muet m2", matchIDs(seul.Matchs))
+	}
+}
+
+// TestTacticalRepo_Univers_ToutesCartes — `MapID` vide = toutes les cartes, comme partout
+// dans ce lecteur.
+func TestTacticalRepo_Univers_ToutesCartes(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	seedTacticalCorpus(t, pdb)
+	q := tacQuery("")
+	got, err := NewTacticalRepo(pdb).Univers(context.Background(), q)
+	if err != nil {
+		t.Fatalf("Univers: %v", err)
+	}
+	surUneCarte, err := NewTacticalRepo(pdb).Univers(context.Background(), tacQuery(tacCarteA))
+	if err != nil {
+		t.Fatalf("Univers (une carte): %v", err)
+	}
+	if len(got.Matchs) <= len(surUneCarte.Matchs) {
+		t.Fatalf("toutes cartes = %v, une carte = %v : le predicat de carte n'est pas neutralise",
+			matchIDs(got.Matchs), matchIDs(surUneCarte.Matchs))
 	}
 }

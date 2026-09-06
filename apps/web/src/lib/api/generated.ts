@@ -3523,7 +3523,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne) */
+        /** Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne, ou je passe mon temps) */
         post: operations["getTacticalRaster"];
         delete?: never;
         options?: never;
@@ -11677,7 +11677,7 @@ export interface components {
             coequipiers?: string[] | null;
             /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
             match_ids?: string[] | null;
-            /** @description Lecture : morts | kills | gagne. Defaut : morts. */
+            /** @description Lecture : morts | kills | gagne | temps. Defaut : morts. « temps » (occupation) exige film.replay_artifact. */
             question?: string;
             /** @description Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers. */
             qui?: string;

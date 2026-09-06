@@ -76,7 +76,7 @@ func (h *TacticalHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	huma.Post(api, "/tactical/maps", h.handleGetMaps,
 		humacore.Op("getTacticalMaps", "Cartes jouees, pour la grille d'entree de l'onglet Tactique", "tactical"))
 	huma.Post(api, "/tactical/{map_id}/raster", h.handleGetRaster,
-		humacore.Op("getTacticalRaster", "Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne)", "tactical"))
+		humacore.Op("getTacticalRaster", "Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne, ou je passe mon temps)", "tactical"))
 	huma.Get(api, "/tactical/{map_id}/background", h.handleGetMapBackground,
 		humacore.Op("getTacticalMapBackground", "Calage du fond d'une carte de l'onglet Tactique", "tactical"))
 	// Route chi nue : la charge utile est binaire, comme le fond du rejeu par match.
@@ -110,7 +110,7 @@ type tacticalMapsBody struct {
 type tacticalRasterBody struct {
 	MatchIDs    []string `json:"match_ids,omitempty" doc:"Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match."`
 	Coequipiers []string `json:"coequipiers,omitempty" doc:"XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade »."`
-	Question    string   `json:"question,omitempty" doc:"Lecture : morts | kills | gagne. Defaut : morts."`
+	Question    string   `json:"question,omitempty" doc:"Lecture : morts | kills | gagne | temps. Defaut : morts. « temps » (occupation) exige film.replay_artifact."`
 	Qui         string   `json:"qui,omitempty" doc:"Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers."`
 }
 

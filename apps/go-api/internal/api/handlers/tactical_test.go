@@ -337,3 +337,46 @@ func TestTacticalHandler_CompositionInvalide400(t *testing.T) {
 		}
 	}
 }
+
+// TestTacticalHandler_QuestionTemps : la question `temps` (occupation) traverse le
+// contrat comme les trois autres — le handler ne connait aucun vocabulaire, il transmet.
+func TestTacticalHandler_QuestionTemps(t *testing.T) {
+	svc := &fakeTacticalSvc{raster: domain.TacticalRaster{
+		MapID: "streets", Question: domain.TacticalQuestionTemps, Qui: domain.TacticalQuiMoi,
+		MatchsFiltres: 4, MatchsRetenus: 3, PasM: 0.5,
+		Cellules: []domain.CelluleTactique{{Col: 2, Lig: 3, Valeur: 1.5, Brut: 18, Matchs: 3}},
+	}}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+	w := appelPost(t, r, "/players/JGtm/tactical/streets/raster",
+		`{"match_ids":["m1","m2","m3","m4"],"question":"temps"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	if svc.vuQuestion != domain.TacticalQuestionTemps {
+		t.Fatalf("question transmise = %q, attendu %q", svc.vuQuestion, domain.TacticalQuestionTemps)
+	}
+	var got domain.TacticalRaster
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	// Les DEUX denominateurs traversent : sans eux le pied de carte ne peut pas dire
+	// « 3 matchs mesures sur 4 », qui est toute la couverture d'une lecture d'occupation.
+	if got.MatchsFiltres != 4 || got.MatchsRetenus != 3 {
+		t.Fatalf("denominateurs = %d/%d, attendu 3 sur 4", got.MatchsRetenus, got.MatchsFiltres)
+	}
+	if len(got.Cellules) != 1 || got.Cellules[0].Valeur != 1.5 || got.Cellules[0].Brut != 18 {
+		t.Fatalf("cellules = %+v : la valeur (secondes) et le brut (echantillons) doivent traverser ensemble",
+			got.Cellules)
+	}
+}
+
+// TestTacticalHandler_TempsSansCapability : un titre qui ne produit pas d'artefact de
+// rejeu rend 503, jamais 200 avec une carte vide.
+func TestTacticalHandler_TempsSansCapability(t *testing.T) {
+	svc := &fakeTacticalSvc{errRast: games.ErrCapabilityNotSupported}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+	w := appelPost(t, r, "/players/JGtm/tactical/streets/raster", `{"match_ids":["m1"],"question":"temps"}`)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d body=%s, attendu 503", w.Code, w.Body.String())
+	}
+}

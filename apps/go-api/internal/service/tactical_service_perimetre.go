@@ -35,7 +35,8 @@ func validerLecture(carte, question, qui string, coequipiers []string) error {
 		return domain.ErrTacticalCarteInconnue
 	}
 	switch question {
-	case domain.TacticalQuestionMorts, domain.TacticalQuestionKills, domain.TacticalQuestionGagne:
+	case domain.TacticalQuestionMorts, domain.TacticalQuestionKills, domain.TacticalQuestionGagne,
+		domain.TacticalQuestionTemps:
 	default:
 		return fmt.Errorf("%w (%q)", domain.ErrTacticalQuestionInconnue, question)
 	}

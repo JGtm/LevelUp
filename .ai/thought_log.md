@@ -1,3 +1,49 @@
+## [2026-09-06] Plan Tactique phase 6 — les rasters d'occupation cuits une fois, sommes a la lecture — Complete
+
+**Decision technique principale.** L'occupation (« ou je passe mon temps ») est desormais
+calculee UNE SEULE FOIS, a la cuisson de l'artefact, et deposee en SIDECAR par match
+(`data/cache/replays/{slug}/rasters/{short}.json`). La page n'en somme que des fichiers :
+aucun cache d'agregat, aucune invalidation. Quatre proprietes portent le lot. (1) **Un
+echantillon vaut 250 ms de presence, pas un point de film** : le film ne replique une
+position que lorsqu'elle change assez, donc compter les points bruts aurait mesure le
+mouvement et non le temps passe ; le reechantillonnage tient la derniere position connue sur
+une fenetre DEMI-OUVERTE, 2 s font huit quarts de seconde. (2) **Le plancher de rarete
+appartient a l'agregat** : ecrit avec `Cellules()`, un sidecar de match aurait ete vide par
+construction (une cellule d'un match compte un match distinct) — d'ou `CellulesBrutes()`, la
+forme qu'on stocke, sans plancher ni division. (3) **Un sidecar absent est un match NON
+MESURE**, pas un match a zero : meme regle que le drapeau `Mesure` du journal des morts,
+appliquee a l'autre substrat — le compter au denominateur aurait fait varier l'intensite avec
+la couverture de film au lieu du jeu. (4) **Rien ne cuit, et c'est garde par ratchet** : ni la
+page ni le rattrapage `levelup tactical-rasters --backfill` ne peuvent nommer `replaybuild`,
+`BuildFromFilm` ou `filmcache` (`archlint/no_cuisson_depuis_tactique_test.go`, self-check par
+cible). Le rattrapage n'ouvre AUCUNE base, pas meme en lecture : le sidecar est par match et
+anonyme, il n'y a rien a demander a DuckDB.
+
+**Resultats observes.** Gate complet vert. Go : `gofmt` et `go vet` propres, `go test -count=1`
+sur les 10 arbres sans un `FAIL` (code 0), **`go test -tags=integration -p 1` sur
+`replayartifacts` + `persist` : ok/ok, code de sortie 0** (le diff touche `internal/sync/`),
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue, `openapi-gen -check` a jour,
+`generated.ts` regenere (2 lignes, additions pures). Web : typecheck propre, lint 0 erreur
+(30 warnings preexistants), **suite vitest COMPLETE 606 fichiers / 6405 tests / 14 skip /
+0 fail**. ONZE inversions jouees, toutes mordantes. Deux pieges rencontres et fermes sur
+place : le sous-dossier `rasters/` n'est pas un choix de rangement mais la CONDITION de
+cohabitation (les deux parcours du dossier d'artefacts — `AvailableSet` et la purge recurrente
+— ne comptent que les `.json` de premier niveau : a plat, un sidecar aurait ete lu comme le
+match d'un artefact inexistant par l'un, et supprime comme indatable par l'autre) ; et deux
+tests existants employaient « temps » comme exemple de question INCONNUE, ce que l'ouverture du
+vocabulaire a invalide — lecon generale, une fixture de valeur invalide ne doit pas emprunter
+au champ semantique de la feature.
+
+**Conclusion / prochaine etape.** Cinq commits sur `feat/tactique` (6.0 a 6.4), non pousses :
+revue adversariale par le superviseur avant push. Trois decouvertes consignees au §7 du plan,
+aucune traitee : la purge des artefacts laisse les sidecars ORPHELINS (quelques kilooctets par
+match, decision produit a prendre) ; `domain/tactical.go` est a 504 lignes depuis la phase 4 bis,
+d'ou la constante `TacticalQuestionTemps` logee dans `domain/tactical_raster.go` plutot que de
+grossir la dette gelee ; et la lecon des fixtures ci-dessus. Suite du plan : phase 7 (occupation,
+spawns, routes, isolement), qui consomme ces sidecars — `tracks.go` lui a ete avance ici, avec
+ses spawns et ses premieres entrees par cellule deja produits. La phase 5 reste GELEE jusqu'au
+lot D de l'audit v2.
+
 ## [2026-09-05] Integration des branches actives dans l'architecture cuisson-perf — CLOSE, merge feat/v75 — Complete
 
 **Decision technique principale.** Tout ce qui devait rejoindre `feat/v75` a ete rejoue DANS

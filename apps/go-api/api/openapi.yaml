@@ -6240,7 +6240,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
           description: Error
-      summary: Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne)
+      summary: Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne, ou je passe mon temps)
       tags:
         - tactical
   /players/{player_slug}/tactical/maps:
@@ -25725,7 +25725,7 @@ components:
             - array
             - "null"
         question:
-          description: 'Lecture : morts | kills | gagne. Defaut : morts.'
+          description: 'Lecture : morts | kills | gagne | temps. Defaut : morts. « temps » (occupation) exige film.replay_artifact.'
           type: string
         qui:
           description: 'Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers.'

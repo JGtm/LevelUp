@@ -171,3 +171,25 @@ func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.
 	})
 	return univ, err
 }
+
+// Univers rend les matchs retenus par le perimetre et la composition de leurs equipes,
+// SANS aucune mesure accrochee — la lecture d'OCCUPATION n'a besoin que de ca (ses
+// valeurs viennent des sidecars de raster, pas de la base).
+//
+// C'est le MEME `chargerUnivers` que les trois autres lectures, expose : deux definitions
+// de l'univers auraient mesure sur deux populations differentes sous le meme nom de
+// filtre. `q.MapID` vide = toutes les cartes, comme partout ici.
+func (r *TacticalRepo) Univers(ctx context.Context, q domain.TacticalQuery) (domain.TacticalUnivers, error) {
+	ctx, cancel := context.WithTimeout(ctx, tacticalReadTimeout)
+	defer cancel()
+	db, release, err := r.ouvrir(ctx, q, "Univers")
+	if err != nil {
+		return domain.TacticalUnivers{}, err
+	}
+	defer release()
+	univ, err := r.chargerUnivers(ctx, db, q)
+	if err != nil {
+		return domain.TacticalUnivers{}, r.degrader(ctx, "Univers", err)
+	}
+	return univ, nil
+}
