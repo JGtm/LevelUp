@@ -956,3 +956,85 @@ de cette meme session viennent de reparer. La note dit ce qui a ete mesure, et p
 ```
 
 Les deux mutations sont annulees ; G1, G3, G4, G5 passent, le paquet `filmdec` est vert.
+
+## Gate de cloture des corrections + E.9 — rejoue INTEGRALEMENT le 2026-09-06
+
+Meme worktree, meme branche, en SERIE, en avant-plan, `-p 1 -parallel 1 -count=1`, prefixe
+`GOCACHE=/c/Users/Guillaume/AppData/Local/go-build-v2-decodeur-2`
+`GOLANGCI_LINT_CACHE=/c/Users/Guillaume/AppData/Local/golangci-v2-decodeur CGO_ENABLED=1`.
+Films lus en LECTURE SEULE dans le checkout principal, UN film par processus. Aucune cuisson
+d'artefact, aucun tag `gamefiles`.
+
+| commande | derniere ligne / verdict | contre la reference E.1 |
+|---|---|---|
+| `go build ./...` | exit 0 | identique |
+| `go vet ./...` | exit 0 | identique |
+| `gofmt -l ./internal/analysis/filmdec/ ./internal/archlint/ ./cmd/rdata_weapon_scan/` | (vide) | identique |
+| les 10 paquets du gate inconditionnel | `ok levelup/go-api/internal/archlint 6.691s` — **10 ok**, exit 0 | identique |
+| `TestEquivalenceMiniFilm` (7 digests de la mini-bobine) | `--- PASS (1.16s)` | identique |
+| goldens killsource, 4 films reels | `FAIL ... 110.302s` — 000d5950 / 9b191a7f / 78919882 PASS, **`fccc61cd` FAIL sur LA MEME ligne** (`3 propose(s)` fige contre `2 propose(s)` mesure, 74 lignes figees / 74 obtenues) | **identique, echec anterieur compris** |
+| `TestReferenceFilms` x4 | les quatre PASS | identique |
+| `TestLigneDiscriminanteEstServieParLaMarche` | `--- PASS (17.25s)` | identique |
+| temoin de marche delta `000d5950` | `{paquets 14350 records 38883 aboutis 30089}` (77.383 %), FAIL contre le fige `{38878, 30080}` | **identique, echec anterieur compris** |
+| empreinte de registre `000d5950` | 50 blocs / 1067 slots / 49 porteurs · `0x61e492dd4de7fd4e` · concordance **true** · PASS | identique |
+| table ECS G1 / G2 / G3 / G4 / **G5** sur `000d5950` | les CINQ PASS. G2 : 50 blocs, 49 porteurs, 1067 = 1067 (+14 alias). G3 : 27 references / 1479 champs | identique (+ G5, nouveau) |
+| golden des familles, **2 passes independantes** | PASS x2, sortie identique, md5 du TSV `e396143919281fde5f92a56d0af03d86` inchange | identique |
+| nouveaux temoins (marcheur x4, preambule) | PASS x2 passes | nouveau |
+| integration `killcollector` (`-tags=integration`) | `ok ... 32.242s` — **67 PASS** | identique |
+| `golangci-lint run --timeout 10m --new-from-merge-base=origin/main ./...` (la commande EXACTE de la CI) | **`0 issues.`**, exit 0 | vert |
+
+AUCUN CHIFFRE DES TEMOINS N'A BOUGE. Les deux echecs ANTERIEURS au lot (golden `fccc61cd`, temoin
+de marche delta) sont retrouves a l'identique : ces corrections ne les reparent pas — c'est le lot A
+qui traite leur cause (P0-1) — et ne les masquent pas.
+
+## Ratchets, apres les corrections
+
+| ratchet | avant | apres | sens |
+|---|---|---|---|
+| `archlint/filmdec_package_vars_test.go` | 96 | 96 | inchange (fichier intact) |
+| `archlint/no_local_longest_run_test.go` | 1 exemption | 1 | inchange (fichier intact) |
+| `archlint/decode_lock_held_test.go` | liste FERMEE de 3 paquets | liste **DERIVEE** + plancher date de 4 | ELARGIT la couverture |
+| `filmdec/event_preamble_guard_test.go` | exemption = le fichier `event_list.go` | exemption = la fonction `readPacketHead` | RESSERRE |
+| `filmdec/ecs_widths_guard_test.go` — `ecsEcartsAdmis` | 3 ecarts admis | **2** | REDESCEND |
+| `filmdec/ecs_widths_guard_test.go` — `ecsLargeursFixes` / `Gardees` | 114 / 65 | 114 / 65 | inchange |
+| `filmdec/ecs_widths_guard_test.go` — G5 | (n'existait pas) | 4 lignes, 12 largeurs figees | NOUVEAU |
+| `filmdec/delta_biped_walk_guard_test.go` | 2 controles | **4** (dont l'avance et les comptes reels) | ELARGIT |
+
+Aucun ratchet n'a monte. Aucune allowlist n'a grandi ; deux ont retreci.
+
+## Statut — les sept points
+
+| # | constat | statut | preuve |
+|---|---|---|---|
+| 1 | C1 P1 — l'avance du marcheur n'etait couverte par rien | `[x]` | M6 rouge : 3 records au lieu de 2, le leurre publie a i0=77 |
+| 2 | C2 P1 — le journal designait un faux oracle pour E.4 | `[x]` | correction datee au gate E.4 + correctif date au thought_log |
+| 3 | C3 P2 — le garde du preambule ne voyait que la moitie des copies | `[x]` | M1 et M2 rouges, sites exacts designes |
+| 4 | C4 P2 — liste fermee + un paquet qui decode sans verrou | `[x]` | ratchet rouge sur `cmd/rdata_weapon_scan/main.go:214 litLoc`, vert apres le verrou |
+| 5 | C5 P2 — `-update` regenerait le golden des familles | `[x]` | M11 : `ok` -> `FAIL`, md5 du golden inchange |
+| 6 | C6 P2 — l'en-tete du golden decrivait un autre fichier | `[x]` | comptes refaits sur le TSV, `rendreStable` cite a la place de `%+v` |
+| 7 | E.9 — table des largeurs, decision utilisateur 10 | `[x]` | G5 mesure 8/8/8 et 45/60/60 ; table re-perimee -> G4 rouge ; code mute -> G4 + G5 rouges |
+
+Aucun `[~]`, aucun `[!]`. Aucun test desactive, aucun skip ajoute, aucun golden regenere, aucune
+allowlist agrandie. Zero ligne de code du DECODEUR touchee : le diff est fait de tests, de gardes,
+de trois lignes de la table ECS (sans lecteur applicatif), d'un verrou dans un binaire d'outillage
+et de journal.
+
+## Decouvertes de cette session — consignees, NON traitees
+
+1. **Le golden des familles jette les denominateurs.** `ajouterSlice(r, "camoStates", camo, err)`
+   ignore le `st` du milieu de `ScanCamoStates`, qui porte pourtant `Records` — le seul chiffre qui
+   compte le travail du marcheur. Ferme cote marcheur delta bipede par le temoin de comptes
+   (correction 1) ; les autres denominateurs de chaque famille (`WithI28`, `Read`, `Unread`,
+   `NoChannel`...) restent hors golden.
+2. **`ScanEquipmentState` n'ancre PAS par le marcheur delta bipede** mais par
+   `matchWorldObjectRecord` (`equipment_state.go:310`), sur la bande des slots d'equipement. Son
+   denominateur (5 282 records sur la mini-bobine) n'est fige nulle part — il releve du marcheur
+   d'objets du monde, qui n'a pas eu son item E.4.
+3. **Deux formes de copie du preambule restent invisibles au garde AST** : les neuf bits repartis
+   entre deux suites de statements imbriquees, et la copie par arithmetique d'offset
+   (`readBitsAt(pay, p+2, 7)`). Les deux sont ecrites dans l'en-tete du fichier ; aucune des six
+   copies d'origine n'avait ces formes.
+4. **`bits_typ` melange deux semantiques** — une largeur FIXE et une largeur NOMINALE — et c'est ce
+   melange qui oblige `ecsEcartsAdmis` a exister. Les distinguer (par exemple en prefixant les
+   nominales) est une reecriture de la table, hors du perimetre de l'item E.9 qui corrige entree
+   par entree sur mesure.

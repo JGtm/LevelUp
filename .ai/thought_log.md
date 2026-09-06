@@ -95544,3 +95544,97 @@ mecanisme restes sans ecrivain (`accumWorld`, `inferResyncTargets`), dont le ret
 decision produit. Prochaine etape : revue adversariale du superviseur puis integration dans
 `feat/v75`. Surveillance CI non effectuee : consigne du coordinateur, verification par le
 superviseur.
+
+## [2026-09-06] Lot E — corrections de la revue adversariale E-R1 + item E.9 (table ECS) — Complete
+
+**Contexte.** Reprise du lot E apres sa revue adversariale (verdict E-R1 : comportement identique
+confirme sur TOUS les temoins, mais **les preuves neuves trouees** — 2 P1, 4 P2, 21 conditions qui
+tiennent, 13 mutations). S'y ajoute l'item E.9, ouvert par la decision utilisateur 10 du jour :
+corriger PRUDEMMENT `ecs_table.tsv`, chaque entree adossee a une mesure, sans toucher le decodeur.
+Meme worktree `LevelUp-wt-v2-decodeur`, branche `feat/v2-decodeur`, base `98df0b00c`. Contrainte
+inchangee : comportement du decodeur STRICTEMENT identique, temoins de `LOT_E_digests_avant.md`
+comme gate.
+
+**Decision technique.** Le fil conducteur des six constats est le meme : un garde-rail qui NOMME ce
+qu'il protege sans le TOUCHER. Trois formes ont ete corrigees, chacune a sa racine.
+
+(1) UN TEMOIN QUI N'EXECUTE PAS LA LIGNE QU'IL PRETEND COUVRIR. L'avance du marcheur delta
+(`p = i0 + i0Bits`) etait « couverte » par un test qui marchait un payload A ZERO : aucun record
+publie, donc l'instruction jamais executee, et `p = i0 + 1` passait tout — golden compris. Le
+correctif construit un payload de deux records colles dont le composant i0 du premier PORTE un
+en-tete de record valide (un leurre). Un marcheur qui reprend son balayage a l'interieur d'un record
+deja publie le trouve ; celui qui avance correctement ne le voit jamais. Sous la mutation :
+3 records au lieu de 2, le leurre a i0=77.
+
+(2) UN GARDE QUI CHERCHE UN LITTERAL LA OU LA REGLE EST STRUCTURELLE. Le garde du preambule
+d'evenement cherchait `Skip([12])` puis `ReadBits(7)` dans les trois lignes suivantes : il ne voyait
+ni une copie etalee sur cinq lignes, ni la copie la plus probable de toutes — le copier-coller du
+corps du lecteur unique, qui n'emploie aucun `Skip`. Il COMPTE desormais DES BITS sur l'AST : par
+lecteur, dans chaque suite de statements, « deux bits consommes puis une lecture de sept » sur des
+operations consecutives. La borne « meme suite de statements » n'est pas un choix esthetique, elle
+est MESUREE : sans elle, deux faux positifs (`consumeObjectLowFrequency`, un R(7) dans un `if` ;
+`consumeByName`, deux branches exclusives d'un `switch`) auraient exige une allowlist des le premier
+jour, et une allowlist du premier jour est une allowlist qui grandit.
+
+(3) UNE LISTE ECRITE A LA MAIN A COTE DE LA REGLE QUI DEVRAIT LA PRODUIRE. Le ratchet du verrou de
+decodage portait trois paquets en dur, entretenus par une commande documentee qui cherchait
+`filmdec.Scan` alors que la regle codee couvre aussi `DecodeFrame*` et `TraverseEntity*` — et
+`cmd/rdata_weapon_scan` passait dans l'ecart, decodant sans verrou dans un binaire que
+`go build ./...` compile. La liste est maintenant DERIVEE en balayant `internal` et `cmd` avec la
+fonction de regle elle-meme, avec un plancher date pour qu'une derivation cassee ne puisse pas
+rendre une liste vide en annoncant vert.
+
+S'y ajoutent trois defauts de VERITE ECRITE, tous corriges a la source et dates : le gate E.4
+designait comme oracle un temoin qui mesure un AUTRE marcheur (neutraliser `walkDeltaBipedPayload`
+ne bouge pas ses trois chiffres) ; un unique `-update` regenerait DEUX sorties figees, si bien que
+la commande tapee pour les graines de fuzz reecrivait le golden des familles en repondant `ok` ;
+et l'en-tete du golden annoncait « 25 familles sur 30 », « cinq a zero » et un digest « %+v »
+alors que le fichier fige 35 lignes (33 familles + 2 mesures derivees, 29 peuplees, 4 a zero, 2 en
+erreur) et que le digest passe par `rendreStable`, qui existe PRECISEMENT parce que `%+v` imprimait
+des adresses.
+
+Pour E.9, le prealable a ete de verifier que `ecs_table.tsv` **n'a aucun lecteur applicatif** (son
+seul lecteur est le garde-rail lui-meme) : la corriger ne peut donc pas changer un bit servi. Puis
+un controle neuf, G5, fige la largeur consommee sur CHACUN des trois motifs de tampon, separement,
+pour les lignes dont la table cite une mesure — parce qu'une note en colonne de prose n'est pas une
+mesure, c'est une affirmation, et cette session vient de montrer trois fois ce que devient une
+affirmation que personne ne rejoue.
+
+**Resultats.** Sept commits, 11 fichiers, +1163 / -82 lignes, **zero ligne de code du decodeur**.
+`ti=35 i=50 biped-map-editor-flag-component` corrigee 1 -> 8 bits et sortie de l'allowlist (R(8)
+plat, « CONFIRMED bit-exact from the decompile ») ; `ti=43 i=0` et `ti=37 i=14` recoivent une note
+et leur mesure, sans nombre unique, parce que leur largeur est gardee — et celle d'i0 est en plus
+PROPRE A LA CARTE (45 sur Cliffhanger, autre chose ailleurs), donc aucun entier de cette colonne ne
+peut etre juste partout. G5 mesure 45/60/60, re-mesures par le depot et non repris de la sonde
+jetable de la revue.
+
+MESURE QUI CONTREDIT UNE HYPOTHESE DU MANDAT, ecrite parce qu'elle est vraie : « un compte de
+records par famille qui change si l'avance change » N'EXISTE PAS sur la mini-bobine. Les comptes ont
+ete pris SOUS la mutation avant d'etre figes — 28 005, identiques. Reprendre le balayage dans un
+record deja publie n'y produit aucun ancrage de plus : la porte d'en-tete est trop stricte. Aucun
+doublon n'etait donc absorbe par un dedoublonnage aval, il n'y avait pas de doublon, et le golden ne
+bougeait pas pour cette raison-la autant que parce qu'il jette les denominateurs. L'oracle de
+l'avance est le temoin synthetique, et le journal du lot ne dit plus autre chose.
+
+Ecart assume avec le mandat, ecrit : la note de `ti=43 i=0` ne dit pas « trois films » mais « trois
+motifs de tampon », parce que c'est ce qui a ete mesure — inventer une provenance aurait ete la
+classe de defaut que les corrections 2 et 6 viennent de reparer.
+
+Chaque correction est prouvee ROUGE PUIS VERT par la mutation du verdict (M6, M1, M2, M11, plus le
+ratchet du verrou et deux mutations neuves sur la table ECS). Gate rejoue integralement :
+`go build ./...` exit 0, `go vet ./...` exit 0, les 10 paquets verts, `TestEquivalenceMiniFilm`
+PASS, goldens killsource sur 4 films **identiques echec anterieur `fccc61cd` compris**, temoin de
+marche delta `{14350, 38883, 30089}` avec son meme echec anterieur, empreinte de registre
+`0x61e492dd4de7fd4e` concordante, table ECS G1-G5 les cinq PASS, golden des familles PASS sur deux
+passes avec md5 inchange, integration `killcollector` 67 PASS,
+`golangci-lint --new-from-merge-base=origin/main ./...` = **0 issues**. Aucun ratchet n'a monte :
+deux allowlists retrecissent (`ecsEcartsAdmis` 3 -> 2, exemption du preambule passee du fichier a la
+fonction) et la liste fermee du verrou devient derivee.
+
+**Conclusion / prochaine etape.** Les sept points sont `[x]`, aucun `[~]`, aucun `[!]`. Journal
+`.ai/V7.5/v2/LOT_E.md`, section « Corrections apres revue adversariale (E-R1) + item E.9 ». Quatre
+decouvertes consignees et non traitees, dont deux qui appellent un successeur : le golden des
+familles jette tous les denominateurs des balayages, et `ScanEquipmentState` ancre par un marcheur
+d'objets du monde qui n'a jamais eu son item E.4. Prochaine etape : ronde 2 de la revue sur ces
+corrections, puis integration dans `feat/v75`. Surveillance CI non effectuee : consigne du
+coordinateur, verification par le superviseur.
