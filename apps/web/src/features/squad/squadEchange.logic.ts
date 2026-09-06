@@ -5,7 +5,7 @@
  * disent COMMENT. Les trois règles produit qui vivent ici sont celles qu'un test
  * doit pouvoir mettre en défaut sans monter un arbre React :
  *
- *   1. le CAP DU MOMENT n'est rendu qu'au-dessus de DEUX seuils à la fois ;
+ *   1. le CONSTAT DU MOMENT n'est rendu qu'au-dessus de DEUX seuils à la fois ;
  *   2. les badges « le plus / le moins couvert » n'apparaissent qu'à ÉCART RÉEL ;
  *   3. un échantillon faible s'affiche AVEC sa réserve et ne classe personne.
  */
@@ -20,16 +20,16 @@ import type { KPITrend } from '@/components/layout/KPIStrip'
  * Plancher d'échantillon : 30 morts d'équipe (plan tactique §1, décision produit
  * 2026-09-05). Miroir EXACT de `coordination.SeuilEchantillonFaible` côté Go — le
  * serveur pose déjà le drapeau `echantillon_faible`, cette constante ne sert qu'aux
- * règles CLIENTES qui doivent nommer le seuil (réserve, cap du moment).
+ * règles CLIENTES qui doivent nommer le seuil (réserve, constat du moment).
  */
 export const PLANCHER_MORTS = 30
 
 /**
- * Écart minimal pour que le « cap du moment » ait quelque chose à dire : 5 points
+ * Écart minimal pour que le « constat du moment » ait quelque chose à dire : 5 points
  * (décision de l'utilisateur, 2026-09-06). En dessous, l'écart est du bruit de
  * tirage et la carte n'est PAS rendue — aucun état vide, aucun bruit.
  */
-export const ECART_CAP_POINTS = 5
+export const ECART_CONSTAT_POINTS = 5
 
 /**
  * Écart minimal entre le plus et le moins couvert pour poser les deux badges :
@@ -57,7 +57,7 @@ export interface EcartEchange {
  * IL VIT ICI ET PAS DANS LE COMPOSANT (correction W3, revue du 2026-09-06) : la
  * soustraction, son arrondi et la condition de masquage étaient inlinés dans
  * `SquadEchangeKpi`, hors de portée de tout test — supprimer le masquage ou inverser
- * le signe passait sans qu'aucune assertion ne bouge. `capDuMoment` consomme la même
+ * le signe passait sans qu'aucune assertion ne bouge. `constatDuMoment` consomme la même
  * fonction : deux surfaces qui affichent « l'écart à l'habituel » ne peuvent pas le
  * calculer chacune de leur côté.
  */
@@ -70,8 +70,8 @@ export function ecartEchange(echange: SquadEchange): EcartEchange {
   }
 }
 
-/** Le cap du moment, quand il y a lieu de le rendre. */
-export interface CapDuMoment {
+/** Le constat du moment, quand il y a lieu de le rendre. */
+export interface ConstatDuMoment {
   /** `consolide` : on échange PLUS que d'habitude. `attention` : moins. */
   ton: 'consolide' | 'attention'
   /** Écart au taux habituel, en POINTS entiers et signés (ex. −7). */
@@ -87,16 +87,16 @@ export interface CapDuMoment {
 }
 
 /**
- * capDuMoment applique LA règle de seuil du plan (§1, arrêtée par l'utilisateur le
+ * constatDuMoment applique LA règle de seuil du plan (§1, arrêtée par l'utilisateur le
  * 2026-09-06) : la carte n'existe QUE si le périmètre porte au moins
  * PLANCHER_MORTS morts d'équipe ET que l'écart au taux habituel atteint
- * ECART_CAP_POINTS points, dans un sens ou dans l'autre.
+ * ECART_CONSTAT_POINTS points, dans un sens ou dans l'autre.
  *
  * `null` = la carte n'est pas rendue. Pas d'état vide, pas de « rien à signaler » :
  * une carte de cap qui s'affiche pour dire qu'elle n'a rien à dire est du bruit, et
  * sous 30 morts l'écart mesuré est du tirage.
  */
-export function capDuMoment(echange: SquadEchange | null | undefined): CapDuMoment | null {
+export function constatDuMoment(echange: SquadEchange | null | undefined): ConstatDuMoment | null {
   if (!echange) return null
   const { couverture, habituel } = echange
   if (couverture.n < PLANCHER_MORTS) return null
@@ -105,7 +105,7 @@ export function capDuMoment(echange: SquadEchange | null | undefined): CapDuMome
   if (habituel.n <= 0) return null
 
   const { ecart, ecartPoints } = ecartEchange(echange)
-  if (Math.abs(ecartPoints) < ECART_CAP_POINTS) return null
+  if (Math.abs(ecartPoints) < ECART_CONSTAT_POINTS) return null
 
   return {
     ton: ecartPoints > 0 ? 'consolide' : 'attention',

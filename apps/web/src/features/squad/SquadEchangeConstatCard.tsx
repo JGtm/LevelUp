@@ -1,5 +1,12 @@
 /**
- * SquadEchangeCapCard — le « Cap du moment » de l'Escouade, en tête de Synergies.
+ * SquadEchangeConstatCard — le « Constat du moment » de l'Escouade, en tête de Synergies.
+ *
+ * « CONSTAT », ET SURTOUT PAS « CAP » (décision utilisateur du 2026-09-06). La page
+ * porte déjà un « Cap d'escouade » (`SquadFocusStrip`), à quelques centimètres au-dessus
+ * des onglets, et l'onglet Entraînement un « Cap du moment » (`CoachFocusCard`) : ces
+ * deux-là regardent DEVANT — objectifs de la composition, axe à renforcer. Celle-ci
+ * regarde DERRIÈRE : elle constate ce que disent les matchs affichés, et ne propose
+ * aucune direction. Trois « Cap » côte à côte, dont un rétrospectif, se marchaient dessus.
  *
  * UNE CARTE, DEUX CADRAGES, JAMAIS UNE ALERTE. Accent `info` dans les deux sens :
  * « vous consolidez » quand le camp échange plus que d'habitude, « X mérite votre
@@ -13,7 +20,7 @@
  * aucun « rien à signaler » : sous 30 morts l'écart mesuré est du tirage, et sous
  * 5 points il n'y a rien à dire.
  *
- * La règle vit dans `squadEchange.logic.capDuMoment`, pure et testée : ce composant
+ * La règle vit dans `squadEchange.logic.constatDuMoment`, pure et testée : ce composant
  * n'a aucune décision à prendre.
  */
 import { useMemo } from 'react'
@@ -24,14 +31,14 @@ import { intlLocale } from '@/lib/formatters'
 import type { SquadEchange } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { capDuMoment } from './squadEchange.logic'
+import { constatDuMoment } from './squadEchange.logic'
 import { getSquadEchangeText } from './squadEchangeStrings'
 
-export interface SquadEchangeCapCardProps {
+export interface SquadEchangeConstatCardProps {
   echange: SquadEchange | null | undefined
 }
 
-export function SquadEchangeCapCard({ echange }: SquadEchangeCapCardProps) {
+export function SquadEchangeConstatCard({ echange }: SquadEchangeConstatCardProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadEchangeText(locale)
   const numLoc = intlLocale(locale)
@@ -46,7 +53,7 @@ export function SquadEchangeCapCard({ echange }: SquadEchangeCapCardProps) {
     [numLoc],
   )
 
-  const cap = capDuMoment(echange)
+  const cap = constatDuMoment(echange)
   if (!cap) return null
 
   // MAGNITUDE, pas grandeur signée : la phrase porte déjà la direction (« de moins »
@@ -54,17 +61,17 @@ export function SquadEchangeCapCard({ echange }: SquadEchangeCapCardProps) {
   const delta = formatPoints(cap.ecart)
   const phrase =
     cap.ton === 'consolide'
-      ? t.capConsolidate(delta, pctFmt.format(cap.taux), pctFmt.format(cap.habituel))
-      : t.capAttention(delta, pctFmt.format(cap.taux), pctFmt.format(cap.habituel))
+      ? t.constatConsolidate(delta, pctFmt.format(cap.taux), pctFmt.format(cap.habituel))
+      : t.constatAttention(delta, pctFmt.format(cap.taux), pctFmt.format(cap.habituel))
 
   return (
-    <KpiCard accent="info" testId="squad-echange-cap">
+    <KpiCard accent="info" testId="squad-echange-constat">
       <div className="px-3 py-2">
-        <p className="text-2xs uppercase tracking-wide text-muted-foreground">{t.capTitle}</p>
-        <p className="mt-0.5 text-sm font-semibold text-foreground" data-testid="squad-echange-cap-phrase">
+        <p className="text-2xs uppercase tracking-wide text-muted-foreground">{t.constatTitle}</p>
+        <p className="mt-0.5 text-sm font-semibold text-foreground" data-testid="squad-echange-constat-phrase">
           {phrase}
         </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{t.capBasis(cap.morts, cap.matchs)}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{t.constatBasis(cap.morts, cap.matchs)}</p>
       </div>
     </KpiCard>
   )

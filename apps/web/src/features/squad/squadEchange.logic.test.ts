@@ -5,9 +5,9 @@ import type { SquadEchange } from '@/lib/api/types'
 import { couverture, echangeDe } from './squadEchange.fixtures'
 import {
   ECART_BADGE_VENGEANCES,
-  ECART_CAP_POINTS,
+  ECART_CONSTAT_POINTS,
   PLANCHER_MORTS,
-  capDuMoment,
+  constatDuMoment,
   couvertureParJoueur,
   delaisSeries,
   ecartEchange,
@@ -22,9 +22,9 @@ import {
 // divergente (12 matchs par défaut ici, autre valeur là-bas), ce qui rendait deux
 // tests du même invariant incomparables. Correction W7 (revue du 2026-09-06).
 
-// ─── LE CAP DU MOMENT : DEUX SEUILS, TOUS LES DEUX NÉCESSAIRES ────────────────
+// ─── LE CONSTAT DU MOMENT : DEUX SEUILS, TOUS LES DEUX NÉCESSAIRES ────────────────
 
-describe('capDuMoment — la règle de seuil du plan (§1, 2026-09-06)', () => {
+describe('constatDuMoment — la règle de seuil du plan (§1, 2026-09-06)', () => {
   it('N’EST PAS rendu sous le plancher de morts, même avec un écart énorme', () => {
     // 29 morts, 50 points d'écart : la carte reste absente. Sous le plancher,
     // l'écart n'est pas un signal, c'est un tirage.
@@ -32,7 +32,7 @@ describe('capDuMoment — la règle de seuil du plan (§1, 2026-09-06)', () => {
       couverture: couverture(20, PLANCHER_MORTS - 1),
       habituel: couverture(4, 40),
     })
-    expect(capDuMoment(e)).toBeNull()
+    expect(constatDuMoment(e)).toBeNull()
   })
 
   it('N’EST PAS rendu sous le seuil d’écart, même avec un gros échantillon', () => {
@@ -41,7 +41,7 @@ describe('capDuMoment — la règle de seuil du plan (§1, 2026-09-06)', () => {
       couverture: couverture(176, 400), // 44,0 %
       habituel: couverture(160, 400), // 40,0 %
     })
-    expect(capDuMoment(e)).toBeNull()
+    expect(constatDuMoment(e)).toBeNull()
   })
 
   it('EST rendu EXACTEMENT au plancher (30 morts) et à l’écart minimal (5 points)', () => {
@@ -49,9 +49,9 @@ describe('capDuMoment — la règle de seuil du plan (§1, 2026-09-06)', () => {
       couverture: couverture(15, PLANCHER_MORTS), // 50,0 %
       habituel: couverture(45, 100), // 45,0 %
     })
-    const cap = capDuMoment(e)
+    const cap = constatDuMoment(e)
     expect(cap).not.toBeNull()
-    expect(cap?.ecartPoints).toBe(ECART_CAP_POINTS)
+    expect(cap?.ecartPoints).toBe(ECART_CONSTAT_POINTS)
     expect(cap?.ton).toBe('consolide')
     expect(cap?.morts).toBe(PLANCHER_MORTS)
   })
@@ -61,7 +61,7 @@ describe('capDuMoment — la règle de seuil du plan (§1, 2026-09-06)', () => {
       couverture: couverture(12, 40), // 30,0 %
       habituel: couverture(40, 100), // 40,0 %
     })
-    const cap = capDuMoment(e)
+    const cap = constatDuMoment(e)
     expect(cap?.ton).toBe('attention')
     expect(cap?.ecartPoints).toBe(-10)
   })
@@ -71,12 +71,12 @@ describe('capDuMoment — la règle de seuil du plan (§1, 2026-09-06)', () => {
       couverture: couverture(20, 40),
       habituel: couverture(0, 0),
     })
-    expect(capDuMoment(e)).toBeNull()
+    expect(constatDuMoment(e)).toBeNull()
   })
 
   it('N’EST PAS rendu quand la section est absente du contrat', () => {
-    expect(capDuMoment(null)).toBeNull()
-    expect(capDuMoment(undefined)).toBeNull()
+    expect(constatDuMoment(null)).toBeNull()
+    expect(constatDuMoment(undefined)).toBeNull()
   })
 })
 
@@ -97,8 +97,8 @@ describe('anti-biais — un petit échantillon ne classe personne', () => {
     expect(petit.couverture.echantillon_faible).toBe(true)
   })
 
-  it('aucun cap du moment, malgré 100 % contre 30 % (60 points d’écart)', () => {
-    expect(capDuMoment(petit)).toBeNull()
+  it('aucun constat du moment, malgré 100 % contre 30 % (60 points d’écart)', () => {
+    expect(constatDuMoment(petit)).toBeNull()
   })
 
   it('aucun badge « le plus / le moins couvert » : rien ne classe qui que ce soit', () => {

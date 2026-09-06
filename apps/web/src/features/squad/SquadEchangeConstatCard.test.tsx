@@ -1,5 +1,5 @@
 /**
- * Le CAP DU MOMENT — deux seuils, deux cadrages, et rien du tout en dessous.
+ * Le CONSTAT DU MOMENT — deux seuils, deux cadrages, et rien du tout en dessous.
  *
  * La règle elle-même est testée dans squadEchange.logic.test.ts ; ici on vérifie que
  * le composant ne rend RIEN quand elle dit non (aucun état vide, aucun bruit) et
@@ -11,15 +11,15 @@ import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { SquadEchangeCapCard } from './SquadEchangeCapCard'
+import { SquadEchangeConstatCard } from './SquadEchangeConstatCard'
 import { couverture, echangeDe } from './squadEchange.fixtures'
 
 beforeEach(() => useAppShellStore.setState({ locale: 'fr' }))
 afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
 
-describe('SquadEchangeCapCard', () => {
+describe('SquadEchangeConstatCard', () => {
   it('ne rend RIEN quand la section est absente du contrat', () => {
-    const { container } = renderWithProviders(<SquadEchangeCapCard echange={undefined} />)
+    const { container } = renderWithProviders(<SquadEchangeConstatCard echange={undefined} />)
     expect(container.textContent).toBe('')
   })
 
@@ -28,17 +28,17 @@ describe('SquadEchangeCapCard', () => {
       couverture: couverture(8, 8, 3),
       habituel: couverture(40, 100),
     })
-    const { container } = renderWithProviders(<SquadEchangeCapCard echange={sousLePlancher} />)
+    const { container } = renderWithProviders(<SquadEchangeConstatCard echange={sousLePlancher} />)
     expect(container.textContent).toBe('')
   })
 
   it('cadre l’écart négatif en ATTENTION, jamais en alerte', () => {
     renderWithProviders(
-      <SquadEchangeCapCard
+      <SquadEchangeConstatCard
         echange={echangeDe({ couverture: couverture(9, 45), habituel: couverture(40, 100) })}
       />,
     )
-    const phrase = screen.getByTestId('squad-echange-cap-phrase').textContent ?? ''
+    const phrase = screen.getByTestId('squad-echange-constat-phrase').textContent ?? ''
     expect(phrase).toMatch(/mérite votre attention/i)
     // W6 : la direction est DANS LES MOTS (« de moins ») — le nombre est une
     // magnitude. « +20 pts de moins que d'habitude » se contredisait tout seul.
@@ -49,11 +49,11 @@ describe('SquadEchangeCapCard', () => {
 
   it('cadre l’écart positif en CONSOLIDATION', () => {
     renderWithProviders(
-      <SquadEchangeCapCard
+      <SquadEchangeConstatCard
         echange={echangeDe({ couverture: couverture(27, 45), habituel: couverture(40, 100) })}
       />,
     )
-    const phrase = screen.getByTestId('squad-echange-cap-phrase').textContent ?? ''
+    const phrase = screen.getByTestId('squad-echange-constat-phrase').textContent ?? ''
     expect(phrase).toMatch(/consolidez/i)
     // Même règle dans l'autre sens : « de plus » porte déjà la direction.
     expect(phrase).toContain('20 pts')
