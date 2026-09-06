@@ -363,6 +363,12 @@ type BridgeHealth struct {
 	// doit tendre vers zéro — un artefact non nul porte un défaut de nommage à instruire, pas
 	// une population « inconnue » à afficher. Doublé d'un `slog.Error` à la cuisson.
 	UnnamedLives int `json:"unnamedLives"`
+	// UnnamedLivesContested : la part d'`UnnamedLives` qui tombe sur une FRONTIÈRE entre deux
+	// occupants nommés différents du même slot, que rien ne date. Comptée à part parce qu'elle
+	// n'appelle pas le même chantier : l'identité n'y est pas absente, elle est INDÉCIDABLE —
+	// nommer par « l'occupant précédent » serait un choix par l'ordre, celui-là même que
+	// `SlotAmbiguous` existe pour signaler.
+	UnnamedLivesContested int `json:"unnamedLivesContested"`
 	// ClosedByShot : entrées ajoutées par la fermeture A (le corps disponible).
 	ClosedByShot int `json:"closedByShot"`
 	// ClosedByRespawn : entrées ajoutées par la fermeture B (la réapparition).

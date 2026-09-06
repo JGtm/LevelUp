@@ -77,7 +77,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// apres les quatre passes ci-dessus est un DEFAUT du pont, pas une categorie de donnee : il
 	// se repare par l'OCCUPATION DU SLOT DANS LE TEMPS, et le residu se compte et s'alarme
 	// (cf. unnamed_lives.go).
-	unnamed := nameRemainingLives(doc.Tracks, own.lives, own.SlotXUID, origin, step)
+	unnamed := nameRemainingLives(doc.Tracks, own.lives, own.SlotXUID, own.SlotAmbiguous, origin, step)
 	logUnnamedLives(matchID, doc.Tracks, unnamed)
 	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths), opt.Bots)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
@@ -135,6 +135,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	doc.Coverage.Bridge.NamedByNextLife = unnamed.byNext
 	doc.Coverage.Bridge.NamedBySlotBridge = unnamed.byBridge
 	doc.Coverage.Bridge.UnnamedLives = unnamed.remaining
+	doc.Coverage.Bridge.UnnamedLivesContested = unnamed.contested
 	// La couverture des episodes d'equipement se publie AVEC eux : « N episodes » sans
 	// « sur M vies » se lirait comme une exhaustivite.
 	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks)

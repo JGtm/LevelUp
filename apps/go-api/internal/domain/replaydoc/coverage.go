@@ -65,10 +65,13 @@ type BridgeHealth struct {
 	NamedByNextLife     int `json:"namedByNextLife"`
 	NamedBySlotBridge   int `json:"namedBySlotBridge"`
 	UnnamedLives        int `json:"unnamedLives"`
-	ClosedByShot        int `json:"closedByShot"`
-	ClosedByRespawn     int `json:"closedByRespawn"`
-	ClosedContested     int `json:"closedContested"`
-	ClosedRefused       int `json:"closedRefused"`
+	// UnnamedLivesContested : la part du résidu qui tombe sur une frontière entre deux occupants
+	// nommés du même slot, que rien ne date — indécidable, pas absente.
+	UnnamedLivesContested int `json:"unnamedLivesContested"`
+	ClosedByShot          int `json:"closedByShot"`
+	ClosedByRespawn       int `json:"closedByRespawn"`
+	ClosedContested       int `json:"closedContested"`
+	ClosedRefused         int `json:"closedRefused"`
 }
 
 // T0FilmCoverage est le VERDICT du detecteur de coup d'envoi, servi a cote du champ

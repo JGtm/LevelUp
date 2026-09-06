@@ -9080,6 +9080,9 @@ components:
         unnamedLives:
           format: int64
           type: integer
+        unnamedLivesContested:
+          format: int64
+          type: integer
       required:
         - slots
         - fromReading
@@ -9092,6 +9095,7 @@ components:
         - namedByNextLife
         - namedBySlotBridge
         - unnamedLives
+        - unnamedLivesContested
         - closedByShot
         - closedByRespawn
         - closedContested

@@ -19,7 +19,11 @@ morts, fermetures, sieges de bot, relais), une passe finale nomme ce qui reste p
 DU SLOT DANS LE TEMPS — vie nommee du MEME slot qui precede, sinon qui suit, sinon le pont
 canonique. La regle de collision est respectee par construction : quand deux joueurs se partagent
 un slot, c est le TEMPS qui tranche, jamais « le premier » (ce que `SlotXUID` retient, et le
-defaut meme du constat P1-7). Ce qui resiste n est PAS devine : `coverage.bridge.unnamedLives`
+defaut meme du constat P1-7). **Complement de la revue des durees, verifie sur pieces** : un slot
+en collision est desormais MARQUE (`OwnerReport.SlotAmbiguous`) et non plus seulement compte, le
+repli par le pont s ABSTIENT sur ces slots, et une vie qui tombe ENTRE deux occupants nommes
+differents est REFUSEE et comptee (`bridge.unnamedLivesContested`) plutot que tranchee par
+« l occupant precedent » — un choix par l ordre. Temoin : `084a804d` slot 734. Ce qui resiste n est PAS devine : `coverage.bridge.unnamedLives`
 publie + `slog.Error` portant match, slot et bornes.
 (2) **Un helper canonique par regle, avec son garde-rail** : `xuidOfPublishedTrack` /
 `publishedXUIDs` (la resolution nom-lu-sinon-pont, partagee par les trois lecteurs qui la
@@ -31,11 +35,14 @@ d une capture de zone non attribuee sont publiees ; `warnIfLossy` surveille enfi
 
 **Resultats observes.** Neuf temoins cuits des DEUX cotes par le meme outil (`cmd/replay-build`,
 un film a la fois, verrou solo + verrou inter-agents, parc en lecture seule par jonctions), seul
-le code differant : **142 gains, 0 perte reelle**, 23 mesures apparues. Les 4 lignes « perte » de
-`084a804d` sont instruites une par une et sont toutes des GAINS (une deduction rendue au pont ;
-17 tirs de moins sans slot pour 11 attaches + 6 ambigus, somme exacte ; une ride qui quitte le
-seau non attribue pour le seau par-xuid a 282 frames pres ; une deduplication de partants qui ne
-deplace ni `t0FilmMs` ni `marginMs`). Vies sans nom sur les 9 temoins : **305 -> 200** ; golden
+le code differant : **142 gains, 0 perte reelle**, 25 mesures apparues. Les 6 lignes « perte » de
+`084a804d` sont instruites une par une : quatre sont des GAINS lus a l envers (une deduction
+rendue au pont ; 17 tirs de moins sans slot pour 11 attaches + 6 ambigus, somme exacte ; une ride
+qui quitte le seau non attribue pour le seau par-xuid a 282 frames pres ; une deduplication de
+partants qui ne deplace ni `t0FilmMs` ni `marginMs`), et les deux dernieres sont une attribution
+ARBITRAIRE retiree — la ride du slot 734, que le pont creditait au PREMIER occupant nomme d un
+slot partage, sort desormais sans occupant, toujours publiee, ses 227 frames au grain du slot.
+Vies sans nom sur les 9 temoins : **305 -> 201** ; golden
 `000d5950` : 93 pistes nommees -> **98** sur 104.
 
 **Ce que la cuisson a attrape, et que les tests seuls n auraient pas vu.** Le nommage final vidait

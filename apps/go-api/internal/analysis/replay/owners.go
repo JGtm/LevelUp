@@ -92,6 +92,12 @@ type OwnerReport struct {
 	// à part de FromDeaths — sans quoi le pont dirait « tout vient de la lecture » alors que
 	// non.
 	Closures closureReport
+	// SlotAmbiguous : les slots dont les vies nommées désignent des joueurs DIFFÉRENTS. Le pont
+	// y garde le premier occupant nommé (`ownersFromLives`), ce qui est un choix par l'ORDRE DES
+	// VIES et non par le temps : tout lecteur qui interroge `SlotXUID` sur l'un de ces slots
+	// hérite d'un nom arbitraire. Le marqueur existe pour qu'il puisse s'abstenir — `xuidAt` le
+	// fait déjà, et `SlotCollisions` en est le simple cardinal.
+	SlotAmbiguous map[uint32]bool
 	// lives : les vies découpées et nommées, telles que le nommage les a laissées. Interne au
 	// paquet : c'est la source du nommage PAR VIE des tracks (nameTracksByLives, lot identité
 	// des vies 2026-09-02) — un slot recyclé y porte une identité PAR OCCUPANT, là où SlotXUID
@@ -118,6 +124,13 @@ func (r OwnerReport) xuidAt(slot uint32, tUS uint64) string {
 			continue
 		}
 		return strconv.FormatUint(l.xuid, 10)
+	}
+	// LE REPLI PAR SLOT S'ABSTIENT SUR UN SLOT AMBIGU (2026-09-07). `SlotXUID` y garde le
+	// PREMIER occupant nommé, par ordre des vies : le servir à un instant que sa vie ne couvre
+	// pas reviendrait à publier un nom arbitraire, et c'est exactement ce que cette méthode
+	// existe pour éviter. Sans vie couvrante ET sur un slot à plusieurs occupants, on se tait.
+	if r.SlotAmbiguous[slot] {
+		return ""
 	}
 	if x, ok := r.SlotXUID[slot]; ok && x != 0 {
 		return strconv.FormatUint(x, 10)
@@ -147,8 +160,9 @@ func buildOwners(tracks map[uint32]slotTrack, deaths []Death, idx PlayerIndexTab
 	}
 	rep.IndexReadings = idx.Readings
 	rep.IndexDisagreements = idx.Disagreements
-	owners, byXUID, collisions := ownersFromLives(lives, idx.ByXUID)
-	rep.SlotCollisions = collisions
+	owners, byXUID, ambigus := ownersFromLives(lives, idx.ByXUID)
+	rep.SlotAmbiguous = ambigus
+	rep.SlotCollisions = len(ambigus)
 	rep.FromDeaths = len(owners)
 	// LES FERMETURES VIENNENT APRÈS LA LECTURE, JAMAIS À SA PLACE (cf. closures.go). Elles ne
 	// touchent que les vies que le fil des morts n'a pas nommées, et elles s'abstiennent dès que
