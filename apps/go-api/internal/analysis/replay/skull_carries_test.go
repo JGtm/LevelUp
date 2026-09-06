@@ -68,7 +68,7 @@ func TestSkullCarriesTwoRounds(t *testing.T) {
 	recs, deaths := skullFixture()
 	// step = 1000 us/frame => 1 frame par ms (frame = instant en ms). frames grand : tout ferme.
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
-		matchClock{origin: 0, step: 1000, frames: 100000}, nil)
+		matchClock{origin: 0, step: 1000, frames: 100000}, carrierPresence{})
 
 	if cov == nil || !cov.SkullFilm {
 		t.Fatalf("couverture absente ou SkullFilm faux : %+v", cov)
@@ -109,7 +109,7 @@ func TestSkullCarriesOpenAtAxisEnd(t *testing.T) {
 	recs, deaths := skullFixture()
 	// frames = 23000 : le dernier portage (fin 22000) tombe dans le mou de fin (3 s) -> ouvert.
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
-		matchClock{origin: 0, step: 1000, frames: 23000}, nil)
+		matchClock{origin: 0, step: 1000, frames: 23000}, carrierPresence{})
 	if len(carries) != 4 {
 		t.Fatalf("portages = %d, attendu 4", len(carries))
 	}
@@ -131,7 +131,7 @@ func TestSkullCarriesOpenAtAxisEnd(t *testing.T) {
 
 // TestSkullCarriesUnscanned — hors Oddball (Scanned faux), ni calque ni couverture.
 func TestSkullCarriesUnscanned(t *testing.T) {
-	carries, cov := buildSkullCarries(SkullCarryScan{Scanned: false}, matchClock{step: 1000, frames: 100}, nil)
+	carries, cov := buildSkullCarries(SkullCarryScan{Scanned: false}, matchClock{step: 1000, frames: 100}, carrierPresence{})
 	if carries != nil || cov != nil {
 		t.Errorf("film non-Oddball : attendu (nil, nil), obtenu (%v, %v)", carries, cov)
 	}
@@ -145,11 +145,11 @@ func TestSkullCarriesCarrierAbsent(t *testing.T) {
 	recs, deaths := skullFixture()
 	// A n'est present que [1500,3500] : couvre en PARTIE son 1er portage (1000-4000) mais PAS son
 	// 2e (9000-10000). C et B couvrent leurs portages.
-	presence := map[string][]presenceSpan{
+	presence := carrierPresence{named: map[string][]presenceSpan{
 		"A": {{1500, 3500}},
 		"C": {{5000, 7000}},
 		"B": {{20000, 22000}},
-	}
+	}}
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
 		matchClock{origin: 0, step: 1000, frames: 100000}, presence)
 
@@ -178,27 +178,93 @@ func TestSkullCarriesCarrierAbsent(t *testing.T) {
 	}
 }
 
-// TestSkullCarrierPresence — l'index de presence groupe les vies bipedes par xuid, ignore les vies
-// anonymes.
+// TestSkullCarrierPresence — l'index de presence groupe les vies bipedes NOMMEES par xuid et
+// RETIENT les anonymes a part : elles ne sont pas jetees, elles sont la trace de l'ignorance.
 func TestSkullCarrierPresence(t *testing.T) {
 	tracks := []Track{
 		{XUID: "A", StartFrame: 10, EndFrame: 40},
 		{XUID: "A", StartFrame: 100, EndFrame: 130},
-		{XUID: "", StartFrame: 0, EndFrame: 999}, // anonyme : ignoree
+		{XUID: "", StartFrame: 0, EndFrame: 999},                  // anonyme : RETENUE dans `unnamed`
+		{XUID: "", Bot: "Ciri [bot]", StartFrame: 5, EndFrame: 8}, // bot : IDENTIFIE, donc nulle part
 		{XUID: "B", StartFrame: 50, EndFrame: 70},
 	}
-	p := skullCarrierPresence(tracks)
-	if len(p) != 2 {
-		t.Fatalf("xuids indexes = %d, attendu 2 (anonyme ignoree) : %+v", len(p), p)
+	p := carrierPresenceOf(tracks)
+	if len(p.named) != 2 {
+		t.Fatalf("xuids indexes = %d, attendu 2 : %+v", len(p.named), p.named)
 	}
-	if len(p["A"]) != 2 || len(p["B"]) != 1 {
-		t.Errorf("A=%d vies, B=%d vies, attendu 2 et 1", len(p["A"]), len(p["B"]))
+	if len(p.unnamed) != 1 || p.unnamed[0] != (presenceSpan{0, 999}) {
+		t.Errorf("vies anonymes = %+v, attendu une seule [0,999]", p.unnamed)
 	}
-	if _, ok := bestOverlap(p["A"], 20, 25); !ok {
+	if len(p.named["A"]) != 2 || len(p.named["B"]) != 1 {
+		t.Errorf("A=%d vies, B=%d vies, attendu 2 et 1", len(p.named["A"]), len(p.named["B"]))
+	}
+	if _, ok := bestOverlap(p.named["A"], 20, 25); !ok {
 		t.Errorf("[20,25] devrait recouvrir la vie A [10,40]")
 	}
-	if _, ok := bestOverlap(p["A"], 60, 90); ok {
+	if _, ok := bestOverlap(p.named["A"], 60, 90); ok {
 		t.Errorf("[60,90] ne devrait recouvrir aucune vie A (trou entre [10,40] et [100,130])")
+	}
+}
+
+// TestSkullCarriesVieAnonymeNEstPasUneAbsence — LE FAIT RESIDUEL n° 1 du balayage du parc
+// (`d9781168`, 36 portages -> 30). Un portage dont le porteur n'a AUCUNE vie nommee sur
+// l'intervalle, mais qu'une vie ANONYME recouvre, ne doit etre ni ecarte ni rogne : le pont
+// d'identite n'a pas nomme cette vie, et une presence sans identite n'est pas une absence.
+//
+// Verite terrain de `d9781168` : en Oddball le score EST le temps de portage ; la feuille de match
+// donne 191 s / 196 s par equipe, l'artefact rejetant les anonymes n'en publiait que 60,1 s /
+// 147,4 s. Le gate ecartait de la donnee vraie en croyant ecarter des fantomes.
+func TestSkullCarriesVieAnonymeNEstPasUneAbsence(t *testing.T) {
+	recs, deaths := skullFixture()
+	// Meme presence nommee que TestSkullCarriesCarrierAbsent : A n'est nomme que [1500,3500],
+	// donc son 1er portage (1000-4000) serait ROGNE et son 2e (9000-10000) ECARTE.
+	base := map[string][]presenceSpan{
+		"A": {{1500, 3500}},
+		"C": {{5000, 7000}},
+		"B": {{20000, 22000}},
+	}
+	// Une seule vie ANONYME, qui couvre les DEUX intervalles de A.
+	p := carrierPresence{named: base, unnamed: []presenceSpan{{500, 11000}}}
+	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
+		matchClock{origin: 0, step: 1000, frames: 100000}, p)
+
+	if len(carries) != 4 {
+		t.Fatalf("portages = %d, attendu 4 (aucun ecarte) : %+v", len(carries), carries)
+	}
+	if cov.CarrierAbsent != 0 {
+		t.Errorf("CarrierAbsent = %d, attendu 0 : une vie anonyme couvre l'intervalle", cov.CarrierAbsent)
+	}
+	// Le 1er portage de A n'est PAS rogne a [1500,3500] : il garde ses bornes.
+	if carries[0].XUID != "A" || carries[0].T0 != 1000 || carries[0].T1 != 4000 {
+		t.Errorf("portage A = %+v, attendu {A 1000 4000} NON rogne", carries[0])
+	}
+	if !cov.Balanced() {
+		t.Errorf("couverture desequilibree : %+v", cov)
+	}
+}
+
+// TestSkullCarriesFantomeResteEcarte — la CONTRE-EPREUVE du test precedent : sans vie anonyme sur
+// l'intervalle, les pistes publiees rendent compte de tout, et le portage attribue a un joueur
+// qui n'y est pas reste un FANTOME. Le correctif retrecit le gate, il ne le supprime pas.
+func TestSkullCarriesFantomeResteEcarte(t *testing.T) {
+	recs, deaths := skullFixture()
+	p := carrierPresence{
+		named: map[string][]presenceSpan{
+			"A": {{1500, 3500}},
+			"C": {{5000, 7000}},
+			"B": {{20000, 22000}},
+		},
+		// Une vie anonyme LOIN des portages de A : elle ne couvre rien de [9000,10000].
+		unnamed: []presenceSpan{{30000, 40000}},
+	}
+	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
+		matchClock{origin: 0, step: 1000, frames: 100000}, p)
+	if len(carries) != 3 || cov.CarrierAbsent != 1 {
+		t.Fatalf("portages = %d / CarrierAbsent = %d, attendu 3 et 1 (le fantome A@9000 ecarte)",
+			len(carries), cov.CarrierAbsent)
+	}
+	if carries[0].T0 != 1500 || carries[0].T1 != 3500 {
+		t.Errorf("portage A = %+v, attendu rogne a [1500,3500]", carries[0])
 	}
 }
 

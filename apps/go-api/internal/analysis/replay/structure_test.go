@@ -835,8 +835,22 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   dise, et `backfill-replay` saute un artefact à la version courante.
 	//   Détail : internal/analysis/replay/build_objectives_live.go et
 	//   .ai/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md.
-	if SchemaVersion != 42 {
-		t.Fatalf("SchemaVersion = %d, attendu 42 : incrémenter exige une raison écrite ci-dessus "+
+	// v43 — UNE VIE ANONYME N'EST PAS UNE ABSENCE (2026-09-06). Aucun champ ajouté : c'est le
+	//   CONTENU de `skullCarries` (et, latent, de `bombCarries`) qui change. Le gate de présence
+	//   de `af89b091b` (2026-08-30) n'indexait que les vies NOMMÉES et lisait « aucune vie nommée
+	//   de X ne couvre l'intervalle » comme « X est absent de la carte » — alors que le pont
+	//   laisse des vies anonymes (18 slots sur 160 sur `d9781168` — 142 portent au moins une vie
+	//   nommée, ces 18-là aucune). Mesure par une chaîne INDÉPENDANTE : en Oddball le score EST le
+	//   temps de portage, et la feuille de match donne 191 s / 196 s par équipe sur `d9781168` ;
+	//   l'artefact publiait 60,1 s / 147,4 s, contre 172,5 s / 158,8 s pour l'artefact du parc au
+	//   schéma 23. Le gate écartait 6 portages sur 36 (32,6 s) et en rognait 4 autres (91,2 s).
+	//   Touche aussi `51ebbc0f` (7 portages sur 14) et `24dbb67d` (3 sur 20). La version monte
+	//   pour la raison des montées v39/v40/v41/v42 : un artefact 23 à 42 est appauvri sans que sa
+	//   forme le dise, et `backfill-replay` saute un artefact qui porte la version courante.
+	//   Détail : internal/analysis/replay/skull_carries.go (carrierPresence.gate) et
+	//   .ai/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
+	if SchemaVersion != 43 {
+		t.Fatalf("SchemaVersion = %d, attendu 43 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -143,7 +143,7 @@ func bpExtraire(t *testing.T, cache, id string) (
 	slotXUID, own := ResolveSlotXUID(pos, deaths, idx)
 	events := bombHeldEventsOf(changes, own.DeathOffsetMS)
 	carry := BuildHeldObjectCarry(events, slotXUID, deaths)
-	carries, cov := buildBombCarries(carry, matchClock{origin: 0, step: 1000, frames: 1 << 20}, nil)
+	carries, cov := buildBombCarries(carry, matchClock{origin: 0, step: 1000, frames: 1 << 20}, carrierPresence{})
 	return carry.Periods, carries, cov, own
 }
 
