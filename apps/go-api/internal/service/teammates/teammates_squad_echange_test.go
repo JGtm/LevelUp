@@ -30,6 +30,10 @@ func (m *mockTacticalRepo) KillPositions(context.Context, domain.TacticalQuery) 
 	return domain.TacticalPositions{}, errors.New("non appele")
 }
 
+func (m *mockTacticalRepo) Univers(context.Context, domain.TacticalQuery) (domain.TacticalUnivers, error) {
+	return domain.TacticalUnivers{}, errors.New("non appele")
+}
+
 func (m *mockTacticalRepo) KillEvents(_ context.Context, q domain.TacticalQuery) (domain.TacticalKillEvents, error) {
 	m.vues = append(m.vues, q)
 	return m.lecture, m.err

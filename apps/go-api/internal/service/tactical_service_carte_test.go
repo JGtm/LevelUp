@@ -70,9 +70,12 @@ func TestRaster_CarteVide_MemeMessageCanonique(t *testing.T) {
 func TestRaster_QuestionEtAxeNommentLaValeurRefusee(t *testing.T) {
 	svc := NewTacticalService(&mockTacticalRepo{}, capsPositionsSeules(), tsMoi)
 
-	_, err := svc.Raster(context.Background(), tsDemande(tsCarte, "temps", domain.TacticalQuiMoi))
-	if !errors.Is(err, domain.ErrTacticalQuestionInconnue) || !strings.Contains(err.Error(), "temps") {
-		t.Errorf("question : err = %v, attendue la sentinelle NOMMANT « temps »", err)
+	// « temps » A CESSE D'ETRE UN EXEMPLE DE VALEUR INCONNUE le 2026-09-06 (phase 6) :
+	// c'est desormais la quatrieme question servie, l'occupation. La fixture prend une
+	// valeur qui n'a aucune chance d'entrer au vocabulaire.
+	_, err := svc.Raster(context.Background(), tsDemande(tsCarte, "tout-sauf-ca", domain.TacticalQuiMoi))
+	if !errors.Is(err, domain.ErrTacticalQuestionInconnue) || !strings.Contains(err.Error(), "tout-sauf-ca") {
+		t.Errorf("question : err = %v, attendue la sentinelle NOMMANT « tout-sauf-ca »", err)
 	}
 
 	_, err = svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, "tout-le-monde"))

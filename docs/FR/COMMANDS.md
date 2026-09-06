@@ -106,7 +106,17 @@ go run ./cmd/levelup backfill-usage-summary [--dry-run] [--force] [--match ID] [
 #    match et n'écrit rien.
 go run ./cmd/levelup backfill-bomb-stats --dry-run
 go run ./cmd/levelup backfill-bomb-stats [--force] [--match ID] [--limit N] [--title S]
+
+# 4. Rasters d'occupation tactique -> fichiers sidecar JSON sous
+#    data/cache/replays/{slug}/rasters/. AUCUNE base n'est ouverte, pas même en lecture :
+#    le sidecar est par match et anonyme, il n'y a rien à demander à DuckDB.
+go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
 ```
+
+La passe (4) est idempotente : un sidecar n'est réécrit que s'il manque, si son propre
+`schema_version` n'est plus le courant, ou si son `artifact_schema_version` ne correspond
+plus à celui de l'artefact dont il a été projeté (donc après une re-cuisson). Une seconde
+passe immédiate écrit zéro fichier.
 
 Lancer (3) avant (1) est un **no-op SILENCIEUX** : un artefact antérieur au schéma 39 ne porte
 aucun `bombStats`, rien n'est écrit et chaque match tombe dans le compteur « sans calque ». Les

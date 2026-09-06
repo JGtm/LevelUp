@@ -31,35 +31,6 @@ const (
 	tsCarte = "map_streets"
 )
 
-// mockTacticalRepo double port.TacticalRepository et retient ce qu'on lui demande.
-type mockTacticalRepo struct {
-	maps    []domain.TacticalMapRow
-	pos     domain.TacticalPositions
-	ev      domain.TacticalKillEvents
-	errMaps error
-	errPos  error
-	errEv   error
-
-	vuMaps domain.TacticalQuery
-	vuPos  domain.TacticalQuery
-	vuEv   domain.TacticalQuery
-}
-
-func (m *mockTacticalRepo) MapsPlayed(_ context.Context, q domain.TacticalQuery) ([]domain.TacticalMapRow, error) {
-	m.vuMaps = q
-	return m.maps, m.errMaps
-}
-
-func (m *mockTacticalRepo) KillPositions(_ context.Context, q domain.TacticalQuery) (domain.TacticalPositions, error) {
-	m.vuPos = q
-	return m.pos, m.errPos
-}
-
-func (m *mockTacticalRepo) KillEvents(_ context.Context, q domain.TacticalQuery) (domain.TacticalKillEvents, error) {
-	m.vuEv = q
-	return m.ev, m.errEv
-}
-
 // tsDemande assemble une demande de lecture. Le PERIMETRE (liste blanche) est vide
 // par defaut : le mock du port sert un jeu pose a la main et ne le relit pas, mais il
 // traverse le service et decide de `MatchsFiltres` — les deux tests qui l'affirment
@@ -432,7 +403,9 @@ func TestTacticalService_VocabulaireRefuse(t *testing.T) {
 	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
 	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
 
-	if _, err := svc.Raster(context.Background(), tsDemande(tsCarte, "temps", domain.TacticalQuiMoi)); !errors.Is(err, domain.ErrTacticalQuestionInconnue) {
+	// « temps » est une question VALIDE depuis la phase 6 (l'occupation) : la fixture
+	// prend une valeur qui n'entrera jamais au vocabulaire.
+	if _, err := svc.Raster(context.Background(), tsDemande(tsCarte, "tout-sauf-ca", domain.TacticalQuiMoi)); !errors.Is(err, domain.ErrTacticalQuestionInconnue) {
 		t.Errorf("question inconnue: err = %v, want ErrTacticalQuestionInconnue", err)
 	}
 	if _, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, "tout-le-monde")); !errors.Is(err, domain.ErrTacticalQuiInconnu) {

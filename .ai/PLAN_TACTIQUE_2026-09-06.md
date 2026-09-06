@@ -864,14 +864,117 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 - **Gate** : typecheck + vitest ; test pur de `tacticalLogic.ts` ; smoke canvas ; garde-rail
   du peintre ; filtrage d'acces ; `?frame=` positionne le rejeu ; couleurs.
 
-### Phase 6 — Rasters par match a la cuisson + rattrapage — EXECUTABLE (apres la 4)
-- [ ] 6.1 `PathResolver.TacticalRasterPath(slug, shortID)`
-- [ ] 6.2 `sync/replayartifacts/raster.go` : projection artefact -> rasters par match ;
-      `platform/atomicfile` ; meme declencheur et journal que `usage.go` ; sous la porte
-      `film.replay_artifact` du lot C
-- [ ] 6.3 `cmd/levelup/cmd_tactical_rasters.go --backfill` : lecture par `ReplayService`,
-      ne cuit rien, serveur arrete
-- [ ] 6.4 Le service somme les sidecars (`merge.go`)
+### Phase 6 — Rasters par match a la cuisson + rattrapage — CLOSE 2026-09-06
+- [x] 6.0 `analysis/tactical/tracks.go` (293 L, PUR — avance de la phase 7) :
+      `Occupation(g, EntreeOccupation, pasMs)` reechantillonne les pistes a pas FIXE de
+      250 ms en tenant la derniere position connue, sur une fenetre DEMI-OUVERTE.
+      **POURQUOI PAS LES POINTS BRUTS** : le film ne replique une position que lorsqu'elle
+      change assez — un joueur immobile derriere un mur produit deux points en quinze
+      secondes pendant qu'un joueur qui court en produit un par frame. Compter les points
+      mesurerait le MOUVEMENT, pas le temps passe. **DEMI-OUVERTE** : 2 s de presence font
+      huit quarts de seconde, pas neuf ; compter la borne haute ajouterait un echantillon
+      par vie, soit une demi-minute inventee sur un match a cent vies.
+      Rendu par joueur NOMME : echantillons (`[]domain.PositionSample`), premier point de
+      chaque vie (le spawn), premiere entree dans chaque cellule (l'instant contributeur).
+      Vie sans xuid ECARTEE — la rattacher par son slot prendrait un ordre pour une
+      identite. `IntervalleFrameMs`/`pasMs` <= 0 : sortie vide, jamais une cadence devinee
+      (l'appelant resout `replay.DefaultFrameIntervalMS`). Onze tests a trajectoires posees
+      a la main, comptes EXACTS.
+- [x] 6.1 `PathResolver.TacticalRasterDir` / `TacticalRasterPath`
+      (`domain/title/registry.go:763-793`) : `data/cache/replays/{slug}/rasters/{short}.json`.
+      **LE SOUS-DOSSIER N'EST PAS UNE PREFERENCE DE RANGEMENT** : les deux parcours du
+      dossier d'artefacts (`service.replayService.AvailableSet`,
+      `scheduler.purgeReplayArtifactsForTitle`) ne comptent QUE les `.json` de premier
+      niveau et sautent les repertoires. A plat, un sidecar aurait ete lu comme l'artefact
+      d'un match inexistant par le premier, et supprime comme un artefact indatable par le
+      second. Meme cle courte que l'artefact (`FilmShortMatchID`).
+- [x] 6.2 `sync/replayartifacts/raster.go` (252 L) : QUATRIEME projection post-cuisson,
+      apres le T0 du film, le resume d'usage et les stats d'Assaut — memes artefacts
+      ranges, meme place (apres toute cuisson), meme regime best-effort. **LA SEULE QUI
+      N'ECRIT AUCUNE BASE** : son resultat est un fichier a cote de son artefact, donc
+      aucun writer, aucun lease, aucune regle ART. Ecriture par `platform/atomicfile`,
+      compteurs `postsync_replay_rasters_{ecrits,echecs}_total`.
+      Contrat du sidecar : `domain/tactical_raster.go` (129 L, `schema_version` propre,
+      tags snake_case, `pas_m` / `frame_interval_ms` / `pas_echantillon_ms` — cette
+      derniere est L'UNITE de `echantillons`, verifiee a la lecture).
+      **`Raster.CellulesBrutes()`** (`analysis/tactical/raster.go`) : la forme qu'on
+      STOCKE. `Cellules()` applique le plancher de rarete (trois matchs distincts), qui sur
+      un raster d'UN match vide tout par construction — LE PLANCHER APPARTIENT A L'AGREGAT,
+      JAMAIS AU MATCH.
+      **LE GATE EST CELUI DE L'ETAPE** (`film.replay_artifact`, deja franchi en tete de
+      `Run`) : sans la cle rien n'est cuit, donc rien n'est projete. Le relire ferait deux
+      sources de verite pour une question, plus un TOML par cycle — contrairement aux gates
+      jumeaux d'`usage.go` et `bombstats.go`, qui portent des cles DIFFERENTES de celle de
+      l'etape. Sept tests sans base ; artefact de schema 20 projete ; artefact sans piste
+      nommee -> sidecar VIDE mais PRESENT, serialise `[]` et jamais `null`.
+- [x] 6.3 `cmd/levelup/cmd_tactical_rasters.go` (235 L) : `levelup tactical-rasters
+      --backfill [--dry-run] [--title] [--limit]`. **ELLE N'OUVRE AUCUNE BASE, PAS MEME EN
+      LECTURE** — le sidecar est par match et anonyme, il n'y a rien a demander a DuckDB.
+      Enumeration par LE lecteur d'artefacts du depot (`ReplayService.AvailableSet`), qui
+      ne compte que les `.json` de premier niveau : le sous-dossier qu'elle remplit est
+      exclu de sa propre enumeration, par construction (teste).
+      Idempotente, cle de fraicheur DOUBLE (format du sidecar + schema de l'artefact) ;
+      raccourci qui evite d'ouvrir l'artefact quand le sidecar declare deja
+      `replay.SchemaVersion` — un artefact ne peut pas porter un schema superieur a ce que
+      le binaire courant sait produire. Pas de mode par defaut : sans `--backfill`, refus.
+      Gate par capability. **RATCHET `archlint/no_cuisson_depuis_tactique_test.go`** : ni
+      ce rattrapage ni `service/tactical*` ne peuvent nommer `replaybuild`,
+      `BuildFromFilm` ou `filmcache` — self-check PAR CIBLE (un simple compte aurait masque
+      la disparition d'une cible, `internal/service/tactical` en matchant plusieurs).
+      Sept tests sur repertoire temporaire. `docs/COMMANDS.md` + `docs/FR/COMMANDS.md`
+      (bilingue, meme commit — CLAUDE.md n 15).
+- [x] 6.4 `service/tactical_service_rasters.go` (245 L) : la question `temps` sur la meme
+      route `POST /tactical/{map_id}/raster`, portee data-level `film.replay_artifact`.
+      **PORT `TacticalRepository.Univers`** (`port/tactical.go`,
+      `platform/duckdb/tactical_repo_univers.go`) : l'occupation n'a besoin de la base que
+      pour son univers — passer par `KillPositions` aurait scanne les positions de toute la
+      carte pour jeter le resultat. C'est le MEME `chargerUnivers`, expose : deux
+      definitions auraient mesure sur deux populations sous le meme nom de filtre (teste
+      par egalite profonde entre les deux lectures).
+      **PORT `TacticalRasterStore`** + `service.NewTacticalRasterStore` (la source est un
+      FICHIER, pas une base : le service reste testable sans disque), cable au seul endroit
+      de construction (`registry_pages.go`). **UN SIDECAR ABSENT EST UN MATCH NON MESURE**
+      — il compte dans `matchs_filtres`, pas dans `matchs_retenus` : meme regle que le
+      drapeau `Mesure` (correction G2), appliquee a l'autre substrat.
+      **`tactical.RasteriseComptes`** somme des comptes DEJA agreges plutot que de
+      re-fabriquer un point par echantillon (des centaines de milliers de structures par
+      affichage) ; **`tactical.EnSecondes`** convertit la VALEUR (secondes par match) en
+      laissant le BRUT en echantillons — c'est la mesure, la seconde n'en est que l'unite.
+      L'echelle est calculee APRES la conversion, sur les valeurs qui seront peintes.
+      **`facesDeLaQuestion` gagne le cas `temps` -> AUCUNE face** : sans lui la question
+      serait tombee dans la branche par defaut et aurait compte les deux faces comme
+      « ou je gagne », publiant un denominateur de couverture qui ne decrit pas la mesure
+      affichee. Onze tests service (mock du port sidecar), deux tests handler, contrat +
+      `generated.ts` regeneres. `tactical_service_test.go` avait franchi 500 L : le double
+      du port descend dans `tactical_mock_test.go` (meme discipline que les scissions des
+      phases 1, 2 et 4 bis).
+- **Gate PASSE le 2026-09-06** (avant-plan, une commande `go` a la fois,
+  `GOCACHE=...go-build-tactique`, `CGO_ENABLED=1`). Go : `gofmt` propre ; `go vet` propre
+  sur les 10 arbres (3,1 s) ; `go test -count=1` sur `./internal/analysis/tactical/...
+  ./internal/sync/replayartifacts/... ./internal/service/... ./internal/api/...
+  ./internal/domain/... ./internal/port/... ./internal/platform/... ./internal/archlint/...
+  ./contracttest/... ./cmd/...` : **aucun `FAIL`**, code de sortie 0 (duckdb 63,9 s ;
+  api 24,4 s ; service 14,9 s ; handlers 14,0 s ; archlint 12,6 s ; contracttest 0,7 s) ;
+  **`go test -tags=integration -p 1` sur `./internal/sync/replayartifacts/...
+  ./internal/persist/...` : `ok` / `ok`, CODE DE SORTIE 0** (14,1 s et 40,4 s — le diff
+  touche `internal/sync/`, cette passe est obligatoire) ;
+  `golangci-lint run --timeout 5m --new-from-merge-base=origin/main` : **0 issue** ;
+  `openapi-gen -check` : a jour ; `generated.ts` regenere (2 lignes, additions pures).
+  Web (`node_modules/.tmp` purge) : `typecheck` propre ; `lint` **0 erreur** (30 warnings
+  preexistants) ; **suite vitest COMPLETE** `vitest run --pool=forks` : **606 fichiers,
+  6405 tests passes, 14 skip, 0 fail** (134,3 s) ; `routeTree.gen.ts` NON touche.
+  Seuils : fichiers neufs <= 367 L, fonctions <= 45 L, <= 5 parametres ;
+  `tactical_service_test.go` ramene de 510 a 471 L par extraction du mock.
+  **ONZE INVERSIONS JOUEES.** 6.0/6.2 : `Cellules()` a la place de `CellulesBrutes` -> le
+  sidecar est vide ; fenetre fermee (`tMs <= finMs`) -> 9 echantillons au lieu de 8 ;
+  `Joueurs` en `nil` -> serialise `null` ; echelle de temps par defaut retiree -> le test
+  du schema 20 tombe. 6.3 : cle de fraicheur inversee -> le sidecar perime est saute ;
+  sidecar jamais relu -> l'idempotence tombe (2 ecritures a la seconde passe) ; cuisson
+  reintroduite -> le ratchet la nomme en `cmd_tactical_rasters.go:108` ; cible du ratchet
+  renommee -> le self-check tombe. 6.4 : denominateur mis a tous les matchs filtres -> 4
+  au lieu de 3 ; conversion en secondes retiree -> 6 s au lieu de 1,5 ; garde d'unites
+  retiree -> un sidecar a 1000 ms de pas est somme ; `facesDeLaQuestion` sans le cas
+  `temps` -> la couverture publie 0/1 au lieu de 0/0.
 - **Gate** : projection sur fixture (comptes exacts) ; schema ancien (v20) projete ;
   idempotence ; aucun chemin de la page n'ecrit ni ne cuit ; `no_second_artifact_sink_test`.
 
@@ -894,6 +997,7 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **phase 6 CLOSE — les rasters d'occupation sont cuits UNE FOIS, la page n'en somme que des fichiers.** Un sidecar par match (`rasters/{short}.json`), depose par la quatrieme projection post-cuisson et rattrape hors ligne par `levelup tactical-rasters --backfill`. Quatre proprietes portent tout le lot. (1) **UN ECHANTILLON = 250 ms DE PRESENCE, PAS UN POINT DE FILM** : le film ne replique une position que lorsqu'elle change assez, donc compter les points bruts aurait mesure le mouvement et non le temps passe ; la fenetre est demi-ouverte, 2 s font huit quarts de seconde. (2) **LE PLANCHER DE RARETE APPARTIENT A L'AGREGAT** : ecrit avec `Cellules()`, un sidecar de match aurait ete vide par construction (une cellule d'un match compte un match distinct) — d'ou `CellulesBrutes()`, la forme qu'on stocke. (3) **UN SIDECAR ABSENT EST UN MATCH NON MESURE**, pas un match a zero : meme regle que le drapeau `Mesure` de la correction G2, appliquee a l'autre substrat, sans quoi l'intensite aurait varie avec la couverture de film au lieu du jeu. (4) **RIEN NE CUIT, ET C'EST GARDE PAR RATCHET** : ni la page ni le rattrapage ne peuvent nommer `replaybuild`/`BuildFromFilm`/`filmcache`, avec self-check par cible. Deux pieges rencontres et fermes sur place : le sous-dossier `rasters/` n'est pas un choix de rangement mais la condition de cohabitation (les deux parcours du dossier d'artefacts ne comptent que les `.json` de premier niveau — a plat, un sidecar aurait ete lu comme un match par `AvailableSet` et supprime par la purge) ; et deux tests existants employaient « temps » comme exemple de question INCONNUE, ce que l'ouverture du vocabulaire a invalide. Gate complet vert, integration `-p 1` comprise (code de sortie 0), suite vitest complete (606 fichiers / 6405 tests / 0 fail), ONZE inversions jouees.
 - 2026-09-06 : **revue adversariale ronde 2 de la phase 4 bis — 3 constats, TOUS corriges** en 1 commit `tactique(4.8)` ; pas de ronde 3. Le P1 est le meme defaut que la ronde 1 avait deja nomme, une couche plus bas : **une copie qui perd la garde de l'original**. La reconciliation des labels de session avait ete reprise de `SquadLayout` SANS son `if (reconciled.length === 0) return` — et cette garde-la ne protege pas d'un zombie, elle protege d'un CHANGEMENT DE CONTEXTE : ajouter un coequipier bascule la liste proposee de « solo » a « escouade », la session epinglee n'y figure plus, et l'ecrire a vide faisait passer la lecture d'une soiree a l'historique entier, en silence. Garde reprise, et la situation est desormais AFFICHEE plutot que muette. Les deux P2 ferment ce que la ronde 1 avait laisse a moitie : une seule definition du motif XUID (+ garde-rail archlint, dont le self-check positif a rattrape un ratchet faux) et une requete d'annuaire qui n'est plus emise quand sa source n'est pas proposee. Gate complet rejoue, trois inversions.
 - 2026-09-06 : **revue adversariale ronde 1 de la phase 4 bis — 17 constats, TOUS corriges** en 3 commits `tactique(4.7)`. Aucun acces indu, aucune injection, aucun resultat faux cote Go : les defauts etaient d'USAGE. Le plus couteux (W1) : « Aucune carte jouee » s'affichait PENDANT l'attente, parce qu'en TanStack v5 `isLoading` est faux sur une requete desactivee — au premier montage, a chaque clic sur Analyser, et definitivement si la resolution echouait. Les trois autres P1 web disent la meme chose autrement : le selecteur proposait des noms qu'il allait refuser (W2), le label de session persiste devenait un zombie a la synchronisation suivante (W3), et « Reinitialiser les filtres » n'en reinitialisait que la moitie (W4). Cote Go : composition non bornee (5 000 `EXISTS` possibles) desormais bornee et typee, `matchs_filtres` redevenu PAR CARTE sur decision du superviseur, et un commentaire de montage qui annoncait « GET » sur des routes en POST. Gate rejoue en entier, sept inversions.
 - 2026-09-06 : **phase 4 bis CLOSE (items 4.5 et 4.6) — le filtre de session MARCHE.** Le perimetre de l'onglet est desormais une LISTE BLANCHE de match_id, resolue cote client par le endpoint de filtres (base JOUEUR, la seule qui porte les sessions) et postee aux deux endpoints tactiques, qui perdent leurs parametres plats de filtre. Barre L2 assemblee de trois controles existants, etat dans l'URL. Gate complet vert (Go : 0 issue lint, contrat a jour ; web : suite vitest COMPLETE, 606 fichiers / 6390 tests / 0 fail), HUIT inversions jouees. Deux pieges rencontres et documentes sur place : Huma ne met pas a plat une struct embarquee dans un corps (422 silencieux), et un POST de lecture sous /players/ doit entrer dans `readOnlyPostPrefixes` sous peine de 401 pour un visiteur anonyme.
@@ -1203,6 +1307,32 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-06 (phase 6) — **LA PURGE RECURRENTE DES ARTEFACTS NE CONNAIT PAS LES SIDECARS :
+  ils deviennent ORPHELINS.** `scheduler.purgeReplayArtifactsForTitle` supprime les
+  artefacts sortis de la fenetre `replay_retention_months` et saute les repertoires
+  (`e.IsDir()`) — ce qui protege bien `rasters/` d'une suppression accidentelle, mais laisse
+  aussi sur le disque le sidecar d'un artefact purge. Consequence : aucune erreur, aucune
+  lecture fausse (un match hors fenetre est hors perimetre de toute facon), seulement de
+  l'espace disque qui ne se libere jamais — quelques kilooctets par match, contre quelques
+  megaoctets pour l'artefact. NON TRAITE : le fichier lu par le cron est
+  `internal/scheduler/replay_purge_cron.go`, hors perimetre de la phase 6, et le choix
+  « purger aussi le sidecar » vs « les garder, ils sont minuscules et re-servent si la
+  fenetre s'elargit » est une decision produit.
+- 2026-09-06 (phase 6) — **`domain/tactical.go` EST A 504 LIGNES, deja au-dela du seuil.**
+  La phase 4 bis l'y a porte (486 -> 504). La phase 6 ne l'a donc PAS grossi : la constante
+  `TacticalQuestionTemps` vit dans `domain/tactical_raster.go`, a cote du substrat dont elle
+  tire sa mesure, avec la justification ecrite sur place. Consequence assumee : le
+  vocabulaire complet des questions se lit en DEUX endroits. NON TRAITE (la dette de seuil
+  est gelee par la baseline, CLAUDE.md n 5) ; une scission de ce fichier — l'evidente est
+  « types de lecture » vs « ce que la page publie » — serait un petit lot a part.
+- 2026-09-06 (phase 6) — **DEUX TESTS EXISTANTS PRENAIENT « temps » POUR UNE QUESTION
+  INCONNUE.** `TestRaster_QuestionEtAxeNommentLaValeurRefusee` et
+  `TestTacticalService_VocabulaireRefuse` employaient cette chaine comme exemple de valeur
+  hors vocabulaire ; l'ouverture de la quatrieme question les a fait tomber. Corriges DANS
+  LE PERIMETRE (leur intention est intacte : la fixture prend « tout-sauf-ca », qui n'a
+  aucune chance d'entrer au vocabulaire, et le commentaire dit pourquoi). Lecon generale :
+  **une fixture de valeur INVALIDE ne doit pas emprunter au champ semantique de la
+  feature** — elle finit par devenir valide.
 - 2026-09-06 (phase 4 bis) — **LES SESSIONS PROPOSEES NE SONT PAS CELLES DE LA COMPOSITION
   EXACTE, et l'ecart est dans le sens de la prudence.** La barre de l'Escouade propose
   `composition_sessions`, que seule la requete de page teammates sait calculer (intersection

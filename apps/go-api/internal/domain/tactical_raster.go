@@ -112,3 +112,18 @@ type TacticalRasterEntree struct {
 	Lig   int `json:"lig"`
 	Frame int `json:"frame"`
 }
+
+// TacticalQuestionTemps : OU JE PASSE MON TEMPS — la lecture d'OCCUPATION, sommee depuis
+// les sidecars ci-dessus.
+//
+// POURQUOI ELLE VIT ICI ET NON A COTE DE SES TROIS SOEURS (domain/tactical.go). D'abord
+// parce qu'elle n'a pas le meme SUBSTRAT : morts, kills et gagne se lisent tous sur
+// `kill_positions_latest` — le seul substrat qui existe sans artefact —, celle-ci se lit
+// sur les pistes du film. Ensuite parce que `domain/tactical.go` est deja a 504 lignes :
+// la dette de seuil est GELEE par la baseline, on ne l'accroit pas (CLAUDE.md n 5). Le
+// vocabulaire complet des questions se lit donc en deux endroits, et chacun dit d'ou sa
+// mesure vient.
+//
+// L'UNITE EST LA SECONDE PAR MATCH : `CelluleTactique.Valeur` porte des secondes,
+// `Brut` le compte d'echantillons qui les a produites.
+const TacticalQuestionTemps = "temps"

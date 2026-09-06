@@ -64,6 +64,17 @@ type TacticalService interface {
 // MEME endroit — le SELECT de l'univers — pour qu'aucune ne puisse mesurer sur une
 // population que les autres ne voient pas.
 type TacticalRepository interface {
+	// Univers rend les matchs RETENUS par le perimetre et la composition de leurs
+	// equipes, SANS aucune mesure accrochee.
+	//
+	// POURQUOI UNE LECTURE A PART (phase 6, 2026-09-06). La lecture d'OCCUPATION ne
+	// se sert pas de la base pour ses valeurs : elles viennent des sidecars de raster
+	// deposes a la cuisson (cf. TacticalRasterStore). Ce dont elle a besoin ici, c'est
+	// exactement de l'univers — quels matchs, qui etait dans quelle equipe — et rien
+	// d'autre. Passer par `KillPositions` pour l'obtenir aurait scanne
+	// `kill_positions` sur toute la carte pour jeter le resultat.
+	Univers(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalUnivers, error)
+
 	// MapsPlayed liste les cartes jouées par le joueur dans le périmètre, avec le
 	// nombre de matchs et sa décomposition victoires / défaites. Ordre
 	// déterministe (matchs décroissants, puis map_id). `filtre.MapID` est ignoré :
@@ -87,4 +98,23 @@ type TacticalRepository interface {
 	// requête pour ce seul cas aurait donné deux définitions du journal des
 	// morts d'un joueur.
 	KillEvents(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalKillEvents, error)
+}
+
+// TacticalRasterStore lit les SIDECARS de raster tactique — l'occupation d'un match,
+// calculee une fois a la cuisson et deposee a cote de son artefact (cf.
+// internal/sync/replayartifacts/raster.go et domain.TacticalRasterSidecar).
+//
+// UN SIDECAR ABSENT N'EST PAS UNE ERREUR, et c'est la distinction qui porte toute la
+// lecture : le match existe, il est simplement NON MESURE pour les lectures d'artefact
+// (film jamais decode, ou expire cote serveur). Il compte alors dans `matchs_filtres` et
+// PAS dans `matchs_retenus` — le compter au denominateur ferait varier l'intensite avec
+// la couverture de film au lieu du jeu (meme regle que le drapeau `Mesure` du journal des
+// morts, correction G2 du 2026-09-06).
+//
+// La frontiere est une interface parce que la source est un FICHIER, pas une base : le
+// service reste testable sans disque, et le jour ou les sidecars vivraient ailleurs,
+// c'est cette seule implementation qui bougerait.
+type TacticalRasterStore interface {
+	// Charger rend le sidecar d'un match, ou (nil, nil) s'il n'y en a pas.
+	Charger(ctx context.Context, matchID string) (*domain.TacticalRasterSidecar, error)
 }

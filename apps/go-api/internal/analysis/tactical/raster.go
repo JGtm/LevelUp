@@ -203,3 +203,57 @@ func (r *Raster) CellulesBrutes() []CelluleBrute {
 	})
 	return out
 }
+
+// CompteCellule est une occupation DEJA agregee : une cellule, le match qui l'a produite,
+// et le nombre de passages. C'est le dual de CelluleBrute — ce qu'on a stocke, relu.
+type CompteCellule struct {
+	Cellule
+	MatchID     string
+	Occurrences int
+}
+
+// RasteriseComptes construit un raster a partir de comptes DEJA agreges par cellule,
+// plutot que de points.
+//
+// # POURQUOI ELLE EXISTE A COTE DE Rasterise
+//
+// La lecture d'occupation somme N sidecars de match, chacun portant deja ses cellules et
+// leurs comptes. Repasser par `Rasterise` exigerait de RE-FABRIQUER un point par
+// echantillon — un match de dix minutes en compte quelques milliers par joueur, soit des
+// centaines de milliers de structures allouees a chaque affichage pour retrouver un
+// comptage qu'on avait deja. Cette entree-la prend les comptes tels quels.
+//
+// # CE QU'ELLE NE CHANGE PAS
+//
+// L'UNIVERS RESTE UNE ENTREE, avec exactement les memes consequences que pour Rasterise :
+// un match retenu dont le sidecar ne porte aucune cellule pour la cible demandee est un
+// zero LEGITIME et compte au denominateur « par match ». Un compte dont le match n'est pas
+// dans l'univers rend ErrMatchHorsUnivers — un bug d'appelant, ni avale ni arbitre.
+func RasteriseComptes(g Grille, matchs []string, comptes []CompteCellule) (*Raster, error) {
+	r := &Raster{
+		grille:    g,
+		cellules:  make(map[Cellule]map[string]int),
+		resultats: make(map[string]int, len(matchs)),
+	}
+	for _, m := range matchs {
+		r.resultats[m] = domain.OutcomeUnknown
+	}
+	for _, c := range comptes {
+		if _, retenu := r.resultats[c.MatchID]; !retenu {
+			return nil, fmt.Errorf("%w (match %q)", ErrMatchHorsUnivers, c.MatchID)
+		}
+		if c.Occurrences <= 0 {
+			// Un compte nul n'ALIMENTE pas une cellule : une cellule jamais atteinte
+			// n'existe pas dans un raster, et en creer une a zero la ferait entrer dans
+			// les matchs distincts du plancher de rarete sans qu'on y soit jamais passe.
+			continue
+		}
+		parMatch := r.cellules[c.Cellule]
+		if parMatch == nil {
+			parMatch = make(map[string]int)
+			r.cellules[c.Cellule] = parMatch
+		}
+		parMatch[c.MatchID] += c.Occurrences
+	}
+	return r, nil
+}
