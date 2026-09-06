@@ -29,9 +29,11 @@ film_e2e/c0a82e88/` = le plus petit film du corpus à joueurs (Husky Raid:CTF, 8
 ~1,6 Mio zlib), versionné le 2026-08-25 (commit `6d8c5e921`). Son `fixture.json` porte DEUX
 choses de natures différentes : les `chunks` (les octets du film, entrée du décodage) et les
 `facts` (la feuille de match du service Halo : frags/morts/assistances par xuid, scores de
-camp). Les `facts` ne traversent le décodeur QUE comme pont d'identité — les compteurs publiés
-dans `ScoreTimeline.Players` sont décodés des octets (`document_score.go`). Les deux chaînes
-sont donc indépendantes, et rien ne les confrontait (PLAN_MASTER §6.5).
+camp). Les `facts` traversent le décodeur comme CLÉ du pont d'identité, et c'est ce qui limite
+la portée du différentiel : voir le paragraphe « Compteurs de joueur » ci-dessous, corrigé après
+revue. Le fil des morts, lui, est lu du chunk highlight sans aucune base
+(`analysis/replay/deaths_source.go`) : c'est là, et là seulement, que deux chaînes se
+confrontent (PLAN_MASTER §6.5).
 
 **Mesure d'abord, gel ensuite** (exigence du rapport G7). Relevé du 2026-09-05, schéma 39 :
 
@@ -45,13 +47,29 @@ sont donc indépendantes, et rien ne les confrontait (PLAN_MASTER §6.5).
 | actions d'objectif | 12 — 8 `kills`, 4 `assists`, AUCUNE de la famille drapeau |
 | tirs / loadouts / objets d'objectif / portages de drapeau | 265 / 20 / 0 / 0 |
 
-**Différentiel film ↔ API : 15 compteurs sur 15 EXACTS.** Pour les 5 joueurs que le pont
-d'identité apparie (`2533275001554469`, `2535429692041611`, `2535432531943478`,
-`2535463878425995`, `2535465632069522`), les frags, morts et assistances décodés du film
-égalent exactement ceux de l'API. Aucune tolérance n'est donc nommée : l'égalité est la règle.
-Les 3 joueurs non appariés sont figés en liste (un 4e refus doit se voir).
+**Compteurs de joueur — CE PARAGRAPHE ÉTAIT FAUX, corrigé le 2026-09-06 (revue F-R1-1).** Il
+annonçait « Différentiel film ↔ API : 15 compteurs sur 15 EXACTS » comme une confrontation de
+deux chaînes indépendantes. C'en est une propriété IMPOSÉE : `objectiveevents/slotidentity.go`
+apparie un slot d'entité à un xuid par ÉGALITÉ EXACTE du triplet frags/morts/assistances contre
+la ligne de l'API. Tout joueur publié porte donc le triplet de l'API par construction, et une
+régression du décodeur ne produit pas un écart de valeur — elle fait DISPARAÎTRE le joueur du
+calque. Ce que l'assertion garde réellement :
 
-**Un second fait des deux chaînes** : le roster NOMMÉ du film (7 xuids) est exactement
+- **la liste figée des 5 joueurs appariés** (`2533275001554469`, `2535429692041611`,
+  `2535432531943478`, `2535463878425995`, `2535465632069522`) — le VRAI détecteur de régression
+  du pont ; les 3 non appariés sont figés eux aussi, un 4e refus ou un 6e appariement rougit ;
+- **la cohérence INTERNE à la chaîne du film** entre les deux dérivations du même compteur : le
+  NOMBRE D'INCRÉMENTS qui sert de clé d'appariement (`objectiveevents.countsOf`) et la DERNIÈRE
+  VALEUR de la série posée sur la grille de frames (`replay.scoreTicksOf`, qui écarte les
+  émissions hors fenêtre et aplatit les paliers). Rien n'oblige les deux à coïncider ; elles
+  coïncident sur les 15 compteurs (mesure du 2026-09-05). C'est ce que la mutation
+  `score_timeline.go:136` fait rougir.
+
+Le message d'échec, qui disait `DIFFÉRENTIEL film ↔ API`, est renommé
+`SÉRIE PUBLIÉE ≠ CLÉ D'APPARIEMENT`. En-tête du fichier et commentaire de la fonction réécrits.
+
+**Le fait des deux chaînes, lui, TIENT** (vérifié par la revue) : le roster NOMMÉ du film
+(7 xuids) est exactement
 l'ensemble des joueurs que l'API donne à au moins une mort — le seul joueur à 0 mort
 (`2535458702376288`) est le seul absent. Une vie n'est nommée que par la mort qui la ferme
 (`lives.go`). En revanche le NOMBRE de vies nommées n'est PAS le nombre de morts (4 joueurs
@@ -67,7 +85,7 @@ confronter aurait laissé une retouche du fixture déplacer l'attendu en silence
 | Mutation | Effet observé |
 |---|---|
 | `replay/origin.go:114` `read := ... + 100` | `originMs = 34970 ms, attendu 34870 ms` ET `t0FilmMs = 35270 ms, attendu 35170 ms` |
-| `replay/score_timeline.go:136` `ScoreTick{T: t, V: v + 1}` | 4 lignes `DIFFÉRENTIEL film ↔ API` (frags, morts ET assistances décalés) + `courbe d'équipe : 2 points, attendu 3 ([{194 2} {705 4}])` |
+| `replay/score_timeline.go:136` `ScoreTick{T: t, V: v + 1}` | 4 lignes `SÉRIE PUBLIÉE ≠ CLÉ D'APPARIEMENT` (frags, morts ET assistances décalés) + `courbe d'équipe : 2 points, attendu 3 ([{194 2} {705 4}])` |
 | `fixture.json` `"kills": 7` → `6` | `oracle recopié périmé pour 2535463878425995 : fixture.json dit 6/2/1 camp 0, la recopie dit 7/2/1 camp 0` |
 
 Gate F.1 (avant-plan) :
@@ -127,7 +145,7 @@ Supprimé au passage, dans la même fonction : la variable morte `BASELINE_COV_R
 (déclarée `:62`, aucun usage dans tout le dépôt — CLAUDE.md règle 7).
 
 **(c) [~] Le script est DÉJÀ invoqué par la CI.** Vérifié sur pièces : `.github/workflows/
-ci.yml:374-376`, job `go-coverage`, step « Vérifier suite baseline de tests pré-migration »,
+ci.yml:412-414`, job `go-coverage`, step « Vérifier suite baseline de tests pré-migration »,
 `bash ../../scripts/check_test_baseline.sh tests --from-jsonl baseline_current.jsonl`, sous
 `if: always()`. Le `paths-ignore` (`ci.yml:49-50`) ne porte que sur `.ai/**.md` : la
 modification de `.ai/baselines/*.jsonl` déclenche donc bien la CI, comme le commentaire
@@ -243,13 +261,14 @@ suffixe `_gamefiles_test.go` — `cmd/mapfond-build/reglages_test.go`,
   Les quatre autres ne lisent que l'asset publié : ils restent dans le build par défaut et
   continuent de tourner en CI. Aucun import à retirer du fichier d'origine (`himap` y sert
   encore à `StyleFondValide`, ligne 66).
-- **Ratchet promu** : `internal/archlint/gamefiles_tag_test.go` (neuf) balaie `internal/` ET
-  `cmd/` par `filepath.WalkDir` ; `internal/himap/corpus_tag_test.go` est SUPPRIMÉ (il ne
-  regardait qu'un répertoire, par `filepath.Glob` relatif au paquet — c'est précisément
-  pourquoi il n'a jamais vu les deux fichiers ci-dessus). Les deux sens de la règle sont
-  gardés : tout `*_gamefiles_test.go` porte le tag (avec un plancher de 61 fichiers, pour
-  qu'un balayage cassé se voie), et aucun `_test.go` non tagué n'appelle une porte d'entrée du
-  jeu. Allowlist datée à deux entrées : `internal/himap/deploy_root_test.go` (résolution de
+- **Ratchet promu** : `internal/archlint/gamefiles_tag_test.go` (neuf) balaie LA RACINE DU
+  MODULE par `filepath.WalkDir` (corrigé le 2026-09-06, revue F-R1-2 : la première version
+  balayait la constante `{"internal", "cmd"}` alors que l'en-tête promettait « tout le
+  module ») ; `internal/himap/corpus_tag_test.go` est SUPPRIMÉ (il ne regardait qu'un
+  répertoire, par `filepath.Glob` relatif au paquet — c'est précisément pourquoi il n'a jamais
+  vu les deux fichiers ci-dessus). Les deux sens de la règle sont gardés : tout
+  `*_gamefiles_test.go` porte le tag (avec un plancher de 62 fichiers, pour qu'un balayage
+  cassé se voie), et aucun `_test.go` non tagué n'appelle une porte d'entrée du jeu. Allowlist datée à deux entrées : `internal/himap/deploy_root_test.go` (résolution de
   chemin sous `t.Setenv`, < 0,01 s) et le ratchet lui-même (il CITE les motifs qu'il interdit).
   Le « pourquoi » de l'original (mesure des 1 246 s de `TestBalayageCoquille`, asymétrie
   poste/CI) est repris intégralement dans le nouvel en-tête.
@@ -491,6 +510,100 @@ GRANDIT de 1 209 entrées, elle ne rétrécit pas).
    cyclomatique, `runBackfill` de `cmd/levelup` à 65, et 28 `noctx` sur
    `cmd_reset_bitmasks.go` / `cmd_restore_csr.go` (`db.Exec`/`db.QueryRow` sans contexte). Le
    ratchet ne les demandera qu'au prochain qui touchera ces lignes.
+
+## Corrections après revue adversariale F-R1 (2026-09-06)
+
+Revue F-R1 (lentille L6, « ce que les tests ne couvrent pas ») : **25 conditions tiennent,
+19 mutations jouées, 2 constats recevables**. Les deux sont corrigés ci-dessous, chacun prouvé
+en rejouant la mutation exacte du verdict. Les quatre points « non recevables » du verdict sont
+laissés tels quels, sur son propre argument (dette d'emojis inchangée, `skip` compté présent
+mais ÉCRIT, trois leurres non mordants mais non revendiqués, numéros de ligne — ce dernier est
+tout de même corrigé, cf. F-R1-3).
+
+### [x] F-R1-1 (P1, doc inversée) — le « différentiel film ↔ API » des compteurs n'en est pas un
+
+**Le fait, vérifié sur pièces avant de corriger.** `objectiveevents/slotidentity.go:97` apparie
+un slot d'entité à un xuid par ÉGALITÉ EXACTE du triplet frags/morts/assistances contre la ligne
+de match de l'API (`if l.Kills == kills[slot] && l.Deaths == deaths[slot] && l.Assists ==
+assists[slot]`). Tout joueur publié dans `ScoreTimeline.Players` porte donc, PAR CONSTRUCTION,
+le triplet de l'API : la boucle de comparaison ne peut pas voir d'écart, le joueur divergent est
+simplement écarté du calque. La propriété annoncée (« 15 compteurs sur 15 exactement égaux »)
+est imposée par le pont, pas constatée entre deux chaînes.
+
+**Ce que l'assertion garde vraiment**, et qui est maintenant écrit :
+
+1. **la liste figée des 5 appariés** — le vrai détecteur de régression du pont ;
+2. **la cohérence interne à la chaîne du film** entre les deux dérivations du même compteur :
+   le NOMBRE D'INCRÉMENTS, clé d'appariement (`objectiveevents.countsOf` →
+   `len(incrementTimes(...))`), et la DERNIÈRE VALEUR de la série posée sur la grille de frames
+   (`replay.scoreTicksOf`, qui écarte les émissions hors fenêtre et aplatit les paliers). Rien
+   n'oblige les deux à coïncider — un point perdu par la fenêtre, une origine décalée ou un
+   palier mal filtré les sépare.
+
+**Corrigé** : en-tête du fichier (`# CE QUE L'ORACLE DE L'API PROUVE, ET CE QU'IL NE PROUVE
+PAS`, avec les deux cas séparés), commentaire de `oracleAPI`, commentaire de
+`assertCompteursJoueurs`, renvoi de `build_queue_worker_binary_integration_test.go:160-166`, et
+message d'échec `DIFFÉRENTIEL film ↔ API` → `SÉRIE PUBLIÉE ≠ CLÉ D'APPARIEMENT`. Le paragraphe
+fautif de ce journal est corrigé en place, avec mention de ce qu'il disait ; le thought_log
+reçoit un correctif daté à la suite (l'entrée d'origine n'est pas réécrite).
+
+**Le second fait, roster ↔ morts de l'API, est GARDÉ tel quel** : la revue l'a vérifié
+indépendamment (`analysis/replay/deaths_source.go:52-77` — le fil des morts est décodé du chunk
+highlight, aucune base n'intervient, il ne passe pas par `facts`). C'est bien un fait de deux
+chaînes.
+
+**Preuves (mutations 1 et 4 du verdict, rejouées après correction, annulées ensuite)** :
+
+| Mutation | Observé — et conforme à ce que la doc dit maintenant |
+|---|---|
+| `fixture.json:52` kills 7→6 **et** recopie de l'oracle alignée à 6 | `4 joueurs publiés, attendu 5 ([2533275001554469 2535429692041611 2535432531943478 2535465632069522])` + `joueur 2535463878425995 apparié le 2026-09-05 mais plus publié : le pont d'identité a régressé` — **aucune ligne de comparaison de valeurs**, exactement ce que l'en-tête annonce |
+| `replay/score_timeline.go:136` `V: v + 1` | 4 lignes `SÉRIE PUBLIÉE ≠ CLÉ D'APPARIEMENT pour <xuid> : la série finit à N frags … alors que le pont l'a apparié sur M … incréments` |
+
+### [x] F-R1-2 (P2) — le ratchet `gamefiles` ne balayait pas « tout le module »
+
+`racinesBalayees = []string{"internal", "cmd"}` contredisait l'en-tête (« SUR TOUT LE MODULE ») :
+un `_test.go` non tagué sous `contracttest/`, `pkg/`, `scripts/` ou `tests/` passait vert
+(mutation 14 du verdict) — l'angle mort EXACT de l'ancien ratchet de `himap` que F.4 prétendait
+fermer.
+
+**Corrigé** : la constante disparaît. `balayerTests` part de la racine du module
+(`filepath.WalkDir(goAPIRoot, …)`) et ne saute que les répertoires que **l'outil Go lui-même
+n'ouvre pas** — `testdata`, `vendor`, `node_modules`, et tout nom commençant par `.` ou `_`.
+La liste des racines est donc DÉRIVÉE du système de fichiers : une racine neuve est couverte le
+jour où elle apparaît. Vérifié qu'aucun `_test.go` ne vit sous un répertoire sauté (0 fichier),
+donc aucun faux positif possible sur l'état courant.
+
+**Preuve (mutation 14 du verdict, celle qui était VERTE)** :
+`apps/go-api/tests/golden/zz_review_ouvre_le_jeu_test.go` (paquet `golden_test`, appels
+`himap.DeployRoot()` et `himap.ChercheModuleInstalle("bazaar_map")`, sans tag) →
+
+```
+--- FAIL: TestAucunTestNonTagueNeLitLInstallation (0.14s)
+    tests/golden/zz_review_ouvre_le_jeu_test.go appelle DeployRoot( hors du tag "//go:build gamefiles" — …
+    tests/golden/zz_review_ouvre_le_jeu_test.go appelle ChercheModuleInstalle( hors du tag "//go:build gamefiles" — …
+```
+
+Fichier de mutation supprimé, répertoire vide retiré, `git status` propre. Coût du balayage
+élargi : `TestCorpusGamefilesEstTague` passe de 13,6 s à 15,7 s (2 464 `_test.go` au lieu de
+2 454) ; le plancher de 62 fichiers `*_gamefiles_test.go` reste exact (aucun hors
+`internal/` + `cmd/`).
+
+### [x] F-R1-3 (cosmétique) — référence de ligne périmée dans ce journal
+
+`ci.yml:374-376` (invocation du script de baseline) → **`ci.yml:412-414`** : F.6 a inséré
+33 lignes en amont dans le même fichier. Corrigé au paragraphe F.2(c).
+
+### Gate des corrections (avant-plan)
+
+```
+GOCACHE=… CGO_ENABLED=1 go test -count=1 ./internal/archlint/... ./internal/api/wire/...
+→ ok internal/archlint 16.0s · ok internal/api/wire 3.9s
+GOCACHE=… CGO_ENABLED=1 go test -tags=integration -p 1 -count=1 ./internal/api/wire/...
+→ ok  	levelup/go-api/internal/api/wire	16.9s
+GOCACHE=… CGO_ENABLED=1 go build ./...                                   → BUILD OK
+GOCACHE=… GOLANGCI_LINT_CACHE=… golangci-lint run --new-from-merge-base=origin/main ./...
+→ 0 issues.
+```
 
 ## Points à trancher par le superviseur
 
