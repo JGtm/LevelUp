@@ -864,7 +864,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 - **Gate** : typecheck + vitest ; test pur de `tacticalLogic.ts` ; smoke canvas ; garde-rail
   du peintre ; filtrage d'acces ; `?frame=` positionne le rejeu ; couleurs.
 
-### Phase 6 — Rasters par match a la cuisson + rattrapage — CLOSE 2026-09-06
+### Phase 6 — Rasters par match a la cuisson + rattrapage — CLOSE 2026-09-06, revue ronde 1 SOLDEE (14 constats)
 - [x] 6.0 `analysis/tactical/tracks.go` (293 L, PUR — avance de la phase 7) :
       `Occupation(g, EntreeOccupation, pasMs)` reechantillonne les pistes a pas FIXE de
       250 ms en tenant la derniere position connue, sur une fenetre DEMI-OUVERTE.
@@ -948,6 +948,74 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       `generated.ts` regeneres. `tactical_service_test.go` avait franchi 500 L : le double
       du port descend dans `tactical_mock_test.go` (meme discipline que les scissions des
       phases 1, 2 et 4 bis).
+- [x] 6.5 **Revue adversariale ronde 1 — 5 constats P1, 8 P2, 1 decision produit : TOUS
+      corriges** en 4 commits `tactique(6.5.<n>)`. Aucun report.
+      **C1 (P1) — LE TEMPS EN VEHICULE ETAIT PERDU EN SILENCE SUR UN MATCH « MESURE ».**
+      La cuisson coupe une piste en nouvelle vie des qu'un trou depasse 5 s
+      (`replay.lifeGapUS`) ; or un occupant embarque CESSE de repliquer son bipede — ce sont
+      ses trous qui portent les episodes — et ces episodes durent 13 a 36 s en mediane.
+      `vie()` ne tenait donc jamais une position d'un morceau au suivant. L'en-tete
+      justifiait en plus le reechantillonnage par « un joueur immobile quinze secondes »,
+      cas INATTEIGNABLE par construction : doc inversee.
+      Lien verifie sur pieces AVANT de coder : `VehicleRide` est IMBRIQUE dans
+      `VehicleTrack.Rides`, a cote de `VehicleTrack.Samples` — aucun appariement a faire.
+      `EntreeOccupation.Embarquements` (pur) est rempli par l'adaptateur unique de
+      `replayartifacts/raster.go`. Regles : un episode ne cree JAMAIS de spawn ; un
+      echantillon dans la fenetre prend la position du vehicule, le point de bipede est
+      ignore ; un episode sans point de vehicule n'attribue RIEN ; deux episodes
+      chevauchants d'un MEME xuid (ambiguite conducteur/passager que le document publie) ne
+      sont pas sommes. `TacticalRasterSchemaVersion` 1 -> 2 (la formule change). La LACUNE
+      residuelle est ECRITE dans `domain/tactical_raster.go` : la primitive n'attribue que
+      15,6 a 21,1 % des vies de vehicule.
+      **C2 (P1) — LE RATCHET ANTI-CUISSON NE FERMAIT PAS LA PORTE QU'IL CROYAIT FERMER.**
+      La CLI importe deja `replayartifacts` (legitimement, pour deux projections pures), et
+      ce paquet exporte `SpawnBuildOne` et `Run` : remplacer une branche d'echec par
+      `replayartifacts.SpawnBuildOne(...)` laissait le ratchet VERT en faisant de la passe
+      une cuisson EN LOT. Quatre motifs ajoutes + SELF-CHECK PAR MOTIF (un vocabulaire mort
+      n'interdit rien).
+      **C3 (P1) — LE REMEDE PRESCRIT ETAIT UN NO-OP SUR LES SIDECARS QU'IL VISAIT.** Le
+      service ecarte un sidecar aux mauvaises unites en prescrivant `--backfill` ; la CLI ne
+      regardait que le schema. `domain.SidecarRasterCourant` est LE predicat des deux, plus
+      un garde-rail BORNE aux fichiers qui nomment `TacticalRasterSidecar` (le motif nu
+      remontait cinq comparaisons de schema legitimes) et un test de non-divergence des
+      unites chez le paquet PROPRIETAIRE des constantes.
+      **C4 (P1)** — l'echange sous `temps` etait une decision jamais prouvee (les huit cas
+      montaient un titre sans `film.kill_source`) : teste, avec sa moitie « couverture
+      d'evenements a zero ».
+      **C5 (P1)** — la ligne de cablage de `Run` n'etait traversee par rien : test
+      `-tags=integration` qui pilote `Run` de bout en bout via le seam `Deps.BuildOne`,
+      sans decoder un film ni ecrire hors d'un repertoire temporaire.
+      **C6** logs sur les deux erreurs jetees de `lireSidecarRaster` · **C7** troisieme
+      copie du motif `os.ReadFile`+`Unmarshal(&ReplayDocument)` -> `lireDocumentRange` +
+      ratchet · **C8** `Raster()` 83 -> 25 L (`rasterDeKills` extraite ; `funlen` ne le
+      voyait pas, la position d'une fonction n'est pas une ligne ajoutee) et
+      `registry.go` ramene de 987 a ses 957 L par `registry_tactical.go` · **C9**
+      `points_ignores` transporte par le sidecar · **C10** quatre tests de mutations qui
+      passaient · **C11** pointeur de doc corrige (`no_second_artifact_sink_test` compte le
+      puits d'ECRITURE, pas l'enumeration).
+      **C12 (decision produit du superviseur)** — un artefact purge EMPORTE son sidecar, et
+      le court-circuit « dossier vide » de la purge compte desormais les ARTEFACTS et non
+      les entrees (avec `rasters/` present, chaque tick ouvrait la shared pour rien).
+- **Gate REJOUE apres la ronde 1, le 2026-09-06** (avant-plan, en serie, code de sortie
+  verifie). Go : `gofmt` propre ; `go vet` propre sur les 11 arbres ; `go test -count=1`
+  sur les dix arbres dont `./cmd/...` : **aucun `FAIL`, code 0** ;
+  **`go test -count=1 -tags=integration -p 1 ./internal/sync/replayartifacts/...
+  ./internal/persist/... ./internal/scheduler/...` : `ok`/`ok`/`ok`, CODE 0** (12,4 s /
+  47,7 s / 39,0 s) ; `golangci-lint run --new-from-merge-base=origin/main` : **0 issue** ;
+  `golangci-lint --enable funlen` sur les six arbres touches : **aucun fichier du lot
+  signale** (la dette remontee est preexistante et gelee) ; `openapi-gen -check` a jour.
+  Web : `typecheck` propre ; **suite vitest COMPLETE 606 fichiers / 6405 tests / 14 skip /
+  0 fail** (106,8 s). `git status` : 0 fichier sous `data/`.
+  **VINGT MUTATIONS JOUEES, toutes mordantes.** C1 : voie des embarquements supprimee -> 4
+  tests tombent. C10 : `frame := p.T` -> la frame d'entree tombe ; vie a un point ecartee ->
+  le spawn disparait. C3 : cle de fraicheur ramenee au schema -> les deux cas d'unites
+  tombent. C2 : `SpawnBuildOne` reintroduit -> nomme a la ligne ; motif renomme -> le
+  self-check tombe. C6 : sidecar jamais relu -> l'idempotence tombe. C4 : `lireLeJournal`
+  supprime -> l'echange disparait. C9 : transport retire -> 0 au lieu de 8. C10 : sidecar
+  vide traite en non mesure -> 3 au lieu de 4. C5 : ligne de cablage retiree -> le sidecar
+  ne nait pas. C7 : quatrieme copie -> nommee a la ligne. C12 : sidecar non supprime ->
+  orphelin ; court-circuit sur les entrees -> la base est ouverte pour rien ; suppression
+  etendue aux artefacts gardes -> le test le nomme.
 - **Gate PASSE le 2026-09-06** (avant-plan, une commande `go` a la fois,
   `GOCACHE=...go-build-tactique`, `CGO_ENABLED=1`). Go : `gofmt` propre ; `go vet` propre
   sur les 10 arbres (3,1 s) ; `go test -count=1` sur `./internal/analysis/tactical/...
@@ -997,6 +1065,7 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **revue adversariale ronde 1 de la phase 6 — 14 constats, TOUS corriges** en 4 commits `tactique(6.5.<n>)`. Le P1 qui compte est un defaut de MESURE, pas de code : **le temps passe en vehicule n'entrait nulle part, sur des matchs comptes comme MESURES**. La cuisson coupe une vie des qu'un trou depasse 5 s ; un occupant embarque cesse de repliquer son bipede, et ces episodes durent 13 a 36 s en mediane — le reechantillonnage ne pouvait donc structurellement pas les voir, et l'en-tete justifiait le mecanisme par un cas (« immobile quinze secondes ») que la coupe des vies rend INATTEIGNABLE : doc inversee sur la lacune meme qu'elle masquait. Corrige en ATTRIBUANT sans inventer — pendant un episode l'occupant est a la position du vehicule, un episode sans point de vehicule n'attribue rien, et un embarquement ne cree jamais de spawn. Schema du sidecar 1 -> 2, lacune residuelle (15,6 a 21,1 % des vies attribuees) ECRITE dans le contrat. Les quatre autres P1 disent la meme chose autrement : **un garde qui ne garde pas ce qu'il croit**. Le ratchet anti-cuisson ignorait `SpawnBuildOne`, que la CLI pouvait deja appeler ; le remede que le service PRESCRIT dans son avertissement etait un no-op sur exactement les sidecars qu'il ecartait ; l'echange sous `temps` etait une decision jamais prouvee ; et la ligne de cablage qui fait naitre les sidecars a la cuisson n'etait traversee par aucun test. Une mesure a corrige une croyance au passage : `points_ignores` est structurellement NUL aujourd'hui, `replay.Point` etant en float32 et JSON ne pouvant exprimer aucune valeur non finie — le fait est fige par un test plutot que redecouvert comme un bug. Decision produit prise : un artefact purge emporte son sidecar. Gate complet rejoue (integration `-p 1` sur trois arbres, code 0 ; vitest complet 606/6405/0), VINGT mutations jouees.
 - 2026-09-06 : **phase 6 CLOSE — les rasters d'occupation sont cuits UNE FOIS, la page n'en somme que des fichiers.** Un sidecar par match (`rasters/{short}.json`), depose par la quatrieme projection post-cuisson et rattrape hors ligne par `levelup tactical-rasters --backfill`. Quatre proprietes portent tout le lot. (1) **UN ECHANTILLON = 250 ms DE PRESENCE, PAS UN POINT DE FILM** : le film ne replique une position que lorsqu'elle change assez, donc compter les points bruts aurait mesure le mouvement et non le temps passe ; la fenetre est demi-ouverte, 2 s font huit quarts de seconde. (2) **LE PLANCHER DE RARETE APPARTIENT A L'AGREGAT** : ecrit avec `Cellules()`, un sidecar de match aurait ete vide par construction (une cellule d'un match compte un match distinct) — d'ou `CellulesBrutes()`, la forme qu'on stocke. (3) **UN SIDECAR ABSENT EST UN MATCH NON MESURE**, pas un match a zero : meme regle que le drapeau `Mesure` de la correction G2, appliquee a l'autre substrat, sans quoi l'intensite aurait varie avec la couverture de film au lieu du jeu. (4) **RIEN NE CUIT, ET C'EST GARDE PAR RATCHET** : ni la page ni le rattrapage ne peuvent nommer `replaybuild`/`BuildFromFilm`/`filmcache`, avec self-check par cible. Deux pieges rencontres et fermes sur place : le sous-dossier `rasters/` n'est pas un choix de rangement mais la condition de cohabitation (les deux parcours du dossier d'artefacts ne comptent que les `.json` de premier niveau — a plat, un sidecar aurait ete lu comme un match par `AvailableSet` et supprime par la purge) ; et deux tests existants employaient « temps » comme exemple de question INCONNUE, ce que l'ouverture du vocabulaire a invalide. Gate complet vert, integration `-p 1` comprise (code de sortie 0), suite vitest complete (606 fichiers / 6405 tests / 0 fail), ONZE inversions jouees.
 - 2026-09-06 : **revue adversariale ronde 2 de la phase 4 bis — 3 constats, TOUS corriges** en 1 commit `tactique(4.8)` ; pas de ronde 3. Le P1 est le meme defaut que la ronde 1 avait deja nomme, une couche plus bas : **une copie qui perd la garde de l'original**. La reconciliation des labels de session avait ete reprise de `SquadLayout` SANS son `if (reconciled.length === 0) return` — et cette garde-la ne protege pas d'un zombie, elle protege d'un CHANGEMENT DE CONTEXTE : ajouter un coequipier bascule la liste proposee de « solo » a « escouade », la session epinglee n'y figure plus, et l'ecrire a vide faisait passer la lecture d'une soiree a l'historique entier, en silence. Garde reprise, et la situation est desormais AFFICHEE plutot que muette. Les deux P2 ferment ce que la ronde 1 avait laisse a moitie : une seule definition du motif XUID (+ garde-rail archlint, dont le self-check positif a rattrape un ratchet faux) et une requete d'annuaire qui n'est plus emise quand sa source n'est pas proposee. Gate complet rejoue, trois inversions.
 - 2026-09-06 : **revue adversariale ronde 1 de la phase 4 bis — 17 constats, TOUS corriges** en 3 commits `tactique(4.7)`. Aucun acces indu, aucune injection, aucun resultat faux cote Go : les defauts etaient d'USAGE. Le plus couteux (W1) : « Aucune carte jouee » s'affichait PENDANT l'attente, parce qu'en TanStack v5 `isLoading` est faux sur une requete desactivee — au premier montage, a chaque clic sur Analyser, et definitivement si la resolution echouait. Les trois autres P1 web disent la meme chose autrement : le selecteur proposait des noms qu'il allait refuser (W2), le label de session persiste devenait un zombie a la synchronisation suivante (W3), et « Reinitialiser les filtres » n'en reinitialisait que la moitie (W4). Cote Go : composition non bornee (5 000 `EXISTS` possibles) desormais bornee et typee, `matchs_filtres` redevenu PAR CARTE sur decision du superviseur, et un commentaire de montage qui annoncait « GET » sur des routes en POST. Gate rejoue en entier, sept inversions.
@@ -1307,6 +1376,32 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-06 (phase 6, revue) — **LE DOCUMENT EST RELU TROIS A QUATRE FOIS PAR ARTEFACT ET
+  PAR CYCLE.** Les quatre projections post-cuisson (T0 du film, resume d'usage, stats
+  d'Assaut, raster tactique) appellent chacune `lireDocumentRange` sur le MEME fichier —
+  soit, sur un document de ~2 Mo, une dizaine de megaoctets lus et desserialises par match.
+  La factorisation de la lecture est faite (C7) ; le passage a UNE lecture par artefact, le
+  document circulant entre les projections, ne l'est PAS : il change la forme des quatre
+  `persister*`/`projeter*`, c'est-a-dire une refonte de flux, pas une factorisation
+  mecanique. NON TRAITE — melanger les deux dans le meme diff aurait rendu la revue de
+  chacune impossible. Petit lot a part, mesurable au compteur
+  `replay_artifact_digest_reads_total`.
+- 2026-09-06 (phase 6, revue) — **UN FAUX SPAWN A LA SORTIE D'UN VEHICULE.** Un occupant qui
+  descend rouvre une vie de bipede, et cette vie est ouverte par un trou > 5 s — donc son
+  premier point est publie comme un SPAWN alors que ce n'est pas une reapparition mais une
+  descente. Consequence : les grappes de reapparition de la phase 7 verraient des amas aux
+  points de descente des vehicules, la ou personne ne reapparait jamais. La matiere pour le
+  trancher existe deja dans le sidecar : un spawn dont la frame suit de peu le `T1` d'un
+  embarquement du meme joueur n'en est pas un. NON TRAITE : c'est une decision de la phase 7
+  (grappes de spawn), et la corriger a l'aveugle ici aurait fige une heuristique avant
+  d'avoir la lecture qui la valide.
+- 2026-09-06 (phase 6, revue) — **LA COUVERTURE DES EPISODES D'EMBARQUEMENT EST PARTIELLE
+  ET C'EST UNE LIMITE AMONT.** La primitive d'attribution n'apparie que 15,6 a 21,1 % des
+  vies de vehicule (mesure publiee dans `analysis/replay/document_vehicles.go`). Le temps
+  embarque non apparie n'est donc mesure par personne : la lecture « ou je passe mon temps »
+  SOUS-ESTIME le vehicule, structurellement. C'est ecrit dans `domain/tactical_raster.go`
+  pour qu'aucun lecteur ne prenne le silence pour une absence de deplacement. NON TRAITE :
+  se corrigerait en amont, dans la primitive, pas dans ce chantier.
 - 2026-09-06 (phase 6) — **LA PURGE RECURRENTE DES ARTEFACTS NE CONNAIT PAS LES SIDECARS :
   ils deviennent ORPHELINS.** `scheduler.purgeReplayArtifactsForTitle` supprime les
   artefacts sortis de la fenetre `replay_retention_months` et saute les repertoires
