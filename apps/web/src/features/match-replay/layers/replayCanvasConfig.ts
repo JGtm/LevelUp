@@ -9,8 +9,8 @@
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
 import type { CalloutZoneReady } from './calloutsLayer'
-import type { ReplayFeedEntry } from '../killFeedLogic'
-import type { ReplayMediaItem } from '../replayTimelineTracksLogic'
+import type { ReplayFeedEntry } from '../model/killFeedLogic'
+import type { ReplayMediaItem } from '../model/replayTimelineTracksLogic'
 
 /**
  * 8 tokens de série : une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via

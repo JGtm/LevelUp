@@ -12,7 +12,7 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useReplayExport } from './useReplayExport'
-import type { ReplayWindowBounds } from '../replayWindow'
+import type { ReplayWindowBounds } from '../model/replayWindow'
 import { EXPORT_SUPERSAMPLE, exportRenderScale } from '../hooks/useReplayView'
 import { testReplayDoc } from '../test/testDoc'
 

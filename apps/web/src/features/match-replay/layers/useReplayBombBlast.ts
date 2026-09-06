@@ -26,10 +26,10 @@ import {
   drawBombBlastFx,
   type BombBlastStyle,
 } from './bombBlastFx'
-import { useCarrierPosAt } from '../carrierPosition'
-import { type CanvasView } from '../replayView'
-import type { ReplayDocumentReady } from '../replayNormalize'
-import { allyTeamFromScoreboard, teamOfXuidFromScoreboard } from '../matchSides'
+import { useCarrierPosAt } from '../model/carrierPosition'
+import { type CanvasView } from '../model/replayView'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { allyTeamFromScoreboard, teamOfXuidFromScoreboard } from '../model/matchSides'
 
 export interface BombBlastHookInput {
   doc: ReplayDocumentReady

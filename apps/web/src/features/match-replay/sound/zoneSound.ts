@@ -43,10 +43,10 @@
  * rejeu ne devine pas un camp. La capture en cours et les tics se taisent ; la nouvelle
  * colline sonne quand même, elle n'affirme rien.
  */
-import type { ReplayDocumentReady } from '../replayNormalize'
-import { frameToMs, msToFrames } from '../replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs, msToFrames } from '../model/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
-import { covers } from '../replaySpans'
+import { covers } from '../model/replaySpans'
 
 /** Le camp d'un état de zone, vu de la page — la même notion que dans `objectiveSound.ts`. */
 export type ZoneSide = 'ally' | 'enemy'

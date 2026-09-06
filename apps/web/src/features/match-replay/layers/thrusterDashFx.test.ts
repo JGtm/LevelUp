@@ -26,7 +26,7 @@ import {
   type DashStyle,
   type ThrusterDashFx,
 } from './thrusterDashFx'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { recordingContext } from '../test/recordingContext'
 
 const VIEW = { bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 }, width: 100, height: 100, pad: 0 }

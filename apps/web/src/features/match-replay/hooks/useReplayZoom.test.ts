@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 
-import { ZOOM_LEVELS, sceneCenter, visibleBounds } from '../replayLogic'
+import { ZOOM_LEVELS, sceneCenter, visibleBounds } from '../model/replayLogic'
 import { useReplayZoom } from './useReplayZoom'
 
 const SCENE = { minX: 0, minY: 0, maxX: 100, maxY: 60 }

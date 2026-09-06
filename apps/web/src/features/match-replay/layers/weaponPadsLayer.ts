@@ -50,11 +50,11 @@
  * Pas de React : géométrie pure + un CanvasRenderingContext2D, comme les calques voisins.
  * L'encre arrive de l'appelant, qui la tient des variables du thème.
  */
-import type { ReplayWeaponPadReady } from '../replayNormalize'
+import type { ReplayWeaponPadReady } from '../model/replayNormalize'
 import { project, UNCERTAIN_DASH, type PlacementView } from './placementShapes'
-import type { PadScale } from '../weaponPadFamilies'
-import type { XY } from '../replayLogic'
-import { padRespawnAt, padStateAt, type PadState } from '../weaponPadTime'
+import type { PadScale } from '../model/weaponPadFamilies'
+import type { XY } from '../model/replayLogic'
+import { padRespawnAt, padStateAt, type PadState } from '../model/weaponPadTime'
 
 /** Le cadrage est celui des poses : les deux calques projettent la même scène. */
 export type { PlacementView as PadView } from './placementShapes'

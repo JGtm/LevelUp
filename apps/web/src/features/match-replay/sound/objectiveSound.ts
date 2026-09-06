@@ -19,14 +19,14 @@
  * trois statistiques du film y donnent accès.
  */
 
-import type { ReplayDocumentReady } from '../replayNormalize'
-import { frameToMs } from '../replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs } from '../model/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 import {
   allyTeamFromScoreboard,
   teamOfXuidFromScoreboard,
   type ScoreboardSide,
-} from '../matchSides'
+} from '../model/matchSides'
 
 // LES DEUX LECTURES DU TABLEAU DE SCORE ONT LEUR FOYER DANS `matchSides` (K1/K2,
 // 2026-09-06) : ce module les re-expose pour ses appelants historiques, il ne les

@@ -18,10 +18,10 @@ import { render, screen } from '@testing-library/react'
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import { buildFeedEntries, type MedalEvent } from '../killFeedLogic'
+import { buildFeedEntries, type MedalEvent } from '../model/killFeedLogic'
 import { ReplayKillFeed } from './ReplayKillFeed'
 import { testReplayDoc } from '../test/testDoc'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 
 vi.mock('@/lib/accessibility', () => ({
   resolveToken: (token: string) => `var(${token})`,

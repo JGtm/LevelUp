@@ -31,7 +31,7 @@
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
-import type { ObjectiveMarkKind } from '../objectiveMark'
+import type { ObjectiveMarkKind } from '../model/objectiveMark'
 
 /**
  * Opacité du filigrane. 0,22 est le plus haut palier qui laisse les barres de vitalité et la

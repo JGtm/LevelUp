@@ -56,10 +56,10 @@ import { useReplayGroundWeapons } from '../layers/useReplayGroundWeapons'
 import { useReplayVehicles } from '../layers/useReplayVehicles'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { EndMatchSoundSpec } from '../sound/endMatchSound'
-import { killsOfFeed, type ReplayFeedEntry } from '../killFeedLogic'
-import type { ReplayMediaItem } from '../replayTimelineTracksLogic'
+import { killsOfFeed, type ReplayFeedEntry } from '../model/killFeedLogic'
+import type { ReplayMediaItem } from '../model/replayTimelineTracksLogic'
 import { useReplayFx } from '../layers/useReplayFx'
-import { NO_MARKS, type PlayerMarkKind } from '../playerMarks'
+import { NO_MARKS, type PlayerMarkKind } from '../model/playerMarks'
 import { useReplayDrawer } from '../settings/useReplayDrawer'
 import { useReplayTimeline } from '../hooks/useReplayTimeline'
 import { useSlotIdentity } from '../layers/useSlotIdentity'
@@ -75,7 +75,7 @@ import { useReplayStaticLayers } from '../layers/useReplayStaticLayers'
 import { useReplaySettings } from '../settings/useReplaySettings'
 import { useReplaySound } from '../sound/useReplaySound'
 import { backgroundRect } from '../layers/mapBackground'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import {
   drawGeometryLayer,
   drawGrenadesLayer,
@@ -88,8 +88,8 @@ import {
   type LayerPaint,
   type ReplayScene,
 } from '../layers/replayCompose'
-import { frameToMs, layerOffset } from '../replayLogic'
-import type { ReplayWindowBounds } from '../replayWindow'
+import { frameToMs, layerOffset } from '../model/replayLogic'
+import type { ReplayWindowBounds } from '../model/replayWindow'
 import { drawProjectilesLayer } from '../layers/replayProjectiles'
 import { drawTracksLayer } from '../layers/replayMarkers'
 import { useReplayTiming } from '../hooks/useReplayTiming'

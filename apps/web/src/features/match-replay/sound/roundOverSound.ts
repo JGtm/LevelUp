@@ -34,10 +34,10 @@
 import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import type { ReplayLocale } from '../i18n/i18n'
-import { frameToMs } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import { frameToMs } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
-import { roundTransitions } from '../roundsLogic'
+import { roundTransitions } from '../model/roundsLogic'
 
 /**
  * Le stem de la voix « manche terminée », par langue. Extraits du jeu (pack annonceur fourni par

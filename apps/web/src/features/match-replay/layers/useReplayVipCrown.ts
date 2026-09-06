@@ -14,9 +14,9 @@
  */
 import { useCallback, useMemo } from 'react'
 
-import { useCarrierPosAt } from '../carrierPosition'
-import { type CanvasView } from '../replayView'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import { useCarrierPosAt } from '../model/carrierPosition'
+import { type CanvasView } from '../model/replayView'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { drawVipCrown, type VipCrownInput } from './vipCrownLayer'
 
 interface UseReplayVipCrownArgs {

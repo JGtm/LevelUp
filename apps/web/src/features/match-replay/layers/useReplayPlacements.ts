@@ -27,11 +27,11 @@ import {
   type PlacementView,
   type PlacementWindowTime,
 } from './equipmentPlacementsLayer'
-import { translocationLinks } from '../placementTeleport'
+import { translocationLinks } from '../model/placementTeleport'
 import type { RiftScene } from './placementRift'
-import { riftStations } from '../riftStations'
-import { frameToMs } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import { riftStations } from '../model/riftStations'
+import { frameToMs } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { usePlacementHover, type PlacementHoverHandlers } from './usePlacementHover'
 
 export interface ReplayPlacementsInput {

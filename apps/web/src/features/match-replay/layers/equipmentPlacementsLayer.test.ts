@@ -30,13 +30,13 @@ import {
   type PlacementToggles,
   countDrawablePlacements,
 } from './equipmentPlacementsLayer'
-import { placementAt } from '../placementHitTest'
+import { placementAt } from '../model/placementHitTest'
 import {
   buildSlotOwnership,
   colorResolver,
   colorResolverOrLast,
   type ReplayPlayer,
-} from '../rosterLogic'
+} from '../model/rosterLogic'
 import {
   BEACON_ID,
   DEVICE_ID,
@@ -54,7 +54,7 @@ import {
   VIEW,
 } from '../test/placementFixtures'
 import { WALL_DURATION_MS } from './placementWall'
-import { REVEAL_RADIUS_PX, SENSOR_DURATION_MS, SENSOR_RADIUS_M } from '../threatSensor'
+import { REVEAL_RADIUS_PX, SENSOR_DURATION_MS, SENSOR_RADIUS_M } from '../model/threatSensor'
 
 /**
  * LES DEUX JEUX DE BASCULES de ce fichier. `RIEN` est le comportement HISTORIQUE du calque (seuls

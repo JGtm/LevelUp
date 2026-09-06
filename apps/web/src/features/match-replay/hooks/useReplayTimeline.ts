@@ -24,10 +24,10 @@ import { useCallback, useMemo, type ChangeEvent, type ComponentProps, type RefOb
 import { useCapability } from '@/lib/capabilities'
 import { leaderStates, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
-import type { ReplayFeedEntry } from '../killFeedLogic'
+import type { ReplayFeedEntry } from '../model/killFeedLogic'
 import type { ReplayLocale } from '../i18n/i18n'
-import type { PlayerMarkKind } from '../playerMarks'
-import { formatClock } from '../replayLogic'
+import type { PlayerMarkKind } from '../model/playerMarks'
+import { formatClock } from '../model/replayLogic'
 import { EMPTY_MEDIA, SKIP_SECONDS } from '../layers/replayCanvasConfig'
 import type { ReplayTimelineTracks } from '../ui/ReplayTimelineTracks'
 import {
@@ -45,10 +45,10 @@ import {
   type TrackFrag,
   type TrackKill,
   type TrackScale,
-} from '../replayTimelineTracksLogic'
-import { roundTransitions } from '../roundsLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
-import { displayClockMs, type ReplayWindowBounds } from '../replayWindow'
+} from '../model/replayTimelineTracksLogic'
+import { roundTransitions } from '../model/roundsLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { usePersistedFlag, TIMELINE_EXPANDED_KEY } from '../settings/useReplaySettings'
 import { useReplayShortcuts, type ReplayShortcutHandlers } from './useReplayShortcuts'
 

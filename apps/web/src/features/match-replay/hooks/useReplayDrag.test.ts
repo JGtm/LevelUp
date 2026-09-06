@@ -14,7 +14,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 
-import { sceneCenter, visibleBounds } from '../replayLogic'
+import { sceneCenter, visibleBounds } from '../model/replayLogic'
 import { useReplayDrag } from './useReplayDrag'
 import type { ReplayZoom } from './useReplayZoom'
 

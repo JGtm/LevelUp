@@ -46,7 +46,7 @@ import {
   type ReplayScoreTrack,
   type RoundSeparator,
   type TrackMark,
-} from '../replayTimelineTracksLogic'
+} from '../model/replayTimelineTracksLogic'
 
 interface ReplayTimelineTracksProps {
   /** Le curseur, piloté par la boucle de dessin — jamais contrôlé par React. */

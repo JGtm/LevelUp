@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { SKULL_SOUND_STEMS, skullSoundEvents } from './skullSound'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 
 /** Un document reduit a ce que `skullSoundEvents` lit : les trois canaux et l'horloge. */
 function doc(

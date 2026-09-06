@@ -35,12 +35,12 @@ import { ROUND_BREAK_WINDOW_MS } from '../ui/ReplayRoundBreakOverlay'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { OverlayInk, OverlayPanel, OverlayStatusStyle } from './overlayPaint'
 import { neutralStatusStyle } from './overlayPaint'
-import { msToFrames } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
-import type { ReplayWindowBounds } from '../replayWindow'
-import { activeRoundTransition, roundTransitions } from '../roundsLogic'
-import { readScoreBanner } from '../scoreBannerLogic'
-import { readVictory, type FinalScoreReading } from '../victoryLogic'
+import { msToFrames } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayWindowBounds } from '../model/replayWindow'
+import { activeRoundTransition, roundTransitions } from '../model/roundsLogic'
+import { readScoreBanner } from '../model/scoreBannerLogic'
+import { readVictory, type FinalScoreReading } from '../model/victoryLogic'
 
 /**
  * exportFinalScore choisit ce que le panneau de fin écrit : le score SERVI PAR L'API quand il

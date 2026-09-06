@@ -26,7 +26,7 @@ import { drawCalloutsLayer, type CalloutZoneReady } from './calloutsLayer'
 import { drawHeatmapLayer, type HeatGrid } from './heatmapLayer'
 import type { ReplayLocale } from '../i18n/i18n'
 import { drawObjectivesLayer, type ObjectiveElementReady } from './objectivesLayer'
-import { type CanvasView } from '../replayView'
+import { type CanvasView } from '../model/replayView'
 
 /** Ce que chaque calque statique a besoin de savoir, regroupé par calque. */
 export interface StaticLayersInput {

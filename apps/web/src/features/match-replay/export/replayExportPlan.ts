@@ -25,10 +25,10 @@
  * consommée. Le calculer dans la boucle le rendrait invérifiable ; ici, il se teste sans
  * navigateur, sans encodeur et sans canvas.
  */
-import { frameToMs, msToFrames } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import { frameToMs, msToFrames } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { EXPORT_FPS } from './replayVideoEncoder'
-import type { ReplayWindowBounds } from '../replayWindow'
+import type { ReplayWindowBounds } from '../model/replayWindow'
 
 /** Les deux bornes de l'export, sur l'axe du DOCUMENT (images, éventuellement fractionnaires). */
 export interface ExportBounds {

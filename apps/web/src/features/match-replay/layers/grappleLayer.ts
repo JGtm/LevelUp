@@ -20,10 +20,10 @@
  */
 import type { ReplayPoint } from '@/lib/api/types'
 
-import { positionAt, type XY } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
-import { type CanvasView, projectTo } from '../replayView'
-import { buildLivesBySlot, lifeOfSlotAt } from '../livesPosition'
+import { positionAt, type XY } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { type CanvasView, projectTo } from '../model/replayView'
+import { buildLivesBySlot, lifeOfSlotAt } from '../model/livesPosition'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 /** Une traction prête à dessiner : la fenêtre, l'ancre, et les points de SA vie. */

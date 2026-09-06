@@ -12,7 +12,7 @@
  */
 import type { ReplayDocument } from '@/lib/api/types'
 
-import { normalizeReplayDocument, type ReplayDocumentReady } from '../replayNormalize'
+import { normalizeReplayDocument, type ReplayDocumentReady } from '../model/replayNormalize'
 
 /** Document de rejeu minimal valide, normalisé — surcharger ce que le test veut voir. */
 export function testReplayDoc(over: Partial<ReplayDocument> = {}): ReplayDocumentReady {

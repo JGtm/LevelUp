@@ -53,7 +53,7 @@ import { outcomeCodeToValue } from '@/lib/outcome'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { ReplayLocale } from '../i18n/i18n'
-import { readVictory, type VictoryOutcome } from '../victoryLogic'
+import { readVictory, type VictoryOutcome } from '../model/victoryLogic'
 
 /**
  * Les PRISES de la voix d'annonceur, par issue puis par langue. Une liste à plusieurs entrées

@@ -25,12 +25,12 @@
  * seule sa place change, exactement comme le crâne libre et le crâne porté.
  */
 import { drawBombGlyph } from './bombGlyph'
-import { type XY } from '../replayLogic'
+import { type XY } from '../model/replayLogic'
 
-import { type CanvasView, projectTo } from '../replayView'
-import type { ReplayBombCarry } from '../replayNormalize'
+import { type CanvasView, projectTo } from '../model/replayView'
+import type { ReplayBombCarry } from '../model/replayNormalize'
 import { carriedGlyphAlpha } from './carriedGlyphPulse'
-import { covers } from '../replaySpans'
+import { covers } from '../model/replaySpans'
 
 /** Style du calque : les encres sont RÉSOLUES par l'appelant (règle color-tokens). */
 export interface BombCarrierStyle {

@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { drawKillFxLayer, type KillFxStyle } from './replayDraw'
-import type { KillFxEntry } from '../killFx'
+import type { KillFxEntry } from '../model/killFx'
 import { drawMeleeStar, MELEE_STAR_MS, meleeStarProgress } from './meleeStar'
 import { recordingContext, type CanvasOp } from '../test/recordingContext'
 

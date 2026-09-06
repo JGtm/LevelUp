@@ -22,10 +22,10 @@
  * Pas de React : logique pure + un CanvasRenderingContext2D (même règle que grappleLayer).
  */
 import { familyOf } from './shotEffects'
-import { isAliveAt, positionAt } from '../replayLogic'
-import type { ReplayDocumentReady, ReplayTrackReady } from '../replayNormalize'
-import { type CanvasView, projectTo } from '../replayView'
-import { buildLivesBySlot, lifeOfSlotAt } from '../livesPosition'
+import { isAliveAt, positionAt } from '../model/replayLogic'
+import type { ReplayDocumentReady, ReplayTrackReady } from '../model/replayNormalize'
+import { type CanvasView, projectTo } from '../model/replayView'
+import { buildLivesBySlot, lifeOfSlotAt } from '../model/livesPosition'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 /** Un tir prêt à marquer : son instant, et la VIE qui le porte. */

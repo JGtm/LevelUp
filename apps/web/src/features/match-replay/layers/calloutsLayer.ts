@@ -20,8 +20,8 @@
 import type { ReplayCalloutZone, ReplayMapCallouts } from '@/lib/api/types'
 
 import type { ReplayLocale } from '../i18n/i18n'
-import { type XY } from '../replayLogic'
-import { type CanvasView, projectTo } from '../replayView'
+import { type XY } from '../model/replayLogic'
+import { type CanvasView, projectTo } from '../model/replayView'
 
 /** Une zone prête à dessiner : nullabilité du transport résolue, ancre de libellé posée. */
 export interface CalloutZoneReady {

@@ -15,11 +15,11 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { createRef, type PointerEvent, type RefObject } from 'react'
 
-import { worldToCanvas } from '../replayLogic'
-import type { ReplayWeaponPadReady } from '../replayNormalize'
+import { worldToCanvas } from '../model/replayLogic'
+import type { ReplayWeaponPadReady } from '../model/replayNormalize'
 import { testReplayDoc } from '../test/testDoc'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
-import { padStateAt } from '../weaponPadTime'
+import { padStateAt } from '../model/weaponPadTime'
 
 const VUE = {
   bounds: { minX: -50, minY: -50, maxX: 50, maxY: 50 },

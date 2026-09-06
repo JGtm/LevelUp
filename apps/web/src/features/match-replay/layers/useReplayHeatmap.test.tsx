@@ -14,7 +14,7 @@ vi.mock('@/lib/accessibility/resolveToken', () => ({
   resolveToken: (token: string) => (token.endsWith('-low') ? '#1e3a5f' : '#60a5fa'),
 }))
 
-import type { KillFxEntry } from '../killFx'
+import type { KillFxEntry } from '../model/killFx'
 import { testReplayDoc } from '../test/testDoc'
 import { useReplayHeatmap } from './useReplayHeatmap'
 

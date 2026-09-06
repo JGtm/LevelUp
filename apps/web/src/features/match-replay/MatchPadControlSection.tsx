@@ -55,13 +55,13 @@ import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayText } from './i18n/i18nContract'
-import { buildPadControlBars, type PadBarModel, type PadBarRow } from './padControlChart'
+import { buildPadControlBars, type PadBarModel, type PadBarRow } from './model/padControlChart'
 import {
   buildPadControl,
   padControlGaps,
   padControlMissing,
   type PadControl,
-} from './padControlLogic'
+} from './model/padControlLogic'
 import { useMatchReplay } from './queries'
 import { padNameFor } from './layers/useReplayWeaponPads'
 

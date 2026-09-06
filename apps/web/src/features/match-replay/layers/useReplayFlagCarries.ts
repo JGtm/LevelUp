@@ -34,7 +34,7 @@ import { useCallback, useMemo, useState, type PointerEvent, type RefObject } fro
 
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import { useCarrierPosAt } from '../carrierPosition'
+import { useCarrierPosAt } from '../model/carrierPosition'
 import {
   drawFlagCarries,
   flagAt,
@@ -47,11 +47,11 @@ import {
   FLAG_CAPTURE_HOLD_FRAMES,
   type FlagCaptureStyle,
 } from './flagCaptureFx'
-import { type CanvasView, projectTo, scaleOf } from '../replayView'
+import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 import { buildFlagReturnDrops, drawFlagReturnZones } from './flagReturnZone'
-import { frameToMs, type XY } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
-import { allyTeamFromScoreboard, teamOfXuidFromScoreboard } from '../matchSides'
+import { frameToMs, type XY } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { allyTeamFromScoreboard, teamOfXuidFromScoreboard } from '../model/matchSides'
 
 /** Le camp d'un drapeau VU DE LA PAGE — `unknown` quand la ligne « moi » manque. */
 export type FlagSide = 'ally' | 'enemy' | 'unknown'

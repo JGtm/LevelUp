@@ -31,7 +31,7 @@ import {
   SEEKER_ID,
   TIME,
 } from '../test/placementFixtures'
-import { SENSOR_PING_MS, SENSOR_RADIUS_M, SENSOR_SWEEP_MS } from '../threatSensor'
+import { SENSOR_PING_MS, SENSOR_RADIUS_M, SENSOR_SWEEP_MS } from '../model/threatSensor'
 
 describe('seekerImpulseActive — UNE impulsion, et sa fenêtre ne se rejoue pas', () => {
   it('ouverte à l’âge zéro, fermée au terme de sa course', () => {

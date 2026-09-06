@@ -22,14 +22,14 @@
 import { useCallback, useMemo } from 'react'
 
 import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
-import { frameToMs, msToFrames } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import { frameToMs, msToFrames } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import {
   buildThrusterDashFx,
   drawThrusterDashLayer,
   THRUSTER_DASH_HEADING_MS,
 } from './thrusterDashFx'
-import { type CanvasView } from '../replayView'
+import { type CanvasView } from '../model/replayView'
 
 export interface AbilityFxHookInput {
   doc: ReplayDocumentReady

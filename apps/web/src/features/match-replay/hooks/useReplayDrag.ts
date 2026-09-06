@@ -35,7 +35,7 @@
  */
 import { useCallback, useRef, useState, type PointerEvent } from 'react'
 
-import { type CanvasView, scaleOf } from '../replayView'
+import { type CanvasView, scaleOf } from '../model/replayView'
 import type { ReplayZoom } from './useReplayZoom'
 
 export interface ReplayDrag {

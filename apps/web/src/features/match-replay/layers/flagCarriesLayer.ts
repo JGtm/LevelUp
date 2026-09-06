@@ -49,10 +49,10 @@
  *
  * AUCUN TEXTE, comme les deux calques voisins : ce qui se dit se dit dans l'infobulle.
  */
-import { type XY } from '../replayLogic'
+import { type XY } from '../model/replayLogic'
 
-import { type CanvasView, projectTo } from '../replayView'
-import type { ReplayFlagCarryReady } from '../replayNormalize'
+import { type CanvasView, projectTo } from '../model/replayView'
+import type { ReplayFlagCarryReady } from '../model/replayNormalize'
 
 /** Les quatre états publiés par `flagCarries[].spans[].state` (schéma 15). */
 export type FlagState = 'carried' | 'carried_open' | 'dropped' | 'home'

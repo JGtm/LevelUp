@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { type CanvasView } from '../replayView'
-import type { ReplaySkullCarry } from '../replayNormalize'
+import { type CanvasView } from '../model/replayView'
+import type { ReplaySkullCarry } from '../model/replayNormalize'
 import { drawSkullCarrier, skullCarrierActiveAt, type SkullCarrierInput } from './skullCarrierLayer'
 
 const carry = (over: Partial<ReplaySkullCarry>): ReplaySkullCarry => ({

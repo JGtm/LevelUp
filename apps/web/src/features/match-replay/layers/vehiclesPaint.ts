@@ -21,9 +21,9 @@ import { project, type PlacementView } from './placementShapes'
 import { aimLengthScale, drawAimSector } from './replayAimCone'
 import { drawRotatedSprite } from './replayDraw'
 import { drawNameLabel, type LabelStyle } from './replayLabels'
-import type { XY } from '../replayLogic'
-import type { ReplayVehicleTrackReady } from '../replayNormalize'
-import { vehicleOccupantAimAt } from '../vehiclesAim'
+import type { XY } from '../model/replayLogic'
+import type { ReplayVehicleTrackReady } from '../model/replayNormalize'
+import { vehicleOccupantAimAt } from '../model/vehiclesAim'
 import {
   vehicleActiveRides,
   vehicleColorAt,
@@ -39,7 +39,7 @@ import {
   vehicleVisibleAt,
   VEHICLE_FLOOR_PX,
   VEHICLE_UNKNOWN_HALF_PX,
-} from '../vehiclesLayer'
+} from '../model/vehiclesLayer'
 import { traceDiamond } from './weaponPadsLayer'
 
 export type { PlacementView as VehicleView } from './placementShapes'

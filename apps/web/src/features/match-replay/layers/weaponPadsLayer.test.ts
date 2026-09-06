@@ -20,9 +20,9 @@
 import { describe, expect, it } from 'vitest'
 
 import { count, diamondCentres, recordingContext, valuesOf } from '../test/recordingContext'
-import type { ReplayWeaponPadReady } from '../replayNormalize'
-import { worldToCanvas } from '../replayLogic'
-import { padStateAt } from '../weaponPadTime'
+import type { ReplayWeaponPadReady } from '../model/replayNormalize'
+import { worldToCanvas } from '../model/replayLogic'
+import { padStateAt } from '../model/weaponPadTime'
 import { drawWeaponPadsLayer, padAt, padRadiusPx, type PadStyle } from './weaponPadsLayer'
 
 /** 10 m de côté sur 100 px : 10 px par mètre — le même cadrage que les tests de poses. */

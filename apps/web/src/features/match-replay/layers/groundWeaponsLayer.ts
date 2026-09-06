@@ -35,9 +35,9 @@
  */
 import type { ReplayGroundWeapon } from '@/lib/api/types'
 
-import { groundWeaponsAt } from '../groundWeaponTime'
+import { groundWeaponsAt } from '../model/groundWeaponTime'
 import { project, type PlacementView } from './placementShapes'
-import type { XY } from '../replayLogic'
+import type { XY } from '../model/replayLogic'
 
 /** Le cadrage est celui des poses et des socles : les trois projettent la même scène. */
 export type { PlacementView as GroundWeaponView } from './placementShapes'

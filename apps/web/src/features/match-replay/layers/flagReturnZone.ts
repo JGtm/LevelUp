@@ -49,9 +49,9 @@
  * retour observé (le drapeau est repris, ou l'axe s'arrête), la jauge court telle quelle et se
  * plafonne à 1.
  */
-import type { XY } from '../replayLogic'
+import type { XY } from '../model/replayLogic'
 
-import type { ReplayFlagCarryReady } from '../replayNormalize'
+import type { ReplayFlagCarryReady } from '../model/replayNormalize'
 
 /** La règle de retour du mode, telle que `doc.flagReturnZone` la publie (schéma 35). */
 export interface FlagReturnRule {

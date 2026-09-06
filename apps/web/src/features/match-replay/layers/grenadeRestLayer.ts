@@ -14,8 +14,8 @@
  */
 import { drawExplosion } from './explosionFx'
 import type { FxInk } from './fxInk'
-import { explosionTintOf, restKindOf, type GrenadeRestFx } from '../grenadeFx'
-import { type CanvasView, projectTo } from '../replayView'
+import { explosionTintOf, restKindOf, type GrenadeRestFx } from '../model/grenadeFx'
+import { type CanvasView, projectTo } from '../model/replayView'
 
 /** Fenêtres du calque de fin de vol : la nappe électrique persiste plus que le halo. */
 export interface RestWindow {

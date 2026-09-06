@@ -40,9 +40,9 @@
 import { hexToRgba } from '@/components/charts/_utils'
 import type { ReplayBounds } from '@/lib/api/types'
 
-import { frameToMs, msToFrames, type XY } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
-import { type CanvasView, projectTo, scaleOf as viewScale } from '../replayView'
+import { frameToMs, msToFrames, type XY } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { type CanvasView, projectTo, scaleOf as viewScale } from '../model/replayView'
 
 /** Les deux lectures proposées. `kills` = les morts, à la position des victimes. */
 export type HeatmapMode = 'presence' | 'kills'

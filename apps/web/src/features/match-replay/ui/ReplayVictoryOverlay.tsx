@@ -65,9 +65,9 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayText } from '../i18n/i18nContract'
 import { OVERLAY_STATUS_BLOCK, OVERLAY_STATUS_NEUTRAL } from './replayOverlayStyles'
-import type { ReplayWindowBounds } from '../replayWindow'
-import { readScoreBanner, type ScoreBannerReading } from '../scoreBannerLogic'
-import { readVictory, type FinalScoreReading, type VictoryTeam } from '../victoryLogic'
+import type { ReplayWindowBounds } from '../model/replayWindow'
+import { readScoreBanner, type ScoreBannerReading } from '../model/scoreBannerLogic'
+import { readVictory, type FinalScoreReading, type VictoryTeam } from '../model/victoryLogic'
 
 interface Props {
   /** Le document du rejeu — le score final s'y lit par le calque, à la borne de fin. */

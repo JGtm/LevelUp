@@ -28,7 +28,7 @@
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import type { PlayerMarkKind } from '../playerMarks'
+import type { PlayerMarkKind } from '../model/playerMarks'
 
 interface Props {
   /** Marque d'identité du joueur, ou rien — décide de l'encre (`feedNameInk`), plus d'un glyphe. */

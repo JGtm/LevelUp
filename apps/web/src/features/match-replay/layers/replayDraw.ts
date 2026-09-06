@@ -9,13 +9,13 @@ import type { ReplayGrenade, ReplayMapObject } from '@/lib/api/types'
 
 import type { FxInk } from './fxInk'
 import { drawMuzzleFlash } from './muzzleFlash'
-import type { ShotFxEntry } from '../shotFx'
+import type { ShotFxEntry } from '../model/shotFx'
 import { drawDeathMarker, drawShotEffect } from './shotEffects'
-import { MELEE_LINK_MAX_M, type KillFxEntry } from '../killFx'
+import { MELEE_LINK_MAX_M, type KillFxEntry } from '../model/killFx'
 import { drawMeleeStar, meleeStarProgress } from './meleeStar'
-import { altitudeRatio, footprint } from '../replayLogic'
-import { vehicleShotOrigin, type VehicleMountSpriteSize } from '../vehicleWeaponMounts'
-import { type CanvasView, projectTo, scaleOf } from '../replayView'
+import { altitudeRatio, footprint } from '../model/replayLogic'
+import { vehicleShotOrigin, type VehicleMountSpriteSize } from '../model/vehicleWeaponMounts'
+import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 /** Amplitude verticale utilisée pour l'indication d'étage. */

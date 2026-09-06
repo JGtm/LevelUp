@@ -26,7 +26,7 @@ import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { readInk } from './canvasInk'
 import { readFxInk, type FxInk } from './fxInk'
 import type { RiftInk } from './placementRift'
-import type { PadFamily } from '../weaponPadFamilies'
+import type { PadFamily } from '../model/weaponPadFamilies'
 
 /** Fond de carte : token neutre, sans connotation directionnelle (le sujet = les joueurs). */
 const GEOMETRY_TOKEN: SemanticToken = 'divergent-neutral'

@@ -77,18 +77,18 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 export { ASSIST_ICON_STEM }
 import { ASSIST_ICON_STEM, AssistMark } from './ReplayAssistMark'
 import { MedalBadges } from './MedalBadges'
-import { NO_MARKS, type PlayerMarkKind } from '../playerMarks'
+import { NO_MARKS, type PlayerMarkKind } from '../model/playerMarks'
 import { FeedName } from './ReplayFeedName'
 import { ReplayPresenceLine } from './ReplayPresenceLine'
-import { HUD_BAND_CLASS, hudBandStyle } from '../hudBand'
+import { HUD_BAND_CLASS, hudBandStyle } from '../model/hudBand'
 import {
   feedAt,
   type ReplayDeath,
   type ReplayFeedEntry,
   type ReplayKill,
-} from '../killFeedLogic'
-import { formatClock } from '../replayLogic'
-import { displayClockMs, type ReplayWindowBounds } from '../replayWindow'
+} from '../model/killFeedLogic'
+import { formatClock } from '../model/replayLogic'
+import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 
 /** Gabarit d'une icône d'arme : le format bandeau de l'atlas kill feed (option 2a : 22×10). */
 const ICON_W = 22

@@ -26,10 +26,10 @@
  * Le calque, lui, ne publie QUE des socles : `doc.weaponPads` est la liste des socles du match,
  * les râteliers n'y sont pas. La restriction est donc tenue par la source, pas par un filtre.
  */
-import type { ReplayDocumentReady } from '../replayNormalize'
-import { frameToMs } from '../replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs } from '../model/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
-import { padEquipmentFamilyOf } from '../weaponPadFamilies'
+import { padEquipmentFamilyOf } from '../model/weaponPadFamilies'
 
 /**
  * Le son de l'apparition d'une ARME sur socle. Banque `sb_004_mod_mp_shared_weaponpad`,

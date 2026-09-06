@@ -12,8 +12,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
 import { useReplayClock } from './useReplayClock'
-import type { ReplayDocumentReady } from '../replayNormalize'
-import type { ReplayWindowBounds } from '../replayWindow'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { ReplayWindowBounds } from '../model/replayWindow'
 
 /** Un document réduit à ce que l'horloge lui demande : la cadence et le nombre d'images. */
 const DOC = { frameIntervalMs: 100, frameCount: 600, durationMs: 60_000 } as unknown as ReplayDocumentReady

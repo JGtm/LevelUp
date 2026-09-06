@@ -44,7 +44,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useSettings } from '@/features/settings/queries'
-import type { ReplayKill } from '../killFeedLogic'
+import type { ReplayKill } from '../model/killFeedLogic'
 import { seededRandom, soundUrlOf } from './replayAudioMix'
 
 import { persistPreference, readStoredFlag, readStoredNumber } from '../settings/replayPreferences'
@@ -58,7 +58,7 @@ import {
 } from './endMatchSound'
 import type { ReplayLocale } from '../i18n/i18n'
 import { ReplayAudioPlayer } from './replayAudio'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { distanceChain, drawVariation } from './weaponSoundLogic'
 import { WEAPON_SOUND_VARIATIONS } from './weaponSoundVariations'
 import {

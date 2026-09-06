@@ -22,8 +22,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { createRef, type RefObject } from 'react'
 
 import { REPLAY_TEXT } from '../i18n/i18n'
-import { worldToCanvas } from '../replayLogic'
-import type { ReplayDocumentReady, ReplayWeaponPadReady } from '../replayNormalize'
+import { worldToCanvas } from '../model/replayLogic'
+import type { ReplayDocumentReady, ReplayWeaponPadReady } from '../model/replayNormalize'
 import { testReplayDoc } from '../test/testDoc'
 import { count, diamondCentres, recordingContext } from '../test/recordingContext'
 import {
@@ -33,8 +33,8 @@ import {
   padScaleFor,
   useReplayWeaponPads,
 } from './useReplayWeaponPads'
-import { padFamilyOf } from '../weaponPadFamilies'
-import { padStateAt } from '../weaponPadTime'
+import { padFamilyOf } from '../model/weaponPadFamilies'
+import { padStateAt } from '../model/weaponPadTime'
 import { drawWeaponPadsLayer, type PadStyle } from './weaponPadsLayer'
 
 /** Le S7 Sniper tel que le document le sert : clé canonique, libellé bilingue, masque. */

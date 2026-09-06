@@ -38,13 +38,13 @@ import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import { catalogText } from '../i18n/catalogLabel'
-import { drawnSwapAt, type EquippedReading } from '../equippedLogic'
-import { GRENADE_THROW_HOLD_MS, grenadeThrowActive } from '../grenadeFx'
+import { drawnSwapAt, type EquippedReading } from '../model/equippedLogic'
+import { GRENADE_THROW_HOLD_MS, grenadeThrowActive } from '../model/grenadeFx'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
-import type { PlayerState } from '../rosterLogic'
-import { MIRROR_STYLE, weaponFullIcon } from '../weaponFullIcon'
+import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import type { PlayerState } from '../model/rosterLogic'
+import { MIRROR_STYLE, weaponFullIcon } from '../model/weaponFullIcon'
 
 /** Durée de l'animation d'échange — celle du POC, calée sur la rémanence des lancers. */
 const SWAP_ANIM_MS = 340
