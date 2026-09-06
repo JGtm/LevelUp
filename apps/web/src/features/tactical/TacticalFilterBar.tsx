@@ -34,7 +34,7 @@ import type { Locale } from '@/lib/i18n/locale'
 import { reconcileSquadSessionLabels } from '@/lib/sessions/sessionLabels'
 
 import type { TacticalText } from './i18n'
-import { sessionsProposees } from './tacticalLogic'
+import { sessionsHorsListe, sessionsProposees } from './tacticalLogic'
 import { MAX_COEQUIPIERS, type TacticalScope } from './tacticalScope'
 
 /** La SEULE source de composition que cette page sait traduire en XUID. */
@@ -84,7 +84,7 @@ export function TacticalFilterBar({
 
   const avecComposition = scope.coequipiers.length > 0
 
-  const { bar } = useLocalFilterBar({
+  const { bar, sessionOptions } = useLocalFilterBar({
     playerSlug,
     labels: t.filterLabels,
     viewLabels: t.viewLabels,
@@ -97,21 +97,52 @@ export function TacticalFilterBar({
     onResetExtras: () => setScope({ sessions: [], coequipiers: [] }),
     // Fonction, et pas un nœud : les sessions proposées viennent de ce que le hook
     // charge pour ses propres counts — donc elles n'existent pas encore ici.
-    extras: ({ sessionOptions }) => (
+    extras: ({ sessionOptions: dispo }) => (
       <BarreExtras
         locale={locale}
         t={t}
         scope={scope}
         setScope={setScope}
+        sessions={dispo}
         avecComposition={avecComposition}
-        sessions={sessionOptions}
         coequipierOptions={coequipierOptions}
         playerSlug={playerSlug}
       />
     ),
   })
 
-  return <>{bar}</>
+  // Les sessions épinglées que la liste COURANTE ne propose pas — typiquement après
+  // l'ajout d'un coéquipier, qui bascule la liste de « solo » à « escouade ».
+  const proposees = useMemo(
+    () => sessionsProposees(sessionOptions, avecComposition),
+    [sessionOptions, avecComposition],
+  )
+  const horsListe = useMemo(
+    () => sessionsHorsListe(scope.sessions, proposees),
+    [scope.sessions, proposees],
+  )
+
+  return (
+    <>
+      {bar}
+      {/* LA SITUATION SE VOIT, ELLE NE SE DEVINE PAS. Le filtre RESTE appliqué (le
+          retirer ferait passer la lecture d'une soirée à l'historique entier) ; on dit
+          donc ce qui est vrai : ces sessions ne sont pas dans la liste courante.
+          Gabarit de note du dépôt (`SquadLayout`, bandeau des dégradations) — `role`
+          status, tint `warning` et `text-warning` (et non `text-warning-foreground`,
+          illisible sur ce tint en thème sombre : piège documenté dans
+          `components/ui/privacy-banner.tsx`). */}
+      {horsListe.length > 0 && (
+        <div
+          role="status"
+          data-testid="tactical-sessions-hors-liste"
+          className="mx-6 mt-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning"
+        >
+          {t.sessionsHorsListe(horsListe.length, horsListe.join(', '))}
+        </div>
+      )}
+    </>
+  )
 }
 
 /** Les deux contrôles que le hook ne porte pas : sessions et composition. */
@@ -164,6 +195,14 @@ function BarreExtras({
   useEffect(() => {
     if (scope.sessions.length === 0 || proposees.length === 0) return
     const reconcilies = reconcileSquadSessionLabels(scope.sessions, proposees)
+    // LA GARDE DE `SquadLayout` (:452), et la copie l'avait perdue : quand AUCUN label
+    // n'est retrouvé, on ne touche à RIEN. Le cas n'est pas un zombie de
+    // synchronisation, c'est un changement de contexte — ajouter un coéquipier bascule
+    // la liste de « solo » à « escouade », et la session solo épinglée en disparaît sans
+    // avoir rien perdu de sa validité. L'écrire à vide faisait retomber `filter_mode` en
+    // `period` SANS DATES : la lecture passait d'une soirée à l'HISTORIQUE ENTIER, pour
+    // seul signal un avertissement de console. La note sous la barre le dit à la place.
+    if (reconcilies.length === 0) return
     const inchange =
       reconcilies.length === scope.sessions.length &&
       reconcilies.every((l, i) => l === scope.sessions[i])

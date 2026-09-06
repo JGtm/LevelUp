@@ -96548,3 +96548,53 @@ corrigées au passage parce qu'elles fabriquaient une forme absente de la produc
 (`xuid(1234)` au lieu de l'entier nu que `sync.extractXUID` écrit en base) : c'est le
 défaut R3 de la phase 2, et il revient dès qu'on écrit une fixture de mémoire. Le
 superviseur vérifie sur pièces, lance la ronde 2, puis pousse.
+
+---
+
+## [2026-09-06] Tactique phase 4 bis, revue ronde 2 — une copie qui perd la garde de l'original
+
+**Statut** : Complété (commit `tactique(4.8)`, branche `feat/tactique`, non poussé).
+Dernière salve : pas de ronde 3.
+
+**Décision technique principale** — le P1 de cette ronde est, à une couche près, le même
+défaut que la ronde 1 avait déjà nommé : **une frontière juste ailleurs, reprise sans ce
+qui la tenait.** La réconciliation des labels de session vient de `SquadLayout` ; la
+copie avait laissé derrière elle son `if (reconciled.length === 0) return`. Or cette
+garde-là ne protège pas d'un zombie de synchronisation — elle protège d'un CHANGEMENT DE
+CONTEXTE : une session solo est épinglée, l'utilisateur ajoute un coéquipier, la liste
+proposée bascule sur les sessions d'escouade, et le label épinglé n'y figure plus sans
+avoir rien perdu de sa validité. Écrire `sessions: []` faisait alors retomber
+`filter_mode` en `period` SANS DATES : la lecture passait d'une soirée à l'historique
+entier, avec pour seul signal un avertissement de console.
+
+Deux règles en sortent, valables au-delà de ce chantier :
+1. **quand on reprend une mécanique, on reprend ses gardes — et on relit ce qu'elles
+   gardent** ; un commentaire qui dit « même mécanique que X » est une dette tant que la
+   comparaison n'a pas été faite ligne à ligne ;
+2. **un filtre qu'on ne sait plus appliquer se DIT, il ne se retire pas** : la barre
+   affiche désormais les sessions épinglées absentes de la liste courante, et précise que
+   le filtre reste appliqué.
+
+Les deux P2 ferment ce que la ronde 1 avait laissé à moitié. Le motif XUID existait en
+deux exemplaires (`domain` et `handlers`) alors que le contrat disait de réutiliser :
+source unique `domain.XUIDValide`, l'autre supprimée, et un garde-rail archlint interdit
+toute recompilation du motif hors du domaine. **Ce garde-rail a d'abord été FAUX** — son
+motif de détection ne reconnaissait rien, donc il aurait été vert pour toujours ; c'est
+le self-check positif ajouté ensuite (il doit reconnaître la source unique elle-même) qui
+l'a fait tomber. Un ratchet sans preuve qu'il détecte quelque chose n'est pas un ratchet.
+Enfin, la prop `sources` filtrait le RÉSULTAT des suggestions mais pas la REQUÊTE : avec
+une seule source locale, chaque frappe partait quand même vers l'annuaire pour une
+réponse jetée. Le test le prouve en montant les deux comboboxes côte à côte — l'arrivée
+de la requête du combobox libre établit que la fenêtre de debounce est passée pour les
+deux, ce qu'une attente arbitraire n'aurait jamais établi.
+
+**Résultats observés** — Go : `gofmt` propre, `go vet` propre, `go test -count=1` sur
+domain/api/archlint/service → 15 paquets `ok`, aucun `FAIL` ; `golangci-lint
+--new-from-merge-base=origin/main` à 0 issue ; `openapi-gen -check` à jour. Web :
+typecheck propre, lint 0 erreur, suite vitest COMPLÈTE 606 fichiers / 6405 tests / 14
+skip / 0 fail, couleurs 0 violation, imports croisés 7/7 inchangé, manifestes régénérés.
+Trois inversions jouées, chacune faisant tomber son test.
+
+**Conclusion / prochaine étape** — phase 4 bis close, revues comprises, aucun report. Le
+superviseur vérifie sur pièces puis pousse. La suite prévue par le plan est la phase 6
+(rasters à la cuisson) ; la 5 attend toujours le lot D.

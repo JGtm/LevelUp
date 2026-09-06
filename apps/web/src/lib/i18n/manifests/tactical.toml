@@ -139,3 +139,12 @@ en = "Teammate not found"
 [tactical.filter.unknown_teammate_description]
 fr = "Impossible d'identifier {names} parmi tes coéquipiers. Retire ce nom de la composition pour voir les cartes."
 en = "{names} could not be identified among your teammates. Remove that name from the squad to see the maps."
+
+# ── Sessions epinglees absentes de la liste courante ──────────────────────────
+# Cas typique : une session SOLO est epinglee, puis un coequipier est ajoute — la
+# liste bascule sur les sessions d'escouade. Le filtre RESTE applique (le retirer
+# ferait passer la lecture d'une soiree a l'historique entier) : la note dit ce qui
+# est vrai, elle ne s'excuse pas.
+[tactical.filter.sessions_off_list]
+fr = "{n, plural, one {# session épinglée n'est pas dans la liste courante} other {# sessions épinglées ne sont pas dans la liste courante}} : {names}. Le filtre reste appliqué."
+en = "{n, plural, one {# pinned session is not in the current list} other {# pinned sessions are not in the current list}}: {names}. The filter still applies."

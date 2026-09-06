@@ -177,7 +177,14 @@ export function GamertagCombobox({
     liveAttempted,
     liveEmpty: liveEmptyBrut,
     triggerLiveSearch,
-  } = useGamertagSuggestions({ query, frequentOptions, excludeGamertags })
+  } = useGamertagSuggestions({
+    query,
+    frequentOptions,
+    excludeGamertags,
+    // La requête distante n'est même pas ÉMISE quand la source n'est pas proposée :
+    // filtrer le résultat laissait partir un appel par frappe pour une réponse jetée.
+    rechercheDistante: (sources ?? TOUTES_SOURCES).includes('remote'),
+  })
 
   // Filtrage par SOURCE : une source non proposée n'apparaît pas, ne compte pas dans
   // « a-t-on trouvé quelque chose », et ne déclenche ni le repli Xbox ni ses messages.

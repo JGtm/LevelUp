@@ -10,6 +10,7 @@ export const tacticalManifest = {
   "tactical.filter.playlists": { fr: "Playlists", en: "Playlists" },
   "tactical.filter.reset": { fr: "Réinitialiser les filtres", en: "Reset filters" },
   "tactical.filter.sessions": { fr: "Sessions", en: "Sessions" },
+  "tactical.filter.sessions_off_list": { fr: "{n, plural, one {# session épinglée n'est pas dans la liste courante} other {# sessions épinglées ne sont pas dans la liste courante}} : {names}. Le filtre reste appliqué.", en: "{n, plural, one {# pinned session is not in the current list} other {# pinned sessions are not in the current list}}: {names}. The filter still applies." },
   "tactical.filter.squad_placeholder": { fr: "Coéquipiers ({n})", en: "Teammates ({n})" },
   "tactical.filter.unknown_teammate_description": { fr: "Impossible d'identifier {names} parmi tes coéquipiers. Retire ce nom de la composition pour voir les cartes.", en: "{names} could not be identified among your teammates. Remove that name from the squad to see the maps." },
   "tactical.filter.unknown_teammate_title": { fr: "Coéquipier introuvable", en: "Teammate not found" },
