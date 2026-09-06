@@ -96315,3 +96315,66 @@ la vignette charge l'image pleine resolution (jusqu'a 1,4 Mio par carte, aucun p
 miniatures dans le depot) ; la consigne « git checkout routeTree.gen.ts » ne vaut que pour
 un lot qui n'ajoute pas de route. Suite prevue par le plan : phase 6 (rasters a la
 cuisson) ; la 5 attend toujours le lot D.
+
+---
+
+## [2026-09-06] Tactique phase 4 — revue ronde 1 : une traversee de repertoire, et cinq doubles complaisants
+
+**Statut** : Complete (8 constats, tous corriges — non pousse, revue du superviseur)
+
+**Decision technique principale** — deux portes independantes sur le `map_id`, et un ratchet
+sur le site de montage la ou un test HTTP ne pouvait rien dire.
+
+**Le defaut qui comptait (G1)** — le `map_id` est la PREMIERE cle de fond de carte
+entierement controlee par l'appelant : sur le chemin par match elle venait de
+`match_registry`, donc de la base. Elle traversait handler et service jusqu'a
+`filepath.Join(map_backgrounds, cle + ".json")` avec, pour tout controle, un `TrimSpace`.
+Sous Windows, un `..\..\x` passe chi comme UN SEUL segment de chemin et `filepath.Join`
+traite l'antislash comme separateur : `os.Stat` et `os.ReadFile` sortaient du repertoire des
+fonds. Ce qui protegeait le depot n'etait pas une verification, c'etaient trois accidents de
+plate-forme (le schema du sidecar exige, chi qui ne de-echappe pas, l'antislash non
+separateur sous Linux). Corrige par une liste blanche au handler
+(`^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`, appelee avant toute resolution de service) ET une
+garde de chemin au service, dans la fonction qui precede immediatement `PathResolver` — le
+service ne fait confiance a aucun appelant, un futur chemin CLI pourrait ne pas passer par
+le handler.
+
+**Deux choix a l'interieur de la correction, tous deux dictes par le meme principe.**
+D'abord, AUCUNE NORMALISATION : le motif s'applique a la valeur brute. Un `TrimSpace`
+prealable faisait de `carte%20` un `carte` valide — deux URL pour une ressource, et une
+frontiere qui repare son entree au lieu de la refuser. Le test l'a trouve avant moi. Ensuite,
+le brief tranchait un code d'erreur unique sur les trois routes ; la lecture de placement
+rend SON code d'absence habituel, parce qu'un code propre a la validation dirait a
+l'appelant qu'il a franchi le routeur mais pas le filtre — exactement l'oracle que le brief
+voulait eviter en refusant le 400. Un test exige que map_id hostile et carte jamais jouee
+rendent des reponses OCTET POUR OCTET identiques ; c'est lui qui a revele qu'un MESSAGE
+distinct sous un meme code suffisait a rouvrir l'oracle.
+
+**PIEGE RETENU — un double qui repond toujours la meme chose ne teste rien.** Cinq des huit
+constats sont la meme faute, vue de cinq angles : `api.get` double sans que personne ne
+regarde le chemin (figer la cle de cache passait) ; `getBlob` toujours en rejet (le chemin
+nominal du fond jamais joue, une icone cassee serait passee) ; `useMatchRoute` toujours faux
+(deux onglets pouvaient briller ensemble) ; `httptest` toujours distant (le test du garde
+local ne pouvait pas echouer) ; et un routeur reconstruit sans middleware (la mutation qu'il
+pretendait attraper le laissait vert). Un double se pilote, sinon il cadenasse le scenario
+par defaut et rien d'autre. C'est le pendant, cote tests, de la lecon de la ronde 2 de la
+phase 3 sur les garde-fous qui promettent plus qu'ils ne tiennent.
+
+**Second enseignement — un ratchet a une seule face est vacant.** Affirmer « les routes
+tactiques ne sont pas sous le garde local » passerait tout aussi bien si le garde
+disparaissait du depot. Le ratchet exige donc AUSSI que le rejeu, lui, reste dessous : la
+paire dit la vraie regle. Mutation jouee (ligne de montage deplacee) : il tombe en nommant
+le fichier et la ligne.
+
+**Resultats observes** — Go : `go vet` propre sur 7 arbres, `go test -count=1` vert sur
+24 paquets, `golangci-lint --new-from-merge-base=origin/main` a 0 issue, `openapi-gen -check`
+a jour et `generated.ts` inchange (le 400 retire n'etait declare nulle part au contrat).
+Web : `typecheck` propre, `lint` 0 erreur, 178 tests verts sur le filtre cible, 0 couleur en
+dur, imports croises a 7/7 inchange, manifestes sans diff. Six inversions/mutations jouees,
+chacune faisant tomber le test qu'elle vise.
+
+**Conclusion / prochaine etape** — ronde 1 soldee, non poussee. Deux decouvertes hors
+perimetre au §7 : la meme branche morte `missing_match_id` survit dans `handlers/replay.go`
+(lot B/D) ; et aucune AUTRE route du depot ne fabrique un chemin de fichier a partir d'un
+parametre d'URL, verifie sur pieces — si une seconde apparait, elle reutilise `MapIDValide`
+plutot que d'en recopier le motif.

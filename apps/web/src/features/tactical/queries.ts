@@ -48,10 +48,15 @@ export function useTacticalMaps(playerSlug: string) {
  * créée une fois dans la requête et gardée pour la session (`staleTime` et `gcTime`
  * infinis) : une image de carte ne change qu'à une re-cuisson, et revenir sur l'onglet doit
  * réafficher la grille sans re-télécharger. La contrepartie assumée est qu'aucune URL n'est
- * révoquée avant la fermeture de l'onglet ; la quantité est BORNÉE par le nombre de cartes
- * du titre (quelques dizaines), là où créer l'URL au montage de chaque vignette aurait
- * imposé un `setState` dans un effet — cascade de rendus que le lint du dépôt signale, pour
- * un gain nul à cette échelle.
+ * révoquée avant la fermeture de l'onglet ; créer l'URL au montage de chaque vignette
+ * aurait imposé un `setState` dans un effet — cascade de rendus que le lint du dépôt
+ * signale, pour un gain nul à cette échelle.
+ *
+ * LA BORNE EST LE NOMBRE DE CARTES DU TITRE, quel que soit le nombre de joueurs consultés
+ * (revue R1, W4) : la clé de cache ne porte PAS le joueur. Une image de carte est une donnée
+ * de référence du titre, identique pour tout le monde ; la mettre en cache par joueur
+ * retenait N fois le même contenu. Le joueur reste dans l'URL de fetch, parce que la route
+ * est derrière l'ownership.
  *
  * 404 = la carte n'a pas de fond figé : cas NOMINAL (toutes les cartes n'en ont pas). Pas
  * de nouvelle tentative, rien à dire à l'utilisateur — la vignette s'affiche sans image.
@@ -59,7 +64,7 @@ export function useTacticalMaps(playerSlug: string) {
 export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string): string | null {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const { data } = useQuery({
-    queryKey: queryKeys.tacticalMapBackground(playerSlug, titleSlug, mapId),
+    queryKey: queryKeys.tacticalMapBackground(titleSlug, mapId),
     queryFn: async () => {
       const blob = await api.getBlob(
         `/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/background.png`,

@@ -176,8 +176,14 @@ export const queryKeys = {
   // Le FOND d'une carte : propre à la CARTE, indépendant du filtre, figé entre deux
   // cuissons — d'où une clé distincte de la grille (même raison que
   // `matchReplayBackgroundImage` vis-à-vis de `matchReplay`), et un staleTime infini.
-  tacticalMapBackground: (playerSlug: string, titleSlug: string, mapId: string) =>
-    ['tactical-map-background', playerSlug, titleSlug, mapId] as const,
+  //
+  // SANS `playerSlug`, et c'est délibéré (revue R1, W4) : l'image d'une carte est une
+  // donnée de RÉFÉRENCE du titre, identique pour tout le monde. La clé par joueur retenait
+  // N images par joueur consulté dans la session, pour exactement le même contenu.
+  // `titleSlug` reste en 1er segment — une carte n'existe que dans son titre — et l'URL de
+  // fetch garde le joueur (la route est derrière l'ownership).
+  tacticalMapBackground: (titleSlug: string, mapId: string) =>
+    ['tactical-map-background', titleSlug, mapId] as const,
 
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
   synthesis: (playerSlug: string, titleSlug: string, scopeHash: string) =>
