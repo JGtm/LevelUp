@@ -28,7 +28,22 @@
 //   - les champs `Body` et `RawBody` : la convention Huma pour le corps ;
 //   - TOUS les champs des structs dont le nom se termine par `Input` ou `Output` : la
 //     convention du depot pour les entrees/sorties d'operation (en-tetes et parametres
-//     compris — un type `analysis` n'a pas plus sa place dans un en-tete).
+//     compris — un type `analysis` n'a pas plus sa place dans un en-tete) ;
+//   - toute DECLARATION DE TYPE d'`internal/api/` dont le membre de droite est un type
+//     d'ailleurs — alias (`type X = replay.ReplayDocument`) comme type defini
+//     (`type X replay.ReplayDocument`).
+//
+// LA TROISIEME VOIE A ETE OUVERTE PAR LA REVUE ADVERSARIALE DU 2026-09-05, qui a joue la
+// contournement en une ligne : declarer l'alias, puis ecrire `Body storedReplayDocument`. Le
+// scan ne voyait qu'un identifiant local, donc VERT — alors que le corps de `/replay` etait
+// redevenu `analysis/replay.ReplayDocument`. Et un alias est le MEME type pour `reflect` :
+// Huma nomme le schema `ReplayDocument` comme avant et regenere `openapi.yaml` octet pour
+// octet, si bien que le golden ne dit rien non plus. Le type DEFINI, lui, serait rattrape par
+// le golden (Huma renommerait le schema) — mais il est interdit ici aussi : un garde-rail qui
+// depend d'un second gate pour la moitie de ses cas n'en est pas un.
+//
+// Les litteraux de struct et d'interface sont ecartes de cette voie : leurs champs relevent
+// des deux premieres (cf. `relaisDeType`).
 //
 // Un type est en faute des que son expression cite un paquet importe sous
 // `levelup/go-api/internal/analysis/` — a n'importe quelle profondeur (`[]T`, `*T`,
@@ -105,9 +120,9 @@ func TestAucunTypeAnalysisEnCorpsHuma(t *testing.T) {
 		alias := aliasAnalysis(f)
 		rel, _ := filepath.Rel(apiRoot, chemin)
 		rel = filepath.ToSlash(rel)
-		for _, champ := range champsDeCorps(f, &corps) {
-			for _, pkg := range paquetsCites(champ.typ, alias) {
-				cle := rel + ":" + champ.nom
+		juger := func(nom, suffixe string, typ ast.Expr) {
+			for _, pkg := range paquetsCites(typ, alias) {
+				cle := rel + ":" + nom
 				vus[cle] = true
 				if motif, tolere := corpsAnalysisTolere[cle]; tolere {
 					if strings.TrimSpace(motif) == "" {
@@ -115,8 +130,14 @@ func TestAucunTypeAnalysisEnCorpsHuma(t *testing.T) {
 					}
 					continue
 				}
-				violations = append(violations, cle+"  -> "+pkg)
+				violations = append(violations, cle+suffixe+"  -> "+pkg)
 			}
+		}
+		for _, champ := range champsDeCorps(f, &corps) {
+			juger(champ.nom, "", champ.typ)
+		}
+		for _, r := range relaisDeType(f) {
+			juger(r.nom, r.forme, r.typ)
 		}
 		return nil
 	})
@@ -136,9 +157,10 @@ func TestAucunTypeAnalysisEnCorpsHuma(t *testing.T) {
 		}
 	}
 	if len(violations) > 0 {
-		t.Errorf("un type d'`internal/analysis/` sert de corps de requete ou de reponse Huma : le "+
-			"contrat public serait derive d'un modele de calcul (le rejeu a paye 43 montees de "+
-			"schema pour ca). Poser un type dans `domain/` et projeter au service :\n  %s",
+		t.Errorf("un type d'`internal/analysis/` atteint le contrat public — soit en corps de "+
+			"requete ou de reponse Huma, soit par un type d'`internal/api/` qui le relaie. Le "+
+			"contrat serait derive d'un modele de calcul (le rejeu a paye 43 montees de schema "+
+			"pour ca). Poser un type dans `domain/` et projeter au service :\n  %s",
 			strings.Join(violations, "\n  "))
 	}
 }
@@ -196,6 +218,43 @@ func champsDeCorps(f *ast.File, corps *int) []champCorps {
 				}
 			}
 		}
+		return true
+	})
+	return out
+}
+
+// relaisTypeDecl : une declaration de type d'`internal/api/` qui REDONNE un nom local a un
+// type d'ailleurs.
+type relaisTypeDecl struct {
+	nom   string // nom du type declare
+	forme string // "  (ALIAS `=`)" ou "  (type defini)", pour le message
+	typ   ast.Expr
+}
+
+// relaisDeType rend les declarations de type d'un fichier dont le membre de droite EST un
+// type d'ailleurs — alias (`type X = pkg.T`) comme type defini (`type X pkg.T`), a travers
+// pointeurs, tranches, tableaux et maps.
+//
+// LES LITTERAUX DE STRUCT ET D'INTERFACE SONT ECARTES, et c'est deliberé : leurs champs sont
+// deja juges par la premiere voie (corps `Body`/`RawBody` et structs `*Input`/`*Output`), et
+// un `type X struct{ ... }` dont un champ cite `analysis` sans etre un corps de route n'est
+// pas une fuite de contrat — c'est une dependance interne de handler.
+func relaisDeType(f *ast.File) []relaisTypeDecl {
+	var out []relaisTypeDecl
+	ast.Inspect(f, func(n ast.Node) bool {
+		ts, ok := n.(*ast.TypeSpec)
+		if !ok {
+			return true
+		}
+		switch ts.Type.(type) {
+		case *ast.StructType, *ast.InterfaceType:
+			return true
+		}
+		forme := "  (type defini)"
+		if ts.Assign.IsValid() {
+			forme = "  (ALIAS `=` — le plus silencieux : meme type pour reflect, meme nom de schema)"
+		}
+		out = append(out, relaisTypeDecl{nom: ts.Name.Name, forme: forme, typ: ts.Type})
 		return true
 	})
 	return out
