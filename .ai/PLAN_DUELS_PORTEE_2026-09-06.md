@@ -83,6 +83,9 @@ positions, films du cache local) — opération lourde, **DÉCISION UTILISATEUR,
 d'office** (règle `never_batch_replay_artifacts_ask_first`). Tant que le backfill n'a pas
 tourné, la section publie la portée sans le proxy et le dit (« distance d'entame : N frags
 mesurés »), jamais un zéro.
+**VALIDÉ le 2026-09-06 (item 2.5)** : écart médian cumulé 1,24 m sur 87 cas des quatre
+films, pour un gate à 2 m écrit avant la mesure. D5 reste GO — voir la section « Validation
+du proxy d'entame » de `.ai/V7.5/film_re/SONDE_DUELS_2026-09-06.md`.
 
 **D6 — la grammaire graphique est celle DÉJÀ VALIDÉE par l'utilisateur le 2026-09-02** : un
 bâton par arme, un losange sur la valeur centrale (`_killDistanceChart.ts`). Transposition à
@@ -161,26 +164,78 @@ condition de reprise, et le lot 7 se statue `[!]`.
 
 Couche `internal/analysis/` — fonctions PURES, aucune I/O, aucun SQL.
 
-- [ ] 2.1 `analysis/weapon_range.go` : type `MeasuredKill{WeaponKey string; DistanceM, DeltaZ float64; Side}`
+**Exécuté le 2026-09-06** sur la branche `feat/duels-lot2` (worktree `LevelUp-wt-duels-lot2`).
+Tous les items sont statués ; le gate 2.5 est TENU sur les quatre films et sur le cumul, donc
+2.4 est conservé et D5 reste GO. Journal détaillé : `.ai/thought_log.md` (entrée du
+2026-09-06) et `.ai/V7.5/film_re/SONDE_DUELS_2026-09-06.md`, section « Validation du proxy
+d'entame ».
+
+- [x] 2.1 `analysis/weapon_range.go` : type `MeasuredKill{WeaponKey string; DistanceM, DeltaZ float64; Side}`
       (`Side` = tueur | victime), et `WeaponRangeAggregate(kills []MeasuredKill, minMeasured int) []WeaponRange`
       où `WeaponRange` porte `WeaponKey, Side, Measured, P10, Median, P90, Above, Level, Below`.
-- [ ] 2.2 `const WeaponRangeMinMeasured = 8` et `const WeaponRangeLevelBandM = 1.0` (D4, D9),
+      FAIT — la signature rend DEUX valeurs : `([]WeaponRange, WeaponRangeSummary)`. Le résumé
+      est un second RETOUR et non un champ de sortie, précisément pour qu'un appelant qui
+      l'ignore ne puisse pas prendre l'absence d'une arme pour un zéro (D9). Il porte
+      `BelowThreshold`, `BelowThresholdBySide` (le rendu 5.3 dit « frags : N · morts : M ») et
+      `MeasuredBelowThreshold` (les frags réels laissés de côté). Tri de sortie : médiane
+      croissante, puis clé d'arme, puis côté.
+- [x] 2.2 `const WeaponRangeMinMeasured = 8` et `const WeaponRangeLevelBandM = 1.0` (D4, D9),
       définies ICI et nulle part ailleurs — garde-rail grep sur le littéral `1.0` accolé à
       `killer_z`/`victim_z` ailleurs que dans ce fichier.
-- [ ] 2.3 Percentiles par interpolation linéaire, une seule implémentation, testée aux bornes
+      FAIT — `weapon_range_guard_test.go` marche TOUT `internal/` (pas seulement le paquet : la
+      copie qui divergerait viendrait du repo DuckDB) et échoue aussi si les deux déclarations
+      disparaissent du propriétaire. Hors périmètre du grep, écrit dans le test : le TypeScript
+      de `apps/web` (hors module Go) et les `_test.go`, dont les fixtures portent légitimement
+      ±1,0 m exactement pour éprouver les bornes.
+- [x] 2.3 Percentiles par interpolation linéaire, une seule implémentation, testée aux bornes
       (n=1, n=2, valeurs égales).
-- [ ] 2.4 `replay.OpeningLeadMS = 1_500` (nommé, commenté : un temps-pour-tuer) et
+      FAIT — `percentileLinear` (convention « type 7 », celle de `quantile_cont`), non exportée.
+      Vérifié avant d'écrire : le paquet `internal/analysis` n'avait AUCUN percentile interpolé
+      (`PercentileRank` est un rang, `MedianFloat` une médiane seule) ; les deux implémentations
+      voisines vivent dans des SOUS-paquets et sont non exportées (`temporal.quantileSorted`,
+      interpolée ; `patterns.percentile`, au rang le plus proche). Un test épingle la
+      coïncidence `percentileLinear(s, 50) == MedianFloat(s)`.
+- [x] 2.4 `replay.OpeningLeadMS = 1_500` (nommé, commenté : un temps-pour-tuer) et
       `replay.ShiftKillRefs(kills []KillRef, leadMS int64) []KillRef` — pure ; la position
       d'entame est `BuildKillPositions(pos, slotXUID, ShiftKillRefs(kills, -OpeningLeadMS), off)`,
       AUCUNE seconde fonction de placement (règle « deux décodeurs du même fait divergeraient »).
-- [ ] 2.5 **Validation du proxy (D5)** : instrument `replay/duels_ouverture_research_test.go`
+      FAIT — `replay/killpos_opening.go`, CONSERVÉ parce que le gate 2.5 est tenu. Un couple
+      dont l'instant décalé passerait avant l'origine du film n'est PAS écarté par la fonction :
+      `BuildKillPositions` ne lui trouve alors aucune position, ce qui est le résultat correct
+      (jamais une position de réapparition présentée comme une entame). Le comportement est
+      épinglé par un test dédié, pour qu'un changement de la porte de `positionOf` le dise.
+- [x] 2.5 **Validation du proxy (D5)** : instrument `replay/duels_ouverture_research_test.go`
       qui, sur les 4 films de la sonde, compare distance au premier dégât vs distance à T-1,5 s.
       Gate : écart médian <= 2 m. Résultat consigné dans la note de la sonde. Si le gate échoue,
       2.4 est supprimé (pas désactivé — règle 0 code mort) et D5 passe `[!]`.
-- [ ] 2.6 Tests unitaires purs : agrégat nominal, seuil non atteint, une arme, doublons, les
+      FAIT — **GATE TENU**. Cumul des quatre films : n = 87 écarts, médiane **1,24 m**, p90
+      3,28 m, 69,0 % des cas à moins de 2 m. Par film : Cliffhanger 1,29 m (n=28), Catalyst
+      0,40 m (n=8), Bazaar 1,22 m (n=40), Vagabond 1,61 m (n=11). Le gate est tenu PAR LE CODE
+      (`t.Errorf`), pas par une lecture de log. Sensibilité mesurée à 1,0 s et 2,0 s : l'écart
+      croît avec l'avance, ce qui s'explique par le délai médian premier dégât -> fin de vie
+      (551 à 1 335 ms) — la population de validation est biaisée vers les échanges courts, elle
+      ne dit donc PAS de descendre la constante. `OpeningLeadMS` reste à 1,5 s, la valeur de D5.
+- [x] 2.6 Tests unitaires purs : agrégat nominal, seuil non atteint, une arme, doublons, les
       trois classes de dénivelé aux bornes (+1,0 exactement = à niveau).
+      FAIT — `weapon_range_test.go` : nominal deux côtés, seuil non atteint (avec la ventilation
+      du résumé), une arme au seuil exact, doublons, bornes de dénivelé sur un jeu VOLONTAIREMENT
+      ASYMÉTRIQUE, convention de signe côté victime isolée, tri déterministe à médianes égales,
+      non-mutation de l'entrée, entrée vide et seuil absurde.
+
+**Convention de signe du dénivelé, tranchée ici et à respecter par le lot 3** :
+`MeasuredKill.DeltaZ` porte la grandeur PHYSIQUE `killer_z - victim_z`, sans point de vue — le
+repo DuckDB l'écrit telle quelle pour les DEUX lectures. C'est `WeaponRangeAggregate` qui la
+ramène au point de vue du côté demandé (côté victime : l'opposé), pour que « où je meurs, d'en
+haut ou d'en bas » réponde MA position et non celle du tueur. Le repo ne doit donc PAS inverser
+le signe de son côté : le faire deux fois annulerait l'inversion.
 
 **Gate** : `cd apps/go-api && go test ./internal/analysis/ -run 'WeaponRange|OpeningDistance' -v`
+
+Gates réellement exécutés le 2026-09-06 (`CGO_ENABLED=0`, `GOCACHE` isolé), tous verts :
+`go test ./internal/analysis/ -run 'WeaponRange|Percentile|SeuilsPortee' -v` ·
+`go test ./internal/analysis/ -timeout 900s` · `go test ./internal/analysis/replay/ -timeout 900s` ·
+`go vet ./internal/analysis/ ./internal/analysis/replay/` · `gofmt -l` (sortie vide) ·
+`TestSondeDuelsOuverture` sur les 4 films, un par process.
 
 ---
 
@@ -347,3 +402,19 @@ condition de reprise (« un flux de dégâts dense, ou un compteur d'état ECS r
 
 - `hypot3D` (`platform/duckdb`) et `dist3` (`analysis/replay`) sont la même formule dans deux
   paquets. Deux copies, dans la limite ; à surveiller si un troisième paquet en a besoin.
+- (lot 2, 2026-09-06) **Le mot « percentile » recouvre DEUX conventions dans le dépôt.**
+  `analysis/temporal.quantileSorted` et le nouveau `analysis.percentileLinear` interpolent ;
+  `analysis/patterns.percentile`, `analysis/replay.gwPadsQuantile` et `media.percentile`
+  prennent le rang le plus proche. Cinq implémentations, toutes non exportées, dans cinq
+  paquets — aucune n'était réutilisable depuis `internal/analysis`. Les deux familles donnent
+  des p10/p90 différents sur les petits effectifs. NON TRAITÉ (hors périmètre) : la
+  centralisation supposerait de trancher la convention pour des mesures déjà publiées.
+- (lot 2, 2026-09-06) `TestSeuilsPorteeDefinisUneSeuleFois` coûte ~19 s à froid : il marche
+  tout `internal/` et lit chaque `.go`. C'est le prix d'un garde-rail qui couvre les couches
+  aval. À surveiller si d'autres garde-rails adoptent la même marche — à la troisième, il
+  faudra un index partagé plutôt que trois marches complètes.
+- (lot 2, 2026-09-06) **Le délai médian entre le premier dégât CAPTURÉ et la fin de vie vaut
+  551 à 1 335 ms** sur les quatre films. C'est un second angle sur le constat de la sonde n°1
+  (« la riposte vit dans les deux premières secondes ou n'existe pas ») et c'est aussi ce qui
+  biaise la population de validation du proxy d'entame vers les échanges courts. Utile au lot 7
+  s'il s'ouvre ; rien à traiter ici.
