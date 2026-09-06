@@ -24,7 +24,7 @@
  * rapporter cette propriété à l'écran.
  */
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import type { ReplayZoom } from '../useReplayZoom'
+import type { ReplayZoom } from '../hooks/useReplayZoom'
 
 export function ReplayZoomControl({
   zoom,

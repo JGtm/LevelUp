@@ -39,9 +39,9 @@
  */
 import { useCallback, useMemo, useRef, type RefObject } from 'react'
 
-import { formatClock, frameToMs } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
-import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
+import { formatClock, frameToMs } from '../replayLogic'
+import type { ReplayDocumentReady } from '../replayNormalize'
+import { displayClockMs, type ReplayWindowBounds } from '../replayWindow'
 
 /** Cadence de publication de l'image courante vers React, en millisecondes. */
 const FRAME_PUBLISH_MS = 150

@@ -17,7 +17,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { ReplayTransport } from './ReplayTransport'
-import type { ReplayTimeline } from '../useReplayTimeline'
+import type { ReplayTimeline } from '../hooks/useReplayTimeline'
 import type { ReplaySound } from '../sound/useReplaySound'
 import type { ReplayExport } from '../export/useReplayExport'
 

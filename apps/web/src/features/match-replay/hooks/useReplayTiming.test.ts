@@ -14,7 +14,7 @@
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { testReplayDoc } from './test/testDoc'
+import { testReplayDoc } from '../test/testDoc'
 import { REPLAY_TIMING_MS, useReplayTiming } from './useReplayTiming'
 
 describe('REPLAY_TIMING_MS — les durées déclarées', () => {

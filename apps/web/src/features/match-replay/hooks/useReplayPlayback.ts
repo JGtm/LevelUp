@@ -91,11 +91,11 @@
  */
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type RefObject } from 'react'
 
-import { frameToMs } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
-import { readStoredFlag } from './settings/replayPreferences'
-import { AUTOPLAY_DEFAULT, AUTOPLAY_KEY } from './settings/useReplaySettings'
-import type { ReplayWindowBounds } from './replayWindow'
+import { frameToMs } from '../replayLogic'
+import type { ReplayDocumentReady } from '../replayNormalize'
+import { readStoredFlag } from '../settings/replayPreferences'
+import { AUTOPLAY_DEFAULT, AUTOPLAY_KEY } from '../settings/useReplaySettings'
+import type { ReplayWindowBounds } from '../replayWindow'
 
 /** Ce dont la lecture a besoin (objet unique : la règle des 5 paramètres du dépôt). */
 export interface ReplayPlaybackOptions {

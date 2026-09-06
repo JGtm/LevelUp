@@ -24,12 +24,12 @@ import { useCallback, useMemo, type ChangeEvent, type ComponentProps, type RefOb
 import { useCapability } from '@/lib/capabilities'
 import { leaderStates, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
-import type { ReplayFeedEntry } from './killFeedLogic'
-import type { ReplayLocale } from './i18n/i18n'
-import type { PlayerMarkKind } from './playerMarks'
-import { formatClock } from './replayLogic'
-import { EMPTY_MEDIA, SKIP_SECONDS } from './layers/replayCanvasConfig'
-import type { ReplayTimelineTracks } from './ui/ReplayTimelineTracks'
+import type { ReplayFeedEntry } from '../killFeedLogic'
+import type { ReplayLocale } from '../i18n/i18n'
+import type { PlayerMarkKind } from '../playerMarks'
+import { formatClock } from '../replayLogic'
+import { EMPTY_MEDIA, SKIP_SECONDS } from '../layers/replayCanvasConfig'
+import type { ReplayTimelineTracks } from '../ui/ReplayTimelineTracks'
 import {
   buildEventTracks,
   buildFragDominance,
@@ -45,11 +45,11 @@ import {
   type TrackFrag,
   type TrackKill,
   type TrackScale,
-} from './replayTimelineTracksLogic'
-import { roundTransitions } from './roundsLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
-import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
-import { usePersistedFlag, TIMELINE_EXPANDED_KEY } from './settings/useReplaySettings'
+} from '../replayTimelineTracksLogic'
+import { roundTransitions } from '../roundsLogic'
+import type { ReplayDocumentReady } from '../replayNormalize'
+import { displayClockMs, type ReplayWindowBounds } from '../replayWindow'
+import { usePersistedFlag, TIMELINE_EXPANDED_KEY } from '../settings/useReplaySettings'
 import { useReplayShortcuts, type ReplayShortcutHandlers } from './useReplayShortcuts'
 
 /** Ce que le canvas prête à la frise : le document, le cadrage, le fil et la lecture. */

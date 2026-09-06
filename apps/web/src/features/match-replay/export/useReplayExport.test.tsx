@@ -13,7 +13,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useReplayExport } from './useReplayExport'
 import type { ReplayWindowBounds } from '../replayWindow'
-import { EXPORT_SUPERSAMPLE, exportRenderScale } from '../useReplayView'
+import { EXPORT_SUPERSAMPLE, exportRenderScale } from '../hooks/useReplayView'
 import { testReplayDoc } from '../test/testDoc'
 
 // La SIGNATURE est portee par le TYPE du mock, pas par des parametres nommes : sans elle,
