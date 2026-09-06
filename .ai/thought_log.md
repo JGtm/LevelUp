@@ -1,3 +1,56 @@
+## [2026-09-06] Lot 6 duels/portee — reprise de l integration, gates web du volet frontend — En cours
+
+**Decision technique principale.** Reprise apres coupure de session : les cases du plan ne sont
+pas une preuve, les quatre residus 6.0a-6.0d du commit d integration `485467037` ont ete
+RE-VERIFIES SUR PIECES avant de rien relancer. Les quatre tiennent — la vue locale
+`WeaponRangeBlock`/`WeaponRangeOpening` a bien disparu au profit du type genere (grep VIDE sur
+`apps/web/src`), le fichier de test du service est scinde en 477 L + 136 L sous le seuil de 500,
+le motif cherche dans la clause WHERE de `fragSolo` est `match_id` sans alias, et les deux
+assertions d encre (pastilles de la legende de PORTEE, accents des tuiles) sont en place. Rien a
+refaire, aucun commit de rattrapage.
+
+Seconde decision, le partage du worktree : les gates Go et les gates web ont ete separes entre
+deux executeurs travaillant dans LE MEME worktree `LevelUp-wt-duels`. Aucune commande `go` ni
+`make go-api-*` n a ete lancee cote web — deux builds Go concurrents corrompent le cache. Le
+volet Go du plan (nouvel item 6.2bis, ex-6.2) reste ouvert, a inscrire par le pilote.
+
+**Resultats observes.** Sept gates web, code de retour verifie a chaque fois : typecheck RC 0
+(cache `.tsbuildinfo` purge avant), lint RC 0 avec 0 erreur et 28 warnings tous PREEXISTANTS —
+les 20 fichiers porteurs ont ete extraits de la sortie et aucun n appartient au chantier —,
+suite complete RC 0 (595 fichiers, 6 299 tests, 14 skippes), `lint:fields` sans violation sur
+1 687 fichiers, fraicheur de `generated.ts` vis-a-vis d `openapi.yaml` OK, et regeneration des
+21 manifestes i18n rendant un `git diff` VIDE sur `src/lib/i18n/generated/`.
+
+Un premier passage complet avait rendu 2 rouges, tous deux dans
+`src/features/admin/lab-removal.guard.test.ts` (« Test timed out in 5000ms »). DIAGNOSTIC :
+ce garde-rail lit SYNCHRONEMENT les ~1 700 fichiers `.ts`/`.tsx` de `src/` avec le `testTimeout`
+par defaut de 5 s, et le passage tournait pendant les gates Go du pilote sur le meme disque.
+Relance seul trois fois -> 3 x RC 0 ; second passage COMPLET -> RC 0. Hors chantier et
+preexistant : le gate du lot 5 avait deja consigne le meme flake sur « un garde-rail qui balaie
+le systeme de fichiers ». La lecon est generique — un garde-rail qui marche l arborescence sous
+le timeout par defaut de vitest est une bombe a retardement des que la machine est chargee ;
+c est le troisieme du depot dans ce cas.
+
+Trois decouvertes de la session. (1) `tools/check-generated-types-fresh.mjs` vit a la RACINE du
+depot, pas sous `apps/web/tools/` : la commande ecrite dans plusieurs consignes echoue en
+`MODULE_NOT_FOUND`, ce qui ressemble a une erreur de code alors que c est un chemin. (2) La
+regle eslint `@levelup/no-hardcoded-strings` a ete PROUVEE ARMEE sur un fichier du chantier, pas
+seulement supposee active : l `aria-label` de `RangeLegend` remplace par un litteral FR rend
+`1 error` sur `SynthesisWeaponRangeSection.tsx:220` ; le fichier a ete restaure. Sa liste
+blanche ne couvre que les fichiers de test et `src/test/handlers.ts`. (3) `LevelUp-wt-duels/data`
+EXISTE mais ne porte que le contenu TRACKE (`data/cache/**`, `metadata-prebuilt.zip`) et aucune
+`*.duckdb` : y poser une jonction supprimerait des fichiers versionnes. La voie propre pour le
+gate visuel est `make dev LEVELUP_DATA_ROOT=<worktree principal>`, qui alimente
+`LEVELUP_REPO_ROOT` et fait donc pointer `PathResolver`, `config/titles/` ET `.env.local` vers le
+principal, avec un binaire compile depuis le worktree du chantier.
+
+**Conclusion / prochaine etape.** Volet web du lot 6 CLOS. Restent, dans l ordre : le verdict des
+gates Go (6.2bis) et du lint Go (6.3) par le pilote, le gate visuel (6.4, procedure ecrite dans
+le plan, non executee — un serveur tourne deja sur :8000 depuis le worktree principal et devra
+etre arrete d abord), puis 6.6 commit + push + CI. **AUCUN PUSH a ce stade** : `feat/duels` n a
+pas d upstream et n a jamais declenche de run — le lot n est pas clos tant que la CI n est pas
+verte au niveau JOB.
+
 ## [2026-09-06] Lot 5 duels/portee — revue adversariale ronde 1, les 14 correctifs (F1-F14) — Complete
 
 **Decision technique principale.** Le constat structurel de la ronde n est pas un bug de rendu
