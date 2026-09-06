@@ -820,8 +820,23 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   forme le dise, et `backfill-replay` saute un artefact à la version courante.
 	//   Détail : internal/analysis/replay/{closures.go, grapple_lines.go, equipment_episodes.go}
 	//   et .ai/V7.5/v2/INSTRUCTION_REGRESSIONS_2_4.md.
-	if SchemaVersion != 41 {
-		t.Fatalf("SchemaVersion = %d, attendu 41 : incrémenter exige une raison écrite ci-dessus "+
+	// v42 — LE DRAPEAU A ENFIN DES PORTEURS (2026-09-06). Aucun champ ajouté : c'est le CONTENU
+	//   de `flagCarries` qui change, comme aux montées v14 et v15 du même calque. Le calque
+	//   nommait son porteur par le seul pont PAR MORTS, qui exige trois instants coïncidents :
+	//   le joueur qui meurt moins de trois fois — celui qui porte le drapeau — lui échappe par
+	//   construction, sa prise était comptée `noBridge` et AUCUN intervalle n'était publié. Le
+	//   pont COMPLÉTÉ par le triplet, déjà en service pour `objectives` depuis le v40, descend
+	//   désormais jusqu'à ce calque (`FlagInput.Identity`, résolu dans `replaybuild`, partagé
+	//   par les deux calques). Mesuré : `c0a82e88` 0 -> 1 portage (le porteur publié est celui,
+	//   aux instants près, des deux actions `flag_*` du calque `objectives`), `e94163af`
+	//   16 -> 33 et `noBridge` 17 -> 0, `51101d1d` 10 -> 11 ; `fb1a1a72` (3 manches) IDENTIQUE
+	//   octet pour octet — la garde mono-manche s'abstient.
+	//   POURQUOI LA VERSION MONTE : un artefact 41 est amputé de portages sans que sa forme le
+	//   dise, et `backfill-replay` saute un artefact à la version courante.
+	//   Détail : internal/analysis/replay/build_objectives_live.go et
+	//   .ai/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md.
+	if SchemaVersion != 42 {
+		t.Fatalf("SchemaVersion = %d, attendu 42 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

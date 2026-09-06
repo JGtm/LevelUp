@@ -262,6 +262,17 @@ func (ri RoundIdentity) AtRound(round, slot int) string {
 	return ""
 }
 
+// Resolved dit qu'un pont a ete RESOLU — par opposition a la valeur zero du type.
+//
+// LA DISTINCTION EST CELLE ENTRE « PERSONNE N'A RESOLU » ET « LA RESOLUTION N'A NOMME
+// PERSONNE », et un calque qui recoit son pont d'un appelant a besoin des deux : le premier
+// cas lui dit de resoudre lui-meme, le second qu'il n'y a rien a nommer sur ce film. Un
+// compte de slots nommes ne les departage PAS ([NamedCount] vaut zero dans les deux cas).
+//
+// [ResolveRoundIdentity] rend toujours au moins une manche — mono-manche comprise, ou elle
+// rend `{manche: pont plat}` — donc `byRound` non vide EST la marque d'une resolution.
+func (ri RoundIdentity) Resolved() bool { return len(ri.byRound) > 0 }
+
 // Rounds rend la liste triee des manches resolues.
 func (ri RoundIdentity) Rounds() []int {
 	out := make([]int, 0, len(ri.byRound))

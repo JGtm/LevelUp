@@ -91,6 +91,9 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 			"ni d'actions d'objectif, et l'identite des camps retombe sur les frags",
 			"match_id", matchID, "enregistrements", len(recs))
 	}
+	// UN SEUL PONT D'IDENTITE POUR LES DEUX CALQUES QUI EN VIVENT (actions d'objectif et
+	// drapeau vivant) : la meme table slot -> xuid, resolue AU PLUS UNE FOIS par cuisson.
+	pont := &pontParManche{recs: recs, deaths: deathInstantsOf(deaths.list), lines: lines}
 	return filmStats{
 		score: &replay.ScoreInput{
 			Records:    recs,
@@ -99,8 +102,8 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 			TeamScores: facts.TeamScores,
 			Truncated:  truncated,
 		},
-		objectives: identifiedEvents(ctx, matchID, deaths, recs, facts),
-		flag:       flagInput(recs, film),
+		objectives: identifiedEvents(ctx, matchID, deaths, recs, facts, pont),
+		flag:       flagInput(recs, film, pont),
 		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:      skullInput(recs, isSkullVariant(facts.GameVariantName)),
 		bomb:       bombInput(film, isBombVariant(facts.GameVariantName)),
@@ -186,14 +189,42 @@ func vipInput(recs []objectiveevents.StatRecord, isVip bool) replay.VipInput {
 // appliquee a un film Oddball, rend 1 470 « prises » et 994 « vols ». Le cout est un parcours de
 // plus des paquets deja decoupes — depuis le lot 1, ce n'est plus une relecture du film.
 //
-// AUCUN FAIT DE MATCH N'ENTRE ICI, et c'est ce qui rend le calque publiable hors ligne : le
-// porteur se nomme par les INSTANTS DE MORT, jamais par les lignes de match.
-func flagInput(recs []objectiveevents.StatRecord, film *filmsource.Film) replay.FlagInput {
-	return replay.FlagInput{
+// LE PONT D'IDENTITE DESCEND JUSQU'ICI DEPUIS LE 2026-09-06 (schema 42), ET C'EST TOUT LE LOT.
+// Le calque le resolvait lui-meme par les seuls INSTANTS DE MORT, qui exigent TROIS instants
+// coincidents : un joueur qui meurt moins de trois fois — le meilleur, celui qui porte le
+// drapeau — lui echappait par construction, sa prise etait comptee `noBridge` et AUCUN portage
+// n'etait publie pour elle. `c0a82e88` : 3 prises, 3 `noBridge`, 0 portage. Le pont COMPLETE
+// (par morts + triplet, cf. [pontParManche]) est le meme que celui des actions d'objectif, et
+// il vit ICI parce que c'est ici que les lignes de match arrivent — `analysis/replay` continue
+// de n'en voir aucune.
+//
+// IL N'EST DEMANDE QUE SUR UN FILM DE CTF, et la garde est la MEME que celle du calque
+// (`replay.attachFlagCarries`) : le verdict de mode vient des trois signaux du FILM, jamais du
+// nom de variante. Hors CTF, le pont n'est pas resolu du tout — c'est la protection posee le
+// 2026-08-18, quand le deroulage du compteur de morts sur un film d'une autre grammaire montait
+// a 19-22 Go.
+//
+// AUCUN FAIT DE MATCH N'ENTRE DANS LE CALQUE : ce qui descend est une TABLE slot -> xuid. Sans
+// lignes de match, `CompletedByLines` rend le pont par morts inchange et l'artefact reste
+// exactement celui d'avant — la propriete « publiable hors ligne » est conservee.
+func flagInput(recs []objectiveevents.StatRecord, film *filmsource.Film,
+	pont *pontParManche) replay.FlagInput {
+	return withFlagIdentity(replay.FlagInput{
 		Scanned: true,
 		Records: recs,
 		Bursts:  objectiveevents.CaptureBurstTimes(film),
+	}, pont)
+}
+
+// withFlagIdentity pose le pont COMPLETE sur l'entree du calque — et SEULEMENT sur un film que
+// les trois signaux reconnaissent comme du CTF. Coeur PUR, sans film : c'est la regle, seule.
+func withFlagIdentity(in replay.FlagInput, pont *pontParManche) replay.FlagInput {
+	signals := objectiveevents.FlagFilmSignalsFrom(in.Bursts,
+		objectiveevents.NamedEventsFrom(in.Records, objectiveevents.ObjectiveTypeFlag))
+	if signals.IsFlagFilm() {
+		in.Identity = pont.identite()
 	}
+	return in
 }
 
 // identifiedEvents nomme les actions d'objectif du film et les attribue a un xuid PAR MANCHE.
@@ -227,7 +258,8 @@ func flagInput(recs []objectiveevents.StatRecord, film *filmsource.Film) replay.
 // reparsaient chacune le chunk highlight. Le second decodage du statborg, lui, n'a jamais ete
 // refait — `recs` est reutilise.
 func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
-	recs []objectiveevents.StatRecord, facts port.MatchFacts) []objectiveevents.IdentifiedEvent {
+	recs []objectiveevents.StatRecord, facts port.MatchFacts,
+	pont *pontParManche) []objectiveevents.IdentifiedEvent {
 	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeOf(facts.GameVariantName))
 	if len(named) == 0 {
 		return nil
@@ -237,22 +269,40 @@ func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 			"err", deaths.err, "match_id", matchID, "nommees", len(named))
 		return nil
 	}
-	out := identifyRoundEvents(named, recs, deathInstantsOf(deaths.list), playerLines(facts))
+	out := objectiveevents.IdentifyNamedEventsByRound(named, pont.identite())
 	slog.InfoContext(ctx, "replaybuild: actions d'objectif identifiees par manche",
 		"match_id", matchID, "nommees", len(named), "identifiees", len(out), "lignes", len(facts.Players))
 	return out
 }
 
-// identifyRoundEvents resout l'identite PAR MANCHE (par les instants de mort), la COMPLETE par le
-// triplet quand le film est mono-manche et que les lignes de match sont la, puis attribue les
-// evenements nommes. Coeur PUR, sans I/O — testable sans film.
+// pontParManche est LE pont slot d'entite -> xuid de la cuisson : resolu par manche via les
+// instants de mort, COMPLETE par le triplet quand le film est mono-manche et que les lignes de
+// match sont la. Coeur PUR, sans I/O — testable sans film.
 //
-// `lines` vide = pont par morts seul (cf. [identifiedEvents], « les lignes restent facultatives »).
-func identifyRoundEvents(named []objectiveevents.NamedEvent, recs []objectiveevents.StatRecord,
-	deaths []objectiveevents.DeathInstant, lines []objectiveevents.PlayerLine,
-) []objectiveevents.IdentifiedEvent {
-	identity := objectiveevents.ResolveRoundIdentity(recs, deaths).CompletedByLines(recs, lines)
-	return objectiveevents.IdentifyNamedEventsByRound(named, identity)
+// POURQUOI IL EST MEMORISE, ET POURQUOI IL EST PARESSEUX. Deux calques le consomment (les
+// ACTIONS d'objectif et le DRAPEAU VIVANT) et le resolvaient chacun de leur cote sur les MEMES
+// enregistrements et le MEME fil des morts — deux deroulages complets du compteur de morts par
+// cuisson de CTF. Il est memorise pour n'en payer qu'un ; il est PARESSEUX pour n'en payer AUCUN
+// sur les films qu'aucun des deux calques ne lit (le deroulage sur un film d'une autre grammaire
+// est ce qui montait a 19-22 Go avant la garde du 2026-08-18).
+//
+// `lines` vide = pont par morts seul : `CompletedByLines` rend l'identite inchangee, et les deux
+// calques restent publiables hors ligne, sans base.
+type pontParManche struct {
+	recs   []objectiveevents.StatRecord
+	deaths []objectiveevents.DeathInstant
+	lines  []objectiveevents.PlayerLine
+	resolu bool
+	id     objectiveevents.RoundIdentity
+}
+
+// identite rend le pont, en le resolvant au premier appel.
+func (p *pontParManche) identite() objectiveevents.RoundIdentity {
+	if !p.resolu {
+		p.id = objectiveevents.ResolveRoundIdentity(p.recs, p.deaths).CompletedByLines(p.recs, p.lines)
+		p.resolu = true
+	}
+	return p.id
 }
 
 // deathInstantsOf traduit le fil des morts du film dans la forme qu'attend le pont d'identite.

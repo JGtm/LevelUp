@@ -17,6 +17,11 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// porteurDeDrapeau : SweatyYeti75, 7 frags / 2 morts / 1 assistance — l'auteur des DEUX actions
+// de drapeau du fixture ET du seul portage publié. C'est le joueur que le pont par instants de
+// mort ne peut pas nommer seul (il meurt deux fois, le seuil est de trois).
+const porteurDeDrapeau = "2535463878425995"
+
 // assertCalquesDObjectif confronte les calques d'objectif à l'ORACLE INDÉPENDANT du fixture — la
 // feuille de match de l'API, que le décodeur ne lit jamais.
 //
@@ -116,7 +121,6 @@ func assertCalquesDObjectif(t *testing.T, doc replaydoc.ReplayDocument, fx filmF
 	}
 	// LES ACTIONS `flag` : la régression instruite. Elles vivent toutes deux sur le slot du
 	// joueur qui meurt DEUX fois — celui que le pont par instants de mort ne peut pas nommer seul.
-	const porteurDeDrapeau = "2535463878425995" // SweatyYeti75, 7 frags / 2 morts / 1 assistance
 	for stat, attendu := range map[string]int{"flag_captures": 1, "flag_steals": 1} {
 		if got := parJoueur[porteurDeDrapeau][stat]; got != attendu {
 			t.Errorf("action `%s` du porteur de drapeau %s : %d, attendu %d — c'est exactement ce "+
@@ -125,6 +129,76 @@ func assertCalquesDObjectif(t *testing.T, doc replaydoc.ReplayDocument, fx filmF
 		}
 	}
 	t.Logf("calque objectifs : %d actions, %d joueurs pontés", len(doc.Objectives), len(parJoueur))
+	assertPortsDeDrapeau(t, doc, fc)
+}
+
+// assertPortsDeDrapeau confronte le calque du DRAPEAU VIVANT au calque des ACTIONS d'objectif —
+// deux chaînes qui ne partagent que le pont d'identité, et qui doivent nommer le même joueur.
+//
+// LA MESURE QUE CE TEST FIGE (schéma 42, 2026-09-06). Ce film porte 3 prises. Jusqu'au schéma 41
+// le calque en publiait ZÉRO : il nommait son porteur par le seul pont PAR MORTS, qui exige
+// trois instants coïncidents, et l'auteur de la seule prise nommable meurt DEUX fois. Le pont
+// COMPLÉTÉ — celui-là même que les actions consomment depuis le schéma 40 — descend désormais
+// jusqu'à ce calque, et le portage est publié.
+//
+// LES DEUX PRISES QUI RESTENT `noBridge` NE SONT PAS UN DÉFAUT : elles sont sur le slot 12, dont
+// les compteurs agrégés (5, 0, 60 assistances) ne ressemblent à aucune ligne de match — le même
+// slot qui laisse le 8e joueur anonyme ci-dessus. Si un lot futur le rend nommable, ce compte
+// passera à 3 : ce sera un PROGRÈS, et ce test le dira.
+//
+// L'ORACLE EST INDÉPENDANT, ET C'EST TOUT L'INTÉRÊT. Les bornes du portage viennent des
+// compteurs du statborg et du fil des morts du film ; les instants des actions `flag_steals` /
+// `flag_captures` viennent de la table nommée. Que la fenêtre publiée s'ouvre AU vol et se ferme
+// À la capture, sur le MÊME xuid, n'est démontrable par aucune des deux chaînes seule.
+func assertPortsDeDrapeau(t *testing.T, doc replaydoc.ReplayDocument, fc *replaydoc.FlagCarriesCoverage) {
+	t.Helper()
+	if fc.Carries != 1 || fc.NoBridge != 2 || fc.Openings != 3 {
+		t.Errorf("couverture du drapeau : %d portage(s), %d sans pont, %d prises — attendu 1 / 2 / 3 "+
+			"(le porteur qui meurt deux fois est nommé, le slot 12 agrégé ne l'est pas)",
+			fc.Carries, fc.NoBridge, fc.Openings)
+	}
+	if fc.Carries+fc.NoBridge+fc.NoTrack+fc.OutOfWindow != fc.Openings {
+		t.Errorf("invariant de couverture rompu : %d + %d + %d + %d != %d prises",
+			fc.Carries, fc.NoBridge, fc.NoTrack, fc.OutOfWindow, fc.Openings)
+	}
+	var portes []replaydoc.FlagSpan
+	for _, f := range doc.FlagCarries {
+		for _, s := range f.Spans {
+			if s.State == "carried" || s.State == "carried_open" {
+				portes = append(portes, s)
+			}
+		}
+	}
+	if len(portes) != 1 {
+		t.Fatalf("%d intervalle(s) porté(s) publié(s), attendu 1 — au schéma 41 il n'y en avait "+
+			"AUCUN, et le drapeau restait dessiné à sa base pendant qu'un joueur le portait", len(portes))
+	}
+	port := portes[0]
+	if port.XUID == nil || *port.XUID != porteurDeDrapeau {
+		t.Fatalf("porteur publié %v, attendu %s (SweatyYeti75, 7 frags / 2 morts)", port.XUID, porteurDeDrapeau)
+	}
+	// LES DEUX CHAÎNES SE RECOUPENT : le vol ouvre la fenêtre, la capture la ferme.
+	vol, capture := -1, -1
+	for _, a := range doc.Objectives {
+		if a.XUID != porteurDeDrapeau {
+			continue
+		}
+		switch a.Stat {
+		case "flag_steals":
+			vol = a.T
+		case "flag_captures":
+			capture = a.T
+		}
+	}
+	if vol < 0 || capture < 0 {
+		t.Fatalf("actions de drapeau introuvables (vol %d, capture %d) : plus d'oracle indépendant", vol, capture)
+	}
+	if port.T0 > vol || port.T1 != capture {
+		t.Errorf("portage publié sur [%d, %d] ; le calque des ACTIONS date le vol à %d et la capture "+
+			"à %d — les deux chaînes doivent tomber d'accord", port.T0, port.T1, vol, capture)
+	}
+	t.Logf("calque drapeau : 1 portage sur [%d, %d] au porteur %s (vol %d, capture %d), %d prises sans pont",
+		port.T0, port.T1, porteurDeDrapeau, vol, capture, fc.NoBridge)
 }
 
 // clesTriees rend les clés d'une table, triées — pour un message d'échec reproductible.

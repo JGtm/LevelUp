@@ -97029,3 +97029,47 @@ dont `d9781168` -6 portages de crane d'Oddball. `feat/v75` = tout integre.
 Notion). Restent : CI des derniers merges, decision user sur `flagCarries` (completer dans
 replaybuild), instruction optionnelle des quinze faits residuels (Oddball d'abord), nettoyage
 des dix worktrees `LevelUp-wt-v2-*` et des caches, tag v7.5.0.
+
+## [2026-09-06] Rejeu 2D — l'identite des ports de drapeau completee (schema 42) — Complete
+
+**Contexte.** Derniere reprise du chantier v2 : la decision utilisateur sur `flagCarries`. Le
+calque du drapeau nommait son porteur par le seul pont PAR MORTS, qui exige TROIS instants
+coincidents (`deathInstantMin`) : un joueur qui meurt moins de trois fois lui echappe par
+construction — et ce sont ceux qui portent le drapeau. Leurs prises etaient comptees `noBridge`
+et AUCUN intervalle n'etait publie. Entree 543 du registre des reports.
+
+**Decision technique.** La completion se fait dans `replaybuild`, comme pour les actions
+d'objectif, et `analysis/replay` ne voit toujours aucun fait de match : `FlagInput` gagne un
+champ `Identity` qui porte le pont **DEJA RESOLU** (une table `slot -> xuid`), jamais des
+`PlayerLine`. `attachFlagCarries` choisit par `flagIdentityOf` — le pont de l'appelant s'il est
+`Resolved()`, sinon la resolution locale : champ a zero = comportement d'avant a l'octet pres,
+le CLI hors ligne reste entier. `replaybuild` resout le pont UNE fois par cuisson (memo paresseux
+`pontParManche`) et le sert aux DEUX calques ; il etait resolu deux fois. Le pont n'est demande
+que sur un film que les TROIS SIGNAUX DU FILM reconnaissent comme du CTF (garde de cout du
+2026-08-18 conservee). **Un post-traitement du document apres `BuildFromFilm` etait impossible et
+la mesure le dit** : une prise sans xuid n'existe pas dans le document (elle est ecartee avant le
+bornage), elle n'aurait ni fermeture ni geometrie (les deux lisent le xuid), et `flagCarries`
+n'est pas une liste de portages mais la frise contigue de chaque DRAPEAU — ajouter un portage
+redecoupe la frise, il ne renomme pas un intervalle.
+
+**Resultats.** `c0a82e88` 0 -> 1 portage (les 2 prises restantes sont sur le slot 12 agrege,
+nommable par aucun pont) ; `e94163af` 16 -> 33 et `noBridge` 17 -> 0 ; `51101d1d` 10 -> 11 ;
+`fb1a1a72` (3 manches) IDENTIQUE au numero de schema pres — la garde mono-manche prouvee sur un
+film reel. Trois oracles independants : la fenetre publiee [640, 706] coincide avec le
+`flag_steals` (641) et le `flag_captures` (706) du calque des ACTIONS, sur le meme xuid ; le
+marqueur de portage des images-cles confirme 1/1 ; sur `e94163af` le nouveau porteur (1 mort)
+recoit 17 portages contre 17 `flag_grabs` credites par l'autre chaine. `changements = 0` sur les
+trois diffs : aucun portage deplace, aucun perdu — seul `homeByObject` baisse, et c'est la
+consequence voulue (la rentree par l'objet n'agit que sur un drapeau AU SOL). `SchemaVersion`
+41 -> 42 avec chronique ; contrat servi INCHANGE (`generated.ts` regenere, identique). Gates
+verts : paquets touches + `-tags=integration` `api/wire` + `go build` + `golangci-lint
+--new-from-merge-base=origin/main` (0 issue) + golden mini-bobine, equivalence mini-film et
+golden d'assemblage (1 ligne : le numero de schema). Mutations jouees rouge puis vert des deux
+cotes, E2E compris.
+
+**Conclusion / prochaine etape.** Entree 543 du registre FERMEE ; deux lignes ouvertes a sa
+place : les CTF MULTI-MANCHE (`fb1a1a72` : 46 prises, 0 portage, 3 actions identifiees sur 936 —
+c'est le pont par manche qui ne tient pas, pas la completion) et les calques VIP / CRANE, qui
+subissent le meme plafond et pour lesquels le patron est desormais pose. Le seuil de re-cuisson
+de la release passe de `< 40` a `< 42`. Detail :
+`.ai/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md`.
