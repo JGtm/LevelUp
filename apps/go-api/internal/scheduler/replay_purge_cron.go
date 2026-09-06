@@ -46,6 +46,12 @@ type ReplayPurgeCron struct {
 	retention func() int
 	registry  *titlePkg.Registry
 	interval  time.Duration
+	// now rend l'instant de référence du cycle. NIL EN PRODUCTION (= time.Now) ;
+	// injecté par les tests — sans cette couture, la FRONTIÈRE de la fenêtre de
+	// rétention n'est pas testable : un test ne peut que fabriquer des matchs très
+	// loin de part et d'autre du seuil, ce qui laisse passer une inversion du signe
+	// ou un décalage d'un mois. Avec elle, l'attendu s'écrit à la journée près.
+	now func() time.Time
 }
 
 // NewReplayPurgeCron construit le cron. retention requis (nil → noop).
@@ -96,7 +102,7 @@ func (c *ReplayPurgeCron) RunOnce(ctx context.Context) {
 		observability.ReportCronRun(replayPurgeCronName, start, nil, time.Since(start).Milliseconds())
 		return
 	}
-	cutoff := time.Now().UTC().AddDate(0, -months, 0)
+	cutoff := c.nowUTC().AddDate(0, -months, 0)
 
 	var errs []error
 	totalPurged := 0
@@ -126,6 +132,14 @@ func (c *ReplayPurgeCron) RunOnce(ctx context.Context) {
 		observability.AddInt("replay_purge_artifacts_deleted_total", int64(totalPurged))
 	}
 	observability.ReportCronRun(replayPurgeCronName, start, errors.Join(errs...), time.Since(start).Milliseconds())
+}
+
+// nowUTC rend l'instant de référence du cycle, en UTC. `c.now` nil = temps réel.
+func (c *ReplayPurgeCron) nowUTC() time.Time {
+	if c.now == nil {
+		return time.Now().UTC()
+	}
+	return c.now().UTC()
 }
 
 // purgeReplayArtifactsForTitle purge les artefacts d'UN titre. Rend

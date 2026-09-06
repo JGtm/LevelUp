@@ -197,7 +197,7 @@ l'installation locale de Halo Infinite et coûtent des dizaines de minutes
 `//go:build gamefiles` — sans quoi `go test ./internal/himap/` ne terminait jamais sur un
 poste où le jeu est installé, alors que la CI (pas de jeu → `t.Skip`) restait verte. Un test
 qui ouvre le jeu se nomme `*_gamefiles_test.go` ET porte le tag : garde-rails dans
-`internal/himap/corpus_tag_test.go`.
+`internal/archlint/gamefiles_tag_test.go` (ratchet sur tout le module, 2026-09-06 ; remplace `internal/himap/corpus_tag_test.go`).
 
 Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/RUNBOOK_GO_LIVE*`
 — **push sur `main` = déploiement prod automatique** : prévenir l'utilisateur avant.
