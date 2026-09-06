@@ -504,3 +504,12 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   20 → 38 relancée. Proposition au user (feu vert attendu) : balayage du parc local (106
   artefacts, 9 schémas) re-cuits un à un au HEAD et comparés champ par champ, avant puis après
   intégration.
+
+- 2026-09-06 11:00 : INTÉGRATION — B fusionné (`e1dfe6558`, `--no-ff`, conflit thought_log
+  résolu par concaténation) ; F fusionné (`47740fc5e`) avec CLAUDE.md corrigé (garde-rail
+  gamefiles → `internal/archlint/gamefiles_tag_test.go`). Conflit SÉMANTIQUE B/F attrapé par le
+  hook pre-push `go-vet-cgo` : le test de valeurs F.1 typait le document `replay.ReplayDocument`
+  alors que B fait servir `replaydoc.ReplayDocument` → test adapté aux types miroir (mêmes
+  champs), `go vet` + intégration `api/wire` verts (`ok 18 s`). Décision user : feu vert au
+  balayage du parc (un film par processus borné, jamais de bombe RAM) ; corpus élargi aux
+  artefacts des autres worktrees et de la clé PNY (`E:\data\cache\replays\`, état du 31/07).

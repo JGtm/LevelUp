@@ -56,7 +56,7 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/port"
 )
 
@@ -138,7 +138,7 @@ var valeurJoueursApparies = []string{
 
 // valeurCourbeCamp : la SEULE courbe d'équipe publiée sur ce film, frame par frame — les trois
 // captures. Son dernier point vaut le score du vainqueur à l'API (3).
-var valeurCourbeCamp = []replay.ScoreTick{{T: 195, V: 1}, {T: 485, V: 2}, {T: 706, V: 3}}
+var valeurCourbeCamp = []replaydoc.ScoreTick{{T: 195, V: 1}, {T: 485, V: 2}, {T: 706, V: 3}}
 
 // valeurObjectifsParStat : le calque des actions d'objectif, par nom de statistique.
 //
@@ -152,7 +152,7 @@ var valeurObjectifsParStat = map[string]int{"kills": 8, "assists": 4}
 // assertValeursDuDocument confronte le document cuit par l'ouvrier à l'oracle de l'API et aux
 // mesures figées. Appelée par `assertArtefactLivreEtComplet` sur le document que le service de
 // rejeu vient de relire — jamais sur une re-cuisson.
-func assertValeursDuDocument(t *testing.T, doc replay.ReplayDocument, fx filmFixture) {
+func assertValeursDuDocument(t *testing.T, doc replaydoc.ReplayDocument, fx filmFixture) {
 	t.Helper()
 	assertOracleFideleAuFixture(t, fx)
 	assertHorlogeEtGrille(t, doc)
@@ -190,7 +190,7 @@ func assertOracleFideleAuFixture(t *testing.T, fx filmFixture) {
 }
 
 // assertHorlogeEtGrille fige l'axe de temps du document : c'est lui que tout le client soustrait.
-func assertHorlogeEtGrille(t *testing.T, doc replay.ReplayDocument) {
+func assertHorlogeEtGrille(t *testing.T, doc replaydoc.ReplayDocument) {
 	t.Helper()
 	if doc.MatchID != "c0a82e88-7b3b-419c-a984-13385af99259" {
 		t.Errorf("matchId servi %q, attendu celui du fixture", doc.MatchID)
@@ -215,7 +215,7 @@ func assertHorlogeEtGrille(t *testing.T, doc replay.ReplayDocument) {
 // assertRoster fige les vies publiées ET les confronte à l'oracle : le film ne nomme QUE les
 // joueurs que l'API donne morts au moins une fois — le seul joueur à 0 mort (2535458702376288)
 // est aussi le seul absent du roster nommé. C'est un fait des deux chaînes, pas une tautologie.
-func assertRoster(t *testing.T, doc replay.ReplayDocument) {
+func assertRoster(t *testing.T, doc replaydoc.ReplayDocument) {
 	t.Helper()
 	if len(doc.Tracks) != valeurNbTracks {
 		t.Errorf("%d trajectoires, attendu %d", len(doc.Tracks), valeurNbTracks)
@@ -268,12 +268,12 @@ func assertRoster(t *testing.T, doc replay.ReplayDocument) {
 //     un palier mal filtré les sépare. Le triplet de l'API sert ici de VALEUR ATTENDUE COMMUNE
 //     — pas d'oracle indépendant, mais la seule écriture qui les confronte l'une à l'autre.
 //     Mesuré le 2026-09-05 : les deux dérivations coïncident sur les 15 compteurs.
-func assertCompteursJoueurs(t *testing.T, doc replay.ReplayDocument) {
+func assertCompteursJoueurs(t *testing.T, doc replaydoc.ReplayDocument) {
 	t.Helper()
 	if doc.ScoreTimeline == nil {
 		t.Fatal("aucun calque de score : ni la liste des appariés ni les séries publiées n'existent")
 	}
-	publies := map[string]replay.PlayerScore{}
+	publies := map[string]replaydoc.PlayerScore{}
 	for _, p := range doc.ScoreTimeline.Players {
 		publies[p.XUID] = p
 	}
@@ -303,7 +303,7 @@ func assertCompteursJoueurs(t *testing.T, doc replay.ReplayDocument) {
 // assertScoreCamp confronte la courbe d'équipe au score final de l'API : sur ce film, un SEUL
 // slot d'équipe est rattaché (`teamIdentity` = `unresolved`, propriété de ce Husky Raid), et sa
 // courbe monte 1, 2, 3 — les trois captures que l'API donne au vainqueur.
-func assertScoreCamp(t *testing.T, doc replay.ReplayDocument) {
+func assertScoreCamp(t *testing.T, doc replaydoc.ReplayDocument) {
 	t.Helper()
 	if doc.ScoreTimeline == nil {
 		return // déjà signalé par assertCompteursJoueurs
@@ -333,7 +333,7 @@ func assertScoreCamp(t *testing.T, doc replay.ReplayDocument) {
 }
 
 // assertObjectifs fige le calque des actions d'objectif (cf. valeurObjectifsParStat).
-func assertObjectifs(t *testing.T, doc replay.ReplayDocument) {
+func assertObjectifs(t *testing.T, doc replaydoc.ReplayDocument) {
 	t.Helper()
 	parStat := map[string]int{}
 	for _, o := range doc.Objectives {
@@ -353,7 +353,7 @@ func assertObjectifs(t *testing.T, doc replay.ReplayDocument) {
 
 // valeurFinale rend le dernier total d'un compteur — ZÉRO quand la série est absente, ce qui est
 // la façon dont le document représente un compteur resté à zéro.
-func valeurFinale(s replay.ScoreSeries) int {
+func valeurFinale(s replaydoc.ScoreSeries) int {
 	if len(s.Total) == 0 {
 		return 0
 	}
@@ -361,7 +361,7 @@ func valeurFinale(s replay.ScoreSeries) int {
 }
 
 // triXUIDs rend les xuids publiés, triés — pour un message d'échec lisible.
-func triXUIDs(m map[string]replay.PlayerScore) []string {
+func triXUIDs(m map[string]replaydoc.PlayerScore) []string {
 	out := make([]string, 0, len(m))
 	for x := range m {
 		out = append(out, x)
