@@ -64,7 +64,9 @@ import "fmt"
 //
 // Le réglage public `SetBipedMediaFramePresent` a été supprimé le 2026-09-05 (lot E, item E.2) :
 // aucun appelant. La valeur reste `false`, le cas mesuré du décodage keyframe.
-var bipedMediaFramePresent = false
+// PROVENANCE : MESURE — un decodage de keyframe part d un DST memset(0), donc le bloc quaternion
+// garde par l etat DST est absent. Constante depuis le 2026-09-06 (lot E, item E.8).
+const bipedMediaFramePresent = false
 
 // bipedDefaultStateTailBits is the number of extra bits consumed by the
 // config-gated tail of FUN_141f86704 that runs AFTER vtable[0x60] and BEFORE the
@@ -73,7 +75,10 @@ var bipedMediaFramePresent = false
 //
 // Le réglage public `SetBipedDefaultStateTailBits` a été supprimé le 2026-09-05 (lot E, item
 // E.2) : aucun appelant. La largeur reste 0, la valeur mesurée du chemin nominal.
-var bipedDefaultStateTailBits = 0
+// PROVENANCE : largeur MESUREE de la queue config-gardee de FUN_141f86704 — 0 bit sur les films
+// du corpus (les deux R(1) au plus dependent de globaux de config poses au chargement de carte,
+// nuls sur toutes les mesures). Constante depuis le 2026-09-06 (lot E, item E.8).
+const bipedDefaultStateTailBits = 0
 
 // consumeBipedDefaultState ports FUN_140F44C38 bit-exact. It consumes the biped
 // default-state region of a keyframe record (the bits between the R(6) typeIndex
@@ -201,7 +206,10 @@ func consumeBipedDefaultState(br *BitReader) {
 //
 // Le réglage public `SetBipedDefaultStateDecodeMovement` a été supprimé le 2026-09-05 (lot E,
 // item E.2) : aucun appelant. Le décodage expérimental reste donc désactivé.
-var bipedDefaultStateDecodeMovement = false
+// EXPERIMENTAL, JAMAIS ACTIVE : aucun chemin ne l a jamais mis a vrai. Constante depuis le
+// 2026-09-06 (lot E, item E.8) — la GRAMMAIRE que le drapeau garde reste ecrite ci-dessous et
+// dans `consumeBipedDefaultStateMovement`, qui est le savoir a ne pas jeter.
+const bipedDefaultStateDecodeMovement = false
 
 // consumeBipedDefaultStateMovement décode les défauts des composants mouvement du biped
 // au spawn (default-mask i0-i4), avec les desers SPAWN (≠ desers delta), issus du RE
