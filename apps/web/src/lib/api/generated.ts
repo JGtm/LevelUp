@@ -12241,6 +12241,8 @@ export interface components {
         };
         ZonesCoverage: {
             /** Format: int64 */
+            ambiguousZone: number;
+            /** Format: int64 */
             attributed: number;
             /** Format: int64 */
             captures: number;
@@ -12253,6 +12255,10 @@ export interface components {
             /** Format: int64 */
             letters: number;
             method: string;
+            /** Format: int64 */
+            noPosition: number;
+            /** Format: int64 */
+            outside: number;
             /** Format: int64 */
             ownerAgreed: number;
             /** Format: int64 */

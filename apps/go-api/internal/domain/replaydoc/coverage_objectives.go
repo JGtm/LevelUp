@@ -152,6 +152,9 @@ type ZonesCoverage struct {
 	Unpaired      int    `json:"unpaired"`
 	Captures      int    `json:"captures"`
 	Attributed    int    `json:"attributed"`
+	NoPosition    int    `json:"noPosition"`
+	Outside       int    `json:"outside"`
+	AmbiguousZone int    `json:"ambiguousZone"`
 	OwnerChecked  int    `json:"ownerChecked"`
 	OwnerAgreed   int    `json:"ownerAgreed"`
 	OwnerUnpaired int    `json:"ownerUnpaired"`

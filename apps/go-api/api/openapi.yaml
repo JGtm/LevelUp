@@ -27242,6 +27242,9 @@ components:
     ZonesCoverage:
       additionalProperties: false
       properties:
+        ambiguousZone:
+          format: int64
+          type: integer
         attributed:
           format: int64
           type: integer
@@ -27262,6 +27265,12 @@ components:
           type: integer
         method:
           type: string
+        noPosition:
+          format: int64
+          type: integer
+        outside:
+          format: int64
+          type: integer
         ownerAgreed:
           format: int64
           type: integer
@@ -27296,6 +27305,9 @@ components:
         - unpaired
         - captures
         - attributed
+        - noPosition
+        - outside
+        - ambiguousZone
         - ownerChecked
         - ownerAgreed
         - ownerUnpaired
