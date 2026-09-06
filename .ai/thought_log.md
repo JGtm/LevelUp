@@ -95467,3 +95467,54 @@ plus tot dans la session — resolu de lui-meme avant la consigne d'arret).
 **Conclusion / prochaine etape.** Lot G clos du point de vue de l'executeur : gates locaux
 verts, perimetre verifie propre, journal a jour. Verdict CI complet (couverture, E2E) a la
 charge du superviseur au moment de l'integration dans `feat/v75`.
+## [2026-09-06] Lot G — corrections de la revue adversariale R1 (dix constats) — Complété
+
+**Contexte.** Revue adversariale ronde 1 du lot G (`feat/v2-outils`, diff `a21fd77f4...c0b403898`) :
+dix constats recevables, aucun P0, trois P1 (prérequis documentés faux du mode `livrer`, en-tête
+« GENERE PAR » du fichier généré resté sur le producteur retiré, fidélité octet à octet gardée
+par aucun test) et sept P2. Périmètre fermé à ces dix points, exécuteur précédent à saturation de
+contexte.
+
+**Décision technique principale.** Chaque correction est prouvée par la mutation ou la sonde
+nommée par le verdict — rouge d'abord, verte ensuite — et livrée dans son propre commit
+(`v2(G.fix-n)`). Trois choix méritent d'être retenus :
+
+1. **La preuve de fidélité vit désormais dans le dépôt.** `TestLivrerOctetPourOctet` génère un
+   chantier miniature (les `.wav` sources du chantier réel ont disparu de la machine) et le
+   confronte à `testdata/livraison/goldens/` — 301 Ko produits UNE FOIS par le script Python
+   d'origine sur cette même arborescence, jamais par le code Go : régénérer un golden avec Go
+   annulerait la preuve, et le test le dit en tête. La sortie console est comparée elle aussi,
+   parce qu'elle attrape ce que les octets ne disent pas (ordre de livraison, source retenue,
+   colonnage). Mutation M3 du verdict rejouée : rouge sur les deux fichiers exacts annoncés.
+2. **Le portage d'une fonction de bibliothèque se prouve contre la bibliothèque, pas de
+   mémoire.** `joliBaseSansExt` promettait `ntpath` sans porter le préfixe de lecteur ni la règle
+   du point de tête ; `livraisonFormatNombrePy` promettait `str()` de Python avec un
+   `FormatFloat(v,'g',-1,64)` qui diverge sur 144 littéraux de 480. Les deux tables de test sont
+   maintenant des relevés de la sortie RÉELLE de CPython 3.12, pas des attentes reconstituées.
+3. **Une promesse de garde-fou écrite dans un journal n'est pas un garde-fou.** Le journal du lot
+   annonçait qu'un `debug.SetMemoryLimit(` brut hors `internal/filmproc` violait le ratchet ;
+   c'était faux (mutation M2 verte). `TestPasDeSentinelleBruteHorsFilmproc` le rend vrai, avec
+   allowlist datée vide, auto-exclusion assumée (le fichier porte le jeton en clair) et garde
+   contre la vacuité (rouge aussi si le paquet canonique cesse de poser un plafond souple).
+
+**Résultats observés.** Bout en bout sur le jeu synthétique, le mode `livrer` produit désormais
+une sortie console identique caractère pour caractère à celle du script Python, six `.wav`
+identiques octet pour octet, et un `weaponSoundVariations.ts` qui ne diffère plus que sur ses
+trois lignes d'en-tête (divergence voulue, elle-même comparée au gabarit). Le mode tourne sur un
+poste sans Halo installé (`LEVELUP_HALO_DEPLOY` faux) ; le prérequis cgo, lui, est réel et la
+documentation EN/FR le dit désormais au lieu de le nier. La publication est devenue tout ou rien :
+plus aucune erreur de production ne peut laisser `static/sounds/halo_infinite/` à moitié vidé.
+Gate : `go build ./...` propre ; `go test -count=1` vert sur `cmd/weapon-sounds`, `cmd/levelup`,
+`cmd/replay-worker`, `internal/filmproc`, `internal/archlint` ;
+`golangci-lint run --new-from-merge-base=origin/main ./...` → `0 issues.`
+
+**Découvertes consignées (non traitées).** `//nolint:gosec` désigne un linter NON activé par
+`.golangci.yml` — cinq et quelques directives inertes dans le dépôt, à l'origine du warning
+« Found unknown linters » à chaque exécution. `golangci-lint` prend un verrou GLOBAL malgré des
+`GOLANGCI_LINT_CACHE` distincts : deux worktrees qui lintent en même temps se bloquent, il faut
+réessayer. Deux autres modes de `weapon-sounds` (`pck-dump`, `mesurer-wav`) paient encore la
+résolution de la racine `deploy` sans en avoir besoin.
+
+**Conclusion / prochaine étape.** Les dix constats sont statués `[x]` avec preuve écrite dans
+`.ai/V7.5/v2/LOT_G.md`, section « Corrections après revue ». Ronde 2 de la revue (sur les
+corrections seules) à la main du superviseur, puis intégration dans `feat/v75`.

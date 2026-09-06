@@ -33,7 +33,7 @@ func TestEnTeteTSVersionneeSuitLeGabarit(t *testing.T) {
 	// cmd/weapon-sounds -> cmd -> apps/go-api -> apps -> racine du depot
 	racine := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(ceFichier)))))
 	chemin := filepath.Join(racine, "apps", "web", "src", "features", "match-replay", "weaponSoundVariations.ts")
-	brut, err := os.ReadFile(chemin) //nolint:gosec // chemin derive de l'emplacement de ce test
+	brut, err := os.ReadFile(chemin)
 	if err != nil {
 		t.Fatalf("lecture du fichier genere %s: %v", chemin, err)
 	}
