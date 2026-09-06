@@ -202,11 +202,82 @@ func TestLivraisonFiltreVariation(t *testing.T) {
 	}
 }
 
+// TestLivraisonFormatNombrePy — constat C9 de la revue R1.
+//
+// La table entiere est la SORTIE REELLE de `"%s" %% json.loads(litteral)` sous CPython 3.12,
+// relevee une fois par une sonde hors depot (480 litteraux au total, dont 420 tires au sort ;
+// les 56 ci-dessous sont ceux qui portent une regle). L'ancienne version, qui rendait
+// `strconv.FormatFloat(v, 'g', -1, 64)`, divergeait sur 144 d'entre eux ; son test ne probait
+// que `-48`, `800`, `0` et `-3.5` — les quatre cas qui coincidaient.
+//
+// Les regles que la table fixe : un ENTIER JSON est un int Python (`-0` devient `0`, un
+// entier hors int64 garde ses chiffres) ; un FLOTTANT sort en `repr`, toujours pointe
+// (`2.0`, `1e3` -> `1000.0`), en exposant seulement hors de [1e-4, 1e16), avec un exposant
+// signe sur deux chiffres au moins (`1e-05`, `1e+16`) — et le zero NEGATIF flottant garde son
+// signe (`-0.0`) la ou l'entier `-0` le perd.
 func TestLivraisonFormatNombrePy(t *testing.T) {
-	cas := map[string]string{"-48": "-48", "800": "800", "0": "0", "-3.5": "-3.5"}
-	for entree, veut := range cas {
-		if got := livraisonFormatNombrePy(json.Number(entree)); got != veut {
-			t.Errorf("livraisonFormatNombrePy(%q) = %q, veut %q", entree, got, veut)
+	cas := []struct{ litteral, veut string }{
+		{"0", "0"},
+		{"-0", "0"},
+		{"1", "1"},
+		{"-1", "-1"},
+		{"48", "48"},
+		{"-48", "-48"},
+		{"800", "800"},
+		{"1000000", "1000000"},
+		{"-1000000", "-1000000"},
+		{"9007199254740993", "9007199254740993"},
+		{"123456789012345678901234567890", "123456789012345678901234567890"},
+		{"-123456789012345678901234567890", "-123456789012345678901234567890"},
+		{"0.0", "0.0"},
+		{"-0.0", "-0.0"},
+		{"1.0", "1.0"},
+		{"-1.0", "-1.0"},
+		{"2.0", "2.0"},
+		{"-3.0", "-3.0"},
+		{"-3.5", "-3.5"},
+		{"0.5", "0.5"},
+		{"-0.25", "-0.25"},
+		{"4.25", "4.25"},
+		{"-4.25", "-4.25"},
+		{"1.5", "1.5"},
+		{"1234567.5", "1234567.5"},
+		{"-1234567.5", "-1234567.5"},
+		{"85.0", "85.0"},
+		{"-85.0", "-85.0"},
+		{"1e3", "1000.0"},
+		{"1e-3", "0.001"},
+		{"1e-4", "0.0001"},
+		{"1e-5", "1e-05"},
+		{"1e15", "1000000000000000.0"},
+		{"1e16", "1e+16"},
+		{"1e17", "1e+17"},
+		{"1e100", "1e+100"},
+		{"1e-100", "1e-100"},
+		{"-1e3", "-1000.0"},
+		{"-1e-5", "-1e-05"},
+		{"-1e16", "-1e+16"},
+		{"9999999999999998.0", "9999999999999998.0"},
+		{"10000000000000002.0", "1.0000000000000002e+16"},
+		{"0.0001", "0.0001"},
+		{"0.00001", "1e-05"},
+		{"0.000123456", "0.000123456"},
+		{"1e-323", "1e-323"},
+		{"5e-324", "5e-324"},
+		{"1.7976931348623157e308", "1.7976931348623157e+308"},
+		{"0.1", "0.1"},
+		{"0.2", "0.2"},
+		{"0.3", "0.3"},
+		{"0.30000000000000004", "0.30000000000000004"},
+		{"2.675", "2.675"},
+		{"1.0000000000000002", "1.0000000000000002"},
+		{"123.456", "123.456"},
+		{"-123.456", "-123.456"},
+	}
+	for _, c := range cas {
+		if got := livraisonFormatNombrePy(json.Number(c.litteral)); got != c.veut {
+			t.Errorf("livraisonFormatNombrePy(%q) = %q, veut %q (sortie de CPython 3.12)",
+				c.litteral, got, c.veut)
 		}
 	}
 }

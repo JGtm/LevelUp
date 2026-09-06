@@ -8,6 +8,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -347,18 +348,75 @@ func livraisonTsPlage(p livraisonPlage) string {
 	return fmt.Sprintf("{ bas: %s, haut: %s }", livraisonFormatNombrePy(p.Bas), livraisonFormatNombrePy(p.Haut))
 }
 
-// livraisonFormatNombrePy formate un json.Number comme le ferait Python "%s" % valeur : un
-// litteral SANS point ni exposant reste un entier tel quel (un entier JSON est un int
-// Python) ; sinon, la representation la plus courte qui redonne la meme valeur (str() d'un
-// float Python).
+// livraisonFormatNombrePy formate un json.Number comme le ferait `"%s" % valeur` en Python
+// APRES `json.loads` : un litteral sans point ni exposant est un ENTIER Python, sinon c'est
+// un FLOTTANT, et les deux ne s'ecrivent pas pareil.
+//
+// `strconv.FormatFloat(v, 'g', -1, 64)` n'etait ni l'un ni l'autre : il bascule en exposant
+// des 1e6 (`1234567.5` -> `1.2345675e+06` la ou Python ecrit `1234567.5`), il n'ecrit jamais
+// le `.0` que Python impose a un flottant entier (`-3.0` -> `-3`, `1e3` -> `1000`), et le
+// litteral entier `-0` ressortait tel quel la ou Python rend `0` (constat C9 de la revue R1).
 func livraisonFormatNombrePy(n json.Number) string {
 	s := string(n)
 	if !strings.ContainsAny(s, ".eE") {
+		// ENTIER PYTHON. Le seul ecart possible avec le texte d'origine sur du JSON
+		// canonique est le zero negatif (`-0` -> `0`) ; au-dela de int64, Python garde ses
+		// chiffres, exactement comme le litteral.
+		if v, err := strconv.ParseInt(s, 10, 64); err == nil {
+			return strconv.FormatInt(v, 10)
+		}
 		return s
 	}
 	v, err := n.Float64()
 	if err != nil {
 		return s
 	}
-	return strconv.FormatFloat(v, 'g', -1, 64)
+	return livraisonReprFloatPy(v)
+}
+
+// livraisonReprFloatPy reproduit `repr(float)` de CPython : la plus courte ecriture decimale
+// qui redonne la meme valeur, TOUJOURS pointee (un flottant entier garde son `.0`), et en
+// notation exposant seulement quand la virgule sort de la plage [1e-4, 1e16) — la regle
+// `decpt <= -4 || decpt > 16` de `format_float_short`, avec un exposant signe sur au moins
+// deux chiffres (`1e-05`, `1e+16`).
+func livraisonReprFloatPy(v float64) string {
+	signe := ""
+	if math.Signbit(v) {
+		signe, v = "-", -v
+	}
+	mantisse, expTexte, _ := strings.Cut(strconv.FormatFloat(v, 'e', -1, 64), "e")
+	exposant, err := strconv.Atoi(expTexte)
+	if err != nil {
+		return strconv.FormatFloat(v, 'g', -1, 64) // inf/NaN : hors du JSON canonique
+	}
+	chiffres := strings.Replace(mantisse, ".", "", 1)
+	// virgule : la valeur vaut 0.<chiffres> x 10^virgule.
+	virgule := exposant + 1
+	switch {
+	case virgule <= -4 || virgule > 16:
+		tete := chiffres[:1]
+		if len(chiffres) > 1 {
+			tete += "." + chiffres[1:]
+		}
+		return signe + tete + "e" + livraisonExposantPy(virgule-1)
+	case virgule <= 0:
+		return signe + "0." + strings.Repeat("0", -virgule) + chiffres
+	case virgule >= len(chiffres):
+		return signe + chiffres + strings.Repeat("0", virgule-len(chiffres)) + ".0"
+	default:
+		return signe + chiffres[:virgule] + "." + chiffres[virgule:]
+	}
+}
+
+// livraisonExposantPy : l'exposant de `repr(float)`, toujours signe et sur deux chiffres au
+// moins.
+func livraisonExposantPy(e int) string {
+	signe := "+"
+	if e < 0 {
+		signe, e = "-", -e
+	}
+	if e < 10 {
+		return signe + "0" + strconv.Itoa(e)
+	}
+	return signe + strconv.Itoa(e)
 }
