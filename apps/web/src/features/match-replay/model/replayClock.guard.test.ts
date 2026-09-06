@@ -27,7 +27,7 @@ import { join, resolve } from 'node:path'
  * La signature du défaut : une lecture de `originMs` sur autre chose qu'une horloge. La
  * négation arrière écarte `clock.originMs` / `replayClock.originMs`, la lecture légitime.
  */
-const LECTURE_BRUTE = /(?<![Cc]lock)\.originMs/
+const LECTURE_BRUTE = /(?<![Cc]lock\??)\.originMs/
 
 /**
  * Les deux seuls fichiers du rejeu autorisés à nommer le champ : l'horloge, qui EST le

@@ -125,7 +125,7 @@ function harnais(): string {
       const restKindOf = GREN.restKindOf
       const explosionTintOf = GREN.explosionTintOf
       const drawExplosion = EXPLO.drawExplosion
-      ${moduleSource('replayDraw.ts', 7)}
+      ${moduleSource('grenadeRestLayer.ts', 3)}
       return { drawGrenadeRestLayer } })()
     return { EXPLO, DRAW }
   `
