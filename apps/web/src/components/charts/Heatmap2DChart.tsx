@@ -31,7 +31,16 @@ export interface ChartPointHeatmap {
   detail?: Record<string, unknown>
 }
 
-export type HeatmapPaletteMode = 'sequential' | 'divergent'
+/**
+ * Modes de rampe acceptes par ce wrapper — sous-ensemble de HeatmapRampMode.
+ *
+ * 'frequency' (ajout 2026-09-06, matrice d'echange de l'escouade) : rampe NEUTRE
+ * mono-teinte, monotone en luminance dans toutes les palettes. C'est le mode d'une
+ * intensite qui ne porte AUCUN jugement — un nombre de vengeances n'est ni chaud ni
+ * froid, et la rampe cold->hot lui collerait un « bon / mauvais » que la donnee ne dit
+ * pas. Elle interdit aussi de confondre l'echelle avec les couleurs par JOUEUR.
+ */
+export type HeatmapPaletteMode = 'sequential' | 'divergent' | 'frequency'
 
 export interface Heatmap2DChartProps {
   title?: string
@@ -44,6 +53,17 @@ export interface Heatmap2DChartProps {
   paletteMode?: HeatmapPaletteMode
   /** Min/max forcés du visualMap (default = auto-fit). */
   valueRange?: [number, number]
+  /**
+   * Contenu HTML du tooltip d'une cellule. Absent = le libellé historique de la
+   * heatmap joueur × carte (taux de victoire + nombre de matchs), qui ne convient
+   * qu'à ce cas d'usage — toute autre donnée DOIT passer sa propre fonction, sinon
+   * la cellule s'annonce sous un nom qui n'est pas le sien.
+   *
+   * L'appelant est responsable de l'échappement de ce qu'il injecte.
+   */
+  formatTooltip?: (point: ChartPointHeatmap) => string
+  /** Étiquette peinte DANS la cellule. Absent = . */
+  formatLabel?: (point: ChartPointHeatmap) => string
 }
 
 export function Heatmap2DChart({
@@ -55,14 +75,16 @@ export function Heatmap2DChart({
   height,
   paletteMode = 'sequential',
   valueRange,
+  formatTooltip,
+  formatLabel,
 }: Heatmap2DChartProps) {
   // Palette d'accessibilité active : pilote la rampe CVD-safe (rebuild via
   // useColorPaletteVersion dans ChartCard + ce sélecteur au changement de palette).
   const colorPalette = useSettingsDraftStore((s) => s.localUiPrefs.colorPalette)
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointHeatmap>[]) =>
-      buildHeatmap2DOption(s, { paletteMode, valueRange, colorPalette }),
-    [paletteMode, valueRange, colorPalette],
+      buildHeatmap2DOption(s, { paletteMode, valueRange, colorPalette, formatTooltip, formatLabel }),
+    [paletteMode, valueRange, colorPalette, formatTooltip, formatLabel],
   )
 
   return (
@@ -83,6 +105,8 @@ interface BuildOpts {
   valueRange?: [number, number]
   /** Palette d'accessibilité active — pilote la rampe CVD-safe (cf. heatmapColors). */
   colorPalette?: ColorPalette
+  formatTooltip?: (point: ChartPointHeatmap) => string
+  formatLabel?: (point: ChartPointHeatmap) => string
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -91,6 +115,7 @@ export function buildHeatmap2DOption(
   opts: BuildOpts = {},
 ): EChartsCoreOption {
   const { paletteMode = 'sequential', valueRange, colorPalette = 'default' } = opts
+  const { formatTooltip, formatLabel } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -134,6 +159,9 @@ export function buildHeatmap2DOption(
       position: 'top',
       formatter: (params: { data: [number, number, number, Record<string, unknown>?] }) => {
         const [xi, yi, v, detail] = params.data
+        if (formatTooltip) {
+          return formatTooltip({ x: xs[xi], y: ys[yi], value: v, detail })
+        }
         const count = detail?.count ?? 0
         return `${escapeHtml(ys[yi])} × ${escapeHtml(xs[xi])}<br/>Win Rate: <b>${(v * 100).toFixed(1)}%</b><br/>Matchs: <b>${count}</b>`
       },
@@ -158,7 +186,10 @@ export function buildHeatmap2DOption(
         label: {
           show: true,
           formatter: (params: { data: [number, number, number, Record<string, unknown>?] }) => {
-            const [, , , detail] = params.data
+            const [xi, yi, v, detail] = params.data
+            if (formatLabel) {
+              return formatLabel({ x: xs[xi], y: ys[yi], value: v, detail })
+            }
             return String(detail?.count ?? 0)
           },
         },

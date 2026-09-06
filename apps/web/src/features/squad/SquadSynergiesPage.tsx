@@ -25,6 +25,7 @@ import { MapPerfVsHistoryChart } from './MapPerfVsHistoryChart'
 import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
 import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
 import { SquadAssistPairsTable } from './SquadAssistPairsTable'
+import { SquadEchangeMatrixCard } from './SquadEchangeMatrixCard'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
@@ -96,6 +97,10 @@ export function SquadSynergiesPage() {
   // film). Le bloc n'est alors pas monté du tout, plutôt que d'afficher un cadre vide
   // qui laisserait croire à une escouade sans entraide.
   const assistPairs = pageData?.assist_pairs
+  // L'ECHANGE (mort vengee dans les 5 s) : comme assist_pairs, son absence est un
+  // ETAT (titre qui ne nomme pas le tueur de chaque mort, ou aucun match mesure) et
+  // non un zero. Les blocs ne sont alors pas montes du tout.
+  const echange = pageData?.echange
 
   const outcomeLabels = {
     win: mappings?.outcomes?.['win']?.label ?? t.history.outcomeLabel.win,
@@ -175,6 +180,7 @@ export function SquadSynergiesPage() {
           <SquadAssistPairsTable block={assistPairs} />
         </section>
       )}
+      {echange && <SquadEchangeMatrixCard echange={echange} />}
       <SquadMapHeatmapChart
         title={t.heatmap.title}
         emptyMessage={t.empty.noBlockData}
