@@ -43,7 +43,6 @@ package replay
 
 import (
 	"sort"
-	"strconv"
 
 	"levelup/go-api/internal/analysis/filmdec"
 )
@@ -271,9 +270,9 @@ func vehicleRideFromEpisode(
 	// (vehicle_rides_aim.go). Un episode a fin ouverte a deja vu `ep.endUS` resserre ci-dessus :
 	// la serie ne deborde donc jamais la fenetre publiee.
 	r.Aim = vehicleRideAimOf(in.aimBySlot[ep.slot], ep.startUS, ep.endUS, in.clock)
-	if x, ok := in.own.SlotXUID[ep.slot]; ok {
-		r.XUID = strconv.FormatUint(x, 10)
-	}
+	// L OCCUPANT EST CELUI DE L INSTANT D EMBARQUEMENT, pas le premier occupant du slot —
+	// meme correctif et meme helper que la voie par trou (cf. vehicle_rides.go, constat P1-7).
+	r.XUID = in.own.xuidAt(ep.slot, ep.startUS)
 	return life.key, r, ep, true
 }
 
