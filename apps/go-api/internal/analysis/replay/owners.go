@@ -37,6 +37,8 @@ package replay
 // permutations qui tenait lieu de second maillon a été SUPPRIMÉE : elle donnait la bonne
 // table, mais par un choix à marge étroite (32 contre 39) là où le film écrit la réponse.
 
+import "strconv"
+
 // OwnerReport porte le pont et de quoi juger sa qualité. Publier un pont sans dire sur quoi il
 // repose reviendrait à masquer la faiblesse de sa source.
 type OwnerReport struct {
@@ -95,6 +97,32 @@ type OwnerReport struct {
 	// des vies 2026-09-02) — un slot recyclé y porte une identité PAR OCCUPANT, là où SlotXUID
 	// n'en retient qu'une par slot (première nommée, collisions comptées).
 	lives []lifeSpan
+}
+
+// xuidAt rend le joueur qui OCCUPE ce slot à cet instant : la vie qui couvre l'instant si elle
+// est nommée, sinon le pont par slot. Chaîne vide = ni l'une ni l'autre ne le nomme.
+//
+// POURQUOI L'INSTANT COMPTE (correctif du 2026-09-06, constat P1-7). `SlotXUID` est une identité
+// UNIQUE PAR SLOT pour tout le match : `ownersFromLives` garde la PREMIÈRE vie nommée et jette
+// les suivantes en collision, et `buildLifeSpans` trie par slot puis chronologiquement — c'est
+// donc le PREMIER occupant, quel que soit l'instant demandé. Sur un slot de biped recyclé entre
+// deux joueurs nommés (9 artefacts du parc portent `slotCollisions > 0`), tout lecteur qui
+// interroge le pont sans son instant crédite le premier occupant.
+//
+// LE MOTIF EST CELUI DU DÉPÔT — « par vie d'abord, pont en repli » (cf. `tracksByXUID`) — et
+// c'est ici qu'il vit pour tous ses lecteurs : la table par vie est déjà DANS cet objet.
+func (r OwnerReport) xuidAt(slot uint32, tUS uint64) string {
+	t := int64(tUS)
+	for _, l := range r.lives {
+		if l.slot != slot || l.xuid == 0 || t < l.from || t > l.to {
+			continue
+		}
+		return strconv.FormatUint(l.xuid, 10)
+	}
+	if x, ok := r.SlotXUID[slot]; ok && x != 0 {
+		return strconv.FormatUint(x, 10)
+	}
+	return ""
 }
 
 // buildOwners construit le pont à partir du seul fil des morts.
