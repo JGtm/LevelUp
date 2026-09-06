@@ -8,10 +8,16 @@
  * POC tient toujours : vue match UNIQUEMENT, par joueur, kills du TUEUR seulement — pas
  * d'agrégat multi-matchs.
  *
- * L'ÉTAT VIDE SE DIT DÉSORMAIS (2026-09-02, retour user « je ne vois rien du tout ») : sans
- * frag mesuré, la section affiche POURQUOI (positions non mesurées sur ce match — la
- * quasi-totalité tant que le backfill de masse n'a pas tourné) au lieu de disparaître. Une
- * section qui rend null n'est pas découvrable, et son absence se lit « bug ».
+ * DEUX PORTES, ET ELLES DISENT DEUX CHOSES DIFFÉRENTES (règle du 2026-09-05, registre L3) :
+ *   1. LE TITRE — `film.kill_positions` : un titre sans décodeur de film n'aura JAMAIS ces
+ *      positions. La section n'est alors pas rendue du tout. Elle promettait jusqu'ici, sur
+ *      halo_5, un décodage de film qui n'aurait jamais lieu.
+ *   2. LE MATCH — l'état vide ci-dessous : le titre sait les produire, mais pas pour CE
+ *      match-là (2026-09-02, retour user « je ne vois rien du tout »). La section affiche
+ *      alors POURQUOI, au lieu de disparaître : une section qui rend null n'est pas
+ *      découvrable, et son absence se lit « bug ».
+ * Un état vide sur un titre sans film serait un bloc mort — c'est la porte 1 qui l'évite,
+ * jamais la porte 2.
  *
  * Le DÉNOMINATEUR D'HONNÊTETÉ reste : « X/Y frags mesurés » par joueur + la réserve de
  * couverture en pied — un bâton de portée sans lui laisserait croire à l'exhaustivité
@@ -22,6 +28,7 @@ import { useCallback, useMemo } from 'react'
 import { ChartCard } from '@/components/charts/ChartCard'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken } from '@/lib/accessibility'
+import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
 import type { MatchKillDistancePlayer, MatchScoreboardRow } from '@/lib/api/types'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { stripBotSuffix } from '@/lib/players/displayName'
@@ -81,8 +88,12 @@ function PlayerDistanceChart({ bars, t }: { bars: KillDistanceBar[]; t: MatchVie
 
 export function MatchKillDistanceSection({ players, scoreboard, t }: Props) {
   const locale = useAppShellStore((s) => s.locale)
+  const titreMesureLesPositions = useDataCapability('film.kill_positions')
   const board = scoreboard ?? []
   const rows = useMemo(() => players ?? [], [players])
+
+  // PORTE 1 — le titre ne produit pas de positions par kill : rien à afficher, jamais.
+  if (!titreMesureLesPositions) return null
 
   return (
     <SectionCard

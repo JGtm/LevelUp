@@ -216,4 +216,22 @@ describe('SquadSynergyHistoryTable — colonne « Rejeu »', () => {
     )
     expect(screen.queryByRole('link', { name: REPLAY_LABEL })).not.toBeInTheDocument()
   })
+
+  // PORTE DE TITRE (2026-09-05, registre L5) : la colonne entiere disparait pour un titre
+  // sans decodeur de film — meme forme conditionnelle que sa voisine Waypoint.
+  it("masquée quand le titre courant ne déclare pas la capability replay", () => {
+    setTitleCaps(['team_mmr', 'waypoint_match_url'])
+    renderWithProviders(
+      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="me" />,
+    )
+    expect(screen.queryByRole('link', { name: REPLAY_LABEL })).not.toBeInTheDocument()
+  })
+
+  it('rendue quand le titre déclare `replay` ET que la ligne porte un artefact', () => {
+    setTitleCaps(['replay'])
+    renderWithProviders(
+      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="me" />,
+    )
+    expect(screen.getByRole('link', { name: REPLAY_LABEL })).toBeInTheDocument()
+  })
 })
