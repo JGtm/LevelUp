@@ -95544,3 +95544,47 @@ portee au registre : `flagCarries` subit le meme plafond sans avoir le triplet p
 (1 des 3 prises de ce film est nommable, les 2 autres sont sur un slot agrege) — le corriger
 demande de faire descendre des lignes de match dans `analysis/replay`, frontiere delibree, donc
 decision produit.
+
+## [2026-09-06] Corrections apres la revue R2 — les deux gardes non testees, et le bump a 40
+
+**Statut** : Complete (branche `feat/v2-ctf-drapeaux`, lot 3).
+
+**Decision technique principale.** La revue CTF-R2 confirme le diagnostic et le correctif du pont
+d'identite (0 contradiction sur 8 films mono-manche, invariant multi-manche verifie octet pour
+octet sur `9f57c612`, enrichissement strictement additif sur 11 films). Cinq points restaient a
+traiter, chacun prouve par la mutation du verdict.
+
+1. **La garde mono-manche n'etait pas testee.** `twoRoundReassignedFixture` donne aux slots 20 et
+   22 le MEME triplet (0,6,0) : le triplet rend une table vide et `CompletedByLines` sortait au
+   garde PRECEDENT. Nouvelle fixture `deuxManchesTripletResoluFixture` avec un slot 24 que le
+   triplet resout sans ambiguite (compteurs qui REPARTENT DE ZERO par manche — `cumulateRounds`
+   les additionne, c'est ce qui manquait a ma premiere tentative). Le test verifie son propre
+   pre-requis avant d'asserter. Mutation D4 : rouge, 4 messages dont « la completion a effondre
+   l'identite par manche sur une seule table ».
+2. **La garde « completer, jamais contredire » n'avait aucun test** : la garde 3 la doublait
+   partout. `contradictionFixture` isole le seul cas ou `deja` agit seul (les deux ponts designent
+   le meme slot, le joueur du triplet est libre). Mutation D5 : rouge.
+3. **Justification fausse corrigee** : le 8e joueur A un slot (le 12, compteurs (5, 0, 60)) ; c'est
+   l'assistance lue a 60 contre 0 qui fait refuser le triplet. Le commentaire dit desormais la
+   vraie raison, coherente avec le journal, et annonce qu'un slot 12 devenu nommable serait un
+   PROGRES.
+4. **`SchemaVersion` monte de 39 a 40** (decision du superviseur). Mon §9.7 invoquait « la forme ne
+   change pas » : mauvais critere. La regle du depot est qu'un artefact vN doit se voir comme A
+   RE-CUIRE — sans montee, tout artefact 39 cuit d'ici la release serait SAUTE par
+   `backfill-replay` et garderait son calque appauvri. Reconciliations : chronique `document.go`,
+   ratchet `structure_test.go`, golden d'assemblage regenere (son UNIQUE ecart etait la ligne de
+   version, verifie avant), entree du registre corrigee. Contrat OpenAPI : `schemaVersion` y est un
+   `integer` sans `enum`/`const`/`default`/`example`, la valeur n'y figure pas et `generated.ts`
+   est inchange — a signaler : `make generate-types` n'a PAS pu tourner ici (`openapi-typescript`
+   absent du worktree), le controle repose sur la lecture du contrat et le diff nul.
+5. **Dette de taille rendue** : les assertions d'objectif deplacees telles quelles dans
+   `build_queue_worker_objectifs_integration_test.go` ; l'original repasse de 562 a 451 lignes,
+   sous le seuil de 500.
+
+**Resultats observes.** Gates verts : les cinq paquets + `contracttest`, integration wire, build,
+`golangci-lint --new-from-merge-base=origin/main` 0 issue, goldens inconditionnels PASS nommement.
+
+**Conclusion / prochaine etape.** Le lot CTF drapeaux est clos cote code. Reste au carnet : la
+re-cuisson du parc (tout artefact < 40) a la passe `backfill-replay` de la release v7.5.0, et la
+decision produit sur `flagCarries` (faire descendre des lignes de match dans `analysis/replay`
+pour nommer un porteur qui meurt moins de trois fois).
