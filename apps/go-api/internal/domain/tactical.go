@@ -1,6 +1,10 @@
 package domain
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"regexp"
+)
 
 // Les trois refus de l'onglet Tactique. Ils sont dans `domain` parce que le
 // handler doit les TRADUIRE en statut HTTP (404 / 400) sans dependre du service.
@@ -20,7 +24,47 @@ var (
 	// aucun contenu. Retomber en silence sur les coequipiers du match repondrait a une
 	// AUTRE question que celle posee — 400, et le client ne propose pas l'axe.
 	ErrTacticalEscouadeSansComposition = errors.New("tactique: axe escouade demande sans composition")
+	// ErrTacticalCompositionInvalide : la composition demandee est hors bornes (plus de
+	// MaxCoequipiers) ou porte un identifiant qui n'est pas un XUID.
+	ErrTacticalCompositionInvalide = errors.New("tactique: composition invalide")
 )
+
+// MaxCoequipiers est le nombre maximum de coequipiers d'une composition : 3, comme la
+// page Escouade (`MAX_SELECTION` cote web) — c'est la meme notion d'escouade.
+//
+// CE N'EST PAS UNE PREFERENCE D'AFFICHAGE, C'EST UNE BORNE DE COUT. Chaque coequipier
+// ajoute un `EXISTS` correle a la requete d'univers : une composition non bornee laisse
+// le proprietaire d'un profil s'infliger des milliers de sous-requetes, donc un timeout
+// de 30 s puis un 500 — sur ses propres donnees, mais avec la machine de tout le monde.
+const MaxCoequipiers = 3
+
+// motifXUID : un XUID de `match_participants` est un entier decimal.
+//
+// MEME MOTIF que `handlers.xuidPattern` (`api/handlers/match_view.go:35`), qui garde le
+// parametre `with_player` de l'Explorateur — et pour la meme raison : la colonne stocke
+// le NOMBRE NU (`sync.extractXUID` deballe `xuid(1234)` en `1234` a l'ingestion). Le
+// motif vit ICI parce que la regle de composition est une regle de domaine, lue par le
+// service ET par le handler ; une seconde definition par couche divergerait.
+var motifXUID = regexp.MustCompile(`^\d{1,32}$`)
+
+// ValiderComposition refuse une composition hors bornes ou mal formee.
+//
+// LA VALIDATION EST UN REFUS, PAS UN NETTOYAGE : on n'ecarte pas l'identifiant douteux
+// pour continuer avec les autres. Retirer un coequipier ELARGIRAIT le perimetre (le
+// serveur ne resserrerait plus sur lui) et rendrait une lecture plus fournie que celle
+// demandee, sans que rien ne le dise.
+func ValiderComposition(xuids []string) error {
+	if len(xuids) > MaxCoequipiers {
+		return fmt.Errorf("%w: %d coequipiers demandes, %d au maximum",
+			ErrTacticalCompositionInvalide, len(xuids), MaxCoequipiers)
+	}
+	for _, x := range xuids {
+		if !motifXUID.MatchString(x) {
+			return fmt.Errorf("%w: %q n'est pas un XUID", ErrTacticalCompositionInvalide, x)
+		}
+	}
+	return nil
+}
 
 // Types de l'onglet Tactique — lectures de PLACEMENT agregees par carte (ou je meurs, ou
 // je tue, ou je gagne). Structs purs : aucune I/O, aucun SQL, aucune dependance au
@@ -334,16 +378,17 @@ type TacticalRaster struct {
 	Question string `json:"question"`
 	Qui      string `json:"qui"`
 
-	// MatchsFiltres est le nombre de match_id que le FILTRE a retenus — la taille de
-	// la liste blanche recue, TOUTES CARTES CONFONDUES (phase 4 bis, 2026-09-06).
-	// C'est la definition du perimetre cote client : ce que la barre de filtres a
-	// selectionne, avant meme de regarder cette carte-ci.
+	// MatchsFiltres est le nombre de matchs du perimetre joues SUR CETTE CARTE :
+	// l'univers du lecteur, mesures ET non mesures (liste blanche x carte x
+	// composition, exclusion Campagne comprise). Publie pour que le pied de carte
+	// puisse dire « N mesures sur M » — sans lui, l'ecart entre ce que le joueur a
+	// joue ici et ce que la carte peut montrer serait invisible.
 	//
-	// ⚠ IL NE SE LIT PAS « M matchs de cette carte ». L'intersection avec la carte
-	// (et avec la composition) est faite ensuite ; le denominateur de la lecture,
-	// c'est MatchsRetenus ci-dessous. Le pied de carte doit donc dire les deux
-	// grandeurs pour ce qu'elles sont — « N matchs mesures sur cette carte, sur M
-	// matchs filtres » — et jamais les presenter comme un rapport.
+	// LES DEUX GRANDEURS SE COMPARENT, ET C'EST VOULU (decision superviseur du
+	// 2026-09-06, apres un aller-retour) : MatchsRetenus est un SOUS-ENSEMBLE de
+	// MatchsFiltres. Une version intermediaire y avait mis la taille de la liste
+	// blanche recue — toutes cartes confondues —, ce qui donnait deux grandeurs sans
+	// denominateur commun sous des noms qui invitaient a en faire un rapport.
 	MatchsFiltres int `json:"matchs_filtres"`
 
 	// MatchsRetenus est le DENOMINATEUR de la lecture : les matchs du filtre dont le

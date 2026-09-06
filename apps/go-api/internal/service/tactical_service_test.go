@@ -18,10 +18,15 @@ import (
 )
 
 const (
-	tsMoi  = "xuid(1)"
-	tsAmi  = "xuid(2)"
-	tsAdv  = "xuid(3)"
-	tsAdv2 = "xuid(4)"
+	// LES XUIDS SONT DES ENTIERS NUS, comme en base : `sync.extractXUID` deballe le
+	// `xuid(1234)` de l'API en `1234` a l'ingestion, et `match_participants.xuid` ne
+	// stocke que le nombre. Une fixture en `xuid(...)` aurait fabrique une forme qui
+	// n'existe nulle part — et depuis la validation de composition (2026-09-06), elle
+	// serait en plus refusee par le service qu'elle est censee exercer.
+	tsMoi  = "2533274000000001"
+	tsAmi  = "2533274000000002"
+	tsAdv  = "2533274000000003"
+	tsAdv2 = "2533274000000004"
 
 	tsCarte = "map_streets"
 )
@@ -332,14 +337,20 @@ func TestTacticalService_GagneFaceVictime(t *testing.T) {
 	}
 }
 
-// TestTacticalService_JoueurHorsComposition_AucunAxe : un joueur ABSENT de la
-// composition du match n'a pas d'equipe connue — il n'appartient ni a mon escouade
-// ni au camp adverse, et lui en deviner une serait une invention.
+// TestTacticalService_JoueurHorsComposition_AucunAxe : un joueur inconnu de la page
+// n'entre dans AUCUN axe, et pour DEUX raisons distinctes qu'il faut nommer separement
+// depuis que « escouade » a change de sens (2026-09-06) :
 //
-// (Inversion : retirer la garde `!jeSuisLa || !ilEstLa` de ciblePar fait tomber ce
-// test — l'inconnu tomberait dans `adv` par defaut, l'equipe absente valant 0.)
+//	escouade  il n'est pas dans la COMPOSITION choisie (ici : [tsAmi]) — l'axe est une
+//	          liste de xuids, et il n'y figure pas ;
+//	adv       il n'est pas dans la composition DU MATCH, donc son equipe est INCONNUE ;
+//	          `adversairesDuMatch` exige les deux presences (`jeSuisLa && ilEstLa`) au
+//	          lieu de conclure « pas mon equipe » d'une equipe absente valant 0.
+//
+// (Inversion : retirer la garde `jeSuisLa && ilEstLa` d'adversairesDuMatch fait tomber
+// le cas `adv` ; ouvrir l'axe escouade a tout coequipier du match fait tomber l'autre.)
 func TestTacticalService_JoueurHorsComposition_AucunAxe(t *testing.T) {
-	const inconnu = "xuid(9999)"
+	const inconnu = "2533274000009999"
 	repo := &mockTacticalRepo{}
 	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
 	for _, id := range []string{"m1", "m2", "m3"} {

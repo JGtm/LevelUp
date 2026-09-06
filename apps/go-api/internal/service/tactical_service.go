@@ -84,6 +84,12 @@ func (s *TacticalService) MapsPlayed(ctx context.Context, scope domain.TacticalS
 	if s.repo == nil {
 		return page, games.ErrCapabilityNotSupported
 	}
+	compo := compositionNettoyee(scope.Coequipiers)
+	if err := domain.ValiderComposition(compo); err != nil {
+		s.logger.WarnContext(ctx, "tactique: composition refusee",
+			"player", s.xuid, "coequipiers", len(compo), "err", err)
+		return page, err
+	}
 	debut := time.Now()
 	rows, err := s.repo.MapsPlayed(ctx, requeteDuScope(s.xuid, "", scope))
 	if err != nil {
@@ -140,10 +146,10 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 			"player", s.xuid, "map_id", carte, "question", question, "qui", qui)
 		return out, domain.ErrTacticalCarteInconnue
 	}
-	// MATCHS FILTRES = LA TAILLE DE LA LISTE BLANCHE RECUE, toutes cartes confondues
-	// (phase 4 bis) : c'est ce que la barre de filtres a selectionne. L'intersection
-	// avec cette carte-ci, elle, est publiee comme MatchsRetenus.
-	out.MatchsFiltres = len(scope.MatchIDs)
+	// MATCHS FILTRES = L'UNIVERS DE CETTE CARTE : les matchs du perimetre que le joueur
+	// y a joues, mesures ou non. MatchsRetenus en est un SOUS-ENSEMBLE (les mesures),
+	// de sorte que le pied de carte puisse dire « N sur M » sans mentir.
+	out.MatchsFiltres = len(lecture.Univers.Matchs)
 
 	// L'UNIVERS DE LA LECTURE, C'EST LES MATCHS MESURES (correction G2, 2026-09-06).
 	// Un match du filtre dont le film n'a jamais ete decode ne peut alimenter aucune

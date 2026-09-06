@@ -121,7 +121,7 @@ func TestTacticalService_Escouade_CompositionVideDeBlancs_Refuse(t *testing.T) {
 // son point est peint. Le predicat « meme equipe que moi » d'avant le 2026-09-06 en
 // aurait peint trois.
 func TestTacticalService_Escouade_CibleExactementLaComposition(t *testing.T) {
-	const ami2, ami3 = "xuid(21)", "xuid(22)"
+	const ami2, ami3 = "2533274000000021", "2533274000000022"
 	repo := &mockTacticalRepo{}
 	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
 	for _, id := range []string{"m1", "m2", "m3"} {
@@ -159,7 +159,7 @@ func TestTacticalService_Escouade_CibleExactementLaComposition(t *testing.T) {
 // peser sur le taux — sinon nommer deux joueurs dans la barre de filtres changerait
 // un taux qui ne parle pas d'eux.
 func TestTacticalService_Echange_PorteSurLeCampEntier(t *testing.T) {
-	const ami2 = "xuid(21)"
+	const ami2 = "2533274000000021"
 	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
 	repo.pos.Points = []domain.TacticalKillPosition{{
 		MatchID: "m1", KillerXUID: tsAdv, VictimXUID: tsMoi,
@@ -192,5 +192,102 @@ func TestTacticalService_Echange_PorteSurLeCampEntier(t *testing.T) {
 	if got.Echange.N != 2 {
 		t.Errorf("morts vengeables = %d, want 2 (mon camp ENTIER, pas la seule composition)",
 			got.Echange.N)
+	}
+}
+
+// ─── LA COMPOSITION EST BORNEE ET TYPEE (G3) ───────────────────────────────────
+
+// TestTacticalService_Composition_Bornee : au-dela de MaxCoequipiers, REFUS typé.
+//
+// Ce n'est pas une preference d'affichage : chaque coequipier ajoute un `EXISTS`
+// correle a la requete d'univers. Sans borne, le proprietaire d'un profil pouvait
+// s'infliger des milliers de sous-requetes — 30 s de timeout puis un 500, avec la
+// machine de tout le monde.
+func TestTacticalService_Composition_Bornee(t *testing.T) {
+	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
+	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
+
+	trop := []string{"1", "2", "3", "4"}
+	_, err := svc.Raster(context.Background(),
+		tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, trop...))
+	if !errors.Is(err, domain.ErrTacticalCompositionInvalide) {
+		t.Fatalf("err = %v, want ErrTacticalCompositionInvalide", err)
+	}
+	if repo.vuPos.PlayerXUID != "" {
+		t.Errorf("le lecteur a ete appele malgre le refus : %+v", repo.vuPos)
+	}
+
+	// La grille d'entree applique la MEME borne : elle porte le meme perimetre.
+	if _, err := svc.MapsPlayed(context.Background(),
+		domain.TacticalScope{Coequipiers: trop}); !errors.Is(err, domain.ErrTacticalCompositionInvalide) {
+		t.Errorf("MapsPlayed: err = %v, want ErrTacticalCompositionInvalide", err)
+	}
+}
+
+// TestTacticalService_Composition_MotifXUID : un identifiant qui n'est pas un XUID
+// est REFUSE, pas ecarte — l'ecarter elargirait le perimetre en silence.
+func TestTacticalService_Composition_MotifXUID(t *testing.T) {
+	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
+	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
+
+	for _, mauvais := range []string{"xuid(2533274000000002)", "Ami", "'; DROP TABLE", "12345678901234567890123456789012345"} {
+		_, err := svc.Raster(context.Background(),
+			tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, mauvais))
+		if !errors.Is(err, domain.ErrTacticalCompositionInvalide) {
+			t.Errorf("%q : err = %v, want ErrTacticalCompositionInvalide", mauvais, err)
+		}
+	}
+}
+
+// TestTacticalService_Composition_TroisValides_Passe : la sentinelle anti-vacuite des
+// deux tests ci-dessus — trois XUIDs bien formes traversent et atteignent le lecteur.
+func TestTacticalService_Composition_TroisValides_Passe(t *testing.T) {
+	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
+	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
+
+	compo := []string{tsAmi, tsAdv, tsAdv2}
+	if _, err := svc.Raster(context.Background(),
+		tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, compo...)); err != nil {
+		t.Fatalf("Raster: %v", err)
+	}
+	if !egalesXUID(repo.vuPos.Coequipiers, compo) {
+		t.Errorf("composition transmise = %v, want %v", repo.vuPos.Coequipiers, compo)
+	}
+}
+
+// TestTacticalService_MatchsFiltres_ParCarte (G4) : `matchs_filtres` compte les matchs
+// de CETTE CARTE, pas la liste blanche recue.
+//
+// Le perimetre porte 20 identifiants ; le joueur n'a joue cette carte que 8 fois, dont
+// 6 sont mesurees. La page doit lire 8 et 6 — deux grandeurs comparables, l'une
+// sous-ensemble de l'autre. Publier 20 aurait donne deux nombres sans denominateur
+// commun sous des noms qui invitent a en faire un rapport.
+func TestTacticalService_MatchsFiltres_ParCarte(t *testing.T) {
+	repo := &mockTacticalRepo{}
+	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
+	for i := 0; i < 8; i++ {
+		id := "c" + string(rune('a'+i))
+		u := universUnMatch(id, domain.OutcomeWin)
+		u.Matchs[0].Mesure = i < 6
+		repo.pos.Univers.Matchs = append(repo.pos.Univers.Matchs, u.Matchs...)
+		repo.pos.Univers.Equipes[id] = u.Equipes[id]
+	}
+	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
+
+	req := tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi)
+	req.Scope.MatchIDs = make([]string, 20) // 20 identifiants dans la liste blanche
+	for i := range req.Scope.MatchIDs {
+		req.Scope.MatchIDs[i] = "m" + string(rune('a'+i))
+	}
+	got, err := svc.Raster(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Raster: %v", err)
+	}
+	if got.MatchsFiltres != 8 {
+		t.Errorf("MatchsFiltres = %d, want 8 (les matchs de CETTE CARTE, pas les 20 du filtre)",
+			got.MatchsFiltres)
+	}
+	if got.MatchsRetenus != 6 {
+		t.Errorf("MatchsRetenus = %d, want 6 (les mesures parmi les 8)", got.MatchsRetenus)
 	}
 }
