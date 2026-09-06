@@ -157,8 +157,8 @@ export function seriesColor(index: number): string {
  */
 export function hexToRgba(hex: string, alpha: number): string {
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex)
-  if (!m) return `rgba(0,0,0,${alpha})` // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
-  return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})` // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
+  if (!m) return `rgba(0,0,0,${alpha})` // color-allow: 2026-09-06 (ronde 2, N3) — REPLI d'un helper de CONVERSION hex -> rgba : la valeur ne s'affiche que si l'entree n'est pas un hex, elle ne nomme aucune couleur de charte
+  return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})` // color-allow: 2026-09-06 (ronde 2, N3) — CONVERSION d'une couleur DEJA resolue (hex du theme) en rgba pour son alpha : ce helper ne nomme aucune couleur
 }
 
 /**

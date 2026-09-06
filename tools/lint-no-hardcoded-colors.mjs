@@ -59,8 +59,6 @@ const TW_PATTERN = new RegExp(
 //    PAS ce qu'il remplacait — une couleur litterale ecrite dans layers/fxInk.ts passait le
 //    gate global sans un seul rouge (mutation M10 de la revue). Le theme reste la seule
 //    source : ces valeurs vivent dans styles/globals.css, jamais dans une feature.
-//    'color(' est VOLONTAIREMENT ABSENT de la liste : c'est aussi le nom d'une variable de
-//    rendu dans le depot (valueGridModel.ts), et un motif qui crie faux se desactive.
 //    `color(` est VOLONTAIREMENT ABSENT de la liste : c'est aussi le nom d'une variable de
 //    rendu dans le depot (`color(rowIndex, colIndex)`, valueGridModel.ts), et un motif qui
 //    crie faux se desactive.
@@ -98,12 +96,18 @@ function isAllowed(relPath, line) {
     if (relPath.includes(allowed)) return true
   }
   if (line.includes(ALLOWED_INLINE_MARKER)) return true
-  // Lignes purement commentaires (`//`, `*`, ou OUVERTURE de bloc `/*` / `/**`) —
-  // tolérées : une ligne de commentaire ne peint rien. L'ouverture de bloc manquait, et le
-  // troisième motif (fonctions de couleur, 2026-09-06) la rendait visible — deux en-têtes du
-  // rejeu qui DÉCRIVENT la rampe (« un `rgba()` par palier ») étaient comptés fautifs.
+  // Lignes purement commentaires (`//` ou `*`) — tolérées : une ligne de commentaire ne
+  // peint rien.
+  //
+  // L'OUVERTURE DE BLOC (`/*`) N'EST PAS TOLÉRÉE, et c'est une décision (2026-09-06, ronde 2
+  // de la revue, constat N1) : ce test ne regarde que le premier caractère non blanc, donc
+  // `/* rien */ const c = '#ff00aa'` serait passé — le gate HISTORIQUE sur les hex et les
+  // classes Tailwind, lui, l'attrapait. Élargir le lint aux fonctions de couleur ne doit pas
+  // le rétrécir ailleurs. Les deux lignes de PROSE que cette tolérance protégeait (les
+  // en-têtes qui décrivent la rampe de la carte de chaleur) portent un `color-allow` nommé,
+  // comme les dix-sept autres exceptions du lot.
   const trimmed = line.trimStart()
-  if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return true
+  if (trimmed.startsWith('//') || trimmed.startsWith('*')) return true
   return false
 }
 

@@ -112,7 +112,7 @@ const HEAT_Q_HIGH = 0.95
 const HEAT_ALPHA_MIN = 0.12
 const HEAT_ALPHA_MAX = 0.75
 
-/** Paliers de la rampe précalculée : un `rgba()` par palier, indexé pendant le dessin. */
+/** Paliers de la rampe précalculée : un `rgba()` par palier, indexé pendant le dessin. — color-allow: 2026-09-06 (ronde 2, N1) — ligne de PROSE qui DECRIT la rampe du theme, elle n'en pose aucune. */
 export const HEAT_RAMP_STEPS = 64
 
 /**
