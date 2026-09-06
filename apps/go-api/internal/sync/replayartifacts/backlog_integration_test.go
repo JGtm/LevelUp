@@ -416,3 +416,74 @@ func poserArtefactPerime(t *testing.T, repoRoot, matchID string) {
 		t.Fatalf("write: %v", err)
 	}
 }
+
+// TestRun_SelectionDeCuissonVide_RattrapeQuandMeme — LE test du constat C2 (revue A-R1).
+//
+// L'ETAT VISE PAR LE RATTRAPAGE EST CELUI-CI, ET C'EST TOUT LE PROBLEME : une instance dont
+// TOUT est deja cuit (aucun match insere sans artefact, et les 64 matchs de l'horizon ont leur
+// fichier) mais dont RIEN n'est derive — les artefacts d'avant ce lot n'ont pas de marque.
+// `Run` sortait sur `len(work) == 0` AVANT les deux seuls appels a `rattraperDerivations` :
+// aucune derivation n'etait jamais rattrapee sur ces instances, et `JaugeDerivationsRetard`
+// n'y etait jamais publiee — « tout est derive » et « le rattrapage ne tourne pas »
+// redevenaient indistinguables, l'ambiguite exacte que la jauge dit fermer.
+//
+// Note de methode : les tests du lot appelaient `candidatsDerivations` DIRECTEMENT ; ils
+// court-circuitaient `Run` et ne pouvaient donc pas voir ce trou. Celui-ci passe par `Run`.
+func TestRun_SelectionDeCuissonVide_RattrapeQuandMeme(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := racineAvecConfigDuTitre(t, titlePkg.DefaultSlug)
+	t0 := time.Now().UTC().Add(-2 * time.Hour)
+
+	// Deux matchs au registre, artefact pose pour chacun, AUCUNE marque de derivation.
+	for _, id := range []string{"cuittout1", "cuittout2"} {
+		inscrireAuRegistre(t, db, id, t0, 0)
+		poserArtefact(t, repoRoot, id)
+	}
+
+	enfiles := 0
+	d := Deps{
+		RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug, Gamertag: "testeur",
+		Placement: replaybuild.PlacementWorker,
+		WithRead:  func(ctx context.Context, _ string, fn func(*sql.DB)) { fn(db) },
+		AcquireWriter: func(context.Context) (*sql.DB, func(), error) {
+			return db, func() {}, nil
+		},
+		Enqueue: func(context.Context, string, string) error { enfiles++; return nil },
+	}
+
+	Run(context.Background(), d, nil)
+
+	if enfiles != 0 {
+		t.Fatalf("%d match(s) mis en file alors que tout est deja cuit — le rattrapage des "+
+			"derives ne doit RIEN cuire", enfiles)
+	}
+	for _, id := range []string{"cuittout1", "cuittout2"} {
+		p := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, id)
+		if !replaybuild.DerivationsUpToDate(p) {
+			t.Errorf("%s : aucune marque posee par Run — le rattrapage des derives est "+
+				"inatteignable quand il n'y a rien a cuire (constat C2)", id)
+		}
+	}
+}
+
+// racineAvecConfigDuTitre construit une racine de depot TEMPORAIRE qui porte la configuration
+// LIVREE du titre (`config/titles/<slug>/`), recopiee du depot.
+//
+// POURQUOI RECOPIER PLUTOT QUE POINTER LE DEPOT : `Deps.RepoRoot` sert a la fois a lire les
+// capabilities ET a resoudre les chemins d'artefact. Un test qui passerait la racine reelle
+// ecrirait ses artefacts dans les donnees du depot. Un test qui passerait un `t.TempDir()` nu
+// ferait echouer la lecture des capabilities — que les familles comptent, a juste titre, comme
+// un INCIDENT. La recopie donne les deux : les vraies clefs du titre, dans un bac a sable.
+func racineAvecConfigDuTitre(t *testing.T, slug string) string {
+	t.Helper()
+	racine := t.TempDir()
+	src := filepath.Join(racineDepot(t), "config", "titles", slug)
+	dst := filepath.Join(racine, "config", "titles", slug)
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		t.Fatalf("mkdir config: %v", err)
+	}
+	if err := os.CopyFS(dst, os.DirFS(src)); err != nil {
+		t.Fatalf("copie de config/titles/%s: %v", slug, err)
+	}
+	return racine
+}

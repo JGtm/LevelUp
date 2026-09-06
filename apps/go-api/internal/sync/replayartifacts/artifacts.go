@@ -291,12 +291,31 @@ func etatArtefact(path string, facts port.MatchFacts) (aJour, complet bool) {
 // LA FENÊTRE DE RÉTENTION S'APPLIQUE AVANT LES DEUX : on n'enfile pas ce que la
 // purge effacera, et un travail hors fenêtre coûterait un décodage pour rien.
 // Best-effort de bout en bout : aucun retour, aucune erreur ne remonte au cycle.
+//
+// LE RATTRAPAGE DES DÉRIVÉS TOURNE À CHAQUE CYCLE ARMÉ, quel que soit le chemin pris par la
+// cuisson — c'est le constat C2 de la revue A-R1, et c'est un `defer` pour que ce soit VRAI
+// SUR TOUTES LES SORTIES. Avant, il n'était appelé qu'après `enqueueAll` ou après `buildAll` :
+// un cycle dont la sélection de cuisson était vide sortait AVANT, c'est-à-dire exactement dans
+// l'état que le rattrapage vise (une instance dont tout est déjà cuit, mais dont rien n'est
+// dérivé). Sur ces instances aucune dérivation n'était jamais rattrapée, et
+// `JaugeDerivationsRetard` n'était jamais publiée — « tout est dérivé » et « le rattrapage ne
+// tourne pas » redevenaient indistinguables. Il ne cuit rien : voir derivations_backlog.go.
 func Run(ctx context.Context, d Deps, insertedIDs []string) {
 	if !armee(ctx, d) {
 		return
 	}
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), CompteurCycles)
+	defer rattraperDerivations(ctx, d)
+	cuireLeCycle(ctx, d, insertedIDs)
+}
+
+// cuireLeCycle est le travail de CUISSON du cycle : sélection, rattrapage du catalogue de
+// cartes, puis mise en file (placement « ouvrier ») ou construction locale.
+//
+// SÉPARÉ DE [Run] POUR UNE SEULE RAISON : que le rattrapage des dérivés y soit posé en `defer`,
+// donc joué sur TOUTES les sorties de la cuisson — y compris la sortie « rien à cuire ».
+func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 	titre := ctxkeys.TitleSlug(ctx)
-	observability.IncCounterT(titre, CompteurCycles)
 	work, retard := selectionnerLeTravail(ctx, d, insertedIDs)
 	observability.AddIntT(titre, CompteurSelectionnes, int64(len(work)))
 	// JAUGE, PAS COMPTEUR : ce qui reste à rattraper APRÈS ce cycle. Publiée MÊME À ZÉRO —
@@ -319,12 +338,10 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 	// Il ne peut pas faire echouer le cycle : voir mvar_rattrapage.go.
 	rattraperCartesAbsentes(ctx, d, work, d.MvarFetcher)
 	if d.Placement == replaybuild.PlacementWorker {
+		// EN PLACEMENT « OUVRIER » CE PROCESS NE CUIT RIEN, mais les artefacts que l'ouvrier a
+		// déposés sont bien sur le disque : leur rattrapage est posé en `defer` par [Run], et
+		// il vaut donc pour cette sortie-ci comme pour toutes les autres.
 		enqueueAll(ctx, d, work)
-		// LE RATTRAPAGE DES DÉRIVÉS TOURNE ICI AUSSI, et c'est le pendant du constat A1 : en
-		// placement « ouvrier » ce process ne cuit RIEN, mais les artefacts que l'ouvrier a
-		// déposés sont bien sur le disque. Le rattrapage ne cuit rien non plus — il ne fait
-		// que rejouer les dérivations d'artefacts déjà rangés (cf. derivations_backlog.go).
-		rattraperDerivations(ctx, d)
 		return
 	}
 	if len(work) > maxPerCycle {
@@ -351,9 +368,6 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
 		AcquireWriter: d.AcquireWriter,
 	}, b.ranges)
-	// PUIS LE RATTRAPAGE DES DÉRIVÉS : les artefacts déjà rangés dont les dérivations manquent
-	// ou datent d'une révision antérieure. Il ne cuit rien et se borne tout seul (constat A2).
-	rattraperDerivations(ctx, d)
 	publierBilan(ctx, d, b, len(work))
 }
 
