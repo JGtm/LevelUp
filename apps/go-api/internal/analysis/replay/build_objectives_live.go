@@ -21,7 +21,7 @@ package replay
 // de chunks) ni le catalogue de cartes du titre. L'appelant decode une fois et fournit — deux
 // balayages du meme fait divergeraient.
 //
-// # LE PONT D'IDENTITE NE DEMANDE AUCUNE BASE, ET C'EST DELIBERE
+// # LE PONT D'IDENTITE NE DEMANDE AUCUNE BASE, ET IL S'ENRICHIT QUAND L'APPELANT EN A UNE
 //
 // Le slot statborg d'un porteur se resout en xuid par les seuls INSTANTS DE MORT, PAR MANCHE
 // ([objectiveevents.ResolveRoundIdentity]) : les progressions du compteur de morts du statborg,
@@ -30,6 +30,13 @@ package replay
 // la base ; les deux ont ete confrontes a la phase 0 (8 accords / 0 desaccord la ou les deux
 // repondent, et 8/8 contre 0/8 sur un film TRONQUE). Le calque du drapeau se publie donc sur un
 // artefact construit SANS aucun fait de match — un CLI hors ligne le rend entier.
+//
+// DEPUIS LE SCHEMA 42 (2026-09-06), L'APPELANT PEUT FOURNIR SON PONT (`FlagInput.Identity`), et
+// c'est ce qui fait tomber le plafond du calque : le pont par morts exige TROIS instants
+// coincidents, si bien qu'un joueur qui meurt moins de trois fois — le meilleur, celui qui porte
+// le drapeau — lui echappe par construction. La couche d'assemblage, qui tient les lignes de
+// match, complete le pont par le TRIPLET et le pose ici. RIEN NE CHANGE POUR L'APPELANT HORS
+// LIGNE : champ a zero, ce paquet resout comme avant.
 
 import (
 	"log/slog"
@@ -68,6 +75,24 @@ type FlagInput struct {
 	// d'image-cle portant le marqueur de portage, et l'instant de toutes les images-cles.
 	// L'appelant ne le remplit pas.
 	Marks filmdec.CarrierMarkScan
+	// Identity est le pont slot statborg -> xuid PAR MANCHE, DEJA RESOLU par l'appelant.
+	// FACULTATIF : laisse a zero, ce paquet le resout lui-meme par les seuls INSTANTS DE MORT
+	// (cf. [flagIdentityOf]), et le calque reste publiable hors ligne, sans base.
+	//
+	// POURQUOI L'APPELANT PEUT LE FOURNIR, ET CE QUE CELA REPARE (schema 42, 2026-09-06). Le
+	// pont par morts exige `deathInstantMin` = 3 instants coincidents : un joueur qui MEURT
+	// MOINS DE TROIS FOIS lui echappe PAR CONSTRUCTION — et ce sont les meilleurs, c'est-a-dire
+	// ceux qui portent le drapeau. Sur `c0a82e88` (Husky Raid:CTF), les 3 prises du film sont
+	// toutes `noBridge` et le calque publie ZERO portage. La couche d'assemblage, elle, tient
+	// les lignes de match : elle COMPLETE le pont par le triplet
+	// ([objectiveevents.RoundIdentity.CompletedByLines], mono-manche, sans jamais contredire) et
+	// pose ici le resultat. C'est la MEME identite completee que les actions d'objectif
+	// consomment (`replaybuild.identifiedEvents`) — un seul pont pour les deux calques.
+	//
+	// CE PAQUET NE VOIT TOUJOURS AUCUN FAIT DE MATCH : il recoit une TABLE slot -> xuid, pas des
+	// lignes de match ; la regle qui la complete, et les faits qu'elle consomme, vivent chez
+	// l'appelant.
+	Identity objectiveevents.RoundIdentity
 }
 
 // decodeFilmCarrierMarks balaye le marqueur de portage et JOURNALISE ce qu'il en est.
@@ -140,7 +165,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 		attachFlagLayer(doc, vide, cov)
 		return
 	}
-	scan.Identity = objectiveevents.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths))
+	scan.Identity = flagIdentityOf(in, opt)
 	scan.Marks = in.Marks
 	// LES VIES LIBRES ne se lisent que sur un film de CTF, pour la meme raison : hors CTF,
 	// l'identifiant du manifeste n'apparait dans aucune creation `ti=42`. Elles ne sont PAS
@@ -157,6 +182,26 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 	}
 	attachFlagLayer(doc, carries, cov)
 	attachFlagReturnZone(doc, opt.Labels.FlagReturnZone, carries)
+}
+
+// flagIdentityOf rend le pont d'identite du calque : celui de l'appelant s'il en a fourni un,
+// sinon celui que ce paquet resout par les seuls INSTANTS DE MORT.
+//
+// LA PREFERENCE VA A L'APPELANT, ET ELLE NE PEUT QUE COMPLETER. Le pont que la couche
+// d'assemblage fournit est le MEME que celui-ci — memes enregistrements, meme fil des morts
+// (`replay.ScanDeaths`, la fonction que `BuildFromFilm` appelle pour `opt.Deaths`) — PLUS la
+// complementation par le triplet. C'est un SUR-ENSEMBLE : aucun slot nomme ici ne peut y perdre
+// son nom, et aucun ne peut y changer de joueur (`CompletedByLines` ne contredit jamais le pont
+// par morts).
+//
+// [objectiveevents.RoundIdentity.Resolved] et non un compte de noms : un appelant hors ligne qui
+// ne fournit RIEN doit tomber sur la resolution locale, alors qu'un pont fourni qui ne nomme
+// personne est une reponse, pas un silence.
+func flagIdentityOf(in FlagInput, opt Options) objectiveevents.RoundIdentity {
+	if in.Identity.Resolved() {
+		return in.Identity
+	}
+	return objectiveevents.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths))
 }
 
 // attachFlagReturnZone publie la REGLE de retour du mode — et se tait des qu'il manque quoi que
@@ -194,6 +239,22 @@ func deathInstantsOf(deaths []Death) []objectiveevents.DeathInstant {
 		})
 	}
 	return out
+}
+
+// logFlagOpeningsWithoutBridge NOMME les slots que le pont n'a pas resolus. Appelee par
+// `buildFlagCarries`, au moment ou il ecarte ces prises.
+//
+// LE COMPTE SEUL NE SE DIAGNOSTIQUE PAS. `sansPont=3` dit qu'il manque trois portages ; il ne dit
+// pas s'ils appartiennent a UN slot que le pont rate ou a trois, ni lesquels — et c'est exactement
+// la question qu'il faut pouvoir poser a un artefact du parc pour savoir si une completion
+// d'identite le repare. Les slots sont ceux du STATBORG (10..24 pairs pour les joueurs), pas ceux
+// des bipedes.
+func logFlagOpeningsWithoutBridge(slots []int, openings int) {
+	if len(slots) == 0 {
+		return
+	}
+	slog.Info("rejeu : prises de drapeau sans pont d'identite",
+		"slots", slots, "sansPont", len(slots), "prises", openings)
 }
 
 // logFlagCarriesCoverage journalise ce que le calque publie — et ce qu'il ecarte.
