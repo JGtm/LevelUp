@@ -368,19 +368,21 @@ func TestCollectPositions_FilmIllisibleNeTenteAucuneEcriture(t *testing.T) {
 	c.collectPositions(context.Background(), "m1", nil, ids, killRefValide())
 }
 
-// TestToKillOpeningRows_LInstantRedevientCeluiDuKill : LE point critique de la passe
-// d'entames. `BuildKillPositions` a recu des couples decales de -OpeningLeadMS, donc chaque
-// KillPosition rendue porte l'instant MESURE ; la table, elle, est clee sur l'instant DU KILL
-// (c'est par lui que match_kill_events se joint). Un oubli de la readdition rendrait la
-// jointure du lecteur vide, en silence.
-func TestToKillOpeningRows_LInstantRedevientCeluiDuKill(t *testing.T) {
+// TestToKillOpeningRows_PorteLInstantDuKillSansArithmetique : LE point critique de la passe
+// d'entames. La table est clee sur l'instant DU KILL (c'est par lui que match_kill_events se
+// joint) et `replay.BuildKillOpenings` rend DEJA cet instant : la projection le recopie, sans
+// rien lui ajouter. Depuis la bascule du 2026-09-06 (item 3.10 bis), REAJOUTER OpeningLeadMS
+// ici decalerait toutes les lignes de 1,5 s et rendrait la jointure du lecteur vide, en
+// silence. L'accord entre le decalage amont et cet instant est pince par
+// TestComposerPassePositions_... (positions_openings_test.go) : ce test-ci ne verrouille que
+// la projection.
+func TestToKillOpeningRows_PorteLInstantDuKillSansArithmetique(t *testing.T) {
 	const instantDuKill = int64(9000)
 	positions := []replay.KillPosition{
 		{
-			// Ce que BuildKillPositions rend apres ShiftKillRefs(kills, -OpeningLeadMS).
+			// Ce que BuildKillOpenings rend : l'instant DU KILL, pas l'instant mesure.
 			KillRef: replay.KillRef{
-				KillerXUID: 111, VictimXUID: 222,
-				TimeMS: instantDuKill - replay.OpeningLeadMS,
+				KillerXUID: 111, VictimXUID: 222, TimeMS: instantDuKill,
 			},
 			Killer: &replay.Vec3{X: 1, Y: 2, Z: 3},
 			// Victim volontairement nil : entame non localisee d'un cote.

@@ -432,7 +432,15 @@ aucun seuil de publication ne descend dans le SQL (3.3/3.4).
       sortie n'est pas alignée sur l'entrée et un appariement par rang attribuerait à une entame
       l'instant d'une autre mort. Test dédié :
       `TestToKillOpeningRows_LInstantRedevientCeluiDuKill`.
-- [!] 3.10 bis **Filtre « même vie » de la position d'entame — NON TRAITÉ, dépendance externe.**
+- [x] 3.10 bis **Filtre « même vie » de la position d'entame — FAIT le 2026-09-06** (bascule au
+      merge de `feat/duels`, correctif A de la revue adversariale ci-dessous). Le producteur
+      appelle `replay.BuildKillOpenings(positions, slotXUID, kills, int64(originUS))` et
+      `toKillOpeningRows` NE réadditionne plus `replay.OpeningLeadMS` — les deux gestes ont
+      basculé ensemble, comme la réserve l'exigeait. Nouveau compteur ADR 0009
+      `killsource_openings_cotes_hors_vie` (`rep.OpeningOutOfLife`), journalisé dans les deux
+      traces de la passe. Entrée du `.ai/V7.5/REGISTRE_REPORTS.md` CLOSE. L'énoncé du report
+      d'origine est conservé ci-dessous, pour que la condition de reprise reste lisible.
+      <br>_Énoncé du report (2026-09-06, avant merge)_ :
       Consigne du pilote (2026-09-06) : si un joueur a réapparu entre T-1,5 s et T, l'instant
       décalé peut tomber sur son premier échantillon de vie et l'« entame » publiée serait un
       point de réapparition. La correction est `replay.BuildKillOpenings(pos, slotXUID, kills,
@@ -458,7 +466,9 @@ aucun seuil de publication ne descend dans le SQL (3.3/3.4).
       les deux constantes `positionsAtKill` / `positionsAtOpening`. Un type nommé plutôt qu'une
       `string` : une table arbitraire n'a rien à faire dans cette jointure.
 
-**Gate** : `cd apps/go-api && go test ./internal/platform/duckdb/ -run 'WeaponRange|KillMeasured|KillDistance' -v`
+**Gate** (CORRIGÉ le 2026-09-06 : la forme écrite à l'origine, sans `-tags=integration`, ne
+lançait AUCUN test — cf. « Découvertes ») :
+`cd apps/go-api && go test -tags=integration -p 1 -count=1 ./internal/platform/duckdb/ -run 'WeaponRange|WeaponOpening|KillMeasured|KillDistance|Jointure|Proprietaire' -v`
 — `KillDistance` inclus : la migration de 3.1 ne doit rien changer au POC. Puis
 `go test -tags=integration -p 1 ./internal/persist/... ./internal/sync/killcollector/... ./internal/migration/...`
 (3.8-3.10 touchent persist/sync/migration : run nu = FAUX VERT).
@@ -479,6 +489,90 @@ Gates réellement exécutés le 2026-09-06 (`CGO_ENABLED=1` — DuckDB exige CGO
 - `go vet` sur les cinq paquets + `go vet -tags=integration ./internal/platform/duckdb/` -> silencieux.
 - `gofmt -l internal` -> sortie vide.
 - `golangci-lint run --new-from-merge-base=origin/main` -> **0 issues** (baseline non accrue).
+
+
+### Revue adversariale ronde 1 (2026-09-06, branche `feat/duels-lot3`)
+
+Trois relecteurs indépendants ont relu le lot 3. Le pilote a retenu les constats ci-dessous ;
+tous sont traités, aucun autre geste n'a été posé (les découvertes hors périmètre sont au
+registre du bas de ce fichier). La base a d'abord été fusionnée depuis `feat/duels`
+(`replay.BuildKillOpenings` y est arrivée avec les correctifs du lot 2).
+
+- [x] **A — Bascule sur `replay.BuildKillOpenings` (item 3.10 bis fermé).** Les DEUX gestes
+      ensemble : `composerPassePositions` appelle `BuildKillOpenings(positions, slotXUID, kills,
+      originUS)` et `toKillOpeningRows` ne réadditionne plus `OpeningLeadMS`. Un côté dont
+      l'entame et le coup fatal ne partagent pas la même vie est écarté (plus jamais un point de
+      réapparition présenté comme une entame) et COMPTÉ : nouveau compteur ADR 0009
+      `killsource_openings_cotes_hors_vie`, journalisé dans les deux traces de la passe. Aucune
+      donnée d'entame n'ayant été cuite (backfill jamais lancé), rien n'est à recuire.
+      `sync/killcollector/positions.go` + `positions_openings.go` (la passe d'entames a son
+      fichier : positions.go dépassait 500 lignes en portant les deux).
+- [x] **B1 — le test qui pince l'accord décalage ↔ instant persisté.** La couture a été
+      extraite : `composerPassePositions(positions, slotXUID, kills, originUS, matchID)` est PURE
+      et ne demande aucun film. `TestComposerPassePositions_LEntameEstPriseAvantLeKillEtPorte
+      SonInstant` vérifie ENSEMBLE que la ligne porte le `time_ms` DU KILL et que ses
+      coordonnées sont celles de l'échantillon 1,5 s AVANT — distinctes de celles du kill et de
+      celles 1,5 s après. Un second test épingle la remontée du filtre de vie
+      (`OpeningOutOfLife`). MUTATION : signe du décalage inversé dans `BuildKillOpenings` ->
+      `killer_x = 6.5, attendu 3.5` + « le SIGNE du décalage est inversé ». Rouge, restauré vert.
+- [x] **B2 — la passe d'entames est exercée.** `ecrireLesDeuxPasses` orchestre les deux
+      écritures ; `TestEcrireLesDeuxPasses_EcritLesDeuxTables` (base montée par les migrations
+      RÉELLES) vérifie que les deux vues `_latest` portent leur ligne, `time_ms` et coordonnées
+      comprises. MUTATION : appel à `persistOpenings` retiré -> `kill_openings_latest = 0
+      ligne(s), attendu 1`. Rouge, restauré vert.
+- [x] **C1 — double frag : la garde ne se contournait plus par le filtre de côté.** Le `WHERE`
+      s'applique AVANT le `GROUP BY` : une lecture côté victime ne voyait qu'une ligne et jugeait
+      l'unanimité d'un singleton. Le groupe complet `(match_id, feed_killer_xuid, time_ms)` est
+      désormais calculé par la sous-requête `fragSolo`, sur la vue ENTIÈRE, avec `count(*) = 1`
+      EN PLUS de l'unanimité. Le commentaire qui affirmait le contraire est réécrit.
+      `TestWeaponRange_DoubleFragMemeArme_ExcluDesDeuxCotes` couvre les deux côtés. Durcissement,
+      pas correction de chiffres : 0 groupe multi-victimes sur 138 293 événements du corpus.
+- [x] **C2 — `victimXUID` supprimé** de `killMeasured` (projection, scan, champ) : projeté,
+      scanné, jamais lu. La garde C1 n'en a pas besoin — elle compte des lignes, elle ne les
+      nomme pas.
+- [x] **C3 — le chemin builder de `kill_openings` est SUPPRIMÉ.** `BatchBuilder.AddKillOpenings`
+      (0 appelant), `SharedBatch.KillOpenings` et l'appel inconditionnellement no-op de
+      `SharedPersister.Persist` : c'était le « au cas où » de l'anti-pattern n°1. L'INSERT vit
+      désormais dans `kill_opening_persister.go`, à côté de son unique appelant, et
+      `KillOpeningPersister` est le SEUL chemin d'écriture.
+- [x] **C4 — `shared_persister.go` revient à 650 lignes** (679 après le lot 3, 650 avant lui) :
+      la suppression C3 suffit, il ne reste aucun code d'entame dans ce fichier — d'où pas de
+      `shared_persister_kill_openings.go`, qui aurait été un fichier sans appelant local.
+- [x] **C5 — le garde-rail mord.** (a) le motif ne cherche plus `JOIN <table>` mais les NOMS
+      eux-mêmes, `kill_positions` / `kill_openings` et leurs vues, dans le CODE (les lignes de
+      commentaire sont retirées avant la recherche) : une jointure écrite `FROM … JOIN …`, une
+      composée par `Sprintf` et surtout une posée sur les TABLES BRUTES sont désormais captées.
+      `KillDistanceRepo` nommait une table dans un message de journal : il passe par la constante
+      `positionsAtKill`. (b) le pin des gardes porte sur `measuredKillsSQLTemplate` — la VALEUR
+      de la constante — et non sur les octets du fichier, que le commentaire d'en-tête satisfaisait.
+      MUTATIONS : garde d'unanimité retirée de la REQUÊTE (commentaire intact) -> rouge ; copie
+      `FROM kill_positions kp JOIN …` posée dans `kill_distance_repo.go` -> rouge. Restaurés verts.
+- [x] **C6 — l'échec d'écriture d'une entame ne peut plus se taire.**
+      `TestPersistOpenings_EchecDEcriture_CompteEtNePublieRien` : compteur d'erreurs +1, compteur
+      de matchs COUVERTS +0, et AUCUNE trace « entames decodees » (journal capturé). MUTATION :
+      `_ = persistKillOpenings(...)` -> les trois assertions rougissent, dont
+      `matchs_couverts a bougé de 1, attendu 0`. Restauré vert.
+- [x] **C7 — l'échec des positions n'annule plus l'entame.** `ecrireLesDeuxPasses` journalise et
+      compte l'échec des positions puis appelle la passe d'entames dans TOUS les cas : le code
+      fait enfin ce que la doc de `writeOpenings` promettait. Test dédié (table `kill_positions`
+      supprimée, l'entame s'écrit quand même).
+- [x] **C8 — la garde `rowsWritten == 0` est testée** :
+      `TestPublishOpeningsPass_ZeroLigneNeCompteAucunMatch`.
+- [x] **D — `decode_pass` sur `kill_openings` (COMMIT SÉPARÉ, le dernier de la branche).** La vue
+      arbitrait par CLÉ (`written_at` puis `id` par `(match_id, killer_xuid, time_ms)`) : un
+      re-décodage qui ne résout PLUS une entame — ce que le filtre de vie de A fait
+      régulièrement — laissait la ligne de la passe précédente servie à jamais. La table gagne
+      `decode_pass VARCHAR NOT NULL` (migration modifiée EN PLACE : la table n'a jamais été créée
+      nulle part, ni prod ni backfill — écrit et daté dans le commentaire de migration), le
+      persister le tire par `newDecodePassID()`, et la vue devient « DERNIÈRE PASSE ENTIÈRE PAR
+      MATCH » sur le modèle exact de `match_kill_events_latest`. `ReDecodeSupersede` prouve
+      désormais qu'une passe B SANS la ligne de A la fait DISPARAÎTRE de la vue.
+      **Ce point est isolé dans son propre commit pour pouvoir être retiré d'un `git reset` si
+      l'utilisateur le refuse.**
+- [x] **E — gates du plan corrigés** (lots 3, 4, 5 et 6) : toute commande visant
+      `./internal/platform/duckdb/` porte `-tags=integration -p 1` — un run nu rend « no tests to
+      run » et c'est un faux vert. Le gate du lot 3 lui-même, dont le lot avait constaté qu'il ne
+      lançait aucun test, est corrigé plutôt que laissé en l'état.
 
 ## Lot 4 — Service, capability, contrat API
 
@@ -501,6 +595,12 @@ Gates réellement exécutés le 2026-09-06 (`CGO_ENABLED=1` — DuckDB exige CGO
       nil, scope vide. Tests `httptest` sur la page Synthèse : la section absente ne casse rien.
 
 **Gate** : `make go-api-test && cd apps/go-api && go test ./internal/api/... ./internal/service/...`
+puis, parce que le lot branche le repo DuckDB du lot 3 :
+`go test -tags=integration -p 1 -count=1 ./internal/platform/duckdb/`.
+**`-tags=integration -p 1` N'EST PAS OPTIONNEL sur `platform/duckdb`** : toute la famille de
+tests de ce paquet est derrière ce tag, un run nu rend « no tests to run » et c'est un FAUX
+VERT (constaté au lot 3, cf. « Découvertes »). Vérifier le CODE DE RETOUR, jamais un filtre
+sur « FAIL » (il attrape des logs applicatifs).
 
 ---
 
@@ -544,15 +644,20 @@ fusion des deux graphes jumeaux. C'est la référence de rendu du lot.
       rendu de la section avec et sans données, état « sous seuil ».
 
 **Gate** : `Remove-Item -Recurse -Force apps/web/node_modules/.tmp ; make check-types && make test-web`
+— lot WEB : aucun `go test` ici. Si le lot devait toucher au Go (il ne le doit pas), toute
+commande visant `./internal/platform/duckdb/` porterait `-tags=integration -p 1`.
 
 ---
 
 ## Lot 6 — Livraison
 
 - [ ] 6.1 Skill `delivery-checklist`.
-- [ ] 6.2 `cd apps/go-api && go test ./... && go vet ./...` puis
-      `go test -tags=integration -p 1 ./...` (le lot 3 touche `platform/duckdb` ; `-p 1` non
-      négociable ; code de sortie vérifié, pas la sortie filtrée).
+- [ ] 6.2 `cd apps/go-api && go test -count=1 ./... && go vet ./...` puis
+      `go test -tags=integration -p 1 -count=1 ./...`. **LE RUN NU NE VAUT PAS GATE POUR
+      `platform/duckdb`** : toute la famille de tests de ce paquet est derrière
+      `//go:build integration`, un run sans le tag rend « no tests to run ». C'est la SECONDE
+      commande qui fait foi pour ce paquet ; `-p 1` non négociable (DuckDB mono-writer) ; code
+      de sortie vérifié (`$?`), jamais un filtre sur « FAIL » — il attrape des logs applicatifs.
 - [ ] 6.3 `make go-api-lint` — baseline non accrue.
 - [ ] 6.4 Gate visuel : capture de la section Synthèse soumise à l'utilisateur, témoins nommés.
 - [ ] 6.5 Entrée `thought_log.md` ; `.ai/project_map.md` si la carto bouge.
@@ -612,6 +717,16 @@ répliqué, ou source hors film »).
   tout `internal/` et lit chaque `.go`. C'est le prix d'un garde-rail qui couvre les couches
   aval. À surveiller si d'autres garde-rails adoptent la même marche — à la troisième, il
   faudra un index partagé plutôt que trois marches complètes.
+- (lot 3 — revue ronde 1, 2026-09-06) **`kill_positions` porte EXACTEMENT le défaut que D vient
+  de corriger sur `kill_openings`** : sa vue `kill_positions_latest` arbitre par CLÉ
+  (`written_at`, `id` par `(match_id, killer_xuid, time_ms)`), pas par PASSE. Un re-décodage qui
+  ne retrouverait plus une position — film re-téléchargé plus court, pont d'identité qui perd un
+  slot — laisserait la ligne de la passe précédente servie à jamais, mélangée aux nouvelles. Le
+  cas est moins probable que pour l'entame (les positions du coup fatal ne dépendent d'aucun
+  filtre de vie), et surtout la table est PEUPLÉE en production : lui ajouter `decode_pass`
+  exigerait une reconstruction, donc une décision utilisateur. NON TRAITÉ — hors périmètre de
+  cette revue, qui ne portait que sur le diff du lot 3. À reprendre avec le backfill de
+  `kill_openings`, si l'utilisateur l'ouvre : les deux tables se recuiraient de la même passe.
 - (lot 3, 2026-09-06) **`kill_positions` n'a JAMAIS été inscrite à `appendOnlyStateTables`**
   (`internal/sync/append_only_state_guard_test.go`) alors qu'elle est append-only depuis G.2
   (2026-08-30) : l'étape 5 de la recette ADR 0026 a été sautée à sa conversion, exactement

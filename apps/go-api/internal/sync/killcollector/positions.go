@@ -7,9 +7,10 @@ package killcollector
 //
 // DEPUIS LE 2026-09-06, IL EN PRODUIT DEUX : la même lecture du film rend AUSSI
 // `shared.kill_openings` — les positions un temps-pour-tuer AVANT le coup fatal (proxy
-// d'entame, D5 du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md). Pas un second décodeur : la MÊME
-// fonction pure `replay.BuildKillPositions`, appelée avec les couples décalés par
-// `replay.ShiftKillRefs`. Voir buildPositionRows.
+// d'entame, D5 du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md). Pas un second décodeur : la
+// fonction pure `replay.BuildKillOpenings`, qui décale par `replay.ShiftKillRefs`, place par LA
+// fonction de placement du paquet et n'accepte un côté que si l'instant décalé tombe dans la
+// MÊME VIE que le coup fatal. Voir composerPassePositions.
 //
 // # LE FILM EST CHARGÉ UNE FOIS, ET LE PONT DISQUE A DISPARU
 //
@@ -89,17 +90,6 @@ const (
 	metricPositionsKillsDropped = "killsource_positions_morts_sans_position"
 )
 
-// Compteurs de sante de la passe d ENTAMES (D5). Famille distincte de celle des positions, et
-// ce n est pas un detail de nommage : la couverture des deux mesures ne peut PAS etre la meme
-// (une mort survenue dans la premiere seconde et demie d un match n a pas d entame lisible),
-// donc les additionner sous un meme compteur rendrait les deux illisibles.
-const (
-	metricOpeningsMatches     = "killsource_openings_matchs_couverts"
-	metricOpeningsRows        = "killsource_openings_lignes_ecrites"
-	metricOpeningsKillsNoPos  = "killsource_openings_morts_sans_position"
-	metricOpeningsWriteErrors = "killsource_openings_erreurs_ecriture"
-)
-
 // collectPositions : la TROISIÈME écriture de la passe — `shared.kill_positions`.
 //
 // `deaths` est le SOUS-ENSEMBLE PRÉ-FUSION (batch.Deaths dans collect(), avant
@@ -151,13 +141,29 @@ func (c *KillSourceCollector) collectPositions(
 		return
 	}
 
+	c.ecrireLesDeuxPasses(ctx, matchID, pass)
+}
+
+// ecrireLesDeuxPasses ecrit les positions PUIS les entames, SOUS DEUX LEASES SEPARES ET SANS
+// QUE L UNE PUISSE ANNULER L AUTRE.
+//
+// C EST LE POINT CORRIGE LE 2026-09-06 (revue adversariale, constat C7) : la passe de positions
+// coupait la passe d entames par un `return` sur son echec d ecriture, alors que writeOpenings
+// promet en doc un lease SEPARE « pour qu un echec de l une ne fasse pas retomber l autre ». Le
+// code disait le contraire de sa doc. Les deux passes sont desormais independantes : chacune
+// journalise et compte SON echec, aucune ne decide pour l autre.
+//
+// L ORDRE RESTE CELUI-CI (positions d abord) parce que les positions sont la mesure premiere et
+// l entame un proxy par-dessus : si le lease est dispute, c est la mesure qui doit l obtenir en
+// premier. Ce n est pas une dependance, c est une priorite.
+func (c *KillSourceCollector) ecrireLesDeuxPasses(ctx context.Context, matchID string, pass passePositions) {
 	if err := c.writePositions(ctx, matchID, pass.rows); err != nil {
 		observability.AddInt(metricPositionsWriteFail, 1)
 		slog.ErrorContext(ctx, "killsource: positions — ecriture echouee",
 			"match_id", matchID, "err", err)
-		return
+	} else {
+		publishPositionsPass(ctx, matchID, pass.rep, len(pass.rows))
 	}
-	publishPositionsPass(ctx, matchID, pass.rep, len(pass.rows))
 	c.persistOpenings(ctx, matchID, pass)
 }
 
@@ -169,25 +175,6 @@ type passePositions struct {
 	rows     []persist.KillPositionInsert
 	openRep  replay.KillPosReport
 	openRows []persist.KillOpeningInsert
-}
-
-// persistOpenings : la QUATRIEME ecriture de la passe — `shared.kill_openings` (D5).
-//
-// BEST-EFFORT AU CARRE. Les positions sont deja un enrichissement troisieme ; l entame est un
-// PROXY par-dessus. Son echec ne doit faire echouer NI la passe des morts (deja ecrite), NI
-// celle des positions (ecrite juste au-dessus) — il se journalise et se compte, il n interrompt
-// rien. Zero ligne n est pas une erreur non plus : c est l etat d un film dont aucune mort n a
-// d echantillon un temps-pour-tuer plus tot.
-func (c *KillSourceCollector) persistOpenings(ctx context.Context, matchID string, pass passePositions) {
-	if len(pass.openRows) > 0 {
-		if err := c.writeOpenings(ctx, matchID, pass.openRows); err != nil {
-			observability.AddInt(metricOpeningsWriteErrors, 1)
-			slog.ErrorContext(ctx, "killsource: entames — ecriture echouee",
-				"match_id", matchID, "err", err)
-			return
-		}
-	}
-	publishOpeningsPass(ctx, matchID, pass.openRep, len(pass.openRows))
 }
 
 // resolveMapBounds : les identites de carte candidates du match (base), puis leurs bornes de
@@ -215,11 +202,10 @@ func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID stri
 //
 // LES QUATRE BALAYAGES PARTAGENT LE FILM DÉJÀ CHARGÉ (lot 1, item 1.6) : ils prenaient chacun un
 // répertoire et relisaient le film entier depuis le disque, décompression comprise.
-// LA MEME FONCTION PRODUIT L ENTAME, appelee avec les couples DECALES (item 3.10 du plan
-// duels/portee) : `BuildKillPositions(pos, slotXUID, ShiftKillRefs(kills, -OpeningLeadMS), off)`.
-// Un SECOND producteur de position divergerait du premier a la premiere correction portee d un
-// seul cote — c est la regle « deux decodeurs du meme fait divergeraient » qui gouverne deja
-// killpos.go et killpos_bridge.go.
+//
+// ELLE NE COMPOSE RIEN ELLE-MEME : ce qui suit les balayages — les deux jeux de lignes — vit
+// dans `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06,
+// constat B1 : aucun test ne pincait l accord entre le decalage et l instant persiste).
 func buildPositionRows(
 	film *filmsource.Film, entry filmdec.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
@@ -259,34 +245,37 @@ func buildPositionRows(
 			owners.LivesTotal, owners.DeathsNamed, owners.IndexReadings)
 	}
 
-	posOut, rep := replay.BuildKillPositions(positions, slotXUID, kills, int64(originUS))
+	return composerPassePositions(positions, slotXUID, kills, int64(originUS), matchID), nil
+}
 
-	// ── ENTAME : COMPOSITION, PAS SECOND DECODEUR ────────────────────────────────────────
-	// La MEME fonction pure, appelee avec les couples decales. Elle rend des KillPosition
-	// dont le TimeMS est l instant MESURE ; toKillOpeningRows lui readditionne l avance pour
-	// retrouver l instant DU KILL, seule cle par laquelle le kill-feed se joint.
-	//
-	// RESERVE CONNUE, OUVERTE LE 2026-09-06 ET NON TRAITEE ICI A DESSEIN : `BuildKillPositions`
-	// ne connait pas les frontieres de vie. Si un joueur a reapparu entre T-OpeningLeadMS et T,
-	// l instant decale peut tomber sur son premier echantillon de vie et l « entame » publiee
-	// serait un point de reapparition. La correction est une fonction exportee
-	// `replay.BuildKillOpenings(pos, slotXUID, kills, offsetUS)` — decalage ET filtre « meme
-	// vie », KillRef.TimeMS deja ramene a l instant du kill — attendue sur `feat/duels` ;
-	// absente de cette branche au moment d ecrire (verifie sur pieces : `git grep
-	// "func BuildKillOpenings" feat/duels` = aucun resultat). Le filtre de vie N EST PAS
-	// reimplemente ici : deux implementations du meme fait divergeraient, c est la regle qui
-	// gouverne tout ce fichier. BASCULE AU MERGE, en DEUX gestes : l appel ci-dessous devient
-	// `replay.BuildKillOpenings(positions, slotXUID, kills, int64(originUS))`, ET
-	// toKillOpeningRows cesse de readditionner `replay.OpeningLeadMS` (la fonction rend deja
-	// l instant du kill) — l un sans l autre decalerait toutes les lignes de 1,5 s.
-	openOut, openRep := replay.BuildKillPositions(positions, slotXUID,
-		replay.ShiftKillRefs(kills, -replay.OpeningLeadMS), int64(originUS))
+// composerPassePositions : LES DEUX JEUX DE LIGNES D UNE SEULE LECTURE DU FILM. PURE — aucune
+// I/O, aucun film : c est la couture par laquelle un test pince l accord entre le DECALAGE de
+// l entame et l INSTANT qui finit en base (constat B1 de la revue du 2026-09-06 — avec la
+// version precedente, inverser le signe du decalage laissait toute la suite verte, et les lignes
+// auraient porte des coordonnees prises 1,5 s APRES la mort avec un `time_ms` decale de +3 s,
+// donc une jointure vide pour toujours, sans une seule erreur).
+//
+// ── ENTAME : COMPOSITION, PAS SECOND DECODEUR ────────────────────────────────────────────────
+//
+// `replay.BuildKillOpenings` fait TOUT ce que l entame demande, et rien d autre n a le droit de
+// le refaire ici : elle decale les couples de `-OpeningLeadMS`, place par LA fonction de
+// placement du paquet (celle-la meme que `BuildKillPositions`), ECARTE tout cote dont l instant
+// decale ne tombe pas dans la MEME VIE que le coup fatal — sans quoi la « position d entame »
+// serait un point de reapparition — et rend des `KillPosition` dont le `TimeMS` est DEJA celui
+// du kill. `toKillOpeningRows` n a donc AUCUNE avance a readditionner : le faire decalerait
+// toutes les lignes de 1,5 s.
+func composerPassePositions(
+	positions []filmdec.BipedPosition, slotXUID map[uint32]uint64,
+	kills []replay.KillRef, originUS int64, matchID string,
+) passePositions {
+	posOut, rep := replay.BuildKillPositions(positions, slotXUID, kills, originUS)
+	openOut, openRep := replay.BuildKillOpenings(positions, slotXUID, kills, originUS)
 	return passePositions{
 		rep:      rep,
 		rows:     toKillPositionRows(matchID, posOut),
 		openRep:  openRep,
 		openRows: toKillOpeningRows(matchID, openOut),
-	}, nil
+	}
 }
 
 // writePositions : l ecriture, sous son PROPRE lease court — meme raison que writeShots (le
@@ -298,18 +287,6 @@ func (c *KillSourceCollector) writePositions(ctx context.Context, matchID string
 	}
 	defer release()
 	return persist.NewKillPositionPersister(db).PersistPass(ctx, matchID, rows)
-}
-
-// writeOpenings : l ecriture des entames, sous SON PROPRE lease court — meme raison que
-// writePositions, et un lease SEPARE a dessein : les deux passes ne doivent pas se tenir
-// mutuellement, un echec de l une ne fait pas retomber l autre.
-func (c *KillSourceCollector) writeOpenings(ctx context.Context, matchID string, rows []persist.KillOpeningInsert) error {
-	db, release, err := c.acquireShared(ctx)
-	if err != nil {
-		return fmt.Errorf("lease shared %s: %w", matchID, err)
-	}
-	defer release()
-	return persist.NewKillOpeningPersister(db).PersistPass(ctx, matchID, rows)
 }
 
 // killRefsFromDeaths ne garde que les morts dont LES DEUX identites sont resolues — un xuid vide
@@ -377,44 +354,6 @@ func toKillPositionRows(matchID string, positions []replay.KillPosition) []persi
 	return out
 }
 
-// toKillOpeningRows traduit les positions d ENTAME en lignes ecrivables. PROJECTION DEDIEE, et
-// pas `toKillPositionRows` appliquee a la sortie decalee — c est tout l objet de cette fonction.
-//
-// LE time_ms REDEVIENT CELUI DU KILL, ET C EST LE POINT CRITIQUE.
-// `BuildKillPositions` a recu des couples DECALES de -OpeningLeadMS : chaque KillPosition qu il
-// rend porte donc l instant MESURE, pas celui de la mort. La table, elle, est clee sur l instant
-// DU KILL — c est par lui que `match_kill_events_latest` se joint (`kp.time_ms = e.time_ms`).
-// Ecrire l instant decale rendrait la jointure du lecteur VIDE, en silence : zero entame, aucune
-// erreur, rien a voir dans les journaux.
-//
-// LA REASSOCIATION EST ARITHMETIQUE ET NON PAR INDEX, A DESSEIN : `BuildKillPositions` ECARTE
-// les morts dont aucun des deux joueurs n est localisable (`rep.Dropped`), donc sa sortie n est
-// PAS alignee sur la liste de couples d entree — un appariement par rang attribuerait a une
-// entame l instant d une autre mort. L avance retiree est une CONSTANTE : la readditionner
-// redonne l instant d origine de CHAQUE ligne, quelles que soient celles qui manquent.
-//
-// AU MERGE DE `replay.BuildKillOpenings` (cf. la reserve dans buildPositionRows) : cette
-// readdition DISPARAIT, la fonction rendant deja l instant du kill.
-func toKillOpeningRows(matchID string, openings []replay.KillPosition) []persist.KillOpeningInsert {
-	out := make([]persist.KillOpeningInsert, 0, len(openings))
-	for i := range openings {
-		p := &openings[i]
-		row := persist.KillOpeningInsert{
-			MatchID:    matchID,
-			KillerXUID: strconv.FormatUint(p.KillerXUID, 10),
-			TimeMS:     int(p.TimeMS + replay.OpeningLeadMS),
-		}
-		if p.Killer != nil {
-			row.KillerX, row.KillerY, row.KillerZ = &p.Killer.X, &p.Killer.Y, &p.Killer.Z
-		}
-		if p.Victim != nil {
-			row.VictimX, row.VictimY, row.VictimZ = &p.Victim.X, &p.Victim.Y, &p.Victim.Z
-		}
-		out = append(out, row)
-	}
-	return out
-}
-
 // refuserSequenceTrouee : REFUS SUR TROU DE SEQUENCE, le seul controle du disparu pont disque
 // qui protegeait d une position FAUSSE — et il survit tel quel, sans disque.
 //
@@ -452,29 +391,6 @@ func publishPositionsPass(ctx context.Context, matchID string, rep replay.KillPo
 		observability.AddInt(metricPositionsKillsDropped, int64(rep.Dropped))
 	}
 	slog.InfoContext(ctx, "killsource: positions decodees",
-		"match_id", matchID, "kills", rep.Kills, "deux_cotes", rep.Both,
-		"tueur_seul", rep.KillerOnly, "victime_seule", rep.VictimOnly,
-		"sans_position", rep.Dropped, "sans_pont_identite", rep.NoBridge, "lignes", rowsWritten)
-}
-
-// publishOpeningsPass : les compteurs de sante de la passe d entames (ADR 0009) et sa trace.
-//
-// ZERO LIGNE NE COMPTE PAS UN MATCH COUVERT. La couverture de l entame est structurellement
-// partielle (cf. persistOpenings), donc compter un match « couvert » sans aucune ligne rendrait
-// le compteur muet sur la seule question qu il sert a poser : sur combien de matchs ce proxy
-// est-il reellement mesure.
-func publishOpeningsPass(ctx context.Context, matchID string, rep replay.KillPosReport, rowsWritten int) {
-	if rep.Dropped > 0 {
-		observability.AddInt(metricOpeningsKillsNoPos, int64(rep.Dropped))
-	}
-	if rowsWritten == 0 {
-		slog.InfoContext(ctx, "killsource: entames — aucune position d entame sur ce film",
-			"match_id", matchID, "kills", rep.Kills, "sans_position", rep.Dropped)
-		return
-	}
-	observability.AddInt(metricOpeningsMatches, 1)
-	observability.AddInt(metricOpeningsRows, int64(rowsWritten))
-	slog.InfoContext(ctx, "killsource: entames decodees",
 		"match_id", matchID, "kills", rep.Kills, "deux_cotes", rep.Both,
 		"tueur_seul", rep.KillerOnly, "victime_seule", rep.VictimOnly,
 		"sans_position", rep.Dropped, "sans_pont_identite", rep.NoBridge, "lignes", rowsWritten)

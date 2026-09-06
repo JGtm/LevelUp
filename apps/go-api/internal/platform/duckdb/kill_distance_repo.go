@@ -84,8 +84,11 @@ func (r *KillDistanceRepo) LoadMatch(ctx context.Context, matchID string) ([]dom
 	measured, err := r.queryMeasuredKills(ctx, matchID)
 	if err != nil {
 		if isTableNotFoundErr(err) {
-			slog.DebugContext(ctx, "KillDistanceRepo: kill_positions_latest/match_kill_events_latest missing",
-				"match_id", matchID)
+			// La table est NOMMEE par la constante du proprietaire de la jointure, jamais par un
+			// litteral : le garde-rail kill_measured_guard_test.go interdit ces noms hors de
+			// kill_measured.go, et un nom recopie ici survivrait a un renommage la-bas.
+			slog.DebugContext(ctx, "KillDistanceRepo: positions/kill-feed table missing",
+				"match_id", matchID, "table", string(positionsAtKill))
 			return nil, games.ErrCapabilityNotSupported
 		}
 		slog.ErrorContext(ctx, "KillDistanceRepo: query failed", "match_id", matchID, "err", err)
