@@ -97208,3 +97208,45 @@ d'emplacement) mais n'est ni nommé par l'audit ni un « report de dernière lec
 sens — impact visuel mineur (animation), à signaler si un futur audit du même axe l'atteint.
 P1-9 (dessin des vies anonymes) reste en attente d'une décision utilisateur, non traité. Détail
 complet : `.ai/V7.5/v2/WEB_VIES_2026-09-06.md`. Registre d'audit mis à jour (ligne d'état P0-2).
+
+## [2026-09-07] P0-2 — revue adversariale WEB-R1, deux trous de test comblés — Complété
+
+**Contexte.** Revue adversariale WEB-R1 sur le correctif P0-2 (`feat/v2-web-vies`, commit
+`61fb96a60`/`2703dd7b0`) : correctif logique jugé exact et non contourné, mais 2 constats P1
+sur l'invariant « chaque borne ajoutée a un test qui rougit si on la retire ». C1 : la moitié
+HAUTE de la borne de vie (`s.t > life.end` dans `nearestReading`) n'était protégée par aucun
+test — tous les tests « slot recyclé » du lot n'exerçaient que la moitié basse. C2 : la fixture
+partagée ajoutée par le lot (`track(512,'A',0,100)`) excluait silencieusement `t=200` des
+bornes de vie, neutralisant un test PRÉEXISTANT (« une lecture passée prime toujours la lecture
+à venir ») sans que personne ne s'en aperçoive — le commentaire ajouté affirmait même l'inverse
+de ce qui était vérifié.
+
+**Décision technique.** Périmètre strict imposé par la revue : tests seuls, aucun code de
+production à changer. C1 : un test symétrique par lecteur borné (`loadoutAt`, `abilityAt`,
+`inventoryAt`, `grenadeReadingAt`, `refineAbilityReading`) — vie antérieure sans lecture
+propre, seule lecture disponible dans une vie ultérieure du même slot recyclé → `null` attendu.
+Pour `lastFullBefore` : preuve STRUCTURELLE (pas de ligne de borne haute à retirer — son filtre
+`s.t < t` exclut déjà toute lecture d'une vie ultérieure, `t` étant lui-même borné par
+`nearestReading`) documentée en commentaire de test et vérifiée empiriquement en confirmant que
+ce test reste VERT sous la mutation de `nearestReading`. C2 : fixture partagée réparée (vie du
+slot 512 étendue à `[0,250]` pour couvrir `t=200`), commentaire faux retiré, et un test dédié
+ISOLÉ ajouté (indépendant de toute fixture partagée) pour que ce verrou ne puisse plus être
+neutralisé en silence par un futur ajustement de fixture.
+
+**Résultats.** 7 tests ajoutés (170 fichiers / 2536 tests verts, contre 2529 avant R1). Chaque
+mutation rejouée et confirmée : borne haute de `nearestReading` neutralisée → 4 tests rouges
+exactement ceux visés (`loadoutAt`/`abilityAt`/`inventoryAt`/`grenadeReadingAt`), le test
+`lastFullBefore` reste vert (preuve empirique du finding structurel) ; `c.t > frame` de
+`refineAbilityReading` neutralisé → le nouveau test ET le test préexistant du même mécanisme
+rougissent ensemble ; `best ?? ahead` inversé en `ahead ?? best` → 3 tests rouges (l'effet de
+bord sur le test 1, le test réparé, et le nouveau test isolé). Toutes les mutations restaurées,
+`git diff` vide sur `rosterLogic.ts`/`changeRefine.ts` confirmé après restauration. Gates
+rejoués : `tsc --noEmit` propre, `eslint src/lib/replay src/features/match-replay` 0 erreur (8
+warnings préexistants hors périmètre), `vitest run src/lib/replay src/features/match-replay`
+170/2536 verts.
+
+**Conclusion / prochaine étape.** Les 2 constats P1 de WEB-R1 sont fermés par des tests
+uniquement — aucune régression de comportement, le code de production livré était déjà correct
+(vérifié par la revue elle-même : mutations rejouées sur le code AVANT R1 confirmaient déjà le
+comportement correct, seule la COUVERTURE de test avait un trou). Détail complet :
+`.ai/V7.5/v2/WEB_VIES_2026-09-06.md`, section « Corrections R1 ».

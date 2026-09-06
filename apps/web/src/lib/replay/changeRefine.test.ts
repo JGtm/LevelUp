@@ -216,4 +216,17 @@ describe('refineAbilityReading — bornée à la VIE en cours (correctif P0-2)',
     const base = { rank: 9, age: 15, src: 'kf' }
     expect(refineAbilityReading(base, [spentDeLAncienneVie], 1, 60, 40)).toBe(base)
   })
+
+  it('un changement de la vie ULTÉRIEURE (même slot recyclé) n’est jamais lu — borne haute, revue WEB-R1 C1', () => {
+    // Symétrique de la borne basse ci-dessus. `refineAbilityReading` n'a pas de paramètre
+    // `life.end` séparé : c'est `c.t > frame` (préexistant, jamais retiré par ce lot) qui joue
+    // ce rôle de fait — `frame` est toujours <= life.end par construction de l'appelant
+    // (`abilityAt` n'appelle cette fonction qu'après avoir résolu une vie couvrante), donc TOUT
+    // `c.t` d'une vie ultérieure du même slot est structurellement > frame. Ici, frame=20 est
+    // dans la vie ANTÉRIEURE [lifeStart=0] ; le seul changement disponible (t=50) appartient à
+    // la vie ULTÉRIEURE. TEST PAR MUTATION : retirer `c.t > frame` du filtre (garder
+    // `c.t < lifeStart`) rend `{ rank: 7, ... }` au lieu de `null`.
+    const changementDeLaVieUlterieure = equip({ t: 50, r: 7 })
+    expect(refineAbilityReading(null, [changementDeLaVieUlterieure], 1, 20, 0)).toBeNull()
+  })
 })

@@ -422,10 +422,15 @@ describe('playerStateAt — santé', () => {
 })
 
 describe('loadoutAt', () => {
-  // Vie couvrante 0-100 sur les deux slots : les frames exercées ici (5, 60) y tombent toutes,
-  // donc le seul facteur testé reste la présence/absence d'une lecture — pas la vie elle-même.
+  // Vie couvrante 0-250 sur le slot 512 (0-100 sur le 513) : ELLE DOIT COUVRIR t=200, sans
+  // quoi la borne de vie (correctif P0-2) exclut ce candidat AVANT même que `best`/`ahead` ne
+  // le départagent — c'était le constat C2 de la revue WEB-R1 : une vie trop courte ici (0-100)
+  // rendait t=200 inatteignable, et « une lecture PASSÉE prime toujours la lecture à venir »
+  // ci-dessous passait alors MÊME AVEC `best ?? ahead` inversé en `ahead ?? best` (0 test rouge
+  // sur 2529 à la mutation, vérifié par la revue). Avec 0-250, t=200 redevient un candidat
+  // `ahead` réel à la frame 60, et ce test protège de nouveau la préférence passé/avenir.
   const d = doc({
-    tracks: [track(512, 'A', 0, 100), track(513, 'B', 0, 100)],
+    tracks: [track(512, 'A', 0, 250), track(513, 'B', 0, 100)],
     loadouts: [
       { t: 10, slot: 512, w: ['0xAAAA'] },
       { t: 200, slot: 512, w: ['0xBBBB'] },
@@ -449,7 +454,10 @@ describe('loadoutAt', () => {
   })
 
   it('une lecture PASSÉE prime toujours la lecture à venir', () => {
-    // À frame 60 : la lecture passée (t=10) est rendue, pas la suivante (t=200).
+    // À frame 60, les DEUX candidats sont dans les bornes de la vie (0-250) : t=10 (passé,
+    // âge 50) et t=200 (à venir, âge -140). La lecture passée est rendue. TEST PAR MUTATION
+    // (revue WEB-R1, C2) : inverser `best ?? ahead` en `ahead ?? best` dans `nearestReading`
+    // rend l'âge -140 au lieu de 50 — ce test devient ROUGE.
     expect(loadoutAt(d, 512, 60)?.age).toBe(50)
   })
 
@@ -497,6 +505,37 @@ describe('loadoutAt — borné à la VIE EN COURS du slot (correctif P0-2, 2026-
     // frame=55 : la vie 1 est finie (end=50), la vie 2 n'a pas commencé (start=60).
     expect(loadoutAt(recycled, 512, 55)).toBeNull()
   })
+
+  it('une vie ANTÉRIEURE sans lecture propre ne capte JAMAIS la lecture d’une vie ULTÉRIEURE du même slot (borne haute, revue WEB-R1 C1)', () => {
+    // Symétrique du premier cas de ce bloc : la SEULE lecture existante appartient à la vie 2
+    // [60,150] (t=70), la requête tombe dans la vie 1 [0,50], qui n'a AUCUNE lecture propre.
+    // Sans la moitié HAUTE de la borne (`s.t > life.end`), `ahead` capterait à tort cette
+    // lecture future comme repli « à venir » de la vie 1 — potentiellement l'armement d'un
+    // AUTRE joueur. TEST PAR MUTATION : retirer `|| s.t > life.end` du filtre de
+    // `nearestReading` rend `{ weapons: ['0xFFFF'], age: -50 }` au lieu de `null`.
+    const futureLifeOnly = doc({
+      tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)],
+      loadouts: [{ t: 70, slot: 512, w: ['0xFFFF'] }],
+    })
+    expect(loadoutAt(futureLifeOnly, 512, 20)).toBeNull()
+  })
+
+  it('lecture PASSÉE et lecture À VENIR toutes deux dans la MÊME vie : la passée prime — verrou indépendant des fixtures partagées', () => {
+    // Isolé de la fixture `d` du bloc `loadoutAt` ci-dessus (revue WEB-R1, C2 : une fixture
+    // PARTAGÉE entre plusieurs tests peut, sans le dire, exclure le candidat `ahead` de la vie
+    // et neutraliser ce verrou en silence). Ici : UNE SEULE vie [0,100], deux lectures dans
+    // ses bornes, l'une passée (t=10) et l'une à venir (t=80) par rapport à frame=60. TEST PAR
+    // MUTATION : inverser `best ?? ahead` en `ahead ?? best` dans `nearestReading` rend l'âge
+    // -20 (t=80) au lieu de 50 (t=10) — ce test devient ROUGE.
+    const uneSeuleVie = doc({
+      tracks: [track(512, 'A', 0, 100)],
+      loadouts: [
+        { t: 10, slot: 512, w: ['0xAAAA'] },
+        { t: 80, slot: 512, w: ['0xFFFF'] },
+      ],
+    })
+    expect(loadoutAt(uneSeuleVie, 512, 60)).toEqual({ weapons: ['0xAAAA'], age: 50 })
+  })
 })
 
 describe('currentLifeOf', () => {
@@ -543,6 +582,18 @@ describe('abilityAt', () => {
       abilities: [{ t: 10, slot: 512, r: 20, src: 'kf' }],
     })
     expect(abilityAt(d, 512, 100)).toBeNull()
+  })
+
+  it('une vie ANTÉRIEURE sans lecture propre ne capte JAMAIS la capacité d’une vie ULTÉRIEURE (borne haute, revue WEB-R1 C1)', () => {
+    // Symétrique du cas ci-dessus : la SEULE lecture existante appartient à la vie 2 [60,150]
+    // (t=70), la requête tombe dans la vie 1 [0,50], sans lecture propre. TEST PAR MUTATION :
+    // retirer `|| s.t > life.end` du filtre de `nearestReading` rend `{ rank: 9, ... }` au
+    // lieu de `null`.
+    const futureLifeOnly = doc({
+      tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)],
+      abilities: [{ t: 70, slot: 512, r: 9, src: 'kf' }],
+    })
+    expect(abilityAt(futureLifeOnly, 512, 20)).toBeNull()
   })
 })
 
