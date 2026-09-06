@@ -122,7 +122,11 @@ type TacticalQuery struct {
 	// sien : la portee « tout le monde » n'existe pas en V1.
 	PlayerXUID string
 
-	// MapID restreint a une carte. Vide = toutes les cartes (ecran d'entree).
+	// MapID restreint a une carte. Vide = toutes les cartes — c'est le cas de
+	// l'ecran d'entree (MapsPlayed) ET du journal des morts lu par la page
+	// Escouade (KillEvents), qui mesure l'echange d'une COMPOSITION et non d'une
+	// carte. Seule la lecture SPATIALE (KillPositions) l'exige : une grille de
+	// 0,5 m n'a de sens que carte par carte.
 	MapID string
 
 	// Filtre : nil = aucun filtre (tout l'historique du joueur).

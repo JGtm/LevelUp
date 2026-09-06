@@ -69,5 +69,11 @@ type TacticalRepository interface {
 	// KillEvents rend l'univers des matchs retenus ET le journal de leurs morts,
 	// sous la forme que analysis/coordination consomme (victime, tueur crédité,
 	// instant). Même portée que KillPositions : tous les joueurs.
+	//
+	// `filtre.MapID` est OPTIONNEL ici (vide = toutes les cartes) : la page
+	// Escouade mesure l'échange d'une COMPOSITION, qui n'a pas de carte, et
+	// resserre le périmètre sur ses matchs partagés côté service. Une seconde
+	// requête pour ce seul cas aurait donné deux définitions du journal des
+	// morts d'un joueur.
 	KillEvents(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalKillEvents, error)
 }

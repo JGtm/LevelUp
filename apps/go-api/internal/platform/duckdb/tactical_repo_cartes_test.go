@@ -189,8 +189,13 @@ func TestTacticalRepo_AucuneDonnee_ZeroLigneZeroErreur(t *testing.T) {
 	}
 }
 
-// TestTacticalRepo_EntreesVides_Refus : jamais de scan complet — un xuid ou une
-// carte vides sont un refus, pas un balayage de shared.kill_positions.
+// TestTacticalRepo_EntreesVides_Refus : jamais de scan complet — un XUID vide est
+// un refus sur les TROIS lectures, et une carte vide en est un sur la lecture
+// SPATIALE, pas un balayage de shared.kill_positions.
+//
+// La carte vide n'est PLUS un refus sur KillEvents depuis le 2026-09-06 : la page
+// Escouade lit le journal des morts d'une composition, qui n'a pas de carte. La
+// borne qui reste est le joueur — cf. TestTacticalRepo_KillEvents_SansCarte.
 func TestTacticalRepo_EntreesVides_Refus(t *testing.T) {
 	repo := NewTacticalRepo(newTacticalTestPlayerDB(t))
 	if _, err := repo.MapsPlayed(context.Background(), domain.TacticalQuery{}); err == nil {
@@ -199,8 +204,11 @@ func TestTacticalRepo_EntreesVides_Refus(t *testing.T) {
 	if _, err := repo.KillPositions(context.Background(), domain.TacticalQuery{MapID: tacCarteA}); err == nil {
 		t.Error("KillPositions sans xuid : attendu un refus")
 	}
-	if _, err := repo.KillEvents(context.Background(), domain.TacticalQuery{PlayerXUID: tacXUIDMoi}); err == nil {
-		t.Error("KillEvents sans carte : attendu un refus")
+	if _, err := repo.KillPositions(context.Background(), domain.TacticalQuery{PlayerXUID: tacXUIDMoi}); err == nil {
+		t.Error("KillPositions sans carte : attendu un refus")
+	}
+	if _, err := repo.KillEvents(context.Background(), domain.TacticalQuery{}); err == nil {
+		t.Error("KillEvents sans xuid : attendu un refus")
 	}
 }
 
@@ -238,5 +246,67 @@ func TestTacticalRepo_TablesAbsentes_Capability(t *testing.T) {
 	}
 	if _, err := repo.KillEvents(context.Background(), tacQuery(tacCarteA)); !errors.Is(err, games.ErrCapabilityNotSupported) {
 		t.Errorf("KillEvents sur schema sans film: err = %v, want ErrCapabilityNotSupported", err)
+	}
+}
+
+// TestTacticalRepo_KillEvents_SansCarte : la carte est OPTIONNELLE pour le journal
+// des morts (ajout 2026-09-06, phase 3 du plan tactique). La page Escouade mesure
+// l'echange d'une COMPOSITION, qui n'a pas de carte : elle demande tout
+// l'historique du joueur et resserre son perimetre en Go.
+//
+// L'univers doit alors porter les matchs des DEUX cartes (m1, m2, m3) — et
+// TOUJOURS PAS le match tiers m4, ou le joueur n'est pas participant : la borne
+// qui saute est la carte, jamais le joueur.
+func TestTacticalRepo_KillEvents_SansCarte(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	seedTacticalCorpus(t, pdb)
+
+	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(), tacQuery(""))
+	if err != nil {
+		t.Fatalf("KillEvents sans carte: %v", err)
+	}
+	if want := []string{"m1", "m2", "m3"}; !egales(matchIDs(got.Univers.Matchs), want) {
+		t.Fatalf("univers = %v, want %v (les deux cartes, jamais le match tiers)",
+			matchIDs(got.Univers.Matchs), want)
+	}
+	if len(got.Events) != 3 {
+		t.Fatalf("evenements = %d, want 3 (2 sur m1, 1 sur m3) : %+v", len(got.Events), got.Events)
+	}
+	for _, e := range got.Events {
+		if e.MatchID == "m4" {
+			t.Errorf("evenement d'un match ou le joueur n'a pas joue : %+v", e)
+		}
+	}
+}
+
+// TestTacticalRepo_KillEvents_SansCarte_FiltreToujoursApplique : le predicat de
+// carte devenu neutre ne desactive PAS le reste du filtre. Une issue « victoire »
+// ne retient que m1 et m3, sur les deux cartes.
+func TestTacticalRepo_KillEvents_SansCarte_FiltreToujoursApplique(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	seedTacticalCorpus(t, pdb)
+
+	gagne := "win"
+	q := tacQuery("")
+	q.Filtre = &domain.MatchFilterSpec{Outcome: &gagne}
+	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(), q)
+	if err != nil {
+		t.Fatalf("KillEvents sans carte, filtre issue: %v", err)
+	}
+	if want := []string{"m1", "m3"}; !egales(matchIDs(got.Univers.Matchs), want) {
+		t.Fatalf("univers = %v, want %v", matchIDs(got.Univers.Matchs), want)
+	}
+}
+
+// TestTacticalRepo_KillPositions_ExigeUneCarte : la lecture SPATIALE, elle, refuse
+// toujours une carte vide. Sans carte elle balaierait `kill_positions` sur tout
+// l'historique du joueur pour une grille de 0,5 m qui n'a de sens que carte par
+// carte.
+func TestTacticalRepo_KillPositions_ExigeUneCarte(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	seedTacticalCorpus(t, pdb)
+
+	if _, err := NewTacticalRepo(pdb).KillPositions(context.Background(), tacQuery("")); err == nil {
+		t.Fatal("KillPositions sans carte doit etre un REFUS, pas un balayage")
 	}
 }

@@ -33,7 +33,30 @@ const FenetreEchangeMs int64 = 5000
 // VENGEABLE : elle sort du denominateur au lieu d'y compter comme un echec (personne ne
 // pouvait la venger).
 func Echanges(kills []domain.KillEvent, equipes domain.EquipesParMatch) domain.BilanEchanges {
-	bilan := domain.BilanEchanges{Morts: make([]domain.MortSuivie, 0, len(kills))}
+	morts := suivreMorts(kills, equipes, FenetreEchangeMs)
+	bilan := domain.BilanEchanges{Morts: morts}
+	for _, m := range morts {
+		if !m.Vengeable {
+			continue
+		}
+		bilan.NbVengeables++
+		if m.Vengee {
+			bilan.NbVengees++
+		}
+	}
+	bilan.Paires = agregerPaires(bilan.Morts)
+	return bilan
+}
+
+// suivreMorts est le NOYAU commun de Echanges et de Ripostes : il suit chaque mort et
+// cherche le premier coequipier a abattre son tueur, dans la fenetre `fenetreMs`.
+//
+// `fenetreMs` NEGATIF = aucune borne de temps (cf. Ripostes). Le parametre existe pour que
+// les deux lectures ne se separent JAMAIS sur la definition de « qui venge qui » : elles ne
+// different que par la borne, et une seconde implementation de la recherche donnerait deux
+// vengeurs differents pour la meme mort au premier ajustement (CLAUDE.md n 6).
+func suivreMorts(kills []domain.KillEvent, equipes domain.EquipesParMatch, fenetreMs int64) []domain.MortSuivie {
+	morts := make([]domain.MortSuivie, 0, len(kills))
 	for matchID, evenements := range grouperParMatch(kills) {
 		parVictime := indexerParVictime(evenements)
 		equipesDuMatch := equipes[matchID]
@@ -46,20 +69,17 @@ func Echanges(kills []domain.KillEvent, equipes domain.EquipesParMatch) domain.B
 				Vengeable:   estVengeable(d, equipesDuMatch),
 			}
 			if m.Vengeable {
-				bilan.NbVengeables++
-				if r, trouve := chercheVengeur(d, parVictime[d.KillerXUID], equipesDuMatch); trouve {
+				if r, trouve := chercheVengeur(d, parVictime[d.KillerXUID], equipesDuMatch, fenetreMs); trouve {
 					m.Vengee = true
 					m.VengeurXUID = r.KillerXUID
 					m.DelaiMs = r.TimeMs - d.TimeMs
-					bilan.NbVengees++
 				}
 			}
-			bilan.Morts = append(bilan.Morts, m)
+			morts = append(morts, m)
 		}
 	}
-	trierMorts(bilan.Morts)
-	bilan.Paires = agregerPaires(bilan.Morts)
-	return bilan
+	trierMorts(morts)
+	return morts
 }
 
 // estVengeable : il faut un tueur identifie, distinct de la victime (un suicide ne se venge
@@ -75,15 +95,15 @@ func estVengeable(d domain.KillEvent, equipes map[string]int) bool {
 
 // chercheVengeur rend le PREMIER kill du tueur, dans la fenetre, porte par un coequipier de
 // la victime. `candidats` est trie par instant croissant, d'ou l'arret des que la fenetre
-// est depassee.
-func chercheVengeur(d domain.KillEvent, candidats []domain.KillEvent, equipes map[string]int) (domain.KillEvent, bool) {
+// est depassee. `fenetreMs` negatif = pas de borne (l'arret anticipe ne s'applique plus).
+func chercheVengeur(d domain.KillEvent, candidats []domain.KillEvent, equipes map[string]int, fenetreMs int64) (domain.KillEvent, bool) {
 	equipeVictime := equipes[d.VictimXUID]
 	for _, r := range candidats {
 		delai := r.TimeMs - d.TimeMs
 		if delai < 0 {
 			continue
 		}
-		if delai > FenetreEchangeMs {
+		if fenetreMs >= 0 && delai > fenetreMs {
 			break
 		}
 		// Sans auteur (environnement, chute) ou par la victime elle-meme (deja morte) :
