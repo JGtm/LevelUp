@@ -301,7 +301,243 @@ aux deux sites Halo), G5 (`FilmCacheDir` par titre), L8 (`soundUrlOf` avec slug)
 - 2026-09-05 : plan écrit depuis le registre ; 7 worktrees créés (`LevelUp-wt-v2-*`), jonctions
   `node_modules` pour docservi, capabilities, web-modele, tests-ci ; lancement des lots A, B, C,
   D, E, F, G en parallèle.
+- 2026-09-06 : lot B rendu (4/4, CI verte, commits `40667b2c2`..`fa9fdae54`) ; tâche A-I rendue
+  (3/3, CI verte, `2009fbfa7`..`26a488214`), A-II lancée. Directive utilisateur : plus de revue
+  adversariale avant la fin de tous les lots (les quatre déjà lancées finissent). Verdict B-R2
+  reçu : C1 P1 (la parité ne teste jamais la classe zéro/nil : `int` → `*int` ou `[]` contre
+  `null` passent tous les gates ; réparation = jouer `comparer` sur un document zéro et à
+  tranches vides), C2 P2 (un alias `type X = replay.ReplayDocument` contourne le ratchet
+  `archlint`), C3 P2 (plancher documenté 104, mesuré 226). Aucune divergence live. Corrections
+  à faire par l'exécuteur B en fin de chantier, avant merge.
+- 2026-09-06 : verdict B-R1 reçu : équivalence de fil prouvée octet pour octet sur 106 artefacts,
+  109 sidecars, 86 entrées de callouts et 1 000 documents de fuzz ; trois P2 (`ContractVersion`
+  sans lecteur, `champsNonServis` incapable de couvrir un TYPE stocké neuf, prose du producteur
+  recopiée dans `replaydoc/map.go`). Leçon de méthode : deux relecteurs dans le même worktree se
+  polluent (mutations concurrentes) — un relecteur par worktree désormais. Quota : les deux
+  relecteurs A-I arrêtés (revue A d'un bloc avec A-II en fin de chantier) ; lots D et E mis en
+  pause à 01:05, reprise programmée 03:21 ; surveillance CI abandonnée pour tous les lots
+  (vérification par le superviseur à l'intégration, demain).
+- 2026-09-06 : lot C rendu (4/4, HEAD `f319393aa`, CI partiellement vue : 6 jobs verts, 2 en cours
+  au dernier relevé, à revérifier). Écarts au plan constatés sur pièces : `title.toml` n'existe pas
+  (descripteur built-in, `CapReplay` déclarée dans `NewRegistry()`) ; les manifestes « heatmap »
+  vivent sous `apps/web/src/lib/i18n/manifests/` ; le chemin de test est `./contracttest/...` et
+  le gate exige `-tags=integration`. Découverte à traiter en ronde de correction C :
+  `MatchPositionsHeatmap` et ses deux hooks n'ont pas de garde `enabled` sur `film.*` (état vide sur
+  un titre sans film) ; question ouverte : niveau INFO du refus de production contre DEBUG des
+  gates jumeaux (à trancher en revue).
+- 2026-09-06 : lot G rendu (4/4, HEAD `8614e2f2c`, 9 commits ; CI vue partiellement : Go Lint,
+  build/test, frontend, lease, contrat, gitleaks, pre-check verts ; Go Coverage + Baseline non
+  conclu, commit de clôture non surveillé). G.3 : mode `livrer` porté (dont un port bit à bit du
+  générateur MT19937 de CPython), preuve octet à octet contre les scripts Python sur un jeu
+  synthétique ; `[!]` comparaison avec l'artefact de production impossible, les `.wav` sources
+  ont disparu du poste depuis le 2026-08-16. Découvertes : l'annexe G9 est imprécise sur
+  `map_objects.csv`/`forge_object_types.csv` (import manuel, pas de producteur) et sur
+  `mapnav-fetch` (sortie gitignorée) ; `vehicle-sprite` n'a pas de commande unique reproduisant
+  les 18 véhicules ; un commit (`14dd46fd3`) porte un mojibake cosmétique dans son message ;
+  un `git add` multi-chemins échoue en bloc sur un pathspec invalide. Coût : 828 k tokens pour
+  un lot Sonnet (410 appels d'outils), plus que tout lot Opus rendu — Sonnet n'est pas moins cher
+  sur un lot à quatre items hétérogènes.
+- 2026-09-06 : lot F rendu (6/6, HEAD `1dd9b8ab4`, CI non surveillée). F.2(c) `[~]` : la CI
+  invoquait déjà le script de baseline (`ci.yml:374-376`). Baseline 8 586 → 9 795 noms (+1 209
+  entrées réelles pour les 5 paquets). Les deux specs de rasterisation étaient ROUGES au premier
+  rejeu (harnais périmé par deux refactorings v7.5) : réparées, 3/3 vertes en local. F.5 :
+  `path` + `path-except` sur une même règle est refusé par golangci-lint v2.12.2 ; `path-except`
+  seul porte la condition ; dette visible 260 → 300, toute dans `cmd/server`/`cmd/levelup`.
+  À FAIRE À L'INTÉGRATION (superviseur) : (1) `CLAUDE.md` section « Commandes utiles » cite
+  `internal/himap/corpus_tag_test.go`, supprimé : pointer `internal/archlint/gamefiles_tag_test.go`
+  dans le commit de merge ; (2) décision : les deux exemptions fines (`cmd/server/main.go`,
+  `cmd/levelup/main.go`, funlen + gocyclo) restent SUPPRIMÉES — dette visible, ratchet vert, un
+  hotfix dans `main()` ne fait pas remonter la ligne de déclaration ; (3) le lot E supprime des
+  tests de `analysis/replay`, `killcollector`, `objectiveevents` désormais enrôlés dans la
+  baseline : rejouer la baseline au merge de E. DÉCOUVERTE À INSTRUIRE AVANT LA RE-CUISSON DU
+  PARC : sur le fixture `film_e2e/c0a82e88` (Husky Raid CTF) au schéma 39, `flagCarries` = 0 et
+  `objectiveObjects` = 0 alors que le schéma 37 donnait « 92, famille flag » sur le même fixture
+  et que l'API donne 3 captures ; piste `objectiveevents.ObjectiveTypeOf("Husky Raid:CTF")`.
+  Autres découvertes : mode `coverage` du script de baseline invoqué par aucun gate ; `t.Skip`
+  permanent compté « présent » ; fixture de purge dépendante du fuseau du runner ; 49 issues de
+  lint visibles sur `cmd/server` (5) et `cmd/levelup` (44), dont `main` à 149 de complexité.
+- 2026-09-06 : tâche A-II rendue (3/3, commits `69aed7e53`, `9b01446df`, `bddb608d1`, CI non
+  surveillée). A.4 : `replayartifacts.Deriver` appelé des deux rangeurs (`Run` et
+  `StoreBuildArtifact`), preuve de morsure ; A.5 : index `<artefact>.derived.json` + prédicat
+  `DerivationsUpToDate` + rattrapage borné (horizon 64, plafond 5) sur les deux placements, 106
+  artefacts locaux en ~21 cycles ; A.6 : `match_player_positions` CONVERTIE EN APPEND-ONLY
+  (migration : `id` PK + `positions_pass` + vue `_latest` par passe), persister INSERT-only,
+  `WriteMatch` + `write_conn.go` + `-write` positions du diagnostic supprimés ; grain de
+  décimation `GrainPositionsMS = 20 000` (celui que le schéma déclarait, 215 positions par match
+  contre 31 051 brutes) = seul paramètre produit tranché par l'exécuteur, à confirmer en revue.
+  Risque d'intégration D-7 : A-I et C modifient tous deux `internal/domain/title/registry.go`
+  (ajouts indépendants). `match_objective_events` non touchée (PK naturelle, pas de `_latest`).
+- 2026-09-06 03:30 : tâche D-I rendue (5/5, HEAD `e78459c0f`, 7 commits, vitest web entier 6 287
+  verts, build OK, CI non surveillée). Décisions produit de l'exécuteur à valider en revue :
+  (1) ancre de l'axe commun = `header.t0_ms` (celui que le producteur retranche pour
+  `event_time_ms`) ; (2) `_scoreEvents.ts` traité avec `_scoreCurve.ts` ; (3) sur un artefact
+  sans `originMs`, le bloc « Score dans le temps » ne rend rien et la piste Médias se tait
+  (0 carte perdue : les 5 artefacts concernés étaient déjà écartés par `filmClockTrusted`), le
+  fil garde son repli mesuré ; (4) formateur du rejeu = celui qui tronque. Découvertes :
+  `replay-explosion-raster.spec.ts` rouge AVANT le lot (harnais à 7 imports contre 6 réels ;
+  réparé côté lot F, à réconcilier au merge) ; `SynthesisBipolaireChart` rendait « 1m60s »
+  (corrigé par le helper canonique) ; `REGISTRE_REPORTS.md` l.449 à amender par le superviseur
+  (condition exécutée par D.4). D-II lancée en deux temps : D.6-D.8 puis D.9-D.14.
+- 2026-09-06 03:45 : tâche E-I rendue (5/5, 7 commits, 43 fichiers, +517/−1 317, CI non
+  surveillée). Tous les témoins identiques à la référence archivée (`LOT_E_digests_avant.md`) :
+  goldens inconditionnels, 4 goldens killsource sur films réels, 3 témoins de marche delta,
+  table ECS, intégration killcollector ; ratchet des variables 118 → 111 ; trois garde-rails
+  neufs validés par mutation. Découvertes : le golden `fccc61cd` et le témoin de marche delta
+  étaient DÉJÀ rouges sur la base (preuve mesurée de P0-1, traité par A.1) ; 14 variables de
+  paquet sans écrivain restent, dont des largeurs MESURÉES de chemins non nominaux (savoir de
+  rétro-ingénierie) → E.8 ajouté à E-II : les convertir en constantes documentées (provenance,
+  mesure), jamais les jeter ; `golangci-lint` a un cache GLOBAL indépendant de `GOCACHE` qui a
+  menti (« 0 issues » sur un paquet qui en a 6) → toute mesure de lint isole
+  `GOLANGCI_LINT_CACHE` ; `TestKillSourcePositionsFilmReelEtRelitParLaVue` se skippe (film codé
+  en dur sur une carte hors catalogue), seul test de bout en bout de `buildPositionRows` → lot F
+  ou ronde de correction ; les « 49 étapes d'équivalence » du registre sont `cmd/replay-equiv`,
+  qui cuit un artefact par film (interdit dans les lots). E-II lancée (E.6, E.7, E.8).
+- 2026-09-06 04:35 : tâche E-II rendue (3/3, commits `8a65d0969`, `25dbad2e6`, `0dd6e0fc8` +
+  journal, HEAD `98df0b00c`, CI non surveillée). E.6 : golden inconditionnel sur la mini-bobine,
+  30 familles (24 peuplées, 6 vides ou en refus propre expliquées : Fiesta d'arène, donc pas de
+  véhicule ni d'objectif), `registry_test.go` sans chemin absolu ni skip ; deux pièges corrigés
+  (un zéro de mauvais appel n'est pas une population vide : catalogue d'armes dérivé du film ;
+  digest stable par réflexion, pas `%+v`). E.7 : 179 largeurs classées (114 fixes dont 111
+  d'accord, 65 gardées), 3 écarts datés. E.8 : 10 constantes documentées, 5 suppressions,
+  2 gardées, ratchet 111 → 96. Témoins E.1 toujours identiques. Mutations : `dom4RefWidth` rougit
+  la seule famille qui lit ce domaine, `bipedIndexBits` en rougit 14. Découvertes (lot de
+  révision de la table, pas à comportement identique) : `ti=43 i=0 object-position-component`
+  table 15 bits contre 45/60 consommés ; `biped-map-editor-flag-component` table 1 contre R(8)
+  confirmé au décompilé (table périmée) ; `accumWorld`/`accumSlot`/`inferResyncTargets` =
+  interrupteurs de deux mécanismes entiers sans écrivain (décision produit) ; `weaponShots` /
+  `weaponDamages` n'ont que la forme `dir`. LOT E TERMINÉ.
+- 2026-09-06 05:20 : D-II premier temps rendu (D.6, D.7, D.8 magasin `[x]` ; HEAD `ef3c3be4a` ;
+  route 395 → 316 L et 13 `useMemo` → 3 ; `draw` 222 → 22 L, 25 calques en donnée
+  (`LAYER_ORDER`), composition testée au contexte enregistreur ; `playbackStore` par
+  `useSyncExternalStore` ; vitest web 6 339 verts, rasterisation 3/3 identique). `useReplayDrawer`
+  reste (un consommateur, 120 L que le canvas à 651/665 ne peut absorber). D.8 « Transport et
+  tiroir frères du canvas » `[!]` DIFFÉRÉ par décision du superviseur : le tiroir est positionné
+  en `absolute` par rapport à la racine du canvas, changer son parent change sa position à
+  l'écran et aucune spec de rasterisation ne le couvre → item D.15, à faire APRÈS un gate visuel
+  validé par l'utilisateur (témoins nommés par lui), pas dans ce chantier à UI constante.
+  Découvertes : le témoin de rasterisation portait deux dérives (compte d'imports ET
+  `drawGrenadeRestLayer` déplacé) — la version du lot D fait foi au merge, celle du lot F n'en
+  corrige qu'une ; la position de lecture ne se remet pas à zéro d'un match à l'autre (avant
+  comme après le lot, changement de comportement, hors contrainte) ; `buildScene` porte une
+  exemption R5 assumée (table de liaison de 179 L). Second temps lancé (D.9 à D.14).
+- 2026-09-06 06:40 : D.9 et D.10 (M4, M5) rendus (HEAD `2225147ac`, 6 commits ; K3 : 8
+  redéclarations + 36 sites migrés ; K5 : 12 copies et non 10 ; gardes de K2/K5 resserrés sur la
+  formule entière après 4 faux positifs ; vitest web 6 354 verts, rasterisation 3/3). D.10
+  « faux hooks » requalifié `[~]` par le superviseur sur la mesure de l'exécuteur : ils sont 15,
+  leur logique est déjà pure et testée à côté (ex. `useReplayVipCrown` → `drawVipCrown` testé),
+  ils ne portent que mémoïsation et câblage ; les convertir déplacerait ~15 `useMemo` dans le
+  canvas et risquerait une perte de mémoïsation à 60 im/s sans gate — constat W1 réfuté sur
+  pièces pour ce qui est de la testabilité. Découverte : `MatchPadControlSection.tsx` lit
+  `team_side` brut (troisième lecture du scoreboard, famille N4). L'exécuteur D s'arrête sur
+  saturation de contexte (868 k tokens) ; exécuteur frais lancé sur D.11-D.14 depuis le journal.
+- 2026-09-06 08:15 : D.11-D.14 rendus par l'exécuteur frais (HEAD `bb379d10b`, 14 commits ;
+  `max-lines` 500 en error avec `skipComments`, cliquet de lignes brutes supprimé, 26 en-têtes
+  repointés, arborescence en 8 dossiers par `git mv` purs + README + garde d'arborescence ;
+  `lint:colors` en CI, 5 copies supprimées avec preuve 20/20 par mutation, 4 assertions de RENDU
+  conservées à raison (la couleur peut venir de la donnée) ; 7 modules descendus dans
+  `lib/replay/`, allowlist par modules nommés (2 paires → 8 modules), imports croisés hors tests
+  9 → 4 ; merge de `feat/v2-capabilities` (1 conflit, thought_log) et route sous `matchmaking`
+  puis `replay`, 4 cas de test ; vitest web 6 376 verts, rasterisation 3/3 après chacun des 12
+  commits). Découvertes : `lib/ → features/` n'est contrôlé par aucun lint de frontière ; 7
+  violations cross-feature restantes hors rejeu ; le témoin de rasterisation cherche désormais
+  ses modules par nom (`e2e/_helpers/replaySource.ts`) — cette version fait foi au merge avec F.
+  TOUS LES LOTS SONT RENDUS (A, B, C, D, E, F, G). Suite : vérification CI des 7 branches,
+  revues adversariales en bloc, corrections, intégration dans l'ordre C → A → B → F → G → E → D.
 
 ## Découvertes (hors périmètre, à ne pas traiter dans les lots)
 
 - (vide)
+
+## Décisions utilisateur du 2026-09-06 (fermes)
+
+| # | Sujet | Décision |
+|---|---|---|
+| 7 | Perte des ports de drapeau au schéma 39 (fixture Husky Raid CTF) | GRAVE, à instruire immédiatement : worktree `LevelUp-wt-v2-ctf`, branche `feat/v2-ctf-drapeaux`, bissection 37 → 39, correctif + test de non-régression, avis sur bump de schéma |
+| 8 | `match_player_positions` append-only + grain 20 s (A.6) | Confirmés (recommandation superviseur : doctrine anti-corruption, grain déjà déclaré par le schéma et consommé en grille 20×20, constante réversible) |
+| 9 | Transport et tiroir en frères du canvas (ex-D.15) | ON NE TOUCHE PAS : item abandonné (risque visuel sans valeur produit) |
+| 10 | Table des largeurs `ecs_table.tsv` (`ti=43 i=0`, `biped-map-editor-flag-component`, 3 écarts datés) | À CORRIGER PRUDEMMENT : item E.9 après la revue du lot E — chaque entrée corrigée est adossée à une mesure (décompilé, film témoin), aucun changement de comportement du décodeur, le contrôle E.7 perd les allowlists correspondantes |
+| 11 | Mécanismes de resynchronisation sans interrupteur (`accumWorld`, `accumSlot`, `inferResyncTargets`) | Gardés tels quels, commentaire daté au plus ; pas de retrait de fonctionnalité |
+
+## Journal des revues adversariales (ronde 1, 2026-09-06)
+
+| Lot | Verdict | P1 | P2 | Tiennent | Suite |
+|---|---|---|---|---|---|
+| B | B-R1 + B-R2 : équivalence octet pour octet prouvée (106 artefacts, 1 000 fuzz) | 1 (parité aveugle au zéro/nil) | 5 | 13 + 21 | corrigés (6/6, `49ab682af`), ronde 2 en cours |
+| C | C-R1 : comportement livré exact, gardes qui ne mordent pas | 2 (garde des routes sur routeur reconstruit ; fixture synthétique sans test) | 4 (tests colonne, flash halo_5, filtre miroir, `FeatureGate` sans appelant) + obs. INFO | 21 | corrections en cours (8 points) |
+| D | D-R1 : 25/25 calques identiques, jointure et replis équivalents, « 0 carte perdue » recompté vrai | 2 (câblage `t0Ms` sans test ; table de liaison peintre/calque sans test) | 7 (ordre tautologique, infobulle tronquée = exception acceptée, lint couleur aveugle à oklch/rgba et à `lib/`, garde horloge contournable, « 1m00s » = exception acceptée, exemption `max-lines` mal placée, 12 commentaires orphelins) | 24 | corrections en cours (11 points) |
+| F | F-R1 : 25 conditions, 19 mutations | 1 (le « différentiel film ↔ API » est imposé par le pont d'identité : doc inversée) | 1 (ratchet `gamefiles` sur 2 racines) | 25 | corrections en cours (3 points) |
+| G | G-R1 : fidélité du port prouvée sur jeu synthétique, MT19937 conforme | 3 (`livrer` exige jeu + cgo ; en-tête `GENERE PAR` non mis à jour ; aucun test octet à octet) | 7 (pic non ré-échantillonné, logs sentinelle modifiés, ratchet promis absent, vote vide avorte après effacement, `ntpath` partiel, `repr(float)`, erreur avalée) | 26 | exécuteur frais, corrections en cours (10 points) |
+| A | A-R1 : 21 conditions, 12 mutations | 2 (marque posée sans écriture → exclusion à jamais ; rattrapage inatteignable quand rien à cuire) | 5 (verrou d'overlay ENOENT, migration non testée, `team = -1` partout + filtre mort, marques `.derived.json` polluent purge et backfill, 4 acquisitions du writer dans un handler à 30 s) | 21 | exécuteur frais, corrections en cours (7 points) |
+| E | E-R1 : comportement identique confirmé (tous témoins), preuves neuves trouées | 2 (avance du marcheur non testée ; témoin delta ≠ oracle de E.4) | 4 (garde préambule contournable, ratchet verrou liste fermée + `rdata_weapon_scan` sans verrou, `-update` régénère le golden, en-tête du golden faux) | 21 | exécuteur frais, corrections + E.9 table ECS en cours |
+
+Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documentées (5 et 6) ; `ContractVersion` supprimée ; `typesNonServis` ajouté ; hooks de mémoïsation gardés.
+
+- 2026-09-06 (suite) : B-R3 (ronde 2) : les six corrections FERMÉES, un P3 neuf (garde trop
+  strict sur exclusion imbriquée) — LOT B PRÊT À INTÉGRER (HEAD `49ab682af`). F corrections
+  rendues (3/3, HEAD `62edaec30`). INSTRUCTION CTF CLOSE (`feat/v2-ctf-drapeaux`, `086a15f62`) :
+  AUCUNE régression de production — la cuisson du film complet est identique avant et après le
+  merge cuisson-perf, `flagCarries = 0` sur ce match à TOUS les schémas (3 prises sans pont
+  d'identité), « 92 » était un compteur de journal ; la perte réelle était dans le FIXTURE E2E
+  (morceaux 00 et 07 doublement compressés zlib, générés le 2026-08-25), rendu invisible puis
+  actif par `c17f4941f` (retrait du repli zlib de `ParseRegistryChunk` → registre VIDE → 11
+  calques tombés dans la seule cuisson réelle de la CI, verte faute d'assertion de valeur).
+  Correctif : fixture pelé (octets du cache, sha256), `ParseRegistryChunk` REFUSE un tampon
+  compressé (`ErrRegistryStillCompressed`), 3 tests dont l'intégrité du fixture, assertions de
+  valeur E2E (captures = 3 = feuille de match). Pas de bump de schéma, parc non concerné.
+  CONSÉQUENCE POUR F : `build_queue_worker_valeurs_integration_test.go` (F.1) a figé les
+  valeurs du fixture CASSÉ (originMs 34 870, t0FilmMs 35 170, 22 vies…) → à re-mesurer sur le
+  fixture corrigé au merge (intégrer CTF avant F). Disque : C: à 99 %, cache go-build principal
+  69 Go, deux agents en « No space left on device » → purge (caches de relecteurs, `go-link-*`,
+  `go clean -cache` principal).
+
+- 2026-09-06 (ronde 2) : B fermé 6/6 (P3 résiduel) → PRÊT ; F fermé 3/3 + 2 retouches doc
+  (`44067dfb6`) → PRÊT ; D fermé 10/11 + retouches N1/N4/N2/N3 (`8522e9a58`, vérifiées sur
+  pièces : tolérance `/*` retirée, motif horloge qualifié) → PRÊT (intégration en dernier) ;
+  C fermé 7/8, retouches N1 (porte sur un ANCÊTRE du montage, pas un frère) + N2 en cours ;
+  E corrections 7/7 + E.9 (`caee98022`, `ti=35 i=50` 1 → 8 adossé au décompilé, notes pour
+  `ti=43 i=0` et `ti=37 i=14`, contrôle G5) → ronde 2 en cours ; G corrections 10/10
+  (`3efe72e71`, test octet à octet versionné, `ntpath` et `repr(float)` fidèles, publication
+  tout ou rien) → ronde 2 en cours ; A corrections en cours (exécuteur frais). CTF : la revue a
+  infirmé le volet « CI aveugle » (le téléchargeur de l'ouvrier pèle déjà une couche) mais
+  révélé le fond : entre le schéma 20 (parc) et le HEAD, les actions `flag_captures` /
+  `flag_steals` de `c0a82e88` ont disparu (17 → 12) et les 5 pontés sont échangés → bissection
+  20 → 38 relancée. Proposition au user (feu vert attendu) : balayage du parc local (106
+  artefacts, 9 schémas) re-cuits un à un au HEAD et comparés champ par champ, avant puis après
+  intégration.
+
+- 2026-09-06 11:00 : INTÉGRATION — B fusionné (`e1dfe6558`, `--no-ff`, conflit thought_log
+  résolu par concaténation) ; F fusionné (`47740fc5e`) avec CLAUDE.md corrigé (garde-rail
+  gamefiles → `internal/archlint/gamefiles_tag_test.go`). Conflit SÉMANTIQUE B/F attrapé par le
+  hook pre-push `go-vet-cgo` : le test de valeurs F.1 typait le document `replay.ReplayDocument`
+  alors que B fait servir `replaydoc.ReplayDocument` → test adapté aux types miroir (mêmes
+  champs), `go vet` + intégration `api/wire` verts (`ok 18 s`). Décision user : feu vert au
+  balayage du parc (un film par processus borné, jamais de bombe RAM) ; corpus élargi aux
+  artefacts des autres worktrees et de la clé PNY (`E:\data\cache\replays\`, état du 31/07).
+- 2026-09-06 11:20 : C fusionné (ronde 2 close par `b13f36fe9` : porte cherchée sur un ANCÊTRE
+  du montage, mémo par titre prouvé) ; conflit thought_log concaténé. Balayage du parc lancé
+  (worktree `LevelUp-wt-v2-balayage`, outil `cmd/replay-diff`, rapport
+  `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md` attendu). Intégrés : B, F, C. Restent : A (corrections),
+  G et E (ronde 2), D (prêt, en dernier), CTF (enquête rouverte).
+- 2026-09-06 11:45 : ENQUÊTE CTF — VRAIE CAUSE ÉTABLIE (`feat/v2-ctf-drapeaux`, `91296072c` erratum
+  + `eb5585109` correctif) : le commit `d173b1a8c` (2026-08-28, `replaybuild/matchfacts.go`,
+  `identifiedEvents`) a REMPLACÉ le pont d'identité par triplet (`SlotIdentityFrom`) par le pont
+  par morts (`ResolveRoundIdentity`, `deathInstantMin = 3`) alors que les deux couvertures sont
+  complémentaires : les joueurs qui meurent moins de 3 fois (les meilleurs, donc les porteurs)
+  sortaient du pont → actions d'objectif perdues (17 → 12 sur `c0a82e88`, captures et vols de
+  SweatyYeti75 disparus). Régression, pas décision (« neutralité prouvée » contre le mauvais
+  témoin). Correctif : `RoundIdentity.CompletedByLines` (mono-manche, compléter sans contredire,
+  aucun xuid deux fois) → 7/7 pontés, 23 actions, chaque joueur = sa ligne de feuille de match.
+  Impact : tout artefact cuit depuis le 2026-08-28 sur film mono-manche avec un joueur à < 3
+  morts, toutes familles ; pas de bump de schéma (contenu enrichi) ; propagation par le
+  `backfill-replay` de la release (inscrit au registre). Revue adverse CTF-R2 lancée. DÉCISION
+  USER EN ATTENTE : `flagCarries` subit le même plafond mais son identité est construite dans
+  `analysis/replay` sans faits de match (frontière délibérée) — recommandation superviseur :
+  compléter dans `replaybuild` après cuisson (comme les actions), sans franchir la frontière.
+- 2026-09-06 12:10 : E-R2 : six constats FERMÉS, E.9 jugé prudent (3 lignes du TSV, zéro code du
+  décodeur, chaque note vérifiée), 3 P3 en retouche (résorption par la table non détectée, import
+  aliasé invisible au ratchet du verrou, liste d'angles morts non exhaustive). G-R2 : dix constats
+  FERMÉS, goldens reproduits indépendamment par le vrai Python (six `.wav` + `.ts` + console
+  identiques), 2 P3 en retouche (préfixe UNC sensible à la casse, double `Peak()` sur une ligne de
+  log). A-R2 en cours ; CTF-R2 (correctif du pont d'identité) en cours ; balayage en cours.
+- 2026-09-06 12:30 : G retouches vérifiées sur pièces (`6effae3ac` : `EqualFold` sur le préfixe UNC,
+  table à 32 entrées ; `Peak()` lu une fois) et G FUSIONNÉ dans `feat/v75`. Intégrés : B, F, C, G.

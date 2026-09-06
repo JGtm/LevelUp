@@ -235,6 +235,14 @@ func fallbackCapabilities() games.CapabilityMap {
 		// match ; un titre sans la cle ne produit AUCUNE ligne et n expose AUCUNE
 		// colonne (cf. capabilities.toml).
 		games.CapFilmBombStats: games.CapSupported,
+		// L ARTEFACT DE REJEU 2D lui-meme (data/cache/replays/{slug}/{match}.json) : la
+		// SOURCE dont les quatre cles film.* ci-dessus sont des projections. Gouverne la
+		// PRODUCTION (etape post-sync replayartifacts : sans la cle, rien n est mis en
+		// file ni cuit) et, par voie de consequence, les deux loaders du film de la Match
+		// View (/objective-events, /positions), qui rendent alors un 503 propre au lieu
+		// d un 200 [] trompeur. La porte d AFFICHAGE de la page de rejeu est la
+		// capability title-level `replay` (cf. capabilities.toml).
+		games.CapFilmReplayArtifact: games.CapSupported,
 	}
 }
 

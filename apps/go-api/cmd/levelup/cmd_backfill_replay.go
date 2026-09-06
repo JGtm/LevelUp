@@ -107,6 +107,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/replaybuild"
@@ -159,7 +160,7 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 	}
 
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
-	candidats, horsRegistre, err := replaysACuire(ctx, cfg, pr, cacheRoot, o)
+	candidats, horsRegistre, err := replaysACuire(ctx, pr, cacheRoot, o)
 	if err != nil {
 		return err
 	}
@@ -203,7 +204,7 @@ func parserOptionsReplay(args []string) (replayBackfillOptions, error) {
 			"(remediation du cache appauvri — passe A LANCER AVANT activation ouvrier)")
 	fs.StringVar(&o.one, "one", "", "INTERNE : cuire CE seul match dans ce processus (forme appelee par le parent)")
 	fs.Var(&o.mapNames, "map-name", "INTERNE : identite de carte candidate (repetable, du plus fiable au moins fiable)")
-	fs.IntVar(&o.memLimitGiB, "mem-limit-gib", plafondMemoireDefautGiB,
+	fs.IntVar(&o.memLimitGiB, "mem-limit-gib", filmproc.DefaultLimitGiB,
 		"plafond memoire de chaque enfant, en GiB (0 = desarme)")
 	if err := fs.Parse(args); err != nil {
 		return o, err
@@ -241,7 +242,7 @@ func filtrerEtTrierReplay(
 // identites de carte candidates. LA LECTURE DE BASE EST COURTE : les deux handles (shared RO,
 // metadata RO) sont relaches au retour, AVANT tout lancement d'enfant.
 func replaysACuire(
-	ctx context.Context, cfg *config.AppConfig, pr *titlePkg.PathResolver, cacheRoot string, o replayBackfillOptions,
+	ctx context.Context, pr *titlePkg.PathResolver, cacheRoot string, o replayBackfillOptions,
 ) ([]replayCandidat, int, error) {
 	shorts, err := filmcache.ListShortIDs(cacheRoot)
 	if err != nil {
@@ -251,7 +252,7 @@ func replaysACuire(
 		return nil, 0, fmt.Errorf("aucun film dans le cache %s — cette passe est HORS LIGNE, elle n'a pas d'autre source", cacheRoot)
 	}
 
-	registre, err := registreParShort(ctx, cfg, pr, o.titleSlug)
+	registre, err := registreParShort(ctx, pr, o.titleSlug)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -285,7 +286,7 @@ type registreEntry struct {
 // L'ordre des candidats est celui de ReplayMapRepo : nom d'asset EN (resolu, fiable meme
 // quand map_name porte un UUID brut) PUIS map_name brut. metadata peut etre tenue RW par un
 // serveur qui tourne : son ouverture en echec DEGRADE (candidat brut seul), jamais ne bloque.
-func registreParShort(ctx context.Context, cfg *config.AppConfig, pr *titlePkg.PathResolver, titleSlug string) (map[string]registreEntry, error) {
+func registreParShort(ctx context.Context, pr *titlePkg.PathResolver, titleSlug string) (map[string]registreEntry, error) {
 	sharedPath := pr.SharedDBPath(titleSlug)
 	db, release, err := duckdb.OpenReadForQuery(sharedPath)
 	if err != nil {

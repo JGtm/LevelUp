@@ -1,3 +1,5 @@
+//go:build gamefiles
+
 // cmd/mapstruct-build — equivalence_gamefiles_test.go : le test qui manquait.
 //
 // POURQUOI. `internal/himodule` n'a AUCUN test et le découpage de `loadHd1` a été vérifié

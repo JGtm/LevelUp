@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
@@ -25,8 +25,8 @@ type stubReplayService struct {
 	calls    int
 }
 
-func (s *stubReplayService) GetReplay(context.Context, string) (replay.ReplayDocument, error) {
-	return replay.ReplayDocument{}, port.ErrReplayNotAvailable
+func (s *stubReplayService) GetReplay(context.Context, string) (replaydoc.ReplayDocument, error) {
+	return replaydoc.ReplayDocument{}, port.ErrReplayNotAvailable
 }
 
 func (s *stubReplayService) IsAvailable(context.Context, string) bool { return false }
@@ -43,7 +43,7 @@ func (s *stubReplayService) AvailableSet(context.Context) (port.ReplayAvailabili
 	return set, nil
 }
 
-func (s *stubReplayService) MapBackground(context.Context, string) (*replay.MapBackground, error) {
+func (s *stubReplayService) MapBackground(context.Context, string) (*replaydoc.MapBackground, error) {
 	return nil, port.ErrMapBackgroundNotAvailable
 }
 
@@ -51,7 +51,7 @@ func (s *stubReplayService) MapBackgroundImage(context.Context, string) ([]byte,
 	return nil, port.ErrMapBackgroundNotAvailable
 }
 
-func (s *stubReplayService) MapCallouts(context.Context, string) (*replay.MapCalloutsEntry, error) {
+func (s *stubReplayService) MapCallouts(context.Context, string) (*replaydoc.MapCalloutsEntry, error) {
 	return nil, port.ErrMapCalloutsNotAvailable
 }
 

@@ -1,0 +1,5 @@
+# Goldens du mode `livrer` : produits UNE FOIS par `_outils/livraison.py` (le script Python
+# d'origine, hors depot) et compares OCTET POUR OCTET par TestLivrerOctetPourOctet. Les `.wav`
+# sont forces binaires pour que git ne tente JAMAIS de normalisation d'eol : une seule
+# substitution CRLF->LF dans un flux PCM ferait rougir le test sur un checkout Windows.
+*.wav binary

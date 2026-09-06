@@ -6,10 +6,30 @@
 #
 # Garanties vérifiées (mode tests) — dans cet ordre :
 #   1. PRÉSENCE : tout test de la baseline existe encore dans le run courant.
+#      Le bilan d'absence est rendu PAR PACKAGE (cf. report_missing_par_paquet) :
+#      « tous absents » sur un package = compilation impossible, un compte partiel
+#      = tests renommés ou supprimés. Deux causes, deux remèdes.
 #   2. VERDICT TEST : aucun test du run courant n'est en échec ("Action":"fail" + "Test").
 #   3. VERDICT PACKAGE : aucun package en échec sans test en échec (compilation,
 #      panic hors test, TestMain non-zéro).
-#   4. Coverage par package ne baisse pas de plus de 1 point (mode coverage).
+#   4. COUVERTURE (mode coverage) : le total ne baisse pas de plus de 1 point, ET
+#      aucun package pris isolément ne baisse de plus de 1 point.
+#
+# LE CONTRÔLE 4 ÉTAIT UNE DOC INVERSÉE JUSQU'AU 2026-09-05 : il annonçait « par
+# package » et ne lisait que la ligne `^total:` de `go tool cover -func`, un seul
+# chiffre global — qui absorbe, à l'échelle du module, l'effondrement de la
+# couverture d'un package entier (registre d'audit 2026-09-05, constat G3, verdict
+# V-GO-C2). La comparaison par package est désormais faite (cf.
+# compare_coverage_par_paquet, qui documente aussi ce que la mesure ne vaut pas).
+#
+# CE QUE LA BASELINE DE PRÉSENCE COUVRE. `tests_pre_migration.jsonl` a été capturée
+# le 2026-06-26 ; elle ignorait donc tout le chantier v7.5 du rejeu. Les entrées des
+# packages `analysis/replay` (+ `replay/mapvar`), `replaybuild`, `sync/replayartifacts`,
+# `sync/killcollector` et `analysis/objectiveevents` ont été AJOUTÉES le 2026-09-05
+# (1 209 tests, events pass/skip terminaux d'un run réel `-tags=integration`), sans
+# rejouer la capture entière — la baseline est un CUMUL, pas un instantané. Supprimer
+# ou renommer un test de ces packages fait désormais rougir le gate : c'est voulu, et
+# le remède est d'ajouter les nouvelles entrées dans le même commit.
 #
 # Le contrôle 2 a été ajouté le 2026-07-26 : le `|| true` sur le `go test -json`
 # (nécessaire pour pouvoir analyser le JSONL même quand la suite échoue) rendait
@@ -59,7 +79,6 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BASELINE_DIR="$REPO_ROOT/.ai/baselines"
 BASELINE_TESTS="$BASELINE_DIR/tests_pre_migration.jsonl"
 BASELINE_COV_TXT="$BASELINE_DIR/coverage_pre_migration.txt"
-BASELINE_COV_RAW="$BASELINE_DIR/coverage_pre_migration.raw"
 
 # JSONL du run courant (mode autonome) — chemin STABLE (pas un mktemp détruit à la
 # sortie) : sans lui, un échec du gate en CI n'était pas diagnosticable (aucune
@@ -70,7 +89,7 @@ CURRENT_TESTS_JSONL="$REPO_ROOT/apps/go-api/baseline_current.jsonl"
 usage() {
   echo "Usage: $0 [tests|coverage|all] [--from-jsonl <fichier>]"
   echo "  tests                    présence + verdict de la suite (baseline de non-régression)"
-  echo "  coverage                 couverture globale vs baseline"
+  echo "  coverage                 couverture totale ET par package vs baseline"
   echo "  all (défaut)             les deux"
   echo "  --from-jsonl <fichier>   mode consommateur : ne relance PAS la suite, vérifie"
   echo "                           le JSONL 'go test -json' fourni (mode tests uniquement)"
@@ -277,6 +296,41 @@ run_current_suite() {
   ) || true # verdict rendu par l'ANALYSE du JSONL (présence + échecs), pas par ce code retour
 }
 
+# report_missing_par_paquet — le bilan de PRÉSENCE, PACKAGE PAR PACKAGE.
+#
+# POURQUOI PAR PACKAGE, et pas la liste à plat d'avant : les deux causes d'absence
+# n'ont ni le même diagnostic ni le même remède, et seul le COMPTE PAR PACKAGE les
+# distingue. Un package qui ne compile plus rend TOUS ses tests absents d'un coup
+# (aucun event n'est émis) ; un test renommé ou supprimé en fait manquer un ou deux
+# sur des dizaines. La liste à plat mélangeait les deux et, sur un package de 300
+# tests, noyait le signal (l'ancienne sortie imprimait les 300 lignes sans dire que
+# c'était un package entier).
+#
+# $1 = les entrées manquantes (« package::test », une par ligne), $2 = la baseline,
+# $3 = le run courant, tous trois au format de extract_test_names.
+report_missing_par_paquet() {
+  local missing="$1" baseline="$2" current="$3"
+  local pkg manquants total presents
+  # Packages touchés, du plus atteint au moins atteint.
+  while read -r pkg manquants; do
+    [[ -z "$pkg" ]] && continue
+    total=$(printf '%s\n' "$baseline" | grep -c "^${pkg}::" || true)
+    presents=$(printf '%s\n' "$current" | grep -c "^${pkg}::" || true)
+    if [[ "$presents" -eq 0 ]]; then
+      echo "    $pkg : $manquants/$total absents — AUCUN test du package n'a rendu de verdict"
+    else
+      echo "    $pkg : $manquants/$total absents ($presents présents)"
+    fi
+    # Les noms, plafonnés : le compte ci-dessus porte le diagnostic, les noms
+    # servent à retrouver le test — dix suffisent, le reste est dans le JSONL.
+    printf '%s\n' "$missing" | grep "^${pkg}::" | head -10 | sed 's/^/        /'
+    local reste=$((manquants - 10))
+    if [[ "$reste" -gt 0 ]]; then
+      echo "        ... ($reste autres)"
+    fi
+  done < <(printf '%s\n' "$missing" | sed 's/::.*//' | sort | uniq -c | sort -rn | awk '{print $2, $1}')
+}
+
 # verify_tests_jsonl — CŒUR DE VÉRIFICATION, partagé par les deux modes (autonome
 # et consommateur). Toute évolution des contrôles se fait ICI et nulle part
 # ailleurs : deux implémentations divergeraient (le mode local et le gate CI ne
@@ -304,14 +358,15 @@ verify_tests_jsonl() {
 
   if [[ -n "$missing" ]]; then
     echo ""
-    echo "❌ Tests baseline absents du run courant :"
-    printf '%s\n' "$missing" | sed 's/^/    /'
+    echo "❌ Tests baseline absents du run courant, PAR PACKAGE :"
+    report_missing_par_paquet "$missing" "$baseline_tests" "$current_tests"
     echo ""
-    echo "  CAUSE LA PLUS FRÉQUENTE : un package qui ne COMPILE pas rend TOUS ses"
-    echo "  tests absents (aucun event pass/fail/skip n'est émis) — vérifier d'abord"
-    echo "  la sortie de compilation dans $current_jsonl (lignes \"Action\":\"output\")."
-    echo "  Sinon : si ces tests ont été renommés/supprimés volontairement,"
-    echo "  documenter la raison dans le commit message."
+    echo "  LIRE LE BILAN CI-DESSUS D'ABORD : « tous absents » sur un package entier"
+    echo "  est la signature d'une COMPILATION IMPOSSIBLE (aucun event pass/fail/skip"
+    echo "  n'est émis) — vérifier la sortie de compilation dans $current_jsonl"
+    echo "  (lignes \"Action\":\"output\" et \"build-output\"). Un compte PARTIEL désigne"
+    echo "  au contraire des tests renommés ou supprimés : si c'est volontaire,"
+    echo "  documenter la raison dans le commit message ET rejouer la baseline."
     return 1
   fi
 
@@ -448,17 +503,87 @@ check_coverage() {
   baseline_pct=$(awk '/^total:/ { gsub("%",""); print $3 }' "$BASELINE_COV_TXT")
   current_pct=$(awk '/^total:/ { gsub("%",""); print $3 }' "$current_txt")
 
-  echo "  Baseline : ${baseline_pct}%"
-  echo "  Courant  : ${current_pct}%"
+  echo "  Total baseline : ${baseline_pct}%"
+  echo "  Total courant  : ${current_pct}%"
 
   awk -v c="$current_pct" -v b="$baseline_pct" 'BEGIN {
     if (c + 1.0 < b) {
-      printf "❌ Coverage %.1f%% < baseline %.1f%% - 1.0 (régression > 1 point)\n", c, b
+      printf "❌ Coverage TOTAL %.1f%% < baseline %.1f%% - 1.0 (régression > 1 point)\n", c, b
       exit 1
     }
-    printf "✅ Coverage %.1f%% >= baseline %.1f%% - 1.0\n", c, b
+    printf "✅ Coverage TOTAL %.1f%% >= baseline %.1f%% - 1.0\n", c, b
     exit 0
-  }'
+  }' || return 1
+
+  compare_coverage_par_paquet "$BASELINE_COV_TXT" "$current_txt"
+}
+
+# compare_coverage_par_paquet — LE CONTRÔLE 4, PACKAGE PAR PACKAGE.
+#
+# CE QUI ÉTAIT FAUX AVANT LE 2026-09-05 (doc inversée, registre d'audit G3, verdict
+# V-GO-C2) : l'en-tête annonçait « Coverage par package ne baisse pas de plus de
+# 1 point » et le code ne lisait QUE la ligne `^total:` de `go tool cover -func`,
+# c'est-à-dire UN SEUL chiffre global. À l'échelle du module, un chiffre global
+# absorbe la disparition de la couverture d'un package entier.
+#
+# CE QUE LA MESURE VAUT, ET CE QU'ELLE NE VAUT PAS. `go tool cover -func` ne publie
+# PAS le nombre d'instructions par fonction : le pourcentage d'un package est donc
+# la MOYENNE NON PONDÉRÉE des pourcentages de ses fonctions, calculée à l'identique
+# des deux côtés. Ce n'est pas la couverture d'instructions du package (qui
+# exigerait le profil brut, `coverage_pre_migration.raw`, non versionné). Une
+# moyenne non pondérée sous-estime le poids des grosses fonctions ; elle suffit à
+# attraper ce que ce contrôle vise — un package dont la couverture s'effondre.
+#
+# LES PACKAGES ABSENTS D'UN CÔTÉ NE SONT PAS JUGÉS, ils sont COMPTÉS et nommés :
+# un package neuf n'a rien à comparer, un package disparu n'est pas une régression
+# de couverture (sa disparition relève des contrôles 1 à 3).
+compare_coverage_par_paquet() {
+  local baseline_txt="$1" current_txt="$2"
+  echo "  Comparaison PAR PACKAGE (tolérance 1,0 point) :"
+  awk -v tol=1.0 '
+    # pct_par_paquet : "<fichier>:<ligne>:\t<fonction>\t<pct>%" -> moyenne par répertoire.
+    function paquet(chemin,   i) {
+      i = length(chemin)
+      while (i > 0 && substr(chemin, i, 1) != "/") i--
+      return substr(chemin, 1, i - 1)
+    }
+    $1 ~ /^total:/ { next }
+    {
+      # Le pourcentage est le DERNIER champ ; le chemin est le premier, "fichier.go:ligne:".
+      pct = $NF
+      if (pct !~ /%$/) next
+      sub(/%$/, "", pct)
+      split($1, morceaux, ":")
+      p = paquet(morceaux[1])
+      if (p == "") next
+      somme[FILENAME "\x1c" p] += pct
+      compte[FILENAME "\x1c" p] += 1
+      if (FILENAME == ARGV[1]) vus_base[p] = 1; else vus_cour[p] = 1
+    }
+    END {
+      base = ARGV[1]; cour = ARGV[2]
+      regressions = 0; compares = 0; neufs = 0; disparus = 0
+      for (p in vus_base) {
+        if (!(p in vus_cour)) { disparus++; continue }
+        b = somme[base "\x1c" p] / compte[base "\x1c" p]
+        c = somme[cour "\x1c" p] / compte[cour "\x1c" p]
+        compares++
+        if (c + tol < b) {
+          printf "    [ECHEC] %s : %.1f%% -> %.1f%% (-%.1f pt)\n", p, b, c, b - c
+          regressions++
+        }
+      }
+      for (p in vus_cour) if (!(p in vus_base)) neufs++
+      printf "    %d package(s) comparé(s), %d neuf(s) non jugé(s), %d disparu(s) (contrôles 1-3)\n",
+        compares, neufs, disparus
+      if (regressions > 0) {
+        printf "[ECHEC] %d package(s) en regression de couverture de plus de %.1f point\n", regressions, tol
+        exit 1
+      }
+      printf "[OK] Aucun package en regression de couverture de plus de %.1f point\n", tol
+      exit 0
+    }
+  ' "$baseline_txt" "$current_txt"
 }
 
 case "$MODE" in

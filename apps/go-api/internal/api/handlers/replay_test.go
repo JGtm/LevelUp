@@ -14,28 +14,29 @@ import (
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/port"
 )
 
 // mockReplayService implémente port.ReplayService.
 type mockReplayService struct {
-	doc replay.ReplayDocument
+	doc replaydoc.ReplayDocument
 	err error
 	// bg / image / bgErr : le fond de carte, indépendant de l'artefact — un rejeu peut
 	// exister sans fond, et le contraire n'a pas de sens.
-	bg    *replay.MapBackground
+	bg    *replaydoc.MapBackground
 	image []byte
 	bgErr error
 	// callouts / calloutsErr : les zones nommées, indépendantes du fond ET de l'artefact.
-	callouts    *replay.MapCalloutsEntry
+	callouts    *replaydoc.MapCalloutsEntry
 	calloutsErr error
 }
 
-func (m *mockReplayService) GetReplay(_ context.Context, _ string) (replay.ReplayDocument, error) {
+func (m *mockReplayService) GetReplay(_ context.Context, _ string) (replaydoc.ReplayDocument, error) {
 	return m.doc, m.err
 }
 
-func (m *mockReplayService) MapBackground(_ context.Context, _ string) (*replay.MapBackground, error) {
+func (m *mockReplayService) MapBackground(_ context.Context, _ string) (*replaydoc.MapBackground, error) {
 	return m.bg, m.bgErr
 }
 
@@ -43,7 +44,7 @@ func (m *mockReplayService) MapBackgroundImage(_ context.Context, _ string) ([]b
 	return m.image, m.bgErr
 }
 
-func (m *mockReplayService) MapCallouts(_ context.Context, _ string) (*replay.MapCalloutsEntry, error) {
+func (m *mockReplayService) MapCallouts(_ context.Context, _ string) (*replaydoc.MapCalloutsEntry, error) {
 	return m.callouts, m.calloutsErr
 }
 
@@ -92,10 +93,10 @@ func doReplayGetFrom(r *chi.Mux, slug, matchID, remoteAddr string) *httptest.Res
 }
 
 func TestReplayHandler_OK(t *testing.T) {
-	mock := &mockReplayService{doc: replay.ReplayDocument{
+	mock := &mockReplayService{doc: replaydoc.ReplayDocument{
 		SchemaVersion: replay.SchemaVersion, MatchID: "000d5950", TitleSlug: "halo_infinite",
 		FrameCount: 2,
-		Tracks:     []replay.Track{{Slot: 665, Team: -1, Points: []replay.Point{{T: 0, X: 1, Y: 2}}}},
+		Tracks:     []replaydoc.Track{{Slot: 665, Team: -1, Points: []replaydoc.Point{{T: 0, X: 1, Y: 2}}}},
 	}}
 	factory := func(_ context.Context, slug string) (port.ReplayService, error) {
 		if slug != testPlayerSlug {
@@ -107,7 +108,7 @@ func TestReplayHandler_OK(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
 	}
-	var got replay.ReplayDocument
+	var got replaydoc.ReplayDocument
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("réponse illisible: %v", err)
 	}
@@ -157,7 +158,7 @@ func TestReplayHandler_ServiceError(t *testing.T) {
 // Il répare aussi le défaut qui l'a fait écrire : le garde a été posé sans que les tests du
 // handler soient adaptés, et ceux-ci tombaient dessus en annonçant un handler cassé.
 func TestReplayHandler_RefusesRemoteCaller(t *testing.T) {
-	mock := &mockReplayService{doc: replay.ReplayDocument{MatchID: "000d5950"}}
+	mock := &mockReplayService{doc: replaydoc.ReplayDocument{MatchID: "000d5950"}}
 	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }
 	w := doReplayGetFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "203.0.113.7:443")
 	if w.Code != http.StatusNotFound {
@@ -181,11 +182,11 @@ func doReplayPathFrom(r *chi.Mux, slug, matchID, suffixe, remoteAddr string) *ht
 // fondMock rend un service dont le fond de carte est celui de Cliffhanger.
 func fondMock() *mockReplayService {
 	return &mockReplayService{
-		bg: &replay.MapBackground{
+		bg: &replaydoc.MapBackground{
 			SchemaVersion: replay.MapBackgroundSchemaVersion,
 			Module:        "ridgeline",
 			Image:         "ridgeline.png",
-			Calibration: replay.MapBackgroundCalibration{
+			Calibration: replaydoc.MapBackgroundCalibration{
 				MetersPerPixel: 0.092, OriginX: -57.3, OriginY: 78.87,
 				WidthPx: 1633, HeightPx: 1627,
 			},
@@ -201,7 +202,7 @@ func TestReplayBackground_OK(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
 	}
-	var got replay.MapBackground
+	var got replaydoc.MapBackground
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("réponse illisible: %v", err)
 	}
@@ -262,10 +263,10 @@ func TestReplayBackground_RefusesRemoteCaller(t *testing.T) {
 // calloutsMock rend un service dont les zones nommées sont celles de Cliffhanger.
 func calloutsMock() *mockReplayService {
 	return &mockReplayService{
-		callouts: &replay.MapCalloutsEntry{
+		callouts: &replaydoc.MapCalloutsEntry{
 			Module:     "ridgeline",
 			Provenance: replay.CalloutsProvenanceDecoupe,
-			Zones: []replay.CalloutZone{{
+			Zones: []replaydoc.CalloutZone{{
 				VolumeIndex: 10, Name: "ridgeline horses", EN: "Horseshoe", FR: "Fer à cheval",
 				X: 19, Y: 10, Z: 1, ZBottom: -0.2, ZTop: 11,
 				Polygon: [][2]float64{{14.8, 7.5}, {23.8, 7.5}, {23.8, 15.3}},
@@ -281,7 +282,7 @@ func TestReplayCallouts_OK(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
 	}
-	var got replay.MapCalloutsEntry
+	var got replaydoc.MapCalloutsEntry
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("réponse illisible: %v", err)
 	}

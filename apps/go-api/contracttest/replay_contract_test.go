@@ -21,6 +21,16 @@
 // `apps/web/src/features/match-replay/replayNormalize.ts`, et c est la que se verifie qu aucun
 // tableau du contrat ne lui echappe (cf. replayContract.test.ts).
 //
+// CE FICHIER A CHANGE DE COTE LE 2026-09-05 (lot B du plan v2). Jusque-la il reflechissait sur
+// `internal/analysis/replay` — le format du FICHIER d artefact, qui etait AUSSI le contrat. La
+// separation du document stocke et du document servi lui donne son vrai sujet : il reflechit
+// desormais sur `internal/domain/replaydoc`, la forme de FIL, et confronte ce contrat au
+// fichier `api/openapi.yaml` qui en derive. Ce qu il ne regarde plus — que la cuisson ecrive
+// bien tout ce que le contrat promet — est tenu par le test de parite du convertisseur
+// (`internal/service/replayview/parity_test.go`), qui exige une decision ecrite pour chaque
+// champ du document stocke. Les deux gardes se completent : celui-ci tient contrat <-> Go,
+// l autre tient Go stocke <-> Go servi.
+//
 // LES CHAMPS QUE PERSONNE NE LIT — INVENTAIRE CONSIGNE, NON TRAITE (leur sort est le lot 3.6 du
 // plan de finalisation ; ce jalon-ci VERROUILLE, il ne supprime pas). Re-mesure du 2026-07-31,
 // par grep sur `features/match-replay/` et la route du rejeu, en excluant la frontiere et les
@@ -57,10 +67,11 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/domain/replaydoc"
 )
 
-// replaySchemas apparie chaque type Go publie dans l artefact au schema qui doit le decrire.
+// replaySchemas apparie chaque type Go du document SERVI (`domain/replaydoc`) au schema qui
+// doit le decrire.
 //
 // LA LISTE EST ECRITE, PAS DERIVEE : un parcours automatique des types atteignables depuis
 // ReplayDocument aurait le defaut de suivre le code — si un type sortait du document, il
@@ -69,90 +80,90 @@ var replaySchemas = []struct {
 	schema string
 	value  any
 }{
-	{"ReplayDocument", replay.ReplayDocument{}},
-	{"Track", replay.Track{}},
-	{"Point", replay.Point{}},
-	{"Shot", replay.Shot{}},
-	{"Grenade", replay.Grenade{}},
-	{"Projectile", replay.Projectile{}},
-	{"Loadout", replay.Loadout{}},
-	{"Inventory", replay.Inventory{}},
-	{"InventoryCoverage", replay.InventoryCoverage{}},
-	{"AbilityRead", replay.AbilityRead{}},
-	{"EquipmentEpisode", replay.EquipmentEpisode{}},
-	{"EquipmentCoverage", replay.EquipmentCoverage{}},
-	{"GrappleLine", replay.GrappleLine{}},
-	{"GrappleCoverage", replay.GrappleCoverage{}},
-	{"EquipmentPlacement", replay.EquipmentPlacement{}},
-	{"EquipmentPlacementCoverage", replay.EquipmentPlacementCoverage{}},
-	{"WeaponPad", replay.WeaponPad{}},
-	{"PadPresence", replay.PadPresence{}},
-	{"PadCycle", replay.PadCycle{}},
-	{"PadPickup", replay.PadPickup{}},
-	{"GroundWeaponCoverage", replay.GroundWeaponCoverage{}},
-	{"AmmoSlot", replay.AmmoSlot{}},
-	{"Surface", replay.Surface{}},
-	{"MapObject", replay.MapObject{}},
-	{"Bounds", replay.Bounds{}},
-	{"RosterEntry", replay.RosterEntry{}},
-	{"ObjectiveAction", replay.ObjectiveAction{}},
-	{"ScoreTimeline", replay.ScoreTimeline{}},
-	{"TeamScore", replay.TeamScore{}},
-	{"PlayerScore", replay.PlayerScore{}},
-	{"ScoreSeries", replay.ScoreSeries{}},
-	{"ScoreRound", replay.ScoreRound{}},
-	{"ScoreTick", replay.ScoreTick{}},
-	{"ScoreCoverage", replay.ScoreCoverage{}},
-	{"FlagCarry", replay.FlagCarry{}},
-	{"FlagSpan", replay.FlagSpan{}},
-	{"FlagCarriesCoverage", replay.FlagCarriesCoverage{}},
-	{"VipPeriod", replay.VipPeriod{}},
-	{"VipCrownCoverage", replay.VipCrownCoverage{}},
-	{"SkullCarry", replay.SkullCarry{}},
-	{"SkullCarriesCoverage", replay.SkullCarriesCoverage{}},
-	{"BombArming", replay.BombArming{}},
-	{"BombArmingsCoverage", replay.BombArmingsCoverage{}},
-	{"BombCarry", replay.BombCarry{}},
-	{"BombCarriesCoverage", replay.BombCarriesCoverage{}},
-	{"ZoneState", replay.ZoneState{}},
-	{"ZoneSpan", replay.ZoneSpan{}},
-	{"GaugePoint", replay.GaugePoint{}},
-	{"ZonesCoverage", replay.ZonesCoverage{}},
+	{"ReplayDocument", replaydoc.ReplayDocument{}},
+	{"Track", replaydoc.Track{}},
+	{"Point", replaydoc.Point{}},
+	{"Shot", replaydoc.Shot{}},
+	{"Grenade", replaydoc.Grenade{}},
+	{"Projectile", replaydoc.Projectile{}},
+	{"Loadout", replaydoc.Loadout{}},
+	{"Inventory", replaydoc.Inventory{}},
+	{"InventoryCoverage", replaydoc.InventoryCoverage{}},
+	{"AbilityRead", replaydoc.AbilityRead{}},
+	{"EquipmentEpisode", replaydoc.EquipmentEpisode{}},
+	{"EquipmentCoverage", replaydoc.EquipmentCoverage{}},
+	{"GrappleLine", replaydoc.GrappleLine{}},
+	{"GrappleCoverage", replaydoc.GrappleCoverage{}},
+	{"EquipmentPlacement", replaydoc.EquipmentPlacement{}},
+	{"EquipmentPlacementCoverage", replaydoc.EquipmentPlacementCoverage{}},
+	{"WeaponPad", replaydoc.WeaponPad{}},
+	{"PadPresence", replaydoc.PadPresence{}},
+	{"PadCycle", replaydoc.PadCycle{}},
+	{"PadPickup", replaydoc.PadPickup{}},
+	{"GroundWeaponCoverage", replaydoc.GroundWeaponCoverage{}},
+	{"AmmoSlot", replaydoc.AmmoSlot{}},
+	{"Surface", replaydoc.Surface{}},
+	{"MapObject", replaydoc.MapObject{}},
+	{"Bounds", replaydoc.Bounds{}},
+	{"RosterEntry", replaydoc.RosterEntry{}},
+	{"ObjectiveAction", replaydoc.ObjectiveAction{}},
+	{"ScoreTimeline", replaydoc.ScoreTimeline{}},
+	{"TeamScore", replaydoc.TeamScore{}},
+	{"PlayerScore", replaydoc.PlayerScore{}},
+	{"ScoreSeries", replaydoc.ScoreSeries{}},
+	{"ScoreRound", replaydoc.ScoreRound{}},
+	{"ScoreTick", replaydoc.ScoreTick{}},
+	{"ScoreCoverage", replaydoc.ScoreCoverage{}},
+	{"FlagCarry", replaydoc.FlagCarry{}},
+	{"FlagSpan", replaydoc.FlagSpan{}},
+	{"FlagCarriesCoverage", replaydoc.FlagCarriesCoverage{}},
+	{"VipPeriod", replaydoc.VipPeriod{}},
+	{"VipCrownCoverage", replaydoc.VipCrownCoverage{}},
+	{"SkullCarry", replaydoc.SkullCarry{}},
+	{"SkullCarriesCoverage", replaydoc.SkullCarriesCoverage{}},
+	{"BombArming", replaydoc.BombArming{}},
+	{"BombArmingsCoverage", replaydoc.BombArmingsCoverage{}},
+	{"BombCarry", replaydoc.BombCarry{}},
+	{"BombCarriesCoverage", replaydoc.BombCarriesCoverage{}},
+	{"ZoneState", replaydoc.ZoneState{}},
+	{"ZoneSpan", replaydoc.ZoneSpan{}},
+	{"GaugePoint", replaydoc.GaugePoint{}},
+	{"ZonesCoverage", replaydoc.ZonesCoverage{}},
 	// AJOUTES LE 2026-09-01 (revue adversariale du schema 31, P2-3). Le RAMASSAGE NATIF vivait
 	// en production depuis le schema 30 SANS entrer dans cette table : ses deux types
 	// n etaient donc couverts par AUCUN des deux gardes champ<->contrat de ce fichier, alors
 	// meme que le schema 31 leur ajoutait `family` (non requis) et `unknownFamilies` (requis)
 	// — exactement le couple que le garde omitempty<->required existe pour verifier.
-	{"Pickup", replay.Pickup{}},
-	{"PickupCoverage", replay.PickupCoverage{}},
-	{"T0FilmCoverage", replay.T0FilmCoverage{}},
+	{"Pickup", replaydoc.Pickup{}},
+	{"PickupCoverage", replaydoc.PickupCoverage{}},
+	{"T0FilmCoverage", replaydoc.T0FilmCoverage{}},
 	// AJOUTES AU SCHEMA 38 (2026-09-03), DANS LE MEME LOT que le champ — la lecon P2-3 du
 	// 2026-09-01 (`Pickup` absent de cette table pendant deux schemas) appliquee d'emblee :
 	// le couple `recovered`/`gap` (optionnels) contre `recovered` de la couverture (requis)
 	// est exactement ce que les gardes omitempty<->required jugent.
-	{"Translocation", replay.Translocation{}},
-	{"TranslocationCoverage", replay.TranslocationCoverage{}},
-	{"AbilityImpulse", replay.AbilityImpulse{}},
-	{"AbilityImpulseCoverage", replay.AbilityImpulseCoverage{}},
+	{"Translocation", replaydoc.Translocation{}},
+	{"TranslocationCoverage", replaydoc.TranslocationCoverage{}},
+	{"AbilityImpulse", replaydoc.AbilityImpulse{}},
+	{"AbilityImpulseCoverage", replaydoc.AbilityImpulseCoverage{}},
 	// AJOUTES AU LOT P5 (2026-09-04), DANS LE MEME LOT que le champ (lecon P2-3 appliquee
 	// d'emblee) : `charges` est un int NU (zero = une mesure, jamais omis) la ou
 	// `componentAbsent` de la couverture est omitempty — exactement le couple que les gardes
 	// omitempty<->required jugent.
-	{"AbilityCharge", replay.AbilityCharge{}},
-	{"AbilityChargeCoverage", replay.AbilityChargeCoverage{}},
+	{"AbilityCharge", replaydoc.AbilityCharge{}},
+	{"AbilityChargeCoverage", replaydoc.AbilityChargeCoverage{}},
 	// AJOUTES AU SCHEMA 39 (2026-09-05, etape G.2 de l integration), DANS LE MEME LOT que les
 	// deux champs (lecon P2-3 appliquee d emblee). Les quatre types portent EXACTEMENT le couple
 	// que les gardes omitempty<->required jugent : les cinq mesures de `BombPlayerStats` sont
 	// des POINTEURS omitempty (« absent n est pas zero »), la couverture n a que des compteurs
 	// NUS (requis), et `BombEvent` melange les deux (`type`/`timeMs` requis, `xuid`/`actorSource`
 	// optionnels — un fait sans acteur reste un fait).
-	{"BombMatchStats", replay.BombMatchStats{}},
-	{"BombPlayerStats", replay.BombPlayerStats{}},
-	{"BombEvent", replay.BombEvent{}},
-	{"BombStatsCoverage", replay.BombStatsCoverage{}},
-	{"Coverage", replay.Coverage{}},
-	{"LayerCoverage", replay.LayerCoverage{}},
-	{"BridgeHealth", replay.BridgeHealth{}},
+	{"BombMatchStats", replaydoc.BombMatchStats{}},
+	{"BombPlayerStats", replaydoc.BombPlayerStats{}},
+	{"BombEvent", replaydoc.BombEvent{}},
+	{"BombStatsCoverage", replaydoc.BombStatsCoverage{}},
+	{"Coverage", replaydoc.Coverage{}},
+	{"LayerCoverage", replaydoc.LayerCoverage{}},
+	{"BridgeHealth", replaydoc.BridgeHealth{}},
 }
 
 // wantReplayDocumentFields : le nombre de champs que l artefact publie. Ecrit ici pour que le
@@ -643,6 +654,16 @@ var replaySchemas = []struct {
 //	                      `bomb_carriers_killed` est `null` partout a ce jour : la paire
 //	                      tueur/victime qu il demande n existe pas dans la chaine de cuisson.
 //
+//	56 -> 56  2026-09-05  AUCUN CHAMP NEUF, ET POURTANT LE GEL CHANGE DE NATURE (lot B du plan
+//	                      v2). Le compte portait sur `analysis/replay.ReplayDocument`, le format
+//	                      du FICHIER d artefact ; il porte desormais sur
+//	                      `domain/replaydoc.ReplayDocument`, la forme de FIL. Le chiffre est le
+//	                      meme parce que la separation laisse le contrat strictement inchange
+//	                      (`openapi.yaml` et `generated.ts` sans diff, gate du lot) — mais les
+//	                      deux nombres sont desormais libres de diverger : un calque ajoute a la
+//	                      cuisson ne fera plus monter celui-ci. Le champ `schemaVersion` du corps
+//	                      continue de porter la version STOCKEE, celle qui pilote la re-cuisson.
+//
 // Les vingt et une fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
 const wantReplayDocumentFields = 56
@@ -687,10 +708,15 @@ func TestReplayContractDescribesEveryPublishedField(t *testing.T) {
 // LE NOM NE PORTE PLUS LE CHIFFRE (il a dit « TwentyTwo » jusqu au 2026-08-14 alors que le
 // document en publiait 25) : un compte qui bouge se lit dans wantReplayDocumentFields et sa
 // chronique, pas dans un identifiant que personne ne pense a renommer.
+//
+// LES DEUX COTES SONT LE CONTRAT DEPUIS LE 2026-09-05 : le type Go du document SERVI, et le
+// schema qui en est genere. Ce que la CUISSON publie n est plus juge ici (elle a le droit
+// d ecrire des champs que le contrat ne sert pas encore) — c est parity_test.go qui exige que
+// chaque champ stocke ait une decision.
 func TestReplayDocumentFieldCountIsFrozen(t *testing.T) {
-	got := jsonFieldsOf(reflect.TypeOf(replay.ReplayDocument{}))
+	got := jsonFieldsOf(reflect.TypeOf(replaydoc.ReplayDocument{}))
 	if len(got) != wantReplayDocumentFields {
-		t.Errorf("%d champ(s) publie(s) par l artefact, attendu %d : %v",
+		t.Errorf("%d champ(s) servi(s) par le contrat, attendu %d : %v",
 			len(got), wantReplayDocumentFields, got)
 	}
 	props := propertyNamesOf(loadReplaySchemas(t)["ReplayDocument"])
@@ -713,8 +739,8 @@ func TestReplayContractCarriesTupleArity(t *testing.T) {
 		goType       reflect.Type
 		goField      string
 	}{
-		{"Surface", "poly", reflect.TypeOf(replay.Surface{}), "Poly"},
-		{"Projectile", "p", reflect.TypeOf(replay.Projectile{}), "P"},
+		{"Surface", "poly", reflect.TypeOf(replaydoc.Surface{}), "Poly"},
+		{"Projectile", "p", reflect.TypeOf(replaydoc.Projectile{}), "P"},
 	} {
 		t.Run(c.schema+"."+c.prop, func(t *testing.T) {
 			f, ok := c.goType.FieldByName(c.goField)

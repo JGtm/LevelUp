@@ -23,8 +23,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/port"
 )
 
@@ -65,7 +65,10 @@ type replayInput struct {
 	MatchID    string `path:"match_id"`
 }
 
-type replayOutput struct{ Body replay.ReplayDocument }
+// replayOutput : le corps est le document SERVI (`domain/replaydoc`), jamais le document
+// STOCKE. C'est cette frontiere qui rend `openapi.yaml` independant du format de fichier de
+// l'artefact — le service projette, le handler encode (cf. internal/service/replayview).
+type replayOutput struct{ Body replaydoc.ReplayDocument }
 
 // handleGetReplay retourne le document de rejeu 2D d'un match (404 si absent).
 func (h *ReplayHandler) handleGetReplay(ctx context.Context, in *replayInput) (*replayOutput, error) {
@@ -88,7 +91,7 @@ func (h *ReplayHandler) handleGetReplay(ctx context.Context, in *replayInput) (*
 	return &replayOutput{Body: doc}, nil
 }
 
-type backgroundOutput struct{ Body replay.MapBackground }
+type backgroundOutput struct{ Body replaydoc.MapBackground }
 
 // handleGetBackground retourne le CALAGE du fond de carte du match : mètres par pixel,
 // origine monde, taille de l'image, plus les statistiques de cuisson et les dégradations
@@ -113,7 +116,7 @@ func (h *ReplayHandler) handleGetBackground(ctx context.Context, in *replayInput
 	return &backgroundOutput{Body: *bg}, nil
 }
 
-type calloutsOutput struct{ Body replay.MapCalloutsEntry }
+type calloutsOutput struct{ Body replaydoc.MapCalloutsEntry }
 
 // handleGetCallouts retourne les ZONES NOMMÉES officielles de la carte du match :
 // polygones monde, tranche verticale, libellés FR/EN. 404 quand la carte n'en a pas —

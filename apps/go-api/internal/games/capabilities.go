@@ -37,6 +37,7 @@ func AllCapabilityKeys() []CapabilityKey {
 		CapFilmKillPositions,
 		CapFilmUsageSummary,
 		CapFilmBombStats,
+		CapFilmReplayArtifact,
 	}
 }
 

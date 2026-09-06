@@ -22,8 +22,10 @@ export interface UsageText {
   measuredFmt: (measured: number, total: number) => string
   /** « Matchs avec objectifs N/M » — le bloc 3 a son propre scope (hors films). */
   objectivesScopeFmt: (withObjectives: number, total: number) => string
-  /** Raisons du bloc indisponible (contrat : unavailable_reason machine). */
-  unavailableUnsupported: string
+  /** Raisons du bloc indisponible (contrat : unavailable_reason machine).
+   *  `unsupported` N'A PAS DE LIBELLE, et c'est voulu : depuis le 2026-09-05 ce cas
+   *  MASQUE le bloc au lieu de l'annoncer (un titre sans decodeur de film n'aura jamais
+   *  de resume d'usage — la carte etait un bloc mort). Cf. usageLogic.usageAvailability. */
   unavailableLoadFailed: string
   unavailableNoMeasured: string
   /** Titres des vues à l'intérieur des cartes. */
@@ -105,7 +107,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     blockUnavailableTitle: "Usages d'équipement, socles et objectifs",
     measuredFmt: (m, t) => `Matchs mesurés ${m}/${t}`,
     objectivesScopeFmt: (n, t) => `Matchs avec objectifs ${n}/${t}`,
-    unavailableUnsupported: "Ce titre ne publie pas de résumé d'usage des films.",
     unavailableLoadFailed: "La lecture du résumé d'usage a échoué.",
     unavailableNoMeasured: "Aucun match de cette session n'a de film mesuré.",
     viewCadences: 'Cadences par 10 minutes de jeu mesuré',
@@ -177,7 +178,6 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     blockUnavailableTitle: 'Equipment, pads and objectives',
     measuredFmt: (m, t) => `Measured matches ${m}/${t}`,
     objectivesScopeFmt: (n, t) => `Matches with objectives ${n}/${t}`,
-    unavailableUnsupported: 'This title does not publish film usage summaries.',
     unavailableLoadFailed: 'Loading the usage summary failed.',
     unavailableNoMeasured: 'No match of this session has a measured film.',
     viewCadences: 'Rates per 10 minutes of measured play',

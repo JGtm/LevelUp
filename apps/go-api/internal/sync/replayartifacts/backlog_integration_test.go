@@ -188,7 +188,9 @@ func TestCandidatsARattraper_FenetreDeRetention(t *testing.T) {
 // decoder un film (decision D8 — aucun artefact n est construit par ce lot).
 func TestRun_RattrapeSansAucuneInsertion(t *testing.T) {
 	db := baseRegistre(t)
-	repoRoot := t.TempDir()
+	// Racine ISOLEE mais qui porte les manifestes du titre : depuis le 2026-09-05, Run
+	// passe la porte `film.replay_artifact` avant toute selection (capability.go).
+	repoRoot := racineAvecTitres(t, titlePkg.DefaultSlug)
 	t0 := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
 	inscrireAuRegistre(t, db, "aaaaaaaa-1111-4000-8000-000000000000", t0, 0)
 	inscrireAuRegistre(t, db, "bbbbbbbb-2222-4000-8000-000000000000", t0.Add(time.Hour), 0)
@@ -222,7 +224,8 @@ func TestRun_RattrapeSansAucuneInsertion(t *testing.T) {
 // un ouvrier.
 func TestRun_LaJaugeDecroitSurDeuxCycles(t *testing.T) {
 	db := baseRegistre(t)
-	repoRoot := t.TempDir()
+	// Racine ISOLEE + manifestes du titre, cf. TestRun_RattrapeSansAucuneInsertion.
+	repoRoot := racineAvecTitres(t, titlePkg.DefaultSlug)
 	t0 := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
 	for i := 0; i < 9; i++ {
 		inscrireAuRegistre(t, db, fmt.Sprintf("%08d-1111-4000-8000-000000000000", i),

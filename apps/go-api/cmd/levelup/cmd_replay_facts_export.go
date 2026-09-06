@@ -64,11 +64,11 @@ func runReplayFactsExport(cfg *config.AppConfig, args []string) error {
 	}
 	ids := fs.Args()
 	if *out == "" || len(ids) == 0 {
-		return errors.New("usage : levelup replay-facts-export --out <dossier> [--title slug] <short8|match_id>...")
+		return errors.New("usage : levelup replay-facts-export --out <dossier> [--title slug] <short8|match_id> [autres ids]")
 	}
 	ctx := context.Background()
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
-	registre, err := registreParShort(ctx, cfg, pr, *titleSlug)
+	registre, err := registreParShort(ctx, pr, *titleSlug)
 	if err != nil {
 		return err
 	}
