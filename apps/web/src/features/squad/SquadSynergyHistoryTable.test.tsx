@@ -3,7 +3,7 @@
  * « Ouvrir sur Halo Waypoint » (I19, remplace l'ancien texte « ↗ wp »).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import type { SquadMatchHistoryRow } from '@/lib/api/types'
@@ -219,12 +219,28 @@ describe('SquadSynergyHistoryTable — colonne « Rejeu »', () => {
 
   // PORTE DE TITRE (2026-09-05, registre L5) : la colonne entiere disparait pour un titre
   // sans decodeur de film — meme forme conditionnelle que sa voisine Waypoint.
+  // LA COLONNE, PAS SEULEMENT LE LIEN (revue C-R1, constat C2). Asserter l'absence du lien
+  // ne prouve rien : `MatchReplayLink` le masque deja tout seul, donc les deux portes se
+  // couvraient mutuellement et aucune n'etait testee. On compte les colonnes : sans la
+  // capability, le tableau en a UNE de moins — plus d'en-tete fantome ni de cellules vides.
   it("masquée quand le titre courant ne déclare pas la capability replay", () => {
+    // Les deux rendus ne different QUE par `replay` : sinon `team_mmr` et
+    // `waypoint_match_url` feraient varier le compte pour une autre raison.
+    setTitleCaps(['team_mmr', 'waypoint_match_url', 'replay'])
+    renderWithProviders(
+      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="me" />,
+    )
+    const avecColonne = screen.getAllByRole('columnheader').length
+    const cellulesAvec = document.querySelectorAll('tbody tr:first-child td').length
+    cleanup()
+
     setTitleCaps(['team_mmr', 'waypoint_match_url'])
     renderWithProviders(
       <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="me" />,
     )
     expect(screen.queryByRole('link', { name: REPLAY_LABEL })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('columnheader')).toHaveLength(avecColonne - 1)
+    expect(document.querySelectorAll('tbody tr:first-child td')).toHaveLength(cellulesAvec - 1)
   })
 
   it('rendue quand le titre déclare `replay` ET que la ligne porte un artefact', () => {
