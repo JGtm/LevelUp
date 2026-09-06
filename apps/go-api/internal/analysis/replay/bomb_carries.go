@@ -67,12 +67,12 @@ func bombHeldEventsOf(changes []filmdec.HeldWeaponChange, deathOffsetMS int64) [
 // buildBombCarries projette la chronologie reconstruite sur l'axe de frames, sous le gate de
 // présence des pistes publiées. Pur, testable sans film.
 //
-// `presence` a la même sémantique que pour le crâne (skullCarrierPresence) : un portage
-// attribué à un joueur dont AUCUNE vie publiée ne couvre l'intervalle est écarté
-// (`CarrierAbsent`) — le calque n'aurait aucune position où poser la bombe ; un portage qui
-// déborde est ROGNÉ. Un porteur inconnu de `presence` n'est PAS vérifié.
+// `presence` a la même sémantique que pour le crâne, et passe par le MÊME gate
+// ([carrierPresence.gate]) : écart d'un portage que les pistes publiées démentent
+// (`CarrierAbsent`), rognage à la vie nommée qui le recouvre, et ABSTENTION dès que la présence
+// est inconnue (porteur jamais nommé, ou vie anonyme couvrant l'intervalle).
 func buildBombCarries(carry HeldObjectCarry, ctx matchClock,
-	presence map[string][]presenceSpan) ([]BombCarry, *BombCarriesCoverage) {
+	presence carrierPresence) ([]BombCarry, *BombCarriesCoverage) {
 	cov := &BombCarriesCoverage{BombFilm: true, Events: len(carry.Events)}
 	cov.Periods = len(carry.Periods)
 	out := make([]BombCarry, 0, len(carry.Periods))
@@ -92,19 +92,11 @@ func buildBombCarries(carry HeldObjectCarry, ctx matchClock,
 		}
 		xuid := strconv.FormatUint(p.XUID, 10)
 		// Gate de PRÉSENCE : le porteur doit être sur la carte pendant le portage (même
-		// règle et mêmes helpers que le crâne).
-		if spans := presence[xuid]; len(spans) > 0 {
-			span, ok := bestOverlap(spans, f0, f1)
-			if !ok {
-				cov.CarrierAbsent++
-				continue
-			}
-			if f0 < span.f0 {
-				f0 = span.f0
-			}
-			if f1 > span.f1 {
-				f1 = span.f1
-			}
+		// règle et MÊME code que le crâne — une seule copie, cf. carrierPresence.gate).
+		var ok bool
+		if f0, f1, ok = presence.gate(xuid, f0, f1); !ok {
+			cov.CarrierAbsent++
+			continue
 		}
 		closed := !p.Ouverte
 		out = append(out, BombCarry{XUID: xuid, T0: f0, T1: f1, Closed: closed})
@@ -150,7 +142,7 @@ func attachBombCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 		carries, cov = buildBombCarries(carry, matchClock{
 			origin: clock.origin, step: clock.step, frames: clock.frames,
 			deathOffsetMS: own.DeathOffsetMS,
-		}, skullCarrierPresence(doc.Tracks))
+		}, carrierPresenceOf(doc.Tracks))
 	}
 	doc.BombCarries = carries
 	if doc.Coverage != nil {

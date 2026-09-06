@@ -97097,3 +97097,71 @@ tests unitaires (`analysis/replay`, `replaybuild`, `archlint`, `contracttest`,
 **Conclusion / prochaine étape.** Ouverts au registre : CTF multi-manche (le pont par manche ne
 tient pas sur `fb1a1a72`) et calques VIP/crâne (même plafond). Prochaine étape : intégration de
 `feat/v2-residus` (schéma 43) après revue RES-R1, avec corpus témoin à chaque bump de schéma.
+## [2026-09-06] Quinze faits residuels du balayage du parc — instruits, un seul etait une regression — Complete
+
+**Contexte.** Cloture du chantier v2 : le balayage listait quinze faits residuels, tous
+anterieurs au chantier, qu'aucune chronique de schema n'expliquait. Branche
+`feat/v2-residus`, worktree dedie, base schema 41.
+
+**Decision technique.** Treize faits instruits SANS re-cuisson, sur les artefacts du balayage
+(`reference/`, `apres3/`) et la feuille de match de l'API. Un seul est une regression :
+`d9781168`, 36 portages de crane -> 30. Cause : le gate de presence (`af89b091b`, 30/08)
+n'indexait que les vies NOMMEES et lisait « aucune vie nommee de X » comme « X absent » — or
+18 slots sur 142 n'ont aucune vie nommee sur ce film. Correctif : `carrierPresence` retient
+aussi les vies ANONYMES et le gate S'ABSTIENT quand l'une d'elles recouvre le portage (ni
+rejet ni rognage) ; il ne rejette plus que ce que les pistes publiees DEMENTENT. La copie du
+gate dans `bomb_carries.go` est supprimee au profit du meme code.
+
+**Resultats.** Verite terrain independante du film : en Oddball le score EST le temps de
+portage. Feuille de match 191 s / 196 s par equipe ; artefact au schema 41 : 60,1 s / 147,4 s ;
+avec le correctif : 172,5 s / 158,8 s — exactement l'artefact du parc. L'axe `ports` passe de
+8 pertes a ZERO contre la reference. Cuisson temoin `replay-diff` : 12 ecarts, tous des gains
+(la seule « perte » est `carrierAbsent` 6 -> 0, compteur de defaut). Deux tests prouves par
+mutation, dont une contre-epreuve qui garde le gate actif sur le vrai fantome. Piege attrape
+par le test : le rognage doit passer APRES le test d'ignorance — il coute 91,2 s contre 32,6 s
+pour le rejet. Les quatorze autres faits : anciens artefacts faux (points aberrants, code
+d'arme atteste nulle part, capacite hors piste, dictionnaire mort), reclassements dans un gain
+(catalogue de socles etabli, pont d'identite par manche) ou decouverte deja au registre
+(corps immobile coupe par `lifeGapUS`).
+
+**Conclusion / prochaine etape.** Schema 41 -> **43** (42 reserve au complement des ports de
+drapeau, autre branche) : la re-cuisson de release doit repartir de 43. Trois decouvertes
+notees et non traitees, dont `51ebbc0f` qui publie 63 assistances pour 5 a la feuille, et
+l'angle mort du comparateur sur les intervalles ROGNES (invisibles a l'axe des comptes).
+
+## [2026-09-06] Intégration feat/v2-residus (schéma 43) — Complété
+
+**Contexte.** Fusion de `feat/v2-residus` (`cd5302ebf`) dans `feat/v75` après clôture de la
+revue adverse RES-R1 (17/17 conditions, trois constats mineurs corrigés dans `cd5302ebf`).
+Merge `dd8004e90`. Quatre conflits, tous dans la liste admise : `.ai/thought_log.md`
+(concaténation), `document.go` et `structure_test.go` (chronique des schémas, union des deux
+entrées 42 puis 43 dans l'ordre croissant, une seule contrainte `SchemaVersion` finale),
+`testdata/assembly_000d5950.golden` (régénéré par `go test -run GoldenAssembly -update`).
+
+**Décision technique.** Une régression trouvée parmi les quinze faits résiduels : le gate de
+présence des porteurs de crâne/bombe (`af89b091b`, 2026-08-30) traitait une vie ANONYME comme
+une absence de porteur (rejet ou rognage de l'intervalle). Le pont d'identité laisse des vies
+sans nom (18 slots sur 160 sur `d9781168`) sans que cela signifie « absent » — juste « on ne
+sait pas ». Correctif par abstention : `carrierPresence` retient aussi les vies anonymes, le
+gate ne rejette plus que ce que les pistes publiées DÉMENTENT explicitement. La chronique des
+schémas de `document.go` garde les deux entrées (v42 ports de drapeau, v43 gate de présence)
+dans l'ordre croissant ; la phrase « 42 réservé » (écrite avant l'intégration de flagcarries)
+a été retirée car périmée, remplacée par une liste de précédents mise à jour (v39/v40/v41/v42).
+
+**Résultats.** Deux témoins Oddball indépendants du film (le score EST le temps de portage) :
+`d9781168`, feuille de match 191 s / 196 s par équipe — artefact au schéma 41 : 60,1 s / 147,4 s
+(6 portages sur 36 écartés, 4 rognés) ; artefact corrigé : 172,5 s / 158,8 s, quasi la feuille.
+`51ebbc0f` : 66 s → 225 s. Quatorze autres faits résiduels : anciens artefacts faux (points
+aberrants, code d'arme non attesté, capacité hors piste), reclassements dans un gain, ou
+découvertes déjà au registre. Golden `assembly_000d5950.golden` régénéré : diff contre
+`feat/v2-flagcarries` ne montre que la ligne `schema 42` → `schema 43`. Gates rejoués sur
+l'état fusionné : `go build ./...`, tests unitaires (`analysis/replay`, `replaybuild`,
+`archlint`, `contracttest`, `sync/replayartifacts`), intégration
+`-tags=integration ./internal/api/wire/...`, `golangci-lint --new-from-merge-base=origin/main`
+(0 issue), `make generate-types` + `git diff --exit-code generated.ts` — tous verts.
+
+**Conclusion / prochaine étape.** Ouverts au registre (`REGISTRE_REPORTS.md`) : `51ebbc0f`
+découpe par manche des compteurs par joueur (63 assistances créditées à 5 joueurs) et l'angle
+mort du comparateur `replay-diff` sur les intervalles rognés (invisible à l'axe des comptes).
+Prochaine étape : Notion (re-cuisson du parc 41 → 43, à faire par le superviseur), corpus
+témoin à rejouer à chaque bump de schéma.
