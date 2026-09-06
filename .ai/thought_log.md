@@ -95442,9 +95442,11 @@ ecartes par `filmClockTrusted` — la porte ajoutee ne retire aucune carte de l'
 vitest 6 287 tests verts sur la suite web entiere, lint couleurs propre, cliquet d'imports
 croises inchange a 7/7.
 
-**Conclusion / prochaine etape.** Tache D-I close, poussee, CI surveillee. Decouverte non
-traitee (perimetre ferme) : `e2e/replay-explosion-raster.spec.ts` est rouge depuis AVANT ce lot
-— son harnais exige 7 imports de valeur dans `replayDraw.ts`, qui en porte 6, mesure identique
-au commit de base ; c'est le pendant de M1 (ces specs n'ont jamais tourne en CI) et cela releve
-de F.6. La tache D-II (modele, calques, arborescence) ne demarre qu'apres la revue adversariale
-de D-I.
+**Conclusion / prochaine etape.** Tache D-I close et poussee sur `feat/v2-web-modele`. La
+surveillance de la CI est ABANDONNEE sur consigne du superviseur (quota GitHub epuise, verdict
+reporte a sa verification) : la cloture s'appuie sur les gates locaux ci-dessus, rejoues sur
+l'etat exact publie. Decouverte non traitee (perimetre ferme) :
+`e2e/replay-explosion-raster.spec.ts` est rouge depuis AVANT ce lot — son harnais exige
+7 imports de valeur dans `replayDraw.ts`, qui en porte 6, mesure identique au commit de base ;
+c'est le pendant de M1 (ces specs n'ont jamais tourne en CI) et cela releve de F.6. La tache
+D-II (modele, calques, arborescence) ne demarre qu'apres la revue adversariale de D-I.
