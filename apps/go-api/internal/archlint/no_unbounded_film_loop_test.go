@@ -170,9 +170,10 @@ func TestNoUnboundedFilmLoop(t *testing.T) {
 // propre copie (`cmd/levelup/backfill_memlimit.go`, `cmd/replay-worker/memlimit.go`)
 // l'appelaient DEJA — `filmproc` n'a aucun cout de dependance (pas d'import projet
 // non-stdlib) et son callback `onExceeded` porte precisement les deux doctrines d'arret qui
-// divergent legitimement (code de sortie enfant vs rapport au serveur). Un `debug.SetMemoryLimit(`
-// brut hors de `internal/filmproc` est desormais une TROISIEME copie qui rouvrirait le meme
-// defaut : ce ratchet ne l'accepte plus — il doit passer par `filmproc.Arm`.
+// divergent legitimement (code de sortie enfant vs rapport au serveur). Un plafond souple pose
+// en direct hors de `internal/filmproc` serait une TROISIEME copie qui rouvrirait le meme
+// defaut : c'est [TestPasDeSentinelleBruteHorsFilmproc], plus bas, qui le rejette — retirer le
+// jeton d'ICI ne faisait que l'empecher de COMPTER comme preuve de sentinelle, pas de passer.
 var sentinelleTokens = []string{"filmproc.Arm("}
 
 // TestPointsDEntreeDeDecodageArmentUneSentinelle — LE RATCHET NE DE LA BOMBE RAM DU 2026-08-31.
@@ -254,4 +255,114 @@ func sentinelleDansPaquet(t *testing.T, dir string) bool {
 		}
 	}
 	return false
+}
+
+// sentinelleBrute : l'appel direct au plafond SOUPLE du runtime.
+//
+// Il est le PREMIER GESTE d'une troisieme copie de la sentinelle : c'est par lui que les deux
+// copies supprimees au lot v2 G.1 commencaient, et c'est le seul qui laisse une trace
+// grepable avant que le reste (marge dure, echantillonnage, doctrine d'arret) ne soit recopie
+// a cote.
+const sentinelleBrute = "debug.SetMemoryLimit("
+
+// sentinellePaquetCanonique : le SEUL emplacement ou l'appel brut est legitime.
+const sentinellePaquetCanonique = "internal/filmproc/"
+
+// sentinelleBruteAllowlist : les exceptions, chemin relatif a apps/go-api.
+//
+// ELLE EST VIDE, ET C'EST TOUT L'INTERET. Toute entree future doit porter sa justification
+// DATEE et sa date de retrait — un plafond souple pose hors de `internal/filmproc` est une
+// sentinelle qui ne dit pas son nom : elle ne mesure rien, ne tient aucun pic, n'a aucune
+// doctrine d'arret, et elle FAIT MENTIR le pic emis par la vraie sentinelle en changeant le
+// regime du GC sous elle.
+var sentinelleBruteAllowlist = map[string]string{}
+
+// TestPasDeSentinelleBruteHorsFilmproc — LE RATCHET QUE LE JOURNAL DU LOT v2 G PROMETTAIT.
+//
+// Le journal annoncait qu'« un `debug.SetMemoryLimit(` brut hors `internal/filmproc` est
+// desormais une violation du ratchet ». C'etait faux : retirer ce jeton de [sentinelleTokens]
+// l'a seulement empeche de COMPTER comme preuve de sentinelle dans
+// [TestPointsDEntreeDeDecodageArmentUneSentinelle] — aucune regle ne le rejetait, et un
+// paquet absent de [filmBuildAllowedCallers] n'etait meme pas regarde (constat C6 de la revue
+// R1, mutation M2 verte). Un relecteur qui se fiait au journal croyait a un garde-fou
+// inexistant ; il existe maintenant.
+func TestPasDeSentinelleBruteHorsFilmproc(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a echoue")
+	}
+	apiRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
+	// CE FICHIER-CI EST EXCLU, ET C'EST LA SEULE EXCLUSION : il porte le jeton en clair,
+	// dans sa constante ET dans son message d'erreur. Se compter lui-meme rendrait le
+	// ratchet perpetuellement rouge — et epeler le jeton par morceaux pour y echapper
+	// cacherait justement ce que le prochain lecteur doit pouvoir grep.
+	relSoi, _ := filepath.Rel(apiRoot, thisFile)
+	relSoi = filepath.ToSlash(relSoi)
+
+	var violations []string
+	vuDansLeCanonique := false
+	err := filepath.WalkDir(apiRoot, func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case "vendor", ".git", "node_modules", "tmp":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		rel, _ := filepath.Rel(apiRoot, path)
+		rel = filepath.ToSlash(rel)
+		if rel == relSoi {
+			return nil
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		for i, line := range strings.Split(string(data), "\n") {
+			// LES COMMENTAIRES NE SONT PAS DES APPELS : plusieurs fichiers CITENT le plafond
+			// souple pour expliquer leur regime, et les compter ferait rougir sur de la prose.
+			if trimmed := strings.TrimSpace(line); strings.HasPrefix(trimmed, "//") {
+				continue
+			}
+			if !strings.Contains(line, sentinelleBrute) {
+				continue
+			}
+			if strings.HasPrefix(rel, sentinellePaquetCanonique) {
+				vuDansLeCanonique = true
+				continue
+			}
+			if _, autorise := sentinelleBruteAllowlist[rel]; autorise {
+				continue
+			}
+			violations = append(violations,
+				rel+":"+strconv.Itoa(i+1)+"  "+strings.TrimSpace(line))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk apps/go-api: %v", err)
+	}
+	if len(violations) > 0 {
+		t.Errorf("plafond memoire SOUPLE pose hors de %s (%d).\n"+
+			"Un `debug.SetMemoryLimit(` brut est le premier geste d'une TROISIEME copie de la "+
+			"sentinelle : il ne mesure rien, ne tient aucun pic, n'a aucune doctrine d'arret, "+
+			"et il fait mentir le pic emis par la vraie sentinelle en changeant le regime du GC "+
+			"sous elle.\nPasser par `filmproc.Arm(outil, giB, onExceeded)` — cf. "+
+			"cmd/replay-build/main.go :\n  %s",
+			sentinellePaquetCanonique, len(violations), strings.Join(violations, "\n  "))
+	}
+	// LE RATCHET NE DOIT PAS DEVENIR VACUEUX. Si plus personne n'appelle le plafond souple,
+	// meme dans le paquet canonique, c'est que la sentinelle a change de forme — et cette
+	// regle garderait une porte qui n'existe plus.
+	if !vuDansLeCanonique {
+		t.Errorf("aucun %q dans %s : la sentinelle canonique ne pose plus de plafond souple, "+
+			"ce ratchet ne prouve donc plus rien — le reecrire ou le retirer",
+			sentinelleBrute, sentinellePaquetCanonique)
+	}
 }
