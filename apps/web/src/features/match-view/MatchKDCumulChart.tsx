@@ -10,24 +10,34 @@
  * adverse à l'instant du kill, et leur chip est placé EN DESSOUS de la
  * courbe pour ne pas collisionner avec les chips "kill" placés au-dessus.
  *
- * Stagger 2D anti-collision séparé pour les chips au-dessus (kill) et
- * en dessous (death).
- *
  * Source : `combat_tab.highlight_events` filtrés sur `event_type='kill'`,
  * équipe résolue via le scoreboard (team_side du joueur courant = ally team).
+ *
+ * LA GÉOMÉTRIE VIT DANS `_kdCumul.ts` (registre 2026-09-05, N1) : cumuls, bornes d'axe,
+ * placement anti-collision des pastilles et repères de capture y sont purs et testés. Ce
+ * fichier ne fait plus que l'HABILLAGE — les couleurs, qui dépendent de la palette
+ * d'accessibilité au moment du rendu, les libellés d'axe et les infobulles.
+ *
+ * L'AXE DES TEMPS EST LA RÉFÉRENCE DE L'ONGLET, et il l'est sans rien faire : `event_time_ms`
+ * est déjà recalé sur le début du GAMEPLAY par le serveur (`correctMatchViewEventsT0`), son
+ * zéro EST le coup d'envoi. C'est sur cet axe que le bloc « Score dans le temps », juste en
+ * dessous, vient se poser — lui vient du film et compte depuis le premier paquet de position,
+ * d'où la soustraction de `lib/replay/matchClock` (registre 2026-09-05, P0-7). Rien à
+ * convertir ici : toute correction ajoutée à ces abscisses les décalerait de la référence.
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase, type EChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
+import { formatClockMShort } from '@/lib/formatters'
 import type {
   MatchHighlightEvent,
   MatchImpactBadge,
   MatchObjectiveEvent,
   MatchScoreboardRow,
 } from '@/lib/api/types'
-import { extractCtfCaptures } from './_objectiveCaptures'
+import { buildKdCumul, type KdCumul, type KdCumulBadge } from './_kdCumul'
 import type { MatchViewText } from './i18n'
 import { resolveXuidMeta } from './xuidMeta'
 
@@ -41,46 +51,6 @@ interface Props {
   t: MatchViewText
 }
 
-interface BadgeSpec {
-  emoji: string
-  /** kill = ancré sur le killer, chip au-dessus.
-   *  death = ancré sur l'équipe adverse du défunt (qui a frag), chip en dessous. */
-  eventKind: 'kill' | 'death'
-  /** good → token success (vert) / bad → token warning (orange) /
-   *  auto → bon si l'event profite à l'équipe alliée, mauvais sinon. */
-  tone: 'good' | 'bad' | 'auto'
-}
-
-const BADGE_MAP: Record<string, BadgeSpec> = {
-  // Kill events
-  first_blood:       { emoji: '⚡', eventKind: 'kill',  tone: 'auto' },
-  top_gun:           { emoji: '🔫', eventKind: 'kill',  tone: 'good' },
-  clutch_finisher:   { emoji: '🎯', eventKind: 'kill',  tone: 'good' },
-  last_group_kill:   { emoji: '🐌', eventKind: 'kill',  tone: 'bad'  },
-  // kamikaze exclu : badge match-wide, pas de timestamp précis
-  // Death events (player_xuid = victime alliée — le frag est porté par l'adverse)
-  first_group_death: { emoji: '🪦', eventKind: 'death', tone: 'bad'  },
-  last_casualty:     { emoji: '💀', eventKind: 'death', tone: 'good' },
-}
-
-interface CurvePt { tMs: number; y: number }
-
-function valueAtMs(curve: CurvePt[], tMs: number): number {
-  if (curve.length === 0) return 0
-  let last = 0
-  for (const p of curve) {
-    if (p.tMs <= tMs) last = p.y
-    else break
-  }
-  return last
-}
-
-function formatMmSs(valueMs: number): string {
-  const m = Math.floor(valueMs / 60000)
-  const s = Math.max(0, Math.floor((valueMs % 60000) / 1000))
-  return `${m}m${s.toString().padStart(2, '0')}s`
-}
-
 export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, objectiveEvents, t }: Props) {
   // Le chart trace les frags cumulés par équipe : seuls les events `kill` le
   // peuplent. `events` peut être non-vide (médailles, autres faits marquants)
@@ -92,278 +62,26 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, objectiv
       ? [{ key: 'match_view.combat.kd_cumul', datapoints: events }]
       : []
 
+  const model = useMemo(
+    () =>
+      buildKdCumul({
+        events,
+        badges,
+        scoreboard,
+        meXUID,
+        // Cascade « allie = meme camp que moi » : source unique (xuidMeta.ts).
+        xuidMeta: resolveXuidMeta(scoreboard, meXUID),
+        objectiveEvents,
+      }),
+    [events, badges, scoreboard, meXUID, objectiveEvents],
+  )
+
   const buildOption = useCallback(
     (s: ChartSeries<MatchHighlightEvent>[]): EChartsCoreOption => {
-      if (s.length === 0 || !events || events.length === 0) return { backgroundColor: CHART_BG }
-
-      // Cascade « allie = meme camp que moi » : source unique (xuidMeta.ts).
-      const xuidMeta = resolveXuidMeta(scoreboard, meXUID)
-
-      // ---- Cumulatifs par équipe via highlight_events (event_type=kill) ----
-      const sortedKills = events
-        .filter((e) => (e.event_type ?? '').toLowerCase() === 'kill' && e.actor_xuid && e.event_time_ms != null)
-        .sort((a, b) => (a.event_time_ms as number) - (b.event_time_ms as number))
-
-      const allyCurve: CurvePt[] = []
-      const enemyCurve: CurvePt[] = []
-      let allyCum = 0
-      let enemyCum = 0
-      for (const ev of sortedKills) {
-        const meta = xuidMeta.get(ev.actor_xuid as string)
-        if (!meta) continue
-        const tMs = ev.event_time_ms as number
-        if (meta.ally) {
-          allyCum += 1
-          allyCurve.push({ tMs, y: allyCum })
-        } else {
-          enemyCum += 1
-          enemyCurve.push({ tMs, y: enemyCum })
-        }
-      }
-      if (allyCurve.length === 0 && enemyCurve.length === 0) return { backgroundColor: CHART_BG }
-
-      const totalMs = Math.max(
-        allyCurve.length ? allyCurve[allyCurve.length - 1].tMs : 0,
-        enemyCurve.length ? enemyCurve[enemyCurve.length - 1].tMs : 0,
-        60_000,
-      )
-      const yMaxData = Math.max(allyCum, enemyCum, 1)
-
-      // ---- Couleurs (tokens — palette okabe-ito / cividis / etc.) -------
-      const tc = getEChartsThemeColors()
-      const colorAlly  = resolveToken('team-ally')
-      const colorEnemy = resolveToken('team-enemy')
-      const accentGood = resolveToken('success')   // vert
-      const accentBad  = resolveToken('warning')   // orange
-      const chipRich = (border: string) => ({
-        backgroundColor: tc.tooltipBg,
-        borderColor: border,
-        borderWidth: 1,
-        borderRadius: 6,
-        padding: [5, 9],
-        color: tc.text,
-        fontSize: 11,
-        fontWeight: '600',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
-        lineHeight: 20,
-      })
-
-      // ---- Placement chips badges avec stagger 2D anti-collision ---------
-      const baseOffset = Math.max(2.5, yMaxData * 0.18)
-      const chipHeightY = baseOffset * 1.05
-      const chipTimeWindow = totalMs * 0.06
-      // Listes séparées pour les chips au-dessus (kill) et en dessous (death) :
-      // les 2 zones ne peuvent pas se chevaucher — stagger indépendant.
-      type Placed = { tMs: number; yChip: number }
-      const placedAbove: Placed[] = []
-      const placedBelow: Placed[] = []
-
-
-      type MarkPoint = Record<string, unknown>
-      type MarkLineSeg = [Record<string, unknown>, Record<string, unknown>]
-      const allyMP: MarkPoint[]  = []
-      const allyML: MarkLineSeg[] = []
-      const enemyMP: MarkPoint[] = []
-      const enemyML: MarkLineSeg[] = []
-
-      const sortedBadges = (badges ?? [])
-        .filter((b) => b.time_ms != null && BADGE_MAP[b.key])
-        .map((b) => ({ b, spec: BADGE_MAP[b.key], tMs: b.time_ms as number }))
-        .sort((a, b) => a.tMs - b.tMs)
-
-      for (const item of sortedBadges) {
-        const meta = item.b.player_xuid ? xuidMeta.get(item.b.player_xuid) : undefined
-        if (!meta) continue
-        // kill   → ancré sur la courbe du killer (player_xuid)
-        // death  → ancré sur la courbe de l'équipe adverse du défunt (qui a frag)
-        const team: 'ally' | 'enemy' =
-          item.spec.eventKind === 'kill'
-            ? meta.ally ? 'ally' : 'enemy'
-            : meta.ally ? 'enemy' : 'ally'
-        const curve = team === 'ally' ? allyCurve : enemyCurve
-        const yAt = valueAtMs(curve, item.tMs)
-        const placeAbove = item.spec.eventKind === 'kill'
-
-        let yChip = placeAbove ? yAt + baseOffset : yAt - baseOffset
-        const sink = placeAbove ? placedAbove : placedBelow
-        let safety = 12
-        while (
-          safety-- > 0 &&
-          sink.some(
-            (p) =>
-              Math.abs(p.tMs - item.tMs) < chipTimeWindow &&
-              Math.abs(p.yChip - yChip) < chipHeightY,
-          )
-        ) {
-          yChip += placeAbove ? chipHeightY : -chipHeightY
-        }
-        sink.push({ tMs: item.tMs, yChip })
-
-        // Tone résolu (auto = good si la frag profite à l'équipe alliée)
-        let tone: 'good' | 'bad'
-        if (item.spec.tone === 'auto') tone = team === 'ally' ? 'good' : 'bad'
-        else tone = item.spec.tone
-        const accent = tone === 'good' ? accentGood : accentBad
-
-        const sinkMP = team === 'ally' ? allyMP : enemyMP
-        const sinkML = team === 'ally' ? allyML : enemyML
-        const toneTag = tone === 'good' ? 'g' : 'b'
-        const chipLabel = `${item.spec.emoji} ${meta.gamertag}`
-        sinkMP.push({
-          coord: [item.tMs, yAt],
-          symbol: 'circle',
-          symbolSize: 9,
-          itemStyle: { color: accent, borderColor: '#fff', borderWidth: 1.5 }, // color-allow: structural SVG border on colored dot markers
-          label: { show: false },
-        })
-        sinkMP.push({
-          coord: [item.tMs, yChip],
-          symbol: 'circle',
-          symbolSize: 1,
-          itemStyle: { color: 'transparent', borderColor: 'transparent' },
-          label: {
-            show: true,
-            formatter: `{${toneTag}|${chipLabel}}`,
-            rich: {
-              g: chipRich(accentGood),
-              b: chipRich(accentBad),
-            },
-            align: 'center',
-            verticalAlign: 'middle',
-          },
-        })
-        sinkML.push([
-          { coord: [item.tMs, yAt], lineStyle: { color: accent, width: 1, type: 'dashed', opacity: 0.5 } },
-          { coord: [item.tMs, yChip] },
-        ])
-      }
-
-      // Étendre la fenêtre Y haut/bas pour laisser respirer les chips
-      const yMaxAxis = Math.max(
-        yMaxData * 1.3,
-        ...placedAbove.map((p) => p.yChip + chipHeightY),
-        yMaxData + 1,
-      )
-      const yMinAxis = placedBelow.length > 0
-        ? Math.min(0, ...placedBelow.map((p) => p.yChip - chipHeightY))
-        : 0
-
-      // ---- Overlay captures CTF : lignes verticales pleine hauteur ---------
-      // L'axe X est en ms → un markLine `{ xAxis: tMs }` trace une verticale.
-      // Vide si mode non-CTF (extractCtfCaptures renvoie []) → overlay absent.
-      const captures = extractCtfCaptures(objectiveEvents, scoreboard, meXUID)
-      type MarkLineVert = Record<string, unknown>
-      const captureML: MarkLineVert[] = captures.map((c) => ({
-        xAxis: c.tMs,
-        lineStyle: { color: c.ally ? colorAlly : colorEnemy, width: 1, type: 'solid', opacity: 0.7 },
-        label: {
-          show: true,
-          formatter: t.combatCtfCaptureLabel,
-          color: c.ally ? colorAlly : colorEnemy,
-          fontSize: 10,
-          fontWeight: 'bold',
-          position: 'insideEndTop',
-          rotate: 90,
-        },
-        // Tooltip dédié (item-trigger) : scorer + horodatage de la capture.
-        tooltip: {
-          show: true,
-          trigger: 'item',
-          formatter: () => t.combatCtfCaptureTooltip(c.scorer, formatMmSs(c.tMs)),
-        },
-      }))
-
-      const axis = getAxisBase(tc)
-      return {
-        backgroundColor: CHART_BG,
-        grid: { left: 50, right: 90, top: 24, bottom: 56, containLabel: true },
-        tooltip: {
-          ...getTooltipBase(tc),
-          trigger: 'axis',
-          axisPointer: { type: 'cross', label: { formatter: ({ value }: { value: unknown }) => formatMmSs(value as number) } },
-          formatter: (params: Array<{ axisValue: number; marker: string; seriesName: string; value: [number, number] }>) => {
-            if (!Array.isArray(params) || !params.length) return ''
-            // markPoints inherit the parent seriesName and appear as extra entries
-            // in axis-triggered tooltips — deduplicate to one entry per series.
-            const expected = new Set([t.combatTeamLabel, t.combatEnemyLabel])
-            const seen = new Map<string, typeof params[0]>()
-            for (const p of params) {
-              if (expected.has(p.seriesName) && !seen.has(p.seriesName)) seen.set(p.seriesName, p)
-            }
-            if (seen.size === 0) return ''
-            const rows = [...seen.values()].map(p => `${p.marker} ${escapeHtml(p.seriesName ?? '')}: <b>${p.value[1]}</b>`).join('<br/>')
-            return `${formatMmSs(params[0].axisValue)}<br/>${rows}`
-          },
-        },
-        legend: { ...getLegendBase(tc), data: [t.combatTeamLabel, t.combatEnemyLabel] },
-        xAxis: {
-          ...axis,
-          type: 'value',
-          min: 0,
-          max: totalMs,
-          axisLabel: { ...axis.axisLabel, formatter: (v: number) => formatMmSs(v) },
-        },
-        yAxis: {
-          ...axis,
-          type: 'value',
-          min: Math.floor(yMinAxis),
-          max: Math.ceil(yMaxAxis),
-        },
-        series: [
-          {
-            name: t.combatTeamLabel,
-            type: 'line',
-            showSymbol: false,
-            lineStyle: { color: colorAlly, width: 2 },
-            itemStyle: { color: colorAlly },
-            data: allyCurve.map((p) => [p.tMs, p.y]),
-            markPoint: { silent: true, data: allyMP },
-            markLine: { silent: true, symbol: ['none', 'none'], label: { show: false }, data: allyML },
-            z: 4,
-          },
-          {
-            name: t.combatEnemyLabel,
-            type: 'line',
-            showSymbol: false,
-            lineStyle: { color: colorEnemy, width: 2 },
-            itemStyle: { color: colorEnemy },
-            data: enemyCurve.map((p) => [p.tMs, p.y]),
-            markPoint: { silent: true, data: enemyMP },
-            markLine: { silent: true, symbol: ['none', 'none'], label: { show: false }, data: enemyML },
-            z: 4,
-          },
-          // Série dédiée overlay captures CTF : verticales pleine hauteur.
-          // Absente du legend (name hors legend.data). markLine non-silent pour
-          // exposer le tooltip scorer au survol ; aucune donnée de ligne propre.
-          ...(captureML.length > 0
-            ? [{
-                name: t.combatCtfCaptureLabel,
-                type: 'line' as const,
-                data: [] as Array<[number, number]>,
-                showSymbol: false,
-                legendHoverLink: false,
-                markLine: {
-                  silent: false,
-                  symbol: ['none', 'none'],
-                  data: captureML,
-                },
-                z: 3,
-              }]
-            : []),
-        ],
-      }
+      if (s.length === 0 || !model) return { backgroundColor: CHART_BG }
+      return kdCumulOption(model, getEChartsThemeColors(), t)
     },
-    [
-      events,
-      badges,
-      scoreboard,
-      meXUID,
-      objectiveEvents,
-      t.combatTeamLabel,
-      t.combatEnemyLabel,
-      t.combatCtfCaptureLabel,
-      t.combatCtfCaptureTooltip,
-    ],
+    [model, t],
   )
 
   return (
@@ -376,4 +94,207 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, objectiv
       emptyMessage={t.combatNoData}
     />
   )
+}
+
+/** Les marques d'une série : les pastilles (deux points) et leur trait de rattachement. */
+interface BadgeMarks {
+  points: Record<string, unknown>[]
+  lines: Array<[Record<string, unknown>, Record<string, unknown>]>
+}
+
+/**
+ * kdCumulOption — l'option ECharts, extraite du composant pour rester lisible.
+ *
+ * LES COULEURS SE RÉSOLVENT ICI, dans le builder : leur valeur calculée change avec la
+ * palette d'accessibilité, et c'est ce rebuild qui la rafraîchit (cf. ChartCard,
+ * dépendance `paletteVersion`).
+ */
+function kdCumulOption(model: KdCumul, tc: EChartsThemeColors, t: MatchViewText): EChartsCoreOption {
+  const colorAlly = resolveToken('team-ally')
+  const colorEnemy = resolveToken('team-enemy')
+  const accents = { good: resolveToken('success'), bad: resolveToken('warning') }
+  const marks = { ally: badgeMarks(model, 'ally', accents, tc), enemy: badgeMarks(model, 'enemy', accents, tc) }
+
+  const axis = getAxisBase(tc)
+  return {
+    backgroundColor: CHART_BG,
+    grid: { left: 50, right: 90, top: 24, bottom: 56, containLabel: true },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'axis',
+      axisPointer: { type: 'cross', label: { formatter: ({ value }: { value: unknown }) => formatClockMShort(value as number) } },
+      formatter: tooltipFormatter(t),
+    },
+    legend: { ...getLegendBase(tc), data: [t.combatTeamLabel, t.combatEnemyLabel] },
+    xAxis: {
+      ...axis,
+      type: 'value',
+      min: 0,
+      max: model.totalMs,
+      axisLabel: { ...axis.axisLabel, formatter: (v: number) => formatClockMShort(v) },
+    },
+    yAxis: {
+      ...axis,
+      type: 'value',
+      min: model.yMin,
+      max: model.yMax,
+    },
+    series: [
+      teamSeries(t.combatTeamLabel, model.ally, colorAlly, marks.ally),
+      teamSeries(t.combatEnemyLabel, model.enemy, colorEnemy, marks.enemy),
+      // Série dédiée overlay captures CTF : verticales pleine hauteur.
+      // Absente du legend (name hors legend.data). markLine non-silent pour
+      // exposer le tooltip scorer au survol ; aucune donnée de ligne propre.
+      ...captureSeries(model, { ally: colorAlly, enemy: colorEnemy }, t),
+    ],
+  }
+}
+
+/** Une courbe d'équipe, ses pastilles et leurs traits. */
+function teamSeries(
+  name: string,
+  points: KdCumul['ally'],
+  color: string,
+  marks: BadgeMarks,
+): Record<string, unknown> {
+  return {
+    name,
+    type: 'line',
+    showSymbol: false,
+    lineStyle: { color, width: 2 },
+    itemStyle: { color },
+    data: points.map((p) => [p.tMs, p.y]),
+    markPoint: { silent: true, data: marks.points },
+    markLine: { silent: true, symbol: ['none', 'none'], label: { show: false }, data: marks.lines },
+    z: 4,
+  }
+}
+
+/**
+ * badgeMarks habille les pastilles d'un camp : un point plein SUR la courbe, un point
+ * invisible qui porte l'étiquette à sa hauteur placée, et le trait pointillé qui les relie.
+ */
+function badgeMarks(
+  model: KdCumul,
+  team: KdCumulBadge['team'],
+  accents: Record<KdCumulBadge['tone'], string>,
+  tc: EChartsThemeColors,
+): BadgeMarks {
+  const chipRich = (border: string) => ({
+    backgroundColor: tc.tooltipBg,
+    borderColor: border,
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: [5, 9],
+    color: tc.text,
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+    lineHeight: 20,
+  })
+  const marks: BadgeMarks = { points: [], lines: [] }
+  for (const b of model.badges) {
+    if (b.team !== team) continue
+    const accent = accents[b.tone]
+    const toneTag = b.tone === 'good' ? 'g' : 'b'
+    marks.points.push({
+      coord: [b.tMs, b.yAt],
+      symbol: 'circle',
+      symbolSize: 9,
+      itemStyle: { color: accent, borderColor: '#fff', borderWidth: 1.5 }, // color-allow: structural SVG border on colored dot markers
+      label: { show: false },
+    })
+    marks.points.push({
+      coord: [b.tMs, b.yChip],
+      symbol: 'circle',
+      symbolSize: 1,
+      itemStyle: { color: 'transparent', borderColor: 'transparent' },
+      label: {
+        show: true,
+        formatter: `{${toneTag}|${b.label}}`,
+        rich: { g: chipRich(accents.good), b: chipRich(accents.bad) },
+        align: 'center',
+        verticalAlign: 'middle',
+      },
+    })
+    marks.lines.push([
+      { coord: [b.tMs, b.yAt], lineStyle: { color: accent, width: 1, type: 'dashed', opacity: 0.5 } },
+      { coord: [b.tMs, b.yChip] },
+    ])
+  }
+  return marks
+}
+
+/**
+ * captureSeries — les captures de drapeau en verticales pleine hauteur.
+ *
+ * L'axe X est en ms → un markLine `{ xAxis: tMs }` trace une verticale. Vide hors CTF
+ * (`extractCtfCaptures` ne rend rien) : la série n'existe alors pas du tout.
+ */
+function captureSeries(
+  model: KdCumul,
+  couleurs: { ally: string; enemy: string },
+  t: MatchViewText,
+): Record<string, unknown>[] {
+  if (model.captures.length === 0) return []
+  return [
+    {
+      name: t.combatCtfCaptureLabel,
+      type: 'line' as const,
+      data: [] as Array<[number, number]>,
+      showSymbol: false,
+      legendHoverLink: false,
+      markLine: {
+        silent: false,
+        symbol: ['none', 'none'],
+        data: model.captures.map((c) => ({
+          xAxis: c.tMs,
+          lineStyle: {
+            color: c.ally ? couleurs.ally : couleurs.enemy,
+            width: 1,
+            type: 'solid',
+            opacity: 0.7,
+          },
+          label: {
+            show: true,
+            formatter: t.combatCtfCaptureLabel,
+            color: c.ally ? couleurs.ally : couleurs.enemy,
+            fontSize: 10,
+            fontWeight: 'bold',
+            position: 'insideEndTop',
+            rotate: 90,
+          },
+          // Tooltip dédié (item-trigger) : scorer + horodatage de la capture.
+          tooltip: {
+            show: true,
+            trigger: 'item',
+            formatter: () => t.combatCtfCaptureTooltip(c.scorer, formatClockMShort(c.tMs)),
+          },
+        })),
+      },
+      z: 3,
+    },
+  ]
+}
+
+/**
+ * tooltipFormatter écrit l'instant puis une ligne par camp.
+ *
+ * Les markPoints héritent du nom de leur série et reviennent donc en double dans une
+ * infobulle déclenchée par l'axe : on ne garde qu'une entrée par camp.
+ */
+function tooltipFormatter(t: MatchViewText) {
+  return (params: Array<{ axisValue: number; marker: string; seriesName: string; value: [number, number] }>): string => {
+    if (!Array.isArray(params) || !params.length) return ''
+    const expected = new Set([t.combatTeamLabel, t.combatEnemyLabel])
+    const seen = new Map<string, (typeof params)[0]>()
+    for (const p of params) {
+      if (expected.has(p.seriesName) && !seen.has(p.seriesName)) seen.set(p.seriesName, p)
+    }
+    if (seen.size === 0) return ''
+    const rows = [...seen.values()]
+      .map((p) => `${p.marker} ${escapeHtml(p.seriesName ?? '')}: <b>${p.value[1]}</b>`)
+      .join('<br/>')
+    return `${formatClockMShort(params[0].axisValue)}<br/>${rows}`
+  }
 }

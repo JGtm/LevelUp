@@ -17,7 +17,6 @@ import {
   leadChanges,
   normalizeScoreTimeline,
   playerCountersAt,
-  roundAtFrame,
   scoreAtFrame,
   scoreTimelineOf,
   teamIdOfSide,
@@ -105,49 +104,6 @@ describe('teamSeriesFor / teamScoreAtFrame — le camp qui n’a jamais marqué'
     expect(teamIdOfSide('t1')).toBe(1)
     expect(teamIdOfSide(null)).toBeNull()
     expect(teamIdOfSide('')).toBeNull()
-  })
-})
-
-describe('roundAtFrame — la manche courante, qui n’est pas le total', () => {
-  // Témoin Oddball `24dbb67d` : manches 100/78 puis 100/43, total 200/121.
-  const oddball = timelineOf({
-    teams: [
-      {
-        teamId: 0,
-        rounds: [
-          { round: 0, points: [{ t: 595, v: 1 }, { t: 2787, v: 100 }] },
-          { round: 1, points: [{ t: 3100, v: 1 }, { t: 5060, v: 100 }] },
-        ],
-        total: [
-          { t: 595, v: 1 },
-          { t: 2787, v: 100 },
-          { t: 3100, v: 101 },
-          { t: 5060, v: 200 },
-        ],
-      },
-    ],
-    players: null,
-  })
-  const t0 = teamSeriesFor(oddball, 0)
-
-  it('rend la première manche avant tout palier', () => {
-    expect(roundAtFrame(t0, 0)).toEqual({ round: 0, index: 1, value: 0, count: 2 })
-  })
-
-  it('rend la manche 1 et SA valeur, pas le cumul', () => {
-    expect(roundAtFrame(t0, 2787)).toEqual({ round: 0, index: 1, value: 100, count: 2 })
-  })
-
-  it('bascule sur la manche 2, dont la valeur REPART de zéro', () => {
-    expect(roundAtFrame(t0, 3100)?.index).toBe(2)
-    expect(roundAtFrame(t0, 3100)?.value).toBe(1)
-    expect(roundAtFrame(t0, 5060)?.value).toBe(100)
-    // Le total, lui, cumule : 200 là où la manche courante dit 100.
-    expect(teamScoreAtFrame(oddball, 0, 5060)).toBe(200)
-  })
-
-  it('rend null sans série d’équipe', () => {
-    expect(roundAtFrame(null, 100)).toBeNull()
   })
 })
 

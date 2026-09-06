@@ -574,3 +574,9 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   `capability_test.go`, A dans `helpers_test.go`) → le fichier de A supprimé ; journal concaténé.
   Tests unitaires + intégration replayartifacts/persist/sync verts. Intégrés : B, F, C, G, E,
   CTF, A. Reste D.
+- 2026-09-06 14:40 : D FUSIONNÉ dans `feat/v75` (seul conflit : journal ; le déplacement de
+  `weaponSoundVariations.ts` sous `sound/` a absorbé l'en-tête du lot G automatiquement). Gates
+  sur l'état fusionné : `tsc -b --force` 0, lint 0 erreur, `lint:colors` clean, frontière
+  `7 <= plafond 7`, build OK, vitest 612 fichiers / 6 393 verts. LES SEPT LOTS ET LE CORRECTIF
+  CTF SONT INTÉGRÉS : B, F, C, G, E, CTF, A, D. Reste : CI des derniers merges, balayage du parc
+  (en cours), balayage « après » sur `feat/v75` intégré, décision `flagCarries`.

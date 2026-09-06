@@ -9,14 +9,19 @@
  *
  * Source : `combat_tab.cadence` (Phase 1 MV2). Le team_side de chaque xuid
  * dans `dp.components` est résolu via le scoreboard (ally vs enemy).
+ *
+ * LA GÉOMÉTRIE VIT DANS `_cadence.ts` (registre 2026-09-05, N1) : empilements, moyennes
+ * mobiles, pic et libellés d'abscisse y sont purs et testés. Ce fichier ne fait plus que
+ * l'HABILLAGE — les couleurs, qui dépendent de la palette d'accessibilité au moment du
+ * rendu, l'ordre de superposition et les libellés d'axe.
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from '@/components/charts/_utils'
+import { CHART_BG, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase, type EChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { MatchScoreboardRow, MatchViewCadence } from '@/lib/api/types'
-import { formatBinSeconds } from './_chartSeries'
+import { buildCadence, type Cadence } from './_cadence'
 import type { MatchViewText } from './i18n'
 import { resolveXuidMeta } from './xuidMeta'
 
@@ -25,18 +30,6 @@ interface Props {
   scoreboard: MatchScoreboardRow[] | null | undefined
   meXUID: string | null
   t: MatchViewText
-}
-
-/** Moyenne mobile droite avec fenêtre expansive au démarrage (window=3).
- *  Les window-1 premiers points utilisent une fenêtre réduite plutôt que null
- *  pour que la courbe parte dès le premier segment. */
-function movingAverage(values: number[], window = 3): number[] {
-  return values.map((_, i) => {
-    const start = Math.max(0, i - (window - 1))
-    let sum = 0
-    for (let j = start; j <= i; j++) sum += values[j]
-    return Math.round((sum / (i - start + 1)) * 10) / 10
-  })
 }
 
 export function MatchCadenceChart({ cadence, scoreboard, meXUID, t }: Props) {
@@ -53,170 +46,18 @@ export function MatchCadenceChart({ cadence, scoreboard, meXUID, t }: Props) {
       ? [{ key: cadence.key, datapoints: cadence.datapoints }]
       : []
 
+  // Cascade « allié = même camp que moi » : source unique (xuidMeta.ts).
+  const model = useMemo(
+    () => buildCadence({ cadence, meXUID, xuidMeta: resolveXuidMeta(scoreboard, meXUID) }),
+    [cadence, scoreboard, meXUID],
+  )
+
   const buildOption = useCallback(
     (s: ChartSeries<unknown>[]): EChartsCoreOption => {
-      if (s.length === 0 || !cadence || cadence.datapoints.length === 0) {
-        return { backgroundColor: CHART_BG }
-      }
-      // Cascade « allié = même camp que moi » : source unique (xuidMeta.ts). Le `xuid ===
-      // meXUID` est conservé pour le cas — anormal — où le joueur de la page n'a pas de
-      // ligne au scoreboard : il reste son propre allié.
-      const meta = resolveXuidMeta(scoreboard, meXUID)
-      const isAlly = (xuid: string): boolean =>
-        xuid === meXUID || (meta.get(xuid)?.ally ?? false)
-
-      const phaseSeconds = (cadence.meta?.phase_seconds as number | undefined) ?? 30
-      const categories = cadence.datapoints.map((_, i) => formatBinSeconds(i * phaseSeconds))
-      const teamSeries: number[] = []
-      const enemySeries: number[] = []
-      for (const dp of cadence.datapoints) {
-        let team = 0
-        let enemy = 0
-        for (const [xuid, count] of Object.entries(dp.components)) {
-          if (isAlly(xuid)) team += count
-          else enemy += count
-        }
-        teamSeries.push(team)
-        enemySeries.push(enemy)
-      }
-
-      const teamMA = movingAverage(teamSeries, 3)
-      const enemyMA = movingAverage(enemySeries, 3)
-
-      // PIC = max global toutes phases / équipes confondues
-      let peakIdx = 0
-      let peakVal = 0
-      for (let i = 0; i < teamSeries.length; i++) {
-        const total = teamSeries[i] + enemySeries[i]
-        if (total > peakVal) { peakVal = total; peakIdx = i }
-      }
-
-      const colorTeam = resolveToken('team-ally')
-      const colorEnemy = resolveToken('team-enemy')
-      const colorPic = resolveToken('warning')
-      const tc = getEChartsThemeColors()
-      const axis = getAxisBase(tc)
-
-      // Border (theme-aware) autour des courbes MA pour les détacher des
-      // bars empilées : duplicat des courbes en couleur foreground du thème,
-      // un cran plus large, dessous → effet bordure.
-      // `tc.text` = `--foreground` qui s'inverse light/dark, donc lisible
-      // dans les 2 modes sans hex en dur.
-      const maOutlineWidth = 6
-      const maInnerWidth = 3
-      const maOutlineName = '__ma_outline__'
-
-      return {
-        backgroundColor: CHART_BG,
-        grid: { left: 40, right: 20, top: 50, bottom: 80, containLabel: true },
-        tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' } },
-        legend: {
-          ...getLegendBase(tc),
-          bottom: 5,
-          // Exclut les outlines de la légende (un seul item par MA)
-          data: [
-            t.combatTeamLabel,
-            t.combatEnemyLabel,
-            `MA ${t.combatTeamLabel}`,
-            `MA ${t.combatEnemyLabel}`,
-          ],
-        },
-        xAxis: {
-          ...axis,
-          type: 'category',
-          data: categories,
-          name: 'Temps',
-          nameTextStyle: { color: tc.text },
-          axisLabel: { ...axis.axisLabel, rotate: -45, fontSize: 9 },
-          splitLine: { show: false },
-        },
-        yAxis: {
-          ...axis,
-          type: 'value',
-          name: t.combatKillsLabel,
-          nameTextStyle: { color: tc.text },
-          min: 0,
-          splitLine: { show: true, lineStyle: { color: tc.splitLine } },
-        },
-        series: [
-          {
-            type: 'bar',
-            stack: 'total',
-            name: t.combatTeamLabel,
-            data: teamSeries,
-            itemStyle: { color: colorTeam, opacity: 0.8, borderColor: colorTeam, borderWidth: 1 },
-            markPoint: {
-              silent: true,
-              symbolSize: 1,
-              label: {
-                show: true,
-                formatter: 'Pic',
-                position: 'top',
-                color: colorPic,
-                fontSize: 10,
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                padding: [2, 4],
-              },
-              data: peakVal > 0 ? [{ coord: [peakIdx, peakVal] }] : [],
-            },
-          },
-          {
-            type: 'bar',
-            stack: 'total',
-            name: t.combatEnemyLabel,
-            data: enemySeries,
-            itemStyle: { color: colorEnemy, opacity: 0.8, borderColor: colorEnemy, borderWidth: 1 },
-          },
-          // Outlines (z=4) — même tracé, plus large, couleur foreground
-          {
-            type: 'line',
-            name: maOutlineName,
-            data: teamMA,
-            lineStyle: { color: tc.text, width: maOutlineWidth, opacity: 0.95 },
-            symbol: 'none',
-            smooth: true,
-            silent: true,
-            tooltip: { show: false },
-            legendHoverLink: false,
-            z: 4,
-          },
-          {
-            type: 'line',
-            name: maOutlineName,
-            data: enemyMA,
-            lineStyle: { color: tc.text, width: maOutlineWidth, opacity: 0.95 },
-            symbol: 'none',
-            smooth: true,
-            silent: true,
-            tooltip: { show: false },
-            legendHoverLink: false,
-            z: 4,
-          },
-          // Courbes MA colorées (z=5)
-          {
-            type: 'line',
-            name: `MA ${t.combatTeamLabel}`,
-            data: teamMA,
-            lineStyle: { color: colorTeam, width: maInnerWidth, opacity: 1 },
-            itemStyle: { color: colorTeam },
-            symbol: 'none',
-            smooth: true,
-            z: 5,
-          },
-          {
-            type: 'line',
-            name: `MA ${t.combatEnemyLabel}`,
-            data: enemyMA,
-            lineStyle: { color: colorEnemy, width: maInnerWidth, opacity: 1 },
-            itemStyle: { color: colorEnemy },
-            symbol: 'none',
-            smooth: true,
-            z: 5,
-          },
-        ],
-      }
+      if (s.length === 0 || !model) return { backgroundColor: CHART_BG }
+      return cadenceOption(model, getEChartsThemeColors(), t)
     },
-    [cadence, scoreboard, meXUID, t.combatKillsLabel, t.combatTeamLabel, t.combatEnemyLabel],
+    [model, t],
   )
 
   return (
@@ -228,4 +69,127 @@ export function MatchCadenceChart({ cadence, scoreboard, meXUID, t }: Props) {
       emptyMessage={t.combatNoData}
     />
   )
+}
+
+/** Nom réservé des doublures d'épaisseur : hors légende, un seul item par moyenne mobile. */
+const MA_OUTLINE_NAME = '__ma_outline__'
+/** Épaisseur de la doublure et du trait, en pixels — l'écart des deux FAIT la bordure. */
+const MA_OUTLINE_WIDTH = 6
+const MA_INNER_WIDTH = 3
+
+/**
+ * cadenceOption — l'option ECharts, extraite du composant pour rester lisible.
+ *
+ * LES COULEURS SE RÉSOLVENT ICI, dans le builder : leur valeur calculée change avec la
+ * palette d'accessibilité, et c'est ce rebuild qui la rafraîchit (cf. ChartCard).
+ */
+function cadenceOption(model: Cadence, tc: EChartsThemeColors, t: MatchViewText): EChartsCoreOption {
+  const axis = getAxisBase(tc)
+  return {
+    backgroundColor: CHART_BG,
+    grid: { left: 40, right: 20, top: 50, bottom: 80, containLabel: true },
+    tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: {
+      ...getLegendBase(tc),
+      bottom: 5,
+      // Exclut les outlines de la légende (un seul item par MA)
+      data: [
+        t.combatTeamLabel,
+        t.combatEnemyLabel,
+        `MA ${t.combatTeamLabel}`,
+        `MA ${t.combatEnemyLabel}`,
+      ],
+    },
+    xAxis: {
+      ...axis,
+      type: 'category',
+      data: model.categories,
+      name: 'Temps',
+      nameTextStyle: { color: tc.text },
+      axisLabel: { ...axis.axisLabel, rotate: -45, fontSize: 9 },
+      splitLine: { show: false },
+    },
+    yAxis: {
+      ...axis,
+      type: 'value',
+      name: t.combatKillsLabel,
+      nameTextStyle: { color: tc.text },
+      min: 0,
+      splitLine: { show: true, lineStyle: { color: tc.splitLine } },
+    },
+    series: cadenceSeries(model, tc, t),
+  }
+}
+
+/**
+ * cadenceSeries — les six séries du graphe : deux empilements, deux doublures, deux moyennes.
+ *
+ * LES DOUBLURES (z=4) sont le MÊME tracé, plus large, à la couleur de premier plan du thème :
+ * c'est ce qui détache les courbes des barres empilées sans poser de teinte en dur
+ * (`tc.text` = `--foreground`, qui s'inverse clair/sombre).
+ */
+function cadenceSeries(
+  model: Cadence,
+  tc: EChartsThemeColors,
+  t: MatchViewText,
+): Record<string, unknown>[] {
+  const colorTeam = resolveToken('team-ally')
+  const colorEnemy = resolveToken('team-enemy')
+  const colorPic = resolveToken('warning')
+  const doublure = (data: number[]) => ({
+    type: 'line',
+    name: MA_OUTLINE_NAME,
+    data,
+    lineStyle: { color: tc.text, width: MA_OUTLINE_WIDTH, opacity: 0.95 },
+    symbol: 'none',
+    smooth: true,
+    silent: true,
+    tooltip: { show: false },
+    legendHoverLink: false,
+    z: 4,
+  })
+  const moyenne = (name: string, data: number[], color: string) => ({
+    type: 'line',
+    name,
+    data,
+    lineStyle: { color, width: MA_INNER_WIDTH, opacity: 1 },
+    itemStyle: { color },
+    symbol: 'none',
+    smooth: true,
+    z: 5,
+  })
+  return [
+    {
+      type: 'bar',
+      stack: 'total',
+      name: t.combatTeamLabel,
+      data: model.ally,
+      itemStyle: { color: colorTeam, opacity: 0.8, borderColor: colorTeam, borderWidth: 1 },
+      markPoint: {
+        silent: true,
+        symbolSize: 1,
+        label: {
+          show: true,
+          formatter: 'Pic',
+          position: 'top',
+          color: colorPic,
+          fontSize: 10,
+          backgroundColor: 'rgba(0,0,0,0.5)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
+          padding: [2, 4],
+        },
+        data: model.peak.total > 0 ? [{ coord: [model.peak.index, model.peak.total] }] : [],
+      },
+    },
+    {
+      type: 'bar',
+      stack: 'total',
+      name: t.combatEnemyLabel,
+      data: model.enemy,
+      itemStyle: { color: colorEnemy, opacity: 0.8, borderColor: colorEnemy, borderWidth: 1 },
+    },
+    doublure(model.allyMA),
+    doublure(model.enemyMA),
+    moyenne(`MA ${t.combatTeamLabel}`, model.allyMA, colorTeam),
+    moyenne(`MA ${t.combatEnemyLabel}`, model.enemyMA, colorEnemy),
+  ]
 }

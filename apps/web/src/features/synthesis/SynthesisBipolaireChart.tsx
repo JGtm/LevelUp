@@ -18,6 +18,7 @@ import {
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { ComparisonMetricItem } from '@/lib/api/types'
+import { formatClockMShort } from '@/lib/formatters'
 
 interface Props {
   metrics: ComparisonMetricItem[]
@@ -47,9 +48,21 @@ function formatMetricValue(key: string, value: number): string {
     case 'avg_damage_taken':
       return value.toFixed(0)
     case 'avg_life_seconds': {
-      const m = Math.floor(value / 60)
-      const s = Math.round(value % 60)
-      return m > 0 ? `${m}m${String(s).padStart(2, '0')}s` : `${s}s`
+      // SOUS LA MINUTE, LA MOYENNE SE LIT « 37 s » : le « 0m » d'un format M m SS s
+      // n'apporterait rien sur une durée de vie moyenne, et cette décision-là reste ici.
+      // L'ÉCRITURE du format, elle, vient de `lib/formatters` (registre 2026-09-05, N3) ;
+      // l'arrondi précède la conversion, sans quoi 119,6 s se lirait « 1m60s ».
+      //
+      // CE QUE L'ARRONDI D'ABORD CHANGE, MESURÉ (2026-09-06, revue R1, constat C7 — sixième
+      // exception du lot v2 D) : sur un pas de 0,1 s entre 0 et 400 s, 30 valeurs changent de
+      // libellé, réparties en SIX fenêtres d'une demi-seconde — [59,5;60), [119,5;120),
+      // [179,5;180), [239,5;240), [299,5;300), [359,5;360). Dans la première, « 60s » devient
+      // « 1m00s » : un changement de FORME, pas la correction d'une sortie invalide. Dans les
+      // cinq autres, c'est bien une invalidité qui disparaît (« 1m60s », « 2m60s »…).
+      // Décision du superviseur : accepté, une durée juste sous la minute vaut mieux écrite
+      // « 1m00s » que d'imposer deux règles d'arrondi au même libellé.
+      const arrondi = Math.round(value)
+      return arrondi < 60 ? `${arrondi}s` : formatClockMShort(arrondi * 1000)
     }
     case 'time_played_seconds': {
       const d = Math.floor(value / 86400)
