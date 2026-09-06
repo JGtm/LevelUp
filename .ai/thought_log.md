@@ -1,3 +1,48 @@
+## [2026-09-06] Plan Tactique phase 7A — spawns, routes, isolement : le Go et le contrat — Complete
+
+**Decision technique principale.** La verification sur pieces, faite AVANT de coder, a decide
+de toute la forme du lot. Le document de rejeu ne publie AUCUNE liste de morts datees par
+joueur (`neutralDeaths` ne couvre que les morts que personne ne revendique) : la seule source
+hors ligne de « ce joueur est mort a cet instant » est la fin d'une vie NOMMEE — fiable par
+construction, puisque c'est le fil des morts du film qui pose l'identite de la victime sur la
+vie que sa mort termine, et que les survivants de fin de partie restent anonymes. Et parce que
+le film NE PORTE PAS LES EQUIPES (`Track.Team` = -1 pour tout le monde), l'isolement se calcule
+en DEUX TEMPS : a la cuisson, le sidecar mesure la distance a chaque autre joueur nomme VIVANT
+a l'instant de la mort ; a la lecture, le service joint les camps, applique le rayon de la
+VARIANTE du match et tranche. Le sidecar reste anonyme et sans contexte, donc rien ne le perime
+quand un joueur change de camp.
+
+**Resultats observes.** Trois decisions de mesure portent le lot, et chacune se serait lue
+comme un bug si elle avait ete prise autrement. (1) Le plancher des grappes porte sur l'AMAS et
+non sur la cellule : sur une grille de 0,5 m, trois reapparitions de trois matchs differents
+tombent dans trois cellules VOISINES — un plancher par cellule les aurait comptees a un match
+chacune, et tous les spawns du jeu auraient disparu. (2) L'identifiant d'une grappe est derive
+du barycentre, jamais d'un rang : un index change des qu'un match entre dans le filtre, et le
+lien `?spawn=` d'un utilisateur designerait alors un autre amas. (3) Les routes comptent des
+PASSAGES et non du temps, sans quoi elles auraient rendu la meme carte que « ou je passe mon
+temps », simplement bornee a 15 s. Le rayon du radar entre dans `regulation.toml
+[radar_range_m]` avec le chargeur EXISTANT et la convention de cle des quatre tables voisines
+(variante exacte) ; une variante absente ne rend pas de lecture et SE COMPTE. Gate complet
+vert : `go vet` et `go test` sur tout `internal/` + `cmd/` sans un `FAIL`, integration `-p 1`
+sur trois arbres (code 0), `golangci-lint --new-from-merge-base` a 0 issue, contrat a jour,
+typecheck propre, vitest complet 606/6405/0. ONZE mutations jouees, dont UNE SURVIVANTE
+corrigee : le test de stabilite de l'identifiant de grappe ne prouvait pas ce qu'il annoncait
+(l'amas ajoute triait apres l'original, qui gardait donc le rang 0). Deux seuils corriges que
+le ratchet CI ne peut pas voir, meme classe que le C8 de la ronde precedente : la complexite du
+chargeur de regulation (les quatre tables d'entiers se validaient pareil, la quatrieme a
+franchi le seuil) et `domain/tactical.go`, scinde selon la coupure que le §7 de la phase 6
+avait deja identifiee.
+
+**Conclusion / prochaine etape.** Quatre commits `tactique(7.<n>)` sur `feat/tactique`, non
+pousses. **7B (item 7.7, le nuage Escouade) N'EST PAS COMMENCE** : main rendue au superviseur
+pour la revue adversariale entre les deux sous-lots, comme demande. `7.1` est statue `[~]`
+(couvert par la phase 6 et sa correction C1) et `7.5 dispersion.go` `[!]` sur decision du
+superviseur, verifiee sur pieces : aucune lecture de la V1 ne la consomme, et le depot interdit
+le code sans consommateur. Trois decouvertes au §7, aucune traitee : une instabilite de la
+suite vitest complete (2 echecs sur 7 passages, noms non capturables, diff web limite aux
+types), une fixture a DDL recopiee qui avait manque une colonne du schema reel, et le fait que
+le spawn de depart est la premiere vie NOMMEE et non la premiere du film.
+
 ## [2026-09-06] Plan Tactique phase 6 — revue adversariale ronde 1, 14 constats corriges — Complete
 
 **Decision technique principale.** Le constat qui porte le lot n'est pas un bug de code mais

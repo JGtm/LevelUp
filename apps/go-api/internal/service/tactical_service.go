@@ -61,7 +61,13 @@ type TacticalService struct {
 	// en 503 EN LE DISANT (cf. lectureOccupation) ; les trois autres questions, qui se
 	// lisent sur la base, n'en dependent pas.
 	rasters port.TacticalRasterStore
-	logger  *slog.Logger
+	// callouts nomme les grappes de reapparition. Nil = grappes MUETTES, jamais d'erreur.
+	callouts port.TacticalCalloutsStore
+	// radar : game_variant_name -> portee du radar en metres (`regulation.toml`). Une
+	// variante absente n'a PAS de rayon : ses matchs sortent de la lecture « isole » et se
+	// comptent (jamais un rayon de repli).
+	radar  map[string]int
+	logger *slog.Logger
 }
 
 // NewTacticalService construit le service.
@@ -82,6 +88,18 @@ func NewTacticalService(repo port.TacticalRepository, caps games.CapabilityMap, 
 // inapercu : il rend un 503 ET une ligne ERROR nominative (cf. lectureOccupation).
 func (s *TacticalService) WithRasterStore(store port.TacticalRasterStore) *TacticalService {
 	s.rasters = store
+	return s
+}
+
+// WithCalloutsStore injecte le lecteur de zones nommees (nommage des grappes). Chainable.
+func (s *TacticalService) WithCalloutsStore(store port.TacticalCalloutsStore) *TacticalService {
+	s.callouts = store
+	return s
+}
+
+// WithRadarRange injecte la table des portees de radar du titre. Chainable.
+func (s *TacticalService) WithRadarRange(parVariante map[string]int) *TacticalService {
+	s.radar = parVariante
 	return s
 }
 
@@ -134,6 +152,11 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 	scope := domain.TacticalScope{
 		MatchIDs:    req.Scope.MatchIDs,
 		Coequipiers: compositionNettoyee(req.Scope.Coequipiers),
+		// LE FILTRE DE SPAWN TRAVERSE, et il faut le recopier explicitement : cette
+		// reconstruction du scope existe pour NETTOYER la composition, et tout champ
+		// qu'elle oublie est perdu en silence — la lecture repond alors sur l'univers
+		// entier en ayant l'air d'avoir filtre.
+		Spawn: req.Scope.Spawn,
 	}
 	if err := validerLecture(carte, question, qui, scope.Coequipiers); err != nil {
 		return out, err
@@ -141,14 +164,14 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 	if s.repo == nil {
 		return out, games.ErrCapabilityNotSupported
 	}
-	if question == domain.TacticalQuestionTemps {
+	if lectureDArtefact(question) {
 		// L'OCCUPATION A SA PROPRE PORTE ET SON PROPRE SUBSTRAT (cf.
 		// tactical_service_rasters.go) : elle ne lit pas `kill_positions` du tout, elle
 		// somme des sidecars tires des PISTES du film.
 		// L'ERREUR EST CAPTUREE AVANT LE RETOUR : `return out, f(&out)` laisserait
 		// l'ordre d'evaluation des operandes decider si la reponse rendue est celle
 		// d'avant ou d'apres le remplissage.
-		err := s.rasterOccupation(ctx, &out, scope)
+		err := s.rasterArtefact(ctx, &out, scope)
 		return out, err
 	}
 	err := s.rasterDeKills(ctx, &out, scope)
@@ -269,7 +292,7 @@ func projeter(lecture domain.TacticalPositions, question string, cible predicatQ
 // couverture (compterJournal) — pour qu'un « ou je gagne » qui cesserait de compter
 // les morts ne puisse pas le faire d'un seul cote.
 func facesDeLaQuestion(question string) (prendVictime, prendTueur bool) {
-	if question == domain.TacticalQuestionTemps {
+	if lectureDArtefact(question) {
 		// L'OCCUPATION NE REGARDE AUCUNE FACE D'UNE MORT : elle se lit sur les pistes du
 		// film, pas sur le journal. Sa couverture est celle des SIDECARS — l'ecart entre
 		// `matchs_filtres` et `matchs_retenus` —, pas un compte d'evenements localises.
@@ -431,4 +454,20 @@ func positionsDeKillLisibles(caps games.CapabilityMap) bool {
 // internal/games/kill_journal_gate.go.
 func journalDesMortsFiable(caps games.CapabilityMap) bool {
 	return games.JournalDesMortsFiable(caps)
+}
+
+// lectureDArtefact dit si la question se lit sur les SIDECARS et non sur `kill_positions`.
+//
+// LES TROIS PARTAGENT TOUT : la meme porte (`film.replay_artifact`), le meme substrat, le
+// meme denominateur et la meme couverture. Les enumerer a chaque test aurait fait diverger
+// la liste au premier ajout — c'est exactement le defaut que `facesDeLaQuestion` a failli
+// avoir, sa branche par defaut comptant les deux faces d'une mort pour une lecture qui n'en
+// regarde aucune.
+func lectureDArtefact(question string) bool {
+	switch question {
+	case domain.TacticalQuestionTemps, domain.TacticalQuestionRoutes, domain.TacticalQuestionIsole:
+		return true
+	default:
+		return false
+	}
 }

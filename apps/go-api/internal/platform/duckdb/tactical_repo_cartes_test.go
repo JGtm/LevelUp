@@ -199,12 +199,15 @@ func TestTacticalRepo_TablesAbsentes_Capability(t *testing.T) {
 	// Le strict minimum pour que l'univers se lise : pas de kill_positions, pas de
 	// match_kill_events — exactement la situation d'un titre sans decodeur de film.
 	for _, ddl := range []string{
+		// `game_variant_name` est dans le schema REEL (la portee du radar s'y declare, cf.
+		// regulation.toml) : cette DDL recopiee l'avait manquee, et c'est le piege connu du
+		// depot — une fixture ecrite a la main derive du schema qu'elle est censee doubler.
 		`CREATE TABLE match_registry (match_id VARCHAR, map_id VARCHAR, map_name VARCHAR,
 			map_name_fr VARCHAR, start_time TIMESTAMP, start_time_utc TIMESTAMPTZ,
-			playlist_name VARCHAR, pair_name VARCHAR)`,
+			playlist_name VARCHAR, pair_name VARCHAR, game_variant_name VARCHAR)`,
 		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR,
 			team_id INTEGER, outcome INTEGER)`,
-		`INSERT INTO match_registry VALUES ('m1', 'map_streets', 'a', 'a', NULL, NULL, NULL, NULL)`,
+		`INSERT INTO match_registry VALUES ('m1', 'map_streets', 'a', 'a', NULL, NULL, NULL, NULL, 'Slayer:Arena')`,
 		`INSERT INTO match_participants VALUES ('m1', '` + tacXUIDMoi + `', 'moi', 0, 2)`,
 	} {
 		if _, err := sharedSQL.Exec(ddl); err != nil {

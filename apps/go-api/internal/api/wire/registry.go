@@ -85,6 +85,12 @@ type ServiceRegistry struct {
 	// « 2 - 1 manches » plutôt que le cumul de points. Titre sans fichier → absent de la
 	// map → tout reste en points (dégradation sûre).
 	roundsDecide map[string]map[string]bool
+	// radarRange : PAR TITRE (slug → game_variant_name → portee du radar en metres),
+	// chargee depuis la meme regulation.toml au boot. Elle borne la lecture « ou je meurs
+	// isole » de l'onglet Tactique. Titre ou variante absents → PAS DE LECTURE pour ces
+	// matchs, qui se comptent a part : jamais un rayon de repli, qui rendrait une mesure
+	// d'apparence normale sur une regle de jeu qu'on n'a pas etablie.
+	radarRange map[string]map[string]int
 	// scoreTimelineKind : PAR TITRE (slug → règle « libellé de mode normalisé →
 	// lecture du bloc Score dans le temps »), chargée depuis regulation.toml
 	// [score_timeline] au boot. Une FONCTION par titre et non une table : l'appariement
@@ -523,6 +529,23 @@ func (r *ServiceRegistry) WithPlaylistLabelOverrides(byTitle map[string]map[stri
 func (r *ServiceRegistry) WithRegulationSeconds(byTitle map[string]map[string]int) *ServiceRegistry {
 	r.regulationSeconds = byTitle
 	return r
+}
+
+// WithRadarRange injecte la table PAR TITRE des portees de radar (slug → game_variant_name
+// → metres), chargée depuis regulation.toml au boot. Retourne le registry pour chaînage.
+func (r *ServiceRegistry) WithRadarRange(byTitle map[string]map[string]int) *ServiceRegistry {
+	r.radarRange = byTitle
+	return r
+}
+
+// radarRangeFor retourne la table des portées de radar du titre du joueur, ou nil si le
+// titre n'en déclare pas (→ la lecture « isolé » écarte tous ses matchs et le dit). Lookup
+// par CLÉ de map, jamais de comparaison de slug.
+func (r *ServiceRegistry) radarRangeFor(pdb *duckdb.PlayerDB) map[string]int {
+	if r.radarRange == nil || pdb == nil {
+		return nil
+	}
+	return r.radarRange[pdb.TitleSlug]
 }
 
 // WithRoundsDecide injecte la table PAR TITRE des variantes dont le résultat se lit en

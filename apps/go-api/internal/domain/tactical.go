@@ -24,6 +24,11 @@ var (
 	// aucun contenu. Retomber en silence sur les coequipiers du match repondrait a une
 	// AUTRE question que celle posee — 400, et le client ne propose pas l'axe.
 	ErrTacticalEscouadeSansComposition = errors.New("tactique: axe escouade demande sans composition")
+	// ErrTacticalSpawnInconnu : le filtre `spawn` designe une grappe qui n'existe pas dans
+	// l'univers courant. Ce n'est PAS une erreur d'entree : une grappe depend des matchs
+	// retenus, et changer de periode peut la faire passer sous le plancher. 404, avec le
+	// meme sens que « cette carte, ce joueur ne l'a pas jouee sous ce filtre ».
+	ErrTacticalSpawnInconnu = errors.New("tactique: grappe de spawn inconnue sous ce filtre")
 	// ErrTacticalCompositionInvalide : la composition demandee est hors bornes (plus de
 	// MaxCoequipiers) ou porte un identifiant qui n'est pas un XUID.
 	ErrTacticalCompositionInvalide = errors.New("tactique: composition invalide")
@@ -240,6 +245,13 @@ type TacticalScope struct {
 	MatchIDs []string
 	// Coequipiers : les xuids de la composition (0 a 3). Vide = pas de composition.
 	Coequipiers []string
+	// Spawn restreint l'univers aux matchs dont MA PREMIERE VIE part de cette grappe.
+	// Vide = aucune restriction.
+	//
+	// C'EST UN FILTRE D'UNIVERS, PAS DE POINTS : garder au denominateur des matchs partis
+	// d'un autre spawn ferait repondre « je passe peu de temps ici » a une carte ou l'on
+	// n'a simplement pas commence.
+	Spawn string
 }
 
 // TacticalRasterRequest est la demande d'une lecture de placement.
@@ -266,6 +278,14 @@ type TacticalMatch struct {
 	// phase 1 : le zero LEGITIME compte au denominateur, l'ILLISIBLE est compte a
 	// part (correction G2, revue du 2026-09-06).
 	Mesure bool
+
+	// GameVariantName est le nom d'asset UGC de la variante jouee
+	// (`match_registry.game_variant_name`). Il voyage avec le match parce que certaines
+	// REGLES DU JEU en dependent et ne peuvent pas se lire ailleurs : la portee du radar,
+	// qui borne l'isolement, est declaree par variante dans `regulation.toml`. Vide quand
+	// le registre ne la nomme pas — la lecture qui en depend ECARTE alors le match et le
+	// dit, plutot que de deviner une regle.
+	GameVariantName string
 
 	// Outcome porte OutcomeWin / OutcomeLoss / OutcomeDraw / OutcomeDNF, ou
 	// OutcomeUnknown quand le substrat ne le sait pas. Un resultat inconnu compte
@@ -349,114 +369,6 @@ type TacticalMapRow struct {
 	Matchs    int
 	Victoires int
 	Defaites  int
-}
-
-// ---------------------------------------------------------------------------
-// Ce que la page publie
-// ---------------------------------------------------------------------------
-
-// TacticalMapCard est une carte de l'ecran d'entree : la ligne du lecteur, plus
-// le verdict de lisibilite.
-type TacticalMapCard struct {
-	MapID     string `json:"map_id"`
-	MapName   string `json:"map_name"`
-	MapNameFR string `json:"map_name_fr"`
-
-	Matchs    int `json:"matchs"`
-	Victoires int `json:"victoires"`
-	Defaites  int `json:"defaites"`
-
-	// SousPlancher : la carte compte moins de matchs que le plancher par carte.
-	// Elle reste affichee (le joueur doit voir qu'il y a joue) mais desaturee et
-	// non ouvrable — une lecture de placement sur trois matchs est du bruit.
-	SousPlancher bool `json:"sous_plancher"`
-}
-
-// TacticalMapsPage est la reponse de l'ecran d'entree.
-type TacticalMapsPage struct {
-	Cartes []TacticalMapCard `json:"cartes"`
-
-	// PlancherMatchs est le seuil qui a decide de `SousPlancher`. Publie parce que
-	// l'ecran doit pouvoir le NOMMER a l'utilisateur, pas le recopier.
-	PlancherMatchs int `json:"plancher_matchs"`
-}
-
-// TacticalRaster est la reponse d'une lecture de placement sur une carte.
-type TacticalRaster struct {
-	MapID    string `json:"map_id"`
-	Question string `json:"question"`
-	Qui      string `json:"qui"`
-
-	// MatchsFiltres est le nombre de matchs du perimetre joues SUR CETTE CARTE :
-	// l'univers du lecteur, mesures ET non mesures (liste blanche x carte x
-	// composition, exclusion Campagne comprise). Publie pour que le pied de carte
-	// puisse dire « N mesures sur M » — sans lui, l'ecart entre ce que le joueur a
-	// joue ici et ce que la carte peut montrer serait invisible.
-	//
-	// LES DEUX GRANDEURS SE COMPARENT, ET C'EST VOULU (decision superviseur du
-	// 2026-09-06, apres un aller-retour) : MatchsRetenus est un SOUS-ENSEMBLE de
-	// MatchsFiltres. Une version intermediaire y avait mis la taille de la liste
-	// blanche recue — toutes cartes confondues —, ce qui donnait deux grandeurs sans
-	// denominateur commun sous des noms qui invitaient a en faire un rapport.
-	MatchsFiltres int `json:"matchs_filtres"`
-
-	// MatchsRetenus est le DENOMINATEUR de la lecture : les matchs du filtre dont le
-	// journal des morts est LISIBLE (cf. TacticalMatch.Mesure). Un match jamais
-	// decode n'y entre pas — il ne peut alimenter aucune cellule, et l'y compter
-	// ferait varier l'intensite avec la couverture de film au lieu du jeu
-	// (correction G2, 2026-09-06). Publie AVEC les cellules : une intensite sans son
-	// denominateur ne se compare pas d'un filtre a l'autre.
-	//
-	// ⚠ CE N'EST LE DENOMINATEUR DIRECT QUE DE LA LECTURE NON SIGNEE. La lecture
-	// signee normalise CHAQUE COTE par le sien (occV/nbV - occD/nbD, cf.
-	// analysis/tactical.CellulesSignees) : ses deux denominateurs sont
-	// MatchsVictoire et MatchsDefaite ci-dessous, et leur somme est en general
-	// INFERIEURE a MatchsRetenus (les nuls et les matchs de resultat inconnu
-	// comptent dans l'univers, dans aucun des deux cotes).
-	MatchsRetenus int `json:"matchs_retenus"`
-
-	// MatchsVictoire et MatchsDefaite sont les deux denominateurs de la lecture
-	// SIGNEE, sur l'univers entier. Nuls sur une lecture non signee, ou ils
-	// n'auraient aucun role. Publies parce que le pied de carte doit pouvoir dire
-	// sur quoi la difference est calculee — « 12 victoires contre 8 defaites » — au
-	// lieu de laisser croire que c'est MatchsRetenus des deux cotes.
-	MatchsVictoire int `json:"matchs_victoire"`
-	MatchsDefaite  int `json:"matchs_defaite"`
-
-	// PasM est le pas de la grille en metres, et Bornes le rectangle englobant les
-	// cellules LISIBLES — le cadre que le peintre doit couvrir.
-	PasM   float64     `json:"pas_m"`
-	Bornes BornesMonde `json:"bornes"`
-
-	Cellules []CelluleTactique `json:"cellules"`
-	Echelle  EchelleTactique   `json:"echelle"`
-
-	// PointsIgnores : les positions ecartees faute de coordonnees finies. Publie
-	// plutot qu'avale — un decodage qui derape se voit ici.
-	PointsIgnores int `json:"points_ignores"`
-
-	// EvenementsJournal et EvenementsLocalises disent CE QUE LA CARTE NE MONTRE PAS
-	// (ajout 2026-09-06) : combien d'evenements de la cible le journal des morts
-	// compte sur l'univers (morts pour « ou je meurs », kills pour « ou je tue »,
-	// les deux pour « ou je gagne »), et combien d'entre eux ont une position
-	// mesuree. Le pied de carte les rend en clair — « N morts, M localisees ».
-	//
-	// POURQUOI C'EST OBLIGATOIRE. Une position n'existe que si le producteur a su
-	// resoudre les deux identites et si l'instant n'etait pas ambigu (double kill) ;
-	// une carte muette sur un pan entier de la partie ressemble sinon a un pan de
-	// terrain ou il ne se passe rien. L'ecart est une PROPRIETE DE LA MESURE, pas
-	// un detail d'implementation.
-	//
-	// EvenementsJournal vaut 0 quand le journal n'a pas pu etre lu : le pied de
-	// carte doit alors taire la couverture plutot qu'annoncer 0 sur M.
-	EvenementsJournal   int `json:"evenements_journal"`
-	EvenementsLocalises int `json:"evenements_localises"`
-
-	// Echange est le taux de morts vengees de mon equipe SUR CETTE CARTE. nil quand
-	// le titre ne sait pas lire la source des morts (capability `film.kill_source`
-	// absente) : la lecture de placement reste servie, le KPI est simplement
-	// silencieux — jamais un zero, qui se lirait comme une contre-performance.
-	Echange *Couverture `json:"echange,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

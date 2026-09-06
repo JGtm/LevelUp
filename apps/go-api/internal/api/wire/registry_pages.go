@@ -156,6 +156,10 @@ func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayServ
 // (lectures de placement par carte + KPI d'echange). UN SEUL endroit de
 // construction, comme replayServiceFor.
 //
+// La portee du RADAR (regulation.toml [radar_range_m]) est injectee par titre : elle borne
+// la lecture « ou je meurs isole ». Titre ou variante absents -> pas de lecture pour ces
+// matchs, et le compte des ecartes le dit.
+//
 // Multi-titre : les trois portes data-level (`film.kill_positions` pour les
 // lectures de placement, `film.kill_source` pour l'echange, `film.replay_artifact`
 // pour l'occupation) sont lues sur la CapabilityMap de
@@ -176,8 +180,15 @@ func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.Tacti
 	// soit pas une base. Il est monte ici, au seul endroit de construction du service —
 	// sans lui, la lecture « ou je passe mon temps » degrade en 503 en le disant.
 	rasters := service.NewTacticalRasterStore(r.cfg.RepoRoot, pdb.TitleSlug)
+	// LES ZONES NOMMEES viennent du MEME catalogue versionne que le rejeu 2D, par la MEME
+	// cascade (module puis asset UGC) : elles nomment les grappes de reapparition. Magasin
+	// nil impossible ici ; catalogue absent -> grappes MUETTES, jamais une erreur.
+	callouts := service.NewTacticalCalloutsStore(r.cfg.RepoRoot, pdb.TitleSlug,
+		duckdb.NewReplayMapRepo(pdb.SharedReadDB(), pdb.Metadata))
 	return service.NewTacticalService(repo, r.capabilitiesForPDB(pdb), pdb.XUID).
-		WithRasterStore(rasters), nil
+		WithRasterStore(rasters).
+		WithCalloutsStore(callouts).
+		WithRadarRange(r.radarRangeFor(pdb)), nil
 }
 
 // MatchEvents retourne un MatchEventsService pour le joueur : timeline canonique

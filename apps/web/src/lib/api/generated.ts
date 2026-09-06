@@ -11624,6 +11624,16 @@ export interface components {
             /** Format: int64 */
             rows: number;
         };
+        TacticalGrappe: {
+            id: string;
+            /** Format: int64 */
+            matchs: number;
+            nom: string;
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+        };
         TacticalMapCard: {
             /** Format: int64 */
             defaites: number;
@@ -11656,6 +11666,8 @@ export interface components {
             evenements_journal: number;
             /** Format: int64 */
             evenements_localises: number;
+            grappes?: components["schemas"]["TacticalGrappe"][] | null;
+            isolement?: components["schemas"]["Couverture"];
             map_id: string;
             /** Format: int64 */
             matchs_defaite: number;
@@ -11663,6 +11675,8 @@ export interface components {
             matchs_filtres: number;
             /** Format: int64 */
             matchs_retenus: number;
+            /** Format: int64 */
+            matchs_sans_rayon?: number;
             /** Format: int64 */
             matchs_victoire: number;
             /** Format: double */
@@ -11677,10 +11691,12 @@ export interface components {
             coequipiers?: string[] | null;
             /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
             match_ids?: string[] | null;
-            /** @description Lecture : morts | kills | gagne | temps. Defaut : morts. « temps » (occupation) exige film.replay_artifact. */
+            /** @description Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. « temps », « routes » et « isole » exigent film.replay_artifact. */
             question?: string;
             /** @description Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers. */
             qui?: string;
+            /** @description Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction. */
+            spawn?: string;
         };
         TeamHold: {
             /** Format: int64 */

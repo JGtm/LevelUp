@@ -443,3 +443,76 @@ func TestScoreTimelineFromRepo(t *testing.T) {
 		}
 	}
 }
+
+// TestRadarRangeM — LA PORTEE DU RADAR, ET SON ABSENCE.
+//
+// Elle borne l'isolement : « un coequipier etait-il a portee ». Une variante absente n'a
+// PAS de rayon de repli — c'est ce refus qui distingue « il est mort accompagne » de « on
+// ne sait pas a quelle distance on se voit sur ce mode ».
+func TestRadarRangeM(t *testing.T) {
+	set, err := LoadRegulationFromBytes("t.toml", []byte(`
+[meta]
+title_slug = "halo_infinite"
+schema_version = 6
+
+[radar_range_m]
+"Slayer:Arena" = 18
+"BTB:Slayer"   = 24
+`))
+	if err != nil {
+		t.Fatalf("chargement: %v", err)
+	}
+	if m, ok := set.RadarRangeM("Slayer:Arena"); !ok || m != 18 {
+		t.Fatalf("Arene = (%d, %v), attendu (18, true)", m, ok)
+	}
+	if m, ok := set.RadarRangeM("BTB:Slayer"); !ok || m != 24 {
+		t.Fatalf("BTB = (%d, %v), attendu (24, true)", m, ok)
+	}
+	// La cle est ROGNEE comme celle des quatre autres tables.
+	if m, ok := set.RadarRangeM("  Slayer:Arena  "); !ok || m != 18 {
+		t.Fatalf("cle avec blancs = (%d, %v), attendu (18, true)", m, ok)
+	}
+	// VARIANTE INCONNUE : pas de rayon, donc pas de lecture.
+	if m, ok := set.RadarRangeM("Husky Raid:CTF"); ok || m != 0 {
+		t.Fatalf("variante inconnue = (%d, %v), attendu (0, false) — jamais un rayon de repli", m, ok)
+	}
+	// nil-safe, comme tous les accesseurs de ce type.
+	var nul *RegulationSet
+	if m, ok := nul.RadarRangeM("Slayer:Arena"); ok || m != 0 {
+		t.Fatalf("set nil = (%d, %v), attendu (0, false)", m, ok)
+	}
+}
+
+// TestRadarRangeM_ValeurInvalide — un rayon nul ou negatif est une ERREUR DE CHARGEMENT,
+// jamais un silence : il se lirait comme « personne n'est jamais a portee », donc « tout le
+// monde meurt isole ».
+func TestRadarRangeM_ValeurInvalide(t *testing.T) {
+	for _, mauvais := range []string{`"Slayer:Arena" = 0`, `"Slayer:Arena" = -18`} {
+		_, err := LoadRegulationFromBytes("t.toml", []byte(`
+[meta]
+title_slug = "halo_infinite"
+schema_version = 6
+
+[radar_range_m]
+`+mauvais+"\n"))
+		if err == nil {
+			t.Fatalf("%s : attendu une erreur de chargement", mauvais)
+		}
+	}
+}
+
+// TestRadarRangeM_TableLivree — LA TABLE DU DEPOT, pas une fixture : les valeurs arretees
+// le 2026-09-05 doivent etre celles que la production lit.
+func TestRadarRangeM_TableLivree(t *testing.T) {
+	set, err := LoadRegulationFromFile(filepath.Join("..", "..", "..", "..", "..",
+		"config", "titles", "halo_infinite", "mappings", "regulation.toml"))
+	if err != nil {
+		t.Fatalf("chargement de la table livree: %v", err)
+	}
+	if m, ok := set.RadarRangeM("Slayer:Arena"); !ok || m != 18 {
+		t.Fatalf("Arene livree = (%d, %v), attendu 18 m", m, ok)
+	}
+	if m, ok := set.RadarRangeM("BTB:Slayer"); !ok || m != 24 {
+		t.Fatalf("BTB livre = (%d, %v), attendu 24 m", m, ok)
+	}
+}

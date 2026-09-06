@@ -30,7 +30,7 @@
 
 [meta]
 title_slug     = "halo_infinite"
-schema_version = 5
+schema_version = 6
 
 [regulation_seconds]
 "CTF:Arena"                   = 720
@@ -290,3 +290,53 @@ schema_version = 5
 "Assault"          = "events"
 "Neutral Bomb"     = "events"
 "One Bomb"         = "events"
+
+# ---------------------------------------------------------------------------------------
+# PORTÉE DU RADAR par variante, en mètres (schema_version 6, décision utilisateur
+# 2026-09-05) — socle de la lecture « où je meurs isolé » de l'onglet Tactique.
+#
+# CE QUE LA VALEUR EST : la distance à laquelle deux joueurs se voient sur le radar du jeu.
+# C'est elle qui définit « un coéquipier était à portée » — donc « la mort était accompagnée ».
+#
+#   Arène  18 m
+#   BTB    24 m
+#
+# SOURCE : utilisateur, 2026-09-05 (le joueur tranche sur la mécanique de jeu — c'est une
+# règle du titre, pas une grandeur qu'on mesure sur le registre comme le temps réglementaire
+# ou la cible de victoire). Elle est écrite ici, et non en dur dans le code, pour la même
+# raison que les quatre tables ci-dessus : une règle de jeu se corrige dans un fichier de
+# configuration, sans recompiler ni redéployer.
+#
+# MÊME DOCTRINE QUE `regulation_seconds` : clé = `match_registry.game_variant_name` exact.
+# VARIANTE ABSENTE = PAS DE LECTURE — les morts de ce match ne sont ni examinées ni comptées
+# isolées, et le nombre de matchs ainsi écartés est PUBLIÉ (`matchs_sans_rayon`). Un rayon
+# deviné (« 18 m, c'est l'usage ») rendrait une mesure d'apparence normale sur un mode dont
+# on n'a pas établi la règle : c'est exactement le faux positif que ce fichier refuse
+# partout ailleurs.
+#
+# PÉRIMÈTRE — ce qui est volontairement absent : les variantes dont on ne sait pas dire si
+# elles relèvent de l'Arène ou du BTB (Husky Raid, Fiesta sur grande carte...). Ne rien
+# ajouter ici « au jugé ».
+#
+# Consommation : mappings.RegulationSet.RadarRangeM → wiring par titre → service Tactique
+# → coordination.Isolement (rayon PAR MATCH).
+
+[radar_range_m]
+"CTF:Arena"                   = 18
+"CTF:Arena Neutral Flag"      = 18
+"Team Slayer:Arena"           = 18
+"Slayer:Arena"                = 18
+"Slayer:Arena Super Fiesta"   = 18
+"Slayer:Arena Tactical"       = 18
+"Strongholds:Arena"           = 18
+"Arena:Slayer"                = 18
+"Arena:Team Slayer"           = 18
+"Arena:Oddball"               = 18
+"Ranked:Oddball"              = 18
+"Oddball:Arena"               = 18
+"BTB:Slayer"                  = 24
+"BTB:Team Slayer"             = 24
+"BTB:CTF"                     = 24
+"BTB:Total Control"           = 24
+"BTB:Stockpile"               = 24
+"BTB:Team Snipers"            = 24

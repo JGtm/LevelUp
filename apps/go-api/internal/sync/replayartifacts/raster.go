@@ -228,6 +228,8 @@ func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation) ([]doma
 			Cellules:         cellulesDuRaster(raster),
 			Spawns:           spawnsDeLOccupation(j.Spawns),
 			PremieresEntrees: entreesDeLOccupation(j.PremieresEntrees),
+			Morts:            mortsDeLOccupation(j.Morts),
+			Routes:           routesDeLOccupation(j.Routes),
 		})
 	}
 	return out, ignores, nil
@@ -245,7 +247,37 @@ func cellulesDuRaster(r *tactical.Raster) []domain.TacticalRasterCellule {
 func spawnsDeLOccupation(spawns []tactical.SpawnPiste) []domain.TacticalRasterSpawn {
 	out := make([]domain.TacticalRasterSpawn, 0, len(spawns))
 	for _, s := range spawns {
-		out = append(out, domain.TacticalRasterSpawn{Frame: s.Frame, X: s.X, Y: s.Y})
+		out = append(out, domain.TacticalRasterSpawn{
+			Frame: s.Frame, X: s.X, Y: s.Y, PremiereVie: s.PremiereVie,
+		})
+	}
+	return out
+}
+
+// mortsDeLOccupation transporte les morts et leurs voisins. AUCUNE DECISION ICI : ni
+// equipe, ni rayon, ni verdict d'isolement — le film ne porte pas les camps, et c'est le
+// service qui tranchera (cf. domain/tactical_raster.go).
+func mortsDeLOccupation(morts []tactical.MortMesuree) []domain.TacticalRasterMort {
+	out := make([]domain.TacticalRasterMort, 0, len(morts))
+	for _, m := range morts {
+		voisins := make([]domain.TacticalRasterVoisin, 0, len(m.Voisins))
+		for _, v := range m.Voisins {
+			voisins = append(voisins, domain.TacticalRasterVoisin{XUID: v.XUID, DistanceM: v.DistanceM})
+		}
+		out = append(out, domain.TacticalRasterMort{Frame: m.Frame, X: m.X, Y: m.Y, Voisins: voisins})
+	}
+	return out
+}
+
+// routesDeLOccupation transporte les chemins de sortie de spawn.
+func routesDeLOccupation(routes []tactical.Route) []domain.TacticalRasterRoute {
+	out := make([]domain.TacticalRasterRoute, 0, len(routes))
+	for _, r := range routes {
+		cases := make([]domain.TacticalRasterCase, 0, len(r.Cellules))
+		for _, c := range r.Cellules {
+			cases = append(cases, domain.TacticalRasterCase{Col: c.Col, Lig: c.Lig})
+		}
+		out = append(out, domain.TacticalRasterRoute{DebutFrame: r.DebutFrame, Cases: cases})
 	}
 	return out
 }

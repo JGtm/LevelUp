@@ -110,14 +110,26 @@ type tacticalMapsBody struct {
 type tacticalRasterBody struct {
 	MatchIDs    []string `json:"match_ids,omitempty" doc:"Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match."`
 	Coequipiers []string `json:"coequipiers,omitempty" doc:"XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade »."`
-	Question    string   `json:"question,omitempty" doc:"Lecture : morts | kills | gagne | temps. Defaut : morts. « temps » (occupation) exige film.replay_artifact."`
+	Question    string   `json:"question,omitempty" doc:"Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. « temps », « routes » et « isole » exigent film.replay_artifact."`
 	Qui         string   `json:"qui,omitempty" doc:"Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers."`
+	Spawn       string   `json:"spawn,omitempty" doc:"Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction."`
 }
 
 // scopeDepuis : LA traduction du corps vers le perimetre de service, pour les deux
 // routes.
 func scopeDepuis(matchIDs, coequipiers []string) domain.TacticalScope {
 	return domain.TacticalScope{MatchIDs: matchIDs, Coequipiers: coequipiers}
+}
+
+// scopeAvecSpawn ajoute la restriction de grappe, que seule la lecture de placement porte.
+//
+// LA GRILLE DES CARTES NE LA PREND PAS : une grappe est propre a UNE carte, et l'ecran
+// d'entree les liste toutes. L'accepter la aurait invite a filtrer une liste de cartes par
+// un identifiant qui n'a de sens que dans l'une d'elles.
+func scopeAvecSpawn(matchIDs, coequipiers []string, spawn string) domain.TacticalScope {
+	sc := scopeDepuis(matchIDs, coequipiers)
+	sc.Spawn = strings.TrimSpace(spawn)
+	return sc
 }
 
 type tacticalMapsInput struct {
@@ -170,7 +182,7 @@ func (h *TacticalHandler) handleGetRaster(ctx context.Context, in *tacticalRaste
 		MapID:    mapID,
 		Question: defautSiVide(in.Body.Question, domain.TacticalQuestionMorts),
 		Qui:      defautSiVide(in.Body.Qui, domain.TacticalQuiMoi),
-		Scope:    scopeDepuis(in.Body.MatchIDs, in.Body.Coequipiers),
+		Scope:    scopeAvecSpawn(in.Body.MatchIDs, in.Body.Coequipiers, in.Body.Spawn),
 	})
 	if err != nil {
 		return nil, mapTacticalError(ctx, err, "tactical.raster")
@@ -327,6 +339,11 @@ func defautSiVide(v, defaut string) string {
 // no_capability_error_dup_test), le 500 en dernier recours.
 func mapTacticalError(ctx context.Context, err error, probe string) error {
 	switch {
+	case errors.Is(err, domain.ErrTacticalSpawnInconnu):
+		// MEME NATURE QU'UNE CARTE INCONNUE, et donc meme statut : une grappe depend des
+		// matchs retenus, et changer de periode peut la faire passer sous le plancher.
+		// Ce n'est pas une entree invalide, c'est une selection devenue vide.
+		return humacore.NewError(http.StatusNotFound, "tactical_spawn_unknown", err.Error())
 	case errors.Is(err, domain.ErrTacticalCarteInconnue):
 		// LE MESSAGE CANONIQUE, JAMAIS `err.Error()` (revue R2, P1). Ce 404 a DEUX
 		// producteurs — le refus de `MapIDValide` (qui n'a rien a citer) et la carte

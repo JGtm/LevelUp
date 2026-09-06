@@ -118,3 +118,14 @@ type TacticalRasterStore interface {
 	// Charger rend le sidecar d'un match, ou (nil, nil) s'il n'y en a pas.
 	Charger(ctx context.Context, matchID string) (*domain.TacticalRasterSidecar, error)
 }
+
+// TacticalCalloutsStore lit les ZONES NOMMEES d'une carte — les callouts du jeu, qui
+// nomment les grappes de reapparition.
+//
+// UNE ABSENCE N'EST PAS UNE ERREUR, et c'est pourquoi la signature n'en rend pas : toutes
+// les cartes ne sont pas au catalogue (carte Forge non extraite, carte hors rotation), et
+// une grappe sans nom reste une grappe. Rendre une erreur ici aurait invite l'appelant a
+// degrader une lecture entiere pour un libelle manquant.
+type TacticalCalloutsStore interface {
+	ZonesDeLaCarte(ctx context.Context, mapID string) []domain.ZoneNommee
+}

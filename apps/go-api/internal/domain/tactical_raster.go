@@ -34,6 +34,16 @@ package domain
 // traduction en secondes depend de ce pas. Changer analysis/tactical.PasOccupationMs sans
 // incrementer cette version rendrait tous les sidecars du parc silencieusement faux d'un
 // facteur — d'ou le champ PasEchantillonMs ci-dessous, que la lecture verifie.
+// # CE QUE LE SIDECAR NE PEUT PAS DECIDER : LES EQUIPES
+//
+// Le film NE PORTE PAS LES CAMPS (`replay.Track.Team` vaut -1 pour tout le monde ; l'equipe
+// vit dans la base). Une cuisson HORS LIGNE ne peut donc pas dire « il est mort isole » —
+// elle ne sait pas qui est un coequipier. Elle mesure ce qu'elle sait : pour chaque mort, la
+// distance a CHAQUE autre joueur nomme VIVANT a cet instant. Le service joint les equipes,
+// applique le rayon du match, et tranche. C'est la meme frontiere que l'axe « qui » de
+// l'occupation : le sidecar reste ANONYME et sans contexte, donc rien ne le perime quand un
+// joueur change de camp.
+//
 // # LA LACUNE RESIDUELLE, ECRITE PLUTOT QUE TUE
 //
 // Le temps passe en VEHICULE est attribue par les episodes d'occupation du document
@@ -44,7 +54,7 @@ package domain
 // temps » sous-estime le temps en vehicule, et c'est une propriete connue de la mesure —
 // pas un defaut a chercher. Elle ne peut pas se corriger ici : elle se corrigerait en
 // amont, dans la primitive d'attribution des episodes.
-const TacticalRasterSchemaVersion = 2
+const TacticalRasterSchemaVersion = 3
 
 // TacticalRasterSidecar est le fichier depose a cote de l'artefact
 // (title.PathResolver.TacticalRasterPath).
@@ -102,8 +112,16 @@ type TacticalRasterJoueur struct {
 	Cellules []TacticalRasterCellule `json:"cellules"`
 
 	// Spawns : le premier point de chacune de ses vies, trie par frame. C'est la matiere
-	// des grappes de reapparition et des routes de sortie de spawn (phase 7).
+	// des grappes de reapparition (phase 7).
 	Spawns []TacticalRasterSpawn `json:"spawns"`
+
+	// Morts : la fin de chacune de ses vies NOMMEES, avec les voisins vivants a cet
+	// instant. Triees par frame. VIDE mais presente.
+	Morts []TacticalRasterMort `json:"morts"`
+
+	// Routes : les 15 premieres secondes de chacune de ses vies, en cellules ordonnees.
+	// Triees par frame de debut. VIDE mais presente.
+	Routes []TacticalRasterRoute `json:"routes"`
 
 	// PremieresEntrees : par cellule, la frame de la premiere fois. C'est l'INSTANT
 	// CONTRIBUTEUR d'une lecture d'occupation — ce que le clic sur une cellule ouvre
@@ -123,6 +141,52 @@ type TacticalRasterSpawn struct {
 	Frame int     `json:"frame"`
 	X     float64 `json:"x"`
 	Y     float64 `json:"y"`
+
+	// PremiereVie marque le SPAWN DE DEPART — le seul que la lecture des grappes regarde
+	// (decision produit du plan : les reapparitions suivantes dependent de l'endroit ou
+	// l'on vient de mourir, pas du placement d'ouverture).
+	PremiereVie bool `json:"premiere_vie,omitempty"`
+}
+
+// TacticalRasterMort est la fin d'une vie nommee : ou, quand, et qui etait debout autour.
+//
+// UNE VIE NOMMEE EST CLOSE PAR UNE MORT, et c'est la seule source de morts datees qu'un
+// artefact porte : le document ne publie aucune liste de morts par joueur, et c'est le fil
+// des morts du film qui a NOMME la vie que la mort termine. Un survivant de fin de partie
+// reste anonyme, donc ne produit aucune mort — c'est juste.
+type TacticalRasterMort struct {
+	Frame int     `json:"frame"`
+	X     float64 `json:"x"`
+	Y     float64 `json:"y"`
+
+	// Voisins : TOUS les autres joueurs nommes vivants a cet instant, avec leur distance,
+	// tries par xuid. NI EQUIPE NI CAMP — le film ne les porte pas (cf. l'en-tete).
+	Voisins []TacticalRasterVoisin `json:"voisins"`
+}
+
+// TacticalRasterVoisin est un autre joueur vivant a l'instant d'une mort, et sa distance.
+type TacticalRasterVoisin struct {
+	XUID      string  `json:"xuid"`
+	DistanceM float64 `json:"distance_m"`
+}
+
+// TacticalRasterRoute est la sortie de spawn d'une vie : le CHEMIN des 15 premieres
+// secondes.
+//
+// Des cellules et non des comptes : ce qui compte ici est l'itineraire, pas le temps passe
+// dans chaque case — celui-la est deja mesure par `Cellules`.
+type TacticalRasterRoute struct {
+	// DebutFrame est l'instant de la reapparition — l'instant contributeur de la lecture.
+	DebutFrame int `json:"debut_frame"`
+	// Cases est le chemin, dans l'ordre, doublons CONSECUTIFS fusionnes. Une cellule peut
+	// revenir plus loin (un aller-retour) : seule la repetition immediate est reduite.
+	Cases []TacticalRasterCase `json:"cases"`
+}
+
+// TacticalRasterCase est une cellule d'un chemin, sans compte.
+type TacticalRasterCase struct {
+	Col int `json:"col"`
+	Lig int `json:"lig"`
 }
 
 // TacticalRasterEntree est la premiere entree dans une cellule.
@@ -146,6 +210,23 @@ type TacticalRasterEntree struct {
 // L'UNITE EST LA SECONDE PAR MATCH : `CelluleTactique.Valeur` porte des secondes,
 // `Brut` le compte d'echantillons qui les a produites.
 const TacticalQuestionTemps = "temps"
+
+// TacticalQuestionRoutes : PAR OU JE SORS DU SPAWN — les 15 premieres secondes de chaque
+// vie, en cellules traversees.
+//
+// Elle compte des PASSAGES, pas du temps : les doublons consecutifs ont ete fusionnes a la
+// cuisson, si bien qu'une cellule pese autant qu'on la traverse de fois et jamais autant
+// qu'on y reste. Sans cela, la lecture aurait rendu la meme carte que « ou je passe mon
+// temps », simplement bornee a 15 s.
+const TacticalQuestionRoutes = "routes"
+
+// TacticalQuestionIsole : OU JE MEURS ISOLE — les morts sans coequipier vivant a portee du
+// radar (18 m en Arene, 24 m en BTB : `regulation.toml [radar_range_m]`).
+//
+// Elle publie en plus `Isolement` (la part des morts isolees, sous la forme canonique) et
+// `MatchsSansRayon` — les matchs dont la variante n'a pas de portee mesuree, et dont les
+// morts ne sont donc NI examinees NI comptees isolees.
+const TacticalQuestionIsole = "isole"
 
 // SidecarRasterCourant dit si un sidecar est exploitable EN L'ETAT : bon format, bonne
 // grille, bonne unite de temps.
@@ -187,3 +268,29 @@ const (
 	TacticalRasterPasM             = 0.5
 	TacticalRasterPasEchantillonMs = 250
 )
+
+// ZoneNommee est un callout : un nom de lieu et son point de reference, en metres monde.
+//
+// Il vit dans `domain` parce qu'il traverse la frontiere port -> service -> algo : le
+// lecteur de callouts (`port.TacticalCalloutsStore`) le rend, et `analysis/tactical` le
+// consomme pour nommer ses grappes. Le paquet d'algo en a un type JUMEAU, et c'est voulu —
+// il reste PUR, donc il ne connait aucun port.
+type ZoneNommee struct {
+	Nom  string
+	X, Y float64
+}
+
+// TacticalGrappe est une grappe de reapparition, telle que la page la recoit.
+type TacticalGrappe struct {
+	// ID est STABLE entre deux lectures du meme amas — il est derive du barycentre, jamais
+	// d'un rang. C'est lui que le filtre `spawn` transporte.
+	ID string `json:"id"`
+	// Nom est le callout le plus proche du barycentre. VIDE quand la carte n'a aucune zone
+	// au catalogue : aucun nom n'est invente.
+	Nom string `json:"nom"`
+	// X, Y : le barycentre, en metres monde.
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+	// Matchs est le nombre de matchs DISTINCTS ayant alimente l'amas.
+	Matchs int `json:"matchs"`
+}

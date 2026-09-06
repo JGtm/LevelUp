@@ -116,7 +116,9 @@ go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--titl
 La passe (4) est idempotente : un sidecar n'est réécrit que s'il manque, si son propre
 `schema_version` n'est plus le courant, ou si son `artifact_schema_version` ne correspond
 plus à celui de l'artefact dont il a été projeté (donc après une re-cuisson). Une seconde
-passe immédiate écrit zéro fichier.
+passe immédiate écrit zéro fichier. **Le schéma 3 du sidecar** ajoute les morts (avec la
+distance à chaque autre joueur nommé vivant à cet instant), les routes de sortie de spawn et
+le drapeau de spawn de départ : tout sidecar v2 est périmé, et cette passe le réécrit.
 
 Lancer (3) avant (1) est un **no-op SILENCIEUX** : un artefact antérieur au schéma 39 ne porte
 aucun `bombStats`, rien n'est écrit et chaque match tombe dans le compteur « sans calque ». Les

@@ -380,3 +380,82 @@ func TestTacticalHandler_TempsSansCapability(t *testing.T) {
 		t.Fatalf("status=%d body=%s, attendu 503", w.Code, w.Body.String())
 	}
 }
+
+// TestTacticalHandler_QuestionsDArtefact : les trois lectures de sidecar traversent le
+// contrat. Le handler ne connait aucun vocabulaire, il transmet.
+func TestTacticalHandler_QuestionsDArtefact(t *testing.T) {
+	for _, q := range []string{domain.TacticalQuestionRoutes, domain.TacticalQuestionIsole} {
+		svc := &fakeTacticalSvc{}
+		r := newTacticalRouter(tacticalFactory(svc, nil))
+		w := appelPost(t, r, "/players/JGtm/tactical/streets/raster",
+			`{"match_ids":["m1"],"question":"`+q+`"}`)
+		if w.Code != http.StatusOK {
+			t.Fatalf("question %q : status=%d body=%s", q, w.Code, w.Body.String())
+		}
+		if svc.vuQuestion != q {
+			t.Fatalf("question transmise = %q, attendu %q", svc.vuQuestion, q)
+		}
+	}
+}
+
+// TestTacticalHandler_FiltreSpawnTransmis : le filtre de grappe traverse le corps.
+//
+// Sans cette assertion, l'oublier dans le decodage rendrait une lecture NON FILTREE qui a
+// l'air filtree — la page afficherait l'univers entier sous un libelle de spawn.
+func TestTacticalHandler_FiltreSpawnTransmis(t *testing.T) {
+	svc := &fakeTacticalSvc{}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+	w := appelPost(t, r, "/players/JGtm/tactical/streets/raster",
+		`{"match_ids":["m1"],"question":"temps","spawn":"  s+00008+00003  "}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	if svc.vuScope.Spawn != "s+00008+00003" {
+		t.Fatalf("spawn transmis = %q, attendu l'identifiant ROGNE", svc.vuScope.Spawn)
+	}
+}
+
+// TestTacticalHandler_GrappeInconnue : 404 typé, comme une carte non jouée sous ce filtre.
+func TestTacticalHandler_GrappeInconnue(t *testing.T) {
+	svc := &fakeTacticalSvc{errRast: domain.ErrTacticalSpawnInconnu}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+	w := appelPost(t, r, "/players/JGtm/tactical/streets/raster",
+		`{"match_ids":["m1"],"question":"temps","spawn":"s+000+000"}`)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status=%d body=%s, attendu 404", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "tactical_spawn_unknown") {
+		t.Fatalf("corps = %s, attendu le code tactical_spawn_unknown", w.Body.String())
+	}
+}
+
+// TestTacticalHandler_GrappesEtIsolementTraversent : les repères de la lecture arrivent au
+// client — sans eux, la page ne peut ni proposer les grappes ni dire ce qu'elle a écarté.
+func TestTacticalHandler_GrappesEtIsolementTraversent(t *testing.T) {
+	cov := domain.Couverture{Taux: 0.4, Brut: 12, ParMatch: 3, N: 30}
+	svc := &fakeTacticalSvc{raster: domain.TacticalRaster{
+		MapID: "streets", Question: domain.TacticalQuestionIsole, Qui: domain.TacticalQuiMoi,
+		MatchsFiltres: 5, MatchsRetenus: 4, MatchsSansRayon: 1, Isolement: &cov,
+		Grappes: []domain.TacticalGrappe{{ID: "s+1+1", Nom: "Base rouge", X: 1, Y: 1, Matchs: 4}},
+	}}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+	w := appelPost(t, r, "/players/JGtm/tactical/streets/raster",
+		`{"match_ids":["m1"],"question":"isole"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	var got domain.TacticalRaster
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(got.Grappes) != 1 || got.Grappes[0].Nom != "Base rouge" {
+		t.Fatalf("grappes = %+v", got.Grappes)
+	}
+	if got.MatchsSansRayon != 1 {
+		t.Fatalf("matchs_sans_rayon = %d, attendu 1 : une lecture amputee doit le dire",
+			got.MatchsSansRayon)
+	}
+	if got.Isolement == nil || got.Isolement.Brut != 12 || got.Isolement.N != 30 {
+		t.Fatalf("isolement = %+v, attendu le taux AVEC son brut et son denominateur", got.Isolement)
+	}
+}

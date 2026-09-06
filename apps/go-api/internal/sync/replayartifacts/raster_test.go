@@ -9,8 +9,10 @@ package replayartifacts
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/analysis/tactical"
@@ -351,5 +353,155 @@ func TestSidecarSchemaVersion_SuitLaFormule(t *testing.T) {
 	}
 	if s.SchemaVersion != domain.TacticalRasterSchemaVersion {
 		t.Fatalf("schema_version ecrit = %d", s.SchemaVersion)
+	}
+}
+
+// ─── SCHEMA 3 : LES MORTS, LES ROUTES, LE SPAWN DE DEPART ──────────────────────
+
+// artefactMortsEtRoutes : trois joueurs, un instant de mort mesurable.
+//
+//	111  deux vies : [0,20] (mort a la frame 20) puis [40,60] (mort a 60).
+//	222  une vie [0,100] a 20 m de la, donc VIVANT a la frame 20.
+//	333  une vie [0,10] : DEJA MORT a la frame 20, il ne doit pas compter comme voisin.
+const artefactMortsEtRoutes = `{
+  "schemaVersion": 39,
+  "matchId": "beef0001-0000-0000-0000-000000000000",
+  "frameCount": 101,
+  "frameIntervalMs": 100,
+  "tracks": [
+    {"slot":1,"team":-1,"xuid":"111","startFrame":0,"endFrame":20,
+     "points":[{"t":0,"x":0.25,"y":0.25},{"t":20,"x":0.25,"y":0.25}]},
+    {"slot":1,"team":-1,"xuid":"111","startFrame":40,"endFrame":60,
+     "points":[{"t":40,"x":0.25,"y":0.25},{"t":60,"x":0.25,"y":0.25}]},
+    {"slot":2,"team":-1,"xuid":"222","startFrame":0,"endFrame":100,
+     "points":[{"t":0,"x":20.25,"y":0.25},{"t":100,"x":20.25,"y":0.25}]},
+    {"slot":3,"team":-1,"xuid":"333","startFrame":0,"endFrame":10,
+     "points":[{"t":0,"x":1.25,"y":0.25},{"t":10,"x":1.25,"y":0.25}]}
+  ]
+}`
+
+// TestProjeterRasterTactique_MortsEtVoisinsVivants — LE COEUR DE LA LECTURE « ISOLE ».
+//
+// Une vie NOMMEE est close par une mort : c'est la seule source de morts datees qu'un
+// artefact porte. Les voisins sont TOUS les autres joueurs nommes VIVANTS a cet instant —
+// sans equipe ni camp, que le film ne porte pas.
+func TestProjeterRasterTactique_MortsEtVoisinsVivants(t *testing.T) {
+	s, err := ProjeterRasterTactique(ecrireFichier(t, "morts.json", artefactMortsEtRoutes))
+	if err != nil {
+		t.Fatalf("projection: %v", err)
+	}
+	if s.SchemaVersion != domain.TacticalRasterSchemaVersion {
+		t.Fatalf("schema_version = %d", s.SchemaVersion)
+	}
+	var j111 *domain.TacticalRasterJoueur
+	for i := range s.Joueurs {
+		if s.Joueurs[i].XUID == "111" {
+			j111 = &s.Joueurs[i]
+		}
+	}
+	if j111 == nil {
+		t.Fatalf("joueur 111 absent : %+v", s.Joueurs)
+	}
+	if len(j111.Morts) != 2 {
+		t.Fatalf("morts de 111 = %+v, attendu 2 (une par vie nommee)", j111.Morts)
+	}
+	m := j111.Morts[0]
+	if m.Frame != 20 {
+		t.Fatalf("premiere mort a la frame %d, attendu 20 (la FIN de la vie)", m.Frame)
+	}
+	if m.X != 0.25 || m.Y != 0.25 {
+		t.Fatalf("position de la mort = (%v,%v), attendu (0,25 ; 0,25)", m.X, m.Y)
+	}
+	if len(m.Voisins) != 1 {
+		t.Fatalf("voisins = %+v, attendu le seul 222 : 333 est deja mort a la frame 20", m.Voisins)
+	}
+	if m.Voisins[0].XUID != "222" {
+		t.Fatalf("voisin = %q, attendu 222", m.Voisins[0].XUID)
+	}
+	if d := m.Voisins[0].DistanceM; d < 19.99 || d > 20.01 {
+		t.Fatalf("distance au voisin = %v m, attendu 20", d)
+	}
+}
+
+// TestProjeterRasterTactique_SpawnDeDepart — seule la PREMIERE vie porte le drapeau.
+func TestProjeterRasterTactique_SpawnDeDepart(t *testing.T) {
+	s, err := ProjeterRasterTactique(ecrireFichier(t, "spawn.json", artefactMortsEtRoutes))
+	if err != nil {
+		t.Fatalf("projection: %v", err)
+	}
+	for _, j := range s.Joueurs {
+		if j.XUID != "111" {
+			continue
+		}
+		if len(j.Spawns) != 2 {
+			t.Fatalf("spawns de 111 = %+v, attendu 2", j.Spawns)
+		}
+		if !j.Spawns[0].PremiereVie {
+			t.Fatalf("le spawn le plus precoce (frame %d) n'est pas marque premiere_vie", j.Spawns[0].Frame)
+		}
+		if j.Spawns[1].PremiereVie {
+			t.Fatalf("le second spawn (frame %d) est marque premiere_vie : la lecture des "+
+				"grappes compterait une reapparition comme un depart", j.Spawns[1].Frame)
+		}
+		return
+	}
+	t.Fatal("joueur 111 absent")
+}
+
+// TestProjeterRasterTactique_RouteBorneeA15Secondes — une vie de 20 s ne rend que les
+// cellules des 15 PREMIERES secondes, doublons consecutifs fusionnes.
+func TestProjeterRasterTactique_RouteBorneeA15Secondes(t *testing.T) {
+	// Une vie de 0 a 200 frames (20 s) qui avance de 0,5 m toutes les 10 frames (1 s) :
+	// une cellule NOUVELLE par seconde, donc 15 cellules sur la fenetre et 20 sur la vie.
+	var pts []string
+	for f := 0; f <= 200; f += 10 {
+		pts = append(pts, fmt.Sprintf(`{"t":%d,"x":%.2f,"y":0.25}`, f, 0.25+float64(f)/20.0))
+	}
+	corps := `{"schemaVersion":39,"matchId":"route001","frameCount":201,"frameIntervalMs":100,
+      "tracks":[{"slot":1,"team":-1,"xuid":"111","startFrame":0,"endFrame":200,
+        "points":[` + strings.Join(pts, ",") + `]}]}`
+	s, err := ProjeterRasterTactique(ecrireFichier(t, "route.json", corps))
+	if err != nil {
+		t.Fatalf("projection: %v", err)
+	}
+	if len(s.Joueurs) != 1 || len(s.Joueurs[0].Routes) != 1 {
+		t.Fatalf("routes = %+v, attendu une seule", s.Joueurs)
+	}
+	r := s.Joueurs[0].Routes[0]
+	if r.DebutFrame != 0 {
+		t.Fatalf("debut_frame = %d, attendu 0 (l'instant contributeur est le debut de la vie)", r.DebutFrame)
+	}
+	if len(r.Cases) != 15 {
+		t.Fatalf("cases = %d, attendu 15 (les 15 premieres secondes, pas les 20 de la vie) : %+v",
+			len(r.Cases), r.Cases)
+	}
+	// Doublons CONSECUTIFS fusionnes : chaque case differe de la precedente.
+	for i := 1; i < len(r.Cases); i++ {
+		if r.Cases[i] == r.Cases[i-1] {
+			t.Fatalf("case %d repetee consecutivement : %+v", i, r.Cases)
+		}
+	}
+}
+
+// TestProjeterRasterTactique_SansBornesDeVie_AucuneMort — `endFrame` est optionnel dans
+// l'artefact. Sans lui, deduire la mort du dernier point confondrait une mort avec la fin
+// du film, donc avec un SURVIVANT.
+func TestProjeterRasterTactique_SansBornesDeVie_AucuneMort(t *testing.T) {
+	const sansBornes = `{"schemaVersion":20,"matchId":"abc","frameCount":21,"frameIntervalMs":100,
+      "tracks":[{"slot":1,"team":-1,"xuid":"111",
+        "points":[{"t":0,"x":0.25,"y":0.25},{"t":20,"x":0.25,"y":0.25}]}]}`
+	s, err := ProjeterRasterTactique(ecrireFichier(t, "sansbornes.json", sansBornes))
+	if err != nil {
+		t.Fatalf("projection: %v", err)
+	}
+	if len(s.Joueurs) != 1 {
+		t.Fatalf("joueurs = %+v", s.Joueurs)
+	}
+	if len(s.Joueurs[0].Morts) != 0 {
+		t.Fatalf("morts = %+v, attendu aucune sans bornes de vie declarees", s.Joueurs[0].Morts)
+	}
+	// La route, elle, reste mesurable : elle ne depend que des points.
+	if len(s.Joueurs[0].Routes) != 1 {
+		t.Fatalf("routes = %+v, attendu 1", s.Joueurs[0].Routes)
 	}
 }
