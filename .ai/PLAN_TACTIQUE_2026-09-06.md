@@ -454,7 +454,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 > phase 4), `film.replay_artifact` (porte data-level des sidecars, phase 6),
 > `useDataCapability` (cote web, regle des deux portes — voir la case 3.7).
 
-### Phase 4 — Grille des cartes — CLOSE 2026-09-06
+### Phase 4 — Grille des cartes — CLOSE 2026-09-06, revue ronde 1 SOLDEE (8 constats)
 > ORDRE D'EXECUTION : 4.4, puis 4.2, puis 4.3+4.1 — l'ordre des DEPENDANCES, pas celui de
 > la liste. La vignette de 4.3 consomme l'endpoint de 4.4 et les cles de 4.2 ; la route de
 > 4.1 importe la page de 4.3 ET type l'ecriture de `?carte=` que cette page fait. Chaque
@@ -544,6 +544,82 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   tombe ; `FeatureGate` retire de la barre d'onglets -> le test « pas d'onglet sans
   replay » tombe ; `RouteCapabilityGate` retire de `TacticalTab` -> les deux tests de la
   seconde porte tombent.
+- [x] 4.5 **Revue adversariale ronde 1 — 8 constats, tous corriges** en 2 commits
+      `tactique(4.5)`. Aucun report.
+      **G1 (P1, P0 sur un hote Windows expose) — LE map_id N'ETAIT JAMAIS VALIDE AVANT LE
+      SYSTEME DE FICHIERS.** C'est la premiere cle de fond entierement controlee par
+      l'appelant (sur le chemin par match elle venait de `match_registry`), et elle
+      atteignait `filepath.Join(map_backgrounds, cle + ".json")` avec pour seul controle un
+      `TrimSpace`. Sous Windows, `..\..\x` traverse chi comme UN SEUL segment et
+      `filepath.Join` resout l'antislash comme separateur : `os.Stat` et `os.ReadFile`
+      sortaient du repertoire des fonds. DEUX PORTES desormais :
+      `handlers.MapIDValide` (`api/handlers/tactical.go:252`, liste blanche
+      `^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`, appelee AVANT toute resolution de service) et
+      `service.cleDeFondSure` (`service/replay_map_background.go:216`), dans
+      `resolveBackgroundKeyDepuis` — dernier point avant `PathResolver`, gardant les DEUX
+      branches (cle map_id et cle rendue par l'index des noms : c'est la CLE qui doit etre
+      sure, quelle que soit sa provenance) ; une cle VIDE reste legitime (carte native).
+      **AUCUNE NORMALISATION** : le motif s'applique a la valeur BRUTE — un `TrimSpace`
+      prealable faisait de `carte%20` un `carte` valide, defaut trouve par le test lui-meme.
+      **AMENDEMENT AU BRIEF, au service de sa propre raison** : le brief tranchait
+      `map_background_not_available` sur les trois routes ; la lecture de placement rend
+      `tactical_map_unknown`, qui est SON code d'absence. Un code propre a la validation
+      dirait a l'appelant qu'il a franchi le routeur mais pas le filtre — l'oracle que le
+      brief voulait justement eviter en refusant le 400. Un test l'exige : map_id hostile et
+      carte jamais jouee rendent des reponses OCTET POUR OCTET identiques, ce qui a impose
+      de factoriser le message d'absence du fond (`messageSansFond`).
+      Tests : `api/handlers/tactical_mapid_test.go` (predicat aux deux bords, les trois
+      routes, indiscernabilite) et `service/replay_map_background_traversee_test.go`
+      (les deux branches + la PREUVE PAR LE CHEMIN : les cles de la table font reellement
+      sortir `filepath.Clean(MapBackgroundMetaPath(...))` du repertoire des fonds, avec
+      sentinelle anti-vacuite, et toute cle acceptee y reste).
+      **G2 (P1) — LE TEST DU GARDE LOCAL NE POUVAIT PAS ECHOUER.** Il ne montait aucun
+      middleware et partait deja d'une adresse non locale (defaut du defaut de `httptest`,
+      deja documente dans `replay_test.go`). Le MONTAGE est desormais garde par un ratchet
+      sur le site reel : `archlint/tactical_background_local_gate_test.go`, sur le modele et
+      avec l'extracteur de `replay_routes_capability_gate_test.go` — generalise par
+      constructeur (`sitesDeMontage(fichier, ctor)`) plutot que recopie. **RATCHET A DEUX
+      FACES** : les routes tactiques ne sont pas sous `LocalOnlyReplay`, ET le rejeu l'est
+      toujours — sans la seconde, la premiere passerait aussi si le garde disparaissait du
+      depot. Le test HTTP est renomme et reecrit pour ce qu'il couvre reellement : le
+      handler ne branche sur aucune adresse d'appel.
+      **G3 (P2)** — les deux branches `missing_map_id` (400) supprimees, remplacees par la
+      validation G1. `openapi.yaml` INCHANGE (690129 octets) : ce 400 n'etait declare nulle
+      part au contrat, donc `generated.ts` ne bouge pas non plus. `replay.go` non touche
+      (meme forme morte, hors perimetre — consignee au §7).
+      **W1 (P1)** — le passage du filtre a la requete n'etait asserte nulle part (`api.get`
+      double, personne ne regardait le chemin) : figer la cle ou retirer le suffixe d'URL
+      laissait 15 tests verts pendant qu'a l'ecran un changement de periode resservait la
+      grille precedente. Trois tests dans `TacticalPage.test.tsx`.
+      **W2 (P1)** — le chemin NOMINAL du fond n'etait jamais joue (`getBlob` toujours
+      double en rejet) : `<img src={fond ?? ''}>` serait passe, soit une icone cassee sur
+      chaque vignette sans fond. Deux tests, image resolue et image refusee.
+      **W3 (P1)** — `useMatchRoute` double a « toujours faux » : deux onglets pouvaient
+      briller ensemble et retirer `&& !isTactical` passait. Le double suit desormais la
+      route courante ; deux tests exigent EXACTEMENT UN `aria-selected`.
+      **W4 (P2)** — le fond etait cache PAR JOUEUR alors que c'est une donnee de reference
+      du TITRE : N images retenues par joueur consulte, pour le meme contenu, et la borne
+      ecrite en commentaire etait fausse. Cle passee a
+      `tacticalMapBackground(titleSlug, mapId)` (`lib/query/keys.ts:185`), classee dans la
+      categorie « title-scopee par le 1er argument » qui existait deja au garde-rail
+      (`assetMaps`, `presence`). L'URL de fetch garde le joueur — la route reste derriere
+      l'ownership. Borne reecrite.
+      **W5 (P2)** — pointeur de doc corrige vers `TacticalTab.test.tsx`.
+- **Gate REJOUE apres la revue ronde 1, le 2026-09-06** (avant-plan, en serie). Go :
+  `go vet` propre sur 7 arbres ; `go test -count=1` vert sur 24 paquets (duckdb 44,4 s ;
+  api 23,1 s ; service 11,2 s ; handlers 9,5 s ; archlint 8,9 s ; title 7,5 s ;
+  contracttest 0,5 s) ; `golangci-lint run --new-from-merge-base=origin/main` : **0 issue** ;
+  `openapi-gen -check` a jour et `generated.ts` INCHANGE. Web : `typecheck` propre ; `lint`
+  **0 erreur** (30 warnings preexistants) ; `vitest tactical ascension keys capabilities` :
+  21 fichiers, **178 tests** verts ; `lint-no-hardcoded-colors` 0 violation ;
+  `lint-cross-feature-imports` **7/7 inchange** ; manifestes sans diff residuel.
+  **SIX INVERSIONS/MUTATIONS JOUEES** : motif de validation neutralise -> 3 tests de
+  handler tombent ; `cleDeFondSure` neutralisee -> le test de traversee tombe en montrant
+  `err = <nil>` (la resolution ABOUTISSAIT sur une cle `..`) ; ligne de montage tactique
+  deplacee dans le groupe `LocalOnlyReplay` -> le ratchet tombe en nommant
+  `server_apiv1.go:713` ; cle de cache figee + suffixe d'URL retire -> le test du filtre
+  tombe ; `<img>` rendue inconditionnelle -> les deux tests du fond tombent ;
+  `&& !isTactical` retire -> le test « un seul onglet selectionne » tombe.
 - **Gate** : typecheck + test-web ; couleurs ; parite FR/EN.
 
 ### Phase 5 — Vue d'analyse, lectures SQL, drilldown — GELEE JUSQU'AU LOT D
@@ -588,6 +664,30 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **revue adversariale ronde 1 de la phase 4 — 8 constats, TOUS corriges** en
+  2 commits `tactique(4.5)`. Gate rejoue integralement, six inversions/mutations jouees.
+  - **G1 (P1, P0 sur un hote Windows expose) — UNE TRAVERSEE DE REPERTOIRE.** Le `map_id`
+    est la premiere cle de fond entierement controlee par l'appelant, et elle atteignait
+    `filepath.Join` sans validation : `..\..\x` passe chi comme UN SEUL segment, et sous
+    Windows l'antislash EST un separateur. Ce qui protegeait le depot n'etait pas une
+    verification mais trois accidents de plate-forme. Deux portes posees (liste blanche au
+    handler, garde de chemin au service, juste avant `PathResolver`), aucune normalisation
+    (le `TrimSpace` prealable rendait `carte%20` valide — trouve par le test), et un refus
+    OCTET POUR OCTET identique a une carte inconnue, pour ne pas remplacer un oracle par un
+    autre.
+  - **G2 (P1)** — le test qui affirmait que le fond n'est pas sous le garde local du rejeu
+    ne montait aucun middleware : la mutation qu'il pretendait attraper le laissait vert.
+    Remplace par un ratchet sur le SITE DE MONTAGE, a DEUX FACES (les routes tactiques
+    dehors, le rejeu dedans) — sans la seconde face, la premiere passerait aussi si le
+    garde disparaissait.
+  - **G3, W1-W5** — un 400 mort retire du handler ; trois doubles de test trop complaisants
+    (le chemin de requete jamais asserte, le fond jamais servi, `useMatchRoute` toujours
+    faux) ; et une cle de cache par joueur pour une donnee de reference du titre.
+  - **FIL COMMUN DES SIX DEFAUTS DE TEST** : un double qui repond toujours la meme chose ne
+    teste rien. `api.get` sans assertion sur le chemin, `getBlob` toujours en rejet,
+    `useMatchRoute` toujours faux, `httptest` toujours distant — chacun rendait vert le
+    scenario qu'il pretendait couvrir. C'est le meme piege que la ronde 2 de la phase 3
+    (« un garde-fou qui promet plus qu'il ne tient »), vu du cote des doubles.
 - 2026-09-06 : **phase 4 CLOSE — l'onglet Tactique apparait sous Ascension**, en 3 commits
   (`tactique(4.4)`, `(4.2)`, `(4.3+4.1)`). Items 4.1-4.4 `[x]`, gate joue en avant-plan des
   deux cotes, six inversions jouees. Non pousse : revue du superviseur.
@@ -814,6 +914,19 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-06 (phase 4, revue R1) — **LA MEME BRANCHE MORTE SURVIT DANS `handlers/replay.go`.**
+  Les deux `if in.MatchID == "" { 400 missing_match_id }` (`replay.go:79-81`, `:105-107`,
+  et le pendant chi `:157-160`) sont inatteignables pour la meme raison que les
+  `missing_map_id` retires ici : chi ne route pas un segment vide, et la liaison de
+  parametre de Huma refuse la chaine vide avant le handler. Le 400 n'est declare nulle part
+  au contrat. Hors perimetre de la phase 4 (fichier du rejeu, lot B/D de l'audit). NON
+  TRAITE.
+- 2026-09-06 (phase 4, revue R1) — **AUCUNE AUTRE ROUTE DU DEPOT NE FABRIQUE UN CHEMIN DE
+  FICHIER A PARTIR D'UN PARAMETRE D'URL** : verifie sur pieces pendant G1. Les autres
+  lectures de fichiers passent par un identifiant deja resolu en base (match_id ->
+  `match_registry`) ou par un catalogue versionne. La surface fermee par `MapIDValide` etait
+  la seule de cette forme ; si une seconde apparait, elle doit reutiliser ce helper plutot
+  qu'en recopier le motif (la regle des <= 2 copies s'appliquera des la deuxieme).
 - 2026-09-06 (arbitrage utilisateur) — **LOT « MINIATURES DE CARTES » ACCEPTE**, a ouvrir apres la V1 de Tactique : la vignette de la grille charge le PNG pleine resolution (jusqu a 1,4 Mo par carte, une quinzaine de cartes) faute de pipeline de miniatures dans le depot. Perimetre pressenti : generation d une miniature par fond (PathResolver, meme sidecar), endpoint `.../background/thumb.png`, la grille la consomme ; le rejeu garde la pleine resolution. Hors de ce plan.
 - 2026-09-06 (phase 4) — **LE CALAGE PAR CARTE N'A AUCUN CONSOMMATEUR WEB EN PHASE 4.**
   `GET /players/{slug}/tactical/{map_id}/background` (Huma) est servi parce que le contrat

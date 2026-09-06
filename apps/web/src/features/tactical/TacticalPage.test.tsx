@@ -10,8 +10,8 @@
  *   - aucune carte -> `EmptyState`, jamais une grille vide muette ;
  *   - le pied de carte sert la couverture ET la phrase du plancher.
  *
- * La garde de capability (`replay`) est testée avec la route, dans
- * `routes/.../ascension/tactique.test.tsx` : c'est là qu'elle vit.
+ * La garde de capability (`replay`) est testée là où elle vit : `TacticalTab.test.tsx`
+ * (la porte de route) et `features/ascension/AscensionLayout.test.tsx` (la porte d'onglet).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
@@ -19,6 +19,7 @@ import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import type { TacticalMapsPage } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
 
 import { TacticalPage } from './TacticalPage'
 
@@ -36,6 +37,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 })
 
 const get = vi.fn()
+const getBlob = vi.fn()
 vi.mock('@/lib/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/client')>()
   return {
@@ -43,8 +45,7 @@ vi.mock('@/lib/api/client', async (importOriginal) => {
     api: {
       ...actual.api,
       get: (path: string) => get(path),
-      // La vignette demande son fond : sans image, la grille s'affiche quand même.
-      getBlob: () => Promise.reject(new Error('pas de fond')),
+      getBlob: (path: string) => getBlob(path),
     },
   }
 })
@@ -75,10 +76,14 @@ const page: TacticalMapsPage = {
 
 beforeEach(() => {
   useAppShellStore.setState({ locale: 'fr' })
+  useSoloFilterStore.setState({ filterContext: {} as never })
   searchCourant = {}
   navigate.mockReset()
   get.mockReset()
   get.mockResolvedValue(page)
+  getBlob.mockReset()
+  // Défaut : la carte n'a pas de fond. La grille doit s'afficher quand même.
+  getBlob.mockRejectedValue(new Error('pas de fond'))
 })
 afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
 
@@ -175,6 +180,81 @@ describe('TacticalPage — la grille des cartes', () => {
     renderWithProviders(<TacticalPage />)
     expect(await screen.findByTestId('tactical-erreur')).toBeInTheDocument()
     expect(screen.queryByText('Aucune carte jouée')).toBeNull()
+  })
+
+  // ─── W1 — LE FILTRE COURANT DOIT ARRIVER JUSQU'A LA REQUETE ────────────────────────
+  //
+  // Sans ces assertions, figer la clé de cache ou retirer le suffixe de l'URL laissait
+  // TOUS les autres tests verts : `api.get` est doublé et personne ne regardait le chemin.
+  // Conséquence à l'écran : changer de période resservait la grille précédente.
+
+  it('envoie le filtre global dans l’URL, et le porte dans la clé de cache', async () => {
+    useSoloFilterStore.setState({
+      filterContext: {
+        cascade: { playlists: ['Ranked Arena'], modes: ['Slayer'] },
+        period: { start_date: '2026-01-01', end_date: '2026-02-01' },
+      } as never,
+    })
+    renderWithProviders(<TacticalPage />)
+    await screen.findByTestId('tactical-map-streets')
+
+    const url = get.mock.calls[0][0] as string
+    expect(url.startsWith('/players/JGtm/tactical/maps?')).toBe(true)
+    const params = new URLSearchParams(url.slice(url.indexOf('?') + 1))
+    expect(params.get('playlist')).toBe('Ranked Arena')
+    expect(params.get('mode')).toBe('Slayer')
+    expect(params.get('from')).toBe('2026-01-01T00:00:00Z')
+    expect(params.get('to')).toBe('2026-02-01T23:59:59Z')
+  })
+
+  it('n’envoie JAMAIS la session : l’onglet ne l’honore pas (T11)', async () => {
+    useSoloFilterStore.setState({
+      filterContext: {
+        filter_mode: 'sessions',
+        sessions: { picked_session_label: 'Session du 3 mars' },
+        cascade: { playlists: ['Ranked Arena'] },
+      } as never,
+    })
+    renderWithProviders(<TacticalPage />)
+    await screen.findByTestId('tactical-map-streets')
+    expect(get.mock.calls[0][0]).not.toContain('session')
+  })
+
+  it('sans filtre : l’URL est nue, aucun point d’interrogation orphelin', async () => {
+    renderWithProviders(<TacticalPage />)
+    await screen.findByTestId('tactical-map-streets')
+    expect(get.mock.calls[0][0]).toBe('/players/JGtm/tactical/maps')
+  })
+
+  // ─── W2 — LE CHEMIN NOMINAL DU FOND ────────────────────────────────────────────────
+  //
+  // Tous les autres tests doublent `getBlob` en REJET : le cas où une image existe
+  // n'était joué nulle part, et `<img src={fond ?? ''}>` — une icône d'image cassée sur
+  // chaque vignette sans fond — serait passé.
+
+  it('carte AVEC un fond : la vignette porte l’image, demandée à la bonne URL', async () => {
+    const urlObjet = 'blob:tactique/streets'
+    const creerURL = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue(urlObjet)
+    getBlob.mockResolvedValue(new Blob(['png']))
+    try {
+      renderWithProviders(<TacticalPage />)
+      const img = await screen.findByTestId('tactical-map-fond-streets')
+      expect(img).toHaveAttribute('src', urlObjet)
+      expect(getBlob).toHaveBeenCalledWith(
+        '/players/JGtm/tactical/streets/background.png',
+      )
+    } finally {
+      creerURL.mockRestore()
+    }
+  })
+
+  it('carte SANS fond : aucune image, jamais une icône cassée', async () => {
+    renderWithProviders(<TacticalPage />)
+    const streets = await screen.findByTestId('tactical-map-streets')
+    expect(screen.queryByTestId('tactical-map-fond-streets')).toBeNull()
+    expect(streets.querySelector('img')).toBeNull()
   })
 
   it('en anglais, les libellés et le nom canonique', async () => {
