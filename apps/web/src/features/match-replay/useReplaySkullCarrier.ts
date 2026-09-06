@@ -3,7 +3,7 @@
  * seul point.
  *
  * MÊME PARTI QUE `useReplayVipCrown` et `useReplayFlagCarries` : le canvas du rejeu porte une dette
- * de taille GELÉE par un cliquet (`placementFamily.guard.test.ts`) — toute addition s'y fait par
+ * de taille GELÉE par un seuil (`max-lines` eslint, R5) — toute addition s'y fait par
  * EXTRACTION. Ce hook réunit la relecture de position du porteur et le tracé par image, et n'en
  * rend au canvas que deux lignes utiles.
  *

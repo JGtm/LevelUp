@@ -6,7 +6,7 @@
  * plus dans un état React de la route : la position n'a qu'une cellule, celle que la boucle
  * de dessin écrit. Ce fichier n'en décide que le RYTHME.
  *
- * DIXIÈME EXTRACTION IMPOSÉE PAR LE CLIQUET DE TAILLE (`placementFamily.guard.test.ts`) : le
+ * DIXIÈME EXTRACTION IMPOSÉE PAR LE SEUIL DE TAILLE (`max-lines` eslint, R5) : le
  * canvas était PILE à son plafond et le lot du cadrage (2026-08-26) y ajoutait la fenêtre de
  * gameplay. Les deux morceaux sortis ici n'appartiennent pas au DESSIN — ils disent OÙ ON EN
  * EST, l'un à l'écran, l'autre au reste de la page. La découpe suit donc la même frontière que

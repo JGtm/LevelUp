@@ -1,8 +1,8 @@
 /**
  * useTeamCascades — DE QUEL CÔTÉ EST UN CAMP, ET COMMENT IL S'APPELLE.
  *
- * POURQUOI UN FICHIER À PART. `ReplayCanvas` porte un cliquet de taille
- * (`placementFamily.guard.test.ts`) dont la règle est écrite noir sur blanc : « le franchir
+ * POURQUOI UN FICHIER À PART. `ReplayCanvas` porte un seuil de taille
+ * (`max-lines` eslint, R5) dont la règle est écrite noir sur blanc : « le franchir
  * se corrige en extrayant, pas en relevant le nombre ». Ces deux dérivations appartiennent
  * aux équipes, pas au dessin de la carte — et un hook exporté depuis un fichier de
  * composant coûte un avertissement `react-refresh`, d'où ce module (même convention que

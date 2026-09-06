@@ -2,8 +2,8 @@
  * useReplayTiming — TOUTES LES DURÉES DU REJEU, converties une fois par document.
  *
  * POURQUOI CE FICHIER EXISTE. Le canvas du rejeu porte une dette de taille GELÉE par un
- * cliquet (`placementFamily.guard.test.ts`) : toute addition s'y fait par EXTRACTION, jamais
- * par empilement — c'est la manœuvre que le cliquet existe pour imposer, et c'est la
+ * seuil (`max-lines` eslint, R5) : toute addition s'y fait par EXTRACTION, jamais
+ * par empilement — c'est la manœuvre que le seuil existe pour imposer, et c'est la
  * quatrième fois qu'elle sert (useReplayInks, useGrenadeIcons, useReplayWeaponPads avant lui).
  * Le lot R3 allonge la croix de mort et devait écrire pourquoi : les réglages temporels et
  * leur conversion partent donc ici, avec leurs justifications.

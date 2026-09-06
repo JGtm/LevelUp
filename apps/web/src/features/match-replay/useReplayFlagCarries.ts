@@ -2,7 +2,7 @@
  * useReplayFlagCarries — TOUT LE CÂBLAGE DU CALQUE DES DRAPEAUX, en un seul point.
  *
  * POURQUOI UN HOOK ET NON QUATRE MORCEAUX DANS `ReplayCanvas`. Le canvas du rejeu porte une
- * dette de taille GELÉE par un cliquet (`placementFamily.guard.test.ts`) : toute addition s'y
+ * dette de taille GELÉE par un seuil (`max-lines` eslint, R5) : toute addition s'y
  * fait par EXTRACTION, jamais par empilement. Ce hook réunit donc les préoccupations du calque —
  * la relecture de position du porteur, le tracé par image, le survol et l'infobulle — et n'en
  * rend au canvas que quatre lignes utiles. Même parti que `useReplayWeaponPads`, `useZoneStates`

@@ -2,7 +2,7 @@
  * useZoneStates — CE QUE LE CALQUE VIVANT DES ZONES A BESOIN DE SAVOIR, résolu une fois.
  *
  * POURQUOI UN HOOK PLUTÔT QUE DEUX `useMemo` DANS LE CANVAS. `ReplayCanvas.tsx` est sous
- * plafond de taille (garde-rail `placementFamily.guard.test.ts`), et la règle du dépôt est de ne
+ * plafond de taille (garde-rail `max-lines` eslint, R5), et la règle du dépôt est de ne
  * pas accroître cette dette : chaque calque y garde UNE ligne, son détail vit à côté de sa
  * donnée. Même partage que `useReplayWeaponPads` et `useReplayStaticLayers`.
  *

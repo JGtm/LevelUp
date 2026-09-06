@@ -1,7 +1,7 @@
 /**
  * replayCanvasConfig.ts — LES RÉGLAGES CONSTANTS DU CANVAS DE REJEU.
  *
- * DIXIÈME EXTRACTION IMPOSÉE PAR LE CLIQUET DE `ReplayCanvas.tsx` (cf. placementFamily.guard) :
+ * DIXIÈME EXTRACTION IMPOSÉE PAR LE SEUIL DE `ReplayCanvas.tsx` (cf. `max-lines` eslint, R5) :
  * trois valeurs qui ne dépendent d'aucun état, d'aucune propriété et d'aucun hook. Elles étaient
  * en tête du composant et le composant n'en avait besoin qu'à la lecture — les sortir ne déplace
  * pas une ligne de logique et rend au canvas la marge qu'un calque de plus lui prend.

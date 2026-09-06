@@ -5,7 +5,7 @@
  * corps — `void paletteVersion` puis un `resolveToken` ou un `readInk`, mémoïsé sur la version
  * de palette — recopié huit fois dans `ReplayCanvas.tsx`. C'est la 3e copie de la règle
  * CLAUDE.md n°6 largement dépassée, et c'est aussi ce qui a fait grossir le canvas jusqu'à son
- * cliquet de taille (placementFamily.guard.test.ts) : l'extraction est la façon prescrite d'y
+ * seuil de taille (`max-lines` eslint, R5) : l'extraction est la façon prescrite d'y
  * ajouter un calque, pas le relèvement du plafond.
  *
  * UN SEUL MÉMO POUR LES HUIT, ET C'EST MIEUX QUE HUIT : elles dépendaient toutes de la même

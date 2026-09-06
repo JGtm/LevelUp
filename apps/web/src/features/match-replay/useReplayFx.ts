@@ -1,7 +1,7 @@
 /**
  * useReplayFx — LES EFFETS PRÉCALCULÉS DU FILM, en monde, une fois pour ce document.
  *
- * ONZIÈME EXTRACTION IMPOSÉE PAR LE CLIQUET DE TAILLE (`placementFamily.guard.test.ts`) : le
+ * ONZIÈME EXTRACTION IMPOSÉE PAR LE SEUIL DE TAILLE (`max-lines` eslint, R5) : le
  * canvas était PILE à son plafond et le lot C y fait entrer la fin de partie sonore. Ces cinq
  * mémos partagent une seule et même nature — ils ne dépendent que du FILM (et, pour les morts,
  * du fil déjà résolu), ils ne lisent ni thème, ni palette, ni cadrage, et ils ne dessinent

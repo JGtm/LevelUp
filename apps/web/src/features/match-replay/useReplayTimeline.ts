@@ -1,7 +1,7 @@
 /**
  * useReplayTimeline — TOUT CE QUE LA FRISE DEMANDE, assemblé en un objet.
  *
- * TREIZIÈME EXTRACTION IMPOSÉE PAR LE CLIQUET DE TAILLE (`placementFamily.guard.test.ts`) : la
+ * TREIZIÈME EXTRACTION IMPOSÉE PAR LE SEUIL DE TAILLE (`max-lines` eslint, R5) : la
  * barre de lecture de la planche 2a (2026-08-28) fait entrer quatre pistes, leurs échelles, la
  * réduction du fil, les trois horloges de l'axe et le clavier. Posés dans le canvas, c'était
  * une trentaine de lignes — sur un fichier qui n'en a plus une seule de marge. Ils partagent
