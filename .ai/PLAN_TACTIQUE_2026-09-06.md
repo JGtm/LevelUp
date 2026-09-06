@@ -297,7 +297,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   `make generate-types` puis `git diff --exit-code apps/web/src/lib/api/generated.ts`
   ne montre que les nouveaux types.
 
-### Phase 3 — L'ECHANGE SUR LA PAGE ESCOUADE — CLOSE 2026-09-06, revue ronde 1 SOLDEE, cloture 3.8 (tous les items statues)
+### Phase 3 — L'ECHANGE SUR LA PAGE ESCOUADE — CLOSE 2026-09-06, revues rondes 1 ET 2 SOLDEES (tous les items statues)
 - [x] 3.1 Service Escouade : `service/teammates/teammates_squad_echange.go` (279 L) +
       `domain/squad_echange.go` (122 L, tags snake_case), branche dans
       `teammates_service.go` (`WithEchange`) et `GetPage`. L'echange entre dans le
@@ -505,6 +505,41 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **revue adversariale ronde 2 de la phase 3 — DERNIERE salve, 3 constats P2,
+  tous corriges** en 1 commit `tactique(3.9)`. Aucun P0, aucun P1. Trois garde-fous qui
+  PROMETTAIENT plus qu'ils ne tenaient — c'est le fil commun des trois.
+  - **P2-1 — le garde accesseur -> composant etait troue par SOUS-CHAINE.**
+    `composants.includes('t.' + a)` acceptait `coverage` grace a `t.coverageHint`,
+    `lowSample` grace a `t.lowSampleHint`, `delayBin` grace a `t.delayBinOpen`,
+    `delayNarrative` grace a `t.delayNarrativeEmpty`. Le PREFIXE d'un accesseur n'est pas
+    cet accesseur. Passe a une regex a FRONTIERE DE MOT (`t.<accesseur>`).
+    DEUX inversions jouees, et la seconde est la vraie preuve : (A) `t.coverage(` retire de
+    ses DEUX consommateurs, garde corrige -> tombe en nommant `coverage` ; (B) MEME
+    suppression, garde revenu a `includes` -> **6 tests au vert**. Le bandeau de couverture
+    — qui n'est pas decoratif, les films expirent — pouvait donc disparaitre des deux cartes
+    sans que rien ne le dise. NOTE : l'inversion telle que scriptee par le superviseur
+    (retirer `t.coverage(` de la SEULE matrice) ne tombe pas, et c'est normal —
+    `coverage` a DEUX consommateurs, la matrice et la carte des delais.
+  - **P2-2 — deuxieme definition de « match mesure ».** `matchsMesures` comptait les
+    match_id distincts presents dans les evenements, alors que le drapeau `Mesure`
+    (EXISTS + publishable) de G2 est calcule par `chargerUnivers` POUR LES DEUX SURFACES.
+    Les deux coincidaient par accident (tous deux exigent `publishable`), rien ne les liait
+    — et la fixture de test le prouvait, qui declarait `m1` `Mesure: false` en lui donnant
+    deux kill-events sans qu'aucune assertion ne bronche. Une seule definition desormais :
+    le drapeau du lecteur. Fixture rendue coherente ; deux tests ajoutes (un match LISIBLE
+    et MUET compte au denominateur — zero legitime ; un match ILLISIBLE ne compte pas, meme
+    si un evenement le mentionne) ; le sous-test « aucun match mesure » renomme « aucun
+    match lisible » et pose desormais `Mesure: false` au lieu d'une absence d'evenements.
+    INVERSION jouee : comptage par evenements restaure -> les deux nouveaux tests tombent.
+  - **P2-3 — le lisere tirete n'etait pas un second indice.** `borderColor` valait la
+    couleur de REMPLISSAGE, sous la meme opacite globale de 0,35 appliquee a l'element
+    entier : a l'ecran, seule l'opacite se voyait. La doc de la prop, le commentaire de la
+    carte et le test `borderType === 'dashed'` promettaient pourtant deux indices — et le
+    test CADENASSAIT une promesse que l'ecran ne tenait pas. Le lisere est RETIRE plutot que
+    maquille ; l'atténuation est un seul indice graphique, l'opacite, et le SECOND indice
+    est le MOT : suffixe « hors fenetre » sur l'etiquette d'axe et pied de carte. Les trois
+    docs sont reecrites en consequence. Retro-compat intacte : sans la prop, `data` reste
+    `[3, 5, 2]` (test conserve).
 - 2026-09-06 : lots C, B, F de l audit integres dans `feat/v75` et FUSIONNES dans `feat/tactique` (741e1731f, seul conflit : thought_log, union). Phases 4 et 6 degelees, 5 attend D, 7 suit 6. Item 3.7 statue `[~]` (porte deja dans le payload, doctrine `dataCapabilities.ts`). « Cap du moment » renomme « Constat du moment » (decision utilisateur).
 - 2026-09-06 : **cloture de la phase 3 — deux retouches** (`tactique(3.8)`), sur le HEAD
   d'apres la fusion de `feat/v75` (lots C, B, F ; merge `741e1731f`). **(1) RENOMMAGE**

@@ -96192,3 +96192,51 @@ résolution de la racine `deploy` sans en avoir besoin.
 **Conclusion / prochaine étape.** Les dix constats sont statués `[x]` avec preuve écrite dans
 `.ai/V7.5/v2/LOT_G.md`, section « Corrections après revue ». Ronde 2 de la revue (sur les
 corrections seules) à la main du superviseur, puis intégration dans `feat/v75`.
+
+---
+
+## [2026-09-06] Tactique phase 3 — revue adversariale ronde 2, trois P2 soldes
+
+**Statut** : Complete (1 commit `tactique(3.9)`, derniere salve — aucun P0, aucun P1).
+
+**Decision technique principale** — les trois constats disent la meme chose sous trois
+formes : **un garde-fou qui promet plus qu'il ne tient est pire que pas de garde-fou**,
+parce qu'il achete le silence.
+
+1. Le garde i18n cherchait ses accesseurs par SOUS-CHAINE : `t.coverageHint` couvrait
+   `coverage`, `t.lowSampleHint` couvrait `lowSample`, `t.delayBinOpen` couvrait
+   `delayBin`, `t.delayNarrativeEmpty` couvrait `delayNarrative`. Quatre accesseurs sur
+   une vingtaine n'etaient donc gardes par rien. Passe a une frontiere de mot.
+2. `matchsMesures` comptait les match_id presents dans les evenements pendant que le
+   drapeau `Mesure` (EXISTS + publishable) de G2 servait la meme notion aux deux surfaces.
+   Les deux tombaient juste PAR ACCIDENT — tous deux exigent `publishable` — et rien ne les
+   liait.
+3. Le lisere tirete des barres hors fenetre portait la couleur du remplissage, sous la meme
+   opacite globale : invisible. Trois docs et un test l'annoncaient quand meme.
+
+**PIEGE RETENU — un test qui cadenasse une promesse que l'ecran ne tient pas.**
+`expect(itemStyle.borderType).toBe('dashed')` passait, vert, a chaque execution : le style
+etait bien pose dans l'option ECharts. Il n'etait simplement jamais VU, l'opacite de 0,35
+s'appliquant a l'element entier, liseré compris, et sa couleur etant celle du remplissage.
+Le test verifiait donc la presence d'une propriete, pas l'existence d'un indice visuel — et
+il aurait empeche quiconque de retirer un decor mort. La correction ne consiste pas a
+rendre le liseré visible mais a ASSUMER un seul indice graphique (l'opacite) et a porter le
+second par le MOT (« hors fenetre » sur l'etiquette d'axe et au pied de carte).
+
+**DEUXIEME LECON, sur les inversions elles-memes.** L'inversion scriptee par le superviseur
+pour le point 1 — retirer `t.coverage(` de la seule matrice — NE TOMBE PAS, et c'est
+correct : `coverage` a deux consommateurs (la matrice et la carte des delais). Il a fallu la
+retirer des deux pour que le garde corrige morde. La vraie demonstration est la
+contre-epreuve : meme suppression, garde revenu a `includes` -> six tests au vert. Le
+bandeau de couverture pouvait disparaitre des DEUX cartes sans un mot. Une inversion qui ne
+tombe pas n'invalide pas le constat ; elle dit qu'on n'a pas encore trouve le bon geste.
+
+**Resultats observes** — Go (`./internal/service/...` seulement, le superviseur ne jouait
+aucun `go` en parallele) : `go vet` propre, `go test -count=1` vert sur 4 paquets
+(`service 8.761s`, `teammates 0.284s`). Web : typecheck propre, lint 0 erreur, vitest
+`squad charts` 95 fichiers / 848 tests verts, garde anti-anglicismes vert, manifestes
+regeneres sans diff.
+
+**Conclusion / prochaine etape** — pas de ronde 3 : le superviseur verifie sur pieces puis
+pousse. Les phases 4 et 6 sont degelees depuis l'integration des lots C, B et F ; la 5
+attend le lot D.

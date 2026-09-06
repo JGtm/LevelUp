@@ -19,7 +19,7 @@ import { describe, expect, it } from 'vitest'
 
 import { squadManifest } from '@/lib/i18n/generated/squad'
 
-import capCardSource from './SquadEchangeConstatCard?raw'
+import constatCardSource from './SquadEchangeConstatCard?raw'
 import delaiCardSource from './SquadEchangeDelaiCard?raw'
 import kpiSource from './SquadEchangeKpi?raw'
 import matrixCardSource from './SquadEchangeMatrixCard?raw'
@@ -86,12 +86,24 @@ describe('manifest squad.echange.*', () => {
     // y passait — declaree, exposee par `emptyDescription`, et affichee par AUCUN
     // composant. Le garde annoncait donc « aucune orpheline » a tort. Il va desormais
     // jusqu'au bout de la chaine : manifest -> accesseur -> composant.
-    const composants = [matrixCardSource, delaiCardSource, kpiSource, capCardSource].join(String.fromCharCode(10))
+    const composants = [matrixCardSource, delaiCardSource, kpiSource, constatCardSource].join(
+      String.fromCharCode(10),
+    )
     const accesseurs = [...accesseurSource.matchAll(/^\s{4}([A-Za-z][A-Za-z0-9]*):/gm)].map(
       (m) => m[1],
     )
     expect(accesseurs.length, 'aucun accesseur détecté : le garde ne garde rien').toBeGreaterThan(20)
-    const jamaisAffiches = accesseurs.filter((a) => !composants.includes(`t.${a}`))
+    // FRONTIÈRE DE MOT, et pas `includes` (correction R2 du 2026-09-06). Une recherche par
+    // SOUS-CHAÎNE trouait le garde en silence : `t.coverageHint` couvrait `coverage`,
+    // `t.lowSampleHint` couvrait `lowSample`, `t.delayBinOpen` couvrait `delayBin`,
+    // `t.delayNarrativeEmpty` couvrait `delayNarrative`. Supprimer le SEUL `t.coverage(`
+    // de la matrice — le bandeau de couverture, qui n'est pas décoratif — laissait donc le
+    // garde au vert. Le PRÉFIXE d'un accesseur n'est pas cet accesseur.
+    //
+    // Les accesseurs sont `[A-Za-z][A-Za-z0-9]*` par construction (capture ci-dessus) :
+    // rien à échapper pour bâtir la regex.
+    const affiche = (a: string) => new RegExp(`\\bt\\.${a}\\b`).test(composants)
+    const jamaisAffiches = accesseurs.filter((a) => !affiche(a))
     expect(
       jamaisAffiches,
       `accesseurs exposés mais affichés nulle part : ${jamaisAffiches.join(', ')}`,

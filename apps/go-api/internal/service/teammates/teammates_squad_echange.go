@@ -108,7 +108,7 @@ func (s *TeammatesService) buildSquadEchange(
 	if mesures == 0 {
 		slog.InfoContext(ctx, "teammates_echange_section_retiree_sans_mesure",
 			"player", mainGamertag, "matchs", len(scopeIDs),
-			"cause", "aucun match du perimetre ne porte de journal des morts publiable")
+			"cause", "aucun match du perimetre ne porte de journal des morts lisible")
 		return nil
 	}
 
@@ -176,15 +176,33 @@ func restreindreAuxMatchs(lecture domain.TacticalKillEvents, matchIDs []string) 
 	return out
 }
 
-// matchsMesures compte les matchs du perimetre qui portent AU MOINS une mort au journal.
-// Un match sans aucune ligne n'a pas ete decode (ou son film a expire) : il n'est pas
-// « un match sans mort », il est un match NON MESURE, et le bandeau de couverture le dit.
+// matchsMesures compte les matchs du perimetre dont le journal des morts est LISIBLE.
+//
+// LA DEFINITION EST CELLE DU LECTEUR, ET IL N'Y EN A QU'UNE (correction R2 du
+// 2026-09-06). « Mesure » veut dire : au moins une ligne PUBLIABLE dans
+// `match_kill_events_latest`, verdict rendu par `chargerUnivers` sous la forme du
+// drapeau `TacticalMatch.Mesure` (EXISTS + publishable, cf. G2) — le MEME drapeau que
+// consomme l'onglet Tactique.
+//
+// LA VERSION PRECEDENTE COMPTAIT LES match_id DISTINCTS PRESENTS DANS LES EVENEMENTS.
+// Elle tombait juste par accident — les deux exigent `publishable` — mais RIEN ne liait
+// les deux calculs : c'etait une seconde definition de « match mesure », libre de
+// diverger au premier ajustement de l'un ou de l'autre, et les deux surfaces auraient
+// alors publie deux denominateurs sous le meme nom. La preuve que rien ne les liait est
+// dans la fixture de test elle-meme, qui declarait un match `Mesure: false` en lui
+// donnant deux kill-events sans qu'aucune assertion ne bronche.
+//
+// UN MATCH MESURE SANS AUCUNE MORT DANS LE PERIMETRE COMPTE : c'est un zero LEGITIME
+// (personne n'est mort, ou aucune mort n'est de mon camp), pas un match illisible. C'est
+// exactement la distinction de G2, et elle se perdait avec le comptage par evenements.
 func matchsMesures(lecture domain.TacticalKillEvents) int {
-	vus := make(map[string]struct{}, len(lecture.Univers.Matchs))
-	for _, e := range lecture.Events {
-		vus[e.MatchID] = struct{}{}
+	n := 0
+	for _, m := range lecture.Univers.Matchs {
+		if m.Mesure {
+			n++
+		}
 	}
-	return len(vus)
+	return n
 }
 
 // campDuJoueur rend le predicat « ce joueur est de MON CAMP dans ce match » : moi ET mes
