@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import {
   grenadeBoxAt,
   grenadeReadingAt,
@@ -9,8 +10,26 @@ import {
 } from './inventoryReading'
 import { testReplayDoc as doc } from '../test/testDoc'
 
+/** Une vie couvrant [start, end] sur un slot — même patron que rosterLogic.test.ts. */
+function track(slot: number, xuid: string | undefined, start: number, end: number): ReplayTrackReady {
+  return {
+    slot,
+    team: -1,
+    xuid,
+    startFrame: start,
+    endFrame: end,
+    points: [
+      { t: start, x: 0, y: 0 },
+      { t: end, x: 1, y: 1 },
+    ],
+  }
+}
+
 describe('inventoryAt', () => {
+  // Vie couvrante large sur les deux slots : les frames exercées ici (5, 60) y tombent
+  // toutes, le seul facteur testé reste la présence/absence d'une lecture.
   const d = doc({
+    tracks: [track(512, 'A', 0, 100), track(513, 'B', 0, 100)],
     inventory: [
       // Marqueur de lecture : `gs` (type de grenade sélectionné). Il portait `a` (index de
       // capacité) jusqu'au schéma 6, qui a RETIRÉ ce champ de l'inventaire — la capacité vit
@@ -30,7 +49,7 @@ describe('inventoryAt', () => {
 
   it('ne lit jamais l’inventaire d’un autre slot', () => {
     expect(inventoryAt(d, 513, 60)?.state.gs).toBe(9)
-    const solo = doc({ inventory: [{ t: 10, slot: 513, gs: 9 }] })
+    const solo = doc({ tracks: [track(512, 'A', 0, 100)], inventory: [{ t: 10, slot: 513, gs: 9 }] })
     expect(inventoryAt(solo, 512, 5)).toBeNull()
   })
 
@@ -44,6 +63,10 @@ describe('inventoryAt', () => {
   })
 
   it('sans inventaire, rend null', () => {
+    expect(inventoryAt(doc({ tracks: [track(512, 'A', 0, 100)] }), 512, 60)).toBeNull()
+  })
+
+  it('sans vie couvrante sur ce slot à cette image, rend null', () => {
     expect(inventoryAt(doc(), 512, 60)).toBeNull()
   })
 })
@@ -53,6 +76,7 @@ describe('inventoryAt — une lecture VIDE n’efface plus la fiche', () => {
   // PLEINE qui la précédait, et la ligne disparaissait pendant ~20 s. 17,4 % des lectures
   // publiées sont dans ce cas (mesure du 2026-08-24).
   const d = doc({
+    tracks: [track(512, 'A', 0, 150), track(513, 'B', 0, 150)],
     inventory: [
       { t: 10, slot: 512, g: [0, 2, 0, 0], gs: 1, d: 0 },
       { t: 100, slot: 512, empty: 'dead' },
@@ -89,6 +113,7 @@ describe('inventoryAt — une lecture VIDE n’efface plus la fiche', () => {
 
   it('ne remonte jamais au slot d’un autre joueur pour combler un vide', () => {
     const croise = doc({
+      tracks: [track(512, 'A', 0, 150), track(513, 'B', 0, 150)],
       inventory: [
         { t: 10, slot: 513, g: [3, 0, 0, 0] },
         { t: 100, slot: 512, empty: 'dead' },
@@ -103,7 +128,10 @@ describe('inventoryAt — une lecture VIDE n’efface plus la fiche', () => {
   it('une étiquette inconnue d’un artefact futur se lit « indisponible », jamais « mort »', () => {
     // Écrire « mort » sur une valeur qu'on ne comprend pas serait affirmer à l'écran ce
     // qu'aucune pièce n'établit.
-    const futur = doc({ inventory: [{ t: 10, slot: 512, empty: 'quelque-chose' }] })
+    const futur = doc({
+      tracks: [track(512, 'A', 0, 100)],
+      inventory: [{ t: 10, slot: 512, empty: 'quelque-chose' }],
+    })
     expect(inventoryAt(futur, 512, 60)?.empty?.kind).toBe('unknown')
   })
 
@@ -112,7 +140,10 @@ describe('inventoryAt — une lecture VIDE n’efface plus la fiche', () => {
     // vide, nearestReading rend la lecture à venir (âge négatif) et le badge « Mort »
     // s'affichait de 7,5 à 19,1 s AVANT la lecture — 8 vies sur 90 du film de référence.
     // Comportement attendu : lecture ordinaire « à venir », sans état vide ni substitution.
-    const ahead = doc({ inventory: [{ t: 50, slot: 512, empty: 'dead' }] })
+    const ahead = doc({
+      tracks: [track(512, 'A', 0, 100)],
+      inventory: [{ t: 50, slot: 512, empty: 'dead' }],
+    })
     const r = inventoryAt(ahead, 512, 10)
     expect(r).not.toBeNull()
     expect(r?.age).toBe(-40)
@@ -125,6 +156,7 @@ describe('inventoryAt — une lecture VIDE n’efface plus la fiche', () => {
     // Sans la garde, lastFullBefore ne trouverait rien avant t=50 et le badge s'afficherait
     // quand même — avec elle, la lecture est rendue « à venir », sans état vide.
     const aheadFull = doc({
+      tracks: [track(512, 'A', 0, 100)],
       inventory: [
         { t: 50, slot: 512, empty: 'dead' },
         { t: 80, slot: 512, g: [2, 0, 0, 0], d: 0 },
@@ -140,6 +172,46 @@ describe('inventoryAt — une lecture VIDE n’efface plus la fiche', () => {
 })
 
 /**
+ * inventoryAt — BORNÉE À LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06,
+ * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`).
+ *
+ * PAS UN ÉTAT D'IDENTITÉ (décision produit du 2026-09-06 : une vie est un humain ou un bot,
+ * jamais une entité anonyme) : `null` dit seulement qu'aucune lecture n'a encore été observée
+ * depuis le début de CETTE vie, jamais qu'elle serait « inconnue ».
+ */
+describe('inventoryAt — borné à la VIE EN COURS du slot (correctif P0-2)', () => {
+  // Vie 1 (slot 512, frames 0-50) : inventaire lu à t=10 ET t=20 (pleine). Vie 2 (MÊME SLOT,
+  // frames 60-150) : aucune lecture dans sa fenêtre.
+  const recycled = doc({
+    tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)],
+    inventory: [{ t: 10, slot: 512, g: [1, 0, 0, 0] }],
+  })
+
+  it('ne reporte JAMAIS la lecture de la vie précédente', () => {
+    // TEST PAR MUTATION : retirer la borne `s.t < life.start || s.t > life.end` de
+    // `nearestReading` fait revenir l'ancien calcul — `best` retrouve la lecture de la vie 1
+    // (âge 90) et ce test devient ROUGE.
+    expect(inventoryAt(recycled, 512, 100)).toBeNull()
+  })
+
+  it('une lecture VIDE de la vie précédente ne comble pas non plus le vide de la vie courante', () => {
+    // `lastFullBefore` doit lui aussi rester dans les bornes de la vie courante : sans la
+    // borne `lifeStart`, il retrouverait la lecture PLEINE de la vie 1 pour « combler » la
+    // lecture vide de la vie 2 — exactement le défaut symétrique de `nearestReading`.
+    const d = doc({
+      tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)],
+      inventory: [
+        { t: 10, slot: 512, g: [1, 0, 0, 0] },
+        { t: 100, slot: 512, empty: 'dead' },
+      ],
+    })
+    const r = inventoryAt(d, 512, 120)
+    expect(r?.state.g).toEqual([])
+    expect(r?.substituted).toBe(false)
+  })
+})
+
+/**
  * L'AXE DES GRENADES (schéma 20) — ce que ces cas verrouillent.
  *
  * Le lot 4.4 ajoute un SECOND canal sur la même grandeur : les paquets delta, transmis au
@@ -150,6 +222,7 @@ describe('inventoryAt — une lecture VIDE n’efface plus la fiche', () => {
 describe('grenadeReadingAt', () => {
   it('rend la lecture la PLUS RÉCENTE du slot, quel que soit le canal', () => {
     const d = doc({
+      tracks: [track(512, 'A', 0, 100)],
       grenadeReads: [
         { t: 10, slot: 512, g: [0, 2, 0, 0], gs: 1, src: 'kf' },
         { t: 45, slot: 512, g: [0, 1, 0, 0], gs: 1, src: 'delta' },
@@ -163,12 +236,27 @@ describe('grenadeReadingAt', () => {
   })
 
   it("rend null quand l'artefact ne porte pas l'axe — le repli est le point", () => {
-    expect(grenadeReadingAt(doc({}), 512, 60)).toBeNull()
+    expect(grenadeReadingAt(doc({ tracks: [track(512, 'A', 0, 100)] }), 512, 60)).toBeNull()
   })
 
   it('ignore les autres slots', () => {
-    const d = doc({ grenadeReads: [{ t: 10, slot: 999, g: [1, 0, 0, 0], src: 'delta' }] })
+    const d = doc({
+      tracks: [track(512, 'A', 0, 100)],
+      grenadeReads: [{ t: 10, slot: 999, g: [1, 0, 0, 0], src: 'delta' }],
+    })
     expect(grenadeReadingAt(d, 512, 60)).toBeNull()
+  })
+
+  it('sans vie couvrante sur ce slot à cette image, rend null', () => {
+    expect(grenadeReadingAt(doc({}), 512, 60)).toBeNull()
+  })
+
+  it('un slot RECYCLÉ ne reporte JAMAIS les grenades de la vie précédente (correctif P0-2)', () => {
+    const d = doc({
+      tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)],
+      grenadeReads: [{ t: 10, slot: 512, g: [0, 2, 0, 0], src: 'kf' }],
+    })
+    expect(grenadeReadingAt(d, 512, 100)).toBeNull()
   })
 })
 
@@ -181,12 +269,14 @@ describe('grenadeReadingAt', () => {
  */
 describe('grenadeBoxAt', () => {
   const withBoth = doc({
+    tracks: [track(512, 'A', 0, 150)],
     inventory: [{ t: 0, slot: 512, g: [2, 0] }],
     grenadeReads: [{ t: 90, slot: 512, g: [0, 5], src: 'delta' }],
   })
 
   it('la lecture de l’axe PASSÉE gagne, avec son âge — c’est le gain du lot', () => {
     const d = doc({
+      tracks: [track(512, 'A', 0, 150)],
       inventory: [{ t: 0, slot: 512, g: [2, 0] }],
       grenadeReads: [{ t: 60, slot: 512, g: [0, 3], src: 'delta' }],
     })
@@ -198,7 +288,7 @@ describe('grenadeBoxAt', () => {
   })
 
   it('sans axe (artefact ≤ 19), retombe sur l’inventaire — le repli est le point', () => {
-    const d = doc({ inventory: [{ t: 0, slot: 512, g: [1, 2], gs: 1 }] })
+    const d = doc({ tracks: [track(512, 'A', 0, 100)], inventory: [{ t: 0, slot: 512, g: [1, 2], gs: 1 }] })
     expect(grenadeBoxAt(d, 512, 60, inventoryAt(d, 512, 60))).toEqual({
       g: [1, 2],
       gs: 1,
@@ -215,7 +305,10 @@ describe('grenadeBoxAt', () => {
   })
 
   it('lecture À VENIR sans rien de passé : elle s’affiche, âge NÉGATIF assumé', () => {
-    const d = doc({ grenadeReads: [{ t: 90, slot: 512, g: [0, 5], src: 'delta' }] })
+    const d = doc({
+      tracks: [track(512, 'A', 0, 150)],
+      grenadeReads: [{ t: 90, slot: 512, g: [0, 5], src: 'delta' }],
+    })
     expect(grenadeBoxAt(d, 512, 30, inventoryAt(d, 512, 30))?.age).toBe(-60)
   })
 
@@ -223,6 +316,7 @@ describe('grenadeBoxAt', () => {
     // Un tableau vide dit « compteurs NON LUS », pas « aucune grenade » : ce n'est donc pas une
     // information passée sur les grenades, et la lecture à venir reste le seul état à montrer.
     const d = doc({
+      tracks: [track(512, 'A', 0, 150)],
       inventory: [{ t: 0, slot: 512, g: [] }],
       grenadeReads: [{ t: 90, slot: 512, g: [0, 5], src: 'delta' }],
     })

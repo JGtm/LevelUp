@@ -5,10 +5,12 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { ReplayTrackReady } from './replayNormalize'
 import { testReplayDoc as doc } from '../../features/match-replay/test/testDoc'
 import {
+  abilityAt,
   buildPlayers,
   buildSlotOwnership,
   colorResolver,
   colorResolverOrLast,
+  currentLifeOf,
   groupByTeam,
   loadoutAt,
   markResolver,
@@ -420,7 +422,10 @@ describe('playerStateAt — santé', () => {
 })
 
 describe('loadoutAt', () => {
+  // Vie couvrante 0-100 sur les deux slots : les frames exercées ici (5, 60) y tombent toutes,
+  // donc le seul facteur testé reste la présence/absence d'une lecture — pas la vie elle-même.
   const d = doc({
+    tracks: [track(512, 'A', 0, 100), track(513, 'B', 0, 100)],
     loadouts: [
       { t: 10, slot: 512, w: ['0xAAAA'] },
       { t: 200, slot: 512, w: ['0xBBBB'] },
@@ -449,12 +454,95 @@ describe('loadoutAt', () => {
   })
 
   it('le repli à venir ne lit JAMAIS le slot d’un autre', () => {
-    const solo = doc({ loadouts: [{ t: 10, slot: 513, w: ['0xCCCC'] }] })
+    const solo = doc({ tracks: [track(512, 'A', 0, 100)], loadouts: [{ t: 10, slot: 513, w: ['0xCCCC'] }] })
     expect(loadoutAt(solo, 512, 5)).toBeNull()
   })
 
   it('sans loadouts, rend null plutôt qu’un inventaire vide', () => {
-    expect(loadoutAt(doc(), 512, 60)).toBeNull()
+    expect(loadoutAt(doc({ tracks: [track(512, 'A', 0, 100)] }), 512, 60)).toBeNull()
+  })
+})
+
+describe('loadoutAt — borné à la VIE EN COURS du slot (correctif P0-2, 2026-09-06)', () => {
+  // Constat P0-2 (.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md) : `nearestReading` ne
+  // regardait pas la frontière de vie — sur un slot RECYCLÉ, la lecture passée la plus proche
+  // gagnait TOUJOURS, quelle que soit sa vie. Vie 1 (slot 512, joueur A, frames 0-50) ; vie 2
+  // (MÊME SLOT, joueur B, frames 60-150).
+  const recycled = doc({
+    tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)],
+    loadouts: [{ t: 10, slot: 512, w: ['0xAAAA'] }],
+  })
+
+  it('ne reporte JAMAIS la lecture de la vie précédente — null, pas encore de lecture propre', () => {
+    // Seule lecture existante : t=10, dans la vie 1. À frame=100 (vie 2), aucune lecture ne
+    // tombe dans SA fenêtre [60,150] : l'attendu est null, jamais l'armement de A reporté sur
+    // la fiche de B. TEST PAR MUTATION : retirer le paramètre `life` de `nearestReading` (ou
+    // son test `s.t < life.start || s.t > life.end`) fait REVENIR l'ancien calcul — `best`
+    // retrouve alors la lecture de la vie 1 (âge 90) et ce test devient ROUGE.
+    expect(loadoutAt(recycled, 512, 100)).toBeNull()
+  })
+
+  it('une lecture DANS la vie en cours reste rendue malgré une vie antérieure sur le même slot', () => {
+    const avecLectureDansLaVie2 = doc({
+      tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)],
+      loadouts: [
+        { t: 10, slot: 512, w: ['0xAAAA'] },
+        { t: 70, slot: 512, w: ['0xDDDD'] },
+      ],
+    })
+    expect(loadoutAt(avecLectureDansLaVie2, 512, 100)).toEqual({ weapons: ['0xDDDD'], age: 30 })
+  })
+
+  it('sans vie couvrante sur ce slot à cette image (entre deux vies), rend null', () => {
+    // frame=55 : la vie 1 est finie (end=50), la vie 2 n'a pas commencé (start=60).
+    expect(loadoutAt(recycled, 512, 55)).toBeNull()
+  })
+})
+
+describe('currentLifeOf', () => {
+  it('rend la vie du slot qui couvre cette image', () => {
+    const d = doc({ tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)] })
+    expect(currentLifeOf(d, 512, 100)?.xuid).toBe('B')
+    expect(currentLifeOf(d, 512, 20)?.xuid).toBe('A')
+  })
+
+  it('rend undefined entre deux vies, jamais la vie voisine', () => {
+    const d = doc({ tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)] })
+    expect(currentLifeOf(d, 512, 55)).toBeUndefined()
+  })
+
+  it('ignore les vies d’un autre slot', () => {
+    const d = doc({ tracks: [track(513, 'A', 0, 100)] })
+    expect(currentLifeOf(d, 512, 50)).toBeUndefined()
+  })
+})
+
+describe('abilityAt', () => {
+  it('rend la dernière lecture du SLOT, avec son âge', () => {
+    const d = doc({
+      tracks: [track(512, 'A', 0, 100)],
+      abilities: [{ t: 10, slot: 512, r: 20, src: 'kf' }],
+    })
+    expect(abilityAt(d, 512, 60)).toEqual({ rank: 20, age: 50, src: 'kf' })
+  })
+
+  it('sans vie couvrante sur ce slot à cette image, rend null', () => {
+    const d = doc({
+      tracks: [track(512, 'A', 0, 40)],
+      abilities: [{ t: 10, slot: 512, r: 20, src: 'kf' }],
+    })
+    expect(abilityAt(d, 512, 60)).toBeNull()
+  })
+
+  it('un slot RECYCLÉ ne reporte JAMAIS la capacité de la vie précédente (correctif P0-2)', () => {
+    // Vie 1 (slot 512, frames 0-50) : capacité lue à t=10. Vie 2 (MÊME SLOT, frames 60-150) :
+    // aucune lecture dans sa fenêtre. AVANT LE CORRECTIF, `nearestReading` ignorait la
+    // frontière de vie et aurait reporté rank=20 (âge 90) sur la fiche de la vie 2.
+    const d = doc({
+      tracks: [track(512, 'A', 0, 50), track(512, 'B', 60, 150)],
+      abilities: [{ t: 10, slot: 512, r: 20, src: 'kf' }],
+    })
+    expect(abilityAt(d, 512, 100)).toBeNull()
   })
 })
 

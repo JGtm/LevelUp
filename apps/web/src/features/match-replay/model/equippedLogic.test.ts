@@ -1,12 +1,30 @@
 import { describe, expect, it } from 'vitest'
 
+import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import { drawnSwapAt, equippedWeapons } from './equippedLogic'
 import { testReplayDoc as doc } from '../test/testDoc'
 
+/** Une vie couvrant [start, end] sur un slot — même patron que rosterLogic.test.ts. */
+function track(slot: number, xuid: string | undefined, start: number, end: number): ReplayTrackReady {
+  return {
+    slot,
+    team: -1,
+    xuid,
+    startFrame: start,
+    endFrame: end,
+    points: [
+      { t: start, x: 0, y: 0 },
+      { t: end, x: 1, y: 1 },
+    ],
+  }
+}
+
 // Un slot, deux armes lues à l'image-clé t=10, et un inventaire dont seul le sélecteur
-// d'emplacement varie d'un cas à l'autre : c'est lui qui est sous test.
+// d'emplacement varie d'un cas à l'autre : c'est lui qui est sous test. Vie couvrante 0-100 :
+// le seul facteur testé reste le sélecteur, jamais la frontière de vie.
 function docWithSelector(d?: number) {
   return doc({
+    tracks: [track(512, 'A', 0, 100)],
     loadouts: [{ t: 10, slot: 512, w: ['0xAAAA', '0xBBBB'] }],
     inventory: [{ t: 10, slot: 512, ...(d === undefined ? {} : { d }) }],
   })
@@ -72,6 +90,7 @@ describe('equippedWeapons — le sélecteur d’emplacement ordonne la rangée',
     // Loadout à UNE arme, sélecteur disant « emplacement 1 » : les deux scans ne se
     // recouvrent pas — marquer une main serait afficher une certitude qu'on n'a pas.
     const d = doc({
+      tracks: [track(512, 'A', 0, 100)],
       loadouts: [{ t: 10, slot: 512, w: ['0xAAAA'] }],
       inventory: [{ t: 10, slot: 512, d: 1 }],
     })
@@ -87,6 +106,7 @@ describe('equippedWeapons — le sélecteur d’emplacement ordonne la rangée',
 
   it('le sélecteur d’un AUTRE slot ne fuit pas', () => {
     const d = doc({
+      tracks: [track(512, 'A', 0, 100)],
       loadouts: [{ t: 10, slot: 512, w: ['0xAAAA', '0xBBBB'] }],
       inventory: [{ t: 10, slot: 513, d: 1 }],
     })
@@ -94,7 +114,7 @@ describe('equippedWeapons — le sélecteur d’emplacement ordonne la rangée',
   })
 
   it('sans loadout lu, rend null — la rangée affiche sa lacune, pas une liste vide', () => {
-    expect(equippedWeapons(doc(), 512, 60)).toBeNull()
+    expect(equippedWeapons(doc({ tracks: [track(512, 'A', 0, 100)] }), 512, 60)).toBeNull()
   })
 
   it('lecture VIDE : aucune arme en main, même si la lecture pleine antérieure en dégainait une', () => {
@@ -103,6 +123,7 @@ describe('equippedWeapons — le sélecteur d’emplacement ordonne la rangée',
     // Reprendre le sélecteur de cette lecture-là faisait affirmer une arme DÉGAINÉE pour un
     // joueur que l'artefact déclare mort : la rangée d'armes affichait `drawn: 0`, `inHand`.
     const d = doc({
+      tracks: [track(512, 'A', 0, 150)],
       loadouts: [{ t: 10, slot: 512, w: ['0xAAAA', '0xBBBB'] }],
       inventory: [
         { t: 10, slot: 512, g: [0, 2, 0, 0], d: 0 },
@@ -126,6 +147,7 @@ describe('equippedWeapons — le sélecteur d’emplacement ordonne la rangée',
 
   it('lecture VIDE inexpliquée, sans lecture pleine antérieure : même abstention', () => {
     const d = doc({
+      tracks: [track(512, 'A', 0, 100)],
       loadouts: [{ t: 10, slot: 512, w: ['0xAAAA'] }],
       inventory: [{ t: 20, slot: 512, empty: 'unknown' }],
     })
@@ -138,6 +160,8 @@ describe('equippedWeapons — le sélecteur d’emplacement ordonne la rangée',
 
 describe('drawnSwapAt — la bascule du sélecteur, datée à l’image-clé', () => {
   // Deux lectures d'inventaire du même slot : la main passe de l'emplacement 0 au 1 à t=200.
+  // `drawnSwapAt` reste hors du correctif P0-2 (dette notée au journal, non traitée ici) : il
+  // n'appelle ni `nearestReading` ni `currentLifeOf`, ces fixtures n'ont donc pas besoin de vie.
   const d = doc({
     inventory: [
       { t: 10, slot: 512, d: 0 },
