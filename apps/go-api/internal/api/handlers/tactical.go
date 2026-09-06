@@ -346,6 +346,12 @@ func mapTacticalError(ctx context.Context, err error, probe string) error {
 		return humacore.NewError(http.StatusBadRequest, "tactical_question_unknown", err.Error())
 	case errors.Is(err, domain.ErrTacticalQuiInconnu):
 		return humacore.NewError(http.StatusBadRequest, "tactical_axis_unknown", err.Error())
+	case errors.Is(err, domain.ErrTacticalCompositionInvalide):
+		// La valeur refusee est NOMMEE (comme les deux 400 ci-dessous) : c'est un
+		// parametre de requete a validation unique, il n'existe aucune seconde
+		// frontiere dont le rendre indiscernable, et le dire est ce qui rend le 400
+		// utile a l'appelant.
+		return humacore.NewError(http.StatusBadRequest, "tactical_composition_invalid", err.Error())
 	case errors.Is(err, domain.ErrTacticalEscouadeSansComposition):
 		// Code PROPRE, distinct de l'axe inconnu : l'axe demande EXISTE, c'est la
 		// composition qui manque. Un `tactical_axis_unknown` enverrait le client

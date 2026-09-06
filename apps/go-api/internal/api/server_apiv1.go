@@ -716,9 +716,18 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// timeline d'events on-demand (kill-feed/timeline), capability-gated.
 		handlers.NewMatchEventsHandler(reg.MatchEvents).Mount(r, playerOpt)
 
-		// Onglet Tactique : GET .../tactical/maps + .../tactical/{map_id}/raster
-		// + .../tactical/{map_id}/background{,.png} (le fond de carte de la grille,
+		// Onglet Tactique : POST .../tactical/maps + POST .../tactical/{map_id}/raster
+		// (les deux LECTURES, en POST depuis le 2026-09-06 : leur périmètre est une
+		// LISTE de match_id, qui ne tient pas dans une query string)
+		// + GET .../tactical/{map_id}/background{,.png} (le fond de carte de la grille,
 		// servi par reg.Replay — la seule cascade carte -> fond du dépôt).
+		//
+		// LES DEUX POST SONT DES LECTURES, ET C'EST DÉCLARÉ AILLEURS : ils sont exemptés
+		// de la garde d'écriture du groupe par le préfixe `/tactical/` de
+		// `middleware.readOnlyPostPrefixes` (comme `/pages/` et `/filters/`). Sans cette
+		// entrée, un visiteur anonyme recevrait un 401 sur une simple lecture. L'ownership
+		// joueur (ADR 0029) et la protection CSRF du groupe, eux, s'appliquent inchangés :
+		// c'est bien la seule garde « écriture » qui est levée, pas l'accès.
 		// Hors sous-groupe capability de TITRE : le gating est DATA-LEVEL
 		// (film.kill_positions / film.kill_source, lues par le service sur la
 		// CapabilityMap de l'adapter) — un titre sans positions mesurées reçoit un

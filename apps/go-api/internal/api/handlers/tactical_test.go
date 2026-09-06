@@ -316,3 +316,24 @@ func TestTacticalHandler_ErreurInterne500(t *testing.T) {
 		t.Errorf("panne -> 500, got %d (%s)", w.Code, w.Body.String())
 	}
 }
+
+// TestTacticalHandler_CompositionInvalide400 : une composition hors bornes ou mal
+// formee est un 400 PROPRE, avec son code — et la valeur refusee est nommee (c'est
+// ce qui rend le 400 utile : l'appelant sait quoi corriger).
+func TestTacticalHandler_CompositionInvalide400(t *testing.T) {
+	svc := &fakeTacticalSvc{errRast: domain.ErrTacticalCompositionInvalide, errMaps: domain.ErrTacticalCompositionInvalide}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+
+	for _, url := range []string{
+		"/players/JGtm/tactical/streets/raster",
+		"/players/JGtm/tactical/maps",
+	} {
+		w := appelPost(t, r, url, `{"coequipiers":["1","2","3","4"]}`)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("%s : status=%d, want 400 — body=%s", url, w.Code, w.Body.String())
+		}
+		if !strings.Contains(w.Body.String(), "tactical_composition_invalid") {
+			t.Errorf("%s : code = %s, want tactical_composition_invalid", url, w.Body.String())
+		}
+	}
+}

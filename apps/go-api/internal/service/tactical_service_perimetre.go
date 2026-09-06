@@ -23,6 +23,12 @@ import (
 
 // validerLecture refuse une demande hors vocabulaire AVANT toute lecture de base.
 func validerLecture(carte, question, qui string, coequipiers []string) error {
+	// LA COMPOSITION D'ABORD : elle est la seule entree dont le COUT depend de la
+	// taille (un `EXISTS` correle par coequipier), donc la seule qu'il faut refuser
+	// avant meme de regarder si la carte existe.
+	if err := domain.ValiderComposition(coequipiers); err != nil {
+		return err
+	}
 	if carte == "" {
 		// Sentinelle NUE, meme raison : ce message est publie tel quel, et « (carte vide) »
 		// distinguerait ce refus-ci des deux autres 404 de la meme famille.

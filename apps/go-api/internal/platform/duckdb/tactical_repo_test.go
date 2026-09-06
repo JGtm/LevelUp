@@ -38,10 +38,12 @@ import (
 )
 
 const (
-	tacXUIDMoi  = "xuid(2533274000000101)"
-	tacXUIDAmi  = "xuid(2533274000000102)"
-	tacXUIDAdv  = "xuid(2533274000000103)"
-	tacXUIDTier = "xuid(2533274000000104)"
+	// Entiers NUS : `match_participants.xuid` ne stocke pas le `xuid(...)` de l'API,
+	// que `sync.extractXUID` deballe a l'ingestion. La fixture suit la base.
+	tacXUIDMoi  = "2533274000000101"
+	tacXUIDAmi  = "2533274000000102"
+	tacXUIDAdv  = "2533274000000103"
+	tacXUIDTier = "2533274000000104"
 
 	tacCarteA = "map_streets"
 	tacCarteB = "map_recharge"
