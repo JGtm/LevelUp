@@ -81,6 +81,12 @@ import {
   drawKillFxLayer,
   drawShotsLayer,
 } from './replayDraw'
+import {
+  composeScene,
+  sceneLayers,
+  type LayerPaint,
+  type ReplayScene,
+} from './replayCompose'
 import { frameToMs, layerOffset } from './replayLogic'
 import type { ReplayWindowBounds } from './replayWindow'
 import { drawProjectilesLayer } from './replayProjectiles'
@@ -324,182 +330,135 @@ export function ReplayCanvas({
   // LA DÉFLAGRATION D'ASSAUT, où et quand elle a eu lieu — seul un match d'Assaut publie la stat.
   const bombBlast = useReplayBombBlast({ doc, view: canvasView, scoreboard, teamColorOf, neutral: floorStyle.edge, reducedMotion })
 
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas || renderWidth === 0) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    const dpr = (window.devicePixelRatio || 1) * exportRenderScale.current
-    const pw = Math.round(renderWidth * dpr)
-    const ph = Math.round(viewH * dpr)
-    if (canvas.width !== pw || canvas.height !== ph) {
-      canvas.width = pw
-      canvas.height = ph
-    }
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, renderWidth, viewH)
+  /**
+   * buildScene LIE chaque calque a l'etat courant du canvas.
+   *
+   * C'EST UNE TABLE, PAS UN ALGORITHME (exemption R5 assumee) : une entree par calque, aucun
+   * embranchement, aucun ordre — l'ordre et les conditions vivent dans `replayCompose`, ou
+   * ils sont testes. La decouper par famille n'en ferait pas trois fonctions plus courtes
+   * mais trois listes de vingt liaisons a tenir en phase, pour la meme table.
+   *
+   * TOUT CE QUI DEPEND DE L'IMAGE arrive en ARGUMENT du peintre (`frame`, `dpr`) : la table,
+   * elle, ne se relie qu'a ce qui change avec les donnees ou le theme.
+   */
+  const buildScene = useCallback(
+    (ctx: CanvasRenderingContext2D, frame: number): ReplayScene => {
+      const view = canvasView
+      // LE FOND SUIT LA FENETRE, PAS LA SCENE : sinon il resterait cadre large pendant que les
+      // joueurs zooment, et l'image cesserait de designer le meme endroit qu'eux.
+      // Pendant un glisser, cuisson gelee : les calques se recopient DECALES (layerOffset).
+      const lo = layerOffset(cookedRef.current, canvasView)
+      const bgRect = mapImage
+        ? backgroundRect(mapImage.calibration, canvasView.bounds, renderWidth, viewH, CANVAS_PAD)
+        : null
+      // La FENETRE D'EVENEMENT, commune aux tirs, aux grenades, aux pulses et aux morts.
+      const win = { frame, hold: eventHoldFrames, frameMs: frameToMs(1, doc) }
+      // Un calque CUIT se repose tel quel, decale de `lo` : sa geometrie ne bouge pas.
+      const cuit = (c: HTMLCanvasElement | null): LayerPaint => () => {
+        if (c) ctx.drawImage(c, lo.x, lo.y, renderWidth, viewH)
+      }
 
-    const view = canvasView
-    const frame = frameRef.current
-    // ORDRE DES CALQUES, du fond vers le sujet : le sol porte les trajectoires, qui portent les
-    // événements. Inverser noierait les joueurs.
-    // LE FOND SUIT LA FENETRE, PAS LA SCENE : sinon il resterait cadre large pendant que les
-    // joueurs zooment, et l'image cesserait de designer le meme endroit qu'eux.
-    // Pendant un glisser, cuisson gelee : les calques se recopient DECALES (cf. layerOffset).
-    const lo = layerOffset(cookedRef.current, canvasView)
-    const bgRect = mapImage
-      ? backgroundRect(mapImage.calibration, canvasView.bounds, renderWidth, viewH, CANVAS_PAD)
-      : null
-    if (mapImage && bgRect) {
-      // L'image ENTIÈRE est posée sur son emprise monde ; le canvas rogne le débord. La
-      // projection est affine et sans rotation, donc deux coins suffisent (mapBackground.ts).
-      ctx.drawImage(mapImage.image, bgRect.x, bgRect.y, bgRect.width, bgRect.height)
-    } else if (doc.geometry?.length) {
-      // REPLI, pas un doublon : sans fichier de structure figé, la carte n'a pas de sol
-      // reconstruit et les props Forge redeviennent le seul repère disponible. Ils couvrent
-      // 3,4 % du terrain — c'est peu, et c'est mieux qu'un fond vide.
-      drawGeometryLayer(ctx, doc.geometry, view, { color: geometryColor, z: zRange })
-    }
-    // La CARTE DE CHALEUR sur le fond et sous tout ce qui nomme ou se deplace : une lecture
-    // du terrain, a l'opacite bornee — elle laisse le decor transparaitre (heatmapLayer.ts).
-    if (heatRef.current) {
-      ctx.drawImage(heatRef.current, lo.x, lo.y, renderWidth, viewH)
-    }
-    // Les ZONES NOMMEES sous ce qui bouge : le vocabulaire du terrain, pas un evenement.
-    if (showZones && zonesRef.current) {
-      ctx.drawImage(zonesRef.current, lo.x, lo.y, renderWidth, viewH)
-    }
-    // Les OBJECTIFS DU MODE par-dessus le vocabulaire : l'enjeu prime sur les noms de lieux.
-    if (objectivesRef.current) {
-      ctx.drawImage(objectivesRef.current, lo.x, lo.y, renderWidth, viewH)
-    }
-    // Les projectiles passent SOUS les joueurs : ce sont des objets du terrain, pas le sujet.
-    if (doc.projectiles?.length) {
-      drawProjectilesLayer(ctx, doc.projectiles, view, frame, grenadeColor)
-    }
-    // Les EMPLACEMENTS D'ARME juste au-dessus du terrain et SOUS les poses : un socle est un
-    // MEUBLE de la carte, il précède ce qu'un joueur y dépose comme ce qui s'y déplace.
-    weaponPads.paint(ctx, frame, dpr)
-    // Les ARMES AU SOL au MÊME étage que les socles : du décor posé sur le terrain, jamais le sujet.
-    groundWeapons.paint(ctx, frame, dpr)
-    // Les POSES D'ÉQUIPEMENT, au-dessus du terrain (fond, zones, chaleur, objectifs) et SOUS
-    // les marqueurs de joueurs : un mur est un objet POSÉ sur la carte — il appartient au
-    // décor du moment, pas au sujet. Sa fenêtre d'affichage n'est PAS [t0, t1] : `t1` date la
-    // mise au repos de l'objet, pas sa disparition (cf. placementEndFrame).
-    if (showPlacements && placements.counts.drawable > 0) {
-      drawEquipmentPlacementsLayer(
-        ctx,
-        // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur révèle les
-        // adversaires du poseur, et « adversaire » est une relation entre deux vies. Le camp
-        // est celui de la base (`team_side`), jamais le drapeau « allié » vu de la page.
-        { placements: doc.equipmentPlacements, lives: doc.tracks, sideOfSlot, rift: placements.rift },
-        view,
-        {
-          frame,
-          // Durée RÉELLE d'une frame : le ping du capteur bat en temps de match, pas en
-          // nombre d'images (même règle que la fin de vol des grenades). Le même objet sert
-          // au survol — une pose ne peut pas être dessinée et non survolable.
-          ...placements.windowTime,
-          k: dpr,
-          reducedMotion,
-          ...placements.toggles,
+      return {
+        toggles: { zones: showZones, shotFx: showShotFx, placements: showPlacements, killFx: showKillFx },
+        has: {
+          background: !!mapImage && !!bgRect,
+          floor: !!doc.geometry?.length,
+          heat: !!heatRef.current,
+          zoneNames: !!zonesRef.current,
+          objectivesCooked: !!objectivesRef.current,
+          projectiles: !!doc.projectiles?.length,
+          placements: placements.counts.drawable > 0,
+          fireMarks: fireMarks.length > 0,
+          shotFx: shotFx.length > 0,
+          grenades: !!doc.grenades?.length,
+          zoneStates: doc.zoneStates.length > 0,
+          objectivePulses: objectivePulses.length > 0,
+          killFx: killFx.length > 0,
         },
-        // FRONTIÈRE : objet lâché à la mort, `t0 = finVie+1` — `colorOfSlotOrLast` (cf. PlacementInk).
-        { colorOfSlot: colorOfSlotOrLast, neutral: floorStyle.edge, wall: wallInk, rift: riftInk },
-      )
-    }
-    vehicles.paint(ctx, frame, dpr)
-    drawTracksLayer(ctx, doc.tracks, view, {
-      colorOfSlot,
-      ink: floorStyle.edge,
-      frame,
-      timing,
-      z: zRange,
-      k: dpr,
-      showAim,
-      markOfSlot,
-      nameOfSlot,
-      showTrail,
-      selfInk,
-      deathInk: shotColor,
-      labelStroke, embarkedAtSlot: vehicles.isEmbarkedAt, // PION EMBARQUÉ (C7).
-    })
-    // Le « ! » PAR-DESSUS le marqueur du tireur, centré dans le noyau : il se lit sur le
-    // point, il se dessine donc juste après lui. Même interrupteur que l'éclair de bouche
-    // (« Effets de tirs ») : c'est le même événement, un seul geste l'éteint.
-    if (showShotFx && fireMarks.length > 0) {
-      drawFireMarks(ctx, fireMarks, view, {
-        frame, hold: shotHoldFrames, colorOfSlot, ink: labelStroke || floorStyle.edge, k: dpr,
-      })
-    }
-
-    // LES GESTES DE CAPACITÉ juste au-dessus des trajectoires et SOUS les effets de tir : le
-    // câble du grappin et le dash du propulseur se lisent sur le pion sans couvrir les
-    // événements (cf. useReplayAbilityFx).
-    abilityFx.paint(ctx, frame, dpr)
-    // Les événements passent APRÈS les trajectoires : ils se lisent sur elles. Les DEUX
-    // effets d'événement sont ÉTEIGNABLES depuis le tiroir (décision du 16/08) : c'est le
-    // DESSIN qui s'éteint, jamais la mesure — `killFx` continue d'alimenter la lecture
-    // « éliminations » de la carte de chaleur, qui n'est pas un effet.
-    const win = { frame, hold: eventHoldFrames, frameMs: frameToMs(1, doc) }
-    if (showShotFx && shotFx.length > 0) {
-      // vehicleSizeOf : origine des tirs en véhicule sur LA MÊME source de tailles que le
-      // calque véhicules (`useReplayVehicles.sizeOf`), jamais un second chargement.
-      drawShotsLayer(ctx, shotFx, view, { ...win, hold: shotHoldFrames }, {
-        ink: fxInk, k: dpr, reducedMotion, vehicleSizeOf: vehicles.sizeOf,
-      })
-    }
-    if (doc.grenades?.length) {
-      drawGrenadesLayer(ctx, doc.grenades, view, win, {
-        color: grenadeColor,
-        iconOf: (rank) => grenadeIconsRef.current.get(rank) ?? null,
-      })
-    }
-    // La FIN DE VOL après le lancer : halo « dernière position connue » (jamais un
-    // impact — aucun événement de détonation dans le film), nappe électrique persistante
-    // pour la Shock/Dynamo. Câblage : useReplayGrenadeRest (dix-septième extraction).
-    grenadeRest.paint(ctx, frame, dpr)
-    // L'ÉTAT DES ZONES à l'image courante (schémas 16-18) : teinte du camp qui la tient,
-    // surbrillance de la colline ACTIVE, arc de la JAUGE EN DIRECT. Il se peint dans la
-    // boucle et non dans un calque cuit : la géométrie ne bouge pas, l'état si. Le calque lui-même
-    // refuse de peindre si le catalogue de l'artefact ne joint pas la liste servie.
-    if (doc.zoneStates.length > 0) drawZoneStates(ctx, zones, doc.zoneStates, view, frame)
-    // LES DRAPEAUX par-dessus les zones et SOUS les morts : l'enjeu du mode prime sur le
-    // terrain, mais une élimination reste l'événement le plus lourd de sens du calque.
-    flags.paint(ctx, frame)
-    // LE CRÂNE LIBRE : sa présence se résout par `skullPresenceAt` (cf. le hook) — tenu à son
-    // dernier repos qu'une prise corrobore, muet pendant les portages, absent aux respawns.
-    objectiveObjects.paint(ctx, frame)
-    // LA COURONNE VIP sur le porteur courant de chaque camp, au-dessus de son marqueur.
-    vipCrown.paint(ctx, frame)
-    // LE CRÂNE d'Oddball sur son porteur (le crâne LIBRE reste au sol via objectiveObjects).
-    skullCarrier.paint(ctx, frame)
-    // LA BOMBE d'Assaut : portée, au sol, jamais après l'explosion (cf. bombCarrierLayer).
-    bombCarrier.paint(ctx, frame)
-    // LA DÉFLAGRATION d'Assaut, par-dessus tout le reste : c'est l'événement qui décide de la
-    // manche, et il n'y en a qu'une poignée par match.
-    bombBlast.paint(ctx, frame)
-    // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
-    // s'ouvre depuis la zone/le marqueur concerné à l'instant de l'action (lot 4.4).
-    if (objectivePulses.length > 0) {
-      drawObjectivePulses(ctx, objectivePulses, view, win,
-        { colorOfTeam: zones.colorOfTeam }, reducedMotion)
-    }
-    // Les MORTS par-dessus les tirs : c'est l'événement le plus lourd de sens du calque,
-    // et le seul dont l'extrémité pointe une vraie victime (couple complet, règle 89/93).
-    if (showKillFx && killFx.length > 0) {
-      drawKillFxLayer(ctx, killFx, view, win, {
-        colorOfSlot: colorOfSlotOrLast, // FRONTIÈRE : kill posthume/échange après la fin de vie (cf. KillFxStyle)
-        fallback: shotColor,
-        reducedMotion, k: dpr,
-      })
-    }
-
-    // L'HORLOGE ET LA PUBLICATION DE L'IMAGE, en dernier : elles disent où en est la scène
-    // qu'on vient de peindre (cf. useReplayClock).
-    clockTick(frame)
-  }, [
-    doc, geometryColor, zRange, timing, clockTick, wallInk, riftInk,
+        paint: {
+          // L'image ENTIERE sur son emprise monde, le canvas rogne le debord : projection
+          // affine sans rotation, donc deux coins suffisent (mapBackground.ts).
+          'fond-carte': () => {
+            if (mapImage && bgRect) {
+              ctx.drawImage(mapImage.image, bgRect.x, bgRect.y, bgRect.width, bgRect.height)
+            }
+          },
+          'sol-forge': () =>
+            drawGeometryLayer(ctx, doc.geometry ?? [], view, { color: geometryColor, z: zRange }),
+          chaleur: cuit(heatRef.current),
+          'zones-nommees': cuit(zonesRef.current),
+          'objectifs-cuits': cuit(objectivesRef.current),
+          projectiles: (_c, fr) =>
+            drawProjectilesLayer(ctx, doc.projectiles ?? [], view, fr, grenadeColor),
+          'socles-armes': weaponPads.paint,
+          'armes-au-sol': groundWeapons.paint,
+          // La fenetre d'une pose n'est PAS [t0, t1] : `t1` date la mise au repos, pas la
+          // disparition (placementEndFrame) ; le ping bat en TEMPS de match, pas en images.
+          'poses-equipement': (_c, fr, k) =>
+            drawEquipmentPlacementsLayer(
+              ctx,
+              // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur revele les
+              // adversaires du poseur, et « adversaire » est une relation entre deux vies. Le
+              // camp est celui de la base (`team_side`), jamais le drapeau « allie » de la page.
+              { placements: doc.equipmentPlacements, lives: doc.tracks, sideOfSlot, rift: placements.rift },
+              view,
+              { frame: fr, ...placements.windowTime, k, reducedMotion, ...placements.toggles },
+              // FRONTIERE : objet lache a la mort, `t0 = finVie+1` — `colorOfSlotOrLast`.
+              { colorOfSlot: colorOfSlotOrLast, neutral: floorStyle.edge, wall: wallInk, rift: riftInk },
+            ),
+          vehicules: vehicles.paint,
+          trajectoires: (_c, fr, k) =>
+            drawTracksLayer(ctx, doc.tracks, view, {
+              colorOfSlot,
+              ink: floorStyle.edge,
+              frame: fr,
+              timing,
+              z: zRange,
+              k,
+              showAim,
+              markOfSlot,
+              nameOfSlot,
+              showTrail,
+              selfInk,
+              deathInk: shotColor,
+              labelStroke, embarkedAtSlot: vehicles.isEmbarkedAt, // PION EMBARQUE (C7).
+            }),
+          'marques-de-tir': (_c, fr, k) =>
+            drawFireMarks(ctx, fireMarks, view, {
+              frame: fr, hold: shotHoldFrames, colorOfSlot, ink: labelStroke || floorStyle.edge, k,
+            }),
+          'gestes-capacite': abilityFx.paint,
+          // vehicleSizeOf : origine des tirs en vehicule sur LA MEME source de tailles que le
+          // calque vehicules (`useReplayVehicles.sizeOf`), jamais un second chargement.
+          tirs: (_c, _fr, k) =>
+            drawShotsLayer(ctx, shotFx, view, { ...win, hold: shotHoldFrames }, {
+              ink: fxInk, k, reducedMotion, vehicleSizeOf: vehicles.sizeOf,
+            }),
+          grenades: () =>
+            drawGrenadesLayer(ctx, doc.grenades ?? [], view, win, {
+              color: grenadeColor,
+              iconOf: (rank) => grenadeIconsRef.current.get(rank) ?? null,
+            }),
+          'fin-de-vol': grenadeRest.paint,
+          'etat-zones': (_c, fr) => drawZoneStates(ctx, zones, doc.zoneStates, view, fr),
+          drapeaux: flags.paint,
+          'objets-objectif': objectiveObjects.paint,
+          'couronne-vip': vipCrown.paint,
+          'crane-porte': skullCarrier.paint,
+          'bombe-portee': bombCarrier.paint,
+          deflagration: bombBlast.paint,
+          'pulses-objectif': () =>
+            drawObjectivePulses(ctx, objectivePulses, view, win, { colorOfTeam: zones.colorOfTeam }, reducedMotion),
+          morts: (_c, _fr, k) =>
+            drawKillFxLayer(ctx, killFx, view, win, {
+              colorOfSlot: colorOfSlotOrLast, // FRONTIERE : kill posthume/echange apres la fin de vie.
+              fallback: shotColor, reducedMotion, k,
+            }),
+        },
+      }
+    },
+    [
+      doc, geometryColor, zRange, timing, wallInk, riftInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
     zonesRef, heatRef, objectivesRef, grenadeIconsRef, cookedRef,
     renderWidth, viewH, canvasView,
@@ -545,7 +504,38 @@ export function ReplayCanvas({
     showShotFx,
     showKillFx,
     mapImage,
-  ])
+    ],
+  )
+
+  /**
+   * draw DIMENSIONNE, EFFACE, COMPOSE, TIQUE — et rien d'autre.
+   *
+   * La scene se lie juste avant (`buildScene`), l'ordre et les bascules se decident dans
+   * `replayCompose` : cette fonction n'a plus a savoir ce qu'il y a a peindre.
+   */
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas || renderWidth === 0) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const dpr = (window.devicePixelRatio || 1) * exportRenderScale.current
+    const pw = Math.round(renderWidth * dpr)
+    const ph = Math.round(viewH * dpr)
+    if (canvas.width !== pw || canvas.height !== ph) {
+      canvas.width = pw
+      canvas.height = ph
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, renderWidth, viewH)
+
+    const frame = frameRef.current
+    composeScene(ctx, sceneLayers(buildScene(ctx, frame)), frame, dpr)
+
+    // L'HORLOGE ET LA PUBLICATION DE L'IMAGE, en dernier : elles disent ou en est la scene
+    // qu'on vient de peindre (cf. useReplayClock).
+    clockTick(frame)
+  }, [buildScene, clockTick, renderWidth, viewH])
+
 
   // Redraw hors animation (thème, resize, données, pause), et publication de la version
   // courante de `draw` aux calques statiques (cf. drawRef plus haut).
