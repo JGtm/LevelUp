@@ -24,13 +24,13 @@
  * pas cuite dans le document) vivent dans l'en-tête de `skullGlyph.ts`. Aucun texte : le porteur
  * est déjà nommé par son marqueur.
  */
-import { type XY } from '../replayLogic'
+import { type XY } from '../model/replayLogic'
 import { drawSkullGlyph } from './skullGlyph'
 
-import { type CanvasView, projectTo } from '../replayView'
-import type { ReplaySkullCarry } from '../replayNormalize'
+import { type CanvasView, projectTo } from '../model/replayView'
+import type { ReplaySkullCarry } from '../model/replayNormalize'
 import { carriedGlyphAlpha } from './carriedGlyphPulse'
-import { covers } from '../replaySpans'
+import { covers } from '../model/replaySpans'
 
 /** Style du calque : les encres sont RÉSOLUES par l'appelant (règle color-tokens). */
 export interface SkullCarrierStyle {

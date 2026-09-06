@@ -17,7 +17,7 @@ import { normalizeScoreTimeline, type ReplayScoreDocument } from '@/lib/replay/s
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { ReplayVictoryOverlay } from './ReplayVictoryOverlay'
-import type { ReplayWindowBounds } from '../replayWindow'
+import type { ReplayWindowBounds } from '../model/replayWindow'
 
 /** Une série d'équipe à manche unique. */
 function equipe(teamId: number, points: Array<[number, number]>) {

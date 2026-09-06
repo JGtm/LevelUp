@@ -24,7 +24,7 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRef, type RefObject } from 'react'
 
-import type { ReplayWindowBounds } from '../replayWindow'
+import type { ReplayWindowBounds } from '../model/replayWindow'
 import { testReplayDoc } from '../test/testDoc'
 import { useReplayPlayback } from './useReplayPlayback'
 import { AUTOPLAY_KEY } from '../settings/useReplaySettings'

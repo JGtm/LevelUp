@@ -22,7 +22,7 @@
  */
 import type { ReplayBounds } from '@/lib/api/types'
 
-import { type XY } from '../replayLogic'
+import { type XY } from '../model/replayLogic'
 import {
   REVEAL_FILL_ALPHA,
   REVEAL_RADIUS_PX,
@@ -30,8 +30,8 @@ import {
   revealAlpha,
   SENSOR_PING_ALPHA,
   SENSOR_SWEEP_MS,
-} from '../threatSensor'
-import { projectTo, scaleOf } from '../replayView'
+} from '../model/threatSensor'
+import { projectTo, scaleOf } from '../model/replayView'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 export interface PlacementView {

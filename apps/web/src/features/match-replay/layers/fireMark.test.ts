@@ -15,8 +15,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildFireMarks, drawFireMarks } from './fireMark'
-import { worldToCanvas } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import { worldToCanvas } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { recordingContext } from '../test/recordingContext'
 
 const VIEW = {

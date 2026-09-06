@@ -13,7 +13,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { DYNAMO_RANK, DYNAMO_REST_HOLD_MS, type GrenadeRestFx } from '../grenadeFx'
+import { DYNAMO_RANK, DYNAMO_REST_HOLD_MS, type GrenadeRestFx } from '../model/grenadeFx'
 import { drawGrenadeRestLayer, dynamoAlpha, type GrenadeRestStyle } from './grenadeRestLayer'
 import { recordingContext, type CanvasOp } from '../test/recordingContext'
 

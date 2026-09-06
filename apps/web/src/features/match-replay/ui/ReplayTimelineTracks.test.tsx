@@ -15,7 +15,7 @@ import { createRef } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 
 import { ReplayTimelineTracks } from './ReplayTimelineTracks'
-import type { PlacedMedia, ReplayMediaItem, TrackMark } from '../replayTimelineTracksLogic'
+import type { PlacedMedia, ReplayMediaItem, TrackMark } from '../model/replayTimelineTracksLogic'
 import { TIMELINE_SHORTCUT_ATTR } from '../hooks/useReplayShortcuts'
 
 function mark(over: Partial<TrackMark> = {}): TrackMark {

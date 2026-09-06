@@ -33,10 +33,10 @@ import { useMemo } from 'react'
 
 import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
-import { msToFrames } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import { msToFrames } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { OVERLAY_STATUS_NEUTRAL } from './replayOverlayStyles'
-import { activeRoundTransition, roundTransitions } from '../roundsLogic'
+import { activeRoundTransition, roundTransitions } from '../model/roundsLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
 /**

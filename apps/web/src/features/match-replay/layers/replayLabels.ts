@@ -15,7 +15,7 @@
  * POURQUOI UN FICHIER À PART : `replayMarkers.ts` frôlait le seuil de taille du dépôt, et
  * l'étiquette est une préoccupation distincte du marqueur (typographie contre géométrie).
  */
-import type { XY } from '../replayLogic'
+import type { XY } from '../model/replayLogic'
 
 /** Corps de la police, en pixels d'ÉCRAN (comme tout ce qui s'adresse à l'œil ici). */
 const LABEL_FONT_PX = 8.5

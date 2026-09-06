@@ -43,7 +43,7 @@
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
 import { drawRift, drawRiftLayer, type RiftInk, type RiftScene } from './placementRift'
-import { placementIsDroppedPower } from '../placementDropped'
+import { placementIsDroppedPower } from '../model/placementDropped'
 import {
   drawDroppedObject,
   drawRepairField,
@@ -61,8 +61,8 @@ import { drawWall, wallHeading, WALL_PANEL_IDS } from './placementWall'
 // La FENÊTRE d'une pose vit à part (cf. le réexport plus haut) : elle est aussi LUE ici, et un
 // réexport ne met rien dans la portée locale. L'import inverse, lui, ne porte que des TYPES —
 // il n'y a donc aucun cycle à l'exécution.
-import { isPlacementActive } from '../placementWindow'
-import type { ReplayTrackReady } from '../replayNormalize'
+import { isPlacementActive } from '../model/placementWindow'
+import type { ReplayTrackReady } from '../model/replayNormalize'
 import {
   SENSOR_FILL_ALPHA,
   SENSOR_PING_WIDTH,
@@ -71,14 +71,14 @@ import {
   SENSOR_RING_WIDTH,
   sensorPing,
   sensorReveals,
-} from '../threatSensor'
+} from '../model/threatSensor'
 
 /**
  * LA FENÊTRE D'UNE POSE vit dans `placementWindow.ts` depuis le 2026-08-18 (seuil de taille),
  * et se réexporte ici : le survol et les tests la lisent par ce module, la découpe interne n'a
  * pas à remonter jusqu'à eux.
  */
-export { isPlacementActive, placementEndFrame, placementShows } from '../placementWindow'
+export { isPlacementActive, placementEndFrame, placementShows } from '../model/placementWindow'
 
 /**
  * Le cadrage est réexporté ici : il est un ARGUMENT de ce calque (`drawEquipmentPlacementsLayer`,

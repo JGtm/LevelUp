@@ -18,12 +18,12 @@
 import { useMemo } from 'react'
 
 import { buildFireMarks } from './fireMark'
-import { buildGrenadeRestFx } from '../grenadeFx'
-import type { ReplayKill } from '../killFeedLogic'
-import { buildKillFx } from '../killFx'
+import { buildGrenadeRestFx } from '../model/grenadeFx'
+import type { ReplayKill } from '../model/killFeedLogic'
+import { buildKillFx } from '../model/killFx'
 import { buildObjectivePulses, type ObjectiveElementReady } from './objectivesLayer'
-import type { ReplayDocumentReady } from '../replayNormalize'
-import { buildShotFx } from '../shotFx'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { buildShotFx } from '../model/shotFx'
 
 export function useReplayFx(
   doc: ReplayDocumentReady,

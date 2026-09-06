@@ -32,15 +32,15 @@ import { useCallback, useMemo } from 'react'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { ObjectiveElementReady } from './objectivesLayer'
-import { msToFrames } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import { msToFrames } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import {
   ZONE_GAUGE_HOLD_MS,
   zoneCatalogMatches,
   zoneElementsOf,
   type ZoneStatesLayerInput,
 } from './zoneStatesLayer'
-import { allyTeamFromScoreboard } from '../matchSides'
+import { allyTeamFromScoreboard } from '../model/matchSides'
 
 /** Ce que le canvas recopie tel quel dans ses appels de dessin. */
 export interface ReplayZoneStates extends ZoneStatesLayerInput {

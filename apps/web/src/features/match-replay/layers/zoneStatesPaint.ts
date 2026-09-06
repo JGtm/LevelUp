@@ -25,7 +25,7 @@ import {
   zoneCornersWorld,
   type ObjectiveElementReady,
 } from './objectivesLayer'
-import type { XY } from '../replayLogic'
+import type { XY } from '../model/replayLogic'
 
 /**
  * ZoneStateNow — ce qu'une zone montre à une frame donnée.

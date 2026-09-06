@@ -31,9 +31,9 @@ import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import { HUD_BAND_CLASS, hudBandStyle } from '../hudBand'
+import { HUD_BAND_CLASS, hudBandStyle } from '../model/hudBand'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import type { ReplayPlayer } from '../rosterLogic'
+import type { ReplayPlayer } from '../model/rosterLogic'
 
 /**
  * allyOfGroup dit de quel côté est un groupe : `true` allié, `false` adverse, `null` quand

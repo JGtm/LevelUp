@@ -37,7 +37,7 @@ vi.mock('@/features/match-replay/queries', () => ({
   useMatchReplay: () => ({ data: artefact.current }),
 }))
 
-const { normalizeReplayDocument } = await import('@/features/match-replay/replayNormalize')
+const { normalizeReplayDocument } = await import('@/features/match-replay/model/replayNormalize')
 
 const t = MATCH_VIEW_TEXT.fr
 

@@ -38,7 +38,7 @@ import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import type { CatalogLabel } from '../i18n/catalogLabel'
-import type { EquippedReading } from '../equippedLogic'
+import type { EquippedReading } from '../model/equippedLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import {
   grenadeBoxAt,
@@ -48,10 +48,10 @@ import {
   inventoryAt,
   inventoryEmptyHint,
   selectedGrenadeFrom,
-} from '../inventoryReading'
+} from '../model/inventoryReading'
 import { ReplayAbilityCell, StateMark } from './ReplayAbilityCell'
-import { formatSeconds, frameToMs, freshness, READING_FADE } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import { formatSeconds, frameToMs, freshness, READING_FADE } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { familyOf } from '../layers/shotEffects'
 
 /** Vignette d'un TYPE DE GRENADE : 14 px (option 2a — la boîte de 56 px est taillée dessus). */

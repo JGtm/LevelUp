@@ -14,7 +14,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 
 import { ReplayMediaLightbox } from './ReplayMediaLightbox'
-import type { ReplayMediaItem } from '../replayTimelineTracksLogic'
+import type { ReplayMediaItem } from '../model/replayTimelineTracksLogic'
 
 interface MockHlsInstance {
   loadSource: ReturnType<typeof vi.fn>

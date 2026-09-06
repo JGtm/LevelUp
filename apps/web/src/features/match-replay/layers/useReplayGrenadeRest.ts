@@ -18,11 +18,11 @@
 import { useCallback } from 'react'
 
 import type { FxInk } from './fxInk'
-import type { GrenadeRestFx } from '../grenadeFx'
+import type { GrenadeRestFx } from '../model/grenadeFx'
 import { drawGrenadeRestLayer } from './grenadeRestLayer'
-import { type CanvasView } from '../replayView'
-import { frameToMs } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import { type CanvasView } from '../model/replayView'
+import { frameToMs } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 
 export interface GrenadeRestHookInput {
   doc: ReplayDocumentReady

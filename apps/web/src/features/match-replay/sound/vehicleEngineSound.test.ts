@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayVehicleTrackReady } from '../replayNormalize'
+import type { ReplayVehicleTrackReady } from '../model/replayNormalize'
 import {
   ENGINE_RIDE_GAP_MERGE_MS,
   enginePhaseAt,

@@ -28,9 +28,9 @@ import { useTitleSlug } from '@/lib/title-routing'
 import type { FxInk } from './fxInk'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
-import { frameToMs } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
-import { buildEmbarkedPredicate, vehicleIsDecor } from '../vehiclesLayer'
+import { frameToMs } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { buildEmbarkedPredicate, vehicleIsDecor } from '../model/vehiclesLayer'
 import { drawVehiclesLayer, type VehicleSpriteSize } from './vehiclesPaint'
 
 /** Une entrée de `index.json` (lot A) : seuls les deux champs utiles ici sont lus. */

@@ -18,9 +18,9 @@
  * le token `destructive` — une mèche qui brûle est la seule information de danger de la page,
  * et aucune couleur d'équipe n'est affirmée (le canal ne connaît pas le camp de l'armeur).
  */
-import { activeBombCountdown } from '../bombCountdown'
-import { formatSeconds } from '../replayLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import { activeBombCountdown } from '../model/bombCountdown'
+import { formatSeconds } from '../model/replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
 interface Props {

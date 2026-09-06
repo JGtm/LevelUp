@@ -20,12 +20,12 @@
  * LE PORTEUR SE RELIT DANS SES TRAJECTOIRES (`posOf`), comme le drapeau : sans position, la
  * couronne ne se dessine pas — elle n'a pas de position propre (elle est TOUJOURS sur le joueur).
  */
-import { type XY } from '../replayLogic'
+import { type XY } from '../model/replayLogic'
 
-import { type CanvasView, projectTo } from '../replayView'
-import type { ReplayVipPeriod } from '../replayNormalize'
+import { type CanvasView, projectTo } from '../model/replayView'
+import type { ReplayVipPeriod } from '../model/replayNormalize'
 import { carriedGlyphAlpha } from './carriedGlyphPulse'
-import { covers } from '../replaySpans'
+import { covers } from '../model/replaySpans'
 
 /** Style du calque : l'encre de la couronne est RÉSOLUE par l'appelant (règle color-tokens). */
 export interface VipCrownStyle {

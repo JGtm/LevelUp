@@ -52,7 +52,7 @@ import {
 } from './exportOverlayPanels'
 import { paintOverlayPanel, type OverlayFonts, type OverlayInk } from './overlayPaint'
 import { mixReplayAudio, soundUrlOf, type MixedTracks, type SoundFamily } from '../sound/replayAudioMix'
-import { formatClock, frameToMs } from '../replayLogic'
+import { formatClock, frameToMs } from '../model/replayLogic'
 import { buildCaptureFilename, triggerDownload } from './replayCapture'
 import { tintedIconCanvas } from '../layers/replayDraw'
 import {
@@ -63,14 +63,14 @@ import {
   type ExportBounds,
   type ExportPlan,
 } from './replayExportPlan'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { EXPORT_FPS, canExportVideo, openVideoExport, type VideoExportSink } from './replayVideoEncoder'
-import { displayClockMs, type ReplayWindowBounds } from '../replayWindow'
+import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { exportRenderScale, exportScaleFor } from '../hooks/useReplayView'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplaySoundEvent } from '../sound/replaySoundVariants'
 import type { EnginePlan } from '../sound/vehicleEngineSound'
-import { readVictory } from '../victoryLogic'
+import { readVictory } from '../model/victoryLogic'
 
 /** Cadence de publication de la progression, en images encodées. */
 const PROGRESS_EVERY = 15

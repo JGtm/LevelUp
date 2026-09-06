@@ -9,10 +9,10 @@
  * Comme le reste du dossier : pas de React, pas de couleur écrite — géométrie pure. L'encre
  * arrive du calque appelant, qui la tient des tokens du thème.
  */
-import type { XY } from '../replayLogic'
+import type { XY } from '../model/replayLogic'
 import { type PlacementView, project, type ShapeStyle } from './placementShapes'
-import type { TeleportLink } from '../placementTeleport'
-import { riftStationsAt, type RiftStation } from '../riftStations'
+import type { TeleportLink } from '../model/placementTeleport'
+import { riftStationsAt, type RiftStation } from '../model/riftStations'
 
 /**
  * Demi-hauteur de la faille, en pixels d'écran.

@@ -35,13 +35,13 @@ import { useTitleSlug } from '@/lib/title-routing'
 
 import { catalogText } from '../i18n/catalogLabel'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { refinePadPresence } from '../padPresenceRefine'
+import { refinePadPresence } from '../model/padPresenceRefine'
 import type { ReplayText } from '../i18n/i18nContract'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
-import { weaponFullIcon } from '../weaponFullIcon'
-import { frameToMs, type XY } from '../replayLogic'
-import type { ReplayDocumentReady, ReplayWeaponPadReady } from '../replayNormalize'
+import { weaponFullIcon } from '../model/weaponFullIcon'
+import { frameToMs, type XY } from '../model/replayLogic'
+import type { ReplayDocumentReady, ReplayWeaponPadReady } from '../model/replayNormalize'
 import {
   PAD_EQUIPMENT_FAMILIES,
   padEquipmentFamilyOf,
@@ -49,13 +49,13 @@ import {
   padScaleOf,
   type PadFamily,
   type PadScale,
-} from '../weaponPadFamilies'
+} from '../model/weaponPadFamilies'
 import {
   padRespawnAt,
   padStateAt,
   type PadRespawn,
   type PadState,
-} from '../weaponPadTime'
+} from '../model/weaponPadTime'
 import { drawWeaponPadsLayer, padAt, type PadIcon } from './weaponPadsLayer'
 
 /** Le catalogue d'ARMES du document, tel qu'il arrive : une table par identifiant, ou rien. */

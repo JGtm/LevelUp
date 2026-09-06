@@ -12,7 +12,7 @@ import { render, screen } from '@testing-library/react'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
-import type { ReplayWeaponPadReady } from '../replayNormalize'
+import type { ReplayWeaponPadReady } from '../model/replayNormalize'
 import { padNameFor } from '../layers/useReplayWeaponPads'
 import type { WeaponPadHover } from '../layers/useReplayWeaponPads'
 

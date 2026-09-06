@@ -13,7 +13,7 @@ import type { ReplayDocument, ReplayMapBackground, ReplayMapCallouts } from '@/l
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { normalizeReplayDocument } from './replayNormalize'
+import { normalizeReplayDocument } from './model/replayNormalize'
 
 /**
  * useMatchReplay charge l'artefact du match, normalisé.

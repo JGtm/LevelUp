@@ -73,12 +73,12 @@
  * Le verdict « ce sont bien les lettres du jeu » appartient au relevé Theater de l'utilisateur.
  */
 import type { ObjectiveElementReady } from './objectivesLayer'
-import { type XY } from '../replayLogic'
+import { type XY } from '../model/replayLogic'
 import { paintZoneState, type ZoneStateNow } from './zoneStatesPaint'
 
 import type { ReplayGaugePoint } from '@/lib/api/types'
-import type { ReplayZoneStateReady } from '../replayNormalize'
-import { type CanvasView, projectTo, scaleOf } from '../replayView'
+import type { ReplayZoneStateReady } from '../model/replayNormalize'
+import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 
 /**
  * ZONE_GAUGE_HOLD_MS — combien de temps le DERNIER point de la série reste affiché, en TEMPS RÉEL

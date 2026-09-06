@@ -24,20 +24,20 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { stripBotSuffix } from '@/lib/players/displayName'
 
 import { ReplayTeamHeader } from './ReplayTeamHeader'
-import { activeEquipmentAt } from '../equipmentFx'
+import { activeEquipmentAt } from '../model/equipmentFx'
 import type { PlacementWindowTime } from '../layers/equipmentPlacementsLayer'
-import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from '../equipmentZones'
-import { objectiveMarkAt } from '../objectiveMark'
+import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from '../model/equipmentZones'
+import { objectiveMarkAt } from '../model/objectiveMark'
 import { ReplayObjectiveMark } from './ReplayObjectiveMark'
-import { equippedWeapons } from '../equippedLogic'
-import { lastTeleportAge, teleportMoments, type TranslocationMoment } from '../placementTeleport'
-import { cardChrome, hasUnderLayer, playerCardFx } from '../playerCardFx'
+import { equippedWeapons } from '../model/equippedLogic'
+import { lastTeleportAge, teleportMoments, type TranslocationMoment } from '../model/placementTeleport'
+import { cardChrome, hasUnderLayer, playerCardFx } from '../model/playerCardFx'
 import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { frameToMs, msToFrames, positionAt, trackWindow } from '../replayLogic'
-import type { PresenceHeader } from '../presenceFeed'
-import { buildSeats, groupSeatsByTeam, seatOccupantAt } from '../seatLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
+import { frameToMs, msToFrames, positionAt, trackWindow } from '../model/replayLogic'
+import type { PresenceHeader } from '../model/presenceFeed'
+import { buildSeats, groupSeatsByTeam, seatOccupantAt } from '../model/seatLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { EliminatedBox, VitalityBar } from './ReplayVitality'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
@@ -50,7 +50,7 @@ import {
   vitalityPresence,
   type ReplayPlayer,
   type VitalityPresence,
-} from '../rosterLogic'
+} from '../model/rosterLogic'
 
 /**
  * Estompage COMPLET d'une lecture de vitalité à 6 s : la même graduation que le bouclier

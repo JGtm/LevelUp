@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 
 import { normalizeScoreTimeline } from '@/lib/replay/scoreTimeline'
 
-import type { ReplayDocumentReady } from '../replayNormalize'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 import { ROUND_OVER_SOUND_STEMS, roundOverSoundEvents } from './roundOverSound'
 
 /** Une manche : numéro et paliers `[frame, valeur]`. */

@@ -17,7 +17,7 @@
  */
 import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
-import { worldToCanvas } from '../replayLogic'
+import { worldToCanvas } from '../model/replayLogic'
 
 /** Rectangle de dessin dans le repère canvas (pixels CSS). */
 export interface BackgroundRect {

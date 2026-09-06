@@ -51,8 +51,8 @@
  * grenades, consommables) mais leur son est déjà l'affaire d'`equipmentChangeSound`. Leur donner
  * en plus le bruit du ramassage d'arme ferait entendre une arme là où il n'y en a pas.
  */
-import type { ReplayDocumentReady } from '../replayNormalize'
-import { frameToMs } from '../replayLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { frameToMs } from '../model/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 
 /**

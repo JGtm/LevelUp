@@ -26,7 +26,7 @@ import {
   wallRadiusM,
   wallRingWorld,
 } from './placementWall'
-import type { ReplayTrackReady } from '../replayNormalize'
+import type { ReplayTrackReady } from '../model/replayNormalize'
 import {
   DEVICE_ID,
   draw,

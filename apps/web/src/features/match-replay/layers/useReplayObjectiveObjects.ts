@@ -22,10 +22,10 @@
 import { useCallback, useMemo } from 'react'
 
 import { drawFreeSkull, type ObjectiveObjectsInput } from './objectiveObjectsLayer'
-import { skullPresenceAt, skullSocle } from '../skullPresence'
+import { skullPresenceAt, skullSocle } from '../model/skullPresence'
 
-import { type CanvasView } from '../replayView'
-import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from '../replayNormalize'
+import { type CanvasView } from '../model/replayView'
+import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from '../model/replayNormalize'
 
 interface UseReplayObjectiveObjectsArgs {
   /** Les vies libres publiées par l'artefact. Vide = rien à peindre, et c'est le cas nominal. */

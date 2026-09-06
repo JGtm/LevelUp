@@ -39,12 +39,12 @@
  */
 import type { ReplayMapObjectives } from '@/lib/api/types'
 
-import { buildCarrierPosAt } from '../carrierPosition'
-import { type XY } from '../replayLogic'
+import { buildCarrierPosAt } from '../model/carrierPosition'
+import { type XY } from '../model/replayLogic'
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
-import type { ReplayDocumentReady } from '../replayNormalize'
-import { type CanvasView, projectTo, scaleOf } from '../replayView'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
+import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 
 /** Valeur « aucun camp » du team_index — celle du fichier de carte, servie telle quelle. */
 export const OBJECTIVE_TEAM_NEUTRAL = -1

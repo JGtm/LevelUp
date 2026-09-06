@@ -26,7 +26,7 @@ import { useCallback, useMemo } from 'react'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import { NO_MARKS, type PlayerMarkKind } from '../playerMarks'
+import { NO_MARKS, type PlayerMarkKind } from '../model/playerMarks'
 import {
   buildPlayers,
   buildSlotOwnership,
@@ -39,8 +39,8 @@ import {
   sideResolver,
   type ReplayPlayer,
   type SlotOwnership,
-} from '../rosterLogic'
-import type { ReplayDocumentReady } from '../replayNormalize'
+} from '../model/rosterLogic'
+import type { ReplayDocumentReady } from '../model/replayNormalize'
 
 export interface SlotIdentity {
   /**

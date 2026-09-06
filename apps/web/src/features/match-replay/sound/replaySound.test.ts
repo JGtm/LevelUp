@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayKill } from '../killFeedLogic'
+import type { ReplayKill } from '../model/killFeedLogic'
 import type { ReplayDocument, ReplayGrenade } from '@/lib/api/types'
 
 import { SOUND_CUT_MAX_S, SOUND_FADE_S, soundEnvelope } from './replayAudio'

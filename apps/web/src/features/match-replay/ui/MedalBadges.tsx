@@ -9,7 +9,7 @@
  * du dépôt en recevant les marques d'identité : ce bloc n'a aucun lien avec la ligne qui le
  * porte (il ignore tueur, victime, couleurs d'équipe), c'est donc lui qui sort.
  */
-import type { MedalEvent } from '../killFeedLogic'
+import type { MedalEvent } from '../model/killFeedLogic'
 
 /** Côté d'un badge de médaille, en px (option 2a du handoff 2026-08-27 : 16 px). */
 const MEDAL_PX = 16

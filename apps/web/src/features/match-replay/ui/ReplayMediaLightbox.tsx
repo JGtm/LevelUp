@@ -31,7 +31,7 @@ import { formatClockMMSS } from '@/lib/formatters'
 import { useHlsVideo } from '@/lib/media/useHlsVideo'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { clipFrameCount, type ReplayMediaItem } from '../replayTimelineTracksLogic'
+import { clipFrameCount, type ReplayMediaItem } from '../model/replayTimelineTracksLogic'
 
 interface ReplayMediaLightboxProps {
   item: ReplayMediaItem

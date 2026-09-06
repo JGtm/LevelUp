@@ -19,7 +19,7 @@
  * l'identification : sans elle la bombe serait indiscernable du crâne à cette taille. Les cotes
  * pèsent comme le crâne (r=7) pour que les objets de mode aient le même poids visuel.
  */
-import type { XY } from '../replayLogic'
+import type { XY } from '../model/replayLogic'
 
 /** Rayon du corps, en pixels canvas. Le gabarit total (corps + collier + mèche) pèse ~r=7. */
 export const BOMB_GLYPH_RADIUS = 6
