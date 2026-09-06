@@ -1,3 +1,11 @@
+## [2026-09-07] Lot 6 duels/portee — gates Go de livraison executes par le pilote, tous verts — Complete (6.2 Go, 6.3)
+
+**Decision technique principale.** Apres l interruption de l executeur d integration (limite de session API), les gates ont ete scindes : volet web par un executeur (commit `67744e6d3`), volet Go par le pilote en arriere-plan avec GOCACHE et GOLANGCI_LINT_CACHE isoles, dans le worktree `LevelUp-wt-duels` sur `feat/duels` (HEAD `67744e6d3`), sans aucune commande Go concurrente.
+
+**Resultats observes.** `go build ./...` RC 0 ; `go vet ./...` RC 0 ; `gofmt -l internal cmd` vide ; `go test -count=1 ./...` RC 0 ; `go test -tags=integration -p 1 -count=1 ./...` RC 0 (suite complete, aucun `--- FAIL`, aucun panic) ; `make go-api-test` RC 0 ; `make go-api-lint` : `golangci-lint run --new-from-merge-base=origin/main` -> 0 issues. Volet web (executeur) : typecheck, lint 0 erreur, vitest 595/595 (6 299 tests), lint:fields, contrat frais, manifests sans diff.
+
+**Conclusion / prochaine etape.** 6.1, 6.2 (web + Go), 6.3 clos. Restent 6.4 (gate visuel utilisateur : `make stop` puis `make dev LEVELUP_DATA_ROOT=<worktree principal>` depuis le worktree duels), 6.5 (journal final, project_map si besoin), 6.6 (push `feat/duels` + CI surveillee job par job). Aucun push effectue.
+
 ## [2026-09-06] Lot 6 duels/portee — reprise de l integration, gates web du volet frontend — En cours
 
 **Decision technique principale.** Reprise apres coupure de session : les cases du plan ne sont
