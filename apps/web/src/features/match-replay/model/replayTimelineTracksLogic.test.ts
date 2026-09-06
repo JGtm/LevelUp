@@ -2,9 +2,13 @@
  * Tests — replayTimelineTracks (ce que la frise montre en dehors du temps).
  *
  * Ce qu'ils protègent, dans l'ordre des règles produit de la planche 2a :
- *  1. QUI EST SUR UNE PISTE. Un acteur sans marque d'identité n'y est pas — la frise parle du
- *     joueur de la page et de ses amis, pas de la salle entière.
- *  2. LES MORTS NE VONT QUE SUR `own`. Une piste alliée mêlant kills et morts serait illisible.
+ *  1. QUI EST SUR UNE PISTE. Depuis le 2026-09-07 (décision 5 du plan « frise, point de vue »),
+ *     c'est le POINT DE VUE et ses COÉQUIPIERS — plus les joueurs marqués amis, qui pouvaient
+ *     être de l'autre camp. Un acteur sans camp connu n'y est pas : la frise parle du joueur
+ *     regardé et de son équipe, pas de la salle entière. Les amis restent distingués, mais par
+ *     la FORME (`friend` → le losange), jamais par la piste ni par la couleur (décision 4).
+ *  2. LES MORTS NE VONT QUE SUR `own`. Une piste de coéquipiers mêlant kills et morts serait
+ *     illisible.
  *  3. LES BORNES DE LA FENÊTRE DE GAMEPLAY. Une marque hors match est ÉCARTÉE, pas rabattue sur
  *     un bord : collée à l'origine, elle se lirait comme un premier frag qui n'a pas eu lieu.
  *  4. LA DOMINANCE SE COMPTE EN FRAGS (2026-08-28), et une ÉGALITÉ est un ÉTAT, pas un trou :
@@ -30,6 +34,7 @@ import {
   trackScale,
   trackWidth,
   type ReplayMediaItem,
+  type TrackAudience,
   type TrackDeath,
   type TrackKill,
 } from './replayTimelineTracksLogic'
@@ -57,10 +62,30 @@ const SCALE = trackScale(FENETRE, 1_000)
 /** Horloge de test : on vérifie qu'elle est APPELÉE, pas sa mise en forme (foyer du dépôt). */
 const clockOf = (ms: number) => `@${ms}`
 
+/**
+ * LE LOBBY DE TEST, tel que la frise le voit depuis « me » (2026-09-07, lot L3) :
+ *  - `me` est le POINT DE VUE ;
+ *  - `pote` est un COÉQUIPIER qui se trouve être un AMI (il aura le losange) ;
+ *  - `equipier` est un coéquipier ordinaire ;
+ *  - `ennemi` est un adversaire, et `pote-adverse` un AMI DE L'AUTRE CAMP — celui qui disparaît
+ *    de la frise depuis la décision 5, et dont l'absence est un cas à part entière ci-dessous ;
+ *  - `inconnu` n'est dans aucune table : acteur hors tableau de score.
+ */
+const IDENTITY: ReadonlyMap<string, { ally: boolean }> = new Map([
+  ['me', { ally: true }],
+  ['pote', { ally: true }],
+  ['equipier', { ally: true }],
+  ['ennemi', { ally: false }],
+  ['pote-adverse', { ally: false }],
+])
+
 const MARKS: ReadonlyMap<string, PlayerMarkKind> = new Map([
   ['me', 'me'],
   ['pote', 'friend'],
+  ['pote-adverse', 'friend'],
 ])
+
+const AUDIENCE: TrackAudience = { viewpoint: 'me', identity: IDENTITY, marks: MARKS }
 
 function kill(over: Partial<TrackKill> = {}): TrackKill {
   return { key: 'k1', replayMs: 20_000, xuid: 'me', ...over }
@@ -82,9 +107,9 @@ describe('trackScale — l’échelle est celle de la frise', () => {
   it('rend une portée NULLE sur un document d’une seule image : rien ne se place', () => {
     const degenere = trackScale(null, 1)
     expect(degenere.span).toBe(0)
-    expect(buildEventTracks([kill()], [], MARKS, FRAME_MS, degenere, clockOf)).toEqual({
+    expect(buildEventTracks([kill()], [], AUDIENCE, FRAME_MS, degenere, clockOf)).toEqual({
       own: [],
-      allies: [],
+      teammates: [],
     })
     expect(buildFragDominance([{ replayMs: 12_000, teamId: 0 }], FRAME_MS, degenere)).toEqual([])
     expect(placeMedia([media()], FRAME_MS, degenere)).toEqual([])
@@ -104,40 +129,98 @@ describe('ratioOfMs — un instant sur l’échelle des pistes', () => {
 })
 
 describe('buildEventTracks — qui est sur quelle piste', () => {
-  it('un acteur SANS marque n’est sur AUCUNE piste', () => {
-    const tracks = buildEventTracks([kill({ xuid: 'inconnu' })], [], MARKS, FRAME_MS, SCALE, clockOf)
+  it('un acteur SANS CAMP CONNU n’est sur AUCUNE piste', () => {
+    const tracks = buildEventTracks([kill({ xuid: 'inconnu' })], [], AUDIENCE, FRAME_MS, SCALE, clockOf)
     expect(tracks.own).toEqual([])
-    expect(tracks.allies).toEqual([])
+    expect(tracks.teammates).toEqual([])
   })
 
-  it('« moi » sur ma piste, un ami sur celle des alliés', () => {
+  it('le POINT DE VUE sur sa piste, un COÉQUIPIER sur la seconde', () => {
     const tracks = buildEventTracks(
-      [kill({ key: 'k-me' }), kill({ key: 'k-pote', xuid: 'pote' })],
+      [kill({ key: 'k-me' }), kill({ key: 'k-equipier', xuid: 'equipier' })],
       [],
-      MARKS,
+      AUDIENCE,
       FRAME_MS,
       SCALE,
       clockOf,
     )
     expect(tracks.own.map((m) => m.key)).toEqual(['k-me'])
-    expect(tracks.allies.map((m) => m.key)).toEqual(['k-pote'])
+    expect(tracks.teammates.map((m) => m.key)).toEqual(['k-equipier'])
   })
 
-  it('LES MORTS NE VONT QUE SUR `own` — celle d’un ami est ignorée', () => {
+  /**
+   * LA DÉCISION 5 EN UN CAS (2026-09-07). La seconde piste montrait les joueurs MARQUÉS AMIS,
+   * quel que soit leur camp ; elle montre les COÉQUIPIERS. Un adversaire n'y entre donc pas —
+   * même quand c'est un ami. Le changement est assumé et documenté : ce cas est là pour qu'une
+   * relecture future ne le prenne pas pour une régression et ne « répare » pas la règle.
+   */
+  it('un ADVERSAIRE n’est sur aucune piste, MÊME s’il est un ami', () => {
+    const tracks = buildEventTracks(
+      [kill({ key: 'k-ennemi', xuid: 'ennemi' }), kill({ key: 'k-pote-adverse', xuid: 'pote-adverse' })],
+      [],
+      AUDIENCE,
+      FRAME_MS,
+      SCALE,
+      clockOf,
+    )
+    expect(tracks.own).toEqual([])
+    expect(tracks.teammates).toEqual([])
+  })
+
+  /**
+   * LE LOSANGE (décision 4) : `friend` voyage avec la marque, et c'est lui — pas la couleur —
+   * qui distinguera un ami. Il vaut pour un COÉQUIPIER ami, jamais pour le point de vue
+   * lui-même (on n'est pas son propre ami) ni pour un coéquipier ordinaire.
+   */
+  it('la marque d’un COÉQUIPIER AMI porte `friend` ; celle du point de vue, jamais', () => {
+    const tracks = buildEventTracks(
+      [
+        kill({ key: 'k-me' }),
+        kill({ key: 'k-pote', xuid: 'pote' }),
+        kill({ key: 'k-equipier', xuid: 'equipier' }),
+      ],
+      [death({ key: 'd-me' })],
+      AUDIENCE,
+      FRAME_MS,
+      SCALE,
+      clockOf,
+    )
+    expect(tracks.own.map((m) => m.friend)).toEqual([false, false])
+    expect(tracks.teammates.map((m) => [m.key, m.friend])).toEqual([
+      ['k-pote', true],
+      ['k-equipier', false],
+    ])
+  })
+
+  it('SANS POINT DE VUE, la piste du haut reste vide — aucun joueur regardé, aucune mort à lui', () => {
+    const tracks = buildEventTracks(
+      [kill({ key: 'k-me' }), kill({ key: 'k-equipier', xuid: 'equipier' })],
+      [death({ key: 'd-me' })],
+      { viewpoint: null, identity: IDENTITY, marks: MARKS },
+      FRAME_MS,
+      SCALE,
+      clockOf,
+    )
+    expect(tracks.own).toEqual([])
+    // Le camp, lui, reste connu : les coéquipiers du point de vue disparu restent alliés.
+    expect(tracks.teammates.map((m) => m.key)).toEqual(['k-me', 'k-equipier'])
+  })
+
+  it('LES MORTS NE VONT QUE SUR `own` — celle d’un coéquipier est ignorée', () => {
     const tracks = buildEventTracks(
       [],
-      [death({ key: 'd-me' }), death({ key: 'd-pote', xuid: 'pote' })],
-      MARKS,
+      [death({ key: 'd-me' }), death({ key: 'd-equipier', xuid: 'equipier' })],
+      AUDIENCE,
       FRAME_MS,
       SCALE,
       clockOf,
     )
     expect(tracks.own.map((m) => m.key)).toEqual(['d-me'])
-    expect(tracks.allies).toEqual([])
+    expect(tracks.teammates).toEqual([])
   })
 
   it('la NATURE de la marque voyage avec elle — c’est elle qui décidera de sa couleur', () => {
-    const tracks = buildEventTracks([kill()], [death()], MARKS, FRAME_MS, SCALE, clockOf)
+    const tracks = buildEventTracks([kill()], [death()], AUDIENCE, FRAME_MS, SCALE, clockOf)
     expect(tracks.own.map((m) => m.kind)).toEqual(['kill', 'death'])
   })
 
@@ -149,7 +232,7 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
         kill({ key: 'dedans', replayMs: 20_000 }),
       ],
       [],
-      MARKS,
+      AUDIENCE,
       FRAME_MS,
       SCALE,
       clockOf,
@@ -161,7 +244,7 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
     const tracks = buildEventTracks(
       [kill({ key: 'debut', replayMs: 10_000 }), kill({ key: 'fin', replayMs: 40_000 })],
       [],
-      MARKS,
+      AUDIENCE,
       FRAME_MS,
       SCALE,
       clockOf,
@@ -173,7 +256,7 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
     const tracks = buildEventTracks(
       [kill({ key: 'k-a', replayMs: 12_000 }), kill({ key: 'k-b', replayMs: 30_000 })],
       [death({ key: 'd-a', replayMs: 20_000 })],
-      MARKS,
+      AUDIENCE,
       FRAME_MS,
       SCALE,
       clockOf,

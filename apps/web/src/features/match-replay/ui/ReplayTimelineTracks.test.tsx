@@ -3,6 +3,8 @@
  *
  * Ce qu'ils protègent :
  *  1. LES QUATRE PISTES SONT NOMMÉES. Une bande de trois pixels sans étiquette ne se lit pas.
+ *     La première ne l'est plus par un mot mais par le MENU de point de vue (2026-09-07, L3) :
+ *     son nom accessible et son losange d'ami ont leurs propres blocs, en fin de fichier.
  *  2. LA PISTE MÉDIAS RESTE, MÊME VIDE (demande utilisateur du 2026-08-28) — et son vide est
  *     une phrase, pas une bande grise muette. C'est l'exception assumée à la règle « pas de
  *     commande quand il n'y a rien à commander » : ce n'est pas une commande, c'est un lieu.
@@ -24,8 +26,32 @@ import { CURSOR_HOST_ATTR, CURSOR_RATIO_VAR } from '../hooks/useReplayPlayback'
 import { TIMELINE_SHORTCUT_ATTR } from '../hooks/useReplayShortcuts'
 
 function mark(over: Partial<TrackMark> = {}): TrackMark {
-  return { key: 'm1', ratio: 0.5, kind: 'kill', clock: '2:30', ...over }
+  return { key: 'm1', ratio: 0.5, kind: 'kill', clock: '2:30', friend: false, ...over }
 }
+
+/**
+ * LE MENU DE POINT DE VUE : deux camps nommés, plus le groupe des joueurs sans ligne de tableau
+ * de score — dont l'option est INERTE (décision 7 bis). `bot-base` porte le xuid de la BASE, pas
+ * la clé film : c'est le piège que le lot devait éviter (cf. `viewpointOptions`).
+ */
+const GROUPES = [
+  {
+    key: 't0',
+    label: 'Cobalt',
+    options: [
+      { value: 'me-1', label: 'JGtm', disabled: false, title: 'JGtm' },
+      { value: 'bot-base', label: 'Cortana', disabled: false, title: 'Cortana' },
+    ],
+  },
+  { key: 't1', label: 'Ambre', options: [{ value: 'foe-1', label: 'Rival', disabled: false, title: 'Rival' }] },
+  {
+    key: '',
+    label: 'Sans équipe',
+    options: [
+      { value: 'bot:Fantome', label: 'Fantome', disabled: true, title: 'Aucune donnée de match pour ce joueur' },
+    ],
+  },
+]
 
 function mediaItem(over: Partial<ReplayMediaItem> = {}): ReplayMediaItem {
   return {
@@ -47,6 +73,7 @@ function renderTracks(over: Partial<Parameters<typeof ReplayTimelineTracks>[0]> 
   const onRequestPause = vi.fn()
   const onScrub = vi.fn()
   const onToggleTracks = vi.fn()
+  const onSelectViewpoint = vi.fn()
   const utils = render(
     <ReplayTimelineTracks
       sliderRef={createRef<HTMLInputElement>()}
@@ -54,7 +81,10 @@ function renderTracks(over: Partial<Parameters<typeof ReplayTimelineTracks>[0]> 
       maxFrame={600}
       onScrub={onScrub}
       own={[]}
-      allies={[]}
+      teammates={[]}
+      viewpoint="me-1"
+      viewpointGroups={GROUPES}
+      onSelectViewpoint={onSelectViewpoint}
       dominance={[]}
       score={null}
       allyOf={() => null}
@@ -70,13 +100,20 @@ function renderTracks(over: Partial<Parameters<typeof ReplayTimelineTracks>[0]> 
       {...over}
     />,
   )
-  return { ...utils, onRequestPause, onScrub, onToggleTracks }
+  return { ...utils, onRequestPause, onScrub, onToggleTracks, onSelectViewpoint }
 }
 
 describe('ReplayTimelineTracks — les quatre pistes sont nommées', () => {
-  it('porte les étiquettes Toi, Alliés, Dominance et Médias', () => {
+  /**
+   * LA PREMIÈRE RANGÉE N'A PLUS D'ÉTIQUETTE (2026-09-07, lot L3) : elle porte le MENU de point
+   * de vue, dont le texte visible est le gamertag regardé. « Toi » y serait faux dès qu'on
+   * regarde quelqu'un d'autre. Les trois autres restent des mots.
+   */
+  it('porte le menu de point de vue, puis les étiquettes Coéquipiers, Dominance et Médias', () => {
     renderTracks()
-    for (const label of ['Toi', 'Alliés', 'Dominance', 'Médias']) {
+    expect(screen.getByLabelText('Joueur suivi')).toBeTruthy()
+    expect(screen.queryByText('Toi')).toBeNull()
+    for (const label of ['Coéquipiers', 'Dominance', 'Médias']) {
       expect(screen.getByText(label)).toBeTruthy()
     }
   })
@@ -181,7 +218,7 @@ describe('ReplayTimelineTracks — les marques et la dominance', () => {
   it('pose chaque marque avec son horloge en infobulle', () => {
     const { container } = renderTracks({
       own: [mark({ key: 'k1', clock: '1:12' }), mark({ key: 'd1', kind: 'death', clock: '3:40' })],
-      allies: [mark({ key: 'a1', clock: '2:02' })],
+      teammates: [mark({ key: 'a1', clock: '2:02' })],
     })
     expect(container.querySelectorAll('[title="1:12"]')).toHaveLength(1)
     expect(container.querySelectorAll('[title="3:40"]')).toHaveLength(1)
@@ -201,7 +238,7 @@ describe('ReplayTimelineTracks — les marques et la dominance', () => {
   it('CENTRE chaque marque sur son instant, quelle que soit la piste', () => {
     const { container } = renderTracks({
       own: [mark({ key: 'k1', clock: '1:12' })],
-      allies: [mark({ key: 'a1', clock: '2:02' })],
+      teammates: [mark({ key: 'a1', clock: '2:02' })],
     })
     for (const horloge of ['1:12', '2:02']) {
       const marque = container.querySelector(`[title="${horloge}"]`)
@@ -275,7 +312,7 @@ describe('ReplayTimelineTracks — les marques et la dominance', () => {
   it('N’ÉCRIT AUCUN HEX : toutes les encres passent par les tokens du thème', () => {
     const { container } = renderTracks({
       own: [mark()],
-      allies: [mark({ key: 'a1' })],
+      teammates: [mark({ key: 'a1' })],
       dominance: [{ key: 's1', from: 0, to: 1, teamId: 0 }],
     })
     expect(container.innerHTML).not.toMatch(/#[0-9a-fA-F]{6}/)
@@ -327,7 +364,8 @@ describe('ReplayTimelineTracks — la piste médias', () => {
     expect(screen.queryByText('Médias')).toBeNull()
     expect(screen.queryByText('Aucun média sur ce match')).toBeNull()
     // Les trois autres pistes et le curseur restent intacts.
-    for (const label of ['Toi', 'Alliés', 'Dominance']) {
+    expect(screen.getByLabelText('Joueur suivi')).toBeTruthy()
+    for (const label of ['Coéquipiers', 'Dominance']) {
       expect(screen.getByText(label)).toBeTruthy()
     }
     expect(screen.getByLabelText('Temps de match')).toBeTruthy()
@@ -343,7 +381,8 @@ describe('ReplayTimelineTracks — le repli des pistes', () => {
   it('REPLIÉ : plus une seule piste, mais le curseur et son temps restent', () => {
     const ref = createRef<HTMLSpanElement>()
     renderTracks({ tracksExpanded: false, media: [placed()], clockRef: ref })
-    for (const label of ['Toi', 'Alliés', 'Dominance', 'Médias']) {
+    expect(screen.queryByLabelText('Joueur suivi')).toBeNull()
+    for (const label of ['Coéquipiers', 'Dominance', 'Médias']) {
       expect(screen.queryByText(label)).toBeNull()
     }
     expect(screen.queryByRole('button', { name: 'Capture Streets' })).toBeNull()
@@ -395,3 +434,113 @@ describe('ReplayTimelineTracks — le repli des pistes', () => {
   })
 })
 
+
+/**
+ * LE MENU DE POINT DE VUE (2026-09-07, lot L3).
+ *
+ * Ce que ces cas tiennent, et qui ne se voit pas à la relecture :
+ *  1. LA VALEUR RENDUE EST CELLE DE LA BASE. Un bot a deux identités — clé film `bot:<nom>`,
+ *     xuid `bid(N.0)` en base — et les marques de la frise s'apparient sur la seconde. Rendre la
+ *     première changerait bien le point de vue, vers un joueur que rien ne reconnaît, et
+ *     laisserait une piste VIDE sans le moindre message.
+ *  2. UNE OPTION SANS DONNÉE LE DIT (décision 7 bis). Un joueur sans ligne de tableau de score
+ *     n'a ni camp ni kill collecté : son option est inerte, avec sa raison en infobulle.
+ *  3. LE CHOIX NE TOUCHE QU'AU POINT DE VUE (décision 1). Ni le curseur, ni la lecture.
+ *  4. LE FOCUS PART AVEC LE CHOIX. Sans cela, la barre d'espace qui suit — le geste réflexe pour
+ *     mettre en pause — rouvrirait la liste : `useReplayShortcuts` coupe tous les raccourcis
+ *     quand l'élément actif est un `SELECT`. Rien dans le typage ne relie les deux.
+ */
+describe('ReplayTimelineTracks — le menu de point de vue', () => {
+  function menu(): HTMLSelectElement {
+    return screen.getByLabelText('Joueur suivi') as HTMLSelectElement
+  }
+
+  it('s’ouvre sur le joueur REGARDÉ — au montage, celui de la page (décision 8)', () => {
+    renderTracks()
+    expect(menu().value).toBe('me-1')
+    expect(menu().tagName).toBe('SELECT')
+  })
+
+  it('range les joueurs par camp, et nomme la section de ceux qui n’en ont pas', () => {
+    const { container } = renderTracks()
+    const sections = [...container.querySelectorAll('optgroup')].map((g) => g.getAttribute('label'))
+    expect(sections).toEqual(['Cobalt', 'Ambre', 'Sans équipe'])
+  })
+
+  it('un joueur SANS ligne de tableau de score est listé, INERTE, et dit pourquoi', () => {
+    renderTracks()
+    const option = screen.getByRole('option', { name: 'Fantome' }) as HTMLOptionElement
+    expect(option.disabled).toBe(true)
+    expect(option.title).toBe('Aucune donnée de match pour ce joueur')
+  })
+
+  it('LE BOT REND SON XUID DE BASE, jamais la clé du film : sinon sa piste resterait vide', () => {
+    const { onSelectViewpoint } = renderTracks()
+    fireEvent.change(menu(), { target: { value: 'bot-base' } })
+    expect(onSelectViewpoint).toHaveBeenCalledWith('bot-base')
+  })
+
+  it('choisir NE TOUCHE NI AU CURSEUR NI À LA LECTURE (décision 1)', () => {
+    const { onScrub, onRequestPause, onToggleTracks, onSelectViewpoint } = renderTracks()
+    const curseur = screen.getByLabelText('Temps de match') as HTMLInputElement
+    fireEvent.change(curseur, { target: { value: '240' } })
+    onScrub.mockClear()
+    fireEvent.change(menu(), { target: { value: 'foe-1' } })
+    expect(onSelectViewpoint).toHaveBeenCalledWith('foe-1')
+    // Le curseur n'a pas bougé d'une image, et personne n'a demandé de pause ni de repli.
+    expect(curseur.value).toBe('240')
+    expect(onScrub).not.toHaveBeenCalled()
+    expect(onRequestPause).not.toHaveBeenCalled()
+    expect(onToggleTracks).not.toHaveBeenCalled()
+  })
+
+  it('APRÈS UN CHOIX, le menu n’a plus le focus — sinon Espace rouvrirait la liste', () => {
+    renderTracks()
+    menu().focus()
+    expect(document.activeElement).toBe(menu())
+    fireEvent.change(menu(), { target: { value: 'foe-1' } })
+    expect(document.activeElement).not.toBe(menu())
+  })
+
+  /**
+   * L'EXEMPTION CLAVIER DE LA FRISE VISE NOMMÉMENT LE CURSEUR, pas ce menu : tant que la liste
+   * est ouverte, ses flèches doivent changer de joueur. Poser l'attribut ici rendrait les
+   * flèches au rejeu et casserait la navigation native de la liste.
+   */
+  it('le menu n’est PAS exempté de la garde anti-frappe', () => {
+    renderTracks()
+    expect(menu()).not.toHaveAttribute(TIMELINE_SHORTCUT_ATTR)
+  })
+})
+
+/**
+ * LE LOSANGE DES AMIS (décision 4 du plan, 2026-09-07). La forme dit l'identité, la couleur dit
+ * le camp : une marque amie tourne de 45°, et son encre — celle qui distingue un frag d'une mort
+ * — ne change pas d'un iota. C'est un cas de test parce que rien d'autre ne tient une FORME.
+ */
+describe('ReplayTimelineTracks — les amis prennent le losange', () => {
+  it('une marque AMIE tourne de 45°, une marque ordinaire non', () => {
+    const { container } = renderTracks({
+      own: [mark({ key: 'k1', clock: '1:12' })],
+      teammates: [mark({ key: 'a1', clock: '2:02', friend: true })],
+    })
+    expect(container.querySelector('[title="1:12"]')?.className).not.toContain('rotate-45')
+    expect(container.querySelector('[title="2:02"]')?.className).toContain('rotate-45')
+  })
+
+  it('elle garde le CENTRE et l’ENCRE des autres : seule la silhouette change', () => {
+    const { container } = renderTracks({
+      teammates: [
+        mark({ key: 'ami', clock: '2:02', friend: true }),
+        mark({ key: 'mort-amie', clock: '3:03', kind: 'death', friend: true }),
+      ],
+    })
+    const ami = container.querySelector('[title="2:02"]')
+    const mortAmie = container.querySelector('[title="3:03"]')
+    expect(ami?.className).toContain('-translate-x-1/2')
+    // L'encre reste celle du TYPE d'événement — un ami tombé garde l'encre des morts.
+    expect(ami?.getAttribute('style')).toContain('--ac-team-ally')
+    expect(mortAmie?.getAttribute('style')).toContain('--ac-team-enemy')
+    expect(mortAmie?.className).toContain('rotate-45')
+  })
+})

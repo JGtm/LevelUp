@@ -1,7 +1,8 @@
 /**
  * replayTimelineTracksLogic — CE QUE LA FRISE MONTRE, en dehors du temps : les marques des
- * pistes (les tiennes, celles de tes alliés), les segments de DOMINANCE, et les médias posés
- * sur le match. Logique pure, testable, sans JSX — les composants n'en font que le rendu.
+ * pistes (celles du joueur REGARDÉ, celles de ses COÉQUIPIERS — cf. `buildEventTracks`), les
+ * segments de DOMINANCE, et les médias posés sur le match. Logique pure, testable, sans JSX —
+ * les composants n'en font que le rendu.
  *
  * TROIS PISTES PLUTÔT QU'UNE FRISE : une frise seule donne la position dans le temps et rien
  * d'autre — c'est le constat qui avait donné les marques de retournement (`ReplayLeadMarks`,
@@ -93,12 +94,40 @@ export interface TrackMark {
   kind: 'kill' | 'death'
   /** Instant, pour l'infobulle (mm:ss déjà mis en forme par l'appelant). */
   clock: string
+  /**
+   * L'acteur est-il un AMI du compte connecté (marque `friend` de `playerMarks`) ?
+   *
+   * LA FORME DIT L'IDENTITÉ, LA COULEUR DIT LE CAMP (décision D5 du plan d'habillage, reprise
+   * en décision 4 du plan « frise, point de vue ») : un ami prend le LOSANGE, comme son point
+   * sur la carte (`layers/replayMarkers.ts`, `MarkerShape = 'diamond'`). Sur cette frise la
+   * couleur est déjà prise deux fois — kill et mort — et les deux encres reprennent les
+   * couleurs d'équipe choisies par l'utilisateur en jeu : il n'en reste aucune de libre.
+   */
+  friend: boolean
 }
 
-/** Les deux pistes d'événements : la tienne, celle de tes alliés. */
+/** Les deux pistes d'événements : celle du point de vue, celle de ses coéquipiers. */
 export interface EventTracks {
   own: TrackMark[]
-  allies: TrackMark[]
+  teammates: TrackMark[]
+}
+
+/**
+ * À QUI LA FRISE S'INTÉRESSE — les trois lectures d'identité dont les pistes ont besoin,
+ * groupées pour ne pas allonger la liste d'arguments de `buildEventTracks`.
+ *
+ * ELLES NE SE DÉDUISENT PAS L'UNE DE L'AUTRE, et c'est pourquoi les trois sont là : le POINT DE
+ * VUE dit à qui appartient la piste du haut, le CAMP (relatif à ce point de vue) dit qui va sur
+ * celle des coéquipiers, et les MARQUES disent qui est un ami — une propriété du compte
+ * connecté, indépendante du match et du camp.
+ */
+export interface TrackAudience {
+  /** Le joueur regardé : sa piste porte ses kills ET ses morts. `null` = aucune piste propre. */
+  viewpoint: string | null
+  /** Camp de chaque xuid, RELATIF au point de vue (`XuidMeta` de la vue match). */
+  identity: ReadonlyMap<string, { ally: boolean }>
+  /** Marques d'identité du compte connecté : seul `friend` compte ici (cf. `TrackMark.friend`). */
+  marks: ReadonlyMap<string, PlayerMarkKind>
 }
 
 /** Un kill, réduit à ce dont les pistes ont besoin. */
@@ -117,49 +146,59 @@ export interface TrackDeath {
 }
 
 /**
- * buildEventTracks range les kills et les morts sur DEUX pistes, selon la marque d'identité du
- * joueur (`playerMarks.ts` : 'me' | 'friend'). Un acteur SANS marque n'est sur aucune piste —
- * la frise ne parle que du joueur de la page et de ses amis, pas de la salle entière ; deviner
- * un camp par défaut peuplerait les pistes de gens que personne ne suit.
+ * buildEventTracks range les kills et les morts sur DEUX pistes : celle du POINT DE VUE, et
+ * celle de ses COÉQUIPIERS.
  *
- * Les morts ne vont QUE sur la piste 'me' : « où je suis tombé » est une lecture de soi. Une
- * piste alliée mêlant leurs kills et leurs morts deviendrait illisible à huit joueurs.
+ * LA RÈGLE A CHANGÉ LE 2026-09-07 (décision 5 du plan « frise, point de vue »), et le
+ * changement de comportement est assumé. La seconde piste montrait les joueurs marqués AMIS —
+ * `playerMarks` marque un ami quel que soit son camp — et elle montre désormais les joueurs du
+ * MÊME CAMP que le point de vue. Conséquence à connaître pour qu'aucune relecture n'y voie une
+ * régression : un ami de l'équipe ADVERSE disparaît de la frise. Il reste losange sur la carte
+ * et nommé dans le fil ; sa place n'était pas sur une piste qui répond à « comment mon équipe
+ * s'en sortait-elle ». Les amis ne sont plus une PISTE, ils sont une FORME (cf. `TrackMark.friend`).
+ *
+ * Un acteur qui n'est ni le point de vue ni son coéquipier n'est sur aucune piste : la frise ne
+ * parle pas de la salle entière. Un acteur sans camp connu (absent du tableau de score) non
+ * plus — `identity` ne le porte pas, et deviner un camp le poserait sur une piste au hasard.
+ *
+ * Les morts ne vont QUE sur la piste du point de vue : « où je suis tombé » est une lecture de
+ * soi. Une piste de coéquipiers mêlant leurs kills et leurs morts serait illisible à huit joueurs.
  */
 export function buildEventTracks(
   kills: readonly TrackKill[],
   deaths: readonly TrackDeath[],
-  marks: ReadonlyMap<string, PlayerMarkKind>,
+  audience: TrackAudience,
   frameIntervalMs: number,
   scale: TrackScale,
   clockOf: (replayMs: number) => string,
 ): EventTracks {
   const own: TrackMark[] = []
-  const allies: TrackMark[] = []
-  if (scale.span <= 0) return { own, allies }
+  const teammates: TrackMark[] = []
+  if (scale.span <= 0) return { own, teammates }
+  // UNE SEULE FABRIQUE POUR LES DEUX BOUCLES : la règle du losange (« un ami, quel que soit son
+  // camp ») n'est écrite qu'ici. Recopiée dans chaque boucle, elle aurait fini par ne valoir que
+  // sur les kills — et une mort d'ami perdrait sa forme sans que rien ne le dise.
+  const marque = (key: string, replayMs: number, kind: 'kill' | 'death', xuid: string): TrackMark => ({
+    key,
+    ratio: ratioOfMs(replayMs, frameIntervalMs, scale),
+    kind,
+    clock: clockOf(replayMs),
+    friend: audience.marks.get(xuid) === 'friend',
+  })
   for (const k of kills) {
-    const mark = marks.get(k.xuid)
-    if (!mark) continue
-    const at: TrackMark = {
-      key: k.key,
-      ratio: ratioOfMs(k.replayMs, frameIntervalMs, scale),
-      kind: 'kill',
-      clock: clockOf(k.replayMs),
-    }
+    const sien = audience.viewpoint != null && k.xuid === audience.viewpoint
+    if (!sien && audience.identity.get(k.xuid)?.ally !== true) continue
+    const at = marque(k.key, k.replayMs, 'kill', k.xuid)
     if (at.ratio < 0 || at.ratio > 1) continue
-    ;(mark === 'me' ? own : allies).push(at)
+    ;(sien ? own : teammates).push(at)
   }
   for (const d of deaths) {
-    if (marks.get(d.xuid) !== 'me') continue
-    const at: TrackMark = {
-      key: d.key,
-      ratio: ratioOfMs(d.replayMs, frameIntervalMs, scale),
-      kind: 'death',
-      clock: clockOf(d.replayMs),
-    }
+    if (audience.viewpoint == null || d.xuid !== audience.viewpoint) continue
+    const at = marque(d.key, d.replayMs, 'death', d.xuid)
     if (at.ratio < 0 || at.ratio > 1) continue
     own.push(at)
   }
-  return { own, allies }
+  return { own, teammates }
 }
 
 /**

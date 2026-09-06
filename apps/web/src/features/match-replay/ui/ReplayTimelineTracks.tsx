@@ -1,6 +1,19 @@
 /**
- * ReplayTimelineTracks — LA FRISE ET SES PISTES : tes éliminations et tes morts, celles de tes
- * alliés, la DOMINANCE (aux frags), le SCORE du mode, les MÉDIAS, puis le curseur de lecture.
+ * ReplayTimelineTracks — LA FRISE ET SES PISTES : les éliminations et les morts du joueur
+ * REGARDÉ, les éliminations de ses COÉQUIPIERS, la DOMINANCE (aux frags), le SCORE du mode, les
+ * MÉDIAS, puis le curseur de lecture.
+ *
+ * # LA PREMIÈRE RANGÉE SE CHOISIT (2026-09-07, lot L3)
+ *
+ * Son libellé disait « Toi ». Il est devenu un MENU (`ReplayViewpointSelect`) : l'endroit où
+ * l'on lit de qui parle la piste est celui où l'on change de joueur. Le geste ne touche qu'au
+ * POINT DE VUE — ni le curseur, ni la lecture, ni la vitesse ne bougent (décision 1 du plan) :
+ * changer de joueur change ce qu'on voit, jamais où l'on en est.
+ *
+ * La seconde piste a changé de population le même jour (décision 5) : elle montrait les joueurs
+ * marqués AMIS, y compris ceux de l'équipe adverse, et montre désormais les COÉQUIPIERS du
+ * joueur regardé. Les amis n'ont plus une piste, ils ont une FORME — le losange, comme sur la
+ * carte (cf. `MarkTrack`).
  *
  * DOMINANCE ET SCORE SE LISENT ENSEMBLE, et c'est tout l'intérêt de les empiler : la première
  * dit qui gagne les duels, la seconde qui gagne le match. Sur un mode à objectif elles se
@@ -56,7 +69,9 @@ import { CURSOR_RATIO_VAR } from '../hooks/useReplayPlayback'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { ReplayMediaLightbox } from './ReplayMediaLightbox'
 import { ReplayPlayhead } from './ReplayPlayhead'
+import { ReplayViewpointSelect } from './ReplayViewpointSelect'
 import { TIMELINE_GRID_COLUMNS } from './replayTimelineGrid'
+import type { ViewpointOptionGroup } from '../model/viewpointOptions'
 import {
   clipFrameCount,
   trackLeft,
@@ -82,9 +97,15 @@ interface ReplayTimelineTracksProps {
   minFrame: number
   maxFrame: number
   onScrub: (e: ChangeEvent<HTMLInputElement>) => void
-  /** Tes marques, celles de tes alliés (cf. buildEventTracks). */
+  /** Les marques du joueur regardé, celles de ses coéquipiers (cf. buildEventTracks). */
   own: readonly TrackMark[]
-  allies: readonly TrackMark[]
+  teammates: readonly TrackMark[]
+  /** Le point de vue courant : la valeur affichée par le menu de la première rangée. */
+  viewpoint: string | null
+  /** Les sections du menu, un camp par section (cf. `buildViewpointOptions`). */
+  viewpointGroups: readonly ViewpointOptionGroup[]
+  /** Poser le point de vue. `null` revient au joueur de la page. */
+  onSelectViewpoint: (xuid: string | null) => void
   /** Les segments de dominance AUX FRAGS (cf. buildFragDominance) et le camp de chacun. */
   dominance: readonly DominanceSegment[]
   /**
@@ -118,7 +139,8 @@ interface ReplayTimelineTracksProps {
 
 export function ReplayTimelineTracks({
   sliderRef, minFrame, maxFrame, onScrub,
-  own, allies, dominance, score, allyOf, labelOf, media, showMediaTrack,
+  own, teammates, viewpoint, viewpointGroups, onSelectViewpoint,
+  dominance, score, allyOf, labelOf, media, showMediaTrack,
   tracksExpanded, onToggleTracks,
   playing, onRequestPause, clockRef, locale,
 }: ReplayTimelineTracksProps) {
@@ -141,11 +163,18 @@ export function ReplayTimelineTracks({
     <div className="relative" data-replay-cursor-host="">
       {tracksExpanded && (
         <div className="relative mb-[5px] grid items-center gap-y-[5px]" style={TIMELINE_GRID_COLUMNS}>
-          <TrackLabel>{t.trackYou}</TrackLabel>
+          {/* LE LIBELLÉ DE LA PREMIÈRE RANGÉE EST LA COMMANDE (cf. l'en-tête) : c'est là qu'on
+              lit de qui parle la piste, donc là qu'on change de joueur. */}
+          <ReplayViewpointSelect
+            value={viewpoint}
+            groups={viewpointGroups}
+            label={t.viewpointLabel}
+            onSelect={onSelectViewpoint}
+          />
           <MarkTrack marks={own} height="h-3.5" tall />
 
-          <TrackLabel>{t.trackAllies}</TrackLabel>
-          <MarkTrack marks={allies} height="h-3.5" tall={false} />
+          <TrackLabel>{t.trackTeammates}</TrackLabel>
+          <MarkTrack marks={teammates} height="h-3.5" tall={false} />
 
           <TrackLabel>{t.trackDominance}</TrackLabel>
           <LeadTrack
@@ -445,8 +474,24 @@ function TrackLabel({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Une piste de marques. `tall` distingue la TIENNE (marques pleines, plus hautes) de celle des
- * alliés (plus basses, atténuées) : deux pistes de même poids se liraient comme une seule.
+ * Une piste de marques. `tall` distingue celle du joueur REGARDÉ (marques pleines, plus hautes)
+ * de celle de ses coéquipiers (plus basses, atténuées) : deux pistes de même poids se liraient
+ * comme une seule.
+ *
+ * UN AMI PREND LE LOSANGE (décision 4 du plan « frise, point de vue », 2026-09-07). C'est la
+ * grammaire de la carte, transposée telle quelle : la FORME dit l'identité, la COULEUR dit le
+ * camp — et ici la couleur est déjà prise deux fois (kill à l'encre alliée, mort à l'encre
+ * adverse), sur deux tokens qui reprennent les couleurs d'équipe choisies par l'utilisateur en
+ * jeu. Il n'en reste aucune de libre, et en inventer une troisième pour « ami » ferait dire
+ * deux choses à la même grandeur.
+ *
+ * LE MOT EST CELUI DE LA CARTE, PAS UN SECOND VOCABULAIRE : `MarkerShape = 'diamond'`
+ * (`layers/replayMarkers.ts`) nomme déjà cette forme pour la même population.
+ *
+ * LA MARQUE AMIE EST CARRÉE AVANT D'ÊTRE TOURNÉE, et c'est ce qui en fait un losange : une
+ * barre de 2 à 3 px de large pivotée de 45° donne une oblique, pas un losange — la forme ne se
+ * lirait pas à cette taille. Elle garde le CENTRE des autres (même `top` + même translation) et
+ * la même encre : seule sa silhouette change.
  *
  * UNE MARQUE EST CENTRÉE SUR SON INSTANT, pas posée à sa droite (décision utilisateur du
  * 2026-09-06, prise en même temps que le trait de lecture). Elle se posait par son BORD GAUCHE
@@ -473,7 +518,7 @@ function MarkTrack({
       {marks.map((m) => (
         <span
           key={m.key}
-          className={`pointer-events-none absolute -translate-x-1/2 rounded-[2px] ${tall ? 'top-[3px] h-2 w-[3px]' : 'top-1 h-1.5 w-[2px] opacity-65'}`}
+          className={`pointer-events-none absolute -translate-x-1/2 rounded-[2px] ${markShape(m.friend, tall)}`}
           style={{
             left: trackLeft(m.ratio),
             background: tokenCssVar(m.kind === 'kill' ? 'team-ally' : 'team-enemy'),
@@ -483,4 +528,22 @@ function MarkTrack({
       ))}
     </div>
   )
+}
+
+/**
+ * LA SILHOUETTE D'UNE MARQUE : barre verticale par défaut, LOSANGE pour un ami (décision 4).
+ *
+ * LES QUATRE VARIANTES PARTAGENT LEUR CENTRE VERTICAL — y = 7 px sur une piste de 14 (`h-3.5`) :
+ * `top-[3px]` + 8 px de haut, `top-1` + 6, `top-[4px]` + 6 pour les deux losanges. Sans cette
+ * égalité, une marque amie flotterait un pixel plus haut que ses voisines et la piste se lirait
+ * comme deux lignes. Le losange est plus court que la barre haute parce qu'il occupe sa
+ * DIAGONALE une fois tourné (6 px de côté ≈ 8,5 px en travers) : à taille égale il dépasserait
+ * de la piste.
+ *
+ * L'ATTÉNUATION reste celle de la piste, pas de la forme : la piste des coéquipiers est plus
+ * discrète que celle du joueur regardé, qu'on y soit ami ou non.
+ */
+function markShape(friend: boolean, tall: boolean): string {
+  if (friend) return tall ? 'top-[4px] h-1.5 w-1.5 rotate-45' : 'top-[4px] h-1.5 w-1.5 rotate-45 opacity-65'
+  return tall ? 'top-[3px] h-2 w-[3px]' : 'top-1 h-1.5 w-[2px] opacity-65'
 }

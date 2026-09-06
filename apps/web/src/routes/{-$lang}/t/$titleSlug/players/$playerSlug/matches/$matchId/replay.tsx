@@ -107,8 +107,9 @@ function ReplayPage() {
   const { data: settings } = useSettings()
   // PAR LES YEUX DE QUI (2026-09-06, L2b) : un seul foyer, ici, et sa valeur descend en
   // PARAMÈTRE à tout ce qui en dépend — modèle, calques d'objectif, écran de fin, export.
-  // Le défaut est le joueur de la page ; le menu qui permettra d'en choisir un autre est le
-  // lot suivant, et il n'aura qu'à appeler `viewpoint.select`.
+  // Le défaut est le joueur de la page, à CHAQUE montage (décision 8 : rien n'est persisté).
+  // Depuis le 2026-09-07 (L3), le MENU de la première piste de la frise appelle `select` : il
+  // reçoit `model.players` pour ses sections et ne touche à rien d'autre que ce foyer.
   const viewpoint = useReplayViewpoint(matchView?.team_tab.scoreboard)
   const model = useReplayModel(data, matchView, settings, viewpoint.xuid)
   const { scoreboard, identity: xuidMeta, marks, window: playWindow, feed: feedEntries } = model
@@ -251,6 +252,8 @@ function ReplayPage() {
               marks={marks}
               endMatch={endMatchSound}
               viewpoint={viewpoint.xuid}
+              players={model.players}
+              onSelectViewpoint={viewpoint.select}
               outcome={{
                 // LE VERDICT, POUR L'EXPORT SEUL : l'écran de fin monté juste en dessous est du
                 // DOM, qu'aucun encodeur vidéo ne voit. L'export le repeint DANS la toile, et

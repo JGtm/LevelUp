@@ -8,9 +8,12 @@
  */
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
+import type { XuidMeta } from '@/features/match-view/xuidMeta'
+
 import type { CalloutZoneReady } from './calloutsLayer'
 import type { ReplayFeedEntry } from '../model/killFeedLogic'
 import type { ReplayMediaItem } from '../model/replayTimelineTracksLogic'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 
 /**
  * 8 tokens de série : une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
@@ -62,3 +65,25 @@ export const FRAME_PUBLISH_MS = 150
  * only-export-components` — la même raison qui a sorti `SlidersIcon` et les hooks du canvas.
  */
 export const SKIP_SECONDS = 10
+
+/**
+ * Référence STABLE pour « pas de roster » : le menu de point de vue de la frise (2026-09-07) se
+ * construit sur `model.players`, qui n'existe pas avant que la vue du match soit là. Même raison
+ * que les trois constantes ci-dessus — un `?? []` inline rebâtirait les sections du menu à
+ * chaque rendu, pour la même liste vide.
+ */
+export const EMPTY_PLAYERS: ReplayPlayer[] = []
+
+/**
+ * Geste NEUTRE pour « personne n'écoute le choix de point de vue » : le canvas monté sans page
+ * (tests de calque, export hors route) rend un menu qui ne change rien plutôt qu'un menu absent.
+ * Référence stable, pour ne pas remémoïser la frise à chaque rendu.
+ */
+export const NO_VIEWPOINT_SELECT = (): void => {}
+
+/**
+ * Référence STABLE pour « aucun camp connu » — le pendant de `NO_MARKS` pour la table
+ * d'identité. Le canvas peut être monté sans vue match : la frise reçoit alors une table vide
+ * (personne n'est coéquipier de personne) plutôt qu'une nouvelle Map à chaque rendu.
+ */
+export const NO_IDENTITY: XuidMeta = new Map()

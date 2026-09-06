@@ -195,3 +195,68 @@ describe('readVictory — vu par les yeux d’un point de vue (3e argument)', ()
     expect(readVictory(sansMoi, 2, 'foe-1')).toBeNull()
   })
 })
+
+/**
+ * AJOUT DU 2026-09-07 (lot L3) — LE SCORE FINAL VU DEPUIS L'AUTRE CAMP.
+ *
+ * Ajouts seulement : les cas à un argument ci-dessus fixent le comportement d'origine, celui de
+ * toute surface qui ne connaît pas de point de vue.
+ *
+ * CE QU'ILS PROTÈGENT. `score_mine` / `score_theirs` sont ancrés sur le JOUEUR DE LA PAGE, comme
+ * `outcome_code` — l'API ne publie pas le score vu d'un adversaire. Or l'écran de fin donne à
+ * cette lecture la PRIORITÉ sur celle du calque du film, qui, elle, suit le point de vue : vu
+ * depuis un adversaire, l'écran annonçait donc l'issue permutée et le score dans l'ordre du
+ * joueur de la page — « Défaite, 3 - 1 ». Le défaut est arrivé avec L2b et ne se voyait qu'à la
+ * fin de la lecture, après avoir changé de joueur.
+ */
+describe('finalScoreFromHeader — vu par les yeux d’un point de vue (sujet)', () => {
+  const NOMME = [
+    { xuid: 'me-1', team_side: 't0', is_me: true },
+    { xuid: 'ally-2', team_side: 't0', is_me: false },
+    { xuid: 'foe-1', team_side: 't1', is_me: false },
+    { xuid: 'nomad-9', team_side: null, is_me: false },
+  ]
+  const HEADER = { score_kind: 'rounds', score_mine: 3, score_theirs: 1 }
+
+  it('sujet = le joueur de la page : rigoureusement l’ordre d’origine', () => {
+    expect(finalScoreFromHeader(HEADER, NOMME, 'me-1')).toEqual({ ally: 3, enemy: 1 })
+  })
+
+  it('sujet = un coéquipier : identique aussi — même camp, même ordre', () => {
+    expect(finalScoreFromHeader(HEADER, NOMME, 'ally-2')).toEqual({ ally: 3, enemy: 1 })
+  })
+
+  it('SUJET DE L’AUTRE CAMP : le score est PERMUTÉ, comme l’issue', () => {
+    expect(finalScoreFromHeader(HEADER, NOMME, 'foe-1')).toEqual({ ally: 1, enemy: 3 })
+  })
+
+  /**
+   * SUJET NON SITUABLE : l'ordre du joueur de la page, PAS `null`. Sans camp il n'y a rien à
+   * permuter, et l'ordre de l'API est le seul sens que ces deux nombres aient. Aucun score faux
+   * ne peut atteindre l'écran par là : les deux surfaces qui l'affichent ne se rendent qu'avec
+   * une lecture de `readVictory`, qui rend `null` dans exactement ces cas-là.
+   */
+  it('sujet sans camp transmis, ou absent du tableau : l’ordre du joueur de la page', () => {
+    expect(finalScoreFromHeader(HEADER, NOMME, 'nomad-9')).toEqual({ ally: 3, enemy: 1 })
+    expect(finalScoreFromHeader(HEADER, NOMME, 'xuid-jamais-vu')).toEqual({ ally: 3, enemy: 1 })
+  })
+
+  it('sans ligne « moi », rien à permuter : l’ordre publié par l’API', () => {
+    const sansMoi = NOMME.map((r) => ({ ...r, is_me: false }))
+    expect(finalScoreFromHeader(HEADER, sansMoi, 'foe-1')).toEqual({ ally: 3, enemy: 1 })
+  })
+
+  it('un match qui n’oppose pas exactement deux camps ne se permute pas non plus', () => {
+    const troisCamps = [...NOMME, { xuid: 'third-1', team_side: 't2', is_me: false }]
+    expect(finalScoreFromHeader(HEADER, troisCamps, 'foe-1')).toEqual({ ally: 3, enemy: 1 })
+  })
+
+  it('sujet à null, ou tableau absent : le comportement à un argument, à la ligne près', () => {
+    expect(finalScoreFromHeader(HEADER, NOMME, null)).toEqual(finalScoreFromHeader(HEADER))
+    expect(finalScoreFromHeader(HEADER, undefined, 'foe-1')).toEqual(finalScoreFromHeader(HEADER))
+  })
+
+  it('les nombres manquants restent null, sujet ou pas', () => {
+    expect(finalScoreFromHeader({ score_kind: 'rounds' }, NOMME, 'foe-1')).toBeNull()
+  })
+})
