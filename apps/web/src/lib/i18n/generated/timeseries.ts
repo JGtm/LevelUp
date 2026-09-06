@@ -51,7 +51,7 @@ export const timeseriesManifest = {
   "timeseries.form.r_squared_unreliable": { fr: "Tendance peu fiable", en: "Unreliable trend" },
   "timeseries.form.r_squared_warning": { fr: "R² < 0.3 — tendance non significative", en: "R² < 0.3 — non-significant trend" },
   "timeseries.form.winrate_slope": { fr: "Pente du taux de victoire", en: "Win rate slope" },
-  "timeseries.intensity.heatmap_title": { fr: "Heatmap d'intensité (jour × heure)", en: "Intensity heatmap (day × hour)" },
+  "timeseries.intensity.heatmap_title": { fr: "Carte de chaleur d'intensité (jour × heure)", en: "Intensity heatmap (day × hour)" },
   "timeseries.intensity.score_per_min_axis_y": { fr: "pts/min", en: "pts/min" },
   "timeseries.intensity.score_per_min_series_label": { fr: "Score/min", en: "Score/min" },
   "timeseries.intensity.score_per_min_title": { fr: "Score par minute", en: "Score per minute" },

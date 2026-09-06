@@ -250,6 +250,13 @@ func fallbackCapabilities() games.CapabilityMap {
 		// (durées non fiables, impulses partiels) → not_exposed au lancement.
 		// Promotion degraded (agrégation d'impulses) = chantier ultérieur distinct.
 		games.CapMatchObjectiveStats: games.CapNotExposed,
+		// Artefact de rejeu 2D : DECLAREE explicitement not_exposed, la ou les cinq autres
+		// cles film.* sont simplement absentes de cette map. Celle-ci ne gouverne pas
+		// qu une production : elle gouverne aussi deux ROUTES SERVIES (/objective-events,
+		// /positions) qui repondaient 200 [] sur Halo 5 alors que le code promettait un
+		// 503 (registre 2026-09-05, constat D2). Un refus explicite se lit ; une absence
+		// se deduisait. Halo 5 n a aucun decodeur de film : aucun artefact possible.
+		games.CapFilmReplayArtifact: games.CapNotExposed,
 	}
 }
 

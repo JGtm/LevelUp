@@ -154,6 +154,11 @@ function ExplorerFiltersBar({
   // masqué pour un titre sans rang (NO-OP halo_infinite). Distinct du `disabled`
   // existant, qui dépend du contexte playlist classée sélectionné.
   const hasRanked = useCapability('ranked')
+  // Le filtre « Avec rejeu / Sans rejeu » est une surface `replay` : un titre sans
+  // décodeur de film n'aura JAMAIS d'artefact, donc « Avec rejeu » y rendrait toujours
+  // zéro ligne et « Sans rejeu » serait un synonyme de « tous ». Masqué (2026-09-05,
+  // registre L5 — sa voisine Waypoint était gatée, pas lui).
+  const hasReplay = useCapability('replay')
   return (
     <Card>
       <CardContent className="py-3 pt-3 space-y-3">
@@ -224,25 +229,27 @@ function ExplorerFiltersBar({
           {/* Présence d'un rejeu 2D — 3 états, même forme que le scope escouade.
               Pas de compte par option : le backend n'expose pas de dimension
               cascade pour le rejeu (la présence d'artefact n'est pas une donnée
-              de match, c'est un fichier). */}
-          <select
-            value={replayScope}
-            onChange={(e) => onReplayScopeChange(e.target.value as ReplayScope)}
-            aria-label={t('explorer.filters.replay_aria')}
-            className="rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
-          >
-            {(['', 'with', 'without'] as const).map((v) => {
-              const labelKey =
-                v === '' ? 'explorer.filters.replay_all'
-                : v === 'with' ? 'explorer.filters.replay_with'
-                : 'explorer.filters.replay_without'
-              return (
-                <option key={v} value={v}>
-                  {t(labelKey)}
-                </option>
-              )
-            })}
-          </select>
+              de match, c'est un fichier). Gaté par la capability `replay` du titre. */}
+          {hasReplay && (
+            <select
+              value={replayScope}
+              onChange={(e) => onReplayScopeChange(e.target.value as ReplayScope)}
+              aria-label={t('explorer.filters.replay_aria')}
+              className="rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
+            >
+              {(['', 'with', 'without'] as const).map((v) => {
+                const labelKey =
+                  v === '' ? 'explorer.filters.replay_all'
+                  : v === 'with' ? 'explorer.filters.replay_with'
+                  : 'explorer.filters.replay_without'
+                return (
+                  <option key={v} value={v}>
+                    {t(labelKey)}
+                  </option>
+                )
+              })}
+            </select>
+          )}
         </div>
 
         {/* Ligne 2 : tous les multi-selects */}
