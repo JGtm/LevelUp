@@ -59,6 +59,60 @@ rajouter `OpeningLeadMS` ; l un sans l autre decalerait toutes les lignes de 1,5
 entame n etant encore cuite (backfill jamais lance, decision utilisateur), rien n est a recuire si
 la bascule precede le backfill. Trois decouvertes hors perimetre consignees au plan, dont un FAUX
 VERT generique : le gate du lot, sans `-tags=integration`, ne lancait AUCUN des tests qu il visait.
+## [2026-09-06] Lot 2 duels — revue adversariale ronde 1 : l entame pouvait etre un point de reapparition — Complete
+
+**Ronde 2 (relecteur frais, corrections seules).** 0 P0, 0 P1, 1 P2 consigne (marge aval de `coversInstant` sans test « absence »). Equivalence de `BuildKillPositions` avant/apres refactor prouvee par test differentiel (20 000 tirages, DeepEqual positions + rapport). F3 recalcule a la main : 3,4 / 10,5 / 33,0 justes. Fusionne dans feat/duels (`e300e1492`).
+
+**Decision technique principale.** Deux relecteurs independants ont relu le lot 2 du
+`.ai/PLAN_DUELS_PORTEE_2026-09-06.md` ; sept constats retenus, tous corriges sur
+`feat/duels-lot2-fix` (worktree `LevelUp-wt-duels-fix2`). Le constat qui rendait le lot non
+livrable a ete trouve DEUX FOIS, independamment : composer `BuildKillPositions` avec des couples
+decales de -1,5 s ne suffit PAS a produire une entame. Le placement ne connait aucune frontiere
+de vie ; il rend l echantillon le plus proche a 120 ms pres. Si un joueur a REAPPARU entre
+l entame et le coup fatal, l instant decale tombe dans la tolerance du PREMIER echantillon de la
+nouvelle vie et le placement rend le POINT D APPARITION — presente comme une entame. L en-tete du
+fichier affirmait exactement l inverse (« mieux vaut pas d entame qu une position de
+reapparition »), et le test cense l epingler ne couvrait que l origine du FILM, pas celle de la
+VIE. Correctif : `replay.BuildKillOpenings(pos, slotXUID, kills, offsetUS) ([]KillPosition,
+KillPosReport)` — decale par `ShiftKillRefs`, place par LA fonction de placement (aucune seconde,
+regle « deux decodeurs du meme fait divergeraient »), puis ne garde un cote que si le slot qui a
+fourni la position porte l instant du KILL dans la MEME vie (`buildLifeSpans`, trou `lifeGapUS`).
+Deux choix se sont imposes en ecrivant : le placement est factorise dans `placeKillPositions`, qui
+rend en plus le SLOT retenu (`positionOf` rend desormais la position ET son slot) — sans le slot,
+la question « de quelle vie vient cette position ? » n a pas de reponse ; et la couverture d une
+vie est ASYMETRIQUE — 120 ms de marge APRES la derniere position (la vie d une victime se termine
+AU coup fatal, sans cette marge aucune entame de victime ne passerait), AUCUNE marge AVANT la
+premiere (la premiere position d une vie EST la reapparition). L instant rendu en sortie est celui
+du KILL, jamais l instant decale : `time_ms` est la cle de jointure vers la mort.
+
+**Resultats observes.** Reproduction du relecteur epinglee en test (mort a 1 550 ms, apparitions a
+t = 0 : le placement nu rend les deux spawns, 1 131 m d ecart pour une mort a 5 m ; l entame
+refuse et compte `OpeningOutOfLife = 2`). Les trois tests de refus portent leur propre TEMOIN :
+chacun verifie d abord que le placement nu tombe dans le piege — sans quoi un « aucune entame »
+resterait vert alors que le filtre aurait disparu. Mutations prouvees rouges puis restaurees :
+filtre de vie neutralise -> 3 tests d entame rouges ; `sort.Float64s` retire -> le nouveau
+`TestWeaponRangeAggregateDistancesNonTriees` rouge (p10 13,4 au lieu de 3,4 ; mediane 9,5 au lieu
+de 10,5 ; p90 8,5 au lieu de 33,0, tous calcules a la main) ; detecteur du garde-rail neutralise
+(`if false && fautifPortee(...)`) -> `TestSeuilsPorteeDetecteUneCopie` rouge. Les six autres
+constats : test « instant negatif » reecrit avec un `offsetUS` non nul (l instant de match negatif
+devient un instant de FILM positif, dans la tolerance — ce qui refuse est la vie, plus un
+debordement `uint64`) ; garde-rail dote d une racine injectable et d un controle positif (deux
+copies fautives + un fichier licite dans un `t.TempDir()`) ; doc de `WeaponRangeMinMeasured`
+corrigee (`BelowThreshold` compte des COUPLES arme x cote, pas des armes) ; deux morceaux de code
+mort supprimes (clamp `minMeasured < 1`, garde `lo >= n-1` de `percentileLinear`), leur
+inatteignabilite ecrite en commentaire pour qu ils ne reviennent pas. Gates verts
+(`CGO_ENABLED=0`, GOCACHE isole) : `go test -count=1 ./internal/analysis/
+./internal/analysis/replay/ -timeout 900s` (37,4 s / 23,9 s), `go vet`, `gofmt -l` vide, et
+`go build ./internal/sync/killcollector/` avec CGO — le consommateur de `KillPosReport` compile.
+
+**Conclusion / prochaine etape.** F1 a F7 statues `[x]` dans le bloc « Revue adversariale ronde 1 »
+du lot 2 ; deux constats consignes en « Decouvertes » sans etre traites (ce que les regex du
+garde-rail ne captent pas — SQL multiligne, alias `dz`, `HAVING count(*) >= 8` — et la meme
+imprecision de formulation dans le texte de D9). Le lot 3 reste inchange dans son perimetre : il
+n ecrit AUCUN seuil ni comparaison de denivele en SQL, ce qui est precisement ce qui rend les
+trous du garde-rail acceptables. `BuildKillOpenings` est desormais le seul appel legitime pour une
+entame : le producteur du lot 3.10 (`killcollector/positions.go`) doit l appeler ELLE, et non
+`BuildKillPositions` sur des couples decales.
 
 ## [2026-09-06] Lot 1 duels — le bouclier DU TUEUR : signal reel, attribution impossible — NO-GO lot 7 — Complete
 
