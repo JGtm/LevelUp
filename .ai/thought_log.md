@@ -95440,3 +95440,105 @@ bloc, corrections (dont B-R2 C1), integration dans l'ordre C -> A -> B -> F -> G
 CLAUDE.md corrige (garde-rail gamefiles deplace sous archlint), baseline rejouee au merge de E,
 temoin de rasterisation du lot D prime sur celui du lot F. Item D.15 (transport et tiroir freres
 du canvas) differe a un gate visuel valide par le user.
+## [2026-09-05] Lot B du plan v2 — le document de rejeu SERVI separe du document STOCKE — Complete
+
+**Contexte.** Decision utilisateur ferme n2 du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`
+(constat C7 du registre d'audit, annexes G2/G3) : le format du FICHIER d'artefact de rejeu
+(`internal/analysis/replay.ReplayDocument`) etait aussi le contrat public — 99 de ses types
+atteignables sont des `components.schemas` d'`api/openapi.yaml`, donc autant de types
+TypeScript. Consequence mesuree : 43 montees de `SchemaVersion` en cinq semaines, chacune
+regenerant le contrat pour un champ que le client ne lisait pas ; et aucun renommage cote
+client possible sans invalider le parc d'artefacts cuits. Exigence du lot : separer
+MAINTENANT, avec une forme de fil strictement inchangee (`openapi.yaml` et `generated.ts`
+sans diff). Worktree dedie `LevelUp-wt-v2-docservi`, branche `feat/v2-docservi`.
+
+**Decision technique.** Trois pieces. (1) `internal/domain/replaydoc` porte la forme de fil et
+rien d'autre : 99 structs + 3 scalaires nommes, memes noms de types (Huma en derive les noms
+de schemas), memes tags, meme ordre de champs (il gouverne la liste `required`), zero import
+du monde stocke ; `ContractVersion = 39`, distincte de la version stockee qui, elle, pilote la
+re-cuisson. (2) `internal/service/replayview` projette, une fonction pure par type, sans E/S,
+en preservant la nullite des tranches (sur les champs sans `omitempty`, `null` et `[]` sont
+deux corps differents). Projection EXPLICITE et non aller-retour JSON ni copie par reflexion :
+le but de la separation est qu'un champ non servi soit une decision visible au diff.
+(3) Le port, le service et le handler passent aux types servis ; un ratchet `archlint` (scan
+AST d'`internal/api/`, champs `Body`/`RawBody` et structs `*Input`/`*Output`) interdit le
+retour d'un type `analysis` en corps de route. Prealable verifie sur pieces avant d'ecrire :
+`huma@v2.39.1/registry.go` ignore le paquet dans le nom de schema et fait `panic` sur deux
+types NOMMES homonymes — le suffixe numerique ne concerne que les types anonymes.
+
+**Resultats.** Contrat INCHANGE : `go run ./cmd/openapi-gen` reecrit 676 077 octets et
+`git diff --exit-code` est vide sur `api/openapi.yaml` comme sur `generated.ts`. Controle
+prealable par programme jetable : les 99 schemas Huma des trois racines sont identiques octet
+pour octet des deux cotes. Trois garde-rails prouves par MUTATION (mutation posee, echec
+constate et cite, mutation annulee, suite re-jouee verte) : retirer un champ du seul
+convertisseur, le retirer aussi du type servi, remettre un type `analysis` en corps de route.
+`TestReplayDocumentFieldCountIsFrozen` change de nature — il porte desormais sur le contrat
+servi, chronique mise a jour dans le meme commit — et la garantie qu'il portait implicitement
+(« la cuisson ecrit tout ce que le contrat promet ») passe au test de parite, qui exige une
+decision ecrite par champ stocke, liste `champsNonServis` vide au 2026-09-05. Gates verts :
+suites `api`/`service`/`domain`/`archlint`/`contracttest`, `make go-api-test`, `go build ./...`,
+`golangci-lint` (0 issue sur les paquets crees ; les 19 restantes sont de la dette anterieure
+gelee dans `handlers/`), typecheck web. Quatre commits (`40667b2c2`, `1d32a6356`, `fac6d2c07`,
+`28b3e4ce1`). Decouverte hors perimetre, non traitee et inscrite a l'allowlist datee du
+ratchet : `handlers/patterns.go` sert `analysis/patterns.PatternReport` (4 schemas), meme
+defaut, anterieur au lot — cible de retrait 2026-11-01, critere mesurable ecrit. Deuxieme
+decouverte : le « 100 schemas » du registre en vaut 99, `Vec3` venant de `games/canonical`.
+
+**Conclusion / prochaine etape.** Lot B clos, 4 items sur 4 statues `[x]`, journal
+`.ai/V7.5/v2/LOT_B.md`. Ajouter un calque a la cuisson ne touche plus le contrat public.
+Prochaine etape : revue adversariale du diff par le superviseur, puis integration dans
+`feat/v75` selon l'ordre du plan (C -> A -> B -> F -> G -> E -> D).
+
+## [2026-09-06] Lot B du plan v2 — corrections apres revue adversariale (six constats) — Complete
+
+**Contexte.** Deux relecteurs adversariaux ont relu le lot B (`feat/v2-docservi`,
+a21fd77f4..fa9fdae54) sous deux lentilles : L3 (anti-patterns CLAUDE.md, correction de la
+projection) et L6 (ce que les tests ne couvrent pas). Le coeur du lot tient, prouve sur
+pieces : equivalence de fil OCTET POUR OCTET avec l'encodeur reel du depot
+(`humacore.JSONFormat`) sur 106 artefacts, 109 sidecars de fond, 86 entrees de callouts et
+1 000 documents de fuzz nil/vide/zero ; 228 paires de types visitees sans ecart de nom,
+d'ordre, de tag ni de marshaler ; `openapi.yaml` et `generated.ts` regeneres a l'identique.
+Six constats recevables (1 P1, 5 P2), aucun bloquant, tous traites ici.
+
+**Decision technique.** Le constat P1 est le seul qui touche la valeur du lot : le lot
+remplace une contrainte de COMPILATION (les deux documents etaient le meme type) par des
+tests ecrits, et la classe de divergence la plus probable — celle du zero et de la nullite —
+passait entiere. Le remplisseur du test de parite ne produisait ni zero ni nil (entiers a
+partir de 1, tranches de longueur 2, pointeurs toujours alloues), si bien que deux mutations
+restaient vertes sur les quatre tests ET sur le golden : un `int` devenu `*int` cote servi (la
+valeur 0 se tait sous `omitempty` et parle sous un pointeur) et une tranche nulle normalisee
+en tranche vide (`null` devient `[]` sur un champ sans `omitempty`). Correction : deux boutons
+sur le remplisseur (`zero` pour les scalaires, `frontiere`/`bord` pour l'etat des conteneurs)
+et un BALAYAGE de la frontiere de 0 a 12. Le balayage n'est pas decoratif — une tranche nulle
+a la racine ne dit rien d'une tranche nulle au troisieme niveau, et c'est la que la mutation
+a ete jouee. Les cinq P2 : le ratchet se contournait en une ligne par un alias de type (meme
+type pour reflect, donc meme schema Huma, donc golden muet) — troisieme voie ajoutee au scan,
+alias ET type defini ; le plancher du ratchet etait calibre sur 104 quand le scan en voit 226
+(le 104 venait d'un grep preparatoire qui ignorait les corps declares sur une ligne) — porte
+a 180 avec chronique datee ; `ContractVersion` n'avait aucun lecteur et son test etait une
+tautologie — retiree, avec dans `doc.go` ce qui tient reellement la forme servie ;
+`champsNonServis` ne pouvait pas couvrir un TYPE stocke neuf, soit le cas majoritaire des
+calques du rejeu — seconde liste datee `typesNonServis`, consultee avant le controle du jumeau
+et par le parcours ; cinq doc-comments recopies du producteur decrivaient autre chose que le
+type servi, dont deux faux (un « sidecar » qui n'est ecrit nulle part, un « rendu tel quel »
+que le lot venait justement d'abolir — doc inversee dans un fichier neuf).
+
+**Resultats.** Six points statues, six commits (`128cbe785`, `5d132eb4a`, `cda395c83`,
+`138eb2518`, `b7ec4e50c`, `063c1f6b8`). Chaque garde-rail prouve par MUTATION, posee puis
+annulee : les deux mutations du verdict P1 rougissent desormais en nommant le chemin
+(`.tracks[0].startFrame : present cote servi, absent cote stocke` ;
+`.tracks[0].points : <nil> cote stocke, [] cote servi`), l'alias et le type defini rougissent
+en nommant la forme du relais, un type stocke neuf non inscrit rougit et devient vert une fois
+inscrit a `typesNonServis`, une exemption orpheline rougit des deux cotes, et le filtre des
+champs non exportes a sa contre-epreuve. Gates verts apres corrections : `openapi-gen -check`
+« est a jour (676077 octets) », les deux `git diff --exit-code` vides, 16 paquets `ok`,
+`go build ./...`, et `golangci-lint run --new-from-merge-base=origin/main ./...` a 0 issue.
+Decouverte de methode remontee au pilote : les deux relecteurs ont travaille dans le MEME
+worktree et se sont pollues mutuellement (une mutation concurrente ne peut produire qu'un faux
+echec, jamais un faux succes, donc les verdicts restent surs — mais deux revues simultanees
+demandent deux worktrees).
+
+**Conclusion / prochaine etape.** Lot B clos apres revue, journal `.ai/V7.5/v2/LOT_B.md`
+complete d'une section « Corrections apres revue » avec les six points, les huit mutations et
+les gates. Prochaine etape : integration dans `feat/v75` par le superviseur, selon l'ordre du
+plan (C -> A -> B -> F -> G -> E -> D).
