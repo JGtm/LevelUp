@@ -139,13 +139,23 @@ func (r *WeaponRangeRepo) loadBothSides(
 	return out, nil
 }
 
-// buildWeaponRangeQuery compose la clause de portée puis délègue la jointure à l'helper
-// canonique. `column` est la colonne de xuid du côté lu.
+// buildWeaponRangeQuery compose les deux clauses de portée puis délègue la jointure à
+// l'helper canonique. `column` est la colonne de xuid du côté lu.
+//
+// LES MATCH_ID SONT LIÉS DEUX FOIS, ET L'ORDRE COMPTE : d'abord ceux de la sous-requête
+// `fragSolo` (elle précède la clause WHERE dans le texte SQL), ensuite ceux de la portée
+// externe, ensuite les arguments du filtre de joueur. Sans le scope de la sous-requête,
+// DuckDB balaie la vue entière pour juger l'unicité du frag — mesuré ×15,6 (résidu 4.0a).
 func buildWeaponRangeQuery(
 	table measuredPositionsTable, column string, f port.WeaponRangeFilters,
 ) (string, []any) {
 	var sb strings.Builder
-	args := make([]any, 0, len(f.MatchIDs)+len(f.XUIDs)+1)
+	args := make([]any, 0, 2*len(f.MatchIDs)+len(f.XUIDs)+1)
+
+	fragScope := "s.match_id IN (" + Placeholders(len(f.MatchIDs)) + ")"
+	for _, id := range f.MatchIDs {
+		args = append(args, id)
+	}
 
 	sb.WriteString("e.match_id IN (")
 	sb.WriteString(Placeholders(len(f.MatchIDs)))
@@ -161,7 +171,38 @@ func buildWeaponRangeQuery(
 		XUIDs:    f.XUIDs,
 	})
 
-	return measuredKillsQuery(table, sb.String()), args
+	return measuredKillsQuery(table, fragScope, sb.String()), args
+}
+
+// ResolveWeaponLabels traduit des clés de registre en noms d'affichage (port.WeaponLabelResolver).
+//
+// LA MÊME RÉSOLUTION QUE `KillDistanceRepo.resolveRows`, ET PAS UNE SECONDE : elle passe par
+// `resolveWeaponKeyLabelsAny`, l'unique passage du paquet pour cette traduction (source de nom
+// keyée par weapon_key, cf. weapon_resolver.go). Une copie ici divergerait sur l'ordre de
+// priorité FR/EN, et deux pages nommeraient la même arme différemment.
+//
+// BEST-EFFORT, SANS ERREUR REMONTÉE : le résolveur sous-jacent journalise ses pannes (registre
+// absent, requête en échec) et rend ce qu'il a. La signature garde `error` pour que ce contrat
+// puisse un jour dire non — aujourd'hui elle vaut toujours nil, et l'appelant qui la teste ne
+// fait rien d'inutile : il se protège d'un futur implémenteur qui échouerait vraiment.
+func (r *WeaponRangeRepo) ResolveWeaponLabels(
+	ctx context.Context, weaponKeys []string,
+) (map[string]port.WeaponLabel, error) {
+	out := make(map[string]port.WeaponLabel, len(weaponKeys))
+	if len(weaponKeys) == 0 {
+		return out, nil
+	}
+	for key, meta := range resolveWeaponKeyLabelsAny(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponKeys) {
+		// Une entrée sans aucun nom n'en est pas une : la laisser passer ferait publier un
+		// libellé vide là où l'appelant sait retomber sur la clé.
+		if meta.label == "" && meta.labelEN == "" {
+			continue
+		}
+		out[key] = port.WeaponLabel{Label: meta.label, LabelEN: meta.labelEN}
+	}
+	slog.DebugContext(ctx, "WeaponRangeRepo: weapon labels resolved",
+		"slug", r.pdb.TitleSlug, "demandees", len(weaponKeys), "resolues", len(out))
+	return out, nil
 }
 
 // toMeasuredKills traduit `source_tag` -> `weapon_key` et habille chaque mesure de son côté.

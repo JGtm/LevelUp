@@ -320,3 +320,43 @@ func TestPercentileLinearMedianeCoincideAvecMedianFloat(t *testing.T) {
 		}
 	}
 }
+
+// TestWeaponRangeBelowOrdreDeterministe — l'ordre des couples ÉCARTÉS : effectif décroissant,
+// puis clé d'arme, puis côté (constat F5, revue adversariale du lot 4, 2026-09-06 —
+// `sortWeaponRangeBelow` n'était exercé par aucun test).
+//
+// POURQUOI CET ORDRE COMPTE. Ces lignes se lisent telles quelles sous le graphe (« frags :
+// Hydra (6) · Disrupteur (4) »), et le service ne les retrie PAS : deux tris du même fait
+// divergeraient. L'ordre d'arrivée, lui, est celui des lignes lues par le repo — dont la
+// requête n'a pas d'`ORDER BY`. Sans ce tri, la phrase publiée changerait d'ordre d'un
+// chargement à l'autre.
+//
+// LA FIXTURE ENTRE DANS L'ORDRE EXACTEMENT INVERSE de la sortie attendue, et elle exerce les
+// TROIS critères : deux effectifs différents (6 et 2), deux clés au même effectif (aaa/hydra),
+// et la même clé des deux côtés au même effectif (le côté départage en dernier).
+func TestWeaponRangeBelowOrdreDeterministe(t *testing.T) {
+	var kills []MeasuredKill
+	kills = append(kills, serie("ravager", SideVictim, 2)...)
+	kills = append(kills, serie("hydra", SideVictim, 6)...)
+	kills = append(kills, serie("hydra", SideKiller, 6)...)
+	kills = append(kills, serie("aaa", SideKiller, 6)...)
+
+	_, sum := WeaponRangeAggregate(kills, WeaponRangeMinMeasured)
+	if len(sum.BelowThresholdRows) != 4 {
+		t.Fatalf("%d couple(s) écarté(s), attendu 4 : %+v",
+			len(sum.BelowThresholdRows), sum.BelowThresholdRows)
+	}
+	attendu := []WeaponRangeBelow{
+		{WeaponKey: "aaa", Side: SideKiller, Measured: 6},
+		{WeaponKey: "hydra", Side: SideKiller, Measured: 6},
+		{WeaponKey: "hydra", Side: SideVictim, Measured: 6},
+		{WeaponKey: "ravager", Side: SideVictim, Measured: 2},
+	}
+	for i, veut := range attendu {
+		if sum.BelowThresholdRows[i] != veut {
+			t.Fatalf("rang %d = %+v, attendu %+v (effectif décroissant, puis clé, puis côté) — "+
+				"ordre complet obtenu : %+v", i, sum.BelowThresholdRows[i], veut,
+				sum.BelowThresholdRows)
+		}
+	}
+}

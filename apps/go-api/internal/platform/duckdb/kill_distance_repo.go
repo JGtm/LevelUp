@@ -101,9 +101,39 @@ func (r *KillDistanceRepo) LoadMatch(ctx context.Context, matchID string) ([]dom
 }
 
 // killDistanceWhere : la portée de CE lecteur — un seul match, jamais un scan.
-// Le reste de la jointure (gardes `publishable` et d'unanimité, NULL-checks,
-// groupement) vit dans kill_measured.go, partagé avec WeaponRangeRepo.
+// Le reste de la jointure (gardes `publishable`, d'unanimité et d'unicité du
+// frag, NULL-checks, groupement) vit dans kill_measured.go, partagé avec
+// WeaponRangeRepo.
+//
+// GARDE D'UNICITÉ DU FRAG (2026-09-06, lot 3) : deux morts au même (match,
+// tueur, instant) — MÊME à la même arme — ne publient plus rien. Le POC les
+// mesurait avant, sur une position arbitraire, faute de savoir laquelle des
+// deux victimes la ligne de positions plaçait. Impact mesuré sur le corpus :
+// NUL (0 groupe multi-victimes sur 138 293 événements). Changement statué et
+// accepté au résidu 4.0c du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md.
 const killDistanceWhere = `e.match_id = ?`
+
+// killDistanceFragScope : le MÊME match, borné dans la sous-requête `fragSolo`.
+// Sans lui, DuckDB balaie la vue entière pour juger l'unicité du frag (résidu
+// 4.0a). Ses paramètres sont liés AVANT ceux de killDistanceWhere.
+const killDistanceFragScope = `s.match_id = ?`
+
+// killDistanceQueryFor compose la lecture d'UN match : le texte SQL ET ses
+// paramètres, dans l'ordre du texte.
+//
+// UN SEUL SITE DE COMPOSITION, ET C'EST LUI QUE LE TEST DE PLAN EXERCE. La
+// tentation est d'écrire ce couple deux fois — ici et dans
+// kill_measured_scope_test.go — mais un test qui RECOMPOSE la requête à partir
+// des constantes ne juge plus le lecteur de production : ramener le scope de la
+// sous-requête à `TRUE` à cet endroit le laisserait vert (constat F1 de la revue
+// adversariale du lot 4, 2026-09-06). Le test appelle donc cette fonction.
+//
+// matchID est lié DEUX FOIS : la sous-requête `fragSolo` d'abord (elle précède
+// la clause WHERE dans le texte SQL), la portée externe ensuite.
+func killDistanceQueryFor(matchID string) (string, []any) {
+	return measuredKillsQuery(positionsAtKill, killDistanceFragScope, killDistanceWhere),
+		[]any{matchID, matchID}
+}
 
 // queryMeasuredKills lit les morts mesurées du match via l'helper canonique.
 func (r *KillDistanceRepo) queryMeasuredKills(ctx context.Context, matchID string) ([]killMeasured, error) {
@@ -113,9 +143,8 @@ func (r *KillDistanceRepo) queryMeasuredKills(ctx context.Context, matchID strin
 	}
 	defer release()
 
-	return queryMeasuredKills(ctx, db,
-		measuredKillsQuery(positionsAtKill, killDistanceWhere),
-		[]any{matchID}, "KillDistanceRepo("+matchID+")")
+	q, args := killDistanceQueryFor(matchID)
+	return queryMeasuredKills(ctx, db, q, args, "KillDistanceRepo("+matchID+")")
 }
 
 // resolveRows traduit source_tag -> weapon_key (classificateur), agrège par
