@@ -26,6 +26,7 @@ import {
   sameLeadSegments,
   THUMB_PX,
   trackLeft,
+  trackLeftVar,
   trackScale,
   trackWidth,
   type ReplayMediaItem,
@@ -396,6 +397,37 @@ describe('la géométrie de la piste suit celle du curseur natif', () => {
   it('trackWidth rend une largeur POSITIVE, même sur un intervalle inversé', () => {
     expect(trackWidth(0.25, 0.75)).toBe(`calc((100% - ${THUMB_PX}px) * 0.5)`)
     expect(trackWidth(0.8, 0.2)).toBe(`calc((100% - ${THUMB_PX}px) * 0)`)
+  })
+
+  /**
+   * `trackLeftVar` — LA MÊME FORMULE, SUR UNE VARIABLE (2026-09-06, lot du trait de lecture).
+   *
+   * CE QUE CES CAS TIENNENT : que les deux formes ne divergent pas. Le trait de lecture et la
+   * bulle de temps se positionnent par variable (leur ratio change soixante fois par seconde,
+   * il n'existe pas au rendu) ; les marques, elles, par valeur. Si les deux expressions
+   * cessaient de décrire la même géométrie, le trait passerait à côté du kill qu'il désigne —
+   * et rien d'autre ne le dirait, puisque chacune resterait vraie de son côté.
+   */
+  it('trackLeftVar décrit la MÊME géométrie que trackLeft, à la variable près', () => {
+    // Le ratio littéral de `trackLeft` laisse la place à `var(...)` : tout le reste — la
+    // demi-largeur du curseur, la largeur utile — est identique caractère pour caractère.
+    expect(trackLeftVar('--played-r')).toBe(trackLeft(1).replace('* 1)', '* var(--played-r, 0))'))
+  })
+
+  it('trackLeftVar réserve la demi-largeur du curseur, comme les marques', () => {
+    expect(trackLeftVar('--played-r')).toBe(
+      `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * var(--played-r, 0))`,
+    )
+  })
+
+  /**
+   * LE REPLI À ZÉRO N'EST PAS UN ORNEMENT : tant que la lecture n'a pas posé le curseur une
+   * première fois, la variable n'existe pas — et un `var()` sans repli rend TOUT le `calc()`
+   * invalide, donc la position `auto`. Le trait sauterait alors de l'origine à sa place au
+   * premier pas de la boucle, à chaque montage de la frise.
+   */
+  it('trackLeftVar porte un repli à zéro pour la variable pas encore écrite', () => {
+    expect(trackLeftVar('--quoi-que-ce-soit')).toContain('var(--quoi-que-ce-soit, 0)')
   })
 })
 

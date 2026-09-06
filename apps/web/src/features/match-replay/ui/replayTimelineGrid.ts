@@ -1,0 +1,46 @@
+/**
+ * replayTimelineGrid — LES DEUX COLONNES DE LA FRISE, définies une seule fois (2026-09-06).
+ *
+ * # POURQUOI UN MODULE POUR DEUX LONGUEURS
+ *
+ * La frise se pose sur une grille à deux colonnes : les LIBELLÉS de piste (« Toi », « Alliés »,
+ * « Dominance »…) puis les PISTES elles-mêmes. Trois lecteurs ont besoin des mêmes nombres, et
+ * c'est ce qui les sort des classes Tailwind du composant :
+ *
+ *  1. la grille des PISTES (`ReplayTimelineTracks`) ;
+ *  2. la grille du TRANSPORT — chevron et curseur — qui doit s'aligner au pixel sur la première,
+ *     sans quoi le curseur ne lit plus l'axe qu'il commande ;
+ *  3. le TRAIT DE LECTURE (`ReplayPlayhead`), qui ne traverse QUE la colonne des pistes et doit
+ *     donc savoir où elle commence.
+ *
+ * Écrits en classes (`grid-cols-[76px_1fr]`, `gap-x-3`) et recopiés dans le calcul du trait, ces
+ * deux nombres auraient dérivé au premier élargissement de la colonne — L3 la passe à 100 px pour
+ * y loger un menu de joueurs. Chacune des trois écritures serait restée vraie de son côté, et le
+ * trait aurait glissé sans qu'aucun test ne rougisse. Une définition, trois lecteurs.
+ *
+ * # CE QU'IL N'EST PAS
+ *
+ * Ce n'est pas la géométrie de PISTE : la position d'un instant sur une piste
+ * (`calc(8px + (100% - 16px) * r)`, la demi-largeur que réserve le curseur natif) vit dans
+ * `model/replayTimelineTracksLogic.ts` et n'a rien à faire ici. Les deux se composent — colonne
+ * d'abord, position dans la colonne ensuite — mais elles ne changent pas pour les mêmes raisons.
+ */
+
+/** La colonne des LIBELLÉS de piste. */
+export const LABEL_COLUMN = '76px'
+
+/** L'écart entre les libellés et les pistes (l'équivalent exact de `gap-x-3`). */
+export const COLUMN_GAP = '0.75rem'
+
+/** Les colonnes, telles que les DEUX grilles de la frise les posent. */
+export const TIMELINE_GRID_COLUMNS = {
+  gridTemplateColumns: `${LABEL_COLUMN} 1fr`,
+  columnGap: COLUMN_GAP,
+}
+
+/**
+ * LE BORD GAUCHE DE LA COLONNE DES PISTES, vu de la grille entière. Le trait de lecture part de
+ * là : posé sur toute la largeur, il barrerait aussi les libellés — un nom traversé d'un trait
+ * ne se lit plus.
+ */
+export const TRACKS_COLUMN_LEFT = `calc(${LABEL_COLUMN} + ${COLUMN_GAP})`

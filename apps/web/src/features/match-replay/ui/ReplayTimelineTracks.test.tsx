@@ -9,13 +9,18 @@
  *  3. OUVRIR UN MÉDIA MET LE REJEU EN PAUSE. Le composant ne connaît pas la boucle : il DEMANDE
  *     la pause à l'appelant, et seulement si la lecture tourne.
  *  4. AUCUN HEX. Les encres passent par les tokens du thème (règle color-tokens).
+ *  5. LE TRAIT DE LECTURE (2026-09-06) : un seul, dans la géométrie des marques, et SEULEMENT
+ *     quand la frise est dépliée. Plus le lien non typé qui le nourrit — l'attribut de la
+ *     racine où la lecture vient poser la position du curseur.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { createRef } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 
 import { ReplayTimelineTracks } from './ReplayTimelineTracks'
+import { trackLeftVar } from '../model/replayTimelineTracksLogic'
 import type { PlacedMedia, ReplayMediaItem, TrackMark } from '../model/replayTimelineTracksLogic'
+import { CURSOR_HOST_ATTR, CURSOR_RATIO_VAR } from '../hooks/useReplayPlayback'
 import { TIMELINE_SHORTCUT_ATTR } from '../hooks/useReplayShortcuts'
 
 function mark(over: Partial<TrackMark> = {}): TrackMark {
@@ -84,8 +89,10 @@ describe('ReplayTimelineTracks — les quatre pistes sont nommées', () => {
     renderTracks({ clockRef: ref })
     expect(ref.current).toBeTruthy()
     expect(ref.current?.getAttribute('aria-hidden')).toBe('true')
-    // La bulle suit le curseur par la MEME variable que le remplissage de la piste.
-    expect(ref.current?.getAttribute('style') ?? '').toContain('--played')
+    // La bulle suit le curseur par la MEME position que le trait et les marques : le ratio nu
+    // ecrit par `writeCursor`, passe dans la geometrie de piste (corrige le 2026-09-06 — elle
+    // lisait le pourcentage brut, et portait donc jusqu'a 8 px de decalage).
+    expect(ref.current?.getAttribute('style') ?? '').toContain(trackLeftVar(CURSOR_RATIO_VAR))
   })
 
   it('le curseur garde ses bornes et son nom accessible', () => {
@@ -109,6 +116,65 @@ describe('ReplayTimelineTracks — les quatre pistes sont nommées', () => {
     renderTracks()
     expect(screen.getByLabelText('Temps de match')).toHaveAttribute(TIMELINE_SHORTCUT_ATTR)
   })
+
+  /**
+   * MÊME GARDE-FOU, SECOND LIEN NON TYPÉ (2026-09-06) : `useReplayPlayback.writeCursor` remonte
+   * du champ jusqu'à la racine de la frise par `CURSOR_HOST_ATTR` pour y poser `--played` et
+   * `--played-r`. Retirer l'attribut compilerait et ne casserait aucun autre test — la pose
+   * retomberait silencieusement sur la rangée du champ, où les PISTES ne la voient pas : le
+   * trait de lecture resterait figé à l'origine pendant que le curseur avance.
+   */
+  it('la RACINE porte l’attribut où la lecture vient poser la position du curseur', () => {
+    const { container } = renderTracks()
+    const racine = container.querySelector(`[${CURSOR_HOST_ATTR}]`)
+    expect(racine).toBeTruthy()
+    // Et c'est bien la racine, pas un noeud interne : le champ doit être un de ses descendants.
+    expect(racine?.contains(screen.getByLabelText('Temps de match'))).toBe(true)
+  })
+})
+
+/**
+ * LE TRAIT DE LECTURE (demande utilisateur du 2026-09-06).
+ *
+ * Ce que ces cas tiennent :
+ *  1. IL N'EXISTE QUE DÉPLIÉE. Repliée, la frise n'a aucune piste à traverser : un trait y
+ *     serait un trait vers rien, posé sur une hauteur nulle.
+ *  2. IL SUIT LA MÊME GÉOMÉTRIE QUE LES MARQUES. C'est tout l'intérêt du lot — un trait qui
+ *     désigne un kill à 8 px près ne désigne rien.
+ *  3. IL NE CAPTE PAS LE POINTEUR ET NE PARLE PAS. La frise reste saisissable sous lui, et il
+ *     ne redonne pas un nom accessible que le champ expose déjà.
+ */
+describe('ReplayTimelineTracks — le trait de lecture', () => {
+  /**
+   * Le trait : positionné par la géométrie de piste sur la variable de lecture, et SANS `clamp`.
+   *
+   * La bulle de temps emploie la même formule — c'est tout l'objet du lot, elles partagent une
+   * géométrie — mais elle l'enveloppe d'un `clamp` qui la retient dans la frise à ses deux
+   * bouts. Le trait, lui, va jusqu'au bord : c'est ce qui les distingue ici.
+   */
+  function traits(container: HTMLElement): Element[] {
+    return [...container.querySelectorAll('span')].filter((el) => {
+      const style = el.getAttribute('style') ?? ''
+      return style.includes(trackLeftVar(CURSOR_RATIO_VAR)) && !style.includes('clamp')
+    })
+  }
+
+  it('dépliée, un trait unique suit la lecture dans la géométrie des marques', () => {
+    const { container } = renderTracks({ tracksExpanded: true })
+    expect(traits(container)).toHaveLength(1)
+  })
+
+  it('REPLIÉE, il n’y a pas de trait : il n’y a plus de piste à traverser', () => {
+    const { container } = renderTracks({ tracksExpanded: false })
+    expect(traits(container)).toHaveLength(0)
+  })
+
+  it('il ne capte pas le pointeur et ne redonne pas un nom déjà pris', () => {
+    const { container } = renderTracks({ tracksExpanded: true })
+    const conteneur = traits(container)[0].parentElement
+    expect(conteneur?.className).toContain('pointer-events-none')
+    expect(conteneur?.getAttribute('aria-hidden')).toBe('true')
+  })
 })
 
 describe('ReplayTimelineTracks — les marques et la dominance', () => {
@@ -120,6 +186,29 @@ describe('ReplayTimelineTracks — les marques et la dominance', () => {
     expect(container.querySelectorAll('[title="1:12"]')).toHaveLength(1)
     expect(container.querySelectorAll('[title="3:40"]')).toHaveLength(1)
     expect(container.querySelectorAll('[title="2:02"]')).toHaveLength(1)
+  })
+
+  /**
+   * UNE MARQUE EST CENTRÉE SUR SON INSTANT (décision utilisateur du 2026-09-06).
+   *
+   * Ce que ce cas tient, et il ne se voit pas à la relecture : la marque est POSITIONNÉE par
+   * `trackLeft(ratio)`, qui rend le point exact du frag — mais un élément de deux à trois pixels
+   * posé à ce `left` déborde tout entier vers la DROITE. Sans la translation de sa demi-largeur,
+   * son milieu tombe après l'instant qu'elle désigne, et le trait de lecture — qui, lui, passe
+   * pile sur le point — la longe au lieu de la couper. Le `left` resterait pourtant juste : rien
+   * d'autre que ce cas ne verrait la différence.
+   */
+  it('CENTRE chaque marque sur son instant, quelle que soit la piste', () => {
+    const { container } = renderTracks({
+      own: [mark({ key: 'k1', clock: '1:12' })],
+      allies: [mark({ key: 'a1', clock: '2:02' })],
+    })
+    for (const horloge of ['1:12', '2:02']) {
+      const marque = container.querySelector(`[title="${horloge}"]`)
+      expect(marque?.className, `la marque ${horloge} n’est pas centrée sur son instant`).toContain(
+        '-translate-x-1/2',
+      )
+    }
   })
 
   it('nomme le meneur d’une bande de dominance, avec le libellé du scoreboard', () => {
