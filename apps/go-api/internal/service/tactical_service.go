@@ -2,9 +2,15 @@
 //
 // Orchestration (arch-rules) : combine UN port (port.TacticalRepository) et DEUX
 // algos purs (analysis/tactical pour le rasterisage, analysis/coordination pour
-// l'echange). Aucun SQL, aucune ouverture de base, aucun appel a un autre service
-// — l'univers des matchs vient du lecteur, qui applique le filtre de
-// l'Explorateur par le builder pur `analysis.BuildNeighborsWhereClause`.
+// l'echange). Aucun SQL, aucune ouverture de base, aucun appel a un autre service.
+//
+// LE PERIMETRE ARRIVE RESOLU (phase 4 bis, 2026-09-06) : la page fait resoudre sa
+// selection — periode OU sessions epinglees, contexte solo/escouade, cascade — par le
+// endpoint de filtres (service.FilteredMatchIDs, base JOUEUR), et ce service recoit des
+// match_id en LISTE BLANCHE. Il ne filtre donc plus rien : une seconde definition du
+// perimetre donnerait deux comptes de matchs pour la meme question, et c'est elle qui
+// laissait le filtre de session sans effet sur cet onglet (il vit dans la base joueur,
+// que les requetes shared du lecteur ne joignent pas).
 //
 // ─── L'UNIVERS VIENT DU FILTRE, JAMAIS DES POINTS ──────────────────────────────
 //
@@ -71,15 +77,15 @@ func (s *TacticalService) WithLogger(l *slog.Logger) *TacticalService {
 	return s
 }
 
-// MapsPlayed rend les cartes jouees sous le filtre, avec leur verdict de
+// MapsPlayed rend les cartes jouees dans le perimetre, avec leur verdict de
 // lisibilite (plancher par carte).
-func (s *TacticalService) MapsPlayed(ctx context.Context, filtre *domain.MatchFilterSpec) (domain.TacticalMapsPage, error) {
+func (s *TacticalService) MapsPlayed(ctx context.Context, scope domain.TacticalScope) (domain.TacticalMapsPage, error) {
 	page := domain.TacticalMapsPage{PlancherMatchs: domain.PlancherMatchsParCarte}
 	if s.repo == nil {
 		return page, games.ErrCapabilityNotSupported
 	}
 	debut := time.Now()
-	rows, err := s.repo.MapsPlayed(ctx, domain.TacticalQuery{PlayerXUID: s.xuid, Filtre: filtre})
+	rows, err := s.repo.MapsPlayed(ctx, requeteDuScope(s.xuid, "", scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: cartes jouees en echec", "player", s.xuid, "err", err)
 		return page, err
@@ -94,14 +100,20 @@ func (s *TacticalService) MapsPlayed(ctx context.Context, filtre *domain.MatchFi
 	}
 	s.logger.InfoContext(ctx, "tactique: cartes jouees",
 		"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "cartes", len(page.Cartes),
+		"matchs_filtres", len(scope.MatchIDs), "coequipiers", len(scope.Coequipiers),
 		"plancher_matchs", domain.PlancherMatchsParCarte, "duration", time.Since(debut))
 	return page, nil
 }
 
 // Raster rend la lecture de placement d'une carte.
-func (s *TacticalService) Raster(ctx context.Context, carte, question, qui string, filtre *domain.MatchFilterSpec) (domain.TacticalRaster, error) {
+func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterRequest) (domain.TacticalRaster, error) {
+	carte, question, qui := req.MapID, req.Question, req.Qui
 	out := domain.TacticalRaster{MapID: carte, Question: question, Qui: qui}
-	if err := validerLecture(carte, question, qui); err != nil {
+	scope := domain.TacticalScope{
+		MatchIDs:    req.Scope.MatchIDs,
+		Coequipiers: compositionNettoyee(req.Scope.Coequipiers),
+	}
+	if err := validerLecture(carte, question, qui, scope.Coequipiers); err != nil {
 		return out, err
 	}
 	if s.repo == nil || !positionsDeKillLisibles(s.caps) {
@@ -111,7 +123,7 @@ func (s *TacticalService) Raster(ctx context.Context, carte, question, qui strin
 	}
 	debut := time.Now()
 
-	lecture, err := s.repo.KillPositions(ctx, domain.TacticalQuery{PlayerXUID: s.xuid, MapID: carte, Filtre: filtre})
+	lecture, err := s.repo.KillPositions(ctx, requeteDuScope(s.xuid, carte, scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: lecture des positions en echec",
 			"player", s.xuid, "map_id", carte, "question", question, "err", err)
@@ -128,7 +140,10 @@ func (s *TacticalService) Raster(ctx context.Context, carte, question, qui strin
 			"player", s.xuid, "map_id", carte, "question", question, "qui", qui)
 		return out, domain.ErrTacticalCarteInconnue
 	}
-	out.MatchsFiltres = len(lecture.Univers.Matchs)
+	// MATCHS FILTRES = LA TAILLE DE LA LISTE BLANCHE RECUE, toutes cartes confondues
+	// (phase 4 bis) : c'est ce que la barre de filtres a selectionne. L'intersection
+	// avec cette carte-ci, elle, est publiee comme MatchsRetenus.
+	out.MatchsFiltres = len(scope.MatchIDs)
 
 	// L'UNIVERS DE LA LECTURE, C'EST LES MATCHS MESURES (correction G2, 2026-09-06).
 	// Un match du filtre dont le film n'a jamais ete decode ne peut alimenter aucune
@@ -137,7 +152,7 @@ func (s *TacticalService) Raster(ctx context.Context, carte, question, qui strin
 	mesure := universMesure(lecture.Univers)
 	out.MatchsRetenus = len(mesure.Matchs)
 
-	points := projeter(lecture, question, qui, s.xuid)
+	points := projeter(lecture, question, cible(lecture.Univers.Equipes, qui, s.xuid, scope.Coequipiers))
 	out.EvenementsLocalises = len(points)
 	raster, err := rasteriser(mesure, question, points)
 	if err != nil {
@@ -146,12 +161,13 @@ func (s *TacticalService) Raster(ctx context.Context, carte, question, qui strin
 		return out, fmt.Errorf("tactique: rasterisage: %w", err)
 	}
 	remplirRaster(&out, raster, question)
-	s.lireLeJournal(ctx, &out, filtre)
+	s.lireLeJournal(ctx, &out, scope)
 
 	s.logger.InfoContext(ctx, "tactique: lecture de placement",
 		"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "map_id", carte,
 		"question", question, "qui", qui,
 		"matchs_filtres", out.MatchsFiltres, "matchs_retenus", out.MatchsRetenus,
+		"coequipiers", len(scope.Coequipiers),
 		"cellules", len(out.Cellules), "points_ignores", out.PointsIgnores,
 		"evenements_journal", out.EvenementsJournal,
 		"evenements_localises", out.EvenementsLocalises,
@@ -177,34 +193,13 @@ func universMesure(u domain.TacticalUnivers) domain.TacticalUnivers {
 	return out
 }
 
-// validerLecture refuse une demande hors vocabulaire AVANT toute lecture de base.
-func validerLecture(carte, question, qui string) error {
-	if carte == "" {
-		// Sentinelle NUE, meme raison : ce message est publie tel quel, et « (carte vide) »
-		// distinguerait ce refus-ci des deux autres 404 de la meme famille.
-		return domain.ErrTacticalCarteInconnue
-	}
-	switch question {
-	case domain.TacticalQuestionMorts, domain.TacticalQuestionKills, domain.TacticalQuestionGagne:
-	default:
-		return fmt.Errorf("%w (%q)", domain.ErrTacticalQuestionInconnue, question)
-	}
-	switch qui {
-	case domain.TacticalQuiMoi, domain.TacticalQuiEscouade, domain.TacticalQuiAdversaires:
-		return nil
-	default:
-		return fmt.Errorf("%w (%q)", domain.ErrTacticalQuiInconnu, qui)
-	}
-}
-
 // projeter transforme les morts mesurees en points a rasteriser, selon la question
 // et l'axe « qui ».
 //
 //	morts  -> la position de la VICTIME, quand la victime est dans la cible ;
 //	kills  -> la position du TUEUR, quand le tueur est dans la cible ;
 //	gagne  -> LES DEUX (l'engagement a deux faces, cf. domain.TacticalQuestionGagne).
-func projeter(lecture domain.TacticalPositions, question, qui, moi string) []domain.PositionSample {
-	cible := ciblePar(lecture.Univers.Equipes, qui, moi)
+func projeter(lecture domain.TacticalPositions, question string, cible predicatQui) []domain.PositionSample {
 	prendVictime, prendTueur := facesDeLaQuestion(question)
 
 	points := make([]domain.PositionSample, 0, len(lecture.Points))
@@ -225,32 +220,6 @@ func projeter(lecture domain.TacticalPositions, question, qui, moi string) []dom
 // les morts ne puisse pas le faire d'un seul cote.
 func facesDeLaQuestion(question string) (prendVictime, prendTueur bool) {
 	return question != domain.TacticalQuestionKills, question != domain.TacticalQuestionMorts
-}
-
-// ciblePar rend le predicat d'appartenance a l'axe demande, PAR MATCH.
-//
-// Une identite VIDE (bot, environnement) n'appartient a aucun axe : elle n'a pas
-// d'equipe, et la ranger quelque part serait une invention. Un joueur absent de la
-// composition du match non plus — son equipe est INCONNUE, pas devinable.
-func ciblePar(equipes domain.EquipesParMatch, qui, moi string) func(matchID, xuid string) bool {
-	return func(matchID, xuid string) bool {
-		if xuid == "" {
-			return false
-		}
-		if qui == domain.TacticalQuiMoi {
-			return xuid == moi
-		}
-		duMatch := equipes[matchID]
-		monEquipe, jeSuisLa := duMatch[moi]
-		son, ilEstLa := duMatch[xuid]
-		if !jeSuisLa || !ilEstLa {
-			return false
-		}
-		if qui == domain.TacticalQuiEscouade {
-			return son == monEquipe && xuid != moi
-		}
-		return son != monEquipe
-	}
 }
 
 // rasteriser choisit la forme de rasterisage qu'exige la question : SIGNEE pour
@@ -302,16 +271,15 @@ func remplirRaster(out *domain.TacticalRaster, raster *tactical.Raster, question
 //
 // Un echec de lecture est journalise puis degrade : la lecture de placement, elle,
 // reste servie. Aucune erreur avalee.
-func (s *TacticalService) lireLeJournal(ctx context.Context, out *domain.TacticalRaster, filtre *domain.MatchFilterSpec) {
-	lecture, err := s.repo.KillEvents(ctx, domain.TacticalQuery{
-		PlayerXUID: s.xuid, MapID: out.MapID, Filtre: filtre,
-	})
+func (s *TacticalService) lireLeJournal(ctx context.Context, out *domain.TacticalRaster, scope domain.TacticalScope) {
+	lecture, err := s.repo.KillEvents(ctx, requeteDuScope(s.xuid, out.MapID, scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: journal des morts en echec (couverture et echange non servis)",
 			"player", s.xuid, "map_id", out.MapID, "err", err)
 		return
 	}
-	out.EvenementsJournal = compterJournal(lecture, out.Question, out.Qui, s.xuid)
+	out.EvenementsJournal = compterJournal(lecture, out.Question,
+		cible(lecture.Univers.Equipes, out.Qui, s.xuid, scope.Coequipiers))
 	if journalDesMortsFiable(s.caps) {
 		out.Echange = s.mesurerEchange(ctx, out.MapID, lecture)
 	}
@@ -321,8 +289,7 @@ func (s *TacticalService) lireLeJournal(ctx context.Context, out *domain.Tactica
 // DENOMINATEUR de la couverture. Memes faces que le rasterisage
 // (facesDeLaQuestion) : ce qui est compte ici est exactement ce qui aurait ete
 // peint si toutes les positions existaient.
-func compterJournal(lecture domain.TacticalKillEvents, question, qui, moi string) int {
-	cible := ciblePar(lecture.Univers.Equipes, qui, moi)
+func compterJournal(lecture domain.TacticalKillEvents, question string, cible predicatQui) int {
 	prendVictime, prendTueur := facesDeLaQuestion(question)
 	n := 0
 	for _, e := range lecture.Events {
@@ -339,13 +306,14 @@ func compterJournal(lecture domain.TacticalKillEvents, question, qui, moi string
 // mesurerEchange rend le taux de morts vengees DE MON EQUIPE sur cette carte.
 func (s *TacticalService) mesurerEchange(ctx context.Context, carte string, lecture domain.TacticalKillEvents) *domain.Couverture {
 	bilan := coordination.Echanges(lecture.Events, lecture.Univers.Equipes)
-	monCamp := ciblePar(lecture.Univers.Equipes, domain.TacticalQuiEscouade, s.xuid)
+	monCamp := campDuMatch(lecture.Univers.Equipes, s.xuid)
 
 	vengeables, vengees := 0, 0
 	for _, m := range bilan.Morts {
-		// Mon camp = mes coequipiers ET moi. `ciblePar(escouade)` m'exclut par
-		// construction (c'est ce que « escouade » veut dire sur les rasters) : la
-		// couverture, elle, porte sur l'equipe entiere.
+		// MON CAMP ENTIER — mes coequipiers DU MATCH et moi (decision utilisateur du
+		// 2026-09-06), et surtout PAS la composition choisie : le denominateur le moins
+		// biaise ne doit pas retrecir parce qu'on a nomme deux coequipiers dans la barre
+		// de filtres. `campDuMatch` m'exclut par construction, d'ou le test explicite.
 		if m.VictimeXUID != s.xuid && !monCamp(m.MatchID, m.VictimeXUID) {
 			continue
 		}

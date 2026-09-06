@@ -76,32 +76,6 @@ func TestTacticalRepo_SansMetadata_NomFRVide(t *testing.T) {
 	}
 }
 
-// TestTacticalRepo_MapsPlayed_Filtre : la grille d'entree est filtree par le meme
-// vocabulaire que le reste. Une issue « defaite » ne laisse qu'un match sur la
-// carte A, et fait disparaitre la carte B (jouee en victoire seulement).
-func TestTacticalRepo_MapsPlayed_Filtre(t *testing.T) {
-	pdb := newTacticalTestPlayerDB(t)
-	seedTacticalCorpus(t, pdb)
-
-	perdu := "loss"
-	rows, err := NewTacticalRepo(pdb).MapsPlayed(context.Background(), domain.TacticalQuery{
-		PlayerXUID: tacXUIDMoi,
-		Filtre:     &domain.MatchFilterSpec{Outcome: &perdu},
-	})
-	if err != nil {
-		t.Fatalf("MapsPlayed: %v", err)
-	}
-	if len(rows) != 1 {
-		t.Fatalf("cartes = %+v, want la seule carte A (B n'a qu'une victoire)", rows)
-	}
-	if rows[0].MapID != tacCarteA || rows[0].Matchs != 1 {
-		t.Errorf("carte = %+v, want %s a 1 match", rows[0], tacCarteA)
-	}
-	if rows[0].Victoires != 0 || rows[0].Defaites != 1 {
-		t.Errorf("V/D sous filtre = %d/%d, want 0/1", rows[0].Victoires, rows[0].Defaites)
-	}
-}
-
 // TestTacticalRepo_Campagne_Masquee : les matchs de Campagne d'un joueur Halo 5
 // (~287 lignes historiques en prod) n'entrent NI dans la grille des cartes NI dans
 // l'univers des rasters — l'Explorateur les masque deja, l'onglet Tactique ne peut
@@ -276,25 +250,6 @@ func TestTacticalRepo_KillEvents_SansCarte(t *testing.T) {
 		if e.MatchID == "m4" {
 			t.Errorf("evenement d'un match ou le joueur n'a pas joue : %+v", e)
 		}
-	}
-}
-
-// TestTacticalRepo_KillEvents_SansCarte_FiltreToujoursApplique : le predicat de
-// carte devenu neutre ne desactive PAS le reste du filtre. Une issue « victoire »
-// ne retient que m1 et m3, sur les deux cartes.
-func TestTacticalRepo_KillEvents_SansCarte_FiltreToujoursApplique(t *testing.T) {
-	pdb := newTacticalTestPlayerDB(t)
-	seedTacticalCorpus(t, pdb)
-
-	gagne := "win"
-	q := tacQuery("")
-	q.Filtre = &domain.MatchFilterSpec{Outcome: &gagne}
-	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(), q)
-	if err != nil {
-		t.Fatalf("KillEvents sans carte, filtre issue: %v", err)
-	}
-	if want := []string{"m1", "m3"}; !egales(matchIDs(got.Univers.Matchs), want) {
-		t.Fatalf("univers = %v, want %v", matchIDs(got.Univers.Matchs), want)
 	}
 }
 

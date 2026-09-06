@@ -21,18 +21,25 @@ import (
 // titre ne mesure pas les positions de kill (le handler degrade en 503).
 // `MapsPlayed`, lui, ne lit que le registre des matchs — il n'a rien a gater.
 //
+// LE PERIMETRE ARRIVE RESOLU (phase 4 bis, 2026-09-06) : le client fait resoudre sa
+// selection par le endpoint de filtres (service.FilteredMatchIDs, base JOUEUR) et passe
+// des match_id en LISTE BLANCHE. Ce service ne filtre plus rien lui-meme — une seconde
+// definition du perimetre donnerait deux comptes de matchs pour la meme question, et
+// c'est elle qui laissait les sessions sans effet sur cet onglet.
+//
 // Refus typés, traduits en statut par le handler :
-//   - domain.ErrTacticalCarteInconnue      -> 404 ;
-//   - domain.ErrTacticalQuestionInconnue   -> 400 ;
-//   - domain.ErrTacticalQuiInconnu         -> 400.
+//   - domain.ErrTacticalCarteInconnue             -> 404 ;
+//   - domain.ErrTacticalQuestionInconnue          -> 400 ;
+//   - domain.ErrTacticalQuiInconnu                -> 400 ;
+//   - domain.ErrTacticalEscouadeSansComposition   -> 400.
 type TacticalService interface {
-	// MapsPlayed rend les cartes jouees sous le filtre, triees par nombre de
+	// MapsPlayed rend les cartes jouees dans le perimetre, triees par nombre de
 	// matchs decroissant, chacune portant son verdict de lisibilite.
-	MapsPlayed(ctx context.Context, filtre *domain.MatchFilterSpec) (domain.TacticalMapsPage, error)
+	MapsPlayed(ctx context.Context, scope domain.TacticalScope) (domain.TacticalMapsPage, error)
 
 	// Raster rend la lecture de placement d'une carte pour une question
 	// (domain.TacticalQuestion*) et un axe (domain.TacticalQui*).
-	Raster(ctx context.Context, carte, question, qui string, filtre *domain.MatchFilterSpec) (domain.TacticalRaster, error)
+	Raster(ctx context.Context, req domain.TacticalRasterRequest) (domain.TacticalRaster, error)
 }
 
 // TacticalRepository — onglet Tactique (plan .ai/PLAN_TACTIQUE_2026-09-06.md,
@@ -52,8 +59,12 @@ type TacticalService interface {
 // Capability gating : retourne games.ErrCapabilityNotSupported si les tables du
 // film sont absentes (titre/schéma sans décodeur). Zéro ligne est l'état NOMINAL
 // d'un joueur dont aucun match n'est encore décodé — pas une panne.
+// LE PERIMETRE EST UNE LISTE BLANCHE (`domain.TacticalQuery.Matchs`), eventuellement
+// resserrée par une COMPOSITION (`Coequipiers`) : les trois lectures l'appliquent au
+// MEME endroit — le SELECT de l'univers — pour qu'aucune ne puisse mesurer sur une
+// population que les autres ne voient pas.
 type TacticalRepository interface {
-	// MapsPlayed liste les cartes jouées par le joueur sous le filtre, avec le
+	// MapsPlayed liste les cartes jouées par le joueur dans le périmètre, avec le
 	// nombre de matchs et sa décomposition victoires / défaites. Ordre
 	// déterministe (matchs décroissants, puis map_id). `filtre.MapID` est ignoré :
 	// cette lecture est l'écran d'entrée, elle porte sur toutes les cartes.

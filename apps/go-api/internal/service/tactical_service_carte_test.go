@@ -27,8 +27,8 @@ func TestRaster_CarteInconnue_NeCiteJamaisLaCarte(t *testing.T) {
 	repo := &mockTacticalRepo{} // aucun match dans l'univers
 	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
 
-	_, err := svc.Raster(context.Background(), carte,
-		domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
+	_, err := svc.Raster(context.Background(),
+		tsDemande(carte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 	if !errors.Is(err, domain.ErrTacticalCarteInconnue) {
 		t.Fatalf("err = %v, attendue ErrTacticalCarteInconnue", err)
 	}
@@ -50,8 +50,8 @@ func TestRaster_CarteInconnue_NeCiteJamaisLaCarte(t *testing.T) {
 func TestRaster_CarteVide_MemeMessageCanonique(t *testing.T) {
 	svc := NewTacticalService(&mockTacticalRepo{}, capsPositionsSeules(), tsMoi)
 
-	_, err := svc.Raster(context.Background(), "",
-		domain.TacticalQuestionMorts, domain.TacticalQuiMoi, nil)
+	_, err := svc.Raster(context.Background(),
+		tsDemande("", domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 	if !errors.Is(err, domain.ErrTacticalCarteInconnue) {
 		t.Fatalf("err = %v, attendue ErrTacticalCarteInconnue", err)
 	}
@@ -70,12 +70,12 @@ func TestRaster_CarteVide_MemeMessageCanonique(t *testing.T) {
 func TestRaster_QuestionEtAxeNommentLaValeurRefusee(t *testing.T) {
 	svc := NewTacticalService(&mockTacticalRepo{}, capsPositionsSeules(), tsMoi)
 
-	_, err := svc.Raster(context.Background(), tsCarte, "temps", domain.TacticalQuiMoi, nil)
+	_, err := svc.Raster(context.Background(), tsDemande(tsCarte, "temps", domain.TacticalQuiMoi))
 	if !errors.Is(err, domain.ErrTacticalQuestionInconnue) || !strings.Contains(err.Error(), "temps") {
 		t.Errorf("question : err = %v, attendue la sentinelle NOMMANT « temps »", err)
 	}
 
-	_, err = svc.Raster(context.Background(), tsCarte, domain.TacticalQuestionMorts, "tout-le-monde", nil)
+	_, err = svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, "tout-le-monde"))
 	if !errors.Is(err, domain.ErrTacticalQuiInconnu) || !strings.Contains(err.Error(), "tout-le-monde") {
 		t.Errorf("axe : err = %v, attendue la sentinelle NOMMANT « tout-le-monde »", err)
 	}

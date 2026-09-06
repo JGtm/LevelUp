@@ -6208,7 +6208,7 @@ paths:
       tags:
         - tactical
   /players/{player_slug}/tactical/{map_id}/raster:
-    get:
+    post:
       operationId: getTacticalRaster
       parameters:
         - in: path
@@ -6221,62 +6221,12 @@ paths:
           required: true
           schema:
             type: string
-        - description: 'Lecture : morts | kills | gagne. Defaut : morts.'
-          explode: false
-          in: query
-          name: question
-          schema:
-            description: 'Lecture : morts | kills | gagne. Defaut : morts.'
-            type: string
-        - description: 'Axe : moi | escouade | adv. Defaut : moi.'
-          explode: false
-          in: query
-          name: qui
-          schema:
-            description: 'Axe : moi | escouade | adv. Defaut : moi.'
-            type: string
-        - description: Playlists, separees par une virgule.
-          explode: false
-          in: query
-          name: playlist
-          schema:
-            description: Playlists, separees par une virgule.
-            type: string
-        - description: Categories de mode, separees par une virgule.
-          explode: false
-          in: query
-          name: mode
-          schema:
-            description: Categories de mode, separees par une virgule.
-            type: string
-        - description: Borne basse (RFC3339).
-          explode: false
-          in: query
-          name: from
-          schema:
-            description: Borne basse (RFC3339).
-            type: string
-        - description: Borne haute (RFC3339).
-          explode: false
-          in: query
-          name: to
-          schema:
-            description: Borne haute (RFC3339).
-            type: string
-        - description: 'Issue : win | loss | draw | dnf.'
-          explode: false
-          in: query
-          name: outcome
-          schema:
-            description: 'Issue : win | loss | draw | dnf.'
-            type: string
-        - description: XUID (entier decimal) devant avoir participe au match.
-          explode: false
-          in: query
-          name: with_player
-          schema:
-            description: XUID (entier decimal) devant avoir participe au match.
-            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TacticalRasterBody'
+        required: true
       responses:
         "200":
           content:
@@ -6294,7 +6244,7 @@ paths:
       tags:
         - tactical
   /players/{player_slug}/tactical/maps:
-    get:
+    post:
       operationId: getTacticalMaps
       parameters:
         - in: path
@@ -6302,48 +6252,12 @@ paths:
           required: true
           schema:
             type: string
-        - description: Playlists, separees par une virgule.
-          explode: false
-          in: query
-          name: playlist
-          schema:
-            description: Playlists, separees par une virgule.
-            type: string
-        - description: Categories de mode, separees par une virgule.
-          explode: false
-          in: query
-          name: mode
-          schema:
-            description: Categories de mode, separees par une virgule.
-            type: string
-        - description: Borne basse (RFC3339).
-          explode: false
-          in: query
-          name: from
-          schema:
-            description: Borne basse (RFC3339).
-            type: string
-        - description: Borne haute (RFC3339).
-          explode: false
-          in: query
-          name: to
-          schema:
-            description: Borne haute (RFC3339).
-            type: string
-        - description: 'Issue : win | loss | draw | dnf.'
-          explode: false
-          in: query
-          name: outcome
-          schema:
-            description: 'Issue : win | loss | draw | dnf.'
-            type: string
-        - description: XUID (entier decimal) devant avoir participe au match.
-          explode: false
-          in: query
-          name: with_player
-          schema:
-            description: XUID (entier decimal) devant avoir participe au match.
-            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TacticalMapsBody'
+        required: true
       responses:
         "200":
           content:
@@ -25698,6 +25612,24 @@ components:
         - defaites
         - sous_plancher
       type: object
+    TacticalMapsBody:
+      additionalProperties: false
+      properties:
+        coequipiers:
+          description: XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe.
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        match_ids:
+          description: 'Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match.'
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+      type: object
     TacticalMapsPage:
       additionalProperties: false
       properties:
@@ -25774,6 +25706,30 @@ components:
         - points_ignores
         - evenements_journal
         - evenements_localises
+      type: object
+    TacticalRasterBody:
+      additionalProperties: false
+      properties:
+        coequipiers:
+          description: XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade ».
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        match_ids:
+          description: 'Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match.'
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        question:
+          description: 'Lecture : morts | kills | gagne. Defaut : morts.'
+          type: string
+        qui:
+          description: 'Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers.'
+          type: string
       type: object
     TeamHold:
       additionalProperties: false

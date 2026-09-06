@@ -160,8 +160,8 @@ func TestTacticalMapID_CalageRefuseLesChemins(t *testing.T) {
 func TestTacticalMapID_RasterRefuseLesChemins(t *testing.T) {
 	for _, hostile := range mapIDsHostilesURL {
 		svc := &fakeTacticalSvc{}
-		w := appel(t, newTacticalRouter(tacticalFactory(svc, nil)),
-			"/players/JGtm/tactical/"+hostile+"/raster")
+		w := appelPost(t, newTacticalRouter(tacticalFactory(svc, nil)),
+			"/players/JGtm/tactical/"+hostile+"/raster", `{}`)
 		if w.Code != http.StatusNotFound {
 			t.Errorf("map_id %q : status=%d, attendu 404 — body=%s", hostile, w.Code, w.Body.String())
 		}
@@ -177,10 +177,10 @@ func TestTacticalMapID_RasterRefuseLesChemins(t *testing.T) {
 // l'oracle : rien ne dit a l'appelant laquelle des deux frontieres il a heurtee.
 func TestTacticalMapID_IndiscernableDUneCarteInconnue(t *testing.T) {
 	svcInconnue := &fakeTacticalSvc{errRast: domain.ErrTacticalCarteInconnue}
-	legitime := appel(t, newTacticalRouter(tacticalFactory(svcInconnue, nil)),
-		"/players/JGtm/tactical/carte-jamais-jouee/raster")
-	hostile := appel(t, newTacticalRouter(tacticalFactory(&fakeTacticalSvc{}, nil)),
-		`/players/JGtm/tactical/..\..\x/raster`)
+	legitime := appelPost(t, newTacticalRouter(tacticalFactory(svcInconnue, nil)),
+		"/players/JGtm/tactical/carte-jamais-jouee/raster", `{}`)
+	hostile := appelPost(t, newTacticalRouter(tacticalFactory(&fakeTacticalSvc{}, nil)),
+		`/players/JGtm/tactical/..\..\x/raster`, `{}`)
 	if legitime.Code != hostile.Code {
 		t.Fatalf("statuts distincts : legitime=%d hostile=%d", legitime.Code, hostile.Code)
 	}

@@ -3521,10 +3521,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne) */
-        get: operations["getTacticalRaster"];
+        get?: never;
         put?: never;
-        post?: never;
+        /** Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne) */
+        post: operations["getTacticalRaster"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3538,10 +3538,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Cartes jouees, pour la grille d'entree de l'onglet Tactique */
-        get: operations["getTacticalMaps"];
+        get?: never;
         put?: never;
-        post?: never;
+        /** Cartes jouees, pour la grille d'entree de l'onglet Tactique */
+        post: operations["getTacticalMaps"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11636,6 +11636,12 @@ export interface components {
             /** Format: int64 */
             victoires: number;
         };
+        TacticalMapsBody: {
+            /** @description XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe. */
+            coequipiers?: string[] | null;
+            /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
+            match_ids?: string[] | null;
+        };
         TacticalMapsPage: {
             cartes: components["schemas"]["TacticalMapCard"][] | null;
             /** Format: int64 */
@@ -11665,6 +11671,16 @@ export interface components {
             points_ignores: number;
             question: string;
             qui: string;
+        };
+        TacticalRasterBody: {
+            /** @description XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade ». */
+            coequipiers?: string[] | null;
+            /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
+            match_ids?: string[] | null;
+            /** @description Lecture : morts | kills | gagne. Defaut : morts. */
+            question?: string;
+            /** @description Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers. */
+            qui?: string;
         };
         TeamHold: {
             /** Format: int64 */
@@ -19663,24 +19679,7 @@ export interface operations {
     };
     getTacticalRaster: {
         parameters: {
-            query?: {
-                /** @description Lecture : morts | kills | gagne. Defaut : morts. */
-                question?: string;
-                /** @description Axe : moi | escouade | adv. Defaut : moi. */
-                qui?: string;
-                /** @description Playlists, separees par une virgule. */
-                playlist?: string;
-                /** @description Categories de mode, separees par une virgule. */
-                mode?: string;
-                /** @description Borne basse (RFC3339). */
-                from?: string;
-                /** @description Borne haute (RFC3339). */
-                to?: string;
-                /** @description Issue : win | loss | draw | dnf. */
-                outcome?: string;
-                /** @description XUID (entier decimal) devant avoir participe au match. */
-                with_player?: string;
-            };
+            query?: never;
             header?: never;
             path: {
                 player_slug: string;
@@ -19688,7 +19687,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TacticalRasterBody"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -19712,27 +19715,18 @@ export interface operations {
     };
     getTacticalMaps: {
         parameters: {
-            query?: {
-                /** @description Playlists, separees par une virgule. */
-                playlist?: string;
-                /** @description Categories de mode, separees par une virgule. */
-                mode?: string;
-                /** @description Borne basse (RFC3339). */
-                from?: string;
-                /** @description Borne haute (RFC3339). */
-                to?: string;
-                /** @description Issue : win | loss | draw | dnf. */
-                outcome?: string;
-                /** @description XUID (entier decimal) devant avoir participe au match. */
-                with_player?: string;
-            };
+            query?: never;
             header?: never;
             path: {
                 player_slug: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TacticalMapsBody"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

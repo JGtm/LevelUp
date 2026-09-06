@@ -84,8 +84,8 @@ func TestRaster_AucuneOuvertureDeBaseSurEntreeRefusee(t *testing.T) {
 	for _, hostile := range mapIDsHostilesURL {
 		svc := &fakeTacticalSvc{}
 		appels := 0
-		w := appel(t, newTacticalRouter(fabriqueComptee(svc, &appels)),
-			"/players/JGtm/tactical/"+hostile+"/raster")
+		w := appelPost(t, newTacticalRouter(fabriqueComptee(svc, &appels)),
+			"/players/JGtm/tactical/"+hostile+"/raster", `{}`)
 		if w.Code != http.StatusNotFound {
 			t.Errorf("map_id %q : status=%d, attendu 404", hostile, w.Code)
 		}
@@ -101,8 +101,8 @@ func TestRaster_AucuneOuvertureDeBaseSurEntreeRefusee(t *testing.T) {
 // l'appellerait plus jamais passerait pour exemplaire.
 func TestRaster_FabriqueAppeleeSurEntreeValide(t *testing.T) {
 	appels := 0
-	w := appel(t, newTacticalRouter(fabriqueComptee(&fakeTacticalSvc{}, &appels)),
-		"/players/JGtm/tactical/streets/raster")
+	w := appelPost(t, newTacticalRouter(fabriqueComptee(&fakeTacticalSvc{}, &appels)),
+		"/players/JGtm/tactical/streets/raster", `{}`)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
 	}
@@ -116,11 +116,11 @@ func TestRaster_FabriqueAppeleeSurEntreeValide(t *testing.T) {
 //
 // C'est ce test que fait tomber le retour de `fmt.Errorf("%w (%q)", ...)` cote service.
 func TestRaster_OctetPourOctet_FormeReelleDuService(t *testing.T) {
-	inconnue := appel(t,
+	inconnue := appelPost(t,
 		newTacticalRouter(tacticalFactory(&fakeTacticalSvc{errRast: formeReelleCarteInconnue()}, nil)),
-		"/players/JGtm/tactical/carte-jamais-jouee/raster")
-	hostile := appel(t, newTacticalRouter(tacticalFactory(&fakeTacticalSvc{}, nil)),
-		"/players/JGtm/tactical/"+carteHostile+"/raster")
+		"/players/JGtm/tactical/carte-jamais-jouee/raster", `{}`)
+	hostile := appelPost(t, newTacticalRouter(tacticalFactory(&fakeTacticalSvc{}, nil)),
+		"/players/JGtm/tactical/"+carteHostile+"/raster", `{}`)
 
 	if inconnue.Code != hostile.Code {
 		t.Fatalf("statuts distincts : inconnue=%d hostile=%d", inconnue.Code, hostile.Code)
@@ -145,10 +145,10 @@ func TestRaster_OctetPourOctet_MemeSiLeServiceEnrobe(t *testing.T) {
 	enrobe := &fakeTacticalSvc{
 		errRast: fmt.Errorf("%w (%q)", domain.ErrTacticalCarteInconnue, "zzz"),
 	}
-	inconnue := appel(t, newTacticalRouter(tacticalFactory(enrobe, nil)),
-		"/players/JGtm/tactical/zzz/raster")
-	hostile := appel(t, newTacticalRouter(tacticalFactory(&fakeTacticalSvc{}, nil)),
-		"/players/JGtm/tactical/"+carteHostile+"/raster")
+	inconnue := appelPost(t, newTacticalRouter(tacticalFactory(enrobe, nil)),
+		"/players/JGtm/tactical/zzz/raster", `{}`)
+	hostile := appelPost(t, newTacticalRouter(tacticalFactory(&fakeTacticalSvc{}, nil)),
+		"/players/JGtm/tactical/"+carteHostile+"/raster", `{}`)
 
 	if strings.Contains(inconnue.Body.String(), "zzz") {
 		t.Errorf("le corps publie CITE la carte demandee : %s", inconnue.Body.String())
