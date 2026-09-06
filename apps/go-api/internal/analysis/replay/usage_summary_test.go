@@ -356,3 +356,73 @@ func TestUsageSummary_SlotRecycleCrediteChaqueOccupant(t *testing.T) {
 		}
 	}
 }
+
+// TestUsageSummary_LacherALaMortRevientAuLacheur — CONSTAT N-3 DE LA SECONDE RONDE REG-R2
+// (2026-09-06) : la correction C5 laissait le canal des POSES sur l'ancienne règle.
+//
+// LE CAS. Un objet LÂCHÉ à la mort porte `t0 = finVie + 1` (le poseur n'occupe déjà plus le
+// slot) : aucune vie ne couvre cet instant, et le repli « dernier occupant du match » créditait
+// le lâcher au joueur SUIVANT sur un slot repris. Ce n'est pas un résidu — la revue a mesuré que
+// 32 à 95 % des poses d'un film tombent hors de toute fenêtre publiée (`879a4dba` 153/351,
+// `4f77afc1` 443/466, `145908d1` 34/105) : c'est le chemin MAJORITAIRE de ce canal.
+//
+// LA RÈGLE, celle du web (`ownerAtFrameOrLast`, rosterLogic.ts) : la vie qui couvre l'instant,
+// sinon la vie qui vient de S'ACHEVER avant lui — jamais le dernier-gagnant du match.
+func TestUsageSummary_LacherALaMortRevientAuLacheur(t *testing.T) {
+	doc := &ReplayDocument{
+		SchemaVersion: SchemaVersion, FrameIntervalMS: 100, FrameCount: 1000,
+		Roster: []RosterEntry{{XUID: "111", FilmIndex: 0}, {XUID: "222", FilmIndex: 1}},
+		Tracks: []Track{
+			{Slot: 5, XUID: "111", StartFrame: 0, EndFrame: 100},
+			{Slot: 5, XUID: "222", StartFrame: 200, EndFrame: 400},
+		},
+		EquipmentPlacements: []EquipmentPlacement{
+			// Lâché à la mort de 111 : une image APRÈS la fin de sa vie.
+			{Family: "grapple", Origin: OriginDropped, Owner: 5, T0: 101, ID: "0x1"},
+			// Lâché à la mort de 222, dans les mêmes termes.
+			{Family: "grapple", Origin: OriginDropped, Owner: 5, T0: 401, ID: "0x2"},
+		},
+	}
+	s := BuildUsageSummary(doc)
+	byXUID := map[string]UsagePlayerSummary{}
+	for _, p := range s.Players {
+		byXUID[p.XUID] = p
+	}
+	if got := byXUID["111"].DroppedObjects; got != 1 {
+		t.Errorf("111 : %d lâcher(s), attendu 1 — l'objet lâché à sa mort (t0 = finVie + 1) "+
+			"doit lui revenir, pas au repreneur du slot", got)
+	}
+	if got := byXUID["222"].DroppedObjects; got != 1 {
+		t.Errorf("222 : %d lâcher(s), attendu 1", got)
+	}
+}
+
+// TestUsageSummary_UneVieSurUnSlotReprisNePerdPasSesLancers — CONSTAT N-4 DE REG-R2. Un joueur
+// dont TOUTES les vies sont sur des slots repris ensuite par un autre n'entrait pas dans
+// `avecVie` — construit depuis le seul « dernier occupant » de chaque slot —, et perdait donc
+// TOUS ses lancers de grenade, alors que l'en-tête de la fonction promet l'inverse (« seul un
+// joueur dont AU MOINS UNE VIE est publiée reçoit des lancers » : il en a une).
+func TestUsageSummary_UneVieSurUnSlotReprisNePerdPasSesLancers(t *testing.T) {
+	doc := &ReplayDocument{
+		SchemaVersion: SchemaVersion, FrameIntervalMS: 100, FrameCount: 1000,
+		Roster: []RosterEntry{{XUID: "111", FilmIndex: 0}, {XUID: "222", FilmIndex: 1}},
+		Tracks: []Track{
+			{Slot: 5, XUID: "111", StartFrame: 0, EndFrame: 100}, // unique vie de 111, slot repris
+			{Slot: 5, XUID: "222", StartFrame: 200, EndFrame: 400},
+		},
+		GrappleLines: []GrappleLine{{Slot: 5, T0: 10, T1: 20}},
+		Grenades:     []Grenade{{Idx: 0, Rank: 0}, {Idx: 0, Rank: 1}},
+	}
+	s := BuildUsageSummary(doc)
+	byXUID := map[string]UsagePlayerSummary{}
+	for _, p := range s.Players {
+		byXUID[p.XUID] = p
+	}
+	if got := byXUID["111"].GrenadesThrown; got != 2 {
+		t.Errorf("111 : %d lancer(s), attendu 2 — sa vie est publiée, le slot repris ensuite "+
+			"ne doit pas l'effacer de la table des index de film", got)
+	}
+	if got := byXUID["111"].GrapplePulls; got != 1 {
+		t.Errorf("111 : %d traction(s), attendu 1 (pré-requis du test)", got)
+	}
+}
