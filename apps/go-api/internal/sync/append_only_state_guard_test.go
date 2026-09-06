@@ -104,6 +104,13 @@ var appendOnlyStateTables = []string{
 	// aucun DELETE / ON CONFLICT / INSERT OR REPLACE|IGNORE toléré. Lecture via _latest
 	// UNIQUEMENT — une lecture brute servirait les lignes des passes précédentes.
 	"match_bomb_stats",
+	// kill_openings (duels/portée D5, 2026-09-06) : créée directement append-only (id PK seq
+	// + written_at + vue kill_openings_latest). Unité de génération = la PASSE DE DÉCODAGE,
+	// arbitrée par written_at puis id, sur la clé (match_id, killer_xuid, time_ms). Écriture =
+	// INSERT pur (kill_opening_persister.go) ; aucun DELETE / ON CONFLICT / INSERT OR
+	// REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT — une lecture brute servirait les
+	// positions d'une passe de décodage précédente. Recette ADR 0026 étape 5.
+	"kill_openings",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors

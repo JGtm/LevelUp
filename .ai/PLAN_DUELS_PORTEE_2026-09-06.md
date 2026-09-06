@@ -265,52 +265,168 @@ Gates réellement exécutés le 2026-09-06 (`CGO_ENABLED=0`, `GOCACHE` isolé), 
 
 ## Lot 3 — Port + repo DuckDB, avec l'extraction de la jointure
 
-- [ ] 3.1 **Extraire l'helper canonique** `measuredKillsQuery(where string)` dans
+**Exécuté le 2026-09-06** sur la branche `feat/duels-lot3` (worktree `LevelUp-wt-duels-lot3`).
+Tous les items sont statués. Trois consignes du pilote, issues d'une revue adversariale du
+lot 2, ont été appliquées en cours de lot : la clé de jointure des entames est l'instant DU
+KILL (3.10), le filtre « même vie » ne se réimplémente pas ici (3.10 bis, réserve écrite), et
+aucun seuil de publication ne descend dans le SQL (3.3/3.4).
+
+- [x] 3.1 **Extraire l'helper canonique** `measuredKillsQuery(where string)` dans
       `platform/duckdb/kill_measured.go` : la jointure `match_kill_events_latest × kill_positions_latest`,
       la garde `publishable`, la garde d'unanimité `HAVING count(DISTINCT e.source_tag) = 1`, le
       `Scan` en `killDistanceMeasured` étendu de `deltaZ` et `victimXUID`. `KillDistanceRepo.LoadMatch`
       MIGRE dessus dans le même commit (règle 6 : à la 3e copie on centralise ET on migre).
-- [ ] 3.2 **Garde-rail** `kill_measured_guard_test.go` : grep interdisant le littéral
+      FAIT — `kill_measured.go` porte `measuredKillsQuery(table, where)`, le type `killMeasured`
+      (étendu de `matchID`, `timeMS`, `victimXUID`, `deltaZ`), `queryMeasuredKills` et `hypot3D`
+      (déplacée depuis le POC : elle sert maintenant les deux grandeurs dérivées).
+      `KillDistanceRepo` ne garde que sa clause de portée (`killDistanceWhere`) ; ses 9 tests
+      d'origine passent INCHANGÉS. La signature prend la table en premier paramètre — 3.12 est
+      donc couvert par construction, pas par un second passage.
+- [x] 3.2 **Garde-rail** `kill_measured_guard_test.go` : grep interdisant le littéral
       `JOIN kill_positions_latest` hors de `kill_measured.go` (Q21b de `queries_match.go` reste
       sur sa propre jointure kill-feed sans positions — hors motif, documenté dans le test).
-- [ ] 3.3 `port.WeaponRangeRepository` :
+      FAIT — deux tests : l'interdit (les .go non-test de `platform/duckdb` + `halo5/`) et la
+      vitalité du propriétaire (il doit toujours nommer les DEUX tables ET porter ses deux
+      gardes, sinon le garde-rail ne garde plus rien). VU ROUGE avant commit (témoin : littéral
+      réintroduit dans `kill_distance_repo.go`, test rejoué, littéral retiré). Deux exceptions
+      nominatives et datées, écrites dans le test : le propriétaire, et
+      `halo5/halo5_match_events_source.go` (LEFT JOIN d'énumération d'events, positions natives,
+      aucune mesure de distance). Q21b est hors motif parce qu'elle ne joint AUCUNE table de
+      positions — le motif vise la jointure, et c'est écrit dans le test.
+- [x] 3.3 `port.WeaponRangeRepository` :
       `LoadWeaponRange(ctx, slug string, f WeaponRangeFilters) ([]analysis.MeasuredKill, error)`,
       `WeaponRangeFilters{MatchIDs, Gamertag, XUIDs}` + `Validate()` calqué sur
       `WeaponAccuracyFilters` (D10). Le repo rend les kills MESURÉS ; l'agrégat est en analysis.
-- [ ] 3.4 `platform/duckdb/weapon_range_repo.go` : deux requêtes via l'helper, `WHERE e.match_id IN (?)
+      FAIT — `port/weapon_range.go`. DEUX méthodes : `LoadWeaponRange` (coup fatal) et
+      `LoadWeaponOpening` (entame), même filtre, même contrat de capability. `Validate()` refuse
+      les deux formes de scan complet (aucun match / aucun joueur). AUCUN seuil de publication
+      dans ce port ni dans son repo : le seuil D9 vit dans `WeaponRangeAggregate`, qui compte ce
+      qu'il écarte — un `HAVING count(*) >= 8` en SQL rendrait ce décompte impossible.
+- [x] 3.4 `platform/duckdb/weapon_range_repo.go` : deux requêtes via l'helper, `WHERE e.match_id IN (?)
       AND e.feed_killer_xuid = ?` (côté tueur) et `... AND e.victim_xuid = ?` (côté victime) ;
       classification `source_tag -> weapon_key` par le `port.KillSourceClassifier` injecté ; distance
       par `hypot3D` (déjà l'unique formule du paquet) ; `deltaZ = killer_z - victim_z`.
-- [ ] 3.5 Table `kill_positions_latest` absente ou vide -> `games.ErrCapabilityNotSupported`
+      FAIT — les deux côtés sous UN SEUL emprunt du lecteur partagé (le lease est la ressource la
+      plus disputée du process). `analysis.MeasuredKill` a été ÉTENDU (jamais réécrit) de la clé
+      du frag — `MatchID`, `KillerXUID`, `TimeMS` — sans quoi le lot 4 ne pourrait pas apparier
+      l'entame à son coup fatal par frag (D5 / item 4.2) ; l'agrégat ne groupe toujours que par
+      (arme, côté), les nouveaux champs ne le touchent pas. Le dénivelé est écrit BRUT des deux
+      côtés, jamais inversé ici : un test dédié l'épingle (une seconde inversion annulerait celle
+      de `WeaponRangeAggregate`, et le produit dirait l'exact contraire de la vérité).
+      `appendXUIDFilter` (weapon_kills_repo.go) a été généralisé de l'alias de table à la COLONNE
+      complète, ses 4 appelants migrés : sans quoi ce lecteur, qui filtre sur DEUX colonnes de
+      xuid de la même table, aurait posé une QUATRIÈME copie du sous-select `xuid_aliases`.
+- [x] 3.5 Table `kill_positions_latest` absente ou vide -> `games.ErrCapabilityNotSupported`
       (même contrat que `WeaponAccuracyRepository`).
-- [ ] 3.6 `slog.DebugContext` : lignes lues, armes retenues, armes sous seuil ;
+      FAIT, avec une NUANCE ASSUMÉE que le plan confondait : table ABSENTE ->
+      `ErrCapabilityNotSupported` ; table PRÉSENTE MAIS VIDE -> zéro ligne, AUCUNE erreur. Les
+      deux états sont distincts et deux tests les séparent. Les confondre ferait dire « ce titre
+      ne sait pas faire » à un scope simplement pas encore décodé — et sur `kill_openings`, dont
+      le backfill n'a pas tourné, ce serait le cas NOMINAL.
+- [x] 3.6 `slog.DebugContext` : lignes lues, armes retenues, armes sous seuil ;
       `slog.ErrorContext(ctx, "...", "err", err)` sur toute erreur, ligne illisible comprise
       (jamais avalée).
-- [ ] 3.7 Test DuckDB `:memory:` : schéma créé PAR LES MIGRATIONS RÉELLES
+      FAIT — un Debug par côté (`lignes_lues`, `retenues`, `hors_registre` : un trou de registre
+      se voit sans relire le code), Error sur lecteur indisponible, requête échouée, ligne
+      illisible et itération interrompue. « Armes sous seuil » n'est PAS journalisé ici et ne peut
+      pas l'être : le seuil est en analysis (D9), le repo ne le connaît pas.
+- [x] 3.7 Test DuckDB `:memory:` : schéma créé PAR LES MIGRATIONS RÉELLES
       (leçon `reference_test_ddl_copies_derivent`) ; cas : nominal deux côtés, unanimité violée,
       position manquante d'un côté, table absente.
+      FAIT — `weapon_range_repo_test.go` (12 tests) : nominal deux côtés avec dénivelé BRUT
+      vérifié dans les deux sens, résolution par gamertag via `xuid_aliases`, unanimité violée,
+      position absente ET partielle, passe non publiable, hors scope, entame nominale (avec
+      l'instant du kill), entame sur table vide, entame sur vue absente, filtres trop larges
+      (les deux formes, sur les deux méthodes), classificateur nil, source hors registre. La
+      fixture partagée `insertKill` a été refactorée en `insertKillEvent(killEventFixture)` pour
+      nommer la VICTIME sans recopier l'INSERT — un seul INSERT dans la fixture, toujours.
 
-- [ ] 3.8 **Table `kill_openings`** (D5, si le gate 2.5 est GO) : migration append-only
+- [x] 3.8 **Table `kill_openings`** (D5, si le gate 2.5 est GO) : migration append-only
       (`id` PK séquence, `written_at`, `match_id`, `killer_xuid`, `time_ms`, six coordonnées à
       T-lead) + vue `kill_openings_latest`, dans `steps_appendonly_*` et `migration/order.go`,
       recette ADR 0026 (`append_only_rebuild.go`). Isolation par titre vérifiée par le test
       `synthetic_title_b/migration_isolation_test.go`.
-- [ ] 3.9 Persister INSERT-only `KillOpeningPersister` via `BatchBuilder.AddKillOpenings` —
+      FAIT — `games/halo_infinite/migrations/steps_shared_kill_openings.go`, à côté de sa sœur
+      `kill_positions` plutôt que dans `steps_appendonly_misc.go` : ce fichier-là regroupe des
+      CONVERSIONS (`ApplyAppendOnlyRebuild`), et `kill_openings` est NET-NEUVE — elle se crée
+      DIRECTEMENT append-only, patron `match_bomb_stats`. Nom au canonicalOrder juste après
+      `shared_append_only_kill_positions_v1`. Tests verts : `TestCanonicalCoversGlobalAndTitle`,
+      `TestSyntheticTitleB_MigrationIsolation`, tout `games/halo_infinite/migrations`.
+      Deux tables et pas six colonnes de plus sur `kill_positions` : les deux couvertures ne
+      peuvent PAS être les mêmes, et les fusionner obligerait à réécrire une ligne append-only.
+- [x] 3.9 Persister INSERT-only `KillOpeningPersister` via `BatchBuilder.AddKillOpenings` —
       calqué sur `kill_position_persister.go` ; allowlist `no_art_patterns_test.go` inchangée.
-- [ ] 3.10 Producteur : dans `killcollector/positions.go`, après `BuildKillPositions`, un second
+      FAIT — `persist/kill_opening_persister.go` + `KillOpeningInsert` (rows.go) +
+      `Shared.KillOpenings` (batch.go) + `AddKillOpenings` (builder.go) + `persistKillOpenings`
+      (shared_persister.go), plus 5 tests d'intégration. Type DISTINCT de `KillPositionInsert`
+      malgré une forme identique : un type partagé laisserait écrire, sans que rien ne rougisse,
+      une passe d'entames dans `kill_positions` — c'est-à-dire des positions fausses de 1,5 s
+      présentées comme celles du coup fatal. `no_art_patterns_test.go` INCHANGÉ (vérifié : suite
+      `internal/sync` verte). `append_only_state_guard_test.go` s'est vu AJOUTER `kill_openings`
+      (recette ADR 0026 étape 5) — un durcissement, jamais un élargissement d'allowlist.
+- [x] 3.10 Producteur : dans `killcollector/positions.go`, après `BuildKillPositions`, un second
       appel avec `ShiftKillRefs` ; compteurs ADR 0009 (`killsource_openings_lignes_ecrites`,
       `..._morts_sans_position`) ; échec = journalisé + compté, JAMAIS fatal à la passe de morts.
-- [ ] 3.11 `backfill-killsource` : la capture d'entame suit `WithPositionCapture` (même
+      FAIT — `buildPositionRows` rend désormais une `passePositions` (les deux jeux de lignes
+      d'UNE seule lecture du film) ; `persistOpenings` écrit sous son propre lease court,
+      best-effort au carré (son échec ne fait retomber ni la passe de morts ni celle des
+      positions). Quatre compteurs :
+      `killsource_openings_{matchs_couverts,lignes_ecrites,morts_sans_position,erreurs_ecriture}`
+      — zéro ligne ne compte PAS un match couvert, sinon le compteur serait muet sur la seule
+      question qu'il sert à poser. `toKillOpeningRows` est une PROJECTION DÉDIÉE (consigne du
+      pilote) : elle réassocie chaque entame à l'instant DU KILL, seule clé par laquelle
+      `kp.time_ms = e.time_ms` peut rendre quelque chose. La réassociation est ARITHMÉTIQUE et
+      non par index, à dessein — `BuildKillPositions` écarte les morts non localisables, donc sa
+      sortie n'est pas alignée sur l'entrée et un appariement par rang attribuerait à une entame
+      l'instant d'une autre mort. Test dédié :
+      `TestToKillOpeningRows_LInstantRedevientCeluiDuKill`.
+- [!] 3.10 bis **Filtre « même vie » de la position d'entame — NON TRAITÉ, dépendance externe.**
+      Consigne du pilote (2026-09-06) : si un joueur a réapparu entre T-1,5 s et T, l'instant
+      décalé peut tomber sur son premier échantillon de vie et l'« entame » publiée serait un
+      point de réapparition. La correction est `replay.BuildKillOpenings(pos, slotXUID, kills,
+      offsetUS)` — décalage ET filtre de vie, `KillRef.TimeMS` déjà ramené à l'instant du kill —
+      attendue sur `feat/duels`. VÉRIFIÉ SUR PIÈCES au moment d'écrire : `git grep "func
+      BuildKillOpenings" feat/duels` ne rend RIEN. Le filtre n'est PAS réimplémenté ici (consigne
+      explicite, et règle « deux décodeurs du même fait divergeraient »). La réserve est écrite au
+      point d'appel (`buildPositionRows`) avec sa condition de bascule EN DEUX GESTES : l'appel
+      devient `replay.BuildKillOpenings(...)` ET `toKillOpeningRows` cesse de rajouter
+      `OpeningLeadMS` — l'un sans l'autre décalerait toutes les lignes de 1,5 s. Inscrit au
+      `.ai/V7.5/REGISTRE_REPORTS.md`.
+- [~] 3.11 `backfill-killsource` : la capture d'entame suit `WithPositionCapture` (même
       drapeau, même catalogue de bornes) — aucun nouveau flag.
-- [ ] 3.12 L'helper 3.1 accepte la table source en paramètre (`kill_positions_latest` |
+      COUVERT PAR 3.10, RIEN À ÉCRIRE — vérifié sur pièces :
+      `cmd/levelup/cmd_backfill_killsource.go:259-263` appelle `WithPositionCapture(mapNames,
+      mapBounds)`, qui arme `c.mapNames`/`c.mapBounds` ; `collectPositions` refuse la passe
+      entière quand ils sont nils, et la production d'entames vit À L'INTÉRIEUR de cette passe.
+      Le drapeau existant les gouverne donc toutes les deux, et aucun flag n'a été ajouté
+      (règle 11 : pas de feature OFF « pour plus tard »).
+- [~] 3.12 L'helper 3.1 accepte la table source en paramètre (`kill_positions_latest` |
       `kill_openings_latest`) — une seule jointure pour les deux lectures.
+      COUVERT PAR 3.1 : `measuredKillsQuery(table measuredPositionsTable, where string)`, avec
+      les deux constantes `positionsAtKill` / `positionsAtOpening`. Un type nommé plutôt qu'une
+      `string` : une table arbitraire n'a rien à faire dans cette jointure.
 
 **Gate** : `cd apps/go-api && go test ./internal/platform/duckdb/ -run 'WeaponRange|KillMeasured|KillDistance' -v`
 — `KillDistance` inclus : la migration de 3.1 ne doit rien changer au POC. Puis
 `go test -tags=integration -p 1 ./internal/persist/... ./internal/sync/killcollector/... ./internal/migration/...`
 (3.8-3.10 touchent persist/sync/migration : run nu = FAUX VERT).
 
----
+Gates réellement exécutés le 2026-09-06 (`CGO_ENABLED=1` — DuckDB exige CGO ; `GOCACHE` et
+`GOLANGCI_LINT_CACHE` isolés dans le worktree), tous verts :
+
+- `go test ./internal/platform/duckdb/ -run 'WeaponRange|KillMeasured|KillDistance' -v` -> `ok
+  [no tests to run]`. **Le gate écrit dans le plan ne lance AUCUN des tests qu'il vise** : ces
+  tests-là sont `//go:build integration` (le POC KillDistance l'était déjà). La forme utile est
+  `go test -tags=integration -p 1 ...` : 23 tests, tous PASS (9 KillDistance inchangés,
+  12 WeaponRange/WeaponOpening, 2 garde-rails).
+- `go test ./internal/platform/duckdb/ ./internal/port/... ./internal/persist/...
+  ./internal/sync/killcollector/... ./internal/migration/... ./internal/games/...` -> 26 paquets `ok`.
+- `go test -tags=integration -p 1 ./internal/persist/... ./internal/sync/... ./internal/migration/...
+  ./internal/games/...` -> code de sortie **0** (vérifié sur le code de sortie, pas sur un filtre
+  de sortie : un `grep FAIL` nu attrape des logs applicatifs).
+- `go vet` sur les cinq paquets + `go vet -tags=integration ./internal/platform/duckdb/` -> silencieux.
+- `gofmt -l internal` -> sortie vide.
+- `golangci-lint run --new-from-merge-base=origin/main` -> **0 issues** (baseline non accrue).
 
 ## Lot 4 — Service, capability, contrat API
 
@@ -444,6 +560,26 @@ répliqué, ou source hors film »).
   tout `internal/` et lit chaque `.go`. C'est le prix d'un garde-rail qui couvre les couches
   aval. À surveiller si d'autres garde-rails adoptent la même marche — à la troisième, il
   faudra un index partagé plutôt que trois marches complètes.
+- (lot 3, 2026-09-06) **`kill_positions` n'a JAMAIS été inscrite à `appendOnlyStateTables`**
+  (`internal/sync/append_only_state_guard_test.go`) alors qu'elle est append-only depuis G.2
+  (2026-08-30) : l'étape 5 de la recette ADR 0026 a été sautée à sa conversion, exactement
+  comme elle l'avait été pour `match_usage_players`/`match_usage_films` (dont l'inscription
+  porte la mention « l'inscription manquait à l'arrivée de la branche »). `kill_openings` y a
+  été inscrite par ce lot ; sa sœur NON — hors périmètre. Rien ne casse aujourd'hui (aucun
+  writer ne la mute), mais le garde-rail ne la protège d'aucun DELETE futur.
+- (lot 3, 2026-09-06) **Le sous-select `SELECT xuid FROM xuid_aliases WHERE gamertag = ?` existe
+  en TROIS copies** dans `platform/duckdb` : `appendXUIDFilter` (weapon_kills_repo.go, désormais
+  généralisé à la colonne et partagé par 4 appelants dont le nouveau lecteur de portée),
+  `killsource_weapon_kills_repo.go:261` et `objective_index_repo.go:106`. Les deux dernières
+  sont préexistantes et hors périmètre ; à la quatrième copie la règle n°6 imposera de les
+  migrer sur le helper. Ce lot a évité d'en créer une en généralisant le paramètre du helper
+  plutôt qu'en recopiant.
+- (lot 3, 2026-09-06) **Le gate écrit pour ce lot ne lançait aucun test.** `go test
+  ./internal/platform/duckdb/ -run 'WeaponRange|KillMeasured|KillDistance'` rend « no tests to
+  run » : toute cette famille de tests est `//go:build integration`. Le piège est générique — un
+  gate sans `-tags=integration` sur un paquet dont les tests DB sont tagués est un FAUX VERT, et
+  le plan le disait déjà pour persist/sync/migration sans le voir pour `platform/duckdb`. À
+  corriger dans les gates des lots suivants.
 - (lot 2, 2026-09-06) **Le délai médian entre le premier dégât CAPTURÉ et la fin de vie vaut
   551 à 1 335 ms** sur les quatre films. C'est un second angle sur le constat de la sonde n°1
   (« la riposte vit dans les deux premières secondes ou n'existe pas ») et c'est aussi ce qui

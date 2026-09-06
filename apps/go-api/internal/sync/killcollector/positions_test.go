@@ -367,3 +367,41 @@ func TestCollectPositions_FilmIllisibleNeTenteAucuneEcriture(t *testing.T) {
 	ids := MatchIdentities{XUIDs: []string{"111", "222"}}
 	c.collectPositions(context.Background(), "m1", nil, ids, killRefValide())
 }
+
+// TestToKillOpeningRows_LInstantRedevientCeluiDuKill : LE point critique de la passe
+// d'entames. `BuildKillPositions` a recu des couples decales de -OpeningLeadMS, donc chaque
+// KillPosition rendue porte l'instant MESURE ; la table, elle, est clee sur l'instant DU KILL
+// (c'est par lui que match_kill_events se joint). Un oubli de la readdition rendrait la
+// jointure du lecteur vide, en silence.
+func TestToKillOpeningRows_LInstantRedevientCeluiDuKill(t *testing.T) {
+	const instantDuKill = int64(9000)
+	positions := []replay.KillPosition{
+		{
+			// Ce que BuildKillPositions rend apres ShiftKillRefs(kills, -OpeningLeadMS).
+			KillRef: replay.KillRef{
+				KillerXUID: 111, VictimXUID: 222,
+				TimeMS: instantDuKill - replay.OpeningLeadMS,
+			},
+			Killer: &replay.Vec3{X: 1, Y: 2, Z: 3},
+			// Victim volontairement nil : entame non localisee d'un cote.
+		},
+	}
+	rows := toKillOpeningRows("m1", positions)
+	if len(rows) != 1 {
+		t.Fatalf("attendu 1 ligne, obtenu %d", len(rows))
+	}
+	r := rows[0]
+	if int64(r.TimeMS) != instantDuKill {
+		t.Errorf("TimeMS = %d, attendu %d (l'instant DU KILL, pas l'instant mesure)",
+			r.TimeMS, instantDuKill)
+	}
+	if r.MatchID != "m1" || r.KillerXUID != "111" {
+		t.Errorf("ligne inattendue: %+v", r)
+	}
+	if r.KillerZ == nil || *r.KillerZ != 3 {
+		t.Errorf("position tueur inattendue: Z=%v", r.KillerZ)
+	}
+	if r.VictimX != nil {
+		t.Errorf("VictimX devait rester nil (non localisee), obtenu %v", *r.VictimX)
+	}
+}
