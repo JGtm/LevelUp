@@ -7,6 +7,31 @@
 > 30/08 et 02/09 ont traversé des goldens synthétiques pendant dix-neuf schémas faute de ce
 > différentiel. Worktree `LevelUp-wt-v2-corpus`, branche `feat/v2-corpus`.
 
+> **NOTE DATÉE 2026-09-06 (2e passe, corrections de périmètre demandées avant revue).** Deux
+> corrections apportées après la rédaction initiale de ce journal : (1) le bug de mesure
+> `<calque>.<sous-champ>/n` (§6 ci-dessous) découvert lors de la 1re exécution est maintenant
+> CORRIGÉ À LA SOURCE — les chiffres de la §3 ci-dessous datent d'AVANT ce correctif et sont
+> **remplacés** par ceux de la §7 (2e exécution, mode parc, correctif inclus) ; (2) la référence
+> par défaut du gate n'est plus le parc mais une **cuisson à la base** (§5) — §1 à §4 restent le
+> compte rendu de la 1re conception (mode parc uniquement), conservé pour l'historique du
+> raisonnement, mais **ne reflètent plus le comportement par défaut du gate livré**.
+>
+> **Effet du correctif §6 sur `BALAYAGE_PARC_2026-09-06.md` : aucun sur ses CONCLUSIONS,
+> potentiel sur les COMPTES bruts de sa section 5.** Le balayage cite exclusivement des mesures
+> SPÉCIALISÉES (`coverage.*`, `objectives/par-*`, `tracks/points`, `vies-par-xuid`...) — aucune
+> n'utilise `mesurerTableau` au niveau imbriqué (le seul niveau affecté par le bug ; le niveau
+> racine, un seul appel par calque, a toujours été correct). Les COMPTES AGRÉGÉS de sa section 5
+> (« ports : 91 pertes », « véhicules : 51 pertes »...) additionnaient TOUTE l'empreinte, donc
+> INCLUAIENT `flagCarries.spans/n`, `vehicles.rides/n`, `vehicles.samples/n`, `zoneStates.spans/n`
+> et `zoneStates.gauge/n` avec une valeur SOUS-COMPTÉE (dernier groupe itéré, pas la somme) —
+> ces cinq métriques précises n'apparaissent dans AUCUNE conclusion textuelle du balayage
+> (vérifié par relecture des §5, §6 et §9). Aucun chiffre cité dans le corps du texte de
+> `BALAYAGE_PARC_2026-09-06.md` n'est donc faux ; les totaux bruts du tableau de sa section 5
+> auraient pu être légèrement plus élevés avec le correctif (le rapport n'est pas rejoué : il
+> n'est PAS réécrit, conformément à la consigne). `BALAYAGE_PARC` n'est donc PAS corrigé par ce
+> commit.
+
+
 ## 1. Conception retenue
 
 ### 1.1 Axe « somme des durées » (`internal/replaydiff`)
@@ -192,7 +217,149 @@ de 119+ matchs et 19 schémas** — un défaut isolé à une famille de mode non
 manifeste (ou à un schéma intermédiaire non représenté) resterait invisible. Le manifeste est
 extensible sans changement de code (§1.2).
 
-## 5. Gates joués
+## 5. Correction 1 — la référence par défaut devient une cuisson à la base
+
+**Constat du superviseur** : un gate qui rend PERTE sur 7 témoins sur 7 au MEILLEUR état connu
+(HEAD contre le parc, jamais à jour) ne gate rien — personne ne peut lire un tableau tout rouge
+et savoir si SON changement a introduit une régression. La §2-§4 ci-dessus, en mode parc seul,
+en est la démonstration : 7/7 PERTE, alors qu'aucune régression de produit n'était en cause.
+
+**Conception retenue** : `--reference=base` (nouveau défaut). Le gate résout une révision de
+BASE (`--base`, défaut : `origin/feat/v75` si le HEAD courant en diffère, sinon `HEAD^` —
+`base.go:resolveBaseRevision`), crée un **worktree Git détaché temporaire** de cette révision
+sous la racine de travail (`git worktree add --detach`), y compile `cmd/replay-build` (GOCACHE
+dédié, distinct de celui du HEAD), cuit chaque témoin **avec le binaire de base ET avec celui du
+HEAD** dans deux racines de travail distinctes, puis compare les deux artefacts frais sur tous
+les axes. Toute perte fait sortir en code 1.
+
+Le mode `--reference=parc` reste disponible (balayage de release contre l'artefact déjà cuit) —
+désormais **informatif par défaut** (imprime le tableau, sort en 0), bloquant seulement avec
+`--strict`.
+
+**Pourquoi un binaire compilé et invoqué en sous-processus, pas un import direct**
+(`internal/replaybuild`) : importer ce paquet donnerait TOUJOURS le comportement du code AVEC
+LEQUEL LE GATE EST COMPILÉ (le HEAD), quelle que soit la révision qu'on croit cuire — la
+comparaison HEAD-contre-base serait vacuante (les deux côtés cuiraient avec le même code). La
+cuisson passe donc par un binaire `cmd/replay-build` **compilé depuis la révision voulue**,
+invoqué en sous-processus — la même méthode pour les deux côtés, symétrique par construction
+(`bake.go`, `orchestrate.go`).
+
+**Le verrou de décodage partagé reste externe au sous-processus** : `cmd/replay-build` arme sa
+propre sentinelle et son propre verrou solo, mais sur `LEVELUP_REPO_ROOT=workRoot` — une racine
+jetable que personne d'autre ne dispute. Ce verrou-là ne protège rien contre la concurrence
+MACHINE. `bake.go` prend donc EN PLUS le verrou PARTAGÉ (`lockRoot` = `CacheRootDir()` du PARC,
+jamais de la racine de travail) avant de lancer le sous-processus — le même verrou que
+`cmd/replay-build` et `backfill-replay` posent déjà depuis n'importe quel checkout.
+
+**Suppression du worktree détaché, et sa garde** : retiré à la fin (`defer`), même en échec.
+AVANT `git worktree remove`, le worktree est balayé pour une JONCTION (`contientUneJonction`,
+`os.ModeSymlink`) — `git worktree remove` la SUIVRAIT et supprimerait récursivement des fichiers
+de l'autre côté (piège déjà mesuré sur ce dépôt, `reference_worktree_remove_follows_junctions.md`).
+Ce gate ne pose jamais de jonction dans ce worktree (copie systématique, `staging.go`) : la
+vérification est une garde défensive, jamais un cas attendu.
+
+**Découverte opérationnelle en cours de route** : les trois premières tentatives d'exécution
+complète (7 témoins × 2 cuissons) ont dépassé le budget de 600 s d'une commande avant-plan
+bloquante — la machine porte des dizaines de worktrees actifs (`git worktree list` : ~90
+entrées), et une commande TUÉE par expiration de timeout (contrairement à une bascule
+automatique en arrière-plan) ne joue AUCUN `defer` Go : un worktree détaché et un sous-processus
+`replay-build-base.exe` sont restés orphelins deux fois, tenant le verrou partagé et un fichier
+de log, jusqu'à nettoyage manuel (`git worktree remove --force`, `taskkill`). Le calcul du gate
+lui-même n'est pas en cause — le budget d'une invocation manuelle avant-plan l'est. Documenté
+ici pour la prochaine exécution : prévoir un budget target ≥ 12-15 min pour le manifeste complet
+en mode base sur une machine chargée, ou lancer en arrière-plan surveillé.
+
+## 6. Correction 2 — le bug de mesure `<calque>.<sous-champ>/n`, corrigé à la source
+
+Périmètre de ce lot inclus (`internal/replaydiff` est possédé par ce chantier) : le bug de
+mesure préexistant découvert lors de la 1re exécution (§3.2 ci-dessus, désormais consigné puis
+corrigé) est réparé à la source, pas seulement consigné.
+
+**Le bug.** `mesurerTableau` (`empreinte_axes.go`) posait `prefixe+"/n"` par un **SET** (`e.num`)
+inconditionnellement. Pour un calque à deux niveaux (`flagCarries[].spans[]`,
+`vehicles[].rides[]`, `vehicles[].samples[]`, `zoneStates[].spans[]`, `zoneStates[].gauge[]`,
+et — via la passe générique, en parallèle de la mesure spécialisée correcte — `tracks[].points[]`),
+cette fonction est appelée **une fois par groupe de premier niveau** (une équipe de
+`flagCarries`, un véhicule de `vehicles`...) : la mesure finale n'était que celle du DERNIER
+groupe itéré, jamais la somme.
+
+**Le correctif.** Distinction par profondeur : au niveau RACINE (`profondeur == 0`, un seul
+appel par calque de premier niveau — le même calcul que `passeGenerique` pose déjà pour le même
+préfixe), `e.num` reste correct (poser = accumuler depuis zéro en un seul appel). Au niveau
+IMBRIQUÉ (`profondeur > 0`, plusieurs appels sur le même préfixe), `e.incr` accumule. Un `e.incr`
+inconditionnel à TOUS les niveaux avait été essayé en premier et rejeté : `passeGenerique`
+pose déjà `<calque>/n` en `e.num` pour le niveau racine, et un `e.incr` y additionnerait à une
+valeur préexistante au lieu de la remplacer (mesuré : `flagCarries/n` rendait 4 au lieu de 2
+pour deux équipes vides).
+
+**Preuve par mutation** (`internal/replaydiff/empreinte_axes_test.go`, 3 tests neufs) :
+`TestSpansDeCalqueImbriqueEstLaSomme` (deux `FlagCarry` de tailles différentes, 2+1=3 attendu),
+`TestVehiclesRidesDeCalqueImbriqueEstLaSomme` (même défaut sur un autre calque à deux niveaux),
+`TestCalqueRacineNAPasBesoinDeSomme` (non-régression : le niveau racine n'a besoin d'aucune
+somme). Mutation temporaire (retour au `e.num` inconditionnel) : les deux premiers tests
+rougissent exactement comme attendu (`flagCarries.spans/n` rend 1 au lieu de 3,
+`vehicles.rides/n` rend 0 au lieu de 3), le troisième reste vert (le niveau racine n'était pas
+affecté) — correctif restauré, suite revérifiée verte.
+
+**Preuve en conditions réelles** (§7, comparaison avec le rapport de la §2) : `flagCarries.spans/n`
+sur `bcb6d393` rend désormais **34 → 17** — la VRAIE somme des deux équipes (cohérente avec
+`flagCarries.spans/total`, mesurée séparément par `e.incr` et donc jamais affectée par ce bug) —
+alors que le rapport de la 1re exécution (bug non corrigé) rendait « 3 → 1 » (le dernier groupe
+itéré). La perte RÉELLE de matière sur ce témoin (déjà consignée au registre comme découverte
+nouvelle) est confirmée par ce chiffre correct : moitié moins de spans de drapeau, pas un
+artefact de mesure.
+
+## 7. Ré-exécution au HEAD (2e passe) — les deux modes
+
+Mêmes commit et manifeste que la §2 (worktree `LevelUp-wt-v2-corpus`, HEAD étendu des
+corrections des §5-§6). Protocole de verrou inter-agents respecté à chaque cuisson.
+
+### 7.1 Mode base (défaut) — HEAD contre `origin/feat/v75`
+
+```
+temoin       famille          base(origin/feat/v75)   HEAD    gains   pertes      duree  statut
+bcb6d393     ctf_mono_manche      43     43        0        0     11.44s  ok
+fb1a1a72     ctf_multi_manche     43     43        0        0     29.71s  ok
+d9781168     oddball              43     43        0        0     49.11s  ok
+c75f33b8     assaut_bombe         43     43        0        0      15.8s  ok
+bf15f7ab     slayer               43     43        0        0     13.47s  ok
+51ebbc0f     deux_manches         43     43        0        0     19.24s  ok
+084a804d     vehicules            43     43        0        0    2m32.3s  ok
+```
+
+**Code de sortie 0. 7/7 témoins « ok », 0 gain, 0 perte, schéma 43 des deux côtés.** Exactement
+l'attendu : ce lot (le gate lui-même + le correctif §6 dans `internal/replaydiff`) ne touche
+aucun code de cuisson (`internal/replaybuild`, `internal/analysis/replay`,
+`internal/analysis/filmdec`) — les deux artefacts (base et HEAD) sont produits par un code de
+cuisson STRICTEMENT IDENTIQUE, donc byte-identiques en substance. C'est la démonstration que le
+mode base fonctionne : un gate silencieux sur un lot qui ne change aucune cuisson.
+
+### 7.2 Mode parc (informatif) — HEAD contre l'artefact déjà cuit
+
+```
+temoin       famille            parc   HEAD    gains   pertes      duree  statut
+bcb6d393     ctf_mono_manche      20     43      205       27     11.23s  PERTE
+fb1a1a72     ctf_multi_manche     34     43       27        2     31.19s  PERTE
+d9781168     oddball              23     43      176        7     24.23s  PERTE
+c75f33b8     assaut_bombe         28     43      168        9     14.45s  PERTE
+bf15f7ab     slayer               34     43       41        2     15.51s  PERTE
+51ebbc0f     deux_manches         21     43      184       10     18.47s  PERTE
+084a804d     vehicules            20     43      483       21   2m13.37s  PERTE
+```
+
+**Code de sortie 0 (mode informatif, sans `--strict`)** : le parc n'est jamais à jour, ces pertes
+sont attendues et NE bloquent PAS le gate par défaut — cf. §5. Le détail nommé
+(`imprimerDetailPertes`) confirme, chiffres CORRIGÉS (§6) à l'appui, la même analyse que la §3
+ci-dessus : l'immense majorité des 96 pertes brutes (contre 75 dans la 1re exécution — le
+correctif révèle correctement `tracks.points/n`, qui était auparavant silencieux ou trompeur)
+relève de motifs déjà expliqués dans `BALAYAGE_PARC_2026-09-06.md` (bornes de scène assainies,
+reclassements, compteurs de défaut, réattributions dans un gain — souvent avec des chiffres
+identiques au balayage), plus les deux faits nouveaux déjà consignés au registre (`bcb6d393`
+flagCarries, `084a804d` equipmentEpisodes — désormais chiffrés correctement : 34→17 spans de
+drapeau, pas 3→1). Aucune régression massive. Ces deux faits restent au registre, non traités
+ici (un autre agent les instruit).
+
+## 8. Gates joués
 
 ```
 cd apps/go-api

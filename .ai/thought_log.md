@@ -97211,3 +97211,57 @@ avant tout merge touchant `analysis/replay`/`replaybuild`/`filmdec` ou bumpant `
 Prochaine étape : instruire les deux faits nouveaux (`bcb6d393` flagCarries, `084a804d`
 equipmentEpisodes) et le bug de mesure `spans/n`, tous trois au registre avec condition de
 reprise écrite.
+
+## [2026-09-06] Gate corpus témoin — corrections de périmètre avant revue — Complété
+
+**Contexte.** Deux corrections demandées par le superviseur sur `feat/v2-corpus` avant revue,
+en série sur le même worktree : (1) le bug de mesure `<calque>.<sous-champ>/n` découvert lors
+de la 1re exécution (entrée précédente) est possédé par ce chantier (`internal/replaydiff`
+lui appartient) — à corriger à la source, pas seulement consigner ; (2) constat du superviseur
+qu'un gate rendant PERTE sur 7 témoins/7 au meilleur état connu (HEAD contre le parc, jamais à
+jour) ne gate rien — la référence par défaut doit devenir une cuisson fraîche d'une révision de
+base, pas un artefact figé.
+
+**Décision technique.** (1) `mesurerTableau` (`empreinte_axes.go`) posait `prefixe+"/n"` par un
+SET inconditionnel (`e.num`) à chaque appel — pour un calque à deux niveaux
+(`flagCarries[].spans[]`, `vehicles[].rides/samples[]`, `zoneStates[].spans/gauge[]`), la
+fonction est appelée une fois par groupe de premier niveau : la mesure finale n'était que celle
+du DERNIER groupe itéré, jamais la somme. Correctif : distinction par profondeur — racine
+(`profondeur == 0`, un seul appel par calque, même calcul que `passeGenerique`) garde `e.num` ;
+imbriqué (`profondeur > 0`, plusieurs appels sur le même préfixe) passe à `e.incr` (accumule).
+Preuve par mutation : 3 tests neufs (`empreinte_axes_test.go`), mutation temporaire
+(`e.num` partout) fait rougir 2/3 comme attendu (`flagCarries.spans/n` rend 1 au lieu de 3,
+`vehicles.rides/n` rend 0 au lieu de 3), le troisième (racine) reste vert — correctif restauré.
+(2) Nouveau défaut `--reference=base` : le gate résout une révision de base (`--base`, défaut
+`origin/feat/v75` si le HEAD en diffère sinon `HEAD^`), crée un worktree Git détaché temporaire
+de cette révision, y compile `cmd/replay-build` (GOCACHE dédié), cuit chaque témoin avec le
+binaire de BASE et celui du HEAD dans deux racines de travail distinctes, compare les deux
+artefacts frais. Binaire compilé + sous-processus, pas un import direct : importer
+`internal/replaybuild` donnerait toujours le comportement du HEAD des deux côtés (comparaison
+vacuante) — même méthode symétrique pour les deux côtés (`base.go`, `orchestrate.go`). Le
+verrou de décodage partagé (`filmproc.AcquireSolo`) reste pris par `bake.go` sur le
+`CacheRootDir()` du PARC (pas de la racine de travail jetable) avant chaque sous-processus.
+Worktree détaché retiré en `defer`, jamais sans vérifier l'absence de jonction au préalable
+(`contientUneJonction`, piège déjà mesuré sur ce dépôt). Mode `--reference=parc` conservé,
+devenu informatif par défaut (tableau imprimé, exit 0), bloquant seulement avec `--strict`.
+
+**Résultats.** Mode base (défaut), HEAD contre `origin/feat/v75` : 7/7 témoins « ok », 0 gain,
+0 perte, schéma 43 des deux côtés, code de sortie 0 — attendu, ce lot ne touche aucun code de
+cuisson. Mode parc (informatif), HEAD contre l'artefact déjà cuit : 7/7 PERTE, code de sortie 0
+(sans `--strict`) ; chiffres désormais corrects grâce au §6 — `bcb6d393` : `flagCarries.spans/n`
+rend 34→17 (la vraie somme, cohérente avec `spans/total`) au lieu du « 3→1 » buggé de la
+1re exécution. Analyse inchangée sur le fond : motifs déjà expliqués par
+`BALAYAGE_PARC_2026-09-06.md` + les deux faits nouveaux déjà au registre, non traités ici (un
+autre agent les instruit). `BALAYAGE_PARC_2026-09-06.md` non réécrit (conforme à la consigne) —
+note datée ajoutée en tête de `CORPUS_TEMOIN_2026-09-06.md` précisant que le correctif §6
+n'affecte aucune conclusion de ce rapport (mesures spécialisées, jamais `mesurerTableau`
+imbriqué) mais aurait pu légèrement relever ses comptes agrégés bruts de section 5. Gates :
+`go test -count=1` (4 paquets touchés), `go build ./...` (CGO 0 et 1), `go vet ./...`,
+`golangci-lint --new-from-merge-base=origin/main` (0 issue) — tous verts, GOCACHE/
+GOLANGCI_LINT_CACHE dédiés au worktree, un film à la fois, verrou mkdir autour de chaque
+cuisson et de chaque exécution du gate.
+
+**Conclusion / prochaine étape.** Gate prêt pour revue avec une référence par défaut qui gate
+réellement (base fraîche, pas un parc figé). Restent au registre, non traités par ce chantier :
+les deux faits nouveaux (`bcb6d393` portage de drapeau, `084a804d` épisode d'équipement) —
+instruits par un autre agent.
