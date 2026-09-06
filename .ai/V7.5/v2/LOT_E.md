@@ -742,3 +742,51 @@ CE QU'IL NE VOIT TOUJOURS PAS, ECRIT DANS L'EN-TETE DU FICHIER : (1) une copie d
 seraient repartis entre deux suites imbriquees — c'est le prix de la borne ci-dessus, et aucune des
 six copies d'origine n'avait cette forme ; (2) une copie par arithmetique d'offset
 (`readBitsAt(pay, p+2, 7)`), qui demanderait de suivre la valeur de `p`.
+
+## [x] Correction 4 (C4, P2) — la liste des paquets qui decodent est DERIVEE de la regle
+
+Commit `v2(E.fix-4)`. `archlint/decode_lock_held_test.go`, `cmd/rdata_weapon_scan/main.go`.
+
+LE TROU. `paquetsQuiDecodent` etait une liste FERMEE de trois paquets, maintenue par une commande
+documentee qui cherchait `filmdec.Scan` — alors que la regle CODEE (`balayageFilmdec`) couvre
+`Scan*` **et** `DecodeFrame*` **et** `TraverseEntity*`. Un quatrieme paquet passait dans l'ecart
+entre la liste et la commande censee l'entretenir : `cmd/rdata_weapon_scan/main.go:258` appelle
+`filmdec.DecodeFrameRecords` et ne contient AUCUN `LockProcessDecode`. C'est un binaire que
+`go build ./...` compile.
+
+CE QUI EST FAIT.
+
+1. La liste est **derivee** : `paquetsQuiDecodent(t, racine)` balaie `internal` et `cmd`, retient
+   toute source non-test qui contient `filmdec.` ET dont l'AST porte un appel reconnu par
+   `balayageFilmdec`, hors `internal/analysis/filmdec`. La regle et sa liste ne peuvent plus
+   diverger : c'est la MEME fonction qui decide des deux.
+2. Un PLANCHER date (`paquetsAttendus`, 4 entrees) fait echouer le test si la derivation cesse de
+   trouver un paquet connu — une derivation cassee (mauvaise racine, marcheur renomme) ne peut pas
+   rendre une liste vide en annoncant « vert ». Ce n'est pas un plafond : un paquet neuf entre
+   tout seul.
+3. `cmd/rdata_weapon_scan` mis en conformite : `release := filmdec.LockProcessDecode()` +
+   `defer release()` en TETE de `main`, avec la justification ecrite au-dessus. C'est la forme qui
+   satisfait le contrat « pour toute la duree du decodage, jamais par sous-appel » sur un binaire
+   mono-tache ; `litLoc` est alors couvert par le point fixe (son seul appelant du paquet est
+   `main`).
+4. L'en-tete du fichier ne documente plus une commande de re-mesure : il explique que la liste est
+   derivee, et pourquoi.
+
+PREUVE, ROUGE PUIS VERT (2026-09-06) :
+
+```
+AVANT le verrou, liste derivee :
+--- FAIL: TestBalayagesFilmdecSousVerrou/cmd/rdata_weapon_scan
+      cmd/rdata_weapon_scan/main.go:214 litLoc
+    (les trois autres paquets : PASS)
+
+APRES le verrou :
+--- PASS: TestBalayagesFilmdecSousVerrou (4 sous-tests PASS)
+go build ./...  -> exit 0
+go vet ./internal/archlint/ ./cmd/rdata_weapon_scan/  -> exit 0
+```
+
+CE QUE LA DERIVATION MESURE EN PLUS, ET QUI N'A RIEN CHANGE : le balayage couvre desormais les
+fichiers a contrainte de compilation (`parser.ParseFile` ignore les tags). Aucun paquet
+supplementaire n'en ressort sur l'arbre du jour — les quatre trouves sont exactement les quatre
+que la commande de re-mesure corrigee rend.
