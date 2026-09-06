@@ -878,8 +878,35 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   chantiers parallèles ne peuvent pas revendiquer le même numéro (même règle qu'au v42).
 	//   Détail : internal/analysis/replay/{equipment_episodes.go (spanFor), flag_carries.go
 	//   (tracksByXUID)} et .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
-	if SchemaVersion != 45 {
-		t.Fatalf("SchemaVersion = %d, attendu 45 : incrémenter exige une raison écrite ci-dessus "+
+	// v46 — UN JOUEUR NE PORTE PLUS SON PROPRE DRAPEAU (2026-09-06). Aucun champ ajouté : c'est
+	//   le CONTENU de `flagCarries` qui change — à quel drapeau un portage est rattaché, et donc
+	//   à quel drapeau la CAPTURE qui le ferme est publiée.
+	//   LE FAIT. `bcb6d393` (CTF:Arena, 3-0, les quatre porteurs de l'équipe 0) publiait 15
+	//   portages sur le drapeau étiqueté « équipe 1 » et 1 sur celui étiqueté « équipe 0 ». Le
+	//   seizième est impossible : en CTF on RENVOIE son drapeau, on ne le porte pas. L'étiquette,
+	//   elle, est JUSTE — le catalogue de carte donne le socle de l'équipe 1 en (-7,30 · -1,79)
+	//   et celui de l'équipe 0 en (41,03 · 9,72), et les trois captures de l'équipe 0 se
+	//   terminent à (40,59 · 9,95), (41,46 · 9,27) et (40,37 · 9,85) : on livre le drapeau
+	//   adverse à SA PROPRE base, donc `team_index` du catalogue et `teamId` de la feuille de
+	//   match coïncident.
+	//   LES DEUX CAUSES, dans `assignFlags`. (1) L'ORDRE : l'état « où git chaque drapeau » se
+	//   tenait à jour en parcourant les PRISES, si bien que la position de LÂCHER d'un portage
+	//   était inscrite dès son attribution — avant d'avoir eu lieu. Le portage ouvert à
+	//   171 941 ms ne se ferme qu'à 325 913 ms (145 s APRÈS la prise suivante) et sa position de
+	//   lâcher (-6,53 · -2,19) chassait du sol la position réelle (33,61 · 2,48) que la prise
+	//   venait chercher à 0 m. Le parcours se fait désormais par ÉVÉNEMENTS DATÉS. (2) LA RÈGLE :
+	//   le repli sur le socle le plus proche est juste pour un VOL et faux pour une PRISE, qui se
+	//   fait là où l'objet est tombé — ici à 10,4 m du socle de l'équipe 0 contre 41,1 m de celui
+	//   de l'équipe 1. Une prise que rien ne rattache au sol va au drapeau DÉJÀ EN JEU quand il
+	//   est le seul ; à deux, la règle se tait et le socle reprend la main.
+	//   MESURE : 16 portages sur 16 au drapeau de l'équipe 1, zéro sur celui de l'équipe 0, et
+	//   les trois captures publiées sur le drapeau adverse. La version monte pour la raison des
+	//   montées v39 à v45 : un artefact 45 attribue un portage — et sa capture — au mauvais
+	//   drapeau sans que sa forme le dise, et la reprise du backfill se fait par SchemaVersion.
+	//   Détail : internal/analysis/replay/flag_assign.go et
+	//   .ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md.
+	if SchemaVersion != 46 {
+		t.Fatalf("SchemaVersion = %d, attendu 46 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
