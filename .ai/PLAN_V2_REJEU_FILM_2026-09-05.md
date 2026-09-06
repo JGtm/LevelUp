@@ -580,3 +580,23 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   `7 <= plafond 7`, build OK, vitest 612 fichiers / 6 393 verts. LES SEPT LOTS ET LE CORRECTIF
   CTF SONT INTÉGRÉS : B, F, C, G, E, CTF, A, D. Reste : CI des derniers merges, balayage du parc
   (en cours), balayage « après » sur `feat/v75` intégré, décision `flagCarries`.
+- 2026-09-06 15:20 : BALAYAGE « AVANT » RENDU (`feat/v2-balayage`, outil `cmd/replay-diff`, rapport
+  `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`) : 119 matchs / 161 artefacts distincts / 19 schémas
+  (1-38), 119/119 re-cuits à `f1c7b411f` (B+F), 0 échec, 36 min, pic 0,56 Gio, parc de référence
+  intact. Régressions candidates : (1) actions d'objectif CTF non attribuées sur les 14 CTF du
+  parc (297 actions, −20 captures) = le pont d'identité `d173b1a8c`, DÉJÀ CORRIGÉ (schéma 40) ;
+  (2) grappin −10 à −40 % sur 16 matchs (coïncide avec les usages d'équipement du schéma 38,
+  non tranché) ; (3) épisodes camo/surbouclier −1/−2 sur 11 matchs ; (4) un joueur perd toutes
+  ses vies nommées sur 3 matchs. Tout le reste expliqué sur pièces (drapeau neutre schéma 35,
+  véhicules fantômes fusionnés, identité des camps résolue à somme constante, bornes de scène
+  corrigées d'un facteur 100). Piège de méthode : la première série de cuissons tournait SANS
+  les faits (échappement bash `\$`), re-cuite après correction. Suite : balayage « APRÈS » sur
+  `feat/v75` intégré (même outil) + instruction des candidates 2-4 (worktree
+  `LevelUp-wt-v2-regressions`).
+- 2026-09-06 15:40 : CI de `feat/v75` rouge sur les trois derniers merges, deux causes distinctes :
+  (1) merges CTF et A : job Frontend, garde `replaySchemaLogic.guard.test.ts` (copie web de
+  `SchemaVersion` à 39 contre 40) — résolu par le merge D qui supprime ce fichier (item D.4) ;
+  (2) merges A et D : job Coverage + Baseline, 9 entrées de baseline pour `TestLireT0FilmArtefact*`
+  (`sync/replayartifacts`) enrôlées par F et supprimées par A avec leur fonction (dérivation T0
+  refondue en A.4) → entrées retirées de `.ai/baselines/tests_pre_migration.jsonl` (9 795 → 9 786),
+  suppression volontaire documentée. Aucun test en échec dans la suite Go.
