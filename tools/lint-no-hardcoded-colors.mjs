@@ -52,6 +52,20 @@ const TW_PATTERN = new RegExp(
   'g',
 )
 
+// 3. Fonctions de couleur CSS : oklch(), rgb()/rgba(), hsl()/hsla(), color()...
+//    AJOUTE LE 2026-09-06 (lot v2, correction C5 de la revue R1). Deux gardes du rejeu
+//    supprimes en D.12 portaient ce controle (oklch sur les encres d'effet de tir, oklch et
+//    rgba sur les fichiers du lacher d'equipement) : sans lui, le lint canonique ne couvrait
+//    PAS ce qu'il remplacait — une couleur litterale ecrite dans layers/fxInk.ts passait le
+//    gate global sans un seul rouge (mutation M10 de la revue). Le theme reste la seule
+//    source : ces valeurs vivent dans styles/globals.css, jamais dans une feature.
+//    'color(' est VOLONTAIREMENT ABSENT de la liste : c'est aussi le nom d'une variable de
+//    rendu dans le depot (valueGridModel.ts), et un motif qui crie faux se desactive.
+//    `color(` est VOLONTAIREMENT ABSENT de la liste : c'est aussi le nom d'une variable de
+//    rendu dans le depot (`color(rowIndex, colIndex)`, valueGridModel.ts), et un motif qui
+//    crie faux se desactive.
+const CSS_COLOR_FN_PATTERN = /\b(?:oklch|oklab|lch|rgba?|hsla?|hwb)\s*\(/g
+
 // Whitelist de fichiers / patterns explicitement tolérés.
 const ALLOWED_FILES = [
   // Palettes brutes — c'est leur seule raison d'être.
@@ -84,9 +98,12 @@ function isAllowed(relPath, line) {
     if (relPath.includes(allowed)) return true
   }
   if (line.includes(ALLOWED_INLINE_MARKER)) return true
-  // Lignes purement commentaires (`//` ou `*`) — tolérées.
+  // Lignes purement commentaires (`//`, `*`, ou OUVERTURE de bloc `/*` / `/**`) —
+  // tolérées : une ligne de commentaire ne peint rien. L'ouverture de bloc manquait, et le
+  // troisième motif (fonctions de couleur, 2026-09-06) la rendait visible — deux en-têtes du
+  // rejeu qui DÉCRIVENT la rampe (« un `rgba()` par palier ») étaient comptés fautifs.
   const trimmed = line.trimStart()
-  if (trimmed.startsWith('//') || trimmed.startsWith('*')) return true
+  if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return true
   return false
 }
 
@@ -114,7 +131,15 @@ const violations = []
 const featuresDir = join(WEB_SRC, 'features')
 const componentsDir = join(WEB_SRC, 'components')
 
-for (const rootDir of [featuresDir, componentsDir]) {
+// lib/replay/ EST DU PRODUIT, pas de l'outillage (ajoute le 2026-09-06, correction C5) :
+// le lot v2 D.13 y a descendu le document du rejeu, sa normalisation, sa logique de lecture,
+// le roster et le chargement — sept modules que la Match View et la page de rejeu lisent a
+// egalite. Les laisser hors du balayage aurait ouvert un angle mort de la taille d'un
+// deplacement de fichier. Aucune allowlist n'y est necessaire : mesure du 2026-09-06, aucun
+// de ces modules ne DEFINIT de couleur (ils lisent des tokens, comme le reste du produit).
+const libReplayDir = join(WEB_SRC, 'lib/replay')
+
+for (const rootDir of [featuresDir, componentsDir, libReplayDir]) {
   let root
   try {
     root = statSync(rootDir)
@@ -145,6 +170,13 @@ for (const rootDir of [featuresDir, componentsDir]) {
       if (twMatches) {
         for (const m of twMatches) {
           violations.push({ file: relPath, line: i + 1, kind: 'tailwind', match: m })
+        }
+      }
+      // Fonctions de couleur CSS (oklch / rgb / hsl / color...)
+      const fnMatches = line.match(CSS_COLOR_FN_PATTERN)
+      if (fnMatches) {
+        for (const m of fnMatches) {
+          violations.push({ file: relPath, line: i + 1, kind: 'fonction-couleur', match: m })
         }
       }
     }

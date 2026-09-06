@@ -21,8 +21,8 @@ function hexToRgba(cssVar: string, alpha: number): string {
 
 const DEFAULT_OUTCOME_STYLE: MatchCardOutcomeStyle = {
   scoreColor: tokenCssVar('divergent-neutral'),
-  panelBackground: 'rgba(158, 158, 158, 0.12)',
-  panelBorder: 'rgba(158, 158, 158, 0.28)',
+  panelBackground: 'rgba(158, 158, 158, 0.12)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
+  panelBorder: 'rgba(158, 158, 158, 0.28)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
 }
 
 export function getMatchCardOutcomeStyle(tone: string | null | undefined): MatchCardOutcomeStyle {

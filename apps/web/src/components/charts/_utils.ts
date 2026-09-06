@@ -70,7 +70,7 @@ export function getTooltipBase(tc: EChartsThemeColors) {
     backgroundColor: tc.tooltipBg,
     borderColor: tc.tooltipBorder,
     textStyle: { color: tc.text, fontSize: 11 },
-    extraCssText: 'border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4)',
+    extraCssText: 'border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
   } as const
 }
 
@@ -157,8 +157,8 @@ export function seriesColor(index: number): string {
  */
 export function hexToRgba(hex: string, alpha: number): string {
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex)
-  if (!m) return `rgba(0,0,0,${alpha})`
-  return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})`
+  if (!m) return `rgba(0,0,0,${alpha})` // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
+  return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})` // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
 }
 
 /**
