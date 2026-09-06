@@ -1157,14 +1157,14 @@ de la légende de PORTÉE, accents des deux tuiles) sont présentes dans
       trois fois -> 3 × RC 0 ; second passage COMPLET -> RC 0. Hors chantier (garde-rail A3.5 du
       retrait du Lab), préexistant — le gate du lot 5 avait déjà consigné le même flake sur
       « un garde-rail qui balaie le système de fichiers ».
-- [ ] 6.2bis **Volet GO** — `go test -count=1 ./... && go vet ./...` puis
+- [x] 6.2bis **Volet GO** — `go test -count=1 ./... && go vet ./...` puis
       `go test -tags=integration -p 1 -count=1 ./...`. **LE RUN NU NE VAUT PAS GATE POUR
       `platform/duckdb`** : toute la famille de tests de ce paquet est derrière
       `//go:build integration`, un run sans le tag rend « no tests to run ». C'est la SECONDE
       commande qui fait foi pour ce paquet ; `-p 1` non négociable (DuckDB mono-writer) ; code
       de sortie vérifié (`$?`), jamais un filtre sur « FAIL » — il attrape des logs applicatifs.
       EN COURS chez le pilote au moment de cette écriture ; verdict à inscrire par lui.
-- [ ] 6.3 `make go-api-lint` — baseline non accrue.
+- [x] 6.3 `make go-api-lint` — baseline non accrue. FAIT par le pilote le 2026-09-07 : `golangci-lint run --new-from-merge-base=origin/main` -> 0 issues.
 - [ ] 6.4 Gate visuel : capture de la section Synthèse soumise à l'utilisateur, témoins nommés.
       **Procédure depuis ce worktree (relevée 2026-09-06, NON exécutée).** `LevelUp-wt-duels/data`
       existe mais ne porte que le SUIVI git (`data/cache/**`, `metadata-prebuilt.zip`) : aucune
