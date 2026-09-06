@@ -52,7 +52,7 @@ const chunkParallelism = 8
 // genericBuildFailedErrorCode : le motif d'échec ORDINAIRE (décodage, réseau, artefact non
 // transmis...). Nommé pour rester DISTINCT, par construction, de
 // domain.BuildJobErrorCodeMemoryExceeded — un film-bombe isolé ne doit jamais se confondre
-// avec une vraie erreur de décodage (cf. memlimit.go, TestProcessJob_EchecOrdinaire_GardeSonMotif).
+// avec une vraie erreur de décodage (cf. TestProcessJob_EchecOrdinaire_GardeSonMotif, memlimit_test.go).
 const genericBuildFailedErrorCode = "replay_build_failed"
 
 // outilOuvrier : le nom sous lequel l'ouvrier tient le verrou de décodage de la machine. C'est
@@ -65,10 +65,11 @@ const outilOuvrier = "replay-worker"
 // non un chevauchement ordinaire.
 const attenteVerrouOuvrier = 10 * time.Minute
 
-// exitCodeMemoryExceeded : code de sortie quand la sentinelle mémoire a isolé le job en
-// cours (cf. memlimit.go). Distinct de 1 (arrêt sur erreur de la boucle) et 2 (configuration
-// manquante, cf. main.go) : un opérateur qui lit les journaux du superviseur du processus
-// doit pouvoir distinguer un dépassement mémoire volontaire d'un simple plantage.
+// exitCodeMemoryExceeded : code de sortie quand la sentinelle mémoire (internal/filmproc.Arm,
+// armée ci-dessous dans processJob) a isolé le job en cours. Distinct de 1 (arrêt sur erreur
+// de la boucle) et 2 (configuration manquante, cf. main.go) : un opérateur qui lit les
+// journaux du superviseur du processus doit pouvoir distinguer un dépassement mémoire
+// volontaire d'un simple plantage.
 const exitCodeMemoryExceeded = 3
 
 // worker : l'état LOCAL de l'ouvrier. Rien d'autre que des compteurs — l'état de
@@ -81,7 +82,8 @@ type worker struct {
 	// keepsFilms : le dossier de travail EST le cache film du dépôt (archive
 	// perpétuelle) — les morceaux ne sont alors jamais supprimés. Cf. cleanupFilm.
 	keepsFilms bool
-	// memLimitGiB : le plafond mémoire dur de CHAQUE job (0 = désarmé). Cf. memlimit.go.
+	// memLimitGiB : le plafond mémoire dur de CHAQUE job (0 = désarmé). Cf. internal/filmproc.Arm,
+	// armé ci-dessous dans processJob.
 	memLimitGiB int
 	jobsDone    int64
 	jobsFailed  int64
@@ -103,15 +105,20 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 	beatCtx, stopBeat := context.WithCancel(ctx)
 	go w.beatUntil(beatCtx, job.JobID)
 
-	// LA SENTINELLE EST ARMÉE POUR CE JOB SEUL (cf. memlimit.go) : un pic mesuré depuis le
-	// démarrage de l'ouvrier confondrait plusieurs films. onExceeded RAPPORTE l'échec au
-	// serveur PUIS arrête ce processus — l'OS récupère la RAM par construction, même
-	// doctrine que l'enfant de la passe hors ligne (cmd/levelup, blindage 2026-08-20/24).
-	guard := armMemoryGuard(w.memLimitGiB, func(peakBytes uint64) {
+	// LA SENTINELLE EST ARMÉE POUR CE JOB SEUL, via la sentinelle canonique
+	// internal/filmproc.Arm (memes deux plafonds : 3 GiB souple, +25 % dur, échantillonnage
+	// 250 ms — le calcul vit desormais dans un seul endroit, memguard.go) : un pic mesuré
+	// depuis le démarrage de l'ouvrier confondrait plusieurs films. onExceeded RAPPORTE
+	// l'échec au serveur PUIS arrête ce processus — l'OS récupère la RAM par construction,
+	// même doctrine que l'enfant de la passe hors ligne (cmd/levelup, blindage 2026-08-20/24).
+	// LE TEXTE DE LA LIGNE D'ARMEMENT EST CELUI D'AVANT LA CENTRALISATION, mot pour mot
+	// (constat C5 de la revue R1) : un filtre de journal cale sur « replay-worker: plafond
+	// memoire arme pour ce job » ne matchait plus le libelle unifie.
+	guard := filmproc.Arm(outilOuvrier, w.memLimitGiB, func(peakBytes uint64) {
 		w.reportMemoryExceeded(ctx, job, peakBytes)
-	})
+	}, filmproc.WithArmMessage("replay-worker: plafond memoire arme pour ce job"))
 	result, err := w.buildAndSend(ctx, job)
-	guard.disarm()
+	guard.Disarm()
 	stopBeat()
 	w.cleanupFilm(ctx, job)
 
@@ -150,10 +157,11 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 }
 
 // reportMemoryExceeded rend compte au serveur d'un dépassement du plafond mémoire dur PUIS
-// arrête ce processus (cf. memlimit.go pour le pourquoi de l'arrêt). Le compte rendu est
+// arrête ce processus (le plafond lui-même est armé par internal/filmproc.Arm dans
+// processJob ; le pourquoi des deux plafonds vit dans filmproc/doc.go). Le compte rendu est
 // ISOLÉ dans completeMemoryExceeded (testable) : seule la ligne os.Exit ne l'est pas — même
-// parti pris que cmd/levelup/backfill_memlimit_test.go (on teste les pièces, jamais la
-// coupure elle-même, pour ne pas donner à un test le pouvoir de tuer le binaire de test).
+// parti pris que memlimit_test.go (on teste les pièces, jamais la coupure elle-même, pour ne
+// pas donner à un test le pouvoir de tuer le binaire de test).
 //
 // APPELÉE DEPUIS LA GOROUTINE DE LA SENTINELLE, PENDANT QUE LE DÉCODAGE EST ENCORE EN VOL :
 // c'est voulu, c'est le seul moment où ce processus est encore vivant pour parler au serveur.
@@ -203,9 +211,15 @@ func memoryExceededMessage(matchID string, peakBytes uint64) string {
 		matchID, pic)
 }
 
+// memGuardOctetsParGiB : la conversion, nommée pour ne pas semer des 1<<30 dans le code. Sert
+// uniquement à la mise en forme humaine (formatMemGuardBytes, ci-dessous) — la sentinelle
+// mémoire elle-même est armée par internal/filmproc.Arm (cf. processJob), qui porte sa propre
+// constante interne.
+const memGuardOctetsParGiB = 1 << 30
+
 // formatMemGuardBytes rend une taille lisible ("7.90 GiB" / "512 MiB"). Même forme que
-// libelleOctets de cmd/levelup (paquets main distincts, cf. memlimit.go pour le pourquoi de
-// la duplication).
+// libelleOctets de cmd/levelup — paquets main distincts, duplication triviale (une conversion
+// et un printf) sous le seuil de centralisation de CLAUDE.md règle 6.
 func formatMemGuardBytes(n uint64) string {
 	if n >= memGuardOctetsParGiB {
 		return fmt.Sprintf("%.2f GiB", float64(n)/float64(memGuardOctetsParGiB))

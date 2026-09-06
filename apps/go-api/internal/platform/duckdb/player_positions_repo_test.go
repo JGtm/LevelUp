@@ -1,6 +1,16 @@
 //go:build integration
 
-// Package duckdb — player_positions_repo_test.go : tests PlayerPositionsRepo.
+// Package duckdb — player_positions_repo_test.go : LA LECTURE des positions joueurs.
+//
+// LE REPO EST EN LECTURE SEULE DEPUIS LE 2026-09-06 (décision utilisateur 1) : `WriteMatch`
+// (DELETE-then-INSERT sur le handle de lecture) a été supprimée, la table est projetée de
+// l'artefact de rejeu par `persist.PlayerPositionsPersister` sous le lease RW. Les tests qui
+// éprouvaient l'écriture ont donc suivi la fonction ; ceux qui restent éprouvent ce qui compte
+// désormais — LA LECTURE PASSE-T-ELLE PAR LA VUE `_latest`.
+//
+// LES PASSES SONT SEMÉES EN INSERT PURS, comme le persister le fait : c'est la seule écriture
+// que la table accepte, et cela permet d'éprouver la propriété qui n'existait pas avant — une
+// projection remplace la précédente SANS effacer quoi que ce soit.
 //
 // Lancer avec : go test -tags=integration -run PlayerPositions ./internal/platform/duckdb/ -v
 package duckdb
@@ -21,8 +31,8 @@ import (
 const ppTestMatchID = "m_positions_001"
 
 // newPlayerPositionsTestPlayerDB ouvre une mem DB, applique TOUTES les migrations
-// shared (dont shared_match_player_positions_v1), puis construit un PlayerDB dont
-// le SharedReader pointe sur cette conn (RW en legacy).
+// shared (dont la conversion append-only de match_player_positions), puis construit un
+// PlayerDB dont le SharedReader pointe sur cette conn (RW en legacy).
 func newPlayerPositionsTestPlayerDB(t *testing.T) *PlayerDB {
 	t.Helper()
 	sqlDB, err := sql.Open("duckdb", ":memory:")
@@ -53,18 +63,32 @@ func samplePositions() []positions.PlayerPosition {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Round-trip
-// ---------------------------------------------------------------------------
+// semerPasse écrit UNE passe de positions en INSERT purs — la seule forme d'écriture que la
+// table accepte. `pass` et l'horodatage sont partagés par toutes les lignes de la passe : c'est
+// exactement ce que fait `persist.PlayerPositionsPersister`, et c'est ce qui rend la vue
+// `_latest` capable de retenir une génération entière.
+func semerPasse(t *testing.T, pdb *PlayerDB, matchID, pass string, decalageSec int, pos []positions.PlayerPosition) {
+	t.Helper()
+	ctx := context.Background()
+	for _, p := range pos {
+		_, err := pdb.Shared.Exec(ctx, `
+			INSERT INTO match_player_positions
+				(match_id, positions_pass, written_at, time_ms, x, y, z, team)
+			VALUES (?, ?, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) + INTERVAL (?) SECOND, ?, ?, ?, ?, ?)`,
+			matchID, pass, decalageSec, p.TimeMS, p.X, p.Y, p.Z, p.Team)
+		if err != nil {
+			t.Fatalf("INSERT passe %s: %v", pass, err)
+		}
+	}
+}
 
-func TestPlayerPositionsRepo_WriteThenLoad_RoundTrip(t *testing.T) {
+// TestPlayerPositionsRepo_LoadMatch_ServesLatestPass : le cas nominal ET la propriété neuve.
+func TestPlayerPositionsRepo_LoadMatch_ServesLatestPass(t *testing.T) {
 	pdb := newPlayerPositionsTestPlayerDB(t)
 	repo := NewPlayerPositionsRepo(pdb)
 	ctx := context.Background()
 
-	if err := repo.WriteMatch(ctx, ppTestMatchID, samplePositions()); err != nil {
-		t.Fatalf("WriteMatch: %v", err)
-	}
+	semerPasse(t, pdb, ppTestMatchID, "passe-a", 0, samplePositions())
 
 	got, err := repo.LoadMatch(ctx, ppTestMatchID)
 	if err != nil {
@@ -73,12 +97,10 @@ func TestPlayerPositionsRepo_WriteThenLoad_RoundTrip(t *testing.T) {
 	if len(got) != 3 {
 		t.Fatalf("len(positions) = %d, want 3", len(got))
 	}
-
 	// Ordonné par time_ms ASC : les 2 premiers à t=0, le 3e à t=20000.
 	if got[0].TimeMS != 0 || got[2].TimeMS != 20000 {
 		t.Fatalf("time order = [%d,..,%d], want [0,..,20000]", got[0].TimeMS, got[2].TimeMS)
 	}
-
 	// Valeurs float32 préservées (REAL = float32 natif, pas d'arrondi attendu).
 	last := got[2]
 	if last.X != 34.8 || last.Y != 13.5 || last.Z != 0.5 {
@@ -87,8 +109,6 @@ func TestPlayerPositionsRepo_WriteThenLoad_RoundTrip(t *testing.T) {
 	if last.Team != positions.TeamUnknown {
 		t.Errorf("last.Team = %d, want %d (TeamUnknown)", last.Team, positions.TeamUnknown)
 	}
-
-	// Une position team=1 doit subsister (parmi les 2 à t=0).
 	var hasTeam1 bool
 	for _, p := range got {
 		if p.Team == 1 {
@@ -100,66 +120,41 @@ func TestPlayerPositionsRepo_WriteThenLoad_RoundTrip(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Idempotence DELETE-replace
-// ---------------------------------------------------------------------------
-
-func TestPlayerPositionsRepo_WriteMatch_ReplaceIdempotent(t *testing.T) {
+// TestPlayerPositionsRepo_SecondePasseRemplaceLaPremiere — LA PROPRIÉTÉ QUI REMPLACE LE
+// DELETE-then-INSERT : une nouvelle projection supersède la précédente SANS rien effacer.
+//
+// Une lecture BRUTE de la table rendrait ici 4 lignes (3 + 1) : c'est exactement le piège de la
+// règle ART n°2, et c'est pour cela que le repo lit `match_player_positions_latest`.
+func TestPlayerPositionsRepo_SecondePasseRemplaceLaPremiere(t *testing.T) {
 	pdb := newPlayerPositionsTestPlayerDB(t)
 	repo := NewPlayerPositionsRepo(pdb)
 	ctx := context.Background()
 
-	if err := repo.WriteMatch(ctx, ppTestMatchID, samplePositions()); err != nil {
-		t.Fatalf("WriteMatch #1: %v", err)
-	}
-
-	// Ré-écrit avec un set RÉDUIT (1 seule position) : le DELETE doit purger les 3
-	// anciennes avant l'INSERT.
-	replaced := []positions.PlayerPosition{
+	semerPasse(t, pdb, ppTestMatchID, "passe-a", 0, samplePositions())
+	semerPasse(t, pdb, ppTestMatchID, "passe-b", 60, []positions.PlayerPosition{
 		{TimeMS: 5000, X: 1.0, Y: 2.0, Z: 3.0, Team: 0},
-	}
-	if err := repo.WriteMatch(ctx, ppTestMatchID, replaced); err != nil {
-		t.Fatalf("WriteMatch #2: %v", err)
-	}
+	})
 
 	got, err := repo.LoadMatch(ctx, ppTestMatchID)
 	if err != nil {
 		t.Fatalf("LoadMatch: %v", err)
 	}
 	if len(got) != 1 {
-		t.Fatalf("len(positions) = %d, want 1 (replace)", len(got))
+		t.Fatalf("len(positions) = %d, want 1 — la vue _latest doit servir la DERNIÈRE passe, "+
+			"pas les deux empilées (règle ART n°2)", len(got))
 	}
 	if got[0].TimeMS != 5000 {
-		t.Errorf("got[0].TimeMS = %d, want 5000", got[0].TimeMS)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// No-op garde-fou
-// ---------------------------------------------------------------------------
-
-func TestPlayerPositionsRepo_WriteMatch_EmptyIsNoOp(t *testing.T) {
-	pdb := newPlayerPositionsTestPlayerDB(t)
-	repo := NewPlayerPositionsRepo(pdb)
-	ctx := context.Background()
-
-	if err := repo.WriteMatch(ctx, ppTestMatchID, samplePositions()); err != nil {
-		t.Fatalf("WriteMatch seed: %v", err)
-	}
-	// nil et [] sont des no-op : ne doivent PAS effacer l'existant.
-	if err := repo.WriteMatch(ctx, ppTestMatchID, nil); err != nil {
-		t.Fatalf("WriteMatch(nil): %v", err)
-	}
-	if err := repo.WriteMatch(ctx, ppTestMatchID, []positions.PlayerPosition{}); err != nil {
-		t.Fatalf("WriteMatch([]): %v", err)
+		t.Errorf("got[0].TimeMS = %d, want 5000 (la passe la plus récente)", got[0].TimeMS)
 	}
 
-	got, err := repo.LoadMatch(ctx, ppTestMatchID)
-	if err != nil {
-		t.Fatalf("LoadMatch: %v", err)
+	// Et la passe précédente est TOUJOURS EN BASE : rien n'a été effacé (append-only).
+	var brut int
+	if err := pdb.Shared.QueryRow(ctx,
+		`SELECT COUNT(*) FROM match_player_positions WHERE match_id = ?`, ppTestMatchID).Scan(&brut); err != nil {
+		t.Fatalf("count brut: %v", err)
 	}
-	if len(got) != 3 {
-		t.Errorf("len(positions) = %d, want 3 (no-op préserve)", len(got))
+	if brut != 4 {
+		t.Errorf("table brute = %d ligne(s), want 4 — une projection ne doit RIEN effacer", brut)
 	}
 }
 
@@ -177,22 +172,19 @@ func TestPlayerPositionsRepo_LoadMatch_Empty(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Capability gating
-// ---------------------------------------------------------------------------
-
+// TestPlayerPositionsRepo_CapabilityNotSupported_NoTable : un titre sans la table (ni sa vue)
+// dégrade en ErrCapabilityNotSupported, jamais en erreur SQL brute.
 func TestPlayerPositionsRepo_CapabilityNotSupported_NoTable(t *testing.T) {
 	pdb := newPlayerPositionsTestPlayerDB(t)
 	ctx := context.Background()
+	if _, err := pdb.Shared.Exec(ctx, "DROP VIEW match_player_positions_latest"); err != nil {
+		t.Fatalf("drop view: %v", err)
+	}
 	if _, err := pdb.Shared.Exec(ctx, "DROP TABLE match_player_positions"); err != nil {
 		t.Fatalf("drop: %v", err)
 	}
 
 	repo := NewPlayerPositionsRepo(pdb)
-
-	if err := repo.WriteMatch(ctx, ppTestMatchID, samplePositions()); !errors.Is(err, games.ErrCapabilityNotSupported) {
-		t.Errorf("WriteMatch err = %v, want ErrCapabilityNotSupported", err)
-	}
 	if _, err := repo.LoadMatch(ctx, ppTestMatchID); !errors.Is(err, games.ErrCapabilityNotSupported) {
 		t.Errorf("LoadMatch err = %v, want ErrCapabilityNotSupported", err)
 	}

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/haloclient"
@@ -87,7 +88,12 @@ func TestArmee_ChaqueRefusSeDit(t *testing.T) {
 func TestRun_SelectionVide_LeDitEtPublieLesCompteurs(t *testing.T) {
 	buf := capturerJournal(t)
 	avant := observability.LoadCounterT("", CompteurCycles)
+	// RepoRoot/TitleSlug RENSEIGNES : depuis le 2026-09-05, Run passe d'abord la porte de
+	// production `film.replay_artifact` (capability.go) — un titre non resolu la ferme, et
+	// ce test-ci parle du cas OU L'ETAPE TOURNE.
 	Run(context.Background(), Deps{
+		RepoRoot:  racineDepot(t),
+		TitleSlug: titlePkg.DefaultSlug,
 		Placement: replaybuild.PlacementLocal,
 		Fetcher:   fetcherMuet{},
 		WithRead:  func(context.Context, string, func(*sql.DB)) {}, // ne rend aucun travail

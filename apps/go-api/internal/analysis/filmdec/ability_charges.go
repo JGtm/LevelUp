@@ -159,30 +159,10 @@ func ScanAbilityCharges(fc *FilmContext) ([]AbilityCharge, AbilityChargeStats, e
 	})
 	defer SetAbilityEnergyHook(prev)
 
-	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + s.lay.TotalBits()
-	for _, c := range s.chunks {
-		data, pks, ok := s.fc.ChunkAt(c)
-		if !ok {
-			continue
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta {
-				continue
-			}
-			pay := pk.Payload(data)
-			total := len(pay) * 8
-			for p := 0; p+minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, true, s.lay)
-				if !ok {
-					p++
-					continue
-				}
-				st.Records++
-				sc.account(pay, i0, total, idx, slot, c, pk)
-				p = i0 + s.lay.TotalBits()
-			}
-		}
-	}
+	walkDeltaBipedRecords(s.fc, s.chunks, s.slots, s.lay, func(r deltaBipedRecord) {
+		st.Records++
+		sc.account(r.Payload, r.I0, r.Total, r.Mask, r.Slot, r.Chunk, r.Packet)
+	})
 	sortAbilityCharges(sc.out)
 	st.Scanned = true
 	return sc.out, st, nil

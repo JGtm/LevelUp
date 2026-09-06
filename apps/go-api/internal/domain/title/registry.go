@@ -132,6 +132,22 @@ const (
 	// (games/adapter.go) qui gouverne le chemin de données ; celle-ci gouverne
 	// l'AFFICHAGE (useCapability). Cf. PLAN_V72_OBJECTIVE_STATS.md.
 	CapObjectiveStats Capability = "objective_stats"
+
+	// CapReplay — le titre expose le REJEU 2D d'un match (vue du dessus : trame de
+	// positions, kill-feed recalé, calques d'objectif), servi depuis un artefact
+	// pré-construit. Halo Infinite : oui (décodeur de film + `replaybuild`). Halo 5 :
+	// NON déclarée (autre format de film, aucun décodeur, donc aucun artefact).
+	//
+	// Elle gouverne l'AFFICHAGE et l'accès : les quatre routes `/replay*` sont montées
+	// sous `middleware.RequireCapability` (503 `capability_unavailable` sans elle), la
+	// page de rejeu, le filtre « Avec rejeu / Sans rejeu » de l'Explorer et les colonnes
+	// « Rejeu » des tableaux de matchs sont masqués — plus de lien mort ni de colonne
+	// toujours vide. Pendant title-level de la capability data-level
+	// `film.replay_artifact` (games/adapter.go) qui gouverne, elle, la PRODUCTION de
+	// l'artefact — même partage des rôles que `match.objective.stats` (données) et
+	// `objective_stats` (UI). Décision utilisateur du 2026-09-05, registre
+	// `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` (D1, L2, L5).
+	CapReplay Capability = "replay"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -311,6 +327,10 @@ func NewRegistry() *Registry {
 			// Stats objectifs par match (CTF/Zones/Oddball) — section scoreboard +
 			// KPI Synthèse/Escouade (PLAN_V72_OBJECTIVE_STATS).
 			CapObjectiveStats,
+			// Rejeu 2D : routes /replay*, page de rejeu, filtre et colonnes « Rejeu »
+			// des tableaux de matchs. Pendant title-level de `film.replay_artifact`
+			// (production de l'artefact). Halo 5 ne la déclare pas — cf. son title.toml.
+			CapReplay,
 			// Précision par arme (CapWeaponAccuracy) : REMISÉE le 2026-09-01 — NON déclarée
 			// par Infinite. Elle avait été ajoutée au Lot 3 pour allumer les charts a/c depuis
 			// un numérateur reconstruit du film, mais ce numérateur s'est révélé NON FIABLE au
@@ -796,6 +816,29 @@ func (p *PathResolver) MapPlayedPositionsPath(titleSlug string) string {
 // Ex: data/titles/halo_infinite/reference/map_weapon_pads.json
 func (p *PathResolver) MapWeaponPadsPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_weapon_pads.json")
+}
+
+// MapWeaponPadsOverlayPath retourne le chemin de l'OVERLAY NON VERSIONNÉ du catalogue des
+// emplacements de socle : les cartes que le RUNTIME a rattrapées au fetch d'un film
+// (`sync/replayartifacts/mvar_rattrapage.go`).
+//
+// POURQUOI IL EXISTE, ET POURQUOI IL N'EST PAS LE FICHIER VERSIONNÉ. Le rattrapage écrivait
+// jusqu'au 2026-09-05 dans `map_weapon_pads.json`, un fichier SUIVI PAR GIT. Deux dégâts, un
+// par environnement : en local, un commit avalait +332 lignes de données de référence sans
+// relecture ; en production, `scripts/deploy.sh` fait `git reset --hard origin/main` — chaque
+// déploiement aurait effacé tout ce que le runtime avait rattrapé, silencieusement.
+//
+// LA RÈGLE QUI EN DÉCOULE : le fichier versionné est une ENTRÉE, produite à la main par
+// `cmd/mapopads-build` et relue en revue ; l'overlay est une SORTIE de runtime, jetable et
+// reconstructible. Les deux se fusionnent À LA LECTURE (`replay.LoadMapWeaponPadsMerged`), et
+// c'est l'entrée VERSIONNÉE qui prime en cas de doublon — une carte relue en revue ne peut pas
+// être remplacée par une carte rattrapée automatiquement.
+//
+// `reference/generated/` est ignoré par git (.gitignore) : c'est ce qui rend la règle vraie et
+// pas seulement écrite.
+// Ex: data/titles/halo_infinite/reference/generated/map_weapon_pads.json
+func (p *PathResolver) MapWeaponPadsOverlayPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "generated", "map_weapon_pads.json")
 }
 
 // MapCalloutsPath retourne le chemin du catalogue des CALLOUTS (zones nommées

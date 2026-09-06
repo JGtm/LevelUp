@@ -140,6 +140,12 @@ func libelleIssue(i filmproc.Issue) string {
 	}
 }
 
+// octetsParGiB : la conversion, nommee pour ne pas semer des 1<<30 dans le code. Sert
+// uniquement a la mise en forme humaine (libelleOctets) — la sentinelle memoire elle-meme
+// est armee par internal/filmproc.Arm (cf. cmd_backfill_replay_child.go), qui porte sa
+// propre constante interne.
+const octetsParGiB = 1 << 30
+
 // libellePlafond : le plafond memoire, ou son absence.
 func libellePlafond(gib int) string {
 	if gib <= 0 {

@@ -46,7 +46,8 @@ import (
 	"testing"
 )
 
-// lot1RefDomWidths (largeurs d'index par domaine) est PRODUCTIONISE : weapon_hits_decode.go.
+// Les largeurs d index par domaine viennent de `refDomWidth` (event_list.go), la seule table du
+// paquet depuis le 2026-09-05 (lot E, item E.3).
 
 // lot1LireRef consomme une reference gardee du domaine dom ; rend (index, presente).
 // Le domaine 1 porterait une sonde R(1) qui reduit la largeur a 9 — aucun des types testes
@@ -55,7 +56,7 @@ func lot1LireRef(br *BitReader, dom int) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
 	}
-	idx := br.ReadBits(uint(lot1RefDomWidths[dom]))
+	idx := br.ReadBits(refDomWidth(dom))
 	br.Skip(2) // generation R(2)
 	return idx, true
 }

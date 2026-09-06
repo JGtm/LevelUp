@@ -235,3 +235,28 @@ func TestTraiterResultatEnfant_Ventilation(t *testing.T) {
 		})
 	}
 }
+
+// TestLibellePlafond et TestLibelleOctets — deplaces depuis backfill_memlimit_test.go (lot
+// v2 G.1, 2026-09-05) : la sentinelle memoire elle-meme est desormais internal/filmproc.Arm,
+// mais ces deux fonctions d'AFFICHAGE du recap restent locales a cmd/levelup.
+
+func TestLibellePlafond(t *testing.T) {
+	if got := libellePlafond(0); got != "DESARME" {
+		t.Fatalf("libellePlafond(0) = %q", got)
+	}
+	if got := libellePlafond(3); got != "3 GiB" {
+		t.Fatalf("libellePlafond(3) = %q", got)
+	}
+}
+
+func TestLibelleOctets(t *testing.T) {
+	if got := libelleOctets(0); got != "inconnu" {
+		t.Fatalf("libelleOctets(0) = %q — 0 veut dire NON MESURE, pas zero octet", got)
+	}
+	if got := libelleOctets(2 * octetsParGiB); got != "2.00 GiB" {
+		t.Fatalf("libelleOctets(2 GiB) = %q", got)
+	}
+	if got := libelleOctets(512 * 1024 * 1024); got != "512 MiB" {
+		t.Fatalf("libelleOctets(512 MiB) = %q", got)
+	}
+}

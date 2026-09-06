@@ -31,7 +31,7 @@ function withAlpha(hex: string, alpha: number): string {
   const g = parseInt(hex.slice(3, 5), 16)
   const b = parseInt(hex.slice(5, 7), 16)
   if (isNaN(r) || isNaN(g) || isNaN(b)) return hex
-  return `rgba(${r},${g},${b},${alpha})`
+  return `rgba(${r},${g},${b},${alpha})` // color-allow: 2026-09-06 (revue R1, C5) — CONVERSION d une couleur DEJA resolue (hex du theme) en rgba pour son alpha : ce helper ne nomme aucune couleur
 }
 
 /** 5 zones Y de 20 pts chacune, du pire (tier-5) au meilleur (tier-1). */

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (revue R1 du lot v2 D, constat C8) : 839 lignes de code pour le tableau de matchs de l'Explorer (colonnes, tri client, filtres, rendu). RETRAIT MESURABLE : la table de colonnes sort dans un `_columns.ts` et le fichier repasse sous 500 — hors perimetre du lot v2 D (modele web du rejeu), qui n'y touche que par le merge du lot C. */
 /**
  * ExplorerMatchesTable — tableau historique mode "Matchs" de l'Explorer.
  *
@@ -24,8 +25,11 @@
  * DEUX titres depuis le 2026-07-24) ET par la préférence locale
  * `localUiPrefs.showWaypointColumn` (Settings → Apparence, défaut ON).
  *
- * Colonne « Rejeu » : lien interne vers la page de rejeu 2D, via le composant
- * partagé `lib/match-nav/MatchReplayLink` (la donnée `has_replay` EST la gate).
+ * Colonne « Rejeu » : lien interne vers la page de rejeu 2D, via le composant partagé
+ * `lib/match-nav/MatchReplayLink`. DEUX PORTES depuis le 2026-09-05 (registre L5) : la
+ * capability `replay` du TITRE masque la colonne entière (un titre sans décodeur de film
+ * n'aura jamais d'artefact — la colonne serait vide à perpétuité), et la donnée
+ * `has_replay` décide LIGNE PAR LIGNE si l'icône est rendue.
  */
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
@@ -350,6 +354,9 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   // ET par préférence LOCALE (Apparence → « Colonne Halo Waypoint sur les listes
   // de matchs », défaut ON).
   const waypointCapability = useCapability('waypoint_match_url')
+  // Colonne « Rejeu » : porte de TITRE (cf. en-tête). La porte de LIGNE (`has_replay`)
+  // vit dans MatchReplayLink.
+  const replayCapability = useCapability('replay')
   const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
@@ -943,8 +950,11 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   // qui garde PRIORITÉ (ex: SessionMatchesTable variant="compact" peut la
   // masquer explicitement via COMPACT_HIDDEN_COLUMNS).
   const internalColumnVisibility = useMemo(
-    () => ({ waypoint: waypointCapability && showWaypointColumnPref }),
-    [waypointCapability, showWaypointColumnPref],
+    () => ({
+      waypoint: waypointCapability && showWaypointColumnPref,
+      replay: replayCapability,
+    }),
+    [waypointCapability, showWaypointColumnPref, replayCapability],
   )
 
   const table = useReactTable<ExplorerMatchRow>({

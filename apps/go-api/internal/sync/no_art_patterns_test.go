@@ -144,6 +144,33 @@ var tablesProtegees = []string{
 	// Remplacer une passe = en écrire une nouvelle ; la vue match_bomb_stats_latest ne rend
 	// que la dernière ligne par (match_id, xuid).
 	"match_bomb_stats",
+	// kill_positions / match_weapon_hit_distance (G4 du registre v2, enrôlement 2026-09-05) :
+	// les deux dernières tables du film restées HORS des deux listes anti-ART alors qu'elles
+	// sont append-only avec vue _latest depuis leur migration. Vérifié sur pièces avant
+	// enrôlement :
+	//   - kill_positions : rebuild append-only G.2 (2026-08-30) par
+	//     games/halo_infinite/migrations/steps_appendonly_misc.go (id PK kill_positions_seq +
+	//     written_at + vue kill_positions_latest sur (match_id, killer_xuid, time_ms)) ; deux
+	//     écrivains, tous deux en INSERT pur : persist/kill_position_persister.go (passe film
+	//     Infinite) et persist/shared_persister.go persistKillPositions (chemin builder Halo 5).
+	//     Pas de decoder_rev sur cette table, et c'est voulu (written_at arbitre).
+	//   - match_weapon_hit_distance : CRÉÉE append-only (migration/steps_shared_weapon_hit_distance.go,
+	//     id PK seq + decode_pass + decoder_rev + written_at + vue _latest par PASSE) ; écrivain
+	//     unique persist/weapon_hit_distance_persister.go, un seul statement INSERT.
+	// Enrôlement GRATUIT : aucune violation existante, aucune entrée d'allowlist créée. Le `\b`
+	// final ne déborde pas sur les vues `_latest` (`_` est un caractère de mot).
+	"kill_positions",
+	"match_weapon_hit_distance",
+	// match_player_positions (décision utilisateur 1 du plan v2, 2026-09-06) : la table de la
+	// CARTE DE CHALEUR devient une PROJECTION DE L'ARTEFACT de rejeu, écrite dans le cycle de
+	// sync. Elle était jusque-là remplie par un outil de diagnostic en DELETE-then-INSERT sur
+	// le handle de LECTURE du pool — hors pression concurrente, donc tolérable ; sous le
+	// nouveau régime, ce DELETE indexé serait le déclencheur ART direct. Elle est convertie
+	// append-only (migration/steps_shared_player_positions_appendonly.go : id PK +
+	// positions_pass + vue match_player_positions_latest PAR PASSE) et son unique écrivain,
+	// persist/player_positions_persister.go, n'émet que des INSERT — aucune entrée d'allowlist.
+	// `PlayerPositionsRepo.WriteMatch` a été SUPPRIMÉE avec ses tests.
+	"match_player_positions",
 	// NB (2026-08-03) : `media_likes_history` et `media_match_associations_history` sont
 	// append-only elles aussi mais N'ONT PAS leur place ICI — même raison que
 	// `player_records_history` ci-dessus : elles co-résident dans

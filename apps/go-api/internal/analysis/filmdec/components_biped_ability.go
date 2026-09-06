@@ -488,11 +488,12 @@ func consumeBipedSlide(br *BitReader) {
 // number of bits depending on the R(5) tag value — see consumeBipedActionLoop1Item. It
 // is ported only for tag values whose sub-deser is itself ported; an unknown/heavy tag
 // desyncs (rare: loop1 count is 0 for a biped that is not mid weapon-set transition).
-var bipedActionLoop2Count = 0
-
-// SetBipedActionLoop2Count overrides i63's second-loop iteration count (the RAM-popcount
-// FUN_1409fe718(state,0x49) that is invisible in a delta). Default 0 (common case).
-func SetBipedActionLoop2Count(n int) { bipedActionLoop2Count = n }
+// Le reglage public `SetBipedActionLoop2Count` a ete supprime le 2026-09-05 (lot E, item E.2) :
+// aucun appelant. Le compte reste 0, le cas commun mesure.
+// PROVENANCE : compte du second tour d i63, MESURE a 0 sur le corpus — c est le cas commun, et
+// il n est pas recuperable du flux (popcount RAM de FUN_1409fe718, 0 bit de flux). Constante
+// depuis le 2026-09-06 (lot E, item E.8).
+const bipedActionLoop2Count = 0
 
 // consumeBipedActionSubBlock mirrors FUN_142f21b10's deterministic prologue/epilogue:
 // a `for (p = base; p != base+3; p++)` loop that reads R(0x20)=R(32) on EACH of its 3
@@ -532,22 +533,14 @@ func consumeBipedActionSubBlock(br *BitReader) {
 func consumeBipedActionLoop1Item(br *BitReader) (ported bool) {
 	br.ReadBits(7)        // inline R(7)
 	tag := br.ReadBits(5) // FUN_142ef1734 inline R(5) = tag (0..11)
-	if biDebug {
-		biCurSeq = append(biCurSeq, tag)
-	}
 	return consumeBipedActionTag(br, tag)
 }
 
-// --- instrumentation i63 (calibration tags ; à retirer après) ---
-var (
-	biDebug   bool
-	biCurSeq  []uint64
-	BiBadSeqs [][]uint64 // séquences de tags des records désync (count1>0, finit en tag>=12)
-	BiOkSeqs  [][]uint64 // séquences de tags des records clean (count1>0)
-)
-
-// SetBipedActionDebug active la capture des séquences de tags i63 (calibration).
-func SetBipedActionDebug(b bool) { biDebug = b; BiBadSeqs = nil; BiOkSeqs = nil }
+// (L INSTRUMENTATION i63 — `biDebug`, `biCurSeq`, `BiBadSeqs`, `BiOkSeqs` et leurs quatre
+// branches — A ETE SUPPRIMEE le 2026-09-06, lot E, item E.8. Elle etait annotee « a retirer
+// apres » par son auteur ; son activateur avait disparu au lot E.2, donc elle ne collectait plus
+// rien, et ses deux tranches exportees n avaient aucun lecteur. Elle ne portait aucune valeur
+// MESUREE : c est un collecteur de sequences de tags, pas une largeur.)
 
 // gate8 = FUN_1407f08bc: R(1); if set R(8). The shared "R(1)+optR(8)" leaf reached by
 // several i63-dispatch branches (its payload reader FUN_1407f08f8 is a flat R(8)).
@@ -617,19 +610,10 @@ func consumeBipedActionTag(br *BitReader, tag uint64) (ported bool) {
 func consumeBipedAction(br *BitReader) (ported bool) {
 	consumeBipedActionSubBlock(br) // FUN_142f21b10 start: 96 bits
 	count1 := int(br.ReadBits(4))  // inline R(4)
-	if biDebug {
-		biCurSeq = biCurSeq[:0]
-	}
 	for i := 0; i < count1; i++ {
 		if !consumeBipedActionLoop1Item(br) {
-			if biDebug && len(BiBadSeqs) < 80 {
-				BiBadSeqs = append(BiBadSeqs, append([]uint64(nil), biCurSeq...))
-			}
 			return false // value-gated dispatch unported; desync cleanly
 		}
-	}
-	if biDebug && count1 > 0 && len(BiOkSeqs) < 80 {
-		BiOkSeqs = append(BiOkSeqs, append([]uint64(nil), biCurSeq...))
 	}
 	for i := 0; i < bipedActionLoop2Count; i++ { // FUN_1409fe718 count (RAM, not stream)
 		if br.ReadBit() { // FUN_1406cf008 = R(1) gate

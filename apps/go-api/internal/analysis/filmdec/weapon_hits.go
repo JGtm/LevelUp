@@ -206,8 +206,9 @@ func ScanFilmWeaponShots(dir string, n int) ([]WeaponShot, error) {
 			}
 			s := WeaponShot{TimestampUS: pk.TimestampUS}
 			br := NewBitReader(pay)
-			br.Skip(2)
-			if br.ReadBits(7) != 36 {
+			// Préambule de 9 bits (readPacketHead, event_list.go). Continuation non testée :
+			// le filtre sur 0xD2 ci-dessus la pose déjà (bit 1 de l'octet de tête).
+			if readPacketHead(br).Type != 36 {
 				continue
 			}
 			att, okA := lot1RefDom1(br) // ref0 = attaquant (dom1)
@@ -274,8 +275,9 @@ func scanChunkDamages(pks []FilmPacket, data []byte, w *World, hit map[int]int, 
 			continue
 		}
 		br := NewBitReader(pay)
-		br.Skip(2)
-		if br.ReadBits(7) != 0 {
+		// Préambule de 9 bits (readPacketHead, event_list.go). Continuation non testée :
+		// le filtre sur 0xC0 ci-dessus la pose déjà (bit 1 de l'octet de tête).
+		if readPacketHead(br).Type != 0 {
 			continue // type 1 (damage_section_response), pas type 0
 		}
 		d := WeaponDamage{TimestampUS: pk.TimestampUS, VictimIdx: -1, ResponsibleIdx: -1}

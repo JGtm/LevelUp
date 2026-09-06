@@ -3,13 +3,19 @@
  *
  * Smoke : monte, affiche les onglets Matchs / Joueur.
  */
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
+import { api } from '@/lib/api/client'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { ExplorerMatchesQueryResponse } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { ExplorerPage } from './ExplorerPage'
 import { ExplorerMatchesResultsBlock } from './ExplorerPage.matchesMode'
+
+// Le search de l'URL est pilotable : le cas « ?replay=with sur un titre sans rejeu »
+// (revue C-R1, constat C5) a besoin d'une URL qui porte le filtre.
+const routerState = vi.hoisted(() => ({ search: {} as Record<string, unknown> }))
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
@@ -17,8 +23,84 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     ...actual,
     useNavigate: () => vi.fn(),
     useParams: () => ({ playerSlug: 'test-player' }),
-    useSearch: () => ({}),
+    useSearch: () => routerState.search,
   }
+})
+
+
+/** Force les capabilities du titre courant (fail-open par défaut sinon). */
+function setTitleCaps(caps: string[]) {
+  useAppShellStore.setState({
+    currentTitleSlug: 'test_title',
+    availableTitles: [
+      {
+        slug: 'test_title', name: 'Test', status: 'active', capabilities: caps, is_default: true,
+        effective_hp_to_kill: 225, provides_damage_taken: true, provides_team_mmr: true,
+        provides_max_killing_spree: true, offensive_conversion_p80: 0.9,
+        defensive_resistance_p80: 1.65,
+      },
+    ],
+  })
+}
+
+// PORTE DE TITRE DU FILTRE « Avec rejeu / Sans rejeu » (2026-09-05, registre L5). Sur un
+// titre sans décodeur de film, « Avec rejeu » rendrait toujours zéro ligne et « Sans rejeu »
+// serait un synonyme de « tous » : un filtre qui ne filtre rien est pire qu'absent.
+describe('ExplorerPage — filtre « rejeu » gaté par la capability replay', () => {
+  const FILTRE_REJEU = 'Filtrer par présence de rejeu 2D'
+
+  afterEach(() => {
+    useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
+    routerState.search = {}
+  })
+
+  it('présent quand le titre déclare `replay`', async () => {
+    setTitleCaps(['replay'])
+    renderWithProviders(<ExplorerPage />)
+    await waitFor(() => expect(screen.getByLabelText(FILTRE_REJEU)).toBeInTheDocument())
+  })
+
+  // LE FILTRE MASQUE NE DOIT PAS RESTER ACTIF (revue C-R1, constat C5). La portee est
+  // memorisee par JOUEUR, pas par titre : « Avec rejeu » pose sur halo_infinite se
+  // reinjectait sur halo_5 au chargement — liste filtree a zero, controle invisible, et
+  // rien pour le corriger sinon tout effacer. Ici l'URL joue le role du miroir : meme
+  // chemin de lecture, meme correctif.
+  it('titre sans `replay` + ?replay=with : le filtre est neutralise, pas seulement masque', async () => {
+    routerState.search = { replay: 'with' }
+    const post = vi.spyOn(api, 'post').mockRejectedValue(new Error('hors sujet ici'))
+    setTitleCaps(['ranked'])
+    renderWithProviders(<ExplorerPage />)
+    await waitFor(() => expect(screen.getByText('Matchs')).toBeInTheDocument())
+
+    // (a) aucun filtre actif annonce : sinon l'utilisateur voit « Reinitialiser les
+    //     filtres » sans pouvoir identifier lequel.
+    expect(screen.queryByText('Réinitialiser les filtres')).not.toBeInTheDocument()
+    // (b) et surtout : `replay_scope` n'est pas envoye au backend.
+    await waitFor(() => expect(post).toHaveBeenCalled())
+    for (const [, body] of post.mock.calls) {
+      expect((body as Record<string, unknown>).replay_scope).toBeUndefined()
+    }
+    post.mockRestore()
+  })
+
+  it('titre AVEC `replay` + ?replay=with : le filtre reste actif et part au backend', async () => {
+    routerState.search = { replay: 'with' }
+    const post = vi.spyOn(api, 'post').mockRejectedValue(new Error('hors sujet ici'))
+    setTitleCaps(['replay'])
+    renderWithProviders(<ExplorerPage />)
+    await waitFor(() => expect(post).toHaveBeenCalled())
+    expect(
+      post.mock.calls.some(([, body]) => (body as Record<string, unknown>).replay_scope === 'with'),
+    ).toBe(true)
+    post.mockRestore()
+  })
+
+  it('absent quand le titre ne la déclare pas', async () => {
+    setTitleCaps(['ranked'])
+    renderWithProviders(<ExplorerPage />)
+    await waitFor(() => expect(screen.getByText('Matchs')).toBeInTheDocument())
+    expect(screen.queryByLabelText(FILTRE_REJEU)).not.toBeInTheDocument()
+  })
 })
 
 describe('ExplorerPage', () => {

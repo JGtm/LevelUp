@@ -236,12 +236,14 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		// (consumeObjectAngularVelocity=FUN_140d87740) ajoutait un gate EXTERNE parasite + R(96)
 		// keep -> sur-lecture de 96 bits qui engloutissait les records des joueurs suivants
 		// (oracle: 1 seul biped-delta/frame au lieu de ~8). Validé par tmp_framedump (biped-deltas
-		// par frame). Toggle useLegacyAngularVel pour l'ancien comportement.
-		if useLegacyAngularVel {
-			consumeObjectAngularVelocity(br)
-		} else {
-			consumeDynPrecVec3(br, angularMagBits, angularScaleBits)
-		}
+		// par frame).
+		//
+		// LA BASCULE `useLegacyAngularVel` A DISPARU le 2026-09-05 (lot E, item E.2) : son
+		// drapeau valait `false` et n'avait aucun installateur (le setter n'avait pas
+		// d'appelant), donc la branche « ancien comportement » était inatteignable. Le
+		// désérialiseur qu'elle appelait, `consumeObjectAngularVelocity`, RESTE : il est le
+		// déser CORRECT d'i3 pour ti=40, via `consumeObjectAngularVelocityDynPrec`.
+		consumeDynPrecVec3(br, angularMagBits, angularScaleBits)
 		return variant, nil, true
 	case "object-region-state-component": // i6
 		consumeObjectRegionState(br)
@@ -1032,11 +1034,9 @@ const bipedDefaultStateTypeIndex = 35
 // (Découverte autoritative .exe, 2026-07-03.)
 const objectArchetypeCount = 50
 
-// useBipedDefaultStateDeser routes typeIndex==35 records through the bit-exact
-// consumeBipedDefaultState (FUN_140F44C38) for the part of the default-state it
-// actually covers, then skips the measured residue up to defaultStateBits. It is a
-// package var (default true) so the calibration harness can A/B it against the
-// pure fixed-Skip path. See consumeBipedDefaultState / default_state.go.
+// LE DEFAULT-STATE DU BIPEDE (typeIndex==35) passe par le déser bit-exact
+// consumeBipedDefaultState (FUN_140F44C38) pour la part qu'il couvre réellement, puis saute
+// le résidu mesuré jusqu'à defaultStateBits. Voir consumeBipedDefaultState / default_state.go.
 //
 // MEASURED FACT (cmd/tmp_defstate_measure, cmd/tmp_mpp): on the Hydra record
 // FUN_140F44C38 (vtable[0x60], the ONLY vtable slot that receives the bitreader RSI
@@ -1055,13 +1055,12 @@ const objectArchetypeCount = 50
 // but driven by runtime widths not recoverable from the .exe. vtable[0x88] gets no
 // bitreader and the FUN_141f86704 config tail is <=2 bits, so they cannot host it.
 // Until those runtime widths are sourced from the film header, the 120-bit bit-exact
-// prefix runs and the residue is skipped to preserve the calibrated total. Set
-// useBipedDefaultStateDeser=false for the legacy pure-Skip behaviour.
-var useBipedDefaultStateDeser = true
-
-// SetUseBipedDefaultStateDeser toggles the bit-exact biped default-state deser
-// prefix (vs a pure Skip(defaultStateBits)).
-func SetUseBipedDefaultStateDeser(v bool) { useBipedDefaultStateDeser = v }
+// prefix runs and the residue is skipped to preserve the calibrated total.
+//
+// LA BASCULE `useBipedDefaultStateDeser` A DISPARU le 2026-09-05 (lot E, item E.2) : le
+// drapeau valait `true` et son setter n'avait aucun appelant, donc le chemin « legacy
+// pure-Skip » était inatteignable. Le déser bit-exact est désormais le seul chemin du
+// typeIndex 35, ce qu'il était déjà en fait.
 
 // TraverseEntity decodes one new-entity record header (R6 typeIndex + default-state
 // + R1 gate + presence mask) and walks the archetype's present components via
@@ -1071,8 +1070,8 @@ func SetUseBipedDefaultStateDeser(v bool) { useBipedDefaultStateDeser = v }
 // For the biped archetype (typeIndex==35) the leading part of the default-state is
 // deserialised bit-exact via consumeBipedDefaultState (FUN_140F44C38) + the
 // config-gated FUN_141f86704 tail; any residue up to defaultStateBits is skipped
-// (the residue deser is not yet identified — see useBipedDefaultStateDeser). For
-// other archetypes the legacy fixed Skip(defaultStateBits) is kept.
+// (the residue deser is not yet identified — see the note above consumeBipedDefaultState's
+// call site). For other archetypes the legacy fixed Skip(defaultStateBits) is kept.
 func TraverseEntity(br *BitReader, reg *Registry, defaultStateBits int) EntityTrace {
 	t := EntityTrace{DesyncAt: -1, DefaultBits: defaultStateBits}
 	t.TypeIndex = uint32(br.ReadBits(6))
@@ -1082,7 +1081,7 @@ func TraverseEntity(br *BitReader, reg *Registry, defaultStateBits int) EntityTr
 		t.EndBit = br.BitPos()
 		return t
 	}
-	if useBipedDefaultStateDeser && t.TypeIndex == bipedDefaultStateTypeIndex {
+	if t.TypeIndex == bipedDefaultStateTypeIndex {
 		// VALIDÉ BIT-EXACT en live (CE breakpoint sur FUN_140f44c38 : rep biped = 166 ou 198
 		// bits selon la donnée ; consumeBipedDefaultState consomme EXACTEMENT 198 sur le record
 		// capturé). Le default-state = la longueur EXACTE du deser, PAS un skip vers le "380"
@@ -1090,8 +1089,9 @@ func TraverseEntity(br *BitReader, reg *Registry, defaultStateBits int) EntityTr
 		// historique est SUPPRIMÉ.
 		consumeBipedDefaultState(br)     // FUN_140F44C38, self-délimité, bit-exact
 		consumeBipedDefaultStateTail(br) // FUN_141f86704 config-gated tail (default 0)
-	} else if db, ok := defaultStateBitsByTI[t.TypeIndex]; ok {
-		br.Skip(db) // surcharge de calibration (harness keyframe) : prioritaire sur le port
+		// LA SURCHARGE DE CALIBRATION `defaultStateBitsByTI` A DISPARU ICI le 2026-09-05
+		// (lot E, item E.2) : la table n'etait peuplee que par `SetDefaultStateBitsForTI`,
+		// un reglage sans appelant. Elle restait vide, la branche etait inatteignable.
 	} else if fn, ok := defaultStateDeserByTI[t.TypeIndex]; ok && useArchDefaultStateDeser {
 		fn(br) // deser vtable[0x60] porté bit-exact (cf. default_state_arch.go)
 	} else {
@@ -1131,14 +1131,6 @@ func TraverseEntity(br *BitReader, reg *Registry, defaultStateBits int) EntityTr
 // biped-record-61bit-gap (agents FUN_1408f1aa4 + FUN_14076cb60 convergents).
 var filmComponentCorruptionCheck = false
 
-// useLegacyAngularVel routes i3 through the OLD (wrong) double-gated angular-velocity
-// deser (FUN_140d87740, +R(96) over-read). Default false = the correct single-gate
-// FUN_14076d528. Kept as a toggle for A/B against the biped-deltas-per-frame oracle.
-var useLegacyAngularVel = false
-
-// SetUseLegacyAngularVel toggles the legacy i3 angular-velocity deser.
-func SetUseLegacyAngularVel(v bool) { useLegacyAngularVel = v }
-
 // SetFilmComponentCorruptionCheck (dé)active le corruption-check per-composant du mode film.
 func SetFilmComponentCorruptionCheck(v bool) { filmComponentCorruptionCheck = v }
 
@@ -1152,15 +1144,12 @@ var newRecordTailBits = 0
 // SetNewRecordTailBits fixe le tail terminal per-record NEW (calibration keyframe).
 func SetNewRecordTailBits(n int) { newRecordTailBits = n }
 
-// defaultStateBitsByTI : largeur FIXE (bits) du default-state (vtable[0x60]) par typeIndex, pour
-// les archétypes non-biped dont le default-state est un deser court à largeur constante (résolus
-// statiquement DAT_144e61d88[ti]→vtable[0x60], agent Ghidra). Absent = stub 0-bit (0x1408d8220).
-// Le biped (ti=35) est traité à part (consumeBipedDefaultState). Vide par défaut = comportement
-// historique (fallback br.Skip(defaultStateBits)).
-var defaultStateBitsByTI = map[uint32]int{}
-
-// SetDefaultStateBitsForTI enregistre la largeur de default-state d'un archétype (calibration keyframe).
-func SetDefaultStateBitsForTI(ti uint32, bits int) { defaultStateBitsByTI[ti] = bits }
+// LA SURCHARGE DE CALIBRATION `defaultStateBitsByTI` A DISPARU le 2026-09-05 (lot E, item E.2),
+// avec son enregistreur `SetDefaultStateBitsForTI` et les deux branches qu'elle gardait
+// (`TraverseEntity` et la sonde `TraverseKeyframeBipedAt`) : le setter n'avait aucun appelant,
+// la table restait donc vide et les deux branches étaient inatteignables. Les archétypes
+// non-biped passent, comme avant, par leur déserialiseur porté (`defaultStateDeserByTI`) ou par
+// le repli `br.Skip(defaultStateBits)`.
 
 // useArchDefaultStateDeser route les archétypes non-biped vers leur déserialiseur
 // vtable[0x60] porté (default_state_arch.go) au lieu du Skip(0) historique. Défaut true ;

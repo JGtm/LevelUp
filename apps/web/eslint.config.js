@@ -74,6 +74,37 @@ export default defineConfig([
       'react-refresh/only-export-components': 'off',
     },
   },
+  // ── Seuil de taille R5 (CLAUDE.md n°5) ──────────────────────────────────
+  // Decision utilisateur 4 du 2026-09-05 (.ai/PLAN_V2_REJEU_FILM_2026-09-05.md) :
+  // le seuil de 500 lignes se mesure en lignes de CODE, pas en lignes brutes.
+  // `skipComments` + `skipBlankLines` sont donc les deux moities de cette
+  // decision : un fichier bien documente n'est pas un god file, et 17 extractions
+  // du canvas du rejeu ont ete payees sur un compte de lignes brutes que ses
+  // 207 lignes de commentaires dominaient (annexe W1 de l'audit v7.5).
+  // La regle est en `error` : le depassement se corrige par une extraction par
+  // RESPONSABILITE, ou par un `/* eslint-disable max-lines -- <raison datee> */`
+  // en tete du fichier (R5 admet l'exemption justifiee, jamais silencieuse).
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'max-lines': ['error', { max: 500, skipComments: true, skipBlankLines: true }],
+    },
+  },
+  // La seule famille d'exemptions qui ne peut PAS vivre en tete de son fichier : les
+  // fichiers GENERES (`npm run generate-types`, `scripts/build_i18n_manifests.mjs`), ou un
+  // `eslint-disable` serait efface a la prochaine generation. Toutes les autres exemptions
+  // `max-lines` sont en tete de fichier, datees et motivees — y compris celle de
+  // `ExplorerMatchesTable.tsx`, revenue chez elle le 2026-09-06 une fois le lot C fusionne
+  // (revue R1, constat C8 : la justification « gele pour le merge » avait survecu au merge).
+  {
+    files: [
+      'src/lib/api/generated.ts',
+      'src/lib/i18n/generated/**/*.ts',
+    ],
+    rules: {
+      'max-lines': 'off',
+    },
+  },
   // ── Tests E2E Playwright ────────────────────────────────────────────────
   // Specs exécutées en Node + code navigateur passé à page.evaluate(). Même base
   // de rigueur que le repo (js.recommended + typescript-eslint recommended, donc

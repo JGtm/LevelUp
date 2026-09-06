@@ -349,9 +349,12 @@ export function MatchViewPage() {
             <MatchFragCard distribution={combat_tab.frag_distribution} weapons={weaponKills} />
             {/* POC (LOT G.3, 2026-08-30) : distance par arme, par joueur — juste après
                 les stats d'armes du viewer. Scoreboard passé pour gamertag + total de
-                kills (le DTO backend ne porte que le xuid). Rend null sans donnée
-                mesurée (cas de la quasi-totalité des matchs tant que le backfill de
-                masse n'a pas tourné) : pas de wrapper ici. */}
+                kills (le DTO backend ne porte que le xuid). DEUX PORTES, portées par la
+                section elle-même : elle rend null si le TITRE ne déclare pas
+                `film.kill_positions` (rien à espérer, jamais), et affiche un état vide
+                explicite si le titre les produit mais pas pour CE match (cas de la
+                quasi-totalité tant que le backfill de masse n'a pas tourné). Pas de
+                wrapper ici : un gap fantôme resterait quand la section est absente. */}
             <MatchKillDistanceSection
               players={combat_tab.kill_distance_by_weapon}
               scoreboard={scoreboard}
@@ -408,6 +411,7 @@ export function MatchViewPage() {
             tugOfWar={tugOfWar}
             cadence={combat_tab.cadence}
             scoreTimelineKind={header.score_timeline_kind}
+            t0Ms={header.t0_ms}
             locale={locale}
             t={t}
           />

@@ -142,12 +142,18 @@ var valeurCourbeCamp = []replaydoc.ScoreTick{{T: 195, V: 1}, {T: 485, V: 2}, {T:
 
 // valeurObjectifsParStat : le calque des actions d'objectif, par nom de statistique.
 //
-// LA MESURE CONTREDIT L'EN-TÊTE HISTORIQUE de la preuve voisine (« 92 actions d'objectif nommées
-// (famille flag) », écrit le 2026-08-25 au schéma 37) : au schéma 39, ce film CTF rend 12 actions
-// et AUCUNE de la famille drapeau. L'écart est consigné en découverte du lot F (registre
-// d'audit : le calque des objectifs relève des lots A et E) ; il est figé ici pour que le
-// prochain déplacement se voie.
-var valeurObjectifsParStat = map[string]int{"kills": 8, "assists": 4}
+// HISTORIQUE DE CETTE MESURE. Au schéma 39 (2026-09-05), ce film CTF rendait 12 actions
+// (8 `kills`, 4 `assists`) et AUCUNE de la famille drapeau : c'était une RÉGRESSION, pas un
+// fait du film — le commit `d173b1a8c` (2026-08-28) avait remplacé le pont d'identité par
+// triplet par le pont par morts (`deathInstantMin = 3`) au lieu de les combiner, et les joueurs
+// à moins de trois morts (les porteurs) sortaient du pont. Le schéma 40 complète le pont par le
+// triplet (`RoundIdentity.CompletedByLines`, instruction CTF du 2026-09-06, revue CTF-R2) : les
+// 7 slots nommables sont pontés et chacun publie exactement sa ligne de la feuille de match —
+// 15 frags, 6 assistances, 1 capture, 1 vol (oracle : `facts` du fixture, sommes des lignes des
+// 7 pontés). Le 8e joueur reste non ponté (slot 12 agrégé, assistance lue 60 contre 0).
+// Figé ici pour que le prochain déplacement se voie ; `assertCalquesDObjectif` (fichier voisin)
+// porte la confrontation captures = score de la feuille de match.
+var valeurObjectifsParStat = map[string]int{"kills": 15, "assists": 6, "flag_captures": 1, "flag_steals": 1}
 
 // assertValeursDuDocument confronte le document cuit par l'ouvrier à l'oracle de l'API et aux
 // mesures figées. Appelée par `assertArtefactLivreEtComplet` sur le document que le service de

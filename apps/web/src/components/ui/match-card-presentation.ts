@@ -21,8 +21,8 @@ function hexToRgba(cssVar: string, alpha: number): string {
 
 const DEFAULT_OUTCOME_STYLE: MatchCardOutcomeStyle = {
   scoreColor: tokenCssVar('divergent-neutral'),
-  panelBackground: 'rgba(158, 158, 158, 0.12)',
-  panelBorder: 'rgba(158, 158, 158, 0.28)',
+  panelBackground: 'rgba(158, 158, 158, 0.12)', // color-allow: 2026-09-06 (ronde 2, N3) — GRIS NEUTRE du panneau d'une carte de match SANS issue connue (le defaut, avant que l'issue ne teinte la carte) : une valeur de repli, pas une couleur qui dit quelque chose ; dette PREEXISTANTE au lot v2 D
+  panelBorder: 'rgba(158, 158, 158, 0.28)', // color-allow: 2026-09-06 (ronde 2, N3) — meme gris neutre, sur la bordure du meme panneau de repli ; dette PREEXISTANTE au lot v2 D
 }
 
 export function getMatchCardOutcomeStyle(tone: string | null | undefined): MatchCardOutcomeStyle {
