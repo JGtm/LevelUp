@@ -97165,3 +97165,63 @@ découpe par manche des compteurs par joueur (63 assistances créditées à 5 jo
 mort du comparateur `replay-diff` sur les intervalles rognés (invisible à l'axe des comptes).
 Prochaine étape : Notion (re-cuisson du parc 41 → 43, à faire par le superviseur), corpus
 témoin à rejouer à chaque bump de schéma.
+
+---
+
+## [2026-09-06] Découpe par manche des compteurs — la manche déclarée confrontée au temps (schéma 44)
+
+**Statut.** Complété — branche `feat/v2-manches`, journal
+`.ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md`.
+
+**Le défaut, confirmé sur pièces.** `51ebbc0f` (Oddball, 2 manches) publiait **63 assistances**
+pour un joueur qui en a **5** à la feuille. Diagnostic du relecteur vérifié à la milliseconde :
+la manche 0 du slot 12 portait un échantillon daté 316 777 ms — 57 s APRÈS le début de la
+manche 1 (259 240 ms) — de valeur 60, quand les sept autres joueurs s'arrêtent avant 228 500 ms ;
+le `total` concaténait ensuite `{3167,60}` puis `{3057,61}`, des instants qui reculent, et le 60
+devenait le décalage de la manche 1. Le même enregistrement coûtait au passage son unique frag de
+manche 0 (`kills` 0 au lieu de 2).
+
+**Cause racine.** La manche d'un enregistrement est lue dans deux en-têtes de 5 bits du premier
+composant ; l'assertion d'en-tête ayant été relâchée le 2026-08-18, un résidu de faux positifs
+porte une manche quelconque. La découpe le croyait sur parole, et `longestRun` ne pouvait pas
+l'écarter : une valeur mal lue mais PLUS GRANDE prolonge la suite non décroissante au lieu de la
+rompre. `comp 5 A = 4 164 778 782` dans le même enregistrement le dénonçait, mais rien ne le
+regardait. Le MÊME motif (`slot 12`, `comp 3 A = 60`) existe sur `d9781168` : 69 assistances
+publiées pour 11 à la feuille.
+
+**Décision technique.** Correctif à la SOURCE, dans la découpe :
+`objectiveevents.ResolveRoundWindows` (nouveau fichier `round_windows.go`) mesure l'intervalle de
+chaque manche et les deux marches de groupement (`rawSeriesByRound` pour les compteurs,
+`rawSeriesByKey` pour les actions d'objectif) écartent tout enregistrement daté hors de
+l'intervalle de la manche qu'il déclare. Trois gardes, **aucune constante ajustée** — début =
+médiane BASSE sur les slots du premier instant du slot (le minimum aurait jeté 3 612
+enregistrements légitimes sur `24dbb67d`, où deux slots déclarent la manche 1 dès 85 193 ms
+contre 298 909 ms pour les huit autres) ; manche utilisable = majorité de slots ; borne crédible =
+médianes des instants de part et d'autre. Plus une garde d'ensemble : les débuts doivent croître.
+Filet aval demandé : `ChronologicalTotal` refuse de publier une série cumulée qui recule dans le
+temps et le journalise — une seule fonction pour les deux cumuls (par slot, par joueur).
+
+**Résultats.** Quinze films re-cuits (les DOUZE multi-manche du parc de 119, plus trois
+mono-manche), base `feat/v75` schéma 43 contre schéma 44 : **onze identiques à l'octet hors la
+ligne `schemaVersion`**, quatre corrigés, **zéro disparition, zéro perte réelle**. `51ebbc0f`
+assistances 63 → 4 et frags 0 → 1 ; `d9781168` assistances 69 → **11, exactement la feuille** ;
+vols de drapeau fantômes sur deux films d'Oddball (donc sans drapeau) 58 → 0 et 994 → 0 ;
+`score.points` −2 et −4 (les points que les échantillons égarés ajoutaient). Les totaux que le
+film reconstruit par slot rejoignent la feuille : le joueur en cause y a bien 2 frags / 10 morts /
+5 assistances. **Une régression a été trouvée par la mesure et corrigée avant livraison** : une
+première version cassait `a4083bd2` (une « manche 1 » d'UN SEUL enregistrement fixait une borne,
+153 enregistrements sur 719 jetés, 24 compteurs en baisse) — d'où les gardes de majorité et de
+croissance, chacune prouvée par mutation. Dix mutations passées, chacune tue au moins un test.
+Gates : build, unitaires (`analysis/replay`, `replaybuild`, `archlint`, `contracttest`),
+intégration `api/wire`, `golangci-lint --new-from-merge-base=origin/main` **0 issue**, golden
+d'assemblage régénéré (une ligne : `schema 43` → `schema 44`).
+
+**Conclusion / prochaine étape.** Le parc doit être re-cuit au schéma 44 (re-cuisson de release,
+`backfill-replay`). Découvertes consignées et NON traitées : (1) `51ebbc0f` publie 4 des 5
+assistances que le film reconstruit — sa grille de frames s'arrête à 451 400 ms alors que les
+enregistrements vont à 498 941 ms, `coverage.originResolved = false` ; **ceci explique la question
+restée ouverte au registre** (« aucune des 8 courbes de `51ebbc0f` ne colle à la feuille, contre
+4 sur 8 pour `43716616` ») — les deux films à `originResolved = false` du corpus mesuré sont
+`51ebbc0f` et `fb1a1a72` ; (2) `RealRounds` retient des manches sur des modes qui n'en ont pas
+(Slayer, 3 films sur 119) — le correctif s'en protège sans corriger la cause ; (3) le journal du
+filet de chronologie est répétitif sur ces trois films.

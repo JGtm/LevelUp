@@ -815,7 +815,34 @@ package replay
 // sans que sa forme le dise, et `backfill-replay` saute un artefact à la version courante.
 // Détail : internal/analysis/replay/skull_carries.go (carrierPresence.gate) et
 // .ai/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
-const SchemaVersion = 43
+//
+// v44 (2026-09-06) : LA MANCHE DÉCLARÉE D'UN ENREGISTREMENT EST CONFRONTÉE AU TEMPS. Aucun champ
+// n'est ajouté ; c'est le CONTENU de `scoreTimeline` (les quatre compteurs par joueur et les
+// courbes d'équipe) et des actions d'objectif qui change, sur les films À PLUSIEURS MANCHES
+// SEULEMENT. La manche d'un enregistrement est lue dans deux en-têtes de 5 bits ; l'assertion
+// d'en-tête étant relâchée, un résidu de faux positifs porte une manche quelconque et des
+// valeurs arbitraires. La découpe par manche prenait ce numéro pour argent comptant, et la plus
+// longue sous-suite non décroissante ne pouvait pas l'écarter — une valeur mal lue mais PLUS
+// GRANDE prolonge la suite au lieu de la rompre. Les manches se jouant dans l'ordre, un
+// enregistrement daté hors de l'intervalle de la manche qu'il déclare est désormais écarté.
+//
+//	mesure   `51ebbc0f` (Oddball, 2 manches) : un enregistrement daté 316 777 ms — 57 s APRÈS le
+//	         début de la manche 1 — déclarait la manche 0 avec 60 assistances ; ce 60 devenait le
+//	         décalage de la manche 1 et le document publiait 63 assistances pour un joueur qui en
+//	         a 5 à la feuille (il coûtait aussi son frag de manche 0 : 0 -> 1). MÊME
+//	         enregistrement sur `d9781168` (slot 12, `comp 3 A = 60`) : assistances 69 -> 11,
+//	         soit EXACTEMENT la feuille. Le même bruit nommait 58 vols de drapeau sur `51ebbc0f`
+//	         et 994 sur `24dbb67d` — deux films d'Oddball, donc sans drapeau : tombent à 0.
+//	portée   Quinze témoins re-cuits : les onze autres sont IDENTIQUES À L'OCTET, dont les trois
+//	         films dont l'étiquetage de manche ne suit pas l'horloge (`fb1a1a72`, `72b0a25e`,
+//	         `a4083bd2`) où aucune borne n'est posable, et tous les films mono-manche — qui n'ont
+//	         par construction aucune borne.
+//
+// La version monte pour la raison des montées v39 à v43 : un artefact 1 à 43 d'un film
+// multi-manche porte des compteurs gonflés sans que sa forme le dise, et `backfill-replay` saute
+// un artefact à la version courante. Détail :
+// internal/analysis/objectiveevents/round_windows.go et .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
+const SchemaVersion = 44
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
