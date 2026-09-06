@@ -86,6 +86,9 @@ jobs:
       - name: Lint multi-titres (no hardcoded FieldKey)
         run: npm run lint:fields
 
+      - name: Lint couleurs (tokens semantiques uniquement)
+        run: npm run lint:colors
+
       # Ratchet knip — SANS condition de chemin, et c'est tout l'objet du step.
       # Le hook pre-push homonyme (lefthook.yml) est glob-gaté sur
       # `apps/web/src/**/*.{ts,tsx}` : il ne s'exécute que si le push CONTIENT des

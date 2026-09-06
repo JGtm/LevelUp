@@ -19,7 +19,7 @@ import { resolve } from 'node:path'
 
 import { fxTintVar, SERVED_FX_TINTS } from './fxInk'
 
-import { fichierNomme, lire, racineDuDepot } from '../test/featureFiles'
+import { racineDuDepot } from '../test/featureFiles'
 
 const REPO = racineDuDepot()
 const GO_LOADER = resolve(REPO, 'apps/go-api/internal/games/mappings/loader_replay_labels.go')
@@ -75,14 +75,5 @@ describe('garde-rail : le vocabulaire des teintes de tir', () => {
     }
     expect(css.includes('--replay-fx-core:')).toBe(true)
     expect(clair.includes('--replay-fx-core:')).toBe(true)
-  })
-
-  it('n’écrit AUCUNE couleur dans la feature : les teintes ne vivent que dans le thème', () => {
-    // La règle du dépôt est étendue, pas contournée (item 2.6c du plan).
-    for (const f of ['fxInk.ts', 'muzzleFlash.ts', 'shotFx.ts']) {
-      const src = lire(fichierNomme(f))
-      expect(/#[0-9a-fA-F]{6}\b/.test(src), `${f} porte une valeur hex`).toBe(false)
-      expect(/oklch\(/.test(src), `${f} porte une couleur littérale`).toBe(false)
-    }
   })
 })
