@@ -180,6 +180,43 @@ type KillDistanceRepository interface {
 	LoadMatch(ctx context.Context, matchID string) ([]domain.MatchKillDistancePlayer, error)
 }
 
+// TacticalRepository — onglet Tactique (plan .ai/PLAN_TACTIQUE_2026-09-06.md,
+// phase 2) : les trois lectures de base d'une analyse de placement par CARTE.
+// Implémenté par platform/duckdb.TacticalRepo.
+//
+// Source : shared.match_registry × shared.match_participants pour l'UNIVERS
+// (les matchs retenus par le filtre) ; shared.kill_positions_latest ×
+// shared.match_kill_events_latest pour les positions et le journal des morts —
+// vues `_latest` UNIQUEMENT (règle ART n°2, jamais la table brute).
+//
+// L'UNIVERS VOYAGE AVEC LES POINTS. KillPositions et KillEvents rendent l'un ET
+// l'autre, parce qu'un match retenu SANS point (aucune mort mesurée) doit compter
+// au dénominateur « par match » de la lecture. Le déduire des points l'effacerait
+// — défaut mesuré et corrigé en phase 1 du plan.
+//
+// Capability gating : retourne games.ErrCapabilityNotSupported si les tables du
+// film sont absentes (titre/schéma sans décodeur). Zéro ligne est l'état NOMINAL
+// d'un joueur dont aucun match n'est encore décodé — pas une panne.
+type TacticalRepository interface {
+	// MapsPlayed liste les cartes jouées par le joueur sous le filtre, avec le
+	// nombre de matchs et sa décomposition victoires / défaites. Ordre
+	// déterministe (matchs décroissants, puis map_id). `filtre.MapID` est ignoré :
+	// cette lecture est l'écran d'entrée, elle porte sur toutes les cartes.
+	MapsPlayed(ctx context.Context, filtre domain.TacticalQuery) ([]domain.TacticalMapRow, error)
+
+	// KillPositions rend l'univers des matchs retenus ET les positions mesurées
+	// (tueur ET victime connus) de ces matchs. TOUS les joueurs du match sont
+	// rendus : l'axe « qui » (moi / escouade / adversaires) se tranche dans le
+	// service, à partir des équipes de l'univers — une requête par axe multiplierait
+	// les scans de la même fenêtre.
+	KillPositions(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalPositions, error)
+
+	// KillEvents rend l'univers des matchs retenus ET le journal de leurs morts,
+	// sous la forme que analysis/coordination consomme (victime, tueur crédité,
+	// instant). Même portée que KillPositions : tous les joueurs.
+	KillEvents(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalKillEvents, error)
+}
+
 // MatchExclusionRepository gère le flag is_excluded dans player_match_enrichment.
 // Implémenté par platform/duckdb.MatchExclusionRepo.
 type MatchExclusionRepository interface {
