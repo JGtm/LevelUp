@@ -405,3 +405,176 @@ avec le lot F.
 - **D.15** (promotion de `ReplayTransport` et `ReplaySettingsDrawer` en frères du canvas) :
   différé hors chantier par le superviseur, après un gate visuel validé par l'utilisateur.
 
+
+---
+
+## Tâche D-II, troisième temps (D.11 à D.14) — CLOSE le 2026-09-06
+
+### Items
+
+- [x] **D.11 (décision utilisateur 4) — le seuil de taille se mesure en lignes de code, et
+  l'arborescence suit les responsabilités.** Neuf commits (`929fa368d`, `37f16c909`,
+  `db78b6013`, `9773fda3d`, `72388f2a2`, `eed3a98cd`, `59776f181`, `5178a35bb`, `62e107729`).
+  - **La règle.** `max-lines` ESLint à 500 avec `skipComments: true` et `skipBlankLines: true`,
+    en `error`, sur `src/**/*.{ts,tsx}` (`apps/web/eslint.config.js`). R5 avait un énoncé et
+    aucun outil côté web.
+  - **Le cliquet part.** Les 160 lignes de `placementFamily.guard.test.ts` qui portaient le
+    plafond de lignes BRUTES de `ReplayCanvas.tsx` (<= 665) et son journal de 17 extractions
+    sont supprimées ; le garde des FAMILLES de pose, seul objet déclaré du fichier, reste
+    entier. Les **26 en-têtes** qui citaient ce cliquet comme raison d'exister nomment
+    désormais `max-lines` (une référence à un test supprimé est une doc morte).
+  - **L'arborescence.** Huit dossiers, un commit chacun : `i18n/` (3 sources), `sound/` (25),
+    `export/` (10), `settings/` (8), `layers/` (62), `ui/` (31), `hooks/` (11), `model/` (58),
+    plus `test/` (doubles partagés). Déplacements PURS par `git mv` ; la racine ne garde que
+    ce que la Match View consomme, traité en D.13.
+  - **La règle de classement est écrite** (`features/match-replay/README.md`, huit critères
+    dans un ordre, le premier qui s'applique gagne) **et gardée**
+    (`test/arborescence.guard.test.ts` : un module dont une fonction reçoit un
+    `CanvasRenderingContext2D` vit dans `layers/`, trois exceptions nommées).
+- [x] **D.12 (M6) — le lint couleur canonique entre en CI, ses copies partielles sortent.**
+  `commit fde1dbf34`. Script `lint:colors` (`apps/web/package.json`) + un step au job
+  `frontend` (`.github/workflows/ci.yml`, une seule ligne ajoutée au fichier). Cinq blocs de
+  garde qui relisaient la SOURCE partent (`fxInk`, `heatmapLayer`, `weaponPads`,
+  `flagCarries`, `placementDropped`).
+- [x] **D.13 (N4) — la frontière rejeu / Match View devient vraie, module par module.**
+  `commit 7aa7ebf4f`. Sept modules descendent dans `lib/replay/` (document, normalisation,
+  logique de lecture, roster, deux dépendances pures, chargement) ; le lint accepte une
+  exception au niveau du MODULE ; les deux paires du rejeu deviennent huit modules nommés.
+  Imports croisés hors tests : 9 avant, 4 après.
+- [x] **D.14 — merge du lot C, puis la page de rejeu passe la porte de titre `replay`.**
+  `merge b093fe6fc` + `commit d21998b85`. Un seul conflit (`.ai/thought_log.md`), résolu en
+  gardant les deux entrées. Aucun conflit sur le code : le lot C n'a touché aucun fichier du
+  rejeu. Quatre cas de test, dont un qui lit la route.
+
+### Gate final (D.11-D.14)
+
+| Gate | Commande exacte | Dernière ligne |
+|---|---|---|
+| Typecheck (cache forcé) | `cd apps/web && npx tsc -b --force` | (aucune sortie) `TSC_EXIT=0` |
+| Lint (dont `max-lines` en error) | `npm --prefix apps/web run lint` | `✖ 27 problems (0 errors, 27 warnings)` |
+| Couleurs (script neuf) | `npm --prefix apps/web run lint:colors` | `lint-no-hardcoded-colors: clean (0 violation)` |
+| Imports croisés | `node tools/lint-cross-feature-imports.mjs` | `Info : 7 <= plafond P8.5 (7). Pas d'échec` |
+| Vitest (suite web entière) | `cd apps/web && node_modules/.bin/vitest run --pool=forks` | `Tests  6376 passed \| 14 skipped (6390)` |
+| Build de production | `npm --prefix apps/web run build` | `✓ built in 1.84s` (2 207 modules) |
+| Rasterisation (témoin) | `cd apps/web && npx playwright test e2e/replay-explosion-raster.spec.ts e2e/replay-muzzle-raster.spec.ts --reporter=line` | `3 passed` |
+
+Les 27 avertissements de lint sont ceux de la baseline (28 au commit de base). Zéro test
+skippé ajouté ; aucun garde assoupli sans justification datée. **La rasterisation a été rejouée
+après CHACUN des douze commits** : 3/3 à chaque fois.
+
+**Pouvoir de détection, vérifié par mutation (quatre gardes neufs ou refondus).**
+
+- `carriedGlyphPulse.guard.test.ts` (migré sur le balayage récursif) : la sinusoïde plantée
+  dans `sound/zoneSound.ts` le fait rougir — `expected [ 'sound/zoneSound.ts' ] to deeply
+  equal []`. Le balayage plat ne l'aurait plus vue.
+- `test/arborescence.guard.test.ts` : une fonction de peinture ajoutée à `model/killFx.ts` le
+  fait rougir en nommant le fautif et le README.
+- `lib/replay/crossFeatureBoundary.guard.test.ts` : réintroduire la paire nue
+  `match-view=>match-replay` dans l'allowlist le fait rougir.
+- `replay.gate.test.tsx` (quatrième cas) : retirer la porte `replay` de la route le fait rougir.
+
+**Preuve M6, mesurée et non supposée.** Un hex planté tour à tour dans chacun des **20 fichiers
+cibles** des cinq gardes supprimés fait rougir le lint canonique (20/20) ; une classe Tailwind
+aussi (3/3 éprouvés). Le gate global couvre donc strictement plus que ce qu'il remplace.
+
+### Décisions prises (troisième temps)
+
+19. **Les exemptions `max-lines` sont datées et nommées, jamais silencieuses (D.11).** 22
+    fichiers portent `/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, décision
+    utilisateur 4) : <raison>. */` en tête, en trois familles :
+    - **table de données** (une entrée par clé, aucun embranchement — la découper répartirait
+      la même table sur plusieurs fichiers à tenir en phase) : `lib/api/types.ts`,
+      `features/{squad,match-view,help,settings,ascension}/i18n.ts`,
+      `features/match-replay/i18n/i18n.ts` ;
+    - **suite de tests** d'un même module, qui partagent leur montage :
+      `match-replay/ui/ReplayTeams.test.tsx`, `match-replay/sound/replaySound.test.ts`,
+      `match-view/MatchHeader.test.tsx`, `home/HomePage.test.tsx`,
+      `media/CoverFlowModal.test.tsx` ;
+    - **hors périmètre du lot D** — l'exemption DATE la dette, elle ne l'absout pas :
+      `synthesis/SynthesisPage.tsx`, `timeseries/TimeseriesFormCharts.tsx`,
+      `media/CoverFlowModal.tsx`, `squad/SquadLayout.tsx`,
+      `palmares/PalmaresRelationsPage.tsx`, `palmares/SeasonPassPage.tsx`,
+      `match-view/MatchScoreboard.tsx`, `home/HomePage.tsx`, `components/ui/match-card.tsx`,
+      `components/shell/PeriodSessionRail.tsx`.
+
+    Quatre fichiers sont exemptés PAR LA CONFIG, faute de pouvoir porter un commentaire
+    durable : les trois générés (`lib/api/generated.ts`, `lib/i18n/generated/common.ts`,
+    `lib/i18n/generated/admin.ts` — un `eslint-disable` y serait effacé à la prochaine
+    génération) et `features/explorer/ExplorerMatchesTable.tsx`, gelé par la consigne pour le
+    merge du lot C. Aucun fichier n'a été découpé : le seul du rejeu qui dépassait est une
+    table de traduction.
+20. **La règle de classement de l'arborescence est un ORDRE, pas une liste (D.11).** i18n ->
+    sound -> export -> settings -> layers -> ui -> hooks -> model : le premier critère qui
+    s'applique gagne, ce qui donne à chaque fichier une place et une seule. Les quatre domaines
+    transverses l'emportent sur la forme du fichier — `ReplaySoundControls.tsx` est un
+    composant React et vit dans `sound/`, parce qu'on le cherche avec les sons.
+21. **« Fx » ne veut pas dire calque (D.11).** `shotFx`, `killFx`, `grenadeFx`, `playerCardFx`
+    CALCULENT ce qu'un effet montre et ne touchent jamais la toile : ils vivent dans `model/`.
+    Le critère retenu — recevoir un `CanvasRenderingContext2D` — est le seul des huit qui se
+    lise dans le code, donc le seul qu'un test puisse tenir.
+22. **Onze gardes balayaient `readdirSync(__dirname)` : l'arborescence les aurait rendus VERTS
+    ET INERTES (D.11).** `test/featureFiles.ts` rend la liste RÉCURSIVE de la feature (le patron
+    `walk` était déjà recopié deux fois — la troisième copie était interdite, R6), porte les
+    ancres `racineWeb()` / `racineDuDepot()` pour les neuf gardes qui lisent un fichier Go, un
+    TOML ou la feuille de style, et `fichierNomme()` pour les six qui lisaient une liste de
+    fichiers par chemin. Aucun garde ne compte plus ses `..`.
+23. **Le témoin de rasterisation cherche ses modules par NOM (D.11, D.13).**
+    `e2e/_helpers/replaySource.ts` balaie `features/match-replay/` ET `lib/replay/` : les specs
+    lisaient des chemins écrits en dur et tombaient sur un ENOENT à chaque déplacement — le
+    seul gate qui dise « aucun pixel n'a bougé » ne pouvait pas dépendre d'une arborescence
+    qu'on refond. Ce correctif REMPLACE celui du premier temps (comptage d'imports de valeur),
+    à réconcilier avec le lot F (F.6) au merge.
+24. **Les quatre assertions de couleur sur le RENDU restent (D.12), et c'est un écart assumé au
+    périmètre littéral.** Le registre comptait 9 copies ; cinq relisaient la SOURCE (supprimées,
+    le lint canonique couvre leurs 20 fichiers cibles, mesuré), quatre vérifient le HTML PRODUIT
+    (`ReplayKillFeed`, `ReplayScoreBanner`, `ReplayTimelineTracks`, `playerCardFx`). Un lint
+    statique ne voit jamais une couleur qui arrive par la DONNÉE — `team_color` vient du
+    document. Les supprimer aurait retiré un pouvoir de détection que le gate global ne rend
+    pas : la preuve demandée (« le lint canonique couvre leurs fichiers cibles ») ne peut pas
+    être faite pour celles-là.
+25. **Sept modules descendent dans `lib/replay/`, et pas huit (D.13).** La fermeture a été
+    vérifiée AVANT de bouger : `replayReadyTypes`, `replayNormalize`, `replayLogic`,
+    `changeRefine`, `playerMarks`, `rosterLogic`, `queries` n'importent rien de `features/`.
+    `equipmentUsageLogic` a été laissé : il dépend d'un CALQUE
+    (`layers/equipmentPlacementsLayer`), le descendre aurait fait suivre le calque et ses
+    quatre modules de forme — déplacer la feature au lieu de partager de la logique. C'est
+    exactement l'argument que l'ancienne justification opposait à `queries`, et il ne tenait
+    plus pour lui une fois `replayNormalize` descendu.
+26. **Le plafond du ratchet P8.5 reste à 7 (D.13).** Les sept violations non déclarées sont
+    étrangères au rejeu (`filters`, `palmares`, `explorer`) et les corriger serait un fix hors
+    périmètre (règle 7). Ce qui redescend, c'est la PORTÉE de l'exception : de deux features
+    entières (370 + 60 fichiers) à huit modules nommés. Le lint affiche désormais le module
+    fautif et non plus la feature.
+27. **L'état « ce titre ne propose pas de rejeu » n'est PAS recopié dans le dictionnaire du
+    rejeu (D.14).** Le lot C porte déjà le libellé `replay` en FR et en EN dans la table de
+    `FeatureUnavailable` (`lib/capabilities/`). En écrire un second dans `REPLAY_TEXT` donnerait
+    deux textes pour la même phrase — la duplication que ce lot passe son temps à fermer. La
+    parité FR/EN exigée est tenue, et vérifiée par le test (deux cas de langue).
+28. **La route porte DEUX portes imbriquées (D.14).** `matchmaking` (le match n'existe pas pour
+    ce titre) puis `replay` (le titre a des matchs, aucune chaîne de rejeu). Elles ne disent pas
+    la même chose et le lecteur doit lire la bonne.
+
+### Découvertes (troisième temps, hors périmètre, non traitées)
+
+10. **`MatchPadControlSection.tsx` lit toujours le camp du joueur sans le parser** (constat 8 du
+    second temps). Le fichier est resté à la racine de la feature pour D.13, il n'a pas été
+    touché.
+11. **Sept violations cross-feature non déclarées subsistent**, toutes étrangères au rejeu :
+    `ascension -> filters/filterLink` (2), `explorer -> palmares/RelationWinRateDonut` et
+    `/CumulativeFragGapChart`, `match-view -> explorer/explorerMatchesClientSort` (2) et
+    `squad -> explorer/explorerMatchesClientSort`. Le lint les nomme maintenant module par
+    module, ce qui rend leur traitement mécanique pour le lot qui touchera ces fichiers.
+12. **Les autres paires de l'allowlist restent des paires** (une cinquantaine). Le mécanisme par
+    module existe désormais pour toutes ; seules les deux du rejeu ont été converties, le reste
+    est hors périmètre.
+13. **`lib/` n'est contrôlé par aucun lint de frontière.** Le ratchet P8.5 vérifie
+    `features/ -> features/` et `components/ -> features/`, mais pas `lib/ -> features/`. La
+    fermeture des sept modules descendus a donc été vérifiée À LA MAIN avant le déplacement.
+    Un `lib/ -> features/` interdit par le lint serait le garde-rail manquant.
+
+### Reste à faire
+
+- **D.10 (les faux hooks)** : toujours bloqué sur la question du second temps — le NOM ou la
+  STRUCTURE.
+- **D.15** (promotion de `ReplayTransport` et `ReplaySettingsDrawer` en frères du canvas) :
+  différé hors chantier par le superviseur, après un gate visuel validé par l'utilisateur.
