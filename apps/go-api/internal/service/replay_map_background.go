@@ -42,17 +42,25 @@ import (
 	"os"
 
 	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/replayview"
 )
 
-// MapBackground retourne le calage du fond de carte du match.
-func (s *replayService) MapBackground(ctx context.Context, matchID string) (*replay.MapBackground, error) {
+// MapBackground retourne le calage du fond de carte du match, dans sa forme SERVIE : le
+// sidecar est lu tel qu'il est ecrit sur disque (`analysis/replay`) puis projete sur le
+// contrat public (`domain/replaydoc`), comme le document lui-meme.
+func (s *replayService) MapBackground(ctx context.Context, matchID string) (*replaydoc.MapBackground, error) {
 	key, err := s.resolveBackgroundKey(ctx, matchID)
 	if err != nil {
 		return nil, err
 	}
-	return s.loadMapBackground(ctx, key)
+	bg, err := s.loadMapBackground(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	return replayview.MapBackgroundOf(bg), nil
 }
 
 // MapBackgroundImage retourne les octets PNG du fond de carte du match.

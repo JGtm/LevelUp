@@ -13,8 +13,10 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/replayview"
 )
 
 // replayService lit l'artefact de rejeu d'un titre donné via le PathResolver.
@@ -107,18 +109,23 @@ const replayArtifactExt = ".json"
 //     la famille, le service compose son URL sous /static (cf. replay_vehicle_labels.go).
 //
 // L'absence de l'une ou de l'autre n'est jamais une erreur — le rejeu se sert entier sans.
-func (s *replayService) GetReplay(ctx context.Context, matchID string) (replay.ReplayDocument, error) {
+//
+// LE TYPE DE RETOUR EST LE DOCUMENT SERVI, pas le document stocké : l'artefact est lu dans sa
+// forme de FICHIER (`analysis/replay`), enrichi des trois résolutions ci-dessus, puis PROJETÉ
+// sur la forme de FIL (`domain/replaydoc`) — c'est la seule frontière où les deux se croisent
+// (cf. internal/service/replayview).
+func (s *replayService) GetReplay(ctx context.Context, matchID string) (replaydoc.ReplayDocument, error) {
 	path := title.NewPathResolver(s.repoRoot).ReplayArtifactPath(s.titleSlug, matchID)
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return replay.ReplayDocument{}, port.ErrReplayNotAvailable
+		return replaydoc.ReplayDocument{}, port.ErrReplayNotAvailable
 	}
 	if err != nil {
-		return replay.ReplayDocument{}, fmt.Errorf("lecture artefact rejeu %s: %w", matchID, err)
+		return replaydoc.ReplayDocument{}, fmt.Errorf("lecture artefact rejeu %s: %w", matchID, err)
 	}
 	var doc replay.ReplayDocument
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		return replay.ReplayDocument{}, fmt.Errorf("désérialisation artefact rejeu %s: %w", matchID, err)
+		return replaydoc.ReplayDocument{}, fmt.Errorf("désérialisation artefact rejeu %s: %w", matchID, err)
 	}
 	// LES CLÉS DE CARTE, UNE SEULE FOIS : deux calques statiques les partagent, et la base
 	// ne doit pas être interrogée deux fois pour la même réponse.
@@ -133,5 +140,5 @@ func (s *replayService) GetReplay(ctx context.Context, matchID string) (replay.R
 	// statique dépend du titre, et ne se fige donc pas dans l'artefact (cf.
 	// replay_vehicle_labels.go).
 	s.resolveVehicleLabels(ctx, &doc)
-	return doc, nil
+	return replayview.FromArtifact(doc), nil
 }
