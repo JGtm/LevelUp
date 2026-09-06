@@ -25,8 +25,8 @@ import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
 import { frameToMs, msToFrames } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
-import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
-import { ZONE_SOUND_STEMS } from './zoneSound'
+import { soundEvent, type ReplaySoundEvent } from './sound/replaySoundVariants'
+import { ZONE_SOUND_STEMS } from './sound/zoneSound'
 
 /** L'état du compte à rebours à une image donnée : ce qu'il reste de mèche, et la course. */
 export interface BombCountdownState {

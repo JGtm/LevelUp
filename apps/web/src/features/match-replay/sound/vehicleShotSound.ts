@@ -51,7 +51,7 @@
  * Un tir d'arme DE JOUEUR depuis un siège passager n'arrive jamais ici : son `Shot.w` est
  * dans `weaponLabels`, et `shotSoundStem` répond par `WEAPON_SOUND_STEMS` AVANT ce repli.
  */
-import { vehicleWeapTag } from './vehicleWeaponMounts'
+import { vehicleWeapTag } from '../vehicleWeaponMounts'
 
 /**
  * VEHICLE_SHOT_SOUND_STEMS — `Shot.w` (gabarit weap) -> stem de la PREMIÈRE variante.

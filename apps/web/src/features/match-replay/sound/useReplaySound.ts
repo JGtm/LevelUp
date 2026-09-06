@@ -44,10 +44,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useSettings } from '@/features/settings/queries'
-import type { ReplayKill } from './killFeedLogic'
+import type { ReplayKill } from '../killFeedLogic'
 import { seededRandom, soundUrlOf } from './replayAudioMix'
 
-import { persistPreference, readStoredFlag, readStoredNumber } from './replayPreferences'
+import { persistPreference, readStoredFlag, readStoredNumber } from '../replayPreferences'
 import {
   END_FFA_WIN_VOICE_STEMS,
   END_MUSIC_STEMS,
@@ -56,9 +56,9 @@ import {
   endMatchSoundStems,
   type EndMatchSoundSpec,
 } from './endMatchSound'
-import type { ReplayLocale } from './i18n/i18n'
+import type { ReplayLocale } from '../i18n/i18n'
 import { ReplayAudioPlayer } from './replayAudio'
-import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayDocumentReady } from '../replayNormalize'
 import { distanceChain, drawVariation } from './weaponSoundLogic'
 import { WEAPON_SOUND_VARIATIONS } from './weaponSoundVariations'
 import {

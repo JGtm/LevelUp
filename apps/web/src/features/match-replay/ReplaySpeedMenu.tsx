@@ -16,7 +16,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
-import { soundPlaysAtSpeed } from './replaySoundCursor'
+import { soundPlaysAtSpeed } from './sound/replaySoundCursor'
 import { SPEED_MULTIPLIERS } from './useReplaySettings'
 
 interface ReplaySpeedMenuProps {

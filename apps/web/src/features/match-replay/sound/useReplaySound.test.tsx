@@ -14,12 +14,12 @@ import { act, renderHook } from '@testing-library/react'
 vi.mock('@/features/settings/queries', () => ({ useSettings: () => ({ data: undefined }) }))
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { ReplayKill } from './killFeedLogic'
+import type { ReplayKill } from '../killFeedLogic'
 
 import type { EndMatchSoundSpec } from './endMatchSound'
 import { SOUND_MAX_SPEED } from './replaySoundCursor'
-import { type FakeContext, flushAudio, installFakeAudio } from './test/fakeAudio'
-import { testReplayDoc } from './test/testDoc'
+import { type FakeContext, flushAudio, installFakeAudio } from '../test/fakeAudio'
+import { testReplayDoc } from '../test/testDoc'
 import { SOUND_VOLUME_DEFAULT, useReplaySound } from './useReplaySound'
 
 let ctx: FakeContext

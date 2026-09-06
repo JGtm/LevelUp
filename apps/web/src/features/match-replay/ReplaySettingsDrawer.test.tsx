@@ -15,7 +15,7 @@ import {
   type ReplayFlagControls,
   type ReplayWeaponPadControls,
 } from './ReplaySettingsDrawer'
-import type { ReplaySound } from './useReplaySound'
+import type { ReplaySound } from './sound/useReplaySound'
 
 function makePlacements(over: Partial<ReplayPlacementControls> = {}): ReplayPlacementControls {
   return {

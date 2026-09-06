@@ -42,9 +42,9 @@ import { useAnchoredPanel } from './useAnchoredPanel'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import { HeatmapSection, type ReplayHeatmapControls } from './ReplayHeatmapSection'
 import { LayersSection } from './ReplaySettingsLayers'
-import { SOUND_CATEGORIES } from './replaySound'
+import { SOUND_CATEGORIES } from './sound/replaySound'
 import { MARKER_COLORS_MODES, type MarkerColorsMode } from './useReplaySettings'
-import type { ReplaySound } from './useReplaySound'
+import type { ReplaySound } from './sound/useReplaySound'
 
 /**
  * LA LARGEUR DU PANNEAU, en px et pas en classe : le hook de placement en a besoin pour le

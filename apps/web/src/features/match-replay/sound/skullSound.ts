@@ -81,8 +81,8 @@ import type {
   ReplayDocumentReady,
   ReplayObjectiveObjectReady,
   ReplaySkullCarry,
-} from './replayNormalize'
-import { frameToMs } from './replayLogic'
+} from '../replayNormalize'
+import { frameToMs } from '../replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
