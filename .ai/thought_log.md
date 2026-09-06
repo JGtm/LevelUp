@@ -95542,3 +95542,104 @@ demandent deux worktrees).
 complete d'une section « Corrections apres revue » avec les six points, les huit mutations et
 les gates. Prochaine etape : integration dans `feat/v75` par le superviseur, selon l'ordre du
 plan (C -> A -> B -> F -> G -> E -> D).
+## [2026-09-06] Plan v2 du rejeu — LOT F : tests, garde-rails et CI — Complete
+
+**Contexte.** Lot F du plan `.ai/PLAN_V2_REJEU_FILM_2026-09-05.md`, worktree dedie
+`LevelUp-wt-v2-tests-ci`, branche `feat/v2-tests-ci` sur base `a21fd77f4`. Six items issus du
+registre d'audit du 2026-09-05 : G1 (aucune assertion de VALEUR en CI sur un ReplayDocument
+obtenu d'un film), G3 (la baseline de presence des tests ignore tout le chantier v7.5 et son
+controle « par paquet » est une doc inversee), G7 (RunOnce du cron de purge, seul cron qui
+supprime des fichiers, sans aucun test), I1 (deux tests ouvrent le jeu hors du tag `gamefiles`
+et le ratchet ne regarde qu'un paquet), H7 (l'exemption `^cmd/` du lint couvre les binaires
+deployes), M1 (les deux seules preuves de rendu du rejeu n'ont jamais tourne en CI).
+
+**Decision technique.** Mesurer avant de figer, et prouver chaque test neuf par mutation.
+F.1 : le fixture e2e porte deja un oracle INDEPENDANT du film (la feuille de match de l'API) —
+le differentiel etait gratuit et n'existait pas ; mesure d'abord (15 compteurs sur 15 EXACTS
+pour les 5 joueurs apparies), puis gel des grandeurs sans oracle exterieur (originMs 34 870,
+t0FilmMs 35 170, grille 781 x 100 ms, 22 vies, courbe d'equipe 195:1 485:2 706:3). L'oracle est
+RECOPIE A LA MAIN et confronte au fichier a chaque execution, sans quoi l'assertion serait
+auto-validante. F.2 : 1 209 entrees ajoutees a la baseline depuis un vrai run, et le controle
+« par paquet » rendu reel des DEUX cotes (bilan de presence groupe par paquet ; comparaison de
+couverture paquet par paquet, avec sa limite ecrite — `-func` ne publie pas les comptes
+d'instructions). F.3 : une couture d'horloge ajoutee au cron (nil en production), sans quoi la
+FRONTIERE de la fenetre de retention n'est pas testable. F.4 : le garde-rail du tag promu de
+`internal/himap` vers `internal/archlint`, balayage WalkDir de `internal/` et `cmd/`. F.5 :
+`path` + `path-except` sur la meme regle est REFUSE par golangci-lint v2.12.2 (et `config
+verify` ne l'attrape pas) — `path-except` seul porte toute la condition negative, RE2 n'ayant
+pas de lookahead. F.6 : les deux specs n'ouvrent aucun serveur, elles rejoignent le job
+`frontend` qui tourne a chaque push.
+
+**Resultats.** Six items `[x]` (dont un sous-item `[~]` : la CI invoquait deja le script de
+baseline, verifie sur pieces). Treize mutations manuelles, toutes rattrapees, toutes annulees.
+Deux decouvertes majeures faites PAR les mutations : (a) deux leurres du test de purge ne
+prouvaient rien (leur nom tronque n'etant dans aucun registre, une AUTRE garde les epargnait) —
+remplaces par un fichier sans extension et un repertoire vide nommes comme un artefact
+purgeable ; (b) les deux specs de rasterisation etaient ROUGES au premier rejeu (2 echecs sur
+3), leur harnais perime de deux refactorings du chantier v7.5 — la demonstration exacte du
+constat M1. Consigne aussi : le calque des actions d'objectif ne rend plus AUCUNE action de la
+famille drapeau sur un film CTF (12 actions kills/assists au schema 39 contre « 92, famille
+flag » ecrit au schema 37) ; cause non traitee, elle releve des lots A et E. Le ratchet de lint
+passait de 0 a 9 issues en appliquant F.5 : les 9 sont reparees dans `cmd/levelup` (six
+descriptions d'aide repliees, deux parametres inutilises retires en cascade, un prealloc, un
+ST1005). Gate final sur l'etat complet de la branche, tout en avant-plan : suite ciblee verte,
+`-tags=integration -p 1` sur `api/wire` vert, `go build ./...` OK, ratchet golangci-lint
+`0 issues`, baseline `EXIT=0` sur un JSONL de suite COMPLETE (315 paquets, 100 906 lignes, 0
+echec, produit en 6 groupes sous 10 min chacun), specs Playwright `3 passed`, typecheck et lint
+web sans erreur.
+
+**Conclusion / prochaine etape.** Six commits `v2(F.n)` pousses sur `feat/v2-tests-ci`. La CI
+n'a PAS ete surveillee (consigne utilisateur en cours de lot, quota) : elle sera verifiee par
+le superviseur a l'integration. Trois points a trancher par lui, tous consignes au journal du
+lot `.ai/V7.5/v2/LOT_F.md` : la ligne de `CLAUDE.md` qui cite le fichier supprime
+`internal/himap/corpus_tag_test.go` (je n'ai pas le droit de modifier `CLAUDE.md`), les deux
+exemptions fines de `.golangci.yml` supprimees alors que leur premisse a change sous l'effet du
+meme commit, et le fait que le lot E devra rejouer la baseline de presence dans le meme commit
+que ses suppressions de tests.
+
+## [2026-09-06] LOT F — correctif apres revue adversariale F-R1 — Complete
+
+**Contexte.** Revue adversariale du lot F (lentille L6, « ce que les tests ne couvrent pas ») :
+25 conditions tiennent, 19 mutations jouees, 2 constats recevables. CORRECTIF A L'ENTREE
+PRECEDENTE du meme jour, qui n'est PAS reecrite : elle affirmait « les 5 joueurs apparies ont
+leurs 15 compteurs EXACTEMENT egaux a ceux de l'API », presente comme un differentiel de deux
+chaines independantes. C'est faux, et la revue l'a etabli sur pieces.
+
+**Decision technique.** Verifie avant de corriger : `objectiveevents/slotidentity.go:97`
+apparie un slot d'entite a un xuid par EGALITE EXACTE du triplet frags/morts/assistances contre
+la ligne de match de l'API. Tout joueur publie dans `ScoreTimeline.Players` porte donc le
+triplet de l'API PAR CONSTRUCTION : une regression du decodeur ne produit pas un ecart de
+valeur, elle fait DISPARAITRE le joueur du calque. La documentation est reecrite pour dire ce
+que l'assertion garde reellement — (1) la liste FIGEE des 5 apparies, vrai detecteur de
+regression du pont ; (2) la coherence INTERNE a la chaine du film entre le NOMBRE D'INCREMENTS
+(cle d'appariement, `objectiveevents.countsOf`) et la DERNIERE VALEUR de la serie posee sur la
+grille de frames (`replay.scoreTicksOf`, qui ecarte les emissions hors fenetre et aplatit les
+paliers) : rien n'oblige les deux a coincider. Le message d'echec `DIFFERENTIEL film <-> API`
+devient `SERIE PUBLIEE != CLE D'APPARIEMENT`. Le SECOND fait des deux chaines — le roster nomme
+du film = les joueurs que l'API donne morts au moins une fois — est GARDE : la revue l'a
+verifie independamment (`analysis/replay/deaths_source.go:52-77`, le fil des morts est decode du
+chunk highlight, aucune base n'intervient). Second constat (P2) : le ratchet `gamefiles` de
+`internal/archlint` balayait la constante `{"internal", "cmd"}` alors que son en-tete promettait
+« tout le module » — un `_test.go` non tague sous `tests/` passait vert. La constante disparait :
+le balayage part de la racine du module et ne saute que les repertoires que l'outil Go lui-meme
+n'ouvre pas (`testdata`, `vendor`, `node_modules`, prefixes `.` et `_`). La liste des racines est
+DERIVEE du systeme de fichiers, plus ecrite.
+
+**Resultats.** Les deux mutations du verdict rejouees apres correction. Mutation 1
+(`fixture.json` kills 7->6 + recopie alignee) : rouge par « 4 joueurs publies, attendu 5 » et
+« joueur 2535463878425995 apparie le 2026-09-05 mais plus publie », AUCUNE ligne de comparaison
+de valeurs — exactement ce que la nouvelle documentation annonce. Mutation 4
+(`score_timeline.go:136 V: v+1`) : quatre lignes `SERIE PUBLIEE != CLE D'APPARIEMENT`. Mutation
+14 (`tests/golden/zz_review_ouvre_le_jeu_test.go` non tague), VERTE avant, desormais ROUGE sur
+ses deux appels. Cout du balayage elargi : `TestCorpusGamefilesEstTague` 13,6 s -> 15,7 s
+(2 464 `_test.go` au lieu de 2 454) ; plancher de 62 fichiers inchange et toujours exact.
+Reference `ci.yml:374-376` du journal corrigee en `ci.yml:412-414` (F.6 avait insere 33 lignes
+en amont). Gate : `go test ./internal/archlint/... ./internal/api/wire/...` vert,
+`-tags=integration -p 1 ./internal/api/wire/...` vert, `go build ./...` OK, ratchet
+golangci-lint `0 issues`.
+
+**Conclusion / prochaine etape.** Deux commits `v2(F.fix-n)` sur `feat/v2-tests-ci`. CI toujours
+NON surveillee (consigne utilisateur). Les quatre points « non recevables » du verdict sont
+laisses en l'etat sur son propre argument. Les trois points a trancher par le superviseur
+(ligne de `CLAUDE.md` qui cite le fichier supprime, exemptions fines de `.golangci.yml`,
+baseline a rejouer par le lot E) restent ouverts, inchanges.

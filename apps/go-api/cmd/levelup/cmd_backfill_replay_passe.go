@@ -77,13 +77,14 @@ func executerPasseReplay(
 // `--dry-run`) : ces arbitrages sont deja rendus par le parent, et les repasser ouvrirait la
 // porte a un enfant qui saute le film qu'on vient justement de decider de cuire.
 func argsEnfantReplay(o replayBackfillOptions, cacheRoot string, c replayCandidat) []string {
-	args := []string{
+	args := make([]string, 0, 9+2*len(c.mapNames))
+	args = append(args,
 		"backfill-replay",
 		"--one", c.matchID,
 		"--cache", cacheRoot,
 		"--title", o.titleSlug,
 		"--mem-limit-gib", strconv.Itoa(o.memLimitGiB),
-	}
+	)
 	for _, n := range c.mapNames {
 		args = append(args, "--map-name", n)
 	}
