@@ -1337,6 +1337,19 @@ export type SquadAssistPair = components['schemas']['SquadAssistPair']
  */
 export type SquadAssistPairs = components['schemas']['SquadAssistPairs']
 
+/**
+ * L'ÉCHANGE de l'escouade — une mort vengée dans les 5 s. Ré-exports DIRECTS du
+ * contrat, sans réécrire les `… | null` : le tableau nullable est la forme réelle du
+ * fil (toute tranche Go sort ainsi), et la combler ici la ferait mentir.
+ *
+ * `couverture` / `habituel` sont des `Couverture` (taux + brut + par match + N +
+ * échantillon faible) : un taux ne voyage jamais seul.
+ */
+export type SquadEchange = components['schemas']['SquadEchange']
+export type SquadEchangeCell = components['schemas']['SquadEchangeCell']
+export type SquadEchangeBucket = components['schemas']['SquadEchangeBucket']
+export type SquadEchangeJoueur = components['schemas']['SquadEchangeJoueur']
+
 export interface TeammatesPageResponse {
   options: TeammateOption[]
   teammates: TeammateRow[]
@@ -1368,6 +1381,11 @@ export interface TeammatesPageResponse {
   /** Paires (assistant → tueur assisté) INTERNES à l'escouade + couverture de la
    *  mesure. Absent quand aucun match de la sélection n'a d'assistance mesurée. */
   assist_pairs?: SquadAssistPairs
+  /** L'ÉCHANGE (mort vengée dans les 5 s) : matrice « qui échange pour qui » +
+   *  KPI sur Synergies, distribution du délai sur Dynamique. ABSENT quand le titre
+   *  ne nomme pas le tueur de chaque mort, ou quand aucun match de la sélection ne
+   *  porte de journal des morts — une omission, jamais des zéros. */
+  echange?: SquadEchange
   /** Header alimente <SessionBriefing> (mode solo si pas de coéquipier sélectionné, mode squad sinon). */
   header?: import('@/features/squad/v2/types').SquadHeader
   /** Gamertag du joueur principal — sert à identifier le card "moi" dans header.player_cards. */

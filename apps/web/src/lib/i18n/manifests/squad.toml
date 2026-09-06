@@ -648,3 +648,152 @@ en = "Objective"
 [squad.focus.axis_impact]
 fr = "Impact"
 en = "Impact"
+
+# ─── L'ECHANGE (plan tactique 2026-09-06, phase 3) ──────────────────────────
+#
+# Un ECHANGE est une mort vengee : un coequipier abat le tueur dans les 5 s.
+# Vocabulaire FR arrete : « echange », « vengeance », « riposte ». Jamais
+# « trade ». Aucune chaine FR de ce chantier ne contient le mot anglais des
+# cartes de chaleur (garde anti-anglicismes, lot C.4).
+
+[squad.echange.section_title]
+fr = "Qui échange pour qui"
+en = "Who trades for whom"
+
+[squad.echange.section_label]
+fr = "Échanges entre membres de l'escouade"
+en = "Trades between squad members"
+
+[squad.echange.axis_avenger]
+fr = "Vengeur"
+en = "Avenger"
+
+[squad.echange.axis_avenged]
+fr = "Vengé"
+en = "Avenged"
+
+[squad.echange.definition]
+fr = "Un échange : un coéquipier abat votre tueur dans les {seconds, number} s qui suivent votre mort."
+en = "A trade: a teammate takes down your killer within {seconds, number} s of your death."
+
+[squad.echange.coverage]
+fr = "Mesuré sur {measured, number} des {total, plural, one {# match} other {# matchs}} de la sélection."
+en = "Measured on {measured, number} of the {total, plural, one {# match} other {# matches}} in the selection."
+
+[squad.echange.coverage_hint]
+fr = "Le journal des morts vient du film du match, et les films expirent côté serveur : ce qui manque ne reviendra pas."
+en = "The death log comes from the match film, and films expire server-side: what is missing will not come back."
+
+[squad.echange.narrative]
+fr = "Sur {matches, plural, one {# match} other {# matchs}}, {brut, number} des {n, plural, one {# mort} other {# morts}} de votre camp ont été vengées dans les {seconds, number} s — soit {rate}."
+en = "Over {matches, plural, one {# match} other {# matches}}, {brut, number} of your side's {n, plural, one {# death} other {# deaths}} were avenged within {seconds, number} s — that is {rate}."
+
+[squad.echange.low_sample]
+fr = "échantillon faible"
+en = "small sample"
+
+[squad.echange.low_sample_hint]
+fr = "Moins de {floor, number} morts mesurées : la valeur existe, elle ne classe personne."
+en = "Fewer than {floor, number} measured deaths: the value exists, it ranks no one."
+
+[squad.echange.badge_most_covered]
+fr = "Le plus couvert : {player}"
+en = "Most covered: {player}"
+
+[squad.echange.badge_least_covered]
+fr = "Le moins couvert : {player}"
+en = "Least covered: {player}"
+
+[squad.echange.badge_covered_detail]
+fr = "{n, plural, one {# vengeance} other {# vengeances}}"
+en = "{n, plural, one {# avenging kill} other {# avenging kills}}"
+
+[squad.echange.no_pairs]
+fr = "Aucune vengeance entre membres de l'escouade sur cette sélection."
+en = "No avenging kill between squad members in this selection."
+
+[squad.echange.empty_title]
+fr = "Aucun échange mesuré"
+en = "No trade measured"
+
+[squad.echange.empty_description]
+fr = "Aucun match de la sélection ne porte de journal des morts exploitable."
+en = "No match in the selection carries a usable death log."
+
+[squad.echange.matrix_tooltip]
+fr = "{avenger} a vengé {avenged} {n, plural, one {# fois} other {# fois}} ({perMatch} par match)."
+en = "{avenger} avenged {avenged} {n, plural, one {# time} other {# times}} ({perMatch} per match)."
+
+# ─── Distribution du délai (onglet Dynamique) ───────────────────────────────
+
+[squad.echange.delay_title]
+fr = "Délai d'échange"
+en = "Trade delay"
+
+[squad.echange.delay_label]
+fr = "Distribution du délai d'échange"
+en = "Trade delay distribution"
+
+[squad.echange.delay_narrative]
+fr = "{inWindow, number} ripostes sur {total, number} arrivent dans la fenêtre de {seconds, number} s ; les {outside, number} autres sont montrées et ne comptent pas."
+en = "{inWindow, number} counter-kills out of {total, number} land inside the {seconds, number} s window; the other {outside, number} are shown and do not count."
+
+[squad.echange.delay_narrative_empty]
+fr = "Aucune riposte mesurée sur la sélection."
+en = "No counter-kill measured in this selection."
+
+[squad.echange.delay_x_axis]
+fr = "Délai avant la riposte"
+en = "Delay before the counter-kill"
+
+[squad.echange.delay_y_axis]
+fr = "Morts vengées"
+en = "Avenged deaths"
+
+[squad.echange.delay_bin]
+fr = "{start, number}-{end, number} s"
+en = "{start, number}-{end, number} s"
+
+[squad.echange.delay_bin_open]
+fr = "au-delà de {start, number} s"
+en = "beyond {start, number} s"
+
+[squad.echange.delay_out_of_window_suffix]
+fr = "hors fenêtre"
+en = "outside window"
+
+[squad.echange.delay_window]
+fr = "Fenêtre d'échange : {seconds, number} s — les deux dernières barres sont hors fenêtre, montrées mais jamais comptées."
+en = "Trade window: {seconds, number} s — the last two bars are outside the window, shown but never counted."
+
+# ─── KPI du bandeau ─────────────────────────────────────────────────────────
+
+[squad.echange.kpi_label]
+fr = "Taux d'échange"
+en = "Trade rate"
+
+[squad.echange.kpi_secondary]
+fr = "{brut, number} vengées sur {n, number}"
+en = "{brut, number} avenged out of {n, number}"
+
+[squad.echange.kpi_vs_usual]
+fr = "{delta} vs habituel"
+en = "{delta} vs usual"
+
+# ─── Cap du moment ──────────────────────────────────────────────────────────
+
+[squad.echange.cap_title]
+fr = "Cap du moment"
+en = "Current focus"
+
+[squad.echange.cap_consolidate]
+fr = "Vous consolidez : votre camp échange {delta} de plus que d'habitude ({rate} contre {usual})."
+en = "You are consolidating: your side trades {delta} more than usual ({rate} vs {usual})."
+
+[squad.echange.cap_attention]
+fr = "L'échange mérite votre attention : votre camp échange {delta} de moins que d'habitude ({rate} contre {usual})."
+en = "Trading deserves your attention: your side trades {delta} less than usual ({rate} vs {usual})."
+
+[squad.echange.cap_basis]
+fr = "Sur {n, plural, one {# mort} other {# morts}} de votre camp, {matches, plural, one {# match} other {# matchs}}."
+en = "Based on {n, plural, one {# death} other {# deaths}} on your side, {matches, plural, one {# match} other {# matches}}."
