@@ -95618,3 +95618,59 @@ propre sur 9 arbres, `go test -count=1` vert sur 24 paquets en 43,5 s, ratchet d
 **Prochaine etape** : ronde 2 de la revue sur ces corrections, puis phase 3 (l'echange sur la
 page Escouade). Les deux decisions produit de la phase 2 — « ou je gagne » lu sur les engagements,
 et le KPI d'echange porte sur mon camp — attendent toujours l'arbitrage de l'utilisateur.
+
+---
+
+## [2026-09-06] Tactique phase 3 — l'echange sur la page Escouade
+
+**Statut** : Complete (items 3.1-3.6 `[x]`, 3.7 `[!]` — depend du lot C de l'audit v2).
+
+**Decision technique principale** — l'echange devient une SECTION DE PLUS du `pageData` de
+la page Escouade, servie par le meme appel que les autres (aucune query key nouvelle), et il
+est mesure par le socle pur `analysis/coordination` UNIQUEMENT. Le service Escouade ne
+calcule aucun quotient : il decoupe des perimetres, nomme des joueurs, range des delais dans
+des intervalles pre-binnes (ADR 0010). Il ne consomme pas le service Tactique — il lit le
+MEME port, comme lui.
+
+Trois choix ont structure le lot :
+
+1. **UNE lecture de base, DEUX perimetres.** Le journal des morts est lu une fois sur tout
+   l'historique du joueur (`TacticalQuery{PlayerXUID}` — `MapID` devenu optionnel par un
+   parametre neutre dans la constante SQL, pas par un assemblage en Go), puis resserre en
+   Go sur les matchs filtres et sur l'historique complet de la composition. C'est la
+   mecanique de baseline du briefing de l'Explorateur (`buildBriefingBaseline`) : le
+   perimetre est toujours un SOUS-ENSEMBLE de la reference, et des cardinalites egales
+   valent « aucun filtre ne retrecit » — d'ou un ecart nul par construction, masque a
+   l'ecran par `isFullHistoryScope`.
+2. **La porte data-level a change de maison.** `journalDesMortsFiable` avait un lecteur ;
+   elle en a deux. Copiee, elle aurait donne deux verdicts au premier titre ajoute — donc
+   deux taux d'echange sous le meme nom sur deux pages voisines. Elle vit desormais dans
+   `games.JournalDesMortsFiable`, avec sa raison d'exiger `supported` STRICTEMENT sur le
+   kill-feed natif (`degraded` = kills simultanes omis = fausses morts non vengees).
+3. **Les deux barres hors fenetre exigeaient une lecture SANS borne.** `Echanges` ne rend
+   un delai que dans les 5 s : la distribution demandee n'avait pas de source. Plutot que
+   recopier la recherche de vengeur dans le service, le socle gagne `Ripostes`, qui partage
+   le noyau `suivreMorts(kills, equipes, fenetreMs)`. Invariant teste : sous la fenetre, les
+   deux lectures rendent le meme vengeur et le meme delai — c'est ce qui autorise
+   l'histogramme entier a se construire sur la seule lecture large.
+
+**Resultats observes** — Go : `go vet` propre sur 9 arbres, `go test -count=1` vert,
+`golangci-lint run --new-from-merge-base=origin/main` a 0 issue, `openapi-gen -check` a jour,
+`generated.ts` en additions pures (+40 L). Web : typecheck propre, lint 0 erreur, vitest
+`squad` + `lib/baseline` + garde anti-anglicismes verts, `lint-no-hardcoded-colors` a
+0 violation, `lint-cross-feature-imports` INCHANGE a 7/7 — c'est precisement ce plafond qui
+a impose de DEPLACER `formatSignedPoints` / `isFullHistoryScope` dans `lib/baseline.ts`
+(avec leurs tests, l'Explorateur reroute) au lieu d'ajouter un import croise ou une copie.
+
+**PIEGE RETENU** — deux wrappers de chart etaient trop etroits pour un second usage, et
+c'etait invisible : `Heatmap2DChart` cablait en dur un tooltip « Win Rate / Matchs » (faux
+pour toute autre donnee), et `HistogramChart` ne peint que `series[0]` en IGNORANT EN
+SILENCE toute serie supplementaire. Une « deuxieme serie pour la couleur attenuee » n'aurait
+rien affiche et rien signale. Les deux ont recu une option optionnelle, aucun appelant
+existant modifie.
+
+**Conclusion / prochaine etape** — phase 3 close et non poussee : revue du superviseur.
+L'item 3.7 (`useDataCapability('film.kill_source')`) reste `[!]` : le hook n'existe pas dans
+le depot, aucune gate de substitution n'a ete inventee, et la degradation est deja cote Go
+(section OMISE du contrat -> composants non montes, comportement verifie par test). Le
+cablage revient au lot C de l'audit v2. Les phases 4-7 restent GELEES.

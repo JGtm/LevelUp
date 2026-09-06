@@ -289,21 +289,86 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   `make generate-types` puis `git diff --exit-code apps/web/src/lib/api/generated.ts`
   ne montre que les nouveaux types.
 
-### Phase 3 — L'ECHANGE SUR LA PAGE ESCOUADE — EXECUTABLE (un item attend le lot C)
-- [ ] 3.1 Service Escouade : consomme `analysis/coordination` ; l'echange entre dans le
-      `pageData` de `SquadContext` (aucune query key propre)
-- [ ] 3.2 Onglet **Synergies** : `SectionCard` « Qui echange pour qui » + `Heatmap2DChart`
-      (ligne = vengeur, colonne = venge, orientation `SquadAssistPairsTable`) ;
-      `NarrativeBadge` « le plus couvert » / « le moins couvert » ; bandeau de couverture
-- [ ] 3.3 Onglet **Dynamique** : `SectionCard` « Delai d'echange » + `HistogramChart`, fenetre
-      tracee, barres hors fenetre hachurees (montrees, non comptees)
-- [ ] 3.4 KPI « taux d'echange » (bandeau Escouade) : brut + par match + ecart a l'habituel
-      (`formatSignedPoints`, masque si `isFullHistoryScope`)
-- [ ] 3.5 « Cap du moment » de l'Escouade, gabarit `CoachFocusCard`, regle de seuil de §1
-- [ ] 3.6 Lignes narratives AU-DESSUS de chaque graphe, manifeste `squad.toml` FR + EN, regen
-- [ ] 3.7 **Gate web des sections** : `useDataCapability('film.kill_source')` — **attend le
-      lot C** (`[!]` avec reference si C n'est pas integre a la cloture de la phase ; le
-      superviseur le cable a l'integration)
+### Phase 3 — L'ECHANGE SUR LA PAGE ESCOUADE — CLOSE 2026-09-06 (3.7 reporte au lot C)
+- [x] 3.1 Service Escouade : `service/teammates/teammates_squad_echange.go` (279 L) +
+      `domain/squad_echange.go` (122 L, tags snake_case), branche dans
+      `teammates_service.go` (`WithEchange`) et `GetPage`. L'echange entre dans le
+      `pageData` de `SquadContext` — AUCUNE query key propre. Mesure par
+      `coordination.Echanges` / `Ripostes` / `Mesurer` UNIQUEMENT ; aucun appel du
+      service Tactique (le PORT est lu directement, comme lui).
+      **KPI = MON CAMP** (decision utilisateur 2026-09-06) ; **matrice = ROSTER**
+      (un vengeur de passage compte au taux, pas a la matrice : la page ne sait pas
+      le nommer — doctrine SquadAssistPairsTable). **HABITUEL** = la meme mesure sur
+      `allSquadRowsForTimeline` (historique complet de la composition), meme
+      mecanique que `buildBriefingBaseline` de l'Explorateur.
+      **MapID devient OPTIONNEL** (`domain/tactical.go:TacticalQuery`,
+      `QTacticalUnivers` : predicat de carte neutralise par parametre) — UN seul SQL
+      pour les deux pages, la constante reste sous le radar de
+      `campaign_exclusion_guard_test` ; `KillPositions` exige toujours une carte.
+      **Porte partagee** : `journalDesMortsFiable` quitte le service Tactique pour
+      `games.JournalDesMortsFiable` (`internal/games/kill_journal_gate.go`) — deux
+      lecteurs, une seule definition. Porte fermee -> section OMISE, jamais des zeros.
+      **`coordination.Ripostes`** (nouveau, `riposte.go`) rend les memes morts SANS
+      borne de temps : c'est la seule source des deux barres hors fenetre. Noyau
+      commun `suivreMorts(kills, equipes, fenetreMs)` — pas de seconde recherche de
+      vengeur. `domain.MortSuivie` ajoute a la liste blanche du garde-rail du taux nu,
+      justification datee sur place. Contrat : `openapi-gen` + `generated.ts` (+40 L,
+      additions pures).
+- [x] 3.2 Onglet **Synergies** : `SquadEchangeMatrixCard.tsx` — `SectionCard` « Qui
+      echange pour qui » + `Heatmap2DChart` (ligne = vengeur, colonne = venge,
+      orientation `SquadAssistPairsTable`), palette `frequency` mono-teinte, diagonale
+      absente, cases a zero emises. Bandeau de couverture AU-DESSUS du graphe + ligne
+      narrative. Deux `NarrativeBadge` « le plus / le moins couvert », rendus seulement
+      a >= 2 joueurs, plancher de 30 morts atteint ET >= 3 vengeances d'ecart.
+      `Heatmap2DChart` gagne `paletteMode='frequency'` + `formatTooltip` /
+      `formatLabel` (son libelle par defaut parle de taux de victoire) — appelants
+      existants inchanges.
+- [x] 3.3 Onglet **Dynamique** : `SquadEchangeDelaiCard.tsx` — `SectionCard` « Delai
+      d'echange » + `HistogramChart`, 5 barres dans la fenetre en couleur de serie,
+      2 hors fenetre en `divergent-neutral` (la palette n'a pas de token `muted`).
+      Fenetre marquee dans le pied de carte ET en suffixe d'etiquette (`markLine` non
+      exposee par le wrapper). Pied = definition en une phrase + couverture.
+      `HistogramChart` gagne `binColorToken` (il ne peint que `series[0]` : deux
+      series auraient ete ignorees en silence).
+- [x] 3.4 KPI « Taux d'echange » : `SquadEchangeKpi.tsx` (`KPIStrip`, monte dans
+      `SquadLayout.tsx`) — valeur + « N vengees sur M » + ecart en points
+      (`formatSignedPoints`) + fleche `KPITrend`, masque si `isFullHistoryScope`.
+      **Les deux helpers ont ETE DEPLACES** dans `apps/web/src/lib/baseline.ts` (avec
+      leurs tests) et l'Explorateur pointe dessus : `tools/lint-cross-feature-imports.mjs`
+      est a son plafond (7/7), un `squad -> explorer` de plus l'aurait franchi, et une
+      copie aurait donne deux definitions du meme ecart. Les deux commentaires qui
+      citaient l'ancienne adresse sont corriges dans le meme commit.
+- [x] 3.5 « Cap du moment » : `SquadEchangeCapCard.tsx` en tete de Synergies, gabarit
+      `KpiCard` accent `info` dans LES DEUX SENS (jamais rouge). Regle de seuil de §1
+      appliquee dans `squadEchange.logic.capDuMoment` : rendue SEULEMENT a >= 30 morts
+      d'equipe ET >= 5 points d'ecart ; sinon PAS rendue (aucun etat vide). Troisieme
+      refus ajoute et documente : sans reference mesuree (habituel a N=0) il n'y a pas
+      d'ecart.
+- [x] 3.6 Toutes les chaines dans `manifests/squad.toml` (34 cles `squad.echange.*`,
+      FR + EN), regen `build_i18n_manifests.mjs`, acces par `squadEchangeStrings.ts`
+      (modele `squadFocusStrings`). Zero chaine en dur dans les composants, zero hex,
+      zero classe Tailwind couleur (`lint-no-hardcoded-colors` : 0 violation).
+      Garde-rail dedie `squadEchange.i18n.test.ts` : FR et EN non vides, aucune cle
+      orpheline, aucune cle non resolue, et aucun anglicisme de ce chantier en FR.
+- [!] 3.7 **Gate web des sections par `useDataCapability('film.kill_source')` — NON
+      TRAITE, reference : lot C de l'audit v2, `useDataCapability`.** Le hook N'EXISTE
+      PAS dans le depot (verifie sur pieces le 2026-09-06 : aucune occurrence hors du
+      plan de l'audit). Aucun hook n'a ete invente, aucune gate de substitution n'a ete
+      posee. **La degradation est deja cote Go** : porte fermee -> section absente du
+      `pageData` -> les trois composants ne sont pas montes (`SquadSynergiesPage`,
+      `SquadDynamiquePage`, `SquadEchangeKpi` : `if (!echange) return null`), et un
+      contrat present mais vide rend un `EmptyState`. Comportement VERIFIE PAR TEST
+      (`SquadEchangeCapCard.test.tsx` : « ne rend RIEN quand la section est absente du
+      contrat » ; `SquadEchangeMatrixCard.test.tsx` : etat vide sans paire). Le
+      superviseur cable le hook a l'integration du lot C.
+- **Gate PASSE le 2026-09-06** (avant-plan, une commande `go` a la fois,
+  `GOCACHE=...\go-build-tactique`, `CGO_ENABLED=1`). Go : `go vet` propre sur les
+  9 arbres, `go test -count=1` vert, `golangci-lint run --new-from-merge-base=origin/main`
+  a 0 issue, `openapi-gen -check` a jour. Web : `typecheck` propre, `lint` 0 erreur,
+  vitest `squad` + `lib/baseline` + garde anti-anglicismes verts,
+  `lint-no-hardcoded-colors` 0 violation, `lint-cross-feature-imports` a 7/7
+  (INCHANGE — c'est ce qui a impose le deplacement de 3.4), manifests regeneres sans
+  diff residuel.
 - **Gate** : typecheck + lint + vitest cible (squad) ; matrice sur un jeu pose a la main ;
   etat vide -> `EmptyState` ; **Cap non rendu sous le seuil** ; **anti-biais** (8 morts et
   100 % -> echantillon faible, classe devant personne) ; `node tools/lint-no-hardcoded-colors.mjs` ;
@@ -369,6 +434,16 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-06 : **phase 3 CLOSE** — l'echange est mesure, servi et affiche, en 6 commits
+  `tactique(3.1)` a `(3.6)`. Items 3.1-3.6 `[x]`, 3.7 `[!]` (le hook `useDataCapability`
+  n'existe pas dans le depot : il arrive avec le lot C de l'audit v2 ; aucune gate de
+  substitution inventee — la degradation est cote Go, section OMISE du `pageData`, et le
+  comportement des composants est verifie par test). Gates joues en avant-plan, Go et web.
+  TROIS decisions prises faute de tranche du plan, consignees au §7 : la matrice s'arrete
+  au ROSTER quand le KPI porte sur le CAMP ; le « cap du moment » se tait aussi quand
+  l'habituel n'a aucune mort mesuree ; les deux barres hors fenetre exigeaient une lecture
+  SANS borne de temps, ajoutee au socle partage (`coordination.Ripostes`, noyau commun avec
+  `Echanges`) plutot que recopiee dans le service. Non pousse : revue du superviseur.
 - 2026-09-06 : les deux decisions produit ouvertes en phase 2 (substrat de « ou je gagne » = engagements ; KPI d echange par carte = mon camp) sont ARRETEES par l utilisateur — inscrites au §1.
 - 2026-09-06 : **revue adversariale ronde 1 de la phase 2 — 16 constats, TOUS corriges** en
   6 commits `tactique(2.5)`. Gate rejoue integralement, quatre inversions jouees.
@@ -454,6 +529,47 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-06 (phase 3) — **DECISION PRODUIT : la MATRICE s'arrete au ROSTER quand le KPI
+  porte sur le CAMP.** Le plan tranche le perimetre du taux (mon camp entier, decision
+  utilisateur du 2026-09-06) mais pas celui de la matrice. Retenu : les axes de la matrice
+  sont le joueur principal et les coequipiers SELECTIONNES ; un allie de passage qui venge
+  un membre du camp compte au TAUX (il est bien de mon camp) et n'a AUCUNE ligne dans la
+  matrice, parce que la page ne sait pas le nommer — afficher un xuid nu vaut moins que
+  l'ecarter (doctrine SquadAssistPairsTable, qui ecarte pour la meme raison). Les deux
+  perimetres sont documentes cote a cote dans `domain/squad_echange.go` et testes
+  (`TestBuildSquadEchange_MatriceEcarteHorsRoster`). CONSEQUENCE ASSUMEE : la somme des
+  cases de la matrice peut etre inferieure au `brut` du KPI.
+- 2026-09-06 (phase 3) — **DECISION PRODUIT : le « cap du moment » se tait aussi sans
+  REFERENCE MESUREE.** Le plan nomme deux seuils (30 morts d'equipe, 5 points d'ecart). Un
+  troisieme refus a ete ajoute : si l'habituel porte sur ZERO mort vengeable, son taux vaut
+  0 par construction et l'« ecart » affiche ne serait que l'absence de la reference — la
+  carte n'est pas rendue (`squadEchange.logic.capDuMoment`, teste). Le cas se produit sur
+  une composition dont AUCUN match historique n'a de journal des morts.
+- 2026-09-06 (phase 3) — **LES DEUX BARRES HORS FENETRE N'EXISTAIENT PAS DANS LE SOCLE.**
+  `coordination.Echanges` ne rend un delai que pour les morts vengees DANS la fenetre de
+  5 s : la distribution demandee par le plan (5-7 s, au-dela) n'avait aucune source. Trois
+  issues etaient possibles ; la retenue est `coordination.Ripostes` (meme noyau
+  `suivreMorts`, borne desactivee), parce que recopier la recherche de vengeur dans le
+  service aurait donne deux definitions de « qui venge qui » au premier ajustement, et que
+  laisser les deux barres a zero aurait affiche une distribution muette. Le type de retour
+  `[]domain.MortSuivie` a impose une ligne datee dans la liste blanche de
+  `no_naked_rate_test.go` (le type ne porte aucun quotient). Invariant teste : sous la
+  fenetre, `Ripostes` et `Echanges` rendent le MEME vengeur et le MEME delai.
+- 2026-09-06 (phase 3) — **`useDataCapability` N'EXISTE PAS** (verifie sur pieces : aucune
+  occurrence dans `apps/web/src` hors du plan de l'audit v2). L'item 3.7 est statue `[!]` ;
+  aucun hook n'a ete invente. Le cablage revient au lot C. NON TRAITE.
+- 2026-09-06 (phase 3) — **DEUX WRAPPERS DE CHART ETAIENT TROP ETROITS POUR UN SECOND
+  USAGE, et c'etait invisible.** `Heatmap2DChart` cablait en dur un tooltip « Win Rate /
+  Matchs » (donc faux pour toute autre donnee) ; `HistogramChart` ne peint que `series[0]`
+  et IGNORE EN SILENCE toute serie supplementaire. Les deux ont recu une option optionnelle
+  plutot qu'un jumeau (aucun appelant existant modifie). Le silence de `HistogramChart` sur
+  `series[1..]` reste un piege pour le prochain appelant : il merite un avertissement de
+  developpement ou un test. NON TRAITE (hors perimetre).
+- 2026-09-06 (phase 3) — **`tools/lint-cross-feature-imports.mjs` est A SON PLAFOND (7/7).**
+  Tout nouvel import croise non declare fait echouer le gate. Ce lot l'a contourne
+  proprement (deplacement vers `lib/`), mais les 7 violations residuelles restent, dont les
+  4 importeurs de `explorerMatchesClientSort` deja notes comme « demenagement du a faire
+  dans un lot dedie ». NON TRAITE.
 - 2026-09-06 (phase 2) — **DECISION PRODUIT A CONFIRMER : « ou je gagne » se lit sur les
   ENGAGEMENTS.** Le plan tranche la FORME (raster signe, echelle symetrique, plancher par
   cote) mais pas le SUBSTRAT. Retenu : mes kills ET mes morts
