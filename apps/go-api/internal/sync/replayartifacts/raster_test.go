@@ -412,14 +412,26 @@ func TestProjeterRasterTactique_MortsEtVoisinsVivants(t *testing.T) {
 	if m.X != 0.25 || m.Y != 0.25 {
 		t.Fatalf("position de la mort = (%v,%v), attendu (0,25 ; 0,25)", m.X, m.Y)
 	}
-	if len(m.Voisins) != 1 {
-		t.Fatalf("voisins = %+v, attendu le seul 222 : 333 est deja mort a la frame 20", m.Voisins)
+	// LES TROIS STATUTS SE DISTINGUENT, et c'est tout l'objet de la correction P0-1 : 222
+	// est VU a 20 m, 333 est SU mort (sa vie nommee s'est close a la frame 10).
+	statuts := map[string]domain.TacticalRasterVoisin{}
+	for _, v := range m.Voisins {
+		statuts[v.XUID] = v
 	}
-	if m.Voisins[0].XUID != "222" {
-		t.Fatalf("voisin = %q, attendu 222", m.Voisins[0].XUID)
+	if len(statuts) != 2 {
+		t.Fatalf("voisins = %+v, attendu 222 et 333", m.Voisins)
 	}
-	if d := m.Voisins[0].DistanceM; d < 19.99 || d > 20.01 {
-		t.Fatalf("distance au voisin = %v m, attendu 20", d)
+	if statuts["222"].Statut != domain.StatutVoisinVivant {
+		t.Fatalf("222 = %+v, attendu vivant", statuts["222"])
+	}
+	if d := statuts["222"].DistanceM; d < 19.99 || d > 20.01 {
+		t.Fatalf("distance a 222 = %v m, attendu 20", d)
+	}
+	if statuts["333"].Statut != domain.StatutVoisinMort {
+		t.Fatalf("333 = %+v, attendu mort : sa vie nommee s'est close a la frame 10", statuts["333"])
+	}
+	if statuts["333"].DistanceM != 0 {
+		t.Fatalf("333 porte une distance (%v) alors qu'il est mort", statuts["333"].DistanceM)
 	}
 }
 
@@ -483,10 +495,15 @@ func TestProjeterRasterTactique_RouteBorneeA15Secondes(t *testing.T) {
 	}
 }
 
-// TestProjeterRasterTactique_SansBornesDeVie_AucuneMort — `endFrame` est optionnel dans
-// l'artefact. Sans lui, deduire la mort du dernier point confondrait une mort avec la fin
-// du film, donc avec un SURVIVANT.
-func TestProjeterRasterTactique_SansBornesDeVie_AucuneMort(t *testing.T) {
+// TestProjeterRasterTactique_SansBornesDeVie_LaMortEstAuDernierPoint — CE QUI FAIT D'UNE
+// PISTE UNE MORT, C'EST SON NOM, PAS SES BORNES (correction P1-2).
+//
+// L'ancien garde exigeait `EndFrame > StartFrame` « pour ne pas confondre une mort avec la
+// fin du film ». Il etait INERTE : le producteur ecrit toujours les deux bornes. Le vrai
+// mecanisme est le nommage — `lives.go:191` est la seule assignation d'un xuid a une vie, et
+// elle vient de la mort qui la clot. Une piste nommee SANS bornes declarees a donc bien une
+// mort, a son dernier point.
+func TestProjeterRasterTactique_SansBornesDeVie_LaMortEstAuDernierPoint(t *testing.T) {
 	const sansBornes = `{"schemaVersion":20,"matchId":"abc","frameCount":21,"frameIntervalMs":100,
       "tracks":[{"slot":1,"team":-1,"xuid":"111",
         "points":[{"t":0,"x":0.25,"y":0.25},{"t":20,"x":0.25,"y":0.25}]}]}`
@@ -497,8 +514,11 @@ func TestProjeterRasterTactique_SansBornesDeVie_AucuneMort(t *testing.T) {
 	if len(s.Joueurs) != 1 {
 		t.Fatalf("joueurs = %+v", s.Joueurs)
 	}
-	if len(s.Joueurs[0].Morts) != 0 {
-		t.Fatalf("morts = %+v, attendu aucune sans bornes de vie declarees", s.Joueurs[0].Morts)
+	if len(s.Joueurs[0].Morts) != 1 {
+		t.Fatalf("morts = %+v, attendu 1 : une piste NOMMEE est close par une mort", s.Joueurs[0].Morts)
+	}
+	if f := s.Joueurs[0].Morts[0].Frame; f != 20 {
+		t.Fatalf("mort a la frame %d, attendu 20 (le dernier point de la vie)", f)
 	}
 	// La route, elle, reste mesurable : elle ne depend que des points.
 	if len(s.Joueurs[0].Routes) != 1 {

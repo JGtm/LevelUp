@@ -497,3 +497,165 @@ func TestOccupationVieAUnSeulPoint(t *testing.T) {
 		t.Fatalf("spawns = %+v, attendu un seul a la frame 7", out[0].Spawns)
 	}
 }
+
+// TestOccupationRoute_AllerRetour — LES DOUBLONS FUSIONNES SONT LES CONSECUTIFS, PAS LES
+// DEJA-VUS (revue P1-3).
+//
+// Un aller-retour A -> B -> A est un CHEMIN de trois cases : le remplacer par un ensemble
+// « deja vue » en rendrait deux et effacerait le retour. Les fixtures monotones ne
+// distinguaient pas les deux implementations.
+func TestOccupationRoute_AllerRetour(t *testing.T) {
+	// A = (0,0) ; B = (20,0). La vie va en B a t=1 s puis revient en A a t=2 s.
+	pts := []PointPiste{
+		{T: 0, X: 0.25, Y: 0.25},
+		{T: 10, X: 10.25, Y: 0.25},
+		{T: 20, X: 0.25, Y: 0.25},
+		{T: 30, X: 0.25, Y: 0.25},
+	}
+	out := Occupation(GrilleParDefaut(),
+		entree(Piste{XUID: "111", Points: pts, StartFrame: 0, EndFrame: 30}), PasOccupationMs)
+	if len(out) != 1 || len(out[0].Routes) != 1 {
+		t.Fatalf("routes = %+v", out)
+	}
+	cs := out[0].Routes[0].Cellules
+	if len(cs) != 3 {
+		t.Fatalf("cellules = %+v, attendu 3 (A, B, A) : un ensemble « deja vue » en rendrait 2", cs)
+	}
+	if cs[0] != cs[2] {
+		t.Fatalf("cellules = %+v, attendu un RETOUR en premiere case", cs)
+	}
+	if cs[0] == cs[1] {
+		t.Fatalf("cellules = %+v, attendu un aller en case differente", cs)
+	}
+}
+
+// TestOccupationMort_EnVehicule — LA MORT PREND LA POSITION DU VEHICULE (revue P0-3).
+//
+// Sans la voie vehicule de `statutA`, la mort d'un occupant serait peinte au point de
+// MONTEE — l'invention que ce fichier interdit partout ailleurs. La fixture de la phase 6
+// n'assertait rien sur les morts : supprimer cette voie laissait la suite verte.
+func TestOccupationMort_EnVehicule(t *testing.T) {
+	g := GrilleParDefaut()
+	// 111 monte a la frame 10 en (0,25 ; 0,25) et meurt a la frame 40, le vehicule etant
+	// alors en (30,25 ; 0,25). 222 est immobile en (32,25 ; 0,25) : 2 m du vehicule.
+	piste := Piste{XUID: "111", StartFrame: 0, EndFrame: 40, Points: []PointPiste{
+		{T: 0, X: 0.25, Y: 0.25}, {T: 10, X: 0.25, Y: 0.25},
+	}}
+	autre := pisteImmobile("222", 60, 32.25, 0.25)
+	e := EntreeOccupation{
+		MatchID: "m1", IntervalleFrameMs: intervalleTest, Pistes: []Piste{piste, autre},
+		Embarquements: []Embarquement{{XUID: "111", T0: 10, T1: 40, Points: []PointPiste{
+			{T: 10, X: 0.25, Y: 0.25}, {T: 30, X: 30.25, Y: 0.25},
+		}}},
+	}
+	out := Occupation(g, e, PasOccupationMs)
+	var j *OccupationJoueur
+	for i := range out {
+		if out[i].XUID == "111" {
+			j = &out[i]
+		}
+	}
+	if j == nil || len(j.Morts) != 1 {
+		t.Fatalf("morts de 111 = %+v", out)
+	}
+	m := j.Morts[0]
+	if m.PositionInconnue {
+		t.Fatal("la mort est marquee sans position alors que le vehicule en a une")
+	}
+	if m.X != 30.25 {
+		t.Fatalf("mort en x=%v, attendu 30,25 (la position du VEHICULE, pas le point de montee)", m.X)
+	}
+	// ET LES DISTANCES SONT MESUREES DEPUIS ELLE : 222 est a 2 m du vehicule, pas a 32 m
+	// du point de montee.
+	if len(m.Voisins) != 1 || m.Voisins[0].Statut != StatutVivant {
+		t.Fatalf("voisins = %+v, attendu 222 vivant", m.Voisins)
+	}
+	if d := m.Voisins[0].DistanceM; d < 1.99 || d > 2.01 {
+		t.Fatalf("distance a 222 = %v m, attendu 2 (mesuree depuis le vehicule)", d)
+	}
+}
+
+// TestOccupationMort_EnVehiculeSansPoint — une mort dont on ignore le lieu n'est PAS peinte
+// au point de montee : elle est marquee sans position (revue P0-3).
+func TestOccupationMort_EnVehiculeSansPoint(t *testing.T) {
+	piste := Piste{XUID: "111", StartFrame: 0, EndFrame: 40, Points: []PointPiste{
+		{T: 0, X: 0.25, Y: 0.25}, {T: 10, X: 0.25, Y: 0.25},
+	}}
+	e := EntreeOccupation{
+		MatchID: "m1", IntervalleFrameMs: intervalleTest, Pistes: []Piste{piste},
+		Embarquements: []Embarquement{{XUID: "111", T0: 10, T1: 40}}, // aucun point de vehicule
+	}
+	out := Occupation(GrilleParDefaut(), e, PasOccupationMs)
+	if len(out) != 1 || len(out[0].Morts) != 1 {
+		t.Fatalf("morts = %+v", out)
+	}
+	m := out[0].Morts[0]
+	if !m.PositionInconnue {
+		t.Fatalf("mort = %+v, attendu sans position : le film ne dit pas ou elle a eu lieu", m)
+	}
+	if m.X != 0 || m.Y != 0 {
+		t.Fatalf("mort = (%v,%v), attendu aucune position — pas le point de montee", m.X, m.Y)
+	}
+}
+
+// TestOccupationVoisin_EnVehiculeNonAttribue_EstINCONNU — LE COEUR DE P0-1.
+//
+// Un coequipier embarque sans episode attribue n'est pas mort : il est INVISIBLE. Le
+// compter mort rendait « isolee » une mort survenue a trois metres de lui.
+func TestOccupationVoisin_EnVehiculeNonAttribue_EstINCONNU(t *testing.T) {
+	// 111 meurt a la frame 40. 222 a une vie qui s'arrete de repliquer a la frame 10 et
+	// AUCUNE fenetre couvrant la frame 40 : il est invisible, sans preuve de mort.
+	mort := Piste{XUID: "111", StartFrame: 0, EndFrame: 40, Points: []PointPiste{
+		{T: 0, X: 0.25, Y: 0.25}, {T: 40, X: 0.25, Y: 0.25},
+	}}
+	invisible := Piste{XUID: "222", StartFrame: 0, EndFrame: 10, Points: []PointPiste{
+		{T: 0, X: 3.25, Y: 0.25}, {T: 10, X: 3.25, Y: 0.25},
+	}}
+	out := Occupation(GrilleParDefaut(), EntreeOccupation{
+		MatchID: "m1", IntervalleFrameMs: intervalleTest, Pistes: []Piste{mort, invisible},
+	}, PasOccupationMs)
+	for _, j := range out {
+		if j.XUID != "111" {
+			continue
+		}
+		if len(j.Morts) != 1 || len(j.Morts[0].Voisins) != 1 {
+			t.Fatalf("morts = %+v", j.Morts)
+		}
+		v := j.Morts[0].Voisins[0]
+		// La vie de 222 est NOMMEE et close a la frame 10 : c'est une mort SUE.
+		if v.Statut != StatutMort {
+			t.Fatalf("222 = %+v, attendu mort : sa vie nommee s'est close a la frame 10", v)
+		}
+		return
+	}
+	t.Fatal("joueur 111 absent")
+}
+
+// TestOccupationVoisin_EmbarqueSansPoint_EstINCONNU — un coequipier embarque dont le
+// vehicule n'a aucun point est VIVANT et invisible : `inconnu`, jamais `mort`.
+func TestOccupationVoisin_EmbarqueSansPoint_EstINCONNU(t *testing.T) {
+	mort := Piste{XUID: "111", StartFrame: 0, EndFrame: 40, Points: []PointPiste{
+		{T: 0, X: 0.25, Y: 0.25}, {T: 40, X: 0.25, Y: 0.25},
+	}}
+	// 222 : une vie close a la frame 10 (donc « mort » par defaut), MAIS un embarquement
+	// couvre la frame 40 — il est remonte dans un vehicule dont on n'a aucun point.
+	embarque := Piste{XUID: "222", StartFrame: 0, EndFrame: 10, Points: []PointPiste{
+		{T: 0, X: 3.25, Y: 0.25}, {T: 10, X: 3.25, Y: 0.25},
+	}}
+	out := Occupation(GrilleParDefaut(), EntreeOccupation{
+		MatchID: "m1", IntervalleFrameMs: intervalleTest, Pistes: []Piste{mort, embarque},
+		Embarquements: []Embarquement{{XUID: "222", T0: 20, T1: 60}},
+	}, PasOccupationMs)
+	for _, j := range out {
+		if j.XUID != "111" {
+			continue
+		}
+		v := j.Morts[0].Voisins[0]
+		if v.Statut != StatutInconnu {
+			t.Fatalf("222 = %+v, attendu inconnu : embarque a la frame 40, donc VIVANT et "+
+				"invisible — le compter mort est le defaut P0-1", v)
+		}
+		return
+	}
+	t.Fatal("joueur 111 absent")
+}

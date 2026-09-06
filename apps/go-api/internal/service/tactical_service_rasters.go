@@ -290,8 +290,15 @@ func (s *TacticalService) remplirLectureArtefact(ctx context.Context, out *domai
 			comptes = append(comptes, comptesDesRoutes(sidecars[id], id, dans)...)
 		}
 	case domain.TacticalQuestionIsole:
-		bilan := s.mesurerIsolement(sidecars, univers, dans, mesures)
+		bilan, avecRayon := s.mesurerIsolement(sidecars, univers, dans, mesures)
+		// L'UNIVERS DE CETTE LECTURE EST CELUI DES MATCHS AYANT UN RAYON (correction P0-2) :
+		// rasteriser sur `mesures` diviserait les cellules par des matchs qu'on a refuse de
+		// lire — meme defaut que celui corrige deux fois sous « correction G2 ».
+		mesures = avecRayon
+		out.MatchsRetenus = len(mesures)
 		out.MatchsSansRayon = bilan.MatchsSansRayon
+		out.MortsIndeterminees = bilan.Indeterminees
+		out.MortsPositionInconnue = bilan.PositionInconnue
 		out.Isolement = &bilan.Couverture
 		comptes = comptesDesMortsIsolees(tactical.GrilleParDefaut(), bilan.Isolees)
 	default: // domain.TacticalQuestionTemps

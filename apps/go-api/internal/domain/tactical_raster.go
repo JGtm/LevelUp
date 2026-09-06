@@ -34,6 +34,14 @@ package domain
 // traduction en secondes depend de ce pas. Changer analysis/tactical.PasOccupationMs sans
 // incrementer cette version rendrait tous les sidecars du parc silencieusement faux d'un
 // facteur — d'ou le champ PasEchantillonMs ci-dessous, que la lecture verifie.
+// # LA DISTANCE EST HORIZONTALE, ET DEUX ETAGES LISENT ZERO
+//
+// Toutes les distances de ce fichier sont des `math.Hypot(dx, dy)` : Z est ignore. Un
+// coequipier situe juste au-dessus ou au-dessous, separe par une dalle, est donc mesure a
+// 0 m et compte comme « a portee ». C'est une LIMITE CONNUE de la mesure — toutes les
+// lectures de l'onglet sont des vues du dessus —, ecrite ici pour qu'aucun lecteur ne la
+// decouvre comme un defaut.
+//
 // # CE QUE LE SIDECAR NE PEUT PAS DECIDER : LES EQUIPES
 //
 // Le film NE PORTE PAS LES CAMPS (`replay.Track.Team` vaut -1 pour tout le monde ; l'equipe
@@ -54,7 +62,7 @@ package domain
 // temps » sous-estime le temps en vehicule, et c'est une propriete connue de la mesure —
 // pas un defaut a chercher. Elle ne peut pas se corriger ici : elle se corrigerait en
 // amont, dans la primitive d'attribution des episodes.
-const TacticalRasterSchemaVersion = 3
+const TacticalRasterSchemaVersion = 4
 
 // TacticalRasterSidecar est le fichier depose a cote de l'artefact
 // (title.PathResolver.TacticalRasterPath).
@@ -155,19 +163,46 @@ type TacticalRasterSpawn struct {
 // des morts du film qui a NOMME la vie que la mort termine. Un survivant de fin de partie
 // reste anonyme, donc ne produit aucune mort — c'est juste.
 type TacticalRasterMort struct {
+	// Frame est l'instant de la mort sur l'axe du rejeu.
+	//
+	// CONSOMMATEUR NOMME : le DRILLDOWN de la phase 5 — un clic sur une cellule chaude
+	// ouvre le rejeu 2D a l'instant contributeur (`?frame=`). Il est donc ecrit dans le
+	// sidecar CUIT, meme si la lecture d'isolement, elle, ne s'en sert pas.
 	Frame int     `json:"frame"`
 	X     float64 `json:"x"`
 	Y     float64 `json:"y"`
 
-	// Voisins : TOUS les autres joueurs nommes vivants a cet instant, avec leur distance,
-	// tries par xuid. NI EQUIPE NI CAMP — le film ne les porte pas (cf. l'en-tete).
+	// PositionInconnue : la mort a eu lieu, mais le film ne dit pas OU (embarquement sans
+	// point de vehicule). Elle n'est alors ni peinte ni examinee, et se compte a part —
+	// lui preter le point de montee serait inventer un stationnement.
+	PositionInconnue bool `json:"position_inconnue,omitempty"`
+
+	// Voisins : TOUS les autres joueurs nommes, avec leur STATUT a cet instant, tries par
+	// xuid. NI EQUIPE NI CAMP — le film ne les porte pas (cf. l'en-tete).
 	Voisins []TacticalRasterVoisin `json:"voisins"`
 }
 
-// TacticalRasterVoisin est un autre joueur vivant a l'instant d'une mort, et sa distance.
+// Les trois STATUTS d'un voisin, publies dans le sidecar. Ils repondent a « que sait-on de
+// lui a cet instant », jamais a « etait-il la ».
+//
+// `inconnu` N'EST PAS UN `mort` PRUDENT : un occupant de vehicule non attribue (la primitive
+// n'apparie que 15,6 a 21,1 % des vies) et un survivant de fin de partie (sa derniere vie
+// n'est close par aucune mort, donc anonyme) sont tous deux VIVANTS et invisibles. Les
+// compter morts rendait des morts « isolees » alors qu'un coequipier etait a trois metres.
+const (
+	StatutVoisinVivant  = "vivant"
+	StatutVoisinMort    = "mort"
+	StatutVoisinInconnu = "inconnu"
+)
+
+// TacticalRasterVoisin est un autre joueur nomme et ce qu'on sait de lui a l'instant d'une
+// mort.
 type TacticalRasterVoisin struct {
-	XUID      string  `json:"xuid"`
-	DistanceM float64 `json:"distance_m"`
+	XUID   string `json:"xuid"`
+	Statut string `json:"statut"`
+	// DistanceM n'a de sens que sous StatutVoisinVivant. Arrondie a 2 decimales, comme
+	// toutes les coordonnees de l'artefact.
+	DistanceM float64 `json:"distance_m,omitempty"`
 }
 
 // TacticalRasterRoute est la sortie de spawn d'une vie : le CHEMIN des 15 premieres
