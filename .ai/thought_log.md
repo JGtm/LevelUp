@@ -96096,3 +96096,189 @@ familles jette tous les denominateurs des balayages, et `ScanEquipmentState` anc
 d'objets du monde qui n'a jamais eu son item E.4. Prochaine etape : ronde 2 de la revue sur ces
 corrections, puis integration dans `feat/v75`. Surveillance CI non effectuee : consigne du
 coordinateur, verification par le superviseur.
+## [2026-09-06] Instruction « CTF drapeaux » — la regression etait dans le FIXTURE, pas en production
+
+**Statut** : Complete (branche `feat/v2-ctf-drapeaux`, worktree dedie `LevelUp-wt-v2-ctf`).
+
+**Decision technique principale.** Le constat remonte le 2026-09-05 (« au schema 39 le fixture
+`film_e2e/c0a82e88` rend `flagCarries=0`, `objectiveObjects=0` et 12 actions la ou la doc du
+schema 37 disait 92, famille flag ») a ete re-mesure puis bissecte. Deux conclusions, toutes deux
+sur pieces :
+
+1. **Aucune regression de production.** Sur le film COMPLET du cache, la cuisson au HEAD
+   (schema 39, `a21fd77f4`) rend EXACTEMENT la meme chose qu'avant le merge `736ccf3c3`
+   (schema 38) : `flagCarries=0`, 12 actions (8 kills + 4 assists), `objectLives=4`, couverture
+   identique ligne a ligne. Et `flagCarries=0` avec `noBridge=3` est deja vrai sur l'artefact du
+   parc au schema 20 : ce n'est pas une perte, c'est une propriete de ce match (les 3 prises sont
+   toutes sans pont d'identite).
+2. **La vraie perte est dans le FIXTURE E2E.** Ses morceaux 00 (registre ECS) et 07 (pied) portent
+   DEUX couches zlib au lieu d'une — genere le 2026-08-25 en recompressant un cache film
+   heterogene, ou ces deux-la etaient deja compresses. Invisible jusqu'au 2026-09-02, ou
+   `c17f4941f` (cuisson-perf L1a) a retire l'inflate de `ParseRegistryChunk` : depuis, le registre
+   du fixture est VIDE, et biped 35 / arme au sol 42 / equipement 37 / vehicule 40 / objet
+   d'objectif tombent tous. Onze calques du rejeu disparaissaient de la seule cuisson reelle de la
+   CI, qui restait verte parce qu'elle n'assertait que la FORME du document.
+
+Le « 92 » enfin : c'est le compteur de journal `nommees` (evenements nommes AVANT le pont
+d'identite), pas le contenu du document — mesure au commit qui a ecrit la ligne (schema 18) :
+`nommees=92 identifiees=17` et `doc.objectives = 0`. Il vaut toujours 92 au HEAD. La ligne
+confondait l'amont et le publie.
+
+**Correctif.** (a) Les deux morceaux du fixture sont peles d'une couche — ils sont desormais octet
+a octet ceux du cache, donc ce que le CDN sert. (b) `ParseRegistryChunk` REFUSE un tampon encore
+compresse (`ErrRegistryStillCompressed`, sentinelle en `const` typee pour ne pas faire monter le
+ratchet des vars de `filmdec`) au lieu de rendre un registre vide et une erreur nulle — detection
+de l'en-tete RFC 1950 sur deux octets, sans aucune decompression, garde-rail `archlint` intact.
+Trois tests de non-regression : le refus (unitaire), l'integrite du fixture (une seule couche zlib
+par morceau + registre d'empreinte de reference + archetypes 35/37/40/42), et des assertions de
+VALEUR sur la cuisson E2E (captures = 3 = le score de la feuille de match, `objectLives = 4`,
+8 kills + 4 assists, `openings == noBridge` pour expliquer le silence de `flagCarries`).
+
+**Resultats observes.** Gates verts : `go build ./...` ; `go test` sur objectiveevents, replay,
+replaybuild, filmdec ; `go test -tags=integration -p 1 ./internal/api/wire/...` ; goldens
+killsource et archlint ; `golangci-lint --new-from-merge-base=origin/main` = 0 issue. Le garde-rail
+a ete verifie NEGATIVEMENT (morceau d'origine remis : les deux tests echouent avec le bon message).
+L'artefact E2E passe de 262 535 a 283 260 octets — les calques a archetype sont revenus.
+
+**Conclusion / prochaine etape.** Aucun bump de `SchemaVersion` : la sortie de production ne change
+pas, et aucun artefact du parc n'a ete cuit sans registre (les trois autres mini-bobines
+versionnees sont saines, leurs goldens passent avec le refus actif). Journal detaille :
+`.ai/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md`. A remonter : la branche `feat/v2-tests-ci`
+(`4cf807d64`, lot F.1) a fige comme oracle les valeurs du fixture CASSE — elle doit etre re-mesuree
+sur le fixture corrige avant merge, et sa decouverte « 92 que le decodeur ne rend plus » requalifiee.
+Le seul chemin vers `flagCarries > 0` sur ce match est le pont d'identite par manche, hors perimetre.
+
+## [2026-09-06] CORRECTIF a l'entree precedente — la revue CTF-R1 infirme le recit, pas le correctif
+
+**Statut** : En cours (meme branche `feat/v2-ctf-drapeaux`, lot 2 : correction du diagnostic +
+instruction de la vraie derive).
+
+**Decision technique principale.** La revue adversariale de `086a15f62` a mesure ce que je
+n'avais pas mesure : le telechargeur de l'ouvrier PELE DEJA UNE COUCHE ZLIB
+(`cmd/replay-worker/job.go`, `downloadChunk`), et `filmsource.Load` pele la seconde. Les deux
+couches du fixture E2E etaient donc absorbees par DEUX ETAGES DIFFERENTS et le registre arrivait
+intact. Preuve : fixture d'origine remis au HEAD, l'epreuve E2E est VERTE, assertions de valeur
+comprises, artefact de 283 260 octets — exactement la taille obtenue avec le fixture corrige.
+Mon affirmation « la seule cuisson reelle de la CI decodait sans registre pendant quatre jours »
+est donc FAUSSE : elle venait d'une sonde jetable qui lisait `testdata` en direct, chemin
+qu'aucun test n'emprunte. Aucun sinistre n'a eu lieu ; le defaut etait LATENT.
+
+Le correctif reste bon pour ce qu'il est : le fixture doit dire la verite sur ce que le CDN sert
+(il est desormais octet pour octet celui du cache), et `ParseRegistryChunk` doit refuser un
+tampon compresse au lieu de rendre un registre vide en silence — la detection RFC 1950 est sans
+faux positif sur les 1 378 registres du cache. Ce qui etait faux, c'est la GRAVITE que je lui
+attribuais, pas la reparation.
+
+**Corrections portees** : ERRATUM date en tete de `.ai/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md` (le
+corps est conserve tel quel) ; commentaires faux retires de `filmdec/registry.go` (« premier
+octet 0x29 » — vrai sur 1 117 films seulement, 204 sont en `0x28` et passent la condition CM=8),
+de `registry_compressed_test.go` et de `film_fixture_integrite_cgo_test.go` (« le SEUL film que
+la CI decode » — `TestGoldenMiniBobine` et `TestEquivalenceMiniFilm` decodent aussi) ; oracle des
+captures corrige (il comparait `TeamScores[0]` seul quand `coverage.flagCarries.captures` compte
+les DEUX camps) ; epingles 8/4/12 et liste des pontes RETIREES du test E2E ; decouvertes portees
+au `.ai/V7.5/REGISTRE_REPORTS.md`.
+
+**Ce que la revue rouvre, et qui est la vraie instruction.** Le calque `objectives` de
+`c0a82e88` a DERIVE : 17 actions au parc (schema 20) contre 12 au HEAD, les familles
+`flag_captures` et `flag_steals` ont disparu, et les joueurs qui recoivent des actions sont
+ECHANGES. Ma conclusion « le porteur n'est structurellement pas pontable sur ce film » est donc
+contredite par le parc, ou ses actions de drapeau sont nommees. Instruction en cours.
+
+**Conclusion / prochaine etape.** Bissection du pont d'identite entre le schema 20 et le
+schema 38 (suspect designe : `d173b1a8c`, qui remplace le pont par TOTAUX par un pont PAR
+MANCHE), puis cause sur pieces, correctif ou decision citee.
+
+## [2026-09-06] La vraie derive : le pont par MORTS perd les joueurs qui meurent peu
+
+**Statut** : Complete (branche `feat/v2-ctf-drapeaux`, lot 2, suite du correctif CTF-R1).
+
+**Decision technique principale.** La revue CTF-R1 avait rouvert le fond : sur `c0a82e88`, le
+calque `objectives` passe de 17 actions (artefact du parc, schema 20) a 12 au HEAD, les familles
+`flag_captures` et `flag_steals` disparaissent, et les joueurs pontes sont ECHANGES. Instruit et
+tranche.
+
+**Commit fautif** : `d173b1a8c` (2026-08-28, « obj-parmanche(1) »), ligne
+`replaybuild/matchfacts.go`, `identifiedEvents` — `SlotIdentityFrom(recs, lines)` (pont par
+TRIPLET) remplace par `ResolveRoundIdentity(recs, deaths)` (pont par MORTS). Bissection sur le
+film complet, meme schema 23 de part et d'autre : 17 actions avant, 12 apres.
+
+**Cause, sur pieces.** Les deux ponts, mesures slot par slot sur le meme film, ne se contredisent
+NULLE PART : 3 slots nommes par les deux a l'identique, 2 que seul le triplet nomme, 2 que seul le
+pont par morts nomme. Ce sont deux couvertures COMPLEMENTAIRES, et le commit a remplace l'une par
+l'autre au lieu de les additionner. Le pont par morts exige `deathInstantMin` = 3 instants
+coincidents : SweatyYeti75 (2 morts, 7 frags, auteur de LA capture et DU vol de drapeau du match)
+et DiegoGamer8K (1 mort) lui echappent PAR CONSTRUCTION — ce sont, par definition, les joueurs qui
+meurent le moins. Controle croise independant : les progressions de mort du slot 22 coincident
+avec le fil de SweatyYeti75 et de LUI SEUL (2 sur 2), celles du slot 20 avec DiegoGamer8K et lui
+seul (1 sur 1). Verdict : REGRESSION, pas arbitrage. Le commit annoncait une « neutralite
+mono-manche prouvee par construction » — vraie contre le pont PLAT PAR MORTS, mais ce calque-la
+n'etait pas sur ce pont : il etait sur le triplet. La neutralite a ete prouvee contre le mauvais
+temoin.
+
+**Correctif** : `objectiveevents.RoundIdentity.CompletedByLines(recs, lines)` — complete
+l'identite par manche avec le triplet sur les SEULS slots que le pont par morts n'a pas nommes,
+sous trois gardes : mono-manche uniquement (le triplet apparie des TOTAUX ; en multi-manche c'est
+exactement le defaut que `d173b1a8c` a corrige), completer jamais contredire, et aucun xuid deux
+fois. `lines` vide rend l'identite inchangee : le calque reste publiable hors ligne.
+
+**Resultats observes.** Film complet : 23 actions, 7 joueurs pontes sur 7 presents au film, chacun
+publiant EXACTEMENT sa ligne de la feuille de match (15 frags, 6 assistances au total, conforme a
+l'API). Les deux actions de drapeau reviennent sur SweatyYeti75, aux memes instants qu'au parc.
+Tests : quatre unitaires sur `CompletedByLines` (dont le refus du multi-manche) et des assertions
+E2E figees (7 pontes, egalite avec la feuille, `flag_captures`/`flag_steals` = 1), VERIFIEES PAR
+MUTATION (correctif debranche : « joueurs pontes = 5, attendu 7 » et les deux actions a 0). Gates
+verts : build, objectiveevents/replay/replaybuild/filmdec, integration wire, goldens killsource,
+archlint, filmsource, golangci-lint 0 issue.
+
+**Conclusion / prochaine etape.** AUCUN bump de `SchemaVersion` : la forme du document ne change
+pas, seul le contenu s'enrichit — meme convention que `d173b1a8c`. Le parc cuit entre le
+2026-08-28 et aujourd'hui porte un calque `objectives` incomplet ; la propagation passe par la
+passe `backfill-replay` de la release, portee au registre des reports. Decouverte non traitee et
+portee au registre : `flagCarries` subit le meme plafond sans avoir le triplet pour le completer
+(1 des 3 prises de ce film est nommable, les 2 autres sont sur un slot agrege) — le corriger
+demande de faire descendre des lignes de match dans `analysis/replay`, frontiere delibree, donc
+decision produit.
+
+## [2026-09-06] Corrections apres la revue R2 — les deux gardes non testees, et le bump a 40
+
+**Statut** : Complete (branche `feat/v2-ctf-drapeaux`, lot 3).
+
+**Decision technique principale.** La revue CTF-R2 confirme le diagnostic et le correctif du pont
+d'identite (0 contradiction sur 8 films mono-manche, invariant multi-manche verifie octet pour
+octet sur `9f57c612`, enrichissement strictement additif sur 11 films). Cinq points restaient a
+traiter, chacun prouve par la mutation du verdict.
+
+1. **La garde mono-manche n'etait pas testee.** `twoRoundReassignedFixture` donne aux slots 20 et
+   22 le MEME triplet (0,6,0) : le triplet rend une table vide et `CompletedByLines` sortait au
+   garde PRECEDENT. Nouvelle fixture `deuxManchesTripletResoluFixture` avec un slot 24 que le
+   triplet resout sans ambiguite (compteurs qui REPARTENT DE ZERO par manche — `cumulateRounds`
+   les additionne, c'est ce qui manquait a ma premiere tentative). Le test verifie son propre
+   pre-requis avant d'asserter. Mutation D4 : rouge, 4 messages dont « la completion a effondre
+   l'identite par manche sur une seule table ».
+2. **La garde « completer, jamais contredire » n'avait aucun test** : la garde 3 la doublait
+   partout. `contradictionFixture` isole le seul cas ou `deja` agit seul (les deux ponts designent
+   le meme slot, le joueur du triplet est libre). Mutation D5 : rouge.
+3. **Justification fausse corrigee** : le 8e joueur A un slot (le 12, compteurs (5, 0, 60)) ; c'est
+   l'assistance lue a 60 contre 0 qui fait refuser le triplet. Le commentaire dit desormais la
+   vraie raison, coherente avec le journal, et annonce qu'un slot 12 devenu nommable serait un
+   PROGRES.
+4. **`SchemaVersion` monte de 39 a 40** (decision du superviseur). Mon §9.7 invoquait « la forme ne
+   change pas » : mauvais critere. La regle du depot est qu'un artefact vN doit se voir comme A
+   RE-CUIRE — sans montee, tout artefact 39 cuit d'ici la release serait SAUTE par
+   `backfill-replay` et garderait son calque appauvri. Reconciliations : chronique `document.go`,
+   ratchet `structure_test.go`, golden d'assemblage regenere (son UNIQUE ecart etait la ligne de
+   version, verifie avant), entree du registre corrigee. Contrat OpenAPI : `schemaVersion` y est un
+   `integer` sans `enum`/`const`/`default`/`example`, la valeur n'y figure pas et `generated.ts`
+   est inchange — a signaler : `make generate-types` n'a PAS pu tourner ici (`openapi-typescript`
+   absent du worktree), le controle repose sur la lecture du contrat et le diff nul.
+5. **Dette de taille rendue** : les assertions d'objectif deplacees telles quelles dans
+   `build_queue_worker_objectifs_integration_test.go` ; l'original repasse de 562 a 451 lignes,
+   sous le seuil de 500.
+
+**Resultats observes.** Gates verts : les cinq paquets + `contracttest`, integration wire, build,
+`golangci-lint --new-from-merge-base=origin/main` 0 issue, goldens inconditionnels PASS nommement.
+
+**Conclusion / prochaine etape.** Le lot CTF drapeaux est clos cote code. Reste au carnet : la
+re-cuisson du parc (tout artefact < 40) a la passe `backfill-replay` de la release v7.5.0, et la
+decision produit sur `flagCarries` (faire descendre des lignes de match dans `analysis/replay`
+pour nommer un porteur qui meurt moins de trois fois).

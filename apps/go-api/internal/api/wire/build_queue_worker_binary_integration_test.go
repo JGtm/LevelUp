@@ -152,19 +152,31 @@ func TestOuvrierReel_ConstruitEtLivre(t *testing.T) {
 // APPAUVRI (mesuré : 0 joueur de courbe de score, camps `unresolved`) qui porte pourtant le bon
 // numéro de schéma. La présence de compteurs de joueur est LA ligne qui distingue « livré » de
 // « livré vide » — exactement l'appauvrissement que le transport des faits (via EnqueueReplayBuild)
-// doit supprimer. Ici, AVEC faits : 5 joueurs de courbe de score et 12 actions d'objectif nommées
-// (8 `kills`, 4 `assists` — mesure du 2026-09-05 au schéma 39 ; la ligne disait « 92, famille
-// flag », mesure du 2026-08-25 au schéma 37, que le décodeur ne rend plus : écart consigné en
-// découverte du lot F), contre 0 sans.
+// doit supprimer. Ici, AVEC faits : les joueurs de courbe de score et les actions d'objectif
+// publiées (au schéma 40 : 7 joueurs pontés sur 7 et 23 actions dont les 2 de drapeau, contre
+// 5 et 12 avant le complément du pont par le triplet), contre 0 sans.
 //
-// LES VALEURS, ELLES, SONT VÉRIFIÉES À CÔTÉ : `assertValeursDuDocument`
-// (build_queue_worker_valeurs_integration_test.go) fige l'horloge, la grille, le roster, la
-// liste des joueurs appariés et la courbe de score, et confronte le roster nommé du film à la
-// feuille de match de l'API — constat G1 du registre d'audit du 2026-09-05. Ce que cette
-// confrontation prouve et ce qu'elle ne prouve pas est écrit dans l'en-tête de ce fichier-là
+// CE QUE « 92 » ÉTAIT, ET POURQUOI CETTE LIGNE A MENTI HUIT JOURS. Elle a dit jusqu'au 2026-09-06
+// « 92 actions d'objectif nommées (famille flag) ». Le 92 est bien réel, mais c'est le compteur de
+// JOURNAL `nommees` — les émissions d'emplacement de statistique que `objectiveevents.NamedEvents`
+// reconnaît, AVANT le pont d'identité. Le document, lui, n'en portait alors AUCUNE (le calque
+// `objectives` était vide en production à cette date). Confondre le compteur amont avec le contenu
+// publié a fait passer pour une régression, le 2026-09-05, un chiffre qui n'avait jamais été celui
+// du document. Mesure sur pièces (2026-09-06, films complet ET fixture, schémas 38 et 39
+// confondus) : 92 nommées, 12 identifiées, 12 publiées — puis 23 publiées au schéma 40, le pont
+// par morts ayant été COMPLÉTÉ par le triplet (régression du 2026-08-28, `d173b1a8c`).
+//
+// LES VALEURS SONT VÉRIFIÉES À DEUX ENDROITS, contre l'oracle INDÉPENDANT du fixture (la feuille
+// de match de l'API, `facts`) : `assertCalquesDObjectif` (build_queue_worker_objectifs_integration_test.go)
+// pour les calques d'objectif, et `assertValeursDuDocument`
+// (build_queue_worker_valeurs_integration_test.go) pour l'horloge, la grille, le roster, la liste
+// des joueurs appariés et la courbe de score — constat G1 du registre d'audit du 2026-09-05. Ce que
+// cette confrontation prouve et ce qu'elle ne prouve pas est écrit dans l'en-tête de ce fichier-là
 // (revue F-R1 du 2026-09-06 : le pont d'identité impose l'égalité des triplets, seul le roster
 // est un fait de deux chaînes indépendantes).
-func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domain.BuildQueueJob, jobID string, fx filmFixture) {
+func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domain.BuildQueueJob,
+	jobID string, fx filmFixture,
+) {
 	t.Helper()
 	var resultJSON string
 	trouve := false
@@ -222,6 +234,8 @@ func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domai
 	// propriété de ce film. La ligne dure ci-dessus (joueurs présents) porte la preuve.
 	t.Logf("artefact COMPLET : %d joueurs de courbe de score, identité des camps = %q (informatif)",
 		len(doc.ScoreTimeline.Players), doc.Coverage.Score.TeamIdentity)
+
+	assertCalquesDObjectif(t, doc, fx)
 	assertValeursDuDocument(t, doc, fx)
 }
 

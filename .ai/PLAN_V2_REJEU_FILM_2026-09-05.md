@@ -544,3 +544,25 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
 - 2026-09-06 12:45 : E retouches vérifiées (`60072d717`, 3 gardes, zéro code du décodeur, golden
   intact) ; aucun test supprimé par E ne figure dans la baseline (vérifié) ; E FUSIONNÉ dans
   `feat/v75`. Intégrés : B, F, C, G, E. Restent : A (ronde 2), D (dernier), CTF (revue R2).
+- 2026-09-06 13:00 : CTF-R2 CONFIRME le diagnostic et le correctif du pont d'identité (0
+  contradiction sur 8 films mono-manche ; 4 manches identique octet pour octet ; additif strict
+  sur 11 films ; le triplet refuse toute ambiguïté). Constats : deux gardes (mono-manche,
+  « jamais contredire ») sans test qui morde ; justification fausse sur le slot 12 ; décision
+  « pas de bump » sûre aujourd'hui pour une raison non écrite (0 artefact au schéma 39 sur la
+  machine, prod au schéma 2) mais fragile dès le premier artefact 39 cuit avant la release (le
+  backfill le sauterait) ; fichier de test à 562 L. DÉCISION SUPERVISEUR : bump `SchemaVersion`
+  39 → 40 avec chronique (la règle du dépôt : un artefact vN doit se voir comme à re-cuire) ; l'étape
+  de release « re-cuisson du parc » passe à 40 (registre + Notion à mettre à jour). Corrections
+  en cours chez l'enquêteur.
+- 2026-09-06 13:15 : A-R2 : sept constats FERMÉS ; quatre défauts nés des corrections (N1 P2 :
+  une lecture d'équipe en échec marquait le match « dérivé » — classe de C1 réintroduite ; N3
+  jauge 0 sur cycle annulé ; N4 marque orpheline jamais ramassée ; N2 modes à > 2 camps, 4
+  matchs sur 1 959, décision produit) + doc inversée dans la migration des positions → retouches
+  en cours chez l'exécuteur A ; merge A ensuite (conflit attendu avec C sur
+  `domain/title/registry.go` et `replayartifacts/artifacts.go`).
+- 2026-09-06 13:40 : CTF corrections rendues (`7c85acf58` : deux gardes testées par mutation,
+  justification du slot 12 vraie, SchemaVersion 40 + chronique, assertions déplacées) et CTF
+  FUSIONNÉ dans `feat/v75`. Conflits sémantiques résolus par le superviseur : le test des calques
+  d'objectif typé sur `replaydoc` (lot B), et les valeurs figées par F.1 remesurées au schéma 40
+  (15 frags, 6 assistances, 1 capture, 1 vol = sommes des lignes des 7 pontés). Intégration wire,
+  contrat et `generate-types` verts et sans diff. Intégrés : B, F, C, G, E, CTF.

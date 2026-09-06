@@ -797,8 +797,21 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   la chaîne de cuisson — faux, seule la VICTIME n'était pas résolue. Source non lue =
 	//   champ absent chez tous les joueurs, jamais zéro.
 	//   Détail : internal/analysis/replay/bomb_stats.go et bomb_stats_document.go.
-	if SchemaVersion != 39 {
-		t.Fatalf("SchemaVersion = %d, attendu 39 : incrémenter exige une raison écrite ci-dessus "+
+	// v40 — LE PONT D'IDENTITÉ COMPLÉTÉ PAR LE TRIPLET (2026-09-06). Aucun champ ajouté : c'est
+	//   le CONTENU de `objectives` qui change. Depuis `d173b1a8c` (2026-08-28), le calque
+	//   résolvait l'identité slot -> joueur par les seuls INSTANTS DE MORT, qui en exigent
+	//   trois : un joueur qui meurt moins de trois fois — le meilleur du match, celui qui porte
+	//   le drapeau — n'était plus nommé, et ses actions disparaissaient. Mesuré sur `c0a82e88` :
+	//   17 actions avant, 12 après, les deux seules actions de famille `flag` perdues.
+	//   POURQUOI LA VERSION MONTE SANS CHANGEMENT DE FORME : un artefact 39 cuit avant le
+	//   correctif peut manquer des actions sans que rien ne le dise, et `backfill-replay` saute
+	//   un artefact qui porte la version courante — il garderait son calque appauvri. C'est la
+	//   règle des montées v3/v4/v5/v14/v22/v25/39 (« un artefact vN doit se voir comme à
+	//   re-cuire »), pas l'exception du lot P5, qui ne valait que parce qu'aucun artefact 38
+	//   n'existait alors hors témoins de gate.
+	//   Détail : internal/analysis/objectiveevents/slotidentity_rounds.go (CompletedByLines).
+	if SchemaVersion != 40 {
+		t.Fatalf("SchemaVersion = %d, attendu 40 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
