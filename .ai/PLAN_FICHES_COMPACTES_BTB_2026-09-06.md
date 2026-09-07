@@ -299,7 +299,7 @@ Commandes canoniques (depuis `apps/web`, hors sandbox) :
 - `T_DIFF` = `git diff --stat feat/v75 -- src/features/match-replay/ui/ReplayTeams.test.tsx`
   (doit être vide)
 - `T_ALL` = `Remove-Item -Recurse -Force node_modules\.tmp` puis `npx tsc -b --force`,
-  `npm run lint`, `npm run lint:colors`, `npm run test:run` — codes de sortie lus, pas la
+  `npm run lint`, `npm run lint:colors`, `npm run lint:fields`, `npm run test:run` — codes de sortie lus, pas la
   sortie filtrée.
 
 ### Étape 0 — Préalables, fixation et mesure de départ

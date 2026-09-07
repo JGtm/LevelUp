@@ -36,7 +36,7 @@ export function scoreboardRow(
     perfect_kills: null,
     power_weapon_kills: null,
     melee_kills: null,
-    outcome_label: 'Victoire',
+    outcome_label: 'n/a',
     ...over,
   }
 }
