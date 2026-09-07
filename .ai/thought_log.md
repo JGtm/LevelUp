@@ -96,6 +96,161 @@ travail montee ainsi a recopie 29 Go de `film_chunks` et sature le disque C:. Le
 passent par `cmd //c mklink //J` sur des chemins produits par `cygpath -w`, jamais par une chaine
 bash a backslashes.
 
+## [2026-09-07] Drapeaux, corrections DRAPEAUX-R1 : jamais son propre drapeau (P0 leve) — Complete
+
+**Le mandat.** La revue adversariale DRAPEAUX-R1 valide la cause premiere et confirme que rien
+n'est perdu ni invente (trois spans rallonges controles par les positions ET par le calque des
+actions, quatre mutations rouges, chaine de contrat idempotente, gates verts : 6 conditions sur
+7). Elle refuse la livraison sur **un P0** : le lot servait un resultat FAUX NEUF. Sur
+`64e8adfa`, la capture de 529 075 ms — un fait DATE par l'oracle — passait du drapeau adverse a
+celui du camp de son auteur. Trois constats P2 completaient le tableau.
+
+**Decision technique principale.** Le repli geometrique ne pouvait pas etre repare par plus de
+geometrie : c'est la REGLE DU MODE qui manquait. En CTF on RENVOIE son drapeau, on ne le porte
+pas — donc un portage n'est JAMAIS pose sur le drapeau de l'equipe de son porteur. L'invariant est
+pose AVANT toute inference : tout candidat qui y aboutit est REFUSE (`ownFlagRefused`) ; s'il ne
+reste qu'un candidat il est pris ; s'il n'en reste aucun le portage sort NON ATTRIBUE
+(`unresolved`) et n'est publie sur aucun drapeau — **on n'invente jamais un drapeau**. L'equipe du
+porteur n'etant pas dans le film, elle arrive par `FlagInput.TeamOf`, table xuid -> equipe DEJA
+RESOLUE par l'appelant : exactement la frontiere de `FlagInput.Identity`, `analysis/replay` ne
+voit toujours aucun fait de match. Table vide : l'invariant se tait, l'artefact hors ligne est
+celui d'avant a l'octet pres. Deuxieme correction (C4) : les `flag_returns` et les rentrees
+d'objet remettent desormais `enJeu` **ET** `sol` — la note du fichier n'avouait que la moitie du
+probleme, `sol` perime pouvant faire MENTIR la regle 2, qui est prioritaire. C2 : le champ mort
+`flagCarryRaw.reprise` et sa doc inversee supprimes. C3 : `countFlagOverlaps` compte par DRAPEAU
+(le seuil « plus de deux, tous drapeaux confondus » ratait le cas nominal).
+
+**Resultats observes.** `64e8adfa` : captures publiees sur le drapeau de leur auteur
+**1 (base) / 2 (HEAD revu) -> 0** — les trois captures de l'oracle sont sur le drapeau adverse, y
+compris celle de 472 578 ms **deja fausse a la base**, que la revue mettait hors perimetre et que
+l'invariant repare aussi ; portages sur son propre drapeau **13 / 7 -> 0** ; `ownFlagRefused = 4`,
+`unresolved = 0` ; aucune perte de duree par joueur contre la base (total 2 441 -> 4 438). Les
+trois temoins mandates sont INCHANGES en donnees (`c0a82e88` identique aux 574 mesures ;
+`bcb6d393` et `e94163af` ne bougent que par les compteurs que C3 et C4 rendent justes), avec
+0 portage sur son propre drapeau, captures sur le drapeau adverse et 0 span masque. Cinq tests
+neufs, quatre mutations rouge puis vert. **Une lecon de methode** : M-G (le retour ne remet que
+`enJeu`) a d'abord SURVECU — sur une carte a deux drapeaux l'invariant dur ne laisse qu'un
+candidat et masque l'effet de `sol` ; le test a ete refait sans equipe connue, la seule facon
+d'isoler ce constat. **Une lecon de cablage** : la premiere cuisson R1 rendait
+`ownFlagRefused = 0` parce qu'`attachFlagCarries` ne recopiait pas `TeamOf` dans
+`FlagCarryScan` — un chainon muet ne casse aucun test unitaire, d'ou les deux garde-rails ajoutes
+chez l'appelant.
+
+**Conclusion / prochaine etape.** Le schema reste **46** : la sortie change dans le MEME bump,
+aucun artefact 46 n'a ete diffuse. Le registre porte une entree close de plus (les constats C2 et
+C3) et UNE observation ouverte, qui n'appartient pas a ce lot : sur `bcb6d393`, un porteur nomme
+par le PONT n'est pas localisable dans le document servi (vie ANONYME dans `tracks`, le client
+joint par XUID et fige le drapeau au point de prise) — preexistant, non aggrave en position, a
+traiter par le lot des vies anonymes. Detail :
+`.ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md` §8 quater.
+
+## [2026-09-07] Drapeaux, complement : une lecture vraie n'est ni perdue ni masquee — Complete
+
+**Le mandat.** Le pilote refuse la cloture du lot drapeaux en l'etat : sa decouverte n° 2 faisait
+PERDRE de la duree servie. Sur `bcb6d393`, la duree publiee de `2533274858283686` passait de 358
+a 282 frames — or ces 358 venaient d'etre retablis par le lot des durees (schema 45) contre le
+parc. Doctrine du chantier : une lecture vraie n'est jamais perdue ni masquee ; l'axe des durees
+d'un gate en mode base serait sorti EN ECHEC.
+
+**Decision technique principale.** Le symptome (« le portage repris se reduit a UNE frame ») est
+un cas particulier d'un defaut de COHERENCE, et c'est l'invariant general qui est pose, pas un
+rustine sur le cas nomme. `applyFlagLifeEvent` date l'ouverture d'un portage a
+`frameOfMatchMS(t0)` et sa fin a `frameOfMatchMS(t1) + 1` ; quand un portage est ferme par LA
+PRISE SUIVANTE DU MEME SLOT, `t1` vaut exactement le `t0` du suivant, la fin tombe UNE FRAME
+APRES l'ouverture de la reprise, et `spansOfTransitions` — qui trie par FRAME — la laisse ecraser
+l'etat `carried`. Le drapeau se dessinait AU SOL pendant qu'un joueur courait avec.
+L'INVARIANT POSE : une fin ne publie pas `dropped` quand, a cet instant, un AUTRE portage du meme
+drapeau est encore ouvert (`flagTenuParUnAutre`) — le drapeau passe d'une main a l'autre, il ne
+touche pas le sol. Il couvre les deux situations : la reprise du meme porteur (aucun lacher DATE,
+le modele borne lui-meme le sejour au sol a zero) et le RECOUVREMENT de deux portages du meme
+drapeau (une incoherence que la couverture publie deja ; publier le lacher de l'un ecrasait le
+portage de l'autre, ce qui coutait 4 frames a un joueur de `64e8adfa`). UNE GARDE, ecrite et
+testee : une CAPTURE n'est jamais retenue — elle ne pose pas le drapeau au sol, elle le renvoie a
+sa base, et c'est un fait DATE qui tranche sur tout recouvrement. Le biais assume reste celui de
+l'en-tete de `flag_carries.go` : se tromper en dessinant le drapeau dans une main qui ne le tient
+plus, jamais en le posant au sol alors qu'un joueur court avec.
+
+**Resultats observes.** Mesure contre la base `feat/v2-durees` HEAD (`0930cc692`, recompilee),
+cinq films re-cuits des deux cotes, un par processus sous verrou. Duree totale portee :
+`bcb6d393` 948 -> 1 423, `e94163af` 664 -> 1 159, `cde26226` 4 119 -> 6 422, `64e8adfa`
+2 441 -> 4 388, `c0a82e88` 67 -> 67. **AUCUN joueur en baisse sur aucun des cinq films**
+(`replay-diff`, axe `duree-totale/par-xuid`), spans masques a 0 partout (10, 17, 63, 41 avant).
+Sur `bcb6d393` : `2533274858283686` TIENT ses 358 frames, `2533274823110022` passe de 441 a 666,
+`2535429985869093` de 96 a 346 ; 0 portage sur son propre drapeau, les trois captures sur le
+drapeau adverse. Deux compteurs de couverture publient desormais ce que les regles ont DECIDE —
+`assignedByPlay` (attribution par elimination) et `dropsWithheld` (lacher retenu) —, tous deux
+servis jusqu'au contrat (`replaydoc` -> `replayview` -> `openapi.yaml` -> `generated.ts`,
+cliquet de parite). Trois mutations jouees rouge puis vert, dont celle de la garde de capture.
+Gates : suite complete `./...` verte, integration `api/wire`, `go build`, `go vet` CGO_ENABLED=0
+sur `domain` et `analysis`, lint 0 issue, golden inchange.
+
+**Conclusion / prochaine etape.** Le schema reste 46 : la sortie change dans le MEME bump, aucun
+artefact 46 n'a encore ete diffuse. UNE decouverte reste au registre, et elle se precise : sur
+`64e8adfa` (2 manches, `closedOverlaps = 10`) sept portages restent sur leur propre drapeau et,
+consequence a dire, la capture de 529 075 ms passe du drapeau adverse a celui du camp de son
+auteur — le portage de 5 169 est l'une de ces sept fautes (prise a 2,3 m du socle de son propre
+camp, les deux drapeaux dehors, la troisieme regle se tait). La regle qui la reparerait (« une
+prise au socle S ne porte pas sur le drapeau de S ») reste REFUTEE par la faute de 6 569 sur le
+meme film. Reprise : faire PARTAGER a l'attribution la machine a etats de `assembleFlagLives`
+plutot que d'en ecrire une seconde copie. Detail :
+`.ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md` §8 ter.
+
+## [2026-09-06] Un joueur portait son propre drapeau — DEFAUT du calque, corrige a la source (schema 46) — Complete
+
+**Le mandat.** Instruire la decouverte n° 1 du lot des durees, laissee non traitee : sur
+`bcb6d393` (CTF:Arena, 3-0, les QUATRE porteurs de l equipe 0) le document publie 15 portages sur
+le drapeau etiquete « equipe 1 » et un seizieme sur celui etiquete « equipe 0 » — impossible, un
+joueur ne porte jamais son propre drapeau (decision utilisateur). Le parc fait pareil : ce n est
+donc pas une regression du chantier. Worktree dedie `LevelUp-wt-v2-drapeaux`, branche
+`feat/v2-drapeaux` basee sur `feat/v2-durees` (revue DUREES-R1 close avant toute modification de
+code, comme prescrit).
+
+**Decision technique principale.** VERDICT : DEFAUT DU CALQUE, pas donnee ambigue — et
+l ETIQUETTE n est pas en cause. Preuve independante par la geometrie de la livraison : les trois
+captures de l equipe 0 se terminent a 0,50 / 0,62 / 0,67 m du socle que le catalogue de carte
+etiquette `team_index = 0` ; on livre le drapeau adverse a SA PROPRE base, donc le catalogue et la
+feuille de match coincident. Le defaut est dans `assignFlags`, et il a DEUX causes cumulees.
+(1) ORDRE : l etat « ou git chaque drapeau » se tenait a jour en parcourant les PRISES, si bien
+que la position de LACHER d un portage y etait inscrite des son attribution — avant d avoir eu
+lieu. Une sonde temporaire posee dans la boucle (puis retiree, fichier verifie identique) le
+montre a la ligne pres : le portage ouvert a 171 941 ms ne se ferme qu a 325 913 ms, et son lacher
+(-6,53 · -2,19) chassait du sol la position (33,61 · 2,48) que la prise suivante venait chercher
+a 0 m. (2) REGLE : le repli sur le socle le plus proche, juste pour un VOL (qui se fait a un socle
+par definition), est FAUX pour une PRISE — elle se fait la ou l objet est tombe, souvent pres du
+socle adverse, c est-a-dire du socle du porteur : ici 10,4 m contre 41,1 m. Correctif :
+`flag_assign.go` (deplacement pur de `assignFlags`/`nearestSpawn`/`nearestDroppedFlag`, plus les
+deux changements) — parcours par EVENEMENTS DATES, fin avant prise a instant egal comme dans
+`assembleFlagLives` ; et troisieme regle « une prise que le sol ne rattache a rien va au SEUL
+drapeau en jeu », qui SE TAIT quand les deux drapeaux sont dehors. On retrecit le repli, on ne le
+supprime pas.
+
+**Resultats observes.** `bcb6d393` : 15 + 1 portages deviennent 16 + 0, les TROIS captures se
+publient sur le drapeau adverse (une l etait sur celui du camp qui marquait), et
+`homeByObject` 2 -> 1 — la capture, fait DATE, remplace une rentree d objet inferee. Trois
+hypotheses refutees sur pieces : retour de drapeau (un `flag_returns` n ouvre aucun portage),
+joueur entre ou sorti en cours de partie (les six sont de l equipe 1, aucun ne porte le drapeau),
+slot re-attribue (`noBridge` = 0, film mono-manche). La premisse « une seule capture est liee »
+est corrigee : les trois portages portaient deja `captured = true`, l un d eux etait simplement
+publie sur le mauvais drapeau. Cinq films re-cuits des deux cotes, un par processus sous verrou :
+`e94163af` (drapeau neutre, 33 portages), `c0a82e88` et `cde26226` sont IDENTIQUES hors ligne de
+schema (`replay-diff` : 1 ecart sur 645 / 569 / 660 mesures, `changements = 0` partout) ;
+`64e8adfa` passe de 13 a 7 fautes. Quatre tests neufs, quatre mutations jouees rouge puis vert.
+Gates verts : 23 paquets unitaires, integration `api/wire`, `go build`, lint 0 issue. Golden
+d assemblage regenere : une seule ligne de diff, la version.
+
+**Conclusion / prochaine etape.** Schema 45 -> 46 (44 reserve aux manches, 45 aux durees) :
+un artefact 45 attribue un portage — et sa capture — au mauvais drapeau sans que sa forme le dise,
+et `backfill-replay` saute un artefact a la version courante. TROIS decouvertes portees au
+registre et NON traitees : (a) les 7 fautes residuelles de `64e8adfa` (film a 2 manches, les deux
+drapeaux dehors, ou `enJeu` perime parce que les retours credites et les rentrees d objet ne sont
+pas visibles a cet endroit) — la reprise demande de PARTAGER la machine a etats de
+`assembleFlagLives` au lieu d en ecrire une copie, et une regle tentante y est deja refutee sur
+pieces ; (b) un portage ferme par la prise SUIVANTE DU MEME JOUEUR se publie `dropped` alors qu il
+est porte (10 sur 16 sur `bcb6d393`, avant comme apres — la fin est datee une frame APRES
+l ouverture suivante), defaut preexistant dont ce lot subit une consequence mesuree : la duree
+publiee de `2533274858283686` passe de 358 a 282 frames, le portage etant desormais au milieu du
+trafic du bon drapeau ; (c) aucun compteur de couverture ne publie ce que la troisieme regle a
+decide. Detail : `.ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md`.
 ## [2026-09-07] Lot « vies anonymes » — decision produit, nommage a la source, 9 constats corriges (schema 47) — Complete
 
 **Le mandat.** Corriger cote Go les 9 constats Go de l audit adversarial des lecteurs de vies

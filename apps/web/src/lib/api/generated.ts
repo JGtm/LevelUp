@@ -6487,6 +6487,8 @@ export interface components {
             /** Format: int64 */
             ambiguousSlot: number;
             /** Format: int64 */
+            assignedByPlay: number;
+            /** Format: int64 */
             bursts: number;
             /** Format: int64 */
             captures: number;
@@ -6500,6 +6502,8 @@ export interface components {
             closedOverlaps: number;
             /** Format: int64 */
             dropsRepositioned: number;
+            /** Format: int64 */
+            dropsWithheld: number;
             flagFilm: boolean;
             /** Format: int64 */
             homeByObject: number;
@@ -6529,11 +6533,15 @@ export interface components {
             /** Format: int64 */
             overlaps: number;
             /** Format: int64 */
+            ownFlagRefused: number;
+            /** Format: int64 */
             spawns: number;
             /** Format: int64 */
             steals: number;
             /** Format: int64 */
             teamBirths: number;
+            /** Format: int64 */
+            unresolved: number;
         };
         FlagCarry: {
             spans: components["schemas"]["FlagSpan"][] | null;

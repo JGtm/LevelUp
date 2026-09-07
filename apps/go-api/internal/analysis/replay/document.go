@@ -863,6 +863,30 @@ package replay
 // La version monte pour la raison des montées v39 à v44 : un artefact 36 à 44 est appauvri sans
 // que sa forme le dise. Détail : internal/analysis/replay/{equipment_episodes.go, flag_carries.go}
 // et .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
+//
+// v46 (2026-09-06) : UN JOUEUR NE PORTE PLUS SON PROPRE DRAPEAU. Aucun champ n'est ajouté ;
+// c'est le CONTENU de `flagCarries` qui change — l'attribution d'un portage à l'un des deux
+// drapeaux, et donc la CAPTURE qui le ferme.
+//
+//	l'ordre   `assignFlags` tenait « où git chaque drapeau » en parcourant les PRISES : la
+//	          position de LÂCHER d'un portage y était inscrite dès son attribution, donc avant
+//	          d'avoir eu lieu. Deux portages qui se recouvrent suffisent. `bcb6d393` : le portage
+//	          ouvert à 171 941 ms ne se ferme qu'à 325 913 ms, et sa position de lâcher chassait
+//	          du sol celle que la prise suivante venait chercher à 0 m. Le parcours se fait
+//	          désormais par ÉVÉNEMENTS DATÉS (une fin pose, une prise enlève).
+//	la règle   Le repli sur le socle le plus proche est juste pour un VOL (il se fait à un socle)
+//	          et faux pour une PRISE, qui se fait là où l'objet est tombé — souvent près du socle
+//	          ADVERSE, c'est-à-dire de celui du porteur. Une prise que rien ne rattache au sol va
+//	          désormais au drapeau DÉJÀ EN JEU quand il est le seul ; à deux, la règle se tait.
+//
+// Mesure `bcb6d393` (CTF:Arena 3-0, quatre porteurs de l'équipe 0) : 15 portages sur le drapeau
+// de l'équipe 1 et 1 sur celui de l'équipe 0 -> 16 sur 0, et les TROIS captures reviennent sur
+// le drapeau adverse (une y était publiée sur le drapeau du camp qui marquait). La version monte
+// pour la raison des montées v39 à v45 : un artefact 45 attribue un portage — et sa capture — au
+// mauvais drapeau sans que sa forme le dise, et `backfill-replay` saute un artefact à la version
+// courante. Détail : internal/analysis/replay/flag_assign.go et
+// .ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md.
+//
 // v47 (2026-09-07) : AUCUNE VIE PUBLIEE NE RESTE SANS NOM, ET LES LECTEURS LISENT LA PISTE SOUS
 // L'IDENTITE RESOLUE DE SON SLOT. NEUF champs de couverture s'ajoutent — cinq au pont
 // (`bridge.namedByPreviousLife/namedByNextLife/namedBySlotBridge/unnamedLives/
@@ -917,9 +941,9 @@ package replay
 //	              celle qui a produit `spanFor` au v45. `unionOverlap`. skull_carries.go.
 //
 // La version monte pour la raison des montees v39 a v45 : un artefact 36 a 46 est appauvri sans
-// que sa forme le dise, et `backfill-replay` saute un artefact a la version courante. 44 et 45
-// sont deja integres (manches, durees) ; 46 reste reserve au lot des drapeaux, en cours sur une
-// autre branche : deux chantiers paralleles ne peuvent pas revendiquer le meme numero.
+// que sa forme le dise, et `backfill-replay` saute un artefact a la version courante. 44, 45 et
+// 46 sont deja integres (manches, durees, DRAPEAUX) : la chronique ci-dessus les porte dans
+// l'ordre, et aucun numero n'est plus reserve.
 // Detail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
 //
 // v48 (2026-09-07) : LE PONT D'IDENTITE CESSE D'ETRE MUET SUR LES FILMS DONT LA PREMIERE FIN DE

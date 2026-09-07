@@ -5,6 +5,8 @@ import (
 
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/port"
 )
 
 // flagidentity_test.go — LE PONT D'IDENTITE DESCEND JUSQU'AU CALQUE DU DRAPEAU (schema 42).
@@ -147,4 +149,40 @@ func TestPontParMancheNeResoutQuUneFois(t *testing.T) {
 		t.Errorf("second appel : slot 12 = %q, attendu \"bbb\" — le pont a ete re-resolu au lieu "+
 			"d'etre memorise", x)
 	}
+}
+
+// TestFlagInputPorteLesEquipesDesLignesDeMatch — LE CABLAGE DE L'INVARIANT DUR (DRAPEAUX-R1, C1).
+//
+// L'invariant « un portage n'est JAMAIS pose sur le drapeau de l'equipe de son porteur » vit dans
+// le calque, mais il est MUET sans la table xuid -> equipe : c'est ce cablage-ci qui l'allume, et
+// il s'est deja tu une fois faute d'etre pose jusqu'au bout. Une equipe INCONNUE (-1 en base)
+// n'entre pas : l'invariant ne doit refuser que sur une equipe LUE.
+func TestFlagInputPorteLesEquipesDesLignesDeMatch(t *testing.T) {
+	facts := port.MatchFacts{Players: []domain.MatchPlayerFact{
+		{XUID: "aaa", TeamID: 0},
+		{XUID: "bbb", TeamID: 1},
+		{XUID: "ccc", TeamID: -1}, // equipe absente de la base
+		{XUID: "", TeamID: 0},     // ligne sans xuid
+	}}
+	got := equipesParXUID(facts)
+	if len(got) != 2 || got["aaa"] != 0 || got["bbb"] != 1 {
+		t.Fatalf("table des equipes %v, attendu {aaa:0, bbb:1} — une equipe inconnue n'entre pas", got)
+	}
+	if _, ok := got["ccc"]; ok {
+		t.Errorf("l'equipe -1 de « ccc » ne doit pas entrer : l'invariant refuserait sur une absence")
+	}
+	if equipesParXUID(port.MatchFacts{}) != nil {
+		t.Errorf("sans lignes de match la table est nil : l'invariant se tait, le calque reste hors ligne")
+	}
+}
+
+// TestFlagInputDescendLesEquipesJusquAuScan — la table traverse `FlagInput` jusqu'au calque.
+func TestFlagInputDescendLesEquipesJusquAuScan(t *testing.T) {
+	recs, _, _, bursts := monoRoundCTFFixture()
+	facts := port.MatchFacts{Players: []domain.MatchPlayerFact{{XUID: "aaa", TeamID: 1}}}
+	in := flagInput(recs, nil, &pontParManche{}, facts)
+	if in.TeamOf["aaa"] != 1 {
+		t.Fatalf("FlagInput.TeamOf = %v, attendu {aaa:1} — sans elle l'invariant dur est muet", in.TeamOf)
+	}
+	_ = bursts
 }

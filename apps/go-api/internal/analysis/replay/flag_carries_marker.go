@@ -89,8 +89,17 @@ func tallyFlagCarries(raws []flagCarryRaw, cov *FlagCarriesCoverage) {
 	}
 }
 
-// countFlagOverlaps compte les prises pour lesquelles plus de deux portages sont ouverts. En CTF
-// il y a deux drapeaux : au-dela, la lecture se contredit, et on le publie.
+// countFlagOverlaps compte les prises pour lesquelles UN MEME DRAPEAU est tenu par plus d'un
+// portage a la fois. Un drapeau n'a qu'un porteur : deux portages du meme drapeau qui se
+// recouvrent sont une INCOHERENCE, et elle se publie plutot que de se taire.
+//
+// LE COMPTE ETAIT TOUS DRAPEAUX CONFONDUS, ET IL RATAIT LE CAS NOMINAL (revue DRAPEAUX-R1,
+// constat C3, 2026-09-07) : il exigeait plus de DEUX portages ouverts sans regarder `flagIndex`,
+// si bien que deux porteurs du MEME drapeau — le recouvrement qui fait vraiment se contredire le
+// calque — n'y entraient pas. Mesure du relecteur sur un banc a deux porteurs et un drapeau :
+// `overlaps = 0`, `closedOverlaps = 0`. Le seuil est desormais « plus d'UN portage sur LE MEME
+// drapeau », et les portages non attribues (`flagIndex < 0`) n'y entrent pas — ils ne pretendent
+// tenir aucun drapeau.
 //
 // Rend DEUX comptes : sur tous les portages, puis sur les seuls FERMES. Le second est celui qui
 // juge — un depassement porte par des portages que rien ne ferme est explique par leur duree
@@ -98,8 +107,14 @@ func tallyFlagCarries(raws []flagCarryRaw, cov *FlagCarriesCoverage) {
 // FERMES serait une contradiction entre faits dates.
 func countFlagOverlaps(raws []flagCarryRaw) (all, closed int) {
 	for i := range raws {
+		if raws[i].flagIndex < 0 {
+			continue
+		}
 		open, openClosed := 0, 0
 		for j := range raws {
+			if raws[j].flagIndex != raws[i].flagIndex {
+				continue
+			}
 			if raws[j].t0 > raws[i].t0 || raws[i].t0 >= raws[j].t1 {
 				continue
 			}
@@ -108,10 +123,10 @@ func countFlagOverlaps(raws []flagCarryRaw) (all, closed int) {
 				openClosed++
 			}
 		}
-		if open > 2 {
+		if open > 1 {
 			all++
 		}
-		if openClosed > 2 && raws[i].closed {
+		if openClosed > 1 && raws[i].closed {
 			closed++
 		}
 	}
