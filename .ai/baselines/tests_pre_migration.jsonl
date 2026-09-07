@@ -2012,14 +2012,6 @@
 {"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestBestRatioMatch_FindsBest","Output":"=== RUN   TestBestRatioMatch_FindsBest\n"}
 {"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestBestRatioMatch_FindsBest","Output":"--- PASS: TestBestRatioMatch_FindsBest (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestBestRatioMatch_FindsBest","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_Win"}
-{"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_Win","Output":"=== RUN   TestOutcomeLabel_Win\n"}
-{"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_Win","Output":"--- PASS: TestOutcomeLabel_Win (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_Win","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_Unknown"}
-{"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_Unknown","Output":"=== RUN   TestOutcomeLabel_Unknown\n"}
-{"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_Unknown","Output":"--- PASS: TestOutcomeLabel_Unknown (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_Unknown","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeTone_Win"}
 {"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeTone_Win","Output":"=== RUN   TestOutcomeTone_Win\n"}
 {"Time":"2026-06-26T23:45:09.8255354+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeTone_Win","Output":"--- PASS: TestOutcomeTone_Win (0.00s)\n"}
@@ -2092,30 +2084,6 @@
 {"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestLabelForLocale_FR_FallbackEN","Output":"=== RUN   TestLabelForLocale_FR_FallbackEN\n"}
 {"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestLabelForLocale_FR_FallbackEN","Output":"=== PAUSE TestLabelForLocale_FR_FallbackEN\n"}
 {"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestLabelForLocale_FR_FallbackEN"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Win"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Win","Output":"=== RUN   TestOutcomeLabelForLocale_EN_Win\n"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Win","Output":"=== PAUSE TestOutcomeLabelForLocale_EN_Win\n"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Win"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Loss"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Loss","Output":"=== RUN   TestOutcomeLabelForLocale_EN_Loss\n"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Loss","Output":"=== PAUSE TestOutcomeLabelForLocale_EN_Loss\n"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Loss"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Unknown"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Unknown","Output":"=== RUN   TestOutcomeLabelForLocale_EN_Unknown\n"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Unknown","Output":"=== PAUSE TestOutcomeLabelForLocale_EN_Unknown\n"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Unknown"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Win"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Win","Output":"=== RUN   TestOutcomeLabelForLocale_FR_Win\n"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Win","Output":"=== PAUSE TestOutcomeLabelForLocale_FR_Win\n"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Win"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Unknown"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Unknown","Output":"=== RUN   TestOutcomeLabelForLocale_FR_Unknown\n"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Unknown","Output":"=== PAUSE TestOutcomeLabelForLocale_FR_Unknown\n"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Unknown"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_AllKnown"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_AllKnown","Output":"=== RUN   TestOutcomeLabel_AllKnown\n"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_AllKnown","Output":"=== PAUSE TestOutcomeLabel_AllKnown\n"}
-{"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_AllKnown"}
 {"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeTone_AllKnown"}
 {"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeTone_AllKnown","Output":"=== RUN   TestOutcomeTone_AllKnown\n"}
 {"Time":"2026-06-26T23:45:09.8260551+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeTone_AllKnown","Output":"=== PAUSE TestOutcomeTone_AllKnown\n"}
@@ -4862,8 +4830,6 @@
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestBuildCanonicalSkillBadge_EmptyTierCodeReturnsNil","Output":"=== CONT  TestBuildCanonicalSkillBadge_EmptyTierCodeReturnsNil\n"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestNextSubTierLabel/Onyx_→_nil_(déjà_au_sommet)"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestNextSubTierLabel/Onyx_→_nil_(déjà_au_sommet)","Output":"=== RUN   TestNextSubTierLabel/Onyx_→_nil_(déjà_au_sommet)\n"}
-{"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_AllKnown"}
-{"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_AllKnown","Output":"=== CONT  TestOutcomeLabel_AllKnown\n"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestNextSubTierLabel/Onyx_→_nil_(déjà_au_sommet)","Output":"=== PAUSE TestNextSubTierLabel/Onyx_→_nil_(déjà_au_sommet)\n"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestNextSubTierLabel/Onyx_→_nil_(déjà_au_sommet)"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeTone_AllKnown"}
@@ -4876,20 +4842,12 @@
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestLabelForLocale_FR","Output":"=== CONT  TestLabelForLocale_FR\n"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestLabelForLocale_EN_PrefersEN"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestLabelForLocale_EN_PrefersEN","Output":"=== CONT  TestLabelForLocale_EN_PrefersEN\n"}
-{"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Unknown"}
-{"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Unknown","Output":"=== CONT  TestOutcomeLabelForLocale_FR_Unknown\n"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestBestKDAMatchCanonical_AllNil"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestBestKDAMatchCanonical_AllNil","Output":"=== CONT  TestBestKDAMatchCanonical_AllNil\n"}
-{"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Win"}
-{"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Win","Output":"=== CONT  TestOutcomeLabelForLocale_FR_Win\n"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestBestKDAMatchCanonical_Empty"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestBestKDAMatchCanonical_Empty","Output":"=== CONT  TestBestKDAMatchCanonical_Empty\n"}
-{"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Unknown"}
-{"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Unknown","Output":"=== CONT  TestOutcomeLabelForLocale_EN_Unknown\n"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestNextSubTierLabel/sous-palier_0_(placement)_→_nil","Output":"=== PAUSE TestNextSubTierLabel/sous-palier_0_(placement)_→_nil\n"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis","Test":"TestNextSubTierLabel/sous-palier_0_(placement)_→_nil"}
-{"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Loss"}
-{"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Loss","Output":"=== CONT  TestOutcomeLabelForLocale_EN_Loss\n"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestDominantNameFromRows_AllEmpty"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestDominantNameFromRows_AllEmpty","Output":"=== CONT  TestDominantNameFromRows_AllEmpty\n"}
 {"Time":"2026-06-26T23:45:09.8349919+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestDominantNameFromRows_KeyFromFROnly"}
@@ -5048,8 +5006,6 @@
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestBuildNeighborsWhereClause_Playlist","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PairModeEmptyFallbackGameVariant"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PairModeEmptyFallbackGameVariant","Output":"=== CONT  TestModeLabels_PairModeEmptyFallbackGameVariant\n"}
-{"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Win"}
-{"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Win","Output":"=== CONT  TestOutcomeLabelForLocale_EN_Win\n"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestSkillTierBand/sous-palier_hors_borne_→_pas_de_bande"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestSkillTierBand/sous-palier_hors_borne_→_pas_de_bande","Output":"=== CONT  TestSkillTierBand/sous-palier_hors_borne_→_pas_de_bande\n"}
 {"Time":"2026-06-26T23:45:09.8354974+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis","Test":"TestSkillTierBand/Gold_IV_→_4/6"}
@@ -5488,8 +5444,6 @@
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestBuildHomeScoreLabel_TeamZero","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestBuildCanonicalSkillBadge_EmptyTierCodeReturnsNil","Output":"--- PASS: TestBuildCanonicalSkillBadge_EmptyTierCodeReturnsNil (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestBuildCanonicalSkillBadge_EmptyTierCodeReturnsNil","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_AllKnown","Output":"--- PASS: TestOutcomeLabel_AllKnown (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabel_AllKnown","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeTone_AllKnown","Output":"--- PASS: TestOutcomeTone_AllKnown (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeTone_AllKnown","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestLabelForLocale_EN_FallbackFR","Output":"--- PASS: TestLabelForLocale_EN_FallbackFR (0.00s)\n"}
@@ -5500,16 +5454,8 @@
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestLabelForLocale_EN_PrefersEN","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestBestKDAMatchCanonical_AllNil","Output":"--- PASS: TestBestKDAMatchCanonical_AllNil (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestBestKDAMatchCanonical_AllNil","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Unknown","Output":"--- PASS: TestOutcomeLabelForLocale_FR_Unknown (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Unknown","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Win","Output":"--- PASS: TestOutcomeLabelForLocale_FR_Win (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_FR_Win","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestBestKDAMatchCanonical_Empty","Output":"--- PASS: TestBestKDAMatchCanonical_Empty (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestBestKDAMatchCanonical_Empty","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Unknown","Output":"--- PASS: TestOutcomeLabelForLocale_EN_Unknown (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Unknown","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Loss","Output":"--- PASS: TestOutcomeLabelForLocale_EN_Loss (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Loss","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestDominantNameFromRows_AllEmpty","Output":"--- PASS: TestDominantNameFromRows_AllEmpty (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestDominantNameFromRows_AllEmpty","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8370432+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestDominantNameFromRows_KeyFromFROnly","Output":"--- PASS: TestDominantNameFromRows_KeyFromFROnly (0.00s)\n"}
@@ -5624,8 +5570,6 @@
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestBuildCanonicalSkillBadge_SubTierOutOfRange","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PairModeEmptyFallbackGameVariant","Output":"--- PASS: TestModeLabels_PairModeEmptyFallbackGameVariant (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestModeLabels_PairModeEmptyFallbackGameVariant","Elapsed":0}
-{"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Win","Output":"--- PASS: TestOutcomeLabelForLocale_EN_Win (0.00s)\n"}
-{"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestOutcomeLabelForLocale_EN_Win","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestSelectHighlightWindow_FiltersDissimilarSessions","Output":"--- PASS: TestSelectHighlightWindow_FiltersDissimilarSessions (0.00s)\n"}
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestSelectHighlightWindow_FiltersDissimilarSessions","Elapsed":0}
 {"Time":"2026-06-26T23:45:09.8375604+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestAssetLabels_Nil","Output":"--- PASS: TestAssetLabels_Nil (0.00s)\n"}
