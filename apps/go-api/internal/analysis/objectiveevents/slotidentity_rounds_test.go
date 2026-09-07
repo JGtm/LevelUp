@@ -120,7 +120,7 @@ func TestIdentifyNamedEventsByRoundReassignedSlot(t *testing.T) {
 		{TimeMS: 12000, Slot: 22, Stat: StatFlagCaptures}, // manche 1 -> B
 	}
 
-	byRound := IdentifyNamedEventsByRound(named, ResolveRoundIdentity(recs, deaths))
+	byRound, _ := IdentifyNamedEventsByRound(named, ResolveRoundIdentity(recs, deaths))
 	if len(byRound) != 2 {
 		t.Fatalf("pont par manche : %d action(s) identifiee(s), attendu 2 : %+v", len(byRound), byRound)
 	}
@@ -160,7 +160,7 @@ func TestIdentifyNamedEventsByRoundMonoNeutral(t *testing.T) {
 		{TimeMS: 2000, Slot: 22, Stat: StatFlagCaptures},
 		{TimeMS: 2500, Slot: 20, Stat: StatFlagReturns},
 	}
-	byRound := IdentifyNamedEventsByRound(named, ResolveRoundIdentity(recs, deaths))
+	byRound, _ := IdentifyNamedEventsByRound(named, ResolveRoundIdentity(recs, deaths))
 	flat := IdentifyNamedEvents(named, SlotIdentityByDeaths(recs, deaths))
 	if !reflect.DeepEqual(byRound, flat) {
 		t.Errorf("mono-manche : par manche %+v != pont plat %+v", byRound, flat)

@@ -42,6 +42,10 @@
   `.ai/thought_log.md` par tâche close. Découvertes hors périmètre : consignées, pas traitées.
 - Doctrine : CLAUDE.md (règles 1-16, ART, anti-patterns), skills `arch-rules`,
   `frontend-patterns`, `color-tokens`, `db-schema`. Aucun emoji dans les fichiers versionnés.
+- Gate de non-régression du rejeu (`make replay-corpus-gate`, `cmd/replay-corpus-gate`,
+  manifeste `config/replay_corpus.toml`) : à lancer AVANT tout merge qui touche
+  `analysis/replay`, `replaybuild`, `filmdec`, ou qui bumpe `SchemaVersion` — cf.
+  docs/COMMANDS.md et `.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`.
 
 ## Protocole de revue et d'intégration
 
@@ -690,3 +694,18 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   identique — tous verts. Ouverts au registre : `51ebbc0f` découpe par manche des compteurs
   par joueur (63 assistances pour 5, déjà au `REGISTRE_REPORTS.md`) et l'angle mort du
   comparateur sur les intervalles rognés.
+- 2026-09-07 11:41 : INTÉGRATION DÉPORTÉE feat/v2-integ (worktree LevelUp-wt-v2-integ, base
+  a059caefc, schéma 43) : le principal feat/v75 est resté bloqué par une modification non
+  committée d'une autre session sur .ai/thought_log.md (frise du rejeu, worktree
+  LevelUp-wt-frise-pov) — jamais touchée, jamais stash. Sept branches fusionnées, gates complets
+  après chacune : manches `90ca609a0` (44), durées `6af8f6db8` (45), corpus `0d862af0a` (0
+  conflit, aucun bump), web-vies `7cdb0e56f` (0 conflit, gates web), vies-anonymes `eb7a3dfbd`
+  (47 ; conflit sur flag_carrier_tracks.go d'abord aborté, retenté après alignement de la
+  branche), pont-muet `ee4084c14` (48, 0 conflit), drapeaux `1b32fc775` (46 ; conflit sur
+  matchfacts.go d'abord aborté, retenté après alignement de la branche). SchemaVersion final 48,
+  chronique 44/45/46/47/48 ordonnée, aucune phrase de réservation restante. Deux flakes Windows
+  rencontrés et confirmés préexistants (isolé vert, `-p 1` série vert) : `mapcatalog`
+  (`TestAddOverlayEntryConcurrentDossierAbsentNePerdRien`) et `internal/api/handlers`
+  (`TestStartImport_HappyPathReturns202WithJobID`, consigné au `REGISTRE_REPORTS.md`).
+  `feat/v2-integ` prêt à être fast-forwardé dans `feat/v75` dès que le blocage du principal est
+  levé.

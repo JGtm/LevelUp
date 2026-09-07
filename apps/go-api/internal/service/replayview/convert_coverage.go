@@ -56,17 +56,24 @@ func toLayerCoverage(v replay.LayerCoverage) replaydoc.LayerCoverage {
 
 func toBridgeHealth(v replay.BridgeHealth) replaydoc.BridgeHealth {
 	return replaydoc.BridgeHealth{
-		Slots:              v.Slots,
-		FromReading:        v.FromReading,
-		LivesNamed:         v.LivesNamed,
-		LivesTotal:         v.LivesTotal,
-		IndexReadings:      v.IndexReadings,
-		IndexDisagreements: v.IndexDisagreements,
-		SlotCollisions:     v.SlotCollisions,
-		ClosedByShot:       v.ClosedByShot,
-		ClosedByRespawn:    v.ClosedByRespawn,
-		ClosedContested:    v.ClosedContested,
-		ClosedRefused:      v.ClosedRefused,
+		Slots:                 v.Slots,
+		FromReading:           v.FromReading,
+		LivesNamed:            v.LivesNamed,
+		LivesTotal:            v.LivesTotal,
+		IndexReadings:         v.IndexReadings,
+		IndexDisagreements:    v.IndexDisagreements,
+		SlotCollisions:        v.SlotCollisions,
+		NamedByPreviousLife:   v.NamedByPreviousLife,
+		NamedByNextLife:       v.NamedByNextLife,
+		NamedBySlotBridge:     v.NamedBySlotBridge,
+		UnnamedLives:          v.UnnamedLives,
+		UnnamedLivesContested: v.UnnamedLivesContested,
+		DeathOffsetMatched:    v.DeathOffsetMatched,
+		DeathOffsetRunnerUp:   v.DeathOffsetRunnerUp,
+		ClosedByShot:          v.ClosedByShot,
+		ClosedByRespawn:       v.ClosedByRespawn,
+		ClosedContested:       v.ClosedContested,
+		ClosedRefused:         v.ClosedRefused,
 	}
 }
 

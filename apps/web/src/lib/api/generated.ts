@@ -4764,6 +4764,10 @@ export interface components {
             /** Format: int64 */
             closedRefused: number;
             /** Format: int64 */
+            deathOffsetMatched: number;
+            /** Format: int64 */
+            deathOffsetRunnerUp: number;
+            /** Format: int64 */
             fromReading: number;
             /** Format: int64 */
             indexDisagreements: number;
@@ -4774,9 +4778,19 @@ export interface components {
             /** Format: int64 */
             livesTotal: number;
             /** Format: int64 */
+            namedByNextLife: number;
+            /** Format: int64 */
+            namedByPreviousLife: number;
+            /** Format: int64 */
+            namedBySlotBridge: number;
+            /** Format: int64 */
             slotCollisions: number;
             /** Format: int64 */
             slots: number;
+            /** Format: int64 */
+            unnamedLives: number;
+            /** Format: int64 */
+            unnamedLivesContested: number;
         };
         BucketInfo: {
             label: string;
@@ -6471,6 +6485,10 @@ export interface components {
             /** Format: int64 */
             ambiguousReturns: number;
             /** Format: int64 */
+            ambiguousSlot: number;
+            /** Format: int64 */
+            assignedByPlay: number;
+            /** Format: int64 */
             bursts: number;
             /** Format: int64 */
             captures: number;
@@ -6484,6 +6502,8 @@ export interface components {
             closedOverlaps: number;
             /** Format: int64 */
             dropsRepositioned: number;
+            /** Format: int64 */
+            dropsWithheld: number;
             flagFilm: boolean;
             /** Format: int64 */
             homeByObject: number;
@@ -6513,11 +6533,15 @@ export interface components {
             /** Format: int64 */
             overlaps: number;
             /** Format: int64 */
+            ownFlagRefused: number;
+            /** Format: int64 */
             spawns: number;
             /** Format: int64 */
             steals: number;
             /** Format: int64 */
             teamBirths: number;
+            /** Format: int64 */
+            unresolved: number;
         };
         FlagCarry: {
             spans: components["schemas"]["FlagSpan"][] | null;
@@ -12241,6 +12265,8 @@ export interface components {
         };
         ZonesCoverage: {
             /** Format: int64 */
+            ambiguousZone: number;
+            /** Format: int64 */
             attributed: number;
             /** Format: int64 */
             captures: number;
@@ -12253,6 +12279,10 @@ export interface components {
             /** Format: int64 */
             letters: number;
             method: string;
+            /** Format: int64 */
+            noPosition: number;
+            /** Format: int64 */
+            outside: number;
             /** Format: int64 */
             ownerAgreed: number;
             /** Format: int64 */

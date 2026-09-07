@@ -521,6 +521,86 @@ the previous commit, which yields bit-identical numbers. Nobody could see it bef
 corpus never ran to completion, and CI does not execute it. Tracked in
 `.ai/V7.5/REGISTRE_REPORTS.md`.
 
+#### Replay non-regression gate on a witness corpus (`cmd/replay-corpus-gate`)
+
+Three data regressions (2026-08-28, 08-30, 09-02 — identity bridge per round, unattributed
+flag actions, "one track = one life") sailed through green SYNTHETIC goldens for nineteen
+schema bumps, because nothing diffed real films. `cmd/replay-diff` (used for the one-off
+parc sweep, `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`) turns that manual method into a repeatable
+gate: `config/replay_corpus.toml` freezes one witness match per mode family (CTF single- and
+multi-round, Oddball, Assault, Slayer, a two-round match, a vehicle-heavy match), each chosen
+because it already carries a measured layer or defect (skull carries, the multi-round identity
+bridge, dense vehicle occupancy...). Every axis `cmd/replay-diff` knows is compared (including
+the "summed duration per layer" axis, which catches a trimmed interval that a plain element
+count misses).
+
+**Two reference modes** (decided 2026-09-06, after a first version that compared HEAD to the
+dev parc rendered LOSS on all 7 witnesses at the best known state — a gate that always fails
+gates nothing):
+
+- `--reference=base` (**default**): bakes each witness TWICE — once with HEAD's code, once
+  with a **base revision**'s code (default: `origin/feat/v75` if HEAD differs from it,
+  otherwise `HEAD^` — a detached temporary worktree is created for the base revision and
+  removed afterwards, even on failure) — then diffs the two fresh artifacts. Any loss exits 1.
+  This is the gate to run before merging: the signal is binary, a loss can only come from the
+  diff under review, never from the parc's age.
+- `--reference=parc`: diffs HEAD against the artifact already baked in the local parc (the
+  original, historical method — a release-time sweep). **Informative by default** (prints the
+  table, exits 0) — pass `--strict` to make it exit 1 on loss too.
+
+In both modes the working root is disposable (copied inputs only, config/catalogs from the
+checked-out branch or the base worktree, film chunks from the dev parc — **never writes into
+the parc**), and the gate never bumps a schema — it only compares.
+
+```bash
+make replay-corpus-gate                                      # default: base mode, whole manifest
+cd apps/go-api && go run ./cmd/replay-corpus-gate             # same, with all flags available
+cd apps/go-api && go run ./cmd/replay-corpus-gate \
+  --reference=parc                                            # informative sweep against the parc
+cd apps/go-api && go run ./cmd/replay-corpus-gate \
+  --base=HEAD~3                                               # explicit base revision
+```
+
+**Coverage floor (2026-09-07, CORPUS-R1 C3)**: by default, **every** witness in the manifest
+must be baked and compared — a purged or partial film cache used to leave every witness
+ABSENT, and the gate silently exited 0 having compared nothing (`codeSortie` skips ABSENT
+lines). One or more ABSENT witnesses now exit 2, naming which ones and why; pass
+`--allow-missing` to restore the old behavior (a `slog` warning only, never a failure) for a
+deliberate partial run.
+
+**All flags** (`cd apps/go-api && go run ./cmd/replay-corpus-gate -h` for the live list):
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--reference` | `base` | `base` (fresh bake vs. a base revision) or `parc` (vs. the already-baked parc artifact) |
+| `--base` | auto (see above) | explicit base revision in `--reference=base` mode |
+| `--strict` | `false` | in `--reference=parc` mode, a loss also exits 1 (no effect in base mode, already blocking) |
+| `--allow-missing` | `false` | tolerate an ABSENT witness (warning only) instead of exiting 2 |
+| `--manifest` | `<source-root>/config/replay_corpus.toml` | manifest path |
+| `--source-root` | `git rev-parse --show-toplevel` | repo whose HEAD code/config is under test — **not** `db_profiles.json`-based: works from any worktree, including one without a local copy of that file |
+| `--parc-root` | `source-root` if it already carries the title's shared DB, else auto-detected via the common `.git` | the dev parc (film chunks, `--reference=parc` artifacts) |
+| `--lock-root` | `CacheRootDir()` of the parc | where the shared decode lock lives |
+| `--work-root` | a disposable temp dir | working root for the fresh bake(s) |
+| `--keep-work` | `false` | keep the working root after the run (debugging) |
+| `--json` | (none) | path to also write the full report as JSON |
+
+**Run it before merging anything that touches** `analysis/replay`, `replaybuild`, `filmdec`, or
+that bumps `SchemaVersion`. **Requires**: the local dev parc (film chunks; + already-baked
+artifacts under `data/cache/replays` in `--reference=parc` mode) and read access to the title's
+shared DB (for match facts, via `levelup replay-facts-export` run as a subprocess, per witness —
+the only step that needs CGO/gcc; one witness unknown to the registry only skips that witness,
+never the whole batch). **Does NOT require the installed game**: baking itself (a
+`cmd/replay-build` binary, compiled on the fly for HEAD and, in base mode, for the base
+revision) only reads versioned catalogs (`data/titles/{slug}/reference`), unlike the
+`gamefiles` corpus above — the gate only shares its *spirit* (a large local resource, absent in
+CI, degrades cleanly instead of failing). Measured 2026-09-06/07 on the 7-witness manifest,
+both modes: **cf. `.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** for the exact runs and durations.
+
+If the local parc is older than HEAD, `--reference=parc` diffs are expected to show GAINS (new
+layers, documented fixes); any LOSS is a fact to report, never to hide by narrowing the
+manifest or filtering the report.
+
+
 ### Frontend (`apps/web`)
 
 ```bash

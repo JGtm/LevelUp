@@ -160,8 +160,14 @@ linters:
       # commandes du rejeu. Le gate de lint est un RATCHET
       # (--new-from-merge-base=origin/main, Makefile:307) : l'exemption ne dispensait
       # donc pas le passe, elle dispensait le code NEUF de ces binaires — exactement
-      # l'inverse de ce qu'on veut. Les cinq repassent au regime normal ; les autres
+      # l'inverse de ce qu'on veut. Ces cinq repassent au regime normal ; les autres
       # cmd/ (170+ sondes et scripts) gardent l'exemption.
+      #
+      # SIXIEME AJOUT (2026-09-07, CORPUS-R1 C7) : cmd/replay-corpus-gate — l'exemption
+      # masquait 12 constats sur ce binaire NEUF (unused : freshArtifactPath mort dans
+      # compare.go ; unparam ; gocyclo ; 7 noctx ; goconst), exactement le defaut que le
+      # H7 ci-dessus corrigeait deja pour les cinq autres. Corriges dans le meme commit
+      # que cet ajout.
       #
       # POURQUOI CETTE FORME, ET PAS `path` + `path-except` : golangci-lint v2 REFUSE
       # les deux sur la meme regle (« path and path-except should not be set at the
@@ -169,10 +175,10 @@ linters:
       # l'execution le dit). `path-except` seul doit donc porter TOUTE la condition
       # negative, y compris « hors de cmd/ ». RE2 n'a pas de lookahead : la premiere
       # alternative nie le prefixe `cmd/` caractere par caractere (tout chemin qui ne
-      # commence pas par `cmd/`), la seconde nomme les cinq binaires. Une regle qui
+      # commence pas par `cmd/`), la seconde nomme les six binaires. Une regle qui
       # oublierait la premiere alternative exempterait TOUT `internal/` de ces douze
       # linters.
-      - path-except: "^(?:[^c]|c[^m]|cm[^d]|cmd[^/])|^cmd/(server|levelup|replay-worker|replay-build|replay-equiv)/"
+      - path-except: "^(?:[^c]|c[^m]|cm[^d]|cmd[^/])|^cmd/(server|levelup|replay-worker|replay-build|replay-equiv|replay-corpus-gate)/"
         linters:
           - funlen
           - lll

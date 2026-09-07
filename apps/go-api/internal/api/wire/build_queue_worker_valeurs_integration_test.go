@@ -100,7 +100,14 @@ const (
 	valeurIntervalleMS = 100
 	valeurDureeMS      = 78100
 	valeurNbTracks     = 22
-	valeurNbAnonymes   = 2
+	// valeurNbAnonymes : les vies que MEME le nommage final ne resout pas.
+	//
+	// 2 -> 1 au schema 47 (2026-09-07). Depuis la decision produit « les vies anonymes
+	// n existent pas », une piste sans identite est un DEFAUT de nommage : une passe finale la
+	// nomme par l OCCUPATION DU SLOT DANS LE TEMPS (unnamed_lives.go). Sur ce fixture elle en
+	// resout UNE des deux ; la seconde tombe sur un slot qu aucune vie nommee ne touche et que
+	// le pont ne nomme pas — elle reste comptee (`coverage.bridge.unnamedLives`) et alarmee.
+	valeurNbAnonymes = 1
 	// valeurOriginMS : l'instant de la frame 0 sur l'horloge du fil des éliminations.
 	// C'EST LA VALEUR QUE TOUT LE RECALAGE CLIENT SOUSTRAIT (`replayMs = event_time_ms +
 	// t0_ms − originMs`) : la décaler d'une seule milliseconde décale tout le rejeu.
@@ -112,13 +119,17 @@ const (
 
 // valeurViesParXUID : combien de VIES NOMMÉES le film attribue à chaque joueur.
 //
-// CE N'EST PAS LE NOMBRE DE MORTS DE L'API, et il ne faut pas l'y ramener : une vie n'est nommée
-// que par la mort qui la ferme (`lives.go`), donc une vie ouverte avant le début de la grille ou
-// close par la fin de partie reste anonyme. Sur ce film : 4 joueurs sur 7 tombent sur le compte
-// de morts de l'API, 3 non (2 en plus, 1 en moins). La mesure est figée telle quelle.
+// CE N'EST PAS LE NOMBRE DE MORTS DE L'API, et il ne faut pas l'y ramener : le fil des morts ne
+// nomme une vie que par la mort qui la FERME (`lives.go`), donc une vie ouverte avant le début de
+// la grille ou close par la fin de partie n'en reçoit pas d'identité par cette voie.
+//
+// `2533275001554469` PASSE DE 4 À 5 au schéma 47 (2026-09-07) : le nommage final
+// (unnamed_lives.go) lui rend la vie que le fil des morts ne fermait pas, par l'occupation de son
+// slot dans le temps. C'est le gain attendu de la décision « les vies anonymes n'existent pas »,
+// et c'est le SEUL joueur du fixture qu'il concerne. La mesure reste figée telle quelle.
 var valeurViesParXUID = map[string]int{
 	"2533274823110022": 3,
-	"2533275001554469": 4,
+	"2533275001554469": 5,
 	"2535429692041611": 3,
 	"2535432531943478": 2,
 	"2535463878425995": 3,

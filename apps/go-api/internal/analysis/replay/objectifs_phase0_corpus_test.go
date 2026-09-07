@@ -208,12 +208,12 @@ func objBuildBridge(dir string) (objBridge, error) {
 	table, _ := injectiveOrEmpty(idx)
 	sort.SliceStable(pos, func(i, j int) bool { return pos[i].TimestampUS < pos[j].TimestampUS })
 	lives := buildLifeSpans(indexBySlot(pos))
-	off, matched := bestDeathOffset(lives, deaths)
+	off, matched, _ := bestDeathOffset(lives, deaths)
 	named := nameLivesByDeaths(lives, deaths, off)
 	_, byXUID, collisions := ownersFromLives(lives, table.ByXUID)
 	return objBridge{
 		SlotXUID: byXUID, OffsetMS: off, Deaths: deaths, LivesTotal: len(lives),
-		DeathsNamed: named, OffsetMatches: matched, Collisions: collisions,
+		DeathsNamed: named, OffsetMatches: matched, Collisions: len(collisions),
 	}, nil
 }
 
