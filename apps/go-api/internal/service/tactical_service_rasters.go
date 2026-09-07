@@ -90,7 +90,7 @@ func (s *tacticalRasterStore) Charger(_ context.Context, matchID string) (*domai
 // valeurs ne viennent pas de la base, seulement son univers. Scanner les positions de kill
 // de toute la carte pour en jeter le resultat aurait ete payer la lecture qu'on ne fait pas.
 func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.TacticalRaster,
-	scope domain.TacticalScope) error {
+	scope domain.TacticalScope, dejaLus map[string]*domain.TacticalRasterSidecar) error {
 	if !s.caps.Has(games.CapFilmReplayArtifact) {
 		s.logger.WarnContext(ctx, "tactique: lecture d'artefact indisponible — le titre ne produit pas d'artefact de rejeu",
 			"player", s.xuid, "map_id", out.MapID, "question", out.Question,
@@ -121,7 +121,7 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 			"player", s.xuid, "map_id", out.MapID, "qui", out.Qui, "question", out.Question)
 		return domain.ErrTacticalCarteInconnue
 	}
-	sidecars, ignores := s.chargerSidecars(ctx, univers, out.MapID)
+	sidecars, ignores := s.sidecarsDeLUnivers(ctx, univers, out.MapID, dejaLus)
 
 	// LES GRAPPES SONT DEJA LA quand un filtre de spawn a ete applique en amont (cf.
 	// `Raster`) : les recalculer sur l'univers DEJA RESTREINT reduirait la liste a la seule
@@ -164,6 +164,35 @@ func (s *TacticalService) zonesDeLaCarte(ctx context.Context, mapID string) []do
 //
 // Les trois lectures d'artefact et les grappes s'en servent : les charger par lecture aurait
 // relu les memes fichiers jusqu'a quatre fois par requete.
+// sidecarsDeLUnivers rend les sidecars de l'univers, en REUTILISANT ceux qu'une resolution
+// de filtre de grappe a deja lus (revue P2).
+//
+// L'UNIVERS D'ICI EST UN SOUS-ENSEMBLE de celui qui a servi a resoudre le filtre : chaque
+// match retenu y a donc deja son sidecar, ou n'en avait aucun d'exploitable. Relire le
+// disque pour les memes fichiers etait la seule autre option, et elle doublait le cout de
+// la lecture la plus chere de l'onglet.
+//
+// LE COMPTE DES POINTS IGNORES SE REFAIT SUR CE SOUS-ENSEMBLE : le reprendre du premier
+// chargement l'aurait calcule sur l'univers ENTIER, et un match ecarte par le filtre aurait
+// alourdi la statistique d'un decodage qu'on ne lit pas.
+func (s *TacticalService) sidecarsDeLUnivers(ctx context.Context, univers domain.TacticalUnivers,
+	mapID string, dejaLus map[string]*domain.TacticalRasterSidecar) (map[string]*domain.TacticalRasterSidecar, int) {
+	if dejaLus == nil {
+		return s.chargerSidecars(ctx, univers, mapID)
+	}
+	out := make(map[string]*domain.TacticalRasterSidecar, len(univers.Matchs))
+	ignores := 0
+	for _, m := range univers.Matchs {
+		sc, ok := dejaLus[m.MatchID]
+		if !ok {
+			continue
+		}
+		ignores += sc.PointsIgnores
+		out[m.MatchID] = sc
+	}
+	return out, ignores
+}
+
 func (s *TacticalService) chargerSidecars(ctx context.Context, univers domain.TacticalUnivers,
 	mapID string) (map[string]*domain.TacticalRasterSidecar, int) {
 	out := make(map[string]*domain.TacticalRasterSidecar, len(univers.Matchs))
@@ -215,15 +244,22 @@ func (s *TacticalService) remplirLectureArtefact(ctx context.Context, out *domai
 			comptes = append(comptes, comptesDesRoutes(sidecars[id], id, dans)...)
 		}
 	case domain.TacticalQuestionIsole:
-		bilan, avecRayon := s.mesurerIsolement(sidecars, univers, dans, mesures)
+		// LES MORTS VIENNENT DU JOURNAL (la base), pas du film : c'est la meme source que
+		// « ou je meurs » et que l'echange. Le sidecar ne fournit que les POSITIONS.
+		journal, err := s.repo.KillEvents(ctx, requeteDuScope(s.xuid, out.MapID, scope))
+		if err != nil {
+			s.logger.ErrorContext(ctx, "tactique: journal des morts en echec (isolement non servi)",
+				"player", s.xuid, "map_id", out.MapID, "err", err)
+			return err
+		}
+		bilan, avecRayon := s.mesurerIsolement(journal, sidecars, univers, dans, mesures)
 		// L'UNIVERS DE CETTE LECTURE EST CELUI DES MATCHS AYANT UN RAYON (correction P0-2) :
 		// rasteriser sur `mesures` diviserait les cellules par des matchs qu'on a refuse de
 		// lire — meme defaut que celui corrige deux fois sous « correction G2 ».
 		mesures = avecRayon
 		out.MatchsRetenus = len(mesures)
 		out.MatchsSansRayon = bilan.MatchsSansRayon
-		out.MortsIndeterminees = bilan.Indeterminees
-		out.MortsPositionInconnue = bilan.PositionInconnue
+		out.MortsEquipeATerre = bilan.EquipeATerre
 		out.Isolement = &bilan.Couverture
 		comptes = comptesDesMortsIsolees(tactical.GrilleParDefaut(), bilan.Isolees)
 	default: // domain.TacticalQuestionTemps

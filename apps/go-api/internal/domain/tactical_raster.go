@@ -34,23 +34,28 @@ package domain
 // traduction en secondes depend de ce pas. Changer analysis/tactical.PasOccupationMs sans
 // incrementer cette version rendrait tous les sidecars du parc silencieusement faux d'un
 // facteur — d'ou le champ PasEchantillonMs ci-dessous, que la lecture verifie.
+// # LE SIDECAR NE JUGE RIEN (decision utilisateur du 2026-09-07)
+//
+// Une version precedente y faisait dire au film qui etait mort a l'instant d'une mort, en
+// s'appuyant sur « une vie nommee est close par une mort ». LA PREMISSE ETAIT FAUSSE :
+// `replay/owners.go:166` nomme aussi une vie par FERMETURE DE SLOT, si bien qu'un joueur
+// qui SURVIT en ayant tire recevait une vie nommee — et une mort fabriquee avec.
+//
+// Le film ne porte pas la liste des morts ; la BASE la porte. Le sidecar ne mesure donc
+// plus que ce que le film sait vraiment dire — OU ETAIT CHACUN, ET QUAND — et tout verdict
+// se prend a la LECTURE.
+//
+// SCHEMA 4 -> 5 : `morts[]` et ses voisins (avec leurs statuts `vivant`/`mort`/`inconnu`)
+// disparaissent au profit de `chronologie[]`. Un sidecar v4 n'est plus exploitable et se
+// recuit (meme regle qu'aux schemas precedents).
+//
 // # LA DISTANCE EST HORIZONTALE, ET DEUX ETAGES LISENT ZERO
 //
-// Toutes les distances de ce fichier sont des `math.Hypot(dx, dy)` : Z est ignore. Un
+// Les distances calculees a la lecture sont des `math.Hypot(dx, dy)` : Z est ignore. Un
 // coequipier situe juste au-dessus ou au-dessous, separe par une dalle, est donc mesure a
 // 0 m et compte comme « a portee ». C'est une LIMITE CONNUE de la mesure — toutes les
 // lectures de l'onglet sont des vues du dessus —, ecrite ici pour qu'aucun lecteur ne la
 // decouvre comme un defaut.
-//
-// # CE QUE LE SIDECAR NE PEUT PAS DECIDER : LES EQUIPES
-//
-// Le film NE PORTE PAS LES CAMPS (`replay.Track.Team` vaut -1 pour tout le monde ; l'equipe
-// vit dans la base). Une cuisson HORS LIGNE ne peut donc pas dire « il est mort isole » —
-// elle ne sait pas qui est un coequipier. Elle mesure ce qu'elle sait : pour chaque mort, la
-// distance a CHAQUE autre joueur nomme VIVANT a cet instant. Le service joint les equipes,
-// applique le rayon du match, et tranche. C'est la meme frontiere que l'axe « qui » de
-// l'occupation : le sidecar reste ANONYME et sans contexte, donc rien ne le perime quand un
-// joueur change de camp.
 //
 // # LA LACUNE RESIDUELLE, ECRITE PLUTOT QUE TUE
 //
@@ -62,7 +67,7 @@ package domain
 // temps » sous-estime le temps en vehicule, et c'est une propriete connue de la mesure —
 // pas un defaut a chercher. Elle ne peut pas se corriger ici : elle se corrigerait en
 // amont, dans la primitive d'attribution des episodes.
-const TacticalRasterSchemaVersion = 4
+const TacticalRasterSchemaVersion = 5
 
 // TacticalRasterSidecar est le fichier depose a cote de l'artefact
 // (title.PathResolver.TacticalRasterPath).
@@ -123,18 +128,48 @@ type TacticalRasterJoueur struct {
 	// des grappes de reapparition (phase 7).
 	Spawns []TacticalRasterSpawn `json:"spawns"`
 
-	// Morts : la fin de chacune de ses vies NOMMEES, avec les voisins vivants a cet
-	// instant. Triees par frame. VIDE mais presente.
-	Morts []TacticalRasterMort `json:"morts"`
+	// PremieresEntrees : par cellule, la frame de la premiere fois. C'est l'INSTANT
+	// CONTRIBUTEUR d'une lecture d'occupation — ce que le clic sur une cellule ouvre dans
+	// le rejeu 2D.
+	PremieresEntrees []TacticalRasterEntree `json:"premieres_entrees"`
 
 	// Routes : les 15 premieres secondes de chacune de ses vies, en cellules ordonnees.
 	// Triees par frame de debut. VIDE mais presente.
 	Routes []TacticalRasterRoute `json:"routes"`
 
-	// PremieresEntrees : par cellule, la frame de la premiere fois. C'est l'INSTANT
-	// CONTRIBUTEUR d'une lecture d'occupation — ce que le clic sur une cellule ouvre
-	// dans le rejeu 2D.
-	PremieresEntrees []TacticalRasterEntree `json:"premieres_entrees"`
+	// Chronologie : OU ETAIT LE JOUEUR, ET QUAND. Un segment par fenetre CONTINUE ou sa
+	// position est connue ; entre deux segments, rien.
+	//
+	// UNE ABSENCE N'EST PAS UNE MORT : c'est une absence. Le film ne sait pas distinguer
+	// « mort » de « en vehicule non rattache » ni de « deconnecte » — c'est la LECTURE,
+	// journal des morts et departs en main, qui tranche.
+	Chronologie []TacticalRasterSegment `json:"chronologie"`
+}
+
+// TacticalRasterSegment est une fenetre continue de positions connues.
+//
+// # POURQUOI DES METRES ET NON DES CELLULES
+//
+// Les cellules auraient ete ~35 % plus compactes, et le reste du sidecar en emploie. Mais
+// la chronologie sert une comparaison a SEUIL (le rayon du radar, 18 ou 24 m) : quantifier
+// a 0,5 m ajoute jusqu'a 0,7 m d'erreur sur une distance, ce qui fait BASCULER le verdict
+// des paires proches de la borne. On paie donc les octets pour ne pas fabriquer de faux
+// isolements. L'arrondi a 2 decimales reste celui de tout l'artefact.
+//
+// # LA BORNE, MESUREE
+//
+// Un segment porte un couple par PasChronologieMs (500 ms). Le pire cas realiste est un
+// BTB de 15 min a 24 joueurs, soit 15 x 60 x 2 = 1 800 couples par joueur et
+// 43 200 couples pour le match. Un match d'Arene ordinaire (12 min, 8 joueurs) en compte
+// 11 520. A ~14 octets le couple, le pire cas pese ~600 Ko, contre ~2 Mo pour l'artefact
+// dont il derive.
+type TacticalRasterSegment struct {
+	// DebutFrame est l'instant du PREMIER couple du segment.
+	DebutFrame int `json:"debut_frame"`
+	// XY porte les positions APLATIES (x0, y0, x1, y1, ...), un couple par pas.
+	// `null` a la place d'un nombre = position inconnue a cet echantillon (embarquement
+	// sans point de vehicule) : on n'invente pas de position, et le pas reste tenu.
+	XY []float64 `json:"xy"`
 }
 
 // TacticalRasterCellule est le temps passe dans une cellule, compte en echantillons.
@@ -154,55 +189,6 @@ type TacticalRasterSpawn struct {
 	// (decision produit du plan : les reapparitions suivantes dependent de l'endroit ou
 	// l'on vient de mourir, pas du placement d'ouverture).
 	PremiereVie bool `json:"premiere_vie,omitempty"`
-}
-
-// TacticalRasterMort est la fin d'une vie nommee : ou, quand, et qui etait debout autour.
-//
-// UNE VIE NOMMEE EST CLOSE PAR UNE MORT, et c'est la seule source de morts datees qu'un
-// artefact porte : le document ne publie aucune liste de morts par joueur, et c'est le fil
-// des morts du film qui a NOMME la vie que la mort termine. Un survivant de fin de partie
-// reste anonyme, donc ne produit aucune mort — c'est juste.
-type TacticalRasterMort struct {
-	// Frame est l'instant de la mort sur l'axe du rejeu.
-	//
-	// CONSOMMATEUR NOMME : le DRILLDOWN de la phase 5 — un clic sur une cellule chaude
-	// ouvre le rejeu 2D a l'instant contributeur (`?frame=`). Il est donc ecrit dans le
-	// sidecar CUIT, meme si la lecture d'isolement, elle, ne s'en sert pas.
-	Frame int     `json:"frame"`
-	X     float64 `json:"x"`
-	Y     float64 `json:"y"`
-
-	// PositionInconnue : la mort a eu lieu, mais le film ne dit pas OU (embarquement sans
-	// point de vehicule). Elle n'est alors ni peinte ni examinee, et se compte a part —
-	// lui preter le point de montee serait inventer un stationnement.
-	PositionInconnue bool `json:"position_inconnue,omitempty"`
-
-	// Voisins : TOUS les autres joueurs nommes, avec leur STATUT a cet instant, tries par
-	// xuid. NI EQUIPE NI CAMP — le film ne les porte pas (cf. l'en-tete).
-	Voisins []TacticalRasterVoisin `json:"voisins"`
-}
-
-// Les trois STATUTS d'un voisin, publies dans le sidecar. Ils repondent a « que sait-on de
-// lui a cet instant », jamais a « etait-il la ».
-//
-// `inconnu` N'EST PAS UN `mort` PRUDENT : un occupant de vehicule non attribue (la primitive
-// n'apparie que 15,6 a 21,1 % des vies) et un survivant de fin de partie (sa derniere vie
-// n'est close par aucune mort, donc anonyme) sont tous deux VIVANTS et invisibles. Les
-// compter morts rendait des morts « isolees » alors qu'un coequipier etait a trois metres.
-const (
-	StatutVoisinVivant  = "vivant"
-	StatutVoisinMort    = "mort"
-	StatutVoisinInconnu = "inconnu"
-)
-
-// TacticalRasterVoisin est un autre joueur nomme et ce qu'on sait de lui a l'instant d'une
-// mort.
-type TacticalRasterVoisin struct {
-	XUID   string `json:"xuid"`
-	Statut string `json:"statut"`
-	// DistanceM n'a de sens que sous StatutVoisinVivant. Arrondie a 2 decimales, comme
-	// toutes les coordonnees de l'artefact.
-	DistanceM float64 `json:"distance_m,omitempty"`
 }
 
 // TacticalRasterRoute est la sortie de spawn d'une vie : le CHEMIN des 15 premieres

@@ -5,63 +5,69 @@ package domain
 // ILS VIVENT ICI ET NON DANS `analysis/coordination` (arch-rules, et le ratchet
 // `no_naked_rate_test` de ce paquet-la le verifie) : un type de RESULTAT traverse la
 // frontiere algo -> service -> handler, et un algo qui exporte sa forme de sortie fige son
-// appelant sur son implementation. C'est aussi ce qui empeche d'emballer un taux dans une
-// struct maison pour contourner la liste blanche des types de retour.
+// appelant sur son implementation.
+//
+// # LE MODELE
+//
+// Les morts viennent de la BASE (journal des morts) ; les positions viennent du sidecar,
+// qui ne juge rien. Le service assemble les deux et rend, pour chaque mort de mon camp,
+// l'etat de chaque coequipier : present ou non, et a quelle distance.
+//
+// CE QUE « PRESENT » VEUT DIRE EST UNE DECISION PRODUIT EN COURS (2026-09-07). La lecture
+// tient en attendant sur « une position connue a cet instant ». Le modele vise — mort au
+// journal, reapparition observee ou delai MESURE sur le match, depart lu dans la base — est
+// ecrit et consigne au registre des reports avec sa condition de reprise ; le point
+// d'attente est commente sur pieces dans service/tactical_service_lectures.go.
 
-// MortAExaminer est une mort dont on veut savoir si elle fut isolee.
+// MortAExaminer est une mort du journal, avec l'etat de chaque coequipier a cet instant.
 type MortAExaminer struct {
 	MatchID string
 	// X, Y situent la mort — elles voyagent pour que l'appelant puisse peindre les morts
-	// isolees sans re-joindre quoi que ce soit. `Frame`, lui, N'EST PAS ICI : il est ecrit
-	// dans le SIDECAR (consommateur nomme : le drilldown de la phase 5), mais la lecture
-	// d'isolement ne le lit jamais — un champ porte sans lecteur est du vocabulaire mort.
+	// isolees sans re-joindre quoi que ce soit.
 	X, Y float64
 
-	// PositionInconnue : le film ne dit pas OU cette mort a eu lieu (embarquement sans
-	// point de vehicule). Elle n'est ni peinte ni examinee, et se compte a part.
-	PositionInconnue bool
-
-	// Coequipiers porte, pour CHAQUE coequipier du mort, ce qu'on sait de lui a cet
-	// instant. Le tri par equipe est fait par l'appelant, qui seul connait les camps.
+	// Coequipiers porte, pour CHAQUE coequipier du mort, ce que la lecture a etabli de lui
+	// a cet instant. Le tri par equipe et la resolution de vitalite sont faits par
+	// l'appelant, qui seul a le journal et les departs.
 	//
-	// UNE LISTE VIDE VEUT DIRE « aucun coequipier du tout » — ce qui, pour le placement,
-	// revient au meme que « toute l'equipe a terre » : on ne peut pas etre mal accompagne.
-	Coequipiers []StatutCoequipier
+	// UNE LISTE VIDE VEUT DIRE « aucun coequipier du tout » (joueur solo de son camp) — ce
+	// qui, pour le placement, revient au meme que « toute l'equipe a terre » : on ne peut
+	// pas etre mal accompagne.
+	Coequipiers []EtatCoequipier
 }
 
-// StatutCoequipier est ce que le film sait d'un coequipier a l'instant d'une mort.
-type StatutCoequipier struct {
-	// Statut vaut StatutVoisinVivant / StatutVoisinMort / StatutVoisinInconnu.
-	Statut string
-	// DistanceM n'a de sens que sous StatutVoisinVivant.
+// EtatCoequipier est ce que la lecture sait d'un coequipier a l'instant d'une mort.
+type EtatCoequipier struct {
+	// Vivant : il n'avait pas quitte, et il n'etait pas en attente de reapparition.
+	Vivant bool
+	// DistanceM n'a de sens que si Vivant. C'est la distance a la DERNIERE position connue
+	// du coequipier — decision utilisateur : un joueur vivant est quelque part, et sa
+	// derniere position vaut mieux qu'un « inconnu » qui ne se mesure pas.
 	DistanceM float64
+	// PositionConnue : faux quand le film n'a jamais donne de position de ce joueur avant
+	// cet instant. Il est alors vivant mais nulle part : il ne peut ni accompagner ni
+	// prouver l'isolement.
+	PositionConnue bool
 }
 
 // BilanIsolement est ce que la lecture rend.
 type BilanIsolement struct {
-	// Isolees : les morts sans aucun coequipier dans le rayon. Ce sont elles que la carte
-	// peint.
+	// Isolees : les morts sans aucun coequipier vivant dans le rayon. Ce sont elles que la
+	// carte peint.
 	Isolees []MortAExaminer
 	// Couverture porte le taux (isolees / examinees), son compte brut, la quantite par
 	// match, la taille de l'echantillon et le drapeau d'echantillon faible. C'est la SEULE
-	// forme sous laquelle un taux sort de ce paquet (cf. measure.go).
+	// forme sous laquelle un taux sort du paquet de coordination (cf. measure.go).
 	Couverture Couverture
 	// Examinees est le denominateur : les morts qui avaient au moins un coequipier vivant,
 	// dans un match dont le rayon est connu.
 	Examinees int
-	// SansCoequipierVivant : les morts ECARTEES parce que toute l'equipe etait SUE a terre
-	// — tous les coequipiers au statut `mort`. Publie plutot qu'avale : c'est une part du
-	// jeu, pas un detail.
-	SansCoequipierVivant int
-	// Indeterminees : les morts ECARTEES parce qu'au moins un coequipier etait INVISIBLE
-	// (en vehicule non attribue, ou survivant anonyme) et qu'aucun coequipier vu n'etait a
-	// portee. On ne peut ni dire « isolee » ni dire « accompagnee » : les compter isolees
-	// etait le defaut P0-1 de la revue.
-	Indeterminees int
-	// PositionInconnue : les morts ECARTEES parce que le film ne dit pas OU elles ont eu
-	// lieu (embarquement sans point de vehicule). Elles ne sont ni peintes ni examinees.
-	PositionInconnue int
-	// MatchsSansRayon : les matchs dont la variante n'est pas dans la table du rayon. Leurs
-	// morts ne sont ni examinees ni isolees ; le pied de carte doit pouvoir le dire.
+	// EquipeATerre : les morts ECARTEES parce que tous les coequipiers etaient morts ou
+	// partis. Elles ne disent rien du placement — on ne peut pas etre mal accompagne quand
+	// personne ne peut accompagner — et les compter isolees ferait grimper le taux de
+	// l'equipe qui perd un combat entier, c'est-a-dire mesurer la defaite.
+	EquipeATerre int
+	// MatchsSansRayon : les matchs dont la variante n'a pas de portee mesuree. Leurs morts
+	// ne sont ni examinees ni isolees ; le pied de carte doit pouvoir le dire.
 	MatchsSansRayon int
 }

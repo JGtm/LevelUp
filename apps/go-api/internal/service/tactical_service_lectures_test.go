@@ -51,33 +51,41 @@ func triees(m map[string]string) []string {
 	return out
 }
 
-// vVu / vMort / vInconnu : un voisin dans chacun des trois statuts du sidecar.
-func vVu(xuid string, d float64) domain.TacticalRasterVoisin {
-	return domain.TacticalRasterVoisin{XUID: xuid, Statut: domain.StatutVoisinVivant, DistanceM: d}
-}
-func vMort(xuid string) domain.TacticalRasterVoisin {
-	return domain.TacticalRasterVoisin{XUID: xuid, Statut: domain.StatutVoisinMort}
-}
-func vInconnu(xuid string) domain.TacticalRasterVoisin {
-	return domain.TacticalRasterVoisin{XUID: xuid, Statut: domain.StatutVoisinInconnu}
+// ─── ISOLEMENT ─────────────────────────────────────────────────────────────────
+//
+// LE SIDECAR NE JUGE PLUS RIEN (decision utilisateur du 2026-09-07) : il porte des
+// POSITIONS, et les fixtures ci-dessous posent donc une chronologie par joueur plus un
+// journal de morts. Les verdicts — vivant, mort, isole — se prennent A LA LECTURE.
+
+// segment pose une fenetre observee : un couple de coordonnees tous les
+// `tactical.PasChronologieMs` (500 ms, soit 5 frames a 100 ms).
+func segment(debutFrame int, xy ...float64) domain.TacticalRasterSegment {
+	return domain.TacticalRasterSegment{DebutFrame: debutFrame, XY: xy}
 }
 
-// mortAvec pose une mort d'un joueur avec le statut de chacun de ses voisins.
-func mortAvec(frame int, x, y float64, voisins ...domain.TacticalRasterVoisin) domain.TacticalRasterMort {
-	if voisins == nil {
-		voisins = []domain.TacticalRasterVoisin{}
+// piste pose un joueur avec ses seules fenetres observees.
+func piste(xuid string, segs ...domain.TacticalRasterSegment) domain.TacticalRasterJoueur {
+	return domain.TacticalRasterJoueur{XUID: xuid, Chronologie: segs}
+}
+
+// immobile pose un joueur observe SANS INTERRUPTION de la frame 0 a la frame 20, au meme
+// endroit. C'est le coequipier « present et visible » du cas nominal.
+func immobile(xuid string, x, y float64) domain.TacticalRasterJoueur {
+	return piste(xuid, segment(0, x, y, x, y, x, y, x, y, x, y))
+}
+
+// mortDe pose une mort au JOURNAL — la seule source des morts depuis 7.9.
+func mortDe(matchID, victime, tueur string, tMs int64) domain.KillEvent {
+	return domain.KillEvent{MatchID: matchID, VictimXUID: victime, KillerXUID: tueur, TimeMs: tMs}
+}
+
+// svcIsole monte le service avec la table des rayons d'Arene et de BTB, et le journal.
+func svcIsole(univ domain.TacticalUnivers, store *mockRasterStore,
+	morts ...domain.KillEvent) *TacticalService {
+	repo := &mockTacticalRepo{
+		univ: univ,
+		ev:   domain.TacticalKillEvents{Univers: univ, Events: morts},
 	}
-	return domain.TacticalRasterMort{Frame: frame, X: x, Y: y, Voisins: voisins}
-}
-
-// joueurMorts pose un joueur qui n'a que des morts.
-func joueurMorts(xuid string, morts ...domain.TacticalRasterMort) domain.TacticalRasterJoueur {
-	return domain.TacticalRasterJoueur{XUID: xuid, Morts: morts}
-}
-
-// svcIsole monte le service avec la table des rayons d'Arene et de BTB.
-func svcIsole(univ domain.TacticalUnivers, store *mockRasterStore) *TacticalService {
-	repo := &mockTacticalRepo{univ: univ}
 	return NewTacticalService(repo, capsOccupation(), tsMoi).
 		WithRasterStore(store).
 		WithRadarRange(map[string]int{"Slayer:Arena": 18, "BTB:Slayer": 24})
@@ -103,12 +111,13 @@ func lireIsole(t *testing.T, svc *TacticalService, ids ...string) domain.Tactica
 // filtre qui contient les deux formats est le cas normal.
 func TestIsole_RayonDeLaVarianteDuMatch(t *testing.T) {
 	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
-		"arene": sidecarPose("arene", joueurMorts(tsMoi, mortAvec(10, 2, 3, vVu(tsAmi, 19)))),
-		"btb":   sidecarPose("btb", joueurMorts(tsMoi, mortAvec(10, 2, 3, vVu(tsAmi, 19)))),
+		"arene": sidecarPose("arene", immobile(tsMoi, 2, 3), immobile(tsAmi, 21, 3)),
+		"btb":   sidecarPose("btb", immobile(tsMoi, 2, 3), immobile(tsAmi, 21, 3)),
 	}}
 	svc := svcIsole(universVariantes(map[string]string{
 		"arene": "Slayer:Arena", "btb": "BTB:Slayer",
-	}), store)
+	}), store,
+		mortDe("arene", tsMoi, tsAdv, 1000), mortDe("btb", tsMoi, tsAdv, 1000))
 	out := lireIsole(t, svc, "arene", "btb")
 	if out.Isolement == nil {
 		t.Fatal("la lecture isole ne publie aucune couverture")
@@ -125,16 +134,46 @@ func TestIsole_RayonDeLaVarianteDuMatch(t *testing.T) {
 	}
 }
 
+// TestIsole_VarianteAvecBlancs_ResoutQuandMeme — LE NOM DE VARIANTE VIENT DE LA BASE, et
+// la base porte ce que l'API a envoye : des blancs de tete ou de queue s'y trouvent.
+//
+// SANS NETTOYAGE, la cle manque la table et le match sort SILENCIEUSEMENT de l'univers
+// mesurable : la lecture le compte alors dans `matchs_sans_rayon`, c'est-a-dire qu'elle dit
+// « ce mode n'a pas de portee connue » pour un mode parfaitement connu. Un defaut de donnee
+// se deguise ainsi en trou de referentiel, et c'est la pire forme : elle envoie chercher la
+// panne au mauvais endroit.
+//
+// LE TEST PASSE PAR LE SERVICE, pas par le helper : le nettoyage doit valoir sur le CHEMIN
+// REEL, celui qui va de l'univers a la table des rayons.
+func TestIsole_VarianteAvecBlancs_ResoutQuandMeme(t *testing.T) {
+	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
+		"m1": sidecarPose("m1", immobile(tsMoi, 2, 3), immobile(tsAmi, 21, 3)),
+	}}
+	svc := svcIsole(universVariantes(map[string]string{"m1": "  Slayer:Arena "}), store,
+		mortDe("m1", tsMoi, tsAdv, 1000))
+	out := lireIsole(t, svc, "m1")
+
+	if out.MatchsSansRayon != 0 {
+		t.Fatalf("matchs_sans_rayon = %d, attendu 0 : « %s » est l'Arene, blancs compris",
+			out.MatchsSansRayon, "  Slayer:Arena ")
+	}
+	if out.Isolement.N != 1 || out.Isolement.Brut != 1 {
+		t.Fatalf("couverture = %+v, attendu 1 isolee sur 1 : 19 m depasse les 18 m de l'Arene",
+			out.Isolement)
+	}
+}
+
 // TestIsole_UnAdversaireProcheNAccompagnePersonne — le service JOINT LES EQUIPES : un
 // adversaire a 2 m n'entre pas au calcul, seul le coequipier a 40 m compte.
 //
 // C'est ce que le film ne peut pas faire : il ne porte aucun camp (`Track.Team` = -1).
 func TestIsole_UnAdversaireProcheNAccompagnePersonne(t *testing.T) {
 	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
-		"m1": sidecarPose("m1", joueurMorts(tsMoi,
-			mortAvec(10, 2, 3, vVu(tsAmi, 40), vVu(tsAdv, 2), vVu(tsAdv2, 1)))),
+		"m1": sidecarPose("m1", immobile(tsMoi, 2, 3), immobile(tsAmi, 42, 3),
+			immobile(tsAdv, 4, 3), immobile(tsAdv2, 3, 3)),
 	}}
-	svc := svcIsole(universVariantes(map[string]string{"m1": "Slayer:Arena"}), store)
+	svc := svcIsole(universVariantes(map[string]string{"m1": "Slayer:Arena"}), store,
+		mortDe("m1", tsMoi, tsAdv, 1000))
 	out := lireIsole(t, svc, "m1")
 	if out.Isolement.N != 1 || out.Isolement.Brut != 1 {
 		t.Fatalf("couverture = %+v, attendu 1 mort isolee sur 1 : deux adversaires a 2 m et "+
@@ -142,20 +181,26 @@ func TestIsole_UnAdversaireProcheNAccompagnePersonne(t *testing.T) {
 	}
 }
 
-// TestIsole_TousCoequipiersMorts_ExclusDuDenominateur — une mort dont AUCUN coequipier
-// n'etait vivant sort du denominateur. Ici le seul voisin vivant est un adversaire.
-func TestIsole_TousCoequipiersMorts_ExclusDuDenominateur(t *testing.T) {
+// TestIsole_AucunCoequipierPresent_ExclusDuDenominateur — une mort dont AUCUN coequipier
+// n'etait present sort du denominateur.
+//
+// PROVISOIRE 2026-09-07 : « present » vaut ici « le film le montre a cet instant ». La
+// fenetre observee de tsAmi s'arrete a la frame 0 et ne rouvre qu'a la frame 15 : a la
+// premiere mort (frame 10) il n'est nulle part, a la seconde (frame 20) il est a 40 m.
+func TestIsole_AucunCoequipierPresent_ExclusDuDenominateur(t *testing.T) {
 	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
-		"m1": sidecarPose("m1", joueurMorts(tsMoi,
-			mortAvec(10, 2, 3, vVu(tsAdv, 5), vMort(tsAmi)), // le seul coequipier est SU mort
-			mortAvec(20, 2, 3, vVu(tsAmi, 40)),
-		)),
+		"m1": sidecarPose("m1", immobile(tsMoi, 2, 3),
+			piste(tsAmi, segment(0, 2, 3), segment(15, 42, 3, 42, 3))),
 	}}
-	svc := svcIsole(universVariantes(map[string]string{"m1": "Slayer:Arena"}), store)
+	svc := svcIsole(universVariantes(map[string]string{"m1": "Slayer:Arena"}), store,
+		mortDe("m1", tsMoi, tsAdv, 1000), mortDe("m1", tsMoi, tsAdv, 2000))
 	out := lireIsole(t, svc, "m1")
 	if out.Isolement.N != 1 {
-		t.Fatalf("denominateur = %d, attendu 1 : la mort sans coequipier VIVANT est exclue",
+		t.Fatalf("denominateur = %d, attendu 1 : la mort sans coequipier PRESENT est exclue",
 			out.Isolement.N)
+	}
+	if out.MortsEquipeATerre != 1 {
+		t.Fatalf("morts_equipe_a_terre = %d, attendu 1", out.MortsEquipeATerre)
 	}
 	if out.Isolement.Brut != 1 {
 		t.Fatalf("morts isolees = %d, attendu 1", out.Isolement.Brut)
@@ -175,13 +220,12 @@ func TestIsole_TousCoequipiersMorts_ExclusDuDenominateur(t *testing.T) {
 // rendait invisible.
 func TestIsole_VarianteSansRayon(t *testing.T) {
 	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
-		"connu": sidecarPose("connu", joueurMorts(tsMoi, mortAvec(10, 2, 3, vVu(tsAmi, 40)))),
-		// Aucune mort ici : le match doit quand meme etre compte comme sans rayon.
-		"inconnu": sidecarPose("inconnu", joueurMorts(tsMoi)),
+		"connu":   sidecarPose("connu", immobile(tsMoi, 2, 3), immobile(tsAmi, 42, 3)),
+		"inconnu": sidecarPose("inconnu", immobile(tsMoi, 2, 3)),
 	}}
 	svc := svcIsole(universVariantes(map[string]string{
 		"connu": "Slayer:Arena", "inconnu": "Husky Raid:CTF",
-	}), store)
+	}), store, mortDe("connu", tsMoi, tsAdv, 1000))
 	out := lireIsole(t, svc, "connu", "inconnu")
 
 	if out.MatchsSansRayon != 1 {
@@ -214,9 +258,15 @@ func TestIsole_VarianteSansRayon(t *testing.T) {
 // rend AUCUNE lecture d'isolement, et le dit.
 func TestIsole_SansTableDeRayon(t *testing.T) {
 	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
-		"m1": sidecarPose("m1", joueurMorts(tsMoi, mortAvec(10, 2, 3, vVu(tsAmi, 40)))),
+		"m1": sidecarPose("m1", immobile(tsMoi, 2, 3), immobile(tsAmi, 42, 3)),
 	}}
-	repo := &mockTacticalRepo{univ: universVariantes(map[string]string{"m1": "Slayer:Arena"})}
+	repo := &mockTacticalRepo{
+		univ: universVariantes(map[string]string{"m1": "Slayer:Arena"}),
+		ev: domain.TacticalKillEvents{
+			Univers: universVariantes(map[string]string{"m1": "Slayer:Arena"}),
+			Events:  []domain.KillEvent{mortDe("m1", tsMoi, tsAdv, 1000)},
+		},
+	}
 	svc := NewTacticalService(repo, capsOccupation(), tsMoi).WithRasterStore(store)
 	out, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
 		MapID: "streets", Question: domain.TacticalQuestionIsole, Qui: domain.TacticalQuiMoi,
@@ -227,6 +277,20 @@ func TestIsole_SansTableDeRayon(t *testing.T) {
 	}
 	if out.MatchsSansRayon != 1 || out.Isolement.N != 0 || len(out.Cellules) != 0 {
 		t.Fatalf("sortie = %+v : sans table, aucune mort ne doit etre examinee", out)
+	}
+}
+
+// TestIsole_MortSansPosition_NiPeinteNiExaminee — la mort d'un joueur que le film n'a
+// jamais montre : elle a eu lieu, mais on ne sait pas ou (revue P0-3).
+func TestIsole_MortSansPosition_NiPeinteNiExaminee(t *testing.T) {
+	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
+		"m1": sidecarPose("m1", piste(tsMoi), immobile(tsAmi, 42, 3)),
+	}}
+	svc := svcIsole(universVariantes(map[string]string{"m1": "Slayer:Arena"}), store,
+		mortDe("m1", tsMoi, tsAdv, 1000))
+	out := lireIsole(t, svc, "m1")
+	if out.Isolement.N != 0 || len(out.Cellules) != 0 {
+		t.Fatalf("sortie = %+v : une mort sans lieu ne se mesure ni ne se peint", out)
 	}
 }
 
@@ -416,14 +480,16 @@ func TestFiltreSpawn_GrappeInconnue(t *testing.T) {
 // pour « isole » comme pour « temps ».
 func TestFiltreSpawn_SappliqueAuxAutresLectures(t *testing.T) {
 	store, univ, ids := grappesFixture()
-	// Chaque match porte en plus une mort isolee.
+	// Chaque match porte en plus une mort ISOLEE : le joueur visible a 2,3 et son seul
+	// coequipier a 40 m. Les morts viennent du JOURNAL, les positions du sidecar.
+	morts := make([]domain.KillEvent, 0, len(store.sidecars))
 	for id, sc := range store.sidecars {
-		sc.Joueurs[0].Morts = []domain.TacticalRasterMort{
-			mortAvec(10, 2, 3, vVu(tsAmi, 40)),
-		}
+		sc.Joueurs[0].Chronologie = []domain.TacticalRasterSegment{segment(0, 2, 3, 2, 3, 2, 3)}
+		sc.Joueurs = append(sc.Joueurs, immobile(tsAmi, 42, 3))
 		store.sidecars[id] = sc
+		morts = append(morts, mortDe(id, tsMoi, tsAdv, 1000))
 	}
-	svc := svcIsole(univ, store)
+	svc := svcIsole(univ, store, morts...)
 	complet := lireTemps(t, svc, "", ids...)
 
 	out, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
@@ -595,54 +661,6 @@ func TestCallouts_ErreurNonAvalee(t *testing.T) {
 	muet := NewTacticalCalloutsStore(t.TempDir(), "halo_infinite", nil)
 	if zones := muet.ZonesDeLaCarte(context.Background(), "streets"); zones != nil {
 		t.Fatalf("zones = %+v, attendu aucune", zones)
-	}
-}
-
-// TestIsole_UnCoequipierInvisible_RendLaMortIndeterminee — LE DEFAUT P0-1, VU DU SERVICE.
-//
-// L'algorithme a ses propres cas ; ce qui se verifie ICI est la CHAINE COMPLETE : le
-// sidecar porte un statut `inconnu` (coequipier en vehicule non attribue, ou survivant
-// anonyme), le service joint les equipes, et la mort sort du denominateur en se comptant
-// dans `morts_indeterminees` — jamais en « isolee ».
-func TestIsole_UnCoequipierInvisible_RendLaMortIndeterminee(t *testing.T) {
-	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
-		// Le seul coequipier (tsAmi) est INVISIBLE ; l'adversaire, lui, est vu de pres —
-		// et il n'accompagne personne.
-		"m1": sidecarPose("m1", joueurMorts(tsMoi,
-			mortAvec(10, 2, 3, vInconnu(tsAmi), vVu(tsAdv, 2)))),
-	}}
-	svc := svcIsole(universVariantes(map[string]string{"m1": "Slayer:Arena"}), store)
-	out := lireIsole(t, svc, "m1")
-
-	if out.MortsIndeterminees != 1 {
-		t.Fatalf("morts_indeterminees = %d, attendu 1 — un coequipier INVISIBLE n'est pas un "+
-			"coequipier MORT", out.MortsIndeterminees)
-	}
-	if out.Isolement.N != 0 || out.Isolement.Brut != 0 {
-		t.Fatalf("couverture = %+v : la mort ne doit etre ni examinee ni comptee isolee",
-			out.Isolement)
-	}
-	if len(out.Cellules) != 0 {
-		t.Fatalf("cellules = %+v : une mort indeterminee ne se peint pas", out.Cellules)
-	}
-}
-
-// TestIsole_MortSansPosition_NiPeinteNiExaminee — la mort d'un occupant dont le vehicule
-// n'a aucun point : elle a eu lieu, mais le film ne dit pas ou (revue P0-3).
-func TestIsole_MortSansPosition_NiPeinteNiExaminee(t *testing.T) {
-	sansLieu := mortAvec(10, 0, 0, vVu(tsAmi, 40))
-	sansLieu.PositionInconnue = true
-	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
-		"m1": sidecarPose("m1", joueurMorts(tsMoi, sansLieu)),
-	}}
-	svc := svcIsole(universVariantes(map[string]string{"m1": "Slayer:Arena"}), store)
-	out := lireIsole(t, svc, "m1")
-
-	if out.MortsPositionInconnue != 1 {
-		t.Fatalf("morts_position_inconnue = %d, attendu 1", out.MortsPositionInconnue)
-	}
-	if out.Isolement.N != 0 || len(out.Cellules) != 0 {
-		t.Fatalf("sortie = %+v : une mort sans lieu ne se mesure ni ne se peint", out)
 	}
 }
 

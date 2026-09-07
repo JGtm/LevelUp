@@ -11681,9 +11681,7 @@ export interface components {
             /** Format: int64 */
             matchs_victoire: number;
             /** Format: int64 */
-            morts_indeterminees?: number;
-            /** Format: int64 */
-            morts_position_inconnue?: number;
+            morts_equipe_a_terre?: number;
             /** Format: double */
             pas_m: number;
             /** Format: int64 */

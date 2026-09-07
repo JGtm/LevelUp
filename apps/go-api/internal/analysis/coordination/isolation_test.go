@@ -6,19 +6,20 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// vivant / mort / inconnu : un coequipier dans chacun des trois etats.
-func coeqVivant(d float64) domain.StatutCoequipier {
-	return domain.StatutCoequipier{Statut: domain.StatutVoisinVivant, DistanceM: d}
+// coeqVu / coeqAbsent / coeqVivantSansPosition : les trois etats qu'un coequipier peut
+// prendre a l'instant d'une mort, tels que le SERVICE les resout.
+func coeqVu(d float64) domain.EtatCoequipier {
+	return domain.EtatCoequipier{Vivant: true, PositionConnue: true, DistanceM: d}
 }
-func coeqMort() domain.StatutCoequipier {
-	return domain.StatutCoequipier{Statut: domain.StatutVoisinMort}
+func coeqAbsent() domain.EtatCoequipier {
+	return domain.EtatCoequipier{}
 }
-func coeqInconnu() domain.StatutCoequipier {
-	return domain.StatutCoequipier{Statut: domain.StatutVoisinInconnu}
+func coeqVivantSansPosition() domain.EtatCoequipier {
+	return domain.EtatCoequipier{Vivant: true}
 }
 
-// mortA pose une mort d'un match avec les statuts de ses coequipiers.
-func mortA(matchID string, coeq ...domain.StatutCoequipier) domain.MortAExaminer {
+// mortA pose une mort d'un match avec l'etat de ses coequipiers.
+func mortA(matchID string, coeq ...domain.EtatCoequipier) domain.MortAExaminer {
 	return domain.MortAExaminer{MatchID: matchID, X: 1, Y: 1, Coequipiers: coeq}
 }
 
@@ -46,7 +47,7 @@ func TestIsolement_LaBorneEstInclusive(t *testing.T) {
 		{19, true},
 	}
 	for _, c := range cas {
-		b := Isolement([]domain.MortAExaminer{mortA("m1", coeqVivant(c.distance))}, rayons18("m1"), 1)
+		b := Isolement([]domain.MortAExaminer{mortA("m1", coeqVu(c.distance))}, rayons18("m1"), 1)
 		if b.Examinees != 1 {
 			t.Fatalf("distance %v : examinees = %d, attendu 1", c.distance, b.Examinees)
 		}
@@ -57,13 +58,10 @@ func TestIsolement_LaBorneEstInclusive(t *testing.T) {
 	}
 }
 
-// TestIsolement_RayonParMatchDansLeMemeUnivers — LE RAYON EST UNE PROPRIETE DU MATCH.
-//
-// LA MEME MORT, a 19 m d'un coequipier, est ISOLEE en Arene (18 m) et NE L'EST PAS en BTB
-// (24 m). Un rayon unique melangerait deux regles de jeu sous une seule mesure — et un
-// filtre qui contient les deux formats est le cas normal.
+// TestIsolement_RayonParMatchDansLeMemeUnivers — LA MEME MORT, a 19 m d'un coequipier, est
+// ISOLEE en Arene (18 m) et NE L'EST PAS en BTB (24 m).
 func TestIsolement_RayonParMatchDansLeMemeUnivers(t *testing.T) {
-	morts := []domain.MortAExaminer{mortA("arene", coeqVivant(19)), mortA("btb", coeqVivant(19))}
+	morts := []domain.MortAExaminer{mortA("arene", coeqVu(19)), mortA("btb", coeqVu(19))}
 	b := Isolement(morts, map[string]float64{"arene": 18, "btb": 24}, 2)
 	if b.Examinees != 2 {
 		t.Fatalf("examinees = %d, attendu 2", b.Examinees)
@@ -73,119 +71,83 @@ func TestIsolement_RayonParMatchDansLeMemeUnivers(t *testing.T) {
 	}
 }
 
-// TestIsolement_UnCoequipierINVISIBLE_NEstPasUnCoequipierMORT — LE DEFAUT P0-1.
-//
-// Un occupant de vehicule non attribue (la primitive n'apparie que 15,6 a 21,1 % des vies)
-// et un survivant de fin de partie (derniere vie anonyme) sont VIVANTS et invisibles. Les
-// compter morts rendait « isolee » une mort survenue a trois metres d'un coequipier.
-func TestIsolement_UnCoequipierINVISIBLE_NEstPasUnCoequipierMORT(t *testing.T) {
-	b := Isolement([]domain.MortAExaminer{mortA("m1", coeqInconnu())}, rayons18("m1"), 1)
-	if len(b.Isolees) != 0 {
-		t.Fatalf("isolees = %+v : un coequipier INVISIBLE n'est pas un coequipier MORT", b.Isolees)
-	}
-	if b.Examinees != 0 {
-		t.Fatalf("examinees = %d, attendu 0 : la mort est indeterminee, pas mesuree", b.Examinees)
-	}
-	if b.Indeterminees != 1 {
-		t.Fatalf("indeterminees = %d, attendu 1 — l'incertitude se compte, elle ne se tait pas",
-			b.Indeterminees)
-	}
-	if b.SansCoequipierVivant != 0 {
-		t.Fatalf("sans_coequipier_vivant = %d : « invisible » n'est pas « toute l'equipe a terre »",
-			b.SansCoequipierVivant)
-	}
-}
-
 // TestIsolement_UnCoequipierAPorteeTranche — un coequipier VU A PORTEE decide, quel que
-// soit le reste.
-//
-// Sans cette priorite, une mort survenue a deux metres d'un coequipier serait rangee
-// « indeterminee » parce qu'un TROISIEME joueur etait en vehicule : on perdrait une mesure
-// CERTAINE a cause d'une incertitude sans effet.
+// soit le reste. Sans cette priorite, une mort survenue a deux metres d'un coequipier
+// serait rangee ailleurs a cause d'un TROISIEME joueur : on perdrait une mesure CERTAINE.
 func TestIsolement_UnCoequipierAPorteeTranche(t *testing.T) {
-	b := Isolement([]domain.MortAExaminer{mortA("m1", coeqVivant(2), coeqInconnu(), coeqMort())}, rayons18("m1"), 1)
-	if b.Examinees != 1 {
-		t.Fatalf("examinees = %d, attendu 1", b.Examinees)
-	}
-	if len(b.Isolees) != 0 || b.Indeterminees != 0 {
+	b := Isolement([]domain.MortAExaminer{
+		mortA("m1", coeqVu(2), coeqVivantSansPosition(), coeqAbsent()),
+	}, rayons18("m1"), 1)
+	if b.Examinees != 1 || len(b.Isolees) != 0 {
 		t.Fatalf("bilan = %+v, attendu une mort ACCOMPAGNEE : un coequipier a 2 m tranche", b)
 	}
 }
 
-// TestIsolement_TousCoequipiersMorts_ExclusDuDenominateur — decision produit du plan.
+// TestIsolement_EquipeATerre_ExclueEtPUBLIEE — decision produit du plan, et le compte SORT.
 //
-// « Toute l'equipe a terre » exige que TOUS soient SUS morts. On ne peut pas etre mal
-// accompagne quand personne ne peut accompagner ; l'y compter mesurerait la defaite.
-func TestIsolement_TousCoequipiersMorts_ExclusDuDenominateur(t *testing.T) {
+// « Toute l'equipe a terre » exige que TOUS les coequipiers soient morts ou partis. On ne
+// peut pas etre mal accompagne quand personne ne peut accompagner ; l'y compter mesurerait
+// la defaite. Et le compte est PUBLIE : il etait mesure sans jamais sortir, si bien qu'un
+// denominateur ampute ressemblait a un denominateur complet.
+func TestIsolement_EquipeATerre_ExclueEtPubliee(t *testing.T) {
 	morts := []domain.MortAExaminer{
-		mortA("m1", coeqMort(), coeqMort()),
-		mortA("m1", coeqVivant(40)),
+		mortA("m1", coeqAbsent(), coeqAbsent()),
+		mortA("m1", coeqVu(40)),
 	}
 	b := Isolement(morts, rayons18("m1"), 1)
 	if b.Examinees != 1 {
 		t.Fatalf("examinees = %d, attendu 1 : la mort a equipe a terre est EXCLUE", b.Examinees)
 	}
-	if b.SansCoequipierVivant != 1 {
-		t.Fatalf("sans_coequipier_vivant = %d, attendu 1", b.SansCoequipierVivant)
+	if b.EquipeATerre != 1 {
+		t.Fatalf("equipe_a_terre = %d, attendu 1 — l'exclusion se compte ET se publie", b.EquipeATerre)
 	}
 	if len(b.Isolees) != 1 || b.Couverture.Taux != 1 {
 		t.Fatalf("bilan = %+v, attendu 1 isolee sur 1 examinee", b)
 	}
 }
 
-// TestIsolement_UnMortInvisibleEtUnVuHorsPortee — un vu HORS portee ne suffit pas a
-// trancher quand un autre est invisible : celui-la pourrait etre a deux metres.
-func TestIsolement_UnMortInvisibleEtUnVuHorsPortee(t *testing.T) {
-	b := Isolement([]domain.MortAExaminer{mortA("m1", coeqVivant(40), coeqInconnu())}, rayons18("m1"), 1)
-	if b.Indeterminees != 1 || len(b.Isolees) != 0 {
-		t.Fatalf("bilan = %+v, attendu indeterminee : l'invisible pourrait etre a portee", b)
-	}
-}
-
-// TestIsolement_PositionInconnue — une mort sans lieu n'est ni peinte ni examinee.
-func TestIsolement_PositionInconnue(t *testing.T) {
-	m := mortA("m1", coeqVivant(40))
-	m.PositionInconnue = true
-	b := Isolement([]domain.MortAExaminer{m}, rayons18("m1"), 1)
-	if b.PositionInconnue != 1 {
-		t.Fatalf("position_inconnue = %d, attendu 1", b.PositionInconnue)
-	}
-	if b.Examinees != 0 || len(b.Isolees) != 0 {
-		t.Fatalf("bilan = %+v : une mort sans lieu ne se mesure pas", b)
-	}
-}
-
-// TestIsolement_AucunCoequipierDuTout — un joueur seul de son camp au registre : pour le
-// placement, c'est « on ne peut pas etre mal accompagne ».
+// TestIsolement_AucunCoequipierDuTout — un joueur seul de son camp : pour le placement,
+// c'est « on ne peut pas etre mal accompagne ».
 func TestIsolement_AucunCoequipierDuTout(t *testing.T) {
 	b := Isolement([]domain.MortAExaminer{mortA("m1")}, rayons18("m1"), 1)
-	if b.SansCoequipierVivant != 1 || b.Examinees != 0 {
+	if b.EquipeATerre != 1 || b.Examinees != 0 {
 		t.Fatalf("bilan = %+v, attendu une exclusion « equipe a terre »", b)
 	}
 }
 
-// TestIsolement_VarianteSansRayon — les morts du match sont ECARTEES. Le COMPTE des matchs,
-// lui, est pose par l'appelant : ce paquet ne voit que des morts, et un match sans mort du
-// joueur ne passerait jamais ici (correction P0-2).
+// TestIsolement_VivantSansPosition_NeProuveRien — un coequipier vivant dont le film n'a
+// jamais donne de position compte comme PRESENCE (la mort est examinee), jamais comme
+// SOUTIEN (il ne peut pas rendre la mort accompagnee).
+func TestIsolement_VivantSansPosition_NeProuveRien(t *testing.T) {
+	b := Isolement([]domain.MortAExaminer{mortA("m1", coeqVivantSansPosition())}, rayons18("m1"), 1)
+	if b.Examinees != 1 {
+		t.Fatalf("examinees = %d, attendu 1 : un coequipier vivant est une presence", b.Examinees)
+	}
+	if len(b.Isolees) != 1 {
+		t.Fatalf("isolees = %+v, attendu 1 : sans position, il ne peut pas accompagner", b.Isolees)
+	}
+}
+
+// TestIsolement_VarianteSansRayon — les morts du match sont ECARTEES. Le COMPTE des matchs
+// est pose par l'appelant : ce paquet ne voit que des morts, et un match sans mort du
+// joueur ne passerait jamais ici.
 func TestIsolement_VarianteSansRayon(t *testing.T) {
 	morts := []domain.MortAExaminer{
-		mortA("connu", coeqVivant(40)),
-		mortA("inconnu", coeqVivant(40)),
-		mortA("inconnu", coeqVivant(2)),
+		mortA("connu", coeqVu(40)),
+		mortA("inconnu", coeqVu(40)),
+		mortA("inconnu", coeqVu(2)),
 	}
 	b := Isolement(morts, map[string]float64{"connu": 18}, 1)
 	if b.Examinees != 1 || len(b.Isolees) != 1 {
 		t.Fatalf("bilan = %+v : les morts du match sans rayon ne sont NI examinees NI isolees", b)
 	}
-	// Un rayon a zero ou negatif est traite comme une absence : jamais « tout est isole ».
-	b = Isolement([]domain.MortAExaminer{mortA("m1", coeqVivant(2))}, map[string]float64{"m1": 0}, 1)
+	b = Isolement([]domain.MortAExaminer{mortA("m1", coeqVu(2))}, map[string]float64{"m1": 0}, 1)
 	if b.Examinees != 0 {
 		t.Fatalf("rayon nul : examinees = %d, attendu 0", b.Examinees)
 	}
 }
 
-// TestIsolement_LaCouvertureEstLaFormeCanonique — jamais un taux nu : le brut, le
-// denominateur, la quantite par match et le drapeau d'echantillon faible voyagent avec.
+// TestIsolement_LaCouvertureEstLaFormeCanonique — jamais un taux nu.
 func TestIsolement_LaCouvertureEstLaFormeCanonique(t *testing.T) {
 	morts := make([]domain.MortAExaminer, 0, 40)
 	for i := 0; i < 40; i++ {
@@ -193,7 +155,7 @@ func TestIsolement_LaCouvertureEstLaFormeCanonique(t *testing.T) {
 		if i%4 == 0 {
 			d = 5.0 // accompagnee
 		}
-		morts = append(morts, mortA("m1", coeqVivant(d)))
+		morts = append(morts, mortA("m1", coeqVu(d)))
 	}
 	b := Isolement(morts, rayons18("m1"), 4)
 	if b.Examinees != 40 || b.Couverture.N != 40 {
@@ -208,8 +170,7 @@ func TestIsolement_LaCouvertureEstLaFormeCanonique(t *testing.T) {
 	if b.Couverture.EchantillonFaible {
 		t.Fatal("40 morts examinees : l'echantillon ne doit pas etre faible")
 	}
-	petit := Isolement(morts[:8], rayons18("m1"), 1)
-	if !petit.Couverture.EchantillonFaible {
+	if petit := Isolement(morts[:8], rayons18("m1"), 1); !petit.Couverture.EchantillonFaible {
 		t.Fatalf("8 morts examinees : l'echantillon doit etre faible (seuil %d)", SeuilEchantillonFaible)
 	}
 }
