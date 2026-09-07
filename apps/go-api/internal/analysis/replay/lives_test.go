@@ -55,7 +55,7 @@ func TestNameLivesByDeathsJoinsOnEnd(t *testing.T) {
 	)
 	lives := buildLifeSpans(tr)
 	deaths := []Death{{XUID: 111, TimeMS: 2_000 - 500}, {XUID: 222, TimeMS: 21_000 - 500}}
-	off, n := bestDeathOffset(lives, deaths)
+	off, n, _ := bestDeathOffset(lives, deaths)
 	if n != 2 {
 		t.Fatalf("attendu 2 morts appariables, obtenu %d (decalage %d)", n, off)
 	}

@@ -152,6 +152,20 @@ type Options struct {
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
 	// ni lancer n'est publié.
 	PlayerIndices PlayerIndexTable
+	// RosterXUIDs : les joueurs de la FEUILLE DE MATCH, fournis par l'assembleur. Ils
+	// COMPLÈTENT le roster que le fil des morts donne (`rosterFromDeaths`) avant la lecture
+	// de l'index de joueur.
+	//
+	// LE TROU QU'ILS BOUCHENT, ET IL EST STRUCTUREL : un joueur QUI NE MEURT JAMAIS n'est
+	// dans aucun enregistrement du fil des morts, donc dans aucun roster déduit de lui, donc
+	// dans aucune table d'index — et rien ne peut plus rattacher ses pistes ni le publier au
+	// roster du document. Mesure du 2026-09-07 sur `3372e7eb` (CTF, Isolation) : le roster
+	// publié porte 6 joueurs pour 8 à la feuille, et les DEUX manquants sont exactement les
+	// deux qui finissent à 0 mort (6 frags et 8 frags — les meilleurs du match).
+	//
+	// VIDE = COMPORTEMENT D'AVANT, À L'OCTET PRÈS : le CLI hors ligne et l'ouvrier sans faits
+	// gardent le roster du fil des morts seul, et le rejeu reste publiable sans base.
+	RosterXUIDs []uint64
 	// Bots : les bots que le film DÉCLARE (BOT_METADATA, paquet type 12), fournis par
 	// l'assembleur — le décodage vit chez son propriétaire unique (film/killsource), et ce
 	// paquet-ci est title-agnostic. FilmIndex est le slot de roster déclaré, Name porte le

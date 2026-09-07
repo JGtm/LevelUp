@@ -8,6 +8,8 @@ package replay
 // rattaché, celui-ci ce que le PONT a su nommer. Déplacement PUR : aucune ligne de logique n'est
 // modifiée, seul l'emplacement change.
 
+import "log/slog"
+
 // BridgeHealth résume la santé du pont slot -> joueur.
 //
 // POURQUOI LA PUBLIER PLUTÔT QUE LA GARDER POUR LE JOURNAL : la couverture d'un calque peut
@@ -59,6 +61,18 @@ type BridgeHealth struct {
 	// nommer par « l'occupant précédent » serait un choix par l'ordre, celui-là même que
 	// `SlotAmbiguous` existe pour signaler.
 	UnnamedLivesContested int `json:"unnamedLivesContested"`
+	// DeathOffsetMatched / DeathOffsetRunnerUp : la MARGE du calage du fil des morts — ce que
+	// le calage retenu apparie, et ce que le meilleur des autres candidats aurait apparié.
+	//
+	// POURQUOI CETTE PAIRE EST PUBLIÉE. Depuis le 2026-09-07 le calage n'est plus cherché par un
+	// balayage exhaustif de toute la plage mais par un vote qui localise quelques candidats,
+	// puis par un affinage qui les mesure (cf. lives.go). Un vote peut se tromper de panier ; ce
+	// qui l'empêche de le faire EN SILENCE — le défaut même que ce lot répare —, c'est de
+	// publier le second compte à côté du premier. Un calage vrai écrase ses concurrents :
+	// mesuré 71 contre 8 sur `51ebbc0f` et 157 contre 15 sur `d9781168`. Une marge sous
+	// `deathOffsetMargeMin` est doublée d'un `slog.Warn` à la cuisson.
+	DeathOffsetMatched  int `json:"deathOffsetMatched"`
+	DeathOffsetRunnerUp int `json:"deathOffsetRunnerUp"`
 	// ClosedByShot : entrées ajoutées par la fermeture A (le corps disponible).
 	ClosedByShot int `json:"closedByShot"`
 	// ClosedByRespawn : entrées ajoutées par la fermeture B (la réapparition).
@@ -143,4 +157,24 @@ func verdictOfBridge(b BridgeHealth) string {
 	default:
 		return VerdictNominal
 	}
+}
+
+// warnIfCalageEtroit alarme quand le calage du fil des morts n'écrase pas franchement son
+// meilleur concurrent.
+//
+// LE CALAGE EST DÉSORMAIS LOCALISÉ PAR UN VOTE (cf. lives.go), et une heuristique peut se
+// tromper de panier. Le compte du candidat suivant est le seul témoin qui le dise : quand le
+// calage retenu ne fait pas au moins `deathOffsetMargeMin` fois mieux, il n'est plus
+// distinguable du bruit et TOUT ce qui en dépend est suspect — le nommage des vies, et
+// l'origine du document dont il est le témoin (`resolveOriginMs`). Mesuré x8,9 et x10,5 sur
+// les deux témoins du parc : ce seuil n'est pas atteint aujourd'hui, et c'est bien pourquoi
+// l'atteindre doit se voir.
+func (b BridgeHealth) warnIfCalageEtroit() {
+	if b.DeathOffsetMatched == 0 ||
+		b.DeathOffsetMatched >= deathOffsetMargeMin*b.DeathOffsetRunnerUp {
+		return
+	}
+	slog.Warn("rejeu : calage du fil des morts trop peu distinct du bruit — nommage et origine suspects",
+		"apparies", b.DeathOffsetMatched, "second_candidat", b.DeathOffsetRunnerUp,
+		"marge_minimale", deathOffsetMargeMin, "vies", b.LivesTotal, "slots", b.Slots)
 }

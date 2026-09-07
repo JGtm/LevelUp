@@ -343,6 +343,29 @@ func playerLines(facts port.MatchFacts) []objectiveevents.PlayerLine {
 	return out
 }
 
+// rosterXUIDs rend les joueurs de la feuille de match, en decimal, pour COMPLETER le roster
+// que le fil des morts donne au rejeu (cf. replay.Options.RosterXUIDs).
+//
+// UN JOUEUR QUI NE MEURT JAMAIS N'EST DANS AUCUNE MORT, donc dans aucun roster deduit du fil
+// — et il disparait de toute la chaine : pas d'index de joueur, pas de pont, pas d'entree au
+// roster publie. Mesure du 2026-09-07 sur `3372e7eb` : 6 joueurs publies pour 8 a la feuille,
+// les deux manquants a 0 mort.
+//
+// Un xuid que la feuille ne donne pas en decimal (un bot, `bid(N.0)`) est ignore : le pont des
+// bots passe par BOT_METADATA et les relais, pas par l'index de joueur.
+func rosterXUIDs(facts port.MatchFacts) []uint64 {
+	out := make([]uint64, 0, len(facts.Players))
+	for _, p := range facts.Players {
+		if x, err := strconv.ParseUint(p.XUID, 10, 64); err == nil && x != 0 {
+			out = append(out, x)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 // teamByXUID rend le camp de chaque joueur. Un camp inconnu (-1) n'entre PAS dans la table :
 // il ferait entrer un faux camp dans la somme des frags qui identifie les slots d'equipe.
 func teamByXUID(facts port.MatchFacts) map[string]int {

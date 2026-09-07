@@ -68,10 +68,17 @@ type BridgeHealth struct {
 	// UnnamedLivesContested : la part du résidu qui tombe sur une frontière entre deux occupants
 	// nommés du même slot, que rien ne date — indécidable, pas absente.
 	UnnamedLivesContested int `json:"unnamedLivesContested"`
-	ClosedByShot          int `json:"closedByShot"`
-	ClosedByRespawn       int `json:"closedByRespawn"`
-	ClosedContested       int `json:"closedContested"`
-	ClosedRefused         int `json:"closedRefused"`
+	// DeathOffsetMatched / DeathOffsetRunnerUp : la MARGE du calage du fil des morts — ce que le
+	// calage retenu apparie, et ce que le meilleur des AUTRES candidats aurait apparié. Le
+	// calage est localisé par un vote puis mesuré par affinage : publier le second compte est ce
+	// qui empêche un vote trompé de rendre un calage faux en silence. Un calage vrai écrase ses
+	// concurrents (71 contre 8, 157 contre 15 sur les témoins du parc).
+	DeathOffsetMatched  int `json:"deathOffsetMatched"`
+	DeathOffsetRunnerUp int `json:"deathOffsetRunnerUp"`
+	ClosedByShot        int `json:"closedByShot"`
+	ClosedByRespawn     int `json:"closedByRespawn"`
+	ClosedContested     int `json:"closedContested"`
+	ClosedRefused       int `json:"closedRefused"`
 }
 
 // T0FilmCoverage est le VERDICT du detecteur de coup d'envoi, servi a cote du champ

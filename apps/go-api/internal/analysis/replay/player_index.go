@@ -108,13 +108,34 @@ func ScanPlayerIndices(film *filmsource.Film, roster []uint64) (PlayerIndexTable
 // rosterFromDeaths rend les xuids distincts du fil des morts, en ordre stable. C'est le seul
 // roster dont le rejeu dispose sans base de données — et il est déjà, lui aussi, une lecture.
 func rosterFromDeaths(deaths []Death) []uint64 {
+	return rosterOf(deaths, nil)
+}
+
+// rosterOf rend les xuids du fil des morts COMPLÉTÉS par ceux que l'appelant fournit, en
+// ordre stable.
+//
+// POURQUOI LE COMPLÉMENT EXISTE : un joueur qui ne meurt jamais n'apparaît dans aucun
+// enregistrement du fil, donc dans aucun roster qui en dérive — et il est alors invisible
+// jusqu'au bout de la chaîne (pas d'index de joueur, pas de pont, pas d'entrée au roster
+// publié). Mesure : `3372e7eb`, 6 joueurs publiés pour 8, les deux manquants à 0 mort.
+//
+// `extra` vide rend EXACTEMENT ce que le fil des morts donne : c'est ce qui garde le rejeu
+// publiable hors ligne (cf. [Options.RosterXUIDs]).
+func rosterOf(deaths []Death, extra []uint64) []uint64 {
 	seen := map[uint64]bool{}
-	out := make([]uint64, 0, 8)
-	for _, d := range deaths {
-		if !seen[d.XUID] {
-			seen[d.XUID] = true
-			out = append(out, d.XUID)
+	out := make([]uint64, 0, len(deaths)+len(extra))
+	ajouter := func(x uint64) {
+		if x == 0 || seen[x] {
+			return
 		}
+		seen[x] = true
+		out = append(out, x)
+	}
+	for _, d := range deaths {
+		ajouter(d.XUID)
+	}
+	for _, x := range extra {
+		ajouter(x)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
 	return out

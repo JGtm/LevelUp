@@ -109,7 +109,7 @@ func mesureOrigine(t *testing.T, dir, short string) (int64, int64) {
 		t.Fatalf("fil des morts : %v", err)
 	}
 	lives := buildLifeSpans(indexBySlot(pos))
-	off, matched := bestDeathOffset(lives, deaths)
+	off, matched, _ := bestDeathOffset(lives, deaths)
 	lu := int64(originUS-clockUS) / 1000
 	temoin := int64(originUS)/1000 - off
 	avant, apres, n := ecartFilFiche(lives, deaths, off, originUS, lu)
