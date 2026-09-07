@@ -381,10 +381,10 @@ func TestTacticalHandler_TempsSansCapability(t *testing.T) {
 	}
 }
 
-// TestTacticalHandler_QuestionsDArtefact : les trois lectures de sidecar traversent le
-// contrat. Le handler ne connait aucun vocabulaire, il transmet.
+// TestTacticalHandler_QuestionsDArtefact : les lectures de sidecar traversent le contrat.
+// Le handler ne connait aucun vocabulaire, il transmet.
 func TestTacticalHandler_QuestionsDArtefact(t *testing.T) {
-	for _, q := range []string{domain.TacticalQuestionRoutes, domain.TacticalQuestionIsole} {
+	for _, q := range []string{domain.TacticalQuestionTemps, domain.TacticalQuestionRoutes} {
 		svc := &fakeTacticalSvc{}
 		r := newTacticalRouter(tacticalFactory(svc, nil))
 		w := appelPost(t, r, "/players/JGtm/tactical/streets/raster",
@@ -429,20 +429,19 @@ func TestTacticalHandler_GrappeInconnue(t *testing.T) {
 	}
 }
 
-// TestTacticalHandler_GrappesEtIsolementTraversent : les repères de la lecture arrivent au
-// client — sans eux, la page ne peut ni proposer les grappes ni dire ce qu'elle a écarté.
-func TestTacticalHandler_GrappesEtIsolementTraversent(t *testing.T) {
-	cov := domain.Couverture{Taux: 0.4, Brut: 12, ParMatch: 3, N: 30}
+// TestTacticalHandler_GrappesEtVentilationTraversent : les reperes de la lecture arrivent
+// au client — sans eux, la page ne peut ni proposer les grappes ni dire ce qu'elle a ecarte.
+func TestTacticalHandler_GrappesEtVentilationTraversent(t *testing.T) {
 	svc := &fakeTacticalSvc{raster: domain.TacticalRaster{
-		MapID: "streets", Question: domain.TacticalQuestionIsole, Qui: domain.TacticalQuiMoi,
-		MatchsFiltres: 5, MatchsRetenus: 4, MatchsSansRayon: 1, Isolement: &cov,
+		MapID: "streets", Question: domain.TacticalQuestionRoutes, Qui: domain.TacticalQuiMoi,
+		MatchsFiltres: 5, MatchsRetenus: 2, MatchsEnAttente: 1, MatchsHorsRetention: 2,
 		Grappes: []domain.TacticalGrappe{{
 			ID: "s+1+1+c03", NomFR: "Base rouge", NomEN: "Red base", X: 1, Y: 1, Matchs: 4,
 		}},
 	}}
 	r := newTacticalRouter(tacticalFactory(svc, nil))
 	w := appelPost(t, r, "/players/JGtm/tactical/streets/raster",
-		`{"match_ids":["m1"],"question":"isole"}`)
+		`{"match_ids":["m1"],"question":"routes"}`)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
 	}
@@ -456,11 +455,11 @@ func TestTacticalHandler_GrappesEtIsolementTraversent(t *testing.T) {
 	if len(got.Grappes) != 1 || got.Grappes[0].NomFR != "Base rouge" || got.Grappes[0].NomEN != "Red base" {
 		t.Fatalf("grappes = %+v", got.Grappes)
 	}
-	if got.MatchsSansRayon != 1 {
-		t.Fatalf("matchs_sans_rayon = %d, attendu 1 : une lecture amputee doit le dire",
-			got.MatchsSansRayon)
-	}
-	if got.Isolement == nil || got.Isolement.Brut != 12 || got.Isolement.N != 30 {
-		t.Fatalf("isolement = %+v, attendu le taux AVEC son brut et son denominateur", got.Isolement)
+	// LES DEUX ABSENCES TRAVERSENT SEPAREMENT : c'est ce qui permet a l'ecran de distinguer
+	// « traitement en cours » de « donnees non disponibles ». Les confondre en un seul
+	// nombre remettrait le meme message aux deux situations.
+	if got.MatchsEnAttente != 1 || got.MatchsHorsRetention != 2 {
+		t.Fatalf("en_attente=%d hors_retention=%d, attendu 1 et 2",
+			got.MatchsEnAttente, got.MatchsHorsRetention)
 	}
 }

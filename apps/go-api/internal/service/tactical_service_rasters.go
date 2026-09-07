@@ -83,7 +83,7 @@ func (s *tacticalRasterStore) Charger(_ context.Context, matchID string) (*domai
 // ─── LA LECTURE ────────────────────────────────────────────────────────────────
 
 // rasterArtefact orchestre les TROIS lectures qui viennent des sidecars — « ou je passe
-// mon temps », « par ou je sors du spawn », « ou je meurs isole » — plus les GRAPPES de
+// mon temps » et « par ou je sors du spawn » — plus les GRAPPES de
 // reapparition, qui accompagnent les trois.
 //
 // ELLE NE PASSE PAS PAR `KillPositions` (contrairement aux lectures de placement) : ses
@@ -107,7 +107,7 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 		return games.ErrCapabilityNotSupported
 	}
 	debut := time.Now()
-	univers, err := s.repo.Univers(ctx, requeteDuScope(s.xuid, out.MapID, scope))
+	univers, err := s.repo.Univers(ctx, s.requeteAvecRetention(out.MapID, scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: univers de la lecture d'artefact en echec",
 			"player", s.xuid, "map_id", out.MapID, "err", err)
@@ -132,6 +132,7 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 	// MATCHS FILTRES = L'UNIVERS DE CETTE CARTE — deja restreint par le filtre de spawn,
 	// qui est un filtre d'univers ; MatchsRetenus en est le SOUS-ENSEMBLE MESURE.
 	out.MatchsFiltres = len(univers.Matchs)
+	ventilerNonRetenus(out, univers, sidecars)
 	if err := s.remplirLectureArtefact(ctx, out, univers, sidecars, scope, ignores); err != nil {
 		return err
 	}
@@ -144,10 +145,37 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 		"player", s.xuid, "map_id", out.MapID, "question", out.Question, "qui", out.Qui,
 		"spawn", scope.Spawn, "grappes", len(out.Grappes),
 		"matchs_filtres", out.MatchsFiltres, "matchs_retenus", out.MatchsRetenus,
-		"matchs_sans_rayon", out.MatchsSansRayon,
+		"matchs_en_attente", out.MatchsEnAttente, "matchs_hors_retention", out.MatchsHorsRetention,
 		"coequipiers", len(scope.Coequipiers), "cellules", len(out.Cellules),
 		"duration", time.Since(debut))
 	return nil
+}
+
+// ventilerNonRetenus repartit les matchs SANS sidecar exploitable entre « la cuisson les
+// reprendra » et « ils ne seront jamais cuits ».
+//
+// # POURQUOI DEUX COMPTES ET NON UN SEUL
+//
+// « N mesures sur M » disait la meme chose a deux utilisateurs dans des situations
+// opposees : celui qui vient de jouer et dont les artefacts arrivent dans quelques minutes,
+// et celui qui regarde ses matchs d'il y a deux ans, dont les films ont expire cote serveur
+// et ne seront jamais cuits. Le premier doit attendre, le second n'a rien a attendre.
+//
+// LE PREDICAT VIENT DE LA MEME DEFINITION QUE LA FILE DE CUISSON
+// (`analysis.SQLDansFenetreRetention`, applique par le lecteur) : annoncer une cuisson que
+// la file ne fera pas serait pire que se taire.
+func ventilerNonRetenus(out *domain.TacticalRaster, univers domain.TacticalUnivers,
+	sidecars map[string]*domain.TacticalRasterSidecar) {
+	for _, m := range univers.Matchs {
+		if sidecars[m.MatchID] != nil {
+			continue
+		}
+		if m.DansRetention {
+			out.MatchsEnAttente++
+			continue
+		}
+		out.MatchsHorsRetention++
+	}
 }
 
 // zonesDeLaCarte rend les callouts de la carte, ou rien. Un magasin non cable est un titre
@@ -243,25 +271,6 @@ func (s *TacticalService) remplirLectureArtefact(ctx context.Context, out *domai
 		for _, id := range mesures {
 			comptes = append(comptes, comptesDesRoutes(sidecars[id], id, dans)...)
 		}
-	case domain.TacticalQuestionIsole:
-		// LES MORTS VIENNENT DU JOURNAL (la base), pas du film : c'est la meme source que
-		// « ou je meurs » et que l'echange. Le sidecar ne fournit que les POSITIONS.
-		journal, err := s.repo.KillEvents(ctx, requeteDuScope(s.xuid, out.MapID, scope))
-		if err != nil {
-			s.logger.ErrorContext(ctx, "tactique: journal des morts en echec (isolement non servi)",
-				"player", s.xuid, "map_id", out.MapID, "err", err)
-			return err
-		}
-		bilan, avecRayon := s.mesurerIsolement(journal, sidecars, univers, dans, mesures)
-		// L'UNIVERS DE CETTE LECTURE EST CELUI DES MATCHS AYANT UN RAYON (correction P0-2) :
-		// rasteriser sur `mesures` diviserait les cellules par des matchs qu'on a refuse de
-		// lire — meme defaut que celui corrige deux fois sous « correction G2 ».
-		mesures = avecRayon
-		out.MatchsRetenus = len(mesures)
-		out.MatchsSansRayon = bilan.MatchsSansRayon
-		out.MortsEquipeATerre = bilan.EquipeATerre
-		out.Isolement = &bilan.Couverture
-		comptes = comptesDesMortsIsolees(tactical.GrilleParDefaut(), bilan.Isolees)
 	default: // domain.TacticalQuestionTemps
 		for _, id := range mesures {
 			comptes = append(comptes, comptesDuSidecar(sidecars[id], id, dans)...)
@@ -345,8 +354,8 @@ func remplirDepuisSidecars(out *domain.TacticalRaster, raster *tactical.Raster, 
 	out.Cellules = raster.Cellules()
 	if out.Question == domain.TacticalQuestionTemps {
 		// SEULE L'OCCUPATION SE LIT EN SECONDES : ses comptes sont des echantillons de
-		// 250 ms. Les routes comptent des PASSAGES et les morts isolees des MORTS — les
-		// convertir en temps leur donnerait une unite qu'elles n'ont pas.
+		// 250 ms. Les routes, elles, comptent des PASSAGES — les convertir en temps leur
+		// donnerait une unite qu'elles n'ont pas.
 		out.Cellules = tactical.EnSecondes(out.Cellules, tactical.PasOccupationMs)
 	}
 	out.Echelle = tactical.Echelle(out.Cellules)

@@ -57,10 +57,6 @@ type TacticalRaster struct {
 	// spawn de depart ne se connait que par un sidecar.
 	MatchsFiltres int `json:"matchs_filtres"`
 
-	// SOUS LA LECTURE « isole », C'EST L'UNIVERS MESURABLE : les matchs mesures AYANT un
-	// rayon de radar. Un match dont la variante n'a pas de portee mesuree n'y entre pas —
-	// il est compte a part dans `matchs_sans_rayon`.
-	//
 	// MatchsRetenus est le DENOMINATEUR de la lecture : les matchs du filtre dont le
 	// journal des morts est LISIBLE (cf. TacticalMatch.Mesure). Un match jamais
 	// decode n'y entre pas — il ne peut alimenter aucune cellule, et l'y compter
@@ -118,23 +114,30 @@ type TacticalRaster struct {
 	// d'artefact : ce sont eux que le filtre `spawn` designe.
 	Grappes []TacticalGrappe `json:"grappes,omitempty"`
 
-	// MatchsSansRayon : les matchs ECARTES de la lecture « isole » parce que leur variante
-	// n'a pas de portee de radar mesuree. Publie plutot qu'avale — sans lui, une lecture
-	// amputee ressemblerait a une lecture complete.
-	MatchsSansRayon int `json:"matchs_sans_rayon,omitempty"`
-
-	// MortsEquipeATerre : les morts ECARTEES de la lecture « isole » parce que tous les
-	// coequipiers etaient morts ou partis a cet instant (ou qu'il n'y en avait aucun).
+	// MatchsEnAttente et MatchsHorsRetention VENTILENT les matchs FILTRES qui ne sont pas
+	// RETENUS, pour les lectures d'artefact (« ou je passe mon temps », « par ou je sors
+	// du spawn », grappes de reapparition).
 	//
-	// PUBLIEE, ET C'EST LE POINT : elle etait comptee sans jamais sortir, si bien qu'un
-	// denominateur ampute ressemblait a un denominateur complet. Elle ne dit rien du
-	// placement — on ne peut pas etre mal accompagne quand personne ne peut accompagner.
-	MortsEquipeATerre int `json:"morts_equipe_a_terre,omitempty"`
-
-	// Isolement est la part des morts SANS coequipier vivant a portee, sous la forme
-	// canonique (taux + brut + par match + N + echantillon faible). nil hors de la lecture
-	// « isole ».
-	Isolement *Couverture `json:"isolement,omitempty"`
+	// LES DEUX ABSENCES NE SE DISENT PAS PAREIL, et c'est tout l'objet de la ventilation :
+	//
+	//	EN ATTENTE          le match est DANS la fenetre de retention des artefacts de
+	//	                    rejeu, mais son artefact n'existe pas encore. La cuisson au fil
+	//	                    de l'eau le reprendra : c'est un TRAITEMENT EN COURS.
+	//	HORS RETENTION      le match est plus ancien que la fenetre. Il ne sera jamais cuit,
+	//	                    et son film est de toute facon expire cote serveur : c'est une
+	//	                    DONNEE NON DISPONIBLE, definitivement.
+	//
+	// Sans elles, l'ecran ne pouvait dire que « N mesures sur M » — et un utilisateur qui
+	// vient de jouer voyait le meme message qu'un utilisateur qui regarde ses matchs d'il y
+	// a deux ans, alors que l'un doit attendre quelques minutes et l'autre rien du tout.
+	// Decision UI (phase 5) : le bloc du graphe distingue « donnees non disponibles » de
+	// « traitement en cours ».
+	//
+	// L'INVARIANT EST TESTE : MatchsFiltres = MatchsRetenus + MatchsEnAttente +
+	// MatchsHorsRetention. Une ventilation qui ne somme pas au total cache un troisieme
+	// cas qu'on n'a pas nomme.
+	MatchsEnAttente     int `json:"matchs_en_attente,omitempty"`
+	MatchsHorsRetention int `json:"matchs_hors_retention,omitempty"`
 
 	// Echange est le taux de morts vengees de mon equipe SUR CETTE CARTE. nil quand
 	// le titre ne sait pas lire la source des morts (capability `film.kill_source`

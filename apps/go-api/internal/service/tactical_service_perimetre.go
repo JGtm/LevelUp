@@ -36,7 +36,7 @@ func validerLecture(carte, question, qui string, coequipiers []string) error {
 	}
 	switch question {
 	case domain.TacticalQuestionMorts, domain.TacticalQuestionKills, domain.TacticalQuestionGagne,
-		domain.TacticalQuestionTemps, domain.TacticalQuestionRoutes, domain.TacticalQuestionIsole:
+		domain.TacticalQuestionTemps, domain.TacticalQuestionRoutes:
 	default:
 		return fmt.Errorf("%w (%q)", domain.ErrTacticalQuestionInconnue, question)
 	}
@@ -67,6 +67,20 @@ func requeteDuScope(xuid, carte string, scope domain.TacticalScope) domain.Tacti
 		Matchs:      domain.RestreindreAux(scope.MatchIDs),
 		Coequipiers: compositionNettoyee(scope.Coequipiers),
 	}
+}
+
+// requeteAvecRetention est `requeteDuScope` plus la fenetre de retention COURANTE, relue a
+// chaque lecture comme la purge la relit a chaque tick.
+//
+// ELLE N'EST POSEE QUE POUR LES LECTURES D'ARTEFACT : ce sont les seules qui ventilent
+// leurs matchs non retenus. Les lectures de base (« ou je meurs », « ou je tue »,
+// « ou je gagne ») n'ont pas d'artefact a attendre — leur denominateur est le journal.
+func (s *TacticalService) requeteAvecRetention(carte string, scope domain.TacticalScope) domain.TacticalQuery {
+	q := requeteDuScope(s.xuid, carte, scope)
+	if s.retentionMois != nil {
+		q.RetentionMois = s.retentionMois()
+	}
+	return q
 }
 
 // compositionNettoyee rend les xuids de la composition sans blanc, sans doublon et

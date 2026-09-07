@@ -1145,17 +1145,6 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		}
 	}
 
-	// Portée du RADAR par variante (même regulation.toml, table [radar_range_m]) → borne
-	// la lecture « où je meurs isolé » de l'onglet Tactique. Titre sans déclaration →
-	// absent → aucune lecture d'isolement pour ce titre, et le compte des matchs écartés
-	// le dit (jamais un rayon deviné).
-	radarRange := make(map[string]map[string]int)
-	for _, slug := range multiTitleSlugs {
-		if rset, ok := fieldMappingsRegistry.GetRegulation(slug); ok {
-			radarRange[slug] = rset.RadarRangeMap()
-		}
-	}
-
 	// Lecture du bloc « Score dans le temps » PAR TITRE (même regulation.toml, table
 	// [score_timeline]) → l'en-tête de la vue match dit au client s'il doit masquer le
 	// bloc (Slayer), poser des barres aux instants de marque (drapeau, colline, bombe) ou
@@ -1178,7 +1167,6 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		WithPlaylistLabelOverrides(playlistLabelOverrides).
 		WithRegulationSeconds(regulationSeconds).
 		WithRoundsDecide(roundsDecide).
-		WithRadarRange(radarRange).
 		WithScoreTimelineKind(scoreTimelineKind)
 
 	// V72-27 : câble le résolveur de libellé de rang FR consommé par les

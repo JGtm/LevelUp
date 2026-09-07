@@ -63,11 +63,12 @@ type TacticalService struct {
 	rasters port.TacticalRasterStore
 	// callouts nomme les grappes de reapparition. Nil = grappes MUETTES, jamais d'erreur.
 	callouts port.TacticalCalloutsStore
-	// radar : game_variant_name -> portee du radar en metres (`regulation.toml`). Une
-	// variante absente n'a PAS de rayon : ses matchs sortent de la lecture « isole » et se
-	// comptent (jamais un rayon de repli).
-	radar  map[string]int
-	logger *slog.Logger
+	// retentionMois rend la fenetre de retention des artefacts de rejeu, en mois (0 =
+	// illimitee). MEME SOURCE que la purge et que la file de cuisson : `app_settings.json`.
+	// Nil = la ventilation des matchs non retenus n'est pas publiee (voir
+	// `ventilerNonRetenus`) — on ne devine pas une fenetre.
+	retentionMois func() int
+	logger        *slog.Logger
 }
 
 // NewTacticalService construit le service.
@@ -97,9 +98,13 @@ func (s *TacticalService) WithCalloutsStore(store port.TacticalCalloutsStore) *T
 	return s
 }
 
-// WithRadarRange injecte la table des portees de radar du titre. Chainable.
-func (s *TacticalService) WithRadarRange(parVariante map[string]int) *TacticalService {
-	s.radar = parVariante
+// WithRetentionMois injecte la fenetre de retention des artefacts de rejeu. Chainable.
+//
+// UNE FONCTION ET NON UNE VALEUR : la fenetre est un REGLAGE, relu a chaque lecture comme
+// le cron de purge le relit a chaque tick. Une valeur figee au cablage aurait fait diverger
+// ce que la page annonce de ce que la purge applique, jusqu'au prochain redemarrage.
+func (s *TacticalService) WithRetentionMois(f func() int) *TacticalService {
+	s.retentionMois = f
 	return s
 }
 
@@ -483,7 +488,7 @@ func journalDesMortsFiable(caps games.CapabilityMap) bool {
 // regarde aucune.
 func lectureDArtefact(question string) bool {
 	switch question {
-	case domain.TacticalQuestionTemps, domain.TacticalQuestionRoutes, domain.TacticalQuestionIsole:
+	case domain.TacticalQuestionTemps, domain.TacticalQuestionRoutes:
 		return true
 	default:
 		return false

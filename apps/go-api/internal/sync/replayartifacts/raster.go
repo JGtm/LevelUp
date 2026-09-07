@@ -229,7 +229,6 @@ func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation) ([]doma
 			Spawns:           spawnsDeLOccupation(j.Spawns),
 			PremieresEntrees: entreesDeLOccupation(j.PremieresEntrees),
 			Routes:           routesDeLOccupation(j.Routes),
-			Chronologie:      chronologieDeLOccupation(j.Chronologie),
 		})
 	}
 	return out, ignores, nil
@@ -250,16 +249,6 @@ func spawnsDeLOccupation(spawns []tactical.SpawnPiste) []domain.TacticalRasterSp
 		out = append(out, domain.TacticalRasterSpawn{
 			Frame: s.Frame, X: s.X, Y: s.Y, PremiereVie: s.PremiereVie,
 		})
-	}
-	return out
-}
-
-// chronologieDeLOccupation transporte OU ETAIT LE JOUEUR, ET QUAND. Aucun verdict : ni
-// mort, ni vivant, ni distance — le film ne sait pas le dire, la lecture si.
-func chronologieDeLOccupation(segments []tactical.SegmentChrono) []domain.TacticalRasterSegment {
-	out := make([]domain.TacticalRasterSegment, 0, len(segments))
-	for _, sg := range segments {
-		out = append(out, domain.TacticalRasterSegment{DebutFrame: sg.DebutFrame, XY: sg.XY})
 	}
 	return out
 }

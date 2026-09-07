@@ -1,34 +1,24 @@
 package service
 
-// tactical_service_lectures.go — LES DEUX LECTURES QUI S'AJOUTENT A L'OCCUPATION : les
-// ROUTES de sortie de spawn et les MORTS ISOLEES. Plus les GRAPPES de reapparition, qui ne
-// sont pas une lecture mais un REPERE servi avec toutes.
+// tactical_service_lectures.go — LA LECTURE QUI S'AJOUTE A L'OCCUPATION : les ROUTES de
+// sortie de spawn. Plus les GRAPPES de reapparition, qui ne sont pas une lecture mais un
+// REPERE servi avec toutes.
 //
 // Fichier separe de tactical_service_rasters.go (qui porte le chargement des sidecars et
 // l'occupation) : celui-la dit COMMENT on lit un sidecar, celui-ci dit CE QU'ON Y CHERCHE.
 //
 // ─── TOUT VIENT DES MEMES FICHIERS ─────────────────────────────────────────────
 //
-// Les trois lectures d'artefact (temps, routes, isole) et les grappes se servent du MEME
+// Les deux lectures d'artefact (temps, routes) et les grappes se servent du MEME
 // sidecar par match, charge UNE FOIS par requete. Elles partagent donc leur denominateur —
 // `matchs_retenus`, les matchs dont le sidecar est present et exploitable — et l'ecart avec
 // `matchs_filtres` dit la meme chose pour toutes : ce que la couverture de film ne montre
 // pas.
 //
-// ─── L'ISOLEMENT SE DECIDE ICI, PARCE QUE C'EST ICI QUE LES EQUIPES EXISTENT ───
-//
-// Le sidecar porte, pour chaque mort, la distance a chaque autre joueur nomme VIVANT — sans
-// equipe, que le film ne porte pas. Ce fichier joint `Univers.Equipes`, ne garde que les
-// COEQUIPIERS, applique le rayon de la variante DU MATCH, et laisse `coordination.Isolement`
-// trancher. Une variante sans rayon mesure : le match sort de la lecture et se compte.
-
 import (
 	"context"
-	"math"
 	"sort"
-	"strings"
 
-	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
@@ -57,114 +47,6 @@ func comptesDesRoutes(sc *domain.TacticalRasterSidecar, matchID string,
 				})
 			}
 		}
-	}
-	return out
-}
-
-// chronologie indexe les segments de position d'un joueur pour une interrogation par
-// instant.
-type chronologie struct {
-	// segments : les fenetres observables, dans l'ordre.
-	segments []domain.TacticalRasterSegment
-	// pasFrames : le pas de la chronologie, converti en frames pour ce match.
-	pasFrames int
-}
-
-// positionA rend la position du joueur a une frame, si le sidecar en connait une.
-//
-// LA POSITION EST TENUE JUSQU'AU PAS SUIVANT : un echantillon a la frame f vaut pour
-// [f, f + pas). Au-dela d'un segment, rien — c'est une absence, pas une position.
-func (c chronologie) positionA(frame int) (x, y float64, ok bool) {
-	for _, sg := range c.segments {
-		n := len(sg.XY) / 2
-		if n == 0 {
-			continue
-		}
-		idx := (frame - sg.DebutFrame) / c.pasFrames
-		if frame < sg.DebutFrame || idx >= n {
-			continue
-		}
-		x, y = sg.XY[idx*2], sg.XY[idx*2+1]
-		if math.IsNaN(x) || math.IsNaN(y) {
-			// Trou DANS une fenetre observable (embarquement sans point de vehicule) : on
-			// ne fabrique pas de position.
-			return 0, 0, false
-		}
-		return x, y, true
-	}
-	return 0, 0, false
-}
-
-// dernierePositionAvant rend la derniere position CONNUE du joueur avant un instant.
-//
-// DECISION UTILISATEUR (2026-09-07) : un coequipier vivant dont le film a perdu la trace
-// (vehicule non rattache) est quelque part, et sa DERNIERE position connue vaut mieux qu'un
-// « inconnu » qui ne se mesure pas. On ne fabrique pas d'incertitude : on tient la mesure la
-// plus recente.
-func (c chronologie) dernierePositionAvant(frame int) (x, y float64, ok bool) {
-	for _, sg := range c.segments {
-		n := len(sg.XY) / 2
-		for i := 0; i < n; i++ {
-			f := sg.DebutFrame + i*c.pasFrames
-			if f > frame {
-				break
-			}
-			if px, py := sg.XY[i*2], sg.XY[i*2+1]; !math.IsNaN(px) && !math.IsNaN(py) {
-				x, y, ok = px, py, true
-			}
-		}
-	}
-	return x, y, ok
-}
-
-// chronologiesDuMatch indexe la chronologie de chaque joueur nomme du sidecar.
-func chronologiesDuMatch(sc *domain.TacticalRasterSidecar) map[string]chronologie {
-	pasFrames := 1
-	if sc.FrameIntervalMs > 0 {
-		if p := tactical.PasChronologieMs / sc.FrameIntervalMs; p > 1 {
-			pasFrames = p
-		}
-	}
-	out := make(map[string]chronologie, len(sc.Joueurs))
-	for _, j := range sc.Joueurs {
-		out[j.XUID] = chronologie{segments: j.Chronologie, pasFrames: pasFrames}
-	}
-	return out
-}
-
-// rayonsParMatch resout la portee du radar de chaque match MESURE, par sa variante.
-//
-// UN MATCH DONT LA VARIANTE N'EST PAS DANS LA TABLE N'ENTRE PAS DANS LA TABLE DE SORTIE, et
-// il sort donc de l'UNIVERS de la lecture — pas seulement de ses numerateurs (correction
-// P0-2). Le laisser au denominateur divisait la mesure par des matchs qu'on avait refuse de
-// lire : deux matchs dont un Husky Raid rendaient 0,5 mort isolee par match au lieu de 1.
-// C'est la seule facon de distinguer « il est mort accompagne » de « on ne sait pas a
-// quelle distance on se voit sur ce mode ».
-func (s *TacticalService) rayonsParMatch(matchs []domain.TacticalMatch) map[string]float64 {
-	out := make(map[string]float64, len(matchs))
-	for _, m := range matchs {
-		// LE NOM VIENT DE LA BASE, ET LA BASE PORTE CE QUE L'API A ENVOYE : des variantes
-		// y arrivent avec un blanc de tete ou de queue. Une cle non nettoyee manque alors
-		// la table, et le match sort silencieusement de l'univers mesurable — un defaut de
-		// donnee deguise en « ce mode n'a pas de portee connue » (revue P2).
-		metres, ok := s.radar[strings.TrimSpace(m.GameVariantName)]
-		if !ok || metres <= 0 {
-			continue
-		}
-		out[m.MatchID] = float64(metres)
-	}
-	return out
-}
-
-// comptesDesMortsIsolees rend une occurrence par mort isolee, dans sa cellule.
-func comptesDesMortsIsolees(g tactical.Grille, isolees []domain.MortAExaminer) []tactical.CompteCellule {
-	out := make([]tactical.CompteCellule, 0, len(isolees))
-	for _, m := range isolees {
-		c, ok := g.Cellule(m.X, m.Y)
-		if !ok {
-			continue
-		}
-		out = append(out, tactical.CompteCellule{Cellule: c, MatchID: m.MatchID, Occurrences: 1})
 	}
 	return out
 }
@@ -249,7 +131,7 @@ func (s *TacticalService) perimetreDuSpawn(ctx context.Context, carte string,
 			"player", s.xuid, "map_id", carte, "spawn", scope.Spawn)
 		return perimetreSpawn{}, games.ErrCapabilityNotSupported
 	}
-	univers, err := s.repo.Univers(ctx, requeteDuScope(s.xuid, carte, scope))
+	univers, err := s.repo.Univers(ctx, s.requeteAvecRetention(carte, scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: univers du filtre de spawn en echec",
 			"player", s.xuid, "map_id", carte, "err", err)
@@ -332,99 +214,4 @@ func matchsDeLaGrappe(sidecars map[string]*domain.TacticalRasterSidecar, xuid st
 	}
 	sort.Strings(out)
 	return out
-}
-
-// mortsDuCamp construit les morts a examiner a partir du JOURNAL (la base), en resolvant
-// la vitalite et la position de chaque coequipier dans la chronologie du sidecar.
-//
-// LES MORTS VIENNENT DU JOURNAL, PAS DU FILM (decision utilisateur du 2026-09-07) : c'est
-// la meme source que « ou je meurs » et que l'echange, et la seule qui sache vraiment qui
-// est mort quand. Le film, lui, ne sait dire que OU ETAIT CHACUN.
-func (s *TacticalService) mortsDuCamp(lecture domain.TacticalKillEvents,
-	sidecars map[string]*domain.TacticalRasterSidecar, dans predicatQui,
-	rayons map[string]float64) []domain.MortAExaminer {
-	out := make([]domain.MortAExaminer, 0, len(lecture.Events))
-	for _, ev := range lecture.Events {
-		if _, ok := rayons[ev.MatchID]; !ok {
-			continue
-		}
-		sc := sidecars[ev.MatchID]
-		if sc == nil || !dans(ev.MatchID, ev.VictimXUID) {
-			continue
-		}
-		duMatch := lecture.Univers.Equipes[ev.MatchID]
-		son, connu := duMatch[ev.VictimXUID]
-		if !connu {
-			continue
-		}
-		chronos := chronologiesDuMatch(sc)
-		frame := frameDe(ev.TimeMs, sc.FrameIntervalMs)
-		x, y, positionConnue := chronos[ev.VictimXUID].dernierePositionAvant(frame)
-		if !positionConnue {
-			// La mort a eu lieu, mais le film n'a jamais montre la victime : elle ne peut
-			// ni se peindre ni servir de reference de distance.
-			continue
-		}
-		m := domain.MortAExaminer{MatchID: ev.MatchID, X: x, Y: y}
-		for autre, equipe := range duMatch {
-			if autre == ev.VictimXUID || equipe != son {
-				continue
-			}
-			m.Coequipiers = append(m.Coequipiers,
-				etatDuCoequipier(chronos[autre], frame, x, y))
-		}
-		out = append(out, m)
-	}
-	return out
-}
-
-// etatDuCoequipier resout la presence et la distance d'UN coequipier a l'instant d'une mort.
-//
-// PROVISOIRE 2026-09-07 : « vivant » vaut ici « le film le montre quelque part a cet
-// instant ». Le modele definitif — mort au journal, reapparition observee ou delai MESURE
-// sur le match, depart lu dans la base — attend une decision produit de l'utilisateur sur
-// ce que « vivant » veut dire quand le film se tait. Tant qu'elle n'est pas prise, un
-// coequipier hors champ (vehicule non rattache) est traite comme absent : la mort part alors
-// dans `EquipeATerre` plutot que d'etre comptee accompagnee sur une position devinee.
-func etatDuCoequipier(chrono chronologie, frame int, mx, my float64) domain.EtatCoequipier {
-	x, y, ok := chrono.positionA(frame)
-	if !ok {
-		return domain.EtatCoequipier{}
-	}
-	return domain.EtatCoequipier{
-		Vivant: true, PositionConnue: true, DistanceM: math.Hypot(x-mx, y-my),
-	}
-}
-
-// frameDe convertit un instant du match en frame de l'axe du rejeu.
-func frameDe(tMs int64, intervalleMs int) int {
-	if intervalleMs <= 0 {
-		return 0
-	}
-	return int(tMs / int64(intervalleMs))
-}
-
-// mesurerIsolement assemble la lecture « ou je meurs isole ».
-//
-// L'UNIVERS MESURABLE EST « MESURE *ET* AYANT UN RAYON » (correction P0-2), et il est rendu
-// pour que la somme des cellules soit normalisee sur LUI. `matchsSansRayon` se compte AU
-// NIVEAU DU MATCH : compter au fil des morts laissait invisible un match dont la variante
-// n'a pas de rayon mais ou le joueur n'est pas mort.
-func (s *TacticalService) mesurerIsolement(lecture domain.TacticalKillEvents,
-	sidecars map[string]*domain.TacticalRasterSidecar, univers domain.TacticalUnivers,
-	dans predicatQui, mesures []string) (domain.BilanIsolement, []string) {
-	rayons := s.rayonsParMatch(univers.Matchs)
-	avecRayon := make([]string, 0, len(mesures))
-	sansRayon := 0
-	for _, id := range mesures {
-		if _, ok := rayons[id]; ok {
-			avecRayon = append(avecRayon, id)
-			continue
-		}
-		sansRayon++
-	}
-	bilan := coordination.Isolement(
-		s.mortsDuCamp(lecture, sidecars, dans, rayons), rayons, len(avecRayon))
-	bilan.MatchsSansRayon = sansRayon
-	return bilan, avecRayon
 }

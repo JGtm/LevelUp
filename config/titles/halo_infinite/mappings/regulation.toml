@@ -324,8 +324,19 @@ schema_version = 6
 # UNE VARIANTE ABSENTE DE TOUTES LES TABLES RESTE SANS LECTURE : on ne l'ajoute pas « au
 # jugé » ici juste pour combler un trou.
 #
-# Consommation : mappings.RegulationSet.RadarRangeM → wiring par titre → service Tactique
-# → coordination.Isolement (rayon PAR MATCH).
+# CONSOMMATEUR : lot 7C — lecture d'isolement sur `match_death_context` (2026-09-07).
+#
+# La table n'a AUJOURD'HUI aucun appelant de production, et c'est un état nommé, pas un
+# oubli. Elle a servi une lecture « où je meurs isolé » qui décidait à la LECTURE, sur la
+# chronologie du sidecar de rejeu ; cette lecture est retirée (décision utilisateur du
+# 2026-09-07). Les faits d'isolement se produiront AU SYNC, par le collecteur de kills, dans
+# `match_lives` et `match_death_context` — « les données d'un match en base sont complètes au
+# sync ; seul le rejeu peut attendre la cuisson ». C'est ce collecteur-là qui lira ce rayon,
+# et il en aura besoin exactement sous cette forme : mètres, par game_variant_name.
+#
+# Elle est donc GARDÉE avec ses tests et son garde-rail de couverture. La regénérer plus tard
+# coûterait une campagne de mesure entière (48 variantes, mesurées le 2026-09-05) pour
+# retrouver des valeurs déjà établies.
 
 [radar_range_m]
 "Arena:CTF"                       = 18

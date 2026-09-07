@@ -230,6 +230,12 @@ type TacticalQuery struct {
 	// Matchs est la liste blanche du perimetre (cf. ListeBlancheMatchs).
 	Matchs ListeBlancheMatchs
 
+	// RetentionMois est la fenetre de retention des artefacts de rejeu, en mois (0 =
+	// illimitee). Elle sert UNIQUEMENT a calculer `TacticalMatch.DansRetention` : le
+	// lecteur ne filtre RIEN avec elle — un match hors fenetre reste dans l'univers, il
+	// est simplement compte a part.
+	RetentionMois int
+
 	// Coequipiers restreint aux matchs ou TOUS ces xuids etaient dans MON equipe —
 	// la COMPOSITION choisie dans la barre de filtres, meme notion que la page
 	// Escouade. Vide = aucune contrainte de composition.
@@ -286,6 +292,17 @@ type TacticalMatch struct {
 	// le registre ne la nomme pas — la lecture qui en depend ECARTE alors le match et le
 	// dit, plutot que de deviner une regle.
 	GameVariantName string
+
+	// DansRetention dit que ce match est DANS la fenetre de retention des artefacts de
+	// rejeu (`app_settings.ReplayRetentionMonths`, 0 = illimitee -> vrai pour tous).
+	//
+	// IL DISTINGUE DEUX ABSENCES QUI NE SE DISENT PAS PAREIL. Un match sans sidecar mais
+	// dans la fenetre sera cuit par la file au fil de l'eau — c'est un traitement en cours.
+	// Un match hors fenetre ne le sera jamais, et son film a de toute facon expire cote
+	// serveur — c'est une donnee non disponible. Le fait vient de la MEME definition que
+	// celle qu'applique la file de cuisson (`analysis.SQLDansFenetreRetention`), sans quoi
+	// la page promettrait une cuisson qui n'arrive pas.
+	DansRetention bool
 
 	// Outcome porte OutcomeWin / OutcomeLoss / OutcomeDraw / OutcomeDNF, ou
 	// OutcomeUnknown quand le substrat ne le sait pas. Un resultat inconnu compte
