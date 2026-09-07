@@ -624,9 +624,21 @@ export interface ReplayText {
   victoryScoreLabel: string
   /**
    * LES QUATRE PISTES DE LA FRISE (planche 2a, 2026-08-28). Les trois premières nomment ce
-   * qu'on lit sous le curseur : tes éliminations et tes morts, celles de tes alliés, et qui
-   * menait à cet instant. Ce sont des ÉTIQUETTES DE LIGNE, pas des titres — d'où des mots
-   * seuls, à l'échelle d'une frise haute de quelques pixels.
+   * qu'on lit sous le curseur : les éliminations et les morts du joueur regardé, les
+   * éliminations de ses coéquipiers, et qui menait à cet instant. Ce sont des ÉTIQUETTES DE
+   * LIGNE, pas des titres — d'où des mots seuls, à l'échelle d'une frise haute de quelques
+   * pixels.
+   *
+   * `trackYou` (« Toi ») A DISPARU LE 2026-09-07 (lot L3) : la première rangée ne porte plus une
+   * étiquette mais le MENU de point de vue, dont le texte visible est le gamertag choisi. Le mot
+   * « Toi » y serait faux dès qu'on regarde quelqu'un d'autre, et la commande se nomme désormais
+   * par `viewpointLabel`. Clé retirée plutôt que gardée « au cas où » (règle n° 7 du dépôt) —
+   * une string sans lecteur est du texte mort que les deux tables doivent tenir en phase.
+   *
+   * `trackTeammates` remplace `trackAllies` le 2026-09-07 (décision 5 du plan « frise, point de
+   * vue ») : la piste montrait les joueurs marqués AMIS — y compris ceux de l'équipe adverse —
+   * et montre désormais les COÉQUIPIERS du point de vue. Deux populations différentes, deux
+   * mots différents ; garder « Alliés » aurait fait une doc inversée à l'écran.
    *
    * `dominanceOfFmt` date une bande de dominance dans son infobulle : l'équipe y est nommée
    * par la cascade du scoreboard (`labelOf`), la même que les colonnes et le bandeau. Elle
@@ -638,9 +650,26 @@ export interface ReplayText {
    * d'envoi et de tout retour à parité : sans elle, la bande bleue serait la seule de la piste
    * dont le survol ne dirait rien.
    */
-  trackYou: string
-  trackAllies: string
+  trackTeammates: string
   trackDominance: string
+  /**
+   * LE MENU DE POINT DE VUE (2026-09-07, lot L3), à la place du libellé de la première piste.
+   *
+   * `viewpointLabel` est le NOM ACCESSIBLE de la commande : « Joueur suivi », pas « Toi ». Le
+   * texte visible du menu est un gamertag, qui ne dit pas de quoi il est la réponse — sans ce
+   * nom, un lecteur d'écran annoncerait une liste déroulante anonyme au milieu d'une frise.
+   *
+   * `viewpointNoTeam` nomme la section des joueurs SANS ligne de tableau de score. Ils n'ont pas
+   * de camp, et `groupByTeam` refuse d'en inventer un : la section dit l'absence plutôt que de
+   * les ranger au hasard.
+   *
+   * `viewpointNoData` est l'infobulle des options INERTES de cette section (décision 7 bis) :
+   * sans ligne de tableau de score, la piste de ce joueur serait vide quoi qu'il arrive. Le
+   * menu le dit au lieu de laisser cliquer sur un choix sans effet.
+   */
+  viewpointLabel: string
+  viewpointNoTeam: string
+  viewpointNoData: string
   dominanceOfFmt: (team: string) => string
   dominanceTied: string
   /**

@@ -89,6 +89,17 @@ export interface ReplayExportOptions {
   xuidMeta?: XuidMeta
   /** Le verdict du backend. `null` = pas d'écran de fin, exactement comme dans le DOM. */
   outcome: ExportOutcome | null
+  /**
+   * LE POINT DE VUE de la page (2026-09-06) : l'export rend CE QUE L'ÉCRAN MONTRE (décision 12
+   * du plan « frise, point de vue ») — panneau de victoire compris. La personne qui exporte a
+   * choisi ce qu'elle regarde. `null` : le joueur de la page.
+   *
+   * OBLIGATOIRE DEPUIS LE 2026-09-07 (revue F4, dernier maillon de la chaîne) : `useReplayCapture`
+   * le relaie déjà, mais optionnel ici, l'oubli de ce relais-là restait silencieux — le clip
+   * serait sorti au camp du joueur de la page pendant que l'écran suivait le joueur choisi.
+   * Requis, l'oubli est une erreur de compilation.
+   */
+  viewpoint: string | null
   titleSlug: string
   locale: ReplayLocale
   /**
@@ -218,7 +229,7 @@ async function buildSource(o: ReplayExportOptions, ink: OverlayInk): Promise<Ove
   // LA COULEUR EST CELLE QUE L'UTILISATEUR A RÉGLÉE (décision D1 du DOM) : l'écran de fin est
   // TOUJOURS celui de son camp, donc toujours `team-ally`, surchargeable par l'accessibilité.
   const teamColor = resolveToken('team-ally')
-  const victory = readVictory(o.scoreboard, o.outcome?.code)
+  const victory = readVictory(o.scoreboard, o.outcome?.code, o.viewpoint)
   const logo = victory?.mine
     ? await loadTeamLogo(o.titleSlug, victory.mine.teamID, teamColor)
     : null
@@ -229,6 +240,7 @@ async function buildSource(o: ReplayExportOptions, ink: OverlayInk): Promise<Ove
     xuidMeta: o.xuidMeta,
     playWindow: o.playWindow,
     outcome: o.outcome,
+    viewpoint: o.viewpoint,
     locale: o.locale,
     ink,
     teamStyle: { background: tint.background, border: tint.border },

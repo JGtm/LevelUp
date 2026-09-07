@@ -46,7 +46,19 @@ export interface PresenceHeader {
 /** Une ligne de présence du fil : qui, dans quel sens, et par quelle source. */
 export interface PresenceEvent {
   kind: 'joined' | 'left'
-  /** Clé d'identité du joueur (xuid, ou `bot:<nom>`) — pour la couleur et les marques. */
+  /**
+   * LE XUID DE BASE quand la jointure au tableau de score a abouti, la clé du FILM sinon
+   * (`bot:<nom>`, schéma 36) — corrigé le 2026-09-07 (revue F3).
+   *
+   * POURQUOI CE N'EST PAS LA CLÉ DU ROSTER. Tout ce qui apparie une ligne de présence à
+   * quelqu'un est clé sur le xuid de BASE : le point de vue (résolu contre le tableau de
+   * score), `identity`, `marks`, la liste des coéquipiers. Un BOT porte deux identités — la
+   * clé film `bot:<nom>` et le xuid de base `bid(N.0)` — et cette ligne portait la PREMIÈRE.
+   * L'ombrage de la frise et les paliers de la piste Coéquipiers ne trouvaient donc JAMAIS un
+   * bot : sur le match témoin, où le bot EST le remplaçant, sa piste n'avait ni ombre ni porte
+   * pendant que le fil, deux centimètres à droite, écrivait « a rejoint ». Le fil y gagne du
+   * même coup sa couleur d'équipe, qu'il servait à l'encre de repli.
+   */
   xuid: string
   name: string
   bot: boolean
@@ -166,13 +178,17 @@ function entry(
   name: string,
   replayMs: number,
 ): ReplayFeedEntry {
+  // LE XUID DE BASE D'ABORD (2026-09-07, revue F3) : c'est la clé sur laquelle s'apparient le
+  // point de vue, les marques et les coéquipiers. La clé du film ne sert que faute de ligne de
+  // tableau de score — auquel cas rien ne s'apparie de toute façon, et le fil nomme quand même.
+  const xuid = p.board?.xuid ?? p.xuid
   return {
-    key: `p-${kind}-${p.xuid}-${replayMs}`,
+    key: `p-${kind}-${xuid}-${replayMs}`,
     replayMs,
     kill: null,
     medal: null,
     death: null,
-    presence: { kind, xuid: p.xuid, name, bot: p.bot === true, source },
+    presence: { kind, xuid, name, bot: p.bot === true, source },
   }
 }
 

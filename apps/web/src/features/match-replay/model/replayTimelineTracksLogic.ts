@@ -1,7 +1,8 @@
 /**
  * replayTimelineTracksLogic — CE QUE LA FRISE MONTRE, en dehors du temps : les marques des
- * pistes (les tiennes, celles de tes alliés), les segments de DOMINANCE, et les médias posés
- * sur le match. Logique pure, testable, sans JSX — les composants n'en font que le rendu.
+ * pistes (celles du joueur REGARDÉ, celles de ses COÉQUIPIERS — cf. `buildEventTracks`), les
+ * segments de DOMINANCE, et les médias posés sur le match. Logique pure, testable, sans JSX —
+ * les composants n'en font que le rendu.
  *
  * TROIS PISTES PLUTÔT QU'UNE FRISE : une frise seule donne la position dans le temps et rien
  * d'autre — c'est le constat qui avait donné les marques de retournement (`ReplayLeadMarks`,
@@ -33,6 +34,29 @@ export const THUMB_PX = 16
 export function trackLeft(ratio: number): string {
   const r = Math.min(1, Math.max(0, ratio))
   return `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * ${r})`
+}
+
+/**
+ * LA MÊME POSITION, MAIS SUR UNE VARIABLE CSS que le navigateur résout tout seul (2026-09-06).
+ *
+ * POURQUOI UNE SECONDE FORME PLUTÔT QU'UN SECOND CALCUL. Ce qui suit la LECTURE — la bulle de
+ * temps, le trait de lecture — ne connaît pas son ratio au rendu : il change soixante fois par
+ * seconde, et le passer en prop coûterait un rendu de la frise entière par image. Ces
+ * objets-là sont donc positionnés par une variable écrite en impératif
+ * (`useReplayPlayback.writeCursor`, `--played-r`). Ils ont pourtant besoin de la MÊME géométrie
+ * que les marques, sans quoi le trait de lecture passe jusqu'à 8 px à côté du kill qu'il
+ * désigne — c'est le défaut exact que la bulle de temps portait, invisible faute de repère.
+ *
+ * La formule ne vit donc qu'ICI, sous deux formes : `trackLeft` pour une valeur connue au
+ * rendu, `trackLeftVar` pour une position qui vit dans une variable. Le garde-rail
+ * `ui/timelineGeometry.guard.test.ts` interdit d'en recopier les littéraux ailleurs.
+ *
+ * LE REPLI À ZÉRO N'EST PAS DÉCORATIF : tant que la lecture n'a pas posé le curseur une
+ * première fois, la variable n'existe pas — et un `var()` sans repli rend tout le `calc()`
+ * invalide, donc la position `auto`. L'objet sauterait de l'origine à sa place au premier pas.
+ */
+export function trackLeftVar(cssVar: string): string {
+  return `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * var(${cssVar}, 0))`
 }
 
 /** Largeur CSS d'un intervalle [a..b] de ratios sur la même piste. */
@@ -67,15 +91,61 @@ export function ratioOfMs(replayMs: number, frameIntervalMs: number, scale: Trac
 export interface TrackMark {
   key: string
   ratio: number
-  kind: 'kill' | 'death'
+  /**
+   * TROIS ESPÈCES DE MARQUE, DEUX ENCRES ET UN ANNEAU. `kill` et `death` sont les deux encres du
+   * rejeu ; `medal` est une médaille d'OBJECTIF, décrochée sans élimination (2026-09-07, L4) —
+   * elle n'a pas de camp à dire et se dessine en ANNEAU CREUX, la même signature que l'anneau
+   * qui décore un kill médaillé. Un seul code à apprendre : anneau = médaille.
+   */
+  kind: 'kill' | 'death' | 'medal'
   /** Instant, pour l'infobulle (mm:ss déjà mis en forme par l'appelant). */
   clock: string
+  /**
+   * LES MÉDAILLES DE CETTE MARQUE, en libellés déjà résolus — vide quand il n'y en a pas.
+   *
+   * Elles ne prennent PAS de repère à elles quand un kill les porte (décision 9 du plan) : la
+   * majorité des médailles tombe à moins de 500 ms d'un kill déjà dessiné, et un second glyphe
+   * au même endroit doublerait la frise sans rien ajouter. La marque existante reçoit un ANNEAU
+   * et l'infobulle les nomme.
+   *
+   * UN LIBELLÉ VIDE N'ENTRE PAS (matchs d'avant le backfill des médailles du fil) : la
+   * décoration dirait « il s'est passé quelque chose » sans pouvoir dire quoi.
+   */
+  medals: readonly string[]
+  /**
+   * L'acteur est-il un AMI du compte connecté (marque `friend` de `playerMarks`) ?
+   *
+   * LA FORME DIT L'IDENTITÉ, LA COULEUR DIT LE CAMP (décision D5 du plan d'habillage, reprise
+   * en décision 4 du plan « frise, point de vue ») : un ami prend le LOSANGE, comme son point
+   * sur la carte (`layers/replayMarkers.ts`, `MarkerShape = 'diamond'`). Sur cette frise la
+   * couleur est déjà prise deux fois — kill et mort — et les deux encres reprennent les
+   * couleurs d'équipe choisies par l'utilisateur en jeu : il n'en reste aucune de libre.
+   */
+  friend: boolean
 }
 
-/** Les deux pistes d'événements : la tienne, celle de tes alliés. */
+/** Les deux pistes d'événements : celle du point de vue, celle de ses coéquipiers. */
 export interface EventTracks {
   own: TrackMark[]
-  allies: TrackMark[]
+  teammates: TrackMark[]
+}
+
+/**
+ * À QUI LA FRISE S'INTÉRESSE — les trois lectures d'identité dont les pistes ont besoin,
+ * groupées pour ne pas allonger la liste d'arguments de `buildEventTracks`.
+ *
+ * ELLES NE SE DÉDUISENT PAS L'UNE DE L'AUTRE, et c'est pourquoi les trois sont là : le POINT DE
+ * VUE dit à qui appartient la piste du haut, le CAMP (relatif à ce point de vue) dit qui va sur
+ * celle des coéquipiers, et les MARQUES disent qui est un ami — une propriété du compte
+ * connecté, indépendante du match et du camp.
+ */
+export interface TrackAudience {
+  /** Le joueur regardé : sa piste porte ses kills ET ses morts. `null` = aucune piste propre. */
+  viewpoint: string | null
+  /** Camp de chaque xuid, RELATIF au point de vue (`XuidMeta` de la vue match). */
+  identity: ReadonlyMap<string, { ally: boolean }>
+  /** Marques d'identité du compte connecté : seul `friend` compte ici (cf. `TrackMark.friend`). */
+  marks: ReadonlyMap<string, PlayerMarkKind>
 }
 
 /** Un kill, réduit à ce dont les pistes ont besoin. */
@@ -84,6 +154,8 @@ export interface TrackKill {
   replayMs: number
   /** xuid du tueur (celui à qui la marque appartient). */
   xuid: string
+  /** Libellés des médailles décrochées SUR ce kill (cf. `TrackMark.medals`). */
+  medals: readonly string[]
 }
 
 /** Une mort, réduite de même. `xuid` est celui du défunt. */
@@ -93,50 +165,99 @@ export interface TrackDeath {
   xuid: string
 }
 
+/** Une médaille ORPHELINE : décrochée sans kill à moins de 500 ms — un objectif, presque toujours. */
+export interface TrackMedal {
+  key: string
+  replayMs: number
+  xuid: string
+  /** Le libellé, non vide par construction (cf. `reduceFeed`). */
+  label: string
+}
+
 /**
- * buildEventTracks range les kills et les morts sur DEUX pistes, selon la marque d'identité du
- * joueur (`playerMarks.ts` : 'me' | 'friend'). Un acteur SANS marque n'est sur aucune piste —
- * la frise ne parle que du joueur de la page et de ses amis, pas de la salle entière ; deviner
- * un camp par défaut peuplerait les pistes de gens que personne ne suit.
+ * CE QUE LE FIL DONNE AUX PISTES : trois listes qui voyagent ensemble parce qu'elles sortent du
+ * même parcours (`reduceFeed`) et se posent sur la même échelle. Groupées, elles tiennent
+ * `buildEventTracks` sous les cinq paramètres du dépôt — la liste en comptait déjà six avant que
+ * les médailles n'arrivent.
+ */
+export interface TrackEvents {
+  kills: readonly TrackKill[]
+  deaths: readonly TrackDeath[]
+  medals: readonly TrackMedal[]
+}
+
+/**
+ * buildEventTracks range les kills et les morts sur DEUX pistes : celle du POINT DE VUE, et
+ * celle de ses COÉQUIPIERS.
  *
- * Les morts ne vont QUE sur la piste 'me' : « où je suis tombé » est une lecture de soi. Une
- * piste alliée mêlant leurs kills et leurs morts deviendrait illisible à huit joueurs.
+ * LA RÈGLE A CHANGÉ LE 2026-09-07 (décision 5 du plan « frise, point de vue »), et le
+ * changement de comportement est assumé. La seconde piste montrait les joueurs marqués AMIS —
+ * `playerMarks` marque un ami quel que soit son camp — et elle montre désormais les joueurs du
+ * MÊME CAMP que le point de vue. Conséquence à connaître pour qu'aucune relecture n'y voie une
+ * régression : un ami de l'équipe ADVERSE disparaît de la frise. Il reste losange sur la carte
+ * et nommé dans le fil ; sa place n'était pas sur une piste qui répond à « comment mon équipe
+ * s'en sortait-elle ». Les amis ne sont plus une PISTE, ils sont une FORME (cf. `TrackMark.friend`).
+ *
+ * Un acteur qui n'est ni le point de vue ni son coéquipier n'est sur aucune piste : la frise ne
+ * parle pas de la salle entière. Un acteur sans camp connu (absent du tableau de score) non
+ * plus — `identity` ne le porte pas, et deviner un camp le poserait sur une piste au hasard.
+ *
+ * Les morts ne vont QUE sur la piste du point de vue : « où je suis tombé » est une lecture de
+ * soi. Une piste de coéquipiers mêlant leurs kills et leurs morts serait illisible à huit joueurs.
+ *
+ * LES MÉDAILLES NE DÉCORENT QUE LA PISTE DU POINT DE VUE (2026-09-07, lot L4). Le kill d'un
+ * coéquipier garde sa marque nue même s'il a valu une médaille : la piste des coéquipiers est
+ * atténuée par nature — elle répond à « comment mon équipe s'en sortait-elle », pas à « qui a
+ * fait un doublé ». Y semer des anneaux la rendrait aussi dense que celle du dessus, qu'elle est
+ * faite pour ne pas concurrencer. Le fil, lui, nomme la médaille de chacun.
  */
 export function buildEventTracks(
-  kills: readonly TrackKill[],
-  deaths: readonly TrackDeath[],
-  marks: ReadonlyMap<string, PlayerMarkKind>,
+  events: TrackEvents,
+  audience: TrackAudience,
   frameIntervalMs: number,
   scale: TrackScale,
   clockOf: (replayMs: number) => string,
 ): EventTracks {
   const own: TrackMark[] = []
-  const allies: TrackMark[] = []
-  if (scale.span <= 0) return { own, allies }
-  for (const k of kills) {
-    const mark = marks.get(k.xuid)
-    if (!mark) continue
-    const at: TrackMark = {
-      key: k.key,
-      ratio: ratioOfMs(k.replayMs, frameIntervalMs, scale),
-      kind: 'kill',
-      clock: clockOf(k.replayMs),
-    }
+  const teammates: TrackMark[] = []
+  if (scale.span <= 0) return { own, teammates }
+  // UNE SEULE FABRIQUE POUR LES TROIS BOUCLES : la règle du losange (« un ami, quel que soit son
+  // camp ») n'est écrite qu'ici. Recopiée dans chaque boucle, elle aurait fini par ne valoir que
+  // sur les kills — et une mort d'ami perdrait sa forme sans que rien ne le dise.
+  const marque = (
+    key: string,
+    replayMs: number,
+    kind: TrackMark['kind'],
+    xuid: string,
+    medals: readonly string[] = [],
+  ): TrackMark => ({
+    key,
+    ratio: ratioOfMs(replayMs, frameIntervalMs, scale),
+    kind,
+    clock: clockOf(replayMs),
+    medals,
+    friend: audience.marks.get(xuid) === 'friend',
+  })
+  for (const k of events.kills) {
+    const sien = audience.viewpoint != null && k.xuid === audience.viewpoint
+    if (!sien && audience.identity.get(k.xuid)?.ally !== true) continue
+    const at = marque(k.key, k.replayMs, 'kill', k.xuid, sien ? k.medals : [])
     if (at.ratio < 0 || at.ratio > 1) continue
-    ;(mark === 'me' ? own : allies).push(at)
+    ;(sien ? own : teammates).push(at)
   }
-  for (const d of deaths) {
-    if (marks.get(d.xuid) !== 'me') continue
-    const at: TrackMark = {
-      key: d.key,
-      ratio: ratioOfMs(d.replayMs, frameIntervalMs, scale),
-      kind: 'death',
-      clock: clockOf(d.replayMs),
-    }
+  for (const d of events.deaths) {
+    if (audience.viewpoint == null || d.xuid !== audience.viewpoint) continue
+    const at = marque(d.key, d.replayMs, 'death', d.xuid)
     if (at.ratio < 0 || at.ratio > 1) continue
     own.push(at)
   }
-  return { own, allies }
+  for (const m of events.medals) {
+    if (audience.viewpoint == null || m.xuid !== audience.viewpoint) continue
+    const at = marque(m.key, m.replayMs, 'medal', m.xuid, [m.label])
+    if (at.ratio < 0 || at.ratio > 1) continue
+    own.push(at)
+  }
+  return { own, teammates }
 }
 
 /**
