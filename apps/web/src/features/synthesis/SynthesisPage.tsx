@@ -1,13 +1,14 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : hors perimetre du lot D (modele web du rejeu) : l'exemption DATE la dette, elle ne l'absout pas — le decoupage revient au lot qui touchera ce fichier. */
 /**
  * SynthesisPage --- Vue synthese / bilan periodique (Slice 7).
  * Types ref: SynthesisPageResponse, SynthesisKPIs, ComparisonMetricItem, HeatmapCell, TopWeekItem
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
-import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { tokenCssVar } from '@/lib/accessibility'
 import { useSynthesisPage } from './queries'
 import { useFiltersPreview } from '@/features/filters/queries'
 import { EmptyStateCard } from '@/components/ui/empty-state'
@@ -17,6 +18,8 @@ import { useCapability } from '@/lib/capabilities/capabilities'
 import { FragSunburst } from '@/components/charts/FragSunburst'
 import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
 import { SynthesisWeaponAccuracyChart } from './SynthesisWeaponAccuracyChart'
+import { AccentCard, SectionSubtitle } from './SynthesisCards'
+import { SynthesisWeaponRangeSection } from './SynthesisWeaponRangeSection'
 import { useSynthesisFragCharts } from './useSynthesisFragCharts'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
@@ -45,6 +48,7 @@ import type {
   SynthesisQueryRequest,
   SynthesisWeaponKillEntry,
   SynthesisWeaponAccuracyEntry,
+  SynthesisWeaponRange,
   ObjectiveAggregate,
 } from '@/lib/api/types'
 import { formatDurationMMSS } from '@/lib/formatters/duration'
@@ -62,16 +66,6 @@ function formatTimePlayed(seconds: number): string {
   if (h > 0 || d > 0) parts.push(`${h}h`)
   parts.push(`${m}m`)
   return parts.join(' ')
-}
-
-// Sous-titre de section (type 6 du catalogue) : petit uppercase semibold + filet 1px.
-function SectionSubtitle({ children }: { children: ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <p className="text-3xs font-semibold uppercase tracking-label-md text-foreground/90">{children}</p>
-      <div className="h-px w-full rounded-full bg-border" />
-    </div>
-  )
 }
 
 // ─── Bloc 1 — Vue d'ensemble (D4) ─────────────────────────────────────────────
@@ -120,51 +114,18 @@ function CombatProfileInlineRow({ combatProfile, locale }: { combatProfile: Comb
   )
 }
 
-interface AccentCardProps {
-  label: string
-  value: string
-  accent: SemanticToken
-  onOpenMatch?: () => void
-  openMatchLabel?: string
-}
-function AccentCard({ label, value, accent, onOpenMatch, openMatchLabel }: AccentCardProps) {
-  return (
-    <div className="rounded-lg overflow-hidden border border-border bg-card">
-      <div className="h-[3px]" style={{ backgroundColor: tokenCssVar(accent) }} />
-      <div className="p-3">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground block">{label}</span>
-          {onOpenMatch && (
-            <button
-              type="button"
-              onClick={onOpenMatch}
-              aria-label={openMatchLabel}
-              className="group flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity" aria-hidden="true">
-                <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
-                <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
-              </svg>
-            </button>
-          )}
-        </div>
-        <span className="text-xl font-bold">{value}</span>
-      </div>
-    </div>
-  )
-}
-
 interface SynthesisOverviewSectionProps {
   overview: SynthesisOverview
   detailedStats?: SynthesisDetailedStats
   topWeaponKills?: SynthesisWeaponKillEntry[]
   fragDistribution?: FragDistribution | null
   weaponAccuracy?: SynthesisWeaponAccuracyEntry[]
+  weaponRange?: SynthesisWeaponRange
   combatProfile?: CombatProfileBlock | null
   objectiveStats?: ObjectiveAggregate | null
   playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, objectiveStats, playerSlug }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, weaponRange, combatProfile, objectiveStats, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -206,6 +167,10 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
   // Précision par arme : Halo 5 natif (table weapon_accuracy). Capability-gated →
   // le graphe est masqué pour les titres qui ne fournissent pas la donnée (Infinite).
   const hasWeaponAccuracy = useCapability('weapon_accuracy')
+  // Portée et dénivelé mesurés des engagements : capability PRODUIT `weapon_range`
+  // (title.CapWeaponRange). Halo 5 ne la déclare pas — ses événements de frag n'ont pas
+  // d'arme, la jointure mesurée rendrait zéro ligne et la section serait vide.
+  const hasWeaponRange = useCapability('weapon_range')
   // KPI objectifs (CTF/Zones/Oddball) : gated capability + data-driven (KPI > 0 seulement).
   const hasObjectiveStats = useCapability('objective_stats')
 
@@ -539,6 +504,11 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
           </div>
         )}
 
+        {/* Portée des engagements (lot 5, plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md) — bloc
+            pleine largeur : il porte ses quatre tuiles et sa propre carte à deux graphes,
+            il n'entre pas dans la rangée de vignettes ci-dessus. La section se retire
+            d'elle-même quand le bloc est absent (rien de mesuré sur le scope). */}
+        {hasWeaponRange && <SynthesisWeaponRangeSection range={weaponRange} />}
 
     </section>
   )
@@ -816,6 +786,7 @@ export function SynthesisPage() {
           topWeaponKills={data.top_weapon_kills}
           fragDistribution={data.frag_distribution}
           weaponAccuracy={data.weapon_accuracy}
+          weaponRange={data.weapon_range}
           combatProfile={data.combat_profile}
           objectiveStats={data.objective_stats}
           playerSlug={playerSlug}

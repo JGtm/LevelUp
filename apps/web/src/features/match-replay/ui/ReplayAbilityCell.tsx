@@ -1,0 +1,245 @@
+/**
+ * ReplayAbilityCell.tsx — la CELLULE DE CAPACITÉ de la rangée d'inventaire : la vignette de
+ * l'équipement porté, et — depuis le lot P6 — les CHARGES qui lui restent.
+ *
+ * EXTRAITE DE `ReplayInventoryRow.tsx` LE 2026-09-04, et l'extraction PAIE l'addition (la
+ * règle du cliquet du canvas, appliquée à la rangée) : le fichier était à 496 lignes pour un
+ * plafond de 500, et le lot P6 devait y brancher l'affichage des charges. La cellule part
+ * donc entière — vignette, glyphe de rang non résolu, infobulle d'âge — et les charges
+ * naissent ici, jamais une ligne de logique au composant de rangée.
+ *
+ * CE QUE LA CELLULE AFFICHE DES CHARGES, et pourquoi (décisions P6.1, arbitrage utilisateur
+ * du 04/09) :
+ *  - un COMPTE discret à côté de la vignette (même convention « ×N » que les grenades) quand
+ *    une lecture du canal i56 couvre la vie et l'équipement courants ;
+ *  - « PLEIN » QUALITATIF, sans chiffre, avant la première lecture : le film ne transmet
+ *    RIEN au ramassage, un maximum déduit serait inventé ;
+ *  - RIEN pour une famille que le canal ne mesure pas (camouflage, surbouclier,
+ *    répulseur…) : ni chiffre, ni « plein » — rien d'affirmé.
+ * Le tri entre ces trois états vit dans `abilityChargeLogic.ts` (pur, testé sans rendu).
+ *
+ * LA CELLULE GARDE SA LARGEUR FIXE (la grille des fiches en dépend) : le compte et le
+ * « plein » se posent APRÈS elle, dans l'espace souple de la rangée — comme le badge d'état
+ * vide, ils ne décalent aucune colonne. Chaque marque pâlit avec l'âge de SA lecture (la
+ * doctrine de la rangée) ; « plein » n'a pas de lecture, il ne pâlit pas.
+ */
+import type { ReactNode } from 'react'
+
+import { WeaponIcon } from '@/components/ui/WeaponIcon'
+
+import { abilityChargesAt, type AbilityChargeDisplay } from '../model/abilityChargeLogic'
+import type { CardGabarit } from '../model/cardGabarit'
+import { catalogText, type CatalogLabel } from '../i18n/catalogLabel'
+import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+import { formatSeconds, frameToMs, freshness, READING_FADE } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { abilityAt } from '../../../lib/replay/rosterLogic'
+
+// LA BOÎTE DE LA VIGNETTE DE CAPACITÉ (16 px, la hauteur de la ligne) VIENT DU GABARIT de la
+// fiche (`model/cardGabarit.ts`, `iconAbilityPx`, 2026-09-06) — aucune cote locale ici.
+
+type ReplayText = (typeof REPLAY_TEXT)[ReplayLocale]
+
+/**
+ * ReplayAbilityCell — la cellule FIXE de la vignette, puis les charges dans l'espace souple.
+ *
+ * LA CAPACITÉ A SA PROPRE LECTURE, et donc son propre âge : elle arrive surtout par le canal
+ * i48 des paquets delta, qui ne tombe pas sur les images-clés de l'inventaire — l'estompage
+ * de la rangée ne la décrit pas.
+ */
+export function ReplayAbilityCell({
+  doc,
+  slot,
+  frame,
+  readingFull,
+  locale,
+  gabarit,
+}: {
+  doc: ReplayDocumentReady
+  slot: number
+  frame: number
+  readingFull: number
+  locale: ReplayLocale
+  /** Les cotes de la fiche : le côté de la vignette (`iconAbilityPx`). */
+  gabarit: CardGabarit
+}) {
+  const t = REPLAY_TEXT[locale]
+  const px = gabarit.iconAbilityPx
+  const abilityRead = abilityAt(doc, slot, frame)
+  const ability = abilityText(doc, abilityRead?.rank, t, locale)
+  const charge =
+    abilityRead !== null ? abilityChargesAt(doc, slot, frame, abilityRead.rank) : null
+  // LES CHARGES EN TEXTE À CÔTÉ DE LA CELLULE (fiche normale), OU DANS SON INFOBULLE (tuile
+  // compacte, `showInventoryMarks: false` — décision D5 : la rangée n'a plus d'espace souple).
+  // Le texte de l'infobulle est le même que celui de la marque : une seule composition.
+  const chargeInTitle = charge && !gabarit.showInventoryMarks ? chargeTitle(charge, doc, t) : null
+  return (
+    <>
+      <span className="inline-flex shrink-0 items-center" style={{ width: px }}>
+        {abilityRead ? (
+          ability && (
+            <span
+              className="inline-flex items-center"
+              style={{ opacity: freshness(abilityRead.age, readingFull, READING_FADE) }}
+              title={
+                chargeInTitle
+                  ? `${abilityAgeTitle(t, abilityRead.age, doc, ability.text)} · ${chargeInTitle}`
+                  : abilityAgeTitle(t, abilityRead.age, doc, ability.text)
+              }
+            >
+              {ability.img ? (
+                <WeaponIcon
+                  imageUrl={ability.img}
+                  tinted={ability.tinted}
+                  label={ability.text}
+                  width={px}
+                  height={px}
+                />
+              ) : ability.known ? (
+                ability.text
+              ) : (
+                /* RANG NON RÉSOLU : un GLYPHE, pas un mot ni un caractère (planche du 16/08).
+                   Le rang lu reste la seule chose vraie : il vit dans l'infobulle. */
+                <AbilityUnknownMark label={ability.text} px={px} />
+              )}
+            </span>
+          )
+        ) : doc.abilities.length > 0 ? (
+          /* AUCUNE LECTURE DANS LA VIE EN COURS (correctif P0-2, 2026-09-06) : avant le
+             correctif, `abilityAt` pouvait reporter la capacité d'une vie PRÉCÉDENTE du même
+             slot — parfois celle d'un AUTRE joueur — ou disparaître sur un `spent` qui ne la
+             concernait pas. Même glyphe que le rang lu-mais-non-identifié, mais PAS le même
+             sens : ce n'est pas une identité inconnue (une vie est un humain ou un bot, jamais
+             une entité anonyme — décision produit du 2026-09-06), seulement une lecture pas
+             encore observée depuis le début de cette vie.
+             GARDÉ PAR `doc.abilities.length > 0` (même doctrine que `VitalityPresence`,
+             `playerStateAt` plus haut) : un artefact qui ne porte JAMAIS cet axe ne doit pas
+             afficher une lacune permanente sur chaque fiche — dégradation par ABSENCE DE
+             DONNÉE, jamais un glyphe inventé. */
+          <AbilityUnknownMark label={t.abilityUnread} px={px} />
+        ) : null}
+      </span>
+      {ability && abilityRead && charge && gabarit.showInventoryMarks && (
+        <AbilityChargeMark charge={charge} doc={doc} readingFull={readingFull} t={t} />
+      )}
+    </>
+  )
+}
+
+/**
+ * chargeTitle — ce que l'infobulle dit des charges : le compte et l'âge de SA lecture, ou
+ * d'où vient l'affirmation « plein » (rien transmis = rien consommé). Une seule composition,
+ * pour la marque en texte comme pour l'infobulle de la cellule compacte.
+ */
+function chargeTitle(charge: AbilityChargeDisplay, doc: ReplayDocumentReady, t: ReplayText): string {
+  if (charge.kind === 'full') return t.abilityChargesFullHint
+  return `${t.abilityChargesCount(charge.charges)} · ${t.abilityChargesAge} ${formatSeconds(frameToMs(charge.age, doc))}`
+}
+
+/**
+ * AbilityChargeMark — le compte de charges, ou « plein » qualitatif.
+ *
+ * Le compte pâlit avec l'âge de SA lecture (comme toute cellule de la rangée) et son
+ * infobulle date la lecture. « Plein » n'est pas une lecture : un libellé discret, et
+ * l'infobulle dit d'où vient l'affirmation (rien transmis = rien consommé).
+ */
+function AbilityChargeMark({
+  charge,
+  doc,
+  readingFull,
+  t,
+}: {
+  charge: AbilityChargeDisplay
+  doc: ReplayDocumentReady
+  readingFull: number
+  t: ReplayText
+}) {
+  if (charge.kind === 'full') {
+    return (
+      <span className="opacity-70" title={chargeTitle(charge, doc, t)}>
+        {t.abilityChargesFull}
+      </span>
+    )
+  }
+  return (
+    <span
+      className="tabular-nums text-foreground"
+      style={{ opacity: freshness(charge.age, readingFull, READING_FADE) }}
+      title={chargeTitle(charge, doc, t)}
+    >
+      ×{charge.charges}
+    </span>
+  )
+}
+
+/**
+ * StateMark — le socle des pictogrammes d'état MESURÉ rendus muets (décision produit 4 du
+ * plan parité) : « munitions pleines » (emplacement jamais écrit — flux différentiel, le
+ * plein est la valeur par défaut). Un dessin discret, UNE infobulle simple. Encre en
+ * currentColor : la couleur vient du texte environnant, aucun littéral.
+ */
+export function StateMark({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span role="img" aria-label={label} title={label} className="inline-flex items-center opacity-70">
+      {children}
+    </span>
+  )
+}
+
+/**
+ * AbilityUnknownMark — capacité LUE mais NON IDENTIFIÉE : l'emplacement de la vignette,
+ * vide, en pointillés. Le dessin dit exactement ce qu'on sait — « il y avait quelque chose
+ * ici, on ne sait pas quoi ». Même gabarit que les vignettes de la ligne (`iconAbilityPx`).
+ */
+function AbilityUnknownMark({ label, px }: { label: string; px: number }) {
+  return (
+    <StateMark label={label}>
+      <svg
+        width={px}
+        height={px}
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeDasharray="2.4 1.8"
+        aria-hidden="true"
+      >
+        <rect x="2.4" y="2.4" width="11.2" height="11.2" rx="2.4" />
+      </svg>
+    </StateMark>
+  )
+}
+
+/**
+ * abilityText nomme la capacité — et porte sa vignette de HUD quand le document en sert
+ * une. Un index hors table garde son NUMÉRO dans le texte servi. Renvoie null quand rien
+ * n'a été lu — l'absence de capacité et une capacité non identifiée sont deux états
+ * différents.
+ */
+function abilityText(
+  doc: ReplayDocumentReady,
+  rank: number | undefined,
+  t: ReplayText,
+  locale: ReplayLocale,
+): { text: string; known: boolean; img?: string; tinted?: boolean } | null {
+  if (rank === undefined) return null
+  const lbl: CatalogLabel | undefined = doc.abilityLabels?.[String(rank)]
+  const name = catalogText(lbl, locale)
+  if (name) return { text: name, known: true, img: lbl?.img, tinted: lbl?.tinted }
+  return { text: t.abilityUnidentified(rank), known: false }
+}
+
+/**
+ * abilityAgeTitle — l'infobulle de la capacité : son nom quand il est connu, et TOUJOURS
+ * l'âge de sa lecture. Un âge négatif est une lecture À VENIR (début de vie), dit comme tel.
+ */
+function abilityAgeTitle(
+  t: ReplayText,
+  age: number,
+  doc: ReplayDocumentReady,
+  name: string | null,
+): string {
+  const ms = formatSeconds(frameToMs(Math.abs(age), doc))
+  const when = age < 0 ? `${t.abilityAhead} ${ms}` : `${t.abilityAge} ${ms}`
+  return name ? `${t.abilityLabel} — ${name} · ${when}` : when
+}

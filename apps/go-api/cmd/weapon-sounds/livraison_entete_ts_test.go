@@ -2,7 +2,7 @@ package main
 
 // livraison_entete_ts_test.go — LE GARDE-FOU DE L'EN-TETE DU FICHIER GENERE.
 //
-// `apps/web/src/features/match-replay/weaponSoundVariations.ts` est produit par le mode
+// `apps/web/src/features/match-replay/sound/weaponSoundVariations.ts` est produit par le mode
 // `livrer` et porte, en trois lignes de prose, le NOM DE SON PRODUCTEUR. Apres le portage
 // Go, il annoncait toujours `_outils/livraison.py` — l'outil que la recette declare dans le
 // meme lot « NE PLUS L'UTILISER » : le seul pointeur du fichier genere designait le
@@ -32,7 +32,7 @@ func TestEnTeteTSVersionneeSuitLeGabarit(t *testing.T) {
 	}
 	// cmd/weapon-sounds -> cmd -> apps/go-api -> apps -> racine du depot
 	racine := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(ceFichier)))))
-	chemin := filepath.Join(racine, "apps", "web", "src", "features", "match-replay", "weaponSoundVariations.ts")
+	chemin := filepath.Join(racine, "apps", "web", "src", "features", "match-replay", "sound", "weaponSoundVariations.ts")
 	brut, err := os.ReadFile(chemin)
 	if err != nil {
 		t.Fatalf("lecture du fichier genere %s: %v", chemin, err)

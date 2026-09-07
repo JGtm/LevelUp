@@ -418,3 +418,176 @@ en = "By map"
 [synthesis.breakdown.by_mode]
 fr = "Par mode"
 en = "By mode"
+
+# ─── Portée des engagements (lot 5, plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md) ─
+#
+# Une portée d'USAGE et jamais une portée d'arme (décision D8) : aucune clé ne dit
+# « portée de l'arme ». Vocabulaire FR sans anglicismes — « frags », « morts »,
+# « dénivelé », « d'en haut / à niveau / d'en bas », « distance d'entame ».
+
+[synthesis.weapon_range.heading]
+fr = "Portée des engagements"
+en = "Engagement range"
+
+[synthesis.weapon_range.lede]
+fr = "À quelle distance vous fraguez, à quelle distance vous mourez — par arme, sur la période filtrée. Une portée d'usage : la vôtre, pas celle de l'arme."
+en = "How far away you get your kills, how far away you die — by weapon, over the filtered period. A range of use: yours, not the weapon's."
+
+[synthesis.weapon_range.card_title]
+fr = "Portée par arme — mes frags et mes morts"
+en = "Range by weapon — my kills and my deaths"
+
+[synthesis.weapon_range.card_count]
+fr = "{weapons, plural, one {# arme} other {# armes}} · {kills, number} frags et {deaths, number} morts mesurés"
+en = "{weapons, plural, one {# weapon} other {# weapons}} · {kills, number} kills and {deaths, number} deaths measured"
+
+[synthesis.weapon_range.range_subtitle]
+fr = "Portée"
+en = "Range"
+
+[synthesis.weapon_range.range_subtitle_detail]
+fr = "— bâton du 10e au 90e centile, losange sur la médiane"
+en = "— bar from the 10th to the 90th percentile, diamond on the median"
+
+[synthesis.weapon_range.elevation_subtitle]
+fr = "Dénivelé"
+en = "Elevation"
+
+[synthesis.weapon_range.elevation_subtitle_detail]
+fr = "— d'où vous avez fragué, d'où l'on vous a fragué, à ±1 m près"
+en = "— where you killed from, where you were killed from, to within ±1 m"
+
+[synthesis.weapon_range.legend_label]
+fr = "Légende"
+en = "Legend"
+
+[synthesis.weapon_range.legend_elevation_label]
+fr = "Légende du dénivelé"
+en = "Elevation legend"
+
+[synthesis.weapon_range.side_kills]
+fr = "Mes frags"
+en = "My kills"
+
+[synthesis.weapon_range.side_deaths]
+fr = "Mes morts"
+en = "My deaths"
+
+[synthesis.weapon_range.side_kills_position]
+fr = "(bâton du haut)"
+en = "(top bar)"
+
+[synthesis.weapon_range.side_deaths_position]
+fr = "(bâton du bas, l'arme est celle du tueur)"
+en = "(bottom bar, the weapon is the killer's)"
+
+[synthesis.weapon_range.percentiles]
+fr = "p10 · médiane · p90"
+en = "p10 · median · p90"
+
+[synthesis.weapon_range.no_measure]
+fr = "aucune mesure"
+en = "no measurement"
+
+[synthesis.weapon_range.elev_above]
+fr = "d'en haut (> +1 m)"
+en = "from above (> +1 m)"
+
+[synthesis.weapon_range.elev_level]
+fr = "à niveau"
+en = "level"
+
+[synthesis.weapon_range.elev_below]
+fr = "d'en bas (< −1 m)"
+en = "from below (< −1 m)"
+
+[synthesis.weapon_range.below_threshold_title]
+fr = "Sous le seuil de {min, number} mesures"
+en = "Below the {min, number} measurement threshold"
+
+[synthesis.weapon_range.below_threshold_kills]
+fr = "frags : {names}"
+en = "kills: {names}"
+
+[synthesis.weapon_range.below_threshold_deaths]
+fr = "morts : {names}"
+en = "deaths: {names}"
+
+[synthesis.weapon_range.coverage_note]
+fr = "Ne compte que les frags et les morts dont la position du tueur ET de la victime est mesurée ; tous n'ont pas de position (couverture partielle)."
+en = "Only counts kills and deaths where both the killer and victim position are measured; not all of them have a position (partial coverage)."
+
+[synthesis.weapon_range.table_summary]
+fr = "Voir en tableau"
+en = "View as table"
+
+[synthesis.weapon_range.table_weapon]
+fr = "Arme"
+en = "Weapon"
+
+[synthesis.weapon_range.table_measured_kills]
+fr = "Mesurés"
+en = "Measured"
+
+[synthesis.weapon_range.table_measured_deaths]
+fr = "Mesurées"
+en = "Measured"
+
+[synthesis.weapon_range.table_p10]
+fr = "Portée basse (p10)"
+en = "Low range (p10)"
+
+[synthesis.weapon_range.table_median]
+fr = "Médiane"
+en = "Median"
+
+[synthesis.weapon_range.table_p90]
+fr = "Portée haute (p90)"
+en = "High range (p90)"
+
+[synthesis.weapon_range.table_above]
+fr = "D'en haut"
+en = "From above"
+
+[synthesis.weapon_range.table_below]
+fr = "D'en bas"
+en = "From below"
+
+[synthesis.weapon_range.tile_median_kills]
+fr = "Portée médiane de mes frags"
+en = "Median range of my kills"
+
+[synthesis.weapon_range.tile_median_kills_sub]
+fr = "{measured, number} frags mesurés sur {total, number}"
+en = "{measured, number} measured kills out of {total, number}"
+
+[synthesis.weapon_range.tile_median_deaths]
+fr = "Portée médiane de mes morts"
+en = "Median range of my deaths"
+
+[synthesis.weapon_range.tile_median_deaths_sub]
+fr = "{measured, number} morts mesurées sur {total, number}"
+en = "{measured, number} measured deaths out of {total, number}"
+
+[synthesis.weapon_range.tile_opening]
+fr = "Distance d'entame médiane"
+en = "Median opening distance"
+
+[synthesis.weapon_range.tile_opening_sub]
+fr = "1,5 s avant le frag · {measured, number} frags mesurés"
+en = "1.5 s before the kill · {measured, number} measured kills"
+
+[synthesis.weapon_range.tile_delta]
+fr = "Entame → frag"
+en = "Opening → kill"
+
+[synthesis.weapon_range.tile_delta_sub]
+fr = "Vous fermez la distance dans {pct} des frags"
+en = "You close the distance in {pct} of kills"
+
+# État vide de la carte : toutes les armes sous le seuil de publication. La section reste
+# affichée (tuiles, armes nommées, note de couverture) — c'est le GRAPHE qui n'a rien à
+# tracer, et il le DIT. Un graphe vide sans explication se lirait « bug ».
+[synthesis.weapon_range.empty_below_threshold]
+fr = "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les portées mesurées restent trop rares pour être publiées arme par arme."
+en = "No weapon reaches the {min, number} measurement threshold over this period: measured ranges are still too rare to publish weapon by weapon."

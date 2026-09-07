@@ -29,7 +29,7 @@ func TestBuildObjectiveActionsMapsOntoFrameAxis(t *testing.T) {
 		ident(250, "b", objectiveevents.StatFlagReturns),
 		ident(1_050, "a", objectiveevents.StatFlagGrabs),
 	}
-	got, cov := buildObjectiveActions(evs, scoreClock{intervalMS: 100, frames: 20})
+	got, cov := buildObjectiveActions(evs, 0, scoreClock{intervalMS: 100, frames: 20})
 	if len(got) != 3 || cov.Attached != 3 {
 		t.Fatalf("%d actions (couverture %d), attendu 3", len(got), cov.Attached)
 	}
@@ -54,7 +54,7 @@ func TestBuildObjectiveActionsCountsOutOfWindow(t *testing.T) {
 		ident(500, "a", objectiveevents.StatZoneCaptures),
 		ident(999_000, "a", objectiveevents.StatZoneSecures),
 	}
-	got, cov := buildObjectiveActions(evs, scoreClock{intervalMS: 100, frames: 10})
+	got, cov := buildObjectiveActions(evs, 0, scoreClock{intervalMS: 100, frames: 10})
 	if len(got) != 1 {
 		t.Fatalf("%d actions publiees, attendu 1", len(got))
 	}
@@ -74,7 +74,7 @@ func TestBuildObjectiveActionsRefusesUnidentified(t *testing.T) {
 		ident(100, "", objectiveevents.StatFlagSteals),
 		ident(200, "a", objectiveevents.StatFlagSteals),
 	}
-	got, cov := buildObjectiveActions(evs, scoreClock{intervalMS: 100, frames: 10})
+	got, cov := buildObjectiveActions(evs, 0, scoreClock{intervalMS: 100, frames: 10})
 	if len(got) != 1 || cov.NoSlot != 1 {
 		t.Errorf("%d actions, sansSlot = %d ; attendu 1 et 1", len(got), cov.NoSlot)
 	}
@@ -95,7 +95,7 @@ func TestDropUnpublishedActionsKeepsTheInvariant(t *testing.T) {
 		{T: 2, XUID: "fantome", Stat: objectiveevents.StatFlagReturns},
 	}
 	cov := LayerCoverage{Available: 2, Attached: 2}
-	got, cov := dropUnpublishedActions(actions, []Track{{XUID: "a"}}, cov)
+	got, cov := dropUnpublishedActions(actions, []Track{{XUID: "a"}}, nil, cov)
 	if len(got) != 1 || got[0].XUID != "a" {
 		t.Fatalf("%d actions gardees, attendu 1 (celle du joueur publie)", len(got))
 	}
@@ -150,7 +150,7 @@ func TestBuildObjectiveActionsSubtractsOrigin(t *testing.T) {
 		ident(20_000, "a", objectiveevents.StatFlagReturns),
 	}
 	clock := scoreClock{intervalMS: 100, frames: 200, originMS: 10_000}
-	got, cov := buildObjectiveActions(evs, clock)
+	got, cov := buildObjectiveActions(evs, 0, clock)
 	if len(got) != 2 || cov.Attached != 2 {
 		t.Fatalf("%d action(s) (couverture %d), attendu 2", len(got), cov.Attached)
 	}
@@ -173,11 +173,96 @@ func TestBuildObjectiveActionsRefusesBeforeFrameZero(t *testing.T) {
 		ident(9_950, "a", objectiveevents.StatFlagGrabs),
 		ident(10_100, "a", objectiveevents.StatFlagGrabs),
 	}
-	got, cov := buildObjectiveActions(evs, scoreClock{intervalMS: 100, frames: 200, originMS: 10_000})
+	got, cov := buildObjectiveActions(evs, 0, scoreClock{intervalMS: 100, frames: 200, originMS: 10_000})
 	if len(got) != 1 || cov.OutOfWindow != 1 {
 		t.Errorf("%d action(s), horsFenetre = %d ; attendu 1 et 1", len(got), cov.OutOfWindow)
 	}
 	if !cov.Balanced() {
 		t.Errorf("couverture desequilibree : %+v", cov)
+	}
+}
+
+// TestCouvertureCompteCeQueLePontNaPasNomme — LE DENOMINATEUR VOIT L'AMONT (constat P1-4 de
+// l'audit du 2026-09-06).
+//
+// Les actions que le pont d'identite n'a pas su attribuer n'arrivent JAMAIS dans `evs` : les
+// ignorer faisait de `Available` un compte de RESCAPES, et le rapport rattache/disponible se
+// lisait ~100 % sur un calque partiel. `noSlot` — le seul champ du contrat public prevu pour
+// dire « le pont ne couvre pas ce joueur » — valait alors 0 sur les 111 artefacts du parc,
+// sans une seule exception.
+//
+// MUTATION : rendre `cov := LayerCoverage{Available: len(evs)}` (sans `unnamed`) rougit sur
+// les deux assertions — `disponibles = 2, attendu 5` et `sansSlot = 0, attendu 3`.
+func TestCouvertureCompteCeQueLePontNaPasNomme(t *testing.T) {
+	evs := []objectiveevents.IdentifiedEvent{
+		ident(100, "a", objectiveevents.StatFlagCaptures),
+		ident(200, "b", objectiveevents.StatFlagGrabs),
+	}
+	got, cov := buildObjectiveActions(evs, 3, scoreClock{intervalMS: 100, frames: 20})
+	if len(got) != 2 {
+		t.Fatalf("%d action(s) publiee(s), attendu 2", len(got))
+	}
+	if cov.Available != 5 {
+		t.Errorf("disponibles = %d, attendu 5 (2 identifiees + 3 que le pont n'a pas nommees)",
+			cov.Available)
+	}
+	if cov.NoSlot != 3 {
+		t.Errorf("sansSlot = %d, attendu 3 : la perte amont doit se publier sous la categorie "+
+			"que le contrat lui reserve", cov.NoSlot)
+	}
+	if !cov.Balanced() {
+		t.Errorf("couverture desequilibree : %+v — la fuite serait EN AMONT du point d'equilibre", cov)
+	}
+}
+
+// TestActionDunJoueurSansVieNommeeEstPubliee — UNE LECTURE VRAIE N'EST PAS JETEE PARCE QU'UN
+// NOM MANQUE (constat P1-3 de l'audit du 2026-09-06).
+//
+// Un joueur dont AUCUNE vie n'est nommee perdait TOUTES ses actions d'objectif, alors que sa
+// trajectoire EST publiee et que le pont canonique nomme son slot. Trois consommateurs perdaient
+// la donnee, dont deux qui n'ont jamais eu besoin d'une trajectoire (le SON d'objectif et la
+// garde tout-ou-rien de l'armement de bombe).
+//
+// LE DEFAUT EST DEMONTRE ICI, PAR MUTATION, ET NULLE PART AILLEURS : le chiffre de `3372e7eb`
+// (35 actions sur 76) que la premiere redaction citait ne le mesure pas — ces actions viennent
+// de deux joueurs SANS AUCUNE piste dans le film, que le pont ne peut pas atteindre (revue
+// VIES-R1, C3). Le parc local ne porte aucun temoin de la configuration declenchante.
+//
+// MUTATION : revenir a l'index bati sur `tr.XUID != ""` rougit (« publiees = 0, attendu 1 »).
+func TestActionDunJoueurSansVieNommeeEstPubliee(t *testing.T) {
+	actions := []ObjectiveAction{{T: 1, XUID: "42", Stat: objectiveevents.StatFlagCaptures}}
+	tracks := []Track{{Slot: 536}} // la piste est PUBLIEE, son nommage a echoue
+	cov := LayerCoverage{Available: 1, Attached: 1}
+
+	got, out := dropUnpublishedActions(actions, tracks, map[uint32]uint64{536: 42}, cov)
+	if len(got) != 1 {
+		t.Fatalf("publiees = %d, attendu 1 : le pont nomme le slot 536", len(got))
+	}
+	if out.Unpublished != 0 || out.Attached != 1 {
+		t.Errorf("couverture %+v, attendu nonPubliees=0 rattachees=1", out)
+	}
+}
+
+// TestActionSansPontResteEcartee — LA CONTRE-EPREUVE du test precedent : le correctif
+// RETRECIT le rejet, il ne le supprime pas. On n'invente aucun joueur.
+func TestActionSansPontResteEcartee(t *testing.T) {
+	actions := []ObjectiveAction{{T: 1, XUID: "42", Stat: objectiveevents.StatFlagCaptures}}
+	tracks := []Track{{Slot: 536}}
+	for nom, pont := range map[string]map[uint32]uint64{
+		"pont muet":           nil,
+		"pont sur autre slot": {999: 42},
+		"pont sur autre nom":  {536: 77},
+		"pont a zero":         {536: 0},
+	} {
+		t.Run(nom, func(t *testing.T) {
+			got, out := dropUnpublishedActions(actions, tracks,
+				pont, LayerCoverage{Available: 1, Attached: 1})
+			if len(got) != 0 {
+				t.Errorf("%d action(s) publiee(s), attendu 0 : rien ne nomme ce slot", len(got))
+			}
+			if out.Unpublished != 1 {
+				t.Errorf("couverture %+v, attendu nonPubliees=1", out)
+			}
+		})
 	}
 }

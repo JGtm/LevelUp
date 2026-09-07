@@ -91,7 +91,11 @@ type zoneCtx struct {
 	// actions sont les actions d'objectif DEJA posees sur la grille de frames (doc.Objectives) :
 	// un seul decodage du statborg pour tout le document.
 	actions []ObjectiveAction
-	matchID string
+	// slotXUID est le PONT CANONIQUE slot -> joueur. Il descend jusqu'ici parce que l'attribution
+	// geometrique lit la position du capteur sur SES pistes : sans le pont, une piste dont le
+	// nommage a echoue ne se rattache a personne (cf. samplesByXUID).
+	slotXUID map[uint32]uint64
+	matchID  string
 }
 
 // zoneSample est une emission scalaire posee sur la grille de frames.
@@ -136,7 +140,16 @@ func buildZoneStates(in ZoneInput, c zoneCtx) ([]ZoneState, *ZonesCoverage) {
 	cov.Slots = ser.slots
 	caps := zoneCapturesOf(c.actions)
 	cov.Captures = len(caps)
-	att, _ := AttributeZones(caps, c.tracks, cat, AttributeOptions{MaxDistanceM: zoneCaptureDistanceM})
+	att, attCov := AttributeZones(caps, c.tracks, cat, c.slotXUID,
+		AttributeOptions{MaxDistanceM: zoneCaptureDistanceM})
+	// LA COUVERTURE DE L'ATTRIBUTION EST PUBLIEE, PLUS JETEE (correctif du 2026-09-06, constat
+	// P1-5). Elle etait perdue a la ligne d'appel (`att, _ :=`), et avec elle la seule piece qui
+	// distingue « le joueur n'etait pas dans la zone » (`Outside`, une MESURE) de « le pont ne
+	// nomme pas son slot » (`NoPosition`, une IGNORANCE) — la distinction meme sur laquelle
+	// coverage.go fonde toute sa doctrine. Sur les trois films mesures, 11, 12 et 5 captures
+	// disparaissaient sans qu'aucune ligne du journal ni aucun champ de l'artefact ne dise
+	// pourquoi.
+	cov.NoPosition, cov.Outside, cov.AmbiguousZone = attCov.NoPosition, attCov.Outside, attCov.Ambiguous
 	pairs := zonePairsOf(att)
 	cov.Attributed = len(pairs)
 	if len(pairs) == 0 {

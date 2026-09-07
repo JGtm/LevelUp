@@ -181,6 +181,10 @@ func applyMatchHeaderMapImage(
 // applyMatchHeaderScore : il dépend de la table `[rounds_decide]`, portée par le service
 // (même raison que le flag « Prolongation » — buildMatchHeader est déjà à la limite de
 // paramètres).
+//
+// Le libellé posé ici est le REPLI FR : le mot du TITRE (outcomes.toml, localisé) est appliqué
+// juste après par applyMatchHeaderOutcomeLabel, pour la même raison que les deux lignes
+// ci-dessus — le jeu d'outcomes est porté par le service, pas par le builder.
 func applyMatchHeaderOutcome(h *domain.MatchViewHeader, stats *domain.PlayerMatchStatsRaw) {
 	if stats == nil || stats.OutcomeCode == 0 {
 		return
@@ -190,6 +194,25 @@ func applyMatchHeaderOutcome(h *domain.MatchViewHeader, stats *domain.PlayerMatc
 	h.OutcomeLabel = outcomeLabel(code)
 	h.OutcomeColor = outcomeColor(code)
 	h.OutcomeColorToken = outcomeColorToken(code)
+}
+
+// applyMatchHeaderOutcomeLabel pose LE MOT DE L'ISSUE tel que le titre le dit, dans la locale
+// de la requête (2026-09-07).
+//
+// L'en-tête servait « Victoire / Défaite / Égalité / Abandon » depuis une map Go écrite en
+// français : sous UI anglaise, la carte d'en-tête ET l'écran de fin du rejeu — qui reprend ce
+// champ — annonçaient un mot français, pendant que le même écran vu depuis un adversaire prenait
+// son titre dans `outcomes.toml` et sortait « Loss ». Deux vocabulaires sur un seul panneau.
+//
+// Sans jeu d'outcomes (adapter non câblé, titre sans TOML), resolveOutcomeLabel replie sur la
+// map FR : le champ garde alors exactement la valeur posée par applyMatchHeaderOutcome.
+func applyMatchHeaderOutcomeLabel(
+	ctx context.Context, h *domain.MatchViewHeader, outcomes *mappings.OutcomeMappingSet,
+) {
+	if h.OutcomeCode == nil {
+		return
+	}
+	h.OutcomeLabel = resolveOutcomeLabel(ctx, outcomes, *h.OutcomeCode)
 }
 
 // applyMatchHeaderEnrichment renseigne PerfDisplay/Color, IsExcluded, DominanceFlag/Badge.

@@ -25,13 +25,11 @@
  */
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 import ts from 'typescript'
 
-const ICI = dirname(fileURLToPath(import.meta.url))
-const REPO = resolve(ICI, '..', '..', '..')
-const MUZZLE = resolve(REPO, 'apps/web/src/features/match-replay/muzzleFlash.ts')
+import { REPO, sourceDuRejeu } from './_helpers/replaySource'
+
 const CSS = resolve(REPO, 'apps/web/src/styles/globals.css')
 const TOML = resolve(REPO, 'config/titles/halo_infinite/mappings/replay_labels.toml')
 
@@ -51,7 +49,7 @@ const H = 180
 
 /** Le code de l'éclair, transpilé pour la page. */
 function moduleSource(): string {
-  const src = readFileSync(MUZZLE, 'utf8')
+  const src = sourceDuRejeu('muzzleFlash.ts')
   const valueImports = [...src.matchAll(/^import\s+(?!type\b)/gm)]
   expect(
     valueImports,

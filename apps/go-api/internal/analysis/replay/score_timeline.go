@@ -397,10 +397,14 @@ func playerRoundsByXUID(recs []objectiveevents.StatRecord, comp objectiveevents.
 
 // seriesOfRounds pose sur la grille les segments par manche d'un xuid : `Rounds` (les manches
 // telles quelles) et `Total` (le cumul recompose dans l'ordre des manches).
+//
+// LE CUMUL PASSE PAR [objectiveevents.ChronologicalTotal] : concatener les manches dans l'ordre
+// des MANCHES ne donne une courbe chronologique que si la decoupe par manche est juste. Le
+// controle refuse de publier une courbe qui recule dans le temps, et le dit au journal.
 func seriesOfRounds(byRound map[int][]objectiveevents.ScorePoint, c scoreClock) ScoreSeries {
 	return ScoreSeries{
 		Rounds: scoreRoundsOf(byRound, c),
-		Total:  scoreTicksOf(cumulateXUIDRounds(byRound), c),
+		Total:  scoreTicksOf(objectiveevents.ChronologicalTotal(cumulateXUIDRounds(byRound)), c),
 	}
 }
 

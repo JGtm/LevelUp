@@ -189,7 +189,12 @@ const synthesisKPIs = {
   accuracy: null, kills_per_min: null, avg_life_seconds: null, performance_score: null,
 }
 
-const synthesisFixture = {
+/**
+ * Fixture de la page Synthèse — EXPORTÉE pour que les tests qui vérifient le MONTAGE d'une
+ * section puissent la réémettre enrichie d'un bloc (ex. `weapon_range`, absent par défaut
+ * ici comme dans la plupart des scopes réels) sans redéclarer la réponse entière.
+ */
+export const synthesisFixture = {
   period: 'all',
   total_matches: 5,
   solo_kpis: synthesisKPIs,

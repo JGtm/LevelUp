@@ -31,14 +31,6 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// Outcomes mappés selon les codes Halo Infinite.
-var outcomeLabels = map[int]string{
-	1: "Égalité",
-	2: "Victoire",
-	3: "Défaite",
-	4: "Abandon",
-}
-
 // Labels de scope/contexte partagés entre filters, tri, options Explorer.
 // Externalisés pour goconst (utilisés à plusieurs endroits + côté tests).
 const (
@@ -95,8 +87,8 @@ type MatchHistoryService struct {
 	// sans page publique → pas de lien (dégradation gracieuse, F3).
 	assetURL games.TitleAssetURLAdapter
 	// semantic (optionnel) : adapter sémantique du titre, utilisé pour résoudre les
-	// libellés d'outcome depuis outcomes.toml (source de vérité) plutôt qu'en dur
-	// (F4). nil → fallback FR canonique via outcomeLabel().
+	// libellés d'outcome depuis outcomes.toml (source de vérité) plutôt qu'en dur (F4),
+	// DANS LA LOCALE DE LA REQUÊTE depuis le 2026-09-07. nil → repli FR (outcome_label.go).
 	semantic games.TitleSemanticAdapter
 	// rankedCapable indique si le titre expose la capability match.skill.snapshot
 	// (gate du module classé du briefing Explorer, DEC-7). Injecté par le wiring
@@ -124,15 +116,6 @@ type MatchHistoryService struct {
 	// lister les matchs ayant un artefact (colonne « Rejeu » + filtre replay_scope).
 	// Nil → aucune ligne ne porte de rejeu (titre sans film cuit, dégradation propre).
 	replaySvc port.ReplayService
-}
-
-// outcomeCodeToKey mappe le code outcome Halo (domain.Outcome*) vers la clé
-// canonique outcomes.toml (win/loss/tie/dnf). "" si code inconnu.
-var outcomeCodeToKey = map[int]string{
-	domain.OutcomeDraw: "tie",
-	domain.OutcomeWin:  duelLabelWin,
-	domain.OutcomeLoss: duelLabelLoss,
-	domain.OutcomeDNF:  "dnf",
 }
 
 // NewMatchHistoryService crée un MatchHistoryService.
@@ -216,9 +199,12 @@ func (s *MatchHistoryService) replayAvailability(ctx context.Context) port.Repla
 // d'assets + gamertag) et libellé d'outcome (F4, via l'adapter sémantique). Champs
 // nil si l'adapter correspondant n'est pas câblé → dégradation gracieuse.
 //
+// ctx porte la LOCALE de la requête : le libellé d'issue en dépend depuis le
+// 2026-09-07 (il sortait d'une map FR en dur, y compris sous UI anglaise).
+//
 // replays : ensemble des matchs ayant un artefact de rejeu, résolu une fois par
 // requête par l'appelant (nil = aucun rejeu publié sur les lignes).
-func (s *MatchHistoryService) rowFormatters(replays port.ReplayAvailability) rowFormatters {
+func (s *MatchHistoryService) rowFormatters(ctx context.Context, replays port.ReplayAvailability) rowFormatters {
 	f := rowFormatters{replays: replays}
 	// Libellé de playlist résolu via le chokepoint unique (strip + override) —
 	// même « Super Fiesta » que la Match View / les tuiles home.
@@ -231,18 +217,11 @@ func (s *MatchHistoryService) rowFormatters(replays port.ReplayAvailability) row
 		gt := s.waypointPlayer
 		f.matchURL = func(matchID string) string { return s.assetURL.PlayerMatchWebURL(gt, matchID) }
 	}
-	if s.semantic != nil {
-		f.outcomeLabel = func(code int) string {
-			if oc := s.semantic.Outcomes(); oc != nil {
-				if m, ok := oc.Get(outcomeCodeToKey[code]); ok {
-					if lbl, _ := m.Label("fr"); lbl != "" {
-						return lbl
-					}
-				}
-			}
-			return outcomeLabel(code) // failsafe FR canonique
-		}
-	}
+	// Libellé d'issue : le mot du TITRE (outcomes.toml) dans la LOCALE de la requête, via le
+	// chokepoint unique du dépôt. Le jeu d'outcomes est résolu UNE FOIS ici, pas par ligne.
+	// Adapter absent ou titre sans TOML → resolveOutcomeLabel replie sur la map FR (journalisé).
+	outcomes := outcomesOf(s.semantic)
+	f.outcomeLabel = func(code int) string { return resolveOutcomeLabel(ctx, outcomes, code) }
 	return f
 }
 
@@ -347,7 +326,7 @@ func (s *MatchHistoryService) GetPage(
 	mapWinRates := computeMapWinRates(rawRows)
 
 	// Enrichissement
-	items := enrichRows(filtered, mapWinRates, s.rowFormatters(replays))
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters(ctx, replays))
 
 	// Tri
 	sortItems(items, req.SortField, req.SortDir)

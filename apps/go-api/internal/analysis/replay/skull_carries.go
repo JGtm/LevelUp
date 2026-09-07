@@ -93,13 +93,13 @@ type skullRawCarry struct {
 // Rend (nil, nil) quand rien n'a ete balaye (film non-Oddball), et (nil, couverture) quand le film
 // est Oddball mais qu'aucune periode ne sort — la couverture dit alors POURQUOI.
 //
-// `presence` indexe, par xuid, les fenetres de vie bipede publiees. Un portage attribue a un joueur
-// dont AUCUNE vie ne couvre l'intervalle est une attribution FANTOME (le canal de score pointe un
-// joueur absent de la carte) : le calque n'aurait aucune position ou poser le crane, on l'ecarte
-// (`CarrierAbsent`). Un portage qui DEBORDE de la presence du porteur est ROGNE a elle (le crane
-// n'est porte que tant que le porteur est present). Un porteur inconnu de `presence` — jamais nomme
-// dans les tracks, ou `presence` nil en test — n'est PAS verifie : on ne rejette pas l'inconnu.
-func buildSkullCarries(scan SkullCarryScan, ctx matchClock, presence map[string][]presenceSpan) ([]SkullCarry, *SkullCarriesCoverage) {
+// `presence` est l'index des vies bipedes publiees (cf. [carrierPresence]) et decide, par
+// [carrierPresence.gate], de ce qui sort : un portage dont les pistes publiees prouvent que le
+// porteur etait AILLEURS est un FANTOME et part en `CarrierAbsent` ; un portage qui deborde d'une
+// vie NOMMEE du porteur est ROGNE a elle. Partout ailleurs — porteur jamais nomme, ou vie ANONYME
+// couvrant l'intervalle — le gate S'ABSTIENT : on ne rejette pas l'inconnu. `presence` zero
+// (tests) laisse donc passer tous les trains.
+func buildSkullCarries(scan SkullCarryScan, ctx matchClock, presence carrierPresence) ([]SkullCarry, *SkullCarriesCoverage) {
 	if !scan.Scanned {
 		return nil, nil
 	}
@@ -123,18 +123,10 @@ func buildSkullCarries(scan SkullCarryScan, ctx matchClock, presence map[string]
 			f1 = f0
 		}
 		// Gate de PRESENCE : le porteur doit etre sur la carte pendant le portage.
-		if spans := presence[r.xuid]; len(spans) > 0 {
-			span, ok := bestOverlap(spans, f0, f1)
-			if !ok {
-				cov.CarrierAbsent++
-				continue
-			}
-			if f0 < span.f0 {
-				f0 = span.f0
-			}
-			if f1 > span.f1 {
-				f1 = span.f1
-			}
+		var ok bool
+		if f0, f1, ok = presence.gate(r.xuid, f0, f1); !ok {
+			cov.CarrierAbsent++
+			continue
 		}
 		closed := f1 < openThreshold
 		out = append(out, SkullCarry{XUID: r.xuid, T0: f0, T1: f1, Closed: closed})
@@ -151,27 +143,120 @@ func buildSkullCarries(scan SkullCarryScan, ctx matchClock, presence map[string]
 // presenceSpan est une fenetre [f0,f1] fermee sur l'axe de frames publie.
 type presenceSpan struct{ f0, f1 int }
 
-// skullCarrierPresence indexe, par xuid, les fenetres [StartFrame, EndFrame] des vies bipedes
-// PUBLIEES (`doc.Tracks`). Les vies anonymes (xuid vide) n'entrent pas : une presence inconnue ne
-// doit pas se faire passer pour une absence. Meme axe de frames que les portages (les deux passent
-// par le meme `origin`/`step`), donc directement comparables.
-func skullCarrierPresence(tracks []Track) map[string][]presenceSpan {
-	out := map[string][]presenceSpan{}
-	for _, t := range tracks {
-		if t.XUID == "" {
-			continue
-		}
-		out[t.XUID] = append(out[t.XUID], presenceSpan{t.StartFrame, t.EndFrame})
-	}
-	return out
+// carrierPresence est l'index de PRESENCE des porteurs sur l'axe de frames publie — et, ce qui
+// compte autant, ce qu'il NE SAIT PAS.
+//
+// POURQUOI DEUX CHAMPS ET PAS UNE SEULE MAP. Le gate de presence (2026-08-30) a d'abord indexe
+// les seules vies NOMMEES, et lu « aucune vie nommee de X ne couvre l'intervalle » comme « X est
+// ABSENT de la carte ». C'est un faux syllogisme : le pont d'identite laisse des vies ANONYMES
+// (18 slots sur 160 sur `d9781168` — 142 portent au moins une vie nommee, ces 18-la aucune), et
+// une vie anonyme est une PRESENCE SANS IDENTITE, pas une absence. Mesure du 2026-09-06, chaine
+// independante : en Oddball le score EST le temps de portage, et la feuille de match donne
+// 191 s / 196 s par equipe sur `d9781168` ; le gate publiait 60,1 s / 147,4 s. Il ecartait deux
+// tiers du temps de portage d'une equipe, en croyant ecarter des fantomes. Le champ `unnamed`
+// est ce qui rend l'ignorance VISIBLE au gate.
+type carrierPresence struct {
+	// named : les vies publiees et NOMMEES, groupees par xuid.
+	named map[string][]presenceSpan
+	// unnamed : les vies publiees que le pont n'a identifiees NI par xuid NI comme bot.
+	// Quelqu'un est la, on ne sait pas qui — donc on ne peut RIEN affirmer sur l'absence d'un
+	// joueur a cet instant.
+	unnamed []presenceSpan
 }
 
-// bestOverlap rend la fenetre de presence qui recouvre le plus [f0,f1], et si un recouvrement
-// existe. Sans recouvrement (le porteur n'est present a AUCUN instant du portage), (presenceSpan{},
-// false) — le portage est un fantome.
-func bestOverlap(spans []presenceSpan, f0, f1 int) (presenceSpan, bool) {
-	best := presenceSpan{}
-	bestOv := 0
+// carrierPresenceOf indexe les vies bipedes PUBLIEES (`doc.Tracks`) : les nommees par xuid, les
+// non identifiees a part. Meme axe de frames que les portages (les deux passent par le meme
+// `origin`/`step`), donc directement comparables. Sert le crane ET la bombe.
+//
+// UNE VIE DE BOT N'ENTRE NULLE PART, et c'est voulu. Elle n'a pas de xuid (seul cas ou une vie
+// est nommee sans en avoir un, cf. [Track.Bot]), donc elle ne peut pas porter un portage ; mais
+// elle est IDENTIFIEE, donc elle ne cree aucun doute sur ou se trouve un joueur. La ranger avec
+// les anonymes ferait abstenir le gate sur les 20 films a bots du parc sans raison.
+//
+// UNE IDENTITE DEDUITE AJOUTE UNE PRESENCE, ELLE N'EN RETIRE JAMAIS UNE (2026-09-07). Depuis le
+// nommage final (unnamed_lives.go), plus aucune vie n'est publiee sans identite : `unnamed`
+// serait donc VIDE, et l'abstention n° 2 du gate — celle qui coute le plus, cf. son en-tete —
+// mourrait avec elle. Or la voie qui a nomme ces vies-la est une DEDUCTION (l'occupation du slot
+// dans le temps), pas une lecture : elle etablit qu'un joueur etait PROBABLEMENT la, jamais
+// qu'un AUTRE n'y etait pas. Les faire compter comme une preuve d'absence transformerait une
+// deduction en refutation — et la mesure le dit : sur `d9781168`, l'Oddball dont le score EST le
+// temps de portage, cela coutait un portage et 101 frames, EN S'ELOIGNANT de la feuille de match
+// (387 s reelles ; 331,3 s publiees contre 321,2 s).
+//
+// Une vie dont l'identite est deduite entre donc DANS LES DEUX : sous son xuid (c'est sa
+// presence a lui) ET parmi les vies qui ne prouvent l'absence de personne.
+func carrierPresenceOf(tracks []Track, deduced map[int]bool) carrierPresence {
+	p := carrierPresence{named: map[string][]presenceSpan{}}
+	for i, t := range tracks {
+		span := presenceSpan{t.StartFrame, t.EndFrame}
+		switch {
+		case t.XUID != "":
+			p.named[t.XUID] = append(p.named[t.XUID], span)
+			if deduced[i] {
+				p.unnamed = append(p.unnamed, span)
+			}
+		case t.Bot == "":
+			p.unnamed = append(p.unnamed, span)
+		}
+	}
+	return p
+}
+
+// gate applique la regle de PRESENCE a un portage [f0,f1] attribue a `xuid`. Il rend les bornes
+// a publier et `false` quand le portage est un FANTOME (a ecarter, `CarrierAbsent`).
+//
+// TROIS CAS D'ABSTENTION, tous ramenes au meme principe : ON NE REJETTE PAS L'INCONNU.
+//  1. `xuid` n'a AUCUNE vie nommee (jamais ponte, ou `named` vide en test) : rien a opposer.
+//  2. Une vie ANONYME recouvre l'intervalle : la presence y est INCONNUE, pas nulle. Ni rejet ni
+//     rognage — rogner reviendrait a affirmer que le porteur n'etait pas la ou une vie sans nom
+//     dit que quelqu'un l'etait.
+//  3. Une vie nommee de `xuid` recouvre l'intervalle : le portage est publie, ROGNE a la vie qui
+//     le recouvre le plus (le crane n'est porte que tant que son porteur est present).
+//
+// Le rejet ne subsiste donc que quand les pistes publiees rendent COMPTE de tout l'intervalle et
+// que le porteur n'y est pas — le seul cas ou « absent » est une mesure et non une ignorance.
+func (p carrierPresence) gate(xuid string, f0, f1 int) (int, int, bool) {
+	spans := p.named[xuid]
+	if len(spans) == 0 {
+		return f0, f1, true
+	}
+	// L'IGNORANCE PASSE AVANT LE ROGNAGE, et c'est la moitie la plus couteuse du correctif : sur
+	// `d9781168`, le rejet coutait 32,6 s de portage et le rognage 91,2 s. Rogner un portage a une
+	// vie nommee alors qu'une vie SANS NOM couvre le reste, c'est affirmer une absence que rien
+	// n'etablit.
+	if _, unknown := unionOverlap(p.unnamed, f0, f1); unknown {
+		return f0, f1, true
+	}
+	if span, ok := unionOverlap(spans, f0, f1); ok {
+		if f0 < span.f0 {
+			f0 = span.f0
+		}
+		if f1 > span.f1 {
+			f1 = span.f1
+		}
+		return f0, f1, true
+	}
+	return f0, f1, false
+}
+
+// unionOverlap rend l'UNION des fenetres de presence que [f0,f1] recouvre, et si au moins une
+// le recouvre.
+//
+// POURQUOI L'UNION, ET PAS LA FENETRE QUI RECOUVRE LE PLUS (residu instruit le 2026-09-06). Le
+// rognage a `bestOverlap` etait le MEME defaut que `windowFor` avant le schema 45 : un portage
+// qu'un trou de replication de plus de `lifeGapUS` coupe en deux vies NOMMEES du meme porteur
+// etait tronque a la moitie la plus longue, et la part couverte par l'autre vie — dont, selon
+// le cote, l'instant de PRISE — partait a la trappe. `spanFor` (equipment_episodes.go) a tranche
+// la question pour les episodes d'equipement au schema 45 ; c'est la meme mesure, la meme cause
+// et la meme reponse. Le correctif du schema 43 n'avait traite que le REJET (« l'ignorance passe
+// avant le rognage »), jamais le rognage lui-meme.
+//
+// L'UNION NE DEBORDE JAMAIS L'INTERVALLE MESURE : les bornes rendues sont ensuite CLAMPEES sur
+// [f0,f1] par l'appelant, et une fenetre que l'intervalle ne recouvre pas n'entre pas dans
+// l'union. Un portage qu'AUCUNE vie nommee ne recouvre reste ecarte : la regle de rejet ne
+// bouge pas.
+func unionOverlap(spans []presenceSpan, f0, f1 int) (presenceSpan, bool) {
+	out, found := presenceSpan{}, false
 	for _, s := range spans {
 		lo, hi := f0, f1
 		if s.f0 > lo {
@@ -180,12 +265,22 @@ func bestOverlap(spans []presenceSpan, f0, f1 int) (presenceSpan, bool) {
 		if s.f1 < hi {
 			hi = s.f1
 		}
-		if ov := hi - lo + 1; ov > bestOv {
-			bestOv = ov
-			best = s
+		if hi < lo {
+			continue // cette vie ne recouvre pas l'intervalle
+		}
+		switch {
+		case !found:
+			out, found = s, true
+		default:
+			if s.f0 < out.f0 {
+				out.f0 = s.f0
+			}
+			if s.f1 > out.f1 {
+				out.f1 = s.f1
+			}
 		}
 	}
-	return best, bestOv > 0
+	return out, found
 }
 
 // skullCarryIntervals reconstruit les periodes de portage : les trains de tics de score de mode,
@@ -258,7 +353,8 @@ func skullGrabCount(recs []objectiveevents.StatRecord) int {
 // LE PONT D'IDENTITE (slot statborg -> xuid) SE FAIT ICI, comme pour la couronne et le drapeau,
 // par les seuls INSTANTS DE MORT et PAR MANCHE — aucune base. `own.DeathOffsetMS` cale l'horloge
 // des enregistrements (meme horloge que le fil des morts) sur l'axe des frames.
-func attachSkullCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock replayClock) {
+func attachSkullCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock replayClock,
+	deduced map[int]bool) {
 	in := opt.Skull
 	if !in.Scanned {
 		return
@@ -271,7 +367,7 @@ func attachSkullCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock
 	carries, cov := buildSkullCarries(scan, matchClock{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
 		deathOffsetMS: own.DeathOffsetMS,
-	}, skullCarrierPresence(doc.Tracks))
+	}, carrierPresenceOf(doc.Tracks, deduced))
 	doc.SkullCarries = carries
 	if doc.Coverage != nil {
 		doc.Coverage.SkullCarries = cov

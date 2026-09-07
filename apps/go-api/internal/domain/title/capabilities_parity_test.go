@@ -135,9 +135,16 @@ func TestCapabilityLiteralsInFrontAreDeclaredInGo(t *testing.T) {
 
 // orphanCapabilityAllowlist — capabilities Go volontairement NON déclarées par un
 // titre public, ou NON consommées. Chaque entrée est datée + justifiée (règle
-// CLAUDE.md n°11). VIDE au 2026-07-26 : les 21 capabilities sont toutes déclarées
-// par Halo Infinite ou Halo 5, et toutes lues par au moins un consommateur.
-var orphanCapabilityAllowlist = map[string]string{}
+// CLAUDE.md n°11). VIDE au 2026-09-06 : les capabilities déclarées sont toutes
+// accordées par Halo Infinite ou Halo 5, et toutes lues par au moins un consommateur.
+// L'allowlist est DÉCROISSANTE : `TestOrphanCapabilityAllowlistIsCurrent` fait échouer
+// la suite dès qu'une entrée n'a plus lieu d'être.
+var orphanCapabilityAllowlist = map[string]string{
+	// VIDE au 2026-09-06 : l'entrée temporaire `weapon_range`, posée le même jour en
+	// attendant son gate d'affichage, a été retirée par le lot 5 du plan
+	// .ai/PLAN_DUELS_PORTEE_2026-09-06.md — `useCapability('weapon_range')` existe
+	// désormais dans apps/web/src (SynthesisPage.tsx), la capability a son consommateur.
+}
 
 // TestCapabilitiesGrantedByAPublicTitle — toute capability déclarée côté Go doit
 // être accordée par AU MOINS UN titre public (built-in Infinite ou config/titles/

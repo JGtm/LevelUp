@@ -84,7 +84,7 @@ const permSidecarRaster = 0o644
 // et la passe hors ligne DOIVENT projeter a l'identique, et deux ecritures de la meme
 // regle divergeraient au premier ajustement.
 func ProjeterRasterTactique(path string) (domain.TacticalRasterSidecar, error) {
-	doc, err := lireDocumentRange(path)
+	doc, _, err := lireDocumentRange(path)
 	if err != nil {
 		return domain.TacticalRasterSidecar{}, err
 	}
@@ -298,7 +298,7 @@ func EcrireSidecarRaster(path string, s domain.TacticalRasterSidecar) error {
 //
 // Best-effort de bout en bout, comme toute l'etape : aucun echec ne remonte au cycle, et
 // aucun ne se tait. Un match en echec n'empeche ni les suivants ni le reste de la cuisson.
-func projeterRastersTactiques(ctx context.Context, d Deps, rapports []artefactCuit) {
+func projeterRastersTactiques(ctx context.Context, d Deps, rapports []artefactLu) {
 	if len(rapports) == 0 {
 		return
 	}

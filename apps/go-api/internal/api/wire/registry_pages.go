@@ -90,6 +90,9 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	svc = svc.WithCitationsRepo(duckdb.NewCitationsRepo(pdb)).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithAssetURL(r.assetURLFor(pdb.TitleSlug)).
+		// Libellés d'issue (outcomes.toml) de l'en-tête, localisés par la requête : sans
+		// cet adapter le champ retombe sur le repli FR — « Victoire » sous UI anglaise.
+		WithSemantic(r.semanticFor(pdb.TitleSlug)).
 		WithTitleSlug(pdb.TitleSlug).
 		// ModeCategory du header (garde Fiesta du rejeu 2D) : même taxonomie que
 		// MediaRepo, cf. haloInfiniteModeTaxonomy (registry_media.go).

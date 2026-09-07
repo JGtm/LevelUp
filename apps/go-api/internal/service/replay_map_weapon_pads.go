@@ -6,7 +6,8 @@ package service
 // LA CHAÎNE, et qui décide quoi :
 //
 //	match -> map_id (registre partagé)                   ReplayMapNameRepo (partagé, matchMapKeys)
-//	map_id -> emplacements de la carte (catalogue figé)  replay.LoadMapWeaponPads
+//	map_id -> emplacements de la carte (catalogue figé)  replay.LoadMapWeaponPadsMerged
+//	                                                     (versionné + overlay rattrapé)
 //	emplacements x socles du match -> ce qui est ALLUMÉ  replay.BuildMapWeaponPads
 //
 // PAS DE MODE DANS CETTE CHAÎNE, et c'est mesuré : le fichier de carte ne dit pas quel mode
@@ -45,7 +46,11 @@ func (s *replayService) mapWeaponPadsForKeys(ctx context.Context, matchID string
 		return nil
 	}
 	res := title.NewPathResolver(s.repoRoot)
-	cat, err := replay.LoadMapWeaponPads(res.MapWeaponPadsPath(s.titleSlug))
+	// FUSION VERSIONNE + OVERLAY (cf. PathResolver.MapWeaponPadsOverlayPath) : une carte
+	// rattrapee par le runtime doit servir comme une carte versionnee, sans quoi le rattrapage
+	// remplirait un fichier que personne ne lit.
+	cat, err := replay.LoadMapWeaponPadsMerged(
+		res.MapWeaponPadsPath(s.titleSlug), res.MapWeaponPadsOverlayPath(s.titleSlug))
 	if err != nil {
 		// Le catalogue est VERSIONNÉ : son absence n'est pas le cas nominal d'une carte sans
 		// socle — on le dit, puis on dégrade (même règle que les objectifs et les callouts).

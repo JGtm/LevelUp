@@ -182,7 +182,7 @@ function buildWaveSeries(waves: TeamWave[], opts: WaveSeriesOpts): Record<string
       { value: [w.xEnd, laneY], _tip: waveTip(sideLabel, w, xuidMeta, t), label: waveLabel(color, w.count, position) },
     ],
     lineStyle: { color, width: 4, opacity: 0.9 },
-    itemStyle: { color, borderColor: 'rgba(255,255,255,0.6)', borderWidth: 1.5 },
+    itemStyle: { color, borderColor: 'rgba(255,255,255,0.6)', borderWidth: 1.5 }, // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
     symbol: ['circle', 'circle'],
     symbolSize: 9,
     label: { show: false },

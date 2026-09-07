@@ -16,6 +16,14 @@ package replayartifacts
 // de `os.ReadFile` seul : ce paquet lit legitimement d'autres fichiers (chunks de film,
 // capabilities), et interdire la primitive au lieu du motif aurait ete un garde qui gene
 // sans proteger.
+//
+// LE MOTIF SURVEILLE EST `json.Unmarshal`, PAS LE NOM DU TYPE (fusion feat/v75 du
+// 2026-09-07) : depuis que [Deriver] (derivations.go) lit CHAQUE artefact une seule fois et
+// fait CIRCULER le document deja parse vers les projections (`doc *replay.ReplayDocument` en
+// parametre — bombstats.go, derivations.go, positions.go), le simple NOM du type apparait
+// legitimement hors de document.go. Ce n'est pas de la deserialisation, c'est le type qui
+// voyage — exactement ce que ce garde-rail est cense laisser passer (cf. son intention
+// ci-dessus). Le motif precedent (`replay.ReplayDocument`) confondait les deux.
 
 import (
 	"os"
@@ -27,7 +35,7 @@ import (
 )
 
 // motifDeserialisationDocument : la forme surveillee.
-const motifDeserialisationDocument = "replay.ReplayDocument"
+const motifDeserialisationDocument = "json.Unmarshal"
 
 // proprietaireDeLaLecture : le seul fichier ou le type peut etre deserialise.
 const proprietaireDeLaLecture = "document.go"

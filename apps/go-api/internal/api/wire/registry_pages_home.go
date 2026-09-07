@@ -313,7 +313,15 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithPersonalScoreAwardsRepo(duckdb.NewPersonalScoreAwardsRepo(pdb), pdb.XUID).
 		WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb)).
-		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
+		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
+		// Portée par arme (frags ET morts mesurés) : câblage INCONDITIONNEL, comme celui
+		// de la précision. Le repo est le seul à savoir si ce titre a des positions par
+		// kill — il rend games.ErrCapabilityNotSupported, le service omet la section.
+		// Un `if capability` ici ferait la même décision DEUX fois, à deux endroits qui
+		// divergeraient. Le classificateur est CELUI DE killDistanceRepoFor : ces deux
+		// lecteurs lisent exactement la même colonne `source_tag`, et un second
+		// résolveur les ferait nommer la même arme différemment.
+		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}

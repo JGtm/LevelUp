@@ -49,9 +49,7 @@ package replayartifacts
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"log/slog"
-	"os"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -77,34 +75,23 @@ const (
 	t0FilmEchec
 )
 
-// lireT0FilmArtefact lit le SEUL champ `t0FilmMs` de l'artefact RANGE SUR DISQUE.
+// LA LECTURE DU CHAMP `t0FilmMs` A DEMENAGE (2026-09-06) : elle vit dans `rapportsT0`
+// (derivations.go), qui la tire du document DEJA LU par [Deriver] — une seule lecture de
+// l'artefact range pour les quatre derivations, au lieu d'une par famille.
 //
-// SUR DISQUE, ET NON DANS LE BLOB CANDIDAT : `StoreArtifact` peut REFUSER l'ecriture (garde
-// anti-regression) et conserver l'artefact precedent. Reporter la valeur du candidat
-// ecrirait alors en base un coup d'envoi que le disque ne porte pas.
+// SUR DISQUE, ET NON DANS LE BLOB CANDIDAT : la regle n'a pas bouge. `StoreArtifact` peut
+// REFUSER l'ecriture (garde anti-regression) et conserver l'artefact precedent ; reporter la
+// valeur du candidat ecrirait en base un coup d'envoi que le disque ne porte pas.
 //
-// Nil quand le fichier est illisible, quand le schema est anterieur au champ, ou quand le
-// detecteur a REFUSE de dater le coup d'envoi (piege omitempty documente sur le champ) — les
-// trois cas veulent la meme chose : ne rien ecrire.
-func lireT0FilmArtefact(path string) *int64 {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	var head struct {
-		T0FilmMs *int64 `json:"t0FilmMs"`
-	}
-	if err := json.Unmarshal(raw, &head); err != nil {
-		return nil
-	}
-	return head.T0FilmMs
-}
+// Un document sans `t0FilmMs` — schema anterieur au champ, ou detecteur qui a REFUSE de dater
+// le coup d'envoi (piege omitempty documente sur le champ) — ne donne aucun rapport : les deux
+// cas veulent la meme chose, ne rien ecrire.
 
 // reporterT0Film ecrit les coups d'envoi mesures du cycle dans `match_registry`.
 //
 // Best-effort de bout en bout, comme toute l'etape : aucun echec ne remonte au cycle, mais
 // aucun ne se tait non plus.
-func reporterT0Film(ctx context.Context, d Deps, rapports []rapportT0Film) {
+func reporterT0Film(ctx context.Context, d Deps, b *bilanDerivations, rapports []rapportT0Film) {
 	if len(rapports) == 0 {
 		return
 	}
@@ -116,6 +103,7 @@ func reporterT0Film(ctx context.Context, d Deps, rapports []rapportT0Film) {
 			"(aucun writer shared cable sur ce chemin)",
 			"gamertag", d.Gamertag, "matchs", len(rapports))
 		observability.AddIntT(titre, CompteurT0FilmEchecs, int64(len(rapports)))
+		echecT0(b, rapports)
 		return
 	}
 	db, release, err := d.AcquireWriter(ctx)
@@ -123,6 +111,7 @@ func reporterT0Film(ctx context.Context, d Deps, rapports []rapportT0Film) {
 		slog.WarnContext(ctx, "post-sync: rejeu 2D — writer shared indisponible, coup d'envoi non reporte",
 			"gamertag", d.Gamertag, "matchs", len(rapports), "err", err)
 		observability.AddIntT(titre, CompteurT0FilmEchecs, int64(len(rapports)))
+		echecT0(b, rapports)
 		return
 	}
 	defer release()
@@ -136,6 +125,7 @@ func reporterT0Film(ctx context.Context, d Deps, rapports []rapportT0Film) {
 			dejaLa++
 		case t0FilmEchec:
 			echecs++
+			b.echec(r.matchID)
 		}
 	}
 	observability.AddIntT(titre, CompteurT0FilmReportes, int64(ecrits))
@@ -143,6 +133,16 @@ func reporterT0Film(ctx context.Context, d Deps, rapports []rapportT0Film) {
 	observability.AddIntT(titre, CompteurT0FilmEchecs, int64(echecs))
 	slog.InfoContext(ctx, "post-sync: rejeu 2D — coup d'envoi du film reporte au registre",
 		"gamertag", d.Gamertag, "reportes", ecrits, "deja_a_jour", dejaLa, "echecs", echecs)
+}
+
+// echecT0 enregistre au bilan que le coup d'envoi de ces matchs n'a pas ete reporte, ET que
+// c'est faute de writer : sans cette trace, la marque de derivation se poserait sur un match
+// dont RIEN n'a ete ecrit (constat C1).
+func echecT0(b *bilanDerivations, rapports []rapportT0Film) {
+	b.writerIndisponible()
+	for _, r := range rapports {
+		b.echec(r.matchID)
+	}
 }
 
 // ecrireUnT0Film lit l'etat courant du T0 du match puis le corrige si besoin. La lecture et

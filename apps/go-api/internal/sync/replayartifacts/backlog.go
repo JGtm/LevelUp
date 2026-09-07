@@ -185,7 +185,9 @@ func requeteQueueRecente(months int) (string, []any) {
 }
 
 // artefactPresent : le prédicat le moins cher qui existe. Il répond à « ce match a-t-il UN
-// rejeu », pas à « son rejeu est-il au bon schéma » — cf. l'en-tête du fichier.
+// rejeu », pas à « son rejeu est-il au bon schéma », ni à « ses dérivés sont-ils écrits » —
+// cf. l'en-tête du fichier. La question des DÉRIVÉS a son propre prédicat, tout aussi bon
+// marché : `replaybuild.DerivationsUpToDate` (derivations_backlog.go, constat A2).
 func artefactPresent(path string) bool {
 	st, err := os.Stat(path)
 	return err == nil && !st.IsDir() && st.Size() > 0

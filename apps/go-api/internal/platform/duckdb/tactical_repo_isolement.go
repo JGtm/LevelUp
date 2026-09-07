@@ -56,7 +56,7 @@ SELECT e.match_id, min(e.victim_xuid) AS victim_xuid,
 FROM match_kill_events_latest e
 JOIN match_death_context_latest c
   ON c.match_id = e.match_id AND c.victim_xuid = e.victim_xuid AND c.time_ms = e.time_ms
-JOIN kill_positions_latest p
+JOIN %s p
   ON p.match_id = e.match_id AND p.killer_xuid = e.feed_killer_xuid AND p.time_ms = e.time_ms
 WHERE e.match_id IN (SELECT u.match_id FROM (%s) u)
   AND e.publishable
@@ -92,7 +92,9 @@ func (r *TacticalRepo) MortsAvecContexte(ctx context.Context, q domain.TacticalQ
 	}
 
 	selectSQL, args := r.universSQL(q)
-	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalIsolement, selectSQL), args...)
+	// Le nom de la table de positions passe par la constante de kill_measured.go, PAS par un
+	// littéral ici — même règle et même raison que QTacticalPositions (tactical_repo.go).
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalIsolement, positionsAtKill, selectSQL), args...)
 	if err != nil {
 		return out, r.degrader(ctx, "MortsAvecContexte", err)
 	}

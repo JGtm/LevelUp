@@ -42,6 +42,10 @@
   `.ai/thought_log.md` par tâche close. Découvertes hors périmètre : consignées, pas traitées.
 - Doctrine : CLAUDE.md (règles 1-16, ART, anti-patterns), skills `arch-rules`,
   `frontend-patterns`, `color-tokens`, `db-schema`. Aucun emoji dans les fichiers versionnés.
+- Gate de non-régression du rejeu (`make replay-corpus-gate`, `cmd/replay-corpus-gate`,
+  manifeste `config/replay_corpus.toml`) : à lancer AVANT tout merge qui touche
+  `analysis/replay`, `replaybuild`, `filmdec`, ou qui bumpe `SchemaVersion` — cf.
+  docs/COMMANDS.md et `.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`.
 
 ## Protocole de revue et d'intégration
 
@@ -541,3 +545,167 @@ Décisions superviseur : infobulle tronquée et « 1m00s » = exceptions documen
   log). A-R2 en cours ; CTF-R2 (correctif du pont d'identité) en cours ; balayage en cours.
 - 2026-09-06 12:30 : G retouches vérifiées sur pièces (`6effae3ac` : `EqualFold` sur le préfixe UNC,
   table à 32 entrées ; `Peak()` lu une fois) et G FUSIONNÉ dans `feat/v75`. Intégrés : B, F, C, G.
+- 2026-09-06 12:45 : E retouches vérifiées (`60072d717`, 3 gardes, zéro code du décodeur, golden
+  intact) ; aucun test supprimé par E ne figure dans la baseline (vérifié) ; E FUSIONNÉ dans
+  `feat/v75`. Intégrés : B, F, C, G, E. Restent : A (ronde 2), D (dernier), CTF (revue R2).
+- 2026-09-06 13:00 : CTF-R2 CONFIRME le diagnostic et le correctif du pont d'identité (0
+  contradiction sur 8 films mono-manche ; 4 manches identique octet pour octet ; additif strict
+  sur 11 films ; le triplet refuse toute ambiguïté). Constats : deux gardes (mono-manche,
+  « jamais contredire ») sans test qui morde ; justification fausse sur le slot 12 ; décision
+  « pas de bump » sûre aujourd'hui pour une raison non écrite (0 artefact au schéma 39 sur la
+  machine, prod au schéma 2) mais fragile dès le premier artefact 39 cuit avant la release (le
+  backfill le sauterait) ; fichier de test à 562 L. DÉCISION SUPERVISEUR : bump `SchemaVersion`
+  39 → 40 avec chronique (la règle du dépôt : un artefact vN doit se voir comme à re-cuire) ; l'étape
+  de release « re-cuisson du parc » passe à 40 (registre + Notion à mettre à jour). Corrections
+  en cours chez l'enquêteur.
+- 2026-09-06 13:15 : A-R2 : sept constats FERMÉS ; quatre défauts nés des corrections (N1 P2 :
+  une lecture d'équipe en échec marquait le match « dérivé » — classe de C1 réintroduite ; N3
+  jauge 0 sur cycle annulé ; N4 marque orpheline jamais ramassée ; N2 modes à > 2 camps, 4
+  matchs sur 1 959, décision produit) + doc inversée dans la migration des positions → retouches
+  en cours chez l'exécuteur A ; merge A ensuite (conflit attendu avec C sur
+  `domain/title/registry.go` et `replayartifacts/artifacts.go`).
+- 2026-09-06 13:40 : CTF corrections rendues (`7c85acf58` : deux gardes testées par mutation,
+  justification du slot 12 vraie, SchemaVersion 40 + chronique, assertions déplacées) et CTF
+  FUSIONNÉ dans `feat/v75`. Conflits sémantiques résolus par le superviseur : le test des calques
+  d'objectif typé sur `replaydoc` (lot B), et les valeurs figées par F.1 remesurées au schéma 40
+  (15 frags, 6 assistances, 1 capture, 1 vol = sommes des lignes des 7 pontés). Intégration wire,
+  contrat et `generate-types` verts et sans diff. Intégrés : B, F, C, G, E, CTF.
+- 2026-09-06 14:10 : A retouches rendues (`cb33d8ea8` : lecture d'équipe en échec = pas de marque,
+  jauge non publiée sur horizon illisible, marques orphelines ramassées, docs inversées corrigées ;
+  N2 modes > 2 camps consigné, décision produit pour le lot D) et A FUSIONNÉ dans `feat/v75`.
+  Conflits résolus par le superviseur : `replayartifacts.Run` = porte de capability (C) PUIS
+  compteur + `defer` rattrapage + `cuireLeCycle` (A) ; `racineDepot` en double (C dans
+  `capability_test.go`, A dans `helpers_test.go`) → le fichier de A supprimé ; journal concaténé.
+  Tests unitaires + intégration replayartifacts/persist/sync verts. Intégrés : B, F, C, G, E,
+  CTF, A. Reste D.
+- 2026-09-06 14:40 : D FUSIONNÉ dans `feat/v75` (seul conflit : journal ; le déplacement de
+  `weaponSoundVariations.ts` sous `sound/` a absorbé l'en-tête du lot G automatiquement). Gates
+  sur l'état fusionné : `tsc -b --force` 0, lint 0 erreur, `lint:colors` clean, frontière
+  `7 <= plafond 7`, build OK, vitest 612 fichiers / 6 393 verts. LES SEPT LOTS ET LE CORRECTIF
+  CTF SONT INTÉGRÉS : B, F, C, G, E, CTF, A, D. Reste : CI des derniers merges, balayage du parc
+  (en cours), balayage « après » sur `feat/v75` intégré, décision `flagCarries`.
+- 2026-09-06 15:20 : BALAYAGE « AVANT » RENDU (`feat/v2-balayage`, outil `cmd/replay-diff`, rapport
+  `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`) : 119 matchs / 161 artefacts distincts / 19 schémas
+  (1-38), 119/119 re-cuits à `f1c7b411f` (B+F), 0 échec, 36 min, pic 0,56 Gio, parc de référence
+  intact. Régressions candidates : (1) actions d'objectif CTF non attribuées sur les 14 CTF du
+  parc (297 actions, −20 captures) = le pont d'identité `d173b1a8c`, DÉJÀ CORRIGÉ (schéma 40) ;
+  (2) grappin −10 à −40 % sur 16 matchs (coïncide avec les usages d'équipement du schéma 38,
+  non tranché) ; (3) épisodes camo/surbouclier −1/−2 sur 11 matchs ; (4) un joueur perd toutes
+  ses vies nommées sur 3 matchs. Tout le reste expliqué sur pièces (drapeau neutre schéma 35,
+  véhicules fantômes fusionnés, identité des camps résolue à somme constante, bornes de scène
+  corrigées d'un facteur 100). Piège de méthode : la première série de cuissons tournait SANS
+  les faits (échappement bash `\$`), re-cuite après correction. Suite : balayage « APRÈS » sur
+  `feat/v75` intégré (même outil) + instruction des candidates 2-4 (worktree
+  `LevelUp-wt-v2-regressions`).
+- 2026-09-06 15:40 : CI de `feat/v75` rouge sur les trois derniers merges, deux causes distinctes :
+  (1) merges CTF et A : job Frontend, garde `replaySchemaLogic.guard.test.ts` (copie web de
+  `SchemaVersion` à 39 contre 40) — résolu par le merge D qui supprime ce fichier (item D.4) ;
+  (2) merges A et D : job Coverage + Baseline, 9 entrées de baseline pour `TestLireT0FilmArtefact*`
+  (`sync/replayartifacts`) enrôlées par F et supprimées par A avec leur fonction (dérivation T0
+  refondue en A.4) → entrées retirées de `.ai/baselines/tests_pre_migration.jsonl` (9 795 → 9 786),
+  suppression volontaire documentée. Aucun test en échec dans la suite Go.
+- 2026-09-06 13:50 : CI encore rouge sur `beeb6f3ee` : `TestEnTeteTSVersionneeSuitLeGabarit`
+  (lot G) lisait `weaponSoundVariations.ts` à l'ancien emplacement, déplacé sous `sound/` par le
+  lot D (D.11) — troisième conflit sémantique entre lots parallèles ; chemin de sortie du mode
+  `livrer`, test d'en-tête et golden alignés sur `features/match-replay/sound/`.
+- 2026-09-06 14:10 : BALAYAGE « APRÈS » RENDU (`feat/v2-balayage` `4c8de8a05`, fusionné) : 119/119
+  re-cuits au schéma 40 (34,8 min, pic 0,54 Gio, parc intact). (a) cuisson `f1c7b411f` contre
+  cuisson intégrée : 491 écarts, ZÉRO perte, ZÉRO disparition — `schemaVersion` 39 → 40 sur les
+  119 et +438 actions d'objectif retrouvées sur 17 matchs (captures +23, vols +20), rien d'autre :
+  100 matchs sur 119 strictement identiques hors numéro de schéma — preuve indépendante que le
+  lot E est à comportement identique, que A ne touche pas le document et que D ne touche que le
+  web. (b) référence contre intégré : candidate 1 RÉSOLUE (0 perte nouvelle, 300 pertes
+  résorbées, neuf familles à zéro perte) ; candidates 2-4 inchangées (instruction en cours).
+  Verdict : le parc peut être re-cuit au schéma 40 sans rien y perdre, sous réserve des
+  candidates 2-4.
+- 2026-09-06 15:00 : INSTRUCTION DES CANDIDATES 2-4 RENDUE (`feat/v2-regressions` `79bf2e6d2`) :
+  UNE SEULE cause racine, différente de celle soupçonnée par le balayage — `48cf4905d`
+  (2026-09-02, schéma 36, « une track = une vie ») a découpé les pistes par vie et trois
+  consommateurs ont continué de supposer une piste par slot, ne gardant que la dernière : vies
+  nommées (`owners.go`, désignation de la vie fermée jetée), grappin (`grapple_lines.go`,
+  `byTrack[slot]`), fenêtres camo/surbouclier (`trackFrameWindows`). Régressions corrigées
+  (index par piste, `closureReport.closedLife`), sept tests prouvés par mutation, SchemaVersion
+  40 → 41, `closures.go` scindé ; `13d92593` reste à 0 à raison (épisode nul sur point aberrant
+  supprimé). Impact parc : grappin 16 matchs / 54 tractions, épisodes 11 / 17, vies nommées 18
+  matchs. Revue adverse REG-R1 lancée (additivité, quatrième consommateur, mutations) avant merge
+  et balayage final au schéma 41.
+- 2026-09-06 15:40 : REG-R1 : diagnostic confirmé (lignes fautives nommées dans `owners.go`,
+  `grapple_lines.go`, `equipment_episodes.go`), correctif additif et sûr sur 4 films cuits (0 perte,
+  0 déplacement, pont byte-identique), 7 mutations tiennent, 22 conditions. Cinq constats renvoyés :
+  C1 moyen (une traction dont tir et accroche tombent hors de toute fenêtre est jetée alors que
+  la base la publiait, même mono-vie → ne jamais publier moins que la base), C2 (`camoLives` /
+  `overshieldLives` comptent des slots), C3 (« scission pure » fausse : `noteLife` ajouté dans
+  le bloc déplacé), C4 (commentaire contradictoire sur `13d92593`), C5 (`usage_summary.go`
+  attribue par slot « dernier gagnant » : quatrième consommateur, corrigé par piste).
+  Corrections en cours ; ensuite ronde 2, merge, balayage final au schéma 41.
+- 2026-09-06 16:00 : corrections REG rendues (`13c0336b6`) : C1 `lifeNearest` (jamais moins que la
+  base, deux scénarios figés), C2 compteurs par vie, C3/C4 docs vraies, C5 `usageOwners.at(slot,
+  frame)` par vie couvrante + `UsageSummaryRev` us1 → us2 (résumés d'usage à refaire au backfill ;
+  divergence Go/web sur un slot à deux identités inscrite au registre). Cuisson de contrôle
+  `879a4dba` identique à l'octet hors numéro de schéma. REG-R2 lancée ; puis merge, balayage
+  final au schéma 41, Notion (40 → 41).
+- 2026-09-06 16:30 : REG-R2 : C1-C4 FERMÉS, C5 PARTIEL (les poses d'équipement retombent sur le
+  repli « dernier occupant » dans 32 à 95 % des cas, un lâcher à la mort crédité au joueur suivant
+  sur un slot repris ; `avecVie` construit depuis `dernier` perd les lancers d'un joueur à vie
+  unique sur slot repris — préexistant) + trois commentaires absolus et une condition de reprise
+  fausse au registre. Cuissons : `879a4dba` identique à l'octet hors numéro, `4f77afc1` 28 → 31
+  tractions sans perte. Dernières retouches en cours (N-3, N-4 par vie couvrante ou adjacente,
+  docs) ; puis merge, balayage final au schéma 41, Notion.
+- 2026-09-06 17:00 : retouches REG rendues (`5d9f70f92` : poses par `atOrJustBefore`, `avecVie` sur
+  toutes les vies, commentaires exacts, registre corrigé) et REG FUSIONNÉ dans `feat/v75` sans
+  conflit (SchemaVersion 41, UsageSummaryRev us2). Gates rejoués sur l'état fusionné. Suite :
+  balayage final au schéma 41, Notion 40 → 41, nettoyage des worktrees.
+- 2026-09-06 17:20 (correctif de journal) : la ligne de 17:00 annonçait le merge REG « sans
+  conflit » avant qu'il ait eu lieu — la première tentative n'avait rien fusionné ; le merge réel
+  est `b696c7b11` (conflit thought_log concaténé), SchemaVersion 41 vérifié sur pièces, build,
+  tests unitaires et intégration verts, poussé. Notion : re-cuisson du parc portée à 41. Balayage
+  FINAL au schéma 41 lancé (`apres3/`). Intégrés : B, F, C, G, E, CTF, A, D, balayage, REG.
+- 2026-09-06 18:10 : BALAYAGE FINAL (schéma 41) RENDU ET FUSIONNÉ : 119/119, 37,9 min, pic 0,56 Gio.
+  40 → 41 : zéro disparition, +52 tractions (16 matchs), +28 vies nommées (18), +15 épisodes (9),
+  +12 intervalles de drapeau (2 matchs : `flagCarries` était un CINQUIÈME consommateur du défaut,
+  bénéficiaire du correctif), douze axes strictement identiques. Référence → 41 : candidates 1,
+  2, 4 à ZÉRO, candidate 3 à 2 (`13d92593` connu, `2cf24f30` s31 7 → 6 résidu réel). Trois
+  passes : pertes distinctes 1 783 → 1 483 → 1 160, ZÉRO perte nouvelle (sous-ensembles stricts).
+  Restent quinze faits, tous antérieurs au chantier, dont `d9781168` (s23) −6 portages de crâne
+  d'Oddball (36 → 30), à instruire à part. VERDICT : le parc peut être re-cuit au schéma 41.
+- 2026-09-06 17:45 : INTÉGRATION FLAGCARRIES : `feat/v2-flagcarries` (`9ab4436a9`) fusionné dans
+  `feat/v75` sans conflit (merge `e9adb36f5`), SchemaVersion 42 vérifié sur pièces. Revue FLAG-R1 :
+  aucun constat recevable, 11 conditions tiennent, trois cuissons témoins `changements = 0` (0
+  portage perdu ni déplacé), accord joueur par joueur 33/33 avec le calque des actions. Gates
+  rejoués sur l'état fusionné : build, tests unitaires (`analysis/replay`, `replaybuild`,
+  `archlint`, `contracttest`, `sync/replayartifacts`), intégration `api/wire`, contrat OpenAPI
+  régénéré identique — tous verts. Ouverts au registre : CTF multi-manche (`fb1a1a72`, le pont
+  par manche ne tient pas) et calques VIP/crâne (même plafond, patron désormais posé). Suite :
+  intégration `feat/v2-residus` (schéma 43) après revue RES-R1.
+- 2026-09-06 18:24 : INTÉGRATION RESIDUS : `feat/v2-residus` (`cd5302ebf`) fusionné dans
+  `feat/v75` (merge `dd8004e90`), conflits admis résolus (chronique des schémas 42→43 dans
+  `document.go` et `structure_test.go`, golden `assembly_000d5950.golden` régénéré par
+  `-update`, `thought_log.md` concaténé). SchemaVersion 43 vérifié sur pièces. Revue RES-R1 :
+  17/17 conditions, trois constats mineurs corrigés (`cd5302ebf`). Une régression corrigée par
+  abstention : le gate de présence des porteurs de crâne (`af89b091b`) traitait une vie
+  anonyme comme une absence ; `carrierPresence` retient désormais les vies ANONYMES, le gate
+  ne rejette plus que ce que les pistes publiées DÉMENTENT. Deux témoins Oddball (vérité
+  terrain = temps de portage) : `d9781168` feuille 191 s / 196 s, artefact schéma 41
+  60,1 s / 147,4 s, corrigé 172,5 s / 158,8 s (quasi la feuille) ; `51ebbc0f` 66 s → 225 s.
+  Quatorze autres faits résiduels : anciens artefacts faux, reclassements ou normalisations.
+  Gates rejoués sur l'état fusionné : build, tests unitaires (`analysis/replay`,
+  `replaybuild`, `archlint`, `contracttest`, `sync/replayartifacts`), intégration `api/wire`,
+  `golangci-lint --new-from-merge-base=origin/main` (0 issue), contrat OpenAPI régénéré
+  identique — tous verts. Ouverts au registre : `51ebbc0f` découpe par manche des compteurs
+  par joueur (63 assistances pour 5, déjà au `REGISTRE_REPORTS.md`) et l'angle mort du
+  comparateur sur les intervalles rognés.
+- 2026-09-07 11:41 : INTÉGRATION DÉPORTÉE feat/v2-integ (worktree LevelUp-wt-v2-integ, base
+  a059caefc, schéma 43) : le principal feat/v75 est resté bloqué par une modification non
+  committée d'une autre session sur .ai/thought_log.md (frise du rejeu, worktree
+  LevelUp-wt-frise-pov) — jamais touchée, jamais stash. Sept branches fusionnées, gates complets
+  après chacune : manches `90ca609a0` (44), durées `6af8f6db8` (45), corpus `0d862af0a` (0
+  conflit, aucun bump), web-vies `7cdb0e56f` (0 conflit, gates web), vies-anonymes `eb7a3dfbd`
+  (47 ; conflit sur flag_carrier_tracks.go d'abord aborté, retenté après alignement de la
+  branche), pont-muet `ee4084c14` (48, 0 conflit), drapeaux `1b32fc775` (46 ; conflit sur
+  matchfacts.go d'abord aborté, retenté après alignement de la branche). SchemaVersion final 48,
+  chronique 44/45/46/47/48 ordonnée, aucune phrase de réservation restante. Deux flakes Windows
+  rencontrés et confirmés préexistants (isolé vert, `-p 1` série vert) : `mapcatalog`
+  (`TestAddOverlayEntryConcurrentDossierAbsentNePerdRien`) et `internal/api/handlers`
+  (`TestStartImport_HappyPathReturns202WithJobID`, consigné au `REGISTRE_REPORTS.md`).
+  `feat/v2-integ` prêt à être fast-forwardé dans `feat/v75` dès que le blocage du principal est
+  levé.

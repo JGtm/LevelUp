@@ -1,0 +1,119 @@
+//go:build cgo
+
+// Package api — film_fixture_integrite_cgo_test.go : LE MINI-FILM VERSIONNÉ EST-IL CE QUE LE CDN
+// SERT ?
+//
+// POURQUOI CE GARDE-RAIL EXISTE. Le fixture `testdata/film_e2e/c0a82e88` est le film que la
+// cuisson de bout en bout décode (`TestOuvrierReel_ConstruitEtLivre`) — l'un des films réels
+// versionnés du dépôt, aux côtés des mini-bobines de `killsource` (`TestGoldenMiniBobine`) et de
+// `replay` (`TestEquivalenceMiniFilm`), qui décodent elles aussi sans condition. Il n'a de valeur
+// que s'il reproduit ce que l'ouvrier reçoit en production : des morceaux servis par le CDN
+// Azure, chacun sous UNE couche zlib.
+//
+// IL NE LE REPRODUISAIT PAS. Généré le 2026-08-25 en compressant chaque fichier du cache local,
+// il a hérité d'un cache HÉTÉROGÈNE : ses morceaux de jeu (1 à 6) y étaient stockés DÉJÀ
+// décompressés — les compresser une fois était juste — mais ses morceaux 00 (registre ECS) et 07
+// (pied) y étaient stockés compressés, et les compresser à leur tour leur a mis DEUX couches.
+//
+// CE QUE ÇA N'A PAS CASSÉ, et il faut le dire ici parce que la première version de ce
+// commentaire prétendait le contraire (corrigé le 2026-09-06, revue CTF-R1) : la chaîne E2E
+// absorbait les DEUX couches, à deux étages différents — le téléchargeur de l'ouvrier en pèle
+// une (`cmd/replay-worker/job.go`, `downloadChunk`), `filmsource.Load` pèle l'autre. Mesure :
+// avec les morceaux d'origine remis, l'épreuve E2E est verte et rend le MÊME artefact, à l'octet
+// près. Le défaut était donc latent, pas actif.
+//
+// IL RESTE À CORRIGER, ET CE TEST À EXISTER, pour deux raisons : le fixture doit dire la vérité
+// sur ce que le CDN sert (sinon il ment à quiconque le relit ou le régénère), et le double pelage
+// ne survit qu'à une chaîne qui pèle deux fois — depuis `c17f4941f`, un consommateur qui ne pèle
+// qu'une fois obtiendrait un registre vide. Le test fige donc la propriété : UNE couche zlib par
+// morceau, et un registre qui se lit et porte l'empreinte de référence. Il est DÉLIBÉRÉMENT
+// autonome (il ne partage rien avec l'épreuve E2E, qui est derrière le tag `integration`) pour
+// tourner dès que CGO est actif.
+package wire
+
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"testing"
+
+	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
+)
+
+// filmPreuveChunks rend le dossier des morceaux du mini-film versionné, résolu PAR LE PAQUET.
+func filmPreuveChunks(t *testing.T) string {
+	t.Helper()
+	_, ici, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("chemin du test introuvable")
+	}
+	return filepath.Join(filepath.Dir(ici), "testdata", "film_e2e", "c0a82e88", "chunks")
+}
+
+// filmPreuveMorceaux liste les fichiers de morceaux du fixture, triés par nom.
+func filmPreuveMorceaux(t *testing.T) []string {
+	t.Helper()
+	fichiers, err := filepath.Glob(filepath.Join(filmPreuveChunks(t), "chunk_*.bin"))
+	if err != nil || len(fichiers) == 0 {
+		t.Fatalf("morceaux du fixture introuvables (%v) — ils doivent être VERSIONNÉS", err)
+	}
+	return fichiers
+}
+
+// TestFixtureFilmUneSeuleCoucheZlib : chaque morceau du fixture porte EXACTEMENT une couche zlib,
+// comme le CDN les sert. Zéro couche serait un cache local recopié tel quel ; deux couches, le
+// défaut de génération du 2026-08-25.
+func TestFixtureFilmUneSeuleCoucheZlib(t *testing.T) {
+	for _, chemin := range filmPreuveMorceaux(t) {
+		nom := filepath.Base(chemin)
+		brut, err := os.ReadFile(chemin)
+		if err != nil {
+			t.Fatalf("morceau %s illisible : %v", nom, err)
+		}
+		// Une couche : la décompression change la taille (les morceaux de ce film ne sont jamais
+		// incompressibles — le moins compressible du fixture gagne encore un facteur 3).
+		unePasse := filmsource.Inflate(brut)
+		if len(unePasse) == len(brut) {
+			t.Errorf("%s : AUCUNE couche zlib (%d octets) — le fixture doit porter les morceaux "+
+				"tels que le CDN les sert, pas la copie décompressée du cache local", nom, len(brut))
+			continue
+		}
+		// Pas deux : une seconde passe ne doit plus rien décompresser.
+		deuxPasses := filmsource.Inflate(unePasse)
+		if len(deuxPasses) != len(unePasse) {
+			t.Errorf("%s : DEUX couches zlib (%d -> %d -> %d octets) — le décodage n'en pèle "+
+				"qu'une, tout ce qui lit ce morceau lira du zlib au lieu de sa charge",
+				nom, len(brut), len(unePasse), len(deuxPasses))
+		}
+	}
+}
+
+// TestFixtureFilmRegistreECSLisible : le morceau 00 décompressé EST un registre ECS, il porte
+// l'empreinte du build de référence, et les quatre archétypes dont dépendent les calques du rejeu
+// y sont. C'est l'assertion qui aurait arrêté `c17f4941f` sur ce fixture.
+func TestFixtureFilmRegistreECSLisible(t *testing.T) {
+	chemin := filepath.Join(filmPreuveChunks(t), "chunk_00.bin")
+	brut, err := os.ReadFile(chemin)
+	if err != nil {
+		t.Fatalf("morceau du registre illisible : %v", err)
+	}
+	reg, err := filmdec.ParseRegistryChunk(filmsource.Inflate(brut))
+	if err != nil {
+		t.Fatalf("registre ECS du fixture illisible : %v", err)
+	}
+	if fp := filmdec.RegistryFingerprint(reg); fp != filmdec.KnownRegistryFingerprint {
+		t.Fatalf("empreinte du registre = %d, attendu %d (le build de référence) — le décodage "+
+			"tournerait sur une grammaire de composants qui n'est pas celle que la table décrit",
+			fp, filmdec.KnownRegistryFingerprint)
+	}
+	// Les quatre archétypes que la cuisson interroge nommément. Leur absence est exactement ce
+	// que le registre vide produisait, sous le message trompeur « archétype N absent du registre ».
+	for _, ti := range []int{35, 37, 40, 42} {
+		arch, ok := reg.Archetype(ti)
+		if !ok || len(arch.Components) == 0 {
+			t.Errorf("archétype ti=%d absent du registre du fixture (présent=%v, composants=%d)",
+				ti, ok, len(arch.Components))
+		}
+	}
+}

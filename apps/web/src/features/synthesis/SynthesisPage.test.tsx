@@ -3,7 +3,7 @@
  *
  * Smoke : monte, spinner, puis tableau de comparaison depuis MSW.
  */
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import type { ComponentPropsWithoutRef } from 'react'
 
 // Mocks des wrappers ECharts : echarts-for-react absent en env portable.
@@ -15,8 +15,12 @@ vi.mock('@/components/charts/ChartCard', () => ({
 vi.mock('@/components/charts/Heatmap2DChart', () => ({
   Heatmap2DChart: () => <div data-testid="chart-card" />,
 }))
+import { http, HttpResponse } from 'msw'
 import { screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
+import { server } from '@/test/setup'
+import { synthesisFixture } from '@/test/handlers'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { SynthesisPage } from './SynthesisPage'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -177,5 +181,82 @@ describe('SynthesisPage', () => {
         expect(screen.getByText('CTF')).toBeInTheDocument()
       })
     })
+  })
+})
+
+/**
+ * LE MONTAGE DE LA SECTION « PORTÉE DES ENGAGEMENTS » (lot 5, revue du 2026-09-06).
+ *
+ * Les tests de la section elle-même lui passent son bloc à la main : ils resteraient tous
+ * verts si la page oubliait de le brancher (`weaponRange={data.weapon_range}`) ou si la
+ * capability produit `weapon_range` masquait la section pour de bon. Ces trois cas pincent le
+ * CÂBLAGE de bout en bout : réponse -> page -> section, et la porte de capability.
+ */
+describe('SynthesisPage — montage de la section « Portée des engagements »', () => {
+  const REGION = 'Portée par arme — mes frags et mes morts'
+
+  const weaponRangeBlock = {
+    weapons: [
+      {
+        weapon_key: 'hinf_br75',
+        label: 'Fusil de combat BR75',
+        label_en: 'BR75 Battle Rifle',
+        kills: { measured: 281, p10: 7.1, median: 13.6, p90: 24.9, above_pct: 37, level_pct: 49, below_pct: 14 },
+        deaths: { measured: 402, p10: 8.9, median: 16.4, p90: 29.7, above_pct: 10, level_pct: 52, below_pct: 38 },
+      },
+    ],
+    median_kills_m: 7.4,
+    median_deaths_m: 11.8,
+    measured_kills: 1214,
+    total_kills: 1602,
+    measured_deaths: 1087,
+    total_deaths: 1455,
+    below_threshold_kills: [],
+    below_threshold_deaths: [],
+  }
+
+  function serveSynthesis(body: Record<string, unknown>) {
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/synthesis', () => HttpResponse.json(body)),
+    )
+  }
+
+  /** Un titre qui déclare (ou non) `weapon_range` — `useCapability` est fail-open sans titre. */
+  function setTitle(capabilities: string[]) {
+    useAppShellStore.setState({
+      currentTitleSlug: 'sonde',
+      availableTitles: [
+        { slug: 'sonde', name: 'Sonde', status: 'active', capabilities, is_default: false },
+      ] as unknown as ReturnType<typeof useAppShellStore.getState>['availableTitles'],
+    })
+  }
+
+  afterEach(() => {
+    useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
+  })
+
+  it('avec le bloc servi et la capability active, la section est montée', async () => {
+    setTitle(['weapon_range'])
+    serveSynthesis({ ...synthesisFixture, weapon_range: weaponRangeBlock })
+    renderWithProviders(<SynthesisPage />)
+    expect(await screen.findByRole('region', { name: REGION })).toBeInTheDocument()
+  })
+
+  it('sans bloc dans la réponse, la section ne s’affiche pas', async () => {
+    setTitle(['weapon_range'])
+    serveSynthesis({ ...synthesisFixture })
+    renderWithProviders(<SynthesisPage />)
+    // On attend une ancre chargée AVANT de conclure à l'absence : sinon le test passerait
+    // simplement parce que la page n'a pas fini de charger.
+    await screen.findByRole('heading', { name: "Vue d'ensemble" })
+    expect(screen.queryByRole('region', { name: REGION })).not.toBeInTheDocument()
+  })
+
+  it('sans la capability du titre, le bloc servi reste masqué', async () => {
+    setTitle(['matchmaking'])
+    serveSynthesis({ ...synthesisFixture, weapon_range: weaponRangeBlock })
+    renderWithProviders(<SynthesisPage />)
+    await screen.findByRole('heading', { name: "Vue d'ensemble" })
+    expect(screen.queryByRole('region', { name: REGION })).not.toBeInTheDocument()
   })
 })

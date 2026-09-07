@@ -128,32 +128,12 @@ func ScanGrappleReads(fc *FilmContext) ([]GrappleRead, GrappleStats, error) {
 	SetAbilityNonPredictedHook(func(s AbilityNonPredictedState) { sc.last, sc.got = s, true })
 	defer SetAbilityNonPredictedHook(prev)
 
-	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
-	for _, c := range chunks {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
+	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
+		st.Records++
+		if maskHas(r.Mask, i59idx) {
+			sc.account(r.Payload, r.I0, r.Total, r.Mask, r.Slot, r.Chunk, r.Packet)
 		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta {
-				continue
-			}
-			pay := pk.Payload(data)
-			total := len(pay) * 8
-			for p := 0; p+minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, p, total, slots, true, lay)
-				if !ok {
-					p++
-					continue
-				}
-				st.Records++
-				if maskHas(idx, i59idx) {
-					sc.account(pay, i0, total, idx, slot, c, pk)
-				}
-				p = i0 + lay.TotalBits()
-			}
-		}
-	}
+	})
 	return sc.out, st, nil
 }
 
