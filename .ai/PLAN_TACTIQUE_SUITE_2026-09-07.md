@@ -7,7 +7,15 @@ superviseur (pas de relecteur adverse : lots d'interface et de contrat, faible r
 Contrat d'execution : skill `plan-execution`. Branche : `feat/tactique` (ou une branche
 `feat/tactique-suite` issue de `feat/v75` apres la fusion du chantier, au choix de l'utilisateur).
 
-## Pre-requis commun — reprendre `feat/v75` (lot D present)
+> AMENDEMENT 2026-09-07 (soir, `.ai/PLAN_ORCHESTRATION_2026-09-07.md`) : P.1 est FAIT (fusion
+> `f2c8ddce1`). S.2 : le peintre partage n'est PAS dans `lib/replay/` mais dans
+> `features/match-replay/layers/heatmapLayer.ts` — S.2 DEPLACE le noyau dans `lib/replay/` puis
+> supprime `features/tactical/heatPaint.ts` (lot Q7 du plan d'orchestration). S.3 est GELE
+> derriere l'inventaire P1 du plan v2 (axes ROSTER et TEMPS) : faire S.3 avant P1 fabriquerait
+> une deduction que le paradigme condamne (decision D10). S.1 = lot M1 (vague 2). Branche :
+> une branche `feat/` neuve par lot, issue de `feat/v75`.
+
+## Pre-requis commun — reprendre `feat/v75` (lot D present) — FAIT (`f2c8ddce1`)
 
 `feat/v2-web-modele` (lot D de l'audit : lecture du rejeu pilotee par `?frame=` via le
 `playbackStore`, peintre de chaleur dans `lib/replay/`) est FUSIONNE dans `feat/v75` ; `feat/tactique`

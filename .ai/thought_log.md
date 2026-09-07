@@ -100192,3 +100192,36 @@ Prochaine étape : lot D (playbackStore) ouvrira 5.5 et la forme complète de 5.
   a chaque commit ; `make gate-push` lance a la cloture ; CI surveillee.
 - Prochaine etape : fusion dans `feat/v75` par l'utilisateur apres `merge origin/feat/v75` (P du
   plan de suite), puis S.1-S.3.
+
+## [2026-09-07] Orchestration — finitions Tactique, restes v2, libelles en dur, sort de trois branches
+
+**Statut** : En cours (plan redige, revue des phases Haiku lancee, decisions utilisateur en attente)
+
+**Decision technique principale** : un plan d'ORDONNANCEMENT (`.ai/PLAN_ORCHESTRATION_2026-09-07.md`)
+qui renvoie aux quatre documents existants sans les reecrire : vague 1 = finitions + quick wins
+(fusion des blobs, mojibake + garde-rail, fin du lot issue de match, flakes CI, dette mecanique du
+rejeu, peintre de chaleur unique, cloture REELLE de la phase 8 Tactique), vague 2 = finitions
+moyennes, vague 3 = paradigme P. Sobriete : Sonnet pour le mecanique/web, Opus pour diagnostics,
+contrats et paradigme ; un lot par domaine en vol ; worktree dedie + branche `feat/` par lot.
+
+**Resultats observes (sur pieces)** :
+- `feat/outcome-cle-canonique` : son unique commit est deja sur `feat/v75` (`b11bc6872`, memes
+  valeurs, autres noms) -> supprimer. `feat/v2-audit-vies` : brouillon d'un audit dont v75 porte la
+  version statuee -> supprimer. `wt/blob-304-retry` : complet, revu (P0+P1 = 0), aucun conflit de
+  code (haloclient inchange sur v75 depuis la base), conflits doc seulement -> fusionner.
+- Tactique : phases Haiku (7C.9, 5, 7B, 8) toutes DANS le plan d'origine (pas d'extension). 7C.9
+  verifie propre (retrait, biais conservateur documente) ; reliquat : `EtatParti` mort. Phase 8
+  NON close (cases vides, revue du diff integral jamais faite). Phases 5 + 7B (~3 100 L) jamais
+  relues -> revue adversariale Sonnet faite : P0 = 0, P1 = 2 (reserve `echantillon_faible` non affichee sur les tuiles KPI Tactique et sur le nuage Escouade), P2 = 1 (4 cles i18n mortes) ; rapport `.ai/V7.5/REVUE_TACTIQUE_PHASES_5_7B_2026-09-07.md` ; correctifs dans le lot de cloture Tactique (Q8).
+- Compatibilite avec le lot P : 7C consomme le pont par morts du paquet `replay` (pas un pont
+  maison) -> lecteur a migrer en P2 ; le registre d'identite doit vivre en PUR dans
+  `analysis/replay` (le collecteur ne cuit pas) ; S.3 (participation par horloge API) GELE
+  derriere P1 (axes ROSTER/TEMPS). Plan de suite Tactique amende en ce sens.
+- Libelles : 8 appelants du repli `outcomeLabel(` (plan : 5) ; 45 fichiers / 16 litteraux
+  mojibake (plan : 13). Peintre de chaleur du lot D dans `features/match-replay/layers/`, pas
+  `lib/replay/` (premisse de S.2 corrigee).
+
+**Conclusion / prochaine etape** : 11 decisions utilisateur listees au §5 du plan (suppressions,
+fusion des blobs, cibles des libelles, gel de S.3, amendement §0.7 du plan v2). Des l'accord :
+Q1-Q2 par le superviseur, puis Q3 (mojibake) et Q5 (flakes) en parallele (domaines disjoints).
+Rien n'est committe : worktree `LevelUp-wt-orchestration`, branche `wt/orchestration-0907`.
