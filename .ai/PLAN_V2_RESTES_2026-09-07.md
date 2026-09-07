@@ -71,14 +71,33 @@
 
 ## 2. Lots, dans l'ordre (chaque lot clos — gate + revue + journal — avant le suivant)
 
-### R0 — Dette mécanique (aucun changement de sortie ; 0 bump)
-- [ ] `internal/analysis/replay/document.go` (1 417 L) : extraire la chronique des schémas dans `document_chronicle.go`
-      (déplacement pur, commentaires intacts) ; `usage_summary.go` (525 L) : idem chronique `us1..us3` ;
-      `internal/replaybuild/replaybuild.go` (572 L) : extraire la construction de `replay.Options` dans `options.go`.
-- [ ] `flag_carries_test.go` (575 L) → scinder par responsabilité (identité / gardes / assignation) ;
-      `equipment_episodes_test.go:371-372` : commentaire faux (`[45..60]`/`[45..250]` → `[40..60]`/`[40..260]`).
-- [ ] Gate : goldens INCHANGÉS (`git diff --exit-code` sur `testdata/`), suite complète verte, lint 0.
-      Preuve de « déplacement pur » : concaténation triée des lignes avant/après identique.
+### R0 — Dette mécanique (aucun changement de sortie ; 0 bump) — [x] CLOS 2026-09-07 (lot Q6, worktree `LevelUp-wt-q6-r0`, branche `feat/v2-restes-r0`)
+- [x] `internal/analysis/replay/document.go` (1 510 L sur pièces, pas 1 417 — le code a bougé depuis la rédaction du
+      plan) : chronique des schémas (v2..v48) extraite dans `document_chronicle.go` (déplacement pur, `sort | diff`
+      vide) ; `document.go` 553 L, `document_chronicle.go` 959 L. `usage_summary.go` (525 L) : chronique `us2`/`us3`
+      extraite dans `usage_summary_chronicle.go` (déplacement pur, `sort | diff` vide) ; `usage_summary.go` 513 L,
+      `usage_summary_chronicle.go` 14 L. `internal/replaybuild/replaybuild.go` (572 L, 573 L sur pièces) :
+      construction de `replay.Options` extraite dans `options.go` via `buildReplayOptions` (glue de fonction Go
+      incompressible — signature/return/site d'appel — mais chaque ligne de champ bit-à-bit inchangée) ;
+      `replaybuild.go` 545 L, `options.go` 45 L. Effet de bord nécessaire (pas hors périmètre) :
+      `film_stats_cables_guard_test.go` relisait le littéral dans `replaybuild.go` par regex — adapté pour lire
+      `options.go`. `document.go`/`usage_summary.go`/`replaybuild.go` restent > 500 L après cette extraction unique
+      — **statué `[!]`** : le plan ne prescrit qu'une extraction et interdit d'en faire davantage ; consigné au
+      registre (`.ai/V7.5/REGISTRE_REPORTS.md`) pour un lot dédié.
+- [x] `flag_carries_test.go` (575 L) scindé par responsabilité, aucun test renommé : `flag_carries_test.go` (aides
+      partagées, 75 L), `flag_carries_guards_test.go` (5 tests de garde, 117 L), `flag_carries_assignment_test.go`
+      (6 tests de machine à états, 197 L), `flag_carries_anon_lives_test.go` (5 tests vies anonymes/slot partagé,
+      207 L — nommé ainsi et non `flag_carries_identity_test.go` : ce nom existait DÉJÀ au HEAD pour un fichier sans
+      rapport, écrasé par erreur puis restauré depuis `git show HEAD:...` avant tout commit, intercepté par
+      `git status` affichant `M` au lieu de `??`). Déplacement pur reconfirmé après renommage (`sort | diff` vide).
+      `equipment_episodes_test.go:371-372` : bornes réelles vérifiées sur pièces (`StartFrame: 40`/`EndFrame: 60`,
+      union mesurée `[40..260]`) — commentaire faux corrigé `[45..60]`/`[45..250]` → `[40..60]`/`[40..260]`.
+- [x] Gate : goldens INCHANGÉS (`git diff --exit-code` sur `testdata/` des 3 paquets, EXIT=0), `SchemaVersion` = 48
+      inchangé, `gofmt -l` vide, `go build ./...` (module entier) EXIT=0, `go vet` EXIT=0, `go test -count=1` vert
+      sur `internal/analysis/replay/...`, `internal/replaybuild/...`, `internal/service/replayview/...` (parité
+      incluse), `golangci-lint run --new-from-merge-base=origin/main` → 0 issues. Preuve de « déplacement pur » :
+      concaténation triée des lignes avant/après identique — vide pour 1/2/4 ; pour 3, vide hors la glue de
+      fonction Go incompressible (détail : `.ai/thought_log.md` 2026-09-07 « lot Q6 = R0 »).
 
 ### P — Changement de paradigme : registre d'identité des entités du film (bump 49 ; englobe R1, R2, R3)
 Décision user (07/09) : le principe « l'index c'est l'index » vaut pour TOUTES les entités du film, pas seulement les
