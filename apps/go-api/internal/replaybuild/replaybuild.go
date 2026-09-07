@@ -236,36 +236,8 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 	}
 	cat := b.collecterEntreesCatalogue(matchID, film, facts, mapNames, &stats, deaths)
 	tDecode := time.Now()
-	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, film, replay.Options{
-		FrameIntervalMS: b.interval,
-		Geometry:        b.geometry,
-		Structure:       b.structureFor(entry.Module),
-		Labels:          b.labels,
-		NeutralDeaths:   cat.neutral,
-		Kills:           cat.kills,
-		MatchKills:      cat.matchKills,
-		RosterXUIDs:     rosterXUIDs(facts),
-		Bots:            cat.bots,
-		Successions:     cat.successions,
-		Objectives:      stats.objectives,
-		// LE COMPTE DES ECARTES VOYAGE AVEC LES ACTIONS, ET IL EST LE DENOMINATEUR (constat C1
-		// de la revue VIES-R1). Sans lui, `coverage.objectives.available` compte les seuls
-		// RESCAPES du pont d'identite et `noSlot` reste structurellement a zero — le defaut
-		// meme que le lot declare corriger. Mesure : `c0a82e88`, 17 actions nommees par le
-		// film, 12 identifiees par le pont par manche.
-		ObjectivesUnnamed: stats.objectivesUnnamed,
-		Score:             stats.score,
-		Flag:              stats.flag,
-		Vip:               stats.vip,
-		Skull:             stats.skull,
-		Bomb:              stats.bomb,
-		Zone: replay.ZoneInput{Zones: cat.zones, Roles: cat.zoneRoles, TeamByXUID: teamByXUID(facts),
-			Hill: isHillVariant(facts.GameVariantName)},
-		MapQuant:         &entry,
-		Observe:          b.observe,
-		SpawnPoints:      cat.spawnPts,
-		SpawnPointsState: cat.spawnPointsState,
-	})
+	opts := b.buildReplayOptions(entry, facts, cat, &stats)
+	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, film, opts)
 	logPhase("decodage", matchID, tDecode)
 	if err != nil {
 		return Built{}, fmt.Errorf("décodage du film %s: %w", matchID, err)
