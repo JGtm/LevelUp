@@ -1165,7 +1165,7 @@ de la légende de PORTÉE, accents des deux tuiles) sont présentes dans
       de sortie vérifié (`$?`), jamais un filtre sur « FAIL » — il attrape des logs applicatifs.
       EN COURS chez le pilote au moment de cette écriture ; verdict à inscrire par lui.
 - [x] 6.3 `make go-api-lint` — baseline non accrue. FAIT par le pilote le 2026-09-07 : `golangci-lint run --new-from-merge-base=origin/main` -> 0 issues.
-- [ ] 6.4 Gate visuel : capture de la section Synthèse soumise à l'utilisateur, témoins nommés.
+- [x] 6.4 Gate visuel : VALIDÉ par l utilisateur le 2026-09-07 (« C est tout bon validé ») — section Synthèse sur ses données, serveur du chantier lancé sur le worktree principal (`make dev LEVELUP_DATA_ROOT=...`).
       **Procédure depuis ce worktree (relevée 2026-09-06, NON exécutée).** `LevelUp-wt-duels/data`
       existe mais ne porte que le SUIVI git (`data/cache/**`, `metadata-prebuilt.zip`) : aucune
       `*.duckdb`. Ne PAS y poser de jonction `data` — le dossier est tracké, le remplacer
@@ -1185,7 +1185,7 @@ de la légende de PORTÉE, accents des deux tuiles) sont présentes dans
       session d'intégration). Le seul écart de config assumé : `capabilities.toml` du chantier
       n'a qu'un diff de COMMENTAIRE, la capability produit `weapon_range` vit dans
       `registry.go`, compilé — le binaire l'emporte donc avec lui.
-- [ ] 6.5 Entrée `thought_log.md` ; `.ai/project_map.md` si la carto bouge.
+- [x] 6.5 Entrée `thought_log.md` FAITE (2026-09-07) ; `.ai/project_map.md` est GELÉ (bandeau « ne fait plus foi ») : rien à y porter.
 - [ ] 6.6 Commit + push + **CI surveillée jusqu'au niveau JOB** (`gh run list --branch feat/duels`) ;
       tout rouge se répare, même préexistant.
 
