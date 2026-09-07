@@ -368,8 +368,8 @@ func TestEpisodeFranchitUnTrouAnonymeMaisPasLaMortSuivante(t *testing.T) {
 // LA REGLE, ET C'EST CELLE DE `carrierPresenceOf` : une deduction AJOUTE une presence, elle
 // n'ajoute jamais une absence — ni, ici, une MORT.
 //
-// MUTATION : retirer `&& !deduced[i]` de `trackFrameWindows` rougit (« [45..60] au lieu de
-// [45..250] »).
+// MUTATION : retirer `&& !deduced[i]` de `trackFrameWindows` rougit (« [40..60] au lieu de
+// [40..260] »).
 func TestEpisodeNeSArretePasSurUneIdentiteDEDUITE(t *testing.T) {
 	// Deux vies du meme slot, separees par un trou de replication. La PREMIERE porte un xuid
 	// pose par la passe de nommage final (indice 0 dans `deduced`) : nulle mort ne la termine.
