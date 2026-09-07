@@ -495,7 +495,7 @@ func (s *MatchViewService) GetMatchPositions(ctx context.Context, matchID string
 // ---------------------------------------------------------------------------
 // Helpers transverses
 // ---------------------------------------------------------------------------
-// resolveOutcomeLabel / outcomeLabel sont définis dans outcome_label.go et
+// outcomeKey / outcomeText sont définis dans outcome_label.go et
 // formatLifeSeconds dans match_history_service_enrich.go (même package).
 
 // Phase 1 méta-plan § 6.1.3 — chunk MV3 cleanup hex codes.
