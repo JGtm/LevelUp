@@ -248,7 +248,7 @@ func (s *HomeService) fetchMatchesAndSessions(ctx context.Context) (
 		if _, _, hit := s.matchesCache.Get(s.xuid, s.titleSlug); hit {
 			// Cache hit : on doit reconstruire les canonical rows. Le cache n'est
 			// pas encore canonical-aware ; pour P4.3 finale on bypass le cache hit
-			// et recharge canonical. TODO P4.4 : adapter HomeMatchesCache Ã
+			// et recharge canonical. TODO P4.4 : adapter HomeMatchesCache à
 			// canonical.
 			slog.DebugContext(ctx, "home_cache: hit (bypass P4.3 finale)", "xuid", s.xuid)
 		}
