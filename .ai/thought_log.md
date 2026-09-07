@@ -106,6 +106,50 @@ plutot qu ecartes en silence.
 `feat/v2-vies-anonymes`, qui a corrige les 9 constats Go et instruit les 2 residus (les deux
 CONFIRMES : l exemption « lecteur deja rattrape » ne les couvrait pas). Aucun constat P0/P1 n a
 ete refute a l execution. Les 5 P2 sont au registre des reports.
+## [2026-09-06] DUREES-R1 : les trois constats de la revue adversariale traites — la garde du repli anonyme existe enfin — Complete
+
+**Le mandat.** Revue adversariale `DUREES-R1` du lot des deux pertes de duree (contexte frais,
+22/22 conditions tenues, les deux correctifs juges exacts et additifs). Trois constats a traiter,
+perimetre STRICT, meme worktree `LevelUp-wt-v2-durees`.
+
+**Decision technique principale.** C1 (MOYENNE) etait recevable et il est le seul de fond :
+l'argument qui JUSTIFIAIT le repli « une vie anonyme appartient au joueur que le pont nomme »
+etait FAUX sur pieces — `ownersFromLives` compte la collision puis `continue`, le PREMIER nomme
+reste publie dans `SlotXUID`, et `SlotCollisions` ne voit que les conflits entre vies NOMMEES,
+donc jamais la vie anonyme elle-meme. La garde est desormais posee la ou la matiere existe : sur
+les vies PUBLIEES. Le repli est refuse des que les vies nommees du slot ne s accordent pas avec
+le pont (deux occupants nommes, ou un occupant qui n est pas celui du pont) ; le refus se COMPTE
+(`coverage.flagCarries.ambiguousSlot`, compteur de SLOTS, hors de `Balanced()`) et se JOURNALISE
+(`slog.Warn` structure). Ce que la garde ne peut pas attraper — un slot occupe par A nomme puis
+par B jamais nomme — est ecrit dans le code pour que personne ne le croie couvert. C2 : `spanFor`
+ne recevait aucune information de mort ; `trackFrameWindows` rend maintenant des `lifeWindow`
+triees portant `named`, et la couture ne traverse que les frontieres qu AUCUNE identite ne date
+(lecture conservatrice assumee : les fermetures nomment aussi des vies, une couture legitime peut
+etre refusee, jamais l inverse). C3 : le controle independant du calque drapeau reconstruit le
+pont depuis les vies publiees et SAUTE un porteur sans piste au lieu de poser une reference vide,
+que `objDrapeauPres` lisait comme un socle fantome a l origine du monde.
+
+**Resultats observes.** Quatre tests neufs, deux prouves par mutation avec la valeur exacte des
+sondes de la revue : sans la garde C1, `Carries:1 NoTrack:0 AmbiguousSlot:0` au lieu de
+`0/1/1` ; sans la borne C2, `[20..450]` et `[45..450]` au lieu de `[20..50]` et `[45..300]`.
+Re-cuisson des deux temoins comparee a celle d avant R1 : lignes de perte IDENTIQUES ligne pour
+ligne (9 et 19), aucune valeur existante modifiee, substance identique (`084a804d` 21 episodes /
+3697 frames / slot 620 `[3105..3672]` ; `bcb6d393` carries 16, noTrack 0, 441-358-96-53). Seul
+ecart : la mesure NEUVE `ambiguousSlot` — **1 sur `084a804d`, exactement le slot 734 que la revue
+avait mesure**, et le calque n en perd rien. **SchemaVersion reste 45** (contenu des calques
+strictement inchange ; le ratchet dit lui-meme qu un champ optionnel de plus n est pas une raison
+de monter). Gates : suite replay + replaybuild + replaydiff + archlint + contracttest verte,
+integration `api/wire` (`-p 1`) verte, `go build ./...` ok, `golangci-lint
+--new-from-merge-base=origin/main` 0 issue ; tous les fichiers touches sous 500 lignes.
+
+**Conclusion / prochaine etape.** Journal complete (section « Corrections R1 »), phrase fausse du
+§A.3 corrigee sur pieces, entree A du registre completee. UNE decouverte de plus au registre, NON
+traitee : `OwnerReport.SlotXUID` publie un slot en collision sous le nom de son premier occupant
+nomme sans marqueur par slot, et les autres consommateurs du pont (marques de portage,
+ramassages, frags sous equipement actif) n ont pas ete inventories — la garde posee ici est un
+contournement LOCAL au calque drapeau. Condition de reprise ecrite : marquer (ou dater) les slots
+disputes dans `OwnerReport`, puis inventorier les lecteurs ; la garde locale devient alors
+redondante et se supprime.
 
 ## [2026-09-06] Instruction des deux pertes de DUREE du corpus temoin — les deux sont des regressions, corrigees (schema 45) — Complete
 

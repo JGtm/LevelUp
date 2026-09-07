@@ -34,6 +34,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"levelup/go-api/internal/analysis/replay/mapvar"
@@ -164,20 +165,61 @@ func objDrapeauRefs(t *testing.T, id string, d objDoc, step uint64) []objDrapeau
 	for _, s := range objDrapeauSocles(t, id) {
 		out = append(out, objDrapeauRef{x: float32(s.Center.X), y: float32(s.Center.Y)})
 	}
-	// PONT NIL, ET C'EST VOULU : ce controle part du document PUBLIE, qui ne porte pas le pont
-	// slot -> xuid (OwnerReport ne survit pas a la serialisation). Il ne voit donc que les
-	// pistes NOMMEES, exactement comme avant — la mesure de reference ne change pas.
-	idx := tracksByXUID(d.doc.Tracks, nil)
+	// LE CONTROLE APPLIQUE LA MEME REGLE QUE LA PRODUCTION (revue DUREES-R1, constat C3).
+	// L'artefact publie ne porte pas `OwnerReport`, donc pas le pont slot -> xuid : on le
+	// RECONSTRUIT a partir des vies NOMMEES du document — un slot dont toutes les vies nommees
+	// designent le meme joueur prete ses vies anonymes a ce joueur, exactement la garde de
+	// `tracksByXUID`. Passer `nil` laissait le controle strictement plus etroit que la
+	// production depuis le correctif du 2026-09-06 : il ne voyait plus les portages que celui-ci
+	// ajoute.
+	idx, _ := tracksByXUID(d.doc.Tracks, objDrapeauPontDuDocument(d.doc.Tracks), nil)
 	for _, f := range d.doc.FlagCarries {
 		for _, s := range f.Spans {
 			if !flagStateCarrying(s.State) || s.XUID == nil {
 				continue
 			}
+			// AUCUNE PISTE POUR CE PORTEUR : ON SAUTE, ON NE POSE PAS DE REFERENCE VIDE. Une
+			// `objDrapeauRef` sans `porteur` est lue par `objDrapeauPres` comme un SOCLE, et sa
+			// position par defaut est (0,0) — toute creation a moins de 1,5 m de l'origine du
+			// monde aurait alors ete comptee « nee a un socle ». Le controle se serait degrade
+			// en silence, et dans le sens qui l'assouplit.
+			porteur := idx[*s.XUID]
+			if len(porteur) == 0 {
+				continue
+			}
 			out = append(out, objDrapeauRef{
-				porteur: idx[*s.XUID],
+				porteur: porteur,
 				t0US:    d.originUS + uint64(s.T0)*step,
 				t1US:    d.originUS + uint64(s.T1)*step,
 			})
+		}
+	}
+	return out
+}
+
+// objDrapeauPontDuDocument reconstruit, depuis les seules vies PUBLIEES, le pont slot -> xuid
+// que `OwnerReport` porte en production : un slot dont les vies nommees designent UN SEUL joueur.
+// Un slot partage reste absent du pont — la garde de `tracksByXUID` le refuserait de toute facon.
+func objDrapeauPontDuDocument(tracks []Track) map[uint32]uint64 {
+	noms := map[uint32]map[string]struct{}{}
+	for _, t := range tracks {
+		if t.XUID == "" {
+			continue
+		}
+		if noms[t.Slot] == nil {
+			noms[t.Slot] = map[string]struct{}{}
+		}
+		noms[t.Slot][t.XUID] = struct{}{}
+	}
+	out := map[uint32]uint64{}
+	for slot, set := range noms {
+		if len(set) != 1 {
+			continue
+		}
+		for x := range set {
+			if v, err := strconv.ParseUint(x, 10, 64); err == nil {
+				out[slot] = v
+			}
 		}
 	}
 	return out

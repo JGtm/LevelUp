@@ -118,7 +118,8 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// echantillon par frame et perdrait des transitions. Construit AVANT la couverture,
 	// qui publie son compte.
 	var camoNonBinary int
-	doc.EquipmentEpisodes, camoNonBinary = buildEquipmentEpisodes(sorted, opt.CamoStates, origin, step, doc.Tracks)
+	doc.EquipmentEpisodes, camoNonBinary = buildEquipmentEpisodes(sorted, opt.CamoStates, origin, step,
+		doc.Tracks, unnamed.deduced)
 	if camoNonBinary > 0 {
 		slog.Warn("rejeu : lectures camo NON BINAIRES ignorees — l'interrupteur mesure ne connait que 0 et 4095",
 			"lectures", camoNonBinary)
@@ -138,7 +139,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	doc.Coverage.Bridge.UnnamedLivesContested = unnamed.contested
 	// La couverture des episodes d'equipement se publie AVEC eux : « N episodes » sans
 	// « sur M vies » se lirait comme une exhaustivite.
-	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks)
+	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks, unnamed.deduced)
 	doc.Coverage.Equipment.KillsRead = killsRead
 	// LE COUP D'ENVOI, date par le premier mouvement des pistes (cf. t0_film.go). Il se pose
 	// APRES la couverture et non a cote d'`OriginMs` (l. 528) pour deux raisons : son verdict

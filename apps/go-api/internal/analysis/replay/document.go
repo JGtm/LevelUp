@@ -838,15 +838,22 @@ package replay
 // branche. Détail : internal/analysis/replay/{equipment_episodes.go, flag_carries.go} et
 // .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
 // v47 (2026-09-07) : AUCUNE VIE PUBLIEE NE RESTE SANS NOM, ET LES LECTEURS LISENT LA PISTE SOUS
-// L'IDENTITE RESOLUE DE SON SLOT. HUIT champs de couverture s'ajoutent — cinq au pont
+// L'IDENTITE RESOLUE DE SON SLOT. NEUF champs de couverture s'ajoutent — cinq au pont
 // (`bridge.namedByPreviousLife/namedByNextLife/namedBySlotBridge/unnamedLives/
-// unnamedLivesContested`) et trois aux zones (`zones.noPosition/outside/ambiguousZone`) ; le
-// reste est un changement de CONTENU.
+// unnamedLivesContested`), trois aux zones (`zones.noPosition/outside/ambiguousZone`) et un au
+// drapeau (`flagCarries.ambiguousSlot`, apporte par le lot des DUREES et integre ici) ; le reste
+// est un changement de CONTENU.
 //
 // DECISION PRODUIT (utilisateur, 2026-09-07) : « les vies anonymes n'existent pas ; une vie est
 // un humain ou un bot, point ». Une piste publiee sans identite n'est PAS une categorie de
 // donnee, c'est un DEFAUT DE NOMMAGE du pont — a reparer a la source, jamais a afficher.
 //
+//	drapeau       Le repli d'une vie SANS NOM sur le joueur du pont est REFUSE quand les vies
+//	              publiees du slot le contredisent, et le refus se COMPTE
+//	              (`flagCarries.ambiguousSlot`) au lieu de disparaitre en silence. Deux gardes
+//	              cohabitent, sur deux matieres distinctes — le pont EPURE (vies decoupees) et
+//	              `slotAmbigu` (vies publiees) — et le compteur porte les deux populations.
+//	              flag_carrier_tracks.go.
 //	frontieres    Un slot que DEUX joueurs nommes se partagent est desormais MARQUE
 //	              (`OwnerReport.SlotAmbiguous`) et non plus seulement compte : le pont y garde le
 //	              PREMIER occupant, un choix par l'ORDRE DES VIES. Le repli par le pont s'abstient

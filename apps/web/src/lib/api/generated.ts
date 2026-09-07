@@ -6481,6 +6481,8 @@ export interface components {
             /** Format: int64 */
             ambiguousReturns: number;
             /** Format: int64 */
+            ambiguousSlot: number;
+            /** Format: int64 */
             bursts: number;
             /** Format: int64 */
             captures: number;
