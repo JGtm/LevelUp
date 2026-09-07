@@ -14,44 +14,21 @@
  *  5. LE TRAIT DE LECTURE (2026-09-06) : un seul, dans la géométrie des marques, et SEULEMENT
  *     quand la frise est dépliée. Plus le lien non typé qui le nourrit — l'attribut de la
  *     racine où la lecture vient poser la position du curseur.
+ *
+ * L'OMBRAGE DE PRÉSENCE ET L'ANNEAU DES MÉDAILLES (lot L4) ont leur propre fichier,
+ * `ReplayTimelineTracks.presence.test.tsx` : ils forment une responsabilité à part — ce que la
+ * frise dit du temps NON JOUÉ — et les garder ici aurait fait franchir à ce fichier le seuil de
+ * cinq cents lignes de code. Le montage commun aux deux vit dans `test/timelineTracksHarness`.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { createRef } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
-import { ReplayTimelineTracks } from './ReplayTimelineTracks'
 import { trackLeftVar } from '../model/replayTimelineTracksLogic'
-import type { PlacedMedia, ReplayMediaItem, TrackMark } from '../model/replayTimelineTracksLogic'
+import type { PlacedMedia, ReplayMediaItem } from '../model/replayTimelineTracksLogic'
 import { CURSOR_HOST_ATTR, CURSOR_RATIO_VAR } from '../hooks/useReplayPlayback'
 import { TIMELINE_SHORTCUT_ATTR } from '../hooks/useReplayShortcuts'
-
-function mark(over: Partial<TrackMark> = {}): TrackMark {
-  return { key: 'm1', ratio: 0.5, kind: 'kill', clock: '2:30', friend: false, ...over }
-}
-
-/**
- * LE MENU DE POINT DE VUE : deux camps nommés, plus le groupe des joueurs sans ligne de tableau
- * de score — dont l'option est INERTE (décision 7 bis). `bot-base` porte le xuid de la BASE, pas
- * la clé film : c'est le piège que le lot devait éviter (cf. `viewpointOptions`).
- */
-const GROUPES = [
-  {
-    key: 't0',
-    label: 'Cobalt',
-    options: [
-      { value: 'me-1', label: 'JGtm', disabled: false, title: 'JGtm' },
-      { value: 'bot-base', label: 'Cortana', disabled: false, title: 'Cortana' },
-    ],
-  },
-  { key: 't1', label: 'Ambre', options: [{ value: 'foe-1', label: 'Rival', disabled: false, title: 'Rival' }] },
-  {
-    key: '',
-    label: 'Sans équipe',
-    options: [
-      { value: 'bot:Fantome', label: 'Fantome', disabled: true, title: 'Aucune donnée de match pour ce joueur' },
-    ],
-  },
-]
+import { mark, renderTracks } from '../test/timelineTracksHarness'
 
 function mediaItem(over: Partial<ReplayMediaItem> = {}): ReplayMediaItem {
   return {
@@ -67,40 +44,6 @@ function mediaItem(over: Partial<ReplayMediaItem> = {}): ReplayMediaItem {
 
 function placed(over: Partial<PlacedMedia> = {}): PlacedMedia {
   return { item: mediaItem(), from: 0.5, to: 0.5, ...over }
-}
-
-function renderTracks(over: Partial<Parameters<typeof ReplayTimelineTracks>[0]> = {}) {
-  const onRequestPause = vi.fn()
-  const onScrub = vi.fn()
-  const onToggleTracks = vi.fn()
-  const onSelectViewpoint = vi.fn()
-  const utils = render(
-    <ReplayTimelineTracks
-      sliderRef={createRef<HTMLInputElement>()}
-      minFrame={0}
-      maxFrame={600}
-      onScrub={onScrub}
-      own={[]}
-      teammates={[]}
-      viewpoint="me-1"
-      viewpointGroups={GROUPES}
-      onSelectViewpoint={onSelectViewpoint}
-      dominance={[]}
-      score={null}
-      allyOf={() => null}
-      labelOf={(id) => `Équipe ${id}`}
-      media={[]}
-      showMediaTrack
-      tracksExpanded
-      onToggleTracks={onToggleTracks}
-      playing
-      onRequestPause={onRequestPause}
-      clockRef={createRef<HTMLSpanElement>()}
-      locale="fr"
-      {...over}
-    />,
-  )
-  return { ...utils, onRequestPause, onScrub, onToggleTracks, onSelectViewpoint }
 }
 
 describe('ReplayTimelineTracks — les quatre pistes sont nommées', () => {

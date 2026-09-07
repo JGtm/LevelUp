@@ -36,7 +36,9 @@ import {
   type ReplayMediaItem,
   type TrackAudience,
   type TrackDeath,
+  type TrackEvents,
   type TrackKill,
+  type TrackMedal,
 } from './replayTimelineTracksLogic'
 import type { ReplayWindowBounds } from './replayWindow'
 
@@ -88,7 +90,24 @@ const MARKS: ReadonlyMap<string, PlayerMarkKind> = new Map([
 const AUDIENCE: TrackAudience = { viewpoint: 'me', identity: IDENTITY, marks: MARKS }
 
 function kill(over: Partial<TrackKill> = {}): TrackKill {
-  return { key: 'k1', replayMs: 20_000, xuid: 'me', ...over }
+  return { key: 'k1', replayMs: 20_000, xuid: 'me', medals: [], ...over }
+}
+
+/** Une médaille ORPHELINE (objectif) : sans kill à moins de 500 ms, elle a sa propre marque. */
+function medal(over: Partial<TrackMedal> = {}): TrackMedal {
+  return { key: 'md1', replayMs: 22_000, xuid: 'me', label: 'Capture', ...over }
+}
+
+/**
+ * LES TROIS LISTES DU FIL, groupées comme `buildEventTracks` les reçoit (`TrackEvents`). Le
+ * raccourci évite d'écrire `medals: []` à chaque cas qui ne parle que de kills et de morts.
+ */
+function ev(
+  kills: readonly TrackKill[],
+  deaths: readonly TrackDeath[],
+  medals: readonly TrackMedal[] = [],
+): TrackEvents {
+  return { kills, deaths, medals }
 }
 
 function death(over: Partial<TrackDeath> = {}): TrackDeath {
@@ -107,7 +126,7 @@ describe('trackScale — l’échelle est celle de la frise', () => {
   it('rend une portée NULLE sur un document d’une seule image : rien ne se place', () => {
     const degenere = trackScale(null, 1)
     expect(degenere.span).toBe(0)
-    expect(buildEventTracks([kill()], [], AUDIENCE, FRAME_MS, degenere, clockOf)).toEqual({
+    expect(buildEventTracks(ev([kill()], []), AUDIENCE, FRAME_MS, degenere, clockOf)).toEqual({
       own: [],
       teammates: [],
     })
@@ -130,15 +149,15 @@ describe('ratioOfMs — un instant sur l’échelle des pistes', () => {
 
 describe('buildEventTracks — qui est sur quelle piste', () => {
   it('un acteur SANS CAMP CONNU n’est sur AUCUNE piste', () => {
-    const tracks = buildEventTracks([kill({ xuid: 'inconnu' })], [], AUDIENCE, FRAME_MS, SCALE, clockOf)
+    const inconnu = ev([kill({ xuid: 'inconnu' })], [])
+    const tracks = buildEventTracks(inconnu, AUDIENCE, FRAME_MS, SCALE, clockOf)
     expect(tracks.own).toEqual([])
     expect(tracks.teammates).toEqual([])
   })
 
   it('le POINT DE VUE sur sa piste, un COÉQUIPIER sur la seconde', () => {
     const tracks = buildEventTracks(
-      [kill({ key: 'k-me' }), kill({ key: 'k-equipier', xuid: 'equipier' })],
-      [],
+      ev([kill({ key: 'k-me' }), kill({ key: 'k-equipier', xuid: 'equipier' })], []),
       AUDIENCE,
       FRAME_MS,
       SCALE,
@@ -156,8 +175,10 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
    */
   it('un ADVERSAIRE n’est sur aucune piste, MÊME s’il est un ami', () => {
     const tracks = buildEventTracks(
-      [kill({ key: 'k-ennemi', xuid: 'ennemi' }), kill({ key: 'k-pote-adverse', xuid: 'pote-adverse' })],
-      [],
+      ev(
+        [kill({ key: 'k-ennemi', xuid: 'ennemi' }), kill({ key: 'k-pote-adverse', xuid: 'pote-adverse' })],
+        [],
+      ),
       AUDIENCE,
       FRAME_MS,
       SCALE,
@@ -174,12 +195,14 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
    */
   it('la marque d’un COÉQUIPIER AMI porte `friend` ; celle du point de vue, jamais', () => {
     const tracks = buildEventTracks(
-      [
-        kill({ key: 'k-me' }),
-        kill({ key: 'k-pote', xuid: 'pote' }),
-        kill({ key: 'k-equipier', xuid: 'equipier' }),
-      ],
-      [death({ key: 'd-me' })],
+      ev(
+        [
+          kill({ key: 'k-me' }),
+          kill({ key: 'k-pote', xuid: 'pote' }),
+          kill({ key: 'k-equipier', xuid: 'equipier' }),
+        ],
+        [death({ key: 'd-me' })],
+      ),
       AUDIENCE,
       FRAME_MS,
       SCALE,
@@ -194,8 +217,7 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
 
   it('SANS POINT DE VUE, la piste du haut reste vide — aucun joueur regardé, aucune mort à lui', () => {
     const tracks = buildEventTracks(
-      [kill({ key: 'k-me' }), kill({ key: 'k-equipier', xuid: 'equipier' })],
-      [death({ key: 'd-me' })],
+      ev([kill({ key: 'k-me' }), kill({ key: 'k-equipier', xuid: 'equipier' })], [death({ key: 'd-me' })]),
       { viewpoint: null, identity: IDENTITY, marks: MARKS },
       FRAME_MS,
       SCALE,
@@ -208,8 +230,7 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
 
   it('LES MORTS NE VONT QUE SUR `own` — celle d’un coéquipier est ignorée', () => {
     const tracks = buildEventTracks(
-      [],
-      [death({ key: 'd-me' }), death({ key: 'd-equipier', xuid: 'equipier' })],
+      ev([], [death({ key: 'd-me' }), death({ key: 'd-equipier', xuid: 'equipier' })]),
       AUDIENCE,
       FRAME_MS,
       SCALE,
@@ -220,18 +241,20 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
   })
 
   it('la NATURE de la marque voyage avec elle — c’est elle qui décidera de sa couleur', () => {
-    const tracks = buildEventTracks([kill()], [death()], AUDIENCE, FRAME_MS, SCALE, clockOf)
+    const tracks = buildEventTracks(ev([kill()], [death()]), AUDIENCE, FRAME_MS, SCALE, clockOf)
     expect(tracks.own.map((m) => m.kind)).toEqual(['kill', 'death'])
   })
 
   it('une entrée HORS FENÊTRE est écartée, jamais rabattue sur un bord', () => {
     const tracks = buildEventTracks(
-      [
-        kill({ key: 'avant', replayMs: 5_000 }), // le countdown d'avant-match
-        kill({ key: 'apres', replayMs: 45_000 }), // la queue du film
-        kill({ key: 'dedans', replayMs: 20_000 }),
-      ],
-      [],
+      ev(
+        [
+          kill({ key: 'avant', replayMs: 5_000 }), // le countdown d'avant-match
+          kill({ key: 'apres', replayMs: 45_000 }), // la queue du film
+          kill({ key: 'dedans', replayMs: 20_000 }),
+        ],
+        [],
+      ),
       AUDIENCE,
       FRAME_MS,
       SCALE,
@@ -242,8 +265,7 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
 
   it('les BORNES EXACTES du match, elles, sont dedans', () => {
     const tracks = buildEventTracks(
-      [kill({ key: 'debut', replayMs: 10_000 }), kill({ key: 'fin', replayMs: 40_000 })],
-      [],
+      ev([kill({ key: 'debut', replayMs: 10_000 }), kill({ key: 'fin', replayMs: 40_000 })], []),
       AUDIENCE,
       FRAME_MS,
       SCALE,
@@ -254,8 +276,7 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
 
   it('les clés et l’ordre viennent de la source — le rendu peut s’y fier', () => {
     const tracks = buildEventTracks(
-      [kill({ key: 'k-a', replayMs: 12_000 }), kill({ key: 'k-b', replayMs: 30_000 })],
-      [death({ key: 'd-a', replayMs: 20_000 })],
+      ev([kill({ key: 'k-a', replayMs: 12_000 }), kill({ key: 'k-b', replayMs: 30_000 })], [death({ key: 'd-a', replayMs: 20_000 })]),
       AUDIENCE,
       FRAME_MS,
       SCALE,
@@ -264,6 +285,58 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
     // Les kills d'abord, les morts ensuite : deux passes, deux clés stables et distinctes.
     expect(tracks.own.map((m) => m.key)).toEqual(['k-a', 'k-b', 'd-a'])
     expect(tracks.own.map((m) => m.clock)).toEqual(['@12000', '@30000', '@20000'])
+  })
+})
+
+/**
+ * LES MÉDAILLES SUR LA FRISE (2026-09-07, lot L4). Deux règles, et elles ne se recouvrent pas :
+ * une médaille RATTACHÉE à un kill décore la marque déjà dessinée (décision 9) ; une médaille
+ * ORPHELINE prend une marque à elle. Les deux ne valent que sur la piste du joueur regardé.
+ */
+describe('buildEventTracks — les médailles', () => {
+  it('un kill médaillé garde sa marque et emporte ses libellés — pas de second repère', () => {
+    const tracks = buildEventTracks(
+      ev([kill({ medals: ['Doublé', 'Vengeance'] })], []),
+      AUDIENCE,
+      FRAME_MS,
+      SCALE,
+      clockOf,
+    )
+    expect(tracks.own).toHaveLength(1)
+    expect(tracks.own[0]).toMatchObject({ kind: 'kill', medals: ['Doublé', 'Vengeance'] })
+  })
+
+  it('une médaille ORPHELINE du point de vue prend une marque `medal` à elle', () => {
+    const tracks = buildEventTracks(ev([], [], [medal()]), AUDIENCE, FRAME_MS, SCALE, clockOf)
+    expect(tracks.own).toMatchObject([{ kind: 'medal', medals: ['Capture'] }])
+  })
+
+  it('la médaille orpheline d’un COÉQUIPIER n’est sur aucune piste', () => {
+    const orpheline = ev([], [], [medal({ xuid: 'equipier' })])
+    const tracks = buildEventTracks(orpheline, AUDIENCE, FRAME_MS, SCALE, clockOf)
+    expect(tracks.own).toEqual([])
+    expect(tracks.teammates).toEqual([])
+  })
+
+  it('le kill médaillé d’un COÉQUIPIER garde sa marque NUE — les anneaux restent en haut', () => {
+    const tracks = buildEventTracks(
+      ev([kill({ key: 'k-equipier', xuid: 'equipier', medals: ['Doublé'] })], []),
+      AUDIENCE,
+      FRAME_MS,
+      SCALE,
+      clockOf,
+    )
+    expect(tracks.teammates).toMatchObject([{ kind: 'kill', medals: [] }])
+  })
+
+  it('une médaille orpheline HORS FENÊTRE est écartée, comme un kill', () => {
+    const dehors = ev([], [], [medal({ replayMs: 45_000 })])
+    expect(buildEventTracks(dehors, AUDIENCE, FRAME_MS, SCALE, clockOf).own).toEqual([])
+  })
+
+  it('une marque sans médaille porte une liste VIDE — jamais `undefined` à décorer', () => {
+    const tracks = buildEventTracks(ev([kill()], [death()]), AUDIENCE, FRAME_MS, SCALE, clockOf)
+    expect(tracks.own.map((m) => m.medals)).toEqual([[], []])
   })
 })
 

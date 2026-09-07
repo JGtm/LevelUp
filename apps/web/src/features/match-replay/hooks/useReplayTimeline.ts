@@ -44,8 +44,10 @@ import {
   type TrackDeath,
   type TrackFrag,
   type TrackKill,
+  type TrackMedal,
   type TrackScale,
 } from '../model/replayTimelineTracksLogic'
+import { presenceShades, teammatesAbsence } from '../model/presenceTrackLogic'
 import { roundTransitions } from '../model/roundsLogic'
 import { buildViewpointOptions } from '../model/viewpointOptions'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
@@ -110,6 +112,8 @@ export interface ReplayPlaybackForTimeline {
   restart: () => void
   seekBy: (seconds: number) => void
   stepFrames: (frames: number) => void
+  /** Aller à une image précise, sans mettre en pause : le clic sur un repère de présence. */
+  seekToFrame: (frame: number) => void
 }
 
 /** L'objet unique que le canvas repasse tel quel à la barre (patron de `ReplaySound`). */
@@ -149,10 +153,7 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     (replayMs: number) => formatClock(displayClockMs(replayMs, playWindow)),
     [playWindow],
   )
-  const { kills, deaths, frags } = useMemo(
-    () => reduceFeed(feedEntries, viewpoint),
-    [feedEntries, viewpoint],
-  )
+  const reduit = useMemo(() => reduceFeed(feedEntries, viewpoint), [feedEntries, viewpoint])
   // LES TROIS LECTURES D'IDENTITÉ VOYAGENT ENSEMBLE (cf. `TrackAudience`) : qui on regarde, qui
   // est de son camp, qui est un ami. Groupées, elles n'allongent pas la liste d'arguments et se
   // mémoïsent d'un bloc — les trois changent en même temps, à chaque bascule de point de vue.
@@ -161,8 +162,35 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     [viewpoint, identity, marks],
   )
   const tracks = useMemo(
-    () => buildEventTracks(kills, deaths, audience, frameIntervalMs ?? 0, scale, clockOf),
-    [kills, deaths, audience, frameIntervalMs, scale, clockOf],
+    () => buildEventTracks(reduit, audience, frameIntervalMs ?? 0, scale, clockOf),
+    [reduit, audience, frameIntervalMs, scale, clockOf],
+  )
+  // L'OMBRAGE DE PRÉSENCE (2026-09-07, lot L4) LIT LE MÊME FIL QUE LES MARQUES, et c'est tout
+  // ce qui garantit qu'une porte tombe à l'endroit où le fil dit « a rejoint ». Les lignes de
+  // présence y sont déjà fusionnées (`mergeFeedWithPresence`), déjà recalées sur l'axe du rejeu.
+  //
+  // QUAND LE FIL N'EN PORTE AUCUNE, IL N'Y A PAS D'OMBRE, ET C'EST VOULU : `presenceEntries`
+  // rend `[]` sans fenêtre de gameplay ni horloge établie (même porte que les lignes du fil).
+  // L'ombrage est alors ABSENT plutôt que FAUX — posé sur un axe non recalé, il se tromperait de
+  // 3,6 à 50,8 s. Rien à réparer ici : la dégradation a lieu en amont, une fois.
+  const shades = useMemo(
+    () => presenceShades(feedEntries, viewpoint, frameIntervalMs ?? 0, scale, clockOf),
+    [feedEntries, viewpoint, frameIntervalMs, scale, clockOf],
+  )
+  // L'EFFECTIF DE RÉFÉRENCE DE LA PISTE COÉQUIPIERS : les alliés du point de vue, lui-même
+  // exclu. `identity` est déjà RELATIVE au point de vue (cf. `resolveXuidMeta` à trois
+  // arguments) — « allié » y veut dire « du côté de celui qu'on regarde », jamais du joueur de
+  // la page.
+  const teammateXuids = useMemo(() => {
+    const out: string[] = []
+    for (const [xuid, meta] of identity) {
+      if (meta.ally && xuid !== viewpoint) out.push(xuid)
+    }
+    return out
+  }, [identity, viewpoint])
+  const absence = useMemo(
+    () => teammatesAbsence(feedEntries, teammateXuids, frameIntervalMs ?? 0, scale),
+    [feedEntries, teammateXuids, frameIntervalMs, scale],
   )
   // LE MENU DE POINT DE VUE : les sections viennent du roster joint, les trois libellés de
   // l'i18n de la feature. La règle de valeur (le piège des bots) et la règle d'inertie (un
@@ -174,8 +202,8 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
   // LA DOMINANCE SE LIT SUR LES FRAGS (2026-08-28), plus sur le compteur du mode : elle vient
   // donc du MÊME fil que les deux pistes du dessus, jamais d'un second calque.
   const dominance = useMemo(
-    () => buildFragDominance(frags, frameIntervalMs ?? 0, scale),
-    [frags, frameIntervalMs, scale],
+    () => buildFragDominance(reduit.frags, frameIntervalMs ?? 0, scale),
+    [reduit, frameIntervalMs, scale],
   )
   const score = useMemo(() => scoreTrack(doc, dominance, scale), [doc, dominance, scale])
   // LES MÉDIAS ARRIVENT DE LA PAGE, déjà sur l'axe du rejeu (phase 2, 2026-08-28) : ce hook ne
@@ -204,6 +232,10 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     onScrub: playback.onScrub,
     own: tracks.own,
     teammates: tracks.teammates,
+    shades,
+    absence,
+    identity,
+    onSeekFrame: playback.seekToFrame,
     viewpoint,
     viewpointGroups,
     onSelectViewpoint,
@@ -254,8 +286,24 @@ function scoreTrack(
 }
 
 /**
- * reduceFeed ramène le fil à ce que les pistes demandent. Les MÉDAILLES SEULES n'y entrent pas :
- * elles n'ont ni tueur ni défunt, et une piste d'événements dit qui a marqué ou qui est tombé.
+ * reduceFeed ramène le fil à ce que les pistes demandent.
+ *
+ * LES MÉDAILLES Y ENTRENT DEPUIS LE 2026-09-07 (lot L4), et de deux façons qui ne se confondent
+ * pas. Celles qui sont RATTACHÉES à un kill (±500 ms, `killFeedLogic`) voyagent avec lui en
+ * libellés : la marque de kill existe déjà, elle recevra un anneau et son infobulle les nommera
+ * (décision 9 — pas de second repère au même endroit). Celles qui restent ORPHELINES, elles,
+ * n'ont ni tueur ni défunt — ce sont des médailles d'OBJECTIF, et sans marque à décorer elles en
+ * prennent une à elles.
+ *
+ * UN LIBELLÉ VIDE NE PASSE PAS. Sur les matchs antérieurs au backfill des médailles du fil, le
+ * nom peut manquer : une décoration sans libellé dirait « il s'est passé quelque chose » sans
+ * pouvoir dire quoi, et une marque orpheline muette serait un point de plus sur la frise sans
+ * infobulle. Dans les deux cas, rien.
+ *
+ * CE QUI EST FILTRÉ ICI ET CE QUI NE L'EST PAS : reduceFeed dit QUI, `buildEventTracks` dit SUR
+ * QUELLE PISTE. Les médailles orphelines de TOUTE la salle sortent donc d'ici, comme les kills,
+ * et c'est le point de vue qui ne retient que les siennes en aval — une seule règle de piste, un
+ * seul endroit où la lire.
  *
  * EXPORTÉ POUR ÊTRE TESTÉ (revue R1), pas pour être appelé d'ailleurs : c'est ici que se décide
  * À QUI appartient une ligne, et une inversion tueur/victime y serait invisible à la relecture
@@ -264,18 +312,35 @@ function scoreTrack(
 export function reduceFeed(
   entries: readonly ReplayFeedEntry[],
   viewpoint: string | null,
-): { kills: TrackKill[]; deaths: TrackDeath[]; frags: TrackFrag[] } {
+): { kills: TrackKill[]; deaths: TrackDeath[]; medals: TrackMedal[]; frags: TrackFrag[] } {
   const kills: TrackKill[] = []
   const deaths: TrackDeath[] = []
+  const medals: TrackMedal[] = []
   const frags: TrackFrag[] = []
   for (const entry of entries) {
+    if (entry.medal) {
+      if (entry.medal.label) {
+        medals.push({
+          key: entry.key,
+          replayMs: entry.replayMs,
+          xuid: entry.medal.xuid,
+          label: entry.medal.label,
+        })
+      }
+      continue
+    }
     if (entry.death) {
       deaths.push({ key: entry.key, replayMs: entry.replayMs, xuid: entry.death.xuid })
       continue
     }
     const kill = entry.kill
     if (!kill) continue
-    kills.push({ key: entry.key, replayMs: entry.replayMs, xuid: kill.xuid })
+    kills.push({
+      key: entry.key,
+      replayMs: entry.replayMs,
+      xuid: kill.xuid,
+      medals: kill.medals.map((m) => m.label).filter((label) => label !== ''),
+    })
     // LES FRAGS COMPTENT TOUTE LA SALLE, pas seulement les joueurs marqués : la dominance
     // oppose deux CAMPS. Un tueur dont le camp n'est pas résolu (acteur hors scoreboard) ne
     // compte pour personne — l'attribuer par défaut fausserait le meneur.
@@ -289,6 +354,6 @@ export function reduceFeed(
       deaths.push({ key: `${entry.key}-v`, replayMs: entry.replayMs, xuid: kill.victimXuid })
     }
   }
-  return { kills, deaths, frags }
+  return { kills, deaths, medals, frags }
 }
 

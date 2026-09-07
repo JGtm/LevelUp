@@ -13,7 +13,29 @@
  * La seconde piste a changé de population le même jour (décision 5) : elle montrait les joueurs
  * marqués AMIS, y compris ceux de l'équipe adverse, et montre désormais les COÉQUIPIERS du
  * joueur regardé. Les amis n'ont plus une piste, ils ont une FORME — le losange, comme sur la
- * carte (cf. `MarkTrack`).
+ * carte (cf. `ReplayMarkTrack`).
+ *
+ * # LES DEUX PISTES DISENT AUSSI QUI N'ÉTAIT PAS LÀ (2026-09-07, lot L4)
+ *
+ * Une piste sans marque avait deux causes opposées et un seul dessin : le joueur n'était pas là,
+ * ou il n'a rien fait. Trois ajouts les séparent, et chacun a son fichier.
+ *
+ *  - L'OMBRE (`ReplayPresenceShade`) grise le temps hors partie du joueur regardé — ombre de tête
+ *    pour un arrivant, de queue pour un partant. Son bord est FRANC quand l'API date l'événement,
+ *    DÉGRADÉ quand le film le déduit : une frontière au pixel sur une déduction serait un
+ *    mensonge de précision.
+ *  - LA PORTE (`PresenceGlyph`), le glyphe même que le fil emploie, se pose à la frontière du
+ *    côté ombré et EST le bouton : elle emmène le curseur à cet instant, sans mettre en pause et
+ *    sans changer de joueur. Du côté ombré, elle ne recouvre jamais une marque de kill — un kill
+ *    ne peut exister que dans la zone jouée.
+ *  - L'ANNEAU (`ReplayMarkTrack`) entoure une marque de kill qui a valu une médaille, et fait
+ *    à lui seul la marque d'une médaille d'objectif (creuse). Un seul code : anneau = médaille.
+ *
+ * La piste des COÉQUIPIERS, elle, n'a ni porte ni anneau : elle s'assombrit par PALIERS, l'opacité
+ * disant la part de l'effectif absente (`ReplayAbsenceShade`). Quatre portes empilées sur
+ * quatorze pixels ne se liraient pas, et sa question n'est pas « qui est parti » mais « combien
+ * manquaient » — c'est ce qui explique une dominance qui s'effondre sans qu'aucun duel ne l'ait
+ * fait. Le fil, lui, nomme chacun.
  *
  * DOMINANCE ET SCORE SE LISENT ENSEMBLE, et c'est tout l'intérêt de les empiler : la première
  * dit qui gagne les duels, la seconde qui gagne le match. Sur un mode à objectif elles se
@@ -67,10 +89,13 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import { CURSOR_RATIO_VAR } from '../hooks/useReplayPlayback'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+import { ReplayMarkTrack } from './ReplayMarkTrack'
 import { ReplayMediaLightbox } from './ReplayMediaLightbox'
 import { ReplayPlayhead } from './ReplayPlayhead'
+import { ReplayAbsenceShade, ReplayPresenceShade } from './ReplayPresenceShade'
 import { ReplayViewpointSelect } from './ReplayViewpointSelect'
 import { TIMELINE_GRID_COLUMNS } from './replayTimelineGrid'
+import type { AbsenceStep, PresenceShade } from '../model/presenceTrackLogic'
 import type { ViewpointOptionGroup } from '../model/viewpointOptions'
 import {
   clipFrameCount,
@@ -100,6 +125,14 @@ interface ReplayTimelineTracksProps {
   /** Les marques du joueur regardé, celles de ses coéquipiers (cf. buildEventTracks). */
   own: readonly TrackMark[]
   teammates: readonly TrackMark[]
+  /** Le temps hors partie du joueur regardé, et ses portes (cf. `presenceTrackLogic`). */
+  shades: readonly PresenceShade[]
+  /** Les paliers d'effectif manquant de la piste Coéquipiers. */
+  absence: readonly AbsenceStep[]
+  /** Camp de chaque xuid, relatif au point de vue : il teinte les portes, jamais l'ombre. */
+  identity: ReadonlyMap<string, { ally: boolean }>
+  /** Poser le curseur à une image (clic sur une porte). Ne met pas en pause — décision 1. */
+  onSeekFrame: (frame: number) => void
   /** Le point de vue courant : la valeur affichée par le menu de la première rangée. */
   viewpoint: string | null
   /** Les sections du menu, un camp par section (cf. `buildViewpointOptions`). */
@@ -139,7 +172,8 @@ interface ReplayTimelineTracksProps {
 
 export function ReplayTimelineTracks({
   sliderRef, minFrame, maxFrame, onScrub,
-  own, teammates, viewpoint, viewpointGroups, onSelectViewpoint,
+  own, teammates, shades, absence, identity, onSeekFrame,
+  viewpoint, viewpointGroups, onSelectViewpoint,
   dominance, score, allyOf, labelOf, media, showMediaTrack,
   tracksExpanded, onToggleTracks,
   playing, onRequestPause, clockRef, locale,
@@ -171,10 +205,23 @@ export function ReplayTimelineTracks({
             label={t.viewpointLabel}
             onSelect={onSelectViewpoint}
           />
-          <MarkTrack marks={own} height="h-3.5" tall />
+          {/* DIX-HUIT PIXELS ET NON QUATORZE depuis le 2026-09-07 : c'est la seule rangée qui
+              porte un anneau de médaille et une porte de présence, et les rogner les rendrait
+              illisibles. Celle des coéquipiers garde ses quatorze — l'écart de hauteur dit
+              laquelle des deux est le sujet. */}
+          <ReplayMarkTrack marks={own} height="h-[18px]" tall>
+            <ReplayPresenceShade
+              shades={shades}
+              identity={identity}
+              onSeekFrame={onSeekFrame}
+              locale={locale}
+            />
+          </ReplayMarkTrack>
 
           <TrackLabel>{t.trackTeammates}</TrackLabel>
-          <MarkTrack marks={teammates} height="h-3.5" tall={false} />
+          <ReplayMarkTrack marks={teammates} height="h-3.5" tall={false}>
+            <ReplayAbsenceShade steps={absence} />
+          </ReplayMarkTrack>
 
           <TrackLabel>{t.trackDominance}</TrackLabel>
           <LeadTrack
@@ -471,79 +518,4 @@ function TrackLabel({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   )
-}
-
-/**
- * Une piste de marques. `tall` distingue celle du joueur REGARDÉ (marques pleines, plus hautes)
- * de celle de ses coéquipiers (plus basses, atténuées) : deux pistes de même poids se liraient
- * comme une seule.
- *
- * UN AMI PREND LE LOSANGE (décision 4 du plan « frise, point de vue », 2026-09-07). C'est la
- * grammaire de la carte, transposée telle quelle : la FORME dit l'identité, la COULEUR dit le
- * camp — et ici la couleur est déjà prise deux fois (kill à l'encre alliée, mort à l'encre
- * adverse), sur deux tokens qui reprennent les couleurs d'équipe choisies par l'utilisateur en
- * jeu. Il n'en reste aucune de libre, et en inventer une troisième pour « ami » ferait dire
- * deux choses à la même grandeur.
- *
- * LE MOT EST CELUI DE LA CARTE, PAS UN SECOND VOCABULAIRE : `MarkerShape = 'diamond'`
- * (`layers/replayMarkers.ts`) nomme déjà cette forme pour la même population.
- *
- * LA MARQUE AMIE EST CARRÉE AVANT D'ÊTRE TOURNÉE, et c'est ce qui en fait un losange : une
- * barre de 2 à 3 px de large pivotée de 45° donne une oblique, pas un losange — la forme ne se
- * lirait pas à cette taille. Elle garde le CENTRE des autres (même `top` + même translation) et
- * la même encre : seule sa silhouette change.
- *
- * UNE MARQUE EST CENTRÉE SUR SON INSTANT, pas posée à sa droite (décision utilisateur du
- * 2026-09-06, prise en même temps que le trait de lecture). Elle se posait par son BORD GAUCHE
- * sur `trackLeft(ratio)` : large de deux à trois pixels, elle débordait donc tout entière vers
- * la droite, et son milieu — ce que l'œil lit comme « l'endroit » de la marque — tombait un
- * pixel et demi après le frag. Le décalage était invisible tant que rien ne passait par là ;
- * le trait de lecture, lui, l'aurait exhibé à chaque kill.
- *
- * LA TRANSLATION EST DONC LE CENTRAGE, et elle vaut la demi-largeur de la marque quelle qu'elle
- * soit (`-translate-x-1/2` se mesure sur l'élément, pas sur la piste) : les marques hautes et
- * les basses n'ont pas la même largeur et n'ont pas à s'en soucier. L'ANCRE, elle, ne change
- * pas — c'est toujours `trackLeft(ratio)`, le point exact où la pastille du curseur se centre
- * et où passe le trait de lecture. Les trois coïncident maintenant au pixel.
- */
-function MarkTrack({
-  marks, height, tall,
-}: {
-  marks: readonly TrackMark[]
-  height: string
-  tall: boolean
-}) {
-  return (
-    <div className={`relative ${height} rounded-full bg-muted/40`}>
-      {marks.map((m) => (
-        <span
-          key={m.key}
-          className={`pointer-events-none absolute -translate-x-1/2 rounded-[2px] ${markShape(m.friend, tall)}`}
-          style={{
-            left: trackLeft(m.ratio),
-            background: tokenCssVar(m.kind === 'kill' ? 'team-ally' : 'team-enemy'),
-          }}
-          title={m.clock}
-        />
-      ))}
-    </div>
-  )
-}
-
-/**
- * LA SILHOUETTE D'UNE MARQUE : barre verticale par défaut, LOSANGE pour un ami (décision 4).
- *
- * LES QUATRE VARIANTES PARTAGENT LEUR CENTRE VERTICAL — y = 7 px sur une piste de 14 (`h-3.5`) :
- * `top-[3px]` + 8 px de haut, `top-1` + 6, `top-[4px]` + 6 pour les deux losanges. Sans cette
- * égalité, une marque amie flotterait un pixel plus haut que ses voisines et la piste se lirait
- * comme deux lignes. Le losange est plus court que la barre haute parce qu'il occupe sa
- * DIAGONALE une fois tourné (6 px de côté ≈ 8,5 px en travers) : à taille égale il dépasserait
- * de la piste.
- *
- * L'ATTÉNUATION reste celle de la piste, pas de la forme : la piste des coéquipiers est plus
- * discrète que celle du joueur regardé, qu'on y soit ami ou non.
- */
-function markShape(friend: boolean, tall: boolean): string {
-  if (friend) return tall ? 'top-[4px] h-1.5 w-1.5 rotate-45' : 'top-[4px] h-1.5 w-1.5 rotate-45 opacity-65'
-  return tall ? 'top-[3px] h-2 w-[3px]' : 'top-1 h-1.5 w-[2px] opacity-65'
 }
