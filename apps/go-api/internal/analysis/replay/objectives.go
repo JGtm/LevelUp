@@ -69,8 +69,16 @@ type ObjectiveAction struct {
 // du match) ou posterieur a la derniere frame publiee est compte hors fenetre plutot que
 // rattache a une frame qui n'existe pas. La correction RAMENE dans la fenetre les actions de
 // fin de match que l'ancien calcul rejetait (+11 sur 525 au corpus d'origine).
-func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, c scoreClock) ([]ObjectiveAction, LayerCoverage) {
-	cov := LayerCoverage{Available: len(evs)}
+// LE DENOMINATEUR COMPTE AUSSI CE QUI N'EST JAMAIS ARRIVE ICI (`unnamed`). Les evenements que
+// le pont d'identite de l'appelant n'a pas su attribuer ne figurent pas dans `evs` : les ignorer
+// ferait de `Available` un compte de RESCAPES, et le rapport rattache/disponible se lirait
+// ~100 % sur un calque partiel. Ils entrent donc au denominateur ET sous `NoSlot`, la categorie
+// que le contrat public reserve exactement a ce cas (« le pont ne couvre pas ce joueur »).
+// Mesure du depot sur `c0a82e88` : 17 actions nommees, 12 identifiees — la couverture annoncait
+// 12/12 et 0 `noSlot`.
+func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, unnamed int,
+	c scoreClock) ([]ObjectiveAction, LayerCoverage) {
+	cov := LayerCoverage{Available: len(evs) + unnamed, NoSlot: unnamed}
 	if c.intervalMS <= 0 || c.frames <= 0 {
 		cov.OutOfWindow = len(evs)
 		return nil, cov
@@ -79,7 +87,11 @@ func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, c scoreClock) 
 	for _, e := range evs {
 		if e.XUID == "" {
 			// Un evenement sans identite n'est pas posable : le rattacher a un slot
-			// arbitraire serait exactement l'erreur que le pont existe pour eviter.
+			// arbitraire serait exactement l'erreur que le pont existe pour eviter. La
+			// population de production de CETTE branche est nulle (les deux ponts
+			// d'`objectiveevents` ecartent deja le xuid vide) : elle garde l'invariant du
+			// champ publie `ObjectiveAction.XUID`, jamais vide, contre une entree malformee.
+			// Le vrai peuplement de `NoSlot` vient d'`unnamed`, ci-dessus.
 			cov.NoSlot++
 			continue
 		}
@@ -110,13 +122,19 @@ func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, c scoreClock) 
 // pourrait pas la dessiner : il n'a pas de trajectoire ou l'accrocher. La compter sous
 // `Unpublished` plutot que sous `Attached` evite d'annoncer une couverture que l'ecran ne
 // tiendra pas.
-func dropUnpublishedActions(actions []ObjectiveAction, tracks []Track, cov LayerCoverage) ([]ObjectiveAction, LayerCoverage) {
-	published := map[string]bool{}
-	for _, tr := range tracks {
-		if tr.XUID != "" {
-			published[tr.XUID] = true
-		}
-	}
+//
+// LE FILTRE CADENCE SUR LE JOUEUR DE LA PISTE, PAS SUR SON SEUL NOM LU (correctif du
+// 2026-09-06). Bati sur `tr.XUID != ""`, il supprimait TOUTES les actions d'un joueur dont
+// AUCUNE vie n'est nommee alors que le PONT nomme son slot, quand bien meme la trajectoire EST
+// publiee. Defaut DEMONTRE par mutation, mais NON CHIFFRE sur le parc local : les 35 actions sur
+// 76 de `3372e7eb` que la premiere redaction citait viennent de deux joueurs SANS AUCUNE piste
+// dans le film — le pont n'a rien a nommer, et le compte ne bouge pas (revue VIES-R1, C3).
+// Trois consommateurs perdaient la donnee, dont DEUX n'ont jamais eu besoin d'une trajectoire
+// (le SON d'objectif, qui ne lit que l'instant, et la garde tout-ou-rien de l'armement de
+// bombe). La resolution est celle du pont canonique, partagee (`xuidOfPublishedTrack`).
+func dropUnpublishedActions(actions []ObjectiveAction, tracks []Track,
+	slotXUID map[uint32]uint64, cov LayerCoverage) ([]ObjectiveAction, LayerCoverage) {
+	published := publishedXUIDs(tracks, slotXUID)
 	out := actions[:0:0]
 	for _, a := range actions {
 		if !published[a.XUID] {
@@ -137,9 +155,9 @@ func dropUnpublishedActions(actions []ObjectiveAction, tracks []Track, cov Layer
 // ligne (cf. Options.Objectives) — aucune base, et JUSTE en multi-manche (le slot d'entite est
 // reattribue d'une manche a l'autre). L'horloge, elle, demande une soustraction — celle de
 // l'origine (cf. buildObjectiveActions et build_score.go).
-func attachObjectiveActions(doc *ReplayDocument, evs []objectiveevents.IdentifiedEvent, c scoreClock) LayerCoverage {
-	actions, cov := buildObjectiveActions(evs, c)
-	doc.Objectives, cov = dropUnpublishedActions(actions, doc.Tracks, cov)
+func attachObjectiveActions(doc *ReplayDocument, opt Options, own OwnerReport, c scoreClock) LayerCoverage {
+	actions, cov := buildObjectiveActions(opt.Objectives, opt.ObjectivesUnnamed, c)
+	doc.Objectives, cov = dropUnpublishedActions(actions, doc.Tracks, own.NamingBridge(), cov)
 	cov.warnIfLossy("objectifs")
 	return cov
 }

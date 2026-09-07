@@ -604,7 +604,7 @@ func TestAssautPontIdentite(t *testing.T) {
 		}
 		named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeBomb)
 		identity := objectiveevents.ResolveRoundIdentity(recs, di)
-		ident := objectiveevents.IdentifyNamedEventsByRound(named, identity)
+		ident, _ := objectiveevents.IdentifyNamedEventsByRound(named, identity)
 		nomme := 0
 		for _, e := range ident {
 			if e.XUID != "" {

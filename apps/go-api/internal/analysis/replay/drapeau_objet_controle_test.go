@@ -172,7 +172,7 @@ func objDrapeauRefs(t *testing.T, id string, d objDoc, step uint64) []objDrapeau
 	// `tracksByXUID`. Passer `nil` laissait le controle strictement plus etroit que la
 	// production depuis le correctif du 2026-09-06 : il ne voyait plus les portages que celui-ci
 	// ajoute.
-	idx, _ := tracksByXUID(d.doc.Tracks, objDrapeauPontDuDocument(d.doc.Tracks))
+	idx, _ := tracksByXUID(d.doc.Tracks, objDrapeauPontDuDocument(d.doc.Tracks), nil)
 	for _, f := range d.doc.FlagCarries {
 		for _, s := range f.Spans {
 			if !flagStateCarrying(s.State) || s.XUID == nil {

@@ -113,10 +113,24 @@ type EquipmentCoverage struct {
 // LES FENETRES SONT TRIEES ET PORTENT L'IDENTITE DE LEUR VIE (revue DUREES-R1, constat C2) :
 // `spanFor` a besoin de savoir ce que SEPARE un trou entre deux vies — un silence de
 // replication, ou une mort.
-func trackFrameWindows(tracks []Track) map[uint32][]lifeWindow {
+//
+// UNE IDENTITE DEDUITE N'EST PAS UNE MORT (integration du lot des vies, 2026-09-07). Depuis la
+// passe de nommage final (`unnamed_lives.go`), une vie que NULLE MORT ne termine peut porter un
+// xuid — celui de l'occupant du slot, deduit par le TEMPS. Lire `XUID != ""` comme « une mort
+// clot cette vie » etait exact tant que seul `nameLivesByDeaths` nommait ; ca ne l'est plus.
+// Mesure de l'integration : `084a804d` slot 620, dont la premiere vie devient nommee par
+// deduction — l'episode de camouflage `[3105..3672]` (568 frames, la valeur meme que la
+// chronique du v45 publie) retombait a `[3105..3120]`, 16 frames, soit 552 perdues sur le
+// TEMOIN du correctif. `deduced` porte les indices des pistes nommees par deduction : elles
+// comptent comme SANS NOM pour la borne de mort, et pour elle seule.
+//
+// C'est la meme regle que `carrierPresenceOf` (skull_carries.go) : une deduction AJOUTE une
+// presence, elle n'ajoute jamais une absence — ni, ici, une mort.
+func trackFrameWindows(tracks []Track, deduced map[int]bool) map[uint32][]lifeWindow {
 	out := make(map[uint32][]lifeWindow, len(tracks))
-	for _, t := range tracks {
-		out[t.Slot] = append(out[t.Slot], lifeWindow{from: t.StartFrame, to: t.EndFrame, named: t.XUID != ""})
+	for i, t := range tracks {
+		out[t.Slot] = append(out[t.Slot], lifeWindow{
+			from: t.StartFrame, to: t.EndFrame, named: t.XUID != "" && !deduced[i]})
 	}
 	for s := range out {
 		w := out[s]
@@ -314,11 +328,12 @@ func frameOf(ts, origin, step uint64) int {
 // interrupteur — mais elles se COMPTENT, pour que leur apparition se voie au journal.
 func buildEquipmentEpisodes(
 	sorted []filmdec.BipedPosition, camo []filmdec.CamoRead, origin, step uint64, tracks []Track,
+	deduced map[int]bool,
 ) ([]EquipmentEpisode, int) {
 	if len(tracks) == 0 || step == 0 {
 		return nil, 0
 	}
-	windows := trackFrameWindows(tracks)
+	windows := trackFrameWindows(tracks, deduced)
 	var out []EquipmentEpisode
 	nonBinary := buildCamoEpisodes(camo, origin, step, windows, &out)
 	buildOvershieldEpisodes(sorted, origin, step, windows, &out)
@@ -414,9 +429,9 @@ func buildOvershieldEpisodes(
 // les épisodes de toutes les vies, le rend visible — deux épisodes d'un même slot recyclé
 // comptaient pour une seule vie. C'est le défaut symétrique de celui corrigé le même jour
 // pour `coverage.grapple.pullLives` (constat C2 de la revue REG-R1).
-func equipmentCoverage(eps []EquipmentEpisode, tracks []Track) *EquipmentCoverage {
+func equipmentCoverage(eps []EquipmentEpisode, tracks []Track, deduced map[int]bool) *EquipmentCoverage {
 	cov := &EquipmentCoverage{TracksTotal: len(tracks)}
-	windows := trackFrameWindows(tracks)
+	windows := trackFrameWindows(tracks, deduced)
 	camoLives := map[[2]int]struct{}{}
 	osLives := map[[2]int]struct{}{}
 	for _, e := range eps {

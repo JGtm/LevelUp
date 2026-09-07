@@ -138,8 +138,8 @@ func p2aCourbeDistance(t *testing.T, sb *strings.Builder, e p2aEntree, act []Obj
 	t.Helper()
 	loin := TranslateZones(e.zones, mapvar.Vec3{X: p2aTemoinTranslationM, Y: p2aTemoinTranslationM})
 	for _, d := range p2aDistancesM {
-		_, cov := AttributeZones(act, e.doc.Tracks, e.zones, AttributeOptions{MaxDistanceM: d})
-		_, temoin := AttributeZones(act, e.doc.Tracks, loin, AttributeOptions{MaxDistanceM: d})
+		_, cov := AttributeZones(act, e.doc.Tracks, e.zones, nil, AttributeOptions{MaxDistanceM: d})
+		_, temoin := AttributeZones(act, e.doc.Tracks, loin, nil, AttributeOptions{MaxDistanceM: d})
 		t.Logf("  tolerance %4.1f m : attribuees %d/%d = %5.1f %% (hors %d, sans position %d,"+
 			" ambigues %d) · TEMOIN zones a %.0f m : %.1f %%", d, cov.Attributed, cov.Actions,
 			100*p2aRate(cov.Attributed, cov.Actions), cov.Outside, cov.NoPosition, cov.Ambiguous,
@@ -155,7 +155,7 @@ func p2aTableSlotZone(t *testing.T, sb *strings.Builder, e p2aEntree,
 	act []ObjectiveAction,
 ) p2aAppariement {
 	t.Helper()
-	att, _ := AttributeZones(act, e.doc.Tracks, e.zones, AttributeOptions{MaxDistanceM: p2aVerdictDistanceM})
+	att, _ := AttributeZones(act, e.doc.Tracks, e.zones, nil, AttributeOptions{MaxDistanceM: p2aVerdictDistanceM})
 	ramps := p2aRampes(e.sc)
 	rows := make([]p2aCapture, 0, len(att))
 	for _, a := range att {
