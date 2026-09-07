@@ -878,7 +878,34 @@ package replay
 // 46 SONT PRIS** par les lots des manches, des durees et des drapeaux, en cours sur d'autres
 // branches : deux chantiers paralleles ne peuvent pas revendiquer le meme numero.
 // Detail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
-const SchemaVersion = 47
+//
+// v48 (2026-09-07) : LE PONT D'IDENTITE CESSE D'ETRE MUET SUR LES FILMS DONT LA PREMIERE MORT
+// TOMBE APRES LA PREMIERE MINUTE. Aucun champ n'est ajoute : c'est un changement de CONTENU.
+//
+//	calage      `bestDeathOffset` balayait le decalage fil des morts <-> film depuis
+//	            `min(fins de vie) - 60 000` : la marge amont SUPPOSAIT que la premiere mort du
+//	            match tombe dans la premiere minute. Le fil est date depuis le debut du match,
+//	            or la partie ne commence pas a t = 0 (mise en place, joueurs qui rejoignent).
+//	            Au-dela de 60 s, le vrai calage tombait SOUS la borne et l'optimiseur se
+//	            rabattait sur un pic de bruit. La plage est desormais celle des DONNEES
+//	            (`[min(fins) - max(morts), max(fins) - min(morts)]`), designee par un VOTE puis
+//	            affinee au pas de 10 ms sur la grille d'avant. lives.go.
+//	            Mesure : CINQ films du parc sur 106, et ce sont EXACTEMENT les cinq dont
+//	            l'origine du fil n'etait pas publiee (`resolveOriginMs` prend ce calage pour
+//	            temoin). Vies nommees : `51ebbc0f` 9 -> 71 / 87, `fb1a1a72` 17 -> 140 / 147,
+//	            `4f77afc1` 44 -> 192 / 375, `11de8353` 31 -> 150 / 246, `06dfe6d9` 37 -> 225 /
+//	            291. Les films deja bien cales retiennent le MEME entier de calage.
+//	roster      Le roster de lecture de l'index de joueur venait du SEUL fil des morts : un
+//	            joueur qui ne meurt jamais n'y figure pas, donc n'a pas d'index, donc aucune de
+//	            ses pistes n'est rattachable et il manque au roster publie. La feuille de match
+//	            le COMPLETE quand l'appelant la fournit (`Options.RosterXUIDs`, vide = comportement
+//	            d'avant). Mesure : `3372e7eb` publiait 6 joueurs pour 8, les deux manquants a
+//	            0 mort. player_index.go, replaybuild/matchfacts.go.
+//
+// La version monte pour la meme raison qu'aux montees v39 a v47 : un artefact < 48 porte des
+// pistes non nommees et, sur cinq films, un calque d'objectifs et une courbe de score non
+// recales faute d'origine. Detail : .ai/V7.5/v2/PONT_MUET_2026-09-07.md.
+const SchemaVersion = 48
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
