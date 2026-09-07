@@ -59,14 +59,13 @@ export function TimeseriesProgressionTab({
   filterContextHash,
   explorerMatchRows,
 }: TimeseriesProgressionTabProps) {
+  const hasExpectedWinProb = useCapability('expected_win_prob')
   // Colonne « Prob. vic. » (expected_win_prob, LUSR v2) injectée après « Résultat »
-  // dans le tableau historique — spécifique à cette vue (pas sur la page Explorer).
+  // dans le tableau historique — gatée par capability expected_win_prob (remisée).
   const winProbColumns = useMemo<ColumnDef<ExplorerMatchRow>[]>(
-    () => [
+    () => hasExpectedWinProb ? [
       {
         id: 'expected_win_prob',
-        // I16 : colonne triable (tri client, cf. `sortable` sur ExplorerMatchesTable
-        // ci-dessous) — valeur brute nullable, nuls rangés en bas (cf. NUMERIC_SORT).
         accessorFn: (r) => r.expected_win_prob ?? undefined,
         ...NUMERIC_SORT,
         header: t('timeseries.progression.col_win_prob'),
@@ -81,8 +80,8 @@ export function TimeseriesProgressionTab({
           )
         },
       },
-    ],
-    [t],
+    ] : [],
+    [t, hasExpectedWinProb],
   )
   const emptyMsg = t('timeseries.empty.no_data_description')
   // « Premier frag / première mort » : série solo servie par le payload de page —
