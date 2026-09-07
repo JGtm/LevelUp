@@ -18,6 +18,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/replaydiff"
@@ -119,7 +120,9 @@ func vide(s string) string {
 // bloquant, quel que soit le mode : le gate n'a alors pas pu faire son travail), ou si
 // `pertesBloquent` est vrai et qu'un temoin porte une perte. `pertesBloquent` vaut
 // `reference == "base"` (toujours) ou `--strict` (mode parc) — cf. l'en-tete du fichier. Un
-// temoin ABSENT n'est jamais un echec (avertissement deja emis en slog).
+// temoin ABSENT n'est jamais un echec ICI (avertissement deja emis en slog) : la COUVERTURE
+// (au moins un temoin absent = un gate qui ne compare rien) est verifiee separement par
+// [verifierCouverture], AVANT ce calcul — les deux ne se substituent pas l'une a l'autre.
 func codeSortie(lignes []ligneRapport, pertesBloquent bool) int {
 	for _, l := range lignes {
 		if l.Absent {
@@ -133,4 +136,31 @@ func codeSortie(lignes []ligneRapport, pertesBloquent bool) int {
 		}
 	}
 	return 0
+}
+
+// verifierCouverture impose qu'AUCUN temoin du manifeste ne soit ABSENT, sauf si `allowMissing`
+// est vrai — CORPUS-R1 C3 (L6, P0) : un cache de film purge ou partiel rend TOUS les temoins
+// ABSENT, et `codeSortie` ci-dessus les saute tous (`continue`) sans jamais rencontrer ni
+// erreur ni perte — le gate sortait alors en 0 SANS RIEN COMPARER, le silence le plus dangereux
+// qu'un gate de non-regression puisse rendre. Par defaut, un seul temoin absent est donc une
+// ERREUR DE COUVERTURE (distincte d'une perte ou d'une erreur de cuisson) — `--allow-missing`
+// restaure l'ancien comportement (avertissement seul) pour un usage delibere (par exemple un
+// manifeste dont un temoin vient d'etre ajoute avant que son film soit copie localement).
+func verifierCouverture(lignes []ligneRapport, allowMissing bool) error {
+	if allowMissing {
+		return nil
+	}
+	var absents []string
+	for _, l := range lignes {
+		if l.Absent {
+			absents = append(absents, fmt.Sprintf("%s (%s) : %s", l.Temoin.ID, l.Temoin.Famille, l.AbsentCause))
+		}
+	}
+	if len(absents) == 0 {
+		return nil
+	}
+	return fmt.Errorf("couverture incomplete : %d/%d temoin(s) du manifeste absent(s) — "+
+		"un gate qui ne compare pas un temoin ne le garde pas (passer --allow-missing pour "+
+		"tolerer deliberement) :\n  %s",
+		len(absents), len(lignes), strings.Join(absents, "\n  "))
 }

@@ -30,6 +30,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -39,15 +40,15 @@ import (
 )
 
 // resolveBaseRevision rend la revision de base a cuire, cf. l'en-tete du fichier.
-func resolveBaseRevision(explicit, sourceRoot string) (string, error) {
+func resolveBaseRevision(ctx context.Context, explicit, sourceRoot string) (string, error) {
 	if explicit != "" {
 		return explicit, nil
 	}
-	head, err := gitRevParse(sourceRoot, "HEAD")
+	head, err := gitRevParse(ctx, sourceRoot, "HEAD")
 	if err != nil {
 		return "", fmt.Errorf("resolution de la base : HEAD illisible : %w", err)
 	}
-	origin, err := gitRevParse(sourceRoot, "origin/feat/v75")
+	origin, err := gitRevParse(ctx, sourceRoot, "origin/feat/v75")
 	if err != nil {
 		slog.Warn("replay-corpus-gate: origin/feat/v75 introuvable — repli sur HEAD^", "err", err)
 		return "HEAD^", nil
@@ -58,8 +59,8 @@ func resolveBaseRevision(explicit, sourceRoot string) (string, error) {
 	return "HEAD^", nil
 }
 
-func gitRevParse(dir, rev string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", rev)
+func gitRevParse(ctx context.Context, dir, rev string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", rev)
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
@@ -75,10 +76,13 @@ type worktreeBase struct {
 }
 
 // creerWorktreeBase cree le worktree detache et rend sa fonction de nettoyage — a `defer` par
-// l'appelant, MEME EN ECHEC (le worktree, une fois cree, doit toujours etre retire).
-func creerWorktreeBase(sourceRoot, workDir, revision string) (worktreeBase, func(), error) {
+// l'appelant, MEME EN ECHEC (le worktree, une fois cree, doit toujours etre retire). `ctx` ne
+// couvre QUE la CREATION : le nettoyage retourne utilise DELIBEREMENT context.Background(),
+// jamais `ctx` — une interruption (Ctrl-C, CORPUS-R1 C1/C2) annule `ctx` precisement pour
+// declencher CE nettoyage ; l'annuler aussi couperait la suppression qu'on vient de demander.
+func creerWorktreeBase(ctx context.Context, sourceRoot, workDir, revision string) (worktreeBase, func(), error) {
 	chemin := filepath.Join(workDir, "base-worktree")
-	cmd := exec.Command("git", "worktree", "add", "--detach", chemin, revision) //nolint:gosec // revision resolue par resolveBaseRevision
+	cmd := exec.CommandContext(ctx, "git", "worktree", "add", "--detach", chemin, revision) //nolint:gosec // revision resolue par resolveBaseRevision
 	cmd.Dir = sourceRoot
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -97,7 +101,7 @@ func creerWorktreeBase(sourceRoot, workDir, revision string) (worktreeBase, func
 				"nettoyage manuel requis", "chemin", chemin)
 			return
 		}
-		rmCmd := exec.Command("git", "worktree", "remove", "--force", chemin)
+		rmCmd := exec.CommandContext(context.Background(), "git", "worktree", "remove", "--force", chemin)
 		rmCmd.Dir = sourceRoot
 		if out, err := rmCmd.CombinedOutput(); err != nil {
 			slog.Warn("replay-corpus-gate: suppression du worktree base", "chemin", chemin,
@@ -136,11 +140,11 @@ func contientUneJonction(racine string) (bool, error) {
 // compilerReplayBuild compile cmd/replay-build depuis `goAPIDir` vers `sortie`, avec un
 // GOCACHE dedie (jamais celui du HEAD : les deux binaires peuvent differer, un cache partage
 // les ferait courir apres le meme paquet compile sous deux revisions).
-func compilerReplayBuild(goAPIDir, gocache, sortie string) error {
+func compilerReplayBuild(ctx context.Context, goAPIDir, gocache, sortie string) error {
 	if err := os.MkdirAll(gocache, 0o750); err != nil {
 		return fmt.Errorf("GOCACHE dedie (%s) : %w", gocache, err)
 	}
-	cmd := exec.Command("go", "build", "-o", sortie, "./cmd/replay-build")
+	cmd := exec.CommandContext(ctx, "go", "build", "-o", sortie, "./cmd/replay-build")
 	cmd.Dir = goAPIDir
 	cmd.Env = append(os.Environ(), "GOCACHE="+gocache, "CGO_ENABLED=0")
 	var stderr bytes.Buffer

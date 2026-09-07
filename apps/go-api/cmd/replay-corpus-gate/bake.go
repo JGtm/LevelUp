@@ -26,6 +26,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -41,25 +42,45 @@ import (
 // outilNom : le nom que ce gate porte dans le journal des protections (verrou partage).
 const outilNom = "replay-corpus-gate"
 
+// attenteVerrouGate : combien de temps une cuisson attend son tour avant de renoncer — MEME
+// REGIME que les trois autres enchaineurs de films de ce depot (cmd_backfill_replay_child.go,
+// replay-equiv/child.go, replay-worker/job.go, tous a 10 min). Avant CORPUS-R1 C10,
+// `filmproc.AcquireSolo` refusait IMMEDIATEMENT sur un decodage concurrent (worker, post-sync,
+// backfill deja en cours) : un gate qui dure 13 a 25 min sortait alors en erreur pour une
+// raison etrangere au diff sous revue — rouge FAUX, jamais vert faux, mais un bruit que
+// l'attente bornee elimine.
+const attenteVerrouGate = 10 * time.Minute
+
 // resultatCuisson porte l'artefact produit et le temps qu'il a coute.
 type resultatCuisson struct {
 	ArtifactPath string
 	Duree        time.Duration
 }
 
-// bakeTemoin cuit UN temoin dans `workRoot`, avec le binaire `binPath` (replay-build compile a
-// la revision voulue). Essaie chaque carte candidate de `facts.MapNames` DANS L'ORDRE (le plus
-// fiable au moins fiable — meme regle que replaybuild.Builder.BuildMatch, que le CLI unitaire
-// n'expose qu'a un seul --map a la fois) jusqu'a un succes.
-func bakeTemoin(binPath, workRoot, lockRoot, titleSlug string, facts replaybuild.FactsFile) (resultatCuisson, error) {
-	lock, err := filmproc.AcquireSolo(lockRoot, outilNom, facts.MatchID)
+// cuissonParams regroupe les chemins d'UNE cuisson — un struct plutot qu'une signature a plus
+// de 5 parametres une fois `ctx` ajoute (CLAUDE.md n°5).
+type cuissonParams struct {
+	BinPath   string // replay-build compile a la revision voulue
+	WorkRoot  string
+	LockRoot  string
+	TitleSlug string
+}
+
+// bakeTemoin cuit UN temoin dans `p.WorkRoot`, avec le binaire `p.BinPath`. Essaie chaque carte
+// candidate de `facts.MapNames` DANS L'ORDRE (le plus fiable au moins fiable — meme regle que
+// replaybuild.Builder.BuildMatch, que le CLI unitaire n'expose qu'a un seul --map a la fois)
+// jusqu'a un succes. `ctx` borne l'ATTENTE du verrou partage (attenteVerrouGate) — annule (Ctrl-C
+// sur un gate qui dure 13 a 25 min), il interrompt l'attente proprement au lieu de la laisser
+// courir jusqu'a son terme.
+func bakeTemoin(ctx context.Context, p cuissonParams, facts replaybuild.FactsFile) (resultatCuisson, error) {
+	lock, err := filmproc.AcquireSoloWait(ctx, p.LockRoot, outilNom, facts.MatchID, attenteVerrouGate)
 	if err != nil {
 		return resultatCuisson{}, fmt.Errorf("verrou de decodage : %w", err)
 	}
 	defer lock.Release()
 	filmproc.LowerOwnPriority(outilNom)
 
-	factsPath, err := ecrireFaitsTemp(workRoot, facts)
+	factsPath, err := ecrireFaitsTemp(p.WorkRoot, facts)
 	if err != nil {
 		return resultatCuisson{}, fmt.Errorf("faits temporaires : %w", err)
 	}
@@ -70,7 +91,7 @@ func bakeTemoin(binPath, workRoot, lockRoot, titleSlug string, facts replaybuild
 	debut := time.Now()
 	var dernierErr error
 	for _, mapName := range facts.MapNames {
-		if err := cuireUneCarte(binPath, workRoot, titleSlug, mapName, factsPath, facts.MatchID); err != nil {
+		if err := cuireUneCarte(ctx, p, mapName, factsPath, facts.MatchID); err != nil {
 			dernierErr = err
 			continue
 		}
@@ -82,7 +103,7 @@ func bakeTemoin(binPath, workRoot, lockRoot, titleSlug string, facts replaybuild
 	}
 
 	return resultatCuisson{
-		ArtifactPath: title.NewPathResolver(workRoot).ReplayArtifactPath(titleSlug, facts.MatchID),
+		ArtifactPath: title.NewPathResolver(p.WorkRoot).ReplayArtifactPath(p.TitleSlug, facts.MatchID),
 		Duree:        time.Since(debut),
 	}, nil
 }
@@ -106,13 +127,13 @@ func ecrireFaitsTemp(workRoot string, facts replaybuild.FactsFile) (string, erro
 // deduit par defaut depuis LEVELUP_REPO_ROOT (filmcache.ChunkDir), et c'est ce chemin qu'il
 // faut lui laisser resoudre lui-meme — le repeter ici serait une deuxieme ecriture de la meme
 // regle de disposition (filmcache est deja LE point unique, cf. son en-tete).
-func cuireUneCarte(binPath, workRoot, titleSlug, mapName, factsPath, matchID string) error {
-	cmd := exec.Command(binPath, "--map", mapName, "--title", titleSlug, "--facts", factsPath, matchID) //nolint:gosec // binaire et args construits par ce gate
-	cmd.Env = append(os.Environ(), "LEVELUP_REPO_ROOT="+workRoot)
+func cuireUneCarte(ctx context.Context, p cuissonParams, mapName, factsPath, matchID string) error {
+	cmd := exec.CommandContext(ctx, p.BinPath, "--map", mapName, "--title", p.TitleSlug, "--facts", factsPath, matchID) //nolint:gosec // binaire et args construits par ce gate
+	cmd.Env = append(os.Environ(), "LEVELUP_REPO_ROOT="+p.WorkRoot)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%s --map %q : %w\n%s", filepath.Base(binPath), mapName, err, stderr.String())
+		return fmt.Errorf("%s --map %q : %w\n%s", filepath.Base(p.BinPath), mapName, err, stderr.String())
 	}
 	return nil
 }

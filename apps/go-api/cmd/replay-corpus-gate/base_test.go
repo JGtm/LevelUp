@@ -8,7 +8,7 @@ import (
 
 // TestResolveBaseRevisionFlagGagne — le flag explicite prime sur toute resolution automatique.
 func TestResolveBaseRevisionFlagGagne(t *testing.T) {
-	got, err := resolveBaseRevision("v1.2.3", "/peu/importe")
+	got, err := resolveBaseRevision(t.Context(), "v1.2.3", "/peu/importe")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -21,7 +21,7 @@ func TestResolveBaseRevisionFlagGagne(t *testing.T) {
 // rendre soit "origin/feat/v75" soit "HEAD^" (jamais une chaine vide ni une erreur) : ce test
 // tourne dans le worktree du chantier, un vrai depot git — verification d'integration legere.
 func TestResolveBaseRevisionAutoDetectionDansCeDepot(t *testing.T) {
-	got, err := resolveBaseRevision("", sourceRootDeCeDepot(t))
+	got, err := resolveBaseRevision(t.Context(), "", sourceRootDeCeDepot(t))
 	if err != nil {
 		t.Fatalf("resolution automatique de la base : %v", err)
 	}
