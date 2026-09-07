@@ -48,6 +48,13 @@ ce fichier prend le relais a partir de 7C et recoit toute nouvelle decouverte.
   chaque artefact par cycle (une fois par `Deriver.lireArtefacts`, une fois par la projection des
   rasters). NON TRAITE (fusion = brancher, pas optimiser) — a regrouper avec la note deja au registre
   §7 du plan tactique sur le document qui devrait circuler entre projections.
+  **TRAITE le 2026-09-07 (M6)** : `projeterRastersTactiques` appelle desormais directement le
+  calcul pur extrait `projeterRasterDepuisDocument(r.doc)` — plus aucune relecture. `raster.go`
+  ne rouvre le fichier que sur le seul chemin qui n'a pas de document en main (rattrapage CLI,
+  `ProjeterRasterTactique(path)`). Test compteur rouge->vert
+  (`raster_lecture_unique_test.go::TestProjeterRastersTactiques_NeRelitPasLeDocumentDejaEnMain`),
+  gates verts, branche `feat/raster-document-unique`. Detail : `.ai/thought_log.md`
+  entree « Orchestration — lot M6 ».
 
 - 2026-09-07 ; `apps/go-api/internal/platform/duckdb/tactical_repo.go` (`QTacticalPositions`) et
   `tactical_repo_isolement.go` (`QTacticalIsolement`) ; v75 a pose (lot 3, 2026-09-06) le

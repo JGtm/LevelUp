@@ -155,14 +155,14 @@ test `:memory:` dédié à `QTacticalIsolement` (entre dans Q8 si la revue le ju
 
 ## 3. Vague 2 — finitions moyennes (après vague 1 ; un lot par domaine en vol)
 
-| # | Lot | Source | Exécutant | Gate |
-|---|---|---|---|---|
-| M1 | Lien « voir dans le rejeu » depuis une cellule : contrat `POST …/tactical/{map_id}/cellule` (contributions `{match_id, instant_ms, xuid}` filtrées par ownership ADR 0029 + `matchs_non_ouvrables`), service, handler, `TacticalCellCard` avec lien `?frame=` (`playbackStore`), instant → frame en logique pure | Tactique S.1 (5.5 + 5.6 complet) | Opus effort bas pour le contrat + Sonnet pour le web | test « un match d'un autre joueur n'apparaît pas mais compte », `?frame=` positionne le rejeu, contrat régénéré, typecheck, vitest |
-| M2 | Constats P2 de l'audit des vies (5) + `drawnSwapAt` borné à la vie courante côté web | v2 R6 | Sonnet, effort moyen | mutation par constat, vitest, gates v2 |
-| M3 | Budget de candidats du calage (adaptatif ou dédoublonnage par fin de vie) ; test de documentation RETOURNÉ ; bump 49 partagé avec le lot suivant qui bumpe | v2 R7 | Opus, effort moyen | `d9781168` / `51ebbc0f` identiques hors numéro |
-| M4 | Diagnostics : écart K/D/A sur `51ebbc0f` (R4) ; re-vérification CTF multi-manche + VIP/crâne (R5) | v2 R4, R5 | Opus, effort moyen (diagnostic = jugement) | journal chiffré par joueur et par manche ; verdict source vs lecteur ; registre fermé ou rouvert avec chiffres |
-| M5 | Libellés L2 (accueil), L3 (modes/playlists → `assets.toml`), L4 (armes), L5 (rangs → `mappings/ranks.go`) | Libellés | Sonnet, effort moyen, un lot par famille | parité FR/EN à l'écran, ratchet qui baisse, `no_slug_comparison_test` |
-| M6 | Le document de rejeu circule entre projections : `ProjeterRasterTactique` réutilise `a.doc` au lieu de relire le fichier | Découvertes Tactique (fusion v75) | Sonnet, effort bas | durée d'un cycle `Deriver` mesurée avant/après, goldens inchangés |
+| # | Lot | Source | Exécutant | Gate | Statut |
+|---|---|---|---|---|---|
+| M1 | Lien « voir dans le rejeu » depuis une cellule : contrat `POST …/tactical/{map_id}/cellule` (contributions `{match_id, instant_ms, xuid}` filtrées par ownership ADR 0029 + `matchs_non_ouvrables`), service, handler, `TacticalCellCard` avec lien `?frame=` (`playbackStore`), instant → frame en logique pure | Tactique S.1 (5.5 + 5.6 complet) | Opus effort bas pour le contrat + Sonnet pour le web | test « un match d'un autre joueur n'apparaît pas mais compte », `?frame=` positionne le rejeu, contrat régénéré, typecheck, vitest | [ ] |
+| M2 | Constats P2 de l'audit des vies (5) + `drawnSwapAt` borné à la vie courante côté web | v2 R6 | Sonnet, effort moyen | mutation par constat, vitest, gates v2 | [ ] |
+| M3 | Budget de candidats du calage (adaptatif ou dédoublonnage par fin de vie) ; test de documentation RETOURNÉ ; bump 49 partagé avec le lot suivant qui bumpe | v2 R7 | Opus, effort moyen | `d9781168` / `51ebbc0f` identiques hors numéro | [ ] |
+| M4 | Diagnostics : écart K/D/A sur `51ebbc0f` (R4) ; re-vérification CTF multi-manche + VIP/crâne (R5) | v2 R4, R5 | Opus, effort moyen (diagnostic = jugement) | journal chiffré par joueur et par manche ; verdict source vs lecteur ; registre fermé ou rouvert avec chiffres | [ ] |
+| M5 | Libellés L2 (accueil), L3 (modes/playlists → `assets.toml`), L4 (armes), L5 (rangs → `mappings/ranks.go`) | Libellés | Sonnet, effort moyen, un lot par famille | parité FR/EN à l'écran, ratchet qui baisse, `no_slug_comparison_test` | [ ] |
+| M6 | Le document de rejeu circule entre projections : `ProjeterRasterTactique` réutilise `a.doc` au lieu de relire le fichier | Découvertes Tactique (fusion v75) | Sonnet, effort bas | durée d'un cycle `Deriver` mesurée avant/après, goldens inchangés | [x] fait — `projeterRastersTactiques` appelle `projeterRasterDepuisDocument(r.doc)`, extrait de `ProjeterRasterTactique` ; plus aucune relecture (test compteur rouge→vert `TestProjeterRastersTactiques_NeRelitPasLeDocumentDejaEnMain`, préféré à un chronométrage : preuve déterministe du nombre de lectures, sans le bruit d'un benchmark sur fixtures synthétiques) ; goldens `raster_test.go` inchangés ; gates verts ; branche `feat/raster-document-unique`, non fusionnée (voir `.ai/thought_log.md` 2026-09-07 « lot M6 ») |
 
 ## 4. Vague 3 — le paradigme (lot P du plan v2) et ce qu'il débloque
 
