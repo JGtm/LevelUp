@@ -2,6 +2,7 @@
 //
 //	POST /players/{player_slug}/tactical/maps                    (corps : perimetre)
 //	POST /players/{player_slug}/tactical/{map_id}/raster          (corps : perimetre + lecture)
+//	POST /players/{player_slug}/tactical/{map_id}/cellule         (corps : perimetre + lecture + cellule)
 //	GET  /players/{player_slug}/tactical/{map_id}/background      (calage du fond)
 //	GET  /players/{player_slug}/tactical/{map_id}/background.png  (image du fond)
 //
@@ -77,6 +78,8 @@ func (h *TacticalHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 		humacore.Op("getTacticalMaps", "Cartes jouees, pour la grille d'entree de l'onglet Tactique", "tactical"))
 	huma.Post(api, "/tactical/{map_id}/raster", h.handleGetRaster,
 		humacore.Op("getTacticalRaster", "Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne, ou je passe mon temps)", "tactical"))
+	huma.Post(api, "/tactical/{map_id}/cellule", h.handleGetCellule,
+		humacore.Op("getTacticalCellule", "Detail d'une cellule : les contributions ouvrables par l'appelant, pour ouvrir le rejeu au bon instant", "tactical"))
 	huma.Get(api, "/tactical/{map_id}/background", h.handleGetMapBackground,
 		humacore.Op("getTacticalMapBackground", "Calage du fond d'une carte de l'onglet Tactique", "tactical"))
 	// Route chi nue : la charge utile est binaire, comme le fond du rejeu par match.
@@ -188,6 +191,60 @@ func (h *TacticalHandler) handleGetRaster(ctx context.Context, in *tacticalRaste
 		return nil, mapTacticalError(ctx, err, "tactical.raster")
 	}
 	return &tacticalRasterOutput{Body: raster}, nil
+}
+
+// tacticalCelluleAdresse est l'adresse d'UNE cellule, dans le meme repere que
+// domain.CelluleTactique.Col/Lig — la case sur laquelle l'utilisateur a clique.
+type tacticalCelluleAdresse struct {
+	Col int `json:"col" doc:"Colonne de la cellule, ancree sur l'origine du monde (comme CelluleTactique.col)."`
+	Lig int `json:"lig" doc:"Ligne de la cellule, ancree sur l'origine du monde (comme CelluleTactique.lig)."`
+}
+
+// tacticalCelluleBody : LE MEME perimetre que tacticalRasterBody (match_ids,
+// coequipiers, question, qui, spawn), plus la cellule dont on demande le detail.
+type tacticalCelluleBody struct {
+	MatchIDs    []string               `json:"match_ids,omitempty" doc:"Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match."`
+	Coequipiers []string               `json:"coequipiers,omitempty" doc:"XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade »."`
+	Question    string                 `json:"question,omitempty" doc:"Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts."`
+	Qui         string                 `json:"qui,omitempty" doc:"Axe : moi | escouade | adv. Defaut : moi."`
+	Spawn       string                 `json:"spawn,omitempty" doc:"Identifiant d'une grappe de reapparition : restreint l'univers aux matchs dont MA premiere vie en part."`
+	Cellule     tacticalCelluleAdresse `json:"cellule" doc:"La cellule dont on demande le detail (col, lig)."`
+}
+
+type tacticalCelluleInput struct {
+	PlayerSlug string `path:"player_slug"`
+	MapID      string `path:"map_id"`
+	Body       tacticalCelluleBody
+}
+
+type tacticalCelluleOutput struct{ Body domain.TacticalCelluleReponse }
+
+// handleGetCellule retourne le detail d'une cellule : ses contributions ouvrables et le
+// compte de celles ecartees (ADR 0029). Meme validation de map_id et meme traduction
+// d'erreurs que handleGetRaster — c'est la MEME famille de lecture, sur UNE cellule au lieu
+// de la grille entiere.
+func (h *TacticalHandler) handleGetCellule(ctx context.Context, in *tacticalCelluleInput) (*tacticalCelluleOutput, error) {
+	mapID, ok := MapIDValide(in.MapID)
+	if !ok {
+		return nil, humacore.NewError(http.StatusNotFound, "tactical_map_unknown",
+			domain.ErrTacticalCarteInconnue.Error())
+	}
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	reponse, err := svc.Cellule(ctx, domain.TacticalCelluleRequest{
+		MapID:    mapID,
+		Question: defautSiVide(in.Body.Question, domain.TacticalQuestionMorts),
+		Qui:      defautSiVide(in.Body.Qui, domain.TacticalQuiMoi),
+		Scope:    scopeAvecSpawn(in.Body.MatchIDs, in.Body.Coequipiers, in.Body.Spawn),
+		Col:      in.Body.Cellule.Col,
+		Lig:      in.Body.Cellule.Lig,
+	})
+	if err != nil {
+		return nil, mapTacticalError(ctx, err, "tactical.cellule")
+	}
+	return &tacticalCelluleOutput{Body: reponse}, nil
 }
 
 type tacticalMapInput struct {
