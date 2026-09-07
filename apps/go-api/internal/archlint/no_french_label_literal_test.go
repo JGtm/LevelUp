@@ -71,6 +71,8 @@ var accentedLiteralRE = regexp.MustCompile(`[éèêàùçÉÈÊÀÙÇ]`)
 
 // frenchLabelAllowlist : compte du jour (2026-09-07, mesuré par ce test), par fichier
 // relatif à `internal/`. TOTAL au jour de la mesure : 132 fichiers, 538 littéraux (après retrait Q4 de 3 fichiers tombés à zéro).
+// Mise à jour 2026-09-07 (lot M5, L5) : compare_service.go 3 → 2 (csrUnrankedLabel migré
+// vers la clé canonique "unranked", D5) — 132 fichiers, 537 littéraux.
 // Familles connues (cf. plan libellés §2) annotées ; le reste (essentiel : messages
 // d'erreur des handlers, famille F/D6) attend la décision utilisateur D6 avant tri fin.
 var frenchLabelAllowlist = map[string]int{
@@ -98,8 +100,14 @@ var frenchLabelAllowlist = map[string]int{
 	"games/weapons/labels.go":   12,
 	"games/weapons/registry.go": 22,
 
-	// L5 — rangs / CSR (cible existante : mappings/ranks.go).
-	"service/compare_service.go": 3,
+	// L5 — rangs / CSR. mappings/ranks.go (RankCatalog) est le rang de CARRIÈRE,
+	// PAS le tier CSR (découverte lot M5, 2026-09-07 : la carte du plan datait —
+	// doctrine RE-VÉRIFIER). csrUnrankedLabel = "Non classé" (D5) migré vers la
+	// clé canonique "unranked" (lib/skillTiers.ts::localizeTierLabel côté web) :
+	// 3 → 2 littéraux. Les 2 restants sont des messages `logBestEffortErr` (family
+	// F, hors périmètre L5 — le wrapper n'est pas reconnu par l'exclusion slog.*/
+	// fmt.Errorf de ce garde-rail).
+	"service/compare_service.go": 2,
 
 	// L8 — notifications Discord (D8 tranché : langue du compte propriétaire).
 	"notify/discord.go": 34,
