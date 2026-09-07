@@ -1,4 +1,4 @@
-// Package analysis â€” squad_test.go : tests unitaires pour les algorithmes escouade.
+// Package analysis — squad_test.go : tests unitaires pour les algorithmes escouade.
 package analysis
 
 import (
@@ -16,10 +16,10 @@ import (
 func TestComputeSquadPerformanceScore_NoScores(t *testing.T) {
 	result := ComputeSquadPerformanceScore(nil, nil, nil, nil)
 	if result.Score != nil {
-		t.Errorf("score doit Ãªtre nil quand pas de donnÃ©es, got %v", result.Score)
+		t.Errorf("score doit être nil quand pas de données, got %v", result.Score)
 	}
 	if result.Grade != "N/A" {
-		t.Errorf("grade doit Ãªtre N/A, got %s", result.Grade)
+		t.Errorf("grade doit être N/A, got %s", result.Grade)
 	}
 }
 
@@ -27,14 +27,14 @@ func TestComputeSquadPerformanceScore_Basic(t *testing.T) {
 	s1, s2 := 70.0, 80.0
 	result := ComputeSquadPerformanceScore(
 		[]*float64{&s1, &s2},
-		[]float64{65.0, 70.0}, // win rate > 60 â†’ +5
-		[]float64{1.5, 2.0},   // min KDA > 1 â†’ +5
-		[]float64{8.0, 9.0},   // std < 3 â†’ +3
+		[]float64{65.0, 70.0}, // win rate > 60 → +5
+		[]float64{1.5, 2.0},   // min KDA > 1 → +5
+		[]float64{8.0, 9.0},   // std < 3 → +3
 	)
 	if result.Score == nil {
-		t.Fatal("score ne doit pas Ãªtre nil")
+		t.Fatal("score ne doit pas être nil")
 	}
-	// base = 75, bonus = 13 â†’ 88 (clamp 100)
+	// base = 75, bonus = 13 → 88 (clamp 100)
 	expected := 88.0
 	if *result.Score != expected {
 		t.Errorf("score attendu %.1f, got %.1f", expected, *result.Score)
@@ -45,12 +45,12 @@ func TestComputeSquadPerformanceScore_NoBonus(t *testing.T) {
 	s1, s2 := 50.0, 60.0
 	result := ComputeSquadPerformanceScore(
 		[]*float64{&s1, &s2},
-		[]float64{40.0},      // win rate â‰¤ 60 â†’ pas de bonus
-		[]float64{0.8},       // min KDA â‰¤ 1 â†’ pas de bonus
-		[]float64{5.0, 15.0}, // std > 3 â†’ pas de bonus
+		[]float64{40.0},      // win rate ≤ 60 → pas de bonus
+		[]float64{0.8},       // min KDA ≤ 1 → pas de bonus
+		[]float64{5.0, 15.0}, // std > 3 → pas de bonus
 	)
 	if result.Score == nil {
-		t.Fatal("score ne doit pas Ãªtre nil")
+		t.Fatal("score ne doit pas être nil")
 	}
 	if *result.Score != 55.0 {
 		t.Errorf("score attendu 55.0, got %.1f", *result.Score)
@@ -63,13 +63,13 @@ func TestComputeSquadPerformanceScore_Clamp(t *testing.T) {
 		[]*float64{&s1, &s2},
 		[]float64{65.0},     // +5
 		[]float64{2.0},      // +5
-		[]float64{3.0, 4.0}, // std > 3 â†’ pas de bonus
+		[]float64{3.0, 4.0}, // std > 3 → pas de bonus
 	)
 	if result.Score == nil {
-		t.Fatal("score ne doit pas Ãªtre nil")
+		t.Fatal("score ne doit pas être nil")
 	}
 	if *result.Score > 100.0 {
-		t.Errorf("score ne doit pas dÃ©passer 100, got %.1f", *result.Score)
+		t.Errorf("score ne doit pas dépasser 100, got %.1f", *result.Score)
 	}
 }
 
@@ -87,7 +87,7 @@ func TestResolveSquadGrade(t *testing.T) {
 	for _, tc := range cases {
 		g := resolveSquadGrade(tc.score)
 		if g != tc.grade {
-			t.Errorf("score %.0f â†’ grade attendu %s, got %s", tc.score, tc.grade, g)
+			t.Errorf("score %.0f → grade attendu %s, got %s", tc.score, tc.grade, g)
 		}
 	}
 }
@@ -127,7 +127,7 @@ func TestComputeSquadRecords_Empty(t *testing.T) {
 	records := ComputeSquadRecords(nil)
 	for _, v := range records {
 		if v != nil {
-			t.Errorf("record doit Ãªtre nil pour donnÃ©es vides")
+			t.Errorf("record doit être nil pour données vides")
 		}
 	}
 }
@@ -163,7 +163,7 @@ func TestComputeSquadRecords_MinDeaths(t *testing.T) {
 func TestComputeImpactSummary_Empty(t *testing.T) {
 	impact := ComputeImpactSummary(nil, "xuid_me", "xuid_tm")
 	if impact.Available {
-		t.Error("impact doit Ãªtre unavailable quand pas d'events")
+		t.Error("impact doit être unavailable quand pas d'events")
 	}
 }
 
@@ -176,7 +176,7 @@ func TestComputeImpactSummary_FirstBlood(t *testing.T) {
 	}
 	impact := ComputeImpactSummary(events, "xuid_me", "xuid_tm")
 	if !impact.Available {
-		t.Error("impact doit Ãªtre available")
+		t.Error("impact doit être available")
 	}
 	if impact.FirstBloods.Me != 1 {
 		t.Errorf("first bloods me attendu 1, got %d", impact.FirstBloods.Me)
@@ -193,7 +193,7 @@ func TestComputeImpactSummary_FirstBlood(t *testing.T) {
 func TestComputeSquadBreakdown_Empty(t *testing.T) {
 	stats := ComputeSquadBreakdown(nil)
 	if stats.MatchCount != 0 {
-		t.Errorf("match_count doit Ãªtre 0 pour donnÃ©es vides")
+		t.Errorf("match_count doit être 0 pour données vides")
 	}
 }
 
@@ -237,7 +237,7 @@ func TestComputeSynthesisHeatmap(t *testing.T) {
 // =============================================================================
 
 func TestComputeTopWeeks_MinimumMatches(t *testing.T) {
-	// 2 matchs dans une semaine â†’ ne doit pas apparaÃ®tre (min 3).
+	// 2 matchs dans une semaine → ne doit pas apparaître (min 3).
 	t0 := time.Date(2025, 1, 6, 12, 0, 0, 0, time.UTC) // lundi
 	rows := []domain.SquadMatchRow{
 		{StartTime: t0, Outcome: 2, Kills: 10},
@@ -245,7 +245,7 @@ func TestComputeTopWeeks_MinimumMatches(t *testing.T) {
 	}
 	weeks := ComputeTopWeeks(rows)
 	if len(weeks) != 0 {
-		t.Errorf("semaine < 3 matchs ne doit pas apparaÃ®tre, got %d", len(weeks))
+		t.Errorf("semaine < 3 matchs ne doit pas apparaître, got %d", len(weeks))
 	}
 }
 
@@ -262,10 +262,10 @@ func TestComputeTopWeeks_Sorting(t *testing.T) {
 	}
 	weeks := ComputeTopWeeks(rows)
 	if len(weeks) < 2 {
-		t.Fatalf("attendu â‰¥ 2 semaines, got %d", len(weeks))
+		t.Fatalf("attendu ≥ 2 semaines, got %d", len(weeks))
 	}
 	if weeks[0].WinRate < weeks[1].WinRate {
-		t.Errorf("semaines mal triÃ©es : %v", weeks)
+		t.Errorf("semaines mal triées : %v", weeks)
 	}
 }
 
@@ -309,9 +309,9 @@ func TestComputeSynthesisBreakdown_Squad(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ fmtPct â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── fmtPct ─────────────────────────────────────────────────────────────────
 
-// â”€â”€â”€ ComputeSynthesisHeatmap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ComputeSynthesisHeatmap ────────────────────────────────────────────────
 
 func TestComputeSynthesisHeatmap_Empty(t *testing.T) {
 	result := ComputeSynthesisHeatmap(nil)
@@ -331,7 +331,7 @@ func TestComputeSynthesisHeatmap_WithData(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ ComputeSynthesisKPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ComputeSynthesisKPIs ───────────────────────────────────────────────────
 
 func TestComputeSynthesisKPIs_Empty(t *testing.T) {
 	kpis := ComputeSynthesisKPIs(nil, false)
@@ -358,7 +358,7 @@ func TestComputeSynthesisKPIs_WithData(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ ComputeComparisonMetrics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ComputeComparisonMetrics ───────────────────────────────────────────────
 
 func TestComputeComparisonMetrics_ZeroKPIs(t *testing.T) {
 	solo := domain.SynthesisKPIs{}
@@ -369,7 +369,7 @@ func TestComputeComparisonMetrics_ZeroKPIs(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ ComputeTemporalHeatmap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ComputeTemporalHeatmap ─────────────────────────────────────────────────
 
 func TestComputeTemporalHeatmap_Empty(t *testing.T) {
 	result := ComputeTemporalHeatmap(nil)
@@ -391,7 +391,7 @@ func TestComputeTemporalHeatmap_WithData(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ ComputeSquadBreakdown (additional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ComputeSquadBreakdown (additional) ─────────────────────────────────────
 
 func TestComputeSquadBreakdown_WithMixedOutcomes(t *testing.T) {
 	kda := 2.0
@@ -406,7 +406,7 @@ func TestComputeSquadBreakdown_WithMixedOutcomes(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ squad_profiles.go â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── squad_profiles.go ──────────────────────────────────────────────────────
 
 func TestComputeParticipationProfile_WithData(t *testing.T) {
 	kda := 2.5

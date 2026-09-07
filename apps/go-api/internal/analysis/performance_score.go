@@ -1,12 +1,12 @@
-// Package analysis â€” Performance Score relatif Ã  l'historique personnel.
+// Package analysis — Performance Score relatif à l'historique personnel.
 //
 // Port Go de src/analysis/_performance_relative.py et src/analysis/performance_config.py.
 //
 // Algorithme v5-relative :
-//  1. Normaliser chaque match en mÃ©triques/minute.
-//  2. Pour chaque mÃ©trique, calculer le percentile_rank vs l'historique.
-//  3. Score = somme pondÃ©rÃ©e des percentiles / somme des poids actifs.
-//  4. Bonus bot_teammate si match perdu avec bot coÃ©quipier.
+//  1. Normaliser chaque match en métriques/minute.
+//  2. Pour chaque métrique, calculer le percentile_rank vs l'historique.
+//  3. Score = somme pondérée des percentiles / somme des poids actifs.
+//  4. Bonus bot_teammate si match perdu avec bot coéquipier.
 package analysis
 
 import (
@@ -16,16 +16,16 @@ import (
 	"levelup/go-api/internal/legacymatch"
 )
 
-// â”€â”€â”€ Constantes (port de performance_config.py) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Constantes (port de performance_config.py) ──────────────────────────────
 
 // MinMatchesForRelative est le nombre minimum de matchs pour activer le score relatif.
 const MinMatchesForRelative = 10
 
-// DefaultDurationSeconds est la durÃ©e par dÃ©faut si time_played_seconds est absent.
+// DefaultDurationSeconds est la durée par défaut si time_played_seconds est absent.
 const DefaultDurationSeconds = 600.0
 
-// ClÃ©s canoniques des mÃ©triques de performance. PartagÃ©es avec sync.MetricKey*
-// (mÃªmes valeurs string). Re-dÃ©clarÃ©es ici car analysis ne peut pas importer
+// Clés canoniques des métriques de performance. Partagées avec sync.MetricKey*
+// (mêmes valeurs string). Re-déclarées ici car analysis ne peut pas importer
 // sync sans cycle.
 const (
 	PerfMetricKPM              = "kpm"
@@ -43,38 +43,38 @@ const (
 	PerfMetricDefensiveResist  = "defensive_resistance"
 )
 
-// relativeWeights sont les poids des mÃ©triques pour le score relatif v5.
+// relativeWeights sont les poids des métriques pour le score relatif v5.
 var relativeWeights = map[string]float64{
 	PerfMetricKPM:              0.14, // Kills per minute
-	PerfMetricDPMDeaths:        0.10, // Deaths per minute (inversÃ©)
+	PerfMetricDPMDeaths:        0.10, // Deaths per minute (inversé)
 	PerfMetricAPM:              0.06, // Assists per minute
 	PerfMetricKDA:              0.11, // KDA
-	PerfMetricAccuracy:         0.04, // PrÃ©cision
+	PerfMetricAccuracy:         0.04, // Précision
 	PerfMetricPSPM:             0.10, // Personal Score Per Minute
 	PerfMetricDPMDamage:        0.06, // Damage Per Minute
 	PerfMetricRankPerf:         0.04, // Rank vs Expected (optionnel)
-	PerfMetricKillsVsExpected:  0.09, // Kills rÃ©els / Kills attendus
-	PerfMetricDeathsVsExpected: 0.07, // Deaths attendus / Deaths rÃ©els (inversÃ©)
-	PerfMetricMedalExploit:     0.06, // Exploit mÃ©dailles heroic+ pondÃ©rÃ©es par difficultÃ©
-	PerfMetricOffensiveConv:    0.09, // 225Ã—(kills+assists/3)/damage_dealt
-	PerfMetricDefensiveResist:  0.05, // damage_taken/(225Ã—deaths) â€” inversÃ©
-	// Î£ = 1.01 â†’ renormalisÃ© automatiquement (poids manquants ignorÃ©s)
+	PerfMetricKillsVsExpected:  0.09, // Kills réels / Kills attendus
+	PerfMetricDeathsVsExpected: 0.07, // Deaths attendus / Deaths réels (inversé)
+	PerfMetricMedalExploit:     0.06, // Exploit médailles heroic+ pondérées par difficulté
+	PerfMetricOffensiveConv:    0.09, // 225×(kills+assists/3)/damage_dealt
+	PerfMetricDefensiveResist:  0.05, // damage_taken/(225×deaths) — inversé
+	// Σ = 1.01 → renormalisé automatiquement (poids manquants ignorés)
 }
 
-// Codes numÃ©riques des issues de match Halo Infinite.
+// Codes numériques des issues de match Halo Infinite.
 //
-// DEPRECATED : utiliser domain.OutcomeWin / domain.OutcomeLoss Ã  la place.
-// Ces alias sont conservÃ©s pour ne pas casser les call-sites existants
+// DEPRECATED : utiliser domain.OutcomeWin / domain.OutcomeLoss à la place.
+// Ces alias sont conservés pour ne pas casser les call-sites existants
 // (analysis/comeback.go, ...). Migration progressive en P4 (canonical big-bang).
 const (
 	OutcomeWin  = 2
 	OutcomeLoss = 3
 )
 
-// â”€â”€â”€ API principale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── API principale ──────────────────────────────────────────────────────────
 
 // ComputeRelativePerformanceScore calcule le score de performance relatif (0-100)
-// pour un match donnÃ© en le comparant Ã  un historique de matchs prÃ©cÃ©dents.
+// pour un match donné en le comparant à un historique de matchs précédents.
 //
 // Retourne nil si l'historique est trop court (< MinMatchesForRelative).
 func ComputeRelativePerformanceScore(
@@ -92,13 +92,13 @@ func ComputeRelativePerformanceScore(
 	percentiles := make(map[string]float64)
 	weights := make(map[string]float64)
 
-	// MÃ©triques requises (toujours disponibles).
+	// Métriques requises (toujours disponibles).
 	addRequired(PerfMetricKPM, current.kpm, hist.kpm, false, percentiles, weights)
 	addRequired(PerfMetricDPMDeaths, current.dpmDeaths, hist.dpmDeaths, true, percentiles, weights)
 	addRequired(PerfMetricAPM, current.apm, hist.apm, false, percentiles, weights)
 	addRequired(PerfMetricKDA, current.kda, hist.kda, false, percentiles, weights)
 
-	// MÃ©triques optionnelles.
+	// Métriques optionnelles.
 	addOptional(PerfMetricAccuracy, current.accuracy, hist.accuracy, false, percentiles, weights)
 	addOptional(PerfMetricPSPM, current.pspm, hist.pspm, false, percentiles, weights)
 	addOptional(PerfMetricDPMDamage, current.dpmDamage, hist.dpmDamage, false, percentiles, weights)
@@ -130,8 +130,8 @@ func ComputeRelativePerformanceScore(
 	return &rounded
 }
 
-// ComputePerformanceSeries calcule le performance score pour chaque match d'une sÃ©rie.
-// Les matchs doivent Ãªtre triÃ©s par start_time ASC.
+// ComputePerformanceSeries calcule le performance score pour chaque match d'une série.
+// Les matchs doivent être triés par start_time ASC.
 func ComputePerformanceSeries(matches []legacymatch.StatsMatchRow) []*float64 {
 	if len(matches) == 0 {
 		return nil
@@ -148,7 +148,7 @@ func ComputePerformanceSeries(matches []legacymatch.StatsMatchRow) []*float64 {
 	return scores
 }
 
-// â”€â”€â”€ Types internes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Types internes ──────────────────────────────────────────────────────────
 
 type normalizedMetrics struct {
 	kpm                 float64
@@ -182,7 +182,7 @@ type historyColumns struct {
 	defensiveResistance []float64
 }
 
-// â”€â”€â”€ Calcul mÃ©triques normalisÃ©es â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Calcul métriques normalisées ────────────────────────────────────────────
 
 func resolveDuration(row legacymatch.StatsMatchRow) float64 {
 	if row.TimePlayedSeconds != nil && *row.TimePlayedSeconds > 0 {
@@ -296,9 +296,9 @@ func prepareHistoryMetrics(history []legacymatch.StatsMatchRow) historyColumns {
 	return h
 }
 
-// â”€â”€â”€ Percentile rank â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Percentile rank ─────────────────────────────────────────────────────────
 
-// PercentileRank calcule le percentile d'une valeur dans une sÃ©rie (0-100).
+// PercentileRank calcule le percentile d'une valeur dans une série (0-100).
 // Port de _percentile_rank(value, series) Python.
 func PercentileRank(value float64, series []float64) float64 {
 	if len(series) < 2 {
@@ -313,7 +313,7 @@ func PercentileRank(value float64, series []float64) float64 {
 	return clampF(float64(belowOrEqual)/float64(len(series))*100.0, 0.0, 100.0)
 }
 
-// PercentileRankInverse calcule le percentile inversÃ© (moins = mieux).
+// PercentileRankInverse calcule le percentile inversé (moins = mieux).
 func PercentileRankInverse(value float64, series []float64) float64 {
 	if len(series) < 2 {
 		return 50.0
@@ -327,7 +327,7 @@ func PercentileRankInverse(value float64, series []float64) float64 {
 	return clampF(float64(aboveOrEqual)/float64(len(series))*100.0, 0.0, 100.0)
 }
 
-// addRequired calcule et stocke le percentile pour une mÃ©trique toujours disponible.
+// addRequired calcule et stocke le percentile pour une métrique toujours disponible.
 func addRequired(
 	key string,
 	value float64,
@@ -352,12 +352,12 @@ func addRequired(
 	weightsUsed[key] = w
 }
 
-// addOptional calcule et stocke le percentile pour une mÃ©trique optionnelle.
+// addOptional calcule et stocke le percentile pour une métrique optionnelle.
 func addOptional(
 	key string,
 	value *float64,
 	series []float64,
-	inverse bool, //nolint:unparam // inverse=false actuellement, conserver pour mÃ©triques inverses futures
+	inverse bool, //nolint:unparam // inverse=false actuellement, conserver pour métriques inverses futures
 	percentiles, weightsUsed map[string]float64,
 ) {
 	if value == nil || len(series) < 2 {
@@ -366,7 +366,7 @@ func addOptional(
 	addRequired(key, *value, series, inverse, percentiles, weightsUsed)
 }
 
-// â”€â”€â”€ Bot bonus â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Bot bonus ───────────────────────────────────────────────────────────────
 
 func applyBotBonus(score float64, row legacymatch.StatsMatchRow) float64 {
 	isWin := row.Outcome != nil && *row.Outcome == OutcomeWin
@@ -384,7 +384,7 @@ func applyBotBonus(score float64, row legacymatch.StatsMatchRow) float64 {
 	return score + bonus
 }
 
-// â”€â”€â”€ Fallback KDA percentile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Fallback KDA percentile ─────────────────────────────────────────────────
 
 func computeKDAFallback(row legacymatch.StatsMatchRow, allMatches []legacymatch.StatsMatchRow) *float64 {
 	if len(allMatches) <= 1 {
@@ -414,7 +414,7 @@ func computeKDAFallback(row legacymatch.StatsMatchRow, allMatches []legacymatch.
 	return &pct
 }
 
-// clampF restreint une valeur Ã  [min, max].
+// clampF restreint une valeur à [min, max].
 func clampF(v, min, max float64) float64 {
 	if v < min {
 		return min

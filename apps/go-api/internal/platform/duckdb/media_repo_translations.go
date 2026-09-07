@@ -153,7 +153,7 @@ ORDER BY m.map_asset_id, CASE WHEN fr.lang = 'fr-FR' THEN 0 ELSE 1 END`
 }
 
 // mediaFilterOptionPair regroupe l'id source (map_id ou pair_name brut) et le
-// label SQL utilisÃ© pour le filtrage et l'affichage par dÃ©faut.
+// label SQL utilisé pour le filtrage et l'affichage par défaut.
 type mediaFilterOptionPair struct {
 	id    string
 	label string
@@ -163,9 +163,9 @@ type mediaFilterOptionPair struct {
 // faite côté Go via extractMapPairs/extractModePairs/extractPlaylistPairs
 // dans media_repo_q37_pipeline.go.)
 
-// translateMapFilterOptions enrichit les libellÃ©s de cartes en FR via
-// asset_translations + dÃ©dup par map_id. Value = map_id (stable, structurel)
-// pour permettre un filtrage non ambigu cÃ´tÃ© backend (sinon "Altitude" FR ne
+// translateMapFilterOptions enrichit les libellés de cartes en FR via
+// asset_translations + dédup par map_id. Value = map_id (stable, structurel)
+// pour permettre un filtrage non ambigu côté backend (sinon "Altitude" FR ne
 // matche pas "High Ground" raw EN dans match_registry, et le filtre devient
 // inutilisable). Label = FR enrichi pour l'affichage.
 func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
@@ -184,9 +184,9 @@ func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []media
 	}
 	translations := r.loadAssetTranslationNames(ctx, "map", ids)
 
-	// DÃ©dup par map_id : si plusieurs raw labels mappent vers le mÃªme map_id
-	// (ex: "High Ground" et "Altitude" pour la mÃªme carte selon match_name_fr),
-	// on regroupe sous une seule entrÃ©e. Si map_id absent, fallback sur label.
+	// Dédup par map_id : si plusieurs raw labels mappent vers le même map_id
+	// (ex: "High Ground" et "Altitude" pour la même carte selon match_name_fr),
+	// on regroupe sous une seule entrée. Si map_id absent, fallback sur label.
 	seenIDs := make(map[string]bool)
 	seenLabels := make(map[string]bool)
 	options := make([]domain.LabelValue, 0, len(pairs))
@@ -195,7 +195,7 @@ func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []media
 		if labelFR == "" {
 			labelFR = p.label
 		}
-		// Value = map_id si dispo (stable), sinon label (fallback mÃ©dias sans match)
+		// Value = map_id si dispo (stable), sinon label (fallback médias sans match)
 		value := p.id
 		if value == "" {
 			value = p.label
@@ -215,20 +215,20 @@ func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []media
 	return options
 }
 
-// translateModeFilterOptions retourne une liste hiÃ©rarchique :
-//   - 1 entrÃ©e racine par catÃ©gorie prÃ©sente : {Label: "Assassin", Value: "Assassin"}
-//     (label EN canonique â†’ frontend traduit via i18n local)
-//   - N entrÃ©es sous-mode par catÃ©gorie : {Label: "Slayer" (ou trad FR via
+// translateModeFilterOptions retourne une liste hiérarchique :
+//   - 1 entrée racine par catégorie présente : {Label: "Assassin", Value: "Assassin"}
+//     (label EN canonique → frontend traduit via i18n local)
+//   - N entrées sous-mode par catégorie : {Label: "Slayer" (ou trad FR via
 //     mode_name_tr si dispo), Value: "Assassin/Slayer", Parent: "Assassin"}
 //
-// Le format value "CatÃ©gorie/SousMode" permet au backend de filtrer finement :
-// le WHERE dÃ©tecte le sÃ©parateur "/" et applique catÃ©gorie + sous-mode normalisÃ©.
+// Le format value "Catégorie/SousMode" permet au backend de filtrer finement :
+// le WHERE détecte le séparateur "/" et applique catégorie + sous-mode normalisé.
 func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
 	if len(pairs) == 0 {
 		return []domain.LabelValue{}
 	}
 
-	// 1) Grouper par catÃ©gorie + collecter les sous-modes EN distincts
+	// 1) Grouper par catégorie + collecter les sous-modes EN distincts
 	type catBucket struct {
 		category string
 		subEN    map[string]struct{} // sous-modes EN canoniques (ex: "Slayer", "Team Slayer")
@@ -246,21 +246,21 @@ func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []medi
 		if buckets[cat] == nil {
 			buckets[cat] = &catBucket{category: cat, subEN: make(map[string]struct{})}
 		}
-		// Sous-mode EN canonique via NormalizeModeLabel ("Arena:Slayer on X" â†’ "Slayer").
+		// Sous-mode EN canonique via NormalizeModeLabel ("Arena:Slayer on X" → "Slayer").
 		if sub := analysis.NormalizeModeLabel(p.id); sub != "" {
 			buckets[cat].subEN[sub] = struct{}{}
 			subEnSet[sub] = struct{}{}
 		}
 	}
 
-	// 2) Traduire les sous-modes EN â†’ FR via mode_name_tr (best-effort)
+	// 2) Traduire les sous-modes EN → FR via mode_name_tr (best-effort)
 	subEnList := make([]string, 0, len(subEnSet))
 	for en := range subEnSet {
 		subEnList = append(subEnList, en)
 	}
 	subTranslations := r.loadModeNameTranslations(ctx, subEnList)
 
-	// 3) Construire la liste plate : header catÃ©gorie + sous-modes triÃ©s
+	// 3) Construire la liste plate : header catégorie + sous-modes triés
 	categories := make([]string, 0, len(buckets))
 	for cat := range buckets {
 		categories = append(categories, cat)
@@ -270,9 +270,9 @@ func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []medi
 	options := make([]domain.LabelValue, 0)
 	for _, cat := range categories {
 		b := buckets[cat]
-		// Header catÃ©gorie (label EN, le frontend traduit via i18n.ts)
+		// Header catégorie (label EN, le frontend traduit via i18n.ts)
 		options = append(options, domain.LabelValue{Label: cat, Value: cat})
-		// Sous-modes triÃ©s par label localisÃ©
+		// Sous-modes triés par label localisé
 		subs := make([]domain.LabelValue, 0, len(b.subEN))
 		for en := range b.subEN {
 			label := en
@@ -281,7 +281,7 @@ func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []medi
 			}
 			subs = append(subs, domain.LabelValue{
 				Label:  label,
-				Value:  cat + "/" + en, // value canonique EN pour matcher cÃ´tÃ© WHERE
+				Value:  cat + "/" + en, // value canonique EN pour matcher côté WHERE
 				Parent: cat,
 			})
 		}
@@ -292,7 +292,7 @@ func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []medi
 }
 
 // loadAssetTranslationNames lit les traductions FR depuis metadata.asset_translations.
-// Retourne map[asset_id]â†’nom FR. Best-effort.
+// Retourne map[asset_id]→nom FR. Best-effort.
 func (r *MediaRepo) loadAssetTranslationNames(ctx context.Context, assetType string, assetIDs []string) map[string]string {
 	out := make(map[string]string)
 	if r.pdb == nil || r.pdb.Metadata == nil || len(assetIDs) == 0 {
@@ -385,7 +385,7 @@ func resolveMediaTitleSlug(titleSlug string) string {
 }
 
 // loadModeNameTranslations lit les traductions FR depuis metadata.mode_name_tr,
-// keyed par mode_en (dÃ©jÃ  normalisÃ© via analysis.NormalizeModeLabel).
+// keyed par mode_en (déjà normalisé via analysis.NormalizeModeLabel).
 // Le SQL vit dans mode_name_tr.go, source unique du littéral (garde-rail
 // no_mode_name_tr_literal_test.go). Variante best-effort : l'erreur est loguée
 // (plus avalée en silence) et la map retournée vide — jamais nil, le caller

@@ -1,8 +1,8 @@
-// Package analysis â€” home_locale.go : constantes outcome/color/tone, helpers
+// Package analysis — home_locale.go : constantes outcome/color/tone, helpers
 // locale (FR/EN), labels d'outcome, normalisation des modes, badges narratifs,
 // score label, regex UUID.
 //
-// Ces helpers sont partagÃ©s entre la projection legacy (home.go, home_*.go)
+// Ces helpers sont partagés entre la projection legacy (home.go, home_*.go)
 // et la projection canonique (home_canonical_*.go).
 package analysis
 
@@ -14,7 +14,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Constantes outcome (codes numÃ©riques Halo Infinite)
+// Constantes outcome (codes numériques Halo Infinite)
 // ---------------------------------------------------------------------------
 
 const (
@@ -29,7 +29,7 @@ const (
 	homeDominanceCounterRemontada = 5
 )
 
-// Codes couleur sÃ©mantiques utilisÃ©s dans les blocs JSON du Home (highlights).
+// Codes couleur sémantiques utilisés dans les blocs JSON du Home (highlights).
 const (
 	homeColorPositive = "positive"
 	homeColorNeutral  = "neutral"
@@ -40,9 +40,9 @@ const (
 // reconnu (defaut FR/EN identique : "Match").
 const homeOutcomeLabelFallback = "Match"
 
-// Tones d'outcome partagÃ©s entre la projection JSON (home) et les filtres
-// (match_filter). DÃ©clarÃ©s ici car le package n'a pas de fichier de constantes
-// partagÃ©es et home_locale.go est le point d'entrÃ©e des codes outcome.
+// Tones d'outcome partagés entre la projection JSON (home) et les filtres
+// (match_filter). Déclarés ici car le package n'a pas de fichier de constantes
+// partagées et home_locale.go est le point d'entrée des codes outcome.
 const (
 	OutcomeToneWin  = "win"
 	OutcomeToneLoss = "loss"
@@ -53,8 +53,8 @@ const (
 
 var homeOutcomeLabels = map[int]string{
 	homeOutcomeWin:  "Victoire",
-	homeOutcomeLoss: "DÃ©faite",
-	homeOutcomeTie:  "Ã‰galitÃ©",
+	homeOutcomeLoss: "Défaite",
+	homeOutcomeTie:  "Égalité",
 	homeOutcomeDNF:  "Abandon",
 }
 
@@ -168,7 +168,7 @@ func buildHomeNarrativeBadges(dominanceFlag int) []string {
 }
 
 // normalizeHomeModeLabel est un alias interne vers NormalizeModeLabel.
-// ConservÃ© pour ne pas casser les appelants internes au package.
+// Conservé pour ne pas casser les appelants internes au package.
 func normalizeHomeModeLabel(raw string, mapLabels ...string) string {
 	return NormalizeModeLabel(raw, mapLabels...)
 }

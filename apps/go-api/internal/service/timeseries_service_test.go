@@ -52,7 +52,7 @@ func TestBuildCumulTab_RollingKD(t *testing.T) {
 	if len(tab.RollingKD) != 25 {
 		t.Fatalf("expected 25 rolling KD points, got %d", len(tab.RollingKD))
 	}
-	// All same stats â†’ rolling KD should be 2.0 throughout.
+	// All same stats → rolling KD should be 2.0 throughout.
 	if tab.RollingKD[24].Value != 2.0 {
 		t.Errorf("expected rolling KD 2.0, got %v", tab.RollingKD[24].Value)
 	}
@@ -129,11 +129,11 @@ func TestBuildDistributionsTab_CorrectBuckets(t *testing.T) {
 	if len(tab.KDABuckets) == 0 {
 		t.Fatal("expected non-empty KDABuckets")
 	}
-	// buildCorrelationPoints gÃ©nÃ¨re 4 points par match (kills_vs_kd, lifespan_vs_kills,
-	// lifespan_vs_deaths, kills_vs_deaths) â€” accuracy_vs_kda et mmr_team_vs_enemy sont
+	// buildCorrelationPoints génère 4 points par match (kills_vs_kd, lifespan_vs_kills,
+	// lifespan_vs_deaths, kills_vs_deaths) — accuracy_vs_kda et mmr_team_vs_enemy sont
 	// exclus car Accuracy/KDA/MMR sont nil dans ce fixture.
 	if len(tab.CorrelationPoints) != 16 {
-		t.Errorf("expected 4 matches Ã— 4 types = 16 correlation points, got %d", len(tab.CorrelationPoints))
+		t.Errorf("expected 4 matches × 4 types = 16 correlation points, got %d", len(tab.CorrelationPoints))
 	}
 }
 

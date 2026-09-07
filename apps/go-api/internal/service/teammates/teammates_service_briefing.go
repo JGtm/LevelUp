@@ -157,8 +157,8 @@ func filterTopRowsToFriends(rows []domain.TopTeammateRow, friendGamertags []stri
 	return out
 }
 
-// extractSynthesisSessionLabels collecte les sessions uniques en sÃƒÂ©parant solo / escouade,
-// calcule les bornes temporelles, agrÃƒÂ¨ge les expÃƒÂ©riences et playlists prÃƒÂ©sentes, et trie par StartedAt DESC.
+// extractSynthesisSessionLabels collecte les sessions uniques en séparant solo / escouade,
+// calcule les bornes temporelles, agrège les expériences et playlists présentes, et trie par StartedAt DESC.
 func extractSynthesisSessionLabels(matches []legacymatch.SynthesisMatchRow) domain.SessionLabelsList {
 	type meta struct {
 		startedAt   time.Time
@@ -242,7 +242,7 @@ func extractSynthesisSessionLabels(matches []legacymatch.SynthesisMatchRow) doma
 	}
 }
 
-// synthesisExperienceLabel dÃƒÂ©rive le label d'expÃƒÂ©rience d'un match (miroir de filters_service.go).
+// synthesisExperienceLabel dérive le label d'expérience d'un match (miroir de filters_service.go).
 func synthesisExperienceLabel(m legacymatch.SynthesisMatchRow) string {
 	if m.IsFirefight {
 		return squadagg.ExpTypePVE
@@ -283,8 +283,8 @@ func filterSynthesisByCascade(matches []legacymatch.SynthesisMatchRow, c domain.
 	return out
 }
 
-// filterSynthesisBySession filtre les matchs selon les sessions sÃƒÂ©lectionnÃƒÂ©es (union des labels).
-// Slices vides Ã¢â€ â€™ tous les matchs retournÃƒÂ©s sans filtre.
+// filterSynthesisBySession filtre les matchs selon les sessions sélectionnées (union des labels).
+// Slices vides → tous les matchs retournés sans filtre.
 // filterSynthesisByPeriodInput filtre les matchs selon une fenetre temporelle (start/end inclus).
 // Le rail periode et le PeriodePill du FilterOmnibar ecrivent dans req.Filters.Period ;
 // teammates_service doit appliquer ce filtre pour que la nav periode ait un effet sur

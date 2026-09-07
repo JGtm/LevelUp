@@ -100407,3 +100407,62 @@ Rien n'est committe : worktree `LevelUp-wt-orchestration`, branche `wt/orchestra
   (`thought_log`, `REGISTRE_REPORTS`) verifiee aux comptes de lignes ; `go build ./...`,
   `go test ./internal/sync/haloclient/` et `./internal/sync/ -run 'Pooled|Blob|TextPredicate|IsAuth'`
   verts. CI : consultee en fin de vague (regle du 2026-09-07).
+
+## [2026-09-07] Orchestration — vague 1, lot Q3 (mojibake) — Complete
+
+**Decision technique principale.** Re-grep sur pieces (doctrine RE-VERIFIER) au lieu de
+reprendre le compte du plan libelles (45 fichiers hors tests / 16 litteraux) : perimetre reel
+D9 = `.go` du module `apps/go-api` TESTS COMPRIS + `.toml` de `config/titles/**` (0 occurrence
+cote TOML). Methode de reencodage : petit programme Go jetable (scratchpad, jamais commite) qui
+isole les runs maximaux de runes non-ASCII, tente de les reinterpreter comme des octets CP1252
+puis de les redecoder en UTF-8, et ne remplace QUE si le resultat est un UTF-8 valide plus court
+que l'entree (signature d'un double encodage) — jamais un decode-reencode aveugle du fichier
+entier, qui aurait detruit les accents deja corrects coexistant dans les memes fichiers
+(confirme : 218 accents legitimes dans `sync/engine.go` pour 1 seul defaut reel). Faux positifs
+ecartes AVANT correction : 62 fichiers contenant `Â` (capitale accentuee legitime en francais —
+CABLE, LACHER, DEGAT, RATELIER, BATI) ne sont PAS du mojibake, verifies un par un puis exclus
+(aucun n'est une fixture testant volontairement le mojibake — la seule exception documentee est
+le garde-rail lui-meme, qui construit ses fixtures a l'execution plutot que de s'auto-allowlister
+avec un allowlist non vide). Le balayage par motif litteral (`Ã`/`Å`/`â€`) a manque 1 fichier
+entier (`skill_rating_extra_test.go`, defaut "â‰ˆ"/"â†’" jamais "Ã"-prefixe) et des occurrences
+dans 2 fichiers deja corriges ailleurs (`synthesis_service_legacy.go`, `synthesis_service_builders.go`,
+fleche "→" mojibake) — trouves seulement en ecrivant le garde-rail generique (motif structurel
+`[ÃÅ][classe]` / `â[classe]`, pas une liste figee) et en le faisant tourner AVANT de clore l'etape ;
+le meme balayage generique a resolu 6 sites residuels ou une corruption SECONDAIRE (aplatissement
+NBSP→espace, guillemet/apostrophe courbe→droit, anterieure ou posterieure au roundtrip PowerShell,
+cause non identifiee) avait detruit un octet necessaire a la reversion automatique — corriges a la
+main, caractere pres, sans toucher a l'espacement/ponctuation environnant (`home_highlights.go`,
+`stats_canonical.go`, `synthesis_service.go`, `synthesis_service_legacy.go`,
+`synthesis_service_builders.go`). 4 fichiers du paquet `teammates` etaient corrompus EN DEUX
+PASSES (le roundtrip applique deux fois : "câblé" -> "cÃƒÂ¢blÃƒÂ©") ; l'algorithme (iteratif
+jusqu'a point fixe) les a corriges sans traitement special.
+
+**Resultats observes.** 62 fichiers `.go` corriges (61 au premier balayage + 1 trouve en ecrivant
+le garde-rail), 0 fichier `.toml`. ~41 lignes portant un litteral de chaine corrompu (13 en code
+de production hors tests : `home_locale.go`, `home_service.go`, `session_page_service.go`,
+`stats_service.go`, `synthesis_service.go`, `synthesis_service_legacy.go`, `teammates_service.go`,
+`citations_custom.go` ; ~28 dans des tests), le reste en commentaires. Garde-rail
+`internal/archlint/no_mojibake_test.go` : 2 tests de detection (module Go + TOML titres),
+allowlist VIDE, regex structurelle (pas une enumeration Ã©/Ã¨/Ã .../commentee dans l'en-tete avec
+la cause exacte (roundtrip PowerShell 5.1 `Get-Content`/`Set-Content` sans `-Encoding utf8`) et
+la parade. Mutation jouee et retiree DEUX fois : (1) test unitaire
+`TestNoMojibakeInGoModule_DetectsAMutation` sur un contenu simule, vert en permanence ; (2)
+mutation reelle sur `home_locale.go` (reintroduction de "DÃ©faite"), `TestNoMojibakeInGoModule`
+rougit avec la ligne exacte, puis fichier restaure a l'identique (diff post-restauration =
+diff Q3 attendu, rien d'autre). Gates : `gofmt -l` vide sur les 62 fichiers + le nouveau test ;
+`go build ./...` (0) ; `go vet` sur `analysis/... service/... games/... notify/... archlint/...
+platform/duckdb/... sync/` (0) ; `go test -count=1` verts sur `internal/analysis/...`,
+`internal/service/...` (dont `teammates`), `internal/games/...` (himap skip attendu, tag
+`gamefiles` absent), `internal/notify/...`, `internal/archlint/...`, `internal/platform/duckdb/...`,
+`internal/sync/` (racine, `engine.go` touche).
+
+**Conclusion / prochaine etape.** Etape close : plan `.ai/PLAN_ORCHESTRATION_2026-09-07.md` ligne
+Q3 et `.ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md` §4 L0 traites. 2 decouvertes hors perimetre
+consignees dans une nouvelle section `## 9. DECOUVERTES DE L'EXECUTION (Q3, 2026-09-07)` du plan
+libelles (le §3 vise par le brief est deja occupe par « OPTIONS D'ARCHITECTURE » — doctrine
+RE-VERIFIER, pas traitees ici) : (a) 5 messages `fmt.Errorf` FR en dur ("... non cable (P4.3
+finale exige le wiring DI)") non catalogues dans l'inventaire §2.F, a qualifier pour L7 ; (b) la
+corruption secondaire NBSP/guillemet-droit constatee sur 6 sites, a anticiper si `docs/`/`.ai/`
+sont un jour traites pour le mojibake (D9, hors branche). Commit(s) sur `feat/mojibake-garde-rail`
+(worktree `LevelUp-wt-q3-mojibake`), push `origin`. Pas de fusion dans `feat/v75` (accord
+utilisateur prealable requis, regle CLAUDE.md n°16).
