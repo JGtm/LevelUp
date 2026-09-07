@@ -1,3 +1,111 @@
+## [2026-09-07] Orchestration — vague 1, lot Q6 = R0 du plan restes (dette mecanique rejeu) — Complete
+
+**Decision technique principale.** Lot R0 de `.ai/PLAN_V2_RESTES_2026-09-07.md` (= Q6 de
+`.ai/PLAN_ORCHESTRATION_2026-09-07.md`), execute dans le worktree dedie `LevelUp-wt-q6-r0`
+(branche `feat/v2-restes-r0` depuis `feat/mojibake-garde-rail` @ `058e632e6`). Chaque
+`fichier:ligne` du brief a ete rouvert sur pieces avant d'agir (le code avait bouge depuis la
+redaction du plan : `document.go` faisait 1510 L, pas 1417). Quatre extractions + un correctif de
+commentaire, zero changement de sortie, zero bump de `SchemaVersion` (reste 48) :
+
+1. `document.go` -> `document_chronicle.go` : la chronique des schemas (v2 a v48, lignes 28-983
+   de l'original) deplacee TELLE QUELLE ; le const `SchemaVersion` garde son intro de doc-comment
+   (2 lignes) dans `document.go`. Coupure choisie une ligne plus tot que le premier essai
+   (28 au lieu de 27) pour laisser la ligne de commentaire vide `//` a la chronique plutot qu'au
+   fichier de base : `gofmt` la retire sinon juste avant un `const`, ce qui aurait rendu le
+   deplacement non-pur (une ligne disparait au lieu de se deplacer).
+2. `usage_summary.go` -> `usage_summary_chronicle.go` : meme motif pour la chronique `us2`/`us3`
+   du const `UsageSummaryRev` (lignes 65-76 de l'original, meme piege de `gofmt` resolu de la
+   meme facon).
+3. `replaybuild.go` -> `options.go` : le litteral `replay.Options{...}` (28 champs, un
+   commentaire de 5 lignes inclus) extrait dans une methode `(b *Builder) buildReplayOptions(...)`
+   ; le site d'appel devient `opts := b.buildReplayOptions(entry, facts, cat, &stats); doc, err :=
+   replay.BuildFromFilm(matchID, b.titleSlug, film, opts)`. CE N'EST PAS UN DEPLACEMENT PUR AU
+   SENS STRICT (Go exige une signature de fonction, un `return`, un site d'appel — glue
+   incompressible), mais chaque ligne de CHAMP (les 28 `Xxx: ...`) est bit-a-bit inchangee.
+   Effet de bord decouvert par le gate test (pas anticipe par le plan) :
+   `film_stats_cables_guard_test.go` (garde-rail C1 de la revue VIES-R1) relit
+   `replaybuild.go` par regex pour verifier que chaque champ de `filmStats` est cable dans le
+   litteral `replay.Options{...}` — son propre commentaire anticipait le cas (« le garde-rail ne
+   verifie plus rien (l'assemblage a-t-il ete deplace ?) »). Corrige pour lire `options.go` et le
+   motif `return replay\.Options\{` : necessaire a la reussite du deplacement demande par le
+   plan, donc dans le perimetre de l'etape 3, pas une decouverte a reporter.
+4. `flag_carries_test.go` scinde en 3 fichiers par responsabilite + 1 fichier d'aides partagees
+   (aucun test renomme) : `flag_carries_test.go` (aides `flagTestCtx`/`flagTestTrack`/
+   `flagTestSignals`/`flagStateCarrying`/`flagOfTeam`/`assertFlagStates`, 6 fonctions, 75 L),
+   `flag_carries_guards_test.go` (5 tests de garde : pont absent, porteur tue ambigu, film non-CTF,
+   balayage absent, simultaneite fermee — 117 L), `flag_carries_assignment_test.go` (6 tests de
+   machine a etats : vol/capture, mort/reprise, fusion de prises jumelles, portage ouvert,
+   marqueur confirme/non confirme — 197 L), et un fichier d'identite RENOMME en cours de route :
+   **DECOUVERT EN COURS D'EXECUTION** qu'un fichier `flag_carries_identity_test.go` existait DEJA
+   au HEAD (4 tests sur `flagIdentityOf`/le pont fourni par l'appelant, sans rapport avec le
+   sujet vise) — mon premier jet l'a ECRASE par erreur de nommage (meme intitule que le plan).
+   Erreur interceptee par `git status` (le fichier apparaissait `M` au lieu de `??`) AVANT tout
+   commit : original restaure depuis `git show HEAD:...`, mon extrait (5 tests sur les vies
+   anonymes / slots partages : `VieAnonymeNEstPasUneAbsence`, `VieAnonymeSansPontResteEcartee`,
+   `SlotPartageRefuseLeRepli`, `SlotNonPartageAccepteEtNeCompteRien`,
+   `SlotEpureDuPontComptEncoreLeRefus`) renomme `flag_carries_anon_lives_test.go` (207 L). Preuve
+   de deplacement pur reverifiee APRES le renommage (toujours vide).
+5. `equipment_episodes_test.go:371-372` : commentaire de mutation faux corrige sur pieces —
+   les bornes reelles des pistes du test sont `StartFrame: 40`/`EndFrame: 60` (pas 45), et
+   l'union mesuree au test est `[40..260]` (pas `[45..250]`, qui est la fenetre de RECHERCHE
+   passee a `spanFor`, pas le resultat). `[45..60]`/`[45..250]` -> `[40..60]`/`[40..260]`.
+
+**Resultats observes — preuves de deplacement pur (`sort | diff`, package/import/lignes vides
+exclus, vide = OK) :**
+- `document.go` + `document_chronicle.go` vs original : EXIT=0, diff vide.
+- `usage_summary.go` + `usage_summary_chronicle.go` vs original : EXIT=0, diff vide.
+- `replaybuild.go` + `options.go` vs original : diff NON vide mais limite a la glue de fonction
+  Go incompressible (imports du nouveau fichier, signature `func (b *Builder)
+  buildReplayOptions(...)`, `return replay.Options{`/`}` de fermeture, le site d'appel `opts :=
+  ...` / `doc, err := replay.BuildFromFilm(..., opts)` a la place du litteral inline, 2 lignes de
+  commentaire de la nouvelle fonction) — AUCUNE ligne de champ (`Xxx: ...`, y compris le
+  commentaire de 5 lignes sur `ObjectivesUnnamed`) ne differe.
+- `flag_carries_test.go` + `flag_carries_anon_lives_test.go` + `flag_carries_guards_test.go` +
+  `flag_carries_assignment_test.go` vs original : EXIT=0, diff vide (verifie une seconde fois
+  apres correction du nommage).
+
+**Tailles avant/après (L) :** `document.go` 1510 -> 553 (+ `document_chronicle.go` 959) ;
+`usage_summary.go` 525 -> 513 (+ `usage_summary_chronicle.go` 14) ; `replaybuild.go` 572 -> 545
+(+ `options.go` 45) ; `flag_carries_test.go` 575 -> 75 (+ `flag_carries_anon_lives_test.go` 207,
+`flag_carries_guards_test.go` 117, `flag_carries_assignment_test.go` 197) ;
+`equipment_episodes_test.go` 402 -> 402 (2 lignes de commentaire corrigees, aucun changement de
+taille).
+
+**Statut sous seuil de 500 L, sur pieces apres extraction :** `document_chronicle.go` (959),
+`document.go` (553) et `usage_summary.go` (513) et `replaybuild.go` (545) restent AU-DESSUS de
+500 L malgre l'extraction demandee — l'extraction UNIQUE que le plan prescrit ne suffit pas, et
+le plan interdit explicitement de decouper davantage que ce qu'il demande (« le plan fixe les
+coupes »). Statue `[!]` sur ce point precis (seuil fichier non atteint), consigne au registre des
+reports avec la liste des AUTRES fichiers du paquet deja au-dessus de 500 L (hors perimetre R0,
+non crees par ce lot) : `.ai/V7.5/REGISTRE_REPORTS.md`.
+
+**Gates (tous rejoues apres le renommage du fichier d'identite, sorties collees) :**
+- Preuve de deplacement pur x4 : voir ci-dessus, EXIT=0 sur 1/2/4, glue minimale documentee sur 3.
+- Goldens inchanges : `git diff --exit-code -- apps/go-api/internal/analysis/replay/testdata
+  apps/go-api/internal/replaybuild/testdata apps/go-api/internal/service/replayview/testdata` ->
+  EXIT=0 (rien a committer). `SchemaVersion` : `grep -c "const SchemaVersion = 48"
+  document.go` -> 1.
+- `gofmt -l internal/analysis/replay internal/replaybuild internal/service/replayview` -> vide.
+- `go build ./...` (module entier) -> EXIT=0.
+- `go vet ./internal/analysis/replay/... ./internal/replaybuild/...` -> EXIT=0.
+- `go test -count=1 ./internal/analysis/replay/... ./internal/replaybuild/...
+  ./internal/service/replayview/...` -> `ok` sur les 4 paquets (`replay`, `replay/mapvar`,
+  `replaybuild`, `service/replayview` — ce dernier porte le cliquet de parite
+  `parity_test.go`), y compris `TestChaqueChampDeFilmStatsEstCableDansOptions` (corrige a
+  l'etape 3) et `TestChaqueChampDeFilmStatsEstCableDansOptions` verifie isolement en `-run` avant
+  la suite complete.
+- `golangci-lint run --new-from-merge-base=origin/main ./internal/analysis/replay/...
+  ./internal/replaybuild/...` -> `0 issues.`
+
+**Conclusion / prochaine etape.** Etape R0 fermee, tous les items du bloc R0 statues (voir
+`.ai/PLAN_V2_RESTES_2026-09-07.md`), Q6 coche dans `.ai/PLAN_ORCHESTRATION_2026-09-07.md`.
+Decouvertes consignees au registre, NON traitees (perimetre ferme) : (a) trois fichiers touches
+par ce lot restent au-dessus de 500 L apres l'unique extraction prescrite ; (b) une dizaine
+d'autres fichiers du paquet `internal/analysis/replay` (tests de recherche/golden pour la
+plupart) et `internal/service/replayview/parity_test.go` depassent deja 500 L, sans lien avec ce
+lot. Commit(s) par chemins explicites sur `feat/v2-restes-r0`, push `origin`. Pas de fusion (lot
+suivant du plan restes : P/R1, decision utilisateur en attente sur le choix P vs R1-R3 sequentiel).
+
 ## [2026-09-07] Fusion `origin/feat/v75` -> `feat/tactique` (worktree `LevelUp-wt-tactique`) — Complete
 
 **Decision technique principale.** Regle ferme de l'utilisateur : `feat/v75` fait foi sur les 13
