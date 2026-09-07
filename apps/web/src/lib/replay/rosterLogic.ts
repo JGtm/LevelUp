@@ -539,15 +539,25 @@ export interface LoadoutReading {
  * un slot est réattribué à chaque réapparition. C'est aussi ce qui rend le report SÛR — une
  * dotation ne peut pas franchir une mort, puisqu'elle ne survit pas à son porteur.
  *
+ * BORNÉE À LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06,
+ * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`) : un slot réattribué n'accueille pas
+ * qu'une mort, il accueille une AUTRE vie — parfois un AUTRE joueur. Chercher « la dernière
+ * lecture du slot » sans borne de vie reportait donc l'armement de la vie PRÉCÉDENTE.
+ * `currentLifeOf` désigne la vie qui couvre `frame` sur ce slot ; sans elle, aucune recherche
+ * n'a lieu — `null`, jamais une lecture volée à une autre vie.
+ *
  * AVANT LA PREMIÈRE IMAGE-CLÉ D'UNE VIE, la lecture rendue est la plus proche À VENIR du même
- * slot — donc de la MÊME vie, jamais d'une autre : c'est ce qui rend le repli sûr. L'âge est
- * alors NÉGATIF et publié tel quel : l'affichage l'estompe sur sa valeur absolue et
- * l'infobulle le dit « à venir », jamais déguisé en lecture passée. C'est la doctrine du POC
- * (readAgeAt) : 25,2 % de ses fiches affichaient des armes lues dans le futur — sans ce
- * repli, chaque début de vie dit « armes non lues » pendant jusqu'à 20 s.
+ * slot — donc de la MÊME vie, jamais d'une autre : c'est ce qui rend le repli sûr, et
+ * désormais une propriété VÉRIFIÉE plutôt que seulement énoncée. L'âge est alors NÉGATIF et
+ * publié tel quel : l'affichage l'estompe sur sa valeur absolue et l'infobulle le dit « à
+ * venir », jamais déguisé en lecture passée. C'est la doctrine du POC (readAgeAt) : 25,2 % de
+ * ses fiches affichaient des armes lues dans le futur — sans ce repli, chaque début de vie dit
+ * « armes non lues » pendant jusqu'à 20 s.
  */
 export function loadoutAt(doc: ReplayDocumentReady, slot: number, frame: number): LoadoutReading | null {
-  const read = nearestReading(doc.loadouts ?? [], slot, frame)
+  const life = currentLifeOf(doc, slot, frame)
+  if (!life) return null
+  const read = nearestReading(doc.loadouts ?? [], slot, frame, trackWindow(life))
   if (!read) return null
   // LA DATATION FINE (schéma 25) : le relevé d'image-clé donne l'ÉTAT, les changements d'arme
   // datés donnent les TRANSITIONS survenues depuis. Ce qu'ils appliquent et ce qu'ils refusent
@@ -559,6 +569,30 @@ export function loadoutAt(doc: ReplayDocumentReady, slot: number, frame: number)
     slot,
     frame,
   )
+}
+
+/**
+ * currentLifeOf — LA VIE DU SLOT QUI COUVRE CETTE IMAGE, ou `undefined`.
+ *
+ * SŒUR DE `lifeOfSlotAt` (`features/match-replay/model/livesPosition.ts`), PAS UNE QUATRIÈME
+ * COPIE : ce module ne peut pas l'importer — `lib/` ne dépend jamais de `features/` (sens
+ * unique du dépôt, aucun fichier de production ne l'inverse) — et les appelants d'ici
+ * (`loadoutAt`, `abilityAt`, et `inventoryAt`/`grenadeReadingAt` côté feature, qui réutilisent
+ * cette même fonction) n'ont qu'un slot et une image, jamais la map par-slot déjà construite :
+ * la reconstruire à chaque appel coûterait plus cher qu'un balayage direct de `doc.tracks`,
+ * déjà la complexité de `nearestReading` lui-même. Le même balayage direct existe déjà en
+ * production (`abilityChargeLogic.ts:133`) et l'audit du 2026-09-06 l'a examiné et écarté
+ * comme non fautif — même garde, même verdict.
+ *
+ * MÊME RÈGLE QUE `lifeOfSlotAt` : « prendre la première venue serait une faute » — un slot
+ * sans vie à cet instant ne rend rien, jamais une vie voisine.
+ */
+export function currentLifeOf(
+  doc: ReplayDocumentReady,
+  slot: number,
+  frame: number,
+): ReplayTrackReady | undefined {
+  return doc.tracks.find((t) => t.slot === slot && isAliveAt(t, frame))
 }
 
 /**
@@ -576,16 +610,35 @@ export function loadoutAt(doc: ReplayDocumentReady, slot: number, frame: number)
  *   - avant la première lecture d'une vie, on rend la plus proche À VENIR du même slot, avec
  *     un âge NÉGATIF publié tel quel. L'affichage l'estompe sur sa valeur absolue et le dit
  *     « à venir » — jamais déguisé en lecture passée.
+ *
+ * `life` BORNE DÉSORMAIS LA RECHERCHE À LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06,
+ * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`) — NI `best` NI `ahead` NE REGARDAIENT LA
+ * FRONTIÈRE DE VIE AVANT CE CORRECTIF : sur un slot recyclé ou un film multi-manche, `best`
+ * retenait TOUJOURS la lecture passée la plus proche, quelle que soit sa vie, avant même de
+ * considérer `ahead` — le repli « à venir » documenté ci-dessus était donc INERTE dès que le
+ * slot portait une vie antérieure, et la fiche affichait l'armement de cette vie précédente,
+ * parfois celui d'un AUTRE joueur sur un slot recyclé. `life` vient de `currentLifeOf` ; sans
+ * vie couvrante, ou sans lecture dans ses bornes, la fonction rend `null`.
+ *
+ * `null` NE VEUT PAS DIRE « IDENTITÉ INCONNUE » — décision produit du 2026-09-06 : une vie est
+ * un humain ou un bot, jamais une entité anonyme (le nommage se corrige à la source côté Go,
+ * hors de ce lot). `null` dit uniquement « aucune lecture encore observée depuis le début de
+ * CETTE vie » — un repli neutre, jamais la lecture volée à une autre vie.
  */
 export function nearestReading<T extends { slot: number; t: number }>(
   samples: readonly T[],
   slot: number,
   frame: number,
+  life: { start: number; end: number } | undefined,
 ): { value: T; age: number } | null {
+  if (!life) return null
   let best: { value: T; age: number } | null = null
   let ahead: { value: T; age: number } | null = null
   for (const s of samples) {
     if (s.slot !== slot) continue
+    // BORNE DE VIE : une lecture hors de [life.start, life.end] appartient à une AUTRE vie du
+    // même slot (recyclé) — jamais candidate, ni comme « best » ni comme « ahead ».
+    if (s.t < life.start || s.t > life.end) continue
     const age = frame - s.t
     if (age < 0) {
       // La plus PROCHE à venir : l'âge le moins négatif.
@@ -618,13 +671,22 @@ export interface AbilityReading {
  * (image-clé et paquet delta, qui disent ce que le joueur PORTE) et les CHANGEMENTS
  * d'équipement (qui datent ce qui lui ARRIVE). Le départage — et le cas de la consommation,
  * qui rend `null` parce que le joueur ne porte alors plus rien — vit dans changeRefine.ts.
+ *
+ * BORNÉE À LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06, même défaut et même remède
+ * que `loadoutAt`) : sans vie couvrante pour ce slot à cette image, aucune des deux sources ne
+ * répond — `null`, jamais la capacité d'une autre vie. `window.start` descend jusqu'à
+ * `refineAbilityReading`, qui borne à son tour le canal des changements d'équipement (site
+ * frère du même défaut, `changeRefine.ts`).
  */
 export function abilityAt(
   doc: ReplayDocumentReady,
   slot: number,
   frame: number,
 ): AbilityReading | null {
-  const read = nearestReading(doc.abilities ?? [], slot, frame)
+  const life = currentLifeOf(doc, slot, frame)
+  if (!life) return null
+  const window = trackWindow(life)
+  const read = nearestReading(doc.abilities ?? [], slot, frame, window)
   const base = read ? { rank: read.value.r, age: read.age, src: read.value.src } : null
-  return refineAbilityReading(base, doc.equipmentChanges, slot, frame)
+  return refineAbilityReading(base, doc.equipmentChanges, slot, frame, window.start)
 }
