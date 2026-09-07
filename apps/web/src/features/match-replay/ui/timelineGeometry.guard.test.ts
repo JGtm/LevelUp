@@ -40,8 +40,20 @@ import { describe, expect, it } from 'vitest'
 
 import { featureRoot } from '../test/featureFiles'
 
-/** Les composants qui posent quelque chose sur les pistes. Tout nouveau va dans cette liste. */
-const COMPOSANTS = ['ui/ReplayTimelineTracks.tsx', 'ui/ReplayPlayhead.tsx']
+/**
+ * Les composants qui posent quelque chose sur les pistes. Tout nouveau va dans cette liste.
+ *
+ * Trois s'y ajoutent le 2026-09-07 (lot L4) : la piste de marques extraite de l'hôte
+ * (`ReplayMarkTrack`), et les deux ombrages de présence (`ReplayPresenceShade`, qui pose aussi
+ * la porte cliquable à la frontière). Ils posent tous une largeur ou une position sur l'axe de
+ * la frise — c'est exactement ce que ce garde surveille.
+ */
+const COMPOSANTS = [
+  'ui/ReplayTimelineTracks.tsx',
+  'ui/ReplayPlayhead.tsx',
+  'ui/ReplayMarkTrack.tsx',
+  'ui/ReplayPresenceShade.tsx',
+]
 
 /**
  * Les littéraux de la géométrie de curseur. `THUMB_PX` compris : l'importer pour recomposer la

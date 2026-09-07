@@ -206,6 +206,17 @@ export interface ReplayPlayback {
    * geste d'arrêt sur image par nature.
    */
   stepFrames: (frames: number) => void
+  /**
+   * ALLER À UNE IMAGE PRÉCISE, bornée comme les deux commandes ci-dessus (c'est le même
+   * `seekTo`). Exposée le 2026-09-07 pour les repères d'entrée/sortie de la frise, qui SONT des
+   * boutons (décision 2 du plan « frise, point de vue ») : cliquer la porte d'un remplaçant
+   * emmène le curseur à son arrivée.
+   *
+   * ELLE NE MET PAS EN PAUSE, contrairement à `stepFrames` : un saut vers un instant nommé est
+   * un déplacement, pas un arrêt sur image — la lecture reprend de là, et c'est ce qu'on attend
+   * en cliquant sur un repère pendant qu'on regarde.
+   */
+  seekToFrame: (frame: number) => void
 }
 
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
@@ -384,5 +395,5 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     setPlaying((p) => !p)
   }
 
-  return { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub, seekBy, stepFrames }
+  return { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub, seekBy, stepFrames, seekToFrame: seekTo }
 }

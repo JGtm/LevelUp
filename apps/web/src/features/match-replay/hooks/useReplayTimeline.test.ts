@@ -31,7 +31,7 @@ function killEntry(over: Partial<ReplayKill> & { key?: string; replayMs?: number
   return {
     key,
     replayMs,
-    kill: { xuid: 'me', victimXuid: '', ...kill } as ReplayKill,
+    kill: { xuid: 'me', victimXuid: '', medals: [], ...kill } as ReplayKill,
     medal: null,
     death: null,
   }
@@ -42,9 +42,10 @@ function deathEntry(xuid: string, key = 'd1', replayMs = 25_000): ReplayFeedEntr
   return { key, replayMs, kill: null, medal: null, death: { xuid } as ReplayDeath }
 }
 
-/** Une médaille seule : ni tueur ni défunt. */
-function medalEntry(): ReplayFeedEntry {
-  return { key: 'm1', replayMs: 21_000, kill: null, medal: { xuid: 'me' } as never, death: null }
+/** Une médaille seule : ni tueur ni défunt — une médaille d'OBJECTIF, presque toujours. */
+function medalEntry(label = 'Capture'): ReplayFeedEntry {
+  const medal = { xuid: 'me', label } as never
+  return { key: 'm1', replayMs: 21_000, kill: null, medal, death: null }
 }
 
 describe('reduceFeed — une élimination appartient à son TUEUR', () => {
@@ -53,7 +54,7 @@ describe('reduceFeed — une élimination appartient à son TUEUR', () => {
       [killEntry({ xuid: 'pote', victimXuid: 'ennemi' })],
       VIEWPOINT,
     )
-    expect(kills).toEqual([{ key: 'k1', replayMs: 20_000, xuid: 'pote' }])
+    expect(kills).toEqual([{ key: 'k1', replayMs: 20_000, xuid: 'pote', medals: [] }])
     expect(deaths).toEqual([])
   })
 
@@ -91,7 +92,7 @@ describe('reduceFeed — une mort, et ses deux formes', () => {
       [killEntry({ key: 'k7', xuid: 'ennemi', victimXuid: 'me' })],
       VIEWPOINT,
     )
-    expect(kills).toEqual([{ key: 'k7', replayMs: 20_000, xuid: 'ennemi' }])
+    expect(kills).toEqual([{ key: 'k7', replayMs: 20_000, xuid: 'ennemi', medals: [] }])
     expect(deaths).toEqual([{ key: 'k7-v', replayMs: 20_000, xuid: 'me' }])
   })
 
@@ -142,15 +143,45 @@ describe('reduceFeed — les FRAGS de la piste Dominance', () => {
   })
 })
 
-describe('reduceFeed — ce qui n’est ni un frag ni une mort', () => {
-  it('une MÉDAILLE SEULE n’entre sur aucune piste', () => {
-    const { kills, deaths } = reduceFeed([medalEntry()], VIEWPOINT)
-    expect(kills).toEqual([])
-    expect(deaths).toEqual([])
+/**
+ * LES MÉDAILLES (2026-09-07, lot L4). Deux chemins qui ne se confondent pas : rattachée à un
+ * kill, la médaille voyage AVEC lui en libellés (la marque existe déjà, elle recevra un anneau) ;
+ * orpheline, elle prend une entrée à elle. Sans libellé, rien — sur les matchs d'avant le
+ * backfill, une décoration muette ne dirait pas ce qui a été décroché.
+ */
+describe('reduceFeed — les médailles', () => {
+  it('les médailles d’un kill le suivent en LIBELLÉS, pas en repère de plus', () => {
+    const decore = [{ label: 'Doublé' }, { label: 'Vengeance' }] as never
+    const { kills, medals } = reduceFeed([killEntry({ medals: decore })], VIEWPOINT)
+    expect(kills[0].medals).toEqual(['Doublé', 'Vengeance'])
+    expect(medals).toEqual([])
   })
 
-  it('un fil vide rend trois listes vides, jamais undefined', () => {
-    expect(reduceFeed([], VIEWPOINT)).toEqual({ kills: [], deaths: [], frags: [] })
+  it('un libellé VIDE ne décore rien : la marque reste nue plutôt que muette', () => {
+    const sansNom = [{ label: '' }, { label: 'Doublé' }] as never
+    const { kills } = reduceFeed([killEntry({ medals: sansNom })], VIEWPOINT)
+    expect(kills[0].medals).toEqual(['Doublé'])
+  })
+
+  it('une MÉDAILLE SEULE n’est ni un kill ni une mort : elle sort par sa propre liste', () => {
+    const { kills, deaths, medals } = reduceFeed([medalEntry()], VIEWPOINT)
+    expect(kills).toEqual([])
+    expect(deaths).toEqual([])
+    expect(medals).toEqual([{ key: 'm1', replayMs: 21_000, xuid: 'me', label: 'Capture' }])
+  })
+
+  it('une médaille seule SANS LIBELLÉ ne sort pas : rien à nommer, rien à dessiner', () => {
+    expect(reduceFeed([medalEntry('')], VIEWPOINT).medals).toEqual([])
+  })
+
+  it('une médaille seule n’est le frag de personne', () => {
+    expect(reduceFeed([medalEntry()], VIEWPOINT).frags).toEqual([])
+  })
+})
+
+describe('reduceFeed — ce qui n’est ni un frag ni une mort', () => {
+  it('un fil vide rend quatre listes vides, jamais undefined', () => {
+    expect(reduceFeed([], VIEWPOINT)).toEqual({ kills: [], deaths: [], medals: [], frags: [] })
   })
 
   it('l’ordre du fil est conservé — les pistes se lisent dans le sens du match', () => {
