@@ -100466,3 +100466,90 @@ corruption secondaire NBSP/guillemet-droit constatee sur 6 sites, a anticiper si
 sont un jour traites pour le mojibake (D9, hors branche). Commit(s) sur `feat/mojibake-garde-rail`
 (worktree `LevelUp-wt-q3-mojibake`), push `origin`. Pas de fusion dans `feat/v75` (accord
 utilisateur prealable requis, regle CLAUDE.md n°16).
+
+## [2026-09-07] Orchestration — vague 1, lot Q4 (issue de match, cle canonique, D5) — Complete
+
+**Decision technique principale.** D5 (utilisateur, ferme) : le Go sert la CLE canonique
+d'issue (`win|loss|tie|dnf`, MT-06), jamais un texte — abandon de l'option transitoire
+"le Go localise depuis le TOML" du lot `feat/outcome-cle-canonique` (branche supprimee par
+le superviseur, Q1). Re-verifie sur pieces les 8 DTO portant `OutcomeLabel`
+(`TopMatchDTO`, `CommonMatchRow`, `ExplorerMatchesRow`, `RecentMatchItem`,
+`MatchHistoryRow`, `MatchViewHeader`, `MatchPersonalResult`, `MatchScoreboardRow`) et leurs
+producteurs. Deux mecanismes de resolution retenus selon ce qui est disponible au site
+d'appel : `outcomeKey(outcomes, code)` (adapter du titre cable — MatchViewHeader,
+MatchHistoryRow/ExplorerMatchesRow via `rowFormatters`, MatchPersonalResult et
+MatchScoreboardRow via un `*mappings.OutcomeMappingSet` neuf thread dans
+`buildSummaryTabFull`/`buildTeamTabFull`) et `outcomeKeyFromHaloCode(code)` (repli
+Halo-only, pour CareerService/ExplorerService qui n'ont PAS d'adapter semantique cable —
+dette multi-titre existante, hors perimetre Q4, consignee §9/§10 du plan libelles).
+`domain.RecentMatchItem.OutcomeLabel` supprime (D4, 0 lecteur verifie dans
+`apps/web/src/features/home` et ailleurs) — mais son texte alimentait AUSSI le composite
+`Title` ("Victoire · Aquarius") via `home_locale.go`'s `outcomeLabelForLocale` : plutot que
+perdre ce mot ou reintroduire une map FR, `RecentMatchesOptions.OutcomeText` (resolveur
+injecte par `home_service.go` depuis l'adapter du titre, `analysis` reste pur) le fournit ;
+`Title` degrade proprement (carte seule) si la cle est vide. **Verdict CSV (item 1)** :
+`handlers/match_history.go` Export() est un fichier CSV rendu SERVEUR (`encoding/csv`),
+sans JS pour localiser — seule exception a "jamais de texte cote Go" : `MatchHistoryService.
+OutcomeText(ctx, code)` resout le mot depuis l'adapter du titre (jamais une map Go),
+appele par ligne dans l'export. `duelOutcomeLabel` (Explorer, `explorer_service_convert.go:60`)
+verifie DEJA conforme a D5 (cle `win|loss|other` sur un champ `Outcome`, pas `outcome_label`)
+— `[~]` couvert, non touche (la description du plan orchestration attendait `duel_outcome`/
+`won|lost` : carte perimee, doctrine RE-VERIFIER confirmee). Options du filtre "Resultat"
+de l'Explorer (`computeAvailableOutcomes`) : `Label` sert desormais `outcomeKeyFromHaloCode(o)`
+au lieu d'un mot FR — le web l'ignorait deja (i18n local `explorer.toml`), donc 0 impact
+visuel, juste retrait du dernier mot FR en dur de ce site.
+
+**Resultats observes.** Go : `internal/service/outcome_label.go` reecrit (outcomeKey/
+outcomeText/outcomeTextByKey/outcomeKeyFromHaloCode) ; 7 champs domain renommes
+`OutcomeLabel`->`Outcome` (json `outcome,omitempty`, tag `enum:"win,loss,tie,dnf"`) ; 1 champ
+supprime (`RecentMatchItem.OutcomeLabel`) ; `home_locale.go` perd `homeOutcomeLabelFallback`,
+`homeOutcomeLabels`, `homeOutcomeLabelsEN`, `outcomeLabelForLocale`, `outcomeLabel` (0 appelant
+production restant, verifie) ; `MatchHistoryService.rowFormatters` perd son parametre `ctx`
+(plus besoin de locale pour une cle) ; nouvelle methode `MatchHistoryService.OutcomeText` +
+ajoutee a `port.MatchHistoryService` (3 mocks de tests mis a jour). Contrat :
+`api/openapi_manual_fragment.yaml` (`CareerTopMatch.outcome_label`->`outcome` + enum),
+`go run ./cmd/openapi-gen` (696782 octets, `-check` vert), `npm run generate-types`
+(`generated.ts` : 8 sites `outcome_label`->`outcome` avec enum TS, commite). Web : 1 lecteur
+reel migre (`MatchHeader.card.tsx` `OutcomeRow` -> `useOutcomeLabel(header.outcome ?? '')`,
+import `@/lib/i18n/fieldMappings`) ; ~20 fixtures de tests adaptees (renommage ou suppression
+du champ selon le DTO) ; `MatchHeader.test.tsx` seme le cache TanStack Query
+(`fieldMappingsQueryKey('halo_infinite','fr')`) au lieu d'attendre un texte fabrique -
+patron repris de `ReplayVictoryOverlay.test.tsx`. **Garde-rail final** :
+`internal/archlint/no_french_label_literal_test.go` — ratchet PAR FICHIER (pas un total,
+different de `filmdec_package_vars_test.go`), scan AST (pas regex) du perimetre
+`internal/{service,analysis,api/handlers,notify,games}` hors `_test.go`/`migrations/`
+(CLAUDE.md §2.H, oubli du brief initial corrige sur pieces) /arguments directs de
+`slog.*`/`fmt.Errorf`. **Compte du jour : 132 fichiers, 538 litteraux** — tres au-dela des
+~15 fichiers de l'inventaire §2 du plan libelles (echantillon non exhaustif, l'essentiel
+etant des messages d'erreur `api/handlers/*` de la famille F/D6 jamais catalogues un par
+un). Genere via un script Go jetable (scratchpad, non commite) reutilisant EXACTEMENT la
+logique du test pour eviter une transcription manuelle de 130+ lignes. Gates GO : `gofmt -l`
+vide, `go build ./internal/...` (0), `go vet` sur les 6 paquets cibles (0),
+`golangci-lint run --new-from-merge-base=origin/main ./...` (0 issue — 2 warnings
+`nolint:PLR0913` deja presents dans le style etabli du fichier, pas une regression),
+`go test -count=1` vert sur `service/…` (incl. `fragdist`/`replayview`/`teammates`),
+`analysis/…` (incl. tous les sous-paquets), `domain/…`, `api/…` (incl. `handlers`,
+`humacore`, `middleware`, `wire`), `archlint/…`, `games/…` (incl. tous les sous-paquets) —
+`TestStartImport_HappyPathReturns202WithJobID` a flake une fois (flake CONNU, lot Q5, non
+lie a ce diff : reproduit vert 4x en isolation et en suite complete). Gates WEB :
+`npm run typecheck` (0 erreur), `npm run lint` (0 erreur, 29 warnings preexistants sans
+rapport), `npx vitest run --pool=forks` (**6965 tests passes, 17 skipped, 653 fichiers**),
+`lint:fields` (0 violation, 220 labels FR/EN a verifier — inchange), `lint:colors`
+(0 violation).
+
+**Conclusion / prochaine etape.** Etape close : `.ai/PLAN_ORCHESTRATION_2026-09-07.md` ligne
+Q4 cochee ; `.ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md` §4 L1 statue CLOS (forme = option 1) et
+garde-rail final pose ; 4 decouvertes hors perimetre consignees dans une nouvelle section
+`## 10. DECOUVERTES DE L'EXECUTION (Q4, 2026-09-07)` du plan libelles : (a) l'ampleur reelle
+du garde-rail final (132 fichiers vs ~15 attendus) ; (b) `MatchPersonalResult`/le
+`outcome` par ligne de scoreboard sans lecteur web trouve (candidat code mort plus large que
+Q4, pas traite — extension de perimetre non autorisee) ; (c) `match_history_explorer_options.go`
+porte aussi des labels FR en dur pour perf-tier/CSR-tier (famille D/L5, meme fichier que le
+site touche) ; (d) le filtre Explorer ignore deja le champ backend `Label` pour la dimension
+outcome (candidat champ mort au meme titre que (b)). Rien traite au-dela du perimetre Q4.
+Commit(s) sur `feat/issue-cle-canonique` (worktree `LevelUp-wt-q4-outcome`, base
+`feat/mojibake-garde-rail`), push `origin`. Pas de fusion dans `feat/v75` (accord
+utilisateur prealable requis, regle CLAUDE.md n°16). Pages a verifier a l'ecran par
+l'utilisateur (parite FR/EN) : Match View (en-tete + ecran de fin du rejeu 2D), Explorer
+(export CSV), historique des parties, Carriere (top matchs), accueil (tuiles de matchs
+recents).

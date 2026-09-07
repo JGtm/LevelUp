@@ -130,9 +130,26 @@ obligatoire pour F (les erreurs), où un libellé serveur n'a aucun sens multi-l
   l'écrire dans le test.
 - Gate : `go build ./...`, `go vet`, tests des packages touchés, garde vert.
 
-**L1 — Issue de match** : EN COURS (`feat/outcome-cle-canonique`). À la clôture : supprimer
-`domain.HomeMatchRow.OutcomeLabel` s'il est bien sans lecteur, migrer `duelOutcomeLabel`
-(explorer) sur le même helper si le vocabulaire est le même, sinon TOML dédié.
+**L1 — Issue de match** : **CLOS le 2026-09-07 (lot Q4, branche `feat/issue-cle-canonique`),
+forme retenue = OPTION 1 (décision D5)**. Chaque DTO qui portait `outcome_label` porte
+`outcome` = clé canonique (`win|loss|tie|dnf`, `omitempty`) ; `resolveOutcomeLabel`,
+`outcomeLabel`, `outcomeLabels`, ses 4 constantes et le kill-switch ont disparu
+(`internal/service/outcome_label.go` réécrit : `outcomeKey`/`outcomeText`/
+`outcomeKeyFromHaloCode`) ; `home_locale.go` (`homeOutcomeLabels*`, `outcomeLabelForLocale`,
+`outcomeLabel`) supprimés, remplacés par un résolveur injecté
+(`RecentMatchesOptions.OutcomeText`) qui lit l'adapter du titre ; `domain.RecentMatchItem.
+OutcomeLabel` supprimé (D4, 0 lecteur confirmé). `duelOutcomeLabel` (Explorer,
+`explorer_service_convert.go:60`) vérifié DÉJÀ conforme (clé `win|loss|other` sur un champ
+`Outcome`) — `[~]`, non touché. Seule exception texte : l'export CSV
+(`handlers/match_history.go`, serveur, sans JS) reste servi en clair via
+`MatchHistoryService.OutcomeText`, résolu depuis l'adapter du titre — jamais une map Go.
+Web : lecteurs migrés sur `useOutcomeLabel`/`useOutcomeMapping`
+(`MatchHeader.card.tsx:362`, seul lecteur réel de `header.outcome_label` — les autres
+occurrences trouvées au grep du 07/09 étaient soit l'options du filtre Explorer (i18n
+locale, non le backend), soit du code déjà migré en amont). Garde-rail final posé :
+`internal/archlint/no_french_label_literal_test.go` (ratchet par fichier, 132 fichiers /
+538 littéraux au 2026-09-07, périmètre `internal/{service,analysis,api/handlers,notify,
+games}` hors migrations/tests/slog/fmt.Errorf).
 
 **L2 — Accueil** (`home_locale.go`) : toutes les paires `labelForLocale(locale, fr, en)` vers
 TOML + adapter ; l'accueil est le pilote historique de l'ADR 0011 (labels i18n hors canonical),
@@ -233,3 +250,36 @@ si une entrée couvre déjà une famille ci-dessus avant d'en créer une).
   lot `docs/`/`.ai/` traite un jour le mojibake hors Go (D9), s'attendre au même résidu
   et à la même méthode manuelle — un simple decode-CP1252 automatique ne suffira pas
   partout.
+
+## 10. DÉCOUVERTES DE L'EXÉCUTION (Q4, 2026-09-07)
+
+> Même remarque qu'en §9 : consignées SANS être traitées (règle 7 plan-execution).
+
+- 2026-09-07 ; `internal/archlint/no_french_label_literal_test.go` (mesure AST complète,
+  périmètre `internal/{service,analysis,api/handlers,notify,games}` hors migrations) ; le
+  garde-rail final révèle **132 fichiers / 538 littéraux accentués**, très au-delà des ~15
+  fichiers cités dans l'inventaire §2 (échantillon, pas exhaustif — §2.F listait 9 fichiers
+  avec « … »). L'essentiel : des messages d'erreur `api/handlers/*` non catalogués
+  individuellement. Reprise : L7, une fois D6 tranché — la liste complète est dans
+  `frenchLabelAllowlist`, prête à servir de check-list de migration.
+- 2026-09-07 ; `internal/domain/match_view.go` (`MatchPersonalResult`, `MatchScoreboardRow`)
+  ; `personal_result` (l'objet entier) et le `outcome` par ligne de scoreboard n'ont AUCUN
+  lecteur web trouvé (grep `personal_result` et `outcome_label`/`outcome` scoreboard dans
+  `apps/web/src` : 0 hit hors types générés). Pas traité ici (D4 ne visait que
+  `outcome_label` nommément ; supprimer tout `MatchPersonalResult`/ligne de scoreboard
+  serait une extension de périmètre non autorisée par Q4). Reprise : à qualifier — code
+  mort plus large que le seul champ d'issue, ou lecteur futur prévu ?
+- 2026-09-07 ; `internal/service/match_history_explorer_options.go` (`computeAvailableOutcomes`,
+  `perfTierLabel`, `skillTierLabel`) ; ce fichier porte AUSSI des libellés FR en dur pour
+  les paliers de perf et les tiers CSR (`"Excellent"`, `"Bon"`, `"Correct"`…, `"Argent"`,
+  `"Or"`…), hors périmètre Q4 (familles D/rangs, L5) mais dans le même fichier que le site
+  touché (`outcomeLabel(o)` → `outcomeKeyFromHaloCode(o)`). Reprise : L5.
+- 2026-09-07 ; `apps/web/src/features/explorer/ExplorerPage.filterOptions.ts`
+  (`withCounts`) ; le filtre « Résultat » de l'Explorer ignore déjà le champ `label` servi
+  par le backend pour `available_outcomes` (ne lit que `.value`/`.count`) — ses libellés
+  viennent d'un i18n local (`explorer.toml`, `t('explorer.filters.outcome_win')` etc.).
+  `computeAvailableOutcomes` sert donc désormais une clé canonique jamais lue par le web
+  actuel (ni avant, ni après Q4) : conforme à D5 en l'état, mais le champ `Label` de
+  `domain.LabelValue` pour cette dimension est un candidat « champ mort » au même titre
+  que `MatchPersonalResult` ci-dessus. Reprise : à qualifier avec L3 (options de filtre
+  title-agnostic).
