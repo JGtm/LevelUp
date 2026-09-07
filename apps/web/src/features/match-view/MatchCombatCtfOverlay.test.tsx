@@ -46,7 +46,7 @@ function sbRow(partial: Partial<MatchScoreboardRow>): MatchScoreboardRow {
     kills: null, deaths: null, assists: null, shots_fired: null, shots_hit: null,
     accuracy: null, damage_dealt: null, damage_taken: null, average_life: null,
     headshot_kills: null, max_killing_spree: null, perfect_kills: null,
-    power_weapon_kills: null, melee_kills: null, outcome_label: '', ...partial,
+    power_weapon_kills: null, melee_kills: null, ...partial,
   } as MatchScoreboardRow
 }
 

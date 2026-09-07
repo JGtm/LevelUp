@@ -5234,9 +5234,10 @@ export interface components {
             /** Format: uuid */
             match_id: string;
             mode_ui?: string | null;
+            /** @enum {string|null} */
+            outcome?: "win" | "loss" | "tie" | "dnf" | null;
             /** Format: int64 */
             outcome_code?: number | null;
-            outcome_label?: string | null;
             /** Format: float */
             performance_score?: number | null;
             playlist_label?: string | null;
@@ -5539,7 +5540,8 @@ export interface components {
             map_ui: string;
             match_id: string;
             mode_ui: string;
-            outcome_label: string;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             /** Format: int64 */
             player_outcome: number;
             /** Format: date-time */
@@ -6340,9 +6342,10 @@ export interface components {
             match_id: string;
             match_url: string;
             mode_ui: string | null;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             /** Format: int64 */
             outcome_code: number;
-            outcome_label: string;
             /** Format: int64 */
             overtime_seconds?: number;
             /** Format: int64 */
@@ -7929,9 +7932,10 @@ export interface components {
             match_id: string;
             match_url: string;
             mode_ui: string | null;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             /** Format: int64 */
             outcome_code: number;
-            outcome_label: string;
             /** Format: int64 */
             overtime_seconds?: number;
             /** Format: int64 */
@@ -8126,9 +8130,10 @@ export interface components {
             TopWeaponID: string | null;
         };
         MatchPersonalResult: {
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             outcome_color: string;
             outcome_color_token?: string;
-            outcome_label: string;
             /** Format: int64 */
             rank_in_team?: number;
             /** Format: int64 */
@@ -8346,7 +8351,8 @@ export interface components {
             objective?: components["schemas"]["MatchScoreboardObjective"];
             /** Format: double */
             offensive_conversion?: number;
-            outcome_label: string;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             /** Format: int64 */
             perfect_kills?: number;
             /** Format: double */
@@ -8476,11 +8482,12 @@ export interface components {
             match_id: string;
             mode_category?: string;
             mode_ui: string;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             /** Format: int64 */
             outcome_code?: number;
             outcome_color: string;
             outcome_color_token?: string;
-            outcome_label: string;
             /** Format: int64 */
             overtime_seconds?: number;
             performance_color?: string;
@@ -12177,9 +12184,10 @@ export interface components {
             map_ui: string | null;
             match_id: string;
             mode_ui: string | null;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             /** Format: int64 */
             outcome_code: number;
-            outcome_label: string;
             /** Format: double */
             performance_score: number;
             start_time: string | null;

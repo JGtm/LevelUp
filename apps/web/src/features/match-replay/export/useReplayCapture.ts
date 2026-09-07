@@ -336,9 +336,10 @@ function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
  * IL Y AVAIT DEUX VOCABULAIRES, et c'est ce que cette règle ferme. Le mot par défaut venait de
  * `header.outcome_label`, fabriqué par une map Go CODÉE EN DUR EN FRANÇAIS ; seul le mot
  * PERMUTÉ passait par `outcomes.toml`. En français les deux coïncidaient — rien ne se voyait ;
- * en anglais le clip aurait dit « Victoire » par défaut et « Loss » vu d'un adversaire. Le
- * backend sert désormais lui aussi le mot du TOML (`service/outcome_label.go`), mais il ne
- * connaît qu'un point de vue : le résoudre ici, sur l'issue lue, est ce qui garantit l'unicité.
+ * en anglais le clip aurait dit « Victoire » par défaut et « Loss » vu d'un adversaire. Depuis
+ * le 2026-09-07 (D5), le backend ne sert plus AUCUN mot pour l'issue — seulement la clé
+ * canonique (win|loss|tie|dnf, cf. `service/outcome_label.go`) — et ne connaît de toute façon
+ * qu'un point de vue : le résoudre ici, sur l'issue lue, est ce qui garantit l'unicité.
  *
  * MÊME RÈGLE QUE LE DOM (`ReplayVictoryOverlay`), à la ligne près — c'est la deuxième et
  * dernière copie tolérée (règle n° 6), et l'en-tête d'`exportOverlayPanels` dit déjà pourquoi
