@@ -1,3 +1,66 @@
+## [2026-09-07] P1 — Inventaire des entites du film et de leurs liens (lot P du plan v2) — Complete
+
+**Decision technique principale.** Lot de JOURNAL, zero code : le livrable est
+`.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`, contrat des phases P2 a P5. Il inventorie les
+neuf entites que le decodeur expose deja (index de joueur, slot de bipede, slot de statborg joueur
+et equipe, objet d objectif, zone, vehicule, arme au sol / equipement, bot), avec pour chacune son
+identifiant dans le film, sa duree de vie, ses liens DIRECTS, ses liens par REPLI (calque et ligne
+exacte) et deux colonnes de faisabilite. Les dix axes (a)-(j) portent chacun un verdict ecrit.
+Amendement §0.7 du plan v2 redige mot pour mot (decision D11) : le registre est une fonction PURE
+de `internal/analysis/replay`, appelee par `replaybuild` ET par le collecteur de sync, sans aucune
+dependance a l artefact cuit.
+
+**Resultats observes.**
+- **VERDICT ROSTER (axe d), en tete du document : NON.** Le film ne porte pas les entrees/sorties
+  de joueurs. `player-active-in-game-component` (ti=5 i18) et
+  `player-pending-join-in-progress-spawn-component` (ti=5 i19) sont decodes
+  (`filmdec/components_player.go:182-190`) et publies par hook (`:94`), mais sans aucun consommateur
+  de production et avec 163 et 105 lectures pour 22 films (LOTBP_PHASE0 §P.0.1/§P.0.5, verdict
+  « NON TENU (denominateur) »). **S.3 se fera donc par calage `real_start_time` / `t0_quality`,
+  APRES P2** — conforme a D10.
+- **TEMPS (a) et MANCHES (b) : NEGATIFS pour cause d absence de porteur.** L entite moteur de partie
+  (ti=0) n est pas repliquee : 1 record sur 22 films et 1 269 000 records certains. L horloge de
+  manche, les etats et le numero de manche officiels n existent pas dans le film. La seule horloge
+  DIRECTE est le couple (horodatage moteur du paquet, `start_ms` du manifeste,
+  `filmsource/film.go:39-43`), deja employe par le statborg (`objectiveevents/statborg.go:199`) et
+  jamais par la grille de frames, qui est ancree sur le premier paquet de POSITION
+  (`replay/build.go:49`, `:530-533`).
+- **EQUIPES (c) : le film ne porte l equipe d aucun joueur** (`replay/document.go:1474-1479`,
+  `Track.Team = -1`) ; la base est source unique, pas verification. Le composant
+  `game-engine-team-mapping-component` est traverse et ses valeurs jetees
+  (`filmdec/components_team_mapping.go:33-45`), et il appartient a ti=0.
+- **BOTS (e) : le lien direct EXISTE et n est pas publie.** `BotID` (= le N de `bid(N.0)`) est lu du
+  paquet type 12 et deja utilise comme cle exacte pour les relais
+  (`replaybuild/replaybuild.go:500-508`), mais l artefact ne le porte pas, si bien que le web joint
+  par le NOM NU (`apps/web/src/lib/replay/rosterLogic.ts:122-128`). Gain le moins cher du lot P.
+- **PROVENANCE (g) : cinq exemplaires incompatibles existent deja** (`NomPar*`, `BridgeHealth`,
+  `vehicleResolvedBy` interne, `EquipmentPlacement.Origin`, `Pickup.Origin`, `ScoreIdentity*`). Le
+  document propose la forme exacte d un type unique `Link{Source, Method, Readings, Metric, From, To}`,
+  avec bornes temporelles OBLIGATOIRES — c est ce qui interdit de rejouer le defaut P0-2 du pont
+  aplati.
+- **LECTEURS HORS REJEU (i) : reponse explicite.** Un bump d `IsolationDecoderRev` a P2 impose bien
+  une reecriture par `levelup backfill-killsource` : la selection `matchsAJour`
+  (`cmd/levelup/cmd_backfill_killsource_selection.go:89-101`) sort de « a jour » tout match ayant des
+  positions ET des equipes, qui ecrit alors une NOUVELLE passe append-only dans `match_lives` et
+  `match_death_context` ; les vues `_latest` basculent d un bloc. Le journal des morts n est pas
+  reecrit tant que `KillSourceDecoderRev` ne bouge pas. Liste complete des 17 lecteurs du pont
+  fournie, `fichier:ligne`.
+- **Compte des liens (decompte par entite au §1.2 du document)** : 18 liens DIRECTS disponibles
+  aujourd hui contre 23 liens par REPLI, plus 2 liens de source externe (equipe, arrivees) qui ne
+  viennent pas du film. Le trou est le slot de BIPEDE (E2) : **0 lien direct**, cinq replis empiles
+  pour repondre a une seule question — quel joueur occupe ce slot a cet instant — et c est de ce
+  trou que dependent les objets d objectif, les vehicules et les ramassages pour nommer leur
+  porteur. D ou l ordre P2 avant P3/P4/P5. Exigent du travail decodeur (donc plan d apres v7.5.0) :
+  slot de bipede <-> index de joueur, slot statborg <-> joueur, equipe, attachement porteur <->
+  objet, identite de zone, vehicule de l embarquement (partiel), instance <-> socle.
+
+**Conclusion / prochaine etape.** P1 est clos, tous les axes statues, aucun item differe. Trois
+decouvertes consignees au registre (`.ai/V7.5/REGISTRE_REPORTS.md`) : commentaire perime de
+`vehicle_rides.go:29-31` (doc inversee, a corriger en P4), plomberie ti=0 sans flux (plan decodeur
+d apres v7.5.0, ne rien supprimer), `bid` de bot non publie (a fermer en P2). Prochaine etape : P2 —
+registre des joueurs, fonction pure de `analysis/replay`, bump 49, migration des 17 lecteurs et
+garde-rail a allowlist datee. S.3 reste gele derriere P2, avec le calage prescrit ci-dessus.
+
 ## [2026-09-07] Remise de la probabilité de victoire attendue (expected_win_prob) — Complété
 
 **Décision technique principale.** Nouvelle capability title-level `CapExpectedWinProb`
