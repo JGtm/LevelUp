@@ -125,7 +125,8 @@ func buildBombCarries(carry HeldObjectCarry, ctx matchClock,
 // grille de frames qui perd les trois. La rendre ici est ce qui évite de la reconstruire une
 // seconde fois (cf. l'en-tête de bomb_stats_document.go). Zéro valeur = rien n'a été
 // reconstruit (hors famille bomb, ou aucun pont).
-func attachBombCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock replayClock) HeldObjectCarry {
+func attachBombCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock replayClock,
+	deduced map[int]bool) HeldObjectCarry {
 	if !opt.Bomb.CarryScanned {
 		return HeldObjectCarry{}
 	}
@@ -142,7 +143,7 @@ func attachBombCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 		carries, cov = buildBombCarries(carry, matchClock{
 			origin: clock.origin, step: clock.step, frames: clock.frames,
 			deathOffsetMS: own.DeathOffsetMS,
-		}, carrierPresenceOf(doc.Tracks))
+		}, carrierPresenceOf(doc.Tracks, deduced))
 	}
 	doc.BombCarries = carries
 	if doc.Coverage != nil {

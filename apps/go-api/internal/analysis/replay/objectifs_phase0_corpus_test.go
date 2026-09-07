@@ -213,7 +213,7 @@ func objBuildBridge(dir string) (objBridge, error) {
 	_, byXUID, collisions := ownersFromLives(lives, table.ByXUID)
 	return objBridge{
 		SlotXUID: byXUID, OffsetMS: off, Deaths: deaths, LivesTotal: len(lives),
-		DeathsNamed: named, OffsetMatches: matched, Collisions: collisions,
+		DeathsNamed: named, OffsetMatches: matched, Collisions: len(collisions),
 	}, nil
 }
 

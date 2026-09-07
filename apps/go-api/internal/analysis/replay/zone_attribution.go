@@ -134,10 +134,14 @@ func (o AttributeOptions) maxGapFrames() int {
 // Les actions sont rendues dans leur ordre d'entree, une entree par action, y compris
 // pour celles qui ne sont pas attribuees : l'appelant qui veut la liste complete des
 // actions la garde sans re-joindre.
+//
+// `slotXUID` EST LE PONT CANONIQUE slot -> joueur (`OwnerReport`, `ResolveSlotXUID`). Il est
+// exige, pas optionnel : sans lui, les pistes dont le nommage a echoue ne se rattachent a
+// personne et leurs captures sortent `NoPosition` (cf. samplesByXUID).
 func AttributeZones(actions []ObjectiveAction, tracks []Track, zones []Zone,
-	opt AttributeOptions) ([]ZoneAttribution, ZoneCoverage) {
+	slotXUID map[uint32]uint64, opt AttributeOptions) ([]ZoneAttribution, ZoneCoverage) {
 	maxGap := opt.maxGapFrames()
-	samples := samplesByXUID(tracks)
+	samples := samplesByXUID(tracks, slotXUID)
 	out := make([]ZoneAttribution, 0, len(actions))
 	cov := ZoneCoverage{Actions: len(actions)}
 	for _, a := range actions {
@@ -201,16 +205,26 @@ func nearestZones(zones []Zone, p Point) (float64, []Zone) {
 // joueur qui meurt et reapparait a plusieurs tracks ; chercher sa position dans une seule
 // d'entre elles raterait toutes les actions des autres vies.
 //
-// Les vies sans xuid sont ECARTEES : le film ne nomme pas toutes les vies, et rattacher
-// une position anonyme a un joueur serait exactement l'erreur que le pont d'identite
-// existe pour eviter.
-func samplesByXUID(tracks []Track) map[string][]Point {
+// CHAQUE VIE EST LUE SOUS L'IDENTITE RESOLUE DE SON SLOT, pas sous son seul nom LU (correctif
+// du 2026-09-06, constat P0-1). N'indexer que les pistes dont `XUID != ""` etait la MEME
+// construction que le `tracksByXUID` du drapeau avant le schema 45, dans le fichier voisin et
+// sans le pont : une capture tombant pendant une vie dont le nommage a echoue ne trouvait plus
+// d'echantillon a moins de `MaxGapFrames`, sortait `NoPosition`, ne votait plus a l'appariement
+// jauge <-> proprietaire — et quand plus aucune capture n'etait attribuee, `buildZoneStates`
+// rendait `nil` hors mode a colline : c'est le calque `zoneStates` ENTIER (proprietaire, jauge
+// en direct, lettres A/B/C) qui disparaissait de l'artefact servi. Mesure du parc : `696a9d7c`
+// 11 captures perdues sur 77, `7344d24f` 12 sur 71, `af13e2b2` 5 sur 19.
+//
+// L'IDENTITE VIENT DU PONT, JAMAIS D'UNE DEDUCTION LOCALE (`xuidOfPublishedTrack`) : une piste
+// que le pont ne nomme pas reste ecartee — on ne rattache aucune position a un joueur invente.
+func samplesByXUID(tracks []Track, slotXUID map[uint32]uint64) map[string][]Point {
 	out := map[string][]Point{}
 	for _, tr := range tracks {
-		if tr.XUID == "" {
+		xuid := xuidOfPublishedTrack(tr, slotXUID)
+		if xuid == "" {
 			continue
 		}
-		out[tr.XUID] = append(out[tr.XUID], tr.Points...)
+		out[xuid] = append(out[xuid], tr.Points...)
 	}
 	for x := range out {
 		pts := out[x]

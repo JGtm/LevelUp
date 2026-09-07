@@ -152,7 +152,7 @@ func closeByAvailableBody(tracks map[uint32]slotTrack, owner map[uint32]int,
 		return
 	}
 	c := claimsFromShots(tracks, owner, lives, free, fire)
-	attributeClaimedBodies(tracks, owner, c, rep)
+	attributeClaimedBodies(tracks, owner, lives, c, rep)
 	// Une vie contestée à un instant peut être seule candidate à un autre : seules celles qui
 	// n'ont JAMAIS été revendiquées sont des déductions abandonnées. Le comptage ne dépend pas
 	// de l'ordre d'itération de la map, donc rien à trier ici.
@@ -209,7 +209,7 @@ func claimsFromShots(tracks map[uint32]slotTrack, owner map[uint32]int, lives []
 // attributeClaimedBodies pose au pont les corps qu'UN SEUL tireur revendique, que ce tireur ne
 // revendique QU'UNE FOIS, et qu'il peut PROLONGER. Chacun des trois refus est compté.
 func attributeClaimedBodies(tracks map[uint32]slotTrack, owner map[uint32]int,
-	c shotClaims, rep *closureReport) {
+	lives []lifeSpan, c shotClaims, rep *closureReport) {
 	twice := shootersClaimingTwoBodies(c.byBody)
 	for _, slot := range sortedClaimSlots(c.byBody) {
 		if len(c.byBody[slot]) != 1 { // deux joueurs pour un même corps
@@ -221,7 +221,7 @@ func attributeClaimedBodies(tracks map[uint32]slotTrack, owner map[uint32]int,
 			rep.contested++
 			continue
 		}
-		if !bodyExtendsShooter(tracks, owner, slot, pi) {
+		if !bodyExtendsShooter(tracks, owner, slot, lifeStartOf(lives, c.life[slot], tracks, slot), pi) {
 			rep.refused++
 			continue
 		}
@@ -288,12 +288,19 @@ func shootersClaimingTwoBodies(claims map[uint32]map[int]int) map[int]bool {
 // candidat reste attribuable même s'il était en réalité invisible à cet instant. Ce cas-là ne se
 // distingue pas du cas nominal avec les pièces disponibles — c'est la limite de la fermeture A,
 // pas un contrôle oublié.
-func bodyExtendsShooter(tracks map[uint32]slotTrack, owner map[uint32]int, slot uint32, pi int) bool {
-	cand := tracks[slot].pts
-	if len(cand) == 0 {
+//
+// `from` EST LE DÉBUT DE LA VIE DÉSIGNÉE, PAS DU SLOT (correctif du 2026-09-06, constat P1-6).
+// `tracks[slot].pts[0]` est le premier point du slot TOUTES VIES CONFONDUES : sur un slot
+// recyclé, la terminalité se testait contre le début de la PREMIÈRE vie du slot, si bien qu'un
+// corps nommé du tireur s'achevant ENTRE les deux vies faisait échouer « tous ses corps connus
+// s'achèvent avant » — alors qu'il s'achève bien avant la vie candidate. La vie désignée est
+// `c.life[slot]` ; quand les tirs en ont pointé plusieurs (`-1`), on retombe sur le début du
+// slot, qui est le comportement d'avant : on ne resserre que ce qui est désigné.
+func bodyExtendsShooter(tracks map[uint32]slotTrack, owner map[uint32]int, slot uint32,
+	from uint64, pi int) bool {
+	if len(tracks[slot].pts) == 0 {
 		return false
 	}
-	from := cand[0].TimestampUS
 	anchored := false
 	for s, p := range owner {
 		if p != pi || s == slot {
@@ -309,6 +316,21 @@ func bodyExtendsShooter(tracks map[uint32]slotTrack, owner map[uint32]int, slot 
 		anchored = true
 	}
 	return anchored
+}
+
+// lifeStartOf rend le début de la vie DÉSIGNÉE par les tirs, ou à défaut celui du slot entier.
+//
+// LE DÉFAUT EST LE COMPORTEMENT D'AVANT, et il est atteint dans le seul cas où la désignation
+// n'existe pas : `c.life[slot] == -1`, c'est-à-dire quand les tirs ont pointé DEUX vies du même
+// slot et que la vie ne se tranche pas. On ne resserre jamais sur une vie qu'on n'a pas désignée.
+func lifeStartOf(lives []lifeSpan, life int, tracks map[uint32]slotTrack, slot uint32) uint64 {
+	if life >= 0 && life < len(lives) && lives[life].slot == slot {
+		return uint64(lives[life].from)
+	}
+	if pts := tracks[slot].pts; len(pts) > 0 {
+		return pts[0].TimestampUS
+	}
+	return 0
 }
 
 // freeLives rend les vies sans identité dont le slot n'est pas DÉJÀ au pont : un slot nommé par

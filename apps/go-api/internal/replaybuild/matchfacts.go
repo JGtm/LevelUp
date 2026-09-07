@@ -45,6 +45,11 @@ import (
 type filmStats struct {
 	score      *replay.ScoreInput
 	objectives []objectiveevents.IdentifiedEvent
+	// objectivesUnnamed est le nombre d evenements d objectif que le film NOMMAIT et que le
+	// pont par manche n a pas su attribuer. Il voyage jusqu au document parce qu il est le
+	// DENOMINATEUR manquant : sans lui, `coverage.objectives.available` compte les rescapes
+	// et un calque partiel se lit ~100 % (cf. objectiveevents.IdentifyNamedEventsByRound).
+	objectivesUnnamed int
 	// flag porte les lectures du DRAPEAU VIVANT que seul cet etage peut faire : les
 	// enregistrements d'entite (les memes que la courbe de score) et les bursts de capture. Les
 	// SOCLES s'y ajoutent chez l'appelant (ils viennent du catalogue de carte, pas du film).
@@ -94,6 +99,7 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 	// UN SEUL PONT D'IDENTITE POUR LES DEUX CALQUES QUI EN VIVENT (actions d'objectif et
 	// drapeau vivant) : la meme table slot -> xuid, resolue AU PLUS UNE FOIS par cuisson.
 	pont := &pontParManche{recs: recs, deaths: deathInstantsOf(deaths.list), lines: lines}
+	objectifs, nonNommes := identifiedEvents(ctx, matchID, deaths, recs, facts, pont)
 	return filmStats{
 		score: &replay.ScoreInput{
 			Records:    recs,
@@ -102,11 +108,12 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 			TeamScores: facts.TeamScores,
 			Truncated:  truncated,
 		},
-		objectives: identifiedEvents(ctx, matchID, deaths, recs, facts, pont),
-		flag:       flagInput(recs, film, pont, facts),
-		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
-		skull:      skullInput(recs, isSkullVariant(facts.GameVariantName)),
-		bomb:       bombInput(film, isBombVariant(facts.GameVariantName)),
+		objectives:        objectifs,
+		objectivesUnnamed: nonNommes,
+		flag:              flagInput(recs, film, pont, facts),
+		vip:               vipInput(recs, isVipVariant(facts.GameVariantName)),
+		skull:             skullInput(recs, isSkullVariant(facts.GameVariantName)),
+		bomb:              bombInput(film, isBombVariant(facts.GameVariantName)),
 	}
 }
 
@@ -278,22 +285,29 @@ func withFlagIdentity(in replay.FlagInput, pont *pontParManche) replay.FlagInput
 // C'est la meme lecture que `killRefs` consomme (kills.go), la ou les deux ouvraient et
 // reparsaient chacune le chunk highlight. Le second decodage du statborg, lui, n'a jamais ete
 // refait — `recs` est reutilise.
+// LE SECOND RETOUR EST LE NOMBRE D'ACTIONS QUE LE PONT N'A PAS NOMMEES, et il n'est pas une
+// commodite de journal : il devient `coverage.objectives.noSlot` dans l'artefact servi (cf.
+// replay/objectives.go). Sans lui la perte n'existait que dans un `slog` non durable, qui ne
+// voyage ni dans le document ni dans le contrat — et `noSlot` valait 0 sur les 111 artefacts du
+// parc, sans une seule exception. Le fil des morts ILLISIBLE rend `len(named)` : le calque est
+// alors integralement perdu, et c'est cette perte-la qu'il faut publier, pas zero.
 func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 	recs []objectiveevents.StatRecord, facts port.MatchFacts,
-	pont *pontParManche) []objectiveevents.IdentifiedEvent {
+	pont *pontParManche) ([]objectiveevents.IdentifiedEvent, int) {
 	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeOf(facts.GameVariantName))
 	if len(named) == 0 {
-		return nil
+		return nil, 0
 	}
 	if deaths.err != nil {
 		slog.WarnContext(ctx, "replaybuild: fil des morts illisible — actions d'objectif non identifiees",
 			"err", deaths.err, "match_id", matchID, "nommees", len(named))
-		return nil
+		return nil, len(named)
 	}
-	out := objectiveevents.IdentifyNamedEventsByRound(named, pont.identite())
+	out, nonNommes := objectiveevents.IdentifyNamedEventsByRound(named, pont.identite())
 	slog.InfoContext(ctx, "replaybuild: actions d'objectif identifiees par manche",
-		"match_id", matchID, "nommees", len(named), "identifiees", len(out), "lignes", len(facts.Players))
-	return out
+		"match_id", matchID, "nommees", len(named), "identifiees", len(out),
+		"nonNommees", nonNommes, "lignes", len(facts.Players))
+	return out, nonNommes
 }
 
 // pontParManche est LE pont slot d'entite -> xuid de la cuisson : resolu par manche via les

@@ -210,20 +210,24 @@ go-api-test:
 go-api-test-gamefiles:
 	cd $(GO_API_DIR) && go test -tags=gamefiles -count=1 -timeout 3600s ./internal/himap/ -v
 
-## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin (EXIGE le parc
-## local de developpement — chunks de film + artefacts deja cuits sous data/cache/, ET
-## l'acces en lecture a la base partagee du titre pour les faits du match ; PAS le jeu
-## installe).
+## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin. DEFAUT
+## (--reference=base) : cuit chaque temoin DEUX FOIS (code du HEAD, code d'une revision de
+## base — origin/feat/v75 ou HEAD^) dans deux racines de travail jetables (jamais le parc), et
+## compare les deux artefacts frais par TOUS les axes de cmd/replay-diff (dont la somme des
+## durees par calque). Toute perte sort en code 1 : le signal est binaire, une perte ne peut
+## venir que du diff en cours de revue. Mode --reference=parc (balayage de release, contre
+## l'artefact deja cuit) disponible mais INFORMATIF sauf --strict — cf. docs/COMMANDS.md.
 ##
 ## A LANCER AVANT tout merge qui touche analysis/replay, replaybuild, filmdec, ou qui bumpe
-## SchemaVersion (cf. docs/COMMANDS.md). Cuit chaque temoin de config/replay_corpus.toml au
-## HEAD dans une racine de travail jetable (jamais le parc), compare a l'artefact deja cuit
-## par TOUS les axes de cmd/replay-diff (dont la somme des durees par calque), imprime un
-## tableau et sort en code 1 des qu'un axe montre une perte. Duree mesuree (7 temoins,
-## 2026-09-06) : cf. docs/COMMANDS.md.
+## SchemaVersion. EXIGE le parc local de developpement (chunks de film) ET l'acces en lecture
+## a la base partagee du titre pour les faits du match ; PAS le jeu installe. Marche SANS FLAG
+## depuis un depot qui porte sa propre base partagee (le cas courant, cf. docs/COMMANDS.md pour
+## le detail des 10 options si votre topologie l'exige) ; duree mesuree (7 temoins, 2026-09-07,
+## les deux modes) : cf. .ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md.
 ##
-## Un temoin absent du parc local est un avertissement (`slog`), jamais un echec silencieux —
-## la cible reste utilisable sur un poste sans parc (elle ne compare alors rien).
+## Par defaut, un SEUL temoin absent (cache de film purge ou partiel) fait sortir en code 2 —
+## un gate qui ne compare rien ne doit jamais sortir en 0 (`--allow-missing` restaure l'ancien
+## avertissement seul, pour un usage delibere).
 replay-corpus-gate:
 	cd $(GO_API_DIR) && CGO_ENABLED=0 go run ./cmd/replay-corpus-gate
 

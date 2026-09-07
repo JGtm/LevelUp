@@ -849,6 +849,25 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   forme le dise, et `backfill-replay` saute un artefact qui porte la version courante.
 	//   Détail : internal/analysis/replay/skull_carries.go (carrierPresence.gate) et
 	//   .ai/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
+	// v44 — LA MANCHE DÉCLARÉE EST CONFRONTÉE AU TEMPS (2026-09-06). Aucun champ ajouté : c'est le
+	//   CONTENU de `scoreTimeline` (les quatre compteurs par joueur, les courbes d'équipe) et des
+	//   actions d'objectif qui change, sur les films À PLUSIEURS MANCHES seulement. La manche d'un
+	//   enregistrement est lue dans deux en-têtes de 5 bits, et le résidu de faux positifs que
+	//   l'assertion d'en-tête laisse passer en porte une quelconque. La découpe la croyait sur
+	//   parole ; la plus longue sous-suite non décroissante ne pouvait pas l'écarter, une valeur
+	//   mal lue mais PLUS GRANDE prolongeant la suite au lieu de la rompre.
+	//   Mesuré : `51ebbc0f` publiait 63 assistances (feuille : 5) pour `2535439712156981` à cause
+	//   d'un enregistrement daté 57 s après le début de la manche 1 et déclarant la manche 0 avec
+	//   `comp 3 A = 60` ; frags 0 -> 1 au passage. Le MÊME enregistrement sur `d9781168` : 69 -> 11
+	//   assistances, exactement la feuille. Vols de drapeau fantômes sur deux films d'Oddball :
+	//   58 -> 0 (`51ebbc0f`), 994 -> 0 (`24dbb67d`). Onze des quinze témoins re-cuits sont
+	//   IDENTIQUES À L'OCTET, dont les trois films dont l'étiquetage de manche ne suit pas
+	//   l'horloge et tous les mono-manche.
+	//   POURQUOI LA VERSION MONTE : un artefact 1 à 43 d'un film multi-manche porte des compteurs
+	//   gonflés sans que sa forme le dise, et `backfill-replay` saute un artefact à la version
+	//   courante.
+	//   Détail : internal/analysis/objectiveevents/round_bounds.go et
+	//   .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
 	// v45 — UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE (2026-09-06). Aucun champ
 	//   ajouté : c'est le CONTENU de `equipmentEpisodes` et de `flagCarries` qui change, sur la
 	//   même cause que les montées v41 et v43 — le découpage « une track = une vie » du v36, dont
@@ -874,8 +893,6 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//             locale : un slot que le pont ne nomme pas reste écarté.
 	//   POURQUOI LA VERSION MONTE : un artefact 36 à 44 est amputé de durée sans que sa forme le
 	//   dise, et `backfill-replay` saute un artefact qui porte la version courante.
-	//   LE 44 EST SAUTÉ ET RÉSERVÉ au lot des manches, en cours sur une autre branche : deux
-	//   chantiers parallèles ne peuvent pas revendiquer le même numéro (même règle qu'au v42).
 	//   Détail : internal/analysis/replay/{equipment_episodes.go (spanFor), flag_carries.go
 	//   (tracksByXUID)} et .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
 	// v46 — UN JOUEUR NE PORTE PLUS SON PROPRE DRAPEAU (2026-09-06). Aucun champ ajouté : c'est
@@ -905,8 +922,30 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   drapeau sans que sa forme le dise, et la reprise du backfill se fait par SchemaVersion.
 	//   Détail : internal/analysis/replay/flag_assign.go et
 	//   .ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md.
-	if SchemaVersion != 46 {
-		t.Fatalf("SchemaVersion = %d, attendu 46 : incrémenter exige une raison écrite ci-dessus "+
+	// v47 — AUCUNE VIE PUBLIÉE NE RESTE SANS NOM (2026-09-07). Décision produit : « les vies
+	//   anonymes n'existent pas ; une vie est un humain ou un bot, point ». Une piste sans
+	//   identité est un DÉFAUT du pont, pas une donnée : une passe finale la nomme par
+	//   l'OCCUPATION DU SLOT DANS LE TEMPS (vie nommée du même slot qui précède, sinon qui suit,
+	//   sinon le pont canonique), et le résidu se publie (`bridge.unnamedLives`) doublé d'un
+	//   `slog.Error`. Sept lecteurs qui jetaient une lecture VRAIE faute de nom sont corrigés au
+	//   passage — objectifs, zones, les deux fermetures, les rides de véhicule, les sièges de
+	//   bot, et le rognage des portages. CES SEPT-LÀ SONT DES CORRECTIFS DE DÉFENSE : leurs
+	//   mutations rougissent, mais le parc local ne porte de témoin chiffré pour aucun (revue
+	//   VIES-R1, C3 — les chiffres cités en première rédaction mesuraient autre chose). Le gain
+	//   MESURÉ du schéma est celui du nommage : 305 vies sans nom -> 201 sur neuf témoins.
+	//   NEUF champs de couverture s'ajoutent : CINQ côté pont (`namedByPreviousLife`,
+	//   `namedByNextLife`, `namedBySlotBridge`, `unnamedLives`, `unnamedLivesContested`), TROIS
+	//   côté zones (`noPosition`, `outside`, `ambiguousZone`) et UN côté drapeau
+	//   (`flagCarries.ambiguousSlot`, apporté par le lot des DURÉES et intégré ici : le refus du
+	//   repli d'une vie sans nom se COMPTE au lieu de se taire). Le cinquième champ du pont vient
+	//   du complément de la revue des durées : un slot à plusieurs occupants est MARQUÉ, et la
+	//   frontière entre deux d'entre eux est refusée plutôt que tranchée.
+	//   POURQUOI LA VERSION MONTE : un artefact 36 à 46 est appauvri sans que sa forme le dise.
+	//   44, 45 et 46 sont INTEGRES (manches, durees, drapeaux) : la chronique ci-dessus les
+	//   porte dans l ordre, et aucun numero n est plus reserve.
+	//   Détail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
+	if SchemaVersion != 47 {
+		t.Fatalf("SchemaVersion = %d, attendu 47 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

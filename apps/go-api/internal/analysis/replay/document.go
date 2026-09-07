@@ -816,6 +816,33 @@ package replay
 // Détail : internal/analysis/replay/skull_carries.go (carrierPresence.gate) et
 // .ai/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
 //
+// v44 (2026-09-06) : LA MANCHE DÉCLARÉE D'UN ENREGISTREMENT EST CONFRONTÉE AU TEMPS. Aucun champ
+// n'est ajouté ; c'est le CONTENU de `scoreTimeline` (les quatre compteurs par joueur et les
+// courbes d'équipe) et des actions d'objectif qui change, sur les films À PLUSIEURS MANCHES
+// SEULEMENT. La manche d'un enregistrement est lue dans deux en-têtes de 5 bits ; l'assertion
+// d'en-tête étant relâchée, un résidu de faux positifs porte une manche quelconque et des
+// valeurs arbitraires. La découpe par manche prenait ce numéro pour argent comptant, et la plus
+// longue sous-suite non décroissante ne pouvait pas l'écarter — une valeur mal lue mais PLUS
+// GRANDE prolonge la suite au lieu de la rompre. Les manches se jouant dans l'ordre, un
+// enregistrement daté hors de l'intervalle de la manche qu'il déclare est désormais écarté.
+//
+//	mesure   `51ebbc0f` (Oddball, 2 manches) : un enregistrement daté 316 777 ms — 57 s APRÈS le
+//	         début de la manche 1 — déclarait la manche 0 avec 60 assistances ; ce 60 devenait le
+//	         décalage de la manche 1 et le document publiait 63 assistances pour un joueur qui en
+//	         a 5 à la feuille (il coûtait aussi son frag de manche 0 : 0 -> 1). MÊME
+//	         enregistrement sur `d9781168` (slot 12, `comp 3 A = 60`) : assistances 69 -> 11,
+//	         soit EXACTEMENT la feuille. Le même bruit nommait 58 vols de drapeau sur `51ebbc0f`
+//	         et 994 sur `24dbb67d` — deux films d'Oddball, donc sans drapeau : tombent à 0.
+//	portée   Quinze témoins re-cuits : les onze autres sont IDENTIQUES À L'OCTET, dont les trois
+//	         films dont l'étiquetage de manche ne suit pas l'horloge (`fb1a1a72`, `72b0a25e`,
+//	         `a4083bd2`) où aucune borne n'est posable, et tous les films mono-manche — qui n'ont
+//	         par construction aucune borne.
+//
+// La version monte pour la raison des montées v39 à v43 : un artefact 1 à 43 d'un film
+// multi-manche porte des compteurs gonflés sans que sa forme le dise, et `backfill-replay` saute
+// un artefact à la version courante. Détail :
+// internal/analysis/objectiveevents/round_bounds.go et .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
+//
 // v45 (2026-09-06) : UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE. Aucun champ n'est
 // ajouté ; c'est le CONTENU d'`equipmentEpisodes` et de `flagCarries` qui change. Même cause
 // qu'aux v41 et v43 — le découpage « une track = une vie » du v36 —, mais sur deux consommateurs
@@ -833,10 +860,9 @@ package replay
 //	          perdues, `carries` 16 -> 7. L'identité vient du PONT canonique (`ResolveSlotXUID`),
 //	          jamais d'une déduction locale.
 //
-// La version monte pour la raison des montées v39 à v43 : un artefact 36 à 44 est appauvri sans
-// que sa forme le dise. **44 EST SAUTÉ ET RÉSERVÉ** au lot des manches, en cours sur une autre
-// branche. Détail : internal/analysis/replay/{equipment_episodes.go, flag_carries.go} et
-// .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
+// La version monte pour la raison des montées v39 à v44 : un artefact 36 à 44 est appauvri sans
+// que sa forme le dise. Détail : internal/analysis/replay/{equipment_episodes.go, flag_carries.go}
+// et .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
 //
 // v46 (2026-09-06) : UN JOUEUR NE PORTE PLUS SON PROPRE DRAPEAU. Aucun champ n'est ajouté ;
 // c'est le CONTENU de `flagCarries` qui change — l'attribution d'un portage à l'un des deux
@@ -860,7 +886,66 @@ package replay
 // mauvais drapeau sans que sa forme le dise, et `backfill-replay` saute un artefact à la version
 // courante. Détail : internal/analysis/replay/flag_assign.go et
 // .ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md.
-const SchemaVersion = 46
+//
+// v47 (2026-09-07) : AUCUNE VIE PUBLIEE NE RESTE SANS NOM, ET LES LECTEURS LISENT LA PISTE SOUS
+// L'IDENTITE RESOLUE DE SON SLOT. NEUF champs de couverture s'ajoutent — cinq au pont
+// (`bridge.namedByPreviousLife/namedByNextLife/namedBySlotBridge/unnamedLives/
+// unnamedLivesContested`), trois aux zones (`zones.noPosition/outside/ambiguousZone`) et un au
+// drapeau (`flagCarries.ambiguousSlot`, apporte par le lot des DUREES et integre ici) ; le reste
+// est un changement de CONTENU.
+//
+// DECISION PRODUIT (utilisateur, 2026-09-07) : « les vies anonymes n'existent pas ; une vie est
+// un humain ou un bot, point ». Une piste publiee sans identite n'est PAS une categorie de
+// donnee, c'est un DEFAUT DE NOMMAGE du pont — a reparer a la source, jamais a afficher.
+//
+//	drapeau       Le repli d'une vie SANS NOM sur le joueur du pont est REFUSE quand les vies
+//	              publiees du slot le contredisent, et le refus se COMPTE
+//	              (`flagCarries.ambiguousSlot`) au lieu de disparaitre en silence. Deux gardes
+//	              cohabitent, sur deux matieres distinctes — le pont EPURE (vies decoupees) et
+//	              `slotAmbigu` (vies publiees) — et le compteur porte les deux populations.
+//	              flag_carrier_tracks.go.
+//	frontieres    Un slot que DEUX joueurs nommes se partagent est desormais MARQUE
+//	              (`OwnerReport.SlotAmbiguous`) et non plus seulement compte : le pont y garde le
+//	              PREMIER occupant, un choix par l'ORDRE DES VIES. Le repli par le pont s'abstient
+//	              sur ces slots, et une vie qui tombe ENTRE deux occupants differents est REFUSEE
+//	              et comptee (`bridge.unnamedLivesContested`) plutot que tranchee au hasard.
+//	              Temoin : `084a804d` slot 734. owners.go, unnamed_lives.go, published_tracks.go.
+//	nommage       Apres les quatre passes existantes (fil des morts, fermetures, sieges de bot,
+//	              relais), une passe finale nomme ce qui reste par l'OCCUPATION DU SLOT DANS LE
+//	              TEMPS : vie nommee du meme slot qui PRECEDE, sinon celle qui SUIT, sinon le
+//	              pont canonique. Le residu se compte (`unnamedLives`) et s'alarme (slog.Error) ;
+//	              il ne se devine jamais. unnamed_lives.go.
+//	objectifs     Le denominateur comptait les seuls RESCAPES du pont d'identite : `noSlot`
+//	              valait 0 sur les 111 artefacts du parc, sans exception. Et le filtre « piste
+//	              publiee » cadencait sur le seul nom LU — un joueur dont aucune vie n'est nommee
+//	              alors que le pont nomme son slot perdait TOUTES ses actions. Defaut DEMONTRE
+//	              (mutation) mais NON CHIFFRE sur le parc : les 35 actions de `3372e7eb` que la
+//	              premiere redaction citait viennent de deux joueurs SANS AUCUNE piste, que le
+//	              pont ne peut pas atteindre (revue VIES-R1, C3). objectives.go,
+//	              published_tracks.go, coverage.go (`warnIfLossy` voit `Unpublished`).
+//	zones         `samplesByXUID` n'indexait que les pistes NOMMEES : une capture couverte par
+//	              une vie non resolue sortait `NoPosition`, ne votait plus, et quand plus aucune
+//	              n'etait attribuee le calque `zoneStates` ENTIER disparaissait. `696a9d7c` 11
+//	              captures perdues sur 77, `7344d24f` 12 sur 71, `af13e2b2` 5 sur 19. La cause
+//	              d'une capture perdue est desormais PUBLIEE. zone_attribution.go, zone_states.go.
+//	fermetures    Les deux garde-fous jugeaient sur le nuage du slot ENTIER la ou le code venait
+//	              de DESIGNER une vie : sur un slot a deux vies eloignees, l intervalle teste
+//	              couvrait le trou qui les separe. closures.go, closures_respawn.go.
+//	vehicules     L occupant d une ride venait de `SlotXUID`, identite UNIQUE par slot pour tout
+//	              le match : sur un slot recycle, l episode sortait avec le PREMIER occupant, et
+//	              c'est lui qui donne sa COULEUR au vehicule. `OwnerReport.xuidAt(slot, instant)`.
+//	bots          Deux bots d un meme siege s ecrasaient dans une `map[siege]nom` : le dernier
+//	              balaye gagnait, sans rapport avec la chronologie du remplacement. identity.go.
+//	portages      Le rognage de `carrierPresence.gate` tronquait a la vie de recouvrement
+//	              MAXIMAL un portage qu un trou de replication coupe en deux — meme cause que
+//	              celle qui a produit `spanFor` au v45. `unionOverlap`. skull_carries.go.
+//
+// La version monte pour la raison des montees v39 a v45 : un artefact 36 a 46 est appauvri sans
+// que sa forme le dise, et `backfill-replay` saute un artefact a la version courante. 44, 45 et
+// 46 sont deja integres (manches, durees, DRAPEAUX) : la chronique ci-dessus les porte dans
+// l'ordre, et aucun numero n'est plus reserve.
+// Detail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
+const SchemaVersion = 47
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

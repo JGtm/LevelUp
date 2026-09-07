@@ -28,14 +28,53 @@ package main
 // chemin qui n'a JAMAIS existe dans le parc reel.
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
+
+// avertirSiCatalogueModifie logue un AVERTISSEMENT explicite si config/titles/{slug} ou
+// data/titles/{slug}/reference portent des modifications NON COMMISES dans `sourceRoot` —
+// CORPUS-R1 C11 (2026-09-07). Le cote HEAD de ce gate copie DELIBEREMENT l'ARBRE DE TRAVAIL
+// (stageReferenceOnce, ci-dessous), jamais un commit strict comme le cote base
+// (creerWorktreeBase, base.go) : c'est ce qui permet de tester un changement de catalogue AVANT
+// de le committer — exactement le moment ou ce gate sert le plus. Un fichier local NON COMMIS
+// serait sinon impute A TORT au diff de revision par un lecteur qui n'aurait aucun moyen de le
+// savoir : cet avertissement rend le cas VISIBLE, sans empecher l'usage qui le motive. Un
+// echec de la verification elle-meme (pas un depot git, `git` absent) est lui aussi un simple
+// avertissement — jamais une raison de faire echouer la cuisson.
+func avertirSiCatalogueModifie(ctx context.Context, sourceRoot, titleSlug string) {
+	relRef, err := filepath.Rel(sourceRoot,
+		filepath.Join(title.NewPathResolver(sourceRoot).TitleDataDir(titleSlug), "reference"))
+	if err != nil {
+		slog.Warn("replay-corpus-gate: verification des modifications locales des catalogues (chemin)",
+			"err", err)
+		return
+	}
+	relConfig := filepath.Join("config", "titles", titleSlug)
+	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain", "--", relConfig, relRef) //nolint:gosec // chemins internes derives du titre
+	cmd.Dir = sourceRoot
+	out, err := cmd.Output()
+	if err != nil {
+		slog.Warn("replay-corpus-gate: verification des modifications locales des catalogues",
+			"err", err)
+		return
+	}
+	if modifs := strings.TrimSpace(string(out)); modifs != "" {
+		slog.Warn("replay-corpus-gate: catalogues de reference du HEAD modifies localement "+
+			"(non commis) — la cuisson HEAD les inclut ; un ecart contre la base peut donc ne "+
+			"PAS venir uniquement du diff de revision",
+			"titre", titleSlug, "modifications", modifs)
+	}
+}
 
 // stageReferenceOnce copie UNE FOIS, vers `workRoot`, les catalogues VERSIONNES du titre lus
 // depuis `sourceRoot` : config/titles/{slug} et data/titles/{slug}/reference.
@@ -59,32 +98,35 @@ func stageReferenceOnce(sourceRoot, workRoot, titleSlug string) error {
 }
 
 // stageFilm copie le manifeste et les chunks d'UN film depuis le parc reel vers la racine de
-// travail. Rend le dossier de chunks a passer a `replaybuild.Builder.BuildMatch`. Un film
-// absent du parc (aucun chunk) est signale par une erreur nommee — l'appelant la traduit en
-// avertissement `slog` et saute le temoin, sans faire echouer les autres.
-func stageFilm(parcRoot, workRoot, short string) (filmDir string, err error) {
+// travail. Ne rend PAS le dossier de chunks (CORPUS-R1 C7, unparam) : depuis que la cuisson
+// passe par un sous-processus (bake.go), ce chemin n'est JAMAIS transmis explicitement — le
+// binaire replay-build le deduit lui-meme depuis LEVELUP_REPO_ROOT (filmcache.ChunkDir), cf.
+// l'en-tete de cuireUneCarte. Un film absent du parc (aucun chunk) est signale par une erreur
+// nommee — l'appelant la traduit en avertissement `slog` et saute le temoin, sans faire
+// echouer les autres.
+func stageFilm(parcRoot, workRoot, short string) error {
 	srcCache := title.NewPathResolver(parcRoot).CacheRootDir()
 	dstCache := title.NewPathResolver(workRoot).CacheRootDir()
 
 	srcManifest := filmcache.ManifestPath(srcCache, short)
 	if _, statErr := os.Stat(srcManifest); statErr != nil {
-		return "", fmt.Errorf("manifeste du film %s absent du parc (%s) : %w", short, srcManifest, statErr)
+		return fmt.Errorf("manifeste du film %s absent du parc (%s) : %w", short, srcManifest, statErr)
 	}
 	dstManifest := filmcache.ManifestPath(dstCache, short)
 	if err := copierFichier(srcManifest, dstManifest); err != nil {
-		return "", fmt.Errorf("copie du manifeste %s : %w", short, err)
+		return fmt.Errorf("copie du manifeste %s : %w", short, err)
 	}
 
 	srcChunks := filmcache.ChunkDir(srcCache, short)
 	dstChunks := filmcache.ChunkDir(dstCache, short)
 	n, err := copierArbreCompte(srcChunks, dstChunks)
 	if err != nil {
-		return "", fmt.Errorf("copie des chunks %s : %w", short, err)
+		return fmt.Errorf("copie des chunks %s : %w", short, err)
 	}
 	if n == 0 {
-		return "", fmt.Errorf("film %s absent du parc (aucun chunk sous %s)", short, srcChunks)
+		return fmt.Errorf("film %s absent du parc (aucun chunk sous %s)", short, srcChunks)
 	}
-	return dstChunks, nil
+	return nil
 }
 
 // copierArbre copie recursivement un repertoire. Un repertoire source absent n'est PAS une
