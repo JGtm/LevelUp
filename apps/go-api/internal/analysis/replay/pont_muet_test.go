@@ -264,41 +264,6 @@ func TestUnAmasDeFinsSimultaneesNEmportePasLeVote(t *testing.T) {
 	}
 }
 
-// TestLaMargeDuCalageEstPubliee — la paire (retenu, suivant) doit sortir de `bestDeathOffset`,
-// sinon rien ne permet de voir un vote trompé. Sur un film sain la marge est franche.
-func TestLaMargeDuCalageEstPubliee(t *testing.T) {
-	lives, deaths := pontFixtureAmas(5_000_000, 30_000, 40, 12, 4, 400_040)
-
-	_, n, second := bestDeathOffset(lives, deaths)
-
-	if n != 40 {
-		t.Fatalf("appariements = %d, attendu 40", n)
-	}
-	if second == 0 {
-		t.Fatalf("second candidat = 0 : l'amas de bruit devrait en former un, "+
-			"la marge ne serait pas mesurée (retenu %d)", n)
-	}
-	if n < deathOffsetMargeMin*second {
-		t.Fatalf("marge %d/%d sous le seuil de %d sur une fixture pourtant nette",
-			n, second, deathOffsetMargeMin)
-	}
-}
-
-// TestUnCalageSansConcurrentNAPasDeSecond — sans amas, il n'y a qu'un candidat : le second
-// compte est nul, et la garde de marge ne doit pas se déclencher pour autant.
-func TestUnCalageSansConcurrentNAPasDeSecond(t *testing.T) {
-	lives, deaths := pontFixture(2_000_000, 20_000, 16)
-
-	_, n, second := bestDeathOffset(lives, deaths)
-
-	if n != 16 {
-		t.Fatalf("appariements = %d, attendu 16", n)
-	}
-	if second*deathOffsetMargeMin > n {
-		t.Fatalf("second = %d contre %d : la garde s'alarmerait sur un film sain", second, n)
-	}
-}
-
 // TestSansFeuilleLeRosterEstCeluiDeLAncienCorps — LA CONTRE-ÉPREUVE, refaite après le constat
 // PONT-R1/C3 : comparer `rosterOf(d, nil)` à `rosterFromDeaths(d)` ne prouvait plus rien, celui-ci
 // étant devenu un délégué d'une ligne — les deux membres étaient le MÊME appel.

@@ -82,6 +82,8 @@ souffre aucune exception. (C3) La contre-epreuve du roster comparait deux appels
 copie LITTERALE de l ancien corps. SchemaVersion RESTE 48 — la re-cuisson des deux temoins ne rend
 que 2 ecarts sur 620 et 609 mesures, les deux champs de marge. Gates rejoues au complet.
 
+**RONDE PONT-R2 : deux trous de TEST combles, une limite documentee (2026-09-07).** Tests seuls, code de production inchange. (D1) La marge publiee n avait aucun test qui la vise — `deathOffsetMargeMin = 0` ne faisait rougir personne, les deux tests existants comparant `n < margeMin*second`, soit `n < 0`. Comble par un test qui CAPTURE `slog.Warn` : marge etroite -> alarme, marges franches (les deux temoins du parc) -> silence, pont vide -> silence, et l APPEL depuis `buildCoverage` verifie. (D2) La fusion des paniers voisins non plus : sans elle, une fixture a 40 paires sans la moindre ambiguite publie une marge 40:40 et declencherait l alarme sur un calage parfait. (D3) Limite structurelle du filet a trois candidats portee au REGISTRE sans etre corrigee — un amas de morts distinctes plus gros que le vrai calage remplit le budget de paniers ; figee par un test de DOCUMENTATION qui verifie que l alarme SE DECLENCHE (2:2), donc que la limite ne se franchit pas en silence, et qui rougira si un correctif futur fait mieux. `pont_muet_test.go` franchissait 500 lignes : la surveillance du calage est sortie dans `pont_marge_test.go`.
+
 **Conclusion / prochaine etape.** `SchemaVersion` 47 -> 48 : la re-cuisson de release est
 obligatoire pour les cinq films. Trois BTB sont repares a la sonde mais NON cuits (regle RAM).
 Reste ouvert au registre, hors de ce lot : le pont STATBORG, qui exige trois progressions du
