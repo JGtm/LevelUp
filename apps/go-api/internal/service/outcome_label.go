@@ -24,6 +24,18 @@ import (
 // (0 = pas d'issue enregistrée sur la ligne). Ce n'est pas un repli : il n'y a rien à traduire.
 const outcomeLabelUnknown = "-"
 
+// Les quatre mots du repli, extraits en constantes : `goconst` (min-occurrences 4) refuse un
+// littéral répété dans le module, et « Victoire », « Défaite », « Égalité » et « Abandon »
+// vivent aussi dans le repli de l'accueil (analysis/home_locale.go) et dans les libellés
+// Discord (notify/discord.go). Nommer ici ne crée PAS un vocabulaire canonique — la source de
+// vérité reste `outcomes.toml` ; ces quatre-là partent avec le kill-switch de outcomeLabels.
+const (
+	outcomeLabelTie  = "Égalité"
+	outcomeLabelWin  = "Victoire"
+	outcomeLabelLoss = "Défaite"
+	outcomeLabelDNF  = "Abandon"
+)
+
 // outcomeLabels — REPLI FRANÇAIS du libellé d'issue, conservé pour les titres qui n'exposent
 // pas (encore) de `raw_code` dans leur `outcomes.toml`, et pour les surfaces qui n'ont pas
 // d'adapter sémantique câblé. Les quatre valeurs sont à l'octet celles de la colonne `fr` du
@@ -35,10 +47,10 @@ const outcomeLabelUnknown = "-"
 // dans resolveOutcomeLabel). Le jour où le compteur est à zéro, ce bloc et outcomeLabel()
 // partent avec leurs derniers appelants (career, explorer — cf. le rapport de lot).
 var outcomeLabels = map[int]string{
-	1: "Égalité",
-	2: "Victoire",
-	3: "Défaite",
-	4: "Abandon",
+	1: outcomeLabelTie,
+	2: outcomeLabelWin,
+	3: outcomeLabelLoss,
+	4: outcomeLabelDNF,
 }
 
 // outcomesOf extrait le jeu d'outcomes de l'adapter sémantique d'un titre. nil-safe des deux
