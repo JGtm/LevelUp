@@ -39,6 +39,10 @@ func toFlagCarriesCoverage(v replay.FlagCarriesCoverage) replaydoc.FlagCarriesCo
 		ObjectLives:           v.ObjectLives,
 		ClosedByObject:        v.ClosedByObject,
 		DropsRepositioned:     v.DropsRepositioned,
+		AssignedByPlay:        v.AssignedByPlay,
+		DropsWithheld:         v.DropsWithheld,
+		OwnFlagRefused:        v.OwnFlagRefused,
+		Unresolved:            v.Unresolved,
 	}
 }
 

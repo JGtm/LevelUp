@@ -38,7 +38,8 @@ import (
 // En CTF on ne porte jamais son propre drapeau : on le RENVOIE, et c'est `flag_returns`. Un
 // portage appartient donc toujours au drapeau adverse — mais « adverse » suppose de connaitre
 // l'equipe du porteur, et **l'equipe n'est pas dans le film** (cf. `Track.Team`). L'attribution
-// passe donc par la GEOMETRIE, en deux regles qui suivent le comportement de l'objet :
+// passe donc par la GEOMETRIE : la regle, ses trois cas et l'ordre dans lequel ils se lisent
+// vivent dans `flag_assign.go`, avec la mesure qui les fonde.
 //
 // LE RENVOI N'EST PAS INSTANTANE, ET LA PHRASE LE DISAIT A TORT jusqu'au 2026-08-31 (« le toucher
 // le RENVOIE »). Le renvoi demande de SE TENIR dans la zone du drapeau tombe pendant ~3,1 s seul,
@@ -51,10 +52,6 @@ import (
 // EN VARIANTE « DRAPEAU NEUTRE », il n'y a qu'UN drapeau et il n'est celui de personne : la regle
 // ci-dessus devient sans objet, et tous les portages tombent dans ce drapeau unique parce qu'un
 // seul socle est retenu (`flag_neutral.go`).
-//
-//	un VOL (`flag_steals`) se fait AU SOCLE : le drapeau est celui du socle le plus proche ;
-//	une PRISE (`flag_grabs`) ramasse un drapeau DEJA au sol : c'est celui qui y est, si l'un
-//	  d'eux git a moins de [flagPickupRadiusM] ; sinon on retombe sur le socle le plus proche.
 //
 // Carte hors du catalogue d'objectifs : aucun socle, tous les portages tombent dans un seul
 // drapeau d'equipe [TeamNeutral]. Le calque reste vrai (les portages sont ceux qu'ils sont), il
@@ -99,6 +96,9 @@ type FlagCarryScan struct {
 	// manche a l'autre ; une prise est nommee par l'identite de sa manche, choisie sur son
 	// instant). Sur un film mono-manche c'est le pont plat, a l'octet pres.
 	Identity objectiveevents.RoundIdentity
+	// TeamOf est la table xuid -> equipe fournie par l'appelant (cf. [FlagInput.TeamOf]) : elle
+	// porte l'invariant « jamais son propre drapeau ». Vide : l'invariant se tait.
+	TeamOf map[string]int
 	// Marks est le controle independant : les records de bipede d'image-cle portant le marqueur
 	// de portage, plus les instants de TOUTES les images-cles.
 	Marks filmdec.CarrierMarkScan
@@ -200,7 +200,7 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	// ... et le point de lacher se corrige APRES, sur la piste LIBRE : le porteur meurt rarement
 	// la ou l'objet se pose. L'attribution du drapeau qui suit s'en sert.
 	cov.DropsRepositioned = repositionFlagDrops(raws, ctx, scan)
-	assignFlags(raws, scan.Spawns)
+	assignFlags(raws, scan, ctx, cov)
 	markFlagCarries(raws, scan.Marks, ctx)
 	tallyFlagCarries(raws, cov)
 	cov.Overlaps, cov.ClosedOverlaps = countFlagOverlaps(raws)
@@ -346,58 +346,6 @@ func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, cov *FlagCa
 		out = append(out, r)
 	}
 	return out
-}
-
-// assignFlags attribue chaque portage a un drapeau (index dans la liste des socles).
-func assignFlags(raws []flagCarryRaw, spawns []FlagSpawn) {
-	if len(spawns) == 0 {
-		for i := range raws {
-			raws[i].flagIndex = 0
-		}
-		return
-	}
-	dropped := make([]*[2]float32, len(spawns)) // position courante de chaque drapeau au sol
-	for i := range raws {
-		fi := -1
-		if !raws[i].steal {
-			fi = nearestDroppedFlag(dropped, raws[i].x0, raws[i].y0)
-		}
-		if fi < 0 {
-			fi = nearestSpawn(spawns, raws[i].x0, raws[i].y0)
-		}
-		raws[i].flagIndex = fi
-		if raws[i].captured {
-			dropped[fi] = nil
-			continue
-		}
-		dropped[fi] = &[2]float32{raws[i].x1, raws[i].y1}
-	}
-}
-
-// nearestDroppedFlag rend l'index du drapeau LACHE le plus proche du point, ou -1 si aucun n'est
-// a portee.
-func nearestDroppedFlag(dropped []*[2]float32, x, y float32) int {
-	best, bd := -1, float64(flagPickupRadiusM*flagPickupRadiusM)
-	for i, p := range dropped {
-		if p == nil {
-			continue
-		}
-		if d := sqDist(p[0], p[1], x, y); d <= bd {
-			best, bd = i, d
-		}
-	}
-	return best
-}
-
-// nearestSpawn rend l'index du socle le plus proche du point.
-func nearestSpawn(spawns []FlagSpawn, x, y float32) int {
-	best, bd := 0, sqDist(spawns[0].X, spawns[0].Y, x, y)
-	for i := 1; i < len(spawns); i++ {
-		if d := sqDist(spawns[i].X, spawns[i].Y, x, y); d < bd {
-			best, bd = i, d
-		}
-	}
-	return best
 }
 
 // sqDist rend le carre de la distance plane entre deux points.
