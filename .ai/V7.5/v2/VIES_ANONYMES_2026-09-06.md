@@ -228,7 +228,14 @@ par la résolution dans le temps de P1-7, −1 par cette abstention honnête).
   et `TestZonesAttribueLesCapturesDesViesNonNommees` (0 zone publiée — le calque entier
   disparaît). **Contre-épreuve** : `TestCaptureSansPontResteSansPosition`, trois sous-cas (pont
   muet, autre slot, autre nom).
-- **Témoins** : `af13e2b2` **+19 gains, 0 perte** ; `7344d24f` +5 ; `696a9d7c` +1.
+- **Témoins — CORRIGÉ par la revue VIES-R1 (C3)** : la première rédaction annonçait
+  « `af13e2b2` +19 gains ». **C'est faux, et les gains appartiennent à P0-0.** Mesuré des deux
+  côtés : `zones.captures` **19 → 19**, `zones.attributed` **14 → 14** — *aucune capture
+  récupérée* sur ce témoin ; les 19 gains sont tous des pistes nommées. Ce que P0-1 apporte
+  vraiment ici est la CAUSE, désormais lisible : `zones.noPosition = 5` au HEAD, champ qui
+  n'existait pas. P0-1 est donc un **correctif de défense** — sa mutation rougit (`M9`), le
+  chemin est fermé — mais **aucune mesure de parc ne le chiffre** : le corpus local ne porte pas
+  de film où une capture tombe sur une vie que seul le pont nomme.
 
 ## P1-3 — Le filtre « piste publiée » passe par le pont
 
@@ -250,7 +257,16 @@ par la résolution dans le temps de P1-7, −1 par cette abstention honnête).
 - **Mutations** : `TestActionDunJoueurSansVieNommeeEstPubliee` et
   `TestMortNeutreDunJoueurSansVieNommeeEstPubliee` (0 publiée au lieu de 1). **Contre-épreuve** :
   `TestActionSansPontResteEcartee`, quatre sous-cas.
-- **Témoin** : `3372e7eb` **+7 gains, 0 perte**.
+- **Témoin — CORRIGÉ par la revue VIES-R1 (C3)** : la première rédaction annonçait
+  « `3372e7eb` +7 gains » et attribuait ses 35 actions perdues à « un joueur dont aucune vie
+  n'est nommée ». **Les deux sont faux.** Mesuré des deux côtés : `objectives.unpublished`
+  **35 → 35**, `attached` **41 → 41** — *aucune action récupérée* ; les 7 gains sont la version
+  de schéma et des pistes nommées (P0-0). Et la cause réelle est autre : les 35 actions
+  appartiennent à `2535429116401024` et `2535433300797518`, **absents du roster ET sans aucune
+  piste dans le film** (roster 6, feuille 8) — le repli par le pont ne peut pas les atteindre,
+  puisqu'il n'y a aucune piste à nommer. P1-3 reste un **correctif de défense** portant
+  (mutation `M10` rouge) ; le fait « joueur de la feuille sans aucune piste » est porté au
+  registre des reports, et il relève du lot du pont muet.
 
 ## P1-4 — La couverture voit l'amont, et l'alarme voit la bonne catégorie
 
@@ -427,8 +443,106 @@ LIMITE, pas une erreur », a été corrigée pour ne plus contredire la décisio
    défaut de la passe de nommage mais du pont EN AMONT. **Au registre des reports.**
 2. **`696a9d7c` ne progresse pas** (3 vies sans nom, avant comme après) : ses trois slots ne
    portent aucune vie nommée et le pont ne les nomme pas. Même famille que (1), volume négligeable.
-3. **`084a804d` garde 79 vies sans nom sur 344** — 344 pistes pour 201 slots au pont, beaucoup de
+3. **`084a804d` garde 80 vies sans nom sur 344** — 344 pistes pour 201 slots au pont, beaucoup de
    vies très courtes sur des slots jamais nommés. Même famille que (1).
 4. **Les cinq P2 de l'audit** (`birthOfLives`, `coverage.equipmentChanges.lives`, la borne de
    manche, `indexBySlot` web, les jointures roster↔joueur qui perdent les bots) restent au
    registre, non traités — règle du zéro fix hors périmètre.
+
+---
+
+## Corrections R1 (revue adversariale VIES-R1, 2026-09-07)
+
+Revue close : **cœur exact** (rien perdu, rien inventé, 14 mutations rouges dont une cuisson
+mutée, oracle Oddball tenu sur l'artefact réel), **aucun P0**, huit constats corrigés ici.
+
+### C1 (P1) — le compte des actions écartées ne quittait jamais `replaybuild`
+
+**Le défaut** : `filmStats.objectivesUnnamed` était écrit (`matchfacts.go:112`) et **jamais lu** —
+le littéral `replay.Options{...}` de `BuildMatch` ne le passait pas. Champ mort (anti-patron n°1),
+qu'aucun gate n'attrape : `go vet` et `golangci-lint` ne signalent pas un champ de structure
+inutilisé. **P1-4 n'était donc livré qu'à moitié** : `coverage.objectives.available` restait un
+compte de RESCAPÉS et `noSlot` restait structurellement à 0 — le défaut même que l'item déclarait
+corriger. (L'autre moitié, `warnIfLossy` sur `Unpublished`, était bien branchée.)
+
+**Le correctif** : `ObjectivesUnnamed: stats.objectivesUnnamed` dans `replaybuild.go`.
+
+**La preuve, par cuisson** — `c0a82e88`, les deux côtés au même outil, seul C1 diffère :
+
+| | `available` | `attached` | `noSlot` |
+|---|---|---|---|
+| sans C1 | 23 | 23 | **0** |
+| **avec C1** | **92** | 23 | **69** |
+
+Le dénominateur compte enfin les événements que le FILM porte (92) et non les rescapés du pont
+(23) ; l'invariant tient au chiffre près (23 + 69 = 92). `3372e7eb` ne bouge pas (76/41/0/35) —
+son pont nomme tout ce qu'il peut, et ses 35 pertes sont d'une autre nature (cf. C3).
+
+**Le garde-rail** : `film_stats_cables_guard_test.go` lit LA SOURCE de l'assemblage et exige que
+chaque champ de `filmStats` apparaisse dans le littéral `replay.Options{...}` — un champ
+délibérément non câblé s'inscrit dans `champsNonCables` avec sa raison. Un test unitaire qui
+reconstruirait le littéral serait resté vert quoi qu'il arrive ; c'est la même logique que
+`published_tracks_guard_test.go`. **Mutation** : le champ débranché, le garde rougit
+(« champ(s) de filmStats ÉCRIT(S) mais jamais passé(s) à replay.Options : [objectivesUnnamed] »).
+
+### C2 (P1) — le helper partagé servait le nom arbitraire là où la passe s'abstient
+
+**Le défaut** : `xuidOfPublishedTrack` repliait sur `slotXUID[t.Slot]` **sans la garde
+`SlotAmbiguous`** que le lot venait d'ajouter à ses deux jumeaux (`bridgeOfSlot`, `xuidAt`) pour
+cette raison précise. Sur la configuration réelle du slot 734 de `084a804d`, la passe de nommage
+REFUSE (`contested = 1`) et le helper servait quand même `2535430265968559` : `samplesByXUID`
+(zones, chemin NEUF de ce lot) indexait les positions de la piste contestée sous le PREMIER
+occupant — **une capture de zone pouvait être géolocalisée sur la trajectoire d'un autre joueur**.
+Même exposition pour `tracksByXUID` (drapeau).
+
+**Le correctif, à la source** : `OwnerReport.NamingBridge()` rend le pont **débarrassé des slots
+ambigus**, et les quatre lecteurs qui NOMMENT une piste le reçoivent (zones, pistes de porteur de
+drapeau, actions d'objectif, morts neutres). Plutôt que de faire descendre `SlotAmbiguous` dans
+quatre chaînes d'appel, on retire les slots ambigus en amont : **le lecteur ne peut plus oublier
+la garde, puisqu'il n'a plus de quoi l'enfreindre.** `SlotXUID` reste inchangé pour ses autres
+consommateurs (ramassages, marques de portage, frags sous équipement actif) — leur exemption est
+explicite au cadrage de l'audit, et la modifier sortirait du périmètre.
+
+**Mutation** : `NamingBridge` rendant `SlotXUID` tel quel,
+`TestUnePisteCONTESTEEnEstJamaisIndexeeSousUnXUID` rougit sur les deux assertions (piste indexée
+sous `2535430265968559`, échantillons de zone servis). **Contre-épreuve** : sur un slot non
+ambigu, le repli par le pont joue toujours.
+
+### C3 (P2) — deux témoins chiffrés ne tenaient pas
+
+La revue a recuit `af13e2b2` et `3372e7eb` des deux côtés. Verdict, sur pièces :
+
+| témoin | ce que le journal annonçait | ce qui est MESURÉ |
+|---|---|---|
+| `af13e2b2` (P0-1) | « +19 gains » | `zones.captures` **19 → 19**, `attributed` **14 → 14** — *aucune capture récupérée*. Les 19 gains sont des pistes nommées, donc **P0-0**. Apport réel de P0-1 : `zones.noPosition = 5`, la CAUSE, champ qui n'existait pas |
+| `3372e7eb` (P1-3) | « +7 gains » et « un joueur dont aucune vie n'est nommée » | `objectives.unpublished` **35 → 35**, `attached` **41 → 41** — *aucune action récupérée*. Et la cause écrite est **fausse** : les 35 actions appartiennent à `2535429116401024` et `2535433300797518`, **absents du roster ET sans aucune piste** (roster 6, feuille 8) |
+
+**P0-1 et P1-3 restent des correctifs portants** — leurs mutations rougissent (`M9`, `M10`), le
+chemin est fermé — mais ce sont des **correctifs de DÉFENSE, non chiffrés sur le parc** : aucun
+film local ne porte la configuration déclenchante. Le journal, la chronique du schéma, le ratchet
+et les commentaires de `objectives.go`, `published_tracks.go` et de leurs tests sont corrigés en
+conséquence : **le seul gain MESURÉ du lot est celui du nommage** (305 → 201 vies sans nom).
+
+Le fait « joueur de la feuille de match sans aucune piste dans le film » (`3372e7eb` : 2 sur 8)
+entre au registre des reports — il relève du lot du pont muet.
+
+### C4 à C8 (P3)
+
+- **C4** — la chronique (`document.go`) et le ratchet (`structure_test.go`) énuméraient **7**
+  champs quand l'artefact en porte **8** : `bridge.unnamedLivesContested`, ajouté par le
+  complément, n'avait pas d'entrée. Corrigé, avec le paragraphe « frontières » qui manquait.
+- **C5** — `coverage.go` était passé de 497 à **522 lignes** sans exemption (règle n°5, qu'aucun
+  linter n'attrape). La santé du PONT sort dans `coverage_bridge.go` — déplacement PUR, frontière
+  naturelle du sujet : `coverage.go` porte ce que chaque CALQUE a rattaché, l'autre ce que le PONT
+  a su nommer. **385 + 146 lignes.**
+- **C6** — `UsageSummaryRev = "us3"` sans entrée de chronique (doc inversée : un lecteur concluait
+  que les résumés `us2` sont à jour). Entrée `us3` datée, avec ce qu'elle change et ce qu'elle
+  oblige à refaire.
+- **C7** — `t0_film.go` affirmait « le film n'offre aucun moyen de replier une piste anonyme sur
+  un joueur » : depuis `unnamed_lives.go` il en offre un, et `burst` passe 21 → 20 sur
+  `084a804d`. Le commentaire est corrigé ET **le couplage est écrit** : le nommage ne peut que
+  FAIRE BAISSER ce compteur, or `burst` est une GARDE (`t0FilmMinBurst = 2`, en deçà le coup
+  d'envoi n'est plus daté). Risque non observé (les deux artefacts du parc à `t0Film` ont un burst
+  de 5 et 6, et le verdict de `084a804d` ne bouge pas), mais désormais connu.
+- **C8** — « `084a804d` garde 79 vies sans nom » → **80**, la valeur publiée
+  (`bridge.unnamedLives = 80`, et 344 − 264 pistes nommées = 80).

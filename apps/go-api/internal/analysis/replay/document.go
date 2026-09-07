@@ -838,14 +838,21 @@ package replay
 // branche. Détail : internal/analysis/replay/{equipment_episodes.go, flag_carries.go} et
 // .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
 // v47 (2026-09-07) : AUCUNE VIE PUBLIEE NE RESTE SANS NOM, ET LES LECTEURS LISENT LA PISTE SOUS
-// L'IDENTITE RESOLUE DE SON SLOT. Quatre champs de couverture s'ajoutent (`bridge.
-// namedByPreviousLife/namedByNextLife/namedBySlotBridge/unnamedLives`, `zones.noPosition/
-// outside/ambiguousZone`) ; le reste est un changement de CONTENU.
+// L'IDENTITE RESOLUE DE SON SLOT. HUIT champs de couverture s'ajoutent — cinq au pont
+// (`bridge.namedByPreviousLife/namedByNextLife/namedBySlotBridge/unnamedLives/
+// unnamedLivesContested`) et trois aux zones (`zones.noPosition/outside/ambiguousZone`) ; le
+// reste est un changement de CONTENU.
 //
 // DECISION PRODUIT (utilisateur, 2026-09-07) : « les vies anonymes n'existent pas ; une vie est
 // un humain ou un bot, point ». Une piste publiee sans identite n'est PAS une categorie de
 // donnee, c'est un DEFAUT DE NOMMAGE du pont — a reparer a la source, jamais a afficher.
 //
+//	frontieres    Un slot que DEUX joueurs nommes se partagent est desormais MARQUE
+//	              (`OwnerReport.SlotAmbiguous`) et non plus seulement compte : le pont y garde le
+//	              PREMIER occupant, un choix par l'ORDRE DES VIES. Le repli par le pont s'abstient
+//	              sur ces slots, et une vie qui tombe ENTRE deux occupants differents est REFUSEE
+//	              et comptee (`bridge.unnamedLivesContested`) plutot que tranchee au hasard.
+//	              Temoin : `084a804d` slot 734. owners.go, unnamed_lives.go, published_tracks.go.
 //	nommage       Apres les quatre passes existantes (fil des morts, fermetures, sieges de bot,
 //	              relais), une passe finale nomme ce qui reste par l'OCCUPATION DU SLOT DANS LE
 //	              TEMPS : vie nommee du meme slot qui PRECEDE, sinon celle qui SUIT, sinon le
@@ -854,7 +861,10 @@ package replay
 //	objectifs     Le denominateur comptait les seuls RESCAPES du pont d'identite : `noSlot`
 //	              valait 0 sur les 111 artefacts du parc, sans exception. Et le filtre « piste
 //	              publiee » cadencait sur le seul nom LU — un joueur dont aucune vie n'est nommee
-//	              perdait TOUTES ses actions (35 sur 76 sur `3372e7eb`). objectives.go,
+//	              alors que le pont nomme son slot perdait TOUTES ses actions. Defaut DEMONTRE
+//	              (mutation) mais NON CHIFFRE sur le parc : les 35 actions de `3372e7eb` que la
+//	              premiere redaction citait viennent de deux joueurs SANS AUCUNE piste, que le
+//	              pont ne peut pas atteindre (revue VIES-R1, C3). objectives.go,
 //	              published_tracks.go, coverage.go (`warnIfLossy` voit `Unpublished`).
 //	zones         `samplesByXUID` n'indexait que les pistes NOMMEES : une capture couverte par
 //	              une vie non resolue sortait `NoPosition`, ne votait plus, et quand plus aucune

@@ -884,10 +884,15 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   l'OCCUPATION DU SLOT DANS LE TEMPS (vie nommée du même slot qui précède, sinon qui suit,
 	//   sinon le pont canonique), et le résidu se publie (`bridge.unnamedLives`) doublé d'un
 	//   `slog.Error`. Sept lecteurs qui jetaient une lecture VRAIE faute de nom sont corrigés au
-	//   passage — objectifs (35 actions sur 76 perdues sur `3372e7eb`), zones (le calque ENTIER
-	//   pouvait disparaître : 11, 12 et 5 captures perdues sur `696a9d7c`, `7344d24f`,
-	//   `af13e2b2`), les deux fermetures, les rides de véhicule, les sièges de bot, et le
-	//   rognage des portages. Quatre champs de couverture s'ajoutent côté pont, trois côté zones.
+	//   passage — objectifs, zones, les deux fermetures, les rides de véhicule, les sièges de
+	//   bot, et le rognage des portages. CES SEPT-LÀ SONT DES CORRECTIFS DE DÉFENSE : leurs
+	//   mutations rougissent, mais le parc local ne porte de témoin chiffré pour aucun (revue
+	//   VIES-R1, C3 — les chiffres cités en première rédaction mesuraient autre chose). Le gain
+	//   MESURÉ du schéma est celui du nommage : 305 vies sans nom -> 201 sur neuf témoins. HUIT champs de couverture s'ajoutent : CINQ côté pont
+	//   (`namedByPreviousLife`, `namedByNextLife`, `namedBySlotBridge`, `unnamedLives`,
+	//   `unnamedLivesContested`) et trois côté zones (`noPosition`, `outside`, `ambiguousZone`).
+	//   Le cinquième vient du complément de la revue des durées : un slot à plusieurs occupants
+	//   est MARQUÉ, et la frontière entre deux d'entre eux est refusée plutôt que tranchée.
 	//   POURQUOI LA VERSION MONTE : un artefact 36 à 46 est appauvri sans que sa forme le dise.
 	//   44, 45 et 46 SONT PRIS par les lots des manches, des durées et des drapeaux, en cours sur
 	//   d'autres branches. Détail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.

@@ -242,9 +242,23 @@ func t0FilmDepartures(tracks []T0FilmTrack, frameIntervalMS int) (deps []t0FilmD
 // `windowMS` du tout premier. `deps` doit etre trie par frame.
 //
 // PAR XUID, pas par piste : deux vies du meme joueur ne font pas deux partants. Une piste que
-// le fil des morts n'a pas nommee compte pour UN partant — le film n'offre aucun moyen de la
-// replier sur un joueur, et deux vies anonymes qui partent dans la meme seconde du coup
-// d'envoi sont deux joueurs (une seconde vie suppose une mort, impossible avant le depart).
+// RIEN n'a nommee compte pour UN partant — deux vies sans identite qui partent dans la meme
+// seconde du coup d'envoi sont deux joueurs (une seconde vie suppose une mort, impossible avant
+// le depart).
+//
+// CE COMPTEUR DEPEND DESORMAIS DU NOMMAGE, ET C'EST UN COUPLAGE A CONNAITRE (constat C7 de la
+// revue VIES-R1, 2026-09-07). La phrase precedente disait « le film n'offre aucun moyen de la
+// replier sur un joueur » : depuis `unnamed_lives.go` il en offre un — l'occupation du slot dans
+// le temps. Deux partants distincts peuvent donc recevoir le MEME xuid et n'en faire plus qu'un.
+// Mesure : `084a804d`, `coverage.t0Film.burst` 21 -> 20.
+//
+// LE SENS DU COUPLAGE EST A SENS UNIQUE : le nommage ne peut que FAIRE BAISSER `burst`, jamais
+// le faire monter. Or `burst` est une GARDE — sous `t0FilmMinBurst` (2), `t0FilmRefuse` et le
+// coup d'envoi n'est plus date. Un film dont le depart ne serait porte que par deux pistes que
+// le nommage rabat sur un seul joueur perdrait donc sa datation. Le cas n'est pas observe (les
+// deux artefacts du parc qui portent `t0Film` ont un burst de 5 et 6, et sur `084a804d` le
+// verdict ne bouge pas : `detected` vrai, `t0FilmMs` et `marginMs` identiques des deux cotes),
+// mais il est ECRIT ici plutot que decouvert un jour sur un film muet.
 func t0FilmBurst(deps []t0FilmDeparture, frameIntervalMS int, windowMS int64) int {
 	if len(deps) == 0 {
 		return 0
