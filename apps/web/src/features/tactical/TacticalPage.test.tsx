@@ -20,7 +20,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
-import type { FilterContextInput, TacticalMapsPage } from '@/lib/api/types'
+import type { FilterContextInput, TacticalMapsPage, TacticalRaster } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { TacticalPage } from './TacticalPage'
@@ -91,6 +91,27 @@ const page: TacticalMapsPage = {
       sous_plancher: true,
     },
   ],
+}
+
+/** Réponse minimale du raster : suffit à faire sortir `TacticalAnalysisView` de son état
+ *  d'attente. Le détail de cette lecture (KPI, plan, cellule) est cadenassé ailleurs
+ *  (`TacticalAnalysisView.test.tsx`) — ici on vérifie seulement QUI s'affiche quand
+ *  `?carte=` est posé, pas ce que la vue d'analyse en fait. */
+const RASTER_VIDE: TacticalRaster = {
+  map_id: 'streets',
+  question: 'morts',
+  qui: 'moi',
+  bornes: { min_x: 0, max_x: 0, min_y: 0, max_y: 0, valide: false },
+  pas_m: 0,
+  echelle: { p50: 0, p95: 0, borne: 0, n_cellules: 0, symetrique: false },
+  cellules: [],
+  matchs_filtres: 0,
+  matchs_retenus: 0,
+  matchs_victoire: 0,
+  matchs_defaite: 0,
+  evenements_journal: 0,
+  evenements_localises: 0,
+  points_ignores: 0,
 }
 
 beforeEach(() => {
@@ -180,12 +201,23 @@ describe('TacticalPage — la grille des cartes', () => {
     expect(navigate).not.toHaveBeenCalled()
   })
 
-  it('la carte sélectionnée dans l’URL est marquée comme telle', async () => {
+  it('la carte sélectionnée dans l’URL ouvre la vue d’analyse, pas la grille', async () => {
+    // Décision phase 5 : le clic SÉLECTIONNE (phase 4), et une carte sélectionnée
+    // OUVRE désormais la vue d'analyse — elle ne se contente plus de marquer une
+    // vignette dans une grille qui resterait affichée à côté.
     searchCourant = { carte: 'streets' }
+    post.mockImplementation((path: string) => {
+      if (path.endsWith('/filters/match-ids')) return Promise.resolve({ match_ids: PERIMETRE })
+      if (path.endsWith('/tactical/maps')) return Promise.resolve(page)
+      if (path.endsWith('/tactical/streets/raster')) return Promise.resolve(RASTER_VIDE)
+      return Promise.reject(new Error(`appel inattendu : ${path}`))
+    })
     renderWithProviders(<TacticalPage />)
-    const streets = await screen.findByTestId('tactical-map-streets')
-    expect(streets).toHaveAttribute('aria-pressed', 'true')
-    expect(streets.textContent).toContain('Carte sélectionnée')
+    // `findByText` REPOLLE jusqu'à disparition du nom de repli (`scope.carte` brut) :
+    // le titre existe dès le premier rendu, mais son texte ne porte le nom traduit
+    // qu'une fois la grille (même requête que la page précédente) chargée.
+    expect(await screen.findByText('Plan de Ruelles — Où je meurs')).toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-map-streets')).not.toBeInTheDocument()
   })
 
   it('pied de carte : la couverture ET la phrase du plancher', async () => {

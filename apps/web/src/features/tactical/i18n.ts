@@ -68,16 +68,46 @@ export function getTacticalText(locale: Locale) {
     kpiCoverage: m('tactical.kpi.coverage'),
     kpiTrade: m('tactical.kpi.trade'),
     kpiIsolation: m('tactical.kpi.isolation'),
+    kpiSecondary: (brut: number, n: number) => m('tactical.kpi.secondary', { brut, n }),
     planTitle: m('tactical.plan.title'),
     planOf: (map: string) => m('tactical.plan.title_of', { map }),
     footerHeatmap: m('tactical.plan.footer_heatmap'),
     footerRoutes: m('tactical.plan.footer_routes'),
     footerEmpty: m('tactical.plan.footer_empty'),
+    footerFloor: (n: number) => m('tactical.plan.footer_floor', { n }),
+    sourceReplay: m('tactical.plan.source_replay'),
+    sourceJournal: m('tactical.plan.source_journal'),
+    planEmptyTitle: m('tactical.plan.empty_title'),
+    planEmptyDescription: m('tactical.plan.empty_description'),
     statusPending: (n: number) => m('tactical.status.pending', { n }),
     statusUnavailable: (n: number) => m('tactical.status.unavailable', { n }),
     cellTitle: m('tactical.cell.title'),
     cellPlaceholder: m('tactical.cell.placeholder'),
+    cellPlaceholderDescription: m('tactical.cell.placeholder_description'),
     cellMatches: (n: number) => m('tactical.cell.matches', { n }),
+
+    // ── Titre de la vue, barre d'outils ──────────────────────────────────────
+    analysisPageTitle: (map: string, question: string) =>
+      m('tactical.analysis.page_title', { map, question }),
+    analysisErrorTitle: m('tactical.analysis.error_title'),
+    analysisErrorDescription: m('tactical.analysis.error_description'),
+    questionLabel: m('tactical.toolbar.question_label'),
+    whoLabel: m('tactical.toolbar.who_label'),
+    whoMe: m('tactical.toolbar.who_me'),
+    whoSquad: m('tactical.toolbar.who_squad'),
+    whoOpponents: m('tactical.toolbar.who_opponents'),
+    spawnLabel: m('tactical.toolbar.spawn_label'),
+    spawnAll: m('tactical.toolbar.spawn_all'),
+
+    // ── Unité de la légende, une par question ────────────────────────────────
+    units: {
+      morts: m('tactical.unit.morts') as string,
+      kills: m('tactical.unit.kills') as string,
+      gagne: m('tactical.unit.gagne') as string,
+      temps: m('tactical.unit.temps') as string,
+      routes: m('tactical.unit.routes') as string,
+      isole: m('tactical.unit.isole') as string,
+    },
   }
 }
 

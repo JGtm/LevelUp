@@ -32,7 +32,13 @@ import { TacticalAnalysisView } from './TacticalAnalysisView'
 import { TacticalFilterBar } from './TacticalFilterBar'
 import { TacticalMapTile } from './TacticalMapTile'
 import { useCoequipierOptions, useTacticalMaps, useTacticalMatchIDs } from './queries'
-import { contexteFiltre, couvertureGrille, resoudreComposition, trierCartes } from './tacticalLogic'
+import {
+  contexteFiltre,
+  couvertureGrille,
+  nomCarte,
+  resoudreComposition,
+  trierCartes,
+} from './tacticalLogic'
 import {
   decodeTacticalScope,
   encodeTacticalScope,
@@ -109,8 +115,13 @@ export function TacticalPage() {
   const enEchec = perimetreEnEchec || grille.isError
   const enChargement = !compositionImpossible && !enEchec && (perimetreEnCours || grille.isPending)
 
-  // Affiche la vue d'analyse si une carte est sélectionnée
+  // Affiche la vue d'analyse si une carte est sélectionnée. Le nom affichable vient de
+  // ce que la grille sait DÉJÀ de la carte (même source que les vignettes) ; si la
+  // grille n'a pas encore chargé (URL ouverte directement sur `?carte=`), l'id sert de
+  // repli — jamais une chaîne vide.
   if (scope.carte) {
+    const carteSelectionnee = cartes.find((c) => c.map_id === scope.carte)
+    const nomAffiche = carteSelectionnee ? nomCarte(carteSelectionnee, locale) : scope.carte
     return (
       <>
         <TacticalFilterBar
@@ -124,6 +135,11 @@ export function TacticalPage() {
         <TacticalAnalysisView
           playerSlug={playerSlug}
           mapId={scope.carte}
+          mapName={nomAffiche}
+          locale={locale}
+          t={t}
+          matchIds={matchIDs}
+          coequipiers={composition.xuids}
         />
       </>
     )
