@@ -28,14 +28,14 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { useReplayCapture } from './useReplayCapture'
 
 /**
- * L'ESPION SUR `useReplayExport` (2026-09-07, revue ronde 2) — il DÉLÈGUE au vrai hook.
+ * L'ESPION SUR `useReplayExport` (2026-09-07) — il DÉLÈGUE au vrai hook.
  *
  * POURQUOI IL FAUT EN PASSER PAR LÀ. `viewedLabel` — le mot que le panneau de l'export peindra —
  * est calculé DANS cette couture (`useViewedOutcome`) et ne ressort pas de `useReplayCapture` :
  * il descend directement dans les options de l'export. Le seul calcul de production n'avait donc
- * aucun test, et le remplacer par `label` laissait toute la suite verte. On intercepte les
- * options au passage, sans rien changer d'autre : le vrai hook est appelé, avec le même objet,
- * au même endroit de l'ordre des hooks.
+ * aucun test, et le neutraliser laissait toute la suite verte. On intercepte les options au
+ * passage, sans rien changer d'autre : le vrai hook est appelé, avec le même objet, au même
+ * endroit de l'ordre des hooks.
  *
  * `vi.hoisted` parce que la fabrique de `vi.mock` est remontée en tête de module : une `const`
  * ordinaire y serait dans sa zone morte.
@@ -378,15 +378,15 @@ describe('useReplayCapture — navigateur sans enregistrement', () => {
 })
 
 /**
- * AJOUT DU 2026-09-07 (revue ronde 2) — LE MOT QUE LE CLIP PEINDRA.
+ * AJOUT DU 2026-09-07 — LE MOT QUE LE CLIP PEINDRA, ET SA SOURCE UNIQUE.
  *
  * `useViewedOutcome` est le SEUL calcul de production de `viewedLabel`, et il n'était couvert
- * par rien : le remplacer par `label` laissait toute la suite verte, et le clip exporté depuis
- * le point de vue d'un adversaire aurait annoncé « Victoire » sur l'équipe qui a perdu — le
- * défaut F2, revenu par la porte de l'export. Ces cas fixent les deux régimes, et le dégradé.
+ * par rien : le clip exporté depuis le point de vue d'un adversaire annonçait « Victoire » sur
+ * l'équipe qui a perdu. Le mot vient désormais des mappings du titre dans TOUS les cas — la page
+ * ne descend plus que le code — et ces cas fixent les deux régimes, plus le dégradé.
  *
  * ILS N'OBSERVENT PAS LE PANNEAU mais l'ENTRÉE de l'export : ce que `exportOverlayPanels` en
- * fait est éprouvé chez lui (`exportOverlayPanels.test.ts`, quatre cas sur `viewedLabel`). Ici,
+ * fait est éprouvé chez lui (`exportOverlayPanels.test.ts`, cinq cas sur `viewedLabel`). Ici,
  * la seule question est « la couture a-t-elle résolu le bon mot ? ».
  */
 describe('useReplayCapture — le mot du verdict transmis à l’export', () => {
@@ -395,8 +395,11 @@ describe('useReplayCapture — le mot du verdict transmis à l’export', () => 
     { xuid: 'eux', team_side: 't1', is_me: false },
   ] as MatchScoreboardRow[]
 
-  /** Le verdict servi par l'en-tête : le joueur de la page a GAGNÉ (code 2). */
-  const OUTCOME = { code: 2, label: 'Victoire' }
+  /**
+   * Le verdict servi par l'en-tête : le joueur de la page a GAGNÉ (code 2). LE CODE SEUL —
+   * depuis le 2026-09-07 la page ne descend plus de libellé, le mot se résout ici.
+   */
+  const OUTCOME = { code: 2 }
 
   /** Le même lobby, plus un COÉQUIPIER du joueur de la page. */
   const SB_TRIO = [...SB, { xuid: 'pote', team_side: 't0', is_me: false } as MatchScoreboardRow]
@@ -437,11 +440,11 @@ describe('useReplayCapture — le mot du verdict transmis à l’export', () => 
     expect(optionsPour('eux').outcome?.viewedLabel).toBe('Défaite')
   })
 
-  it('point de vue = LE JOUEUR DE LA PAGE : le libellé du backend, tel quel', () => {
+  it('point de vue = LE JOUEUR DE LA PAGE : le libellé de son issue, tel quel', () => {
     expect(optionsPour('moi').outcome?.viewedLabel).toBe('Victoire')
   })
 
-  it('point de vue ABSENT (`null`) : le libellé du backend, comme avant le chantier', () => {
+  it('point de vue ABSENT (`null`) : le libellé de l’issue de la page', () => {
     expect(optionsPour(null).outcome?.viewedLabel).toBe('Victoire')
   })
 
@@ -449,14 +452,18 @@ describe('useReplayCapture — le mot du verdict transmis à l’export', () => 
     expect(optionsPour('pote', { board: SB_TRIO }).outcome?.viewedLabel).toBe('Victoire')
   })
 
-  it('issue permutée SANS mappings du titre : `null` — jamais une clé brute dans le clip', () => {
-    // `useOutcomeMapping` rend `undefined` : le panneau se taira, comme sans `outcome_label`.
+  it('SANS mappings du titre : `null` — jamais une clé brute dans le clip', () => {
+    // `useOutcomeMapping` rend `undefined` : le panneau se taira, comme le DOM dans le même cas.
     // C'est exactement ce que `useOutcomeLabel` ne saurait pas dire — il rendrait « loss ».
     expect(optionsPour('eux', { mappings: false }).outcome?.viewedLabel).toBeNull()
   })
 
+  it('SANS mappings du titre, point de vue par défaut : `null` aussi — une seule source', () => {
+    expect(optionsPour(null, { mappings: false }).outcome?.viewedLabel).toBeNull()
+  })
+
   it('le reste du verdict traverse INCHANGÉ : seul le mot vu s’ajoute', () => {
     const outcome = optionsPour('eux').outcome
-    expect(outcome).toMatchObject({ code: 2, label: 'Victoire', viewedLabel: 'Défaite' })
+    expect(outcome).toMatchObject({ code: 2, viewedLabel: 'Défaite' })
   })
 })

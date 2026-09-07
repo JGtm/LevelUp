@@ -258,8 +258,10 @@ function ReplayPage() {
                 // LE VERDICT, POUR L'EXPORT SEUL : l'écran de fin monté juste en dessous est du
                 // DOM, qu'aucun encodeur vidéo ne voit. L'export le repeint DANS la toile, et
                 // c'est ici qu'il reçoit de quoi le faire — la MÊME source que l'écran affiché.
+                // Le CODE seul : le MOT se résout des deux côtés depuis les mappings du titre
+                // (2026-09-07), sur l'issue lue — un `outcome_label` de plus rouvrirait le
+                // second vocabulaire que ce chantier a fermé.
                 code: matchView?.header.outcome_code,
-                label: matchView?.header.outcome_label,
                 finalScore: model.score,
               }}
               feedEntries={feedEntries}
@@ -273,7 +275,6 @@ function ReplayPage() {
               scoreboard={scoreboard}
               xuidMeta={xuidMeta}
               outcomeCode={matchView?.header.outcome_code}
-              outcomeLabel={matchView?.header.outcome_label}
               viewpoint={viewpoint.xuid}
               finalScore={model.score}
               playWindow={playWindow}

@@ -350,6 +350,10 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// portée par le service, pas par le builder — buildMatchHeader est déjà à la
 	// limite de paramètres). Titre sans table → no-op.
 	applyMatchHeaderOvertime(&header, meta, s.regulationSeconds)
+	// LE MOT DE L'ISSUE, dit par le TITRE et dans la locale de la requête (2026-09-07). Ici et
+	// pas dans le builder, pour la même raison que la ligne au-dessus : le jeu d'outcomes vient
+	// de l'adapter sémantique, porté par le service. Adapter absent → repli FR, à l'identique.
+	applyMatchHeaderOutcomeLabel(ctx, &header, outcomesOf(s.semantic))
 	// Score de l'en-tête : points ou MANCHES. Ici et pas dans le builder, pour la même
 	// raison que la ligne au-dessus — la table `[rounds_decide]` est portée par le
 	// service. Table absente → lecture en points, comportement d'avant le 2026-08-29.

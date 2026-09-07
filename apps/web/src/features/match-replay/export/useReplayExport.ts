@@ -87,7 +87,10 @@ export interface ReplayExportOptions {
   playWindow: ReplayWindowBounds | null
   scoreboard: readonly MatchScoreboardRow[]
   xuidMeta?: XuidMeta
-  /** Le verdict du backend. `null` = pas d'écran de fin, exactement comme dans le DOM. */
+  /**
+   * Le verdict du match, DÉJÀ complété du mot que l'écran montre (`viewedLabel`, résolu par
+   * `useReplayCapture` depuis les mappings du titre). `null` = pas d'écran de fin, comme le DOM.
+   */
   outcome: ExportOutcome | null
   /**
    * LE POINT DE VUE de la page (2026-09-06) : l'export rend CE QUE L'ÉCRAN MONTRE (décision 12
