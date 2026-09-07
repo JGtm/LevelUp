@@ -28,6 +28,7 @@ import { usePageScope } from '@/lib/page-scope/usePageScope'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { getTacticalText } from './i18n'
+import { TacticalAnalysisView } from './TacticalAnalysisView'
 import { TacticalFilterBar } from './TacticalFilterBar'
 import { TacticalMapTile } from './TacticalMapTile'
 import { useCoequipierOptions, useTacticalMaps, useTacticalMatchIDs } from './queries'
@@ -107,6 +108,26 @@ export function TacticalPage() {
   // une grille servie, jamais l'absence de l'une des deux.
   const enEchec = perimetreEnEchec || grille.isError
   const enChargement = !compositionImpossible && !enEchec && (perimetreEnCours || grille.isPending)
+
+  // Affiche la vue d'analyse si une carte est sélectionnée
+  if (scope.carte) {
+    return (
+      <>
+        <TacticalFilterBar
+          playerSlug={playerSlug}
+          locale={locale}
+          t={t}
+          scope={scope}
+          setScope={setScope}
+          coequipierOptions={coequipierOptions}
+        />
+        <TacticalAnalysisView
+          playerSlug={playerSlug}
+          mapId={scope.carte}
+        />
+      </>
+    )
+  }
 
   return (
     <>

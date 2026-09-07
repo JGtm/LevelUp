@@ -148,3 +148,90 @@ en = "{names} could not be identified among your teammates. Remove that name fro
 [tactical.filter.sessions_off_list]
 fr = "{n, plural, one {# session épinglée n'est pas dans la liste courante} other {# sessions épinglées ne sont pas dans la liste courante}} : {names}. Le filtre reste appliqué."
 en = "{n, plural, one {# pinned session is not in the current list} other {# pinned sessions are not in the current list}}: {names}. The filter still applies."
+
+# ── Vue d'analyse (Phase 5) ──────────────────────────────────────────────────
+
+# Questions de la vue d'analyse
+[tactical.analysis.questions.morts]
+fr = "Où je meurs"
+en = "Where I die"
+
+[tactical.analysis.questions.kills]
+fr = "Où je tue"
+en = "Where I kill"
+
+[tactical.analysis.questions.gagne]
+fr = "Où je gagne"
+en = "Where I win"
+
+[tactical.analysis.questions.temps]
+fr = "Où je passe mon temps"
+en = "Where I spend time"
+
+[tactical.analysis.questions.routes]
+fr = "Mes routes de spawn"
+en = "My spawn routes"
+
+[tactical.analysis.questions.isole]
+fr = "Où je meurs isolé"
+en = "Where I die isolated"
+
+# KPI Strip
+[tactical.kpi.matches_retained]
+fr = "Matchs retenus"
+en = "Retained matches"
+
+[tactical.kpi.coverage]
+fr = "Couverture"
+en = "Coverage"
+
+[tactical.kpi.trade]
+fr = "Échange après ma mort"
+en = "Trade after my death"
+
+[tactical.kpi.isolation]
+fr = "Morts en isolement"
+en = "Isolated deaths"
+
+# Plan card
+[tactical.plan.title]
+fr = "Plan"
+en = "Plan"
+
+[tactical.plan.title_of]
+fr = "Plan de {map}"
+en = "Plan of {map}"
+
+[tactical.plan.footer_heatmap]
+fr = "Échelle quantile p50 vers p95, saturée au-delà. Une cellule jamais atteinte reste vide — elle n'est pas peinte en froid."
+en = "Quantile scale p50 to p95, saturated beyond. An unreached cell remains empty — it is not painted cold."
+
+[tactical.plan.footer_routes]
+fr = "15 premières secondes de chaque vie, une ligne par vie à 17% d'opacité : la route de consensus apparait par empilement."
+en = "First 15 seconds of each life, one line per life at 17% opacity: consensus route appears by layering."
+
+[tactical.plan.footer_empty]
+fr = "Aucune donnée mesurable pour cette question."
+en = "No measurable data for this question."
+
+# Status messages
+[tactical.status.pending]
+fr = "Traitement en cours : {n, plural, one {# match} other {# matchs}} en attente de cuisson"
+en = "Processing: {n, plural, one {# match} other {# matches}} pending cooking"
+
+[tactical.status.unavailable]
+fr = "Données non disponibles pour {n, plural, one {# match} other {# matchs}}"
+en = "Data unavailable for {n, plural, one {# match} other {# matches}}"
+
+# Cell card
+[tactical.cell.title]
+fr = "Cellule sélectionnée"
+en = "Selected cell"
+
+[tactical.cell.placeholder]
+fr = "Clique une zone chaude du plan."
+en = "Click a hot area of the plan."
+
+[tactical.cell.matches]
+fr = "{n, plural, one {# match distinct} other {# matchs distincts}} ont alimenté cette cellule"
+en = "{n, plural, one {# distinct match} other {# distinct matches}} contributed to this cell"

@@ -173,3 +173,30 @@ export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string): 
   })
   return data ?? null
 }
+
+/**
+ * useTacticalRaster — la grille de placement pour UNE carte et une question.
+ *
+ * POST : les paramètres de la requête sont envoyés dans le corps (liste de match_id,
+ * question, qui, spawn). La clé de cache porte l'empreinte de tous les paramètres —
+ * changer de question donne une nouvelle requête, jamais un cache croisé.
+ */
+export function useTacticalRaster(
+  playerSlug: string,
+  mapId: string,
+  params: {
+    match_ids: string[]
+    question?: string
+    qui?: string
+    spawn?: string
+  },
+) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  return useQuery({
+    queryKey: queryKeys.tacticalRaster(playerSlug, titleSlug, mapId, hashFiltre(params)),
+    queryFn: () =>
+      api.post(`/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/raster`, params),
+    enabled: !!playerSlug && !!mapId,
+    staleTime: 2 * 60 * 1000,
+  })
+}
