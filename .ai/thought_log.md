@@ -97979,3 +97979,46 @@ uniquement — aucune régression de comportement, le code de production livré 
 (vérifié par la revue elle-même : mutations rejouées sur le code AVANT R1 confirmaient déjà le
 comportement correct, seule la COUVERTURE de test avait un trou). Détail complet :
 `.ai/V7.5/v2/WEB_VIES_2026-09-06.md`, section « Corrections R1 ».
+
+## [2026-09-07] Intégration déportée feat/v2-integ : manches, durées, corpus, web-vies, vies-anonymes, pont, drapeaux — Complété
+
+**Contexte.** Le principal (`feat/v75`) est resté bloqué toute la session par une modification
+non committée d'une autre session sur `.ai/thought_log.md` (chantier « frise du rejeu »,
+worktree `LevelUp-wt-frise-pov`) — jamais touchée, jamais `stash`, question posée au user restée
+sans réponse. Intégration déportée dans un worktree dédié (`LevelUp-wt-v2-integ`, branche
+`feat/v2-integ`, base `a059caefc`, schéma 43), pour ne pas bloquer les sept lots du chantier v2
+prêts à fusionner.
+
+**Décision technique.** Sept merges `--no-ff` en série, gates complets après chacun (build,
+tests unitaires complets, intégration `api/wire -p 1`, `go vet` sans CGO, `golangci-lint
+--new-from-merge-base`, contrat OpenAPI). Règles de conflit fixes : `.ai/*.md` par
+concaténation ; `document.go` par chronique ordonnée avec `SchemaVersion` au plus grand,
+phrases de réservation retirées à chaque bump ; `structure_test.go` par union des chroniques
+avec un seul bloc de contrôle sur le numéro final ; goldens régénérés par le mécanisme du
+paquet (`-run GoldenAssembly -update`), jamais résolus à la main ; `openapi.yaml`/`generated.ts`
+vérifiés par `openapi-gen -check` ; tout autre fichier `.go` en conflit → `git merge --abort`
+immédiat, rapport, alignement de la branche par son exécuteur, nouvelle tentative.
+
+**Résultats.** Sept fusions : manches `90ca609a0` (schéma 44, découpe par manche des
+compteurs), durées `6af8f6db8` (45, trous de réplication camo/drapeau), corpus `0d862af0a`
+(gate local de non-régression, aucun bump), web-vies `7cdb0e56f` (fiche bornée à la vie en
+cours, aucun bump), vies-anonymes `eb7a3dfbd` (47, nommage par occupation du slot), pont-muet
+`ee4084c14` (48, calage du fil des morts hors borne fausse), drapeaux `1b32fc775` (46,
+affectation par événements datés, invariant « jamais son propre drapeau »). Deux tentatives
+abandonnées puis retentées après alignement amont : vies-anonymes (conflit réel sur
+`flag_carrier_tracks.go`, hors liste admise) et drapeaux (conflit réel sur `matchfacts.go`,
+signatures divergentes de `flagInput`/`identifiedEvents`) — dans les deux cas l'exécuteur du lot
+a réaligné sa branche sur l'état courant de `feat/v2-integ`, et le nouveau merge s'est résolu
+dans la liste admise. Deux flakes Windows rencontrés en gate 2 (suite complète parallèle),
+confirmés préexistants et sans rapport avec les diffs fusionnés (isolés x3 verts, suite en série
+`-p 1` entièrement verte) : `mapcatalog.TestAddOverlayEntryConcurrentDossierAbsentNePerdRien`
+et `handlers.TestStartImport_HappyPathReturns202WithJobID` — tous deux consignés au
+`REGISTRE_REPORTS.md` avec condition de reprise. SchemaVersion final 48, chronique 44 à 48
+ordonnée, `structure_test.go` un seul bloc `!= 48`, `document.go` sans phrase de réservation
+restante.
+
+**Conclusion / prochaine étape.** `feat/v2-integ` est prêt, gates verts de bout en bout,
+poussé sur `origin`. Reste : lever le blocage du principal (commit de l'autre session sur
+`thought_log.md`), puis `git merge --ff-only feat/v2-integ` dans `feat/v75`, push, CI. Ensuite,
+selon `HANDOFF_V2_REJEU_FILM_2026-09-07.md` : Notion (schéma 41 → 48), extraction des fichiers
+chroniques > 500 lignes, nettoyage des worktrees `LevelUp-wt-v2-*`, tag v7.5.0.
