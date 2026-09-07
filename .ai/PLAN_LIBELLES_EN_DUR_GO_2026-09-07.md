@@ -155,10 +155,69 @@ games}` hors migrations/tests/slog/fmt.Errorf).
 TOML + adapter ; l'accueil est le pilote historique de l'ADR 0011 (labels i18n hors canonical),
 il y a donc déjà une frontière à respecter — lire `home_service.go:36-42` et l'ADR avant.
 
-**L3 — Modes / playlists / catégories / portées** (B) → `assets.toml` ; ratchet
-`no_bare_resolve_mode_ui_test.go` existe déjà dans `archlint` : l'étendre.
+**L2 — CLOS le 2026-09-07 (lot M5 première moitié, branche `feat/libelles-accueil-rangs`)** —
+re-vérifié sur pièces (doctrine RE-VÉRIFIER : la carte datait déjà) : `home_locale.go` ne
+portait déjà PLUS aucune paire `labelForLocale(locale, fr, en)` avec des littéraux FR/EN en
+dur — les maps `homeOutcomeLabels*`/`outcomeLabelForLocale` avaient disparu avec Q4 (L1). Les
+appels restants de `labelForLocale`/`labelFR` (dans `home_canonical*.go`) résolvent des noms
+d'ASSET dynamiques (map/mode/playlist) depuis `canonical.AssetReference.Labels`, peuplés à la
+sync depuis `metadata.asset_translations` / `mode_name_tr` (DB) — ce n'est PAS un littéral Go,
+c'est de la donnée par-match localisée par le TITRE (famille L3, hors périmètre de ce lot).
+`buildHomeNarrativeBadges` sert déjà des CLÉS (`"dominant"`, `"humiliation"`…), pas du texte.
+Seul point réellement en dur trouvé : `RecentMatchItem.Title`, composite Go
+`"<mot d'issue> · <carte>"` assemblé dans `home_canonical_recent.go` via
+`RecentMatchesOptions.OutcomeText` (résolveur injecté depuis l'adapter du titre, D5 — donc pas
+un mot FR en dur, mais un TEXTE PRÉ-ASSEMBLÉ côté Go, contraire à l'option 1). Vérifié qu'il
+n'a qu'UN seul lecteur web (`match-card.tsx::buildMatchHeading`), et seulement en DERNIER
+repli quand `map_ui` ET `mode_ui` manquent tous les deux (`MapUI`/`ModeUI` déjà servis à part
+et couvrant le cas nominal) — pas une refonte de contrat nécessaire. **Supprimé** :
+`domain.RecentMatchItem.Title`, `analysis.RecentMatchesOptions.OutcomeText`, la construction
+`label`/`title` dans `home_canonical_recent.go`, `outcomes := outcomesOf(s.semantic)` +
+`OutcomeText: func(...)` dans `home_service.go` (règle 7, 0 code mort — git garde
+l'historique). Le web compose désormais ce repli depuis la même clé i18n que le placeholder
+d'image (`common.match_card.map_unknown`, "Map inconnue"/"Unknown map") ; `OutcomeTone`
+(déjà la clé canonique `win|loss|tie|dnf`, cf. `outcomes.toml`) reste disponible pour un futur
+lecteur via `useOutcomeLabel`. `openapi.yaml` ne modélise pas `HomePageResponse` (TODO Sprint
+32 préexistant) : 0 impact contrat, `generate-types` sans diff. Tests Go et web mis à jour
+(gates verts). Pages à vérifier à l'écran : Accueil (tuiles de matchs récents, FR et EN).
 
-**L4 — Armes** (C) ; **L5 — Rangs** (D, cible existante `mappings/ranks.go`).
+**L3 — Modes / playlists / catégories / portées** (B) → `assets.toml` ; ratchet
+`no_bare_resolve_mode_ui_test.go` existe déjà dans `archlint` : l'étendre. **HORS PÉRIMÈTRE du
+lot M5 première moitié (2026-09-07)** — périmètre fermé à L2+L5 par consigne d'exécution ;
+reste `[ ]` pour la seconde moitié de M5.
+
+**L4 — Armes** (C). **HORS PÉRIMÈTRE du lot M5 première moitié (2026-09-07)** — reste `[ ]`
+pour la seconde moitié de M5.
+
+**L5 — Rangs** (D, cible existante `mappings/ranks.go`).
+
+**L5 — CLOS le 2026-09-07 (lot M5 première moitié, branche `feat/libelles-accueil-rangs`)** —
+**découverte majeure, doctrine RE-VÉRIFIER confirmée** : `internal/games/mappings/ranks.go`
+(`RankCatalog`, `.Label`/`.FullLabel`) est le catalogue du rang de CARRIÈRE (XP, « Général
+Platine VI »), **PAS** le tier CSR (Bronze..Onyx + sous-palier). La carte du plan associait à
+tort ce fichier à `csrUnrankedLabel` — ce ne sont pas le même système de rang. Traité au
+périmètre exact demandé : `compare_service.go::csrUnrankedLabel = "Non classé"` → clé
+canonique `"unranked"` (D5) ; consommé par `csrSummary.currentLabel`/`allTimeLabel` →
+`domain.NormalizedPlayerStats.HighestCSRLabel`/`HighestCSRAllTimeLabel` →
+`CompareMetricRow.DisplayA`/`DisplayB` (métriques `csr`/`csr_alltime` de la page Comparaison).
+Le web (`ComparePage.tsx::formatMetricValue`) passait déjà `display` à
+`lib/skillTiers.ts::localizeTierLabel` — mécanisme CLIENT-SIDE existant (pas de TOML) qui
+localise déjà tous les noms de palier CSR (Bronze/Or/Platine…) : la clé `"unranked"` y est
+ajoutée (`TIER_NAME_BY_KEY['unranked'] = {fr:'Non classé', en:'Unranked'}`), réutilisant LE
+MÊME canal plutôt que d'en ouvrir un nouveau (cohérent avec la consigne « jamais un nouveau
+canal », et avec le fait que les noms de palier CSR eux-mêmes ne passent pas par
+`/field-mappings` aujourd'hui). Le ratchet `no_french_label_literal_test.go` baisse de 3 → 2
+pour `compare_service.go`. Commentaires « Général Platine VI » : laissés (ce sont des
+commentaires, consigne explicite). **Non traité, consigné en découverte (§9)** : `csrRankLabel`
+(même fichier) formate encore le TIER en clair (« Platine IV ») via `skillTierLabel` — doublon
+avec `home_canonical_skill.go::csrTierENtoFR` et `sync/csr_writes.go::tierENtoFR` (3 copies,
+règle 6 dépassée) ; `sync/csr_writes.go` va plus loin en PERSISTANT le libellé FR dans
+`match_skill_rank.tier_label` (table append-only ADR 0026) — migration hors format de ce lot.
+`match_history_explorer_options.go::skillTierLabel`/`perfTierLabel` (déjà repérés §10, Q4) :
+`.Label` y est mort (le web n'utilise que `.value`/`.count`, `ExplorerPage.filterOptions.ts`)
+mais touchent aussi une famille distincte (paliers de perf, pas CSR) — laissés pour une
+décision de périmètre séparée. Pages à vérifier à l'écran : Comparaison de joueurs (ligne CSR
+d'un joueur non classé, FR et EN).
 
 **L6 — Narratif / prestige / synthèse** (E) : APRÈS décision §7 (contenu ou libellé).
 
@@ -283,3 +342,43 @@ si une entrée couvre déjà une famille ci-dessus avant d'en créer une).
   `domain.LabelValue` pour cette dimension est un candidat « champ mort » au même titre
   que `MatchPersonalResult` ci-dessus. Reprise : à qualifier avec L3 (options de filtre
   title-agnostic).
+
+## 11. DÉCOUVERTES DE L'EXÉCUTION (M5 première moitié — L2+L5, 2026-09-07)
+
+> Consignées SANS être traitées (règle 7 plan-execution). Périmètre fermé au lot : L2 (accueil)
+> et L5 (rangs) seulement — PAS L3 (modes), PAS L4 (armes).
+
+- 2026-09-07 ; `internal/games/mappings/ranks.go` ; la carte du plan (§2.D, §4 L5) associait ce
+  fichier au tier CSR de `compare_service.go::csrUnrankedLabel`. Vérifié sur pièces :
+  `RankCatalog`/`RankEntry` couvrent le rang de CARRIÈRE (XP, « Général Platine VI »), un
+  système DIFFÉRENT du tier CSR (Bronze..Onyx + sous-palier, ranked matchmaking). Aucune
+  cible commune n'existe aujourd'hui pour les DEUX (le CSR se localise 100% côté web via
+  `lib/skillTiers.ts`, pas via `mappings/ranks.go` ni via `/field-mappings`). Reprise : si un
+  lot futur veut unifier ces deux catalogues de rang sous `/field-mappings`, corriger d'abord
+  la doctrine (deux familles distinctes, pas une).
+- 2026-09-07 ; `internal/service/compare_service.go::csrRankLabel` (+ `skillTierLabel` du même
+  fichier) ; formate encore le TIER CSR en clair (« Platine IV », FR uniquement — bug visible
+  sous UI EN, non corrigé par ce lot car hors du périmètre exact demandé : seul
+  `csrUnrankedLabel` était nommé). Ce calcul est dupliqué EN TROIS ENDROITS avec des variantes
+  légères : `compare_service.go::csrRankLabel`/`skillTierLabel`,
+  `analysis/home_canonical_skill.go::BuildCSRTierLabelFromEN`/`csrTierENtoFR`, et
+  `sync/csr_writes.go::formatCSRTierLabel`/`tierENtoFR` — au-delà du seuil de 2 copies (règle
+  6 du dépôt). `sync/csr_writes.go` va plus loin : il PERSISTE le libellé FR dans
+  `match_skill_rank.tier_label` (table append-only, ADR 0026), donc corriger cette famille à la
+  racine implique une migration de données (`backfill-killsource`-like), pas un simple
+  remplacement de littéral — hors format d'un lot L5 « accueil/rangs ». Reprise : lot dédié
+  « CSR tier label — clé canonique + migration append-only », après une décision explicite de
+  l'utilisateur sur le coût (migration DB) vs bénéfice (bug EN visible, aujourd'hui contourné
+  côté web par `localizeTierLabel` pour les 2 lecteurs qui appellent cette fonction).
+- 2026-09-07 ; `internal/service/match_history_explorer_options.go::skillTierLabel` +
+  `perfTierLabel` ; toujours en dur (déjà repérés §10 lors de Q4, « Reprise : L5 »). Vérifié à
+  nouveau : `domain.LabelValue.Label` pour ces deux dimensions (`available_skill_tiers`,
+  `available_perf_tiers`) n'a AUCUN lecteur web (`ExplorerPage.filterOptions.ts::withCounts` ne
+  lit que `.value`/`.count`) — même statut « champ mort » que `computeAvailableOutcomes` avant
+  Q4. `skillTierLabel` recoupe le même tier CSR que la découverte précédente (4e copie du même
+  calcul si on compte celle-ci). `perfTierLabel` (paliers de performance, pas CSR) est une
+  famille distincte, non couverte par l'inventaire §2 du plan. Non traité ici : le fichier est
+  partagé entre plusieurs dimensions Explorer, et une correction partielle (un seul des deux
+  littéraux) aurait laissé le fichier dans un état incohérent sans plan de test dédié. Reprise :
+  décision de périmètre (L5 strict = CSR seulement, ou nouveau L9 = paliers de perf ?) avant
+  d'y toucher.
