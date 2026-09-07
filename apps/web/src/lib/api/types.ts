@@ -3127,3 +3127,10 @@ export type BornesMonde = components['schemas']['BornesMonde']
 export type EchelleTactique = components['schemas']['EchelleTactique']
 export type TacticalCouverture = components['schemas']['Couverture']
 export type TacticalGrappe = components['schemas']['TacticalGrappe']
+
+// Le DÉTAIL D'UNE CELLULE (lien « voir dans le rejeu », lot M1) : mêmes raisons de typage
+// sur le contrat généré que les deux lectures ci-dessus — un renommage côté Go casse `tsc`
+// ici plutôt que de se découvrir à l'exécution.
+export type TacticalCelluleBody = components['schemas']['TacticalCelluleBody']
+export type TacticalCelluleReponse = components['schemas']['TacticalCelluleReponse']
+export type TacticalContribution = components['schemas']['TacticalContribution']

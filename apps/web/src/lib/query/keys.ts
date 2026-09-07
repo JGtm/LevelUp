@@ -194,6 +194,11 @@ export const queryKeys = {
   // Raster de placement pour UNE carte et UNE question.
   tacticalRaster: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>
     ['tactical-raster', playerSlug, titleSlug, mapId, paramHash] as const,
+  // Détail d'UNE cellule (lien « voir dans le rejeu », lot M1) : mêmes raisons que
+  // `tacticalRaster` (une carte n'existe que dans son titre), clé DISTINCTE parce que le
+  // périmètre inclut en plus l'adresse de la cellule cliquée.
+  tacticalCellule: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>
+    ['tactical-cellule', playerSlug, titleSlug, mapId, paramHash] as const,
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
   synthesis: (playerSlug: string, titleSlug: string, scopeHash: string) =>
     ['synthesis', playerSlug, titleSlug, scopeHash] as const,
