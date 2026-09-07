@@ -27,13 +27,14 @@ func (m *mockCallouts) ZonesDeLaCarte(context.Context, string) []domain.ZoneNomm
 }
 
 // universVariantes pose des matchs mesures et ELIGIBLES, moi + un ami contre deux
-// adversaires. La cle de la map nomme le match ; sa valeur ne sert plus (le nom de variante
-// est parti avec la lecture d'isolement), elle documente la fixture.
+// adversaires. La valeur de la map est le NOM DE VARIANTE, qui porte la regle du mode : la
+// lecture d'isolement y resout la portee du radar.
 func universVariantes(parMatch map[string]string) domain.TacticalUnivers {
 	u := domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
 	for _, id := range triees(parMatch) {
 		u.Matchs = append(u.Matchs, domain.TacticalMatch{
-			MatchID: id, Outcome: domain.OutcomeWin, Mesure: true, EligibleALaCuisson: true,
+			MatchID: id, GameVariantName: parMatch[id], Outcome: domain.OutcomeWin,
+			Mesure: true, EligibleALaCuisson: true,
 		})
 		u.Equipes[id] = map[string]int{tsMoi: 0, tsAmi: 0, tsAdv: 1, tsAdv2: 1}
 	}

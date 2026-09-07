@@ -1,3 +1,58 @@
+## [2026-09-07] Plan Tactique phase 7C — les faits d'isolement au sync, deux tables append-only — Complete
+
+**Decision technique principale** — decision utilisateur du 2026-09-07 : « les donnees d'un
+match en base sont completes au sync ; seul le rejeu peut attendre la cuisson ». Les faits
+d'isolement deviennent une SECONDE PROJECTION de la passe de positions du collecteur de kills,
+qui scanne deja tout ce qu'il faut (positions bipeds avec bornes de carte, fil des morts, index
+de joueur, pont slot->xuid, vies nommees). Aucun decodage nouveau, aucune cuisson.
+
+`match_lives` : une ligne par vie NOMMEE, sur l'horloge du MATCH. `match_death_context` : une
+ligne par mort du JOURNAL, avec les quatre etats de ses coequipiers et la distance au plus
+proche de ceux qu'on VOYAIT. Les deux append-only, vues `_latest` par PASSE (jamais par cle) —
+une passe plus courte que la precedente laisserait sinon survivre les lignes de l'ancienne.
+
+**Une deviation de la lettre du plan, tranchee sur pieces.** L'enum `end_cause` a quatre
+valeurs (`death` | `closure` | `film_end` | `cut`) melangeait deux questions orthogonales. Grep
+sur TOUT le paquet `replay` — la lecon de la ronde 2 : seuls `lives.go:233` et `owners.go:166`
+nomment une vie, et l'export n'emet que les vies nommees. `film_end` et `cut` etaient donc
+INATTEIGNABLES. Deux colonnes : `end_cause` (comment la vie s'est terminee) et `named_by`
+(comment on sait a qui elle appartient). Le point produit du brief en sort durci — un survivant
+nomme par fermeture porte `named_by = closure` ET `end_cause = film_end`. Validee par le
+superviseur, ecrite au plan.
+
+**Le troisieme etat est celui qui a deja coute une lecture.** « Hors de vue » n'est ni « mort »
+ni « a portee » : un coequipier en vehicule PEUT accompagner (la mort reste examinable) mais on
+ne sait pas ou il est. Les deux erreurs symetriques ont ete commises dans ce chantier — le
+compter mort (P0 ronde 1), puis lui inventer une position. Les deux ont leur test.
+
+**Resultats observes** — 8 tests purs sur les vies (dont une sentinelle anti-enum-morte), 7 sur
+le contexte, 8 sur l'algorithme d'isolement, 8 au service, 12 d'integration sur les VRAIES
+migrations, 1 ratchet anti-divergence des valeurs d'enum entre `replay`, `persist` et le DDL.
+Sept mutations jouees, chacune fait tomber un test nomme : decoupe sans distinction
+fin-de-film/coupure ; nommage sans pose de cause ; hors-de-vue traite comme en-attente ;
+position primant sur le depart ; adversaire compte comme coequipier ; vue `_latest` par cle au
+lieu de par passe ; divergence de valeur d'enum. ART : les deux tables entrent dans
+`tablesProtegees`, aucune allowlist ajoutee — le garde-rail est RENFORCE.
+
+**Une limite de couverture a dire, pas a taire** : le test d'integration du COLLECTEUR
+(`killcollector/isolation_facts_integration_test.go`) se skippe sans `KILLSOURCE_FIXTURES` —
+les films ne sont pas versionnes (107 Mo) et ce worktree n'a aucune donnee de production. Il
+n'a donc pas tourne dans cette session. Ce qu'il couvre seul est le CHAINAGE ; les quatre etats
+sont prouves en pur, l'idempotence de la passe sur les vraies migrations. Les deux autres
+niveaux tournent partout. Commande a jouer sur le poste principal :
+`KILLSOURCE_FIXTURES=../../../../../data/cache/film_chunks go test -count=1 -tags=integration
+-p 1 -run FaitsDIsolementFilmReel ./internal/sync/killcollector/` (la variable pointe la RACINE
+du cache ; le test lit `<racine>/9b191a7f/chunk_*.bin`).
+
+Une fixture a rougi a l'ecriture et c'etait elle qui avait tort : avec une seule mort, DEUX
+calages d'horloge apparient autant de morts et `bestDeathOffset` en choisit un.
+
+**Conclusion / prochaine etape** — 7C close, items 7C.1 a 7C.7 tous statues (7C.7 consigne,
+hors perimetre comme l'item le demandait). Le rattrapage `backfill-killsource` reprend le
+corpus deja collecte grace a `IsolationDecoderRev`, distincte de `KillSourceDecoderRev`. STOP
+avant 7B (item 7.7, nuage isolement x couverture de la page Escouade), qui dependait de 7C et
+peut desormais demarrer.
+
 ## [2026-09-07] Plan Tactique 7.10 — revue : la ventilation parlait au nom de la file sans reprendre sa regle — Complete
 
 **Decision technique principale** — deux constats de fond, une seule cause. Le P0 : le

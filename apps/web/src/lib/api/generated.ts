@@ -11668,6 +11668,7 @@ export interface components {
             /** Format: int64 */
             evenements_localises: number;
             grappes?: components["schemas"]["TacticalGrappe"][] | null;
+            isolement?: components["schemas"]["Couverture"];
             map_id: string;
             /** Format: int64 */
             matchs_defaite: number;
@@ -11680,7 +11681,11 @@ export interface components {
             /** Format: int64 */
             matchs_retenus: number;
             /** Format: int64 */
+            matchs_sans_rayon?: number;
+            /** Format: int64 */
             matchs_victoire: number;
+            /** Format: int64 */
+            morts_equipe_a_terre?: number;
             /** Format: double */
             pas_m: number;
             /** Format: int64 */
@@ -11693,7 +11698,7 @@ export interface components {
             coequipiers?: string[] | null;
             /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
             match_ids?: string[] | null;
-            /** @description Lecture : morts | kills | gagne | temps | routes. Defaut : morts. « temps » et « routes » exigent film.replay_artifact. */
+            /** @description Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions. */
             question?: string;
             /** @description Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers. */
             qui?: string;

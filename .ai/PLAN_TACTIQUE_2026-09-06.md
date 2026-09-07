@@ -1322,7 +1322,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       variante) ; la portee de l'invariant de somme est dite dans la phrase meme, avec le
       test de la branche base (compteurs a zero sous « ou je meurs »).
 
-### Phase 7C — Faits d'isolement AU SYNC (collecteur de kills) — OUVERTE 2026-09-07
+### Phase 7C — Faits d'isolement AU SYNC (collecteur de kills) — CLOSE 2026-09-07 (7 items statues)
 
 Principe (utilisateur, 2026-09-07, ferme) : les donnees d'un match en base sont completes au sync ;
 seul le rejeu attend la cuisson. Les faits d'isolement sont donc une SECONDE PROJECTION de la passe
@@ -1350,39 +1350,77 @@ nouveau, aucune cuisson, l'artefact ne bouge pas.
       entre le nommer et dire qu'il a survecu, et le choix fait le comptait mort (P0 ronde 2).
       La mort PRIME sur la structure (sinon toute mort suivie d'un respawn sortirait
       « coupure ») ; sentinelle anti-enum-morte + deux mutations mordantes.
-- [ ] 7C.2 Table `match_death_context` (append-only, vue `_latest`) : une ligne par mort du
+- [x] 7C.2 Table `match_death_context` (append-only, vue `_latest`) : une ligne par mort du
       journal (`match_id`, `victim_xuid`, `time_ms` = cle de jointure avec `match_kill_events`),
       avec : `nearest_teammate_m` (coequipier VISIBLE le plus proche, 2D, NULL si aucun),
       `teammates_visible`, `teammates_waiting` (mort < 1 s... non : derniere mort du journal
       < t et aucune position depuis), `teammates_out_of_sight` (vivant au sens « pas en attente,
       pas parti » mais sans position dans la derniere seconde : vehicule non replique),
       `teammates_left` (depart en base avant t), `teammates_total`. « Visible » = position
-      repliquee dans la DERNIERE SECONDE (constante nommee). L'equipe vient de la BASE a la
-      collecte (`match_participants`, a ajouter a `MatchIdentities`), jamais du film.
-- [ ] 7C.3 Persisteurs `persist.LivesPersister` / `DeathContextPersister` sur le patron
+      repliquee dans la DERNIERE SECONDE (`replay.FenetreVisibiliteMs`). L'equipe vient de la
+      BASE a la collecte (`match_participants`, ajoute a `MatchIdentities` dans la MEME
+      requete que `shots_fired`), jamais du film.
+      **L'ORDRE DES QUATRE ETATS EST UNE DECISION** : parti (la base fait foi) > visible
+      (l'OBSERVATION prime sur la deduction) > en attente > hors de vue. Calcul PUR dans
+      `replay.ContextesDesMorts`. Une mort dont le film ne montre pas la victime NE SORT PAS :
+      sa ligne se lirait « aucun coequipier a portee », donc ISOLEE — une absence de mesure
+      deviendrait un verdict.
+- [x] 7C.3 Persisteurs `persist.LivesPersister` / `DeathContextPersister` sur le patron
       `KillPositionPersister.PersistPass` (INSERT-only, lease court `acquireShared`, jamais
       d'UPSERT) ; allowlist `no_art_patterns_test.go` intacte ; garde-rail lecture `_latest`.
-- [ ] 7C.4 Branchement dans `collectPositions` (meme porte `CapFilmKillPositions` ? -> NON :
+- [x] 7C.4 Branchement dans `collectPositions` (meme porte `CapFilmKillPositions` ? -> NON :
       nouvelle cle data-level fine ? verifier `capabilities.toml` ; decision : reutiliser la porte
       des positions, les faits en dependent) ; compteurs d'observabilite ; echec = WARN/ERROR +
       compteur, jamais bloquant pour le journal.
-- [ ] 7C.5 Rattrapage : `backfill-killsource` (cache miroir) produit les deux tables pour les
+- [x] 7C.5 Rattrapage : `backfill-killsource` (cache miroir) produit les deux tables pour les
       matchs deja collectes (`matchsAJour` : fraicheur par `decoder_rev` de la passe) ; `--dry-run`.
-- [ ] 7C.6 Lecture `isole` (Tactique) : requete `platform/duckdb` = morts de mon camp du journal
+- [x] 7C.6 Lecture `isole` (Tactique) : requete `platform/duckdb` = morts de mon camp du journal
       `_latest` JOIN `match_death_context_latest`, rayon PAR MATCH via `RadarRangeMap`
       (`game_variant_name` de retour dans `QTacticalUnivers`, `TrimSpace` a la resolution) ;
-      isolee = `nearest_teammate_m` NULL ou > rayon ET `teammates_visible + out_of_sight
-      + waiting`... regle : isolee si aucun coequipier visible a portee ; « equipe a terre » =
-      `teammates_visible + teammates_out_of_sight == 0` (exclue du denominateur, publiee) ;
-      `matchs_sans_rayon` ; `domain.Couverture` plancher 30 ; positions des morts depuis
-      `kill_positions` (question `morts` filtree). Contrat : question `isole` + compteurs.
-- [ ] 7C.7 `match_lives` cote rejeu : consigner seulement (la fiche « elimine / en attente /
-      parti » pourra la lire — hors perimetre).
-- **Gate** : `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` ;
-  `no_art_patterns_test` ; test d'integration du collecteur sur film de fixture (patron
-  `engine_postsync_films_integration_test.go`) prouvant : 2 tables ecrites, idempotence de la
-  passe (`_latest` = derniere passe), contexte d'une mort avec coequipier visible a 3 m / en
-  attente / hors de vue / parti ; revue : 2 relecteurs (L1 ART + L6).
+      isolee = aucun coequipier VISIBLE a portee (`nearest_teammate_m` NULL ou > rayon) ;
+      « equipe a terre » = `teammates_visible + teammates_out_of_sight == 0` (exclue du
+      denominateur, publiee) ; `matchs_sans_rayon` ; `domain.Couverture` plancher 30 ;
+      positions des morts depuis `kill_positions_latest`, jointes PAR LE TUEUR (la table a pour
+      cle (match_id, killer_xuid, time_ms) et porte les deux positions). Contrat : question
+      `isole` + `isolement` + `matchs_sans_rayon` + `morts_equipe_a_terre`, `generated.ts`
+      regenere. `game_variant_name` revient dans `QTacticalUnivers` **avec son consommateur** —
+      la regle du depot : une colonne entre avec son lecteur.
+      **LA VENTILATION EN ATTENTE / NON CUISABLES NE S'APPLIQUE PAS** : cette lecture lit la
+      BASE, elle n'attend aucun artefact. Remplir ces compteurs annoncerait un traitement en
+      cours a qui a deja toute sa reponse (test dedie).
+- [~] 7C.7 `match_lives` cote rejeu — **CONSIGNE, HORS PERIMETRE** (ce que l'item demandait).
+      La table porte desormais, par vie nommee, `start_ms`/`end_ms` sur l'horloge du MATCH,
+      `end_cause` (`death` | `film_end` | `cut`) et `named_by` (`death` | `closure`). La fiche
+      de match pourra en tirer « elimine / en attente / parti » SANS re-decoder le film, et
+      surtout sans refaire la faute que ce lot corrige : un joueur nomme par FERMETURE porte
+      `named_by = closure` ET `end_cause = film_end` — il est identifie, il n'est pas mort.
+      Aucun code de rejeu n'est touche par ce lot.
+- **Gate — PASSE** : `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...
+  ./internal/migration/... ./internal/service/... ./internal/platform/duckdb/...` EXIT 0 ;
+  `no_art_patterns_test` vert AVEC les deux tables ajoutees a `tablesProtegees` (aucune
+  allowlist creee — le garde-rail est RENFORCE, pas contourne).
+  **La couverture demandee est repartie sur TROIS niveaux, et c'est deliberé** : les quatre
+  etats (visible a 3 m / en attente / hors de vue / parti) sont prouves en PUR
+  (`replay/death_context_test.go`) parce qu'ils demandent des positions posees a la
+  milliseconde ; l'idempotence de la passe et les refus de validation sont prouves sur les
+  VRAIES migrations (`persist/lives_persister_integration_test.go`, 12 cas) parce qu'ils
+  tiennent au SQL et non au Go ; le CHAINAGE (le materiau remonte, les equipes arrivent, les
+  deux tables se remplissent ensemble sous la meme passe) est prouve par
+  `killcollector/isolation_facts_integration_test.go` sur le film de fixture.
+  ⚠ **CE DERNIER SE SKIPPE SANS `KILLSOURCE_FIXTURES`** — les films ne sont pas versionnes
+  (107 Mo), et ce worktree n'a aucune donnee de production (interdit du chantier). Il n'a donc
+  PAS tourne dans cette session : c'est un fait, pas une omission. Les deux autres niveaux, eux,
+  tournent partout. **A JOUER SUR LE POSTE PRINCIPAL** (la variable pointe la RACINE du cache,
+  le test lit `<racine>/9b191a7f/chunk_*.bin`) :
+
+  ```
+  KILLSOURCE_FIXTURES=../../../../../data/cache/film_chunks     go test -count=1 -tags=integration -p 1 -run FaitsDIsolementFilmReel     ./internal/sync/killcollector/
+  ```
+
+  Il se SKIPPE aussi, proprement, si la carte du film 9b191a7f n'est pas au catalogue de bornes
+  (carte Forge ou hors des 79 natives) : sans position, il n'y a pas de fait d'isolement, et
+  c'est un cas normal — pas une regression.
+  Revue : 2 relecteurs (L1 ART + L6) — a la main du superviseur.
 
 Depend de 7C : l'item 7.7 (7B, nuage isolement x couverture de la page Escouade).
 
@@ -1711,7 +1749,22 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 
 - 2026-09-07 : **cloture de la phase 7A — la lecture « ou je meurs isole » est RETIREE, et les lectures d'artefact disent enfin CE QU'ELLES ATTENDENT** (commits `tactique(7.10.<n>)`). La decision utilisateur du 2026-09-07 tranche la question laissee ouverte a la ronde 2 : les faits d'isolement se produisent **AU SYNC**, par le collecteur de kills — qui scanne deja les morts et `ScanBipedPositions` —, dans deux tables append-only `match_lives` et `match_death_context`. Le principe qui la fonde tient en une phrase, et il vaut bien au-dela de cet onglet : **« les donnees d'un match en base sont completes au sync ; seul le rejeu peut attendre la cuisson »**. La lecture retiree violait les deux moities : elle demandait au FILM de dire qui etait mort — ce qu'il ne sait pas —, et elle faisait dependre un fait de base du calendrier de cuisson des artefacts. Est parti avec elle tout ce qu'elle seule tenait : `analysis/coordination/isolation.go` et ses tests, `domain/isolation.go`, `BilanIsolement`, la valeur `isole` du contrat, trois champs publies, le cablage du rayon de radar de bout en bout, et la `chronologie[]` du sidecar — **schema 5 -> 6**, qui redevient exactement ce que les deux lectures restantes consomment. Ce qui est GARDE l'est avec un nom de consommateur et une date, pas avec un « au cas ou » : la table `[radar_range_m]` est une campagne de mesure de 48 variantes, et c'est le lot 7C qui la lira. **Le second fil du lot repond a une question que la page ne savait pas poser** : « N mesures sur M » servait le meme message a l'utilisateur qui vient de jouer — son artefact arrive dans quelques minutes — et a celui qui regarde ses matchs d'il y a deux ans, dont le film a expire cote serveur. Les deux absences se comptent desormais separement (`matchs_en_attente`, `matchs_hors_retention`), avec la DEFINITION DE LA FILE DE CUISSON et non une seconde ecrite a la main : annoncer une cuisson que la file ne fera pas serait pire que se taire. **Et le garde-rail pose pour l'empecher a mordu a l'ecriture** — il a trouve DEUX copies inline preexistantes de la meme fenetre (`replay_purge_cron.go`, `backlog.go`), ramenees a la definition unique dans le lot : poser un garde en laissant passer ce qu'il designe, c'est la factorisation abandonnee du diagnostic n 8.
 - 2026-09-07 : **revue de 7.10 — 1 P0, 4 P1, 6 P2, tous statues** (commits `tactique(7.10.3..n)`). Les deux constats de fond disent la meme chose sous deux formes : **la ventilation parlait au nom de la file sans reprendre sa regle**. Le P0 d'abord — une ligne de registre sans horodatage (la DDL l'autorise) faisait valoir NULL au predicat, et le scanner dans un `bool` nu rendait 500 sur TOUTE la lecture d'artefact de la carte : une seule ligne mal datee suffisait a eteindre l'onglet. Le P1 ensuite, plus grave dans ses effets : la file exige TROIS conditions et on n'en avait repris qu'une, si bien qu'un match dont le FILM EST DEFINITIVEMENT PERDU — le marqueur terminal, ~29 % du parc — sortait « en attente ». La page envoyait donc attendre indefiniment un ecran qui ne se remplirait jamais. **Une promesse plus large que ce que la file tient est pire que pas de promesse du tout**, et la correction n'est pas de recopier la troisieme condition mais d'extraire le predicat entier (`analysis.SQLEligibleALaCuisson`), consomme par la file ET par le lecteur : les compteurs deviennent `matchs_en_attente` et `matchs_non_cuisables`. **Le troisieme fil est un trou de couverture qui explique les deux premiers** : le SQL qui calcule ce booleen n'etait exerce par AUCUN test, parce que le double du service le rendait a la main — un predicat qui rend NULL a donc pu etre livre sans qu'aucun gate ne rougisse. Deux tests `:memory:` posent desormais les quatre situations, six tests unitaires figent les fragments, et les deux mutations (retirer le `IS NOT NULL`, neutraliser le test du bit) font tomber des tests nommes. **Un constat de la revue n'etait pas recevable** : le cron de purge EST teste depuis `15df6c629` — `RunOnce` avec horloge injectee, frontiere prouvee a la seconde —, verifie sur pieces avant de statuer.
+- 2026-09-07 : **phase 7C livree — les faits d'isolement se produisent AU SYNC** (commits `tactique(7C.*)`). Le principe que l'utilisateur a pose tient en une phrase et il porte tout le lot : « les donnees d'un match en base sont completes au sync ; seul le rejeu peut attendre la cuisson ». La lecture retiree au 7.10 violait les deux moities — elle demandait au FILM de dire qui etait mort, et elle faisait dependre un fait de base du calendrier de cuisson. Deux tables append-only le remplacent, ecrites par le collecteur de kills comme SECONDE PROJECTION de sa passe de positions : aucun decodage nouveau, l'artefact ne bouge pas. **La lettre du plan a du ceder sur un point, et la verification sur pieces dit pourquoi** : l'enum `end_cause` a quatre valeurs melangeait deux questions orthogonales, et rendait `film_end` et `cut` INATTEIGNABLES — un grep sur TOUT le paquet `replay` (la lecon de la ronde 2, appliquee) montre que seuls deux sites nomment une vie, et que l'export n'emet que les vies nommees. Deux colonnes : `end_cause` dit COMMENT la vie s'est terminee, `named_by` dit COMMENT ON SAIT A QUI elle appartient. Le point produit en sort DURCI — un survivant nomme par fermeture porte `named_by = closure` ET `end_cause = film_end`, la ou un champ unique obligeait a choisir entre le nommer et dire qu'il a survecu. **Le troisieme etat est celui qui a deja coute une lecture** : « hors de vue » n'est ni « mort » ni « a portee » — un coequipier en vehicule PEUT accompagner (la mort reste examinable) mais on ne sait pas ou il est. Le compter mort faisait sortir « equipe a terre » une mort survenue a trois metres d'un Warthog ; lui inventer une position aurait fabrique un accompagnement. Les deux erreurs ont ete commises, dans cet ordre, et les deux ont maintenant leur test.
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-07 (phase 7C) — **`match_lives` DIT AUSSI CE QUE LE REJEU NE SAIT PAS DIRE.** Le
+  document de rejeu nomme ses vies (`nameTracksByLives`) mais ne publie NI la cause de leur fin
+  NI la provenance de leur identite : la fiche de match ne peut donc pas distinguer un joueur
+  ELIMINE d'un joueur PARTI, ni d'un joueur simplement plus repliqué. La table le sait desormais
+  (`end_cause`, `named_by`). NON TRAITE, hors perimetre — l'item 7C.7 ne demandait que de le
+  consigner. Condition de reprise : un lot qui touche a la fiche de match ou au rejeu 2D ; la
+  jointure est directe (`match_lives_latest` par `match_id` + `xuid`), aucune re-cuisson.
+- 2026-09-07 (phase 7C) — **LE CONTEXTE D'UNE MORT PORTE QUATRE ETATS, LA LECTURE N'EN LIT QUE
+  DEUX.** `teammates_waiting` et `teammates_left` sont ecrits mais jamais lus : la regle
+  « equipe a terre » s'exprime entierement par `visibles + hors_de_vue == 0`. Ils sont GARDES
+  volontairement — ce sont eux qui rendent la somme verifiable (le persister refuse une passe
+  dont les quatre etats ne font pas le total), et ce controle a une valeur propre : il attrape
+  un producteur qui aurait oublie un cas. Les retirer rendrait l'invariant invérifiable pour
+  economiser deux entiers par mort.
 - 2026-09-07 (phase 7A, lot 7.10.3) — **`settingsStore.Load()` EN ERREUR SE DEGRADE EN
   SILENCE CHEZ SES AUTRES APPELANTS.** Corrige DANS LE LOT pour
   `wire/registry.go:retentionMoisRejeu` (un `slog.Warn` avant le repli : sans lui, un

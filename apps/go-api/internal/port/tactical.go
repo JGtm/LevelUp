@@ -98,6 +98,19 @@ type TacticalRepository interface {
 	// requête pour ce seul cas aurait donné deux définitions du journal des
 	// morts d'un joueur.
 	KillEvents(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalKillEvents, error)
+
+	// MortsAvecContexte rend l'univers ET les morts LOCALISEES de ses matchs, avec ce que le
+	// collecteur a mesure de leur voisinage AU SYNC (`match_death_context`) : combien de
+	// coequipiers pouvaient accompagner, et a quelle distance etait le plus proche de ceux
+	// qu'on voyait.
+	//
+	// LE FAIT EST DEJA CALCULE. La lecture ne fait que le comparer au rayon du radar de la
+	// variante. Une version precedente le deduisait a la LECTURE, sur la chronologie d'un
+	// artefact de rejeu : elle demandait au film ce qu'il ne sait pas dire, et faisait
+	// dependre un fait de base du calendrier de cuisson (decision utilisateur du 2026-09-07).
+	//
+	// Meme portee que KillPositions : tous les joueurs, l'axe « qui » se tranche au service.
+	MortsAvecContexte(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalMortsContexte, error)
 }
 
 // TacticalRasterStore lit les SIDECARS de raster tactique — l'occupation d'un match,

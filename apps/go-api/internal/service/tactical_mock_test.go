@@ -15,19 +15,22 @@ import (
 
 // mockTacticalRepo double port.TacticalRepository et retient ce qu'on lui demande.
 type mockTacticalRepo struct {
-	maps    []domain.TacticalMapRow
-	pos     domain.TacticalPositions
-	ev      domain.TacticalKillEvents
-	univ    domain.TacticalUnivers
-	errMaps error
-	errPos  error
-	errEv   error
-	errUniv error
+	maps     []domain.TacticalMapRow
+	pos      domain.TacticalPositions
+	ev       domain.TacticalKillEvents
+	univ     domain.TacticalUnivers
+	morts    domain.TacticalMortsContexte
+	errMaps  error
+	errPos   error
+	errEv    error
+	errUniv  error
+	errMorts error
 
-	vuMaps domain.TacticalQuery
-	vuPos  domain.TacticalQuery
-	vuEv   domain.TacticalQuery
-	vuUniv domain.TacticalQuery
+	vuMaps  domain.TacticalQuery
+	vuPos   domain.TacticalQuery
+	vuEv    domain.TacticalQuery
+	vuUniv  domain.TacticalQuery
+	vuMorts domain.TacticalQuery
 }
 
 // Univers : la lecture d'OCCUPATION (phase 6) n'a besoin que de l'univers — ses valeurs
@@ -75,6 +78,24 @@ func (m *mockTacticalRepo) KillEvents(_ context.Context, q domain.TacticalQuery)
 	for _, e := range m.ev.Events {
 		if garde[e.MatchID] {
 			out.Events = append(out.Events, e)
+		}
+	}
+	return out, nil
+}
+
+// MortsAvecContexte : la lecture d'isolement (lot 7C). Comme les trois autres, ELLE HONORE LA
+// LISTE BLANCHE — un double plus permissif que la production rend invisible tout defaut de
+// perimetre, et c'est deja arrive deux fois sur ce meme fichier.
+func (m *mockTacticalRepo) MortsAvecContexte(_ context.Context, q domain.TacticalQuery) (domain.TacticalMortsContexte, error) {
+	m.vuMorts = q
+	if m.errMorts != nil || !perimetreAFiltrer(q) {
+		return m.morts, m.errMorts
+	}
+	garde := gardeDuPerimetre(q)
+	out := domain.TacticalMortsContexte{Univers: universFiltre(m.morts.Univers, garde)}
+	for _, d := range m.morts.Morts {
+		if garde[d.MatchID] {
+			out.Morts = append(out.Morts, d)
 		}
 	}
 	return out, nil

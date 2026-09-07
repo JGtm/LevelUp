@@ -25699,6 +25699,8 @@ components:
           type:
             - array
             - "null"
+        isolement:
+          $ref: '#/components/schemas/Couverture'
         map_id:
           type: string
         matchs_defaite:
@@ -25716,7 +25718,13 @@ components:
         matchs_retenus:
           format: int64
           type: integer
+        matchs_sans_rayon:
+          format: int64
+          type: integer
         matchs_victoire:
+          format: int64
+          type: integer
+        morts_equipe_a_terre:
           format: int64
           type: integer
         pas_m:
@@ -25763,7 +25771,7 @@ components:
             - array
             - "null"
         question:
-          description: 'Lecture : morts | kills | gagne | temps | routes. Defaut : morts. « temps » et « routes » exigent film.replay_artifact.'
+          description: 'Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions.'
           type: string
         qui:
           description: 'Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers.'
