@@ -102,7 +102,7 @@ chacune · phase 7 : lourd (autant que 1 a 6) · phase 8 : petit.
 | Seuil du « Cap du moment » | Rendu seulement si au moins **30 morts d'equipe** ET (ecart d'au moins **5 points** au taux d'echange habituel OU part de morts isolees d'au moins **50 %**). Sinon non rendu. |
 | Couleurs V/D | `outcome-win` / `outcome-loss` — jamais `compare-a/b`. |
 | **Ou se produisent les faits d'isolement** | **AU SYNC, par le collecteur de kills** (`internal/sync/killcollector`, qui scanne deja les morts et `ScanBipedPositions`), dans deux tables append-only `match_lives` et `match_death_context` — utilisateur, 2026-09-07, FERME. Principe : **« les donnees d'un match en base sont completes au sync ; seul le rejeu peut attendre la cuisson »**. La lecture « ou je meurs isole » qui tranchait A LA LECTURE sur la chronologie du sidecar de rejeu est RETIREE (lot 7.10) : elle faisait dependre un fait de base du calendrier de cuisson des artefacts, et elle demandait au film de dire qui etait mort — ce qu'il ne sait pas. Reprise en **lot 7C**, apres la cloture de 7A. |
-| **Message d'absence sur les lectures d'artefact** | **DEUX ABSENCES, DEUX MESSAGES** — decision UI, phase 5. `matchs_en_attente` (dans la fenetre de retention, artefact pas encore cuit) = « traitement en cours » ; `matchs_hors_retention` (plus ancien que la fenetre, film expire cote serveur) = « donnees non disponibles ». « N mesures sur M » servait le meme texte a l'utilisateur qui vient de jouer et a celui qui regarde ses matchs d'il y a deux ans : le premier doit attendre quelques minutes, le second n'a rien a attendre. |
+| **Message d'absence sur les lectures d'artefact** | **DEUX ABSENCES, DEUX MESSAGES** — decision UI, phase 5. `matchs_en_attente` (**la file de cuisson le reprendra** : film pas definitivement perdu, horodatage exploitable, dans la fenetre de retention — le predicat EXACT de la file, `analysis.SQLEligibleALaCuisson`) = « traitement en cours » ; `matchs_non_cuisables` (tout le reste : film expire cote serveur, registre incapable de dater, plus ancien que la fenetre) = « donnees non disponibles ». **Le compteur « en attente » ne doit JAMAIS etre plus large que ce que la file tient** : une promesse non tenue envoie l'utilisateur attendre un ecran qui ne se remplira pas. « N mesures sur M » servait le meme texte a l'utilisateur qui vient de jouer et a celui qui regarde ses matchs d'il y a deux ans : le premier doit attendre quelques minutes, le second n'a rien a attendre. |
 | Anglicismes | `heatmap` entre au garde anti-anglicismes (lot C.4) : aucune chaine FR de ce chantier ne le contient. |
 
 ## 2. Ce qui existe deja — verifie sur pieces, a NE PAS reecrire
@@ -1283,6 +1283,45 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       `sync/replayartifacts/backlog.go:228`). Invariant teste :
       `matchs_filtres = matchs_retenus + matchs_en_attente + matchs_hors_retention`.
 
+- [x] 7.11 **Revue de 7.10 — 1 P0, 4 P1, 6 P2 : tous statues.** Commits
+      `tactique(7.10.3..n)`.
+      **P0 — LA VENTILATION RENDAIT 500 SUR UNE LIGNE MAL DATEE.**
+      `COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') >= ?` vaut NULL quand les deux
+      horodatages sont NULL — ce que la DDL autorise — et le scanner dans un `bool` nu rendait
+      `converting NULL to bool`, donc 500 sur TOUTE la lecture d'artefact de la carte. Corrige
+      par construction : le predicat place `IS NOT NULL` AVANT la comparaison de fenetre, et
+      `FALSE AND NULL` vaut FALSE en logique ternaire.
+      **P1 — LA VENTILATION PROMETTAIT UNE CUISSON QUE RIEN NE FERAIT.** La file exige TROIS
+      conditions ; on n'en reprenait qu'une. Un match au film DEFINITIVEMENT PERDU (marqueur
+      terminal `MBitFilmAbsent`, ~29 % du parc) sortait « en attente » : l'utilisateur
+      attendait indefiniment un ecran qui ne se remplirait jamais. Le predicat est extrait en
+      `analysis.SQLEligibleALaCuisson(alias, mois, bit)` — film pas perdu ET datable ET dans
+      la fenetre —, CONSOMME PAR LA FILE ET PAR LE LECTEUR. Les compteurs deviennent
+      `matchs_en_attente` (eligible) et `matchs_non_cuisables` (tout le reste). Le ratchet
+      couvre desormais le test du bit ; `BacklogHorizon` est documente comme borne de DEBIT
+      (cf. §7).
+      **P1 — TESTS.** Le SQL de `QTacticalUnivers` n'etait exerce par AUCUN test (le double
+      rendait le booleen a la main) : deux tests `:memory:` posent les quatre situations
+      (recent / vieux / film perdu / indatable) et prouvent la ventilation 1 sur 4, fenetre
+      bornee et illimitee. Six tests unitaires couvrent `BorneRetention`,
+      `BorneRetentionDepuis`, `SQLDansFenetreRetention` et `SQLEligibleALaCuisson` (ordre des
+      conditions ET ordre des parametres). **LE TEST DU CRON DE PURGE EXISTAIT DEJA** :
+      `scheduler/replay_purge_cron_runonce_test.go` (commit `15df6c629`) appelle `RunOnce`
+      avec l'horloge injectee et prouve la frontiere a la seconde — verifie sur pieces,
+      constat non recevable en l'etat, et la mutation de la borne le fait bien tomber.
+      **P1 — doc inversee** (`tactical_service.go`) : nil valait « pas de ventilation » alors
+      que nil -> 0 -> illimitee. Le comportement reel est ecrit, avec son test.
+      **P1 — code mort** : `TacticalMatch.GameVariantName` et sa colonne SQL retires (leur
+      seul lecteur etait la lecture d'isolement) ; le lot 7C les reintroduira avec son
+      consommateur.
+      **P2** : ratchet elargi a « rétention » accentue ; `slog.Warn` avant le repli sur
+      settings illisible (les deux autres appelants CONSIGNES au §7, non corriges) ;
+      `RadarRangeForVariant` retiree faute d'appelant, avec la lecon du `TrimSpace` ecrite
+      dans la doc de la table pour 7C ; docs perimees corrigees (« TROIS lectures », la
+      chronologie annoncee en en-tete de `vies.go`, la justification de la colonne de
+      variante) ; la portee de l'invariant de somme est dite dans la phrase meme, avec le
+      test de la branche base (compteurs a zero sous « ou je meurs »).
+
 ### Phase 7C — Faits d'isolement au sync (`match_lives`, `match_death_context`) — BRIEF A VENIR
 
 Ouverte par la decision utilisateur du 2026-09-07 (cf. §1). Le collecteur de kills
@@ -1620,7 +1659,24 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 - 2026-09-07 : **revue adversariale ronde 2 de la phase 7A — 1 P0, 2 P1, 7 P2 ; le volet du P0 est SUSPENDU par le superviseur, le reste est livre** en commits `tactique(7.9.<n>)`. Le P0 dit ce que la ronde 1 avait manque, et il le dit contre MA propre verification : j'avais affirme, sur pieces, que le nommage d'une vie venait de la mort — j'avais greppe `lives.go` SEUL. `replay/owners.go:166` (`nameClosedLives`) nomme aussi par FERMETURE DE SLOT, si bien qu'un survivant qui a tire recevait une mort FABRIQUEE. La lecon tient en une phrase : **une verification qui ne cherche qu'a l'endroit ou l'on croit deja savoir n'est pas une verification.** La consequence est structurelle et elle est livree : **le sidecar ne juge plus rien.** Il portait des morts, des statuts de voisin et des distances — trois verdicts sur une matiere qui ne les soutenait pas ; il ne porte plus qu'une CHRONOLOGIE DE POSITIONS (un couple tous les 500 ms par fenetre observee), et les types de verdict sont supprimes avec leurs tests. Schema 5. Le modele de lecture qui devait remplacer ces verdicts — mort au journal, reapparition observee ou delai MESURE sur le match a la maniere de `respawnWindow`, depart lu dans la base, type de mort lu dans `neutralDeaths` — a ete ECRIT ET COMPILE, puis SORTI DE L'ARBRE sur decision du superviseur : la question produit « que veut dire vivant quand le film se tait » n'est pas tranchee. Il attend sous `scratchpad/7.9-modele-vivant-mort/` avec sa condition de reprise au §7 ; la lecture tient en attendant sur « vivant = une position a cet instant », commentee `PROVISOIRE 2026-09-07` a l'endroit exact ou la decision manque — une phrase qui dit quoi attend quoi, pas un TODO. **Le second constat frappe encore le double du port, sur l'autre moitie de la meme faute.** La ronde 1 lui avait fait appliquer la liste blanche NON VIDE ; il exemptait toujours la liste VIDE et rendait alors l'univers entier. Or `requeteDuScope` pose TOUJOURS la liste : les ~35 fixtures sans identifiants verifiaient un comportement qui n'existe nulle part, et un perimetre vide lit AUCUN match en production. Le double applique desormais les deux cas, `tsDemande` pose le perimetre reel du double, les compositions suivent les matchs, et un test dedie prouve le 404 sur liste vide. **Un double plus permissif que la production ne cache pas un bug : il en fabrique un jeu de tests qui le protege.**
 
 - 2026-09-07 : **cloture de la phase 7A — la lecture « ou je meurs isole » est RETIREE, et les lectures d'artefact disent enfin CE QU'ELLES ATTENDENT** (commits `tactique(7.10.<n>)`). La decision utilisateur du 2026-09-07 tranche la question laissee ouverte a la ronde 2 : les faits d'isolement se produisent **AU SYNC**, par le collecteur de kills — qui scanne deja les morts et `ScanBipedPositions` —, dans deux tables append-only `match_lives` et `match_death_context`. Le principe qui la fonde tient en une phrase, et il vaut bien au-dela de cet onglet : **« les donnees d'un match en base sont completes au sync ; seul le rejeu peut attendre la cuisson »**. La lecture retiree violait les deux moities : elle demandait au FILM de dire qui etait mort — ce qu'il ne sait pas —, et elle faisait dependre un fait de base du calendrier de cuisson des artefacts. Est parti avec elle tout ce qu'elle seule tenait : `analysis/coordination/isolation.go` et ses tests, `domain/isolation.go`, `BilanIsolement`, la valeur `isole` du contrat, trois champs publies, le cablage du rayon de radar de bout en bout, et la `chronologie[]` du sidecar — **schema 5 -> 6**, qui redevient exactement ce que les deux lectures restantes consomment. Ce qui est GARDE l'est avec un nom de consommateur et une date, pas avec un « au cas ou » : la table `[radar_range_m]` est une campagne de mesure de 48 variantes, et c'est le lot 7C qui la lira. **Le second fil du lot repond a une question que la page ne savait pas poser** : « N mesures sur M » servait le meme message a l'utilisateur qui vient de jouer — son artefact arrive dans quelques minutes — et a celui qui regarde ses matchs d'il y a deux ans, dont le film a expire cote serveur. Les deux absences se comptent desormais separement (`matchs_en_attente`, `matchs_hors_retention`), avec la DEFINITION DE LA FILE DE CUISSON et non une seconde ecrite a la main : annoncer une cuisson que la file ne fera pas serait pire que se taire. **Et le garde-rail pose pour l'empecher a mordu a l'ecriture** — il a trouve DEUX copies inline preexistantes de la meme fenetre (`replay_purge_cron.go`, `backlog.go`), ramenees a la definition unique dans le lot : poser un garde en laissant passer ce qu'il designe, c'est la factorisation abandonnee du diagnostic n 8.
+- 2026-09-07 : **revue de 7.10 — 1 P0, 4 P1, 6 P2, tous statues** (commits `tactique(7.10.3..n)`). Les deux constats de fond disent la meme chose sous deux formes : **la ventilation parlait au nom de la file sans reprendre sa regle**. Le P0 d'abord — une ligne de registre sans horodatage (la DDL l'autorise) faisait valoir NULL au predicat, et le scanner dans un `bool` nu rendait 500 sur TOUTE la lecture d'artefact de la carte : une seule ligne mal datee suffisait a eteindre l'onglet. Le P1 ensuite, plus grave dans ses effets : la file exige TROIS conditions et on n'en avait repris qu'une, si bien qu'un match dont le FILM EST DEFINITIVEMENT PERDU — le marqueur terminal, ~29 % du parc — sortait « en attente ». La page envoyait donc attendre indefiniment un ecran qui ne se remplirait jamais. **Une promesse plus large que ce que la file tient est pire que pas de promesse du tout**, et la correction n'est pas de recopier la troisieme condition mais d'extraire le predicat entier (`analysis.SQLEligibleALaCuisson`), consomme par la file ET par le lecteur : les compteurs deviennent `matchs_en_attente` et `matchs_non_cuisables`. **Le troisieme fil est un trou de couverture qui explique les deux premiers** : le SQL qui calcule ce booleen n'etait exerce par AUCUN test, parce que le double du service le rendait a la main — un predicat qui rend NULL a donc pu etre livre sans qu'aucun gate ne rougisse. Deux tests `:memory:` posent desormais les quatre situations, six tests unitaires figent les fragments, et les deux mutations (retirer le `IS NOT NULL`, neutraliser le test du bit) font tomber des tests nommes. **Un constat de la revue n'etait pas recevable** : le cron de purge EST teste depuis `15df6c629` — `RunOnce` avec horloge injectee, frontiere prouvee a la seconde —, verifie sur pieces avant de statuer.
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-07 (phase 7A, lot 7.10.3) — **`settingsStore.Load()` EN ERREUR SE DEGRADE EN
+  SILENCE CHEZ SES AUTRES APPELANTS.** Corrige DANS LE LOT pour
+  `wire/registry.go:retentionMoisRejeu` (un `slog.Warn` avant le repli : sans lui, un
+  `app_settings.json` illisible faisait passer la page en fenetre illimitee, donc « tout est
+  en attente », sans que rien ne relie l'anomalie a sa cause). **NON TRAITE, hors perimetre**
+  : les deux autres appelants — `cmd/server/main.go:1421` (fenetre du cron de purge) et
+  `api/server_apiv1.go:314,472` — font le meme `return 0` / repli muet sur erreur de
+  chargement. Le plus couteux est celui du cron : un settings illisible y vaut « retention
+  illimitee », donc purge desactivee sans un mot. Condition de reprise : a traiter avec le
+  prochain lot qui touche au cablage des settings.
+- 2026-09-07 (phase 7A, lot 7.10.3) — **`BacklogHorizon = 64` EST UNE BORNE DE DEBIT, PAS
+  D'ELIGIBILITE**, et la distinction est desormais ecrite dans la doc de `MatchsEnAttente`.
+  Un match eligible au-dela de l'horizon d'un cycle n'est pas « non cuisable » : il sera
+  repris a un cycle suivant. Le compteur dit donc « la file le reprendra », jamais « la file
+  le reprend maintenant » — et c'est la bonne promesse a faire a l'utilisateur, qui ne
+  raisonne pas en cycles.
 - 2026-09-07 (phase 7A, lot 7.10) — **LEÇON DE METHODE : UN GREP SUR UN SEUL FICHIER N'EST
   PAS UNE VERIFICATION.** A la ronde 1 j'ai affirme, « sur pieces », qu'une vie du film n'est
   nommee que par la mort qui la clot — j'avais greppe `lives.go` SEUL. `owners.go:166`
