@@ -70,6 +70,20 @@ func (fakeKillSourceClassifier) KillSourceClassName(tag uint32) (string, bool) {
 	return "ARME", true
 }
 
+// borneAUneConnexion : UNE SEULE CONNEXION PAR BASE, COMME EN PRODUCTION.
+//
+// Sur un DSN `:memory:`, duckdb-go n'a pas d'InstanceCache : chaque connexion supplementaire
+// que le pool `database/sql` ouvre est UNE BASE MEMOIRE NEUVE, sans les migrations ni le
+// registre. Le symptome est INTERMITTENT et deroutant — « Could not convert string 'tag' to
+// UINT32 », « NOT NULL constraint failed: decoder_rev » — parce qu'il depend de la
+// concurrence du pool, pas du test. La production borne deja (`applyConnLimits`, db.go), les
+// tests de stress aussi ; cette fixture ne le faisait pas (constat F8, revue adversariale du
+// lot 4, 2026-09-06).
+func borneAUneConnexion(db *sql.DB) {
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+}
+
 // newKillSourceTestPlayerDB : shared migre (vue `_latest` incluse) + metadata portant le
 // VRAI registre d'armes et ses libelles.
 func newKillSourceTestPlayerDB(t *testing.T) *PlayerDB {
@@ -78,6 +92,7 @@ func newKillSourceTestPlayerDB(t *testing.T) *PlayerDB {
 	if err != nil {
 		t.Fatalf("open shared mem: %v", err)
 	}
+	borneAUneConnexion(sharedSQL)
 	t.Cleanup(func() { _ = sharedSQL.Close() })
 	if err := migration.RunForDB(sharedSQL, migration.TargetShared); err != nil {
 		t.Fatalf("RunForDB(Shared): %v", err)
@@ -87,6 +102,7 @@ func newKillSourceTestPlayerDB(t *testing.T) *PlayerDB {
 	if err != nil {
 		t.Fatalf("open meta mem: %v", err)
 	}
+	borneAUneConnexion(metaSQL)
 	t.Cleanup(func() { _ = metaSQL.Close() })
 	if err := weapons.ApplyRegistry(metaSQL); err != nil {
 		t.Fatalf("ApplyRegistry: %v", err)
@@ -103,20 +119,38 @@ func newKillSourceTestPlayerDB(t *testing.T) *PlayerDB {
 	}
 }
 
-// insertKill pose une mort dans match_kill_events. killerXUID vide = tueur BOT (xuid NULL) ;
-// tag nul = source non mesuree.
-func insertKill(t *testing.T, pdb *PlayerDB, pass string, publishable bool,
-	killerXUID string, tag uint32, timeMS int,
-) {
+// killEventFixture decrit UNE mort a poser dans match_kill_events. Struct plutot que huit
+// parametres positionnels : depuis le lot 3 du plan duels/portee (2026-09-06) la VICTIME est
+// nommee sur certains cas (le lecteur de portee lit aussi le cote victime), et un huitieme
+// argument anonyme de plus rendrait chaque appel illisible.
+type killEventFixture struct {
+	pass        string
+	publishable bool
+	// killerXUID vide = tueur BOT (colonne NULL).
+	killerXUID string
+	// victimXUID vide = victime non resolue / bot (colonne NULL) — l etat par defaut.
+	victimXUID string
+	// tag nul = source non mesuree.
+	tag    uint32
+	timeMS int
+}
+
+// insertKillEvent pose une mort dans match_kill_events. UNIQUE INSERT de la fixture : les
+// appelants passent par lui (directement ou via insertKill).
+func insertKillEvent(t *testing.T, pdb *PlayerDB, k killEventFixture) {
 	t.Helper()
 	var killer any
-	if killerXUID != "" {
-		killer = killerXUID
+	if k.killerXUID != "" {
+		killer = k.killerXUID
+	}
+	var victim any
+	if k.victimXUID != "" {
+		victim = k.victimXUID
 	}
 	var srcTag any
 	var srcCat any
-	if tag != 0 {
-		srcTag = int64(tag)
+	if k.tag != 0 {
+		srcTag = int64(k.tag)
 		srcCat = "None"
 	}
 	_, err := pdb.Shared.Exec(context.Background(), `
@@ -124,9 +158,20 @@ func insertKill(t *testing.T, pdb *PlayerDB, pass string, publishable bool,
 			(match_id, decode_pass, decoder_rev, publishable, time_ms,
 			 victim_gamertag, victim_xuid, feed_killer_gamertag, feed_killer_xuid,
 			 feed_present, assist_known, source_tag, source_category, read_path, read_origin)
-		VALUES (?, ?, 'rev_test', ?, ?, 'Victime', NULL, 'Tueur', ?, TRUE, FALSE, ?, ?, ?, 'credit-concordant')`,
-		kscMatchID, pass, publishable, timeMS, killer, srcTag, srcCat, killscope.ReadPathFilmWalk)
+		VALUES (?, ?, 'rev_test', ?, ?, 'Victime', ?, 'Tueur', ?, TRUE, FALSE, ?, ?, ?, 'credit-concordant')`,
+		kscMatchID, k.pass, k.publishable, k.timeMS, victim, killer, srcTag, srcCat, killscope.ReadPathFilmWalk)
 	if err != nil {
 		t.Fatalf("insert kill: %v", err)
 	}
+}
+
+// insertKill : la forme historique (victime anonyme), conservee telle quelle pour les tests
+// qui ne lisent que le cote tueur.
+func insertKill(t *testing.T, pdb *PlayerDB, pass string, publishable bool,
+	killerXUID string, tag uint32, timeMS int,
+) {
+	t.Helper()
+	insertKillEvent(t, pdb, killEventFixture{
+		pass: pass, publishable: publishable, killerXUID: killerXUID, tag: tag, timeMS: timeMS,
+	})
 }

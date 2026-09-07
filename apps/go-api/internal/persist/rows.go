@@ -174,6 +174,32 @@ type KillPositionInsert struct {
 	VictimZ    *float64 `json:"victim_z,omitempty"`
 }
 
+// KillOpeningInsert — row pour shared.kill_openings : les positions monde des deux
+// joueurs UN TEMPS-POUR-TUER AVANT le coup fatal (proxy d'entame, D5 du plan
+// .ai/PLAN_DUELS_PORTEE_2026-09-06.md, validé le 2026-09-06 à 1,24 m d'écart médian).
+//
+// MÊME FORME QUE KillPositionInsert, ET POURTANT UN TYPE DISTINCT : les deux rows
+// ne visent pas la même table et ne portent PAS la même mesure. Un type partagé
+// laisserait passer, sans que rien ne rougisse, une passe d'entames écrite dans
+// kill_positions — c'est-à-dire des positions fausses de 1,5 s présentées comme
+// celles du coup fatal.
+//
+// TimeMS EST L'INSTANT DU KILL, pas l'instant mesuré : c'est la clé du frag, celle
+// par laquelle match_kill_events se joint. Les six coordonnées, elles, sont prises
+// à `TimeMS - replay.OpeningLeadMS`. Coordonnées nullables, même raison que sa
+// sœur : un seul des deux joueurs peut être localisable à cet instant.
+type KillOpeningInsert struct {
+	MatchID    string   `json:"match_id"`
+	KillerXUID string   `json:"killer_xuid"`
+	TimeMS     int      `json:"time_ms"`
+	KillerX    *float64 `json:"killer_x,omitempty"`
+	KillerY    *float64 `json:"killer_y,omitempty"`
+	KillerZ    *float64 `json:"killer_z,omitempty"`
+	VictimX    *float64 `json:"victim_x,omitempty"`
+	VictimY    *float64 `json:"victim_y,omitempty"`
+	VictimZ    *float64 `json:"victim_z,omitempty"`
+}
+
 // XUIDAliasInsert — row pour shared.xuid_aliases.
 type XUIDAliasInsert struct {
 	XUID     string    `json:"xuid"`

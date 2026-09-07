@@ -145,6 +145,13 @@ type SynthesisPageV2Response struct {
 	// (nil → absent) pour les titres qui ne peuplent pas cette donnée (Infinite).
 	WeaponAccuracy []SynthesisWeaponAccuracyEntry `json:"weapon_accuracy,omitempty"`
 
+	// Bloc portée et dénivelé des engagements (mes frags ET mes morts, par arme, mesurés
+	// depuis les positions monde décodées du film). Nil (champ omis) pour un titre sans
+	// positions par kill, un scope non décodé ou une lecture en échec — jamais une section
+	// vide. Gated côté front par la capability produit `weapon_range`. Cf.
+	// synthesis_weapon_range.go et .ai/PLAN_DUELS_PORTEE_2026-09-06.md.
+	WeaponRange *SynthesisWeaponRange `json:"weapon_range,omitempty"`
+
 	// Bloc profil combat (OC + DR + descripteurs) — nil si < 15 matchs dans le scope.
 	// Ref : PLAN_COMBAT_PROFILE_WIRING.md Phase 1.
 	CombatProfile *CombatProfileBlock `json:"combat_profile,omitempty"`

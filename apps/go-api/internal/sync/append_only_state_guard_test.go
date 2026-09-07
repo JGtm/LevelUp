@@ -130,6 +130,17 @@ var appendOnlyStateTables = []string{
 	// Écriture = INSERT pur (persist/player_positions_persister.go) ; lecture via _latest
 	// UNIQUEMENT — une lecture brute empilerait toutes les projections d'un match.
 	"match_player_positions",
+	// kill_openings (duels/portée D5, 2026-09-06) : créée directement append-only (id PK seq
+	// + decode_pass + written_at + vue kill_openings_latest). L'unité de génération est la
+	// PASSE DE DÉCODAGE, pas la ligne : la vue retient la DERNIÈRE PASSE ENTIÈRE par match
+	// (`decode_pass`, modèle de match_kill_events_latest), et c'est vital ICI — une entame
+	// n'existe pas toujours (le filtre « même vie » de replay.BuildKillOpenings en écarte),
+	// donc un arbitrage par CLÉ servirait à jamais la ligne d'une passe précédente pour un
+	// frag que le re-décodage ne résout plus. Écriture = INSERT pur
+	// (kill_opening_persister.go, un seul statement) ; aucun DELETE / ON CONFLICT / INSERT OR
+	// REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT — une lecture brute servirait les
+	// positions d'une passe de décodage précédente. Recette ADR 0026 étape 5.
+	"kill_openings",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors
