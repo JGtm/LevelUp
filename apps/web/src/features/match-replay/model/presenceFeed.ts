@@ -38,9 +38,16 @@ export const PRESENCE_ARRIVE_MS = 10_000
 /** REPLI FILM : dernière vie qui s'achève plus tôt que ça avant la fin = ne reviendra plus. */
 export const PRESENCE_DEPART_MS = 20_000
 
-/** Ce que la présence lit de l'en-tête : l'origine ABSOLUE de l'axe du match. */
+/**
+ * Ce que le rejeu lit de l'en-tête de la vue match : l'origine ABSOLUE de l'axe du match
+ * (présence, relais de siège), et — depuis le 2026-09-06 — la CATÉGORIE DE MODE, qui décide
+ * du gabarit des fiches (`model/cardDensity.ts`, décision D1 : compacte si `BTB`). C'est un
+ * sous-ensemble de `MatchViewHeader` : la page passe l'en-tête entier, le type ne nomme que
+ * ce qui est lu.
+ */
 export interface PresenceHeader {
   start_time?: string | null
+  mode_category?: string | null
 }
 
 /** Une ligne de présence du fil : qui, dans quel sens, et par quelle source. */

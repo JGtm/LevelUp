@@ -40,8 +40,9 @@ import type { ObjectiveMarkKind } from '../model/objectiveMark'
  */
 const WATERMARK_OPACITY = 0.22
 
-/** Côté du glyphe, en pixels : la hauteur du corps de la fiche (35 px), moins l'air autour. */
-const WATERMARK_PX = 46
+// LE CÔTÉ DU GLYPHE VIENT DU GABARIT DE LA FICHE (`model/cardGabarit.ts`, `watermarkPx`,
+// 2026-09-06) : 46 px sur un corps de 35 (la fiche normale), 34 px sur un corps de 31 (la
+// tuile compacte) — le critère est le même dans les deux cas : le glyphe RESTE UN FOND.
 
 /**
  * Les six glyphes, en repère 16×16.
@@ -76,14 +77,23 @@ const GLYPH_PATHS: Record<ObjectiveMarkKind, string> = {
  * sont `relative` — l'ordre de peinture du DOM les met donc au-dessus, exactement comme la
  * couche d'effets de `playerCardFx`. Aucun `z-index` à arbitrer.
  */
-export function ReplayObjectiveMark({ kind }: { kind: ObjectiveMarkKind }) {
+export function ReplayObjectiveMark({
+  kind,
+  sizePx,
+  radiusClass,
+}: {
+  kind: ObjectiveMarkKind
+  sizePx: number
+  /** Le rayon de la tuile, en classe (`ReplayPlayerCard.TILE_LAYOUT.layerRadius`) : le filigrane l'épouse. */
+  radiusClass: string
+}) {
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute inset-y-0 right-[-6px] flex items-center overflow-hidden rounded-lg"
+      className={`pointer-events-none absolute inset-y-0 right-[-6px] flex items-center overflow-hidden ${radiusClass}`}
       style={{ color: tokenCssVar('extreme'), opacity: WATERMARK_OPACITY }}
     >
-      <svg width={WATERMARK_PX} height={WATERMARK_PX} viewBox="0 0 16 16" fill="currentColor">
+      <svg width={sizePx} height={sizePx} viewBox="0 0 16 16" fill="currentColor">
         <path d={GLYPH_PATHS[kind]} fillRule="evenodd" />
       </svg>
     </span>

@@ -409,9 +409,13 @@
   from { background-color: color-mix(in srgb, var(--ac-success) 52%, transparent); }
   to   { background-color: transparent; }
 }
-/* La permutation translate chaque vignette de la place de l'AUTRE (--replay-dx) : c'est la
-   seule distance qui fasse réellement se croiser les deux. Sans mouvement, un échange est
-   indiscernable d'un changement d'arme. */
+/* La permutation translate chaque vignette de la place de l'AUTRE (--replay-dx, 46 px par
+   défaut : la distance entre les DEUX cellules d'arme de la fiche normale) : c'est la seule
+   distance qui fasse réellement se croiser les deux. Sans mouvement, un échange est
+   indiscernable d'un changement d'arme. Sur la tuile compacte (une seule cellule, plan fiches
+   compactes 2026-09-06, I6), la vignette ENTRANTE pose elle-même --replay-dx à la largeur de
+   sa cellule (48 px, `ReplayWeaponsRow`) et elle seule s'anime (replay-wswap-l) : l'échange
+   reste visible, il ne croise plus rien. */
 @keyframes replay-wswap-left {
   from { transform: translateX(var(--replay-dx, 46px)); opacity: 0.25; }
   to   { transform: none; opacity: 1; }

@@ -1228,6 +1228,66 @@ par cron, 107 artefacts pour 1 380 films — avec gate de validation (ecart medi
 morts ou le premier degat est capture) et backfill soumis a l utilisateur. Rien n est commite :
 accord utilisateur requis.
 
+## [2026-09-07] Fiches compactes du rejeu (Grande equipe) — etapes 2 a 5.2 — Complete (reste gate visuel, push, CI, merge)
+
+**Decision technique principale.** La tuile compacte est rendue par le MEME composant que la
+fiche normale, sur une table fermee de mise en page (`TILE_LAYOUT`, cle `bodyPx 35 | 31`,
+litteraux Tailwind en clair — jamais interpoles) : corps de 35 = classes d'aujourd'hui a
+l'octet (fixture 4v4 inchangee), corps de 31 = trois lignes (nom seul `leading-[14px]`, jauges
+`flex-1` + triplet mono 9 px, arme 48 / grenade 14 / capacite 16). Encadre « Elimine » compact
+sur deux lignes ; « Hors film » seul avec `goneValue` en infobulle (D4). Sous-composants :
+une cellule d'arme (arme rangee nommee en infobulle, echange anime sur la seule vignette
+entrante, `--replay-dx` = largeur de cellule), grenade selectionnee seule (stock via
+`grenadeBoxHint`), triplet sans cellule de score (score en infobulle), charges et marques
+d'inventaire en infobulle (`showInventoryMarks`, D5) ; `model/handCellHint.ts` compose
+munitions (3 cas, rien en D=2) + etat vide avec ses ages. i18n FR+EN : `weaponStowedFmt`,
+`playerScoreLiveFmt`, `ammoHintFmt`. Rayon des couches d'effets aligne sur la tuile
+(`layerRadius`). Retires sur decision utilisateur (« ce n'est qu'un changement UI ») : captures
+avant, releves DevTools, boucle d'optimisation perf, revue adversariale du diff.
+
+**Resultats observes.** Suite web ENTIERE : 618 fichiers / 6 440 tests verts, exit 0 ;
+match-replay 167 fichiers / 2 368 tests ; `tsc -b --force` 0 ; eslint 0 (27 avertissements
+preexistants) ; `lint:colors` 0. Fixtures 4v4 (`a650f6b5`) et 6v6 (`4dc466cc`) inchangees a
+l'octet apres chaque etape ; `ReplayTeams.test.tsx` sans une ligne de diff. Tests ajoutes :
+compact 20 `it`, densite 5 `it` (12v9, relais, chaine de grille, sans decodage, 24 sans
+categorie → normal). Perf JS APRES (mesure seule, pas un gate) : colonne BTB compacte p50
+1,30 ms contre 1,36 ms en normal sur le meme temoin (-3,5 %), modele seul 0,09 ms — chiffres
+~2x sous l'AVANT y compris sur du code inchange : etat machine, seuls les ecarts intra-passe
+comptent. Piege trouve en route : le perf test montait la colonne sans en-tete, donc jamais en
+compacte — troisieme ligne ajoutee.
+
+**Conclusion / prochaine etape.** Reste : commit etape 4-5.2, push `feat/fiches-compactes`,
+CI surveillee, gate visuel utilisateur (temoins `4f77afc1` BTB et `000d5950` 4v4 sur le dev
+local), puis merge dans `feat/v75`. Decouvertes consignees au plan (perf test : en-tete de
+commentaire perime, seuils absolus non reproductibles entre sessions).
+
+## [2026-09-06] Fiches compactes du rejeu (Grande equipe) — etapes 0 et 1 — En cours
+
+**Decision technique principale.** Deux gabarits de fiche, UN SEUL jeu de composants : les cotes
+vivent dans un objet `CardGabarit` (`model/cardGabarit.ts`, `GABARIT_NORMAL` = les constantes
+d'aujourd'hui valeur pour valeur, `GABARIT_COMPACT` = maquette A2, tuile 115 x 62, trois lignes),
+et la densite se lit sur le TYPE DE MATCH (`header.mode_category === 'BTB'`,
+`model/cardDensity.ts`) — decision utilisateur : « les matchs de type 4v4 on touche pas » ;
+toute heuristique d'effectif (sieges, joueurs, lignes de tableau) est exclue ; pas de groupe
+« sans equipe » (tout joueur a une equipe, FFA = chacun la sienne). Aucun reglage, aucun drapeau.
+Plan revu a quatre angles (architecture, tests, perf, produit), 40 constats integres :
+`.ai/PLAN_FICHES_COMPACTES_BTB_2026-09-06.md`.
+
+**Resultats observes.** Fixture DOM 4v4 (`ui/__fixtures__/replayTeams.4v4.html`) prise AVANT
+tout code et identique apres l'extraction de `PlayerCard` vers `ui/ReplayPlayerCard.tsx` +
+`model/playerCardReadings.ts` (`ReplayTeams.tsx` 488 -> 219 L) ; `ReplayTeams.test.tsx` sans
+une ligne de diff ; garde-rail `ui/cardGabarit.guard.test.ts` (aucune cote locale, aucun mot
+de densite, aucun import des reglages). Suite match-replay complete : 165 fichiers, 2 342
+tests verts. Mesure JS AVANT (Profiler, 5 x 100 rendus) : colonne BTB p50 2,98 ms, 4v4
+1,66 ms, modele seul 0,17 ms pour 25 fiches — les 24 fiches d'un BTB etaient DEJA toutes
+rendues (colonne defilante), le lot ne change que la surface visible. Rituels de mesure
+navigateur retires du plan sur decision utilisateur (« ce n'est qu'un changement UI »).
+
+**Conclusion / prochaine etape.** Etape 2 (le gabarit compact lui-meme) puis 3 (sous-composants
+en compact, infobulles de report FR+EN), 4 (cas limites), 5 (gates, revue adversariale, gate
+visuel utilisateur sur `4f77afc1` et `000d5950`). Worktree `LevelUp-wt-fiches-compactes`,
+branche `feat/fiches-compactes`, merge dans `feat/v75` a la cloture.
+
 ## [2026-09-05] Integration des branches actives dans l'architecture cuisson-perf — CLOSE, merge feat/v75 — Complete
 
 **Decision technique principale.** Tout ce qui devait rejoindre `feat/v75` a ete rejoue DANS

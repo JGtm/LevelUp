@@ -13,6 +13,7 @@ import { formatKDA } from '@/lib/formatters/number'
 
 import type { PlayerCounters } from '@/lib/replay/scoreTimeline'
 
+import type { CardGabarit } from '../model/cardGabarit'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
 /**
@@ -27,18 +28,52 @@ const FDA_TINT_PCT = 22
  * celle des armes le 2026-08-24 : « comme sur une grille pour que l'alignement soit le même
  * pour tous les joueurs »).
  *
- * `SCORE_CELL_W` — la cellule du score personnel, TOUJOURS rendue même vide : c'est elle qui
- * tient l'alignement. Un joueur non publié n'a pas de score, et si sa cellule disparaissait,
- * son triplet glisserait de 30 px par rapport à celui du voisin publié — exactement le
- * décalage qu'on cherche à supprimer. Vide veut dire « pas de mesure », pas « zéro ».
+ * `scoreCellW` — la cellule du score personnel, TOUJOURS rendue même vide SUR LE GABARIT
+ * NORMAL : c'est elle qui tient l'alignement. Un joueur non publié n'a pas de score, et si sa
+ * cellule disparaissait, son triplet glisserait de 30 px par rapport à celui du voisin publié
+ * — exactement le décalage qu'on cherche à supprimer. Vide veut dire « pas de mesure », pas
+ * « zéro ». Cette doctrine ne vaut que là où la cellule existe : sur la tuile compacte
+ * (`showScore: false`, plan fiches compactes 2026-09-06) il n'y a PAS de cellule de score —
+ * le triplet, seul et à droite de sa ligne, s'aligne de lui-même — et le score passe dans
+ * l'infobulle du triplet avec sa valeur (`playerScoreLiveFmt`), sur un joueur publié seulement.
  *
- * `COUNT_CELL_W` — la cellule d'UN compteur. Ce sont des `min-width` et non des largeurs
+ * `countCellW` — la cellule d'UN compteur. Ce sont des `min-width` et non des largeurs
  * fermes : deux chiffres tiennent partout (le cas ordinaire, donc l'alignement est tenu), et
  * un troisième chiffre pousse sa cellule plutôt que d'être rogné. Une valeur juste mais
  * tronquée serait pire qu'une colonne d'un pixel de trop.
+ *
+ * LES DEUX LARGEURS VIENNENT DU GABARIT DE LA FICHE (`model/cardGabarit.ts`, 2026-09-06 :
+ * 30 / 15 en normal, 10 pour le compteur en compact) — ce composant ne porte plus de cote.
  */
-const SCORE_CELL_W = 30
-const COUNT_CELL_W = 15
+
+/**
+ * LA TYPOGRAPHIE DU TRIPLET SUIT SON ÉCHELLE (`countCellW`) par une table FERMÉE de littéraux
+ * Tailwind (cf. cardGabarit.ts : une classe interpolée ne produit aucune règle). 15 : le
+ * triplet d'aujourd'hui, classe pour classe — mono 10 px, gap 3, fond `px-1`. 10 : la ligne
+ * de 12 px de la tuile compacte — mono 9 px, `leading-none`, gap 2, fond `px-[3px]` ; trois
+ * cellules de 10, deux séparateurs, gaps et marges : ≈ 54 px.
+ */
+interface TripletTypo {
+  /** La rangée : score et triplet. */
+  row: string
+  /** Le triplet lui-même, hors son fond. */
+  cells: string
+  /** Le fond FDA, posé seulement quand il y a un FDA. */
+  tint: string
+}
+
+const TRIPLET_TYPO: Record<CardGabarit['countCellW'], TripletTypo> = {
+  15: {
+    row: 'inline-flex shrink-0 items-baseline gap-1 font-mono text-[10px] tabular-nums',
+    cells: 'inline-flex items-baseline gap-[3px]',
+    tint: 'rounded-[3px] px-1',
+  },
+  10: {
+    row: 'inline-flex shrink-0 items-baseline gap-[2px] font-mono text-[9px] leading-none tabular-nums',
+    cells: 'inline-flex items-baseline gap-[2px]',
+    tint: 'rounded-[3px] px-[3px]',
+  },
+}
 
 /** Le fond du triplet : le token du palier, dilué dans le fond de la tuile. */
 function fdaTint(tone: FdaTone): string {
@@ -83,10 +118,13 @@ export function ReplayCountersBadge({
   board,
   live,
   locale,
+  gabarit,
 }: {
   board?: MatchScoreboardRow
   live: PlayerCounters | null
   locale: ReplayLocale
+  /** Les cotes de la fiche : largeurs minimales de la cellule de score et d'un compteur. */
+  gabarit: CardGabarit
 }) {
   const t = REPLAY_TEXT[locale]
   if (!live && !board) return null
@@ -102,29 +140,37 @@ export function ReplayCountersBadge({
   // ne donne aucun FDA — donc aucun fond : une couleur est une affirmation.
   const fda = matchFda(counters)
   const label = live ? t.countersLive : t.countersMatch
+  const typo = TRIPLET_TYPO[gabarit.countCellW]
+  const tripletTitle = fda === null ? label : t.fdaTooltipFmt(label, formatKDA(fda, locale))
+  // SANS CELLULE DE SCORE, le score vit dans l'infobulle du triplet — avec sa valeur, et sur
+  // un joueur publié seulement (la base ne le porte pas à cet endroit).
+  const title =
+    !gabarit.showScore && live ? `${tripletTitle} · ${t.playerScoreLiveFmt(live.score)}` : tripletTitle
   return (
-    <span className="inline-flex shrink-0 items-baseline gap-1 font-mono text-[10px] tabular-nums">
+    <span className={typo.row}>
       {/* LE SCORE PERSONNEL D'ABORD (demande utilisateur du 2026-08-29) : il passe à GAUCHE
           des compteurs. Sa cellule est rendue même sans mesure — vide, sans infobulle — et
           c'est ce qui aligne les triplets d'une colonne à l'autre. */}
+      {gabarit.showScore && (
+        <span
+          className="shrink-0 text-right font-normal text-muted-foreground"
+          style={{ minWidth: gabarit.scoreCellW }}
+          title={live ? t.playerScoreLive : undefined}
+        >
+          {live ? live.score : ''}
+        </span>
+      )}
       <span
-        className="shrink-0 text-right font-normal text-muted-foreground"
-        style={{ minWidth: SCORE_CELL_W }}
-        title={live ? t.playerScoreLive : undefined}
-      >
-        {live ? live.score : ''}
-      </span>
-      <span
-        className={`inline-flex items-baseline gap-[3px] ${fda === null ? '' : 'rounded-[3px] px-1'}`}
+        className={`${typo.cells} ${fda === null ? '' : typo.tint}`}
         style={fda === null ? undefined : { background: fdaTint(fdaTone(fda)) }}
-        title={fda === null ? label : t.fdaTooltipFmt(label, formatKDA(fda, locale))}
+        title={title}
       >
         {parts.map(([v, token], i) => (
           <Fragment key={token}>
             {i > 0 && <span className="opacity-[.35]">/</span>}
             <span
               className="inline-block text-center font-bold"
-              style={{ color: tokenCssVar(token as 'success'), minWidth: COUNT_CELL_W }}
+              style={{ color: tokenCssVar(token as 'success'), minWidth: gabarit.countCellW }}
             >
               {v ?? '?'}
             </span>
