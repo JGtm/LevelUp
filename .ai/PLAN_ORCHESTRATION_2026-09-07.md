@@ -153,6 +153,8 @@ Non retenus en vague 1 (consignés, pas oubliés) : canvas tactique à `k = 1` s
 (optimisation, à regrouper avec « le document qui circule entre projections » — vague 2) ;
 test `:memory:` dédié à `QTacticalIsolement` (entre dans Q8 si la revue le juge P1, sinon vague 2).
 
+**VAGUE 1 CLOSE le 2026-09-07** : fusionnee dans `feat/v75` (`6a1496e30`), revue unique P0 0 / P1 1 corrige, CI verte (run 34157192772, 8 jobs verts + E2E skip). Deux rouges de CI corriges au passage, hors lots : baseline des tests Go (8 tests `TestOutcomeLabel*` retires avec les maps FR) et `MatchStatCards.test` (mock du store sans `availableTitles` apres le commit parallele `9af8aea41`).
+
 ## 3. Vague 2 — finitions moyennes (après vague 1 ; un lot par domaine en vol)
 
 | # | Lot | Source | Exécutant | Gate |

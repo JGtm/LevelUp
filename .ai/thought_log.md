@@ -101023,3 +101023,11 @@ plus le rendu ; le parc y est stable. Vagabond etait la carte restee en arriere.
 **Reste ouvert.** Le depot PRINCIPAL porte encore, non commites, les cinq fichiers de la premiere
 publication de Vagabond (fond, sidecar, registre, reglages, journal) faite avant que le piege n°1
 soit compris : le garde-fou a refuse le `git checkout --` dans ce depot partage. A restaurer.
+
+## [2026-09-07] Orchestration — vague 1 : CI verte (Complete)
+- `feat/v75` = `6a1496e30`. CI run 34157192772 : 8 jobs verts, E2E skip. Deux rouges corriges
+  dans la fusion (hors lots) : baseline des tests Go (8 `TestOutcomeLabel*` retires — fonctions
+  supprimees par la cle canonique d'issue, D4/D5) et `MatchStatCards.test.tsx` (mock du store
+  sans `availableTitles` apres `9af8aea41`, commit parallele).
+- Vague 2 en vol : M1 (lien cellule -> rejeu), M3 (budget du calage, Opus), M5 L2+L5
+  (accueil, rangs) ; M2 et M6 livres non fusionnes ; M4 apres M3.
