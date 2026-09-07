@@ -1,7 +1,7 @@
-// Package halo_infinite â€” citations_custom.go : 12 fonctions custom du moteur citations.
+// Package halo_infinite — citations_custom.go : 12 fonctions custom du moteur citations.
 //
 // Port Go de src/analysis/citations/custom_rules.py.
-// 0 accÃ¨s DB â€” toutes les donnÃ©es arrivent via domain.CitationContext.
+// 0 accès DB — toutes les données arrivent via domain.CitationContext.
 package halo_infinite
 
 import (
@@ -130,7 +130,7 @@ func computeWinsStrongholds(ctx domain.CitationContext) int {
 	return 0
 }
 
-// computeAnnexionForcee : sÃ©ries de 3 captures de zone sans mort entre elles.
+// computeAnnexionForcee : séries de 3 captures de zone sans mort entre elles.
 // Utilise highlight_events si disponibles, sinon fallback sur awards["zone_captured"] / 3.
 func computeAnnexionForcee(ctx domain.CitationContext) int {
 	if len(ctx.Events) > 0 {
@@ -154,14 +154,14 @@ func computeAnnexionForcee(ctx domain.CitationContext) int {
 	return ctx.Awards["zone_captured"] / 3
 }
 
-// computeFlagEmDown : arrÃªts de porteur de drapeau.
+// computeFlagEmDown : arrêts de porteur de drapeau.
 func computeFlagEmDown(ctx domain.CitationContext) int {
 	return sumAwardsExact(ctx.Awards,
-		"runner_stopped", "Porteur arrÃªtÃ©", "Flag Carrier Kill", "Flag Carrier Killed",
+		"runner_stopped", "Porteur arrêté", "Flag Carrier Kill", "Flag Carrier Killed",
 	)
 }
 
-// computeHijack : piratage de vÃ©hicule/tourelle.
+// computeHijack : piratage de véhicule/tourelle.
 func computeHijack(ctx domain.CitationContext) int {
 	total := sumAwardsWithPrefix(ctx.Awards, "hijacked_")
 	total += sumAwardsContaining(ctx.Awards, "hijack")

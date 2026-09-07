@@ -1,5 +1,5 @@
-// Package analysis â€” home_canonical_recent.go : BuildRecentMatchesWithFavorites
-// canonical (P4.3 finale). Construit la liste des matchs rÃ©cents + score label.
+// Package analysis — home_canonical_recent.go : BuildRecentMatchesWithFavorites
+// canonical (P4.3 finale). Construit la liste des matchs récents + score label.
 package analysis
 
 import (
@@ -15,7 +15,7 @@ import (
 // BuildRecentMatchesWithFavoritesFromCanonical : full canonical (P4.3 finale).
 //
 // Lit Map/Playlist/GameVariant labels via Summary.AssetReference.Labels.
-// PairName (composite Halo-only) substituÃ© par GameVariant FR/Default.
+// PairName (composite Halo-only) substitué par GameVariant FR/Default.
 // Ce que la couche service injecte — locale, létalité du titre, résolveur de badge de
 // palier, table des variantes qui se décident aux manches — voyage dans
 // RecentMatchesOptions, ci-dessous.
@@ -58,7 +58,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		if r.Summary.MatchID == "" {
 			continue
 		}
-		// Outcome canonical â†’ int Halo pour les helpers existants.
+		// Outcome canonical → int Halo pour les helpers existants.
 		outcome := canonicalOutcomeToInt(r.Self.Outcome)
 		label := outcomeLabelForLocale(outcome, locale)
 		tone := outcomeTone(outcome)
@@ -149,7 +149,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			}
 		}
 
-		// Combat yield depuis canonical (DamageDealt/DamageTaken int â†’ float64).
+		// Combat yield depuis canonical (DamageDealt/DamageTaken int → float64).
 		var offConv, defRes *float64
 		var dmgDealtPtr, dmgTakenPtr *float64
 		if r.Self.DamageDealt != nil {
@@ -236,7 +236,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 }
 
 // buildScoreLabelCanonical : reconstruit le score "X-Y" depuis Summary.Teams
-// + Self.TeamID (Ã©quivalent canonical de buildHomeScoreLabel).
+// + Self.TeamID (équivalent canonical de buildHomeScoreLabel).
 func buildScoreLabelCanonical(r canonical.PlayerMatchRow, roundsDecide map[string]bool) *string {
 	var t0, t1 *canonical.TeamSnapshot
 	for i := range r.Summary.Teams {

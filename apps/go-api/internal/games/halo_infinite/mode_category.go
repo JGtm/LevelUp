@@ -1,31 +1,31 @@
-// Package halo_infinite â€” mode_category.go : portage Go de
+// Package halo_infinite — mode_category.go : portage Go de
 // `src.analysis.mode_categories` / `src.analysis.mode_display` (branche v7/cockpit Python).
 //
 // =============================================================================
-// 2 NIVEAUX ORTHOGONAUX pour la sÃ©mantique des modes Halo Infinite :
+// 2 NIVEAUX ORTHOGONAUX pour la sémantique des modes Halo Infinite :
 // =============================================================================
 //
-//  1. SOUS-MODE (label affichÃ© individuellement) â†’ cf. mode_label.go
-//     "Arena:Slayer on Bazaar" â†’ "Slayer" (puis traduit "Assassin" via mode_name_tr)
-//     ImplÃ©mentÃ© par NormalizeModeLabel().
+//  1. SOUS-MODE (label affiché individuellement) → cf. mode_label.go
+//     "Arena:Slayer on Bazaar" → "Slayer" (puis traduit "Assassin" via mode_name_tr)
+//     Implémenté par NormalizeModeLabel().
 //
-//  2. CATÃ‰GORIE PARENTE (filtre Mode dans la galerie mÃ©dia, regroupements UI)
-//     "Arena:Slayer on Bazaar" â†’ "Assassin" (catÃ©gorie qui regroupe Arena/Tactical/Assault/Community)
-//     ImplÃ©mentÃ© par InferModeCategoryFromPairName() ci-dessous.
+//  2. CATÉGORIE PARENTE (filtre Mode dans la galerie média, regroupements UI)
+//     "Arena:Slayer on Bazaar" → "Assassin" (catégorie qui regroupe Arena/Tactical/Assault/Community)
+//     Implémenté par InferModeCategoryFromPairName() ci-dessous.
 //
 // NE PAS DUPLIQUER : selon le besoin, choisir l'une ou l'autre fonction.
 // =============================================================================
 //
-// Une `mode_category` custom regroupe plusieurs prÃ©fixes de pair_name :
+// Une `mode_category` custom regroupe plusieurs préfixes de pair_name :
 //
 //	Assassin  : Arena, Tactical, Assault, Community
 //	Fiesta    : Fiesta, Super Fiesta, Husky Raid, Super Husky Raid, Castle Wars
 //	BTB       : BTB, BTB Heavies
 //	Ranked    : Ranked
 //	Firefight : Firefight, Gruntpocalypse
-//	Other     : tout le reste (Event, et tout prÃ©fixe inconnu)
+//	Other     : tout le reste (Event, et tout préfixe inconnu)
 //
-// Source de vÃ©ritÃ© Python (consulter en cas de doute) :
+// Source de vérité Python (consulter en cas de doute) :
 //
 //	git show v7/cockpit:src/analysis/mode_display.py     (_PREFIX_RULES)
 //	git show v7/cockpit:src/analysis/mode_categories.py  (PREFIX_TO_CATEGORY)
@@ -36,13 +36,13 @@ import (
 	"strings"
 )
 
-// ModeCategoryAssassin et autres : valeurs canoniques retournÃ©es par
-// InferModeCategoryFromPairName. Stables â€” utilisÃ©es comme labels dans l'UI.
+// ModeCategoryAssassin et autres : valeurs canoniques retournées par
+// InferModeCategoryFromPairName. Stables — utilisées comme labels dans l'UI.
 //
 // DIVERGENCE PYTHON v7/cockpit : Super Fiesta et Husky Raid sont promus en
-// catÃ©gories distinctes (Python les regroupait sous "Fiesta"). Justification :
+// catégories distinctes (Python les regroupait sous "Fiesta"). Justification :
 // ce sont des playlists temporaires Halo Infinite identifiables par les joueurs
-// (rotations event), donc les masquer derriÃ¨re "Fiesta" rend le filtre opaque.
+// (rotations event), donc les masquer derrière "Fiesta" rend le filtre opaque.
 const (
 	ModeCategoryAssassin    = "Assassin"
 	ModeCategoryFiesta      = "Fiesta"
@@ -63,12 +63,12 @@ const (
 	ModePrefixSuperHuskyRaid = "Super Husky Raid"
 )
 
-// modePrefixToCategory mappe le prÃ©fixe (gauche du ":" dans pair_name, casse normalisÃ©e)
-// vers la catÃ©gorie custom. Miroir Go de _PREFIX_RULES Python.
+// modePrefixToCategory mappe le préfixe (gauche du ":" dans pair_name, casse normalisée)
+// vers la catégorie custom. Miroir Go de _PREFIX_RULES Python.
 //
-// La traduction FR Ã©ventuelle (ex: "ArÃ¨ne", "CommunautÃ©", "ClassÃ©") est gÃ©rÃ©e
-// cÃ´tÃ© infÃ©rence en testant les variantes via _CASE_MAP â€” ici on stocke les
-// prÃ©fixes EN canoniques (cf. Python _normalize_case).
+// La traduction FR éventuelle (ex: "Arène", "Communauté", "Classé") est gérée
+// côté inférence en testant les variantes via _CASE_MAP — ici on stocke les
+// préfixes EN canoniques (cf. Python _normalize_case).
 var modePrefixToCategory = map[string]string{
 	"Arena":                  ModeCategoryAssassin,
 	"Tactical":               ModeCategoryAssassin,
@@ -87,7 +87,7 @@ var modePrefixToCategory = map[string]string{
 	"Event":                  ModeCategoryOther,
 }
 
-// modeCaseMap â€” prÃ©fixes spÃ©ciaux dont la casse doit Ãªtre conservÃ©e (acronymes
+// modeCaseMap — préfixes spéciaux dont la casse doit être conservée (acronymes
 // ou multi-mots usuels). Miroir Python _CASE_MAP.
 var modeCaseMap = map[string]string{
 	"btb heavies":      ModePrefixBTBHeavies,
@@ -98,10 +98,10 @@ var modeCaseMap = map[string]string{
 	"castle wars":      ModePrefixCastleWars,
 }
 
-var modeMapSuffixRe = regexp.MustCompile(`(?i)^(.*?)(?:\s*[\-â€“â€”]\s*[0-9A-Za-z]{8,})$`)
+var modeMapSuffixRe = regexp.MustCompile(`(?i)^(.*?)(?:\s*[\-–—]\s*[0-9A-Za-z]{8,})$`)
 
-// stripMapSuffix retire le suffixe " on MapName" et un Ã©ventuel suffixe ID
-// technique (8+ caractÃ¨res alphanum aprÃ¨s " - "). Miroir Python _strip_map_suffix.
+// stripMapSuffix retire le suffixe " on MapName" et un éventuel suffixe ID
+// technique (8+ caractères alphanum après " - "). Miroir Python _strip_map_suffix.
 func stripMapSuffix(s string) string {
 	if i := strings.Index(s, " on "); i >= 0 {
 		s = s[:i]
@@ -112,13 +112,13 @@ func stripMapSuffix(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// normalizeModeCase normalise la casse d'un prÃ©fixe pour le lookup dans
-// modePrefixToCategory. MÃªmes rÃ¨gles que Python _normalize_case :
+// normalizeModeCase normalise la casse d'un préfixe pour le lookup dans
+// modePrefixToCategory. Mêmes règles que Python _normalize_case :
 //
-//	"btb"           â†’ "BTB"           (via modeCaseMap)
-//	"super fiesta"  â†’ "Super Fiesta"  (via modeCaseMap)
-//	"ARENA"         â†’ "ARENA"         (tout-majuscules conservÃ©)
-//	"team slayer"   â†’ "Team Slayer"   (title case)
+//	"btb"           → "BTB"           (via modeCaseMap)
+//	"super fiesta"  → "Super Fiesta"  (via modeCaseMap)
+//	"ARENA"         → "ARENA"         (tout-majuscules conservé)
+//	"team slayer"   → "Team Slayer"   (title case)
 func normalizeModeCase(prefix string) string {
 	prefix = strings.TrimSpace(prefix)
 	if prefix == "" {
@@ -140,13 +140,13 @@ func normalizeModeCase(prefix string) string {
 	return strings.Join(parts, " ")
 }
 
-// InferModeCategoryFromPairName retourne la catÃ©gorie custom (Assassin/Fiesta/
-// BTB/Ranked/Firefight/Other) infÃ©rÃ©e depuis un pair_name brut.
+// InferModeCategoryFromPairName retourne la catégorie custom (Assassin/Fiesta/
+// BTB/Ranked/Firefight/Other) inférée depuis un pair_name brut.
 //
-// GÃ¨re :
-//   - Format normal : "Arena:Slayer on Bazaar" â†’ "Assassin"
-//   - Format inversÃ© : "CTF:Arena" â†’ "Assassin" (prÃ©fixe Ã  droite si gauche est inconnu)
-//   - Sans sÃ©parateur : "Husky Raid" â†’ "Fiesta", "Sniper Slayer" â†’ "Other"
+// Gère :
+//   - Format normal : "Arena:Slayer on Bazaar" → "Assassin"
+//   - Format inversé : "CTF:Arena" → "Assassin" (préfixe à droite si gauche est inconnu)
+//   - Sans séparateur : "Husky Raid" → "Fiesta", "Sniper Slayer" → "Other"
 //
 // Miroir Python infer_custom_category_from_pair_name + infer_mode_category_from_pair_name.
 func InferModeCategoryFromPairName(pairName string) string {
@@ -158,8 +158,8 @@ func InferModeCategoryFromPairName(pairName string) string {
 		return ModeCategoryOther
 	}
 
-	// Pas de sÃ©parateur : tester si le label complet matche un prÃ©fixe connu
-	// (ex: "Husky Raid" sans sous-mode â†’ Fiesta)
+	// Pas de séparateur : tester si le label complet matche un préfixe connu
+	// (ex: "Husky Raid" sans sous-mode → Fiesta)
 	if !strings.Contains(raw, ":") {
 		if cat, ok := modePrefixToCategory[normalizeModeCase(raw)]; ok {
 			return cat
@@ -182,13 +182,13 @@ func InferModeCategoryFromPairName(pairName string) string {
 	return ModeCategoryOther
 }
 
-// PairNamePrefixesForCategory retourne la liste des prÃ©fixes EN qui sont
-// rangÃ©s dans la catÃ©gorie donnÃ©e. UtilisÃ© pour construire le WHERE inverse :
-// quand l'utilisateur filtre "Fiesta", on gÃ©nÃ¨re
+// PairNamePrefixesForCategory retourne la liste des préfixes EN qui sont
+// rangés dans la catégorie donnée. Utilisé pour construire le WHERE inverse :
+// quand l'utilisateur filtre "Fiesta", on génère
 // `WHERE pair_name LIKE 'Fiesta:%' OR LIKE 'Super Fiesta:%' OR LIKE 'Husky Raid:%' OR ...`
 // (et aussi "= 'Fiesta'", "= 'Husky Raid'" pour les modes sans `:`).
 //
-// Pour la catÃ©gorie "Other" retourne nil â€” l'appelant doit utiliser
+// Pour la catégorie "Other" retourne nil — l'appelant doit utiliser
 // AllKnownPairNamePrefixes() pour construire un NOT IN.
 func PairNamePrefixesForCategory(category string) []string {
 	if category == "" || category == ModeCategoryOther {
@@ -203,9 +203,9 @@ func PairNamePrefixesForCategory(category string) []string {
 	return out
 }
 
-// AllKnownPairNamePrefixes retourne tous les prÃ©fixes EN rangÃ©s dans une
-// catÃ©gorie connue (Assassin/Fiesta/BTB/Ranked/Firefight). UtilisÃ© pour
-// construire le filtre "Other" : NOT IN ces prÃ©fixes.
+// AllKnownPairNamePrefixes retourne tous les préfixes EN rangés dans une
+// catégorie connue (Assassin/Fiesta/BTB/Ranked/Firefight). Utilisé pour
+// construire le filtre "Other" : NOT IN ces préfixes.
 func AllKnownPairNamePrefixes() []string {
 	out := make([]string, 0, len(modePrefixToCategory))
 	for prefix, cat := range modePrefixToCategory {

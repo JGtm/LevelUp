@@ -185,14 +185,14 @@ func TestInferModeCategoryFromPairName(t *testing.T) {
 		{"Ranked:Slayer on Aquarius", ModeCategoryRanked},
 		{"Firefight:KOTH", ModeCategoryFirefight},
 		{"Gruntpocalypse:Slayer", ModeCategoryFirefight},
-		// Sans sÃ©parateur (mode parent qui est lui-mÃªme une catÃ©gorie)
+		// Sans séparateur (mode parent qui est lui-même une catégorie)
 		{"Husky Raid", ModeCategoryHuskyRaid},
 		{"BTB", ModeCategoryBTB},
 		{"Castle Wars", ModeCategoryFiesta},
-		// Format inversÃ© (prÃ©fixe Ã  droite)
+		// Format inversé (préfixe à droite)
 		{"CTF:Arena", ModeCategoryAssassin},
 		{"Slayer:Ranked", ModeCategoryRanked},
-		// PrÃ©fixe inconnu â†’ Other
+		// Préfixe inconnu → Other
 		{"Custom:Slayer", ModeCategoryOther},
 		{"Slayer", ModeCategoryOther},
 		// Casse normalisation
@@ -226,7 +226,7 @@ func TestPairNamePrefixesForCategory(t *testing.T) {
 			"Arena": true, "Tactical": true, "Assault": true, "Community": true,
 		}},
 		{ModeCategoryFirefight, map[string]bool{"Firefight": true, "Gruntpocalypse": true}},
-		{ModeCategoryOther, map[string]bool{}}, // Other = NIL cÃ´tÃ© Go (l'appelant utilise AllKnownPairNamePrefixes pour NOT IN)
+		{ModeCategoryOther, map[string]bool{}}, // Other = NIL côté Go (l'appelant utilise AllKnownPairNamePrefixes pour NOT IN)
 	}
 	for _, tc := range cases {
 		t.Run(tc.category, func(t *testing.T) {

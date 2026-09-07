@@ -34,8 +34,8 @@ type mockSquadRepo struct {
 	synthErr            error
 	allyRows            []domain.AllyParticipant
 	allyErr             error
-	// LookupXUIDByGamertag : lookup attendu (gamertag normalisÃ© en lowercase â†’ xuid).
-	// Si vide, retourne ("", false, nil) â€” comportement par dÃ©faut.
+	// LookupXUIDByGamertag : lookup attendu (gamertag normalisé en lowercase → xuid).
+	// Si vide, retourne ("", false, nil) — comportement par défaut.
 	lookupAliases map[string]string
 	lookupErr     error
 	// assetFR : traductions FR par type d'asset ("map"|"playlist"|"pair") →

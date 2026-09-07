@@ -28,7 +28,7 @@ func (s *HomeService) GetBattlePass(ctx context.Context) domain.BattlePassRespon
 		}
 		return resp
 	}
-	// Live indisponible (pas de tokens, erreur rÃ©seau) â†’ fallback cache DB.
+	// Live indisponible (pas de tokens, erreur réseau) → fallback cache DB.
 	if s.cacheRepo != nil {
 		if cached, hit, err := s.cacheRepo.LoadCachedBattlePass(ctx, battlePassCacheTTLFallback); err == nil && hit {
 			slog.DebugContext(ctx, "home: BattlePass live indisponible - fallback cache DB",
@@ -79,9 +79,9 @@ func (s *HomeService) RefreshTrack(ctx context.Context, trackPath string) {
 	s.provider.FetchAndWarmTrack(ctx, trackPath)
 }
 
-// GetChallenges retourne les dÃ©fis actifs (live d'abord, cache DB en fallback).
-// Appel live systÃ©matique pour garantir des donnÃ©es fraÃ®ches au rechargement de page.
-// Si le live Ã©choue (tokens absents, API indisponible), le cache DB est retournÃ©.
+// GetChallenges retourne les défis actifs (live d'abord, cache DB en fallback).
+// Appel live systématique pour garantir des données fraîches au rechargement de page.
+// Si le live échoue (tokens absents, API indisponible), le cache DB est retourné.
 func (s *HomeService) GetChallenges(ctx context.Context) domain.ChallengesResponse {
 	// Démo : pas d'API Halo live + cache challenge_snapshots TTL 24h → on sert une
 	// fixture embarquée (cf. home_service_demo.go) plutôt que "Défis indisponibles".
@@ -126,8 +126,8 @@ func (s *HomeService) GetChallenges(ctx context.Context) domain.ChallengesRespon
 }
 
 // =============================================================================
-// P4.3b (ADR 0011) : les converters canonical â†’ home types ont Ã©tÃ© dÃ©placÃ©s
-// dans `analysis/home_canonical.go` (encapsulÃ©s derriÃ¨re les wrappers
+// P4.3b (ADR 0011) : les converters canonical → home types ont été déplacés
+// dans `analysis/home_canonical.go` (encapsulés derrière les wrappers
 // `analysis.*FromCanonical`). Le service ne porte plus de logique de
 // conversion : il consomme les wrappers directement.
 // =============================================================================

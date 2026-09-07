@@ -1,4 +1,4 @@
-// Package analysis â€” skill_rating_test.go : tests pour le moteur de rating LUSR.
+// Package analysis — skill_rating_test.go : tests pour le moteur de rating LUSR.
 package analysis
 
 import (
@@ -72,7 +72,7 @@ func TestNewPlayerState(t *testing.T) {
 
 func TestApplyInactivityDecay(t *testing.T) {
 	sigma := 5.0
-	decayed := applyInactivityDecay(sigma, 30) // 30 jours d'inactivitÃ©
+	decayed := applyInactivityDecay(sigma, 30) // 30 jours d'inactivité
 	if decayed <= sigma {
 		t.Error("expected sigma to increase with inactivity decay")
 	}
@@ -104,7 +104,7 @@ func TestSigmoidRatio(t *testing.T) {
 	if result2 < 0.49 || result2 > 0.51 {
 		t.Errorf("expected ~0.5 for sigmoidRatio(1,1), got %f", result2)
 	}
-	// sigmoidRatio(0, 0) â†’ denom < 1e-9, retourne 0.5
+	// sigmoidRatio(0, 0) → denom < 1e-9, retourne 0.5
 	result3 := sigmoidRatio(0, 0)
 	if result3 != 0.5 {
 		t.Errorf("expected 0.5 for sigmoidRatio(0,0), got %f", result3)
@@ -126,7 +126,7 @@ func TestIndexParticipants(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ trueskillUpdate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── trueskillUpdate ────────────────────────────────────────────────────────
 
 func TestTrueskillUpdate_WinIncreasesRating(t *testing.T) {
 	newMu, newSigma := trueskillUpdate(1500, 350, 1500, 350, 1.0, 1.0)
@@ -145,7 +145,7 @@ func TestTrueskillUpdate_LossDecreasesRating(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ drawMarginFromProbability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── drawMarginFromProbability ──────────────────────────────────────────────
 
 func TestDrawMarginFromProbability_Positive(t *testing.T) {
 	margin := drawMarginFromProbability(0.06, betaTS)
@@ -154,7 +154,7 @@ func TestDrawMarginFromProbability_Positive(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ wWin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── wWin ───────────────────────────────────────────────────────────────────
 
 func TestWWin_PositiveT(t *testing.T) {
 	w := wWin(2.0, 0.5)
@@ -163,7 +163,7 @@ func TestWWin_PositiveT(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ sigmoidRatio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── sigmoidRatio ───────────────────────────────────────────────────────────
 
 func TestSigmoidRatio_ZeroDenom(t *testing.T) {
 	s := sigmoidRatio(5, 0)
@@ -179,7 +179,7 @@ func TestSigmoidRatio_Normal(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ resolvePlaylistGroup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── resolvePlaylistGroup ───────────────────────────────────────────────────
 
 func TestResolvePlaylistGroup_Ranked(t *testing.T) {
 	g := resolvePlaylistGroup("Ranked Arena", "somePair")
@@ -195,7 +195,7 @@ func TestResolvePlaylistGroup_Default(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ getOrCreateState â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── getOrCreateState ───────────────────────────────────────────────────────
 
 func TestGetOrCreateState_New(t *testing.T) {
 	states := make(map[string]*playerState)
@@ -218,7 +218,7 @@ func TestGetOrCreateState_Existing(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ normPDF / normInvCDF / rationalApprox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── normPDF / normInvCDF / rationalApprox ──────────────────────────────────
 
 func TestNormPDF_Zero(t *testing.T) {
 	v := normPDF(0)
@@ -250,7 +250,7 @@ func TestRationalApprox(t *testing.T) {
 	}
 }
 
-// â”€â”€â”€ splitParticipants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── splitParticipants ──────────────────────────────────────────────────────
 
 func TestSplitParticipants(t *testing.T) {
 	t1, t2 := 1, 2

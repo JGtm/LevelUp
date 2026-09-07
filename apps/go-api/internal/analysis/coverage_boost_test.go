@@ -58,9 +58,9 @@ func TestDecodePositionFrame_ValidFrame_Boost(t *testing.T) {
 
 // ---------- ScanFirstMovements with data ----------
 
-// buildValidFrame construit une frame test ; baseType est paramÃ©trÃ© pour l'extension future.
+// buildValidFrame construit une frame test ; baseType est paramétré pour l'extension future.
 //
-//nolint:unparam // baseType est gardÃ© pour clarifier l'intention de la frame
+//nolint:unparam // baseType est gardé pour clarifier l'intention de la frame
 func buildValidFrame(baseType, playerIdx byte) []byte {
 	data := make([]byte, 20)
 	data[0] = frameMarkerB0
@@ -162,7 +162,7 @@ func TestEstimateFilmMatchStartMS_ZeroMinPlayers(t *testing.T) {
 	}
 }
 
-// ---------- computeNormalizedMetrics â€” uncovered branches ----------
+// ---------- computeNormalizedMetrics — uncovered branches ----------
 
 func TestComputeNormalizedMetrics_AllOptionalFields(t *testing.T) {
 	kda := 3.5
@@ -231,7 +231,7 @@ func TestComputeNormalizedMetrics_NoOptionalFields(t *testing.T) {
 	}
 }
 
-// ---------- BuildHighlights â€” more branch coverage ----------
+// ---------- BuildHighlights — more branch coverage ----------
 
 func TestMeanAccuracy_WithMultipleValues(t *testing.T) {
 	a1, a2, a3 := 0.4, 0.6, 0.8
@@ -270,7 +270,7 @@ func TestAbs64_Zero(t *testing.T) {
 	}
 }
 
-// ---------- isTeammatesBreak â€” edge cases ----------
+// ---------- isTeammatesBreak — edge cases ----------
 
 func TestIsTeammatesBreak_BothNil(t *testing.T) {
 	if isTeammatesBreak(nil, nil, nil) {
@@ -301,8 +301,8 @@ func TestIsTeammatesBreak_FriendLeftSession(t *testing.T) {
 }
 
 func TestIsTeammatesBreak_SameFriendRemains(t *testing.T) {
-	// x1 (ami) reste dans les deux matchs, seul x2â†’x3 change (non-ami).
-	// Avec le mode "friends", le sous-ensemble d'amis {x1} est inchangÃ© â†’ pas de rupture.
+	// x1 (ami) reste dans les deux matchs, seul x2→x3 change (non-ami).
+	// Avec le mode "friends", le sous-ensemble d'amis {x1} est inchangé → pas de rupture.
 	a, b := "x1,x2", "x1,x3"
 	friends := map[string]struct{}{"x1": {}}
 	if isTeammatesBreak(&a, &b, friends) {
@@ -310,7 +310,7 @@ func TestIsTeammatesBreak_SameFriendRemains(t *testing.T) {
 	}
 }
 
-// ---------- prepareHistoryMetrics â€” uncovered branches ----------
+// ---------- prepareHistoryMetrics — uncovered branches ----------
 
 func TestPrepareHistoryMetrics_Empty(t *testing.T) {
 	cols := prepareHistoryMetrics(nil)
