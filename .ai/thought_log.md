@@ -1,3 +1,72 @@
+## [2026-09-07] Lot M5 (premiere moitie) — libelles en dur, familles L2 accueil + L5 rangs — Complete
+
+**Decision technique principale.** Execution du lot M5 (plan d'orchestration §3, source
+`.ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md`), perimetre FERME a L2 (accueil) et L5 (rangs) par
+consigne d'execution — PAS L3 (modes), PAS L4 (armes). Worktree dedie `LevelUp-wt-m5-libelles`,
+branche `feat/libelles-accueil-rangs` depuis `feat/v75` @ `6a1496e30`. Skills invoques :
+plan-execution, arch-rules, canonical-types, frontend-patterns. Decision utilisateur D5 (option 1
+partout, "la cle canonique est ce qu'il y a de plus solide") appliquee aux deux familles.
+
+Inventaire sur pieces AVANT de coder (doctrine RE-VERIFIER, la carte du plan datait) :
+- L2 : `internal/analysis/home_locale.go` ne portait DEJA PLUS aucune paire
+  `labelForLocale(locale, fr, en)` avec des litteraux FR/EN en dur — les maps `homeOutcomeLabels*`
+  avaient disparu avec Q4 (lot L1). Les appels restants de `labelForLocale`/`labelFR` (dans
+  `home_canonical*.go`) resolvent des NOMS D'ASSET dynamiques (map/mode/playlist) depuis
+  `canonical.AssetReference.Labels`, peuples a la sync depuis `metadata.asset_translations` /
+  `mode_name_tr` (DB) — famille L3 (modes/playlists), pas un litteral Go, donc HORS PERIMETRE de
+  ce lot. `buildHomeNarrativeBadges` sert deja des cles ("dominant", "humiliation"...), conforme.
+  Seul point reellement en dur : `domain.RecentMatchItem.Title`, composite Go
+  `"<mot d'issue> · <carte>"` assemble dans `home_canonical_recent.go` via
+  `RecentMatchesOptions.OutcomeText`. Un seul lecteur web (`match-card.tsx::buildMatchHeading`),
+  et seulement en DERNIER repli quand `map_ui` ET `mode_ui` manquent tous les deux (le cas nominal
+  est deja couvert par `MapUI`/`ModeUI`, servis a part).
+- L5 : `internal/service/compare_service.go::csrUnrankedLabel = "Non classe"`. Decouverte majeure :
+  `internal/games/mappings/ranks.go` (cible supposee par le plan) est le catalogue du rang de
+  CARRIERE (XP, "General Platine VI"), PAS le tier CSR (Bronze..Onyx) — deux systemes distincts,
+  la carte du plan les confondait.
+
+**Actions.**
+- L2 : supprime `domain.RecentMatchItem.Title`, `analysis.RecentMatchesOptions.OutcomeText`, la
+  construction `label`/`title` dans `home_canonical_recent.go`, et
+  `outcomes := outcomesOf(s.semantic)` + `OutcomeText: func(...)` dans `home_service.go` (regle 7,
+  0 code mort). Web : `match-card.tsx::buildMatchHeading` et l'alt de repli composent desormais le
+  texte depuis la meme cle i18n que le placeholder d'image (`common.match_card.map_unknown`),
+  jamais un composite pre-assemble cote Go. `OutcomeTone` (deja la cle canonique win/loss/tie/dnf)
+  reste disponible pour un futur lecteur via `useOutcomeLabel`.
+- L5 : `csrUnrankedLabel` migre vers la cle canonique `"unranked"`. Le web (`ComparePage.tsx`)
+  passait deja `display` a `lib/skillTiers.ts::localizeTierLabel` (mecanisme CLIENT-SIDE existant,
+  pas de TOML, qui localise deja tous les noms de palier CSR) : cle `"unranked"` ajoutee au meme
+  canal (`TIER_NAME_BY_KEY`) plutot que d'en ouvrir un nouveau. Ratchet
+  `no_french_label_literal_test.go` : `compare_service.go` 3 -> 2 littéraux (allowlist resserree,
+  total du fichier remis a jour a 537).
+
+**Decouvertes consignees, NON traitees** (plan libelles §11) : (1) `csrRankLabel`/`skillTierLabel`
+(compare_service.go) formatent encore le tier CSR en clair ("Platine IV", bug visible sous UI EN) —
+calcul duplique EN TROIS ENDROITS (compare_service.go, home_canonical_skill.go, sync/csr_writes.go)
+au-dela du seuil de 2 copies (regle 6) ; sync/csr_writes.go va plus loin en PERSISTANT le libelle FR
+dans `match_skill_rank.tier_label` (table append-only ADR 0026) — corriger a la racine exige une
+migration de donnees, hors format de ce lot ; (2) `match_history_explorer_options.go::skillTierLabel`
++ `perfTierLabel` : `.Label` mort (le web ne lit que `.value`/`.count`), deja repere au lot Q4 (§10)
+"Reprise: L5", toujours non traite (perimetre a trancher : L5 strict = CSR seulement, ou nouvelle
+famille pour les paliers de perf ?).
+
+**Resultats observes.** Gates Go : `gofmt -l` vide, `go build ./internal/...` propre, `go vet` des
+paquets touches propre, `go test -count=1 ./internal/service/... ./internal/analysis/...
+./internal/domain/... ./internal/api/... ./internal/archlint/... ./internal/games/...` : tous verts
+(y compris `TestNoNewFrenchLabelLiteral`). `openapi-gen -check` : a jour (HomePageResponse n'est pas
+modelise dans le contrat — TODO Sprint 32 preexistant, donc 0 impact). `make generate-types` : 0 diff
+sur `generated.ts`. `golangci-lint run --new-from-merge-base=origin/main ./...` : 0 issue. Web :
+`npm run typecheck` propre, `npx vitest run --pool=forks` : 656 fichiers / 6993 tests verts (17
+skipped, meme baseline), `npm run lint` : 0 erreur / 29 warnings (baseline inchangee), `lint:colors`
+0 violation, `lint:fields` 0 violation.
+
+**Conclusion / prochaine etape.** L2 et L5 clos et coches (plan libelles §4, plan d'orchestration §3
+M5 — statut "L2+L5 [x]", L3/L4 restent `[ ]` pour la seconde moitie du lot M5). Pages a verifier a
+l'ecran par l'utilisateur (FR et EN) : Accueil (tuiles de matchs recents — cas rare sans carte NI
+mode) et Comparaison de joueurs (ligne CSR d'un joueur non classe). Commits sur
+`feat/libelles-accueil-rangs`, poussee vers origin, non fusionnee (attend l'accord utilisateur comme
+les autres lots de la vague).
+
 ## [2026-09-07] Orchestration — ouverture de la vague 3, lot P1 (inventaire du registre d'identite) — Complete
 
 **Decision technique principale.** Vague 3 du plan `.ai/PLAN_ORCHESTRATION_2026-09-07.md` ouverte a
