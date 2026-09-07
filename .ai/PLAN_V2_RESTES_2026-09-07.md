@@ -229,11 +229,18 @@ Fait : après le lot pont (schéma 48), écart cumulé K/D/A 69 (avant 94), les 
       sur un film de chaque variante : 0 portage perdu, durées ≥ parc, aucune identité inventée.
 - [ ] Fermer ou rouvrir (avec chiffres) les entrées « CTF multi-manche » et « calques VIP/crâne » du registre.
 
-### R6 — Constats P2 de l'audit et web
-- [ ] Les 5 P2 de `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md` (section « Constats retenus », gravité P2) :
+### R6 — Constats P2 de l'audit et web — CLOS le 2026-09-07 (lot `feat/v2-restes-r6`, M2 du plan d'orchestration)
+- [x] Les 5 P2 de `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md` (section « Constats retenus », gravité P2) :
       traiter un par un (correctif + mutation) ou fermer avec preuve de non-lieu ; colonne « Décision/état ».
-- [ ] Web : `apps/web/src/lib/replay/…` `drawnSwapAt` (lecture non bornée à la vie en cours) : borner via
-      `currentLifeOf`, test vitest par mutation ; gates `tsc --noEmit`, eslint, vitest.
+      P2-1/P2-2 : confirmés sur pièces, racine dans `filmdec` (décodeur gelé §0.6) — correctif hors périmètre,
+      diagnostic + registre (`.ai/V7.5/REGISTRE_REPORTS.md`). P2-3 : non-lieu, déjà corrigé par `f1b4f4ee5`
+      (`fix(manches/MANCHES-R1)`, 2026-09-07 00:05, déjà sur `feat/v75`). P2-4, P2-5 : corrigés, mutations jouées.
+      Détail : `.ai/V7.5/v2/RESTES_R6_2026-09-07.md`.
+- [x] Web : `apps/web/src/features/match-replay/model/equippedLogic.ts` `drawnSwapAt` (lecture non bornée à la
+      vie en cours, le code a bougé depuis la rédaction du plan — la fonction est côté `match-replay`, pas
+      `lib/replay`) : bornée via `currentLifeOf` + `trackWindow` (même patron que `loadoutAt`/`abilityAt`,
+      correctif P0-2) ; tests vitest par mutation (`equippedLogic.test.ts`) ; gates `tsc -b`, eslint,
+      `vitest run --pool=forks` : 0 erreur, 653 fichiers / 6972 tests verts.
 
 ### R7 — Calage du fil des morts : budget de candidats (registre D3 du lot pont)
 Fait figé par `TestUnAmasPlusGrosQueLeVraiCalageALARMEAuLieuDeSeTaire` (`pont_marge_test.go`) : un amas de morts
