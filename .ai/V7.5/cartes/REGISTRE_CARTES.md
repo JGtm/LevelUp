@@ -87,7 +87,7 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Isolation | `01af558d` | 17 | 93.9 | -0,04 | forge | VALIDEE `encre` 27/08 — navmesh (reference + rognage + tolerance 1,5 m) + zones de callout marge 1 m |
 | Fortress | `0d1c9255` | 17 | 87.4 | -10,60 | forge | REFUSEE 13/08 |
 | Dredge | `e4bb06db` | 16 | 91.5 | -0,25 | forge | REFUSEE 13/08 |
-| Vagabond | `105f5d84` | 16 | 74.3 | -0,01 | forge | A RETRAVAILLER — gros |
+| Vagabond | `105f5d84` | 16 | 74.3 | -0,01 | forge | VALIDEE 07/09 |
 | Houseki | `cf034ec8` | 15 | 86.0 | -0,11 | forge | VALIDEE 30/08 |
 | High Ground | `bb7b78ae` | 15 | 100.0 | -0,01 | forge | REFUSEE 13/08 |
 | Takamanohara | `edcd4467` | 15 | 94.1 | -0,29 | forge | REFUSEE 13/08 |
@@ -1552,7 +1552,7 @@ A JUGER. Aucune n'est declaree validee.
 |---|---|---|---|---|---|---|
 | The Pit | `648ae7aa` | REFUSEE 13/08 | 1057x1278 | 19/20 | maillage borne + zones a 1 m | VALIDEE 30/08 |
 | Goliath | `504ebf22` | REFUSEE 13/08 | 1078x1502 | 13/13 | maillage en reference + zones a 1 m | VALIDEE 30/08 |
-| Vagabond | `105f5d84` | A RETRAVAILLER — gros | 1261x1267 | 9/9 | maillage borne + zones a 1 m | A JUGER |
+| Vagabond | `105f5d84` | VALIDEE 07/09 | 1224x1203 | 9/9 | maillage borne + zones a 1 m | VALIDEE — recuisson 07/09 |
 | Empyrean | `d035fc3e` | REFUSEE 13/08 | 1370x1185 | 13/13 | maillage borne + zones a 1 m | VALIDEE 30/08 |
 | Starboard | `7a9265af` | REFUSEE 13/08 | 1210x1170 | 12/12 | maillage en reference + zones a 1 m | VALIDEE 30/08 |
 | Domicile | `921aebb1` | REFUSEE 13/08 | 1075x1684 | 13/13 | maillage en reference + zones a 1 m | VALIDEE 30/08 |
