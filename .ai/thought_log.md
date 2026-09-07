@@ -1,3 +1,50 @@
+## [2026-09-07] Plan Tactique 7A — revue ronde 2 : le sidecar cesse de juger, le double cesse de mentir — Complete (volet vivant/mort SUSPENDU)
+
+**Decision technique principale** — le P0 de la ronde 2 invalide une verification que
+j'avais moi-meme signee : `replay/owners.go:166` (`nameClosedLives`) nomme une vie par
+FERMETURE DE SLOT, pas par mort. J'avais greppe `lives.go` seul et conclu l'inverse. Un
+survivant qui a tire recevait donc une mort fabriquee, et tout ce que le sidecar en
+deduisait — statut de voisin, distance, « toute l'equipe a terre » — reposait sur ce faux.
+Correction structurelle : **le sidecar ne juge plus rien**. Il ne porte qu'une chronologie
+de positions (un couple tous les 500 ms par fenetre observee, en metres), et les types de
+verdict (`TacticalRasterMort`, `TacticalRasterVoisin`, les statuts) sont supprimes avec
+leurs tests — regle 7, pas de musee. Schema du sidecar 4 -> 5 ; le contrat perd
+`morts_indeterminees` et `morts_position_inconnue` au profit de `morts_equipe_a_terre`.
+
+Le modele de lecture qui devait reprendre ces verdicts — mort au journal, reapparition
+observee ou delai de reapparition MESURE sur le match (mediane haute, exactement comme
+`replay/closures.go:respawnWindow`, reecrite en pur pour ne pas importer le decodeur),
+depart lu dans `match_participants.last_leave_time`, type de mort lu dans `neutralDeaths` —
+a ete ecrit, compile et teste, puis SORTI DE L'ARBRE sur decision du superviseur : la
+question produit « que veut dire vivant quand le film se tait » n'est pas tranchee. Il
+attend sous `scratchpad/7.9-modele-vivant-mort/`, avec sa condition de reprise consignee au
+§7 du plan. La lecture tient en attendant sur « vivant = une position a cet instant »,
+commentee `PROVISOIRE 2026-09-07` dans `etatDuCoequipier` — une phrase qui dit quoi attend
+quoi, jamais un TODO.
+
+Le second constat frappe le double du port sur l'autre moitie de la faute deja corrigee en
+ronde 1 : il appliquait la liste blanche NON VIDE, et exemptait la VIDE en rendant l'univers
+entier. Or `requeteDuScope` pose TOUJOURS la liste, et une liste vide ne lit AUCUN match en
+production : les ~35 fixtures sans identifiants verifiaient un comportement qui n'existe
+nulle part. Le double applique desormais les deux cas, `tsDemande` pose le perimetre reel du
+double, `universFiltre` filtre aussi les compositions, et un test dedie prouve le 404
+`ErrTacticalCarteInconnue` sur liste vide.
+
+**Resultats observes** — go build + go vet EXIT 0 sur `./internal/...` et `./cmd/...` ;
+suite `./internal/...` verte. Deux mutations jouees, chacune faisant tomber son test nomme :
+la clemence du double sur liste vide (`TestTacticalService_ListeBlancheVide_NeLitRien`
+tombe) et le retrait du `TrimSpace` a la resolution du rayon
+(`TestIsole_VarianteAvecBlancs_ResoutQuandMeme` tombe). Le ratchet de couverture de la table
+du radar, elargi a `[rounds_decide]` et `[hold_ticks]` avec une sentinelle anti-vacuite par
+table, passe sans correction : les 48 variantes livrees couvrent deja les quatre tables.
+Contrat + `generated.ts` regeneres (deux champs retires, un ajoute) ; aucun usage web des
+champs retires.
+
+**Conclusion / prochaine etape** — 7A ronde 2 statuee : P0 traite par la suppression des
+verdicts du sidecar, son volet de lecture SUSPENDU et consigne avec sa condition de reprise ;
+P1 et les 7 P2 livres. STOP demande avant 7B (item 7.7, nuage isolement x couverture sur la
+page Escouade). La reprise du volet suspendu attend la decision produit de l'utilisateur.
+
 ## [2026-09-07] Plan Tactique 7A — revue adversariale ronde 1, 16 constats corriges — Complete
 
 **Decision technique principale.** Les trois P0 disent la meme chose sous trois formes : ON

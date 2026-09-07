@@ -1046,7 +1046,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 - **Gate** : projection sur fixture (comptes exacts) ; schema ancien (v20) projete ;
   idempotence ; aucun chemin de la page n'ecrit ni ne cuit ; `no_second_artifact_sink_test`.
 
-### Phase 7 — Occupation, spawns, routes, isolement — 7A CLOSE 2026-09-06, revue ronde 1 SOLDEE (16 constats) ; 7B EN ATTENTE
+### Phase 7 — Occupation, spawns, routes, isolement — 7A : revues rondes 1 ET 2 STATUEES (16 + 10 constats) ; un volet SUSPENDU (modele vivant/mort, cf. 7.9) ; 7B EN ATTENTE
 > DECOUPEE EN DEUX SOUS-LOTS par le superviseur : **7A** (Go pur + sidecar v3 + service +
 > contrat) est livre et rendu pour revue adversariale ; **7B** (7.7, le nuage Escouade) ne
 > commence qu'apres.
@@ -1195,6 +1195,48 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 - **Gate** : trajectoires posees a la main ; rayon par match (18/24 dans le meme filtre) ;
   variante absente -> pas de lecture ; tous-morts exclu ; premiere vie seule ; session < 5
   morts exclue ; aucune cuisson.
+
+- [x] 7.9 **Revue adversariale ronde 2 de 7A — 1 P0, 2 P1, 7 P2. PARTIELLEMENT EXECUTEE :
+      le volet « modele vivant/mort » est SUSPENDU par decision du superviseur (2026-09-07,
+      decision produit en cours avec l'utilisateur).** Commits `tactique(7.9.<n>)`.
+      **P0 — UNE VIE NOMMEE N'EST PAS UNE MORT.** `replay/owners.go:166`
+      (`nameClosedLives`) nomme une vie par FERMETURE DE SLOT, pas par mort : un survivant
+      qui a tire recevait donc une mort FABRIQUEE. Ma verification de la ronde 1 etait
+      fausse — j'avais greppe `lives.go` seul et conclu que le nommage venait de la mort.
+      Consequence directe : **le sidecar ne juge plus rien.** Il portait des morts, des
+      statuts de voisin (`vivant`/`mort`/`inconnu`) et des distances ; il ne porte plus
+      qu'une CHRONOLOGIE DE POSITIONS (`chronologie[]`, un couple tous les 500 ms par
+      fenetre observee, en metres). Schema du sidecar : 4 -> 5. Les types
+      `TacticalRasterMort`, `TacticalRasterVoisin` et les statuts sont SUPPRIMES avec leurs
+      tests (regle 7), et `morts_indeterminees` / `morts_position_inconnue` quittent le
+      contrat au profit de `morts_equipe_a_terre`.
+      **LE VERDICT SE PREND A LA LECTURE, et il est PROVISOIRE** : « vivant » vaut
+      aujourd'hui « le film le montre quelque part a cet instant ». Le modele definitif —
+      mort au journal, reapparition observee ou delai de reapparition MESURE sur le match
+      (mediane de `replay/closures.go:respawnWindow` reecrite en pur), depart lu dans
+      `match_participants.last_leave_time`, type de mort lu dans `neutralDeaths` — est
+      ECRIT ET GARDE HORS DE L'ARBRE en attendant la decision produit (cf. §7). Le point
+      d'attente est commente sur pieces dans `etatDuCoequipier` (`PROVISOIRE 2026-09-07`).
+      L'isolement se resout donc en TROIS sorties : accompagnee, isolee, equipe a terre.
+      **P1 — LE DOUBLE DU PORT MENTAIT ENCORE, sur l'autre moitie.** `perimetreAFiltrer`
+      exemptait la liste blanche VIDE et rendait alors l'univers ENTIER. Or
+      `requeteDuScope` POSE TOUJOURS la liste : les ~35 fixtures qui n'avaient pas
+      d'identifiants lisaient un univers que le vrai lecteur aurait vide, et verifiaient un
+      comportement qui n'existe nulle part. Le double applique desormais le cas ;
+      `tsDemande` prend le double en argument et pose EXACTEMENT son perimetre ;
+      `universFiltre` filtre aussi les COMPOSITIONS (meme demi-verite, une couche plus
+      bas) ; et `TestTacticalService_ListeBlancheVide_NeLitRien` prouve le 404
+      `ErrTacticalCarteInconnue` sur liste vide — il echoue quand on remet la clemence.
+      **P2 (7)** : `MatchsRetenus` documente sous `isole` [~ deja fait en 7.8] ;
+      `strings.TrimSpace` a la resolution du rayon + test par le CHEMIN REEL (mutation
+      jouee) ; ratchet de couverture du radar elargi a `[rounds_decide]` et `[hold_ticks]`
+      avec sentinelle anti-vacuite par table ; `RadarRangeM` -> `RadarRangeMap` [~ deja
+      fait en 7.8] ; `_ = migration.All()` mort supprime dans
+      `tactical_repo_cartes_test.go` ; test mal nomme supprime avec le modele qu'il
+      testait ; **double chargement des sidecars sous filtre de spawn** ferme —
+      `perimetreDuSpawn` rend `perimetreSpawn{Grappes, MatchIDs, Sidecars}` et
+      `sidecarsDeLUnivers` reutilise ce qui est deja lu (le compte des points ignores se
+      refait sur le sous-ensemble, sans quoi un match ecarte alourdirait la statistique).
 
 ### Phase 8 — Cloture
 - [ ] 8.1 `.ai/thought_log.md` ; 8.2 `REGISTRE_REPORTS.md` si report ; 8.3 `make gate-push`
@@ -1517,7 +1559,42 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   avant-plan, `golangci-lint` a 0 issue, zero I/O et zero import de `analysis/replay` ou de
   `platform/duckdb` dans les deux nouveaux paquets. Non pousse : revue du superviseur.
 
+- 2026-09-07 : **revue adversariale ronde 2 de la phase 7A — 1 P0, 2 P1, 7 P2 ; le volet du P0 est SUSPENDU par le superviseur, le reste est livre** en commits `tactique(7.9.<n>)`. Le P0 dit ce que la ronde 1 avait manque, et il le dit contre MA propre verification : j'avais affirme, sur pieces, que le nommage d'une vie venait de la mort — j'avais greppe `lives.go` SEUL. `replay/owners.go:166` (`nameClosedLives`) nomme aussi par FERMETURE DE SLOT, si bien qu'un survivant qui a tire recevait une mort FABRIQUEE. La lecon tient en une phrase : **une verification qui ne cherche qu'a l'endroit ou l'on croit deja savoir n'est pas une verification.** La consequence est structurelle et elle est livree : **le sidecar ne juge plus rien.** Il portait des morts, des statuts de voisin et des distances — trois verdicts sur une matiere qui ne les soutenait pas ; il ne porte plus qu'une CHRONOLOGIE DE POSITIONS (un couple tous les 500 ms par fenetre observee), et les types de verdict sont supprimes avec leurs tests. Schema 5. Le modele de lecture qui devait remplacer ces verdicts — mort au journal, reapparition observee ou delai MESURE sur le match a la maniere de `respawnWindow`, depart lu dans la base, type de mort lu dans `neutralDeaths` — a ete ECRIT ET COMPILE, puis SORTI DE L'ARBRE sur decision du superviseur : la question produit « que veut dire vivant quand le film se tait » n'est pas tranchee. Il attend sous `scratchpad/7.9-modele-vivant-mort/` avec sa condition de reprise au §7 ; la lecture tient en attendant sur « vivant = une position a cet instant », commentee `PROVISOIRE 2026-09-07` a l'endroit exact ou la decision manque — une phrase qui dit quoi attend quoi, pas un TODO. **Le second constat frappe encore le double du port, sur l'autre moitie de la meme faute.** La ronde 1 lui avait fait appliquer la liste blanche NON VIDE ; il exemptait toujours la liste VIDE et rendait alors l'univers entier. Or `requeteDuScope` pose TOUJOURS la liste : les ~35 fixtures sans identifiants verifiaient un comportement qui n'existe nulle part, et un perimetre vide lit AUCUN match en production. Le double applique desormais les deux cas, `tsDemande` pose le perimetre reel du double, les compositions suivent les matchs, et un test dedie prouve le 404 sur liste vide. **Un double plus permissif que la production ne cache pas un bug : il en fabrique un jeu de tests qui le protege.**
+
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-07 (phase 7A, revue ronde 2) — **LE MODELE VIVANT/MORT DE L'ISOLEMENT EST
+  SUSPENDU, ET SON CODE EST ECRIT.** Le P0 de la ronde 2 (une vie nommee par FERMETURE DE
+  SLOT, `replay/owners.go:166`) a montre que le sidecar ne peut pas dire qui est mort. La
+  decision utilisateur du 2026-09-07 posait un modele complet — « on sait quand un joueur
+  meurt, quand il reapparait et quand il quitte ; entre les deux il est vivant » — puis un
+  correctif : **pas de table de delais, aucune valeur manuelle**, le delai de reapparition
+  est une constante DU MATCH mesuree comme `replay/closures.go:respawnWindow` (mediane
+  HAUTE de l'ecart entre un debut de vie et la mort precedente du meme joueur ; 8,09 s et
+  10,18 s observes selon les films, jamais publies). Le superviseur a ensuite SUSPENDU ce
+  volet, la decision produit n'etant pas close. **NON TRAITE, avec sa condition de
+  reprise** : le code ecrit et compilant est conserve hors de l'arbre sous
+  `scratchpad/7.9-modele-vivant-mort/` (patch complet + `domain/reapparition.go` +
+  `analysis/coordination/reapparition.go` + les deux fichiers de service avec leurs tests).
+  Ce qu'il contient et qui devra revenir tel quel : `TacticalUnivers.Departs` (repo :
+  `CAST(epoch_ms(p.last_leave_time) - epoch_ms(<fragment timezone canonique>) AS BIGINT)`,
+  miroir de `replay_facts_repo.go:112`), la copie de `neutralDeaths` dans le sidecar
+  (`{xuid, feed_ms, kind}` — SEULE source du type de mort, le journal de la base n'en porte
+  aucun), l'appariement tolerant film/journal (1 s), la classification `normale` /
+  `suicide` (film) / `trahison` (journal, via `Univers.Equipes`), la mediane pure dans
+  `analysis/coordination` avec delai PAR TYPE des 3 echantillons, et `matchs_sans_delai`
+  publie au contrat pour qu'un match sans reapparition mesurable soit SIGNALE au lieu de
+  recevoir un delai devine. **Condition de reprise : la decision produit de l'utilisateur
+  sur ce que « vivant » veut dire quand le film se tait.** En attendant, la lecture
+  `isole` tient sur « vivant = une position dans la chronologie a t », commente
+  `PROVISOIRE 2026-09-07` dans `etatDuCoequipier`.
+- 2026-09-07 (phase 7A, revue ronde 2) — **`replay/closures.go:respawnWindow` N'A AUCUN
+  TEST.** La regle qui calibre la fenetre de reapparition de TOUT le decodeur (et sur
+  laquelle le modele suspendu devait se caler, « meme valeur sur une fixture commune »)
+  n'est couverte par aucun test dans `closures_test.go` : la mediane haute, le choix de la
+  mort PRECEDENTE la plus proche et la demi-largeur de 750 ms ne sont figes nulle part. La
+  fixture commune demandee par le brief 7.9 n'existe donc pas. NON TRAITE (hors perimetre
+  de l'onglet Tactique). Condition de reprise : a traiter avec le volet suspendu ci-dessus,
+  qui a besoin de cette valeur de reference.
 - 2026-09-07 (phase 7A, revue) — **LA DISTANCE D'ISOLEMENT EST HORIZONTALE : DEUX ETAGES
   LISENT 0 m.** Toutes les distances du sidecar sont des `math.Hypot(dx, dy)` — Z est ignore,
   comme dans toutes les lectures de l'onglet, qui sont des vues du dessus. Un coequipier
