@@ -238,15 +238,19 @@ type HighlightSlide struct {
 
 // RecentMatchItem représente un match récent dans la timeline.
 type RecentMatchItem struct {
-	MatchID         string     `json:"match_id"`
-	Title           string     `json:"title"`
-	Detail          string     `json:"detail"`
-	StartedAt       *time.Time `json:"started_at,omitempty"`
-	OutcomeLabel    string     `json:"outcome_label"`
-	OutcomeTone     string     `json:"outcome_tone"`
-	ScoreLabel      *string    `json:"score_label,omitempty"`
-	NarrativeBadges []string   `json:"narrative_badges,omitempty"`
-	IsFavorite      bool       `json:"is_favorite"`
+	MatchID   string     `json:"match_id"`
+	Title     string     `json:"title"`
+	Detail    string     `json:"detail"`
+	StartedAt *time.Time `json:"started_at,omitempty"`
+	// OutcomeLabel supprimé le 2026-09-07 (D4/D5, lot Q4) : 0 lecteur dans
+	// apps/web/src/features/home (grep vérifié) — le mot FR/EN venait de deux maps Go
+	// (home_locale.go), la 3e source du même mot avec match_history et l'accueil legacy.
+	// git garde l'historique si un lecteur apparaît un jour ; alors passer par la clé
+	// canonique (cf. Title, qui porte le mot résolu via l'adapter du titre).
+	OutcomeTone     string   `json:"outcome_tone"`
+	ScoreLabel      *string  `json:"score_label,omitempty"`
+	NarrativeBadges []string `json:"narrative_badges,omitempty"`
+	IsFavorite      bool     `json:"is_favorite"`
 	// S56 — champs enrichis pour MatchCard
 	MapUI                    *string `json:"map_ui,omitempty"`
 	ModeUI                   *string `json:"mode_ui,omitempty"`

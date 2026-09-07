@@ -438,9 +438,13 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows, locale)
 	// Les tuiles d'accueil lisent le score par la MÊME règle que la vue match et les
 	// tableaux : `roundsDecide` porte les variantes qui se décident aux manches (ADR 0032).
+	// Jeu d'outcomes du titre, résolu UNE FOIS pour toute la page (pas par tuile) : source
+	// du mot d'issue du composite Title, jamais une map Go (D5, 2026-09-07).
+	outcomes := outcomesOf(s.semantic)
 	recentOpts := analysis.RecentMatchesOptions{
 		Locale: locale, EffectiveHpToKill: hp,
 		SkillBadgeURL: s.skillBadgeResolver, RoundsDecide: s.roundsDecide,
+		OutcomeText: func(key string) string { return outcomeTextByKey(outcomes, locale, key) },
 	}
 	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(
 		d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, recentOpts)

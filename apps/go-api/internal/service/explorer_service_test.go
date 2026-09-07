@@ -464,8 +464,8 @@ func TestExplorerService_GetCommonMatches_WithStats(t *testing.T) {
 	if m.PlayerOutcome != 2 {
 		t.Errorf("PlayerOutcome = %d, want 2 (WIN)", m.PlayerOutcome)
 	}
-	if m.OutcomeLabel == "" {
-		t.Error("OutcomeLabel vide — doit être résolu via outcomeLabel()")
+	if m.Outcome != "win" {
+		t.Errorf("Outcome = %q, attendu %q (clé canonique, cf. outcomeKeyFromHaloCode)", m.Outcome, "win")
 	}
 }
 

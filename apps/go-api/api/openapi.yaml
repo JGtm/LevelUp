@@ -10227,13 +10227,18 @@ components:
         mode_ui:
           nullable: true
           type: string
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
+          nullable: true
+          type: string
         outcome_code:
           format: int64
           nullable: true
           type: integer
-        outcome_label:
-          nullable: true
-          type: string
         performance_score:
           format: float
           nullable: true
@@ -10978,7 +10983,12 @@ components:
           type: string
         mode_ui:
           type: string
-        outcome_label:
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
           type: string
         player_outcome:
           format: int64
@@ -10995,7 +11005,6 @@ components:
         - mode_ui
         - were_teammates
         - player_outcome
-        - outcome_label
         - kills
         - deaths
         - kda
@@ -12751,11 +12760,16 @@ components:
           type:
             - string
             - "null"
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
+          type: string
         outcome_code:
           format: int64
           type: integer
-        outcome_label:
-          type: string
         overtime_seconds:
           format: int64
           type: integer
@@ -12810,7 +12824,6 @@ components:
         - mode_ui
         - playlist_label
         - outcome_code
-        - outcome_label
         - score_label
         - is_with_friends
         - experience_type_label
@@ -16549,11 +16562,16 @@ components:
           type:
             - string
             - "null"
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
+          type: string
         outcome_code:
           format: int64
           type: integer
-        outcome_label:
-          type: string
         overtime_seconds:
           format: int64
           type: integer
@@ -16619,7 +16637,6 @@ components:
         - start_time
         - start_time_label
         - outcome_code
-        - outcome_label
         - score_label
         - map_ui
         - mode_ui
@@ -17060,11 +17077,16 @@ components:
     MatchPersonalResult:
       additionalProperties: false
       properties:
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
+          type: string
         outcome_color:
           type: string
         outcome_color_token:
-          type: string
-        outcome_label:
           type: string
         rank_in_team:
           format: int64
@@ -17073,7 +17095,6 @@ components:
           format: int64
           type: integer
       required:
-        - outcome_label
         - outcome_color
       type: object
     MatchPlayerFact:
@@ -17441,7 +17462,12 @@ components:
         offensive_conversion:
           format: double
           type: number
-        outcome_label:
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
           type: string
         perfect_kills:
           format: int64
@@ -17492,7 +17518,6 @@ components:
         - xuid
         - gamertag
         - is_me
-        - outcome_label
       type: object
     MatchScoreboardSkillRank:
       additionalProperties: false
@@ -17752,14 +17777,19 @@ components:
           type: string
         mode_ui:
           type: string
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
+          type: string
         outcome_code:
           format: int64
           type: integer
         outcome_color:
           type: string
         outcome_color_token:
-          type: string
-        outcome_label:
           type: string
         overtime_seconds:
           format: int64
@@ -17804,7 +17834,6 @@ components:
       required:
         - match_id
         - start_time_label
-        - outcome_label
         - outcome_color
         - dominance_flag
         - had_bot_teammate
@@ -27060,11 +27089,16 @@ components:
           type:
             - string
             - "null"
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
+          type: string
         outcome_code:
           format: int64
           type: integer
-        outcome_label:
-          type: string
         performance_score:
           format: double
           type: number
@@ -27079,7 +27113,6 @@ components:
         - map_ui
         - mode_ui
         - outcome_code
-        - outcome_label
         - kills
         - deaths
         - kda

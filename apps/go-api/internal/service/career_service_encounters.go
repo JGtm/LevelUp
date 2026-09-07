@@ -338,7 +338,7 @@ func convertTopMatches(rows []domain.TopMatchRawRow) []domain.TopMatchDTO {
 			MapUI:            mapPtr,
 			ModeUI:           modePtr,
 			OutcomeCode:      r.Outcome,
-			OutcomeLabel:     outcomeLabel(r.Outcome),
+			Outcome:          outcomeKeyFromHaloCode(r.Outcome),
 			Kills:            r.Kills,
 			Deaths:           r.Deaths,
 			KDA:              r.KDA,

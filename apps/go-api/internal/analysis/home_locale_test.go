@@ -85,54 +85,12 @@ func TestLabelForLocale_FR_FallbackEN(t *testing.T) {
 	}
 }
 
-// ─── outcomeLabelForLocale ────────────────────────────────────────────────
+// outcomeLabelForLocale et outcomeLabel (analysis) ont été supprimés le 2026-09-07 (D5,
+// lot Q4) : la clé canonique d'issue vient du titre (mappings.Canonical), jamais d'une map
+// Go FR/EN. Le texte du composite Title, quand il existe, est injecté par le service depuis
+// l'adapter sémantique (RecentMatchesOptions.OutcomeText) — testé côté service.
 
-func TestOutcomeLabelForLocale_EN_Win(t *testing.T) {
-	t.Parallel()
-	if got := outcomeLabelForLocale(homeOutcomeWin, "en"); got != "Victory" {
-		t.Errorf("outcomeLabelForLocale(WIN, en) = %q, want Victory", got)
-	}
-}
-
-func TestOutcomeLabelForLocale_EN_Loss(t *testing.T) {
-	t.Parallel()
-	if got := outcomeLabelForLocale(homeOutcomeLoss, "en"); got != "Defeat" {
-		t.Errorf("outcomeLabelForLocale(LOSS, en) = %q, want Defeat", got)
-	}
-}
-
-func TestOutcomeLabelForLocale_EN_Unknown(t *testing.T) {
-	t.Parallel()
-	if got := outcomeLabelForLocale(99, "en"); got != "Match" {
-		t.Errorf("outcomeLabelForLocale(99, en) = %q, want Match", got)
-	}
-}
-
-func TestOutcomeLabelForLocale_FR_Win(t *testing.T) {
-	t.Parallel()
-	got := outcomeLabelForLocale(homeOutcomeWin, "fr")
-	if got == "" || got == "Match" {
-		t.Errorf("outcomeLabelForLocale(WIN, fr) = %q, want non-empty FR label", got)
-	}
-}
-
-func TestOutcomeLabelForLocale_FR_Unknown(t *testing.T) {
-	t.Parallel()
-	if got := outcomeLabelForLocale(99, "fr"); got != "Match" {
-		t.Errorf("outcomeLabelForLocale(99, fr) = %q, want Match", got)
-	}
-}
-
-// ─── outcomeLabel & outcomeTone (round-out) ───────────────────────────────
-
-func TestOutcomeLabel_AllKnown(t *testing.T) {
-	t.Parallel()
-	for _, code := range []int{homeOutcomeWin, homeOutcomeLoss, homeOutcomeTie, homeOutcomeDNF} {
-		if got := outcomeLabel(code); got == "" {
-			t.Errorf("outcomeLabel(%d) returned empty", code)
-		}
-	}
-}
+// ─── outcomeTone (round-out) ───────────────────────────────────────────────
 
 func TestOutcomeTone_AllKnown(t *testing.T) {
 	t.Parallel()

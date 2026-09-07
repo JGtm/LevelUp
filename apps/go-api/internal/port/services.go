@@ -133,6 +133,10 @@ type SessionNotifier interface {
 type MatchHistoryService interface {
 	GetPage(ctx context.Context, req domain.MatchHistoryQueryRequest) (domain.MatchHistoryPageResponse, error)
 	ExportCSV(ctx context.Context, req domain.MatchHistoryQueryRequest) ([]domain.MatchHistoryRow, error)
+	// OutcomeText résout le TEXTE de l'issue depuis le titre, dans la locale de ctx — réservé
+	// à l'export CSV (fichier rendu serveur, sans JS pour localiser une clé). Le JSON de
+	// l'API sert la clé (MatchHistoryRow.Outcome) ; le web localise partout ailleurs.
+	OutcomeText(ctx context.Context, code int) string
 }
 
 // MatchViewService construit la vue détaillée d'un match.
