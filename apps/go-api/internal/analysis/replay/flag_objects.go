@@ -264,7 +264,9 @@ func closeByFreeLives(raws []flagCarryRaw, ctx flagCarryCtx, scan FlagCarryScan)
 	if len(scan.Free) == 0 {
 		return raws, 0
 	}
-	idx := tracksByXUID(ctx.tracks, ctx.slotXUID)
+	// Les slots ambigus sont comptes et journalises par `attachFlagCarryPositions`, seul porteur
+	// de la couverture : les compter deux fois sur le meme index ne dirait rien de plus.
+	idx, _ := tracksByXUID(ctx.tracks, ctx.slotXUID, ctx.slotAmbiguous)
 	closed := 0
 	for i := range raws {
 		if raws[i].closed {

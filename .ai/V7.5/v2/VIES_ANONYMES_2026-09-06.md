@@ -562,3 +562,84 @@ rouge à toute l'équipe. Régénérer la baseline aurait été l'autre voie —
 
 **Contrôle** : les 9 786 entrées de la baseline ont été rejouées contre le run courant des cinq
 paquets touchés — **0 absent**.
+
+---
+
+## Intégration de `feat/v2-durees` (2026-09-07)
+
+L'intégrateur a dû abandonner un premier merge : `flag_carrier_tracks.go` conflictait en trois
+blocs avec les corrections DUREES-R1 (`0930cc692`), postérieures à ma base `7e5c454bc`. Merge
+refait ici, résolu SÉMANTIQUEMENT.
+
+### `flag_carrier_tracks.go` — deux gardes, deux populations, un seul compteur
+
+Les deux branches ont posé une garde sur le repli « une vie sans nom appartient au joueur que le
+pont nomme ». **Elles ne jugent pas sur la même matière, et aucune ne rend l'autre inutile** :
+
+| garde | matière | ce qu'elle attrape |
+|---|---|---|
+| `OwnerReport.NamingBridge()` (VIES-R1 C2) | `own.lives` — les vies **découpées**, y compris celles que `minPoints` n'a pas publiées | les slots que **deux vies nommées** se partagent : ils sont RETIRÉS du pont, le lecteur n'a plus de quoi servir un nom arbitraire |
+| `slotAmbigu` (DUREES-R1 C1) | les vies **publiées** | la contradiction **pont ↔ document** : le pont nomme un joueur que les vies nommées du slot ne portent pas — ce n'est pas une collision entre deux vies nommées, donc `SlotAmbiguous` ne la voit jamais |
+
+**Résolution retenue** : la source d'identité reste `xuidOfPublishedTrack` sur le **pont épuré**
+(mon C2 — la résolution vit en un seul endroit, règle n°6), et `slotAmbiguous` voyage **à côté**
+du pont pour que le REFUS se COMPTE. Sans lui, un slot retiré du pont épuré serait
+indistinguable d'un slot que le pont n'a jamais nommé : `coverage.flagCarries.ambiguousSlot`
+serait retombé à zéro en silence, et le compteur que DUREES-R1 a fait servir jusqu'au contrat
+aurait perdu la moitié de sa population. `replierRefuse` porte les deux gardes ; le `slog.Warn`
+et le compteur restent.
+
+**Mutations** : les deux gardes retirées → `TestFlagCarriesSlotPartageRefuseLeRepli` rouge
+(0 portage attendu, `ambiguousSlot = 0`). La garde **amont seule** retirée →
+`TestFlagCarriesSlotEpureDuPontComptEncoreLeRefus` rouge (`ambiguousSlot = 0` alors que le refus
+a bien eu lieu) — c'est ce test neuf qui verrouille la fusion.
+
+### La régression que la cuisson de contrôle a attrapée : une déduction n'est pas une mort
+
+DUREES-R1 (C2) a fait de `spanFor` une union **qui ne franchit pas une mort**, et son marqueur de
+mort est `XUID != ""` — « l'identité d'une vie vient de la mort qui la TERMINE ». Le proxy était
+exact tant que seul `nameLivesByDeaths` nommait. **Ma passe de nommage final le casse** : elle
+nomme, par déduction, des vies que nulle mort ne termine.
+
+**Mesuré sur `084a804d` slot 620** — deux vies dont la première, sans nom, est désormais nommée
+par la passe :
+
+| | épisode camo du slot 620 |
+|---|---|
+| mon HEAD d'avant | `[3105..3672]` — **568 frames** (la valeur que la chronique du v45 publie comme réparée) |
+| merge brut | `[3105..3120]` — **16 frames** |
+| **merge corrigé** | `[3105..3672]` — **568 frames** |
+
+552 frames perdues sur le TÉMOIN du correctif que la garde était censée protéger. `deduced` (les
+indices des pistes nommées par déduction) descend donc jusqu'à `trackFrameWindows` : ces vies
+comptent comme **sans nom pour la borne de mort, et pour elle seule**. C'est exactement la règle
+déjà posée dans `carrierPresenceOf` — **une déduction ajoute une présence, jamais une absence ;
+ni, ici, une mort**.
+
+**Mutation** : `&& !deduced[i]` retiré → `TestEpisodeNeSArretePasSurUneIdentiteDEDUITE` rouge
+(`[40..60]` au lieu de `[40..260]`). **Contre-épreuve** dans le même test : une vie nommée PAR UNE
+MORT arrête toujours l'union — le constat C2 de DUREES-R1 garde ses dents.
+
+### Cuisson de contrôle
+
+Les deux côtés cuits par le même outil, seul le code différant (mon HEAD d'avant merge contre le
+merge résolu) :
+
+| témoin | pertes | gains | apparus | identiques |
+|---|---|---|---|---|
+| `bcb6d393` (drapeaux, le témoin du v45) | **0** | 0 | 0 | **685** |
+| `084a804d` (véhicules) | **0** | 0 | 1 | 1 065 |
+
+La seule mesure apparue est `coverage.flagCarries.ambiguousSlot = 1`, le champ neuf du lot des
+durées. Vérifications ponctuelles sur `084a804d` : `unnamedLivesContested = 1`,
+`slotCollisions = 3`, slot 734 = `[A, (sans nom), B]` — **aucun nom inventé**.
+
+### Schéma et contrat
+
+`SchemaVersion` reste **47** : la sortie change dans le même bump, non publié. La chronique et le
+ratchet énumèrent désormais **NEUF** champs — les huit du lot des vies plus
+`flagCarries.ambiguousSlot`, apporté par le lot des durées et qui n'avait d'entrée ni dans l'une
+ni dans l'autre. `openapi.yaml` régénéré par `cmd/openapi-gen` et `generated.ts` par
+`openapi-typescript` : **aucun écart**, les deux étaient déjà à jour. Golden d'assemblage
+régénéré : **inchangé**. `.ai/thought_log.md` résolu par concaténation (les deux entrées
+conservées).

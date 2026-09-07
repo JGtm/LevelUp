@@ -8,17 +8,22 @@ package replaydoc
 // comme une exhaustivite, et un film CTF sans aucun portage publie serait indistinguable d'un
 // film qui n'est pas du CTF.
 type FlagCarriesCoverage struct {
-	FlagFilm              bool `json:"flagFilm"`
-	Bursts                int  `json:"bursts"`
-	Captures              int  `json:"captures"`
-	Steals                int  `json:"steals"`
-	Openings              int  `json:"openings"`
-	Carries               int  `json:"carries"`
-	Closed                int  `json:"closed"`
-	Open                  int  `json:"open"`
-	NoBridge              int  `json:"noBridge"`
-	NoTrack               int  `json:"noTrack"`
-	OutOfWindow           int  `json:"outOfWindow"`
+	FlagFilm    bool `json:"flagFilm"`
+	Bursts      int  `json:"bursts"`
+	Captures    int  `json:"captures"`
+	Steals      int  `json:"steals"`
+	Openings    int  `json:"openings"`
+	Carries     int  `json:"carries"`
+	Closed      int  `json:"closed"`
+	Open        int  `json:"open"`
+	NoBridge    int  `json:"noBridge"`
+	NoTrack     int  `json:"noTrack"`
+	OutOfWindow int  `json:"outOfWindow"`
+	// AmbiguousSlot : slots dont les vies ANONYMES ont ete refusees au repli par le pont
+	// slot -> xuid, faute d accord avec leurs vies nommees. Publie avec ses freres `noTrack` et
+	// `ambiguous*` : c est de la matiere que le calque renonce a lire, et sans elle un portage
+	// manquant serait indistinguable d un portage qui n a jamais eu lieu.
+	AmbiguousSlot         int  `json:"ambiguousSlot"`
 	MarkerObserved        int  `json:"markerObserved"`
 	MarkerConfirmed       int  `json:"markerConfirmed"`
 	OpenObserved          int  `json:"openObserved"`

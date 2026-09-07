@@ -888,11 +888,14 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   bot, et le rognage des portages. CES SEPT-LÀ SONT DES CORRECTIFS DE DÉFENSE : leurs
 	//   mutations rougissent, mais le parc local ne porte de témoin chiffré pour aucun (revue
 	//   VIES-R1, C3 — les chiffres cités en première rédaction mesuraient autre chose). Le gain
-	//   MESURÉ du schéma est celui du nommage : 305 vies sans nom -> 201 sur neuf témoins. HUIT champs de couverture s'ajoutent : CINQ côté pont
-	//   (`namedByPreviousLife`, `namedByNextLife`, `namedBySlotBridge`, `unnamedLives`,
-	//   `unnamedLivesContested`) et trois côté zones (`noPosition`, `outside`, `ambiguousZone`).
-	//   Le cinquième vient du complément de la revue des durées : un slot à plusieurs occupants
-	//   est MARQUÉ, et la frontière entre deux d'entre eux est refusée plutôt que tranchée.
+	//   MESURÉ du schéma est celui du nommage : 305 vies sans nom -> 201 sur neuf témoins.
+	//   NEUF champs de couverture s'ajoutent : CINQ côté pont (`namedByPreviousLife`,
+	//   `namedByNextLife`, `namedBySlotBridge`, `unnamedLives`, `unnamedLivesContested`), TROIS
+	//   côté zones (`noPosition`, `outside`, `ambiguousZone`) et UN côté drapeau
+	//   (`flagCarries.ambiguousSlot`, apporté par le lot des DURÉES et intégré ici : le refus du
+	//   repli d'une vie sans nom se COMPTE au lieu de se taire). Le cinquième champ du pont vient
+	//   du complément de la revue des durées : un slot à plusieurs occupants est MARQUÉ, et la
+	//   frontière entre deux d'entre eux est refusée plutôt que tranchée.
 	//   POURQUOI LA VERSION MONTE : un artefact 36 à 46 est appauvri sans que sa forme le dise.
 	//   44, 45 et 46 SONT PRIS par les lots des manches, des durées et des drapeaux, en cours sur
 	//   d'autres branches. Détail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.

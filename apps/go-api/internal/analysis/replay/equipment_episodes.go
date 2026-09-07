@@ -109,12 +109,50 @@ type EquipmentCoverage struct {
 // donnait au document des bornes de scène fausses, et que l'assainissement a supprimé.
 // Cuisson de contrôle : 0 épisode, document identique à la base hors `schemaVersion`.
 // (Constat C4 de la revue REG-R1 : ce commentaire le citait parmi les films restitués.)
-func trackFrameWindows(tracks []Track) map[uint32][][2]int {
-	out := make(map[uint32][][2]int, len(tracks))
-	for _, t := range tracks {
-		out[t.Slot] = append(out[t.Slot], [2]int{t.StartFrame, t.EndFrame})
+//
+// LES FENETRES SONT TRIEES ET PORTENT L'IDENTITE DE LEUR VIE (revue DUREES-R1, constat C2) :
+// `spanFor` a besoin de savoir ce que SEPARE un trou entre deux vies — un silence de
+// replication, ou une mort.
+//
+// UNE IDENTITE DEDUITE N'EST PAS UNE MORT (integration du lot des vies, 2026-09-07). Depuis la
+// passe de nommage final (`unnamed_lives.go`), une vie que NULLE MORT ne termine peut porter un
+// xuid — celui de l'occupant du slot, deduit par le TEMPS. Lire `XUID != ""` comme « une mort
+// clot cette vie » etait exact tant que seul `nameLivesByDeaths` nommait ; ca ne l'est plus.
+// Mesure de l'integration : `084a804d` slot 620, dont la premiere vie devient nommee par
+// deduction — l'episode de camouflage `[3105..3672]` (568 frames, la valeur meme que la
+// chronique du v45 publie) retombait a `[3105..3120]`, 16 frames, soit 552 perdues sur le
+// TEMOIN du correctif. `deduced` porte les indices des pistes nommees par deduction : elles
+// comptent comme SANS NOM pour la borne de mort, et pour elle seule.
+//
+// C'est la meme regle que `carrierPresenceOf` (skull_carries.go) : une deduction AJOUTE une
+// presence, elle n'ajoute jamais une absence — ni, ici, une mort.
+func trackFrameWindows(tracks []Track, deduced map[int]bool) map[uint32][]lifeWindow {
+	out := make(map[uint32][]lifeWindow, len(tracks))
+	for i, t := range tracks {
+		out[t.Slot] = append(out[t.Slot], lifeWindow{
+			from: t.StartFrame, to: t.EndFrame, named: t.XUID != "" && !deduced[i]})
+	}
+	for s := range out {
+		w := out[s]
+		sort.Slice(w, func(i, j int) bool { return w[i].from < w[j].from })
 	}
 	return out
+}
+
+// lifeWindow est la fenetre d UNE vie publiee, plus ce que sa FIN signifie.
+type lifeWindow struct {
+	from, to int
+	// named dit que la vie PORTE une identite. `spanFor` s en sert comme borne de MORT :
+	// l identite d une vie vient de la mort qui la TERMINE (`nameLivesByDeaths` pose le xuid de
+	// la victime sur la vie que sa mort acheve). Une vie ANONYME, elle, est une vie coupee par un
+	// TROU DE REPLICATION — rien n y meurt, et c est exactement la couture que `spanFor` existe
+	// pour refaire.
+	//
+	// LA LECTURE EST CONSERVATRICE, ET C EST VOULU : les fermetures nomment aussi des vies
+	// (`nameClosedLives`) sans qu une mort les termine, si bien qu une couture legitime peut etre
+	// refusee — jamais l inverse. Un episode trop court est une mesure incomplete ; un episode
+	// qui enjambe une mort est une mesure FAUSSE, peinte sur une vie ou rien ne l a lue.
+	named bool
 }
 
 // windowFor rend la vie du slot qui recouvre le plus l'intervalle d'un épisode. ok=false
@@ -127,15 +165,15 @@ func trackFrameWindows(tracks []Track) map[uint32][][2]int {
 // LE RECOUVREMENT PLUTÔT QUE L'APPARTENANCE : une lecture peut tomber dans un trou de
 // réplication (les vies d'un slot ne se touchent pas), et exiger que `from` soit DANS une
 // fenêtre y perdrait l'épisode. Le recouvrement maximal ne dépend d'aucun ordre.
-func windowFor(windows [][2]int, from, to int) ([2]int, bool) {
-	best, bestOv, found := [2]int{}, 0, false
+func windowFor(windows []lifeWindow, from, to int) (lifeWindow, bool) {
+	best, bestOv, found := lifeWindow{}, 0, false
 	for _, w := range windows {
 		lo, hi := from, to
-		if lo < w[0] {
-			lo = w[0]
+		if lo < w.from {
+			lo = w.from
 		}
-		if hi > w[1] {
-			hi = w[1]
+		if hi > w.to {
+			hi = w.to
 		}
 		if ov := hi - lo + 1; ov > 0 && (!found || ov > bestOv) {
 			best, bestOv, found = w, ov, true
@@ -144,9 +182,9 @@ func windowFor(windows [][2]int, from, to int) ([2]int, bool) {
 	return best, found
 }
 
-// spanFor rend les bornes de l'UNION des vies du slot que l'intervalle mesuré recouvre.
-// ok=false quand aucune ne l'intersecte : l'épisode n'a alors aucune fiche où s'afficher, et
-// il est écarté comme avant.
+// spanFor rend les bornes de l'UNION des vies du slot que l'intervalle mesuré recouvre — mais
+// SANS JAMAIS FRANCHIR UNE MORT. ok=false quand aucune vie ne l'intersecte : l'épisode n'a alors
+// aucune fiche où s'afficher, et il est écarté comme avant.
 //
 // POURQUOI L'UNION, ET PAS LA VIE QUI RECOUVRE LE PLUS. Un état actif se mesure PAR SLOT (i28
 // pour le camo, i5 pour le surbouclier) : ses deux bornes sont des transitions LUES, elles ne
@@ -157,34 +195,60 @@ func windowFor(windows [][2]int, from, to int) ([2]int, bool) {
 // l'épisode couverte par l'autre vie, DONT SON INSTANT D'ACTIVATION MESURÉ. Mesure du corpus
 // témoin : `084a804d`, slot 620, camo [3105..3672] lu (568 frames), publié [3173..3672] (500) —
 // 68 frames perdues dont 16 à l'intérieur d'une vie publiée, l'activation sonnée 6,8 s en
-// retard. L'union ne publie jamais hors des vies du slot : elle refuse seulement de laisser un
-// trou de réplication amputer une mesure qui l'enjambe.
-func spanFor(windows [][2]int, from, to int) ([2]int, bool) {
-	span, found := [2]int{}, false
+// retard.
+//
+// POURQUOI LA MORT ARRÊTE L'UNION (revue DUREES-R1, constat C2). L'union recoud un SILENCE, pas
+// une vie. Sans cette borne, trois vies NOMMÉES d'un même slot avec une activation dans la
+// première rendaient un épisode `[20..450]` qui enjambait deux morts — `equipmentFx.ts` aurait
+// peint l'effet sur des vies où rien ne l'a jamais lu. La couture ne traverse donc que les
+// frontières qu'AUCUNE identité ne date (cf. `lifeWindow.named`), et s'arrête à la première fin
+// de vie nommée rencontrée depuis l'ancre. La règle vaut dans les deux sens ; en pratique le
+// clamp de `close` ne peut que RÉTRÉCIR l'intervalle mesuré, donc seule l'extension vers l'avant
+// change quelque chose.
+//
+// L'ANCRE est la vie qui CONTIENT l'ouverture ; à défaut (activation antérieure à la première
+// vie publiée, cf. `frameOf` en signé) la première vie recouverte.
+func spanFor(windows []lifeWindow, from, to int) (lifeWindow, bool) {
+	couvertes := overlapping(windows, from, to)
+	if len(couvertes) == 0 {
+		return lifeWindow{}, false
+	}
+	ancre := 0
+	for i, w := range couvertes {
+		if from >= w.from && from <= w.to {
+			ancre = i
+			break
+		}
+	}
+	lo, hi := ancre, ancre
+	for lo > 0 && !couvertes[lo-1].named {
+		lo--
+	}
+	for hi < len(couvertes)-1 && !couvertes[hi].named {
+		hi++
+	}
+	return lifeWindow{from: couvertes[lo].from, to: couvertes[hi].to, named: couvertes[hi].named}, true
+}
+
+// overlapping rend, dans l'ordre chronologique, les vies du slot que `[from, to]` recouvre.
+// L'ordre vient de `trackFrameWindows`, qui trie : la contiguïté testée par `spanFor` est donc
+// celle du temps, jamais celle de l'itération d'une map.
+func overlapping(windows []lifeWindow, from, to int) []lifeWindow {
+	out := make([]lifeWindow, 0, len(windows))
 	for _, w := range windows {
 		lo, hi := from, to
-		if lo < w[0] {
-			lo = w[0]
+		if lo < w.from {
+			lo = w.from
 		}
-		if hi > w[1] {
-			hi = w[1]
+		if hi > w.to {
+			hi = w.to
 		}
 		if hi < lo {
 			continue // cette vie ne recouvre pas l'intervalle
 		}
-		switch {
-		case !found:
-			span, found = w, true
-		default:
-			if w[0] < span[0] {
-				span[0] = w[0]
-			}
-			if w[1] > span[1] {
-				span[1] = w[1]
-			}
-		}
+		out = append(out, w)
 	}
-	return span, found
+	return out
 }
 
 // episodeAccum accumule les épisodes d'UNE famille pour UN slot : machine à deux états
@@ -194,7 +258,7 @@ type episodeAccum struct {
 	fam  string
 	// windows porte TOUTES les vies publiées du slot : l'épisode est borné à celle qu'il
 	// recouvre, jamais à la dernière du slot (cf. trackFrameWindows).
-	windows   [][2]int
+	windows   []lifeWindow
 	openFrame int
 	open      bool
 	out       *[]EquipmentEpisode
@@ -221,11 +285,11 @@ func (a *episodeAccum) close(endFrame int, endRead bool) {
 		return // aucune vie publiée ne recouvre l'épisode
 	}
 	t0, t1 := a.openFrame, endFrame
-	if t0 < w[0] {
-		t0 = w[0]
+	if t0 < w.from {
+		t0 = w.from
 	}
-	if t1 > w[1] {
-		t1 = w[1]
+	if t1 > w.to {
+		t1 = w.to
 	}
 	if t1 < t0 {
 		return
@@ -241,7 +305,7 @@ func (a *episodeAccum) finish() {
 		return
 	}
 	if w, ok := windowFor(a.windows, a.openFrame, a.openFrame); ok {
-		a.close(w[1], false)
+		a.close(w.to, false)
 		return
 	}
 	a.open = false
@@ -264,11 +328,12 @@ func frameOf(ts, origin, step uint64) int {
 // interrupteur — mais elles se COMPTENT, pour que leur apparition se voie au journal.
 func buildEquipmentEpisodes(
 	sorted []filmdec.BipedPosition, camo []filmdec.CamoRead, origin, step uint64, tracks []Track,
+	deduced map[int]bool,
 ) ([]EquipmentEpisode, int) {
 	if len(tracks) == 0 || step == 0 {
 		return nil, 0
 	}
-	windows := trackFrameWindows(tracks)
+	windows := trackFrameWindows(tracks, deduced)
 	var out []EquipmentEpisode
 	nonBinary := buildCamoEpisodes(camo, origin, step, windows, &out)
 	buildOvershieldEpisodes(sorted, origin, step, windows, &out)
@@ -291,7 +356,7 @@ func buildEquipmentEpisodes(
 // regroupées par slot puis rejouées en ordre de temps — l'ordre du balayage suit déjà les
 // chunks, le tri est là pour que la machine ne dépende pas d'un ordre d'itération.
 func buildCamoEpisodes(
-	camo []filmdec.CamoRead, origin, step uint64, windows map[uint32][][2]int, out *[]EquipmentEpisode,
+	camo []filmdec.CamoRead, origin, step uint64, windows map[uint32][]lifeWindow, out *[]EquipmentEpisode,
 ) int {
 	bySlot := map[uint32][]filmdec.CamoRead{}
 	for _, r := range camo {
@@ -329,7 +394,7 @@ func buildCamoEpisodes(
 // balayage que les positions (le quantum brut voyage dans BipedPosition.Shield.Q). Les
 // positions arrivent DÉJÀ triées par temps (BuildFromPositions trie avant d'assembler).
 func buildOvershieldEpisodes(
-	sorted []filmdec.BipedPosition, origin, step uint64, windows map[uint32][][2]int, out *[]EquipmentEpisode,
+	sorted []filmdec.BipedPosition, origin, step uint64, windows map[uint32][]lifeWindow, out *[]EquipmentEpisode,
 ) {
 	accs := map[uint32]*episodeAccum{}
 	var order []uint32
@@ -364,9 +429,9 @@ func buildOvershieldEpisodes(
 // les épisodes de toutes les vies, le rend visible — deux épisodes d'un même slot recyclé
 // comptaient pour une seule vie. C'est le défaut symétrique de celui corrigé le même jour
 // pour `coverage.grapple.pullLives` (constat C2 de la revue REG-R1).
-func equipmentCoverage(eps []EquipmentEpisode, tracks []Track) *EquipmentCoverage {
+func equipmentCoverage(eps []EquipmentEpisode, tracks []Track, deduced map[int]bool) *EquipmentCoverage {
 	cov := &EquipmentCoverage{TracksTotal: len(tracks)}
-	windows := trackFrameWindows(tracks)
+	windows := trackFrameWindows(tracks, deduced)
 	camoLives := map[[2]int]struct{}{}
 	osLives := map[[2]int]struct{}{}
 	for _, e := range eps {
@@ -375,7 +440,7 @@ func equipmentCoverage(eps []EquipmentEpisode, tracks []Track) *EquipmentCoverag
 		// compter une vie de trop que perdre l'épisode dans le dénominateur.
 		cle := [2]int{int(e.Slot), -1}
 		if w, ok := windowFor(windows[e.Slot], e.T0, e.T1); ok {
-			cle[1] = w[0]
+			cle[1] = w.from
 		}
 		switch e.Fam {
 		case EquipFamilyCamo:
