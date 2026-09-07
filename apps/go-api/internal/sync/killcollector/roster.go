@@ -11,6 +11,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/observability"
 	"log/slog"
 	"time"
@@ -61,6 +62,8 @@ func (r *SharedRoster) IdentitiesForMatch(ctx context.Context, matchID string) (
 		ParXUID:    parXUID,
 		ParNom:     make(map[string]string, len(parXUID)),
 		ShotsFired: map[string]int{},
+		Equipes:    map[string]int{},
+		DepartMS:   map[string]int64{},
 	}
 	ambigus := map[string]bool{}
 	for xuid, gt := range parXUID {
@@ -121,21 +124,33 @@ func (r *SharedRoster) gamertagsForMatch(ctx context.Context, matchID string) (m
 	return out, nil
 }
 
-// participantsForMatch complete `out` avec les xuids du match et la reference `shots_fired`.
+// participantsForMatch complete `out` avec les xuids du match, la reference `shots_fired`,
+// l EQUIPE et le DEPART de chacun.
 //
 // ⚠ `shots_fired` NULL N EST PAS ZERO. Une colonne nulle veut dire « l API n a pas donne le
 // nombre de tirs » ; zero veut dire « l API dit qu il n a pas tire ». La porte de publication
 // traite les deux DIFFEREMMENT (refus faute de reference d un cote, verdict de l autre), donc la
 // lecture ne doit surtout pas les confondre : une valeur nulle n entre pas dans la table.
+//
+// UNE SEULE REQUETE POUR LES QUATRE COLONNES (lot 7C). L equipe et le depart servent aux faits
+// d isolement (`match_death_context`) ; les demander a part aurait fait deux allers-retours pour
+// la meme ligne de la meme table. La MEME regle qu au-dessus s applique a `team_id` et a
+// `last_leave_time` : NULL veut dire « non renseigne », et une entree absente n est pas un zero.
+//
+// LE DEPART EST CALE SUR L HORODATAGE CANONIQUE du registre (regle n 8), exactement comme
+// `replay_facts_repo.playerFacts` : `start_time` brut decalerait d un fuseau.
 func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string, out *MatchIdentities) error {
 	if r == nil || r.db == nil {
 		return fmt.Errorf("SharedRoster: db nil")
 	}
+	debut := analysis.SQLStartTimeCanonical("mr")
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT xuid, shots_fired
-		FROM match_participants
-		WHERE match_id = ? AND xuid IS NOT NULL AND xuid <> ''
-		ORDER BY xuid
+		SELECT p.xuid, p.shots_fired, p.team_id,
+		       CAST(epoch_ms(p.last_leave_time) - epoch_ms(`+debut+`) AS BIGINT)
+		FROM match_participants p
+		JOIN match_registry mr ON mr.match_id = p.match_id
+		WHERE p.match_id = ? AND p.xuid IS NOT NULL AND p.xuid <> ''
+		ORDER BY p.xuid
 	`, matchID)
 	if err != nil {
 		return fmt.Errorf("SharedRoster participants(%s): %w", matchID, err)
@@ -144,13 +159,19 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 
 	for rows.Next() {
 		var xuid string
-		var shots sql.NullInt64
-		if err := rows.Scan(&xuid, &shots); err != nil {
+		var shots, team, depart sql.NullInt64
+		if err := rows.Scan(&xuid, &shots, &team, &depart); err != nil {
 			return fmt.Errorf("SharedRoster participants(%s) scan: %w", matchID, err)
 		}
 		out.XUIDs = append(out.XUIDs, xuid)
 		if shots.Valid {
 			out.ShotsFired[xuid] = int(shots.Int64)
+		}
+		if team.Valid {
+			out.Equipes[xuid] = int(team.Int64)
+		}
+		if depart.Valid {
+			out.DepartMS[xuid] = depart.Int64
 		}
 	}
 	if err := rows.Err(); err != nil {

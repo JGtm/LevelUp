@@ -28,9 +28,17 @@ package main
 //
 // # ELLE EST REPRENABLE, ET LA CLE EST `decoder_rev`
 //
-// Un match dont la passe COURANTE (vue `_latest`) porte la revision de decodeur courante est
-// saute. Interrompre la passe et la relancer reprend donc ou elle en etait, sans re-decoder ce
-// qui est deja fait. `--force` redecode tout — c est ce qu il faut le jour ou la revision change.
+// Un match dont TOUTES les passes courantes (vues `_latest`) portent leur revision de decodeur
+// courante est saute. Interrompre la passe et la relancer reprend donc ou elle en etait, sans
+// re-decoder ce qui est deja fait. `--force` redecode tout — c est ce qu il faut le jour ou une
+// revision change.
+//
+// DEUX REVISIONS, DEUX UNITES DE FRAICHEUR (lot 7C) : `KillSourceDecoderRev` pour le journal des
+// morts, `IsolationDecoderRev` pour les faits d isolement (`match_lives`,
+// `match_death_context`). Elles evoluent separement — un changement de la regle de visibilite
+// doit refaire les faits d isolement SANS refaire le journal, qui n a pas bouge. La commande
+// reprend donc un match dont le journal est a jour mais dont les faits d isolement manquent ou
+// datent : c est ce qui permet au corpus DEJA collecte de recevoir les deux nouvelles tables.
 //
 // # ELLE PASSE LES GROS FILMS EN DERNIER, ET CE N EST PAS UNE PREFERENCE
 //
@@ -391,17 +399,36 @@ func filmsACollecter(
 	return out, nil
 }
 
-// matchsAJour : les matchs dont la passe COURANTE porte la revision de decodeur courante.
+// matchsAJour : les matchs dont TOUTES les passes courantes portent leur revision de decodeur
+// courante — le journal des morts ET les faits d isolement.
 //
-// La lecture passe par la VUE `_latest` (ADR 0026) : une passe ancienne, deja supplantee, ne
+// La lecture passe par les VUES `_latest` (ADR 0026) : une passe ancienne, deja supplantee, ne
 // doit pas faire sauter un match. `read_path` distingue les deux producteurs — un match couvert
 // par le credit-seul reste candidat au decodage de son film, et c est voulu : le film apporte la
 // source du degat, que le credit ne peut pas connaitre.
+//
+// ─── LES FAITS D ISOLEMENT ONT LEUR PROPRE FRAICHEUR (lot 7C, 2026-09-07) ────────────────
+//
+// Sans la seconde condition, TOUT LE CORPUS DEJA COLLECTE resterait sans `match_lives` ni
+// `match_death_context` : son journal porte deja la revision courante, donc le rattrapage le
+// sauterait a jamais, et la lecture d isolement serait vide sur tout l historique sans qu aucune
+// erreur ne le dise.
+//
+// LA CONDITION NE PORTE QUE SUR LES MATCHS QUI ONT DES POSITIONS. Un film dont la carte est hors
+// du catalogue de bornes n a pas de position, donc ne peut avoir aucun fait d isolement :
+// l exiger de lui le ferait redecoder a chaque passe, pour rien. `EXISTS kill_positions_latest`
+// est le predicat le moins cher qui distingue les deux cas.
 func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT DISTINCT match_id FROM match_kill_events_latest
-		WHERE decoder_rev = ? AND read_path <> ?`,
-		killcollector.KillSourceDecoderRev, killscope.ReadPathCreditBackfill)
+		SELECT DISTINCT e.match_id FROM match_kill_events_latest e
+		WHERE e.decoder_rev = ? AND e.read_path <> ?
+		  AND (
+		    NOT EXISTS (SELECT 1 FROM kill_positions_latest p WHERE p.match_id = e.match_id)
+		    OR EXISTS (SELECT 1 FROM match_lives_latest l
+		               WHERE l.match_id = e.match_id AND l.decoder_rev = ?)
+		  )`,
+		killcollector.KillSourceDecoderRev, killscope.ReadPathCreditBackfill,
+		killcollector.IsolationDecoderRev)
 	if err != nil {
 		return nil, fmt.Errorf("matchs deja a jour: %w", err)
 	}

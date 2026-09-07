@@ -144,6 +144,16 @@ var tablesProtegees = []string{
 	// Remplacer une passe = en écrire une nouvelle ; la vue match_bomb_stats_latest ne rend
 	// que la dernière ligne par (match_id, xuid).
 	"match_bomb_stats",
+	// match_lives / match_death_context (7C isolement au sync, 2026-09-07) : tables
+	// append-only NET-NEUVES (vies nommées du film ; voisinage à l'instant de chaque mort du
+	// journal). Leur persister (internal/persist/lives_persister.go) n'émet que des INSERT
+	// dans une transaction unique — aucune entrée d'allowlist à prévoir, ni ici ni dans
+	// allowlistRawDelete. Même mécanique de passe que match_kill_events : remplacer une passe
+	// consiste à en écrire une nouvelle sous un `decode_pass` neuf, et les vues _latest ne
+	// rendent que la DERNIÈRE PASSE PAR MATCH — jamais la dernière ligne par clé, sans quoi
+	// une passe plus courte laisserait survivre les lignes de la précédente.
+	"match_lives",
+	"match_death_context",
 	// NB (2026-08-03) : `media_likes_history` et `media_match_associations_history` sont
 	// append-only elles aussi mais N'ONT PAS leur place ICI — même raison que
 	// `player_records_history` ci-dessus : elles co-résident dans
