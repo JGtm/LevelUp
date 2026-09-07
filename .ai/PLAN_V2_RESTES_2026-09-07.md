@@ -226,11 +226,25 @@ est faux.
 - [ ] Neutralité : `d9781168` et `51ebbc0f` identiques hors numéro (marges inchangées) ; bump 49.
 
 ### R8 — Flakes CI hors rejeu (doctrine : tout rouge se répare, même préexistant)
-- [ ] `internal/api/handlers` `TestStartImport_HappyPathReturns202WithJobID` : le job d'import asynchrone survit au
+- [x] `internal/api/handlers` `TestStartImport_HappyPathReturns202WithJobID` : le job d'import asynchrone survit au
       retour HTTP (`jobs.Store` écrit après la fin du test → `TempDir RemoveAll`) : attendre la fin du job dans le
-      test (ou fermer le store) ; preuve : `-count=20` vert sous charge (`-p 8`).
-- [ ] `internal/persist` `TestWorker_Run_PersistsAndACKs` : assertion de système de fichiers sur runner chargé
+      test (ou fermer le store) ; preuve : `-count=20` vert sous charge (`-p 8`). **CLOS 2026-09-07** — le test attend
+      désormais l'état terminal du job (`pollJobUntilDone`, helper déjà existant dans
+      `openspartan_import_e2e_test.go`, même package) avant de rendre la main. Preuve :
+      `go test -count=20 -p 8 -run TestStartImport_HappyPathReturns202WithJobID ./internal/api/handlers/` vert deux
+      fois de suite (3.8s puis 3.7s) ; `go test -count=1 ./internal/api/handlers/` vert. Taux d'échec observé avant
+      correctif : 0/20 en local (le flake est spécifique à la charge CI réelle, non reproduit hors CI — corrigé sur
+      analyse de la cause, pas sur observation locale d'un rouge).
+- [x] `internal/persist` `TestWorker_Run_PersistsAndACKs` : assertion de système de fichiers sur runner chargé
       (51,9 s en CI contre 0,08 s en local) : identifier l'attente implicite, la remplacer par une synchronisation.
+      **CLOS 2026-09-07** — l'attente implicite était `persister.count()==3` (incrémenté dans `Persist`, AVANT l'ACK)
+      utilisée comme proxy pour "les 3 WAL sont supprimés" (qui n'a lieu qu'après, dans `Worker.handle`) : sous charge,
+      la fenêtre entre les deux se creuse. Remplacé par une synchronisation explicite sur le hook `OnPersistOK` déjà
+      exposé par `Worker` (se déclenche après l'ACK) — aucun changement du code de prod, le hook existait déjà et
+      n'était simplement pas branché par ce test. Preuve : `-count=20 -p 8` vert deux fois de suite (0.16s les deux
+      fois) ; `go test -count=1 ./internal/persist/` vert ; `go test -tags=integration -p 1 -count=1 ./internal/persist/`
+      vert (50.4s, exit 0). Taux d'échec observé avant correctif : 0/20 en local (idem ci-dessus, flake propre à la
+      charge CI).
 
 ### R9 — Release (séquence Notion « Backlog LevelUp », dans l'ordre ; prévenir le user avant tout push sur `main`)
 - [ ] Re-cuisson du parc au dernier schéma (`backfill-replay`, un film à la fois, verrou `filmproc`), puis recompter
