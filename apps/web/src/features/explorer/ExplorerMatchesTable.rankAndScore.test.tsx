@@ -43,7 +43,7 @@ function makeRow(overrides: Partial<ExplorerMatchRow> = {}): ExplorerMatchRow {
     map_ui: 'Aquarius',
     mode_ui: 'Slayer',
     playlist_label: 'Quick Play',
-    outcome_label: 'Victoire',
+    outcome: 'win',
     outcome_code: 2,
     score_label: '50-30',
     is_with_friends: false,

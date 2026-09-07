@@ -65,7 +65,7 @@ function row(xuid: string, gamertag: string, side: string | null): MatchScoreboa
     perfect_kills: null,
     power_weapon_kills: null,
     melee_kills: null,
-    outcome_label: 'Victoire',
+    outcome: 'win',
   }
 }
 

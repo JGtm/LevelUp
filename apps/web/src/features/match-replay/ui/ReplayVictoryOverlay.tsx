@@ -21,9 +21,11 @@
  * défaut prenait `header.outcome_label`, fabriqué par une map Go CODÉE EN DUR EN FRANÇAIS ;
  * seul le titre PERMUTÉ passait par `outcomes.toml`, lui localisé. En français les deux
  * coïncidaient mot pour mot — rien ne se voyait ; en anglais le même écran disait « Victoire »
- * par défaut et « Loss » vu d'un adversaire. Le backend sert désormais lui aussi le mot du TOML
- * (`service/outcome_label.go`), mais il ne connaît qu'un point de vue, celui du joueur de la
- * page : une seule source ici reste la seule façon d'avoir un seul mot.
+ * par défaut et « Loss » vu d'un adversaire. Depuis le 2026-09-07 (D5), le backend ne sert plus
+ * AUCUN mot pour l'issue — seulement la clé canonique (`header.outcome`, win|loss|tie|dnf,
+ * cf. `service/outcome_label.go`) — et ne connaît de toute façon qu'un point de vue, celui du
+ * joueur de la page : une seule source ici (`useOutcomeMapping` sur l'issue LUE) reste la seule
+ * façon d'avoir un seul mot, quel que soit le point de vue.
  *
  * IL EST DÉRIVÉ DE LA POSITION DE LECTURE, PAS D'UN ÉTAT (décision D-B5) : visible tant que la
  * lecture est à la borne de fin ou au-delà, invisible dès qu'on remonte la frise ou qu'on
