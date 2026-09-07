@@ -15,6 +15,8 @@
  *
  * L'ORDRE DES ÉTAGES EST UNE CONTRAINTE, PAS UNE MISE EN PAGE :
  *
+ *   0. le POINT DE VUE (`viewpoint`, 2026-09-06) : par les yeux de qui on regarde. Il précède
+ *      tout le reste parce que l'identité et les marques en dépendent ;
  *   1. le SCOREBOARD, d'où sortent l'identité (`identity`) et les marques (`marks`) ;
  *   2. l'HORLOGE (`clock`), qui ne dépend que de l'artefact et du countdown ;
  *   3. la FENÊTRE de gameplay (`window`), qui exige l'horloge ET la durée jouable ;
@@ -61,7 +63,14 @@ export interface ReplayModelSettings {
 export interface ReplayModel {
   /** Le tableau de score du match, jamais nul : `[]` quand la vue match n'est pas là. */
   scoreboard: MatchScoreboardRow[]
-  /** Camp et gamertag de chaque xuid — la cascade « allié = même camp que moi ». */
+  /**
+   * PAR LES YEUX DE QUI cette page se regarde (2026-09-06) : le joueur choisi, à défaut celui
+   * de la page, `null` si le tableau de score ne nomme personne. C'est la valeur que les
+   * surfaces hors modèle — écran de fin, calques d'objectif, export — reçoivent en paramètre,
+   * pour qu'aucune d'elles ne la redécouvre de son côté.
+   */
+  viewpoint: string | null
+  /** Camp et gamertag de chaque xuid — la cascade « allié = même camp que le point de vue ». */
   identity: XuidMeta
   /** Marques d'identité (moi, ami) par xuid : forme du point sur la carte, glyphe au fil. */
   marks: ReadonlyMap<string, PlayerMarkKind>
@@ -89,6 +98,7 @@ export interface ReplayModel {
 /** Le modèle d'une page sans donnée : toutes les portes fermées, aucune valeur inventée. */
 const VIDE: ReplayModel = {
   scoreboard: [],
+  viewpoint: null,
   identity: new Map(),
   marks: new Map(),
   players: [],
@@ -112,12 +122,21 @@ export function buildReplayModel(
   doc: ReplayDocumentReady | null | undefined,
   matchView: MatchViewResponse | null | undefined,
   settings?: ReplayModelSettings | null,
+  viewpoint?: string | null,
 ): ReplayModel {
   if (!doc) return VIDE
   const header = matchView?.header
   const scoreboard = matchView?.team_tab.scoreboard ?? []
-  const identity = resolveXuidMeta(scoreboard, meXUIDOf(scoreboard))
-  const marks = buildPlayerMarks(scoreboard, settings?.friend_gamertags ?? [])
+  // LE SUJET DE LA PAGE, RÉSOLU ICI ET NULLE PART AILLEURS (2026-09-06, L2b) : le joueur choisi
+  // s'il y en a un, sinon celui de la page. Tout ce qui dépend d'un « moi » en dessous le
+  // reçoit en paramètre — plus aucune surface ne relit `is_me` pour le redécouvrir.
+  const subject = viewpoint ?? meXUIDOf(scoreboard)
+  // TROIS ARGUMENTS, ET LE TROISIÈME COMPTE : sans lui, vu depuis un adversaire, la ligne du
+  // joueur de la page resterait alliée EN PLUS du camp regardé (cf. `xuidMeta.test.ts`, cas c).
+  // Quand le sujet EST le joueur de la page, la table rendue est identique à celle d'avant le
+  // chantier — c'est ce que fixe `replayModel.test.ts`.
+  const identity = resolveXuidMeta(scoreboard, subject, subject)
+  const marks = buildPlayerMarks(scoreboard, settings?.friend_gamertags ?? [], subject)
 
   // LES DEUX HORLOGES NE COÏNCIDENT PAS : cf. `killFeedLogic` et `header.t0_ms`.
   const t0Ms = header?.t0_ms ?? 0
@@ -134,6 +153,7 @@ export function buildReplayModel(
 
   return {
     scoreboard,
+    viewpoint: subject,
     identity,
     marks,
     players,
@@ -148,8 +168,11 @@ export function buildReplayModel(
     // même horloge que le fil, la frise et les sièges.
     media: buildReplayMedia(matchView?.media_tab, header, clock),
     // LE SCORE FINAL QUAND IL NE SE DÉDUIT PAS DU FILM : sur un mode à manches, le calque
-    // rendrait les points de la dernière manche au lieu du résultat.
-    score: finalScoreFromHeader(header),
+    // rendrait les points de la dernière manche au lieu du résultat. IL SUIT LE POINT DE VUE
+    // depuis le 2026-09-07 : l'API l'ancre sur le joueur de la page, et l'écran de fin le
+    // préfère à la lecture du calque — vu depuis un adversaire, les deux nombres seraient dans
+    // l'ordre de quelqu'un d'autre que l'issue affichée juste au-dessus.
+    score: finalScoreFromHeader(header, scoreboard, subject),
     t0Ms,
   }
 }

@@ -18,8 +18,20 @@ import { cheminCourt, fichierNomme, lire, nomDe, testsDeLaFeature } from './feat
 // La signature de la copie : normaliser soi-même un document dans un fichier de test.
 const REBUILD = /normalizeReplayDocument\s*\(/
 
-// Seul le test de la frontière elle-même l'appelle légitimement hors fixture.
-const ALLOWED = new Set(['testDoc.guard.test.ts', 'replayContract.test.ts'])
+/**
+ * Les tests qui appellent la frontière légitimement, hors fixture :
+ *  - `replayContract.test.ts` : c'est le test DE la frontière ;
+ *  - `replayModel.bench.test.ts` (2026-09-06, mesure E2.3 du plan « frise, point de vue ») : il
+ *    chronomètre la jointure sur l'ARTEFACT RÉEL du match témoin, lu du cache du dépôt et passé
+ *    par le chemin exact de la page. C'est l'inverse du défaut que ce garde prévient — il ne
+ *    fabrique aucun document minimal, il refuse justement d'en fabriquer un. RETRAIT : le jour
+ *    où la mesure disparaîtrait.
+ */
+const ALLOWED = new Set([
+  'testDoc.guard.test.ts',
+  'replayContract.test.ts',
+  'replayModel.bench.test.ts',
+])
 
 describe('garde-rail : une seule fixture de document de rejeu', () => {
   it('aucun test de la feature ne renormalise un document à la main', () => {

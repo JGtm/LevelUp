@@ -10,7 +10,8 @@
  *
  * LES DEUX RÈGLES, ET CE QU'ELLES REFUSENT DE DEVINER :
  *
- *   - MON équipe est celle de la ligne marquée `is_me`. Pas de ligne « moi », ou un `team_side`
+ *   - MON équipe est celle du SUJET — le point de vue de la page (`model/replayViewpoint`),
+ *     et à défaut de sujet la ligne marquée `is_me`. Pas de sujet situable, ou un `team_side`
  *     qui ne se parse pas : `null`. Les appelants s'en servent pour SE TAIRE (encre neutre,
  *     son muet), jamais pour prendre l'équipe 0 par défaut.
  *   - L'ÉQUIPE D'UN XUID vient de sa propre ligne. Un joueur absent du tableau — un remplaçant
@@ -33,10 +34,24 @@ export interface ScoreboardSide {
  *
  * `null` N'EST PAS « ÉQUIPE 0 » : c'est l'absence de camp de référence. Un calque qui le
  * reçoit doit se taire (encre neutre), pas choisir.
+ *
+ * `subject` (2026-09-06) est LE POINT DE VUE de la page de rejeu : quand il est fourni, le camp
+ * de référence est celui de SA ligne, et les quatre calques qui lisent cette valeur — bombe,
+ * drapeaux, zones, sons d'objectif — basculent ensemble (décision 11 du plan : les sons EN
+ * COURS de match suivent le point de vue, seul le VERDICT de fin reste ancré sur le joueur de
+ * la page). Un sujet absent du tableau, ou dont le camp ne se parse pas : `null`, et tout le
+ * monde se tait — jamais un repli silencieux sur la ligne « moi », qui donnerait au calque le
+ * camp d'un autre que celui qu'on regarde.
+ *
+ * `subject` absent : comportement d'origine, la ligne `is_me`.
  */
 export function allyTeamFromScoreboard(
   scoreboard: readonly ScoreboardSide[] | null | undefined,
+  subject?: string | null,
 ): number | null {
+  if (subject != null) {
+    return parseTeamSideID(scoreboard?.find((r) => r.xuid === subject)?.team_side ?? null)
+  }
   return parseTeamSideID(scoreboard?.find((r) => r.is_me)?.team_side ?? null)
 }
 

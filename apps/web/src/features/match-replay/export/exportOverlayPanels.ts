@@ -62,6 +62,20 @@ export interface ExportOutcome {
   /** Déjà localisé par le serveur. Sans lui, pas d'écran de fin — comme dans le DOM. */
   label: string | null | undefined
   /**
+   * LE MOT QUE L'ÉCRAN MONTRE VRAIMENT (2026-09-07, revue F2), quand il diffère de `label`.
+   *
+   * `label` est `header.outcome_label`, le verdict DU JOUEUR DE LA PAGE — l'API n'en publie pas
+   * d'autre. Vu depuis un adversaire, `readVictory` permute l'issue et le panneau prend le camp
+   * du sujet : le clip annonçait donc « Victoire » sur l'équipe qui a perdu, exactement comme le
+   * DOM avant cette correction. Le libellé CANONIQUE de l'issue permutée (`outcomes.toml`, servi
+   * par `/field-mappings`) est résolu par `useReplayCapture` — un hook, ce que ce module n'est
+   * pas — et descend ici tout résolu.
+   *
+   * ABSENT : on retombe sur `label`, qui est le mot JUSTE tant que rien n'est permuté. C'est
+   * aussi ce que fait le seul appelant de production quand le point de vue est celui de la page.
+   */
+  viewedLabel?: string | null
+  /**
    * Le score final SERVI PAR L'API sur un mode à MANCHES (« 2 - 1 »), là où le calque du film
    * rendrait les points de la dernière manche. `null` sur un mode en points : le calque reste
    * la source. MÊME valeur que celle de l'écran affiché — l'export ne doit jamais raconter
@@ -77,12 +91,23 @@ export interface OverlayPanelDeps {
   xuidMeta?: XuidMeta
   playWindow: ReplayWindowBounds | null
   outcome: ExportOutcome | null
+  /**
+   * LE POINT DE VUE de la page (2026-09-06) : l'export rend CE QUE L'ÉCRAN MONTRE (décision 12
+   * du plan « frise, point de vue ») — panneau de victoire compris. La personne qui exporte a
+   * choisi ce qu'elle regarde. Absent : le joueur de la page.
+   */
+  viewpoint?: string | null
   locale: ReplayLocale
   ink: OverlayInk
   /**
-   * La teinte du camp du joueur de la page. TOUJOURS fournie : l'égalité est déjà traitée par
-   * l'absence de `victory.mine`, qui bascule seule sur le style neutre. Un `null` ici serait un
-   * second chemin vers la même chose, qu'aucun appelant ne peut produire.
+   * La teinte du camp du SUJET — le joueur de la page tant qu'aucun point de vue n'est choisi,
+   * celui qu'on REGARDE dès qu'il y en a un (2026-09-06 ; jumeau du même constat corrigé dans
+   * `ReplayVictoryOverlay`). Elle vaut toujours `team-ally` : `victory.mine` est l'équipe du
+   * sujet, et toute la page peint déjà ce camp-là en allié.
+   *
+   * TOUJOURS FOURNIE : l'égalité est déjà traitée par l'absence de `victory.mine`, qui bascule
+   * seule sur le style neutre. Un `null` ici serait un second chemin vers la même chose,
+   * qu'aucun appelant ne peut produire.
    */
   teamStyle: OverlayStatusStyle
   /** Le filigrane DÉJÀ teinté, ou `null` tant qu'il n'est pas chargé. */
@@ -110,7 +135,7 @@ export function buildOverlayPanelSource(deps: OverlayPanelDeps): OverlayPanelSou
   const timeline = scoreTimelineOf(deps.doc)
   const transitions = roundTransitions(timeline)
   const breakFrames = Math.max(1, Math.round(msToFrames(ROUND_BREAK_WINDOW_MS, deps.doc)))
-  const victory = readVictory(deps.scoreboard, deps.outcome?.code)
+  const victory = readVictory(deps.scoreboard, deps.outcome?.code, deps.viewpoint)
   // LE SCORE SE LIT À LA BORNE DE FIN, pas à l'image courante (décision D-B4 du DOM) : la
   // lecture peut être allée au-delà, et le panneau n'a plus rien à dire après la fin.
   const finalScore = deps.playWindow
@@ -119,7 +144,10 @@ export function buildOverlayPanelSource(deps: OverlayPanelDeps): OverlayPanelSou
   const neutral = neutralStatusStyle(deps.ink)
 
   const victoryPanel = (): OverlayPanel | null => {
-    const label = deps.outcome?.label
+    // LE MOT SUIT LE POINT DE VUE, comme le camp et le score (2026-09-07, cf. `viewedLabel`).
+    // `undefined` retombe sur `label` ; `null` explicite (issue permutée dont le titre n'a pas
+    // de libellé canonique) fait taire le panneau, exactement comme un `outcome_label` absent.
+    const label = deps.outcome?.viewedLabel === undefined ? deps.outcome?.label : deps.outcome.viewedLabel
     if (!label || !victory) return null
     const mine = victory.mine
     const rows = mine ? deps.scoreboard.filter((r) => r.team_side === mine.teamSide) : []

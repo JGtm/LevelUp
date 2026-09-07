@@ -41,7 +41,7 @@ import { useReplayAbilityFx } from '../layers/useReplayAbilityFx'
 import { drawEquipmentPlacementsLayer } from '../layers/equipmentPlacementsLayer'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from '../layers/useReplayPlacements'
-import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_ZONES, SERIES_TOKENS } from '../layers/replayCanvasConfig'
+import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_PLAYERS, EMPTY_ZONES, NO_IDENTITY, NO_VIEWPOINT_SELECT, SERIES_TOKENS } from '../layers/replayCanvasConfig'
 import { useReplayObjectiveObjects } from '../layers/useReplayObjectiveObjects'
 import { useReplayVipCrown } from '../layers/useReplayVipCrown'
 import { useReplayBombCarrier } from '../layers/useReplayBombCarrier'
@@ -60,6 +60,7 @@ import { killsOfFeed, type ReplayFeedEntry } from '../model/killFeedLogic'
 import type { ReplayMediaItem } from '../model/replayTimelineTracksLogic'
 import { useReplayFx } from '../layers/useReplayFx'
 import { NO_MARKS, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { useReplayDrawer } from '../settings/useReplayDrawer'
 import { useReplayTimeline } from '../hooks/useReplayTimeline'
 import { useSlotIdentity } from '../layers/useSlotIdentity'
@@ -132,10 +133,33 @@ interface ReplayCanvasProps {
    * la carte reste lisible (points à l'encre neutre, sans étiquette) — jamais une erreur.
    */
   scoreboard?: MatchScoreboardRow[]
-  /** Camp de chaque xuid, du point de vue du joueur de la page (allié / adversaire). */
+  /** Camp de chaque xuid, RELATIF au point de vue (allié / adversaire) — cf. `viewpoint`. */
   xuidMeta?: XuidMeta
   /** Marques d'identité par xuid (« moi », « ami ») : elles décident de la FORME du point. */
   marks?: ReadonlyMap<string, PlayerMarkKind>
+  /**
+   * PAR LES YEUX DE QUI (2026-09-06, plan « frise, point de vue ») : le joueur dont le camp
+   * fait référence. La page le résout une fois (`model.viewpoint`) et le canvas le RELAIE,
+   * sans jamais le redécouvrir — aux calques d'objectif (bombe, drapeaux, zones), à la piste
+   * sonore (tics de zone, voix d'objectif — décision 11) et à l'export (décision 12). `null` :
+   * la ligne « moi » du tableau de score, c'est-à-dire le comportement d'origine.
+   *
+   * OBLIGATOIRE DEPUIS LE 2026-09-07 (revue ronde 2), `null` compris — et c'est le maillon qui
+   * manquait. Les six relais INTERNES du canvas étaient devenus requis la veille (revue F4),
+   * mais la PORTE D'ENTRÉE de la chaîne restait optionnelle : retirer `viewpoint={viewpoint.xuid}`
+   * de `replay.tsx` compilait, et laissait toute la suite verte, pendant que la carte, la frise,
+   * les calques et le clip repartaient tous ensemble sur le joueur de la page. Un maillon requis
+   * derrière une porte facultative ne garde rien.
+   */
+  viewpoint: string | null
+  /**
+   * LE ROSTER JOINT DU MATCH (`model.players`) et le geste qui pose le point de vue : les deux
+   * ne servent qu'au MENU de la frise (2026-09-07, lot L3). Ils traversent le canvas comme le
+   * fil et les médias — assemblés une fois par la page, jamais reconstruits ici. Roster vide et
+   * geste absent = un menu sans option, ce qui est exactement l'état d'une page sans vue match.
+   */
+  players?: readonly ReplayPlayer[]
+  onSelectViewpoint?: (xuid: string | null) => void
   /**
    * LE FIL ALIGNÉ ET LES MÉDIAS, assemblés une fois par la page (`buildFeedEntries`,
    * `buildReplayMedia`) : un second recalage ici divergerait de ce qu'on lit à côté.
@@ -159,8 +183,15 @@ interface ReplayCanvasProps {
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, background, callouts, scoreboard, xuidMeta, marks,
-  endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
+  viewpoint, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
+  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT,
 }: ReplayCanvasProps) {
+  // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
+  // `null` compris, et les six destinataires du relais (son, zones, drapeaux, déflagration,
+  // frise, export) le reçoivent eux aussi en paramètre obligatoire (revue F4). La chaîne est
+  // donc requise de bout en bout — un maillon oublié, à l'entrée comme au milieu, est une erreur
+  // de compilation, là où il laissait silencieusement ces surfaces sur le camp du joueur de la
+  // page pendant que la carte suivait le joueur choisi. Un `= null` ici rouvrait la porte.
   // LES KILLS VIENNENT DU FIL, DÉJÀ RECALÉS (2026-09-05, J2) : la carte et la piste sonore
   // lisaient les kills BRUTS et rejouaient chacune `alignFeed` — quatre exécutions du même
   // recalage par chargement, et deux chemins qui divergeraient le jour où le canvas ne
@@ -188,7 +219,7 @@ export function ReplayCanvas({
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
   // objectiveSound.ts, fin endMatch, « manche terminée » locale-aware — la `locale` ne sert qu'à lui).
-  const sound = useReplaySound(doc, feedKills, multiplier, scoreboard, endMatch ?? null, locale)
+  const sound = useReplaySound(doc, feedKills, multiplier, scoreboard, endMatch ?? null, locale, viewpoint)
 
   const paletteVersion = useColorPaletteVersion()
   // TOUTES LES ENCRES DU REJEU, résolues une fois par palette — voir l'en-tête d'useReplayInks.
@@ -240,7 +271,7 @@ export function ReplayCanvas({
   // la requête) : normalisés une fois, comme les callouts. Absents = pas de calque.
   const mapObjectives = useMemo(() => normalizeMapObjectives(doc.mapObjectives), [doc.mapObjectives])
   // L'ÉTAT VIVANT DES ZONES (schémas 16-18) : encres, jointure du catalogue, tenue de la jauge (useZoneStates).
-  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc)
+  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc, viewpoint)
 
   const teamCascades = useTeamCascades(scoreboard, xuidMeta, locale)
 
@@ -321,7 +352,7 @@ export function ReplayCanvas({
   // calque statique, le drapeau porté suit son porteur image par image.
   const flags = useReplayFlagCarries({
     doc, view: canvasView, frameRef, enabled: showFlagCarries,
-    scoreboard, teamColorOf, neutral: floorStyle.edge, outline: markInk.outline, reducedMotion,
+    scoreboard, viewpoint, teamColorOf, neutral: floorStyle.edge, outline: markInk.outline, reducedMotion,
   })
 
   const objectiveObjects = useReplayObjectiveObjects({
@@ -336,7 +367,7 @@ export function ReplayCanvas({
   // LA FIN DE VOL des grenades (dix-septième extraction — elle paie la déflagration ci-dessous).
   const grenadeRest = useReplayGrenadeRest({ doc, view: canvasView, fx: grenadeRestFx, window: restWindow, ink: fxInk, smoke: floorStyle.edge, halo: grenadeColor, reducedMotion })
   // LA DÉFLAGRATION D'ASSAUT, où et quand elle a eu lieu — seul un match d'Assaut publie la stat.
-  const bombBlast = useReplayBombBlast({ doc, view: canvasView, scoreboard, teamColorOf, neutral: floorStyle.edge, reducedMotion })
+  const bombBlast = useReplayBombBlast({ doc, view: canvasView, scoreboard, viewpoint, teamColorOf, neutral: floorStyle.edge, reducedMotion })
 
   /**
    * buildScene LIE chaque calque a l'etat courant du canvas.
@@ -569,6 +600,10 @@ export function ReplayCanvas({
   const timeline = useReplayTimeline({
     doc, playWindow, feedEntries, media, marks: marks ?? NO_MARKS, renderWidth, locale,
     lead: teamCascades, playback, toggleSound: sound.toggle, zoom,
+    // LE MENU DE POINT DE VUE (2026-09-07) : le canvas RELAIE, il ne résout rien. `identity`
+    // est la même table que celle des calques (`xuidMeta`), déjà relative au point de vue —
+    // c'est elle qui dit qui est coéquipier du joueur regardé.
+    viewpoint: viewpoint ?? null, identity: xuidMeta ?? NO_IDENTITY, players, onSelectViewpoint,
   })
   // LE TIROIR, groupé de même (useReplayDrawer) : les disponibilités viennent des calques, les
   // bascules de `useReplaySettings`, et l'état d'ouverture du hook lui-même (2026-08-30).
@@ -595,7 +630,7 @@ export function ReplayCanvas({
   const capture = useReplayCapture({
     canvasRef, doc, frameRef, playing: playback.playing, play: playback.togglePlay,
     audioTrack: sound.recordingTrack, soundTrack: sound.exportTrack, soundVolume: sound.volume,
-    redraw, playWindow, scoreboard, xuidMeta, outcome, locale,
+    redraw, playWindow, scoreboard, xuidMeta, outcome, viewpoint, locale,
   })
 
   return (

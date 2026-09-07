@@ -1,6 +1,41 @@
 /**
- * ReplayTimelineTracks — LA FRISE ET SES PISTES : tes éliminations et tes morts, celles de tes
- * alliés, la DOMINANCE (aux frags), le SCORE du mode, les MÉDIAS, puis le curseur de lecture.
+ * ReplayTimelineTracks — LA FRISE ET SES PISTES : les éliminations et les morts du joueur
+ * REGARDÉ, les éliminations de ses COÉQUIPIERS, la DOMINANCE (aux frags), le SCORE du mode, les
+ * MÉDIAS, puis le curseur de lecture.
+ *
+ * # LA PREMIÈRE RANGÉE SE CHOISIT (2026-09-07, lot L3)
+ *
+ * Son libellé disait « Toi ». Il est devenu un MENU (`ReplayViewpointSelect`) : l'endroit où
+ * l'on lit de qui parle la piste est celui où l'on change de joueur. Le geste ne touche qu'au
+ * POINT DE VUE — ni le curseur, ni la lecture, ni la vitesse ne bougent (décision 1 du plan) :
+ * changer de joueur change ce qu'on voit, jamais où l'on en est.
+ *
+ * La seconde piste a changé de population le même jour (décision 5) : elle montrait les joueurs
+ * marqués AMIS, y compris ceux de l'équipe adverse, et montre désormais les COÉQUIPIERS du
+ * joueur regardé. Les amis n'ont plus une piste, ils ont une FORME — le losange, comme sur la
+ * carte (cf. `ReplayMarkTrack`).
+ *
+ * # LES DEUX PISTES DISENT AUSSI QUI N'ÉTAIT PAS LÀ (2026-09-07, lot L4)
+ *
+ * Une piste sans marque avait deux causes opposées et un seul dessin : le joueur n'était pas là,
+ * ou il n'a rien fait. Trois ajouts les séparent, et chacun a son fichier.
+ *
+ *  - L'OMBRE (`ReplayPresenceShade`) grise le temps hors partie du joueur regardé — ombre de tête
+ *    pour un arrivant, de queue pour un partant. Son bord est FRANC quand l'API date l'événement,
+ *    DÉGRADÉ quand le film le déduit : une frontière au pixel sur une déduction serait un
+ *    mensonge de précision.
+ *  - LA PORTE (`PresenceGlyph`), le glyphe même que le fil emploie, se pose à la frontière du
+ *    côté ombré et EST le bouton : elle emmène le curseur à cet instant, sans mettre en pause et
+ *    sans changer de joueur. Du côté ombré, elle ne recouvre jamais une marque de kill — un kill
+ *    ne peut exister que dans la zone jouée.
+ *  - L'ANNEAU (`ReplayMarkTrack`) entoure une marque de kill qui a valu une médaille, et fait
+ *    à lui seul la marque d'une médaille d'objectif (creuse). Un seul code : anneau = médaille.
+ *
+ * La piste des COÉQUIPIERS, elle, n'a ni porte ni anneau : elle s'assombrit par PALIERS, l'opacité
+ * disant la part de l'effectif absente (`ReplayAbsenceShade`). Quatre portes empilées sur
+ * quatorze pixels ne se liraient pas, et sa question n'est pas « qui est parti » mais « combien
+ * manquaient » — c'est ce qui explique une dominance qui s'effondre sans qu'aucun duel ne l'ait
+ * fait. Le fil, lui, nomme chacun.
  *
  * DOMINANCE ET SCORE SE LISENT ENSEMBLE, et c'est tout l'intérêt de les empiler : la première
  * dit qui gagne les duels, la seconde qui gagne le match. Sur un mode à objectif elles se
@@ -30,16 +65,42 @@
  * médias » n'en est pas un, et une rangée vide le dirait à tort. La rangée disparaît donc
  * quand le titre ne déclare pas la capability `media` (`showMediaTrack`) — le rejeu, lui,
  * n'est gardé que par `matchmaking`, les deux ne se recouvrent pas.
+ *
+ * # UN SEUL TRAIT DE LECTURE TRAVERSE LES PISTES (2026-09-06)
+ *
+ * Quatre pistes empilées disent la forme du match, mais rien ne reliait une marque de kill à
+ * l'instant qu'on écoute : l'œil devait descendre jusqu'au curseur, retenir sa position, et
+ * remonter. Un trait vertical unique, à l'aplomb du curseur, répond à la question sur place.
+ *
+ * DEUX GRILLES PLUTÔT QU'UNE, et c'est ce trait qui l'impose. Le trait doit couvrir les pistes
+ * ET S'ARRÊTER AU-DESSUS de la pastille du curseur — le traverser en ferait une croix. Une
+ * grille unique ne sait pas exprimer « du haut de la première rangée au bas de l'avant-dernière »
+ * sans une hauteur codée en dur, qui redeviendrait fausse dès qu'une rangée s'ajoute (la piste
+ * Score n'existe pas sur tous les modes, la piste Médias dépend d'une capability). Les pistes
+ * ont donc leur propre grille, et le trait s'y pose en `inset-y-0` : sa hauteur EST celle des
+ * pistes, quelles qu'elles soient, sans un seul pixel écrit à la main. La rangée de transport
+ * (chevron + curseur) vit dans une seconde grille, aux MÊMES colonnes — celles que
+ * `replayTimelineGrid.ts` définit une fois pour les trois lecteurs, le trait compris : il a
+ * besoin des mêmes nombres pour savoir où commence la colonne des pistes.
  */
 import { useState, type ChangeEvent, type RefObject } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
+import { CURSOR_RATIO_VAR } from '../hooks/useReplayPlayback'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+import { ReplayMarkTrack } from './ReplayMarkTrack'
 import { ReplayMediaLightbox } from './ReplayMediaLightbox'
+import { ReplayPlayhead } from './ReplayPlayhead'
+import { ReplayAbsenceShade, ReplayPresenceShade } from './ReplayPresenceShade'
+import { ReplayViewpointSelect } from './ReplayViewpointSelect'
+import { TIMELINE_GRID_COLUMNS } from './replayTimelineGrid'
+import type { AbsenceStep, PresenceShade } from '../model/presenceTrackLogic'
+import type { ViewpointOptionGroup } from '../model/viewpointOptions'
 import {
   clipFrameCount,
   trackLeft,
+  trackLeftVar,
   trackWidth,
   type DominanceSegment,
   type PlacedMedia,
@@ -48,15 +109,36 @@ import {
   type TrackMark,
 } from '../model/replayTimelineTracksLogic'
 
+/**
+ * LA MARGE QUE LA BULLE DE TEMPS GARDE AUX DEUX BOUTS de la frise : sa demi-largeur, à peu près.
+ * Centrée sur le curseur, elle déborderait d'autant à 0 % et à 100 %. C'est une propriété de la
+ * BULLE (son texte fait « 00:00 »), pas de la géométrie des pistes — d'où une constante à elle.
+ */
+const BUBBLE_EDGE = '1.4rem'
+
 interface ReplayTimelineTracksProps {
   /** Le curseur, piloté par la boucle de dessin — jamais contrôlé par React. */
   sliderRef: RefObject<HTMLInputElement | null>
   minFrame: number
   maxFrame: number
   onScrub: (e: ChangeEvent<HTMLInputElement>) => void
-  /** Tes marques, celles de tes alliés (cf. buildEventTracks). */
+  /** Les marques du joueur regardé, celles de ses coéquipiers (cf. buildEventTracks). */
   own: readonly TrackMark[]
-  allies: readonly TrackMark[]
+  teammates: readonly TrackMark[]
+  /** Le temps hors partie du joueur regardé, et ses portes (cf. `presenceTrackLogic`). */
+  shades: readonly PresenceShade[]
+  /** Les paliers d'effectif manquant de la piste Coéquipiers. */
+  absence: readonly AbsenceStep[]
+  /** Camp de chaque xuid, relatif au point de vue : il teinte les portes, jamais l'ombre. */
+  identity: ReadonlyMap<string, { ally: boolean }>
+  /** Poser le curseur à une image (clic sur une porte). Ne met pas en pause — décision 1. */
+  onSeekFrame: (frame: number) => void
+  /** Le point de vue courant : la valeur affichée par le menu de la première rangée. */
+  viewpoint: string | null
+  /** Les sections du menu, un camp par section (cf. `buildViewpointOptions`). */
+  viewpointGroups: readonly ViewpointOptionGroup[]
+  /** Poser le point de vue. `null` revient au joueur de la page. */
+  onSelectViewpoint: (xuid: string | null) => void
   /** Les segments de dominance AUX FRAGS (cf. buildFragDominance) et le camp de chacun. */
   dominance: readonly DominanceSegment[]
   /**
@@ -90,7 +172,9 @@ interface ReplayTimelineTracksProps {
 
 export function ReplayTimelineTracks({
   sliderRef, minFrame, maxFrame, onScrub,
-  own, allies, dominance, score, allyOf, labelOf, media, showMediaTrack,
+  own, teammates, shades, absence, identity, onSeekFrame,
+  viewpoint, viewpointGroups, onSelectViewpoint,
+  dominance, score, allyOf, labelOf, media, showMediaTrack,
   tracksExpanded, onToggleTracks,
   playing, onRequestPause, clockRef, locale,
 }: ReplayTimelineTracksProps) {
@@ -104,93 +188,124 @@ export function ReplayTimelineTracks({
   }
 
   return (
-    <div className="relative">
-      <div className="grid grid-cols-[76px_1fr] items-center gap-x-3 gap-y-[5px]">
-        {tracksExpanded && (
-          <>
-            <TrackLabel>{t.trackYou}</TrackLabel>
-            <MarkTrack marks={own} height="h-3.5" tall />
-
-            <TrackLabel>{t.trackAllies}</TrackLabel>
-            <MarkTrack marks={allies} height="h-3.5" tall={false} />
-
-            <TrackLabel>{t.trackDominance}</TrackLabel>
-            <LeadTrack
-              segments={dominance}
-              allyOf={allyOf}
-              titleOf={(teamId) =>
-                teamId == null ? t.dominanceTied : t.dominanceOfFmt(labelOf(teamId))
-              }
+    // `data-replay-cursor-host` — LA RACINE PORTE LES VARIABLES DE POSITION du curseur
+    // (`--played`, `--played-r`), et c'est ICI que `useReplayPlayback.writeCursor` vient les
+    // poser : il remonte depuis le champ par cet attribut (cf. `CURSOR_HOST_ATTR`). Sur la
+    // rangée du champ, comme jusqu'au 2026-09-06, les pistes ne les auraient pas vues — une
+    // propriété personnalisée n'hérite que vers le bas. Rien dans le typage ne relie l'écriture
+    // et cette pose : c'est un test qui le fait (`ReplayTimelineTracks.test.tsx`).
+    <div className="relative" data-replay-cursor-host="">
+      {tracksExpanded && (
+        <div className="relative mb-[5px] grid items-center gap-y-[5px]" style={TIMELINE_GRID_COLUMNS}>
+          {/* LE LIBELLÉ DE LA PREMIÈRE RANGÉE EST LA COMMANDE (cf. l'en-tête) : c'est là qu'on
+              lit de qui parle la piste, donc là qu'on change de joueur. */}
+          <ReplayViewpointSelect
+            value={viewpoint}
+            groups={viewpointGroups}
+            label={t.viewpointLabel}
+            onSelect={onSelectViewpoint}
+          />
+          {/* DIX-HUIT PIXELS ET NON QUATORZE depuis le 2026-09-07 : c'est la seule rangée qui
+              porte un anneau de médaille et une porte de présence, et les rogner les rendrait
+              illisibles. Celle des coéquipiers garde ses quatorze — l'écart de hauteur dit
+              laquelle des deux est le sujet. */}
+          <ReplayMarkTrack marks={own} height="h-[18px]" tall>
+            <ReplayPresenceShade
+              shades={shades}
+              identity={identity}
+              onSeekFrame={onSeekFrame}
+              locale={locale}
             />
+          </ReplayMarkTrack>
 
-            {/* LA PISTE SCORE N'EXISTE PAS SUR TOUS LES MATCHS (cf. `scoreTrack`) : en Slayer,
-                le score EST le compte des frags et la rangée répéterait celle du dessus. Son
-                absence est donc un fait du mode — pas une rangée vide à remplir plus tard. */}
-            {score && (
-              <>
-                <TrackLabel>{t.trackScore}</TrackLabel>
-                <LeadTrack
-                  segments={score.segments}
-                  allyOf={allyOf}
-                  titleOf={(teamId) =>
-                    teamId == null ? t.scoreTied : t.scoreOfFmt(labelOf(teamId))
-                  }
-                  rounds={score.rounds}
-                  roundTitleOf={(endedIndex) => t.roundOverFmt(endedIndex)}
-                />
-              </>
-            )}
+          <TrackLabel>{t.trackTeammates}</TrackLabel>
+          <ReplayMarkTrack marks={teammates} height="h-3.5" tall={false}>
+            <ReplayAbsenceShade steps={absence} />
+          </ReplayMarkTrack>
 
-            {showMediaTrack && (
-              <>
-                <TrackLabel>{t.mediaTrack}</TrackLabel>
-                <div className="relative h-[26px] rounded-md border border-border bg-muted/30">
-                  {media.length === 0 && (
-                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] text-muted-foreground">
-                      {t.mediaEmpty}
-                    </span>
-                  )}
-                  {media.map(({ item, from, to }) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => openMedia(item.id)}
-                      className="absolute top-[3px] flex h-[18px] overflow-hidden rounded-sm border border-input transition-colors hover:border-foreground"
-                      style={
-                        item.kind === 'clip'
-                          ? { left: trackLeft(from), width: trackWidth(from, to), minWidth: 14 }
-                          : { left: trackLeft(from), width: 30, marginLeft: -15 }
-                      }
-                      aria-label={item.label ?? t.mediaOpen}
-                      title={item.label ?? t.mediaOpen}
-                    >
-                      {item.kind === 'clip' ? (
-                        Array.from({ length: clipFrameCount(item.durationMs ?? 0) }).map((_, i) => (
-                          <img
-                            key={i}
-                            src={item.thumbUrl}
-                            alt=""
-                            className="h-full min-w-0 flex-1 object-cover"
-                          />
-                        ))
-                      ) : (
-                        <img src={item.thumbUrl} alt="" className="h-full w-full object-cover" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </>
-        )}
+          <TrackLabel>{t.trackDominance}</TrackLabel>
+          <LeadTrack
+            segments={dominance}
+            allyOf={allyOf}
+            titleOf={(teamId) =>
+              teamId == null ? t.dominanceTied : t.dominanceOfFmt(labelOf(teamId))
+            }
+          />
 
+          {/* LA PISTE SCORE N'EXISTE PAS SUR TOUS LES MATCHS (cf. `scoreTrack`) : en Slayer,
+              le score EST le compte des frags et la rangée répéterait celle du dessus. Son
+              absence est donc un fait du mode — pas une rangée vide à remplir plus tard. */}
+          {score && (
+            <>
+              <TrackLabel>{t.trackScore}</TrackLabel>
+              <LeadTrack
+                segments={score.segments}
+                allyOf={allyOf}
+                titleOf={(teamId) =>
+                  teamId == null ? t.scoreTied : t.scoreOfFmt(labelOf(teamId))
+                }
+                rounds={score.rounds}
+                roundTitleOf={(endedIndex) => t.roundOverFmt(endedIndex)}
+              />
+            </>
+          )}
+
+          {showMediaTrack && (
+            <>
+              <TrackLabel>{t.mediaTrack}</TrackLabel>
+              <div className="relative h-[26px] rounded-md border border-border bg-muted/30">
+                {media.length === 0 && (
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] text-muted-foreground">
+                    {t.mediaEmpty}
+                  </span>
+                )}
+                {media.map(({ item, from, to }) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openMedia(item.id)}
+                    className="absolute top-[3px] flex h-[18px] overflow-hidden rounded-sm border border-input transition-colors hover:border-foreground"
+                    style={
+                      item.kind === 'clip'
+                        ? { left: trackLeft(from), width: trackWidth(from, to), minWidth: 14 }
+                        : { left: trackLeft(from), width: 30, marginLeft: -15 }
+                    }
+                    aria-label={item.label ?? t.mediaOpen}
+                    title={item.label ?? t.mediaOpen}
+                  >
+                    {item.kind === 'clip' ? (
+                      Array.from({ length: clipFrameCount(item.durationMs ?? 0) }).map((_, i) => (
+                        <img
+                          key={i}
+                          src={item.thumbUrl}
+                          alt=""
+                          className="h-full min-w-0 flex-1 object-cover"
+                        />
+                      ))
+                    ) : (
+                      <img src={item.thumbUrl} alt="" className="h-full w-full object-cover" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* LE TRAIT DE LECTURE FERME LA PILE : il est le dernier enfant pour passer AU-DESSUS
+              des pistes, et il ne vit qu'ici — repliée, la frise n'a rien à traverser. */}
+          <ReplayPlayhead />
+        </div>
+      )}
+
+      <div className="grid items-center" style={TIMELINE_GRID_COLUMNS}>
         <TracksToggle
           expanded={tracksExpanded}
           onToggle={onToggleTracks}
           label={tracksExpanded ? t.tracksCollapse : t.tracksExpand}
         />
-        {/* LE CURSEUR. `--played` est écrit par la boucle de dessin (useReplayPlayback) : le
-            remplissage suit donc la lecture sans un seul rendu React. */}
+        {/* LE CURSEUR. `--played` (le remplissage) et `--played-r` (la position des pistes)
+            sont écrits par la boucle de dessin (useReplayPlayback) sur la RACINE ci-dessus : le
+            champ les reçoit par héritage, et tout suit la lecture sans un seul rendu React. */}
         <div className="relative mt-[3px]">
           {/* `data-replay-timeline` REND SA FRAPPE AU LECTEUR (décision utilisateur du
               2026-08-28, gate de la planche 2a). Un `input[type=range]` est un champ de saisie
@@ -225,12 +340,23 @@ export function ReplayTimelineTracks({
               plus bas dans une autre taille : DEUX éléments pour une seule question — « où
               j'en suis » — désormais répondue à l'endroit exact où on la pose.
 
-              `left: var(--played)` : la même variable que le remplissage de la piste, écrite
-              par `useReplayPlayback.writeCursor` sur le parent (cf. son commentaire). Texte et
-              position suivent donc la lecture par le MÊME chemin impératif, sans un rendu.
+              SA POSITION EST CELLE DES MARQUES, PAS UN POURCENTAGE BRUT (corrigé le
+              2026-09-06). Elle lisait `var(--played)` — la part parcourue en pourcentage de la
+              largeur — alors que tout ce qui se pose sur les pistes vit dans la géométrie du
+              CURSEUR (`trackLeft` : le curseur natif réserve sa demi-largeur à chaque bout).
+              La bulle portait donc jusqu'à 8 px de décalage avec l'instant qu'elle annonce ;
+              invisible tant qu'aucun repère ne passait par là, criant depuis que le trait de
+              lecture le fait. Elle emploie maintenant `trackLeftVar` — la MÊME formule que les
+              marques et que le trait, écrite une seule fois dans le module de logique.
+
+              Le chemin, lui, ne change pas : une variable écrite en impératif par
+              `useReplayPlayback.writeCursor` sur la racine de la frise (cf. son commentaire).
+              Texte et position suivent la lecture sans un seul rendu React.
 
               `clamp` retient la bulle dans la frise à ses deux extrémités : centrée sur le
-              curseur, elle déborderait de sa demi-largeur à 0 % et à 100 %. */}
+              curseur, elle déborderait de sa demi-largeur à 0 % et à 100 %. Ses deux bornes
+              sont des marges de BULLE (sa demi-largeur), pas de la géométrie de piste — c'est
+              pourquoi elles restent écrites ici et que le garde-rail les exempte nommément. */}
           <div className="pointer-events-none relative h-[15px]">
             {/* `aria-hidden` ET C'EST DÉLIBÉRÉ : le champ juste au-dessus porte déjà
                 `aria-label={t.time}`. Nommer la bulle pareil donnerait DEUX éléments du même
@@ -241,7 +367,9 @@ export function ReplayTimelineTracks({
               ref={clockRef}
               aria-hidden="true"
               className="absolute -translate-x-1/2 whitespace-nowrap text-[11px] font-medium tabular-nums text-muted-foreground"
-              style={{ left: 'clamp(1.4rem, var(--played, 0%), calc(100% - 1.4rem))' }}
+              style={{
+                left: `clamp(${BUBBLE_EDGE}, ${trackLeftVar(CURSOR_RATIO_VAR)}, calc(100% - ${BUBBLE_EDGE}))`,
+              }}
             />
           </div>
         </div>
@@ -388,34 +516,6 @@ function TrackLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
       {children}
-    </div>
-  )
-}
-
-/**
- * Une piste de marques. `tall` distingue la TIENNE (marques pleines, plus hautes) de celle des
- * alliés (plus basses, atténuées) : deux pistes de même poids se liraient comme une seule.
- */
-function MarkTrack({
-  marks, height, tall,
-}: {
-  marks: readonly TrackMark[]
-  height: string
-  tall: boolean
-}) {
-  return (
-    <div className={`relative ${height} rounded-full bg-muted/40`}>
-      {marks.map((m) => (
-        <span
-          key={m.key}
-          className={`pointer-events-none absolute rounded-[2px] ${tall ? 'top-[3px] h-2 w-[3px]' : 'top-1 h-1.5 w-[2px] opacity-65'}`}
-          style={{
-            left: trackLeft(m.ratio),
-            background: tokenCssVar(m.kind === 'kill' ? 'team-ally' : 'team-enemy'),
-          }}
-          title={m.clock}
-        />
-      ))}
     </div>
   )
 }

@@ -35,3 +35,49 @@ describe('buildPlayerMarks', () => {
     expect([...buildPlayerMarks(board, ['', '   ']).keys()]).toEqual(['ME'])
   })
 })
+
+/**
+ * AJOUT DU 2026-09-06 (lot L2b) — la marque `me` suit le POINT DE VUE (décision 13 du plan
+ * « frise, point de vue »). Ajouts seulement : les cas ci-dessus fixent le comportement sans
+ * point de vue, celui des appelants qui n'en connaissent pas.
+ */
+describe('buildPlayerMarks — avec un point de vue', () => {
+  const board = [
+    row({ xuid: 'ME', gamertag: 'Guillaume', is_me: true }),
+    row({ xuid: 'A', gamertag: 'Ma Pote', team_side: 't0' }),
+    row({ xuid: 'B', gamertag: 'Adversaire Ami', team_side: 't1' }),
+    row({ xuid: 'C', gamertag: 'Inconnu', team_side: 't1' }),
+  ]
+
+  it('le disque cerclé va au joueur REGARDÉ, pas à la ligne « moi »', () => {
+    const marks = buildPlayerMarks(board, [], 'C')
+    expect(marks.get('C')).toBe('me')
+    expect(marks.get('ME')).toBeUndefined()
+  })
+
+  it('celui qu’on regarde n’est jamais marqué ami de lui-même', () => {
+    expect(buildPlayerMarks(board, ['Adversaire Ami'], 'B').get('B')).toBe('me')
+  })
+
+  it('la ligne « moi » redevient un joueur comme un autre — amie si elle est amie', () => {
+    expect(buildPlayerMarks(board, ['Guillaume'], 'C').get('ME')).toBe('friend')
+  })
+
+  it('point de vue = la ligne « moi » : identique à l’appel sans point de vue', () => {
+    const avec = buildPlayerMarks(board, ['Ma Pote'], 'ME')
+    const sans = buildPlayerMarks(board, ['Ma Pote'])
+    expect(Object.fromEntries(avec)).toEqual(Object.fromEntries(sans))
+  })
+
+  it('point de vue absent du tableau de score : PERSONNE ne porte la marque « moi »', () => {
+    // Pas de repli sur `is_me` : le disque cerclé désignerait alors quelqu'un d'autre que ce
+    // qu'on regarde, ce qui est pire que pas de disque du tout.
+    const marks = buildPlayerMarks(board, [], 'xuid-jamais-vu')
+    expect([...marks.values()]).not.toContain('me')
+  })
+
+  it('point de vue à null ou undefined : le comportement d’origine', () => {
+    expect(buildPlayerMarks(board, [], null).get('ME')).toBe('me')
+    expect(buildPlayerMarks(board, [], undefined).get('ME')).toBe('me')
+  })
+})

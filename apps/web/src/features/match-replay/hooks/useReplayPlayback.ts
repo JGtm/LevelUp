@@ -83,11 +83,12 @@
  * arrêter — la lecture sous les doigts de qui vient d'ouvrir le tiroir pour régler la fois
  * suivante. Mettre en marche et mettre en pause restent le travail de la barre de lecture.
  *
- * `writeCursor` EST LE SEUL ENDROIT QUI DÉPLACE LE CURSEUR, et il en écrit DEUX choses : la
- * valeur du champ (ce que le navigateur dessine) et la variable CSS `--played` (ce que la
- * frise habillée remplit derrière lui). Les séparer les ferait diverger au premier chemin
- * oublié — c'est pourquoi la boucle, les sauts, le rembobinage, le glissé manuel et la pose
- * initiale l'appellent tous, sans exception.
+ * `writeCursor` EST LE SEUL ENDROIT QUI DÉPLACE LE CURSEUR, et il en écrit TROIS choses : la
+ * valeur du champ (ce que le navigateur dessine), la variable CSS `--played` (ce que la frise
+ * habillée remplit derrière lui) et, depuis le 2026-09-06, `--played-r` — la MÊME position,
+ * mais en ratio brut, que la géométrie de piste sait consommer. Les séparer les ferait
+ * diverger au premier chemin oublié — c'est pourquoi la boucle, les sauts, le rembobinage, le
+ * glissé manuel et la pose initiale l'appellent tous, sans exception.
  */
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type RefObject } from 'react'
 
@@ -96,6 +97,46 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { readStoredFlag } from '../settings/replayPreferences'
 import { AUTOPLAY_DEFAULT, AUTOPLAY_KEY } from '../settings/useReplaySettings'
 import type { ReplayWindowBounds } from '../model/replayWindow'
+
+/**
+ * LA PART PARCOURUE, EN POURCENTAGE — le remplissage du dégradé de la piste, tel qu'il existe
+ * depuis l'habillage du curseur. Elle porte son unité parce que c'est un `linear-gradient` qui
+ * la consomme, et qu'un dégradé veut une longueur.
+ */
+export const CURSOR_PLAYED_VAR = '--played'
+
+/**
+ * LA MÊME POSITION, EN RATIO NU [0..1] (2026-09-06, lot du trait de lecture).
+ *
+ * POURQUOI DEUX VARIABLES POUR UNE SEULE POSITION, et ce n'est pas un doublon. Le dégradé de
+ * la piste veut un POURCENTAGE de la largeur du champ ; les marques, elles, vivent dans la
+ * géométrie du CURSEUR — `calc(8px + (100% - 16px) * r)`, cf. `trackLeft` — parce qu'un curseur
+ * natif réserve sa demi-largeur à chaque bout. Les deux ne se rejoignent qu'au milieu de la
+ * frise : un objet posé à `left: var(--played)` dérive jusqu'à 8 px de la marque qu'il désigne
+ * aux extrémités. Un ratio nu est la seule forme que les DEUX géométries savent consommer
+ * (`* var(--played-r)` d'un côté, `calc(var(--played-r) * 100%)` de l'autre si besoin) —
+ * d'où celle-ci, écrite au même endroit unique et dans le même geste.
+ */
+export const CURSOR_RATIO_VAR = '--played-r'
+
+/**
+ * L'ATTRIBUT QUI DÉSIGNE L'HÔTE DES DEUX VARIABLES — la racine de la frise habillée
+ * (`ReplayTimelineTracks`), et elle seule.
+ *
+ * POURQUOI UN ATTRIBUT PLUTÔT QUE `el.parentElement`. Jusqu'au 2026-09-06 les variables se
+ * posaient sur le parent du champ, c'est-à-dire sur le conteneur de la seule RANGÉE du curseur :
+ * les pistes, qui vivent dans les rangées du dessus, ne les voyaient pas (les propriétés
+ * personnalisées héritent vers le BAS, jamais vers le côté). Le trait de lecture, lui, doit les
+ * lire depuis la première piste. Les poser un cran plus haut suffit — le champ continue de les
+ * recevoir par héritage, son dégradé ne change pas d'un pixel.
+ *
+ * NOMMÉ ET PAS DEVINÉ : `closest` sur cet attribut vise CE conteneur, quel que soit le nombre de
+ * niveaux que la frise s'ajoutera (L3 lui ajoute un menu, L4 des glyphes). Compter les
+ * `parentElement` aurait re-cassé au premier remaniement, en silence et sans test rouge — le
+ * remplissage se serait simplement posé sur le mauvais élément. Le repli sur le parent puis sur
+ * le champ garde la pose fonctionnelle hors de la frise (tests de hook, champ détaché).
+ */
+export const CURSOR_HOST_ATTR = 'data-replay-cursor-host'
 
 /** Ce dont la lecture a besoin (objet unique : la règle des 5 paramètres du dépôt). */
 export interface ReplayPlaybackOptions {
@@ -165,6 +206,17 @@ export interface ReplayPlayback {
    * geste d'arrêt sur image par nature.
    */
   stepFrames: (frames: number) => void
+  /**
+   * ALLER À UNE IMAGE PRÉCISE, bornée comme les deux commandes ci-dessus (c'est le même
+   * `seekTo`). Exposée le 2026-09-07 pour les repères d'entrée/sortie de la frise, qui SONT des
+   * boutons (décision 2 du plan « frise, point de vue ») : cliquer la porte d'un remplaçant
+   * emmène le curseur à son arrivée.
+   *
+   * ELLE NE MET PAS EN PAUSE, contrairement à `stepFrames` : un saut vers un instant nommé est
+   * un déplacement, pas un arrêt sur image — la lecture reprend de là, et c'est ce qu'on attend
+   * en cliquant sur un repère pendant qu'on regarde.
+   */
+  seekToFrame: (frame: number) => void
 }
 
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
@@ -185,22 +237,25 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   const leadInFrame = playWindow?.leadInFrame ?? 0
 
   /**
-   * writeCursor POSE LE CURSEUR : la valeur du champ, et le REMPLISSAGE de la frise habillée.
+   * writeCursor POSE LE CURSEUR : la valeur du champ, et la POSITION que toute la frise
+   * habillée consomme — remplissage du dégradé, bulle de temps, trait de lecture.
    *
    * `--played` est la part parcourue, en pourcentage de la fenêtre. Le dégradé de la piste la
    * consomme depuis les classes du champ (`ReplayTimelineTracks.tsx`, variantes
    * `[&::-webkit-slider-runnable-track]` / `[&::-moz-range-track]` — même technique que le
    * volume dans `ReplaySoundControls.tsx`) : aucune feuille de style à tenir à jour, et aucun
-   * rendu React pour un remplissage qui suit la lecture. Elle s'écrit ICI et nulle part
-   * ailleurs — un chemin qui déplacerait le curseur sans elle laisserait le remplissage figé
-   * sur la position précédente.
+   * rendu React pour un remplissage qui suit la lecture. `--played-r` est la MÊME position en
+   * ratio nu, celle qu'attend la géométrie de curseur (cf. `CURSOR_RATIO_VAR`). Les deux
+   * s'écrivent ICI et nulle part ailleurs — un chemin qui déplacerait le curseur sans elles
+   * laisserait la frise figée sur la position précédente, et un second chemin d'écriture
+   * les ferait diverger l'une de l'autre.
    *
-   * ELLE SE POSE SUR LE PARENT, ET PAS SUR LE CHAMP (2026-09-02). Les propriétés
-   * personnalisées HÉRITENT : le champ la reçoit donc exactement comme avant, son dégradé ne
-   * change pas d'un pixel. Ce qui change, c'est que la BULLE DE TEMPS — un frère du champ,
-   * depuis que les bornes début/milieu/fin ont laissé la place au temps sous le curseur —
-   * peut la lire elle aussi. Posée sur le champ, elle serait restée invisible à tout ce qui
-   * n'est pas lui : un `input` n'a pas de descendants.
+   * ELLES SE POSENT SUR LA RACINE DE LA FRISE, ET PAS SUR LE CHAMP (2026-09-02, remonté d'un
+   * cran le 2026-09-06 — cf. `CURSOR_HOST_ATTR`). Les propriétés personnalisées HÉRITENT : le
+   * champ les reçoit donc exactement comme avant, son dégradé ne change pas d'un pixel. Ce qui
+   * change, c'est que la BULLE DE TEMPS et les PISTES — qui ne sont pas des descendants du
+   * champ, ni même de sa rangée — peuvent les lire elles aussi. Posées sur le champ, elles
+   * seraient restées invisibles à tout ce qui n'est pas lui : un `input` n'a pas de descendants.
    */
   const writeCursor = useCallback(
     (frame: number) => {
@@ -208,11 +263,18 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
       if (!el) return
       el.value = String(Math.round(frame))
       const span = endFrame - startFrame
-      const pct = span > 0 ? ((frame - startFrame) / span) * 100 : 0
       // Borné : la frise ne se remplit ni en deçà de son début ni au-delà de sa fin, même si
-      // un appelant lui sert une image hors fenêtre.
-      const played = `${Math.min(100, Math.max(0, pct))}%`
-      ;(el.parentElement ?? el).style.setProperty('--played', played)
+      // un appelant lui sert une image hors fenêtre (le préambule d'avant coup d'envoi est
+      // précisément ce cas-là, et il doit lire zéro plutôt qu'un ratio négatif).
+      const ratio = Math.min(1, Math.max(0, span > 0 ? (frame - startFrame) / span : 0))
+      // L'HÔTE EST CHERCHÉ À CHAQUE POSE, et c'est volontaire : le mémoriser demanderait de
+      // savoir quand la frise se remonte (repli/dépli, changement de mode). `closest` sur un
+      // attribut coûte trois sauts de parent — moins qu'un rendu React, et cette fonction
+      // tourne déjà soixante fois par seconde sans que rien ne s'en plaigne.
+      const racine = el.closest(`[${CURSOR_HOST_ATTR}]`) as HTMLElement | null
+      const host = racine ?? el.parentElement ?? el
+      host.style.setProperty(CURSOR_PLAYED_VAR, `${ratio * 100}%`)
+      host.style.setProperty(CURSOR_RATIO_VAR, String(ratio))
     },
     [startFrame, endFrame],
   )
@@ -333,5 +395,5 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     setPlaying((p) => !p)
   }
 
-  return { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub, seekBy, stepFrames }
+  return { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub, seekBy, stepFrames, seekToFrame: seekTo }
 }

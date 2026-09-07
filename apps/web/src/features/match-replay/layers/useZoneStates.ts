@@ -71,11 +71,25 @@ export function useZoneStates(
   neutral: string,
   /** Le document : `coverage.zones.catalog` (jointure) et sa cadence (tenue de la jauge). */
   doc: ReplayDocumentReady,
+  /**
+   * LE POINT DE VUE de la page (2026-09-06, plan « frise, point de vue ») : l'encre d'une zone
+   * dit « tenue par mon camp » ou « par l'autre » — vu par les yeux d'un adversaire, les deux
+   * s'échangent. `null` : la ligne « moi », comportement d'origine.
+   *
+   * OBLIGATOIRE DEPUIS LE 2026-09-07 (revue F4), `null` compris. Optionnel, son oubli chez
+   * l'appelant ne faisait rougir AUCUN test — les zones seraient simplement restées aux
+   * couleurs du joueur de la page pendant que la carte suivait le joueur choisi. Requis,
+   * l'oubli est une erreur de compilation.
+   */
+  viewpoint: string | null,
 ): ReplayZoneStates {
   const zoneElements = useMemo(() => zoneElementsOf(objectives), [objectives])
   const joinable = zoneCatalogMatches(doc.coverage?.zones?.catalog, zoneElements.length)
   const gaugeHoldFrames = useMemo(() => msToFrames(ZONE_GAUGE_HOLD_MS, doc), [doc])
-  const allyTeamID = useMemo(() => allyTeamFromScoreboard(scoreboard), [scoreboard])
+  const allyTeamID = useMemo(
+    () => allyTeamFromScoreboard(scoreboard, viewpoint),
+    [scoreboard, viewpoint],
+  )
   /**
    * L'ENCRE D'UN CAMP VIENT DES RÉGLAGES DE L'UTILISATEUR, plus du référentiel du jeu
    * (retour du 2026-08-26 : « le socle de l'équipe est en bleu alors que j'utilise une

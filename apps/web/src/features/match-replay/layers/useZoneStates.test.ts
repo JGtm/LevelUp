@@ -53,7 +53,7 @@ describe('useZoneStates', () => {
   it('rend la MÊME référence quand rien ne change — un survol ne doit pas recuire le tracé', () => {
     const { result, rerender } = renderHook(
       (p: { objectifs: ObjectiveElementReady[] }) =>
-        useZoneStates(p.objectifs, TABLEAU, ENCRE, '#neutre', DOC),
+        useZoneStates(p.objectifs, TABLEAU, ENCRE, '#neutre', DOC, null),
       { initialProps: { objectifs: OBJECTIFS } },
     )
     const premier = result.current
@@ -69,7 +69,7 @@ describe('useZoneStates', () => {
   it('rend une NOUVELLE référence quand les objectifs servis changent', () => {
     const { result, rerender } = renderHook(
       (p: { objectifs: ObjectiveElementReady[] }) =>
-        useZoneStates(p.objectifs, TABLEAU, ENCRE, '#neutre', DOC),
+        useZoneStates(p.objectifs, TABLEAU, ENCRE, '#neutre', DOC, null),
       { initialProps: { objectifs: OBJECTIFS } },
     )
     const premier = result.current
@@ -79,35 +79,35 @@ describe('useZoneStates', () => {
   })
 
   it("ne garde que les zones, dans l'ordre servi — c'est ce que `zoneRef` indexe", () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC, null))
     expect(result.current.zoneElements.map((e) => e.x)).toEqual([-20, 20])
     expect(result.current.joinable).toBe(true)
   })
 
   it("sans ligne « moi », aucun camp n'est allié : les encres du propriétaire et du capteur restent inconnues", () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, null, ENCRE, '#neutre', DOC))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, null, ENCRE, '#neutre', DOC, null))
     expect(result.current.style.colorOfOwner(1)).toBeNull()
     expect(result.current.style.colorOfCapturer(1)).toBeNull()
   })
 
   it("avec la ligne « moi », le camp du tableau de bord est l'allié", () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC, null))
     expect(result.current.style.colorOfOwner(1)).toBe('#allie')
     expect(result.current.style.colorOfOwner(0)).toBe('#adverse')
   })
 
   it("le camp QUI CAPTURE une zone tenue est le camp d'en face du propriétaire", () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC, null))
     // Ma zone (camp 1) se fait capturer : l'arc est ADVERSE ; leur zone (camp 0) : l'arc est ALLIÉ.
     expect(result.current.style.colorOfCapturer(1)).toBe('#adverse')
     expect(result.current.style.colorOfCapturer(0)).toBe('#allie')
   })
 
   it('la tenue de la jauge en direct est UNE seconde, en frames de ce document', () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC, null))
     expect(result.current.gaugeHoldFrames).toBe(10)
     const lent = renderHook(() =>
-      useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', testReplayDoc({ frameIntervalMs: 250 })),
+      useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', testReplayDoc({ frameIntervalMs: 250 }), null),
     )
     expect(lent.result.current.gaugeHoldFrames).toBe(4)
   })
@@ -116,12 +116,12 @@ describe('useZoneStates', () => {
   // catalogue de formes, ou un rôle de plus dans la table du titre). `zoneRef` ne désigne plus
   // la même zone : le calque vivant ne peint RIEN.
   it('catalogue de l\'artefact différent de la liste servie : la jointure est refusée', () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', docWith(3)))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', docWith(3), null))
     expect(result.current.joinable).toBe(false)
   })
 
   it('couverture absente : « pas vérifiable » se traite comme « pas joignable »', () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', docWith(undefined)))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', docWith(undefined), null))
     expect(result.current.joinable).toBe(false)
   })
 })
@@ -149,7 +149,7 @@ describe('zoneCatalogMatches', () => {
  */
 describe('useZoneStates — colorOfTeam suit la palette de l’utilisateur (A12)', () => {
   const rendre = (tableau: MatchScoreboardRow[] | null) =>
-    renderHook(() => useZoneStates(OBJECTIFS, tableau, ENCRE, '#neutre', DOC)).result
+    renderHook(() => useZoneStates(OBJECTIFS, tableau, ENCRE, '#neutre', DOC, null)).result
 
   it('le camp du joueur prend l’encre ALLIÉE réglée, jamais une couleur du jeu', () => {
     const { current } = rendre(TABLEAU)

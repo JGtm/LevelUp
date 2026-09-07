@@ -19,8 +19,11 @@ import { describe, expect, it } from 'vitest'
 
 import type { MatchViewResponse } from '@/lib/api/types'
 
+import { meXUIDOf, resolveXuidMeta } from '@/features/match-view/xuidMeta'
+
 import { testReplayDoc } from '../test/testDoc'
 import { buildReplayModel } from './replayModel'
+import { finalScoreFromHeader } from './victoryLogic'
 
 const ORIGIN_MS = 5_000
 const T0_MS = 20_000
@@ -91,6 +94,7 @@ describe('buildReplayModel — sans donnée, rien n’est inventé', () => {
     const m = buildReplayModel(null, matchView())
     expect(m).toEqual({
       scoreboard: [],
+      viewpoint: null,
       identity: new Map(),
       marks: new Map(),
       players: [],
@@ -240,5 +244,117 @@ describe('buildReplayModel — le roster', () => {
     })
     const { players } = buildReplayModel(doc(), inconnu)
     expect(players.find((p) => p.xuid === 'adv')?.board).toBeUndefined()
+  })
+})
+
+/**
+ * AJOUT DU 2026-09-06 (lot L2b) — LE POINT DE VUE, et la preuve qu'il ne change rien par défaut.
+ *
+ * LE RISQUE DE CE LOT tient en une phrase : `buildReplayModel` appelle désormais
+ * `resolveXuidMeta` à TROIS arguments et `buildPlayerMarks` à trois aussi, sur tous les chemins
+ * — y compris quand personne n'a rien sélectionné. Si les deux régimes divergeaient d'un cheveu
+ * sur le cas par défaut, la page changerait de couleurs sans qu'aucun autre test ne rougisse
+ * (les cas ci-dessus ne regardent que deux xuid, pas la table entière). Le premier cas ci-dessous
+ * compare donc les DEUX MODÈLES ENTIERS, par égalité profonde.
+ */
+describe('buildReplayModel — le point de vue', () => {
+  it('sans point de vue : le modèle ENTIER est celui de la lecture d’origine', () => {
+    // La lecture d'origine, c'est « le joueur de la page », ici `me`. Passer ce xuid
+    // explicitement doit rendre exactement le même modèle que ne rien passer du tout.
+    // MÊMES INSTANCES d'entrée pour les deux appels : la comparaison porte sur la SORTIE de la
+    // jointure, pas sur l'égalité structurelle de deux artefacts fabriqués séparément.
+    const d = doc()
+    const mv = matchView()
+    const reglages = { friend_gamertags: ['Autre'] }
+    const parDefaut = buildReplayModel(d, mv, reglages)
+    const explicite = buildReplayModel(d, mv, reglages, 'me')
+    // `clock` PORTE DES FONCTIONS (conversions d'axes) : deux fermetures distinctes ne sont
+    // jamais égales, quelle que soit l'identité de leur résultat. On compare donc le reste du
+    // modèle en bloc, et l'horloge par ses VALEURS — sinon l'assertion échouerait toujours,
+    // pour une raison qui n'a rien à voir avec le point de vue.
+    const { clock: horlogeA, ...resteA } = parDefaut
+    const { clock: horlogeB, ...resteB } = explicite
+    expect(resteA).toEqual(resteB)
+    expect({ ...horlogeA, gameplayMsOfFilmMs: null, gameplayMsOfFrame: null, filmMsOfMatchMs: null, frameOfFilmMs: null })
+      .toEqual({ ...horlogeB, gameplayMsOfFilmMs: null, gameplayMsOfFrame: null, filmMsOfMatchMs: null, frameOfFilmMs: null })
+    expect(horlogeA?.gameplayMsOfFrame(150)).toBe(horlogeB?.gameplayMsOfFrame(150))
+    expect(parDefaut.viewpoint).toBe('me')
+  })
+
+  it('l’identité par défaut est exactement celle de `resolveXuidMeta` à deux arguments', () => {
+    // L'ancre du contrat de non-régression : le régime à trois arguments, appliqué au joueur
+    // de la page, rend la même table que le régime d'avant le chantier.
+    const sb = matchView().team_tab.scoreboard
+    const { identity } = buildReplayModel(doc(), matchView())
+    expect(Object.fromEntries(identity)).toEqual(
+      Object.fromEntries(resolveXuidMeta(sb, meXUIDOf(sb))),
+    )
+  })
+
+  it('SANS CAMPS (mêlée générale) : l’identité par défaut est encore celle des deux arguments', () => {
+    // LE CAS QUE LA FIXTURE DU DESSUS NE COUVRE PAS (revue F1, 2026-09-07). Elle donne un
+    // `team_side` à tout le monde, donc la comparaison de camp suffit à faire du joueur de la
+    // page un allié — le troisième argument n'y change rien même s'il est mal calculé. Sur un
+    // mode SANS ÉQUIPES, `team_side` est nul partout : seul le sujet lui-même peut encore être
+    // allié, et `buildReplayModel` passe son troisième argument SANS CONDITION. C'est là que
+    // le pion du joueur de la page prenait l'encre adverse sur sa propre page.
+    const sansCamps = matchView({
+      team_tab: {
+        scoreboard: [
+          { xuid: 'me', gamertag: 'Moi', team_side: null, is_me: true },
+          { xuid: 'adv', gamertag: 'Autre', team_side: null, is_me: false },
+        ],
+      },
+    })
+    const sb = sansCamps.team_tab.scoreboard
+    const { identity } = buildReplayModel(doc(), sansCamps)
+    expect(Object.fromEntries(identity)).toEqual(
+      Object.fromEntries(resolveXuidMeta(sb, meXUIDOf(sb))),
+    )
+    expect(identity.get('me')).toEqual({ gamertag: 'Moi', ally: true })
+    expect(identity.get('adv')).toEqual({ gamertag: 'Autre', ally: false })
+  })
+
+  it('le SCORE FINAL suit le point de vue : permuté vu de l’autre camp, intact vu de la page', () => {
+    // Le pendant chiffré de l'issue permutée : l'API ancre `score_mine` / `score_theirs` sur le
+    // joueur de la page, l'écran de fin donne à cette lecture la priorité sur celle du calque.
+    // Vu depuis un adversaire, sans permutation, le panneau annoncerait « Défaite, 3 - 1 ».
+    expect(buildReplayModel(doc(), matchView(), null, 'adv').score).toEqual({ ally: 1, enemy: 3 })
+    const parDefaut = buildReplayModel(doc(), matchView()).score
+    expect(parDefaut).toEqual({ ally: 3, enemy: 1 })
+    expect(parDefaut).toEqual(finalScoreFromHeader(matchView().header))
+  })
+
+  it('vu depuis l’adversaire : les camps s’échangent, et la ligne « moi » n’est plus alliée', () => {
+    const { identity, viewpoint } = buildReplayModel(doc(), matchView(), null, 'adv')
+    expect(viewpoint).toBe('adv')
+    expect(identity.get('adv')).toEqual({ gamertag: 'Autre', ally: true })
+    expect(identity.get('me')).toEqual({ gamertag: 'Moi', ally: false })
+  })
+
+  it('vu depuis l’adversaire : le disque cerclé le suit (décision 13)', () => {
+    const { marks } = buildReplayModel(doc(), matchView(), null, 'adv')
+    expect(marks.get('adv')).toBe('me')
+    expect(marks.get('me')).toBeUndefined()
+  })
+
+  it('vu depuis l’adversaire : les kills du fil changent de bord', () => {
+    // `KillEvent.ally` est cuit dans le modèle depuis `identity` : c'est le chemin par lequel
+    // une bascule de point de vue repeint la frise et le fil. Le frag est de `me` sur `adv`.
+    const vuDeMoi = buildReplayModel(doc(), matchView())
+    const vuDeLui = buildReplayModel(doc(), matchView(), null, 'adv')
+    expect(vuDeMoi.feed.find((e) => e.kill)?.kill?.ally).toBe(true)
+    expect(vuDeLui.feed.find((e) => e.kill)?.kill?.ally).toBe(false)
+  })
+
+  it('point de vue absent du scoreboard : personne n’est allié, et rien ne casse', () => {
+    const { identity, marks, viewpoint } = buildReplayModel(doc(), matchView(), null, 'fantome')
+    expect(viewpoint).toBe('fantome')
+    expect([...identity.values()].map((v) => v.ally)).toEqual([false, false])
+    expect(marks.size).toBe(0)
+  })
+
+  it('sans artefact, le modèle vide porte un point de vue nul', () => {
+    expect(buildReplayModel(null, matchView(), null, 'adv').viewpoint).toBeNull()
   })
 })
