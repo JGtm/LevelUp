@@ -276,6 +276,16 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     loadoutAhead:
       'Armes de la première image-clé de cette vie, lue dans',
     weaponSecondaryHint: 'secondaire (arme rangée à la dernière lecture)',
+    weaponStowedFmt: (name) => `Arme rangée : ${name}`,
+    playerScoreLiveFmt: (score) => `Score personnel à l'instant lu : ${score}`,
+    ammoHintFmt: (ammo) =>
+      ammo.kind === 'full'
+        ? 'Munitions pleines'
+        : ammo.kind === 'charge'
+          ? `Charge restante : ${ammo.pct} %`
+          : ammo.res === undefined
+            ? `Munitions : ${ammo.mag}`
+            : `Munitions : ${ammo.mag} / ${ammo.res}`,
     grenadeThrown: 'Grenade lancée',
     eliminatedLabel: 'Éliminé',
     respawnIn: 'Réapparition dans',
@@ -680,6 +690,16 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     loadoutAge: 'Weapons read',
     loadoutAhead: 'Weapons from the first keyframe of this life, read in',
     weaponSecondaryHint: 'secondary (weapon holstered at the last reading)',
+    weaponStowedFmt: (name) => `Stowed weapon: ${name}`,
+    playerScoreLiveFmt: (score) => `Personal score at the moment being played: ${score}`,
+    ammoHintFmt: (ammo) =>
+      ammo.kind === 'full'
+        ? 'Ammo full'
+        : ammo.kind === 'charge'
+          ? `Charge left: ${ammo.pct} %`
+          : ammo.res === undefined
+            ? `Ammo: ${ammo.mag}`
+            : `Ammo: ${ammo.mag} / ${ammo.res}`,
     grenadeThrown: 'Grenade thrown',
     eliminatedLabel: 'Eliminated',
     respawnIn: 'Respawn in',

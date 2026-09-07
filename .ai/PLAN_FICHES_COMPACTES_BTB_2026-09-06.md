@@ -412,16 +412,52 @@ Fichiers : `ui/ReplayPlayerCard.tsx`, `ui/ReplayVitality.tsx` (`VitalityBar` via
 `gaugeShieldPx` / `gaugeHealthPx`, `EliminatedBox` compact), `ui/ReplayObjectiveMark.tsx`
 (`watermarkPx`).
 
-- [ ] 2.1 Trois lignes aux cotes du tableau, `leading-[14px]` sur le nom, corps fixe 31 px.
-- [ ] 2.2 Ligne 1 : nom seul, pleine largeur, `title` = nom complet ; `fx.title` atteignable
+- [x] 2.1 Trois lignes aux cotes du tableau, `leading-[14px]` sur le nom, corps fixe 31 px.
+      Fait (2026-09-07) : `ui/ReplayPlayerCard.tsx` porte une table FERMÉE `TILE_LAYOUT`
+      keyed par `CardGabarit['bodyPx']` (35 = les classes d'aujourd'hui à l'octet, 31 = la
+      tuile `rounded-md border px-1.5 py-1.5`, ligne 1 `relative flex leading-[14px]`, corps
+      `mt-[3px] h-[31px]`, ligne 2 `flex h-[12px] items-center gap-[5px]`, ligne 3
+      `mt-[3px] flex h-[16px] …`) ; `BODY_CLASS = { 35: 'h-[35px]', 31: 'h-[31px]' }` et
+      `NAME_CLASS = { 11.5: 'text-[11.5px]' }` — littéraux en clair, jamais interpolés. Pour
+      que ces tables soient closes À LA COMPILATION, `cardGabarit.ts` type `bodyPx: 35 | 31`,
+      `namePx: 11.5`, `countCellW: 15 | 10` (unions de littéraux ; les valeurs des deux
+      gabarits sont inchangées, `cardGabarit.test` intact).
+- [x] 2.2 Ligne 1 : nom seul, pleine largeur, `title` = nom complet ; `fx.title` atteignable
       sur cette ligne (D6).
-- [ ] 2.3 Ligne 2 : jauges `flex-1` + triplet ; règle « document sans `sh`/`hp` = aucune
+      Fait : le triplet quitte la ligne du nom (`countersOnNameLine: false` dans la table) ; le
+      nom garde `title={name}` mais N'EST PAS en `flex-1` sur le corps de 31 — le reste de la
+      ligne remonte à l'infobulle de la tuile (test (b) : `closest('[title]')` de la ligne du
+      nom = la tuile, « écran occultant » sur Charlie).
+- [x] 2.3 Ligne 2 : jauges `flex-1` + triplet ; règle « document sans `sh`/`hp` = aucune
       barre » conservée.
-- [ ] 2.4 Ligne 3 : arme 48, grenade 14, capacité 16.
-- [ ] 2.5 Encadré « Éliminé » compact sur deux lignes ; cas « hors film » selon D4 ; `title`
+      Fait : `gauges: 'flex min-w-0 flex-1 flex-col gap-[2px]'`, jauges 4 / 2 px par
+      `gaugeShieldPx` / `gaugeHealthPx` (déjà branchées à l'étape 1), `VitalityBar` rend
+      toujours `null` sur une lecture nulle (test (g) : 0 jauge sans `sh`/`hp`, 100 % sur une
+      vie sans mesure, 60 % sur une mesure).
+- [x] 2.4 Ligne 3 : arme 48, grenade 14, capacité 16.
+      Fait pour la LIGNE et ses cotes : conteneur `h-[16px] gap-x-[5px]`, cellule d'arme 48
+      (`weaponCellW`), vignettes 14 / 16 (`iconGrenadePx` / `iconAbilityPx`) — tests (d) et (f).
+      La COMPOSITION de la ligne (une seule cellule d'arme, pas de cellule de munitions ni de
+      boîte de stock) est, par construction du plan, l'objet de 3.1 / 3.2 : au gate 2 la rangée
+      émet encore les cellules du gabarit normal aux largeurs du compact.
+- [x] 2.5 Encadré « Éliminé » compact sur deux lignes ; cas « hors film » selon D4 ; `title`
       « Réapparition dans » conservé ; aucun `progressbar`.
-- [ ] 2.6 `boltCount` = 2 et `watermarkPx` = 34 en compacte ; croix inchangées (I6).
-- [ ] 2.7 Levée du `it.todo` à 6 sièges de 0.5.
+      Fait : `ui/ReplayVitality.tsx` — `EliminatedBox` reçoit `bodyPx` + `counters?` et
+      dispatche par une table fermée `ELIMINATED_BY_BODY = { 35: EliminatedRow, 31:
+      EliminatedStack }` ; `EliminatedRow` = le DOM d'aujourd'hui (fixture 4v4 inchangée) ;
+      `EliminatedStack` = `px-[5px] py-[2px]`, ligne 1 `h-[13px]` (« ÉLIMINÉ » 7 px
+      `tracking-[.15em]` + triplet), ligne 2 `h-[14px] justify-end` (décompte mono 13 px, `title`
+      « Réapparition dans »). Hors film : ligne 2 vide, `goneValue` en `title` de l'ENCADRÉ
+      (test (h)). Aucun `progressbar` (asserté).
+- [x] 2.6 `boltCount` = 2 et `watermarkPx` = 34 en compacte ; croix inchangées (I6).
+      Fait : câblage de l'étape 1 (`gabarit.boltCount`, `gabarit.watermarkPx`) exercé par les
+      tests (i) 2 éclairs / 3 croix et (k) `<svg width="34">`, aucun `width="46"` ; les tests
+      existants restent à 3 / 3 (`T_EXIST` 70/70).
+- [x] 2.7 Levée du `it.todo` à 6 sièges de 0.5.
+      Fait : `ReplayTeams.dom4v4.test.tsx` — `documentSixParCamp()` (le document riche + 4
+      sièges vivants équipés), `tableau(4 | 6)`, fixture `__fixtures__/replayTeams.6v6.html`
+      (65 427 octets, md5 `4dc466cc773622a09671d07bdb9efe8a`) prise AVANT le premier code de
+      l'étape 2, 12 corps `h-[35px]`, aucune classe `auto-fill`.
 
 **Gate 2** : `ui/ReplayPlayerCard.compact.test.tsx` (roster 12v12 et 7v7), liste fermée
 d'`it` : (a) hauteur ET classes des rangées identiques vivant/mort ; (b) nom sur la ligne
@@ -437,17 +473,55 @@ cadre ni zone ; (k) filigrane présent à 34 px. Plus `T_EXIST`, `T_DIFF`, `T_DO
 Fichiers : `ui/ReplayWeaponsRow.tsx`, `ui/ReplayInventoryRow.tsx`, `ui/ReplayCountersBadge.tsx`,
 `ui/ReplayAbilityCell.tsx`, `i18n/i18n.ts`, `styles/globals.css` (`--replay-dx`).
 
-- [ ] 3.1 `ReplayWeaponsRow` : `weaponCells: 1` → une cellule (48), arme rangée nommée dans
+- [x] 3.1 `ReplayWeaponsRow` : `weaponCells: 1` → une cellule (48), arme rangée nommée dans
       le `title` (`weaponStowedFmt`) ; loadout non lu → cellule vide + `title` « armes non
       lues » ; badge de lancer sur 48 px ; échange animé selon I6.
-- [ ] 3.2 `ReplayInventoryRow` : `showAmmo: false`, `showGrenadeStock: false` → grenade
+      Fait (2026-09-07) : `seule = gabarit.weaponCells === 1` → `cells = [weapons[0]]`, la
+      vignette n'a PAS d'infobulle propre et c'est la RANGÉE (dont la boîte est alors la
+      cellule) qui porte `handCellTitle` = `weaponStowedFmt(nom de weapons[1])` quand le
+      sélecteur est lu (sinon le nom seul, sans affirmer « rangée »), puis `handHint` (3.2),
+      puis l'âge. Loadout non lu : une seule `EmptyWeaponCell` de 48 sous
+      `loadoutUnread · handHint`. Échange : `swap.dx = cellW` → la vignette pose
+      `--replay-dx: 48px` (type `ChipStyle = CSSProperties & { '--replay-dx'?: string }`) et
+      seule `replay-wswap-l` existe (k = 0) ; `globals.css` documente le défaut 46 px et le
+      cas à une cellule. Badge de lancer : `absolute inset-0` dans le wrapper `relative` de la
+      cellule → 48 px par construction ; NON exercé par un test (aucune fixture de lancer dans
+      le test compact — dit au journal). Fiche normale : `dx: null`, `hint` inchangé, DOM 4v4
+      identique.
+- [x] 3.2 `ReplayInventoryRow` : `showAmmo: false`, `showGrenadeStock: false` → grenade
       sélectionnée + capacité ; munitions dans le `title` de l'arme (`ammoHintFmt`, trois cas
       + rien en D=2) ; stock via `grenadeBoxHint` ; marques de D5 dans les `title`, avec leurs
       âges ; distinction LU / DÉDUITE de la sélection dans le `title`.
-- [ ] 3.3 `ReplayCountersBadge` : `showScore: false`, `countCellW: 10`, score dans le `title`
+      Fait : la cellule de munitions n'est rendue que si `showAmmo` ; la boîte de stock est
+      remplacée par `GrenadeSelectedCell` (14 px, vignette du seul type qui partira, encre
+      `warning`, `title` = provenance LUE / DÉDUITE · « sél. ? » si indéterminé (cellule VIDE)
+      · `grenadeBoxHint` réemployé tel quel) ; `InventoryEmptyMark` n'est rendue que si
+      `showInventoryMarks` (nouveau booléen du gabarit — normal `true`, compact `false` —
+      ajouté à `cardGabarit.test`). Les munitions et les marques de la MAIN sont composées par
+      la FICHE dans `model/handCellHint.ts` (pur : `isChargeWeapon` — `CHARGE_FX` y déménage,
+      une seule définition —, `ammoOfHand` = les branches exactes de `AmmoCell`,
+      `handCellHint` = munitions ou « dégainée ? », puis « Mort / Inventaire indisponible —
+      inventoryEmptyHint » avec ses DEUX âges) et confiées à `ReplayWeaponsRow.handHint`.
+      Coût : une lecture `inventoryAt` de plus par fiche COMPACTE (jamais en normal) — à
+      mesurer au 5.2. `ReplayAbilityCell` : charges (`×N` + âge, ou « plein » + provenance)
+      dans le `title` de la cellule quand `!showInventoryMarks`, via `chargeTitle` (une seule
+      composition, partagée avec la marque en texte).
+- [x] 3.3 `ReplayCountersBadge` : `showScore: false`, `countCellW: 10`, score dans le `title`
       (`playerScoreLiveFmt`) ; la doctrine « cellule de score toujours rendue » ne vaut que
       pour le gabarit normal — dit dans le commentaire.
-- [ ] 3.4 Entrées i18n FR + EN (I9).
+      Fait : cellule de score conditionnée à `showScore` ; `title` du triplet =
+      `fdaTooltip · playerScoreLiveFmt(live.score)` sur un joueur publié seulement ;
+      typographie par table fermée `TRIPLET_TYPO` keyed par `countCellW` (15 : classes
+      d'aujourd'hui à l'octet, gap et `px-1` compris ; 10 : `text-[9px] leading-none`,
+      `gap-[2px]`, `px-[3px]` → ≈ 54 px). Commentaire d'en-tête réécrit (la doctrine de la
+      cellule vaut « là où la cellule existe »).
+- [x] 3.4 Entrées i18n FR + EN (I9).
+      Fait : `i18nContract.ts` — type `AmmoHint` (count / charge / full) + `weaponStowedFmt`,
+      `playerScoreLiveFmt`, `ammoHintFmt` ; `i18n.ts` FR (« Arme rangée : X », « Score
+      personnel à l'instant lu : N », « Munitions : m / r » / « Charge restante : p % » /
+      « Munitions pleines ») et EN (« Stowed weapon: X », « Personal score at the moment being
+      played: N », « Ammo: m / r » / « Charge left: p % » / « Ammo full ») — parité tenue par
+      `Record<ReplayLocale, ReplayText>` (`tsc` exit 0), cas EN asserté dans le test compact.
 
 **Gate 3** : `ui/ReplayPlayerCard.compact.test.tsx` étendu — chaque report est présent dans un
 `title` avec sa valeur (arme rangée, munitions 3 cas, stock, score, marques D5 avec âges), et
@@ -544,6 +618,37 @@ _(une ligne par gate : date, gate, commandes, résultat chiffré)_
   la mesure AVANT (l'extraction ne coûte rien ; ce n'est PAS la mesure APRÈS du 5.2).
   Aucun `git commit` : l'arbre est laissé modifié pour l'autorisation de l'utilisateur
   (7 fichiers modifiés, 11 nouveaux dont la fixture).
+- **2026-09-07 — gate 2** (avant-plan, codes de sortie lus) : fixture 6v6 prise AVANT tout code
+  de l'étape 2 (`T_DOM` 2 verts, snapshot écrit, 4v4 md5 inchangé `a650f6b5…`) ; puis
+  `ui/ReplayPlayerCard.compact.test.tsx` (a)–(k) : 11/11, exit 0 (un premier rouge sur (a) était
+  une erreur du TEST — la trace de Kilo posée hors roster en 7v7 fabriquait un 15e siège — corrigée
+  dans le test, pas dans le code) ; `T_EXIST` 70/70 ; `T_DIFF` 0 ligne ; `T_DOM` 2/2 (4v4 md5
+  `a650f6b57ba38463ddeabf4ef7694817` inchangé après la tuile compacte, 6v6
+  `4dc466cc773622a09671d07bdb9efe8a`) ; garde-rail `cardGabarit.guard` 6/6, `cardGabarit.test`
+  3/3, `cardDensity.test` 11/11 (6 fichiers, 103 tests, exit 0) ; `rm node_modules/.tmp` +
+  `npx tsc -b --force` exit 0 (après une annotation `string[]` dans le test) ; eslint sur les 5
+  fichiers touchés exit 0 ; `npm run lint:colors` 0 violation. Aucun `git commit`.
+- **2026-09-07 — gate 3** (avant-plan, codes de sortie lus) : `ui/ReplayPlayerCard.compact.test.tsx`
+  étendu de 8 `it` (une seule cellule de 48 + arme rangée nommée + loadout non lu + ligne 3 =
+  48 / 14 / 16 ; munitions 3 cas + RIEN en D=2 ; stock + LUE / DÉDUITE / « sél. ? » sur 14 px ;
+  score dans le `title`, aucune cellule de score ; marques D5 avec âges — « Mort » 0,8 s /
+  1,7 s, « dégainée ? », charges « ×2 · 1,2 s » et « plein » ; `fx.title` atteignable malgré
+  les infobulles de cellule ; estompage par cellule + âge négatif « dans 0.8 s » ; EN) :
+  19/19, exit 0 (un premier rouge sur la ligne 3 était une erreur du TEST — il comptait les
+  largeurs des éclairs de l'incrustation, hors corps — corrigée dans le test) ; `T_EXIST`
+  70/70 ; `T_DIFF` 0 ligne ; `T_DOM` 2/2, md5 4v4 `a650f6b57ba38463ddeabf4ef7694817` inchangé,
+  6v6 `4dc466cc773622a09671d07bdb9efe8a` inchangé ; `cardGabarit.guard` 6/6, `cardGabarit.test`
+  3/3 (+ `showInventoryMarks`), `cardDensity.test` 11/11 — 6 fichiers, **111 tests, exit 0** ;
+  `rm node_modules/.tmp` + `npx tsc -b --force` exit 0 (après un typage `ReplayInventory[]`
+  dans le test) ; `npm run lint` exit 0 (27 avertissements PRÉEXISTANTS hors périmètre —
+  `react-hooks/incompatible-library` sur TanStack Table etc. ; `eslint --max-warnings 0` sur
+  les 13 fichiers touchés : exit 0) ; `npm run lint:colors` 0 violation. Aucun `git commit`,
+  arbre laissé modifié : 13 fichiers modifiés, 3 nouveaux (`model/handCellHint.ts`,
+  `ui/ReplayPlayerCard.compact.test.tsx`, `ui/__fixtures__/replayTeams.6v6.html`). NON
+  exercé par un test : le badge de lancer sur la cellule de 48 (aucune fixture de lancer dans
+  le test compact ; la géométrie est `absolute inset-0` dans le wrapper de la cellule) et le
+  rendu réel de l'animation d'échange à une cellule (`--replay-dx` posé, asserté nulle part —
+  le gate visuel 5.3 les verra). L'étape 4 n'est PAS commencée.
 
 ## Ce que ce plan NE fait pas
 
@@ -592,3 +697,18 @@ _(une ligne par gate : date, gate, commandes, résultat chiffré)_
 - (0.5) `npx vitest run -u <fichier>` lance TOUTE la suite (le `-u` avale le filtre) : à
   n'utiliser qu'avec `--update` explicite ou en supprimant la fixture avant la passe. Suite
   complète passée à cette occasion : 6 394 verts, 16 sautés, 1 seul snapshot écrit.
+- (2.7 / gate 2) Une TRACE dont le joueur n'est ni au roster ni au tableau fabrique un siège
+  de plus (`buildPlayers`) — observé en 7v7 quand la vie de Kilo restait posée hors effectif :
+  le siège apparaît sans camp. Même famille que le cas « bot absent du tableau » de D2 ;
+  artefact de fixture ici, non traité.
+- (3.1) `--replay-dx` vaut 46 px par défaut dans `globals.css` (valeur du POC) alors que la
+  distance réelle entre les deux cellules d'arme de la fiche normale est 40 + 5 = 45 px. Un
+  pixel d'écart sur la course de l'animation, préexistant, hors périmètre (le lot ne touche pas
+  le gabarit normal) — non traité.
+- (3.2) `handCellHint` refait une lecture `inventoryAt` par fiche compacte (la rangée
+  d'inventaire fait déjà la sienne, et `equippedWeapons` une troisième) : c'est le « gain
+  gratuit » de I4 (calculer `inventoryAt` une fois dans la fiche) qui devient plus tentant —
+  réservé au 5.2 si le volet JS dégrade, conformément au plan.
+- (3.1) Le test compact n'exerce pas le badge de lancer (`GrenadeThrowBadge`) : aucune fixture
+  de lancer (`grenadeThrows`) n'a été bâtie — la couverture existante du badge vit dans les
+  tests du gabarit normal. À couvrir si le gate visuel 5.3 montre un défaut sur 48 px.

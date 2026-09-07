@@ -69,6 +69,10 @@ export function ReplayAbilityCell({
   const ability = abilityText(doc, abilityRead?.rank, t, locale)
   const charge =
     abilityRead !== null ? abilityChargesAt(doc, slot, frame, abilityRead.rank) : null
+  // LES CHARGES EN TEXTE À CÔTÉ DE LA CELLULE (fiche normale), OU DANS SON INFOBULLE (tuile
+  // compacte, `showInventoryMarks: false` — décision D5 : la rangée n'a plus d'espace souple).
+  // Le texte de l'infobulle est le même que celui de la marque : une seule composition.
+  const chargeInTitle = charge && !gabarit.showInventoryMarks ? chargeTitle(charge, doc, t) : null
   return (
     <>
       <span className="inline-flex shrink-0 items-center" style={{ width: px }}>
@@ -76,7 +80,11 @@ export function ReplayAbilityCell({
           <span
             className="inline-flex items-center"
             style={{ opacity: freshness(abilityRead.age, readingFull, READING_FADE) }}
-            title={abilityAgeTitle(t, abilityRead.age, doc, ability.text)}
+            title={
+              chargeInTitle
+                ? `${abilityAgeTitle(t, abilityRead.age, doc, ability.text)} · ${chargeInTitle}`
+                : abilityAgeTitle(t, abilityRead.age, doc, ability.text)
+            }
           >
             {ability.img ? (
               <WeaponIcon
@@ -96,11 +104,21 @@ export function ReplayAbilityCell({
           </span>
         )}
       </span>
-      {ability && abilityRead && charge && (
+      {ability && abilityRead && charge && gabarit.showInventoryMarks && (
         <AbilityChargeMark charge={charge} doc={doc} readingFull={readingFull} t={t} />
       )}
     </>
   )
+}
+
+/**
+ * chargeTitle — ce que l'infobulle dit des charges : le compte et l'âge de SA lecture, ou
+ * d'où vient l'affirmation « plein » (rien transmis = rien consommé). Une seule composition,
+ * pour la marque en texte comme pour l'infobulle de la cellule compacte.
+ */
+function chargeTitle(charge: AbilityChargeDisplay, doc: ReplayDocumentReady, t: ReplayText): string {
+  if (charge.kind === 'full') return t.abilityChargesFullHint
+  return `${t.abilityChargesCount(charge.charges)} · ${t.abilityChargesAge} ${formatSeconds(frameToMs(charge.age, doc))}`
 }
 
 /**
@@ -123,7 +141,7 @@ function AbilityChargeMark({
 }) {
   if (charge.kind === 'full') {
     return (
-      <span className="opacity-70" title={t.abilityChargesFullHint}>
+      <span className="opacity-70" title={chargeTitle(charge, doc, t)}>
         {t.abilityChargesFull}
       </span>
     )
@@ -132,7 +150,7 @@ function AbilityChargeMark({
     <span
       className="tabular-nums text-foreground"
       style={{ opacity: freshness(charge.age, readingFull, READING_FADE) }}
-      title={`${t.abilityChargesCount(charge.charges)} · ${t.abilityChargesAge} ${formatSeconds(frameToMs(charge.age, doc))}`}
+      title={chargeTitle(charge, doc, t)}
     >
       ×{charge.charges}
     </span>

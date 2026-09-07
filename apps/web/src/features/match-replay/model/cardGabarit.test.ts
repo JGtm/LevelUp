@@ -17,6 +17,7 @@ describe('cardGabarit', () => {
       ammoCellW: 32,
       showGrenadeStock: true,
       grenadesBoxW: 56,
+      showInventoryMarks: true,
       showScore: true,
       scoreCellW: 30,
       countCellW: 15,
@@ -45,6 +46,8 @@ describe('cardGabarit', () => {
     expect(GABARIT_COMPACT.showAmmo).toBe(false)
     expect(GABARIT_COMPACT.showGrenadeStock).toBe(false)
     expect(GABARIT_COMPACT.showScore).toBe(false)
+    // Et les marques souples (D5) : en infobulle, jamais en texte sur la tuile.
+    expect(GABARIT_COMPACT.showInventoryMarks).toBe(false)
   })
 
   it('les deux gabarits sont gelés : une cote ne se corrige pas à la volée dans un composant', () => {

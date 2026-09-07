@@ -14,6 +14,17 @@ import type { PadControlGapKey } from '../model/padControlLogic'
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
 
 /**
+ * Les munitions de l'ARME EN MAIN telles que la tuile compacte les dit en infobulle (I9 du plan
+ * fiches compactes) : un compte `mag / res` (arme à chargeur), une charge restante en pour-cent
+ * (familles plasma / mêlée / énergie), ou « pleines » (emplacement jamais écrit — flux
+ * différentiel, le plein est la valeur par défaut). Les mêmes trois natures que `AmmoCell`.
+ */
+export type AmmoHint =
+  | { kind: 'count'; mag: number; res?: number }
+  | { kind: 'charge'; pct: number }
+  | { kind: 'full' }
+
+/**
  * LE TABLEAU DES USAGES D'ÉQUIPEMENT de la page match (onglet Chronologie). Il compte, sur tout
  * le match, ce que le rejeu ne montre qu'image par image.
  *
@@ -699,6 +710,17 @@ export interface ReplayText {
   loadoutAge: string
   loadoutAhead: string
   weaponSecondaryHint: string
+  /**
+   * LES REPORTS DE LA TUILE COMPACTE (plan fiches compactes 2026-09-06, I9) : ce qui quitte la
+   * tuile passe en infobulle AVEC SA VALEUR. `weaponStowedFmt` nomme l'arme rangée (la seconde
+   * cellule d'arme n'existe plus) ; `playerScoreLiveFmt` porte le score personnel à l'instant
+   * lu (la cellule de score n'existe plus) ; `ammoHintFmt` dit les munitions de la main —
+   * compte, charge restante, ou pleines. Rien n'est composé quand rien n'est en main (D=2) :
+   * l'appelant (`model/handCellHint.ts`) ne l'appelle pas.
+   */
+  weaponStowedFmt: (name: string) => string
+  playerScoreLiveFmt: (score: number) => string
+  ammoHintFmt: (ammo: AmmoHint) => string
   /** Badge de lancer sur la fiche (le `.gic` du POC) : l'auteur est écrit dans le film. */
   grenadeThrown: string
   /** L'encadré de la fiche morte (option 2a) : le mot d'état, puis le décompte lu. */

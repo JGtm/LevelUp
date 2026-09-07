@@ -16,7 +16,8 @@
  *   mag/res sont des ancrages parasites du film (mesure 2026-08-24 : 46 cellules « 1/0 »
  *   sur le témoin, toutes sur ces familles). Elles affichent leur charge en POURCENTAGE
  *   écrit (« 87% », demande utilisateur du 2026-08-24 — pas une jauge) : 100% quand rien
- *   n'a été consommé — jamais un « 1/0 ».
+ *   n'a été consommé — jamais un « 1/0 ». La famille se reconnaît dans
+ *   `model/handCellHint.ts` (`isChargeWeapon`), partagé avec l'infobulle compacte.
  *
  * SEULE L'ARME EN MAIN garde ses munitions (règle de la fiche compacte, devenue LA fiche) :
  * les munitions d'une arme rangée ne se lisent que pour préparer une permutation, ce qui
@@ -33,6 +34,14 @@
  * l'affichage des CHARGES restantes s'y branche (compte lu, « plein » qualitatif, ou rien —
  * cf. `abilityChargeLogic.ts`), et l'extraction paie l'addition — ce fichier était à 4 lignes
  * de son plafond de 500.
+ *
+ * SUR LA TUILE COMPACTE (plan fiches compactes 2026-09-06, étape 3), la rangée ne rend que la
+ * GRENADE SÉLECTIONNÉE (14 px) et la CAPACITÉ (16 px) : pas de cellule de munitions
+ * (`showAmmo: false` — elles passent dans l'infobulle de l'arme, composée par la fiche), pas de
+ * boîte de stock (`showGrenadeStock: false` — le stock passe dans l'infobulle de la grenade,
+ * `grenadeBoxHint`), et AUCUNE marque en texte (`showInventoryMarks: false`, décision D5 :
+ * « sél. ? » dans l'infobulle de la grenade, « Mort » / « Inventaire indisponible » dans celle
+ * de l'arme, les charges dans celle de la capacité).
  */
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
@@ -40,11 +49,14 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { CatalogLabel } from '../i18n/catalogLabel'
 import type { CardGabarit } from '../model/cardGabarit'
 import type { EquippedReading } from '../model/equippedLogic'
+import { isChargeWeapon } from '../model/handCellHint'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import {
   grenadeBoxAt,
   grenadeBoxHint,
   grenadesCarriedFrom,
+  type GrenadeBox,
+  type GrenadeSelection,
   type InventoryEmptyState,
   inventoryAt,
   inventoryEmptyHint,
@@ -53,15 +65,13 @@ import {
 import { ReplayAbilityCell, StateMark } from './ReplayAbilityCell'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { familyOf } from '../layers/shotEffects'
 
 // LES LARGEURS FIXES DES CELLULES (munitions 32, boîte de grenades 56 — option 2a) ET LA
 // VIGNETTE DE GRENADE (14 px, la boîte est taillée dessus) VIENNENT DU GABARIT de la fiche
 // (`model/cardGabarit.ts`, 2026-09-06 : `ammoCellW`, `grenadesBoxW`, `iconGrenadePx`) — la
 // grille des fiches en dépend, et deux gabarits ne peuvent pas partager une constante locale.
 
-/** Les familles d'arme À CHARGE : pas de chargeur, une jauge (cf. en-tête). */
-const CHARGE_FX = new Set(['plasma', 'melee', 'light'])
+type ReplayText = (typeof REPLAY_TEXT)[ReplayLocale]
 
 export function ReplayInventoryRow({
   doc,
@@ -134,65 +144,79 @@ export function ReplayInventoryRow({
       // Chaque cellule porte donc l'âge de la lecture qui la décrit, et rien d'autre.
       title={ageTitle}
     >
-      <span
-        className="inline-flex shrink-0 items-center"
-        style={{ width: gabarit.ammoCellW, opacity: read ? freshness(read.age, readingFull, READING_FADE) : 1 }}
-      >
-        {equipped && ammo.length > 0 && (
-          equipped.drawn !== null ? (
-            <AmmoCell
-              ammo={ammo[equipped.drawn] ?? {}}
-              charge={CHARGE_FX.has(familyOf(drawnId ? doc.weaponLabels?.[drawnId]?.fx : undefined))}
-              fullLabel={t.ammoFullLabel}
-              drawnHint={t.ammoDrawnHint}
-              gaugeLabel={t.gaugeLabel}
+      {gabarit.showAmmo && (
+        <span
+          className="inline-flex shrink-0 items-center"
+          style={{ width: gabarit.ammoCellW, opacity: read ? freshness(read.age, readingFull, READING_FADE) : 1 }}
+        >
+          {equipped && ammo.length > 0 && (
+            equipped.drawn !== null ? (
+              <AmmoCell
+                ammo={ammo[equipped.drawn] ?? {}}
+                charge={isChargeWeapon(doc, drawnId)}
+                fullLabel={t.ammoFullLabel}
+                drawnHint={t.ammoDrawnHint}
+                gaugeLabel={t.gaugeLabel}
+              />
+            ) : !equipped.holstered && !empty ? (
+              // Sélecteur non lu : la cellule dit la lacune — armes rangées (D=2), elle,
+              // n'affiche RIEN : aucune arme en main, aucune munition à décrire.
+              //
+              // SAUF SUR UNE LECTURE VIDE : `equippedWeapons` y rend volontairement `drawnUnread`
+              // (aucune arme dégainée pour un joueur que l'artefact déclare mort), et le badge
+              // d'état en fin de rangée dit POURQUOI. Écrire « dégainée ? » à côté de « Mort »
+              // poserait une lacune là où la cause est connue.
+              <span className="border-b border-dashed border-border opacity-80">
+                {t.drawnUnknown}
+              </span>
+            ) : null
+          )}
+        </span>
+      )}
+      {gabarit.showGrenadeStock ? (
+        <span
+          className="inline-flex shrink-0 items-center gap-1 overflow-hidden"
+          // ÂGE PROPRE AUX GRENADES, comme pour la capacité et pour la même raison : l'axe
+          // `grenadeReads` ne tombe pas sur les images-clés de l'inventaire, l'estompage de
+          // l'inventaire ne le décrit donc pas. Un âge négatif est une lecture À VENIR : la
+          // valeur absolue estompe, l'infobulle dit « dans X s ».
+          style={{
+            width: gabarit.grenadesBoxW,
+            opacity: box ? freshness(box.age, readingFull, READING_FADE) : 1,
+          }}
+          title={box ? grenadeBoxHint(t, box, grenades, doc) : undefined}
+        >
+          {grenades.map((g) => (
+            <GrenadeChip
+              key={g.rank}
+              carried={g}
+              icon={grenadeMaskOf(doc.grenadeLabels?.[g.rank])}
+              iconPx={gabarit.iconGrenadePx}
+              selected={
+                typeof selected === 'object' && selected !== null && g.rank === selected.rank
+                  ? selected
+                  : null
+              }
+              t={t}
             />
-          ) : !equipped.holstered && !empty ? (
-            // Sélecteur non lu : la cellule dit la lacune — armes rangées (D=2), elle,
-            // n'affiche RIEN : aucune arme en main, aucune munition à décrire.
-            //
-            // SAUF SUR UNE LECTURE VIDE : `equippedWeapons` y rend volontairement `drawnUnread`
-            // (aucune arme dégainée pour un joueur que l'artefact déclare mort), et le badge
-            // d'état en fin de rangée dit POURQUOI. Écrire « dégainée ? » à côté de « Mort »
-            // poserait une lacune là où la cause est connue.
+          ))}
+          {selected === 'indeterminate' && (
             <span className="border-b border-dashed border-border opacity-80">
-              {t.drawnUnknown}
+              {t.grenadeSelUnknown}
             </span>
-          ) : null
-        )}
-      </span>
-      <span
-        className="inline-flex shrink-0 items-center gap-1 overflow-hidden"
-        // ÂGE PROPRE AUX GRENADES, comme pour la capacité et pour la même raison : l'axe
-        // `grenadeReads` ne tombe pas sur les images-clés de l'inventaire, l'estompage de
-        // l'inventaire ne le décrit donc pas. Un âge négatif est une lecture À VENIR : la
-        // valeur absolue estompe, l'infobulle dit « dans X s ».
-        style={{
-          width: gabarit.grenadesBoxW,
-          opacity: box ? freshness(box.age, readingFull, READING_FADE) : 1,
-        }}
-        title={box ? grenadeBoxHint(t, box, grenades, doc) : undefined}
-      >
-        {grenades.map((g) => (
-          <GrenadeChip
-            key={g.rank}
-            carried={g}
-            icon={grenadeMaskOf(doc.grenadeLabels?.[g.rank])}
-            iconPx={gabarit.iconGrenadePx}
-            selected={
-              typeof selected === 'object' && selected !== null && g.rank === selected.rank
-                ? selected
-                : null
-            }
-            t={t}
-          />
-        ))}
-        {selected === 'indeterminate' && (
-          <span className="border-b border-dashed border-border opacity-80">
-            {t.grenadeSelUnknown}
-          </span>
-        )}
-      </span>
+          )}
+        </span>
+      ) : (
+        <GrenadeSelectedCell
+          box={box}
+          grenades={grenades}
+          selected={selected}
+          doc={doc}
+          readingFull={readingFull}
+          iconPx={gabarit.iconGrenadePx}
+          t={t}
+        />
+      )}
       {/* LA CELLULE DE CAPACITÉ vit dans son propre fichier depuis le lot P6 (charges) :
           vignette à largeur fixe, puis compte de charges ou « plein » dans l'espace souple —
           elle garde son âge propre, sa lecture ne tombant pas sur les images-clés. */}
@@ -209,8 +233,9 @@ export function ReplayInventoryRow({
           colonnes des fiches restent alignées. Un badge inséré AVANT une cellule fixe décalerait
           toute la grille des fiches voisines dès qu'un joueur meurt — placé en DERNIER, il occupe
           la place libre de la rangée sans toucher à une seule largeur. Il est souple et tronqué
-          (« Inventaire indisponible » est long) : l'infobulle porte le texte entier. */}
-      {empty && read && (
+          (« Inventaire indisponible » est long) : l'infobulle porte le texte entier. Sur la
+          tuile compacte il n'a plus de place : il vit dans l'infobulle de l'arme (D5). */}
+      {gabarit.showInventoryMarks && empty && read && (
         <InventoryEmptyMark
           empty={empty}
           label={empty.kind === 'dead' ? t.inventoryDeadLabel : t.inventoryEmptyLabel}
@@ -243,6 +268,65 @@ function grenadeMaskOf(label: CatalogLabel | undefined): GrenadeIconRef | null {
 }
 
 /**
+ * GrenadeSelectedCell — la cellule FIXE de la tuile compacte : la vignette du SEUL type qui
+ * partira au prochain lancer, à l'encre `warning` du type équipé, sans compteur ni anneau (la
+ * place). Tout le reste passe dans l'infobulle : la provenance de la sélection (LUE dans le
+ * film, ou DÉDUITE d'un seul type porté — deux affirmations qui ne se confondent pas), le
+ * STOCK des types portés (`grenadeBoxHint`, réemployé tel quel) et son âge, et « sél. ? »
+ * quand plusieurs types sont portés sans sélecteur lu — la cellule reste alors VIDE, on ne
+ * devine pas laquelle partira. Sans lecture : vide, sans infobulle. Même estompage que la
+ * boîte : l'âge de la lecture de grenades.
+ */
+function GrenadeSelectedCell({
+  box,
+  grenades,
+  selected,
+  doc,
+  readingFull,
+  iconPx,
+  t,
+}: {
+  box: GrenadeBox | null
+  grenades: readonly { rank: number; name: string; count: number }[]
+  selected: GrenadeSelection
+  doc: ReplayDocumentReady
+  readingFull: number
+  iconPx: number
+  t: ReplayText
+}) {
+  const sel = typeof selected === 'object' && selected !== null ? selected : null
+  const chosen = sel ? (grenades.find((g) => g.rank === sel.rank) ?? null) : null
+  const title = !box
+    ? undefined
+    : [
+        chosen && sel ? `${chosen.name} — ${sel.read ? t.grenadeSelectedRead : t.grenadeSelected}` : null,
+        selected === 'indeterminate' ? t.grenadeSelUnknown : null,
+        grenadeBoxHint(t, box, grenades, doc),
+      ]
+        .filter((p): p is string => !!p)
+        .join(' · ')
+  const icon = chosen ? grenadeMaskOf(doc.grenadeLabels?.[chosen.rank]) : null
+  return (
+    <span
+      className="inline-flex shrink-0 items-center overflow-hidden"
+      style={{
+        width: iconPx,
+        opacity: box ? freshness(box.age, readingFull, READING_FADE) : 1,
+        color: chosen ? tokenCssVar('warning') : undefined,
+      }}
+      title={title}
+    >
+      {chosen &&
+        (icon ? (
+          <WeaponIcon imageUrl={icon.url} tinted={icon.tinted} label={chosen.name} width={iconPx} height={iconPx} />
+        ) : (
+          <span className="truncate">{chosen.name}</span>
+        ))}
+    </span>
+  )
+}
+
+/**
  * GrenadeChip — UN type de grenade porté : sa vignette, son compteur, et la marque du type
  * ÉQUIPÉ quand c'est lui qui partira au prochain lancer.
  *
@@ -263,7 +347,7 @@ function GrenadeChip({
   iconPx: number
   /** Non nul = c'est CE type qui est équipé ; `read` dit si la lecture ou la déduction l'établit. */
   selected: { rank: number; read: boolean } | null
-  t: (typeof REPLAY_TEXT)[ReplayLocale]
+  t: ReplayText
 }) {
   return (
     <span
