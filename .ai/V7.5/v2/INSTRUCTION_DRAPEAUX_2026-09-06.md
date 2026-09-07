@@ -468,13 +468,15 @@ est corrigee.
 
 ### Mesure — `64e8adfa`, la ou le P0 se voyait
 
-| | base `0930cc692` | HEAD revu `33aad602c` | **HEAD R1** |
+| | base du lot `0930cc692` | **parent immediat `33aad602c`** | **HEAD R1** |
 |---|---|---|---|
 | captures publiees sur le drapeau de LEUR AUTEUR | 1 | **2** (P0) | **0** |
 | portages sur son propre drapeau | 13 | 7 | **0** |
 | spans masques (1 frame + `dropped`) | 41 | 0 | 0 |
 | duree totale portee | 2 441 | 4 388 | **4 438** |
-| joueurs dont la duree BAISSE vs base | — | 0 | **0** |
+
+**LA BASE DE COMPARAISON DE CETTE RONDE EST LE PARENT IMMEDIAT** `33aad602c`, pas la base du lot :
+c'est contre lui que se juge ce que les corrections R1 ont change, et c'est lui qui portait le P0.
 
 Les **trois** captures de l'oracle sont desormais sur le drapeau adverse — y compris celle de
 472 578 ms, **deja fausse a la base** (le P1 preexistant que la revue mettait hors perimetre) :
@@ -519,6 +521,37 @@ M-H  les recouvrements redeviennent tous drapeaux confondus
 **M-G a d'abord SURVECU**, et c'est instructif : sur une carte a deux drapeaux, l'invariant dur ne
 laisse qu'un candidat et masque l'effet de `sol`. Le test a ete refait **sans equipe connue**, la
 seule facon d'isoler le constat C4 — l'invariant s'y tait, et c'est bien l'etat du sol qui tranche.
+
+### Corrections R2 — le maillon que personne ne gardait
+
+La ronde **DRAPEAUX-R2** declare C1 a C4 exacts (quatre mutations rouges, **0 portage sur son
+propre drapeau sur 88 spans controles exhaustivement**, 3 captures = oracle) et ne laisse qu'un
+constat, **W1 (P1, test seul)** : supprimer la ligne `TeamOf: in.TeamOf` d'`attachFlagCarries`
+(`build_objectives_live.go:162`) laissait les **166 paquets verts**. La table des equipes traverse
+DEUX maillons — `replaybuild` -> `FlagInput`, puis `FlagInput` -> `FlagCarryScan` — et les deux
+garde-rails du lot ne couvraient que le premier. C'est exactement le chainon qui s'etait tu au
+premier essai R1.
+
+`TestAttachFlagCarriesDescendLesEquipesJusquAuScan` exerce `attachFlagCarries` sur un film
+synthetique (records du statborg, bursts, socles, pont pose, `TeamOf` peuple) et verifie non pas
+un champ — il est interne — mais son **EFFET** : l'invariant a refuse. Mutation jouee :
+
+```
+W1  la ligne « TeamOf: in.TeamOf » retiree d attachFlagCarries
+    --- FAIL: TestAttachFlagCarriesDescendLesEquipesJusquAuScan
+        ownFlagRefused = 0, attendu 1 : la table des equipes n a pas atteint le calque
+        drapeau d equipe 0 porte par [2 3], attendu [2]
+```
+
+### Observation O1 de la ronde R2 — trois durees baissent contre le PARENT, et c'est une defusion
+
+Contre `33aad602c`, trois xuid de `64e8adfa` perdent de la duree publiee : **612 -> 596**,
+**810 -> 464**, **552 -> 142**. Ce n'est **pas une perte de donnee** : au parent, ces joueurs
+portaient — a tort — le drapeau de leur PROPRE equipe, et deux spans du meme joueur sur deux
+drapeaux differents se cumulaient dans la somme par xuid. L'invariant les ramene sur un seul
+drapeau ; l'artefact de rendu que la faute d'attribution creait **se defait**, et la duree publiee
+redescend a ce que le film dit. Le total du film MONTE (4 388 -> 4 438) et aucune duree ne baisse
+contre la base du lot `0930cc692` — c'est bien le portage fautif, et lui seul, qui disparait.
 
 ## 9. Decouvertes, notees et NON traitees
 
