@@ -92,7 +92,15 @@ qui restent déduits sont publiés comme tels (provenance). Les flux non décod�
 états de mode, roster, horloge) font l'objet d'un plan DÉCODEUR séparé après v7.5.0 et le déplacement sous
 `games/halo_infinite/film/` : un item par flux, additif (nouveau type d'enregistrement lu, jamais une réécriture),
 mesuré par la part de liens directs dans la provenance, sous les garde-rails existants (corpus `gamefiles`, goldens).
-- [ ] P1 — Inventaire (journal, avant tout code) : pour chaque entité que le décodeur expose déjà (index de joueur,
+- [x] P1 — Inventaire (journal, avant tout code) — **RENDU le 2026-09-07 :
+      `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`** (branche `feat/p1-inventaire`, aucun code touché).
+      Neuf entités inventoriées, axes (a) à (j) statués, séquençage P2-P5 posé, questions ouvertes assorties de
+      leur témoin. **VERDICT ROSTER (axe d) : NON — le film ne porte pas les entrées/sorties de joueurs
+      (ti=5 i18/i19 décodés mais sans flux : 163 et 105 lectures sur 22 films) ; S.3 se fera par calage
+      `real_start_time` / `t0_quality`, APRÈS P2.** L'amendement du §0.7 exigé par la décision D11
+      (`.ai/PLAN_ORCHESTRATION_2026-09-07.md` §1.2 condition 2) est rédigé mot pour mot au §2 (j) de
+      l'inventaire : **il se porte ici au premier commit de P2**, pas avant. Énoncé d'origine, conservé :
+      pour chaque entité que le décodeur expose déjà (index de joueur,
       slot de bipède, objet d'objectif, véhicule, arme au sol, équipement, socle/zone) : son identifiant dans le film,
       sa durée de vie (création/replacement/destruction, frontières de manche), les liens DIRECTS que le film donne
       (porteur ↔ objet, occupant ↔ véhicule, objet ↔ équipe propriétaire, objet ↔ socle) et les liens que seul un
