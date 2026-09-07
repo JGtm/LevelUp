@@ -100874,3 +100874,23 @@ utilisateur prealable requis, regle CLAUDE.md n°16). Pages a verifier a l'ecran
 l'utilisateur (parite FR/EN) : Match View (en-tete + ecran de fin du rejeu 2D), Explorer
 (export CSV), historique des parties, Carriere (top matchs), accueil (tuiles de matchs
 recents).
+
+## [2026-09-07] Orchestration — cloture de la vague 1 (Complete)
+- Six lots fusionnes dans la branche d'integration `wt/orchestration-0907` au-dessus de
+  `666b02d17` (mojibake, flakes CI, issue par cle canonique, dette mecanique du rejeu, peintre
+  de chaleur unique, cloture Tactique) : zero conflit de code, conflits docs seulement (plan
+  d'orchestration : version du superviseur ; autres `.ai` : union).
+- Gates de fin de vague, tous exit 0 : gofmt, build, vet, unit (analysis/service/domain/api/
+  archlint/games/platform/replaybuild/notify/sync/persist), integration `-p 1` (sync, persist,
+  migration, wire), test film reel `TestKillSourceFaitsDIsolementFilmReel` PASS en 21 s sur
+  `data/cache/film_chunks` du poste principal, `openapi-gen -check`, golangci-lint 0 issue ;
+  web : npm ci, typecheck, lint 0 erreur, vitest 654 fichiers / 6 986 tests, couleurs, libelles,
+  `generated.ts` a jour.
+- Revue adversariale UNIQUE (Sonnet, contexte frais, diff cumule 163 fichiers) :
+  `.ai/V7.5/REVUE_VAGUE1_2026-09-07.md` — P0 0, P1 1, P2 7. Le P1 (trois copies du motif
+  « texte — echantillon faible », deux separateurs) est corrige dans la meme branche :
+  `lib/formatters/lowSampleNote.ts` (`withLowSampleNote`), trois sites migres, garde-rail
+  `lowSampleNote.guard.test.ts` (mutation jouee : une copie dans features/ -> rouge). Les P2
+  restent au rapport (dette consignee, non traitee).
+- Prochaine etape : avance rapide de `feat/v75`, push, UN controle de CI ; puis vague 2
+  (M2 et M6 deja livres, restent M1, M3, M4, M5).

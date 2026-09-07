@@ -23,6 +23,7 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import type { TacticalRaster } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
+import { withLowSampleNote } from '@/lib/formatters/lowSampleNote'
 import type { Locale } from '@/lib/i18n/locale'
 
 import type { TacticalText } from './i18n'
@@ -208,9 +209,9 @@ function buildKpiCards(t: TacticalText, locale: Locale, data: TacticalRaster): K
 }
 
 /**
- * kpiSecondaryWithReserve — accole la réserve d'échantillon faible au sous-titre,
- * MÊME FORME que `SquadEchangeKpi.tsx` pour la même mesure d'échange (le drapeau
- * `echantillon_faible` interdit de comparer la valeur, il ne la cache pas).
+ * kpiSecondaryWithReserve — accole la réserve d'échantillon faible au sous-titre, par la
+ * forme unique du dépôt (`withLowSampleNote`, même source que `SquadEchangeKpi.tsx` : le
+ * drapeau `echantillon_faible` interdit de comparer la valeur, il ne la cache pas).
  */
 function kpiSecondaryWithReserve(
   t: TacticalText,
@@ -218,6 +219,5 @@ function kpiSecondaryWithReserve(
   n: number,
   echantillonFaible: boolean,
 ): string {
-  const base = t.kpiSecondary(brut, n)
-  return echantillonFaible ? `${base} — ${t.lowSample}` : base
+  return withLowSampleNote(t.kpiSecondary(brut, n), echantillonFaible, t.lowSample)
 }
