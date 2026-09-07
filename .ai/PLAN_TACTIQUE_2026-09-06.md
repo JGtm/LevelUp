@@ -854,17 +854,42 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
   typecheck, lint, vitest `tactical`, couleurs, imports croises (plafond 7/7 : les helpers
   d Explorateur/Escouade necessaires descendent dans `lib/` ou `features/_shared/`), manifestes.
 
-### Phase 5 — Vue d'analyse, lectures SQL, drilldown — GELEE JUSQU'AU LOT D
-- [ ] 5.1 Peintre partage dans `lib/replay/` (selon D.13), extrait de `heatmapLayer.ts`,
-      garde-rail grep contre une seconde implementation du noyau
-- [ ] 5.2 `tacticalScope.ts` (usePageScope) ; barre d'outils ; titre « Plan de <carte> — <question> »
-- [ ] 5.3 `KPIStrip` : matchs retenus, couverture, morts isolees, echange « sur cette carte »
-- [ ] 5.4 `SectionCard` « Plan » : canvas + legende ; `footer` = unite, planchers, source
-- [ ] 5.5 `?frame=` sur la route du rejeu, selon le modele D.6/D.8 (playbackStore)
-- [ ] 5.6 `SectionCard` « Cellule selectionnee » : contributeurs, lien `?frame=` ; **liste
-      filtree par l'ownership XUID** (ADR 0029) ; `footer` = matchs comptes non ouvrables
-- **Gate** : typecheck + vitest ; test pur de `tacticalLogic.ts` ; smoke canvas ; garde-rail
-  du peintre ; filtrage d'acces ; `?frame=` positionne le rejeu ; couleurs.
+### Phase 5 — Vue d'analyse, lectures SQL, drilldown — CLOSE 2026-09-07 (5.5 reportee)
+- [x] 5.1 Peintre partage `heatPaint.ts` (copie adaptee de `heatmapLayer.ts` : cellules
+      pre-agregees par le serveur, pas de points bruts a accumuler) ; fusion dans
+      `lib/replay/` reportee avec 5.5 (meme dependance : le lecteur du lot D).
+- [x] 5.2 `TacticalToolbar.tsx` (question / qui / spawn, etat local — aucun
+      `validateSearch` ne portait ces trois reglages) ; titre H2 « Plan de <carte> —
+      <question> » (`tacticalView.logic.pageTitle`).
+- [x] 5.3 `KPIStrip` (`TacticalAnalysisView.buildKpiCards`) : matchs retenus, couverture,
+      echange « sur cette carte », morts isolees — echange/isolement OMIS (pas une carte
+      a 0 %) quand le contrat ne les publie pas pour la question courante.
+- [x] 5.4 `TacticalPlanCard.tsx` : canvas (fond + `drawTacticalHeatmap`) cadre a
+      l'aspect-ratio DU MONDE (bornes du raster, jamais 16:9 fixe — sinon `object-cover`
+      desalignerait fond et calque) ; `footer` = unite (par question) + plancher
+      (`TACTICAL_CELL_FLOOR = 3`, meme seuil que le serveur) + source (artefact de rejeu
+      pour temps/routes, journal des morts sinon) ; bandeaux « en attente » / « non
+      disponible » (les deux peuvent coexister) ; `EmptyStateNotice` si 0 cellule.
+- [!] 5.5 `?frame=` sur la route du rejeu (modele D.6/D.8, playbackStore) — DEPEND DU
+      LOT D, non ouvert. `CelluleTactique` (contrat) ne publie qu'un COMPTE de matchs
+      contributeurs, aucun identifiant de match : rien a quoi lier tant que ce contrat ne
+      change pas cote Go non plus.
+- [x] 5.6 `TacticalCellCard.tsx` : valeur + unite, nombre de matchs contributeurs QUAND
+      la cellule le porte (`CelluleTactique.matchs`) ; `EmptyStateNotice` sans selection.
+      **PERIMETRE REDUIT** vs l'intitule original (« contributeurs, lien `?frame=`, liste
+      filtree ownership ») : ces trois elements exigent une liste de match_id PAR
+      CELLULE que le contrat ne publie pas — reportes avec 5.5, meme cause.
+- **Gate** : typecheck + `npm run lint` (0 erreur, 30 warnings inchange) + vitest complet
+  (608 fichiers / 6432 tests / 0 fail, dont `tacticalView.logic.test.ts` — titre par
+  question/locale, message attente/indisponible/coexistence, cellule depuis un clic,
+  unite par question — et `TacticalAnalysisView.test.tsx` — attente, echec, vide,
+  nominal) ; couleurs (`lint-no-hardcoded-colors` 0 violation) ; libelles (`lint-no-
+  hardcoded-fields` 0 violation) ; garde-rail anti-anglicismes (corrige : "kills par
+  match" -> "frags par match", vocabulaire deja etabli ailleurs dans le depot) ; garde-
+  rail titleSlug des query keys (corrige : `tacticalRaster`, ajoute par le placeholder,
+  n'etait classe nulle part) ; `?frame=` HORS PERIMETRE (5.5 reportee) ; smoke canvas
+  HORS PERIMETRE (pas de test canvas : jsdom n'implemente pas le contexte 2D, regle
+  ecrite dans le brief de cette passe).
 
 ### Phase 6 — Rasters par match a la cuisson + rattrapage — CLOSE 2026-09-06, revue ronde 1 SOLDEE (14 constats)
 - [x] 6.0 `analysis/tactical/tracks.go` (293 L, PUR — avance de la phase 7) :
@@ -1483,6 +1508,31 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-07 : **phase 5 CLOSE (5.2-5.4, 5.6 ; 5.5 reportee au lot D).** Le placeholder
+  laisse par la passe precedente (17 L) est remplace par la vue reelle :
+  `TacticalToolbar.tsx` (question / qui / spawn en `useState` local — aucune route ne
+  porte encore ces trois reglages), `TacticalPlanCard.tsx` (canvas fond + calque de
+  chaleur, cadre a l'aspect-ratio DU MONDE — bornes du raster, jamais 16:9 fixe, sinon
+  `object-cover` desalignerait fond et cellules au clic), `TacticalCellCard.tsx`,
+  `tacticalView.logic.ts` (titre, unite, source, messages de statut, cellule depuis un
+  clic — tout pur, teste seul). **Reduction de perimetre assumee sur 5.6** : le contrat
+  `CelluleTactique` ne publie qu'un COMPTE de matchs contributeurs, jamais leurs
+  identifiants — « contributeurs + lien `?frame=` + liste filtree ownership » exige donc
+  la meme dependance que 5.5 (playbackStore, lot D) et est reportee avec elle, pas
+  simulee. **KPI omis plutot que faux** : `echange`/`isolement` sont des champs optionnels
+  du contrat (une question qui ne les mesure pas ne les publie pas) — la tuile
+  correspondante est absente, jamais affichee a 0 % (ce qui affirmerait une mesure qui
+  n'existe pas). Deux gardes preexistants trouves casses par le PLACEHOLDER de la passe
+  precedente (commit `a395fa78f`), corriges ici car ils bloquaient le gate de cette meme
+  feature : `TacticalPage.test.tsx` attendait encore l'ancien comportement de la grille
+  (vignette « pressee ») alors que le retour anticipe vers `TacticalAnalysisView` existait
+  deja dans ce commit ; et `keys.title-slug.guard.test.ts` n'avait jamais classe la
+  fabrique `tacticalRaster` que ce meme commit avait ajoutee. Un anglicisme corrige au
+  passage (« kills par match » -> « frags par match », vocabulaire deja etabli dans
+  `common.toml`/`frags.toml`). Gate complet rejoue : typecheck vert, lint 0 erreur (30
+  warnings inchange), vitest COMPLET 608 fichiers / 6432 tests / 0 fail (dont les deux
+  fichiers de tests neufs de cette passe), couleurs et libelles 0 violation. Details :
+  `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`.
 - 2026-09-07 : **revue adversariale ronde 1 de la phase 7A — 16 constats, TOUS corriges** en 3 commits `tactique(7.8.<n>)`. Les trois P0 disent la meme chose sous trois formes : **on affirmait ce qu'on ne savait pas**. Un coequipier INVISIBLE — en vehicule non attribue, ou survivant de fin de partie dont la derniere vie est anonyme — etait compte MORT, si bien qu'une mort survenue a trois metres d'un coequipier sortait « isolee » sous l'etiquette « toute l'equipe a terre » ; une mort dont le film ne dit pas le lieu etait peinte au point de MONTEE dans le vehicule ; et les matchs dont la variante n'a pas de rayon restaient au denominateur, divisant la mesure par des matchs qu'on avait refuse de lire (troisieme occurrence du defaut deja corrige deux fois sous « correction G2 »). Le sidecar porte desormais un STATUT a trois valeurs par voisin, et la lecture distingue quatre sorties qui ne se confondent plus : accompagnee, isolee, indeterminee, equipe a terre. **Le second fil du lot est un garde qui ne gardait rien** : `EndFrame > StartFrame` etait vrai de toute piste de deux frames (le producteur ecrit toujours les bornes) — ce qui garantit qu'une vie est close par une mort, c'est le NOMMAGE, verifie sur pieces ; et le filtre `spawn` ne vivait que dans la branche des sidecars, rendant 200 sur l'univers entier sous un libelle de grappe pour les lectures SQL. **Et ce qui rendait ce dernier defaut invisible etait le double lui-meme** : le mock du port ignorait la liste blanche que le vrai lecteur applique dans son SELECT. Le rendre fidele a immediatement revele deux fixtures fausses. Table du radar completee aux 48 variantes connues, avec un test de couverture qui a mordu a l'ecriture. Gate complet rejoue (integration `-p 1`, EXIT 0 ; vitest complet 606/6405/0), ONZE mutations jouees, dont une SURVIVANTE corrigee.
 - 2026-09-06 : **phase 7A CLOSE (Go pur + sidecar v3 + service + contrat) ; 7B rendue pour revue.** La verification sur pieces a decide de toute la forme : le document de rejeu ne publie AUCUNE liste de morts datees par joueur (`neutralDeaths` ne couvre que les morts non revendiquees), si bien que la seule source hors ligne de « ce joueur est mort a cet instant » est la fin d'une vie NOMMEE — fiable par construction, puisque c'est le fil des morts qui pose l'identite de la victime sur la vie que sa mort termine, et que les survivants restent anonymes. Et parce que le film NE PORTE PAS LES EQUIPES, l'isolement se calcule en DEUX TEMPS : la cuisson mesure la distance a chaque autre joueur nomme vivant, la lecture joint les camps et applique le rayon du match. Trois decisions de mesure portent le lot. (1) **Le plancher des grappes porte sur l'AMAS, pas sur la cellule** : a 0,5 m, trois reapparitions de trois matchs tombent dans trois cellules voisines — un plancher par cellule aurait fait disparaitre tous les spawns du jeu. (2) **L'identifiant d'une grappe est une POSITION, pas un rang** : un index change des qu'un match entre dans le filtre, et le lien `?spawn=` d'un utilisateur designerait un autre amas. (3) **Les routes comptent des PASSAGES, pas du temps**, sans quoi elles rendraient la carte de « ou je passe mon temps » simplement bornee a 15 s. Le rayon du radar entre dans `regulation.toml [radar_range_m]` (18 m Arene / 24 m BTB, source utilisateur du 2026-09-05), avec le chargeur existant et la convention de cle des quatre tables voisines ; une variante absente ne rend PAS de lecture et se compte. Deux seuils corriges que le ratchet CI ne peut pas voir — complexite du chargeur (les quatre tables d'entiers se validaient pareil) et `domain/tactical.go` scinde, la coupure que le §7 de la phase 6 avait deja identifiee. Gate complet vert, ONZE mutations jouees, dont une SURVIVANTE corrigee (le test de stabilite de l'identifiant ne prouvait pas ce qu'il annoncait).
 - 2026-09-06 : **revue adversariale ronde 1 de la phase 6 — 14 constats, TOUS corriges** en 4 commits `tactique(6.5.<n>)`. Le P1 qui compte est un defaut de MESURE, pas de code : **le temps passe en vehicule n'entrait nulle part, sur des matchs comptes comme MESURES**. La cuisson coupe une vie des qu'un trou depasse 5 s ; un occupant embarque cesse de repliquer son bipede, et ces episodes durent 13 a 36 s en mediane — le reechantillonnage ne pouvait donc structurellement pas les voir, et l'en-tete justifiait le mecanisme par un cas (« immobile quinze secondes ») que la coupe des vies rend INATTEIGNABLE : doc inversee sur la lacune meme qu'elle masquait. Corrige en ATTRIBUANT sans inventer — pendant un episode l'occupant est a la position du vehicule, un episode sans point de vehicule n'attribue rien, et un embarquement ne cree jamais de spawn. Schema du sidecar 1 -> 2, lacune residuelle (15,6 a 21,1 % des vies attribuees) ECRITE dans le contrat. Les quatre autres P1 disent la meme chose autrement : **un garde qui ne garde pas ce qu'il croit**. Le ratchet anti-cuisson ignorait `SpawnBuildOne`, que la CLI pouvait deja appeler ; le remede que le service PRESCRIT dans son avertissement etait un no-op sur exactement les sidecars qu'il ecartait ; l'echange sous `temps` etait une decision jamais prouvee ; et la ligne de cablage qui fait naitre les sidecars a la cuisson n'etait traversee par aucun test. Une mesure a corrige une croyance au passage : `points_ignores` est structurellement NUL aujourd'hui, `replay.Point` etant en float32 et JSON ne pouvant exprimer aucune valeur non finie — le fait est fige par un test plutot que redecouvert comme un bug. Decision produit prise : un artefact purge emporte son sidecar. Gate complet rejoue (integration `-p 1` sur trois arbres, code 0 ; vitest complet 606/6405/0), VINGT mutations jouees.

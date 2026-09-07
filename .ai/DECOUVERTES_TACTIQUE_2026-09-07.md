@@ -36,3 +36,26 @@ ce fichier prend le relais a partir de 7C et recoit toute nouvelle decouverte.
 - 2026-09-07 ; `api/wire/registry.go` + `cmd/server/main.go:1421` + `api/server_apiv1.go` ;
   `settingsStore.Load()` en erreur se degrade en silence chez deux appelants (dont le cron de purge :
   settings illisible = retention illimitee = purge desactivee sans un mot). Reprise : WARN.
+
+## Phase 5 — vue d'analyse (branche `feat/tactique`, worktree dedie, HEAD `a395fa78f`)
+
+- 2026-09-07 ; `apps/web/src/lib/api/types.ts` (schema `TacticalRaster`) ; `matchs_sans_rayon`
+  et `morts_equipe_a_terre` sont publies par le contrat mais non consommes par la vue (hors
+  perimetre du brief 5.2-5.6). `matchs_sans_rayon` ressemble a la meme reserve que
+  `Couverture.echantillon_faible` (matchs dont la variante n'a pas de rayon connu, ecartes de
+  la mesure d'isolement) — pourrait justifier une note de couverture sur la tuile KPI
+  « Morts en isolement ». NON TRAITE.
+- 2026-09-07 ; `apps/web/src/features/tactical/TacticalPlanCard.tsx` ; le canvas est peint a
+  `k = 1` (pas de `devicePixelRatio`), plus simple que `heatmapLayer.ts` (`k = dpr`, cf.
+  `useReplayHeatmap.ts`) — bords de cellule moins nets sur ecran haute densite. Choix de
+  portee assume pour cette passe, pas un defaut fonctionnel. NON TRAITE.
+- 2026-09-07 ; `apps/web/src/features/tactical/TacticalPage.test.tsx:183` ; le test « la carte
+  selectionnee dans l'URL est marquee comme telle » attendait encore l'ANCIEN comportement
+  (grille + vignette « pressee ») alors que le placeholder de la phase 5 (commit `a395fa78f`)
+  avait deja pose le retour anticipe qui affiche `TacticalAnalysisView` a la place de la
+  grille — cassE des ce commit, non detecte a l'epoque. CORRIGE dans cette passe (bloquait le
+  gate de la feature qu'elle teste).
+- 2026-09-07 ; `apps/web/src/lib/query/keys.title-slug.guard.test.ts` ; la fabrique
+  `tacticalRaster` (ajoutee par le placeholder, commit `a395fa78f`) n'etait classee ni
+  title-scopee ni agnostique — completude du garde-rail rompue des ce commit, non detectee a
+  l'epoque. CORRIGEE dans cette passe (bloquait le gate).

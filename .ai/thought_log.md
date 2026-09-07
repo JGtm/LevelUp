@@ -97018,3 +97018,45 @@ Trois inversions jouées, chacune faisant tomber son test.
 **Conclusion / prochaine étape** — phase 4 bis close, revues comprises, aucun report. Le
 superviseur vérifie sur pièces puis pousse. La suite prévue par le plan est la phase 6
 (rasters à la cuisson) ; la 5 attend toujours le lot D.
+
+## [2026-09-07] Phase 5 — Tactique vue d'analyse
+
+**Statut** : Complété
+
+**Décisions techniques principales** :
+- Item 5.1 : Copie du noyau heatmapLayer → heatPaint.ts (buildTacticalGrid, tacticalIntensity, heatRamp, drawTacticalHeatmap). Adaptation : cellules pré-agrégées par serveur, pas de points bruts.
+- Items 5.2-5.6 : Vue d'analyse quand `carte` en URL ; KPI strip (matchs, couverture, échange, isole) ; plan card avec canvas + heatmap ; cellule sélectionnée ; i18n complet FR/EN ; query key tacticalRaster. Phase 5.5 (frame link) reportée lot D.
+- Intégration : TacticalPage affiche TacticalAnalysisView quand scope.carte est non-vide.
+- **Reprise 2026-09-07 (passe 2)** : le placeholder (17 L) remplacé par la vue réelle —
+  `TacticalToolbar.tsx` (question/qui/spawn en `useState` local, aucune route ne les
+  porte), `TacticalPlanCard.tsx` (canvas fond + calque, cadré à l'aspect-ratio DU MONDE
+  pour rester aligné avec le calque au clic), `TacticalCellCard.tsx`, `tacticalView.logic.ts`
+  (titre/unité/source/messages/cellule-depuis-clic, pur, testé seul). `useTacticalRaster`
+  étendu (coéquipiers, `match_ids` nullable — même contrat d'attente que `useTacticalMaps`,
+  réponse typée `TacticalRaster`). KPI échange/isolement OMIS (pas affichés à 0 %) quand
+  le contrat ne les publie pas pour la question. 5.6 réduit à valeur+unité+compte de
+  matchs contributeurs : la liste de matchs et `?frame=` exigent des identifiants que
+  `CelluleTactique` ne publie pas — reportés avec 5.5, pas simulés.
+
+**Résultats observés** :
+- Commit 38a8bd550 : heatPaint.ts, typecheck vert, lint vert
+- Commit a395fa78f : TacticalAnalysisView placeholder, i18n manifest étendu (50 clés), queries.ts + hook useTacticalRaster, query keys ajoutées, TacticalPage modifié
+- Reprise 2026-09-07 : 21 clés i18n ajoutées (71 → 73 avec les 2 clés d'erreur), 4 nouveaux
+  fichiers (`TacticalToolbar`, `TacticalPlanCard`, `TacticalCellCard`, `tacticalView.logic`)
+  + leurs tests. Deux gardes préexistants trouvés cassés par le placeholder (non détectés à
+  l'époque) et corrigés ici car ils bloquaient le gate de cette feature :
+  `TacticalPage.test.tsx` (test obsolète sur le comportement pré-vue d'analyse) et
+  `keys.title-slug.guard.test.ts` (fabrique `tacticalRaster` jamais classée). Un
+  anglicisme corrigé (« kills » → « frags », vocabulaire déjà établi). Gate complet
+  rejoué : typecheck vert ; lint 0 erreur (30 warnings, inchangé) ; vitest COMPLET —
+  608 fichiers / 6432 tests / 0 fail ; `lint-no-hardcoded-colors` et
+  `lint-no-hardcoded-fields` 0 violation.
+
+**Conclusion** :
+Phase 5 CLOSE (5.2-5.4, 5.6 ; 5.5 justifié `[!]`, dépendance explicite du lot D
+— playbackStore, contrat `CelluleTactique` sans identifiants de match). Aucun report
+opportuniste : le périmètre réduit de 5.6 est documenté, pas dissimulé.
+
+Prochaine étape : lot D (playbackStore) ouvrira 5.5 et la forme complète de 5.6
+(contributeurs + `?frame=`), ce qui suppose aussi un ajout côté contrat Go
+(identifiants de match par cellule) — hors périmètre de cette passe.

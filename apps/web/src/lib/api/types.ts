@@ -3084,3 +3084,14 @@ export type TacticalMapCard = components['schemas']['TacticalMapCard']
 // ici, au lieu de se découvrir à l'exécution sur une grille vide.
 export type TacticalMapsBody = components['schemas']['TacticalMapsBody']
 export type TacticalRasterBody = components['schemas']['TacticalRasterBody']
+
+// La RÉPONSE du raster de placement (vue d'analyse, phase 5) : cellules pré-agrégées par le
+// serveur (bornes, pas de grille, échelle p50/p95), grappes de réapparition nommées, et les
+// compteurs de couverture (matchs retenus/en attente/non cuisables) que la vue doit afficher
+// TELS QUELS — jamais recalculés côté client, même règle que le plancher de la grille.
+export type TacticalRaster = components['schemas']['TacticalRaster']
+export type CelluleTactique = components['schemas']['CelluleTactique']
+export type BornesMonde = components['schemas']['BornesMonde']
+export type EchelleTactique = components['schemas']['EchelleTactique']
+export type TacticalCouverture = components['schemas']['Couverture']
+export type TacticalGrappe = components['schemas']['TacticalGrappe']

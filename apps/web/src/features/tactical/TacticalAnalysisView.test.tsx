@@ -1,0 +1,170 @@
+/**
+ * TacticalAnalysisView — la vue d'analyse d'une carte (items 5.2-5.6).
+ *
+ * Ce que ces tests cadenassent, `useTacticalRaster` MOQUÉ (la lecture réseau est déjà
+ * couverte côté contrat par les tests Go et par `queries.ts`) :
+ *   - EN ATTENTE (`isPending`) -> un indicateur de chargement, aucun KPI ;
+ *   - EN ÉCHEC (`isError`) -> le message d'échec, aucun KPI ;
+ *   - VIDE (réponse reçue, aucune cellule au-dessus du plancher) -> le message du
+ *     plancher dans la carte « Plan », le bandeau de KPI reste servi ;
+ *   - NOMINAL -> les quatre tuiles de KPI, le canevas du plan, le placeholder de la
+ *     carte « Cellule sélectionnée » tant qu'aucune cellule n'est cliquée.
+ *
+ * PAS DE TEST CANVAS (jsdom n'implémente pas le contexte 2D) : `TacticalPlanCard` garde
+ * son `if (!ctx) return`, ces tests ne vérifient que le rendu React autour.
+ */
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { screen } from '@testing-library/react'
+import type { UseQueryResult } from '@tanstack/react-query'
+
+import type { TacticalRaster } from '@/lib/api/types'
+import { renderWithProviders } from '@/test/render-utils'
+
+import { getTacticalText } from './i18n'
+import { TacticalAnalysisView } from './TacticalAnalysisView'
+
+const getBlob = vi.fn()
+vi.mock('@/lib/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/client')>()
+  return {
+    ...actual,
+    api: { ...actual.api, getBlob: (path: string) => getBlob(path) },
+  }
+})
+
+const useTacticalRaster = vi.fn()
+vi.mock('./queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./queries')>()
+  return { ...actual, useTacticalRaster: (...args: unknown[]) => useTacticalRaster(...args) }
+})
+
+const t = getTacticalText('fr')
+
+const BORNES = { min_x: 0, max_x: 100, min_y: 0, max_y: 50, valide: true }
+
+const RASTER_NOMINAL: TacticalRaster = {
+  map_id: 'streets',
+  question: 'morts',
+  qui: 'moi',
+  bornes: BORNES,
+  pas_m: 10,
+  echelle: { p50: 1, p95: 5, borne: 5, n_cellules: 2, symetrique: false },
+  cellules: [
+    {
+      col: 2,
+      lig: 1,
+      valeur: 3,
+      brut: 3,
+      matchs: 4,
+      matchs_victoire: 2,
+      matchs_defaite: 2,
+      centre_x: 25,
+      centre_y: 15,
+    },
+    {
+      col: 5,
+      lig: 2,
+      valeur: 5,
+      brut: 5,
+      matchs: 6,
+      matchs_victoire: 3,
+      matchs_defaite: 3,
+      centre_x: 55,
+      centre_y: 25,
+    },
+  ],
+  echange: { taux: 0.42, brut: 21, n: 50, par_match: 0.4, echantillon_faible: false },
+  isolement: { taux: 0.18, brut: 9, n: 50, par_match: 0.18, echantillon_faible: false },
+  grappes: [{ id: 'g1', nom_fr: 'Base Rouge', nom_en: 'Red Base', matchs: 10, x: 10, y: 10 }],
+  matchs_filtres: 50,
+  matchs_retenus: 45,
+  matchs_victoire: 20,
+  matchs_defaite: 25,
+  matchs_en_attente: 0,
+  matchs_non_cuisables: 0,
+  evenements_journal: 500,
+  evenements_localises: 480,
+  points_ignores: 0,
+}
+
+const RASTER_VIDE: TacticalRaster = {
+  ...RASTER_NOMINAL,
+  cellules: [],
+  echelle: { p50: 0, p95: 0, borne: 0, n_cellules: 0, symetrique: false },
+  echange: undefined,
+  isolement: undefined,
+  matchs_retenus: 2,
+}
+
+function mockRaster(partial: Partial<UseQueryResult<TacticalRaster>>) {
+  useTacticalRaster.mockReturnValue({
+    data: undefined,
+    isPending: false,
+    isError: false,
+    ...partial,
+  } as UseQueryResult<TacticalRaster>)
+}
+
+function renderVue() {
+  return renderWithProviders(
+    <TacticalAnalysisView
+      playerSlug="JGtm"
+      mapId="streets"
+      mapName="Ruelles"
+      locale="fr"
+      t={t}
+      matchIds={['m1', 'm2']}
+      coequipiers={[]}
+    />,
+  )
+}
+
+afterEach(() => {
+  vi.clearAllMocks()
+})
+
+describe('TacticalAnalysisView — états de la lecture', () => {
+  it('EN ATTENTE : un indicateur de chargement, aucun KPI', () => {
+    mockRaster({ isPending: true })
+    renderVue()
+    expect(screen.getByTestId('tactical-analysis-pending')).toBeInTheDocument()
+    expect(screen.queryByTestId('kpi-strip')).not.toBeInTheDocument()
+  })
+
+  it('EN ÉCHEC : le message d’échec, aucun KPI', () => {
+    mockRaster({ isError: true })
+    renderVue()
+    expect(screen.getByText(t.analysisErrorTitle)).toBeInTheDocument()
+    expect(screen.queryByTestId('kpi-strip')).not.toBeInTheDocument()
+  })
+
+  it('VIDE : le message du plancher dans la carte Plan, le KPI reste servi', () => {
+    mockRaster({ data: RASTER_VIDE })
+    renderVue()
+    expect(screen.getByText(t.planEmptyTitle)).toBeInTheDocument()
+    expect(screen.getByTestId('kpi-strip')).toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-plan-canvas')).not.toBeInTheDocument()
+  })
+
+  it('NOMINAL : les KPI, le canevas du plan, le placeholder de la cellule', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    renderVue()
+
+    expect(screen.getByTestId('kpi-strip')).toBeInTheDocument()
+    const cartes = screen.getAllByTestId('kpi-card')
+    expect(cartes).toHaveLength(4) // retenus, couverture, échange, isolement
+
+    expect(screen.getByTestId('tactical-plan-canvas')).toBeInTheDocument()
+    expect(screen.getByText(t.cellPlaceholder)).toBeInTheDocument()
+
+    expect(
+      screen.getByRole('heading', { name: 'Plan de Ruelles — Où je meurs' }),
+    ).toBeInTheDocument()
+  })
+
+  it('la carte Plan omet échange/isolement quand le contrat ne les publie pas', () => {
+    mockRaster({ data: { ...RASTER_NOMINAL, echange: undefined, isolement: undefined } })
+    renderVue()
+    expect(screen.getAllByTestId('kpi-card')).toHaveLength(2)
+  })
+})

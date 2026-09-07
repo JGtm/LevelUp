@@ -235,3 +235,103 @@ en = "Click a hot area of the plan."
 [tactical.cell.matches]
 fr = "{n, plural, one {# match distinct} other {# matchs distincts}} ont alimenté cette cellule"
 en = "{n, plural, one {# distinct match} other {# distinct matches}} contributed to this cell"
+
+[tactical.cell.placeholder_description]
+fr = "Sélectionne une cellule du plan pour voir son détail."
+en = "Select a plan cell to see its detail."
+
+# ── Titre de la vue d'analyse ─────────────────────────────────────────────────
+[tactical.analysis.page_title]
+fr = "Plan de {map} — {question}"
+en = "Plan of {map} — {question}"
+
+[tactical.analysis.error_title]
+fr = "L'analyse n'a pas pu être chargée."
+en = "The analysis could not be loaded."
+
+[tactical.analysis.error_description]
+fr = "Réessaie plus tard ou change de question."
+en = "Try again later or change the question."
+
+# ── Barre d'outils (question / qui / spawn) ───────────────────────────────────
+[tactical.toolbar.question_label]
+fr = "Question"
+en = "Question"
+
+[tactical.toolbar.who_label]
+fr = "Qui"
+en = "Who"
+
+[tactical.toolbar.who_me]
+fr = "Moi"
+en = "Me"
+
+[tactical.toolbar.who_squad]
+fr = "Escouade"
+en = "Squad"
+
+[tactical.toolbar.who_opponents]
+fr = "Adversaires"
+en = "Opponents"
+
+[tactical.toolbar.spawn_label]
+fr = "Spawn de départ"
+en = "Starting spawn"
+
+[tactical.toolbar.spawn_all]
+fr = "Tous"
+en = "All"
+
+# ── Unités de la légende (une par question) ───────────────────────────────────
+[tactical.unit.morts]
+fr = "morts par match"
+en = "deaths per match"
+
+[tactical.unit.kills]
+fr = "frags par match"
+en = "kills per match"
+
+[tactical.unit.gagne]
+fr = "engagements par match"
+en = "engagements per match"
+
+[tactical.unit.temps]
+fr = "secondes par match"
+en = "seconds per match"
+
+[tactical.unit.routes]
+fr = "passages par match"
+en = "passages per match"
+
+[tactical.unit.isole]
+fr = "morts isolées par match"
+en = "isolated deaths per match"
+
+# ── Source de la mesure (pied du plan) ────────────────────────────────────────
+[tactical.plan.source_replay]
+fr = "Source : artefacts de rejeu"
+en = "Source: replay artifacts"
+
+[tactical.plan.source_journal]
+fr = "Source : journal des morts"
+en = "Source: death log"
+
+# Plancher par cellule : 3 matchs distincts (calibration mesurée de `mappos-build`,
+# section 6 du plan Tactique) — même seuil que le serveur applique pour publier une
+# cellule, jamais recalculé côté client.
+[tactical.plan.footer_floor]
+fr = "Plancher : {n, plural, one {# match distinct} other {# matchs distincts}} par cellule"
+en = "Floor: {n, plural, one {# distinct match} other {# distinct matches}} per cell"
+
+[tactical.plan.empty_title]
+fr = "Pas assez de matchs mesurés sur cette carte"
+en = "Not enough measured matches on this map"
+
+[tactical.plan.empty_description]
+fr = "Élargis la période, la composition ou change de spawn de départ pour mesurer plus de matchs."
+en = "Widen the period, the squad, or change the starting spawn to measure more matches."
+
+# ── KPI génériques (taux + compte brut, jamais un taux seul) ──────────────────
+[tactical.kpi.secondary]
+fr = "{brut, number} sur {n, number}"
+en = "{brut, number} out of {n, number}"

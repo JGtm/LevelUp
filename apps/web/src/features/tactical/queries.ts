@@ -23,6 +23,7 @@ import type {
   FilterMatchIdsResponse,
   TacticalMapsBody,
   TacticalMapsPage,
+  TacticalRaster,
   TeammateOption,
 } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
@@ -178,25 +179,34 @@ export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string): 
  * useTacticalRaster — la grille de placement pour UNE carte et une question.
  *
  * POST : les paramètres de la requête sont envoyés dans le corps (liste de match_id,
- * question, qui, spawn). La clé de cache porte l'empreinte de tous les paramètres —
- * changer de question donne une nouvelle requête, jamais un cache croisé.
+ * composition, question, qui, spawn). La clé de cache porte l'empreinte de tous les
+ * paramètres — changer de question donne une nouvelle requête, jamais un cache croisé.
+ *
+ * `matchIds` à `null` = le périmètre n'est pas encore résolu (même contrat que
+ * `useTacticalMaps`) : la requête N'EST PAS lancée. Une liste VIDE une fois le périmètre
+ * résolu est une réponse légitime (aucun match ne correspond) et part normalement.
  */
 export function useTacticalRaster(
   playerSlug: string,
   mapId: string,
   params: {
-    match_ids: string[]
+    match_ids: string[] | null
+    coequipiers?: string[]
     question?: string
     qui?: string
     spawn?: string
   },
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const corps = { ...params, match_ids: params.match_ids ?? [] }
   return useQuery({
-    queryKey: queryKeys.tacticalRaster(playerSlug, titleSlug, mapId, hashFiltre(params)),
+    queryKey: queryKeys.tacticalRaster(playerSlug, titleSlug, mapId, hashFiltre(corps)),
     queryFn: () =>
-      api.post(`/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/raster`, params),
-    enabled: !!playerSlug && !!mapId,
+      api.post<TacticalRaster>(
+        `/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/raster`,
+        corps,
+      ),
+    enabled: !!playerSlug && !!mapId && params.match_ids !== null,
     staleTime: 2 * 60 * 1000,
   })
 }
