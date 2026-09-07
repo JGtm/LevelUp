@@ -105,10 +105,16 @@ func passeDesFilmsEnLigne(ctx context.Context, cfg *config.AppConfig, db *sql.DB
 		cacheRoot,
 	)
 
+	// LA CAPTURE DES POSITIONS, CABLEE ICI AUSSI (correction P0-1, 2026-09-07) : ce chemin la
+	// manquait, comme l etape post-sync. Un film telecharge en ligne n a aucune raison de
+	// produire moins que le meme film relu du cache.
+	capture, fermerCapture := positionCaptureDeps(cfg, o.titleSlug, db)
+	defer fermerCapture()
+
 	collecteur := killcollector.NewKillSourceCollector(
 		source, killcollector.NewSharedRoster(db), writerDeja(db), caps,
 		0, // limite par match : le defaut du collecteur (45 min)
-	)
+	).AvecCapture(capture)
 	debut := time.Now()
 	sum := collecteur.CollectMatches(ctx, candidats)
 	fmt.Printf("films (en ligne) : %d ecrits (%d morts), %d absents/expires, %d sans kill-feed, "+
