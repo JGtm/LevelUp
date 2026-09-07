@@ -615,6 +615,619 @@ recoupe pas avec la feuille de match sur `bcb6d393` (parc comme HEAD — ce n es
 regression), et aucun inventaire systematique des lecteurs qui supposent encore « un slot = une
 piste nommee » n existe. Journal complet : `.ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md`.
 
+## [2026-09-07] Chantier duels/portee — gate visuel valide, livraison (6.4, 6.5) — Complete ; 6.6 push + CI en cours
+
+**Decision technique principale.** Le chantier livre ce que la mesure a autorise et rien d autre : la portee par arme des frags ET des morts, le denivele signe, la table `kill_openings` (decode_pass, D12) et son producteur pour la distance d entame (proxy T-1,5 s valide a 1,24 m d ecart median) ; le comptage des duels est REPORTE au registre avec sa condition de reprise (deux sondes, deux canaux du film complementaires dans ce qui leur manque). Cinq lots, chacun relu par 2 a 3 relecteurs frais en worktrees separes, deux rondes maximum, 0 P1 residuel partout.
+
+**Resultats observes.** Gate visuel valide par l utilisateur sur ses donnees (« C est tout bon valide »). Gates de livraison tous verts : Go (build, vet, gofmt, `go test ./...`, `-tags=integration -p 1 ./...`, `make go-api-test`, lint 0 issue) et web (typecheck, lint 0 erreur, vitest 6 299, lint:fields, contrat frais, manifests). Tuiles d entame absentes sur les donnees locales : `kill_openings` vide tant que le backfill (decision utilisateur, jamais lance d office) n a pas tourne — comportement voulu, jamais un zero.
+
+**Conclusion / prochaine etape.** Push de `feat/duels` et CI surveillee job par job (6.6). FAIT : 4 workflows verts sur `c84620aab`, CI 9 jobs verts au niveau JOB (E2E skipped sur branche). 12 worktrees temporaires et 12 branches de lot supprimes (lien node_modules de fix4 retire avant, cible principale intacte). Seul `LevelUp-wt-duels` (feat/duels) subsiste. Ensuite : nettoyage des worktrees temporaires (liens `node_modules` a retirer AVANT `git worktree remove`), et les decisions utilisateur en attente au registre : backfill `kill_openings` sur le cache de films ; `kill_positions` (peuplee en prod) a passer en `decode_pass` et a inscrire aux tables append-only protegees.
+
+## [2026-09-07] Lot 6 duels/portee — gates Go de livraison executes par le pilote, tous verts — Complete (6.2 Go, 6.3)
+
+**Decision technique principale.** Apres l interruption de l executeur d integration (limite de session API), les gates ont ete scindes : volet web par un executeur (commit `67744e6d3`), volet Go par le pilote en arriere-plan avec GOCACHE et GOLANGCI_LINT_CACHE isoles, dans le worktree `LevelUp-wt-duels` sur `feat/duels` (HEAD `67744e6d3`), sans aucune commande Go concurrente.
+
+**Resultats observes.** `go build ./...` RC 0 ; `go vet ./...` RC 0 ; `gofmt -l internal cmd` vide ; `go test -count=1 ./...` RC 0 ; `go test -tags=integration -p 1 -count=1 ./...` RC 0 (suite complete, aucun `--- FAIL`, aucun panic) ; `make go-api-test` RC 0 ; `make go-api-lint` : `golangci-lint run --new-from-merge-base=origin/main` -> 0 issues. Volet web (executeur) : typecheck, lint 0 erreur, vitest 595/595 (6 299 tests), lint:fields, contrat frais, manifests sans diff.
+
+**Conclusion / prochaine etape.** 6.1, 6.2 (web + Go), 6.3 clos. Restent 6.4 (gate visuel utilisateur : `make stop` puis `make dev LEVELUP_DATA_ROOT=<worktree principal>` depuis le worktree duels), 6.5 (journal final, project_map si besoin), 6.6 (push `feat/duels` + CI surveillee job par job). Aucun push effectue.
+
+## [2026-09-06] Lot 6 duels/portee — reprise de l integration, gates web du volet frontend — En cours
+
+**Decision technique principale.** Reprise apres coupure de session : les cases du plan ne sont
+pas une preuve, les quatre residus 6.0a-6.0d du commit d integration `485467037` ont ete
+RE-VERIFIES SUR PIECES avant de rien relancer. Les quatre tiennent — la vue locale
+`WeaponRangeBlock`/`WeaponRangeOpening` a bien disparu au profit du type genere (grep VIDE sur
+`apps/web/src`), le fichier de test du service est scinde en 477 L + 136 L sous le seuil de 500,
+le motif cherche dans la clause WHERE de `fragSolo` est `match_id` sans alias, et les deux
+assertions d encre (pastilles de la legende de PORTEE, accents des tuiles) sont en place. Rien a
+refaire, aucun commit de rattrapage.
+
+Seconde decision, le partage du worktree : les gates Go et les gates web ont ete separes entre
+deux executeurs travaillant dans LE MEME worktree `LevelUp-wt-duels`. Aucune commande `go` ni
+`make go-api-*` n a ete lancee cote web — deux builds Go concurrents corrompent le cache. Le
+volet Go du plan (nouvel item 6.2bis, ex-6.2) reste ouvert, a inscrire par le pilote.
+
+**Resultats observes.** Sept gates web, code de retour verifie a chaque fois : typecheck RC 0
+(cache `.tsbuildinfo` purge avant), lint RC 0 avec 0 erreur et 28 warnings tous PREEXISTANTS —
+les 20 fichiers porteurs ont ete extraits de la sortie et aucun n appartient au chantier —,
+suite complete RC 0 (595 fichiers, 6 299 tests, 14 skippes), `lint:fields` sans violation sur
+1 687 fichiers, fraicheur de `generated.ts` vis-a-vis d `openapi.yaml` OK, et regeneration des
+21 manifestes i18n rendant un `git diff` VIDE sur `src/lib/i18n/generated/`.
+
+Un premier passage complet avait rendu 2 rouges, tous deux dans
+`src/features/admin/lab-removal.guard.test.ts` (« Test timed out in 5000ms »). DIAGNOSTIC :
+ce garde-rail lit SYNCHRONEMENT les ~1 700 fichiers `.ts`/`.tsx` de `src/` avec le `testTimeout`
+par defaut de 5 s, et le passage tournait pendant les gates Go du pilote sur le meme disque.
+Relance seul trois fois -> 3 x RC 0 ; second passage COMPLET -> RC 0. Hors chantier et
+preexistant : le gate du lot 5 avait deja consigne le meme flake sur « un garde-rail qui balaie
+le systeme de fichiers ». La lecon est generique — un garde-rail qui marche l arborescence sous
+le timeout par defaut de vitest est une bombe a retardement des que la machine est chargee ;
+c est le troisieme du depot dans ce cas.
+
+Trois decouvertes de la session. (1) `tools/check-generated-types-fresh.mjs` vit a la RACINE du
+depot, pas sous `apps/web/tools/` : la commande ecrite dans plusieurs consignes echoue en
+`MODULE_NOT_FOUND`, ce qui ressemble a une erreur de code alors que c est un chemin. (2) La
+regle eslint `@levelup/no-hardcoded-strings` a ete PROUVEE ARMEE sur un fichier du chantier, pas
+seulement supposee active : l `aria-label` de `RangeLegend` remplace par un litteral FR rend
+`1 error` sur `SynthesisWeaponRangeSection.tsx:220` ; le fichier a ete restaure. Sa liste
+blanche ne couvre que les fichiers de test et `src/test/handlers.ts`. (3) `LevelUp-wt-duels/data`
+EXISTE mais ne porte que le contenu TRACKE (`data/cache/**`, `metadata-prebuilt.zip`) et aucune
+`*.duckdb` : y poser une jonction supprimerait des fichiers versionnes. La voie propre pour le
+gate visuel est `make dev LEVELUP_DATA_ROOT=<worktree principal>`, qui alimente
+`LEVELUP_REPO_ROOT` et fait donc pointer `PathResolver`, `config/titles/` ET `.env.local` vers le
+principal, avec un binaire compile depuis le worktree du chantier.
+
+**Conclusion / prochaine etape.** Volet web du lot 6 CLOS. Restent, dans l ordre : le verdict des
+gates Go (6.2bis) et du lint Go (6.3) par le pilote, le gate visuel (6.4, procedure ecrite dans
+le plan, non executee — un serveur tourne deja sur :8000 depuis le worktree principal et devra
+etre arrete d abord), puis 6.6 commit + push + CI. **AUCUN PUSH a ce stade** : `feat/duels` n a
+pas d upstream et n a jamais declenche de run — le lot n est pas clos tant que la CI n est pas
+verte au niveau JOB.
+
+## [2026-09-06] Lot 5 duels/portee — revue adversariale ronde 1, les 14 correctifs (F1-F14) — Complete
+
+**Decision technique principale.** Le constat structurel de la ronde n est pas un bug de rendu
+mais un TROU DE PREUVE : `useWeaponRangeOptions` s executait pendant les tests de composant sans
+que son resultat soit jamais regarde (echarts-for-react etait mocke en div muette), et les tests
+purs des deux constructeurs ne prouvaient que ceci — ils honorent ce qu on leur INJECTE. Entre
+les deux, personne ne verifiait le cablage : echanger les encres des frags et des morts, les
+libelles d infobulle, ou passer `tc.axisLabel` la ou `tc.card` est attendu laissait toute la
+suite verte. Le correctif est un fichier de test qui CAPTURE la prop `option` reellement passee
+a ECharts et applique la vraie palette d accessibilite — sans `applyPalette`, `resolveToken`
+rend la chaine vide et deux couleurs echangees restent egales, le test serait decoratif.
+
+Deuxieme decision, `cssColorToHex` : la conversion de couleur est faite PAR LE NAVIGATEUR
+(aller-retour sur `fillStyle` d un contexte 2D), jamais par une table oklch->sRGB ecrite a la
+main. Motif : `--muted-foreground` est un `oklch(...)` que le canvas peint correctement mais que
+le parseur de zrender ne connait pas — au survol, `lift()` rend `undefined` et le segment « a
+niveau » perdait son remplissage. Ecart assume avec la maquette : DOUBLE SENTINELLE (noir puis
+blanc avant chaque lecture) au lieu d une seule, parce qu une couleur invalide sortait sinon en
+noir — un rendu faux silencieux, pire que la valeur d origine. `getEChartsThemeColors` n est PAS
+etendue : elle a de nombreux appelants dont beaucoup passent ces valeurs a des proprietes que
+zrender ne derive jamais.
+
+**Resultats observes.** Quatorze constats statues `[x]`, chacun avec sa mutation prouvee rouge
+puis restauree — dont six pour le seul F7. Trois d entre eux valent d etre retenus. (1) La tuile
+« Portee mediane de mes frags » s affichait « 0,0 m » sur un scope ou le joueur n a frague
+personne : le service ne retire le bloc que si les DEUX cotes sont vides, et le lot appliquait
+la doctrine anti-zero (D5) a l entame seulement. (2) `weaponRange={undefined}` dans
+`SynthesisPage.tsx` aurait laisse la section invisible en production sans qu un seul test bouge
+— trois tests au niveau page ferment ce trou (bloc servi + capability, sans bloc, sans
+capability). (3) Le miroir `WEAPON_RANGE_MIN_MEASURED = 8` n avait aucun garde-rail : un test
+lit desormais `analysis/weapon_range.go` et compare, et il ECHOUE si la source est illisible
+plutot que de se skipper.
+
+Gates : typecheck RC 0 ; lint RC 0 (0 erreur, 28 warnings preexistants, aucun sur un fichier du
+lot) ; suite web complete 595 fichiers / 6 297 tests RC 0 ; `lint:fields` sans violation ; grep
+hex vide sur `features/synthesis/` hors tests. `buildWeaponRangeOption` repasse de 107 a 67
+lignes par extraction, sans qu aucun des 16 tests existants ne change.
+
+**Conclusion / prochaine etape.** Ronde 1 close sur `feat/duels-lot5-fix` (worktree
+`LevelUp-wt-duels-fix5`), rien de pousse. Deux decouvertes consignees au plan et NON traitees :
+le meme piege `oklch` frappe `MatchScoreCurveChart.tsx:176` et
+`squad/charts/squadEfficiencyChart.ts:211` (preexistant) ; et aucun script npm ni etape de CI ne
+rejoue `build_i18n_manifests.mjs`, donc une derive toml <-> generated n est vue par rien. Suite :
+fusion de la branche par le superviseur, puis lot 6 (livraison).
+
+## [2026-09-06] Lot 5 duels/portee — la section web « Portee des engagements » (5.1-5.6) — Complete
+
+**Decision technique principale.** La maquette validee par l utilisateur est transposee telle
+quelle, y compris son choix technique : une serie ECharts `custom` avec `renderItem` plutot que
+le couple bar+scatter du graphe de match. La raison est mesurable — sur un axe de CATEGORIES un
+`scatter` se pose au centre de la bande et ne sait pas se decaler d un demi-baton ; avec deux
+batons par ligne, le losange de la mediane des morts tomberait ENTRE les deux. Le `renderItem`
+place les quatre formes aux coordonnees que l API ECharts rend elle-meme : la position est
+exacte, pas approchee. Un test la verifie contre une API factice, coordonnee par coordonnee.
+
+Deuxieme decision : le TRI NE SE REJOUE PAS cote front. Il vient du backend (mediane des frags
+croissante, `mergeWeaponSides`) et la projection le CONSERVE ; l axe Y est simplement lu a l
+envers au montage. Deux tris du meme fait divergeraient au premier changement de doctrine — la
+maquette, elle, triait parce qu elle portait ses propres donnees d illustration.
+
+**Resultats observes.** Deux consignes du pilote sont arrivees pendant le lot et ont change le
+contrat de rendu. (1) `weapons: []` avec des compteurs NON NULS est un cas NOMINAL — le joueur
+dont toutes les armes restent sous le seuil de 8 mesures. La section reste alors entiere (tuiles,
+armes ecartees nommees, note de couverture) et les deux graphes cedent la place a une phrase qui
+dit POURQUOI : un canevas vide sans mot se lit « bug », jamais « rien a montrer ». Seule l ABSENCE
+de bloc retire la section. (2) `delta_median_m` / `closing_share_pct` / `n` passent dans un
+sous-objet OPTIONNEL `opening.delta` : la tuile « Distance d entame » suit `opening`, la tuile
+« Entame -> frag » suit `opening.delta`. Les deux absences disent deux choses differentes —
+entame non mesuree d un cote, entame non appariee a son frag de l autre — et un zero dirait « la
+distance ne bouge pas ». `generated.ts` porte encore la forme PLATE (la regeneration arrive par
+`feat/duels-lot4-fix`) : le front lit le bloc par une vue LOCALE datee, volontairement identique
+a la forme servie, dont le `Omit<>` fera rougir le typecheck si la regeneration diverge.
+
+Trois constats sur pieces. `getEChartsThemeColors()` ne rendait pas `--card`, dont la grammaire
+validee se sert comme ENCRE DE SEPARATION dans le canvas (contour du losange sur son baton, bord
+d un segment empile) : le champ a ete ajoute, additif, aucun appelant existant touche.
+`muted-foreground` n est PAS un `SemanticToken` — la classe « a niveau » emprunte donc le gris
+des libelles d axe cote canvas et `bg-muted-foreground` cote DOM, deux chemins vers la MEME
+variable CSS. Et le seuil de publication (8) n est pas dans le contrat alors que le rendu doit l
+ECRIRE : le front porte une constante miroir, commentee, jamais utilisee pour filtrer. Les trois
+sont au registre des decouvertes du plan.
+
+`AccentCard` et `SectionSubtitle` ont ete DEPLACES de `SynthesisPage.tsx` vers
+`SynthesisCards.tsx` (rendu inchange ; `AccentCard` gagne un `sub?` pour porter le denominateur
+d une mesure partielle). Les recopier aurait fait deux gabarits pour la meme chose dans la meme
+page, et l import inverse — la section important depuis la page qui la monte — aurait ferme un
+cycle. `weapon_range` est SORTIE de `orphanCapabilityAllowlist` dans le commit qui monte la
+section, mutation prouvee rouge avant restauration.
+
+**Gates.** `npm run typecheck` RC 0 · `npm run lint` RC 0 (0 erreur, 28 warnings tous
+preexistants) · `npm test -- --run` 593 fichiers / 6 271 tests RC 0 · `npm run lint:fields`
+aucune violation · grep hex et grep classes Tailwind de couleur VIDES sur `features/synthesis/`
+hors tests · `go test ./internal/domain/title/...` ok, `gofmt -l` vide. A savoir : le worktree n
+avait aucun `node_modules`, `npm ci` a du etre lance avant tout gate web.
+
+**Conclusion / prochaine etape.** Lot 5 clos, items 5.1 a 5.6 tous `[x]`. Restent : le GATE
+VISUEL (capture de la section soumise a l utilisateur — c est le lot 6.4, pilote), et la
+substitution de la vue locale `WeaponRangeBlock` par le type genere des la fusion de
+`feat/duels-lot4-fix`.
+
+## [2026-09-06] Lot 4 duels/portee — correctifs de revue adversariale ronde 1 (F1-F10) — Complete
+
+**Decision technique principale.** Les dix constats retenus par le pilote (deux relecteurs :
+axe TESTS, axe COUCHES/MULTI-TITRE) sont traites sur la branche `feat/duels-lot4-fix`. Deux
+d entre eux ont change de forme apres verification sur pieces, et c est l essentiel de la
+session.
+
+(1) **F1 — le test de plan ne pouvait PAS etre rendu rouge par la mutation demandee, et la
+raison est un comportement d optimiseur mesure ce jour.** Sur la forme `e.match_id = ?` (le POC
+KillDistanceRepo), DuckDB PROPAGE l egalite a travers les cles de jointure : le balayage de
+`match_kill_events` porte son filtre meme quand la sous-requete `fragSolo` ne demande rien
+(1 balayage, `Filters="match_id='...'"`). Sur la forme `IN (...)` du lecteur de Synthese, il ne
+le fait pas — la meme mutation y rend 2 balayages, le second nu, et le test vire rouge. Le
+correctif structurel demande est fait (`killDistanceQueryFor` est l UNIQUE site de composition,
+appele par `queryMeasuredKills` ET par le test, plus de recomposition a partir des constantes),
+mais il fallait une seconde assertion pour que la mutation morde : `verifieFragSoloPorteLeScope`
+juge la requete COMPOSEE PAR LA PRODUCTION — la clause `WHERE` de `fragSolo` (et pas la
+sous-requete entiere, dont la projection cite `s.match_id`, ce qui rendait ma premiere version
+toujours verte) plus le nombre de parametres lies. Lecon generale, consignee au plan : un
+garde-rail de PLAN sur une requete a egalite ne discrimine pas la presence d un scope dans une
+branche ; et un scope de branche ne doit jamais reposer sur cette propagation, qui est un choix
+d optimiseur, pas un contrat.
+
+(2) **F10 — le critere de retrait de l entree d allowlist `weapon_range` etait bien mesurable,
+mais tenu par un AUTRE test que celui que le commentaire nommait.** Le commentaire annoncait un
+signalement « en `t.Logf` » : faux — `TestCapabilitiesReferencedByAConsumer` fait `continue` sur
+un consommateur existant AVANT de lire l allowlist. C est
+`TestOrphanCapabilityAllowlistIsCurrent` qui tient l hygiene, en `t.Errorf`, des qu une entree
+est accordee ET consommee. Verifie par mutation : un `useCapability('weapon_range')` temporaire
+depose dans `apps/web/src` fait rougir la suite (« exception perimee, la retirer »). Le pilote
+demandait d AJOUTER un `t.Errorf` dans le premier test ; NON FAIT, delibere et justifie au plan :
+l assertion existe deja complete ailleurs (la dupliquer serait une seconde doctrine du meme
+fait), et posee sur le seul axe « consommateur » elle serait FAUSSE pour une capability consommee
+mais accordee par aucun titre public, dont l entree reste necessaire a l autre axe.
+
+**Resultats observes.** F9 change la forme du contrat : les trois nombres du delta d entame
+passent dans un sous-objet OPTIONNEL `opening.delta` (`median_m`, `closing_share_pct`, `n`),
+omis quand `Paired == 0` — cas atteignable, `kill_positions` et `kill_openings` s ecrivant sous
+deux leases independants, et un `closing_share_pct: 0` requis se lisant « ce joueur ne ferme
+jamais la distance ». C est la doctrine D5 un cran plus bas. Contrat REGENERE (openapi-gen +
+generate-types), jamais edite a la main ; le lot 5 est prevenu. F8 corrige une cause reelle de
+flakiness : la fixture `newKillSourceTestPlayerDB` n appliquait pas `SetMaxOpenConns(1)` alors
+que la production le fait — sur un DSN `:memory:`, chaque connexion supplementaire du pool est
+une base VIDE, d ou des echecs intermittents et deroutants. La suite d integration a ete rejouee
+3 fois : 3/3 verte. La seconde demande de F8 (« reduire le seed de 50 000 lignes ») est SANS
+OBJET, verifie sur pieces : `seedDeuxCotes` insere DEUX morts et aucun seed massif n existe dans
+ce paquet.
+
+SIX MUTATIONS PROUVEES ROUGES puis restaurees : F1 (scope `fragSolo` -> `TRUE` : « la clause
+WHERE de fragSolo ne porte AUCUN filtre » + « 1 parametre lie, attendu 2 »), F2 (garde
+`Self.Kills != nil` retiree -> `panic: nil pointer dereference`), F4 (« la mediane des frags
+prime » rendue inconditionnelle -> ordre inverse), F5 (tri des couples ecartes retire -> rang 0
+faux), F6 (regime de log inverse -> « presence d un WARN = true, attendu false »), F7
+(`KillerXUID` retire de la cle du frag -> `MedianDeltaM = -26 au lieu de -36`, `ClosingShare =
+0.5 au lieu de 1`), plus les deux mutations de F9 (`if st.Paired > 0` inconditionnel ->
+sous-bloc a zero publie ; `omitempty` retire -> `"delta":null` dans la charge utile) et celle de
+F10.
+
+**Conclusion / prochaine etape.** Gates verts, codes de retour verifies :
+`-tags=integration -p 1 ./internal/platform/duckdb/` RC 0 (4 executions, dont 3 consecutives
+pour F8) ; `./internal/analysis/ ./internal/service/... ./internal/api/... ./internal/domain/...`
+RC 0 ; `go vet` silencieux ; `gofmt -l internal` vide ; `synthesis_service.go` toujours a 500
+lignes EXACTEMENT (aucune ligne ajoutee) ; `openapi-gen -check` a jour ;
+`check-generated-types-fresh` OK ; `make go-api-test` RC 0 ; `npm run typecheck` RC 0. Trois
+decouvertes hors perimetre sont consignees au plan sans etre traitees, dont
+`weapon_resolver.go:243-247` qui avale l erreur de `rows.Scan` (prexistant). Prochaine etape :
+merge de `feat/duels-lot4-fix` dans `feat/duels-lot4` par le superviseur, puis lot 5 (web) — qui
+doit RETIRER l entree `weapon_range` de `orphanCapabilityAllowlist` dans le commit meme qui monte
+la section, sous peine de suite rouge.
+
+## [2026-09-06] Lot 4 duels/portee — service, capability produit, contrat API (4.1-4.6) — Complete
+
+**Decision technique principale.** Le contrat publie UNE LIGNE PAR ARME portant ses DEUX COTES
+en pointeurs (`Weapons []WeaponRangeRow`, `Kills`/`Deaths *WeaponRangeSide`), et non les deux
+listes paralleles que le plan avait ecrites : la maquette validee le 2026-09-06 fusionne les
+deux graphes jumeaux, et deux listes obligeraient le front a reapparier les armes pour dessiner
+une seule ligne. Le pointeur porte une distinction que le rendu doit faire : nil = « aucune
+mesure de ce cote », un zero dirait « mesure, a zero metre ». Meme regle pour le bloc d entame,
+NIL tant qu aucune entame n est mesuree (D5) — c est l etat NOMINAL tant que le backfill de
+`kill_openings` n a pas tourne, et un bloc a zero se lirait « ce joueur engage au contact ».
+
+Le delta entame -> coup fatal se calcule PAR FRAG APPARIE (`analysis.WeaponOpeningDelta`, clé
+`match_id, killer_xuid, time_ms`). Le test qui le garde est construit pour que l erreur interdite
+soit visible : les medianes des deux populations y sont EGALES alors que le delta apparie vaut
+-5 m — une soustraction de medianes rendrait 0 et raconterait que le joueur ne ferme jamais la
+distance.
+
+**Resultats observes.** Deux constats ont corrige le plan sur pieces. (1) La « cle miroir dans
+capabilities.toml » demandee par 4.4 est IMPOSSIBLE : ce fichier ne porte que le vocabulaire
+data-level, et `games.CapabilityMapFromMappings` rejette au boot toute clé hors
+`AllCapabilityKeys()` — le miroir d une capability PRODUIT est le TypeScript, ce que deux
+garde-rails imposaient deja. (2) Halo 5 PEUPLE `kill_positions` nativement (`MapKillPositions`) :
+la moitie spatiale existe. Ce qui lui manque est l ARME — ses `match_kill_events` n ont aucun
+`source_tag` — donc la jointure mesuree rendrait zero ligne et la capability lui ouvrirait une
+section VIDE. Le raisonnement, et sa condition de reouverture, sont ecrits dans la doc de
+`CapWeaponRange` plutot que dans un ticket.
+
+Un report assume, date et borne : `weapon_range` entre a `orphanCapabilityAllowlist` (jusqu ici
+VIDE) parce que son seul consommateur prevu est le gate d affichage du lot 5 — le cablage Go est
+inconditionnel par decision 4.1, aucun consommateur Go n existe ni ne doit exister. Le lot 5
+supprime l entree dans le commit qui monte la section ; le critere est mesurable.
+
+**Conclusion / prochaine etape.** Gates verts, codes de retour verifies : duckdb integration
+(205,6 s), analysis/service/api/domain, killcollector integration, `go vet`, `gofmt`,
+`make go-api-test`, `openapi-gen -check`, `npm run typecheck`, `npm test` (6 227 tests),
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue. Le lot 5 consomme
+`SynthesisPageV2Response.weapon_range` et retire l entree d allowlist.
+
+## [2026-09-06] Lot 4 duels/portee — les quatre residus du lot 3 (4.0a-4.0d) — Complete
+
+**Decision technique principale.** `fragSolo` porte desormais SON scope (`measuredKillsQuery(table,
+fragSoloScope, where)`, parametres dupliques, scope lie AVANT le WHERE). La preuve exigee par le
+plan a demande de changer de format : le plan textuel de DuckDB coupe le texte des filtres a 27
+caracteres dans ses boites ASCII, un detecteur pose dessus raterait justement les filtres longs
+d un scope multi-matchs — `kill_measured_scope_test.go` decode donc `EXPLAIN (FORMAT JSON)` et
+verifie que TOUT `SEQ_SCAN` de `match_kill_events` porte un `Filters` sur `match_id`.
+
+**Resultats observes.** Forme reelle du plan, decouverte a l EXPLAIN : DuckDB materialise
+`match_kill_events_latest` en UNE `CTE` que les deux branches relisent (`CTE_SCAN`) — il n y a
+donc pas deux balayages a filtrer mais UN SEUL, et il ne peut porter le filtre que si les DEUX
+branches le demandent. Sans le scope de la sous-requete, la CTE n est plus partagee : le plan
+repasse a deux balayages, dont un non filtre. Mutation prouvee rouge (`fragScope` = `TRUE` ->
+« balayage 2/2 : Filters = "" ») pendant que les douze tests de resultat WeaponRange restent
+verts — ce qui est exactement la raison d etre d un test de PLAN. 4.0b : la retractation par
+`decode_pass` exige que la passe suivante ecrive au moins une ligne (une passe vide n ecrit
+aucune generation) ; comportement assume, en-tete de migration corrige et cas asserte tel quel.
+4.0c : l enonce du durcissement `count(*) = 1` est ecrit sur `killDistanceWhere`. 4.0d : les deux
+compteurs de LECTURE (`morts_sans_position`, `cotes_hors_vie`) sortent desormais aussi sur echec
+d ecriture — la doc promettait « il compte MEME quand rien n est ecrit », le code ne le faisait
+pas ; mutation rouge.
+
+**Conclusion / prochaine etape.** Gates verts : `go test -tags=integration -p 1 -count=1
+./internal/platform/duckdb/` (138 s), `./internal/sync/killcollector/ ./internal/persist/
+./internal/games/halo_infinite/migrations/`. Suite du lot 4 : service, capability produit,
+contrat API (4.1-4.6).
+
+## [2026-09-06] Lot 3 duels — revue adversariale a trois relecteurs, correctifs, ronde 2, fusion — Complete
+
+**Decision technique principale.** Revue L1 (anti-ART) + L3 (anti-patterns) + L6 (tests) en parallele et aveugles ; deux relecteurs ont converge independamment sur la vue `kill_openings_latest` arbitree par cle et non par passe ; decision pilote soumise a l utilisateur : `decode_pass` sur `kill_openings` (table jamais creee nulle part, migration modifiee en place, commit separe `ed3b323f3` retirable). Les deux P1 de L6 (signe du decalage et passe d entames non couverts par les tests) sont elimines structurellement par la bascule sur `replay.BuildKillOpenings` et pinces par des tests dont les mutations ont ete vues rouges.
+
+**Resultats observes.** Ronde 1 : 2 P1, 8 P2 retenus. Ronde 2 (relecteur frais) : 0 P1, 4 P2 residuels, 14 conditions tenues, 7 mutations rouges. Mesures sur base reelle : `KillDistanceRepo` avant/apres helper identique au 6e chiffre ; 0 groupe multi-victimes sur 138 293 evenements (le P1 « double frag cote victime » a une population vide, retrograde en durcissement `count(*) = 1`) ; `fragSolo` non borne : x15,6 (192 ms vs 12 ms) — P2 reporte en tete du lot 4 avec preuve EXPLAIN exigee.
+
+**Conclusion / prochaine etape.** `feat/duels-lot3` fusionnee dans `feat/duels` (`059eb4c80`), `decode_pass` inclus (retirable). Les 4 P2 residuels sont des items 4.0a-4.0d en tete du lot 4. Decouvertes consignees : `kill_positions` (peuplee en prod) a le meme defaut de vue et n est pas inscrite a la liste append-only — decision utilisateur, hors chantier.
+
+## [2026-09-06] Lot 3 duels/portee — revue adversariale ronde 1 : le filtre de vie branche, et trois tests qui ne mordaient pas — Complete
+
+**Decision technique principale.** Trois relecteurs independants ont relu le lot 3 ; onze constats
+retenus par le pilote, tous corriges sur `feat/duels-lot3` apres fusion de `feat/duels` (qui
+apporte `replay.BuildKillOpenings`). Le geste central est la BASCULE de l entame : le producteur
+appelle desormais `BuildKillOpenings(positions, slotXUID, kills, originUS)` — decalage, placement
+ET filtre « meme vie » — et `toKillOpeningRows` cesse de readditionner `OpeningLeadMS`. Les deux
+gestes etaient indissociables : l un sans l autre decalait toutes les lignes de 1,5 s. Item 3.10
+bis ferme, entree du registre des reports CLOSE.
+
+Trois constats P1/P2 disaient la meme chose sous trois angles : **le lot livrait du code correct
+que rien ne tenait**. (1) Aucun test ne pincait l accord entre le DECALAGE de l entame et l
+INSTANT persiste — inverser le signe laissait la suite verte, avec des coordonnees prises 1,5 s
+APRES la mort et un `time_ms` decale, donc une jointure vide POUR TOUJOURS sans une seule erreur.
+(2) Supprimer l appel `persistOpenings` laissait la suite verte : la passe n etait exercee par
+aucun test. (3) Le garde-rail de la jointure etait satisfait par le COMMENTAIRE de doc du fichier
+proprietaire (qui cite la clause entre backticks) et non par la requete : retirer
+`HAVING count(DISTINCT e.source_tag) = 1` du SQL laissait le test vert. Les trois sont fermes par
+des tests dont la rougeur est PROUVEE par mutation, et le pin des gardes porte desormais sur la
+VALEUR de `measuredKillsSQLTemplate`, plus sur les octets du fichier.
+
+Deux corrections de fond au-dela des tests. **C1** : le `WHERE` d un filtre de cote s applique
+AVANT le `GROUP BY`, donc une lecture cote victime jugeait l unanimite d un SINGLETON — la garde
+existait, le filtre passait autour. Le groupe complet est desormais calcule par une sous-requete
+`fragSolo` sur la vue entiere, avec `count(*) = 1` en plus de l unanimite : un double frag ne
+publie plus rien des deux cotes (durcissement, 0 groupe multi-victimes sur 138 293 evenements).
+**C7** : un echec d ecriture des positions coupait la passe d entames par un `return`, alors que
+`writeOpenings` promet en doc un lease SEPARE — le code disait le contraire de sa doc ; les deux
+passes sont maintenant independantes.
+
+**Resultats observes.** Gates verts, codes de retour verifies (jamais un filtre sur « FAIL ») :
+`go test -tags=integration -p 1 -count=1 ./internal/platform/duckdb/ ./internal/persist/...
+./internal/sync/... ./internal/migration/... ./internal/games/...` -> 0 ; le run nu equivalent
+-> 0 ; `go vet` sur les memes paquets (+ `-tags=integration`) -> silencieux ; `gofmt -l internal`
+-> vide. Cinq mutations rouges puis restaurees : signe du decalage inverse (B1), appel
+`persistOpenings` retire (B2), garde d unanimite retiree de la REQUETE seule (C5b), copie de la
+table BRUTE dans un lecteur (C5a), erreur d INSERT avalee par le persister (C6). Dette :
+`shared_persister.go` revient de 679 a 650 lignes (le chemin builder mort de `kill_openings` est
+supprime : 0 appelant, no-op inconditionnel) ; `positions.go` passe sous le plafond de 500 lignes
+en cedant la passe d entames a `positions_openings.go`.
+
+**Conclusion / prochaine etape.** Un COMMIT SEPARE, le dernier de la branche, ajoute `decode_pass`
+a `kill_openings` : la vue arbitrait par CLE, donc un re-decodage qui ne resout PLUS une entame —
+ce que le filtre de vie fait regulierement — laissait la ligne precedente servie a jamais. La
+table n existant nulle part (ni prod ni backfill), la migration est modifiee EN PLACE et la vue
+devient « derniere passe ENTIERE par match », sur le modele de `match_kill_events_latest`. Isole
+pour pouvoir etre retire d un `git reset` si l utilisateur refuse. Decouverte consignee au plan et
+NON traitee : `kill_positions` porte exactement le meme defaut de vue, mais elle est PEUPLEE en
+prod — lui ajouter `decode_pass` exigerait une reconstruction, donc une decision utilisateur.
+
+## [2026-09-06] Lot 3 duels/portee — jointure mesuree centralisee, port et repo de portee, table `kill_openings` — Complete
+
+**Decision technique principale.** Lot 3 du `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`, execute sur
+`feat/duels-lot3` (worktree dedie). Trois decisions structurent le lot.
+
+(1) **La jointure kills x positions est extraite AVANT d etre reutilisee.** Le POC G.3
+(`kill_distance_repo.go`) en portait la seule copie ; ce lot en aurait ajoute deux (cote tueur,
+cote victime) puis deux autres pour l entame. Elle vit desormais dans
+`platform/duckdb/kill_measured.go` — `measuredKillsQuery(table, where)` — et le POC MIGRE dessus
+dans le meme commit, ses 9 tests inchanges. Ce qui rendait la centralisation obligatoire n est pas
+le volume mais la NATURE des deux gardes : `publishable` et l unanimite
+`HAVING count(DISTINCT source_tag) = 1` protegent d une mesure FAUSSE mais PLAUSIBLE (une position
+accrochee a la mauvaise arme est indetectable a l ecran). Une copie qui en oublierait une
+continuerait de rendre des nombres. D ou le garde-rail `kill_measured_guard_test.go`, vu ROUGE
+avant commit, qui interdit la jointure ailleurs ET verifie que le proprietaire porte toujours ses
+deux gardes — un garde-rail qui ne garde plus rien est pire qu aucun.
+
+(2) **Le signe du denivele n est pas inverse par le repo.** Convention tranchee au lot 2 :
+`MeasuredKill.DeltaZ` porte la grandeur PHYSIQUE `killer_z - victim_z` ; c est
+`WeaponRangeAggregate` qui la ramene au point de vue du cote demande. Le repo l ecrit BRUT pour
+les DEUX lectures. Une seconde inversion ici annulerait la premiere et le produit repondrait « d en
+haut » quand la verite est « d en bas » — faux et silencieux. Un test dedie l epingle dans les deux
+sens sur un jeu volontairement asymetrique.
+
+(3) **`kill_openings` est une table SOEUR, pas six colonnes de plus sur `kill_positions`.** Les
+deux couvertures ne peuvent PAS etre les memes (une mort des premieres 1,5 s n a pas d entame
+lisible), et les fusionner obligerait a ecrire des NULL dans une ligne existante, donc a REECRIRE
+une ligne append-only : exactement ce que la doctrine ART interdit. Creee DIRECTEMENT append-only
+(patron `match_bomb_stats`), pas via `ApplyAppendOnlyRebuild` qui est la recette de CONVERSION.
+Point le plus facile a rater, et il est teste : la ligne porte le `time_ms` DU KILL (la cle par
+laquelle le kill-feed se joint) et des coordonnees prises 1,5 s plus tot ; ecrire l instant decale
+rendrait la jointure du lecteur VIDE, en silence.
+
+**Resultats observes.** Livre : `platform/duckdb/{kill_measured.go, weapon_range_repo.go}` +
+2 garde-rails, `port/weapon_range.go` (deux methodes : coup fatal et entame),
+`games/halo_infinite/migrations/steps_shared_kill_openings.go` + `migration/order.go`,
+`persist/kill_opening_persister.go` + `KillOpeningInsert`/`AddKillOpenings`/`persistKillOpenings`,
+et le producteur dans `sync/killcollector/positions.go` (une seule lecture du film rend les deux
+jeux de lignes ; ecriture best-effort au carre, quatre compteurs ADR 0009). `analysis.MeasuredKill`
+a ete ETENDU de la cle du frag (`MatchID`, `KillerXUID`, `TimeMS`) : sans elle le lot 4 ne pourrait
+pas apparier l entame a son coup fatal PAR FRAG (D5), et un delta entre deux medianes ne decrit pas
+les memes engagements. `appendXUIDFilter` generalise de l alias a la COLONNE complete (4 appelants
+migres) pour ne pas poser une 4e copie du sous-select `xuid_aliases`. Gates verts :
+23 tests d integration `platform/duckdb` (dont les 9 du POC inchanges), 26 paquets unitaires,
+la suite `-tags=integration -p 1` sur persist/sync/migration/games a **code de sortie 0**,
+`go vet` silencieux, `gofmt -l` vide, `golangci-lint --new-from-merge-base=origin/main` a
+**0 issue**. `no_art_patterns_test.go` INCHANGE ; `append_only_state_guard_test.go` s est vu
+AJOUTER `kill_openings` (durcissement, recette ADR 0026 etape 5).
+
+**Conclusion / prochaine etape.** Items 3.1 a 3.12 tous statues (`[x]` sauf 3.11 et 3.12 `[~]`).
+UN report, inscrit au `.ai/V7.5/REGISTRE_REPORTS.md` et statue `[!]` sous 3.10 bis : le filtre
+« meme vie » de la position d entame. `BuildKillPositions` ignore les frontieres de vie, donc une
+reapparition entre T-1,5 s et T ferait publier un point de reapparition comme une entame. La
+correction est `replay.BuildKillOpenings`, attendue sur `feat/duels` et ABSENTE au moment d ecrire
+(verifie : `git grep "func BuildKillOpenings" feat/duels` = 0 resultat) ; consigne du pilote de ne
+pas la reimplementer (deux decodeurs du meme fait divergeraient). La bascule est ecrite au point d
+appel et tient en DEUX gestes indissociables — l appel change ET `toKillOpeningRows` cesse de
+rajouter `OpeningLeadMS` ; l un sans l autre decalerait toutes les lignes de 1,5 s. Aucune donnee d
+entame n etant encore cuite (backfill jamais lance, decision utilisateur), rien n est a recuire si
+la bascule precede le backfill. Trois decouvertes hors perimetre consignees au plan, dont un FAUX
+VERT generique : le gate du lot, sans `-tags=integration`, ne lancait AUCUN des tests qu il visait.
+## [2026-09-06] Lot 2 duels — revue adversariale ronde 1 : l entame pouvait etre un point de reapparition — Complete
+
+**Ronde 2 (relecteur frais, corrections seules).** 0 P0, 0 P1, 1 P2 consigne (marge aval de `coversInstant` sans test « absence »). Equivalence de `BuildKillPositions` avant/apres refactor prouvee par test differentiel (20 000 tirages, DeepEqual positions + rapport). F3 recalcule a la main : 3,4 / 10,5 / 33,0 justes. Fusionne dans feat/duels (`e300e1492`).
+
+**Decision technique principale.** Deux relecteurs independants ont relu le lot 2 du
+`.ai/PLAN_DUELS_PORTEE_2026-09-06.md` ; sept constats retenus, tous corriges sur
+`feat/duels-lot2-fix` (worktree `LevelUp-wt-duels-fix2`). Le constat qui rendait le lot non
+livrable a ete trouve DEUX FOIS, independamment : composer `BuildKillPositions` avec des couples
+decales de -1,5 s ne suffit PAS a produire une entame. Le placement ne connait aucune frontiere
+de vie ; il rend l echantillon le plus proche a 120 ms pres. Si un joueur a REAPPARU entre
+l entame et le coup fatal, l instant decale tombe dans la tolerance du PREMIER echantillon de la
+nouvelle vie et le placement rend le POINT D APPARITION — presente comme une entame. L en-tete du
+fichier affirmait exactement l inverse (« mieux vaut pas d entame qu une position de
+reapparition »), et le test cense l epingler ne couvrait que l origine du FILM, pas celle de la
+VIE. Correctif : `replay.BuildKillOpenings(pos, slotXUID, kills, offsetUS) ([]KillPosition,
+KillPosReport)` — decale par `ShiftKillRefs`, place par LA fonction de placement (aucune seconde,
+regle « deux decodeurs du meme fait divergeraient »), puis ne garde un cote que si le slot qui a
+fourni la position porte l instant du KILL dans la MEME vie (`buildLifeSpans`, trou `lifeGapUS`).
+Deux choix se sont imposes en ecrivant : le placement est factorise dans `placeKillPositions`, qui
+rend en plus le SLOT retenu (`positionOf` rend desormais la position ET son slot) — sans le slot,
+la question « de quelle vie vient cette position ? » n a pas de reponse ; et la couverture d une
+vie est ASYMETRIQUE — 120 ms de marge APRES la derniere position (la vie d une victime se termine
+AU coup fatal, sans cette marge aucune entame de victime ne passerait), AUCUNE marge AVANT la
+premiere (la premiere position d une vie EST la reapparition). L instant rendu en sortie est celui
+du KILL, jamais l instant decale : `time_ms` est la cle de jointure vers la mort.
+
+**Resultats observes.** Reproduction du relecteur epinglee en test (mort a 1 550 ms, apparitions a
+t = 0 : le placement nu rend les deux spawns, 1 131 m d ecart pour une mort a 5 m ; l entame
+refuse et compte `OpeningOutOfLife = 2`). Les trois tests de refus portent leur propre TEMOIN :
+chacun verifie d abord que le placement nu tombe dans le piege — sans quoi un « aucune entame »
+resterait vert alors que le filtre aurait disparu. Mutations prouvees rouges puis restaurees :
+filtre de vie neutralise -> 3 tests d entame rouges ; `sort.Float64s` retire -> le nouveau
+`TestWeaponRangeAggregateDistancesNonTriees` rouge (p10 13,4 au lieu de 3,4 ; mediane 9,5 au lieu
+de 10,5 ; p90 8,5 au lieu de 33,0, tous calcules a la main) ; detecteur du garde-rail neutralise
+(`if false && fautifPortee(...)`) -> `TestSeuilsPorteeDetecteUneCopie` rouge. Les six autres
+constats : test « instant negatif » reecrit avec un `offsetUS` non nul (l instant de match negatif
+devient un instant de FILM positif, dans la tolerance — ce qui refuse est la vie, plus un
+debordement `uint64`) ; garde-rail dote d une racine injectable et d un controle positif (deux
+copies fautives + un fichier licite dans un `t.TempDir()`) ; doc de `WeaponRangeMinMeasured`
+corrigee (`BelowThreshold` compte des COUPLES arme x cote, pas des armes) ; deux morceaux de code
+mort supprimes (clamp `minMeasured < 1`, garde `lo >= n-1` de `percentileLinear`), leur
+inatteignabilite ecrite en commentaire pour qu ils ne reviennent pas. Gates verts
+(`CGO_ENABLED=0`, GOCACHE isole) : `go test -count=1 ./internal/analysis/
+./internal/analysis/replay/ -timeout 900s` (37,4 s / 23,9 s), `go vet`, `gofmt -l` vide, et
+`go build ./internal/sync/killcollector/` avec CGO — le consommateur de `KillPosReport` compile.
+
+**Conclusion / prochaine etape.** F1 a F7 statues `[x]` dans le bloc « Revue adversariale ronde 1 »
+du lot 2 ; deux constats consignes en « Decouvertes » sans etre traites (ce que les regex du
+garde-rail ne captent pas — SQL multiligne, alias `dz`, `HAVING count(*) >= 8` — et la meme
+imprecision de formulation dans le texte de D9). Le lot 3 reste inchange dans son perimetre : il
+n ecrit AUCUN seuil ni comparaison de denivele en SQL, ce qui est precisement ce qui rend les
+trous du garde-rail acceptables. `BuildKillOpenings` est desormais le seul appel legitime pour une
+entame : le producteur du lot 3.10 (`killcollector/positions.go`) doit l appeler ELLE, et non
+`BuildKillPositions` sur des couples decales.
+
+## [2026-09-06] Lot 1 duels — le bouclier DU TUEUR : signal reel, attribution impossible — NO-GO lot 7 — Complete
+
+**Decision technique principale.** Sonde n°2 du `.ai/PLAN_DUELS_PORTEE_2026-09-06.md` (lot 1),
+cote BASE cette fois : la n°1 s interdisait la base et ignorait donc QUI etait le tueur pour 50 a
+90 % des morts. Le tueur est connu hors film, par `match_kill_events_latest`. Question decisive :
+pour les morts dont le kill-feed nomme le tueur, le BOUCLIER DU TUEUR chute-t-il dans la fenetre
+d engagement ? Instrument `internal/sync/killcollector/duels_bouclier_research_test.go`
+(+ `_mesures_test.go`), compose des decodeurs et du PONT DE PRODUCTION — `ScanBipedPositions`
+avec `CaptureDirs`, `ScanClockOrigin`, `ScanDeaths`, `ScanPlayerIndices`, `ResolveSlotXUID`,
+`BuildKillPositions` : la mesure A passe par la fonction que le lot 7 utiliserait, pas par une
+resolution locale. Base ouverte en `OpenReadForQuery` (item 1.1 — le serveur peut tenir le fichier
+en RW). Seuils du gate ecrits AVANT la mesure et JAMAIS ajustes au resultat. Un durcissement
+ajoute en cours de mesure : l eligibilite du temoin est bornee au domaine observable (un kill des
+39 premieres secondes verrait sa fenetre reculee de 37 s tomber avant la premiere lecture de
+bouclier, la ou personne ne peut chuter — sans cette borne, `B/temoin` serait un artefact de bord).
+
+**Resultats observes** (409 kills du feed, 4 films d arene, cumul des entiers bruts). Trois gates
+sur quatre passent, et nettement : **A = 370/409 = 90,5 %** (et 100 % des tueurs ont au moins un
+slot au pont — les 9,5 % perdus sont des morts sans echantillon de position dans la tolerance,
+pas des tueurs inconnus) ; **B/O = 135/237 = 0,57**, au centre de [0,35 ; 0,90] ; **B/temoin =
+123/22 = 5,59** pour un seuil de 3, avec 4,50 a 12,00 sur chacun des quatre films — le signal est
+REEL, ce n est pas une densite d evenements. **Le quatrieme echoue : D = 71/135 = 52,6 % contre
+60 %.** Dans 47,4 % des fenetres ou le bouclier du tueur chute, au moins un AUTRE adversaire du
+tueur chute aussi : le signal dit « le tueur a pris des coups », jamais « de sa victime ». Et D
+varie de 40,0 % (Catalyst) a 64,5 % (Bazaar, seul film qui passe) — le meme facteur non uniforme
+qui invalidait deja le comptage par reciprocite, et un biais qui varie rend deux matchs
+incomparables. Qualite du pont lue et non supposee : 0 desaccord d index, 0 collision de slot,
+26 a 31 chunks concordants, 90 a 117 morts appariees. Densite 3,3 a 9,2 chutes par kill.
+
+**Conclusion / prochaine etape.** **NO-GO lot 7**, statue `[!]` sur ses 5 items, aucun code ecrit.
+Le mur se nomme precisement, et c est ce qui dit ce qu il faudrait pour le franchir : la sonde n°1
+avait le LIEN (le degat nomme son auteur) sans le RAPPEL (0,8 a 4,8 evenements par mort) ; la n°2
+a le RAPPEL sans le LIEN (une chute de bouclier est anonyme). Les deux canaux du film sont
+exactement complementaires dans ce qui leur manque — aucune combinaison ne referme l ecart, il n y
+a pas de troisieme reglage a essayer sur ces deux canaux. Note
+`.ai/V7.5/film_re/SONDE_DUELS_BOUCLIER_2026-09-06.md` ; report inscrit au
+`.ai/V7.5/REGISTRE_REPORTS.md` avec sa condition de reprise (un canal portant l AUTEUR du degat a
+la densite du bouclier : flux de degats dense — refute par mesure ; compteur d etat ECS replique —
+piste ouverte, aucune sonde faite ; source hors film — aucune connue). Les lots 2 a 6 du plan (la
+portee par arme des deux cotes, le denivele signe, le proxy d entame) ne dependent PAS de ce gate
+et restent entierement ouverts. Ecart releve au plan : sa commande de gate portait `CGO_ENABLED=0`,
+faux — la sonde ouvre DuckDB, qui exige CGO ; corrige dans le plan.
+## [2026-09-06] Duels lot 2 — agregat de portee pur, et le proxy d'entame VALIDE sur pieces — Complete
+
+**Decision technique principale.** Lot 2 du plan `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`, branche
+`feat/duels-lot2` (worktree dedie). Trois choses. (1) `internal/analysis/weapon_range.go` :
+`WeaponRangeAggregate(kills []MeasuredKill, minMeasured int) ([]WeaponRange, WeaponRangeSummary)`,
+PUR, aucune I/O. Le resume est un SECOND RETOUR et non un champ de sortie : une arme sous le seuil
+n'a precisement pas de ligne, et un appelant qui ignore ce retour ne doit pas pouvoir prendre le
+silence pour un zero (D9). (2) La convention de signe du denivele est tranchee ici et une seule
+fois : `MeasuredKill.DeltaZ` porte la grandeur PHYSIQUE `killer_z - victim_z`, sans point de vue ;
+c'est l'agregat qui la ramene au point de vue du cote demande — cote victime, l'oppose. Sans cette
+inversion, « ou je meurs, d'en haut ou d'en bas » repondrait la position du TUEUR, l'inverse de la
+question. Le lot 3 ne doit donc PAS inverser le signe en SQL : deux inversions s'annulent. (3) Le
+proxy d'entame ne se suppose pas, il se valide : instrument
+`replay/duels_ouverture_research_test.go`, gate ecrit avant la mesure et TENU PAR LE CODE
+(`t.Errorf`), pas par une lecture de log.
+
+**Resultats observes.** GATE 2.5 TENU sur les quatre films et sur le cumul. Sur les morts dont le
+PREMIER degat de l'echange est capture, l'ecart entre la distance a cet instant et la distance a
+T-1,5 s vaut, en mediane : Cliffhanger 1,29 m (n=28), Catalyst 0,40 m (n=8), Bazaar 1,22 m (n=40),
+Vagabond 1,61 m (n=11) ; cumul sur les 87 ecarts bruts mis bout a bout : mediane 1,24 m, p90
+3,28 m, 69,0 % des cas a moins de 2 m — contre un seuil de 2 m ecrit avant la mesure. La
+population de validation couvre 91 des 398 morts (22,9 %). Sensibilite mesuree a 1,0 s et 2,0 s :
+l'ecart croit avec l'avance et 1,0 s mesure partout mieux — ce N'EST PAS un argument pour changer
+la constante, et le nombre qui l'explique a ete ajoute a l'instrument : le delai median entre le
+premier degat CAPTURE et la fin de vie vaut 551 a 1 335 ms. La population de validation est donc
+biaisee vers les echanges COURTS ; sur elle, tout proxy qui remonte plus loin que la reference
+s'en ecarte mecaniquement. La sensibilite mesure la forme de la population, pas la qualite du
+proxy. `OpeningLeadMS` reste a 1 500 ms, la valeur de D5, choisie sur un argument de jeu.
+Garde-rail 2.2 : `weapon_range_guard_test.go` marche TOUT `internal/` (la copie qui divergerait
+viendrait du repo DuckDB, pas du paquet) et echoue aussi si les deux constantes disparaissent du
+proprietaire. Percentiles : verifie avant d'ecrire — `internal/analysis` n'avait aucun percentile
+interpole ; les cinq implementations du depot vivent dans cinq sous-paquets, toutes non exportees,
+et suivent DEUX conventions incompatibles (interpolee vs rang le plus proche). Non traite, inscrit
+aux Decouvertes du plan.
+
+**Conclusion / prochaine etape.** Items 2.1 a 2.6 tous statues `[x]` ; D5 reste GO, l'item 2.4 est
+CONSERVE, donc la table `kill_openings` du lot 3 (3.8 a 3.12) reste au programme. Gates verts :
+`go test ./internal/analysis/` et `./internal/analysis/replay/` (suites entieres), `go vet` sur les
+deux paquets, `gofmt -l` vide, et `TestSondeDuelsOuverture` sur les quatre films, un par process.
+Aucune base ouverte, aucune cuisson d'artefact, aucun reseau. Section « Validation du proxy
+d'entame » ajoutee a `.ai/V7.5/film_re/SONDE_DUELS_2026-09-06.md`, avec ses trois reserves ecrites
+(sous-ensemble non representatif et biais optimiste, queue longue a p90 3,28 m, Catalyst tient a
+n=8). Suite pour le pilote : lot 3, en respectant la convention de signe ci-dessus.
+
+## [2026-09-06] Sonde duels — la reciprocite du degat est le bon critere, le film n'en porte pas assez — Complete
+
+**Decision technique principale.** Demande utilisateur : compter les duels, les duels gagnes et
+ceux devenus des trios. Critere retenu avec lui : la RECIPROCITE DU DEGAT (le degat circule dans
+les deux sens), jamais une geometrie de visee — un tir dans le dos n'est pas un duel, une riposte
+qui touche en est un, et ca se mesure sans modeliser la reaction du joueur. Sonde ecrite dans
+`internal/analysis/replay/duels_sonde_research_test.go` (+ `_mesures_test.go`), composee
+UNIQUEMENT de decodeurs de production (ScanFilmWeaponDamages, ScanBipedPositions, ScanDeaths,
+buildLifeSpans, bestDeathOffset, nameLivesByDeaths), hors ligne, quatre films d'arene, seuils
+ecrits AVANT la mesure. Apport de methode : la base d'atterrissage se calibre sur « le slot
+etait-il VIVANT a l'instant du degat », pas sur « le slot existe » — l'existence est satisfaite
+par presque toute base et ne note que la densite des slots ; la vivacite date, donc elle
+discrimine.
+
+**Resultats observes.** M1 ECHOUE : reciprocite 0 a 12,8 % contre un seuil de 40 %. Cause
+quantifiee : le film n'emet que 91 a 428 `damage_aftermath` pour 90 a 117 morts (0,8 a 4,8 par
+mort), et le sous-type 0xC0 non decode n'ouvre aucun reservoir (40 a 124 paquets de plus). Voir un
+duel exige que DEUX degats survivent a l'echantillonnage : avec P(degat fatal capture) mesuree a
+0,40 et 0,50, l'attendu est 0,16 et 0,25, on mesure 0,11 et 0,13 — l'arithmetique de la perte se
+referme. Le temoin decale rend 0 faux positif sur les quatre films : le critere est juste, c'est
+le RAPPEL qui manque, pas la precision. Acquis durables : base 512 confirmee, detachee d'un
+facteur 2,1 a 2,6 ; jointure degat fatal -> fin de vie reelle (ecart median 231 et 433 ms) ;
+distance de l'engagement resolue a 95,7-100 % ; portee mediane des eliminations stable a 5,8-6,9 m
+sur quatre cartes ; denivele |dz| median 0,4-0,9 m et 16-40 % des engagements a plus d un metre — l axe vertical
+est REEL (une premiere mesure « 3D moins plan », aveugle au denivele, avait conclu a tort au nul ;
+corrigee le meme jour). Voie bouclier (M5) : deux a dix fois plus dense mais oracle de validite plafonne a
+44-76 % et discrimination degradee la ou la densite est bonne.
+
+**Conclusion / prochaine etape.** Plan `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`, note de mesure
+`.ai/V7.5/film_re/SONDE_DUELS_2026-09-06.md`, branche `feat/duels` (worktree dedie). Le comptage
+de duels n'est pas livrable sur le flux de degats ; UNE mesure peut le rouvrir et fait le lot 1 du
+plan (gate chiffre) : le bouclier DU TUEUR chute-t-il pendant la fenetre, le tueur etant connu par
+le kill-feed a 97,6 % et non par le film. Livrable inconditionnel : l'agregat multi-matchs de la
+portee par arme — exactement l'item que le POC G.3 du 2026-08-30 avait ferme par cadrage — sur
+`kill_positions_latest` x `match_kill_events_latest`, zero re-cuisson, grammaire graphique deja
+validee par l'utilisateur le 2026-09-02 (baton par arme, losange sur la valeur centrale) transposee
+en p10/mediane/p90. REVISION du meme jour apres revue critique (demande utilisateur) : lot 3 extrait
+l helper de jointure kills x positions (3e copie -> centralisation + garde-rail), lot 1 lit la base
+en OpenReadForQuery et normalise son gate par l oracle victime (fenetre 2 s, mesuree), Nmin=8
+defini une fois (verifie : la constante du chantier precision n est pas sur feat/v75), filtres =
+ceux de la Synthese (MatchIDs, aucun filtre temporel SQL), cote VICTIME promu dans les lots
+(« ou je meurs, et a quelle arme »), denivele signe ajoute (decision utilisateur ; |dz| median
+0,4-0,9 m, 16-40 % au-dela d un metre), proxy d entame T-1,5 s calcule dans la passe positions
+de killcollector et persiste append-only (`kill_openings`) — PAS dans l artefact de rejeu, purge
+par cron, 107 artefacts pour 1 380 films — avec gate de validation (ecart median <= 2 m sur les
+morts ou le premier degat est capture) et backfill soumis a l utilisateur. Rien n est commite :
+accord utilisateur requis.
+
 ## [2026-09-05] Integration des branches actives dans l'architecture cuisson-perf — CLOSE, merge feat/v75 — Complete
 
 **Decision technique principale.** Tout ce qui devait rejoindre `feat/v75` a ete rejoue DANS

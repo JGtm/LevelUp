@@ -11373,6 +11373,21 @@ export interface components {
             /** Format: int64 */
             wins: number;
         };
+        SynthesisOpening: {
+            delta?: components["schemas"]["SynthesisOpeningDelta"];
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: double */
+            median_m: number;
+        };
+        SynthesisOpeningDelta: {
+            /** Format: double */
+            closing_share_pct: number;
+            /** Format: double */
+            median_m: number;
+            /** Format: int64 */
+            n: number;
+        };
         SynthesisOverview: {
             /** Format: double */
             avg_deaths?: number;
@@ -11435,6 +11450,7 @@ export interface components {
             top_weapon_kills?: components["schemas"]["SynthesisWeaponKillEntry"][] | null;
             top_weeks: components["schemas"]["TopWeekEntry"][] | null;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
+            weapon_range?: components["schemas"]["SynthesisWeaponRange"];
         };
         SynthesisScope: {
             /** Format: date-time */
@@ -11461,6 +11477,24 @@ export interface components {
             kills: number;
             label: string;
             role?: string;
+        };
+        SynthesisWeaponRange: {
+            below_threshold_deaths?: components["schemas"]["WeaponBelowThreshold"][] | null;
+            below_threshold_kills?: components["schemas"]["WeaponBelowThreshold"][] | null;
+            /** Format: int64 */
+            measured_deaths: number;
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: double */
+            median_deaths_m: number;
+            /** Format: double */
+            median_kills_m: number;
+            opening?: components["schemas"]["SynthesisOpening"];
+            /** Format: int64 */
+            total_deaths: number;
+            /** Format: int64 */
+            total_kills: number;
+            weapons: components["schemas"]["WeaponRangeRow"][] | null;
         };
         T0FilmCoverage: {
             /** Format: int64 */
@@ -12161,6 +12195,13 @@ export interface components {
         WatcherSubscriptionsOutputBody: {
             subscribed_players: string[] | null;
         };
+        WeaponBelowThreshold: {
+            label?: string;
+            label_en?: string;
+            /** Format: int64 */
+            measured: number;
+            weapon_key: string;
+        };
         WeaponChange: {
             from?: string;
             kind: string;
@@ -12214,6 +12255,29 @@ export interface components {
             y: number;
             /** Format: float */
             z?: number;
+        };
+        WeaponRangeRow: {
+            deaths?: components["schemas"]["WeaponRangeSide"];
+            kills?: components["schemas"]["WeaponRangeSide"];
+            label?: string;
+            label_en?: string;
+            weapon_key: string;
+        };
+        WeaponRangeSide: {
+            /** Format: double */
+            above_pct: number;
+            /** Format: double */
+            below_pct: number;
+            /** Format: double */
+            level_pct: number;
+            /** Format: int64 */
+            measured: number;
+            /** Format: double */
+            median: number;
+            /** Format: double */
+            p10: number;
+            /** Format: double */
+            p90: number;
         };
         WinLossPoint: {
             /** Format: int64 */
