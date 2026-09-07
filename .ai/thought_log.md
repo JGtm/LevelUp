@@ -97099,3 +97099,12 @@ opportuniste : le périmètre réduit de 5.6 est documenté, pas dissimulé.
 Prochaine étape : lot D (playbackStore) ouvrira 5.5 et la forme complète de 5.6
 (contributeurs + `?frame=`), ce qui suppose aussi un ajout côté contrat Go
 (identifiants de match par cellule) — hors périmètre de cette passe.
+
+## [2026-09-07] Tactique — phase 8 : cloture du chantier (Complete)
+- Decision : perimetre ferme par l'utilisateur ; decouvertes consignees dans
+  `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`, suite (3 items) dans `.ai/PLAN_TACTIQUE_SUITE_2026-09-07.md`.
+- Resultats : phases 1-7 livrees sur `feat/tactique` (5.5 et la liste des contributeurs reportes
+  au plan de suite, lot D fusionne dans `feat/v75` mais pas encore repris ici) ; gates locaux verts
+  a chaque commit ; `make gate-push` lance a la cloture ; CI surveillee.
+- Prochaine etape : fusion dans `feat/v75` par l'utilisateur apres `merge origin/feat/v75` (P du
+  plan de suite), puis S.1-S.3.
