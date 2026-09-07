@@ -160,9 +160,12 @@ describe('equippedWeapons — le sélecteur d’emplacement ordonne la rangée',
 
 describe('drawnSwapAt — la bascule du sélecteur, datée à l’image-clé', () => {
   // Deux lectures d'inventaire du même slot : la main passe de l'emplacement 0 au 1 à t=200.
-  // `drawnSwapAt` reste hors du correctif P0-2 (dette notée au journal, non traitée ici) : il
-  // n'appelle ni `nearestReading` ni `currentLifeOf`, ces fixtures n'ont donc pas besoin de vie.
+  // BORNÉE À LA VIE EN COURS DU SLOT depuis le constat R6 (audit vies anonymes 2026-09-06,
+  // même défaut et même remède que `loadoutAt`/`abilityAt`, correctif P0-2) : les fixtures
+  // portent désormais une vie couvrante, sans quoi `currentLifeOf` ne rend rien et la
+  // fonction s'abstient (`null`).
   const d = doc({
+    tracks: [track(512, 'A', 0, 400)],
     inventory: [
       { t: 10, slot: 512, d: 0 },
       { t: 200, slot: 512, d: 1 },
@@ -180,6 +183,7 @@ describe('drawnSwapAt — la bascule du sélecteur, datée à l’image-clé', (
 
   it('sans bascule (sélecteur stable), rien', () => {
     const stable = doc({
+      tracks: [track(512, 'A', 0, 300)],
       inventory: [
         { t: 10, slot: 512, d: 1 },
         { t: 200, slot: 512, d: 1 },
@@ -192,6 +196,7 @@ describe('drawnSwapAt — la bascule du sélecteur, datée à l’image-clé', (
     // d=2 (« rien de dégainé ») et d absent ne participent pas : seule une main lue qui
     // CHANGE d'emplacement est un échange.
     const gaps = doc({
+      tracks: [track(512, 'A', 0, 300)],
       inventory: [
         { t: 10, slot: 512, d: 1 },
         { t: 100, slot: 512 },
@@ -200,5 +205,31 @@ describe('drawnSwapAt — la bascule du sélecteur, datée à l’image-clé', (
       ],
     })
     expect(drawnSwapAt(gaps, 512, 205, 30)).toBeNull()
+  })
+
+  it('sans vie couvrante pour ce slot à cette image, aucune bascule n’est datée', () => {
+    expect(drawnSwapAt(doc({ inventory: [{ t: 10, slot: 512, d: 0 }, { t: 200, slot: 512, d: 1 }] }), 512, 205, 30))
+      .toBeNull()
+  })
+
+  /**
+   * LE DÉFAUT QUE CE CAS FERME (constat R6, audit vies anonymes 2026-09-06). Un slot est
+   * réattribué à chaque réapparition ET entre manches : la dernière lecture de la vie de A
+   * (d=0) suivie de la première lecture de la vie de B (d=1) sur le MÊME slot recyclé n'est
+   * PAS une bascule d'arme — ce sont deux joueurs différents. Avant le correctif, le balayage
+   * ignorait la frontière de vie et datait une bascule fantôme à t=160 (âge 40, dans la
+   * fenêtre) ; borné à la vie de B (qui commence à 150), le seul enregistrement qui reste dans
+   * la fenêtre est sa toute première lecture — rien à comparer, donc aucune bascule.
+   */
+  it('BORNE À LA VIE EN COURS DU SLOT : une bascule entre deux vies d’un slot recyclé n’est jamais datée', () => {
+    const recycled = doc({
+      tracks: [track(512, 'A', 0, 100), track(512, 'B', 150, 300)],
+      inventory: [
+        { t: 10, slot: 512, d: 0 }, // vie de A
+        { t: 90, slot: 512, d: 0 },
+        { t: 160, slot: 512, d: 1 }, // vie de B — un AUTRE joueur, pas une bascule de A
+      ],
+    })
+    expect(drawnSwapAt(recycled, 512, 200, 60)).toBeNull()
   })
 })

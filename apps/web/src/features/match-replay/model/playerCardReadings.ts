@@ -30,6 +30,7 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   playerName,
   playerStateAt,
+  rosterEntryKey,
   type PlayerState,
   type ReplayPlayer,
   type VitalityPresence,
@@ -89,7 +90,13 @@ export function playerCardReadings({
   const name = (rawName ? stripBotSuffix(rawName) : null) ?? t.unknownPlayer
   const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
   // L'index de FILM du joueur : la clé des lancers de grenade (l'auteur y est écrit).
-  const filmIndex = doc.roster.find((r) => r.xuid === player.xuid)?.filmIndex ?? null
+  //
+  // UN BOT N'A PAS DE XUID AU ROSTER (`r.xuid === ''`) : la jointure passe par
+  // `rosterEntryKey` (rosterLogic.ts), DANS LE MÊME ESPACE que `player.xuid`
+  // (`'bot:<nom>'`, cf. `buildPlayers`). Comparer `r.xuid` à `player.xuid` directement ne
+  // matche jamais un bot — le badge de lancer de grenade ne s'allumait alors JAMAIS pour lui
+  // (constat P2-5, audit vies anonymes 2026-09-06).
+  const filmIndex = doc.roster.find((r) => rosterEntryKey(r) === player.xuid)?.filmIndex ?? null
   // Les DEUX éclats d'événement : le coup fatal et la réapparition. Ils durent le temps de
   // leur animation ; le délai NÉGATIF la fait reprendre à son avancement réel, donc elle
   // reste juste après un saut dans le temps de lecture (cf. globals.css).
