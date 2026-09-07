@@ -35,6 +35,10 @@ const FEATURE_LABEL: Record<TitleCapability, { fr: string; en: string }> = {
     fr: 'la portée mesurée des engagements',
     en: 'measured engagement range',
   },
+  expected_win_prob: {
+    fr: 'la probabilité de victoire attendue',
+    en: 'expected win probability',
+  },
 }
 
 interface FeatureUnavailableProps {
