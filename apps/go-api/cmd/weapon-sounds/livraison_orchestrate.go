@@ -69,7 +69,7 @@ func livrer(donneesDir, sonsRacine, depotCible string) error {
 	if err := livraisonPublier(attente, cible); err != nil {
 		return err
 	}
-	tsvar := filepath.Join(depotCible, "apps", "web", "src", "features", "match-replay", "weaponSoundVariations.ts")
+	tsvar := filepath.Join(depotCible, "apps", "web", "src", "features", "match-replay", "sound", "weaponSoundVariations.ts")
 	if err := livraisonEcrireTS(tsvar, e.Variations); err != nil {
 		return err
 	}

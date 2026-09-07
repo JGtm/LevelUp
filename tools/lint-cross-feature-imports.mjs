@@ -34,8 +34,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '..')
 const WEB_SRC = join(REPO_ROOT, 'apps/web/src')
 
-// Pattern : extrait `featureName` de `@/features/featureName/...`.
-const FEATURE_IMPORT_RE = /@\/features\/([a-z0-9-]+)/g
+// Pattern : extrait `featureName` de `@/features/featureName/...`, et le CHEMIN du module
+// importé (2e groupe) — une exception peut ainsi porter sur un module nommé plutôt que sur
+// une feature entière (cf. ALLOWED_CROSS_IMPORTS ci-dessous).
+const FEATURE_IMPORT_RE = /@\/features\/([a-z0-9-]+)((?:\/[A-Za-z0-9._-]+)*)/g
 
 // Exceptions cross-feature documentées.
 //
@@ -79,24 +81,40 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // Career réutilise MatchEncountersTable pour les "Joueurs les plus croisés"
   'career=>match-view',
   // Le rejeu 2D pose les kills de la Match View sur sa propre horloge : il réutilise la
-  // COLLECTE des kills (`_momentum.collectKillEvents`), la cascade de couleur d'équipe
-  // (`teamColor`) et l'index des joueurs (`xuidMeta`) plutôt que d'en écrire une seconde
-  // version. Dépendance durable et voulue — la dupliquer donnerait deux définitions de
-  // « ce qui est un kill » et deux couleurs pour la même équipe.
-  'match-replay=>match-view',
-  // Reciproque, et STRICTEMENT bornee au chargement de l'artefact. La vue match affiche la
-  // courbe « Score dans le temps », qui est un calque de l'ARTEFACT DE REJEU (schema 12,
-  // decision D2 du plan d'exploitation du registre du film : aucune table DuckDB nouvelle,
-  // la donnee vit dans l'artefact). Elle le charge par useMatchReplay — MEME endpoint,
-  // MEME cle de cache (match-replay), MEME gate de presence (header.replay_available) que
-  // le lien « rejeu ». Dupliquer cette query donnerait deux caches pour un document de 1,5
-  // a 2,7 Mio et deux verites sur « l'artefact existe-t-il ». Le hook ne peut pas descendre
-  // dans lib/ sans y emmener replayNormalize (la frontiere de nullabilite du document,
-  // 46 importeurs dans match-replay) : ce serait deplacer la feature, pas partager de la
-  // logique. TOUTE la logique PURE du score, elle, a bien ete sortie dans
-  // lib/replay/scoreTimeline.ts (2026-08-18, ratchet P8.5) — cette exception ne couvre QUE
-  // le chargement de l'artefact.
-  'match-view=>match-replay',
+  // COLLECTE des kills (`_momentum.collectKillEvents`), les deux cascades de couleur d'équipe
+  // (`teamColor` pour les surfaces, `teamSeriesColor` pour les séries) et l'index des joueurs
+  // (`xuidMeta`) plutôt que d'en écrire une seconde version. Dépendance durable et voulue — la
+  // dupliquer donnerait deux définitions de « ce qui est un kill » et deux couleurs pour la
+  // même équipe. QUATRE MODULES NOMMÉS depuis le 2026-09-06 (v2 D.13) : la paire entière
+  // autorisait 60 fichiers de la Match View, et le commentaire n'en citait déjà que trois sur
+  // les quatre réellement importés.
+  'match-replay=>match-view/_momentum',
+  'match-replay=>match-view/teamColor',
+  'match-replay=>match-view/teamSeriesColor',
+  'match-replay=>match-view/xuidMeta',
+  // Reciproque. Le CHARGEMENT de l'artefact n'y figure plus : `queries.ts` est descendu dans
+  // `lib/replay/` le 2026-09-06 (v2 D.13) avec le document lui-meme (`replayNormalize`,
+  // `replayReadyTypes`), sa logique de lecture (`replayLogic`), le roster (`rosterLogic`) et
+  // ses deux dependances pures — la fermeture a ete verifiee : aucun de ces sept modules
+  // n'importe quoi que ce soit de `features/`. L'ancienne justification disait que le hook
+  // « ne peut pas descendre sans emmener replayNormalize » : c'est exactement ce qui a ete
+  // fait, et les cinq imports de query ont disparu.
+  //
+  // CE QUI RESTE, ET POURQUOI, module par module :
+  //  - les deux SECTIONS de l'onglet Chronologie sont des vues du document de rejeu montees
+  //    par la Match View ; leur contenu (dictionnaire, calques, hook de socles) vit dans la
+  //    feature du rejeu — les descendre dans `lib/` y emmenerait un calque et l'i18n, c'est-a
+  //    -dire deplacerait la feature au lieu de partager de la logique ;
+  //  - `i18n/i18n` : la barre de faits marquants nomme les usages d'equipement avec le
+  //    vocabulaire du rejeu (`REPLAY_TEXT[locale].equipmentUsage`) — un second dictionnaire
+  //    donnerait deux libelles pour la meme chose ;
+  //  - `model/equipmentUsageLogic` : `equipmentKillBadges` y lit `EPISODE_FAMILIES`, les deux
+  //    familles dont l'usage forme un episode. Le module ne peut pas descendre dans `lib/`
+  //    (il depend d'un calque), la constante ne peut pas se recopier (regle n° 6).
+  'match-view=>match-replay/MatchEquipmentUsageSection',
+  'match-view=>match-replay/MatchPadControlSection',
+  'match-view=>match-replay/i18n/i18n',
+  'match-view=>match-replay/model/equipmentUsageLogic',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history
@@ -271,9 +289,15 @@ try {
     while ((m = FEATURE_IMPORT_RE.exec(text)) !== null) {
       const importedFeature = m[1]
       if (importedFeature === consumerFeature) continue
-      const key = `${consumerFeature}=>${importedFeature}`
-      if (ALLOWED_CROSS_IMPORTS.has(key)) continue
-      crossViolations.push({ file: relPath, key, importedFeature })
+      const importedModule = `${importedFeature}${m[2] ?? ''}`
+      // Deux formes d'exception, et la seconde est la seule qui dise la vérité quand une
+      // feature n'emprunte que trois modules à sa voisine : la PAIRE (`a=>b`, toute la
+      // feature) et le MODULE NOMMÉ (`a=>b/dossier/module`). Un module autorisé n'ouvre pas
+      // sa feature ; ajouter un import ailleurs dans la même voisine fait rougir le lint.
+      const paire = `${consumerFeature}=>${importedFeature}`
+      const module = `${consumerFeature}=>${importedModule}`
+      if (ALLOWED_CROSS_IMPORTS.has(paire) || ALLOWED_CROSS_IMPORTS.has(module)) continue
+      crossViolations.push({ file: relPath, key: module, importedFeature: importedModule })
     }
   }
 } catch (err) {

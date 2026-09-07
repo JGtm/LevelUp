@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : table de donnees (une entree par cle, aucun embranchement) : la decouper repartirait la meme table sur plusieurs fichiers a tenir en phase, sans retirer une seule decision au lecteur. */
 /**
  * Types de l'API LevelUp.
  *
@@ -1504,6 +1505,10 @@ export interface SynthesisPageResponse {
   // Précision par arme (Halo 5 natif) — toutes les armes tirées, accuracy 0..1.
   // Omis pour les titres qui ne peuplent pas weapon_accuracy (Infinite).
   weapon_accuracy?: SynthesisWeaponAccuracyEntry[]
+  // Portée et dénivelé mesurés des engagements (section « Portée par arme »).
+  // Omis quand la capability produit `weapon_range` manque ou quand rien n'est mesuré
+  // sur le scope — jamais un bloc à zéro (cf. .ai/PLAN_DUELS_PORTEE_2026-09-06.md, D5/D9).
+  weapon_range?: SynthesisWeaponRange
   // PLAN_COMBAT_PROFILE_WIRING Phase 1
   combat_profile?: CombatProfileBlock | null
   // KPI objectifs (cumul CTF/Zones/Oddball sur le scope) — omis pour un titre sans
@@ -1518,6 +1523,19 @@ export type SynthesisWeaponKillEntry = components['schemas']['SynthesisWeaponKil
 
 // Précision par arme — accuracy en unité 0..1 (le composant multiplie par 100).
 export type SynthesisWeaponAccuracyEntry = components['schemas']['SynthesisWeaponAccuracyEntry']
+
+// Portée par arme (frags ET morts) — le bloc entier, ses lignes, un côté, une arme sous
+// le seuil de publication, et le proxy d'entame. Re-exports du contrat OpenAPI : la forme
+// est celle du service (`domain.SynthesisWeaponRange`), jamais un mirror manuel.
+export type SynthesisWeaponRange = components['schemas']['SynthesisWeaponRange']
+export type WeaponRangeRow = components['schemas']['WeaponRangeRow']
+export type WeaponRangeSide = components['schemas']['WeaponRangeSide']
+export type WeaponBelowThreshold = components['schemas']['WeaponBelowThreshold']
+// Le proxy d'entame et son delta apparié : `opening` est OMIS quand aucune entame n'est
+// mesurée, `opening.delta` quand aucun frag n'a pu être apparié à la sienne. Les deux
+// absences disent deux choses différentes et l'UI les distingue (cf. plan, D5).
+export type SynthesisOpening = components['schemas']['SynthesisOpening']
+export type SynthesisOpeningDelta = components['schemas']['SynthesisOpeningDelta']
 
 // Répartition hiérarchique des frags v2 (sunburst classe→rôle) — title-agnostic,
 // partagé par Synthesis/Match view/Timeseries/Sessions. Cf. domain/frag_distribution.go.

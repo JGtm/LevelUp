@@ -37,6 +37,30 @@ ce fichier prend le relais a partir de 7C et recoit toute nouvelle decouverte.
   `settingsStore.Load()` en erreur se degrade en silence chez deux appelants (dont le cron de purge :
   settings illisible = retention illimitee = purge desactivee sans un mot). Reprise : WARN.
 
+## Fusion `origin/feat/v75` -> `feat/tactique` (worktree `LevelUp-wt-tactique`)
+
+- 2026-09-07 ; `apps/go-api/internal/sync/replayartifacts/raster.go:301` (`projeterRastersTactiques`) ;
+  v75 a remplace toute la chaine de bursts (`b.usage []artefactCuit`) par le pipeline `Deriver`
+  (`derivations.go`, `artefactLu` avec `doc *replay.ReplayDocument` deja parse) — la fusion a adapte
+  la signature (`[]artefactCuit` -> `[]artefactLu`) et cable l'appel dans `Deriver` apres
+  `persisterStatsBombe`, mais `ProjeterRasterTactique` continue de relire le fichier via
+  `lireDocumentRange(path)` au lieu de reutiliser `a.doc` deja en memoire : DOUBLE LECTURE/PARSE de
+  chaque artefact par cycle (une fois par `Deriver.lireArtefacts`, une fois par la projection des
+  rasters). NON TRAITE (fusion = brancher, pas optimiser) — a regrouper avec la note deja au registre
+  §7 du plan tactique sur le document qui devrait circuler entre projections.
+
+- 2026-09-07 ; `apps/go-api/internal/platform/duckdb/tactical_repo.go` (`QTacticalPositions`) et
+  `tactical_repo_isolement.go` (`QTacticalIsolement`) ; v75 a pose (lot 3, 2026-09-06) le
+  garde-rail `kill_measured_guard_test.go` qui interdit tout littéral `kill_positions(_latest)`
+  hors de `kill_measured.go` — les deux requêtes tactique nommaient la table en dur et faisaient
+  rougir `TestJointureMesureeUneSeuleFois` apres la fusion. ADAPTE (pas une decouverte a
+  consigner sans agir — la ratchet de v75 l'exige) : les deux templates SQL prennent desormais
+  `%s` a la place du littéral, et les deux sites d'appel passent la constante non exportee
+  `positionsAtKill` de `kill_measured.go` (meme paquet `duckdb`). AUCUNE reutilisation de
+  `measuredKillsQuery` : ces deux lectures n'ont ni classificateur d'arme ni garde d'unanimite
+  sur `source_tag` (documente dans l'en-tete de tactical_repo.go, « CE QUI DIFFERE DE
+  KillDistanceRepo ») — seul le NOM de table est partage, pas la jointure entiere.
+
 ## Phase 5 — vue d'analyse (branche `feat/tactique`, worktree dedie, HEAD `a395fa78f`)
 
 - 2026-09-07 ; `apps/web/src/lib/api/types.ts` (schema `TacticalRaster`) ; `matchs_sans_rayon`

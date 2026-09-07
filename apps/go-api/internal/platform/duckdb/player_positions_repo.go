@@ -1,23 +1,25 @@
-// Package duckdb — player_positions_repo.go : write+read repo des positions
-// joueurs keyframe v3 (shared.match_player_positions).
+// Package duckdb — player_positions_repo.go : repo de LECTURE des positions joueurs
+// (shared.match_player_positions), pour la carte de chaleur de la fiche de match.
 //
-// Source : pipeline diagnostic v3 (décodage film) qui produit des
-// []positions.PlayerPosition par match (match-level, pas d'attribution xuid —
-// cf. §N de .ai/RESEARCH_THEATER_RE.md). Ce repo persiste / relit ces positions.
+// LECTURE SEULE DEPUIS LE 2026-09-06 (décision utilisateur 1 du plan v2). `WriteMatch`
+// (DELETE-then-INSERT par match, sur le handle de LECTURE du pool) a été SUPPRIMÉE : la table
+// est désormais une PROJECTION DE L'ARTEFACT de rejeu, écrite en INSERT purs par
+// `persist.PlayerPositionsPersister` sous le lease RW, depuis les dérivations post-rangement
+// (`sync/replayartifacts/positions.go`). Un DELETE indexé sur une table écrite dans le cycle de
+// sync est le déclencheur direct du bug ART DuckDB #23046 — la doctrine (ADR 0019/0026) l'exclut,
+// et `match_player_positions` figure maintenant dans les listes de `no_art_patterns_test.go` et
+// `append_only_state_guard_test.go`.
 //
-// Connexion : comme les autres writers/readers shared (ObjectiveEventsRepo,
-// weapon_kills), on passe par SharedReadDB().Get(ctx) → connexion DIRECTE à
-// shared_matches_v2.duckdb (tables à la racine, PAS de préfixe `shared.`). En
-// mode legacy / CLI backfill, ce handle est RW : WriteMatch peut écrire dessus.
-// Le backfill v3 tourne HORS chemin live (sérialisé) — pas de pression ART.
+// LA LECTURE PASSE PAR LA VUE `_latest`, ET C'EST OBLIGATOIRE (règle ART n°2) : la table est
+// append-only par PASSE, et une lecture brute servirait les positions de toutes les projections
+// précédentes empilées — une carte de chaleur qui compterait chaque point deux ou trois fois.
 //
-// Écriture par match : DELETE FROM match_player_positions WHERE match_id = ?,
-// puis INSERT de toutes les positions, dans une seule transaction (idempotent +
-// atomique) — même pattern que ObjectiveEventsRepo.
+// Connexion : comme les autres readers shared, on passe par SharedReadDB().Get(ctx) → connexion
+// DIRECTE à shared_matches_v2.duckdb (tables à la racine, PAS de préfixe `shared.`).
 //
-// Capability gating : si la table n'existe pas (titre sans capability film /
-// migration non appliquée), DuckDB remonte "Table ... does not exist",
-// intercepté via isTableNotFoundErr -> games.ErrCapabilityNotSupported.
+// Capability gating : si la vue n'existe pas (titre sans capability film / migration non
+// appliquée), DuckDB remonte "Table ... does not exist", intercepté via isTableNotFoundErr ->
+// games.ErrCapabilityNotSupported.
 package duckdb
 
 import (
@@ -38,64 +40,6 @@ type PlayerPositionsRepo struct {
 // NewPlayerPositionsRepo crée un PlayerPositionsRepo lié à un PlayerDB.
 func NewPlayerPositionsRepo(pdb *PlayerDB) *PlayerPositionsRepo {
 	return &PlayerPositionsRepo{pdb: pdb}
-}
-
-// WriteMatch remplace atomiquement TOUTES les positions d'un match.
-//
-// Pattern DELETE-then-INSERT-par-match : DELETE FROM match_player_positions
-// WHERE match_id = ?, puis INSERT de toutes les positions, dans une seule
-// transaction. Ré-exécuter pour le même matchID écrase l'existant (idempotent).
-//
-// positions == nil/[] est un no-op total (ni DELETE ni INSERT) : un décodage qui
-// n'a rien produit ne doit pas effacer les positions déjà persistées (garde-fou
-// anti-perte de données, aligné sur ObjectiveEventsRepo).
-//
-// Retourne games.ErrCapabilityNotSupported si la table n'existe pas.
-func (r *PlayerPositionsRepo) WriteMatch(ctx context.Context, matchID string, pos []positions.PlayerPosition) error {
-	if len(pos) == 0 {
-		return nil
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return fmt.Errorf("PlayerPositionsRepo.WriteMatch: shared reader: %w", err)
-	}
-	defer release()
-
-	if err := writePlayerPositionsTx(ctx, db, matchID, pos); err != nil {
-		if isTableNotFoundErr(err) {
-			return games.ErrCapabilityNotSupported
-		}
-		return fmt.Errorf("PlayerPositionsRepo.WriteMatch(%s): %w", matchID, err)
-	}
-	return nil
-}
-
-// writePlayerPositionsTx exécute le DELETE+INSERT dans une transaction.
-func writePlayerPositionsTx(ctx context.Context, db *sql.DB, matchID string, pos []positions.PlayerPosition) error {
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin: %w", err)
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	if _, err := tx.ExecContext(ctx,
-		`DELETE FROM match_player_positions WHERE match_id = ?`, matchID); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
-	for i, p := range pos {
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO match_player_positions (match_id, time_ms, x, y, z, team)
-			VALUES (?, ?, ?, ?, ?, ?)`,
-			matchID, p.TimeMS, p.X, p.Y, p.Z, p.Team,
-		); err != nil {
-			return fmt.Errorf("insert #%d: %w", i, err)
-		}
-	}
-	return tx.Commit()
 }
 
 // LoadMatch relit toutes les positions d'un match, ordonnées par time_ms puis
@@ -122,10 +66,13 @@ func (r *PlayerPositionsRepo) LoadMatch(ctx context.Context, matchID string) ([]
 }
 
 // loadPlayerPositionRows lit les positions d'un match, ordonnées par time_ms ASC.
+//
+// ⚠ LA VUE `_latest`, JAMAIS LA TABLE (ADR 0026, règle ART n°2) : la table empile une génération
+// par projection d'artefact, et une lecture brute servirait toutes les passes superposées.
 func loadPlayerPositionRows(ctx context.Context, db *sql.DB, matchID string) ([]positions.PlayerPosition, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT time_ms, x, y, z, team
-		FROM match_player_positions
+		FROM match_player_positions_latest
 		WHERE match_id = ?
 		ORDER BY time_ms ASC`, matchID)
 	if err != nil {

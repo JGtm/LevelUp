@@ -85,7 +85,7 @@ func ctfBridgeReport(t *testing.T, cat *filmdec.MapQuantCatalog, dir, short, map
 	sort.SliceStable(pos, func(i, j int) bool { return pos[i].TimestampUS < pos[j].TimestampUS })
 	tracks := indexBySlot(pos)
 	lives := buildLifeSpans(tracks)
-	off, matched := bestDeathOffset(lives, deaths)
+	off, matched, _ := bestDeathOffset(lives, deaths)
 	named := nameLivesByDeaths(lives, deaths, off)
 
 	var b strings.Builder
@@ -106,7 +106,7 @@ func ctfWriteWindowSweep(b *strings.Builder, tracks map[uint32]slotTrack, deaths
 	fmt.Fprintf(b, "\n# sensibilite a la fenetre d'appariement\n")
 	for _, w := range ctfWidenedWindows {
 		lv := buildLifeSpans(tracks) // vies neuves : nameLivesByDeaths écrit dedans
-		o, _ := bestDeathOffset(lv, deaths)
+		o, _, _ := bestDeathOffset(lv, deaths)
 		fmt.Fprintf(b, "fenetre_ms\t%d\tvies_nommees\t%d\tsur\t%d\n",
 			w, ctfNameWithWindow(lv, deaths, o, w), len(lv))
 	}
@@ -183,8 +183,8 @@ func ctfWriteDriftProbe(b *strings.Builder, lives []lifeSpan, deaths []Death, of
 			late = append(late, l)
 		}
 	}
-	oe, ne := bestDeathOffset(early, deaths)
-	ol, nl := bestDeathOffset(late, deaths)
+	oe, ne, _ := bestDeathOffset(early, deaths)
+	ol, nl, _ := bestDeathOffset(late, deaths)
 	fmt.Fprintf(b, "\n# sonde de derive d'horloge\n")
 	fmt.Fprintf(b, "offset_global_ms\t%d\noffset_premiere_moitie_ms\t%d\tapparies\t%d\noffset_seconde_moitie_ms\t%d\tapparies\t%d\n",
 		off, oe, ne, ol, nl)

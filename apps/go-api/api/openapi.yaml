@@ -9197,6 +9197,12 @@ components:
         closedRefused:
           format: int64
           type: integer
+        deathOffsetMatched:
+          format: int64
+          type: integer
+        deathOffsetRunnerUp:
+          format: int64
+          type: integer
         fromReading:
           format: int64
           type: integer
@@ -9212,10 +9218,25 @@ components:
         livesTotal:
           format: int64
           type: integer
+        namedByNextLife:
+          format: int64
+          type: integer
+        namedByPreviousLife:
+          format: int64
+          type: integer
+        namedBySlotBridge:
+          format: int64
+          type: integer
         slotCollisions:
           format: int64
           type: integer
         slots:
+          format: int64
+          type: integer
+        unnamedLives:
+          format: int64
+          type: integer
+        unnamedLivesContested:
           format: int64
           type: integer
       required:
@@ -9226,6 +9247,13 @@ components:
         - indexReadings
         - indexDisagreements
         - slotCollisions
+        - namedByPreviousLife
+        - namedByNextLife
+        - namedBySlotBridge
+        - unnamedLives
+        - unnamedLivesContested
+        - deathOffsetMatched
+        - deathOffsetRunnerUp
         - closedByShot
         - closedByRespawn
         - closedContested
@@ -13419,6 +13447,12 @@ components:
         ambiguousReturns:
           format: int64
           type: integer
+        ambiguousSlot:
+          format: int64
+          type: integer
+        assignedByPlay:
+          format: int64
+          type: integer
         bursts:
           format: int64
           type: integer
@@ -13438,6 +13472,9 @@ components:
           format: int64
           type: integer
         dropsRepositioned:
+          format: int64
+          type: integer
+        dropsWithheld:
           format: int64
           type: integer
         flagFilm:
@@ -13483,6 +13520,9 @@ components:
         overlaps:
           format: int64
           type: integer
+        ownFlagRefused:
+          format: int64
+          type: integer
         spawns:
           format: int64
           type: integer
@@ -13490,6 +13530,9 @@ components:
           format: int64
           type: integer
         teamBirths:
+          format: int64
+          type: integer
+        unresolved:
           format: int64
           type: integer
       required:
@@ -13504,6 +13547,7 @@ components:
         - noBridge
         - noTrack
         - outOfWindow
+        - ambiguousSlot
         - markerObserved
         - markerConfirmed
         - openObserved
@@ -13521,6 +13565,10 @@ components:
         - objectLives
         - closedByObject
         - dropsRepositioned
+        - assignedByPlay
+        - dropsWithheld
+        - ownFlagRefused
+        - unresolved
       type: object
     FlagCarry:
       additionalProperties: false
@@ -25376,6 +25424,38 @@ components:
         - unfinished
         - win_rate
       type: object
+    SynthesisOpening:
+      additionalProperties: false
+      properties:
+        delta:
+          $ref: '#/components/schemas/SynthesisOpeningDelta'
+        measured_kills:
+          format: int64
+          type: integer
+        median_m:
+          format: double
+          type: number
+      required:
+        - median_m
+        - measured_kills
+      type: object
+    SynthesisOpeningDelta:
+      additionalProperties: false
+      properties:
+        closing_share_pct:
+          format: double
+          type: number
+        median_m:
+          format: double
+          type: number
+        "n":
+          format: int64
+          type: integer
+      required:
+        - median_m
+        - closing_share_pct
+        - "n"
+      type: object
     SynthesisOverview:
       additionalProperties: false
       properties:
@@ -25513,6 +25593,8 @@ components:
           type:
             - array
             - "null"
+        weapon_range:
+          $ref: '#/components/schemas/SynthesisWeaponRange'
       required:
         - scope
         - overview
@@ -25591,6 +25673,56 @@ components:
       required:
         - label
         - kills
+      type: object
+    SynthesisWeaponRange:
+      additionalProperties: false
+      properties:
+        below_threshold_deaths:
+          items:
+            $ref: '#/components/schemas/WeaponBelowThreshold'
+          type:
+            - array
+            - "null"
+        below_threshold_kills:
+          items:
+            $ref: '#/components/schemas/WeaponBelowThreshold'
+          type:
+            - array
+            - "null"
+        measured_deaths:
+          format: int64
+          type: integer
+        measured_kills:
+          format: int64
+          type: integer
+        median_deaths_m:
+          format: double
+          type: number
+        median_kills_m:
+          format: double
+          type: number
+        opening:
+          $ref: '#/components/schemas/SynthesisOpening'
+        total_deaths:
+          format: int64
+          type: integer
+        total_kills:
+          format: int64
+          type: integer
+        weapons:
+          items:
+            $ref: '#/components/schemas/WeaponRangeRow'
+          type:
+            - array
+            - "null"
+      required:
+        - weapons
+        - median_kills_m
+        - median_deaths_m
+        - measured_kills
+        - total_kills
+        - measured_deaths
+        - total_deaths
       type: object
     T0FilmCoverage:
       additionalProperties: false
@@ -27572,6 +27704,22 @@ components:
       required:
         - subscribed_players
       type: object
+    WeaponBelowThreshold:
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+        label_en:
+          type: string
+        measured:
+          format: int64
+          type: integer
+        weapon_key:
+          type: string
+      required:
+        - weapon_key
+        - measured
+      type: object
     WeaponChange:
       additionalProperties: false
       properties:
@@ -27701,6 +27849,55 @@ components:
         - weapon
         - spawns
         - presence
+      type: object
+    WeaponRangeRow:
+      additionalProperties: false
+      properties:
+        deaths:
+          $ref: '#/components/schemas/WeaponRangeSide'
+        kills:
+          $ref: '#/components/schemas/WeaponRangeSide'
+        label:
+          type: string
+        label_en:
+          type: string
+        weapon_key:
+          type: string
+      required:
+        - weapon_key
+      type: object
+    WeaponRangeSide:
+      additionalProperties: false
+      properties:
+        above_pct:
+          format: double
+          type: number
+        below_pct:
+          format: double
+          type: number
+        level_pct:
+          format: double
+          type: number
+        measured:
+          format: int64
+          type: integer
+        median:
+          format: double
+          type: number
+        p10:
+          format: double
+          type: number
+        p90:
+          format: double
+          type: number
+      required:
+        - measured
+        - p10
+        - median
+        - p90
+        - above_pct
+        - level_pct
+        - below_pct
       type: object
     WinLossPoint:
       additionalProperties: false
@@ -27837,6 +28034,9 @@ components:
     ZonesCoverage:
       additionalProperties: false
       properties:
+        ambiguousZone:
+          format: int64
+          type: integer
         attributed:
           format: int64
           type: integer
@@ -27857,6 +28057,12 @@ components:
           type: integer
         method:
           type: string
+        noPosition:
+          format: int64
+          type: integer
+        outside:
+          format: int64
+          type: integer
         ownerAgreed:
           format: int64
           type: integer
@@ -27891,6 +28097,9 @@ components:
         - unpaired
         - captures
         - attributed
+        - noPosition
+        - outside
+        - ambiguousZone
         - ownerChecked
         - ownerAgreed
         - ownerUnpaired

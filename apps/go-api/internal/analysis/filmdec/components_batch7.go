@@ -5,7 +5,8 @@ package filmdec
 
 // consumeObjectMultiplayerProperties (obje i9) mirrors FUN_1407d4c94, the REAL frame-deser
 // of object-multiplayer-properties-component (CORRECTED 2026-06-14: the old DecodeEntityRecordQ
-// targeted FUN_14080c1f8, a DIFFERENT/larger entity record). Structure: R(1) present ; if set,
+// targeted FUN_14080c1f8, a DIFFERENT/larger entity record — ce décodeur superseded a été
+// SUPPRIMÉ avec `entity_quant.go` le 2026-09-05, lot E, item E.2). Structure: R(1) present ; if set,
 // R(5) tag + a byte-oriented TLV blob (each "byte" = next R(8), no byte-align in FRAME mode).
 // Length-driven -> bit-exact reproducible regardless of variant kind.
 //

@@ -6,6 +6,7 @@
 #   make go-api-build  # Compile le binaire Go
 #   make go-api-test   # Lance les tests Go
 #   make go-api-test-gamefiles # Corpus cartes (exige Halo installe, ~6 min)
+#   make replay-corpus-gate # Non-regression rejeu sur corpus temoin (exige le parc local)
 #   make install-web   # Installe les dépendances npm
 #   make test-web      # Tests Vitest frontend
 #   make openapi-gen   # Régénère api/openapi.yaml (Huma + fragment manuel)
@@ -24,7 +25,7 @@ LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
 .PHONY: help web dev stop restart test-web test-e2e test-e2e-ui demo-visual check-types \
         generate-types install-web \
         go-api-build go-api-test go-api-test-gamefiles go-api-dev _go-api-run \
-        go-api-test-shared-social-gate install-git-hooks gate-push \
+        go-api-test-shared-social-gate install-git-hooks gate-push replay-corpus-gate \
         go-api-test-coverage-ratchet openapi-gen openapi-check
 
 ## Affiche cette aide
@@ -208,6 +209,27 @@ go-api-test:
 ## LEVELUP_HALO_DEPLOY=<chemin>.
 go-api-test-gamefiles:
 	cd $(GO_API_DIR) && go test -tags=gamefiles -count=1 -timeout 3600s ./internal/himap/ -v
+
+## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin. DEFAUT
+## (--reference=base) : cuit chaque temoin DEUX FOIS (code du HEAD, code d'une revision de
+## base — origin/feat/v75 ou HEAD^) dans deux racines de travail jetables (jamais le parc), et
+## compare les deux artefacts frais par TOUS les axes de cmd/replay-diff (dont la somme des
+## durees par calque). Toute perte sort en code 1 : le signal est binaire, une perte ne peut
+## venir que du diff en cours de revue. Mode --reference=parc (balayage de release, contre
+## l'artefact deja cuit) disponible mais INFORMATIF sauf --strict — cf. docs/COMMANDS.md.
+##
+## A LANCER AVANT tout merge qui touche analysis/replay, replaybuild, filmdec, ou qui bumpe
+## SchemaVersion. EXIGE le parc local de developpement (chunks de film) ET l'acces en lecture
+## a la base partagee du titre pour les faits du match ; PAS le jeu installe. Marche SANS FLAG
+## depuis un depot qui porte sa propre base partagee (le cas courant, cf. docs/COMMANDS.md pour
+## le detail des 10 options si votre topologie l'exige) ; duree mesuree (7 temoins, 2026-09-07,
+## les deux modes) : cf. .ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md.
+##
+## Par defaut, un SEUL temoin absent (cache de film purge ou partiel) fait sortir en code 2 —
+## un gate qui ne compare rien ne doit jamais sortir en 0 (`--allow-missing` restaure l'ancien
+## avertissement seul, pour un usage delibere).
+replay-corpus-gate:
+	cd $(GO_API_DIR) && CGO_ENABLED=0 go run ./cmd/replay-corpus-gate
 
 ## Go API: lance les tests avec rapport de couverture
 go-api-coverage:

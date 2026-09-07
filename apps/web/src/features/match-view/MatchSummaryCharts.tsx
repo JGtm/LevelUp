@@ -57,7 +57,7 @@ const DECAL_HATCH: DecalConfig = {
   dashArrayX: [1, 0],
   dashArrayY: [4, 4],
   rotation: -Math.PI / 4,
-  color: 'rgba(255,255,255,0.35)',
+  color: 'rgba(255,255,255,0.35)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
 }
 
 // Décal cercles (série "Hist. Moy.")
@@ -66,7 +66,7 @@ const DECAL_DOTS: DecalConfig = {
   symbolSize: 1,
   dashArrayX: [4, 8],
   dashArrayY: [4, 8],
-  color: 'rgba(255,255,255,0.45)',
+  color: 'rgba(255,255,255,0.45)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
 }
 
 // option aria pour activer les décals par item

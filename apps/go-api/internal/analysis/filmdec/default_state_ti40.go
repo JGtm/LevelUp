@@ -52,11 +52,14 @@ const VehicleTypeIndex = 40
 // quand la porte de flux `bVar14` vaut 1. Cette largeur depend de globaux de config runtime
 // (DAT_1445cc9e0 axis widths, DAT_144632be0 index) non recuperables statiquement — voir le § 3 du
 // dossier RE. Defaut 0 : le bloc est modelise ABSENT, comme le media-frame du bipede
-// (bipedDefaultStateTailBits). Expose pour qu'un harnais de calibration puisse sonder l'alternative.
-var vehicleMediaFrameBits = 0
-
-// SetVehicleMediaFrameBits fixe la largeur modelisee du bloc quaternion de la feuille 4.
-func SetVehicleMediaFrameBits(n int) { vehicleMediaFrameBits = n }
+// (bipedDefaultStateTailBits).
+//
+// Le reglage public `SetVehicleMediaFrameBits` a ete supprime le 2026-09-05 (lot E, item E.2) :
+// aucun appelant. La largeur reste 0, c'est-a-dire le bloc modelise absent.
+// PROVENANCE : largeur MESUREE du bloc quaternion de la feuille 4 de ti=40 — 0, c est-a-dire le
+// bloc modelise ABSENT, ce qui est bit-exact sur le chemin nominal (bVar14 == 0, le cas d un
+// spawn). Constante depuis le 2026-09-06 (lot E, item E.8).
+const vehicleMediaFrameBits = 0
 
 // consumeDefaultStateTI40 porte FUN_1410a5a74 (archetype 40, « vehicule »).
 //

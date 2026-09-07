@@ -1,24 +1,42 @@
 package migration
 
-// steps_shared_player_positions.go — table v3 (film) pour les POSITIONS joueurs
-// keyframe (§N de .ai/RESEARCH_THEATER_RE.md).
+// steps_shared_player_positions.go — CREATION de la table des POSITIONS joueurs (v3 film,
+// §N de .ai/RESEARCH_THEATER_RE.md). C'est la forme D'ORIGINE ; sa forme COURANTE est celle que
+// `steps_shared_player_positions_appendonly.go` lui donne — lire les deux ensemble.
 //
-// Net-new : aucune table existante touchée. Produite par
-// internal/analysis/positions.DecodeKeyframePositions depuis les chunks film
-// (paquet TYPE_2, combs bit-level + triplet float32-LE). 1 ligne = 1 position
-// full-state décodée (granularité ~20s du snapshot type-2).
+// # CE QUE CE FICHIER POSE, ET CE QUI A CHANGE DEPUIS (decision 1 du plan v2, 2026-09-06)
 //
-// LIMITE (honnête, §N) : v1 = MATCH-LEVEL — pas d'attribution xuid (la
-// delta-compression bloque l'index par joueur). La colonne team est best-effort
-// (-1 = inconnu) ; aucun lien xuid n'est posé.
+// Il cree les colonnes et rien d'autre. Trois affirmations de son en-tete d'origine sont
+// devenues FAUSSES le jour ou la table est devenue une PROJECTION DE L'ARTEFACT DE REJEU, et
+// les laisser au present aurait fait croire au lecteur que le regime d'ecriture est encore
+// celui d'un outil hors ligne :
 //
-// Pas de PK contraignante : l'écriture est un DELETE-then-INSERT par match (un
-// même triplet (time_ms, x, y, z) peut légitimement se répéter — spawns, points
-// fixes — donc une PK (match_id, time_ms, x, y, z) rejetterait des positions
-// valides). team est INTEGER (0/1 ou -1). written_at trace la provenance.
+//	LE PRODUCTEUR      les positions venaient de `analysis/positions.DecodeKeyframePositions`,
+//	                   appele par `cmd/diag_weapons_v3 -positions -write`. Elles viennent
+//	                   maintenant des trajectoires de l'artefact, projetees par
+//	                   `sync/replayartifacts/positions.go` a la granularite de ~20 s que la
+//	                   table declare (GrainPositionsMS), comme les trois autres derivations
+//	                   post-rangement.
+//	LE REGIME          l'ecriture etait un DELETE-then-INSERT par match. Elle est desormais
+//	                   APPEND-ONLY : `persist.PlayerPositionsPersister` fait des INSERT purs,
+//	                   toutes les lignes d'une projection partagent `positions_pass`, et la
+//	                   LECTURE passe par `match_player_positions_latest` (regle ART n°2).
+//	LE CHEMIN          « ecriture HORS chemin live, pas de pression concurrente ART » : c'est
+//	                   l'inverse. L'ecriture vit dans le CYCLE DE SYNC, sous le lease shared —
+//	                   c'est-a-dire exactement le regime pour lequel la conversion append-only
+//	                   existe.
 //
-// Écriture HORS chemin live (backfill diagnostic sérialisé, MaxOpenConns(1)) →
-// pas de pression concurrente ART (cf. .ai/PLAN_WEAPON_ATTRIBUTION_V3.md §10).
+// # CE QUI N'A PAS CHANGE
+//
+// PAS DE PK CONTRAIGNANTE, et la raison tient toujours : un meme triplet (time_ms, x, y, z)
+// peut legitimement se repeter (spawns, points fixes), donc une PK naturelle rejetterait des
+// positions valides. C'est pourquoi la vue `_latest` retient LA DERNIERE PASSE par match, et
+// non la derniere ligne par cle.
+//
+// LA TABLE EST MATCH-LEVEL : aucune colonne xuid. Le document, lui, nomme le porteur de chaque
+// trajectoire — il sert a poser l'EQUIPE (lue en base par ce xuid, cf. positions.go) puis il est
+// jete. La publier changerait la forme d'une table deja lue par la carte de chaleur : hors
+// decision 1, consigne en decouverte.
 
 import "database/sql"
 

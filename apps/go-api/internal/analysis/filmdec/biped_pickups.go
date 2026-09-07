@@ -205,15 +205,17 @@ func ScanBipedPickups(fc *FilmContext) ([]BipedPickup, BipedPickupStats, error) 
 // `ok` est faux dès que la lecture n'est pas celle qu'on attend — on ne publie jamais un
 // ramassage deviné.
 func decodeBipedPickup(pay []byte, st *BipedPickupStats) (BipedPickup, bool) {
-	// LE PRÉAMBULE FAIT 9 BITS : configuration(1) + continuation(1) + type R(7). Il se lit en
-	// ligne plutôt que par une constante — celle-ci n'avait aucun lecteur et la CI l'a relevée
-	// (golangci-lint, `unused`) ; le fait, lui, reste écrit ici.
+	// LE PRÉAMBULE FAIT 9 BITS : configuration(1) + continuation(1) + type R(7). Il se lit par
+	// `readPacketHead` (event_list.go), le SEUL lecteur du préambule depuis le 2026-09-05
+	// (lot E, item E.3). La justification qui vivait ici — « il se lit en ligne plutôt que par
+	// une constante, celle-ci n'avait aucun lecteur et la CI l'a relevée » — était PÉRIMÉE :
+	// `eventPayloadStartBit` a deux lecteurs depuis le portage des événements véhicule.
 	br := NewBitReader(pay)
-	br.Skip(1)         // bit de configuration
-	if !br.ReadBit() { // continuation : un événement suit
+	h := readPacketHead(br)
+	if !h.More { // continuation : un événement suit
 		return BipedPickup{}, false // liste vide : impossible pour 0xC4, mais on ne le suppose pas
 	}
-	switch typ := int(br.ReadBits(7)); typ {
+	switch typ := h.Type; typ {
 	case bipedPickupType:
 		st.Type9++
 	case bipedBoardVehicleType:

@@ -105,6 +105,33 @@ export function formatDurationMShort(seconds?: number | null, fallback = '-'): s
 }
 
 /**
+ * formatClockMShort — un INSTANT du match en `MmSSs`, depuis des millisecondes.
+ *
+ * LA VARIANTE QUI MANQUAIT, ET POURQUOI ELLE N'EST PAS `formatDurationMShort`. Le dépôt a
+ * déjà tranché ce cas pour le format `M:SS` (cf. `formatClockMMSS` juste au-dessus) : une
+ * DURÉE nulle n'existe pas et se rend « - », un INSTANT nul est le coup d'envoi et se rend
+ * « 0m00s ». `formatDurationMShort` prend des SECONDES et rend « - » à zéro ; il était donc
+ * insubstituable aux trois écritures manuelles de `MmSSs` que la vue match portait (registre
+ * 2026-09-05, N3), qui datent toutes un instant en millisecondes. Cette fonction est la
+ * variante manquante, pas une quatrième copie : le garde-rail
+ * `clockMShort.guard.test.ts` interdit désormais le littéral hors de ce fichier.
+ *
+ * TRONQUE, ET NE DESCEND PAS SOUS ZÉRO : même convention que `formatClockMMSS`, un instant
+ * antérieur au coup d'envoi se lit « 0m00s » plutôt qu'en négatif.
+ *
+ * @example
+ *   formatClockMShort(0)         // "0m00s" (le coup d'envoi, pas une absence)
+ *   formatClockMShort(65_300)    // "1m05s"
+ *   formatClockMShort(-5_000)    // "0m00s"
+ */
+export function formatClockMShort(ms: number): string {
+  const total = Math.max(0, Math.floor((Number.isFinite(ms) ? ms : 0) / 1000))
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${m}m${s.toString().padStart(2, '0')}s`
+}
+
+/**
  * Format durée « h min » pour des TOTAUX de temps de jeu (durée cumulée d'un
  * scope de matchs, ex. tuile « Durée totale » du briefing Explorer). Distinct de
  * formatDurationMMSS (MM:SS d'UN match) et de formatDurationHMS : ici on exprime

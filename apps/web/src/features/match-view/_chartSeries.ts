@@ -18,13 +18,18 @@ import type {
   MatchKillerVictimPair,
   MatchScoreboardRow,
 } from '@/lib/api/types'
+import { formatClockMShort } from '@/lib/formatters'
 import { displayPlayerName } from '@/lib/players/displayName'
 
-/** Format seconds → "MmSSs" (ex 75 → "1m15s"). */
+/**
+ * Format seconds → "MmSSs" (ex 75 → "1m15s").
+ *
+ * L'ÉCRITURE DU FORMAT VIENT DE `lib/formatters` (registre 2026-09-05, N3) : c'est un
+ * INSTANT — la borne d'un intervalle de temps de jeu, dont le zéro est le coup d'envoi et
+ * non une absence de durée. Seule l'UNITÉ est propre à cet appelant, d'où la conversion.
+ */
 export function formatBinSeconds(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = Math.max(0, Math.floor(seconds % 60))
-  return `${m}m${s.toString().padStart(2, '0')}s`
+  return formatClockMShort(seconds * 1000)
 }
 
 /** Construction des séries du chart match_view.18 (Antagonistes — qui a tué qui).

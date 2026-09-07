@@ -185,8 +185,9 @@ func consumeFwdUpDynPrecConfig(br *BitReader) {
 //	    mode 0 : FUN_14076d528(...,8,0x13) = R(1) présent ; si 0 -> R(19) + R(8)
 //
 // C'est EXACTEMENT `consumeObjectAngularVelocity` (components_movement.go), le
-// porteur déjà écrit de FUN_140d87740 — qui avait été DÉBRANCHÉ en 2026-07 sous le
-// drapeau `useLegacyAngularVel` parce qu'il était faux pour le BIPÈDE. Il l'était :
+// porteur déjà écrit de FUN_140d87740 — qui avait été DÉBRANCHÉ en 2026-07 sous un
+// drapeau `useLegacyAngularVel` (supprimé le 2026-09-05, lot E : il n'avait plus
+// d'installateur) parce qu'il était faux pour le BIPÈDE. Il l'était :
 // le bipède porte `object-angular-velocity-component` -> FUN_140d70998, sans le
 // gate externe. La correction de 2026-07 était juste pour ti=35 et a cassé ti=40,
 // qui est le SEUL archétype du registre à porter la variante dyn.-préc.

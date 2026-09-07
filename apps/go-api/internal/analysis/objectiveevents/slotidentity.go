@@ -155,17 +155,28 @@ func IdentifyNamedEvents(evs []NamedEvent, identity map[int]string) []Identified
 // NEUTRALITE MONO-MANCHE, par construction : sur un film a une seule manche, [RoundIdentity.At]
 // ignore le temps et rend l'unique table — le resultat est alors celui du pont plat resolu par
 // les instants de mort ([SlotIdentityByDeaths]), a l'octet pres.
-func IdentifyNamedEventsByRound(evs []NamedEvent, identity RoundIdentity) []IdentifiedEvent {
+//
+// LE SECOND RETOUR EST LE COMPTE DES ECARTES, ET IL N'EST PAS FACULTATIF. L'en-tete
+// d'[IdentifyNamedEvents] pose deja la regle — « publier des evenements attribues sans dire
+// combien ne l'ont pas ete laisserait croire a l'exhaustivite » — mais le pont ne rendait que
+// les rescapes : le denominateur que le rejeu 2D publie ensuite
+// (`replay.LayerCoverage.Available`) comptait les evenements DEJA identifies, donc un calque
+// partiel se lisait ~100 %. Mesure du depot sur `c0a82e88` : 17 actions nommees, 12
+// identifiees — 5 perdues, avec une couverture qui annoncait 12/12 et 0 `noSlot`. Le compte
+// voyage desormais jusqu'au document, ou il alimente `noSlot` (cf. replay/objectives.go).
+func IdentifyNamedEventsByRound(evs []NamedEvent, identity RoundIdentity) ([]IdentifiedEvent, int) {
 	out := make([]IdentifiedEvent, 0, len(evs))
+	unnamed := 0
 	for _, e := range evs {
 		xuid := identity.At(e.Slot, e.TimeMS)
 		if xuid == "" {
+			unnamed++
 			continue
 		}
 		out = append(out, IdentifiedEvent{NamedEvent: e, XUID: xuid})
 	}
 	sortIdentifiedEvents(out)
-	return out
+	return out, unnamed
 }
 
 // sortIdentifiedEvents ordonne par instant, puis xuid, puis nom : un ordre total, donc une

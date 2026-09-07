@@ -17,6 +17,7 @@ import {
   formatDurationMMSS,
   formatDurationHMS,
   formatDurationMShort,
+  formatClockMShort,
   formatDurationHM,
   displayRatingLabel,
   formatRankDelta,
@@ -189,6 +190,28 @@ describe('formatDurationMShort', () => {
     expect(formatDurationMShort(0)).toBe('-')
     expect(formatDurationMShort(-5)).toBe('-')
     expect(formatDurationMShort(NaN)).toBe('-')
+  })
+})
+
+describe('formatClockMShort — l’INSTANT en MmSSs, depuis des millisecondes', () => {
+  it('tronque à la seconde, secondes sur deux chiffres', () => {
+    expect(formatClockMShort(65_300)).toBe('1m05s')
+    expect(formatClockMShort(37_900)).toBe('0m37s')
+    expect(formatClockMShort(125_000)).toBe('2m05s')
+    expect(formatClockMShort(600_000)).toBe('10m00s')
+  })
+
+  it('rend le COUP D’ENVOI à zéro, et jamais « - » : un instant nul est un instant', () => {
+    // C'est toute la différence avec `formatDurationMShort`, qui rend « - » sur 0 parce
+    // qu'une DURÉE nulle n'existe pas (même partage que M:SS, cf. `formatClockMMSS`).
+    expect(formatClockMShort(0)).toBe('0m00s')
+    expect(formatDurationMShort(0)).toBe('-')
+  })
+
+  it('ne descend jamais sous zéro, et ne propage pas un NaN', () => {
+    expect(formatClockMShort(-5_000)).toBe('0m00s')
+    expect(formatClockMShort(NaN)).toBe('0m00s')
+    expect(formatClockMShort(Infinity)).toBe('0m00s')
   })
 })
 

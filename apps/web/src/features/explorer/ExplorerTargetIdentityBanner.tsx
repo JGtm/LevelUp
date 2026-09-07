@@ -173,7 +173,7 @@ export function ExplorerTargetIdentityBanner({
           {/* Adornment carrière (parité Home) : couche décorative à droite,
               derrière l'identité (z-[1] vs z-[2]), bornée à la zone hero (sibling du
               shell dans le wrapper interne) pour ne pas chevaucher la barre XP. Le
-              drop-shadow rgba(...) est une couleur structurelle (tolérée, règle 20
+              drop-shadow rgba(...) est une couleur structurelle (tolérée, règle 20 — color-allow: 2026-09-06 revue R1 C5, ce commentaire la DECRIT, il ne la pose pas)
               CLAUDE.md) — recopié du banner Home. */}
           {careerAdornmentUrl && (
             <div className="pointer-events-none absolute right-2 top-0 z-[1] flex h-full items-start">

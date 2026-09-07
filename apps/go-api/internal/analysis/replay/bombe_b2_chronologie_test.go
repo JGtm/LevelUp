@@ -190,7 +190,8 @@ func b2Detonateurs(t *testing.T, cache, id string) map[int]string {
 	}
 	identity := objectiveevents.ResolveRoundIdentity(recs, di)
 	out := map[int]string{}
-	for _, e := range objectiveevents.IdentifyNamedEventsByRound(named, identity) {
+	ident, _ := objectiveevents.IdentifyNamedEventsByRound(named, identity)
+	for _, e := range ident {
 		if e.Stat == objectiveevents.StatBombDetonations {
 			out[e.TimeMS] = e.XUID
 		}

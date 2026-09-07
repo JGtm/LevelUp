@@ -137,19 +137,38 @@ func FlatRoundIdentity(identity map[int]string) RoundIdentity {
 	return RoundIdentity{byRound: map[int]map[int]string{0: identity}}
 }
 
-// roundStartsOf rend, par manche presente dans `byRound`, le plus petit instant d'enregistrement
-// observe pour cette manche, la liste triee par instant croissant.
+// roundStartsOf rend, par manche presente dans `byRound`, l'instant ou elle COMMENCE, la liste
+// triee par instant croissant.
+//
+// LE DEBUT VIENT DE [RoundStartsMS], source unique du paquet (constat C2 de la revue MANCHES-R1,
+// 2026-09-06). Le minimum des instants declares, qu'elle prenait avant, suit le premier faux
+// positif venu : sur `24dbb67d` il datait la manche 1 a 85 193 ms quand le consensus la date a
+// 298 909 ms, et [RoundIdentity.At] resolvait la mauvaise manche pendant 213 s.
+//
+// REPLI, et il est necessaire : une manche que le consensus ne sait pas fixer (sans majorite de
+// slots) n'est pas dans [RoundStartsMS] alors qu'elle peut etre dans `byRound`. Son debut reste
+// alors le minimum de ses instants declares — le comportement d'avant, faute de mieux, et sur une
+// manche que la decoupe ne borne de toute facon pas.
 func roundStartsOf(recs []StatRecord, byRound map[int]map[int]string) []roundStart {
 	if len(byRound) <= 1 {
 		return nil
 	}
+	consensus := RoundStartsMS(recs)
 	min := map[int]int{}
 	for _, r := range recs {
 		if _, ok := byRound[r.Round]; !ok {
 			continue
 		}
+		if _, fixe := consensus[r.Round]; fixe {
+			continue
+		}
 		if cur, seen := min[r.Round]; !seen || r.TimeMS < cur {
 			min[r.Round] = r.TimeMS
+		}
+	}
+	for round := range byRound {
+		if debut, fixe := consensus[round]; fixe {
+			min[round] = debut
 		}
 	}
 	out := make([]roundStart, 0, len(min))
@@ -184,6 +203,75 @@ func (ri RoundIdentity) At(slot, timeMS int) string {
 	return ri.byRound[ri.roundOfTime(timeMS)][slot]
 }
 
+// CompletedByLines COMPLETE l'identite par manche avec le pont par TRIPLET
+// ([SlotIdentityFrom]), sur les seuls slots que le pont par morts n'a pas su nommer, et
+// UNIQUEMENT sur un film mono-manche.
+//
+// # LE TROU QU'ELLE BOUCHE, ET COMBIEN IL COUTAIT
+//
+// Le pont par morts exige `deathInstantMin` = 3 instants coincidents pour nommer un slot. Un
+// joueur qui MEURT MOINS DE TROIS FOIS est donc STRUCTURELLEMENT hors de sa portee — et ce sont
+// les MEILLEURS joueurs, ceux qui portent le drapeau. Mesure sur `c0a82e88` (Husky Raid:CTF,
+// une manche) : le pont par morts nomme 5 slots sur 7 et laisse tomber le slot 22
+// (2 morts, 7 frags, LE voleur ET LE captureur de drapeau du match) et le slot 20 (1 mort).
+// Le calque `objectives` perdait avec eux ses DEUX SEULES actions de famille `flag`.
+//
+// # POURQUOI CE N'EST PAS UNE REGRESSION DE PRUDENCE
+//
+// Les deux ponts sont DISJOINTS par construction — l'un lit les TOTAUX du match, l'autre des
+// INSTANTS du film — et sur ce film ils ne se contredisent nulle part : 3 slots nommes par les
+// deux, a l'identique ; 2 que seul le triplet nomme ; 2 que seul le pont par morts nomme. Mieux,
+// le CONTROLE CROISE confirme les deux slots litigieux : les progressions de mort du slot 22
+// coincident avec le fil de 2535463878425995 et de LUI SEUL (2 sur 2), celles du slot 20 avec
+// 2535465632069522 et lui seul (1 sur 1). Le pont par morts ne se tait pas parce qu'il doute :
+// il se tait parce qu'il n'a pas ASSEZ D'ANCRES pour que sa marge s'applique.
+//
+// # LES TROIS GARDES, ET AUCUNE N'EST NEGOCIABLE
+//
+//  1. MONO-MANCHE SEULEMENT. Le triplet apparie des TOTAUX DE MATCH ; en multi-manche le slot
+//     d'entite est reattribue et le compteur repart de zero — c'est exactement le defaut que
+//     `d173b1a8c` a corrige, et il n'est pas question de le reintroduire.
+//  2. COMPLETER, JAMAIS CONTREDIRE. Un slot deja nomme par le pont par morts garde son nom.
+//  3. AUCUN XUID DEUX FOIS. Un xuid deja porte par un autre slot de la manche n'est pas ajoute —
+//     meme regle que la seconde passe de [SlotIdentityFrom] et que [withoutContestedXUID].
+//
+// `lines` vide rend l'identite INCHANGEE : le calque reste publiable hors ligne, sans base.
+func (ri RoundIdentity) CompletedByLines(recs []StatRecord, lines []PlayerLine) RoundIdentity {
+	if len(lines) == 0 || len(ri.byRound) != 1 {
+		return ri
+	}
+	triplet := SlotIdentityFrom(recs, lines)
+	if len(triplet) == 0 {
+		return ri
+	}
+	round, base := 0, map[int]string(nil)
+	for r, m := range ri.byRound {
+		round, base = r, m
+	}
+	fusion := make(map[int]string, len(base)+len(triplet))
+	pris := make(map[string]bool, len(base))
+	for slot, xuid := range base {
+		fusion[slot] = xuid
+		pris[xuid] = true
+	}
+	// Ordre STABLE : `triplet` est une map, et deux slots peuvent revendiquer le meme xuid.
+	// Sans tri, lequel des deux l'emporte changerait d'une execution a l'autre.
+	slots := make([]int, 0, len(triplet))
+	for slot := range triplet {
+		slots = append(slots, slot)
+	}
+	sort.Ints(slots)
+	for _, slot := range slots {
+		xuid := triplet[slot]
+		if _, deja := fusion[slot]; deja || pris[xuid] {
+			continue
+		}
+		fusion[slot] = xuid
+		pris[xuid] = true
+	}
+	return RoundIdentity{byRound: map[int]map[int]string{round: fusion}, starts: ri.starts}
+}
+
 // AtRound rend le xuid du slot POUR UNE MANCHE connue — la voie du porteur, qui itere deja les
 // trains de tics manche par manche.
 func (ri RoundIdentity) AtRound(round, slot int) string {
@@ -192,6 +280,17 @@ func (ri RoundIdentity) AtRound(round, slot int) string {
 	}
 	return ""
 }
+
+// Resolved dit qu'un pont a ete RESOLU — par opposition a la valeur zero du type.
+//
+// LA DISTINCTION EST CELLE ENTRE « PERSONNE N'A RESOLU » ET « LA RESOLUTION N'A NOMME
+// PERSONNE », et un calque qui recoit son pont d'un appelant a besoin des deux : le premier
+// cas lui dit de resoudre lui-meme, le second qu'il n'y a rien a nommer sur ce film. Un
+// compte de slots nommes ne les departage PAS ([NamedCount] vaut zero dans les deux cas).
+//
+// [ResolveRoundIdentity] rend toujours au moins une manche — mono-manche comprise, ou elle
+// rend `{manche: pont plat}` — donc `byRound` non vide EST la marque d'une resolution.
+func (ri RoundIdentity) Resolved() bool { return len(ri.byRound) > 0 }
 
 // Rounds rend la liste triee des manches resolues.
 func (ri RoundIdentity) Rounds() []int {

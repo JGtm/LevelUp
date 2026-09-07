@@ -46,10 +46,15 @@ type result struct {
 	originMS      int64
 	hasOrigin     bool
 	tracks        []replay.Track
-	zones         []replay.Zone
-	roster        []replay.RosterEntry
-	frameCount    int
-	err           error
+	// slotXUID est le pont slot -> joueur RECONSTRUIT depuis les pistes publiees du document
+	// (premiere vie nommee de chaque slot, collisions ecartees). `BuildFromFilm` ne rend pas
+	// son `OwnerReport` ; sans ce pont, l'outil de mesure croiserait sur MOINS de pistes que la
+	// production et ses taux ne seraient plus comparables aux siens (cf. samplesByXUID).
+	slotXUID   map[uint32]uint64
+	zones      []replay.Zone
+	roster     []replay.RosterEntry
+	frameCount int
+	err        error
 }
 
 // zoneStats : les statistiques d'objectif du mode a zones. Les frags et assistances sont
@@ -99,6 +104,7 @@ func (r *runner) measure(ctx context.Context, m eligible) result {
 		return res
 	}
 	res.actions, res.tracks, res.zones = doc.Objectives, doc.Tracks, m.zones.Zones
+	res.slotXUID = slotBridgeOf(doc.Tracks)
 	res.roster = doc.Roster
 	res.frameCount = doc.FrameCount
 	res.nullAction = shiftBy(doc.Objectives, doc.FrameCount, nullShiftFrames)
@@ -109,6 +115,33 @@ func (r *runner) measure(ctx context.Context, m eligible) result {
 		res.correctedNull = shiftBy(res.corrected, doc.FrameCount, nullShiftFrames)
 	}
 	return res
+}
+
+// slotBridgeOf reconstruit le pont slot -> joueur depuis les pistes PUBLIEES : la premiere vie
+// nommee de chaque slot le nomme, et un slot que deux joueurs se partagent n'est nomme par
+// aucun — la MEME regle de collision que `ownersFromLives`, dont ceci est la projection
+// disponible hors du paquet.
+func slotBridgeOf(tracks []replay.Track) map[uint32]uint64 {
+	out := map[uint32]uint64{}
+	collision := map[uint32]bool{}
+	for _, tr := range tracks {
+		if tr.XUID == "" {
+			continue
+		}
+		x, err := strconv.ParseUint(tr.XUID, 10, 64)
+		if err != nil {
+			continue
+		}
+		if prev, seen := out[tr.Slot]; seen && prev != x {
+			collision[tr.Slot] = true
+			continue
+		}
+		out[tr.Slot] = x
+	}
+	for s := range collision {
+		delete(out, s)
+	}
+	return out
 }
 
 // correctedActions repose les evenements identifies sur l'axe de temps du rejeu en

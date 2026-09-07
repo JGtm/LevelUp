@@ -36,14 +36,18 @@ import (
 // Les erreurs sont enveloppees avec la MEME formulation pour toutes les projections : leurs
 // journaux se lisent alors de la meme facon, et un `lecture artefact` dans un log designe
 // toujours le meme evenement.
-func lireDocumentRange(path string) (*replay.ReplayDocument, error) {
+//
+// RENVOIE AUSSI LA TAILLE LUE (octets) : [lireArtefacts] (derivations.go) en a besoin pour la
+// marque de derivation (`replaybuild.WriteDerivationsMark`), et c'est le meme octet-la — le
+// deduire d'un second `os.Stat` risquerait une taille qui a change entre les deux appels.
+func lireDocumentRange(path string) (*replay.ReplayDocument, int, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("lecture artefact: %w", err)
+		return nil, 0, fmt.Errorf("lecture artefact: %w", err)
 	}
 	var doc replay.ReplayDocument
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		return nil, fmt.Errorf("parse artefact: %w", err)
+		return nil, 0, fmt.Errorf("parse artefact: %w", err)
 	}
-	return &doc, nil
+	return &doc, len(raw), nil
 }

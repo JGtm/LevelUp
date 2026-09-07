@@ -199,7 +199,7 @@ SELECT kp.match_id,
        COALESCE(min(e.victim_xuid), '') AS victim_xuid,
        min(kp.killer_x) AS killer_x, min(kp.killer_y) AS killer_y,
        min(kp.victim_x) AS victim_x, min(kp.victim_y) AS victim_y
-FROM kill_positions_latest kp
+FROM %s kp
 JOIN match_kill_events_latest e
     ON e.match_id = kp.match_id
    AND e.feed_killer_xuid = kp.killer_xuid
@@ -239,7 +239,12 @@ func (r *TacticalRepo) KillPositions(ctx context.Context, q domain.TacticalQuery
 	}
 
 	selectSQL, args := r.universSQL(q)
-	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalPositions, selectSQL), args...)
+	// Le nom de la table de positions passe par la constante de kill_measured.go, PAS par un
+	// littéral ici : c'est le seul propriétaire du nom (garde-rail
+	// kill_measured_guard_test.go, lot 3 v75 du 2026-09-06). Cette lecture n'emprunte PAS
+	// measuredKillsQuery (pas de classificateur d'arme, pas de garde d'unanimité — cf.
+	// l'en-tête du fichier) ; seul le NOM de la table est partagé.
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalPositions, positionsAtKill, selectSQL), args...)
 	if err != nil {
 		return out, r.degrader(ctx, "KillPositions", err)
 	}

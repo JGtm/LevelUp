@@ -52,7 +52,7 @@ const (
 // encore migré vers tokenCssVar(). Utiliser outcomeColorToken pour les
 // nouveaux champs (Phase 1 méta-plan § 6.1.3 — chunk MV3 cleanup).
 //
-// (outcomeLabels est défini dans match_history_service.go)
+// (outcomeLabels — le repli FR des LIBELLÉS — est défini dans outcome_label.go)
 var outcomeColors = map[int]string{
 	1: mvHexOutcomeNeutral, // Égalité
 	2: mvHexOutcomeWin,     // Victoire
@@ -191,11 +191,24 @@ type MatchViewService struct {
 	// reste faux et le front ne pose aucun lien : un titre qui ne produit pas de
 	// rejeu n'a rien à afficher, pas une erreur à remonter.
 	replaySvc port.ReplayService
+	// semantic (optionnel) : adapter sémantique du titre — SEUL usage ici, le mot de
+	// l'issue du match (outcomes.toml, localisé) posé sur l'en-tête. Injecté via
+	// WithSemantic. Nil → repli FR documenté (outcome_label.go), le comportement
+	// d'avant le 2026-09-07.
+	semantic games.TitleSemanticAdapter
 }
 
 // NewMatchViewService crée un MatchViewService.
 func NewMatchViewService(repo port.MatchViewRepository, xuid string) *MatchViewService {
 	return &MatchViewService{repo: repo, xuid: xuid}
+}
+
+// WithSemantic injecte l'adapter sémantique du titre : l'en-tête y prend le LIBELLÉ D'ISSUE
+// du match (outcomes.toml), dans la locale de la requête. Sans injection, repli sur la map FR
+// — l'en-tête annonçait « Victoire » sous UI anglaise avant le 2026-09-07.
+func (s *MatchViewService) WithSemantic(a games.TitleSemanticAdapter) *MatchViewService {
+	s.semantic = a
+	return s
 }
 
 // WithCitationsRepo injecte le CitationsRepository pour peupler l'onglet Citations.
@@ -482,8 +495,8 @@ func (s *MatchViewService) GetMatchPositions(ctx context.Context, matchID string
 // ---------------------------------------------------------------------------
 // Helpers transverses
 // ---------------------------------------------------------------------------
-// outcomeLabel et formatLifeSeconds sont définis dans match_history_service.go
-// (même package).
+// resolveOutcomeLabel / outcomeLabel sont définis dans outcome_label.go et
+// formatLifeSeconds dans match_history_service_enrich.go (même package).
 
 // Phase 1 méta-plan § 6.1.3 — chunk MV3 cleanup hex codes.
 // Les helpers outcomeColor et perfColor restent pour rétrocompat front V0 ;

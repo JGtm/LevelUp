@@ -1452,6 +1452,10 @@ func Steps() []migration.Migration {
 	// Schéma de référence inter-titres : positions monde par kill (Halo 5 natif,
 	// Infinite plus tard). Cf. steps_shared_kill_positions.go.
 	steps = append(steps, sharedKillPositionsSteps()...)
+	// Table SOEUR de kill_positions : les positions un temps-pour-tuer AVANT le coup fatal
+	// (proxy d'entame, D5 du plan duels/portée). Créée directement append-only.
+	// Cf. steps_shared_kill_openings.go.
+	steps = append(steps, sharedKillOpeningsSteps()...)
 	// Schéma de référence inter-titres : compteur par-match des commendations natives
 	// (Halo 5 natif, AXE B prod-gate). Cf. steps_shared_commendations.go.
 	steps = append(steps, sharedCommendationsSteps()...)

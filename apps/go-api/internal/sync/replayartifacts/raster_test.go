@@ -201,7 +201,7 @@ func TestProjeterRastersTactiques_LotDuCycle(t *testing.T) {
 	bon := ecrireFichier(t, "bon.json", artefactImmobile)
 	casse := ecrireFichier(t, "casse.json", `{"schemaVersion":`)
 	d := Deps{RepoRoot: root, TitleSlug: titlePkg.DefaultSlug, Gamertag: "TestGT"}
-	projeterRastersTactiques(context.Background(), d, []artefactCuit{
+	projeterRastersTactiques(context.Background(), d, []artefactLu{
 		{matchID: "aaaaaaaa-0000-0000-0000-000000000000", path: casse},
 		{matchID: "000d5950-1234-4abc-9def-0123456789ab", path: bon},
 	})

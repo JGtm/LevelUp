@@ -64,8 +64,8 @@ const (
 // zoomRefDomains : les domaines des trois références de `unit_zoom`, dans l'ordre de lecture.
 var zoomRefDomains = [3]int{4, 8, 7}
 
-// zoomRefWidth : largeur de l'index par domaine (table des domaines de l'exécutable).
-var zoomRefWidth = map[int]uint{0: 13, 1: 13, 2: 8, 3: 8, 4: 9, 5: 8, 6: 9, 7: 13, 8: 13}
+// (La table des largeurs par domaine vivait ici en copie, avec `3: 8` là où la mesure dit 7.
+// Supprimée le 2026-09-05, lot E, item E.3 : `refDomWidth` d'event_list.go est la seule table.)
 
 // ZoomEvent est UNE bascule de lunette : quand, pour quel bipède, et vers quel palier.
 type ZoomEvent struct {
@@ -133,11 +133,11 @@ func ScanZoomEvents(film *filmsource.Film) []ZoomEvent {
 // ok=false si l'en-tête n'est pas un `unit_zoom` ou si l'unité n'est pas désignée.
 func decodeZoomHead(pay []byte, tsUS uint64) (ZoomEvent, bool) {
 	br := NewBitReader(pay)
-	br.Skip(1) // bit de configuration
-	if !br.ReadBit() {
+	h := readPacketHead(br) // [config][continuation][R(7) type] — event_list.go
+	if !h.More {
 		return ZoomEvent{}, false // liste vide : pas d'événement en tête
 	}
-	if int(br.ReadBits(7)) != zoomEventType {
+	if h.Type != zoomEventType {
 		return ZoomEvent{}, false
 	}
 	idx, ok := readZoomRef(br, zoomRefDomains[0]) // l'unité qui zoome
@@ -159,7 +159,7 @@ func readZoomRef(br *BitReader, dom int) (uint64, bool) {
 	if !br.ReadBit() {
 		return 0, false
 	}
-	idx := br.ReadBits(zoomRefWidth[dom])
+	idx := br.ReadBits(refDomWidth(dom))
 	br.Skip(2) // génération
 	return idx, true
 }

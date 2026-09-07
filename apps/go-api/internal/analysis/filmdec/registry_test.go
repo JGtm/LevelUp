@@ -34,37 +34,63 @@ func TestParseRegistrySynthetic(t *testing.T) {
 	}
 }
 
-// chunk00Dir is the dev cache film directory; the integration test skips when it is absent.
-const chunk00Dir = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950`
+// registreBlocsAttendus : le registre du film de reference fait 50 blocs — parseRegistry le borne
+// a sa fin structurelle (cf. `b9390a9f5`, « le registre fait 50 blocs, pas 118 »).
+const registreBlocsAttendus = 50
 
-func TestParseRegistryBipedBlock35(t *testing.T) {
+// TestRegistreReelDeLaMiniBobine — LE REGISTRE REEL, CONFRONTE INCONDITIONNELLEMENT.
+//
+// IL LIT LA MINI-BOBINE VERSIONNEE, pas le cache de developpement. Jusqu'au 2026-09-06 (lot E,
+// item E.6) ce test pointait un CHEMIN ABSOLU de la machine de l'auteur et se `t.Skipf` ailleurs :
+// il ne gardait donc rien en CI ni chez quiconque. La bobine de `killsource` porte le chunk_00 du
+// meme film 000d5950, versionne (435 Ko) — son absence est une panne du depot, pas une condition
+// d'execution, d'ou le `t.Fatal`.
+//
+// CE QU'IL DIT QUE LE GOLDEN NE DIT PAS. Le golden des familles
+// (`golden_minibobine_test.go`) rend des empreintes : un rouge y signifie « quelque chose a
+// change ». Les assertions ci-dessous NOMMENT ce qui casserait en premier si le decoupage du
+// registre bougeait — l'empreinte du registre, le nombre de blocs, et les indices de composant du
+// bipede que tout le decodage suppose (i0 position, i4 vitalite, i11 dead-state, 43-46 armes
+// portees).
+func TestRegistreReelDeLaMiniBobine(t *testing.T) {
 	// ReadFilmChunk DECOMPRESSE : ParseRegistryChunk ne le fait plus (lot 1).
-	raw, err := ReadFilmChunk(chunk00Dir, 0)
+	raw, err := ReadFilmChunk(bobineFamilles, 0)
 	if err != nil {
-		t.Skipf("chunk_00 absent (%v)", err)
+		t.Fatalf("chunk_00 de la mini-bobine versionnee illisible (%s) : %v", bobineFamilles, err)
 	}
 	reg, err := ParseRegistryChunk(raw)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	biped, ok := reg.Archetype(35)
+	if fp := RegistryFingerprint(reg); fp != KnownRegistryFingerprint {
+		t.Errorf("empreinte du registre = %#016x, connue %#016x : la bobine ne porte plus le "+
+			"registre de reference du chantier", fp, KnownRegistryFingerprint)
+	}
+	if len(reg.Archetypes) != registreBlocsAttendus {
+		t.Errorf("%d archetypes, attendu %d (le registre est borne a sa fin structurelle)",
+			len(reg.Archetypes), registreBlocsAttendus)
+	}
+	biped, ok := reg.Archetype(BipedTypeIndex)
 	if !ok {
-		t.Fatalf("no archetype #35 (have %d)", len(reg.Archetypes))
+		t.Fatalf("aucun archetype #%d (il y en a %d)", BipedTypeIndex, len(reg.Archetypes))
 	}
-	if got := biped.component(0); got != "object-position-dynamic-precision-component" {
-		t.Fatalf("biped i0 = %q", got)
+	for _, c := range []struct {
+		i    int
+		veut string
+	}{
+		{0, "object-position-dynamic-precision-component"},
+		{4, "object-body-vitality-component"},
+		{11, "object-dead-state-component"},
+	} {
+		if got := biped.component(c.i); got != c.veut {
+			t.Errorf("biped i%d = %q, attendu %q", c.i, got, c.veut)
+		}
 	}
-	if got := biped.component(4); got != "object-body-vitality-component" {
-		t.Fatalf("biped i4 = %q", got)
+	held := biped.indicesOf(compWeaponStateTypeInfo)
+	if len(held) != 4 || held[0] != 43 || held[1] != 44 || held[2] != 45 || held[3] != 46 {
+		t.Errorf("indices d'arme portee = %v, attendu [43 44 45 46]", held)
 	}
-	if got := biped.component(11); got != "object-dead-state-component" {
-		t.Fatalf("biped i11 = %q", got)
-	}
-	held := biped.indicesOf("weapon-state-type-info")
-	if len(held) != 4 || held[0] != 43 {
-		t.Fatalf("held-weapon indices = %v, want [43 44 45 46]", held)
-	}
-	if len(biped.Components) != 64 {
-		t.Fatalf("biped component count = %d, want 64", len(biped.Components))
+	if len(biped.Components) != archetypeBlockSlots {
+		t.Errorf("le bipede porte %d composants, attendu %d", len(biped.Components), archetypeBlockSlots)
 	}
 }

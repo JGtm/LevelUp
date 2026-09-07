@@ -100,7 +100,14 @@ const (
 	valeurIntervalleMS = 100
 	valeurDureeMS      = 78100
 	valeurNbTracks     = 22
-	valeurNbAnonymes   = 2
+	// valeurNbAnonymes : les vies que MEME le nommage final ne resout pas.
+	//
+	// 2 -> 1 au schema 47 (2026-09-07). Depuis la decision produit « les vies anonymes
+	// n existent pas », une piste sans identite est un DEFAUT de nommage : une passe finale la
+	// nomme par l OCCUPATION DU SLOT DANS LE TEMPS (unnamed_lives.go). Sur ce fixture elle en
+	// resout UNE des deux ; la seconde tombe sur un slot qu aucune vie nommee ne touche et que
+	// le pont ne nomme pas — elle reste comptee (`coverage.bridge.unnamedLives`) et alarmee.
+	valeurNbAnonymes = 1
 	// valeurOriginMS : l'instant de la frame 0 sur l'horloge du fil des éliminations.
 	// C'EST LA VALEUR QUE TOUT LE RECALAGE CLIENT SOUSTRAIT (`replayMs = event_time_ms +
 	// t0_ms − originMs`) : la décaler d'une seule milliseconde décale tout le rejeu.
@@ -112,13 +119,17 @@ const (
 
 // valeurViesParXUID : combien de VIES NOMMÉES le film attribue à chaque joueur.
 //
-// CE N'EST PAS LE NOMBRE DE MORTS DE L'API, et il ne faut pas l'y ramener : une vie n'est nommée
-// que par la mort qui la ferme (`lives.go`), donc une vie ouverte avant le début de la grille ou
-// close par la fin de partie reste anonyme. Sur ce film : 4 joueurs sur 7 tombent sur le compte
-// de morts de l'API, 3 non (2 en plus, 1 en moins). La mesure est figée telle quelle.
+// CE N'EST PAS LE NOMBRE DE MORTS DE L'API, et il ne faut pas l'y ramener : le fil des morts ne
+// nomme une vie que par la mort qui la FERME (`lives.go`), donc une vie ouverte avant le début de
+// la grille ou close par la fin de partie n'en reçoit pas d'identité par cette voie.
+//
+// `2533275001554469` PASSE DE 4 À 5 au schéma 47 (2026-09-07) : le nommage final
+// (unnamed_lives.go) lui rend la vie que le fil des morts ne fermait pas, par l'occupation de son
+// slot dans le temps. C'est le gain attendu de la décision « les vies anonymes n'existent pas »,
+// et c'est le SEUL joueur du fixture qu'il concerne. La mesure reste figée telle quelle.
 var valeurViesParXUID = map[string]int{
 	"2533274823110022": 3,
-	"2533275001554469": 4,
+	"2533275001554469": 5,
 	"2535429692041611": 3,
 	"2535432531943478": 2,
 	"2535463878425995": 3,
@@ -142,12 +153,18 @@ var valeurCourbeCamp = []replaydoc.ScoreTick{{T: 195, V: 1}, {T: 485, V: 2}, {T:
 
 // valeurObjectifsParStat : le calque des actions d'objectif, par nom de statistique.
 //
-// LA MESURE CONTREDIT L'EN-TÊTE HISTORIQUE de la preuve voisine (« 92 actions d'objectif nommées
-// (famille flag) », écrit le 2026-08-25 au schéma 37) : au schéma 39, ce film CTF rend 12 actions
-// et AUCUNE de la famille drapeau. L'écart est consigné en découverte du lot F (registre
-// d'audit : le calque des objectifs relève des lots A et E) ; il est figé ici pour que le
-// prochain déplacement se voie.
-var valeurObjectifsParStat = map[string]int{"kills": 8, "assists": 4}
+// HISTORIQUE DE CETTE MESURE. Au schéma 39 (2026-09-05), ce film CTF rendait 12 actions
+// (8 `kills`, 4 `assists`) et AUCUNE de la famille drapeau : c'était une RÉGRESSION, pas un
+// fait du film — le commit `d173b1a8c` (2026-08-28) avait remplacé le pont d'identité par
+// triplet par le pont par morts (`deathInstantMin = 3`) au lieu de les combiner, et les joueurs
+// à moins de trois morts (les porteurs) sortaient du pont. Le schéma 40 complète le pont par le
+// triplet (`RoundIdentity.CompletedByLines`, instruction CTF du 2026-09-06, revue CTF-R2) : les
+// 7 slots nommables sont pontés et chacun publie exactement sa ligne de la feuille de match —
+// 15 frags, 6 assistances, 1 capture, 1 vol (oracle : `facts` du fixture, sommes des lignes des
+// 7 pontés). Le 8e joueur reste non ponté (slot 12 agrégé, assistance lue 60 contre 0).
+// Figé ici pour que le prochain déplacement se voie ; `assertCalquesDObjectif` (fichier voisin)
+// porte la confrontation captures = score de la feuille de match.
+var valeurObjectifsParStat = map[string]int{"kills": 15, "assists": 6, "flag_captures": 1, "flag_steals": 1}
 
 // assertValeursDuDocument confronte le document cuit par l'ouvrier à l'oracle de l'API et aux
 // mesures figées. Appelée par `assertArtefactLivreEtComplet` sur le document que le service de

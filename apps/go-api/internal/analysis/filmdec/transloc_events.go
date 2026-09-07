@@ -65,8 +65,14 @@ const (
 	// translocEventType : le numéro de type de `EquipmentTranslocatorTeleportEffects` sous
 	// la numérotation du dispatcher.
 	translocEventType = 117
-	// translocRefWidth : largeur de l'index de ref0 (domaine 2 de la table des domaines).
-	translocRefWidth = 8
+	// translocRefDomain : le DOMAINE de ref0. Sa largeur se lit dans `refDomWidth`
+	// (event_list.go), la seule table des domaines du paquet. La copie locale de cette
+	// largeur a disparu le 2026-09-05 (lot E, item E.3).
+	translocRefDomain = 2
+	// translocRefWidth : la même largeur, sous forme de constante, pour les instruments qui
+	// calculent une longueur d'en-tête à la compilation. Le garde-rail
+	// `event_preamble_guard_test.go` interdit qu'elle diverge de `refDomWidth(2)`.
+	translocRefWidth = dom2RefWidth
 	// translocGenBits : largeur du champ de génération de ref0.
 	translocGenBits = 2
 	// translocSlotBase : la base du domaine — même fermeture mesurée que zoomSlotBase.
@@ -165,17 +171,17 @@ func ScanTranslocatorTeleports(film *filmsource.Film, entry *MapQuantEntry) []Tr
 // perdu (l'instant et le slot sont déjà lus).
 func decodeTranslocHead(pay []byte, tsUS uint64, entry *MapQuantEntry) (TranslocatorTeleport, bool) {
 	br := NewBitReader(pay)
-	br.Skip(1) // bit de configuration
-	if !br.ReadBit() {
+	h := readPacketHead(br) // [config][continuation][R(7) type] — event_list.go
+	if !h.More {
 		return TranslocatorTeleport{}, false // liste vide : pas d'événement en tête
 	}
-	if int(br.ReadBits(7)) != translocEventType {
+	if h.Type != translocEventType {
 		return TranslocatorTeleport{}, false
 	}
 	if !br.ReadBit() {
 		return TranslocatorTeleport{}, false // ref0 absente : pas d'unité désignée
 	}
-	idx := br.ReadBits(translocRefWidth)
+	idx := br.ReadBits(refDomWidth(translocRefDomain))
 	br.Skip(translocGenBits)
 	ev := TranslocatorTeleport{TimestampUS: tsUS, Slot: uint32(idx + translocSlotBase)}
 	ev.From, ev.To, ev.HasPositions = decodeTranslocJump(br, entry)

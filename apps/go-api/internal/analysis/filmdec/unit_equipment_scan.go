@@ -83,36 +83,17 @@ func ScanUnitEquipment(fc *FilmContext) ([]UnitEquipmentEmission, error) {
 	defer SetUnitEquipmentHook(prev)
 
 	var out []UnitEquipmentEmission
-	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
-	for _, c := range chunks {
-		data, pks, ok := fc.ChunkAt(c)
-		if !ok {
-			continue
+	walkDeltaBipedRecords(fc, chunks, slots, lay, func(r deltaBipedRecord) {
+		if !maskHas(r.Mask, idx26) {
+			return
 		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta {
-				continue
-			}
-			pay := pk.Payload(data)
-			total := len(pay) * 8
-			for p := 0; p+minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, p, total, slots, true, lay)
-				if !ok {
-					p++
-					continue
-				}
-				if maskHas(idx, idx26) {
-					last.got = false
-					if walkRecordTo(pay, i0, total, idx, lay, arch, idx26) && last.got {
-						out = append(out, UnitEquipmentEmission{
-							Slot: slot, TimestampUS: pk.TimestampUS, Read: last.read,
-						})
-					}
-					last.got = false
-				}
-				p = i0 + lay.TotalBits()
-			}
+		last.got = false
+		if walkRecordTo(r.Payload, r.I0, r.Total, r.Mask, lay, arch, idx26) && last.got {
+			out = append(out, UnitEquipmentEmission{
+				Slot: r.Slot, TimestampUS: r.Packet.TimestampUS, Read: last.read,
+			})
 		}
-	}
+		last.got = false
+	})
 	return out, nil
 }

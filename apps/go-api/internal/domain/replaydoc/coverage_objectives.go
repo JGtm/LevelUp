@@ -8,17 +8,22 @@ package replaydoc
 // comme une exhaustivite, et un film CTF sans aucun portage publie serait indistinguable d'un
 // film qui n'est pas du CTF.
 type FlagCarriesCoverage struct {
-	FlagFilm              bool `json:"flagFilm"`
-	Bursts                int  `json:"bursts"`
-	Captures              int  `json:"captures"`
-	Steals                int  `json:"steals"`
-	Openings              int  `json:"openings"`
-	Carries               int  `json:"carries"`
-	Closed                int  `json:"closed"`
-	Open                  int  `json:"open"`
-	NoBridge              int  `json:"noBridge"`
-	NoTrack               int  `json:"noTrack"`
-	OutOfWindow           int  `json:"outOfWindow"`
+	FlagFilm    bool `json:"flagFilm"`
+	Bursts      int  `json:"bursts"`
+	Captures    int  `json:"captures"`
+	Steals      int  `json:"steals"`
+	Openings    int  `json:"openings"`
+	Carries     int  `json:"carries"`
+	Closed      int  `json:"closed"`
+	Open        int  `json:"open"`
+	NoBridge    int  `json:"noBridge"`
+	NoTrack     int  `json:"noTrack"`
+	OutOfWindow int  `json:"outOfWindow"`
+	// AmbiguousSlot : slots dont les vies ANONYMES ont ete refusees au repli par le pont
+	// slot -> xuid, faute d accord avec leurs vies nommees. Publie avec ses freres `noTrack` et
+	// `ambiguous*` : c est de la matiere que le calque renonce a lire, et sans elle un portage
+	// manquant serait indistinguable d un portage qui n a jamais eu lieu.
+	AmbiguousSlot         int  `json:"ambiguousSlot"`
 	MarkerObserved        int  `json:"markerObserved"`
 	MarkerConfirmed       int  `json:"markerConfirmed"`
 	OpenObserved          int  `json:"openObserved"`
@@ -36,6 +41,10 @@ type FlagCarriesCoverage struct {
 	ObjectLives           int  `json:"objectLives"`
 	ClosedByObject        int  `json:"closedByObject"`
 	DropsRepositioned     int  `json:"dropsRepositioned"`
+	AssignedByPlay        int  `json:"assignedByPlay"`
+	DropsWithheld         int  `json:"dropsWithheld"`
+	OwnFlagRefused        int  `json:"ownFlagRefused"`
+	Unresolved            int  `json:"unresolved"`
 }
 
 // VipCrownCoverage porte les denominateurs du calque. Sans eux, « 15 periodes » se lirait comme
@@ -152,6 +161,9 @@ type ZonesCoverage struct {
 	Unpaired      int    `json:"unpaired"`
 	Captures      int    `json:"captures"`
 	Attributed    int    `json:"attributed"`
+	NoPosition    int    `json:"noPosition"`
+	Outside       int    `json:"outside"`
+	AmbiguousZone int    `json:"ambiguousZone"`
 	OwnerChecked  int    `json:"ownerChecked"`
 	OwnerAgreed   int    `json:"ownerAgreed"`
 	OwnerUnpaired int    `json:"ownerUnpaired"`

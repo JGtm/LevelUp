@@ -15,6 +15,8 @@ package replay
 
 import (
 	"fmt"
+	"log/slog"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -206,14 +208,15 @@ func nameBotTracks(tracks []Track, owner map[uint32]int, bots []BotIdentity) {
 	if len(owner) == 0 || len(bots) == 0 {
 		return
 	}
-	nameByIndex := make(map[int]string, len(bots))
-	for _, b := range bots {
-		if b.Name != "" {
-			nameByIndex[b.FilmIndex] = b.Name
-		}
+	nameByIndex, partages := botNamesBySeat(bots)
+	if partages > 0 {
+		// PAS UNE ERREUR : un siège partagé est un fait du film (des remplaçants SUCCESSIFS),
+		// et c'est le RELAIS qui sait les départager par l'instant de bascule.
+		slog.Info("rejeu : sièges de bot partagés par plusieurs noms — nommage laissé au relais",
+			"sieges", partages)
 	}
 	for i := range tracks {
-		if tracks[i].XUID != "" {
+		if tracks[i].XUID != "" || tracks[i].Bot != "" {
 			continue
 		}
 		pi, ok := owner[tracks[i].Slot]
@@ -224,4 +227,46 @@ func nameBotTracks(tracks []Track, owner map[uint32]int, bots []BotIdentity) {
 			tracks[i].Bot = name
 		}
 	}
+}
+
+// botNamesBySeat rend le nom du bot de chaque siège, et le nombre de sièges qu'il REFUSE de
+// nommer parce que plusieurs bots les déclarent.
+//
+// LE DERNIER BALAYÉ NE GAGNE PLUS (correctif du 2026-09-06, constat P1-8). `nameByIndex[b.
+// FilmIndex] = b.Name` écrasait silencieusement : sur un siège que deux bots déclarent, le nom
+// retenu dépendait de l'ordre de balayage, sans aucun rapport avec la chronologie du
+// remplacement — le pion du rejeu affichait alors un gamertag faux sur des pans entiers du
+// match. Or le cas est MESURÉ et la doctrine est écrite quatre fonctions plus haut
+// (`buildRoster`) : « DEUX BOTS PEUVENT PARTAGER UN INDEX (RE_LOG 7ter.62 : "343 Aloysius"
+// puis "343 PardonMy", les deux déclarant slot=8) — des remplaçants SUCCESSIFS sur le même
+// siège de réplication. Ils entrent tous les deux : le nom les différencie, l'index dit le
+// siège. » `buildRoster` respectait la règle ; `nameBotTracks`, à 40 lignes de là, la violait.
+//
+// UN SIÈGE AMBIGU N'EST DONC PAS NOMMÉ ICI : ses vies restent libres pour `attributeSuccessions`
+// (successions.go), qui les nomme PAR VIE à partir de l'instant de bascule lu dans la base —
+// le seul mécanisme du dépôt qui sache trancher. Ce qu'il ne nomme pas entre au résidu de
+// nommage publié (cf. `Coverage.Bridge.UnnamedLives`).
+//
+// POURQUOI PAS UN SIMPLE ÉCHANGE D'ORDRE avec `attributeSuccessions`, qui aurait aussi libéré
+// ces vies : vérifié sur pièces, `candidateIn` (successions.go) ne restreint PAS ses candidates
+// au slot du remplaçant — il balaie toutes les pistes anonymes de la fenêtre. Faire courir les
+// relais avant le nommage par siège leur laisserait prendre des vies que ce nommage-ci
+// attribue correctement. L'abstention ne libère que les sièges réellement ambigus.
+func botNamesBySeat(bots []BotIdentity) (map[int]string, int) {
+	noms := make(map[int][]string, len(bots))
+	for _, b := range bots {
+		if b.Name == "" || slices.Contains(noms[b.FilmIndex], b.Name) {
+			continue
+		}
+		noms[b.FilmIndex] = append(noms[b.FilmIndex], b.Name)
+	}
+	out, partages := make(map[int]string, len(noms)), 0
+	for idx, n := range noms {
+		if len(n) > 1 {
+			partages++
+			continue
+		}
+		out[idx] = n[0]
+	}
+	return out, partages
 }

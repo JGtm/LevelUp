@@ -150,7 +150,7 @@ WHERE wa.match_id IN (`)
 	// appendXUIDFilter attend un port.WeaponKillFilters (Gamertag/XUIDs). On
 	// projette WeaponAccuracyFilters dessus pour réutiliser le helper unique
 	// (résolution gamertag→xuid via xuid_aliases identique).
-	appendXUIDFilter(&sb, &args, "wa", port.WeaponKillFilters{
+	appendXUIDFilter(&sb, &args, "wa.xuid", port.WeaponKillFilters{
 		Gamertag: f.Gamertag,
 		XUIDs:    f.XUIDs,
 	})

@@ -284,3 +284,264 @@ func (f fetcherComptant) GetFilmChunks(context.Context, string) ([]haloclient.Fi
 	*f.n++
 	return nil, false, nil
 }
+
+// ─── LE RATTRAPAGE DES DÉRIVÉS (constat A2) ───────────────────────────────────────────────────
+//
+// Même raison d'être que les tests ci-dessus : la requête d'horizon est partagée avec le
+// rattrapage de cuisson, mais la SÉLECTION est différente (artefact présent ET dérivés absents).
+// Elle ne peut être éprouvée que sur une vraie base migrée.
+
+// TestCandidatsDerivations_SelectionneLesRangesSansDerives : la sélection, cas par cas.
+func TestCandidatsDerivations_SelectionneLesRangesSansDerives(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := t.TempDir()
+	maintenant := time.Now().UTC()
+
+	// m-sans-artefact : rien sur disque -> AFFAIRE DE LA CUISSON, pas de la dérivation.
+	inscrireAuRegistre(t, db, "sansarte", maintenant.Add(-1*time.Hour), 0)
+	// m-a-deriver : artefact rangé, aucune marque -> candidat.
+	inscrireAuRegistre(t, db, "aderiver", maintenant.Add(-2*time.Hour), 0)
+	poserArtefact(t, repoRoot, "aderiver")
+	// m-deja-derive : artefact rangé ET marqué à la révision courante -> écarté.
+	inscrireAuRegistre(t, db, "dejaderi", maintenant.Add(-3*time.Hour), 0)
+	poserArtefact(t, repoRoot, "dejaderi")
+	marquerArtefactCommeDerive(t, repoRoot, "dejaderi")
+
+	work, restant, _ := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
+
+	if restant != 0 {
+		t.Errorf("restant = %d, attendu 0 (trois matchs, un seul candidat)", restant)
+	}
+	if len(work) != 1 || work[0].MatchID != "aderiver" {
+		t.Fatalf("candidats = %+v, attendu le seul artefact rangé sans marque", work)
+	}
+	attendu := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, "aderiver")
+	if work[0].Path != attendu {
+		t.Errorf("chemin = %q, attendu la place canonique %q", work[0].Path, attendu)
+	}
+}
+
+// TestCandidatsDerivations_ConvergeApresDerivation : LA PROPRIÉTÉ QUI FAIT TOUT TENIR. Sans
+// marque, les mêmes cinq artefacts reviendraient à chaque cycle, indéfiniment.
+func TestCandidatsDerivations_ConvergeApresDerivation(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := t.TempDir()
+	inscrireAuRegistre(t, db, "unmatch1", time.Now().UTC().Add(-time.Hour), 0)
+	poserArtefact(t, repoRoot, "unmatch1")
+	d := depsRattrapage(repoRoot, 0)
+
+	work, _, _ := candidatsDerivations(context.Background(), db, d)
+	if len(work) != 1 {
+		t.Fatalf("cycle 1 : %d candidat(s), attendu 1", len(work))
+	}
+	// La dérivation pose la marque (marquerDerivations, appelé par Deriver). Bilan VIERGE :
+	// aucune famille n'a échoué, donc la marque se pose — c'est la seule condition depuis le
+	// constat C1 de la revue A-R1.
+	marquerDerivations(context.Background(), &bilanDerivations{},
+		lireArtefacts(context.Background(), d, work))
+
+	work2, restant, _ := candidatsDerivations(context.Background(), db, d)
+	if len(work2) != 0 || restant != 0 {
+		t.Fatalf("cycle 2 : %d candidat(s) et %d restant(s), attendu 0 et 0 — le rattrapage "+
+			"ne converge pas, il rejouerait les mêmes artefacts à chaque cycle", len(work2), restant)
+	}
+}
+
+// TestCandidatsDerivations_PlafondEtRestant : le lot est borné par maxPerCycle, et ce qui
+// dépasse est COMPTÉ (une jauge qui reste à zéro pendant qu'il reste du travail ne décrit rien).
+func TestCandidatsDerivations_PlafondEtRestant(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := t.TempDir()
+	const total = maxPerCycle + 3
+	for i := 0; i < total; i++ {
+		id := fmt.Sprintf("mderiv%02d", i)
+		inscrireAuRegistre(t, db, id, time.Now().UTC().Add(-time.Duration(i)*time.Hour), 0)
+		poserArtefact(t, repoRoot, id)
+	}
+
+	work, restant, _ := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
+
+	if len(work) != maxPerCycle {
+		t.Errorf("lot = %d, attendu le plafond %d", len(work), maxPerCycle)
+	}
+	if restant != total-maxPerCycle {
+		t.Errorf("restant = %d, attendu %d", restant, total-maxPerCycle)
+	}
+}
+
+// TestCandidatsDerivations_ArtefactPerimeEstDeriveTelQuel : la re-cuisson du corpus est un
+// ARBITRAGE UTILISATEUR DATÉ (registre des reports l. 17) que ce rattrapage ne renverse pas —
+// il dérive l'artefact TEL QU'IL EST, ce qui vaut mieux que rien.
+func TestCandidatsDerivations_ArtefactPerimeEstDeriveTelQuel(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := t.TempDir()
+	inscrireAuRegistre(t, db, "perimeee", time.Now().UTC().Add(-time.Hour), 0)
+	poserArtefactPerime(t, repoRoot, "perimeee")
+
+	work, _, _ := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
+	if len(work) != 1 || work[0].MatchID != "perimeee" {
+		t.Fatalf("candidats = %+v, attendu l'artefact périmé (dérivé tel quel, JAMAIS re-cuit ici)", work)
+	}
+}
+
+// TestRattraperDerivations_SansSegmentDeLectureNeFaitRien : un chemin de sync sans lecture
+// câblée ne panique pas et ne prétend rien rattraper.
+func TestRattraperDerivations_SansSegmentDeLectureNeFaitRien(t *testing.T) {
+	rattraperDerivations(context.Background(), Deps{RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug})
+}
+
+// marquerArtefactCommeDerive pose la marque de dérivation d'un artefact déjà sur disque.
+func marquerArtefactCommeDerive(t *testing.T, repoRoot, matchID string) {
+	t.Helper()
+	path := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, matchID)
+	st, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat artefact %s: %v", matchID, err)
+	}
+	if err := replaybuild.WriteDerivationsMark(path, replay.SchemaVersion, int(st.Size())); err != nil {
+		t.Fatalf("WriteDerivationsMark %s: %v", matchID, err)
+	}
+}
+
+// poserArtefactPerime pose un artefact d'une version de schéma ANTÉRIEURE — la situation des
+// 106 artefacts du cache local (9 versions, aucune à la courante).
+func poserArtefactPerime(t *testing.T, repoRoot, matchID string) {
+	t.Helper()
+	path := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, matchID)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	blob, err := json.Marshal(replay.ReplayDocument{SchemaVersion: replay.SchemaVersion - 1, MatchID: matchID})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if err := os.WriteFile(path, blob, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+}
+
+// TestRun_SelectionDeCuissonVide_RattrapeQuandMeme — LE test du constat C2 (revue A-R1).
+//
+// L'ETAT VISE PAR LE RATTRAPAGE EST CELUI-CI, ET C'EST TOUT LE PROBLEME : une instance dont
+// TOUT est deja cuit (aucun match insere sans artefact, et les 64 matchs de l'horizon ont leur
+// fichier) mais dont RIEN n'est derive — les artefacts d'avant ce lot n'ont pas de marque.
+// `Run` sortait sur `len(work) == 0` AVANT les deux seuls appels a `rattraperDerivations` :
+// aucune derivation n'etait jamais rattrapee sur ces instances, et `JaugeDerivationsRetard`
+// n'y etait jamais publiee — « tout est derive » et « le rattrapage ne tourne pas »
+// redevenaient indistinguables, l'ambiguite exacte que la jauge dit fermer.
+//
+// Note de methode : les tests du lot appelaient `candidatsDerivations` DIRECTEMENT ; ils
+// court-circuitaient `Run` et ne pouvaient donc pas voir ce trou. Celui-ci passe par `Run`.
+func TestRun_SelectionDeCuissonVide_RattrapeQuandMeme(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := racineAvecConfigDuTitre(t, titlePkg.DefaultSlug)
+	t0 := time.Now().UTC().Add(-2 * time.Hour)
+
+	// Deux matchs au registre, artefact pose pour chacun, AUCUNE marque de derivation.
+	for _, id := range []string{"cuittout1", "cuittout2"} {
+		inscrireAuRegistre(t, db, id, t0, 0)
+		poserArtefact(t, repoRoot, id)
+	}
+
+	enfiles := 0
+	d := Deps{
+		RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug, Gamertag: "testeur",
+		Placement: replaybuild.PlacementWorker,
+		WithRead:  func(ctx context.Context, _ string, fn func(*sql.DB)) { fn(db) },
+		AcquireWriter: func(context.Context) (*sql.DB, func(), error) {
+			return db, func() {}, nil
+		},
+		Enqueue: func(context.Context, string, string) error { enfiles++; return nil },
+	}
+
+	Run(context.Background(), d, nil)
+
+	if enfiles != 0 {
+		t.Fatalf("%d match(s) mis en file alors que tout est deja cuit — le rattrapage des "+
+			"derives ne doit RIEN cuire", enfiles)
+	}
+	for _, id := range []string{"cuittout1", "cuittout2"} {
+		p := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, id)
+		if !replaybuild.DerivationsUpToDate(p) {
+			t.Errorf("%s : aucune marque posee par Run — le rattrapage des derives est "+
+				"inatteignable quand il n'y a rien a cuire (constat C2)", id)
+		}
+	}
+}
+
+// racineAvecConfigDuTitre construit une racine de depot TEMPORAIRE qui porte la configuration
+// LIVREE du titre (`config/titles/<slug>/`), recopiee du depot.
+//
+// POURQUOI RECOPIER PLUTOT QUE POINTER LE DEPOT : `Deps.RepoRoot` sert a la fois a lire les
+// capabilities ET a resoudre les chemins d'artefact. Un test qui passerait la racine reelle
+// ecrirait ses artefacts dans les donnees du depot. Un test qui passerait un `t.TempDir()` nu
+// ferait echouer la lecture des capabilities — que les familles comptent, a juste titre, comme
+// un INCIDENT. La recopie donne les deux : les vraies clefs du titre, dans un bac a sable.
+func racineAvecConfigDuTitre(t *testing.T, slug string) string {
+	t.Helper()
+	racine := t.TempDir()
+	src := filepath.Join(racineDepot(t), "config", "titles", slug)
+	dst := filepath.Join(racine, "config", "titles", slug)
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		t.Fatalf("mkdir config: %v", err)
+	}
+	if err := os.CopyFS(dst, os.DirFS(src)); err != nil {
+		t.Fatalf("copie de config/titles/%s: %v", slug, err)
+	}
+	return racine
+}
+
+// TestRattraperDerivations_HorizonIllisible_NePubliePasLaJauge — constat N3 de la revue A-R2.
+//
+// `lireHorizonRegistre` journalise et rend `nil` quand la lecture echoue (contexte annule ou
+// expire, requete en erreur) : `restant` valait alors 0, et la jauge publiait « tout est
+// derive » sur un cycle qui n'avait RIEN LU. C'est l'ambiguite exacte que le commentaire de la
+// jauge dit fermer.
+//
+// LE `defer` DE C2 A RENDU CE CAS COURANT : avant, un cycle au contexte annule sortait de `Run`
+// sur la selection vide sans jamais atteindre le rattrapage ; il y passe desormais a tous les
+// coups.
+//
+// METHODE : une valeur SENTINELLE est publiee avant le cycle. Si la jauge est republiee, elle
+// est ecrasee — c'est ce qui distingue « pas publiee » de « publiee a zero », que
+// `LoadCounter` seul ne saurait pas separer.
+func TestRattraperDerivations_HorizonIllisible_NePubliePasLaJauge(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := racineAvecConfigDuTitre(t, titlePkg.DefaultSlug)
+	const sentinelle = 7
+	observability.SetIntT(titlePkg.DefaultSlug, JaugeDerivationsRetard, sentinelle)
+
+	ctx, annuler := context.WithCancel(context.Background())
+	annuler()
+	d := Deps{
+		RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug, Gamertag: "testeur",
+		WithRead: func(_ context.Context, _ string, fn func(*sql.DB)) { fn(db) },
+	}
+	rattraperDerivations(ctx, d)
+
+	if got := observability.LoadCounterT(titlePkg.DefaultSlug, JaugeDerivationsRetard); got != sentinelle {
+		t.Fatalf("jauge = %d apres un cycle dont l'horizon est ILLISIBLE, attendu %d (inchangee) "+
+			"— publier 0 revient a dire « tout est derive » sur un cycle qui n'a rien lu "+
+			"(constat N3)", got, sentinelle)
+	}
+}
+
+// TestRattraperDerivations_HorizonLu_PublieLaJauge — la contre-epreuve : un cycle qui a bien lu
+// publie la jauge, MEME A ZERO. Sans elle, « ne pas publier sur echec » degenererait en « ne
+// jamais publier », et l'etape redeviendrait muette.
+func TestRattraperDerivations_HorizonLu_PublieLaJauge(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := racineAvecConfigDuTitre(t, titlePkg.DefaultSlug)
+	observability.SetIntT(titlePkg.DefaultSlug, JaugeDerivationsRetard, 7)
+
+	d := Deps{
+		RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug, Gamertag: "testeur",
+		WithRead: func(_ context.Context, _ string, fn func(*sql.DB)) { fn(db) },
+	}
+	rattraperDerivations(context.Background(), d)
+
+	if got := observability.LoadCounterT(titlePkg.DefaultSlug, JaugeDerivationsRetard); got != 0 {
+		t.Fatalf("jauge = %d sur un registre VIDE effectivement lu, attendu 0 — la jauge doit "+
+			"etre publiee meme a zero", got)
+	}
+}

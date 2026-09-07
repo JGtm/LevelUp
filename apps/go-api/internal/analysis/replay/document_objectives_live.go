@@ -216,6 +216,16 @@ type FlagCarriesCoverage struct {
 	// OutOfWindow : la prise tombe hors de l'axe de temps publie (fins de partie que le film
 	// prolonge au-dela de la derniere position rendue).
 	OutOfWindow int `json:"outOfWindow"`
+	// AmbiguousSlot : nombre de SLOTS dont les vies ANONYMES ont ete refusees au repli par le
+	// pont, parce que leurs vies nommees ne s'accordent pas avec lui (deux occupants nommes, ou
+	// un occupant nomme qui n'est pas celui que le pont designe) — cf. flag_carrier_tracks.go.
+	//
+	// CE N'EST PAS UNE PARTITION DES PRISES, et il n'entre donc pas dans `Balanced()` : il compte
+	// de la MATIERE QUE LE CALQUE RENONCE A LIRE, en amont de toute prise. Un slot compte ici
+	// meme si aucune prise ne tombe dans sa fenetre anonyme — c'est le denominateur du risque,
+	// pas son realise. Publie parce que sans lui, un portage manquant faute d'identite
+	// disponible serait indistinguable d'un portage qui n'a jamais eu lieu.
+	AmbiguousSlot int `json:"ambiguousSlot"`
 	// MarkerObserved / MarkerConfirmed : le CONTROLE INDEPENDANT, SUR LES SEULS PORTAGES FERMES.
 	// MarkerObserved compte ceux qui contiennent au moins une image-cle (le denominateur : sans
 	// image-cle, le marqueur ne peut rien confirmer) ; MarkerConfirmed ceux dont au moins une
@@ -237,9 +247,10 @@ type FlagCarriesCoverage struct {
 	// et l'ecart entre les deux populations se voit.
 	OpenObserved  int `json:"openObserved"`
 	OpenConfirmed int `json:"openConfirmed"`
-	// Overlaps compte les prises pour lesquelles PLUS DE DEUX portages sont ouverts a la fois.
-	// En CTF il y a deux drapeaux : trois porteurs simultanes est une INCOHERENCE, et elle est
-	// publiee plutot que tue.
+	// Overlaps compte les prises pour lesquelles UN MEME DRAPEAU est tenu par plus d'un portage
+	// a la fois. Un drapeau n'a qu'un porteur : le recouvrement est une INCOHERENCE, et elle est
+	// publiee plutot que tue. Le seuil portait sur « plus de deux portages, tous drapeaux
+	// confondus » jusqu'au 2026-09-07 — il ratait le cas nominal (revue DRAPEAUX-R1, C3).
 	Overlaps int `json:"overlaps"`
 	// ClosedOverlaps compte les memes depassements EN NE REGARDANT QUE LES PORTAGES FERMES.
 	//
@@ -298,6 +309,28 @@ type FlagCarriesCoverage struct {
 	// la piste LIBRE et non plus de la derniere position du porteur. L'ecart n'est pas
 	// cosmetique : un drapeau tombe rebondit, et le porteur meurt rarement la ou l'objet se pose.
 	DropsRepositioned int `json:"dropsRepositioned"`
+	// AssignedByPlay : prises qu AUCUN drapeau au sol ne rattachait et qui sont allees au SEUL
+	// drapeau en jeu (flag_assign.go, troisieme regle). C est une attribution PAR ELIMINATION,
+	// et elle se publie pour se verifier : sans elle, ces prises retombaient sur le socle le
+	// plus proche — celui du porteur quand l objet est tombe pres de la base adverse.
+	AssignedByPlay int `json:"assignedByPlay"`
+	// DropsWithheld : fins de portage dont l'etat [FlagStateDropped] N'A PAS ete publie, parce
+	// qu'a cet instant un AUTRE portage du meme drapeau etait encore ouvert — le drapeau passe
+	// d'une main a l'autre, il ne touche pas le sol (cf. `flagTenuParUnAutre`).
+	//
+	// C'EST LA MESURE DE L'INVARIANT DE COHERENCE, et elle vaut d'etre lue : avant lui, un
+	// portage repris se reduisait a UNE frame et le drapeau se dessinait AU SOL pendant qu'un
+	// joueur courait avec. `bcb6d393` : 11 fins retenues sur 16 portages, et la duree publiee
+	// de deux porteurs remontait de 441 a 666 et de 96 a 346 frames.
+	DropsWithheld int `json:"dropsWithheld"`
+	// OwnFlagRefused : attributions REFUSEES parce qu'elles aboutissaient au drapeau de
+	// l'equipe du porteur. En CTF on renvoie son drapeau, on ne le porte pas : l'invariant
+	// prime sur la geometrie, et son compteur dit combien de fois le repli s'est trompe.
+	OwnFlagRefused int `json:"ownFlagRefused"`
+	// Unresolved : portages qu'AUCUN drapeau ne peut recevoir une fois l'invariant applique —
+	// publies sur aucun drapeau, plutot que sur un drapeau INVENTE. Ils restent comptes dans
+	// `carries` : le joueur a bel et bien porte quelque chose, c'est LEQUEL qui n'est pas su.
+	Unresolved int `json:"unresolved"`
 }
 
 // Balanced verifie les DEUX invariants du calque : toute prise de l'oracle est soit publiee, soit

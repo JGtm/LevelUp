@@ -111,8 +111,12 @@ func (b *Builder) padsCatalog() *replay.MapWeaponPadsCatalog {
 		return b.pads
 	}
 	b.padsTried = true
-	path := title.NewPathResolver(b.repoRoot).MapWeaponPadsPath(b.titleSlug)
-	cat, err := replay.LoadMapWeaponPads(path)
+	res := title.NewPathResolver(b.repoRoot)
+	path := res.MapWeaponPadsPath(b.titleSlug)
+	// FUSION VERSIONNE + OVERLAY : les cartes rattrapees au fetch de film vivent dans l'overlay
+	// non versionne, et c'est precisement pour la CUISSON qu'elles sont rattrapees (sans elles,
+	// `coverage.pickups.spawnPointsState == "map_absent"`).
+	cat, err := replay.LoadMapWeaponPadsMerged(path, res.MapWeaponPadsOverlayPath(b.titleSlug))
 	if err != nil {
 		// Le catalogue est VERSIONNE : son absence est une installation incomplete, pas le cas
 		// nominal. On le dit, puis on degrade.

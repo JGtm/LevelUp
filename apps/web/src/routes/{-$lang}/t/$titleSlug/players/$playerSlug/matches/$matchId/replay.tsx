@@ -5,43 +5,45 @@
  * Trajectoires des joueurs décodées du film, servies par l'API comme artefact
  * pré-construit (GET .../replay). La disponibilité est PAR MATCH : 404 → état vide.
  * Ce n'est donc pas un drapeau global — le stub `REJEU_2D_ENABLED` qui occupait cette
- * route est remplacé par l'implémentation réelle. La garde de capability est conservée :
- * sans `matchmaking`, le match n'existe pas pour ce titre, donc son rejeu non plus.
+ * route est remplacé par l'implémentation réelle.
+ *
+ * DEUX PORTES DE TITRE, ET ELLES NE DISENT PAS LA MÊME CHOSE (2026-09-06, v2 D.14) :
+ *  - `matchmaking` : sans elle, le match n'existe pas pour ce titre, donc son rejeu non plus ;
+ *  - `replay` : le titre a des matchs, mais aucune chaîne de rejeu (capability title-level du
+ *    lot C, servie par le bootstrap). Halo 5 est dans ce cas.
+ * La porte est posée AU-DESSUS du composant : la page n'est pas montée, donc aucun de ses
+ * hooks de chargement ne tourne — ni l'artefact (1,5 à 2,7 Mio), ni la vue match, ni le fond
+ * de carte. Un titre sans rejeu ne paie aucune requête, et lit un état qui le dit
+ * (`FeatureUnavailable`, libellé `replay` FR/EN).
  */
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 
-import { normalizeCallouts } from '@/features/match-replay/calloutsLayer'
-import { endMatchSoundSpec } from '@/features/match-replay/endMatchSound'
-import { REPLAY_TEXT } from '@/features/match-replay/i18n'
+import { normalizeCallouts } from '@/features/match-replay/layers/calloutsLayer'
+import { endMatchSoundSpec } from '@/features/match-replay/sound/endMatchSound'
+import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
+import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/model/playbackStore'
+import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
+import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
 import {
   useMatchReplay,
   useReplayMapBackground,
   useReplayMapCallouts,
   useReplayMapImage,
-} from '@/features/match-replay/queries'
-import { buildFeedEntries, collectMedalEvents } from '@/features/match-replay/killFeedLogic'
-import { mergeFeedWithPresence, presenceEntries } from '@/features/match-replay/presenceFeed'
-import { buildPlayers } from '@/features/match-replay/rosterLogic'
-import { buildReplayMedia } from '@/features/match-replay/replayMediaLogic'
-import { buildPlayerMarks } from '@/features/match-replay/playerMarks'
-import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
-import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
-import { ReplayMatchRecall } from '@/features/match-replay/ReplayMatchRecall'
-import { frameToMs } from '@/features/match-replay/replayLogic'
-import { replayWindow } from '@/features/match-replay/replayWindow'
-import { ReplayBombCountdownOverlay } from '@/features/match-replay/ReplayBombCountdownOverlay'
-import { ReplayRoundBreakOverlay } from '@/features/match-replay/ReplayRoundBreakOverlay'
-import { ReplayScoreBanner } from '@/features/match-replay/ReplayScoreBanner'
-import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
-import { ReplayVictoryOverlay } from '@/features/match-replay/ReplayVictoryOverlay'
-import { finalScoreFromHeader } from '@/features/match-replay/victoryLogic'
+} from '@/lib/replay/queries'
+import { ReplayCanvas } from '@/features/match-replay/ui/ReplayCanvas'
+import { ReplayKillFeed } from '@/features/match-replay/ui/ReplayKillFeed'
+import { ReplayMatchRecall } from '@/features/match-replay/ui/ReplayMatchRecall'
+import { frameToMs } from '@/lib/replay/replayLogic'
+import { ReplayBombCountdownOverlay } from '@/features/match-replay/ui/ReplayBombCountdownOverlay'
+import { ReplayRoundBreakOverlay } from '@/features/match-replay/ui/ReplayRoundBreakOverlay'
+import { ReplayScoreBanner } from '@/features/match-replay/ui/ReplayScoreBanner'
+import { ReplayTeams } from '@/features/match-replay/ui/ReplayTeams'
+import { ReplayVictoryOverlay } from '@/features/match-replay/ui/ReplayVictoryOverlay'
 import { MatchBreadcrumb } from '@/features/match-view/MatchHeader'
 import { buildMatchHeadingStr } from '@/features/match-view/format'
-import { collectKillEvents } from '@/features/match-view/_momentum'
 import { useMatchView } from '@/features/match-view/queries'
 import type { TeamColorResolver } from '@/features/match-view/teamColor'
-import { meXUIDOf, resolveXuidMeta } from '@/features/match-view/xuidMeta'
 import { useSettings } from '@/features/settings/queries'
 import { tokenCssVar } from '@/lib/accessibility'
 import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
@@ -54,7 +56,9 @@ export const Route = createFileRoute(
 )({
   component: () => (
     <RouteCapabilityGate capability="matchmaking">
-      <ReplayPage />
+      <RouteCapabilityGate capability="replay">
+        <ReplayPage />
+      </RouteCapabilityGate>
     </RouteCapabilityGate>
   ),
 })
@@ -74,7 +78,11 @@ function ReplayPage() {
   // base porte qui sont les gens. L'artefact ne mélange pas les deux — la jointure se fait
   // ici, sur le xuid, qui est la seule clé qui ne suppose rien (surtout pas un ordre).
   const { data: matchView } = useMatchView(playerSlug, matchId)
-  const [frame, setFrame] = useState(0)
+  // LA POSITION DE LECTURE VIENT DU MAGASIN, la page n'en garde plus de copie (2026-09-06,
+  // W1) : le canvas ecrit, cette page lit. L'abonnement suit la cadence de PUBLICATION
+  // (150 ms), pas celle de l'ecran — cf. `model/playbackStore`.
+  const playbackStore = usePlaybackStore()
+  const frame = usePlaybackFrame(playbackStore)
 
   // LE FOND DE CARTE, en deux temps assumés : le CALAGE d'abord (quelques centaines
   // d'octets, il dit si la carte a une image et où elle se pose), l'IMAGE ensuite —
@@ -90,31 +98,21 @@ function ReplayPage() {
   const { data: calloutsEntry } = useReplayMapCallouts(playerSlug, matchId)
   const callouts = useMemo(() => normalizeCallouts(calloutsEntry), [calloutsEntry])
 
-  // LE KILL FEED VIENT DE LA BASE, PAS DU FILM. Le rejeu ne porte pas les kills ; la Match
-  // View, elle, les sert déjà résolus (auteur, équipe, ARME du kill avec son icône). On
-  // réutilise donc sa lecture — aucun appel de plus, aucun artefact à reconstruire.
-  // Mémoïsé : `?? []` fabrique un tableau neuf à chaque rendu, ce qui reconstruirait
-  // l'index des joueurs et la liste des kills soixante fois par seconde de lecture.
-  const scoreboard = useMemo(() => matchView?.team_tab.scoreboard ?? [], [matchView])
-  const xuidMeta = useMemo(
-    () => resolveXuidMeta(scoreboard, meXUIDOf(scoreboard)),
-    [scoreboard],
-  )
-  const kills = useMemo(
-    () => collectKillEvents(matchView?.combat_tab.highlight_events, xuidMeta),
-    [matchView?.combat_tab.highlight_events, xuidMeta],
-  )
-  // AMIS ET « MOI », UNE SEULE TABLE POUR LES TROIS PANNEAUX (décision D5). Les amis sont
-  // ceux du COMPTE CONNECTÉ (`settings.friend_gamertags`), le « moi » est le joueur DE LA
-  // PAGE (`is_me` du scoreboard) : deux notions distinctes, une seule grammaire à l'écran.
-  // Mémoïsé sur la liste elle-même — la réponse des réglages est stable tant qu'on ne la
-  // modifie pas, et la carte redessine soixante fois par seconde.
+  // LE MODÈLE DE LA PAGE, JOINT ICI ET NULLE PART AILLEURS (2026-09-06, W1). L'artefact dit
+  // ce qui s'est passé et l'identifie par XUID ; la vue match dit qui sont les gens. La
+  // jointure des deux — identité, marques, horloge, fenêtre de gameplay, roster, fil recalé,
+  // médias, score final — vit dans `model/replayModel`, pure et testée sans React ; ce hook
+  // ne fait que la mémoïser. La page n'en garde que ce qui dépend de la LANGUE ou de
+  // l'affichage, plus bas.
   const { data: settings } = useSettings()
-  const friendGamertags = settings?.friend_gamertags
-  const marks = useMemo(
-    () => buildPlayerMarks(scoreboard, friendGamertags ?? []),
-    [scoreboard, friendGamertags],
-  )
+  // PAR LES YEUX DE QUI (2026-09-06, L2b) : un seul foyer, ici, et sa valeur descend en
+  // PARAMÈTRE à tout ce qui en dépend — modèle, calques d'objectif, écran de fin, export.
+  // Le défaut est le joueur de la page, à CHAQUE montage (décision 8 : rien n'est persisté).
+  // Depuis le 2026-09-07 (L3), le MENU de la première piste de la frise appelle `select` : il
+  // reçoit `model.players` pour ses sections et ne touche à rien d'autre que ce foyer.
+  const viewpoint = useReplayViewpoint(matchView?.team_tab.scoreboard)
+  const model = useReplayModel(data, matchView, settings, viewpoint.xuid)
+  const { scoreboard, identity: xuidMeta, marks, window: playWindow, feed: feedEntries } = model
   // LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : sur le rejeu, les points, les titres de
   // colonnes et les noms du fil prennent les MÊMES tokens d'accessibilité — allié / adverse,
   // surchargeables par les réglages. La cascade d'identité du fil (couleur backend, puis
@@ -124,63 +122,17 @@ function ReplayPage() {
     (_teamID, ally) => tokenCssVar(ally ? 'team-ally' : 'team-enemy'),
     [],
   )
-  // Les MÉDAILLES viennent des mêmes events (event_type `medal`), identité résolue
-  // côté backend — même lecture unique, aucun appel de plus.
-  const medalEvents = useMemo(
-    () => collectMedalEvents(matchView?.combat_tab.highlight_events),
-    [matchView?.combat_tab.highlight_events],
-  )
-  // Les deux horloges ne coïncident pas : cf. killFeedLogic.ts et header.t0_ms.
-  const t0Ms = matchView?.header.t0_ms ?? 0
-  // LE SCORE FINAL DU MATCH, quand il ne se déduit PAS du film : sur un mode à manches, le
-  // calque rendrait à la borne de fin les points de la dernière manche (« 100 - 43 ») au lieu
-  // du résultat (« 2 - 1 »). L'écran de fin ET son jumeau repeint dans la vidéo exportée
-  // reçoivent donc la même valeur, celle que la vue match affiche déjà en tête.
-  const finalScore = useMemo(
-    () => finalScoreFromHeader(matchView?.header),
-    [matchView?.header],
-  )
-  // LE CADRAGE SUR LE MATCH RÉEL, CALCULÉ UNE FOIS ICI (déplacé avant le fil le 2026-09-02 :
-  // les lignes de présence en ont besoin) — le film déborde le match du countdown et d'une
-  // queue de 5-6 s, et les deux bornes demandent l'artefact ET l'en-tête.
-  const playWindow = useMemo(
-    () => (data ? replayWindow(data, matchView?.header) : null),
-    [data, matchView?.header],
-  )
-  // LE FIL ALIGNÉ, ASSEMBLÉ ICI ET NULLE PART AILLEURS (planche 2a, 2026-08-28) : la colonne
-  // de droite l'affiche, la frise du lecteur en tire ses pistes « Toi » et « Alliés ». Un
-  // second appel côté canvas referait tout le recalage — et surtout, deux recalages menés
-  // séparément peuvent diverger : la marque d'une élimination sur la frise ne serait alors
-  // plus exactement la ligne qu'on lit dans le fil.
-  // LES LIGNES D'ENTRÉE/SORTIE s'y fusionnent (demande user 2026-09-02) : dérivées des
-  // bornes de vie du document (presenceFeed.ts), triées sur le même axe que le reste.
-  const feedEntries = useMemo(() => {
-    const base = buildFeedEntries(kills, medalEvents, t0Ms, data)
-    if (!data) return base
-    return mergeFeedWithPresence(
-      base,
-      presenceEntries(buildPlayers(data, scoreboard ?? []), playWindow, data, matchView?.header),
-    )
-  }, [kills, medalEvents, t0Ms, data, scoreboard, playWindow, matchView?.header])
-  // LES MÉDIAS DU MATCH, RECALÉS ICI ET NULLE PART AILLEURS (phase 2, 2026-08-28) : ce sont
-  // ceux de l'onglet médias du match, déjà en mémoire — la page monte la vue du match pour ses
-  // fiches et son fil, aucun appel de plus. Leur horodatage est ABSOLU (l'heure de la capture),
-  // là où le fil compte en millisecondes de match : `buildReplayMedia` fait la soustraction,
-  // une seule fois, sur la même origine que le fil (`doc.originMs`).
-  const replayMedia = useMemo(
-    () => buildReplayMedia(matchView?.media_tab, matchView?.header, data?.originMs),
-    [matchView?.media_tab, matchView?.header, data?.originMs],
-  )
   const nowMs = data ? frameToMs(frame, data) : 0
-  // LE CADRAGE SUR LE MATCH RÉEL, CALCULÉ UNE FOIS ICI (et nulle part ailleurs) : le film
-  // déborde le match du countdown d'avant-partie et d'une queue de 5-6 s, et les deux bornes
-  // demandent l'artefact ET l'en-tête — deux requêtes distinctes qui ne se rejoignent qu'à ce
-  // niveau. La lecture, la frise, l'horloge, le fil et les infobulles la reçoivent ; aucun ne
-  // la recalcule. `null` = pas de cadrage établi, tout le monde retombe sur le film entier.
-  // LA FIN DE PARTIE SONORE (lot C), lue ICI comme le cadrage et pour la même raison : elle
-  // croise l'en-tête (l'issue du joueur de la page) et le scoreboard (ses camps), deux données
-  // qui ne se rejoignent qu'à ce niveau. C'est la MÊME lecture que l'écran de fin ci-dessous —
-  // `endMatchSoundSpec` s'appuie sur `readVictory`, il ne re-décode pas `outcome_code`.
+  // LA FIN DE PARTIE SONORE (lot C) reste À LA PAGE, et pour une raison précise : elle dépend
+  // de la LANGUE (voix d'annonceur), que le modèle ne connaît pas. C'est la MÊME lecture que
+  // l'écran de fin ci-dessous — `endMatchSoundSpec` s'appuie sur `readVictory`, il ne
+  // re-décode pas `outcome_code`.
+  //
+  // ET C'EST LA SEULE SURFACE QUI NE SUIT PAS LE POINT DE VUE (décision 3 du plan, 2026-09-06) :
+  // aucun sujet ne lui est passé, donc elle lit le résultat du JOUEUR DE LA PAGE. Inspecter un
+  // adversaire ne doit pas faire jouer « Défaite » sur un match gagné. L'écran, lui, suit ce
+  // qu'on regarde — l'incohérence apparente entre les deux appels est voulue, ne pas la
+  // « corriger ».
   const endMatchSound = useMemo(
     () => endMatchSoundSpec(scoreboard, matchView?.header.outcome_code, locale),
     [scoreboard, matchView?.header.outcome_code, locale],
@@ -292,25 +244,28 @@ function ReplayPage() {
               doc={data}
               locale={locale}
               playWindow={playWindow}
-              kills={kills}
-              t0Ms={t0Ms}
-              onFrameChange={setFrame}
+              playbackStore={playbackStore}
               background={mapBackground}
               callouts={callouts}
               scoreboard={scoreboard}
               xuidMeta={xuidMeta}
               marks={marks}
               endMatch={endMatchSound}
+              viewpoint={viewpoint.xuid}
+              players={model.players}
+              onSelectViewpoint={viewpoint.select}
               outcome={{
                 // LE VERDICT, POUR L'EXPORT SEUL : l'écran de fin monté juste en dessous est du
                 // DOM, qu'aucun encodeur vidéo ne voit. L'export le repeint DANS la toile, et
                 // c'est ici qu'il reçoit de quoi le faire — la MÊME source que l'écran affiché.
+                // Le CODE seul : le MOT se résout des deux côtés depuis les mappings du titre
+                // (2026-09-07), sur l'issue lue — un `outcome_label` de plus rouvrirait le
+                // second vocabulaire que ce chantier a fermé.
                 code: matchView?.header.outcome_code,
-                label: matchView?.header.outcome_label,
-                finalScore,
+                finalScore: model.score,
               }}
               feedEntries={feedEntries}
-              media={replayMedia}
+              media={model.media}
             />
             {/* L'ÉCRAN DE FIN DE MATCH, dérivé de la position de lecture (D-B5) : il apparaît
                 quand la lecture atteint la borne de fin et disparaît dès qu'on remonte la
@@ -320,8 +275,8 @@ function ReplayPage() {
               scoreboard={scoreboard}
               xuidMeta={xuidMeta}
               outcomeCode={matchView?.header.outcome_code}
-              outcomeLabel={matchView?.header.outcome_label}
-              finalScore={finalScore}
+              viewpoint={viewpoint.xuid}
+              finalScore={model.score}
               playWindow={playWindow}
               frame={frame}
               titleSlug={params.titleSlug}

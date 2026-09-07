@@ -68,7 +68,7 @@ func TestSkullCarriesTwoRounds(t *testing.T) {
 	recs, deaths := skullFixture()
 	// step = 1000 us/frame => 1 frame par ms (frame = instant en ms). frames grand : tout ferme.
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
-		matchClock{origin: 0, step: 1000, frames: 100000}, nil)
+		matchClock{origin: 0, step: 1000, frames: 100000}, carrierPresence{})
 
 	if cov == nil || !cov.SkullFilm {
 		t.Fatalf("couverture absente ou SkullFilm faux : %+v", cov)
@@ -109,7 +109,7 @@ func TestSkullCarriesOpenAtAxisEnd(t *testing.T) {
 	recs, deaths := skullFixture()
 	// frames = 23000 : le dernier portage (fin 22000) tombe dans le mou de fin (3 s) -> ouvert.
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
-		matchClock{origin: 0, step: 1000, frames: 23000}, nil)
+		matchClock{origin: 0, step: 1000, frames: 23000}, carrierPresence{})
 	if len(carries) != 4 {
 		t.Fatalf("portages = %d, attendu 4", len(carries))
 	}
@@ -131,7 +131,7 @@ func TestSkullCarriesOpenAtAxisEnd(t *testing.T) {
 
 // TestSkullCarriesUnscanned — hors Oddball (Scanned faux), ni calque ni couverture.
 func TestSkullCarriesUnscanned(t *testing.T) {
-	carries, cov := buildSkullCarries(SkullCarryScan{Scanned: false}, matchClock{step: 1000, frames: 100}, nil)
+	carries, cov := buildSkullCarries(SkullCarryScan{Scanned: false}, matchClock{step: 1000, frames: 100}, carrierPresence{})
 	if carries != nil || cov != nil {
 		t.Errorf("film non-Oddball : attendu (nil, nil), obtenu (%v, %v)", carries, cov)
 	}
@@ -145,11 +145,11 @@ func TestSkullCarriesCarrierAbsent(t *testing.T) {
 	recs, deaths := skullFixture()
 	// A n'est present que [1500,3500] : couvre en PARTIE son 1er portage (1000-4000) mais PAS son
 	// 2e (9000-10000). C et B couvrent leurs portages.
-	presence := map[string][]presenceSpan{
+	presence := carrierPresence{named: map[string][]presenceSpan{
 		"A": {{1500, 3500}},
 		"C": {{5000, 7000}},
 		"B": {{20000, 22000}},
-	}
+	}}
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
 		matchClock{origin: 0, step: 1000, frames: 100000}, presence)
 
@@ -178,27 +178,97 @@ func TestSkullCarriesCarrierAbsent(t *testing.T) {
 	}
 }
 
-// TestSkullCarrierPresence — l'index de presence groupe les vies bipedes par xuid, ignore les vies
-// anonymes.
+// TestSkullCarrierPresence — l'index de presence groupe les vies bipedes NOMMEES par xuid et
+// RETIENT a part celles qui ne prouvent l'absence de personne : une vie sans identite, et une
+// vie dont l'identite est DEDUITE (cf. carrierPresenceOf). Elles ne sont pas jetees, elles sont
+// la trace de l'ignorance.
 func TestSkullCarrierPresence(t *testing.T) {
 	tracks := []Track{
-		{XUID: "A", StartFrame: 10, EndFrame: 40},
-		{XUID: "A", StartFrame: 100, EndFrame: 130},
-		{XUID: "", StartFrame: 0, EndFrame: 999}, // anonyme : ignoree
-		{XUID: "B", StartFrame: 50, EndFrame: 70},
+		{Slot: 1, XUID: "1", StartFrame: 10, EndFrame: 40},
+		{Slot: 1, XUID: "1", StartFrame: 100, EndFrame: 130},
+		{Slot: 3, XUID: "", StartFrame: 0, EndFrame: 999},                  // sans identite : RETENUE
+		{Slot: 4, XUID: "", Bot: "Ciri [bot]", StartFrame: 5, EndFrame: 8}, // bot : IDENTIFIE
+		{Slot: 2, XUID: "2", StartFrame: 50, EndFrame: 70},
 	}
-	p := skullCarrierPresence(tracks)
-	if len(p) != 2 {
-		t.Fatalf("xuids indexes = %d, attendu 2 (anonyme ignoree) : %+v", len(p), p)
+	// Aucune identite deduite ici : les quatre xuids viennent de la lecture.
+	deduites := map[int]bool{}
+	p := carrierPresenceOf(tracks, deduites)
+	if len(p.named) != 2 {
+		t.Fatalf("xuids indexes = %d, attendu 2 : %+v", len(p.named), p.named)
 	}
-	if len(p["A"]) != 2 || len(p["B"]) != 1 {
-		t.Errorf("A=%d vies, B=%d vies, attendu 2 et 1", len(p["A"]), len(p["B"]))
+	if len(p.unnamed) != 1 || p.unnamed[0] != (presenceSpan{0, 999}) {
+		t.Errorf("vies anonymes = %+v, attendu une seule [0,999]", p.unnamed)
 	}
-	if _, ok := bestOverlap(p["A"], 20, 25); !ok {
+	if len(p.named["1"]) != 2 || len(p.named["2"]) != 1 {
+		t.Errorf("A=%d vies, B=%d vies, attendu 2 et 1", len(p.named["1"]), len(p.named["2"]))
+	}
+	if _, ok := unionOverlap(p.named["1"], 20, 25); !ok {
 		t.Errorf("[20,25] devrait recouvrir la vie A [10,40]")
 	}
-	if _, ok := bestOverlap(p["A"], 60, 90); ok {
+	if _, ok := unionOverlap(p.named["1"], 60, 90); ok {
 		t.Errorf("[60,90] ne devrait recouvrir aucune vie A (trou entre [10,40] et [100,130])")
+	}
+}
+
+// TestSkullCarriesVieAnonymeNEstPasUneAbsence — LE FAIT RESIDUEL n° 1 du balayage du parc
+// (`d9781168`, 36 portages -> 30). Un portage dont le porteur n'a AUCUNE vie nommee sur
+// l'intervalle, mais qu'une vie ANONYME recouvre, ne doit etre ni ecarte ni rogne : le pont
+// d'identite n'a pas nomme cette vie, et une presence sans identite n'est pas une absence.
+//
+// Verite terrain de `d9781168` : en Oddball le score EST le temps de portage ; la feuille de match
+// donne 191 s / 196 s par equipe, l'artefact rejetant les anonymes n'en publiait que 60,1 s /
+// 147,4 s. Le gate ecartait de la donnee vraie en croyant ecarter des fantomes.
+func TestSkullCarriesVieAnonymeNEstPasUneAbsence(t *testing.T) {
+	recs, deaths := skullFixture()
+	// Meme presence nommee que TestSkullCarriesCarrierAbsent : A n'est nomme que [1500,3500],
+	// donc son 1er portage (1000-4000) serait ROGNE et son 2e (9000-10000) ECARTE.
+	base := map[string][]presenceSpan{
+		"A": {{1500, 3500}},
+		"C": {{5000, 7000}},
+		"B": {{20000, 22000}},
+	}
+	// Une seule vie ANONYME, qui couvre les DEUX intervalles de A.
+	p := carrierPresence{named: base, unnamed: []presenceSpan{{500, 11000}}}
+	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
+		matchClock{origin: 0, step: 1000, frames: 100000}, p)
+
+	if len(carries) != 4 {
+		t.Fatalf("portages = %d, attendu 4 (aucun ecarte) : %+v", len(carries), carries)
+	}
+	if cov.CarrierAbsent != 0 {
+		t.Errorf("CarrierAbsent = %d, attendu 0 : une vie anonyme couvre l'intervalle", cov.CarrierAbsent)
+	}
+	// Le 1er portage de A n'est PAS rogne a [1500,3500] : il garde ses bornes.
+	if carries[0].XUID != "A" || carries[0].T0 != 1000 || carries[0].T1 != 4000 {
+		t.Errorf("portage A = %+v, attendu {A 1000 4000} NON rogne", carries[0])
+	}
+	if !cov.Balanced() {
+		t.Errorf("couverture desequilibree : %+v", cov)
+	}
+}
+
+// TestSkullCarriesFantomeResteEcarte — la CONTRE-EPREUVE du test precedent : sans vie anonyme sur
+// l'intervalle, les pistes publiees rendent compte de tout, et le portage attribue a un joueur
+// qui n'y est pas reste un FANTOME. Le correctif retrecit le gate, il ne le supprime pas.
+func TestSkullCarriesFantomeResteEcarte(t *testing.T) {
+	recs, deaths := skullFixture()
+	p := carrierPresence{
+		named: map[string][]presenceSpan{
+			"A": {{1500, 3500}},
+			"C": {{5000, 7000}},
+			"B": {{20000, 22000}},
+		},
+		// Une vie anonyme LOIN des portages de A : elle ne couvre rien de [9000,10000].
+		unnamed: []presenceSpan{{30000, 40000}},
+	}
+	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
+		matchClock{origin: 0, step: 1000, frames: 100000}, p)
+	if len(carries) != 3 || cov.CarrierAbsent != 1 {
+		t.Fatalf("portages = %d / CarrierAbsent = %d, attendu 3 et 1 (le fantome A@9000 ecarte)",
+			len(carries), cov.CarrierAbsent)
+	}
+	if carries[0].T0 != 1500 || carries[0].T1 != 3500 {
+		t.Errorf("portage A = %+v, attendu rogne a [1500,3500]", carries[0])
 	}
 }
 
@@ -229,5 +299,111 @@ func TestSkullCarrySecondsByXUID(t *testing.T) {
 	}
 	if best != "A" {
 		t.Errorf("porteur principal = %q, attendu \"A\"", best)
+	}
+}
+
+// TestPortageAChevalSurDeuxViesNommeesGardeSesBornes — LE RESIDU A, instruit le 2026-09-06.
+//
+// VERDICT : CONFIRME, l'exemption « lecteur deja rattrape » ne le couvrait PAS. Le correctif du
+// schema 43 a traite le REJET (« l'ignorance passe avant le rognage ») ; le ROGNAGE, lui, est
+// reste sur `bestOverlap` — la vie de recouvrement MAXIMAL. C'est exactement le defaut que
+// `windowFor` portait avant le schema 45 et que `spanFor` a ferme pour les episodes
+// d'equipement : un portage qu'un trou de replication de plus de `lifeGapUS` coupe en deux vies
+// NOMMEES du meme porteur etait tronque a la moitie la plus longue, l'instant de PRISE compris.
+//
+// LE CAS : le porteur a deux vies nommees, [10..30] et [80..120], separees par un trou. Le
+// portage mesure court de 20 a 100 : il enjambe le trou. L'union rend [10..120], le clamp
+// ramene a [20..100] — les bornes MESUREES, intactes.
+//
+// MUTATION : revenir a `bestOverlap` rougit — le portage sort [80..100], ampute de 60 frames
+// (la vie [80..120] recouvre 21 frames du portage contre 11 pour [10..30]).
+func TestPortageAChevalSurDeuxViesNommeesGardeSesBornes(t *testing.T) {
+	p := carrierPresence{named: map[string][]presenceSpan{
+		"A": {{f0: 10, f1: 30}, {f0: 80, f1: 120}},
+	}}
+	f0, f1, ok := p.gate("A", 20, 100)
+	if !ok {
+		t.Fatal("portage ecarte : deux vies nommees le recouvrent")
+	}
+	if f0 != 20 || f1 != 100 {
+		t.Errorf("bornes publiees [%d..%d], attendu [20..100] — un trou de replication ne doit "+
+			"pas amputer une duree mesuree", f0, f1)
+	}
+}
+
+// TestPortageResteRogneHorsDesViesNommees — LA CONTRE-EPREUVE : l'union ne deborde JAMAIS les
+// vies du porteur. Un portage qui commence avant sa premiere vie et finit apres la derniere est
+// toujours ramene a ce que les pistes rendent compte.
+func TestPortageResteRogneHorsDesViesNommees(t *testing.T) {
+	p := carrierPresence{named: map[string][]presenceSpan{
+		"A": {{f0: 10, f1: 30}, {f0: 80, f1: 120}},
+	}}
+	f0, f1, ok := p.gate("A", 0, 200)
+	if !ok {
+		t.Fatal("portage ecarte a tort")
+	}
+	if f0 != 10 || f1 != 120 {
+		t.Errorf("bornes publiees [%d..%d], attendu [10..120] — l'union est bornee par les vies", f0, f1)
+	}
+	// Et un portage qu'AUCUNE vie nommee ne recouvre reste un FANTOME : la regle de rejet ne
+	// bouge pas.
+	if _, _, ok := p.gate("A", 300, 400); ok {
+		t.Error("portage hors de toute vie nommee : il devait rester ecarte")
+	}
+}
+
+// TestUneIdentiteDEDUITENeProuveLAbsenceDePersonne — L'INTERACTION P0-0 x GATE DE PRESENCE
+// (2026-09-07), attrapee par la cuisson des temoins.
+//
+// Depuis le nommage final (unnamed_lives.go), plus aucune vie n'est publiee sans identite :
+// `carrierPresence.unnamed` serait donc VIDE, et l'abstention n 2 du gate — la moitie la plus
+// couteuse du correctif du schema 43 — mourrait avec elle. Une vie nommee PAR DEDUCTION
+// (l'occupation du slot dans le temps) etablit qu'un joueur etait probablement la ; elle
+// n'etablit JAMAIS qu'un autre n'y etait pas. La compter comme une preuve d'absence
+// transformerait une deduction en refutation.
+//
+// MESURE : sur `d9781168` (Oddball, dont le score EST le temps de portage), la compter coutait
+// un portage et 101 frames, en S'ELOIGNANT de la feuille de match — 387 s reelles, 331,3 s
+// publiees avec cette garde contre 321,2 s sans.
+//
+// MUTATION : retirer la branche `if !identityIsRead(...)` rougit (« portage ecarte »).
+func TestUneIdentiteDEDUITENeProuveLAbsenceDePersonne(t *testing.T) {
+	// Le slot 7 porte une vie NOMMEE PAR LECTURE (joueur B, fil des morts) et une vie que seul
+	// le nommage final a nommee — a B aussi, par occupation.
+	tracks := []Track{
+		{Slot: 7, StartFrame: 0, EndFrame: 50, XUID: "2"},
+		{Slot: 7, StartFrame: 100, EndFrame: 200, XUID: "2"}, // identite DEDUITE
+		{Slot: 9, StartFrame: 0, EndFrame: 300, XUID: "1"},
+	}
+	// La piste d'indice 1 est celle que le nommage final a nommee.
+	p := carrierPresenceOf(tracks, map[int]bool{1: true})
+	if len(p.unnamed) != 1 {
+		t.Fatalf("vies sans identite LUE = %d, attendu 1 (la vie deduite du slot 7)", len(p.unnamed))
+	}
+
+	// Un portage de A sur [120..180] : la vie deduite le recouvre. Le gate doit S'ABSTENIR,
+	// pas rejeter — la deduction ne refute rien.
+	f0, f1, ok := p.gate("1", 120, 180)
+	if !ok || f0 != 120 || f1 != 180 {
+		t.Errorf("portage [%d..%d] ok=%v ; attendu [120..180] conserve : une identite DEDUITE "+
+			"ne prouve l'absence de personne", f0, f1, ok)
+	}
+}
+
+// TestUneIdentiteLUEProuveToujoursUnePresence — LA CONTRE-EPREUVE : le gate garde ses dents.
+// Une vie nommee PAR LECTURE rend compte de l'occupation du slot, et un portage attribue a un
+// joueur qu'aucune de SES vies ne recouvre reste un fantome.
+func TestUneIdentiteLUEProuveToujoursUnePresence(t *testing.T) {
+	tracks := []Track{
+		{Slot: 7, StartFrame: 100, EndFrame: 200, XUID: "2"},
+		{Slot: 9, StartFrame: 0, EndFrame: 50, XUID: "1"},
+	}
+	p := carrierPresenceOf(tracks, nil) // aucune identite deduite : tout vient de la lecture
+	if len(p.unnamed) != 0 {
+		t.Fatalf("aucune identite deduite ici : unnamed = %d, attendu 0", len(p.unnamed))
+	}
+	if _, _, ok := p.gate("1", 120, 180); ok {
+		t.Error("portage de A sur un intervalle que seule une vie LUE de B recouvre : " +
+			"il devait rester ecarte")
 	}
 }

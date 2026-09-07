@@ -46,10 +46,49 @@ const eventTypeBits = 7
 // puis la charge) : après [config(1)][continuation(1)][R(7) type].
 const eventPayloadStartBit = 2 + eventTypeBits // 9
 
-// PacketHeadEventType lit le type de l'ÉVÉNEMENT DE TÊTE d'un payload de paquet delta : il lit
-// le bit de configuration, puis le bit de continuation. Si la continuation est nulle, la liste
-// est vide (le paquet est une trame de records pure) et present vaut false. Sinon il lit le
-// R(7) du type de tête. Aucune charge n'est décodée : O(1), sans allocation au-delà du reader.
+// packetHead est le PRÉAMBULE DE 9 BITS d'un paquet delta, décodé : [config(1)][continuation(1)]
+// [R(7) type]. C'est la seule forme du préambule dans ce paquet — elle était écrite SIX fois en
+// ligne, sous deux conventions différentes, avant le 2026-09-05 (lot E, item E.3).
+type packetHead struct {
+	// Config : bit 0, le drapeau de configuration (1 sur 100 % du corpus).
+	Config bool
+	// More : bit 1, la continuation. Faux = liste d'événements VIDE (le paquet est une trame
+	// de records pure) ; le champ Type n'a alors aucun sens grammatical.
+	More bool
+	// Type : les 7 bits de type de l'événement de tête. LU DANS TOUS LES CAS, y compris quand
+	// More est faux — voir readPacketHead pour la raison, qui est un invariant de compatibilité.
+	Type int
+}
+
+// readPacketHead lit le préambule de 9 bits sur `br` et le laisse positionné au PREMIER BIT DU
+// CORPS de l'événement (soit `eventPayloadStartBit` quand `br` partait du bit 0).
+//
+// IL LIT TOUJOURS LES NEUF BITS, y compris quand la continuation est nulle. C'est ce qui rend
+// cette factorisation BIT-EXACTE pour les six appelants d'origine, qui se répartissaient en deux
+// conventions :
+//
+//   - TROIS testaient la continuation et sortaient sans lire le type (`decodeZoomHead`,
+//     `decodeTranslocHead`, `decodeBipedPickup`). Ils abandonnent leur lecteur au même instant,
+//     donc les 7 bits lus en trop ne sont observés par personne.
+//   - TROIS la SAUTAIENT et lisaient le type quoi qu'il arrive (`modalPostCountsBit`,
+//     et les deux balayages de `weapon_hits.go`). Chacun est précédé d'un filtre sur l'OCTET DE
+//     TÊTE du payload — 0xD2 pour le type 36, 0xC0 pour le type 0 — dont le bit 1 vaut 1 : la
+//     continuation y est donc posée par construction, et ne pas la tester ne leur coûte rien.
+//
+// Faire tester la continuation aux trois derniers serait un CHANGEMENT DE COMPORTEMENT sur une
+// entrée synthétique (le harnais `writeModalHeader` écrit `bits(0, 2)` en préfixe, continuation
+// comprise) : hors du périmètre « comportement strictement identique » du lot E-I.
+func readPacketHead(br *BitReader) packetHead {
+	var h packetHead
+	h.Config = br.ReadBit()
+	h.More = br.ReadBit()
+	h.Type = int(br.ReadBits(eventTypeBits))
+	return h
+}
+
+// PacketHeadEventType lit le type de l'ÉVÉNEMENT DE TÊTE d'un payload de paquet delta. Si la
+// continuation est nulle, la liste est vide (le paquet est une trame de records pure) et present
+// vaut false. Aucune charge n'est décodée : O(1), sans allocation au-delà du reader.
 //
 // C'est le CADRAGE MINIMAL de la liste : il suffit à compter les familles par type de tête
 // (validation des comptes corpus) sans porter la grammaire de charge de chaque type.
@@ -57,12 +96,11 @@ func PacketHeadEventType(pay []byte) (typ int, present bool) {
 	if len(pay) < 1 {
 		return 0, false
 	}
-	br := NewBitReader(pay)
-	_ = br.ReadBit() // bit 0 : drapeau de configuration (1 sur 100 % du corpus)
-	if !br.ReadBit() {
-		return 0, false // bit 1 : continuation = 0 -> liste vide
+	h := readPacketHead(NewBitReader(pay))
+	if !h.More {
+		return 0, false
 	}
-	return int(br.ReadBits(eventTypeBits)), true
+	return h.Type, true
 }
 
 // --- Référence gardée -------------------------------------------------------------------------
@@ -75,27 +113,64 @@ func PacketHeadEventType(pay []byte) (typ int, present bool) {
 // largeur tombe à 9. Ces largeurs de référence sont celles de la build de référence ; l'id-reader
 // du domaine 7 est le même RUNTIME que `FrameConfig.IDLowBits` (11..14 selon le film).
 
-// dom7RefWidth est la largeur (bits) d'un index de référence de domaine 7/8/0 sur la build de
-// référence. Runtime en toute rigueur (cf. IDLowBits), mais 13 vaut sur les films de référence.
-const dom7RefWidth = 13
-
-// dom2RefWidth / dom3RefWidth : largeurs des domaines 2 et 3, les DOMAINES DES RÉFÉRENCES DE
-// L'EMBARQUEMENT (lus dans l'exécutable le 2026-09-02, cf. boardRefs). Ni l'un ni l'autre ne
-// porte de sonde : `FUN_1406d3140` ne la lit que pour le domaine 1.
+// refDomWidth rend la largeur (bits) de l'index d'une référence gardée du DOMAINE `dom`.
 //
-// LA LARGEUR EST RUNTIME EN TOUTE RIGUEUR — `FUN_1406d310c(count)` rend ceil(log2(count)) sur une
-// table initialisée à l'exécution, illisible dans l'image statique. Les deux valeurs ci-dessous
-// sont donc MESURÉES, chacune par son propre oracle (balayage de largeurs, event_list_board_test.go,
-// 8 films / 22 embarquements) :
+// C'EST LA SEULE TABLE DES DOMAINES DU PAQUET, et elle l'est depuis le 2026-09-05 (lot E, item
+// E.3). Elle en remplace trois qui coexistaient — `dom7RefWidth`/`dom2RefWidth`/`dom3RefWidth`
+// ici, `lot1RefDomWidths` (weapon_hits_decode.go) et `zoomRefWidth` (zoom_events.go) —, et deux
+// d'entre elles CONTREDISAIENT la valeur mesurée du domaine 3 en portant `3: 8`. Un garde-rail
+// (`event_preamble_guard_test.go`) interdit qu'une quatrième renaisse.
+//
+// LES LARGEURS SONT RUNTIME EN TOUTE RIGUEUR — `FUN_1406d310c(count)` rend ceil(log2(count)) sur
+// une table initialisée à l'exécution, illisible dans l'image statique. Les valeurs ci-dessous
+// sont celles de la build de référence, et les deux domaines de l'EMBARQUEMENT ont chacun leur
+// oracle propre (balayage de largeurs, event_list_board_test.go, 8 films / 22 embarquements) :
+//
 //   - domaine 2 = 8 : l'occupant tombe dans la bande bipède 22/22 = 100 % et ouvre un trou du flux
 //     de position à l'instant de l'événement dans 77,3 % des cas (témoin décalé : 0 %). À 7 bits le
 //     recoupement s'effondre à 4,5 %, à 9 bits la bande n'est plus tenue (72,7 %), à 13 bits 9,1 %.
 //   - domaine 3 = 7 : départagé par le SIÈGE, qui se lit après les trois réfs. À 7 bits le siège de
 //     l'embarquement égale celui de la sortie appariée dans 5/6 = 83,3 % des cas et vaut 0 sur 21/22
 //     (même « siège dominant 0 » que la sortie) ; à 8 bits l'accord tombe à 0/6, à 13 bits 4/6.
+//     LA PROSE DE L'EXÉCUTABLE DIT 8 ; la mesure dit 7, et c'est la mesure qui fait foi. Les deux
+//     tables recopiées portaient 8 : aucune ne servait le domaine 3 en production, sans quoi le
+//     décalage d'un bit aurait emporté tout le corps de l'événement.
+//
+// Le domaine 1 est le seul à porter une SONDE (1 bit) qui abaisse sa largeur de 13 à 9 :
+// `FUN_1406d3140` ne la lit que pour lui (`if (param_3 == 1 && ReadBit())`). Elle n'est PAS dans
+// cette table, qui ne rend que la largeur de l'index ; ses lecteurs sont `readDom1Ref` et
+// `lot1RefDom1`.
+//
+// UN DOMAINE HORS TABLE REND 0, exactement comme les cartes qu'elle remplace : une clé absente y
+// valait le zéro du type, donc `ReadBits(0)` — zéro bit consommé.
+func refDomWidth(dom int) uint {
+	switch dom {
+	case 0, 1, 7, 8:
+		return dom7RefWidth
+	case 2, 5:
+		return dom2RefWidth
+	case 3:
+		return dom3RefWidth
+	case 4, 6:
+		return dom4RefWidth
+	}
+	return 0
+}
+
+// Les largeurs elles-mêmes, une déclaration par valeur. `refDomWidth` est le SEUL endroit qui les
+// associe à un numéro de domaine ; ces noms restent parce que la grammaire d'un événement se lit
+// mieux « domaine 2 » que « 8 », et parce que les instruments de mesure les nomment.
 const (
+	// dom7RefWidth : domaines 0, 1, 7 et 8. Runtime en toute rigueur (cf. `FrameConfig.IDLowBits`,
+	// 11..14 selon le film), mais 13 vaut sur les films de référence.
+	dom7RefWidth = 13
+	// dom2RefWidth : domaines 2 et 5.
 	dom2RefWidth = 8
+	// dom3RefWidth : domaine 3. MESURÉE 7 (cf. l'oracle du siège ci-dessus), contre 8 dans la
+	// prose de l'exécutable.
 	dom3RefWidth = 7
+	// dom4RefWidth : domaines 4 et 6.
+	dom4RefWidth = 9
 )
 
 // guardedRef est une référence d'entité gardée décodée.

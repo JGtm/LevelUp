@@ -161,10 +161,11 @@ type DeadState struct {
 // It returns the captured dead-state fields (the weapon-attribution payload).
 // deadStatePreSkip injects N extra bits consumed BEFORE the dead-state head, to
 // brute-force a CONSTANT cumulative upstream misalignment (calibration harness only; 0 in prod).
-var deadStatePreSkip int
-
-// SetDeadStatePreSkip sets the calibration pre-skip (negative = rewind via Skip).
-func SetDeadStatePreSkip(n int) { deadStatePreSkip = n }
+// Le réglage public `SetDeadStatePreSkip` a été supprimé le 2026-09-05 (lot E, item E.2) :
+// aucun appelant. Le pré-saut reste 0, la valeur de production.
+// PROVENANCE : 0 en production — c est une injection de calibration, et le harnais qui la posait
+// n existe plus. Constante depuis le 2026-09-06 (lot E, item E.8).
+const deadStatePreSkip = 0
 
 // (La façade sans typeIndex `consumeObjectDeadStateBiped(br)` a été retirée le 2026-08-01 —
 // lot C : elle ne faisait que fixer 0x23 et n'avait plus d'appelant. Passer le typeIndex
@@ -299,11 +300,13 @@ func consumeDeadStateAnimBlock(br *BitReader, ds *DeadState) {
 // bitstream bit, so its presence cannot be read offline. Default true (the agent's
 // "moving biped / ragdoll" assumption); a validation harness flips it to test the
 // immobile case. See consumeDeadStateAnimBlock step 14.
-var deadStateVelocityPresent = false
-
-// SetDeadStateVelocityPresent toggles the RAM-gated velocity block in the dead-state
-// tail (step 14). Calibration only.
-func SetDeadStateVelocityPresent(b bool) { deadStateVelocityPresent = b }
+//
+// Le réglage public `SetDeadStateVelocityPresent` a été supprimé le 2026-09-05 (lot E, item
+// E.2) : aucun appelant. La valeur reste `false`, celle du décodage de production.
+// PROVENANCE : MESURE — le bloc de velocite de l etape 14 est garde par un drapeau RAM
+// (*(state+0x1c) & 0x10), invisible hors ligne ; le decodage de production le modelise ABSENT, et
+// c est ce que valent les goldens. Constante depuis le 2026-09-06 (lot E, item E.8).
+const deadStateVelocityPresent = false
 
 // readOpt5Signed mirrors FUN_1407f2058: R(1) present bit; if CLEAR -> R(5) payload
 // (returned as a non-negative value); if SET -> -1 sentinel (no payload).

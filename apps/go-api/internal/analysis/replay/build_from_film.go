@@ -373,7 +373,7 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// morts, et les 5 bits qui précèdent chaque xuid donnent son index. Sans cette table, aucun
 	// tir ni lancer n'est publié — comme sans le fil des morts.
 	if len(deaths) > 0 {
-		idx, err := ScanPlayerIndices(film, rosterFromDeaths(deaths))
+		idx, err := ScanPlayerIndices(film, rosterOf(deaths, opt.RosterXUIDs))
 		if err != nil {
 			slog.Warn("index de joueur illisible — aucun tir ni lancer ne sera publie",
 				"err", err, "match_id", matchID)

@@ -59,9 +59,10 @@ var longestRunAllowed = map[string]bool{
 // RETRAIT : quand `filmdec` aura sa propre primitive de plage de bits. Le volet
 // `cmd/tmp_*` / `cmd/wf_*` de cette exemption est RETIRÉ le 2026-08-01 (lot A du
 // plan de dette avant merge) : l'outillage de recherche est supprimé, l'exemption
-// par préfixe n'a plus de cible.
+// par préfixe n'a plus de cible. Le volet `frame_debug.go` est RETIRÉ le 2026-09-05
+// (lot E, item E.2) : le fichier est supprimé (deux fonctions de debug sans aucun
+// appelant, tests compris), l'exemption n'a plus de cible non plus.
 var longestRunAllowedPrefixes = []string{
-	"internal/analysis/filmdec/frame_debug.go",
 	"internal/analysis/filmdec/frame_records.go",
 }
 

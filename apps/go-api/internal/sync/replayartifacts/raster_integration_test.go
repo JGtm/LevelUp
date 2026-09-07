@@ -175,7 +175,7 @@ func TestRun_ProjectionEnEchecNArretePasLeCycle(t *testing.T) {
 		[]byte(`{"schemaVersion":`), 0o644); err != nil {
 		t.Fatalf("corrompre l'artefact: %v", err)
 	}
-	projeterRastersTactiques(context.Background(), d, []artefactCuit{
+	projeterRastersTactiques(context.Background(), d, []artefactLu{
 		{matchID: casse, path: pr.ReplayArtifactPath(titlePkg.DefaultSlug, casse)},
 		{matchID: sain, path: pr.ReplayArtifactPath(titlePkg.DefaultSlug, sain)},
 	})

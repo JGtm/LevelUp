@@ -19,16 +19,17 @@ import "log/slog"
 //
 // L'écart est JOURNALISÉ, jamais tu : un calque qui perd des entrées en silence laisse croire
 // que le film n'en portait pas.
-func keepNeutralDeathsOfPublishedTracks(deaths []NeutralDeath, tracks []Track) []NeutralDeath {
+//
+// LE FILTRE CADENCE SUR LE JOUEUR DE LA PISTE, PAS SUR SON SEUL NOM LU — même correctif, même
+// jour et même helper que les actions d'objectif (`xuidOfPublishedTrack`). Ce site-ci et
+// `objectives.go` étaient les deux SEULS des treize filtres « piste publiée » du paquet à
+// cadencer sur un nom lu ; les onze autres cadencent sur le SLOT via `keepOfPublishedTracks`.
+func keepNeutralDeathsOfPublishedTracks(deaths []NeutralDeath, tracks []Track,
+	slotXUID map[uint32]uint64) []NeutralDeath {
 	if len(deaths) == 0 {
 		return nil
 	}
-	published := map[string]bool{}
-	for _, tr := range tracks {
-		if tr.XUID != "" {
-			published[tr.XUID] = true
-		}
-	}
+	published := publishedXUIDs(tracks, slotXUID)
 	out := make([]NeutralDeath, 0, len(deaths))
 	for _, d := range deaths {
 		if d.Kind == "" || !published[d.XUID] {

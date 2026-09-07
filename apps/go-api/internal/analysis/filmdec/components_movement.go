@@ -55,27 +55,18 @@ type PrecisionDescriptor struct {
 // consumeDynPrecVec3 mirrors FUN_14076d528: a leading R(1) present flag (bit==0
 // => present), then on the present path R(mag) packed direction + R(scale) log/exp
 // magnitude. bit==1 => absent (vector is the engine constant, no further bits).
-// dynPrecHook, si non-nil, reçoit chaque vec3 dynamic-precision décodé (vélocité i1/i3) :
-// présent, valeur brute direction packée + scale, et le bit de départ (== StartBit du
-// composant). Additif : ne change AUCUNE consommation de bits.
-var dynPrecHook func(present bool, packedDir, scale uint64, bitpos int)
-
-// SetDynPrecHook installe (ou efface, nil) le hook de capture vélocité dynamic-precision.
-func SetDynPrecHook(h func(present bool, packedDir, scale uint64, bitpos int)) { dynPrecHook = h }
-
+//
+// LE CROCHET DE CAPTURE `dynPrecHook` A ETE SUPPRIME le 2026-09-05 (lot E, item E.2), avec son
+// setter `SetDynPrecHook` et les blocs de sauvegarde/restauration qui le promenaient : aucun
+// site du depot ne l'installait non-nil, tests compris. Il etait donc prouvablement toujours
+// nil, et sa capture — additive, sans effet sur la consommation de bits — n'emettait rien.
+// La consommation de bits de ce deser est inchangee, a la ligne pres.
 func consumeDynPrecVec3(br *BitReader, mag, scale uint) {
-	start := br.BitPos()
 	if br.ReadBit() { // FUN_14076d528 leading R(1); JNZ -> absent (0 payload bits)
-		if dynPrecHook != nil {
-			dynPrecHook(false, 0, 0, start)
-		}
 		return
 	}
-	dir := br.ReadBits(mag)  // packed direction (feeds FUN_1406d8288 unpack, 0 extra bits)
-	sc := br.ReadBits(scale) // FUN_14076d6dc log/exp scale word
-	if dynPrecHook != nil {
-		dynPrecHook(true, dir, sc, start)
-	}
+	br.ReadBits(mag)   // packed direction (feeds FUN_1406d8288 unpack, 0 extra bits)
+	br.ReadBits(scale) // FUN_14076d6dc log/exp scale word
 }
 
 // consumeObjectTranslationalVelocity (i1) mirrors FUN_14076d45c -> FUN_14076d4d0.
@@ -163,12 +154,10 @@ var PositionCalibratedSkip = false
 // quantum, PROPRE au chemin delta et DISTINCT de la range absolue (Cliffhanger ~[-974,179] / 2^6
 // = 18 u = FAUX pour un delta). Valeur par défaut = quantum de grille MESURÉ sur l'oracle CE
 // (différence minimale non nulle entre positions consécutives, identique sur X/Y/Z et tous les
-// slots). Réglable via SetDeltaQuantum (l'outil de validation le DÉRIVE de l'oracle plutôt que
-// de le figer). La range delta pour le chemin axis-width vaut DeltaQuantum * 2^AxisW (centrée 0).
+// slots). Le reglage public `SetDeltaQuantum` a ete supprime le 2026-09-05 (lot E, item E.2) :
+// aucun appelant. La range delta pour le chemin axis-width vaut DeltaQuantum * 2^AxisW
+// (centree 0).
 var DeltaQuantum float32 = 0.01383
-
-// SetDeltaQuantum règle le pas du chemin delta d'i0 (dérivé de l'oracle par l'outil de validation).
-func SetDeltaQuantum(q float32) { DeltaQuantum = q }
 
 // keyframeWriterI0Grammar route le chemin ABSOLU d'i0 sur la grammaire que l'ECRIVAIN d'état
 // complet du jeu pose, et que le lecteur du jeu relit — les deux disent la même chose CONTRE

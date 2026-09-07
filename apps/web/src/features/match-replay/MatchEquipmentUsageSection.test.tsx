@@ -28,7 +28,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
-import { REPLAY_TEXT } from './i18n'
+import { REPLAY_TEXT } from './i18n/i18n'
 import { MatchEquipmentUsageSection } from './MatchEquipmentUsageSection'
 import { testReplayDoc } from './test/testDoc'
 
@@ -36,7 +36,7 @@ import { testReplayDoc } from './test/testDoc'
 // le reste (agrégation, colonnes, libellés) reste le vrai code. Même patron que
 // `MatchScoreCurveChart.test.tsx`.
 const artefact = vi.hoisted(() => ({ current: undefined as unknown }))
-vi.mock('./queries', () => ({ useMatchReplay: () => ({ data: artefact.current }) }))
+vi.mock('../../lib/replay/queries', () => ({ useMatchReplay: () => ({ data: artefact.current }) }))
 
 const t = REPLAY_TEXT.fr
 
