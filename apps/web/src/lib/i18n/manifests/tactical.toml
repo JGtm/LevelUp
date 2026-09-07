@@ -198,22 +198,6 @@ en = "Isolated deaths"
 fr = "Plan"
 en = "Plan"
 
-[tactical.plan.title_of]
-fr = "Plan de {map}"
-en = "Plan of {map}"
-
-[tactical.plan.footer_heatmap]
-fr = "Échelle quantile p50 vers p95, saturée au-delà. Une cellule jamais atteinte reste vide — elle n'est pas peinte en froid."
-en = "Quantile scale p50 to p95, saturated beyond. An unreached cell remains empty — it is not painted cold."
-
-[tactical.plan.footer_routes]
-fr = "15 premières secondes de chaque vie, une ligne par vie à 17% d'opacité : la route de consensus apparait par empilement."
-en = "First 15 seconds of each life, one line per life at 17% opacity: consensus route appears by layering."
-
-[tactical.plan.footer_empty]
-fr = "Aucune donnée mesurable pour cette question."
-en = "No measurable data for this question."
-
 # Status messages
 [tactical.status.pending]
 fr = "Traitement en cours : {n, plural, one {# match} other {# matchs}} en attente de cuisson"
@@ -335,3 +319,11 @@ en = "Widen the period, the squad, or change the starting spawn to measure more 
 [tactical.kpi.secondary]
 fr = "{brut, number} sur {n, number}"
 en = "{brut, number} out of {n, number}"
+
+[tactical.kpi.low_sample]
+fr = "échantillon faible"
+en = "small sample"
+
+[tactical.kpi.no_radius_note]
+fr = "{n, plural, one {# match sans rayon connu, écarté} other {# matchs sans rayon connu, écartés}}"
+en = "{n, plural, one {# match with unknown radius, excluded} other {# matches with unknown radius, excluded}}"
