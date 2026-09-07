@@ -17,25 +17,53 @@ ce fichier prend le relais a partir de 7C et recoit toute nouvelle decouverte.
 - 2026-09-07 ; `analysis/replay/lives_export_test.go:180-193` ; test d'orthogonalite tautologique
   (trois litteraux) ; l'orthogonalite `end_cause`/`named_by` n'est pas prouvee sur un vrai pont.
   Reprise : fixture `ResolveSlotXUID` avec fermeture par reapparition (`closeByRespawn`, `fire = nil`).
+  **TRAITÉ le 2026-09-07 (Q8)** : `TestViesNommees_LesDeuxAxesSontOrthogonaux` rejoue desormais
+  un vrai pont (deux vies de 111 calibrent la fenetre de reapparition, une troisieme vie
+  anonyme est nommee par `closeByRespawn` et sort `film_end`+`closure`) ; vert.
 - 2026-09-07 ; `sync/killcollector/isolation_facts_integration_test.go` ; le test film reel ne peut
   jamais passer (roster `fakeRoster{}` vide -> `Equipes` vide -> skip). Reprise : roster construit
   depuis `replay.ScanDeaths(film)`, exiger vies > 0 ET contextes > 0, `t.Fatal` sinon ; commande
   `KILLSOURCE_FIXTURES=<racine>/data/cache/film_chunks go test -count=1 -tags=integration -p 1 -run FaitsDIsolementFilmReel ./internal/sync/killcollector/`.
+  **TRAITÉ le 2026-09-07 (Q8)** : roster `filmRoster` construit depuis `replay.ScanDeaths(film)`
+  (gamertag+xuid reels du film), garde `positions==0 || vies==0 || contextes==0` par film puis
+  `t.Fatal` (plus de `t.Skipf` maquillant une couverture nulle) ; compile sous `-tags=integration`
+  (verifie), **pas encore rejoue sur fixtures reelles** — a faire par le superviseur, commande
+  ci-dessus depuis `apps/go-api`.
 - 2026-09-07 ; `sync/killcollector/isolation_facts.go:176` ; un pont non publiable
   (`IndexDisagreements > 0`) fait tomber toutes les morts dans `killsource_isolement_morts_sans_lieu`.
   Reprise : compteur dedie.
+  **TRAITÉ le 2026-09-07 (Q8)** : `metricIsolationPontNonPublicable` (`killsource_isolement_pont_
+  non_publiable`) ajoute, `toDeathContextRows` l'alimente AVANT tout appel a `ContextesDesMorts`
+  quand `!replay.PontPubliable(mat.report)` ; test `TestToDeathContextRows_PontNonPublicable_
+  CompteDedie` vert.
 - 2026-09-07 ; `sync/killcollector/roster.go` ; `LEFT JOIN match_registry` sans test. Reprise : test
   `IdentitiesForMatch` sur base `:memory:` migree, participants sans registre.
+  **FERME CADUQUE le 2026-09-07 (Q8)** : verifie sur pieces, `roster.go` (module `IdentitiesForMatch`)
+  ne porte plus aucun `LEFT JOIN match_registry` — le JOIN a disparu avec 7C.9 (retrait
+  `ArriveeMS`/`DepartMS` et de la requete `match_registry` qui les lisait). Rien a tester.
 - 2026-09-07 ; `platform/duckdb/no_raw_rating_reads_test.go:44` ; `match_kill_events`,
   `kill_positions`, `match_bomb_stats` absentes de la regex de lecture brute. Reprise : les ajouter.
+  **TRAITÉ le 2026-09-07 (Q8)** : les trois tables ajoutees a `rawRe` ; mutation testee (un
+  literal `FROM kill_positions` hors vue fait rougir `TestNoRawAppendOnlyReads`) ; **P0 = 0** :
+  tous les lecteurs existants (`platform/duckdb`, `api`, `analysis`) passaient deja par `_latest`.
 - 2026-09-07 ; `sync/killcollector/positions.go:103` ; le refus des positions au sync etait
   journalise en Debug seulement — une table neuve vide ne se remarque pas. Reprise : WARN + compteur.
+  **TRAITÉ le 2026-09-07 (Q8)** : le refus « collecteur non cable » (capability presente,
+  `WithPositionCapture` absent — la vraie regression de cablage, distincte du refus « titre sans
+  la capability » qui reste Debug) passe en `slog.WarnContext` + `metricPositionsNotWired`
+  (`killsource_positions_non_cablees`) ; test mis a jour, vert.
 - 2026-09-07 ; `sync/killcollector/capture.go` ; la capture de positions est desormais branchee au
   sync de PROD (elle ne l'etait que dans le backfill) : scan complet des bipedes par match synchronise.
-  Cout a observer au premier deploiement (duree de l'etape post-sync, `PostSyncBudget`).
+  Cout a observer au premier deploiement (duree de l'etape post-sync, `PostSyncBudget`). NON TRAITE
+  (point de vigilance PROD, hors perimetre Q8 — cf. §1.2 du plan d'orchestration).
 - 2026-09-07 ; `api/wire/registry.go` + `cmd/server/main.go:1421` + `api/server_apiv1.go` ;
   `settingsStore.Load()` en erreur se degrade en silence chez deux appelants (dont le cron de purge :
   settings illisible = retention illimitee = purge desactivee sans un mot). Reprise : WARN.
+  **TRAITÉ le 2026-09-07 (Q8)**, verifie sur pieces : `api/wire/registry.go` (`retentionMoisRejeu`)
+  loggait DEJA en WARN avant degradation (regle n°3 deja appliquee, rien a faire) — les deux
+  appelants reellement silencieux etaient `cmd/server/main.go` (fermeture du cron de purge
+  `replayPurgeCron`, ~ligne 1420) et `internal/api/server_apiv1.go` (`instanceLockedFn`, ligne
+  314) ; les deux loggent desormais en WARN avant de degrader.
 
 ## Fusion `origin/feat/v75` -> `feat/tactique` (worktree `LevelUp-wt-tactique`)
 
@@ -68,7 +96,9 @@ ce fichier prend le relais a partir de 7C et recoit toute nouvelle decouverte.
   perimetre du brief 5.2-5.6). `matchs_sans_rayon` ressemble a la meme reserve que
   `Couverture.echantillon_faible` (matchs dont la variante n'a pas de rayon connu, ecartes de
   la mesure d'isolement) — pourrait justifier une note de couverture sur la tuile KPI
-  « Morts en isolement ». NON TRAITE.
+  « Morts en isolement ». **`matchs_sans_rayon` TRAITÉ le 2026-09-07 (Q8)** : note
+  `tactical.kpi.no_radius_note` rendue sur la tuile Isolement quand `> 0`, testee. `morts_
+  equipe_a_terre` reste NON TRAITE (hors perimetre Q8, aucun item ne le cite).
 - 2026-09-07 ; `apps/web/src/features/tactical/TacticalPlanCard.tsx` ; le canvas est peint a
   `k = 1` (pas de `devicePixelRatio`), plus simple que `heatmapLayer.ts` (`k = dpr`, cf.
   `useReplayHeatmap.ts`) — bords de cellule moins nets sur ecran haute densite. Choix de
@@ -88,6 +118,15 @@ ce fichier prend le relais a partir de 7C et recoit toute nouvelle decouverte.
   cette requete — elle n'est exercee que par ses consommateurs (service Tactique existant,
   et desormais le nuage Escouade du lot 7.7/7B) via mock du port. NON TRAITE (hors perimetre
   de 7.7 ; le lot 7.7 n'ajoute aucune SQL, il reutilise la lecture telle quelle).
+
+## Lot Q8 — cloture reelle de la phase 8 (branche `feat/tactique-cloture`)
+
+- 2026-09-07 ; `cmd/server/main.go:722` ; un TROISIEME appelant silencieux de
+  `settingsStore.Load()` : `if s, lerr := settingsStore.Load(); lerr == nil { analysis.
+  SetExcludeAssistsFromYield(s.RendementExcludeAssists) ... }` degrade en silence (aucun WARN
+  sur `lerr != nil`) — hors perimetre du brief Q8 (qui ne citait que `registry.go`,
+  `main.go:~1421` et `server_apiv1.go`). NON TRAITE, decouvert en verifiant sur pieces les
+  autres appels de `settingsStore.Load()` dans `cmd/server/main.go`.
 
 ## Lot Q7 — fusion du peintre de chaleur (branche `feat/peintre-chaleur-unique`)
 

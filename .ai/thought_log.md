@@ -1,3 +1,69 @@
+## [2026-09-07] Tactique — clôture réelle (Q8) — Complété
+
+**Contexte.** Lot Q8 de `.ai/PLAN_ORCHESTRATION_2026-09-07.md` : la phase 8 du chantier
+Tactique restait non close malgré le titre du commit `05548d4e4` (§1.2 du plan
+d'orchestration) — cases 8.1-8.4 vides, revue adversariale du diff intégral jamais faite.
+Worktree `LevelUp-wt-q8-tactique`, branche `feat/tactique-cloture` = `feat/peintre-chaleur-unique`
+(déjà livrée) fusionnée avec `feat/mojibake-garde-rail` (déjà livrée) : auto-merge propre, aucun
+conflit de code (seuls `.ai/PLAN_ORCHESTRATION_2026-09-07.md` et `.ai/thought_log.md`, gardés
+des deux côtés).
+
+**Décision technique principale.** Fermer la phase 8 en traitant EXACTEMENT les items du
+brief (périmètre fermé), rien de plus :
+1. Web — les trois constats de la revue Phase 5/7B (`.ai/V7.5/REVUE_TACTIQUE_PHASES_5_7B_
+   2026-09-07.md`, P0=0/P1=2/P2=1) : réserve `echantillon_faible` accolée au `secondary` des
+   tuiles KPI Tactique « Échange »/« Isolement » (même forme que `SquadEchangeKpi.tsx`, clé
+   `tactical.kpi.low_sample`) ; réserve rendue dans le tooltip du nuage
+   `SquadIsolementNuageCard` (même ligne de code que le fix, 210-223 — pas une troisième
+   forme) ; quatre clés i18n mortes (`planOf`/`footerHeatmap`/`footerRoutes`/`footerEmpty`)
+   supprimées de `tactical.toml` + `i18n.ts` après grep à zéro consommateur. `matchs_sans_rayon`
+   (déjà publié) : note de couverture sur la tuile Isolement, clé `tactical.kpi.no_radius_note`.
+2. Go — `replay.EtatParti` et son `case` supprimés (morts depuis 7C.9, jamais réintroduits) ;
+   champ `Partis` retiré de `ContexteMort` ; `teammates_left` écrit à 0 avec commentaire
+   (colonne append-only conservée, ADR 0026, pas de migration de schéma).
+3. Go — registre Tactique : regex `no_raw_rating_reads_test.go` élargie à
+   `match_kill_events`/`kill_positions`/`match_bomb_stats` (mutation testée : un littéral hors
+   vue fait rougir le test ; **P0 = 0**, tous les lecteurs existants passaient déjà par
+   `_latest`) ; refus de câblage des positions (`positions.go`, cas config — capability
+   présente, `WithPositionCapture` absent) passé en WARN + compteur dédié
+   `killsource_positions_non_cablees` (le cas « titre sans la capability », fréquent et non
+   pathologique, reste Debug) ; `settingsStore.Load()` en erreur loggué en WARN avant
+   dégradation aux deux appelants réellement silencieux (`cmd/server/main.go` cron de purge,
+   `internal/api/server_apiv1.go` `instanceLockedFn` — `api/wire/registry.go` loggait déjà,
+   vérifié sur pièces) ; compteur dédié `killsource_isolement_pont_non_publiable` pour ne plus
+   mélanger « pont refusé pour tout le match » et « cette victime précise sans lieu » ; test
+   d'orthogonalité `end_cause`/`named_by` (`lives_export_test.go`) rejoué sur un VRAI pont
+   (`ResolveSlotXUID` + `closeByRespawn`, fire = nil) au lieu de trois littéraux ; test film
+   réel réparé (roster `filmRoster` construit depuis `replay.ScanDeaths(film)` — gamertag/xuid
+   réels — au lieu de `fakeRoster{}` vide qui vidait `Equipes` et sautait la projection sur
+   chaque film ; `t.Fatal` remplace le `t.Skipf` final) ; entrée « LEFT JOIN match_registry
+   sans test » fermée CADUQUE (vérifié sur pièces : le JOIN a disparu avec 7C.9).
+4. Docs — phase 8 statuée (8.1 `[x]`, 8.2/8.3/8.4 `[~]` référençant la doctrine de vague de
+   l'orchestration — décision utilisateur 2026-09-07) ; entrée de clôture au §6 du plan
+   Tactique ; `DECOUVERTES_TACTIQUE_2026-09-07.md` : chaque entrée traitée marquée « TRAITÉ le
+   2026-09-07 (Q8) », une découverte nouvelle consignée non traitée (`cmd/server/main.go:722`,
+   un troisième appelant silencieux de `settingsStore.Load()` hors périmètre Q8).
+
+**Résultats observés (gates, tous verts).** Go : `gofmt -l` vide ; `go build -p 2 ./...` ;
+`go vet` des paquets touchés ; `go test -p 2 -count=1 ./internal/analysis/replay/...
+./internal/platform/duckdb/... ./internal/api/... ./internal/sync/killcollector/...` (13
+paquets, tous `ok`) ; `go test -tags=integration -p 1 -count=1 ./internal/sync/...
+./internal/persist/...` (14 paquets, tous `ok`, ~4 min) ; les 5 tests de
+`no_art_patterns_test.go` verts ; `golangci-lint run --new-from-merge-base=origin/main ./...`
+→ 0 issue. Web : typecheck propre ; lint 0 erreur / 29 warnings (baseline inchangée) ;
+`vitest run --pool=forks` complet → 654 fichiers passés + 1 skip, 6986 tests passés + 17 skips
+(skips préexistants, aucun nouveau) ; `lint:colors` 0 violation ; `lint:fields` 0 violation.
+Le test film réel Go (`TestKillSourceFaitsDIsolementFilmReel`) compile sous `-tags=integration`
+et skip proprement sans `KILLSOURCE_FIXTURES` (vérifié) — **pas rejoué avec les fixtures**
+(107 Mo, non versionnées) : à faire par le superviseur sur le poste principal, commande exacte
+consignée dans `DECOUVERTES_TACTIQUE_2026-09-07.md` et le rapport de session.
+
+**Conclusion / prochaine étape.** Phase 8 close côté exécution. Reste au superviseur (doctrine
+de vague, §0.7 du plan d'orchestration) : rejouer le test film réel avec `KILLSOURCE_FIXTURES`,
+consulter la CI une fois en fin de vague 1, mener la revue adversariale unique sur le diff
+cumulé de la vague avant fusion dans `feat/v75`. Commits par chemins (web/Go/docs) sur
+`feat/tactique-cloture`, poussés, PAS fusionnés.
+
 ## [2026-09-07] Q7 — un seul peintre de chaleur (`lib/replay/heatPaint.ts`) — Complete
 
 **Diagnostic (sur pieces).** Deux implementations : `features/match-replay/layers/
