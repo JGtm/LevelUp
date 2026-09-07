@@ -11,7 +11,6 @@ package service
 import (
 	"context"
 	"errors"
-	"sort"
 	"testing"
 
 	"levelup/go-api/internal/analysis/replay"
@@ -27,12 +26,14 @@ func (m *mockCallouts) ZonesDeLaCarte(context.Context, string) []domain.ZoneNomm
 	return m.zones
 }
 
-// universVariantes pose des matchs avec leur variante, moi + un ami contre deux adversaires.
+// universVariantes pose des matchs mesures et ELIGIBLES, moi + un ami contre deux
+// adversaires. La cle de la map nomme le match ; sa valeur ne sert plus (le nom de variante
+// est parti avec la lecture d'isolement), elle documente la fixture.
 func universVariantes(parMatch map[string]string) domain.TacticalUnivers {
 	u := domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
 	for _, id := range triees(parMatch) {
 		u.Matchs = append(u.Matchs, domain.TacticalMatch{
-			MatchID: id, GameVariantName: parMatch[id], Outcome: domain.OutcomeWin, Mesure: true,
+			MatchID: id, Outcome: domain.OutcomeWin, Mesure: true, EligibleALaCuisson: true,
 		})
 		u.Equipes[id] = map[string]int{tsMoi: 0, tsAmi: 0, tsAdv: 1, tsAdv2: 1}
 	}
@@ -60,83 +61,6 @@ func svcArtefact(univ domain.TacticalUnivers, store *mockRasterStore,
 		ev:   domain.TacticalKillEvents{Univers: univ, Events: morts},
 	}
 	return NewTacticalService(repo, capsOccupation(), tsMoi).WithRasterStore(store)
-}
-
-// ─── VENTILATION DES MATCHS NON RETENUS ────────────────────────────────────────
-
-// universRetention pose des matchs dont on choisit, un par un, s'ils sont DANS la fenetre
-// de retention des artefacts de rejeu.
-func universRetention(dans map[string]bool) domain.TacticalUnivers {
-	u := domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
-	ids := make([]string, 0, len(dans))
-	for id := range dans {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	for _, id := range ids {
-		u.Matchs = append(u.Matchs, domain.TacticalMatch{
-			MatchID: id, Outcome: domain.OutcomeWin, Mesure: true, DansRetention: dans[id],
-		})
-		u.Equipes[id] = map[string]int{tsMoi: 0, tsAmi: 0, tsAdv: 1, tsAdv2: 1}
-	}
-	return u
-}
-
-// TestVentilation_EnAttenteContreHorsRetention — LES DEUX ABSENCES NE SE DISENT PAS PAREIL.
-//
-// Un match sans sidecar mais DANS la fenetre sera cuit par la file au fil de l'eau : c'est
-// un TRAITEMENT EN COURS, et l'utilisateur n'a qu'a attendre. Un match hors fenetre ne le
-// sera jamais — son film a expire cote serveur : c'est une DONNEE NON DISPONIBLE, et il n'y
-// a rien a attendre. « N mesures sur M » servait le meme message aux deux.
-func TestVentilation_EnAttenteContreHorsRetention(t *testing.T) {
-	univ := universRetention(map[string]bool{
-		"cuit": true, "attend1": true, "attend2": true, "vieux": false,
-	})
-	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
-		"cuit": sidecarSpawn("cuit", 0.25, 0.25),
-	}}
-	svc := svcArtefact(univ, store)
-	out := lireTemps(t, svc, "", "cuit", "attend1", "attend2", "vieux")
-
-	if out.MatchsRetenus != 1 {
-		t.Fatalf("matchs_retenus = %d, attendu 1", out.MatchsRetenus)
-	}
-	if out.MatchsEnAttente != 2 {
-		t.Fatalf("matchs_en_attente = %d, attendu 2 : deux matchs dans la fenetre sans "+
-			"artefact, que la cuisson reprendra", out.MatchsEnAttente)
-	}
-	if out.MatchsHorsRetention != 1 {
-		t.Fatalf("matchs_hors_retention = %d, attendu 1 : un match plus vieux que la "+
-			"fenetre ne sera jamais cuit", out.MatchsHorsRetention)
-	}
-}
-
-// TestVentilation_LInvariantDeSomme — matchs_filtres = retenus + en_attente + hors_retention.
-//
-// UNE VENTILATION QUI NE SOMME PAS AU TOTAL CACHE UN TROISIEME CAS QU'ON N'A PAS NOMME, et
-// le pied de carte affiche alors des nombres qui ne se recomposent pas. Le test le verifie
-// sur un univers ou les trois situations coexistent — c'est le seul cas ou l'oubli se voit.
-func TestVentilation_LInvariantDeSomme(t *testing.T) {
-	univ := universRetention(map[string]bool{
-		"c1": true, "c2": true, "a1": true, "a2": true, "a3": true, "v1": false, "v2": false,
-	})
-	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
-		"c1": sidecarSpawn("c1", 0.25, 0.25),
-		"c2": sidecarSpawn("c2", 0.65, 0.25),
-	}}
-	svc := svcArtefact(univ, store)
-	out := lireTemps(t, svc, "", "c1", "c2", "a1", "a2", "a3", "v1", "v2")
-
-	somme := out.MatchsRetenus + out.MatchsEnAttente + out.MatchsHorsRetention
-	if somme != out.MatchsFiltres {
-		t.Fatalf("retenus(%d) + en_attente(%d) + hors_retention(%d) = %d, attendu "+
-			"matchs_filtres = %d", out.MatchsRetenus, out.MatchsEnAttente,
-			out.MatchsHorsRetention, somme, out.MatchsFiltres)
-	}
-	if out.MatchsRetenus != 2 || out.MatchsEnAttente != 3 || out.MatchsHorsRetention != 2 {
-		t.Fatalf("ventilation = %d/%d/%d, attendu 2/3/2", out.MatchsRetenus,
-			out.MatchsEnAttente, out.MatchsHorsRetention)
-	}
 }
 
 // ─── ROUTES ────────────────────────────────────────────────────────────────────
