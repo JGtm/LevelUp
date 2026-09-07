@@ -546,3 +546,19 @@ entre au registre des reports — il relève du lot du pont muet.
   de 5 et 6, et le verdict de `084a804d` ne bouge pas), mais désormais connu.
 - **C8** — « `084a804d` garde 79 vies sans nom » → **80**, la valeur publiée
   (`bridge.unnamedLives = 80`, et 344 − 264 pistes nommées = 80).
+
+### Hors constats — un rouge de CI attrapé et réparé
+
+La CI du commit précédent (`3ff9f9463`) était **rouge**, et le lot en était la cause : j'avais
+renommé `TestUneVieAnonymeNeSertAPersonne` en `TestUneVieSansPontNeSertAPersonne` par souci de
+doctrine. Or ce nom figure dans `.ai/baselines/tests_pre_migration.jsonl`, la baseline de
+non-régression — un artefact **GELÉ** dont la disparition d'une entrée fait échouer le gate
+« Vérifier suite baseline » ( sur ).
+
+**Le nom d'origine est restauré**, et la raison est écrite au-dessus du test : la doctrine vit
+dans le corps du test et dans , pas dans un renommage qui coûterait un faux
+rouge à toute l'équipe. Régénérer la baseline aurait été l'autre voie — écartée : elle absorberait
+5 000 tests apparus depuis le gel et masquerait la dérive d'autrui, bien au-delà du périmètre.
+
+**Contrôle** : les 9 786 entrées de la baseline ont été rejouées contre le run courant des cinq
+paquets touchés — **0 absent**.
