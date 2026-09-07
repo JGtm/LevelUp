@@ -67,7 +67,7 @@ func attachZoneStates(doc *ReplayDocument, opt Options, own OwnerReport, c repla
 	states, cov := buildZoneStates(opt.Zone, zoneCtx{
 		origin: c.origin, step: c.step, frames: doc.FrameCount,
 		intervalMS: doc.FrameIntervalMS, tracks: doc.Tracks,
-		actions: doc.Objectives, slotXUID: own.SlotXUID, matchID: doc.MatchID,
+		actions: doc.Objectives, slotXUID: own.NamingBridge(), matchID: doc.MatchID,
 	})
 	doc.ZoneStates = states
 	if doc.Coverage != nil {

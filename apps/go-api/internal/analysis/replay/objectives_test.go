@@ -218,10 +218,15 @@ func TestCouvertureCompteCeQueLePontNaPasNomme(t *testing.T) {
 // TestActionDunJoueurSansVieNommeeEstPubliee — UNE LECTURE VRAIE N'EST PAS JETEE PARCE QU'UN
 // NOM MANQUE (constat P1-3 de l'audit du 2026-09-06).
 //
-// Un joueur dont AUCUNE vie n'est nommee perdait TOUTES ses actions d'objectif — 35 sur 76
-// (46 %) sur `3372e7eb` —, alors que sa trajectoire EST publiee : le pont canonique nomme son
-// slot. Trois consommateurs perdaient la donnee, dont deux qui n'ont jamais eu besoin d'une
-// trajectoire (le SON d'objectif et la garde tout-ou-rien de l'armement de bombe).
+// Un joueur dont AUCUNE vie n'est nommee perdait TOUTES ses actions d'objectif, alors que sa
+// trajectoire EST publiee et que le pont canonique nomme son slot. Trois consommateurs perdaient
+// la donnee, dont deux qui n'ont jamais eu besoin d'une trajectoire (le SON d'objectif et la
+// garde tout-ou-rien de l'armement de bombe).
+//
+// LE DEFAUT EST DEMONTRE ICI, PAR MUTATION, ET NULLE PART AILLEURS : le chiffre de `3372e7eb`
+// (35 actions sur 76) que la premiere redaction citait ne le mesure pas — ces actions viennent
+// de deux joueurs SANS AUCUNE piste dans le film, que le pont ne peut pas atteindre (revue
+// VIES-R1, C3). Le parc local ne porte aucun temoin de la configuration declenchante.
 //
 // MUTATION : revenir a l'index bati sur `tr.XUID != ""` rougit (« publiees = 0, attendu 1 »).
 func TestActionDunJoueurSansVieNommeeEstPubliee(t *testing.T) {
