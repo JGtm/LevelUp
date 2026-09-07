@@ -5,8 +5,9 @@
  * résultat du match — la seule chose que tout le monde retient — n'était écrit nulle part sur
  * la page. Ce panneau le dit, à l'instant où il se produit.
  *
- * C'EST L'ÉCRAN DU JOUEUR DE LA PAGE, PAS CELUI DU VAINQUEUR (amendement utilisateur du
- * 2026-08-26). Le logo, la couleur et le nom sont ceux de SON équipe, en victoire COMME en
+ * C'EST L'ÉCRAN DU JOUEUR REGARDÉ, PAS CELUI DU VAINQUEUR (amendement utilisateur du
+ * 2026-08-26 ; « regardé » plutôt que « de la page » depuis le point de vue sélectionnable du
+ * 2026-09-06). Le logo, la couleur et le nom sont ceux de SON équipe, en victoire COMME en
  * défaite — exactement comme l'écran de fin du jeu, qui ne vous affiche pas l'emblème adverse
  * parce qu'il a gagné. Ce que l'issue change, c'est le TITRE, pas l'habillage.
  *
@@ -15,6 +16,15 @@
  * Match View affiche pour ce match. En fabriquer une variante côté front donnerait deux
  * verdicts pour un seul match. Sans ce libellé, pas d'écran : un panneau plein cadre qui
  * n'annonce rien serait pire que pas de panneau.
+ *
+ * SAUF QUAND LA LECTURE A ÉTÉ PERMUTÉE (correction du 2026-09-07). `outcome_label` est le mot
+ * du JOUEUR DE LA PAGE, et l'API n'en publie pas d'autre : vu depuis un adversaire d'un match
+ * gagné, le camp, le logo et le score suivaient bien le sujet pendant que le titre continuait
+ * d'annoncer « Victoire » — au-dessus de l'équipe qui a perdu, et d'un score inversé. Dans ce
+ * cas, et seulement dans ce cas (`victoryIsFlipped`), le titre vient du libellé CANONIQUE de
+ * l'issue permutée, `outcomes.toml` du titre servi par `/field-mappings` : la même source que
+ * celle dont le backend tire `outcome_label`, jamais une string écrite ici. Point de vue par
+ * défaut : `outcome_label` tel quel, à la lettre près, comme avant le chantier.
  *
  * IL EST DÉRIVÉ DE LA POSITION DE LECTURE, PAS D'UN ÉTAT (décision D-B5) : visible tant que la
  * lecture est à la borne de fin ou au-delà, invisible dès qu'on remonte la frise ou qu'on
@@ -37,7 +47,7 @@
  * user »). L'écran a porté un temps la couleur d'IDENTITÉ officielle (Eagle bleu, Cobra rouge,
  * cascade `teamColorResolver` du scoreboard) : un joueur qui a réglé son camp en vert voyait
  * donc la page entière en vert et son écran de fin en bleu. C'est le token `team-ally` —
- * l'équipe de l'écran est TOUJOURS celle du joueur de la page — surchargeable par les réglages
+ * l'équipe de l'écran est TOUJOURS celle du joueur REGARDÉ — surchargeable par les réglages
  * d'accessibilité, comme les pions, les barres et les fiches. Seule la RECETTE de teinte reste
  * empruntée au scoreboard (`teamTintStyles`, 22 % / 55 %) : elle ne dit pas quelle couleur,
  * seulement à quelle dose. LE TEXTE RESTE EN `--foreground` : une couleur de camp peut être
@@ -57,6 +67,7 @@ import type { CSSProperties } from 'react'
 import { teamTintStyles } from '@/features/match-view/teamColor'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { tokenCssVar } from '@/lib/accessibility'
+import { useOutcomeMapping } from '@/lib/i18n/fieldMappings'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { teamLogoPath } from '@/lib/halo/teamNames'
 import { scoreTimelineOf, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
@@ -67,7 +78,12 @@ import type { ReplayText } from '../i18n/i18nContract'
 import { OVERLAY_STATUS_BLOCK, OVERLAY_STATUS_NEUTRAL } from './replayOverlayStyles'
 import type { ReplayWindowBounds } from '../model/replayWindow'
 import { readScoreBanner, type ScoreBannerReading } from '../model/scoreBannerLogic'
-import { readVictory, type FinalScoreReading, type VictoryTeam } from '../model/victoryLogic'
+import {
+  readVictory,
+  victoryIsFlipped,
+  type FinalScoreReading,
+  type VictoryTeam,
+} from '../model/victoryLogic'
 
 interface Props {
   /** Le document du rejeu — le score final s'y lit par le calque, à la borne de fin. */
@@ -81,9 +97,14 @@ interface Props {
    * « frise, point de vue »), pas forcément le joueur de la page. Vu depuis un adversaire, un
    * match gagné devient donc une défaite à l'écran, aux couleurs de SON camp — c'est la
    * lecture juste : `outcomeCode` reste le verdict du joueur de la page, et `readVictory`
-   * permute. Absent (`null`) : la lecture d'origine, celle du joueur de la page.
+   * permute. `null` : la lecture d'origine, celle du joueur de la page.
+   *
+   * LA PROP EST OBLIGATOIRE DEPUIS LE 2026-09-07 (revue F4), `null` compris. Optionnelle, son
+   * oubli chez un appelant ne se voyait NULLE PART : l'écran serait simplement resté sur le
+   * camp du joueur de la page pendant que la carte suivait le joueur choisi. Requise, l'oubli
+   * est une erreur de compilation.
    */
-  viewpoint?: string | null
+  viewpoint: string | null
   /** Le verdict ÉCRIT (`header.outcome_label`), déjà localisé par le backend. */
   outcomeLabel: string | null | undefined
   /** La fenêtre de gameplay : sa borne de fin déclenche l'écran. `null` → pas d'écran. */
@@ -129,7 +150,15 @@ export function ReplayVictoryOverlay({
         : null,
     [doc, scoreboard, xuidMeta, playWindow],
   )
-  if (!playWindow || frame < playWindow.endFrame || !reading || !outcomeLabel) return null
+  // LE MOT DU VERDICT SUIT LE POINT DE VUE (2026-09-07, cf. l'en-tête). Les deux hooks sont
+  // appelés SANS CONDITION, avant toute sortie : le panneau ne se rend qu'une fois sur mille
+  // images, et un hook derrière un `if` est interdit par React. `useOutcomeMapping` rend
+  // `undefined` tant que les mappings du titre ne sont pas là — d'où le repli `?? null`, qui
+  // fait taire le panneau plutôt qu'écrire une clé brute (« loss ») en plein cadre.
+  const permute = victoryIsFlipped(scoreboard, viewpoint)
+  const canonique = useOutcomeMapping(reading?.outcome ?? '')?.label ?? null
+  const title = permute ? canonique : outcomeLabel
+  if (!playWindow || frame < playWindow.endFrame || !reading || !title) return null
   return (
     <div
       role="status"
@@ -142,20 +171,20 @@ export function ReplayVictoryOverlay({
           team={reading.mine}
           scoreboard={scoreboard}
           titleSlug={titleSlug}
-          title={outcomeLabel}
+          title={title}
           t={t}
           score={score}
           finalScore={finalScore}
         />
       ) : (
-        <NeutralPanel title={outcomeLabel} t={t} score={score} finalScore={finalScore} />
+        <NeutralPanel title={title} t={t} score={score} finalScore={finalScore} />
       )}
     </div>
   )
 }
 
 interface TeamPanelProps {
-  /** L'équipe DU JOUEUR DE LA PAGE — l'habillage, quelle que soit l'issue. */
+  /** L'équipe DU JOUEUR REGARDÉ — l'habillage, quelle que soit l'issue. */
   team: VictoryTeam
   scoreboard: readonly MatchScoreboardRow[]
   titleSlug: string
@@ -178,8 +207,10 @@ interface TeamPanelProps {
 function TeamPanel({ team, scoreboard, titleSlug, title, t, score, finalScore }: TeamPanelProps) {
   const rows = scoreboard.filter((r) => r.team_side === team.teamSide)
   const label = resolveTeamLabel(rows, team.teamSide, t)
-  // LA COULEUR DU JOUEUR DE LA PAGE, telle qu'il l'a réglée (D1, cf. l'en-tête) : l'écran est
-  // TOUJOURS celui de son camp, donc toujours `team-ally`. Fond et trait par la recette du
+  // LA COULEUR ALLIÉE TELLE QUE L'UTILISATEUR L'A RÉGLÉE (D1, cf. l'en-tête). L'écran est
+  // TOUJOURS celui du camp REGARDÉ — donc toujours `team-ally` : depuis le point de vue
+  // sélectionnable (2026-09-06), `reading.mine` est l'équipe du sujet, et `identity` peint déjà
+  // ce camp-là en allié partout ailleurs sur la page. Fond et trait par la recette du
   // scoreboard. PAS D'ACCENT LATÉRAL GAUCHE : l'utilisateur l'a fait retirer de ce style.
   const teamColor = tokenCssVar('team-ally')
   const tint = teamTintStyles(teamColor)

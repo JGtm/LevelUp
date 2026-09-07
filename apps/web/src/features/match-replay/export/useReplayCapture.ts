@@ -46,6 +46,8 @@ import { frameToMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { useReplayExport, type ReplayExport, type ReplayExportOptions } from './useReplayExport'
 import type { ExportOutcome } from './exportOverlayPanels'
+import { readVictory, victoryIsFlipped } from '../model/victoryLogic'
+import { useOutcomeMapping } from '@/lib/i18n/fieldMappings'
 import type { ReplayWindowBounds } from '../model/replayWindow'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
@@ -82,9 +84,13 @@ export interface ReplayCaptureOptions {
   /**
    * LE POINT DE VUE de la page (2026-09-06) : l'export rend CE QUE L'ÉCRAN MONTRE (décision 12
    * du plan « frise, point de vue ») — panneau de victoire compris. La personne qui exporte a
-   * choisi ce qu'elle regarde. Absent : le joueur de la page.
+   * choisi ce qu'elle regarde. `null` : le joueur de la page.
+   *
+   * OBLIGATOIRE DEPUIS LE 2026-09-07 (revue F4), `null` compris. Optionnel, son oubli chez
+   * l'appelant ne faisait rougir AUCUN test — le clip serait sorti au camp du joueur de la page
+   * pendant que l'écran suivait le joueur choisi. Requis, l'oubli ne compile plus.
    */
-  viewpoint?: string | null
+  viewpoint: string | null
   locale?: ReplayLocale
   /** La piste sonore du rejeu et son volume, pour le mixage hors ligne (`useReplaySound`). */
   soundTrack?: ReplayExportOptions['soundTrack']
@@ -113,6 +119,9 @@ export interface ReplayCapture {
 
 /** Nomme un fichier de capture sur l'instant de match COURANT, dans l'extension demandée. */
 type FilenameFor = (ext: string) => string
+
+/** Le tableau de score absent, en référence STABLE : un `[]` neuf par rendu casserait les mémos. */
+const EMPTY_BOARD: readonly MatchScoreboardRow[] = []
 
 /**
  * openRecording assemble le flux, ouvre l'enregistreur et le démarre. HORS REACT : rien ici
@@ -275,6 +284,11 @@ export function useReplayCapture(o: ReplayCaptureOptions): ReplayCapture {
  * LE HOOK EST APPELÉ SANS CONDITION, et seul son RÉSULTAT est retenu ou jeté : appeler un hook
  * derrière un `if` est interdit par React, et une page sans surimpressions reste une page qui
  * peut exporter son terrain.
+ *
+ * C'EST AUSSI ICI QUE LE MOT DU VERDICT SE RÉSOUT (2026-09-07, revue F2), et pas plus bas : le
+ * libellé canonique d'une issue permutée vient d'un HOOK (`useOutcomeLabel`, les mappings du
+ * titre), et `exportOverlayPanels` est une fonction pure que la boucle d'export appelle hors
+ * React. La couture est la dernière marche où un hook peut encore courir.
  */
 function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
   const { canvasRef, frameRef, doc, playing, play, redraw } = o
@@ -282,6 +296,7 @@ function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
     if (playing) play()
   }, [playing, play])
   const bidon = useCallback(() => {}, [])
+  const outcome = useViewedOutcome(o)
   const exportable = useReplayExport({
     canvasRef,
     frameRef,
@@ -291,7 +306,7 @@ function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
     playWindow: o.playWindow ?? null,
     scoreboard: o.scoreboard ?? [],
     xuidMeta: o.xuidMeta,
-    outcome: o.outcome ?? null,
+    outcome,
     viewpoint: o.viewpoint,
     titleSlug: doc.titleSlug ?? '',
     locale: o.locale ?? 'fr',
@@ -299,4 +314,33 @@ function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
     soundVolume: o.soundVolume,
   })
   return redraw ? exportable : null
+}
+
+/**
+ * useViewedOutcome complète le verdict de la page avec LE MOT QUE L'ÉCRAN MONTRE.
+ *
+ * `header.outcome_label` est le verdict du JOUEUR DE LA PAGE, et l'API n'en publie pas d'autre.
+ * Tant que le point de vue est le sien, c'est le bon mot — `viewedLabel` vaut alors exactement
+ * `label`. Dès que la lecture est PERMUTÉE (sujet de l'autre camp), le mot juste est le libellé
+ * canonique de l'issue permutée, celui d'`outcomes.toml` : la même source que celle dont le
+ * backend tire `outcome_label`, donc jamais deux vocabulaires pour un même match.
+ *
+ * MÊME RÈGLE QUE LE DOM (`ReplayVictoryOverlay`), à la ligne près — c'est la deuxième et
+ * dernière copie tolérée (règle n° 6), et l'en-tête d'`exportOverlayPanels` dit déjà pourquoi
+ * l'export ne peut pas monter le composant. `null` en sortie quand l'issue permutée n'a pas de
+ * libellé (mappings du titre pas encore là) : le panneau se tait, comme sans `outcome_label`.
+ */
+function useViewedOutcome(o: ReplayCaptureOptions): ExportOutcome | null {
+  const scoreboard = o.scoreboard ?? EMPTY_BOARD
+  const reading = useMemo(
+    () => readVictory(scoreboard, o.outcome?.code, o.viewpoint),
+    [scoreboard, o.outcome?.code, o.viewpoint],
+  )
+  const canonique = useOutcomeMapping(reading?.outcome ?? '')?.label ?? null
+  const permute = victoryIsFlipped(scoreboard, o.viewpoint)
+  const label = o.outcome?.label
+  return useMemo(
+    () => (o.outcome ? { ...o.outcome, viewedLabel: permute ? canonique : label } : null),
+    [o.outcome, permute, canonique, label],
+  )
 }

@@ -171,8 +171,14 @@ describe('resolveXuidMeta — vu par les yeux d’un point de vue (3e argument)'
     )
   })
 
-  it('vu depuis une ligne SANS camp transmis : personne n’est allié — aucun camp deviné', () => {
-    expect(carte(resolveXuidMeta(BOARD, 'me-1', 'nomad-9'))).toEqual(attendu())
+  it('vu depuis une ligne SANS camp transmis : LUI SEUL est allié — aucun camp deviné', () => {
+    // CORRIGÉ LE 2026-09-07 (revue F1). Ce cas attendait `attendu()` — personne d'allié, pas
+    // même le sujet — et c'était le défaut : en mêlée générale, où AUCUNE ligne n'a de
+    // `team_side`, le rejeu (qui passe son troisième argument sans condition) faisait alors
+    // prendre au pion du joueur regardé l'encre adverse sur sa propre page. Le camp des AUTRES
+    // reste indéductible ; celui du sujet ne se déduit pas, il est donné — exactement ce que
+    // fait le repli `is_me` à deux arguments, dont ce régime est le miroir.
+    expect(carte(resolveXuidMeta(BOARD, 'me-1', 'nomad-9'))).toEqual(attendu('nomad-9'))
   })
 
   it('point de vue ABSENT du tableau de score : personne n’est allié, « moi » compris', () => {
@@ -196,5 +202,52 @@ describe('resolveXuidMeta — vu par les yeux d’un point de vue (3e argument)'
   it('les gamertags ne dépendent JAMAIS du point de vue', () => {
     const noms = (m: XuidMeta) => Object.fromEntries([...m].map(([k, v]) => [k, v.gamertag]))
     expect(noms(resolveXuidMeta(BOARD, 'me-1', 'foe-1'))).toEqual(noms(resolveXuidMeta(BOARD, 'me-1')))
+  })
+})
+
+/**
+ * AJOUT DU 2026-09-07 (revue F1) — LA MÊLÉE GÉNÉRALE, où personne n'a de camp.
+ *
+ * POURQUOI UNE FIXTURE À PART. Le lobby du dessus a des camps ; le trou que la revue a trouvé
+ * n'apparaît que quand il n'y en a AUCUN — c'est-à-dire sur un mode sans équipes, où
+ * `team_side` est nul pour toute la salle. Le rejeu passe son troisième argument SANS CONDITION
+ * (`buildReplayModel` : `resolveXuidMeta(scoreboard, subject, subject)`), même quand le sujet
+ * est le joueur de la page : sur ces matchs-là, l'ancien calcul ne rendait donc plus personne
+ * allié et le pion du joueur de la page passait à l'encre adverse — une régression par rapport
+ * à l'appel à deux arguments, invisible partout ailleurs.
+ *
+ * CE QUE CES CAS FIXENT : à trois arguments comme à deux, le sujet est allié de lui-même, et
+ * lui seul quand aucun camp ne se lit.
+ */
+const BOARD_FFA = [
+  { xuid: 'me-1', gamertag: 'Alpha', team_side: null, is_me: true },
+  { xuid: 'rival-1', gamertag: 'Bravo', team_side: null, is_me: false },
+  { xuid: 'rival-2', gamertag: 'Charlie', team_side: null, is_me: false },
+] as unknown as MatchScoreboardRow[]
+
+/** La table attendue du lobby FFA : les trois joueurs, alliés = ceux qu'on nomme. */
+function attenduFFA(...allies: readonly string[]) {
+  const noms: Record<string, string> = { 'me-1': 'Alpha', 'rival-1': 'Bravo', 'rival-2': 'Charlie' }
+  return Object.fromEntries(
+    Object.entries(noms).map(([xuid, gamertag]) => [xuid, { gamertag, ally: allies.includes(xuid) }]),
+  )
+}
+
+describe('resolveXuidMeta — mêlée générale : aucun camp, un sujet quand même', () => {
+  it('vu depuis le joueur de la page : lui seul est allié, comme à deux arguments', () => {
+    expect(carte(resolveXuidMeta(BOARD_FFA, 'me-1', 'me-1'))).toEqual(attenduFFA('me-1'))
+    // L'ÉGALITÉ AVEC LE RÉGIME À DEUX ARGUMENTS EST LA VRAIE ASSERTION : c'est elle qui dit
+    // que passer le troisième argument sur un match sans camps ne change RIEN à l'écran.
+    expect(carte(resolveXuidMeta(BOARD_FFA, 'me-1', 'me-1'))).toEqual(
+      carte(resolveXuidMeta(BOARD_FFA, 'me-1')),
+    )
+  })
+
+  it('vu depuis un adversaire : lui seul est allié, la ligne « moi » n’en est pas', () => {
+    expect(carte(resolveXuidMeta(BOARD_FFA, 'me-1', 'rival-1'))).toEqual(attenduFFA('rival-1'))
+  })
+
+  it('point de vue introuvable : personne, même en mêlée générale', () => {
+    expect(carte(resolveXuidMeta(BOARD_FFA, 'me-1', 'xuid-jamais-vu'))).toEqual(attenduFFA())
   })
 })

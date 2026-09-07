@@ -92,9 +92,14 @@ export interface ReplayExportOptions {
   /**
    * LE POINT DE VUE de la page (2026-09-06) : l'export rend CE QUE L'ÉCRAN MONTRE (décision 12
    * du plan « frise, point de vue ») — panneau de victoire compris. La personne qui exporte a
-   * choisi ce qu'elle regarde. Absent : le joueur de la page.
+   * choisi ce qu'elle regarde. `null` : le joueur de la page.
+   *
+   * OBLIGATOIRE DEPUIS LE 2026-09-07 (revue F4, dernier maillon de la chaîne) : `useReplayCapture`
+   * le relaie déjà, mais optionnel ici, l'oubli de ce relais-là restait silencieux — le clip
+   * serait sorti au camp du joueur de la page pendant que l'écran suivait le joueur choisi.
+   * Requis, l'oubli est une erreur de compilation.
    */
-  viewpoint?: string | null
+  viewpoint: string | null
   titleSlug: string
   locale: ReplayLocale
   /**

@@ -17,6 +17,14 @@
  * ce troisième argument, la fonction fait exactement ce qu'elle faisait — court-circuit
  * `is_me` compris, cf. la caractérisation `xuidMeta.test.ts`. Les cinq charts de la page match
  * appellent à deux arguments et ne changent donc pas d'un iota (décision 15 du plan).
+ *
+ * LE SUJET EST ALLIÉ DE LUI-MÊME, DANS LES DEUX RÉGIMES (correction du 2026-09-07). À deux
+ * arguments c'est le court-circuit `is_me` qui le garantit ; à trois, c'est la comparaison
+ * `r.xuid === viewpoint`. Sans elle, un match SANS CAMPS — la mêlée générale, où `team_side`
+ * est nul pour tout le monde — ne rendait plus personne allié dès que le rejeu passait son
+ * troisième argument, ce qu'il fait inconditionnellement : le pion du joueur regardé prenait
+ * l'encre adverse sur sa propre page. « Aucun camp deviné » ne veut pas dire « pas même le
+ * sien » : le camp des AUTRES reste indéductible, celui du sujet ne se déduit pas, il est donné.
  */
 import { displayPlayerName } from '@/lib/players/displayName'
 import type { MatchScoreboardRow } from '@/lib/api/types'
@@ -30,13 +38,15 @@ export type XuidMeta = ReadonlyMap<string, { gamertag: string; ally: boolean }>
  * `meXUID` désigne le joueur de la page ; sa ligne peut aussi se reconnaître à `is_me`,
  * qui reste prioritaire (une ligne marquée « moi » est alliée par définition).
  *
- * `viewpoint` (2026-09-06, rejeu 2D seulement) DÉSACTIVE ce court-circuit : quand il est
- * fourni, « allié » veut dire « du côté de CE joueur-là », un point c'est tout. Il le faut :
- * vu depuis un adversaire, le court-circuit laisserait la ligne `is_me` alliée en même temps
- * que le camp adverse — DEUX camps alliés à la fois, donc des kills des deux couleurs sur la
- * même frise (c'est le cas (c) de la caractérisation). Un `viewpoint` absent du tableau de
- * score, ou dont le camp n'est pas transmis, ne fait allié PERSONNE : aucun camp deviné, même
- * règle que partout ailleurs.
+ * `viewpoint` (2026-09-06, rejeu 2D seulement) DÉPLACE ce court-circuit sur LUI : quand il est
+ * fourni, « allié » veut dire « du côté de CE joueur-là », plus « du côté de la ligne moi ». Il
+ * le faut : vu depuis un adversaire, le court-circuit laisserait la ligne `is_me` alliée en même
+ * temps que le camp adverse — DEUX camps alliés à la fois, donc des kills des deux couleurs sur
+ * la même frise (c'est le cas (c) de la caractérisation). Un `viewpoint` ABSENT du tableau de
+ * score ne fait allié personne : aucun camp deviné, même règle que partout ailleurs. Un
+ * `viewpoint` PRÉSENT mais sans camp transmis n'a qu'un seul allié, lui — le cas de la mêlée
+ * générale (2026-09-07), où personne n'a de `team_side` et où la piste du joueur regardé doit
+ * garder son encre.
  */
 export function resolveXuidMeta(
   scoreboard: MatchScoreboardRow[] | null | undefined,
@@ -47,12 +57,15 @@ export function resolveXuidMeta(
   const sujet = viewpoint ?? meXUID
   const meRow = sujet ? sb.find((r) => r.xuid === sujet) : undefined
   const allyTeam = meRow?.team_side ?? null
-  // LE REPLI `is_me` N'EXISTE QUE SANS POINT DE VUE : c'est la seule différence entre les deux
-  // régimes, et elle tient en ce booléen. Voir l'en-tête du module.
+  // COMMENT SE RECONNAÎT LE SUJET : par la marque `is_me` sans point de vue, par son xuid avec.
+  // C'est la seule différence entre les deux régimes, et elle tient en ce booléen. Dans les deux
+  // cas le sujet est allié de lui-même — voir l'en-tête du module.
   const repliSurMoi = viewpoint == null
   const meta = new Map<string, { gamertag: string; ally: boolean }>()
   for (const r of sb) {
-    const ally = (repliSurMoi && !!r.is_me) || (allyTeam != null && r.team_side === allyTeam)
+    const ally =
+      (repliSurMoi ? !!r.is_me : r.xuid === viewpoint) ||
+      (allyTeam != null && r.team_side === allyTeam)
     meta.set(r.xuid, { gamertag: displayPlayerName(r.gamertag, r.xuid), ally })
   }
   return meta

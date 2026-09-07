@@ -37,10 +37,15 @@ export interface BombBlastHookInput {
   scoreboard: MatchScoreboardRow[] | null | undefined
   /**
    * LE POINT DE VUE de la page (2026-09-06, plan « frise, point de vue ») : le camp de
-   * référence est celui de CE joueur, pas nécessairement celui de la ligne « moi ». Absent :
+   * référence est celui de CE joueur, pas nécessairement celui de la ligne « moi ». `null` :
    * la ligne « moi », comportement d'origine.
+   *
+   * OBLIGATOIRE DEPUIS LE 2026-09-07 (revue F4), `null` compris. Optionnel, son oubli chez
+   * l'appelant ne faisait rougir AUCUN test — la déflagration serait restée aux couleurs du
+   * joueur de la page pendant que la carte suivait le joueur choisi. Requis, l'oubli est une
+   * erreur de compilation.
    */
-  viewpoint?: string | null
+  viewpoint: string | null
   /** Encre d'un camp vu de la page (tokens déjà résolus par l'appelant). */
   teamColorOf: (ally: boolean) => string
   /** Encre servie quand le camp est inconnu : ni équipe inventée, ni explosion invisible. */

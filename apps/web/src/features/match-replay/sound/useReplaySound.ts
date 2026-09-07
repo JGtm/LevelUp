@@ -297,21 +297,28 @@ export function useReplaySound(
   // pur : `sideResolverFromScoreboard`). Absent, ou sans ligne « moi » : les actions qui ont
   // deux variantes d'équipe restent MUETTES — le rejeu ne devine jamais un camp, même règle
   // que l'encre des calques.
-  scoreboard?: readonly ScoreboardSide[],
-  endMatch: EndMatchSoundSpec | null = null,
+  scoreboard: readonly ScoreboardSide[] | undefined,
+  endMatch: EndMatchSoundSpec | null,
   // La LANGUE de l'interface : elle ne sert QU'au son « manche terminée » (voix d'annonceur,
   // `roundOverSound.ts`), la seule entrée locale-aware de la piste. Absente, ce son se tait.
-  locale?: ReplayLocale,
+  locale: ReplayLocale | undefined,
   // LE POINT DE VUE de la page (2026-09-06) : « allié » et « adverse » se disent par rapport à
   // CE joueur (décision 11 — les sons d'objectif en cours de match suivent ce qu'on regarde ;
   // seule la fin de partie, `endMatch` ci-dessus, reste ancrée sur le joueur de la page).
-  // Absent : la ligne « moi », comportement d'origine.
+  // `null` : la ligne « moi », comportement d'origine.
   //
   // SEPTIÈME PARAMÈTRE, EN CONNAISSANCE DE CAUSE (seuil du dépôt : 5). Les six premiers sont
   // déjà là ; les regrouper en objet toucherait les huit appels du hook — dont sept tests —
   // dans un lot dont le contrat est « rien ne change ». À faire au prochain passage sur ce
   // fichier, pas ici.
-  viewpoint?: string | null,
+  //
+  // ET IL EST OBLIGATOIRE DEPUIS LE 2026-09-07 (revue F4), `null` compris — ce qui a forcé les
+  // TROIS paramètres précédents à le devenir aussi : TypeScript n'accepte pas un paramètre
+  // requis derrière un optionnel. C'est le prix d'une garantie de compilation sur le relais du
+  // point de vue ; sans elle, l'oublier laissait les tics de zone et la voix d'objectif sur le
+  // camp du joueur de la page pendant que la carte suivait le joueur choisi, et les 2 673 tests
+  // restaient verts. Les appels passent donc `undefined` là où ils omettaient — explicite.
+  viewpoint: string | null,
 ): ReplaySound {
   const sideOfXuid = useMemo(
     () => sideResolverFromScoreboard(scoreboard, viewpoint),

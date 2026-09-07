@@ -3,9 +3,12 @@
  *
  * # POURQUOI UN MODULE POUR DEUX LONGUEURS
  *
- * La frise se pose sur une grille à deux colonnes : les LIBELLÉS de piste (« Toi », « Alliés »,
- * « Dominance »…) puis les PISTES elles-mêmes. Trois lecteurs ont besoin des mêmes nombres, et
- * c'est ce qui les sort des classes Tailwind du composant :
+ * La frise se pose sur une grille à deux colonnes : la COLONNE DE GAUCHE — le MENU de joueurs
+ * en première rangée, puis les libellés « Coéquipiers », « Dominance », « Score », « Médias » —
+ * puis les PISTES elles-mêmes. (Elle a porté « Toi » et « Alliés » jusqu'au 2026-09-07 : le lot
+ * L3 remplace le premier par le menu et le second par les COÉQUIPIERS du joueur regardé.) Trois
+ * lecteurs ont besoin des mêmes nombres, et c'est ce qui les sort des classes Tailwind du
+ * composant :
  *
  *  1. la grille des PISTES (`ReplayTimelineTracks`) ;
  *  2. la grille du TRANSPORT — chevron et curseur — qui doit s'aligner au pixel sur la première,

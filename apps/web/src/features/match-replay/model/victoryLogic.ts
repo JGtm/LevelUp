@@ -60,7 +60,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
  */
 type VictoryRows = ReadonlyArray<Pick<MatchScoreboardRow, 'team_side' | 'is_me'> & { xuid?: string }>
 
-/** L'issue du match DU POINT DE VUE du joueur de la page. */
+/** L'issue du match POUR LE SUJET de la lecture — le joueur de la page à défaut de point de vue. */
 export type VictoryOutcome = 'win' | 'loss' | 'tie'
 
 /** Une équipe désignée par la lecture : de quoi la nommer, la teinter et la coiffer. */
@@ -69,14 +69,21 @@ export interface VictoryTeam {
   teamID: number
   /** Camp au format du backend (`t{N}`) — ce que la cascade de libellé attend. */
   teamSide: string
-  /** `true` si c'est l'équipe du joueur de la page. */
+  /** `true` si c'est l'équipe du SUJET (le joueur de la page à défaut de point de vue). */
   ally: boolean
 }
 
 /** La lecture de fin de match : l'issue, l'équipe qui habille l'écran, celle qui gagne. */
 export interface VictoryReading {
   outcome: VictoryOutcome
-  /** L'équipe DU JOUEUR DE LA PAGE — l'habillage de l'écran. `null` sur une égalité. */
+  /**
+   * L'ÉQUIPE DU SUJET — l'habillage de l'écran. `null` sur une égalité.
+   *
+   * « Du joueur de la page » jusqu'au 2026-09-06 : c'était vrai tant que `readVictory` devinait
+   * son sujet. Depuis qu'il le reçoit en paramètre, c'est l'équipe de CELUI QU'ON REGARDE — le
+   * joueur de la page quand aucun sujet n'est passé, ce que fait toujours la fin de partie
+   * sonore (décision 3 du plan).
+   */
   mine: VictoryTeam | null
   /** L'équipe qui remporte le match. `null` sur une égalité, qui ne désigne personne. */
   winner: VictoryTeam | null
@@ -128,6 +135,35 @@ export function readVictory(
     mine: { teamID: mine.id, teamSide: mine.side, ally: true },
     winner: { teamID: winner.id, teamSide: winner.side, ally: won },
   }
+}
+
+/**
+ * victoryIsFlipped — LA LECTURE A-T-ELLE ÉTÉ RETOURNÉE ? (2026-09-07, revue F2)
+ *
+ * `true` quand le sujet est du camp OPPOSÉ à celui du joueur de la page : ce que la page a
+ * gagné, lui l'a perdu, et `readVictory` a permuté en conséquence. `false` partout ailleurs —
+ * sans sujet, sujet du même camp, sujet non situable, match qui n'oppose pas deux camps.
+ *
+ * POURQUOI UNE FONCTION ET NON UN CHAMP DE `VictoryReading`. Le mot du verdict n'est pas dans
+ * la lecture : `header.outcome_label` est servi par le backend et vaut pour le joueur de la
+ * page. Une surface qui affiche une lecture PERMUTÉE doit donc aller chercher un autre mot
+ * (le libellé canonique de l'issue, `outcomes.toml`), et elle n'a aucun moyen de savoir qu'elle
+ * y est tenue — deux lectures « Défaite » ne se distinguent pas. Ce prédicat est ce moyen.
+ * Ajouter le champ à l'objet aurait fait rougir les quatorze cas de `victoryLogic.test.ts`,
+ * qui fixent la lecture ENTIÈRE par égalité profonde : la caractérisation n'accepte que des
+ * ajouts, et un champ de plus n'en est pas un.
+ *
+ * C'EST AUSSI LE PRÉDICAT DU SCORE : `finalScoreFromHeader` l'appelle, plutôt que de refaire
+ * la même triple comparaison sous un autre nom. Une seule définition de « l'autre camp ».
+ */
+export function victoryIsFlipped(scoreboard: VictoryRows, subject?: string | null): boolean {
+  if (subject == null) return false
+  const camps = identifiedCamps(scoreboard)
+  if (camps.length !== 2) return false
+  const mien = myCampIndex(scoreboard, camps)
+  if (mien === null) return false
+  const vu = subjectCampIndex(scoreboard, camps, subject, mien)
+  return vu !== null && vu !== mien
 }
 
 /**
@@ -253,12 +289,9 @@ export function finalScoreFromHeader(
 ): FinalScoreReading | null {
   if (!header || header.score_mine == null || header.score_theirs == null) return null
   const page = { ally: header.score_mine, enemy: header.score_theirs }
-  if (subject == null || !scoreboard) return page
-  const camps = identifiedCamps(scoreboard)
-  if (camps.length !== 2) return page
-  const mien = myCampIndex(scoreboard, camps)
-  if (mien === null) return page
-  const vu = subjectCampIndex(scoreboard, camps, subject, mien)
-  if (vu === null) return page
-  return vu === mien ? page : { ally: page.enemy, enemy: page.ally }
+  if (!scoreboard) return page
+  // MÊME DÉFINITION DE « L'AUTRE CAMP » QUE L'ISSUE (2026-09-07) : ce test était écrit ici en
+  // quatre gardes, recopiées de `readVictory`. Elles vivent désormais dans `victoryIsFlipped`,
+  // que l'écran de fin appelle aussi pour choisir son MOT — les trois ne peuvent plus diverger.
+  return victoryIsFlipped(scoreboard, subject) ? { ally: page.enemy, enemy: page.ally } : page
 }

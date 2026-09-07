@@ -177,3 +177,67 @@ describe('mergeFeedWithPresence — un seul axe de temps', () => {
     expect(mergeFeedWithPresence([feedLine('k1', 1)], []).map((e) => e.key)).toEqual(['k1'])
   })
 })
+
+/**
+ * AJOUT DU 2026-09-07 (revue F3) — L'IDENTITÉ QUE LA LIGNE PORTE, et sur quoi elle s'apparie.
+ *
+ * Un BOT a deux identités : la clé du FILM (`bot:<nom>`, schéma 36) et le xuid de BASE
+ * (`bid(N.0)`) quand la jointure au tableau de score aboutit. Tout ce qui apparie une ligne de
+ * présence à quelqu'un — le point de vue, `identity`, `marks`, la liste des coéquipiers — est
+ * clé sur le xuid de BASE. La ligne portait la clé du film : l'ombrage de la frise ne trouvait
+ * donc jamais un bot, alors même que le fil disait « a rejoint ».
+ */
+describe('presenceEntries — la ligne porte le xuid de BASE dès que la jointure aboutit', () => {
+  const HEADER = { start_time: '2026-09-01T00:00:00Z' }
+  const DOC_ORIGIN = { ...DOC, originMs: 4_000 } as ReplayDocumentReady
+
+  /** Un bot du film, joint au tableau de score sous son xuid de base `bid(1.0)`. */
+  function botJoint(): ReplayPlayer {
+    return player('bot:343 Oscar [bot]', [life(600, 900, 2_400)], {
+      bot: true,
+      filmName: '343 Oscar [bot]',
+      board: {
+        xuid: 'bid(1.0)',
+        gamertag: '343 Oscar [bot]',
+        joined_in_progress: true,
+        first_joined_time: '2026-09-01T00:01:40Z',
+        left_in_progress: false,
+      } as ReplayPlayer['board'],
+    })
+  }
+
+  it('chemin API : le bot joint porte `bid(1.0)`, pas sa clé film', () => {
+    const [e] = presenceEntries([botJoint()], WINDOW, DOC_ORIGIN, HEADER)
+    expect(e.presence?.xuid).toBe('bid(1.0)')
+    expect(e.presence).toMatchObject({ kind: 'joined', source: 'api', bot: true })
+    // La CLÉ de la ligne suit, sans quoi deux joueurs pourraient la partager après jointure.
+    expect(e.key).toContain('bid(1.0)')
+  })
+
+  it('repli FILM : même règle — la jointure décide, pas la source de l’instant', () => {
+    const sansDrapeaux = player('bot:343 Oscar [bot]', [life(600, 900, 2_400)], {
+      bot: true,
+      filmName: '343 Oscar [bot]',
+      board: { xuid: 'bid(1.0)', gamertag: '343 Oscar [bot]' } as ReplayPlayer['board'],
+    })
+    const [e] = presenceEntries([sansDrapeaux], WINDOW, DOC_ORIGIN, HEADER)
+    expect(e.presence).toMatchObject({ xuid: 'bid(1.0)', source: 'film' })
+  })
+
+  it('SANS ligne de tableau de score : la clé du film, faute de mieux', () => {
+    const orphelin = player('bot:343 Oscar [bot]', [life(600, 900, 2_400)], {
+      bot: true,
+      filmName: '343 Oscar [bot]',
+    })
+    const [e] = presenceEntries([orphelin], WINDOW, DOC)
+    expect(e.presence?.xuid).toBe('bot:343 Oscar [bot]')
+  })
+
+  it('un humain joint est inchangé : sa clé film EST déjà son xuid de base', () => {
+    const humain = player('A', [life(600, 900, 2_400)], {
+      board: { xuid: 'A', gamertag: 'Alpha' } as ReplayPlayer['board'],
+    })
+    const [e] = presenceEntries([humain], WINDOW, DOC)
+    expect(e.presence?.xuid).toBe('A')
+  })
+})
