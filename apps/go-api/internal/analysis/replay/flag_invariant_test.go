@@ -200,3 +200,68 @@ func TestFlagOverlapsComptesParDrapeau(t *testing.T) {
 			"doit se compter, elle etait invisible tant que le seuil ignorait `flagIndex`", *cov)
 	}
 }
+
+// TestAttachFlagCarriesDescendLesEquipesJusquAuScan — LE MAILLON QUE PERSONNE NE GARDAIT (W1).
+//
+// L'invariant dur ne vaut que si la table des equipes lui parvient, et elle traverse DEUX
+// maillons : `replaybuild` -> `FlagInput` (garde chez l'appelant, `flagidentity_test.go`) puis
+// `FlagInput` -> `FlagCarryScan`, dans `attachFlagCarries`. Le second n'avait aucun garde-rail :
+// retirer la ligne `TeamOf: in.TeamOf` laissait les 166 paquets VERTS, et le premier essai du
+// lot avait justement livre `ownFlagRefused = 0` pour cette raison. Un chainon muet ne casse
+// aucun test unitaire — celui-ci le casse.
+//
+// LA PREUVE EST UN EFFET, PAS UN CHAMP : on n'observe pas `scan.TeamOf` (il est interne), on
+// verifie que l'invariant A REFUSE. Il ne peut refuser que si la table est arrivee.
+func TestAttachFlagCarriesDescendLesEquipesJusquAuScan(t *testing.T) {
+	// Un compteur du statborg qui monte a 1 : c'est l'increment que l'oracle date.
+	rec := func(ms, slot, comp int) objectiveevents.StatRecord {
+		return objectiveevents.StatRecord{TimeMS: ms, Slot: slot, Round: 0,
+			Comps: map[int]objectiveevents.StatValue{comp: {A: 1}}}
+	}
+	const (
+		compCaptures = 21
+		compGrabs    = 22
+		compSteals   = 24
+	)
+	in := FlagInput{
+		Scanned: true,
+		Records: []objectiveevents.StatRecord{
+			rec(1000, 12, compSteals),   // « 1 » (equipe 0) vole le drapeau de l'equipe 1
+			rec(2000, 14, compSteals),   // « 2 » (equipe 1) vole celui de l'equipe 0
+			rec(5000, 16, compGrabs),    // « 3 » (equipe 0) ramasse A SON PROPRE SOCLE
+			rec(9000, 12, compCaptures), // la capture, sans quoi le film n'est pas reconnu CTF
+		},
+		Bursts:   []int{9000},
+		Spawns:   flagInvariantSpawns(),
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
+		TeamOf:   map[string]int{"1": 0, "2": 1, "3": 0},
+	}
+	doc := &ReplayDocument{
+		FrameCount: 100,
+		Coverage:   &Coverage{},
+		Tracks: []Track{
+			flagTestTrack(12, "1", 0, 99, 2, 2),
+			flagTestTrack(14, "2", 0, 99, 98, 98),
+			flagTestTrack(16, "3", 0, 99, 98, 98),
+		},
+	}
+
+	attachFlagCarries(doc, Options{Flag: in}, OwnerReport{},
+		replayClock{origin: 0, step: 100_000, frames: 100})
+
+	cov := doc.Coverage.FlagCarries
+	if cov == nil {
+		t.Fatalf("aucune couverture publiee : le film temoin n'a pas ete reconnu comme du CTF")
+	}
+	if cov.Carries != 3 {
+		t.Fatalf("couverture %+v : 3 portages attendus — sans eux le test ne prouve rien", *cov)
+	}
+	if cov.OwnFlagRefused != 1 {
+		t.Errorf("ownFlagRefused = %d, attendu 1 : la table des equipes n'a pas atteint le calque. "+
+			"C'est le maillon `FlagInput` -> `FlagCarryScan` d'`attachFlagCarries` qui est muet, "+
+			"et l'invariant « jamais son propre drapeau » se tait avec lui", cov.OwnFlagRefused)
+	}
+	// Et l'effet se lit dans le document : « 3 » (equipe 0) ne tient PAS le drapeau de l'equipe 0.
+	assertPorteurs(t, flagOfTeam(t, doc.FlagCarries, 0), []string{"2"})
+	assertPorteurs(t, flagOfTeam(t, doc.FlagCarries, 1), []string{"1", "3"})
+}
