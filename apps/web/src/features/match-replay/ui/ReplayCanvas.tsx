@@ -141,10 +141,17 @@ interface ReplayCanvasProps {
    * PAR LES YEUX DE QUI (2026-09-06, plan « frise, point de vue ») : le joueur dont le camp
    * fait référence. La page le résout une fois (`model.viewpoint`) et le canvas le RELAIE,
    * sans jamais le redécouvrir — aux calques d'objectif (bombe, drapeaux, zones), à la piste
-   * sonore (tics de zone, voix d'objectif — décision 11) et à l'export (décision 12). Absent :
+   * sonore (tics de zone, voix d'objectif — décision 11) et à l'export (décision 12). `null` :
    * la ligne « moi » du tableau de score, c'est-à-dire le comportement d'origine.
+   *
+   * OBLIGATOIRE DEPUIS LE 2026-09-07 (revue ronde 2), `null` compris — et c'est le maillon qui
+   * manquait. Les six relais INTERNES du canvas étaient devenus requis la veille (revue F4),
+   * mais la PORTE D'ENTRÉE de la chaîne restait optionnelle : retirer `viewpoint={viewpoint.xuid}`
+   * de `replay.tsx` compilait, et laissait toute la suite verte, pendant que la carte, la frise,
+   * les calques et le clip repartaient tous ensemble sur le joueur de la page. Un maillon requis
+   * derrière une porte facultative ne garde rien.
    */
-  viewpoint?: string | null
+  viewpoint: string | null
   /**
    * LE ROSTER JOINT DU MATCH (`model.players`) et le geste qui pose le point de vue : les deux
    * ne servent qu'au MENU de la frise (2026-09-07, lot L3). Ils traversent le canvas comme le
@@ -176,14 +183,15 @@ interface ReplayCanvasProps {
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, background, callouts, scoreboard, xuidMeta, marks,
-  viewpoint = null, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
+  viewpoint, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT,
 }: ReplayCanvasProps) {
-  // LE POINT DE VUE EST NORMALISÉ ICI, UNE FOIS (2026-09-07, revue F4) : `null` par défaut,
-  // jamais `undefined`. Les six destinataires du relais (son, zones, drapeaux, déflagration,
-  // frise, export) le REÇOIVENT désormais en paramètre OBLIGATOIRE — un oubli de relais est une
-  // erreur de compilation, là où il laissait silencieusement ces calques sur le camp du joueur
-  // de la page pendant que la carte suivait le joueur choisi.
+  // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
+  // `null` compris, et les six destinataires du relais (son, zones, drapeaux, déflagration,
+  // frise, export) le reçoivent eux aussi en paramètre obligatoire (revue F4). La chaîne est
+  // donc requise de bout en bout — un maillon oublié, à l'entrée comme au milieu, est une erreur
+  // de compilation, là où il laissait silencieusement ces surfaces sur le camp du joueur de la
+  // page pendant que la carte suivait le joueur choisi. Un `= null` ici rouvrait la porte.
   // LES KILLS VIENNENT DU FIL, DÉJÀ RECALÉS (2026-09-05, J2) : la carte et la piste sonore
   // lisaient les kills BRUTS et rejouaient chacune `alignFeed` — quatre exécutions du même
   // recalage par chargement, et deux chemins qui divergeraient le jour où le canvas ne

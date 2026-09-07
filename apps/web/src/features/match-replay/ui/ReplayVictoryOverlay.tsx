@@ -11,20 +11,29 @@
  * défaite — exactement comme l'écran de fin du jeu, qui ne vous affiche pas l'emblème adverse
  * parce qu'il a gagné. Ce que l'issue change, c'est le TITRE, pas l'habillage.
  *
- * LE TITRE VIENT DU BACKEND, ET IL N'EST PAS RÉÉCRIT ICI : `header.outcome_label` est déjà
- * localisé côté serveur (« Victoire » / « Défaite » / « Égalité »), c'est le même mot que la
- * Match View affiche pour ce match. En fabriquer une variante côté front donnerait deux
- * verdicts pour un seul match. Sans ce libellé, pas d'écran : un panneau plein cadre qui
- * n'annonce rien serait pire que pas de panneau.
+ * LE TITRE VIENT DU BACKEND, ET IL N'EST PAS RÉÉCRIT ICI : `header.outcome_label` est servi tout
+ * fait (« Victoire » / « Défaite » / « Égalité »), c'est le même mot que la Match View affiche
+ * pour ce match. En fabriquer une variante côté front donnerait deux verdicts pour un seul
+ * match. Sans ce libellé, pas d'écran : un panneau plein cadre qui n'annonce rien serait pire
+ * que pas de panneau.
  *
  * SAUF QUAND LA LECTURE A ÉTÉ PERMUTÉE (correction du 2026-09-07). `outcome_label` est le mot
  * du JOUEUR DE LA PAGE, et l'API n'en publie pas d'autre : vu depuis un adversaire d'un match
  * gagné, le camp, le logo et le score suivaient bien le sujet pendant que le titre continuait
  * d'annoncer « Victoire » — au-dessus de l'équipe qui a perdu, et d'un score inversé. Dans ce
  * cas, et seulement dans ce cas (`victoryIsFlipped`), le titre vient du libellé CANONIQUE de
- * l'issue permutée, `outcomes.toml` du titre servi par `/field-mappings` : la même source que
- * celle dont le backend tire `outcome_label`, jamais une string écrite ici. Point de vue par
- * défaut : `outcome_label` tel quel, à la lettre près, comme avant le chantier.
+ * l'issue permutée, `outcomes.toml` du titre servi par `/field-mappings` — jamais une string
+ * écrite ici. Point de vue par défaut : `outcome_label` tel quel, à la lettre près, comme avant
+ * le chantier.
+ *
+ * LES DEUX MOTS N'ONT PAS LA MÊME PROVENANCE, et le dire est le seul moyen que la prochaine
+ * relecture ne s'y trompe pas (revue ronde 2, qui a corrigé l'inverse écrit ici la veille).
+ * `header.outcome_label` sort d'une map Go CODÉE EN DUR EN FRANÇAIS
+ * (`service/match_history_service.go`, `outcomeLabels`) ; le titre permuté sort d'`outcomes.toml`,
+ * lui localisé. En français les deux vocabulaires coïncident mot pour mot — c'est pourquoi rien
+ * ne se voit aujourd'hui. En anglais, le titre par défaut resterait FRANÇAIS pendant que le
+ * titre permuté sortirait traduit. Ce défaut-là n'est pas né ici : il vaut déjà pour la Match
+ * View et pour toute l'app, et il se répare côté Go — dette consignée, hors périmètre.
  *
  * IL EST DÉRIVÉ DE LA POSITION DE LECTURE, PAS D'UN ÉTAT (décision D-B5) : visible tant que la
  * lecture est à la borne de fin ou au-delà, invisible dès qu'on remonte la frise ou qu'on

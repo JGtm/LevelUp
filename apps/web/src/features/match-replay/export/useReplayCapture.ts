@@ -286,9 +286,15 @@ export function useReplayCapture(o: ReplayCaptureOptions): ReplayCapture {
  * peut exporter son terrain.
  *
  * C'EST AUSSI ICI QUE LE MOT DU VERDICT SE RÉSOUT (2026-09-07, revue F2), et pas plus bas : le
- * libellé canonique d'une issue permutée vient d'un HOOK (`useOutcomeLabel`, les mappings du
- * titre), et `exportOverlayPanels` est une fonction pure que la boucle d'export appelle hors
+ * libellé canonique d'une issue permutée vient d'un HOOK — `useOutcomeMapping`, les mappings du
+ * titre — et `exportOverlayPanels` est une fonction pure que la boucle d'export appelle hors
  * React. La couture est la dernière marche où un hook peut encore courir.
+ *
+ * `useOutcomeMapping` ET PAS `useOutcomeLabel`, qui serait pourtant le hook naturel : celui-ci
+ * rend la CLÉ BRUTE quand les mappings du titre ne sont pas chargés (`win`, `loss`), et un
+ * panneau d'export ne peut pas se rattraper — le clip encodé garderait le mot `loss` en plein
+ * cadre, pour toujours. `useOutcomeMapping` rend `undefined` dans ce cas, ce qui se distingue
+ * d'un libellé et fait TAIRE le panneau, comme un `outcome_label` absent (revue ronde 2).
  */
 function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
   const { canvasRef, frameRef, doc, playing, play, redraw } = o
@@ -322,8 +328,16 @@ function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
  * `header.outcome_label` est le verdict du JOUEUR DE LA PAGE, et l'API n'en publie pas d'autre.
  * Tant que le point de vue est le sien, c'est le bon mot — `viewedLabel` vaut alors exactement
  * `label`. Dès que la lecture est PERMUTÉE (sujet de l'autre camp), le mot juste est le libellé
- * canonique de l'issue permutée, celui d'`outcomes.toml` : la même source que celle dont le
- * backend tire `outcome_label`, donc jamais deux vocabulaires pour un même match.
+ * canonique de l'issue permutée, celui d'`outcomes.toml` servi par `/field-mappings`.
+ *
+ * LES DEUX MOTS NE VIENNENT PAS DE LA MÊME SOURCE, et il faut le dire (revue ronde 2, qui a
+ * corrigé une affirmation fausse écrite ici la veille). `header.outcome_label` est fabriqué par
+ * une map Go CODÉE EN DUR EN FRANÇAIS (`service/match_history_service.go`, `outcomeLabels` :
+ * Victoire / Défaite / Égalité / Abandon), pas par `outcomes.toml`. En français les deux
+ * vocabulaires coïncident, et c'est pourquoi rien ne se voit aujourd'hui ; en anglais le titre
+ * par défaut resterait FRANÇAIS pendant que le titre permuté sortirait localisé. Cette
+ * incohérence-là existe DÉJÀ sur toute l'app (la Match View affiche le même mot en dur) : elle
+ * se règle côté Go, pas ici — dette consignée, hors périmètre de cette revue.
  *
  * MÊME RÈGLE QUE LE DOM (`ReplayVictoryOverlay`), à la ligne près — c'est la deuxième et
  * dernière copie tolérée (règle n° 6), et l'en-tête d'`exportOverlayPanels` dit déjà pourquoi

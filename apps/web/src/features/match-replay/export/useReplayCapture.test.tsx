@@ -19,10 +19,39 @@ import { createRef, type ReactNode, type RefObject } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createTestQueryClient } from '@/test/render-utils'
+import { fieldMappingsQueryKey } from '@/lib/i18n/fieldMappings'
+import type { ReplayExportOptions } from './useReplayExport'
 import { captureCanvasImage, triggerDownload } from './replayCapture'
 import { pickVideoMimeType } from './replayRecording'
 import { testReplayDoc } from '../test/testDoc'
+import type { MatchScoreboardRow } from '@/lib/api/types'
 import { useReplayCapture } from './useReplayCapture'
+
+/**
+ * L'ESPION SUR `useReplayExport` (2026-09-07, revue ronde 2) — il DÉLÈGUE au vrai hook.
+ *
+ * POURQUOI IL FAUT EN PASSER PAR LÀ. `viewedLabel` — le mot que le panneau de l'export peindra —
+ * est calculé DANS cette couture (`useViewedOutcome`) et ne ressort pas de `useReplayCapture` :
+ * il descend directement dans les options de l'export. Le seul calcul de production n'avait donc
+ * aucun test, et le remplacer par `label` laissait toute la suite verte. On intercepte les
+ * options au passage, sans rien changer d'autre : le vrai hook est appelé, avec le même objet,
+ * au même endroit de l'ordre des hooks.
+ *
+ * `vi.hoisted` parce que la fabrique de `vi.mock` est remontée en tête de module : une `const`
+ * ordinaire y serait dans sa zone morte.
+ */
+const espionExport = vi.hoisted(() => ({ options: [] as ReplayExportOptions[] }))
+
+vi.mock('./useReplayExport', async (importOriginal) => {
+  const vrai = await importOriginal<typeof import('./useReplayExport')>()
+  return {
+    ...vrai,
+    useReplayExport: (o: ReplayExportOptions) => {
+      espionExport.options.push(o)
+      return vrai.useReplayExport(o)
+    },
+  }
+})
 
 vi.mock('./replayCapture', async (importOriginal) => {
   // Le NOMMAGE reste le vrai : c'est lui qui prouve que l'instant lu est le bon.
@@ -58,12 +87,35 @@ function mount(
 /**
  * LE PROVIDER DE REQUÊTES EST DEVENU NÉCESSAIRE LE 2026-09-07 (revue F2) : la couture résout
  * désormais le MOT du verdict par les mappings du titre (`useOutcomeMapping`, TanStack Query)
- * quand le point de vue permute la lecture. Aucun test d'ici n'exerce ce cas — ils montent tous
- * la capture sans verdict — mais le hook s'appelle sans condition, comme tout hook.
+ * quand le point de vue permute la lecture. La plupart des cas d'ici n'exercent pas ce chemin —
+ * ils montent la capture sans verdict — mais le hook s'appelle sans condition, comme tout hook.
+ *
+ * `outcomes` À `true` SÈME LES MAPPINGS DU TITRE dans le cache, sous la clé que
+ * `useFieldMappings` construit à partir des défauts du store (`halo_infinite`, `fr`). La requête
+ * reste désactivée en test (`isBootstrapped` est faux) et lit quand même la donnée. À `false`,
+ * c'est le cas dégradé : aucun libellé canonique.
  */
-function Provider({ children }: { children: ReactNode }) {
-  return <QueryClientProvider client={createTestQueryClient()}>{children}</QueryClientProvider>
+function providerWith(outcomes: boolean) {
+  const qc = createTestQueryClient()
+  if (outcomes) {
+    qc.setQueryData(fieldMappingsQueryKey('halo_infinite', 'fr'), {
+      title_slug: 'halo_infinite',
+      schema_version: 1,
+      locale: 'fr',
+      fields: {},
+      outcomes: {
+        win: { label: 'Victoire', color_token: 'outcome.positive' },
+        loss: { label: 'Défaite', color_token: 'outcome.negative' },
+      },
+    })
+  }
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  }
 }
+
+/** Le provider des cas qui n'ont pas de verdict à peindre : sans mappings, ils n'en lisent pas. */
+const Provider = providerWith(false)
 
 beforeEach(() => {
   vi.mocked(captureCanvasImage).mockReset()
@@ -322,5 +374,89 @@ describe('useReplayCapture — navigateur sans enregistrement', () => {
       result.current.captureImage()
     })
     expect(triggerDownload).toHaveBeenCalledTimes(1)
+  })
+})
+
+/**
+ * AJOUT DU 2026-09-07 (revue ronde 2) — LE MOT QUE LE CLIP PEINDRA.
+ *
+ * `useViewedOutcome` est le SEUL calcul de production de `viewedLabel`, et il n'était couvert
+ * par rien : le remplacer par `label` laissait toute la suite verte, et le clip exporté depuis
+ * le point de vue d'un adversaire aurait annoncé « Victoire » sur l'équipe qui a perdu — le
+ * défaut F2, revenu par la porte de l'export. Ces cas fixent les deux régimes, et le dégradé.
+ *
+ * ILS N'OBSERVENT PAS LE PANNEAU mais l'ENTRÉE de l'export : ce que `exportOverlayPanels` en
+ * fait est éprouvé chez lui (`exportOverlayPanels.test.ts`, quatre cas sur `viewedLabel`). Ici,
+ * la seule question est « la couture a-t-elle résolu le bon mot ? ».
+ */
+describe('useReplayCapture — le mot du verdict transmis à l’export', () => {
+  const SB = [
+    { xuid: 'moi', team_side: 't0', is_me: true },
+    { xuid: 'eux', team_side: 't1', is_me: false },
+  ] as MatchScoreboardRow[]
+
+  /** Le verdict servi par l'en-tête : le joueur de la page a GAGNÉ (code 2). */
+  const OUTCOME = { code: 2, label: 'Victoire' }
+
+  /** Le même lobby, plus un COÉQUIPIER du joueur de la page. */
+  const SB_TRIO = [...SB, { xuid: 'pote', team_side: 't0', is_me: false } as MatchScoreboardRow]
+
+  /** Monte la capture avec un verdict et un point de vue, et rend les options vues par l'export. */
+  function optionsPour(
+    viewpoint: string | null,
+    { mappings = true, board = SB }: { mappings?: boolean; board?: MatchScoreboardRow[] } = {},
+  ) {
+    espionExport.options.length = 0
+    const canvasRef = createRef<HTMLCanvasElement>() as RefObject<HTMLCanvasElement | null>
+    canvasRef.current = document.createElement('canvas')
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    renderHook(
+      () =>
+        useReplayCapture({
+          canvasRef,
+          doc: DOC,
+          frameRef,
+          playing: false,
+          play: vi.fn(),
+          // `redraw` est ce qui rend l'export DISPONIBLE (cf. `useExportSeam`) : sans lui le
+          // hook tourne quand même, mais son résultat est jeté — et les options nous échappent.
+          redraw: vi.fn(),
+          scoreboard: board,
+          outcome: OUTCOME,
+          viewpoint,
+        }),
+      { wrapper: providerWith(mappings) },
+    )
+    return espionExport.options[espionExport.options.length - 1]
+  }
+
+  it('point de vue ADVERSE : le libellé CANONIQUE de l’issue permutée', () => {
+    // Le joueur de la page a gagné (code 2) ; vu de `eux`, la lecture est une défaite, et c'est
+    // ce mot-là — celui d'`outcomes.toml` — que le clip doit peindre, pas « Victoire ».
+    expect(optionsPour('eux').outcome?.viewedLabel).toBe('Défaite')
+  })
+
+  it('point de vue = LE JOUEUR DE LA PAGE : le libellé du backend, tel quel', () => {
+    expect(optionsPour('moi').outcome?.viewedLabel).toBe('Victoire')
+  })
+
+  it('point de vue ABSENT (`null`) : le libellé du backend, comme avant le chantier', () => {
+    expect(optionsPour(null).outcome?.viewedLabel).toBe('Victoire')
+  })
+
+  it('COÉQUIPIER du joueur de la page : même camp, donc rien de permuté', () => {
+    expect(optionsPour('pote', { board: SB_TRIO }).outcome?.viewedLabel).toBe('Victoire')
+  })
+
+  it('issue permutée SANS mappings du titre : `null` — jamais une clé brute dans le clip', () => {
+    // `useOutcomeMapping` rend `undefined` : le panneau se taira, comme sans `outcome_label`.
+    // C'est exactement ce que `useOutcomeLabel` ne saurait pas dire — il rendrait « loss ».
+    expect(optionsPour('eux', { mappings: false }).outcome?.viewedLabel).toBeNull()
+  })
+
+  it('le reste du verdict traverse INCHANGÉ : seul le mot vu s’ajoute', () => {
+    const outcome = optionsPour('eux').outcome
+    expect(outcome).toMatchObject({ code: 2, label: 'Victoire', viewedLabel: 'Défaite' })
   })
 })

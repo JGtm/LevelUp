@@ -100,9 +100,14 @@ export interface OverlayPanelDeps {
   locale: ReplayLocale
   ink: OverlayInk
   /**
-   * La teinte du camp du joueur de la page. TOUJOURS fournie : l'égalité est déjà traitée par
-   * l'absence de `victory.mine`, qui bascule seule sur le style neutre. Un `null` ici serait un
-   * second chemin vers la même chose, qu'aucun appelant ne peut produire.
+   * La teinte du camp du SUJET — le joueur de la page tant qu'aucun point de vue n'est choisi,
+   * celui qu'on REGARDE dès qu'il y en a un (2026-09-06 ; jumeau du même constat corrigé dans
+   * `ReplayVictoryOverlay`). Elle vaut toujours `team-ally` : `victory.mine` est l'équipe du
+   * sujet, et toute la page peint déjà ce camp-là en allié.
+   *
+   * TOUJOURS FOURNIE : l'égalité est déjà traitée par l'absence de `victory.mine`, qui bascule
+   * seule sur le style neutre. Un `null` ici serait un second chemin vers la même chose,
+   * qu'aucun appelant ne peut produire.
    */
   teamStyle: OverlayStatusStyle
   /** Le filigrane DÉJÀ teinté, ou `null` tant qu'il n'est pas chargé. */
