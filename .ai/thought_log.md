@@ -1,3 +1,167 @@
+## [2026-09-07] Libelles FR/EN codes en dur cote Go — inventaire et PLAN OUVERT pour un autre agent — Complete (plan) / En cours (lot issue)
+
+**Le mandat.** Apres la revue adverse du chantier frise (le mot du verdict en FR dur), l'utilisateur
+a demande : (1) piloter tout de suite le lot « libelle d'issue localise » (branche
+`feat/outcome-cle-canonique` empilee sur `feat/v75-frise-pov`, worktree `LevelUp-wt-outcome-cle`,
+executeur Opus en cours : helper `outcomeLabel` sur `OutcomeMappingSet.Get(key).Label(locale)`
+avec repli FR date, ecran de victoire + export sur un seul vocabulaire `useOutcomeMapping`) ;
+(2) un plan detaille mais OUVERT pour les derniers libelles en dur, destine a un autre agent —
+`.ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md`.
+
+**Inventaire sur pieces (07/09).** Trois sources pour « Victoire » : map FR seule
+(`match_history_service.go:35` → en-tete Match View, historique, rencontres carriere), maps FR+EN
+en Go (`home_locale.go:54`, champ `HomeMatchRow.OutcomeLabel` sans lecteur web trouve → mort ?),
+TOML du titre (web). Autres familles : modes/playlists/categories (`mode_category.go`,
+`rankedplaylists.go` NameFR/NameEN, `expTypePVPRanked`), armes (`weapons/registry.go` EN/FR),
+rangs (`compare_service.go` « Non classe » — cible `mappings/ranks.go` existe), narratif/prestige/
+synthese (contenu ou libelle : a decider), messages d'erreur et descriptions OpenAPI des handlers
+(`ApiError.code` existe : localiser par code cote web), Discord (`notify/discord.go`, chemin
+`semanticLabels` deja la). **DEFAUT TRANSVERSE : mojibake reel** — 45 fichiers Go hors tests
+portent la sequence UTF-8 doublement encodee « Ã », 13 dans des LITTERAUX dont deux libelles
+d'issue de l'accueil (`home_locale.go:56-57` « DÃ©faite », verifie a l'octet) — a corriger EN
+PREMIER (L0) avec un garde `archlint/no_mojibake_test.go` ; cause probable = roundtrip
+PowerShell 5.1 (memoire du depot).
+
+**Decision technique principale.** Plan en 9 lots independants (L0 mojibake + garde, L1 issue en
+cours, L2 accueil, L3 modes, L4 armes, L5 rangs, L6 narratif, L7 erreurs API, L8 Discord) + ratchet
+final `no_french_label_literal_test.go` (allowlist nommee/datee, compteur decroissant). Options
+d'architecture laissees ouvertes par famille (cle canonique + web localise / libelle localise
+serveur depuis TOML / les deux) ; six decisions reservees a l'utilisateur (§7).
+
+**Conclusion / prochaine etape.** Lot issue LIVRE : relu sur pieces (`outcome_label.go` : Canonical → Get → Label(locale), repli FR date, log de repli muet sur code inconnu), gates Go (gofmt, vet, service/api/archlint) et web (2970 tests, tsc --force, lint 27) rejoues par le superviseur, commit `3f94b17ca` POUSSE sur `feat/outcome-cle-canonique`, CI run 34122935781 surveillee. Cinq appelants de `outcomeLabel(code)` restent sur le repli (carriere, explorer x2, resume + scoreboard Match View — non rendus cote web) : plan ouvert §2.A corrige en consequence. Merge dans `feat/v75` : attend la liberation par l'audit. Le plan ouvert est remis a un autre agent. Serveurs `:8000` / `:5173` / `:5174` toujours en place.
+
+## [2026-09-06] Frise du rejeu — plan a quatre lots : trait de lecture unique, point de vue selectionnable, medailles et presence — En cours
+
+**Le mandat.** Trois idees utilisateur sur le lecteur sous le rejeu, discutees puis tranchees le
+2026-09-06 : (1) un trait vertical unique qui traverse les pistes et suit la lecture ; (2) la
+piste « Toi » devient un menu de joueurs par equipe, qui fait basculer le point de vue des pistes
+Dominance / Score / Coequipiers ; (3) les medailles du joueur sur sa piste. Aucune ecriture de
+code a ce stade : le livrable est le plan `.ai/PLAN_FRISE_POINT_DE_VUE_2026-09-06.md`.
+
+**Decisions techniques principales.** Dix decisions fermees avec l'utilisateur, dont quatre
+structurantes. (a) La selection change le POINT DE VUE, jamais le TEMPS : aucun saut de curseur,
+aucune pause, aucune bascule silencieuse vers un remplacant — le point de vue est une personne,
+pas un siege (regle miroir de `rosterLogic` : l'identite appartient au joueur, jamais a la vie).
+(b) Amis distingues par la FORME (losange), jamais par la couleur : sur la frise la couleur est
+deja prise deux fois (kill = `team-ally`, mort = `team-enemy`) et la carte a deja tranche la meme
+question (D5, `replayMarkers.ts` : la forme dit l'identite, la couleur dit le camp). (c) Le son et
+la voix de fin restent ancres sur le joueur de la page, l'ecran de victoire suit le point de vue.
+(d) Les medailles attachees a un kill DECORENT la marque existante au lieu d'ajouter un glyphe —
+elles sont deja appariees aux kills a +/- `MEDAL_ATTACH_MS`, et 20 a 40 glyphes sur 600 px seraient
+illisibles.
+
+**Constats sur pieces (verifies, pas deduits).** Cinq comptent pour l'execution. (1) `--played`
+est ecrit sur le parent du CHAMP, invisible aux pistes, et en geometrie DIFFERENTE de celle des
+marques (`calc(8px + (100% - 16px) * r)`, THUMB_PX=16) : un trait pose naivement deriverait
+jusqu'a 8 px de la marque qu'il designe — la bulle de temps porte deja ce defaut. (2) Le point de
+vue est bien plus petit que craint : `resolveXuidMeta` n'est appele QU'UNE FOIS dans
+`match-replay` (`replayModel.ts:119`) ; les cinq autres appels sont des charts de `match-view`,
+hors perimetre. (3) Mais `resolveXuidMeta` porte un court-circuit `r.is_me ||` dans le calcul de
+`ally` qui devient FAUX des que le point de vue est ailleurs. (4) `readVictory` est partage par
+l'ecran de victoire et le son : il doit recevoir son sujet en parametre, sinon la decision (c) est
+intenable. (5) PIEGE DES BOTS : un bot est cle `bot:<nom>` cote film et `bid(N.0)` cote base, et
+les marques de la frise s'apparient sur les xuid de la BASE — un menu qui rendrait la cle film
+donnerait une piste vide en silence.
+
+**Ce qui n'a rien coute.** Les entrees/sorties en cours de partie, que l'utilisateur voyait comme
+le point dur, sont deja resolues comme donnee : `presenceFeed.ts` (02/09) lit l'API
+`first_joined_time` / `last_leave_time` en source affirmative, retombe sur les bornes de vie du
+film avec des marges mesurees (10 s / 20 s, > 2x la reapparition mediane de 8,0 s), recale sur
+l'axe du rejeu et fusionne au fil. Rien a collecter, rien cote Go, aucun seuil neuf a inventer.
+Le glyphe de porte du fil (`PresenceGlyph`) sera EXTRAIT — pas recopie — pour marquer la frontiere
+ombre/jeu sur la piste, et servira aussi de bouton d'acces a l'instant.
+
+**Revue multi-angles (meme jour, sur pieces).** Deux erreurs de mon plan corrigees :
+`MatchPadControlSection` / `MatchEquipmentUsageSection` sont montes sur la page MATCH
+(`MatchViewTabChronology.tsx`), pas sur le rejeu — retires du routage, allowlist du garde ;
+tailles reelles 421/445 lignes (pas 320/230) -> extraction PLANIFIEE et non eventuelle. Trois
+angles morts : `matchSides` est un eventail (bombe, drapeaux, zones, SONS d'objectif) ;
+`readVictory` a quatre consommateurs dont l'EXPORT video ; un `SELECT` focus coupe tous les
+raccourcis (`useReplayShortcuts.ts:81`) -> `blur()` apres le choix. Decisions 11-14 (sons
+d'objectif suivent le point de vue, export WYSIWYG, disque cercle = point de vue, decoration de
+medaille = anneau) tranchees par l'utilisateur. **Decision 15** ajoutee a sa demande : RIEN NE
+CHANGE HORS PAGE — inventaire des tests existants (aucun test de VALEURS sur `resolveXuidMeta`,
+aucun sur `matchSides`, Cadence et KDCumul sans test), etape L2a = tests de caracterisation
+ecrits AVANT le changement dans un commit a part, gate L2b = diff hors page vide par commande,
+caracterisation sans ligne supprimee, compte de tests >= avant, captures avant/apres de
+l'onglet Chronologie. Le garde `xuidMeta.guard` tue l'alternative « helper a cote » : seule voie
+= troisieme parametre optionnel de `resolveXuidMeta`.
+
+**Execution (go utilisateur « pilote Opus dans un worktree dedie »).** Worktree
+`LevelUp-wt-frise-pov`, branche `feat/v75-frise-pov` depuis a059caefc, `apps/web/node_modules`
+en jonction vers le principal. Temoins choisis sur donnees (`cmd/diag_q`, serveur arrete, 106
+artefacts x `match_participants` x `match_registry`) : `4ecdf3e7` (CTF Neutral Flag, 2 arrives /
+2 partis, 1 bot, JGtm) et `bf5ced1b` (CTF, 1/1, 1 bot, JGtm) — sur ces matchs le bot EST le
+remplacant. **L1 livre par Opus (101 tool uses) et relu sur pieces** : ratio nu `--played-r`
+ecrit par `writeCursor` sur la racine (`data-replay-cursor-host`, `closest`), formule unique
+`trackLeft` / `trackLeftVar`, bulle de temps realignee (elle portait 8 px de decalage), deux
+grilles aux memes colonnes (`replayTimelineGrid.ts`) pour que le trait couvre exactement les
+pistes, garde `timelineGeometry.guard` prouve rouge. Decouverte requalifiee en decision 16 par
+l'utilisateur : marques de kill CENTREES (`-translate-x-1/2`), trait/pastille/marques sur la meme
+ancre. Gates rejoues par le superviseur (1162 tests verts, `tsc -b --force` 0). Commit L1 sur la
+branche du worktree. Serveurs de verification : API `:8000` (air, principal), vite `:5173` =
+AVANT (principal), `:5174` = APRES (worktree) — verdict visuel utilisateur en attente.
+
+**L2a / L2b / L3 (nuit du 06 au 07/09, trois executeurs Opus, relus sur pieces).** L2a :
+`xuidMeta.test.ts` (10 cas, Map entiere) et `matchSides.test.ts` (13 cas) verts du premier coup
+sur le code actuel — reference du gate L2b : 46 fichiers / 467 tests ; deux corrections de plan
+(`mySideID` n'existe pas, c'est `allyTeamFromScoreboard` ; a deux arguments, vu depuis un
+adversaire, `resolveXuidMeta` rend DEUX camps allies). L2b : foyer `resolveViewpoint` (delegue a
+`meXUIDOf`, ne lit pas `is_me`), 3e parametre optionnel de `resolveXuidMeta` (un booleen de
+repli), `buildPlayerMarks`/`allyTeamFromScoreboard`/`readVictory`/`finalScoreFromHeader` avec
+sujet, cinq consommateurs de `matchSides` routes (dont `useReplaySound`, absent de la liste
+initiale), son de fin a deux arguments commente sur place, garde `noIsMeOutsideViewpoint`
+(5 exemptions datees) ; verrous 1-3 rejoues : match-view limite a `xuidMeta.ts`, photographies
+sans une ligne supprimee, 46 / 493 ; E2.3 = 0,16 ms median sur l'artefact reel — rien decoupe.
+L3 : `LABEL_COLUMN` 100 px, `ReplayViewpointSelect` natif (`blur()` apres le choix, sinon Espace
+rouvre la liste), `viewpointOptions.ts` pur (valeur = xuid de BASE, desactive sans ligne de
+scoreboard — decision 7 bis superviseur), piste Coequipiers sur `identity.ally`, amis en losange
+carre 6x6, `finalScoreFromHeader` avec sujet. Commits `e9d003d23`, `7237e053d`, puis L3.
+
+**L4 (07/09, executeur Opus, relu sur pieces).** `presenceTrackLogic.ts` (ombres par joueur,
+paliers d'absence de l'equipe), `PresenceGlyph` extrait du fil et `presenceWording` centralise
+dans `model/` (le fil et la frise partagent « l'API affirme, le film reste au fait »),
+`ReplayPresenceShade` (porte = bouton d'acces a l'instant, cote ombre, sans pause ; degrade sur
+le repli film ; encre par camp ou encre courante), `ReplayMarkTrack` (anneau sur marque
+medaillee, anneau creux 8 px pour une medaille seule, losange carre 6 px pour un ami), piste du
+sujet 18 px / Coequipiers 14 px. Incident disque C: plein en cours de lot (transitoire, 28 puis
+47 Go libres), repris sans perte. Deux corrections : 28e warning lint elimine (module `.ts` pour
+la fonction exportee a cote d'un composant, precedent L1), ecriture interdite du `thought_log`
+du worktree restauree. Gates rejoues : 3077 tests, `tsc -b --force` 0, lint 27 = baseline.
+
+**Revue adversariale de branche (07/09, skill `adversarial-review`, 2 rondes).** Ronde 1 : deux
+relecteurs frais aveugles l'un a l'autre (L3+L5 ; L6 avec droit de mutation) — 4 + 8 constats
+recevables, 2 en commun, 11 P0/P1 distincts apres triage superviseur. Trois defauts de fond :
+le MOT du verdict de l'ecran de victoire (et de l'export) restait `header.outcome_label` du
+joueur de la page pendant que camp/logo/score suivaient le point de vue (trouve par les deux
+relecteurs) ; la presence des bots clee sur la cle FILM `bot:<nom>` contre xuid de BASE partout
+ailleurs (le bot remplacant du temoin n'aurait eu ni ombre ni porte) ; le 3e argument de
+`resolveXuidMeta` tuait le repli `is_me` meme par defaut — en MELEE GENERALE (`team_side` nul,
+verifie cote Go) le pion du joueur de la page prenait l'encre adverse. Remedes : `victoryIsFlipped`
+pure + `useOutcomeMapping` quand permute (jamais une cle brute), `p.board?.xuid ?? p.xuid`, le
+SUJET allie par definition a 3 arguments (fixture FFA : 3 args = 2 args, table entiere). Plus :
+relais du point de vue REQUIS au typage (mutation : 7 erreurs tsc, une par porteur, la ou 2 673
+tests restaient verts), hooks montes en test (`useReplayViewpoint`, `useReplayTimeline`,
+`seekToFrame` sans pause), doc inversee x4. Arbitrage : un cas a 3 arguments ne en L2b modifie
+(la photographie L2a a 2 arguments est intacte). Ronde 2 (frais, corrections seules) : F1-F6
+tiennent par mutation, 31 conditions ; 2 P1 (commentaires) + 3 P2 → 11 → 2, decroissance
+stricte, pas de ronde 3 ; retouche finale : prop d'entree `ReplayCanvas.viewpoint` requise
+(TS2741 par mutation), calcul de `viewedLabel` teste (3 rouges par mutation), docs. Decouverte
+PRE-EXISTANTE escaladee : `header.outcome_label` = map Go codee en dur en FR
+(`match_history_service.go:35`) — en locale EN, « Victoire » par defaut et « Loss » permute ;
+au registre, decision produit utilisateur (issue par cle canonique cote Go).
+
+**Conclusion / prochaine etape.** Sept commits sur `feat/v75-frise-pov` (L1 fab1b9ed0, L2a
+e9d003d23, L2b 7237e053d, L3 cd802c780, L4 60b462bdb, revue 047987d13 + ronde 2) — plan
+execute, revue passee, delivery-checklist passe, registre tenu. **EN ATTENTE (decision user
+07/09 08h40)** : verdicts visuels et merge attendent que `feat/v75` soit liberee par l'audit et
+ses correctifs ; a la reprise, `git merge feat/v75` dans la branche + gates rejoues AVANT les
+verdicts. Decision produit actee : l'issue sera servie par sa cle canonique cote Go (lot a part,
+registre). Retrait du worktree : jonction `apps/web/node_modules` a supprimer en PowerShell
+AVANT `git worktree remove`. Serveurs `:8000` / `:5173` / `:5174` laisses en place. Ordre : L1 trait -> L2 point de vue
+explicite + garde-rail -> L3 menu -> L4 medailles et presence. Worktree DEDIE
+`LevelUp-wt-frise-pov`, branche `feat/v75-frise-pov` (prefixe `feat/` pour que la CI se declenche).
+
 ## [2026-09-05] Integration des branches actives dans l'architecture cuisson-perf — CLOSE, merge feat/v75 — Complete
 
 **Decision technique principale.** Tout ce qui devait rejoindre `feat/v75` a ete rejoue DANS
