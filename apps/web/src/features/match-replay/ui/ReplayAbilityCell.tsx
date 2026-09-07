@@ -28,14 +28,15 @@ import type { ReactNode } from 'react'
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 
 import { abilityChargesAt, type AbilityChargeDisplay } from '../model/abilityChargeLogic'
+import type { CardGabarit } from '../model/cardGabarit'
 import { catalogText, type CatalogLabel } from '../i18n/catalogLabel'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { abilityAt } from '../../../lib/replay/rosterLogic'
 
-/** Boîte de la vignette de CAPACITÉ : la hauteur de la ligne. */
-const HUD_ICON_PX = 16
+// LA BOÎTE DE LA VIGNETTE DE CAPACITÉ (16 px, la hauteur de la ligne) VIENT DU GABARIT de la
+// fiche (`model/cardGabarit.ts`, `iconAbilityPx`, 2026-09-06) — aucune cote locale ici.
 
 type ReplayText = (typeof REPLAY_TEXT)[ReplayLocale]
 
@@ -52,21 +53,25 @@ export function ReplayAbilityCell({
   frame,
   readingFull,
   locale,
+  gabarit,
 }: {
   doc: ReplayDocumentReady
   slot: number
   frame: number
   readingFull: number
   locale: ReplayLocale
+  /** Les cotes de la fiche : le côté de la vignette (`iconAbilityPx`). */
+  gabarit: CardGabarit
 }) {
   const t = REPLAY_TEXT[locale]
+  const px = gabarit.iconAbilityPx
   const abilityRead = abilityAt(doc, slot, frame)
   const ability = abilityText(doc, abilityRead?.rank, t, locale)
   const charge =
     abilityRead !== null ? abilityChargesAt(doc, slot, frame, abilityRead.rank) : null
   return (
     <>
-      <span className="inline-flex shrink-0 items-center" style={{ width: HUD_ICON_PX }}>
+      <span className="inline-flex shrink-0 items-center" style={{ width: px }}>
         {ability && abilityRead && (
           <span
             className="inline-flex items-center"
@@ -78,15 +83,15 @@ export function ReplayAbilityCell({
                 imageUrl={ability.img}
                 tinted={ability.tinted}
                 label={ability.text}
-                width={HUD_ICON_PX}
-                height={HUD_ICON_PX}
+                width={px}
+                height={px}
               />
             ) : ability.known ? (
               ability.text
             ) : (
               /* RANG NON RÉSOLU : un GLYPHE, pas un mot ni un caractère (planche du 16/08).
                  Le rang lu reste la seule chose vraie : il vit dans l'infobulle. */
-              <AbilityUnknownMark label={ability.text} />
+              <AbilityUnknownMark label={ability.text} px={px} />
             )}
           </span>
         )}
@@ -151,14 +156,14 @@ export function StateMark({ label, children }: { label: string; children: ReactN
 /**
  * AbilityUnknownMark — capacité LUE mais NON IDENTIFIÉE : l'emplacement de la vignette,
  * vide, en pointillés. Le dessin dit exactement ce qu'on sait — « il y avait quelque chose
- * ici, on ne sait pas quoi ». Même gabarit que les vignettes de la ligne (16 px).
+ * ici, on ne sait pas quoi ». Même gabarit que les vignettes de la ligne (`iconAbilityPx`).
  */
-function AbilityUnknownMark({ label }: { label: string }) {
+function AbilityUnknownMark({ label, px }: { label: string; px: number }) {
   return (
     <StateMark label={label}>
       <svg
-        width={HUD_ICON_PX}
-        height={HUD_ICON_PX}
+        width={px}
+        height={px}
         viewBox="0 0 16 16"
         fill="none"
         stroke="currentColor"

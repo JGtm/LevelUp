@@ -13,6 +13,7 @@ import { formatKDA } from '@/lib/formatters/number'
 
 import type { PlayerCounters } from '@/lib/replay/scoreTimeline'
 
+import type { CardGabarit } from '../model/cardGabarit'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
 /**
@@ -27,18 +28,19 @@ const FDA_TINT_PCT = 22
  * celle des armes le 2026-08-24 : « comme sur une grille pour que l'alignement soit le même
  * pour tous les joueurs »).
  *
- * `SCORE_CELL_W` — la cellule du score personnel, TOUJOURS rendue même vide : c'est elle qui
+ * `scoreCellW` — la cellule du score personnel, TOUJOURS rendue même vide : c'est elle qui
  * tient l'alignement. Un joueur non publié n'a pas de score, et si sa cellule disparaissait,
  * son triplet glisserait de 30 px par rapport à celui du voisin publié — exactement le
  * décalage qu'on cherche à supprimer. Vide veut dire « pas de mesure », pas « zéro ».
  *
- * `COUNT_CELL_W` — la cellule d'UN compteur. Ce sont des `min-width` et non des largeurs
+ * `countCellW` — la cellule d'UN compteur. Ce sont des `min-width` et non des largeurs
  * fermes : deux chiffres tiennent partout (le cas ordinaire, donc l'alignement est tenu), et
  * un troisième chiffre pousse sa cellule plutôt que d'être rogné. Une valeur juste mais
  * tronquée serait pire qu'une colonne d'un pixel de trop.
+ *
+ * LES DEUX LARGEURS VIENNENT DU GABARIT DE LA FICHE (`model/cardGabarit.ts`, 2026-09-06 :
+ * 30 / 15 en normal, 10 pour le compteur en compact) — ce composant ne porte plus de cote.
  */
-const SCORE_CELL_W = 30
-const COUNT_CELL_W = 15
 
 /** Le fond du triplet : le token du palier, dilué dans le fond de la tuile. */
 function fdaTint(tone: FdaTone): string {
@@ -83,10 +85,13 @@ export function ReplayCountersBadge({
   board,
   live,
   locale,
+  gabarit,
 }: {
   board?: MatchScoreboardRow
   live: PlayerCounters | null
   locale: ReplayLocale
+  /** Les cotes de la fiche : largeurs minimales de la cellule de score et d'un compteur. */
+  gabarit: CardGabarit
 }) {
   const t = REPLAY_TEXT[locale]
   if (!live && !board) return null
@@ -109,7 +114,7 @@ export function ReplayCountersBadge({
           c'est ce qui aligne les triplets d'une colonne à l'autre. */}
       <span
         className="shrink-0 text-right font-normal text-muted-foreground"
-        style={{ minWidth: SCORE_CELL_W }}
+        style={{ minWidth: gabarit.scoreCellW }}
         title={live ? t.playerScoreLive : undefined}
       >
         {live ? live.score : ''}
@@ -124,7 +129,7 @@ export function ReplayCountersBadge({
             {i > 0 && <span className="opacity-[.35]">/</span>}
             <span
               className="inline-block text-center font-bold"
-              style={{ color: tokenCssVar(token as 'success'), minWidth: COUNT_CELL_W }}
+              style={{ color: tokenCssVar(token as 'success'), minWidth: gabarit.countCellW }}
             >
               {v ?? '?'}
             </span>

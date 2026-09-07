@@ -38,6 +38,7 @@ import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import type { CatalogLabel } from '../i18n/catalogLabel'
+import type { CardGabarit } from '../model/cardGabarit'
 import type { EquippedReading } from '../model/equippedLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import {
@@ -54,11 +55,10 @@ import { formatSeconds, frameToMs, freshness, READING_FADE } from '../../../lib/
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { familyOf } from '../layers/shotEffects'
 
-/** Vignette d'un TYPE DE GRENADE : 14 px (option 2a — la boîte de 56 px est taillée dessus). */
-const GRENADE_ICON_PX = 14
-/** Largeurs FIXES des cellules — la grille des fiches en dépend (option 2a : 32 / 56). */
-const AMMO_CELL_W = 32
-const GRENADES_BOX_W = 56
+// LES LARGEURS FIXES DES CELLULES (munitions 32, boîte de grenades 56 — option 2a) ET LA
+// VIGNETTE DE GRENADE (14 px, la boîte est taillée dessus) VIENNENT DU GABARIT de la fiche
+// (`model/cardGabarit.ts`, 2026-09-06 : `ammoCellW`, `grenadesBoxW`, `iconGrenadePx`) — la
+// grille des fiches en dépend, et deux gabarits ne peuvent pas partager une constante locale.
 
 /** Les familles d'arme À CHARGE : pas de chargeur, une jauge (cf. en-tête). */
 const CHARGE_FX = new Set(['plasma', 'melee', 'light'])
@@ -70,6 +70,7 @@ export function ReplayInventoryRow({
   frame,
   readingFull,
   locale,
+  gabarit,
 }: {
   doc: ReplayDocumentReady
   slot: number
@@ -77,6 +78,8 @@ export function ReplayInventoryRow({
   frame: number
   readingFull: number
   locale: ReplayLocale
+  /** Les cotes de la fiche : largeurs des cellules, côté de la vignette de grenade. */
+  gabarit: CardGabarit
 }) {
   const t = REPLAY_TEXT[locale]
   const read = inventoryAt(doc, slot, frame)
@@ -133,7 +136,7 @@ export function ReplayInventoryRow({
     >
       <span
         className="inline-flex shrink-0 items-center"
-        style={{ width: AMMO_CELL_W, opacity: read ? freshness(read.age, readingFull, READING_FADE) : 1 }}
+        style={{ width: gabarit.ammoCellW, opacity: read ? freshness(read.age, readingFull, READING_FADE) : 1 }}
       >
         {equipped && ammo.length > 0 && (
           equipped.drawn !== null ? (
@@ -165,7 +168,7 @@ export function ReplayInventoryRow({
         // l'inventaire ne le décrit donc pas. Un âge négatif est une lecture À VENIR : la
         // valeur absolue estompe, l'infobulle dit « dans X s ».
         style={{
-          width: GRENADES_BOX_W,
+          width: gabarit.grenadesBoxW,
           opacity: box ? freshness(box.age, readingFull, READING_FADE) : 1,
         }}
         title={box ? grenadeBoxHint(t, box, grenades, doc) : undefined}
@@ -175,6 +178,7 @@ export function ReplayInventoryRow({
             key={g.rank}
             carried={g}
             icon={grenadeMaskOf(doc.grenadeLabels?.[g.rank])}
+            iconPx={gabarit.iconGrenadePx}
             selected={
               typeof selected === 'object' && selected !== null && g.rank === selected.rank
                 ? selected
@@ -198,6 +202,7 @@ export function ReplayInventoryRow({
         frame={frame}
         readingFull={readingFull}
         locale={locale}
+        gabarit={gabarit}
       />
       {/* L'ÉTAT VIDE VIENT APRÈS LES CELLULES FIXES, et c'est ce qui concilie les deux règles.
           Le lot « lecture vide » le voulait à côté de l'équipement ; la refonte veut que les
@@ -248,11 +253,14 @@ function grenadeMaskOf(label: CatalogLabel | undefined): GrenadeIconRef | null {
 function GrenadeChip({
   carried,
   icon,
+  iconPx,
   selected,
   t,
 }: {
   carried: { rank: number; name: string; count: number }
   icon: GrenadeIconRef | null
+  /** Côté de la vignette, du gabarit de la fiche. */
+  iconPx: number
   /** Non nul = c'est CE type qui est équipé ; `read` dit si la lecture ou la déduction l'établit. */
   selected: { rank: number; read: boolean } | null
   t: (typeof REPLAY_TEXT)[ReplayLocale]
@@ -280,8 +288,8 @@ function GrenadeChip({
           imageUrl={icon.url}
           tinted={icon.tinted}
           label={carried.name}
-          width={GRENADE_ICON_PX}
-          height={GRENADE_ICON_PX}
+          width={iconPx}
+          height={iconPx}
         />
       ) : (
         carried.name
