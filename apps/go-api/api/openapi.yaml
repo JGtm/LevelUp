@@ -13183,6 +13183,9 @@ components:
         ambiguousSlot:
           format: int64
           type: integer
+        assignedByPlay:
+          format: int64
+          type: integer
         bursts:
           format: int64
           type: integer
@@ -13202,6 +13205,9 @@ components:
           format: int64
           type: integer
         dropsRepositioned:
+          format: int64
+          type: integer
+        dropsWithheld:
           format: int64
           type: integer
         flagFilm:
@@ -13286,6 +13292,8 @@ components:
         - objectLives
         - closedByObject
         - dropsRepositioned
+        - assignedByPlay
+        - dropsWithheld
       type: object
     FlagCarry:
       additionalProperties: false

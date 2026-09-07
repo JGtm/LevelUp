@@ -100,7 +100,7 @@ func assembleFlagLives(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx
 	for f := range state {
 		state[f] = FlagStateHome
 	}
-	for _, ev := range flagLifeTimeline(raws, scan, ctx) {
+	for _, ev := range flagLifeTimeline(raws, scan, ctx, cov) {
 		applyFlagLifeEvent(ev, raws, scan, flagLifeState{trans: trans, state: state, ctx: ctx, cov: cov})
 	}
 	return flagCarriesOf(trans, scan, ctx.frames)
@@ -116,13 +116,34 @@ type flagLifeState struct {
 }
 
 // flagLifeTimeline rend la suite chronologique des evenements de vie des drapeaux.
-func flagLifeTimeline(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx) []flagLifeEvent {
+//
+// UNE REPRISE DU MEME PORTEUR N EMET AUCUNE FIN, et c est ce qui empeche un span MASQUE. Un
+// portage ferme par la prise suivante du meme slot (`reprise`) n a AUCUN lacher date : le
+// modele borne lui-meme le sejour au sol a zero, puisque la fin et la reprise tombent sur la
+// meme milliseconde. Emettre sa fin quand meme posait un `dropped` a la frame SUIVANTE de
+// l ouverture de la reprise — la fin est datee `frame(t1) + 1`, l ouverture `frame(t0)` —, si
+// bien que le portage repris se reduisait a UNE frame et que le drapeau se dessinait au sol
+// pendant qu un joueur courait avec. Mesure sur `bcb6d393` : 10 portages sur 16, dont les 77
+// frames du portage qui finit par la capture.
+//
+// LA GARDE EST ETROITE : il faut que la reprise tombe sur le MEME drapeau. Si le portage
+// suivant du meme slot a ete attribue a l AUTRE drapeau, celui-ci est bel et bien lache, et sa
+// fin s emet comme avant.
+func flagLifeTimeline(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx,
+	cov *FlagCarriesCoverage) []flagLifeEvent {
 	out := make([]flagLifeEvent, 0, 2*len(raws))
 	for i, r := range raws {
 		out = append(out, flagLifeEvent{at: r.t0, kind: flagLifeOpen, carry: i})
-		if r.closed {
-			out = append(out, flagLifeEvent{at: r.t1, kind: flagLifeClose, carry: i})
+		if !r.closed {
+			continue
 		}
+		// UNE CAPTURE N EST JAMAIS RETENUE : elle ne pose pas le drapeau au sol, elle le renvoie
+		// a sa base, et c est un fait DATE qui tranche sur tout recouvrement.
+		if !r.captured && flagTenuParUnAutre(raws, i) {
+			cov.DropsWithheld++
+			continue
+		}
+		out = append(out, flagLifeEvent{at: r.t1, kind: flagLifeClose, carry: i})
 	}
 	for _, t := range flagReturnTimes(scan) {
 		out = append(out, flagLifeEvent{at: t, kind: flagLifeReturn, carry: -1})
@@ -137,6 +158,35 @@ func flagLifeTimeline(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx)
 		return out[i].kind < out[j].kind
 	})
 	return out
+}
+
+// flagTenuParUnAutre dit qu'a l'instant ou le portage `i` s'acheve, UN AUTRE portage du MEME
+// drapeau est encore ouvert : le drapeau passe d'une main a l'autre, il ne touche pas le sol.
+//
+// C'EST L'INVARIANT DE COHERENCE DU CALQUE : un etat [FlagStateDropped] ne se publie jamais a un
+// instant ou le document dit par ailleurs que le drapeau est PORTE. Deux situations le
+// declenchent, et la premiere est de loin la plus frequente :
+//
+//	la REPRISE du meme porteur   le portage est ferme par la prise suivante de son propre slot
+//	  (`reprise`)                 (`bcb6d393` : 11 fois sur 16) — il n'y a AUCUN lacher date, le
+//	                              modele borne lui-meme le sejour au sol a zero ;
+//	un RECOUVREMENT              deux portages du meme drapeau se chevauchent — une incoherence
+//	                              que la couverture publie deja (`overlaps`, `closedOverlaps`).
+//	                              Publier le lacher de l'un ECRASERAIT le portage de l'autre.
+//
+// LE BIAIS EST CELUI QUE L'EN-TETE DE `flag_carries.go` ASSUME : se tromper en dessinant le
+// drapeau dans une main qui ne le tient plus, jamais en le posant au sol alors qu'un joueur
+// court avec. Ce qui est ecarte ici n'est pas perdu : le recouvrement reste compte.
+func flagTenuParUnAutre(raws []flagCarryRaw, i int) bool {
+	for j := range raws {
+		if j == i || raws[j].flagIndex != raws[i].flagIndex {
+			continue
+		}
+		if raws[j].t0 <= raws[i].t1 && raws[i].t1 < raws[j].t1 {
+			return true
+		}
+	}
+	return false
 }
 
 // flagReturnTimes rend les instants tries des `flag_returns` du film.

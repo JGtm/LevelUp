@@ -297,33 +297,127 @@ aucune raison de ne pas l etre. Trois pas, sans decision de produit :
 recopie, et `openapi.yaml` puis `generated.ts` sont REGENERES (jamais edites a la main) —
 diff : 4 lignes au contrat, 2 aux types web. Paquet vert, contrat vert.
 
+## 8 ter. Complement : spans masques — une lecture vraie n'est ni perdue ni masquee
+
+La premiere version de ce lot mettait le 16e portage sur le BON drapeau et, ce faisant, le
+faisait tomber sous un defaut PREEXISTANT (decouverte n° 2 d'alors) : la duree PUBLIEE de
+`2533274858283686` passait de 358 a 282 frames. Le lot des durees venait de retablir ces 358
+contre le parc ; l'axe des durees d'un gate en mode base serait donc sorti EN ECHEC. Corrige ici.
+
+### Le defaut, a la ligne
+
+`applyFlagLifeEvent` date l'ouverture d'un portage a `frameOfMatchMS(t0)` et sa fin a
+`frameOfMatchMS(t1) + 1`. Quand un portage est ferme par LA PRISE SUIVANTE DU MEME SLOT
+(`boundFlagCarries`, quatrieme fait de fermeture), `t1` vaut exactement le `t0` du suivant : la
+fin tombe donc UNE FRAME APRES l'ouverture de la reprise, et `spansOfTransitions`, qui trie par
+FRAME, la laisse ecraser l'etat `carried`. Le portage repris se reduisait a UNE frame, suivi
+d'un `dropped` qui couvrait tout le trajet — **le drapeau se dessinait au sol pendant qu'un
+joueur courait avec**.
+
+### L'invariant pose, plus general que le symptome
+
+Une fin ne publie pas `dropped` quand, a cet instant, **un autre portage du meme drapeau est
+encore ouvert** (`flagTenuParUnAutre`) : le drapeau passe d'une main a l'autre, il ne touche pas
+le sol. Deux situations le declenchent :
+
+- la **reprise** du meme porteur — aucun lacher DATE : le modele borne lui-meme le sejour au sol
+  a zero (11 fois sur 16 portages sur `bcb6d393`) ;
+- un **recouvrement** de deux portages du meme drapeau — une incoherence que la couverture
+  publie deja (`overlaps`, `closedOverlaps`) ; publier le lacher de l'un ECRASAIT le portage de
+  l'autre (c'est ce qui coutait 4 frames a `2533274823110022` sur `64e8adfa`).
+
+**UNE CAPTURE N'EST JAMAIS RETENUE** : elle ne pose pas le drapeau au sol, elle le renvoie a sa
+base, et c'est un fait DATE qui tranche sur tout recouvrement. La garde est ecrite et testee.
+
+Le biais est celui que l'en-tete de `flag_carries.go` assume depuis l'origine : se tromper en
+dessinant le drapeau dans une main qui ne le tient plus, jamais en le posant au sol alors qu'un
+joueur court avec.
+
+### Les deux compteurs, servis jusqu'au contrat
+
+`coverage.flagCarries` publie desormais ce que les regles ont DECIDE, et les deux traversent
+`replaydoc` -> `replayview` -> `openapi.yaml` -> `generated.ts` (cliquet de parite
+`TestChaqueChampStockeAUneDecision`) :
+
+- **`assignedByPlay`** — prises attribuees au SEUL drapeau en jeu (troisieme regle
+  d'attribution, une attribution par elimination) ;
+- **`dropsWithheld`** — fins dont l'etat `dropped` n'a pas ete publie parce qu'un autre portage
+  tenait encore le drapeau.
+
+### Mesure, base `feat/v2-durees` HEAD (`0930cc692`, recompilee) contre ce HEAD
+
+| film | duree totale portee | `dropsWithheld` | joueurs dont la duree BAISSE | spans masques |
+|---|---|---|---|---|
+| `bcb6d393` | 948 -> **1 423** | 11 | **aucun** | 10 -> **0** |
+| `e94163af` | 664 -> **1 159** | 18 | **aucun** | 17 -> **0** |
+| `c0a82e88` | 67 -> 67 | 0 | **aucun** | 0 -> 0 |
+| `cde26226` | 4 119 -> **6 422** | 63 | **aucun** | 63 -> **0** |
+| `64e8adfa` | 2 441 -> **4 388** | 49 | **aucun** | 41 -> **0** |
+
+Durees par joueur sur `bcb6d393` (frames), base contre HEAD :
+
+| xuid | base | HEAD |
+|---|---|---|
+| `2533274823110022` | 441 | **666** |
+| `2533274858283686` | **358** | **358** (tenu) |
+| `2535429985869093` | 96 | **346** |
+| `2535469190789936` | 53 | 53 |
+| **total** | **948** | **1 423** |
+
+Les trois temoins mandates gardent 0 portage sur son propre drapeau et leurs captures sur le
+drapeau adverse. `64e8adfa` : 13 -> 7 fautes, aucune perte de duree.
+
+### Tests, prouves par mutation
+
+`internal/analysis/replay/flag_reprise_test.go` :
+
+- `TestFlagRepriseNePubliePasDeLacher` — deux portages du meme porteur se fondent en UN span
+  continu `[10..50]` (41 frames), `dropsWithheld = 1`, aucun `dropped` ;
+- `TestFlagRepriseSurUnAutreDrapeauLacheBien` — **la contre-epreuve** : si la reprise porte sur
+  l'AUTRE drapeau, le premier est bel et bien lache et son `dropped` se publie.
+
+```
+M-A  la fin de la reprise est emise quand meme
+     --- FAIL: TestFlagRepriseNePubliePasDeLacher
+         etats [home carried dropped home], attendu [home carried home]
+M-B  la garde « meme drapeau » retiree
+     --- FAIL: TestFlagRepriseSurUnAutreDrapeauLacheBien
+         dropsWithheld = 1, attendu 0 ; etats [home carried], attendu [home carried dropped]
+M-C  la garde « une capture n'est jamais retenue » retiree
+     --- FAIL: TestFlagAssignLeSolSuitLeTempsEtNonLOrdreDesPrises
+         aucun retour a la base a la frame 71 sur le drapeau adverse
+```
+
+Les deux tests d'attribution asserent en outre `assignedByPlay` (1 quand la troisieme regle
+tranche, 0 quand elle se tait).
+
+### Ce que le complement ne repare pas
+
+Sur `64e8adfa` (2 manches, `closedOverlaps = 10`), la capture de 529 075 ms passe du drapeau
+adverse au drapeau du camp de son auteur. Ce n'est PAS le fait de cet invariant — c'est le
+portage de 5 169 qui est mal attribue, l'une des 7 fautes residuelles deja au registre : la prise
+se fait a 2,3 m du socle de son PROPRE camp, les deux drapeaux sont dehors, et la regle du seul
+drapeau en jeu se tait. La regle qui la reparerait (« une prise au socle S ne porte pas sur le
+drapeau de S ») reste REFUTEE par la faute de 6 569 sur le meme film.
+
 ## 9. Decouvertes, notees et NON traitees
 
-1. **`64e8adfa` garde 7 portages sur leur propre drapeau (13 avant).** Le film a **2 manches** et
-   `closedOverlaps = 10` — une contradiction entre faits dates, deja publiee par la couverture. Aux
-   sept instants restants, ou bien les DEUX drapeaux sont dehors (la troisieme regle se tait a
-   dessein), ou bien `enJeu` est PERIME parce que le drapeau est rentre par un `flag_returns` ou
-   une rentree d'objet, que `assignFlags` ne voit pas. **Une regle tentante est REFUTEE** : « une
-   PRISE au socle S ne porte pas sur le drapeau de S » vaut pour six des sept fautes mais
-   **contredit la septieme** (frame 6569 : un joueur de l'equipe 1 prend a 2,6 m du socle de
-   l'equipe 0, et la bonne reponse est justement le drapeau de l'equipe 0). *Reprise* : faire
-   partager a l'attribution la machine a etats de `assembleFlagLives` (retours credites + rentrees
-   d'objet) plutot que d'en ecrire une seconde copie — la regle du depot interdit la troisieme
-   copie d'un meme motif.
-2. **Un portage ferme par la prise SUIVANTE DU MEME JOUEUR se publie `dropped` alors qu'il est
-   porte.** `applyFlagLifeEvent` date la fin a `frameOfMatchMS(t1) + 1` et l'ouverture a
-   `frameOfMatchMS(t0)` : quand `t1 == t0` (le meme joueur relache et reprend — ce que fait tout
-   porteur qui tire), la fin tombe UNE FRAME APRES l'ouverture et ecrase l'etat `carried`. Mesure :
-   **10 portages sur 16 sur `bcb6d393`** (avant comme apres ce lot), **17 sur 33 sur `e94163af`**.
-   *Consequence mesuree de ce lot* : le 16e portage, desormais sur le bon drapeau, tombe sous ce
-   defaut-la, et la duree PUBLIEE de `2533274858283686` passe de 358 a 282 frames — les 77 frames
-   etaient auparavant visibles parce qu'elles etaient seules sur un drapeau que personne d'autre ne
-   touchait. Le portage n'est pas perdu (il est publie, a la bonne place) ; c'est son span qui est
-   masque. *Reprise* : une fin ne doit pas ecraser un `carried` ouvert au meme instant sur le meme
-   drapeau — corriger la datation de la transition de fin, avec un test de mutation sur un relais
-   du meme slot.
-3. **Aucun compteur de couverture ne publie combien de portages la troisieme regle a attribues.**
-   `FlagCarriesCoverage` est servi par le contrat (`internal/domain/replaydoc/coverage.go` +
-   `openapi.yaml` + `generated.ts`) : ajouter un champ deborde le perimetre de ce fait. *Reprise* :
-   au prochain lot qui touche la couverture du drapeau, publier `assignedByPlay` (et son
-   pendant ambigu) pour que la regle se verifie au lieu de se croire.
+Les decouvertes n° 2 (spans masques) et n° 3 (compteur de couverture) de la premiere redaction
+sont **TRAITEES** au §8 ter. Il reste une entree.
+
+1. **`64e8adfa` garde 7 portages sur leur propre drapeau (13 avant ce lot), et une capture y
+   change de drapeau.** Le film a **2 manches** et `closedOverlaps = 10` — une contradiction
+   entre faits dates, deja publiee par la couverture. Aux sept instants restants, ou bien les
+   DEUX drapeaux sont dehors (la troisieme regle d'attribution se tait a dessein), ou bien
+   `enJeu` est PERIME parce que le drapeau est rentre par un `flag_returns` ou une rentree
+   d'objet, que `assignFlags` ne voit pas. **Consequence a dire** : la capture de 529 075 ms
+   passe du drapeau adverse a celui du camp de son auteur, parce que le portage de 5 169 est
+   l'une de ces sept fautes (prise a 2,3 m du socle de son PROPRE camp, les deux drapeaux
+   dehors). **Une regle tentante est REFUTEE sur pieces** : « une PRISE au socle S ne porte pas
+   sur le drapeau de S » repare six fautes sur sept et CONTREDIT la septieme (frame 6 569 : un
+   joueur de l'equipe 1 prend a 2,6 m du socle de l'equipe 0, et la bonne reponse est justement
+   le drapeau de l'equipe 0). *Reprise* : faire PARTAGER a l'attribution la machine a etats de
+   `assembleFlagLives` (retours credites + rentrees d'objet, qui nomment leur socle) au lieu d'en
+   ecrire une seconde copie — la regle du depot interdit la troisieme copie d'un meme motif.
+   Controle de reprise : les 7 fautes a 0 et la capture de 529 075 ms revenue sur le drapeau
+   adverse, sans bouger `bcb6d393`, `e94163af`, `c0a82e88` ni `cde26226`.

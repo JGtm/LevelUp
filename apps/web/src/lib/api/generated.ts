@@ -6473,6 +6473,8 @@ export interface components {
             /** Format: int64 */
             ambiguousSlot: number;
             /** Format: int64 */
+            assignedByPlay: number;
+            /** Format: int64 */
             bursts: number;
             /** Format: int64 */
             captures: number;
@@ -6486,6 +6488,8 @@ export interface components {
             closedOverlaps: number;
             /** Format: int64 */
             dropsRepositioned: number;
+            /** Format: int64 */
+            dropsWithheld: number;
             flagFilm: boolean;
             /** Format: int64 */
             homeByObject: number;
