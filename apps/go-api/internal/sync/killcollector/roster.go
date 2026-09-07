@@ -43,12 +43,12 @@ func NewSharedRoster(db *sql.DB) *SharedRoster { return &SharedRoster{db: db} }
 // un xuid de victime. Des lignes qu aucun agregat carriere ne peut joindre — c est-a-dire
 // exactement ce que ce chantier existe pour produire.
 //
-// La vue est la SOURCE UNIQUE du resolveur `xuid -> gamertag` du depot
-// (`analysis.GamertagLookupViewSQL`), et sa cascade explique pourquoi lire une seule table ne
-// suffit jamais : bot connu, puis `xuid_aliases`, puis `match_participants`, puis
-// `killer_victim_pairs`, puis libelle masque. **`xuid_aliases` a cesse d etre alimente en avril
-// 2026** ; ce sont les gamertags du KILL-FEED, portes par `killer_victim_pairs`, qui couvrent
-// les adversaires croises depuis. Couverture mesuree : 18 219 xuids, 36 masques.
+// La vue est la SOURCE UNIQUE du resolveur `xuid -> gamertag` du depot, et sa cascade explique
+// pourquoi lire une seule table ne suffit jamais : bot connu, puis `xuid_aliases`, puis
+// `match_participants`, puis `killer_victim_pairs`, puis libelle masque. **`xuid_aliases` a cesse
+// d etre alimente en avril 2026** ; ce sont les gamertags du KILL-FEED, portes par
+// `killer_victim_pairs`, qui couvrent les adversaires croises depuis. Couverture mesuree : 18 219
+// xuids, 36 masques.
 //
 // AMBIGUITE : si deux participants du meme match portent le meme nom, on n en garde AUCUN.
 // Ecrire les morts d un joueur sous le xuid d un autre serait pire que de n en ecrire aucun.
@@ -61,6 +61,7 @@ func (r *SharedRoster) IdentitiesForMatch(ctx context.Context, matchID string) (
 		ParXUID:    parXUID,
 		ParNom:     make(map[string]string, len(parXUID)),
 		ShotsFired: map[string]int{},
+		Equipes:    map[string]int{},
 	}
 	ambigus := map[string]bool{}
 	for xuid, gt := range parXUID {
@@ -121,7 +122,8 @@ func (r *SharedRoster) gamertagsForMatch(ctx context.Context, matchID string) (m
 	return out, nil
 }
 
-// participantsForMatch complete `out` avec les xuids du match et la reference `shots_fired`.
+// participantsForMatch complete `out` avec les xuids du match, la reference `shots_fired`
+// et l EQUIPE de chacun.
 //
 // ⚠ `shots_fired` NULL N EST PAS ZERO. Une colonne nulle veut dire « l API n a pas donne le
 // nombre de tirs » ; zero veut dire « l API dit qu il n a pas tire ». La porte de publication
@@ -132,10 +134,10 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 		return fmt.Errorf("SharedRoster: db nil")
 	}
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT xuid, shots_fired
-		FROM match_participants
-		WHERE match_id = ? AND xuid IS NOT NULL AND xuid <> ''
-		ORDER BY xuid
+		SELECT p.xuid, p.shots_fired, p.team_id
+		FROM match_participants p
+		WHERE p.match_id = ? AND p.xuid IS NOT NULL AND p.xuid <> ''
+		ORDER BY p.xuid
 	`, matchID)
 	if err != nil {
 		return fmt.Errorf("SharedRoster participants(%s): %w", matchID, err)
@@ -144,13 +146,16 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 
 	for rows.Next() {
 		var xuid string
-		var shots sql.NullInt64
-		if err := rows.Scan(&xuid, &shots); err != nil {
+		var shots, team sql.NullInt64
+		if err := rows.Scan(&xuid, &shots, &team); err != nil {
 			return fmt.Errorf("SharedRoster participants(%s) scan: %w", matchID, err)
 		}
 		out.XUIDs = append(out.XUIDs, xuid)
 		if shots.Valid {
 			out.ShotsFired[xuid] = int(shots.Int64)
+		}
+		if team.Valid {
+			out.Equipes[xuid] = int(team.Int64)
 		}
 	}
 	if err := rows.Err(); err != nil {

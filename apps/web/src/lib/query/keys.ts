@@ -167,6 +167,33 @@ export const queryKeys = {
    *  Title-agnostic PAR DESIGN (balaie tous les joueurs/titres). */
   teammatesAll: ['teammates'] as const,
 
+  // Onglet Tactique (Ascension) — la grille des cartes jouées.
+  // `filterHash` : le filtre courant entre dans la clé parce qu'il change la POPULATION
+  // servie (quelles cartes, et combien de matchs sur chacune). Sans lui, changer de
+  // période resservirait la grille de la période précédente.
+  tacticalMaps: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['tactical-maps', playerSlug, titleSlug, filterHash] as const,
+  // Le PÉRIMÈTRE de l'onglet : les match_id que la barre L2 fait résoudre par
+  // /filters/match-ids. Clé DISTINCTE de la grille (2026-09-06) parce que la
+  // résolution est partagée par toutes les lectures de l'onglet — la grille
+  // aujourd'hui, la vue par carte demain — et qu'une seule requête doit la servir.
+  tacticalMatchIDs: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['tactical-match-ids', playerSlug, titleSlug, filterHash] as const,
+  // Le FOND d'une carte : propre à la CARTE, indépendant du filtre, figé entre deux
+  // cuissons — d'où une clé distincte de la grille (même raison que
+  // `matchReplayBackgroundImage` vis-à-vis de `matchReplay`), et un staleTime infini.
+  //
+  // SANS `playerSlug`, et c'est délibéré (revue R1, W4) : l'image d'une carte est une
+  // donnée de RÉFÉRENCE du titre, identique pour tout le monde. La clé par joueur retenait
+  // N images par joueur consulté dans la session, pour exactement le même contenu.
+  // `titleSlug` reste en 1er segment — une carte n'existe que dans son titre — et l'URL de
+  // fetch garde le joueur (la route est derrière l'ownership).
+  tacticalMapBackground: (titleSlug: string, mapId: string) =>
+    ['tactical-map-background', titleSlug, mapId] as const,
+
+  // Raster de placement pour UNE carte et UNE question.
+  tacticalRaster: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>
+    ['tactical-raster', playerSlug, titleSlug, mapId, paramHash] as const,
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
   synthesis: (playerSlug: string, titleSlug: string, scopeHash: string) =>
     ['synthesis', playerSlug, titleSlug, scopeHash] as const,

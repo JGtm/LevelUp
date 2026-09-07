@@ -1,3 +1,42 @@
+## [2026-09-07] Fusion `origin/feat/v75` -> `feat/tactique` (worktree `LevelUp-wt-tactique`) — Complete
+
+**Decision technique principale.** Regle ferme de l'utilisateur : `feat/v75` fait foi sur les 13
+conflits ; le besoin du chantier tactique est re-applique PAR-DESSUS, adapte a l'API/aux types de
+v75, jamais l'inverse. `owners.go` : le marquage `nomPar = NomParFermeture` repose sur la version
+v75 du nommage par fermeture (deja refondue). `order.go` : `shared_match_lives_v1` insere a la
+position alphabetique de son fichier. `replay_purge_cron.go` : les DEUX familles de nettoyage
+(sidecar de raster + marque de derivation orpheline) coexistent, la seconde ajoutee par v75.
+`killcollector/positions.go` : refonte totale par v75 (`passePositions`/`Deriver`/entames) —
+`projeterFaitsDIsolement` recablee dans `ecrireLesDeuxPasses` avec le materiau construit par
+`buildPositionRows`. `replayartifacts/` : v75 a remplace toute la chaine `b.usage []artefactCuit`
+par le pipeline `Deriver`/`artefactLu`/`bilanDerivations` (derivations.go, inconnu du plan de
+fusion) — `projeterRastersTactiques` adapte a `[]artefactLu`, cable dans `Deriver` apres
+`persisterStatsBombe` ; `lireArtefacts` migre vers `lireDocumentRange` (ratchet
+`document_unique_test.go`, motif corrige de `replay.ReplayDocument` vers `json.Unmarshal` — le
+motif precedent aurait fait rougir le passage legitime du document deja parse en parametre) ;
+`backlog.go`/`derivations_backlog.go` unifies sur `requeteQueueRecente` + `analysis.SQLEligibleALaCuisson`
+(`fenetreRetention` devenue morte, supprimee). Hors plan : `tactical_repo.go`/`tactical_repo_isolement.go`
+nommaient `kill_positions_latest` en dur et faisaient rougir le garde-rail v75
+`kill_measured_guard_test.go` (lot 3, 2026-09-06) — adaptes a la constante `positionsAtKill` de
+`kill_measured.go`, sans reutiliser `measuredKillsQuery` (pas de garde d'unanimite d'arme, semantique
+differente, documentee dans l'en-tete du fichier). `.ai/thought_log.md` et `REGISTRE_REPORTS.md` :
+les deux contenus gardes (v75 puis tactique), sans doublon nouveau.
+
+**Resultats observes.** 13 conflits resolus, 1 fichier non liste par le plan mais casse par la
+fusion (`tactical_repo*.go`) corrige et consigne dans `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`.
+Contrat regenere (`openapi-gen` + `generate-types`). Gates : `go build ./...` OK ; `go vet` OK ;
+`go test -count=1 ./internal/... ./contracttest/... ./cmd/...` 166 paquets verts (1 echec initial
+`TestJointureMesureeUneSeuleFois`, corrige) ; integration `./internal/sync/...` verte (1 echec
+initial de compilation sur `positions_openings_integration_test.go`, signature
+`ecrireLesDeuxPasses` mise a jour) ; integration `persist/migration/scheduler` verte ;
+`openapi-gen -check` a jour ; web `typecheck`/`lint` (0 erreur, 29 warnings baseline)/`vitest`
+(6965 tests, 0 echec) verts ; `lint-no-hardcoded-colors` propre.
+
+**Conclusion / prochaine etape.** Commit de fusion sur `feat/tactique`, aucun push. Reste au
+registre `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md` : la double lecture/parse d'un artefact par
+`projeterRastersTactiques` (Deriver l'a deja lu, `ProjeterRasterTactique` le relit) — perf, pas
+correction, a regrouper avec la note deja au §7 du plan tactique.
+
 ## [2026-09-07] Campagne de fusion des branches de lot dans `feat/v75` — cinq branches integrees, `feat/tactique` reportee — Complete (cinq), En cours (tactique)
 
 **Le mandat.** Fusionner `feat/duels`, `feat/v75-frise-pov`, `feat/fiches-compactes`,
@@ -1334,6 +1373,464 @@ navigateur retires du plan sur decision utilisateur (« ce n'est qu'un changemen
 en compact, infobulles de report FR+EN), 4 (cas limites), 5 (gates, revue adversariale, gate
 visuel utilisateur sur `4f77afc1` et `000d5950`). Worktree `LevelUp-wt-fiches-compactes`,
 branche `feat/fiches-compactes`, merge dans `feat/v75` a la cloture.
+## [2026-09-07] Plan Tactique 7.7 (lot 7B) — le nuage isolement x couverture de l'Escouade — Complete
+
+**Decision technique principale** — zero nouvel algo. Le lot 7C avait deja pose le fait
+(`match_death_context`/`MortsAvecContexte`) et la mecanique de comparaison
+(`analysis/coordination.Isolement`, deja consommee par la lecture Tactique « isole ») ; la
+phase 3 avait deja pose la mesure de couverture (`coordination.Echanges`, deja consommee par
+la matrice « qui echange pour qui »). Ce lot ne fait que DECOUPER PAR SESSION ces deux mesures
+existantes, restreintes a un seul joueur et un seul groupe de matchs, dans le MEME service
+teammates que l'echange (`teammates_squad_isolement.go`, appele depuis `buildSquadEchange`).
+Aucune nouvelle requete SQL. Le rayon du radar entre par le MEME chemin que l'onglet Tactique
+(`ServiceRegistry.radarRangeFor` -> `TeammatesService.WithRadarRange`), jamais une seconde
+table.
+
+**Cote web** : le nuage a besoin d'un encodage PAR POINT (taille = morts examinees, opacite =
+echantillon faible sous 30) que le wrapper `<ScatterChart>` partage ne porte pas — il n'expose
+qu'un `symbolSize` uniforme par SERIE, pas par point. Plutot que d'etendre ce wrapper (et ses
+tests, partages avec les correlations Timeseries) pour un seul consommateur, `SquadIsolementNuageCard.tsx`
+compose `<ChartCard>` directement avec un `buildOption` custom — le meme pattern que
+`FirstBloodLanes`. Quadrants nommes repris A L'IDENTIQUE de la maquette
+echange-escouade.html (« proche et couvert », « loin, mais on vient », « proche, et pourtant
+seul », « loin et sans secours »), medianes du nuage tracees en lignes de reference
+(`markLine`), quadrant d'alerte teinte en `warning` (`markArea`).
+
+**Resultats observes** : Go build/vet/tests verts (`internal/service/...`,
+`internal/platform/duckdb`, `internal/api/...`, `contracttest`), `openapi-gen -check` a jour ;
+web typecheck/lint (0 erreur, 30 warnings — inchange) verts, vitest COMPLET 610 fichiers / 6450
+tests / 0 fail (608/6432 avant ce lot) ; `lint-no-hardcoded-colors` 0 violation. Deux commits
+`tactique(7B.1)` (service, requete, contrat) et `tactique(7B.2)` (carte Escouade).
+
+**Decouverte hors perimetre** : la lecture `MortsAvecContexte`/`QTacticalIsolement`
+(`platform/duckdb/tactical_repo_isolement.go`, posee en 7C) n'a AUCUN test `:memory:` dedie —
+seule sa consommation par ce lot (via mock du port) et par le service Tactique existant
+l'exercent. Notee dans `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`, non traitee (hors perimetre de
+7.7).
+
+**Conclusion / prochaine etape** : item 7.7 CLOS. Phase 7 (7A + 7B + 7C) integralement close.
+Prochaine etape du plan tactique : phase 8 (cloture) ou reprise d'un chantier en attente
+(`project_tactique_chantier.md` : onglet Tactique 8 phases, derive ECHANGE sur Escouade).
+
+## [2026-09-07] Plan Tactique 7C — revue ronde 1 : la capture n'etait branchee nulle part, et le slot recycle mentait — Complete
+
+**Decision technique principale** — les deux P0 se ressemblent : dans les deux cas, le code
+faisait ce qu'il fallait, mais pas la ou il fallait.
+
+P0-1 : `WithPositionCapture` n'etait appele QUE par `backfill-killsource`. Ni l'etape post-sync
+du serveur ni `--online` ne le cablaient, donc `collectPositions` sortait en Debug et AUCUNE
+position n'a jamais ete produite au fil du sync en production — defaut PREEXISTANT depuis la
+mise en place de `kill_positions`, rendu bloquant par l'objectif de 7C. Le refus etait un
+`Debug`, et une table neuve qui reste vide ne se remarque pas : voila comment un silence dure.
+Le cablage vit desormais dans `killcollector/capture.go` et les trois chemins l'appellent. DEUX
+ratchets, parce qu'aucun ne suffit : l'un verifie que chaque collecteur ARME la capture, l'autre
+que le cycle la RENSEIGNE — `AvecCapture` sur des deps vides serait un no-op silencieux,
+exactement la forme qu'aurait prise une correction incomplete.
+
+**Cout assume et ecrit** : le scan des bipedes entre pour la premiere fois dans le chemin de
+sync de prod. Il tourne sur le film DEJA charge (aucune relecture disque, c'est la meme passe
+que le journal des morts), l'ecriture garde son lease court, et tout echec reste best-effort.
+C'est l'objet meme du lot et le principe utilisateur « complet au sync ».
+
+P0-2 : les positions etaient attribuees par le pont APLATI (`SlotXUID`), qui donne tout
+l'intervalle d'un slot a son PREMIER porteur nomme. Un slot RECYCLE creditait donc le second
+occupant au premier — le bug que `nameTracksByLives` avait corrige pour les traces le
+2026-09-02, refait a l'identique cinq jours plus tard sur une autre surface. L'attribution passe
+par LA VIE QUI COUVRE L'INSTANT.
+
+**Une deviation tranchee sur pieces** : la revue demandait de refuser la projection quand le
+verdict du pont est « non publiable », ce qui inclut `SlotCollisions > 0`. Or ce compteur dit
+qu'un slot a ete RECYCLE : il invalide le pont aplati que le REJEU publie, pas les vies par
+lesquelles on attribue ici. Refuser dessus aurait ecarte exactement les films que la correction
+P0-2 existe pour traiter. `IndexDisagreements`, lui, refuse — celui-la rend le NOMMAGE faux.
+Le test l'a montre : ma premiere fixture de slot recycle ne rendait aucun contexte.
+
+**Resultats observes** — 11 tests purs de contexte (dont le slot recycle, la mort recente, le
+`joined_in_progress`), 10 tests unitaires de projection executables en CI (ils manquaient
+entierement : tout tenait a un test d'integration qui se skippe), 2 ratchets de cablage.
+Sept mutations jouees, chacune fait tomber un test nomme : retour au pont aplati ; visible sans
+test de vitalite ; arrivee ignoree ; post-sync sans resolveur ; `--online` sans cablage ; plus
+les trois de la ronde precedente rejouees.
+
+Gates au PREMIER PLAN, decoupes : sync EXIT 0 (10 paquets), persist+migration EXIT 0, duckdb
+EXIT 0 (4), service EXIT 0 (4) ; `go test ./internal/...` EXIT 0 ; golangci-lint 0 issue ;
+typecheck vert ; vitest 606/6405/0 ; contrat inchange.
+
+**Conclusion / prochaine etape** — revue de 7C statuee, tous constats traites. Deux decouvertes
+au §7 : trois autres tables append-only absentes de la regex de lecture brute (non traitees), et
+la duree du silence sur les positions au sync. Le test sur film reel choisit desormais son film
+parmi les fixtures ; il reste a le jouer sur le poste principal. STOP avant 7B.
+
+## [2026-09-07] Plan Tactique phase 7C — les faits d'isolement au sync, deux tables append-only — Complete
+
+**Decision technique principale** — decision utilisateur du 2026-09-07 : « les donnees d'un
+match en base sont completes au sync ; seul le rejeu peut attendre la cuisson ». Les faits
+d'isolement deviennent une SECONDE PROJECTION de la passe de positions du collecteur de kills,
+qui scanne deja tout ce qu'il faut (positions bipeds avec bornes de carte, fil des morts, index
+de joueur, pont slot->xuid, vies nommees). Aucun decodage nouveau, aucune cuisson.
+
+`match_lives` : une ligne par vie NOMMEE, sur l'horloge du MATCH. `match_death_context` : une
+ligne par mort du JOURNAL, avec les quatre etats de ses coequipiers et la distance au plus
+proche de ceux qu'on VOYAIT. Les deux append-only, vues `_latest` par PASSE (jamais par cle) —
+une passe plus courte que la precedente laisserait sinon survivre les lignes de l'ancienne.
+
+**Une deviation de la lettre du plan, tranchee sur pieces.** L'enum `end_cause` a quatre
+valeurs (`death` | `closure` | `film_end` | `cut`) melangeait deux questions orthogonales. Grep
+sur TOUT le paquet `replay` — la lecon de la ronde 2 : seuls `lives.go:233` et `owners.go:166`
+nomment une vie, et l'export n'emet que les vies nommees. `film_end` et `cut` etaient donc
+INATTEIGNABLES. Deux colonnes : `end_cause` (comment la vie s'est terminee) et `named_by`
+(comment on sait a qui elle appartient). Le point produit du brief en sort durci — un survivant
+nomme par fermeture porte `named_by = closure` ET `end_cause = film_end`. Validee par le
+superviseur, ecrite au plan.
+
+**Le troisieme etat est celui qui a deja coute une lecture.** « Hors de vue » n'est ni « mort »
+ni « a portee » : un coequipier en vehicule PEUT accompagner (la mort reste examinable) mais on
+ne sait pas ou il est. Les deux erreurs symetriques ont ete commises dans ce chantier — le
+compter mort (P0 ronde 1), puis lui inventer une position. Les deux ont leur test.
+
+**Resultats observes** — 8 tests purs sur les vies (dont une sentinelle anti-enum-morte), 7 sur
+le contexte, 8 sur l'algorithme d'isolement, 8 au service, 12 d'integration sur les VRAIES
+migrations, 1 ratchet anti-divergence des valeurs d'enum entre `replay`, `persist` et le DDL.
+Sept mutations jouees, chacune fait tomber un test nomme : decoupe sans distinction
+fin-de-film/coupure ; nommage sans pose de cause ; hors-de-vue traite comme en-attente ;
+position primant sur le depart ; adversaire compte comme coequipier ; vue `_latest` par cle au
+lieu de par passe ; divergence de valeur d'enum. ART : les deux tables entrent dans
+`tablesProtegees`, aucune allowlist ajoutee — le garde-rail est RENFORCE.
+
+**Une limite de couverture a dire, pas a taire** : le test d'integration du COLLECTEUR
+(`killcollector/isolation_facts_integration_test.go`) se skippe sans `KILLSOURCE_FIXTURES` —
+les films ne sont pas versionnes (107 Mo) et ce worktree n'a aucune donnee de production. Il
+n'a donc pas tourne dans cette session. Ce qu'il couvre seul est le CHAINAGE ; les quatre etats
+sont prouves en pur, l'idempotence de la passe sur les vraies migrations. Les deux autres
+niveaux tournent partout. Commande a jouer sur le poste principal :
+`KILLSOURCE_FIXTURES=../../../../../data/cache/film_chunks go test -count=1 -tags=integration
+-p 1 -run FaitsDIsolementFilmReel ./internal/sync/killcollector/` (la variable pointe la RACINE
+du cache ; le test lit `<racine>/9b191a7f/chunk_*.bin`).
+
+Une fixture a rougi a l'ecriture et c'etait elle qui avait tort : avec une seule mort, DEUX
+calages d'horloge apparient autant de morts et `bestDeathOffset` en choisit un.
+
+**Conclusion / prochaine etape** — 7C close, items 7C.1 a 7C.7 tous statues (7C.7 consigne,
+hors perimetre comme l'item le demandait). Le rattrapage `backfill-killsource` reprend le
+corpus deja collecte grace a `IsolationDecoderRev`, distincte de `KillSourceDecoderRev`. STOP
+avant 7B (item 7.7, nuage isolement x couverture de la page Escouade), qui dependait de 7C et
+peut desormais demarrer.
+
+## [2026-09-07] Plan Tactique 7.10 — revue : la ventilation parlait au nom de la file sans reprendre sa regle — Complete
+
+**Decision technique principale** — deux constats de fond, une seule cause. Le P0 : le
+predicat de retention valait NULL pour un match sans horodatage (la DDL l'autorise,
+`steps_shared_core.go:35-37`), et le scanner dans un `bool` nu rendait
+`converting NULL to bool` — 500 sur TOUTE la lecture d'artefact de la carte, pour une seule
+ligne mal datee. Le P1 : la file exige TROIS conditions (film pas definitivement perdu,
+horodatage exploitable, dans la fenetre) et la ventilation n'en reprenait qu'une, si bien
+qu'un match au film PERDU — marqueur terminal, ~29 % du parc — sortait « en attente ». La
+page envoyait attendre indefiniment un ecran qui ne se remplirait jamais.
+
+Correction commune : extraire le predicat ENTIER, pas recopier la condition manquante.
+`analysis.SQLEligibleALaCuisson(alias, mois, bit)` rend le SQL ET ses parametres dans
+l'ordre, et il est consomme par la file (`requeteQueueRecente`) comme par le lecteur
+(`QTacticalUnivers`). Le `IS NOT NULL` precede la comparaison de fenetre : `FALSE AND NULL`
+vaut FALSE, donc le predicat ne vaut jamais NULL — le P0 est ferme par construction, pas par
+un COALESCE de plus. Les compteurs deviennent `matchs_en_attente` (eligible) et
+`matchs_non_cuisables` (tout le reste). Le ratchet couvre desormais le test du bit.
+
+Effet de bord assume et ecrit : le `IS NOT NULL` RESSERRE la file quand la retention est
+illimitee — un match sans aucun horodatage n'y entre plus. Il n'y avait rien a en faire :
+`ORDER BY <canonique> DESC` ne sait pas le placer.
+
+**Resultats observes** — le trou de couverture explique les deux defauts : le SQL de
+`QTacticalUnivers` n'etait exerce par AUCUN test, le double du service rendant le booleen a
+la main. Deux tests `:memory:` posent les quatre situations (recent / vieux / film perdu /
+indatable) ; six tests unitaires figent `BorneRetention`, `BorneRetentionDepuis`,
+`SQLDansFenetreRetention` et `SQLEligibleALaCuisson` (ordre des conditions ET des
+parametres). Deux mutations jouees : retirer le `IS NOT NULL` fait tomber
+`TestUnivers_EligibiliteALaCuisson_QuatreCas` ; neutraliser le test du bit le fait tomber
+sur « film_perdu : eligible = true, attendu false ».
+
+**Un constat de la revue n'etait pas recevable, verifie sur pieces** : le cron de purge EST
+teste depuis le commit `15df6c629` — `replay_purge_cron_runonce_test.go` appelle `RunOnce`
+avec une horloge injectee et prouve la frontiere a la seconde pres. La mutation de la borne
+(`now - mois` -> `now`) le fait bien tomber. Aucun test ajoute : il aurait fait doublon.
+
+**Conclusion / prochaine etape** — 7A close, revue de 7.10 statuee. Deux decouvertes
+consignees au §7 : la degradation muette de `settingsStore.Load()` chez ses deux autres
+appelants (dont le cron de purge, ou un settings illisible desactive la purge sans un mot),
+et `BacklogHorizon` comme borne de DEBIT et non d'eligibilite. Lot 7C toujours en attente de
+son brief.
+
+## [2026-09-07] Plan Tactique — cloture de 7A : l'isolement quitte la lecture pour le sync — Complete
+
+**Decision technique principale** — decision utilisateur du 2026-09-07 : les faits
+d'isolement se produisent AU SYNC, par le collecteur de kills (`internal/sync/killcollector`,
+qui scanne deja les morts et `ScanBipedPositions`), dans deux tables append-only
+`match_lives` et `match_death_context` — lot 7C, apres la cloture de 7A. Le principe :
+« les donnees d'un match en base sont completes au sync ; seul le rejeu peut attendre la
+cuisson ».
+
+La lecture « ou je meurs isole » violait les deux moities de cette phrase. Elle demandait au
+FILM de dire qui etait mort (le P0 de la ronde 2 : `owners.go:166` nomme une vie par
+fermeture de slot, donc un survivant qui avait tire recevait une mort fabriquee), et elle
+faisait dependre un fait de base du calendrier de cuisson des artefacts. Elle est RETIREE
+entierement, regle 7 : `analysis/coordination/isolation.go` + tests, `domain/isolation.go`,
+`BilanIsolement` et son entree de liste blanche, la valeur `isole` du contrat,
+`matchs_sans_rayon` / `morts_equipe_a_terre` / `isolement`, le cablage `WithRadarRange` de
+bout en bout, et la `chronologie[]` du sidecar dont elle etait le seul consommateur — schema
+5 -> 6. Le modele vivant/mort ecrit a la salve 7.9 et garde hors de l'arbre est SUPPRIME :
+rien n'en est repris.
+
+Ce qui est garde l'est avec un consommateur nomme et date, jamais « au cas ou » :
+`[radar_range_m]` (48 variantes mesurees le 2026-09-05), `RadarRangeMap`, ses tests et son
+ratchet, plus un accesseur `RadarRangeForVariant` ou demenage le `TrimSpace` — le nom vient
+de `match_registry.game_variant_name`, donc de ce que l'API a envoye, et la normalisation
+appartient au point de resolution : chez l'appelant, elle se reecrit a chaque appelant et
+s'oublie une fois.
+
+Second fil : les lectures d'artefact publient `matchs_en_attente` et `matchs_hors_retention`.
+« N mesures sur M » servait le meme message a qui vient de jouer et a qui regarde ses matchs
+d'il y a deux ans. Le fait vient du lecteur (`TacticalMatch.DansRetention`) avec LA
+DEFINITION DE LA FILE DE CUISSON, extraite en `analysis.SQLDansFenetreRetention` /
+`BorneRetention` : annoncer une cuisson que la file ne fera pas serait pire que se taire.
+
+**Resultats observes** — le garde-rail `no_retention_window_inline_test` a MORDU A
+L'ECRITURE : deux copies inline preexistantes de la fenetre
+(`scheduler/replay_purge_cron.go:105`, `sync/replayartifacts/backlog.go:228`), ramenees a la
+definition unique dans le lot — poser un garde en laissant passer ce qu'il designe serait la
+factorisation abandonnee du diagnostic n 8. Invariant teste :
+`matchs_filtres = matchs_retenus + matchs_en_attente + matchs_hors_retention`. Mutation
+jouee : confondre les deux absences fait tomber les deux tests de ventilation (2/5/0 au lieu
+de 2/3/2). Contrat + `generated.ts` regeneres ; aucun usage web des champs retires.
+
+**Conclusion / prochaine etape** — 7A CLOSE. Lot 7C ouvert au plan (titre + dependance,
+brief a rediger par le superviseur) ; l'item 7.7 (7B) en depend desormais et ne peut pas
+demarrer avant que les tables existent en base.
+
+## [2026-09-07] Plan Tactique 7A — revue ronde 2 : le sidecar cesse de juger, le double cesse de mentir — Complete (volet vivant/mort SUSPENDU)
+
+**Decision technique principale** — le P0 de la ronde 2 invalide une verification que
+j'avais moi-meme signee : `replay/owners.go:166` (`nameClosedLives`) nomme une vie par
+FERMETURE DE SLOT, pas par mort. J'avais greppe `lives.go` seul et conclu l'inverse. Un
+survivant qui a tire recevait donc une mort fabriquee, et tout ce que le sidecar en
+deduisait — statut de voisin, distance, « toute l'equipe a terre » — reposait sur ce faux.
+Correction structurelle : **le sidecar ne juge plus rien**. Il ne porte qu'une chronologie
+de positions (un couple tous les 500 ms par fenetre observee, en metres), et les types de
+verdict (`TacticalRasterMort`, `TacticalRasterVoisin`, les statuts) sont supprimes avec
+leurs tests — regle 7, pas de musee. Schema du sidecar 4 -> 5 ; le contrat perd
+`morts_indeterminees` et `morts_position_inconnue` au profit de `morts_equipe_a_terre`.
+
+Le modele de lecture qui devait reprendre ces verdicts — mort au journal, reapparition
+observee ou delai de reapparition MESURE sur le match (mediane haute, exactement comme
+`replay/closures.go:respawnWindow`, reecrite en pur pour ne pas importer le decodeur),
+depart lu dans `match_participants.last_leave_time`, type de mort lu dans `neutralDeaths` —
+a ete ecrit, compile et teste, puis SORTI DE L'ARBRE sur decision du superviseur : la
+question produit « que veut dire vivant quand le film se tait » n'est pas tranchee. Il
+attend sous `scratchpad/7.9-modele-vivant-mort/`, avec sa condition de reprise consignee au
+§7 du plan. La lecture tient en attendant sur « vivant = une position a cet instant »,
+commentee `PROVISOIRE 2026-09-07` dans `etatDuCoequipier` — une phrase qui dit quoi attend
+quoi, jamais un TODO.
+
+Le second constat frappe le double du port sur l'autre moitie de la faute deja corrigee en
+ronde 1 : il appliquait la liste blanche NON VIDE, et exemptait la VIDE en rendant l'univers
+entier. Or `requeteDuScope` pose TOUJOURS la liste, et une liste vide ne lit AUCUN match en
+production : les ~35 fixtures sans identifiants verifiaient un comportement qui n'existe
+nulle part. Le double applique desormais les deux cas, `tsDemande` pose le perimetre reel du
+double, `universFiltre` filtre aussi les compositions, et un test dedie prouve le 404
+`ErrTacticalCarteInconnue` sur liste vide.
+
+**Resultats observes** — go build + go vet EXIT 0 sur `./internal/...` et `./cmd/...` ;
+suite `./internal/...` verte. Deux mutations jouees, chacune faisant tomber son test nomme :
+la clemence du double sur liste vide (`TestTacticalService_ListeBlancheVide_NeLitRien`
+tombe) et le retrait du `TrimSpace` a la resolution du rayon
+(`TestIsole_VarianteAvecBlancs_ResoutQuandMeme` tombe). Le ratchet de couverture de la table
+du radar, elargi a `[rounds_decide]` et `[hold_ticks]` avec une sentinelle anti-vacuite par
+table, passe sans correction : les 48 variantes livrees couvrent deja les quatre tables.
+Contrat + `generated.ts` regeneres (deux champs retires, un ajoute) ; aucun usage web des
+champs retires.
+
+**Conclusion / prochaine etape** — 7A ronde 2 statuee : P0 traite par la suppression des
+verdicts du sidecar, son volet de lecture SUSPENDU et consigne avec sa condition de reprise ;
+P1 et les 7 P2 livres. STOP demande avant 7B (item 7.7, nuage isolement x couverture sur la
+page Escouade). La reprise du volet suspendu attend la decision produit de l'utilisateur.
+
+## [2026-09-07] Plan Tactique 7A — revue adversariale ronde 1, 16 constats corriges — Complete
+
+**Decision technique principale.** Les trois P0 disent la meme chose sous trois formes : ON
+AFFIRMAIT CE QU'ON NE SAVAIT PAS. Un coequipier INVISIBLE — occupant de vehicule non
+attribue (la primitive n'apparie que 15,6 a 21,1 % des vies) ou survivant de fin de partie
+(derniere vie anonyme) — etait compte MORT, si bien qu'une mort survenue a trois metres d'un
+coequipier sortait « isolee » sous l'etiquette « toute l'equipe a terre ». Le sidecar porte
+desormais un STATUT a trois valeurs par voisin (`vivant` avec sa distance, `mort`,
+`inconnu`), et la lecture distingue QUATRE sorties qui ne se confondent plus : accompagnee,
+isolee, indeterminee, equipe a terre — avec une priorite qui compte, un coequipier VU A
+PORTEE tranchant avant tout le reste, sans quoi une mesure certaine serait perdue pour une
+incertitude sans effet. Deux branches ont ete tranchees SUR PIECES avant de coder : le slot
+n'est PAS une identite stable (le depot a supprime le nommage par slot parce qu'un slot
+recycle donnait son intervalle au premier porteur nomme), donc les segments non nommes ne
+prouvent rien ; et une vie ne peut etre nommee QUE par la mort qui la clot
+(`lives.go:191` est la seule assignation), donc le garde `EndFrame > StartFrame` etait
+inerte et le vrai mecanisme est le NOMMAGE.
+
+**Resultats observes.** Le second fil du lot est le meme que celui des rondes precedentes :
+UN GARDE QUI NE GARDE PAS. Le filtre `spawn` ne vivait que dans la branche des sidecars et
+rendait 200 sur l'univers ENTIER sous un libelle de grappe pour les lectures SQL ; les
+matchs sans rayon restaient au denominateur (troisieme occurrence du defaut deja corrige
+deux fois sous « correction G2 ») ; une mort sans lieu etait peinte au point de MONTEE dans
+le vehicule. ET CE QUI RENDAIT LE PREMIER INVISIBLE ETAIT LE DOUBLE LUI-MEME : le mock du
+port ignorait la liste blanche que le vrai lecteur applique dans son SELECT — le rendre
+fidele a immediatement fait tomber deux fixtures fausses (20 identifiants disjoints des 8 de
+la carte, et une DDL recopiee qui avait manque une colonne). Table du radar completee aux 48
+variantes connues des autres tables, avec un test de couverture qui a mordu a l'ecriture :
+13 manquaient. Gate complet rejoue en serie, tous codes de sortie verifies : `go vet` et
+`go test` sur `internal/`, `cmd/` et `contracttest/` sans un `FAIL` ; integration `-p 1` sur
+trois arbres ; `golangci-lint --new-from-merge-base` a 0 issue ; `funlen` ne signalant aucun
+fichier du lot ; contrat a jour et `generate-types` sans derive ; vitest complet
+606/6405/0. ONZE mutations jouees, dont UNE SURVIVANTE corrigee — la bilinguite des noms de
+grappe passait parce que le double du service court-circuitait `zonesNommees`.
+
+**Conclusion / prochaine etape.** Trois commits `tactique(7.8.<n>)` sur `feat/tactique`, non
+pousses ; schema du sidecar 3 -> 4. **7B (item 7.7, le nuage Escouade) N'EST TOUJOURS PAS
+COMMENCE** : main rendue pour la ronde 2. Trois decouvertes ajoutees au §7, aucune traitee :
+la distance d'isolement est HORIZONTALE (deux etages lisent 0 m — limite assumee, ecrite en
+trois endroits), un survivant de fin de partie sort en `inconnu` et non en `vivant` (donc la
+fin de match est moins mesuree que le reste, faute d'une preuve d'identite que le film ne
+donne pas), et l'identifiant d'une grappe est deterministe mais PAS eternel (un univers qui
+bouge peut le changer ; le 404 le dit).
+
+## [2026-09-06] Plan Tactique phase 7A — spawns, routes, isolement : le Go et le contrat — Complete
+
+**Decision technique principale.** La verification sur pieces, faite AVANT de coder, a decide
+de toute la forme du lot. Le document de rejeu ne publie AUCUNE liste de morts datees par
+joueur (`neutralDeaths` ne couvre que les morts que personne ne revendique) : la seule source
+hors ligne de « ce joueur est mort a cet instant » est la fin d'une vie NOMMEE — fiable par
+construction, puisque c'est le fil des morts du film qui pose l'identite de la victime sur la
+vie que sa mort termine, et que les survivants de fin de partie restent anonymes. Et parce que
+le film NE PORTE PAS LES EQUIPES (`Track.Team` = -1 pour tout le monde), l'isolement se calcule
+en DEUX TEMPS : a la cuisson, le sidecar mesure la distance a chaque autre joueur nomme VIVANT
+a l'instant de la mort ; a la lecture, le service joint les camps, applique le rayon de la
+VARIANTE du match et tranche. Le sidecar reste anonyme et sans contexte, donc rien ne le perime
+quand un joueur change de camp.
+
+**Resultats observes.** Trois decisions de mesure portent le lot, et chacune se serait lue
+comme un bug si elle avait ete prise autrement. (1) Le plancher des grappes porte sur l'AMAS et
+non sur la cellule : sur une grille de 0,5 m, trois reapparitions de trois matchs differents
+tombent dans trois cellules VOISINES — un plancher par cellule les aurait comptees a un match
+chacune, et tous les spawns du jeu auraient disparu. (2) L'identifiant d'une grappe est derive
+du barycentre, jamais d'un rang : un index change des qu'un match entre dans le filtre, et le
+lien `?spawn=` d'un utilisateur designerait alors un autre amas. (3) Les routes comptent des
+PASSAGES et non du temps, sans quoi elles auraient rendu la meme carte que « ou je passe mon
+temps », simplement bornee a 15 s. Le rayon du radar entre dans `regulation.toml
+[radar_range_m]` avec le chargeur EXISTANT et la convention de cle des quatre tables voisines
+(variante exacte) ; une variante absente ne rend pas de lecture et SE COMPTE. Gate complet
+vert : `go vet` et `go test` sur tout `internal/` + `cmd/` sans un `FAIL`, integration `-p 1`
+sur trois arbres (code 0), `golangci-lint --new-from-merge-base` a 0 issue, contrat a jour,
+typecheck propre, vitest complet 606/6405/0. ONZE mutations jouees, dont UNE SURVIVANTE
+corrigee : le test de stabilite de l'identifiant de grappe ne prouvait pas ce qu'il annoncait
+(l'amas ajoute triait apres l'original, qui gardait donc le rang 0). Deux seuils corriges que
+le ratchet CI ne peut pas voir, meme classe que le C8 de la ronde precedente : la complexite du
+chargeur de regulation (les quatre tables d'entiers se validaient pareil, la quatrieme a
+franchi le seuil) et `domain/tactical.go`, scinde selon la coupure que le §7 de la phase 6
+avait deja identifiee.
+
+**Conclusion / prochaine etape.** Quatre commits `tactique(7.<n>)` sur `feat/tactique`, non
+pousses. **7B (item 7.7, le nuage Escouade) N'EST PAS COMMENCE** : main rendue au superviseur
+pour la revue adversariale entre les deux sous-lots, comme demande. `7.1` est statue `[~]`
+(couvert par la phase 6 et sa correction C1) et `7.5 dispersion.go` `[!]` sur decision du
+superviseur, verifiee sur pieces : aucune lecture de la V1 ne la consomme, et le depot interdit
+le code sans consommateur. Trois decouvertes au §7, aucune traitee : une instabilite de la
+suite vitest complete (2 echecs sur 7 passages, noms non capturables, diff web limite aux
+types), une fixture a DDL recopiee qui avait manque une colonne du schema reel, et le fait que
+le spawn de depart est la premiere vie NOMMEE et non la premiere du film.
+
+## [2026-09-06] Plan Tactique phase 6 — revue adversariale ronde 1, 14 constats corriges — Complete
+
+**Decision technique principale.** Le constat qui porte le lot n'est pas un bug de code mais
+un TROU DE MESURE : **le temps passe en vehicule n'entrait nulle part, sur des matchs comptes
+comme MESURES**. La cuisson coupe une piste en nouvelle vie des qu'un trou depasse 5 s
+(`replay.lifeGapUS`) ; or un occupant embarque cesse de repliquer son bipede — ce sont
+precisement ses trous qui portent les episodes d'occupation — et ces episodes durent 13 a
+36 s en mediane. Le reechantillonnage ne pouvait donc structurellement pas les voir, et
+l'en-tete justifiait tout le mecanisme par un cas (« un joueur immobile derriere un mur
+pendant quinze secondes ») que la coupe des vies rend INATTEIGNABLE : une doc inversee sur la
+lacune meme qu'elle masquait. Correction : on ATTRIBUE sans inventer — pendant un episode
+[T0,T1] d'un occupant nomme, l'occupant est a la position du VEHICULE (le lien est une
+imbrication, `VehicleRide` dans `VehicleTrack.Rides` a cote de `Samples`, verifie sur pieces
+avant de coder) ; un episode sans point de vehicule n'attribue RIEN ; un embarquement ne cree
+JAMAIS de spawn ; deux episodes chevauchants d'un meme xuid ne sont pas sommes. Schema du
+sidecar 1 -> 2, et la lacune residuelle — la primitive n'apparie que 15,6 a 21,1 % des vies
+de vehicule — est ECRITE dans le contrat.
+
+**Resultats observes.** Les quatre autres P1 disent la meme chose sous d'autres formes : UN
+GARDE QUI NE GARDE PAS CE QU'IL CROIT. Le ratchet anti-cuisson ignorait `SpawnBuildOne`, que
+la CLI pouvait deja appeler (elle importe le paquet pour deux projections pures) — un
+remplacement de branche d'echec en aurait fait une cuisson en lot, ratchet vert. Le remede
+que le service PRESCRIT dans son avertissement (`--backfill`) etait un no-op sur exactement
+les sidecars qu'il ecartait, les deux cotes n'appliquant pas le meme predicat de fraicheur.
+L'echange servi sous `temps` etait une decision jamais prouvee (les huit cas montaient un
+titre sans `film.kill_source`). Et la ligne de cablage qui fait naitre les sidecars a la
+cuisson n'etait traversee par AUCUN test. Une mesure a corrige une croyance au passage :
+`points_ignores` est structurellement NUL aujourd'hui — `replay.Point` est en float32 et
+JSON ne peut exprimer aucune valeur non finie, une coordonnee hors bornes faisant echouer la
+deserialisation de tout l'artefact ; le fait est FIGE par un test plutot que redecouvert plus
+tard comme un bug. Gate complet rejoue en serie : `go test` sur dix arbres sans un `FAIL`,
+integration `-p 1` sur trois arbres (code 0), `golangci-lint --new-from-merge-base` a 0 issue,
+`funlen` ne signalant aucun fichier du lot, contrat a jour, suite vitest COMPLETE
+(606 fichiers / 6405 tests / 0 fail). VINGT mutations jouees, toutes mordantes.
+
+**Conclusion / prochaine etape.** Quatre commits `tactique(6.5.<n>)` sur `feat/tactique`, non
+pousses. Decision produit appliquee : un artefact purge emporte son sidecar (et le
+court-circuit « dossier vide » de la purge compte desormais les ARTEFACTS, sans quoi chaque
+tick ouvrait la shared pour rien). Trois decouvertes ajoutees au §7, aucune traitee : la
+lecture unique du document par cycle (les quatre projections relisent le meme fichier), le
+FAUX SPAWN a la sortie d'un vehicule — une vie rouverte par un trou > 5 s juste apres un `T1`
+d'embarquement n'est pas une reapparition, a trancher en phase 7 avec les grappes de spawn —
+et la couverture partielle des episodes. Suite : phase 7, qui consomme ces sidecars ; phase 5
+toujours GELEE jusqu'au lot D.
+
+## [2026-09-06] Plan Tactique phase 6 — les rasters d'occupation cuits une fois, sommes a la lecture — Complete
+
+**Decision technique principale.** L'occupation (« ou je passe mon temps ») est desormais
+calculee UNE SEULE FOIS, a la cuisson de l'artefact, et deposee en SIDECAR par match
+(`data/cache/replays/{slug}/rasters/{short}.json`). La page n'en somme que des fichiers :
+aucun cache d'agregat, aucune invalidation. Quatre proprietes portent le lot. (1) **Un
+echantillon vaut 250 ms de presence, pas un point de film** : le film ne replique une
+position que lorsqu'elle change assez, donc compter les points bruts aurait mesure le
+mouvement et non le temps passe ; le reechantillonnage tient la derniere position connue sur
+une fenetre DEMI-OUVERTE, 2 s font huit quarts de seconde. (2) **Le plancher de rarete
+appartient a l'agregat** : ecrit avec `Cellules()`, un sidecar de match aurait ete vide par
+construction (une cellule d'un match compte un match distinct) — d'ou `CellulesBrutes()`, la
+forme qu'on stocke, sans plancher ni division. (3) **Un sidecar absent est un match NON
+MESURE**, pas un match a zero : meme regle que le drapeau `Mesure` du journal des morts,
+appliquee a l'autre substrat — le compter au denominateur aurait fait varier l'intensite avec
+la couverture de film au lieu du jeu. (4) **Rien ne cuit, et c'est garde par ratchet** : ni la
+page ni le rattrapage `levelup tactical-rasters --backfill` ne peuvent nommer `replaybuild`,
+`BuildFromFilm` ou `filmcache` (`archlint/no_cuisson_depuis_tactique_test.go`, self-check par
+cible). Le rattrapage n'ouvre AUCUNE base, pas meme en lecture : le sidecar est par match et
+anonyme, il n'y a rien a demander a DuckDB.
+
+**Resultats observes.** Gate complet vert. Go : `gofmt` et `go vet` propres, `go test -count=1`
+sur les 10 arbres sans un `FAIL` (code 0), **`go test -tags=integration -p 1` sur
+`replayartifacts` + `persist` : ok/ok, code de sortie 0** (le diff touche `internal/sync/`),
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue, `openapi-gen -check` a jour,
+`generated.ts` regenere (2 lignes, additions pures). Web : typecheck propre, lint 0 erreur
+(30 warnings preexistants), **suite vitest COMPLETE 606 fichiers / 6405 tests / 14 skip /
+0 fail**. ONZE inversions jouees, toutes mordantes. Deux pieges rencontres et fermes sur
+place : le sous-dossier `rasters/` n'est pas un choix de rangement mais la CONDITION de
+cohabitation (les deux parcours du dossier d'artefacts — `AvailableSet` et la purge recurrente
+— ne comptent que les `.json` de premier niveau : a plat, un sidecar aurait ete lu comme le
+match d'un artefact inexistant par l'un, et supprime comme indatable par l'autre) ; et deux
+tests existants employaient « temps » comme exemple de question INCONNUE, ce que l'ouverture du
+vocabulaire a invalide — lecon generale, une fixture de valeur invalide ne doit pas emprunter
+au champ semantique de la feature.
+
+**Conclusion / prochaine etape.** Cinq commits sur `feat/tactique` (6.0 a 6.4), non pousses :
+revue adversariale par le superviseur avant push. Trois decouvertes consignees au §7 du plan,
+aucune traitee : la purge des artefacts laisse les sidecars ORPHELINS (quelques kilooctets par
+match, decision produit a prendre) ; `domain/tactical.go` est a 504 lignes depuis la phase 4 bis,
+d'ou la constante `TacticalQuestionTemps` logee dans `domain/tactical_raster.go` plutot que de
+grossir la dette gelee ; et la lecon des fixtures ci-dessus. Suite du plan : phase 7 (occupation,
+spawns, routes, isolement), qui consomme ces sidecars — `tracks.go` lui a ete avance ici, avec
+ses spawns et ses premieres entrees par cellule deja produits. La phase 5 reste GELEE jusqu'au
+lot D de l'audit v2.
 
 ## [2026-09-05] Integration des branches actives dans l'architecture cuisson-perf — CLOSE, merge feat/v75 — Complete
 
@@ -96739,6 +97236,338 @@ plan `.ai/PLAN_V2_REJEU_FILM_<date>.md` sous `plan-review`, lot 0 (trois P0 + le
 actifs au merge : catalogue ecrit par le runtime, projections sur « artefact range ») avant le
 tag v7.5.0.
 
+## [2026-09-06] Tactique phase 1 — socle pur : grille, raster, echange — Complete
+
+**Decision technique principale.** Deux paquets purs neufs, sans aucune I/O ni import de
+`analysis/replay` ou de `platform/duckdb` : `internal/analysis/tactical` (grille de 0,5 m,
+raster creux, somme, echelles) et `internal/analysis/coordination` (couverture, echange).
+Trois choix structurent le reste du chantier. (1) L'adresse d'une cellule est ancree sur
+l'ORIGINE DU MONDE, pas sur les bornes de la lecture : c'est ce qui rend deux rasters de
+matchs differents sommables sans re-projection, condition du stockage d'un raster par match a
+la cuisson (phase 6). Les bornes agregees sont l'union, et servent au cadrage, pas a
+l'adressage. (2) Le raster garde le detail PAR MATCH dans chaque cellule
+(`cellule -> matchID -> passages`) : le plancher de rarete se compte en matchs distincts et la
+lecture signee doit savoir quels passages viennent des victoires — un compteur global perdrait
+les deux. Une cellule jamais atteinte n'existe pas dans la table (pas de zero explicite).
+(3) La lecture signee normalise CHAQUE COTE par son propre nombre de matchs : avec 20 victoires
+et 5 defaites, une difference brute lit +15 sur une cellule au rythme identique des deux cotes
+et peint une zone gagnante qui n'est que le taux de victoire global. Plancher par cote (3 V ET
+3 D), echelle symetrique bornee par le p95 de |valeur| — un quantile sur le signe mesure la
+proportion de cellules favorables, pas l'intensite. Cote coordination : `domain.Couverture` est
+le SEUL type de retour d'un taux (taux 0..1, brut, par match, N, echantillon faible sous 30
+morts), tenu par un garde-rail AST qui interdit toute fonction exportee rendant un `float64` ;
+la fenetre d'echange est la constante `FenetreEchangeMs = 5000` (utilisateur, 2026-09-05,
+autorite mecanique de jeu) et non un parametre, deux surfaces qui la choisiraient separement
+publieraient deux taux sous le meme nom. Les codes de resultat existants `domain.Outcome*` sont
+reutilises : aucun enum de plus.
+
+**Resultats observes.** 6 commits sur `wt/tactique` (`tactique(1.1)` a `(1.6)`), 17 fichiers,
+2 013 lignes. Gate rejoue en avant-plan le 2026-09-06 : `go vet` propre (0,8 s), `go test` sur
+les trois arbres vert (7 paquets, 13,1 s), `golangci-lint run` sur les deux nouveaux paquets a
+0 issue. Seuils tenus : fichiers de 30 a 315 L, fonctions <= 33 L, <= 3 parametres. Les deux
+cas limites de l'echange sont couverts par des tests a comptes exacts : un tueur qui abat deux
+coequipiers puis tombe dans la fenetre venge LES DEUX morts (pas d'appariement un-pour-un) ;
+un tueur mort de l'environnement, de lui-meme ou de son propre coequipier ne venge rien. Une
+mort sans tueur, par un coequipier, ou aux equipes inconnues n'est pas VENGEABLE : elle sort du
+denominateur au lieu d'y compter comme un echec. Chaque condition du gate a ete verifiee PAR
+INVERSION (onze inversions jouees : floor -> troncature, plancher par cote -> plancher global,
+valeur par match -> par matchs de la cellule, ecart de taux -> difference brute, p95 sur
+|valeur| -> p95 signe, fenetre 5 s -> 15 s, vengeur unique -> appariement un-pour-un, tueur
+sans auteur -> vengeur valide, equipes inconnues et tir ami -> vengeable, plancher 30 -> 8,
+garde-rail du taux nu). Deux d'entre elles ont mis a nu un test non discriminant : la table
+d'equipes n'etait gardee que par `NbVengees`, deux assertions sur `NbVengeables` et un test de
+tir ami ont ete ajoutes. Deux decouvertes consignees au §7 du plan, non traitees : trois
+implementations de quantile dans le depot pour deux conventions differentes (`replay` tronque,
+`temporal` interpole, `tactical` suit `temporal`) ; le hook `go-vet` de lefthook noie son
+verdict sous 60 lignes de « build constraints exclude all Go files ».
+
+**Conclusion / prochaine etape.** Phase 1 close, items 1.1-1.6 `[x]` et 1.7 `[~]` (les types
+`domain/` sont livres avec le code qui les compile, commits 1.1, 1.5 et 1.6). RIEN N'EST
+POUSSE : le superviseur rejoue le gate, lance la revue adversariale, puis pousse. Phase 2
+(port, repo DuckDB, service, handler) executable ensuite ; phases 4-7 gelees jusqu'a
+l'integration des lots C, B et D de l'audit v2.
+
+**Revue ronde 1 : 13 constats retenus, corriges, tests ajoutes.** Deux relecteurs
+independants, un P0 verifie sur pieces. Le P0 : le denominateur « par match » excluait les
+matchs RETENUS SANS POINT, parce que la table des matchs n'etait alimentee que par la boucle
+sur les points. Un match sans kill pour « ou je tue », sans mort pour « ou je meurs »,
+disparaissait du denominateur ; sur 12 victoires et 8 defaites dont 2 victoires muettes, une
+cellule vue 6 fois en victoire et 4 en defaite se lisait +0,10 (« zone gagnante ») au lieu de
+0,00 (neutre) — la mesure peignait le silence de deux matchs. L'univers des matchs devient une
+ENTREE EXPLICITE de l'appelant (`Rasterise(g, matchs, points)`,
+`RasteriseAvecResultats(g, resultats, points)`, tous deux faillibles) et un point d'un match
+hors univers rend `ErrMatchHorsUnivers` : un filtre qui ne dit pas la meme chose que la lecture
+est un bug, pas une donnee a arbitrer. Le commentaire qui confondait « zero legitime » et
+« position illisible » est reecrit : le premier compte au denominateur, la seconde se compte a
+part. Corrections suivantes : `OutcomeUnknown` vaut desormais ABSENCE d'information dans
+`Somme` (deux vues partielles d'un match, ses morts et ses kills, se somment — la valeur connue
+l'emporte) et les univers sommes doivent etre identiques (`ErrUniversIncompatible`) ; `Bornes()`
+cadre les cellules LISIBLES et non les alimentees (sur Dredge, le cadre etait quatorze fois
+trop large pour la carte peinte) ; un ratchet `archlint/tactical_pure_test.go` garde enfin
+l'invariant de purete que le doc.go se contentait d'annoncer (refus de `analysis/replay`,
+`platform/duckdb`, `database/sql`) ; le garde-rail du taux nu, qui n'inspectait que
+`*ast.Ident`, deballe maintenant recursivement le type de retour (tranche, map, pointeur,
+canal, fonction, alias) et interdit les types struct exportes du paquet — huit formes verifiees
+par inversion. Six tests manquants ajoutes : valeur signee sur une cellule INCOMPLETE aux cotes
+asymetriques, plancher par cote decidant DES DEUX cotes, somme au pas de 0,25 m, tri de la
+lecture signee, cumul des points illisibles, tri des paires d'echange sur quatre vengeurs.
+`merge_test.go` a franchi les 500 lignes sous ces ajouts et a ete scinde. Gate rejoue, elargi a
+`internal/archlint` : `go vet` propre, `go test -count=1` vert sur 8 paquets en 9,1 s,
+`golangci-lint` a 0 issue, fichiers de 17 a 349 L.
+
+**Revue ronde 2 : 3 constats (2 P1, 1 P2), corriges, liste blanche des types de retour.** La
+correction C de la ronde 1 avait INVERSE la doc du paquet — « les bornes sont l'union des
+bornes des rasters sommes » est faux des lors que `Bornes()` applique le plancher, un raster
+par match n'ayant aucune cellule a trois matchs distincts : le paragraphe dit maintenant que
+les bornes se lisent sur l'agregat, et un test l'epingle plutot que la relecture. Le garde-rail
+du taux nu, lui, exemptait tout type d'un autre paquet : `type TauxEchange float64` dans
+`domain` aurait rendu au taux sa forme de nombre seul sans qu'aucun `float64` n'apparaisse
+dans `coordination`. Une liste noire ne peut pas gagner cette course — il y a une infinite de
+facons d'emballer un nombre et une seule liste de ce que le paquet a le droit de rendre : la
+logique est inversee en LISTE BLANCHE datee (error, bool, int, int64, string,
+`domain.Couverture`, `domain.BilanEchanges`, plus les conteneurs dont chaque composant, cle
+comprise, y figure), tout ajout exigeant une justification datee dans le fichier. Enfin la
+sentinelle anti-vacuite, perdue au passage precedent, est retablie sur le compte des fonctions
+exportees inspectees. Cinq inversions rapportees : `domain.TauxEchange` refuse,
+`[]domain.Couverture` accepte, `func() (domain.Couverture, float64)` refuse, `map[float64]int`
+refuse, garde d'inspection neutralisee -> sentinelle. Gate rejoue : vet propre, `test -count=1`
+vert sur 8 paquets en 10,7 s, `golangci-lint` a 0 issue.
+
+## [2026-09-06] Onglet Tactique — phase 2 : port, lecteur DuckDB, service, handler (Complete)
+
+**Decision technique principale : l'univers des matchs est une ENTREE DU LECTEUR, pas une
+deduction des points.** `TacticalRepository.KillPositions` et `KillEvents` ne rendent pas des
+points, ils rendent un `domain.TacticalPositions` / `TacticalKillEvents` qui porte L'UNIVERS
+(les matchs retenus par le filtre, avec leur issue et la composition des equipes) ET les points
+par-dessus. C'est la traduction, au niveau du port, du defaut P0 corrige en phase 1 : un match
+retenu qui n'a AUCUNE position mesuree doit compter au denominateur « par match », faute de quoi
+la lecture signee peint une zone gagnante la ou il n'y a que des matchs muets d'un cote. Le test
+de service pose le cas chiffre — 12 victoires dont 6 muettes, 8 defaites dont 4 muettes, une
+cellule vue en 6 V et 4 D vaut 6/12 - 4/8 = 0,00 et non 6/10 - 4/8 = +0,10.
+
+**Ce qui a ete livre**, en quatre commits `tactique(2.1)` a `(2.4)` sur `feat/tactique`
+(worktree dedie `LevelUp-wt-tactique`, non pousse) : l'interface `TacticalRepository` a cote de
+`KillDistanceRepository` ; le lecteur `platform/duckdb/tactical_repo.go` calque sur la jointure
+`kill_positions_latest x match_kill_events_latest` de `kill_distance_repo.go` ; le service
+`TacticalService` (trois questions, trois axes, deux portes de capability) ; les deux endpoints
+Huma `GET /players/{slug}/tactical/maps` et `.../tactical/{map_id}/raster`, cables en un seul
+endroit (`ServiceRegistry.Tactical`), contrat OpenAPI et `generated.ts` regeneres en additions
+pures. Aucun artefact de rejeu lu, aucune capability creee, aucun fichier web ecrit.
+
+**Trois gardes de prudence, chacune parce qu'une attribution PAR LIGNE est en jeu.** Le filtre
+`publishable` est exige des deux cotes : une passe non publiable est juste en agregat et fausse
+ligne a ligne (bijection nom -> xuid a marge nulle), or l'axe « moi / escouade / adversaires »
+et le « qui a venge qui » decident ligne par ligne — une identite permutee peint le point du
+mauvais cote de l'axe, sans que rien ne le signale. La garde d'ambiguite `HAVING count(*) = 1`
+ecarte le double kill au meme (tueur, instant) : `kill_positions_latest` ne porte qu'UNE
+position de victime par cle et aucune colonne `victim_xuid`, la position devient donc
+inattribuable des que deux morts partagent l'instant. Enfin une position PARTIELLE (un seul cote
+connu) n'est jamais approchee.
+
+**Deux portes de capability, deux effets differents, et c'est delibere.** `film.kill_positions`
+absente rend `ErrCapabilityNotSupported` — 503 propre, il n'y a pas de lecture de placement sans
+positions. `film.kill_source` absente rend le KPI d'echange SILENCIEUX (champ omis) et laisse la
+lecture de placement servie : publier un zero se lirait comme une contre-performance, alors que
+l'absence dit ce qui est vrai — ce titre ne mesure pas cela. Les deux se lisent sur la
+`CapabilityMap` de l'adapter du titre du joueur (`capabilitiesForPDB`), jamais sur un slug.
+
+**Deux decisions produit prises faute de tranche du plan, consignees en §7 et A CONFIRMER** :
+« ou je gagne » se lit sur les ENGAGEMENTS (mes kills ET mes morts) — le plan tranche la forme du
+raster signe mais pas son substrat, et la seule presence mesurable avant les rasters d'occupation
+est le combat, qui a deux faces ; et le KPI d'echange d'une carte porte sur les morts de MON CAMP
+(coequipiers et moi).
+
+**Deux pieges rencontres, tous deux silencieux.** Un champ EMBARQUE de type NON EXPORTE dans une
+entree Huma n'est pas lie par reflexion : tous les filtres arrivaient vides, sans erreur ni log
+(type renomme `TacticalFilterQuery`, piege garde par un test). Et le ratchet
+`no_raw_kill_scope_literal` a MORDU sur la fixture de test, ou `read_path` etait ecrit en clair —
+corrige en `killscope.ReadPathFilmWalk`. Le test du lecteur est volontairement SANS tag de build,
+contrairement a `kill_distance_repo_test.go` : le gate de la phase ne pose pas
+`-tags=integration`, et un test derriere un tag que le gate ne pose pas ne garde rien.
+
+**Gate joue en avant-plan, une commande `go` a la fois** : `go vet` propre sur les sept arbres
+(1,9 s) ; `go test -count=1` vert sur 22 paquets en 42,3 s ; `golangci-lint run
+--new-from-merge-base=origin/main` — LE ratchet de la CI — a **0 issue** ; `openapi-gen -check` a
+jour ; ratchets `no_slug_comparison`, `no_data_path_join`, `no_raw_start_time_literal`,
+`no_raw_outcome_literal`, `no_inline_objective_latest_view` et `tactical_pure` verts.
+
+**Revue adversariale ronde 1 : 16 constats, tous corriges** en 6 commits `tactique(2.5)`.
+Trois etaient des P1 de fond, et les trois disent la meme chose sous trois formes — un lecteur
+ne verifie pas ce qu'il croit verifier.
+
+**R1, la porte de lecture etait une cle d'ECRITURE.** Les rasters etaient gates sur
+`film.kill_positions`, dont la propre documentation dit « CETTE CLE GOUVERNE LA CAPTURE, PAS LA
+LECTURE ». Halo 5 ne la declare pas et n'a aucune raison de le faire : sans decodeur de film, il
+remplit la MEME table nativement depuis le carnage (`match.events.spatial = supported`), et
+`match_kill_events` par la reprise de `killer_victim_pairs`. Un joueur Halo 5 recevait donc un
+503 sur une jointure qui aurait rendu toutes ses positions. Deux predicats nommes remplacent les
+deux `Has` : `positionsDeKillLisibles` accepte la capture Infinite OU le natif Halo 5 ;
+`journalDesMortsFiable` accepte la source de degat du film OU un kill-feed natif declare
+`supported` STRICTEMENT. Ce strict n'est pas une coquetterie : `Has` accepte aussi `degraded`,
+et Infinite declare justement `match.killfeed.per_kill = degraded` (kills simultanes
+possiblement omis) — soit exactement le defaut qui fabriquerait de faux echanges, une mort omise
+dans la fenetre de 5 s se lisant « non vengee ». Le vrai correctif tient en une cle FINE de
+lecture qui n'existe pas encore dans le vocabulaire des capabilities ; elle est consignee au §7
+comme relevant du lot C de l'audit, pas de ce lot.
+
+**R2, un garde-rail qui ne voit pas ce qu'il garde.** Les ~287 matchs de Campagne d'un joueur
+Halo 5 entraient dans la grille des cartes et dans l'univers des rasters, alors que l'Explorateur
+les masque. Le depot a pourtant un garde-rail structurel pour exactement cela — mais il ne balaye
+que les constantes nommees `Q<...>`, et mes constantes s'appelaient `tacticalUniversSQL`. Le
+garde-rail existait, il ne les voyait pas. Prefixe `Q` + token d'exclusion resolu au call site, et
+l'inversion (token retire) le fait bien tomber en nommant `QTacticalUnivers`.
+
+**R3, une fixture qui invente sa donnee.** `match_registry.map_name_fr` est systematiquement
+NULLE — le constat etait deja pose DEUX FOIS dans le meme paquet. Toutes les cartes sortaient
+donc avec un nom FR vide, et le test ne le voyait pas parce qu'il semait dans cette colonne une
+valeur qui n'existe nulle part en prod. C'est la lecon « DDL de test recopiee = derive
+indetectable » sous une autre forme : ici ce n'est pas la forme de la table qui derive, c'est son
+CONTENU PLAUSIBLE. La fixture seme desormais `asset_translations`, comme les tests voisins, et le
+lecteur passe par le helper promu depuis `EngagementScoreRepo` — pas une troisieme copie.
+
+**Le contrat, avant qu'il n'ait un consommateur.** `TacticalRaster` portait des tags snake_case,
+ses quatre voisins n'en avaient aucun : le contrat melangeait `map_id` et
+`MinX`/`Brut`/`EchantillonFaible`. Corrige maintenant, parce que le web n'a encore rien branche.
+Trois ajouts de fond au passage : la COUVERTURE DE LOCALISATION (`evenements_journal` /
+`evenements_localises`), parce qu'une carte muette sur un pan de la partie ressemble sinon a un
+pan de terrain ou il ne se passe rien — l'ecart entre ce que le journal compte et ce qui est
+localise est une propriete de la mesure, servie pour tous les titres ; les DEUX denominateurs de
+la lecture signee, que `MatchsRetenus` ne represente pas ; et le retrait du parametre `session`,
+que `BuildNeighborsWhereClause` n'applique jamais — on n'accepte pas ce qu'on n'honore pas.
+
+**Huit tests manquants**, dont un P0 : la face VICTIME de « ou je gagne » n'etait exercee nulle
+part, si bien qu'un `prendVictime` inverse serait passe vert. Les trois autres inversions
+demandees ont ete jouees et tombent : R1 (predicat reduit a la cle de capture), R2 (token
+retire), T5 (garde de composition retiree — un joueur inconnu tombe alors dans `adv`, l'equipe
+absente valant 0). Deux docs inversees corrigees SUR PIECES cote producteurs : un `killer_xuid`
+vide n'arrive pas (le collecteur exige les deux identites, le persister refuse la ligne) tandis
+qu'un `victim_xuid` vide arrive bel et bien, par le producteur natif de Halo 5 qui ne pose que
+le tueur.
+
+**Seuils reverifies APRES les ajouts** : les deux fichiers de test avaient franchi 500 lignes et
+ont ete scindes, meme discipline que `merge_test.go` en phase 1. Gate rejoue en entier : `go vet`
+propre sur 9 arbres, `go test -count=1` vert sur 24 paquets en 43,5 s, ratchet de lint de la CI a
+0 issue, `openapi-gen -check` a jour.
+
+**Prochaine etape** : ronde 2 de la revue sur ces corrections, puis phase 3 (l'echange sur la
+page Escouade). Les deux decisions produit de la phase 2 — « ou je gagne » lu sur les engagements,
+et le KPI d'echange porte sur mon camp — attendent toujours l'arbitrage de l'utilisateur.
+
+---
+
+## [2026-09-06] Tactique phase 3 — l'echange sur la page Escouade
+
+**Statut** : Complete (items 3.1-3.6 `[x]`, 3.7 `[!]` — depend du lot C de l'audit v2).
+
+**Decision technique principale** — l'echange devient une SECTION DE PLUS du `pageData` de
+la page Escouade, servie par le meme appel que les autres (aucune query key nouvelle), et il
+est mesure par le socle pur `analysis/coordination` UNIQUEMENT. Le service Escouade ne
+calcule aucun quotient : il decoupe des perimetres, nomme des joueurs, range des delais dans
+des intervalles pre-binnes (ADR 0010). Il ne consomme pas le service Tactique — il lit le
+MEME port, comme lui.
+
+Trois choix ont structure le lot :
+
+1. **UNE lecture de base, DEUX perimetres.** Le journal des morts est lu une fois sur tout
+   l'historique du joueur (`TacticalQuery{PlayerXUID}` — `MapID` devenu optionnel par un
+   parametre neutre dans la constante SQL, pas par un assemblage en Go), puis resserre en
+   Go sur les matchs filtres et sur l'historique complet de la composition. C'est la
+   mecanique de baseline du briefing de l'Explorateur (`buildBriefingBaseline`) : le
+   perimetre est toujours un SOUS-ENSEMBLE de la reference, et des cardinalites egales
+   valent « aucun filtre ne retrecit » — d'ou un ecart nul par construction, masque a
+   l'ecran par `isFullHistoryScope`.
+2. **La porte data-level a change de maison.** `journalDesMortsFiable` avait un lecteur ;
+   elle en a deux. Copiee, elle aurait donne deux verdicts au premier titre ajoute — donc
+   deux taux d'echange sous le meme nom sur deux pages voisines. Elle vit desormais dans
+   `games.JournalDesMortsFiable`, avec sa raison d'exiger `supported` STRICTEMENT sur le
+   kill-feed natif (`degraded` = kills simultanes omis = fausses morts non vengees).
+3. **Les deux barres hors fenetre exigeaient une lecture SANS borne.** `Echanges` ne rend
+   un delai que dans les 5 s : la distribution demandee n'avait pas de source. Plutot que
+   recopier la recherche de vengeur dans le service, le socle gagne `Ripostes`, qui partage
+   le noyau `suivreMorts(kills, equipes, fenetreMs)`. Invariant teste : sous la fenetre, les
+   deux lectures rendent le meme vengeur et le meme delai — c'est ce qui autorise
+   l'histogramme entier a se construire sur la seule lecture large.
+
+**Resultats observes** — Go : `go vet` propre sur 9 arbres, `go test -count=1` vert,
+`golangci-lint run --new-from-merge-base=origin/main` a 0 issue, `openapi-gen -check` a jour,
+`generated.ts` en additions pures (+40 L). Web : typecheck propre, lint 0 erreur, vitest
+`squad` + `lib/baseline` + garde anti-anglicismes verts, `lint-no-hardcoded-colors` a
+0 violation, `lint-cross-feature-imports` INCHANGE a 7/7 — c'est precisement ce plafond qui
+a impose de DEPLACER `formatSignedPoints` / `isFullHistoryScope` dans `lib/baseline.ts`
+(avec leurs tests, l'Explorateur reroute) au lieu d'ajouter un import croise ou une copie.
+
+**PIEGE RETENU** — deux wrappers de chart etaient trop etroits pour un second usage, et
+c'etait invisible : `Heatmap2DChart` cablait en dur un tooltip « Win Rate / Matchs » (faux
+pour toute autre donnee), et `HistogramChart` ne peint que `series[0]` en IGNORANT EN
+SILENCE toute serie supplementaire. Une « deuxieme serie pour la couleur attenuee » n'aurait
+rien affiche et rien signale. Les deux ont recu une option optionnelle, aucun appelant
+existant modifie.
+
+**Conclusion / prochaine etape** — phase 3 close et non poussee : revue du superviseur.
+L'item 3.7 (`useDataCapability('film.kill_source')`) reste `[!]` : le hook n'existe pas dans
+le depot, aucune gate de substitution n'a ete inventee, et la degradation est deja cote Go
+(section OMISE du contrat -> composants non montes, comportement verifie par test). Le
+cablage revient au lot C de l'audit v2. Les phases 4-7 restent GELEES.
+
+**AJOUT DU 2026-09-06 (cloture `tactique(3.8)`, apres la fusion de `feat/v75`)** — l'item 3.7
+passe de `[!]` a `[~]`, et c'est le lot C lui-meme qui l'y met : le hook `useDataCapability`
+existe desormais, et sa doctrine REFUSE ce branchement. `dataCapabilities.ts` n'accepte dans
+`DATA_CAPABILITIES` qu'une cle effectivement gatee cote UI, et documente sur place — avec
+`film.usage_summary` — qu'une porte deja presente dans le payload ne se relit pas (« deux
+sources de verite pour une seule question, plus une requete inutile »). Notre section EST
+omise du `pageData` quand la porte Go se ferme. Et le gate serait FAUX pour Halo 5 : la porte
+Go est un OU sur deux provenances, et Halo 5 est servi par son kill-feed natif SANS
+`film.kill_source` — exactement le defaut que la correction R1 de la phase 2 avait deja
+elimine cote Go. La lecon a retenir : **un hook qui arrive ne rend pas automatiquement dû le
+branchement qu'on avait reporte** ; il faut relire sa doctrine avant de s'y accrocher. Meme
+commit : la carte « Cap du moment » devient « **Constat du moment** » (decision utilisateur) —
+la page portait deja un « Cap d'escouade » prospectif et l'onglet Entrainement un « Cap du
+moment », et trois « Cap » cote a cote dont un retrospectif se marchaient dessus.
+
+---
+
+## [2026-09-06] Tactique phase 3 — revue adversariale ronde 1, 12 constats soldes
+
+**Statut** : Complete (5 commits `tactique(3.7)`, gate rejoue integralement, cinq inversions
+jouees).
+
+**Decision technique principale** — G2, requalifie P1 par le superviseur, est le constat qui
+a change une regle de mesure sur DEUX surfaces : le denominateur « par match » comptait des
+matchs ILLISIBLES. Le numerateur ne peut venir que des matchs dont le journal des morts a ete
+lu ; le denominateur comptait tous les matchs du filtre. Or les films Theater EXPIRENT cote
+serveur : deux filtres sur le meme jeu, l'un a 20 matchs decodes sur 20 et l'autre a 2 sur 20,
+rendaient 0,20 et 0,02 — la grandeur que le contrat annonce « comparable d'un filtre a
+l'autre » ne l'etait pas. C'est le PENDANT EXACT du defaut P0 de la phase 1, et la nuance
+tient en une phrase : le zero LEGITIME compte au denominateur (un match joue ou je n'ai pas
+tue), l'ILLISIBLE est compte A PART (un match dont on ne sait rien). Le lecteur rend donc un
+drapeau `Mesure` par match (EXISTS sur `match_kill_events_latest`, `publishable` exige comme
+dans les deux lectures — sans quoi un match compterait comme mesure sur une page et pas sur
+l'autre), et les deux contrats publient les DEUX comptes.
+
+**PIEGE RETENU, et il valait un P0** — un wrapper de chart qui DEDUIT ses categories d'axe de
+l'ordre d'apparition des points impose une contrainte silencieuse a tous ses appelants :
+emettre les cases DANS L'ORDRE, sans trou. `matriceSeries` sautait la diagonale (« personne ne
+se venge soi-meme ») ; la premiere COLONNE rencontree etait donc le DEUXIEME joueur, et la
+matrice sortait avec ses colonnes decalees d'un cran — sur un duo, les deux axes exactement
+inverses. Rien ne le signalait : la grille etait pleine, les nombres justes, les etiquettes
+presentes. Une case impossible doit etre EMISE et dite vide, jamais omise.
+
+**Deuxieme piege, du meme genre** — une couleur « neutre » n'existe pas par decret. Mesure sur
+les quatre palettes d'accessibilite : AUCUN token semantique du depot n'est achromatique
+partout, et `divergent-neutral` — le candidat evident, celui que la doc du composant
+proclamait « le gris neutre de la maison » — vaut #60A5FA (blue-400) dans la palette PAR
+DEFAUT, soit PLUS soutenu que la serie qu'il devait accompagner. L'attenuation passe donc par
+la couleur de serie elle-meme (opacite + liseré tireté), qui n'a aucune dependance de palette.
+
+**Resultats observes** — Go : `go vet` propre sur 9 arbres, `go test -count=1` vert sur tous
+(duckdb 65,9 s ; api 24,8 s ; service 11,8 s ; teammates 0,38 s ; archlint 13,3 s),
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue, `openapi-gen -check` a jour. Web :
+typecheck propre, lint 0 erreur, vitest 82 fichiers / 743 tests verts,
+`lint-no-hardcoded-colors` 0 violation, `lint-cross-feature-imports` toujours a 7/7.
+
+**Conclusion / prochaine etape** — les 12 constats sont soldes, aucun report. L'item 3.7 reste
+`[!]` (le hook `useDataCapability` arrive avec le lot C). Non pousse : le superviseur pousse
+apres verification et lance la ronde 2 sur ces corrections.
 ## [2026-09-06] Chantier v2 rejeu/film — lancement et rendu des sept lots (pilotage) — En cours
 
 **Contexte.** Suite de l'audit du 05/09 : le user a tranche les six escalades (positions =
@@ -98906,3 +99735,460 @@ poussé sur `origin`. Reste : lever le blocage du principal (commit de l'autre s
 `thought_log.md`), puis `git merge --ff-only feat/v2-integ` dans `feat/v75`, push, CI. Ensuite,
 selon `HANDOFF_V2_REJEU_FILM_2026-09-07.md` : Notion (schéma 41 → 48), extraction des fichiers
 chroniques > 500 lignes, nettoyage des worktrees `LevelUp-wt-v2-*`, tag v7.5.0.
+
+---
+
+## [2026-09-06] Tactique phase 3 — revue adversariale ronde 2, trois P2 soldes
+
+**Statut** : Complete (1 commit `tactique(3.9)`, derniere salve — aucun P0, aucun P1).
+
+**Decision technique principale** — les trois constats disent la meme chose sous trois
+formes : **un garde-fou qui promet plus qu'il ne tient est pire que pas de garde-fou**,
+parce qu'il achete le silence.
+
+1. Le garde i18n cherchait ses accesseurs par SOUS-CHAINE : `t.coverageHint` couvrait
+   `coverage`, `t.lowSampleHint` couvrait `lowSample`, `t.delayBinOpen` couvrait
+   `delayBin`, `t.delayNarrativeEmpty` couvrait `delayNarrative`. Quatre accesseurs sur
+   une vingtaine n'etaient donc gardes par rien. Passe a une frontiere de mot.
+2. `matchsMesures` comptait les match_id presents dans les evenements pendant que le
+   drapeau `Mesure` (EXISTS + publishable) de G2 servait la meme notion aux deux surfaces.
+   Les deux tombaient juste PAR ACCIDENT — tous deux exigent `publishable` — et rien ne les
+   liait.
+3. Le lisere tirete des barres hors fenetre portait la couleur du remplissage, sous la meme
+   opacite globale : invisible. Trois docs et un test l'annoncaient quand meme.
+
+**PIEGE RETENU — un test qui cadenasse une promesse que l'ecran ne tient pas.**
+`expect(itemStyle.borderType).toBe('dashed')` passait, vert, a chaque execution : le style
+etait bien pose dans l'option ECharts. Il n'etait simplement jamais VU, l'opacite de 0,35
+s'appliquant a l'element entier, liseré compris, et sa couleur etant celle du remplissage.
+Le test verifiait donc la presence d'une propriete, pas l'existence d'un indice visuel — et
+il aurait empeche quiconque de retirer un decor mort. La correction ne consiste pas a
+rendre le liseré visible mais a ASSUMER un seul indice graphique (l'opacite) et a porter le
+second par le MOT (« hors fenetre » sur l'etiquette d'axe et au pied de carte).
+
+**DEUXIEME LECON, sur les inversions elles-memes.** L'inversion scriptee par le superviseur
+pour le point 1 — retirer `t.coverage(` de la seule matrice — NE TOMBE PAS, et c'est
+correct : `coverage` a deux consommateurs (la matrice et la carte des delais). Il a fallu la
+retirer des deux pour que le garde corrige morde. La vraie demonstration est la
+contre-epreuve : meme suppression, garde revenu a `includes` -> six tests au vert. Le
+bandeau de couverture pouvait disparaitre des DEUX cartes sans un mot. Une inversion qui ne
+tombe pas n'invalide pas le constat ; elle dit qu'on n'a pas encore trouve le bon geste.
+
+**Resultats observes** — Go (`./internal/service/...` seulement, le superviseur ne jouait
+aucun `go` en parallele) : `go vet` propre, `go test -count=1` vert sur 4 paquets
+(`service 8.761s`, `teammates 0.284s`). Web : typecheck propre, lint 0 erreur, vitest
+`squad charts` 95 fichiers / 848 tests verts, garde anti-anglicismes vert, manifestes
+regeneres sans diff.
+
+**Conclusion / prochaine etape** — pas de ronde 3 : le superviseur verifie sur pieces puis
+pousse. Les phases 4 et 6 sont degelees depuis l'integration des lots C, B et F ; la 5
+attend le lot D.
+
+---
+
+## [2026-09-06] Tactique phase 4 — la grille des cartes, et l'onglet qui la porte
+
+**Statut** : Complete (phase 4 close, non poussee — revue du superviseur)
+
+**Decision technique principale** — l'onglet Tactique existe : 5e onglet d'Ascension, une
+grille des cartes JOUEES triee par nombre de matchs, un endpoint de fond de carte servi PAR
+CARTE. Trois commits (`tactique(4.4)`, `(4.2)`, `(4.3+4.1)`), executes dans l'ordre des
+DEPENDANCES et non dans celui de la liste du plan : le contrat d'abord, le vocabulaire
+ensuite, la page et sa route en dernier. 4.3 et 4.1 sont un SEUL commit parce que la
+dependance est mutuelle — la route importe la page, et le schema de recherche de la route
+TYPE l'ecriture de `?carte=` que la page fait ; les separer donnait, dans un sens comme dans
+l'autre, un commit qui ne compile pas.
+
+**Ce qui a demande une decision**
+
+1. **Le clic SELECTIONNE, il n'ouvre pas encore, et il le dit.** La vue d'analyse par carte
+   est la phase 5, gelee jusqu'au lot D de l'audit du rejeu : sa route n'existe pas. Un
+   `Link` vers une route inexistante ne compile pas ; un `navigate` vers une chaine
+   construite mene a un 404 — un lien MORT. Le bouton ecrit donc la carte choisie dans
+   l'URL (`?carte=<map_id>`), son nom accessible dit « Selectionner <carte> », son etat est
+   `aria-pressed`, la selection se voit et se partage. C'est a la fois honnete et
+   exactement l'etat que la phase 5 consommera.
+2. **Le fond de carte SORT du garde local du rejeu.** `LocalOnlyReplay` protege les
+   trajectoires decodees du film, dont la couverture n'est pas productionnalisable. Une
+   image de carte est une donnee de REFERENCE versionnee, extraite des fichiers de jeu.
+   Monter la route sous le garde aurait vide la grille en production sans rien proteger :
+   un test appelle depuis une adresse non locale et exige 200.
+3. **Aucune seconde resolution carte -> fond.** La cascade (cle map_id d'abord pour les
+   cartes Forge, index des noms ensuite pour les natives) a ete extraite de
+   `resolveBackgroundKey` vers `resolveBackgroundKeyDepuis`, la lecture du PNG vers
+   `readBackgroundImage`, et la cascade des noms candidats vers `assemblerIdentites` cote
+   DuckDB. Les deux entrees — par match, par carte — les consomment. Recopier l'une
+   d'elles aurait donne deux fonds possibles pour la meme carte selon la page qui la
+   demande.
+4. **Le plancher n'est pas recalcule cote client.** Le serveur publie `sous_plancher` par
+   carte et `plancher_matchs` pour la page. Le client LIT le verdict et NOMME le seuil ;
+   refaire la comparaison aurait donne deux verites sur « cette carte est-elle lisible »,
+   qui divergeraient au premier ajustement.
+
+**PIEGE RETENU — un gabarit demande n'est pas forcement le gabarit du cas.** Le brief
+demandait `PageUnavailable` pour un titre sans `replay`. Ce gabarit-la est celui d'ADR 0029
+— une ressource qui EXISTE mais que le joueur courant n'a pas le droit de voir — et il
+exige des libelles et des actions qu'il aurait fallu ecrire. Le depot a deja un gabarit pour
+« capability absente au niveau route » : `RouteCapabilityGate` -> `FeatureUnavailable` ->
+`EmptyStateCard`, utilise par la route Ascension parente pour `lusr`, et qui porte deja le
+libelle FR/EN de `replay`. Prendre l'autre aurait recopie ce libelle et fabrique un second
+gabarit pour le meme etat. L'ecart est assume et documente dans la case 4.1 du plan.
+
+**Second piege, cote React** : le motif naturel pour une image binaire — creer l'URL
+d'objet au montage, la revoquer au demontage — passe par un `setState` dans un `useEffect`,
+que le lint du depot signale (cascade de rendus). Retenu : l'URL d'objet EST l'entree de
+cache (`staleTime` et `gcTime` infinis), bornee par le nombre de cartes du titre.
+Contrepartie assumee et ecrite sur place : rien n'est revoque avant la fermeture de
+l'onglet.
+
+**Resultats observes** — Go : `go vet` propre sur 8 arbres, `go test -count=1` vert sur
+25 paquets, `golangci-lint --new-from-merge-base=origin/main` a 0 issue, `openapi-gen
+-check` a jour. Web : `typecheck` propre, `lint` 0 erreur (30 warnings tous preexistants —
+celui que ce lot avait introduit a ete supprime), 21 fichiers et 171 tests verts sur le
+filtre `tactical ascension keys capabilities`, garde anti-anglicismes vert (le manifeste
+`tactical.toml` y entre des sa creation), 0 couleur en dur, `lint-cross-feature-imports`
+INCHANGE a 7/7, manifestes regeneres sans diff. SIX inversions jouees : branche map_id
+neutralisee, garde de session retiree, `disabled` et desaturation retires, `FeatureGate`
+retire, `RouteCapabilityGate` retire.
+
+**Conclusion / prochaine etape** — phase 4 close, non poussee. Quatre decouvertes hors
+perimetre consignees au §7 : le calage par carte n'a pas encore de consommateur web (il est
+pour la phase 5) ; le filtre de session de l'omnibar est ignore EN SILENCE par cet onglet ;
+la vignette charge l'image pleine resolution (jusqu'a 1,4 Mio par carte, aucun pipeline de
+miniatures dans le depot) ; la consigne « git checkout routeTree.gen.ts » ne vaut que pour
+un lot qui n'ajoute pas de route. Suite prevue par le plan : phase 6 (rasters a la
+cuisson) ; la 5 attend toujours le lot D.
+
+---
+
+## [2026-09-06] Tactique phase 4 — revue ronde 1 : une traversee de repertoire, et cinq doubles complaisants
+
+**Statut** : Complete (8 constats, tous corriges — non pousse, revue du superviseur)
+
+**Decision technique principale** — deux portes independantes sur le `map_id`, et un ratchet
+sur le site de montage la ou un test HTTP ne pouvait rien dire.
+
+**Le defaut qui comptait (G1)** — le `map_id` est la PREMIERE cle de fond de carte
+entierement controlee par l'appelant : sur le chemin par match elle venait de
+`match_registry`, donc de la base. Elle traversait handler et service jusqu'a
+`filepath.Join(map_backgrounds, cle + ".json")` avec, pour tout controle, un `TrimSpace`.
+Sous Windows, un `..\..\x` passe chi comme UN SEUL segment de chemin et `filepath.Join`
+traite l'antislash comme separateur : `os.Stat` et `os.ReadFile` sortaient du repertoire des
+fonds. Ce qui protegeait le depot n'etait pas une verification, c'etaient trois accidents de
+plate-forme (le schema du sidecar exige, chi qui ne de-echappe pas, l'antislash non
+separateur sous Linux). Corrige par une liste blanche au handler
+(`^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`, appelee avant toute resolution de service) ET une
+garde de chemin au service, dans la fonction qui precede immediatement `PathResolver` — le
+service ne fait confiance a aucun appelant, un futur chemin CLI pourrait ne pas passer par
+le handler.
+
+**Deux choix a l'interieur de la correction, tous deux dictes par le meme principe.**
+D'abord, AUCUNE NORMALISATION : le motif s'applique a la valeur brute. Un `TrimSpace`
+prealable faisait de `carte%20` un `carte` valide — deux URL pour une ressource, et une
+frontiere qui repare son entree au lieu de la refuser. Le test l'a trouve avant moi. Ensuite,
+le brief tranchait un code d'erreur unique sur les trois routes ; la lecture de placement
+rend SON code d'absence habituel, parce qu'un code propre a la validation dirait a
+l'appelant qu'il a franchi le routeur mais pas le filtre — exactement l'oracle que le brief
+voulait eviter en refusant le 400. Un test exige que map_id hostile et carte jamais jouee
+rendent des reponses OCTET POUR OCTET identiques ; c'est lui qui a revele qu'un MESSAGE
+distinct sous un meme code suffisait a rouvrir l'oracle.
+
+**PIEGE RETENU — un double qui repond toujours la meme chose ne teste rien.** Cinq des huit
+constats sont la meme faute, vue de cinq angles : `api.get` double sans que personne ne
+regarde le chemin (figer la cle de cache passait) ; `getBlob` toujours en rejet (le chemin
+nominal du fond jamais joue, une icone cassee serait passee) ; `useMatchRoute` toujours faux
+(deux onglets pouvaient briller ensemble) ; `httptest` toujours distant (le test du garde
+local ne pouvait pas echouer) ; et un routeur reconstruit sans middleware (la mutation qu'il
+pretendait attraper le laissait vert). Un double se pilote, sinon il cadenasse le scenario
+par defaut et rien d'autre. C'est le pendant, cote tests, de la lecon de la ronde 2 de la
+phase 3 sur les garde-fous qui promettent plus qu'ils ne tiennent.
+
+**Second enseignement — un ratchet a une seule face est vacant.** Affirmer « les routes
+tactiques ne sont pas sous le garde local » passerait tout aussi bien si le garde
+disparaissait du depot. Le ratchet exige donc AUSSI que le rejeu, lui, reste dessous : la
+paire dit la vraie regle. Mutation jouee (ligne de montage deplacee) : il tombe en nommant
+le fichier et la ligne.
+
+**Resultats observes** — Go : `go vet` propre sur 7 arbres, `go test -count=1` vert sur
+24 paquets, `golangci-lint --new-from-merge-base=origin/main` a 0 issue, `openapi-gen -check`
+a jour et `generated.ts` inchange (le 400 retire n'etait declare nulle part au contrat).
+Web : `typecheck` propre, `lint` 0 erreur, 178 tests verts sur le filtre cible, 0 couleur en
+dur, imports croises a 7/7 inchange, manifestes sans diff. Six inversions/mutations jouees,
+chacune faisant tomber le test qu'elle vise.
+
+**Conclusion / prochaine etape** — ronde 1 soldee, non poussee. Deux decouvertes hors
+perimetre au §7 : la meme branche morte `missing_match_id` survit dans `handlers/replay.go`
+(lot B/D) ; et aucune AUTRE route du depot ne fabrique un chemin de fichier a partir d'un
+parametre d'URL, verifie sur pieces — si une seconde apparait, elle reutilise `MapIDValide`
+plutot que d'en recopier le motif.
+
+---
+
+## [2026-09-06] Tactique phase 4 — ronde 2 : l'oracle avait survecu dans le libelle
+
+**Statut** : Complete (3 constats, tous corriges — non pousse, revue du superviseur)
+
+**Decision technique principale** — fermer la frontiere aux DEUX couches, et rendre
+discriminants deux tests qui ne l'etaient pas.
+
+**Le defaut qui comptait (P1)** — la ronde 1 avait rendu indiscernables les CODES d'erreur
+d'un `map_id` hostile et d'une carte legitime jamais jouee. Le corps, lui, differait : le
+service enrobait sa sentinelle avec la carte demandee (`fmt.Errorf("%w (%q)", ...)`) et le
+handler publiait `err.Error()`, tandis que le refus de validation publiait la sentinelle nue.
+La presence de l'identifiant entre parentheses disait a l'appelant laquelle des deux
+frontieres il avait heurtee. **On avait ferme la porte et laisse la fenetre ouverte.**
+
+Corrige aux deux couches, chacune avec son test et son inversion : le service rend la
+sentinelle nue et met le detail au journal ; le handler publie le message canonique quoi
+qu'on lui donne. Les deux 400 sur `question` et `qui` continuent de nommer la valeur
+refusee, et c'est un choix argumente : ce sont des parametres de requete a validation
+unique, il n'existe aucune seconde frontiere dont il faudrait les rendre indiscernables, et
+nommer la valeur rejetee est ce qui rend un 400 utile. La regle du message canonique ne vaut
+que pour le 404 de carte, qui a DEUX producteurs.
+
+**PIEGE RETENU — un double infidele valide le handler contre une realite qui n'existe pas.**
+Le test de la ronde 1 comparait deja les deux reponses octet pour octet, et il passait : son
+double rendait la sentinelle NUE, forme que le service reel ne produisait jamais. Le test
+etait juste, la fixture etait fausse, et l'ecart entre les deux etait exactement le defaut.
+Le correctif ne consiste donc pas seulement a corriger le code : le fichier de tests porte
+maintenant DEUX doubles opposes — l'un qui reproduit la forme reelle (et tombe si le service
+regresse), l'autre qui ENROBE volontairement (et tombe si le handler regresse). Aucun des
+deux ne suffit seul.
+
+**Second piege — un test peut etre vert pour la mauvaise raison, et seulement sur une
+plate-forme.** Le test de la garde d'index posait sa cle hostile via `MapBackgroundMetaPath`,
+dont le `filepath.Join` nettoyait le `..\` : le sidecar sortait du repertoire des fonds, qui
+n'etait alors jamais cree, `os.ReadDir` echouait, et la fonction sortait AVANT la garde
+testee. Sous Linux il mordait, sous Windows non. Reecrit avec un nom de fichier `..evade.json`
+— legal, present dans le repertoire, dont seul le STEM porte `..` — et un decor VERIFIE avant
+l'assertion : l'index doit resoudre vers la cle hostile et son sidecar doit etre lisible,
+faute de quoi un refus ne prouverait rien. La lecon generale : quand un test verifie un
+refus, il faut d'abord prouver que sans la garde ca PASSERAIT.
+
+**Troisieme correctif (P2)** — la fabrique de service, qui ouvre la base du joueur,
+s'executait avant la validation sur la route raster. Remontee ; et le double compte
+desormais les appels a la FABRIQUE, pas seulement ceux au service — l'assertion etait posee
+un cran trop tard.
+
+**Resultats observes** — `go vet` propre sur 3 arbres ; `go test -count=1` vert sur 12
+paquets (api 23,3 s ; archlint 15,5 s ; service 9,9 s ; handlers 9,0 s) ;
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue ; `openapi-gen -check` a jour
+(690129 octets, contrat inchange). Quatre inversions jouees, chacune faisant tomber son test.
+
+**Conclusion / prochaine etape** — ronde 2 soldee, pas de ronde 3 : le superviseur verifie
+sur pieces puis pousse. La phase 4 est close, revues comprises ; la suite prevue par le plan
+est la phase 6 (rasters a la cuisson), la 5 attendant toujours le lot D.
+
+---
+
+## [2026-09-06] Tactique phase 4 bis — le perimetre devient une liste blanche, et le filtre de session marche enfin
+
+**Statut** : Complété (items 4.5 et 4.6 du plan `.ai/PLAN_TACTIQUE_2026-09-06.md`, branche
+`feat/tactique`, worktree dedie).
+
+**Décision technique principale** — le perimetre de l'onglet Tactique n'est plus un jeu
+d'axes de filtre passes en query string, mais une LISTE BLANCHE de `match_id` resolue COTE
+CLIENT par le endpoint de filtres existant (`POST /filters/match-ids` ->
+`service.FilteredMatchIDs`, base JOUEUR). Les deux lectures tactiques passent en POST avec
+`{ match_ids, coequipiers?, question?, qui? }` et perdent playlist/mode/from/to/outcome. La
+raison est structurelle : les SESSIONS vivent dans la base joueur
+(`player_match_enrichment`), que les requetes shared du lecteur tactique ne joignent pas —
+`BuildNeighborsWhereClause` les rangeait donc dans ses filtres IGNORES, et l'onglet servait
+la periode entiere sans le dire. Une seule definition du perimetre dans l'app, celle qui
+sait lire les sessions.
+
+Trois choix de conception qui ont demande de l'attention :
+
+1. **`domain.ListeBlancheMatchs` est un TYPE, pas un `[]string`.** Deux appelants ont des
+   besoins opposes sur la meme absence de valeur : l'onglet passe une liste (vide = AUCUN
+   match), la page Escouade n'en passe aucune (= tout l'historique). Avec un slice nu, ces
+   deux etats sont le meme `len() == 0`, et le jour ou un appelant oublie sa liste il obtient
+   l'historique entier en silence. Le zero-value du type est « aucune restriction » (le seul
+   etat constructible par accident) et toute liste vient de `RestreindreAux`.
+2. **« Escouade » = la composition choisie, mais PAS pour le KPI d'echange.** L'axe des
+   rasters cible les xuids nommes dans la barre (arbitrage utilisateur) ; le taux d'echange
+   reste sur MON CAMP ENTIER (autre arbitrage utilisateur, du meme jour). Deux perimetres
+   voisins, donc DEUX predicats (`cible` / `campDuMatch`) : les faire partager un seul les
+   aurait fusionnes sans que rien ne le montre a l'ecran — le denominateur du taux aurait
+   retreci quand on nomme un coequipier.
+3. **La composition voyage en gamertags dans l'URL, en xuids dans la requete.** Un nom qu'on
+   ne sait pas traduire ARRETE la lecture au lieu d'etre ignore : l'ignorer ELARGIT le
+   perimetre et rend une grille plus fournie que demandee, sans rien dire.
+
+Cote web, `useLocalFilterBar` a ete ETENDU (option `committed`) au lieu d'etre recopie : la
+page Tactique possede l'etat committed via `usePageScope` (URL), le pending restant interne
+et calcule comme un CALQUE sur le committed — une copie initialisee au montage serait restee
+figee au retour navigateur. Ses trois consommateurs existants sont inchanges.
+
+**Résultats observés** — Go : `go vet` propre sur 8 arbres ; `go test -count=1` sans aucun
+`FAIL` sur service/api/domain/port/duckdb/archlint/contracttest/cmd ;
+`golangci-lint --new-from-merge-base=origin/main` a 0 issue ; `openapi-gen -check` a jour.
+Web : typecheck propre, lint 0 erreur, **suite vitest COMPLETE** (606 fichiers, 6390 tests,
+14 skip, 0 fail), couleurs 0 violation, imports croises 7/7 inchange, manifestes regeneres.
+HUIT inversions jouees, chacune faisant tomber le test qu'elle vise.
+
+Deux pieges rencontres, tous deux invisibles sans test : **Huma ne met pas a plat une struct
+EMBARQUEE dans un corps** (il en fait une propriete a part, et le corps aplati part en 422),
+et **un POST de LECTURE sous `/players/` doit entrer dans `middleware.readOnlyPostPrefixes`**
+— sans quoi la garde d'ecriture du groupe refuse en 401 une lecture que la meme personne
+obtenait en GET la veille.
+
+**Conclusion / prochaine étape** — phase 4 bis close, deux commits (`tactique(4.5)`,
+`tactique(4.6)`), non pousses : le superviseur verifie sur pieces, joue la revue
+adversariale, puis pousse. Report unique et documente : la moitie CLIENT de « sans
+composition, l'axe Escouade n'est pas propose » releve de la phase 5 (il n'existe aucun
+selecteur d'axe a l'ecran tant que la vue par carte est gelee) ; la regle est appliquee et
+testee cote Go. Trois decouvertes hors perimetre consignees au §7 du plan, dont un
+`matchs_filtres` qui a change de sens et que la phase 5 devra lire correctement.
+
+---
+
+## [2026-09-06] Tactique phase 4 bis, revue ronde 1 — 17 constats : une frontiere juste peut rester fausse a l'usage
+
+**Statut** : Complété (3 commits `tactique(4.7)`, branche `feat/tactique`, non poussés).
+
+**Décision technique principale** — les deux relecteurs n'ont trouvé ni accès indu, ni
+injection, ni résultat faux côté Go. Les 17 constats retenus portent tous sur l'USAGE :
+un code correct qui, à l'écran, dit ou fait autre chose que ce qu'il mesure.
+
+Le plus coûteux (W1) mérite d'être retenu au-delà de ce chantier : **en TanStack Query
+v5, `isLoading` vaut `isPending && isFetching`, donc il est FAUX sur une requête
+désactivée.** Notre grille est suspendue tant que le périmètre n'est pas résolu — elle
+affichait donc « Aucune carte jouée » au premier montage, à chaque clic sur « Analyser »
+(nouvelle clé, aucune donnée en cache) et définitivement quand la résolution échouait,
+l'échec étant en plus avalé. La règle qui en sort : un état vide est une RÉPONSE, il
+exige que toutes les lectures dont il dépend aient répondu ; on lit `isPending`, pas
+`isLoading`, dès qu'une requête peut être désactivée.
+
+Les trois autres P1 web disent la même chose sous d'autres formes :
+- **le sélecteur proposait ce qu'il allait refuser** (W2) — quatre sources de gamertags
+  dont une seule traduisible en XUID ; `GamertagCombobox` gagne une prop `sources`
+  rétro-compatible, et l'onglet n'offre que ce qu'il sait résoudre ;
+- **le label de session persisté devenait un zombie** (W3) — il embarque son compte de
+  matchs, le backend filtre par égalité stricte : deux matchs de plus et le lien partagé
+  rend une grille vide. La réconciliation de la page Escouade descend dans
+  `lib/sessions/sessionLabels.ts` (deux consommateurs, une définition) ;
+- **« Réinitialiser les filtres » n'en réinitialisait que la moitié** (W4) — en mode
+  contrôlé, le hook ne patche que ses cinq champs ; sessions et composition survivaient,
+  et `hasActiveFilters` les ignorait, donc le bouton n'était même pas rendu.
+
+Côté Go : la composition n'était bornée par rien (5 000 chaînes → 5 000 `EXISTS`
+corrélés, 30 s puis 500) — bornée à 3 et validée sur le motif XUID, refus typé en 400 ;
+`matchs_filtres` redevient PAR CARTE sur décision du superviseur (sa version « taille de
+la liste blanche » donnait deux grandeurs sans dénominateur commun sous des noms qui
+invitent à en faire un rapport) ; et un commentaire de montage annonçait « GET » sur des
+routes passées en POST, au seul endroit où l'on voit la pile de middlewares.
+
+**Résultats observés** — Go : `gofmt` propre, `go vet` propre sur 8 arbres, `go test`
+sans aucun `FAIL`, `golangci-lint --new-from-merge-base=origin/main` à 0 issue,
+`openapi-gen -check` à jour et `generated.ts` inchangé. Web : typecheck propre, lint 0
+erreur, suite vitest COMPLÈTE 606 fichiers / 6402 tests / 14 skip / 0 fail, couleurs 0
+violation, imports croisés 7/7 inchangé, manifestes sans diff. SEPT inversions jouées,
+chacune faisant tomber le test qu'elle vise.
+
+**Conclusion / prochaine étape** — ronde 1 soldée, aucun report. Deux fixtures ont été
+corrigées au passage parce qu'elles fabriquaient une forme absente de la production
+(`xuid(1234)` au lieu de l'entier nu que `sync.extractXUID` écrit en base) : c'est le
+défaut R3 de la phase 2, et il revient dès qu'on écrit une fixture de mémoire. Le
+superviseur vérifie sur pièces, lance la ronde 2, puis pousse.
+
+---
+
+## [2026-09-06] Tactique phase 4 bis, revue ronde 2 — une copie qui perd la garde de l'original
+
+**Statut** : Complété (commit `tactique(4.8)`, branche `feat/tactique`, non poussé).
+Dernière salve : pas de ronde 3.
+
+**Décision technique principale** — le P1 de cette ronde est, à une couche près, le même
+défaut que la ronde 1 avait déjà nommé : **une frontière juste ailleurs, reprise sans ce
+qui la tenait.** La réconciliation des labels de session vient de `SquadLayout` ; la
+copie avait laissé derrière elle son `if (reconciled.length === 0) return`. Or cette
+garde-là ne protège pas d'un zombie de synchronisation — elle protège d'un CHANGEMENT DE
+CONTEXTE : une session solo est épinglée, l'utilisateur ajoute un coéquipier, la liste
+proposée bascule sur les sessions d'escouade, et le label épinglé n'y figure plus sans
+avoir rien perdu de sa validité. Écrire `sessions: []` faisait alors retomber
+`filter_mode` en `period` SANS DATES : la lecture passait d'une soirée à l'historique
+entier, avec pour seul signal un avertissement de console.
+
+Deux règles en sortent, valables au-delà de ce chantier :
+1. **quand on reprend une mécanique, on reprend ses gardes — et on relit ce qu'elles
+   gardent** ; un commentaire qui dit « même mécanique que X » est une dette tant que la
+   comparaison n'a pas été faite ligne à ligne ;
+2. **un filtre qu'on ne sait plus appliquer se DIT, il ne se retire pas** : la barre
+   affiche désormais les sessions épinglées absentes de la liste courante, et précise que
+   le filtre reste appliqué.
+
+Les deux P2 ferment ce que la ronde 1 avait laissé à moitié. Le motif XUID existait en
+deux exemplaires (`domain` et `handlers`) alors que le contrat disait de réutiliser :
+source unique `domain.XUIDValide`, l'autre supprimée, et un garde-rail archlint interdit
+toute recompilation du motif hors du domaine. **Ce garde-rail a d'abord été FAUX** — son
+motif de détection ne reconnaissait rien, donc il aurait été vert pour toujours ; c'est
+le self-check positif ajouté ensuite (il doit reconnaître la source unique elle-même) qui
+l'a fait tomber. Un ratchet sans preuve qu'il détecte quelque chose n'est pas un ratchet.
+Enfin, la prop `sources` filtrait le RÉSULTAT des suggestions mais pas la REQUÊTE : avec
+une seule source locale, chaque frappe partait quand même vers l'annuaire pour une
+réponse jetée. Le test le prouve en montant les deux comboboxes côte à côte — l'arrivée
+de la requête du combobox libre établit que la fenêtre de debounce est passée pour les
+deux, ce qu'une attente arbitraire n'aurait jamais établi.
+
+**Résultats observés** — Go : `gofmt` propre, `go vet` propre, `go test -count=1` sur
+domain/api/archlint/service → 15 paquets `ok`, aucun `FAIL` ; `golangci-lint
+--new-from-merge-base=origin/main` à 0 issue ; `openapi-gen -check` à jour. Web :
+typecheck propre, lint 0 erreur, suite vitest COMPLÈTE 606 fichiers / 6405 tests / 14
+skip / 0 fail, couleurs 0 violation, imports croisés 7/7 inchangé, manifestes régénérés.
+Trois inversions jouées, chacune faisant tomber son test.
+
+**Conclusion / prochaine étape** — phase 4 bis close, revues comprises, aucun report. Le
+superviseur vérifie sur pièces puis pousse. La suite prévue par le plan est la phase 6
+(rasters à la cuisson) ; la 5 attend toujours le lot D.
+
+## [2026-09-07] Phase 5 — Tactique vue d'analyse
+
+**Statut** : Complété
+
+**Décisions techniques principales** :
+- Item 5.1 : Copie du noyau heatmapLayer → heatPaint.ts (buildTacticalGrid, tacticalIntensity, heatRamp, drawTacticalHeatmap). Adaptation : cellules pré-agrégées par serveur, pas de points bruts.
+- Items 5.2-5.6 : Vue d'analyse quand `carte` en URL ; KPI strip (matchs, couverture, échange, isole) ; plan card avec canvas + heatmap ; cellule sélectionnée ; i18n complet FR/EN ; query key tacticalRaster. Phase 5.5 (frame link) reportée lot D.
+- Intégration : TacticalPage affiche TacticalAnalysisView quand scope.carte est non-vide.
+- **Reprise 2026-09-07 (passe 2)** : le placeholder (17 L) remplacé par la vue réelle —
+  `TacticalToolbar.tsx` (question/qui/spawn en `useState` local, aucune route ne les
+  porte), `TacticalPlanCard.tsx` (canvas fond + calque, cadré à l'aspect-ratio DU MONDE
+  pour rester aligné avec le calque au clic), `TacticalCellCard.tsx`, `tacticalView.logic.ts`
+  (titre/unité/source/messages/cellule-depuis-clic, pur, testé seul). `useTacticalRaster`
+  étendu (coéquipiers, `match_ids` nullable — même contrat d'attente que `useTacticalMaps`,
+  réponse typée `TacticalRaster`). KPI échange/isolement OMIS (pas affichés à 0 %) quand
+  le contrat ne les publie pas pour la question. 5.6 réduit à valeur+unité+compte de
+  matchs contributeurs : la liste de matchs et `?frame=` exigent des identifiants que
+  `CelluleTactique` ne publie pas — reportés avec 5.5, pas simulés.
+
+**Résultats observés** :
+- Commit 38a8bd550 : heatPaint.ts, typecheck vert, lint vert
+- Commit a395fa78f : TacticalAnalysisView placeholder, i18n manifest étendu (50 clés), queries.ts + hook useTacticalRaster, query keys ajoutées, TacticalPage modifié
+- Reprise 2026-09-07 : 21 clés i18n ajoutées (71 → 73 avec les 2 clés d'erreur), 4 nouveaux
+  fichiers (`TacticalToolbar`, `TacticalPlanCard`, `TacticalCellCard`, `tacticalView.logic`)
+  + leurs tests. Deux gardes préexistants trouvés cassés par le placeholder (non détectés à
+  l'époque) et corrigés ici car ils bloquaient le gate de cette feature :
+  `TacticalPage.test.tsx` (test obsolète sur le comportement pré-vue d'analyse) et
+  `keys.title-slug.guard.test.ts` (fabrique `tacticalRaster` jamais classée). Un
+  anglicisme corrigé (« kills » → « frags », vocabulaire déjà établi). Gate complet
+  rejoué : typecheck vert ; lint 0 erreur (30 warnings, inchangé) ; vitest COMPLET —
+  608 fichiers / 6432 tests / 0 fail ; `lint-no-hardcoded-colors` et
+  `lint-no-hardcoded-fields` 0 violation.
+
+**Conclusion** :
+Phase 5 CLOSE (5.2-5.4, 5.6 ; 5.5 justifié `[!]`, dépendance explicite du lot D
+— playbackStore, contrat `CelluleTactique` sans identifiants de match). Aucun report
+opportuniste : le périmètre réduit de 5.6 est documenté, pas dissimulé.
+
+Prochaine étape : lot D (playbackStore) ouvrira 5.5 et la forme complète de 5.6
+(contributeurs + `?frame=`), ce qui suppose aussi un ajout côté contrat Go
+(identifiants de match par cellule) — hors périmètre de cette passe.
+
+## [2026-09-07] Tactique — phase 8 : cloture du chantier (Complete)
+- Decision : perimetre ferme par l'utilisateur ; decouvertes consignees dans
+  `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`, suite (3 items) dans `.ai/PLAN_TACTIQUE_SUITE_2026-09-07.md`.
+- Resultats : phases 1-7 livrees sur `feat/tactique` (5.5 et la liste des contributeurs reportes
+  au plan de suite, lot D fusionne dans `feat/v75` mais pas encore repris ici) ; gates locaux verts
+  a chaque commit ; `make gate-push` lance a la cloture ; CI surveillee.
+- Prochaine etape : fusion dans `feat/v75` par l'utilisateur apres `merge origin/feat/v75` (P du
+  plan de suite), puis S.1-S.3.

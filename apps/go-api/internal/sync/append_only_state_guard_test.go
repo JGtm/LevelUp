@@ -48,6 +48,13 @@ var appendOnlyStateTables = []string{
 	// (#23046, 2026-06-21) — id PK + colonne stage + written_at, lecture via
 	// player_match_enrichment_latest (merge-on-read par-groupe). INSERT pur taggé.
 	"player_match_enrichment",
+	// match_lives / match_death_context (7C isolement au sync, 2026-09-07) : tables
+	// append-only NET-NEUVES, vues _latest PAR PASSE. Etape 5 de la recette ADR 0026 —
+	// c'est CE garde-la qui interdit `INSERT OR IGNORE`, que le scan file-level de
+	// no_art_patterns_test ne voit pas. Writer unique : persist/lives_persister.go, INSERT
+	// purs dans une transaction unique.
+	"match_lives",
+	"match_death_context",
 	// pve_match_stats : append-only in-place (id PK + vue pve_match_stats_latest).
 	// L'écriture passe par un guard SELECT-then-INSERT idempotent (pve_persister.go) ;
 	// l'ancien INSERT OR IGNORE est interdit (audit adversarial 2026-06-21).

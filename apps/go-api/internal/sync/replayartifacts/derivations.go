@@ -46,9 +46,7 @@ package replayartifacts
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"log/slog"
-	"os"
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/replaybuild"
@@ -133,6 +131,12 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	reporterT0Film(ctx, d, b, rapportsT0(lus))
 	persisterResumesUsage(ctx, d, b, lus)
 	persisterStatsBombe(ctx, d, b, lus)
+	// LES RASTERS TACTIQUES, QUATRIEME PROJECTION — memes artefacts lus, meme place (apres
+	// toute cuisson). La seule qui n'ecrit AUCUNE base : son resultat est un fichier pose a
+	// cote de son artefact (cf. raster.go), donc hors du segment d'ecriture shared partage
+	// par les familles ci-dessus et ci-dessous. Elle est gouvernee par la porte de l'etape
+	// elle-meme, `film.replay_artifact`, deja franchie en tete de Run.
+	projeterRastersTactiques(ctx, d, lus)
 	// LES POSITIONS EN DERNIER (decision utilisateur 1) : c'est la projection la plus VOLUMINEUSE
 	// du lot (~215 lignes par match apres decimation, cf. positions.go). La passer apres les
 	// trois autres garantit que si le writer devient indisponible en cours de route, ce sont les
@@ -293,19 +297,13 @@ func marquerDerivations(ctx context.Context, b *bilanDerivations, lus []artefact
 func lireArtefacts(ctx context.Context, d Deps, ranges []ArtefactRange) []artefactLu {
 	out := make([]artefactLu, 0, len(ranges))
 	for _, r := range ranges {
-		raw, err := os.ReadFile(r.Path)
+		doc, octets, err := lireDocumentRange(r.Path)
 		if err != nil {
 			slog.WarnContext(ctx, "post-sync: artefact range mais illisible — aucune derivation",
 				"gamertag", d.Gamertag, "match_id", r.MatchID, "path", r.Path, "err", err)
 			continue
 		}
-		var doc replay.ReplayDocument
-		if err := json.Unmarshal(raw, &doc); err != nil {
-			slog.WarnContext(ctx, "post-sync: artefact range mais indeserialisable — aucune derivation",
-				"gamertag", d.Gamertag, "match_id", r.MatchID, "path", r.Path, "err", err)
-			continue
-		}
-		out = append(out, artefactLu{matchID: r.MatchID, path: r.Path, doc: &doc, octets: len(raw)})
+		out = append(out, artefactLu{matchID: r.MatchID, path: r.Path, doc: doc, octets: octets})
 	}
 	return out
 }

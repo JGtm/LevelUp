@@ -99,7 +99,7 @@ const (
 // approximation, c'est la population exacte qui peut avoir une position.
 func (c *KillSourceCollector) collectPositions(
 	ctx context.Context, matchID string, film *filmsource.Film,
-	ids MatchIdentities, deaths []persist.KillEventInsert,
+	ids MatchIdentities, deaths, fusionnees []persist.KillEventInsert,
 ) {
 	if !c.caps.Has(games.CapFilmKillPositions) {
 		slog.DebugContext(ctx, "killsource: positions — capability absente, passe ignoree",
@@ -135,13 +135,13 @@ func (c *KillSourceCollector) collectPositions(
 		return
 	}
 
-	pass, err := buildPositionRows(film, entry, ids, kills, matchID)
+	pass, mat, err := buildPositionRows(film, entry, ids, kills, matchID)
 	if err != nil {
 		slog.WarnContext(ctx, "killsource: positions — passe ignoree", "match_id", matchID, "err", err)
 		return
 	}
 
-	c.ecrireLesDeuxPasses(ctx, matchID, pass)
+	c.ecrireLesDeuxPasses(ctx, matchID, pass, mat, ids, fusionnees)
 }
 
 // ecrireLesDeuxPasses ecrit les positions PUIS les entames, SOUS DEUX LEASES SEPARES ET SANS
@@ -156,13 +156,25 @@ func (c *KillSourceCollector) collectPositions(
 // L ORDRE RESTE CELUI-CI (positions d abord) parce que les positions sont la mesure premiere et
 // l entame un proxy par-dessus : si le lease est dispute, c est la mesure qui doit l obtenir en
 // premier. Ce n est pas une dependance, c est une priorite.
-func (c *KillSourceCollector) ecrireLesDeuxPasses(ctx context.Context, matchID string, pass passePositions) {
+func (c *KillSourceCollector) ecrireLesDeuxPasses(
+	ctx context.Context, matchID string, pass passePositions, mat materiauDIsolement,
+	ids MatchIdentities, fusionnees []persist.KillEventInsert,
+) {
 	if err := c.writePositions(ctx, matchID, pass.rows); err != nil {
 		observability.AddInt(metricPositionsWriteFail, 1)
 		slog.ErrorContext(ctx, "killsource: positions — ecriture echouee",
 			"match_id", matchID, "err", err)
 	} else {
 		publishPositionsPass(ctx, matchID, pass.rep, len(pass.rows))
+
+		// LES FAITS D ISOLEMENT SONT LA SECONDE PROJECTION DU MEME MATERIAU (lot 7C). Ils passent
+		// APRES l ecriture des positions et ne rendent aucune erreur : leur echec ne doit couter ni
+		// le journal des morts ni les positions, deja ecrits et bien plus centraux au produit.
+		//
+		// MEME PORTE QUE LES POSITIONS (`CapFilmKillPositions`) : les deux tables reposent sur les
+		// memes positions bipeds. Une capability neuve n aurait rien gate de plus et aurait ajoute
+		// une cle a tenir a jour dans chaque `capabilities.toml`.
+		c.projeterFaitsDIsolement(ctx, matchID, mat, ids, fusionnees)
 	}
 	c.persistOpenings(ctx, matchID, pass)
 }
@@ -220,7 +232,7 @@ func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID stri
 func buildPositionRows(
 	film *filmsource.Film, entry filmdec.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
-) (passePositions, error) {
+) (passePositions, materiauDIsolement, error) {
 	release := filmdec.LockProcessDecode()
 	defer release()
 
@@ -229,23 +241,23 @@ func buildPositionRows(
 	bipedOpt.WorldRange = &rng
 	positions, err := filmdec.ScanBipedPositions(film, bipedOpt)
 	if err != nil {
-		return passePositions{}, fmt.Errorf("positions bipeds: %w", err)
+		return passePositions{}, materiauDIsolement{}, fmt.Errorf("positions bipeds: %w", err)
 	}
 
 	originUS, err := replay.ScanClockOrigin(film)
 	if err != nil {
 		observability.AddInt(metricPositionsNoOrigin, 1)
-		return passePositions{}, fmt.Errorf("horloge du film: %w", err)
+		return passePositions{}, materiauDIsolement{}, fmt.Errorf("horloge du film: %w", err)
 	}
 
 	deathsFilm, err := replay.ScanDeaths(film)
 	if err != nil {
-		return passePositions{}, fmt.Errorf("fil des morts (rejeu): %w", err)
+		return passePositions{}, materiauDIsolement{}, fmt.Errorf("fil des morts (rejeu): %w", err)
 	}
 
 	idx, err := replay.ScanPlayerIndices(film, rosterUint64(ids.XUIDs))
 	if err != nil {
-		return passePositions{}, fmt.Errorf("index de joueur: %w", err)
+		return passePositions{}, materiauDIsolement{}, fmt.Errorf("index de joueur: %w", err)
 	}
 	if idx.Disagreements > 0 {
 		observability.AddInt(metricPositionsAmbiguous, int64(idx.Disagreements))
@@ -254,12 +266,16 @@ func buildPositionRows(
 	slotXUID, owners := replay.ResolveSlotXUID(positions, deathsFilm, idx)
 	if len(slotXUID) == 0 {
 		observability.AddInt(metricPositionsNoBridge, 1)
-		return passePositions{}, fmt.Errorf(
+		return passePositions{}, materiauDIsolement{}, fmt.Errorf(
 			"pont slot->xuid vide (vies=%d nommees=%d lectures_index=%d)",
 			owners.LivesTotal, owners.DeathsNamed, owners.IndexReadings)
 	}
 
-	return composerPassePositions(positions, slotXUID, kills, int64(originUS), matchID), nil
+	// LE MATERIAU REMONTE TEL QUEL : le rapport porte les vies nommees et le calage d horloge,
+	// les positions portent le monde. La projection des faits d isolement s en sert sans
+	// rescanner le film (cf. isolation_facts.go).
+	mat := materiauDIsolement{report: owners, positions: positions}
+	return composerPassePositions(positions, slotXUID, kills, int64(originUS), matchID), mat, nil
 }
 
 // composerPassePositions : LES DEUX JEUX DE LIGNES D UNE SEULE LECTURE DU FILM. PURE — aucune

@@ -1338,6 +1338,28 @@ export type SquadAssistPair = components['schemas']['SquadAssistPair']
  */
 export type SquadAssistPairs = components['schemas']['SquadAssistPairs']
 
+/**
+ * L'ÉCHANGE de l'escouade — une mort vengée dans les 5 s. Ré-exports DIRECTS du
+ * contrat, sans réécrire les `… | null` : le tableau nullable est la forme réelle du
+ * fil (toute tranche Go sort ainsi), et la combler ici la ferait mentir.
+ *
+ * `couverture` / `habituel` sont des `Couverture` (taux + brut + par match + N +
+ * échantillon faible) : un taux ne voyage jamais seul.
+ */
+export type SquadEchange = components['schemas']['SquadEchange']
+export type SquadEchangeCell = components['schemas']['SquadEchangeCell']
+export type SquadEchangeBucket = components['schemas']['SquadEchangeBucket']
+export type SquadEchangeJoueur = components['schemas']['SquadEchangeJoueur']
+
+/**
+ * Le nuage « isolement x couverture » de l'onglet Synergies (`SquadEchange.nuage_isolement`,
+ * plan tactique item 7.7) : un point par (joueur, session). `part_isolee` et `couverture`
+ * sont des `Couverture` (taux + brut + par match + N + échantillon faible), jamais un float
+ * nu.
+ */
+export type SquadNuageIsolement = components['schemas']['SquadNuageIsolement']
+export type SquadIsolementPoint = components['schemas']['SquadIsolementPoint']
+
 export interface TeammatesPageResponse {
   options: TeammateOption[]
   teammates: TeammateRow[]
@@ -1369,6 +1391,11 @@ export interface TeammatesPageResponse {
   /** Paires (assistant → tueur assisté) INTERNES à l'escouade + couverture de la
    *  mesure. Absent quand aucun match de la sélection n'a d'assistance mesurée. */
   assist_pairs?: SquadAssistPairs
+  /** L'ÉCHANGE (mort vengée dans les 5 s) : matrice « qui échange pour qui » +
+   *  KPI sur Synergies, distribution du délai sur Dynamique. ABSENT quand le titre
+   *  ne nomme pas le tueur de chaque mort, ou quand aucun match de la sélection ne
+   *  porte de journal des morts — une omission, jamais des zéros. */
+  echange?: SquadEchange
   /** Header alimente <SessionBriefing> (mode solo si pas de coéquipier sélectionné, mode squad sinon). */
   header?: import('@/features/squad/v2/types').SquadHeader
   /** Gamertag du joueur principal — sert à identifier le card "moi" dans header.player_cards. */
@@ -3070,3 +3097,28 @@ export type ReplayMapWeaponPad = components['schemas']['MapWeaponPadDTO']
 // `name` est le gamertag TEL QUE LE FILM L'ÉCRIT — ce n'est pas une résolution, rien n'est
 // allé le chercher ailleurs, donc rien ne peut l'avoir mal apparié.
 export type ReplayRosterEntry = components['schemas']['RosterEntry']
+
+// L'onglet TACTIQUE — l'écran d'entrée : les cartes JOUÉES sous le filtre courant, avec
+// leur bilan et le verdict de lisibilité du serveur (`sous_plancher`). Le plancher par
+// carte est publié AVEC les cartes (`plancher_matchs`) parce que l'écran doit pouvoir le
+// NOMMER à l'utilisateur — jamais le recopier côté client, ce qui en ferait deux vérités.
+export type TacticalMapsPage = components['schemas']['TacticalMapsPage']
+export type TacticalMapCard = components['schemas']['TacticalMapCard']
+
+// Les CORPS des deux lectures tactiques — elles sont en POST parce que leur périmètre est
+// une LISTE de match_id, qui ne tient pas dans une query string. Typer le corps sur le
+// contrat généré (et non sur un objet littéral) fait qu'un renommage côté Go casse `tsc`
+// ici, au lieu de se découvrir à l'exécution sur une grille vide.
+export type TacticalMapsBody = components['schemas']['TacticalMapsBody']
+export type TacticalRasterBody = components['schemas']['TacticalRasterBody']
+
+// La RÉPONSE du raster de placement (vue d'analyse, phase 5) : cellules pré-agrégées par le
+// serveur (bornes, pas de grille, échelle p50/p95), grappes de réapparition nommées, et les
+// compteurs de couverture (matchs retenus/en attente/non cuisables) que la vue doit afficher
+// TELS QUELS — jamais recalculés côté client, même règle que le plancher de la grille.
+export type TacticalRaster = components['schemas']['TacticalRaster']
+export type CelluleTactique = components['schemas']['CelluleTactique']
+export type BornesMonde = components['schemas']['BornesMonde']
+export type EchelleTactique = components['schemas']['EchelleTactique']
+export type TacticalCouverture = components['schemas']['Couverture']
+export type TacticalGrappe = components['schemas']['TacticalGrappe']

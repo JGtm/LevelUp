@@ -716,6 +716,25 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// timeline d'events on-demand (kill-feed/timeline), capability-gated.
 		handlers.NewMatchEventsHandler(reg.MatchEvents).Mount(r, playerOpt)
 
+		// Onglet Tactique : POST .../tactical/maps + POST .../tactical/{map_id}/raster
+		// (les deux LECTURES, en POST depuis le 2026-09-06 : leur périmètre est une
+		// LISTE de match_id, qui ne tient pas dans une query string)
+		// + GET .../tactical/{map_id}/background{,.png} (le fond de carte de la grille,
+		// servi par reg.Replay — la seule cascade carte -> fond du dépôt).
+		//
+		// LES DEUX POST SONT DES LECTURES, ET C'EST DÉCLARÉ AILLEURS : ils sont exemptés
+		// de la garde d'écriture du groupe par le préfixe `/tactical/` de
+		// `middleware.readOnlyPostPrefixes` (comme `/pages/` et `/filters/`). Sans cette
+		// entrée, un visiteur anonyme recevrait un 401 sur une simple lecture. L'ownership
+		// joueur (ADR 0029) et la protection CSRF du groupe, eux, s'appliquent inchangés :
+		// c'est bien la seule garde « écriture » qui est levée, pas l'accès.
+		// Hors sous-groupe capability de TITRE : le gating est DATA-LEVEL
+		// (film.kill_positions / film.kill_source, lues par le service sur la
+		// CapabilityMap de l'adapter) — un titre sans positions mesurées reçoit un
+		// 503 propre, et la grille des cartes reste servie. Côté web l'onglet est
+		// gated par la capability de titre `replay` (FeatureGate / RouteCapabilityGate).
+		handlers.NewTacticalHandler(reg.Tactical, reg.Replay).Mount(r, playerOpt)
+
 		// Phase 4 plan engagement : score + courbe par match + profil + timeseries + squad
 		// + admin recompute. Toutes les routes sont gated par CapEngagement
 		// (titre doit declarer la capability — halo_infinite=oui, autres=non
@@ -1126,6 +1145,17 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		}
 	}
 
+	// Portée du RADAR par variante (même regulation.toml, table [radar_range_m]) → borne la
+	// lecture « où je meurs isolé » de l'onglet Tactique. Titre sans déclaration → absent →
+	// aucune lecture d'isolement pour ce titre, et le compte des matchs écartés le dit (jamais
+	// un rayon deviné).
+	radarRange := make(map[string]map[string]int)
+	for _, slug := range multiTitleSlugs {
+		if rset, ok := fieldMappingsRegistry.GetRegulation(slug); ok {
+			radarRange[slug] = rset.RadarRangeMap()
+		}
+	}
+
 	// Lecture du bloc « Score dans le temps » PAR TITRE (même regulation.toml, table
 	// [score_timeline]) → l'en-tête de la vue match dit au client s'il doit masquer le
 	// bloc (Slayer), poser des barres aux instants de marque (drapeau, colline, bombe) ou
@@ -1148,6 +1178,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		WithPlaylistLabelOverrides(playlistLabelOverrides).
 		WithRegulationSeconds(regulationSeconds).
 		WithRoundsDecide(roundsDecide).
+		WithRadarRange(radarRange).
 		WithScoreTimelineKind(scoreTimelineKind)
 
 	// V72-27 : câble le résolveur de libellé de rang FR consommé par les

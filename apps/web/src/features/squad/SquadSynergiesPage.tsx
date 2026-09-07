@@ -25,6 +25,9 @@ import { MapPerfVsHistoryChart } from './MapPerfVsHistoryChart'
 import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
 import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
 import { SquadAssistPairsTable } from './SquadAssistPairsTable'
+import { SquadEchangeConstatCard } from './SquadEchangeConstatCard'
+import { SquadEchangeMatrixCard } from './SquadEchangeMatrixCard'
+import { SquadIsolementNuageCard } from './SquadIsolementNuageCard'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
@@ -96,6 +99,10 @@ export function SquadSynergiesPage() {
   // film). Le bloc n'est alors pas monté du tout, plutôt que d'afficher un cadre vide
   // qui laisserait croire à une escouade sans entraide.
   const assistPairs = pageData?.assist_pairs
+  // L'ECHANGE (mort vengee dans les 5 s) : comme assist_pairs, son absence est un
+  // ETAT (titre qui ne nomme pas le tueur de chaque mort, ou aucun match mesure) et
+  // non un zero. Les blocs ne sont alors pas montes du tout.
+  const echange = pageData?.echange
 
   const outcomeLabels = {
     win: mappings?.outcomes?.['win']?.label ?? t.history.outcomeLabel.win,
@@ -106,6 +113,10 @@ export function SquadSynergiesPage() {
 
   return (
     <div className="space-y-4">
+      {/* « Constat du moment » EN TÊTE de l'onglet. La carte se rend d'elle-même sous ses
+          deux seuils (30 morts d'équipe ET 5 points d'écart) : rien à passer ici, et
+          rien du tout à l'écran quand elle n'a rien à dire. */}
+      <SquadEchangeConstatCard echange={echange} />
       {/* Graphes toujours montés : ChartCard affiche son état vide (titre +
           message) au lieu de faire disparaître le bloc quand mapBreakdown
           est vide ou sans champs de performance. */}
@@ -174,6 +185,10 @@ export function SquadSynergiesPage() {
           <p className="mb-2 text-xs text-muted-foreground">{t.assists.description}</p>
           <SquadAssistPairsTable block={assistPairs} />
         </section>
+      )}
+      {echange && <SquadEchangeMatrixCard echange={echange} />}
+      {echange?.nuage_isolement && (
+        <SquadIsolementNuageCard nuage={echange.nuage_isolement} joueurs={echange.joueurs ?? []} />
       )}
       <SquadMapHeatmapChart
         title={t.heatmap.title}

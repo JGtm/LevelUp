@@ -51,6 +51,7 @@ import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRou
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionObjectifsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionTactiqueRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
@@ -314,6 +315,15 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute =
         Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute,
     } as any,
   )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionTactiqueRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionTactiqueRouteImport.update(
+    {
+      id: '/tactique',
+      path: '/tactique',
+      getParentRoute: () =>
+        Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute,
+    } as any,
+  )
 const Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRoute =
   Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRouteImport.update(
     {
@@ -543,6 +553,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionObjectifsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionTactiqueRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute
@@ -608,6 +619,7 @@ export interface FileRoutesByTo {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionObjectifsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionTactiqueRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute
@@ -676,6 +688,7 @@ export interface FileRoutesById {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionObjectifsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionTactiqueRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCitationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerCommendationsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerMedalsRoute
@@ -746,6 +759,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
@@ -811,6 +825,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
@@ -878,6 +893,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/commendations'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career/medals'
@@ -1219,6 +1235,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute
     }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique'
+      path: '/tactique'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionTactiqueRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRoute
+    }
     '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations': {
       id: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/citations'
       path: '/career/citations'
@@ -1426,6 +1449,7 @@ interface Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRouteChildren {
   Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionCoachingRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionObjectifsRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionObjectifsRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute
+  Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionTactiqueRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionTactiqueRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRoute
 }
 
@@ -1437,6 +1461,8 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRouteChildren: Char1
       Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionObjectifsRoute,
     Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute:
       Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRealisationsRoute,
+    Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionTactiqueRoute:
+      Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionTactiqueRoute,
     Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRoute:
       Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRoute,
   }

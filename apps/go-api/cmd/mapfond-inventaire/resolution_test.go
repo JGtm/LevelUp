@@ -4,7 +4,8 @@ package main
 //
 // La seule raison d etre de cette commande est de dire quelles cartes n ont pas de fond A L
 // ECRAN. Elle ne le fait qu a une condition : resoudre EXACTEMENT comme
-// `replayService.resolveBackgroundKey`. Le jour ou la production gagne un chemin de resolution et
+// `replayService.resolveBackgroundKeyDepuis` (la cascade partagee par les deux enveloppes,
+// par match et par carte). Le jour ou la production gagne un chemin de resolution et
 // pas l inventaire, celui-ci se met a compter des manques qui n existent pas — c est deja arrive
 // deux fois a la main, et les deux fois la conclusion a ete fausse
 // (`.ai/V7.5/cartes/HANDOFF_FONDS_CARTE_2026-09-03.md`, sections 2.2 et 7).
@@ -137,10 +138,12 @@ func TestResoutFondSidecarSansPngResoutQuandMeme(t *testing.T) {
 // cheminServiceProduction est le fichier dont l inventaire rejoue la logique.
 const cheminServiceProduction = "apps/go-api/internal/service/replay_map_background.go"
 
-// cheminsDeResolutionAttendus : le nombre de `return` de `resolveBackgroundKey` qui rendent une
-// CLÉ (par opposition aux retours d'erreur, qui rendent la chaîne vide). Il en vaut DEUX : la clé
-// map_id, puis la clé rendue par l'index — l'héritage variante vers base vit DANS `Lookup`, pas
-// dans un troisième retour.
+// cheminsDeResolutionAttendus : le nombre de `return` de `resolveBackgroundKeyDepuis` qui
+// rendent une CLÉ (par opposition aux retours d'erreur, qui rendent la chaîne vide). La cascade
+// vit dans `resolveBackgroundKeyDepuis`, appelée par les deux enveloppes `resolveBackgroundKey`
+// (par match) et `resolveBackgroundKeyForMap` (par carte) : lire l'une des enveloppes ne verrait
+// qu'un relais vide. Il en vaut DEUX : la clé map_id, puis la clé rendue par l'index — l'héritage
+// variante vers base vit DANS `Lookup`, pas dans un troisième retour.
 const cheminsDeResolutionAttendus = 2
 
 // retourAvecCle capte un `return <identifiant>, nil` — donc un retour qui SERT une clé. Les
@@ -162,13 +165,13 @@ func TestInventaireEtProductionResolventPareil(t *testing.T) {
 	if err != nil {
 		t.Fatalf("service de fond de carte illisible : %v", err)
 	}
-	corps, err := corpsDeFonction(string(blob), "func (s *replayService) resolveBackgroundKey(")
+	corps, err := corpsDeFonction(string(blob), "func (s *replayService) resolveBackgroundKeyDepuis(")
 	if err != nil {
 		t.Fatalf("%v — la signature a changé, l'inventaire doit être relu", err)
 	}
 
 	if n := len(retourAvecCle.FindAllString(corps, -1)); n != cheminsDeResolutionAttendus {
-		t.Errorf("resolveBackgroundKey rend une clé par %d chemin(s), attendu %d.\n"+
+		t.Errorf("resolveBackgroundKeyDepuis rend une clé par %d chemin(s), attendu %d.\n"+
 			"La production a gagné (ou perdu) un chemin de résolution. `cmd/mapfond-inventaire`\n"+
 			"le rejoue dans `resoutFond` : le mettre à jour DANS LE MÊME COMMIT, sinon l'inventaire\n"+
 			"comptera des cartes « sans fond » qui sont servies à l'écran.", n, cheminsDeResolutionAttendus)
@@ -178,7 +181,7 @@ func TestInventaireEtProductionResolventPareil(t *testing.T) {
 	iMapID := strings.Index(corps, "MapBackgroundMetaPath")
 	iIndex := strings.Index(corps, "MapBackgroundIndexFor")
 	if iMapID < 0 || iIndex < 0 {
-		t.Fatalf("resolveBackgroundKey n'appelle plus MapBackgroundMetaPath (%d) et/ou "+
+		t.Fatalf("resolveBackgroundKeyDepuis n'appelle plus MapBackgroundMetaPath (%d) et/ou "+
 			"MapBackgroundIndexFor (%d) — `resoutFond` repose sur les deux", iMapID, iIndex)
 	}
 	if iMapID > iIndex {

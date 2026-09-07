@@ -110,6 +110,14 @@ const (
 	// Publiee MEME A ZERO — « tout est derive » et « le rattrapage ne tourne pas » s ecriraient
 	// autrement pareil (meme regle que CompteurRetard).
 	JaugeDerivationsRetard = "postsync_replay_derivations_retard"
+	// Rasters tactiques projetes des artefacts cuits dans le cycle, deposes en SIDECAR a
+	// cote de leur artefact (cf. raster.go). CompteurRastersEcrits : sidecars deposes ;
+	// CompteurRastersEchecs : artefact illisible, sans matchId, ou ecriture refusee — un
+	// defaut, jamais un etat normal. UN ARTEFACT SANS PISTE NOMMEE COMPTE POUR ECRIT :
+	// son sidecar existe et vaut zero, ce qui n'est pas la meme chose qu'un match sans
+	// sidecar (celui-la est NON MESURE pour la lecture d'occupation).
+	CompteurRastersEcrits = "postsync_replay_rasters_ecrits_total"
+	CompteurRastersEchecs = "postsync_replay_rasters_echecs_total"
 )
 
 // SignalerClientSansChunks journalise et compte l'échec de l'assertion `ChunksFetcher` faite

@@ -49,48 +49,65 @@ func (s *replayService) MapCallouts(ctx context.Context, matchID string) (*repla
 			"match_id", matchID, "titleSlug", s.titleSlug)
 		return nil, port.ErrMapCalloutsNotAvailable
 	}
-	res := title.NewPathResolver(s.repoRoot)
-	cat, err := replay.LoadMapCallouts(res.MapCalloutsPath(s.titleSlug))
-	if err != nil {
-		// Le catalogue est VERSIONNÉ : son absence ou son illisibilité n'est pas le cas
-		// nominal d'une carte sans zones — on le dit, puis on dégrade.
-		slog.WarnContext(ctx, "rejeu 2D : catalogue de callouts illisible — pas de zones nommées",
-			"err", err, "titleSlug", s.titleSlug)
-		return nil, port.ErrMapCalloutsNotAvailable
-	}
-	if entry, ok := s.calloutsByModule(ctx, cat, keys); ok {
-		return replayview.MapCalloutsOf(entry), nil
-	}
-	entry, err := cat.LookupByID(keys.MapID)
-	if err != nil {
-		if !errors.Is(err, replay.ErrCalloutsUnknownMap) {
-			slog.WarnContext(ctx, "rejeu 2D : lookup callouts par map_id en échec",
-				"err", err, "map_id", keys.MapID, "titleSlug", s.titleSlug)
-		}
-		// Ni module ni asset au catalogue : absence propre, le rejeu reste entier.
+	entry, ok := zonesPourIdentites(ctx, s.repoRoot, s.titleSlug, keys)
+	if !ok {
 		slog.DebugContext(ctx, "rejeu 2D : carte hors catalogue de callouts",
 			"match_id", matchID, "map_id", keys.MapID, "candidats", keys.Names,
 			"titleSlug", s.titleSlug)
 		return nil, port.ErrMapCalloutsNotAvailable
 	}
-	return replayview.MapCalloutsOf(&entry), nil
+	return replayview.MapCalloutsOf(entry), nil
 }
 
-// calloutsByModule tente l'essai 1 : nom de carte -> module -> entrée du catalogue.
+// zonesPourIdentites resout les zones nommees d'une carte a partir de ses identites, par la
+// cascade DES DEUX FAMILLES (module d'abord, asset UGC ensuite).
+//
+// ELLE EST PARTAGEE, ET C'EST LA REGLE DU DEPOT : deux surfaces la consomment — le rejeu 2D
+// (par MATCH, ci-dessus) et l'onglet Tactique (par CARTE, cf. tactical_callouts.go), qui
+// nomme ses grappes de reapparition par le callout le plus proche. En deux exemplaires, une
+// carte Forge aurait fini par avoir des zones d'un cote et pas de l'autre — le defaut exact
+// que la cascade a deux essais a ete ecrite pour fermer (avant le 2026-09-02, il n'y avait
+// que l'essai par module et les cartes Forge n'affichaient rien).
+func zonesPourIdentites(ctx context.Context, repoRoot, titleSlug string,
+	keys port.MatchMapKeys) (*replay.MapCalloutsEntry, bool) {
+	res := title.NewPathResolver(repoRoot)
+	cat, err := replay.LoadMapCallouts(res.MapCalloutsPath(titleSlug))
+	if err != nil {
+		// Le catalogue est VERSIONNÉ : son absence ou son illisibilité n'est pas le cas
+		// nominal d'une carte sans zones — on le dit, puis on dégrade.
+		slog.WarnContext(ctx, "callouts : catalogue illisible — pas de zones nommées",
+			"err", err, "titleSlug", titleSlug)
+		return nil, false
+	}
+	if entry, ok := calloutsParModule(ctx, repoRoot, titleSlug, cat, keys); ok {
+		return entry, true
+	}
+	entry, err := cat.LookupByID(keys.MapID)
+	if err != nil {
+		if !errors.Is(err, replay.ErrCalloutsUnknownMap) {
+			slog.WarnContext(ctx, "callouts : lookup par map_id en échec",
+				"err", err, "map_id", keys.MapID, "titleSlug", titleSlug)
+		}
+		return nil, false
+	}
+	return &entry, true
+}
+
+// calloutsParModule tente l'essai 1 : nom de carte -> module -> entrée du catalogue.
 //
 // Rend `false` pour TOUTE absence (catalogue de bornes illisible, aucun module pour les
 // noms candidats, module hors catalogue de callouts) — l'appelant enchaîne sur le map_id.
 // Une carte Forge passe ici sans rien trouver, et c'est le cas nominal.
-func (s *replayService) calloutsByModule(ctx context.Context, cat *replay.MapCalloutsCatalog,
-	keys port.MatchMapKeys) (*replay.MapCalloutsEntry, bool) {
+func calloutsParModule(ctx context.Context, repoRoot, titleSlug string,
+	cat *replay.MapCalloutsCatalog, keys port.MatchMapKeys) (*replay.MapCalloutsEntry, bool) {
 	if len(keys.Names) == 0 {
 		return nil, false
 	}
-	res := title.NewPathResolver(s.repoRoot)
-	quant, err := filmdec.LoadMapQuantCatalog(res.MapQuantBoundsPath(s.titleSlug))
+	res := title.NewPathResolver(repoRoot)
+	quant, err := filmdec.LoadMapQuantCatalog(res.MapQuantBoundsPath(titleSlug))
 	if err != nil {
-		slog.WarnContext(ctx, "rejeu 2D : catalogue de bornes illisible — essai par module abandonné",
-			"err", err, "titleSlug", s.titleSlug)
+		slog.WarnContext(ctx, "callouts : catalogue de bornes illisible — essai par module abandonné",
+			"err", err, "titleSlug", titleSlug)
 		return nil, false
 	}
 	for _, name := range keys.Names {
@@ -103,8 +120,8 @@ func (s *replayService) calloutsByModule(ctx context.Context, cat *replay.MapCal
 			return &zones, true
 		}
 		if !errors.Is(cerr, replay.ErrCalloutsUnknownMap) {
-			slog.WarnContext(ctx, "rejeu 2D : lookup callouts par module en échec",
-				"err", cerr, "module", entry.Module, "titleSlug", s.titleSlug)
+			slog.WarnContext(ctx, "callouts : lookup par module en échec",
+				"err", cerr, "module", entry.Module, "titleSlug", titleSlug)
 		}
 	}
 	return nil, false

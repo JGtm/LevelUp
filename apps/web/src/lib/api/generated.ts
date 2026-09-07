@@ -3472,6 +3472,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/tactical/{map_id}/background": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Calage du fond d'une carte de l'onglet Tactique */
+        get: operations["getTacticalMapBackground"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/tactical/{map_id}/background.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sert l'image du fond d'une carte de l'onglet Tactique
+         * @description Image vue du dessus d'une carte (PNG), cuite hors ligne par `cmd/mapfond-build`.
+         *     C'est la MÊME donnée que le fond du rejeu 2D, résolue par la même cascade, mais
+         *     adressée par `map_id` : la grille des cartes ne connaît pas de match. Son CALAGE
+         *     est servi par `GET .../tactical/{map_id}/background`. Contrairement au rejeu,
+         *     cette route n'est PAS restreinte à la boucle locale : une image de carte est une
+         *     donnée de référence versionnée, pas une trajectoire décodée d'un film.
+         */
+        get: operations["getTacticalMapBackgroundImage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/tactical/{map_id}/raster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne, ou je passe mon temps) */
+        post: operations["getTacticalRaster"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/tactical/maps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cartes jouees, pour la grille d'entree de l'onglet Tactique */
+        post: operations["getTacticalMaps"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/templates/suggest": {
         parameters: {
             query?: never;
@@ -4740,6 +4816,17 @@ export interface components {
             /** @enum {string} */
             setup_state: "no_halo_link" | "halo_linked_no_profile" | "profile_ready_no_sync" | "ready";
         };
+        BornesMonde: {
+            /** Format: double */
+            max_x: number;
+            /** Format: double */
+            max_y: number;
+            /** Format: double */
+            min_x: number;
+            /** Format: double */
+            min_y: number;
+            valide: boolean;
+        };
         Bounds: {
             /** Format: float */
             maxX: number;
@@ -5228,6 +5315,26 @@ export interface components {
             /** Format: int64 */
             playlists: number;
         };
+        CelluleTactique: {
+            /** Format: double */
+            brut: number;
+            /** Format: double */
+            centre_x: number;
+            /** Format: double */
+            centre_y: number;
+            /** Format: int64 */
+            col: number;
+            /** Format: int64 */
+            lig: number;
+            /** Format: int64 */
+            matchs: number;
+            /** Format: int64 */
+            matchs_defaite: number;
+            /** Format: int64 */
+            matchs_victoire: number;
+            /** Format: double */
+            valeur: number;
+        };
         Challenge: {
             /** Format: date-time */
             abandoned_at?: string;
@@ -5524,6 +5631,17 @@ export interface components {
             /** Format: double */
             y_value: number;
         };
+        Couverture: {
+            /** Format: int64 */
+            brut: number;
+            echantillon_faible: boolean;
+            /** Format: int64 */
+            n: number;
+            /** Format: double */
+            par_match: number;
+            /** Format: double */
+            taux: number;
+        };
         Coverage: {
             abilityCharges?: components["schemas"]["AbilityChargeCoverage"];
             abilityImpulses?: components["schemas"]["AbilityImpulseCoverage"];
@@ -5708,6 +5826,17 @@ export interface components {
             bucket_upper: number;
             /** Format: int64 */
             count: number;
+        };
+        EchelleTactique: {
+            /** Format: double */
+            borne: number;
+            /** Format: int64 */
+            n_cellules: number;
+            /** Format: double */
+            p50: number;
+            /** Format: double */
+            p95: number;
+            symetrique: boolean;
         };
         EncounterDTO: {
             /** Format: int64 */
@@ -10803,6 +10932,46 @@ export interface components {
             radar?: unknown[] | null;
             timeline_multi_player?: components["schemas"]["ChartSeriesChartPoint2D"][] | null;
         };
+        SquadEchange: {
+            cellules: components["schemas"]["SquadEchangeCell"][] | null;
+            couverture: components["schemas"]["Couverture"];
+            delais: components["schemas"]["SquadEchangeBucket"][] | null;
+            /** Format: int64 */
+            fenetre_ms: number;
+            habituel: components["schemas"]["Couverture"];
+            joueurs: components["schemas"]["SquadEchangeJoueur"][] | null;
+            /** Format: int64 */
+            matchs_habituel: number;
+            /** Format: int64 */
+            matchs_mesures: number;
+            /** Format: int64 */
+            matchs_total: number;
+            nuage_isolement?: components["schemas"]["SquadNuageIsolement"];
+        };
+        SquadEchangeBucket: {
+            /** Format: int64 */
+            debut_ms: number;
+            /** Format: int64 */
+            fin_ms: number;
+            hors_fenetre: boolean;
+            /** Format: int64 */
+            nombre: number;
+            ouvert: boolean;
+        };
+        SquadEchangeCell: {
+            /** Format: int64 */
+            nombre: number;
+            /** Format: double */
+            par_match: number;
+            venge_gamertag: string;
+            venge_xuid: string;
+            vengeur_gamertag: string;
+            vengeur_xuid: string;
+        };
+        SquadEchangeJoueur: {
+            gamertag: string;
+            xuid: string;
+        };
         SquadEngagementSession: {
             durations_seconds: number[] | null;
             labels: string[] | null;
@@ -10873,6 +11042,17 @@ export interface components {
             rows: {
                 [key: string]: components["schemas"]["SquadIntensityMatchRow"][] | null;
             };
+        };
+        SquadIsolementPoint: {
+            couverture: components["schemas"]["Couverture"];
+            gamertag: string;
+            /** Format: int64 */
+            morts_examinees: number;
+            /** Format: int64 */
+            morts_isolees: number;
+            part_isolee: components["schemas"]["Couverture"];
+            session_label: string;
+            xuid: string;
         };
         SquadKillMechanicBar: {
             kills_by_player: {
@@ -10951,6 +11131,13 @@ export interface components {
             start_time: string;
             /** Format: double */
             team_mmr_avg: number;
+        };
+        SquadNuageIsolement: {
+            /** Format: int64 */
+            plancher_echantillon_faible: number;
+            /** Format: int64 */
+            plancher_morts_session: number;
+            points: components["schemas"]["SquadIsolementPoint"][] | null;
         };
         SquadPageResponse: {
             selected_teammate?: components["schemas"]["SelectedTeammateData"];
@@ -11514,6 +11701,87 @@ export interface components {
             /** Format: int64 */
             rows: number;
         };
+        TacticalGrappe: {
+            id: string;
+            /** Format: int64 */
+            matchs: number;
+            nom_en: string;
+            nom_fr: string;
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+        };
+        TacticalMapCard: {
+            /** Format: int64 */
+            defaites: number;
+            map_id: string;
+            map_name: string;
+            map_name_fr: string;
+            /** Format: int64 */
+            matchs: number;
+            sous_plancher: boolean;
+            /** Format: int64 */
+            victoires: number;
+        };
+        TacticalMapsBody: {
+            /** @description XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe. */
+            coequipiers?: string[] | null;
+            /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
+            match_ids?: string[] | null;
+        };
+        TacticalMapsPage: {
+            cartes: components["schemas"]["TacticalMapCard"][] | null;
+            /** Format: int64 */
+            plancher_matchs: number;
+        };
+        TacticalRaster: {
+            bornes: components["schemas"]["BornesMonde"];
+            cellules: components["schemas"]["CelluleTactique"][] | null;
+            echange?: components["schemas"]["Couverture"];
+            echelle: components["schemas"]["EchelleTactique"];
+            /** Format: int64 */
+            evenements_journal: number;
+            /** Format: int64 */
+            evenements_localises: number;
+            grappes?: components["schemas"]["TacticalGrappe"][] | null;
+            isolement?: components["schemas"]["Couverture"];
+            map_id: string;
+            /** Format: int64 */
+            matchs_defaite: number;
+            /** Format: int64 */
+            matchs_en_attente?: number;
+            /** Format: int64 */
+            matchs_filtres: number;
+            /** Format: int64 */
+            matchs_non_cuisables?: number;
+            /** Format: int64 */
+            matchs_retenus: number;
+            /** Format: int64 */
+            matchs_sans_rayon?: number;
+            /** Format: int64 */
+            matchs_victoire: number;
+            /** Format: int64 */
+            morts_equipe_a_terre?: number;
+            /** Format: double */
+            pas_m: number;
+            /** Format: int64 */
+            points_ignores: number;
+            question: string;
+            qui: string;
+        };
+        TacticalRasterBody: {
+            /** @description XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade ». */
+            coequipiers?: string[] | null;
+            /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
+            match_ids?: string[] | null;
+            /** @description Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions. */
+            question?: string;
+            /** @description Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers. */
+            qui?: string;
+            /** @description Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction. */
+            spawn?: string;
+        };
         TeamHold: {
             /** Format: int64 */
             teamId?: number;
@@ -11578,6 +11846,7 @@ export interface components {
             assist_pairs?: components["schemas"]["SquadAssistPairs"];
             composition_sessions?: components["schemas"]["SessionLabelEntry"][] | null;
             data_issues?: components["schemas"]["DataIssue"][] | null;
+            echange?: components["schemas"]["SquadEchange"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             frag_classes?: {
                 [key: string]: components["schemas"]["FragClassEntry"][] | null;
@@ -19471,6 +19740,137 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AsyncJobStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTacticalMapBackground: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapBackground"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTacticalMapBackgroundImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Image PNG du fond de carte */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour cette carte */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTacticalRaster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TacticalRasterBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TacticalRaster"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTacticalMaps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TacticalMapsBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TacticalMapsPage"];
                 };
             };
             /** @description Error */

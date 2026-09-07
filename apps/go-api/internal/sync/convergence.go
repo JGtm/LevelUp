@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/replayartifacts"
 )
@@ -568,6 +569,15 @@ func (s postSyncFilmSteps) runKillSource(ctx context.Context, insertedIDs []stri
 		return 0
 	}
 	return killcollector.RunPostSync(ctx, e.killSource, killcollector.PostSyncDeps{
+		// LA CAPTURE DES POSITIONS, ENFIN CABLEE AU SYNC (correction P0-1, 2026-09-07). Sans
+		// elle, `collectPositions` sortait en Debug et NI `kill_positions` NI les faits
+		// d'isolement n'etaient jamais produits au fil de l'eau — seul le backfill hors ligne
+		// les ecrivait. METADATA NIL, ET C'EST DELIBERE : le serveur tient deja metadata en
+		// RW, et en ouvrir un second handle echouerait sur « different configuration »
+		// (ADR 0016) ; le resolveur retombe alors sur le libelle BRUT du registre
+		// (`match_registry.map_name`), qui suffit au catalogue de bornes — indexe en anglais,
+		// comme ce libelle.
+		MapNames:   duckdbpkg.NewReplayMapRepo(sharedLecteur{acces: s.shared}, nil),
 		Fetcher:    fetcher,
 		LocalCache: e.localFilmCache,
 		WithRead:   s.withRead,
@@ -580,6 +590,16 @@ func (s postSyncFilmSteps) runKillSource(ctx context.Context, insertedIDs []stri
 		TitleSlug: e.titleSlug,
 		Gamertag:  e.gamertag,
 	}, insertedIDs)
+}
+
+// sharedLecteur adapte le segment shared du cycle en `duckdb.SharedReader`.
+//
+// Le resolveur de carte lit `match_registry` ; il lui faut un segment de LECTURE, jamais le
+// writer. `SharedAccess.Read` en pose un court et rend son releaseur.
+type sharedLecteur struct{ acces *SharedAccess }
+
+func (l sharedLecteur) Get(ctx context.Context) (*sql.DB, func(), error) {
+	return l.acces.Read(ctx)
 }
 
 // runReplayArtifacts — étape 1.58 : pont disque film + artefacts de rejeu 2D. TOUTE la

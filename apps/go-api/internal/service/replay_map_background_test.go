@@ -32,6 +32,13 @@ func (m *mapNamesStub) MapKeysForMatch(_ context.Context, matchID string) (port.
 	return port.MatchMapKeys{MapID: m.mapID, Names: m.names, PairName: m.pairName}, m.err
 }
 
+// MapKeysForMap : meme stub, entree par CARTE. `vu` recoit le map_id demande — les tests du
+// fond par carte verifient ainsi qu'on interroge bien la base par map_id, sans match.
+func (m *mapNamesStub) MapKeysForMap(_ context.Context, mapID string) (port.MatchMapKeys, error) {
+	m.vu = append(m.vu, mapID)
+	return port.MatchMapKeys{MapID: m.mapID, Names: m.names}, m.err
+}
+
 // fondDeCarte pose, sous une racine de dépôt neuve, le catalogue de bornes et les deux
 // fichiers d'un fond de carte (image + calage). Rend la racine.
 //

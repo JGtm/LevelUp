@@ -128,12 +128,8 @@ func candidatsDerivations(ctx context.Context, sharedDB *sql.DB, d Deps) (work [
 // MESURE (rien a rattraper) et le second une ABSENCE de mesure. Sans cette distinction, la
 // jauge de retard publiait « tout est derive » sur un cycle qui n'avait rien lu (constat N3).
 func lireHorizonRegistre(ctx context.Context, sharedDB *sql.DB, d Deps) ([]string, bool) {
-	args := []any{bitFilmAbsent}
-	if d.RetentionMonths > 0 {
-		args = append(args, fenetreRetention(d.RetentionMonths))
-	}
-	rows, err := sharedDB.QueryContext(ctx, requeteQueueRecente(d.RetentionMonths),
-		append(args, BacklogHorizon)...)
+	sqlQueue, args := requeteQueueRecente(d.RetentionMonths)
+	rows, err := sharedDB.QueryContext(ctx, sqlQueue, append(args, BacklogHorizon)...)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: rejeu 2D — horizon des derives illisible", "err", err)
 		return nil, false

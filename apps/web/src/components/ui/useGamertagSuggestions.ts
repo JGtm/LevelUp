@@ -81,6 +81,16 @@ interface UseGamertagSuggestionsArgs {
   query: string
   frequentOptions?: TeammateOption[]
   excludeGamertags?: string[]
+  /**
+   * La recherche SERVEUR est-elle proposée ? Défaut : oui (comportement historique).
+   *
+   * Un appelant qui n'affiche pas les sources distantes ne doit pas les INTERROGER : le
+   * filtrage par source s'applique au résultat, pas à la requête, et chaque frappe de
+   * deux caractères partait quand même vers `/directory/gamertags/search` pour une
+   * réponse jetée. `false` désarme la requête ET son repli Xbox — celui-ci n'a de sens
+   * que comme suite de celle-là.
+   */
+  rechercheDistante?: boolean
 }
 
 // ─── Scoring local ─────────────────────────────────────────────────────────────
@@ -101,6 +111,7 @@ export function useGamertagSuggestions({
   query,
   frequentOptions = [],
   excludeGamertags = [],
+  rechercheDistante = true,
 }: UseGamertagSuggestionsArgs): UseGamertagSuggestionsResult {
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
 
@@ -112,7 +123,7 @@ export function useGamertagSuggestions({
   }, [query])
 
   const trimmed = debouncedQuery.trim()
-  const remoteEnabled = trimmed.length >= REMOTE_MIN_CHARS
+  const remoteEnabled = rechercheDistante && trimmed.length >= REMOTE_MIN_CHARS
 
   const remoteQuery = useQuery({
     queryKey: queryKeys.gamertagSearch(trimmed),

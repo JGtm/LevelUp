@@ -28,9 +28,17 @@ package main
 //
 // # ELLE EST REPRENABLE, ET LA CLE EST `decoder_rev`
 //
-// Un match dont la passe COURANTE (vue `_latest`) porte la revision de decodeur courante est
-// saute. Interrompre la passe et la relancer reprend donc ou elle en etait, sans re-decoder ce
-// qui est deja fait. `--force` redecode tout — c est ce qu il faut le jour ou la revision change.
+// Un match dont TOUTES les passes courantes (vues `_latest`) portent leur revision de decodeur
+// courante est saute. Interrompre la passe et la relancer reprend donc ou elle en etait, sans
+// re-decoder ce qui est deja fait. `--force` redecode tout — c est ce qu il faut le jour ou une
+// revision change.
+//
+// DEUX REVISIONS, DEUX UNITES DE FRAICHEUR (lot 7C) : `KillSourceDecoderRev` pour le journal des
+// morts, `IsolationDecoderRev` pour les faits d isolement (`match_lives`,
+// `match_death_context`). Elles evoluent separement — un changement de la regle de visibilite
+// doit refaire les faits d isolement SANS refaire le journal, qui n a pas bouge. La commande
+// reprend donc un match dont le journal est a jour mais dont les faits d isolement manquent ou
+// datent : c est ce qui permet au corpus DEJA collecte de recevoir les deux nouvelles tables.
 //
 // # ELLE PASSE LES GROS FILMS EN DERNIER, ET CE N EST PAS UNE PREFERENCE
 //
@@ -89,24 +97,19 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/haloclient"
 	"levelup/go-api/internal/sync/killcollector"
 )
@@ -244,23 +247,21 @@ func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o kil
 	if err != nil {
 		return err
 	}
+	// CAPTURE DES POSITIONS (G.2bis), BEST-EFFORT : catalogue de bornes illisible ou metadata
+	// indisponible degrade en « positions desactivees » (le collecteur continue sans elles, la
+	// passe des morts/tirs n en depend pas). ACTIVEE PAR DEFAUT ici, PAS derriere un flag CLI —
+	// c est la seule commande de backfill de ce producteur, et une feature OFF « pour plus tard »
+	// est l anti-pattern que CLAUDE.md interdit (regle 11) : la capture est prete, elle capture.
+	capture, cleanupPositions := positionCaptureDeps(cfg, o.titleSlug, db)
+	defer cleanupPositions()
+
 	collecteur := killcollector.NewKillSourceCollector(
 		killcollector.NewLocalCacheFilms(cache),
 		killcollector.NewSharedRoster(db),
 		writerDeja(db),
 		caps,
 		0, // limite par match : le defaut du collecteur (45 min)
-	)
-	// CAPTURE DES POSITIONS (G.2bis), BEST-EFFORT : catalogue de bornes illisible ou metadata
-	// indisponible degrade en « positions desactivees » (le collecteur continue sans elles, la
-	// passe des morts/tirs n en depend pas). ACTIVEE PAR DEFAUT ici, PAS derriere un flag CLI —
-	// c est la seule commande de backfill de ce producteur, et une feature OFF « pour plus tard »
-	// est l anti-pattern que CLAUDE.md interdit (regle 11) : la capture est prete, elle capture.
-	mapNames, mapBounds, cleanupPositions := positionCaptureDeps(cfg, o.titleSlug, db)
-	defer cleanupPositions()
-	if mapNames != nil && mapBounds != nil {
-		collecteur = collecteur.WithPositionCapture(mapNames, mapBounds)
-	}
+	).AvecCapture(capture)
 
 	ids := make([]string, 0, len(candidats))
 	for _, c := range candidats {
@@ -287,15 +288,9 @@ func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o kil
 // l appelant peut la `defer` inconditionnellement.
 func positionCaptureDeps(
 	cfg *config.AppConfig, titleSlug string, sharedDB *sql.DB,
-) (port.ReplayMapNameRepo, *filmdec.MapQuantCatalog, func()) {
+) (killcollector.DepsCapture, func()) {
 	noop := func() {}
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
-
-	catalog, err := filmdec.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titleSlug))
-	if err != nil {
-		fmt.Printf("catalogue de bornes indisponible (%v) — positions desactivees pour cette passe\n", err)
-		return nil, nil, noop
-	}
 
 	// OpenReadOnly (pas OpenReadForQuery) : la precondition de CETTE commande est le SERVEUR
 	// ARRETE (comme pour le handle RW de shared), donc aucun autre process ne tient metadata en
@@ -304,11 +299,20 @@ func positionCaptureDeps(
 	metaDB, err := duckdb.OpenReadOnly(pr.MetadataDBPath(titleSlug))
 	if err != nil {
 		fmt.Printf("metadata illisible (%v) — positions desactivees pour cette passe\n", err)
-		return nil, nil, noop
+		return killcollector.DepsCapture{}, noop
 	}
+	fermer := func() { _ = metaDB.Close() }
 
-	repo := duckdb.NewReplayMapRepo(staticSharedReader{db: sharedDB}, metaDB)
-	return repo, catalog, func() { _ = metaDB.Close() }
+	// LE CATALOGUE ET SA POLITIQUE DE DEGRADATION VIVENT DANS `killcollector` (lot 7C.8) :
+	// les TROIS chemins de collecte (post-sync du serveur, --online, ce backfill) les
+	// partagent. Le defaut P0-1 etait que seul celui-ci cablait la capture.
+	capture, err := killcollector.CaptureDepuisCatalogue(cfg.RepoRoot, titleSlug,
+		duckdb.NewReplayMapRepo(staticSharedReader{db: sharedDB}, metaDB))
+	if err != nil {
+		fmt.Printf("%v — positions desactivees pour cette passe\n", err)
+		return killcollector.DepsCapture{}, fermer
+	}
+	return capture, fermer
 }
 
 // staticSharedReader adapte le handle shared DEJA OUVERT (le lease de cette commande) en
@@ -348,138 +352,6 @@ func passeDuCredit(ctx context.Context, db *sql.DB, o killsourceOptions) error {
 // n existe qu UN writer, pas par un verrou supplementaire.
 func writerDeja(db *sql.DB) func(context.Context) (*sql.DB, func(), error) {
 	return func(context.Context) (*sql.DB, func(), error) { return db, func() {}, nil }
-}
-
-// filmsACollecter : les films du cache qui correspondent a un match du registre, tries par
-// COUT CROISSANT, moins ceux qui sont deja a jour.
-func filmsACollecter(
-	ctx context.Context, db *sql.DB, cacheRoot string, o killsourceOptions,
-) ([]filmCandidat, error) {
-	registre, err := matchsDuRegistre(ctx, db, 0)
-	if err != nil {
-		return nil, err
-	}
-	dejaFaits := map[string]bool{}
-	if !o.force {
-		if dejaFaits, err = matchsAJour(ctx, db); err != nil {
-			return nil, err
-		}
-	}
-
-	out := make([]filmCandidat, 0, len(registre))
-	for _, id := range registre {
-		if dejaFaits[id] {
-			continue
-		}
-		n, ok := compterChunks(cacheRoot, id)
-		if !ok {
-			continue // pas de film en cache : ce match releve du producteur credit-seul
-		}
-		out = append(out, filmCandidat{matchID: id, chunks: n})
-	}
-	// LES GROS EN DERNIER. A cout egal, l identifiant departage — une passe doit etre
-	// reproductible, y compris dans son ordre.
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].chunks != out[j].chunks {
-			return out[i].chunks < out[j].chunks
-		}
-		return out[i].matchID < out[j].matchID
-	})
-	if o.limit > 0 && len(out) > o.limit {
-		out = out[:o.limit]
-	}
-	return out, nil
-}
-
-// matchsAJour : les matchs dont la passe COURANTE porte la revision de decodeur courante.
-//
-// La lecture passe par la VUE `_latest` (ADR 0026) : une passe ancienne, deja supplantee, ne
-// doit pas faire sauter un match. `read_path` distingue les deux producteurs — un match couvert
-// par le credit-seul reste candidat au decodage de son film, et c est voulu : le film apporte la
-// source du degat, que le credit ne peut pas connaitre.
-func matchsAJour(ctx context.Context, db *sql.DB) (map[string]bool, error) {
-	rows, err := db.QueryContext(ctx, `
-		SELECT DISTINCT match_id FROM match_kill_events_latest
-		WHERE decoder_rev = ? AND read_path <> ?`,
-		killcollector.KillSourceDecoderRev, killscope.ReadPathCreditBackfill)
-	if err != nil {
-		return nil, fmt.Errorf("matchs deja a jour: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	out := map[string]bool{}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("matchs deja a jour (scan): %w", err)
-		}
-		out[id] = true
-	}
-	return out, rows.Err()
-}
-
-// matchsDuRegistre : les matchs du registre, dans un ordre stable.
-func matchsDuRegistre(ctx context.Context, db *sql.DB, limit int) ([]string, error) {
-	q := `SELECT match_id FROM match_registry ORDER BY match_id`
-	if limit > 0 {
-		q += fmt.Sprintf(" LIMIT %d", limit)
-	}
-	rows, err := db.QueryContext(ctx, q)
-	if err != nil {
-		return nil, fmt.Errorf("registre des matchs: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("registre des matchs (scan): %w", err)
-		}
-		out = append(out, id)
-	}
-	return out, rows.Err()
-}
-
-// compterChunks : le nombre de chunks declares au manifeste cache. C est le PROXY DE COUT, et
-// il est lu sans ouvrir un seul chunk.
-func compterChunks(cacheRoot, matchID string) (int, bool) {
-	court := matchID
-	if i := strings.IndexByte(matchID, '-'); i > 0 {
-		court = matchID[:i]
-	}
-	raw, err := os.ReadFile(filepath.Join(cacheRoot, "film_manifests", court+".json"))
-	if err != nil {
-		return 0, false
-	}
-	var m struct {
-		Chunks []struct{} `json:"chunks"`
-	}
-	if err := json.Unmarshal(raw, &m); err != nil || len(m.Chunks) == 0 {
-		return 0, false
-	}
-	return len(m.Chunks), true
-}
-
-// afficherPlan : le plan de passe, avec sa queue de films chers en evidence.
-func afficherPlan(candidats []filmCandidat) {
-	total := 0
-	gros := 0
-	for _, c := range candidats {
-		total += c.chunks
-		if c.chunks > 50 {
-			gros++
-		}
-	}
-	fmt.Printf("  chunks a decoder : %d au total, %d film(s) au-dela de 50 chunks (passes en dernier)\n",
-		total, gros)
-	for i, c := range candidats {
-		if i >= 5 && i < len(candidats)-3 {
-			continue
-		}
-		if i == 5 {
-			fmt.Println("  ...")
-		}
-		fmt.Printf("  %-40s %3d chunks\n", c.matchID, c.chunks)
-	}
 }
 
 // resoudreCacheFilms : `--cache`, puis l environnement, puis le defaut du depot.

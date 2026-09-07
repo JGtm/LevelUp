@@ -18,42 +18,13 @@
  * silencieusement ignorée pour le preview tant qu'une session est sélectionnée
  * — le `pending` d'origine reste intact pour le commit Analyser.
  */
-import type { FilterContextInput, SessionsInput, PeriodInput, SessionLabelEntry } from '@/lib/api/types'
+import type { FilterContextInput, SessionsInput, PeriodInput } from '@/lib/api/types'
+// L'identite d'un label de session (suffixe « (N) » volatil) vit dans `lib/sessions` :
+// deux features la lisent depuis le 2026-09-06 (Escouade et Tactique).
+import { stripSessionCountSuffix } from '@/lib/sessions/sessionLabels'
 
 const DEFAULT_SESSIONS: SessionsInput = { picked_sessions: [], gap_minutes: 120 }
 const DEFAULT_PERIOD: PeriodInput = { start_date: null, end_date: null }
-
-/**
- * Retire le suffixe " (N)" (match-count figé au sync, cf. buildSessionLabel
- * côté Go) d'un label de session pour obtenir une clé d'identité stable.
- */
-export function stripSessionCountSuffix(label: string): string {
-  return label.replace(/\s*\(\d+\)\s*$/, '').trim()
-}
-
-/**
- * Réconcilie les labels de sessions pickés contre la liste de sessions courante.
- *
- * Les labels backend embarquent un suffixe " (N)" qui change au gré des syncs.
- * Un label persisté en localStorage avec un ancien compte devient un "zombie" :
- * compté par le rail mais sans case à cocher correspondante (donc indécochable)
- * et filtré à 0 match côté backend. On remappe chaque label pické vers sa forme
- * courante (matching sur la clé sans suffixe) et on droppe les zombies
- * introuvables + les doublons. L'ordre des labels valides est préservé.
- */
-export function reconcileSquadSessionLabels(
-  picked: string[],
-  sessions: SessionLabelEntry[],
-): string[] {
-  if (picked.length === 0 || sessions.length === 0) return picked
-  const currentByKey = new Map(sessions.map((s) => [stripSessionCountSuffix(s.label), s.label]))
-  const reconciled: string[] = []
-  for (const label of picked) {
-    const current = currentByKey.get(stripSessionCountSuffix(label))
-    if (current && !reconciled.includes(current)) reconciled.push(current)
-  }
-  return reconciled
-}
 
 /** Action de ré-ancrage de session décidée quand la composition d'escouade change. */
 export type CompositionReanchorAction =

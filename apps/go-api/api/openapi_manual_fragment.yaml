@@ -1837,6 +1837,37 @@ paths:
           description: Image PNG du fond de carte
         '404':
           description: Aucun fond de carte figé pour la carte de ce match
+  # Même route, keyée par CARTE : la grille de l'onglet Tactique liste des cartes et n'a
+  # aucun match sous la main. Même charge utile binaire, donc même traitement manuel.
+  /players/{player_slug}/tactical/{map_id}/background.png:
+    get:
+      tags:
+        - tactical
+      operationId: getTacticalMapBackgroundImage
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: map_id
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Sert l'image du fond d'une carte de l'onglet Tactique
+      description: |
+        Image vue du dessus d'une carte (PNG), cuite hors ligne par `cmd/mapfond-build`.
+        C'est la MÊME donnée que le fond du rejeu 2D, résolue par la même cascade, mais
+        adressée par `map_id` : la grille des cartes ne connaît pas de match. Son CALAGE
+        est servi par `GET .../tactical/{map_id}/background`. Contrairement au rejeu,
+        cette route n'est PAS restreinte à la boucle locale : une image de carte est une
+        donnée de référence versionnée, pas une trajectoire décodée d'un film.
+      responses:
+        '200':
+          description: Image PNG du fond de carte
+        '404':
+          description: Aucun fond de carte figé pour cette carte
   /players/{player_slug}/pages/squad/v2:
     get:
       responses:

@@ -51,6 +51,12 @@ import (
 var readOnlyPostPrefixes = []string{
 	"/pages/",   // toutes les pages sont des projections en lecture
 	"/filters/", // résolution de filtres (match-ids, resolve)
+	// Onglet Tactique (2026-09-06) : les deux lectures (grille des cartes, raster
+	// d'une carte) sont passées en POST parce que leur périmètre est une LISTE de
+	// match_id, qui ne tient pas dans une query string. Elles n'écrivent rien — pas
+	// même un compteur. Sans cette entrée, la garde d'écriture refusait en 401 une
+	// lecture que la même personne obtenait en GET la veille.
+	"/tactical/",
 }
 
 // readOnlyPostExact : POST de lecture hors des familles ci-dessus.

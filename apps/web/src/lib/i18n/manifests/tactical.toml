@@ -1,0 +1,337 @@
+# Manifest i18n de l'onglet TACTIQUE (Ascension) — grille des cartes jouées.
+# Chaque clé DOIT porter fr ET en (contrôlé par build_i18n_manifests.mjs).
+#
+# VOCABULAIRE FR ARRÊTÉ : « carte », « matchs », « victoires », « défaites »,
+# « plancher ». Jamais « map », jamais « heatmap » (ce dernier est interdit par
+# lib/i18n/no-anglicisms.guard.test.ts, où ce manifeste est scanné).
+
+# ── Section « Cartes jouées » ─────────────────────────────────────────────────
+[tactical.maps.title]
+fr = "Cartes jouées"
+en = "Maps played"
+
+[tactical.maps.label]
+fr = "Cartes jouées"
+en = "Maps played"
+
+[tactical.maps.loading]
+fr = "Chargement des cartes…"
+en = "Loading maps…"
+
+[tactical.maps.error]
+fr = "Les cartes n'ont pas pu être chargées."
+en = "Maps could not be loaded."
+
+# ── État vide ─────────────────────────────────────────────────────────────────
+[tactical.maps.empty_title]
+fr = "Aucune carte jouée"
+en = "No map played"
+
+[tactical.maps.empty_description]
+fr = "Aucun match ne correspond aux filtres en cours. Élargis la période ou retire un filtre."
+en = "No match matches the current filters. Widen the period or remove a filter."
+
+# ── Vignette d'une carte ──────────────────────────────────────────────────────
+[tactical.maps.matches]
+fr = "{n, plural, one {# match} other {# matchs}}"
+en = "{n, plural, one {# match} other {# matches}}"
+
+# Barre victoires / défaites : le compte brut, jamais un taux seul.
+[tactical.maps.record]
+fr = "{wins, plural, one {# victoire} other {# victoires}} · {losses, plural, one {# défaite} other {# défaites}}"
+en = "{wins, plural, one {# win} other {# wins}} · {losses, plural, one {# loss} other {# losses}}"
+
+# Nom accessible de la barre : les deux comptes ET leur dénominateur, parce que
+# victoires + défaites peut être inférieur au nombre de matchs (nuls, résultat inconnu).
+[tactical.maps.record_label]
+fr = "{wins, plural, one {# victoire} other {# victoires}} et {losses, plural, one {# défaite} other {# défaites}} sur {n, plural, one {# match} other {# matchs}}"
+en = "{wins, plural, one {# win} other {# wins}} and {losses, plural, one {# loss} other {# losses}} out of {n, plural, one {# match} other {# matches}}"
+
+# Bouton d'une carte ouvrable : ce que le clic FAIT, dit sans ambiguïté.
+[tactical.maps.select]
+fr = "Sélectionner {map}"
+en = "Select {map}"
+
+[tactical.maps.selected]
+fr = "Carte sélectionnée"
+en = "Selected map"
+
+# ── Plancher par carte ────────────────────────────────────────────────────────
+# Raison affichée EN CLAIR sur une vignette désaturée : le joueur doit voir qu'il a
+# joué la carte, et pourquoi elle ne s'ouvre pas.
+[tactical.maps.floor_reason]
+fr = "{n, plural, one {# match} other {# matchs}} sur {floor} requis"
+en = "{n, plural, one {# match} other {# matches}} of {floor} required"
+
+[tactical.maps.floor_note]
+fr = "Une carte s'ouvre à partir de {floor} matchs : en dessous, une lecture de placement ne mesure que du bruit."
+en = "A map opens from {floor} matches on: below that, a positioning reading measures nothing but noise."
+
+# ── Pied de carte : couverture ────────────────────────────────────────────────
+[tactical.maps.coverage]
+fr = "{maps, plural, one {# carte jouée} other {# cartes jouées}}, {matches, plural, one {# match} other {# matchs}}"
+en = "{maps, plural, one {# map played} other {# maps played}}, {matches, plural, one {# match} other {# matches}}"
+
+# ── Barre de filtres L2 (phase 4 bis) ─────────────────────────────────────────
+# Vocabulaire ARRÊTÉ : « expérience », « playlists », « modes », « vue »,
+# « sessions », « escouade ». Jamais « squad », jamais « filter ».
+[tactical.filter.experience]
+fr = "Expérience"
+en = "Experience"
+
+[tactical.filter.experience_all]
+fr = "Toutes"
+en = "All"
+
+[tactical.filter.experience_ranked]
+fr = "Classé"
+en = "Ranked"
+
+[tactical.filter.experience_unranked]
+fr = "Non classé"
+en = "Unranked"
+
+[tactical.filter.playlists]
+fr = "Playlists"
+en = "Playlists"
+
+[tactical.filter.modes]
+fr = "Modes"
+en = "Modes"
+
+[tactical.filter.reset]
+fr = "Réinitialiser les filtres"
+en = "Reset filters"
+
+[tactical.filter.view]
+fr = "Vue"
+en = "View"
+
+[tactical.filter.view_all]
+fr = "Tous les matchs"
+en = "All matches"
+
+[tactical.filter.view_solo]
+fr = "Solo"
+en = "Solo"
+
+[tactical.filter.view_squad]
+fr = "En escouade"
+en = "With a squad"
+
+# Sélecteur de sessions : le libellé du bouton quand rien n'est épinglé.
+[tactical.filter.sessions]
+fr = "Sessions"
+en = "Sessions"
+
+# Sélecteur de composition (coéquipiers). {n} = nombre de coéquipiers proposés.
+[tactical.filter.squad_placeholder]
+fr = "Coéquipiers ({n})"
+en = "Teammates ({n})"
+
+# ── Composition non résolue ───────────────────────────────────────────────────
+# Un gamertag de l'URL qu'on ne sait pas traduire en identifiant : la grille n'est
+# PAS servie (l'ignorer élargirait le périmètre en silence).
+[tactical.filter.unknown_teammate_title]
+fr = "Coéquipier introuvable"
+en = "Teammate not found"
+
+[tactical.filter.unknown_teammate_description]
+fr = "Impossible d'identifier {names} parmi tes coéquipiers. Retire ce nom de la composition pour voir les cartes."
+en = "{names} could not be identified among your teammates. Remove that name from the squad to see the maps."
+
+# ── Sessions epinglees absentes de la liste courante ──────────────────────────
+# Cas typique : une session SOLO est epinglee, puis un coequipier est ajoute — la
+# liste bascule sur les sessions d'escouade. Le filtre RESTE applique (le retirer
+# ferait passer la lecture d'une soiree a l'historique entier) : la note dit ce qui
+# est vrai, elle ne s'excuse pas.
+[tactical.filter.sessions_off_list]
+fr = "{n, plural, one {# session épinglée n'est pas dans la liste courante} other {# sessions épinglées ne sont pas dans la liste courante}} : {names}. Le filtre reste appliqué."
+en = "{n, plural, one {# pinned session is not in the current list} other {# pinned sessions are not in the current list}}: {names}. The filter still applies."
+
+# ── Vue d'analyse (Phase 5) ──────────────────────────────────────────────────
+
+# Questions de la vue d'analyse
+[tactical.analysis.questions.morts]
+fr = "Où je meurs"
+en = "Where I die"
+
+[tactical.analysis.questions.kills]
+fr = "Où je tue"
+en = "Where I kill"
+
+[tactical.analysis.questions.gagne]
+fr = "Où je gagne"
+en = "Where I win"
+
+[tactical.analysis.questions.temps]
+fr = "Où je passe mon temps"
+en = "Where I spend time"
+
+[tactical.analysis.questions.routes]
+fr = "Mes routes de spawn"
+en = "My spawn routes"
+
+[tactical.analysis.questions.isole]
+fr = "Où je meurs isolé"
+en = "Where I die isolated"
+
+# KPI Strip
+[tactical.kpi.matches_retained]
+fr = "Matchs retenus"
+en = "Retained matches"
+
+[tactical.kpi.coverage]
+fr = "Couverture"
+en = "Coverage"
+
+[tactical.kpi.trade]
+fr = "Échange après ma mort"
+en = "Trade after my death"
+
+[tactical.kpi.isolation]
+fr = "Morts en isolement"
+en = "Isolated deaths"
+
+# Plan card
+[tactical.plan.title]
+fr = "Plan"
+en = "Plan"
+
+[tactical.plan.title_of]
+fr = "Plan de {map}"
+en = "Plan of {map}"
+
+[tactical.plan.footer_heatmap]
+fr = "Échelle quantile p50 vers p95, saturée au-delà. Une cellule jamais atteinte reste vide — elle n'est pas peinte en froid."
+en = "Quantile scale p50 to p95, saturated beyond. An unreached cell remains empty — it is not painted cold."
+
+[tactical.plan.footer_routes]
+fr = "15 premières secondes de chaque vie, une ligne par vie à 17% d'opacité : la route de consensus apparait par empilement."
+en = "First 15 seconds of each life, one line per life at 17% opacity: consensus route appears by layering."
+
+[tactical.plan.footer_empty]
+fr = "Aucune donnée mesurable pour cette question."
+en = "No measurable data for this question."
+
+# Status messages
+[tactical.status.pending]
+fr = "Traitement en cours : {n, plural, one {# match} other {# matchs}} en attente de cuisson"
+en = "Processing: {n, plural, one {# match} other {# matches}} pending cooking"
+
+[tactical.status.unavailable]
+fr = "Données non disponibles pour {n, plural, one {# match} other {# matchs}}"
+en = "Data unavailable for {n, plural, one {# match} other {# matches}}"
+
+# Cell card
+[tactical.cell.title]
+fr = "Cellule sélectionnée"
+en = "Selected cell"
+
+[tactical.cell.placeholder]
+fr = "Clique une zone chaude du plan."
+en = "Click a hot area of the plan."
+
+[tactical.cell.matches]
+fr = "{n, plural, one {# match distinct} other {# matchs distincts}} ont alimenté cette cellule"
+en = "{n, plural, one {# distinct match} other {# distinct matches}} contributed to this cell"
+
+[tactical.cell.placeholder_description]
+fr = "Sélectionne une cellule du plan pour voir son détail."
+en = "Select a plan cell to see its detail."
+
+# ── Titre de la vue d'analyse ─────────────────────────────────────────────────
+[tactical.analysis.page_title]
+fr = "Plan de {map} — {question}"
+en = "Plan of {map} — {question}"
+
+[tactical.analysis.error_title]
+fr = "L'analyse n'a pas pu être chargée."
+en = "The analysis could not be loaded."
+
+[tactical.analysis.error_description]
+fr = "Réessaie plus tard ou change de question."
+en = "Try again later or change the question."
+
+# ── Barre d'outils (question / qui / spawn) ───────────────────────────────────
+[tactical.toolbar.question_label]
+fr = "Question"
+en = "Question"
+
+[tactical.toolbar.who_label]
+fr = "Qui"
+en = "Who"
+
+[tactical.toolbar.who_me]
+fr = "Moi"
+en = "Me"
+
+[tactical.toolbar.who_squad]
+fr = "Escouade"
+en = "Squad"
+
+[tactical.toolbar.who_opponents]
+fr = "Adversaires"
+en = "Opponents"
+
+[tactical.toolbar.spawn_label]
+fr = "Spawn de départ"
+en = "Starting spawn"
+
+[tactical.toolbar.spawn_all]
+fr = "Tous"
+en = "All"
+
+# ── Unités de la légende (une par question) ───────────────────────────────────
+[tactical.unit.morts]
+fr = "morts par match"
+en = "deaths per match"
+
+[tactical.unit.kills]
+fr = "frags par match"
+en = "kills per match"
+
+[tactical.unit.gagne]
+fr = "engagements par match"
+en = "engagements per match"
+
+[tactical.unit.temps]
+fr = "secondes par match"
+en = "seconds per match"
+
+[tactical.unit.routes]
+fr = "passages par match"
+en = "passages per match"
+
+[tactical.unit.isole]
+fr = "morts isolées par match"
+en = "isolated deaths per match"
+
+# ── Source de la mesure (pied du plan) ────────────────────────────────────────
+[tactical.plan.source_replay]
+fr = "Source : artefacts de rejeu"
+en = "Source: replay artifacts"
+
+[tactical.plan.source_journal]
+fr = "Source : journal des morts"
+en = "Source: death log"
+
+# Plancher par cellule : 3 matchs distincts (calibration mesurée de `mappos-build`,
+# section 6 du plan Tactique) — même seuil que le serveur applique pour publier une
+# cellule, jamais recalculé côté client.
+[tactical.plan.footer_floor]
+fr = "Plancher : {n, plural, one {# match distinct} other {# matchs distincts}} par cellule"
+en = "Floor: {n, plural, one {# distinct match} other {# distinct matches}} per cell"
+
+[tactical.plan.empty_title]
+fr = "Pas assez de matchs mesurés sur cette carte"
+en = "Not enough measured matches on this map"
+
+[tactical.plan.empty_description]
+fr = "Élargis la période, la composition ou change de spawn de départ pour mesurer plus de matchs."
+en = "Widen the period, the squad, or change the starting spawn to measure more matches."
+
+# ── KPI génériques (taux + compte brut, jamais un taux seul) ──────────────────
+[tactical.kpi.secondary]
+fr = "{brut, number} sur {n, number}"
+en = "{brut, number} out of {n, number}"

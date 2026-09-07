@@ -25,7 +25,8 @@ import { useExplorerPrefsStore } from '@/stores/explorerPrefsStore'
 import type { ExplorerBriefing } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { BriefingTile } from './BriefingTile'
-import { deltaToken, isFullHistoryScope } from './ExplorerBriefing.logic'
+import { isFullHistoryScope } from '@/lib/baseline'
+import { deltaToken } from './ExplorerBriefing.logic'
 import { ExplorerBriefingModules } from './ExplorerBriefingModules'
 import {
   DurationTile,

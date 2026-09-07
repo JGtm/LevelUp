@@ -105,7 +105,23 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 // applyMapFRTranslations). Best-effort : ("", false) si Metadata absent, pas de
 // ligne FR ou erreur — l'appelant garde alors le nom EN.
 func (r *EngagementScoreRepo) resolveMapNameFR(ctx context.Context, mapID string) (string, bool) {
-	if r.pdb == nil || r.pdb.Metadata == nil {
+	if r.pdb == nil {
+		return "", false
+	}
+	return mapNameFRFromAssetTranslations(ctx, r.pdb.Metadata, mapID)
+}
+
+// mapNameFRFromAssetTranslations est LE corps de la resolution ci-dessus, promu en
+// fonction de paquet le 2026-09-06 (correction R3) pour que le lecteur tactique
+// s'en serve au lieu d'en ecrire une TROISIEME copie — il y en avait deja deux dans
+// ce paquet (celle-ci et `FiltersRepo.applyMapFRTranslations`, qui resout par NOM
+// EN faute de map_id sous la main).
+//
+// Best-effort assume : une metadata absente, une carte sans traduction ou une
+// erreur de lecture rendent ("", false), et l'appelant garde le nom EN. Un nom de
+// carte manquant n'est pas une panne d'affichage.
+func mapNameFRFromAssetTranslations(ctx context.Context, meta *DB, mapID string) (string, bool) {
+	if meta == nil || mapID == "" {
 		return "", false
 	}
 	const q = `
@@ -114,7 +130,7 @@ func (r *EngagementScoreRepo) resolveMapNameFR(ctx context.Context, mapID string
 		ORDER BY CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END
 		LIMIT 1
 	`
-	rows, err := r.pdb.Metadata.QueryRecovered(ctx, q, mapID)
+	rows, err := meta.QueryRecovered(ctx, q, mapID)
 	if err != nil {
 		return "", false
 	}

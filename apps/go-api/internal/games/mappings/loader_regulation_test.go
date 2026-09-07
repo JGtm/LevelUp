@@ -443,3 +443,117 @@ func TestScoreTimelineFromRepo(t *testing.T) {
 		}
 	}
 }
+
+// TestRadarRange_CheminReel — LA TABLE EST LUE COMME LA PRODUCTION LA LIT.
+//
+// L'accesseur `RadarRangeM` n'avait AUCUN appelant de production (le service resout par
+// `map[game_variant_name]`) : c'etait du code mort teste, et son rognage de cle donnait
+// l'illusion que le chemin reel rognait aussi. Il est supprime ; ce test porte desormais
+// sur `RadarRangeMap`, la seule sortie que le cablage consomme, ET sur la resolution telle
+// que le service la fait.
+func TestRadarRange_CheminReel(t *testing.T) {
+	set, err := LoadRegulationFromBytes("t.toml", []byte(`
+[meta]
+title_slug = "halo_infinite"
+schema_version = 6
+
+[radar_range_m]
+"  Slayer:Arena  " = 18
+"BTB:Slayer"       = 24
+`))
+	if err != nil {
+		t.Fatalf("chargement: %v", err)
+	}
+	table := set.RadarRangeMap()
+	// LA CLE EST ROGNEE AU CHARGEMENT : le service resout par `table[variante]` sans
+	// rogner, donc une cle a blancs dans le TOML serait introuvable a l'execution.
+	if m, ok := table["Slayer:Arena"]; !ok || m != 18 {
+		t.Fatalf("table = %v : la cle du TOML n'a pas ete rognee au chargement", table)
+	}
+	if m, ok := table["BTB:Slayer"]; !ok || m != 24 {
+		t.Fatalf("BTB = (%d, %v), attendu 24", m, ok)
+	}
+	if _, ok := table["Husky Raid:CTF"]; ok {
+		t.Fatal("une variante absente ne doit pas apparaitre dans la table")
+	}
+	// nil-safe, comme tous les accesseurs de ce type.
+	var nul *RegulationSet
+	if nul.RadarRangeMap() != nil {
+		t.Fatal("set nil : attendu une table nulle")
+	}
+}
+
+// TestRadarRangeM_ValeurInvalide — un rayon nul ou negatif est une ERREUR DE CHARGEMENT,
+// jamais un silence : il se lirait comme « personne n'est jamais a portee », donc « tout le
+// monde meurt isole ».
+func TestRadarRangeM_ValeurInvalide(t *testing.T) {
+	for _, mauvais := range []string{`"Slayer:Arena" = 0`, `"Slayer:Arena" = -18`} {
+		_, err := LoadRegulationFromBytes("t.toml", []byte(`
+[meta]
+title_slug = "halo_infinite"
+schema_version = 6
+
+[radar_range_m]
+`+mauvais+"\n"))
+		if err == nil {
+			t.Fatalf("%s : attendu une erreur de chargement", mauvais)
+		}
+	}
+}
+
+// TestRadarRangeM_TableLivree — LA TABLE DU DEPOT, pas une fixture : les valeurs arretees
+// le 2026-09-05 doivent etre celles que la production lit.
+func TestRadarRangeM_TableLivree(t *testing.T) {
+	set, err := LoadRegulationFromFile(filepath.Join("..", "..", "..", "..", "..",
+		"config", "titles", "halo_infinite", "mappings", "regulation.toml"))
+	if err != nil {
+		t.Fatalf("chargement de la table livree: %v", err)
+	}
+	table := set.RadarRangeMap()
+	if table["Slayer:Arena"] != 18 {
+		t.Fatalf("Arene livree = %d, attendu 18 m", table["Slayer:Arena"])
+	}
+	if table["BTB:Slayer"] != 24 {
+		t.Fatalf("BTB livre = %d, attendu 24 m", table["BTB:Slayer"])
+	}
+	// TOUTE VARIANTE CONNUE D'UNE AUTRE TABLE A UNE PORTEE (decision superviseur du
+	// 2026-09-06) : sans cela, une variante parfaitement identifiee par ailleurs sortait de
+	// la lecture « isole » sans que rien ne l'explique.
+	//
+	// LES QUATRE TABLES SONT COUVERTES DEPUIS LE 2026-09-07 (revue ronde 2). Les deux
+	// premieres seules laissaient un trou exact : une variante declaree UNIQUEMENT dans
+	// [rounds_decide] ou [hold_ticks] — les modes a manches et les modes de garde, ceux
+	// dont l'ajout est le plus probable — passait ce garde-rail sans avoir de portee.
+	for nom, connues := range map[string][]string{
+		"[score_target]":       clesInt(set.targets),
+		"[regulation_seconds]": clesInt(set.seconds),
+		"[rounds_decide]":      clesBool(set.roundsDecide),
+		"[hold_ticks]":         clesInt(set.holdTicks),
+	} {
+		if len(connues) == 0 {
+			t.Errorf("%s : aucune variante lue — le garde-rail ne garde rien de cette table", nom)
+		}
+		for _, variante := range connues {
+			if table[variante] == 0 {
+				t.Errorf("variante %q connue de %s mais absente de [radar_range_m]", variante, nom)
+			}
+		}
+	}
+}
+
+// clesInt / clesBool : les variantes declarees par une table, pour la boucle de couverture.
+func clesInt(m map[string]int) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
+}
+
+func clesBool(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
+}

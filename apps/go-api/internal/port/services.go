@@ -181,6 +181,14 @@ type ReplayService interface {
 	MapBackground(ctx context.Context, matchID string) (*replaydoc.MapBackground, error)
 	// MapBackgroundImage retourne les octets PNG du fond, même sentinelle d'absence.
 	MapBackgroundImage(ctx context.Context, matchID string) ([]byte, error)
+	// MapBackgroundForMap et MapBackgroundImageForMap servent le MÊME fond, keyé par
+	// CARTE (map_id) au lieu du match. La grille de l'onglet Tactique n'a pas de match
+	// sous la main : elle liste des cartes. La résolution est la même — et elle n'est
+	// écrite qu'une fois (resolveBackgroundKeyDepuis dans le service) : seule change la
+	// façon d'obtenir les identités de carte (ReplayMapNameRepo.MapKeysForMap).
+	// Mêmes sentinelles d'absence que leurs jumelles par match.
+	MapBackgroundForMap(ctx context.Context, mapID string) (*replaydoc.MapBackground, error)
+	MapBackgroundImageForMap(ctx context.Context, mapID string) ([]byte, error)
 	// MapCallouts retourne les ZONES NOMMÉES officielles de la carte du match
 	// (polygones monde + libellés FR/EN, catalogue de référence versionné). Retourne
 	// ErrMapCalloutsNotAvailable quand la carte n'en a pas — cas nominal des cartes
@@ -223,6 +231,13 @@ type ReplayMapNameRepo interface {
 	// MapKeysForMatch retourne les identités de carte du match (map_id + noms candidats).
 	// Erreur = carte inconnue, l'appelant dégrade sans fond.
 	MapKeysForMatch(ctx context.Context, matchID string) (MatchMapKeys, error)
+	// MapKeysForMap retourne les mêmes identités à partir du SEUL map_id, pour les
+	// surfaces qui raisonnent par CARTE et non par match (grille de l'onglet Tactique).
+	// Le map_id est alors déjà connu ; ne manquent que les NOMS candidats, qui restent
+	// nécessaires — le fond d'une carte native est keyé par son module installé, pas par
+	// son asset. `PairName` est toujours vide : il n'existe qu'au niveau d'un match.
+	// Erreur = carte inconnue, même dégradation que ci-dessus.
+	MapKeysForMap(ctx context.Context, mapID string) (MatchMapKeys, error)
 }
 
 // MatchPlayerFact et MatchFacts sont des ALIAS de leurs types de domaine

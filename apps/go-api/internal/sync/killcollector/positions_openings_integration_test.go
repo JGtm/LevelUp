@@ -96,7 +96,8 @@ func TestEcrireLesDeuxPasses_EcritLesDeuxTables(t *testing.T) {
 	db := openSharedTestDB(t)
 	c := &KillSourceCollector{acquireShared: sharedWriter(db)}
 
-	c.ecrireLesDeuxPasses(context.Background(), "m-deux-passes", passeDeuxLignes("m-deux-passes"))
+	c.ecrireLesDeuxPasses(context.Background(), "m-deux-passes", passeDeuxLignes("m-deux-passes"),
+		materiauDIsolement{}, MatchIdentities{}, nil)
 
 	if n := compterVuePositions(t, db, "kill_positions_latest", "m-deux-passes"); n != 1 {
 		t.Errorf("kill_positions_latest = %d ligne(s), attendu 1", n)
@@ -128,7 +129,8 @@ func TestEcrireLesDeuxPasses_EchecDesPositionsNAnnulePasLEntame(t *testing.T) {
 	c := &KillSourceCollector{acquireShared: sharedWriter(db)}
 
 	avantEchec := observability.LoadCounter(metricPositionsWriteFail)
-	c.ecrireLesDeuxPasses(context.Background(), "m-c7", passeDeuxLignes("m-c7"))
+	c.ecrireLesDeuxPasses(context.Background(), "m-c7", passeDeuxLignes("m-c7"),
+		materiauDIsolement{}, MatchIdentities{}, nil)
 
 	if got := observability.LoadCounter(metricPositionsWriteFail) - avantEchec; got != 1 {
 		t.Errorf("%s a bougé de %d, attendu 1", metricPositionsWriteFail, got)

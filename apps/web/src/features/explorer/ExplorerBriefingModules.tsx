@@ -31,7 +31,8 @@ import type {
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import { BriefingSectionCard } from './BriefingSectionCard'
-import { deltaToken, formatSignedPoints, signOf } from './ExplorerBriefing.logic'
+import { formatSignedPoints } from '@/lib/baseline'
+import { deltaToken, signOf } from './ExplorerBriefing.logic'
 import { RankedBlock } from './ExplorerRankedBlock'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string

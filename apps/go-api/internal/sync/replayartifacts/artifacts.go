@@ -368,7 +368,9 @@ func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 	b := buildAll(ctx, d, work)
 	// LES DÉRIVATIONS VIENNENT APRÈS TOUTE CUISSON, jamais entre deux : c'est ce qui garantit
 	// que les bursts writer ne recouvrent aucun décodage. UN SEUL POINT D'ENTRÉE, le même que
-	// celui du dépôt d'ouvrier (cf. derivations.go — constat A1).
+	// celui du dépôt d'ouvrier (cf. derivations.go — constat A1). Les rasters tactiques
+	// (cf. raster.go) sont la QUATRIÈME famille dérivée : mêmes artefacts rangés, même
+	// point d'entrée — voir Deriver.
 	Deriver(ctx, DerivationsDeps{
 		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
 		AcquireWriter: d.AcquireWriter,

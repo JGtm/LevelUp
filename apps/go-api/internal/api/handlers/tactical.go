@@ -1,0 +1,383 @@
+// Package handlers — tactical.go : les endpoints de l'onglet Tactique.
+//
+//	POST /players/{player_slug}/tactical/maps                    (corps : perimetre)
+//	POST /players/{player_slug}/tactical/{map_id}/raster          (corps : perimetre + lecture)
+//	GET  /players/{player_slug}/tactical/{map_id}/background      (calage du fond)
+//	GET  /players/{player_slug}/tactical/{map_id}/background.png  (image du fond)
+//
+// Montes sur le sous-routeur /players/{player_slug} — ownership (ADR 0029) et
+// titre herites du groupe, comme /replay et /matches/{id}/events.
+//
+// ─── DEUX POST DE LECTURE, ET C'EST LE MOTIF DU DEPOT ──────────────────────────
+//
+// Les deux lectures prennent un CORPS parce que leur perimetre est une LISTE DE
+// match_id : elle ne tient pas dans une query string (phase 4 bis, 2026-09-06). Meme
+// forme que /pages/*, /filters/* et /engagement/timeseries — des POST qui ne mutent
+// rien, declares comme tels dans middleware.readOnlyPostPrefixes (sans quoi la garde
+// d'ecriture du groupe joueur refuserait un visiteur anonyme sur une simple lecture).
+//
+// LES ANCIENS PARAMETRES PLATS DE FILTRE ONT DISPARU du contrat (playlist, mode,
+// from, to, outcome, with_player) : le client fait resoudre sa selection par
+// /filters/match-ids — le MEME pipeline que le compteur de l'omnibar, base joueur,
+// donc sessions comprises — et envoie le resultat. Une seule definition du perimetre
+// dans l'app.
+//
+// ZERO LOGIQUE ICI. Le handler decode, delegue, traduit un refus en statut.
+package handlers
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/port"
+)
+
+// TacticalHandler sert l'onglet Tactique.
+//
+// DEUX SERVICES, ET C'EST VOULU. Les lectures tactiques viennent du TacticalService ; le
+// FOND DE CARTE vient du ReplayService, qui possede deja la resolution carte -> image (une
+// seule cascade dans le depot, cf. service/replay_map_background.go). Faire transiter le
+// fond par le TacticalService aurait ete un service qui en appelle un autre — l'anti-pattern
+// de couplage horizontal de `arch-rules`.
+type TacticalHandler struct {
+	newSvc    ServiceFactory[port.TacticalService]
+	newReplay ServiceFactory[port.ReplayService]
+}
+
+// NewTacticalHandler construit le handler avec ses deux factories de service.
+func NewTacticalHandler(
+	newSvc ServiceFactory[port.TacticalService],
+	newReplay ServiceFactory[port.ReplayService],
+) *TacticalHandler {
+	return &TacticalHandler{newSvc: newSvc, newReplay: newReplay}
+}
+
+// Mount enregistre les routes de l'onglet sur le sous-routeur chi.
+//
+// LE FOND DE CARTE N'EST PAS SOUS LE GARDE LOCAL DU REJEU (`LocalOnlyReplay`), et c'est
+// deliberé : ce garde protege les TRAJECTOIRES decodees du film, dont la couverture n'est
+// pas encore productionnalisable (cf. replay_local_gate.go). Une image de fond est une
+// donnee de REFERENCE versionnee, extraite des fichiers de carte et non d'un film : la
+// masquer hors localhost rendrait la grille des cartes vide en production sans rien
+// proteger.
+func (h *TacticalHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Post(api, "/tactical/maps", h.handleGetMaps,
+		humacore.Op("getTacticalMaps", "Cartes jouees, pour la grille d'entree de l'onglet Tactique", "tactical"))
+	huma.Post(api, "/tactical/{map_id}/raster", h.handleGetRaster,
+		humacore.Op("getTacticalRaster", "Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne, ou je passe mon temps)", "tactical"))
+	huma.Get(api, "/tactical/{map_id}/background", h.handleGetMapBackground,
+		humacore.Op("getTacticalMapBackground", "Calage du fond d'une carte de l'onglet Tactique", "tactical"))
+	// Route chi nue : la charge utile est binaire, comme le fond du rejeu par match.
+	r.Get("/tactical/{map_id}/background.png", h.handleGetMapBackgroundImage)
+}
+
+// LE PERIMETRE, et il est le meme pour les deux lectures.
+//
+// UNE LISTE BLANCHE, PAS DES AXES DE FILTRE (phase 4 bis, 2026-09-06). Le client
+// resout sa selection par POST /filters/match-ids — periode OU sessions epinglees,
+// contexte solo/escouade/mixte, cascade, sur la base JOUEUR — et poste les match_id.
+// C'est ce qui fait MARCHER le filtre de session ici : les sessions vivent dans la
+// base joueur, que les requetes shared du lecteur tactique ne joignent pas.
+//
+// `match_ids` ABSENT VAUT LISTE VIDE, DONC AUCUN MATCH. Le contraire — « pas de
+// liste, donc tout l'historique » — servirait la totalite a un client qui a rate son
+// corps, et l'ecart ne se verrait qu'a la lecture des chiffres.
+//
+// LES DEUX CHAMPS SONT ECRITS DEUX FOIS, ET C'EST HUMA QUI L'IMPOSE : il ne met pas a
+// plat une struct EMBARQUEE dans un corps (il en fait une propriete a part entiere,
+// et le corps aplati est alors refuse en 422 — piege mesure ici meme). Une struct
+// partagee par embarquement etait la premiere ecriture ; elle rendait les deux routes
+// inutilisables. La conversion vers le domaine, elle, reste UNE seule fonction
+// (scopeDepuis) : c'est la partie qui pourrait diverger en silence.
+type tacticalMapsBody struct {
+	MatchIDs    []string `json:"match_ids,omitempty" doc:"Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match."`
+	Coequipiers []string `json:"coequipiers,omitempty" doc:"XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe."`
+}
+
+// tacticalRasterBody : le meme perimetre, plus ce qu'on lit dessus.
+type tacticalRasterBody struct {
+	MatchIDs    []string `json:"match_ids,omitempty" doc:"Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match."`
+	Coequipiers []string `json:"coequipiers,omitempty" doc:"XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade »."`
+	Question    string   `json:"question,omitempty" doc:"Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions."`
+	Qui         string   `json:"qui,omitempty" doc:"Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers."`
+	Spawn       string   `json:"spawn,omitempty" doc:"Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction."`
+}
+
+// scopeDepuis : LA traduction du corps vers le perimetre de service, pour les deux
+// routes.
+func scopeDepuis(matchIDs, coequipiers []string) domain.TacticalScope {
+	return domain.TacticalScope{MatchIDs: matchIDs, Coequipiers: coequipiers}
+}
+
+// scopeAvecSpawn ajoute la restriction de grappe, que seule la lecture de placement porte.
+//
+// LA GRILLE DES CARTES NE LA PREND PAS : une grappe est propre a UNE carte, et l'ecran
+// d'entree les liste toutes. L'accepter la aurait invite a filtrer une liste de cartes par
+// un identifiant qui n'a de sens que dans l'une d'elles.
+func scopeAvecSpawn(matchIDs, coequipiers []string, spawn string) domain.TacticalScope {
+	sc := scopeDepuis(matchIDs, coequipiers)
+	sc.Spawn = strings.TrimSpace(spawn)
+	return sc
+}
+
+type tacticalMapsInput struct {
+	PlayerSlug string `path:"player_slug"`
+	Body       tacticalMapsBody
+}
+
+type tacticalMapsOutput struct{ Body domain.TacticalMapsPage }
+
+type tacticalRasterInput struct {
+	PlayerSlug string `path:"player_slug"`
+	MapID      string `path:"map_id"`
+	Body       tacticalRasterBody
+}
+
+type tacticalRasterOutput struct{ Body domain.TacticalRaster }
+
+// handleGetMaps retourne les cartes jouees par le joueur sous le filtre.
+func (h *TacticalHandler) handleGetMaps(ctx context.Context, in *tacticalMapsInput) (*tacticalMapsOutput, error) {
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	page, err := svc.MapsPlayed(ctx, scopeDepuis(in.Body.MatchIDs, in.Body.Coequipiers))
+	if err != nil {
+		return nil, mapTacticalError(ctx, err, "tactical.maps")
+	}
+	return &tacticalMapsOutput{Body: page}, nil
+}
+
+// handleGetRaster retourne la lecture de placement d'une carte.
+func (h *TacticalHandler) handleGetRaster(ctx context.Context, in *tacticalRasterInput) (*tacticalRasterOutput, error) {
+	// L'ORDRE COMPTE (revue R2). On valide AVANT de resoudre le service : la fabrique
+	// OUVRE la base du joueur, et une entree hors vocabulaire ne doit rien faire ouvrir.
+	// Les deux routes du fond validaient deja d'abord (`replayPourCarte`) ; celle-ci ne le
+	// faisait pas, alors que ses tests affirmaient qu'aucun service n'etait appele.
+	mapID, ok := MapIDValide(in.MapID)
+	if !ok {
+		// MEME 404, MEME CODE, MEME MESSAGE que « cette carte, ce joueur ne l'a pas
+		// jouee » : un code — ou un libelle — distinct pour un refus de VALIDATION dirait
+		// a l'appelant que son entree a franchi le routeur mais pas le filtre.
+		return nil, humacore.NewError(http.StatusNotFound, "tactical_map_unknown",
+			domain.ErrTacticalCarteInconnue.Error())
+	}
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	raster, err := svc.Raster(ctx, domain.TacticalRasterRequest{
+		MapID:    mapID,
+		Question: defautSiVide(in.Body.Question, domain.TacticalQuestionMorts),
+		Qui:      defautSiVide(in.Body.Qui, domain.TacticalQuiMoi),
+		Scope:    scopeAvecSpawn(in.Body.MatchIDs, in.Body.Coequipiers, in.Body.Spawn),
+	})
+	if err != nil {
+		return nil, mapTacticalError(ctx, err, "tactical.raster")
+	}
+	return &tacticalRasterOutput{Body: raster}, nil
+}
+
+type tacticalMapInput struct {
+	PlayerSlug string `path:"player_slug"`
+	MapID      string `path:"map_id"`
+}
+
+type tacticalMapBackgroundOutput struct{ Body replaydoc.MapBackground }
+
+// handleGetMapBackground retourne le CALAGE du fond d'une carte : metres par pixel, origine
+// monde, taille de l'image. 404 quand la carte n'a pas de fond fige — absence NORMALE
+// (toutes les cartes n'en ont pas), que le client traduit par une vignette sans image.
+func (h *TacticalHandler) handleGetMapBackground(
+	ctx context.Context, in *tacticalMapInput,
+) (*tacticalMapBackgroundOutput, error) {
+	svc, mapID, err := h.replayPourCarte(ctx, in.PlayerSlug, in.MapID)
+	if err != nil {
+		return nil, err
+	}
+	bg, err := svc.MapBackgroundForMap(ctx, mapID)
+	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+		return nil, humacore.NewError(http.StatusNotFound, "map_background_not_available",
+			messageSansFond)
+	}
+	if err != nil {
+		return nil, mapTacticalError(ctx, err, "tactical.map_background")
+	}
+	return &tacticalMapBackgroundOutput{Body: *bg}, nil
+}
+
+// handleGetMapBackgroundImage sert le PNG du fond d'une carte, avec le meme cache que le
+// fond par match : donnee de REFERENCE versionnee, qui ne change qu'a une re-cuisson.
+// `private` parce que la route est derriere l'ownership joueur.
+func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	slug := chi.URLParam(r, "player_slug")
+	mapID, ok := MapIDValide(chi.URLParam(r, "map_id"))
+	if !ok {
+		// MEME message que l'absence de fond, pas seulement le meme code : un libelle
+		// distinct suffirait a distinguer un refus de validation d'une carte sans fond.
+		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
+			messageSansFond)
+		return
+	}
+	svc, err := h.newReplay(ctx, slug)
+	if err != nil {
+		writeError(ctx, w, http.StatusNotFound, "player_not_found", err.Error())
+		return
+	}
+	blob, err := svc.MapBackgroundImageForMap(ctx, mapID)
+	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
+			messageSansFond)
+		return
+	}
+	if err != nil {
+		slog.ErrorContext(ctx, "tactique: image de fond en echec", "err", err, "map_id", mapID)
+		writeError(ctx, w, http.StatusInternalServerError, "tactical_error", err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Content-Length", strconv.Itoa(len(blob)))
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	if _, err := w.Write(blob); err != nil {
+		slog.WarnContext(ctx, "tactique: ecriture de l'image de fond interrompue",
+			"err", err, "map_id", mapID, "player", slug)
+	}
+}
+
+// replayPourCarte VALIDE le map_id puis resout le service de rejeu du joueur.
+//
+// L'ORDRE COMPTE : on valide AVANT de resoudre le service, donc avant toute lecture. Une
+// entree hors vocabulaire ne doit toucher ni la base ni le disque.
+func (h *TacticalHandler) replayPourCarte(
+	ctx context.Context, playerSlug, rawMapID string,
+) (port.ReplayService, string, error) {
+	mapID, ok := MapIDValide(rawMapID)
+	if !ok {
+		// MEME message que l'absence de fond (cf. handleGetMapBackgroundImage).
+		return nil, "", humacore.NewError(http.StatusNotFound, "map_background_not_available",
+			messageSansFond)
+	}
+	svc, err := h.newReplay(ctx, playerSlug)
+	if err != nil {
+		return nil, "", humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	return svc, mapID, nil
+}
+
+// motifMapID : le vocabulaire COMPLET d'un identifiant de carte.
+//
+// Un map_id est soit un asset UGC (uuid), soit la cle d'un module Forge : des lettres, des
+// chiffres, un tiret, un souligne. Rien d'autre. Le motif est une LISTE BLANCHE — le premier
+// caractere est alphanumerique (pas de nom cache, pas de tiret d'option), la longueur est
+// bornee.
+// messageSansFond : LE message des deux refus du fond — carte hors vocabulaire et carte
+// sans image figee. Un seul littéral, parce que deux libelles distincts sous le meme code
+// suffiraient a rendre la validation observable.
+const messageSansFond = "aucun fond de carte pour cette carte"
+
+var motifMapID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`)
+
+// MapIDValide valide un map_id venu de l'URL et rend sa forme nettoyee.
+//
+// POURQUOI CETTE VALIDATION EXISTE, ET POURQUOI ELLE EST STRICTE (revue R1, constat G1).
+// Le map_id est la PREMIERE cle de fond de carte entierement controlee par l'appelant : sur
+// le chemin par match, la cle venait de `match_registry`, donc de la base. Ici elle traverse
+// le handler, le service, puis `PathResolver.MapBackground{,Meta}Path`, qui la concatene par
+// `filepath.Join(dir, cle + ".json")`. Sous Windows, `..\..\x` passe chi comme UN SEUL
+// segment de chemin et `filepath.Join` traite l'antislash comme un separateur : le `os.Stat`
+// et le `os.ReadFile` sortaient alors du repertoire des fonds. Ce qui protegeait le depot
+// jusqu'ici n'etait pas une verification mais trois accidents de plate-forme (le schema du
+// sidecar exige, chi qui ne de-echappe pas, l'antislash non separateur sous Linux).
+//
+// UN REFUS EST UN 404, JAMAIS UN 400. Un statut distinct pour un refus de validation dirait
+// a l'appelant que son entree a franchi le routeur mais pas le filtre — un oracle gratuit
+// sur la frontiere. Chaque route rend donc SON code d'absence habituel : un map_id hostile
+// est indiscernable d'une carte que le joueur n'a jamais jouee.
+//
+// LE SERVICE NE FAIT PAS CONFIANCE A CE HELPER : `resolveBackgroundKeyDepuis` refuse a son
+// tour toute cle porteuse d'un separateur ou d'un `..`, juste avant le systeme de fichiers
+// (defense en profondeur — un futur appelant pourrait oublier cette porte-ci).
+// AUCUNE NORMALISATION : le motif s'applique a la valeur BRUTE. Un `TrimSpace` prealable
+// aurait fait de `carte%20` un `carte` valide — deux URL distinctes pour une meme
+// ressource, et une frontiere qui repare son entree au lieu de la refuser. Un map_id reel
+// ne porte jamais d'espacement.
+func MapIDValide(raw string) (string, bool) {
+	if !motifMapID.MatchString(raw) {
+		return "", false
+	}
+	return raw, true
+}
+
+// defautSiVide applique le defaut d'un parametre absent. Un parametre PRESENT mais
+// hors vocabulaire n'est PAS remplace par le defaut : il est refuse par le service
+// (400) — servir « morts » a qui a demande « temps » repondrait a une autre
+// question sans le dire.
+func defautSiVide(v, defaut string) string {
+	if s := strings.TrimSpace(v); s != "" {
+		return s
+	}
+	return defaut
+}
+
+// mapTacticalError traduit les refus du service en statut HTTP.
+//
+// L'ordre compte : les refus TYPES d'abord (ils sont plus precis), la capability
+// ensuite par le helper central MapCapabilityError (source unique, garde-rail
+// no_capability_error_dup_test), le 500 en dernier recours.
+func mapTacticalError(ctx context.Context, err error, probe string) error {
+	switch {
+	case errors.Is(err, domain.ErrTacticalSpawnInconnu):
+		// MEME NATURE QU'UNE CARTE INCONNUE, et donc meme statut : une grappe depend des
+		// matchs retenus, et changer de periode peut la faire passer sous le plancher.
+		// Ce n'est pas une entree invalide, c'est une selection devenue vide.
+		return humacore.NewError(http.StatusNotFound, "tactical_spawn_unknown", err.Error())
+	case errors.Is(err, domain.ErrTacticalCarteInconnue):
+		// LE MESSAGE CANONIQUE, JAMAIS `err.Error()` (revue R2, P1). Ce 404 a DEUX
+		// producteurs — le refus de `MapIDValide` (qui n'a rien a citer) et la carte
+		// legitime que le joueur n'a pas jouee — et le corps doit etre le meme pour les
+		// deux. Publier l'erreur enrobee laissait le detail du service decider du libelle :
+		// il suffisait qu'il cite la carte demandee pour rouvrir, par le message, l'oracle
+		// qu'on venait de fermer par le code. Le detail vit au JOURNAL, cote service.
+		//
+		// Les deux 400 ci-dessous publient, EUX, l'erreur telle quelle : `question` et
+		// `qui` sont des parametres de requete a validation unique — il n'existe aucune
+		// seconde frontiere dont les rendre indiscernables, et nommer la valeur refusee
+		// est ce qui rend le 400 utile.
+		slog.InfoContext(ctx, "tactique: carte refusee", "probe", probe, "err", err)
+		return humacore.NewError(http.StatusNotFound, "tactical_map_unknown",
+			domain.ErrTacticalCarteInconnue.Error())
+	case errors.Is(err, domain.ErrTacticalQuestionInconnue):
+		return humacore.NewError(http.StatusBadRequest, "tactical_question_unknown", err.Error())
+	case errors.Is(err, domain.ErrTacticalQuiInconnu):
+		return humacore.NewError(http.StatusBadRequest, "tactical_axis_unknown", err.Error())
+	case errors.Is(err, domain.ErrTacticalCompositionInvalide):
+		// La valeur refusee est NOMMEE (comme les deux 400 ci-dessous) : c'est un
+		// parametre de requete a validation unique, il n'existe aucune seconde
+		// frontiere dont le rendre indiscernable, et le dire est ce qui rend le 400
+		// utile a l'appelant.
+		return humacore.NewError(http.StatusBadRequest, "tactical_composition_invalid", err.Error())
+	case errors.Is(err, domain.ErrTacticalEscouadeSansComposition):
+		// Code PROPRE, distinct de l'axe inconnu : l'axe demande EXISTE, c'est la
+		// composition qui manque. Un `tactical_axis_unknown` enverrait le client
+		// corriger le mauvais parametre.
+		return humacore.NewError(http.StatusBadRequest, "tactical_squad_axis_without_composition", err.Error())
+	}
+	if mapped, ok := MapCapabilityError(ctx, err, probe); ok {
+		return mapped
+	}
+	slog.ErrorContext(ctx, "tactique: lecture en echec", "probe", probe, "err", err)
+	return humacore.NewError(http.StatusInternalServerError, "tactical_error", err.Error())
+}
