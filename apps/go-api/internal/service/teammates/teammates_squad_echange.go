@@ -137,6 +137,10 @@ func (s *TeammatesService) buildSquadEchange(
 		matchsMesures(habituel))
 	out.MatchsHabituel = len(habituelIDs)
 
+	// Nuage « isolement x couverture » (item 7.7) : MEME perimetre filtre (`scope`,
+	// `scopeIDs`) et MEME roster que le reste de la section — decoupes par session.
+	out.NuageIsolement = s.buildSquadIsolementNuage(ctx, scope, scopeRows, xuidsOrdered, gtByXUID, mainXUID)
+
 	slog.InfoContext(ctx, "teammates_echange",
 		"player", mainGamertag, "matchs", out.MatchsTotal, "matchs_mesures", out.MatchsMesures,
 		"morts_vengeables", out.Couverture.N, "morts_vengees", out.Couverture.Brut,

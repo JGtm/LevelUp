@@ -23824,6 +23824,8 @@ components:
         matchs_total:
           format: int64
           type: integer
+        nuage_isolement:
+          $ref: '#/components/schemas/SquadNuageIsolement'
       required:
         - joueurs
         - cellules
@@ -24145,6 +24147,34 @@ components:
         - options
         - rows
       type: object
+    SquadIsolementPoint:
+      additionalProperties: false
+      properties:
+        couverture:
+          $ref: '#/components/schemas/Couverture'
+        gamertag:
+          type: string
+        morts_examinees:
+          format: int64
+          type: integer
+        morts_isolees:
+          format: int64
+          type: integer
+        part_isolee:
+          $ref: '#/components/schemas/Couverture'
+        session_label:
+          type: string
+        xuid:
+          type: string
+      required:
+        - xuid
+        - gamertag
+        - session_label
+        - morts_examinees
+        - morts_isolees
+        - part_isolee
+        - couverture
+      type: object
     SquadKillMechanicBar:
       additionalProperties: false
       properties:
@@ -24326,6 +24356,26 @@ components:
         - start_time
         - outcome
         - team_mmr_avg
+      type: object
+    SquadNuageIsolement:
+      additionalProperties: false
+      properties:
+        plancher_echantillon_faible:
+          format: int64
+          type: integer
+        plancher_morts_session:
+          format: int64
+          type: integer
+        points:
+          items:
+            $ref: '#/components/schemas/SquadIsolementPoint'
+          type:
+            - array
+            - "null"
+      required:
+        - points
+        - plancher_morts_session
+        - plancher_echantillon_faible
       type: object
     SquadPageResponse:
       additionalProperties: false
