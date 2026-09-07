@@ -137,19 +137,38 @@ func FlatRoundIdentity(identity map[int]string) RoundIdentity {
 	return RoundIdentity{byRound: map[int]map[int]string{0: identity}}
 }
 
-// roundStartsOf rend, par manche presente dans `byRound`, le plus petit instant d'enregistrement
-// observe pour cette manche, la liste triee par instant croissant.
+// roundStartsOf rend, par manche presente dans `byRound`, l'instant ou elle COMMENCE, la liste
+// triee par instant croissant.
+//
+// LE DEBUT VIENT DE [RoundStartsMS], source unique du paquet (constat C2 de la revue MANCHES-R1,
+// 2026-09-06). Le minimum des instants declares, qu'elle prenait avant, suit le premier faux
+// positif venu : sur `24dbb67d` il datait la manche 1 a 85 193 ms quand le consensus la date a
+// 298 909 ms, et [RoundIdentity.At] resolvait la mauvaise manche pendant 213 s.
+//
+// REPLI, et il est necessaire : une manche que le consensus ne sait pas fixer (sans majorite de
+// slots) n'est pas dans [RoundStartsMS] alors qu'elle peut etre dans `byRound`. Son debut reste
+// alors le minimum de ses instants declares — le comportement d'avant, faute de mieux, et sur une
+// manche que la decoupe ne borne de toute facon pas.
 func roundStartsOf(recs []StatRecord, byRound map[int]map[int]string) []roundStart {
 	if len(byRound) <= 1 {
 		return nil
 	}
+	consensus := RoundStartsMS(recs)
 	min := map[int]int{}
 	for _, r := range recs {
 		if _, ok := byRound[r.Round]; !ok {
 			continue
 		}
+		if _, fixe := consensus[r.Round]; fixe {
+			continue
+		}
 		if cur, seen := min[r.Round]; !seen || r.TimeMS < cur {
 			min[r.Round] = r.TimeMS
+		}
+	}
+	for round := range byRound {
+		if debut, fixe := consensus[round]; fixe {
+			min[round] = debut
 		}
 	}
 	out := make([]roundStart, 0, len(min))

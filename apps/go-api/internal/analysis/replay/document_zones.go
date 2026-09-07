@@ -270,6 +270,23 @@ type ZonesCoverage struct {
 	// d'attribuer a une zone. C'est le denominateur de l'appariement lui-meme.
 	Captures   int `json:"captures"`
 	Attributed int `json:"attributed"`
+	// NoPosition / Outside / AmbiguousZone disent POURQUOI une capture nommee n'a pas ete
+	// attribuee. Ils viennent de [ZoneCoverage], que la ligne d'appel jetait jusqu'au
+	// 2026-09-06 (`att, _ :=`) : `captures - attributed` donnait un total muet, et il etait
+	// impossible, sur un artefact du parc, de separer les trois causes.
+	//
+	//	NoPosition     aucun echantillon de position du capteur a moins de `MaxGapFrames` —
+	//	               une IGNORANCE (piste dont le nommage a echoue, trou d'echantillonnage) ;
+	//	Outside        la position est connue et la zone la plus proche est trop loin — une
+	//	               MESURE, et le seul compteur qui parle vraiment du croisement ;
+	//	AmbiguousZone  plusieurs zones a la meme distance minimale : on refuse de trancher.
+	//
+	// LA DISTINCTION EST LE FOND DU SUJET : « il n'etait pas dans la zone » et « on ne sait pas
+	// ou il etait » appellent deux chantiers opposes, et un total unique ne les separe pas.
+	// INVARIANT : attributed + noPosition + outside + ambiguousZone == captures.
+	NoPosition    int `json:"noPosition"`
+	Outside       int `json:"outside"`
+	AmbiguousZone int `json:"ambiguousZone"`
 	// OwnerChecked / OwnerAgreed : LE CONTROLE INDEPENDANT du proprietaire. Pour chaque capture
 	// attribuee, la valeur du tag 4 de la zone juste apres la capture est confrontee a l'equipe
 	// du capteur (roster). `Checked` compte les confrontations possibles (valeur non neutre

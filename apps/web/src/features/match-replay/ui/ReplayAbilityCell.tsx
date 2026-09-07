@@ -67,29 +67,44 @@ export function ReplayAbilityCell({
   return (
     <>
       <span className="inline-flex shrink-0 items-center" style={{ width: HUD_ICON_PX }}>
-        {ability && abilityRead && (
-          <span
-            className="inline-flex items-center"
-            style={{ opacity: freshness(abilityRead.age, readingFull, READING_FADE) }}
-            title={abilityAgeTitle(t, abilityRead.age, doc, ability.text)}
-          >
-            {ability.img ? (
-              <WeaponIcon
-                imageUrl={ability.img}
-                tinted={ability.tinted}
-                label={ability.text}
-                width={HUD_ICON_PX}
-                height={HUD_ICON_PX}
-              />
-            ) : ability.known ? (
-              ability.text
-            ) : (
-              /* RANG NON RÉSOLU : un GLYPHE, pas un mot ni un caractère (planche du 16/08).
-                 Le rang lu reste la seule chose vraie : il vit dans l'infobulle. */
-              <AbilityUnknownMark label={ability.text} />
-            )}
-          </span>
-        )}
+        {abilityRead ? (
+          ability && (
+            <span
+              className="inline-flex items-center"
+              style={{ opacity: freshness(abilityRead.age, readingFull, READING_FADE) }}
+              title={abilityAgeTitle(t, abilityRead.age, doc, ability.text)}
+            >
+              {ability.img ? (
+                <WeaponIcon
+                  imageUrl={ability.img}
+                  tinted={ability.tinted}
+                  label={ability.text}
+                  width={HUD_ICON_PX}
+                  height={HUD_ICON_PX}
+                />
+              ) : ability.known ? (
+                ability.text
+              ) : (
+                /* RANG NON RÉSOLU : un GLYPHE, pas un mot ni un caractère (planche du 16/08).
+                   Le rang lu reste la seule chose vraie : il vit dans l'infobulle. */
+                <AbilityUnknownMark label={ability.text} />
+              )}
+            </span>
+          )
+        ) : doc.abilities.length > 0 ? (
+          /* AUCUNE LECTURE DANS LA VIE EN COURS (correctif P0-2, 2026-09-06) : avant le
+             correctif, `abilityAt` pouvait reporter la capacité d'une vie PRÉCÉDENTE du même
+             slot — parfois celle d'un AUTRE joueur — ou disparaître sur un `spent` qui ne la
+             concernait pas. Même glyphe que le rang lu-mais-non-identifié, mais PAS le même
+             sens : ce n'est pas une identité inconnue (une vie est un humain ou un bot, jamais
+             une entité anonyme — décision produit du 2026-09-06), seulement une lecture pas
+             encore observée depuis le début de cette vie.
+             GARDÉ PAR `doc.abilities.length > 0` (même doctrine que `VitalityPresence`,
+             `playerStateAt` plus haut) : un artefact qui ne porte JAMAIS cet axe ne doit pas
+             afficher une lacune permanente sur chaque fiche — dégradation par ABSENCE DE
+             DONNÉE, jamais un glyphe inventé. */
+          <AbilityUnknownMark label={t.abilityUnread} />
+        ) : null}
       </span>
       {ability && abilityRead && charge && (
         <AbilityChargeMark charge={charge} doc={doc} readingFull={readingFull} t={t} />

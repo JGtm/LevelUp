@@ -18,37 +18,80 @@ package main
 // `LEVELUP_REPO_ROOT=parcRoot` : l'export lit `parcRoot/data/titles/{slug}/warehouse/...` en
 // RO (`OpenReadForQuery`, jamais `OpenReadOnly` force) et n'ecrit que les `<short8>.facts.json`
 // demandes, dans `factsDir` (une racine temporaire, jamais le parc).
+//
+// # EXPORT PAR TEMOIN, PAS EN UN SEUL LOT (CORPUS-R1 C4, 2026-09-07)
+//
+// Une invocation UNIQUE portant tous les ids faisait echouer TOUT le sous-processus (exit 2)
+// au premier id inconnu du registre — AVANT toute cuisson, y compris pour les temoins valides
+// du meme manifeste. Chaque id est desormais exporte par une invocation SEPAREE : un id
+// inconnu ne fait echouer QUE lui (`slog.Warn`, jamais fatal), son `<short8>.facts.json` reste
+// simplement absent — `orchestrate.go` le detecte alors comme un temoin ABSENT (jamais une
+// ERREUR), et `verifierCouverture` (report.go, C3) en fait un plancher de couverture explicite
+// plutot qu'un silence.
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 )
 
-// exportFacts ecrit un `<short8>.facts.json` par id dans `factsDir`, en lecture seule sur la
-// base partagee de `parcRoot`. `goAPIDir` est le repertoire depuis lequel lancer `go run`
-// (celui qui porte `cmd/levelup` — cf. resolveSourceRoot).
-func exportFacts(goAPIDir, parcRoot, titleSlug, factsDir string, ids []string) error {
+// exporterUnFait exporte les faits d'UN match — extrait en type nommé pour permettre un test
+// unitaire de la boucle de continuation (exportFactsAvec) SANS vrai sous-processus CGO.
+type exporterUnFait func(id string) error
+
+// exportParams regroupe les chemins fixes d'un export — un struct plutot qu'une signature a
+// plus de 5 parametres une fois `ctx` ajoute (CLAUDE.md n°5).
+type exportParams struct {
+	GoAPIDir  string // depuis ou lancer `go run` (celui qui porte cmd/levelup)
+	ParcRoot  string
+	TitleSlug string
+	FactsDir  string
+}
+
+// exportFacts ecrit un `<short8>.facts.json` PAR id dans `p.FactsDir`, en lecture seule sur la
+// base partagee de `p.ParcRoot`.
+func exportFacts(ctx context.Context, p exportParams, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	if err := os.MkdirAll(factsDir, 0o750); err != nil {
+	if err := os.MkdirAll(p.FactsDir, 0o750); err != nil {
 		return fmt.Errorf("dossier des faits : %w", err)
 	}
-	args := append([]string{"run", "./cmd/levelup", "replay-facts-export",
-		"--out", factsDir, "--title", titleSlug}, ids...)
-	cmd := exec.Command("go", args...) //nolint:gosec // args = ids du manifeste + chemins internes
-	cmd.Dir = goAPIDir
+	exportFactsAvec(func(id string) error {
+		return exportUnFait(ctx, p, id)
+	}, ids)
+	return nil
+}
+
+// exportFactsAvec applique `exporter` a chaque id, EN CONTINUANT apres un echec — le coeur du
+// correctif C4, teste independamment du sous-processus reel (facts_test.go).
+func exportFactsAvec(exporter exporterUnFait, ids []string) {
+	for _, id := range ids {
+		if err := exporter(id); err != nil {
+			slog.Warn("replay-corpus-gate: export des faits impossible pour ce temoin — ignore, "+
+				"les autres temoins du manifeste continuent",
+				"temoin", id, "err", err)
+		}
+	}
+}
+
+// exportUnFait invoque `levelup replay-facts-export` pour UN SEUL id.
+func exportUnFait(ctx context.Context, p exportParams, id string) error {
+	cmd := exec.CommandContext(ctx, "go", "run", "./cmd/levelup", "replay-facts-export", //nolint:gosec // id du manifeste + chemins internes
+		"--out", p.FactsDir, "--title", p.TitleSlug, id)
+	cmd.Dir = p.GoAPIDir
 	cmd.Env = append(os.Environ(),
-		"LEVELUP_REPO_ROOT="+parcRoot,
+		"LEVELUP_REPO_ROOT="+p.ParcRoot,
 		"CGO_ENABLED=1",
 	)
 	var stderr, stdout bytes.Buffer
 	cmd.Stderr, cmd.Stdout = &stderr, &stdout
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("export des faits (levelup replay-facts-export) : %w\nstdout:\n%s\nstderr:\n%s",
-			err, stdout.String(), stderr.String())
+		return fmt.Errorf("export des faits (levelup replay-facts-export %s) : %w\nstdout:\n%s\nstderr:\n%s",
+			id, err, stdout.String(), stderr.String())
 	}
 	return nil
 }

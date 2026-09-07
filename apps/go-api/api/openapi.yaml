@@ -9062,10 +9062,25 @@ components:
         livesTotal:
           format: int64
           type: integer
+        namedByNextLife:
+          format: int64
+          type: integer
+        namedByPreviousLife:
+          format: int64
+          type: integer
+        namedBySlotBridge:
+          format: int64
+          type: integer
         slotCollisions:
           format: int64
           type: integer
         slots:
+          format: int64
+          type: integer
+        unnamedLives:
+          format: int64
+          type: integer
+        unnamedLivesContested:
           format: int64
           type: integer
       required:
@@ -9076,6 +9091,11 @@ components:
         - indexReadings
         - indexDisagreements
         - slotCollisions
+        - namedByPreviousLife
+        - namedByNextLife
+        - namedBySlotBridge
+        - unnamedLives
+        - unnamedLivesContested
         - closedByShot
         - closedByRespawn
         - closedContested
@@ -27262,6 +27282,9 @@ components:
     ZonesCoverage:
       additionalProperties: false
       properties:
+        ambiguousZone:
+          format: int64
+          type: integer
         attributed:
           format: int64
           type: integer
@@ -27282,6 +27305,12 @@ components:
           type: integer
         method:
           type: string
+        noPosition:
+          format: int64
+          type: integer
+        outside:
+          format: int64
+          type: integer
         ownerAgreed:
           format: int64
           type: integer
@@ -27316,6 +27345,9 @@ components:
         - unpaired
         - captures
         - attributed
+        - noPosition
+        - outside
+        - ambiguousZone
         - ownerChecked
         - ownerAgreed
         - ownerUnpaired

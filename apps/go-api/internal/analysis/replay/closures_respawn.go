@@ -80,8 +80,9 @@ func closeByRespawn(tracks map[uint32]slotTrack, owner map[uint32]int, lives []l
 			rep.refused++
 			continue
 		}
-		slot := lives[vies[0]].slot
-		if overlapsNamedLife(tracks, owner, slot, pi) {
+		vie := lives[vies[0]]
+		slot := vie.slot
+		if overlapsNamedLife(tracks, owner, vie, pi) {
 			rep.refused++
 			continue
 		}
@@ -144,12 +145,26 @@ func victimsInWindow(deaths []Death, off int64, fromUS, lo, hi int64) []uint64 {
 // LA FERMETURE A NE L'APPELLE PLUS : sa corroboration (`bodyExtendsShooter`) exige davantage — non
 // pas l'absence de contradiction, mais la preuve que le corps PROLONGE le tireur. B n'en a pas
 // besoin : son identité vient du fil des morts, pas de l'unicité d'un candidat.
-func overlapsNamedLife(tracks map[uint32]slotTrack, owner map[uint32]int, slot uint32, pi int) bool {
-	cand := tracks[slot].pts
-	if len(cand) == 0 {
+//
+// LA MESURE SE PREND SUR LA VIE DESIGNEE, PAS SUR LE NUAGE DU SLOT ENTIER (correctif du
+// 2026-09-06, constat P1-6). `tracks[slot].pts` est le nuage COMPLET du slot, toutes vies
+// confondues : depuis le schema 36 un slot recycle en porte plusieurs, et sur un slot dont deux
+// vies sont eloignees (30 s puis 600 s) l'intervalle teste couvrait les 570 s qui les separent.
+// N'importe quelle vie nommee du joueur candidat y tombait, la deduction sortait `refused`,
+// `owner[slot]` n'etait pas pose — et tous les tirs du slot partaient en
+// `coverage.shots.noSlot` sans etre dessines, la perte exacte que ce fichier existe pour
+// reparer. La fermeture a DESIGNE une vie (`lives[vies[0]]`) : c'est son intervalle qu'on teste.
+//
+// L'AUTRE COTE RESTE LE SLOT ENTIER, ET C'EST VOULU : `owner[s] = pi` dit que le pont attribue
+// TOUT le slot `s` a ce joueur ; un trou de replication a l'interieur n'est pas une absence du
+// joueur (un porteur invisible et immobile cesse d'etre replique). Restreindre ce cote-la
+// rendrait le garde-fou plus permissif sans rien prouver de plus.
+func overlapsNamedLife(tracks map[uint32]slotTrack, owner map[uint32]int, vie lifeSpan, pi int) bool {
+	slot := vie.slot
+	if len(tracks[slot].pts) == 0 {
 		return false
 	}
-	from, to := cand[0].TimestampUS, cand[len(cand)-1].TimestampUS
+	from, to := uint64(vie.from), uint64(vie.to)
 	for s, p := range owner {
 		if p != pi || s == slot {
 			continue

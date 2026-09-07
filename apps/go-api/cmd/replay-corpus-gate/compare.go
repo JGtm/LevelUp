@@ -19,12 +19,6 @@ func referenceArtifactPath(parcRoot, titleSlug, matchID string) string {
 	return title.NewPathResolver(parcRoot).ReplayArtifactPath(titleSlug, matchID)
 }
 
-// freshArtifactPath rend le chemin de l'artefact FRAIS, ecrit par bakeTemoin dans la racine
-// de travail — jamais dans le parc.
-func freshArtifactPath(workRoot, titleSlug, matchID string) string {
-	return title.NewPathResolver(workRoot).ReplayArtifactPath(titleSlug, matchID)
-}
-
 // compareTemoin lit les deux artefacts et rend leur rapport de comparaison.
 func compareTemoin(refPath, freshPath string) (replaydiff.Rapport, error) {
 	docRef, err := replaydiff.LireDocument(refPath)

@@ -212,12 +212,20 @@ func lifeEndsMS(lives []lifeSpan) []int64 {
 // Le second retour donne slot -> XUID, c'est-à-dire l'IDENTITÉ du porteur et non son rang.
 // Les deux sortent du même parcours et de la même règle de collision : les séparer ferait
 // diverger deux tables censées dire la même chose.
+//
+// LE SLOT EN COLLISION EST DESORMAIS MARQUE, PAS SEULEMENT COMPTE (2026-09-07). La boucle garde
+// le PREMIER occupant nomme et compte les suivants, mais `SlotCollisions` est un TOTAL de match :
+// aucun consommateur ne pouvait savoir QUEL slot etait concerne, et tous — les marques de
+// portage, les ramassages, les frags sous equipement actif, les calques d'objectif — heritaient
+// donc d'un nom ARBITRAIRE (celui du premier occupant, par ordre des vies) sur ces slots-la. Le
+// troisieme retour rend l'ensemble des slots ambigus, pour que « ce slot a eu deux occupants »
+// cesse d'etre indiscernable de « ce slot appartient a ce joueur ».
 func ownersFromLives(
 	lives []lifeSpan, xuidToIndex map[uint64]int,
-) (map[uint32]int, map[uint32]uint64, int) {
+) (map[uint32]int, map[uint32]uint64, map[uint32]bool) {
 	out := map[uint32]int{}
 	byXUID := map[uint32]uint64{}
-	collisions := 0
+	ambigus := map[uint32]bool{}
 	for _, l := range lives {
 		if l.xuid == 0 {
 			continue
@@ -227,13 +235,13 @@ func ownersFromLives(
 			continue
 		}
 		if prev, seen := out[l.slot]; seen && prev != idx {
-			collisions++
+			ambigus[l.slot] = true
 			continue // conflit : on ne tranche pas, on ne publie pas
 		}
 		out[l.slot] = idx
 		byXUID[l.slot] = l.xuid
 	}
-	return out, byXUID, collisions
+	return out, byXUID, ambigus
 }
 
 func absI64(v int64) int64 {
