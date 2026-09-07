@@ -28,6 +28,10 @@ var stepDependencies = map[string]string{
 	// déjà sans name_fr) ; le garde-fou documente néanmoins l'intention et protège
 	// une future DB legacy où l'inversion romprait la garde tableExists attendue.
 	"purge_weapons_name_fr_column": "add_weapon_registry",
+	// purge_weapon_families_labels_columns (plan libellés en dur, lot M5 L4) rebuild la
+	// table `weapon_families` créée par add_weapon_registry — le créateur DOIT précéder,
+	// même raisonnement que purge_weapons_name_fr_column ci-dessus.
+	"purge_weapon_families_labels_columns": "add_weapon_registry",
 	// drop_arc_titles (V721-09, 2026-07-25) ne crée pas arc_titles : il la SUPPRIME.
 	// Sur une base joueur VIERGE, si le dropper passait avant create_arc_titles_join,
 	// le DROP IF EXISTS serait un no-op et la table survivrait au provisioning —

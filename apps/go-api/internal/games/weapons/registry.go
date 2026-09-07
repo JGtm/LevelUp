@@ -16,7 +16,9 @@
 // .ai/PLAN_WEAPON_TAXONOMY.md). 3 tables référentielles dans metadata.duckdb :
 //   - weapons          : 1 ligne par arme par titre (class/role/family/faction/damage_type + extra JSON).
 //   - weapon_ids       : N ids par arme (filmshell/stock_id/module…) → un id résout vers UN weapon_key.
-//   - weapon_families  : référentiel des familles cross-titre (clé → libellés FR/EN).
+//   - weapon_families  : whitelist référentielle des clés de famille cross-titre (plus
+//     de libellé EN/FR ici depuis le 2026-09-08 — colonnes name_en/name_fr jamais lues,
+//     purgées par purge_weapon_families_labels_columns, plan libellés en dur lot M5 L4).
 //
 // Choix de schéma (décision 2026-06-23) : PK simple + INSERT OR IGNORE, comme
 // labels.go / career_ranks / mode_name_tr. C'est un référentiel STATIQUE
@@ -90,7 +92,15 @@ func countWeaponRegistryRows(db *sql.DB) int {
 	return total
 }
 
-type weaponFamilyRow struct{ key, en, fr string }
+// weaponFamilyRow — clé de famille cross-titre. Ne porte plus de libellé EN/FR
+// (retiré le 2026-09-08, plan libellés en dur lot M5 L4, migration
+// purge_weapon_families_labels_columns) : ces libellés n'avaient AUCUN lecteur
+// (ni Go, ni web — le sunburst « Frags par arme »
+// n'affiche que les niveaux classe/rôle, cf. apps/web/src/lib/i18n/manifests/frags.toml,
+// jamais le niveau famille) — 0 code mort plutôt qu'une migration vers un TOML qui
+// aurait recopié du contenu mort. family_key reste la donnée référentielle utile
+// (whitelist jointe depuis weapons.family_key).
+type weaponFamilyRow struct{ key string }
 
 // weaponRow — class = manipulation (poing/épaule/lourde/mêlée/grenade) ;
 // role = fonction de combat (automatic/precision/sniper/shotgun/sidearm/power/
@@ -137,12 +147,23 @@ const (
 	// family — un châssis n'a pas de fonction de combat à ventiler.
 	clsVehicle = "vehicle"
 	clsTurret  = "turret"
+	// clsUnattributed / clsOther : buckets fourre-tout (non résolus / résidus REQ H5).
+	// Mêmes conventions que ci-dessus : class == role == family.
+	clsUnattributed = "unattributed"
+	clsOther        = "other"
 
 	roleAuto      = "automatic"
 	rolePrecision = "precision"
 	roleSniper    = "sniper"
 	rolePower     = "power"
 	roleSpecial   = "special"
+	// roleShotgun sert à la fois de role et de family (comme clsSidearm/clsGrenade/
+	// clsMelee ci-dessus) : un fusil à pompe n'a pas de sous-famille plus fine.
+	roleShotgun = "shotgun"
+
+	// famRocketLauncher : family réutilisée ≥4 fois (goconst) — role reste rolePower,
+	// seule la family est partagée entre les lance-roquettes Infinite et H5.
+	famRocketLauncher = "rocket_launcher"
 
 	facHuman      = "human"
 	facCovenant   = "covenant"
@@ -185,9 +206,7 @@ const (
 func ApplyRegistry(db *sql.DB) error {
 	if err := migration.ExecScript(db, `
 		CREATE TABLE IF NOT EXISTS weapon_families (
-			family_key VARCHAR PRIMARY KEY,
-			name_en    VARCHAR NOT NULL,
-			name_fr    VARCHAR NOT NULL
+			family_key VARCHAR PRIMARY KEY
 		);
 		CREATE TABLE IF NOT EXISTS weapons (
 			weapon_key   VARCHAR NOT NULL,
@@ -237,9 +256,9 @@ func ApplyRegistry(db *sql.DB) error {
 }
 
 func seedWeaponFamilies(db *sql.DB) error {
-	const q = `INSERT OR IGNORE INTO weapon_families (family_key, name_en, name_fr) VALUES (?, ?, ?)`
+	const q = `INSERT OR IGNORE INTO weapon_families (family_key) VALUES (?)`
 	for _, f := range weaponRegistryFamilies {
-		if _, err := db.ExecContext(migration.BootCtx(), q, f.key, f.en, f.fr); err != nil {
+		if _, err := db.ExecContext(migration.BootCtx(), q, f.key); err != nil {
 			return err
 		}
 	}
@@ -308,64 +327,64 @@ func seedWeaponStockIDs(db *sql.DB) error {
 
 // weaponRegistryFamilies — référentiel des familles cross-titre (union HINF + H5, §6.3).
 var weaponRegistryFamilies = []weaponFamilyRow{
-	{"battle_rifle", "Battle Rifle", "Fusil de combat"},
-	{"dmr", "DMR", "DMR"},
-	{"stalker_rifle", "Stalker Rifle", "Fusil traqueur"},
-	{"assault_rifle", "Assault Rifle", "Fusil d'assaut"},
-	{"smg", "SMG", "Mitraillette"},
-	{"commando", "Commando", "Commando"},
-	{"sniper_rifle", "Sniper Rifle", "Fusil de précision"},
-	{"shotgun", "Shotgun", "Fusil à pompe"},
-	{"hydra", "Hydra", "Hydra"},
-	{"rocket_launcher", "Rocket Launcher", "Lance-roquettes"},
-	{"magnum", "Magnum", "Magnum"},
-	{"plasma_pistol", "Plasma Pistol", "Pistolet à plasma"},
-	{"needler", "Needler", "Needler"},
-	{"sentinel_beam", "Sentinel Beam", "Laser de Sentinelle"},
-	{"energy_sword", "Energy Sword", "Épée à énergie"},
-	{"gravity_hammer", "Gravity Hammer", "Marteau antigravité"},
-	{"skewer", "Skewer", "Empaleur"},
-	{"cindershot", "Cindershot", "Crémator"},
-	{"heatwave", "Heatwave", "Calcineur"},
-	{"ravager", "Ravager", "Ravageur"},
-	{"shock_rifle", "Shock Rifle", "Fusil électrique"},
-	{"disruptor", "Disruptor", "Disrupteur"},
-	{"mangler", "Mangler", "Déchiqueteur"},
-	{"pulse_carbine", "Pulse Carbine", "Carabine à impulsion"},
-	{"carbine", "Carbine", "Carabine"},
-	{"frag_grenade", "Frag Grenade", "Grenade à fragmentation"},
-	{"plasma_grenade", "Plasma Grenade", "Grenade à plasma"},
-	{"dynamo_grenade", "Dynamo Grenade", "Grenade Dynamo"},
-	{"splinter_grenade", "Splinter Grenade", "Grenade Splinter"},
-	{"grenade_launcher", "Grenade Launcher", "Lance-grenades"},
-	{"railgun", "Railgun", "Railgun"},
-	{"saw", "SAW", "SAW"},
-	{"spartan_laser", "Spartan Laser", "Laser Spartan"},
-	{"plasma_rifle", "Plasma Rifle", "Fusil à plasma"},
-	{"fuel_rod", "Fuel Rod Cannon", "Canon à combustible"},
-	{"storm_rifle", "Storm Rifle", "Fusil Storm"},
-	{"beam_rifle", "Beam Rifle", "Fusil à rayon"},
-	{"plasma_caster", "Plasma Caster", "Canon plasma"},
-	{"light_rifle", "Light Rifle", "Fusil léger"},
-	{"binary_rifle", "Binary Rifle", "Fusil binaire"},
-	{"boltshot", "Boltshot", "Pistolet à particules"},
-	{"incineration_cannon", "Incineration Cannon", "Canon incendiaire"},
-	{"suppressor", "Suppressor", "Éradicateur"},
-	{"scattershot", "Scattershot", "Répercuteur"},
+	{"battle_rifle"},
+	{"dmr"},
+	{"stalker_rifle"},
+	{"assault_rifle"},
+	{"smg"},
+	{"commando"},
+	{"sniper_rifle"},
+	{roleShotgun},
+	{"hydra"},
+	{famRocketLauncher},
+	{"magnum"},
+	{"plasma_pistol"},
+	{"needler"},
+	{"sentinel_beam"},
+	{"energy_sword"},
+	{"gravity_hammer"},
+	{"skewer"},
+	{"cindershot"},
+	{"heatwave"},
+	{"ravager"},
+	{"shock_rifle"},
+	{"disruptor"},
+	{"mangler"},
+	{"pulse_carbine"},
+	{"carbine"},
+	{"frag_grenade"},
+	{"plasma_grenade"},
+	{"dynamo_grenade"},
+	{"splinter_grenade"},
+	{"grenade_launcher"},
+	{"railgun"},
+	{"saw"},
+	{"spartan_laser"},
+	{"plasma_rifle"},
+	{"fuel_rod"},
+	{"storm_rifle"},
+	{"beam_rifle"},
+	{"plasma_caster"},
+	{"light_rifle"},
+	{"binary_rifle"},
+	{"boltshot"},
+	{"incineration_cannon"},
+	{"suppressor"},
+	{"scattershot"},
 	// Long-tail H5 (frags v_weapon_kills réels) : armes de mêlée d'objectif / REQ.
-	{"golf_club", "Golf Club", "Club de golf"},
-	{"oddball", "Oddball", "Oddball"},
+	{"golf_club"},
+	{"oddball"},
 	// Hors-arsenal H5 (frags non-combat classés 2026-07-17) : familles neutres par
 	// catégorie (véhicule/tourelle/environnement/non-attribué/autres). Réceptacle
 	// pour le donut « Frags par type d'arme » ; exclues de l'insight coach côté web.
-	{"vehicle", "Vehicle", "Véhicule"},
-	{"turret", "Turret", "Tourelle"},
-	{"environmental", "Environmental", "Environnement"},
+	{clsVehicle},
+	{clsTurret},
+	{clsEnvironmental},
 	// equipment : ajoutée le 2026-08-29 avec le répulseur (lot « kills hors arme à feu »).
 	// Halo Infinite, contrairement aux cinq familles ci-dessus qui sont H5-only.
-	{clsEquipment, "Equipment", "Équipement"},
-	{"unattributed", "Unattributed", "Non attribué"},
-	{"other", "Other", "Autres"},
+	{clsEquipment},
+	{clsUnattributed},
+	{clsOther},
 }
 
 // weaponRegistryWeapons — 84 entrées : 29 Infinite (§6.1) + 55 Halo 5 (§6.2 :
@@ -385,7 +404,11 @@ var weaponRegistryWeapons = []weaponRow{
 	{"hinf_cqs48_bulldog", titleHINF, "CQS48 Bulldog", clsShoulder, "shotgun", "shotgun", facHuman, dmgBallistic, mfrMisriah},
 	{"hinf_hydra", titleHINF, "MLRS-2 Hydra", clsHeavy, rolePower, "hydra", facHuman, dmgExplosive, "Chalybs Defense Solutions"},
 	{"hinf_m41_spnkr", titleHINF, nameM41SPNKr, clsHeavy, rolePower, "rocket_launcher", facHuman, dmgExplosive, mfrMisriah},
-	{"hinf_fuel_rod_spnkr", titleHINF, "Fuel Rod SPNKr", clsHeavy, rolePower, "rocket_launcher", facBanished, dmgExplosive, "Banished (SPNKr modifié)"},
+	// manufacturer "modified" (pas "modifié") depuis le 2026-09-08 (lot M5 L4) : ce champ
+	// n'a AUCUN lecteur (vérifié par grep sur le module ET le web — colonne `manufacturer`
+	// jamais sélectionnée hors seed), donc pas un libellé affiché ; le mot FR isolé était
+	// simplement incohérent avec le reste du champ (EN partout ailleurs).
+	{"hinf_fuel_rod_spnkr", titleHINF, "Fuel Rod SPNKr", clsHeavy, rolePower, "rocket_launcher", facBanished, dmgExplosive, "Banished (SPNKr modified)"},
 	{"hinf_sidekick", titleHINF, "Mk50 Sidekick", clsSidearm, clsSidearm, "magnum", facHuman, dmgBallistic, "Emerson Tactical Systems"},
 	{"hinf_plasma_pistol", titleHINF, "Plasma Pistol", clsSidearm, clsSidearm, "plasma_pistol", facCovenant, dmgPlasma, "Iruiru Armory"},
 	{"hinf_needler", titleHINF, "Needler", clsShoulder, roleSpecial, "needler", facCovenant, dmgSpike, mfrLodam},
