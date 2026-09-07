@@ -64,7 +64,7 @@ func ComputeComparisonMetrics(solo, squad domain.SynthesisKPIs) []domain.Compari
 	return items
 }
 
-// ComputeTemporalHeatmap construit la heatmap jour Ã— heure depuis les matchs.
+// ComputeTemporalHeatmap construit la heatmap jour × heure depuis les matchs.
 func ComputeTemporalHeatmap(rows []legacymatch.SynthesisMatchRow) []domain.TemporalHeatmapCell {
 	type heatmapAgg struct {
 		count int

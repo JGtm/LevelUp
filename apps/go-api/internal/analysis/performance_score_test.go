@@ -1,4 +1,4 @@
-// Package analysis â€” performance_score_test.go : tests unitaires des algorithmes de performance.
+// Package analysis — performance_score_test.go : tests unitaires des algorithmes de performance.
 package analysis
 
 import (
@@ -9,7 +9,7 @@ import (
 
 func TestPercentileRank_MinValue(t *testing.T) {
 	series := []float64{10, 20, 30, 40, 50}
-	rank := PercentileRank(5, series) // en-dessous du min â†’ 0%
+	rank := PercentileRank(5, series) // en-dessous du min → 0%
 	if rank < 0 || rank > 100 {
 		t.Errorf("PercentileRank out of [0,100]: %f", rank)
 	}
@@ -17,7 +17,7 @@ func TestPercentileRank_MinValue(t *testing.T) {
 
 func TestPercentileRank_MaxValue(t *testing.T) {
 	series := []float64{10, 20, 30, 40, 50}
-	rank := PercentileRank(60, series) // au-dessus du max â†’ 100%
+	rank := PercentileRank(60, series) // au-dessus du max → 100%
 	if rank < 0 || rank > 100 {
 		t.Errorf("PercentileRank out of [0,100]: %f", rank)
 	}
@@ -28,19 +28,19 @@ func TestPercentileRank_MaxValue(t *testing.T) {
 
 func TestPercentileRank_MedianValue(t *testing.T) {
 	series := []float64{10, 20, 30, 40, 50}
-	rank := PercentileRank(30, series) // mÃ©diane â†’ ~60%
-	// 3 valeurs â‰¤ 30 sur 5 â†’ 60%
+	rank := PercentileRank(30, series) // médiane → ~60%
+	// 3 valeurs ≤ 30 sur 5 → 60%
 	if rank < 40 || rank > 80 {
-		t.Errorf("PercentileRank of median â‰ˆ 60, got %f", rank)
+		t.Errorf("PercentileRank of median ≈ 60, got %f", rank)
 	}
 }
 
 func TestPercentileRankInverse_HalfPoint(t *testing.T) {
 	series := []float64{10, 20, 30, 40, 50}
-	// Inverse: combien >= 30? â†’ 3 sur 5 = 60%
+	// Inverse: combien >= 30? → 3 sur 5 = 60%
 	val := PercentileRankInverse(30, series)
 	if val < 40 || val > 80 {
-		t.Errorf("PercentileRankInverse(30) â‰ˆ 60, got %f", val)
+		t.Errorf("PercentileRankInverse(30) ≈ 60, got %f", val)
 	}
 }
 
@@ -63,7 +63,7 @@ func TestComputePerformanceSeries_SingleMatch(t *testing.T) {
 	}
 }
 
-// â”€â”€ Sprint 48 : tests additionnels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Sprint 48 : tests additionnels ──────────────────────────────────
 
 func TestComputePerformanceSeries_MultipleMatches(t *testing.T) {
 	rows := []legacymatch.StatsMatchRow{
@@ -101,14 +101,14 @@ func TestComputeNormalizedMetrics_ZeroDuration(t *testing.T) {
 		TimePlayedSeconds: intPtr(0),
 	}
 	m := computeNormalizedMetrics(row)
-	// Avec duration=0, les per-minute ne doivent pas Ãªtre Inf ou NaN
+	// Avec duration=0, les per-minute ne doivent pas être Inf ou NaN
 	if m.kpm < 0 {
 		t.Error("kpm should not be negative")
 	}
 }
 
 func TestApplyBotBonus_NoMMR(t *testing.T) {
-	// Sans MMR, le bonus est basÃ© uniquement sur le rÃ©sultat
+	// Sans MMR, le bonus est basé uniquement sur le résultat
 	row := legacymatch.StatsMatchRow{}
 	score := applyBotBonus(75.0, row)
 	// La fonction ajoute toujours un bonus (pas de branche "no bonus")
@@ -171,14 +171,14 @@ func TestClampF(t *testing.T) {
 }
 
 func TestPercentileRank_EmptySeries(t *testing.T) {
-	// Avec sÃ©rie vide (<2 Ã©lÃ©ments), retourne 50.0 (valeur par dÃ©faut)
+	// Avec série vide (<2 éléments), retourne 50.0 (valeur par défaut)
 	rank := PercentileRank(50, nil)
 	if rank != 50.0 {
 		t.Errorf("PercentileRank with empty series should be 50.0 (default), got %f", rank)
 	}
 }
 
-// â”€â”€ Tests ComputeRelativePerformanceScore â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Tests ComputeRelativePerformanceScore ────────────────────────────
 
 func makeHistoryRows(n int) []legacymatch.StatsMatchRow {
 	rows := make([]legacymatch.StatsMatchRow, n)

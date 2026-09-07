@@ -41,9 +41,9 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 	allMatches []legacymatch.SynthesisMatchRow,
 	sessionMatchIDs map[string]bool,
 ) (*domain.TeammateRow, []domain.SquadMatchRow, []domain.SquadMatchRow, error) {
-	// Ãƒâ€°tape 1 : chercher le gamertag dans le top 50 escouade Ã¢â‚¬â€ case-insensitive
+	// Étape 1 : chercher le gamertag dans le top 50 escouade — case-insensitive
 	// pour absorber les variations de casse entre la saisie user et la valeur en
-	// DB (Halo API renvoie tantÃƒÂ´t "Madina97294" tantÃƒÂ´t "madina97294").
+	// DB (Halo API renvoie tantôt "Madina97294" tantôt "madina97294").
 	var teammateXUID string
 	var encounterCount int
 	for _, r := range topRows {
@@ -54,9 +54,9 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 		}
 	}
 
-	// Ãƒâ€°tape 2 : fallback Ã¢â‚¬â€ rÃƒÂ©soudre via shared.xuid_aliases (LookupXUIDByGamertag) pour les gamertags
-	// hors top 50 (utilisateur qui a 50+ coÃƒÂ©quipiers rÃƒÂ©guliers OU saisie libre
-	// dans la combobox). encounterCount reste 0 Ã¢â‚¬â€ recalculÃƒÂ© depuis squadMatches
+	// Étape 2 : fallback — résoudre via shared.xuid_aliases (LookupXUIDByGamertag) pour les gamertags
+	// hors top 50 (utilisateur qui a 50+ coéquipiers réguliers OU saisie libre
+	// dans la combobox). encounterCount reste 0 — recalculé depuis squadMatches
 	// plus bas si on charge effectivement les matchs.
 	if teammateXUID == "" {
 		resolved, found, err := s.repo.LookupXUIDByGamertag(ctx, gamertag)
@@ -69,7 +69,7 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 			return nil, nil, nil, nil
 		}
 		if !found {
-			// Vraiment inconnu de tous les aliases Ã¢â‚¬â€ on log et on drop.
+			// Vraiment inconnu de tous les aliases — on log et on drop.
 			slog.WarnContext(ctx, "teammates_gamertag_not_found",
 				"player_xuid", playerXUID,
 				"gamertag", gamertag,

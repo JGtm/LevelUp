@@ -60,7 +60,7 @@ func buildHighlightsPreviewCanonical(rows []canonical.PlayerMatchRow) domain.Syn
 		if r.Self.Deaths != nil {
 			d = *r.Self.Deaths
 		}
-		// Outcome canonical â†' int Halo pour le DTO inchangÃ©.
+		// Outcome canonical →' int Halo pour le DTO inchangé.
 		var outcome int
 		switch r.Self.Outcome {
 		case canonical.OutcomeWin:

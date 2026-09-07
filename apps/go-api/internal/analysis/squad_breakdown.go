@@ -1,4 +1,4 @@
-// Package analysis â€” squad_breakdown.go : breakdown solo/escouade + synthÃ¨se + top weeks.
+// Package analysis — squad_breakdown.go : breakdown solo/escouade + synthèse + top weeks.
 package analysis
 
 import (
@@ -14,8 +14,8 @@ import (
 // Breakdown solo vs escouade
 // =============================================================================
 
-// ComputeSquadBreakdown calcule les stats agrÃ©gÃ©es pour un mode (solo ou escouade).
-// rows doit dÃ©jÃ  Ãªtre filtrÃ© (is_with_friends=true ou false).
+// ComputeSquadBreakdown calcule les stats agrégées pour un mode (solo ou escouade).
+// rows doit déjà être filtré (is_with_friends=true ou false).
 func ComputeSquadBreakdown(rows []domain.SquadMatchRow) domain.SquadBreakdownStats {
 	if len(rows) == 0 {
 		return domain.SquadBreakdownStats{}
@@ -42,7 +42,7 @@ func ComputeSquadBreakdown(rows []domain.SquadMatchRow) domain.SquadBreakdownSta
 	var wr float64
 	if totalWL > 0 {
 		// TODO P4 ADR 0006 : convertir vers WinRate canonique (0..1) + format front.
-		// Conserve l'unitÃ© 0..100.0 historique avec arrondi 1 dÃ©cimale.
+		// Conserve l'unité 0..100.0 historique avec arrondi 1 décimale.
 		wr = math.Round(WinRate(wins, totalWL)*1000) / 10
 	}
 	var avgKDA float64
@@ -63,11 +63,11 @@ func ComputeSquadBreakdown(rows []domain.SquadMatchRow) domain.SquadBreakdownSta
 }
 
 // =============================================================================
-// SynthÃ¨se â€” Heatmap + Top Weeks
+// Synthèse — Heatmap + Top Weeks
 // =============================================================================
 
 // ComputeSynthesisHeatmap convertit les lignes DuckDB en cellules de heatmap.
-// Calcule le win rate (%) pour chaque combinaison carte Ã— mode.
+// Calcule le win rate (%) pour chaque combinaison carte × mode.
 func ComputeSynthesisHeatmap(rows []domain.SynthesisHeatmapRow) []domain.HeatmapCell {
 	cells := make([]domain.HeatmapCell, 0, len(rows))
 	for _, r := range rows {
@@ -130,7 +130,7 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 		agg.count++
 	}
 
-	// Filtrer semaines â‰¥ 3 matchs.
+	// Filtrer semaines ≥ 3 matchs.
 	type weekScore struct {
 		entry domain.TopWeekEntry
 		wr    float64
@@ -272,7 +272,7 @@ func ComputeSynthesisTopWeeks(rows []legacymatch.SynthesisMatchRow) []domain.Top
 }
 
 // ComputeSynthesisBreakdown calcule les stats de breakdown solo ou squad.
-// isSquad=true â†’ matchs avec amis (is_with_friends=true), false â†’ matchs solo.
+// isSquad=true → matchs avec amis (is_with_friends=true), false → matchs solo.
 func ComputeSynthesisBreakdown(rows []legacymatch.SynthesisMatchRow, isSquad bool) domain.SquadBreakdownStats {
 	var matchCount, wins, total int
 	var sumKills, sumKDA float64
@@ -314,10 +314,10 @@ func ComputeSynthesisBreakdown(rows []legacymatch.SynthesisMatchRow, isSquad boo
 }
 
 // =============================================================================
-// Sprint 43 â€” Bipolaire enrichie
+// Sprint 43 — Bipolaire enrichie
 // =============================================================================
 
-// ComputeSynthesisKPIs calcule les KPIs dÃ©taillÃ©s pour un sous-ensemble solo ou squad.
+// ComputeSynthesisKPIs calcule les KPIs détaillés pour un sous-ensemble solo ou squad.
 func ComputeSynthesisKPIs(rows []legacymatch.SynthesisMatchRow, isSquad bool) domain.SynthesisKPIs {
 	var kpis domain.SynthesisKPIs
 	var totalWL, wins int
@@ -400,13 +400,13 @@ func ComputeSynthesisKPIs(rows []legacymatch.SynthesisMatchRow, isSquad bool) do
 
 // ComputeSynthesisKPIsFromCanonical est la variante canonical-aware de
 // ComputeSynthesisKPIs (P4 pilote synthesis, ADR 0011). Consomme directement
-// `[]canonical.PlayerMatchRow` sans intermÃ©diaire `legacymatch.SynthesisMatchRow`.
+// `[]canonical.PlayerMatchRow` sans intermédiaire `legacymatch.SynthesisMatchRow`.
 //
-// Comportement strictement Ã©quivalent Ã  ComputeSynthesisKPIs ; la seule
-// diffÃ©rence est la source des champs (Self.Kills, Self.KDA, Self.Outcome
+// Comportement strictement équivalent à ComputeSynthesisKPIs ; la seule
+// différence est la source des champs (Self.Kills, Self.KDA, Self.Outcome
 // au lieu de SynthesisMatchRow.{Kills,KDA,Outcome}).
 //
 // Migration progressive : ComputeSynthesisKPIs reste pour les autres callers
-// (Squad, Teammates) qui n'ont pas encore migrÃ©. Sera supprimÃ© en P4.3 quand
+// (Squad, Teammates) qui n'ont pas encore migré. Sera supprimé en P4.3 quand
 // tous les callers seront sur canonical.
 // extKPIAcc accumule les compteurs des KPIs etendus du bipolaire Solo/Escouade.

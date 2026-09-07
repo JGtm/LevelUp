@@ -59,7 +59,7 @@ func (r *SquadRepo) LoadMainTeamParticipants(ctx context.Context, mainXUID strin
 	return result, rows.Err()
 }
 
-// LoadSynthesisHeatmap charge les donnÃ©es heatmap mapÃ—mode (Q33).
+// LoadSynthesisHeatmap charge les données heatmap map×mode (Q33).
 func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()

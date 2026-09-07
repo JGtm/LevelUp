@@ -104,7 +104,7 @@ func TestBuildTeammateOptions(t *testing.T) {
 	}
 }
 
-// ---------- computeKPIsFromSquadMatches â€” HeadshotKills / PerfectKills ----------
+// ---------- computeKPIsFromSquadMatches — HeadshotKills / PerfectKills ----------
 
 func TestComputeKPIsFromSquadMatches_HeadshotAndPerfectKills(t *testing.T) {
 	acc := 0.6
@@ -146,7 +146,7 @@ func TestExtractSynthesisSessionLabels_SeparatesSoloSquad(t *testing.T) {
 	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsWithFriends: false, SessionLabel: &s1, StartTime: ts},
 		{MatchID: "m2", IsWithFriends: true, SessionLabel: &s2, StartTime: ts},
-		{MatchID: "m3", IsWithFriends: false, SessionLabel: &s1, StartTime: ts}, // doublon â†’ 1 seul
+		{MatchID: "m3", IsWithFriends: false, SessionLabel: &s1, StartTime: ts}, // doublon → 1 seul
 	}
 	got := extractSynthesisSessionLabels(matches)
 	if len(got.Solo) != 1 {
@@ -218,7 +218,7 @@ func TestExtractSynthesisSessionLabels_SortedByStartedAtDesc(t *testing.T) {
 	}
 }
 
-// ---------- extractSynthesisSessionLabels â€” expÃ©riences & playlists ----------
+// ---------- extractSynthesisSessionLabels — expériences & playlists ----------
 
 func TestExtractSynthesisSessionLabels_AggregatesExperiences(t *testing.T) {
 	label := "sess-mixed"
@@ -343,7 +343,7 @@ func TestFilterSynthesisBySession_MultiSquadLabels(t *testing.T) {
 		{MatchID: "m3", IsWithFriends: true, SessionLabel: &s3},
 		{MatchID: "m4", IsWithFriends: false, SessionLabel: &s1},
 	}
-	// SÃ©lection de 2 sessions escouade sur 3 â†’ union des matchs
+	// Sélection de 2 sessions escouade sur 3 → union des matchs
 	got := filterSynthesisBySession(matches, nil, []string{s1, s2})
 	if len(got) != 2 {
 		t.Errorf("expected 2 matches (m1+m2), got %d: %v", len(got), got)
@@ -637,11 +637,11 @@ func TestTeammatesService_GetPage_WithSelectedGamertag(t *testing.T) {
 	if tm.WithKPIs.PerfectKillsPerGame == nil || *tm.WithKPIs.PerfectKillsPerGame != 0.5 {
 		t.Errorf("expected perfect_kills_per_game=0.5, got %v", tm.WithKPIs.PerfectKillsPerGame)
 	}
-	// MapBreakdown doit Ãªtre calculÃ©
+	// MapBreakdown doit être calculé
 	if len(resp.MapBreakdown) == 0 {
 		t.Error("expected non-empty MapBreakdown")
 	}
-	// MatchSeries doit contenir l'entrÃ©e pour Ally1
+	// MatchSeries doit contenir l'entrée pour Ally1
 	if _, ok := resp.MatchSeries["Ally1"]; !ok {
 		t.Error("expected MatchSeries entry for Ally1")
 	}
@@ -795,7 +795,7 @@ func TestTeammatesService_GetPage_UnknownGamertag_Skipped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Unknown gamertag non prÃ©sent dans topRows â†’ skippÃ©
+	// Unknown gamertag non présent dans topRows → skippé
 	if len(resp.Teammates) != 0 {
 		t.Errorf("expected 0 teammates, got %d", len(resp.Teammates))
 	}

@@ -36,16 +36,16 @@ import (
 	"levelup/go-api/internal/service/squadagg"
 )
 
-// FriendGamertagsResolver retourne la liste courante des amis configurÃƒÂ©s
-// (app_settings.friend_gamertags). AppelÃƒÂ© ÃƒÂ  chaque requÃƒÂªte pour reflÃƒÂ©ter les
-// PATCH settings sans redÃƒÂ©marrage.
+// FriendGamertagsResolver retourne la liste courante des amis configurés
+// (app_settings.friend_gamertags). Appelé à chaque requête pour refléter les
+// PATCH settings sans redémarrage.
 type FriendGamertagsResolver func(ctx context.Context) []string
 
-// TeammatesService calcule les stats coÃƒÂ©quipiers au format FastAPI.
+// TeammatesService calcule les stats coéquipiers au format FastAPI.
 type TeammatesService struct {
 	repo            port.SquadRepository
 	friendGamertags FriendGamertagsResolver
-	// playerMatchesRepo (P4.3 finale) : loader canonical-only. CÃƒÂ¢blÃƒÂ© en DI
+	// playerMatchesRepo (P4.3 finale) : loader canonical-only. Câblé en DI
 	// universellement via registry.go (ServiceRegistry.playerMatchesAdapterFor).
 	// IMPORTANT : cet adapteur est BOUND au gamertag du joueur principal (ignore
 	// l'arg gamertag). Pour charger les canonical rows d'un coequipier different,
@@ -96,11 +96,11 @@ type TeammatesService struct {
 	radarRange map[string]int
 }
 
-// NewTeammatesService crÃƒÂ©e un TeammatesService.
+// NewTeammatesService crée un TeammatesService.
 //
-// friendGamertags : optionnel. Si nil, le filtre amis-only est dÃƒÂ©sactivÃƒÂ©
-// (top retournÃƒÂ© brut, ancien comportement). Quand fourni, le top dropdown
-// est restreint aux amis configurÃƒÂ©s.
+// friendGamertags : optionnel. Si nil, le filtre amis-only est désactivé
+// (top retourné brut, ancien comportement). Quand fourni, le top dropdown
+// est restreint aux amis configurés.
 func NewTeammatesService(repo port.SquadRepository, friendGamertags FriendGamertagsResolver) *TeammatesService {
 	return &TeammatesService{repo: repo, friendGamertags: friendGamertags}
 }
@@ -215,9 +215,9 @@ func (s *TeammatesService) GetPage(
 		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService: %w", err)
 	}
 
-	// Ã‚Â§3 plan Squad/Sessions : filtre top dropdown aux amis configurÃƒÂ©s
+	// §3 plan Squad/Sessions : filtre top dropdown aux amis configurés
 	// (settings.friend_gamertags). Hors amis = exclus du dropdown mais
-	// toujours requÃƒÂªtables explicitement via SelectedGamertags + alias.
+	// toujours requêtables explicitement via SelectedGamertags + alias.
 	var friendGTs []string
 	if s.friendGamertags != nil {
 		friendGTs = s.friendGamertags(ctx)
@@ -227,14 +227,14 @@ func (s *TeammatesService) GetPage(
 		dropdownRows = filterTopRowsToFriends(topRows, friendGTs)
 	}
 
-	// Options (liste des coÃƒÂ©quipiers frÃƒÂ©quents Ã¢â‚¬â€ limitÃƒÂ©e aux amis si configurÃƒÂ©).
+	// Options (liste des coéquipiers fréquents — limitée aux amis si configuré).
 	options := buildTeammateOptions(dropdownRows)
 
 	// P4.3 finale (ADR 0011) : load canonical via PlayerMatchesRepo, convert
 	// vers SynthesisMatchRow pour les helpers internes (extractSynthesisSessionLabels,
 	// filterSynthesisByCascade, etc.).
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService: PlayerMatchesRepo non cÃƒÂ¢blÃƒÂ© (P4.3 finale exige le wiring DI)")
+		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
@@ -247,10 +247,10 @@ func (s *TeammatesService) GetPage(
 	// Extraire les session_labels disponibles (solo / escouade).
 	sessionLabels := extractSynthesisSessionLabels(allMatches)
 
-	// Filtrer les matchs selon les sessions sÃƒÂ©lectionnÃƒÂ©es.
+	// Filtrer les matchs selon les sessions sélectionnées.
 	filteredMatches := filterSynthesisBySession(allMatches, req.PickedSoloSessions, req.PickedSquadSessions)
 
-	// Appliquer les filtres cascade (experience_types, playlists) si prÃƒÂ©sents.
+	// Appliquer les filtres cascade (experience_types, playlists) si présents.
 	if req.Filters != nil {
 		filteredMatches = filterSynthesisByCascade(filteredMatches, req.Filters.Cascade)
 		// Period (rail nav, PeriodePill) — sans cela la navigation periode n'a aucun

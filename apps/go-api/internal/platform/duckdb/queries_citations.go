@@ -21,8 +21,8 @@ FROM citation_mappings
 WHERE enabled IS NOT FALSE
 ORDER BY category, citation_name_display`
 
-// Q35 : Citations â€” totaux agrÃ©gÃ©s depuis match_citations (player stats.duckdb).
-// ParamÃ¨tre : aucun.
+// Q35 : Citations — totaux agrégés depuis match_citations (player stats.duckdb).
+// Paramètre : aucun.
 const Q35CitationTotals = `
 SELECT
     citation_name_norm,
@@ -44,8 +44,8 @@ WHERE xuid = ?
 GROUP BY medal_name_id
 ORDER BY total_count DESC`
 
-// Q36b : Commendations â€” mappings mÃ©dailleâ†’citation depuis metadata.duckdb.
-// ParamÃ¨tre : aucun. RequÃªte sur pdb.Metadata.
+// Q36b : Commendations — mappings médaille→citation depuis metadata.duckdb.
+// Paramètre : aucun. Requête sur pdb.Metadata.
 const Q36bMedalCitationMappings = `
 SELECT
     medal_id,
@@ -92,8 +92,8 @@ LIMIT 4`
 // reellement executee vit dans sync.loadFullCitationMappings
 // (internal/sync/citations.go), qui interroge metadata.duckdb directement.
 
-// Q39 : Moteur citations â€” mappings citationâ†’medal depuis metadata.duckdb.
-// ParamÃ¨tre : aucun. RequÃªte sur pdb.Metadata.
+// Q39 : Moteur citations — mappings citation→medal depuis metadata.duckdb.
+// Paramètre : aucun. Requête sur pdb.Metadata.
 // Retourne 4 colonnes : citation_name_norm, citation_name_display, medal_id, mapping_type.
 const Q39CitationMedalMappings = `
 SELECT

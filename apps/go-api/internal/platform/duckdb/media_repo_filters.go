@@ -113,8 +113,8 @@ func (r *MediaRepo) ListMediaAuthors(ctx context.Context) ([]domain.MediaAuthor,
 	return authors, rows.Err()
 }
 
-// translatePlaylistFilterOptions enrichit les libellÃ©s de playlists en FR via
-// asset_translations (asset_type='playlist') + dÃ©dup par playlist_id. Value =
+// translatePlaylistFilterOptions enrichit les libellés de playlists en FR via
+// asset_translations (asset_type='playlist') + dédup par playlist_id. Value =
 // playlist_id (stable) ; sinon fallback label brut.
 func (r *MediaRepo) translatePlaylistFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
 	if len(pairs) == 0 {
@@ -168,9 +168,9 @@ func (r *MediaRepo) CurrentPlayerSlug() string {
 }
 
 // LoadMatchCandidatesForMedia retourne les matchs du joueur courant dans la
-// fenÃªtre temporelle [capture_start - window, capture_start + window].
-// Inclut les KPIs du joueur pour aider Ã  reconnaÃ®tre le bon match.
-// Si capture_start_utc est nul â†’ fallback mtime, sinon liste vide.
+// fenêtre temporelle [capture_start - window, capture_start + window].
+// Inclut les KPIs du joueur pour aider à reconnaître le bon match.
+// Si capture_start_utc est nul → fallback mtime, sinon liste vide.
 //
 // cross-DB match scan (shared + player KPIs) → assemblage candidates. La complexité
 // reflète les nombreux fallbacks (capture_start_utc → mtime, NULL playlists, etc.).
@@ -189,10 +189,10 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		return domain.MediaMatchCandidatesResponse{}, nil
 	}
 
-	// Lire capture_start_utc + association actuelle du mÃ©dia.
+	// Lire capture_start_utc + association actuelle du média.
 	// Match flexible : soit file_path exact (DB absolute), soit file_name
-	// (basename â€” pour quand le frontend envoie l'URL transformÃ©e et qu'on
-	// reÃ§oit “.../foo.mp4” au lieu du chemin DB original).
+	// (basename — pour quand le frontend envoie l'URL transformée et qu'on
+	// reçoit “.../foo.mp4” au lieu du chemin DB original).
 	basename := filepath.Base(filePath)
 	var captureUTC sql.NullTime
 	var currentMatchID sql.NullString
@@ -220,10 +220,10 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	cap := captureUTC.Time
 	resp.CaptureUTC = &cap
 
-	// Charger les matchs du joueur dans la fenÃªtre.
+	// Charger les matchs du joueur dans la fenêtre.
 	// start_time_utc est TIMESTAMPTZ UTC garanti (migration add_start_time_utc_to_match_registry).
-	// Fallback sur start_time AT TIME ZONE 'UTC' pour les matchs synchro aprÃ¨s le fix DuckDB
-	// (first_sync_at >= 2026-03-01 â†’ start_time dÃ©jÃ  UTC) qui n'auraient pas encore start_time_utc.
+	// Fallback sur start_time AT TIME ZONE 'UTC' pour les matchs synchro après le fix DuckDB
+	// (first_sync_at >= 2026-03-01 → start_time déjà UTC) qui n'auraient pas encore start_time_utc.
 	// query shared-only via SharedReader (root-level
 	// naming). start_time_utc est TIMESTAMPTZ UTC garanti.
 	sharedDB, releaseShared, err := r.pdb.SharedReadDB().Get(ctx)
@@ -329,8 +329,8 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		}
 		if pairName.Valid {
 			// Sous-mode EN canonique pour le picker (Slayer/CTF/KOTH/etc.) :
-			// l'utilisateur a besoin du DÃ‰TAIL du mode pour distinguer entre 4
-			// matchs candidats â€” pas de la catÃ©gorie parente. cf. mode_label.go
+			// l'utilisateur a besoin du DÉTAIL du mode pour distinguer entre 4
+			// matchs candidats — pas de la catégorie parente. cf. mode_label.go
 			// (NormalizeModeLabel) vs mode_category.go (InferModeCategoryFromPairName).
 			if en := analysis.NormalizeModeLabel(pairName.String); en != "" {
 				c.ModeName = &en
@@ -356,8 +356,8 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		matchIDs = append(matchIDs, c.MatchID)
 	}
 
-	// Traduction FR des modes (ex: "Slayer" â†’ "Assassin") via mode_name_tr.
-	// Si pair_name_fr Ã©tait dÃ©jÃ  rempli en DB, on le prÃ©serve quand mÃªme
+	// Traduction FR des modes (ex: "Slayer" → "Assassin") via mode_name_tr.
+	// Si pair_name_fr était déjà rempli en DB, on le préserve quand même
 	// puisqu'on substitue uniquement si une traduction existe.
 	// GH3-4 : la traduction FR (mode_name_tr) n'est appliquée QUE sous FR. Sous EN,
 	// ModeName reste le sous-mode EN canonique (NormalizeModeLabel sur base EN-first).
@@ -371,7 +371,7 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			if resp.Candidates[i].ModeName == nil {
 				continue
 			}
-			// ModeName est dÃ©jÃ  le sous-mode EN canonique (cf. boucle ci-dessus) â†’
+			// ModeName est déjà le sous-mode EN canonique (cf. boucle ci-dessus) →
 			// lookup direct, pas besoin de re-normaliser.
 			if fr, ok := translations[*resp.Candidates[i].ModeName]; ok && fr != "" {
 				resp.Candidates[i].ModeName = &fr
@@ -456,7 +456,7 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		}
 	}
 
-	// 2e query batch : lobby (max 12 joueurs par match â€” assez pour 4v4 + spectateurs)
+	// 2e query batch : lobby (max 12 joueurs par match — assez pour 4v4 + spectateurs)
 	if len(matchIDs) > 0 {
 		lobbies := r.loadMatchLobbies(ctx, matchIDs)
 		for i := range resp.Candidates {
@@ -540,8 +540,8 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 }
 
 // Miroir Go de q37MediaModeLabelExpr : extraction du mode parent.
-//   - Si le label contient ":" â†’ prÃ©fixe avant (Arena:Slayer â†’ Arena)
-//   - Sinon â†’ strip suffixes carte/Forge/Ranked
+//   - Si le label contient ":" → préfixe avant (Arena:Slayer → Arena)
+//   - Sinon → strip suffixes carte/Forge/Ranked
 var (
 	modeLabelOnRe     = regexp.MustCompile(`(?i)\s+on\s+.+$`)
 	modeLabelForgeRe  = regexp.MustCompile(`(?i)\s*-\s*Forge\b.*$`)
@@ -558,6 +558,6 @@ func normalizeModeLabel(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// SetMediaMatchAssociation force l'association d'un mÃ©dia Ã  un match prÃ©cis.
-// Supprime l'association existante (si prÃ©sente) et insÃ¨re la nouvelle.
-// Retourne (mapName, modeName) pour permettre au handler d'enrichir la rÃ©ponse.
+// SetMediaMatchAssociation force l'association d'un média à un match précis.
+// Supprime l'association existante (si présente) et insère la nouvelle.
+// Retourne (mapName, modeName) pour permettre au handler d'enrichir la réponse.
