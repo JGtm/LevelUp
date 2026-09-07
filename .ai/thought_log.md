@@ -100574,3 +100574,59 @@ corruption secondaire NBSP/guillemet-droit constatee sur 6 sites, a anticiper si
 sont un jour traites pour le mojibake (D9, hors branche). Commit(s) sur `feat/mojibake-garde-rail`
 (worktree `LevelUp-wt-q3-mojibake`), push `origin`. Pas de fusion dans `feat/v75` (accord
 utilisateur prealable requis, regle CLAUDE.md n°16).
+
+## [2026-09-07] Orchestration — vague 2, lot M2 = v2 R6 (constats P2 audit vies + drawnSwapAt web) — Complete
+
+**Decision technique principale.** Les 5 constats P2 de `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`
+rouverts sur pieces (le code a bouge : scission `document.go`, extraction de `ReplayTeams.tsx` vers
+`playerCardReadings.ts` le 2026-09-06). P2-1 (`birthOfLives` rend la naissance du SLOT servie comme
+naissance de la VIE) et P2-2 (`coverage.equipmentChanges.lives` compte des SLOTS publie comme des
+VIES) partagent une racine UNIQUE dans `internal/analysis/filmdec/equipment_changes.go`
+(`mergeEquipEmissions` groupe par SLOT jamais par (slot, vie), et `bornAt` n'a que le slot en
+parametre — aucun instant a interroger) : decodeur GELE (doctrine plan v2 §0.6, interdit explicite
+de la mission de toucher `filmdec`/`himap`). Disposition = diagnostic + registre, exactement la
+voie que la doctrine prescrit pour un defaut de decodeur ; aucun code ecrit pour ces deux-la. P2-3
+(borne de manche = MIN sur population non filtree) est un NON-LIEU : deja corrige par un commit
+ANTERIEUR de la meme campagne (`f1b4f4ee5`, `fix(manches/MANCHES-R1)`, 2026-09-07 00:05, deja sur
+`feat/v75`) — `roundStartsOf` prend desormais `RoundStartsMS` (consensus median sur majorite de
+slots, `chainedRounds`) comme source unique. P2-4 (`indexBySlot` web credite un geste au DERNIER
+occupant du slot) et P2-5 (deux jointures roster<->joueur perdent les BOTS, cles de deux espaces)
+sont CORRIGES : P2-4 passe les 3 canaux d'`equipmentUsageLogic.ts` de l'agregat match `indexBySlot`
+a `buildSlotOwnership(players).ownerAtFrame(slot, t0)`, resolu a l'instant du geste ; P2-5 introduit
+un helper canonique `rosterEntryKey` (rosterLogic.ts, meme derivation que
+`seatLogic.filmIndexByIdentity` deja correct) substitue aux deux comparaisons directes
+`entry.xuid === player.xuid` fautives (`equipmentUsageLogic.ts`, et `playerCardReadings.ts` — le
+second site avait bouge depuis l'audit). `drawnSwapAt`
+(`apps/web/src/features/match-replay/model/equippedLogic.ts`, le plan le citait sous
+`lib/replay/` : le code a bouge) balayait tout `doc.inventory` du slot sans regarder la frontiere
+de vie — meme defaut et meme remede que le correctif P0-2 deja pose sur `loadoutAt`/`abilityAt`
+(`currentLifeOf` + `trackWindow`, borne au debut de la vie en cours).
+
+**Resultats observes.** Chaque correctif web mutation-teste (rouge sans le correctif, verifie en
+relisant la logique du test contre le code avant/apres) : `equipmentUsageLogic.test.ts` (2 tests
+neufs : slot recycle P2-4, bot P2-5), `rosterLogic.test.ts` (3 tests neufs sur `rosterEntryKey`),
+`equippedLogic.test.ts` (1 test neuf sur la frontiere de vie de `drawnSwapAt`, 4 fixtures
+existantes mises a jour avec une vie couvrante — sans elle `currentLifeOf` ne rend plus rien).
+Aucun correctif ne change le contenu CUIT (P2-4/P2-5 sont des agregations web pures depuis le
+document deja servi, P2-1/P2-2 sont differes) : **0 bump** (`SchemaVersion` reste 48).
+Gates Go (worktree sans film local) : `gofmt -l` vide, `go build ./...` (0), `go vet` sur
+`analysis/replay/...` et `replaybuild/...` (0), `go test -count=1` sur `analysis/replay/...`,
+`replaybuild/...`, `service/replayview/...` (4 paquets verts), `golangci-lint
+--new-from-merge-base=origin/main` sur les memes paquets (0 issue), `git diff --exit-code
+generated.ts` (vide, contrat inchange). Gates web : `tsc -b` (0 erreur), `eslint` (0 erreur, 29
+warnings preexistants sans rapport), `vitest run --pool=forks` complet (653 fichiers / 6972 tests
+verts, 1 fichier / 17 tests skip preexistants).
+
+**Conclusion / prochaine etape.** Lot M2 clos : `.ai/PLAN_V2_RESTES_2026-09-07.md` R6 coche,
+`.ai/PLAN_ORCHESTRATION_2026-09-07.md` M2 coche, `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`
+(tableau Decision/etat, une ligne par P2-N) et `.ai/V7.5/REGISTRE_REPORTS.md` (entree barree et
+fermee, nouvelle entree ouverte pour P2-1/P2-2 avec condition de reprise = plan decodeur
+post-v7.5.0) mis a jour. Journal detaille : `.ai/V7.5/v2/RESTES_R6_2026-09-07.md`. Decouverte
+notee au registre, non traitee : `seatLogic.filmIndexByIdentity` porte une 3e copie inline de la
+derivation « cle de roster pour un bot » depuis la creation de `rosterEntryKey` — factorisation
+future, pas un defaut. Le gate corpus (`make replay-corpus-gate`) et les temoins chiffres du plan
+v2 sont hors de portee dans ce worktree (aucun film ni artefact cuit local) : sans objet pour ce
+lot de toute facon (aucun bump, aucun contenu cuit modifie) — a confirmer par le superviseur sur
+le poste principal si un doute subsiste. Commits sur `feat/v2-restes-r6` (base
+`feat/v2-restes-r0`), push `origin`. Pas de fusion dans `feat/v75` (accord utilisateur prealable
+requis, regle CLAUDE.md n°16).
