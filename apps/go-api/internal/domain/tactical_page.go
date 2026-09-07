@@ -148,6 +148,24 @@ type TacticalRaster struct {
 	MatchsEnAttente    int `json:"matchs_en_attente,omitempty"`
 	MatchsNonCuisables int `json:"matchs_non_cuisables,omitempty"`
 
+	// MatchsSansRayon : les matchs ECARTES de la lecture « isole » parce que leur variante
+	// n'a pas de portee de radar mesuree. Publie plutot qu'avale — sans lui, une lecture
+	// amputee ressemblerait a une lecture complete.
+	MatchsSansRayon int `json:"matchs_sans_rayon,omitempty"`
+
+	// MortsEquipeATerre : les morts ECARTEES de la lecture « isole » parce qu'AUCUN
+	// coequipier n'etait en mesure d'accompagner (tous morts, partis, ou aucun).
+	//
+	// PUBLIEE, ET C'EST LE POINT : on ne peut pas etre mal accompagne quand personne ne peut
+	// accompagner. Les compter au denominateur ferait monter le taux avec les hecatombes de
+	// l'equipe, c'est-a-dire avec quelque chose que le placement du joueur ne commande pas.
+	MortsEquipeATerre int `json:"morts_equipe_a_terre,omitempty"`
+
+	// Isolement est la part des morts SANS coequipier visible a portee, sous la forme
+	// canonique (taux + brut + par match + N + echantillon faible). nil hors de la lecture
+	// « isole ».
+	Isolement *Couverture `json:"isolement,omitempty"`
+
 	// Echange est le taux de morts vengees de mon equipe SUR CETTE CARTE. nil quand
 	// le titre ne sait pas lire la source des morts (capability `film.kill_source`
 	// absente) : la lecture de placement reste servie, le KPI est simplement

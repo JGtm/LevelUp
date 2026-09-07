@@ -285,6 +285,16 @@ type TacticalMatch struct {
 	// part (correction G2, revue du 2026-09-06).
 	Mesure bool
 
+	// GameVariantName est le nom d'asset UGC de la variante jouee
+	// (`match_registry.game_variant_name`). Il voyage avec le match parce qu'une REGLE DU
+	// JEU en depend et ne peut se lire nulle part ailleurs : la PORTEE DU RADAR, qui borne
+	// la lecture « ou je meurs isole », est declaree par variante dans `regulation.toml`.
+	// L'artefact, lui, ne connait pas les regles du mode.
+	//
+	// Vide quand le registre ne la nomme pas — la lecture qui en depend ECARTE alors le
+	// match et le compte (`matchs_sans_rayon`), plutot que de deviner une regle.
+	GameVariantName string
+
 	// EligibleALaCuisson dit que la FILE DE CUISSON des artefacts de rejeu reprendra ce
 	// match : film pas definitivement perdu, horodatage exploitable, et dans la fenetre de
 	// retention (`analysis.SQLEligibleALaCuisson`, le predicat de la file elle-meme).
@@ -354,6 +364,28 @@ type TacticalKillPosition struct {
 }
 
 // TacticalPositions : l'univers ET les positions mesurees de ses matchs.
+// MortContexte est une mort LOCALISEE de l'univers, avec ce que le collecteur a mesure de son
+// voisinage au sync (`match_death_context`).
+//
+// ELLE PORTE LES DEUX ETATS QUI COMPTENT, et pas les quatre : `waiting` et `left` disent qu'un
+// coequipier ne pouvait PAS accompagner, ce que `visibles + hors_de_vue == 0` exprime deja. Les
+// transporter aurait offert a la lecture deux facons d'ecrire la meme regle.
+type MortContexte struct {
+	MatchID    string
+	VictimXUID string
+	// X, Y : la position de la VICTIME, depuis `kill_positions_latest`.
+	X, Y float64
+	// PlusProcheM : distance au coequipier VISIBLE le plus proche. nil = aucun visible.
+	PlusProcheM         *float64
+	Visibles, HorsDeVue int
+}
+
+// TacticalMortsContexte : l'univers ET ses morts localisees avec leur voisinage.
+type TacticalMortsContexte struct {
+	Univers TacticalUnivers
+	Morts   []MortContexte
+}
+
 type TacticalPositions struct {
 	Univers TacticalUnivers
 	Points  []TacticalKillPosition

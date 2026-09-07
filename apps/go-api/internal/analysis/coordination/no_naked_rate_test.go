@@ -48,16 +48,18 @@ var (
 	// porte AUCUN quotient — MatchID, deux xuids, un instant, trois booleens et un delai en
 	// int64 : il n'y a rien dedans qu'un lecteur puisse prendre pour un taux, et le seul
 	// taux de ce paquet reste celui de Mesurer.
-	// `domain.BilanIsolement` RETIRE LE 2026-09-07 (lot 7.10). La lecture « ou je meurs
-	// isole » tranchait a la LECTURE, sur la chronologie du sidecar de rejeu ; elle est
-	// retiree, et les faits d'isolement se produiront AU SYNC, dans `match_death_context`
-	// (decision utilisateur du 2026-09-07, lot 7C). Une entree de liste blanche pour un
-	// type qui n'existe plus n'autoriserait rien, mais elle laisserait croire que ce
-	// paquet rend encore ce type-la : la liste dit ce que le paquet REND AUJOURD'HUI.
+	// `domain.BilanIsolement` REMIS LE 2026-09-07 (lot 7C), apres avoir ete retire au lot
+	// 7.10 avec la premiere lecture d'isolement. JUSTIFICATION : `Isolement` le rend parce
+	// que la lecture a besoin de TROIS choses que le taux seul ne porte pas — les morts
+	// isolees (la carte les peint), les morts ECARTEES faute de coequipier en mesure
+	// d'accompagner, et les matchs dont la variante n'a pas de rayon mesure. Son unique taux
+	// est `Couverture`, du type canonique ; le reste sont des comptes entiers et des
+	// positions. Un lecteur ne peut prendre aucun de ses champs pour un quotient.
 	typesQualifiesAutorises = map[string]bool{
-		"domain.Couverture":    true,
-		"domain.BilanEchanges": true,
-		"domain.MortSuivie":    true,
+		"domain.Couverture":     true,
+		"domain.BilanEchanges":  true,
+		"domain.MortSuivie":     true,
+		"domain.BilanIsolement": true,
 	}
 )
 

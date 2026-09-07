@@ -63,6 +63,11 @@ type TacticalService struct {
 	rasters port.TacticalRasterStore
 	// callouts nomme les grappes de reapparition. Nil = grappes MUETTES, jamais d'erreur.
 	callouts port.TacticalCalloutsStore
+	// radar : game_variant_name -> portee du radar en metres (`regulation.toml`). Une
+	// variante absente n'a PAS de rayon : ses matchs sortent de la lecture « isole » et se
+	// comptent a part (jamais un rayon de repli, qui rendrait une mesure d'apparence normale
+	// sur une regle de jeu qu'on n'a pas etablie).
+	radar map[string]int
 	// retentionMois rend la fenetre de retention des artefacts de rejeu, en mois. MEME
 	// SOURCE ET MEME CONVENTION que la purge et que la file (0 = ILLIMITEE).
 	//
@@ -81,34 +86,6 @@ type TacticalService struct {
 // degradation : une map non chargee ne vaut pas une capability presente.
 func NewTacticalService(repo port.TacticalRepository, caps games.CapabilityMap, playerXUID string) *TacticalService {
 	return &TacticalService{repo: repo, caps: caps, xuid: playerXUID, logger: slog.Default()}
-}
-
-// WithRasterStore injecte le lecteur de sidecars d'occupation. Chainable.
-//
-// UN `With*` PLUTOT QU'UN 4e PARAMETRE, et la raison n'est pas la commodite : ce lecteur
-// ne sert QU'A la lecture d'occupation, qui est la seule des quatre a ne pas venir de la
-// base. Le mettre au constructeur aurait fait porter une dependance de fichier a vingt
-// sites de test qui n'en ont aucun besoin. L'oubli de cablage, lui, ne peut pas passer
-// inapercu : il rend un 503 ET une ligne ERROR nominative (cf. lectureOccupation).
-func (s *TacticalService) WithRasterStore(store port.TacticalRasterStore) *TacticalService {
-	s.rasters = store
-	return s
-}
-
-// WithCalloutsStore injecte le lecteur de zones nommees (nommage des grappes). Chainable.
-func (s *TacticalService) WithCalloutsStore(store port.TacticalCalloutsStore) *TacticalService {
-	s.callouts = store
-	return s
-}
-
-// WithRetentionMois injecte la fenetre de retention des artefacts de rejeu. Chainable.
-//
-// UNE FONCTION ET NON UNE VALEUR : la fenetre est un REGLAGE, relu a chaque lecture comme
-// le cron de purge le relit a chaque tick. Une valeur figee au cablage aurait fait diverger
-// ce que la page annonce de ce que la purge applique, jusqu'au prochain redemarrage.
-func (s *TacticalService) WithRetentionMois(f func() int) *TacticalService {
-	s.retentionMois = f
-	return s
 }
 
 // WithLogger injecte un logger (sinon slog.Default()). Chainable.
@@ -198,6 +175,14 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		// l'ordre d'evaluation des operandes decider si la reponse rendue est celle
 		// d'avant ou d'apres le remplissage.
 		err := s.rasterArtefact(ctx, &out, scope, dejaLus)
+		return out, err
+	}
+	if question == domain.TacticalQuestionIsole {
+		// « ISOLE » LIT LA BASE COMME LES LECTURES DE PLACEMENT, mais sur DEUX tables de
+		// plus : le contexte de chaque mort, ecrit au sync, et les positions pour le lieu.
+		// Elle n'attend AUCUN artefact — la ventilation en attente / non cuisables ne la
+		// concerne donc pas.
+		err := s.rasterIsole(ctx, &out, scope)
 		return out, err
 	}
 	err := s.rasterDeKills(ctx, &out, scope)
@@ -326,6 +311,15 @@ func facesDeLaQuestion(question string) (prendVictime, prendTueur bool) {
 		// compte les DEUX faces, comme « ou je gagne » : un denominateur de couverture
 		// qui ne decrit pas la mesure affichee.
 		return false, false
+	}
+	if question == domain.TacticalQuestionIsole {
+		// « ISOLE » NE REGARDE QUE LA FACE VICTIME, comme « ou je meurs » : elle mesure la
+		// part de MES morts survenues sans coequipier a portee. Sans ce cas, elle serait
+		// tombee dans la branche par defaut et aurait compte les DEUX faces — un
+		// denominateur de couverture deux fois trop grand pour la mesure affichee, et le
+		// pied de carte aurait annonce « N morts, M localisees » sur un N qui compte aussi
+		// mes kills.
+		return true, false
 	}
 	return question != domain.TacticalQuestionKills, question != domain.TacticalQuestionMorts
 }

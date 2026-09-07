@@ -45,6 +45,15 @@ import (
 // `clausePerimetre` : sa longueur depend de l'appel, donc il ne peut pas vivre dans
 // une constante. Ses valeurs sont des PARAMETRES LIES, jamais des litteraux.
 //
+// LA VARIANTE VOYAGE AVEC LE MATCH (retablie au lot 7C, 2026-09-07, AVEC son consommateur) :
+// la PORTEE DU RADAR, qui borne la lecture « ou je meurs isole », est declaree PAR VARIANTE
+// dans `regulation.toml`. Elle ne se lit nulle part ailleurs — ni le film ni l'artefact ne
+// connaissent les regles du mode. `COALESCE(..., ”)` parce qu'un registre peut ne pas la
+// nommer : la lecture ECARTE alors le match et le compte, plutot que de deviner un rayon.
+//
+// ELLE AVAIT ETE RETIREE AU LOT 7.10 faute de lecteur — la premiere lecture d'isolement venait
+// d'etre supprimee. La regle du depot est celle-la : une colonne entre AVEC son consommateur.
+//
 // L'ELIGIBILITE A LA CUISSON VOYAGE AVEC LE MATCH (2026-09-07, lot 7.10) : la lecture
 // d'artefact ventile ses matchs non retenus entre « la file les reprendra » et « rien ne
 // les cuira », et cette question ne se resout qu'au registre — l'artefact, par definition,
@@ -71,6 +80,7 @@ import (
 // pour Infinite, qui n'a aucun match Campagne au registre).
 const QTacticalUnivers = `
 SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome, ` + colonneEligible + `,
+       COALESCE(mr.game_variant_name, '') AS game_variant_name,
        EXISTS (SELECT 1 FROM match_kill_events_latest e
                WHERE e.match_id = mr.match_id AND e.publishable) AS mesure
 FROM match_registry mr
@@ -168,7 +178,8 @@ func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.
 	}
 	if err := scanRows(ctx, rows, "univers", func(sc rowScanner) error {
 		var m domain.TacticalMatch
-		if err := sc.Scan(&m.MatchID, &m.Outcome, &m.EligibleALaCuisson, &m.Mesure); err != nil {
+		if err := sc.Scan(&m.MatchID, &m.Outcome, &m.EligibleALaCuisson,
+			&m.GameVariantName, &m.Mesure); err != nil {
 			return err
 		}
 		univ.Matchs = append(univ.Matchs, m)

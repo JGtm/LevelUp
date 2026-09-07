@@ -39,6 +39,13 @@ func (m *mockTacticalRepo) KillEvents(_ context.Context, q domain.TacticalQuery)
 	return m.lecture, m.err
 }
 
+// MortsAvecContexte : la page Escouade ne lit PAS l'isolement (elle mesure l'echange d'une
+// composition). Le double refuse donc l'appel plutot que de rendre un vide plausible — si un
+// jour cette page s'y branche, le test qui l'y branche verra l'erreur, pas un zero.
+func (m *mockTacticalRepo) MortsAvecContexte(context.Context, domain.TacticalQuery) (domain.TacticalMortsContexte, error) {
+	return domain.TacticalMortsContexte{}, errors.New("non appele")
+}
+
 // capsFiables : la porte data-level ouverte par la provenance « film » (Halo Infinite).
 func capsFiables() games.CapabilityMap {
 	return games.CapabilityMap{games.CapFilmKillSource: games.CapSupported}

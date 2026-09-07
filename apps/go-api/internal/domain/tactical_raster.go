@@ -213,6 +213,19 @@ const TacticalQuestionTemps = "temps"
 // temps », simplement bornee a 15 s.
 const TacticalQuestionRoutes = "routes"
 
+// TacticalQuestionIsole : OU JE MEURS ISOLE — les morts sans coequipier VISIBLE a portee du
+// radar (18 m en Arene, 24 m en BTB : `regulation.toml [radar_range_m]`).
+//
+// LE FAIT EST ETABLI AU SYNC (`match_death_context`, lot 7C) : le collecteur de kills compte,
+// pour chaque mort du journal, les coequipiers dans chacun des quatre etats et la distance au
+// plus proche de ceux qu'on voyait. La lecture ne fait que comparer cette distance au rayon de
+// la variante du match.
+//
+// Elle publie en plus `Isolement` (la part des morts isolees, sous la forme canonique),
+// `MatchsSansRayon` (les matchs dont la variante n'a pas de portee mesuree) et
+// `MortsEquipeATerre` (les morts ecartees parce que personne ne pouvait accompagner).
+const TacticalQuestionIsole = "isole"
+
 // SidecarRasterCourant dit si un sidecar est exploitable EN L'ETAT : bon format, bonne
 // grille, bonne unite de temps.
 //
