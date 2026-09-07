@@ -94,6 +94,7 @@ function useLayer(
     frameRef,
     enabled: over.enabled ?? true,
     scoreboard: over.sb === undefined ? scoreboard('t0') : over.sb,
+    viewpoint: null,
     teamColorOf: (ally: boolean) => (ally ? ALLY : ENEMY),
     neutral: NEUTRAL,
     outline: OUTLINE,

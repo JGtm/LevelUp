@@ -15,7 +15,11 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ReplayDeath, ReplayFeedEntry, ReplayKill } from '../model/killFeedLogic'
-import { reduceFeed } from './useReplayTimeline'
+import { reduceFeed, useReplayTimeline } from './useReplayTimeline'
+import { renderHook } from '@testing-library/react'
+import { testReplayDoc } from '../test/testDoc'
+import type { ReplayWindowBounds } from '../model/replayWindow'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 /**
  * LE POINT DE VUE, ET RIEN D'AUTRE (2026-09-07, lot L3). Cette fonction lisait la marque `me`
@@ -194,5 +198,134 @@ describe('reduceFeed — ce qui n’est ni un frag ni une mort', () => {
       VIEWPOINT,
     )
     expect(kills.map((k) => k.key)).toEqual(['a', 'b', 'c'])
+  })
+})
+
+/**
+ * AJOUT DU 2026-09-07 (revue F5) — LE BRANCHEMENT DU HOOK, pas seulement sa réduction.
+ *
+ * POURQUOI CES CAS. `reduceFeed` était testé ; `useReplayTimeline` lui-même ne l'était par
+ * RIEN — aucun test ne le montait. Or c'est lui qui décide À QUOI le point de vue est branché :
+ * quel joueur ombre sa piste (`presenceShades`), quel effectif sert de dénominateur à la piste
+ * Coéquipiers (`teammatesAbsence`), et ce que le menu propose. Un relais coupé — `null` au lieu
+ * du point de vue, le sujet compté parmi ses propres coéquipiers — laissait la suite verte et
+ * l'écran faux : une piste sans ombre, ou une piste d'équipe assombrie par l'arrivée de celui
+ * qu'on regarde.
+ */
+describe('useReplayTimeline — ce à quoi le point de vue est branché', () => {
+  /** Document 10 Hz, 200 images : la frise couvre les images 0 à 199, un ratio r vaut 199·r. */
+  const DOC = testReplayDoc({ frameCount: 200, frameIntervalMs: 100, originMs: 0 })
+  const WINDOW: ReplayWindowBounds = {
+    startFrame: 0,
+    leadInFrame: 0,
+    endFrame: 200,
+    startMs: 0,
+    endMs: 20_000,
+  }
+
+  /** Une ligne d'entrée en partie, du fil déjà fusionné (`mergeFeedWithPresence`). */
+  function arrivee(xuid: string, replayMs: number): ReplayFeedEntry {
+    return {
+      key: `p-joined-${xuid}-${replayMs}`,
+      replayMs,
+      kill: null,
+      medal: null,
+      death: null,
+      presence: { kind: 'joined', xuid, name: xuid, bot: false, source: 'api' },
+    }
+  }
+
+  /** Le roster joint : deux camps, plus un joueur que le tableau de score ne connaît pas. */
+  const PLAYERS = [
+    { xuid: 'moi', filmName: 'Moi', lives: [], board: { xuid: 'moi', team_side: 't0' } },
+    { xuid: 'pote', filmName: 'Pote', lives: [], board: { xuid: 'pote', team_side: 't0' } },
+    { xuid: 'eux', filmName: 'Eux', lives: [], board: { xuid: 'eux', team_side: 't1' } },
+    { xuid: 'bot:Oscar', filmName: 'Oscar [bot]', bot: true, lives: [] },
+  ] as unknown as ReplayPlayer[]
+
+  /** L'identité RELATIVE au point de vue, telle que le modèle la rend (`resolveXuidMeta`). */
+  function identiteVueDe(sujet: string): ReadonlyMap<string, { ally: boolean }> {
+    const camp: Record<string, string> = { moi: 't0', pote: 't0', eux: 't1' }
+    const mien = camp[sujet]
+    return new Map(
+      Object.entries(camp).map(([xuid, side]) => [xuid, { ally: xuid === sujet || side === mien }]),
+    )
+  }
+
+  const PLAYBACK = {
+    sliderRef: { current: null },
+    startFrame: 0,
+    endFrame: 200,
+    onScrub: () => {},
+    playing: false,
+    togglePlay: () => {},
+    restart: () => {},
+    seekBy: () => {},
+    stepFrames: () => {},
+    seekToFrame: () => {},
+  }
+
+  function monter(viewpoint: string, feedEntries: readonly ReplayFeedEntry[]) {
+    return renderHook(() =>
+      useReplayTimeline({
+        doc: DOC,
+        playWindow: WINDOW,
+        feedEntries,
+        marks: new Map(),
+        viewpoint,
+        identity: identiteVueDe(viewpoint),
+        players: PLAYERS,
+        onSelectViewpoint: () => {},
+        lead: { allyOf: () => null, labelOf: (id: number) => `Équipe ${id}` },
+        playback: PLAYBACK,
+        toggleSound: () => {},
+        renderWidth: 480,
+        locale: 'fr',
+      }),
+    )
+  }
+
+  it('(i) les ombres rendues sont celles du POINT DE VUE, pas celles de personne', () => {
+    const feed = [arrivee('moi', 5_000), arrivee('eux', 8_000)]
+    expect(monter('moi', feed).result.current.shades.map((s) => s.xuid)).toEqual(['moi'])
+    // Le relais suit la bascule : c'est CE branchement-là qu'aucun test ne tenait.
+    expect(monter('eux', feed).result.current.shades.map((s) => s.xuid)).toEqual(['eux'])
+  })
+
+  it('(i bis) sans ligne de présence pour lui, aucune ombre — le cas nominal', () => {
+    expect(monter('pote', [arrivee('moi', 5_000)]).result.current.shades).toEqual([])
+  })
+
+  it('(ii) les coéquipiers EXCLUENT le point de vue : il n’assombrit pas sa propre piste', () => {
+    // `moi` et `pote` sont du même camp : vu de `moi`, l'effectif de référence est de UN.
+    const { result } = monter('moi', [arrivee('moi', 8_000), arrivee('pote', 4_000)])
+    expect(result.current.absence.map((a) => [a.absent, a.total])).toEqual([[1, 1]])
+    // Son arrivée à 8 s n'ouvre aucun palier : le seul palier s'arrête à celle de `pote`, à 4 s.
+    expect(result.current.absence[0].to).toBeCloseTo(0.2, 6)
+  })
+
+  it('(ii bis) vu d’un camp d’un seul joueur, la piste Coéquipiers n’a aucun palier', () => {
+    const { result } = monter('eux', [arrivee('eux', 4_000), arrivee('moi', 4_000)])
+    expect(result.current.absence).toEqual([])
+  })
+
+  it('(iii) le menu porte les libellés i18n attendus, groupe « Sans équipe » compris', () => {
+    const groupes = monter('moi', []).result.current.viewpointGroups
+    expect(groupes.map((g) => g.label)).toEqual(['Équipe 0', 'Équipe 1', 'Sans équipe'])
+    expect(groupes[0].options.map((o) => o.label)).toEqual(['Moi', 'Pote'])
+    // Un joueur sans ligne de tableau de score est listé mais INERTE (décision 7 bis du plan),
+    // et son infobulle donne la raison — jamais une option qui fait semblant.
+    const orphelin = groupes[2].options[0]
+    expect(orphelin).toMatchObject({
+      label: 'Oscar',
+      disabled: true,
+      title: 'Aucune donnée de match pour ce joueur',
+    })
+  })
+
+  it('(iii bis) le point de vue et le geste de sélection ressortent tels quels', () => {
+    const { result } = monter('eux', [])
+    expect(result.current.viewpoint).toBe('eux')
+    expect(typeof result.current.onSelectViewpoint).toBe('function')
   })
 })

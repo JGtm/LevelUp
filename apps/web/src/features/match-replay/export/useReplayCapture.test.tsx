@@ -14,9 +14,11 @@
  * main. Ce que le module de sortie FAIT est vérifié chez lui (`replayCapture.test.ts`).
  */
 import { act, renderHook } from '@testing-library/react'
-import { createRef, type RefObject } from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createRef, type ReactNode, type RefObject } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { createTestQueryClient } from '@/test/render-utils'
 import { captureCanvasImage, triggerDownload } from './replayCapture'
 import { pickVideoMimeType } from './replayRecording'
 import { testReplayDoc } from '../test/testDoc'
@@ -47,10 +49,20 @@ function mount(
   const play = vi.fn()
   const view = renderHook(
     ({ playing }: { playing: boolean }) =>
-      useReplayCapture({ canvasRef, doc: DOC, frameRef, playing, play, audioTrack }),
-    { initialProps: { playing: true } },
+      useReplayCapture({ canvasRef, doc: DOC, frameRef, playing, play, audioTrack, viewpoint: null }),
+    { initialProps: { playing: true }, wrapper: Provider },
   )
   return { ...view, play }
+}
+
+/**
+ * LE PROVIDER DE REQUÊTES EST DEVENU NÉCESSAIRE LE 2026-09-07 (revue F2) : la couture résout
+ * désormais le MOT du verdict par les mappings du titre (`useOutcomeMapping`, TanStack Query)
+ * quand le point de vue permute la lecture. Aucun test d'ici n'exerce ce cas — ils montent tous
+ * la capture sans verdict — mais le hook s'appelle sans condition, comme tout hook.
+ */
+function Provider({ children }: { children: ReactNode }) {
+  return <QueryClientProvider client={createTestQueryClient()}>{children}</QueryClientProvider>
 }
 
 beforeEach(() => {

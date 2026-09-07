@@ -74,9 +74,14 @@ export function useZoneStates(
   /**
    * LE POINT DE VUE de la page (2026-09-06, plan « frise, point de vue ») : l'encre d'une zone
    * dit « tenue par mon camp » ou « par l'autre » — vu par les yeux d'un adversaire, les deux
-   * s'échangent. Absent : la ligne « moi », comportement d'origine.
+   * s'échangent. `null` : la ligne « moi », comportement d'origine.
+   *
+   * OBLIGATOIRE DEPUIS LE 2026-09-07 (revue F4), `null` compris. Optionnel, son oubli chez
+   * l'appelant ne faisait rougir AUCUN test — les zones seraient simplement restées aux
+   * couleurs du joueur de la page pendant que la carte suivait le joueur choisi. Requis,
+   * l'oubli est une erreur de compilation.
    */
-  viewpoint?: string | null,
+  viewpoint: string | null,
 ): ReplayZoneStates {
   const zoneElements = useMemo(() => zoneElementsOf(objectives), [objectives])
   const joinable = zoneCatalogMatches(doc.coverage?.zones?.catalog, zoneElements.length)

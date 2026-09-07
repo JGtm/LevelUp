@@ -169,3 +169,32 @@ describe('teammatesAbsence — les paliers de la piste Coéquipiers', () => {
     expect(teammatesAbsence([autreLigne(3_000)], QUATRE, FRAME_MS, SCALE)).toEqual([])
   })
 })
+
+/**
+ * AJOUT DU 2026-09-07 (revue F3) — LE BOT SÉLECTIONNÉ A SON OMBRE.
+ *
+ * Le cas RÉEL du match témoin `4ecdf3e7` : le remplaçant est un BOT. Le menu de point de vue
+ * rend son xuid de BASE (`bid(N.0)`, cf. `viewpointOptions` — le piège des bots y est traité),
+ * alors que la ligne de présence portait la clé du FILM (`bot:<nom>`). Les deux ne se
+ * rencontraient jamais : la piste du bot sélectionné restait vierge d'ombre et de porte pendant
+ * que le fil affichait « a rejoint ». La correction est dans `presenceFeed` ; ce test-ci vérifie
+ * que l'appariement ABOUTIT, c'est-à-dire que le défaut ne peut pas revenir par ce chemin.
+ */
+describe('presenceShades — appariement d’un BOT sur le xuid de base', () => {
+  it('un bot joint, sélectionné par son xuid de BASE : son ombre et sa porte existent', () => {
+    const entries = [ligne({ replayMs: 2_500, xuid: 'bid(1.0)', name: '343 Oscar', bot: true })]
+    const [ombre] = presenceShades(entries, 'bid(1.0)', FRAME_MS, SCALE, clockOf)
+    expect(ombre).toMatchObject({ from: 0, to: 0.25, edge: 0.25, xuid: 'bid(1.0)' })
+  })
+
+  it('la clé du film ne s’apparie plus à rien, et c’est exactement le défaut corrigé', () => {
+    const entries = [ligne({ replayMs: 2_500, xuid: 'bid(1.0)', bot: true })]
+    expect(presenceShades(entries, 'bot:343 Oscar', FRAME_MS, SCALE, clockOf)).toEqual([])
+  })
+
+  it('un bot COÉQUIPIER compte dans les paliers d’absence de la piste Coéquipiers', () => {
+    const entries = [ligne({ replayMs: 5_000, xuid: 'bid(1.0)', bot: true })]
+    const paliers = teammatesAbsence(entries, ['bid(1.0)', 'pote'], FRAME_MS, SCALE)
+    expect(paliers).toEqual([{ key: 'a0-0.5', from: 0, to: 0.5, absent: 1, total: 2 }])
+  })
+})

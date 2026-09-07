@@ -12,8 +12,12 @@
  */
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
 
 import { normalizeScoreTimeline, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
+import { fieldMappingsQueryKey } from '@/lib/i18n/fieldMappings'
+import { createTestQueryClient } from '@/test/render-utils'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { ReplayVictoryOverlay } from './ReplayVictoryOverlay'
@@ -72,7 +76,41 @@ const COBRA = 'rgb(254, 57, 57)'
 /** Le token de camp allié — la couleur de l'écran de fin depuis le retour du 2026-08-28. */
 const ALLY_TOKEN = 'var(--ac-team-ally)'
 
-function renderOverlay(over: Partial<Parameters<typeof ReplayVictoryOverlay>[0]> = {}) {
+/**
+ * LES MAPPINGS DU TITRE, POSÉS DANS LE CACHE (2026-09-07, revue F2) — pas appelés au réseau.
+ *
+ * L'écran de fin lit désormais les libellés canoniques d'issue (`outcomes.toml`, servis par
+ * `/field-mappings`) pour titrer une lecture PERMUTÉE. C'est un hook TanStack Query : sans
+ * `QueryClientProvider`, il jette. On sème donc la réponse directement dans le cache, sous la
+ * clé que `useFieldMappings` construit à partir des défauts du store (`halo_infinite`, `fr`) —
+ * la requête reste désactivée (`isBootstrapped` est faux en test), et lit quand même la donnée.
+ *
+ * `seed` à `false` reproduit le cas dégradé : mappings absents, aucun libellé canonique.
+ */
+function providerWith(seed: boolean) {
+  const qc = createTestQueryClient()
+  if (seed) {
+    qc.setQueryData(fieldMappingsQueryKey('halo_infinite', 'fr'), {
+      title_slug: 'halo_infinite',
+      schema_version: 1,
+      locale: 'fr',
+      fields: {},
+      outcomes: {
+        win: { label: 'Victoire', color_token: 'outcome.positive' },
+        loss: { label: 'Défaite', color_token: 'outcome.negative' },
+        tie: { label: 'Égalité', color_token: 'outcome.neutral' },
+      },
+    })
+  }
+  return function Provider({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  }
+}
+
+function renderOverlay(
+  over: Partial<Parameters<typeof ReplayVictoryOverlay>[0]> = {},
+  { mappings = true }: { mappings?: boolean } = {},
+) {
   return render(
     <ReplayVictoryOverlay
       doc={docOf(SLAYER_TEAMS)}
@@ -80,12 +118,14 @@ function renderOverlay(over: Partial<Parameters<typeof ReplayVictoryOverlay>[0]>
       xuidMeta={META}
       outcomeCode={2}
       outcomeLabel="Victoire"
+      viewpoint={null}
       playWindow={WINDOW}
       frame={500}
       titleSlug="halo_infinite"
       locale="fr"
       {...over}
     />,
+    { wrapper: providerWith(mappings) },
   )
 }
 
@@ -278,5 +318,56 @@ describe('ReplayVictoryOverlay — score final servi par l’API', () => {
   it('accepte un zéro : 2 manches à 0 est une mesure', () => {
     renderOverlay({ finalScore: { ally: 2, enemy: 0 } })
     expect(screen.getByLabelText('Équipe adverse')).toHaveTextContent('0')
+  })
+})
+
+// ─── Le MOT du verdict suit le point de vue (2026-09-07, revue F2) ─────────
+//
+// Camp, logo et score suivaient déjà le sujet ; le titre, lui, restait `header.outcome_label`,
+// c'est-à-dire le verdict du JOUEUR DE LA PAGE. Vu depuis un adversaire d'un match gagné, le
+// panneau annonçait donc « Victoire » au-dessus de l'équipe perdante et d'un score inversé.
+describe('ReplayVictoryOverlay — le verdict suit le point de vue', () => {
+  it('vu depuis un adversaire : le titre est l’issue PERMUTÉE, et le camp est le sien', () => {
+    renderOverlay({ viewpoint: 'eux', finalScore: { ally: 2, enemy: 1 } })
+    expect(screen.getByText('Défaite')).toBeInTheDocument()
+    expect(screen.queryByText('Victoire')).not.toBeInTheDocument()
+    // Le score arrive DÉJÀ permuté de `finalScoreFromHeader` (le modèle le fait) : ce cas
+    // vérifie que le titre et lui racontent la même chose, pas que l'écran permute deux fois.
+    expect(screen.getByLabelText('Équipe alliée')).toHaveTextContent('2')
+  })
+
+  it('vu depuis un adversaire d’un match PERDU : le titre devient « Victoire »', () => {
+    renderOverlay({ viewpoint: 'eux', outcomeCode: 3, outcomeLabel: 'Défaite' })
+    expect(screen.getByText('Victoire')).toBeInTheDocument()
+  })
+
+  it('vu depuis le joueur de la page : le libellé du backend, tel quel', () => {
+    renderOverlay({ viewpoint: 'moi' })
+    expect(screen.getByText('Victoire')).toBeInTheDocument()
+  })
+
+  it('point de vue non situable : rien n’est permuté, le libellé du backend reste', () => {
+    // `readVictory` rend `null` sur un sujet introuvable — donc pas de panneau du tout. Le cas
+    // utile est celui du coéquipier : situable, même camp, aucune permutation.
+    renderOverlay({ viewpoint: 'xuid-jamais-vu' })
+    expect(screen.queryByText('Victoire')).not.toBeInTheDocument()
+    expect(screen.queryByText('Défaite')).not.toBeInTheDocument()
+  })
+
+  it('égalité vue de l’autre camp : le panneau neutre garde le mot du backend', () => {
+    // Une égalité l'est pour tout le monde : `victoryIsFlipped` est vrai, mais l'issue lue
+    // reste `tie` et son libellé canonique dit la même chose que celui du backend.
+    renderOverlay({ viewpoint: 'eux', outcomeCode: 1, outcomeLabel: 'Égalité' })
+    expect(screen.getByText('Égalité')).toBeInTheDocument()
+  })
+
+  it('SANS mappings du titre : une lecture permutée ne se rend PAS — jamais « loss » en clair', () => {
+    const { container } = renderOverlay({ viewpoint: 'eux' }, { mappings: false })
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('SANS mappings du titre : le point de vue par défaut, lui, s’affiche comme avant', () => {
+    renderOverlay({}, { mappings: false })
+    expect(screen.getByText('Victoire')).toBeInTheDocument()
   })
 })

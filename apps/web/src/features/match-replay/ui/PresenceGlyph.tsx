@@ -20,7 +20,9 @@
  * `viewBox` ne bouge pas — c'est ce qui garantit que les deux rendus sont le MÊME glyphe à deux
  * échelles.
  *
- * CE FICHIER N'EXPORTE QUE LE COMPOSANT, et ce n'est pas un hasard. `presenceWording` — la règle
+ * CE FICHIER N'EXPORTE QUE LE COMPOSANT, et ce n'est pas un hasard — ses deux dimensions de
+ * référence sont PRIVÉES depuis le 2026-09-07 (revue F6), personne ne les lisait du dehors.
+ * `presenceWording` — la règle
  * « l'API affirme, le film reste au fait » — y a vécu quelques heures le 2026-09-07 avant de
  * partir dans `model/presenceWording.ts` : un module qui exporte un composant ET autre chose
  * casse le rafraîchissement à chaud de Vite, et la dette lint du dépôt est gelée. Même remède que
@@ -29,9 +31,16 @@
 
 import type { PresenceEvent } from '../model/presenceFeed'
 
-/** Les dimensions du glyphe dans le FIL — la taille d'origine, et le défaut de ce composant. */
-export const PRESENCE_GLYPH_W = 14
-export const PRESENCE_GLYPH_H = 12
+/**
+ * Les dimensions du glyphe dans le FIL — la taille d'origine, et le défaut de ce composant.
+ *
+ * PRIVÉES DEPUIS LE 2026-09-07 (revue F6) : elles étaient exportées, et aucun autre fichier ne
+ * les importait — l'en-tête pouvait donc dire « ce fichier n'exporte que le composant » tout en
+ * étant faux. Rendues privées plutôt que la phrase corrigée : la frise passe sa taille en props,
+ * elle n'a jamais eu besoin de lire celle du fil (règle n° 7, on ne garde rien « au cas où »).
+ */
+const PRESENCE_GLYPH_W = 14
+const PRESENCE_GLYPH_H = 12
 
 export function PresenceGlyph({
   kind,

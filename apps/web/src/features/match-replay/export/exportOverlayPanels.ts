@@ -62,6 +62,20 @@ export interface ExportOutcome {
   /** Déjà localisé par le serveur. Sans lui, pas d'écran de fin — comme dans le DOM. */
   label: string | null | undefined
   /**
+   * LE MOT QUE L'ÉCRAN MONTRE VRAIMENT (2026-09-07, revue F2), quand il diffère de `label`.
+   *
+   * `label` est `header.outcome_label`, le verdict DU JOUEUR DE LA PAGE — l'API n'en publie pas
+   * d'autre. Vu depuis un adversaire, `readVictory` permute l'issue et le panneau prend le camp
+   * du sujet : le clip annonçait donc « Victoire » sur l'équipe qui a perdu, exactement comme le
+   * DOM avant cette correction. Le libellé CANONIQUE de l'issue permutée (`outcomes.toml`, servi
+   * par `/field-mappings`) est résolu par `useReplayCapture` — un hook, ce que ce module n'est
+   * pas — et descend ici tout résolu.
+   *
+   * ABSENT : on retombe sur `label`, qui est le mot JUSTE tant que rien n'est permuté. C'est
+   * aussi ce que fait le seul appelant de production quand le point de vue est celui de la page.
+   */
+  viewedLabel?: string | null
+  /**
    * Le score final SERVI PAR L'API sur un mode à MANCHES (« 2 - 1 »), là où le calque du film
    * rendrait les points de la dernière manche. `null` sur un mode en points : le calque reste
    * la source. MÊME valeur que celle de l'écran affiché — l'export ne doit jamais raconter
@@ -125,7 +139,10 @@ export function buildOverlayPanelSource(deps: OverlayPanelDeps): OverlayPanelSou
   const neutral = neutralStatusStyle(deps.ink)
 
   const victoryPanel = (): OverlayPanel | null => {
-    const label = deps.outcome?.label
+    // LE MOT SUIT LE POINT DE VUE, comme le camp et le score (2026-09-07, cf. `viewedLabel`).
+    // `undefined` retombe sur `label` ; `null` explicite (issue permutée dont le titre n'a pas
+    // de libellé canonique) fait taire le panneau, exactement comme un `outcome_label` absent.
+    const label = deps.outcome?.viewedLabel === undefined ? deps.outcome?.label : deps.outcome.viewedLabel
     if (!label || !victory) return null
     const mine = victory.mine
     const rows = mine ? deps.scoreboard.filter((r) => r.team_side === mine.teamSide) : []

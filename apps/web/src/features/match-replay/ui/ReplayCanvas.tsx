@@ -176,9 +176,14 @@ interface ReplayCanvasProps {
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, background, callouts, scoreboard, xuidMeta, marks,
-  viewpoint, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
+  viewpoint = null, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT,
 }: ReplayCanvasProps) {
+  // LE POINT DE VUE EST NORMALISÉ ICI, UNE FOIS (2026-09-07, revue F4) : `null` par défaut,
+  // jamais `undefined`. Les six destinataires du relais (son, zones, drapeaux, déflagration,
+  // frise, export) le REÇOIVENT désormais en paramètre OBLIGATOIRE — un oubli de relais est une
+  // erreur de compilation, là où il laissait silencieusement ces calques sur le camp du joueur
+  // de la page pendant que la carte suivait le joueur choisi.
   // LES KILLS VIENNENT DU FIL, DÉJÀ RECALÉS (2026-09-05, J2) : la carte et la piste sonore
   // lisaient les kills BRUTS et rejouaient chacune `alignFeed` — quatre exécutions du même
   // recalage par chargement, et deux chemins qui divergeraient le jour où le canvas ne

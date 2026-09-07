@@ -10,6 +10,12 @@
 import { describe, expect, it } from 'vitest'
 
 import { finalScoreFromHeader, readVictory } from './victoryLogic'
+// AJOUT DU 2026-09-07 (revue F2) — IMPORT SÉPARÉ, À DESSEIN. La caractérisation L2a de ce
+// fichier n'accepte que des lignes AJOUTÉES (gate du plan : le diff n'a aucune ligne `-`).
+// Compléter l'import du dessus l'aurait MODIFIÉ. Aucune règle du dépôt n'interdit deux imports
+// du même module (pas de `import/no-duplicates` dans `eslint.config.js`) ; les deux lignes se
+// fondront en une le jour où la caractérisation cessera d'être gelée.
+import { victoryIsFlipped } from './victoryLogic'
 
 /** Une ligne de scoreboard réduite à ce que la lecture regarde. */
 function row(side: string | null, isMe = false) {
@@ -258,5 +264,59 @@ describe('finalScoreFromHeader — vu par les yeux d’un point de vue (sujet)',
 
   it('les nombres manquants restent null, sujet ou pas', () => {
     expect(finalScoreFromHeader({ score_kind: 'rounds' }, NOMME, 'foe-1')).toBeNull()
+  })
+})
+
+/**
+ * AJOUT DU 2026-09-07 (revue F2) — `victoryIsFlipped`, LE PRÉDICAT DU MOT.
+ *
+ * Il ne dit pas l'issue, il dit si la lecture a été RETOURNÉE. L'écran de fin et le panneau de
+ * l'export s'en servent pour choisir leur TITRE : `header.outcome_label` quand rien n'a été
+ * permuté (le mot du backend, celui de la Match View), le libellé canonique de l'issue permutée
+ * sinon. Sans lui, un match gagné regardé depuis un adversaire affichait « Victoire » au-dessus
+ * de l'équipe perdante — le seul mot du panneau, et il était faux.
+ *
+ * Ces cas n'en touchent aucun autre : la fonction n'existait pas.
+ */
+describe('victoryIsFlipped — le sujet est-il du camp opposé au joueur de la page ?', () => {
+  const NOMME = [
+    { xuid: 'me-1', team_side: 't0', is_me: true },
+    { xuid: 'ally-2', team_side: 't0', is_me: false },
+    { xuid: 'foe-1', team_side: 't1', is_me: false },
+    { xuid: 'nomad-9', team_side: null, is_me: false },
+  ]
+
+  it('sujet de l’autre camp : vrai', () => {
+    expect(victoryIsFlipped(NOMME, 'foe-1')).toBe(true)
+  })
+
+  it('sujet = le joueur de la page, ou un coéquipier : faux', () => {
+    expect(victoryIsFlipped(NOMME, 'me-1')).toBe(false)
+    expect(victoryIsFlipped(NOMME, 'ally-2')).toBe(false)
+  })
+
+  it('sans sujet : faux — c’est le régime d’origine, celui du joueur de la page', () => {
+    expect(victoryIsFlipped(NOMME, null)).toBe(false)
+    expect(victoryIsFlipped(NOMME)).toBe(false)
+  })
+
+  it('sujet non situable : faux — rien à permuter, donc rien de permuté', () => {
+    expect(victoryIsFlipped(NOMME, 'nomad-9')).toBe(false)
+    expect(victoryIsFlipped(NOMME, 'xuid-jamais-vu')).toBe(false)
+  })
+
+  it('sans ligne « moi », ou hors d’un match à deux camps : faux', () => {
+    expect(victoryIsFlipped(NOMME.map((r) => ({ ...r, is_me: false })), 'foe-1')).toBe(false)
+    expect(victoryIsFlipped([...NOMME, { xuid: 't3', team_side: 't2', is_me: false }], 'foe-1')).toBe(false)
+    expect(victoryIsFlipped([], 'foe-1')).toBe(false)
+  })
+
+  it('IL EST LE MÊME PRÉDICAT QUE LA PERMUTATION DU SCORE, et c’est ce qui les tient ensemble', () => {
+    const header = { score_mine: 3, score_theirs: 1 }
+    for (const sujet of ['me-1', 'ally-2', 'foe-1', 'nomad-9', 'xuid-jamais-vu', null]) {
+      const permute = victoryIsFlipped(NOMME, sujet)
+      const attendu = permute ? { ally: 1, enemy: 3 } : { ally: 3, enemy: 1 }
+      expect(finalScoreFromHeader(header, NOMME, sujet)).toEqual(attendu)
+    }
   })
 })

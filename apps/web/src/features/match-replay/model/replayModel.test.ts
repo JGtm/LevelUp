@@ -23,6 +23,7 @@ import { meXUIDOf, resolveXuidMeta } from '@/features/match-view/xuidMeta'
 
 import { testReplayDoc } from '../test/testDoc'
 import { buildReplayModel } from './replayModel'
+import { finalScoreFromHeader } from './victoryLogic'
 
 const ORIGIN_MS = 5_000
 const T0_MS = 20_000
@@ -288,6 +289,40 @@ describe('buildReplayModel — le point de vue', () => {
     expect(Object.fromEntries(identity)).toEqual(
       Object.fromEntries(resolveXuidMeta(sb, meXUIDOf(sb))),
     )
+  })
+
+  it('SANS CAMPS (mêlée générale) : l’identité par défaut est encore celle des deux arguments', () => {
+    // LE CAS QUE LA FIXTURE DU DESSUS NE COUVRE PAS (revue F1, 2026-09-07). Elle donne un
+    // `team_side` à tout le monde, donc la comparaison de camp suffit à faire du joueur de la
+    // page un allié — le troisième argument n'y change rien même s'il est mal calculé. Sur un
+    // mode SANS ÉQUIPES, `team_side` est nul partout : seul le sujet lui-même peut encore être
+    // allié, et `buildReplayModel` passe son troisième argument SANS CONDITION. C'est là que
+    // le pion du joueur de la page prenait l'encre adverse sur sa propre page.
+    const sansCamps = matchView({
+      team_tab: {
+        scoreboard: [
+          { xuid: 'me', gamertag: 'Moi', team_side: null, is_me: true },
+          { xuid: 'adv', gamertag: 'Autre', team_side: null, is_me: false },
+        ],
+      },
+    })
+    const sb = sansCamps.team_tab.scoreboard
+    const { identity } = buildReplayModel(doc(), sansCamps)
+    expect(Object.fromEntries(identity)).toEqual(
+      Object.fromEntries(resolveXuidMeta(sb, meXUIDOf(sb))),
+    )
+    expect(identity.get('me')).toEqual({ gamertag: 'Moi', ally: true })
+    expect(identity.get('adv')).toEqual({ gamertag: 'Autre', ally: false })
+  })
+
+  it('le SCORE FINAL suit le point de vue : permuté vu de l’autre camp, intact vu de la page', () => {
+    // Le pendant chiffré de l'issue permutée : l'API ancre `score_mine` / `score_theirs` sur le
+    // joueur de la page, l'écran de fin donne à cette lecture la priorité sur celle du calque.
+    // Vu depuis un adversaire, sans permutation, le panneau annoncerait « Défaite, 3 - 1 ».
+    expect(buildReplayModel(doc(), matchView(), null, 'adv').score).toEqual({ ally: 1, enemy: 3 })
+    const parDefaut = buildReplayModel(doc(), matchView()).score
+    expect(parDefaut).toEqual({ ally: 3, enemy: 1 })
+    expect(parDefaut).toEqual(finalScoreFromHeader(matchView().header))
   })
 
   it('vu depuis l’adversaire : les camps s’échangent, et la ligne « moi » n’est plus alliée', () => {
