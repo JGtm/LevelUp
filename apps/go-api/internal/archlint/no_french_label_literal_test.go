@@ -73,6 +73,9 @@ var accentedLiteralRE = regexp.MustCompile(`[éèêàùçÉÈÊÀÙÇ]`)
 // relatif à `internal/`. TOTAL au jour de la mesure : 132 fichiers, 538 littéraux (après retrait Q4 de 3 fichiers tombés à zéro).
 // Mise à jour 2026-09-07 (lot M5, L5) : compare_service.go 3 → 2 (csrUnrankedLabel migré
 // vers la clé canonique "unranked", D5) — 132 fichiers, 537 littéraux.
+// Mise à jour 2026-09-08 (lot M5, L3) : rankedplaylists.go 15 → 0, retiré de la liste
+// (NameEN/NameFR lisent désormais ranked_playlists_labels.toml) — 131 fichiers, 522
+// littéraux.
 // Familles connues (cf. plan libellés §2) annotées ; le reste (essentiel : messages
 // d'erreur des handlers, famille F/D6) attend la décision utilisateur D6 avant tri fin.
 var frenchLabelAllowlist = map[string]int{
@@ -91,10 +94,20 @@ var frenchLabelAllowlist = map[string]int{
 	"service/synthesis_service_builders.go":        1,
 	"service/synthesis_service_legacy.go":          5,
 
-	// L3 — modes / playlists / catégories (cible : assets.toml).
-	"analysis/playlist_label.go":                             2,
-	"games/halo_infinite/rankedplaylists/rankedplaylists.go": 15,
-	"service/match_history_service.go":                       2,
+	// L3 — modes / playlists / catégories (cible : assets.toml). rankedplaylists.go
+	// retiré le 2026-09-08 (lot M5 L3, branche feat/libelles-modes-playlists) :
+	// NameEN/NameFR sont devenues des méthodes lisant ranked_playlists_labels.toml
+	// (embarqué, mêmes loader/validation que assets.toml — cf. commentaire du TOML
+	// pour la justification de l'emplacement et sa condition de reprise) : 15 → 0.
+	// match_history_service.go (expTypePVPRanked/expTypePVPUnranked) NON traité :
+	// la VALUE canonique FR est un CONTRAT testé avec la cascade de filtres du web
+	// (GH5-2, ~80 fichiers `apps/web/src` matchent dessus, ex.
+	// features/_shared/experienceCascade.ts, commentaire « NE PAS traduire ces
+	// chaînes ici ») — le LABEL, lui, est déjà localisé FR/EN (expTypeLabelEN).
+	// Migrer la VALUE vers une clé neutre exige un lot dédié coordonné back+front
+	// (cf. .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §11, découverte M5 L3).
+	"analysis/playlist_label.go":       2,
+	"service/match_history_service.go": 2,
 
 	// L4 — armes (cible : mappings/fields.toml ou assets.toml).
 	"games/weapons/labels.go":   12,

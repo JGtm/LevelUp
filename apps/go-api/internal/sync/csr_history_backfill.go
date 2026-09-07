@@ -71,7 +71,7 @@ func fetchSeasonRankedCSRs(
 		if res == nil || !hasRealCSR(*res) {
 			continue
 		}
-		res.PlaylistName = pl.NameEN
+		res.PlaylistName = pl.NameEN()
 		res.Queue = pl.Queue
 		res.Input = pl.Input
 		csrs = append(csrs, *res)
