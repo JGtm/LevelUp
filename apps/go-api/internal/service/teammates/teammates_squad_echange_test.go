@@ -54,6 +54,12 @@ func (m *mockTacticalRepo) MortsAvecContexte(context.Context, domain.TacticalQue
 	return m.morts, m.mortsErr
 }
 
+// MatchsOuvrables (ADR 0029, lot M1) : jamais appelee par les tests d'echange de ce
+// fichier — le detail d'une cellule est un lecteur distinct (TacticalService.Cellule).
+func (m *mockTacticalRepo) MatchsOuvrables(context.Context, string, []string) (map[string]time.Time, error) {
+	return nil, errors.New("non appele")
+}
+
 // capsFiables : la porte data-level ouverte par la provenance « film » (Halo Infinite).
 func capsFiables() games.CapabilityMap {
 	return games.CapabilityMap{games.CapFilmKillSource: games.CapSupported}
