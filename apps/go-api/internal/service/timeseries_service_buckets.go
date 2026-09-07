@@ -46,7 +46,7 @@ func buildAccuracyBuckets(matches []legacymatch.StatsMatchRow) []domain.Distribu
 	return buckets
 }
 
-// buildScorePerMinBuckets crÃ©e des buckets de 10 pts/min pour la distribution score/min.
+// buildScorePerMinBuckets crée des buckets de 10 pts/min pour la distribution score/min.
 func buildScorePerMinBuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionBucket {
 	const binWidth = 10.0
 	counts := make(map[int]int)
@@ -225,13 +225,13 @@ func buildPerfScoreBuckets(matches []legacymatch.StatsMatchRow) []domain.Distrib
 	return buckets
 }
 
-// buildRollingWRBuckets crÃ©e des buckets de 5 % pour la distribution du win-rate glissant (fenÃªtre 14).
+// buildRollingWRBuckets crée des buckets de 5 % pour la distribution du win-rate glissant (fenêtre 14).
 func buildRollingWRBuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionBucket {
 	const (
 		window   = 14
 		binWidth = 5.0
 	)
-	counts := make([]int, 21) // bins 0-5, 5-10, â€¦, 95-100
+	counts := make([]int, 21) // bins 0-5, 5-10, …, 95-100
 
 	for i := range matches {
 		start := i - window + 1

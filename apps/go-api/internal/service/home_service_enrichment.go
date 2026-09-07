@@ -66,7 +66,7 @@ func applyReplayAvailabilityToRecentItems(replays port.ReplayAvailability, itemL
 	}
 }
 
-// enrichMatchesWithMedals injecte les TopMedals (max 4, sÃ©lection par raretÃ©/count)
+// enrichMatchesWithMedals injecte les TopMedals (max 4, sélection par rareté/count)
 // dans chaque RecentMatchItem via un appel batch sur le repo.
 func enrichMatchesWithMedals(ctx context.Context, repo port.HomeRepository, items []domain.RecentMatchItem) {
 	if len(items) == 0 {
@@ -124,10 +124,10 @@ func selectTopMedals(medals []domain.RecentMatchMedal, n int) []domain.RecentMat
 	return sorted[:n]
 }
 
-// maxCitationSnippets est le nombre maximum de citations affichÃ©es par MatchCard.
+// maxCitationSnippets est le nombre maximum de citations affichées par MatchCard.
 const maxCitationSnippets = 3
 
-// enrichMatchesWithCitations injecte les TopCitations (max 3, filtre citations dÃ©jÃ  masterisÃ©es)
+// enrichMatchesWithCitations injecte les TopCitations (max 3, filtre citations déjà masterisées)
 // dans chaque RecentMatchItem via un appel batch sur le repo.
 func enrichMatchesWithCitations(ctx context.Context, repo port.HomeRepository, items []domain.RecentMatchItem) {
 	if len(items) == 0 {
@@ -248,7 +248,7 @@ func buildCommendationSnippets(rows []domain.HomeMatchCommendationRaw, limit int
 }
 
 // GetBattlePass retourne les infos Battle Pass (live d'abord, cache DB en fallback).
-// Appel live systÃ©matique pour garantir des donnÃ©es fraÃ®ches au rechargement de page.
-// Si le live Ã©choue (tokens absents, API indisponible), le cache DB est retournÃ©.
-// Si un PersistSink est configurÃ© et que le live rÃ©ussit, les donnÃ©es sont persistÃ©es
-// de maniÃ¨re synchrone avant le retour (garantit que loadTrackSnapshots lit un rang Ã  jour).
+// Appel live systématique pour garantir des données fraîches au rechargement de page.
+// Si le live échoue (tokens absents, API indisponible), le cache DB est retourné.
+// Si un PersistSink est configuré et que le live réussit, les données sont persistées
+// de manière synchrone avant le retour (garantit que loadTrackSnapshots lit un rang à jour).

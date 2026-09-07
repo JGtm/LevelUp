@@ -46,12 +46,12 @@ func LoadCareerRankImageURLs(ctx context.Context, metaDB *DB, titleSlug string) 
 // LoadRankCatalog construit un mappings.RankCatalog en interrogeant la table
 // career_rank_translations de metadata.duckdb.
 //
-// Les libellÃ©s sont peuplÃ©s via la CLI cmd/refresh-career-ranks (one-shot,
-// fetch GameCMS). Si la table est vide, retourne un catalog vide â€” le service
-// home utilisera alors un libellÃ© minimal (rank_id seul).
+// Les libellés sont peuplés via la CLI cmd/refresh-career-ranks (one-shot,
+// fetch GameCMS). Si la table est vide, retourne un catalog vide — le service
+// home utilisera alors un libellé minimal (rank_id seul).
 //
-// Les codes lang Waypoint ("fr-FR", "de-DE") sont normalisÃ©s en codes courts
-// ("fr", "de") au moment de la lecture, en cohÃ©rence avec mappings.LocaleEN/FR.
+// Les codes lang Waypoint ("fr-FR", "de-DE") sont normalisés en codes courts
+// ("fr", "de") au moment de la lecture, en cohérence avec mappings.LocaleEN/FR.
 // rankAcc accumule l'entrée de rang en cours de construction (une par rank_id) le
 // temps d'agréger les traductions puis le seuil XP.
 type rankAcc struct {

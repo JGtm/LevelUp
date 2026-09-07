@@ -1,5 +1,5 @@
-// Package analysis â€” home_canonical_skill.go : skill history inference +
-// construction du badge CSR (label localisÃ© + URL d'image statique).
+// Package analysis — home_canonical_skill.go : skill history inference +
+// construction du badge CSR (label localisé + URL d'image statique).
 package analysis
 
 import (
@@ -10,7 +10,7 @@ import (
 )
 
 // InferHomeSkillHistoryFromCanonical est la variante canonical-aware de l'helper
-// privÃ© inferHomeSkillHistory du service home. Retourne (hasRanked, hasUnranked).
+// privé inferHomeSkillHistory du service home. Retourne (hasRanked, hasUnranked).
 // PvE matchs sont exclus (Summary.IsPvE).
 func InferHomeSkillHistoryFromCanonical(rows []canonical.PlayerMatchRow) (bool, bool) {
 	hasRanked := false

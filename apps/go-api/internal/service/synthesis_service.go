@@ -40,18 +40,18 @@ import (
 	"levelup/go-api/internal/service/fragdist"
 )
 
-// SynthesisService orchestre les donnÃ©es de la page SynthÃ¨se.
+// SynthesisService orchestre les données de la page Synthèse.
 type SynthesisService struct {
 	repo port.SynthesisRepository
 	// dataAdapter (optionnel, Phase 2 plan finition multi-titres) :
 	// quand fourni, GetSynthesisPage mesure la capability match.history pour
-	// loguer une Ã©ventuelle dÃ©gradation.
+	// loguer une éventuelle dégradation.
 	dataAdapter games.TitleDataAdapter
 	// playerMatchesRepo (P4.1+P4.3, ADR 0011) : source canonical-aware. Quand
 	// fournie avec titleSlug+gamertag, GetSynthesisPage charge directement
 	// `[]canonical.PlayerMatchRow` et appelle les analyses *FromCanonical sans
 	// converter. Le path legacy (s.repo.LoadSynthesisMatches) reste pour
-	// rÃ©trocompatibilitÃ© tant que la DI cabling n'est pas mise Ã  jour partout.
+	// rétrocompatibilité tant que la DI cabling n'est pas mise à jour partout.
 	playerMatchesRepo port.PlayerMatchesRepository
 	// personalScoreAwardsRepo (P9) : charge les fun stats (betrayals, suicides,
 	// vehicles_destroyed, hijacks) depuis personal_score_awards.
@@ -87,7 +87,7 @@ type SynthesisService struct {
 	playerXUID string
 }
 
-// NewSynthesisService crÃ©e un SynthesisService avec le repository injectÃ©.
+// NewSynthesisService crée un SynthesisService avec le repository injecté.
 func NewSynthesisService(repo port.SynthesisRepository) *SynthesisService {
 	return &SynthesisService{repo: repo}
 }
@@ -102,7 +102,7 @@ func (s *SynthesisService) WithDataAdapter(a games.TitleDataAdapter) *SynthesisS
 
 // WithPlayerMatchesRepo (P4.1+P4.3, ADR 0011) injecte le loader canonical-aware.
 // Quand fourni avec titleSlug+gamertag, GetSynthesisPage charge depuis le
-// loader unifiÃ© et appelle les analyses *FromCanonical (pas de converter).
+// loader unifié et appelle les analyses *FromCanonical (pas de converter).
 func (s *SynthesisService) WithPlayerMatchesRepo(
 	repo port.PlayerMatchesRepository,
 	titleSlug, gamertag string,
@@ -158,7 +158,7 @@ func (s *SynthesisService) WithObjectiveStatsRepo(repo port.ObjectiveStatsReposi
 	return s
 }
 
-// GetSynthesisPage construit la rÃ©ponse de la page SynthÃ¨se.
+// GetSynthesisPage construit la réponse de la page Synthèse.
 // Sprint 55 D2 : applique period et filters depuis le SynthesisRequest.
 func (s *SynthesisService) GetSynthesisPage(
 	ctx context.Context,
@@ -171,7 +171,7 @@ func (s *SynthesisService) GetSynthesisPage(
 	}
 
 	// Phase 2 plan finition multi-titres : log de la capability match.history
-	// quand un DataAdapter est injectÃ©. Sert Ã  mesurer la dÃ©gradation potentielle
+	// quand un DataAdapter est injecté. Sert à mesurer la dégradation potentielle
 	// avant la bascule fonctionnelle (le Synthesis lit aujourd'hui depuis le repo
 	// legacy car canonical.PlayerStats ne couvre pas encore SynthesisMatch).
 	if s.dataAdapter != nil {
@@ -186,10 +186,10 @@ func (s *SynthesisService) GetSynthesisPage(
 	}
 
 	// P4.3 finale (ADR 0011) : path canonical exclusif. Le legacy fallback
-	// path a Ã©tÃ© supprimÃ© â€" playerMatchesRepo + titleSlug + gamertag sont
-	// dÃ©sormais REQUIS (wirÃ©s universellement en DI via registry.go).
+	// path a été supprimé —" playerMatchesRepo + titleSlug + gamertag sont
+	// désormais REQUIS (wirés universellement en DI via registry.go).
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return nil, fmt.Errorf("SynthesisService: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")
+		return nil, fmt.Errorf("SynthesisService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
 	canonicalRows, err := s.loadAndEnrichCanonicalRows(ctx)
 	if err != nil {
@@ -496,5 +496,5 @@ func (s *SynthesisService) loadWeaponAccuracy(
 // Helpers internes
 // =============================================================================
 
-// filterSynthesisByPeriod filtre les matchs SynthÃ¨se selon la pÃ©riode demandÃ©e.
-// Retourne les matchs filtrÃ©s, les filtres appliquÃ©s et ceux ignorÃ©s.
+// filterSynthesisByPeriod filtre les matchs Synthèse selon la période demandée.
+// Retourne les matchs filtrés, les filtres appliqués et ceux ignorés.
