@@ -21,7 +21,7 @@ import {
   type HeatGrid,
   type HeatmapMode,
   type HeatmapSpan,
-} from './heatmapLayer'
+} from '../../../lib/replay/heatPaint'
 import type { KillFxEntry } from '../model/killFx'
 import { msToFrames } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
