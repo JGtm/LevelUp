@@ -101,6 +101,8 @@ chacune · phase 7 : lourd (autant que 1 a 6) · phase 8 : petit.
 | Instant contributeur | Morts / kills : l'horodatage. Occupation : premiere entree dans la cellule. Routes : debut de la vie. |
 | Seuil du « Cap du moment » | Rendu seulement si au moins **30 morts d'equipe** ET (ecart d'au moins **5 points** au taux d'echange habituel OU part de morts isolees d'au moins **50 %**). Sinon non rendu. |
 | Couleurs V/D | `outcome-win` / `outcome-loss` — jamais `compare-a/b`. |
+| **Ou se produisent les faits d'isolement** | **AU SYNC, par le collecteur de kills** (`internal/sync/killcollector`, qui scanne deja les morts et `ScanBipedPositions`), dans deux tables append-only `match_lives` et `match_death_context` — utilisateur, 2026-09-07, FERME. Principe : **« les donnees d'un match en base sont completes au sync ; seul le rejeu peut attendre la cuisson »**. La lecture « ou je meurs isole » qui tranchait A LA LECTURE sur la chronologie du sidecar de rejeu est RETIREE (lot 7.10) : elle faisait dependre un fait de base du calendrier de cuisson des artefacts, et elle demandait au film de dire qui etait mort — ce qu'il ne sait pas. Reprise en **lot 7C**, apres la cloture de 7A. |
+| **Message d'absence sur les lectures d'artefact** | **DEUX ABSENCES, DEUX MESSAGES** — decision UI, phase 5. `matchs_en_attente` (dans la fenetre de retention, artefact pas encore cuit) = « traitement en cours » ; `matchs_hors_retention` (plus ancien que la fenetre, film expire cote serveur) = « donnees non disponibles ». « N mesures sur M » servait le meme texte a l'utilisateur qui vient de jouer et a celui qui regarde ses matchs d'il y a deux ans : le premier doit attendre quelques minutes, le second n'a rien a attendre. |
 | Anglicismes | `heatmap` entre au garde anti-anglicismes (lot C.4) : aucune chaine FR de ce chantier ne le contient. |
 
 ## 2. Ce qui existe deja — verifie sur pieces, a NE PAS reecrire
@@ -1046,7 +1048,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 - **Gate** : projection sur fixture (comptes exacts) ; schema ancien (v20) projete ;
   idempotence ; aucun chemin de la page n'ecrit ni ne cuit ; `no_second_artifact_sink_test`.
 
-### Phase 7 — Occupation, spawns, routes, isolement — 7A : revues rondes 1 ET 2 STATUEES (16 + 10 constats) ; un volet SUSPENDU (modele vivant/mort, cf. 7.9) ; 7B EN ATTENTE
+### Phase 7 — Occupation, spawns, routes — 7A CLOSE 2026-09-07 (revues rondes 1 ET 2 statuees, 26 constats) ; ISOLEMENT DEPLACE EN 7C ; 7B EN ATTENTE (depend de 7C)
 > DECOUPEE EN DEUX SOUS-LOTS par le superviseur : **7A** (Go pur + sidecar v3 + service +
 > contrat) est livre et rendu pour revue adversariale ; **7B** (7.7, le nuage Escouade) ne
 > commence qu'apres.
@@ -1071,18 +1073,29 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       **LA VARIANTE VOYAGE AVEC LE MATCH** : `QTacticalUnivers` publie
       `game_variant_name` et `domain.TacticalMatch` le porte — la regle du mode ne se lit
       nulle part ailleurs, l'artefact ne la connait pas.
-- [x] 7.4 `analysis/coordination/isolation.go` (80 L, PUR) : rayon PAR MATCH, borne
-      INCLUSIVE (le rayon est la portee du radar : se voir juste a la limite, c'est se
-      voir). Deux exclusions distinctes et COMPTEES — tous coequipiers morts -> hors
-      denominateur ; variante sans rayon -> match hors lecture, `MatchsSansRayon` publie.
-      Types de resultat dans `domain` + liste blanche du ratchet `no_naked_rate_test`.
+- [~] 7.4 `analysis/coordination/isolation.go` — **ECRIT, LIVRE, PUIS RETIRE LE 2026-09-07 ;
+      REPRIS PAR LE LOT 7C.** Le module tranchait bien (rayon PAR MATCH, borne INCLUSIVE —
+      le rayon est la portee du radar, se voir juste a la limite c'est se voir ; exclusions
+      distinctes et comptees), mais sur une ENTREE qu'il n'aurait jamais du recevoir : la
+      vitalite des coequipiers, deduite du film. La decision utilisateur du 2026-09-07 place
+      ce fait AU SYNC, dans `match_death_context` (cf. §1 et phase 7C) — « les donnees d'un
+      match en base sont completes au sync ; seul le rejeu peut attendre la cuisson ». Le
+      fichier et ses tests sont supprimes en 7.10, avec `domain/isolation.go` et l'entree
+      `BilanIsolement` de la liste blanche de `no_naked_rate_test`. **CE QUI SURVIT** : la
+      table `[radar_range_m]` et son chargeur, gardes avec une designation de consommateur
+      datee (lot 7C). La regle de decision, elle, se reecrira sur la nouvelle entree — elle
+      tenait en 80 lignes pures, ce n'est pas ce qui coutait.
 - [!] 7.5 `dispersion.go` — **NON TRAITE, decision du superviseur.** Aucune lecture de la V1
       ne la consomme : la case 7.6 liste routes / isole / temps / gagne, et le §0 arrete six
       questions dont aucune n'est une dispersion. Le depot interdit le code sans consommateur
       (CLAUDE.md n 7, « 0 code mort ») : l'ecrire aurait produit un algo teste que personne
       n'appelle. Verification faite sur pieces avant de statuer — ni le §1, ni le §4, ni le
       §5 du plan ne la nomment ailleurs que dans cette enumeration.
-- [x] 7.6 Sidecar v3 + les deux lectures + le filtre de spawn.
+- [x] 7.6 Sidecar v3 + les deux lectures + le filtre de spawn. **AMENDE LE 2026-09-07
+      (lot 7.10) : la lecture `isole` est RETIREE et reprise par le lot 7C** — le sidecar ne
+      porte plus ni morts, ni voisins, ni chronologie (schema 6 : spawns, routes, cellules,
+      `points_ignores`, `pas_echantillon_ms`). Ce qui reste ci-dessous et vaut toujours : la
+      lecture `routes`, le filtre de spawn et les grappes.
       **SIDECAR v3** : morts (instant, position, et la distance a CHAQUE autre joueur nomme
       VIVANT), routes par vie (15 s, cellules ordonnees, doublons consecutifs fusionnes),
       `premiere_vie` sur les spawns. Verifie sur pieces AVANT de coder : le document ne
@@ -1106,8 +1119,9 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       via `MapKeysForMap` pose en phase 4.4). Contrat + `generated.ts` regeneres (additions
       pures) ; `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` disent que le schema 3 perime les
       sidecars v2.
-- [ ] 7.7 Escouade Synergies : nuage isolement x couverture — **7B, non commence** (rendu de
-      main pour revue adversariale entre les deux sous-lots).
+- [ ] 7.7 Escouade Synergies : nuage isolement x couverture — **7B, non commence, et DEPEND
+      DESORMAIS DE 7C** : son axe « isolement » se lira sur `match_death_context`, pas sur un
+      sidecar de rejeu. Il ne peut pas demarrer avant que les tables existent en base.
 - [x] 7.8 **Revue adversariale ronde 1 de 7A — 3 P0, 5 P1, 8 P2 : TOUS corriges** en
       3 commits `tactique(7.8.<n>)`, plus la table du radar completee. Aucun report.
       **P0-1 — UN COEQUIPIER INVISIBLE ETAIT COMPTE MORT.** Un occupant de vehicule (la
@@ -1237,6 +1251,50 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       `perimetreDuSpawn` rend `perimetreSpawn{Grappes, MatchIDs, Sidecars}` et
       `sidecarsDeLUnivers` reutilise ce qui est deja lu (le compte des points ignores se
       refait sur le sous-ensemble, sans quoi un match ecarte alourdirait la statistique).
+
+- [x] 7.10 **CLOTURE DE 7A — la lecture « ou je meurs isole » est RETIREE, et les lectures
+      d'artefact ventilent enfin leurs absences.** Commits `tactique(7.10.<n>)`.
+      **LE RETRAIT (regle 7, zero code mort).** La decision utilisateur du 2026-09-07 place
+      les faits d'isolement AU SYNC (cf. §1). Tout ce qui les calculait A LA LECTURE part
+      avec : la valeur `isole` du contrat, la branche du service, `analysis/coordination/
+      isolation.go` et ses tests, `domain/isolation.go`, `BilanIsolement` (et son entree
+      dans la liste blanche de `no_naked_rate_test.go`), `matchs_sans_rayon`,
+      `morts_equipe_a_terre`, `isolement`, le cablage `WithRadarRange` de bout en bout, et
+      la `chronologie[]` du sidecar — dont `isole` etait le SEUL consommateur. **Sidecar
+      schema 5 -> 6** : spawns + routes + cellules + `points_ignores` + `pas_echantillon_ms`,
+      exactement ce que les deux lectures restantes consomment. Le commentaire `PROVISOIRE`
+      disparait avec le code qu'il expliquait — il n'y a plus de decision en attente ici.
+      **CE QUI EST GARDE, ET POURQUOI CE N'EST PAS DU CODE MORT** : `[radar_range_m]` (48
+      variantes mesurees le 2026-09-05), `RadarRangeMap`, ses tests et son ratchet de
+      couverture. Ils portent une **designation de consommateur datee** — lot 7C, lecture
+      d'isolement sur `match_death_context`, 2026-09-07 — dans le TOML **et** dans le
+      chargeur. Le `TrimSpace` demenage AVEC la table, dans un accesseur
+      `RadarRangeForVariant` : le nom vient de `match_registry.game_variant_name`, donc de
+      ce que l'API a envoye, et la normalisation appartient au point de resolution — chez
+      l'appelant, elle se reecrit a chaque appelant et s'oublie une fois.
+      **LA VENTILATION (contrat).** A cote de `matchs_filtres` / `matchs_retenus`, les
+      lectures d'artefact publient `matchs_en_attente` et `matchs_hors_retention`. Le fait
+      vient du lecteur (`TacticalMatch.DansRetention`), calcule avec **la definition de la
+      file de cuisson**, extraite en `analysis.SQLDansFenetreRetention` /
+      `analysis.BorneRetention` — annoncer une cuisson que la file ne fera pas serait pire
+      que se taire. Garde-rail `archlint/no_retention_window_inline_test.go` (self-check
+      positif sur les deux formes) : **il a mordu a l'ecriture** et ramene DEUX copies
+      inline preexistantes a la definition unique (`scheduler/replay_purge_cron.go:105`,
+      `sync/replayartifacts/backlog.go:228`). Invariant teste :
+      `matchs_filtres = matchs_retenus + matchs_en_attente + matchs_hors_retention`.
+
+### Phase 7C — Faits d'isolement au sync (`match_lives`, `match_death_context`) — BRIEF A VENIR
+
+Ouverte par la decision utilisateur du 2026-09-07 (cf. §1). Le collecteur de kills
+(`internal/sync/killcollector`) scanne deja les morts ET `ScanBipedPositions` : il tient donc,
+au sync, tout ce qu'il faut pour ecrire qui etait vivant et ou, a l'instant de chaque mort.
+Deux tables append-only, `match_lives` et `match_death_context`, recette ADR 0026 (vues
+`_latest`). Le rayon du radar se lit dans `regulation.toml [radar_range_m]`, gardee a cet
+effet (cf. 7.10).
+
+**Brief a venir** — a rediger par le superviseur.
+
+Depend de 7C : l'item 7.7 (7B, nuage isolement x couverture de la page Escouade).
 
 ### Phase 8 — Cloture
 - [ ] 8.1 `.ai/thought_log.md` ; 8.2 `REGISTRE_REPORTS.md` si report ; 8.3 `make gate-push`
@@ -1561,32 +1619,24 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 
 - 2026-09-07 : **revue adversariale ronde 2 de la phase 7A — 1 P0, 2 P1, 7 P2 ; le volet du P0 est SUSPENDU par le superviseur, le reste est livre** en commits `tactique(7.9.<n>)`. Le P0 dit ce que la ronde 1 avait manque, et il le dit contre MA propre verification : j'avais affirme, sur pieces, que le nommage d'une vie venait de la mort — j'avais greppe `lives.go` SEUL. `replay/owners.go:166` (`nameClosedLives`) nomme aussi par FERMETURE DE SLOT, si bien qu'un survivant qui a tire recevait une mort FABRIQUEE. La lecon tient en une phrase : **une verification qui ne cherche qu'a l'endroit ou l'on croit deja savoir n'est pas une verification.** La consequence est structurelle et elle est livree : **le sidecar ne juge plus rien.** Il portait des morts, des statuts de voisin et des distances — trois verdicts sur une matiere qui ne les soutenait pas ; il ne porte plus qu'une CHRONOLOGIE DE POSITIONS (un couple tous les 500 ms par fenetre observee), et les types de verdict sont supprimes avec leurs tests. Schema 5. Le modele de lecture qui devait remplacer ces verdicts — mort au journal, reapparition observee ou delai MESURE sur le match a la maniere de `respawnWindow`, depart lu dans la base, type de mort lu dans `neutralDeaths` — a ete ECRIT ET COMPILE, puis SORTI DE L'ARBRE sur decision du superviseur : la question produit « que veut dire vivant quand le film se tait » n'est pas tranchee. Il attend sous `scratchpad/7.9-modele-vivant-mort/` avec sa condition de reprise au §7 ; la lecture tient en attendant sur « vivant = une position a cet instant », commentee `PROVISOIRE 2026-09-07` a l'endroit exact ou la decision manque — une phrase qui dit quoi attend quoi, pas un TODO. **Le second constat frappe encore le double du port, sur l'autre moitie de la meme faute.** La ronde 1 lui avait fait appliquer la liste blanche NON VIDE ; il exemptait toujours la liste VIDE et rendait alors l'univers entier. Or `requeteDuScope` pose TOUJOURS la liste : les ~35 fixtures sans identifiants verifiaient un comportement qui n'existe nulle part, et un perimetre vide lit AUCUN match en production. Le double applique desormais les deux cas, `tsDemande` pose le perimetre reel du double, les compositions suivent les matchs, et un test dedie prouve le 404 sur liste vide. **Un double plus permissif que la production ne cache pas un bug : il en fabrique un jeu de tests qui le protege.**
 
+- 2026-09-07 : **cloture de la phase 7A — la lecture « ou je meurs isole » est RETIREE, et les lectures d'artefact disent enfin CE QU'ELLES ATTENDENT** (commits `tactique(7.10.<n>)`). La decision utilisateur du 2026-09-07 tranche la question laissee ouverte a la ronde 2 : les faits d'isolement se produisent **AU SYNC**, par le collecteur de kills — qui scanne deja les morts et `ScanBipedPositions` —, dans deux tables append-only `match_lives` et `match_death_context`. Le principe qui la fonde tient en une phrase, et il vaut bien au-dela de cet onglet : **« les donnees d'un match en base sont completes au sync ; seul le rejeu peut attendre la cuisson »**. La lecture retiree violait les deux moities : elle demandait au FILM de dire qui etait mort — ce qu'il ne sait pas —, et elle faisait dependre un fait de base du calendrier de cuisson des artefacts. Est parti avec elle tout ce qu'elle seule tenait : `analysis/coordination/isolation.go` et ses tests, `domain/isolation.go`, `BilanIsolement`, la valeur `isole` du contrat, trois champs publies, le cablage du rayon de radar de bout en bout, et la `chronologie[]` du sidecar — **schema 5 -> 6**, qui redevient exactement ce que les deux lectures restantes consomment. Ce qui est GARDE l'est avec un nom de consommateur et une date, pas avec un « au cas ou » : la table `[radar_range_m]` est une campagne de mesure de 48 variantes, et c'est le lot 7C qui la lira. **Le second fil du lot repond a une question que la page ne savait pas poser** : « N mesures sur M » servait le meme message a l'utilisateur qui vient de jouer — son artefact arrive dans quelques minutes — et a celui qui regarde ses matchs d'il y a deux ans, dont le film a expire cote serveur. Les deux absences se comptent desormais separement (`matchs_en_attente`, `matchs_hors_retention`), avec la DEFINITION DE LA FILE DE CUISSON et non une seconde ecrite a la main : annoncer une cuisson que la file ne fera pas serait pire que se taire. **Et le garde-rail pose pour l'empecher a mordu a l'ecriture** — il a trouve DEUX copies inline preexistantes de la meme fenetre (`replay_purge_cron.go`, `backlog.go`), ramenees a la definition unique dans le lot : poser un garde en laissant passer ce qu'il designe, c'est la factorisation abandonnee du diagnostic n 8.
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
-- 2026-09-07 (phase 7A, revue ronde 2) — **LE MODELE VIVANT/MORT DE L'ISOLEMENT EST
-  SUSPENDU, ET SON CODE EST ECRIT.** Le P0 de la ronde 2 (une vie nommee par FERMETURE DE
-  SLOT, `replay/owners.go:166`) a montre que le sidecar ne peut pas dire qui est mort. La
-  decision utilisateur du 2026-09-07 posait un modele complet — « on sait quand un joueur
-  meurt, quand il reapparait et quand il quitte ; entre les deux il est vivant » — puis un
-  correctif : **pas de table de delais, aucune valeur manuelle**, le delai de reapparition
-  est une constante DU MATCH mesuree comme `replay/closures.go:respawnWindow` (mediane
-  HAUTE de l'ecart entre un debut de vie et la mort precedente du meme joueur ; 8,09 s et
-  10,18 s observes selon les films, jamais publies). Le superviseur a ensuite SUSPENDU ce
-  volet, la decision produit n'etant pas close. **NON TRAITE, avec sa condition de
-  reprise** : le code ecrit et compilant est conserve hors de l'arbre sous
-  `scratchpad/7.9-modele-vivant-mort/` (patch complet + `domain/reapparition.go` +
-  `analysis/coordination/reapparition.go` + les deux fichiers de service avec leurs tests).
-  Ce qu'il contient et qui devra revenir tel quel : `TacticalUnivers.Departs` (repo :
-  `CAST(epoch_ms(p.last_leave_time) - epoch_ms(<fragment timezone canonique>) AS BIGINT)`,
-  miroir de `replay_facts_repo.go:112`), la copie de `neutralDeaths` dans le sidecar
-  (`{xuid, feed_ms, kind}` — SEULE source du type de mort, le journal de la base n'en porte
-  aucun), l'appariement tolerant film/journal (1 s), la classification `normale` /
-  `suicide` (film) / `trahison` (journal, via `Univers.Equipes`), la mediane pure dans
-  `analysis/coordination` avec delai PAR TYPE des 3 echantillons, et `matchs_sans_delai`
-  publie au contrat pour qu'un match sans reapparition mesurable soit SIGNALE au lieu de
-  recevoir un delai devine. **Condition de reprise : la decision produit de l'utilisateur
-  sur ce que « vivant » veut dire quand le film se tait.** En attendant, la lecture
-  `isole` tient sur « vivant = une position dans la chronologie a t », commente
-  `PROVISOIRE 2026-09-07` dans `etatDuCoequipier`.
+- 2026-09-07 (phase 7A, lot 7.10) — **LEÇON DE METHODE : UN GREP SUR UN SEUL FICHIER N'EST
+  PAS UNE VERIFICATION.** A la ronde 1 j'ai affirme, « sur pieces », qu'une vie du film n'est
+  nommee que par la mort qui la clot — j'avais greppe `lives.go` SEUL. `owners.go:166`
+  (`nameClosedLives`) nomme aussi par FERMETURE DE SLOT, et toute la lecture d'isolement
+  reposait sur ce faux : un survivant qui avait tire recevait une mort FABRIQUEE. La regle a
+  en tirer : une verification qui ne cherche qu'a l'endroit ou l'on croit deja savoir
+  CONFIRME une hypothese, elle ne la teste pas. Le grep doit porter sur le PAQUET, et le
+  compte des sites d'ecriture doit etre EXHAUSTIF avant qu'on ecrive « verifie ».
+- 2026-09-07 (phase 7A, lot 7.10) — **DEUX COPIES INLINE DE LA FENETRE DE RETENTION,
+  TROUVEES PAR LE GARDE-RAIL QU'ON POSAIT.** `scheduler/replay_purge_cron.go:105` et
+  `sync/replayartifacts/backlog.go:228` calculaient chacun leur borne
+  (`AddDate(0, -mois, 0)`). Trois definitions de « dans la fenetre » pour trois composants
+  qui doivent dire la meme chose : ce que la purge SUPPRIME, ce que la file CUIT, et ce que
+  la page ANNONCE. TRAITE dans le lot (les deux appellent `analysis.BorneRetention`), parce
+  que la troisieme definition etait celle qu'on ajoutait — poser un garde-rail en laissant
+  passer ce qu'il designe aurait ete une factorisation abandonnee.
 - 2026-09-07 (phase 7A, revue ronde 2) — **`replay/closures.go:respawnWindow` N'A AUCUN
   TEST.** La regle qui calibre la fenetre de reapparition de TOUT le decodeur (et sur
   laquelle le modele suspendu devait se caler, « meme valeur sur une fixture commune »)

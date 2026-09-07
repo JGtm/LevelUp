@@ -1,3 +1,49 @@
+## [2026-09-07] Plan Tactique — cloture de 7A : l'isolement quitte la lecture pour le sync — Complete
+
+**Decision technique principale** — decision utilisateur du 2026-09-07 : les faits
+d'isolement se produisent AU SYNC, par le collecteur de kills (`internal/sync/killcollector`,
+qui scanne deja les morts et `ScanBipedPositions`), dans deux tables append-only
+`match_lives` et `match_death_context` — lot 7C, apres la cloture de 7A. Le principe :
+« les donnees d'un match en base sont completes au sync ; seul le rejeu peut attendre la
+cuisson ».
+
+La lecture « ou je meurs isole » violait les deux moities de cette phrase. Elle demandait au
+FILM de dire qui etait mort (le P0 de la ronde 2 : `owners.go:166` nomme une vie par
+fermeture de slot, donc un survivant qui avait tire recevait une mort fabriquee), et elle
+faisait dependre un fait de base du calendrier de cuisson des artefacts. Elle est RETIREE
+entierement, regle 7 : `analysis/coordination/isolation.go` + tests, `domain/isolation.go`,
+`BilanIsolement` et son entree de liste blanche, la valeur `isole` du contrat,
+`matchs_sans_rayon` / `morts_equipe_a_terre` / `isolement`, le cablage `WithRadarRange` de
+bout en bout, et la `chronologie[]` du sidecar dont elle etait le seul consommateur — schema
+5 -> 6. Le modele vivant/mort ecrit a la salve 7.9 et garde hors de l'arbre est SUPPRIME :
+rien n'en est repris.
+
+Ce qui est garde l'est avec un consommateur nomme et date, jamais « au cas ou » :
+`[radar_range_m]` (48 variantes mesurees le 2026-09-05), `RadarRangeMap`, ses tests et son
+ratchet, plus un accesseur `RadarRangeForVariant` ou demenage le `TrimSpace` — le nom vient
+de `match_registry.game_variant_name`, donc de ce que l'API a envoye, et la normalisation
+appartient au point de resolution : chez l'appelant, elle se reecrit a chaque appelant et
+s'oublie une fois.
+
+Second fil : les lectures d'artefact publient `matchs_en_attente` et `matchs_hors_retention`.
+« N mesures sur M » servait le meme message a qui vient de jouer et a qui regarde ses matchs
+d'il y a deux ans. Le fait vient du lecteur (`TacticalMatch.DansRetention`) avec LA
+DEFINITION DE LA FILE DE CUISSON, extraite en `analysis.SQLDansFenetreRetention` /
+`BorneRetention` : annoncer une cuisson que la file ne fera pas serait pire que se taire.
+
+**Resultats observes** — le garde-rail `no_retention_window_inline_test` a MORDU A
+L'ECRITURE : deux copies inline preexistantes de la fenetre
+(`scheduler/replay_purge_cron.go:105`, `sync/replayartifacts/backlog.go:228`), ramenees a la
+definition unique dans le lot — poser un garde en laissant passer ce qu'il designe serait la
+factorisation abandonnee du diagnostic n 8. Invariant teste :
+`matchs_filtres = matchs_retenus + matchs_en_attente + matchs_hors_retention`. Mutation
+jouee : confondre les deux absences fait tomber les deux tests de ventilation (2/5/0 au lieu
+de 2/3/2). Contrat + `generated.ts` regeneres ; aucun usage web des champs retires.
+
+**Conclusion / prochaine etape** — 7A CLOSE. Lot 7C ouvert au plan (titre + dependance,
+brief a rediger par le superviseur) ; l'item 7.7 (7B) en depend desormais et ne peut pas
+demarrer avant que les tables existent en base.
+
 ## [2026-09-07] Plan Tactique 7A — revue ronde 2 : le sidecar cesse de juger, le double cesse de mentir — Complete (volet vivant/mort SUSPENDU)
 
 **Decision technique principale** — le P0 de la ronde 2 invalide une verification que
