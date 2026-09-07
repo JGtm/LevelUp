@@ -40,7 +40,7 @@ func TestTacticalService_Echange_EchantillonFaible(t *testing.T) {
 	}
 	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
 
-	got, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
+	got, err := svc.Raster(context.Background(), tsDemande(repo, tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 	if err != nil {
 		t.Fatalf("Raster: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestTacticalService_SansKillSource_EchangeSilencieux(t *testing.T) {
 	repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
 	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
 
-	got, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
+	got, err := svc.Raster(context.Background(), tsDemande(repo, tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 	if err != nil {
 		t.Fatalf("Raster: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestTacticalService_EchangeEnEchec_LectureServie(t *testing.T) {
 	}
 	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
 
-	got, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
+	got, err := svc.Raster(context.Background(), tsDemande(repo, tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 	if err != nil {
 		t.Fatalf("Raster: %v, want la lecture servie malgre l'echec du KPI", err)
 	}
@@ -122,7 +122,7 @@ func TestTacticalService_AucunePositionLisible_Capability(t *testing.T) {
 		"killfeed natif seul":   {games.CapMatchKillfeedPerKill: games.CapSupported},
 	} {
 		svc := NewTacticalService(repo, caps, tsMoi)
-		_, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
+		_, err := svc.Raster(context.Background(), tsDemande(repo, tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 		if !errors.Is(err, games.ErrCapabilityNotSupported) {
 			t.Errorf("%s: err = %v, want ErrCapabilityNotSupported", nom, err)
 		}
@@ -150,7 +150,7 @@ func TestTacticalService_PositionsNatives_RasterServi(t *testing.T) {
 	caps := games.CapabilityMap{games.CapMatchEventsSpatial: games.CapSupported}
 	svc := NewTacticalService(repo, caps, tsMoi)
 
-	got, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
+	got, err := svc.Raster(context.Background(), tsDemande(repo, tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 	if err != nil {
 		t.Fatalf("positions NATIVES (match.events.spatial) : err = %v, want une lecture servie", err)
 	}
@@ -189,7 +189,7 @@ func TestTacticalService_EchangeDeuxProvenances(t *testing.T) {
 		repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
 		repo.ev = domain.TacticalKillEvents{Univers: universUnMatch("m1", domain.OutcomeWin)}
 		svc := NewTacticalService(repo, c.caps, tsMoi)
-		got, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
+		got, err := svc.Raster(context.Background(), tsDemande(repo, tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 		if err != nil {
 			t.Fatalf("%s: %v", c.nom, err)
 		}
@@ -261,11 +261,12 @@ func TestTacticalService_MapsPlayed_PerimetreTransmis(t *testing.T) {
 // TestTacticalService_SansLecteur : un titre sans lecteur cable degrade en
 // capability absente, jamais en panique.
 func TestTacticalService_SansLecteur(t *testing.T) {
+	repo := &mockTacticalRepo{}
 	svc := NewTacticalService(nil, capsCompletes(), tsMoi)
 	if _, err := svc.MapsPlayed(context.Background(), domain.TacticalScope{}); !errors.Is(err, games.ErrCapabilityNotSupported) {
 		t.Errorf("MapsPlayed sans lecteur: err = %v, want ErrCapabilityNotSupported", err)
 	}
-	if _, err := svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi)); !errors.Is(err, games.ErrCapabilityNotSupported) {
+	if _, err := svc.Raster(context.Background(), tsDemande(repo, tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi)); !errors.Is(err, games.ErrCapabilityNotSupported) {
 		t.Errorf("Raster sans lecteur: err = %v, want ErrCapabilityNotSupported", err)
 	}
 }

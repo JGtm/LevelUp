@@ -82,14 +82,17 @@ func (m *mockTacticalRepo) KillEvents(_ context.Context, q domain.TacticalQuery)
 
 // perimetreAFiltrer dit si le double doit appliquer la liste blanche.
 //
-// UNE LISTE VIDE N'EST PAS FILTREE PAR CE DOUBLE, et c'est un partage de responsabilite
-// ASSUME, pas un oubli. Le VRAI lecteur traduit « liste vide » par `AND FALSE`, donc par
-// AUCUN match — et c'est teste la ou cela se joue, sur `:memory:`
-// (platform/duckdb/tactical_repo_test.go). Ici, les fixtures posent leur univers a la main
-// et ne passent pas de liste : filtrer les viderait toutes sans rien prouver de plus.
-// Ce que ce double garde, c'est l'autre moitie : une liste NON VIDE est appliquee.
+// UNE LISTE VIDE MAIS POSEE VAUT « AUCUN MATCH », ici comme chez le vrai lecteur (corrige
+// le 2026-09-07, revue ronde 2). La version precedente exemptait ce cas et rendait alors
+// l'univers ENTIER : or `requeteDuScope` POSE TOUJOURS la liste, si bien que toute fixture
+// sans `MatchIDs` lisait un univers que le vrai lecteur aurait vide. Un double plus
+// permissif que la production est ce qui rend les defauts de perimetre invisibles — c'est
+// deja ainsi que le filtre de spawn avait pu etre servi sur l'univers entier (P1-1).
+//
+// Le seul etat non filtre est donc l'ABSENCE de liste, que `ListeBlancheMatchs` distingue
+// du vide par construction (`RestreindreAux` vs zero-value).
 func perimetreAFiltrer(q domain.TacticalQuery) bool {
-	return q.Matchs.Restreint() && len(q.Matchs.IDs()) > 0
+	return q.Matchs.Restreint()
 }
 
 // gardeDuPerimetre / universFiltre : LE DOUBLE APPLIQUE LA LISTE BLANCHE, comme le vrai
@@ -105,10 +108,18 @@ func gardeDuPerimetre(q domain.TacticalQuery) map[string]bool {
 }
 
 func universFiltre(u domain.TacticalUnivers, garde map[string]bool) domain.TacticalUnivers {
-	out := domain.TacticalUnivers{Equipes: u.Equipes}
+	out := domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
 	for _, m := range u.Matchs {
 		if garde[m.MatchID] {
 			out.Matchs = append(out.Matchs, m)
+		}
+	}
+	// LES COMPOSITIONS SUIVENT LES MATCHS : les rendre toutes laissait le service voir les
+	// equipes de matchs qu'il n'avait pas le droit de lire — la meme demi-verite que le
+	// perimetre non applique, une couche plus bas.
+	for id, eq := range u.Equipes {
+		if garde[id] {
+			out.Equipes[id] = eq
 		}
 	}
 	return out

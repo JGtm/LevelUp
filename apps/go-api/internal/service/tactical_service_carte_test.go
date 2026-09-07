@@ -28,7 +28,7 @@ func TestRaster_CarteInconnue_NeCiteJamaisLaCarte(t *testing.T) {
 	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
 
 	_, err := svc.Raster(context.Background(),
-		tsDemande(carte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
+		tsDemande(repo, carte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 	if !errors.Is(err, domain.ErrTacticalCarteInconnue) {
 		t.Fatalf("err = %v, attendue ErrTacticalCarteInconnue", err)
 	}
@@ -48,10 +48,11 @@ func TestRaster_CarteInconnue_NeCiteJamaisLaCarte(t *testing.T) {
 // (`validerLecture`, carte vide) rend EXACTEMENT le meme message. Les deux refus de la
 // famille doivent etre indiscernables entre eux comme du refus de validation.
 func TestRaster_CarteVide_MemeMessageCanonique(t *testing.T) {
-	svc := NewTacticalService(&mockTacticalRepo{}, capsPositionsSeules(), tsMoi)
+	repo := &mockTacticalRepo{}
+	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
 
 	_, err := svc.Raster(context.Background(),
-		tsDemande("", domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
+		tsDemande(repo, "", domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
 	if !errors.Is(err, domain.ErrTacticalCarteInconnue) {
 		t.Fatalf("err = %v, attendue ErrTacticalCarteInconnue", err)
 	}
@@ -68,17 +69,18 @@ func TestRaster_CarteVide_MemeMessageCanonique(t *testing.T) {
 // rejetee est ce qui rend le 400 utile. La regle du message canonique ne vaut que pour le
 // 404 de carte, qui a DEUX producteurs.
 func TestRaster_QuestionEtAxeNommentLaValeurRefusee(t *testing.T) {
-	svc := NewTacticalService(&mockTacticalRepo{}, capsPositionsSeules(), tsMoi)
+	repo := &mockTacticalRepo{}
+	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
 
 	// « temps » A CESSE D'ETRE UN EXEMPLE DE VALEUR INCONNUE le 2026-09-06 (phase 6) :
 	// c'est desormais la quatrieme question servie, l'occupation. La fixture prend une
 	// valeur qui n'a aucune chance d'entrer au vocabulaire.
-	_, err := svc.Raster(context.Background(), tsDemande(tsCarte, "tout-sauf-ca", domain.TacticalQuiMoi))
+	_, err := svc.Raster(context.Background(), tsDemande(repo, tsCarte, "tout-sauf-ca", domain.TacticalQuiMoi))
 	if !errors.Is(err, domain.ErrTacticalQuestionInconnue) || !strings.Contains(err.Error(), "tout-sauf-ca") {
 		t.Errorf("question : err = %v, attendue la sentinelle NOMMANT « tout-sauf-ca »", err)
 	}
 
-	_, err = svc.Raster(context.Background(), tsDemande(tsCarte, domain.TacticalQuestionMorts, "tout-le-monde"))
+	_, err = svc.Raster(context.Background(), tsDemande(repo, tsCarte, domain.TacticalQuestionMorts, "tout-le-monde"))
 	if !errors.Is(err, domain.ErrTacticalQuiInconnu) || !strings.Contains(err.Error(), "tout-le-monde") {
 		t.Errorf("axe : err = %v, attendue la sentinelle NOMMANT « tout-le-monde »", err)
 	}
