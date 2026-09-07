@@ -10,8 +10,9 @@
  *
  * LES EFFETS VIVENT SUR UNE COUCHE SOUS LE CONTENU, POSÉE SUR LA BORDURE DE LA TUILE
  * (option 2a du handoff 2026-08-27) : depuis que chaque fiche est une tuile autonome
- * (bordure, coins arrondis au rayon de l'app), la couche absolue est `inset-0 rounded-lg` —
- * cadres et voiles épousent la tuile au lieu de dessiner un second anneau en retrait.
+ * (bordure, coins arrondis), la couche absolue est `inset-0` AU RAYON DE LA TUILE
+ * (`rounded-lg` en normal, `rounded-md` en compact — `ReplayPlayerCard.TILE_LAYOUT.layerRadius`,
+ * 2026-09-07) — cadres et voiles épousent la tuile au lieu de dessiner un second anneau en retrait.
  * C'est elle qui reçoit `underStyle` et la classe d'éclat ; l'INCRUSTATION au-dessus
  * (nuage et éclairs de l'écran, croix du champ, anneau du capteur, fourreau de
  * translocation) vit dans ReplayTeams.ZoneFxOverlay, à la même géométrie.
