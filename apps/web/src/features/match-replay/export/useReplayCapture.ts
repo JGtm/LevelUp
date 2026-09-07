@@ -46,7 +46,7 @@ import { frameToMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { useReplayExport, type ReplayExport, type ReplayExportOptions } from './useReplayExport'
 import type { ExportOutcome } from './exportOverlayPanels'
-import { readVictory, victoryIsFlipped } from '../model/victoryLogic'
+import { readVictory } from '../model/victoryLogic'
 import { useOutcomeMapping } from '@/lib/i18n/fieldMappings'
 import type { ReplayWindowBounds } from '../model/replayWindow'
 import type { ReplayLocale } from '../i18n/i18n'
@@ -79,7 +79,11 @@ export interface ReplayCaptureOptions {
   playWindow?: ReplayWindowBounds | null
   scoreboard?: readonly MatchScoreboardRow[]
   xuidMeta?: XuidMeta
-  /** Le verdict du backend : sans lui, pas d'ecran de fin dans le clip (parite DOM). */
+  /**
+   * Le verdict du match : son CODE (`header.outcome_code`) et, sur un mode a manches, le score
+   * final servi par l'API. Le MOT, lui, se resout ici meme depuis les mappings du titre
+   * (`useViewedOutcome`). Sans verdict, pas d'ecran de fin dans le clip (parite DOM).
+   */
   outcome?: ExportOutcome | null
   /**
    * LE POINT DE VUE de la page (2026-09-06) : l'export rend CE QUE L'ÉCRAN MONTRE (décision 12
@@ -285,16 +289,16 @@ export function useReplayCapture(o: ReplayCaptureOptions): ReplayCapture {
  * derrière un `if` est interdit par React, et une page sans surimpressions reste une page qui
  * peut exporter son terrain.
  *
- * C'EST AUSSI ICI QUE LE MOT DU VERDICT SE RÉSOUT (2026-09-07, revue F2), et pas plus bas : le
- * libellé canonique d'une issue permutée vient d'un HOOK — `useOutcomeMapping`, les mappings du
- * titre — et `exportOverlayPanels` est une fonction pure que la boucle d'export appelle hors
- * React. La couture est la dernière marche où un hook peut encore courir.
+ * C'EST AUSSI ICI QUE LE MOT DU VERDICT SE RÉSOUT (2026-09-07), et pas plus bas : le libellé
+ * canonique de l'issue vient d'un HOOK — `useOutcomeMapping`, les mappings du titre — et
+ * `exportOverlayPanels` est une fonction pure que la boucle d'export appelle hors React. La
+ * couture est la dernière marche où un hook peut encore courir.
  *
  * `useOutcomeMapping` ET PAS `useOutcomeLabel`, qui serait pourtant le hook naturel : celui-ci
  * rend la CLÉ BRUTE quand les mappings du titre ne sont pas chargés (`win`, `loss`), et un
  * panneau d'export ne peut pas se rattraper — le clip encodé garderait le mot `loss` en plein
  * cadre, pour toujours. `useOutcomeMapping` rend `undefined` dans ce cas, ce qui se distingue
- * d'un libellé et fait TAIRE le panneau, comme un `outcome_label` absent (revue ronde 2).
+ * d'un libellé et fait TAIRE le panneau, exactement comme le DOM.
  */
 function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
   const { canvasRef, frameRef, doc, playing, play, redraw } = o
@@ -325,24 +329,21 @@ function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
 /**
  * useViewedOutcome complète le verdict de la page avec LE MOT QUE L'ÉCRAN MONTRE.
  *
- * `header.outcome_label` est le verdict du JOUEUR DE LA PAGE, et l'API n'en publie pas d'autre.
- * Tant que le point de vue est le sien, c'est le bon mot — `viewedLabel` vaut alors exactement
- * `label`. Dès que la lecture est PERMUTÉE (sujet de l'autre camp), le mot juste est le libellé
- * canonique de l'issue permutée, celui d'`outcomes.toml` servi par `/field-mappings`.
+ * UNE SEULE SOURCE, LES MAPPINGS DU TITRE (2026-09-07) : le libellé de l'issue LUE
+ * (`readVictory`, donc déjà permutée quand le sujet est de l'autre camp) tel qu'`outcomes.toml`
+ * le publie via `/field-mappings`. C'est mot pour mot ce que peint le DOM.
  *
- * LES DEUX MOTS NE VIENNENT PAS DE LA MÊME SOURCE, et il faut le dire (revue ronde 2, qui a
- * corrigé une affirmation fausse écrite ici la veille). `header.outcome_label` est fabriqué par
- * une map Go CODÉE EN DUR EN FRANÇAIS (`service/match_history_service.go`, `outcomeLabels` :
- * Victoire / Défaite / Égalité / Abandon), pas par `outcomes.toml`. En français les deux
- * vocabulaires coïncident, et c'est pourquoi rien ne se voit aujourd'hui ; en anglais le titre
- * par défaut resterait FRANÇAIS pendant que le titre permuté sortirait localisé. Cette
- * incohérence-là existe DÉJÀ sur toute l'app (la Match View affiche le même mot en dur) : elle
- * se règle côté Go, pas ici — dette consignée, hors périmètre de cette revue.
+ * IL Y AVAIT DEUX VOCABULAIRES, et c'est ce que cette règle ferme. Le mot par défaut venait de
+ * `header.outcome_label`, fabriqué par une map Go CODÉE EN DUR EN FRANÇAIS ; seul le mot
+ * PERMUTÉ passait par `outcomes.toml`. En français les deux coïncidaient — rien ne se voyait ;
+ * en anglais le clip aurait dit « Victoire » par défaut et « Loss » vu d'un adversaire. Le
+ * backend sert désormais lui aussi le mot du TOML (`service/outcome_label.go`), mais il ne
+ * connaît qu'un point de vue : le résoudre ici, sur l'issue lue, est ce qui garantit l'unicité.
  *
  * MÊME RÈGLE QUE LE DOM (`ReplayVictoryOverlay`), à la ligne près — c'est la deuxième et
  * dernière copie tolérée (règle n° 6), et l'en-tête d'`exportOverlayPanels` dit déjà pourquoi
- * l'export ne peut pas monter le composant. `null` en sortie quand l'issue permutée n'a pas de
- * libellé (mappings du titre pas encore là) : le panneau se tait, comme sans `outcome_label`.
+ * l'export ne peut pas monter le composant. `null` en sortie quand l'issue n'a pas de libellé
+ * (mappings du titre pas encore là) : le panneau se tait, exactement comme le DOM.
  */
 function useViewedOutcome(o: ReplayCaptureOptions): ExportOutcome | null {
   const scoreboard = o.scoreboard ?? EMPTY_BOARD
@@ -350,11 +351,9 @@ function useViewedOutcome(o: ReplayCaptureOptions): ExportOutcome | null {
     () => readVictory(scoreboard, o.outcome?.code, o.viewpoint),
     [scoreboard, o.outcome?.code, o.viewpoint],
   )
-  const canonique = useOutcomeMapping(reading?.outcome ?? '')?.label ?? null
-  const permute = victoryIsFlipped(scoreboard, o.viewpoint)
-  const label = o.outcome?.label
+  const viewedLabel = useOutcomeMapping(reading?.outcome ?? '')?.label ?? null
   return useMemo(
-    () => (o.outcome ? { ...o.outcome, viewedLabel: permute ? canonique : label } : null),
-    [o.outcome, permute, canonique, label],
+    () => (o.outcome ? { ...o.outcome, viewedLabel } : null),
+    [o.outcome, viewedLabel],
   )
 }

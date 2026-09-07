@@ -138,23 +138,26 @@ export function readVictory(
 }
 
 /**
- * victoryIsFlipped — LA LECTURE A-T-ELLE ÉTÉ RETOURNÉE ? (2026-09-07, revue F2)
+ * victoryIsFlipped — LA LECTURE A-T-ELLE ÉTÉ RETOURNÉE ? (2026-09-07)
  *
  * `true` quand le sujet est du camp OPPOSÉ à celui du joueur de la page : ce que la page a
  * gagné, lui l'a perdu, et `readVictory` a permuté en conséquence. `false` partout ailleurs —
  * sans sujet, sujet du même camp, sujet non situable, match qui n'oppose pas deux camps.
  *
- * POURQUOI UNE FONCTION ET NON UN CHAMP DE `VictoryReading`. Le mot du verdict n'est pas dans
- * la lecture : `header.outcome_label` est servi par le backend et vaut pour le joueur de la
- * page. Une surface qui affiche une lecture PERMUTÉE doit donc aller chercher un autre mot
- * (le libellé canonique de l'issue, `outcomes.toml`), et elle n'a aucun moyen de savoir qu'elle
- * y est tenue — deux lectures « Défaite » ne se distinguent pas. Ce prédicat est ce moyen.
- * Ajouter le champ à l'objet aurait fait rougir les quatorze cas de `victoryLogic.test.ts`,
- * qui fixent la lecture ENTIÈRE par égalité profonde : la caractérisation n'accepte que des
- * ajouts, et un champ de plus n'en est pas un.
+ * C'EST LE PRÉDICAT DU SCORE : `finalScoreFromHeader` l'appelle pour savoir s'il doit échanger
+ * les deux nombres servis par l'en-tête, qui valent pour le joueur de la page. Une seule
+ * définition de « l'autre camp », plutôt que la même triple comparaison sous un autre nom.
  *
- * C'EST AUSSI LE PRÉDICAT DU SCORE : `finalScoreFromHeader` l'appelle, plutôt que de refaire
- * la même triple comparaison sous un autre nom. Une seule définition de « l'autre camp ».
+ * IL A SERVI UN TEMPS AU MOT DU VERDICT, et n'y sert plus : l'écran de fin et le panneau de
+ * l'export choisissaient entre `header.outcome_label` (le mot du backend, valable pour le
+ * joueur de la page) et le libellé canonique de l'issue permutée. Depuis que les deux titres
+ * viennent d'`outcomes.toml` sur l'issue LUE, il n'y a plus de branche à ouvrir — le mot suit
+ * la permutation tout seul. Le score, lui, n'a pas d'équivalent : les nombres de l'en-tête ne
+ * portent pas de point de vue, d'où ce prédicat toujours vivant.
+ *
+ * POURQUOI UNE FONCTION ET NON UN CHAMP DE `VictoryReading` : l'ajouter à l'objet aurait fait
+ * rougir les quatorze cas de `victoryLogic.test.ts`, qui fixent la lecture ENTIÈRE par égalité
+ * profonde — la caractérisation n'accepte que des ajouts, et un champ de plus n'en est pas un.
  */
 export function victoryIsFlipped(scoreboard: VictoryRows, subject?: string | null): boolean {
   if (subject == null) return false
