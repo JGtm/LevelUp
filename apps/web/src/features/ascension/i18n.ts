@@ -17,6 +17,8 @@ export interface AscensionText {
   tabObjectives: string
   tabCoaching: string
   tabRealisations: string
+  /** Onglet « Tactique » (5e rang, 2026-09-06) — masqué pour un titre sans rejeu. */
+  tabTactical: string
   tipsTickerAriaLabel: string
   profilLayerTitle: string
   profilLayerDescription: string
@@ -190,6 +192,7 @@ const FR: AscensionText = {
   tabObjectives: 'Objectifs',
   tabCoaching: 'Entraînement',
   tabRealisations: 'Réalisations',
+  tabTactical: 'Tactique',
   tipsTickerAriaLabel: 'Astuces de jeu pour progresser',
   profilLayerTitle: 'Profil de jeu',
   profilLayerDescription:
@@ -424,6 +427,7 @@ const EN: AscensionText = {
   tabObjectives: 'Objectives',
   tabCoaching: 'Training',
   tabRealisations: 'Achievements',
+  tabTactical: 'Tactics',
   tipsTickerAriaLabel: 'Gameplay tips to improve',
   profilLayerTitle: 'Play profile',
   profilLayerDescription:

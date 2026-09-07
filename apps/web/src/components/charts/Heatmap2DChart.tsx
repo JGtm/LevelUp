@@ -27,11 +27,30 @@ import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBas
 export interface ChartPointHeatmap {
   x: string
   y: string
-  value: number
+  /**
+   * Valeur de la cellule, ou `null` pour une case VIDE — non peinte, hors échelle,
+   * sans étiquette (ajout 2026-09-06, correction W1).
+   *
+   * POURQUOI UNE CASE VIDE PLUTÔT QU'UNE CASE ABSENTE. Les axes de ce wrapper sont
+   * DÉDUITS de l'ordre d'apparition des points : omettre une case décale les
+   * catégories, et une matrice carrée à diagonale omise sortait avec un axe X
+   * décalé d'un cran par rapport à l'axe Y (roster [A,B,C,D] → colonnes B,C,D,A).
+   * Une case impossible doit donc être ÉMISE, et dite vide.
+   */
+  value: number | null
   detail?: Record<string, unknown>
 }
 
-export type HeatmapPaletteMode = 'sequential' | 'divergent'
+/**
+ * Modes de rampe acceptes par ce wrapper — sous-ensemble de HeatmapRampMode.
+ *
+ * 'frequency' (ajout 2026-09-06, matrice d'echange de l'escouade) : rampe NEUTRE
+ * mono-teinte, monotone en luminance dans toutes les palettes. C'est le mode d'une
+ * intensite qui ne porte AUCUN jugement — un nombre de vengeances n'est ni chaud ni
+ * froid, et la rampe cold->hot lui collerait un « bon / mauvais » que la donnee ne dit
+ * pas. Elle interdit aussi de confondre l'echelle avec les couleurs par JOUEUR.
+ */
+export type HeatmapPaletteMode = 'sequential' | 'divergent' | 'frequency'
 
 export interface Heatmap2DChartProps {
   title?: string
@@ -44,6 +63,15 @@ export interface Heatmap2DChartProps {
   paletteMode?: HeatmapPaletteMode
   /** Min/max forcés du visualMap (default = auto-fit). */
   valueRange?: [number, number]
+  /**
+   * Contenu HTML du tooltip d'une cellule. Absent = le libellé historique de la
+   * heatmap joueur × carte (taux de victoire + nombre de matchs), qui ne convient
+   * qu'à ce cas d'usage — toute autre donnée DOIT passer sa propre fonction, sinon
+   * la cellule s'annonce sous un nom qui n'est pas le sien.
+   *
+   * L'appelant est responsable de l'échappement de ce qu'il injecte.
+   */
+  formatTooltip?: (point: ChartPointHeatmap) => string
 }
 
 export function Heatmap2DChart({
@@ -55,14 +83,15 @@ export function Heatmap2DChart({
   height,
   paletteMode = 'sequential',
   valueRange,
+  formatTooltip,
 }: Heatmap2DChartProps) {
   // Palette d'accessibilité active : pilote la rampe CVD-safe (rebuild via
   // useColorPaletteVersion dans ChartCard + ce sélecteur au changement de palette).
   const colorPalette = useSettingsDraftStore((s) => s.localUiPrefs.colorPalette)
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointHeatmap>[]) =>
-      buildHeatmap2DOption(s, { paletteMode, valueRange, colorPalette }),
-    [paletteMode, valueRange, colorPalette],
+      buildHeatmap2DOption(s, { paletteMode, valueRange, colorPalette, formatTooltip }),
+    [paletteMode, valueRange, colorPalette, formatTooltip],
   )
 
   return (
@@ -83,6 +112,7 @@ interface BuildOpts {
   valueRange?: [number, number]
   /** Palette d'accessibilité active — pilote la rampe CVD-safe (cf. heatmapColors). */
   colorPalette?: ColorPalette
+  formatTooltip?: (point: ChartPointHeatmap) => string
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -91,6 +121,7 @@ export function buildHeatmap2DOption(
   opts: BuildOpts = {},
 ): EChartsCoreOption {
   const { paletteMode = 'sequential', valueRange, colorPalette = 'default' } = opts
+  const { formatTooltip } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -113,11 +144,18 @@ export function buildHeatmap2DOption(
     }
   }
 
-  // ECharts heatmap data : [xIndex, yIndex, value, detail]
-  const data = dps.map((d) => [xs.indexOf(d.x), ys.indexOf(d.y), d.value, d.detail])
+  // ECharts heatmap data : [xIndex, yIndex, value, detail].
+  //
+  // Une case VIDE part en `'-'` : c'est la valeur « pas de donnée » d'ECharts — la
+  // cellule n'est pas peinte, le visualMap ne la classe pas, et son étiquette est
+  // vide. `null` ferait la même chose côté rendu mais casserait le `Math.min`
+  // ci-dessous ; les valeurs vides sont donc écartées AVANT le calcul de l'échelle.
+  const data = dps.map((d) => [xs.indexOf(d.x), ys.indexOf(d.y), d.value ?? '-', d.detail])
 
-  const minV = valueRange?.[0] ?? Math.min(...dps.map((d) => d.value))
-  const maxV = valueRange?.[1] ?? Math.max(...dps.map((d) => d.value))
+  const remplies = dps.filter((d): d is ChartPointHeatmap & { value: number } => d.value != null)
+  const valeurs = remplies.map((d) => d.value)
+  const minV = valueRange?.[0] ?? (valeurs.length > 0 ? Math.min(...valeurs) : 0)
+  const maxV = valueRange?.[1] ?? (valeurs.length > 0 ? Math.max(...valeurs) : 0)
 
   // Rampe centralisée : en palette d'accessibilité, une heatmap séquentielle
   // bascule sur la rampe de fréquence (luminance monotone, CVD-safe).
@@ -132,8 +170,14 @@ export function buildHeatmap2DOption(
     tooltip: {
       ...getTooltipBase(tc),
       position: 'top',
-      formatter: (params: { data: [number, number, number, Record<string, unknown>?] }) => {
-        const [xi, yi, v, detail] = params.data
+      formatter: (params: { data: [number, number, number | string, Record<string, unknown>?] }) => {
+        const [xi, yi, brut, detail] = params.data
+        // Case vide : rien à dire, pas même « 0 ».
+        if (typeof brut !== 'number') return ''
+        const v = brut
+        if (formatTooltip) {
+          return formatTooltip({ x: xs[xi], y: ys[yi], value: v, detail })
+        }
         const count = detail?.count ?? 0
         return `${escapeHtml(ys[yi])} × ${escapeHtml(xs[xi])}<br/>Win Rate: <b>${(v * 100).toFixed(1)}%</b><br/>Matchs: <b>${count}</b>`
       },
@@ -157,8 +201,10 @@ export function buildHeatmap2DOption(
         data,
         label: {
           show: true,
-          formatter: (params: { data: [number, number, number, Record<string, unknown>?] }) => {
-            const [, , , detail] = params.data
+          formatter: (params: { data: [number, number, number | string, Record<string, unknown>?] }) => {
+            const [, , brut, detail] = params.data
+            // Case vide : aucune étiquette (un « 0 » se lirait comme une mesure).
+            if (typeof brut !== 'number') return ''
             return String(detail?.count ?? 0)
           },
         },

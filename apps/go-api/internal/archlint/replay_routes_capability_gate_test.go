@@ -103,7 +103,7 @@ func TestReplayRoutesMountedUnderCapabilityGate(t *testing.T) {
 		if parseErr != nil {
 			t.Fatalf("parser.ParseFile(%s): %v", rel, parseErr)
 		}
-		for _, site := range sitesDeMontageReplay(fichier) {
+		for _, site := range sitesDeMontage(fichier, replayHandlerCtor) {
 			sitesTrouves++
 			if !unAncetreInstalleLaPorte(site.ancetres) {
 				violations = append(violations,
@@ -133,18 +133,23 @@ func TestReplayRoutesMountedUnderCapabilityGate(t *testing.T) {
 	}
 }
 
-// siteMontageReplay : un appel a NewReplayHandler et la CHAINE des blocs qui le contiennent,
-// du plus proche au plus lointain. Ce sont ses ancetres, et eux seuls : aucun frere.
-type siteMontageReplay struct {
+// siteMontage : un appel a un constructeur de handler et la CHAINE des blocs qui le
+// contiennent, du plus proche au plus lointain. Ce sont ses ancetres, et eux seuls : aucun
+// frere.
+type siteMontage struct {
 	appel    *ast.CallExpr
 	ancetres []*ast.BlockStmt
 }
 
-// sitesDeMontageReplay rend, pour chaque appel a NewReplayHandler, la chaine de ses blocs
+// sitesDeMontage rend, pour chaque appel au constructeur donne, la chaine de ses blocs
 // englobants — au montage reel : le corps du `r.Group(func(r chi.Router) { ... })`, puis
 // celui de `mountAPIV1`, etc.
-func sitesDeMontageReplay(fichier *ast.File) []siteMontageReplay {
-	var out []siteMontageReplay
+//
+// Parametree par le constructeur depuis le 2026-09-06 : le ratchet du garde local des
+// routes tactiques (`tactical_background_local_gate_test.go`) a exactement le meme besoin
+// d'extraction, et une seconde copie de cette remontee de pile aurait diverge.
+func sitesDeMontage(fichier *ast.File, ctor string) []siteMontage {
+	var out []siteMontage
 	var pile []ast.Node
 
 	ast.Inspect(fichier, func(n ast.Node) bool {
@@ -160,7 +165,7 @@ func sitesDeMontageReplay(fichier *ast.File) []siteMontageReplay {
 		if !ok {
 			return true
 		}
-		if !appelNomme(appel, replayHandlerCtor) {
+		if !appelNomme(appel, ctor) {
 			return true
 		}
 		// On remonte la pile (le dernier element est l'appel lui-meme) et on retient TOUS les
@@ -172,7 +177,7 @@ func sitesDeMontageReplay(fichier *ast.File) []siteMontageReplay {
 				ancetres = append(ancetres, b)
 			}
 		}
-		out = append(out, siteMontageReplay{appel: appel, ancetres: ancetres})
+		out = append(out, siteMontage{appel: appel, ancetres: ancetres})
 		return true
 	})
 	return out

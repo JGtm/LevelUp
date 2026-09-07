@@ -6148,6 +6148,132 @@ paths:
       summary: Sync delta par joueur
       tags:
         - sync
+  /players/{player_slug}/tactical/{map_id}/background:
+    get:
+      operationId: getTacticalMapBackground
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: map_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MapBackground'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Calage du fond d'une carte de l'onglet Tactique
+      tags:
+        - tactical
+  /players/{player_slug}/tactical/{map_id}/background.png:
+    get:
+      description: |
+        Image vue du dessus d'une carte (PNG), cuite hors ligne par `cmd/mapfond-build`.
+        C'est la MÊME donnée que le fond du rejeu 2D, résolue par la même cascade, mais
+        adressée par `map_id` : la grille des cartes ne connaît pas de match. Son CALAGE
+        est servi par `GET .../tactical/{map_id}/background`. Contrairement au rejeu,
+        cette route n'est PAS restreinte à la boucle locale : une image de carte est une
+        donnée de référence versionnée, pas une trajectoire décodée d'un film.
+      operationId: getTacticalMapBackgroundImage
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: map_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Image PNG du fond de carte
+        "404":
+          description: Aucun fond de carte figé pour cette carte
+      summary: Sert l'image du fond d'une carte de l'onglet Tactique
+      tags:
+        - tactical
+  /players/{player_slug}/tactical/{map_id}/raster:
+    post:
+      operationId: getTacticalRaster
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: map_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TacticalRasterBody'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TacticalRaster'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne, ou je passe mon temps)
+      tags:
+        - tactical
+  /players/{player_slug}/tactical/maps:
+    post:
+      operationId: getTacticalMaps
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TacticalMapsBody'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TacticalMapsPage'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Cartes jouees, pour la grille d'entree de l'onglet Tactique
+      tags:
+        - tactical
   /players/{player_slug}/templates/suggest:
     get:
       operationId: suggestPrestigeTemplates
@@ -9005,6 +9131,30 @@ components:
         - oauth_code_flow_enabled
         - demo_mode
       type: object
+    BornesMonde:
+      additionalProperties: false
+      properties:
+        max_x:
+          format: double
+          type: number
+        max_y:
+          format: double
+          type: number
+        min_x:
+          format: double
+          type: number
+        min_y:
+          format: double
+          type: number
+        valide:
+          type: boolean
+      required:
+        - min_x
+        - min_y
+        - max_x
+        - max_y
+        - valide
+      type: object
     Bounds:
       additionalProperties: false
       properties:
@@ -10320,6 +10470,47 @@ components:
         - maps
         - game_variants
       type: object
+    CelluleTactique:
+      additionalProperties: false
+      properties:
+        brut:
+          format: double
+          type: number
+        centre_x:
+          format: double
+          type: number
+        centre_y:
+          format: double
+          type: number
+        col:
+          format: int64
+          type: integer
+        lig:
+          format: int64
+          type: integer
+        matchs:
+          format: int64
+          type: integer
+        matchs_defaite:
+          format: int64
+          type: integer
+        matchs_victoire:
+          format: int64
+          type: integer
+        valeur:
+          format: double
+          type: number
+      required:
+        - col
+        - lig
+        - centre_x
+        - centre_y
+        - valeur
+        - brut
+        - matchs
+        - matchs_victoire
+        - matchs_defaite
+      type: object
     Challenge:
       additionalProperties: false
       properties:
@@ -11009,6 +11200,30 @@ components:
         - y_value
         - outcome
       type: object
+    Couverture:
+      additionalProperties: false
+      properties:
+        brut:
+          format: int64
+          type: integer
+        echantillon_faible:
+          type: boolean
+        "n":
+          format: int64
+          type: integer
+        par_match:
+          format: double
+          type: number
+        taux:
+          format: double
+          type: number
+      required:
+        - taux
+        - brut
+        - par_match
+        - "n"
+        - echantillon_faible
+      type: object
     Coverage:
       additionalProperties: false
       properties:
@@ -11421,6 +11636,30 @@ components:
         - bucket_lower
         - bucket_upper
         - count
+      type: object
+    EchelleTactique:
+      additionalProperties: false
+      properties:
+        borne:
+          format: double
+          type: number
+        n_cellules:
+          format: int64
+          type: integer
+        p50:
+          format: double
+          type: number
+        p95:
+          format: double
+          type: number
+        symetrique:
+          type: boolean
+      required:
+        - p50
+        - p95
+        - borne
+        - symetrique
+        - n_cellules
       type: object
     EncounterDTO:
       additionalProperties: false
@@ -23596,6 +23835,115 @@ components:
             - array
             - "null"
       type: object
+    SquadEchange:
+      additionalProperties: false
+      properties:
+        cellules:
+          items:
+            $ref: '#/components/schemas/SquadEchangeCell'
+          type:
+            - array
+            - "null"
+        couverture:
+          $ref: '#/components/schemas/Couverture'
+        delais:
+          items:
+            $ref: '#/components/schemas/SquadEchangeBucket'
+          type:
+            - array
+            - "null"
+        fenetre_ms:
+          format: int64
+          type: integer
+        habituel:
+          $ref: '#/components/schemas/Couverture'
+        joueurs:
+          items:
+            $ref: '#/components/schemas/SquadEchangeJoueur'
+          type:
+            - array
+            - "null"
+        matchs_habituel:
+          format: int64
+          type: integer
+        matchs_mesures:
+          format: int64
+          type: integer
+        matchs_total:
+          format: int64
+          type: integer
+        nuage_isolement:
+          $ref: '#/components/schemas/SquadNuageIsolement'
+      required:
+        - joueurs
+        - cellules
+        - delais
+        - fenetre_ms
+        - couverture
+        - habituel
+        - matchs_habituel
+        - matchs_mesures
+        - matchs_total
+      type: object
+    SquadEchangeBucket:
+      additionalProperties: false
+      properties:
+        debut_ms:
+          format: int64
+          type: integer
+        fin_ms:
+          format: int64
+          type: integer
+        hors_fenetre:
+          type: boolean
+        nombre:
+          format: int64
+          type: integer
+        ouvert:
+          type: boolean
+      required:
+        - debut_ms
+        - fin_ms
+        - ouvert
+        - hors_fenetre
+        - nombre
+      type: object
+    SquadEchangeCell:
+      additionalProperties: false
+      properties:
+        nombre:
+          format: int64
+          type: integer
+        par_match:
+          format: double
+          type: number
+        venge_gamertag:
+          type: string
+        venge_xuid:
+          type: string
+        vengeur_gamertag:
+          type: string
+        vengeur_xuid:
+          type: string
+      required:
+        - vengeur_xuid
+        - vengeur_gamertag
+        - venge_xuid
+        - venge_gamertag
+        - nombre
+        - par_match
+      type: object
+    SquadEchangeJoueur:
+      additionalProperties: false
+      properties:
+        gamertag:
+          type: string
+        xuid:
+          type: string
+      required:
+        - xuid
+        - gamertag
+      type: object
     SquadEngagementSession:
       additionalProperties: false
       properties:
@@ -23847,6 +24195,34 @@ components:
         - options
         - rows
       type: object
+    SquadIsolementPoint:
+      additionalProperties: false
+      properties:
+        couverture:
+          $ref: '#/components/schemas/Couverture'
+        gamertag:
+          type: string
+        morts_examinees:
+          format: int64
+          type: integer
+        morts_isolees:
+          format: int64
+          type: integer
+        part_isolee:
+          $ref: '#/components/schemas/Couverture'
+        session_label:
+          type: string
+        xuid:
+          type: string
+      required:
+        - xuid
+        - gamertag
+        - session_label
+        - morts_examinees
+        - morts_isolees
+        - part_isolee
+        - couverture
+      type: object
     SquadKillMechanicBar:
       additionalProperties: false
       properties:
@@ -24028,6 +24404,26 @@ components:
         - start_time
         - outcome
         - team_mmr_avg
+      type: object
+    SquadNuageIsolement:
+      additionalProperties: false
+      properties:
+        plancher_echantillon_faible:
+          format: int64
+          type: integer
+        plancher_morts_session:
+          format: int64
+          type: integer
+        points:
+          items:
+            $ref: '#/components/schemas/SquadIsolementPoint'
+          type:
+            - array
+            - "null"
+      required:
+        - points
+        - plancher_morts_session
+        - plancher_echantillon_faible
       type: object
     SquadPageResponse:
       additionalProperties: false
@@ -25369,6 +25765,203 @@ components:
         - exists
         - rows
       type: object
+    TacticalGrappe:
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        matchs:
+          format: int64
+          type: integer
+        nom_en:
+          type: string
+        nom_fr:
+          type: string
+        x:
+          format: double
+          type: number
+        "y":
+          format: double
+          type: number
+      required:
+        - id
+        - nom_fr
+        - nom_en
+        - x
+        - "y"
+        - matchs
+      type: object
+    TacticalMapCard:
+      additionalProperties: false
+      properties:
+        defaites:
+          format: int64
+          type: integer
+        map_id:
+          type: string
+        map_name:
+          type: string
+        map_name_fr:
+          type: string
+        matchs:
+          format: int64
+          type: integer
+        sous_plancher:
+          type: boolean
+        victoires:
+          format: int64
+          type: integer
+      required:
+        - map_id
+        - map_name
+        - map_name_fr
+        - matchs
+        - victoires
+        - defaites
+        - sous_plancher
+      type: object
+    TacticalMapsBody:
+      additionalProperties: false
+      properties:
+        coequipiers:
+          description: XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe.
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        match_ids:
+          description: 'Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match.'
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+      type: object
+    TacticalMapsPage:
+      additionalProperties: false
+      properties:
+        cartes:
+          items:
+            $ref: '#/components/schemas/TacticalMapCard'
+          type:
+            - array
+            - "null"
+        plancher_matchs:
+          format: int64
+          type: integer
+      required:
+        - cartes
+        - plancher_matchs
+      type: object
+    TacticalRaster:
+      additionalProperties: false
+      properties:
+        bornes:
+          $ref: '#/components/schemas/BornesMonde'
+        cellules:
+          items:
+            $ref: '#/components/schemas/CelluleTactique'
+          type:
+            - array
+            - "null"
+        echange:
+          $ref: '#/components/schemas/Couverture'
+        echelle:
+          $ref: '#/components/schemas/EchelleTactique'
+        evenements_journal:
+          format: int64
+          type: integer
+        evenements_localises:
+          format: int64
+          type: integer
+        grappes:
+          items:
+            $ref: '#/components/schemas/TacticalGrappe'
+          type:
+            - array
+            - "null"
+        isolement:
+          $ref: '#/components/schemas/Couverture'
+        map_id:
+          type: string
+        matchs_defaite:
+          format: int64
+          type: integer
+        matchs_en_attente:
+          format: int64
+          type: integer
+        matchs_filtres:
+          format: int64
+          type: integer
+        matchs_non_cuisables:
+          format: int64
+          type: integer
+        matchs_retenus:
+          format: int64
+          type: integer
+        matchs_sans_rayon:
+          format: int64
+          type: integer
+        matchs_victoire:
+          format: int64
+          type: integer
+        morts_equipe_a_terre:
+          format: int64
+          type: integer
+        pas_m:
+          format: double
+          type: number
+        points_ignores:
+          format: int64
+          type: integer
+        question:
+          type: string
+        qui:
+          type: string
+      required:
+        - map_id
+        - question
+        - qui
+        - matchs_filtres
+        - matchs_retenus
+        - matchs_victoire
+        - matchs_defaite
+        - pas_m
+        - bornes
+        - cellules
+        - echelle
+        - points_ignores
+        - evenements_journal
+        - evenements_localises
+      type: object
+    TacticalRasterBody:
+      additionalProperties: false
+      properties:
+        coequipiers:
+          description: XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade ».
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        match_ids:
+          description: 'Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match.'
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        question:
+          description: 'Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions.'
+          type: string
+        qui:
+          description: 'Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers.'
+          type: string
+        spawn:
+          description: 'Identifiant d''une grappe de reapparition (champ grappes[].id) : restreint l''univers aux matchs dont MA premiere vie en part. Vide = aucune restriction.'
+          type: string
+      type: object
     TeamHold:
       additionalProperties: false
       properties:
@@ -25538,6 +26131,8 @@ components:
           type:
             - array
             - "null"
+        echange:
+          $ref: '#/components/schemas/SquadEchange'
         first_blood:
           items:
             $ref: '#/components/schemas/FirstBloodPlayerSeries'

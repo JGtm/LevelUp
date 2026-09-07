@@ -522,6 +522,12 @@ type TeammatesPageResponse struct {
 	// la sélection, avec la couverture de la mesure. Nil quand aucun match de la
 	// sélection n'a d'assistance mesurée (dont : titre sans décodeur de film).
 	AssistPairs *SquadAssistPairs `json:"assist_pairs,omitempty"`
+	// Echange alimente les trois surfaces de l'ECHANGE (une mort vengee dans les 5 s) :
+	// la matrice « qui echange pour qui » et le KPI sur Synergies, la distribution du
+	// delai sur Dynamique. Nil quand le titre ne nomme pas le tueur de chaque mort
+	// (games.JournalDesMortsFiable) ou quand aucun match de la selection ne porte de
+	// journal des morts — une OMISSION, jamais des zeros.
+	Echange *SquadEchange `json:"echange,omitempty"`
 	// FirstBlood alimente le chart « Premier frag / première mort » (lanes) de
 	// l'onglet Dynamique : une série PAR JOUEUR de l'escouade, valeurs par match
 	// (aucun bucketing serveur). Vide si aucune donnée highlight_events.

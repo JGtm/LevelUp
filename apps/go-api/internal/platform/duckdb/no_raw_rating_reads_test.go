@@ -39,7 +39,13 @@ func TestNoRawAppendOnlyReads(t *testing.T) {
 
 	// `FROM|JOIN <table>` : le groupe 2 capture un éventuel suffixe `_latest`.
 	// Une occurrence dont le groupe 2 est vide = lecture BRUTE.
-	rawRe := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+(match_skill_rank|match_csrs|player_csr_snapshots|pve_match_stats)(_latest)?\b`)
+	//
+	// `match_lives` / `match_death_context` AJOUTÉES LE 2026-09-07 (lot 7C.8) : append-only,
+	// vues `_latest` PAR PASSE — une lecture brute y servirait un MÉLANGE de décodages, pas
+	// seulement une ligne périmée. Trois autres tables append-only du dépôt manquent encore à
+	// cette liste (`match_kill_events`, `kill_positions`, `match_bomb_stats`) : découverte
+	// consignée au §7 du plan Tactique, NON traitée ici (hors périmètre).
+	rawRe := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+(match_skill_rank|match_csrs|player_csr_snapshots|pve_match_stats|match_lives|match_death_context)(_latest)?\b`)
 
 	// Allowlist datée (2026-07-02) — lectures brutes VOLONTAIRES et documentées.
 	allow := map[string]string{

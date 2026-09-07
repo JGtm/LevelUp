@@ -190,9 +190,12 @@ var canonicalOrder = []string{
 	// tout ce qu'elle couvrait, dédupliqué sur l'identité (cf. §10-2 de la conception).
 	"shared_kill_events_credit_base_v1", // shared
 	"shared_kill_events_from_pairs_v1",  // shared (J4 : reprise dédupliquée de killer_victim_pairs -> match_kill_events + drop v_killer_victim_full ; la table source RESTE)
-	"shared_objective_events_v1",        // shared
-	"shared_objective_score_v1_drop",    // shared (v7.5 lot 3 : DROP match_objective_score_timeline ; remplace shared_objective_score_v1, dont le créateur est supprimé)
-	"shared_match_player_positions_v1",  // shared
+	// steps_shared_match_lives.go : init() suit le nom de fichier, donc APRES les trois
+	// steps_shared_kill_events*.go — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
+	"shared_match_lives_v1",            // shared (vies nommées du film + contexte de voisinage d une mort, append-only + vues _latest par passe)
+	"shared_objective_events_v1",       // shared
+	"shared_objective_score_v1_drop",   // shared (v7.5 lot 3 : DROP match_objective_score_timeline ; remplace shared_objective_score_v1, dont le créateur est supprimé)
+	"shared_match_player_positions_v1", // shared
 	// Conversion append-only de la table ci-dessus (decision 1 du plan v2, 2026-09-06) :
 	// APRES son createur, evidemment — le rebuild CTAS lit la table qu'il convertit.
 	"shared_match_player_positions_appendonly_v1",      // shared

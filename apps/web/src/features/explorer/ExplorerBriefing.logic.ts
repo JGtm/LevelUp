@@ -9,33 +9,11 @@ import type { SemanticToken } from '@/lib/accessibility'
 
 // formatSignedFixed (delta signé à N décimales, glyphe '−' U+2212) est centralisé
 // dans `@/lib/formatters` — importé directement par les modules du briefing.
-
-/**
- * Formate un delta de TAUX (ratio 0..1) en points de pourcentage signés
- * (ex. +0.30 → "+30 pts"). Unité « pts » pour distinguer d'un pourcentage absolu.
- */
-export function formatSignedPoints(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return ''
-  const pts = Math.round(v * 100)
-  if (pts === 0) return '±0 pts'
-  return pts > 0 ? `+${pts} pts` : `−${Math.abs(pts)} pts`
-}
-
-/**
- * Vrai quand le scope affiché couvre TOUT l'historique (aucun filtre narrowing).
- *
- * Le scope est toujours un SOUS-ENSEMBLE de la baseline (un filtre ne peut que
- * rétrécir) : des cardinalités égales impliquent donc des ensembles identiques,
- * d'où des deltas « vs habituel » nuls par construction — à masquer (P-1). Faux
- * si la baseline est absente (`undefined !== number`) : sans baseline il n'y a de
- * toute façon aucun delta à afficher.
- */
-export function isFullHistoryScope(
-  scopeMatches: number | null | undefined,
-  baselineMatches: number | null | undefined,
-): boolean {
-  return scopeMatches != null && baselineMatches === scopeMatches
-}
+//
+// formatSignedPoints et isFullHistoryScope ont DÉMÉNAGÉ dans `@/lib/baseline` le
+// 2026-09-06 : la page Escouade en a besoin pour son écart d'échange « vs habituel »,
+// et le ratchet d'imports croisés (plafond atteint) interdisait un squad -> explorer
+// de plus. Une copie aurait donné deux définitions du même écart.
 
 /** Signe d'un nombre : -1 / 0 / 1 (0 pour nul, absent ou non fini). */
 export function signOf(v: number | null | undefined): -1 | 0 | 1 {

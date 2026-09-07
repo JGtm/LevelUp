@@ -70,6 +70,16 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   home: () => queryKeys.home(P, T, 'fr'),
   seasonPass: () => queryKeys.seasonPass(P, T, 'fr'),
   palmaresRelations: () => queryKeys.palmaresRelations(P, T),
+  // Onglet Tactique : une carte n'existe que dans son titre, et la grille compte les
+  // matchs du titre courant.
+  tacticalMaps: () => queryKeys.tacticalMaps(P, T, 'h'),
+  tacticalMatchIDs: () => queryKeys.tacticalMatchIDs(P, T, 'h'),
+  // Le fond d'une carte est title-scopé par le 1er argument (comme `assetMaps` ou
+  // `presence`) : c'est une donnée de référence du titre, la même pour tous les joueurs.
+  tacticalMapBackground: () => queryKeys.tacticalMapBackground(T, 'map-1'),
+  // Le raster de placement (vue d'analyse, phase 5) compte les matchs du titre courant,
+  // même raison que `tacticalMaps`.
+  tacticalRaster: () => queryKeys.tacticalRaster(P, T, 'map-1', 'h'),
   // Escouade / synthèse / sessions / compare.
   teammates: () => queryKeys.teammates(P, T, 'h', []),
   synthesis: () => queryKeys.synthesis(P, T, 'h'),

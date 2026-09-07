@@ -1,0 +1,457 @@
+package domain
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+)
+
+// Les trois refus de l'onglet Tactique. Ils sont dans `domain` parce que le
+// handler doit les TRADUIRE en statut HTTP (404 / 400) sans dependre du service.
+var (
+	// ErrTacticalCarteInconnue : aucune carte de ce nom dans les matchs retenus du
+	// joueur. Ce n'est pas une carte vide, c'est une carte qu'il n'a pas jouee
+	// SOUS CE FILTRE — 404, jamais une lecture a zero cellule qui se lirait comme
+	// « rien ne s'y passe ».
+	ErrTacticalCarteInconnue = errors.New("tactique: carte inconnue pour ce joueur")
+	// ErrTacticalQuestionInconnue : question hors du vocabulaire servi.
+	ErrTacticalQuestionInconnue = errors.New("tactique: question inconnue")
+	// ErrTacticalQuiInconnu : axe « qui » hors du vocabulaire servi.
+	ErrTacticalQuiInconnu = errors.New("tactique: axe qui inconnu")
+	// ErrTacticalEscouadeSansComposition : l'axe `escouade` a ete demande sans
+	// composition. Depuis le 2026-09-06 (arbitrage utilisateur), « Escouade » designe
+	// LA COMPOSITION CHOISIE, pas « mes coequipiers du match » : sans elle, l'axe n'a
+	// aucun contenu. Retomber en silence sur les coequipiers du match repondrait a une
+	// AUTRE question que celle posee — 400, et le client ne propose pas l'axe.
+	ErrTacticalEscouadeSansComposition = errors.New("tactique: axe escouade demande sans composition")
+	// ErrTacticalSpawnInconnu : le filtre `spawn` designe une grappe qui n'existe pas dans
+	// l'univers courant. Ce n'est PAS une erreur d'entree : une grappe depend des matchs
+	// retenus, et changer de periode peut la faire passer sous le plancher. 404, avec le
+	// meme sens que « cette carte, ce joueur ne l'a pas jouee sous ce filtre ».
+	ErrTacticalSpawnInconnu = errors.New("tactique: grappe de spawn inconnue sous ce filtre")
+	// ErrTacticalCompositionInvalide : la composition demandee est hors bornes (plus de
+	// MaxCoequipiers) ou porte un identifiant qui n'est pas un XUID.
+	ErrTacticalCompositionInvalide = errors.New("tactique: composition invalide")
+)
+
+// MaxCoequipiers est le nombre maximum de coequipiers d'une composition : 3, comme la
+// page Escouade (`MAX_SELECTION` cote web) — c'est la meme notion d'escouade.
+//
+// CE N'EST PAS UNE PREFERENCE D'AFFICHAGE, C'EST UNE BORNE DE COUT. Chaque coequipier
+// ajoute un `EXISTS` correle a la requete d'univers : une composition non bornee laisse
+// le proprietaire d'un profil s'infliger des milliers de sous-requetes, donc un timeout
+// de 30 s puis un 500 — sur ses propres donnees, mais avec la machine de tout le monde.
+const MaxCoequipiers = 3
+
+// motifXUID : un XUID est un entier decimal (32 chiffres au plus).
+//
+// LA SEULE DEFINITION DU DEPOT (unification 2026-09-06, ronde 2). La colonne
+// `match_participants.xuid` stocke le NOMBRE NU — `sync.extractXUID` deballe le
+// `xuid(1234)` de l'API en `1234` a l'ingestion —, et deux frontieres le verifient : la
+// composition de l'onglet Tactique et le parametre `with_player` de l'Explorateur
+// (`handlers.parseNeighborsFilterSpec`). Elles lisent toutes deux `XUIDValide` : le motif
+// vivait en double, sans rien pour empecher les deux copies de diverger.
+//
+// Il vit dans `domain` parce que c'est la couche la plus basse des deux appelants — un
+// handler ne peut pas etre importe par un service. Garde-rail :
+// archlint/no_local_xuid_pattern_test.go interdit un second `regexp.MustCompile` du motif
+// hors de ce paquet.
+var motifXUID = regexp.MustCompile(`^\d{1,32}$`)
+
+// XUIDValide dit si `s` a la forme d'un XUID stocke en base.
+func XUIDValide(s string) bool { return motifXUID.MatchString(s) }
+
+// ValiderComposition refuse une composition hors bornes ou mal formee.
+//
+// LA VALIDATION EST UN REFUS, PAS UN NETTOYAGE : on n'ecarte pas l'identifiant douteux
+// pour continuer avec les autres. Retirer un coequipier ELARGIRAIT le perimetre (le
+// serveur ne resserrerait plus sur lui) et rendrait une lecture plus fournie que celle
+// demandee, sans que rien ne le dise.
+func ValiderComposition(xuids []string) error {
+	if len(xuids) > MaxCoequipiers {
+		return fmt.Errorf("%w: %d coequipiers demandes, %d au maximum",
+			ErrTacticalCompositionInvalide, len(xuids), MaxCoequipiers)
+	}
+	for _, x := range xuids {
+		if !XUIDValide(x) {
+			return fmt.Errorf("%w: %q n'est pas un XUID", ErrTacticalCompositionInvalide, x)
+		}
+	}
+	return nil
+}
+
+// Types de l'onglet Tactique — lectures de PLACEMENT agregees par carte (ou je meurs, ou
+// je tue, ou je gagne). Structs purs : aucune I/O, aucun SQL, aucune dependance au
+// document de rejeu.
+//
+// FRONTIERE VOULUE : `internal/analysis/tactical` ne connait QUE ces types. Il n'importe
+// ni `analysis/replay` (le document de rejeu) ni `platform/duckdb` — c'est l'appelant qui
+// PROJETTE ce qu'il a (positions de `kill_positions`, points des pistes d'un artefact)
+// vers `PositionSample`. Le rasterisage reste donc consommable sans artefact.
+
+// PositionSample est l'entree minimale du rasterisage : un point du monde, en METRES, et
+// le match qui l'a produit.
+//
+// Le match est porte par le point (et non par l'appel) parce que le plancher de rarete se
+// compte en MATCHS DISTINCTS par cellule : sans l'identifiant, un joueur immobile gonfle
+// une cellule sans rien prouver de plus (mesure de cmd/mappos-build, 2026-08-30).
+//
+// Z est volontairement absent : toutes les lectures de l'onglet sont des vues du dessus.
+type PositionSample struct {
+	MatchID string
+	X, Y    float64
+}
+
+// BornesMonde est le rectangle englobant d'une lecture, en metres monde. `Valide` est faux
+// tant qu'aucun point n'a ete vu : un rectangle vide n'est pas un rectangle a l'origine.
+type BornesMonde struct {
+	MinX float64 `json:"min_x"`
+	MinY float64 `json:"min_y"`
+	MaxX float64 `json:"max_x"`
+	MaxY float64 `json:"max_y"`
+
+	Valide bool `json:"valide"`
+}
+
+// CelluleTactique est une cellule ALIMENTEE d'une lecture agregee. Une cellule jamais
+// atteinte n'existe pas : elle n'apparait dans aucune liste (decision produit 2026-09-05,
+// « cellule jamais atteinte = VIDE, jamais peinte en froid »).
+type CelluleTactique struct {
+	// Col, Lig : l'adresse entiere de la cellule sur la grille, ancree sur l'ORIGINE DU
+	// MONDE (et non sur les bornes de la lecture) — deux lectures filtrees differemment
+	// nomment donc la meme cellule pareil, et deux rasters de matchs differents se
+	// somment sans re-projection.
+	Col int `json:"col"`
+	Lig int `json:"lig"`
+
+	// CentreX, CentreY : le centre de la cellule en metres monde, pour le peintre.
+	CentreX float64 `json:"centre_x"`
+	CentreY float64 `json:"centre_y"`
+
+	// Valeur est la valeur PAR MATCH (decision produit : jamais un cumul brut, qui ne se
+	// compare pas d'un filtre a l'autre). Lecture simple : occurrences / nombre de matchs
+	// retenus. Lecture signee : taux du cote victoire moins taux du cote defaite.
+	Valeur float64 `json:"valeur"`
+
+	// Brut est le cumul non normalise qui a produit `Valeur` — servi AVEC elle, jamais a
+	// sa place (doctrine « jamais un taux seul »).
+	Brut float64 `json:"brut"`
+
+	// Matchs est le nombre de matchs DISTINCTS ayant alimente la cellule ; MatchsVictoire
+	// et MatchsDefaite le detaillent par cote (non nuls seulement en lecture signee).
+	Matchs         int `json:"matchs"`
+	MatchsVictoire int `json:"matchs_victoire"`
+	MatchsDefaite  int `json:"matchs_defaite"`
+}
+
+// EchelleTactique porte les reperes de coloration d'une lecture. Les quantiles sont
+// calcules sur les cellules ALIMENTEES uniquement : inclure des zeros implicites
+// ecraserait toute la dynamique vers le bas.
+type EchelleTactique struct {
+	// P50, P95 : les quantiles des valeurs des cellules. En lecture signee, ils portent
+	// sur la VALEUR ABSOLUE — un quantile sur le signe n'a pas de sens (il depend de la
+	// proportion de cellules favorables, pas de l'intensite).
+	P50 float64 `json:"p50"`
+	P95 float64 `json:"p95"`
+
+	// Borne est le haut de l'echelle. En lecture signee, l'echelle est SYMETRIQUE et va
+	// de -Borne a +Borne : sans cela, un cote parait plus intense que l'autre a valeur
+	// egale.
+	Borne float64 `json:"borne"`
+
+	// Symetrique dit laquelle des deux lectures ci-dessus s'applique.
+	Symetrique bool `json:"symetrique"`
+
+	// NCellules est le nombre de cellules ayant servi au calcul.
+	NCellules int `json:"n_cellules"`
+}
+
+// ---------------------------------------------------------------------------
+// Lecture tactique — ce qu'un lecteur de base rend, et ce qu'une page en publie.
+//
+// Les types ci-dessous vivent ICI et pas dans `internal/analysis/tactical` :
+// ils traversent la frontiere port -> service -> handler, et un DTO de reponse
+// est un type de `domain`, jamais un type d'`analysis` (un algo qui exporte sa
+// forme de sortie fige son appelant sur son implementation).
+// ---------------------------------------------------------------------------
+
+// ListeBlancheMatchs est le PERIMETRE de matchs d'une lecture tactique.
+//
+// POURQUOI UN TYPE ET PAS UN `[]string` (phase 4 bis, 2026-09-06). Deux appelants
+// ont des besoins OPPOSES sur la meme absence de valeur :
+//
+//	l'onglet Tactique   passe la liste resolue par service.FilteredMatchIDs — et une
+//	                    liste VIDE veut dire AUCUN MATCH (le filtre n'a rien retenu),
+//	                    jamais « tous » ;
+//	la page Escouade    ne passe AUCUNE liste : elle lit le journal des morts sur tout
+//	                    l'historique du joueur, puis resserre en Go.
+//
+// Avec un `[]string` nu, ces deux etats sont le meme `len() == 0` — et le jour ou un
+// appelant oublie sa liste, il obtient l'historique ENTIER en silence. Le zero-value
+// de ce type-ci est l'absence de restriction (le seul etat qu'on peut construire par
+// accident) et TOUTE liste, vide comprise, vient de RestreindreAux.
+type ListeBlancheMatchs struct {
+	restreint bool
+	ids       []string
+}
+
+// RestreindreAux borne une lecture aux match_id donnes. `ids` VIDE = aucun match.
+func RestreindreAux(ids []string) ListeBlancheMatchs {
+	return ListeBlancheMatchs{restreint: true, ids: ids}
+}
+
+// Restreint dit si une liste blanche a ete posee (fut-elle vide).
+func (l ListeBlancheMatchs) Restreint() bool { return l.restreint }
+
+// IDs rend les match_id de la liste blanche (nil si aucune n'a ete posee).
+func (l ListeBlancheMatchs) IDs() []string { return l.ids }
+
+// TacticalQuery est la demande adressee au lecteur tactique.
+//
+// LE PERIMETRE EST UNE LISTE BLANCHE DE match_id, pas un jeu d'axes de filtre
+// (phase 4 bis, 2026-09-06). Les axes de l'Explorateur — periode, sessions epinglees,
+// contexte solo/escouade, cascade — sont resolus EN AMONT par
+// `service.FilteredMatchIDs`, sur la base JOUEUR, qui est la seule a porter les
+// sessions. Le lecteur, lui, ne connait que des identifiants. C'est ce qui fait
+// MARCHER le filtre de session sur cet onglet (arbitrage utilisateur du 2026-09-06),
+// la ou un `MatchFilterSpec` le rangeait dans les filtres IGNORES.
+type TacticalQuery struct {
+	// PlayerXUID est le joueur dont on lit les matchs. L'univers est TOUJOURS le
+	// sien : la portee « tout le monde » n'existe pas en V1.
+	PlayerXUID string
+
+	// MapID restreint a une carte. Vide = toutes les cartes — c'est le cas de
+	// l'ecran d'entree (MapsPlayed) ET du journal des morts lu par la page
+	// Escouade (KillEvents), qui mesure l'echange d'une COMPOSITION et non d'une
+	// carte. Seule la lecture SPATIALE (KillPositions) l'exige : une grille de
+	// 0,5 m n'a de sens que carte par carte.
+	MapID string
+
+	// Matchs est la liste blanche du perimetre (cf. ListeBlancheMatchs).
+	Matchs ListeBlancheMatchs
+
+	// RetentionMois est la fenetre de retention des artefacts de rejeu, en mois (0 =
+	// illimitee, comme pour la purge et la file). Elle sert UNIQUEMENT a calculer
+	// `TacticalMatch.EligibleALaCuisson` : le lecteur ne filtre RIEN avec elle — un match
+	// non eligible reste dans l'univers, il est simplement compte a part.
+	RetentionMois int
+
+	// Coequipiers restreint aux matchs ou TOUS ces xuids etaient dans MON equipe —
+	// la COMPOSITION choisie dans la barre de filtres, meme notion que la page
+	// Escouade. Vide = aucune contrainte de composition.
+	Coequipiers []string
+}
+
+// TacticalScope est le perimetre demande par la PAGE : les match_id que le client
+// a fait resoudre, et la composition choisie. Un struct plutot que deux `[]string`
+// adjacents — deux listes de chaines de suite s'inversent sans que le compilateur
+// le voie.
+type TacticalScope struct {
+	// MatchIDs : la liste blanche resolue par le client. VIDE = aucun match.
+	MatchIDs []string
+	// Coequipiers : les xuids de la composition (0 a 3). Vide = pas de composition.
+	Coequipiers []string
+	// Spawn restreint l'univers aux matchs dont MA PREMIERE VIE part de cette grappe.
+	// Vide = aucune restriction.
+	//
+	// C'EST UN FILTRE D'UNIVERS, PAS DE POINTS : garder au denominateur des matchs partis
+	// d'un autre spawn ferait repondre « je passe peu de temps ici » a une carte ou l'on
+	// n'a simplement pas commence.
+	Spawn string
+}
+
+// TacticalRasterRequest est la demande d'une lecture de placement.
+type TacticalRasterRequest struct {
+	MapID    string
+	Question string
+	Qui      string
+	Scope    TacticalScope
+}
+
+// TacticalMatch est un match RETENU par le filtre : l'unite de l'univers.
+type TacticalMatch struct {
+	MatchID string
+
+	// Mesure dit que le journal des morts de ce match est LISIBLE (au moins une
+	// ligne publiable dans match_kill_events_latest).
+	//
+	// UN MATCH NON MESURE N'EST PAS UN MATCH A ZERO MORT, c'est un match ILLISIBLE :
+	// son film n'a jamais ete decode, ou il a EXPIRE cote serveur. Il ne peut
+	// alimenter aucun numerateur ; le compter au denominateur « par match » ferait
+	// varier la grandeur avec la COUVERTURE DE FILM au lieu du jeu — deux filtres a
+	// couverture differente (20 matchs sur 20 decodes contre 2 sur 20) rendraient
+	// 0,20 et 0,02 pour exactement le meme jeu. C'est le pendant du defaut P0 de la
+	// phase 1 : le zero LEGITIME compte au denominateur, l'ILLISIBLE est compte a
+	// part (correction G2, revue du 2026-09-06).
+	Mesure bool
+
+	// GameVariantName est le nom d'asset UGC de la variante jouee
+	// (`match_registry.game_variant_name`). Il voyage avec le match parce qu'une REGLE DU
+	// JEU en depend et ne peut se lire nulle part ailleurs : la PORTEE DU RADAR, qui borne
+	// la lecture « ou je meurs isole », est declaree par variante dans `regulation.toml`.
+	// L'artefact, lui, ne connait pas les regles du mode.
+	//
+	// Vide quand le registre ne la nomme pas — la lecture qui en depend ECARTE alors le
+	// match et le compte (`matchs_sans_rayon`), plutot que de deviner une regle.
+	GameVariantName string
+
+	// EligibleALaCuisson dit que la FILE DE CUISSON des artefacts de rejeu reprendra ce
+	// match : film pas definitivement perdu, horodatage exploitable, et dans la fenetre de
+	// retention (`analysis.SQLEligibleALaCuisson`, le predicat de la file elle-meme).
+	//
+	// IL DISTINGUE DEUX ABSENCES QUI NE SE DISENT PAS PAREIL. Un match sans artefact mais
+	// eligible sera cuit au fil de l'eau — c'est un traitement en cours, il suffit
+	// d'attendre. Un match non eligible ne le sera jamais : son film a expire cote serveur,
+	// ou le registre ne sait pas le dater. C'est une donnee non disponible, et lui promettre
+	// une cuisson serait envoyer l'utilisateur attendre indefiniment.
+	EligibleALaCuisson bool
+
+	// Outcome porte OutcomeWin / OutcomeLoss / OutcomeDraw / OutcomeDNF, ou
+	// OutcomeUnknown quand le substrat ne le sait pas. Un resultat inconnu compte
+	// au denominateur « par match » et dans aucun des deux cotes de la lecture
+	// signee (cf. analysis/tactical.RasteriseAvecResultats).
+	Outcome int
+}
+
+// TacticalUnivers est L'ENSEMBLE DES MATCHS RETENUS par le filtre, avec la
+// composition des equipes de chacun.
+//
+// POURQUOI IL VOYAGE AVEC LES POINTS ET N'EN EST JAMAIS DEDUIT : un match retenu
+// peut n'avoir AUCUN point sur la lecture courante (aucune mort, aucun kill), et
+// c'est un zero legitime qui doit compter au denominateur. Le deduire des points
+// l'effacerait — c'est le defaut corrige en phase 1 (12 victoires dont 2 muettes
+// lues +0,10 au lieu de 0,00).
+type TacticalUnivers struct {
+	Matchs []TacticalMatch
+
+	// Equipes : matchID -> xuid -> numero d'equipe. La composition change d'un
+	// match a l'autre ; une table globale melangerait deux compositions au premier
+	// joueur ayant change de camp.
+	Equipes EquipesParMatch
+}
+
+// TacticalKillPosition est UNE mort mesuree : la position du tueur et celle de la
+// victime, en metres monde, avec les deux identites.
+//
+// Z est absent : toutes les lectures de l'onglet sont des vues du dessus. Une
+// ligne n'existe que si les DEUX positions sont connues — une position partielle
+// n'est jamais approchee (meme prudence que KillDistanceRepo).
+type TacticalKillPosition struct {
+	MatchID string
+
+	// KillerXUID et VictimXUID peuvent etre VIDES, et ce sont deux cas TRES
+	// inegalement probables — la doc d'origine les mettait sur le meme plan, a tort.
+	//
+	//	KillerXUID vide  N'ARRIVE PAS en sortie de KillPositions. La jointure est une
+	//	                 EGALITE sur `kill_positions.killer_xuid`, et le persister
+	//	                 REFUSE toute ligne sans tueur (persist/kill_position_persister.go).
+	//	                 Le champ reste defensif : un scan qui rendrait une chaine vide
+	//	                 ne doit pas etre range dans un axe par accident.
+	//	VictimXUID vide  ARRIVE. Le collecteur du film n'ecrit de position que pour les
+	//	                 morts dont LES DEUX identites sont resolues
+	//	                 (sync/killcollector/positions.go, killRefsFromDeaths), mais le
+	//	                 producteur NATIF de Halo 5 ne pose que le tueur
+	//	                 (games/halo_5/ingest/positions.go) : sa ligne peut donc joindre
+	//	                 un kill-event dont la victime est un BOT (victim_xuid NULL).
+	//
+	// Dans les deux cas, une identite vide n'appartient a AUCUN axe « qui » : elle n'a
+	// pas d'equipe, et lui en deviner une serait une invention.
+	KillerXUID string
+	VictimXUID string
+
+	KillerX, KillerY float64
+	VictimX, VictimY float64
+}
+
+// MortContexte est une mort LOCALISEE de l'univers, avec ce que le collecteur a mesure de son
+// voisinage au sync (`match_death_context`).
+//
+// ELLE PORTE LES DEUX ETATS QUI COMPTENT, et pas les quatre : `waiting` et `left` disent qu'un
+// coequipier ne pouvait PAS accompagner, ce que `visibles + hors_de_vue == 0` exprime deja. Les
+// transporter aurait offert a la lecture deux facons d'ecrire la meme regle.
+type MortContexte struct {
+	MatchID    string
+	VictimXUID string
+	// X, Y : la position de la VICTIME, depuis `kill_positions_latest`.
+	X, Y float64
+	// PlusProcheM : distance au coequipier VISIBLE le plus proche. nil = aucun visible.
+	PlusProcheM         *float64
+	Visibles, HorsDeVue int
+}
+
+// TacticalMortsContexte : l'univers ET ses morts localisees avec leur voisinage.
+type TacticalMortsContexte struct {
+	Univers TacticalUnivers
+	Morts   []MortContexte
+}
+
+// TacticalPositions : l'univers ET les positions mesurees de ses matchs.
+type TacticalPositions struct {
+	Univers TacticalUnivers
+	Points  []TacticalKillPosition
+}
+
+// TacticalKillEvents : l'univers ET le journal des morts de ses matchs, sous la
+// forme que `analysis/coordination` consomme.
+type TacticalKillEvents struct {
+	Univers TacticalUnivers
+	Events  []KillEvent
+}
+
+// TacticalMapRow est une carte JOUEE, telle que le lecteur la rend : le compte de
+// matchs et sa decomposition en victoires / defaites. Le plancher de lisibilite
+// est pose par le service, pas par le lecteur — une regle produit n'appartient pas
+// a une requete SQL.
+type TacticalMapRow struct {
+	MapID     string
+	MapName   string
+	MapNameFR string
+
+	Matchs    int
+	Victoires int
+	Defaites  int
+}
+
+// ---------------------------------------------------------------------------
+// Vocabulaire et bornes de l'onglet
+// ---------------------------------------------------------------------------
+
+// Les QUESTIONS servies par la phase 2. Elles se lisent toutes sur le meme
+// substrat — les positions mesurees de `kill_positions` — parce que c'est le seul
+// qui existe sans artefact de rejeu. Les questions d'occupation (ou je passe mon
+// temps, mes routes de spawn) arrivent avec les rasters de la cuisson.
+const (
+	// TacticalQuestionMorts : ou JE MEURS — la position de la VICTIME.
+	TacticalQuestionMorts = "morts"
+	// TacticalQuestionKills : ou JE TUE — la position du TUEUR.
+	TacticalQuestionKills = "kills"
+	// TacticalQuestionGagne : ou JE GAGNE — lecture SIGNEE, sur les ENGAGEMENTS
+	// (mes kills ET mes morts), chaque cote ramene a son propre nombre de matchs.
+	//
+	// POURQUOI LES ENGAGEMENTS ET PAS LES SEULS KILLS : la question demande ou ma
+	// presence correle avec la victoire. La seule presence mesurable avant les
+	// rasters d'occupation est le combat, et il a DEUX faces — ne garder que les
+	// kills confondrait « ou je gagne » avec « ou je tue », qui est deja une
+	// question a part. Substitution prevue : l'occupation, quand elle existera.
+	TacticalQuestionGagne = "gagne"
+)
+
+// L'axe QUI.
+//
+// `escouade` designe LA COMPOSITION CHOISIE dans la barre de filtres — les xuids que
+// l'utilisateur a nommes, et eux seuls (arbitrage utilisateur du 2026-09-06, qui
+// REMPLACE « mes coequipiers du match »). Le perimetre de matchs garantit deja que ces
+// joueurs etaient dans mon equipe (cf. TacticalQuery.Coequipiers) ; sans composition,
+// l'axe est REFUSE (ErrTacticalEscouadeSansComposition) plutot que redefini en douce.
+//
+// `adv` reste l'autre equipe DU MATCH : elle change a chaque partie et ne se nomme pas.
+const (
+	TacticalQuiMoi         = "moi"
+	TacticalQuiEscouade    = "escouade"
+	TacticalQuiAdversaires = "adv"
+)
+
+// PlancherMatchsParCarte est le nombre de matchs en dessous duquel une carte
+// n'est pas ouvrable : 10 (plan tactique, 2026-09-05). Une lecture de placement
+// sur trois matchs ne mesure pas un placement, elle mesure trois parties.
+const PlancherMatchsParCarte = 10

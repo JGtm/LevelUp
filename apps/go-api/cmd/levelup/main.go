@@ -129,6 +129,8 @@ func main() {
 		exitErr = runBackfillUsageSummary(cfg, args)
 	case "backfill-bomb-stats":
 		exitErr = runBackfillBombStats(cfg, args)
+	case "tactical-rasters":
+		exitErr = runTacticalRasters(cfg, args)
 	case "replay-facts-export":
 		exitErr = runReplayFactsExport(cfg, args)
 	case "migrate":
@@ -208,6 +210,10 @@ Commandes:
                   match_usage_films, append-only) : AUCUN décodage de film, un artefact lu à la fois, reprenable par (summary_rev,
                   artifact_schema) via la vue _latest. --dry-run imprime les compteurs par match (prises nommées/anonymes, bonus par
                   famille) pour les contrôles croisés (--force, --match, --limit, serveur arrêté)
+  tactical-rasters  Depose le sidecar d'occupation (« ou chaque joueur a passe son temps ») des artefacts de rejeu deja cuits :
+                  AUCUN decodage de film, AUCUNE base ouverte — une lecture d'artefacts suivie de petits JSON ranges sous
+                  data/cache/replays/{slug}/rasters/. Idempotent (un sidecar n'est refait que s'il manque ou si son artefact a
+                  change de schema) (--backfill obligatoire, --dry-run, --title, --limit)
   replay-facts-export  Exporte les faits de match (JSON, forme de replay-build --facts) et les cartes candidates de matchs nommes, pour le harnais d'equivalence des rejeux (--out, --title)
   migrate         Migrer les donnees vers le namespace multi-titres
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])

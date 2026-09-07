@@ -30,7 +30,7 @@
 
 [meta]
 title_slug     = "halo_infinite"
-schema_version = 5
+schema_version = 6
 
 [regulation_seconds]
 "CTF:Arena"                   = 720
@@ -290,3 +290,100 @@ schema_version = 5
 "Assault"          = "events"
 "Neutral Bomb"     = "events"
 "One Bomb"         = "events"
+
+# ---------------------------------------------------------------------------------------
+# PORTÉE DU RADAR par variante, en mètres (schema_version 6, décision utilisateur
+# 2026-09-05) — socle de la lecture « où je meurs isolé » de l'onglet Tactique.
+#
+# CE QUE LA VALEUR EST : la distance à laquelle deux joueurs se voient sur le radar du jeu.
+# C'est elle qui définit « un coéquipier était à portée » — donc « la mort était accompagnée ».
+#
+#   Arène  18 m
+#   BTB    24 m
+#
+# SOURCE : utilisateur, 2026-09-05 (le joueur tranche sur la mécanique de jeu — c'est une
+# règle du titre, pas une grandeur qu'on mesure sur le registre comme le temps réglementaire
+# ou la cible de victoire). Elle est écrite ici, et non en dur dans le code, pour la même
+# raison que les quatre tables ci-dessus : une règle de jeu se corrige dans un fichier de
+# configuration, sans recompiler ni redéployer.
+#
+# MÊME DOCTRINE QUE `regulation_seconds` : clé = `match_registry.game_variant_name` exact.
+# VARIANTE ABSENTE = PAS DE LECTURE — les morts de ce match ne sont ni examinées ni comptées
+# isolées, et le nombre de matchs ainsi écartés est PUBLIÉ (`matchs_sans_rayon`). Un rayon
+# deviné (« 18 m, c'est l'usage ») rendrait une mesure d'apparence normale sur un mode dont
+# on n'a pas établi la règle : c'est exactement le faux positif que ce fichier refuse
+# partout ailleurs.
+#
+# COUVERTURE — décision superviseur du 2026-09-06 : cette table couvre TOUTES les variantes
+# connues des autres tables de ce fichier. La règle d'affectation est celle de l'utilisateur
+# (2026-09-05) : famille BTB (`BTB:*`, `BTB Heavies:*`, `*:BTB`) = 24 m, tout le reste = 18 m.
+# Un test le vérifie (`TestRadarRangeM_TableLivree`) : une variante identifiée par
+# `score_target` ou `regulation_seconds` et absente d'ici sortirait de la lecture « où je
+# meurs isolé » sans que rien ne l'explique.
+#
+# UNE VARIANTE ABSENTE DE TOUTES LES TABLES RESTE SANS LECTURE : on ne l'ajoute pas « au
+# jugé » ici juste pour combler un trou.
+#
+# CONSOMMATEUR : la lecture « où je meurs isolé » de l'onglet Tactique (lot 7C, livré le
+# 2026-09-07). Chemin : `mappings.RegulationSet.RadarRangeMap` → câblage par titre
+# (`server_apiv1` → `ServiceRegistry.WithRadarRange`) → `TacticalService.rayonsParMatch`, qui
+# résout le rayon PAR MATCH depuis `match_registry.game_variant_name`.
+#
+# ⚠ LA CLÉ SE NETTOIE À LA RÉSOLUTION (`strings.TrimSpace`). Le nom vient de la base, donc de ce
+# que l'API a envoyé, et des variantes y arrivent avec un blanc de tête ou de queue. Une clé non
+# nettoyée manque la table, et le match sort SILENCIEUSEMENT de la lecture — un défaut de donnée
+# déguisé en trou de référentiel, qui envoie chercher la panne au mauvais endroit.
+#
+# UNE VARIANTE ABSENTE N'EST PAS UN RAYON PAR DÉFAUT : ses matchs sortent de la lecture et se
+# comptent à part (`matchs_sans_rayon`). Un rayon deviné rendrait une mesure d'apparence normale
+# sur une règle de jeu qu'on n'a pas établie.
+
+[radar_range_m]
+"Arena:CTF"                       = 18
+"Arena:Escalation Slayer"         = 18
+"Arena:Oddball"                   = 18
+"Arena:One Flag CTF"              = 18
+"Arena:Slayer"                    = 18
+"Arena:Strongholds"               = 18
+"Arena:Team Slayer"               = 18
+"Arena:Team Snipers"              = 18
+"Arena:VIP"                       = 18
+"Assault:Neutral Bomb"            = 18
+"Assault:One Bomb"                = 18
+"BTB Heavies:CTF"                 = 24
+"BTB Heavies:Slayer"              = 24
+"BTB Heavies:Total Control"       = 24
+"BTB:CTF"                         = 24
+"BTB:Fiesta CTF"                  = 24
+"BTB:Fiesta Slayer"               = 24
+"BTB:Fiesta Total Control"        = 24
+"BTB:One Flag CTF"                = 24
+"BTB:Slayer"                      = 24
+"BTB:Stockpile"                   = 24
+"BTB:Team Snipers"                = 24
+"BTB:Total Control"               = 24
+"CTF:Arena"                       = 18
+"CTF:Arena Neutral Flag"          = 18
+"CTF:BTB"                         = 24
+"Event:Escalation Slayer"         = 18
+"Fiesta:Slayer"                   = 18
+"Husky Raid:CTF"                  = 18
+"Husky Raid:Super CTF"            = 18
+"KOTH:Arena"                      = 18
+"Oddball:Arena"                   = 18
+"Ranked:CTF"                      = 18
+"Ranked:CTF 3 Captures"           = 18
+"Ranked:King of the Hill"         = 18
+"Ranked:Oddball"                  = 18
+"Ranked:Slayer"                   = 18
+"Ranked:Strongholds"              = 18
+"Slayer:Arena"                    = 18
+"Slayer:Arena Fiesta"             = 18
+"Slayer:Arena Super Fiesta"       = 18
+"Slayer:Arena Tactical"           = 18
+"Strongholds:Arena"               = 18
+"Super Fiesta:Slayer"             = 18
+"Super Husky Raid:CTF"            = 18
+"Tactical:Slayer"                 = 18
+"Team Slayer:Arena"               = 18
+"Team Snipers:Arena"              = 18

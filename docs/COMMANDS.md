@@ -104,7 +104,19 @@ go run ./cmd/levelup backfill-usage-summary [--dry-run] [--force] [--match ID] [
 #    match_objective_events. Dry run FIRST: it prints per-match counters and writes nothing.
 go run ./cmd/levelup backfill-bomb-stats --dry-run
 go run ./cmd/levelup backfill-bomb-stats [--force] [--match ID] [--limit N] [--title S]
+
+# 4. Tactical occupation rasters -> sidecar JSON files under
+#    data/cache/replays/{slug}/rasters/. NO database is opened, not even read-only: the
+#    sidecar is per-match and anonymous, so nothing has to be asked of DuckDB.
+go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
 ```
+
+Pass (4) is idempotent: a sidecar is only rewritten when it is missing, when its own
+`schema_version` is no longer current, or when its `artifact_schema_version` no longer
+matches the artifact it was projected from (so, after a re-bake). A second immediate pass
+writes zero files. **Sidecar schema 3** adds deaths (with the distance to every other named
+player alive at that instant), spawn-exit routes and the starting-spawn flag: every v2
+sidecar is stale and this pass rewrites it.
 
 Running (3) before (1) is a **silent no-op**: artifacts older than schema 39 carry no
 `bombStats`, so nothing is written and every match lands in the `sans calque` counter. Both

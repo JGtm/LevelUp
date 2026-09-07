@@ -246,6 +246,12 @@ func nameClosedLives(lives []lifeSpan, after, closed map[uint32]int, xuidToIndex
 		}
 		if x, ok := indexToXUID[pi]; ok {
 			lives[life].xuid = x
+			// LA FERMETURE NOMME, ELLE NE TERMINE PAS. Elle dit « un autre corps est réapparu,
+			// donc celui-ci était celui-là » — rien sur la façon dont la vie s'est terminée.
+			// `cause` reste donc ce que la découpe a établi (fin du film, ou coupure), et
+			// c'est exactement ce qui empêche de refabriquer une mort pour un survivant
+			// (P0 de la ronde 2, 2026-09-07).
+			lives[life].nomPar = NomParFermeture
 		}
 	}
 }
