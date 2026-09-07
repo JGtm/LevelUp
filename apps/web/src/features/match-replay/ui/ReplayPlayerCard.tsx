@@ -11,8 +11,11 @@
  *
  * LES COTES VIENNENT DU GABARIT (`model/cardGabarit.ts`) — des nombres et des booléens, jamais
  * un mot de densité : la même tuile rend la fiche normale (235 px, corps de 35) et, sur une
- * Grande équipe, la tuile compacte (115 × 62). La profondeur du DOM autour du nom ne bouge pas :
- * dix tests atteignent la tuile par `getByText(nom).parentElement.parentElement`.
+ * Grande équipe, la tuile compacte (115 × 62, corps de 31). La MISE EN PAGE se lit dans une
+ * table FERMÉE par la hauteur du corps (`TILE_LAYOUT`, 2026-09-07) : un corps de 35 rend la
+ * fiche d'aujourd'hui classe pour classe (fixation `__fixtures__/replayTeams.4v4.html`), un
+ * corps de 31 la tuile à trois lignes. La profondeur du DOM autour du nom ne bouge dans aucun
+ * des deux : dix tests atteignent la tuile par `getByText(nom).parentElement.parentElement`.
  *
  * TROIS RÈGLES QUI NE SE NÉGOCIENT PAS ICI :
  *   1. Une valeur non lue s'affiche comme une lacune, jamais comme un zéro ni une moyenne.
@@ -30,11 +33,78 @@ import { EliminatedBox, VitalityBar } from './ReplayVitality'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import type { CardGabarit } from '../model/cardGabarit'
 import type { ZonePresence } from '../model/equipmentZones'
+import { handCellHint } from '../model/handCellHint'
 import { cardChrome, hasUnderLayer } from '../model/playerCardFx'
 import { playerCardReadings, type CardFxScene } from '../model/playerCardReadings'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayPlayer, VitalityPresence } from '../../../lib/replay/rosterLogic'
+
+/**
+ * LA MISE EN PAGE DE LA TUILE, PAR HAUTEUR DE CORPS — une table FERMÉE de littéraux Tailwind
+ * (une valeur arbitraire interpolée ne produit AUCUNE règle, en silence : cf. cardGabarit.ts et
+ * `rosterHeight.guard.test.ts`). La clé est `CardGabarit['bodyPx']`, une union de littéraux :
+ * un corps qui n'est pas dans la table ne compile pas.
+ *
+ * 35 — LA FICHE D'AUJOURD'HUI (option 2a du handoff 2026-08-27), classe pour classe : deux
+ * lignes, le nom et le triplet côte à côte, puis le corps (jauges 5 / 3 px, rangée de 18 px à
+ * cellules fixes). Le nom est en `flex-1` : la ligne est à lui et au triplet.
+ *
+ * 31 — LA TUILE COMPACTE (maquette A2, plan fiches compactes 2026-09-06) : 115 × 62, marge
+ * 6 px, rayon 6 px, TROIS lignes. Ligne 1 (14 px) : le nom SEUL, pleine ligne, `leading-[14px]`
+ * — sans lui le preflight Tailwind (1,5) donne 17,25 px et la tuile 65 ; le nom n'est PAS en
+ * `flex-1`, pour que l'infobulle de la TUILE (`fx.title`) reste atteignable sur le reste de la
+ * ligne (décision D6 : le `title` d'une cellule masque celui de la tuile). Ligne 2 (12 px) : les
+ * jauges 4 / 2 px en `flex-1` à gauche (≈ 42 px), le triplet à droite (≈ 54 px). Ligne 3
+ * (16 px) : arme en main 48, grenade sélectionnée 14, capacité 16, `gap 5` — 88 px, 13 d'air.
+ * Interlignes 3 px ; corps FIXE 31 = 12 + 3 + 16 ; tuile 1 + 6 + 14 + 3 + 31 + 6 + 1 = 62.
+ */
+interface TileLayout {
+  /** La tuile : chrome, marges, rayon. */
+  tile: string
+  /** La ligne du nom. */
+  nameLine: string
+  /** Le nom, hors sa taille (`NAME_CLASS`) et hors son encre (vivant / mort). */
+  name: string
+  /** Le corps, SANS sa hauteur (`BODY_CLASS`) ni son `overflow-hidden` (la garantie, ajoutée). */
+  body: string
+  /** Le triplet F/M/A vit sur la ligne du nom (vrai) ou sur la ligne des jauges, dans le corps. */
+  countersOnNameLine: boolean
+  /** La pile des deux jauges. */
+  gauges: string
+  /** La ligne des jauges quand elle porte AUSSI le triplet (corps de 31) ; '' sinon. */
+  vitalsLine: string
+  /** La rangée armes + inventaire. */
+  row: string
+}
+
+const TILE_LAYOUT: Record<CardGabarit['bodyPx'], TileLayout> = {
+  35: {
+    tile: 'relative flex shrink-0 flex-col rounded-lg border px-2.5 py-2',
+    nameLine: 'relative flex items-baseline gap-1.5',
+    name: 'min-w-0 flex-1 truncate',
+    body: 'relative mt-[7px]',
+    countersOnNameLine: true,
+    gauges: 'flex flex-col gap-[3px]',
+    vitalsLine: '',
+    row: 'mt-[6px] flex h-[18px] flex-nowrap items-center gap-x-[5px] overflow-hidden',
+  },
+  31: {
+    tile: 'relative flex shrink-0 flex-col rounded-md border px-1.5 py-1.5',
+    nameLine: 'relative flex leading-[14px]',
+    name: 'min-w-0 truncate',
+    body: 'relative mt-[3px]',
+    countersOnNameLine: false,
+    gauges: 'flex min-w-0 flex-1 flex-col gap-[2px]',
+    vitalsLine: 'flex h-[12px] items-center gap-[5px]',
+    row: 'mt-[3px] flex h-[16px] flex-nowrap items-center gap-x-[5px] overflow-hidden',
+  },
+}
+
+/** La hauteur FIXE du corps, en classe : le littéral en clair, jamais interpolé. */
+const BODY_CLASS: Record<CardGabarit['bodyPx'], string> = { 35: 'h-[35px]', 31: 'h-[31px]' }
+/** La taille du nom, en classe — une seule valeur, les deux gabarits la partagent. */
+const NAME_CLASS: Record<CardGabarit['namePx'], string> = { 11.5: 'text-[11.5px]' }
 
 interface ReplayPlayerCardProps {
   player: ReplayPlayer
@@ -58,16 +128,34 @@ export function ReplayPlayerCard({
   const { live, state, name, equipped, filmIndex, zones, objective, fx } = playerCardReadings({
     player, doc, frame, presence, flashFrames, scoreTimeline, fxScene, text: t,
   })
+  const L = TILE_LAYOUT[gabarit.bodyPx]
+  // LE TRIPLET EST LE MÊME ÉLÉMENT dans les deux gabarits ; seule sa PLACE change (ligne du
+  // nom, ou ligne des jauges — et l'encadré « Éliminé » sur une fiche morte compacte). Il reste
+  // visible mort ou vif : la mort ne retire pas les compteurs.
+  const counters = <ReplayCountersBadge board={player.board} live={live} locale={locale} gabarit={gabarit} />
+  // Le bouclier AU-DESSUS de la santé : l'ordre dans lequel le jeu les encaisse, dit aussi par
+  // l'épaisseur (5 / 3 en normal, 4 / 2 en compact). Sans `sh`/`hp` dans le document, aucune
+  // barre n'existe (`VitalityBar` rend null sur une lecture nulle).
+  const gauges = (
+    <div className={L.gauges}>
+      <VitalityBar reading={state.shield} fade={vitalityFade} name={t.shieldLabel} token="info" heightPx={gabarit.gaugeShieldPx} />
+      <VitalityBar reading={state.health} fade={vitalityFade} name={t.healthLabel} token="success" heightPx={gabarit.gaugeHealthPx} />
+    </div>
+  )
+  // SANS CELLULE DE MUNITIONS (`showAmmo: false`), c'est l'ARME EN MAIN qui dit ses munitions
+  // et les marques de la lecture d'inventaire, en infobulle (décision D5) : la fiche compose le
+  // texte (`model/handCellHint.ts`, une lecture d'inventaire de plus par fiche compacte — le
+  // volet JS du 5.2 le mesure) et le confie à la rangée d'armes. Jamais sur la fiche normale.
+  const handHint =
+    gabarit.showAmmo || !state.life
+      ? undefined
+      : (handCellHint(t, doc, state.life.slot, frame, equipped) ?? undefined)
   return (
     // LA TUILE (option 2a du handoff 2026-08-27) : chaque fiche porte sa bordure et son
     // fond — dégradé court autour de `card` en vie, `card` teinté destructive en mort
     // (cf. playerCardFx.cardChrome). `shrink-0` : une tuile ne se tasse jamais, la colonne
     // défile.
-    <div
-      className="relative flex shrink-0 flex-col rounded-lg border px-2.5 py-2"
-      style={cardChrome(state.alive)}
-      title={fx.title}
-    >
+    <div className={L.tile} style={cardChrome(state.alive)} title={fx.title}>
       {/* LA COUCHE D'EFFETS ÉPOUSE LA TUILE (option 2a) : fonds, voiles, flou et cadres
           vivent sur cette couche `inset-0 rounded-lg`, SOUS le contenu — les rangées sont
           en `relative` pour peindre au-dessus d'elle. Les éclats de mort/réapparition
@@ -88,39 +176,39 @@ export function ReplayPlayerCard({
           « ami » a été retiré de la colonne. Il reste au FIL des éliminations, où il sert à
           reconnaître un nom au milieu d'événements qui défilent ; sur une fiche, la colonne
           d'équipe et le nom disent déjà tout ce qu'il y a à savoir. */}
-      <div className="relative flex items-baseline gap-1.5">
+      <div className={L.nameLine}>
         <span
-          className={`min-w-0 flex-1 truncate text-[11.5px] font-bold uppercase tracking-[.06em] ${
+          className={`${L.name} ${NAME_CLASS[gabarit.namePx]} font-bold uppercase tracking-[.06em] ${
             state.alive ? 'text-foreground' : 'text-muted-foreground'
           }`}
           title={name}
         >
           {name}
         </span>
-        <ReplayCountersBadge board={player.board} live={live} locale={locale} gabarit={gabarit} />
+        {L.countersOnNameLine && counters}
       </div>
       {/* HAUTEUR CONSTANTE vivant/mort : le CORPS de la fiche est une zone à hauteur FIXE
-          (35 px = barres 11 + marge 6 + inventaire 18) dans les DEUX états. La mort
-          remplace son CONTENU — l'encadré « Éliminé » remplit toute la zone — jamais la
-          zone : une fiche qui change de hauteur fait sauter toute la colonne à chaque mort
-          (retour utilisateur du 2026-08-24). `overflow-hidden` est la garantie, pas un
-          ornement. La hauteur est `gabarit.bodyPx`, écrite en CLASSE (valeur arbitraire
-          Tailwind : le littéral doit être en clair — cf. cardGabarit.ts). */}
-      <div className="relative mt-[7px] h-[35px] overflow-hidden">
+          (`bodyPx` : 35 = barres 11 + marge 6 + inventaire 18 ; 31 = jauges 12 + 3 + rangée 16)
+          dans les DEUX états. La mort remplace son CONTENU — l'encadré « Éliminé » remplit
+          toute la zone — jamais la zone : une fiche qui change de hauteur fait sauter toute la
+          colonne à chaque mort (retour utilisateur du 2026-08-24). `overflow-hidden` est la
+          garantie, pas un ornement. */}
+      <div className={`${L.body} ${BODY_CLASS[gabarit.bodyPx]} overflow-hidden`}>
         {state.alive ? (
           <>
-            {/* Le bouclier AU-DESSUS de la santé : l'ordre dans lequel le jeu les encaisse,
-                dit aussi par l'épaisseur (5 / 3 en normal, 4 / 2 en compact). */}
-            <div className="flex flex-col gap-[3px]">
-              <VitalityBar reading={state.shield} fade={vitalityFade} name={t.shieldLabel} token="info" heightPx={gabarit.gaugeShieldPx} />
-              <VitalityBar reading={state.health} fade={vitalityFade} name={t.healthLabel} token="success" heightPx={gabarit.gaugeHealthPx} />
-            </div>
+            {L.countersOnNameLine ? (
+              gauges
+            ) : (
+              <div className={L.vitalsLine}>
+                {gauges}
+                {counters}
+              </div>
+            )}
             {/* ARMES ET INVENTAIRE SUR UNE GRILLE À CELLULES FIXES (demande utilisateur du
-                2026-08-24) : chaque rangée émet des cellules à largeur constante — deux
-                armes, munitions de la main, grenades, capacité — pour que les fiches
-                s'alignent en colonnes. `flex-nowrap` + `overflow-hidden` : la rangée ne se
-                replie jamais. */}
-            <div className="mt-[6px] flex h-[18px] flex-nowrap items-center gap-x-[5px] overflow-hidden">
+                2026-08-24) : chaque rangée émet des cellules à largeur constante — pour que les
+                fiches s'alignent en colonnes. `flex-nowrap` + `overflow-hidden` : la rangée ne
+                se replie jamais. */}
+            <div className={L.row}>
               <ReplayWeaponsRow
                 doc={doc}
                 state={state}
@@ -130,6 +218,7 @@ export function ReplayPlayerCard({
                 filmIndex={filmIndex}
                 locale={locale}
                 gabarit={gabarit}
+                handHint={handHint}
               />
               {state.life && (
                 <ReplayInventoryRow
@@ -145,7 +234,14 @@ export function ReplayPlayerCard({
             </div>
           </>
         ) : (
-          <EliminatedBox state={state} doc={doc} frame={frame} locale={locale} />
+          <EliminatedBox
+            state={state}
+            doc={doc}
+            frame={frame}
+            locale={locale}
+            bodyPx={gabarit.bodyPx}
+            counters={L.countersOnNameLine ? undefined : counters}
+          />
         )}
       </div>
       <ZoneFxOverlay zones={zones} translocationDelay={fx.translocationDelay} boltCount={gabarit.boltCount} />

@@ -19,8 +19,10 @@
  * voit.
  *
  * LE GABARIT NORMAL VA JUSQU'À SIX SIÈGES PAR CAMP (la densité se lit sur la catégorie de
- * mode, jamais sur les effectifs — décision D1) : la même fixation à 6 sièges est un
- * `it.todo` levé à l'étape 2 du plan.
+ * mode, jamais sur les effectifs — décision D1) : la même fixation à 6 sièges
+ * (`__fixtures__/replayTeams.6v6.html`) a été prise à l'étape 2 du plan, AVANT le premier code
+ * de la tuile compacte — le seul chemin de rendu était alors le gabarit normal. Un en-tête sans
+ * catégorie sur douze sièges rend donc, et doit toujours rendre, la colonne d'aujourd'hui.
  */
 import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
@@ -50,8 +52,13 @@ function vie(slot: number, xuid: string, points: Point[]) {
   return { slot, team: -1, xuid, startFrame: 0, endFrame: 300, points }
 }
 
-function documentRiche() {
-  return testReplayDoc({
+/** Les quatre sièges de plus du 6v6 : deux par camp, vivants, une arme, un inventaire lu. */
+const NOMS_6V6 = ['India', 'Juliett', 'Kilo', 'Lima'] as const
+const XUIDS_6V6 = ['I', 'J', 'K', 'L'] as const
+
+/** Le document de transport du 4v4 — la forme que `testReplayDoc` complète. */
+function richeOver(): Partial<ReplayDocument> {
+  return {
     roster: XUIDS.map((xuid, i) => ({ xuid, filmIndex: i, name: NOMS[i] })),
     tracks: [
       // Alpha : bouclier entamé lu à l'image 80 (âge 20 à l'image lue).
@@ -151,18 +158,49 @@ function documentRiche() {
     ],
     equipmentEpisodes: [{ slot: 515, fam: 'camo', t0: 0, t1: 150, endRead: true }],
     flagCarries: [{ team: 1, spans: [{ state: 'carried', xuid: 'F', t0: 60, t1: 140, x: 3, y: 7 }] }],
+  }
+}
+
+function documentRiche() {
+  return testReplayDoc(richeOver())
+}
+
+/** Le même document, plus deux sièges par camp : la limite haute du gabarit normal. */
+function documentSixParCamp() {
+  const base = richeOver()
+  return testReplayDoc({
+    ...base,
+    roster: [
+      ...(base.roster ?? []),
+      ...XUIDS_6V6.map((xuid, i) => ({ xuid, filmIndex: 8 + i, name: NOMS_6V6[i] })),
+    ],
+    tracks: [
+      ...(base.tracks ?? []),
+      ...XUIDS_6V6.map((xuid, i) => vie(521 + i, xuid, [{ t: 0, x: i, y: 5, sh: 0.7, hp: 1 }])),
+    ],
+    loadouts: [
+      ...(base.loadouts ?? []),
+      ...XUIDS_6V6.map((_, i) => ({ t: 0, slot: 521 + i, w: ['0xBBBB', '0xAAAA'] })),
+    ],
+    inventory: [
+      ...(base.inventory ?? []),
+      ...XUIDS_6V6.map((_, i) => ({ t: 0, slot: 521 + i, d: 0, am: [{ mag: 6, res: 12 }, { mag: 20 }], g: [1, 0] })),
+    ],
   })
 }
 
-function tableau() {
-  return XUIDS.map((xuid, i) =>
-    scoreboardRow(xuid, NOMS[i], i < 4 ? 't0' : 't1', i === 0 ? { is_me: true } : {}),
-  )
+/** Le tableau : `parCamp` sièges dans `t0`, le reste dans `t1` ; Alpha est le joueur de la page. */
+function tableau(parCamp: 4 | 6) {
+  const noms = parCamp === 6 ? [...NOMS, ...NOMS_6V6] : [...NOMS]
+  const xuids = parCamp === 6 ? [...XUIDS, ...XUIDS_6V6] : [...XUIDS]
+  // Les sièges de plus du 6v6 (I, J → t0 ; K, L → t1) s'ajoutent à chaque camp du 4v4.
+  const camp = (i: number) => (i < 4 || i === 8 || i === 9 ? 't0' : 't1')
+  return xuids.map((xuid, i) => scoreboardRow(xuid, noms[i], camp(i), i === 0 ? { is_me: true } : {}))
 }
 
 describe('ReplayTeams — fixation du DOM 4v4 (aucune régression hors BTB)', () => {
   it('le HTML de la colonne est celui de la fixture prise avant le lot', async () => {
-    const board = tableau()
+    const board = tableau(4)
     const vue = render(
       <ReplayTeams
         doc={documentRiche()}
@@ -180,5 +218,23 @@ describe('ReplayTeams — fixation du DOM 4v4 (aucune régression hors BTB)', ()
     await expect(vue.container.innerHTML).toMatchFileSnapshot('./__fixtures__/replayTeams.4v4.html')
   })
 
-  it.todo('même fixation à 6 sièges par camp (limite haute du gabarit normal) — levée à l’étape 2')
+  it('même fixation à 6 sièges par camp (limite haute du gabarit normal) : sans catégorie, la colonne d’aujourd’hui', async () => {
+    const board = tableau(6)
+    const vue = render(
+      <ReplayTeams
+        doc={documentSixParCamp()}
+        scoreboard={board}
+        frame={FRAME}
+        locale="fr"
+        xuidMeta={resolveXuidMeta(board, 'A')}
+        header={{ start_time: '2026-07-24T20:00:00Z' }}
+      />,
+    )
+    for (const nom of [...NOMS, ...NOMS_6V6]) expect(vue.getByText(nom)).toBeTruthy()
+    // Douze sièges, et la colonne SIMPLE du gabarit normal — jamais la grille : aucun repli sur
+    // les effectifs (D1), la fixture 6v6 en est la preuve nœud pour nœud.
+    expect(vue.container.innerHTML).not.toContain('auto-fill')
+    expect(vue.container.querySelectorAll('.h-\\[35px\\]')).toHaveLength(12)
+    await expect(vue.container.innerHTML).toMatchFileSnapshot('./__fixtures__/replayTeams.6v6.html')
+  })
 })
