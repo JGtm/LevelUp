@@ -27,6 +27,7 @@ import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
 import { SquadAssistPairsTable } from './SquadAssistPairsTable'
 import { SquadEchangeConstatCard } from './SquadEchangeConstatCard'
 import { SquadEchangeMatrixCard } from './SquadEchangeMatrixCard'
+import { SquadIsolementNuageCard } from './SquadIsolementNuageCard'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
@@ -186,6 +187,9 @@ export function SquadSynergiesPage() {
         </section>
       )}
       {echange && <SquadEchangeMatrixCard echange={echange} />}
+      {echange?.nuage_isolement && (
+        <SquadIsolementNuageCard nuage={echange.nuage_isolement} joueurs={echange.joueurs ?? []} />
+      )}
       <SquadMapHeatmapChart
         title={t.heatmap.title}
         emptyMessage={t.empty.noBlockData}

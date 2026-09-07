@@ -1,3 +1,42 @@
+## [2026-09-07] Plan Tactique 7.7 (lot 7B) — le nuage isolement x couverture de l'Escouade — Complete
+
+**Decision technique principale** — zero nouvel algo. Le lot 7C avait deja pose le fait
+(`match_death_context`/`MortsAvecContexte`) et la mecanique de comparaison
+(`analysis/coordination.Isolement`, deja consommee par la lecture Tactique « isole ») ; la
+phase 3 avait deja pose la mesure de couverture (`coordination.Echanges`, deja consommee par
+la matrice « qui echange pour qui »). Ce lot ne fait que DECOUPER PAR SESSION ces deux mesures
+existantes, restreintes a un seul joueur et un seul groupe de matchs, dans le MEME service
+teammates que l'echange (`teammates_squad_isolement.go`, appele depuis `buildSquadEchange`).
+Aucune nouvelle requete SQL. Le rayon du radar entre par le MEME chemin que l'onglet Tactique
+(`ServiceRegistry.radarRangeFor` -> `TeammatesService.WithRadarRange`), jamais une seconde
+table.
+
+**Cote web** : le nuage a besoin d'un encodage PAR POINT (taille = morts examinees, opacite =
+echantillon faible sous 30) que le wrapper `<ScatterChart>` partage ne porte pas — il n'expose
+qu'un `symbolSize` uniforme par SERIE, pas par point. Plutot que d'etendre ce wrapper (et ses
+tests, partages avec les correlations Timeseries) pour un seul consommateur, `SquadIsolementNuageCard.tsx`
+compose `<ChartCard>` directement avec un `buildOption` custom — le meme pattern que
+`FirstBloodLanes`. Quadrants nommes repris A L'IDENTIQUE de la maquette
+echange-escouade.html (« proche et couvert », « loin, mais on vient », « proche, et pourtant
+seul », « loin et sans secours »), medianes du nuage tracees en lignes de reference
+(`markLine`), quadrant d'alerte teinte en `warning` (`markArea`).
+
+**Resultats observes** : Go build/vet/tests verts (`internal/service/...`,
+`internal/platform/duckdb`, `internal/api/...`, `contracttest`), `openapi-gen -check` a jour ;
+web typecheck/lint (0 erreur, 30 warnings — inchange) verts, vitest COMPLET 610 fichiers / 6450
+tests / 0 fail (608/6432 avant ce lot) ; `lint-no-hardcoded-colors` 0 violation. Deux commits
+`tactique(7B.1)` (service, requete, contrat) et `tactique(7B.2)` (carte Escouade).
+
+**Decouverte hors perimetre** : la lecture `MortsAvecContexte`/`QTacticalIsolement`
+(`platform/duckdb/tactical_repo_isolement.go`, posee en 7C) n'a AUCUN test `:memory:` dedie —
+seule sa consommation par ce lot (via mock du port) et par le service Tactique existant
+l'exercent. Notee dans `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`, non traitee (hors perimetre de
+7.7).
+
+**Conclusion / prochaine etape** : item 7.7 CLOS. Phase 7 (7A + 7B + 7C) integralement close.
+Prochaine etape du plan tactique : phase 8 (cloture) ou reprise d'un chantier en attente
+(`project_tactique_chantier.md` : onglet Tactique 8 phases, derive ECHANGE sur Escouade).
+
 ## [2026-09-07] Plan Tactique 7C — revue ronde 1 : la capture n'etait branchee nulle part, et le slot recycle mentait — Complete
 
 **Decision technique principale** — les deux P0 se ressemblent : dans les deux cas, le code
