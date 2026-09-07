@@ -231,9 +231,9 @@ type TacticalQuery struct {
 	Matchs ListeBlancheMatchs
 
 	// RetentionMois est la fenetre de retention des artefacts de rejeu, en mois (0 =
-	// illimitee). Elle sert UNIQUEMENT a calculer `TacticalMatch.DansRetention` : le
-	// lecteur ne filtre RIEN avec elle — un match hors fenetre reste dans l'univers, il
-	// est simplement compte a part.
+	// illimitee, comme pour la purge et la file). Elle sert UNIQUEMENT a calculer
+	// `TacticalMatch.EligibleALaCuisson` : le lecteur ne filtre RIEN avec elle — un match
+	// non eligible reste dans l'univers, il est simplement compte a part.
 	RetentionMois int
 
 	// Coequipiers restreint aux matchs ou TOUS ces xuids etaient dans MON equipe —
@@ -285,24 +285,16 @@ type TacticalMatch struct {
 	// part (correction G2, revue du 2026-09-06).
 	Mesure bool
 
-	// GameVariantName est le nom d'asset UGC de la variante jouee
-	// (`match_registry.game_variant_name`). Il voyage avec le match parce que certaines
-	// REGLES DU JEU en dependent et ne peuvent pas se lire ailleurs : la portee du radar,
-	// qui borne l'isolement, est declaree par variante dans `regulation.toml`. Vide quand
-	// le registre ne la nomme pas — la lecture qui en depend ECARTE alors le match et le
-	// dit, plutot que de deviner une regle.
-	GameVariantName string
-
-	// DansRetention dit que ce match est DANS la fenetre de retention des artefacts de
-	// rejeu (`app_settings.ReplayRetentionMonths`, 0 = illimitee -> vrai pour tous).
+	// EligibleALaCuisson dit que la FILE DE CUISSON des artefacts de rejeu reprendra ce
+	// match : film pas definitivement perdu, horodatage exploitable, et dans la fenetre de
+	// retention (`analysis.SQLEligibleALaCuisson`, le predicat de la file elle-meme).
 	//
-	// IL DISTINGUE DEUX ABSENCES QUI NE SE DISENT PAS PAREIL. Un match sans sidecar mais
-	// dans la fenetre sera cuit par la file au fil de l'eau — c'est un traitement en cours.
-	// Un match hors fenetre ne le sera jamais, et son film a de toute facon expire cote
-	// serveur — c'est une donnee non disponible. Le fait vient de la MEME definition que
-	// celle qu'applique la file de cuisson (`analysis.SQLDansFenetreRetention`), sans quoi
-	// la page promettrait une cuisson qui n'arrive pas.
-	DansRetention bool
+	// IL DISTINGUE DEUX ABSENCES QUI NE SE DISENT PAS PAREIL. Un match sans artefact mais
+	// eligible sera cuit au fil de l'eau — c'est un traitement en cours, il suffit
+	// d'attendre. Un match non eligible ne le sera jamais : son film a expire cote serveur,
+	// ou le registre ne sait pas le dater. C'est une donnee non disponible, et lui promettre
+	// une cuisson serait envoyer l'utilisateur attendre indefiniment.
+	EligibleALaCuisson bool
 
 	// Outcome porte OutcomeWin / OutcomeLoss / OutcomeDraw / OutcomeDNF, ou
 	// OutcomeUnknown quand le substrat ne le sait pas. Un resultat inconnu compte

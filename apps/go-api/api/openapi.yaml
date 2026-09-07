@@ -25710,7 +25710,7 @@ components:
         matchs_filtres:
           format: int64
           type: integer
-        matchs_hors_retention:
+        matchs_non_cuisables:
           format: int64
           type: integer
         matchs_retenus:

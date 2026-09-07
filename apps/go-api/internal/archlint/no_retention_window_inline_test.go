@@ -5,16 +5,19 @@
 //
 // Deux endroits repondent a « ce match est-il dans la fenetre de retention ? » : la FILE DE
 // CUISSON, qui decide ce qui sera cuit, et la LECTURE TACTIQUE, qui annonce a l'utilisateur
-// ce qui va l'etre (`matchs_en_attente` contre `matchs_hors_retention`). Les deux DOIVENT
+// ce qui va l'etre (`matchs_en_attente` contre `matchs_non_cuisables`). Les deux DOIVENT
 // dire la meme chose.
 //
 // Une seconde formulation ecrite a la main aurait fini par diverger — un `>` contre un
-// `>=`, un fuseau, un `AddDate` sur le mois courant — et la page aurait promis une cuisson
-// qui n'arrive jamais, ou declare definitivement perdu un match que la file reprend le
-// lendemain. C'est la pire forme d'erreur d'un tel message : il envoie attendre pour rien,
-// ou renoncer a tort.
+// `>=`, un fuseau, un `AddDate` sur le mois courant, ou UNE CONDITION OUBLIEE — et la page
+// aurait promis une cuisson qui n'arrive jamais, ou declare definitivement perdu un match
+// que la file reprend le lendemain. C'est la pire forme d'erreur d'un tel message : il
+// envoie attendre pour rien, ou renoncer a tort. Le cas s'est produit : la ventilation
+// comptait « en attente » des matchs dont le FILM EST PERDU, parce qu'elle ne reprenait que
+// la fenetre et pas le marqueur terminal.
 //
-// La regle vit dans `analysis.SQLDansFenetreRetention` et `analysis.BorneRetention`.
+// La regle vit dans `analysis.SQLEligibleALaCuisson`, `analysis.SQLDansFenetreRetention` et
+// `analysis.BorneRetention`.
 package archlint
 
 import (
@@ -29,23 +32,41 @@ import (
 // formulationsDeLaFenetre : les formes qui refont la borne a la main.
 //
 // `AddDate(0, -` capture le calcul de la borne quel que soit le nom de la variable de mois ;
-// ` >= ?` capture la comparaison SQL de l'horodatage a cette borne. Les deux ne sont
-// cherchees que dans les fichiers qui NOMMENT la retention (cf. motRetention), sans quoi
-// elles remonteraient des dizaines de fenetres sans rapport.
+// ` >= ?` capture la comparaison SQL de l'horodatage a cette borne ;
+// `backfill_completed, 0) & ?` capture le test du marqueur de film perdu, TROISIEME condition
+// de l'eligibilite (ajout 2026-09-07). Les trois ne sont cherchees que dans les fichiers qui
+// NOMMENT la retention (cf. motsRetention), sans quoi elles remonteraient des dizaines de
+// fenetres sans rapport.
 var formulationsDeLaFenetre = []string{
 	"AddDate(0, -",
 	" >= ?",
+	"backfill_completed, 0) & ?",
 }
 
 // paquetProprietaireDeLaFenetre : le seul endroit ou ces formes sont legitimes.
 const paquetProprietaireDeLaFenetre = "internal/analysis/sql_fragments.go"
 
-// motRetention BORNE le balayage aux fichiers qui parlent de retention.
+// motsRetention BORNE le balayage aux fichiers qui parlent de retention.
 //
 // SANS CETTE BORNE, LE RATCHET EST FAUX : `AddDate(0, -` est un calcul de date banal dans un
 // depot qui fenetre des saisons, des historiques et des snapshots. Seul un fichier qui NOMME
 // la retention peut en reecrire la regle.
-const motRetention = "etention"
+//
+// LES DEUX ORTHOGRAPHES SONT CHERCHEES : le depot ecrit ses commentaires en francais
+// accentue (« rétention ») et ses identifiants sans accent (`RetentionMonths`). Ne chercher
+// que la forme nue laissait passer un fichier entierement redige avec l'accent — le ratchet
+// aurait alors garde le vide sans le dire.
+var motsRetention = []string{"etention", "étention"}
+
+// nommeLaRetention dit si un fichier parle de retention, sous l'une ou l'autre orthographe.
+func nommeLaRetention(contenu string) bool {
+	for _, mot := range motsRetention {
+		if strings.Contains(contenu, mot) {
+			return true
+		}
+	}
+	return false
+}
 
 // TestUneSeuleDefinitionDeLaFenetreDeRetention — le ratchet.
 //
@@ -80,7 +101,7 @@ func TestUneSeuleDefinitionDeLaFenetreDeRetention(t *testing.T) {
 			return readErr
 		}
 		proprietaire := rel == paquetProprietaireDeLaFenetre
-		if !proprietaire && !strings.Contains(string(data), motRetention) {
+		if !proprietaire && !nommeLaRetention(string(data)) {
 			return nil
 		}
 		for i, line := range strings.Split(string(data), "\n") {

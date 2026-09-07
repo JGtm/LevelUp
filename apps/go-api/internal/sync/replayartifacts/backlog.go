@@ -130,11 +130,8 @@ func nomsDeCarte(ctx context.Context, metaDB *sql.DB, c candidatARattraper) []st
 // lireQueueRecente lit l'horizon au registre puis écarte, sur DISQUE, ceux qui ont déjà un
 // artefact. L'ordre du registre (du plus récent au plus vieux) est conservé.
 func lireQueueRecente(ctx context.Context, sharedDB *sql.DB, d Deps, deja map[string]bool) []candidatARattraper {
-	args := []any{bitFilmAbsent}
-	if borne, bornee := analysis.BorneRetention(d.RetentionMonths); bornee {
-		args = append(args, borne)
-	}
-	rows, err := sharedDB.QueryContext(ctx, requeteQueueRecente(d.RetentionMonths), append(args, BacklogHorizon)...)
+	sqlQueue, args := requeteQueueRecente(d.RetentionMonths)
+	rows, err := sharedDB.QueryContext(ctx, sqlQueue, append(args, BacklogHorizon)...)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: rejeu 2D — retard illisible", "err", err)
 		return nil
@@ -161,23 +158,30 @@ func lireQueueRecente(ctx context.Context, sharedDB *sql.DB, d Deps, deja map[st
 	return out
 }
 
-// requeteQueueRecente : les matchs les plus récents du registre que le marqueur terminal
-// n'écarte pas, dans la fenêtre de rétention (0 = illimitée).
+// requeteQueueRecente : les matchs ÉLIGIBLES à la cuisson, du plus récent au plus ancien.
+// Rend le SQL et ses paramètres, sauf la limite — l'appelant l'ajoute en dernier.
+//
+// LE PRÉDICAT D'ÉLIGIBILITÉ EST PARTAGÉ avec la lecture tactique
+// (`analysis.SQLEligibleALaCuisson`), qui annonce à l'utilisateur ce que cette file
+// reprendra : deux formulations, et la page promet une cuisson que rien ne fait.
+//
+// ⚠ LE `IS NOT NULL` DU FRAGMENT RESSERRE CETTE REQUÊTE quand la rétention est ILLIMITÉE
+// (2026-09-07, lot 7.10.3) : un match sans aucun horodatage n'entre plus dans la file. Il
+// n'y avait rien à en faire — `ORDER BY <canonique> DESC` ne sait pas le placer, et
+// `LIMIT 64` le laissait de toute façon au hasard du tri. Sous une fenêtre bornée, la
+// comparaison l'excluait déjà.
 //
 // ORDRE DESCENDANT, comme `killcollector.requeteBacklog` et pour la même raison : un film déjà
 // expiré ne se sauve pas, et les matchs récents sont à la fois les seuls récupérables et ceux
 // que l'utilisateur regarde. `start_time` brut trierait faux (règle 8) — d'où le COALESCE
 // canonique.
-func requeteQueueRecente(months int) string {
-	fenetre := ""
-	if _, bornee := analysis.BorneRetention(months); bornee {
-		fenetre = " AND " + analysis.SQLDansFenetreRetention("r")
-	}
+func requeteQueueRecente(months int) (string, []any) {
+	predicat, args := analysis.SQLEligibleALaCuisson("r", months, int64(bitFilmAbsent))
 	return `SELECT r.match_id, r.map_name, r.map_id
 		FROM match_registry r
-		WHERE COALESCE(r.backfill_completed, 0) & ? = 0` + fenetre + `
+		WHERE ` + predicat + `
 		ORDER BY ` + analysis.SQLStartTimeCanonical("r") + ` DESC, r.match_id
-		LIMIT ?`
+		LIMIT ?`, args
 }
 
 // artefactPresent : le prédicat le moins cher qui existe. Il répond à « ce match a-t-il UN

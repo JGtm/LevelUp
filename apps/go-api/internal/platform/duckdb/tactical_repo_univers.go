@@ -28,8 +28,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
-
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/sync/matchflags"
 )
 
 // QTacticalUnivers est le SELECT des matchs RETENUS : ceux du joueur, sur la
@@ -45,11 +45,11 @@ import (
 // `clausePerimetre` : sa longueur depend de l'appel, donc il ne peut pas vivre dans
 // une constante. Ses valeurs sont des PARAMETRES LIES, jamais des litteraux.
 //
-// LA VARIANTE VOYAGE AVEC LE MATCH (ajout 2026-09-06, phase 7) : la portee du radar, qui
-// borne la lecture « ou je meurs isole », est declaree PAR VARIANTE dans `regulation.toml`.
-// Elle ne peut se lire nulle part ailleurs — l'artefact, lui, ne connait pas les regles du
-// mode. `COALESCE(..., ”)` parce qu'un registre peut ne pas la nommer : la lecture ECARTE
-// alors le match et le compte, plutot que de deviner un rayon.
+// L'ELIGIBILITE A LA CUISSON VOYAGE AVEC LE MATCH (2026-09-07, lot 7.10) : la lecture
+// d'artefact ventile ses matchs non retenus entre « la file les reprendra » et « rien ne
+// les cuira », et cette question ne se resout qu'au registre — l'artefact, par definition,
+// n'existe pas pour eux. Le predicat est celui de la file elle-meme
+// (`analysis.SQLEligibleALaCuisson`).
 //
 // LE DRAPEAU `mesure` (ajout 2026-09-06, correction G2) dit si le journal des morts
 // de ce match est LISIBLE : au moins une ligne publiable dans
@@ -70,22 +70,21 @@ import (
 // call site par resolveCampaignExclusion, qui connait le titre du joueur (no-op
 // pour Infinite, qui n'a aucun match Campagne au registre).
 const QTacticalUnivers = `
-SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome, ` + colonneRetention + `,
-       COALESCE(mr.game_variant_name, '') AS game_variant_name,
+SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome, ` + colonneEligible + `,
        EXISTS (SELECT 1 FROM match_kill_events_latest e
                WHERE e.match_id = mr.match_id AND e.publishable) AS mesure
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
 WHERE mp.xuid = ? AND (? = '' OR mr.map_id = ?)` + campaignExclusionToken
 
-// colonneRetention : le jeton que `universSQL` remplace par le predicat de retention, ou
-// par TRUE quand la fenetre est illimitee.
+// colonneEligible : le jeton que `universSQL` remplace par le predicat d'eligibilite a la
+// cuisson (`analysis.SQLEligibleALaCuisson`).
 //
 // UN JETON PLUTOT QU'UN ASSEMBLAGE EN GO : le garde-rail structurel
 // campaign_exclusion_guard_test ne balaye QUE des constantes `Q<...>`, et QTacticalUnivers
 // doit rester une constante entiere pour rester sous son radar (meme raison que le token
 // campagne juste au-dessus).
-const colonneRetention = "%RETENTION%"
+const colonneEligible = "%ELIGIBLE_CUISSON%"
 
 // clauseAucunMatch : le predicat d'une liste blanche VIDE.
 //
@@ -135,22 +134,22 @@ func clausePerimetre(q domain.TacticalQuery) (string, []any) {
 // resolu pour le titre du joueur. `q.MapID` vide = toutes les cartes.
 func (r *TacticalRepo) universSQL(q domain.TacticalQuery) (string, []any) {
 	perim, perimArgs := clausePerimetre(q)
-	args := []any{domain.OutcomeUnknown}
 
-	// LA COLONNE DE RETENTION EST RESOLUE ICI, ET SON ARGUMENT SUIT SA PLACE DANS LE SELECT
-	// (juste apres le defaut d'outcome). Un `?` ajoute sans son argument au bon rang
+	// LA COLONNE D'ELIGIBILITE EST RESOLUE ICI, ET SES ARGUMENTS SUIVENT SA PLACE DANS LE
+	// SELECT (juste apres le defaut d'outcome). Un `?` ajoute sans son argument au bon rang
 	// decalerait silencieusement tous les suivants — le xuid deviendrait la carte.
 	//
-	// FENETRE ILLIMITEE = TRUE POUR TOUS : le reglage par defaut ne retire aucun match, et
-	// il ne doit pas non plus ajouter de parametre.
-	col := "TRUE AS dans_retention"
-	if borne, bornee := analysis.BorneRetention(q.RetentionMois); bornee {
-		col = analysis.SQLDansFenetreRetention("mr") + " AS dans_retention"
-		args = append(args, borne)
-	}
+	// LE PREDICAT VIENT DE `analysis.SQLEligibleALaCuisson`, LE MEME QUE LA FILE : c'est
+	// lui qui garantit que « en attente » veut dire « la file le reprendra », et non « il
+	// n'a pas d'artefact ». Il ne vaut jamais NULL (cf. sa doc), donc il se scanne dans un
+	// `bool` nu.
+	predicat, predArgs := analysis.SQLEligibleALaCuisson("mr", q.RetentionMois, int64(matchflags.MBitFilmAbsent))
+	args := make([]any, 0, 4+len(predArgs)+len(perimArgs))
+	args = append(args, domain.OutcomeUnknown)
+	args = append(args, predArgs...)
 	args = append(args, q.PlayerXUID, q.MapID, q.MapID)
 	args = append(args, perimArgs...)
-	sql := strings.Replace(QTacticalUnivers, colonneRetention, col, 1)
+	sql := strings.Replace(QTacticalUnivers, colonneEligible, "("+predicat+") AS eligible_cuisson", 1)
 	return resolveCampaignExclusion(sql, r.pdb.TitleSlug, "mr") + perim, args
 }
 
@@ -169,7 +168,7 @@ func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.
 	}
 	if err := scanRows(ctx, rows, "univers", func(sc rowScanner) error {
 		var m domain.TacticalMatch
-		if err := sc.Scan(&m.MatchID, &m.Outcome, &m.DansRetention, &m.GameVariantName, &m.Mesure); err != nil {
+		if err := sc.Scan(&m.MatchID, &m.Outcome, &m.EligibleALaCuisson, &m.Mesure); err != nil {
 			return err
 		}
 		univ.Matchs = append(univ.Matchs, m)

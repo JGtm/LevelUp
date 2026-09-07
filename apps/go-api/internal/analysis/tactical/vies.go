@@ -1,7 +1,6 @@
 package tactical
 
-// vies.go — CE QU'UNE VIE PRODUIT EN PLUS DE SON OCCUPATION : sa ROUTE de sortie de spawn,
-// et la CHRONOLOGIE DE POSITIONS du joueur.
+// vies.go — CE QU'UNE VIE PRODUIT EN PLUS DE SON OCCUPATION : sa ROUTE de sortie de spawn.
 //
 // # LE SIDECAR NE JUGE RIEN, ET IL NE PORTE PLUS DE CHRONOLOGIE
 //
