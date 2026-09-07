@@ -105,6 +105,62 @@ d'autres fichiers du paquet `internal/analysis/replay` (tests de recherche/golde
 plupart) et `internal/service/replayview/parity_test.go` depassent deja 500 L, sans lien avec ce
 lot. Commit(s) par chemins explicites sur `feat/v2-restes-r0`, push `origin`. Pas de fusion (lot
 suivant du plan restes : P/R1, decision utilisateur en attente sur le choix P vs R1-R3 sequentiel).
+## [2026-09-07] Q7 — un seul peintre de chaleur (`lib/replay/heatPaint.ts`) — Complete
+
+**Diagnostic (sur pieces).** Deux implementations : `features/match-replay/layers/
+heatmapLayer.ts` (461 L, `buildHeatmap` accumule des points bruts de trajectoire et les
+LISSE elle-meme — noyau gaussien, etalonnage p50/p95, peint a `k = devicePixelRatio` via son
+`CanvasView`) et `features/tactical/heatPaint.ts` (228 L, copie du 2026-09-07, `buildTacticalGrid`
+empaquette des cellules DEJA agregees/echelonnees par le serveur, peint a `k = 1`, geometrie
+sans Y-flip car le canvas tactique est cadre exactement sur les bornes du raster). COMMUN a
+l'octet pres : `heatRamp`/`parseHex`/`mixHex` (rampe 3 points, opacite 0,12->0,75), le calcul
+d'intensite [0,1] (`heatIntensity`/`tacticalIntensity`, meme formule), et le tracé canvas
+(fusion des cellules voisines de meme palier en un rectangle, bords alignes au pixel physique
+`k`). DIFFERENT : la fabrication (accumulation+lissage vs empaquetage) et la projection
+monde->canvas (Y invers cote rejeu via `projectTo`/`scaleOf` de `features/match-replay/model/
+replayView.ts`, pas cote tactique).
+
+**Decision technique.** Noyau unique dans `apps/web/src/lib/replay/heatPaint.ts` (498 L,
+fonctions <= 34 L). Le tracé commun est UNE fonction privee `drawHeatmap(ctx, source,
+geometry, style)` parametree par deux petites interfaces : `HeatSource` (lire une valeur en
+`(row, col)`, dense ou eparse) et `HeatGeometry` (situer les bords physiques d'une cellule) —
+c'est cette abstraction qui absorbe le Y-flip SANS que le noyau importe `CanvasView`
+(interdit : `lib/` ne doit jamais dependre de `features/`). `drawHeatmapLayer` et
+`drawTacticalHeatmap` restent deux fonctions EXPORTEES du noyau (pas des adaptateurs dans les
+features) : chacune construit son `HeatSource`/`HeatGeometry` puis delegue. Consequence :
+`features/match-replay/layers/heatmapLayer.ts` devient vide (tout son contenu etait deja
+generique) et disparait ; `useReplayStaticLayers.ts` devient le seul point qui calcule
+`{topLeft, step}` via `projectTo`/`scaleOf` de son `CanvasView` avant d'appeler le noyau.
+`GridFrame` (cell/nx/ny/minX/minY) est factorise et partage entre `HeatGrid` et
+`TacticalGrid` (`extends`). Un `tacticalIntensity` symetrique de `heatIntensity` est
+re-expose (aucun appelant de production ne l'utilise, mais il rend l'entree « cellules »
+testable sans canvas, meme regle que l'entree « points »).
+
+**Resultats observes.** Fichiers crees : `lib/replay/heatPaint.ts` (noyau), `heatPaint.test.ts`
+(migre de `heatmapLayer.test.ts` + snapshot leger d'intensites pour l'entree points),
+`heatPaint.guard.test.ts` (garde-rail des cinq noms). Fichiers supprimes : `features/
+match-replay/layers/heatmapLayer.ts` + son `.test.ts`, `features/tactical/heatPaint.ts`.
+Consommateurs migres (import seul, sauf mention) : `useReplayHeatmap.ts`,
+`useReplayStaticLayers.ts` (+ calcul `{topLeft, step}`), `useReplaySettings.ts`,
+`ReplayHeatmapLegend.tsx`, `ReplayHeatmapSection.tsx`, `TacticalPlanCard.tsx` (+ `view`
+simplifiee, `width`/`height`/`k` retires car inutilises par `drawTacticalHeatmap`),
+`tacticalView.logic.ts`. `tacticalView.logic.test.ts` : 4 tests ajoutes pour
+`tacticalGridFromRaster` (aucun n'existait avant ce lot) + 1 snapshot leger d'intensites.
+Garde-rail joue en mutation : copie de `drawTacticalHeatmap` dans `features/tactical/` ->
+rouge (`AssertionError: ... redefini hors du noyau canonique`) -> fichier retire -> vert.
+Gates : `npm run typecheck` (`tsc -b`) 0 erreur ; `npm run lint` 0 erreur, 29 warnings
+(baseline inchangee, aucun dans les fichiers touches) ; `npx vitest run --pool=forks` 653
+fichiers / 6979 tests verts, 2 fichiers / 18 tests skip (pre-existants) ; `lint:colors` 0
+violation ; `lint:fields` 0 violation (220 labels scannes) ; `crossFeatureBoundary.guard`
+vert (inchange par ce lot — aucun import cross-feature nouveau) ; `heatPaint.guard.test.ts`
+vert (6 tests).
+
+**Conclusion / prochaine etape.** S.2.1/S.2.2 du plan Tactique et Q7 de l'orchestration
+coches. Une decouverte consignee sans traitement : `heatmapLayer.guard.test.ts` (reste en
+place, il teste `ReplayHeatmapLegend.tsx`) documente encore un fichier disparu dans son
+en-tete — toilettage hors perimetre. Commit(s) sur `feat/peintre-chaleur-unique` (issue de
+`feat/v75`), push demande a l'utilisateur avant fusion — ne PAS fusionner dans `feat/v75`
+sans validation.
 
 ## [2026-09-07] Fusion `origin/feat/v75` -> `feat/tactique` (worktree `LevelUp-wt-tactique`) — Complete
 
