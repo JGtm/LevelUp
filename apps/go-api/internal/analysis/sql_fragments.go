@@ -80,20 +80,61 @@ func SQLStartTimeCanonical(alias string) string {
 // SQLDansFenetreRetention rend le predicat « ce match est DANS la fenetre de retention des
 // artefacts de rejeu », a comparer a la borne rendue par [BorneRetention].
 //
-// # UNE SEULE DEFINITION DE « DANS LA FENETRE »
+// IL NE SUFFIT PAS A DIRE QU'UN MATCH SERA CUIT : la file en exige davantage (cf.
+// [SQLEligibleALaCuisson]). Il ne s'emploie seul que pour repondre a « ce match est-il
+// encore dans la fenetre », jamais a « la file le reprendra ».
 //
-// La file de cuisson (`sync/replayartifacts.requeteQueueRecente`) et la lecture tactique
-// s'en servent toutes les deux, et elles DOIVENT dire la meme chose : la premiere decide ce
-// qui sera cuit, la seconde annonce a l'utilisateur ce qui va l'etre. Deux formulations
-// auraient fini par diverger d'un `>` a un `>=` ou d'un fuseau, et la page aurait promis
-// une cuisson qui n'arrive jamais — ou tu l'aurait dite impossible alors qu'elle est en
-// file. Le garde-rail `internal/archlint/no_retention_window_inline_test.go` interdit toute
-// autre formulation.
-//
-// L'horodatage passe par le fragment canonique (regle n°8) : `start_time` brut trierait et
-// filtrerait faux.
+// L'horodatage passe par le fragment canonique (regle n 8) : `start_time` brut trierait et
+// filtrerait faux. ATTENTION, LE PREDICAT PEUT VALOIR NULL : les deux horodatages du
+// registre sont nullables, et `NULL >= x` vaut NULL. Ne jamais le scanner seul dans un
+// `bool` — [SQLEligibleALaCuisson] le protege par un `IS NOT NULL` en amont du AND.
 func SQLDansFenetreRetention(alias string) string {
 	return SQLStartTimeCanonical(alias) + " >= ?"
+}
+
+// SQLEligibleALaCuisson rend le predicat « la file de cuisson des artefacts de rejeu
+// reprendra ce match », avec ses parametres DANS L'ORDRE.
+//
+// # UNE SEULE DEFINITION, PARCE QUE DEUX PROMESSES CONTRADICTOIRES SONT PIRES QU'AUCUNE
+//
+// Deux composants repondent a cette question : la FILE
+// (`sync/replayartifacts.requeteQueueRecente`), qui decide ce qu'elle cuit, et la LECTURE
+// TACTIQUE, qui annonce a l'utilisateur ce qui va l'etre (`matchs_en_attente` contre
+// `matchs_non_cuisables`). Si la seconde est plus large que la premiere, la page promet une
+// cuisson que rien ne fera — et l'utilisateur attend indefiniment un ecran qui ne se
+// remplira pas. C'est arrive : la premiere version comptait « en attente » les matchs dont
+// le FILM EST DEFINITIVEMENT PERDU. Le garde-rail
+// `internal/archlint/no_retention_window_inline_test.go` interdit toute autre formulation.
+//
+// # LES TROIS CONDITIONS
+//
+//	FILM PAS PERDU      `backfill_completed & bitFilmAbsent = 0`. Le marqueur est TERMINAL :
+//	                    l'etape 1.57 le pose quand le film rend 404 ou 0 chunk, et il vaut
+//	                    pour ~29 % du parc. Un match marque ne sera jamais cuit.
+//	DATABLE             les deux horodatages du registre sont nullables. Un match sans date
+//	                    ne peut ni etre ordonne par recence ni etre situe dans la fenetre :
+//	                    la file ne le prend pas.
+//	DANS LA FENETRE     seulement si la retention est bornee (`mois > 0`).
+//
+// # LE PREDICAT NE VAUT JAMAIS NULL, ET C'EST DELIBERE
+//
+// `IS NOT NULL` precede la comparaison de fenetre : en logique ternaire SQL,
+// `FALSE AND NULL` vaut FALSE. Le resultat se scanne donc sans risque dans un `bool` nu.
+// Sans cet ordre, un match a horodatages NULL faisait echouer le scan
+// (`converting NULL to bool`) et rendait 500 sur TOUTE la lecture de la carte.
+func SQLEligibleALaCuisson(alias string, mois int, bitFilmAbsent int64) (string, []any) {
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+	sql := "COALESCE(" + prefix + "backfill_completed, 0) & ? = 0" +
+		" AND " + SQLStartTimeCanonical(alias) + " IS NOT NULL"
+	args := []any{bitFilmAbsent}
+	if borne, bornee := BorneRetention(mois); bornee {
+		sql += " AND " + SQLDansFenetreRetention(alias)
+		args = append(args, borne)
+	}
+	return sql, args
 }
 
 // BorneRetention rend l'instant a partir duquel un match est DANS la fenetre, et `true` si

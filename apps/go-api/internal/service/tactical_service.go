@@ -63,10 +63,13 @@ type TacticalService struct {
 	rasters port.TacticalRasterStore
 	// callouts nomme les grappes de reapparition. Nil = grappes MUETTES, jamais d'erreur.
 	callouts port.TacticalCalloutsStore
-	// retentionMois rend la fenetre de retention des artefacts de rejeu, en mois (0 =
-	// illimitee). MEME SOURCE que la purge et que la file de cuisson : `app_settings.json`.
-	// Nil = la ventilation des matchs non retenus n'est pas publiee (voir
-	// `ventilerNonRetenus`) — on ne devine pas une fenetre.
+	// retentionMois rend la fenetre de retention des artefacts de rejeu, en mois. MEME
+	// SOURCE ET MEME CONVENTION que la purge et que la file (0 = ILLIMITEE).
+	//
+	// NIL VAUT 0, DONC ILLIMITEE — pas « pas de ventilation », qui reste toujours publiee.
+	// Sans fenetre, aucun match n'est ecarte POUR SON AGE : seuls le marqueur de film perdu
+	// et l'absence d'horodatage le rendent non cuisable. C'est la degradation sure — ne pas
+	// connaitre la fenetre ne doit pas faire dire « jamais cuit » a un match cuisable.
 	retentionMois func() int
 	logger        *slog.Logger
 }

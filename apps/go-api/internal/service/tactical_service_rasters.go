@@ -82,9 +82,9 @@ func (s *tacticalRasterStore) Charger(_ context.Context, matchID string) (*domai
 
 // ─── LA LECTURE ────────────────────────────────────────────────────────────────
 
-// rasterArtefact orchestre les TROIS lectures qui viennent des sidecars — « ou je passe
-// mon temps » et « par ou je sors du spawn » — plus les GRAPPES de
-// reapparition, qui accompagnent les trois.
+// rasterArtefact orchestre les DEUX lectures qui viennent des sidecars — « ou je passe mon
+// temps » et « par ou je sors du spawn » — plus les GRAPPES de reapparition, qui
+// accompagnent les deux.
 //
 // ELLE NE PASSE PAS PAR `KillPositions` (contrairement aux lectures de placement) : ses
 // valeurs ne viennent pas de la base, seulement son univers. Scanner les positions de kill
@@ -145,14 +145,14 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 		"player", s.xuid, "map_id", out.MapID, "question", out.Question, "qui", out.Qui,
 		"spawn", scope.Spawn, "grappes", len(out.Grappes),
 		"matchs_filtres", out.MatchsFiltres, "matchs_retenus", out.MatchsRetenus,
-		"matchs_en_attente", out.MatchsEnAttente, "matchs_hors_retention", out.MatchsHorsRetention,
+		"matchs_en_attente", out.MatchsEnAttente, "matchs_non_cuisables", out.MatchsNonCuisables,
 		"coequipiers", len(scope.Coequipiers), "cellules", len(out.Cellules),
 		"duration", time.Since(debut))
 	return nil
 }
 
-// ventilerNonRetenus repartit les matchs SANS sidecar exploitable entre « la cuisson les
-// reprendra » et « ils ne seront jamais cuits ».
+// ventilerNonRetenus repartit les matchs SANS sidecar exploitable entre « la file les
+// reprendra » et « rien ne les cuira ».
 //
 // # POURQUOI DEUX COMPTES ET NON UN SEUL
 //
@@ -161,20 +161,21 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 // et celui qui regarde ses matchs d'il y a deux ans, dont les films ont expire cote serveur
 // et ne seront jamais cuits. Le premier doit attendre, le second n'a rien a attendre.
 //
-// LE PREDICAT VIENT DE LA MEME DEFINITION QUE LA FILE DE CUISSON
-// (`analysis.SQLDansFenetreRetention`, applique par le lecteur) : annoncer une cuisson que
-// la file ne fera pas serait pire que se taire.
+// LE PREDICAT EST CELUI DE LA FILE ELLE-MEME (`analysis.SQLEligibleALaCuisson`, applique
+// par le lecteur) : film pas perdu, horodatage exploitable, dans la fenetre. Annoncer une
+// cuisson que la file ne fera pas est pire que se taire — l'utilisateur attend un ecran qui
+// ne se remplira jamais.
 func ventilerNonRetenus(out *domain.TacticalRaster, univers domain.TacticalUnivers,
 	sidecars map[string]*domain.TacticalRasterSidecar) {
 	for _, m := range univers.Matchs {
 		if sidecars[m.MatchID] != nil {
 			continue
 		}
-		if m.DansRetention {
+		if m.EligibleALaCuisson {
 			out.MatchsEnAttente++
 			continue
 		}
-		out.MatchsHorsRetention++
+		out.MatchsNonCuisables++
 	}
 }
 
@@ -190,8 +191,8 @@ func (s *TacticalService) zonesDeLaCarte(ctx context.Context, mapID string) []do
 // chargerSidecars lit UNE FOIS les sidecars de l'univers et rend, avec eux, le total des
 // points ecartes a la cuisson.
 //
-// Les trois lectures d'artefact et les grappes s'en servent : les charger par lecture aurait
-// relu les memes fichiers jusqu'a quatre fois par requete.
+// Les deux lectures d'artefact et les grappes s'en servent : les charger par lecture aurait
+// relu les memes fichiers trois fois par requete.
 // sidecarsDeLUnivers rend les sidecars de l'univers, en REUTILISANT ceux qu'une resolution
 // de filtre de grappe a deja lus (revue P2).
 //

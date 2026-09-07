@@ -58,7 +58,7 @@ func validerLecture(carte, question, qui string, coequipiers []string) error {
 }
 
 // requeteDuScope traduit le perimetre de la page en demande au lecteur. UNE SEULE
-// traduction pour les trois lectures : la liste blanche est TOUJOURS posee (meme
+// traduction pour toutes les lectures : la liste blanche est TOUJOURS posee (meme
 // vide — ce qui vaut « aucun match »), et la composition est nettoyee.
 func requeteDuScope(xuid, carte string, scope domain.TacticalScope) domain.TacticalQuery {
 	return domain.TacticalQuery{

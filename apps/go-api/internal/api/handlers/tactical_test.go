@@ -434,7 +434,7 @@ func TestTacticalHandler_GrappeInconnue(t *testing.T) {
 func TestTacticalHandler_GrappesEtVentilationTraversent(t *testing.T) {
 	svc := &fakeTacticalSvc{raster: domain.TacticalRaster{
 		MapID: "streets", Question: domain.TacticalQuestionRoutes, Qui: domain.TacticalQuiMoi,
-		MatchsFiltres: 5, MatchsRetenus: 2, MatchsEnAttente: 1, MatchsHorsRetention: 2,
+		MatchsFiltres: 5, MatchsRetenus: 2, MatchsEnAttente: 1, MatchsNonCuisables: 2,
 		Grappes: []domain.TacticalGrappe{{
 			ID: "s+1+1+c03", NomFR: "Base rouge", NomEN: "Red base", X: 1, Y: 1, Matchs: 4,
 		}},
@@ -458,8 +458,8 @@ func TestTacticalHandler_GrappesEtVentilationTraversent(t *testing.T) {
 	// LES DEUX ABSENCES TRAVERSENT SEPAREMENT : c'est ce qui permet a l'ecran de distinguer
 	// « traitement en cours » de « donnees non disponibles ». Les confondre en un seul
 	// nombre remettrait le meme message aux deux situations.
-	if got.MatchsEnAttente != 1 || got.MatchsHorsRetention != 2 {
-		t.Fatalf("en_attente=%d hors_retention=%d, attendu 1 et 2",
-			got.MatchsEnAttente, got.MatchsHorsRetention)
+	if got.MatchsEnAttente != 1 || got.MatchsNonCuisables != 2 {
+		t.Fatalf("en_attente=%d non_cuisables=%d, attendu 1 et 2",
+			got.MatchsEnAttente, got.MatchsNonCuisables)
 	}
 }

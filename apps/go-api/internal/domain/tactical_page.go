@@ -114,30 +114,39 @@ type TacticalRaster struct {
 	// d'artefact : ce sont eux que le filtre `spawn` designe.
 	Grappes []TacticalGrappe `json:"grappes,omitempty"`
 
-	// MatchsEnAttente et MatchsHorsRetention VENTILENT les matchs FILTRES qui ne sont pas
-	// RETENUS, pour les lectures d'artefact (« ou je passe mon temps », « par ou je sors
-	// du spawn », grappes de reapparition).
+	// MatchsEnAttente et MatchsNonCuisables VENTILENT les matchs FILTRES qui ne sont pas
+	// RETENUS. ILS NE SONT REMPLIS QUE PAR LES LECTURES D'ARTEFACT (« ou je passe mon
+	// temps », « par ou je sors du spawn », grappes) : ce sont les seules qui attendent un
+	// fichier. Les lectures de base (« ou je meurs », « ou je tue », « ou je gagne ») lisent
+	// le journal des morts et n'attendent rien — elles laissent les deux compteurs a zero.
 	//
 	// LES DEUX ABSENCES NE SE DISENT PAS PAREIL, et c'est tout l'objet de la ventilation :
 	//
-	//	EN ATTENTE          le match est DANS la fenetre de retention des artefacts de
-	//	                    rejeu, mais son artefact n'existe pas encore. La cuisson au fil
-	//	                    de l'eau le reprendra : c'est un TRAITEMENT EN COURS.
-	//	HORS RETENTION      le match est plus ancien que la fenetre. Il ne sera jamais cuit,
-	//	                    et son film est de toute facon expire cote serveur : c'est une
-	//	                    DONNEE NON DISPONIBLE, definitivement.
+	//	EN ATTENTE          la FILE DE CUISSON reprendra ce match — film pas
+	//	                    definitivement perdu, horodatage exploitable, dans la fenetre de
+	//	                    retention. C'est un TRAITEMENT EN COURS : il suffit d'attendre.
+	//	NON CUISABLE        rien ne le cuira jamais : film expire cote serveur (marqueur
+	//	                    terminal), registre incapable de le dater, ou plus ancien que la
+	//	                    fenetre. C'est une DONNEE NON DISPONIBLE.
 	//
-	// Sans elles, l'ecran ne pouvait dire que « N mesures sur M » — et un utilisateur qui
-	// vient de jouer voyait le meme message qu'un utilisateur qui regarde ses matchs d'il y
-	// a deux ans, alors que l'un doit attendre quelques minutes et l'autre rien du tout.
-	// Decision UI (phase 5) : le bloc du graphe distingue « donnees non disponibles » de
-	// « traitement en cours ».
+	// LE PREDICAT EST CELUI DE LA FILE ELLE-MEME (`analysis.SQLEligibleALaCuisson`). Une
+	// version anterieure comptait « en attente » tout match dans la fenetre, y compris ceux
+	// dont le FILM EST PERDU : la page envoyait alors attendre indefiniment une cuisson que
+	// rien n'allait faire. Une promesse plus large que ce que la file tient est pire que
+	// pas de promesse du tout.
 	//
-	// L'INVARIANT EST TESTE : MatchsFiltres = MatchsRetenus + MatchsEnAttente +
-	// MatchsHorsRetention. Une ventilation qui ne somme pas au total cache un troisieme
-	// cas qu'on n'a pas nomme.
-	MatchsEnAttente     int `json:"matchs_en_attente,omitempty"`
-	MatchsHorsRetention int `json:"matchs_hors_retention,omitempty"`
+	// `BacklogHorizon` (64 matchs par cycle) NE FIGURE PAS dans le predicat : c'est une
+	// borne de DEBIT, pas d'eligibilite. Un match eligible au-dela de l'horizon sera repris
+	// a un cycle suivant — il est bien « en attente », simplement pas de ce cycle-ci.
+	//
+	// Decision UI (phase 5) : le bloc du graphe distingue « traitement en cours » de
+	// « donnees non disponibles ».
+	//
+	// L'INVARIANT EST TESTE, ET IL NE VAUT QUE POUR LES LECTURES D'ARTEFACT :
+	// MatchsFiltres = MatchsRetenus + MatchsEnAttente + MatchsNonCuisables. Une ventilation
+	// qui ne somme pas au total cache un troisieme cas qu'on n'a pas nomme.
+	MatchsEnAttente    int `json:"matchs_en_attente,omitempty"`
+	MatchsNonCuisables int `json:"matchs_non_cuisables,omitempty"`
 
 	// Echange est le taux de morts vengees de mon equipe SUR CETTE CARTE. nil quand
 	// le titre ne sait pas lire la source des morts (capability `film.kill_source`

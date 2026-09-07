@@ -28,6 +28,7 @@ package wire
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -349,7 +350,14 @@ func (r *ServiceRegistry) retentionMoisRejeu() int {
 		return 0
 	}
 	s, err := r.settingsStore.Load()
-	if err != nil || s == nil {
+	if err != nil {
+		// LOGUE AVANT DE DEGRADER (regle n 3) : sans cette ligne, un app_settings.json
+		// illisible faisait silencieusement passer la page en fenetre illimitee — donc
+		// « tout est en attente » —, et rien n'aurait relie l'anomalie a sa cause.
+		slog.Warn("tactique: fenetre de retention illisible, repli sur illimitee", "err", err)
+		return 0
+	}
+	if s == nil {
 		return 0
 	}
 	return s.ReplayRetentionMonths

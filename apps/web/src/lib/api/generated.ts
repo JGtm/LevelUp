@@ -11676,7 +11676,7 @@ export interface components {
             /** Format: int64 */
             matchs_filtres: number;
             /** Format: int64 */
-            matchs_hors_retention?: number;
+            matchs_non_cuisables?: number;
             /** Format: int64 */
             matchs_retenus: number;
             /** Format: int64 */
