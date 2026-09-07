@@ -109,3 +109,14 @@ résiduels à instruire (en cours) ; nettoyage OK (fait).
 - CI à surveiller sur `feat/v75` après ce push : `gh run list --branch feat/v75 --workflow CI --limit 2`.
 - Reste : Notion à porter de 41 à 43 (superviseur), corpus témoin à rejouer à chaque bump de schéma.
 - Reste : découpe par manche des compteurs par joueur (`51ebbc0f`, 63 assistances pour 5, au registre).
+
+## 10. Mise à jour (intégration déportée complète — sept lots)
+
+- Worktree déporté `LevelUp-wt-v2-integ`, branche `feat/v2-integ` : sept merges faits, gates
+  verts après chacun — manches `90ca609a0` (44), durées `6af8f6db8` (45), corpus `0d862af0a`,
+  web-vies `7cdb0e56f`, vies-anonymes `eb7a3dfbd` (47), pont-muet `ee4084c14` (48), drapeaux
+  `1b32fc775` (46). SchemaVersion final 48. Poussé sur `origin/feat/v2-integ`.
+- Reste : le principal `feat/v75` toujours bloqué (§1) — dès levée, `git merge --ff-only
+  feat/v2-integ` dans `feat/v75`, push, CI.
+- Deux flakes Windows consignés au `REGISTRE_REPORTS.md` (charge parallèle, hors périmètre v2) :
+  `mapcatalog` et `internal/api/handlers.TestStartImport_HappyPathReturns202WithJobID`.
