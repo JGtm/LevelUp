@@ -366,3 +366,53 @@ func TestPasDeSentinelleBruteHorsFilmproc(t *testing.T) {
 			sentinelleBrute, sentinellePaquetCanonique)
 	}
 }
+
+// TestBoucleDeCuissonDuGateEstProtegee — CORPUS-R1 C5 (2026-09-07).
+//
+// cmd/replay-corpus-gate boucle sur CHAQUE temoin d'un manifeste et declenche, PAR temoin, une
+// a deux cuissons (bakeTemoin, cmd/replay-corpus-gate/bake.go) — le MEME motif que les quatre
+// sinistres RAM que ce fichier garde, sous une forme differente : bakeTemoin n'appelle JAMAIS
+// BuildMatch/BuildBytes/BuildFromFilm directement ([filmBuildCalls] ci-dessus ne le voit donc
+// jamais) — il compile et invoque cmd/replay-build en SOUS-PROCESSUS, precisement pour que la
+// cuisson tourne sous le code d'une revision ARBITRAIRE (base.go). Le sous-processus arme sa
+// PROPRE sentinelle (deja verifie par [TestPointsDEntreeDeDecodageArmentUneSentinelle] sur
+// cmd/replay-build/main.go — inutile et FAUX de le redemander ici : bake.go n'ouvre aucune
+// base et ne decode rien lui-meme). La protection COTE APPELANT est un verrou PARTAGE pris
+// AUTOUR de chaque cuisson (jamais une boucle qui les enchainerait sans lui) et une priorite
+// CPU abaissee — ce test verifie ces deux garanties SUR PIECES, dans bake.go.
+func TestBoucleDeCuissonDuGateEstProtegee(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a echoue")
+	}
+	apiRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
+	bakePath := filepath.Join(apiRoot, "cmd", "replay-corpus-gate", "bake.go")
+	data, err := os.ReadFile(bakePath) //nolint:gosec // chemin fixe, interne au ratchet
+	if err != nil {
+		t.Fatalf("lecture de %s: %v", bakePath, err)
+	}
+	src := string(data)
+
+	idxLock := strings.Index(src, "filmproc.AcquireSolo")
+	idxCuisson := strings.Index(src, "cuireUneCarte(")
+	if idxLock == -1 {
+		t.Fatal("bake.go n'appelle plus filmproc.AcquireSolo(Wait) — le verrou partage a disparu " +
+			"(CORPUS-R1 C5/C10) : la boucle de cuisson du gate n'est plus protegee contre un " +
+			"decodage concurrent (worker, post-sync, backfill)")
+	}
+	if idxCuisson == -1 {
+		t.Fatal("bake.go n'appelle plus cuireUneCarte( — ce ratchet ne verifie plus rien " +
+			"(reecrire ou retirer TestBoucleDeCuissonDuGateEstProtegee)")
+	}
+	if idxLock > idxCuisson {
+		t.Error("bake.go: le verrou partage (filmproc.AcquireSolo) est pris APRES le premier " +
+			"appel a cuireUneCarte — la cuisson n'est plus protegee contre un decodage " +
+			"concurrent (CORPUS-R1 C5)")
+	}
+
+	if !strings.Contains(src, "LowerOwnPriority(") {
+		t.Error("bake.go n'appelle plus filmproc.LowerOwnPriority — la cuisson du gate " +
+			"reprendrait la priorite CPU normale, cf. les sinistres RAM de aout 2026 " +
+			"(CORPUS-R1 C5)")
+	}
+}

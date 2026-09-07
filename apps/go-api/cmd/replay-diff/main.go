@@ -21,7 +21,10 @@
 // Deux artefacts du meme match a deux epoques ne sont JAMAIS egaux (bornes affinees, ordre des
 // tableaux, champs neufs). Comparer les octets ne dirait rien. L'outil reduit donc chaque
 // artefact a une EMPREINTE : un jeu de mesures nommees (`objectifs/par-stat/flag_captures` = 3,
-// `joueur/2533.../kills` = 12, `pistes/points` = 41 260...), et compare les mesures deux a deux.
+// `joueur/2533.../kills` = 12, `pistes/points` = 41 260...), et compare les mesures deux a deux —
+// y compris la SOMME DES DUREES de chaque calque a intervalles [t0,t1] (ports, vies de vehicule,
+// tractions de grappin...) : un rognage de bordure qui garde le NOMBRE d'elements intact reste
+// invisible au seul comptage, jamais a la somme des durees.
 //
 // # LA TOLERANCE A L'EVOLUTION DU SCHEMA
 //
@@ -29,6 +32,14 @@
 // regression. L'inverse — presente dans l'ancien, absente ou plus basse dans le nouveau — est une
 // PERTE, et c'est le seul signal que ce balayage cherche. Une valeur textuelle differente est un
 // CHANGEMENT, a instruire au cas par cas.
+//
+// # OU VIT LA LOGIQUE
+//
+// Empreinte, Comparer et le rendu vivent dans `internal/replaydiff` — un `package main` ne
+// s'importe pas, et `cmd/replay-corpus-gate` (le gate de non-regression sur corpus temoin,
+// docs/COMMANDS.md) a besoin de la MEME comparaison sans dupliquer une ligne (CLAUDE.md n°6).
+// Ce fichier n'est plus que l'enveloppe CLI historique : memes flags, meme sortie, zero
+// changement de comportement.
 //
 // Usage :
 //
@@ -43,6 +54,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+
+	"levelup/go-api/internal/replaydiff"
 )
 
 func main() {
@@ -65,24 +78,24 @@ func main() {
 
 // executer lit les deux artefacts, calcule leurs empreintes, les compare et rend le rapport.
 func executer(ancien, nouveau, sortieJSON string, tout, quiet bool) error {
-	docA, err := lireDocument(ancien)
+	docA, err := replaydiff.LireDocument(ancien)
 	if err != nil {
 		return fmt.Errorf("artefact ancien : %w", err)
 	}
-	docB, err := lireDocument(nouveau)
+	docB, err := replaydiff.LireDocument(nouveau)
 	if err != nil {
 		return fmt.Errorf("artefact nouveau : %w", err)
 	}
-	empA := Empreindre(docA)
-	empB := Empreindre(docB)
-	rap := Comparer(empA, empB)
+	empA := replaydiff.Empreindre(docA)
+	empB := replaydiff.Empreindre(docB)
+	rap := replaydiff.Comparer(empA, empB)
 	rap.FichierAncien = ancien
 	rap.FichierNouveau = nouveau
 	if !quiet {
-		afficherTableau(os.Stdout, rap, tout)
+		replaydiff.AfficherTableau(os.Stdout, rap, tout)
 	}
 	if sortieJSON != "" {
-		if err := ecrireJSON(sortieJSON, rap); err != nil {
+		if err := replaydiff.EcrireJSON(sortieJSON, rap); err != nil {
 			return err
 		}
 	}

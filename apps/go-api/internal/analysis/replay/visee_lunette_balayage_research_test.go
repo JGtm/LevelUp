@@ -228,7 +228,7 @@ func adsBalayeFilm(dir string, f adsMedailleFilm, b *adsSweepBilan) {
 		return
 	}
 	lives := buildLifeSpans(indexBySlot(pos))
-	off, _ := bestDeathOffset(lives, deaths)
+	off, _, _ := bestDeathOffset(lives, deaths)
 	if nameLivesByDeaths(lives, deaths, off) == 0 {
 		b.rejetPont++
 		return

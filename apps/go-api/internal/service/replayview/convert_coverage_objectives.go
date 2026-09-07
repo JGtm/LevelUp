@@ -21,6 +21,7 @@ func toFlagCarriesCoverage(v replay.FlagCarriesCoverage) replaydoc.FlagCarriesCo
 		NoBridge:              v.NoBridge,
 		NoTrack:               v.NoTrack,
 		OutOfWindow:           v.OutOfWindow,
+		AmbiguousSlot:         v.AmbiguousSlot,
 		MarkerObserved:        v.MarkerObserved,
 		MarkerConfirmed:       v.MarkerConfirmed,
 		OpenObserved:          v.OpenObserved,
@@ -38,6 +39,10 @@ func toFlagCarriesCoverage(v replay.FlagCarriesCoverage) replaydoc.FlagCarriesCo
 		ObjectLives:           v.ObjectLives,
 		ClosedByObject:        v.ClosedByObject,
 		DropsRepositioned:     v.DropsRepositioned,
+		AssignedByPlay:        v.AssignedByPlay,
+		DropsWithheld:         v.DropsWithheld,
+		OwnFlagRefused:        v.OwnFlagRefused,
+		Unresolved:            v.Unresolved,
 	}
 }
 
@@ -145,6 +150,9 @@ func toZonesCoverage(v replay.ZonesCoverage) replaydoc.ZonesCoverage {
 		Unpaired:      v.Unpaired,
 		Captures:      v.Captures,
 		Attributed:    v.Attributed,
+		NoPosition:    v.NoPosition,
+		Outside:       v.Outside,
+		AmbiguousZone: v.AmbiguousZone,
 		OwnerChecked:  v.OwnerChecked,
 		OwnerAgreed:   v.OwnerAgreed,
 		OwnerUnpaired: v.OwnerUnpaired,

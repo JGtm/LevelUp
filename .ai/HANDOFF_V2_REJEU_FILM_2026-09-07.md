@@ -23,6 +23,15 @@
   de contrôle ; goldens régénérés (`-run GoldenAssembly -update`) ; `openapi.yaml`/`generated.ts` régénérés par les cibles ;
   `.ai/baselines/` JAMAIS régénéré ; tout autre `.go` en conflit → abort, faire aligner la branche par son exécuteur.
 
+- **Mise à jour (07/09, fin de matinée)** : intégration integ TERMINÉE, sept lots fusionnés.
+  Hashs réels finaux : manches `90ca609a0` (44), durées `6af8f6db8` (45), corpus `0d862af0a`,
+  web-vies `7cdb0e56f`, vies-anonymes `eb7a3dfbd` (47), pont-muet `ee4084c14` (48, aligné depuis
+  `273e94f11`), drapeaux `1b32fc775` (46, aligné depuis `3f0f81ed8` — les hashs `9ed9dea3a` et
+  `b4c0d58c2` ci-dessus sont périmés, remplacés après alignement de chaque branche sur l'état
+  courant de `feat/v2-integ`). HEAD `feat/v2-integ` = `1b32fc775`, SchemaVersion 48, gates
+  verts, poussé sur `origin`. Intégration integ terminée, reste le ff (fast-forward de
+  `feat/v2-integ` dans `feat/v75` dès que le blocage du principal est levé).
+
 ## 2. Séquence de fin (dans l'ordre)
 
 1. Attendre PONT-R2, VIES-ALIGN, W1 drapeaux. Corrections éventuelles par les exécuteurs (Sonnet pour ronde 2).

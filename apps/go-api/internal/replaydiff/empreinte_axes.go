@@ -1,4 +1,4 @@
-package main
+package replaydiff
 
 // empreinte_axes.go — LA PASSE SPECIALISEE : ce que la taille d'un calque ne dit pas.
 //
@@ -24,32 +24,44 @@ var champsFamille = map[string]bool{
 	"chassis": true, "slotKind": true, "source": true, "oracle": true, "cause": true,
 }
 
+// Noms d'axe REPETES par plusieurs calques dans axesParCle : nommes une fois (goconst), pas
+// pour un autre besoin — un calque non liste ici garde son propre nom pour axe (cf. axeDe).
+const (
+	axeHorloges       = "horloges"
+	axeCarte          = "carte"
+	axePorts          = "ports"
+	axeObjetsObjectif = "objets-objectif"
+	axeEquipement     = "equipement"
+	axeArmes          = "armes"
+	axeGrenades       = "grenades"
+)
+
 // axesParCle donne l'axe de rapport de chaque calque connu. Un calque INCONNU prend son propre
 // nom pour axe : c'est ce qui fait entrer un calque neuf dans le rapport sans qu'on l'y inscrive.
 var axesParCle = map[string]string{
 	"schemaVersion": "entete", "matchId": "entete", "titleSlug": "entete",
-	"frameCount": "horloges", "frameIntervalMs": "horloges", "durationMs": "horloges",
-	"originMs": "horloges", "t0FilmMs": "horloges",
-	"bounds": "carte", "geometry": "carte", "geometryBounds": "carte",
-	"structure": "carte", "structureBounds": "carte",
+	"frameCount": axeHorloges, "frameIntervalMs": axeHorloges, "durationMs": axeHorloges,
+	"originMs": axeHorloges, "t0FilmMs": axeHorloges,
+	"bounds": axeCarte, "geometry": axeCarte, "geometryBounds": axeCarte,
+	"structure": axeCarte, "structureBounds": axeCarte,
 	"tracks": "pistes", "roster": "roster",
 	"scoreTimeline": "score",
 	"objectives":    "objectifs",
-	"flagCarries":   "ports", "skullCarries": "ports", "bombCarries": "ports",
-	"vipCrown": "ports", "flagReturnZone": "objets-objectif",
-	"objectiveObjects": "objets-objectif", "mapObjectives": "objets-objectif",
-	"zoneStates": "objets-objectif",
+	"flagCarries":   axePorts, "skullCarries": axePorts, "bombCarries": axePorts,
+	"vipCrown": axePorts, "flagReturnZone": axeObjetsObjectif,
+	"objectiveObjects": axeObjetsObjectif, "mapObjectives": axeObjetsObjectif,
+	"zoneStates": axeObjetsObjectif,
 	"vehicles":   "vehicules", "vehicleLabels": "vehicules",
-	"equipmentPlacements": "equipement", "equipmentChanges": "equipement",
-	"equipmentEpisodes": "equipement", "abilityCharges": "equipement",
-	"abilityImpulses": "equipement", "abilities": "equipement",
-	"abilityLabels": "equipement", "grappleLines": "equipement",
-	"translocations": "equipement", "inventory": "equipement",
-	"shots": "armes", "loadouts": "armes", "weaponChanges": "armes", "pickups": "armes",
-	"groundWeapons": "armes", "weaponPads": "armes", "padPickups": "armes",
-	"weaponLabels": "armes", "killEffects": "armes", "mapWeaponPads": "armes",
-	"grenades": "grenades", "grenadeReads": "grenades", "grenadeLabels": "grenades",
-	"projectiles": "grenades",
+	"equipmentPlacements": axeEquipement, "equipmentChanges": axeEquipement,
+	"equipmentEpisodes": axeEquipement, "abilityCharges": axeEquipement,
+	"abilityImpulses": axeEquipement, "abilities": axeEquipement,
+	"abilityLabels": axeEquipement, "grappleLines": axeEquipement,
+	"translocations": axeEquipement, "inventory": axeEquipement,
+	"shots": axeArmes, "loadouts": axeArmes, "weaponChanges": axeArmes, "pickups": axeArmes,
+	"groundWeapons": axeArmes, "weaponPads": axeArmes, "padPickups": axeArmes,
+	"weaponLabels": axeArmes, "killEffects": axeArmes, "mapWeaponPads": axeArmes,
+	"grenades": axeGrenades, "grenadeReads": axeGrenades, "grenadeLabels": axeGrenades,
+	"projectiles": axeGrenades,
 	"bombStats":   "assaut", "bombArmings": "assaut", "bombEvents": "assaut",
 	"coverage": "couverture", "neutralDeaths": "morts",
 }
@@ -75,7 +87,8 @@ func passeSpecialisee(e *Empreinte, doc map[string]any) {
 	mesurerScore(e, objet(doc["scoreTimeline"]))
 	aplatir(e, "couverture", "coverage", doc["coverage"], 0)
 	aplatir(e, "assaut", "bombStats", doc["bombStats"], 0)
-	aplatir(e, "carte", "bounds", doc["bounds"], 0)
+	aplatir(e, axeCarte, "bounds", doc["bounds"], 0)
+	mesurerDurees(e, doc)
 }
 
 // mesurerTableau mesure UN calque element par element, sans connaitre sa forme : la longueur de
@@ -84,7 +97,24 @@ func passeSpecialisee(e *Empreinte, doc map[string]any) {
 // drapeau, les echantillons d'un vehicule) et s'arrete la : plus bas, la mesure ne porterait
 // plus de sens produit.
 func mesurerTableau(e *Empreinte, axe, prefixe string, items []any, profondeur int) {
-	e.num(axe, prefixe+"/n", float64(len(items)))
+	// AU NIVEAU RACINE (profondeur 0), mesurerTableau n'est appele QU'UNE FOIS pour ce
+	// prefixe (une clef de premier niveau du document, cf. passeSpecialisee) : e.num pose
+	// la valeur, elle ne doit pas s'accumuler a celle deja posee par passeGenerique pour le
+	// MEME prefixe (meme calque, meme compte).
+	//
+	// AU NIVEAU IMBRIQUE (profondeur > 0), la fonction est appelee PLUSIEURS FOIS sur le
+	// MEME prefixe — une fois par element du tableau PARENT (flagCarries[].spans[],
+	// vehicles[].rides[]...). e.num y ECRASERAIT a chaque appel : la mesure finale serait
+	// celle du DERNIER groupe itere (ex. la derniere equipe de flagCarries), pas la somme
+	// sur tous les groupes — e.incr accumule.
+	//
+	// Bug mesure le 2026-09-06 (cmd/replay-corpus-gate, temoin 084a804d :
+	// flagCarries.spans/n rendait 1 alors que 15 portages etaient fermes) — corrige ici.
+	if profondeur == 0 {
+		e.num(axe, prefixe+"/n", float64(len(items)))
+	} else {
+		e.incr(axe, prefixe+"/n", float64(len(items)))
+	}
 	if profondeur > 1 {
 		return
 	}

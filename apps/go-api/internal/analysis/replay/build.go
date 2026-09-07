@@ -72,6 +72,13 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// que la lecture et les fermetures savaient nommer (cf. successions.go).
 	attributeSuccessions(doc.Tracks, opt.Successions, origin, step,
 		own.DeathOffsetMS, own.DeathOffsetMatches, refs)
+	// LE NOMMAGE FINAL, ET IL EST LA CONSEQUENCE D'UNE DECISION PRODUIT (2026-09-07) : « les vies
+	// anonymes n'existent pas ; une vie est un humain ou un bot, point ». Ce qui reste sans nom
+	// apres les quatre passes ci-dessus est un DEFAUT du pont, pas une categorie de donnee : il
+	// se repare par l'OCCUPATION DU SLOT DANS LE TEMPS, et le residu se compte et s'alarme
+	// (cf. unnamed_lives.go).
+	unnamed := nameRemainingLives(doc.Tracks, own.lives, own.SlotXUID, own.SlotAmbiguous, origin, step)
+	logUnnamedLives(matchID, doc.Tracks, unnamed)
 	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths), opt.Bots)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, own.DeathOffsetMS, own.DeathOffsetMatches)
@@ -102,7 +109,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	grenCov.warnIfLossy("grenades")
 
 	clock := replayScoreClock(&doc, interval, matchID)
-	objCov := attachObjectiveActions(&doc, opt.Objectives, clock)
+	objCov := attachObjectiveActions(&doc, opt, own, clock)
 	scoreCov := attachScoreTimeline(&doc, opt.Score, opt.Deaths, clock, matchID)
 
 	// L'ETAT ACTIF des deux familles mesurees (camo, surbouclier) : episodes dates par
@@ -111,7 +118,8 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// echantillon par frame et perdrait des transitions. Construit AVANT la couverture,
 	// qui publie son compte.
 	var camoNonBinary int
-	doc.EquipmentEpisodes, camoNonBinary = buildEquipmentEpisodes(sorted, opt.CamoStates, origin, step, doc.Tracks)
+	doc.EquipmentEpisodes, camoNonBinary = buildEquipmentEpisodes(sorted, opt.CamoStates, origin, step,
+		doc.Tracks, unnamed.deduced)
 	if camoNonBinary > 0 {
 		slog.Warn("rejeu : lectures camo NON BINAIRES ignorees — l'interrupteur mesure ne connait que 0 et 4095",
 			"lectures", camoNonBinary)
@@ -122,9 +130,16 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	killsRead := attachAllEquipmentKills(doc.EquipmentEpisodes, opt.Kills, own.SlotXUID, doc.OriginMs, interval)
 
 	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, own, doc.OriginMs != nil, scoreCov)
+	// LE RESIDU DE NOMMAGE SE PUBLIE AVEC LE PONT : un artefact qui porte des vies sans identite
+	// doit le DIRE, sans quoi le defaut ne se voit que dans les journaux du jour de la cuisson.
+	doc.Coverage.Bridge.NamedByPreviousLife = unnamed.byPrevious
+	doc.Coverage.Bridge.NamedByNextLife = unnamed.byNext
+	doc.Coverage.Bridge.NamedBySlotBridge = unnamed.byBridge
+	doc.Coverage.Bridge.UnnamedLives = unnamed.remaining
+	doc.Coverage.Bridge.UnnamedLivesContested = unnamed.contested
 	// La couverture des episodes d'equipement se publie AVEC eux : « N episodes » sans
 	// « sur M vies » se lirait comme une exhaustivite.
-	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks)
+	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks, unnamed.deduced)
 	doc.Coverage.Equipment.KillsRead = killsRead
 	// LE COUP D'ENVOI, date par le premier mouvement des pistes (cf. t0_film.go). Il se pose
 	// APRES la couverture et non a cote d'`OriginMs` (l. 528) pour deux raisons : son verdict
@@ -234,19 +249,21 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// porteur) — garde de mode par l'appelant (opt.Skull.Scanned), cf. skull_carries.go. Le crane
 	// LIBRE (attachObjectiveObjects, ci-dessous) reste la couche POSITION ; ce calque-ci est la
 	// couche VIVANTE par-dessus.
-	attachSkullCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	attachSkullCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount},
+		unnamed.deduced)
 	// LE PORTEUR DE LA BOMBE d'Assaut, sur les pistes PUBLIEES (la bombe est a la position de
 	// son porteur) — garde de mode par l'appelant (opt.Bomb.CarryScanned, TOUTES les variantes
 	// de la famille bomb), source : le canal des armes tenues DEJA balaye (opt.WeaponChanges),
 	// cf. bomb_carries.go.
-	bombCarry := attachBombCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	bombCarry := attachBombCarries(&doc, opt, own,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount}, unnamed.deduced)
 	// LES OBJETS D'OBJECTIF LIBRES SONT POSÉS HORS DE LA GARDE DE MODE DU DRAPEAU, et c'est
 	// délibéré : ce calque ne lit ni le statborg ni le fil des morts, donc rien de ce que cette
 	// garde protège. La placer devant l'éteindrait sur Oddball — là où il sert.
 	attachObjectiveObjects(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// L'ETAT DES ZONES, sur la MEME horloge que les positions et sur les captures DEJA posees
 	// (`doc.Objectives`) — cf. build_zones.go.
-	attachZoneStates(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	attachZoneStates(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// L'ARMEMENT DE LA BOMBE, sur la meme horloge que les actions d'objectif et confronte aux
 	// explosions DEJA posees (`doc.Objectives`) — garde de mode par l'appelant
 	// (opt.Bomb.Scanned), cf. bomb_armings.go.
@@ -274,7 +291,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// Les morts sans revendication ne sont publiées que pour les joueurs dont une trajectoire
 	// l'est : le client déduit ces lignes DE SES PISTES, une entrée sans piste ne rencontrerait
 	// jamais de ligne à décorer (même règle que les tirs, lancers et actions d'objectif).
-	doc.NeutralDeaths = keepNeutralDeathsOfPublishedTracks(opt.NeutralDeaths, doc.Tracks)
+	doc.NeutralDeaths = keepNeutralDeathsOfPublishedTracks(opt.NeutralDeaths, doc.Tracks, own.NamingBridge())
 	builtInv, invDroppedOrigin := buildInventory(opt.Inventory, origin, step)
 	doc.Inventory = keepInventoryOfPublishedTracks(builtInv, doc.Tracks)
 	// COUVERTURE DU CALQUE INVENTAIRE (audit AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 5),

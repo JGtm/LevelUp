@@ -849,8 +849,123 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   forme le dise, et `backfill-replay` saute un artefact qui porte la version courante.
 	//   Détail : internal/analysis/replay/skull_carries.go (carrierPresence.gate) et
 	//   .ai/V7.5/v2/INSTRUCTION_RESIDUS_2026-09-06.md.
-	if SchemaVersion != 43 {
-		t.Fatalf("SchemaVersion = %d, attendu 43 : incrémenter exige une raison écrite ci-dessus "+
+	// v44 — LA MANCHE DÉCLARÉE EST CONFRONTÉE AU TEMPS (2026-09-06). Aucun champ ajouté : c'est le
+	//   CONTENU de `scoreTimeline` (les quatre compteurs par joueur, les courbes d'équipe) et des
+	//   actions d'objectif qui change, sur les films À PLUSIEURS MANCHES seulement. La manche d'un
+	//   enregistrement est lue dans deux en-têtes de 5 bits, et le résidu de faux positifs que
+	//   l'assertion d'en-tête laisse passer en porte une quelconque. La découpe la croyait sur
+	//   parole ; la plus longue sous-suite non décroissante ne pouvait pas l'écarter, une valeur
+	//   mal lue mais PLUS GRANDE prolongeant la suite au lieu de la rompre.
+	//   Mesuré : `51ebbc0f` publiait 63 assistances (feuille : 5) pour `2535439712156981` à cause
+	//   d'un enregistrement daté 57 s après le début de la manche 1 et déclarant la manche 0 avec
+	//   `comp 3 A = 60` ; frags 0 -> 1 au passage. Le MÊME enregistrement sur `d9781168` : 69 -> 11
+	//   assistances, exactement la feuille. Vols de drapeau fantômes sur deux films d'Oddball :
+	//   58 -> 0 (`51ebbc0f`), 994 -> 0 (`24dbb67d`). Onze des quinze témoins re-cuits sont
+	//   IDENTIQUES À L'OCTET, dont les trois films dont l'étiquetage de manche ne suit pas
+	//   l'horloge et tous les mono-manche.
+	//   POURQUOI LA VERSION MONTE : un artefact 1 à 43 d'un film multi-manche porte des compteurs
+	//   gonflés sans que sa forme le dise, et `backfill-replay` saute un artefact à la version
+	//   courante.
+	//   Détail : internal/analysis/objectiveevents/round_bounds.go et
+	//   .ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md.
+	// v45 — UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE (2026-09-06). Aucun champ
+	//   ajouté : c'est le CONTENU de `equipmentEpisodes` et de `flagCarries` qui change, sur la
+	//   même cause que les montées v41 et v43 — le découpage « une track = une vie » du v36, dont
+	//   deux consommateurs de plus supposaient encore qu'un slot ne porte qu'une piste NOMMÉE.
+	//   Deux pertes de DURÉE, invisibles à tout comptage d'éléments, trouvées par le nouvel axe
+	//   « somme des durées » du comparateur (`cmd/replay-corpus-gate`, première exécution) :
+	//   épisodes  L'état actif se lit PAR SLOT (i28 camo, i5 surbouclier) : ses deux bornes sont
+	//             des transitions LUES. `close` bornait l'épisode à la vie de recouvrement
+	//             MAXIMAL, donc jetait la part couverte par une AUTRE vie du même slot — dont
+	//             l'instant d'activation. Et pour le camouflage, l'état actif est justement ce
+	//             qui PROVOQUE le trou de réplication : un porteur invisible et immobile cesse
+	//             d'être répliqué. `084a804d`, slot 620 : camo lu [3105..3672] (568 frames),
+	//             publié [3173..3672] (500) — 68 frames perdues dont 16 À L'INTÉRIEUR d'une vie
+	//             publiée, activation sonnée 6,8 s en retard (`replaySound.ts` sonne chaque
+	//             `t0`). Le bornage passe à l'UNION des vies recouvertes (`spanFor`).
+	//   drapeaux  `attachFlagCarryPositions` n'indexait que les pistes NOMMÉES : une prise que
+	//             seule la vie ANONYME du porteur recouvre sortait `NoTrack`, et le portage
+	//             disparaissait. `bcb6d393` : 9 prises sur 16 perdues (toutes celles du slot 536
+	//             après sa mort à la frame 2736), `carries` 16 -> 7 ; l'élagage déplaçait de
+	//             surcroît l'attribution de drapeau d'un dixième portage (`dropsRepositioned`
+	//             4 -> 1). L'identité de la vie anonyme vient du PONT CANONIQUE
+	//             (`ResolveSlotXUID`, celui des marques de portage), jamais d'une déduction
+	//             locale : un slot que le pont ne nomme pas reste écarté.
+	//   POURQUOI LA VERSION MONTE : un artefact 36 à 44 est amputé de durée sans que sa forme le
+	//   dise, et `backfill-replay` saute un artefact qui porte la version courante.
+	//   Détail : internal/analysis/replay/{equipment_episodes.go (spanFor), flag_carries.go
+	//   (tracksByXUID)} et .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
+	// v46 — UN JOUEUR NE PORTE PLUS SON PROPRE DRAPEAU (2026-09-06). Aucun champ ajouté : c'est
+	//   le CONTENU de `flagCarries` qui change — à quel drapeau un portage est rattaché, et donc
+	//   à quel drapeau la CAPTURE qui le ferme est publiée.
+	//   LE FAIT. `bcb6d393` (CTF:Arena, 3-0, les quatre porteurs de l'équipe 0) publiait 15
+	//   portages sur le drapeau étiqueté « équipe 1 » et 1 sur celui étiqueté « équipe 0 ». Le
+	//   seizième est impossible : en CTF on RENVOIE son drapeau, on ne le porte pas. L'étiquette,
+	//   elle, est JUSTE — le catalogue de carte donne le socle de l'équipe 1 en (-7,30 · -1,79)
+	//   et celui de l'équipe 0 en (41,03 · 9,72), et les trois captures de l'équipe 0 se
+	//   terminent à (40,59 · 9,95), (41,46 · 9,27) et (40,37 · 9,85) : on livre le drapeau
+	//   adverse à SA PROPRE base, donc `team_index` du catalogue et `teamId` de la feuille de
+	//   match coïncident.
+	//   LES DEUX CAUSES, dans `assignFlags`. (1) L'ORDRE : l'état « où git chaque drapeau » se
+	//   tenait à jour en parcourant les PRISES, si bien que la position de LÂCHER d'un portage
+	//   était inscrite dès son attribution — avant d'avoir eu lieu. Le portage ouvert à
+	//   171 941 ms ne se ferme qu'à 325 913 ms (145 s APRÈS la prise suivante) et sa position de
+	//   lâcher (-6,53 · -2,19) chassait du sol la position réelle (33,61 · 2,48) que la prise
+	//   venait chercher à 0 m. Le parcours se fait désormais par ÉVÉNEMENTS DATÉS. (2) LA RÈGLE :
+	//   le repli sur le socle le plus proche est juste pour un VOL et faux pour une PRISE, qui se
+	//   fait là où l'objet est tombé — ici à 10,4 m du socle de l'équipe 0 contre 41,1 m de celui
+	//   de l'équipe 1. Une prise que rien ne rattache au sol va au drapeau DÉJÀ EN JEU quand il
+	//   est le seul ; à deux, la règle se tait et le socle reprend la main.
+	//   MESURE : 16 portages sur 16 au drapeau de l'équipe 1, zéro sur celui de l'équipe 0, et
+	//   les trois captures publiées sur le drapeau adverse. La version monte pour la raison des
+	//   montées v39 à v45 : un artefact 45 attribue un portage — et sa capture — au mauvais
+	//   drapeau sans que sa forme le dise, et la reprise du backfill se fait par SchemaVersion.
+	//   Détail : internal/analysis/replay/flag_assign.go et
+	//   .ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md.
+	// v47 — AUCUNE VIE PUBLIÉE NE RESTE SANS NOM (2026-09-07). Décision produit : « les vies
+	//   anonymes n'existent pas ; une vie est un humain ou un bot, point ». Une piste sans
+	//   identité est un DÉFAUT du pont, pas une donnée : une passe finale la nomme par
+	//   l'OCCUPATION DU SLOT DANS LE TEMPS (vie nommée du même slot qui précède, sinon qui suit,
+	//   sinon le pont canonique), et le résidu se publie (`bridge.unnamedLives`) doublé d'un
+	//   `slog.Error`. Sept lecteurs qui jetaient une lecture VRAIE faute de nom sont corrigés au
+	//   passage — objectifs, zones, les deux fermetures, les rides de véhicule, les sièges de
+	//   bot, et le rognage des portages. CES SEPT-LÀ SONT DES CORRECTIFS DE DÉFENSE : leurs
+	//   mutations rougissent, mais le parc local ne porte de témoin chiffré pour aucun (revue
+	//   VIES-R1, C3 — les chiffres cités en première rédaction mesuraient autre chose). Le gain
+	//   MESURÉ du schéma est celui du nommage : 305 vies sans nom -> 201 sur neuf témoins.
+	//   NEUF champs de couverture s'ajoutent : CINQ côté pont (`namedByPreviousLife`,
+	//   `namedByNextLife`, `namedBySlotBridge`, `unnamedLives`, `unnamedLivesContested`), TROIS
+	//   côté zones (`noPosition`, `outside`, `ambiguousZone`) et UN côté drapeau
+	//   (`flagCarries.ambiguousSlot`, apporté par le lot des DURÉES et intégré ici : le refus du
+	//   repli d'une vie sans nom se COMPTE au lieu de se taire). Le cinquième champ du pont vient
+	//   du complément de la revue des durées : un slot à plusieurs occupants est MARQUÉ, et la
+	//   frontière entre deux d'entre eux est refusée plutôt que tranchée.
+	//   POURQUOI LA VERSION MONTE : un artefact 36 à 46 est appauvri sans que sa forme le dise.
+	//   44, 45 et 46 sont INTEGRES (manches, durees, drapeaux) : la chronique ci-dessus les
+	//   porte dans l ordre, et aucun numero n est plus reserve.
+	//   Détail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
+	// v48 — LE PONT CESSE D'ÊTRE MUET SUR LES FILMS QUI DÉMARRENT TARD (2026-09-07). Deux champs
+	//   ajoutés (`bridge.deathOffsetMatched/deathOffsetRunnerUp`), le reste est du CONTENU.
+	//   (1) `bestDeathOffset` cherchait le calage du fil des morts depuis
+	//   `min(fins de vie) − 60 000` : la grandeur que cette borne suppose petite est l'instant de
+	//   match de LA PLUS PRÉCOCE DES FINS DE VIE du film — pas la première mort, qui lui est
+	//   seulement corrélée (`d9781168` : 18,4 s contre 53,6 s ; `43716616` sain malgré une
+	//   première mort à 60,4 s), une vie pouvant se terminer sans mort. Elle tombe à 71,4 s sur
+	//   `51ebbc0f` et à 87,5 s sur `4f77afc1` : le vrai calage passait SOUS la borne et
+	//   l'optimiseur retenait un pic de bruit. La plage est désormais celle des données. CINQ
+	//   films du parc sur 106 étaient concernés, et ce sont EXACTEMENT les cinq sans origine
+	//   publiée : vies nommées 9 → 71, 17 → 140, 44 → 192, 31 → 150, 37 → 225.
+	//   (2) Le vote qui localise le calage est une HEURISTIQUE : trois candidats sont affinés et
+	//   la paire (retenu, meilleur des autres) est publiée, doublée d'un `slog.Warn` sous
+	//   `deathOffsetMargeMin` — sans quoi un vote trompé rendrait un calage faux en silence.
+	//   (3) Le roster qui sert à lire l'index de joueur venait du seul fil des morts : un joueur
+	//   à 0 mort n'y figurait pas, n'avait donc pas d'index, et manquait au roster publié
+	//   (`3372e7eb`, 6 pour 8). La feuille de match le complète quand l'appelant la fournit.
+	//   POURQUOI LA VERSION MONTE : un artefact < 48 porte des pistes non nommées, et sur ces
+	//   cinq films un calque d'objectifs et une courbe de score non recalés faute d'origine.
+	//   Détail : .ai/V7.5/v2/PONT_MUET_2026-09-07.md.
+	if SchemaVersion != 48 {
+		t.Fatalf("SchemaVersion = %d, attendu 48 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

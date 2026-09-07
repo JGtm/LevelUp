@@ -55,7 +55,7 @@ func TestNameLivesByDeathsJoinsOnEnd(t *testing.T) {
 	)
 	lives := buildLifeSpans(tr)
 	deaths := []Death{{XUID: 111, TimeMS: 2_000 - 500}, {XUID: 222, TimeMS: 21_000 - 500}}
-	off, n := bestDeathOffset(lives, deaths)
+	off, n, _ := bestDeathOffset(lives, deaths)
 	if n != 2 {
 		t.Fatalf("attendu 2 morts appariables, obtenu %d (decalage %d)", n, off)
 	}
@@ -105,9 +105,9 @@ func TestOwnersFromLivesRefusesToPickOnCollision(t *testing.T) {
 		{slot: 512, from: 0, to: 1_000_000, xuid: 111},
 		{slot: 512, from: 10_000_000, to: 11_000_000, xuid: 222},
 	}
-	owners, byXUID, collisions := ownersFromLives(lives, map[uint64]int{111: 0, 222: 1})
-	if collisions != 1 {
-		t.Errorf("attendu 1 collision comptee, obtenu %d", collisions)
+	owners, byXUID, ambigus := ownersFromLives(lives, map[uint64]int{111: 0, 222: 1})
+	if len(ambigus) != 1 || !ambigus[512] {
+		t.Errorf("attendu le slot 512 MARQUE ambigu, obtenu %v", ambigus)
 	}
 	if _, published := owners[512]; !published {
 		t.Errorf("la premiere lecture doit rester ; seule la contradictoire est ecartee")
@@ -248,5 +248,62 @@ func TestNameBotTracksNamesBridgedSlotsOnly(t *testing.T) {
 	}
 	if tracks[1].Bot != "" || tracks[2].Bot != "" || tracks[2].XUID == "" {
 		t.Errorf("vies hors pont ou déjà nommées inchangées, obtenu %+v", tracks)
+	}
+}
+
+// TestDeuxBotsSurUnMemeSiegeNeSecrasentPas — LE CORRECTIF P1-8 (audit du 2026-09-06).
+//
+// `nameByIndex[b.FilmIndex] = b.Name` : le DERNIER balayé gagnait, sans ordre garanti et sans
+// aucun rapport avec la chronologie du remplacement — le pion du rejeu affichait un gamertag
+// faux sur des pans entiers du match. Le cas est mesuré (RE_LOG 7ter.62 : « 343 Aloysius » puis
+// « 343 PardonMy », les deux déclarant slot=8) et la doctrine est écrite quatre fonctions plus
+// haut, dans `buildRoster`, qui la respecte.
+//
+// UN SIÈGE AMBIGU N'EST PLUS NOMMÉ PAR SIÈGE : ses vies restent libres pour `attributeSuccessions`,
+// qui seul sait les départager par l'instant de bascule lu dans la base.
+//
+// MUTATION : revenir à `nameByIndex[b.FilmIndex] = b.Name` rougit — la piste du siège partagé
+// porte un nom arbitraire au lieu de rester libre.
+func TestDeuxBotsSurUnMemeSiegeNeSecrasentPas(t *testing.T) {
+	bots := []BotIdentity{
+		{FilmIndex: 8, Name: "343 Aloysius [bot]"},
+		{FilmIndex: 8, Name: "343 PardonMy [bot]"},
+		{FilmIndex: 9, Name: "343 Razzle [bot]"},
+	}
+	noms, partages := botNamesBySeat(bots)
+	if partages != 1 {
+		t.Errorf("sieges partages = %d, attendu 1", partages)
+	}
+	if _, nomme := noms[8]; nomme {
+		t.Errorf("le siege 8 est declare par DEUX bots : il ne doit pas etre nomme par siege, "+
+			"obtenu %q", noms[8])
+	}
+	if noms[9] != "343 Razzle [bot]" {
+		t.Errorf("le siege 9 n'a qu'un bot : il doit rester nomme, obtenu %q", noms[9])
+	}
+
+	// Bout en bout : la piste du siège ambigu reste LIBRE (ni xuid, ni bot), celle du siège
+	// mono-bot est nommée.
+	tracks := []Track{{Slot: 100}, {Slot: 200}}
+	nameBotTracks(tracks, map[uint32]int{100: 8, 200: 9}, bots)
+	if tracks[0].Bot != "" {
+		t.Errorf("piste du siege partage : %q, attendu libre pour le relais", tracks[0].Bot)
+	}
+	if tracks[1].Bot != "343 Razzle [bot]" {
+		t.Errorf("piste du siege mono-bot : %q, attendu le nom du bot", tracks[1].Bot)
+	}
+}
+
+// TestUnMemeBotDeclareDeuxFoisResteNomme — LA CONTRE-ÉPREUVE : l'abstention porte sur des NOMS
+// distincts, pas sur des déclarations répétées. `killsource.loadBotMeta` déduplique sur (Slot,
+// BotID) : un même bot peut arriver deux fois avec le même nom, et ce n'est pas une ambiguïté.
+func TestUnMemeBotDeclareDeuxFoisResteNomme(t *testing.T) {
+	noms, partages := botNamesBySeat([]BotIdentity{
+		{FilmIndex: 8, Name: "343 Razzle [bot]"},
+		{FilmIndex: 8, Name: "343 Razzle [bot]"},
+	})
+	if partages != 0 || noms[8] != "343 Razzle [bot]" {
+		t.Errorf("meme nom deux fois : partages = %d, nom = %q ; attendu 0 et le nom",
+			partages, noms[8])
 	}
 }

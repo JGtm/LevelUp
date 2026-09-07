@@ -45,6 +45,11 @@ import (
 type filmStats struct {
 	score      *replay.ScoreInput
 	objectives []objectiveevents.IdentifiedEvent
+	// objectivesUnnamed est le nombre d evenements d objectif que le film NOMMAIT et que le
+	// pont par manche n a pas su attribuer. Il voyage jusqu au document parce qu il est le
+	// DENOMINATEUR manquant : sans lui, `coverage.objectives.available` compte les rescapes
+	// et un calque partiel se lit ~100 % (cf. objectiveevents.IdentifyNamedEventsByRound).
+	objectivesUnnamed int
 	// flag porte les lectures du DRAPEAU VIVANT que seul cet etage peut faire : les
 	// enregistrements d'entite (les memes que la courbe de score) et les bursts de capture. Les
 	// SOCLES s'y ajoutent chez l'appelant (ils viennent du catalogue de carte, pas du film).
@@ -94,6 +99,7 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 	// UN SEUL PONT D'IDENTITE POUR LES DEUX CALQUES QUI EN VIVENT (actions d'objectif et
 	// drapeau vivant) : la meme table slot -> xuid, resolue AU PLUS UNE FOIS par cuisson.
 	pont := &pontParManche{recs: recs, deaths: deathInstantsOf(deaths.list), lines: lines}
+	objectifs, nonNommes := identifiedEvents(ctx, matchID, deaths, recs, facts, pont)
 	return filmStats{
 		score: &replay.ScoreInput{
 			Records:    recs,
@@ -102,11 +108,12 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 			TeamScores: facts.TeamScores,
 			Truncated:  truncated,
 		},
-		objectives: identifiedEvents(ctx, matchID, deaths, recs, facts, pont),
-		flag:       flagInput(recs, film, pont),
-		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
-		skull:      skullInput(recs, isSkullVariant(facts.GameVariantName)),
-		bomb:       bombInput(film, isBombVariant(facts.GameVariantName)),
+		objectives:        objectifs,
+		objectivesUnnamed: nonNommes,
+		flag:              flagInput(recs, film, pont, facts),
+		vip:               vipInput(recs, isVipVariant(facts.GameVariantName)),
+		skull:             skullInput(recs, isSkullVariant(facts.GameVariantName)),
+		bomb:              bombInput(film, isBombVariant(facts.GameVariantName)),
 	}
 }
 
@@ -208,12 +215,33 @@ func vipInput(recs []objectiveevents.StatRecord, isVip bool) replay.VipInput {
 // lignes de match, `CompletedByLines` rend le pont par morts inchange et l'artefact reste
 // exactement celui d'avant — la propriete « publiable hors ligne » est conservee.
 func flagInput(recs []objectiveevents.StatRecord, film *filmsource.Film,
-	pont *pontParManche) replay.FlagInput {
+	pont *pontParManche, facts port.MatchFacts) replay.FlagInput {
 	return withFlagIdentity(replay.FlagInput{
 		Scanned: true,
 		Records: recs,
 		Bursts:  objectiveevents.CaptureBurstTimes(film),
+		TeamOf:  equipesParXUID(facts),
 	}, pont)
+}
+
+// equipesParXUID rend la table xuid -> equipe des lignes de match, pour l'invariant « jamais son
+// propre drapeau » du calque du drapeau (revue DRAPEAUX-R1, C1).
+//
+// UNE EQUIPE INCONNUE N'ENTRE PAS : la base ecrit -1 quand elle ne la porte pas, et l'invariant
+// ne doit refuser que sur une equipe LUE. Sans lignes de match, la table est nil et l'invariant
+// se tait — la meme degradation que le pont d'identite.
+func equipesParXUID(facts port.MatchFacts) map[string]int {
+	var out map[string]int
+	for _, p := range facts.Players {
+		if p.XUID == "" || p.TeamID < 0 {
+			continue
+		}
+		if out == nil {
+			out = make(map[string]int, len(facts.Players))
+		}
+		out[p.XUID] = p.TeamID
+	}
+	return out
 }
 
 // withFlagIdentity pose le pont COMPLETE sur l'entree du calque — et SEULEMENT sur un film que
@@ -257,22 +285,29 @@ func withFlagIdentity(in replay.FlagInput, pont *pontParManche) replay.FlagInput
 // C'est la meme lecture que `killRefs` consomme (kills.go), la ou les deux ouvraient et
 // reparsaient chacune le chunk highlight. Le second decodage du statborg, lui, n'a jamais ete
 // refait — `recs` est reutilise.
+// LE SECOND RETOUR EST LE NOMBRE D'ACTIONS QUE LE PONT N'A PAS NOMMEES, et il n'est pas une
+// commodite de journal : il devient `coverage.objectives.noSlot` dans l'artefact servi (cf.
+// replay/objectives.go). Sans lui la perte n'existait que dans un `slog` non durable, qui ne
+// voyage ni dans le document ni dans le contrat — et `noSlot` valait 0 sur les 111 artefacts du
+// parc, sans une seule exception. Le fil des morts ILLISIBLE rend `len(named)` : le calque est
+// alors integralement perdu, et c'est cette perte-la qu'il faut publier, pas zero.
 func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 	recs []objectiveevents.StatRecord, facts port.MatchFacts,
-	pont *pontParManche) []objectiveevents.IdentifiedEvent {
+	pont *pontParManche) ([]objectiveevents.IdentifiedEvent, int) {
 	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeOf(facts.GameVariantName))
 	if len(named) == 0 {
-		return nil
+		return nil, 0
 	}
 	if deaths.err != nil {
 		slog.WarnContext(ctx, "replaybuild: fil des morts illisible — actions d'objectif non identifiees",
 			"err", deaths.err, "match_id", matchID, "nommees", len(named))
-		return nil
+		return nil, len(named)
 	}
-	out := objectiveevents.IdentifyNamedEventsByRound(named, pont.identite())
+	out, nonNommes := objectiveevents.IdentifyNamedEventsByRound(named, pont.identite())
 	slog.InfoContext(ctx, "replaybuild: actions d'objectif identifiees par manche",
-		"match_id", matchID, "nommees", len(named), "identifiees", len(out), "lignes", len(facts.Players))
-	return out
+		"match_id", matchID, "nommees", len(named), "identifiees", len(out),
+		"nonNommees", nonNommes, "lignes", len(facts.Players))
+	return out, nonNommes
 }
 
 // pontParManche est LE pont slot d'entite -> xuid de la cuisson : resolu par manche via les
@@ -325,6 +360,29 @@ func playerLines(facts port.MatchFacts) []objectiveevents.PlayerLine {
 		out = append(out, objectiveevents.PlayerLine{
 			XUID: p.XUID, Kills: p.Kills, Deaths: p.Deaths, Assists: p.Assists,
 		})
+	}
+	return out
+}
+
+// rosterXUIDs rend les joueurs de la feuille de match, en decimal, pour COMPLETER le roster
+// que le fil des morts donne au rejeu (cf. replay.Options.RosterXUIDs).
+//
+// UN JOUEUR QUI NE MEURT JAMAIS N'EST DANS AUCUNE MORT, donc dans aucun roster deduit du fil
+// — et il disparait de toute la chaine : pas d'index de joueur, pas de pont, pas d'entree au
+// roster publie. Mesure du 2026-09-07 sur `3372e7eb` : 6 joueurs publies pour 8 a la feuille,
+// les deux manquants a 0 mort.
+//
+// Un xuid que la feuille ne donne pas en decimal (un bot, `bid(N.0)`) est ignore : le pont des
+// bots passe par BOT_METADATA et les relais, pas par l'index de joueur.
+func rosterXUIDs(facts port.MatchFacts) []uint64 {
+	out := make([]uint64, 0, len(facts.Players))
+	for _, p := range facts.Players {
+		if x, err := strconv.ParseUint(p.XUID, 10, 64); err == nil && x != 0 {
+			out = append(out, x)
+		}
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }

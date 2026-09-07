@@ -55,7 +55,7 @@ func TestActionDansLaZoneEstAttribueeALaBonneInstance(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, -20, 0, 0), zoneAt(1, 102, 0, 0, 0), zoneAt(2, 103, 20, 0, 0)}
 	tracks := []Track{track("2533", pointAt(50, 20.5, 0.5, 0.2))}
 
-	res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, AttributeOptions{})
+	res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, nil, AttributeOptions{})
 	checkInvariant(t, cov)
 	if cov.Attributed != 1 {
 		t.Fatalf("attribuees = %d, attendu 1 (couverture %+v)", cov.Attributed, cov)
@@ -76,7 +76,7 @@ func TestPositionHorsDeTouteZoneNEstPasAttribuee(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0)}
 	tracks := []Track{track("2533", pointAt(50, 50, 50, 0))}
 
-	res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, AttributeOptions{})
+	res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, nil, AttributeOptions{})
 	checkInvariant(t, cov)
 	if cov.Outside != 1 || cov.Attributed != 0 || cov.NoPosition != 0 {
 		t.Errorf("couverture %+v, attendu 1 dehors et rien d'autre", cov)
@@ -97,7 +97,7 @@ func TestLaHauteurTrancheEntreDeuxEtages(t *testing.T) {
 	}
 	actions := []ObjectiveAction{action("auRezDeChaussee", 50), action("aLEtage", 50)}
 
-	res, cov := AttributeZones(actions, tracks, zones, AttributeOptions{})
+	res, cov := AttributeZones(actions, tracks, zones, nil, AttributeOptions{})
 	checkInvariant(t, cov)
 	if !res[0].Attributed {
 		t.Error("joueur au rez-de-chaussee : attendu dans la zone")
@@ -121,31 +121,41 @@ func TestLesViesDUnMemeJoueurSontFusionnees(t *testing.T) {
 	}
 	actions := []ObjectiveAction{action("2533", 10), action("2533", 200)}
 
-	_, cov := AttributeZones(actions, tracks, zones, AttributeOptions{})
+	_, cov := AttributeZones(actions, tracks, zones, nil, AttributeOptions{})
 	checkInvariant(t, cov)
 	if cov.Attributed != 2 {
 		t.Errorf("attribuees = %d, attendu 2 (une par vie) — couverture %+v", cov.Attributed, cov)
 	}
 }
 
-// TestUneVieAnonymeNeSertAPersonne : le film ne nomme pas toutes les vies (15 sur 105 sur
-// le film de reference). Une position anonyme ne doit servir a personne — ni a un joueur
-// nomme, ni a une action elle-meme sans identite.
+// TestUneVieAnonymeNeSertAPersonne : une piste que RIEN ne nomme — ni le fil des morts, ni le
+// pont canonique — ne doit servir a personne : ni a un joueur nomme, ni a une action elle-meme
+// sans identite.
 //
-// Le second cas est celui qui mord : une action sans xuid et une vie sans xuid partagent
-// la meme clé vide. Sans le rejet explicite des vies anonymes, elles s'apparieraient, et
-// l'action serait posee sur une trajectoire dont on ignore le porteur.
+// LE NOM DU TEST EST CONSERVE TEL QUEL, et c'est deliberé : il figure dans la baseline de
+// non-regression (`.ai/baselines/tests_pre_migration.jsonl`), un artefact GELE dont la
+// disparition d'une entree fait rougir le gate CI. Depuis la decision du 2026-09-07 une vie
+// « anonyme » n'est plus une categorie de donnee mais un DEFAUT de nommage — la doctrine est
+// dans le corps du test et dans `unnamed_lives.go`, pas dans un renommage qui couterait un
+// faux rouge a tout le monde.
+//
+// Le second cas est celui qui mord : une action sans xuid et une piste sans xuid partagent
+// la meme clé vide. Sans le rejet explicite, elles s'apparieraient, et l'action serait posee
+// sur une trajectoire dont on ignore le porteur.
+//
+// C'EST LA CONTRE-EPREUVE DU CORRECTIF P0-1, et elle doit rester verte : le pont RETRECIT le
+// rejet, il ne le supprime pas (`slotXUID` est nil ici — aucun pont).
 func TestUneVieAnonymeNeSertAPersonne(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0)}
 	tracks := []Track{track("", pointAt(50, 1, 0, 0))} // vie non nommee, pile dans la zone
 
-	_, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, AttributeOptions{})
+	_, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, nil, AttributeOptions{})
 	checkInvariant(t, cov)
 	if cov.NoPosition != 1 || cov.Attributed != 0 {
 		t.Errorf("joueur nomme : couverture %+v, attendu 1 sans position", cov)
 	}
 
-	_, covAnon := AttributeZones([]ObjectiveAction{action("", 50)}, tracks, zones, AttributeOptions{})
+	_, covAnon := AttributeZones([]ObjectiveAction{action("", 50)}, tracks, zones, nil, AttributeOptions{})
 	checkInvariant(t, covAnon)
 	if covAnon.Attributed != 0 {
 		t.Errorf("action sans identite : %d attribuee(s) sur une vie anonyme — "+
@@ -172,7 +182,7 @@ func TestLaToleranceDEchantillonnageEstBornee(t *testing.T) {
 	}
 	for _, c := range cas {
 		tracks := []Track{track("2533", pointAt(c.frameEchant, 1, 0, 0))}
-		res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, AttributeOptions{MaxGapFrames: DefaultMaxGapFrames})
+		res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, nil, AttributeOptions{MaxGapFrames: DefaultMaxGapFrames})
 		checkInvariant(t, cov)
 		if res[0].Attributed != c.attribuee {
 			t.Errorf("%s : attribuee = %v, attendu %v", c.nom, res[0].Attributed, c.attribuee)
@@ -192,7 +202,7 @@ func TestAEgaliteDEcartLEchantillonAnterieurLEmporte(t *testing.T) {
 		pointAt(51, 21, 0, 0), // apres : dans la zone 102
 	)}
 
-	res, _ := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, AttributeOptions{})
+	res, _ := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, nil, AttributeOptions{})
 	if !res[0].Attributed || res[0].InstanceID != 101 {
 		t.Errorf("instance retenue = %d (attribuee=%v), attendu 101 (echantillon anterieur)",
 			res[0].InstanceID, res[0].Attributed)
@@ -206,7 +216,7 @@ func TestZonesQuiSeRecouvrentSontDeclareesAmbigues(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0), zoneAt(1, 102, 1, 0, 0)} // rayon 3, centres a 1 m
 	tracks := []Track{track("2533", pointAt(50, 0.5, 0, 0))}
 
-	res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, AttributeOptions{})
+	res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, nil, AttributeOptions{})
 	checkInvariant(t, cov)
 	if cov.Ambiguous != 1 || cov.Attributed != 0 {
 		t.Errorf("couverture %+v, attendu 1 ambigue", cov)
@@ -229,8 +239,8 @@ func TestLeTemoinNegatifEffondreLAttribution(t *testing.T) {
 		actions = append(actions, action("j", i))
 	}
 
-	_, vrai := AttributeZones(actions, tracks, zones, AttributeOptions{})
-	_, temoin := AttributeZones(actions, tracks, TranslateZones(zones, mapvar.Vec3{X: 12, Y: 12}), AttributeOptions{})
+	_, vrai := AttributeZones(actions, tracks, zones, nil, AttributeOptions{})
+	_, temoin := AttributeZones(actions, tracks, TranslateZones(zones, mapvar.Vec3{X: 12, Y: 12}), nil, AttributeOptions{})
 	checkInvariant(t, vrai)
 	checkInvariant(t, temoin)
 
@@ -263,7 +273,7 @@ func TestLeSeuilDeDistanceRelacheLAppartenance(t *testing.T) {
 	tracks := []Track{track("2533", pointAt(50, 8, 0, 0))}
 	actions := []ObjectiveAction{action("2533", 50)}
 
-	res, strict := AttributeZones(actions, tracks, zones, AttributeOptions{})
+	res, strict := AttributeZones(actions, tracks, zones, nil, AttributeOptions{})
 	checkInvariant(t, strict)
 	if strict.Attributed != 0 || strict.Outside != 1 {
 		t.Errorf("seuil strict : couverture %+v, attendu 1 dehors", strict)
@@ -272,12 +282,12 @@ func TestLeSeuilDeDistanceRelacheLAppartenance(t *testing.T) {
 		t.Errorf("distance publiee = %.3f, attendu 5,0 (8 m du centre, rayon 3)", got)
 	}
 
-	_, large := AttributeZones(actions, tracks, zones, AttributeOptions{MaxDistanceM: 6})
+	_, large := AttributeZones(actions, tracks, zones, nil, AttributeOptions{MaxDistanceM: 6})
 	checkInvariant(t, large)
 	if large.Attributed != 1 {
 		t.Errorf("seuil 6 m : couverture %+v, attendu 1 attribuee", large)
 	}
-	_, juste := AttributeZones(actions, tracks, zones, AttributeOptions{MaxDistanceM: 4.9})
+	_, juste := AttributeZones(actions, tracks, zones, nil, AttributeOptions{MaxDistanceM: 4.9})
 	if juste.Attributed != 0 {
 		t.Errorf("seuil 4,9 m pour une distance de 5,0 : attendu 0 attribuee, obtenu %d",
 			juste.Attributed)
@@ -290,7 +300,7 @@ func TestSousSeuilLaPlusProcheLEmporte(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0), zoneAt(1, 102, 14, 0, 0)}
 	tracks := []Track{track("2533", pointAt(50, 10, 0, 0))} // 7 m du bord de 101, 1 m de celui de 102
 
-	res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones,
+	res, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, nil,
 		AttributeOptions{MaxDistanceM: 10})
 	checkInvariant(t, cov)
 	if res[0].InstanceID != 102 {
@@ -301,9 +311,61 @@ func TestSousSeuilLaPlusProcheLEmporte(t *testing.T) {
 // TestSansActionLaCouvertureEstVideEtClose : un match sans action ne doit pas produire de
 // division par zero ni de compteur incoherent chez l'appelant.
 func TestSansActionLaCouvertureEstVideEtClose(t *testing.T) {
-	res, cov := AttributeZones(nil, nil, []Zone{zoneAt(0, 101, 0, 0, 0)}, AttributeOptions{})
+	res, cov := AttributeZones(nil, nil, []Zone{zoneAt(0, 101, 0, 0, 0)}, nil, AttributeOptions{})
 	checkInvariant(t, cov)
 	if len(res) != 0 || cov.Actions != 0 {
 		t.Errorf("res = %d, actions = %d, attendu 0/0", len(res), cov.Actions)
+	}
+}
+
+// TestCaptureSurVieNonNommeeEstAttribueeParLePont — LE CORRECTIF P0-1 (audit du 2026-09-06).
+//
+// `samplesByXUID` n'indexait que les pistes dont `XUID != ""`. Une capture tombant pendant une
+// vie dont le nommage a echoue ne trouvait alors aucun echantillon a moins de `MaxGapFrames`,
+// sortait `NoPosition`, ne votait plus a l'appariement jauge <-> proprietaire — et quand plus
+// aucune capture n'etait attribuee, le calque `zoneStates` ENTIER disparaissait de l'artefact
+// (`buildZoneStates` rend nil hors mode a colline). Mesure du parc : `696a9d7c` 11 captures
+// perdues sur 77, `7344d24f` 12 sur 71, `af13e2b2` 5 sur 19.
+//
+// MUTATION : revenir a l'index bati sur `tr.XUID != ""` rougit
+// (« attribuees = 0, attendu 1 » et « NoPosition = 1 »).
+func TestCaptureSurVieNonNommeeEstAttribueeParLePont(t *testing.T) {
+	zones := []Zone{zoneAt(0, 101, 0, 0, 0)}
+	// La piste est PUBLIEE et pile dans la zone ; son nommage a echoue, mais le pont nomme
+	// son slot.
+	tracks := []Track{{Slot: 536, Points: []Point{pointAt(50, 1, 0, 0)}}}
+	pont := map[uint32]uint64{536: 2533}
+
+	att, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, pont,
+		AttributeOptions{})
+	checkInvariant(t, cov)
+	if cov.Attributed != 1 || cov.NoPosition != 0 {
+		t.Fatalf("couverture %+v, attendu 1 attribuee et 0 sans position — "+
+			"le pont nomme le slot 536", cov)
+	}
+	if !att[0].Attributed || !att[0].HasSample {
+		t.Errorf("attribution %+v : la position de la vie doit avoir servi", att[0])
+	}
+}
+
+// TestCaptureSansPontResteSansPosition — LA CONTRE-EPREUVE : le correctif RETRECIT le rejet.
+// Trois sous-cas, comme `TestFlagCarriesVieAnonymeSansPontResteEcartee` : pont muet, pont sur
+// un autre slot, pont sur un autre nom. On n'invente aucun capteur.
+func TestCaptureSansPontResteSansPosition(t *testing.T) {
+	zones := []Zone{zoneAt(0, 101, 0, 0, 0)}
+	tracks := []Track{{Slot: 536, Points: []Point{pointAt(50, 1, 0, 0)}}}
+	for nom, pont := range map[string]map[uint32]uint64{
+		"pont muet":           nil,
+		"pont sur autre slot": {999: 2533},
+		"pont sur autre nom":  {536: 7777},
+	} {
+		t.Run(nom, func(t *testing.T) {
+			_, cov := AttributeZones([]ObjectiveAction{action("2533", 50)}, tracks, zones, pont,
+				AttributeOptions{})
+			checkInvariant(t, cov)
+			if cov.Attributed != 0 || cov.NoPosition != 1 {
+				t.Errorf("couverture %+v, attendu 0 attribuee et 1 sans position", cov)
+			}
+		})
 	}
 }

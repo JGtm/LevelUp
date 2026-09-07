@@ -1,0 +1,119 @@
+# config/replay_corpus.toml
+#
+# Manifeste du CORPUS TEMOIN de non-regression des artefacts de rejeu (cmd/replay-corpus-gate).
+#
+# POURQUOI CE FICHIER EXISTE. Trois regressions de donnees (28/08, 30/08, 02/09 — pont
+# d'identite par manche, drapeaux non attribues, "une piste = une vie") ont traverse des
+# goldens SYNTHETIQUES verts pendant dix-neuf schemas de suite, faute d'un differentiel sur
+# des FILMS REELS. Le balayage retroactif du parc (.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md,
+# 119 matchs, 161 artefacts, 19 schemas) a fini par les trouver — mais APRES coup. Ce manifeste
+# fige un SOUS-ENSEMBLE restreint et durable du meme parc, pour que le meme differentiel tourne
+# desormais AVANT tout merge qui touche au decodeur ou au constructeur de rejeu (cf.
+# docs/COMMANDS.md, section replay-corpus-gate).
+#
+# UN TEMOIN PAR FAMILLE DE MODE, PAS UN ECHANTILLON ALEATOIRE : chaque entree ci-dessous a ete
+# choisie parce qu'elle porte un calque ou un defaut deja mesure une fois (portage de crane,
+# pont d'identite multi-manche, fusion de vehicules...) — perdre cette matiere-la est le
+# signal le plus probable d'une regression future. Les id sont la forme COURTE du match
+# (title.FilmShortMatchID, 8 caracteres hex) : la cle du cache film ET du parc d'artefacts
+# (data/cache/replays/{slug}/{id}.json, data/cache/film_chunks/{id}/).
+#
+# CE MANIFESTE EST TITLE-AGNOSTIC PAR CONSTRUCTION : il nomme le titre en donnee (`title_slug`
+# ci-dessous), jamais en dur dans le code — cmd/replay-corpus-gate lit ce champ et branche sur
+# la capability `film.replay_artifact` du titre concerne, jamais sur une comparaison de slug
+# (CLAUDE.md, regle transverse multi-titre ; ratchet no_slug_comparison_test.go). Un second
+# titre qui gagnerait un decodeur de film ajouterait ses propres entrees ici, avec son propre
+# `title_slug` — le format n'a rien a changer.
+#
+# Toute modification breaking (renommage de champ, changement de sens) incremente
+# schema_version.
+
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+# --- CTF mono-manche -----------------------------------------------------------------------
+# Le calque `objectifs` (kills/assists/flag_grabs/flag_captures/flag_steals...) est le seul qui
+# dise ce qu'un joueur a FAIT, et c'est celui que la regression du 28/08 a vide sur 14 CTF du
+# parc (pont d'identite par manche, corrige au schema 40). bcb6d393 est un CTF:Arena canonique
+# (1 manche), deja mesure au 2e balayage : un residu connu (2 actions "kills" re-attribuees
+# a l'interieur d'un gain net) sert de temoin — toute REGRESSION future dessus doit se
+# distinguer de ce residu deja explique.
+[[temoin]]
+id      = "bcb6d393"
+famille = "ctf_mono_manche"
+mode    = "CTF:Arena"
+carte   = "Cliffhanger"
+raison  = "porte le calque objectifs (captures/vols/prises de drapeau) sur un CTF a 1 manche ; residu connu (re-attribution kills dans un gain, cf. BALAYAGE_PARC section C candidate 1) sert de reference de bruit attendu"
+
+# --- CTF multi-manche -----------------------------------------------------------------------
+# Ouvert au registre (.ai/V7.5/REGISTRE_REPORTS.md) : le pont d'identite par manche ne tient
+# PAS sur ce film (contrairement aux CTF mono-manche corriges par le correctif du 06/09). Tant
+# que ce defaut n'est pas ferme, ce temoin doit rester SURVEILLE explicitement — un differentiel
+# qui ne le nommerait pas laisserait une regression multi-manche invisible, exactement le
+# scenario du 28/08.
+[[temoin]]
+id      = "fb1a1a72"
+famille = "ctf_multi_manche"
+mode    = "CTF:Arena"
+carte   = "Banished Narrows"
+raison  = "CTF multi-manche ; le pont d'identite par manche ne tient pas encore dessus (defaut ouvert au registre) — a surveiller explicitement tant qu'il n'est pas ferme"
+
+# --- Oddball --------------------------------------------------------------------------------
+# Seul calque de "portage" qui n'a jamais ete instruit apres le balayage final (schema 41) :
+# d9781168 perd 6 portages de crane (36 -> 30, schema 23) sans qu'aucune des quatre
+# regressions candidates du balayage ne l'explique. Le garder au corpus, c'est refuser de
+# perdre CE signal-la une seconde fois.
+[[temoin]]
+id      = "d9781168"
+famille = "oddball"
+mode    = "Oddball:Arena"
+carte   = "Dredge"
+raison  = "porte le calque skullCarries (portages de crane) ; residu non instruit du balayage final (36 -> 30, schema 23) — surveiller toute perte supplementaire"
+
+# --- Assaut / bombe -------------------------------------------------------------------------
+# Seul match Assaut du parc local (facts_census du 2026-09-06 sur les 106 artefacts
+# disponibles). Porte bombCarries (ports de bombe) ET, au HEAD, les cinq statistiques d'Assaut
+# dependantes de l'artefact (capability film.bomb_stats) — aucun artefact du parc n'etant assez
+# recent pour les avoir portees a la premiere cuisson, toute perte apparaitrait ici en premier.
+[[temoin]]
+id      = "c75f33b8"
+famille = "assaut_bombe"
+mode    = "Assault:One Bomb"
+carte   = "Curfew"
+raison  = "seul match Assaut du parc local ; porte bombCarries et les statistiques d'Assaut derivees de l'artefact (film.bomb_stats)"
+
+# --- Slayer -----------------------------------------------------------------------------------
+# Temoin de la famille SANS objectif (aucun calque de portage, aucune zone) : garantit que le
+# gate ne mesure pas QUE les modes a objectif — pistes, armes, grenades, equipement doivent
+# rester couverts sur un mode qui n'a qu'eux. Deja mesure au 2e balayage (weaponLabels 17 -> 16,
+# sans consequence sur les tirs publies).
+[[temoin]]
+id      = "bf15f7ab"
+famille = "slayer"
+mode    = "Slayer:Arena"
+carte   = "Perilous"
+raison  = "mode sans objectif (aucun portage, aucune zone) ; couvre pistes/armes/grenades/equipement seuls ; residu connu (weaponLabels 17 -> 16, sans consequence)"
+
+# --- Film a 2 manches -------------------------------------------------------------------------
+# Distinct du temoin CTF multi-manche : meme carte que fb1a1a72 (Banished Narrows) mais mode
+# Oddball, et le nombre de manches (2) est celui qui exerce la jointure score/manche
+# independamment du mode. Couvre score.equipe.*.manches sur un mode a plusieurs rounds.
+[[temoin]]
+id      = "51ebbc0f"
+famille = "deux_manches"
+mode    = "Oddball:Arena"
+carte   = "Banished Narrows"
+raison  = "film a 2 manches (rounds) ; exerce la jointure score/manche independamment du mode CTF deja couvert par ctf_multi_manche"
+
+# --- Vehicules ----------------------------------------------------------------------------
+# "Heavies" porte le catalogue de vehicules le plus dense du parc (57 chunks, le film le plus
+# long a cuire du balayage, 128 s au schema 41). Couvre le calque vehicles (vies + occupations
+# de sieges), dont la fusion des vies en relais (fantomes, commit 89a67a48f) et la visee des
+# occupants (aimReads) sont des ajouts recents qui n'ont ete verifies que sur ce type de match.
+[[temoin]]
+id      = "084a804d"
+famille = "vehicules"
+mode    = "BTB Heavies:CTF"
+carte   = "Fortitude Heavies"
+raison  = "densite maximale de vehicules du parc (57 chunks) ; couvre vies de vehicule + occupations de sieges (fusion des vies en relais, visee des occupants)"

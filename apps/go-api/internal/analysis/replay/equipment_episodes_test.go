@@ -38,7 +38,7 @@ func TestCamoEpisodeOuvreEtFermeSurLesTransitionsMesurees(t *testing.T) {
 		camoRead(512, 20, filmdec.CamoActiveQ), // même état : ne rouvre rien
 		camoRead(512, 34, filmdec.CamoInactiveQ),
 	}
-	eps, nonBinary := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks)
+	eps, nonBinary := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if nonBinary != 0 {
 		t.Fatalf("aucune lecture non binaire attendue, obtenu %d", nonBinary)
 	}
@@ -54,7 +54,7 @@ func TestCamoEpisodeOuvreEtFermeSurLesTransitionsMesurees(t *testing.T) {
 func TestCamoEpisodeOuvertALaMortSeFermeALaFinDeLaVie(t *testing.T) {
 	tracks := []Track{{Slot: 512, StartFrame: 5, EndFrame: 42}}
 	camo := []filmdec.CamoRead{camoRead(512, 30, filmdec.CamoActiveQ)}
-	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks)
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 1 {
 		t.Fatalf("attendu 1 épisode, obtenu %d : %+v", len(eps), eps)
 	}
@@ -70,7 +70,7 @@ func TestCamoActivationAnterieureALOrigineSeClampeAuDebutDeLaVie(t *testing.T) {
 		{Slot: 512, TimestampUS: eqOrigin - 500_000, Q: filmdec.CamoActiveQ}, // avant la frame 0
 		camoRead(512, 8, filmdec.CamoInactiveQ),
 	}
-	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks)
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 1 {
 		t.Fatalf("attendu 1 épisode, obtenu %d : %+v", len(eps), eps)
 	}
@@ -86,7 +86,7 @@ func TestCamoLectureNonBinaireCompteeMaisSansEffet(t *testing.T) {
 		camoRead(512, 15, 2048), // jamais observée sur le corpus : ni ouvre, ni ferme
 		camoRead(512, 20, filmdec.CamoInactiveQ),
 	}
-	eps, nonBinary := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks)
+	eps, nonBinary := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if nonBinary != 1 {
 		t.Fatalf("la lecture non binaire doit être COMPTÉE, obtenu %d", nonBinary)
 	}
@@ -98,7 +98,7 @@ func TestCamoLectureNonBinaireCompteeMaisSansEffet(t *testing.T) {
 func TestCamoVieNonPublieeNeProduitAucunEpisode(t *testing.T) {
 	tracks := []Track{{Slot: 512, StartFrame: 0, EndFrame: 42}}
 	camo := []filmdec.CamoRead{camoRead(999, 10, filmdec.CamoActiveQ)}
-	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks)
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if eps != nil {
 		t.Errorf("un slot sans trajectoire publiée n'a aucune fiche où poser l'épisode : %+v", eps)
 	}
@@ -113,7 +113,7 @@ func TestOvershieldEpisodeSuitLaRegleQSup64(t *testing.T) {
 		shieldPos(700, 30, 120),
 		shieldPos(700, 45, 64), // épuisement : retour au plein — fin MESURÉE
 	}
-	eps, _ := buildEquipmentEpisodes(pos, nil, eqOrigin, eqStep, tracks)
+	eps, _ := buildEquipmentEpisodes(pos, nil, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 1 {
 		t.Fatalf("attendu 1 épisode, obtenu %d : %+v", len(eps), eps)
 	}
@@ -126,7 +126,7 @@ func TestOvershieldEpisodeSuitLaRegleQSup64(t *testing.T) {
 func TestOvershieldMortEnSurboucliersFermeALaFinDeLaVie(t *testing.T) {
 	tracks := []Track{{Slot: 700, StartFrame: 0, EndFrame: 60}}
 	pos := []filmdec.BipedPosition{shieldPos(700, 50, 200)}
-	eps, _ := buildEquipmentEpisodes(pos, nil, eqOrigin, eqStep, tracks)
+	eps, _ := buildEquipmentEpisodes(pos, nil, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 1 {
 		t.Fatalf("attendu 1 épisode, obtenu %d : %+v", len(eps), eps)
 	}
@@ -151,7 +151,7 @@ func TestEquipmentEpisodesTriesEtCouvertureComptee(t *testing.T) {
 		shieldPos(700, 10, 200),
 		shieldPos(700, 25, 60),
 	}
-	eps, _ := buildEquipmentEpisodes(pos, camo, eqOrigin, eqStep, tracks)
+	eps, _ := buildEquipmentEpisodes(pos, camo, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 3 {
 		t.Fatalf("attendu 3 épisodes, obtenu %d : %+v", len(eps), eps)
 	}
@@ -159,7 +159,7 @@ func TestEquipmentEpisodesTriesEtCouvertureComptee(t *testing.T) {
 	if eps[0].Fam != EquipFamilyOvershield || eps[1].T0 != 40 || eps[2].T0 != 60 {
 		t.Errorf("épisodes non triés par T0 : %+v", eps)
 	}
-	cov := equipmentCoverage(eps, tracks)
+	cov := equipmentCoverage(eps, tracks, nil)
 	if cov.TracksTotal != 3 || cov.CamoLives != 1 || cov.CamoEpisodes != 2 ||
 		cov.OvershieldLives != 1 || cov.OvershieldEpisodes != 1 {
 		t.Errorf("couverture fausse : %+v", cov)
@@ -168,11 +168,11 @@ func TestEquipmentEpisodesTriesEtCouvertureComptee(t *testing.T) {
 
 func TestEquipmentEpisodesSansDonneesRendNil(t *testing.T) {
 	tracks := []Track{{Slot: 512, StartFrame: 0, EndFrame: 100}}
-	if eps, _ := buildEquipmentEpisodes(nil, nil, eqOrigin, eqStep, tracks); eps != nil {
+	if eps, _ := buildEquipmentEpisodes(nil, nil, eqOrigin, eqStep, tracks, nil); eps != nil {
 		t.Errorf("sans lecture, rien n'est inventé : %+v", eps)
 	}
 	if eps, _ := buildEquipmentEpisodes(nil, []filmdec.CamoRead{camoRead(512, 10, filmdec.CamoActiveQ)},
-		eqOrigin, eqStep, nil); eps != nil {
+		eqOrigin, eqStep, nil, nil); eps != nil {
 		t.Errorf("sans trajectoire publiée, rien n'est publié : %+v", eps)
 	}
 }
@@ -197,7 +197,7 @@ func TestEpisodeDUneVieAnterieureEstPublie(t *testing.T) {
 		camoRead(512, 10, filmdec.CamoActiveQ), camoRead(512, 20, filmdec.CamoInactiveQ),
 		camoRead(512, 210, filmdec.CamoActiveQ), camoRead(512, 230, filmdec.CamoInactiveQ),
 	}
-	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks)
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 2 {
 		t.Fatalf("%d épisode(s), attendu 2 — celui de la vie ANTÉRIEURE a été jeté : %+v", len(eps), eps)
 	}
@@ -207,7 +207,7 @@ func TestEpisodeDUneVieAnterieureEstPublie(t *testing.T) {
 	if eps[1].T0 != 210 || eps[1].T1 != 230 {
 		t.Errorf("épisode de la seconde vie [%d..%d], attendu [210..230]", eps[1].T0, eps[1].T1)
 	}
-	cov := equipmentCoverage(eps, tracks)
+	cov := equipmentCoverage(eps, tracks, nil)
 	if cov.CamoEpisodes != 2 || cov.CamoLives != 2 {
 		t.Errorf("couverture %+v, attendu camoEpisodes=2 et camoLives=2 — deux VIES du même "+
 			"slot (constat C2 de la revue REG-R1 : le compteur indexait par slot)", cov)
@@ -225,7 +225,7 @@ func TestEpisodeOuvertEnFinDeVieAnterieureSeFermeSurSaPropreVie(t *testing.T) {
 		{Slot: 512, StartFrame: 200, EndFrame: 260},
 	}
 	camo := []filmdec.CamoRead{camoRead(512, 40, filmdec.CamoActiveQ)}
-	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks)
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
 	if len(eps) != 1 {
 		t.Fatalf("%d épisode(s), attendu 1 : %+v", len(eps), eps)
 	}
@@ -252,7 +252,7 @@ func TestCouvertureDesEpisodesCompteDesViesPasDesSlots(t *testing.T) {
 		{Slot: 512, Fam: EquipFamilyOvershield, T0: 30, T1: 40},
 		{Slot: 512, Fam: EquipFamilyOvershield, T0: 240, T1: 250},
 	}
-	cov := equipmentCoverage(eps, tracks)
+	cov := equipmentCoverage(eps, tracks, nil)
 	if cov.CamoEpisodes != 2 || cov.CamoLives != 2 {
 		t.Errorf("camo : %d épisodes / %d vies, attendu 2 / 2 — deux vies du MÊME slot",
 			cov.CamoEpisodes, cov.CamoLives)
@@ -260,5 +260,143 @@ func TestCouvertureDesEpisodesCompteDesViesPasDesSlots(t *testing.T) {
 	if cov.OvershieldEpisodes != 2 || cov.OvershieldLives != 2 {
 		t.Errorf("surbouclier : %d épisodes / %d vies, attendu 2 / 2",
 			cov.OvershieldEpisodes, cov.OvershieldLives)
+	}
+}
+
+// TestEpisodeAChevalSurDeuxViesGardeSesBornesMesurees — UN TROU DE REPLICATION N'AMPUTE PAS UNE
+// MESURE QUI L'ENJAMBE (correctif du 2026-09-06, corpus temoin).
+//
+// L'etat actif se lit PAR SLOT (i28 pour le camo) : ses deux bornes sont des transitions LUES,
+// qui ne savent rien du decoupage en vies. Depuis le schema 36 (« une track = une vie ») un trou
+// de plus de `lifeGapUS` coupe la piste — et pour le camouflage cet etat est justement ce qui
+// PROVOQUE le trou : un porteur invisible et immobile cesse d'etre replique. Borner l'episode a
+// la seule vie de recouvrement MAXIMAL jetait alors la part couverte par l'autre vie, dont
+// l'instant d'ACTIVATION. Mesure : `084a804d`, slot 620, camo lu [3105..3672] (568 frames),
+// publie [3173..3672] (500) — 68 frames perdues, dont 16 A L'INTERIEUR d'une vie publiee, et
+// l'activation sonnee 6,8 s en retard.
+func TestEpisodeAChevalSurDeuxViesGardeSesBornesMesurees(t *testing.T) {
+	// Deux vies du meme slot, separees d'un trou ; la SECONDE recouvre bien plus que la
+	// premiere — c'est elle que l'ancienne regle elisait, en rognant l'ouverture.
+	tracks := []Track{
+		{Slot: 620, StartFrame: 0, EndFrame: 50},
+		{Slot: 620, StartFrame: 60, EndFrame: 300},
+		{Slot: 620, StartFrame: 400, EndFrame: 500}, // vie NON recouverte : elle ne doit rien elargir
+	}
+	camo := []filmdec.CamoRead{
+		camoRead(620, 45, filmdec.CamoActiveQ),
+		camoRead(620, 250, filmdec.CamoInactiveQ),
+	}
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
+	if len(eps) != 1 {
+		t.Fatalf("%d episode(s), attendu 1 : %+v", len(eps), eps)
+	}
+	if eps[0].T0 != 45 || eps[0].T1 != 250 {
+		t.Errorf("episode [%d..%d], attendu [45..250] — les deux bornes sont MESUREES, le trou "+
+			"de replication entre 50 et 60 ne doit en rogner aucune", eps[0].T0, eps[0].T1)
+	}
+	if !eps[0].EndRead {
+		t.Errorf("endRead=false, attendu true — la fin est une transition mesuree, pas une mort")
+	}
+}
+
+// TestEpisodeNEnjambePasUneMort — LA BORNE DU CONSTAT C2 (revue DUREES-R1). L'union de `spanFor`
+// recoud un SILENCE de replication, pas une vie : elle ne doit JAMAIS franchir une fin de vie
+// NOMMEE, dont l'identite vient de la mort qui la termine.
+//
+// Sans cette borne, trois vies nommees d'un meme slot et une activation dans la PREMIERE
+// rendaient `[20..450]` — un episode annonce a travers DEUX morts, que `equipmentFx.ts` aurait
+// peint sur des vies ou rien ne l'a jamais lu. La mutation prescrite au premier correctif ne
+// l'exercait pas : elle placait l'activation dans la SECONDE vie, ou le clamp ne peut que
+// retrecir.
+func TestEpisodeNEnjambePasUneMort(t *testing.T) {
+	tracks := []Track{
+		{Slot: 620, XUID: "111", StartFrame: 0, EndFrame: 50},
+		{Slot: 620, XUID: "111", StartFrame: 60, EndFrame: 300},
+		{Slot: 620, XUID: "111", StartFrame: 400, EndFrame: 500},
+	}
+	camo := []filmdec.CamoRead{
+		camoRead(620, 20, filmdec.CamoActiveQ),
+		camoRead(620, 450, filmdec.CamoInactiveQ),
+	}
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
+	if len(eps) != 1 {
+		t.Fatalf("%d episode(s), attendu 1 : %+v", len(eps), eps)
+	}
+	if eps[0].T0 != 20 || eps[0].T1 != 50 {
+		t.Errorf("episode [%d..%d], attendu [20..50] — l'union doit s'arreter a la premiere fin "+
+			"de vie NOMMEE, pas enjamber deux morts", eps[0].T0, eps[0].T1)
+	}
+}
+
+// TestEpisodeFranchitUnTrouAnonymeMaisPasLaMortSuivante — la meme regle, exercee dans les DEUX
+// sens sur un seul slot : la couture traverse la vie ANONYME (trou de replication) et s'arrete
+// net a la fin de la vie NOMMEE qui suit. C'est exactement la forme du cas reel `084a804d`
+// slot 620, augmentee d'une vie de plus pour que la borne ait quelque chose a refuser.
+func TestEpisodeFranchitUnTrouAnonymeMaisPasLaMortSuivante(t *testing.T) {
+	tracks := []Track{
+		{Slot: 620, StartFrame: 0, EndFrame: 50},                 // ANONYME : trou de replication
+		{Slot: 620, XUID: "111", StartFrame: 60, EndFrame: 300},  // NOMMEE : sa fin est une mort
+		{Slot: 620, XUID: "111", StartFrame: 400, EndFrame: 500}, // la vie d'apres
+	}
+	camo := []filmdec.CamoRead{
+		camoRead(620, 45, filmdec.CamoActiveQ),
+		camoRead(620, 450, filmdec.CamoInactiveQ),
+	}
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks, nil)
+	if len(eps) != 1 {
+		t.Fatalf("%d episode(s), attendu 1 : %+v", len(eps), eps)
+	}
+	if eps[0].T0 != 45 || eps[0].T1 != 300 {
+		t.Errorf("episode [%d..%d], attendu [45..300] — la couture traverse la vie ANONYME "+
+			"(activation mesuree conservee) puis s'arrete a la mort", eps[0].T0, eps[0].T1)
+	}
+}
+
+// TestEpisodeNeSArretePasSurUneIdentiteDEDUITE — L'INTERACTION DES DEUX LOTS, attrapee par la
+// cuisson de controle de l'integration (2026-09-07).
+//
+// DUREES-R1 (C2) a fait de `spanFor` une union qui NE FRANCHIT PAS UNE MORT, et son marqueur de
+// mort est `XUID != ""` : « l identite d une vie vient de la mort qui la TERMINE ». Le proxy
+// etait exact tant que seul `nameLivesByDeaths` nommait. La passe de nommage final
+// (`unnamed_lives.go`) le casse : elle nomme, PAR DEDUCTION, des vies que nulle mort ne termine.
+//
+// MESURE DE L'INTEGRATION : `084a804d` slot 620 — deux vies dont la PREMIERE etait sans nom et
+// que la passe nomme desormais. L'episode de camouflage `[3105..3672]` (568 frames — la valeur
+// meme que la chronique du v45 publie comme reparee) retombait a `[3105..3120]`, 16 frames :
+// 552 perdues sur le TEMOIN du correctif qu'il etait cense proteger.
+//
+// LA REGLE, ET C'EST CELLE DE `carrierPresenceOf` : une deduction AJOUTE une presence, elle
+// n'ajoute jamais une absence — ni, ici, une MORT.
+//
+// MUTATION : retirer `&& !deduced[i]` de `trackFrameWindows` rougit (« [45..60] au lieu de
+// [45..250] »).
+func TestEpisodeNeSArretePasSurUneIdentiteDEDUITE(t *testing.T) {
+	// Deux vies du meme slot, separees par un trou de replication. La PREMIERE porte un xuid
+	// pose par la passe de nommage final (indice 0 dans `deduced`) : nulle mort ne la termine.
+	tracks := []Track{
+		{Slot: 512, StartFrame: 40, EndFrame: 60, XUID: "111"},
+		{Slot: 512, StartFrame: 200, EndFrame: 260, XUID: "111"},
+	}
+	deduced := map[int]bool{0: true}
+	windows := trackFrameWindows(tracks, deduced)
+
+	span, ok := spanFor(windows[512], 45, 250)
+	if !ok {
+		t.Fatal("aucune vie ne recouvre l'intervalle mesure")
+	}
+	if span.from != 40 || span.to != 260 {
+		t.Errorf("union [%d..%d], attendu [40..260] : la premiere vie est nommee par DEDUCTION, "+
+			"pas par une mort — elle ne borne pas l'union", span.from, span.to)
+	}
+
+	// CONTRE-EPREUVE : la meme configuration ou la premiere vie est nommee PAR UNE MORT. La
+	// borne tient, et c'est tout le propos du constat C2 de DUREES-R1.
+	span, ok = spanFor(trackFrameWindows(tracks, nil)[512], 45, 250)
+	if !ok {
+		t.Fatal("aucune vie ne recouvre l'intervalle mesure")
+	}
+	if span.to != 60 {
+		t.Errorf("union [%d..%d] : une vie nommee PAR UNE MORT doit arreter l'union a 60",
+			span.from, span.to)
 	}
 }

@@ -38,7 +38,8 @@ import (
 // En CTF on ne porte jamais son propre drapeau : on le RENVOIE, et c'est `flag_returns`. Un
 // portage appartient donc toujours au drapeau adverse — mais « adverse » suppose de connaitre
 // l'equipe du porteur, et **l'equipe n'est pas dans le film** (cf. `Track.Team`). L'attribution
-// passe donc par la GEOMETRIE, en deux regles qui suivent le comportement de l'objet :
+// passe donc par la GEOMETRIE : la regle, ses trois cas et l'ordre dans lequel ils se lisent
+// vivent dans `flag_assign.go`, avec la mesure qui les fonde.
 //
 // LE RENVOI N'EST PAS INSTANTANE, ET LA PHRASE LE DISAIT A TORT jusqu'au 2026-08-31 (« le toucher
 // le RENVOIE »). Le renvoi demande de SE TENIR dans la zone du drapeau tombe pendant ~3,1 s seul,
@@ -51,10 +52,6 @@ import (
 // EN VARIANTE « DRAPEAU NEUTRE », il n'y a qu'UN drapeau et il n'est celui de personne : la regle
 // ci-dessus devient sans objet, et tous les portages tombent dans ce drapeau unique parce qu'un
 // seul socle est retenu (`flag_neutral.go`).
-//
-//	un VOL (`flag_steals`) se fait AU SOCLE : le drapeau est celui du socle le plus proche ;
-//	une PRISE (`flag_grabs`) ramasse un drapeau DEJA au sol : c'est celui qui y est, si l'un
-//	  d'eux git a moins de [flagPickupRadiusM] ; sinon on retombe sur le socle le plus proche.
 //
 // Carte hors du catalogue d'objectifs : aucun socle, tous les portages tombent dans un seul
 // drapeau d'equipe [TeamNeutral]. Le calque reste vrai (les portages sont ceux qu'ils sont), il
@@ -99,6 +96,9 @@ type FlagCarryScan struct {
 	// manche a l'autre ; une prise est nommee par l'identite de sa manche, choisie sur son
 	// instant). Sur un film mono-manche c'est le pont plat, a l'octet pres.
 	Identity objectiveevents.RoundIdentity
+	// TeamOf est la table xuid -> equipe fournie par l'appelant (cf. [FlagInput.TeamOf]) : elle
+	// porte l'invariant « jamais son propre drapeau ». Vide : l'invariant se tait.
+	TeamOf map[string]int
 	// Marks est le controle independant : les records de bipede d'image-cle portant le marqueur
 	// de portage, plus les instants de TOUTES les images-cles.
 	Marks filmdec.CarrierMarkScan
@@ -123,8 +123,15 @@ type flagCarryCtx struct {
 	tracks []Track
 	deaths []Death
 	// slotXUID nomme le slot de BIPEDE des marques de portage (espace de slots different de
-	// celui du statborg).
+	// celui du statborg). C'est le pont EPURE (`OwnerReport.NamingBridge()`) : les slots que
+	// deux vies nommees se partagent en sont retires, pour qu'aucun lecteur ne puisse servir le
+	// nom arbitraire du premier occupant (revue VIES-R1, C2).
 	slotXUID map[uint32]uint64
+	// slotAmbiguous porte les slots que le pont epure vient de retirer. Il voyage A COTE parce
+	// que le REFUS doit se COMPTER : sans lui, un slot retire du pont serait indistinguable d'un
+	// slot que le pont n'a jamais nomme, et `coverage.flagCarries.ambiguousSlot` retomberait a
+	// zero en silence (revue DUREES-R1, C1 — le compteur est servi jusqu'au contrat).
+	slotAmbiguous map[uint32]bool
 }
 
 // flagOpening est une prise, avant tout bornage.
@@ -193,7 +200,7 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	// ... et le point de lacher se corrige APRES, sur la piste LIBRE : le porteur meurt rarement
 	// la ou l'objet se pose. L'attribution du drapeau qui suit s'en sert.
 	cov.DropsRepositioned = repositionFlagDrops(raws, ctx, scan)
-	assignFlags(raws, scan.Spawns)
+	assignFlags(raws, scan, ctx, cov)
 	markFlagCarries(raws, scan.Marks, ctx)
 	tallyFlagCarries(raws, cov)
 	cov.Overlaps, cov.ClosedOverlaps = countFlagOverlaps(raws)
@@ -314,7 +321,11 @@ func closeByCarrierKills(raws []flagCarryRaw, evs []objectiveevents.NamedEvent,
 // ecarte ce qui n'en a pas. C'est le seul endroit qui rejette apres le pont : les compteurs de
 // cause y sont.
 func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, cov *FlagCarriesCoverage) []flagCarryRaw {
-	idx := tracksByXUID(ctx.tracks)
+	// LE REFUS DU REPLI EST COMPTE ET DIT : la matiere existe, le calque renonce a s'en servir
+	// parce que le slot est partage (cf. flag_carrier_tracks.go, garde du constat C1).
+	idx, ambigus := tracksByXUID(ctx.tracks, ctx.slotXUID, ctx.slotAmbiguous)
+	cov.AmbiguousSlot = len(ambigus)
+	logFlagAmbiguousSlots(ambigus)
 	out := raws[:0:0]
 	for _, r := range raws {
 		f0 := ctx.frameOfMatchMS(r.t0)
@@ -335,88 +346,6 @@ func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, cov *FlagCa
 		out = append(out, r)
 	}
 	return out
-}
-
-// tracksByXUID range les pistes publiees par joueur.
-func tracksByXUID(tracks []Track) map[string][]Track {
-	out := map[string][]Track{}
-	for _, t := range tracks {
-		if t.XUID != "" {
-			out[t.XUID] = append(out[t.XUID], t)
-		}
-	}
-	return out
-}
-
-// pointOfXUIDAt rend le point PUBLIE le plus proche de la frame demandee, parmi les pistes d'un
-// joueur. Rend (_, false) si aucune piste n'a de point a moins d'une frame — le drapeau n'aurait
-// alors pas de position a dessiner, et on prefere ne rien poser.
-func pointOfXUIDAt(tracks []Track, frame int) (Point, bool) {
-	best, bd, found := Point{}, 0, false
-	for _, tr := range tracks {
-		for _, p := range tr.Points {
-			d := p.T - frame
-			if d < 0 {
-				d = -d
-			}
-			if !found || d < bd {
-				best, bd, found = p, d, true
-			}
-		}
-	}
-	return best, found && bd <= 1
-}
-
-// assignFlags attribue chaque portage a un drapeau (index dans la liste des socles).
-func assignFlags(raws []flagCarryRaw, spawns []FlagSpawn) {
-	if len(spawns) == 0 {
-		for i := range raws {
-			raws[i].flagIndex = 0
-		}
-		return
-	}
-	dropped := make([]*[2]float32, len(spawns)) // position courante de chaque drapeau au sol
-	for i := range raws {
-		fi := -1
-		if !raws[i].steal {
-			fi = nearestDroppedFlag(dropped, raws[i].x0, raws[i].y0)
-		}
-		if fi < 0 {
-			fi = nearestSpawn(spawns, raws[i].x0, raws[i].y0)
-		}
-		raws[i].flagIndex = fi
-		if raws[i].captured {
-			dropped[fi] = nil
-			continue
-		}
-		dropped[fi] = &[2]float32{raws[i].x1, raws[i].y1}
-	}
-}
-
-// nearestDroppedFlag rend l'index du drapeau LACHE le plus proche du point, ou -1 si aucun n'est
-// a portee.
-func nearestDroppedFlag(dropped []*[2]float32, x, y float32) int {
-	best, bd := -1, float64(flagPickupRadiusM*flagPickupRadiusM)
-	for i, p := range dropped {
-		if p == nil {
-			continue
-		}
-		if d := sqDist(p[0], p[1], x, y); d <= bd {
-			best, bd = i, d
-		}
-	}
-	return best
-}
-
-// nearestSpawn rend l'index du socle le plus proche du point.
-func nearestSpawn(spawns []FlagSpawn, x, y float32) int {
-	best, bd := 0, sqDist(spawns[0].X, spawns[0].Y, x, y)
-	for i := 1; i < len(spawns); i++ {
-		if d := sqDist(spawns[i].X, spawns[i].Y, x, y); d < bd {
-			best, bd = i, d
-		}
-	}
-	return best
 }
 
 // sqDist rend le carre de la distance plane entre deux points.
