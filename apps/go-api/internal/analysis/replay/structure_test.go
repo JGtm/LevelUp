@@ -891,8 +891,22 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact 36 à 46 est appauvri sans que sa forme le dise.
 	//   44, 45 et 46 SONT PRIS par les lots des manches, des durées et des drapeaux, en cours sur
 	//   d'autres branches. Détail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
-	if SchemaVersion != 47 {
-		t.Fatalf("SchemaVersion = %d, attendu 47 : incrémenter exige une raison écrite ci-dessus "+
+	// v48 — LE PONT CESSE D'ÊTRE MUET SUR LES FILMS QUI DÉMARRENT TARD (2026-09-07). Aucun
+	//   champ ajouté : un changement de CONTENU. (1) `bestDeathOffset` cherchait le calage du
+	//   fil des morts depuis `min(fins de vie) − 60 000` : la marge amont supposait que la
+	//   première mort du match tombe dans la première minute. Elle tombe à 71 s sur `51ebbc0f`
+	//   et à 136 s sur `4f77afc1` — le vrai calage passait SOUS la borne et l'optimiseur
+	//   retenait un pic de bruit. La plage est désormais celle des données. CINQ films du parc
+	//   sur 106 étaient concernés, et ce sont EXACTEMENT les cinq sans origine publiée : vies
+	//   nommées 9 → 71, 17 → 140, 44 → 192, 31 → 150, 37 → 225. (2) Le roster qui sert à lire
+	//   l'index de joueur venait du seul fil des morts : un joueur à 0 mort n'y figurait pas,
+	//   n'avait donc pas d'index, et manquait au roster publié (`3372e7eb`, 6 pour 8). La
+	//   feuille de match le complète quand l'appelant la fournit.
+	//   POURQUOI LA VERSION MONTE : un artefact < 48 porte des pistes non nommées, et sur ces
+	//   cinq films un calque d'objectifs et une courbe de score non recalés faute d'origine.
+	//   Détail : .ai/V7.5/v2/PONT_MUET_2026-09-07.md.
+	if SchemaVersion != 48 {
+		t.Fatalf("SchemaVersion = %d, attendu 48 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

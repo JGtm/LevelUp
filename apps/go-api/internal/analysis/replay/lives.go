@@ -97,25 +97,104 @@ func buildLifeSpans(tracks map[uint32]slotTrack) []lifeSpan {
 	return out
 }
 
+// deathOffsetStepMS est le pas du balayage fin du calage, et la grille reste ancrée sur la
+// PREMIÈRE FIN DE VIE — celle sur laquelle le balayage linéaire d'avant 2026-09-07 était déjà
+// ancré (il partait de `min(fins) − 60 000`, et 60 000 est multiple de 10). Un film déjà bien
+// calé retient donc le MÊME entier qu'avant, et sa re-cuisson ne déplace rien.
+const deathOffsetStepMS = 10
+
 // bestDeathOffset résout le décalage entre l'horloge du fil des morts et celle du film.
 //
 // LE MAXIMUM EST UN PLATEAU : toute la largeur de la fenêtre d'acceptation donne le même
 // compte. On retient son CENTRE — au bord, tous les écarts d'appariement vaudraient la
 // demi-fenêtre, ce qui ferait passer un mauvais calage pour bon.
+//
+// # LA MARGE AMONT DE 60 s A ÉTÉ SUPPRIMÉE, ET C'EST LE DÉFAUT QUE CE FICHIER FERMAIT MAL
+//
+// Le balayage partait de `min(fins de vie) − 60 000` : il supposait que LA PREMIÈRE MORT DU
+// MATCH TOMBE DANS LA PREMIÈRE MINUTE. Le fil des morts est daté depuis le début du match,
+// or la partie ne commence pas à t = 0 — les joueurs rejoignent après la mise en place, et
+// il faut encore quelques dizaines de secondes pour la première mort. Au-delà de 60 s, le
+// vrai calage tombe SOUS la borne basse et l'optimiseur se rabat sur un pic de bruit.
+//
+// MESURE DU 2026-09-07, cinq films du parc sur 106 — et ce sont EXACTEMENT les cinq dont
+// l'origine du fil n'était pas publiée (`resolveOriginMs` prend ce calage pour témoin) :
+//
+//	film        1re mort du fil   morts appariées      vies nommées
+//	51ebbc0f          71 348 ms      9  ->  71  / 71      9 ->  71 / 87
+//	fb1a1a72          63 356 ms     17  -> 140  / 141    17 -> 140 / 147
+//	4f77afc1         136 435 ms     44  -> 192  / 300    44 -> 192 / 375
+//	11de8353         119 367 ms     31  -> 155  / 166    31 -> 150 / 246
+//	06dfe6d9         117 073 ms     37  -> 225  / 261    37 -> 225 / 291
+//
+// Les quatre témoins de contrôle (première mort à 52-60 s) rendent le même nombre de vies
+// nommées avant et après : la frontière était bien la constante, à rien d'autre.
+//
+// # LA PLAGE EST CELLE DES DONNÉES, ET LE BALAYAGE DEVIENT UN VOTE PUIS UN AFFINAGE
+//
+// Aucune constante ne remplace 60 s : le support complet est
+// `[min(fins) − max(morts), max(fins) − min(morts)]` — hors de là, aucune mort ne peut
+// tomber sur aucune fin de vie. Le balayer au pas de 10 ms coûterait vingt fois plus cher
+// sur un film BTB, d'où le vote de [voteDeathOffset] : il désigne le calage candidat en UN
+// parcours, et [refineDeathOffset] garde la règle historique (pas de 10 ms, plateau centré)
+// sur la seule fenêtre utile. Sur `4f77afc1` le compte d'évaluations passe de ~46 000 à 61.
 func bestDeathOffset(lives []lifeSpan, deaths []Death) (int64, int) {
 	ends := lifeEndsMS(lives)
 	if len(ends) == 0 || len(deaths) == 0 {
 		return 0, 0
 	}
-	lo, hi := ends[0], ends[0]
+	return refineDeathOffset(ends, deaths, voteDeathOffset(ends, deaths))
+}
+
+// voteDeathOffset désigne le calage candidat par un VOTE : chaque couple (fin de vie, mort)
+// vote pour l'écart qui les apparierait, en paniers de la largeur de la fenêtre
+// d'appariement. Au vrai calage, TOUTES les morts votent dans le même panier ; un pic de
+// bruit n'en réunit qu'une poignée (mesuré sur `51ebbc0f` : 71 contre 10).
+//
+// DEUX GRILLES DÉCALÉES D'UNE DEMI-LARGEUR, et il les faut : un calage qui tombe sur une
+// frontière de panier verrait ses votes coupés en deux, et une grille unique le manquerait
+// au profit d'un panier plus dense ailleurs. La seconde grille le rend entier.
+func voteDeathOffset(ends []int64, deaths []Death) int64 {
+	const w = deathMatchWindowMS
+	grids := [2]map[int64]int{{}, {}}
 	for _, e := range ends {
-		lo, hi = minI64(lo, e), maxI64(hi, e)
+		for _, d := range deaths {
+			diff := e - d.TimeMS
+			grids[0][floorDivI64(diff, w)]++
+			grids[1][floorDivI64(diff+w/2, w)]++
+		}
 	}
+	best, bestN := int64(0), -1
+	for g := range grids {
+		shift := int64(g) * (w / 2)
+		for bucket, n := range grids[g] {
+			// Le centre du panier, ramené sur l'axe des écarts. L'ordre d'itération d'une
+			// map n'est pas garanti : à égalité, le plus petit centre tranche.
+			center := bucket*w + w/2 - shift
+			if n > bestN || (n == bestN && center < best) {
+				best, bestN = center, n
+			}
+		}
+	}
+	return best
+}
+
+// refineDeathOffset garde la règle historique — pas de [deathOffsetStepMS], plateau centré —
+// appliquée à la seule fenêtre utile autour du candidat.
+//
+// LA FENÊTRE FAIT DEUX FOIS LA LARGEUR D'APPARIEMENT DE CHAQUE CÔTÉ, et c'est une borne, pas
+// un réglage : un plateau ne peut pas dépasser `2 × deathMatchWindowMS` (au-delà, une mort au
+// moins sort de la fenêtre), et le centre du panier voté est à au plus une demi-largeur du
+// vrai calage. Tout plateau du maximum tient donc dedans.
+func refineDeathOffset(ends []int64, deaths []Death, around int64) (int64, int) {
+	anchor := ends[0]
+	for _, e := range ends {
+		anchor = minI64(anchor, e)
+	}
+	start := alignOnGridI64(around-2*deathMatchWindowMS, anchor, deathOffsetStepMS)
 	bestN := -1
 	var plateau []int64
-	// La plage balayée est celle des fins de vie : l'origine du fil des morts est le début
-	// du match, qui tombe forcément dedans. La marge amont couvre l'avant-match.
-	for off := lo - 60_000; off <= hi; off += 10 {
+	for off := start; off <= around+2*deathMatchWindowMS; off += deathOffsetStepMS {
 		if n := countDeathMatches(ends, deaths, off); n > bestN {
 			bestN, plateau = n, []int64{off}
 		} else if n == bestN {
@@ -123,6 +202,25 @@ func bestDeathOffset(lives []lifeSpan, deaths []Death) (int64, int) {
 		}
 	}
 	return plateau[len(plateau)/2], bestN
+}
+
+// floorDivI64 est la division entière vers le BAS, y compris sur un dividende négatif — la
+// division de Go tronque vers zéro, ce qui ferait partager un panier aux écarts de part et
+// d'autre de l'origine.
+func floorDivI64(a, b int64) int64 {
+	q := a / b
+	if a%b != 0 && (a < 0) != (b < 0) {
+		q--
+	}
+	return q
+}
+
+// alignOnGridI64 rend le plus petit multiple de `step` décalé de `anchor` qui atteint `v`.
+func alignOnGridI64(v, anchor, step int64) int64 {
+	if r := ((v-anchor)%step + step) % step; r != 0 {
+		v += step - r
+	}
+	return v
 }
 
 // countDeathMatches compte les morts appariables à une fin de vie, chaque vie servant une
