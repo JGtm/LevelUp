@@ -292,9 +292,6 @@ func TestHomeService_GetHomePage_RespectsLocale(t *testing.T) {
 	if got := *respFR.RecentMatches[0].PlaylistUI; got != "Partie rapide" {
 		t.Fatalf("FR PlaylistUI = %q, want %q", got, "Partie rapide")
 	}
-	if got := respFR.RecentMatches[0].OutcomeLabel; got != "Victoire" {
-		t.Fatalf("FR OutcomeLabel = %q, want %q", got, "Victoire")
-	}
 
 	respEN, err := svc.GetHomePage(context.Background(), "GT", "en")
 	if err != nil {
@@ -305,9 +302,6 @@ func TestHomeService_GetHomePage_RespectsLocale(t *testing.T) {
 	}
 	if got := *respEN.RecentMatches[0].PlaylistUI; got != "Quick Play" {
 		t.Fatalf("EN PlaylistUI = %q, want %q", got, "Quick Play")
-	}
-	if got := respEN.RecentMatches[0].OutcomeLabel; got != "Victory" {
-		t.Fatalf("EN OutcomeLabel = %q, want %q", got, "Victory")
 	}
 }
 

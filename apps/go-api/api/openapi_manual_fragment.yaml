@@ -2681,9 +2681,10 @@ components:
           type: integer
           format: int64
           nullable: true
-        outcome_label:
+        outcome:
           type: string
           nullable: true
+          enum: [win, loss, tie, dnf]
         kills:
           type: integer
           nullable: true

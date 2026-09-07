@@ -139,8 +139,9 @@ func TestMatchHistoryHandler_Export_OK(t *testing.T) {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	mock := &mockMatchHistoryService{
 		csvRows: []domain.MatchHistoryRow{
-			{MatchID: "m1", StartTime: now, OutcomeLabel: "WIN", ScoreLabel: "25-10", MatchURL: "/m/m1"},
+			{MatchID: "m1", StartTime: now, Outcome: "win", ScoreLabel: "25-10", MatchURL: "/m/m1"},
 		},
+		outcomeText: "WIN",
 	}
 	factory := func(_ context.Context, slug string) (port.MatchHistoryService, string, string, error) {
 		if slug != testPlayerSlug {

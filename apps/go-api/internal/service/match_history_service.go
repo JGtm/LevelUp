@@ -196,15 +196,12 @@ func (s *MatchHistoryService) replayAvailability(ctx context.Context) port.Repla
 
 // rowFormatters construit les résolveurs title-agnostic injectés dans
 // l'enrichissement d'une ligne : URL de page publique du match (F3, via l'adapter
-// d'assets + gamertag) et libellé d'outcome (F4, via l'adapter sémantique). Champs
+// d'assets + gamertag) et CLÉ canonique d'outcome (F4, via l'adapter sémantique). Champs
 // nil si l'adapter correspondant n'est pas câblé → dégradation gracieuse.
-//
-// ctx porte la LOCALE de la requête : le libellé d'issue en dépend depuis le
-// 2026-09-07 (il sortait d'une map FR en dur, y compris sous UI anglaise).
 //
 // replays : ensemble des matchs ayant un artefact de rejeu, résolu une fois par
 // requête par l'appelant (nil = aucun rejeu publié sur les lignes).
-func (s *MatchHistoryService) rowFormatters(ctx context.Context, replays port.ReplayAvailability) rowFormatters {
+func (s *MatchHistoryService) rowFormatters(replays port.ReplayAvailability) rowFormatters {
 	f := rowFormatters{replays: replays}
 	// Libellé de playlist résolu via le chokepoint unique (strip + override) —
 	// même « Super Fiesta » que la Match View / les tuiles home.
@@ -217,12 +214,28 @@ func (s *MatchHistoryService) rowFormatters(ctx context.Context, replays port.Re
 		gt := s.waypointPlayer
 		f.matchURL = func(matchID string) string { return s.assetURL.PlayerMatchWebURL(gt, matchID) }
 	}
-	// Libellé d'issue : le mot du TITRE (outcomes.toml) dans la LOCALE de la requête, via le
-	// chokepoint unique du dépôt. Le jeu d'outcomes est résolu UNE FOIS ici, pas par ligne.
-	// Adapter absent ou titre sans TOML → resolveOutcomeLabel replie sur la map FR (journalisé).
+	// Clé d'issue : traduite depuis le raw_code du TITRE (outcomes.toml), via le chokepoint
+	// unique du dépôt. Le jeu d'outcomes est résolu UNE FOIS ici, pas par ligne. Adapter
+	// absent ou code non mappé par le titre → repli Halo-only (le code brut reste
+	// exploitable ; ce n'est pas un mot fabriqué, juste la MÊME clé qu'un titre Halo aurait
+	// mappée).
 	outcomes := outcomesOf(s.semantic)
-	f.outcomeLabel = func(code int) string { return resolveOutcomeLabel(ctx, outcomes, code) }
+	f.outcomeKey = func(code int) string {
+		if key := outcomeKey(outcomes, code); key != "" {
+			return key
+		}
+		return outcomeKeyFromHaloCode(code)
+	}
 	return f
+}
+
+// OutcomeText résout le TEXTE de l'issue depuis le titre, dans la LOCALE de la requête —
+// SEULE surface qui a besoin d'un texte rendu côté serveur : l'export CSV
+// (handlers/match_history.go, Export) est un fichier direct, sans JS pour localiser. Le
+// JSON de l'API sert la clé (MatchHistoryRow.Outcome) ; ici seulement, pour la même raison
+// que rowFormatters, le mot vient de outcomes.toml — jamais une map Go (D5, 2026-09-07).
+func (s *MatchHistoryService) OutcomeText(ctx context.Context, code int) string {
+	return outcomeText(outcomesOf(s.semantic), ctxkeys.Locale(ctx), code)
 }
 
 // WithDataAdapter injecte le DataAdapter multi-titres pour activer une
@@ -326,7 +339,7 @@ func (s *MatchHistoryService) GetPage(
 	mapWinRates := computeMapWinRates(rawRows)
 
 	// Enrichissement
-	items := enrichRows(filtered, mapWinRates, s.rowFormatters(ctx, replays))
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters(replays))
 
 	// Tri
 	sortItems(items, req.SortField, req.SortDir)

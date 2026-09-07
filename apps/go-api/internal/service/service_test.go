@@ -356,8 +356,8 @@ func TestConvertCommonMatches_WereTeammates(t *testing.T) {
 	if result[0].PlayerOutcome != 2 {
 		t.Errorf("expected outcome=2, got %d", result[0].PlayerOutcome)
 	}
-	if result[0].OutcomeLabel == "" {
-		t.Error("OutcomeLabel vide — doit être résolu")
+	if result[0].Outcome != "win" {
+		t.Errorf("Outcome = %q, attendu %q (clé canonique)", result[0].Outcome, "win")
 	}
 }
 

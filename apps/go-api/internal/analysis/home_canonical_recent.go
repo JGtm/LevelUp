@@ -36,6 +36,12 @@ type RecentMatchesOptions struct {
 	// RoundsDecide : game_variant_name -> le RÉSULTAT se lit en manches (ADR 0032).
 	// Nil/absente → lecture en points, comme avant.
 	RoundsDecide map[string]bool
+	// OutcomeText résout le TEXTE de l'issue (clé canonique win|loss|tie|dnf -> mot du
+	// TITRE, dans la locale) — injecté par le service depuis l'adapter sémantique
+	// (outcomes.toml), jamais une map Go (D5, 2026-09-07). Nil ou clé non mappée → "" ; le
+	// Title composite se rabat alors sur la carte/le mode seuls (analysis reste pur, 0
+	// adapter direct — cf. arch-rules).
+	OutcomeText func(key string) string
 }
 
 func BuildRecentMatchesWithFavoritesFromCanonical(
@@ -58,10 +64,15 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		if r.Summary.MatchID == "" {
 			continue
 		}
-		// Outcome canonical → int Halo pour les helpers existants.
+		// Outcome canonical → int Halo pour outcomeTone (couleur, mécanisme distinct des
+		// libellés — hors périmètre D5). Le TEXTE du composite Title, lui, vient de
+		// l'adapter du titre via OutcomeText, jamais d'une map Go.
 		outcome := canonicalOutcomeToInt(r.Self.Outcome)
-		label := outcomeLabelForLocale(outcome, locale)
 		tone := outcomeTone(outcome)
+		label := ""
+		if opts.OutcomeText != nil {
+			label = opts.OutcomeText(string(r.Self.Outcome))
+		}
 
 		// FDA (KDA canonique fourni par l'API ; pas un calcul custom).
 		// Le label dans Detail est "FDA" en FR (cf. fields.toml::kda).
@@ -187,12 +198,17 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			mapImageURL = &u
 		}
 
+		// Title : "<mot d'issue> · <carte>" quand le mot est résolu (adapter câblé), sinon
+		// la carte seule — jamais de séparateur orphelin devant un mot vide.
+		title := mapUI
+		if label != "" {
+			title = fmt.Sprintf("%s · %s", label, mapUI)
+		}
 		items = append(items, domain.RecentMatchItem{
 			MatchID:                  r.Summary.MatchID,
-			Title:                    fmt.Sprintf("%s · %s", label, mapUI),
+			Title:                    title,
 			Detail:                   fmt.Sprintf("%s · FDA %s · %s", modeUI, kdaStr, scoreStr),
 			StartedAt:                &t,
-			OutcomeLabel:             label,
 			OutcomeTone:              tone,
 			ScoreLabel:               scoreLabel,
 			NarrativeBadges:          narrativeBadges,

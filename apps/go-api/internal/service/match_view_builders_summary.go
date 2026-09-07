@@ -10,6 +10,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
 
@@ -26,6 +27,7 @@ func buildSummaryTabFull(
 	titleSlug string,
 	richCitations []domain.HomeMatchCitationRaw,
 	durationSec int,
+	outcomes *mappings.OutcomeMappingSet, //nolint:revive // PLR0913 : clé canonique d'issue (D5, 2026-09-07), même limite déjà relaxée que buildTeamTabFull
 ) domain.MatchSummaryTab {
 	citations := analysis.BuildCitationSnippets(richCitations, math.MaxInt32)
 	if citations == nil {
@@ -33,7 +35,7 @@ func buildSummaryTabFull(
 	}
 	tab := domain.MatchSummaryTab{
 		KPIs:           domain.MatchSummaryKpis{},
-		PersonalResult: domain.MatchPersonalResult{OutcomeLabel: "-", OutcomeColor: mvHexOutcomeUnknown},
+		PersonalResult: domain.MatchPersonalResult{OutcomeColor: mvHexOutcomeUnknown},
 		Medals:         convertMedals(medals, titleSlug),
 		Citations:      citations,
 		ExpectedStats:  buildExpectedStats(expected, histRows, meta, durationSec),
@@ -85,7 +87,7 @@ func buildSummaryTabFull(
 			score = int(math.Round(*stats.PersonalScore))
 		}
 		tab.PersonalResult = domain.MatchPersonalResult{
-			OutcomeLabel:      outcomeLabel(stats.OutcomeCode),
+			Outcome:           outcomeKey(outcomes, stats.OutcomeCode),
 			OutcomeColor:      outcomeColor(stats.OutcomeCode),
 			OutcomeColorToken: outcomeColorToken(stats.OutcomeCode),
 			Score:             &score,
