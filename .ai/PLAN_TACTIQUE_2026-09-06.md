@@ -1073,7 +1073,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
 - **Gate** : projection sur fixture (comptes exacts) ; schema ancien (v20) projete ;
   idempotence ; aucun chemin de la page n'ecrit ni ne cuit ; `no_second_artifact_sink_test`.
 
-### Phase 7 — Occupation, spawns, routes — 7A CLOSE 2026-09-07 (revues rondes 1 ET 2 statuees, 26 constats) ; ISOLEMENT DEPLACE EN 7C ; 7B EN ATTENTE (depend de 7C)
+### Phase 7 — Occupation, spawns, routes — 7A CLOSE 2026-09-07 (revues rondes 1 ET 2 statuees, 26 constats) ; ISOLEMENT DEPLACE EN 7C ; 7B CLOSE 2026-09-07 (nuage Escouade, apres 7C)
 > DECOUPEE EN DEUX SOUS-LOTS par le superviseur : **7A** (Go pur + sidecar v3 + service +
 > contrat) est livre et rendu pour revue adversariale ; **7B** (7.7, le nuage Escouade) ne
 > commence qu'apres.
@@ -1144,9 +1144,24 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       via `MapKeysForMap` pose en phase 4.4). Contrat + `generated.ts` regeneres (additions
       pures) ; `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` disent que le schema 3 perime les
       sidecars v2.
-- [ ] 7.7 Escouade Synergies : nuage isolement x couverture — **7B, non commence, et DEPEND
-      DESORMAIS DE 7C** : son axe « isolement » se lira sur `match_death_context`, pas sur un
-      sidecar de rejeu. Il ne peut pas demarrer avant que les tables existent en base.
+- [x] 7.7 Escouade Synergies : nuage isolement x couverture — **7B CLOSE 2026-09-07.**
+      Service `teammates_squad_isolement.go` (`buildSquadIsolementNuage`, appele depuis
+      `buildSquadEchange`) : decoupe par SESSION les deux mesures deja existantes —
+      `MortsAvecContexte`/`coordination.Isolement` (lot 7C) pour l'axe isolement,
+      `coordination.Echanges` (phase 3) pour l'axe couverture, restreintes a un seul
+      joueur et un seul groupe de matchs. Zero nouvelle requete SQL. Point
+      `{xuid, session_label, morts_examinees, morts_isolees, part_isolee, couverture}` ;
+      session sous `domain.PlancherMortsSessionIsolement` (5) exclue. Contrat :
+      `SquadEchange.nuage_isolement`. Carte `SquadIsolementNuageCard.tsx` (nuage compose
+      directement sur `<ChartCard>`, meme pattern que `FirstBloodLanes` — le wrapper
+      `<ScatterChart>` partage n'encode pas de taille/opacite PAR POINT), medianes en
+      lignes de reference, quadrants nommes repris de la maquette
+      echange-escouade.html (« proche et couvert », « loin, mais on vient », « proche,
+      et pourtant seul », « loin et sans secours »). Logique pure `squadIsolement.logic.ts`
+      + `squadIsolementStrings.ts` (i18n FR/EN). Deux commits `tactique(7B.1)` /
+      `tactique(7B.2)`. Gate complet vert (Go build/vet/tests + openapi-gen -check ;
+      web typecheck/lint/vitest COMPLET 610 fichiers / 6450 tests / 0 fail ; couleurs 0
+      violation).
 - [x] 7.8 **Revue adversariale ronde 1 de 7A — 3 P0, 5 P1, 8 P2 : TOUS corriges** en
       3 commits `tactique(7.8.<n>)`, plus la table du radar completee. Aucun report.
       **P0-1 — UN COEQUIPIER INVISIBLE ETAIT COMPTE MORT.** Un occupant de vehicule (la
@@ -1497,7 +1512,8 @@ nouveau, aucune cuisson, l'artefact ne bouge pas.
       fabrique son roster et n'a aucun moyen de connaitre la carte sans base. Il ne se saute que
       si aucun film n'est utilisable, EN LES LISTANT.
 
-Depend de 7C : l'item 7.7 (7B, nuage isolement x couverture de la page Escouade).
+Depend de 7C : l'item 7.7 (7B, nuage isolement x couverture de la page Escouade) — **CLOSE
+2026-09-07**, cf. case 7.7.
 
 ### Phase 8 — Cloture
 - [ ] 8.1 `.ai/thought_log.md` ; 8.2 `REGISTRE_REPORTS.md` si report ; 8.3 `make gate-push`
@@ -1508,6 +1524,27 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-07 : **item 7.7 (7B) CLOSE — le nuage isolement x couverture de la page
+  Escouade.** Depuis que 7C a pose `match_death_context`/`MortsAvecContexte`, le lot ne
+  demandait plus AUCUN nouvel algo : decouper par SESSION deux mesures deja ecrites —
+  `coordination.Isolement` (deja consommee par la lecture Tactique « isole ») et
+  `coordination.Echanges` (deja consommee par la matrice de la phase 3), restreintes a
+  un seul joueur et un seul groupe de matchs. `teammates_squad_isolement.go` vit dans le
+  MEME service que l'echange (pas un nouveau service), reutilise `restreindreAuxMatchs`/
+  `matchsMesures`, et injecte la table de portee de radar par le MEME chemin que l'onglet
+  Tactique (`ServiceRegistry.radarRangeFor` -> `WithRadarRange`). Cote web, le nuage a
+  besoin d'un encodage PAR POINT (taille = morts examinees, opacite = echantillon
+  faible) que le wrapper `<ScatterChart>` partage ne porte pas (il n'expose qu'un
+  `symbolSize` uniforme par SERIE) : `SquadIsolementNuageCard.tsx` compose `<ChartCard>`
+  directement, meme pattern que `FirstBloodLanes` plutot que d'etendre un wrapper
+  partage pour un seul consommateur. Quadrants repris a l'identique de la maquette
+  echange-escouade.html (« proche et couvert », « loin, mais on vient », « proche, et
+  pourtant seul », « loin et sans secours »), medianes du nuage en lignes de reference.
+  Gate complet vert : Go build/vet/tests (dont `internal/platform/duckdb`,
+  `internal/api/...`, `contracttest`) + `openapi-gen -check` ; web typecheck, lint (0
+  erreur, 30 warnings inchange), vitest COMPLET 610 fichiers / 6450 tests / 0 fail (608/
+  6432 avant ce lot) ; 0 violation couleur. Deux commits `tactique(7B.1)` (service,
+  requete, contrat) et `tactique(7B.2)` (carte Escouade).
 - 2026-09-07 : **phase 5 CLOSE (5.2-5.4, 5.6 ; 5.5 reportee au lot D).** Le placeholder
   laisse par la passe precedente (17 L) est remplace par la vue reelle :
   `TacticalToolbar.tsx` (question / qui / spawn en `useState` local — aucune route ne

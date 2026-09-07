@@ -800,3 +800,67 @@ en = "Trading deserves your attention: your side trades {delta} less than usual 
 [squad.echange.constat_basis]
 fr = "Sur {n, plural, one {# mort} other {# morts}} de votre camp, {matches, plural, one {# match} other {# matchs}}."
 en = "Based on {n, plural, one {# death} other {# deaths}} on your side, {matches, plural, one {# match} other {# matches}}."
+
+# ─── Nuage isolement x couverture (item 7.7, sous SquadEchange.nuage_isolement) ────────
+#
+# Un point par (joueur, session) : la part de morts isolées (aucun coéquipier visible à
+# portée du radar) contre le taux d'échange de la même session. Vocabulaire arrêté par la
+# maquette echange-escouade.html : les quatre libellés de quadrant sont repris à
+# l'identique (« proche et couvert », « loin, mais on vient », « proche, et pourtant
+# seul », « loin et sans secours »).
+
+[squad.isolement.section_title]
+fr = "Isolement et couverture"
+en = "Isolation and coverage"
+
+[squad.isolement.section_label]
+fr = "Nuage isolement et couverture par session"
+en = "Isolation and coverage cloud by session"
+
+[squad.isolement.x_axis]
+fr = "Part de morts hors portée du radar"
+en = "Share of deaths outside radar range"
+
+[squad.isolement.y_axis]
+fr = "Part de morts vengées"
+en = "Share of avenged deaths"
+
+[squad.isolement.definition]
+fr = "Un point par joueur et par session : en abscisse, la part de ses morts sans coéquipier visible à portée du radar ; en ordonnée, la part de ses morts vengées dans les 5 s."
+en = "One point per player and per session: on the X axis, the share of their deaths with no teammate visible within radar range; on the Y axis, the share of their deaths avenged within 5 s."
+
+[squad.isolement.floor]
+fr = "Planchers : {sessionFloor, number} morts examinées par session pour qu'un point existe, {sampleFloor, number} pour qu'un taux se lise sans réserve."
+en = "Floors: {sessionFloor, number} examined deaths per session for a point to exist, {sampleFloor, number} for a rate to read without reservation."
+
+[squad.isolement.low_sample]
+fr = "échantillon faible"
+en = "small sample"
+
+[squad.isolement.tooltip]
+fr = "{gamertag} — {session}<br>Isolement : {isoRate} ({isoBrut}/{isoN})<br>Couverture : {covRate} ({covBrut}/{covN})"
+en = "{gamertag} — {session}<br>Isolation: {isoRate} ({isoBrut}/{isoN})<br>Coverage: {covRate} ({covBrut}/{covN})"
+
+[squad.isolement.quadrant_proche_couvert]
+fr = "Proche et couvert"
+en = "Close and covered"
+
+[squad.isolement.quadrant_loin_couvert]
+fr = "Loin, mais on vient"
+en = "Far, but backup comes"
+
+[squad.isolement.quadrant_proche_seul]
+fr = "Proche, et pourtant seul"
+en = "Close, yet alone"
+
+[squad.isolement.quadrant_loin_sans_secours]
+fr = "Loin et sans secours"
+en = "Far and without help"
+
+[squad.isolement.empty_title]
+fr = "Aucun point mesuré"
+en = "No point measured"
+
+[squad.isolement.empty_description]
+fr = "Aucune session de la sélection n'atteint le plancher de 5 morts examinées."
+en = "No session in the selection reaches the 5 examined-deaths floor."

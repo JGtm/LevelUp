@@ -59,3 +59,8 @@ ce fichier prend le relais a partir de 7C et recoit toute nouvelle decouverte.
   `tacticalRaster` (ajoutee par le placeholder, commit `a395fa78f`) n'etait classee ni
   title-scopee ni agnostique — completude du garde-rail rompue des ce commit, non detectee a
   l'epoque. CORRIGEE dans cette passe (bloquait le gate).
+- 2026-09-07 ; `apps/go-api/internal/platform/duckdb/tactical_repo_isolement.go`
+  (`QTacticalIsolement`/`MortsAvecContexte`, posee en 7C) ; aucun test `:memory:` DEDIE a
+  cette requete — elle n'est exercee que par ses consommateurs (service Tactique existant,
+  et desormais le nuage Escouade du lot 7.7/7B) via mock du port. NON TRAITE (hors perimetre
+  de 7.7 ; le lot 7.7 n'ajoute aucune SQL, il reutilise la lecture telle quelle).
