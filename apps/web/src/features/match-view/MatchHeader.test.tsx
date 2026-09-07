@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 
+import { fieldMappingsQueryKey } from '@/lib/i18n/fieldMappings'
 import { MatchHeaderCard, MatchNavigationBar } from './MatchHeader'
 import type { MatchViewHeader, MatchViewRank } from '@/lib/api/types'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
@@ -79,7 +80,7 @@ const baseHeader: MatchViewHeader = {
   start_time: undefined,
   start_time_label: 'Dim. 4 mai 2026 · 19h35',
   outcome_code: 2,
-  outcome_label: 'Victoire',
+  outcome: 'win',
   outcome_color: '#22c55e',
   outcome_color_token: 'outcome-win',
   score_label: '87 - 62',
@@ -109,8 +110,24 @@ const baseRank: MatchViewRank = {
   icon_url: '/static/ranks/halo_infinite/120px-HINF-CSR_Diamond1.png',
 }
 
+// LES MAPPINGS DU TITRE, POSÉS DANS LE CACHE (2026-09-07) : l'en-tête prend désormais son
+// mot d'issue via useOutcomeLabel (clé canonique servie par le backend, cf. header.outcome),
+// pas un texte reçu de l'API. useFieldMappings jette hors QueryClientProvider ; on sème donc
+// la réponse directement dans le cache sous la clé par défaut du store (halo_infinite/fr) —
+// la requête reste désactivée en test (isBootstrapped faux), et lit quand même la donnée.
 function renderWithQueryClient(node: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  qc.setQueryData(fieldMappingsQueryKey('halo_infinite', 'fr'), {
+    title_slug: 'halo_infinite',
+    schema_version: 1,
+    locale: 'fr',
+    fields: {},
+    outcomes: {
+      win: { label: 'Victoire', color_token: 'outcome.positive' },
+      loss: { label: 'Défaite', color_token: 'outcome.negative' },
+      tie: { label: 'Égalité', color_token: 'outcome.neutral' },
+    },
+  })
   return render(<QueryClientProvider client={qc}>{node}</QueryClientProvider>)
 }
 

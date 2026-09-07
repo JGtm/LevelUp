@@ -350,10 +350,13 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// portée par le service, pas par le builder — buildMatchHeader est déjà à la
 	// limite de paramètres). Titre sans table → no-op.
 	applyMatchHeaderOvertime(&header, meta, s.regulationSeconds)
-	// LE MOT DE L'ISSUE, dit par le TITRE et dans la locale de la requête (2026-09-07). Ici et
-	// pas dans le builder, pour la même raison que la ligne au-dessus : le jeu d'outcomes vient
-	// de l'adapter sémantique, porté par le service. Adapter absent → repli FR, à l'identique.
-	applyMatchHeaderOutcomeLabel(ctx, &header, outcomesOf(s.semantic))
+	// Jeu d'outcomes du titre, résolu UNE FOIS et réutilisé pour l'en-tête, le résumé et le
+	// scoreboard (2026-09-07, décision D5) : la CLÉ canonique de l'issue (win|loss|tie|dnf),
+	// jamais un texte — le web localise via useOutcomeLabel.
+	outcomes := outcomesOf(s.semantic)
+	// LA CLÉ DE L'ISSUE. Ici et pas dans le builder, pour la même raison que la ligne
+	// au-dessus : le jeu d'outcomes vient de l'adapter sémantique, porté par le service.
+	applyMatchHeaderOutcomeKey(&header, outcomes)
 	// Score de l'en-tête : points ou MANCHES. Ici et pas dans le builder, pour la même
 	// raison que la ligne au-dessus — la table `[rounds_decide]` est portée par le
 	// service. Table absente → lecture en points, comportement d'avant le 2026-08-29.
@@ -375,7 +378,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 	if meta != nil && meta.DurationSeconds != nil {
 		curDurSec = int(*meta.DurationSeconds)
 	}
-	summary := buildSummaryTabFull(d.stats, d.medals, d.expected, d.histRows, meta, s.titleSlug, d.richCitations, curDurSec)
+	summary := buildSummaryTabFull(d.stats, d.medals, d.expected, d.histRows, meta, s.titleSlug, d.richCitations, curDurSec, outcomes)
 	// Proba de victoire pré-match (LUSR v2) → card « Résultat attendu ». Source :
 	// match_skill_rank_latest.expected_win_prob via d.skillRank (même lecture que le
 	// player-matches scan). Best-effort : nil pour les matchs pré-v2 / sans donnée.
@@ -487,7 +490,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 			}
 		}
 	}
-	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL)
+	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL, outcomes)
 	// Halo 5 persisté : libellés d'équipe « Rouge/Bleu » depuis team_colors (no-op HINF
 	// et si le référentiel est vide → le front garde son libellé existant).
 	s.applyTeamNames(ctx, team.Scoreboard)

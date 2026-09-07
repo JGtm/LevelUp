@@ -31,7 +31,7 @@ function row(over: Partial<ExplorerMatchRow>): ExplorerMatchRow {
     map_ui: '',
     mode_ui: '',
     playlist_label: '',
-    outcome_label: '',
+    outcome: undefined,
     outcome_code: 2,
     score_label: '',
     is_with_friends: false,

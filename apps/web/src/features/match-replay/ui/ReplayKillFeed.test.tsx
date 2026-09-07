@@ -451,7 +451,7 @@ describe('ReplayKillFeed — marques « moi » et « ami »', () => {
       perfect_kills: null,
       power_weapon_kills: null,
       melee_kills: null,
-      outcome_label: 'Victoire',
+      outcome: 'win',
     }
   }
   const BOARD = [sbRow('me', 'JGtm', true), sbRow('foe', 'Cobra01')]

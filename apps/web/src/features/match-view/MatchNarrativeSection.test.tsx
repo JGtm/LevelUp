@@ -34,7 +34,7 @@ const headerWithoutBadge: MatchViewHeader = {
   start_time: undefined,
   start_time_label: '',
   outcome_code: 2,
-  outcome_label: 'Win',
+  outcome: 'win',
   outcome_color: '#22c55e',
   score_label: '',
   dominance_flag: false,

@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/analysis/relations"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
 
@@ -44,6 +45,7 @@ func buildTeamTabFull(
 	friendsExtras map[string]port.FriendMatchExtras,
 	sharedCSRs map[string]*domain.SkillRankRaw,
 	assetURL games.TitleAssetURLAdapter, //nolint:PLR0913 — coordinator function
+	outcomes *mappings.OutcomeMappingSet, //nolint:PLR0913 — clé canonique d'issue (D5, 2026-09-07)
 ) domain.MatchTeamTab {
 	// Index bulk medals et weapons par XUID pour O(1) lookup (extract helpers).
 	medalsByXUID := indexBulkMedalsByXUID(bulkMedals, assetURL, len(scoreboard))
@@ -92,7 +94,7 @@ func buildTeamTabFull(
 			AssassinationKills:  s.AssassinationKills,
 			GroundPoundKills:    s.GroundPoundKills,
 			ShoulderBashKills:   s.ShoulderBashKills,
-			OutcomeLabel:        outcomeLabel(s.OutcomeCode),
+			Outcome:             outcomeKey(outcomes, s.OutcomeCode),
 			Score:               toIntPtr(s.PersonalScore),
 			PerfectKills:        &s.PerfectKills,
 			TopWeaponID:         s.TopWeaponID,

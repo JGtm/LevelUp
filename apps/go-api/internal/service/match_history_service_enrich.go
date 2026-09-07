@@ -68,11 +68,12 @@ func computeMapWinRates(rows []domain.MatchHistoryRawRow) map[string][2]int {
 // ---------------------------------------------------------------------------
 
 // rowFormatters regroupe les résolveurs title-agnostic injectés dans l'enrichissement
-// d'une ligne : URL de page publique du match (F3) et libellé d'outcome via le titre
-// (F4). Champs nil → dégradation gracieuse (URL vide ; outcome via le repli FR documenté).
+// d'une ligne : URL de page publique du match (F3) et clé canonique d'outcome via le titre
+// (F4, D5 2026-09-07 : clé, jamais un texte). Champs nil → dégradation gracieuse (URL vide ;
+// clé via le repli Halo-only documenté sur outcomeKeyFromHaloCode).
 type rowFormatters struct {
 	matchURL      func(matchID string) string
-	outcomeLabel  func(code int) string
+	outcomeKey    func(code int) string
 	playlistLabel func(rawFR string) string
 	// regulation : table `game_variant_name → temps réglementaire (s)` du titre
 	// courant (regulation.toml). Nil/vide → aucun flag « Prolongation », jamais
@@ -126,14 +127,15 @@ func (f rowFormatters) hasReplayFor(matchID string) bool {
 	return f.replays.Has(matchID)
 }
 
-// outcomeLabelFor rend le libellé d'issue de la ligne. Le résolveur est TOUJOURS injecté par
-// MatchHistoryService.rowFormatters (il porte la locale de la requête) ; le nil ne survient que
-// sur un rowFormatters zéro-valeur — un test qui n'enrichit pas les libellés. Repli FR alors.
-func (f rowFormatters) outcomeLabelFor(code int) string {
-	if f.outcomeLabel == nil {
-		return outcomeLabel(code) // repli FR, cf. outcome_label.go
+// outcomeKeyFor rend la CLÉ CANONIQUE d'issue de la ligne (win|loss|tie|dnf). Le résolveur
+// est TOUJOURS injecté par MatchHistoryService.rowFormatters ; le nil ne survient que sur un
+// rowFormatters zéro-valeur — un test qui n'enrichit pas les clés. Repli Halo-only alors (pas
+// d'adapter à portée dans ce cas, cf. outcomeKeyFromHaloCode).
+func (f rowFormatters) outcomeKeyFor(code int) string {
+	if f.outcomeKey == nil {
+		return outcomeKeyFromHaloCode(code)
 	}
-	return f.outcomeLabel(code)
+	return f.outcomeKey(code)
 }
 
 func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFormatters) []domain.MatchHistoryRow {
@@ -218,7 +220,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		StartTime:                startTime,
 		StartTimeLabel:           label,
 		OutcomeCode:              r.Outcome,
-		OutcomeLabel:             fmts.outcomeLabelFor(r.Outcome),
+		Outcome:                  fmts.outcomeKeyFor(r.Outcome),
 		ScoreLabel:               scoreLabel,
 		ScoreKind:                scoreKind,
 		MapUI:                    ptrStr(mapU),
@@ -342,8 +344,8 @@ func paginate(items []domain.MatchHistoryRow, req domain.PaginationRequest) (dom
 // Helpers
 // ---------------------------------------------------------------------------
 
-// outcomeLabel / resolveOutcomeLabel vivent dans outcome_label.go depuis le 2026-09-07 :
-// le libellé d'issue vient du titre (outcomes.toml) et non plus d'une map FR en dur.
+// outcomeKey / outcomeKeyFromHaloCode vivent dans outcome_label.go : la CLÉ canonique
+// d'issue vient du titre (outcomes.toml), jamais un texte ni une map FR en dur (D5, 2026-09-07).
 
 func formatDateFR(t time.Time) string {
 	if t.IsZero() {

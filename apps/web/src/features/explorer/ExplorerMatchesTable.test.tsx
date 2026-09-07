@@ -85,7 +85,7 @@ function makeRow(i: number, overrides: Partial<ExplorerMatchRow> = {}): Explorer
     map_ui: `Map${i}`,
     mode_ui: 'Slayer',
     playlist_label: 'Quick Play',
-    outcome_label: 'Victoire',
+    outcome: 'win',
     outcome_code: 2,
     score_label: '50-30',
     is_with_friends: false,

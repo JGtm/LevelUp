@@ -154,7 +154,10 @@ func (h *MatchHistoryHandler) Export(w http.ResponseWriter, r *http.Request) {
 		_ = cw.Write([]string{
 			row.MatchID,
 			row.StartTime.Format(time.RFC3339),
-			row.OutcomeLabel,
+			// Seule surface qui rend du TEXTE côté serveur (fichier direct, pas de JS pour
+			// localiser une clé) : le mot vient de l'adapter sémantique du titre, jamais
+			// d'une map Go (D5, 2026-09-07 — cf. service.OutcomeText).
+			svc.OutcomeText(r.Context(), row.OutcomeCode),
 			row.ScoreLabel,
 			optStr(row.MapUI),
 			optStr(row.ModeUI),
