@@ -523,6 +523,9 @@ func TestGetMatchFilm_FilmAbsent(t *testing.T) {
 }
 
 func TestGetMatchFilm_DownloadFails(t *testing.T) {
+	// Le 500 du blob est désormais RETENTÉ (volet C) : backoff raccourci, sinon
+	// ce cas coûte ~5,6 s de sommeil pour un verdict connu d'avance.
+	avecRetryBaseDelayCourt(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			_ = json.NewEncoder(w).Encode(filmManifestJSON(

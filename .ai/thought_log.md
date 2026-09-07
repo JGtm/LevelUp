@@ -1832,6 +1832,177 @@ spawns, routes, isolement), qui consomme ces sidecars — `tracks.go` lui a ete 
 ses spawns et ses premieres entrees par cellule deja produits. La phase 5 reste GELEE jusqu'au
 lot D de l'audit v2.
 
+## [2026-09-05] Volet C — ronde 2 de revue adversariale : la boucle converge (P0+P1 : 2 → 0) — Complete
+
+Relecture en contexte frais du seul commit de corrections `68e6d5752`. Aucun P0/P1, 18
+conditions qui tiennent (dont le determinisme du test « corps coupe » et l'equivalence
+`isAuthErr`→`IsAuthError`). Un P2 consigne, non traite par respect de la borne de boucle
+(`adversarial-review` §8) : le garde-rail textuel ne visite pas les declarations courtes
+`:=` ni les `case` de `switch` — lot a part, cf. plan §5.2. Branche poussee ; `wt/**` ne
+declenche pas la CI (`ci.yml`), donc miroir `feat/blob-304-retry-ci` sur le meme commit
+pour obtenir le verdict. Pas de merge dans `feat/v75` (decision utilisateur du jour).
+
+## [2026-09-05] Volet C — ronde 1 de revue adversariale : le retry de blob durci sur 10 points — Complete
+
+**CE QUI ARRIVE.** Deux relecteurs independants ont relu le lot C.3 (`downloadBlob` retente,
+le 304 d edge n est plus un verdict). **11 constats recus** : 8 recevables corriges tels quels,
+1 amendement de decision (C.2.7), 2 consignes NON TRAITES (ils visent `doGet`, hors perimetre).
+Liste FERMEE, zero fix opportuniste.
+
+**DECISION TECHNIQUE PRINCIPALE : le prédicat textuel d auth meurt aussi.** Le constat qui
+change une decision : `isAuthErr` (`halo_client_career.go`) cherchait « HTTP 401 » / « HTTP 403 »
+dans `err.Error()`, et le garde-rail pose au lot C.3 pretendait interdire le predicat textuel
+sur les erreurs HTTP tout en EXEMPTANT, sans l ecrire ni la dater, la seule occurrence restante.
+Pire : le message de `BlobHTTPError.Error()` contient exactement ces sous-chaines — un 403 du
+CDN PUBLIC pouvait donc faire dire a `doPlayerGatedGet` « ton jeton n a pas la portee » et
+degrader une reponse player-gated sur une panne d edge. `isAuthErr` est SUPPRIME,
+`doPlayerGatedGet` appelle `IsAuthError` (`errors.As` sur `*HTTPError` ; verifie sur pieces que
+`doGet` rend bien ce type sur 401/403). Le garde-rail gagne « HTTP 401 » / « HTTP 403 » ET les
+INDIRECTIONS : un litteral interdit nomme par une `const`/`var` est desormais un constat, parce
+que nommer la chaine suffisait a contourner le controle precedent.
+
+**LES DEUX P1.** (a) Un corps coupe a mi-lecture apres un 200 (`unexpected EOF`,
+`connection reset`) etait marque FATAL : une coupure de transport condamnait le film comme un
+404. Il se retente maintenant comme tout autre echec de transport, et compte dans l abandon.
+Restent fatals, exactement deux cas : la requete impossible a construire, et un corps 200
+COMPLET qui n est pas du zlib (page d erreur HTML servie en 200 — la retenter couterait
+4 x 870 Ko pour rien). (b) Le caractere COLLANT du `Cache-Control: no-cache` (une fois un 304 vu,
+toutes les retentatives le portent, meme apres un 503 intermediaire) n avait aucun garde-rail :
+il en a un.
+
+**LES SIX P2.** Plus de backoff apres la DERNIERE tentative (un 304 epuise coute 5,6 s au lieu
+de 12 s, et un `ctx` qui expirait pendant ce sommeil final MASQUAIT l abandon : ni compteur
+`retry_exhausted`, ni WARN — la sortie de boucle passe desormais toujours par `blobAbandon`) ;
+`Retry-After` honore sur les blobs ; corps draine avant fermeture sur un statut non-200 (sinon
+`net/http` jette la connexion au lieu de la rendre au pool) ; commentaire du champ `Attempts`
+corrige (1..maxRetries, pas « 1 ou maxRetries ») ; table `retryableBlobStatus` couverte EN
+ENTIER (7 statuts retentes + 6 definitifs, les deux sens rougissent) ; borne basse de
+`retryBaseDelay` (>= 500 ms), qui remplace la garantie de compilation perdue au passage
+`const` -> `var`.
+
+**METHODE.** Chaque test neuf a ete VU ROUGE une fois par mutation temporaire du code, puis le
+code restaure. Un test s est revele complaisant a ce moment-la : le cas « corps coupe » passait
+meme avec le bug, parce que le serveur de test n avait rien pousse sur le fil avant d abandonner
+— l echec retombait sur le transport et ne prouvait rien. Corrige par un `Flush()` explicite
+avant l abandon ; il rougit alors bien. C est le rappel que « le test passe » ne dit rien tant
+qu on ne l a pas vu echouer pour la bonne raison.
+
+**RESULTATS.** Les quatre gates, en serie, sur le worktree `LevelUp-wt-blob-304` :
+`go test ./internal/sync/... -count=1` exit 0 (59 s, 0 `--- FAIL:`) ;
+`go vet ./internal/sync/...` exit 0 (2 s) ;
+`go test -tags=integration -p 1 ./... -count=1` exit 0 (17 min 26 s, 0 `--- FAIL:`) ;
+`make gate-push` exit 0 (17 min 25 s, eslint 0 erreur / 28 warnings preexistants, baseline
+8 586/8 586 presents sur un run courant de 14 625 tests). Seuils : `downloadBlob` 60 lignes,
+`halo_client_http.go` 404 lignes, `gofmt -l` vide. Diff : 3 fichiers de test, 2 de production
+(`halo_client_http.go`, `halo_client_career.go`) ; `halo_client.go` n a PAS eu besoin d etre
+touche, `IsAuthError` portait deja la bonne semantique.
+
+**CONCLUSION / PROCHAINE ETAPE.** Le lot C.3 plus cette ronde forment le volet C complet ;
+il reste le merge dans `feat/v75` (decision utilisateur) et l observation prescrite C.4 a J+7
+apres deploiement, deja inscrite au registre des reports. Les deux constats NON TRAITES visent
+`doGet` (backoff terminal identique, corps perdu quand la lecture echoue) : ils sont ecrits en
+5.1 du plan, a reprendre dans un lot dedie a `doGet`.
+## [2026-09-05] downloadBlob : le 304 du CDN n etait pas un echec, et un blob ne se retentait jamais — Complete
+
+**LE CONSTAT, MESURE AVANT D ETRE CODE.** Le volet C du plan de reprise du fork est ne d une
+decouverte du volet B : `downloadBlob` traitait TOUT statut non-200 comme un echec definitif de
+sa tentative UNIQUE, alors que `doGet`, dix lignes plus bas, retente 5xx et pannes reseau. Les
+logs de trois mois (prod + local) disent quels statuts tombent reellement : **304 x 22**, 502 x 3,
+« echec reseau » x 471 — et JAMAIS de 404/410. Les 304 frappent toujours les MEMES 5-6 films,
+pendant des mois. Le blob, lui, est vivant : sonde sans jeton, `HEAD` -> 200, 870 413 octets.
+Nous n envoyons aucune en-tete conditionnelle : un « Not Modified » sur une requete
+INCONDITIONNELLE n est pas une information sur le blob, c est un artefact d edge Azure Front
+Door. Comme `fetchFilmChunks` abandonne tous les chunks a la premiere erreur (errgroup), un
+seul 304 coutait le film ENTIER, a chaque passe de rattrapage, indefiniment.
+
+**DECISION TECHNIQUE PRINCIPALE : un type d erreur DISTINCT, et c est le coeur du lot.**
+`BlobHTTPError{StatusCode, URL, Attempts}` n est ni un alias, ni un embed, ni un enveloppement
+de `HTTPError` — `errors.As(err, &*HTTPError)` ne doit PAS le trouver. La raison n est pas
+esthetique : le CDN des films est PUBLIC (URL sans query string, aucun jeton envoye), or
+`notifyPoolOnError` marque un slot `unhealthy` sur un `*HTTPError` 401/403 et gele TOUT le pool
+sur un 503. Si le type matchait, une panne d edge CDN poisonnerait un jeton Halo parfaitement
+valide. Le test qui le PROUVE passe par `notifyPoolOnError` lui-meme, avec le mock de pool
+existant, sur 401/403/429/503 : ni `MarkUnhealthy`, ni `OnHTTPError`, ni `On429ForToken`.
+
+**LE RETRY.** Liste FERMEE de statuts retentes — 304, 408, 429, 500, 502, 503, 504 — plus les
+echecs de transport, que `downloadBlob` ne retentait pas non plus. Jamais retentes : 404/410
+(absent) et 401/403 (sans objet sur un CDN public), comme tout autre 4xx. Une retentative qui
+SUIT un 304 porte `Cache-Control: no-cache` (forcer la revalidation a l origine), jamais la
+premiere requete ni les autres statuts. Sous delai depasse, aucun verdict : `ctx.Err()` sort
+immediatement. `downloadBlob` reste a 52 lignes, decoupe en `fetchBlobOnce` / `inflateBlob` /
+`blobAbandon` / `retryableBlobStatus`.
+
+**LE TEXTE N EST PLUS UNE API.** `isNotFoundErr` decidait « film absent » en cherchant
+« HTTP 404 » dans `err.Error()`. Il passe au typE (`*HTTPError` ET `*BlobHTTPError`, 404/410) et
+le repli textuel DISPARAIT. Garde-rail `no_text_predicate_test.go` : scan AST des `.go` non-test
+du paquet, echec si l un des quatre litteraux interdits sert de predicat (test de sous-chaine ou
+comparaison). Il a ete VERIFIE ROUGE une fois, litteral temporaire reintroduit puis retire.
+
+**UN ECART DU PLAN, TRAITE SUR PIECES.** La decision 4 affirmait que `contains`/`containsStr`
+deviendraient morts : faux, `isAuthErr` (career) les utilisait aussi pour « HTTP 401 »/« 403 ».
+La decision est appliquee quand meme — les helpers sont supprimes, `isAuthErr` bascule sur
+`strings.Contains`, semantique strictement identique (`contains` etait une reimplementation a la
+main de `strings.Contains`). Ce predicat-la reste textuel : consigne en decouverte, pas traite.
+
+**RESULTATS OBSERVES.** Gate C en serie, mutex `go` respecte : `go test ./internal/sync/...`
+code 0 (1 min 20 s) ; `go vet ./internal/sync/...` code 0 ; `go test -tags=integration -p 1 ./...`
+code 0 (16 min 28 s, 160 paquets `ok`, 0 `--- FAIL:`) ; `make gate-push` code 0 (15 min 23 s,
+baseline 8 586/8 586 tests presents). Les deux tests existants qui font echouer un blob (500,
+desormais RETENTE) restent verts a 0,02 s grace au backoff raccourci en test — `retryBaseDelay`
+devient une `var` de paquet, surchargee par un seul helper qui restaure la valeur de production.
+
+**PROCHAINE ETAPE.** Revue adversariale (`sync/`, 2 relecteurs) avant le merge dans `feat/v75` :
+elle n est pas un item du lot et n a pas ete faite. Puis, a J+7 du deploiement, l observation
+prescrite C.4.1 — compter `halo_api: downloadBlob 304 puis succes`. > 0 : l artefact cede au
+retry. = 0 avec des `retry_exhausted` sur 304 : le 304 est COLLANT cote Front Door, et le sujet
+suivant devient le contournement de l edge. Inscrit au registre des reports.
+## [2026-09-05] Volet B « films aux blobs expires » — le Lot 0 rend zero, le volet se ferme sans une ligne de code — Complete
+
+**Ce qui etait prevu.** Le volet B de `.ai/PLAN_REPRISE_FORK_2026-09-05.md` visait un trou reel
+sur le papier : un manifeste de film encore vivant dont les blobs pre-signes rendent 404/410
+ressort en erreur de transport, donc `MBitFilmAbsent` n'est jamais pose, donc le match repart a
+chaque cycle des rattrapages 1.57/1.58 et n'aboutit jamais. Trois lots de code etaient ecrits et
+leurs decisions produit tranchees. Le plan les faisait preceder d'un Lot 0 de pure mesure, avec
+une clause de sortie explicite si le compte tombait a zero.
+
+**Decision technique principale.** L'asymetrie du plan commandait de mesurer avant de coder ; la
+mesure a rendu zero ; on ne code pas un verdict definitif contre un phenomene jamais observe. Le
+Lot 2 aurait ecrit `MBitFilmAbsent` dans `match_registry.backfill_completed` — un bit PERMANENT,
+qui retire le match des deux rattrapages pour toujours. Un faux positif ne se repare pas tout
+seul. Le cout d'attendre une premiere occurrence reelle est nul ; le cout d'un faux verdict est
+un film perdu sans retour.
+
+**Resultats observes.** Prod (VPS, `/opt/levelup/data/logs`, binaire `main` 98bd7c143, v7.3.1),
+fenetre 2026-06-13T22:08Z → 2026-09-05T18:54Z, TOUS les fichiers de log (34 `*.log*` : general,
+sync, auth, provider et leurs archives `.1` a `.3`) : `downloadBlob HTTP 404` ou `410`, tous
+messages confondus = **0**. Il y a bien 553 lignes `downloadBlob` (general.log 29, general.log.1
+18, sync.log 26, sync.log.1 480 ; messages : echec reseau 471, `weapon_kills: erreur match` 63,
+`downloadBlob HTTP error` 19), mais les seuls statuts HTTP observes sont **304 x 17 et 502 x 2**.
+`killsource: decodage du film` + `echec` en prod : 0, attendu — le collecteur v7.5 n'y est pas
+deploye. Local (`feat/v75`), deux repertoires : `logs/` (general.log du 2026-05-20 au
+2026-09-04) donne 304 x 4 et 502 x 1, zero echec de decodage ; `apps/go-api/logs/` (jusqu'au
+2026-09-05) porte 5 952 lignes `killsource` et **1 860 passes `decodage du film — debut` / 1 860
+`— fin`, 0 `— echec`** (resultat `sans-killfeed` x 1 860). La chaine visee a donc reellement
+tourne 1 860 fois sans jamais produire l'echec que le volet devait traiter. B.0.2 : 0 match_id
+distinct. B.0.4 : **0 sur 0**, aucun id a tester.
+
+**Ce qui a ete ecrit.** B.0.1 a B.0.4 coches ; les 16 items des lots 1, 2, 3 et de l'observation
+J+7 statues `[!]` avec la meme justification, sans etre supprimes ni reecrits — ils restent la
+trace de ce qui aurait ete fait, decisions produit comprises. Chiffres et fenetres en §6 du plan,
+etat et condition de reprise en tete du volet B, entree au registre des reports.
+
+**Decouverte laissee au §5, non traitee.** `apps/go-api/internal/sync/haloclient/halo_client_http.go`,
+`downloadBlob` lignes 50-53 : tout statut non-200 devient une erreur formatee
+`downloadBlob HTTP %d` et un WARN. C'est ce qui fait apparaitre **304** comme un echec de
+telechargement, 17 fois en prod et 5 fois en local — un « Not Modified » n'est pas un echec.
+Qualification a faire dans un lot dedie (d'ou vient l'en-tete conditionnel, et le 304 doit-il
+etre un succes ou un cas neutre), pas ici : zero fix opportuniste hors perimetre.
+
+**Conclusion / prochaine etape.** Volet B ferme, aucun code Go touche, aucun gate de test a
+jouer (lot documentaire). Condition de reprise ecrite en deux endroits : rouvrir si
+`downloadBlob HTTP 404|410` apparait dans les logs (prod `/opt/levelup/data/logs/*.log*`, local
+`apps/go-api/logs/`), et reprendre alors a B.0.4 avec les ids observes. Le volet A du meme plan
+(collections `null` des classements) reste entier et independant : c'est lui, la suite.
 ## [2026-09-05] Integration des branches actives dans l'architecture cuisson-perf — CLOSE, merge feat/v75 — Complete
 
 **Decision technique principale.** Tout ce qui devait rejoindre `feat/v75` a ete rejoue DANS
@@ -100225,3 +100396,14 @@ contrats et paradigme ; un lot par domaine en vol ; worktree dedie + branche `fe
 fusion des blobs, cibles des libelles, gel de S.3, amendement §0.7 du plan v2). Des l'accord :
 Q1-Q2 par le superviseur, puis Q3 (mojibake) et Q5 (flakes) en parallele (domaines disjoints).
 Rien n'est committe : worktree `LevelUp-wt-orchestration`, branche `wt/orchestration-0907`.
+
+## [2026-09-07] Orchestration — vague 1, lots Q1 et Q2 (Complete)
+- Q1 : `feat/outcome-cle-canonique` et `feat/v2-audit-vies` supprimees (locales + origin, rien
+  d'unique dedans) ; 73 worktrees PROPRES de branches deja fusionnees dans `feat/v75` retires
+  (`Downloads/Scripts/LevelUp-wt-*` et `.claude/worktrees/*`), branches locales `-d` ; les
+  worktrees sales sont laisses et listes (journal du menage : scratchpad `menage_worktrees.log`).
+- Q2 : `wt/blob-304-retry` fusionnee (retry d'un blob CDN, 304 d'edge, corps coupe retente,
+  garde-rail `no_text_predicate_test`) ; aucun conflit de code, union des deux docs
+  (`thought_log`, `REGISTRE_REPORTS`) verifiee aux comptes de lignes ; `go build ./...`,
+  `go test ./internal/sync/haloclient/` et `./internal/sync/ -run 'Pooled|Blob|TextPredicate|IsAuth'`
+  verts. CI : consultee en fin de vague (regle du 2026-09-07).

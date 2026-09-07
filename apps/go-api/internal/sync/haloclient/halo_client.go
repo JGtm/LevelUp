@@ -49,14 +49,20 @@ const (
 	haloGameCMSHost = "https://gamecms-hacs.svc.halowaypoint.com"
 	// maxRetries est le nombre de tentatives avant abandon (portage de tries=4 Python).
 	maxRetries = 4
-	// retryBaseDelay est le délai de base pour le backoff exponentiel.
-	retryBaseDelay = 800 * time.Millisecond
 	// backoffCeiling borne le délai d'un retry in-client : au-delà, c'est le
 	// cooldown global du pool (OnHTTPError) qui prend le relais.
 	backoffCeiling = 10 * time.Second
 	// matchCountMax est le nombre maximum de matchs par page d'historique (API Halo).
 	matchCountMax = 25
 )
+
+// retryBaseDelay est le délai de base du backoff exponentiel des retries.
+//
+// VAR et non const : les tests qui exercent l'épuisement des tentatives (blob
+// 304 × maxRetries) le raccourcissent le temps du cas, sinon un seul test dure
+// une douzaine de secondes. Surcharger UNIQUEMENT via avecRetryBaseDelayCourt
+// (halo_client_blob_retry_test.go), qui restaure la valeur de production.
+var retryBaseDelay = 800 * time.Millisecond
 
 // HTTPError encapsule une erreur HTTP avec statusCode exposé pour inspection.
 type HTTPError struct {

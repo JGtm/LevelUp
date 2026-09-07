@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/auth/pool"
+	"levelup/go-api/internal/sync/haloclient"
 )
 
 // mockPool implémente pool.Pool pour les tests.
@@ -463,6 +464,40 @@ func TestPooledHaloClientNotifyError_401_MarksUnhealthy(t *testing.T) {
 		}
 		if !isAuthError(err) {
 			t.Errorf("isAuthError(%d) devrait être true", code)
+		}
+	}
+}
+
+// TestPooledHaloClientNotifyError_BlobHTTPError_NePoisonnePasLePool (volet C,
+// 2026-09-05) : le CDN des films est PUBLIC — nos tokens n'y servent à rien et
+// son edge n'est pas l'API Halo. Un 403 venant de lui ne doit donc pas marquer
+// un token valide unhealthy, et un 503/429 d'edge ne doit pas geler tout le
+// pool. C'est la raison d'être du type distinct BlobHTTPError : si errors.As
+// sur *HTTPError le matchait, ce test serait rouge.
+func TestPooledHaloClientNotifyError_BlobHTTPError_NePoisonnePasLePool(t *testing.T) {
+	const blobURL = "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/film/a/b/filmChunk16"
+	for _, code := range []int{403, 401, 503, 429} {
+		mp := &mockPool{
+			tokens:           map[string]*domain.HaloTokens{"slotA": testTokens("slotA")},
+			onHTTPErrorCalls: []int{},
+		}
+		client := NewPooledHaloClient(mp, "", "", 0)
+		lease := &pool.Lease{Gamertag: "slotA", Tokens: testTokens("slotA"), Release: func() {}}
+		err := &haloclient.BlobHTTPError{StatusCode: code, URL: blobURL, Attempts: 1}
+
+		client.notifyPoolOnError(lease, err)
+
+		if len(mp.markUnhealthy) != 0 {
+			t.Errorf("code %d : aucun MarkUnhealthy attendu sur une erreur de blob, got %v", code, mp.markUnhealthy)
+		}
+		if len(mp.onHTTPErrorCalls) != 0 {
+			t.Errorf("code %d : aucun cooldown global attendu sur une erreur de blob, got %v", code, mp.onHTTPErrorCalls)
+		}
+		if len(mp.on429Gamertags) != 0 {
+			t.Errorf("code %d : aucun cooldown per-token attendu sur une erreur de blob, got %v", code, mp.on429Gamertags)
+		}
+		if isAuthError(err) {
+			t.Errorf("code %d : isAuthError doit rester faux sur une erreur de blob", code)
 		}
 	}
 }

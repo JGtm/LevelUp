@@ -204,6 +204,9 @@ func TestGetMatchFilm_CompletesAllBeforeReturn(t *testing.T) {
 // 500 → errgroup retourne l'erreur, les autres goroutines doivent aborter
 // proprement (via ctx cancel propagé par errgroup.WithContext).
 func TestGetMatchFilm_OneChunkFails_ReturnsError(t *testing.T) {
+	// Le 500 du chunk 3 est désormais RETENTÉ (volet C) : backoff raccourci pour
+	// que le cas reste sous la seconde.
+	avecRetryBaseDelayCourt(t)
 	const nChunks = 5
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/spectate") {
