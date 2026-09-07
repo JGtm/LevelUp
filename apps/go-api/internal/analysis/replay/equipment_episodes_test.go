@@ -262,3 +262,92 @@ func TestCouvertureDesEpisodesCompteDesViesPasDesSlots(t *testing.T) {
 			cov.OvershieldEpisodes, cov.OvershieldLives)
 	}
 }
+
+// TestEpisodeAChevalSurDeuxViesGardeSesBornesMesurees — UN TROU DE REPLICATION N'AMPUTE PAS UNE
+// MESURE QUI L'ENJAMBE (correctif du 2026-09-06, corpus temoin).
+//
+// L'etat actif se lit PAR SLOT (i28 pour le camo) : ses deux bornes sont des transitions LUES,
+// qui ne savent rien du decoupage en vies. Depuis le schema 36 (« une track = une vie ») un trou
+// de plus de `lifeGapUS` coupe la piste — et pour le camouflage cet etat est justement ce qui
+// PROVOQUE le trou : un porteur invisible et immobile cesse d'etre replique. Borner l'episode a
+// la seule vie de recouvrement MAXIMAL jetait alors la part couverte par l'autre vie, dont
+// l'instant d'ACTIVATION. Mesure : `084a804d`, slot 620, camo lu [3105..3672] (568 frames),
+// publie [3173..3672] (500) — 68 frames perdues, dont 16 A L'INTERIEUR d'une vie publiee, et
+// l'activation sonnee 6,8 s en retard.
+func TestEpisodeAChevalSurDeuxViesGardeSesBornesMesurees(t *testing.T) {
+	// Deux vies du meme slot, separees d'un trou ; la SECONDE recouvre bien plus que la
+	// premiere — c'est elle que l'ancienne regle elisait, en rognant l'ouverture.
+	tracks := []Track{
+		{Slot: 620, StartFrame: 0, EndFrame: 50},
+		{Slot: 620, StartFrame: 60, EndFrame: 300},
+		{Slot: 620, StartFrame: 400, EndFrame: 500}, // vie NON recouverte : elle ne doit rien elargir
+	}
+	camo := []filmdec.CamoRead{
+		camoRead(620, 45, filmdec.CamoActiveQ),
+		camoRead(620, 250, filmdec.CamoInactiveQ),
+	}
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks)
+	if len(eps) != 1 {
+		t.Fatalf("%d episode(s), attendu 1 : %+v", len(eps), eps)
+	}
+	if eps[0].T0 != 45 || eps[0].T1 != 250 {
+		t.Errorf("episode [%d..%d], attendu [45..250] — les deux bornes sont MESUREES, le trou "+
+			"de replication entre 50 et 60 ne doit en rogner aucune", eps[0].T0, eps[0].T1)
+	}
+	if !eps[0].EndRead {
+		t.Errorf("endRead=false, attendu true — la fin est une transition mesuree, pas une mort")
+	}
+}
+
+// TestEpisodeNEnjambePasUneMort — LA BORNE DU CONSTAT C2 (revue DUREES-R1). L'union de `spanFor`
+// recoud un SILENCE de replication, pas une vie : elle ne doit JAMAIS franchir une fin de vie
+// NOMMEE, dont l'identite vient de la mort qui la termine.
+//
+// Sans cette borne, trois vies nommees d'un meme slot et une activation dans la PREMIERE
+// rendaient `[20..450]` — un episode annonce a travers DEUX morts, que `equipmentFx.ts` aurait
+// peint sur des vies ou rien ne l'a jamais lu. La mutation prescrite au premier correctif ne
+// l'exercait pas : elle placait l'activation dans la SECONDE vie, ou le clamp ne peut que
+// retrecir.
+func TestEpisodeNEnjambePasUneMort(t *testing.T) {
+	tracks := []Track{
+		{Slot: 620, XUID: "111", StartFrame: 0, EndFrame: 50},
+		{Slot: 620, XUID: "111", StartFrame: 60, EndFrame: 300},
+		{Slot: 620, XUID: "111", StartFrame: 400, EndFrame: 500},
+	}
+	camo := []filmdec.CamoRead{
+		camoRead(620, 20, filmdec.CamoActiveQ),
+		camoRead(620, 450, filmdec.CamoInactiveQ),
+	}
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks)
+	if len(eps) != 1 {
+		t.Fatalf("%d episode(s), attendu 1 : %+v", len(eps), eps)
+	}
+	if eps[0].T0 != 20 || eps[0].T1 != 50 {
+		t.Errorf("episode [%d..%d], attendu [20..50] — l'union doit s'arreter a la premiere fin "+
+			"de vie NOMMEE, pas enjamber deux morts", eps[0].T0, eps[0].T1)
+	}
+}
+
+// TestEpisodeFranchitUnTrouAnonymeMaisPasLaMortSuivante — la meme regle, exercee dans les DEUX
+// sens sur un seul slot : la couture traverse la vie ANONYME (trou de replication) et s'arrete
+// net a la fin de la vie NOMMEE qui suit. C'est exactement la forme du cas reel `084a804d`
+// slot 620, augmentee d'une vie de plus pour que la borne ait quelque chose a refuser.
+func TestEpisodeFranchitUnTrouAnonymeMaisPasLaMortSuivante(t *testing.T) {
+	tracks := []Track{
+		{Slot: 620, StartFrame: 0, EndFrame: 50},                 // ANONYME : trou de replication
+		{Slot: 620, XUID: "111", StartFrame: 60, EndFrame: 300},  // NOMMEE : sa fin est une mort
+		{Slot: 620, XUID: "111", StartFrame: 400, EndFrame: 500}, // la vie d'apres
+	}
+	camo := []filmdec.CamoRead{
+		camoRead(620, 45, filmdec.CamoActiveQ),
+		camoRead(620, 450, filmdec.CamoInactiveQ),
+	}
+	eps, _ := buildEquipmentEpisodes(nil, camo, eqOrigin, eqStep, tracks)
+	if len(eps) != 1 {
+		t.Fatalf("%d episode(s), attendu 1 : %+v", len(eps), eps)
+	}
+	if eps[0].T0 != 45 || eps[0].T1 != 300 {
+		t.Errorf("episode [%d..%d], attendu [45..300] — la couture traverse la vie ANONYME "+
+			"(activation mesuree conservee) puis s'arrete a la mort", eps[0].T0, eps[0].T1)
+	}
+}

@@ -1,3 +1,95 @@
+## [2026-09-06] DUREES-R1 : les trois constats de la revue adversariale traites — la garde du repli anonyme existe enfin — Complete
+
+**Le mandat.** Revue adversariale `DUREES-R1` du lot des deux pertes de duree (contexte frais,
+22/22 conditions tenues, les deux correctifs juges exacts et additifs). Trois constats a traiter,
+perimetre STRICT, meme worktree `LevelUp-wt-v2-durees`.
+
+**Decision technique principale.** C1 (MOYENNE) etait recevable et il est le seul de fond :
+l'argument qui JUSTIFIAIT le repli « une vie anonyme appartient au joueur que le pont nomme »
+etait FAUX sur pieces — `ownersFromLives` compte la collision puis `continue`, le PREMIER nomme
+reste publie dans `SlotXUID`, et `SlotCollisions` ne voit que les conflits entre vies NOMMEES,
+donc jamais la vie anonyme elle-meme. La garde est desormais posee la ou la matiere existe : sur
+les vies PUBLIEES. Le repli est refuse des que les vies nommees du slot ne s accordent pas avec
+le pont (deux occupants nommes, ou un occupant qui n est pas celui du pont) ; le refus se COMPTE
+(`coverage.flagCarries.ambiguousSlot`, compteur de SLOTS, hors de `Balanced()`) et se JOURNALISE
+(`slog.Warn` structure). Ce que la garde ne peut pas attraper — un slot occupe par A nomme puis
+par B jamais nomme — est ecrit dans le code pour que personne ne le croie couvert. C2 : `spanFor`
+ne recevait aucune information de mort ; `trackFrameWindows` rend maintenant des `lifeWindow`
+triees portant `named`, et la couture ne traverse que les frontieres qu AUCUNE identite ne date
+(lecture conservatrice assumee : les fermetures nomment aussi des vies, une couture legitime peut
+etre refusee, jamais l inverse). C3 : le controle independant du calque drapeau reconstruit le
+pont depuis les vies publiees et SAUTE un porteur sans piste au lieu de poser une reference vide,
+que `objDrapeauPres` lisait comme un socle fantome a l origine du monde.
+
+**Resultats observes.** Quatre tests neufs, deux prouves par mutation avec la valeur exacte des
+sondes de la revue : sans la garde C1, `Carries:1 NoTrack:0 AmbiguousSlot:0` au lieu de
+`0/1/1` ; sans la borne C2, `[20..450]` et `[45..450]` au lieu de `[20..50]` et `[45..300]`.
+Re-cuisson des deux temoins comparee a celle d avant R1 : lignes de perte IDENTIQUES ligne pour
+ligne (9 et 19), aucune valeur existante modifiee, substance identique (`084a804d` 21 episodes /
+3697 frames / slot 620 `[3105..3672]` ; `bcb6d393` carries 16, noTrack 0, 441-358-96-53). Seul
+ecart : la mesure NEUVE `ambiguousSlot` — **1 sur `084a804d`, exactement le slot 734 que la revue
+avait mesure**, et le calque n en perd rien. **SchemaVersion reste 45** (contenu des calques
+strictement inchange ; le ratchet dit lui-meme qu un champ optionnel de plus n est pas une raison
+de monter). Gates : suite replay + replaybuild + replaydiff + archlint + contracttest verte,
+integration `api/wire` (`-p 1`) verte, `go build ./...` ok, `golangci-lint
+--new-from-merge-base=origin/main` 0 issue ; tous les fichiers touches sous 500 lignes.
+
+**Conclusion / prochaine etape.** Journal complete (section « Corrections R1 »), phrase fausse du
+§A.3 corrigee sur pieces, entree A du registre completee. UNE decouverte de plus au registre, NON
+traitee : `OwnerReport.SlotXUID` publie un slot en collision sous le nom de son premier occupant
+nomme sans marqueur par slot, et les autres consommateurs du pont (marques de portage,
+ramassages, frags sous equipement actif) n ont pas ete inventories — la garde posee ici est un
+contournement LOCAL au calque drapeau. Condition de reprise ecrite : marquer (ou dater) les slots
+disputes dans `OwnerReport`, puis inventorier les lecteurs ; la garde locale devient alors
+redondante et se supprime.
+
+## [2026-09-06] Instruction des deux pertes de DUREE du corpus temoin — les deux sont des regressions, corrigees (schema 45) — Complete
+
+**Le mandat.** Instruire les deux faits nouveaux isoles par la premiere execution de
+`cmd/replay-corpus-gate` (`.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md` §3.3), tous deux detectes par
+le NOUVEL axe « somme des durees » et par lui seul : (A) `bcb6d393` perd 86 frames de portage de
+drapeau sur 2 joueurs ; (B) `084a804d` perd 68 frames d episodes d equipement SANS perdre
+d episode. Worktree dedie `LevelUp-wt-v2-durees`, branche `feat/v2-durees` basee sur
+`feat/v2-corpus`.
+
+**Decision technique principale.** Les deux faits ont LA MEME RACINE : le decoupage « une track =
+une vie » du schema 36, dont trois consommateurs avaient ete rattrapes au schema 41 et un
+quatrieme au 43. Ceux-ci sont les cinquieme et sixieme, et les premiers que seule une mesure de
+DUREE pouvait reveler. (A) `tracksByXUID` n indexait que les pistes NOMMEES : les 9 dernieres
+prises de `2535429985869093` tombaient dans la vie ANONYME de son slot 536 et sortaient
+`NoTrack` — une vie sans nom est une PRESENCE SANS IDENTITE, pas une absence (meme principe qu au
+schema 43). Correctif : l identite de la piste anonyme vient du PONT CANONIQUE `ResolveSlotXUID`,
+celui qui nomme deja les marques de portage — jamais d une deduction locale, et un slot que le
+pont ne nomme pas reste ecarte. (B) `close` bornait un episode a la vie de recouvrement MAXIMAL :
+un camouflage lu `[3105..3672]` etait publie `[3173..3672]`, son instant d ACTIVATION jete. Le
+camouflage est d ailleurs la CAUSE du trou de replication qui coupe la piste (porteur invisible et
+immobile). Correctif : bornage a l UNION des vies recouvertes (`spanFor`), regle de rejet
+inchangee.
+
+**Resultats observes.** Preuves : memes 1943 et 835 points de part et d autre (seule la
+segmentation change, rien n est perdu a la lecture) ; la vie coupee est ANONYME donc aucune mort
+ne la nomme ; le corps est a 0,55 unite de sa position 5,3 s plus tard ; le canal i28 ne repasse
+jamais a 0. Les deux hypotheses de depart du fait B sont REFUTEES sur pieces (aucun point du slot
+620 assaini — les 9 points perdus sont le fait n° 5 des residus, slot 539 ; aucun gate ajoute
+depuis le 25/08 — `79bf2e6d2` est au contraire le correctif PARTIEL du meme defaut, qui a rendu le
+COMPTE sans la duree). Celle du fait A (« re-attribution entre joueurs, total d equipe inchange »)
+est refutee aussi : le total d equipe baissait. Apres correctif, les deux calques redeviennent
+EGAUX a l artefact du parc element par element (`carries` 16 / `noTrack` 0 / 441-358-96-53 frames
+par joueur ; 21 episodes / 3697 frames, diff d ensemble vide). Corpus complet re-cuit : pertes
+75 -> 55, et les CINQ familles non concernees sont identiques au chiffre pres. Trois tests dont
+deux prouves par mutation et un en contre-epreuve a trois sous-cas. Gates : suite replay +
+replaybuild + replaydiff + archlint + contracttest, integration `api/wire` (`-p 1`), `go build`,
+`golangci-lint --new-from-merge-base=origin/main` 0 issue. Golden regenere, unique ecart = la
+ligne de version (1 sur 606).
+
+**Conclusion / prochaine etape.** `SchemaVersion` 43 -> **45** ; **44 est saute et RESERVE** au lot
+des manches en cours sur une autre branche (a l heure du commit `feat/v75` ne le porte pas encore).
+Les deux entrees du registre passent a CLOS avec leur verdict. Quatre decouvertes notees et NON
+traitees, dont deux qui meritent une decision : l attribution du drapeau a une EQUIPE ne se
+recoupe pas avec la feuille de match sur `bcb6d393` (parc comme HEAD — ce n est pas une
+regression), et aucun inventaire systematique des lecteurs qui supposent encore « un slot = une
+piste nommee » n existe. Journal complet : `.ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md`.
+
 ## [2026-09-05] Integration des branches actives dans l'architecture cuisson-perf — CLOSE, merge feat/v75 — Complete
 
 **Decision technique principale.** Tout ce qui devait rejoindre `feat/v75` a ete rejoue DANS
@@ -97286,3 +97378,48 @@ vérifie que le repli sort bien quand aucune borne n'est posable. **N3** : `manc
 (529 L) scindé par responsabilité — 413 L pour la découpe et les fixtures, 278 L dans
 `manches_segments_test.go` pour ce qui concerne le bloc (slot, manche). Gates : 23 paquets ok,
 build, `CGO_ENABLED=0 go vet`, `golangci-lint --new-from-merge-base` 0 issue.
+## [2026-09-06] Gate local de non-régression du rejeu sur corpus témoin — Complété
+
+**Contexte.** Répond aux deux items laissés ouverts par l'intégration de feat/v2-residus :
+« l'angle mort du comparateur `replay-diff` sur les intervalles rognés » et « corpus témoin à
+rejouer à chaque bump de schéma ». Trois régressions (28/08, 30/08, 02/09) ont traversé des
+goldens synthétiques pendant dix-neuf schémas faute d'un différentiel sur films réels ; ce
+chantier industrialise la méthode du balayage ponctuel (`BALAYAGE_PARC_2026-09-06.md`) en gate
+répétable. Worktree `LevelUp-wt-v2-corpus`, branche `feat/v2-corpus`.
+
+**Décision technique.** (1) Extraction de la logique de `cmd/replay-diff` (un `package main`,
+non importable) vers `internal/replaydiff`, partagée par le CLI historique (comportement
+externe inchangé, test de fumée vérifié) et le nouveau gate — règle des ≤ 2 copies. (2) Axe
+« somme des durées » : descend récursivement dans tout calque à intervalles `[t0,t1]`
+(n'importe lequel, sans câblage en dur), ventile par xuid ou par slot selon la clé que la
+source utilise déjà. Preuve par mutation : l'appel désactivé fait rougir 6/8 tests, restauré
+et revérifié vert. (3) `cmd/replay-corpus-gate`, binaire séparé : trois racines distinctes
+(source = code au HEAD, parc = chunks + référence, travail = jetable) — l'auto-détection du
+parc par `.git` commun s'est révélée FAUSSE sur ce dépôt (`LevelUp-go-migration` est lui-même
+un worktree d'un ancêtre `LevelUp` au `data/` périmé) et a dû être validée par la présence de
+la base partagée avant d'être acceptée. Verrou `filmproc.AcquireSolo` sur `CacheRootDir()` du
+PARC (pas de la racine de travail) — partagé avec tout autre outil de cuisson de la machine.
+Ratchet `no_unbounded_film_loop_test.go` étendu (nouveau site déclaré, régime « un film à la
+fois, verrou partagé, sentinelle par témoin »).
+
+**Résultats.** Manifeste `config/replay_corpus.toml`, 7 témoins (un par famille de mode,
+recensés sur les 106 matchs du parc via `replay-facts-export`). Gate exécuté au HEAD
+(`a059caefc`, schéma 43) : 7/7 cuits sans échec, pic mémoire 0,44 Gio. 75 pertes brutes
+analysées une à une : 61 (81 %) expliquées par la chronique existante (bornes assainies,
+reclassements, compteurs de défaut, réattributions déjà documentées — plusieurs avec les
+CHIFFRES EXACTS cités par le balayage), 7 (9 %) un bug de mesure PRÉEXISTANT découvert en
+chemin (`<calque>.spans/n` compte le dernier groupe itéré, pas la somme — l'axe durée, non
+affecté, a permis de le voir), 7 (9 %) deux faits nouveaux non expliqués (perte de durée de
+portage de drapeau sur `bcb6d393`, perte de durée d'épisode d'équipement sur `084a804d`).
+Aucune régression massive. Les trois découvertes consignées au registre
+(`REGISTRE_REPORTS.md`), pas traitées ici (hors périmètre : ce chantier détecte, il
+n'instruit pas). Gates : `go test` (4 paquets), `go build ./...` (CGO 0 et 1), `go vet`,
+`golangci-lint --new-from-merge-base=origin/main` (0 issue après correctif de 15 issues
+révélées par le déplacement vers `internal/replaydiff` — dette du paquet neuf sur
+`origin/main`, pas introduite par ce chantier, mais corrigée pour tenir le ratchet à 0).
+
+**Conclusion / prochaine étape.** `make replay-corpus-gate` documenté (bilingue) comme geste
+avant tout merge touchant `analysis/replay`/`replaybuild`/`filmdec` ou bumpant `SchemaVersion`.
+Prochaine étape : instruire les deux faits nouveaux (`bcb6d393` flagCarries, `084a804d`
+equipmentEpisodes) et le bug de mesure `spans/n`, tous trois au registre avec condition de
+reprise écrite.

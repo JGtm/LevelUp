@@ -1,4 +1,4 @@
-package main
+package replaydiff
 
 // rendu.go — LES DEUX SORTIES : un tableau qu'un operateur lit, un JSON qu'un balayage agrege.
 //
@@ -44,28 +44,28 @@ func formater(v float64) string {
 	return strconv.FormatFloat(v, 'f', 4, 64)
 }
 
-// afficherTableau ecrit le rapport lisible.
-func afficherTableau(w io.Writer, r Rapport, tout bool) {
-	fmt.Fprintf(w, "match %s : schema %d -> %d   (%s -> %s)\n",
+// AfficherTableau ecrit le rapport lisible.
+func AfficherTableau(w io.Writer, r Rapport, tout bool) {
+	_, _ = fmt.Fprintf(w, "match %s : schema %d -> %d   (%s -> %s)\n",
 		court(r.MatchID), r.SchemaAncien, r.SchemaNouveau,
 		nomCourt(r.FichierAncien), nomCourt(r.FichierNouveau))
 	if len(r.Differences) == 0 {
-		fmt.Fprintf(w, "  aucune difference (%d mesures identiques)\n", r.Identiques)
+		_, _ = fmt.Fprintf(w, "  aucune difference (%d mesures identiques)\n", r.Identiques)
 		return
 	}
-	fmt.Fprintf(w, "  %d ecarts sur %d mesures\n", len(r.Differences), len(r.Differences)+r.Identiques)
+	_, _ = fmt.Fprintf(w, "  %d ecarts sur %d mesures\n", len(r.Differences), len(r.Differences)+r.Identiques)
 	afficherBilans(w, r)
 	axeCourant := ""
 	for _, d := range r.Differences {
 		if d.Axe != axeCourant {
 			axeCourant = d.Axe
-			fmt.Fprintf(w, "\n  [%s]\n", axeCourant)
+			_, _ = fmt.Fprintf(w, "\n  [%s]\n", axeCourant)
 		}
-		fmt.Fprintf(w, "    %-9s %-58s %12s -> %-12s\n",
+		_, _ = fmt.Fprintf(w, "    %-9s %-58s %12s -> %-12s\n",
 			d.Sens, tronquer(d.Metrique, 58), vide(d.Ancien), vide(d.Nouveau))
 	}
 	if tout {
-		fmt.Fprintf(w, "\n  (%d mesures identiques non listees)\n", r.Identiques)
+		_, _ = fmt.Fprintf(w, "\n  (%d mesures identiques non listees)\n", r.Identiques)
 	}
 }
 
@@ -87,13 +87,13 @@ func afficherBilans(w io.Writer, r Rapport) {
 		if b.Pertes == 0 && b.Gains == 0 && b.Changements == 0 {
 			continue
 		}
-		fmt.Fprintf(w, "    %-18s pertes=%-4d gains=%-4d changements=%-4d identiques=%d\n",
+		_, _ = fmt.Fprintf(w, "    %-18s pertes=%-4d gains=%-4d changements=%-4d identiques=%d\n",
 			a, b.Pertes, b.Gains, b.Changements, b.Identiques)
 	}
 }
 
-// ecrireJSON depose le rapport de la paire.
-func ecrireJSON(path string, r Rapport) error {
+// EcrireJSON depose le rapport de la paire.
+func EcrireJSON(path string, r Rapport) error {
 	blob, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return fmt.Errorf("serialisation du rapport : %w", err)

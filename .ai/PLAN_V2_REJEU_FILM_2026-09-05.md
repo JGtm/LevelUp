@@ -42,6 +42,10 @@
   `.ai/thought_log.md` par tâche close. Découvertes hors périmètre : consignées, pas traitées.
 - Doctrine : CLAUDE.md (règles 1-16, ART, anti-patterns), skills `arch-rules`,
   `frontend-patterns`, `color-tokens`, `db-schema`. Aucun emoji dans les fichiers versionnés.
+- Gate de non-régression du rejeu (`make replay-corpus-gate`, `cmd/replay-corpus-gate`,
+  manifeste `config/replay_corpus.toml`) : à lancer AVANT tout merge qui touche
+  `analysis/replay`, `replaybuild`, `filmdec`, ou qui bumpe `SchemaVersion` — cf.
+  docs/COMMANDS.md et `.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`.
 
 ## Protocole de revue et d'intégration
 
