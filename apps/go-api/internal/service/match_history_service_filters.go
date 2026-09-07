@@ -408,7 +408,7 @@ func (s *MatchHistoryService) ExportCSV(
 	mapWinRates := computeMapWinRates(rawRows)
 	// Rejeu 2D : l'export CSV ne porte pas de colonne « Rejeu » (cf. availableColumns)
 	// — inutile de lister le dossier d'artefacts pour un fichier qui ne l'affiche pas.
-	items := enrichRows(filtered, mapWinRates, s.rowFormatters(nil))
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters(ctx, nil))
 	sortItems(items, req.SortField, req.SortDir)
 
 	return items, nil

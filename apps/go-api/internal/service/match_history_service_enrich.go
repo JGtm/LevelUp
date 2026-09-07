@@ -1,6 +1,6 @@
 // Package service - match_history_service_enrich.go : toFilterMatchRow +
 // computeMapWinRates + enrichRows/enrichRow + sortItems/compareRows +
-// paginate + helpers de format (outcomeLabel, formatDateFR,
+// paginate + helpers de format (formatDateFR,
 // formatLifeSeconds, buildPeriodLabel, ptr/cmp helpers).
 // Decoupe de match_history_service.go (god-file split, refactor 2026-05-27).
 package service
@@ -69,7 +69,7 @@ func computeMapWinRates(rows []domain.MatchHistoryRawRow) map[string][2]int {
 
 // rowFormatters regroupe les résolveurs title-agnostic injectés dans l'enrichissement
 // d'une ligne : URL de page publique du match (F3) et libellé d'outcome via le titre
-// (F4). Champs nil → dégradation gracieuse (URL vide ; outcome via le fallback FR dur).
+// (F4). Champs nil → dégradation gracieuse (URL vide ; outcome via le repli FR documenté).
 type rowFormatters struct {
 	matchURL      func(matchID string) string
 	outcomeLabel  func(code int) string
@@ -126,9 +126,12 @@ func (f rowFormatters) hasReplayFor(matchID string) bool {
 	return f.replays.Has(matchID)
 }
 
+// outcomeLabelFor rend le libellé d'issue de la ligne. Le résolveur est TOUJOURS injecté par
+// MatchHistoryService.rowFormatters (il porte la locale de la requête) ; le nil ne survient que
+// sur un rowFormatters zéro-valeur — un test qui n'enrichit pas les libellés. Repli FR alors.
 func (f rowFormatters) outcomeLabelFor(code int) string {
 	if f.outcomeLabel == nil {
-		return outcomeLabel(code) // failsafe : libellés FR canoniques Halo
+		return outcomeLabel(code) // repli FR, cf. outcome_label.go
 	}
 	return f.outcomeLabel(code)
 }
@@ -339,12 +342,8 @@ func paginate(items []domain.MatchHistoryRow, req domain.PaginationRequest) (dom
 // Helpers
 // ---------------------------------------------------------------------------
 
-func outcomeLabel(code int) string {
-	if lbl, ok := outcomeLabels[code]; ok {
-		return lbl
-	}
-	return "-"
-}
+// outcomeLabel / resolveOutcomeLabel vivent dans outcome_label.go depuis le 2026-09-07 :
+// le libellé d'issue vient du titre (outcomes.toml) et non plus d'une map FR en dur.
 
 func formatDateFR(t time.Time) string {
 	if t.IsZero() {
