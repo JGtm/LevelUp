@@ -311,12 +311,12 @@ func TestCompareService_FetchCSRSummary(t *testing.T) {
 	if sum.allTimeValue != 1700 || sum.allTimeLabel != "Onyx" {
 		t.Errorf("all-time = (%v, %q), want (1700, Onyx)", sum.allTimeValue, sum.allTimeLabel)
 	}
-	// Récupéré mais AUCUN classement (slice vide) → "Non classé" (≠ non récupéré).
+	// Récupéré mais AUCUN classement (slice vide) → clé "unranked" (≠ non récupéré).
 	empty := CSRProviderFunc(func(_ context.Context, _, _ string) ([]domain.CareerPlaylistCSR, error) {
 		return nil, nil
 	})
 	if got := (&CompareService{}).WithCSR(empty, "S13").fetchCSRSummary(context.Background(), "xuid"); got.currentLabel != csrUnrankedLabel || got.currentValue != 0 {
-		t.Errorf("récupéré sans classement → 'Non classé', got (%v, %q)", got.currentValue, got.currentLabel)
+		t.Errorf("récupéré sans classement → 'unranked', got (%v, %q)", got.currentValue, got.currentLabel)
 	}
 	// Non récupéré (pas de saison / pas de provider) → label VIDE (= N/A côté front).
 	if got := (&CompareService{}).WithCSR(csr, "").fetchCSRSummary(context.Background(), "xuid"); got.currentLabel != "" {
@@ -346,7 +346,7 @@ func TestCSRRankLabel(t *testing.T) {
 }
 
 // TestBuildMetrics_CSRRow : tri-état CSR porté par le libellé — classé (tier),
-// "Non classé" (récupéré, value 0) et N/A (label vide = non récupéré).
+// "unranked" (récupéré, value 0) et N/A (label vide = non récupéré).
 func TestBuildMetrics_CSRRow(t *testing.T) {
 	byKey := func(rows []domain.CompareMetricRow) map[string]domain.CompareMetricRow {
 		m := make(map[string]domain.CompareMetricRow, len(rows))
@@ -373,11 +373,11 @@ func TestBuildMetrics_CSRRow(t *testing.T) {
 		t.Errorf("csr winner = %q, want a (1600>1450)", csr.Winner)
 	}
 
-	// B "Non classé" (récupéré, value 0, label set) → disponible et affiché (pas N/A).
+	// B "unranked" (récupéré, value 0, label set) → disponible et affiché (pas N/A).
 	bUnranked := domain.NormalizedPlayerStats{IsLocal: false, Matches: 50, HighestCSR: 0, HighestCSRLabel: csrUnrankedLabel}
 	r := byKey(buildMetrics(a, bUnranked, 225))[compareMetricCSR]
 	if !r.ValueBAvailable || r.DisplayB != csrUnrankedLabel {
-		t.Errorf("csr B 'Non classé' doit être disponible et affiché, got avail=%v disp=%q", r.ValueBAvailable, r.DisplayB)
+		t.Errorf("csr B 'unranked' doit être disponible et affiché, got avail=%v disp=%q", r.ValueBAvailable, r.DisplayB)
 	}
 
 	// B non récupéré (label vide) → N/A (indisponible).
