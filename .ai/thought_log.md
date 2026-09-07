@@ -1,3 +1,20 @@
+## [2026-09-07] Remise de la probabilité de victoire attendue (expected_win_prob) — Complété
+
+**Décision technique principale.** Nouvelle capability title-level `CapExpectedWinProb`
+("expected_win_prob"), non accordée à aucun titre. Approche chirurgicale : ne désactive QUE
+la probabilité de victoire LUSR (pas les K/D/A attendus qui restent sous `CapExpectedStats`).
+Les données restent calculées et stockées dans `match_skill_rank.expected_win_prob` pour
+analyse interne — seul l'affichage est masqué.
+
+**Résultats observés.** Tests de parité verts (constante ↔ knownCapabilities ↔ miroir TS ↔
+consommateurs ↔ allowlist orpheline). TypeScript compile. 3 lieux d'affichage gatés :
+carte `MatchWinProbCard` (détail match), colonne "Prob. vic." (Progression), colonne
+(Synergies escouade).
+
+**Prochaine étape.** Pour réactiver : accorder `CapExpectedWinProb` au titre concerné dans
+`registry.go` (Infinite) ou `title.toml` (autre titre), et retirer l'entrée de
+`orphanCapabilityAllowlist`.
+
 ## [2026-09-07] Fusion `origin/feat/v75` -> `feat/tactique` (worktree `LevelUp-wt-tactique`) — Complete
 
 **Decision technique principale.** Regle ferme de l'utilisateur : `feat/v75` fait foi sur les 13
