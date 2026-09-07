@@ -224,6 +224,27 @@ en = "{n, plural, one {# distinct match} other {# distinct matches}} contributed
 fr = "Sélectionne une cellule du plan pour voir son détail."
 en = "Select a plan cell to see its detail."
 
+# Détail d'une cellule — contributions et lien vers le rejeu (lot M1, Tactique S.1).
+[tactical.cell.contributions_title]
+fr = "Voir dans le rejeu"
+en = "View in replay"
+
+[tactical.cell.contributions_loading]
+fr = "Chargement des contributions…"
+en = "Loading contributions…"
+
+[tactical.cell.contributions_empty]
+fr = "Aucun match ouvrable pour cette cellule."
+en = "No openable match for this cell."
+
+[tactical.cell.contribution_label]
+fr = "Match du {date} à {instant} — ouvrir dans le rejeu"
+en = "Match of {date} at {instant} — open in replay"
+
+[tactical.cell.footer_not_openable]
+fr = "{n, plural, one {# match compté non ouvrable} other {# matchs comptés non ouvrables}}"
+en = "{n, plural, one {# match counted, not openable} other {# matches counted, not openable}}"
+
 # ── Titre de la vue d'analyse ─────────────────────────────────────────────────
 [tactical.analysis.page_title]
 fr = "Plan de {map} — {question}"

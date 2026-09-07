@@ -6,11 +6,13 @@ import type { BornesMonde, CelluleTactique, EchelleTactique } from '@/lib/api/ty
 import { getTacticalText } from './i18n'
 import {
   cellFromClick,
+  instantToFrame,
   pageTitle,
   ratioSafe,
   sourceForQuestion,
   statusMessages,
   tacticalGridFromRaster,
+  TACTICAL_REPLAY_FRAME_INTERVAL_MS,
   unitForQuestion,
 } from './tacticalView.logic'
 
@@ -178,5 +180,39 @@ describe('tacticalGridFromRaster — bornes + pas -> grille de peinture', () => 
     // (0) ; 6 -> aux deux tiers de l'échelle — même règle que `heatIntensity` (entrée points).
     const intensites = g.cells.map((c) => tacticalIntensity(g, c.value))
     expect(intensites).toEqual([null, 0, 2 / 3])
+  })
+})
+
+// ─── instantToFrame — conversion mécanique instant (ms) -> frame (lot M1) ──────
+
+describe('instantToFrame — instant en millisecondes -> index de frame', () => {
+  it('divise par le pas d’échantillonnage par défaut (100 ms)', () => {
+    expect(instantToFrame(4200)).toBe(42)
+  })
+
+  it('accepte un pas d’échantillonnage explicite (sidecar FrameIntervalMs)', () => {
+    expect(instantToFrame(2000, 200)).toBe(10)
+  })
+
+  it('arrondit au plus proche quand la division n’est pas exacte', () => {
+    expect(instantToFrame(4250)).toBe(43) // 42.5 -> arrondi à 43
+    expect(instantToFrame(4240)).toBe(42) // 42.4 -> arrondi à 42
+  })
+
+  it('zéro milliseconde -> frame zéro', () => {
+    expect(instantToFrame(0)).toBe(0)
+  })
+
+  it('un pas d’échantillonnage nul ou négatif ne rend rien (0), jamais une division par zéro', () => {
+    expect(instantToFrame(4200, 0)).toBe(0)
+    expect(instantToFrame(4200, -100)).toBe(0)
+  })
+
+  it('un instant négatif (donnée aberrante) ne rend rien (0), jamais une frame négative', () => {
+    expect(instantToFrame(-500)).toBe(0)
+  })
+
+  it('la constante par défaut vaut 100 ms — même valeur que analysis/replay.DefaultFrameIntervalMS côté Go', () => {
+    expect(TACTICAL_REPLAY_FRAME_INTERVAL_MS).toBe(100)
   })
 })

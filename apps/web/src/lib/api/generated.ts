@@ -3514,6 +3514,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/tactical/{map_id}/cellule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Detail d'une cellule : les contributions ouvrables par l'appelant, pour ouvrir le rejeu au bon instant */
+        post: operations["getTacticalCellule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/tactical/{map_id}/raster": {
         parameters: {
             query?: never;
@@ -11708,6 +11725,45 @@ export interface components {
             /** Format: int64 */
             rows: number;
         };
+        TacticalCelluleAdresse: {
+            /**
+             * Format: int64
+             * @description Colonne de la cellule, ancree sur l'origine du monde (comme CelluleTactique.col).
+             */
+            col: number;
+            /**
+             * Format: int64
+             * @description Ligne de la cellule, ancree sur l'origine du monde (comme CelluleTactique.lig).
+             */
+            lig: number;
+        };
+        TacticalCelluleBody: {
+            /** @description La cellule dont on demande le detail (col, lig). */
+            cellule: components["schemas"]["TacticalCelluleAdresse"];
+            /** @description XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade ». */
+            coequipiers?: string[] | null;
+            /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
+            match_ids?: string[] | null;
+            /** @description Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. */
+            question?: string;
+            /** @description Axe : moi | escouade | adv. Defaut : moi. */
+            qui?: string;
+            /** @description Identifiant d'une grappe de reapparition : restreint l'univers aux matchs dont MA premiere vie en part. */
+            spawn?: string;
+        };
+        TacticalCelluleReponse: {
+            contributions: components["schemas"]["TacticalContribution"][] | null;
+            /** Format: int64 */
+            matchs_non_ouvrables: number;
+        };
+        TacticalContribution: {
+            /** Format: int64 */
+            instant_ms: number;
+            match_id: string;
+            /** Format: date-time */
+            match_started_at: string;
+            xuid: string;
+        };
         TacticalGrappe: {
             id: string;
             /** Format: int64 */
@@ -19818,6 +19874,42 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    getTacticalCellule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TacticalCelluleBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TacticalCelluleReponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
         };
     };

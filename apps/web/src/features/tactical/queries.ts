@@ -21,6 +21,7 @@ import type {
   CareerEncountersResponse,
   FilterContextInput,
   FilterMatchIdsResponse,
+  TacticalCelluleReponse,
   TacticalMapsBody,
   TacticalMapsPage,
   TacticalRaster,
@@ -207,6 +208,44 @@ export function useTacticalRaster(
         corps,
       ),
     enabled: !!playerSlug && !!mapId && params.match_ids !== null,
+    staleTime: 2 * 60 * 1000,
+  })
+}
+
+/**
+ * useTacticalCellule — le DÉTAIL d'UNE cellule cliquée : ses contributions ouvrables
+ * (ADR 0029) et le compte de celles écartées (lot M1, Tactique S.1).
+ *
+ * MÊME PÉRIMÈTRE QUE `useTacticalRaster`, PLUS L'ADRESSE DE LA CELLULE. La clé de cache en
+ * porte l'empreinte : deux cellules différentes ne doivent jamais se resservir l'une
+ * l'autre, et changer de question/qui/spawn doit redemander le détail.
+ *
+ * `cellule` à `null` = AUCUNE CELLULE SÉLECTIONNÉE : la requête N'EST PAS lancée. Ce n'est
+ * pas un cas d'attente comme `matchIds === null` (le périmètre non résolu) — c'est l'état
+ * NORMAL avant tout clic, et il ne doit déclencher aucun appel réseau.
+ */
+export function useTacticalCellule(
+  playerSlug: string,
+  mapId: string,
+  cellule: { col: number; lig: number } | null,
+  params: {
+    match_ids: string[] | null
+    coequipiers?: string[]
+    question?: string
+    qui?: string
+    spawn?: string
+  },
+) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const corps = cellule ? { ...params, match_ids: params.match_ids ?? [], cellule } : null
+  return useQuery({
+    queryKey: queryKeys.tacticalCellule(playerSlug, titleSlug, mapId, hashFiltre(corps)),
+    queryFn: () =>
+      api.post<TacticalCelluleReponse>(
+        `/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/cellule`,
+        corps,
+      ),
+    enabled: !!playerSlug && !!mapId && !!corps && params.match_ids !== null,
     staleTime: 2 * 60 * 1000,
   })
 }

@@ -89,6 +89,13 @@ export function getTacticalText(locale: Locale) {
     cellPlaceholder: m('tactical.cell.placeholder'),
     cellPlaceholderDescription: m('tactical.cell.placeholder_description'),
     cellMatches: (n: number) => m('tactical.cell.matches', { n }),
+    // Contributions et lien vers le rejeu (lot M1, Tactique S.1).
+    cellContributionsTitle: m('tactical.cell.contributions_title'),
+    cellContributionsLoading: m('tactical.cell.contributions_loading'),
+    cellContributionsEmpty: m('tactical.cell.contributions_empty'),
+    cellContributionLabel: (date: string, instant: string) =>
+      m('tactical.cell.contribution_label', { date, instant }),
+    cellFooterNotOpenable: (n: number) => m('tactical.cell.footer_not_openable', { n }),
 
     // ── Titre de la vue, barre d'outils ──────────────────────────────────────
     analysisPageTitle: (map: string, question: string) =>
