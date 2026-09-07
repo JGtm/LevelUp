@@ -16,9 +16,9 @@
  */
 import { catalogText, type CatalogLabel } from '../i18n/catalogLabel'
 import type { REPLAY_TEXT, ReplayLocale } from '../i18n/i18n'
-import { formatSeconds, frameToMs } from '../../../lib/replay/replayLogic'
+import { formatSeconds, frameToMs, trackWindow } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady, ReplayInventoryReady } from '../../../lib/replay/replayNormalize'
-import { nearestReading } from '../../../lib/replay/rosterLogic'
+import { currentLifeOf, nearestReading } from '../../../lib/replay/rosterLogic'
 
 /**
  * InventoryEmptyKind — POURQUOI la lecture qui couvre cette image ne rend rien.
@@ -81,13 +81,22 @@ export interface InventoryReading {
  * QUAND CETTE LECTURE EST VIDE, on ne la jette pas et on ne s'y arrête pas : on rend l'état
  * vide dans `empty` ET la dernière lecture PLEINE du même slot dans `state`. C'est la seule
  * façon de dire les deux choses vraies à la fois — « il portait ceci » et « il est mort ».
+ *
+ * BORNÉE À LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06,
+ * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`, même défaut et même remède que
+ * `loadoutAt`) : sans vie couvrante pour ce slot à cette image, `null` — jamais l'inventaire
+ * d'une autre vie. `window.start` descend jusqu'à `lastFullBefore`, qui borne à son tour son
+ * repli sur la dernière lecture PLEINE.
  */
 export function inventoryAt(
   doc: ReplayDocumentReady,
   slot: number,
   frame: number,
 ): InventoryReading | null {
-  const read = nearestReading(doc.inventory ?? [], slot, frame)
+  const life = currentLifeOf(doc, slot, frame)
+  if (!life) return null
+  const window = trackWindow(life)
+  const read = nearestReading(doc.inventory ?? [], slot, frame, window)
   if (!read) return null
   if (!read.value.empty) return { state: read.value, age: read.age, substituted: false }
   // LECTURE VIDE À VENIR (âge négatif) : ne rien affirmer. La mort qu'elle rapporte n'est pas
@@ -102,23 +111,28 @@ export function inventoryAt(
     kind: read.value.empty === 'dead' ? 'dead' : 'unknown',
     age: read.age,
   }
-  // La dernière lecture PLEINE strictement antérieure à la lecture vide. On ne remonte PAS
-  // au-delà de la vie : le slot est réattribué à chaque réapparition, donc toute lecture de
-  // ce slot appartient à la même vie que celle qui vient de finir.
-  const full = lastFullBefore(doc.inventory ?? [], slot, read.value.t)
+  // La dernière lecture PLEINE strictement antérieure à la lecture vide, ET dans la MÊME vie
+  // (`window.start`) : le slot est réattribué à chaque réapparition, une lecture antérieure au
+  // début de cette vie appartient à une AUTRE — jamais un repli valide (correctif P0-2).
+  const full = lastFullBefore(doc.inventory ?? [], slot, read.value.t, window.start)
   if (!full) return { state: read.value, age: read.age, empty, substituted: false }
   return { state: full, age: frame - full.t, empty, substituted: true }
 }
 
-/** lastFullBefore — la lecture PORTEUSE la plus récente d'un slot, strictement avant `t`. */
+/**
+ * lastFullBefore — la lecture PORTEUSE la plus récente d'un slot, strictement avant `t` et pas
+ * avant `lifeStart` (correctif P0-2, 2026-09-06) : avant cette borne, la lecture appartient à
+ * une AUTRE vie du même slot — jamais un repli valide, même « pleine ».
+ */
 function lastFullBefore(
   samples: readonly ReplayInventoryReady[],
   slot: number,
   t: number,
+  lifeStart: number,
 ): ReplayInventoryReady | null {
   let best: ReplayInventoryReady | null = null
   for (const s of samples) {
-    if (s.slot !== slot || s.empty || s.t >= t) continue
+    if (s.slot !== slot || s.empty || s.t >= t || s.t < lifeStart) continue
     if (!best || s.t > best.t) best = s
   }
   return best
@@ -195,13 +209,18 @@ export interface GrenadeReading {
  * RETOUR À NULL = l'artefact ne porte pas cet axe (antérieur au schéma 20) ou le film n'en
  * transmet rien. L'appelant retombe alors sur `inventory`, exactement comme avant : un artefact
  * ancien continue de s'afficher, il est seulement moins frais.
+ *
+ * BORNÉE À LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06, même défaut et même remède
+ * que `loadoutAt`) : sans vie couvrante, `null` — jamais les grenades d'une autre vie.
  */
 export function grenadeReadingAt(
   doc: ReplayDocumentReady,
   slot: number,
   frame: number,
 ): GrenadeReading | null {
-  const read = nearestReading(doc.grenadeReads ?? [], slot, frame)
+  const life = currentLifeOf(doc, slot, frame)
+  if (!life) return null
+  const read = nearestReading(doc.grenadeReads ?? [], slot, frame, trackWindow(life))
   if (!read) return null
   return {
     g: read.value.g,

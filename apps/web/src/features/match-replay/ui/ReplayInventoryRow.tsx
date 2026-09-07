@@ -135,8 +135,22 @@ export function ReplayInventoryRow({
         className="inline-flex shrink-0 items-center"
         style={{ width: AMMO_CELL_W, opacity: read ? freshness(read.age, readingFull, READING_FADE) : 1 }}
       >
-        {equipped && ammo.length > 0 && (
-          equipped.drawn !== null ? (
+        {equipped && (
+          !read && doc.inventory.length > 0 ? (
+            // AUCUNE LECTURE D'INVENTAIRE DANS LA VIE EN COURS (correctif P0-2, 2026-09-06) :
+            // le loadout a une lecture (`equipped` existe), les munitions de CETTE vie non —
+            // avant le correctif, `inventoryAt` pouvait reporter celles d'une vie PRÉCÉDENTE
+            // du même slot. PAS UN ÉTAT D'IDENTITÉ (décision produit du 2026-09-06 : une vie
+            // est un humain ou un bot, jamais une entité anonyme) : un tiret neutre et discret,
+            // jamais un mot qui dirait « inconnu » — l'infobulle précise « pas encore lu ». Un
+            // silence total se lirait comme « chargeur vide », qui est une mesure, pas une
+            // lacune. GARDÉ PAR `doc.inventory.length > 0` (même doctrine que
+            // `VitalityPresence`) : un artefact qui ne porte JAMAIS cet axe reste muet, comme
+            // avant le correctif — dégradation par ABSENCE DE DONNÉE, jamais un tiret inventé.
+            <span className="opacity-60" title={t.ammoUnread}>
+              —
+            </span>
+          ) : !read || ammo.length === 0 ? null : equipped.drawn !== null ? (
             <AmmoCell
               ammo={ammo[equipped.drawn] ?? {}}
               charge={CHARGE_FX.has(familyOf(drawnId ? doc.weaponLabels?.[drawnId]?.fx : undefined))}

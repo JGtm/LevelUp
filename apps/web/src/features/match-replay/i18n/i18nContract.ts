@@ -728,6 +728,20 @@ export interface ReplayText {
   abilityAge: string
   abilityAhead: string
   /**
+   * AUCUNE LECTURE DE CAPACITÉ DANS LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06,
+   * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`). Avant le correctif, `abilityAt`
+   * cherchait « la dernière lecture du slot » sans borne de vie : sur un slot recyclé ou un
+   * film multi-manche, la vignette pouvait montrer la capacité de la vie PRÉCÉDENTE — parfois
+   * celle d'un AUTRE joueur — ou disparaître si cette vie s'était terminée en `spent`. Même
+   * glyphe que `abilityUnidentified` (vignette vide en pointillés), infobulle dédiée.
+   *
+   * CE N'EST PAS UN ÉTAT D'IDENTITÉ (décision produit du 2026-09-06 : une vie est un humain ou
+   * un bot, jamais une entité anonyme — le nommage se corrige à la source côté Go, hors de ce
+   * lot) : le libellé dit uniquement qu'aucune lecture n'a encore été observée depuis le début
+   * de CETTE vie, jamais qu'elle serait « inconnue », et jamais la lecture empruntée à une autre.
+   */
+  abilityUnread: string
+  /**
    * LES CHARGES DE LA CAPACITÉ PORTÉE (schéma 38 enrichi, lot P6) : le compte de la lecture
    * la plus récente de la même vie et du même équipement — et « PLEIN » QUALITATIF avant la
    * première lecture (décision utilisateur du 04/09) : le film ne transmet RIEN au ramassage,
@@ -797,6 +811,18 @@ export interface ReplayText {
   ammoFullLabel: string
   ammoDrawnHint: string
   drawnUnknown: string
+  /**
+   * AUCUNE LECTURE D'INVENTAIRE DANS LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06,
+   * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`) : le loadout peut être lu (`equipped`
+   * existe) alors que les munitions de CETTE vie ne le sont pas encore — avant le correctif,
+   * `inventoryAt` pouvait reporter celles d'une vie précédente sur ce slot.
+   *
+   * PAS UN ÉTAT D'IDENTITÉ (décision produit du 2026-09-06 : une vie est un humain ou un bot,
+   * jamais une entité anonyme) : le repli affiche un tiret neutre, et CE libellé n'est que
+   * l'infobulle qui dit pourquoi — « pas encore de lecture », jamais « inconnu ». Un silence
+   * total se lirait comme « chargeur vide », qui est une mesure, pas une lacune.
+   */
+  ammoUnread: string
   /**
    * Lecture d'inventaire VIDE (schéma 19, `inventory[].empty`). Le LIBELLÉ se lit à l'écran,
    * l'INDICE porte l'explication et se termine par l'âge de la lecture VIDE — la sienne, pas
