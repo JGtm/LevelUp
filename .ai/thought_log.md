@@ -97423,3 +97423,114 @@ avant tout merge touchant `analysis/replay`/`replaybuild`/`filmdec` ou bumpant `
 Prochaine étape : instruire les deux faits nouveaux (`bcb6d393` flagCarries, `084a804d`
 equipmentEpisodes) et le bug de mesure `spans/n`, tous trois au registre avec condition de
 reprise écrite.
+
+## [2026-09-06] Gate corpus témoin — corrections de périmètre avant revue — Complété
+
+**Contexte.** Deux corrections demandées par le superviseur sur `feat/v2-corpus` avant revue,
+en série sur le même worktree : (1) le bug de mesure `<calque>.<sous-champ>/n` découvert lors
+de la 1re exécution (entrée précédente) est possédé par ce chantier (`internal/replaydiff`
+lui appartient) — à corriger à la source, pas seulement consigner ; (2) constat du superviseur
+qu'un gate rendant PERTE sur 7 témoins/7 au meilleur état connu (HEAD contre le parc, jamais à
+jour) ne gate rien — la référence par défaut doit devenir une cuisson fraîche d'une révision de
+base, pas un artefact figé.
+
+**Décision technique.** (1) `mesurerTableau` (`empreinte_axes.go`) posait `prefixe+"/n"` par un
+SET inconditionnel (`e.num`) à chaque appel — pour un calque à deux niveaux
+(`flagCarries[].spans[]`, `vehicles[].rides/samples[]`, `zoneStates[].spans/gauge[]`), la
+fonction est appelée une fois par groupe de premier niveau : la mesure finale n'était que celle
+du DERNIER groupe itéré, jamais la somme. Correctif : distinction par profondeur — racine
+(`profondeur == 0`, un seul appel par calque, même calcul que `passeGenerique`) garde `e.num` ;
+imbriqué (`profondeur > 0`, plusieurs appels sur le même préfixe) passe à `e.incr` (accumule).
+Preuve par mutation : 3 tests neufs (`empreinte_axes_test.go`), mutation temporaire
+(`e.num` partout) fait rougir 2/3 comme attendu (`flagCarries.spans/n` rend 1 au lieu de 3,
+`vehicles.rides/n` rend 0 au lieu de 3), le troisième (racine) reste vert — correctif restauré.
+(2) Nouveau défaut `--reference=base` : le gate résout une révision de base (`--base`, défaut
+`origin/feat/v75` si le HEAD en diffère sinon `HEAD^`), crée un worktree Git détaché temporaire
+de cette révision, y compile `cmd/replay-build` (GOCACHE dédié), cuit chaque témoin avec le
+binaire de BASE et celui du HEAD dans deux racines de travail distinctes, compare les deux
+artefacts frais. Binaire compilé + sous-processus, pas un import direct : importer
+`internal/replaybuild` donnerait toujours le comportement du HEAD des deux côtés (comparaison
+vacuante) — même méthode symétrique pour les deux côtés (`base.go`, `orchestrate.go`). Le
+verrou de décodage partagé (`filmproc.AcquireSolo`) reste pris par `bake.go` sur le
+`CacheRootDir()` du PARC (pas de la racine de travail jetable) avant chaque sous-processus.
+Worktree détaché retiré en `defer`, jamais sans vérifier l'absence de jonction au préalable
+(`contientUneJonction`, piège déjà mesuré sur ce dépôt). Mode `--reference=parc` conservé,
+devenu informatif par défaut (tableau imprimé, exit 0), bloquant seulement avec `--strict`.
+
+**Résultats.** Mode base (défaut), HEAD contre `origin/feat/v75` : 7/7 témoins « ok », 0 gain,
+0 perte, schéma 43 des deux côtés, code de sortie 0 — attendu, ce lot ne touche aucun code de
+cuisson. Mode parc (informatif), HEAD contre l'artefact déjà cuit : 7/7 PERTE, code de sortie 0
+(sans `--strict`) ; chiffres désormais corrects grâce au §6 — `bcb6d393` : `flagCarries.spans/n`
+rend 34→17 (la vraie somme, cohérente avec `spans/total`) au lieu du « 3→1 » buggé de la
+1re exécution. Analyse inchangée sur le fond : motifs déjà expliqués par
+`BALAYAGE_PARC_2026-09-06.md` + les deux faits nouveaux déjà au registre, non traités ici (un
+autre agent les instruit). `BALAYAGE_PARC_2026-09-06.md` non réécrit (conforme à la consigne) —
+note datée ajoutée en tête de `CORPUS_TEMOIN_2026-09-06.md` précisant que le correctif §6
+n'affecte aucune conclusion de ce rapport (mesures spécialisées, jamais `mesurerTableau`
+imbriqué) mais aurait pu légèrement relever ses comptes agrégés bruts de section 5. Gates :
+`go test -count=1` (4 paquets touchés), `go build ./...` (CGO 0 et 1), `go vet ./...`,
+`golangci-lint --new-from-merge-base=origin/main` (0 issue) — tous verts, GOCACHE/
+GOLANGCI_LINT_CACHE dédiés au worktree, un film à la fois, verrou mkdir autour de chaque
+cuisson et de chaque exécution du gate.
+
+**Conclusion / prochaine étape.** Gate prêt pour revue avec une référence par défaut qui gate
+réellement (base fraîche, pas un parc figé). Restent au registre, non traités par ce chantier :
+les deux faits nouveaux (`bcb6d393` portage de drapeau, `084a804d` épisode d'équipement) —
+instruits par un autre agent.
+
+## [2026-09-07] Gate corpus témoin — corrections CORPUS-R1 (revue adversariale) — Complété
+
+**Contexte.** Revue adversariale CORPUS-R1 sur `feat/v2-corpus` (HEAD `9b2eb82c1`) avant merge :
+revue sur pièces + exécution réelle (7 exécutions du gate, manifeste réduit). Verdict : le
+cœur (axe des durées, correctif spans/n, verrou exclusif, parc non écrit) tient, mais
+l'enveloppe portait douze constats dont trois hauts — le plus grave (C3, gravite L6/P0) faisait
+sortir le gate en code 0 SANS RIEN COMPARER quand le cache de film est purgé ou partiel. Tous
+les douze corriges dans ce lot, aucun différé.
+
+**Décision technique.** (1) C1/C2 (hautes, le même mécanisme) : `defer cleanup()` figeait la
+valeur de fonction au moment du defer — une reassignation posterieure (`*previousCleanup =
+func(){...}`) n'était jamais vue, et `os.Exit(code)` au milieu de `executer` sautait de toute
+facon tous les defers des qu'une perte était trouvée (le chemin NOMINAL du gate). Correctif
+structurel : `executer(ctx, o) (int, error)` ne quitte plus jamais le processus lui-même — un
+seul point d'appel a `os.Exit`, dans `main()`, apres le retour complet. Nettoyage compose dans
+un nouveau type `nettoyeurCompose` (`cleanup.go`, slice de fonctions + sync.Once) : chaque
+etape `Ajoute` son nettoyage des sa creation, sans jamais reassigner une closure sous un defer
+deja arme. (2) C3 (haute, P0) : `report.go:verifierCouverture`, nouveau plancher de couverture
+— par defaut un SEUL temoin ABSENT fait sortir en code 2 (liste nommee), `--allow-missing`
+restaure l'ancien avertissement seul. (3) C4 : `facts.go` reecrit pour exporter PAR TEMOIN (une
+invocation par id) au lieu d'un lot unique qui echouait tout au premier id inconnu du registre.
+(4) C6 : `resolveSourceRoot` bascule de `title.FindRepoRoot` (cherche db_profiles.json, absent
+d'un worktree dedie) vers `git rev-parse --show-toplevel` ; `resolveParcRoot` essaie
+`sourceRoot` lui-meme avant le `.git` commun. (5) C7 : retrait de l'exemption golangci pour
+`cmd/replay-corpus-gate`, correction des 12 constats masques (dead code, unparam, 9×noctx via
+propagation de `context.Context` a travers tout le paquet, goconst). (6) C5 : nouveau ratchet
+archlint `TestBoucleDeCuissonDuGateEstProtegee`, verifie SUR PIECES que le verrou partage est
+pris AVANT la cuisson. (7) C10 : `AcquireSolo` (refus immediat) → `AcquireSoloWait` (attente
+bornee 10 min), meme regime que les trois autres enchaineurs de films du depot. (8) C11 :
+nouvel avertissement `avertirSiCatalogueModifie` (git status --porcelain) si l'arbre de travail
+HEAD modifie localement un catalogue de reference, pour ne jamais imputer a tort un ecart au
+diff de revision. (9) C8/C9/C12 : decoupage de `executer` (97L → 5 fonctions ≤40L), commentaire
+de `roots.go` corrige (affirmait a tort qu'aucun verrou n'etait pose par defaut), test de fumee
+neuf pour `cmd/replay-diff` (le paquet n'avait aucun fichier de test malgre le journal qui
+l'annoncait joue).
+
+**Résultats.** Preuve manuelle du correctif C1/C2 : manifeste reduit a 3 temoins courts, un run
+SANS mutation (3/3 ok, EXIT=0, nettoyage complet) puis un run AVEC la mutation exacte de la
+revue (rognage d'une frame sur `flag_carries_lives.go`) reproduisant EXACTEMENT les 5 pertes
+citees par le verdict sur `bcb6d393` — EXIT=1, et **nettoyage complet meme sur ce chemin**
+(`%TEMP%\replay-corpus-gate-*` absent, `git worktree list` sans residu) : avant le correctif,
+ce chemin nominal laissait le worktree detache et jusqu'a 938 Mio orphelins. C6 prouve en
+conditions reelles : le run sans mutation resout `source` automatiquement depuis
+`LevelUp-wt-v2-corpus` (aucun `db_profiles.json` local) sans `--source-root`. C5 prouve par
+mutation (suppression de `LowerOwnPriority` → le nouveau ratchet rougit, restaure → vert).
+Gates : `go test` (4 paquets), `go build ./...` (CGO 0 et 1), `go vet ./...`,
+`golangci-lint run --new-from-merge-base=origin/main ./...` (0 issue, SANS exception de
+chemin) — tous verts. `golangci-lint run ./cmd/replay-corpus-gate/...` isole (sans le ratchet,
+config telle quelle) : 0 issues, les 12 constats masques par l'ancienne exemption sont
+REELLEMENT corriges.
+
+**Conclusion / prochaine étape.** Le gate est pret pour merge : reference par defaut qui gate
+reellement (cuisson fraiche a la base), plancher de couverture qui empeche un faux vert,
+nettoyage garanti sur tous les chemins de sortie (succes, perte, erreur, interruption). Restent
+au registre, non traites par ce lot : les deux faits nouveaux (`bcb6d393` portage de drapeau,
+`084a804d` episode d'equipement) — instruits par un autre agent.

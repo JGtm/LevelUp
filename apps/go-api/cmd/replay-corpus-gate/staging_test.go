@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -68,7 +72,7 @@ func TestCopierFichierCreeLeRepertoireParent(t *testing.T) {
 func TestStageFilmSansChunksEstUneErreurNommee(t *testing.T) {
 	parcRoot := t.TempDir()
 	workRoot := t.TempDir()
-	if _, err := stageFilm(parcRoot, workRoot, "aaaaaaaa"); err == nil {
+	if err := stageFilm(parcRoot, workRoot, "aaaaaaaa"); err == nil {
 		t.Fatal("un film sans manifeste ni chunks au parc doit etre une erreur")
 	}
 }
@@ -80,5 +84,77 @@ func mustWriteFile(t *testing.T, path, contenu string) {
 	}
 	if err := os.WriteFile(path, []byte(contenu), 0o600); err != nil {
 		t.Fatalf("ecriture de la fixture : %v", err)
+	}
+}
+
+// depotGitJetable cree un depot git minimal sous t.TempDir(), avec le fichier de catalogue du
+// titre deja COMMIS — la fixture commune aux deux tests de avertirSiCatalogueModifie
+// (CORPUS-R1 C11).
+func depotGitJetable(t *testing.T, titleSlug string) (repo, fichierCatalogue string) {
+	t.Helper()
+	repo = t.TempDir()
+	runGitTest(t, repo, "init")
+	runGitTest(t, repo, "config", "user.email", "test@example.com")
+	runGitTest(t, repo, "config", "user.name", "Test")
+
+	configDir := filepath.Join(repo, "config", "titles", titleSlug)
+	if err := os.MkdirAll(configDir, 0o750); err != nil {
+		t.Fatalf("fixture : %v", err)
+	}
+	fichierCatalogue = filepath.Join(configDir, "title.toml")
+	mustWriteFile(t, fichierCatalogue, "a = 1\n")
+	runGitTest(t, repo, "add", "-A")
+	runGitTest(t, repo, "commit", "-m", "init")
+	return repo, fichierCatalogue
+}
+
+func runGitTest(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v : %v\n%s", args, err, out)
+	}
+}
+
+// captureSlog redirige le logger par defaut vers un buffer le temps du test, et le restaure a
+// la fin — evite de dependre d'un handler global partage entre tests paralleles.
+func captureSlog(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	ancien := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(ancien) })
+	return &buf
+}
+
+// TestAvertirSiCatalogueModifieDetecteUneModificationLocale — CORPUS-R1 C11 : le cote HEAD
+// copie l'arbre de travail (jamais un commit strict comme le cote base) ; une modification
+// locale NON COMMISE sur un catalogue de reference doit etre LOGUEE, pour ne jamais etre
+// imputee a tort au diff de revision par un lecteur qui n'aurait aucun moyen de le savoir.
+func TestAvertirSiCatalogueModifieDetecteUneModificationLocale(t *testing.T) {
+	titleSlug := "titre-test-c11"
+	repo, fichier := depotGitJetable(t, titleSlug)
+	mustWriteFile(t, fichier, "a = 2\n") // modification locale, jamais commise
+
+	buf := captureSlog(t)
+	avertirSiCatalogueModifie(t.Context(), repo, titleSlug)
+
+	if !strings.Contains(buf.String(), "modifies localement") {
+		t.Fatalf("attendu un avertissement sur la modification locale, obtenu : %q", buf.String())
+	}
+}
+
+// TestAvertirSiCatalogueModifieSansModificationNeLogueRien — l'arbre de travail est identique
+// au dernier commit : aucun avertissement, le cas nominal reste silencieux.
+func TestAvertirSiCatalogueModifieSansModificationNeLogueRien(t *testing.T) {
+	titleSlug := "titre-test-c11-propre"
+	repo, _ := depotGitJetable(t, titleSlug)
+
+	buf := captureSlog(t)
+	avertirSiCatalogueModifie(t.Context(), repo, titleSlug)
+
+	if strings.Contains(buf.String(), "modifies localement") {
+		t.Fatalf("aucune modification locale : aucun avertissement attendu, obtenu : %q", buf.String())
 	}
 }
