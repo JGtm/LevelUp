@@ -39,7 +39,6 @@ import type { RecentMatchItem } from '@/lib/api/types'
 
 const WIN_MATCH: RecentMatchItem = {
   match_id: 'match-001',
-  title: 'Aquarius · Slayer',
   detail: '15K / 2D',
   started_at: '2026-04-10T20:00:00Z',
   outcome_tone: 'win',
@@ -62,7 +61,6 @@ const WIN_MATCH: RecentMatchItem = {
 
 const LOSS_MATCH: RecentMatchItem = {
   match_id: 'match-002',
-  title: 'Empyrean · CTF',
   detail: '5K / 10D',
   started_at: '2026-04-11T18:00:00Z',
   outcome_tone: 'loss',
@@ -97,9 +95,13 @@ describe('MatchCard', () => {
     expect(screen.queryByText('Slayer on Forest sur Forêt')).toBeNull()
   })
 
-  it('rend sans crasher quand les champs S56 sont absents', () => {
+  it('rend sans crasher quand les champs S56 sont absents (repli clé, plus de composite Go)', () => {
     render(<MatchCard match={LOSS_MATCH} />)
-    expect(screen.getByText('Empyrean · CTF')).toBeTruthy()
+    // title (composite Go) supprimé le 2026-09-07 (lot M5 L2) : le dernier repli
+    // (mode ET carte absents) rend désormais le même texte-clé que le placeholder
+    // d'image (deux occurrences : le titre et le placeholder), jamais un composite
+    // pré-assemblé côté backend.
+    expect(screen.getAllByText('Map inconnue').length).toBeGreaterThan(0)
     expect(screen.getByTestId('match-card-score').textContent).toBe('')
   })
 
