@@ -1,3 +1,11 @@
+## [2026-09-07] Chantier duels/portee — gate visuel valide, livraison (6.4, 6.5) — Complete ; 6.6 push + CI en cours
+
+**Decision technique principale.** Le chantier livre ce que la mesure a autorise et rien d autre : la portee par arme des frags ET des morts, le denivele signe, la table `kill_openings` (decode_pass, D12) et son producteur pour la distance d entame (proxy T-1,5 s valide a 1,24 m d ecart median) ; le comptage des duels est REPORTE au registre avec sa condition de reprise (deux sondes, deux canaux du film complementaires dans ce qui leur manque). Cinq lots, chacun relu par 2 a 3 relecteurs frais en worktrees separes, deux rondes maximum, 0 P1 residuel partout.
+
+**Resultats observes.** Gate visuel valide par l utilisateur sur ses donnees (« C est tout bon valide »). Gates de livraison tous verts : Go (build, vet, gofmt, `go test ./...`, `-tags=integration -p 1 ./...`, `make go-api-test`, lint 0 issue) et web (typecheck, lint 0 erreur, vitest 6 299, lint:fields, contrat frais, manifests). Tuiles d entame absentes sur les donnees locales : `kill_openings` vide tant que le backfill (decision utilisateur, jamais lance d office) n a pas tourne — comportement voulu, jamais un zero.
+
+**Conclusion / prochaine etape.** Push de `feat/duels` et CI surveillee job par job (6.6). Ensuite : nettoyage des worktrees temporaires (liens `node_modules` a retirer AVANT `git worktree remove`), et les decisions utilisateur en attente au registre : backfill `kill_openings` sur le cache de films ; `kill_positions` (peuplee en prod) a passer en `decode_pass` et a inscrire aux tables append-only protegees.
+
 ## [2026-09-07] Lot 6 duels/portee — gates Go de livraison executes par le pilote, tous verts — Complete (6.2 Go, 6.3)
 
 **Decision technique principale.** Apres l interruption de l executeur d integration (limite de session API), les gates ont ete scindes : volet web par un executeur (commit `67744e6d3`), volet Go par le pilote en arriere-plan avec GOCACHE et GOLANGCI_LINT_CACHE isoles, dans le worktree `LevelUp-wt-duels` sur `feat/duels` (HEAD `67744e6d3`), sans aucune commande Go concurrente.
