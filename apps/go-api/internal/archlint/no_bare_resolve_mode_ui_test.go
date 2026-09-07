@@ -80,3 +80,75 @@ func TestNoNewBareResolveModeUI(t *testing.T) {
 			len(violations), strings.Join(violations, "\n  "))
 	}
 }
+
+// ---------------------------------------------------------------------------
+// TestNoNewModePlaylistLabelLiteral — garde-rail complémentaire (lot M5 L3,
+// 2026-09-08, .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §2.B/§4).
+//
+// rankedplaylists.go portait NameEN/NameFR comme des CHAMPS de struct littéral
+// assignés en dur (`NameEN: "Ranked Arena", NameFR: "Arène classée"`) — exactement
+// l'anti-pattern « map Go de libellés de mode/playlist » que le plan interdit
+// (CLAUDE.md « Multi-titre » : TOML config/titles/{slug}/mappings/, jamais un
+// libellé FR/EN en dur côté Go). Migré vers ranked_playlists_labels.toml (même
+// loader/validation que assets.toml) ; NameEN()/NameFR() sont maintenant des
+// MÉTHODES qui lisent ce TOML — un futur retour en arrière (nouveau champ
+// littéral, ou une nouvelle map[string]string clé→nom FR/EN sur ce même modèle)
+// recréerait le problème. Volontairement étroit (un seul motif regex, comme les
+// autres ratchets du dossier) : il attrape le motif exact déjà vu deux fois dans
+// ce fichier avant migration, pas toute forme possible de libellé en dur (cf.
+// no_french_label_literal_test.go pour la mesure large par littéral accentué).
+var modePlaylistLabelFieldRE = regexp.MustCompile(`\b(NameEN|NameFR)\s*:\s*"`)
+
+// modePlaylistLabelFieldAllowlist : fichiers où NameEN:/NameFR: reste toléré comme
+// champ littéral. Grandfathered au 2026-09-08 — toute NOUVELLE occurrence échoue.
+var modePlaylistLabelFieldAllowlist = map[string]bool{
+	// Tier CSR (Bronze..Onyx), PAS un mode/playlist — famille distincte, déjà
+	// identifiée en double/triple ailleurs (compare_service.go::csrRankLabel,
+	// home_canonical_skill.go::csrTierENtoFR, sync/csr_writes.go::tierENtoFR ;
+	// cf. .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §11, découverte M5 L5). Pas
+	// touché par ce ratchet (portée L3 = modes/playlists), ni par ce lot.
+	"analysis/skill_v2/tier.go": true,
+}
+
+func TestNoNewModePlaylistLabelLiteral(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a échoué")
+	}
+	internalRoot := filepath.Dir(filepath.Dir(thisFile)) // .../internal
+
+	var violations []string
+	err := filepath.WalkDir(internalRoot, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		rel, _ := filepath.Rel(internalRoot, path)
+		rel = filepath.ToSlash(rel)
+		if strings.Contains(rel, "/migrations/") || modePlaylistLabelFieldAllowlist[rel] {
+			return nil
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		for i, line := range strings.Split(string(data), "\n") {
+			if modePlaylistLabelFieldRE.MatchString(line) {
+				violations = append(violations, rel+":"+strconv.Itoa(i+1)+" → "+strings.TrimSpace(line))
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk: %v", err)
+	}
+	if len(violations) > 0 {
+		t.Errorf("nouveau champ NameEN:/NameFR: assigné à un littéral Go (%d) — un nom de "+
+			"mode/playlist se déclare dans un TOML par-titre (config/titles/{slug}/mappings/, "+
+			"ou si aucun chemin de DI n'existe pour l'appelant, un TOML embarqué documenté au "+
+			"même titre que ranked_playlists_labels.toml), jamais un littéral Go (lot M5 L3, "+
+			"2026-09-08) :\n  %s", len(violations), strings.Join(violations, "\n  "))
+	}
+}
