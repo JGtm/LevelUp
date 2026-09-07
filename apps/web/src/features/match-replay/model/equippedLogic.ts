@@ -17,7 +17,8 @@
  */
 import { inventoryAt } from './inventoryReading'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { loadoutAt } from '../../../lib/replay/rosterLogic'
+import { trackWindow } from '../../../lib/replay/replayLogic'
+import { currentLifeOf, loadoutAt } from '../../../lib/replay/rosterLogic'
 
 /** Une arme de la rangée : son identifiant de famille, et si elle est EN MAIN. */
 export interface EquippedWeapon {
@@ -104,6 +105,15 @@ export function equippedWeapons(
  * moment du geste : vingt secondes séparent deux images-clés et le film ne dit pas l'instant
  * exact. L'animation marque donc une lecture, pas un événement. Sans mouvement, une
  * permutation de vignettes est indiscernable d'un changement d'arme — c'est sa raison d'être.
+ *
+ * BORNÉE À LA VIE EN COURS DU SLOT (constat P2-4bis / R6 de l'audit vies anonymes
+ * 2026-09-06, même défaut et même remède que `loadoutAt`/`abilityAt` : correctif P0-2,
+ * `nearestReading`) : la lecture balayait TOUT `doc.inventory` du slot sans regarder la
+ * frontière de vie — sur un slot recyclé (réapparition ou manche suivante), la dernière
+ * lecture de la vie PRÉCÉDENTE pouvait désigner un autre emplacement que la première de la
+ * vie courante, ce qui datait une « bascule » qu'aucun joueur n'a faite : deux VIES
+ * différentes, parfois deux JOUEURS différents sur le même slot. Sans vie couvrante, ou hors
+ * de ses bornes, aucune lecture n'entre dans le balayage.
  */
 export function drawnSwapAt(
   doc: ReplayDocumentReady,
@@ -111,10 +121,16 @@ export function drawnSwapAt(
   frame: number,
   windowFrames: number,
 ): number | null {
+  const life = currentLifeOf(doc, slot, frame)
+  if (!life) return null
+  const window = trackWindow(life)
   let prev: number | null = null
   let swapT: number | null = null
   for (const inv of doc.inventory) {
     if (inv.slot !== slot || inv.t > frame) continue
+    // BORNE DE VIE : une lecture antérieure au début de la vie en cours appartient à une
+    // AUTRE vie du même slot (recyclé) — jamais candidate à la bascule.
+    if (inv.t < window.start) continue
     const d = inv.d
     if (d !== 0 && d !== 1) continue
     if (prev !== null && d !== prev) swapT = inv.t

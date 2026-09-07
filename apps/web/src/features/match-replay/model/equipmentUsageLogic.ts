@@ -60,7 +60,7 @@ import { PLACEMENT_RENDER, placementIsDeployedObject } from '../layers/equipment
 import { placementIsDroppedPower, PLACEMENT_DROPPED_FAMILIES } from './placementDropped'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { frameToMs } from '../../../lib/replay/replayLogic'
-import { buildPlayers, groupByTeam, indexBySlot, playerName, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
+import { buildPlayers, buildSlotOwnership, groupByTeam, playerName, rosterEntryKey, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { padEquipmentFamilyOf, type PadEquipmentFamilyKey } from './weaponPadFamilies'
 
 /** Les deux familles dont l'ÉTAT ACTIF est mesuré (identifiants stables du document). */
@@ -255,12 +255,19 @@ export function buildEquipmentUsage(
   // compteurs se borne aux mêmes, sinon un geste attribué à une entrée de roster sans piste
   // disparaîtrait de l'écran SANS entrer dans les orphelins — et la somme mentirait.
   const players = buildPlayers(doc, scoreboard ?? []).filter((p) => p.lives.length > 0)
-  const ownerOfSlot = indexBySlot(players, (p) => p)
+  // PROPRIÉTAIRE À L'IMAGE, PAS UN AGRÉGAT MATCH : un slot de bipède est réattribué entre
+  // réapparitions ET entre manches (cf. `buildSlotOwnership`, rosterLogic.ts) ; un agrégat
+  // « dernier gagnant » créditait au DERNIER occupant du slot les gestes de tous les
+  // précédents (constat P2-4, audit vies anonymes 2026-09-06 : sur un film multi-manche ou
+  // avec remplaçant, la ligne du joueur de la manche 1 affichait 0 quand celle de son
+  // successeur portait la somme des deux). Chaque canal porte son instant (`t0`) : la vie qui
+  // le couvre est la SEULE bonne clé.
+  const ownership = buildSlotOwnership(players)
   const tallies = new Map<string, EquipmentUsageTally>()
   const unattributed = emptyTally()
 
   /** Le compteur d'un joueur, créé à la demande ; celui des gestes orphelins sans lui. */
-  const tallyOf = (owner: ReplayPlayer | undefined): EquipmentUsageTally => {
+  const tallyOf = (owner: ReplayPlayer | null | undefined): EquipmentUsageTally => {
     if (!owner) return unattributed
     let t = tallies.get(owner.xuid)
     if (!t) {
@@ -269,30 +276,33 @@ export function buildEquipmentUsage(
     }
     return t
   }
-  /** Le compteur du propriétaire d'une VIE (clé : le slot de piste). */
-  const tallyOfSlot = (slot: number): EquipmentUsageTally => tallyOf(ownerOfSlot.get(slot))
+  /** Le compteur du propriétaire de la VIE qui occupe le slot À L'INSTANT du geste. */
+  const tallyOfSlotAt = (slot: number, t0: number): EquipmentUsageTally =>
+    tallyOf(ownership.ownerAtFrame(slot, t0))
   /**
    * Le compteur d'un joueur désigné par son INDEX DE FILM — l'autre clé du document, et la
-   * seule que les lancers de grenade portent vraiment (cf. en-tête). Le roster fait le pont,
-   * comme `ReplayTeams` le fait déjà pour le badge de lancer.
+   * seule que les lancers de grenade portent vraiment (cf. en-tête). Le roster fait le pont
+   * via `rosterEntryKey` (rosterLogic.ts) : UN BOT N'A PAS DE XUID au roster (`entry.xuid ===
+   * ''`) — comparer directement `entry.xuid` à `player.xuid` (`'bot:<nom>'` côté joueur) ne
+   * matche JAMAIS un bot (constat P2-5, audit vies anonymes 2026-09-06).
    */
   const byFilmIndex = new Map(
-    doc.roster.map((entry) => [entry.filmIndex, players.find((p) => p.xuid === entry.xuid)]),
+    doc.roster.map((entry) => [entry.filmIndex, players.find((p) => p.xuid === rosterEntryKey(entry))]),
   )
   const tallyOfFilmIndex = (index: number): EquipmentUsageTally => tallyOf(byFilmIndex.get(index))
 
-  for (const line of doc.grappleLines) tallyOfSlot(line.slot).grapplePulls += 1
+  for (const line of doc.grappleLines) tallyOfSlotAt(line.slot, line.t0).grapplePulls += 1
 
   for (const e of doc.equipmentEpisodes) {
     // Une famille hors des deux mesurées n'a ni libellé ni sens établi : elle n'entre pas.
     if (!(EPISODE_FAMILIES as readonly string[]).includes(e.fam)) continue
-    addEpisode(tallyOfSlot(e.slot).episodes, e.fam, frameToMs(e.t1 - e.t0, doc), e.k ?? 0)
+    addEpisode(tallyOfSlotAt(e.slot, e.t0).episodes, e.fam, frameToMs(e.t1 - e.t0, doc), e.k ?? 0)
   }
 
   for (const p of doc.equipmentPlacements) {
     // `owner` -1 = aucun bipède contemporain à moins de 3 m : la pose est réelle, son auteur
     // ne l'est pas. Elle rejoint les gestes sans propriétaire plutôt qu'une ligne au hasard.
-    const t = p.owner >= 0 ? tallyOfSlot(p.owner) : unattributed
+    const t = p.owner >= 0 ? tallyOfSlotAt(p.owner, p.t0) : unattributed
     if (placementIsDeployedObject(p) && isDeployableFamily(p.family)) bump(t.deployed, p.family)
     else if (placementIsDroppedPower(p)) bump(t.dropped, p.family)
   }
