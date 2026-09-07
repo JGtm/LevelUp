@@ -157,7 +157,10 @@ interface TierNamePair {
 
 // Index des noms de palier connus (toute casse FR ou EN) → paire localisée.
 // Dérivé de LUSR_TIER_GRID (porte les 6 paires fr/en) + Champion (apex Halo 5,
-// au-dessus d'Onyx ; identique dans les deux langues).
+// au-dessus d'Onyx ; identique dans les deux langues) + 'unranked' — clé
+// canonique servie par CompareService.csrUnrankedLabel (Go, lot M5 L5,
+// 2026-09-07 : D5, plus de mot FR en dur côté backend) quand le CSR a été
+// récupéré mais que le joueur n'est pas classé.
 const TIER_NAME_BY_KEY: Record<string, TierNamePair> = (() => {
   const out: Record<string, TierNamePair> = {}
   for (const t of LUSR_TIER_GRID.tiers) {
@@ -166,6 +169,7 @@ const TIER_NAME_BY_KEY: Record<string, TierNamePair> = (() => {
     out[t.en.toLowerCase()] = pair
   }
   out['champion'] = { fr: 'Champion', en: 'Champion' }
+  out['unranked'] = { fr: 'Non classé', en: 'Unranked' }
   return out
 })()
 
