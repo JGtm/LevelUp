@@ -268,13 +268,13 @@ describe('finalScoreFromHeader — vu par les yeux d’un point de vue (sujet)',
 })
 
 /**
- * AJOUT DU 2026-09-07 (revue F2) — `victoryIsFlipped`, LE PRÉDICAT DU MOT.
+ * AJOUT DU 2026-09-07 — `victoryIsFlipped`, LE PRÉDICAT DU SCORE SERVI PAR L'EN-TÊTE.
  *
- * Il ne dit pas l'issue, il dit si la lecture a été RETOURNÉE. L'écran de fin et le panneau de
- * l'export s'en servent pour choisir leur TITRE : `header.outcome_label` quand rien n'a été
- * permuté (le mot du backend, celui de la Match View), le libellé canonique de l'issue permutée
- * sinon. Sans lui, un match gagné regardé depuis un adversaire affichait « Victoire » au-dessus
- * de l'équipe perdante — le seul mot du panneau, et il était faux.
+ * Il ne dit pas l'issue, il dit si la lecture a été RETOURNÉE. `finalScoreFromHeader` s'en sert
+ * pour échanger les deux nombres de l'en-tête, qui valent pour le joueur de la page : sans lui,
+ * un match gagné regardé depuis un adversaire affichait le score à l'endroit sous un camp
+ * inversé. (Le MOT du verdict s'en est passé depuis : les deux surfaces le prennent dans
+ * `outcomes.toml` sur l'issue LUE, donc déjà permutée — il n'y a plus de branche à ouvrir.)
  *
  * Ces cas n'en touchent aucun autre : la fonction n'existait pas.
  */

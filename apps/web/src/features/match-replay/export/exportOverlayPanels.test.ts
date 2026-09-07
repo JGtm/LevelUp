@@ -38,13 +38,14 @@ describe('exportFinalScore', () => {
 })
 
 /**
- * AJOUT DU 2026-09-07 (revue F2) — LE MOT DU PANNEAU EXPORTÉ SUIT LE POINT DE VUE.
+ * AJOUT DU 2026-09-07 — LE MOT DU PANNEAU EXPORTÉ SUIT LE POINT DE VUE, ET N'A QU'UNE SOURCE.
  *
  * Le clip peignait son verdict avec `outcome.label`, c'est-à-dire `header.outcome_label` : le
- * mot du JOUEUR DE LA PAGE. Vu depuis un adversaire d'un match gagné, `readVictory` permutait
- * bien l'issue et le camp du panneau — mais le titre disait encore « Victoire », au-dessus de
- * l'équipe perdante. Le libellé de l'issue permutée arrive désormais dans `viewedLabel`, résolu
- * par `useReplayCapture` (un hook ; ce module est pur).
+ * mot du JOUEUR DE LA PAGE, fabriqué par une map Go en dur en français. Vu depuis un adversaire
+ * d'un match gagné, `readVictory` permutait bien l'issue et le camp du panneau — mais le titre
+ * disait encore « Victoire », au-dessus de l'équipe perdante. Le libellé de l'issue LUE arrive
+ * désormais dans `viewedLabel`, résolu par `useReplayCapture` (un hook ; ce module est pur)
+ * depuis les mappings du titre, et c'est le SEUL mot que ce module accepte : sans lui, silence.
  */
 describe('buildOverlayPanelSource — le verdict peint dans la vidéo', () => {
   const DOC = {
@@ -79,7 +80,7 @@ describe('buildOverlayPanelSource — le verdict peint dans la vidéo', () => {
       doc: DOC,
       scoreboard: SB,
       playWindow: WINDOW,
-      outcome: { code: 2, label: 'Victoire' },
+      outcome: { code: 2, viewedLabel: 'Victoire' },
       viewpoint: null,
       locale: 'fr',
       ink: INK,
@@ -89,26 +90,29 @@ describe('buildOverlayPanelSource — le verdict peint dans la vidéo', () => {
     }).panelAt(WINDOW.endFrame)
   }
 
-  it('point de vue par défaut : le libellé du backend, tel quel', () => {
+  it('point de vue par défaut : le libellé de l’issue, tel quel', () => {
     expect(panel()?.status).toBe('Victoire')
+  })
+
+  it('point de vue du joueur de la page : le même mot, rien n’est permuté', () => {
+    expect(panel({ viewpoint: 'moi' })?.status).toBe('Victoire')
   })
 
   it('vu depuis un adversaire : le libellé de l’issue PERMUTÉE, fourni par la couture', () => {
     const p = panel({
       viewpoint: 'eux',
-      outcome: { code: 2, label: 'Victoire', viewedLabel: 'Défaite' },
+      outcome: { code: 2, viewedLabel: 'Défaite' },
     })
     expect(p?.status).toBe('Défaite')
   })
 
-  it('`viewedLabel` ABSENT : on retombe sur `label` — le mot juste tant que rien n’est permuté', () => {
-    expect(panel({ viewpoint: 'moi' })?.status).toBe('Victoire')
+  it('`viewedLabel` à `null` : pas de panneau — jamais une clé brute dans le clip', () => {
+    // Le cas dégradé : les mappings du titre ne donnent aucun libellé pour l'issue lue. Même
+    // silence que le DOM, et sans repli sur un second vocabulaire.
+    expect(panel({ viewpoint: 'eux', outcome: { code: 2, viewedLabel: null } })).toBeNull()
   })
 
-  it('`viewedLabel` à `null` : pas de panneau — jamais une clé brute dans le clip', () => {
-    // Le cas dégradé : issue permutée dont les mappings du titre ne donnent aucun libellé.
-    // Même silence que le DOM, et que l'absence d'`outcome_label`.
-    expect(panel({ viewpoint: 'eux', outcome: { code: 2, label: 'Victoire', viewedLabel: null } }))
-      .toBeNull()
+  it('`viewedLabel` ABSENT : pas de panneau non plus — il n’y a plus d’autre source', () => {
+    expect(panel({ outcome: { code: 2 } })).toBeNull()
   })
 })

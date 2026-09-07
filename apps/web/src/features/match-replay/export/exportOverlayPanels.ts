@@ -56,23 +56,20 @@ export function exportFinalScore(
   return fromFilm ? { ally: fromFilm.ally.score, enemy: fromFilm.enemy.score } : null
 }
 
-/** Le verdict du match, tel que la page le reçoit du backend (jamais réécrit côté front). */
+/** Le verdict du match, tel que la page le lit (jamais réécrit ici). */
 export interface ExportOutcome {
   code: number | null | undefined
-  /** Déjà localisé par le serveur. Sans lui, pas d'écran de fin — comme dans le DOM. */
-  label: string | null | undefined
   /**
-   * LE MOT QUE L'ÉCRAN MONTRE VRAIMENT (2026-09-07, revue F2), quand il diffère de `label`.
+   * LE MOT QUE L'ÉCRAN MONTRE, et la SEULE source du titre du panneau (2026-09-07).
    *
-   * `label` est `header.outcome_label`, le verdict DU JOUEUR DE LA PAGE — l'API n'en publie pas
-   * d'autre. Vu depuis un adversaire, `readVictory` permute l'issue et le panneau prend le camp
-   * du sujet : le clip annonçait donc « Victoire » sur l'équipe qui a perdu, exactement comme le
-   * DOM avant cette correction. Le libellé CANONIQUE de l'issue permutée (`outcomes.toml`, servi
-   * par `/field-mappings`) est résolu par `useReplayCapture` — un hook, ce que ce module n'est
-   * pas — et descend ici tout résolu.
+   * C'est le libellé canonique de l'issue LUE — `readVictory`, donc déjà permutée quand on
+   * regarde depuis un adversaire — tel qu'`outcomes.toml` le publie via `/field-mappings`. Il
+   * est résolu par `useReplayCapture` (un hook, ce que ce module n'est pas) et descend ici tout
+   * fait. Le clip disait auparavant « Victoire » au-dessus de l'équipe qui a perdu, parce que le
+   * mot par défaut venait de `header.outcome_label`, le verdict du JOUEUR DE LA PAGE.
    *
-   * ABSENT : on retombe sur `label`, qui est le mot JUSTE tant que rien n'est permuté. C'est
-   * aussi ce que fait le seul appelant de production quand le point de vue est celui de la page.
+   * ABSENT OU `null` : pas de panneau. Jamais de repli sur un autre vocabulaire — l'export ne
+   * doit jamais raconter autre chose que la page, qui se tait dans le même cas.
    */
   viewedLabel?: string | null
   /**
@@ -145,9 +142,9 @@ export function buildOverlayPanelSource(deps: OverlayPanelDeps): OverlayPanelSou
 
   const victoryPanel = (): OverlayPanel | null => {
     // LE MOT SUIT LE POINT DE VUE, comme le camp et le score (2026-09-07, cf. `viewedLabel`).
-    // `undefined` retombe sur `label` ; `null` explicite (issue permutée dont le titre n'a pas
-    // de libellé canonique) fait taire le panneau, exactement comme un `outcome_label` absent.
-    const label = deps.outcome?.viewedLabel === undefined ? deps.outcome?.label : deps.outcome.viewedLabel
+    // Absent : pas de panneau — c'est le silence du DOM quand les mappings du titre ne sont pas
+    // là, et l'export ne doit jamais raconter autre chose que la page.
+    const label = deps.outcome?.viewedLabel
     if (!label || !victory) return null
     const mine = victory.mine
     const rows = mine ? deps.scoreboard.filter((r) => r.team_side === mine.teamSide) : []

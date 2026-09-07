@@ -77,11 +77,11 @@ const COBRA = 'rgb(254, 57, 57)'
 const ALLY_TOKEN = 'var(--ac-team-ally)'
 
 /**
- * LES MAPPINGS DU TITRE, POSÉS DANS LE CACHE (2026-09-07, revue F2) — pas appelés au réseau.
+ * LES MAPPINGS DU TITRE, POSÉS DANS LE CACHE (2026-09-07) — pas appelés au réseau.
  *
- * L'écran de fin lit désormais les libellés canoniques d'issue (`outcomes.toml`, servis par
- * `/field-mappings`) pour titrer une lecture PERMUTÉE. C'est un hook TanStack Query : sans
- * `QueryClientProvider`, il jette. On sème donc la réponse directement dans le cache, sous la
+ * L'écran de fin prend TOUS ses titres dans les libellés canoniques d'issue (`outcomes.toml`,
+ * servis par `/field-mappings`), point de vue par défaut compris. C'est un hook TanStack Query :
+ * sans `QueryClientProvider`, il jette. On sème donc la réponse directement dans le cache, sous la
  * clé que `useFieldMappings` construit à partir des défauts du store (`halo_infinite`, `fr`) —
  * la requête reste désactivée (`isBootstrapped` est faux en test), et lit quand même la donnée.
  *
@@ -117,7 +117,6 @@ function renderOverlay(
       scoreboard={SB}
       xuidMeta={META}
       outcomeCode={2}
-      outcomeLabel="Victoire"
       viewpoint={null}
       playWindow={WINDOW}
       frame={500}
@@ -129,19 +128,19 @@ function renderOverlay(
   )
 }
 
-describe('ReplayVictoryOverlay — le verdict vient du backend', () => {
-  it('écrit `outcome_label` tel quel, sans le reformuler', () => {
+describe('ReplayVictoryOverlay — le verdict vient des mappings du titre', () => {
+  it('écrit le libellé canonique de l’issue, sans le reformuler', () => {
     renderOverlay()
     expect(screen.getByText('Victoire')).toBeInTheDocument()
   })
 
-  it('écrit « Défaite » quand c’est le verdict servi', () => {
-    renderOverlay({ outcomeCode: 3, outcomeLabel: 'Défaite' })
+  it('écrit « Défaite » quand c’est l’issue lue', () => {
+    renderOverlay({ outcomeCode: 3 })
     expect(screen.getByText('Défaite')).toBeInTheDocument()
   })
 
-  it('sans libellé servi : rien — un panneau qui n’annonce rien serait pire', () => {
-    const { container } = renderOverlay({ outcomeLabel: undefined })
+  it('sans mappings du titre : rien — un panneau qui n’annonce rien serait pire', () => {
+    const { container } = renderOverlay({}, { mappings: false })
     expect(container).toBeEmptyDOMElement()
   })
 })
@@ -158,7 +157,7 @@ describe('ReplayVictoryOverlay — l’habillage est celui du joueur de la page'
   })
 
   it('en DÉFAITE : TOUJOURS mon équipe — jamais l’emblème du vainqueur', () => {
-    const { container } = renderOverlay({ outcomeCode: 3, outcomeLabel: 'Défaite' })
+    const { container } = renderOverlay({ outcomeCode: 3 })
     expect(screen.getByText('Équipe Eagle')).toBeInTheDocument()
     expect(screen.queryByText('Équipe Cobra')).not.toBeInTheDocument()
     expect(container.querySelector('img')).toHaveAttribute(
@@ -215,7 +214,7 @@ describe('ReplayVictoryOverlay — le score et l’accessibilité', () => {
   })
 
   it('montre les DEUX camps même en défaite', () => {
-    renderOverlay({ outcomeCode: 3, outcomeLabel: 'Défaite' })
+    renderOverlay({ outcomeCode: 3 })
     expect(screen.getByText('50')).toBeInTheDocument()
     expect(screen.getByText('30')).toBeInTheDocument()
   })
@@ -240,7 +239,7 @@ describe('ReplayVictoryOverlay — le score et l’accessibilité', () => {
 
 describe('ReplayVictoryOverlay — l’égalité', () => {
   it('reste neutre : ni logo, ni couleur, ni nom d’équipe', () => {
-    const { container } = renderOverlay({ outcomeCode: 1, outcomeLabel: 'Égalité' })
+    const { container } = renderOverlay({ outcomeCode: 1 })
     expect(screen.getByText('Égalité')).toBeInTheDocument()
     expect(screen.queryByText(/Équipe /)).not.toBeInTheDocument()
     expect(container.querySelector('img')).toBeNull()
@@ -248,7 +247,7 @@ describe('ReplayVictoryOverlay — l’égalité', () => {
   })
 
   it('garde le score final : une égalité a des chiffres', () => {
-    renderOverlay({ outcomeCode: 1, outcomeLabel: 'Égalité' })
+    renderOverlay({ outcomeCode: 1 })
     expect(screen.getByText('50')).toBeInTheDocument()
   })
 })
@@ -285,7 +284,7 @@ describe('ReplayVictoryOverlay — quand il ne se rend pas', () => {
   })
 
   it('abandon (code 4) : rien', () => {
-    const { container } = renderOverlay({ outcomeCode: 4, outcomeLabel: 'Abandon' })
+    const { container } = renderOverlay({ outcomeCode: 4 })
     expect(container).toBeEmptyDOMElement()
   })
 
@@ -337,16 +336,16 @@ describe('ReplayVictoryOverlay — le verdict suit le point de vue', () => {
   })
 
   it('vu depuis un adversaire d’un match PERDU : le titre devient « Victoire »', () => {
-    renderOverlay({ viewpoint: 'eux', outcomeCode: 3, outcomeLabel: 'Défaite' })
+    renderOverlay({ viewpoint: 'eux', outcomeCode: 3 })
     expect(screen.getByText('Victoire')).toBeInTheDocument()
   })
 
-  it('vu depuis le joueur de la page : le libellé du backend, tel quel', () => {
+  it('vu depuis le joueur de la page : le libellé de son issue, tel quel', () => {
     renderOverlay({ viewpoint: 'moi' })
     expect(screen.getByText('Victoire')).toBeInTheDocument()
   })
 
-  it('point de vue non situable : rien n’est permuté, le libellé du backend reste', () => {
+  it('point de vue non situable : rien n’est permuté, et rien ne se rend', () => {
     // `readVictory` rend `null` sur un sujet introuvable — donc pas de panneau du tout. Le cas
     // utile est celui du coéquipier : situable, même camp, aucune permutation.
     renderOverlay({ viewpoint: 'xuid-jamais-vu' })
@@ -354,10 +353,10 @@ describe('ReplayVictoryOverlay — le verdict suit le point de vue', () => {
     expect(screen.queryByText('Défaite')).not.toBeInTheDocument()
   })
 
-  it('égalité vue de l’autre camp : le panneau neutre garde le mot du backend', () => {
-    // Une égalité l'est pour tout le monde : `victoryIsFlipped` est vrai, mais l'issue lue
-    // reste `tie` et son libellé canonique dit la même chose que celui du backend.
-    renderOverlay({ viewpoint: 'eux', outcomeCode: 1, outcomeLabel: 'Égalité' })
+  it('égalité vue de l’autre camp : le panneau neutre garde le mot de l’égalité', () => {
+    // Une égalité l'est pour tout le monde : l'issue lue reste `tie` des deux côtés, et son
+    // libellé canonique dit donc la même chose quel que soit le sujet regardé.
+    renderOverlay({ viewpoint: 'eux', outcomeCode: 1 })
     expect(screen.getByText('Égalité')).toBeInTheDocument()
   })
 
@@ -366,8 +365,11 @@ describe('ReplayVictoryOverlay — le verdict suit le point de vue', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('SANS mappings du titre : le point de vue par défaut, lui, s’affiche comme avant', () => {
-    renderOverlay({}, { mappings: false })
-    expect(screen.getByText('Victoire')).toBeInTheDocument()
+  it('SANS mappings du titre : le point de vue par défaut ne se rend pas non plus', () => {
+    // Le titre par défaut venait de `header.outcome_label` et survivait donc à l'absence de
+    // mappings ; depuis le 2026-09-07 les deux points de vue lisent la MÊME source, et se
+    // taisent ensemble. C'est le prix — assumé — d'un seul vocabulaire sur le panneau.
+    const { container } = renderOverlay({}, { mappings: false })
+    expect(container).toBeEmptyDOMElement()
   })
 })

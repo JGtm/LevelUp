@@ -618,10 +618,11 @@ export interface ReplayText {
    * L'ÉCRAN DE FIN DE MATCH, à l'instant où la lecture atteint la fin déclarée.
    *
    * IL N'Y A PAS DE CLÉ DE TITRE ICI, ET C'EST VOULU (amendement utilisateur du 2026-08-26) :
-   * le titre est `header.outcome_label`, que le backend sert DÉJÀ localisé (« Victoire » /
-   * « Défaite » / « Égalité »). Le fabriquer une deuxième fois côté front, c'est deux mots
-   * pour le même verdict sur deux pages du même match — exactement ce que la règle de
-   * réutilisation existe pour empêcher. Ne restent ici que les textes PROPRES à cet écran.
+   * le titre est le libellé canonique de l'issue, publié par `outcomes.toml` du titre via
+   * `/field-mappings` et déjà localisé (« Victoire » / « Defeat » / « Tie »). Le fabriquer une
+   * deuxième fois ici, c'est deux mots pour le même verdict sur deux pages du même match —
+   * exactement ce que la règle de réutilisation existe pour empêcher. Ne restent ici que les
+   * textes PROPRES à cet écran.
    *
    * `victoryPanelLabel` nomme la région pour les lecteurs d'écran. Le panneau apparaît SANS
    * geste de l'utilisateur (la lecture arrive au bout) : sans nom de région, l'annonce
