@@ -10922,6 +10922,7 @@ export interface components {
             matchs_mesures: number;
             /** Format: int64 */
             matchs_total: number;
+            nuage_isolement?: components["schemas"]["SquadNuageIsolement"];
         };
         SquadEchangeBucket: {
             /** Format: int64 */
@@ -11018,6 +11019,17 @@ export interface components {
                 [key: string]: components["schemas"]["SquadIntensityMatchRow"][] | null;
             };
         };
+        SquadIsolementPoint: {
+            couverture: components["schemas"]["Couverture"];
+            gamertag: string;
+            /** Format: int64 */
+            morts_examinees: number;
+            /** Format: int64 */
+            morts_isolees: number;
+            part_isolee: components["schemas"]["Couverture"];
+            session_label: string;
+            xuid: string;
+        };
         SquadKillMechanicBar: {
             kills_by_player: {
                 [key: string]: number;
@@ -11095,6 +11107,13 @@ export interface components {
             start_time: string;
             /** Format: double */
             team_mmr_avg: number;
+        };
+        SquadNuageIsolement: {
+            /** Format: int64 */
+            plancher_echantillon_faible: number;
+            /** Format: int64 */
+            plancher_morts_session: number;
+            points: components["schemas"]["SquadIsolementPoint"][] | null;
         };
         SquadPageResponse: {
             selected_teammate?: components["schemas"]["SelectedTeammateData"];

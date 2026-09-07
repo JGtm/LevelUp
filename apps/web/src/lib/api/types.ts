@@ -1350,6 +1350,15 @@ export type SquadEchangeCell = components['schemas']['SquadEchangeCell']
 export type SquadEchangeBucket = components['schemas']['SquadEchangeBucket']
 export type SquadEchangeJoueur = components['schemas']['SquadEchangeJoueur']
 
+/**
+ * Le nuage « isolement x couverture » de l'onglet Synergies (`SquadEchange.nuage_isolement`,
+ * plan tactique item 7.7) : un point par (joueur, session). `part_isolee` et `couverture`
+ * sont des `Couverture` (taux + brut + par match + N + échantillon faible), jamais un float
+ * nu.
+ */
+export type SquadNuageIsolement = components['schemas']['SquadNuageIsolement']
+export type SquadIsolementPoint = components['schemas']['SquadIsolementPoint']
+
 export interface TeammatesPageResponse {
   options: TeammateOption[]
   teammates: TeammateRow[]

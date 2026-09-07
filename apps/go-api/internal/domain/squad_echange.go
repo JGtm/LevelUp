@@ -127,4 +127,12 @@ type SquadEchange struct {
 	// fraction de la selection SANS dire laquelle serait un chiffre non reproductible.
 	MatchsMesures int `json:"matchs_mesures"`
 	MatchsTotal   int `json:"matchs_total"`
+
+	// NuageIsolement alimente le nuage de points « isolement x couverture » de l'onglet
+	// Synergies (plan tactique, item 7.7) : un point par (joueur, session), l'axe
+	// « isolement » venant de match_death_context (lot 7C), l'axe « couverture » de la
+	// meme mesure que ci-dessus. Nil quand le titre n'a pas de table de portee de radar
+	// cablee, ou qu'aucune session ne franchit son plancher — une OMISSION, jamais un
+	// nuage vide.
+	NuageIsolement *SquadNuageIsolement `json:"nuage_isolement,omitempty"`
 }
