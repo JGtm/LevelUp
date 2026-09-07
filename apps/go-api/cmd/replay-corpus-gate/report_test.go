@@ -174,3 +174,54 @@ func TestCodeSortieErreurBloqueMemeEnModeInformatif(t *testing.T) {
 		t.Fatalf("code = %d, attendu 1 (une erreur bloque toujours, meme pertesBloquent=false)", got)
 	}
 }
+
+// TestVerifierCouvertureRefuseUnManifesteEntierementAbsent — CORPUS-R1 C3 (L6, P0) : LE
+// SCENARIO qui rendait un gate vert SANS RIEN COMPARER (cache de film purge -> tous les temoins
+// ABSENT -> codeSortie les sautait tous -> exit 0). verifierCouverture doit refuser AVANT que
+// codeSortie ne soit meme appele.
+func TestVerifierCouvertureRefuseUnManifesteEntierementAbsent(t *testing.T) {
+	lignes := []ligneRapport{
+		{Temoin: Temoin{ID: "a"}, Absent: true, AbsentCause: "cache purge"},
+		{Temoin: Temoin{ID: "b"}, Absent: true, AbsentCause: "cache purge"},
+	}
+	err := verifierCouverture(lignes, false)
+	if err == nil {
+		t.Fatal("un manifeste entierement absent doit etre refuse (couverture incomplete), pas silencieux")
+	}
+	for _, attendu := range []string{"a", "b", "cache purge", "2/2"} {
+		if !strings.Contains(err.Error(), attendu) {
+			t.Errorf("le message doit nommer les temoins absents et leur cause, %q manquant : %v", attendu, err)
+		}
+	}
+}
+
+// TestVerifierCouvertureRefuseUnSeulAbsentParmiDAutres — meme un SEUL temoin absent (pas
+// necessairement tous) est une couverture incomplete par defaut : il pourrait masquer une
+// regression sur CE temoin precis.
+func TestVerifierCouvertureRefuseUnSeulAbsentParmiDAutres(t *testing.T) {
+	lignes := []ligneRapport{
+		{Temoin: Temoin{ID: "a"}, Absent: true, AbsentCause: "cache purge"},
+		{Temoin: Temoin{ID: "b"}, Pertes: 0},
+	}
+	if err := verifierCouverture(lignes, false); err == nil {
+		t.Fatal("un seul temoin absent parmi d'autres doit aussi etre refuse par defaut")
+	}
+}
+
+// TestVerifierCouvertureToleranteAvecAllowMissing — --allow-missing restaure explicitement
+// l'ancien comportement (avertissement seul, jamais bloquant) pour un usage delibere.
+func TestVerifierCouvertureToleranteAvecAllowMissing(t *testing.T) {
+	lignes := []ligneRapport{{Temoin: Temoin{ID: "a"}, Absent: true, AbsentCause: "cache purge"}}
+	if err := verifierCouverture(lignes, true); err != nil {
+		t.Fatalf("--allow-missing doit tolerer l'absence, obtenu : %v", err)
+	}
+}
+
+// TestVerifierCouvertureAucunAbsentToujoursOK — le cas nominal (rien d'absent) ne doit jamais
+// rendre d'erreur, avec ou sans --allow-missing.
+func TestVerifierCouvertureAucunAbsentToujoursOK(t *testing.T) {
+	lignes := []ligneRapport{{Temoin: Temoin{ID: "a"}, Pertes: 0}, {Temoin: Temoin{ID: "b"}, Pertes: 3}}
+	if err := verifierCouverture(lignes, false); err != nil {
+		t.Fatalf("aucun temoin absent : attendu nil, obtenu %v", err)
+	}
+}
