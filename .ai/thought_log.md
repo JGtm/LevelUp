@@ -100466,3 +100466,60 @@ corruption secondaire NBSP/guillemet-droit constatee sur 6 sites, a anticiper si
 sont un jour traites pour le mojibake (D9, hors branche). Commit(s) sur `feat/mojibake-garde-rail`
 (worktree `LevelUp-wt-q3-mojibake`), push `origin`. Pas de fusion dans `feat/v75` (accord
 utilisateur prealable requis, regle CLAUDE.md n°16).
+
+## [2026-09-07] Orchestration — lot M6 (double lecture des rasters tactiques) — Complete
+
+**Decision technique principale.** Verifie sur pieces (le code avait bouge depuis la decouverte
+du registre) : `apps/go-api/internal/sync/replayartifacts/derivations.go` (`lireArtefacts`) lit
+et deserialise CHAQUE artefact UNE fois par cycle et pose le document sur `artefactLu.doc` ; les
+trois autres familles (`t0film.go`, `usage.go`, `bombstats.go`) reutilisent deja `a.doc`. Seule
+`projeterRastersTactiques` (`raster.go:301`, ex-ligne 301 de la decouverte) rappelait
+`ProjeterRasterTactique(r.path)`, qui relit et reparse le meme fichier via `lireDocumentRange` —
+une seconde lecture/parse par artefact et par cycle. Correctif : extraction du calcul pur en
+`projeterRasterDepuisDocument(doc *replay.ReplayDocument)` ; `ProjeterRasterTactique(path)`
+(exportee pour le rattrapage CLI, seul appelant sans document en main) l'appelle apres sa propre
+lecture ; `projeterRastersTactiques` appelle directement `projeterRasterDepuisDocument(r.doc)`,
+sans jamais rouvrir le fichier. Garde defensive `doc == nil` ajoutee (jamais declenchee en
+production — `lireArtefacts` ne pose `artefactLu` qu'apres lecture reussie — mais un panic sur un
+seul match romprait le best-effort de toute l'etape).
+
+**Test compteur (rouge -> vert).** `raster_lecture_unique_test.go`, nouveau seam
+`document.go:ouvrirArtefact` (variable `= os.ReadFile`, substituee par le test pour compter les
+ouvertures). `TestProjeterRastersTactiques_NeRelitPasLeDocumentDejaEnMain` : construit UN
+`artefactLu` avec `.doc` deja renseigne (l'etat reel que `lireArtefacts` produit toujours), appelle
+`projeterRastersTactiques`, attend 0 ouverture supplementaire. AVANT le correctif : ROUGE,
+`lectures == 1` (la relecture de `ProjeterRasterTactique`). APRES : VERT, `lectures == 0`.
+
+**Preuve d'invariance.** Toutes les projections numeriques existantes (`TestProjeterRasterTactique_
+ComptesExacts/SchemaAncien/SansPisteNommee/Refus/TempsEnVehicule/VehiculeSansOccupantNomme/
+PointsIgnoresEstStructurellementNul/SpawnDeDepart/RouteBorneeA15Secondes`) passent SANS
+modification de leurs attentes — seule leur construction change quand elles appellent
+`ProjeterRasterTactique(path)` (inchangee, signature identique). Deux tests de plomberie ont vu
+leur MECANISME d'injection de panne adapte au nouvel invariant (le document est toujours deja en
+main, jamais un JSON casse a ce niveau) sans changer leurs assertions : `TestProjeterRastersTactiques_
+LotDuCycle` (le cas d'echec passe de "JSON illisible" — desormais filtre plus haut par
+`lireArtefacts`, inatteignable ici — a "document valide mais sans matchId", meme categorie que
+`TestProjeterRasterTactique_Refus`) et l'integration `TestRun_ProjectionEnEchecNArretePasLeCycle`
+(la corruption disque post-rangement, qu'aucune relecture ne detecte plus, est remplacee par un
+document `artefactLu.doc` sans matchId — memes deltas de compteurs attendus : +1 echec, +1 ecrit).
+Aucun fichier testdata de sidecar n'existe dans le depot (verifie par recherche) : rien a
+diff-checker sur ce point. Documentation mise a jour dans le meme commit : l'en-tete de
+`document.go` decrivait encore "trois a quatre lectures par cycle" (deja stale avant ce lot,
+puisque seules deux (t0+usage+bombstats partages, raster isole) lisaient reellement en double) —
+corrige pour dire que les QUATRE projections partagent desormais le meme document.
+
+**Gates.** `gofmt -l ./internal/sync/replayartifacts/` (vide, exit 0) ; `go build ./...` (exit 0) ;
+`go vet ./internal/sync/replayartifacts/...` (exit 0) ; `go test -count=1
+./internal/sync/replayartifacts/...` (ok, exit 0) ; `go test -tags=integration -p 1 -count=1
+./internal/sync/replayartifacts/... ./internal/persist/...` (ok, exit 0, ~85 s cumule) ; `go test
+-count=1 ./internal/sync/ -run NoART` -> `TestNoARTPatternsOnProtectedTables` (PASS, exit 0) ;
+`golangci-lint run --new-from-merge-base=origin/main ./internal/sync/replayartifacts/...` (0
+issue, exit 0).
+
+**Conclusion / prochaine etape.** Lot M6 du plan `.ai/PLAN_ORCHESTRATION_2026-09-07.md` clos —
+case cochee dans le plan, entree du registre `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md` marquee
+« TRAITE le 2026-09-07 (M6) ». Aucune decouverte hors perimetre lors de ce lot au-dela de celle
+deja documentee ci-dessus (doc stale de document.go, corrigee dans le commit puisqu'elle decrivait
+directement le code touche). Commit sur `feat/raster-document-unique` (worktree
+`LevelUp-wt-m6-raster`, base `feat/mojibake-garde-rail`), push `origin`. Pas de fusion dans
+`feat/v75` (accord utilisateur prealable requis, regle CLAUDE.md n°16).

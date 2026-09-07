@@ -76,17 +76,35 @@ const permSidecarRaster = 0o644
 // se projette donc exactement comme un artefact courant, et c'est ce qui rend le
 // rattrapage utile AVANT une re-cuisson du parc.
 //
-// `frameIntervalMs` absent (artefacts anciens) : l'echelle par defaut du decodeur
-// (replay.DefaultFrameIntervalMS) est appliquee ICI, chez l'appelant du calcul pur —
-// `analysis/tactical` ne devine aucune cadence.
-//
-// Exportee pour le rattrapage CLI (cmd/levelup/cmd_tactical_rasters.go) : le fil de l'eau
-// et la passe hors ligne DOIVENT projeter a l'identique, et deux ecritures de la meme
-// regle divergeraient au premier ajustement.
+// Exportee pour le rattrapage CLI (cmd/levelup/cmd_tactical_rasters.go) : c'est le SEUL
+// appelant qui n'a pas de document deja en main — il part d'un chemin sur disque, une
+// passe hors ligne a la fois. Le fil de l'eau (`projeterRastersTactiques`, ci-dessous) a
+// DEJA le document lu par le cycle (`artefactLu.doc`) et appelle directement
+// [projeterRasterDepuisDocument] : les deux DOIVENT projeter a l'identique (meme fonction
+// pure), mais un seul des deux chemins a besoin de relire le fichier.
 func ProjeterRasterTactique(path string) (domain.TacticalRasterSidecar, error) {
 	doc, _, err := lireDocumentRange(path)
 	if err != nil {
 		return domain.TacticalRasterSidecar{}, err
+	}
+	return projeterRasterDepuisDocument(doc)
+}
+
+// projeterRasterDepuisDocument est le calcul pur du sidecar, a partir d'un document DEJA
+// lu et deserialise. C'est le point que partagent [ProjeterRasterTactique] (qui vient de
+// le lire) et `projeterRastersTactiques` (qui le recoit d'`artefactLu.doc`, sans jamais
+// rouvrir le fichier — lot M6, cf. DECOUVERTES_TACTIQUE).
+//
+// `frameIntervalMs` absent (artefacts anciens) : l'echelle par defaut du decodeur
+// (replay.DefaultFrameIntervalMS) est appliquee ICI, chez l'appelant du calcul pur —
+// `analysis/tactical` ne devine aucune cadence.
+func projeterRasterDepuisDocument(doc *replay.ReplayDocument) (domain.TacticalRasterSidecar, error) {
+	if doc == nil {
+		// Ne devrait jamais arriver : `lireArtefacts` ne pose `artefactLu` qu'apres une
+		// lecture reussie, et `ProjeterRasterTactique` ne l'appelle qu'avec un document
+		// non nil. Garde defensive, pas un chemin attendu — mais un panic ici romprait
+		// le best-effort de toute l'etape pour un seul match.
+		return domain.TacticalRasterSidecar{}, fmt.Errorf("document absent")
 	}
 	if doc.MatchID == "" {
 		// Sans identifiant de match, le raster n'a pas de cle : le plancher de rarete se
@@ -296,6 +314,11 @@ func EcrireSidecarRaster(path string, s domain.TacticalRasterSidecar) error {
 
 // projeterRastersTactiques projette et depose les sidecars des artefacts cuits du cycle.
 //
+// LE DOCUMENT EST DEJA EN MAIN (`r.doc`, lu une fois par [lireArtefacts]) : cette
+// projection ne rouvre JAMAIS le fichier — c'etait la double lecture fermee par le lot M6
+// (cf. DECOUVERTES_TACTIQUE, fusion feat/v75). `ProjeterRasterTactique` reste le point
+// d'entree du rattrapage CLI, seul appelant qui part d'un chemin sans document en main.
+//
 // Best-effort de bout en bout, comme toute l'etape : aucun echec ne remonte au cycle, et
 // aucun ne se tait. Un match en echec n'empeche ni les suivants ni le reste de la cuisson.
 func projeterRastersTactiques(ctx context.Context, d Deps, rapports []artefactLu) {
@@ -306,7 +329,7 @@ func projeterRastersTactiques(ctx context.Context, d Deps, rapports []artefactLu
 	pr := titlePkg.NewPathResolver(d.RepoRoot)
 	ecrits, echecs := 0, 0
 	for _, r := range rapports {
-		s, err := ProjeterRasterTactique(r.path)
+		s, err := projeterRasterDepuisDocument(r.doc)
 		if err != nil {
 			slog.ErrorContext(ctx, "post-sync: artefact range mais raster tactique impossible",
 				"gamertag", d.Gamertag, "match_id", r.matchID, "err", err)
