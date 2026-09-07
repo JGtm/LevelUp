@@ -21,6 +21,7 @@ func toFlagCarriesCoverage(v replay.FlagCarriesCoverage) replaydoc.FlagCarriesCo
 		NoBridge:              v.NoBridge,
 		NoTrack:               v.NoTrack,
 		OutOfWindow:           v.OutOfWindow,
+		AmbiguousSlot:         v.AmbiguousSlot,
 		MarkerObserved:        v.MarkerObserved,
 		MarkerConfirmed:       v.MarkerConfirmed,
 		OpenObserved:          v.OpenObserved,

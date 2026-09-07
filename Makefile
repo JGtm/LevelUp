@@ -6,6 +6,7 @@
 #   make go-api-build  # Compile le binaire Go
 #   make go-api-test   # Lance les tests Go
 #   make go-api-test-gamefiles # Corpus cartes (exige Halo installe, ~6 min)
+#   make replay-corpus-gate # Non-regression rejeu sur corpus temoin (exige le parc local)
 #   make install-web   # Installe les dépendances npm
 #   make test-web      # Tests Vitest frontend
 #   make openapi-gen   # Régénère api/openapi.yaml (Huma + fragment manuel)
@@ -24,7 +25,7 @@ LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
 .PHONY: help web dev stop restart test-web test-e2e test-e2e-ui demo-visual check-types \
         generate-types install-web \
         go-api-build go-api-test go-api-test-gamefiles go-api-dev _go-api-run \
-        go-api-test-shared-social-gate install-git-hooks gate-push \
+        go-api-test-shared-social-gate install-git-hooks gate-push replay-corpus-gate \
         go-api-test-coverage-ratchet openapi-gen openapi-check
 
 ## Affiche cette aide
@@ -208,6 +209,23 @@ go-api-test:
 ## LEVELUP_HALO_DEPLOY=<chemin>.
 go-api-test-gamefiles:
 	cd $(GO_API_DIR) && go test -tags=gamefiles -count=1 -timeout 3600s ./internal/himap/ -v
+
+## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin (EXIGE le parc
+## local de developpement — chunks de film + artefacts deja cuits sous data/cache/, ET
+## l'acces en lecture a la base partagee du titre pour les faits du match ; PAS le jeu
+## installe).
+##
+## A LANCER AVANT tout merge qui touche analysis/replay, replaybuild, filmdec, ou qui bumpe
+## SchemaVersion (cf. docs/COMMANDS.md). Cuit chaque temoin de config/replay_corpus.toml au
+## HEAD dans une racine de travail jetable (jamais le parc), compare a l'artefact deja cuit
+## par TOUS les axes de cmd/replay-diff (dont la somme des durees par calque), imprime un
+## tableau et sort en code 1 des qu'un axe montre une perte. Duree mesuree (7 temoins,
+## 2026-09-06) : cf. docs/COMMANDS.md.
+##
+## Un temoin absent du parc local est un avertissement (`slog`), jamais un echec silencieux —
+## la cible reste utilisable sur un poste sans parc (elle ne compare alors rien).
+replay-corpus-gate:
+	cd $(GO_API_DIR) && CGO_ENABLED=0 go run ./cmd/replay-corpus-gate
 
 ## Go API: lance les tests avec rapport de couverture
 go-api-coverage:

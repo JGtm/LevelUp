@@ -521,6 +521,43 @@ the previous commit, which yields bit-identical numbers. Nobody could see it bef
 corpus never ran to completion, and CI does not execute it. Tracked in
 `.ai/V7.5/REGISTRE_REPORTS.md`.
 
+#### Replay non-regression gate on a witness corpus (`cmd/replay-corpus-gate`)
+
+Three data regressions (2026-08-28, 08-30, 09-02 — identity bridge per round, unattributed
+flag actions, "one track = one life") sailed through green SYNTHETIC goldens for nineteen
+schema bumps, because nothing diffed real films. `cmd/replay-diff` (used for the one-off
+parc sweep, `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`) turns that manual method into a repeatable
+gate: `config/replay_corpus.toml` freezes one witness match per mode family (CTF single- and
+multi-round, Oddball, Assault, Slayer, a two-round match, a vehicle-heavy match), each chosen
+because it already carries a measured layer or defect (skull carries, the multi-round identity
+bridge, dense vehicle occupancy...). The gate bakes each witness at HEAD in a disposable working
+root (copied inputs only, config/catalogs from the checked-out branch, film chunks from the dev
+parc — **never writes into the parc**), diffs it against the artifact already baked there with
+every axis `cmd/replay-diff` knows (including the new "summed duration per layer" axis, which
+catches a trimmed interval that a plain element count misses), prints a table, and exits 1 the
+moment any axis shows a loss.
+
+```bash
+make replay-corpus-gate                              # whole manifest
+cd apps/go-api && go run ./cmd/replay-corpus-gate     # same, with --manifest/--parc-root/... flags
+```
+
+**Run it before merging anything that touches** `analysis/replay`, `replaybuild`, `filmdec`, or
+that bumps `SchemaVersion`. **Requires**: the local dev parc (film chunks + already-baked
+artifacts under `data/cache/film_chunks|film_manifests|replays`) and read access to the title's
+shared DB (for match facts, via `levelup replay-facts-export` run as a subprocess — the only step
+that needs CGO/gcc). **Does NOT require the installed game**: baking itself (`internal/replaybuild`)
+only reads versioned catalogs (`data/titles/{slug}/reference`), unlike the `gamefiles` corpus
+above — the gate only shares its *spirit* (a large local resource, absent in CI, degrades
+cleanly instead of failing). A witness missing from the local parc is a `slog` warning, not a
+silent or fatal failure — the gate stays usable on a machine with no parc (it then compares
+nothing and exits 0). Measured 2026-09-06 on the 7-witness manifest: **cf.
+`.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** for the exact run and duration.
+
+The gate never bumps a schema — it only compares. If the local parc is older than HEAD, expected
+diffs are GAINS (new layers, documented fixes); any LOSS is a fact to report, never to hide by
+narrowing the manifest or filtering the report.
+
 ### Frontend (`apps/web`)
 
 ```bash
