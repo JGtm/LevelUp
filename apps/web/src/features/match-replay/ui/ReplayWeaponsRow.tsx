@@ -38,6 +38,7 @@ import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import { catalogText } from '../i18n/catalogLabel'
+import type { CardGabarit } from '../model/cardGabarit'
 import { drawnSwapAt, type EquippedReading } from '../model/equippedLogic'
 import { GRENADE_THROW_HOLD_MS, grenadeThrowActive } from '../model/grenadeFx'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -49,8 +50,11 @@ import { MIRROR_STYLE, weaponFullIcon } from '../model/weaponFullIcon'
 /** Durée de l'animation d'échange — celle du POC, calée sur la rémanence des lancers. */
 const SWAP_ANIM_MS = 340
 
-/** Cellule d'arme : GABARIT FIXE (la grille des fiches en dépend) — 40 × 16. */
-export const WEAPON_CELL_W = 40
+/**
+ * Cellule d'arme : GABARIT FIXE (la grille des fiches en dépend). La LARGEUR vient du gabarit
+ * (`weaponCellW` : 40 en normal, 48 en compact — `model/cardGabarit.ts`, 2026-09-06) ; la
+ * hauteur est celle de la ligne.
+ */
 const CELL_H = 16
 /** L'icône dans sa cellule : 38 × 13, centrée — la cellule allumée garde une marge d'encre. */
 const ICON_W = 38
@@ -70,6 +74,7 @@ export function ReplayWeaponsRow({
   readingFull,
   filmIndex,
   locale,
+  gabarit,
 }: {
   doc: ReplayDocumentReady
   state: PlayerState
@@ -80,8 +85,11 @@ export function ReplayWeaponsRow({
   /** Index de film du joueur (roster) — la clé des LANCERS ; null si le roster le tait. */
   filmIndex: number | null
   locale: ReplayLocale
+  /** Les cotes de la fiche : la largeur de cellule d'arme (`weaponCellW`). */
+  gabarit: CardGabarit
 }) {
   const t = REPLAY_TEXT[locale]
+  const cellW = gabarit.weaponCellW
   if (!state.life) return null
   // Le badge de lancer : un ÉVÉNEMENT daté, jamais estompé par l'âge de lecture.
   const throwHold = Math.max(1, msToFrames(GRENADE_THROW_HOLD_MS, doc))
@@ -95,10 +103,10 @@ export function ReplayWeaponsRow({
     return (
       <span className="inline-flex items-center gap-[5px]" title={t.loadoutUnread}>
         <span className="relative inline-flex">
-          <EmptyWeaponCell />
+          <EmptyWeaponCell width={cellW} />
           {gic}
         </span>
-        <EmptyWeaponCell />
+        <EmptyWeaponCell width={cellW} />
       </span>
     )
   }
@@ -130,9 +138,10 @@ export function ReplayWeaponsRow({
               swap={swapAge !== null ? { cls: k === 0 ? 'replay-wswap-l' : 'replay-wswap-r', age: swapAge, span: swapFrames } : null}
               hint={!w.inHand && drawnKnown ? t.weaponSecondaryHint : undefined}
               locale={locale}
+              cellW={cellW}
             />
           ) : (
-            <EmptyWeaponCell />
+            <EmptyWeaponCell width={cellW} />
           )}
           {/* Le badge de lancer COUVRE la cellule de la main (k = 0) : les opacités CSS se
               multiplient, le sortir du bloc estompé le garderait à pleine encre. */}
@@ -144,12 +153,12 @@ export function ReplayWeaponsRow({
 }
 
 /** EmptyWeaponCell — une cellule d'arme sans arme : la place, rien d'autre. */
-function EmptyWeaponCell() {
+function EmptyWeaponCell({ width }: { width: number }) {
   return (
     <span
       aria-hidden
       className="inline-block rounded-[2px] border border-dashed border-border/50"
-      style={{ width: WEAPON_CELL_W, height: CELL_H }}
+      style={{ width, height: CELL_H }}
     />
   )
 }
@@ -223,6 +232,7 @@ function WeaponChip({
   swap,
   hint,
   locale,
+  cellW,
 }: {
   doc: ReplayDocumentReady
   id: string
@@ -231,6 +241,8 @@ function WeaponChip({
   swap: { cls: string; age: number; span: number } | null
   hint?: string
   locale: ReplayLocale
+  /** Largeur de la cellule, du gabarit de la fiche. */
+  cellW: number
 }) {
   const lbl = doc.weaponLabels?.[id]
   const name = catalogText(lbl, locale)
@@ -238,7 +250,7 @@ function WeaponChip({
   // cuit dans l'artefact, rendue dans le sens du kill feed du jeu (cf. weaponFullIcon.ts).
   const icon = lbl?.img ? weaponFullIcon(lbl.img) : null
   const style: CSSProperties = {
-    width: WEAPON_CELL_W,
+    width: cellW,
     height: CELL_H,
     background: inHand
       ? `color-mix(in srgb, var(--foreground) ${HAND_BG_PCT}%, transparent)`
