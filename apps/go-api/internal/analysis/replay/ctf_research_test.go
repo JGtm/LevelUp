@@ -109,7 +109,7 @@ func TestCTFLostShotsResearch(t *testing.T) {
 func ctfReadingOnlyOwners(tracks map[uint32]slotTrack, deaths []Death,
 	idx PlayerIndexTable) (map[uint32]int, []lifeSpan, int64) {
 	lives := buildLifeSpans(tracks)
-	off, _ := bestDeathOffset(lives, deaths)
+	off, _, _ := bestDeathOffset(lives, deaths)
 	nameLivesByDeaths(lives, deaths, off)
 	owners, _, _ := ownersFromLives(lives, idx.ByXUID)
 	return owners, lives, off

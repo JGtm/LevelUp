@@ -203,7 +203,7 @@ func zoomDecalage(t *testing.T, dir string) int64 {
 	if err != nil {
 		t.Fatalf("fil des morts : %v", err)
 	}
-	off, matched := bestDeathOffset(buildLifeSpans(indexBySlot(pos)), deaths)
+	off, matched, _ := bestDeathOffset(buildLifeSpans(indexBySlot(pos)), deaths)
 	t.Logf("RECALAGE — decalage feed->film %d ms (%d fins de vie appariees)", off, matched)
 	return off
 }

@@ -259,7 +259,7 @@ func vfBatPont(dir, gt string) (vfPont, error) {
 		return p, fmt.Errorf("fil des morts : %w", err)
 	}
 	lives := buildLifeSpans(indexBySlot(pos))
-	off, apparies := bestDeathOffset(lives, deaths)
+	off, apparies, _ := bestDeathOffset(lives, deaths)
 	if nameLivesByDeaths(lives, deaths, off) == 0 {
 		return p, fmt.Errorf("pont slot->xuid vide")
 	}

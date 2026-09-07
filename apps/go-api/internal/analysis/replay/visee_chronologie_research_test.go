@@ -95,7 +95,7 @@ func TestViseeChronologie(t *testing.T) {
 		t.Fatalf("fil des morts : %v", err)
 	}
 	lives := buildLifeSpans(indexBySlot(pos))
-	off, matched := bestDeathOffset(lives, deaths)
+	off, matched, _ := bestDeathOffset(lives, deaths)
 	if nameLivesByDeaths(lives, deaths, off) == 0 {
 		t.Fatalf("pont slot->xuid vide")
 	}
