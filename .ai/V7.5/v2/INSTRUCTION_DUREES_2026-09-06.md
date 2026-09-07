@@ -426,15 +426,48 @@ Substance vérifiée à l'identique : `084a804d` 21 épisodes / 3 697 frames, sl
 l'écrit lui-même : « un champ optionnel de plus n'en est pas une [raison] ». Golden d'assemblage
 inchangé.
 
+### CI de branche : le compteur neuf devait aussi être SERVI
+
+Le premier push des corrections R1 a fait **rougir la CI** — un job, `Go Coverage + Baseline
+non-régression (CGO_ENABLED=1 — ./... complet)` ; les huit autres verts. Cause exacte, et elle
+est juste : `internal/service/replayview/parity_test.go` est un **cliquet de parité** qui exige
+que tout champ exporté du document STOCKÉ ait une décision — servi par le contrat public, ou
+inscrit dans `champsNonServis` avec sa justification datée. `coverage.flagCarries.ambiguousSlot`
+n'était ni l'un ni l'autre :
+
+```
+parity_test.go:102: FlagCarriesCoverage.AmbiguousSlot est publie par l'artefact et ABSENT du
+                    document servi, sans entree dans champsNonServis
+parity_test.go:164: premier ecart : .coverage.flagCarries.ambiguousSlot :
+                    present cote stocke, ABSENT cote servi
+```
+
+**Pourquoi le gate local ne l'a pas vu** : le jeu de paquets prescrit
+(`analysis/replay`, `replaybuild`, `replaydiff`, `archlint`, `contracttest`) ne contient pas
+`internal/service/replayview`, que seul le `./...` complet de la CI atteint. La suite complète
+tourne désormais en local avant push (`go test -count=1 ./...` : 0 échec).
+
+**Le correctif, et le choix qu'il tranche.** Le compteur est **SERVI**, pas exempté : ses onze
+frères de la même couverture (`noTrack`, `noBridge`, `ambiguousReturns`, `ambiguousCarrierKills`,
+`ambiguousHomecomings`, `overlaps`…) le sont tous, `champsNonServis` est vide par construction, et
+un diagnostic qui dit « le calque a renoncé à lire de la matière » n'a de valeur que s'il arrive
+au client. Chaîne complète : `replaydoc.FlagCarriesCoverage` + `toFlagCarriesCoverage`, puis
+`make openapi-gen` (contrat : +1 propriété, +1 entrée `required`, rien d'autre) et régénération
+des types web (`generated.ts` : +2 lignes, générateur idempotent vérifié). Aucun code web ne lit
+ce champ ; aucun mirroir écrit à la main n'existe.
+
 ### Gates rejoués après R1
 
 ```
-go test -count=1 ./internal/analysis/replay/... ./internal/replaybuild/... \
-        ./internal/replaydiff/... ./internal/archlint/... ./contracttest/...   # ok
-go test -count=1 -tags=integration -p 1 ./internal/api/wire/...                # ok (49,9 s)
+go test -count=1 ./...                                                         # SUITE COMPLETE, 0 echec
+go test -count=1 -tags=integration -p 1 ./internal/api/wire/...                # ok (20,3 s)
 go build ./...                                                                 # ok
+make openapi-gen ; make openapi-check                                          # contrat a jour
 golangci-lint run --new-from-merge-base=origin/main ./...                      # 0 issues
 ```
+
+**Le `./...` COMPLET remplace le jeu de paquets prescrit**, et c est la lecon de la CI rouge
+ci-dessus : le cliquet de parite ne vit dans aucun des cinq paquets de la liste.
 
 Seuils : `equipment_episodes.go` 442 L, `flag_carries.go` 455 L, `flag_carrier_tracks.go` 148 L,
 `flag_objects.go` 426 L, `document_objectives_live.go` 320 L — tous sous 500.
