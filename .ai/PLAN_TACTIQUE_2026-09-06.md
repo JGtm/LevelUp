@@ -1273,7 +1273,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       ce que l'API a envoye, et la normalisation appartient au point de resolution — chez
       l'appelant, elle se reecrit a chaque appelant et s'oublie une fois.
       **LA VENTILATION (contrat).** A cote de `matchs_filtres` / `matchs_retenus`, les
-      lectures d'artefact publient `matchs_en_attente` et `matchs_hors_retention`. Le fait
+      lectures d'artefact publient `matchs_en_attente` et `matchs_non_cuisables` (ex-`hors_retention`, 7.10.3). Le fait
       vient du lecteur (`TacticalMatch.DansRetention`), calcule avec **la definition de la
       file de cuisson**, extraite en `analysis.SQLDansFenetreRetention` /
       `analysis.BorneRetention` — annoncer une cuisson que la file ne fera pas serait pire
@@ -1281,7 +1281,7 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       positif sur les deux formes) : **il a mordu a l'ecriture** et ramene DEUX copies
       inline preexistantes a la definition unique (`scheduler/replay_purge_cron.go:105`,
       `sync/replayartifacts/backlog.go:228`). Invariant teste :
-      `matchs_filtres = matchs_retenus + matchs_en_attente + matchs_hors_retention`.
+      `matchs_filtres = matchs_retenus + matchs_en_attente + matchs_non_cuisables` (renomme en 7.10.3, cf. 7.11).
 
 - [x] 7.11 **Revue de 7.10 — 1 P0, 4 P1, 6 P2 : tous statues.** Commits
       `tactique(7.10.3..n)`.
@@ -1322,16 +1322,53 @@ artefacts lus par `ReplayService` uniquement ; branchement par capability jamais
       variante) ; la portee de l'invariant de somme est dite dans la phrase meme, avec le
       test de la branche base (compteurs a zero sous « ou je meurs »).
 
-### Phase 7C — Faits d'isolement au sync (`match_lives`, `match_death_context`) — BRIEF A VENIR
+### Phase 7C — Faits d'isolement AU SYNC (collecteur de kills) — OUVERTE 2026-09-07
 
-Ouverte par la decision utilisateur du 2026-09-07 (cf. §1). Le collecteur de kills
-(`internal/sync/killcollector`) scanne deja les morts ET `ScanBipedPositions` : il tient donc,
-au sync, tout ce qu'il faut pour ecrire qui etait vivant et ou, a l'instant de chaque mort.
-Deux tables append-only, `match_lives` et `match_death_context`, recette ADR 0026 (vues
-`_latest`). Le rayon du radar se lit dans `regulation.toml [radar_range_m]`, gardee a cet
-effet (cf. 7.10).
+Principe (utilisateur, 2026-09-07, ferme) : les donnees d'un match en base sont completes au sync ;
+seul le rejeu attend la cuisson. Les faits d'isolement sont donc une SECONDE PROJECTION de la passe
+de positions du collecteur (`internal/sync/killcollector/positions.go:buildPositionRows`), qui
+scanne deja tout le film (`filmdec.ScanBipedPositions`, `replay.ScanDeaths`,
+`replay.ScanPlayerIndices`, `replay.ResolveSlotXUID` -> pont slot->xuid + vies). Aucun decodage
+nouveau, aucune cuisson, l'artefact ne bouge pas.
 
-**Brief a venir** — a rediger par le superviseur.
+- [ ] 7C.1 Table `match_lives` (append-only, `written_at`, vue `match_lives_latest`, recette ADR 0026
+      + `append_only_rebuild.go`) : match_id, xuid, start_ms, end_ms, end_cause
+      (`death` | `closure` | `film_end` | `cut`), decode_pass/decoder_rev comme le journal. Source :
+      les vies nommees que `ResolveSlotXUID` calcule deja (`owners`) — exposer ce qu'il faut du
+      paquet `replay` en PUR, sans dupliquer le nommage.
+- [ ] 7C.2 Table `match_death_context` (append-only, vue `_latest`) : une ligne par mort du
+      journal (`match_id`, `victim_xuid`, `time_ms` = cle de jointure avec `match_kill_events`),
+      avec : `nearest_teammate_m` (coequipier VISIBLE le plus proche, 2D, NULL si aucun),
+      `teammates_visible`, `teammates_waiting` (mort < 1 s... non : derniere mort du journal
+      < t et aucune position depuis), `teammates_out_of_sight` (vivant au sens « pas en attente,
+      pas parti » mais sans position dans la derniere seconde : vehicule non replique),
+      `teammates_left` (depart en base avant t), `teammates_total`. « Visible » = position
+      repliquee dans la DERNIERE SECONDE (constante nommee). L'equipe vient de la BASE a la
+      collecte (`match_participants`, a ajouter a `MatchIdentities`), jamais du film.
+- [ ] 7C.3 Persisteurs `persist.LivesPersister` / `DeathContextPersister` sur le patron
+      `KillPositionPersister.PersistPass` (INSERT-only, lease court `acquireShared`, jamais
+      d'UPSERT) ; allowlist `no_art_patterns_test.go` intacte ; garde-rail lecture `_latest`.
+- [ ] 7C.4 Branchement dans `collectPositions` (meme porte `CapFilmKillPositions` ? -> NON :
+      nouvelle cle data-level fine ? verifier `capabilities.toml` ; decision : reutiliser la porte
+      des positions, les faits en dependent) ; compteurs d'observabilite ; echec = WARN/ERROR +
+      compteur, jamais bloquant pour le journal.
+- [ ] 7C.5 Rattrapage : `backfill-killsource` (cache miroir) produit les deux tables pour les
+      matchs deja collectes (`matchsAJour` : fraicheur par `decoder_rev` de la passe) ; `--dry-run`.
+- [ ] 7C.6 Lecture `isole` (Tactique) : requete `platform/duckdb` = morts de mon camp du journal
+      `_latest` JOIN `match_death_context_latest`, rayon PAR MATCH via `RadarRangeMap`
+      (`game_variant_name` de retour dans `QTacticalUnivers`, `TrimSpace` a la resolution) ;
+      isolee = `nearest_teammate_m` NULL ou > rayon ET `teammates_visible + out_of_sight
+      + waiting`... regle : isolee si aucun coequipier visible a portee ; « equipe a terre » =
+      `teammates_visible + teammates_out_of_sight == 0` (exclue du denominateur, publiee) ;
+      `matchs_sans_rayon` ; `domain.Couverture` plancher 30 ; positions des morts depuis
+      `kill_positions` (question `morts` filtree). Contrat : question `isole` + compteurs.
+- [ ] 7C.7 `match_lives` cote rejeu : consigner seulement (la fiche « elimine / en attente /
+      parti » pourra la lire — hors perimetre).
+- **Gate** : `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` ;
+  `no_art_patterns_test` ; test d'integration du collecteur sur film de fixture (patron
+  `engine_postsync_films_integration_test.go`) prouvant : 2 tables ecrites, idempotence de la
+  passe (`_latest` = derniere passe), contexte d'une mort avec coequipier visible a 3 m / en
+  attente / hors de vue / parti ; revue : 2 relecteurs (L1 ART + L6).
 
 Depend de 7C : l'item 7.7 (7B, nuage isolement x couverture de la page Escouade).
 
@@ -2014,6 +2051,18 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
   affiche une soixantaine de lignes « build constraints exclude all Go files » (les `cmd/*`
   et `internal/ooz` derriere un tag ou du CGO) avant son `OK`. Un vrai echec de vet s'y
   perdrait a la lecture. NON TRAITE (hors perimetre).
+
+- 2026-09-07 (7.10.3, revue ronde 2) — **la file de cuisson se RESSERRE sous retention illimitee** :
+  le predicat partage `SQLEligibleALaCuisson` ajoute `start canonique IS NOT NULL`, donc un match
+  du registre sans aucun horodatage n'entre plus dans la file quand `ReplayRetentionMonths` = 0
+  (le defaut, et le regime prod sauf reglage admin). Verdict du relecteur : P2 — la classe est
+  fermee par les ecrivains actuels (`persistMatchRegistry`, mapper OpenSpartan, seed demo :
+  `time.Time` non nullable), et sous `ORDER BY ... DESC` + `NULLS LAST` (defaut DuckDB, jamais
+  modifie) ces lignes etaient derriere toutes les lignes datees, hors de portee de `LIMIT 64`.
+  Aucun match reellement cuisable ne cesse de l'etre ; la purge (inchangee) les epargne en
+  `unknown`, la page les dit « non cuisables ». Ecrit dans la godoc de `requeteQueueRecente` et
+  le commit `bf24ae36f`. Reste NON MESURE : le nombre de lignes indatables en prod (mandat
+  lecture seule, regle mono-process) — a compter lors d'une operation VPS.
 
 ## 8. Reprise de session
 Avancement = les cases de ce fichier dans le worktree. Reprendre a la premiere case non
