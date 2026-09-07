@@ -66,8 +66,14 @@ const mojibakeThirdCharClass = `\x{20AC}\x{201A}\x{0192}\x{201E}\x{2026}\x{2020}
 // caractère de mojibakeThirdCharClass (le début d'une séquence 3-octets mal relue).
 // mojibakeSecondCharClass inclut U+00C3/U+00C5 eux-mêmes, ce qui attrape aussi une
 // deuxième passe de corruption.
+//
+// Résidu du lot Q3 (2026-09-07) : un U+00C3 en FIN DE LIGNE (un « à » dont l'espace insécable
+// U+00A0 a été aplati puis perdu au trim : `home_service.go:251`) échappait à la règle « suivi
+// d'un second caractère ». U+00C3 n'étant JAMAIS légitime en français, il est un défaut à lui
+// seul, quel que soit ce qui le suit.
 var mojibakeRE = regexp.MustCompile(
-	`[\x{00C3}\x{00C5}][` + mojibakeSecondCharClass + `]` +
+	`\x{00C3}` +
+		`|\x{00C5}[` + mojibakeSecondCharClass + `]` +
 		`|\x{00E2}[` + mojibakeThirdCharClass + `]`,
 )
 
