@@ -36,6 +36,7 @@ import {
   medianesNuage,
   opaciteDuPoint,
   PLANCHER_MORTS_SESSION,
+  pointAttenue,
   tailleDuPoint,
   type MedianesNuage,
 } from './squadIsolement.logic'
@@ -210,7 +211,7 @@ function buildNuageOption(
       formatter: (params: unknown) => {
         const p = (params as { data?: EchartScatterDatum }).data?.raw
         if (!p) return ''
-        return t.tooltip({
+        const base = t.tooltip({
           gamertag: escapeHtml((p.gamertag ?? '') as string),
           session: escapeHtml(p.session_label ?? ''),
           isoRate: pctFmt.format(p.part_isolee.taux),
@@ -220,6 +221,11 @@ function buildNuageOption(
           covBrut: p.couverture.brut,
           covN: p.couverture.n,
         })
+        // L'opacité réduite (opaciteDuPoint) n'est pas un signal fiable à elle
+        // seule (contraste, daltonisme) : le tooltip nomme explicitement la
+        // réserve d'échantillon faible, comme SquadEchangeKpi/SquadEchangeMatrixCard
+        // pour la même mesure.
+        return pointAttenue(p) ? `${base}<br/>${t.lowSample}` : base
       },
     },
     legend: { ...getLegendNames(series), textStyle: { color: tc.axisLabel } },

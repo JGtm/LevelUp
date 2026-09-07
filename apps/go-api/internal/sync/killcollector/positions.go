@@ -47,10 +47,12 @@ package killcollector
 //
 // `games.CapFilmKillPositions` dit que le titre EXPOSE la capture (Infinite) ; elle ne dit rien de
 // savoir si CE collecteur a été câblé avec une résolution de carte (WithPositionCapture). Les deux
-// conditions sont nécessaires : un titre qui n'a pas la capability n'essaie jamais ; un titre qui
-// l'a mais dont le collecteur n'a pas reçu WithPositionCapture (CLI qui ne l'appelle pas, test) se
-// dégrade silencieusement AU NIVEAU CONFIGURATION — situation journalisée en Debug, jamais en
-// erreur : ce n'est pas une panne, c'est une passe qui n'a pas demandé cette donnée.
+// conditions sont nécessaires : un titre qui n'a pas la capability n'essaie jamais (Debug, cas
+// fréquent et non pathologique — pas la donnée que le titre offre). Un titre qui l'a mais dont
+// le collecteur n'a pas reçu WithPositionCapture (CLI qui ne l'appelle pas, mauvaise DI en prod)
+// est, LUI, une régression de câblage : la table `kill_positions` resterait vide en silence,
+// invisible sans relire le code (constat Q8, .ai/DECOUVERTES_TACTIQUE_2026-09-07.md) — journalisé
+// en WARN et compté (`metricPositionsNotWired`) depuis la clôture Q8, pas Debug.
 //
 // # BEST-EFFORT ASSUMÉ, MÊME DOCTRINE QUE shots.go
 //
@@ -88,6 +90,10 @@ const (
 	metricPositionsNoBridge     = "killsource_positions_sans_pont_identite"
 	metricPositionsWriteFail    = "killsource_positions_erreurs_ecriture"
 	metricPositionsKillsDropped = "killsource_positions_morts_sans_position"
+	// metricPositionsNotWired : la capability est là, mais WithPositionCapture n'a pas été
+	// fourni au collecteur — régression de câblage, la table reste vide en silence si ce
+	// compteur n'est pas observé (Q8, .ai/DECOUVERTES_TACTIQUE_2026-09-07.md).
+	metricPositionsNotWired = "killsource_positions_non_cablees"
 )
 
 // collectPositions : la TROISIÈME écriture de la passe — `shared.kill_positions`.
@@ -108,8 +114,10 @@ func (c *KillSourceCollector) collectPositions(
 		return
 	}
 	if c.mapNames == nil || c.mapBounds == nil {
-		slog.DebugContext(ctx, "killsource: positions — collecteur non cable (WithPositionCapture "+
-			"absent), passe ignoree", "match_id", matchID)
+		observability.AddInt(metricPositionsNotWired, 1)
+		slog.WarnContext(ctx, "killsource: positions — collecteur non cable (WithPositionCapture "+
+			"absent), passe ignoree ; la capability est presente, la table restera vide sans ce "+
+			"cablage", "match_id", matchID)
 		return
 	}
 
