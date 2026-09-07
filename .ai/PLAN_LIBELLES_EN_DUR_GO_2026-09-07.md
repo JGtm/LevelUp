@@ -186,6 +186,99 @@ lecteur via `useOutcomeLabel`. `openapi.yaml` ne modélise pas `HomePageResponse
 lot M5 première moitié (2026-09-07)** — périmètre fermé à L2+L5 par consigne d'exécution ;
 reste `[ ]` pour la seconde moitié de M5.
 
+**L3 — CLOS PARTIELLEMENT le 2026-09-08 (lot M5 seconde moitié, branche
+`feat/libelles-modes-playlists`, base `feat/libelles-accueil-rangs` @ `92ae3fe3d`)** —
+repris d'un exécutant précédent coupé par une limite de quota (9 fichiers modifiés non
+commités, dont le nouveau `ranked_playlists_labels.toml`) :
+
+- `internal/games/halo_infinite/mode_category.go` : `[~]` déjà conforme, vérifié sur pièces.
+  `InferModeCategoryFromPairName` retourne des CLÉS de catégorie (`Assassin`, `Fiesta`,
+  `Super Fiesta`, `Husky Raid`, `BTB`, `Ranked`, `Firefight`, `Other`) qui correspondent
+  exactement aux 8 entrées `[assets.mode.*]` de `config/titles/halo_infinite/mappings/assets.toml`
+  (labels EN/FR déjà présents) ; le web les résout via `useAssetLabel('mode', value)`
+  (`MediaToolbar.tsx:282`, commentaire « Phase 3.3 »). Aucun littéral FR affiché à
+  l'utilisateur — pas d'action.
+- `internal/analysis/home_canonical*.go` (`labelForLocale(locale, fr, en)` sur
+  map/mode/playlist) : `[~]` re-confirmé (déjà noté L2) — `fr`/`en` proviennent de
+  `assetLabels(ref *canonical.AssetReference)` qui lit `ref.Labels["fr"/"en"]`, peuplé
+  PAR MATCH depuis la DB (`asset_translations`/`mode_name_tr`) par l'adapter du titre.
+  `labelForLocale`/`labelFR` (`home_locale.go`) sont des sélecteurs purs (aucun texte en
+  dur). Pas une famille de littéraux Go — pas d'action.
+- `internal/games/halo_infinite/rankedplaylists/rankedplaylists.go` : `[x]` — `NameEN`/
+  `NameFR` étaient des CHAMPS de struct littéral (`NameEN: "Ranked Arena", NameFR: "Arène
+  classée"` × 16 playlists). Devenus des MÉTHODES qui lisent
+  `ranked_playlists_labels.toml` (nouveau, embarqué via `go:embed` DANS le package,
+  parsé par `mappings.LoadAssetsFromBytes` — même schéma/validation que `assets.toml`
+  canonique, kind `playlist_ranked`). **Emplacement du TOML — vérifié sur pièces, PAS
+  déplacé, condition de reprise ci-dessous** (point d'attention explicite de la reprise) :
+  un chemin de chargement PAR TITRE existe bel et bien pour cette famille (kind+id+labels
+  EN/FR) — `config/titles/{slug}/mappings/assets.toml` via
+  `mappings.Registry.LoadFromConfigDir(repoRoot, slugs, logger)`
+  (`internal/games/mappings/registry.go:50`) — mais il est **inapplicable tel quel** aux
+  appelants de `NameEN()`/`NameFR()` : `migrations/ranked_playlists.go::applyRankedPlaylistSeeds`
+  (seed DB au moment de la migration, signature `(db *sql.DB) error`, aucun `repoRoot`/
+  `ctx` de titre) et `sync/career.go`, `sync/csr_history_backfill.go` (jobs de sync,
+  aucun `*mappings.Registry` threadé). Le Registry n'est construit qu'au boot serveur
+  (`server_apiv1.go:1068`, `cfg.RepoRoot`) — inaccessible à un package-level `var` évalué
+  à l'import. Un `go:embed` ne peut de toute façon PAS traverser vers
+  `config/titles/...` (embed est borné au sous-arbre du fichier source). **Condition de
+  reprise** : un lot dédié qui thread soit un `rankedplaylists.Init(set
+  *mappings.AssetMappingSet)` appelé une fois par chaque point d'entrée
+  (`server_apiv1.go`, `cmd/probe-world-stats`, tout binaire qui exécute les migrations)
+  avant le premier appel, soit un paramètre explicite sur les 6 call-sites actuels,
+  pourrait migrer ce TOML vers `config/titles/halo_infinite/mappings/assets.toml` (kind
+  `playlist_ranked`) et supprimer l'embed. Jusque-là, l'embed reste la solution
+  practicable, documentée en tête du TOML et dans le commentaire de package. Gate
+  supplémentaire : deux tests de `internal/sync` (`career_ranked_augment_test.go`,
+  `csr_history_backfill_test.go`) référençaient encore `NameEN`/`NameFR` comme CHAMPS
+  (`go vet` cassé, non détecté par l'exécutant précédent faute d'avoir fait tourner les
+  gates) — corrigés en méthodes ; `TestAugmentWithActiveRankedCSRs_UsesProvidedList`
+  ajustait un `Playlist{..., NameEN: "Dynamic"}` qui n'a plus de sens (le nom n'est plus
+  assignable ad hoc) — réécrit pour vérifier le comportement RÉEL déjà documenté
+  ailleurs (`engine_postsync_csr.go::activeRankedPlaylists` : une playlist hors
+  référence statique résout un nom vide, la lecture catalogue-first complète le
+  libellé). `golangci-lint` a aussi révélé un `goconst` neuf sur `"crossplay"` (14
+  occurrences dans `all`, exposé par le refactor car les lignes touchées entrent dans le
+  diff `--new-from-merge-base`) — extrait en constantes `queueOpen`/`queueSoloDuo`/
+  `inputCrossplay`/`inputMnK`/`inputController`.
+- `internal/service/match_history_service.go::expTypePVPRanked = "PVP classé"` /
+  `expTypePVPUnranked = "PVP non classé"` : `[!]` NON TRAITÉ. Vérifié sur pièces : la
+  VALUE (pas le Label) de ces options est un CONTRAT documenté et testé (GH5-2,
+  `filters_service.go::applyExperienceFilter` : « Ne PAS remplacer ces littéraux FR ni
+  localiser la Value — la cascade front en dépend » ; `filters_service.go::experienceLabelForLocale`
+  localise déjà correctement le LABEL affiché en FR/EN via `expTypeLabelEN`, donc pas de
+  bug visible à l'écran). Le web porte ce contrat dans ~80 fichiers sous `apps/web/src`
+  qui font référence à la chaîne `classé`/`non classé`, dont au moins
+  `features/_shared/experienceCascade.ts::EXPERIENCE_TO_CASCADE` avec le commentaire
+  explicite « CONTRAT (GH5-2) … NE PAS traduire ces chaînes ici, sinon la cascade ne
+  matche plus ». Migrer la VALUE vers une clé neutre (le frontend a d'ailleurs déjà ses
+  propres clés `Experience` = `'all'|'ranked'|'unranked'` dans `ExperienceDropdown.tsx`,
+  ce qui rendrait la migration plus simple qu'il n'y paraît) exige un lot COORDONNÉ
+  back+front (constantes Go, tous les matchers substring, `EXPERIENCE_TO_CASCADE`, et
+  une repasse de regression sur Explorer/Session/Synthesis) — hors périmètre d'une
+  reprise L3 « modes/playlists ». Reprise : lot dédié « clé canonique
+  d'expérience/portée », après vérification que le changement de VALUE ne casse aucun
+  filtre persisté côté client (localStorage / URL state).
+- `internal/games/halo_infinite/migrations/mode_playlist_fr.go` : `[~]` confirmé HORS
+  PÉRIMÈTRE (§2.H — fichier sous `migrations/`, seeds `mode_name_tr` / traductions
+  statiques idempotentes). C'est bien la source qui alimente `mode_name_tr` (lu à la
+  sync par les adapters pour peupler `canonical.AssetReference.Labels`), mais la
+  question « faut-il le remplacer par un TOML par-titre » est une décision de portée
+  plus large (faut-il que CHAQUE titre déclare ses traductions de mode en TOML plutôt
+  qu'en migration DB seedée une fois ?) que ce lot ne tranche pas — consigné, non migré.
+
+Ratchets : `no_french_label_literal_test.go` — `rankedplaylists.go` retiré de
+l'allowlist (15 → 0, 131 fichiers / 522 littéraux au total, était 132/537) ;
+`match_history_service.go` inchangé (2, non traité, justifié ci-dessus). Nouveau ratchet
+`internal/archlint/no_bare_resolve_mode_ui_test.go::TestNoNewModePlaylistLabelLiteral`
+(interdit tout nouveau champ struct littéral `NameEN:`/`NameFR:` — grandfathered :
+`analysis/skill_v2/tier.go`, famille TIER CSR distincte, déjà suivie en découverte L5).
+Gates Go (gofmt/build/vet/tests ciblés/openapi-gen -check/golangci-lint 0 issue) et web
+(node_modules réinstallé dans le worktree, generate-types sans diff, typecheck,
+lint 0 erreur, lint:colors, lint:fields, vitest 656 fichiers/6993 tests) verts. Pages à
+vérifier à l'écran (FR et EN) : Carrière (nom des playlists classées), Explorer/filtre
+portée (aucun changement visuel attendu — VALUE inchangée).
+
 **L4 — Armes** (C). **HORS PÉRIMÈTRE du lot M5 première moitié (2026-09-07)** — reste `[ ]`
 pour la seconde moitié de M5.
 
@@ -382,3 +475,47 @@ si une entrée couvre déjà une famille ci-dessus avant d'en créer une).
   littéraux) aurait laissé le fichier dans un état incohérent sans plan de test dédié. Reprise :
   décision de périmètre (L5 strict = CSR seulement, ou nouveau L9 = paliers de perf ?) avant
   d'y toucher.
+
+## 12. DÉCOUVERTES DE L'EXÉCUTION (M5 seconde moitié — L3, 2026-09-08)
+
+> Consignées SANS être traitées (règle 7 plan-execution), sauf la première qui a été
+> corrigée séance tenante car elle bloquait le gate `go vet`/`go build` de l'étape
+> courante (règle 9 : un blocage du gate en cours se corrige, il ne se reporte pas).
+> Détail complet au §4 L3 ci-dessus.
+
+- 2026-09-08 ; `internal/sync/career_ranked_augment_test.go`,
+  `internal/sync/csr_history_backfill_test.go` ; l'exécutant précédent (coupé par la
+  limite de quota) avait converti `rankedplaylists.Playlist.NameEN`/`NameFR` de champs en
+  méthodes dans 6 sites de production mais n'avait PAS fait tourner `go vet`/`go test` sur
+  `internal/sync` — 2 fichiers de test cassaient la compilation (référence aux anciens
+  champs). Corrigé dans cette reprise (méthodes + réécriture du test qui construisait un
+  `Playlist{NameEN: "Dynamic"}` désormais impossible). Leçon : `plan-execution` règle 4
+  (« vérifier sur pièces, deux fois ») s'applique aussi aux GATES, pas seulement au code
+  lu — une conversion champ→méthode doit être suivie d'un `go build ./...`/`go vet` avant
+  de considérer l'étape close, y compris sur des paquets qu'on n'a pas soi-même édités.
+- 2026-09-08 ; `internal/games/halo_infinite/rankedplaylists/rankedplaylists.go` ;
+  l'emplacement canonique documenté par CLAUDE.md (`config/titles/{slug}/mappings/`) est
+  RÉELLEMENT accessible pour cette famille de données (kind+id+labels EN/FR — même forme
+  que `assets.toml`), mais le SEAM de chargement (`mappings.Registry`, construit au boot
+  avec `cfg.RepoRoot`) ne rejoint aucun des 3 appelants actuels (migration DB, 2 jobs de
+  sync) qui sont tous des fonctions pures sans `ctx`/`repoRoot`/Registry. C'est un cas où
+  la règle « TOML par-titre obligatoire » se heurte à une limite du pattern de DI existant
+  plutôt qu'à un manque de discipline — reprise consignée avec un chemin concret (Init
+  package-level appelé aux points d'entrée boot, ou paramètre explicite sur les
+  call-sites). Ne PAS retenter cette migration sans d'abord régler ce seam, sous peine de
+  répéter l'exploration.
+- 2026-09-08 ; `internal/service/match_history_service.go` (`expTypePVPRanked`,
+  `expTypePVPUnranked`) ; ce site est nommé dans l'inventaire §2.B du plan mais son
+  traitement complet (VALUE = clé neutre) est un chantier fullstack à part entière
+  (~80 fichiers `apps/web/src`, cascade de filtres Explorer/Session/Synthesis, contrat
+  GH5-2 explicitement marqué « ne pas toucher » dans le code). Ne pas le glisser dans un
+  futur lot « modes/playlists » sans le dimensionner comme tel (probable lot dédié,
+  décision produit sur le risque de régression des filtres persistés côté client).
+- 2026-09-08 ; `golangci-lint --new-from-merge-base` a révélé un `goconst` sur
+  `rankedplaylists.go` (`"crossplay"` × 14) qui n'apparaissait pas avant le refactor
+  champ→méthode de l'exécutant précédent — pas une régression de CE lot (le littéral
+  existait déjà), mais le refactor a fait entrer les lignes porteuses dans le diff
+  `--new-from-merge-base=origin/main`, donc dans le périmètre du linter ratchet. Leçon
+  pour un futur refactor mécanique sur un fichier à littéraux répétés : `golangci-lint`
+  peut se déclencher sur du code non fonctionnellement changé simplement parce que la
+  LIGNE a bougé — le vérifier avant de considérer un refactor de pure forme comme neutre.

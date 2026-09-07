@@ -1,3 +1,78 @@
+## [2026-09-08] Lot M5 (seconde moitie) — libelles en dur, famille L3 modes/playlists — Complete
+
+**Decision technique principale.** Reprise de l'execution du lot M5, partie L3 (modes / playlists
+/ categories / portees), plan d'orchestration §3 source `.ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md`
+§2.B/§4/§9-11. Reprise d'un executant precedent coupe par une limite de quota : worktree herite
+`LevelUp-wt-m5b-modes`, branche `feat/libelles-modes-playlists` (base `feat/libelles-accueil-rangs`
+@ `92ae3fe3d`), 9 fichiers modifies non commites + 1 nouveau TOML. Skills invoques : plan-execution,
+halo-modes, arch-rules, canonical-types, frontend-patterns. Decision utilisateur ferme : option 1
+(Go sert des cles, web localise via useAssetLabel/useFieldLabel), jamais de comparaison de slug.
+
+Etat herite verifie sur pieces AVANT de continuer (git status/diff, doctrine RE-VERIFIER) :
+`rankedplaylists.go` (Playlist.NameEN/NameFR passes de champs litteraux a des methodes lisant un
+nouveau `ranked_playlists_labels.toml` embarque) + 5 call-sites adaptes (career.go,
+csr_history_backfill.go, leaderboard_world_repo.go, migrations/ranked_playlists.go,
+probe-world-stats/main.go) + leurs tests. Le point d'attention de la reprise portait sur
+l'emplacement du TOML (embarque dans le paquet Go vs `config/titles/halo_infinite/mappings/`) :
+verifie qu'un chemin de chargement par-titre EXISTE pour cette famille (kind+id+labels EN/FR =
+meme forme que `assets.toml`, charge par `mappings.Registry.LoadFromConfigDir(repoRoot, ...)`) mais
+qu'il est INAPPLICABLE aux 3 appelants reels (migration DB + 2 jobs de sync, tous des fonctions
+pures sans repoRoot/Registry threade, et un `go:embed` ne peut de toute facon pas traverser vers
+`config/titles/`) — embed conserve, condition de reprise consignee (§11 du plan libelles).
+
+**Actions.**
+- `internal/games/halo_infinite/mode_category.go` : `[~]` deja conforme (verifie sur pieces) — les
+  8 categories retournees sont des CLES qui matchent `[assets.mode.*]` de `assets.toml`, resolues
+  cote web via `useAssetLabel('mode', value)` (`MediaToolbar.tsx`). Pas d'action.
+- `internal/analysis/home_canonical*.go::labelForLocale` : `[~]` re-confirme donnee (pas litteral) —
+  `assetLabels()` lit `canonical.AssetReference.Labels`, peuple par match depuis la DB.
+- `rankedplaylists.go` : `[x]` herite complete + corrige. Deux fichiers de test de `internal/sync`
+  (`career_ranked_augment_test.go`, `csr_history_backfill_test.go`) cassaient encore la compilation
+  (reference aux anciens champs NameEN/NameFR) — l'executant precedent n'avait pas fait tourner
+  `go vet`/`go test` sur `internal/sync` avant de s'arreter. Corriges (methodes + reecriture du test
+  `UsesProvidedList` qui construisait un `Playlist{NameEN: "Dynamic"}` desormais impossible, remplace
+  par la verification du comportement reel deja documente : une playlist hors reference resout un
+  nom vide). `golangci-lint --new-from-merge-base` a aussi revele un `goconst` neuf sur `"crossplay"`
+  (14 occurrences, expose par le refactor qui a fait entrer ces lignes dans le diff) — extrait en
+  constantes `queueOpen`/`queueSoloDuo`/`inputCrossplay`/`inputMnK`/`inputController`.
+- `internal/service/match_history_service.go::expTypePVPRanked/Unranked` : `[!]` NON TRAITE,
+  justifie. La VALUE (pas le Label, deja localise FR/EN) est un CONTRAT teste et documente dans le
+  code (GH5-2) avec la cascade de filtres web — ~80 fichiers `apps/web/src` en dependent, dont
+  `experienceCascade.ts` avec le commentaire explicite "NE PAS traduire ces chaines ici". Migrer la
+  VALUE vers une cle neutre exige un lot fullstack dedie et coordonne, hors perimetre d'une reprise
+  "modes/playlists".
+- `migrations/mode_playlist_fr.go` : `[~]` confirme hors perimetre (migration, CLAUDE.md §2.H).
+
+Ratchets : `no_french_label_literal_test.go` — `rankedplaylists.go` retire de l'allowlist (15 -> 0,
+131 fichiers / 522 litteraux, etait 132/537). Nouveau ratchet
+`no_bare_resolve_mode_ui_test.go::TestNoNewModePlaylistLabelLiteral` (interdit un nouveau champ
+struct litteral `NameEN:`/`NameFR:` — grandfathered `analysis/skill_v2/tier.go`, famille TIER CSR
+distincte deja suivie en decouverte L5).
+
+**Decouvertes consignees, NON traitees** (plan libelles §12) : (1) seam DI absent entre
+`mappings.Registry` (boot, repoRoot) et les appelants purs de `rankedplaylists` (migration/sync) —
+bloque une migration future du TOML vers `config/titles/` sans threading explicite ; (2)
+`match_history_service.go` VALUE FR canonique couplee a ~80 fichiers web (contrat GH5-2) — lot
+dedie requis ; (3) `golangci-lint --new-from-merge-base` peut se declencher sur du code
+fonctionnellement inchange des qu'un refactor mecanique deplace la ligne dans le diff.
+
+**Resultats observes.** Gates Go : `gofmt -l` vide, `go build ./internal/... ./cmd/...` propre,
+`go vet` des paquets touches propre, `go test -count=1 ./internal/service/... ./internal/analysis/...
+./internal/domain/... ./internal/api/... ./internal/archlint/... ./internal/games/...
+./internal/sync/ ./internal/platform/duckdb/...` tous verts. `openapi-gen -check` : a jour, 0 diff.
+`make generate-types` : 0 diff sur `generated.ts`. `golangci-lint run
+--new-from-merge-base=origin/main ./...` : 0 issue (apres correction du goconst). Web (node_modules
+reinstalle dans le worktree, absent au depart) : `npm run typecheck` propre, `npm run lint` : 0
+erreur / 29 warnings (baseline inchangee, fichiers non touches), `lint:colors` 0 violation,
+`lint:fields` 0 violation, `npx vitest run --pool=forks` : 656 fichiers / 6993 tests verts (1
+skipped, meme baseline).
+
+**Conclusion / prochaine etape.** L3 clos et coche (plan libelles §4, plan d'orchestration §3 M5 —
+statut "L3 [x]"). L4 (armes) reste `[ ]`, seul restant du lot M5. Pages a verifier a l'ecran par
+l'utilisateur (FR et EN) : Carriere (nom des playlists classees dans l'historique CSR) ; aucun
+changement visuel attendu sur Explorer/filtre portee (VALUE inchangee, non traitee). Commits sur
+`feat/libelles-modes-playlists`, poussee vers origin, non fusionnee.
+
 ## [2026-09-07] Lot M5 (premiere moitie) — libelles en dur, familles L2 accueil + L5 rangs — Complete
 
 **Decision technique principale.** Execution du lot M5 (plan d'orchestration §3, source
