@@ -45,17 +45,13 @@ func pisteMonde(slot uint32, deMS, aMS int64, x, y float32) []filmdec.BipedPosit
 func mortFilm(xuid uint64, tMS int64) Death { return Death{XUID: xuid, TimeMS: tMS} }
 
 // dcEntree monte une entrée : le pont est construit par `ResolveSlotXUID`, le vrai.
-func dcEntree(pos []filmdec.BipedPosition, mortsFilm []Death, journal []MortDuJournal,
-	departs, arrivees map[uint64]int64,
-) EntreeContexteMorts {
+func dcEntree(pos []filmdec.BipedPosition, mortsFilm []Death, journal []MortDuJournal) EntreeContexteMorts {
 	_, rep := ResolveSlotXUID(pos, mortsFilm, indexDe(111, 222, 333, 444, 999))
 	return EntreeContexteMorts{
 		Positions: pos,
 		Report:    rep,
 		Journal:   journal,
 		Equipes:   map[uint64]int{111: 0, 222: 0, 333: 0, 444: 0, 999: 1},
-		DepartMS:  departs,
-		ArriveeMS: arrivees,
 	}
 }
 
@@ -89,7 +85,7 @@ func corpusDeReference() ([]filmdec.BipedPosition, []Death, []MortDuJournal) {
 // TestContextesDesMorts_LesQuatreEtats — LE CAS DE RÉFÉRENCE.
 func TestContextesDesMorts_LesQuatreEtats(t *testing.T) {
 	pos, mortsFilm, journal := corpusDeReference()
-	out := ContextesDesMorts(dcEntree(pos, mortsFilm, journal, nil, nil))
+	out := ContextesDesMorts(dcEntree(pos, mortsFilm, journal))
 
 	c := contexteDe(t, out, 111, 10_000)
 	if c.Visibles != 1 || c.EnAttente != 1 || c.HorsDeVue != 1 || c.Partis != 0 {
@@ -128,7 +124,7 @@ func TestContextesDesMorts_SlotRecycle_LePremierOccupantNHeritePas(t *testing.T)
 		{VictimeXUID: 222, TempsMS: 10_000}, {VictimeXUID: 111, TempsMS: 20_000},
 	}
 
-	e := dcEntree(pos, mortsFilm, journal, nil, nil)
+	e := dcEntree(pos, mortsFilm, journal)
 	e.Equipes = map[uint64]int{111: 0, 222: 0, 333: 0}
 	c := contexteDe(t, ContextesDesMorts(e), 111, 20_000)
 
@@ -159,7 +155,7 @@ func TestContextesDesMorts_MortRecente_NEstPasVisible(t *testing.T) {
 	journal := []MortDuJournal{
 		{VictimeXUID: 222, TempsMS: 9_500}, {VictimeXUID: 111, TempsMS: 10_000},
 	}
-	e := dcEntree(pos, mortsFilm, journal, nil, nil)
+	e := dcEntree(pos, mortsFilm, journal)
 	e.Equipes = map[uint64]int{111: 0, 222: 0}
 	c := contexteDe(t, ContextesDesMorts(e), 111, 10_000)
 
@@ -172,55 +168,6 @@ func TestContextesDesMorts_MortRecente_NEstPasVisible(t *testing.T) {
 	}
 	if c.PlusProcheM != nil {
 		t.Fatalf("plus proche = %v, attendu nil : un mort n'est pas a une distance", *c.PlusProcheM)
-	}
-}
-
-// TestContextesDesMorts_PasEncoreArrive_NeCompteNullePart — `joined_in_progress`.
-//
-// Un joueur qui rejoint APRÈS l'instant n'est pas « hors de vue » : il n'est pas dans la
-// partie. Le compter ainsi le rendrait « en mesure d'accompagner » toutes les morts qui
-// précèdent son arrivée — et ferait grossir le dénominateur d'un coéquipier fantôme.
-func TestContextesDesMorts_PasEncoreArrive_NeCompteNullePart(t *testing.T) {
-	var pos []filmdec.BipedPosition
-	pos = append(pos, pisteMonde(1, 0, 10_000, 0, 0)...)
-	pos = append(pos, pisteMonde(2, 0, 20_000, 3, 0)...)
-
-	mortsFilm := []Death{mortFilm(111, 10_000), mortFilm(222, 20_000)}
-	journal := []MortDuJournal{{VictimeXUID: 111, TempsMS: 10_000}}
-
-	e := dcEntree(pos, mortsFilm, journal, nil, map[uint64]int64{333: 15_000})
-	e.Equipes = map[uint64]int{111: 0, 222: 0, 333: 0}
-	c := contexteDe(t, ContextesDesMorts(e), 111, 10_000)
-
-	if c.Total != 1 {
-		t.Fatalf("total = %d, attendu 1 : 333 arrive a 15 000, il n'etait pas la a 10 000 — "+
-			"il ne compte dans AUCUN etat, ni au total", c.Total)
-	}
-	if c.Visibles != 1 {
-		t.Fatalf("visibles = %d, attendu 1 (222)", c.Visibles)
-	}
-}
-
-// TestContextesDesMorts_LeDepartPrimeSurLaPosition — LA BASE FAIT FOI SUR LES DÉPARTS.
-func TestContextesDesMorts_LeDepartPrimeSurLaPosition(t *testing.T) {
-	var pos []filmdec.BipedPosition
-	pos = append(pos, pisteMonde(1, 0, 10_000, 0, 0)...)
-	pos = append(pos, pisteMonde(2, 0, 20_000, 3, 0)...)
-
-	mortsFilm := []Death{mortFilm(111, 10_000), mortFilm(222, 20_000)}
-	journal := []MortDuJournal{{VictimeXUID: 111, TempsMS: 10_000}}
-
-	e := dcEntree(pos, mortsFilm, journal, map[uint64]int64{222: 9_000}, nil)
-	e.Equipes = map[uint64]int{111: 0, 222: 0}
-	c := contexteDe(t, ContextesDesMorts(e), 111, 10_000)
-
-	if c.Partis != 1 || c.Visibles != 0 {
-		t.Fatalf("parti %d / visible %d, attendu 1/0 : le depart de la BASE prime sur ce que "+
-			"le film montre encore", c.Partis, c.Visibles)
-	}
-	if c.PlusProcheM != nil {
-		t.Fatalf("plus proche = %v, attendu nil : un joueur parti n'est pas a une distance",
-			*c.PlusProcheM)
 	}
 }
 
@@ -246,7 +193,7 @@ func TestContextesDesMorts_LaFenetreDeVisibilite(t *testing.T) {
 
 			mortsFilm := []Death{mortFilm(111, 10_000), mortFilm(222, 20_000)}
 			journal := []MortDuJournal{{VictimeXUID: 111, TempsMS: 10_000}}
-			e := dcEntree(pos, mortsFilm, journal, nil, nil)
+			e := dcEntree(pos, mortsFilm, journal)
 			e.Equipes = map[uint64]int{111: 0, 222: 0}
 
 			c := contexteDe(t, ContextesDesMorts(e), 111, 10_000)
@@ -267,7 +214,7 @@ func TestContextesDesMorts_MortSansLieu_NeSortPas(t *testing.T) {
 	pos, mortsFilm, _ := corpusDeReference()
 	// Une mort de 111 a 15 000 : il n'est plus repliqué depuis 10 000.
 	journal := []MortDuJournal{{VictimeXUID: 111, TempsMS: 15_000}}
-	for _, c := range ContextesDesMorts(dcEntree(pos, mortsFilm, journal, nil, nil)) {
+	for _, c := range ContextesDesMorts(dcEntree(pos, mortsFilm, journal)) {
 		if c.VictimeXUID == 111 && c.TempsMS == 15_000 {
 			t.Fatalf("contexte rendu pour une mort sans lieu : %+v", c)
 		}
@@ -281,7 +228,7 @@ func TestContextesDesMorts_MortSansLieu_NeSortPas(t *testing.T) {
 // faits en base serait pire — ils n'ont pas d'écran pour montrer leur réserve.
 func TestContextesDesMorts_IndexIncoherent_RienNeSort(t *testing.T) {
 	pos, mortsFilm, journal := corpusDeReference()
-	e := dcEntree(pos, mortsFilm, journal, nil, nil)
+	e := dcEntree(pos, mortsFilm, journal)
 	e.Report.IndexDisagreements = 1
 
 	if out := ContextesDesMorts(e); len(out) != 0 {
@@ -297,7 +244,7 @@ func TestContextesDesMorts_IndexIncoherent_RienNeSort(t *testing.T) {
 // Refuser dessus écarterait exactement les films que la correction P0-2 existe pour traiter.
 func TestContextesDesMorts_SlotRecycleNeRefusePas(t *testing.T) {
 	pos, mortsFilm, journal := corpusDeReference()
-	e := dcEntree(pos, mortsFilm, journal, nil, nil)
+	e := dcEntree(pos, mortsFilm, journal)
 	e.Report.SlotCollisions = 3
 
 	if out := ContextesDesMorts(e); len(out) == 0 {
@@ -309,8 +256,7 @@ func TestContextesDesMorts_SlotRecycleNeRefusePas(t *testing.T) {
 // TestContextesDesMorts_LaSommeDesEtatsFaitLeTotal — INVARIANT.
 func TestContextesDesMorts_LaSommeDesEtatsFaitLeTotal(t *testing.T) {
 	pos, mortsFilm, journal := corpusDeReference()
-	for _, c := range ContextesDesMorts(dcEntree(pos, mortsFilm, journal,
-		map[uint64]int64{444: 9_000}, nil)) {
+	for _, c := range ContextesDesMorts(dcEntree(pos, mortsFilm, journal)) {
 		if somme := c.Visibles + c.EnAttente + c.HorsDeVue + c.Partis; somme != c.Total {
 			t.Fatalf("%+v : somme des etats = %d, total = %d", c, somme, c.Total)
 		}
@@ -331,7 +277,7 @@ func TestContextesDesMorts_HorlogeDuFilmConvertie(t *testing.T) {
 	// Le fil des morts est sur l'horloge du MATCH : 10 000 et 20 000.
 	mortsFilm := []Death{mortFilm(111, 10_000), mortFilm(222, 20_000)}
 	journal := []MortDuJournal{{VictimeXUID: 111, TempsMS: 10_000}}
-	e := dcEntree(pos, mortsFilm, journal, nil, nil)
+	e := dcEntree(pos, mortsFilm, journal)
 	e.Equipes = map[uint64]int{111: 0, 222: 0}
 
 	if e.Report.DeathOffsetMS != dec {

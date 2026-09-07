@@ -118,15 +118,6 @@ func TestJournalDesMorts_EcarteUneVictimeNonResolue(t *testing.T) {
 	}
 }
 
-// TestInstantsNumeriques_EcarteUnXuidNonDecimal — même règle, sur les instants d'arrivée et de
-// départ : un xuid non décimal ne peut correspondre à aucun joueur du film.
-func TestInstantsNumeriques_EcarteUnXuidNonDecimal(t *testing.T) {
-	out := instantsNumeriques(map[string]int64{"111": 900, "bot": 100})
-	if len(out) != 1 || out[111] != 900 {
-		t.Fatalf("instants = %+v, attendu la seule entree decimale", out)
-	}
-}
-
 // TestPostSyncDeps_SansResolveurDeCarte_LaCaptureEstDesarmee — la garde de la capture au
 // post-sync.
 //

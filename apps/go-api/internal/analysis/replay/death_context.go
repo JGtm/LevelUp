@@ -13,26 +13,25 @@ package replay
 // Il vit dans `analysis/replay` parce que c'est le paquet qui tient déjà les positions et le
 // pont slot->xuid. Le collecteur, lui, se contente de lui passer ce qu'il a déjà lu.
 //
-// # LES QUATRE ÉTATS, ET LEUR ORDRE
+// # LES TROIS ÉTATS APPLIQUÉS EN V1, ET LEUR ORDRE
 //
 // L'ordre d'examen est une DÉCISION, pas un détail d'implémentation :
 //
-//	0. ABSENT         il n'est pas encore arrivé (`first_joined_time` postérieur à l'instant).
-//	                  Il ne compte dans AUCUN état, ni même au total : il n'était pas là.
-//	1. PARTI          la base fait foi. Un joueur dont le départ est enregistré n'est plus dans
-//	                  la partie, quoi que le film montre encore de lui.
-//	2. VISIBLE        une position répliquée dans la dernière seconde ET une vie nommée qui
+//	1. VISIBLE        une position répliquée dans la dernière seconde ET une vie nommée qui
 //	                  couvre l'instant. LES DEUX SONT NÉCESSAIRES : la réplication s'arrête
 //	                  ~34 ms APRÈS la mort, donc un joueur mort depuis 500 ms a encore une
 //	                  position fraîche — sans le test de vitalité, il sortait « visible », avec
 //	                  une distance, et sa mort se lisait « accompagnée ». C'est le SEUL état qui
 //	                  autorise une distance.
-//	3. EN ATTENTE     sa dernière mort au journal précède l'instant, et rien ne l'a montré
+//	2. EN ATTENTE     sa dernière mort au journal précède l'instant, et rien ne l'a montré
 //	                  depuis. Il attend sa réapparition, il ne peut pas accompagner.
-//	4. HORS DE VUE    tout le reste. IL EST VIVANT — typiquement en véhicule, où le biped cesse
+//	3. HORS DE VUE    tout le reste. IL EST VIVANT — typiquement en véhicule, où le biped cesse
 //	                  d'être répliqué. Le compter mort ferait sortir « équipe à terre » une mort
 //	                  survenue à trois mètres d'un coéquipier en Warthog : c'est exactement le
 //	                  défaut P0 de la revue ronde 1 (2026-09-07).
+//
+// V1 : ABSENT et PARTI ne sont JAMAIS appliqués (horloge API ≠ horloge du film). Un coéquipier
+// est présent tout au long du match ; le champ `teammates_left` vaut toujours 0.
 //
 // Mettre « en attente » avant « visible » inverserait le poids de la preuve : une position
 // répliquée est une OBSERVATION, une attente est une déduction, et l'observation gagne.
@@ -81,7 +80,7 @@ type MortDuJournal struct {
 	TempsMS     int64
 }
 
-// EntreeContexteMorts porte les quatre sources, déjà lues par l'appelant.
+// EntreeContexteMorts porte les trois sources, déjà lues par l'appelant.
 type EntreeContexteMorts struct {
 	// Positions : les positions bipeds du film, avec leurs coordonnées MONDE (l'appelant a
 	// fourni les bornes de la carte à `ScanBipedPositions`). Sans monde, aucune distance.
@@ -102,16 +101,6 @@ type EntreeContexteMorts struct {
 	// Equipes : xuid -> numéro d'équipe, depuis `match_participants`. JAMAIS depuis le film,
 	// qui ne porte aucun camp.
 	Equipes map[uint64]int
-	// DepartMS : xuid -> instant du départ, en ms depuis le début du match. Une entrée ABSENTE
-	// veut dire « jamais parti » — et c'est le cas normal.
-	DepartMS map[uint64]int64
-	// ArriveeMS : xuid -> instant de son ARRIVÉE (`first_joined_time`). Une entrée absente veut
-	// dire « présent depuis le début », le cas normal.
-	//
-	// UN JOUEUR PAS ENCORE ARRIVÉ N'EST PAS « HORS DE VUE » : il n'est pas dans la partie. Sans
-	// cette lecture, un `joined_in_progress` tombait en `out_of_sight` — donc compté VIVANT et
-	// « en mesure d'accompagner » — pour toutes les morts qui précèdent son arrivée.
-	ArriveeMS map[uint64]int64
 }
 
 // ContexteMort est ce que la lecture saura d'une mort : combien de coéquipiers dans chaque état,
@@ -191,14 +180,8 @@ func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID, vies map[uint
 		if autre == m.VictimeXUID || equipe != son {
 			continue
 		}
-		if arrivee, connue := e.ArriveeMS[autre]; connue && arrivee > m.TempsMS {
-			// PAS ENCORE ARRIVÉ : il ne compte dans aucun état, ni au total. Le compter
-			// « hors de vue » le rendrait capable d'accompagner une mort survenue avant qu'il
-			// n'entre dans la partie.
-			continue
-		}
 		c.Total++
-		switch etatDUnCoequipier(e, pos, vies, mortsPar, autre, m.TempsMS) {
+		switch etatDUnCoequipier(pos, vies, mortsPar, autre, m.TempsMS) {
 		case EtatParti:
 			c.Partis++
 		case EtatVisible:
@@ -221,13 +204,11 @@ func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID, vies map[uint
 	return c
 }
 
-// etatDUnCoequipier applique les quatre règles, dans l'ordre documenté en tête de fichier.
-func etatDUnCoequipier(e EntreeContexteMorts, pos positionsParXUID, vies map[uint64][]vieMatch,
+// etatDUnCoequipier applique les trois règles actives : visible, en attente, hors de vue.
+// V1 : les départs ne sont plus appliqués (horloge API vs film) — cf. .ai/DECOUVERTES_TACTIQUE_2026-09-07.md
+func etatDUnCoequipier(pos positionsParXUID, vies map[uint64][]vieMatch,
 	mortsPar map[uint64][]int64, xuid uint64, tMS int64,
 ) string {
-	if depart, parti := e.DepartMS[xuid]; parti && depart <= tMS {
-		return EtatParti
-	}
 	if _, vu := pos.visibleA(xuid, tMS); vu && pos.vivantA(vies, xuid, tMS) {
 		return EtatVisible
 	}

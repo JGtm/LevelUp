@@ -11,7 +11,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/observability"
 	"log/slog"
 	"time"
@@ -44,12 +43,12 @@ func NewSharedRoster(db *sql.DB) *SharedRoster { return &SharedRoster{db: db} }
 // un xuid de victime. Des lignes qu aucun agregat carriere ne peut joindre — c est-a-dire
 // exactement ce que ce chantier existe pour produire.
 //
-// La vue est la SOURCE UNIQUE du resolveur `xuid -> gamertag` du depot
-// (`analysis.GamertagLookupViewSQL`), et sa cascade explique pourquoi lire une seule table ne
-// suffit jamais : bot connu, puis `xuid_aliases`, puis `match_participants`, puis
-// `killer_victim_pairs`, puis libelle masque. **`xuid_aliases` a cesse d etre alimente en avril
-// 2026** ; ce sont les gamertags du KILL-FEED, portes par `killer_victim_pairs`, qui couvrent
-// les adversaires croises depuis. Couverture mesuree : 18 219 xuids, 36 masques.
+// La vue est la SOURCE UNIQUE du resolveur `xuid -> gamertag` du depot, et sa cascade explique
+// pourquoi lire une seule table ne suffit jamais : bot connu, puis `xuid_aliases`, puis
+// `match_participants`, puis `killer_victim_pairs`, puis libelle masque. **`xuid_aliases` a cesse
+// d etre alimente en avril 2026** ; ce sont les gamertags du KILL-FEED, portes par
+// `killer_victim_pairs`, qui couvrent les adversaires croises depuis. Couverture mesuree : 18 219
+// xuids, 36 masques.
 //
 // AMBIGUITE : si deux participants du meme match portent le meme nom, on n en garde AUCUN.
 // Ecrire les morts d un joueur sous le xuid d un autre serait pire que de n en ecrire aucun.
@@ -63,8 +62,6 @@ func (r *SharedRoster) IdentitiesForMatch(ctx context.Context, matchID string) (
 		ParNom:     make(map[string]string, len(parXUID)),
 		ShotsFired: map[string]int{},
 		Equipes:    map[string]int{},
-		DepartMS:   map[string]int64{},
-		ArriveeMS:  map[string]int64{},
 	}
 	ambigus := map[string]bool{}
 	for xuid, gt := range parXUID {
@@ -125,38 +122,20 @@ func (r *SharedRoster) gamertagsForMatch(ctx context.Context, matchID string) (m
 	return out, nil
 }
 
-// participantsForMatch complete `out` avec les xuids du match, la reference `shots_fired`,
-// l EQUIPE et le DEPART de chacun.
+// participantsForMatch complete `out` avec les xuids du match, la reference `shots_fired`
+// et l EQUIPE de chacun.
 //
 // ⚠ `shots_fired` NULL N EST PAS ZERO. Une colonne nulle veut dire « l API n a pas donne le
 // nombre de tirs » ; zero veut dire « l API dit qu il n a pas tire ». La porte de publication
 // traite les deux DIFFEREMMENT (refus faute de reference d un cote, verdict de l autre), donc la
 // lecture ne doit surtout pas les confondre : une valeur nulle n entre pas dans la table.
-//
-// UNE SEULE REQUETE POUR LES QUATRE COLONNES (lot 7C). L equipe et le depart servent aux faits
-// d isolement (`match_death_context`) ; les demander a part aurait fait deux allers-retours pour
-// la meme ligne de la meme table. La MEME regle qu au-dessus s applique a `team_id` et a
-// `last_leave_time` : NULL veut dire « non renseigne », et une entree absente n est pas un zero.
-//
-// LE DEPART ET L ARRIVEE SONT CALES SUR L HORODATAGE CANONIQUE du registre (regle n 8),
-// exactement comme `replay_facts_repo.playerFacts` : `start_time` brut decalerait d un fuseau.
-//
-// ⚠ LE JOIN EST UN `LEFT JOIN`, ET C EST DELIBERE (revue de 7C, P2). En INNER, un match sans
-// ligne de registre — le cas d une collecte qui precede l enrichissement — rendait `XUIDs` VIDE
-// et faisait echouer la passe de positions tout entiere, alors que les xuids, eux, existaient.
-// Sans registre, les deux instants sortent NULL : « non renseignes », ce que la lecture sait
-// traiter (« present depuis le debut », « jamais parti »).
 func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string, out *MatchIdentities) error {
 	if r == nil || r.db == nil {
 		return fmt.Errorf("SharedRoster: db nil")
 	}
-	debut := analysis.SQLStartTimeCanonical("mr")
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT p.xuid, p.shots_fired, p.team_id,
-		       CAST(epoch_ms(p.last_leave_time) - epoch_ms(`+debut+`) AS BIGINT),
-		       CAST(epoch_ms(p.first_joined_time) - epoch_ms(`+debut+`) AS BIGINT)
+		SELECT p.xuid, p.shots_fired, p.team_id
 		FROM match_participants p
-		LEFT JOIN match_registry mr ON mr.match_id = p.match_id
 		WHERE p.match_id = ? AND p.xuid IS NOT NULL AND p.xuid <> ''
 		ORDER BY p.xuid
 	`, matchID)
@@ -167,8 +146,8 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 
 	for rows.Next() {
 		var xuid string
-		var shots, team, depart, arrivee sql.NullInt64
-		if err := rows.Scan(&xuid, &shots, &team, &depart, &arrivee); err != nil {
+		var shots, team sql.NullInt64
+		if err := rows.Scan(&xuid, &shots, &team); err != nil {
 			return fmt.Errorf("SharedRoster participants(%s) scan: %w", matchID, err)
 		}
 		out.XUIDs = append(out.XUIDs, xuid)
@@ -177,12 +156,6 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 		}
 		if team.Valid {
 			out.Equipes[xuid] = int(team.Int64)
-		}
-		if depart.Valid {
-			out.DepartMS[xuid] = depart.Int64
-		}
-		if arrivee.Valid {
-			out.ArriveeMS[xuid] = arrivee.Int64
 		}
 	}
 	if err := rows.Err(); err != nil {

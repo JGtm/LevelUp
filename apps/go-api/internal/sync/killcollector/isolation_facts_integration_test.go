@@ -56,8 +56,6 @@ func (r fakeRosterAvecEquipes) IdentitiesForMatch(ctx context.Context, matchID s
 		return ids, err
 	}
 	ids.Equipes = map[string]int{}
-	ids.DepartMS = map[string]int64{}
-	ids.ArriveeMS = map[string]int64{}
 	for i, x := range ids.XUIDs {
 		// DEUX CAMPS, par parité de l'ordre stable des xuids. La composition exacte n'a pas
 		// d'importance ici : ce que le test vérifie est le CHAÎNAGE, pas la mesure — celle-ci

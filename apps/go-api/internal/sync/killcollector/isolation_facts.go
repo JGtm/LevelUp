@@ -168,8 +168,6 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 		Report:    mat.report,
 		Journal:   journal,
 		Equipes:   equipes,
-		DepartMS:  instantsNumeriques(ids.DepartMS),
-		ArriveeMS: instantsNumeriques(ids.ArriveeMS),
 	})
 	// LE RESTE EST « SANS LIEU » : la mort est resolue, sa victime a une equipe, et pourtant
 	// aucun contexte n'est sorti — c'est que le film ne la montrait pas a cet instant.
@@ -209,20 +207,10 @@ func journalDesMorts(deaths []persist.KillEventInsert) ([]replay.MortDuJournal, 
 	return out, nonResolues
 }
 
-// equipesNumeriques / instantsNumeriques traduisent les tables texte de MatchIdentities. Un xuid
+// equipesNumeriques traduit la table texte de MatchIdentities. Un xuid
 // non decimal est ECARTE : il ne peut pas correspondre a un joueur du film.
 func equipesNumeriques(par map[string]int) map[uint64]int {
 	out := make(map[uint64]int, len(par))
-	for s, t := range par {
-		if v, ok := parseXUID(s); ok {
-			out[v] = t
-		}
-	}
-	return out
-}
-
-func instantsNumeriques(par map[string]int64) map[uint64]int64 {
-	out := make(map[uint64]int64, len(par))
 	for s, t := range par {
 		if v, ok := parseXUID(s); ok {
 			out[v] = t
