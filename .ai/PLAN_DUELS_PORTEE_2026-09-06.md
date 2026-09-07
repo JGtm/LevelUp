@@ -1186,7 +1186,7 @@ de la légende de PORTÉE, accents des deux tuiles) sont présentes dans
       n'a qu'un diff de COMMENTAIRE, la capability produit `weapon_range` vit dans
       `registry.go`, compilé — le binaire l'emporte donc avec lui.
 - [x] 6.5 Entrée `thought_log.md` FAITE (2026-09-07) ; `.ai/project_map.md` est GELÉ (bandeau « ne fait plus foi ») : rien à y porter.
-- [ ] 6.6 Commit + push + **CI surveillée jusqu'au niveau JOB** (`gh run list --branch feat/duels`) ;
+- [x] 6.6 FAIT le 2026-09-07 : push `feat/duels` (`c84620aab`), 4 workflows verts — CI (9 jobs : Frontend, Go Lint, Contract Test, OpenAPI Lint, Lease Enforcement, Build+Test ubuntu, Build+Test windows, Coverage+Baseline ; E2E Playwright skipped sur branche), Deploy Pre-Check, Secrets, ADR 0021 Gate. Worktrees et branches temporaires supprimés. Ancien texte :
       tout rouge se répare, même préexistant.
 
 ---

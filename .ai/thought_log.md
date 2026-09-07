@@ -4,7 +4,7 @@
 
 **Resultats observes.** Gate visuel valide par l utilisateur sur ses donnees (« C est tout bon valide »). Gates de livraison tous verts : Go (build, vet, gofmt, `go test ./...`, `-tags=integration -p 1 ./...`, `make go-api-test`, lint 0 issue) et web (typecheck, lint 0 erreur, vitest 6 299, lint:fields, contrat frais, manifests). Tuiles d entame absentes sur les donnees locales : `kill_openings` vide tant que le backfill (decision utilisateur, jamais lance d office) n a pas tourne — comportement voulu, jamais un zero.
 
-**Conclusion / prochaine etape.** Push de `feat/duels` et CI surveillee job par job (6.6). Ensuite : nettoyage des worktrees temporaires (liens `node_modules` a retirer AVANT `git worktree remove`), et les decisions utilisateur en attente au registre : backfill `kill_openings` sur le cache de films ; `kill_positions` (peuplee en prod) a passer en `decode_pass` et a inscrire aux tables append-only protegees.
+**Conclusion / prochaine etape.** Push de `feat/duels` et CI surveillee job par job (6.6). FAIT : 4 workflows verts sur `c84620aab`, CI 9 jobs verts au niveau JOB (E2E skipped sur branche). 12 worktrees temporaires et 12 branches de lot supprimes (lien node_modules de fix4 retire avant, cible principale intacte). Seul `LevelUp-wt-duels` (feat/duels) subsiste. Ensuite : nettoyage des worktrees temporaires (liens `node_modules` a retirer AVANT `git worktree remove`), et les decisions utilisateur en attente au registre : backfill `kill_openings` sur le cache de films ; `kill_positions` (peuplee en prod) a passer en `decode_pass` et a inscrire aux tables append-only protegees.
 
 ## [2026-09-07] Lot 6 duels/portee — gates Go de livraison executes par le pilote, tous verts — Complete (6.2 Go, 6.3)
 
