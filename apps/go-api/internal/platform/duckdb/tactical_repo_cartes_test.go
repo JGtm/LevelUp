@@ -202,7 +202,6 @@ func TestTacticalRepo_TablesAbsentes_Capability(t *testing.T) {
 	// `game_variant_name`, et rien ne le signalait tant qu'aucune requete n'y touchait.
 	// Ici on part du schema LIVRE et on supprime les tables du film : c'est exactement la
 	// situation d'un titre sans decodeur, et elle ne peut plus diverger.
-	_ = migration.All()
 	if err := migration.RunForDB(sharedSQL, migration.TargetShared); err != nil {
 		t.Fatalf("migrations shared: %v", err)
 	}

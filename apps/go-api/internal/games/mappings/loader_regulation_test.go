@@ -516,19 +516,44 @@ func TestRadarRangeM_TableLivree(t *testing.T) {
 	if table["BTB:Slayer"] != 24 {
 		t.Fatalf("BTB livre = %d, attendu 24 m", table["BTB:Slayer"])
 	}
-	// TOUTE VARIANTE CONNUE DES AUTRES TABLES A UNE PORTEE (decision superviseur du
+	// TOUTE VARIANTE CONNUE D'UNE AUTRE TABLE A UNE PORTEE (decision superviseur du
 	// 2026-09-06) : sans cela, une variante parfaitement identifiee par ailleurs sortait de
 	// la lecture « isole » sans que rien ne l'explique.
-	for variante := range set.targets {
-		if table[variante] == 0 {
-			t.Errorf("variante %q connue de [score_target] mais absente de [radar_range_m]",
-				variante)
+	//
+	// LES QUATRE TABLES SONT COUVERTES DEPUIS LE 2026-09-07 (revue ronde 2). Les deux
+	// premieres seules laissaient un trou exact : une variante declaree UNIQUEMENT dans
+	// [rounds_decide] ou [hold_ticks] — les modes a manches et les modes de garde, ceux
+	// dont l'ajout est le plus probable — passait ce garde-rail sans avoir de portee.
+	for nom, connues := range map[string][]string{
+		"[score_target]":       clesInt(set.targets),
+		"[regulation_seconds]": clesInt(set.seconds),
+		"[rounds_decide]":      clesBool(set.roundsDecide),
+		"[hold_ticks]":         clesInt(set.holdTicks),
+	} {
+		if len(connues) == 0 {
+			t.Errorf("%s : aucune variante lue — le garde-rail ne garde rien de cette table", nom)
+		}
+		for _, variante := range connues {
+			if table[variante] == 0 {
+				t.Errorf("variante %q connue de %s mais absente de [radar_range_m]", variante, nom)
+			}
 		}
 	}
-	for variante := range set.seconds {
-		if table[variante] == 0 {
-			t.Errorf("variante %q connue de [regulation_seconds] mais absente de [radar_range_m]",
-				variante)
-		}
+}
+
+// clesInt / clesBool : les variantes declarees par une table, pour la boucle de couverture.
+func clesInt(m map[string]int) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
 	}
+	return out
+}
+
+func clesBool(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
 }
