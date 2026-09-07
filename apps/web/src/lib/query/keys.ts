@@ -412,4 +412,10 @@ export const queryKeys = {
   filtersResolveAll: (playerSlug: string) => ['filters-resolve', playerSlug] as const,
   /** Préfixe broad — invalide tous les `adminDataQualityIssues(*)`. */
   adminDataQualityIssuesAll: ['admin', 'data-quality', 'issues'] as const,
+
+  // Tactique (Phase 5 — analyse spatiale)
+  tacticalMapsPlayed: (playerSlug: string, titleSlug: string, filterHash: string) =>
+    ['tactical', playerSlug, titleSlug, 'maps', filterHash] as const,
+  tacticalRaster: (playerSlug: string, titleSlug: string, mapId: string, filterHash: string, question: string, who: string, spawn: string) =>
+    ['tactical', playerSlug, titleSlug, 'raster', mapId, filterHash, question, who, spawn] as const,
 } as const
