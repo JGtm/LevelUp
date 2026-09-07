@@ -154,7 +154,7 @@ func duelsMorts(t *testing.T, film *filmsource.Film, lives []lifeSpan) []duelMor
 	if err != nil {
 		t.Fatalf("fil des morts : %v", err)
 	}
-	off, _ := bestDeathOffset(lives, deaths)
+	off, _, _ := bestDeathOffset(lives, deaths)
 	nommees := nameLivesByDeaths(lives, deaths, off)
 	if nommees == 0 {
 		t.Fatalf("aucune vie nommee (%d vies, %d morts) : le pont mort <-> vie a echoue",
