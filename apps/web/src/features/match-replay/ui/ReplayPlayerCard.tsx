@@ -76,6 +76,14 @@ interface TileLayout {
   vitalsLine: string
   /** La rangée armes + inventaire. */
   row: string
+  /**
+   * Le RAYON des couches d'effets — couche sous le contenu, incrustation (nuage, éclairs,
+   * anneau du capteur, fourreau de translocation) et filigrane de porteur : LE MÊME que celui
+   * de la tuile, sans quoi une couche `inset-0` à 8 px déborderait les coins d'une tuile à 6
+   * (étape 4.6, 2026-09-07). `rounded-lg` sur la fiche normale (la chaîne d'aujourd'hui, à
+   * l'octet), `rounded-md` sur la compacte. Un littéral en clair par gabarit, jamais interpolé.
+   */
+  layerRadius: string
 }
 
 const TILE_LAYOUT: Record<CardGabarit['bodyPx'], TileLayout> = {
@@ -88,6 +96,7 @@ const TILE_LAYOUT: Record<CardGabarit['bodyPx'], TileLayout> = {
     gauges: 'flex flex-col gap-[3px]',
     vitalsLine: '',
     row: 'mt-[6px] flex h-[18px] flex-nowrap items-center gap-x-[5px] overflow-hidden',
+    layerRadius: 'rounded-lg',
   },
   31: {
     tile: 'relative flex shrink-0 flex-col rounded-md border px-1.5 py-1.5',
@@ -98,6 +107,7 @@ const TILE_LAYOUT: Record<CardGabarit['bodyPx'], TileLayout> = {
     gauges: 'flex min-w-0 flex-1 flex-col gap-[2px]',
     vitalsLine: 'flex h-[12px] items-center gap-[5px]',
     row: 'mt-[3px] flex h-[16px] flex-nowrap items-center gap-x-[5px] overflow-hidden',
+    layerRadius: 'rounded-md',
   },
 }
 
@@ -157,13 +167,13 @@ export function ReplayPlayerCard({
     // défile.
     <div className={L.tile} style={cardChrome(state.alive)} title={fx.title}>
       {/* LA COUCHE D'EFFETS ÉPOUSE LA TUILE (option 2a) : fonds, voiles, flou et cadres
-          vivent sur cette couche `inset-0 rounded-lg`, SOUS le contenu — les rangées sont
-          en `relative` pour peindre au-dessus d'elle. Les éclats de mort/réapparition
-          animent SON fond, jamais celui de la fiche. */}
+          vivent sur cette couche `inset-0`, au rayon de la tuile (`L.layerRadius`), SOUS le
+          contenu — les rangées sont en `relative` pour peindre au-dessus d'elle. Les éclats
+          de mort/réapparition animent SON fond, jamais celui de la fiche. */}
       {hasUnderLayer(fx) && (
         <div
           aria-hidden
-          className={`replay-card-fx pointer-events-none absolute inset-0 rounded-lg ${fx.flashClass}`}
+          className={`replay-card-fx pointer-events-none absolute inset-0 ${L.layerRadius} ${fx.flashClass}`}
           style={fx.underStyle}
         />
       )}
@@ -171,7 +181,9 @@ export function ReplayPlayerCard({
           derrière le contenu, sans toucher ni la bordure (trois cadres d'équipement) ni le
           fond (verre, voile, teinte de mort). Déclarée AVANT les rangées, qui sont
           `relative` : l'ordre de peinture du DOM les met au-dessus, comme la couche d'effets. */}
-      {objective && <ReplayObjectiveMark kind={objective} sizePx={gabarit.watermarkPx} />}
+      {objective && (
+        <ReplayObjectiveMark kind={objective} sizePx={gabarit.watermarkPx} radiusClass={L.layerRadius} />
+      )}
       {/* AUCUNE MARQUE D'IDENTITÉ SUR LA FICHE (demande utilisateur du 2026-08-25) : le glyphe
           « ami » a été retiré de la colonne. Il reste au FIL des éliminations, où il sert à
           reconnaître un nom au milieu d'événements qui défilent ; sur une fiche, la colonne
@@ -244,7 +256,12 @@ export function ReplayPlayerCard({
           />
         )}
       </div>
-      <ZoneFxOverlay zones={zones} translocationDelay={fx.translocationDelay} boltCount={gabarit.boltCount} />
+      <ZoneFxOverlay
+        zones={zones}
+        translocationDelay={fx.translocationDelay}
+        boltCount={gabarit.boltCount}
+        radiusClass={L.layerRadius}
+      />
     </div>
   )
 }
@@ -290,7 +307,7 @@ const SHROUD_BOLTS = [
  * SUR SA PROPRE COUCHE, ET C'EST LE POINT : la couche du dessous anime déjà son fond (une
  * seule animation par élément et par propriété) — la pulsation du capteur, les éclairs et
  * le fourreau vivent donc chacun sur leur enfant. MÊME GÉOMÉTRIE que la couche du dessous
- * (`inset-0 rounded-lg`, la tuile elle-même — option 2a) : les deux épousent la fiche,
+ * (`inset-0` au rayon de la tuile, `radiusClass` — option 2a) : les deux épousent la fiche,
  * jamais deux cadres décalés. `pointer-events-none` : l'infobulle et le survol restent
  * ceux de la fiche. `aria-hidden` : tout ce que l'incrustation montre est déjà dit en
  * texte par l'infobulle (title de la fiche).
@@ -305,18 +322,21 @@ function ZoneFxOverlay({
   zones,
   translocationDelay,
   boltCount,
+  radiusClass,
 }: {
   zones: ZonePresence
   translocationDelay: string | null
   /** Nombre d'éclairs à rendre, pris en tête de `SHROUD_BOLTS` (3 en normal, 2 en compact). */
   boltCount: number
+  /** Le rayon de la tuile, en classe (`TILE_LAYOUT.layerRadius`) : l'incrustation l'épouse. */
+  radiusClass: string
 }) {
   const rien =
     !zones.repair && zones.shroudSinceMs === null && zones.sensorSincePingMs === null &&
     translocationDelay === null
   if (rien) return null
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg">
+    <div aria-hidden className={`pointer-events-none absolute inset-0 overflow-hidden ${radiusClass}`}>
       {zones.shroudSinceMs !== null && (
         <>
           <div className="replay-zone-cloud absolute inset-0" />
@@ -335,7 +355,7 @@ function ZoneFxOverlay({
       )}
       {zones.sensorSincePingMs !== null && (
         <div
-          className="replay-zone-sensor absolute inset-0 rounded-lg border-[1.5px] border-dashed"
+          className={`replay-zone-sensor absolute inset-0 ${radiusClass} border-[1.5px] border-dashed`}
           style={{
             borderColor: tokenCssVar('destructive'),
             animationDelay: `${(-zones.sensorSincePingMs / 1000).toFixed(3)}s`,
@@ -354,7 +374,7 @@ function ZoneFxOverlay({
         ))}
       {translocationDelay !== null && (
         <div
-          className="replay-flash-translocation absolute inset-0 rounded-lg"
+          className={`replay-flash-translocation absolute inset-0 ${radiusClass}`}
           style={{ animationDelay: translocationDelay }}
         />
       )}

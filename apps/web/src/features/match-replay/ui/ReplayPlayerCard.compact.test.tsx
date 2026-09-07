@@ -16,6 +16,7 @@ import { render, within } from '@testing-library/react'
 import type { ReplayDocument, ReplayInventory } from '@/lib/api/types'
 
 import { ReplayTeams } from './ReplayTeams'
+import { fichierNomme, lire } from '../test/featureFiles'
 import { scoreboardRow } from '../test/scoreboardRow'
 import { testReplayDoc } from '../test/testDoc'
 import { formatSeconds, frameToMs } from '../../../lib/replay/replayLogic'
@@ -377,6 +378,35 @@ describe('ReplayPlayerCard — la tuile compacte (mode_category BTB) : gate 2', 
     const india = tuile(vue, 'India')
     expect(india.querySelector('svg[width="34"]')).not.toBeNull()
     expect(vue.container.querySelector('svg[width="46"]')).toBeNull()
+  })
+
+  it('(l) 4.6 — les couches d’effets épousent le rayon de la tuile compacte (`rounded-md`), aucun `rounded-lg` dans la colonne', () => {
+    const { vue } = renderBTB(12)
+    // La tuile est en `rounded-md` ; une couche `inset-0` en `rounded-lg` (8 px) déborderait ses coins (6 px).
+    expect(vue.container.innerHTML).not.toContain('rounded-lg')
+    // La couche SOUS le contenu (Charlie : le voile de l'écran occultant).
+    const charlie = tuile(vue, 'Charlie')
+    const sous = charlie.querySelector('.replay-card-fx') as HTMLElement
+    expect(sous.className).toContain('absolute inset-0 rounded-md')
+    // L'incrustation AU-DESSUS (le nuage et les éclairs de Charlie, les croix de Delta).
+    const incrustation = charlie.querySelector('.replay-zone-cloud')?.parentElement as HTMLElement
+    expect(incrustation.className).toBe('pointer-events-none absolute inset-0 overflow-hidden rounded-md')
+    const croix = tuile(vue, 'Delta').querySelector('.replay-zone-cross')?.parentElement as HTMLElement
+    expect(croix.className).toBe('pointer-events-none absolute inset-0 overflow-hidden rounded-md')
+    // Le filigrane de porteur (India).
+    const filigrane = tuile(vue, 'India').querySelector('svg[width="34"]')?.parentElement as HTMLElement
+    expect(filigrane.className).toContain('overflow-hidden rounded-md')
+    // Les deux couches que ce document ne pose pas (anneau du capteur, fourreau de
+    // translocation) reçoivent le même rayon : au source, aucune classe de couche n'écrit plus
+    // `rounded-lg` en dur — seule la table `TILE_LAYOUT` le porte, pour le corps de 35.
+    const src = lire(fichierNomme('ReplayPlayerCard.tsx'))
+    expect(src).not.toMatch(/className="[^"]*rounded-lg/)
+    expect(src).toMatch(/replay-zone-sensor absolute inset-0 \$\{radiusClass\}/)
+    expect(src).toMatch(/replay-flash-translocation absolute inset-0 \$\{radiusClass\}/)
+    expect(src).toMatch(/replay-card-fx pointer-events-none absolute inset-0 \$\{L\.layerRadius\}/)
+    expect(src.match(/layerRadius: 'rounded-lg'/g)).toHaveLength(1)
+    expect(src.match(/layerRadius: 'rounded-md'/g)).toHaveLength(1)
+    expect(lire(fichierNomme('ReplayObjectiveMark.tsx'))).not.toMatch(/className="[^"]*rounded-lg/)
   })
 })
 

@@ -77,11 +77,20 @@ const GLYPH_PATHS: Record<ObjectiveMarkKind, string> = {
  * sont `relative` — l'ordre de peinture du DOM les met donc au-dessus, exactement comme la
  * couche d'effets de `playerCardFx`. Aucun `z-index` à arbitrer.
  */
-export function ReplayObjectiveMark({ kind, sizePx }: { kind: ObjectiveMarkKind; sizePx: number }) {
+export function ReplayObjectiveMark({
+  kind,
+  sizePx,
+  radiusClass,
+}: {
+  kind: ObjectiveMarkKind
+  sizePx: number
+  /** Le rayon de la tuile, en classe (`ReplayPlayerCard.TILE_LAYOUT.layerRadius`) : le filigrane l'épouse. */
+  radiusClass: string
+}) {
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute inset-y-0 right-[-6px] flex items-center overflow-hidden rounded-lg"
+      className={`pointer-events-none absolute inset-y-0 right-[-6px] flex items-center overflow-hidden ${radiusClass}`}
       style={{ color: tokenCssVar('extreme'), opacity: WATERMARK_OPACITY }}
     >
       <svg width={sizePx} height={sizePx} viewBox="0 0 16 16" fill="currentColor">
