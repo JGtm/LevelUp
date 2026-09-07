@@ -32,12 +32,17 @@ import (
 
 // Compteurs de sante des faits d'isolement (ADR 0009 : entiers, snake_case, aucun ratio).
 const (
-	metricIsolationMatches       = "killsource_isolement_matchs_couverts"
-	metricIsolationLives         = "killsource_isolement_vies_ecrites"
-	metricIsolationContexts      = "killsource_isolement_contextes_ecrits"
-	metricIsolationNoTeams       = "killsource_isolement_sans_equipes"
-	metricIsolationDeathsNoPlace = "killsource_isolement_morts_sans_lieu"
-	metricIsolationWriteFail     = "killsource_isolement_erreurs_ecriture"
+	metricIsolationMatches  = "killsource_isolement_matchs_couverts"
+	metricIsolationLives    = "killsource_isolement_vies_ecrites"
+	metricIsolationContexts = "killsource_isolement_contextes_ecrits"
+	metricIsolationNoTeams  = "killsource_isolement_sans_equipes"
+	// TROIS CAUSES, TROIS COMPTEURS. Un seul ecart (`len(deaths) - len(contexts)`) melangeait
+	// « la victime n'a pas de xuid », « le film ne la montre pas » et « elle n'a pas d'equipe
+	// en base » — trois pannes a diagnostiquer differemment, indistinguables sous un nombre.
+	metricIsolationVictimeNonResolue = "killsource_isolement_victime_non_resolue"
+	metricIsolationSansEquipe        = "killsource_isolement_mort_sans_equipe"
+	metricIsolationDeathsNoPlace     = "killsource_isolement_morts_sans_lieu"
+	metricIsolationWriteFail         = "killsource_isolement_erreurs_ecriture"
 )
 
 // projeterFaitsDIsolement ecrit `match_lives` et `match_death_context` a partir de ce que la
@@ -68,10 +73,10 @@ func (c *KillSourceCollector) projeterFaitsDIsolement(
 			"match_id", matchID)
 		return
 	}
-	contexts := toDeathContextRows(mat, ids, deaths)
-	if manquantes := len(deaths) - len(contexts); manquantes > 0 {
-		observability.AddInt(metricIsolationDeathsNoPlace, int64(manquantes))
-	}
+	contexts, ecarts := toDeathContextRows(mat, ids, deaths)
+	observability.AddInt(metricIsolationVictimeNonResolue, int64(ecarts.victimeNonResolue))
+	observability.AddInt(metricIsolationSansEquipe, int64(ecarts.sansEquipe))
+	observability.AddInt(metricIsolationDeathsNoPlace, int64(ecarts.sansLieu))
 
 	if err := c.writeIsolationFacts(ctx, matchID, persist.LivesBatch{
 		MatchID: matchID, DecoderRev: IsolationDecoderRev, Lives: lives, Contexts: contexts,
@@ -86,7 +91,8 @@ func (c *KillSourceCollector) projeterFaitsDIsolement(
 	observability.AddInt(metricIsolationContexts, int64(len(contexts)))
 	slog.InfoContext(ctx, "killsource: isolement — faits ecrits",
 		"match_id", matchID, "vies", len(lives), "contextes", len(contexts),
-		"morts_journal", len(deaths))
+		"morts_journal", len(deaths), "victimes_non_resolues", ecarts.victimeNonResolue,
+		"morts_sans_equipe", ecarts.sansEquipe, "morts_sans_lieu", ecarts.sansLieu)
 }
 
 // writeIsolationFacts : l'ecriture, sous son PROPRE lease court — meme raison que writePositions
@@ -110,10 +116,13 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 const IsolationDecoderRev = "isolement-2026-09-07"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
+//
+// LE RAPPORT SUFFIT : il porte le pont, les vies nommees et le calage d'horloge. Une version
+// precedente recopiait aussi `SlotXUID` — un doublon de `report.SlotXUID`, et surtout le pont
+// APLATI que la correction P0-2 a cesse d'employer.
 type materiauDIsolement struct {
 	report    replay.OwnerReport
 	positions []filmdec.BipedPosition
-	slotXUID  map[uint32]uint64
 }
 
 // toLifeRows traduit les vies pures en lignes ecrivables.
@@ -136,17 +145,38 @@ func toLifeRows(vies []replay.VieNommee) []persist.LifeInsert {
 // LE JOURNAL EST LA SOURCE DES MORTS, pas le film. C'est la meme liste que celle qui part dans
 // `match_kill_events`, donc les deux tables se joignent sur (match_id, victim_xuid, time_ms)
 // sans rapprocher deux horloges.
+// ecartsDeProjection : pourquoi une mort du journal n'a pas produit de contexte.
+type ecartsDeProjection struct {
+	victimeNonResolue int // bot, ou nom que le roster ne resout pas
+	sansEquipe        int // aucune ligne d'equipe en base pour cette victime
+	sansLieu          int // le film ne montre pas la victime a cet instant
+}
+
 func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 	deaths []persist.KillEventInsert,
-) []persist.DeathContextInsert {
+) ([]persist.DeathContextInsert, ecartsDeProjection) {
+	journal, nonResolues := journalDesMorts(deaths)
+	equipes := equipesNumeriques(ids.Equipes)
+	ecarts := ecartsDeProjection{victimeNonResolue: nonResolues}
+	for _, m := range journal {
+		if _, connue := equipes[m.VictimeXUID]; !connue {
+			ecarts.sansEquipe++
+		}
+	}
 	ctxs := replay.ContextesDesMorts(replay.EntreeContexteMorts{
-		Positions:  mat.positions,
-		SlotXUID:   mat.slotXUID,
-		DecalageMS: mat.report.DeathOffsetMS,
-		Journal:    journalDesMorts(deaths),
-		Equipes:    equipesNumeriques(ids.Equipes),
-		DepartMS:   departsNumeriques(ids.DepartMS),
+		Positions: mat.positions,
+		Report:    mat.report,
+		Journal:   journal,
+		Equipes:   equipes,
+		DepartMS:  instantsNumeriques(ids.DepartMS),
+		ArriveeMS: instantsNumeriques(ids.ArriveeMS),
 	})
+	// LE RESTE EST « SANS LIEU » : la mort est resolue, sa victime a une equipe, et pourtant
+	// aucun contexte n'est sorti — c'est que le film ne la montrait pas a cet instant.
+	ecarts.sansLieu = len(journal) - ecarts.sansEquipe - len(ctxs)
+	if ecarts.sansLieu < 0 {
+		ecarts.sansLieu = 0
+	}
 	out := make([]persist.DeathContextInsert, 0, len(ctxs))
 	for _, c := range ctxs {
 		out = append(out, persist.DeathContextInsert{
@@ -160,24 +190,26 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 			TeammatesTotal:      c.Total,
 		})
 	}
-	return out
+	return out, ecarts
 }
 
 // journalDesMorts ne garde que les morts dont la VICTIME est resolue. Une victime sans xuid
 // (bot, nom non resolu) ne peut ni etre situee dans une equipe ni etre jointe au journal.
-func journalDesMorts(deaths []persist.KillEventInsert) []replay.MortDuJournal {
+func journalDesMorts(deaths []persist.KillEventInsert) ([]replay.MortDuJournal, int) {
 	out := make([]replay.MortDuJournal, 0, len(deaths))
+	nonResolues := 0
 	for i := range deaths {
 		v, ok := parseXUID(deaths[i].VictimXUID)
 		if !ok {
+			nonResolues++
 			continue
 		}
 		out = append(out, replay.MortDuJournal{VictimeXUID: v, TempsMS: int64(deaths[i].TimeMS)})
 	}
-	return out
+	return out, nonResolues
 }
 
-// equipesNumeriques / departsNumeriques traduisent les tables texte de MatchIdentities. Un xuid
+// equipesNumeriques / instantsNumeriques traduisent les tables texte de MatchIdentities. Un xuid
 // non decimal est ECARTE : il ne peut pas correspondre a un joueur du film.
 func equipesNumeriques(par map[string]int) map[uint64]int {
 	out := make(map[uint64]int, len(par))
@@ -189,7 +221,7 @@ func equipesNumeriques(par map[string]int) map[uint64]int {
 	return out
 }
 
-func departsNumeriques(par map[string]int64) map[uint64]int64 {
+func instantsNumeriques(par map[string]int64) map[uint64]int64 {
 	out := make(map[uint64]int64, len(par))
 	for s, t := range par {
 		if v, ok := parseXUID(s); ok {

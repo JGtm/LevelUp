@@ -363,7 +363,6 @@ type TacticalKillPosition struct {
 	VictimX, VictimY float64
 }
 
-// TacticalPositions : l'univers ET les positions mesurees de ses matchs.
 // MortContexte est une mort LOCALISEE de l'univers, avec ce que le collecteur a mesure de son
 // voisinage au sync (`match_death_context`).
 //
@@ -386,6 +385,7 @@ type TacticalMortsContexte struct {
 	Morts   []MortContexte
 }
 
+// TacticalPositions : l'univers ET les positions mesurees de ses matchs.
 type TacticalPositions struct {
 	Univers TacticalUnivers
 	Points  []TacticalKillPosition

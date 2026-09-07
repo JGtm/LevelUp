@@ -1,3 +1,52 @@
+## [2026-09-07] Plan Tactique 7C — revue ronde 1 : la capture n'etait branchee nulle part, et le slot recycle mentait — Complete
+
+**Decision technique principale** — les deux P0 se ressemblent : dans les deux cas, le code
+faisait ce qu'il fallait, mais pas la ou il fallait.
+
+P0-1 : `WithPositionCapture` n'etait appele QUE par `backfill-killsource`. Ni l'etape post-sync
+du serveur ni `--online` ne le cablaient, donc `collectPositions` sortait en Debug et AUCUNE
+position n'a jamais ete produite au fil du sync en production — defaut PREEXISTANT depuis la
+mise en place de `kill_positions`, rendu bloquant par l'objectif de 7C. Le refus etait un
+`Debug`, et une table neuve qui reste vide ne se remarque pas : voila comment un silence dure.
+Le cablage vit desormais dans `killcollector/capture.go` et les trois chemins l'appellent. DEUX
+ratchets, parce qu'aucun ne suffit : l'un verifie que chaque collecteur ARME la capture, l'autre
+que le cycle la RENSEIGNE — `AvecCapture` sur des deps vides serait un no-op silencieux,
+exactement la forme qu'aurait prise une correction incomplete.
+
+**Cout assume et ecrit** : le scan des bipedes entre pour la premiere fois dans le chemin de
+sync de prod. Il tourne sur le film DEJA charge (aucune relecture disque, c'est la meme passe
+que le journal des morts), l'ecriture garde son lease court, et tout echec reste best-effort.
+C'est l'objet meme du lot et le principe utilisateur « complet au sync ».
+
+P0-2 : les positions etaient attribuees par le pont APLATI (`SlotXUID`), qui donne tout
+l'intervalle d'un slot a son PREMIER porteur nomme. Un slot RECYCLE creditait donc le second
+occupant au premier — le bug que `nameTracksByLives` avait corrige pour les traces le
+2026-09-02, refait a l'identique cinq jours plus tard sur une autre surface. L'attribution passe
+par LA VIE QUI COUVRE L'INSTANT.
+
+**Une deviation tranchee sur pieces** : la revue demandait de refuser la projection quand le
+verdict du pont est « non publiable », ce qui inclut `SlotCollisions > 0`. Or ce compteur dit
+qu'un slot a ete RECYCLE : il invalide le pont aplati que le REJEU publie, pas les vies par
+lesquelles on attribue ici. Refuser dessus aurait ecarte exactement les films que la correction
+P0-2 existe pour traiter. `IndexDisagreements`, lui, refuse — celui-la rend le NOMMAGE faux.
+Le test l'a montre : ma premiere fixture de slot recycle ne rendait aucun contexte.
+
+**Resultats observes** — 11 tests purs de contexte (dont le slot recycle, la mort recente, le
+`joined_in_progress`), 10 tests unitaires de projection executables en CI (ils manquaient
+entierement : tout tenait a un test d'integration qui se skippe), 2 ratchets de cablage.
+Sept mutations jouees, chacune fait tomber un test nomme : retour au pont aplati ; visible sans
+test de vitalite ; arrivee ignoree ; post-sync sans resolveur ; `--online` sans cablage ; plus
+les trois de la ronde precedente rejouees.
+
+Gates au PREMIER PLAN, decoupes : sync EXIT 0 (10 paquets), persist+migration EXIT 0, duckdb
+EXIT 0 (4), service EXIT 0 (4) ; `go test ./internal/...` EXIT 0 ; golangci-lint 0 issue ;
+typecheck vert ; vitest 606/6405/0 ; contrat inchange.
+
+**Conclusion / prochaine etape** — revue de 7C statuee, tous constats traites. Deux decouvertes
+au §7 : trois autres tables append-only absentes de la regex de lecture brute (non traitees), et
+la duree du silence sur les positions au sync. Le test sur film reel choisit desormais son film
+parmi les fixtures ; il reste a le jouer sur le poste principal. STOP avant 7B.
+
 ## [2026-09-07] Plan Tactique phase 7C — les faits d'isolement au sync, deux tables append-only — Complete
 
 **Decision technique principale** — decision utilisateur du 2026-09-07 : « les donnees d'un

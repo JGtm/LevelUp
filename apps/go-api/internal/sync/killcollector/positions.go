@@ -92,7 +92,7 @@ const (
 // approximation, c'est la population exacte qui peut avoir une position.
 func (c *KillSourceCollector) collectPositions(
 	ctx context.Context, matchID string, film *filmsource.Film,
-	ids MatchIdentities, deaths []persist.KillEventInsert,
+	ids MatchIdentities, deaths, fusionnees []persist.KillEventInsert,
 ) {
 	if !c.caps.Has(games.CapFilmKillPositions) {
 		slog.DebugContext(ctx, "killsource: positions — capability absente, passe ignoree",
@@ -149,7 +149,7 @@ func (c *KillSourceCollector) collectPositions(
 	// MEME PORTE QUE LES POSITIONS (`CapFilmKillPositions`) : les deux tables reposent sur les
 	// memes positions bipeds. Une capability neuve n aurait rien gate de plus et aurait ajoute
 	// une cle a tenir a jour dans chaque `capabilities.toml`.
-	c.projeterFaitsDIsolement(ctx, matchID, mat, ids, deaths)
+	c.projeterFaitsDIsolement(ctx, matchID, mat, ids, fusionnees)
 }
 
 // resolveMapBounds : les identites de carte candidates du match (base), puis leurs bornes de
@@ -220,7 +220,7 @@ func buildPositionRows(
 	// LE MATERIAU REMONTE TEL QUEL : le rapport porte les vies nommees et le calage d horloge,
 	// les positions portent le monde. La projection des faits d isolement s en sert sans
 	// rescanner le film (cf. isolation_facts.go).
-	mat := materiauDIsolement{report: owners, positions: positions, slotXUID: slotXUID}
+	mat := materiauDIsolement{report: owners, positions: positions}
 	return rep, toKillPositionRows(matchID, posOut), mat, nil
 }
 

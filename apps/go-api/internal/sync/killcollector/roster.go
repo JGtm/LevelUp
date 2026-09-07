@@ -64,6 +64,7 @@ func (r *SharedRoster) IdentitiesForMatch(ctx context.Context, matchID string) (
 		ShotsFired: map[string]int{},
 		Equipes:    map[string]int{},
 		DepartMS:   map[string]int64{},
+		ArriveeMS:  map[string]int64{},
 	}
 	ambigus := map[string]bool{}
 	for xuid, gt := range parXUID {
@@ -137,8 +138,14 @@ func (r *SharedRoster) gamertagsForMatch(ctx context.Context, matchID string) (m
 // la meme ligne de la meme table. La MEME regle qu au-dessus s applique a `team_id` et a
 // `last_leave_time` : NULL veut dire « non renseigne », et une entree absente n est pas un zero.
 //
-// LE DEPART EST CALE SUR L HORODATAGE CANONIQUE du registre (regle n 8), exactement comme
-// `replay_facts_repo.playerFacts` : `start_time` brut decalerait d un fuseau.
+// LE DEPART ET L ARRIVEE SONT CALES SUR L HORODATAGE CANONIQUE du registre (regle n 8),
+// exactement comme `replay_facts_repo.playerFacts` : `start_time` brut decalerait d un fuseau.
+//
+// ⚠ LE JOIN EST UN `LEFT JOIN`, ET C EST DELIBERE (revue de 7C, P2). En INNER, un match sans
+// ligne de registre — le cas d une collecte qui precede l enrichissement — rendait `XUIDs` VIDE
+// et faisait echouer la passe de positions tout entiere, alors que les xuids, eux, existaient.
+// Sans registre, les deux instants sortent NULL : « non renseignes », ce que la lecture sait
+// traiter (« present depuis le debut », « jamais parti »).
 func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string, out *MatchIdentities) error {
 	if r == nil || r.db == nil {
 		return fmt.Errorf("SharedRoster: db nil")
@@ -146,9 +153,10 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 	debut := analysis.SQLStartTimeCanonical("mr")
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT p.xuid, p.shots_fired, p.team_id,
-		       CAST(epoch_ms(p.last_leave_time) - epoch_ms(`+debut+`) AS BIGINT)
+		       CAST(epoch_ms(p.last_leave_time) - epoch_ms(`+debut+`) AS BIGINT),
+		       CAST(epoch_ms(p.first_joined_time) - epoch_ms(`+debut+`) AS BIGINT)
 		FROM match_participants p
-		JOIN match_registry mr ON mr.match_id = p.match_id
+		LEFT JOIN match_registry mr ON mr.match_id = p.match_id
 		WHERE p.match_id = ? AND p.xuid IS NOT NULL AND p.xuid <> ''
 		ORDER BY p.xuid
 	`, matchID)
@@ -159,8 +167,8 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 
 	for rows.Next() {
 		var xuid string
-		var shots, team, depart sql.NullInt64
-		if err := rows.Scan(&xuid, &shots, &team, &depart); err != nil {
+		var shots, team, depart, arrivee sql.NullInt64
+		if err := rows.Scan(&xuid, &shots, &team, &depart, &arrivee); err != nil {
 			return fmt.Errorf("SharedRoster participants(%s) scan: %w", matchID, err)
 		}
 		out.XUIDs = append(out.XUIDs, xuid)
@@ -172,6 +180,9 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 		}
 		if depart.Valid {
 			out.DepartMS[xuid] = depart.Int64
+		}
+		if arrivee.Valid {
+			out.ArriveeMS[xuid] = arrivee.Int64
 		}
 	}
 	if err := rows.Err(); err != nil {

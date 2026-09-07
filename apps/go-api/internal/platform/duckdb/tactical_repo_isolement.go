@@ -19,6 +19,14 @@ package duckdb
 // porte les deux positions. La position de la VICTIME s'y lit donc en joignant sur le TUEUR
 // credite de sa mort. Une mort que personne ne revendique (chute, hors-limites) n'a pas de ligne
 // et sort de la lecture : elle a bien eu lieu, mais on ne sait pas ou la peindre.
+//
+// # LA GARDE D'AMBIGUITE, REPRISE DE `QTacticalPositions`
+//
+// UN DOUBLE KILL AU MEME INSTANT donne DEUX morts pour UNE seule ligne de position : la table
+// n'a aucune colonne de victime. Sans garde, les deux morts heriteraient des MEMES coordonnees,
+// et l'une des deux serait peinte au mauvais endroit — de facon indetectable a l'ecran.
+// `HAVING count(*) = 1` ecarte le groupe ENTIER, meme prudence que la lecture de placement :
+// mieux vaut deux morts absentes que deux morts mal placees.
 
 import (
 	"context"
@@ -40,9 +48,11 @@ import (
 // fausse ligne par ligne (marge de bijection nulle, cas BTB). Une lecture qui nomme une mort
 // exige donc `publishable = TRUE`, comme le kill feed et la timeline.
 const QTacticalIsolement = `
-SELECT e.match_id, e.victim_xuid,
-       p.victim_x, p.victim_y,
-       c.nearest_teammate_m, c.teammates_visible, c.teammates_out_of_sight
+SELECT e.match_id, min(e.victim_xuid) AS victim_xuid,
+       min(p.victim_x) AS victim_x, min(p.victim_y) AS victim_y,
+       min(c.nearest_teammate_m) AS nearest_teammate_m,
+       min(c.teammates_visible) AS teammates_visible,
+       min(c.teammates_out_of_sight) AS teammates_out_of_sight
 FROM match_kill_events_latest e
 JOIN match_death_context_latest c
   ON c.match_id = e.match_id AND c.victim_xuid = e.victim_xuid AND c.time_ms = e.time_ms
@@ -52,7 +62,9 @@ WHERE e.match_id IN (SELECT u.match_id FROM (%s) u)
   AND e.publishable
   AND e.victim_xuid IS NOT NULL AND e.victim_xuid <> ''
   AND p.victim_x IS NOT NULL AND p.victim_y IS NOT NULL
-ORDER BY e.match_id, e.time_ms, e.victim_xuid`
+GROUP BY e.match_id, e.feed_killer_xuid, e.time_ms
+HAVING count(*) = 1
+ORDER BY e.match_id, e.time_ms`
 
 // MortsAvecContexte rend l'univers ET les morts localisees de ses matchs, avec le voisinage que
 // le collecteur a mesure au sync.
