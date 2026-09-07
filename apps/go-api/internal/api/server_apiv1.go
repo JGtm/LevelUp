@@ -312,7 +312,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			return true
 		}
 		s, err := settingsStore.Load()
-		return err == nil && s.InstanceLocked
+		if err != nil {
+			// LOGUE AVANT DE DÉGRADER (règle n°3) : sans cette ligne, un app_settings.json
+			// illisible faisait retomber le verrou sur "non verrouillé" en silence (Q8,
+			// .ai/DECOUVERTES_TACTIQUE_2026-09-07.md).
+			slog.Warn("instance_locked: settings illisibles, repli sur non verrouillé", "err", err)
+			return false
+		}
+		return s.InstanceLocked
 	}
 
 	// Sprint 15 : Device Code Flow + authentification Halo

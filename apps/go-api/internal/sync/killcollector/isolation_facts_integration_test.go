@@ -28,8 +28,11 @@ import (
 	"database/sql"
 	"os"
 	"sort"
+	"strconv"
 	"testing"
 
+	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/sync/haloclient"
 )
@@ -43,26 +46,67 @@ import (
 // les films essayés.
 const filmsEssayesAuMax = 20
 
-// fakeRosterAvecEquipes : le roster de test, MAIS AVEC LES EQUIPES.
+// filmRoster : le roster de test construit depuis LE FILM LUI-MÊME (Q8, 2026-09-07),
+// PAS un double vide.
 //
-// SANS ELLES, LA PROJECTION SE SAUTE, et c'est le comportement documenté : « isolé » se mesure
-// entre coéquipiers, et le film ne porte aucun camp. Le double par défaut (`fakeRoster`) n'en
-// pose pas — il sert les tests du journal des morts, qui n'en ont pas besoin.
-type fakeRosterAvecEquipes struct{ base fakeRoster }
+// REMPLACE fakeRosterAvecEquipes{base: fakeRoster{}} : un `fakeRoster{}` littéral n'a AUCUN
+// participant, donc `ids.XUIDs` restait vide, donc `ids.Equipes` aussi — la garde
+// `len(ids.Equipes) == 0` de `projeterFaitsDIsolement` sautait la projection sur CHAQUE film
+// essayé. Ce test annonçait une couverture qu'il n'avait jamais : il ne pouvait que se sauter.
+//
+// `replay.ScanDeaths(film)` lit le fil des morts du MÊME film (XUID + gamertag, une lecture
+// structurelle, jamais un nom à parser) : les xuids qui y meurent sont RÉELLEMENT ceux que la
+// passe crédit va résoudre. Deux camps par parité de l'ordre stable — le film ne porte aucun
+// camp (`Track.Team` vaut -1 partout, cf. `MatchIdentities.Equipes`), la composition exacte
+// n'a pas d'importance ici : ce que ce test vérifie est le CHAÎNAGE bout en bout sur des
+// données réelles, pas la mesure d'isolement elle-même (couverte par les tests purs de
+// `isolation_facts_test.go` et `death_context_test.go`, où les équipes sont posées à la main).
+type filmRoster struct {
+	parXUID map[string]string
+	parNom  map[string]string
+	equipes map[string]int
+	xuids   []string
+}
 
-func (r fakeRosterAvecEquipes) IdentitiesForMatch(ctx context.Context, matchID string) (MatchIdentities, error) {
-	ids, err := r.base.IdentitiesForMatch(ctx, matchID)
+// filmRosterDepuisFilm construit le roster. Une erreur ou un fil des morts vide n'est pas
+// fatale ici : l'appelant essaie le film suivant, exactement comme pour un décodage échoué.
+func filmRosterDepuisFilm(film *filmsource.Film) (filmRoster, error) {
+	deaths, err := replay.ScanDeaths(film)
 	if err != nil {
-		return ids, err
+		return filmRoster{}, err
 	}
-	ids.Equipes = map[string]int{}
-	for i, x := range ids.XUIDs {
-		// DEUX CAMPS, par parité de l'ordre stable des xuids. La composition exacte n'a pas
-		// d'importance ici : ce que le test vérifie est le CHAÎNAGE, pas la mesure — celle-ci
-		// est couverte par les tests purs, où les équipes sont posées à la main.
-		ids.Equipes[x] = i % 2
+	r := filmRoster{parXUID: map[string]string{}, parNom: map[string]string{}, equipes: map[string]int{}}
+	vus := map[uint64]bool{}
+	for _, d := range deaths {
+		if d.XUID == 0 || vus[d.XUID] {
+			continue
+		}
+		vus[d.XUID] = true
+		s := strconv.FormatUint(d.XUID, 10)
+		r.xuids = append(r.xuids, s)
+		if d.Gamertag != "" {
+			// Les deux tables du CONTRAT (`Resoudre`) : un nom de kill-feed qui EST un
+			// gamertag se résout par ParNom ; un nom déjà `xuid:...` n'a besoin d'aucune des
+			// deux (il porte le xuid dans la chaîne elle-même).
+			r.parXUID[s] = d.Gamertag
+			r.parNom[d.Gamertag] = s
+		}
 	}
-	return ids, nil
+	sort.Strings(r.xuids)
+	for i, s := range r.xuids {
+		r.equipes[s] = i % 2
+	}
+	return r, nil
+}
+
+func (r filmRoster) IdentitiesForMatch(context.Context, string) (MatchIdentities, error) {
+	return MatchIdentities{
+		ParXUID:    r.parXUID,
+		ParNom:     r.parNom,
+		XUIDs:      r.xuids,
+		ShotsFired: map[string]int{},
+		Equipes:    r.equipes,
+	}, nil
 }
 
 // filmsDeFixture liste les films disponibles, dans un ordre STABLE (deux exécutions doivent
@@ -103,10 +147,23 @@ func TestKillSourceFaitsDIsolementFilmReel(t *testing.T) {
 		if len(chunks) == 0 {
 			continue
 		}
+		decode, derr := FilmOf(chunks)
+		if derr != nil {
+			t.Logf("film %s : decodage echoue (%v) — on essaie le suivant", film, derr)
+			essayes = append(essayes, film)
+			continue
+		}
+		roster, rerr := filmRosterDepuisFilm(decode)
+		if rerr != nil || len(roster.xuids) == 0 {
+			t.Logf("film %s : aucune identite au fil des morts (%v) — on essaie le suivant",
+				film, rerr)
+			essayes = append(essayes, film)
+			continue
+		}
 		db := openSharedTestDB(t)
 		col := NewKillSourceCollector(
 			&fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}},
-			fakeRosterAvecEquipes{base: fakeRoster{}}, sharedWriter(db),
+			roster, sharedWriter(db),
 			games.CapabilityMap{
 				games.CapFilmKillSource:    games.CapSupported,
 				games.CapFilmKillPositions: games.CapSupported,
@@ -120,15 +177,22 @@ func TestKillSourceFaitsDIsolementFilmReel(t *testing.T) {
 		}
 		vies, contextes, positions := comptesDuFilm(t, db, film)
 		t.Logf("film %s : %d vies, %d contextes, %d positions", film, vies, contextes, positions)
-		if positions == 0 || vies == 0 {
+		// VIES ET CONTEXTES, PAS SEULEMENT POSITIONS (Q8) : avec un roster REEL, la garde
+		// `len(Equipes) == 0` ne saute plus jamais la projection — un film au catalogue de
+		// bornes doit desormais produire les deux tables, pas seulement kill_positions.
+		if positions == 0 || vies == 0 || contextes == 0 {
 			essayes = append(essayes, film)
 			continue
 		}
 		verifierFaitsDIsolement(t, db, col, film, vies, contextes)
 		return
 	}
-	t.Skipf("aucun des %d films essayes n'a produit de position exploitable (carte hors "+
-		"catalogue de bornes, ou pont slot->xuid vide) : %v — cas normal, pas une regression",
+	// KILLSOURCE_FIXTURES EST PRESENT (filmsDeFixture s'est deja saute sinon) : ne trouver
+	// AUCUN film exploitable parmi filmsEssayesAuMax n'est plus un cas normal depuis que le
+	// roster vient du film lui-meme — c'est un FATAL, pas un skip qui maquillerait une
+	// couverture nulle en resultat normal (c'est exactement le defaut que ce lot corrige).
+	t.Fatalf("aucun des %d films essayes n'a produit vies ET contextes (carte hors catalogue "+
+		"de bornes, roster sans identite au fil des morts, ou pont slot->xuid vide) : %v",
 		len(essayes), essayes)
 }
 
