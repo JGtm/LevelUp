@@ -97165,3 +97165,124 @@ découpe par manche des compteurs par joueur (63 assistances créditées à 5 jo
 mort du comparateur `replay-diff` sur les intervalles rognés (invisible à l'axe des comptes).
 Prochaine étape : Notion (re-cuisson du parc 41 → 43, à faire par le superviseur), corpus
 témoin à rejouer à chaque bump de schéma.
+
+---
+
+## [2026-09-06] Découpe par manche des compteurs — la manche déclarée confrontée au temps (schéma 44)
+
+**Statut.** Complété — branche `feat/v2-manches`, journal
+`.ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md`.
+
+**Le défaut, confirmé sur pièces.** `51ebbc0f` (Oddball, 2 manches) publiait **63 assistances**
+pour un joueur qui en a **5** à la feuille. Diagnostic du relecteur vérifié à la milliseconde :
+la manche 0 du slot 12 portait un échantillon daté 316 777 ms — 57 s APRÈS le début de la
+manche 1 (259 240 ms) — de valeur 60, quand les sept autres joueurs s'arrêtent avant 228 500 ms ;
+le `total` concaténait ensuite `{3167,60}` puis `{3057,61}`, des instants qui reculent, et le 60
+devenait le décalage de la manche 1. Le même enregistrement coûtait au passage son unique frag de
+manche 0 (`kills` 0 au lieu de 2).
+
+**Cause racine.** La manche d'un enregistrement est lue dans deux en-têtes de 5 bits du premier
+composant ; l'assertion d'en-tête ayant été relâchée le 2026-08-18, un résidu de faux positifs
+porte une manche quelconque. La découpe le croyait sur parole, et `longestRun` ne pouvait pas
+l'écarter : une valeur mal lue mais PLUS GRANDE prolonge la suite non décroissante au lieu de la
+rompre. `comp 5 A = 4 164 778 782` dans le même enregistrement le dénonçait, mais rien ne le
+regardait. Le MÊME motif (`slot 12`, `comp 3 A = 60`) existe sur `d9781168` : 69 assistances
+publiées pour 11 à la feuille.
+
+**Décision technique.** Correctif à la SOURCE, dans la découpe :
+`objectiveevents.ResolveRoundBounds` (nouveau fichier `round_bounds.go`) mesure l'intervalle de
+chaque manche et les deux marches de groupement (`rawSeriesByRound` pour les compteurs,
+`rawSeriesByKey` pour les actions d'objectif) écartent tout enregistrement daté hors de
+l'intervalle de la manche qu'il déclare. Trois gardes, **aucune constante ajustée** — début =
+médiane BASSE sur les slots du premier instant du slot (le minimum aurait jeté 3 612
+enregistrements légitimes sur `24dbb67d`, où deux slots déclarent la manche 1 dès 85 193 ms
+contre 298 909 ms pour les huit autres) ; manche utilisable = majorité de slots ; borne crédible =
+médianes des instants de part et d'autre. Plus une garde d'ensemble : les débuts doivent croître.
+Filet aval demandé : `ChronologicalTotal` refuse de publier une série cumulée qui recule dans le
+temps et le journalise — une seule fonction pour les deux cumuls (par slot, par joueur).
+
+**Résultats.** Quinze films re-cuits (les DOUZE multi-manche du parc de 119, plus trois
+mono-manche), base `feat/v75` schéma 43 contre schéma 44 : **onze identiques à l'octet hors la
+ligne `schemaVersion`**, quatre corrigés, **zéro disparition, zéro perte réelle**. `51ebbc0f`
+assistances 63 → 4 et frags 0 → 1 ; `d9781168` assistances 69 → **11, exactement la feuille** ;
+vols de drapeau fantômes sur deux films d'Oddball (donc sans drapeau) 58 → 0 et 994 → 0 ;
+`score.points` −2 et −4 (les points que les échantillons égarés ajoutaient). Les totaux que le
+film reconstruit par slot rejoignent la feuille : le joueur en cause y a bien 2 frags / 10 morts /
+5 assistances. **Une régression a été trouvée par la mesure et corrigée avant livraison** : une
+première version cassait `a4083bd2` (une « manche 1 » d'UN SEUL enregistrement fixait une borne,
+153 enregistrements sur 719 jetés, 24 compteurs en baisse) — d'où les gardes de majorité et de
+croissance, chacune prouvée par mutation. Dix mutations passées, chacune tue au moins un test.
+Gates : build, unitaires (`analysis/replay`, `replaybuild`, `archlint`, `contracttest`),
+intégration `api/wire`, `golangci-lint --new-from-merge-base=origin/main` **0 issue**, golden
+d'assemblage régénéré (une ligne : `schema 43` → `schema 44`).
+
+**Conclusion / prochaine étape.** Le parc doit être re-cuit au schéma 44 (re-cuisson de release,
+`backfill-replay`). Découvertes consignées et NON traitées : (1) `51ebbc0f` publie 4 des 5
+assistances que le film reconstruit — sa grille de frames s'arrête à 451 400 ms alors que les
+enregistrements vont à 498 941 ms, `coverage.originResolved = false` ; **ceci explique la question
+restée ouverte au registre** (« aucune des 8 courbes de `51ebbc0f` ne colle à la feuille, contre
+4 sur 8 pour `43716616` ») — les deux films à `originResolved = false` du corpus mesuré sont
+`51ebbc0f` et `fb1a1a72` ; (2) `RealRounds` retient des manches sur des modes qui n'en ont pas
+(Slayer, 3 films sur 119) — le correctif s'en protège sans corriger la cause ; (3) le journal du
+filet de chronologie est répétitif sur ces trois films.
+
+**Correctif de suite (même jour, `feat/v2-manches`).** La CI a attrapé un piège que le poste
+Windows ne pouvait pas voir : le fichier neuf s'appelait `round_windows.go` (« les FENÊTRES de
+manche ») et Go applique une contrainte de compilation IMPLICITE au NOM — `*_windows.go` n'est
+compilé que sur Windows. En local (CGO_ENABLED=1, Windows) tout passait ; sur le runner Linux,
+`go vet ./internal/analysis/...` rendait `undefined: ResolveRoundWindows`. Renommé en
+`round_bounds.go` (type `RoundBounds`, `ResolveRoundBounds`, `roundSpan`), et un ratchet posé —
+`internal/archlint/no_accidental_goos_suffix_test.go` refuse tout `.go` du module dont le nom se
+termine par un suffixe GOOS/GOARCH, avec une allowlist de cinq adaptateurs système Windows
+vérifiés un à un (priorité de processus, projection mémoire, espace disque, purge de sessions).
+Prouvé par mutation : un `sonde_linux.go` vide fait échouer le ratchet. Gate local ajouté à la
+liste : `CGO_ENABLED=0 go vet ./internal/domain/... ./internal/analysis/...` — c'est l'étape
+exacte de la CI, et elle est le seul moyen de voir cette classe de faute depuis Windows.
+
+**Corrections de la revue MANCHES-R1 (même jour, `feat/v2-manches`).** Revue close, 15/15
+conditions, aucun P0/P1 ; trois constats traités, `SchemaVersion` reste 44 car aucun ne change le
+document sur le parc. **C1** (requalifié P1, doctrine « une lecture vraie n'est jamais jetée ») :
+les trois gardes des bornes comparaient des médianes GLOBALES, si bien qu'une borne pouvait tomber
+après la fin du bloc d'un slot minoritaire et faire disparaître sa manche entière — fixture du
+relecteur (3 slots ouvrant la manche 1 à 40 s, 5 à 70 s) : 12 enregistrements légitimes jetés,
+`rounds[1]` vide pour trois joueurs, assistances 8 → 5. La granularité passe du film au bloc
+(slot, manche) : on n'écarte que ce qui est CONTREDIT — un bloc dont une partie tombe dans la
+fenêtre voit ses égarés écartés, un bloc entièrement hors fenêtre est GARDÉ dans sa manche
+déclarée et journalisé (`slog.Warn` avec match, slot, manche, bornes, écart, nombre). Effet parc :
+**nul** — sur les 13 films mesurés, EXEMPTÉS = 0 partout et les comptes d'écartés sont identiques
+à ceux d'avant C1. Trois tests dont la mutation inverse exigée (l'égaré de `51ebbc0f`, qui a un
+bloc dans la fenêtre, reste écarté). **C2** : `roundStartsOf` prenait le MINIMUM des instants
+déclarés là où la découpe prend la médiane — sur `24dbb67d`, manche 1 à 85 193 ms contre
+298 909 ms, 213 s pendant lesquelles `RoundIdentity.At` résolvait la mauvaise manche. Source
+unique `RoundStartsMS` ; repli documenté pour une manche sans consensus. Mesuré élément par
+élément sur les deux films les plus exposés, `24dbb67d` et `fb1a1a72` : artefacts **identiques à
+l'octet**, `objectives` par (xuid, statistique) identiques, `flagCarries`/`skullCarries`/`vipCrown`
+identiques — aucune variation, donc aucune qui s'éloigne de la feuille ; au passage `24dbb67d`
+est **8 joueurs sur 8 exacts** en K/D/A contre sa feuille. **C3** : la fourchette nominale des
+écartés n'a plus qu'une écriture, `objectiveevents.OutliersNominalMax = 27`, et elle est VIVANTE
+(au-delà, le journal passe de INFO à WARN). Gates rejoués : build, `CGO_ENABLED=0 go vet`
+(l'étape qui avait attrapé le piège `_windows.go`), tests replay/objectiveevents/replaybuild/
+archlint/contracttest, intégration `api/wire`, `golangci-lint --new-from-merge-base` 0 issue,
+golden inchangé. Observation sans défaut : une cuisson de `24dbb67d` coupée par la sentinelle
+mémoire à 3,83 Gio puis re-cuite à 0,217 Gio — contention machine, la sentinelle a joué son rôle.
+
+**Ronde 2 de la revue (MANCHES-R2, 2026-09-07, `feat/v2-manches`).** C1/C2/C3 jugés exacts, aucun
+P0/P1 ; trois P2/P3 soldés sans cuisson, `SchemaVersion` reste 44. **N2, le plus important** : le
+relecteur a démontré que le correctif C2 n'avait AUCUN garde-rail — neutraliser
+`consensus := RoundStartsMS(recs)` laissait 23 paquets sur 23 verts, parce que le seul test qui
+touchait `roundStartsOf` travaille sur des fixtures sans train de score de mode (donc `RealRounds`
+n'y voit aucune manche et `consensus` y est toujours vide). Ajouté
+`TestIdentiteParMancheSuitLeDebutConsensuel` : film à deux manches AVEC train de score de mode, un
+slot minoritaire déclarant la manche 1 dès 85 s quand la majorité l'ouvre à 298 s (forme de
+`24dbb67d`), et surtout un slot RÉATTRIBUÉ d'une manche à l'autre — c'est lui qui rend l'erreur
+observable, se tromper de manche rendant un autre xuid. Mutation jouée : rouge sur les trois points
+de l'intervalle litigieux (85 000, 150 000, 297 999 ms), vert après restauration. **N1** : sur la
+fixture de C1, `logRoundBounds` émettait trois `WARN bloc de manche GARDÉ` puis un
+`WARN AUCUNE borne posée … les compteurs restent ceux d'avant` — faux, puisque ce sont des bornes
+qui ont permis de détecter ces blocs. Le message se décidait sur le compte d'écartés, qui ne
+distingue pas « aucune borne posable » de « bornes posées, tout l'excédent exempté » ; ajouté
+`RoundBounds.Posed()` et deux tests de journal (capture du handler `slog`), dont le pendant qui
+vérifie que le repli sort bien quand aucune borne n'est posable. **N3** : `manches_compteurs_test.go`
+(529 L) scindé par responsabilité — 413 L pour la découpe et les fixtures, 278 L dans
+`manches_segments_test.go` pour ce qui concerne le bloc (slot, manche). Gates : 23 paquets ok,
+build, `CGO_ENABLED=0 go vet`, `golangci-lint --new-from-merge-base` 0 issue.
