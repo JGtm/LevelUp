@@ -1,3 +1,50 @@
+## [2026-09-07] Campagne de fusion des branches de lot dans `feat/v75` — cinq branches integrees, `feat/tactique` reportee — Complete (cinq), En cours (tactique)
+
+**Le mandat.** Fusionner `feat/duels`, `feat/v75-frise-pov`, `feat/fiches-compactes`,
+`feat/outcome-cle-canonique` et `feat/tactique` dans `feat/v75`, resoudre les conflits, puis
+seulement ensuite surveiller la CI et les tests. Deux inflexions de l'utilisateur en cours de
+campagne : `feat/tactique` est encore en travail (a traiter en dernier, une fois stabilisee),
+et `feat/v2-integ` — branche d'integration temporaire des sept lots V2, destinee a un
+fast-forward — est incluse en tete.
+
+**Prerequis.** Le worktree principal portait des ecrits non commites d'une autre session
+(journal +164 L, cinq reports au registre, six plans/handoffs non suivis) : c'est le blocage
+qui empechait le fast-forward de `feat/v2-integ` depuis la veille. Commit `97c30c921` (accord
+utilisateur), jamais de stash. Effet de bord assume : `feat/v75` n'etant plus un ancetre strict
+de `feat/v2-integ`, l'integration V2 est passee par un commit de fusion au lieu du
+fast-forward prevu — contenu identique, trois conflits d'ecrits seulement.
+
+**Decision technique principale — trois conflits SEMANTIQUES, resolus a la main, aucun cote
+sacrifie.** (1) `killcollector/positions.go` : `feat/duels` a refactore `buildPositionRows`
+(signature `(passePositions, error)`, composition sortie dans `composerPassePositions`) pendant
+que `feat/v75` y ajoutait l'acquisition du verrou de decodage du process. La signature
+refactoree est gardee ET `filmdec.LockProcessDecode()` replace en tete du corps — le contrat de
+`decode_gate.go` (« tout chemin qui enchaine les balayages acquiert ce verrou ») tient toujours.
+(2) `ReplayAbilityCell.tsx` / `ReplayInventoryRow.tsx` : le gabarit `CardGabarit` des fiches
+compactes (`px`, `showAmmo`, `ammoCellW`) porte desormais le correctif P0-2 des vies anonymes
+(« aucune lecture dans la vie en cours » se DIT, gardee par la presence de l'axe). (3) Rupture
+que git n'a pas vue, faute de fichier commun : `bestDeathOffset` a gagne une troisieme valeur de
+retour cote V2 (pont muet) pendant que `feat/duels` ajoutait un appelant a deux valeurs dans
+`duels_sonde_research_test.go` — levee par `go vet`, corrigee (`43cf8e351`). Les conflits
+d'ecrits (`thought_log.md`, `REGISTRE_REPORTS.md`) sont resolus en UNION des deux series, jamais
+par choix d'un cote. Les conflits de capabilities (quatre fichiers) aussi : `replay` et
+`weapon_range` sont deux ajouts distincts au meme point d'insertion.
+
+**Resultats observes.** Cinq branches integrees dans l'ordre v2-integ, duels, frise-pov,
+fiches-compactes, outcome-cle-canonique ; toutes verifiees ancetres de `feat/v75`. Gates rejoues
+apres la derniere fusion : `gofmt -l` 0, `go vet ./...` 0, `go test ./...` 167 paquets, sortie 0 ;
+`tsc -b --force` 0 (cache purge), `eslint` 0 erreur / 27 avertissements (etat anterieur),
+`lint:colors` 0, `lint:fields` 0, suite web entiere verte. Une consequence MESUREE cote fiches
+compactes : leurs deux fixations DOM (`replayTeams.4v4.html`, `6v6`) avaient ete prises sur une
+base anterieure au correctif P0-2 — regenerees UNE fois, avec une seule addition verifiee balise
+par balise (le glyphe « capacité non lue sur cette vie », 5 en 4v4, 9 en 6v6, rien d'autre), et
+une note datee a l'en-tete du test ; le gate `(d)` de la tuile compacte asserte maintenant CE
+glyphe et lui seul au lieu de zero `role=img`.
+
+**Conclusion / prochaine etape.** `feat/tactique` n'est PAS fusionnee : elle est 92 commits en
+avance sur `feat/v75` pour 227 en retard, 4 commits non pousses, et son worktree
+(`LevelUp-wt-tactique`) porte six fichiers modifies non commites — chantier vivant. La fusion
+l'attendra stabilisee, sur demande. `feat/v2-integ` et son worktree peuvent etre supprimes.
 ## [2026-09-07] Libelles FR/EN codes en dur cote Go — inventaire et PLAN OUVERT pour un autre agent — Complete (plan) / En cours (lot issue)
 
 **Le mandat.** Apres la revue adverse du chantier frise (le mot du verdict en FR dur), l'utilisateur
