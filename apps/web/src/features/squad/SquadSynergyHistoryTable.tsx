@@ -116,6 +116,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   // Colonne « Rejeu » : porte de TITRE. La porte de LIGNE (`has_replay`) vit dans
   // MatchReplayLink.
   const replayCapability = useCapability('replay')
+  const hasExpectedWinProb = useCapability('expected_win_prob')
   const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const showWaypoint = waypointCapability && showWaypointColumnPref
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
@@ -294,7 +295,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           )
         },
       },
-      {
+      ...(hasExpectedWinProb ? [{
         accessorKey: 'expected_win_prob',
         header: labels.winProb,
         meta: { headerTooltip: labels.winProbTooltip },
@@ -310,7 +311,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
             </span>
           )
         },
-      },
+      } as ColumnDef<SquadMatchHistoryRow>] : []),
       {
         accessorKey: 'score_label',
         header: labels.score,
@@ -373,7 +374,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           ]
         : []),
     ],
-    [labels, intlLocale, playerSlug, goToSynergyMatch, providesTeamMmr, showWaypoint, replayCapability, theme, currentTitleSlug],
+    [labels, intlLocale, playerSlug, goToSynergyMatch, providesTeamMmr, showWaypoint, replayCapability, hasExpectedWinProb, theme, currentTitleSlug],
   )
 
   // I16 : tri CLIENT par clic sur les en-têtes. Pas d'état de tri initial : l'ordre

@@ -269,6 +269,22 @@ place, il teste `ReplayHeatmapLegend.tsx`) documente encore un fichier disparu d
 en-tete — toilettage hors perimetre. Commit(s) sur `feat/peintre-chaleur-unique` (issue de
 `feat/v75`), push demande a l'utilisateur avant fusion — ne PAS fusionner dans `feat/v75`
 sans validation.
+## [2026-09-07] Remise de la probabilité de victoire attendue (expected_win_prob) — Complété
+
+**Décision technique principale.** Nouvelle capability title-level `CapExpectedWinProb`
+("expected_win_prob"), non accordée à aucun titre. Approche chirurgicale : ne désactive QUE
+la probabilité de victoire LUSR (pas les K/D/A attendus qui restent sous `CapExpectedStats`).
+Les données restent calculées et stockées dans `match_skill_rank.expected_win_prob` pour
+analyse interne — seul l'affichage est masqué.
+
+**Résultats observés.** Tests de parité verts (constante ↔ knownCapabilities ↔ miroir TS ↔
+consommateurs ↔ allowlist orpheline). TypeScript compile. 3 lieux d'affichage gatés :
+carte `MatchWinProbCard` (détail match), colonne "Prob. vic." (Progression), colonne
+(Synergies escouade).
+
+**Prochaine étape.** Pour réactiver : accorder `CapExpectedWinProb` au titre concerné dans
+`registry.go` (Infinite) ou `title.toml` (autre titre), et retirer l'entrée de
+`orphanCapabilityAllowlist`.
 
 ## [2026-09-07] Fusion `origin/feat/v75` -> `feat/tactique` (worktree `LevelUp-wt-tactique`) — Complete
 
@@ -100894,3 +100910,53 @@ recents).
   restent au rapport (dette consignee, non traitee).
 - Prochaine etape : avance rapide de `feat/v75`, push, UN controle de CI ; puis vague 2
   (M2 et M6 deja livres, restent M1, M3, M4, M5).
+## [2026-09-07] Vagabond/Nomad recuit et valide, et le reste du parc declare a l'optimum — Complete
+
+**Demande.** « On a regenere des map background dernierement, regen la map Vagabond/Nomad selon
+les memes criteres. » Vagabond = Nomad, cle Forge `105f5d84-8de1-4908-af3a-1c4f3bf9d642`.
+
+**Ce que « les memes criteres » recouvrait — mesure avant d'agir.** La derniere fournee
+(`b510d8340` « Ajustements graphiques », 06/09, 11 fonds) n'est PAS une recuisson : dimensions
+identiques au pixel pres, aucun reglage ni code modifie, et la seule transition de pixels mesuree
+est `transparent -> gris plein` (forest 11 712 px vers 178,178,178 ; Fragmentation 115 138 ;
+ridgeline 12 310 ; Live Fire 30 519 vers 251). C'est un bouchage de trous applique aux images.
+Il ne s'appliquait pas a Vagabond : 0 pixel transparent enclos dans son fond publie comme dans le
+nouveau. Le levier restant etait donc la recuisson, ce qu'un controle sur `forest` a confirme :
+la meme commande ne reproduit plus le cadre d'aout (1 229x1 431 contre 1 423x1 562 publie), donc
+la CHAINE a bouge depuis les gates du 26 au 30/08.
+
+**Vagabond, a reglages CONSTANTS.** Entree gatee le 30/08 laissee intacte (encre, maillage en
+reference + niveau haut, rognage au maillage, rognage aux zones a 1 m). Mesures : couverture
+98,3 % (carte jugee couverte), 4 633 objets poses sur 4 709, 26 zones de callout, 7,0 % de
+matiere hors zones rognee, ecart median aux ancres -0,226 m (etalonnage -0,29 m), 9 ancres sur 9
+avec du sol. Cadre 1 261x1 267 -> 1 224x1 203, echelle inchangee (0,04213 m/px), calage rededuit
+du cadre utile. Verdict utilisateur sur planche avant/apres : « grave mieux la tienne! Je valide
+elle remplace l'ancienne ». Publie, registre a VALIDEE 07/09 aux deux lignes, `raison` completee
+du verbatim et des chiffres, `gateLe` porte au 07/09.
+
+**LE LOT DE 29 EST REFUSE, ET C'EST UN RESULTAT.** L'utilisateur a designe 29 fonds sur une
+planche de selection (les 106 publies en miniatures a cocher). Les 29 ont ete recuites en scratch,
+un processus par carte : 29 images, 0 echec, 0 non cuisinable. Chiffres : 28 cartes sur 29
+rendent EXACTEMENT le meme compte d'ancres avec du sol qu'avant, aucune n'en perd, Thunderhead en
+gagne (36/36 -> 46/46, catalogue d'objectifs enrichi). Deux cuissons degradees sans effet sur
+l'image (Bazaar et Aquarius : « aucun volume d'eau dans le sddt », leur reglage en demande, le
+module n'en declare pas). Verdict sur planche avant/apres : **« tout etait bien avant, on avait
+atteint l'optimum »**. RIEN N'EST PUBLIE de ce lot — les 29 images restent en scratch.
+Enseignement a retenir : sur ces 29 cartes, l'evolution de la chaine depuis fin aout ne change
+plus le rendu ; le parc y est stable. Vagabond etait la carte restee en arriere.
+
+**Deux pieges d'outillage, tous deux payes ici.**
+1. `mapfond-build` resout la racine du depot par `db_profiles.json`, qui n'existe QUE dans le
+   depot principal : lance depuis un worktree, il lit ET ecrit dans le principal. Or celui-ci est
+   sur `wt/cartes-revue-par-carte`, restee a `6568cce52` — sans les ajustements graphiques du
+   06/09, sans Live Fire/Detachment/Argyle, sans Absolution/Insolence : 22 fonds plus vieux.
+   Cuire depuis la aurait ecrase des retouches par des versions perimees. Parade :
+   `LEVELUP_REPO_ROOT` sur le worktree (l'env court-circuite la recherche du marqueur), plus la
+   copie des entrees hors depot (`.ai/re_dump/mapvar`, `.ai/re_dump/navmesh`, gitignorees).
+2. Un seul chevauchement entre les 11 fonds retouches a la main et les 29 recuits : Threshold
+   (`ddbb3a00`). La recuisson repart de la geometrie et ne conserve pas le bouchage manuel — signale
+   avant le vote, et le vote a tranche pour l'avant.
+
+**Reste ouvert.** Le depot PRINCIPAL porte encore, non commites, les cinq fichiers de la premiere
+publication de Vagabond (fond, sidecar, registre, reglages, journal) faite avant que le piege n°1
+soit compris : le garde-fou a refuse le `git checkout --` dans ce depot partage. A restaurer.

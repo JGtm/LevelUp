@@ -171,6 +171,19 @@ const (
 	// Pendant PRODUIT des capabilities DONNÉE `film.kill_positions` + `film.kill_source`
 	// (games/adapter.go) : celles-là gouvernent la production, celle-ci l'affichage.
 	CapWeaponRange Capability = "weapon_range"
+
+	// CapExpectedWinProb — le titre expose la PROBABILITÉ DE VICTOIRE ATTENDUE
+	// pré-match (prédiction TrueSkill 2, champ expected_win_prob). Absente ⇒ le
+	// front masque la carte « Prob. victoire » du détail de match, la colonne
+	// « Prob. vic. » des tableaux (Progression, Synergies), et le champ reste nil
+	// dans les réponses API (dégradation par construction).
+	//
+	// REMISÉE le 2026-09-07 — NON déclarée par aucun titre. La prédiction est
+	// jugée pas assez fiable pour être exposée en production (écart modèle sur
+	// certaines compositions / modes). Les données restent calculées et stockées
+	// (match_skill_rank.expected_win_prob) pour analyse interne. Reprise : accorder
+	// la capability au titre concerné quand le modèle est recalibré.
+	CapExpectedWinProb Capability = "expected_win_prob"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
