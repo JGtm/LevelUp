@@ -586,18 +586,42 @@ cd apps/go-api && go run ./cmd/replay-corpus-gate \
   --base=HEAD~3                                               # revision de base explicite
 ```
 
+**Plancher de couverture (2026-09-07, CORPUS-R1 C3)** : par défaut, **tous** les témoins du
+manifeste doivent être cuits et comparés — un cache de film purgé ou partiel rendait
+auparavant tous les témoins ABSENT, et le gate sortait silencieusement en 0 sans rien comparer
+(`codeSortie` saute les lignes ABSENT). Un ou plusieurs témoins ABSENT sortent désormais en
+code 2, en nommant lesquels et pourquoi ; `--allow-missing` restaure l'ancien comportement (un
+avertissement `slog` seul, jamais un échec) pour une exécution partielle délibérée.
+
+**Tous les drapeaux** (`cd apps/go-api && go run ./cmd/replay-corpus-gate -h` pour la liste à
+jour) :
+
+| Drapeau | Défaut | Signification |
+|---|---|---|
+| `--reference` | `base` | `base` (cuisson fraîche contre une révision de base) ou `parc` (contre l'artefact déjà cuit) |
+| `--base` | auto (voir plus haut) | révision de base explicite, en mode `--reference=base` |
+| `--strict` | `false` | en mode `--reference=parc`, une perte sort aussi en code 1 (sans effet en mode base, déjà bloquant) |
+| `--allow-missing` | `false` | tolérer un témoin ABSENT (avertissement seul) au lieu de sortir en code 2 |
+| `--manifest` | `<source-root>/config/replay_corpus.toml` | chemin du manifeste |
+| `--source-root` | `git rev-parse --show-toplevel` | dépôt dont le code/la config AU HEAD est testé — **pas** basé sur `db_profiles.json` : fonctionne depuis n'importe quel worktree, y compris un sans copie locale de ce fichier |
+| `--parc-root` | `source-root` s'il porte déjà la base partagée du titre, sinon auto-détecté via le `.git` commun | le parc de développement (chunks de film, artefacts `--reference=parc`) |
+| `--lock-root` | `CacheRootDir()` du parc | où vit le verrou de décodage partagé |
+| `--work-root` | un dossier temporaire jetable | racine de travail de la ou des cuissons fraîches |
+| `--keep-work` | `false` | conserver la racine de travail après l'exécution (débogage) |
+| `--json` | (aucun) | chemin où écrire aussi le rapport complet en JSON |
+
 **À exécuter avant tout merge qui touche** `analysis/replay`, `replaybuild`, `filmdec`, ou qui
 bumpe `SchemaVersion`. **Exige** : le parc local de développement (chunks de film ; + artefacts
 déjà cuits sous `data/cache/replays` en mode `--reference=parc`) et l'accès en lecture à la base
 partagée du titre (pour les faits du match, via `levelup replay-facts-export` lancé en
-sous-processus — la seule étape qui exige CGO/gcc). **N'exige PAS le jeu installé** : la cuisson
-elle-même (un binaire `cmd/replay-build`, compilé à la volée pour le HEAD et, en mode base, pour
-la révision de base) ne lit que des catalogues versionnés (`data/titles/{slug}/reference`),
-contrairement au corpus `gamefiles` ci-dessus — le gate n'en partage que l'ESPRIT (une ressource
-locale volumineuse, absente en CI, qui dégrade proprement plutôt que d'échouer). Un témoin
-absent (du parc, ou de la révision de base) est un avertissement `slog`, jamais un échec
-silencieux ou fatal. Mesuré le 2026-09-06 sur le manifeste à 7 témoins, dans les deux modes :
-**cf. `.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** pour l'exécution exacte et sa durée.
+sous-processus, PAR témoin — la seule étape qui exige CGO/gcc ; un témoin inconnu du registre ne
+saute que lui, jamais tout le lot). **N'exige PAS le jeu installé** : la cuisson elle-même (un
+binaire `cmd/replay-build`, compilé à la volée pour le HEAD et, en mode base, pour la révision
+de base) ne lit que des catalogues versionnés (`data/titles/{slug}/reference`), contrairement au
+corpus `gamefiles` ci-dessus — le gate n'en partage que l'ESPRIT (une ressource locale
+volumineuse, absente en CI, qui dégrade proprement plutôt que d'échouer). Mesuré le
+2026-09-06/07 sur le manifeste à 7 témoins, dans les deux modes : **cf.
+`.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** pour l'exécution exacte et sa durée.
 
 Si le parc local est plus ancien que le HEAD, les écarts attendus en `--reference=parc` sont des
 GAINS (calques neufs, correctifs documentés) ; toute PERTE est un fait à rapporter, jamais à

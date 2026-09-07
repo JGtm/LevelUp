@@ -220,11 +220,14 @@ go-api-test-gamefiles:
 ##
 ## A LANCER AVANT tout merge qui touche analysis/replay, replaybuild, filmdec, ou qui bumpe
 ## SchemaVersion. EXIGE le parc local de developpement (chunks de film) ET l'acces en lecture
-## a la base partagee du titre pour les faits du match ; PAS le jeu installe. Duree mesuree
-## (7 temoins, 2026-09-06, les deux modes) : cf. docs/COMMANDS.md.
+## a la base partagee du titre pour les faits du match ; PAS le jeu installe. Marche SANS FLAG
+## depuis un depot qui porte sa propre base partagee (le cas courant, cf. docs/COMMANDS.md pour
+## le detail des 10 options si votre topologie l'exige) ; duree mesuree (7 temoins, 2026-09-07,
+## les deux modes) : cf. .ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md.
 ##
-## Un temoin absent est un avertissement (`slog`), jamais un echec silencieux — la cible reste
-## utilisable sur un poste sans parc (elle ne compare alors rien).
+## Par defaut, un SEUL temoin absent (cache de film purge ou partiel) fait sortir en code 2 —
+## un gate qui ne compare rien ne doit jamais sortir en 0 (`--allow-missing` restaure l'ancien
+## avertissement seul, pour un usage delibere).
 replay-corpus-gate:
 	cd $(GO_API_DIR) && CGO_ENABLED=0 go run ./cmd/replay-corpus-gate
 
