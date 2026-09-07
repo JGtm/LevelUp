@@ -168,3 +168,45 @@ describe('TacticalAnalysisView — états de la lecture', () => {
     expect(screen.getAllByTestId('kpi-card')).toHaveLength(2)
   })
 })
+
+describe('TacticalAnalysisView — réserve d’échantillon faible (doctrine : interdit de comparer, pas de cacher)', () => {
+  it('avec echantillon_faible=true, les tuiles Échange et Isolement rendent la réserve', () => {
+    mockRaster({
+      data: {
+        ...RASTER_NOMINAL,
+        echange: { ...RASTER_NOMINAL.echange!, echantillon_faible: true },
+        isolement: { ...RASTER_NOMINAL.isolement!, echantillon_faible: true },
+      },
+    })
+    renderVue()
+    const cartes = screen.getAllByTestId('kpi-card')
+    const tradeCard = cartes.find((c) => c.getAttribute('data-id') === 'tactical-trade')
+    const isoCard = cartes.find((c) => c.getAttribute('data-id') === 'tactical-isolation')
+    expect(tradeCard?.textContent).toContain(t.lowSample)
+    expect(isoCard?.textContent).toContain(t.lowSample)
+  })
+
+  it('sans echantillon_faible, aucune tuile ne mentionne la réserve', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    renderVue()
+    const cartes = screen.getAllByTestId('kpi-card')
+    const tradeCard = cartes.find((c) => c.getAttribute('data-id') === 'tactical-trade')
+    const isoCard = cartes.find((c) => c.getAttribute('data-id') === 'tactical-isolation')
+    expect(tradeCard?.textContent).not.toContain(t.lowSample)
+    expect(isoCard?.textContent).not.toContain(t.lowSample)
+  })
+})
+
+describe('TacticalAnalysisView — note de couverture « matchs sans rayon connu » (tuile Isolement)', () => {
+  it('matchs_sans_rayon > 0 : la note apparaît sur la tuile Isolement', () => {
+    mockRaster({ data: { ...RASTER_NOMINAL, matchs_sans_rayon: 3 } })
+    renderVue()
+    expect(screen.getByTestId('tactical-isolation-no-radius')).toHaveTextContent(t.kpiNoRadiusNote(3))
+  })
+
+  it('matchs_sans_rayon absent ou nul : aucune note', () => {
+    mockRaster({ data: { ...RASTER_NOMINAL, matchs_sans_rayon: 0 } })
+    renderVue()
+    expect(screen.queryByTestId('tactical-isolation-no-radius')).not.toBeInTheDocument()
+  })
+})
