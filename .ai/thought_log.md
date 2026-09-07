@@ -100466,3 +100466,52 @@ corruption secondaire NBSP/guillemet-droit constatee sur 6 sites, a anticiper si
 sont un jour traites pour le mojibake (D9, hors branche). Commit(s) sur `feat/mojibake-garde-rail`
 (worktree `LevelUp-wt-q3-mojibake`), push `origin`. Pas de fusion dans `feat/v75` (accord
 utilisateur prealable requis, regle CLAUDE.md n°16).
+## [2026-09-07] Orchestration — vague 1, lot Q5 : flakes CI import async + worker persist (Complete)
+
+**Statut** : Complete
+
+**Decision technique principale** : deux flakes distincts, deux causes distinctes, aucune n'exigeait
+de changer le comportement de code de prod — les deux points de synchronisation necessaires
+existaient deja, simplement non branches par les tests.
+- (a) `internal/api/handlers` `TestStartImport_HappyPathReturns202WithJobID` : `StartImport` lance
+  `go h.runImport(...)` et rend la main immediatement ; le test retournait sans attendre cette
+  goroutine, qui continue d'ecrire dans `h.jobStore` (JSON) et sous `h.stashDir`/le fichier temp —
+  tous sous `t.TempDir()`. Sous charge parallele Windows, `t.TempDir()` tente son `RemoveAll` avant
+  que la goroutine ait fini d'ecrire -> "Le repertoire n'est pas vide". Correctif : le test attend
+  l'etat terminal du job via `pollJobUntilDone` (helper DEJA existant dans
+  `openspartan_import_e2e_test.go`, meme package `handlers` — reutilise, pas duplique) avant de
+  rendre la main.
+- (b) `internal/persist` `TestWorker_Run_PersistsAndACKs` : le poll attendait `persister.count()==3`
+  (incremente DANS `Persist`, donc AVANT l'ACK) comme signal pour verifier ensuite que les 3 WAL
+  sont supprimes — mais la suppression (ACK) a lieu APRES, dans le meme `Worker.handle` synchrone.
+  Sous charge (CI, runner partage), la fenetre entre "Persist retourne" et "WAL reellement
+  supprime" (I/O disque en file d'attente) s'elargit, et l'assertion de suppression tombait avant
+  l'ACK reel du 3e batch (51,9 s en CI vs 0,08 s en local — attente implicite sur le MAUVAIS signal,
+  pas un vrai timeout court). Correctif : synchronisation sur le hook `OnPersistOK` deja expose par
+  `Worker` (se declenche apres l'ACK, cf. `internal/persist/worker.go:184-188`) — aucun changement
+  de code de prod, le hook existait deja et n'etait pas branche par ce test.
+
+**Resultats observes (sur pieces)** :
+- Taux d'echec AVANT correctif (reproduction locale, hors charge CI reelle) : 0/20 sur les deux
+  tests (`go test -count=20 -p 8 -run <Nom>`) — les deux flakes sont etablis par les registres CI
+  (runs Windows charges), pas reproductibles en isolation locale sans la contention reelle d'un
+  runner partage ; corrige sur analyse de la cause (lecture du code), pas sur observation d'un
+  rouge local.
+- Taux d'echec APRES correctif : 0/20 x2 (deux runs consecutifs, (a) 3.8s/3.7s puis (a) 5.3s/5.6s
+  reproductibilite confirmee, (b) 0.16s/0.20s x2) ; `go test -count=1 ./internal/api/handlers/
+  ./internal/persist/` vert (exit 0) ; `go test -tags=integration -p 1 -count=1 ./internal/persist/`
+  vert (exit 0, 45-50s, coherent avec le budget anti-ART attendu) ; `go vet` des deux paquets
+  propre ; `gofmt -l` vide sur les deux fichiers modifies.
+- Fichiers touches : `apps/go-api/internal/api/handlers/openspartan_import_test.go` (import `time`
+  + attente `pollJobUntilDone` en fin de test) ; `apps/go-api/internal/persist/worker_test.go`
+  (`w.OnPersistOK` + attente par canal a la place du poll sur `persister.count()`).
+
+**Decouverte consignee, non traitee** : `TestWorker_Run_PersistFailure_NoACK` (meme fichier,
+ligne ~120) attend un `time.Sleep(200ms)` fixe de la meme famille — non prouve instable a ce jour,
+hors perimetre STRICT du lot (deux tests nommes uniquement). Registre `.ai/V7.5/REGISTRE_REPORTS.md`.
+
+**Conclusion / prochaine etape** : les deux entrees R8 du `.ai/PLAN_V2_RESTES_2026-09-07.md` sont
+cochees `[x]` avec preuve ; les deux entrees du registre `.ai/V7.5/REGISTRE_REPORTS.md` sont barrees
+et closes ; Q5 coche `[x]` dans `.ai/PLAN_ORCHESTRATION_2026-09-07.md`. Commit(s) sur
+`feat/ci-flakes-import-worker` (worktree dedie `LevelUp-wt-q5-flakes`), push vers origin ; pas de
+fusion dans `feat/v75` (decision utilisateur a la fin de la vague).

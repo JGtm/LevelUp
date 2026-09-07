@@ -59,6 +59,19 @@ func TestWorker_Run_PersistsAndACKs(t *testing.T) {
 	persister := &mockPersister{}
 	w := NewWorker("test-shared", q, TargetShared, persister)
 
+	// Worker.handle() appelle Persist() PUIS ACK() (suppression du WAL) avant
+	// de déclencher OnPersistOK — cf. internal/persist/worker.go. Le poll
+	// précédent attendait persister.count()==3 (incrémenté DANS Persist, donc
+	// AVANT l'ACK) puis vérifiait immédiatement la suppression des 3 WAL : sous
+	// charge (CI, runner partagé), la fenêtre entre "Persist retourné" et
+	// "fichier WAL effectivement supprimé" s'élargit (I/O disque en file
+	// d'attente) et l'assertion de suppression pouvait tomber avant l'ACK réel
+	// (51,9 s en CI vs 0,08 s en local — attente implicite sur le mauvais
+	// signal, pas un vrai timeout). On synchronise sur le hook OnPersistOK, qui
+	// ne se déclenche qu'après l'ACK, donc après la suppression du WAL.
+	acked := make(chan struct{}, 3)
+	w.OnPersistOK = func() { acked <- struct{}{} }
+
 	// Démarrer worker
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
@@ -71,10 +84,15 @@ func TestWorker_Run_PersistsAndACKs(t *testing.T) {
 		}
 	}
 
-	// Attendre que le worker ait traité les 3 batches
-	deadline := time.Now().Add(2 * time.Second)
-	for persister.count() < 3 && time.Now().Before(deadline) {
-		time.Sleep(20 * time.Millisecond)
+	// Attendre les 3 ACKs (Persist + suppression du WAL) — pas seulement
+	// persister.count(), qui ne garantit rien sur l'ACK (cf. commentaire ci-dessus).
+	deadline := time.After(30 * time.Second)
+	for acks := 0; acks < 3; acks++ {
+		select {
+		case <-acked:
+		case <-deadline:
+			t.Fatalf("timeout en attente de l'ACK %d/3 (persister.count()=%d)", acks+1, persister.count())
+		}
 	}
 	if persister.count() != 3 {
 		t.Errorf("persister.count() = %d, want 3", persister.count())
