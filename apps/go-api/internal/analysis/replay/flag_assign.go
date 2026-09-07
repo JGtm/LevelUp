@@ -117,22 +117,23 @@ func (g *flagGround) seulEnJeu() int {
 	return seul
 }
 
-// choisir applique les trois regles de l'en-tete, dans l'ordre.
-func (g *flagGround) choisir(r flagCarryRaw, spawns []FlagSpawn) int {
+// choisir applique les trois regles de l'en-tete, dans l'ordre. Le second retour dit que la
+// TROISIEME a tranche — une attribution PAR ELIMINATION, que la couverture publie.
+func (g *flagGround) choisir(r flagCarryRaw, spawns []FlagSpawn) (int, bool) {
 	if r.steal {
-		return nearestSpawn(spawns, r.x0, r.y0)
+		return nearestSpawn(spawns, r.x0, r.y0), false
 	}
 	if f := nearestDroppedFlag(g.sol, r.x0, r.y0); f >= 0 {
-		return f
+		return f, false
 	}
 	if f := g.seulEnJeu(); f >= 0 {
-		return f
+		return f, true
 	}
-	return nearestSpawn(spawns, r.x0, r.y0)
+	return nearestSpawn(spawns, r.x0, r.y0), false
 }
 
 // assignFlags attribue chaque portage a un drapeau (index dans la liste des socles).
-func assignFlags(raws []flagCarryRaw, spawns []FlagSpawn) {
+func assignFlags(raws []flagCarryRaw, spawns []FlagSpawn, cov *FlagCarriesCoverage) {
 	if len(spawns) == 0 {
 		for i := range raws {
 			raws[i].flagIndex = 0
@@ -145,7 +146,10 @@ func assignFlags(raws []flagCarryRaw, spawns []FlagSpawn) {
 			g.poser(raws[ev.carry])
 			continue
 		}
-		f := g.choisir(raws[ev.carry], spawns)
+		f, parElimination := g.choisir(raws[ev.carry], spawns)
+		if parElimination {
+			cov.AssignedByPlay++
+		}
 		raws[ev.carry].flagIndex = f
 		g.prendre(f)
 	}

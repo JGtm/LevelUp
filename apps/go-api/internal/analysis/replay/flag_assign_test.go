@@ -161,6 +161,10 @@ func TestFlagAssignPriseVaAuSeulDrapeauEnJeu(t *testing.T) {
 	if cov.Carries != 2 || !cov.Balanced() {
 		t.Fatalf("couverture %+v : 2 portages attendus, invariant tenu", *cov)
 	}
+	if cov.AssignedByPlay != 1 {
+		t.Errorf("assignedByPlay = %d, attendu 1 : la troisieme regle a tranche, elle se publie",
+			cov.AssignedByPlay)
+	}
 	assertPorteurs(t, flagOfTeam(t, got, 1), []string{"1", "2"})
 	assertPorteurs(t, flagOfTeam(t, got, 0), nil)
 }
@@ -190,6 +194,10 @@ func TestFlagAssignADeuxDrapeauxEnJeuLaRegleSeTait(t *testing.T) {
 	got, cov := buildFlagCarries(scan, flagTestCtx(tracks, nil, 100))
 	if cov.Carries != 3 || !cov.Balanced() {
 		t.Fatalf("couverture %+v : 3 portages attendus, invariant tenu", *cov)
+	}
+	if cov.AssignedByPlay != 0 {
+		t.Errorf("assignedByPlay = %d, attendu 0 : a deux drapeaux dehors la regle se TAIT",
+			cov.AssignedByPlay)
 	}
 	assertPorteurs(t, flagOfTeam(t, got, 1), []string{"1"})
 	assertPorteurs(t, flagOfTeam(t, got, 0), []string{"2", "3"})

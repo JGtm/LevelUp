@@ -308,6 +308,20 @@ type FlagCarriesCoverage struct {
 	// la piste LIBRE et non plus de la derniere position du porteur. L'ecart n'est pas
 	// cosmetique : un drapeau tombe rebondit, et le porteur meurt rarement la ou l'objet se pose.
 	DropsRepositioned int `json:"dropsRepositioned"`
+	// AssignedByPlay : prises qu AUCUN drapeau au sol ne rattachait et qui sont allees au SEUL
+	// drapeau en jeu (flag_assign.go, troisieme regle). C est une attribution PAR ELIMINATION,
+	// et elle se publie pour se verifier : sans elle, ces prises retombaient sur le socle le
+	// plus proche — celui du porteur quand l objet est tombe pres de la base adverse.
+	AssignedByPlay int `json:"assignedByPlay"`
+	// DropsWithheld : fins de portage dont l'etat [FlagStateDropped] N'A PAS ete publie, parce
+	// qu'a cet instant un AUTRE portage du meme drapeau etait encore ouvert — le drapeau passe
+	// d'une main a l'autre, il ne touche pas le sol (cf. `flagTenuParUnAutre`).
+	//
+	// C'EST LA MESURE DE L'INVARIANT DE COHERENCE, et elle vaut d'etre lue : avant lui, un
+	// portage repris se reduisait a UNE frame et le drapeau se dessinait AU SOL pendant qu'un
+	// joueur courait avec. `bcb6d393` : 11 fins retenues sur 16 portages, et la duree publiee
+	// de deux porteurs remontait de 441 a 666 et de 96 a 346 frames.
+	DropsWithheld int `json:"dropsWithheld"`
 }
 
 // Balanced verifie les DEUX invariants du calque : toute prise de l'oracle est soit publiee, soit

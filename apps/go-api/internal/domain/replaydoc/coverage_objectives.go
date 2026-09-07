@@ -37,6 +37,8 @@ type FlagCarriesCoverage struct {
 	ObjectLives           int  `json:"objectLives"`
 	ClosedByObject        int  `json:"closedByObject"`
 	DropsRepositioned     int  `json:"dropsRepositioned"`
+	AssignedByPlay        int  `json:"assignedByPlay"`
+	DropsWithheld         int  `json:"dropsWithheld"`
 }
 
 // VipCrownCoverage porte les denominateurs du calque. Sans eux, « 15 periodes » se lirait comme

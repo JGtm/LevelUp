@@ -1,3 +1,54 @@
+## [2026-09-07] Drapeaux, complement : une lecture vraie n'est ni perdue ni masquee — Complete
+
+**Le mandat.** Le pilote refuse la cloture du lot drapeaux en l'etat : sa decouverte n° 2 faisait
+PERDRE de la duree servie. Sur `bcb6d393`, la duree publiee de `2533274858283686` passait de 358
+a 282 frames — or ces 358 venaient d'etre retablis par le lot des durees (schema 45) contre le
+parc. Doctrine du chantier : une lecture vraie n'est jamais perdue ni masquee ; l'axe des durees
+d'un gate en mode base serait sorti EN ECHEC.
+
+**Decision technique principale.** Le symptome (« le portage repris se reduit a UNE frame ») est
+un cas particulier d'un defaut de COHERENCE, et c'est l'invariant general qui est pose, pas un
+rustine sur le cas nomme. `applyFlagLifeEvent` date l'ouverture d'un portage a
+`frameOfMatchMS(t0)` et sa fin a `frameOfMatchMS(t1) + 1` ; quand un portage est ferme par LA
+PRISE SUIVANTE DU MEME SLOT, `t1` vaut exactement le `t0` du suivant, la fin tombe UNE FRAME
+APRES l'ouverture de la reprise, et `spansOfTransitions` — qui trie par FRAME — la laisse ecraser
+l'etat `carried`. Le drapeau se dessinait AU SOL pendant qu'un joueur courait avec.
+L'INVARIANT POSE : une fin ne publie pas `dropped` quand, a cet instant, un AUTRE portage du meme
+drapeau est encore ouvert (`flagTenuParUnAutre`) — le drapeau passe d'une main a l'autre, il ne
+touche pas le sol. Il couvre les deux situations : la reprise du meme porteur (aucun lacher DATE,
+le modele borne lui-meme le sejour au sol a zero) et le RECOUVREMENT de deux portages du meme
+drapeau (une incoherence que la couverture publie deja ; publier le lacher de l'un ecrasait le
+portage de l'autre, ce qui coutait 4 frames a un joueur de `64e8adfa`). UNE GARDE, ecrite et
+testee : une CAPTURE n'est jamais retenue — elle ne pose pas le drapeau au sol, elle le renvoie a
+sa base, et c'est un fait DATE qui tranche sur tout recouvrement. Le biais assume reste celui de
+l'en-tete de `flag_carries.go` : se tromper en dessinant le drapeau dans une main qui ne le tient
+plus, jamais en le posant au sol alors qu'un joueur court avec.
+
+**Resultats observes.** Mesure contre la base `feat/v2-durees` HEAD (`0930cc692`, recompilee),
+cinq films re-cuits des deux cotes, un par processus sous verrou. Duree totale portee :
+`bcb6d393` 948 -> 1 423, `e94163af` 664 -> 1 159, `cde26226` 4 119 -> 6 422, `64e8adfa`
+2 441 -> 4 388, `c0a82e88` 67 -> 67. **AUCUN joueur en baisse sur aucun des cinq films**
+(`replay-diff`, axe `duree-totale/par-xuid`), spans masques a 0 partout (10, 17, 63, 41 avant).
+Sur `bcb6d393` : `2533274858283686` TIENT ses 358 frames, `2533274823110022` passe de 441 a 666,
+`2535429985869093` de 96 a 346 ; 0 portage sur son propre drapeau, les trois captures sur le
+drapeau adverse. Deux compteurs de couverture publient desormais ce que les regles ont DECIDE —
+`assignedByPlay` (attribution par elimination) et `dropsWithheld` (lacher retenu) —, tous deux
+servis jusqu'au contrat (`replaydoc` -> `replayview` -> `openapi.yaml` -> `generated.ts`,
+cliquet de parite). Trois mutations jouees rouge puis vert, dont celle de la garde de capture.
+Gates : suite complete `./...` verte, integration `api/wire`, `go build`, `go vet` CGO_ENABLED=0
+sur `domain` et `analysis`, lint 0 issue, golden inchange.
+
+**Conclusion / prochaine etape.** Le schema reste 46 : la sortie change dans le MEME bump, aucun
+artefact 46 n'a encore ete diffuse. UNE decouverte reste au registre, et elle se precise : sur
+`64e8adfa` (2 manches, `closedOverlaps = 10`) sept portages restent sur leur propre drapeau et,
+consequence a dire, la capture de 529 075 ms passe du drapeau adverse a celui du camp de son
+auteur — le portage de 5 169 est l'une de ces sept fautes (prise a 2,3 m du socle de son propre
+camp, les deux drapeaux dehors, la troisieme regle se tait). La regle qui la reparerait (« une
+prise au socle S ne porte pas sur le drapeau de S ») reste REFUTEE par la faute de 6 569 sur le
+meme film. Reprise : faire PARTAGER a l'attribution la machine a etats de `assembleFlagLives`
+plutot que d'en ecrire une seconde copie. Detail :
+`.ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md` §8 ter.
+
 ## [2026-09-06] Un joueur portait son propre drapeau — DEFAUT du calque, corrige a la source (schema 46) — Complete
 
 **Le mandat.** Instruire la decouverte n° 1 du lot des durees, laissee non traitee : sur

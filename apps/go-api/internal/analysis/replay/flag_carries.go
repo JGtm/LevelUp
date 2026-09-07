@@ -142,7 +142,12 @@ type flagCarryRaw struct {
 	captured bool
 	// closed dit qu un FAIT a ferme le portage. Faux : rien ne l a ferme, il court jusqu a la
 	// fin du rejeu et aucune transition de fin n est emise.
-	closed     bool
+	closed bool
+	// reprise dit que le portage a ete ferme par LA PRISE SUIVANTE DU MEME SLOT, et par rien
+	// d autre. Ce n est pas un lacher DATE : c est le meme joueur qui reprend, et le modele lui-
+	// meme borne le sejour au sol a zero (la fin et la reprise tombent sur la meme milliseconde).
+	// `flag_carries_lives.go` s en sert pour ne pas publier un `dropped` qui n a jamais existe.
+	reprise    bool
 	flagIndex  int
 	confirmed  bool
 	observable bool
@@ -190,7 +195,7 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	// ... et le point de lacher se corrige APRES, sur la piste LIBRE : le porteur meurt rarement
 	// la ou l'objet se pose. L'attribution du drapeau qui suit s'en sert.
 	cov.DropsRepositioned = repositionFlagDrops(raws, ctx, scan)
-	assignFlags(raws, scan.Spawns)
+	assignFlags(raws, scan.Spawns, cov)
 	markFlagCarries(raws, scan.Marks, ctx)
 	tallyFlagCarries(raws, cov)
 	cov.Overlaps, cov.ClosedOverlaps = countFlagOverlaps(raws)
@@ -251,12 +256,13 @@ func boundFlagCarries(ops []flagOpening, evs []objectiveevents.NamedEvent, ctx f
 		if d, ok := firstAfter(deaths[o.xuid], o.t0); ok && d < t1 {
 			t1, captured, closed = d, false, true
 		}
+		reprise := false
 		if n, ok := next[i]; ok && n < t1 {
-			t1, captured, closed = n, false, true
+			t1, captured, closed, reprise = n, false, true, true
 		}
 		out = append(out, flagCarryRaw{
 			xuid: o.xuid, t0: o.t0, t1: t1, steal: o.steal,
-			captured: captured, closed: closed, flagIndex: -1,
+			captured: captured, closed: closed, reprise: reprise, flagIndex: -1,
 		})
 	}
 	return out
@@ -301,7 +307,9 @@ func closeByCarrierKills(raws []flagCarryRaw, evs []objectiveevents.NamedEvent,
 		case several:
 			ambiguous++
 		case open >= 0:
-			raws[open].t1, raws[open].captured = at, false
+			// LA CHUTE EFFACE LA REPRISE : le portage n est plus ferme par une prise du meme
+			// slot mais par une MORT, qui pose bel et bien le drapeau au sol.
+			raws[open].t1, raws[open].captured, raws[open].reprise = at, false, false
 		}
 	}
 	return raws, ambiguous
