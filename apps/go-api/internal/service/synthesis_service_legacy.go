@@ -17,7 +17,7 @@ import (
 func filterSynthesisByPeriod(
 	rows []legacymatch.SynthesisMatchRow,
 	period string,
-	_ domain.FilterContextInput, // filtres avancÃ©s â€" Ã  implÃ©menter aprÃ¨s backfill de map/mode
+	_ domain.FilterContextInput, // filtres avancés — à implémenter après backfill de map/mode
 ) ([]legacymatch.SynthesisMatchRow, []string, []string) {
 	applied := []string{}
 	ignored := []string{}
@@ -29,21 +29,21 @@ func filterSynthesisByPeriod(
 	case "1w":
 		t := now.AddDate(0, 0, -7)
 		cutoff = &t
-		applied = append(applied, fmt.Sprintf("pÃ©riode=%s", period))
+		applied = append(applied, fmt.Sprintf("période=%s", period))
 	case "1m":
 		t := now.AddDate(0, -1, 0)
 		cutoff = &t
-		applied = append(applied, fmt.Sprintf("pÃ©riode=%s", period))
+		applied = append(applied, fmt.Sprintf("période=%s", period))
 	case "1y":
 		t := now.AddDate(-1, 0, 0)
 		cutoff = &t
-		applied = append(applied, fmt.Sprintf("pÃ©riode=%s", period))
+		applied = append(applied, fmt.Sprintf("période=%s", period))
 	case "2y":
 		t := now.AddDate(-2, 0, 0)
 		cutoff = &t
-		applied = append(applied, fmt.Sprintf("pÃ©riode=%s", period))
+		applied = append(applied, fmt.Sprintf("période=%s", period))
 	default:
-		// "all" â€" pas de filtre temporel
+		// "all" — pas de filtre temporel
 	}
 
 	if cutoff == nil {
@@ -65,7 +65,7 @@ func buildScopeDescription(period string, matchCount int) string {
 		"1w":  "7 derniers jours",
 		"1m":  "30 derniers jours",
 		"1y":  "12 derniers mois",
-		"2y":  "2 derniÃ¨res annÃ©es",
+		"2y":  "2 dernières années",
 	}
 	label, ok := labels[period]
 	if !ok {
@@ -80,8 +80,8 @@ func buildScopeDescription(period string, matchCount int) string {
 
 const highlightTopN = 5
 
-// buildHighlightsPreview construit les top/pire matchs depuis les matchs filtrÃ©s.
-// Tri en place sur des copies â€" pas de mutation des slices partagÃ©s.
+// buildHighlightsPreview construit les top/pire matchs depuis les matchs filtrés.
+// Tri en place sur des copies — pas de mutation des slices partagés.
 func buildHighlightsPreview(rows []legacymatch.SynthesisMatchRow) domain.SynthesisHighlightsPreview {
 	if len(rows) == 0 {
 		return domain.SynthesisHighlightsPreview{}
@@ -129,11 +129,11 @@ func buildHighlightsPreview(rows []legacymatch.SynthesisMatchRow) domain.Synthes
 	}
 }
 
-// topNByFunc retourne les N premiers Ã©lÃ©ments selon la fonction de comparaison less(a,b).
+// topNByFunc retourne les N premiers éléments selon la fonction de comparaison less(a,b).
 func topNByFunc(rows []legacymatch.SynthesisMatchRow, n int, less func(a, b legacymatch.SynthesisMatchRow) bool) []legacymatch.SynthesisMatchRow {
 	cp := make([]legacymatch.SynthesisMatchRow, len(rows))
 	copy(cp, rows)
-	// tri partiel : sÃ©lectionner les N premiers
+	// tri partiel : sélectionner les N premiers
 	for i := 0; i < n && i < len(cp); i++ {
 		minIdx := i
 		for j := i + 1; j < len(cp); j++ {
@@ -149,7 +149,7 @@ func topNByFunc(rows []legacymatch.SynthesisMatchRow, n int, less func(a, b lega
 	return cp[:n]
 }
 
-// buildBreakdowns agrÃ¨ge les donnÃ©es heatmap en breakdowns carte et mode.
+// buildBreakdowns agrège les données heatmap en breakdowns carte et mode.
 func buildBreakdowns(rows []domain.SynthesisHeatmapRow) domain.SynthesisBreakdowns {
 	if len(rows) == 0 {
 		return domain.SynthesisBreakdowns{
@@ -158,8 +158,8 @@ func buildBreakdowns(rows []domain.SynthesisHeatmapRow) domain.SynthesisBreakdow
 		}
 	}
 
-	mapAgg := map[string][2]int{}  // map_name â†' [match_count, wins]
-	modeAgg := map[string][2]int{} // mode_name â†' [match_count, wins]
+	mapAgg := map[string][2]int{}  // map_name →' [match_count, wins]
+	modeAgg := map[string][2]int{} // mode_name →' [match_count, wins]
 	for _, r := range rows {
 		m := mapAgg[r.MapName]
 		m[0] += r.MatchCount
@@ -198,7 +198,7 @@ func buildBreakdowns(rows []domain.SynthesisHeatmapRow) domain.SynthesisBreakdow
 			WinRate:    wr,
 		})
 	}
-	// tri par MatchCount desc (sÃ©lection partielle des top 10)
+	// tri par MatchCount desc (sélection partielle des top 10)
 	sortMapEntries(mapEntries)
 	sortModeEntries(modeEntries)
 	if len(mapEntries) > 10 {
@@ -344,7 +344,7 @@ func sortModeEntries(s []domain.SynthesisModeEntry) {
 }
 
 // =============================================================================
-// P4.3 (ADR 0011) : helpers canonical (le converter SynthesisMatchRow est retirÃ©)
+// P4.3 (ADR 0011) : helpers canonical (le converter SynthesisMatchRow est retiré)
 // =============================================================================
 
 // filterSynthesisByPeriodCanonical filtre les lignes canoniques selon :

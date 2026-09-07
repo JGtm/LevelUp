@@ -378,7 +378,7 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 	}
 }
 
-// run est le cÅ“ur du moteur de sync. isDelta=true → stop dès un match connu.
+// run est le cœur du moteur de sync. isDelta=true → stop dès un match connu.
 func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta bool) (domain.SyncResult, error) {
 	result := domain.SyncResult{StartedAt: time.Now()}
 	// mode + sa forme titre-case pour le nom d'event (remplace strings.Title,

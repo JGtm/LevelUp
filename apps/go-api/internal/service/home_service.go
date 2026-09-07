@@ -1,4 +1,4 @@
-// Package service â€” home_service.go : service de la page d'accueil Mission Control.
+// Package service — home_service.go : service de la page d'accueil Mission Control.
 package service
 
 import (
@@ -22,29 +22,29 @@ import (
 	"levelup/go-api/internal/sync"
 )
 
-// HomeService orchestre les donnÃ©es de la page d'accueil.
+// HomeService orchestre les données de la page d'accueil.
 type HomeService struct {
 	repo         port.HomeRepository
 	cacheRepo    port.BattlePassCacheRepository
 	provider     *halo.HaloProvider
-	sink         port.HomePersistSink // nil â†’ pas de persistance (tests, joueurs sans auth)
+	sink         port.HomePersistSink // nil → pas de persistance (tests, joueurs sans auth)
 	socialRepo   port.SocialRepository
 	playerSlug   string
-	semantic     games.TitleSemanticAdapter // nil â†’ libellÃ©s rangs construits via fallbacks (RankName)
-	matchesCache *HomeMatchesCache          // nil â†’ pas de cache (tests, appels HomeCtx sans auth)
-	xuid         string                     // clÃ© de cache ; vide si matchesCache est nil
+	semantic     games.TitleSemanticAdapter // nil → libellés rangs construits via fallbacks (RankName)
+	matchesCache *HomeMatchesCache          // nil → pas de cache (tests, appels HomeCtx sans auth)
+	xuid         string                     // clé de cache ; vide si matchesCache est nil
 	// dataAdapter (optionnel, Phase C+ multi-titres) : point d'extension pour
-	// router LoadPlayerStats via la couche canonique. Ã€ ce jour, le service
+	// router LoadPlayerStats via la couche canonique. À ce jour, le service
 	// utilise le repo direct car canonical.PlayerStats ne couvre pas encore
-	// la totalitÃ© du payload home KPIs (favorite_playlist, avg_kda, etc.).
-	// Le hook est en place pour permettre une bascule incrÃ©mentale.
+	// la totalité du payload home KPIs (favorite_playlist, avg_kda, etc.).
+	// Le hook est en place pour permettre une bascule incrémentale.
 	dataAdapter games.TitleDataAdapter
 	// playerMatchesRepo (P4.1, ADR 0011) : loader canonical-aware optionnel.
 	// Quand fourni avec titleSlug + gamertag, fetchMatchesAndSessions charge
 	// canonical et convertit via homeMatchRowFromCanonical / homeSessionsFromCanonical.
-	// SkillTierLabel et SkillRankImageURL sont laissÃ©s vides cÃ´tÃ© converter
+	// SkillTierLabel et SkillRankImageURL sont laissés vides côté converter
 	// (TODO P4.3 : enrichir via TitleSemanticAdapter.Ranks() et
-	// TitleAssetURLAdapter.CSRRankImageURL une fois les adapters CSR cÃ¢blÃ©s
+	// TitleAssetURLAdapter.CSRRankImageURL une fois les adapters CSR câblés
 	// dans le service).
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
@@ -85,7 +85,7 @@ type HomeService struct {
 	replaySvc port.ReplayService
 }
 
-// NewHomeService crÃ©e un HomeService avec le repository et le provider Halo.
+// NewHomeService crée un HomeService avec le repository et le provider Halo.
 func NewHomeService(repo port.HomeRepository) *HomeService {
 	return &HomeService{
 		repo:     repo,
@@ -119,8 +119,8 @@ func (s *HomeService) WithRoundsDecide(roundsDecide map[string]bool) *HomeServic
 	return s
 }
 
-// WithHaloProvider remplace le provider Halo utilisÃ© par le service.
-// Utile pour injecter un provider configurÃ© par joueur (cache local, tests).
+// WithHaloProvider remplace le provider Halo utilisé par le service.
+// Utile pour injecter un provider configuré par joueur (cache local, tests).
 func (s *HomeService) WithHaloProvider(provider *halo.HaloProvider) *HomeService {
 	if provider != nil {
 		s.provider = provider
@@ -129,37 +129,37 @@ func (s *HomeService) WithHaloProvider(provider *halo.HaloProvider) *HomeService
 }
 
 // WithPersistSink configure le sink de persistance fire-and-forget.
-// Retourne le service pour permettre le chaÃ®nage.
+// Retourne le service pour permettre le chaînage.
 func (s *HomeService) WithPersistSink(sink port.HomePersistSink) *HomeService {
 	s.sink = sink
 	return s
 }
 
 // WithCacheRepo configure le repository de cache BP/Challenges.
-// Retourne le service pour permettre le chaÃ®nage.
+// Retourne le service pour permettre le chaînage.
 func (s *HomeService) WithCacheRepo(r port.BattlePassCacheRepository) *HomeService {
 	s.cacheRepo = r
 	return s
 }
 
 // WithSocial configure le repository social (favoris) et le slug joueur.
-// Retourne le service pour permettre le chaÃ®nage.
+// Retourne le service pour permettre le chaînage.
 func (s *HomeService) WithSocial(repo port.SocialRepository, playerSlug string) *HomeService {
 	s.socialRepo = repo
 	s.playerSlug = playerSlug
 	return s
 }
 
-// WithSemanticAdapter injecte le SemanticAdapter du titre courant pour rÃ©soudre
-// les libellÃ©s des rangs de carriÃ¨re (Ranks() expose un *mappings.RankCatalog).
-// Si nil, les libellÃ©s tombent sur le fallback RankName de la player DB.
+// WithSemanticAdapter injecte le SemanticAdapter du titre courant pour résoudre
+// les libellés des rangs de carrière (Ranks() expose un *mappings.RankCatalog).
+// Si nil, les libellés tombent sur le fallback RankName de la player DB.
 func (s *HomeService) WithSemanticAdapter(semantic games.TitleSemanticAdapter) *HomeService {
 	s.semantic = semantic
 	return s
 }
 
 // WithDataAdapter injecte le DataAdapter multi-titres pour activer une
-// future bascule LoadPlayerStats. DÃ©gradation gracieuse si nil.
+// future bascule LoadPlayerStats. Dégradation gracieuse si nil.
 func (s *HomeService) WithDataAdapter(a games.TitleDataAdapter) *HomeService {
 	s.dataAdapter = a
 	return s
@@ -176,7 +176,7 @@ func (s *HomeService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, t
 }
 
 // WithMatchesCache active le cache TTL process-level pour LoadHomeMatches + LoadHomeSessions.
-// xuid est la clÃ© de cache ; sans lui le cache ne peut pas fonctionner.
+// xuid est la clé de cache ; sans lui le cache ne peut pas fonctionner.
 func (s *HomeService) WithMatchesCache(cache *HomeMatchesCache, xuid string) *HomeService {
 	s.matchesCache = cache
 	s.xuid = xuid
@@ -205,17 +205,17 @@ func (s *HomeService) WithCareerLive(svc *CareerLiveService) *HomeService {
 	return s
 }
 
-// SetSessionActive implÃ©mente port.SessionNotifier.
-// ConservÃ© pour compatibilitÃ© avec le watcher â€” aucun effet sur le handler HTTP
+// SetSessionActive implémente port.SessionNotifier.
+// Conservé pour compatibilité avec le watcher — aucun effet sur le handler HTTP
 // qui appelle toujours le live directement.
 func (s *HomeService) SetSessionActive(_ bool) {
 }
 
-// homePageData regroupe toutes les donnÃ©es brutes chargÃ©es en parallÃ¨le par fetchHomePageData.
+// homePageData regroupe toutes les données brutes chargées en parallèle par fetchHomePageData.
 //
-// P4.3b (ADR 0011) : `canonicalRows` est renseignÃ© quand le path canonical est
+// P4.3b (ADR 0011) : `canonicalRows` est renseigné quand le path canonical est
 // actif (playerMatchesRepo + titleSlug + gamertag). `matches`/`sessions`
-// restent renseignÃ©s pour la rÃ©trocompatibilitÃ© (legacy fallback path).
+// restent renseignés pour la rétrocompatibilité (legacy fallback path).
 type homePageData struct {
 	canonicalRows  []canonical.PlayerMatchRow // nil = legacy path
 	spartanIdent   *domain.HomeSpartanIdentityRow
@@ -228,15 +228,15 @@ type homePageData struct {
 }
 
 // fetchMatchesAndSessions charge les rows canonical du joueur (P4.3 finale).
-// Retourne aussi un cache du `bool fromCache` pour tÃ©lÃ©mÃ©trie.
+// Retourne aussi un cache du `bool fromCache` pour télémétrie.
 //
 // P4.3 finale (ADR 0011) : path canonical exclusif. playerMatchesRepo +
-// titleSlug + gamertag sont REQUIS (wirÃ©s en DI universellement). Le legacy
-// fallback (LoadHomeMatches + LoadHomeSessions parallel) a Ã©tÃ© supprimÃ©.
+// titleSlug + gamertag sont REQUIS (wirés en DI universellement). Le legacy
+// fallback (LoadHomeMatches + LoadHomeSessions parallel) a été supprimé.
 //
-// Le cache TTL stocke encore les rows canonical pour rÃ©trocompat avec les
-// signatures Get/Set existantes (qui prennent matches/sessions legacy) â€” la
-// suppression du cache legacy est tracker dans une follow-up dÃ©diÃ©e.
+// Le cache TTL stocke encore les rows canonical pour rétrocompat avec les
+// signatures Get/Set existantes (qui prennent matches/sessions legacy) — la
+// suppression du cache legacy est tracker dans une follow-up dédiée.
 // finale, cf. commentaire ci-dessous) ; conservé pour exposition future de métrique
 // + retour du cache hit quand la couche canonical-aware sera ajoutée (P4.4).
 //
@@ -248,14 +248,14 @@ func (s *HomeService) fetchMatchesAndSessions(ctx context.Context) (
 		if _, _, hit := s.matchesCache.Get(s.xuid, s.titleSlug); hit {
 			// Cache hit : on doit reconstruire les canonical rows. Le cache n'est
 			// pas encore canonical-aware ; pour P4.3 finale on bypass le cache hit
-			// et recharge canonical. TODO P4.4 : adapter HomeMatchesCache Ã
+			// et recharge canonical. TODO P4.4 : adapter HomeMatchesCache à
 			// canonical.
 			slog.DebugContext(ctx, "home_cache: hit (bypass P4.3 finale)", "xuid", s.xuid)
 		}
 	}
 
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return nil, false, fmt.Errorf("HomeService: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")
+		return nil, false, fmt.Errorf("HomeService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
 	rows, e := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
@@ -267,19 +267,19 @@ func (s *HomeService) fetchMatchesAndSessions(ctx context.Context) (
 	slog.DebugContext(ctx, "home: loaded canonical",
 		"rows", len(canonicalRows), "title_slug", s.titleSlug)
 
-	// Maintien du cache pour la mÃ©trique (set vide pour invalider stale).
+	// Maintien du cache pour la métrique (set vide pour invalider stale).
 	if s.matchesCache != nil && s.xuid != "" {
 		s.matchesCache.Set(s.xuid, s.titleSlug, nil, nil)
 	}
 	return canonicalRows, false, nil
 }
 
-// fetchHomePageData charge toutes les donnÃ©es de la page d'accueil en parallÃ¨le.
-// Les erreurs non-critiques sont absorbÃ©es (dÃ©gradation silencieuse).
+// fetchHomePageData charge toutes les données de la page d'accueil en parallèle.
+// Les erreurs non-critiques sont absorbées (dégradation silencieuse).
 func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (homePageData, error) {
 	var d homePageData
 
-	// Groupe 1 : matches+sessions (cache TTL) en parallÃ¨le avec les autres appels lÃ©gers.
+	// Groupe 1 : matches+sessions (cache TTL) en parallèle avec les autres appels légers.
 	var cacheHit bool
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -312,7 +312,7 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 		return nil
 	})
 	g.Go(func() error {
-		// Fallback sur len(matches) aprÃ¨s le Wait si la query Ã©choue (totalMatches reste 0).
+		// Fallback sur len(matches) après le Wait si la query échoue (totalMatches reste 0).
 		d.totalMatches, _ = s.repo.CountPlayerMatches(gctx)
 		return nil
 	})
@@ -357,7 +357,7 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 	if d.totalMatches == 0 {
 		d.totalMatches = len(d.canonicalRows)
 	}
-	_ = cacheHit // exploitable pour des mÃ©triques futures
+	_ = cacheHit // exploitable pour des métriques futures
 	return d, nil
 }
 
@@ -409,11 +409,11 @@ func applyPerfPlacementsToRecentItems(ctx context.Context, allRows []canonical.P
 	}
 }
 
-// GetHomePage retourne la page d'accueil agrÃ©gÃ©e (hero card, highlights, matchs rÃ©cents,
-// mÃ©dias rÃ©cents, rÃ©sumÃ©s de sessions solo et escouade).
+// GetHomePage retourne la page d'accueil agrégée (hero card, highlights, matchs récents,
+// médias récents, résumés de sessions solo et escouade).
 //
 // P4.3 finale (ADR 0011) : path canonical exclusif. Toutes les analyses
-// passent par les `analysis.*FromCanonical`. Le legacy fallback a Ã©tÃ© supprimÃ©.
+// passent par les `analysis.*FromCanonical`. Le legacy fallback a été supprimé.
 func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) (*domain.HomePageResponse, error) {
 	defer func(start time.Time) {
 		observability.RecordDurationMS("home_get_page", time.Since(start).Milliseconds())
@@ -465,7 +465,7 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		hero.KPIs.FavoriteWeaponKills = d.favWeaponKills
 	}
 
-	// Enrichissement mÃ©dailles + citations par liste en parallÃ¨le.
+	// Enrichissement médailles + citations par liste en parallèle.
 	//
 	// TITLE-AGNOSTIC (P7) : citations dérivées D'ABORD, puis commendations NATIVES en
 	// fallback sur le MÊME slot TopCitations quand il reste vide. Halo Infinite remplit
@@ -527,4 +527,4 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 }
 
 // buildFavoriteMatchListCanonical est la variante canonical-aware de
-// buildFavoriteMatchList. DÃ©lÃ¨gue Ã  la version legacy via le wrapper analysis.
+// buildFavoriteMatchList. Délègue à la version legacy via le wrapper analysis.

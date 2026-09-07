@@ -207,3 +207,29 @@ si une entrée couvre déjà une famille ci-dessus avant d'en créer une).
   en FR codé en dur » + décision utilisateur « clé canonique côté Go »).
 - Journal : `.ai/thought_log.md`, entrée du 2026-09-06/07 « Frise du rejeu ».
 - Mémoire agent : `project_frise_point_de_vue_chantier`, `project_multititre_gap_register`.
+
+## 9. DÉCOUVERTES DE L'EXÉCUTION (Q3, 2026-09-07)
+
+> Le brief d'exécution de Q3 renvoyait à un « §3 Découvertes » qui n'existe pas dans ce
+> document (§3 est occupé par « OPTIONS D'ARCHITECTURE » — doctrine RE-VÉRIFIER). Section
+> ajoutée ici en fin de fichier pour ne pas perturber la numérotation existante. Consignées
+> SANS être traitées, conformément au contrat plan-execution (règle 7).
+
+- 2026-09-07 ; `internal/service/home_service.go:258`, `session_page_service.go:146`,
+  `stats_service.go:79`, `synthesis_service.go:192`, `teammates/teammates_service.go:237` ;
+  cinq `fmt.Errorf("...: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")` —
+  message FR en dur, non catalogué dans l'inventaire §2.F (« Messages d'erreur et
+  descriptions d'API »). Reprise : L7, une fois D6 tranché — vérifier d'abord si ce message
+  atteint effectivement un client HTTP (sinon il reste une erreur de câblage interne,
+  jamais affichée, et n'a pas besoin d'un code machine).
+- 2026-09-07 ; `home_highlights.go:4,87,118`, `stats_canonical.go:46`,
+  `synthesis_service.go:189`, `synthesis_service_legacy.go:20,46,84,161-162`,
+  `synthesis_service_builders.go:63` ; une corruption SECONDAIRE (espace insécable
+  aplati en espace normal, apostrophe/guillemet courbe aplati en ASCII droit),
+  antérieure ou postérieure au roundtrip PowerShell 5.1 (cause non identifiée), avait
+  détruit l'octet nécessaire à la réinterprétation CP1252 automatique sur ces 6 sites —
+  corrigés à la main caractère près (le mojibake retiré, l'espacement/la ponctuation
+  environnante laissés tels quels, règle « ne rien changer d'autre »). Reprise : si un
+  lot `docs/`/`.ai/` traite un jour le mojibake hors Go (D9), s'attendre au même résidu
+  et à la même méthode manuelle — un simple decode-CP1252 automatique ne suffira pas
+  partout.
