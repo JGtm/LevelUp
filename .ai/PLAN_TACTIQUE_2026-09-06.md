@@ -1422,6 +1422,56 @@ nouveau, aucune cuisson, l'artefact ne bouge pas.
   c'est un cas normal — pas une regression.
   Revue : 2 relecteurs (L1 ART + L6) — a la main du superviseur.
 
+- [x] 7C.8 **Revue ronde 1 de 7C — 2 P0, 8 P1, ~10 P2 : tous statues.** Commits
+      `tactique(7C.8.<n>)`.
+      **P0-1 — LA CAPTURE N'ETAIT BRANCHEE QU'AU RATTRAPAGE.** `WithPositionCapture` n'etait
+      appele que par `backfill-killsource` : ni l'etape post-sync du serveur ni `--online` ne le
+      cablaient, donc `collectPositions` sortait en Debug et AUCUNE position n'a jamais ete
+      produite AU FIL DU SYNC en production — defaut PREEXISTANT pour `kill_positions`, devenu
+      bloquant pour l'objectif de 7C. Le cablage vit desormais dans
+      `killcollector/capture.go` (`CaptureDepuisCatalogue` + `AvecCapture`) et les TROIS chemins
+      l'appellent. Deux ratchets, parce qu'aucun ne suffit :
+      `TestToutCollecteurCableLaCapture` (toute construction arme la capture) et
+      `TestPostSyncFournitLeResolveurDeCarte` (le cycle renseigne `MapNames` — `AvecCapture` sur
+      des deps vides serait un no-op silencieux). **Cout assume** : le scan des bipedes entre
+      pour la premiere fois dans le chemin de sync de prod ; il tourne sur le film DEJA charge
+      (aucune relecture disque), l'ecriture garde son lease court, et tout echec reste
+      best-effort (WARN + compteur, jamais bloquant pour le journal).
+      **P0-2 — SLOT RECYCLE.** Les positions etaient attribuees par `SlotXUID`, le pont APLATI :
+      il donne tout l'intervalle d'un slot a son PREMIER porteur nomme, si bien que le second
+      occupant se voyait crediter les positions du premier — `teammates_visible` et
+      `nearest_teammate_m` faux, invisibles au validateur. C'est le bug que `nameTracksByLives`
+      a corrige pour les traces le 2026-09-02. L'attribution se fait desormais par LA VIE QUI
+      COUVRE L'INSTANT (`occupantA`). **DIFFERENCE ASSUMEE AVEC LE REJEU sur le refus de
+      publier** : `IndexDisagreements > 0` refuse (le NOMMAGE est faux), mais PAS
+      `SlotCollisions > 0` — ce compteur dit qu'un slot a ete RECYCLE, ce qui invalide le pont
+      aplati que le rejeu publie, pas les VIES par lesquelles on attribue ici. Refuser dessus
+      ecarterait exactement les films que cette correction existe pour traiter.
+      **P1** : `first_joined_time` lu (un `joined_in_progress` ne compte plus « hors de vue »,
+      ni meme au total) ; les contextes ET la regle « en attente » suivent la liste FUSIONNEE du
+      journal, pas la liste pre-fusion (une mort credit-seule avait sinon aucun contexte et sa
+      victime n'etait jamais « en attente ») ; « visible » exige une position recente ET une VIE
+      qui couvre l'instant (la replication s'arrete ~34 ms APRES la mort : un coequipier tue
+      500 ms plus tot sortait « visible » avec une distance) ; garde d'ambiguite du double kill
+      reprise de `QTacticalPositions` (`GROUP BY ... HAVING count(*) = 1`) ; le test
+      d'orthogonalite compare desormais un vrai pont, pas trois litteraux qu'il ecrit lui-meme ;
+      10 tests unitaires de projection executables EN CI ; les deux tables entrent dans
+      `appendOnlyStateTables` (etape 5 de la recette ADR 0026).
+      **P2** : `matchsAJour` converge (un match sans equipe ne peut pas avoir de faits — il ne
+      sera plus redecode a chaque passe) ; regex de lecture brute elargie aux deux tables ;
+      `LEFT JOIN match_registry` dans le roster (en INNER, un match sans registre vidait `XUIDs`
+      et cassait la passe de positions) ; trois compteurs au lieu d'un pour les morts sans
+      contexte ; `cmd_backfill_killsource.go` scinde (539 -> 380 + 178) ; docs inversees du TOML
+      et du chargeur corrigees (la table a de nouveau un consommateur) ; arrondi des distances
+      en constante nommee ; `visibleA`/`vuEntre` en recherche binaire (le balayage lineaire
+      coutait morts x coequipiers x echantillons) ; `materiauDIsolement.slotXUID` supprime
+      (doublon de `report.SlotXUID`).
+      **C13 — le test sur film reel CHOISIT son film** : il parcourt les repertoires de
+      `KILLSOURCE_FIXTURES` dans un ordre stable, borne a 20, et retient le PREMIER qui produit
+      reellement des positions. Le critere est le RESULTAT, pas le nom de la carte : le test
+      fabrique son roster et n'a aucun moyen de connaitre la carte sans base. Il ne se saute que
+      si aucun film n'est utilisable, EN LES LISTANT.
+
 Depend de 7C : l'item 7.7 (7B, nuage isolement x couverture de la page Escouade).
 
 ### Phase 8 — Cloture
@@ -1751,6 +1801,18 @@ Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pa
 - 2026-09-07 : **revue de 7.10 — 1 P0, 4 P1, 6 P2, tous statues** (commits `tactique(7.10.3..n)`). Les deux constats de fond disent la meme chose sous deux formes : **la ventilation parlait au nom de la file sans reprendre sa regle**. Le P0 d'abord — une ligne de registre sans horodatage (la DDL l'autorise) faisait valoir NULL au predicat, et le scanner dans un `bool` nu rendait 500 sur TOUTE la lecture d'artefact de la carte : une seule ligne mal datee suffisait a eteindre l'onglet. Le P1 ensuite, plus grave dans ses effets : la file exige TROIS conditions et on n'en avait repris qu'une, si bien qu'un match dont le FILM EST DEFINITIVEMENT PERDU — le marqueur terminal, ~29 % du parc — sortait « en attente ». La page envoyait donc attendre indefiniment un ecran qui ne se remplirait jamais. **Une promesse plus large que ce que la file tient est pire que pas de promesse du tout**, et la correction n'est pas de recopier la troisieme condition mais d'extraire le predicat entier (`analysis.SQLEligibleALaCuisson`), consomme par la file ET par le lecteur : les compteurs deviennent `matchs_en_attente` et `matchs_non_cuisables`. **Le troisieme fil est un trou de couverture qui explique les deux premiers** : le SQL qui calcule ce booleen n'etait exerce par AUCUN test, parce que le double du service le rendait a la main — un predicat qui rend NULL a donc pu etre livre sans qu'aucun gate ne rougisse. Deux tests `:memory:` posent desormais les quatre situations, six tests unitaires figent les fragments, et les deux mutations (retirer le `IS NOT NULL`, neutraliser le test du bit) font tomber des tests nommes. **Un constat de la revue n'etait pas recevable** : le cron de purge EST teste depuis `15df6c629` — `RunOnce` avec horloge injectee, frontiere prouvee a la seconde —, verifie sur pieces avant de statuer.
 - 2026-09-07 : **phase 7C livree — les faits d'isolement se produisent AU SYNC** (commits `tactique(7C.*)`). Le principe que l'utilisateur a pose tient en une phrase et il porte tout le lot : « les donnees d'un match en base sont completes au sync ; seul le rejeu peut attendre la cuisson ». La lecture retiree au 7.10 violait les deux moities — elle demandait au FILM de dire qui etait mort, et elle faisait dependre un fait de base du calendrier de cuisson. Deux tables append-only le remplacent, ecrites par le collecteur de kills comme SECONDE PROJECTION de sa passe de positions : aucun decodage nouveau, l'artefact ne bouge pas. **La lettre du plan a du ceder sur un point, et la verification sur pieces dit pourquoi** : l'enum `end_cause` a quatre valeurs melangeait deux questions orthogonales, et rendait `film_end` et `cut` INATTEIGNABLES — un grep sur TOUT le paquet `replay` (la lecon de la ronde 2, appliquee) montre que seuls deux sites nomment une vie, et que l'export n'emet que les vies nommees. Deux colonnes : `end_cause` dit COMMENT la vie s'est terminee, `named_by` dit COMMENT ON SAIT A QUI elle appartient. Le point produit en sort DURCI — un survivant nomme par fermeture porte `named_by = closure` ET `end_cause = film_end`, la ou un champ unique obligeait a choisir entre le nommer et dire qu'il a survecu. **Le troisieme etat est celui qui a deja coute une lecture** : « hors de vue » n'est ni « mort » ni « a portee » — un coequipier en vehicule PEUT accompagner (la mort reste examinable) mais on ne sait pas ou il est. Le compter mort faisait sortir « equipe a terre » une mort survenue a trois metres d'un Warthog ; lui inventer une position aurait fabrique un accompagnement. Les deux erreurs ont ete commises, dans cet ordre, et les deux ont maintenant leur test.
 ## 7. Decouvertes (a remplir pendant l'execution — ne rien corriger hors perimetre)
+- 2026-09-07 (revue de 7C) — **TROIS TABLES APPEND-ONLY MANQUENT A LA REGEX DE LECTURE BRUTE.**
+  `no_raw_rating_reads_test.go` ne surveille que quatre tables ; `match_kill_events`,
+  `kill_positions` et `match_bomb_stats` n'y sont pas, alors qu'elles ont toutes une vue
+  `_latest` et que la lire brute sert un MELANGE de passes. Les deux tables du lot 7C y sont
+  ajoutees (elles sont dans son perimetre) ; les trois autres NON TRAITEES, hors perimetre.
+  Condition de reprise : le prochain lot qui touche a l'une d'elles.
+- 2026-09-07 (revue de 7C) — **AUCUNE POSITION N'AVAIT JAMAIS ETE PRODUITE AU SYNC EN PROD, ET
+  CE DEFAUT PRECEDE CE CHANTIER.** `WithPositionCapture` n'etait cable que par le backfill hors
+  ligne depuis la mise en place de `kill_positions` (lot G.2bis) : l'etape post-sync du serveur
+  ne l'a jamais appele. TRAITE dans le lot (c'etait bloquant pour l'objectif de 7C), mais la
+  duree du silence merite d'etre notee — le refus est un `Debug`, et une table neuve qui reste
+  vide ne se remarque pas.
 - 2026-09-07 (phase 7C) — **`match_lives` DIT AUSSI CE QUE LE REJEU NE SAIT PAS DIRE.** Le
   document de rejeu nomme ses vies (`nameTracksByLives`) mais ne publie NI la cause de leur fin
   NI la provenance de leur identite : la fiche de match ne peut donc pas distinguer un joueur

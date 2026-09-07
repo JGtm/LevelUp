@@ -43,6 +43,14 @@ type MatchIdentities struct {
 	// LE FILM NE PORTE PAS LES DEPARTS. Sans cette colonne, un joueur deconnecte a la
 	// premiere minute resterait un coequipier disponible jusqu a la fin du match.
 	DepartMS map[string]int64
+	// ArriveeMS : `xuid -> instant de son ARRIVEE`, en ms depuis le debut du match
+	// (`first_joined_time`, meme calage canonique que le depart). Une entree ABSENTE veut
+	// dire « present depuis le debut », le cas normal.
+	//
+	// UN JOUEUR PAS ENCORE ARRIVE N'EST PAS « HORS DE VUE » : il n'est pas dans la partie.
+	// Sans cette lecture, un `joined_in_progress` comptait comme coequipier disponible pour
+	// TOUTES les morts qui precedent son arrivee.
+	ArriveeMS map[string]int64
 }
 
 // Resoudre : LE nom que le film donne devient un xuid et un gamertag. UNE SEULE COPIE DE CETTE

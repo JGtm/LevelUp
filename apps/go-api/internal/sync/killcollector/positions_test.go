@@ -325,7 +325,7 @@ func TestCollectPositions_CapabiliteAbsenteNeTenteAucuneEcriture(t *testing.T) {
 		mapBounds:     testMapQuantCatalog(),
 		acquireShared: panicWriter,
 	}
-	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, killRefValide())
+	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, killRefValide(), killRefValide())
 }
 
 func TestCollectPositions_NonCableNeTenteAucuneEcriture(t *testing.T) {
@@ -334,7 +334,7 @@ func TestCollectPositions_NonCableNeTenteAucuneEcriture(t *testing.T) {
 		acquireShared: panicWriter,
 		// mapNames / mapBounds volontairement nil : WithPositionCapture jamais appele.
 	}
-	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, killRefValide())
+	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, killRefValide(), killRefValide())
 }
 
 func TestCollectPositions_AucuneIdentiteResolueNeTenteAucuneEcriture(t *testing.T) {
@@ -345,7 +345,7 @@ func TestCollectPositions_AucuneIdentiteResolueNeTenteAucuneEcriture(t *testing.
 		acquireShared: panicWriter,
 	}
 	deaths := []persist.KillEventInsert{{TimeMS: 1000, FeedKillerXUID: "", VictimXUID: ""}}
-	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, deaths)
+	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, deaths, deaths)
 }
 
 func TestCollectPositions_CarteHorsCatalogueNeTenteAucuneEcriture(t *testing.T) {
@@ -355,7 +355,7 @@ func TestCollectPositions_CarteHorsCatalogueNeTenteAucuneEcriture(t *testing.T) 
 		mapBounds:     testMapQuantCatalog(),
 		acquireShared: panicWriter,
 	}
-	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, killRefValide())
+	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, killRefValide(), killRefValide())
 }
 
 // TestCollectPositions_FilmIllisibleNeTenteAucuneEcriture — bornes resolues, morts resolues,
@@ -369,5 +369,5 @@ func TestCollectPositions_FilmIllisibleNeTenteAucuneEcriture(t *testing.T) {
 		acquireShared: panicWriter,
 	}
 	ids := MatchIdentities{XUIDs: []string{"111", "222"}}
-	c.collectPositions(context.Background(), "m1", nil, ids, killRefValide())
+	c.collectPositions(context.Background(), "m1", nil, ids, killRefValide(), killRefValide())
 }

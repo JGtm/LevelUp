@@ -115,23 +115,17 @@ func (s *RegulationSet) ScoreTarget(gameVariantName string) (int, bool) {
 // RadarRangeMap retourne une COPIE de la table complete, pour le câblage par titre (même
 // forme que RoundsDecideMap).
 //
-// CONSOMMATEUR : lot 7C — lecture d'isolement sur `match_death_context` (2026-09-07).
+// CONSOMMATEUR : la lecture « où je meurs isolé » de l'onglet Tactique (lot 7C, livré le
+// 2026-09-07) — `server_apiv1` → `ServiceRegistry.WithRadarRange` →
+// `TacticalService.rayonsParMatch`, qui résout le rayon PAR MATCH.
 //
-// Elle n'a aujourd'hui aucun appelant de production, et c'est un état NOMMÉ. Elle bornait la
-// lecture « où je meurs isolé » de l'onglet Tactique, qui tranchait à la LECTURE sur la
-// chronologie du sidecar de rejeu ; cette lecture est retirée (décision utilisateur du
-// 2026-09-07 : les faits d'isolement se produisent AU SYNC, par le collecteur de kills, dans
-// `match_lives` et `match_death_context`). C'est ce collecteur qui lira ce rayon, sous cette
-// forme exacte — des mètres, par game_variant_name.
+// ⚠ LA CLÉ SE NETTOIE À LA RÉSOLUTION, chez le consommateur : le nom vient de
+// `match_registry.game_variant_name`, donc de ce que l'API a envoyé, et des variantes y
+// arrivent avec un blanc. Une clé non nettoyée manque la table et sort le match
+// SILENCIEUSEMENT de la lecture.
 //
-// La table reste chargée, testée et gardée par son ratchet de couverture : ses 48 valeurs
-// sont une campagne de mesure du 2026-09-05, et les perdre coûterait de la refaire.
-//
-// ⚠ LA RÉSOLUTION D'UNE VARIANTE APPARTIENT À SON CONSOMMATEUR, et le lot 7C l'apportera
-// avec lui. Elle devra NETTOYER la clé : le nom vient de `match_registry.game_variant_name`,
-// donc de ce que l'API a envoyé, et des variantes y arrivent avec un blanc de tête ou de
-// queue — une clé non nettoyée manque la table et sort le match de la lecture, un défaut de
-// donnée déguisé en trou de référentiel.
+// Les 48 valeurs sont une campagne de mesure du 2026-09-05, gardée par son ratchet de
+// couverture : les perdre coûterait de la refaire.
 func (s *RegulationSet) RadarRangeMap() map[string]int {
 	if s == nil {
 		return nil

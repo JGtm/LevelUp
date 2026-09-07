@@ -17,10 +17,16 @@ package replay
 //
 // L'ordre d'examen est une DÉCISION, pas un détail d'implémentation :
 //
+//	0. ABSENT         il n'est pas encore arrivé (`first_joined_time` postérieur à l'instant).
+//	                  Il ne compte dans AUCUN état, ni même au total : il n'était pas là.
 //	1. PARTI          la base fait foi. Un joueur dont le départ est enregistré n'est plus dans
 //	                  la partie, quoi que le film montre encore de lui.
-//	2. VISIBLE        une position répliquée dans la dernière seconde. C'est le SEUL état qui
-//	                  autorise une distance : les autres n'ont pas de position crédible.
+//	2. VISIBLE        une position répliquée dans la dernière seconde ET une vie nommée qui
+//	                  couvre l'instant. LES DEUX SONT NÉCESSAIRES : la réplication s'arrête
+//	                  ~34 ms APRÈS la mort, donc un joueur mort depuis 500 ms a encore une
+//	                  position fraîche — sans le test de vitalité, il sortait « visible », avec
+//	                  une distance, et sa mort se lisait « accompagnée ». C'est le SEUL état qui
+//	                  autorise une distance.
 //	3. EN ATTENTE     sa dernière mort au journal précède l'instant, et rien ne l'a montré
 //	                  depuis. Il attend sa réapparition, il ne peut pas accompagner.
 //	4. HORS DE VUE    tout le reste. IL EST VIVANT — typiquement en véhicule, où le biped cesse
@@ -37,6 +43,19 @@ import (
 
 	"levelup/go-api/internal/analysis/filmdec"
 )
+
+// DecimalesDeDistance : la précision à laquelle une distance en mètres est publiée.
+//
+// DEUX DÉCIMALES, LA MÊME CONVENTION QUE LES COORDONNÉES DE L'ARTEFACT (`replay.round2`) et que
+// le sidecar d'occupation. Le centimètre est déjà bien en deçà de l'incertitude de la mesure
+// (un joueur au sprint parcourt 5 m dans la fenêtre de visibilité) : publier plus de chiffres
+// donnerait à la valeur une précision qu'elle n'a pas.
+const DecimalesDeDistance = 100
+
+// arrondiMetres applique cette convention.
+func arrondiMetres(v float64) float64 {
+	return math.Round(v*DecimalesDeDistance) / DecimalesDeDistance
+}
 
 // FenetreVisibiliteMs borne l'âge d'une position pour qu'elle compte comme « il était là ».
 //
@@ -67,11 +86,16 @@ type EntreeContexteMorts struct {
 	// Positions : les positions bipeds du film, avec leurs coordonnées MONDE (l'appelant a
 	// fourni les bornes de la carte à `ScanBipedPositions`). Sans monde, aucune distance.
 	Positions []filmdec.BipedPosition
-	// SlotXUID : le pont slot -> xuid, tel que `ResolveSlotXUID` le rend.
-	SlotXUID map[uint32]uint64
-	// DecalageMS convertit l'horloge du FILM en horloge du MATCH
-	// (`horlogeFilm = horlogeMatch + DecalageMS`), soit `OwnerReport.DeathOffsetMS`.
-	DecalageMS int64
+	// Report est le rapport du pont, TEL QUEL. Il porte les vies nommees (slot, bornes,
+	// occupant) et le calage d'horloge.
+	//
+	// PAS `SlotXUID`, ET C'EST LA CORRECTION P0-2 (2026-09-07) : ce pont aplati donne tout
+	// l'intervalle d'un slot RECYCLE a son PREMIER porteur nomme (`ownersFromLives`). Le
+	// second occupant d'un slot se voyait donc crediter les positions du premier —
+	// `teammates_visible` et `nearest_teammate_m` faux, et rien pour le signaler. C'est le
+	// bug historique que `nameTracksByLives` a corrige pour les traces le 2026-09-02 ; ici
+	// l'attribution se fait par la VIE QUI COUVRE L'INSTANT.
+	Report OwnerReport
 	// Journal : toutes les morts du match, y compris celles des coéquipiers — elles servent à
 	// savoir qui attendait sa réapparition.
 	Journal []MortDuJournal
@@ -81,6 +105,13 @@ type EntreeContexteMorts struct {
 	// DepartMS : xuid -> instant du départ, en ms depuis le début du match. Une entrée ABSENTE
 	// veut dire « jamais parti » — et c'est le cas normal.
 	DepartMS map[uint64]int64
+	// ArriveeMS : xuid -> instant de son ARRIVÉE (`first_joined_time`). Une entrée absente veut
+	// dire « présent depuis le début », le cas normal.
+	//
+	// UN JOUEUR PAS ENCORE ARRIVÉ N'EST PAS « HORS DE VUE » : il n'est pas dans la partie. Sans
+	// cette lecture, un `joined_in_progress` tombait en `out_of_sight` — donc compté VIVANT et
+	// « en mesure d'accompagner » — pour toutes les morts qui précèdent son arrivée.
+	ArriveeMS map[uint64]int64
 }
 
 // ContexteMort est ce que la lecture saura d'une mort : combien de coéquipiers dans chaque état,
@@ -96,6 +127,31 @@ type ContexteMort struct {
 	Total                                  int
 }
 
+// PontPubliable dit si le NOMMAGE des vies est assez sûr pour qu'on en tire des faits écrits en
+// base.
+//
+// # `IndexDisagreements` REFUSE, ET C'EST LA MÊME RAISON QUE LE REJEU
+//
+// Une identité lue de deux façons d'un chunk à l'autre (`coverage.go`, `verdictOfBridge`) rend
+// le nommage lui-même faux : ce n'est pas une ambiguïté à arbitrer, c'est le symptôme d'une
+// lecture cassée. Le rejeu refuse alors de publier ; écrire quand même des faits d'isolement en
+// base serait pire — ils n'ont pas d'écran pour montrer leur réserve, ils seront lus comme des
+// mesures.
+//
+// # `SlotCollisions` NE REFUSE PAS ICI, ET C'EST UNE DIFFÉRENCE ASSUMÉE AVEC LE REJEU
+//
+// Ce compteur dit qu'un SLOT a porté deux joueurs — autrement dit qu'il a été RECYCLÉ. Il
+// invalide le pont APLATI (`SlotXUID`, un xuid par slot), que le document de rejeu publie ; il
+// n'invalide pas les VIES, qui portent chacune leur occupant et leurs bornes.
+//
+// Or c'est précisément par les vies que ce fichier attribue les positions (cf.
+// `indexerParXUID`). Refuser sur ce critère écarterait exactement les films que la correction
+// P0-2 existe pour traiter : ceux où un slot change de porteur. On perdrait la couverture sans
+// gagner la moindre sûreté.
+func PontPubliable(r OwnerReport) bool {
+	return r.IndexDisagreements == 0 && len(r.SlotXUID) > 0
+}
+
 // ContextesDesMorts rend un contexte par mort du journal dont la VICTIME A UNE POSITION connue.
 //
 // UNE MORT SANS LIEU NE SORT PAS. Elle a bien eu lieu, mais le film ne montre pas où : les
@@ -103,7 +159,11 @@ type ContexteMort struct {
 // NULL la ferait lire « aucun coéquipier à portée », c'est-à-dire ISOLÉE. Une absence de mesure
 // deviendrait un verdict.
 func ContextesDesMorts(e EntreeContexteMorts) []ContexteMort {
+	if !PontPubliable(e.Report) {
+		return nil
+	}
 	pos := indexerParXUID(e)
+	vies := viesParXUID(e.Report)
 	mortsPar := mortsParVictime(e.Journal)
 
 	out := make([]ContexteMort, 0, len(e.Journal))
@@ -116,13 +176,13 @@ func ContextesDesMorts(e EntreeContexteMorts) []ContexteMort {
 		if !dansUneEquipe {
 			continue
 		}
-		out = append(out, contexteDUneMort(e, pos, mortsPar, m, son, lieu))
+		out = append(out, contexteDUneMort(e, pos, vies, mortsPar, m, son, lieu))
 	}
 	return out
 }
 
 // contexteDUneMort classe chaque coéquipier de la victime et retient le plus proche des visibles.
-func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID,
+func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID, vies map[uint64][]vieMatch,
 	mortsPar map[uint64][]int64, m MortDuJournal, son int, lieu point,
 ) ContexteMort {
 	c := ContexteMort{VictimeXUID: m.VictimeXUID, TempsMS: m.TempsMS}
@@ -131,8 +191,14 @@ func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID,
 		if autre == m.VictimeXUID || equipe != son {
 			continue
 		}
+		if arrivee, connue := e.ArriveeMS[autre]; connue && arrivee > m.TempsMS {
+			// PAS ENCORE ARRIVÉ : il ne compte dans aucun état, ni au total. Le compter
+			// « hors de vue » le rendrait capable d'accompagner une mort survenue avant qu'il
+			// n'entre dans la partie.
+			continue
+		}
 		c.Total++
-		switch etatDUnCoequipier(e, pos, mortsPar, autre, m.TempsMS) {
+		switch etatDUnCoequipier(e, pos, vies, mortsPar, autre, m.TempsMS) {
 		case EtatParti:
 			c.Partis++
 		case EtatVisible:
@@ -149,20 +215,20 @@ func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID,
 		}
 	}
 	if !math.IsInf(plusProche, 1) {
-		arrondi := math.Round(plusProche*100) / 100
+		arrondi := arrondiMetres(plusProche)
 		c.PlusProcheM = &arrondi
 	}
 	return c
 }
 
 // etatDUnCoequipier applique les quatre règles, dans l'ordre documenté en tête de fichier.
-func etatDUnCoequipier(e EntreeContexteMorts, pos positionsParXUID,
+func etatDUnCoequipier(e EntreeContexteMorts, pos positionsParXUID, vies map[uint64][]vieMatch,
 	mortsPar map[uint64][]int64, xuid uint64, tMS int64,
 ) string {
 	if depart, parti := e.DepartMS[xuid]; parti && depart <= tMS {
 		return EtatParti
 	}
-	if _, vu := pos.visibleA(xuid, tMS); vu {
+	if _, vu := pos.visibleA(xuid, tMS); vu && pos.vivantA(vies, xuid, tMS) {
 		return EtatVisible
 	}
 	if derniere, mort := derniereMortAvant(mortsPar[xuid], tMS); mort && !pos.vuEntre(xuid, derniere, tMS) {
@@ -209,19 +275,31 @@ type positionsParXUID map[uint64][]point
 //
 // SEULES LES POSITIONS MONDE ENTRENT : sans les bornes de la carte, un quantum n'est pas une
 // coordonnée, et une distance calculée dessus n'aurait pas d'unité.
+//
+// # L'ATTRIBUTION SE FAIT PAR LA VIE QUI COUVRE L'INSTANT, JAMAIS PAR LE SLOT
+//
+// Un slot est RECYCLÉ aux réapparitions : il désigne une vie, pas un joueur. Le pont aplati
+// (`SlotXUID`) donne tout son intervalle au premier porteur nommé, si bien que le second
+// occupant se voit créditer les positions du premier — c'est le défaut P0-2, et c'est
+// exactement le bug que `nameTracksByLives` a corrigé pour les traces le 2026-09-02.
+//
+// UNE POSITION QUE NULLE VIE NOMMÉE NE COUVRE N'EST ATTRIBUÉE À PERSONNE. Elle est écartée,
+// jamais rattachée au voisin le plus proche : mieux vaut un coéquipier « hors de vue » qu'un
+// coéquipier placé au mauvais endroit.
 func indexerParXUID(e EntreeContexteMorts) positionsParXUID {
+	vies := viesParSlot(e.Report)
 	out := positionsParXUID{}
 	for i := range e.Positions {
 		p := &e.Positions[i]
 		if !p.HasWorld {
 			continue
 		}
-		xuid, connu := e.SlotXUID[p.Slot]
-		if !connu || xuid == 0 {
+		xuid, connu := occupantA(vies[p.Slot], int64(p.TimestampUS))
+		if !connu {
 			continue
 		}
 		out[xuid] = append(out[xuid], point{
-			tMS: int64(p.TimestampUS)/1000 - e.DecalageMS,
+			tMS: int64(p.TimestampUS)/1000 - e.Report.DeathOffsetMS,
 			x:   float64(p.X), y: float64(p.Y),
 		})
 	}
@@ -231,30 +309,90 @@ func indexerParXUID(e EntreeContexteMorts) positionsParXUID {
 	return out
 }
 
-// visibleA rend la position la plus RÉCENTE dans la fenêtre de visibilité, et si elle existe.
-func (p positionsParXUID) visibleA(xuid uint64, tMS int64) (point, bool) {
-	best, trouve := point{}, false
-	for _, pt := range p[xuid] {
-		if pt.tMS > tMS {
-			break
+// viesParSlot indexe les vies NOMMÉES par slot. Les vies anonymes n'entrent pas : elles
+// n'attribuent rien.
+func viesParSlot(r OwnerReport) map[uint32][]lifeSpan {
+	out := make(map[uint32][]lifeSpan, len(r.SlotXUID))
+	for _, l := range r.lives {
+		if l.xuid == 0 {
+			continue
 		}
-		if tMS-pt.tMS <= FenetreVisibiliteMs {
-			best, trouve = pt, true
+		out[l.slot] = append(out[l.slot], l)
+	}
+	return out
+}
+
+// occupantA rend l'occupant d'un slot à un instant du FILM (microsecondes), si une vie nommée
+// le couvre. Bornes INCLUSIVES : `from` et `to` sont les premier et dernier échantillons de la
+// vie, pas un intervalle ouvert.
+func occupantA(vies []lifeSpan, tUS int64) (uint64, bool) {
+	for _, l := range vies {
+		if tUS >= l.from && tUS <= l.to {
+			return l.xuid, true
 		}
 	}
-	return best, trouve
+	return 0, false
+}
+
+// vivantA dit qu'une vie NOMMÉE du joueur couvre l'instant (horloge du MATCH).
+//
+// ELLE DOUBLE LA VISIBILITÉ, ET CE N'EST PAS REDONDANT : la réplication d'un joueur s'arrête
+// ~34 ms APRÈS sa mort (médiane mesurée, `deathMatchWindowMS`). Une position vieille de 500 ms
+// est donc parfaitement possible pour un joueur MORT depuis 500 ms — et sans cette seconde
+// condition il sortirait « visible », avec une distance, et sa mort se lirait « accompagnée ».
+func (p positionsParXUID) vivantA(vies map[uint64][]vieMatch, xuid uint64, tMS int64) bool {
+	for _, v := range vies[xuid] {
+		if tMS >= v.debutMS && tMS <= v.finMS {
+			return true
+		}
+	}
+	return false
+}
+
+// vieMatch est une vie nommée ramenée à l'horloge du MATCH, pour le test de vitalité.
+type vieMatch struct{ debutMS, finMS int64 }
+
+// viesParXUID indexe les vies nommées par occupant, sur l'horloge du match.
+func viesParXUID(r OwnerReport) map[uint64][]vieMatch {
+	out := make(map[uint64][]vieMatch, len(r.SlotXUID))
+	for _, l := range r.lives {
+		if l.xuid == 0 {
+			continue
+		}
+		out[l.xuid] = append(out[l.xuid], vieMatch{
+			debutMS: l.from/1000 - r.DeathOffsetMS,
+			finMS:   l.to/1000 - r.DeathOffsetMS,
+		})
+	}
+	return out
+}
+
+// visibleA rend la position la plus RÉCENTE dans la fenêtre de visibilité, et si elle existe.
+//
+// RECHERCHE BINAIRE, PAS UN BALAYAGE. La tranche est triée par instant, et cette fonction est
+// appelée pour CHAQUE coéquipier de CHAQUE mort : un balayage linéaire y coûtait
+// morts × coéquipiers × échantillons, soit des centaines de millions d'itérations sur un BTB
+// de 15 minutes à 24 joueurs. `sort.Search` ramène le facteur `échantillons` à son logarithme.
+func (p positionsParXUID) visibleA(xuid uint64, tMS int64) (point, bool) {
+	pts := p[xuid]
+	// Premier indice dont l'instant DÉPASSE tMS : le candidat est celui juste avant.
+	i := sort.Search(len(pts), func(k int) bool { return pts[k].tMS > tMS })
+	if i == 0 {
+		return point{}, false
+	}
+	pt := pts[i-1]
+	if tMS-pt.tMS > FenetreVisibiliteMs {
+		return point{}, false
+	}
+	return pt, true
 }
 
 // vuEntre dit si le joueur a été observé APRÈS `depuis` et jusqu'à `jusqua` — c'est-à-dire s'il a
 // réapparu depuis sa mort.
 func (p positionsParXUID) vuEntre(xuid uint64, depuis, jusqua int64) bool {
-	for _, pt := range p[xuid] {
-		if pt.tMS > jusqua {
-			break
-		}
-		if pt.tMS > depuis {
-			return true
-		}
-	}
-	return false
+	pts := p[xuid]
+	// Premier indice STRICTEMENT après `depuis` : s'il existe et tombe avant `jusqua`, le
+	// joueur a été revu. Même raison qu'au-dessus de préférer la recherche binaire.
+	i := sort.Search(len(pts), func(k int) bool { return pts[k].tMS > depuis })
+	return i < len(pts) && pts[i].tMS <= jusqua
 }
