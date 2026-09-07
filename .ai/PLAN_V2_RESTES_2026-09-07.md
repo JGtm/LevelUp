@@ -23,6 +23,14 @@
    replacés à la frontière de manche sans événement de lâcher/retour daté.
 5. Tout changement du contenu cuit bumpe `SchemaVersion` (un seul bump par branche : 49 pour ce plan).
 6. Le décodeur (`filmdec`, `himap`) ne bouge pas avant v7.5.0 : un défaut du décodeur = diagnostic + registre.
+7. L'INDEX EST L'INDEX (user, 07/09) : partout où le film porte un identifiant direct (index de joueur du pied de film
+   et de `PlayerIndexTable` ↔ xuid, `bid(N.0)` pour les bots, et tout lien direct index ↔ slot de statborg ou de
+   bipède que le film contient), il est utilisé à 100 %, jamais remplacé par une déduction. Le pont par morts n'est
+   qu'un REPLI pour les liens que le film ne donne pas directement (aujourd'hui : slot de bipède ↔ index, faute de
+   champ d'identité dans `BipedPosition`), et une VÉRIFICATION des liens directs. UNE table d'identité par film,
+   calculée une fois dans `replaybuild`, publiée dans l'artefact (section `identity` : index ↔ xuid, slot de
+   statborg ↔ index, slot de bipède ↔ index dans le temps, avec la source et la couverture de chaque lien) ; tous
+   les calques la consomment ; aucun calque ne reconstruit son propre pont (garde-rail).
 
 ## 1. Méthode commune à tous les lots
 
@@ -72,16 +80,84 @@
 - [ ] Gate : goldens INCHANGÉS (`git diff --exit-code` sur `testdata/`), suite complète verte, lint 0.
       Preuve de « déplacement pur » : concaténation triée des lignes avant/après identique.
 
-### R1 — Actions d'objectif écartées par le pont statborg (bump 49)
+### P — Changement de paradigme : registre d'identité des entités du film (bump 49 ; englobe R1, R2, R3)
+Décision user (07/09) : le principe « l'index c'est l'index » vaut pour TOUTES les entités du film, pas seulement les
+joueurs : objets d'objectif (drapeaux, crânes, bombes, zones), véhicules, et tous les assets de partie ou de mode
+(armes au sol, équipements, socles). Chaque calque doit consommer un registre unique d'entités identifiées par
+leurs identifiants du film, au lieu de reconstruire des liens par heuristique (socle le plus proche, premier
+occupant d'un slot, recouvrement maximal, seuil de morts). Gros lot, mené en phases closes, chacune avec sa revue.
+Impact décodeur, borné en deux temps : P2 à P5 se font UNIQUEMENT avec ce que le décodeur expose déjà (identifiants
+d'objets, index de joueur, pied de film, `bid`, morts, positions) — aucun changement de `filmdec`/`himap` ; les liens
+qui restent déduits sont publiés comme tels (provenance). Les flux non décodés (`ti=5`, `ManagedPropertyFilmIndex`,
+états de mode, roster, horloge) font l'objet d'un plan DÉCODEUR séparé après v7.5.0 et le déplacement sous
+`games/halo_infinite/film/` : un item par flux, additif (nouveau type d'enregistrement lu, jamais une réécriture),
+mesuré par la part de liens directs dans la provenance, sous les garde-rails existants (corpus `gamefiles`, goldens).
+- [ ] P1 — Inventaire (journal, avant tout code) : pour chaque entité que le décodeur expose déjà (index de joueur,
+      slot de bipède, objet d'objectif, véhicule, arme au sol, équipement, socle/zone) : son identifiant dans le film,
+      sa durée de vie (création/replacement/destruction, frontières de manche), les liens DIRECTS que le film donne
+      (porteur ↔ objet, occupant ↔ véhicule, objet ↔ équipe propriétaire, objet ↔ socle) et les liens que seul un
+      repli reconstruit aujourd'hui, avec le calque et la ligne de code qui porte chaque repli. Deux colonnes de
+      faisabilité : « disponible dans le décodeur actuel » / « exige du travail décodeur » (après v7.5.0, §0.6).
+      Axes à couvrir explicitement par l'inventaire, au-delà des joueurs et des objets (liens aujourd'hui DÉDUITS
+      alors qu'une source directe peut exister) : (a) le TEMPS — origine de la frise et grille de frames (aujourd'hui
+      dérivées du calage du fil des morts : `resolveOriginMs`, `originResolved`, grille plus courte que les
+      enregistrements) : quelle horloge directe le film porte (états de partie, tampons des enregistrements) ;
+      (b) les MANCHES — bornes aujourd'hui calculées par consensus sur les trains de score (`RoundBounds`) : quel flux
+      d'état de mode donne les frontières directement ; (c) les ÉQUIPES — équipe par index de joueur telle que le film
+      la porte (joueurs entrés en cours, changements d'équipe), la feuille en vérification ; (d) le ROSTER — entrées et
+      sorties de joueurs (index, instant) comme source directe de l'occupation des slots, au lieu des trous de pistes ;
+      (e) les BOTS — identifiant stable `bid(N.0)` porté par le registre et par le document servi, la jointure web se
+      faisant sur l'identifiant et non sur le nom nu (égalité de chaîne) ; (f) les CATALOGUES DE CARTE — socles,
+      spawns, zones référencés par identifiant d'asset (`himap`, Forge) et non par géométrie ; (g) la PROVENANCE —
+      chaque lien du registre porte sa source (`direct` / `catalogue` / `déduit` / `non résolu`) publiée dans
+      l'artefact, pour que l'UI puisse l'afficher et que le gate corpus refuse toute régression d'un lien direct vers
+      un lien déduit ; (h) le MULTI-TITRE — types d'entités canoniques (`internal/games/canonical`) pour qu'un autre
+      titre puisse alimenter le même registre par son adapter.
+- [ ] P2 — Registre des joueurs (= R1 + R2) : table d'identité unique (index ↔ xuid ↔ slots de statborg et de bipède
+      dans le temps), publiée (`identity`), source et couverture par lien, lien direct à 100 %, pont par morts en
+      repli et vérification, élimination sur le roster, rien de jeté. Migration des lecteurs joueurs (actions,
+      portages, épisodes, zones, fermetures, usage de session) vers la table ; garde-rail contre tout pont maison.
+- [ ] P3 — Registre des objets d'objectif (= R3) : chaque drapeau/crâne/bombe/zone identifié par son objet du film,
+      avec équipe propriétaire et socle tels que le film ou le catalogue les donnent (jamais « le socle le plus
+      proche » quand l'objet est connu), cycle de vie par manche (§0.4 : replacement sans événement daté → fermeture
+      `roundEnd`), une seule machine à états partagée par les trois calques ; les liens porteur ↔ objet viennent des
+      enregistrements d'attachement du film quand ils existent, la géométrie n'étant qu'une vérification.
+- [ ] P4 — Registre des véhicules et assets : véhicule identifié par son objet (pas par le premier occupant d'un slot),
+      occupant ↔ véhicule dans le temps, armes au sol et équipements par objet ; migration des calques `vehicle_rides`,
+      ramassages, épisodes d'équipement ; `slotCollisions` cesse d'être un motif d'ambiguïté quand l'objet est connu.
+- [ ] P5 — Clôture du paradigme : `make replay-corpus-gate` (0 perte), balayage informatif du parc, oracle feuille de
+      match sur tous les témoins, chronique 49, garde-rail « aucun calque ne construit de lien d'identité hors du
+      registre » (allowlist datée), doc `docs/` (FR et EN) de la section `identity` de l'artefact.
+Les lots R1, R2, R3 ci-dessous restent la description détaillée des faits que P2 et P3 doivent fermer ; ils ne
+s'exécutent pas séparément si P est retenu. S'il est différé, R1 → R3 s'exécutent tels quels.
+
+### R1 — Actions d'objectif écartées par le pont statborg (bump 49 ; ⊂ P2)
 Fait : `3372e7eb`, 35 actions d'objectif sur 76 restent `unpublished` ; elles appartiennent aux 2 joueurs à 0 mort
 (roster désormais 8/8 grâce à `Options.RosterXUIDs`, mais le pont des actions exige `deathInstantMin = 3`).
+Principe (user) : UNE ACTION EST UNE ACTION, que son auteur meure ou non. Le seuil de morts n'est pas une propriété
+des actions : c'est un artefact de la façon dont le pont d'identité a été construit (les instants de mort sont le
+seul point commun exploité entre la feuille, qui nomme les joueurs, et le film, qui ne connaît que des index de
+joueur). Un joueur avec trop peu de morts ne peut pas être apparié par cette voie, il n'est donc pas nommé, et
+l'action, qui exige un nom pour être publiée, est jetée. Le défaut est dans l'identité, jamais dans l'action :
+l'action doit toujours être publiée (sous l'identité résolue, sinon « non résolue » et comptée), et l'identité
+doit venir d'autres voies quand les morts manquent (élimination sur le roster, table d'index joueur du film).
+C'est la même racine que le premier lot du chantier (ports de drapeau des porteurs à moins de trois morts) : R1 est
+le dernier lecteur encore cadencé sur le pont par morts pour son identité.
 - [ ] Mesure : sur les 7 témoins du manifeste `config/replay_corpus.toml` + `3372e7eb` + `c0a82e88`, relever
       `coverage.objectives.{available,attached,unpublished,noSlot}` ; identifier la fonction qui pose le seuil (grep
       `deathInstantMin`) et son appelant dans `replaybuild` (`identifiedEvents`, `pontParManche`).
-- [ ] Conception : nommer l'index joueur d'une action par le pont canonique DANS LE TEMPS (`ResolveSlotXUID`,
-      `RoundIdentity.At`) et par le roster de la feuille (`RosterXUIDs`) : un index dont le xuid est le seul du
-      roster sans slot connu se résout par élimination (compté `resolvedByElimination`) ; sinon reste `unpublished`
-      et compté (jamais inventé). Le seuil de 3 morts devient une PRÉFÉRENCE d'ordre, pas une condition.
+- [ ] Inventaire des identifiants (avant toute conception, journal) : pour chaque flux du film consommé par le rejeu
+      (actions d'objectif/statborg, positions de bipède, morts, ramassages, véhicules, équipement), QUELLE clé il
+      porte (index de joueur, slot de statborg, slot de bipède, xuid) et QUELS liens directs le film fournit entre
+      ces clés (pied de film, `PlayerIndexTable`, `bid(N.0)`, `ManagedPropertyFilmIndex`, `ti=5`, en-têtes de roster :
+      `.ai/V7.5/README.md` et notes de rétro-ingénierie). Tableau clé → source directe → lien manquant.
+- [ ] Conception (doctrine §0.7) : une table d'identité unique par film dans `replaybuild`, publiée dans l'artefact
+      (section `identity`, servie jusqu'au contrat, avec source et couverture par lien) ; les actions sont
+      nommées par le lien DIRECT index ↔ xuid à 100 % ; le pont par morts (`deathInstantMin`) ne sert plus qu'aux
+      liens sans source directe, et vérifie les liens directs (désaccord → `slog.Warn` + compteur, jamais un nom
+      inventé) ; un index sans lien direct ni repli se résout par élimination sur le roster (`resolvedByElimination`)
+      ou reste « non résolu » ET PUBLIÉ (l'action n'est jamais jetée). Garde-rail : test qui interdit à un calque de
+      reconstruire un pont (allowlist datée des seuls producteurs de la table).
 - [ ] Tests par mutation : élimination retirée → rouge ; deux candidats pour un index → reste non publié (rouge si on
       en choisit un) ; film mono-manche entièrement nommé → identique hors numéro.
 - [ ] Témoins : `3372e7eb` unpublished 35 → 0 (ou résidu expliqué joueur par joueur), actions par joueur = feuille
@@ -89,7 +165,7 @@ Fait : `3372e7eb`, 35 actions d'objectif sur 76 restent `unpublished` ; elles ap
       par la feuille) ; `fb1a1a72` (3 manches) sans perte ; `bf15f7ab` (Slayer) identique hors numéro.
 - [ ] Bump 49 + chronique + ratchet + golden ; gates ; revue ; journal ; registre (entrée `3372e7eb` fermée).
 
-### R2 — Vies sur un slot que nulle mort ne termine (même bump 49)
+### R2 — Vies sur un slot que nulle mort ne termine (même bump 49 ; ⊂ P2)
 Fait : `d9781168` (Oddball, à manches) : 19 vies sans nom, toutes sur UN slot sans aucune vie nommée = un joueur qui
 ne meurt jamais de tout le match (doctrine §0.4 : les vies se terminent aux frontières de manche sans mort).
 - [ ] Vérification (1 h, avant tout code) : croiser le slot sans nom avec la feuille : le joueur à 0 mort est-il
@@ -104,7 +180,7 @@ ne meurt jamais de tout le match (doctrine §0.4 : les vies se terminent aux fro
       pas (172,5 / 158,8 s minimum ; feuille 191 / 196), `51ebbc0f` 8 → ?, un film entièrement nommé identique.
 - [ ] Gates ; revue ; journal ; registre.
 
-### R3 — Reset des objets aux frontières de manche (même bump 49)
+### R3 — Reset des objets aux frontières de manche (même bump 49 ; ⊂ P3)
 Fait : `64e8adfa` (CTF 2 manches) : `closedOverlaps = 10`, états `enJeu`/`sol` périmés (un `flag_returns` invisible
 d'`assignFlags`), 7 fautes d'attribution avant l'invariant, machine à états des drapeaux dupliquée
 (`assembleFlagLives` vs `flag_assign.go`).
