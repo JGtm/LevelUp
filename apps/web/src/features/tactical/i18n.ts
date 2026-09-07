@@ -54,6 +54,30 @@ export function getTacticalText(locale: Locale) {
     unknownTeammateTitle: m('tactical.filter.unknown_teammate_title'),
     unknownTeammateDescription: (names: string) =>
       m('tactical.filter.unknown_teammate_description', { names }),
+
+    // ── Vue d'analyse (Phase 5) ──────────────────────────────────────────────
+    analysisQuestions: [
+      { id: 'morts' as const, label: m('tactical.analysis.questions.morts') as string },
+      { id: 'kills' as const, label: m('tactical.analysis.questions.kills') as string },
+      { id: 'gagne' as const, label: m('tactical.analysis.questions.gagne') as string },
+      { id: 'temps' as const, label: m('tactical.analysis.questions.temps') as string },
+      { id: 'routes' as const, label: m('tactical.analysis.questions.routes') as string },
+      { id: 'isole' as const, label: m('tactical.analysis.questions.isole') as string },
+    ],
+    kpiMatchsRetained: m('tactical.kpi.matches_retained'),
+    kpiCoverage: m('tactical.kpi.coverage'),
+    kpiTrade: m('tactical.kpi.trade'),
+    kpiIsolation: m('tactical.kpi.isolation'),
+    planTitle: m('tactical.plan.title'),
+    planOf: (map: string) => m('tactical.plan.title_of', { map }),
+    footerHeatmap: m('tactical.plan.footer_heatmap'),
+    footerRoutes: m('tactical.plan.footer_routes'),
+    footerEmpty: m('tactical.plan.footer_empty'),
+    statusPending: (n: number) => m('tactical.status.pending', { n }),
+    statusUnavailable: (n: number) => m('tactical.status.unavailable', { n }),
+    cellTitle: m('tactical.cell.title'),
+    cellPlaceholder: m('tactical.cell.placeholder'),
+    cellMatches: (n: number) => m('tactical.cell.matches', { n }),
   }
 }
 

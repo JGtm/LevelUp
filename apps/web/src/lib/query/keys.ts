@@ -191,6 +191,9 @@ export const queryKeys = {
   tacticalMapBackground: (titleSlug: string, mapId: string) =>
     ['tactical-map-background', titleSlug, mapId] as const,
 
+  // Raster de placement pour UNE carte et UNE question.
+  tacticalRaster: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>
+    ['tactical-raster', playerSlug, titleSlug, mapId, paramHash] as const,
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
   synthesis: (playerSlug: string, titleSlug: string, scopeHash: string) =>
     ['synthesis', playerSlug, titleSlug, scopeHash] as const,

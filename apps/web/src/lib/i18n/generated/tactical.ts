@@ -2,6 +2,15 @@
 // Source : apps/web/src/lib/i18n/manifests/tactical.toml
 
 export const tacticalManifest = {
+  "tactical.analysis.questions.gagne": { fr: "Où je gagne", en: "Where I win" },
+  "tactical.analysis.questions.isole": { fr: "Où je meurs isolé", en: "Where I die isolated" },
+  "tactical.analysis.questions.kills": { fr: "Où je tue", en: "Where I kill" },
+  "tactical.analysis.questions.morts": { fr: "Où je meurs", en: "Where I die" },
+  "tactical.analysis.questions.routes": { fr: "Mes routes de spawn", en: "My spawn routes" },
+  "tactical.analysis.questions.temps": { fr: "Où je passe mon temps", en: "Where I spend time" },
+  "tactical.cell.matches": { fr: "{n, plural, one {# match distinct} other {# matchs distincts}} ont alimenté cette cellule", en: "{n, plural, one {# distinct match} other {# distinct matches}} contributed to this cell" },
+  "tactical.cell.placeholder": { fr: "Clique une zone chaude du plan.", en: "Click a hot area of the plan." },
+  "tactical.cell.title": { fr: "Cellule sélectionnée", en: "Selected cell" },
   "tactical.filter.experience": { fr: "Expérience", en: "Experience" },
   "tactical.filter.experience_all": { fr: "Toutes", en: "All" },
   "tactical.filter.experience_ranked": { fr: "Classé", en: "Ranked" },
@@ -18,6 +27,10 @@ export const tacticalManifest = {
   "tactical.filter.view_all": { fr: "Tous les matchs", en: "All matches" },
   "tactical.filter.view_solo": { fr: "Solo", en: "Solo" },
   "tactical.filter.view_squad": { fr: "En escouade", en: "With a squad" },
+  "tactical.kpi.coverage": { fr: "Couverture", en: "Coverage" },
+  "tactical.kpi.isolation": { fr: "Morts en isolement", en: "Isolated deaths" },
+  "tactical.kpi.matches_retained": { fr: "Matchs retenus", en: "Retained matches" },
+  "tactical.kpi.trade": { fr: "Échange après ma mort", en: "Trade after my death" },
   "tactical.maps.coverage": { fr: "{maps, plural, one {# carte jouée} other {# cartes jouées}}, {matches, plural, one {# match} other {# matchs}}", en: "{maps, plural, one {# map played} other {# maps played}}, {matches, plural, one {# match} other {# matches}}" },
   "tactical.maps.empty_description": { fr: "Aucun match ne correspond aux filtres en cours. Élargis la période ou retire un filtre.", en: "No match matches the current filters. Widen the period or remove a filter." },
   "tactical.maps.empty_title": { fr: "Aucune carte jouée", en: "No map played" },
@@ -32,6 +45,13 @@ export const tacticalManifest = {
   "tactical.maps.select": { fr: "Sélectionner {map}", en: "Select {map}" },
   "tactical.maps.selected": { fr: "Carte sélectionnée", en: "Selected map" },
   "tactical.maps.title": { fr: "Cartes jouées", en: "Maps played" },
+  "tactical.plan.footer_empty": { fr: "Aucune donnée mesurable pour cette question.", en: "No measurable data for this question." },
+  "tactical.plan.footer_heatmap": { fr: "Échelle quantile p50 vers p95, saturée au-delà. Une cellule jamais atteinte reste vide — elle n'est pas peinte en froid.", en: "Quantile scale p50 to p95, saturated beyond. An unreached cell remains empty — it is not painted cold." },
+  "tactical.plan.footer_routes": { fr: "15 premières secondes de chaque vie, une ligne par vie à 17% d'opacité : la route de consensus apparait par empilement.", en: "First 15 seconds of each life, one line per life at 17% opacity: consensus route appears by layering." },
+  "tactical.plan.title": { fr: "Plan", en: "Plan" },
+  "tactical.plan.title_of": { fr: "Plan de {map}", en: "Plan of {map}" },
+  "tactical.status.pending": { fr: "Traitement en cours : {n, plural, one {# match} other {# matchs}} en attente de cuisson", en: "Processing: {n, plural, one {# match} other {# matches}} pending cooking" },
+  "tactical.status.unavailable": { fr: "Données non disponibles pour {n, plural, one {# match} other {# matchs}}", en: "Data unavailable for {n, plural, one {# match} other {# matches}}" },
 } as const
 
 export type TacticalManifestKey = keyof typeof tacticalManifest
