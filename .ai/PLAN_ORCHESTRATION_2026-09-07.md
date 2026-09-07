@@ -158,7 +158,7 @@ test `:memory:` dédié à `QTacticalIsolement` (entre dans Q8 si la revue le ju
 | # | Lot | Source | Exécutant | Gate |
 |---|---|---|---|---|
 | M1 | Lien « voir dans le rejeu » depuis une cellule : contrat `POST …/tactical/{map_id}/cellule` (contributions `{match_id, instant_ms, xuid}` filtrées par ownership ADR 0029 + `matchs_non_ouvrables`), service, handler, `TacticalCellCard` avec lien `?frame=` (`playbackStore`), instant → frame en logique pure | Tactique S.1 (5.5 + 5.6 complet) | Opus effort bas pour le contrat + Sonnet pour le web | test « un match d'un autre joueur n'apparaît pas mais compte », `?frame=` positionne le rejeu, contrat régénéré, typecheck, vitest |
-| M2 | Constats P2 de l'audit des vies (5) + `drawnSwapAt` borné à la vie courante côté web | v2 R6 | Sonnet, effort moyen | mutation par constat, vitest, gates v2 |
+| M2 | Constats P2 de l'audit des vies (5) + `drawnSwapAt` borné à la vie courante côté web | v2 R6 | Sonnet, effort moyen | mutation par constat, vitest, gates v2 — [x] 2026-09-07 : `feat/v2-restes-r6` (`a77f16ab7`, `0a3c4bc42`, base R0, poussée) ; P2-3 non-lieu (déjà corrigé par `f1b4f4ee5`), P2-4 et P2-5 corrigés côté web avec mutations (`buildSlotOwnership`, `rosterEntryKey`), `drawnSwapAt` borné à la vie courante (`equippedLogic.ts`, pas `lib/replay/`) ; P2-1 et P2-2 REPORTÉS : racine dans `filmdec` (décodeur gelé §0.6) → plan décodeur après v7.5.0 ; aucun bump (48), décodeur intact, vérifié sur pièces par le superviseur ; gate corpus sans objet (contenu cuit inchangé) |
 | M3 | Budget de candidats du calage (adaptatif ou dédoublonnage par fin de vie) ; test de documentation RETOURNÉ ; bump 49 partagé avec le lot suivant qui bumpe | v2 R7 | Opus, effort moyen | `d9781168` / `51ebbc0f` identiques hors numéro |
 | M4 | Diagnostics : écart K/D/A sur `51ebbc0f` (R4) ; re-vérification CTF multi-manche + VIP/crâne (R5) | v2 R4, R5 | Opus, effort moyen (diagnostic = jugement) | journal chiffré par joueur et par manche ; verdict source vs lecteur ; registre fermé ou rouvert avec chiffres |
 | M5 | Libellés L2 (accueil), L3 (modes/playlists → `assets.toml`), L4 (armes), L5 (rangs → `mappings/ranks.go`) | Libellés | Sonnet, effort moyen, un lot par famille | parité FR/EN à l'écran, ratchet qui baisse, `no_slug_comparison_test` |
@@ -183,12 +183,12 @@ test `:memory:` dédié à `QTacticalIsolement` (entre dans Q8 si la revue le ju
 
 | # | Lot | Source | Exécutant | Gate de clôture | Statut |
 |---|---|---|---|---|---|
-| P1 | Inventaire : table des entités (identifiant dans le film, durée de vie, liens DIRECTS, replis avec `fichier:ligne` du calque), axes (a)-(h) du plan v2 + (i) lecteurs hors rejeu + (j) emplacement du registre ; VERDICT écrit ROSTER pour S.3 ; séquençage P2-P5 ; questions ouvertes avec leur témoin | v2 lot P item P1 ; §1.2 et §4 ici | Opus, effort élevé | `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md` complet (aucun axe vide), registre, thought_log, commit `docs(restes/p1):` poussé ; ZÉRO code | [ ] EN VOL depuis 2026-09-07 : worktree `LevelUp-wt-p1-inventaire`, branche `feat/p1-inventaire` (base `22d76a738`) |
+| P1 | Inventaire : table des entités (identifiant dans le film, durée de vie, liens DIRECTS, replis avec `fichier:ligne` du calque), axes (a)-(h) du plan v2 + (i) lecteurs hors rejeu + (j) emplacement du registre ; VERDICT écrit ROSTER pour S.3 ; séquençage P2-P5 ; questions ouvertes avec leur témoin | v2 lot P item P1 ; §1.2 et §4 ici | Opus, effort élevé | `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md` complet (aucun axe vide), registre, thought_log, commit `docs(restes/p1):` poussé ; ZÉRO code | [x] 2026-09-07 : `7cbec66f4` sur `feat/p1-inventaire`, poussé (`origin` confirmé) ; livrable 569 L, 9 entités, axes (a) à (j) tous statués, 18 liens directs contre 23 replis, 3 découvertes au registre ; **0 fichier de code touché** (vérifié sur pièces par le superviseur) ; verdicts en §4.2 |
 | P2 | Registre des joueurs (= R1 + R2) : table d'identité unique publiée, lien direct à 100 %, pont par morts en repli et vérification, migration des lecteurs joueurs, garde-rail anti-pont maison | v2 lot P | Opus | ouvre après P1 statué ET après fusion des lots rejeu en vol (règle §0.6) | [ ] |
 | P3 | Registre des objets d'objectif (= R3) | v2 lot P | Opus | ouvre après P2 | [ ] |
 | P4 | Registre des véhicules et assets | v2 lot P | Opus | ouvre après P3 | [ ] |
 | P5 | Clôture du paradigme (gate corpus 0 perte, chronique 49, garde-rail identité, doc FR/EN) + UNE revue adversariale sur le diff cumulé P2-P5 (règle §0.5) | v2 lot P | Opus | `make replay-corpus-gate` | [ ] |
-| S.3 | Arrivées/départs (Tactique) — dégelé par le verdict ROSTER de P1, exécuté APRÈS P2 | Tactique S.3, D10 | à statuer sur le verdict de P1 | — | [ ] |
+| S.3 | Arrivées/départs (Tactique) — verdict ROSTER de P1 rendu : **NON**, le film ne porte pas les entrées/sorties. S.3 se fera donc par calage `real_start_time` / `t0_quality`, APRÈS P2 | Tactique S.3, D10 | Sonnet, effort moyen | à ouvrir après la clôture de P2 | [ ] dégelé sous condition le 2026-09-07 |
 | L6 / L7 / L8 | Narratif (gabarits par titre, D7), erreurs API (`code` seul, D6), Discord (langue du compte, D8) | Libellés | Sonnet | — | [ ] |
 | R9 | Release : séquence Notion, tag `v7.5.0`, push `main` | v2 R9 | Utilisateur | — | [ ] |
 
@@ -199,6 +199,44 @@ Ordonnancement (2026-09-07, vérifié sur pièces) : la vague 3 s'ouvre alors qu
 il ne peut donc entrer en conflit avec aucun lot en vol. P2, qui touche `analysis/replay`
 et le collecteur, n'ouvre qu'après la fusion des lots du domaine rejeu (règle §0.6 : un
 seul lot en vol par domaine).
+
+### 4.2 Ce que P1 a tranché (2026-09-07)
+
+- **ROSTER (axe d) : NON.** `PlayerActiveInGame` (ti=5 i18) et `PlayerPendingJoinInProgress`
+  (ti=5 i19) sont décodés et publiés par la sonde `SetPlayerStateHook`
+  (`internal/analysis/filmdec/components_player.go:94,182-190`) mais n'ont **aucun consommateur
+  de production**, et leur débit mesuré (163 et 105 lectures sur 22 films, soit ~7 et ~5 par film
+  pour 8 joueurs) ne tient pas le dénominateur. Conséquence : **S.3 par calage `real_start_time` /
+  `t0_quality`, après P2** — D10 confirmée, pas infirmée.
+- **Le trou central est E2, le slot de bipède** : zéro lien direct, cinq replis empilés (pont par
+  morts, fermetures, siège de bot, relais, nommage final) ; E5 (objets d'objectif), E7 (véhicules)
+  et E8 (armes au sol, équipements) en dépendent pour nommer porteur, occupant et ramasseur.
+  C'est ce qui ORDONNE P2 avant P3, P4 et P5.
+- **TEMPS (a) et MANCHES (b) : verdicts négatifs.** ti=0 n'est pas répliqué (1 enregistrement sur
+  22 films). La seule horloge directe est le couple `Packet.TS` + `start_ms` du manifeste, déjà lu
+  par le statborg (`internal/analysis/objectiveevents/statborg.go:199`) et JAMAIS par la grille de
+  frames, qui reste ancrée sur le premier paquet de position (`internal/analysis/replay/build.go:49`).
+- **(g) PROVENANCE** : elle existe déjà en cinq exemplaires incompatibles ; forme unique proposée
+  `Link{Source, Method, Readings, Metric, From, To}`, bornes temporelles obligatoires.
+- **(i)** un bump d'`IsolationDecoderRev` à P2 impose la réécriture de `match_lives` /
+  `match_death_context` par `levelup backfill-killsource` (le journal des morts n'est pas touché) :
+  à budgéter DANS P2, pas après.
+- **(j)** l'amendement du §0.7 du plan v2 (registre = fonction pure de `internal/analysis/replay`,
+  appelée par `replaybuild` ET par le collecteur) est rédigé mot pour mot dans le livrable :
+  à porter au premier commit de P2.
+
+Découvertes consignées au registre, NON traitées : (1) doc inversée
+`internal/analysis/replay/vehicle_rides.go:29-31` — l'événement NOMME le véhicule depuis le lot V8
+(`internal/analysis/filmdec/event_list.go:317-320`), à corriger en P4 ; (2) plomberie ti=0
+(`SetGameEngineHook`, `RoundTimerOf`) sans consommateur ni porteur — ne rien supprimer avant le plan
+décodeur ; (3) `bid(N.0)` lu mais non publié, d'où la jointure web des bots par nom nu
+(`rosterLogic.ts:122-128`) — gain le moins cher du lot P, à fermer en P2.
+
+Contrôle du superviseur : vérifiés SUR PIÈCES le 2026-09-07 — les deux composants de roster sans
+consommateur de production, l'ancrage de la grille de frames sur le premier paquet, l'horloge du
+statborg, la contradiction de `vehicle_rides.go`, et l'absence totale de fichier de code dans le
+diff (`git diff --name-only feat/v75..feat/p1-inventaire` : 4 fichiers, tous sous `.ai/`). Les
+débits de lecture et les décomptes de liens viennent du balayage du lot, non re-mesurés.
 
 ## 5. Décisions qui appartiennent à l'utilisateur (avec recommandation ; à trancher avant le lot concerné)
 

@@ -1,3 +1,45 @@
+## [2026-09-07] Orchestration — ouverture de la vague 3, lot P1 (inventaire du registre d'identite) — Complete
+
+**Decision technique principale.** Vague 3 du plan `.ai/PLAN_ORCHESTRATION_2026-09-07.md` ouverte a
+la demande de l'utilisateur alors que Q4, Q8 (vague 1) et la vague 2 ne sont pas clos. Verifie sur
+pieces avant d'ouvrir : P1 est un lot SANS CODE (inventaire, journal seul), il ne peut donc entrer en
+conflit avec aucun lot en vol ; P2, qui touche `analysis/replay` et le collecteur, reste ferme jusqu'a
+la fusion des lots du domaine rejeu (regle §0.6, un seul lot par domaine). Lot execute par un agent
+Opus, brief ferme, worktree dedie `LevelUp-wt-p1-inventaire`, branche `feat/p1-inventaire` depuis
+`feat/v75` @ `22d76a738`.
+
+**Resultats observes.** Livrable `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md` (569 L, commit
+`7cbec66f4`, pousse) : 9 entites inventoriees, axes (a) a (j) tous statues, 18 liens directs contre
+23 replis, sequencage P2-P5, questions ouvertes assorties de leur temoin. Trois verdicts qui engagent
+la suite :
+- ROSTER (axe d) : **NON**, le film ne porte pas les entrees/sorties de joueurs. `PlayerActiveInGame`
+  (ti=5 i18) et `PlayerPendingJoinInProgress` (ti=5 i19) sont decodes et publies par la sonde
+  `SetPlayerStateHook` (`internal/analysis/filmdec/components_player.go:94,182-190`) mais n'ont aucun
+  consommateur de production et un debit de 163 et 105 lectures sur 22 films. S.3 (Tactique) se fera
+  donc par calage `real_start_time` / `t0_quality`, APRES P2 : D10 confirmee.
+- Le trou central est le slot de bipede (E2) : zero lien direct, cinq replis empiles ; objets,
+  vehicules et armes au sol en dependent pour nommer porteur, occupant et ramasseur. C'est ce qui
+  ordonne P2 avant P3, P4 et P5.
+- TEMPS et MANCHES : negatifs. ti=0 n'est pas replique (1 enregistrement sur 22 films) ; la seule
+  horloge directe est `Packet.TS` + `start_ms`, deja lue par le statborg
+  (`internal/analysis/objectiveevents/statborg.go:199`) et jamais par la grille de frames, ancree sur
+  le premier paquet de position (`internal/analysis/replay/build.go:49`).
+
+**Controle du superviseur (sur pieces, non delegue).** Verifies : les deux composants de roster sans
+consommateur de production, l'ancrage de la grille de frames, l'horloge du statborg, la contradiction
+de `internal/analysis/replay/vehicle_rides.go:29-31` (l'evenement NOMME le vehicule depuis le lot V8,
+`filmdec/event_list.go:317-320`), et l'absence totale de fichier de code dans le diff
+(`git diff --name-only feat/v75..feat/p1-inventaire` : 4 fichiers, tous sous `.ai/`). Les debits de
+lecture et les decomptes de liens viennent du balayage du lot, non re-mesures.
+
+**Conclusion / prochaine etape.** P1 clos et cochee (plan v2 §2 lot P, plan d'orchestration §4.1 avec
+les verdicts en §4.2). Trois decouvertes consignees au registre, non traitees (doc inversee vehicule
+-> P4 ; plomberie ti=0 sans porteur -> plan decodeur ; `bid(N.0)` lu mais non publie -> P2). P2
+n'ouvre pas tant que `feat/v2-restes-r6` et `feat/raster-document-unique` (domaine rejeu) ne sont pas
+fusionnes ; il devra budgeter la reecriture de `match_lives` / `match_death_context` par
+`levelup backfill-killsource` qu'impose un bump d'`IsolationDecoderRev`, et porter l'amendement du
+§0.7 (registre = fonction pure de `analysis/replay`) a son premier commit.
+
 ## [2026-09-07] Orchestration — vague 1, lot Q6 = R0 du plan restes (dette mecanique rejeu) — Complete
 
 **Decision technique principale.** Lot R0 de `.ai/PLAN_V2_RESTES_2026-09-07.md` (= Q6 de
