@@ -138,6 +138,38 @@ func (r OwnerReport) xuidAt(slot uint32, tUS uint64) string {
 	return ""
 }
 
+// NamingBridge rend le pont slot -> joueur DÉBARRASSÉ DES SLOTS AMBIGUS — celui que doit
+// employer tout lecteur qui s'en sert pour NOMMER une piste.
+//
+// POURQUOI IL EXISTE (constat C2 de la revue VIES-R1, 2026-09-07). `SlotXUID` garde le PREMIER
+// occupant nommé d'un slot que deux joueurs se partagent : c'est un choix par l'ORDRE DES VIES.
+// `xuidAt` et `bridgeOfSlot` s'en abstiennent déjà, mais le helper partagé `xuidOfPublishedTrack`
+// ne le pouvait pas — il ne reçoit qu'une map. Résultat mesuré sur `084a804d` slot 734 : la passe
+// de nommage REFUSE (`contested = 1`) et le helper servait quand même `2535430265968559`, si bien
+// que `samplesByXUID` indexait les positions de la piste contestée sous le premier occupant —
+// une capture de zone pouvait être géolocalisée sur la trajectoire d'un AUTRE joueur.
+//
+// PLUTÔT QUE DE FAIRE DESCENDRE `SlotAmbiguous` DANS QUATRE CHAÎNES d'appel (les zones, les
+// pistes de porteur de drapeau, les actions d'objectif, les morts neutres), on retire les slots
+// ambigus À LA SOURCE : le lecteur ne peut plus oublier la garde, puisqu'il n'a plus de quoi
+// l'enfreindre.
+//
+// `SlotXUID` RESTE INCHANGÉ pour ses autres consommateurs (ramassages, marques de portage, frags
+// sous équipement actif) : leur exemption est explicite au cadrage de l'audit, et la modifier
+// sortirait du périmètre de cette revue.
+func (r OwnerReport) NamingBridge() map[uint32]uint64 {
+	if len(r.SlotAmbiguous) == 0 {
+		return r.SlotXUID
+	}
+	out := make(map[uint32]uint64, len(r.SlotXUID))
+	for s, x := range r.SlotXUID {
+		if !r.SlotAmbiguous[s] {
+			out[s] = x
+		}
+	}
+	return out
+}
+
 // buildOwners construit le pont à partir du seul fil des morts.
 //
 // PAS DE REPLI. Si le film ne porte pas son fil des morts, le pont est VIDE et aucun tir n'est

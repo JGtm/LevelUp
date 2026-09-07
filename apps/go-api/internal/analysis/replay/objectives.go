@@ -125,8 +125,10 @@ func buildObjectiveActions(evs []objectiveevents.IdentifiedEvent, unnamed int,
 //
 // LE FILTRE CADENCE SUR LE JOUEUR DE LA PISTE, PAS SUR SON SEUL NOM LU (correctif du
 // 2026-09-06). Bati sur `tr.XUID != ""`, il supprimait TOUTES les actions d'un joueur dont
-// AUCUNE vie n'est nommee — 35 sur 76 (46 %) sur `3372e7eb`, et 7 artefacts du parc sur 111
-// portent la perte —, alors que la trajectoire EST publiee : elle n'est simplement pas nommee.
+// AUCUNE vie n'est nommee alors que le PONT nomme son slot, quand bien meme la trajectoire EST
+// publiee. Defaut DEMONTRE par mutation, mais NON CHIFFRE sur le parc local : les 35 actions sur
+// 76 de `3372e7eb` que la premiere redaction citait viennent de deux joueurs SANS AUCUNE piste
+// dans le film — le pont n'a rien a nommer, et le compte ne bouge pas (revue VIES-R1, C3).
 // Trois consommateurs perdaient la donnee, dont DEUX n'ont jamais eu besoin d'une trajectoire
 // (le SON d'objectif, qui ne lit que l'instant, et la garde tout-ou-rien de l'armement de
 // bombe). La resolution est celle du pont canonique, partagee (`xuidOfPublishedTrack`).
@@ -155,7 +157,7 @@ func dropUnpublishedActions(actions []ObjectiveAction, tracks []Track,
 // l'origine (cf. buildObjectiveActions et build_score.go).
 func attachObjectiveActions(doc *ReplayDocument, opt Options, own OwnerReport, c scoreClock) LayerCoverage {
 	actions, cov := buildObjectiveActions(opt.Objectives, opt.ObjectivesUnnamed, c)
-	doc.Objectives, cov = dropUnpublishedActions(actions, doc.Tracks, own.SlotXUID, cov)
+	doc.Objectives, cov = dropUnpublishedActions(actions, doc.Tracks, own.NamingBridge(), cov)
 	cov.warnIfLossy("objectifs")
 	return cov
 }

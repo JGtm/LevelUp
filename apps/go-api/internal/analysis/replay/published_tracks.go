@@ -41,7 +41,13 @@ func publishedSlots(tracks []Track) map[uint32]bool {
 // `Track.XUID`, document.go — 15 vies sur 105 sur le film de référence, dont 6 survivants de fin
 // de partie que le film ne clôt par aucun événement). Cadencer un filtre « le joueur a-t-il une
 // trajectoire publiée » sur le seul nom LU supprime donc TOUTES les données d'un joueur dont
-// aucune vie n'est nommée — mesuré : `3372e7eb`, 35 actions d'objectif sur 76 (46 %).
+// aucune vie n'est nommée alors que le pont nomme son slot.
+//
+// LE CHIFFRE DE `3372e7eb` NE MESURE PAS CE DÉFAUT-LÀ, et la revue VIES-R1 l'a établi (C3) :
+// ses 35 actions écartées sur 76 appartiennent à deux joueurs SANS AUCUNE PISTE dans le film
+// (roster 6, feuille de match 8) — le pont n'a rien à nommer, et le compte est identique avant
+// et après ce correctif. Le défaut fermé ici est donc DÉMONTRÉ (la mutation rougit) mais NON
+// CHIFFRÉ sur le parc local : aucun de ses films ne porte la configuration déclenchante.
 //
 // L'IDENTITÉ VIENT DU PONT, PAS D'UNE DÉDUCTION LOCALE : `slotXUID` (`OwnerReport`,
 // `ResolveSlotXUID`) est le même pont qui nomme les marques de portage, les ramassages et les

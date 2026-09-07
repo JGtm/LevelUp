@@ -29,7 +29,7 @@ var slotSetPattern = regexp.MustCompile(`\w+\[\w+\.Slot\]\s*=\s*true`)
 // par `.Slot`, qu'une map keyée par chaîne ne déclenche jamais. Les deux seuls filtres du
 // paquet keyés par XUID — `objectives.go` et `neutral_deaths.go` — ont donc divergé des onze
 // autres SANS QUE LE GARDE LES VOIE : ils cadençaient sur le seul nom LU, supprimant toutes
-// les données d'un joueur dont aucune vie n'est nommée (35 actions sur 76 sur `3372e7eb`).
+// les données d'un joueur dont aucune vie n'est nommée alors que le pont nomme son slot.
 // C'est exactement la divergence INVISIBLE annoncée ci-dessus.
 //
 // POURQUOI L'ANCRE `range tracks` : sans elle le motif attrape `rosterFromDeaths`
@@ -111,5 +111,48 @@ func TestKeepOfPublishedTracks_ContratPreserve(t *testing.T) {
 	got := keepOfPublishedTracks([]Shot{{Slot: 512}, {Slot: 999}}, tracks, garde)
 	if len(got) != 1 || got[0].Slot != 512 {
 		t.Errorf("filtrage : attendu le seul slot publié, obtenu %v", got)
+	}
+}
+
+// TestUnePisteCONTESTEEnEstJamaisIndexeeSousUnXUID — LE CONSTAT C2 de la revue VIES-R1
+// (2026-09-07), reproduit sur la configuration REELLE du slot 734 de `084a804d`.
+//
+// LE DEFAUT. `xuidOfPublishedTrack` repliait sur `slotXUID[t.Slot]` SANS la garde d'ambiguite
+// que le lot venait pourtant d'ajouter a ses deux jumeaux (`bridgeOfSlot`, `xuidAt`) pour cette
+// raison precise. Sur un slot en collision, la passe de nommage REFUSE (`contested = 1`) et le
+// helper partage servait quand meme le PREMIER occupant : `samplesByXUID` (zones) indexait les
+// positions de la piste contestee sous ce joueur, si bien qu'une capture de zone pouvait etre
+// geolocalisee sur la trajectoire d'un AUTRE — attribuee a la mauvaise zone, ou attribuee la ou
+// elle aurait du sortir `NoPosition`. Meme exposition pour `tracksByXUID` (drapeau).
+//
+// LE CORRECTIF EST A LA SOURCE : les quatre lecteurs qui NOMMENT une piste recoivent
+// `own.NamingBridge()`, d'ou les slots ambigus sont RETIRES. Le lecteur ne peut plus oublier la
+// garde, puisqu'il n'a plus de quoi l'enfreindre.
+//
+// MUTATION : passer `own.SlotXUID` au lieu de `own.NamingBridge()` rougit — la piste contestee
+// reprend le nom du premier occupant.
+func TestUnePisteCONTESTEEnEstJamaisIndexeeSousUnXUID(t *testing.T) {
+	// La configuration mesuree : A [5872..6981], la vie contestee [7123..7158], B [7457..7591].
+	const a, b = uint64(2535430265968559), uint64(2535456423427614)
+	own := OwnerReport{
+		SlotXUID:      map[uint32]uint64{734: a}, // le pont garde le PREMIER occupant
+		SlotAmbiguous: map[uint32]bool{734: true},
+	}
+	contestee := Track{Slot: 734, StartFrame: 7123, EndFrame: 7158,
+		Points: []Point{{T: 7140, X: 1, Y: 0, Z: 0}}}
+
+	if got := xuidOfPublishedTrack(contestee, own.NamingBridge()); got != "" {
+		t.Errorf("piste contestee indexee sous %q — la passe de nommage l'a REFUSEE, "+
+			"le helper ne doit pas la nommer non plus", got)
+	}
+	// Le chemin NEUF du lot : les zones. La piste contestee ne doit servir a personne.
+	if s := samplesByXUID([]Track{contestee}, own.NamingBridge()); len(s) != 0 {
+		t.Errorf("echantillons indexes %v — une capture de %d pourrait etre geolocalisee sur "+
+			"la trajectoire d'un autre joueur", s, a)
+	}
+	// CONTRE-EPREUVE : sur un slot NON ambigu, le repli par le pont joue toujours.
+	sain := OwnerReport{SlotXUID: map[uint32]uint64{900: b}}
+	if got := xuidOfPublishedTrack(Track{Slot: 900}, sain.NamingBridge()); got != "2535456423427614" {
+		t.Errorf("slot non ambigu : %q, attendu le repli par le pont", got)
 	}
 }
