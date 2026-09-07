@@ -242,14 +242,36 @@ Fait : après le lot pont (schéma 48), écart cumulé K/D/A 69 (avant 94), les 
       correctif P0-2) ; tests vitest par mutation (`equippedLogic.test.ts`) ; gates `tsc -b`, eslint,
       `vitest run --pool=forks` : 0 erreur, 653 fichiers / 6972 tests verts.
 
-### R7 — Calage du fil des morts : budget de candidats (registre D3 du lot pont)
+### R7 — Calage du fil des morts : budget de candidats (registre D3 du lot pont) — [x] CLOS 2026-09-07 (lot M3, worktree `LevelUp-wt-m3-calage`, branche `feat/v2-restes-r7`)
 Fait figé par `TestUnAmasPlusGrosQueLeVraiCalageALARMEAuLieuDeSeTaire` (`pont_marge_test.go`) : un amas de morts
 distinctes plus nombreux que le vrai calage remplit le budget de 3 candidats ; l'alarme se déclenche, le calage rendu
 est faux.
-- [ ] Correctif : budget adaptatif (candidats jusqu'à ce que le meilleur compte réel dépasse le meilleur vote) ou
+- [x] Correctif : budget adaptatif (candidats jusqu'à ce que le meilleur compte réel dépasse le meilleur vote) ou
       dédoublonnage par fin de vie en plus de par mort ; le test de documentation doit être RETOURNÉ (il rougit
       quand le correctif fait mieux : le mettre à jour pour exiger le vrai calage).
-- [ ] Neutralité : `d9781168` et `51ebbc0f` identiques hors numéro (marges inchangées) ; bump 49.
+      **DÉDOUBLONNAGE PAR FIN DE VIE retenu** : le diagnostic (journal `.ai/V7.5/v2/RESTES_R7_2026-09-07.md` §1)
+      montre que le vote comptait les MORTS appariables quand l'affinage apparie 1:1 (chaque fin de vie servie une
+      seule fois, `countDeathMatches`) — un amas de 20 morts distinctes déposait donc 20 voix sur CHAQUE fin de vie
+      isolée du vrai calage pour UNE seule paire réalisable, et ces paniers fantômes remplissaient le budget. La voix
+      d'un panier devient `min(morts distinctes, fins distinctes)` (borne de Hall/König, majorant EXACT de
+      l'appariement que l'affinage mesure) via le nouvel helper `paniersParPivot` de `lives.go`, appelé une fois par
+      côté. **Aucun seuil nouveau** : `deathOffsetCandidats` reste 3, `deathOffsetMargeMin` 2, `deathMatchWindowMS`
+      150. Le budget adaptatif est ÉCARTÉ : il aurait laissé le classement faux et exigé d'affiner les 15 paniers
+      fantômes avant d'atteindre le vrai calage. Fixture adversariale : `[216300 233625 -190050]` / `off=216350 n=2`
+      → `[199950 216300 233625]` / `off=200000 n=15 second=2`. Test RETOURNÉ et renommé
+      `TestUnAmasPlusGrosQueLeVraiCalageNEmportePasLeBudget` (exige le vrai calage, teste `voteDeathOffsets` SEUL,
+      vérifie que l'alarme se TAIT) ; mutation jouée, sortie au journal §3. **Baseline INCHANGÉE** : vérifié sur
+      pièces, le test renommé n'est pas dans `.ai/baselines/tests_pre_migration.jsonl` (datée 2026-06-26, le test
+      date du 2026-09-07). Effet du ratchet lint corrigé à la source : `unparam` a sorti « `k` always receives
+      `deathOffsetCandidats` » sur `voteDeathOffsets` — attribution VÉRIFIÉE (le même lint sur un worktree détaché
+      à la base rend 0 issues), le paramètre de budget est donc retiré (4 appelants, tous sur la même constante).
+- [x] Neutralité : `d9781168` et `51ebbc0f` identiques hors numéro (marges inchangées) ; bump 49.
+      **AUCUN GOLDEN NE BOUGE, DONC PAS DE BUMP** : `go test ./internal/analysis/replay/ -run Golden -update` puis
+      `git diff --exit-code -- internal/analysis/replay/testdata/` → EXIT=0 ; `SchemaVersion` reste **48** et aucune
+      entrée n'est ajoutée à `document_chronicle.go`. C'est le résultat attendu : là où le vote localisait déjà le
+      vrai calage, `min(morts, fins)` vaut le compte des morts. Le 49 reste donc disponible pour le premier lot qui
+      changera réellement le contenu cuit (P2). **`make replay-corpus-gate` et les deux témoins sont à jouer par le
+      SUPERVISEUR** (ce worktree n'a aucun film) — commandes exactes au §6 du journal.
 
 ### R8 — Flakes CI hors rejeu (doctrine : tout rouge se répare, même préexistant)
 - [ ] `internal/api/handlers` `TestStartImport_HappyPathReturns202WithJobID` : le job d'import asynchrone survit au
@@ -265,7 +287,17 @@ est faux.
 
 ## 3. Découvertes (à consigner ici, ne pas traiter dans le lot courant)
 
-(vide au départ)
+- **[R7, 2026-09-07] `lives.go` était DÉJÀ à 509 L (au-dessus du seuil de 500) et passe à 543 L**
+  avec le helper `paniersParPivot`. Dette accrue de 34 L, non créée ; aucune scission n'est
+  prescrite par R7 et la règle 7 du contrat interdit le fix hors périmètre. Rattaché à l'entrée
+  de registre ouverte par R0 sur les fichiers > 500 L du paquet, qui liste désormais `lives.go`.
+- **[R7, 2026-09-07] Le coût du vote du calage double** (deux passes `|morts| × |fins|` au lieu
+  d'une). Ordre de grandeur négligeable devant l'affinage, mais **non mesuré sur un film réel** :
+  aucun film dans le worktree M3. À relever au prochain lot qui cuit un film BTB (P2) si la
+  durée de cuisson bouge.
+- **[R7, 2026-09-07] Chemin périmé au registre** : l'entrée D3 citait le test dans
+  `pont_muet_test.go` alors que PONT-R2 l'avait déplacé dans `pont_marge_test.go`. Corrigé en
+  fermant l'entrée ; aucune autre occurrence.
 
 ## 4. Reprise de session
 
