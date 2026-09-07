@@ -342,7 +342,7 @@ func buildSquadMatchHistory(
 	return rows
 }
 
-// buildMatchSeries construit la sÃƒÂ©rie temporelle des matchs pour un coÃƒÂ©quipier.
+// buildMatchSeries construit la série temporelle des matchs pour un coéquipier.
 func buildMatchSeries(matches []domain.SquadMatchRow) []domain.SquadMatchSeriesPoint {
 	series := make([]domain.SquadMatchSeriesPoint, 0, len(matches))
 	for _, m := range matches {

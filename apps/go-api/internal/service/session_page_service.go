@@ -1,4 +1,4 @@
-// Package service â€” SessionPageService : page dÃ©tail de session avec suggestion de comparaison.
+// Package service — SessionPageService : page détail de session avec suggestion de comparaison.
 package service
 
 import (
@@ -24,7 +24,7 @@ import (
 // explicitement demandée est introuvable (ADR 0029, Couche B).
 const errCodeSessionNotFound = "session_not_found"
 
-// SessionPageService construit la page de dÃ©tail d'une session.
+// SessionPageService construit la page de détail d'une session.
 type SessionPageService struct {
 	statsRepo port.StatsRepository
 	// playerMatchesRepo (P4.1, ADR 0011) : loader canonical-aware optionnel.
@@ -70,7 +70,7 @@ type SessionPageService struct {
 	usageFriends     teammates.FriendGamertagsResolver
 }
 
-// NewSessionPageService crÃ©e un SessionPageService.
+// NewSessionPageService crée un SessionPageService.
 func NewSessionPageService(statsRepo port.StatsRepository) *SessionPageService {
 	return &SessionPageService{statsRepo: statsRepo}
 }
@@ -132,7 +132,7 @@ func (s *SessionPageService) WithObjectiveIndexRepo(repo port.ObjectiveIndexRepo
 	return s
 }
 
-// GetPage retourne la page dÃ©tail d'une session avec suggestion de comparaison.
+// GetPage retourne la page détail d'une session avec suggestion de comparaison.
 func (s *SessionPageService) GetPage(
 	ctx context.Context,
 	req domain.SessionPageRequest,
@@ -143,7 +143,7 @@ func (s *SessionPageService) GetPage(
 
 	// P4.3 finale (ADR 0011) : path canonical exclusif.
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")
+		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
