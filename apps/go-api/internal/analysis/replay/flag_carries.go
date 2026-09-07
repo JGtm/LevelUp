@@ -123,8 +123,15 @@ type flagCarryCtx struct {
 	tracks []Track
 	deaths []Death
 	// slotXUID nomme le slot de BIPEDE des marques de portage (espace de slots different de
-	// celui du statborg).
+	// celui du statborg). C'est le pont EPURE (`OwnerReport.NamingBridge()`) : les slots que
+	// deux vies nommees se partagent en sont retires, pour qu'aucun lecteur ne puisse servir le
+	// nom arbitraire du premier occupant (revue VIES-R1, C2).
 	slotXUID map[uint32]uint64
+	// slotAmbiguous porte les slots que le pont epure vient de retirer. Il voyage A COTE parce
+	// que le REFUS doit se COMPTER : sans lui, un slot retire du pont serait indistinguable d'un
+	// slot que le pont n'a jamais nomme, et `coverage.flagCarries.ambiguousSlot` retomberait a
+	// zero en silence (revue DUREES-R1, C1 — le compteur est servi jusqu'au contrat).
+	slotAmbiguous map[uint32]bool
 }
 
 // flagOpening est une prise, avant tout bornage.
@@ -316,7 +323,7 @@ func closeByCarrierKills(raws []flagCarryRaw, evs []objectiveevents.NamedEvent,
 func attachFlagCarryPositions(raws []flagCarryRaw, ctx flagCarryCtx, cov *FlagCarriesCoverage) []flagCarryRaw {
 	// LE REFUS DU REPLI EST COMPTE ET DIT : la matiere existe, le calque renonce a s'en servir
 	// parce que le slot est partage (cf. flag_carrier_tracks.go, garde du constat C1).
-	idx, ambigus := tracksByXUID(ctx.tracks, ctx.slotXUID)
+	idx, ambigus := tracksByXUID(ctx.tracks, ctx.slotXUID, ctx.slotAmbiguous)
 	cov.AmbiguousSlot = len(ambigus)
 	logFlagAmbiguousSlots(ambigus)
 	out := raws[:0:0]

@@ -1,8 +1,11 @@
 package replay
 
 import (
+	"bytes"
 	"encoding/json"
+	"log/slog"
 	"reflect"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -224,5 +227,35 @@ func TestGrenadeLinksItsPublishedProjectile(t *testing.T) {
 	}
 	if !published[*gren[0].Proj].Rest {
 		t.Errorf("le projectile lie porte at-rest sur son dernier point : Rest attendu true")
+	}
+}
+
+// TestWarnIfLossyAlerteAussiSurLesNonPubliees — LA CATEGORIE QUI BOUGE A ENFIN UNE ALARME
+// (constat P1-4 de l'audit du 2026-09-06).
+//
+// `warnIfLossy` ne parcourait que {NoSlot, Ambiguous, OutOfWindow}. `Unpublished` — la seule
+// categorie qui bouge reellement sur le parc — n'avait aucun seuil : sur `3372e7eb`, 46 % des
+// actions d'objectif disparaissaient SANS UNE SEULE LIGNE DE JOURNAL, pour un seuil de 10 %.
+// Une categorie de rejet sans alarme est un rejet avale.
+//
+// MUTATION : retirer `{"sansTrajectoirePubliee", c.Unpublished}` de la liste rougit
+// (« aucun avertissement »).
+func TestWarnIfLossyAlerteAussiSurLesNonPubliees(t *testing.T) {
+	prev := slog.Default()
+	var buf bytes.Buffer
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(prev)
+
+	LayerCoverage{Available: 76, Attached: 41, Unpublished: 35}.warnIfLossy("objectifs")
+
+	out := buf.String()
+	if !strings.Contains(out, "sansTrajectoirePubliee") {
+		t.Errorf("aucun avertissement sur les actions non publiees — journal : %q", out)
+	}
+	// Le seuil reste un SEUIL : sous 10 %, pas de bruit.
+	buf.Reset()
+	LayerCoverage{Available: 100, Attached: 95, Unpublished: 5}.warnIfLossy("objectifs")
+	if strings.Contains(buf.String(), "sansTrajectoirePubliee") {
+		t.Errorf("avertissement sous le seuil : %q", buf.String())
 	}
 }

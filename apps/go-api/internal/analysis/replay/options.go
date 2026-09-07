@@ -172,6 +172,17 @@ type Options struct {
 	// nuance près qu'eux se résolvent dans ce paquet parce qu'ils lisent `opt.Deaths` déjà scanné
 	// ici. Absente = rejeu sans calque d'objectifs.
 	Objectives []objectiveevents.IdentifiedEvent
+	// ObjectivesUnnamed est le nombre d'actions d'objectif que le film NOMMAIT et que le pont
+	// d'identité de l'appelant n'a PAS su attribuer — celles qui n'arrivent donc jamais dans
+	// `Objectives`.
+	//
+	// POURQUOI IL VOYAGE. Sans lui, `coverage.objectives.available` compte les seuls rescapés :
+	// le rapport rattaché/disponible se lit ~100 % sur un calque partiel, et `noSlot` — le seul
+	// champ du contrat public prévu pour dire « le pont ne couvre pas ce joueur » — est
+	// structurellement inatteignable (vérifié : 0 sur les 111 artefacts du parc). La fuite est
+	// EN AMONT du point d'équilibre, donc son compte doit descendre depuis l'amont. Zéro = le
+	// pont a nommé tout ce que le film nommait, ou l'appelant ne mesure pas cet écart.
+	ObjectivesUnnamed int
 	// Score : de quoi construire LA COURBE DE SCORE (entrée de DONNÉES comme Objectives ; cf. score_timeline.go et build_score.go). Nil = ni calque ni couverture de score.
 	Score *ScoreInput
 	// Flag : de quoi construire LA VIE DES DRAPEAUX de CTF (entrée de DONNÉES comme Score ; cf.

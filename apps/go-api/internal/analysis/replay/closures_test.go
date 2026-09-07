@@ -467,3 +467,132 @@ func TestFermetureBNeTranchePasQuandDeuxMortsDesignentLeMemeSlot(t *testing.T) {
 		t.Fatalf("aucune des deux vies ne doit être nommée, obtenu %d et %d", lives[1].xuid, lives[2].xuid)
 	}
 }
+
+// TestFermetureBTesteLaVieDesigneeEtPasLeSlotEntier — LE CORRECTIF P1-6, côté fermeture B
+// (audit du 2026-09-06).
+//
+// `overlapsNamedLife` bornait son garde-fou sur `tracks[slot].pts`, le nuage COMPLET du slot,
+// toutes vies confondues. Sur un slot recyclé dont deux vies sont éloignées, l'intervalle testé
+// couvrait le trou qui les sépare : n'importe quelle vie nommée du joueur candidat y tombait,
+// la déduction sortait `refused`, `owner[slot]` n'était pas posé — et tous les tirs du slot
+// partaient en `coverage.shots.noSlot` sans être dessinés.
+//
+// LE CAS : le slot 2 porte une PREMIÈRE vie très tôt (0,5 s) et la vie DÉSIGNÉE bien plus tard
+// (20 s). Le joueur 1 possède par ailleurs le slot 3, dont le corps vit de 2 s à 3 s — donc
+// DANS le trou du slot 2, et hors de la vie désignée. Le garde-fou ne doit rien réfuter.
+//
+// MUTATION : reprendre les bornes du slot entier rougit (« refused = 1, slot non attribué »).
+func TestFermetureBTesteLaVieDesigneeEtPasLeSlotEntier(t *testing.T) {
+	tracks := tracksOf(at(1, 9_000_000), at(3, 2_000_000), at(3, 3_000_000),
+		at(2, 500_000), at(2, 20_000_000))
+	lives := []lifeSpan{
+		{slot: 1, from: 9_000_000, to: 10_000_000, xuid: 111},
+		{slot: 2, from: 500_000, to: 600_000},
+		{slot: 2, from: 20_000_000, to: 21_000_000},
+	}
+	// 111 meurt à 1 s et réapparaît à 9 s : la fenêtre de réapparition vaut 8 000 ms.
+	// 222 meurt à 12 s ; la vie du slot 2 à 20 s tombe donc dans SA fenêtre.
+	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
+	owner := map[uint32]int{1: 0, 3: 1} // le slot 3 appartient DÉJÀ au joueur 1 (= xuid 222)
+	var rep closureReport
+	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0, 222: 1}, &rep)
+
+	if owner[2] != 1 {
+		t.Fatalf("le slot 2 devait être attribué au joueur 1 : son corps du slot 3 (2 s -> 3 s) "+
+			"tombe dans le TROU du slot 2, pas dans la vie désignée (20 s). pont = %v, rapport %+v",
+			owner, rep)
+	}
+	if rep.refused != 0 {
+		t.Errorf("refused = %d, attendu 0 : le garde-fou a jugé sur le nuage du slot entier",
+			rep.refused)
+	}
+}
+
+// TestFermetureBRefuseToujoursUnVraiRecouvrement — LA CONTRE-ÉPREUVE : le correctif RESSERRE la
+// mesure, il ne désarme pas le garde-fou. Un joueur n'a qu'un corps : quand le corps connu
+// recouvre VRAIMENT la vie désignée, la déduction reste rejetée.
+func TestFermetureBRefuseToujoursUnVraiRecouvrement(t *testing.T) {
+	tracks := tracksOf(at(1, 9_000_000), at(3, 20_100_000), at(3, 20_500_000),
+		at(2, 500_000), at(2, 20_000_000))
+	lives := []lifeSpan{
+		{slot: 1, from: 9_000_000, to: 10_000_000, xuid: 111},
+		{slot: 2, from: 500_000, to: 600_000},
+		{slot: 2, from: 20_000_000, to: 21_000_000},
+	}
+	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
+	owner := map[uint32]int{1: 0, 3: 1}
+	var rep closureReport
+	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0, 222: 1}, &rep)
+
+	if _, pose := owner[2]; pose {
+		t.Fatalf("le corps du slot 3 recouvre la vie désignée : l'attribution est IMPOSSIBLE, "+
+			"pont = %v", owner)
+	}
+	if rep.refused != 1 {
+		t.Errorf("refused = %d, attendu 1", rep.refused)
+	}
+}
+
+// TestFermetureADateLaTerminaliteSurLaVieDesignee — LE CORRECTIF P1-6, côté fermeture A
+// (audit du 2026-09-06).
+//
+// `bodyExtendsShooter` prenait `from` sur `tracks[slot].pts[0]`, le premier point du slot
+// TOUTES VIES CONFONDUES. Sur un slot recyclé, la terminalité se testait donc contre le début
+// de la PREMIÈRE vie du slot : un corps nommé du tireur s'achevant ENTRE les deux vies faisait
+// échouer « tous ses corps connus s'achèvent avant », alors qu'il s'achève bien avant la vie
+// CANDIDATE. La déduction sortait `refused` et les tirs du slot restaient en `noSlot`.
+//
+// LE CAS : le slot 2 porte une première vie à 0,9 s et la vie DÉSIGNÉE à 20 s. Le tireur 3
+// possède le slot 1, dont le corps s'achève à 2 s — après la première vie du slot 2, mais bien
+// avant la vie désignée. Un seul tir, à 20,1 s : la vie désignée n'est pas ambiguë.
+//
+// MUTATION : reprendre `from := cand[0].TimestampUS` rougit (« le slot 2 devait revenir au
+// joueur 3 », refused = 1).
+func TestFermetureADateLaTerminaliteSurLaVieDesignee(t *testing.T) {
+	tracks := tracksOf(at(1, 400_000), at(1, 2_000_000),
+		at(2, 900_000), at(2, 1_100_000), at(2, 20_000_000), at(2, 20_200_000))
+	owner := map[uint32]int{1: 3}
+	lives := []lifeSpan{
+		{slot: 1, from: 400_000, to: 2_000_000, xuid: 111},
+		{slot: 2, from: 900_000, to: 1_100_000},
+		{slot: 2, from: 20_000_000, to: 20_200_000},
+	}
+	var rep closureReport
+	closeByAvailableBody(tracks, owner, lives, []FireEventRef{
+		{FilmIndex: 3, TimestampUS: 20_100_000},
+	}, &rep)
+
+	if owner[2] != 3 || rep.byShot != 1 {
+		t.Fatalf("le slot 2 devait revenir au joueur 3 : son corps connu s'achève à 2 s, "+
+			"AVANT la vie désignée (20 s). pont = %v, rapport %+v", owner, rep)
+	}
+	if got := rep.closedLife[2]; got != 2 {
+		t.Errorf("la vie désignée devait être l'indice 2, obtenu %d", got)
+	}
+}
+
+// TestFermetureARefuseToujoursUnCorpsPosterieur — LA CONTRE-ÉPREUVE : la terminalité reste une
+// exigence POSITIVE. Un corps connu du tireur qui s'achève APRÈS le début de la vie candidate
+// ferait de celle-ci une vie INTERMÉDIAIRE — donc terminée par une mort, qui l'aurait nommée.
+// Elle ne l'a pas été : la déduction reste rejetée.
+func TestFermetureARefuseToujoursUnCorpsPosterieur(t *testing.T) {
+	tracks := tracksOf(at(1, 400_000), at(1, 20_500_000),
+		at(2, 900_000), at(2, 1_100_000), at(2, 20_000_000), at(2, 20_200_000))
+	owner := map[uint32]int{1: 3}
+	lives := []lifeSpan{
+		{slot: 1, from: 400_000, to: 20_500_000, xuid: 111},
+		{slot: 2, from: 900_000, to: 1_100_000},
+		{slot: 2, from: 20_000_000, to: 20_200_000},
+	}
+	var rep closureReport
+	closeByAvailableBody(tracks, owner, lives, []FireEventRef{
+		{FilmIndex: 3, TimestampUS: 20_100_000},
+	}, &rep)
+
+	if _, pose := owner[2]; pose {
+		t.Fatalf("un corps connu POSTÉRIEUR au candidat interdit la déduction, pont = %v", owner)
+	}
+	if rep.refused != 1 {
+		t.Errorf("refused = %d, attendu 1", rep.refused)
+	}
+}

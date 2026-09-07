@@ -67,7 +67,14 @@ import "sort"
 // l'instant du geste. Sur un slot recyclé, les tractions, épisodes et poses du premier
 // occupant lui reviennent au lieu d'être créditées au second (constat C5 de la revue REG-R1).
 // Tout résumé produit sous `us1` doit donc être refait, et cette montée est ce qui le déclenche.
-const UsageSummaryRev = "us2"
+// us3 (2026-09-07) — UNE VIE DONT LE NOMMAGE A ECHOUE OCCUPE QUAND MEME SON SLOT. Elle entre
+// desormais dans la table par vie avec un xuid VIDE : elle n'ouvre aucune ligne (une ligne est
+// keyee par xuid) mais elle rend l'instant NON ATTRIBUABLE au lieu de le laisser retomber sur
+// `dernier[slot]`, le dernier occupant du match. Sur un slot recycle, la ligne d'un joueur
+// recevait donc un geste qui n'est pas le sien — precisement la regle que le correctif us2
+// declarait avoir supprimee. C'est deja le traitement des vies de BOT, pour la meme raison.
+// Tout resume produit sous `us2` est donc a refaire sur un film a slot recycle.
+const UsageSummaryRev = "us3"
 
 // UsagePlayerSummary — les usages d'UN joueur sur UN match, prêt à persister.
 type UsagePlayerSummary struct {
@@ -279,6 +286,9 @@ func usageSlotOwners(doc *ReplayDocument) usageOwners {
 	}
 	index := map[string]int{}
 	var ordre []*joueur
+	// viesSansNom : les vies que ni le fil des morts, ni le pont, ni le relais n'ont nommees.
+	// Elles n'ouvrent AUCUNE ligne (une ligne est keyee par xuid) mais elles OCCUPENT leur slot.
+	var viesSansNom []*Track
 	ajouter := func(cle, xuid string) *joueur {
 		if i, ok := index[cle]; ok {
 			return ordre[i]
@@ -306,7 +316,16 @@ func usageSlotOwners(doc *ReplayDocument) usageOwners {
 		case tr.Bot != "":
 			j = ajouter("bot:"+tr.Bot, "")
 		default:
-			continue // vie anonyme : ni ligne, ni occupation de slot
+			// UNE VIE QUE LE NOMMAGE N'A PAS RESOLUE OCCUPE QUAND MEME SON SLOT (residu B,
+			// instruit le 2026-09-06). L'ecarter la faisait retomber `at()` sur
+			// `dernier[slot]` — le DERNIER occupant du match — pour tout instant qu'elle
+			// couvre : un geste mesure pendant cette vie etait credite a la LIGNE d'un autre
+			// joueur. Un faux positif nomme est plus couteux qu'une ligne manquante : la vie
+			// entre avec un xuid VIDE, ce qui rend l'instant non attribuable au lieu de
+			// l'attribuer a tort. C'est deja le traitement des vies de BOT, pour la meme
+			// raison (« les attribuer au precedent occupant humain serait faux »).
+			viesSansNom = append(viesSansNom, tr)
+			continue
 		}
 		j.lives = append(j.lives, tr)
 	}
@@ -320,6 +339,10 @@ func usageSlotOwners(doc *ReplayDocument) usageOwners {
 				usageVie{from: tr.StartFrame, to: tr.EndFrame, xuid: j.xuid})
 			out.dernier[tr.Slot] = j.xuid
 		}
+	}
+	for _, tr := range viesSansNom {
+		out.parVie[tr.Slot] = append(out.parVie[tr.Slot],
+			usageVie{from: tr.StartFrame, to: tr.EndFrame, xuid: ""})
 	}
 	for slot := range out.parVie {
 		vies := out.parVie[slot]

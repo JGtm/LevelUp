@@ -895,8 +895,29 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   dise, et `backfill-replay` saute un artefact qui porte la version courante.
 	//   Détail : internal/analysis/replay/{equipment_episodes.go (spanFor), flag_carries.go
 	//   (tracksByXUID)} et .ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md.
-	if SchemaVersion != 45 {
-		t.Fatalf("SchemaVersion = %d, attendu 45 : incrémenter exige une raison écrite ci-dessus "+
+	// v47 — AUCUNE VIE PUBLIÉE NE RESTE SANS NOM (2026-09-07). Décision produit : « les vies
+	//   anonymes n'existent pas ; une vie est un humain ou un bot, point ». Une piste sans
+	//   identité est un DÉFAUT du pont, pas une donnée : une passe finale la nomme par
+	//   l'OCCUPATION DU SLOT DANS LE TEMPS (vie nommée du même slot qui précède, sinon qui suit,
+	//   sinon le pont canonique), et le résidu se publie (`bridge.unnamedLives`) doublé d'un
+	//   `slog.Error`. Sept lecteurs qui jetaient une lecture VRAIE faute de nom sont corrigés au
+	//   passage — objectifs, zones, les deux fermetures, les rides de véhicule, les sièges de
+	//   bot, et le rognage des portages. CES SEPT-LÀ SONT DES CORRECTIFS DE DÉFENSE : leurs
+	//   mutations rougissent, mais le parc local ne porte de témoin chiffré pour aucun (revue
+	//   VIES-R1, C3 — les chiffres cités en première rédaction mesuraient autre chose). Le gain
+	//   MESURÉ du schéma est celui du nommage : 305 vies sans nom -> 201 sur neuf témoins.
+	//   NEUF champs de couverture s'ajoutent : CINQ côté pont (`namedByPreviousLife`,
+	//   `namedByNextLife`, `namedBySlotBridge`, `unnamedLives`, `unnamedLivesContested`), TROIS
+	//   côté zones (`noPosition`, `outside`, `ambiguousZone`) et UN côté drapeau
+	//   (`flagCarries.ambiguousSlot`, apporté par le lot des DURÉES et intégré ici : le refus du
+	//   repli d'une vie sans nom se COMPTE au lieu de se taire). Le cinquième champ du pont vient
+	//   du complément de la revue des durées : un slot à plusieurs occupants est MARQUÉ, et la
+	//   frontière entre deux d'entre eux est refusée plutôt que tranchée.
+	//   POURQUOI LA VERSION MONTE : un artefact 36 à 46 est appauvri sans que sa forme le dise.
+	//   44, 45 et 46 SONT PRIS par les lots des manches, des durées et des drapeaux, en cours sur
+	//   d'autres branches. Détail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
+	if SchemaVersion != 47 {
+		t.Fatalf("SchemaVersion = %d, attendu 47 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -517,3 +517,59 @@ func TestFlagCarriesSlotNonPartageAccepteEtNeCompteRien(t *testing.T) {
 			"occupant nomme ne contredit pas le pont", *cov)
 	}
 }
+
+// TestFlagCarriesSlotEpureDuPontComptEncoreLeRefus — LA FUSION DES DEUX GARDES (integration de
+// `feat/v2-vies-anonymes` et `feat/v2-durees`, 2026-09-07).
+//
+// Les deux revues ont pose une garde, sur deux matieres differentes, et la fusion ne doit en
+// perdre AUCUNE :
+//
+//	VIES-R1 C2   `OwnerReport.NamingBridge()` RETIRE du pont les slots que deux vies nommees se
+//	             partagent — la matiere est `own.lives`, les vies DECOUPEES, y compris celles que
+//	             `minPoints` n'a pas publiees ;
+//	DUREES-R1 C1 `slotAmbigu` juge sur les vies PUBLIEES et attrape la contradiction pont <->
+//	             document, que la premiere ne voit pas.
+//
+// LE PIEGE DE L'INTEGRATION, ET C'EST CE QUE CE TEST FERME : un slot retire du pont epure est
+// INDISTINGUABLE d'un slot que le pont n'a jamais nomme. Le repli echoue silencieusement, la
+// piste est simplement ignoree, et `coverage.flagCarries.ambiguousSlot` retombe a ZERO — le
+// compteur que DUREES-R1 a fait servir jusqu'au contrat cesserait de compter la moitie de sa
+// population sans que rien ne le dise. `slotAmbiguous` voyage donc A COTE du pont epure.
+//
+// ICI les vies PUBLIEES ne se contredisent pas (un seul nom) : seule la garde amont peut
+// refuser, et elle doit COMPTER.
+//
+// MUTATION : retirer la branche `slotAmbiguous[slot]` de `replierRefuse` rougit — 0 portage
+// (le pont epure ne nomme rien) mais `ambiguousSlot = 0`, le refus devenu muet.
+func TestFlagCarriesSlotEpureDuPontComptEncoreLeRefus(t *testing.T) {
+	const porteur = "2535429985869093"
+	// Une seule vie NOMMEE publiee : `slotAmbigu` ne voit aucune contradiction. La collision a
+	// ete constatee en amont, sur une vie que `minPoints` n'a pas publiee.
+	tracks := []Track{
+		flagTestTrack(536, porteur, 0, 40, 30, 40),
+		flagTestTrack(536, "", 60, 99, 30, 40), // la vie que le repli aurait prise
+	}
+	scan := FlagCarryScan{
+		Scanned: true, Signals: flagTestSignals(),
+		Events: []objectiveevents.NamedEvent{
+			{TimeMS: 7000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
+			{TimeMS: 9000, Slot: 12, Stat: objectiveevents.StatFlagCaptures},
+		},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: porteur}),
+		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
+	}
+	ctx := flagTestCtx(tracks, nil, 130)
+	// Le pont EPURE : le slot 536 en est absent, exactement ce que rend `NamingBridge()`.
+	ctx.slotXUID = map[uint32]uint64{}
+	ctx.slotAmbiguous = map[uint32]bool{536: true}
+
+	_, cov := buildFlagCarries(scan, ctx)
+	if cov.Carries != 0 || cov.NoTrack != 1 {
+		t.Errorf("couverture %+v : attendu 0 portage et 1 sansPiste", *cov)
+	}
+	if cov.AmbiguousSlot != 1 {
+		t.Errorf("ambiguousSlot = %d, attendu 1 — un slot RETIRE du pont epure doit rester "+
+			"COMPTE : sinon il devient indistinguable d'un slot que le pont n'a jamais nomme, "+
+			"et la moitie de la population du compteur disparait en silence", cov.AmbiguousSlot)
+	}
+}

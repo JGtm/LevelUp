@@ -34,7 +34,6 @@ package replay
 
 import (
 	"sort"
-	"strconv"
 
 	"levelup/go-api/internal/analysis/filmdec"
 )
@@ -277,9 +276,15 @@ func vehicleRideOf(
 	// LA VISEE SE LIT SUR LES BORNES AFFINEES, pas sur celles du trou : quand un evenement a
 	// resserre une borne, la serie doit suivre le meme intervalle que `T0`/`T1`.
 	r.Aim = vehicleRideAimOf(in.aimBySlot[g.slot], startUS, endUS, in.clock)
-	if x, ok := in.own.SlotXUID[g.slot]; ok {
-		r.XUID = strconv.FormatUint(x, 10)
-	}
+	// L OCCUPANT EST CELUI DE L INSTANT, PAS LE PREMIER DU SLOT (correctif du 2026-09-06,
+	// constat P1-7). `SlotXUID` est une identite UNIQUE par slot pour tout le match : sur un
+	// slot de biped recycle entre deux joueurs, l episode sortait avec le xuid du PREMIER quel
+	// que soit l instant. Or `VehicleRide.XUID` est ce qui donne sa COULEUR au vehicule (le
+	// client joint xuid -> equipe -> couleur) : le sprite prenait l equipe du mauvais joueur et
+	// la fiche creditait le mauvais conducteur. `xuidAt` lit la vie qui couvre l instant, et ne
+	// retombe sur le pont par slot qu a defaut — vide quand ni l une ni l autre ne nomme, ce
+	// que le contrat prevoit explicitement (l episode reste publie, son occupant est inconnu).
+	r.XUID = in.own.xuidAt(g.slot, startUS)
 	return r
 }
 

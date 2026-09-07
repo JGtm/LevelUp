@@ -168,7 +168,7 @@ func p2bControleCaptures(t *testing.T, doc ReplayDocument, film p2aFilm) {
 	// Le catalogue est renumerote comme en production : le rang spatial EST l'index servi.
 	cat := zoneCatalogOf(p2aZones(t, film.MapID, p2aRolesDuMode(film)...))
 	caps := zoneCapturesOf(doc.Objectives)
-	att, cov := AttributeZones(caps, doc.Tracks, cat, AttributeOptions{MaxDistanceM: zoneCaptureDistanceM})
+	att, cov := AttributeZones(caps, doc.Tracks, cat, nil, AttributeOptions{MaxDistanceM: zoneCaptureDistanceM})
 	t.Logf("  ATTRIBUTION geometrique des captures : %d/%d (hors %d, sans position %d, ambigues %d)",
 		cov.Attributed, cov.Actions, cov.Outside, cov.NoPosition, cov.Ambiguous)
 	ok, total := 0, 0
@@ -261,7 +261,7 @@ func p2bInventaireCanaux(t *testing.T, doc ReplayDocument, film p2aFilm,
 ) {
 	t.Helper()
 	cat := zoneCatalogOf(p2aZones(t, film.MapID, p2aRolesDuMode(film)...))
-	att, _ := AttributeZones(zoneCapturesOf(doc.Objectives), doc.Tracks, cat,
+	att, _ := AttributeZones(zoneCapturesOf(doc.Objectives), doc.Tracks, cat, nil,
 		AttributeOptions{MaxDistanceM: zoneCaptureDistanceM})
 	pairs := zonePairsOf(att)
 	c := zoneCtx{origin: origin, step: uint64(doc.FrameIntervalMS) * 1000,

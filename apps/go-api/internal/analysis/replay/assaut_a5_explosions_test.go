@@ -188,7 +188,7 @@ func TestAssautA5PontIdentite(t *testing.T) {
 				XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS)})
 		}
 		named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeBomb)
-		ident := objectiveevents.IdentifyNamedEventsByRound(named,
+		ident, _ := objectiveevents.IdentifyNamedEventsByRound(named,
 			objectiveevents.ResolveRoundIdentity(recs, instants))
 		nommees += len(named)
 		publiees += len(ident)
