@@ -47,6 +47,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/haloclient"
 	"levelup/go-api/internal/sync/matchflags"
 )
@@ -140,6 +141,27 @@ func (h *PostSyncHook) capabilities(slug string) (games.CapabilityMap, error) {
 	return h.caps, h.capsErr
 }
 
+// capture construit les dependances de la capture des positions, BEST-EFFORT.
+//
+// Un catalogue de bornes illisible ou un resolveur absent degrade en « positions desactivees »
+// pour ce cycle — jamais une erreur : le journal des morts, raison d'etre de l'etape, ne doit
+// pas dependre d'une brique tierce. La degradation se JOURNALISE (le silence a deja coute cinq
+// mois sur cette etape).
+func (h *PostSyncHook) capture(ctx context.Context, d PostSyncDeps) DepsCapture {
+	if d.MapNames == nil {
+		slog.InfoContext(ctx, "post-sync: killsource — positions desactivees (aucun resolveur "+
+			"de carte cable)", "title", d.TitleSlug)
+		return DepsCapture{}
+	}
+	deps, err := CaptureDepuisCatalogue(h.repoRoot, d.TitleSlug, d.MapNames)
+	if err != nil {
+		slog.WarnContext(ctx, "post-sync: killsource — positions desactivees",
+			"title", d.TitleSlug, "err", err)
+		return DepsCapture{}
+	}
+	return deps
+}
+
 // racineDuCache : LA racine, celle qu on lit ET celle qu on ecrit.
 //
 // ⚠ DEUX RACINES ETAIENT UN PIEGE, ET TROIS RELECTEURS L ONT TROUVE LE MEME JOUR. Le moteur
@@ -193,6 +215,14 @@ type PostSyncDeps struct {
 	AcquireWriter persist.SharedWriterFn
 	TitleSlug     string
 	Gamertag      string
+	// MapNames resout l'identite de carte d'un match. NON NIL = la capture des positions
+	// (et donc les faits d'isolement) s'active pour ce cycle.
+	//
+	// ELLE MANQUAIT, ET C'EST TOUT LE DEFAUT P0-1 : `WithPositionCapture` n'etait appele que
+	// par le backfill hors ligne, si bien qu'aucune position n'etait jamais produite AU FIL
+	// DU SYNC en production. L'appelant la fournit parce que lui seul sait quel handle
+	// metadata il a le droit d'ouvrir (modele mono-process, ADR 0013).
+	MapNames port.ReplayMapNameRepo
 }
 
 // RunPostSync decode la source du kill des matchs inseres, puis rattrape le backlog.
@@ -237,13 +267,15 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 	racine, cache := h.racineDuCache(ctx, d.LocalCache)
 	source := NewRemoteFilms(NewLocalCacheFilms(cache), d.Fetcher, racine)
 	debut := time.Now()
-	sum := NewKillSourceCollector(
+	col := NewKillSourceCollector(
 		source, rosterParSegment{withRead: d.WithRead}, d.AcquireWriter, caps, PostSyncMatchTimeout,
-	).WithBudget(PostSyncBudget).CollectMatches(ctx, travail)
+	).WithBudget(PostSyncBudget).AvecCapture(h.capture(ctx, d))
+	sum := col.CollectMatches(ctx, travail)
 	observability.AddInt(CompteurPostSyncTraites, int64(sum.Written))
 
 	slog.InfoContext(ctx, "post-sync: kill source",
-		"gamertag", d.Gamertag, "demandes", len(travail), "ecrits", sum.Written,
+		"gamertag", d.Gamertag, "positions", col.CaptureCablee(),
+		"demandes", len(travail), "ecrits", sum.Written,
 		"morts", sum.Deaths, "films_absents", sum.NoFilm, "sans_killfeed", sum.NoKillFeed,
 		"erreurs", sum.Errors, "backlog_restant", restant,
 		"duree", time.Since(debut).Round(time.Second))
