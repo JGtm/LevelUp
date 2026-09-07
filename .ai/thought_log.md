@@ -1,4 +1,4 @@
-## [2026-09-07] Pont d identite muet — une marge de 60 s qui supposait la premiere mort dans la minute (schema 48) — Complete
+## [2026-09-07] Pont d identite muet — une marge de 60 s qui supposait la premiere FIN DE VIE dans la minute (schema 48) — Complete
 
 **Le mandat.** Instruire le report ouvert par le lot des vies anonymes : « le pont d identite est
 GLOBALEMENT MUET sur certains films — 73 vies sans nom sur 86 sur `51ebbc0f` ». Diagnostic seul
@@ -13,10 +13,11 @@ le multi-manche. `72b0a25e` est sur la meme carte que `51ebbc0f` et nomme 93 % :
 carte.
 
 **LA CAUSE, UNE SEULE.** `bestDeathOffset` (`lives.go`) balayait le calage fil des morts <-> film
-depuis `min(fins de vie) - 60 000`. Cette marge amont SUPPOSE que la premiere mort du match tombe
-dans la premiere minute. Le fil est date depuis le debut du MATCH, or la partie ne commence pas a
-t = 0 : les joueurs rejoignent apres la mise en place. La premiere mort tombe a 71,3 s sur
-`51ebbc0f` et a 136,4 s sur `4f77afc1` — le vrai calage passait SOUS la borne, et l optimiseur
+depuis `min(fins de vie) - 60 000`. Cette marge amont SUPPOSE que la plus precoce des FINS DE VIE du film
+tombe dans la premiere minute du match — pas la premiere mort, qui lui est seulement correlee
+(une vie se termine aussi sans mort ; `d9781168` les separe de 35 s). Le fil est date depuis le debut du MATCH, or la partie ne commence pas a
+t = 0 : les joueurs rejoignent apres la mise en place. La premiere fin de vie tombe a 71,4 s sur
+`51ebbc0f` et a 87,5 s sur `4f77afc1` — le vrai calage passait SOUS la borne, et l optimiseur
 retenait un pic de bruit a 9 appariements la ou le bon en donne 71. Les deux symptomes (pont muet,
 origine absente) sont la MEME cause : `resolveOriginMs` prend ce calage pour temoin.
 
@@ -60,6 +61,26 @@ re-cuisson du parc), priver `rosterOf` de son complement (2).
 `golangci-lint --new-from-merge-base` **0 issues**, golden regenere (1 ligne sur 607). Rejoues
 APRES la fusion des corrections VIES-R1, avec une re-cuisson de controle qui rend les memes
 chiffres. Parc principal intact (`git status data/` vide, 1 380 chunks, 111 artefacts).
+
+**REVUE PONT-R1, trois constats traites (2026-09-07).** (C1, P2 traite comme bloquant) Le vote
+deposait une voix par COUPLE (fin de vie, mort) : un amas de `k` fins simultanees — une fin de
+manche arrete toutes les pistes dans un meme cycle de replication — croise avec `m` morts
+simultanees deposait `k x m` voix dans un panier de bruit, de quoi passer devant le vrai calage
+et faire rendre un calage faux SANS SIGNAL, soit le symptome que ce lot repare, reintroduit par
+une autre porte. Corrige en trois temps : une voix par MORT et par panier ; trois candidats
+affines et non un, le compte retenu etant toujours le meilleur compte REEL ; et la marge PUBLIEE
+(`bridge.deathOffsetMatched` / `deathOffsetRunnerUp`) doublee d un `slog.Warn` sous x2. Mesure sur
+les artefacts recuits : x7,1 sur `51ebbc0f` (71 contre 10) et x7,9 sur `d9781168` (143 contre 18).
+LECON DE METHODE : la premiere mutation est restee VERTE parce que le filet des trois candidats
+rattrapait le vote — une defense en profondeur masque le test de mutation de ce qu elle protege ;
+il a fallu un test qui vise `voteDeathOffsets` SEUL. (C2) La cause ecrite n etait pas la grandeur
+mesuree : la borne etait `min(fins de vie) - 60 000`, donc c est la premiere FIN DE VIE sur
+l horloge du match qui la franchit, pas la premiere mort — `d9781168` les separe de 35 s et
+`43716616` etait une fausse exception. Reecrite partout ; sous le critere juste, le parc ne
+souffre aucune exception. (C3) La contre-epreuve du roster comparait deux appels IDENTIQUES
+(`rosterFromDeaths` etant devenu un delegue d une ligne) : remplacee par 300 tirages contre une
+copie LITTERALE de l ancien corps. SchemaVersion RESTE 48 — la re-cuisson des deux temoins ne rend
+que 2 ecarts sur 620 et 609 mesures, les deux champs de marge. Gates rejoues au complet.
 
 **Conclusion / prochaine etape.** `SchemaVersion` 47 -> 48 : la re-cuisson de release est
 obligatoire pour les cinq films. Trois BTB sont repares a la sonde mais NON cuits (regle RAM).

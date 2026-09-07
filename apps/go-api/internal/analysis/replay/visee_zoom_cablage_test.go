@@ -59,7 +59,7 @@ func TestViseeZoomBoutEnBout(t *testing.T) {
 	lives := buildLifeSpans(indexBySlot(pos))
 	// LA MEME reconstruction que la production (zoom_state.go) : plusieurs causes de fermeture.
 	etat := buildScopedLookup(evts, lives, zoomHoldUS)
-	off, _ := bestDeathOffset(lives, ScanFilmDeaths2(t, dir))
+	off, _, _ := bestDeathOffset(lives, ScanFilmDeaths2(t, dir))
 
 	// La track de Nilton est celle du slot 513 (index 1 + base 512), etabli par le pont.
 	const slotNilton = 513
