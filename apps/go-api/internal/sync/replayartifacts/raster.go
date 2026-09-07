@@ -50,7 +50,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"math"
 	"os"
 	"path/filepath"
 
@@ -229,8 +228,8 @@ func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation) ([]doma
 			Cellules:         cellulesDuRaster(raster),
 			Spawns:           spawnsDeLOccupation(j.Spawns),
 			PremieresEntrees: entreesDeLOccupation(j.PremieresEntrees),
-			Morts:            mortsDeLOccupation(j.Morts),
 			Routes:           routesDeLOccupation(j.Routes),
+			Chronologie:      chronologieDeLOccupation(j.Chronologie),
 		})
 	}
 	return out, ignores, nil
@@ -255,35 +254,14 @@ func spawnsDeLOccupation(spawns []tactical.SpawnPiste) []domain.TacticalRasterSp
 	return out
 }
 
-// mortsDeLOccupation transporte les morts et leurs voisins. AUCUNE DECISION ICI : ni
-// equipe, ni rayon, ni verdict d'isolement — le film ne porte pas les camps, et c'est le
-// service qui tranchera (cf. domain/tactical_raster.go).
-func mortsDeLOccupation(morts []tactical.MortMesuree) []domain.TacticalRasterMort {
-	out := make([]domain.TacticalRasterMort, 0, len(morts))
-	for _, m := range morts {
-		voisins := make([]domain.TacticalRasterVoisin, 0, len(m.Voisins))
-		for _, v := range m.Voisins {
-			voisins = append(voisins, domain.TacticalRasterVoisin{
-				XUID: v.XUID, Statut: v.Statut, DistanceM: arrondi2(v.DistanceM),
-			})
-		}
-		out = append(out, domain.TacticalRasterMort{
-			Frame: m.Frame, X: arrondi2(m.X), Y: arrondi2(m.Y),
-			PositionInconnue: m.PositionInconnue, Voisins: voisins,
-		})
+// chronologieDeLOccupation transporte OU ETAIT LE JOUEUR, ET QUAND. Aucun verdict : ni
+// mort, ni vivant, ni distance — le film ne sait pas le dire, la lecture si.
+func chronologieDeLOccupation(segments []tactical.SegmentChrono) []domain.TacticalRasterSegment {
+	out := make([]domain.TacticalRasterSegment, 0, len(segments))
+	for _, sg := range segments {
+		out = append(out, domain.TacticalRasterSegment{DebutFrame: sg.DebutFrame, XY: sg.XY})
 	}
 	return out
-}
-
-// arrondi2 arrondit a deux decimales, la MEME convention que les coordonnees de l'artefact
-// (`replay.round2`).
-//
-// POURQUOI ICI : les positions du document sont des `float32` deja arrondis a 2 decimales ;
-// les promouvoir en `float64` puis les serialiser en pleine precision ecrivait des
-// « 12.340000152587891 » et pres du double d'octets pour le bloc des morts, sans un chiffre
-// de mesure en plus.
-func arrondi2(v float64) float64 {
-	return math.Round(v*100) / 100
 }
 
 // routesDeLOccupation transporte les chemins de sortie de spawn.

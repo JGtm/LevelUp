@@ -25718,10 +25718,7 @@ components:
         matchs_victoire:
           format: int64
           type: integer
-        morts_indeterminees:
-          format: int64
-          type: integer
-        morts_position_inconnue:
+        morts_equipe_a_terre:
           format: int64
           type: integer
         pas_m:

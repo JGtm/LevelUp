@@ -169,13 +169,18 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 	// (morts/kills/gagne) et pour le KPI d'echange autant que pour les lectures d'artefact.
 	// Applique dans la seule branche des sidecars, il rendait 200 sur l'univers ENTIER sous
 	// un libelle de grappe.
+	var dejaLus map[string]*domain.TacticalRasterSidecar
 	if scope.Spawn != "" {
-		grappes, ids, err := s.perimetreDuSpawn(ctx, carte, scope)
+		per, err := s.perimetreDuSpawn(ctx, carte, scope)
 		if err != nil {
 			return out, err
 		}
-		out.Grappes = grappes
-		scope.MatchIDs = ids
+		out.Grappes = per.Grappes
+		scope.MatchIDs = per.MatchIDs
+		// LES SIDECARS SONT DEJA EN MAIN : la lecture qui suit porte sur un sous-ensemble
+		// de cet univers, et les relire serait une seconde traversee du disque pour les
+		// memes fichiers (revue P2).
+		dejaLus = per.Sidecars
 	}
 	if lectureDArtefact(question) {
 		// L'OCCUPATION A SA PROPRE PORTE ET SON PROPRE SUBSTRAT (cf.
@@ -184,7 +189,7 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		// L'ERREUR EST CAPTUREE AVANT LE RETOUR : `return out, f(&out)` laisserait
 		// l'ordre d'evaluation des operandes decider si la reponse rendue est celle
 		// d'avant ou d'apres le remplissage.
-		err := s.rasterArtefact(ctx, &out, scope)
+		err := s.rasterArtefact(ctx, &out, scope, dejaLus)
 		return out, err
 	}
 	err := s.rasterDeKills(ctx, &out, scope)

@@ -57,6 +57,10 @@ type TacticalRaster struct {
 	// spawn de depart ne se connait que par un sidecar.
 	MatchsFiltres int `json:"matchs_filtres"`
 
+	// SOUS LA LECTURE « isole », C'EST L'UNIVERS MESURABLE : les matchs mesures AYANT un
+	// rayon de radar. Un match dont la variante n'a pas de portee mesuree n'y entre pas —
+	// il est compte a part dans `matchs_sans_rayon`.
+	//
 	// MatchsRetenus est le DENOMINATEUR de la lecture : les matchs du filtre dont le
 	// journal des morts est LISIBLE (cf. TacticalMatch.Mesure). Un match jamais
 	// decode n'y entre pas — il ne peut alimenter aucune cellule, et l'y compter
@@ -119,15 +123,13 @@ type TacticalRaster struct {
 	// amputee ressemblerait a une lecture complete.
 	MatchsSansRayon int `json:"matchs_sans_rayon,omitempty"`
 
-	// MortsIndeterminees : les morts ECARTEES de la lecture « isole » parce qu'au moins un
-	// coequipier etait INVISIBLE a cet instant (en vehicule non attribue, ou survivant
-	// anonyme) et qu'aucun coequipier vu n'etait a portee. Ni isolees ni accompagnees :
-	// les compter isolees rendait des morts « seules » a trois metres d'un coequipier.
-	MortsIndeterminees int `json:"morts_indeterminees,omitempty"`
-
-	// MortsPositionInconnue : les morts dont le film ne dit pas OU elles ont eu lieu
-	// (embarquement sans point de vehicule). Ni peintes ni examinees.
-	MortsPositionInconnue int `json:"morts_position_inconnue,omitempty"`
+	// MortsEquipeATerre : les morts ECARTEES de la lecture « isole » parce que tous les
+	// coequipiers etaient morts ou partis a cet instant (ou qu'il n'y en avait aucun).
+	//
+	// PUBLIEE, ET C'EST LE POINT : elle etait comptee sans jamais sortir, si bien qu'un
+	// denominateur ampute ressemblait a un denominateur complet. Elle ne dit rien du
+	// placement — on ne peut pas etre mal accompagne quand personne ne peut accompagner.
+	MortsEquipeATerre int `json:"morts_equipe_a_terre,omitempty"`
 
 	// Isolement est la part des morts SANS coequipier vivant a portee, sous la forme
 	// canonique (taux + brut + par match + N + echantillon faible). nil hors de la lecture
