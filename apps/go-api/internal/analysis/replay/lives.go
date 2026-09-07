@@ -67,7 +67,52 @@ type lifeSpan struct {
 	slot     uint32
 	from, to int64  // microsecondes, horloge du film
 	xuid     uint64 // identité lue dans le fil des morts ; 0 = non nommée
+	// cause dit COMMENT la vie s'est terminée. Posée à la découpe (structure), écrasée par
+	// [CauseVieMort] si le fil des morts apparie sa fin.
+	//
+	// LA MORT PRIME SUR LA STRUCTURE, jamais l'inverse : le trou de 5 s qui suit une mort est
+	// le temps de réapparition, pas une coupure de réplication. Sans cette priorité, toute
+	// mort suivie d'un respawn sortirait « coupure ».
+	cause string
+	// nomPar dit COMMENT ON SAIT À QUI la vie appartient — une question ORTHOGONALE à la
+	// précédente, et les confondre est exactement ce qui a coûté la lecture d'isolement.
+	//
+	// UNE FERMETURE N'EST PAS UNE FIN. `nameClosedLives` déduit une identité par élimination
+	// (un autre corps est réapparu, donc ce corps-ci était celui-là) ; elle ne dit RIEN sur
+	// la façon dont la vie s'est terminée. Un survivant nommé par fermeture porte donc
+	// `nomPar = closure` ET `cause = film_end` : il est identifié, et il n'est pas mort.
+	nomPar string
 }
+
+// Les QUATRE causes de fin d'une vie. Elles sont toutes DÉTERMINABLES sans seuil arbitraire,
+// et c'est la condition pour qu'elles existent : une cause qu'on devinerait ne serait qu'un
+// avis présenté comme un fait.
+//
+//	CauseVieMort       le fil des morts apparie la fin de la vie (à deathMatchWindowMS,
+//	                   médiane mesurée 34 ms). LA SEULE QUI DISE « CE JOUEUR EST MORT ».
+//	CauseVieFinFilm    la réplication du slot s'arrête et ne reprend jamais : la vie court
+//	                   jusqu'au bout de ce que le film montre. C'est le cas du SURVIVANT.
+//	CauseVieCoupure    un trou de plus de lifeGapUS (5 s) a fermé la vie et aucune mort ne
+//	                   l'apparie. Le cas typique est l'embarquement en véhicule : le biped
+//	                   cesse d'être répliqué, le joueur est bien vivant.
+const (
+	CauseVieMort    = "death"
+	CauseVieFinFilm = "film_end"
+	CauseVieCoupure = "cut"
+)
+
+// Les DEUX provenances d'identité d'une vie. Elles répondent à « comment sait-on à qui elle
+// appartient », jamais à « comment s'est-elle terminée ».
+//
+//	NomParMort        le fil des morts a nommé la vie par sa victime — une LECTURE.
+//	NomParFermeture   une fermeture de slot l'a nommée par élimination (closures.go) — une
+//	                  DÉDUCTION, et surtout PAS UNE MORT. Confondre les deux fabrique une
+//	                  mort pour un survivant qui a tiré : c'est le P0 de la ronde 2
+//	                  (2026-09-07), qui a coûté toute une lecture d'isolement.
+const (
+	NomParMort      = "death"
+	NomParFermeture = "closure"
+)
 
 // buildLifeSpans découpe les trajectoires en vies. Un slot qui disparaît plus de lifeGapUS
 // puis revient est une NOUVELLE vie : le slot migre aux réapparitions.
@@ -87,12 +132,16 @@ func buildLifeSpans(tracks map[uint32]slotTrack) []lifeSpan {
 		for _, p := range pts[1:] {
 			t := int64(p.TimestampUS)
 			if t-last > lifeGapUS {
-				out = append(out, lifeSpan{slot: s, from: start, to: last})
+				// TROU AU-DELÀ DU SEUIL : la vie se ferme ici. C'est la cause STRUCTURELLE,
+				// que le nommage écrasera s'il sait mieux (une mort, une fermeture).
+				out = append(out, lifeSpan{slot: s, from: start, to: last, cause: CauseVieCoupure})
 				start = t
 			}
 			last = t
 		}
-		out = append(out, lifeSpan{slot: s, from: start, to: last})
+		// LA DERNIÈRE VIE DU SLOT N'EST FERMÉE PAR AUCUN TROU : ses points sont simplement
+		// épuisés. C'est la fin de ce que le film montre de ce slot — pas une coupure.
+		out = append(out, lifeSpan{slot: s, from: start, to: last, cause: CauseVieFinFilm})
 	}
 	return out
 }
@@ -189,6 +238,8 @@ func nameLivesByDeaths(lives []lifeSpan, deaths []Death, off int64) int {
 		}
 		usedD[p.di], usedL[p.li] = true, true
 		lives[p.li].xuid = deaths[p.di].XUID
+		lives[p.li].cause = CauseVieMort
+		lives[p.li].nomPar = NomParMort
 		n++
 	}
 	return n

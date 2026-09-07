@@ -188,8 +188,11 @@ var canonicalOrder = []string{
 	// Placée AVANT from_pairs parce que l'ordre d'init() suit le nom de fichier — from_pairs
 	// ne trouve alors plus rien à reprendre, et c'est correct : la reprise credit-base couvre
 	// tout ce qu'elle couvrait, dédupliqué sur l'identité (cf. §10-2 de la conception).
-	"shared_kill_events_credit_base_v1",                // shared
-	"shared_kill_events_from_pairs_v1",                 // shared (J4 : reprise dédupliquée de killer_victim_pairs -> match_kill_events + drop v_killer_victim_full ; la table source RESTE)
+	"shared_kill_events_credit_base_v1", // shared
+	"shared_kill_events_from_pairs_v1",  // shared (J4 : reprise dédupliquée de killer_victim_pairs -> match_kill_events + drop v_killer_victim_full ; la table source RESTE)
+	// steps_shared_match_lives.go : init() suit le nom de fichier, donc APRES les trois
+	// steps_shared_kill_events*.go — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
+	"shared_match_lives_v1",                            // shared (vies nommées du film + contexte de voisinage d une mort, append-only + vues _latest par passe)
 	"shared_objective_events_v1",                       // shared
 	"shared_objective_score_v1_drop",                   // shared (v7.5 lot 3 : DROP match_objective_score_timeline ; remplace shared_objective_score_v1, dont le créateur est supprimé)
 	"shared_match_player_positions_v1",                 // shared

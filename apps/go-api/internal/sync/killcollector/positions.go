@@ -128,7 +128,7 @@ func (c *KillSourceCollector) collectPositions(
 		return
 	}
 
-	rep, rows, err := buildPositionRows(film, entry, ids, kills, matchID)
+	rep, rows, mat, err := buildPositionRows(film, entry, ids, kills, matchID)
 	if err != nil {
 		slog.WarnContext(ctx, "killsource: positions — passe ignoree", "match_id", matchID, "err", err)
 		return
@@ -141,6 +141,15 @@ func (c *KillSourceCollector) collectPositions(
 		return
 	}
 	publishPositionsPass(ctx, matchID, rep, len(rows))
+
+	// LES FAITS D ISOLEMENT SONT LA SECONDE PROJECTION DU MEME MATERIAU (lot 7C). Ils passent
+	// APRES l ecriture des positions et ne rendent aucune erreur : leur echec ne doit couter ni
+	// le journal des morts ni les positions, deja ecrits et bien plus centraux au produit.
+	//
+	// MEME PORTE QUE LES POSITIONS (`CapFilmKillPositions`) : les deux tables reposent sur les
+	// memes positions bipeds. Une capability neuve n aurait rien gate de plus et aurait ajoute
+	// une cle a tenir a jour dans chaque `capabilities.toml`.
+	c.projeterFaitsDIsolement(ctx, matchID, mat, ids, deaths)
 }
 
 // resolveMapBounds : les identites de carte candidates du match (base), puis leurs bornes de
@@ -171,29 +180,29 @@ func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID stri
 func buildPositionRows(
 	film *filmsource.Film, entry filmdec.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
-) (replay.KillPosReport, []persist.KillPositionInsert, error) {
+) (replay.KillPosReport, []persist.KillPositionInsert, materiauDIsolement, error) {
 	bipedOpt := filmdec.DefaultScanFilmOptions()
 	rng := entry.Range()
 	bipedOpt.WorldRange = &rng
 	positions, err := filmdec.ScanBipedPositions(film, bipedOpt)
 	if err != nil {
-		return replay.KillPosReport{}, nil, fmt.Errorf("positions bipeds: %w", err)
+		return replay.KillPosReport{}, nil, materiauDIsolement{}, fmt.Errorf("positions bipeds: %w", err)
 	}
 
 	originUS, err := replay.ScanClockOrigin(film)
 	if err != nil {
 		observability.AddInt(metricPositionsNoOrigin, 1)
-		return replay.KillPosReport{}, nil, fmt.Errorf("horloge du film: %w", err)
+		return replay.KillPosReport{}, nil, materiauDIsolement{}, fmt.Errorf("horloge du film: %w", err)
 	}
 
 	deathsFilm, err := replay.ScanDeaths(film)
 	if err != nil {
-		return replay.KillPosReport{}, nil, fmt.Errorf("fil des morts (rejeu): %w", err)
+		return replay.KillPosReport{}, nil, materiauDIsolement{}, fmt.Errorf("fil des morts (rejeu): %w", err)
 	}
 
 	idx, err := replay.ScanPlayerIndices(film, rosterUint64(ids.XUIDs))
 	if err != nil {
-		return replay.KillPosReport{}, nil, fmt.Errorf("index de joueur: %w", err)
+		return replay.KillPosReport{}, nil, materiauDIsolement{}, fmt.Errorf("index de joueur: %w", err)
 	}
 	if idx.Disagreements > 0 {
 		observability.AddInt(metricPositionsAmbiguous, int64(idx.Disagreements))
@@ -202,13 +211,17 @@ func buildPositionRows(
 	slotXUID, owners := replay.ResolveSlotXUID(positions, deathsFilm, idx)
 	if len(slotXUID) == 0 {
 		observability.AddInt(metricPositionsNoBridge, 1)
-		return replay.KillPosReport{}, nil, fmt.Errorf(
+		return replay.KillPosReport{}, nil, materiauDIsolement{}, fmt.Errorf(
 			"pont slot->xuid vide (vies=%d nommees=%d lectures_index=%d)",
 			owners.LivesTotal, owners.DeathsNamed, owners.IndexReadings)
 	}
 
 	posOut, rep := replay.BuildKillPositions(positions, slotXUID, kills, int64(originUS))
-	return rep, toKillPositionRows(matchID, posOut), nil
+	// LE MATERIAU REMONTE TEL QUEL : le rapport porte les vies nommees et le calage d horloge,
+	// les positions portent le monde. La projection des faits d isolement s en sert sans
+	// rescanner le film (cf. isolation_facts.go).
+	mat := materiauDIsolement{report: owners, positions: positions, slotXUID: slotXUID}
+	return rep, toKillPositionRows(matchID, posOut), mat, nil
 }
 
 // writePositions : l ecriture, sous son PROPRE lease court — meme raison que writeShots (le

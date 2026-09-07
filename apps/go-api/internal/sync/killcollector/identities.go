@@ -29,6 +29,20 @@ type MatchIdentities struct {
 	// ShotsFired : la reference de l API, par xuid. Une entree absente veut dire « aucune
 	// reference » — la porte de publication REFUSE alors, elle ne suppose pas.
 	ShotsFired map[string]int
+	// Equipes : `xuid -> numero d equipe` (`match_participants.team_id`).
+	//
+	// ELLE VIENT DE LA BASE, ET C EST LA SEULE SOURCE POSSIBLE : le film ne porte AUCUN camp
+	// (`Track.Team` vaut -1 partout). Sans elle, la lecture d isolement compterait un
+	// adversaire proche comme un accompagnement. Une entree ABSENTE veut dire « equipe non
+	// renseignee » — le joueur n entre alors dans aucun camp, jamais dans un camp par defaut.
+	Equipes map[string]int
+	// DepartMS : `xuid -> instant du depart`, en ms depuis le debut du match
+	// (`last_leave_time`, cale sur l horodatage canonique du registre). Une entree ABSENTE
+	// veut dire « jamais parti », et c est le cas normal.
+	//
+	// LE FILM NE PORTE PAS LES DEPARTS. Sans cette colonne, un joueur deconnecte a la
+	// premiere minute resterait un coequipier disponible jusqu a la fin du match.
+	DepartMS map[string]int64
 }
 
 // Resoudre : LE nom que le film donne devient un xuid et un gamertag. UNE SEULE COPIE DE CETTE

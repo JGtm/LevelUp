@@ -1331,11 +1331,25 @@ scanne deja tout le film (`filmdec.ScanBipedPositions`, `replay.ScanDeaths`,
 `replay.ScanPlayerIndices`, `replay.ResolveSlotXUID` -> pont slot->xuid + vies). Aucun decodage
 nouveau, aucune cuisson, l'artefact ne bouge pas.
 
-- [ ] 7C.1 Table `match_lives` (append-only, `written_at`, vue `match_lives_latest`, recette ADR 0026
-      + `append_only_rebuild.go`) : match_id, xuid, start_ms, end_ms, end_cause
-      (`death` | `closure` | `film_end` | `cut`), decode_pass/decoder_rev comme le journal. Source :
-      les vies nommees que `ResolveSlotXUID` calcule deja (`owners`) — exposer ce qu'il faut du
-      paquet `replay` en PUR, sans dupliquer le nommage.
+- [x] 7C.1 Table `match_lives` (append-only, `written_at`, vue `match_lives_latest`, recette ADR 0026
+      + `append_only_rebuild.go`) : match_id, xuid, start_ms, end_ms, **`end_cause` ET
+      `named_by`**, decode_pass/decoder_rev comme le journal. Source : les vies nommees que
+      `ResolveSlotXUID` calcule deja (`owners`) — exposees en PUR par `replay.OwnerReport.
+      ViesNommees()`, sans dupliquer le nommage (le pont pose la cause a la decoupe et au
+      nommage, ce fichier ne fait que traduire et convertir l'horloge).
+      **DEUX COLONNES LA OU LE PLAN EN ECRIVAIT UNE, apres verification sur pieces
+      (2026-09-07).** Grep sur TOUT le paquet `replay` : seuls `lives.go:233` (fil des morts)
+      et `owners.go:166` (fermeture de slot) nomment une vie, et `ViesNommees` n'emet que les
+      vies NOMMEES. Un `end_cause` a quatre valeurs incluant `closure` rendait donc `film_end`
+      et `cut` INATTEIGNABLES — une valeur d'enum qu'aucun chemin ne produit laisse croire a
+      une distinction qui n'existe pas. La cause est que l'enum melangeait deux questions
+      orthogonales : `end_cause` (`death` | `film_end` | `cut`) dit COMMENT la vie s'est
+      terminee, `named_by` (`death` | `closure`) dit COMMENT ON SAIT A QUI elle appartient.
+      Le point produit du brief en sort DURCI : un survivant nomme par fermeture porte
+      `named_by = closure` ET `end_cause = film_end` — avec un champ unique il fallait choisir
+      entre le nommer et dire qu'il a survecu, et le choix fait le comptait mort (P0 ronde 2).
+      La mort PRIME sur la structure (sinon toute mort suivie d'un respawn sortirait
+      « coupure ») ; sentinelle anti-enum-morte + deux mutations mordantes.
 - [ ] 7C.2 Table `match_death_context` (append-only, vue `_latest`) : une ligne par mort du
       journal (`match_id`, `victim_xuid`, `time_ms` = cle de jointure avec `match_kill_events`),
       avec : `nearest_teammate_m` (coequipier VISIBLE le plus proche, 2D, NULL si aucun),
