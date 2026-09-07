@@ -1,3 +1,46 @@
+## [2026-09-07] Plan Tactique 7.10 — revue : la ventilation parlait au nom de la file sans reprendre sa regle — Complete
+
+**Decision technique principale** — deux constats de fond, une seule cause. Le P0 : le
+predicat de retention valait NULL pour un match sans horodatage (la DDL l'autorise,
+`steps_shared_core.go:35-37`), et le scanner dans un `bool` nu rendait
+`converting NULL to bool` — 500 sur TOUTE la lecture d'artefact de la carte, pour une seule
+ligne mal datee. Le P1 : la file exige TROIS conditions (film pas definitivement perdu,
+horodatage exploitable, dans la fenetre) et la ventilation n'en reprenait qu'une, si bien
+qu'un match au film PERDU — marqueur terminal, ~29 % du parc — sortait « en attente ». La
+page envoyait attendre indefiniment un ecran qui ne se remplirait jamais.
+
+Correction commune : extraire le predicat ENTIER, pas recopier la condition manquante.
+`analysis.SQLEligibleALaCuisson(alias, mois, bit)` rend le SQL ET ses parametres dans
+l'ordre, et il est consomme par la file (`requeteQueueRecente`) comme par le lecteur
+(`QTacticalUnivers`). Le `IS NOT NULL` precede la comparaison de fenetre : `FALSE AND NULL`
+vaut FALSE, donc le predicat ne vaut jamais NULL — le P0 est ferme par construction, pas par
+un COALESCE de plus. Les compteurs deviennent `matchs_en_attente` (eligible) et
+`matchs_non_cuisables` (tout le reste). Le ratchet couvre desormais le test du bit.
+
+Effet de bord assume et ecrit : le `IS NOT NULL` RESSERRE la file quand la retention est
+illimitee — un match sans aucun horodatage n'y entre plus. Il n'y avait rien a en faire :
+`ORDER BY <canonique> DESC` ne sait pas le placer.
+
+**Resultats observes** — le trou de couverture explique les deux defauts : le SQL de
+`QTacticalUnivers` n'etait exerce par AUCUN test, le double du service rendant le booleen a
+la main. Deux tests `:memory:` posent les quatre situations (recent / vieux / film perdu /
+indatable) ; six tests unitaires figent `BorneRetention`, `BorneRetentionDepuis`,
+`SQLDansFenetreRetention` et `SQLEligibleALaCuisson` (ordre des conditions ET des
+parametres). Deux mutations jouees : retirer le `IS NOT NULL` fait tomber
+`TestUnivers_EligibiliteALaCuisson_QuatreCas` ; neutraliser le test du bit le fait tomber
+sur « film_perdu : eligible = true, attendu false ».
+
+**Un constat de la revue n'etait pas recevable, verifie sur pieces** : le cron de purge EST
+teste depuis le commit `15df6c629` — `replay_purge_cron_runonce_test.go` appelle `RunOnce`
+avec une horloge injectee et prouve la frontiere a la seconde pres. La mutation de la borne
+(`now - mois` -> `now`) le fait bien tomber. Aucun test ajoute : il aurait fait doublon.
+
+**Conclusion / prochaine etape** — 7A close, revue de 7.10 statuee. Deux decouvertes
+consignees au §7 : la degradation muette de `settingsStore.Load()` chez ses deux autres
+appelants (dont le cron de purge, ou un settings illisible desactive la purge sans un mot),
+et `BacklogHorizon` comme borne de DEBIT et non d'eligibilite. Lot 7C toujours en attente de
+son brief.
+
 ## [2026-09-07] Plan Tactique — cloture de 7A : l'isolement quitte la lecture pour le sync — Complete
 
 **Decision technique principale** — decision utilisateur du 2026-09-07 : les faits
