@@ -33,9 +33,11 @@ import (
 var champsNonCables = map[string]string{}
 
 func TestChaqueChampDeFilmStatsEstCableDansOptions(t *testing.T) {
-	src, err := os.ReadFile(filepath.Clean("replaybuild.go"))
+	// L'assemblage vit dans options.go depuis le lot restes R0 (deplacement pur de
+	// `buildReplayOptions`, extrait de BuildBytes) — le garde-rail suit le litteral.
+	src, err := os.ReadFile(filepath.Clean("options.go"))
 	if err != nil {
-		t.Fatalf("lecture de replaybuild.go : %v", err)
+		t.Fatalf("lecture de options.go : %v", err)
 	}
 	litteral := optionsLitteral(t, string(src))
 
@@ -58,16 +60,17 @@ func TestChaqueChampDeFilmStatsEstCableDansOptions(t *testing.T) {
 	}
 }
 
-// optionsLitteral extrait le corps du litteral `replay.Options{...}` de `BuildMatch`.
+// optionsLitteral extrait le corps du litteral `replay.Options{...}` de `buildReplayOptions`
+// (options.go).
 //
 // LE GARDE-RAIL DOIT POUVOIR ECHOUER : si le litteral n est plus reconnu, le test s arrete au
 // lieu de passer a vide (lecon J4.0 — un garde qui ne peut pas echouer ne garde rien).
 func optionsLitteral(t *testing.T, src string) string {
 	t.Helper()
-	debut := regexp.MustCompile(`replay\.BuildFromFilm\([^)]*replay\.Options\{`).FindStringIndex(src)
+	debut := regexp.MustCompile(`return replay\.Options\{`).FindStringIndex(src)
 	if debut == nil {
-		t.Fatal("litteral replay.Options{...} de BuildMatch introuvable : le garde-rail ne " +
-			"verifie plus rien (l assemblage a-t-il ete deplace ?)")
+		t.Fatal("litteral replay.Options{...} de buildReplayOptions introuvable : le garde-rail " +
+			"ne verifie plus rien (l assemblage a-t-il ete deplace ?)")
 	}
 	reste := src[debut[1]:]
 	profondeur := 1
