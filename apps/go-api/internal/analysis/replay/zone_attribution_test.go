@@ -128,9 +128,16 @@ func TestLesViesDUnMemeJoueurSontFusionnees(t *testing.T) {
 	}
 }
 
-// TestUneVieSansPontNeSertAPersonne : une piste que RIEN ne nomme — ni le fil des morts, ni le
+// TestUneVieAnonymeNeSertAPersonne : une piste que RIEN ne nomme — ni le fil des morts, ni le
 // pont canonique — ne doit servir a personne : ni a un joueur nomme, ni a une action elle-meme
 // sans identite.
+//
+// LE NOM DU TEST EST CONSERVE TEL QUEL, et c'est deliberé : il figure dans la baseline de
+// non-regression (`.ai/baselines/tests_pre_migration.jsonl`), un artefact GELE dont la
+// disparition d'une entree fait rougir le gate CI. Depuis la decision du 2026-09-07 une vie
+// « anonyme » n'est plus une categorie de donnee mais un DEFAUT de nommage — la doctrine est
+// dans le corps du test et dans `unnamed_lives.go`, pas dans un renommage qui couterait un
+// faux rouge a tout le monde.
 //
 // Le second cas est celui qui mord : une action sans xuid et une piste sans xuid partagent
 // la meme clé vide. Sans le rejet explicite, elles s'apparieraient, et l'action serait posee
@@ -138,7 +145,7 @@ func TestLesViesDUnMemeJoueurSontFusionnees(t *testing.T) {
 //
 // C'EST LA CONTRE-EPREUVE DU CORRECTIF P0-1, et elle doit rester verte : le pont RETRECIT le
 // rejet, il ne le supprime pas (`slotXUID` est nil ici — aucun pont).
-func TestUneVieSansPontNeSertAPersonne(t *testing.T) {
+func TestUneVieAnonymeNeSertAPersonne(t *testing.T) {
 	zones := []Zone{zoneAt(0, 101, 0, 0, 0)}
 	tracks := []Track{track("", pointAt(50, 1, 0, 0))} // vie non nommee, pile dans la zone
 
