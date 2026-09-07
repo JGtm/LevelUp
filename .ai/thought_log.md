@@ -1,3 +1,98 @@
+## [2026-09-08] Lot M5 (fin) — libelles en dur, famille L4 armes — Complete
+
+**Decision technique principale.** Execution du lot M5, derniere partie : L4 (armes),
+plan d'orchestration section M5, source .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md
+section 2.C / section 4 L4 / sections 9-12. Worktree dedie LevelUp-wt-m5c-armes, branche
+feat/libelles-armes depuis feat/libelles-modes-playlists (2f190c543). Skills invoques :
+plan-execution, arch-rules, canonical-types, db-schema, frontend-patterns. Decisions
+utilisateur fermes appliquees : option 1 (le Go sert des cles, le web localise),
+jamais de comparaison de slug, jamais de libelle FR/EN en dur cote Go, un champ *_label
+sans lecteur web est supprime.
+
+Inventaire sur pieces AVANT de coder (doctrine RE-VERIFIER) : les deux sites cites par
+l'inventaire du plan (section 2.C) sont tous les deux des tables SEMEES dans
+metadata.duckdb (weapon_families, weapon_labels), pas des libelles Go a servir
+directement a un DTO. Distinction (a)/(b) de la consigne d'execution appliquee :
+- internal/games/weapons/registry.go:317+ (weaponRegistryFamilies, 22 litteraux) : EN/FR
+  par famille d'arme ("battle_rifle" -> "Battle Rifle"/"Fusil de combat"...), seedes dans
+  weapon_families. Grep exhaustif Go ET web (apps/web/src/lib/i18n/manifests/frags.toml,
+  qui localise deja le sunburst "Frags par arme" niveaux classe/role) : AUCUN lecteur ne
+  selectionne jamais name_en/name_fr depuis cette table. Champ mort avere -> cas (a) mais
+  DEAD, donc traite par SUPPRESSION (regle CLAUDE.md n7, 0 code mort) et non par
+  migration TOML (qui aurait recopie du contenu mort dans un second fichier). Purge des
+  2 colonnes via une migration CTAS-swap dediee (purge_weapon_families_labels_columns),
+  calquee EXACTEMENT sur le precedent direct du meme paquet
+  (purge_weapons_name_fr_column, V721-05.1, 2026-07 - DuckDB refuse ALTER TABLE DROP
+  COLUMN sous PK/index). weaponFamilyRow reduit a struct{ key string }.
+- internal/games/weapons/labels.go (ApplyLabels, table weapon_labels, 12 litteraux) :
+  NON traite, cas (b) explicitement designe comme DONNEES par la consigne d'execution
+  (meme statut que cmd/seed-weapon-labels/ops/seed_*, hors perimetre sauf preuve de
+  convergence). Verifie LIVE (contrairement a weapon_families) :
+  platform/duckdb/weapon_resolver.go lit encore weapon_labels comme repli de nom pour
+  les 3 sentinelles (grenade/melee/vehicule, ids 0/1/2 sans weapon_key) et tout weapon_id
+  inconnu du registre - architecture voulue depuis V72-06 (weapon_name_labels/
+  weapon_names.toml est deja la SOURCE UNIQUE pour le reste). Migrer ce repli vers un
+  TOML dupliquerait cette source unique sans rien resoudre : aucune convergence trouvee.
+
+**Actions.**
+- Nouvelle migration internal/migration/steps_metadata_purge_weapon_families_labels.go
+  (+ 5 tests dedies, tag integration) : rebuild CTAS-swap idempotent, garde anti-perte
+  (rebuilt==before), ordonnee juste avant purge_weapons_name_fr_column dans
+  canonicalOrder (order.go) pour reproduire l'ordre d'enregistrement naturel par nom de
+  fichier (TestSortByCanonicalIsNoOpOnCurrentRegistry l'exige) ; dependance declaree
+  dans order_dependency_test.go (doit suivre add_weapon_registry).
+- registry.go : weaponFamilyRow -> struct{ key string } ; CREATE TABLE weapon_families
+  reduit a (family_key VARCHAR PRIMARY KEY) ; seedWeaponFamilies n'ecrit plus que la
+  cle ; weaponRegistryFamilies reduit a une liste de cles. 1 litteral residuel hors
+  famille ("Banished (SPNKr modifie)", champ manufacturer - lui aussi jamais lu, verifie
+  par grep) anglicise ("modified") plutot que traduit, pour coherence avec le reste du
+  champ (EN partout ailleurs) : 22 -> 0.
+- Nouveau ratchet dedie internal/archlint/no_weapon_family_label_literal_test.go ::
+  TestNoNewWeaponFamilyLabelLiteral (frere de TestNoNewModePlaylistLabelLiteral, L3) :
+  interdit la reintroduction d'un champ de struct "en, fr string" dans
+  internal/games/weapons, allowlist vide.
+- Ratchet no_french_label_literal_test.go : games/weapons/registry.go retire de
+  l'allowlist (22 -> 0) ; games/weapons/labels.go inchange (12, justifie DONNEES) ;
+  131 -> 130 fichiers, 522 -> 500 litteraux.
+- golangci-lint --new-from-merge-base a expose 4 nouveaux goconst (roleShotgun,
+  famRocketLauncher, clsUnattributed, clsOther) sur des lignes de weaponRegistryFamilies
+  qui ont change de forme (le refactor a fait entrer ces lignes dans le diff) - meme
+  phenomene deja consigne comme decouverte L3 (section 12). Corrige par extraction de
+  constantes (pas une regression fonctionnelle).
+
+**Decouvertes consignees, NON traitees** (plan libelles section 13) : (1)
+internal/domain/match_view.go (WeaponLabel, TopWeaponLabel) sert un libelle DEJA
+LOCALISE cote serveur (option 2, pas la cle canonique option 1/D5) - ecart de doctrine
+reel mais preexistant (V72-06, anterieur a D5), chantier fullstack separe (meme famille
+de risque que expTypePVPRanked/Unranked, decouverte L3) ; (2) weapons.manufacturer est
+egalement un champ mort (meme nature que weapon_families avant purge) - hors perimetre
+libelles (pas un FR/EN, dette technique plus large) ; (3) si les 3 sentinelles de
+weapon_labels rejoignent un jour le registre par weapon_key, cette table deviendrait a
+son tour un repli mort comme weapon_families l'etait - a re-verifier a ce moment, pas
+avant.
+
+**Resultats observes.** Gates Go : gofmt -l vide, go build ./internal/... ./cmd/...
+propre, go vet des paquets touches propre, go test -count=1 du perimetre instruit
+(service/analysis/domain/api/archlint/games/sync/platform-duckdb) tous verts, go test
+-tags=integration sur internal/migration et internal/games/weapons (nouvelle migration +
+ses 5 tests) verts, openapi-gen -check a jour (0 diff, aucun changement de contrat DTO),
+make generate-types 0 diff sur generated.ts, golangci-lint run
+--new-from-merge-base=origin/main 0 issue apres extraction des 4 constantes. Web (npm ci
+dans le worktree, purge node_modules/.tmp) : AUCUN fichier web modifie (le champ mort
+eteint etait une colonne DB, pas un DTO API) ; gates relances par prudence : typecheck
+propre, lint 0 erreur / 29 warnings (baseline inchangee), lint:colors 0 violation,
+lint:fields 0 violation, npx vitest run --pool=forks 656 fichiers / 6993 tests verts (17
+skipped, meme baseline que L3).
+
+**Conclusion / prochaine etape.** L4 clos et coche (plan libelles section 4, plan
+d'orchestration section M5). Lot M5 entierement termine (L2+L3+L4+L5, sur 2 sessions).
+Aucune page a verifier a l'ecran pour l'utilisateur (0 changement visuel - les deux
+libelles d'armes etaient soit deja morts soit deja corrects niveau UI). Commits sur
+feat/libelles-armes, poussee vers origin, non fusionnee. Prochaine etape possible (hors
+perimetre de ce lot, a decider avec l'utilisateur) : lot dedie pour migrer
+WeaponLabel/TopWeaponLabel (match_view.go) de l'option 2 vers la cle canonique (option
+1/D5), en coordination avec le web (killfeed, scoreboard, frag breakdown).
+
 ## [2026-09-08] Lot M5 (seconde moitie) — libelles en dur, famille L3 modes/playlists — Complete
 
 **Decision technique principale.** Reprise de l'execution du lot M5, partie L3 (modes / playlists

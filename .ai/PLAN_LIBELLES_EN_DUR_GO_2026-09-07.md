@@ -282,6 +282,82 @@ portée (aucun changement visuel attendu — VALUE inchangée).
 **L4 — Armes** (C). **HORS PÉRIMÈTRE du lot M5 première moitié (2026-09-07)** — reste `[ ]`
 pour la seconde moitié de M5.
 
+**L4 — CLOS le 2026-09-08 (lot M5 seconde moitié, branche `feat/libelles-armes`, worktree
+`LevelUp-wt-m5c-armes`)** — **découverte majeure, doctrine RE-VÉRIFIER confirmée** : les
+deux sites cités par l'inventaire (§2.C) ne sont PAS des libellés Go à migrer vers un
+TOML — vérifiés sur pièces avant de coder :
+- `internal/games/weapons/registry.go:317+` (`weaponRegistryFamilies`, 22 littéraux) :
+  EN/FR par famille d'arme (« battle_rifle » → « Battle Rifle »/« Fusil de combat »…),
+  seedés dans `weapon_families` (metadata.duckdb). Grep exhaustif (Go ET web) : **AUCUN
+  lecteur** ne sélectionne jamais `name_en`/`name_fr` depuis cette table (seul un test
+  d'intégrité référentielle rejoint sur la CLÉ, jamais sur le libellé ; le sunburst
+  « Frags par arme », `apps/web/src/lib/i18n/manifests/frags.toml`, ne localise que les
+  niveaux classe/rôle, jamais le niveau famille ; le nom PAR ARME est une source
+  distincte et déjà correcte depuis V72-06, `weapon_name_labels`/`weapon_names.toml`).
+  Champ mort avéré → traité par SUPPRESSION (règle dépôt « 0 code mort »), pas par
+  migration TOML (qui aurait recopié du contenu mort dans un second fichier). Purge des
+  colonnes `name_en`/`name_fr` de `weapon_families` via une migration CTAS-swap dédiée
+  (`purge_weapon_families_labels_columns`, `internal/migration/steps_metadata_purge_weapon_families_labels.go`),
+  calquée EXACTEMENT sur le précédent direct du même paquet
+  (`purge_weapons_name_fr_column`, V721-05.1, 2026-07 — DuckDB refuse
+  `ALTER TABLE ... DROP COLUMN` sous PK/index). `weaponFamilyRow` réduit à
+  `struct{ key string }`, `weaponRegistryFamilies` réduit à une liste de clés,
+  `seedWeaponFamilies` n'écrit plus que `family_key`. 1 littéral résiduel hors famille
+  (`"Banished (SPNKr modifié)"`, champ `manufacturer` — lui aussi jamais lu, vérifié)
+  anglicisé pour cohérence (« modified ») plutôt que traduit : 22 → 0.
+- `internal/games/weapons/labels.go` (`ApplyLabels`, table `weapon_labels`, 12
+  littéraux) : **NON traité**, DONNÉES au sens de la consigne d'exécution (même statut
+  que `cmd/seed-weapon-labels`/`ops/seed_*` : hors périmètre sauf preuve de convergence).
+  Vérifié LIVE (contrairement à weapon_families) :
+  `platform/duckdb/weapon_resolver.go::resolveWeaponMeta`/`resolveWeaponLabelsOnly`
+  lit encore `weapon_labels` comme repli de nom pour les 3 sentinelles
+  (grenade/mêlée/véhicule, ids `0`/`1`/`2`) et tout `weapon_id` sans `weapon_key`
+  résolu — ce COALESCE (`wnl.name_fr > wnl.name_en > wl.name_fr > wl.name_en`) est
+  l'architecture voulue depuis V72-06 (commentaire du resolver, doc-en-tête). Migrer ce
+  repli vers un TOML dupliquerait `weapon_names.toml` (déjà la SOURCE UNIQUE) sans rien
+  résoudre — aucune convergence à faire, la preuve inverse (le repli EST déjà la seule
+  source restante pour ces cas) écarte le motif de traitement. `[!]` non traité,
+  justifié.
+- Découverte annexe (non traitée, hors du périmètre C) : les DTO `WeaponLabel`/
+  `TopWeaponLabel` (`internal/domain/match_view.go`) servent un libellé déjà LOCALISÉ
+  serveur (option 2 du §3 — le backend localise depuis `weapon_name_labels`), pas une
+  clé canonique (option 1, D5 « option 1 partout »). Écart de doctrine réel mais
+  PRÉEXISTANT (V72-06, avant D5) et hors du périmètre exact de C (§2.C ne cite que
+  registry.go/labels.go) — migrer `match_view.go` et ses ~variantes killfeed vers des
+  clés serait un chantier fullstack à part entière (même famille de risque que
+  `expTypePVPRanked`/`Unranked`, L3 §11). Consigné pour un lot dédié futur, non
+  dimensionné ici.
+
+Ratchets : `no_french_label_literal_test.go` — `games/weapons/registry.go` retiré de
+l'allowlist (22 → 0), `games/weapons/labels.go` inchangé (12, justifié DONNÉES) — total
+131 → 130 fichiers, 522 → 500 littéraux. Nouveau garde-rail dédié
+`no_weapon_family_label_literal_test.go::TestNoNewWeaponFamilyLabelLiteral` (frère de
+`TestNoNewModePlaylistLabelLiteral`, L3) : interdit la réintroduction d'un champ de
+struct `en, fr string` dans `internal/games/weapons` (motif exact retiré de
+`weaponFamilyRow`), allowlist vide.
+
+Gates Go : `gofmt -l` vide, `go build ./internal/... ./cmd/...` propre, `go vet` des
+paquets touchés propre, `go test -count=1` du périmètre instruit (service/analysis/
+domain/api/archlint/games/sync/platform-duckdb) tous verts, `go test -tags=integration`
+sur `internal/migration` et `internal/games/weapons` (nouvelle migration + ses 5 tests
+dédiés) verts, `openapi-gen -check` à jour (0 diff — aucun changement de contrat DTO),
+`make generate-types` 0 diff sur `generated.ts`, `golangci-lint run
+--new-from-merge-base=origin/main ./...` 0 issue (après extraction de 4 constantes
+goconst neuves exposées par le refactor : `roleShotgun`, `famRocketLauncher`,
+`clsUnattributed`, `clsOther` — même phénomène que la découverte L3 §12, une ligne
+purement refactorée entre dans le diff `--new-from-merge-base`). Web (node_modules déjà
+présent, purge de `node_modules\.tmp`, `npm ci`) : AUCUN fichier web modifié (0 champ
+`*_label` supprimé côté web — le champ mort éliminé était une colonne DB, pas un DTO) ;
+gates lancés quand même par prudence : `typecheck` propre, `lint` 0 erreur / 29 warnings
+(baseline inchangée), `lint:colors` 0 violation, `lint:fields` 0 violation,
+`npx vitest run --pool=forks` 656 fichiers / 6993 tests verts (17 skipped, même
+baseline que L3).
+
+Conclusion : L4 clos. Aucun `*_label` web à retirer (aucun DTO API touché). Pages à
+vérifier à l'écran : AUCUNE (0 changement visuel — les deux libellés étaient déjà morts
+ou déjà corrects niveau UI). Commits sur `feat/libelles-armes`, poussée vers origin, non
+fusionnée.
+
 **L5 — Rangs** (D, cible existante `mappings/ranks.go`).
 
 **L5 — CLOS le 2026-09-07 (lot M5 première moitié, branche `feat/libelles-accueil-rangs`)** —
@@ -519,3 +595,36 @@ si une entrée couvre déjà une famille ci-dessus avant d'en créer une).
   pour un futur refactor mécanique sur un fichier à littéraux répétés : `golangci-lint`
   peut se déclencher sur du code non fonctionnellement changé simplement parce que la
   LIGNE a bougé — le vérifier avant de considérer un refactor de pure forme comme neutre.
+
+## 13. DÉCOUVERTES DE L'EXÉCUTION (M5 seconde moitié — L4, 2026-09-08)
+
+> Consignées SANS être traitées (règle 7 plan-execution). Détail complet au §4 L4
+> ci-dessus.
+
+- 2026-09-08 ; `internal/domain/match_view.go` (`WeaponLabel`, `TopWeaponLabel`) et
+  variantes killfeed (`match_view_killfeed_weapon.go`) ; ces DTO servent un libellé
+  d'arme déjà LOCALISÉ côté serveur (option 2 du §3 — résolu depuis
+  `weapon_name_labels`/`weapon_labels` par `platform/duckdb/weapon_resolver.go`), pas
+  une clé canonique (option 1, D5 « option 1 partout »). Écart de doctrine réel mais
+  PRÉEXISTANT (V72-06, antérieur à D5) et hors du périmètre exact de la famille C
+  (§2.C ne cite que `registry.go`/`labels.go`). Migrer ces DTO vers une clé + localisation
+  web serait un chantier fullstack à part entière (même famille de risque que
+  `expTypePVPRanked`/`expTypePVPUnranked`, découverte L3 §12) — non dimensionné ici.
+  Reprise : lot dédié « weapon label → clé canonique », à cadrer avec l'utilisateur
+  (coût : ~toutes les surfaces killfeed/scoreboard/frag qui affichent un nom d'arme).
+- 2026-09-08 ; `internal/games/weapons/labels.go` (table `weapon_labels`) ; conservé
+  intentionnellement (consigne d'exécution : DONNÉES seedées, hors périmètre sauf
+  preuve de convergence). Aucune convergence trouvée — c'est au contraire la SOURCE
+  UNIQUE restante pour 3 cas que `weapon_names.toml` ne couvre pas (sentinelles
+  grenade/mêlée/véhicule sans `weapon_key`, ids inconnus). Si un jour ces 3 sentinelles
+  rejoignent le registre par clé (leur donnant un `weapon_key`), `weapon_labels`
+  deviendrait purement un repli mort comme `weapon_families` l'était — à re-vérifier à
+  ce moment-là, pas avant.
+- 2026-09-08 ; `internal/games/weapons/registry.go` (`weapons.manufacturer`) ; ce champ
+  n'a, comme `weapon_families.name_en/name_fr` avant purge, AUCUN lecteur en dehors du
+  paquet `weapons` (vérifié par grep). Un seul littéral y portait un mot FR
+  (« modifié », anglicisé dans ce lot pour faire baisser le ratchet sans risque
+  fonctionnel) mais le champ dans son ensemble reste un candidat à une purge future du
+  même type que `weapon_families`/`weapons.name_fr` (V721-05.1) — non traité ici
+  (hors périmètre libellés : `manufacturer` n'est pas un FR/EN, c'est un champ mort
+  générique, question de dette technique plus large que ce plan).
