@@ -188,7 +188,7 @@ func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.Tacti
 	return service.NewTacticalService(repo, r.capabilitiesForPDB(pdb), pdb.XUID).
 		WithRasterStore(rasters).
 		WithCalloutsStore(callouts).
-		WithRadarRange(r.radarRangeFor(pdb)), nil
+		WithRetentionMois(r.retentionMoisRejeu), nil
 }
 
 // MatchEvents retourne un MatchEventsService pour le joueur : timeline canonique

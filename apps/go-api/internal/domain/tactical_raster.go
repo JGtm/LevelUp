@@ -34,20 +34,26 @@ package domain
 // traduction en secondes depend de ce pas. Changer analysis/tactical.PasOccupationMs sans
 // incrementer cette version rendrait tous les sidecars du parc silencieusement faux d'un
 // facteur — d'ou le champ PasEchantillonMs ci-dessous, que la lecture verifie.
-// # LE SIDECAR NE JUGE RIEN (decision utilisateur du 2026-09-07)
+// # LE SIDECAR NE JUGE RIEN, ET IL NE PORTE PLUS DE CHRONOLOGIE
 //
 // Une version precedente y faisait dire au film qui etait mort a l'instant d'une mort, en
 // s'appuyant sur « une vie nommee est close par une mort ». LA PREMISSE ETAIT FAUSSE :
 // `replay/owners.go:166` nomme aussi une vie par FERMETURE DE SLOT, si bien qu'un joueur
 // qui SURVIT en ayant tire recevait une vie nommee — et une mort fabriquee avec.
 //
-// Le film ne porte pas la liste des morts ; la BASE la porte. Le sidecar ne mesure donc
-// plus que ce que le film sait vraiment dire — OU ETAIT CHACUN, ET QUAND — et tout verdict
-// se prend a la LECTURE.
+// Le film ne porte pas la liste des morts ; la BASE la porte. Le sidecar en avait alors
+// tire une CHRONOLOGIE DE POSITIONS, pour que la lecture tranche elle-meme. Cette
+// chronologie n'a plus de consommateur : les faits d'isolement se produisent AU SYNC, par
+// le collecteur de kills, dans les tables `match_lives` et `match_death_context`
+// (decision utilisateur du 2026-09-07, lot 7C). Le principe qui la fonde : « les donnees
+// d'un match en base sont completes au sync ; seul le rejeu peut attendre la cuisson » —
+// une chronologie cuite avec l'artefact aurait fait dependre un fait de base du calendrier
+// de cuisson.
 //
-// SCHEMA 4 -> 5 : `morts[]` et ses voisins (avec leurs statuts `vivant`/`mort`/`inconnu`)
-// disparaissent au profit de `chronologie[]`. Un sidecar v4 n'est plus exploitable et se
-// recuit (meme regle qu'aux schemas precedents).
+// SCHEMA 5 -> 6 : `chronologie[]` disparait. Le sidecar est desormais exactement ce que les
+// deux lectures d'artefact consomment — spawns, routes, cellules, `points_ignores` et
+// `pas_echantillon_ms`. Un sidecar v5 n'est plus exploitable et se recuit (meme regle
+// qu'aux schemas precedents).
 //
 // # LA DISTANCE EST HORIZONTALE, ET DEUX ETAGES LISENT ZERO
 //
@@ -67,7 +73,7 @@ package domain
 // temps » sous-estime le temps en vehicule, et c'est une propriete connue de la mesure —
 // pas un defaut a chercher. Elle ne peut pas se corriger ici : elle se corrigerait en
 // amont, dans la primitive d'attribution des episodes.
-const TacticalRasterSchemaVersion = 5
+const TacticalRasterSchemaVersion = 6
 
 // TacticalRasterSidecar est le fichier depose a cote de l'artefact
 // (title.PathResolver.TacticalRasterPath).
@@ -136,40 +142,6 @@ type TacticalRasterJoueur struct {
 	// Routes : les 15 premieres secondes de chacune de ses vies, en cellules ordonnees.
 	// Triees par frame de debut. VIDE mais presente.
 	Routes []TacticalRasterRoute `json:"routes"`
-
-	// Chronologie : OU ETAIT LE JOUEUR, ET QUAND. Un segment par fenetre CONTINUE ou sa
-	// position est connue ; entre deux segments, rien.
-	//
-	// UNE ABSENCE N'EST PAS UNE MORT : c'est une absence. Le film ne sait pas distinguer
-	// « mort » de « en vehicule non rattache » ni de « deconnecte » — c'est la LECTURE,
-	// journal des morts et departs en main, qui tranche.
-	Chronologie []TacticalRasterSegment `json:"chronologie"`
-}
-
-// TacticalRasterSegment est une fenetre continue de positions connues.
-//
-// # POURQUOI DES METRES ET NON DES CELLULES
-//
-// Les cellules auraient ete ~35 % plus compactes, et le reste du sidecar en emploie. Mais
-// la chronologie sert une comparaison a SEUIL (le rayon du radar, 18 ou 24 m) : quantifier
-// a 0,5 m ajoute jusqu'a 0,7 m d'erreur sur une distance, ce qui fait BASCULER le verdict
-// des paires proches de la borne. On paie donc les octets pour ne pas fabriquer de faux
-// isolements. L'arrondi a 2 decimales reste celui de tout l'artefact.
-//
-// # LA BORNE, MESUREE
-//
-// Un segment porte un couple par PasChronologieMs (500 ms). Le pire cas realiste est un
-// BTB de 15 min a 24 joueurs, soit 15 x 60 x 2 = 1 800 couples par joueur et
-// 43 200 couples pour le match. Un match d'Arene ordinaire (12 min, 8 joueurs) en compte
-// 11 520. A ~14 octets le couple, le pire cas pese ~600 Ko, contre ~2 Mo pour l'artefact
-// dont il derive.
-type TacticalRasterSegment struct {
-	// DebutFrame est l'instant du PREMIER couple du segment.
-	DebutFrame int `json:"debut_frame"`
-	// XY porte les positions APLATIES (x0, y0, x1, y1, ...), un couple par pas.
-	// `null` a la place d'un nombre = position inconnue a cet echantillon (embarquement
-	// sans point de vehicule) : on n'invente pas de position, et le pas reste tenu.
-	XY []float64 `json:"xy"`
 }
 
 // TacticalRasterCellule est le temps passe dans une cellule, compte en echantillons.
@@ -240,14 +212,6 @@ const TacticalQuestionTemps = "temps"
 // qu'on y reste. Sans cela, la lecture aurait rendu la meme carte que « ou je passe mon
 // temps », simplement bornee a 15 s.
 const TacticalQuestionRoutes = "routes"
-
-// TacticalQuestionIsole : OU JE MEURS ISOLE — les morts sans coequipier vivant a portee du
-// radar (18 m en Arene, 24 m en BTB : `regulation.toml [radar_range_m]`).
-//
-// Elle publie en plus `Isolement` (la part des morts isolees, sous la forme canonique) et
-// `MatchsSansRayon` — les matchs dont la variante n'a pas de portee mesuree, et dont les
-// morts ne sont donc NI examinees NI comptees isolees.
-const TacticalQuestionIsole = "isole"
 
 // SidecarRasterCourant dit si un sidecar est exploitable EN L'ETAT : bon format, bonne
 // grille, bonne unite de temps.

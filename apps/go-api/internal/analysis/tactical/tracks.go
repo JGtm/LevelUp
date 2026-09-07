@@ -188,12 +188,6 @@ type OccupationJoueur struct {
 	// Routes : les 15 premieres secondes de chacune de ses vies, en cellules ordonnees
 	// (cf. vies.go). Triees par frame de debut.
 	Routes []Route
-
-	// Chronologie : ou etait le joueur, au pas de PasChronologieMs, sur chaque fenetre ou
-	// sa position est CONNUE (cf. vies.go). Entre deux fenetres : rien — une absence n'est
-	// pas une mort, et c'est la LECTURE qui, journal des morts en main, saura laquelle des
-	// deux elle est.
-	Chronologie []SegmentChrono
 }
 
 // Occupation reechantillonne les pistes et les embarquements d'un match a pas fixe et

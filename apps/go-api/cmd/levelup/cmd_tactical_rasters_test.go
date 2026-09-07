@@ -337,10 +337,9 @@ func TestTacticalRasters_Limite(t *testing.T) {
 
 // TestTacticalRasters_SidecarV2Reecrit — LE PARC EXISTANT EST REECRIT PAR LE RATTRAPAGE.
 //
-// Le schema 3 ajoute les morts, les routes et le spawn de depart : la FORMULE change, donc
-// tout sidecar v2 est perime. C'est le rattrapage qui doit s'en apercevoir — sans quoi la
-// lecture « ou je meurs isole » resterait vide sur tout le corpus deja projete, sans une
-// erreur pour le dire.
+// Chaque schema change la FORMULE du sidecar, donc perime tout le parc anterieur. C'est le
+// rattrapage qui doit s'en apercevoir — sans quoi les lectures d'artefact resteraient vides
+// sur tout le corpus deja projete, sans une erreur pour le dire.
 func TestTacticalRasters_SidecarV2Reecrit(t *testing.T) {
 	root := t.TempDir()
 	trPoserArtefacts(t, root, "aaaaaaaa")

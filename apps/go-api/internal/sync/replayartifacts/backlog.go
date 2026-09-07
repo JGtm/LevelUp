@@ -131,8 +131,8 @@ func nomsDeCarte(ctx context.Context, metaDB *sql.DB, c candidatARattraper) []st
 // artefact. L'ordre du registre (du plus récent au plus vieux) est conservé.
 func lireQueueRecente(ctx context.Context, sharedDB *sql.DB, d Deps, deja map[string]bool) []candidatARattraper {
 	args := []any{bitFilmAbsent}
-	if d.RetentionMonths > 0 {
-		args = append(args, time.Now().UTC().AddDate(0, -d.RetentionMonths, 0))
+	if borne, bornee := analysis.BorneRetention(d.RetentionMonths); bornee {
+		args = append(args, borne)
 	}
 	rows, err := sharedDB.QueryContext(ctx, requeteQueueRecente(d.RetentionMonths), append(args, BacklogHorizon)...)
 	if err != nil {
@@ -170,8 +170,8 @@ func lireQueueRecente(ctx context.Context, sharedDB *sql.DB, d Deps, deja map[st
 // canonique.
 func requeteQueueRecente(months int) string {
 	fenetre := ""
-	if months > 0 {
-		fenetre = " AND " + analysis.SQLStartTimeCanonical("r") + " >= ?"
+	if _, bornee := analysis.BorneRetention(months); bornee {
+		fenetre = " AND " + analysis.SQLDansFenetreRetention("r")
 	}
 	return `SELECT r.match_id, r.map_name, r.map_id
 		FROM match_registry r
@@ -223,10 +223,7 @@ func selectBuildWork(
 	}
 	defer func() { _ = rows.Close() }()
 
-	var cutoff time.Time
-	if months > 0 {
-		cutoff = time.Now().UTC().AddDate(0, -months, 0)
-	}
+	cutoff, _ := analysis.BorneRetention(months)
 	var out []buildWork
 	for rows.Next() {
 		var id string

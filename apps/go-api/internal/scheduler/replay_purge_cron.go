@@ -102,7 +102,7 @@ func (c *ReplayPurgeCron) RunOnce(ctx context.Context) {
 		observability.ReportCronRun(replayPurgeCronName, start, nil, time.Since(start).Milliseconds())
 		return
 	}
-	cutoff := c.nowUTC().AddDate(0, -months, 0)
+	cutoff, _ := analysis.BorneRetentionDepuis(c.nowUTC(), months)
 
 	var errs []error
 	totalPurged := 0

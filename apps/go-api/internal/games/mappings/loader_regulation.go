@@ -114,6 +114,18 @@ func (s *RegulationSet) ScoreTarget(gameVariantName string) (int, bool) {
 
 // RadarRangeMap retourne une COPIE de la table complete, pour le câblage par titre (même
 // forme que RoundsDecideMap).
+//
+// CONSOMMATEUR : lot 7C — lecture d'isolement sur `match_death_context` (2026-09-07).
+//
+// Elle n'a aujourd'hui aucun appelant de production, et c'est un état NOMMÉ. Elle bornait la
+// lecture « où je meurs isolé » de l'onglet Tactique, qui tranchait à la LECTURE sur la
+// chronologie du sidecar de rejeu ; cette lecture est retirée (décision utilisateur du
+// 2026-09-07 : les faits d'isolement se produisent AU SYNC, par le collecteur de kills, dans
+// `match_lives` et `match_death_context`). C'est ce collecteur qui lira ce rayon, sous cette
+// forme exacte — des mètres, par game_variant_name.
+//
+// La table reste chargée, testée et gardée par son ratchet de couverture : ses 48 valeurs
+// sont une campagne de mesure du 2026-09-05, et les perdre coûterait de la refaire.
 func (s *RegulationSet) RadarRangeMap() map[string]int {
 	if s == nil {
 		return nil
@@ -123,6 +135,29 @@ func (s *RegulationSet) RadarRangeMap() map[string]int {
 		out[k] = v
 	}
 	return out
+}
+
+// RadarRangeForVariant résout la portée du radar d'une variante, en mètres.
+//
+// CONSOMMATEUR : lot 7C, comme la table elle-même.
+//
+// # LE NOM EST NETTOYÉ, ET CE N'EST PAS DE LA COURTOISIE
+//
+// Le nom de variante vient de `match_registry.game_variant_name`, donc de ce que l'API a
+// envoyé : des variantes y arrivent avec un blanc de tête ou de queue. Une clé non nettoyée
+// manque la table, et le match sort SILENCIEUSEMENT de la lecture — un défaut de donnée
+// déguisé en trou de référentiel, qui envoie chercher la panne au mauvais endroit. La
+// normalisation appartient donc au point de résolution, pas à l'appelant : le mettre chez
+// l'appelant, c'est le réécrire à chaque nouvel appelant, et l'oublier une fois.
+func (s *RegulationSet) RadarRangeForVariant(name string) (int, bool) {
+	if s == nil {
+		return 0, false
+	}
+	m, ok := s.radarRange[strings.TrimSpace(name)]
+	if !ok || m <= 0 {
+		return 0, false
+	}
+	return m, true
 }
 
 // HoldTicksPerPoint retourne le nombre de secondes de GARDE qui valent un point sur la

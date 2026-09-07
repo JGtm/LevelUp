@@ -27,6 +27,8 @@ import (
 	"fmt"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
+
 	"levelup/go-api/internal/domain"
 )
 
@@ -68,13 +70,22 @@ import (
 // call site par resolveCampaignExclusion, qui connait le titre du joueur (no-op
 // pour Infinite, qui n'a aucun match Campagne au registre).
 const QTacticalUnivers = `
-SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome,
+SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome, ` + colonneRetention + `,
        COALESCE(mr.game_variant_name, '') AS game_variant_name,
        EXISTS (SELECT 1 FROM match_kill_events_latest e
                WHERE e.match_id = mr.match_id AND e.publishable) AS mesure
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
 WHERE mp.xuid = ? AND (? = '' OR mr.map_id = ?)` + campaignExclusionToken
+
+// colonneRetention : le jeton que `universSQL` remplace par le predicat de retention, ou
+// par TRUE quand la fenetre est illimitee.
+//
+// UN JETON PLUTOT QU'UN ASSEMBLAGE EN GO : le garde-rail structurel
+// campaign_exclusion_guard_test ne balaye QUE des constantes `Q<...>`, et QTacticalUnivers
+// doit rester une constante entiere pour rester sous son radar (meme raison que le token
+// campagne juste au-dessus).
+const colonneRetention = "%RETENTION%"
 
 // clauseAucunMatch : le predicat d'une liste blanche VIDE.
 //
@@ -124,8 +135,23 @@ func clausePerimetre(q domain.TacticalQuery) (string, []any) {
 // resolu pour le titre du joueur. `q.MapID` vide = toutes les cartes.
 func (r *TacticalRepo) universSQL(q domain.TacticalQuery) (string, []any) {
 	perim, perimArgs := clausePerimetre(q)
-	args := append([]any{domain.OutcomeUnknown, q.PlayerXUID, q.MapID, q.MapID}, perimArgs...)
-	return resolveCampaignExclusion(QTacticalUnivers, r.pdb.TitleSlug, "mr") + perim, args
+	args := []any{domain.OutcomeUnknown}
+
+	// LA COLONNE DE RETENTION EST RESOLUE ICI, ET SON ARGUMENT SUIT SA PLACE DANS LE SELECT
+	// (juste apres le defaut d'outcome). Un `?` ajoute sans son argument au bon rang
+	// decalerait silencieusement tous les suivants — le xuid deviendrait la carte.
+	//
+	// FENETRE ILLIMITEE = TRUE POUR TOUS : le reglage par defaut ne retire aucun match, et
+	// il ne doit pas non plus ajouter de parametre.
+	col := "TRUE AS dans_retention"
+	if borne, bornee := analysis.BorneRetention(q.RetentionMois); bornee {
+		col = analysis.SQLDansFenetreRetention("mr") + " AS dans_retention"
+		args = append(args, borne)
+	}
+	args = append(args, q.PlayerXUID, q.MapID, q.MapID)
+	args = append(args, perimArgs...)
+	sql := strings.Replace(QTacticalUnivers, colonneRetention, col, 1)
+	return resolveCampaignExclusion(sql, r.pdb.TitleSlug, "mr") + perim, args
 }
 
 // chargerUnivers lit les matchs retenus PUIS la composition de leurs equipes.
@@ -143,7 +169,7 @@ func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.
 	}
 	if err := scanRows(ctx, rows, "univers", func(sc rowScanner) error {
 		var m domain.TacticalMatch
-		if err := sc.Scan(&m.MatchID, &m.Outcome, &m.GameVariantName, &m.Mesure); err != nil {
+		if err := sc.Scan(&m.MatchID, &m.Outcome, &m.DansRetention, &m.GameVariantName, &m.Mesure); err != nil {
 			return err
 		}
 		univ.Matchs = append(univ.Matchs, m)

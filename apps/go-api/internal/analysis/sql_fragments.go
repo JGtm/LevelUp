@@ -15,6 +15,8 @@
 //     fmt.Sprintf (lisibilité + audit grep).
 package analysis
 
+import "time"
+
 // SQLIsBotCol construit le prédicat SQL « colonne = xuid de bot » pour la colonne
 // donnée (préfixe d'alias inclus : "xuid", "mp.xuid", "opp.xuid"…). Source unique
 // du prédicat bot (préfixe bid(*), aligné sur analysis.IsBot côté Go). Le garde-rail
@@ -73,4 +75,45 @@ func SQLStartTimeCanonical(alias string) string {
 		prefix = alias + "."
 	}
 	return "COALESCE(" + prefix + "start_time_utc, " + prefix + "start_time AT TIME ZONE 'UTC')"
+}
+
+// SQLDansFenetreRetention rend le predicat « ce match est DANS la fenetre de retention des
+// artefacts de rejeu », a comparer a la borne rendue par [BorneRetention].
+//
+// # UNE SEULE DEFINITION DE « DANS LA FENETRE »
+//
+// La file de cuisson (`sync/replayartifacts.requeteQueueRecente`) et la lecture tactique
+// s'en servent toutes les deux, et elles DOIVENT dire la meme chose : la premiere decide ce
+// qui sera cuit, la seconde annonce a l'utilisateur ce qui va l'etre. Deux formulations
+// auraient fini par diverger d'un `>` a un `>=` ou d'un fuseau, et la page aurait promis
+// une cuisson qui n'arrive jamais — ou tu l'aurait dite impossible alors qu'elle est en
+// file. Le garde-rail `internal/archlint/no_retention_window_inline_test.go` interdit toute
+// autre formulation.
+//
+// L'horodatage passe par le fragment canonique (regle n°8) : `start_time` brut trierait et
+// filtrerait faux.
+func SQLDansFenetreRetention(alias string) string {
+	return SQLStartTimeCanonical(alias) + " >= ?"
+}
+
+// BorneRetention rend l'instant a partir duquel un match est DANS la fenetre, et `true` si
+// la fenetre est bornee.
+//
+// `mois <= 0` VEUT DIRE ILLIMITEE, jamais « zero mois » : c'est le reglage par defaut
+// (`ReplayRetentionMonths`), et un match n'en sort alors jamais.
+func BorneRetention(mois int) (time.Time, bool) {
+	return BorneRetentionDepuis(time.Now().UTC(), mois)
+}
+
+// BorneRetentionDepuis est [BorneRetention] avec un instant de reference explicite.
+//
+// ELLE EXISTE POUR L'HORLOGE INJECTEE du cron de purge, qui doit pouvoir se placer a une
+// date choisie dans ses tests. Le calcul reste ICI : c'est lui, et non l'appel a
+// `time.Now`, qui doit rester unique — un `AddDate` recopie chez l'appelant est exactement
+// la divergence que le garde-rail `no_retention_window_inline_test` interdit.
+func BorneRetentionDepuis(now time.Time, mois int) (time.Time, bool) {
+	if mois <= 0 {
+		return time.Time{}, false
+	}
+	return now.AddDate(0, -mois, 0), true
 }
