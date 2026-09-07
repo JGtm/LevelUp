@@ -84,6 +84,16 @@ type OwnerReport struct {
 	// construit : il n'y a alors aucun témoin, ce qui n'est pas un désaccord.
 	DeathOffsetMS      int64
 	DeathOffsetMatches int
+	// DeathOffsetRunnerUp : ce que le MEILLEUR DES AUTRES calages candidats aurait apparié.
+	//
+	// POURQUOI IL SORT D'ICI. Depuis le 2026-09-07 le calage n'est plus cherché par un balayage
+	// exhaustif mais par un vote qui localise quelques candidats, puis par un affinage qui les
+	// mesure (cf. bestDeathOffset). Une heuristique de localisation peut se tromper de panier ;
+	// ce qui l'empêche de le faire en silence, c'est de publier À CÔTÉ du compte retenu celui de
+	// son suivant. Un calage vrai écrase ses concurrents — mesuré x8,9 et x10,5 sur les deux
+	// témoins du parc ; une marge qui se resserre est le signal qu'il faut aller regarder, et la
+	// cuisson la journalise sous `deathOffsetMargeMin`.
+	DeathOffsetRunnerUp int
 	// SlotCollisions compte les slots dont les vies nommées désignent des joueurs différents.
 	// Mesuré à 0 sur 000d5950 ; un film non nul invaliderait la table slot -> joueur.
 	SlotCollisions int
@@ -183,8 +193,9 @@ func buildOwners(tracks map[uint32]slotTrack, deaths []Death, idx PlayerIndexTab
 	}
 	lives := buildLifeSpans(tracks)
 	rep.LivesTotal = len(lives)
-	off, matched := bestDeathOffset(lives, deaths)
+	off, matched, second := bestDeathOffset(lives, deaths)
 	rep.DeathOffsetMS, rep.DeathOffsetMatches = off, matched
+	rep.DeathOffsetRunnerUp = second
 	rep.DeathsNamed = nameLivesByDeaths(lives, deaths, off)
 	rep.lives = lives
 	if rep.DeathsNamed == 0 {

@@ -921,7 +921,43 @@ package replay
 // sont deja integres (manches, durees) ; 46 reste reserve au lot des drapeaux, en cours sur une
 // autre branche : deux chantiers paralleles ne peuvent pas revendiquer le meme numero.
 // Detail : .ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md.
-const SchemaVersion = 47
+//
+// v48 (2026-09-07) : LE PONT D'IDENTITE CESSE D'ETRE MUET SUR LES FILMS DONT LA PREMIERE FIN DE
+// VIE TOMBE APRES LA PREMIERE MINUTE DU MATCH. Deux champs de couverture s'ajoutent
+// (`bridge.deathOffsetMatched/deathOffsetRunnerUp`) ; le reste est un changement de CONTENU.
+//
+//	calage      `bestDeathOffset` balayait le decalage fil des morts <-> film depuis
+//	            `min(fins de vie) - 60 000`. La grandeur que cette borne suppose petite est donc
+//	            l'instant de match auquel correspond LA PLUS PRECOCE DES FINS DE VIE DU FILM —
+//	            pas la premiere mort, qui lui est seulement correlee : `d9781168` a sa premiere
+//	            fin de vie a 18,4 s et sa premiere mort a 53,6 s, et `43716616` reste sain avec
+//	            une premiere mort a 60,4 s. Une vie se termine aussi SANS mort (fin de film, fin
+//	            de manche, trou de replication). Le fil est date depuis le debut du match, or la
+//	            partie ne commence pas a t = 0 : au-dela de 60 s, le vrai calage tombait SOUS la
+//	            borne et l'optimiseur se rabattait sur un pic de bruit. La plage est desormais
+//	            celle des DONNEES (`[min(fins) - max(morts), max(fins) - min(morts)]`), localisee
+//	            par un VOTE puis affinee au pas de 10 ms sur la grille d'avant. lives.go.
+//	            Mesure : CINQ films du parc sur 106, et ce sont EXACTEMENT les cinq dont
+//	            l'origine du fil n'etait pas publiee (`resolveOriginMs` prend ce calage pour
+//	            temoin). Vies nommees : `51ebbc0f` 9 -> 71 / 87, `fb1a1a72` 17 -> 140 / 147,
+//	            `4f77afc1` 44 -> 192 / 375, `11de8353` 31 -> 150 / 246, `06dfe6d9` 37 -> 225 /
+//	            291. Les films deja bien cales retiennent le MEME entier de calage.
+//	marge       Le vote est une HEURISTIQUE de localisation : il pourrait designer un panier de
+//	            bruit et rendre un calage faux EN SILENCE. Trois candidats sont donc affines et
+//	            mesures, et la paire (retenu, meilleur des autres) est PUBLIEE — un calage vrai
+//	            ecrase ses concurrents (71 contre 8 sur `51ebbc0f`, 157 contre 15 sur
+//	            `d9781168`). Sous `deathOffsetMargeMin`, un `slog.Warn` le dit. coverage_bridge.go.
+//	roster      Le roster de lecture de l'index de joueur venait du SEUL fil des morts : un
+//	            joueur qui ne meurt jamais n'y figure pas, donc n'a pas d'index, donc aucune de
+//	            ses pistes n'est rattachable et il manque au roster publie. La feuille de match
+//	            le COMPLETE quand l'appelant la fournit (`Options.RosterXUIDs`, vide = comportement
+//	            d'avant). Mesure : `3372e7eb` publiait 6 joueurs pour 8, les deux manquants a
+//	            0 mort. player_index.go, replaybuild/matchfacts.go.
+//
+// La version monte pour la meme raison qu'aux montees v39 a v47 : un artefact < 48 porte des
+// pistes non nommees et, sur cinq films, un calque d'objectifs et une courbe de score non
+// recales faute d'origine. Detail : .ai/V7.5/v2/PONT_MUET_2026-09-07.md.
+const SchemaVersion = 48
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

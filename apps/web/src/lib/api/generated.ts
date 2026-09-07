@@ -4764,6 +4764,10 @@ export interface components {
             /** Format: int64 */
             closedRefused: number;
             /** Format: int64 */
+            deathOffsetMatched: number;
+            /** Format: int64 */
+            deathOffsetRunnerUp: number;
+            /** Format: int64 */
             fromReading: number;
             /** Format: int64 */
             indexDisagreements: number;

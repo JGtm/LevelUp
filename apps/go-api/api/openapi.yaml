@@ -9047,6 +9047,12 @@ components:
         closedRefused:
           format: int64
           type: integer
+        deathOffsetMatched:
+          format: int64
+          type: integer
+        deathOffsetRunnerUp:
+          format: int64
+          type: integer
         fromReading:
           format: int64
           type: integer
@@ -9096,6 +9102,8 @@ components:
         - namedBySlotBridge
         - unnamedLives
         - unnamedLivesContested
+        - deathOffsetMatched
+        - deathOffsetRunnerUp
         - closedByShot
         - closedByRespawn
         - closedContested

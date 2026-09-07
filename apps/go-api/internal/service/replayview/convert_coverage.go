@@ -68,6 +68,8 @@ func toBridgeHealth(v replay.BridgeHealth) replaydoc.BridgeHealth {
 		NamedBySlotBridge:     v.NamedBySlotBridge,
 		UnnamedLives:          v.UnnamedLives,
 		UnnamedLivesContested: v.UnnamedLivesContested,
+		DeathOffsetMatched:    v.DeathOffsetMatched,
+		DeathOffsetRunnerUp:   v.DeathOffsetRunnerUp,
 		ClosedByShot:          v.ClosedByShot,
 		ClosedByRespawn:       v.ClosedByRespawn,
 		ClosedContested:       v.ClosedContested,

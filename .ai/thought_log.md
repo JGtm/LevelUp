@@ -1,3 +1,101 @@
+## [2026-09-07] Pont d identite muet — une marge de 60 s qui supposait la premiere FIN DE VIE dans la minute (schema 48) — Complete
+
+**Le mandat.** Instruire le report ouvert par le lot des vies anonymes : « le pont d identite est
+GLOBALEMENT MUET sur certains films — 73 vies sans nom sur 86 sur `51ebbc0f` ». Diagnostic seul
+d abord (phases a-c), correctif a la source ensuite. Worktree dedie `LevelUp-wt-v2-pont`,
+branche `feat/v2-pont-muet` sur `feat/v2-vies-anonymes` (schema 47).
+
+**LA MESURE A PRECEDE L HYPOTHESE, ET ELLE A TUE LES DEUX PLUS SEDUISANTES.** Croisement des 106
+artefacts du parc dont les faits sont exportes : les CINQ films au pont muet (10-13 % de vies
+nommees, contre 42 % pour le sixieme) sont EXACTEMENT les cinq dont l origine du fil n est pas
+publiee. Trois des cinq sont MONO-manche, et quatre films multi-manche sont sains : ce n est pas
+le multi-manche. `72b0a25e` est sur la meme carte que `51ebbc0f` et nomme 93 % : ce n est pas la
+carte.
+
+**LA CAUSE, UNE SEULE.** `bestDeathOffset` (`lives.go`) balayait le calage fil des morts <-> film
+depuis `min(fins de vie) - 60 000`. Cette marge amont SUPPOSE que la plus precoce des FINS DE VIE du film
+tombe dans la premiere minute du match — pas la premiere mort, qui lui est seulement correlee
+(une vie se termine aussi sans mort ; `d9781168` les separe de 35 s). Le fil est date depuis le debut du MATCH, or la partie ne commence pas a
+t = 0 : les joueurs rejoignent apres la mise en place. La premiere fin de vie tombe a 71,4 s sur
+`51ebbc0f` et a 87,5 s sur `4f77afc1` — le vrai calage passait SOUS la borne, et l optimiseur
+retenait un pic de bruit a 9 appariements la ou le bon en donne 71. Les deux symptomes (pont muet,
+origine absente) sont la MEME cause : `resolveOriginMs` prend ce calage pour temoin.
+
+**CE QUE LA CAUSE N EST PAS**, verifie : le fil des morts n est pas incomplet (71 morts lues pour
+71 a la feuille, toutes appariables au bon calage) ; il n y a pas de derive d horloge (residus
+plats) ; ce n est pas `RoundIdentity.CompletedByLines` ni le pont par triplet, qui resolvent le
+slot d entite STATBORG et non le slot de BIPEDE.
+
+**LE FILM N OFFRE AUCUNE AUTRE SOURCE D IDENTITE PAR SLOT.** Recherche menee avant d ecrire le
+correctif : le pied de film nomme un ACTEUR (gamertag <-> xuid), pas une piste ; `ti=12 i14` ne
+donne ni acteur ni lieu ; `BipedPosition` n a aucun champ d identite ; `PlayerIndexTable` relie
+xuid et index de film, jamais un slot de bipede. Le seul pont natif est le fil des morts — il
+fallait donc reparer son APPARIEMENT, et rien d autre.
+
+**LE CORRECTIF.** (1) La plage devient celle des DONNEES (`[min(fins) - max(morts),
+max(fins) - min(morts)]`), designee par un VOTE en paniers de la largeur de la fenetre puis
+affinee au pas de 10 ms — la grille reste ancree sur la premiere fin de vie, celle du balayage
+d avant, ce qui rend la neutralite EXACTE sur les films deja cales. Effet de bord : ~46 000
+evaluations tombent a 61 sur un BTB. (2) Second defaut de la meme famille, releve en cours de lot
+sur `3372e7eb` : le roster qui sert a lire l index de joueur venait du SEUL fil des morts, donc un
+joueur a 0 mort en etait absent — 6 joueurs publies pour 8, les deux manquants a 0 mort. La
+feuille le COMPLETE quand l appelant la fournit (`Options.RosterXUIDs` ; vide = comportement
+d avant, le rejeu reste publiable hors ligne).
+
+**RESULTATS, cuisson de production des deux cotes.** `51ebbc0f` 73 pistes sans nom -> **8** ;
+`fb1a1a72` 127 -> **3** ; `3372e7eb` roster **6 -> 8** ; `d9781168` et `696a9d7c` identiques a
+l octet hors le numero de schema (1 ecart sur 607 et 699 mesures). Zero perte au comparateur : les
+six lignes « perte » des films repares sont des compteurs d ECHEC qui baissent (`shots.noSlot`
+1 556 -> 187, `closedContested` 84 -> 17). `coverage.originResolved` passe a vrai et le verdict
+des tirs de « partiel » a « nominal ».
+
+**L ORACLE A TRANCHE EN FAVEUR DU CORRECTIF.** Le score d equipe de `51ebbc0f` passe de 155/92 a
+**160/95 — exactement la feuille de match**. L ecart cumule K/D/A tombe de 94 a 69, et de 24 a
+**0** sur `fb1a1a72`. Aucun temoin ne s eloigne de la feuille.
+
+**Mutations jouees, rouge puis vert** : remettre la marge de 60 s (4 tests), la retronquer dans le
+vote (2), neutraliser l ancrage de grille (la neutralite tombe — c est elle qui autorise la
+re-cuisson du parc), priver `rosterOf` de son complement (2).
+
+**Gates** : `go test ./...` ok, integration wire ok (26,5 s), build ok, vet ok,
+`golangci-lint --new-from-merge-base` **0 issues**, golden regenere (1 ligne sur 607). Rejoues
+APRES la fusion des corrections VIES-R1, avec une re-cuisson de controle qui rend les memes
+chiffres. Parc principal intact (`git status data/` vide, 1 380 chunks, 111 artefacts).
+
+**REVUE PONT-R1, trois constats traites (2026-09-07).** (C1, P2 traite comme bloquant) Le vote
+deposait une voix par COUPLE (fin de vie, mort) : un amas de `k` fins simultanees — une fin de
+manche arrete toutes les pistes dans un meme cycle de replication — croise avec `m` morts
+simultanees deposait `k x m` voix dans un panier de bruit, de quoi passer devant le vrai calage
+et faire rendre un calage faux SANS SIGNAL, soit le symptome que ce lot repare, reintroduit par
+une autre porte. Corrige en trois temps : une voix par MORT et par panier ; trois candidats
+affines et non un, le compte retenu etant toujours le meilleur compte REEL ; et la marge PUBLIEE
+(`bridge.deathOffsetMatched` / `deathOffsetRunnerUp`) doublee d un `slog.Warn` sous x2. Mesure sur
+les artefacts recuits : x7,1 sur `51ebbc0f` (71 contre 10) et x7,9 sur `d9781168` (143 contre 18).
+LECON DE METHODE : la premiere mutation est restee VERTE parce que le filet des trois candidats
+rattrapait le vote — une defense en profondeur masque le test de mutation de ce qu elle protege ;
+il a fallu un test qui vise `voteDeathOffsets` SEUL. (C2) La cause ecrite n etait pas la grandeur
+mesuree : la borne etait `min(fins de vie) - 60 000`, donc c est la premiere FIN DE VIE sur
+l horloge du match qui la franchit, pas la premiere mort — `d9781168` les separe de 35 s et
+`43716616` etait une fausse exception. Reecrite partout ; sous le critere juste, le parc ne
+souffre aucune exception. (C3) La contre-epreuve du roster comparait deux appels IDENTIQUES
+(`rosterFromDeaths` etant devenu un delegue d une ligne) : remplacee par 300 tirages contre une
+copie LITTERALE de l ancien corps. SchemaVersion RESTE 48 — la re-cuisson des deux temoins ne rend
+que 2 ecarts sur 620 et 609 mesures, les deux champs de marge. Gates rejoues au complet.
+
+**RONDE PONT-R2 : deux trous de TEST combles, une limite documentee (2026-09-07).** Tests seuls, code de production inchange. (D1) La marge publiee n avait aucun test qui la vise — `deathOffsetMargeMin = 0` ne faisait rougir personne, les deux tests existants comparant `n < margeMin*second`, soit `n < 0`. Comble par un test qui CAPTURE `slog.Warn` : marge etroite -> alarme, marges franches (les deux temoins du parc) -> silence, pont vide -> silence, et l APPEL depuis `buildCoverage` verifie. (D2) La fusion des paniers voisins non plus : sans elle, une fixture a 40 paires sans la moindre ambiguite publie une marge 40:40 et declencherait l alarme sur un calage parfait. (D3) Limite structurelle du filet a trois candidats portee au REGISTRE sans etre corrigee — un amas de morts distinctes plus gros que le vrai calage remplit le budget de paniers ; figee par un test de DOCUMENTATION qui verifie que l alarme SE DECLENCHE (2:2), donc que la limite ne se franchit pas en silence, et qui rougira si un correctif futur fait mieux. `pont_muet_test.go` franchissait 500 lignes : la surveillance du calage est sortie dans `pont_marge_test.go`.
+
+**Conclusion / prochaine etape.** `SchemaVersion` 47 -> 48 : la re-cuisson de release est
+obligatoire pour les cinq films. Trois BTB sont repares a la sonde mais NON cuits (regle RAM).
+Reste ouvert au registre, hors de ce lot : le pont STATBORG, qui exige trois progressions du
+compteur de morts et laisse donc 35 actions d objectif ecartees sur `3372e7eb` — les deux joueurs
+a 0 mort y sont desormais VISIBLES au roster, mais leurs actions ne sont toujours pas publiees.
+Detail : `.ai/V7.5/v2/PONT_MUET_2026-09-07.md`.
+
+**Piege de conduite a retenir** : `ln -s` COPIE au lieu de lier dans ce shell MSYS — une racine de
+travail montee ainsi a recopie 29 Go de `film_chunks` et sature le disque C:. Les jonctions
+passent par `cmd //c mklink //J` sur des chemins produits par `cygpath -w`, jamais par une chaine
+bash a backslashes.
+
 ## [2026-09-07] Lot « vies anonymes » — decision produit, nommage a la source, 9 constats corriges (schema 47) — Complete
 
 **Le mandat.** Corriger cote Go les 9 constats Go de l audit adversarial des lecteurs de vies
