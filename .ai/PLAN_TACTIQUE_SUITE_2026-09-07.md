@@ -48,15 +48,30 @@ debut de vie) ; pour `morts`/`kills`/`gagne` le journal porte `time_ms`.
 - **Gate** : `?frame=` positionne le rejeu (test de la route) ; filtrage d'acces teste ;
   typecheck + vitest ; `go test` service/handler ; contrat regenere.
 
-## S.2 — Un seul peintre de chaleur (item 5.1, fusion avec D.13)
+## S.2 — Un seul peintre de chaleur (item 5.1, fusion avec D.13) — FAIT (lot Q7, 2026-09-07,
+branche `feat/peintre-chaleur-unique`)
 
-- [ ] S.2.1 Remplacer `features/tactical/heatPaint.ts` par le peintre partage de `lib/replay/`
-      (lot D) : adapter l'entree « cellules pre-agregees » si le peintre partage ne l'a pas
-      (extension dans `lib/replay/`, pas une troisieme copie) ; supprimer `heatPaint.ts`.
-- [ ] S.2.2 Garde-rail grep : aucune seconde implementation du noyau (`buildHeatmap` /
-      `drawHeatmapLayer`) hors `lib/replay/` (self-check positif).
-- **Gate** : rendu identique (test de `tacticalGridFromRaster` + snapshot leger) ; typecheck ;
-  vitest ; garde-rail vert.
+- [x] S.2.1 Deplace (pas juste remplace, cf. AMENDEMENT en tete de fichier) le noyau
+      `features/match-replay/layers/heatmapLayer.ts` (buildHeatmap/drawHeatmapLayer/heatRamp)
+      vers `lib/replay/heatPaint.ts`, y ajoute l'entree « cellules pre-agregees »
+      (buildTacticalGrid/drawTacticalHeatmap, ex-`features/tactical/heatPaint.ts`) ; les DEUX
+      fichiers copies sont SUPPRIMES (le rejeu et le tactique importent desormais le noyau
+      commun ; `drawHeatmap` interne partage la fusion de plages + alignement pixel, parametre
+      par `HeatSource`/`HeatGeometry` pour que le Y-flip du rejeu et son absence cote tactique
+      restent chacun dans leur adaptateur).
+- [x] S.2.2 Garde-rail `lib/replay/heatPaint.guard.test.ts` : grep (`import.meta.glob`) sur
+      les cinq noms (`buildHeatmap`, `drawHeatmapLayer`, `drawTacticalHeatmap`,
+      `buildTacticalGrid`, `heatRamp`) — rouge si definis hors de `heatPaint.ts`, et
+      self-check positif qu'ils y sont bien. Mutation jouee (copie de
+      `drawTacticalHeatmap` dans `features/tactical/` -> rouge -> retiree -> vert).
+- **Gate** : rendu identique — `tacticalGridFromRaster` (4 tests ajoutes, aucun test
+  existant n'en avait avant Q7) + snapshot leger d'intensites pour les deux entrees ;
+  `heatmapLayer.test.ts` migre tel quel vers `lib/replay/heatPaint.test.ts` (memes
+  assertions, `view` de `drawHeatmapLayer` recalculee via les memes primitives
+  `worldToCanvas`/`canvasScale` puisque le noyau n'importe plus `CanvasView`) ; typecheck
+  (`tsc -b`) vert ; vitest complet 653 fichiers / 6979 tests verts (18 skip pre-existants) ;
+  `crossFeatureBoundary.guard` vert ; garde-rail Q7 vert. Decouvertes : voir
+  `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md` (section « Lot Q7 »).
 
 ## S.3 — Arrivees et departs dans le contexte de mort (premiere entree du registre)
 

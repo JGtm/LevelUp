@@ -7,7 +7,7 @@
  */
 import type { BornesMonde, CelluleTactique, EchelleTactique } from '@/lib/api/types'
 
-import { buildTacticalGrid, type TacticalGrid } from './heatPaint'
+import { buildTacticalGrid, type TacticalGrid } from '@/lib/replay/heatPaint'
 import type { TacticalText } from './i18n'
 
 /** Les six lectures offertes par la barre d'outils — même vocabulaire que le contrat

@@ -23,10 +23,10 @@
 import { useEffect, useRef, type RefObject } from 'react'
 
 import { drawCalloutsLayer, type CalloutZoneReady } from './calloutsLayer'
-import { drawHeatmapLayer, type HeatGrid } from './heatmapLayer'
+import { drawHeatmapLayer, type HeatGrid } from '../../../lib/replay/heatPaint'
 import type { ReplayLocale } from '../i18n/i18n'
 import { drawObjectivesLayer, type ObjectiveElementReady } from './objectivesLayer'
-import { type CanvasView } from '../model/replayView'
+import { projectTo, scaleOf as viewScale, type CanvasView } from '../model/replayView'
 
 /** Ce que chaque calque statique a besoin de savoir, regroupé par calque. */
 export interface StaticLayersInput {
@@ -134,9 +134,15 @@ export function useReplayStaticLayers({
       redraw()
       return
     }
-    heatRef.current = cookLayer(view, (ctx, dpr) =>
-      drawHeatmapLayer(ctx, heatGrid, view, { ramp, k: dpr }),
-    )
+    heatRef.current = cookLayer(view, (ctx, dpr) => {
+      // Le noyau partagé (`lib/replay/heatPaint`) ne connaît pas `CanvasView` (une feature) :
+      // c'est cet adaptateur qui projette le coin de la grille et son pas en pixels canvas.
+      const heatView = {
+        topLeft: projectTo(view, { x: heatGrid.minX, y: heatGrid.minY + heatGrid.ny * heatGrid.cell }),
+        step: heatGrid.cell * viewScale(view),
+      }
+      drawHeatmapLayer(ctx, heatGrid, heatView, { ramp, k: dpr })
+    })
     redraw()
   }, [heatGrid, ramp, view, redraw, frozen])
 

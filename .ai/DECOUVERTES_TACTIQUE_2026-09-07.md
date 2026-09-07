@@ -88,3 +88,13 @@ ce fichier prend le relais a partir de 7C et recoit toute nouvelle decouverte.
   cette requete — elle n'est exercee que par ses consommateurs (service Tactique existant,
   et desormais le nuage Escouade du lot 7.7/7B) via mock du port. NON TRAITE (hors perimetre
   de 7.7 ; le lot 7.7 n'ajoute aucune SQL, il reutilise la lecture telle quelle).
+
+## Lot Q7 — fusion du peintre de chaleur (branche `feat/peintre-chaleur-unique`)
+
+- 2026-09-07 ; `apps/web/src/features/match-replay/layers/heatmapLayer.guard.test.ts` ;
+  son en-tete documente encore « planté dans `heatmapLayer.ts` comme dans
+  `ReplayHeatmapLegend.tsx` » — `heatmapLayer.ts` a disparu avec Q7 (noyau deplace vers
+  `lib/replay/heatPaint.ts`), mais ce garde ne teste QUE `ReplayHeatmapLegend.tsx` (aucun
+  import du fichier disparu) : il reste vert et pertinent, seul le commentaire est perime.
+  NON TRAITE (renommage/reecriture du commentaire hors perimetre Q7 — fix cosmetique sans
+  gate a risque). Reprise : prochain lot qui touche ce fichier, ou toilettage documentaire.

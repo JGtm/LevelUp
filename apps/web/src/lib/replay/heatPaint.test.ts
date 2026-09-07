@@ -1,22 +1,31 @@
 /**
- * heatmapLayer.test.ts — ce que la carte de chaleur doit dire, et ce qu'elle ne doit PAS
- * dire : une bosse là où l'on est passé, deux bosses pour deux lieux, une échelle qu'un
- * seul point extrême ne peut pas écraser, et RIEN là où personne n'a mis les pieds.
+ * heatPaint.test.ts — ce que la carte de chaleur doit dire, et ce qu'elle ne doit PAS dire :
+ * une bosse là où l'on est passé, deux bosses pour deux lieux, une échelle qu'un seul point
+ * extrême ne peut pas écraser, RIEN là où personne n'a mis les pieds — pour les DEUX entrées
+ * du noyau (points bruts du rejeu, cellules pré-agrégées du tactique, Q7 2026-09-07).
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayBounds, ReplayPoint } from '@/lib/api/types'
+import type { ReplayBounds, ReplayDocument, ReplayPoint } from '@/lib/api/types'
 
 import {
   buildHeatmap,
+  buildTacticalGrid,
   drawHeatmapLayer,
+  drawTacticalHeatmap,
   heatIntensity,
   heatRamp,
+  tacticalIntensity,
   HEAT_RAMP_STEPS,
   type HeatGrid,
-} from './heatmapLayer'
-import { testReplayDoc } from '../test/testDoc'
-import { count, recordingContext } from '../test/recordingContext'
+  type TacticalGrid,
+} from './heatPaint'
+import { canvasScale, worldToCanvas } from './replayLogic'
+import { normalizeReplayDocument, type ReplayDocumentReady } from './replayNormalize'
+
+// -----------------------------------------------------------------------------------------
+// Doubles de test — locaux à ce fichier (pas de dépendance à une feature depuis `lib/`).
+// -----------------------------------------------------------------------------------------
 
 const BOUNDS: ReplayBounds = { minX: 0, minY: 0, maxX: 40, maxY: 40 }
 
@@ -27,16 +36,28 @@ interface Vie {
   points: ReplayPoint[]
 }
 
+/** Document de rejeu minimal, normalisé par la même frontière que le serveur. */
+function testReplayDoc(over: Partial<ReplayDocument> & { tracks?: Vie[] }): ReplayDocumentReady {
+  return normalizeReplayDocument({
+    schemaVersion: 1,
+    matchId: 'm',
+    titleSlug: 'halo_infinite',
+    frameCount: 200,
+    bounds: BOUNDS,
+    tracks: [],
+    ...over,
+  } as ReplayDocument)
+}
+
 /** Un document dont UNE frame vaut 100 ms : les durées se lisent alors sans conversion. */
 function docWith(tracks: Vie[], bounds = BOUNDS) {
   return testReplayDoc({ frameIntervalMs: 100, bounds, tracks })
 }
 
 /**
- * Une vie immobile en (x, y), ÉCHANTILLONNÉE À CHAQUE IMAGE pendant `frames` images —
- * comme le film le fait (100 ms). Un séjour long est une longue SUITE de mesures, jamais
- * deux mesures très espacées : cette distinction est précisément ce que le plafond de trou
- * protège, et une fixture qui l'ignorerait testerait le plafond au lieu de la durée.
+ * Une vie immobile en (x, y), ÉCHANTILLONNÉE À CHAQUE IMAGE pendant `frames` images — comme
+ * le film le fait (100 ms). Un séjour long est une longue SUITE de mesures, jamais deux
+ * mesures très espacées : c'est précisément ce que le plafond de trou protège.
  */
 function still(slot: number, x: number, y: number, frames: number): Vie {
   const points: ReplayPoint[] = []
@@ -62,6 +83,42 @@ function isPeak(g: HeatGrid, k: number): boolean {
   }
   return true
 }
+
+/** Un faux contexte 2D qui n'exécute rien et note tout — pas de `node-canvas`, pas de jsdom :
+ *  le code de dessin n'INTERROGE jamais le canvas, il écrit dedans. */
+interface CanvasOp {
+  op: string
+  args: unknown[]
+}
+function recordingContext(): { ops: CanvasOp[]; ctx: CanvasRenderingContext2D } {
+  const ops: CanvasOp[] = []
+  const state: Record<string, unknown> = {}
+  const proxy = new Proxy(
+    {},
+    {
+      get(_t, prop) {
+        if (typeof prop !== 'string') return undefined
+        if (prop in state) return state[prop]
+        return (...args: unknown[]) => {
+          ops.push({ op: prop, args })
+        }
+      },
+      set(_t, prop, value) {
+        if (typeof prop === 'string') {
+          state[prop] = value
+          ops.push({ op: `set ${prop}`, args: [value] })
+        }
+        return true
+      },
+    },
+  )
+  return { ops, ctx: proxy as unknown as CanvasRenderingContext2D }
+}
+const count = (ops: CanvasOp[], op: string): number => ops.filter((o) => o.op === op).length
+
+// -----------------------------------------------------------------------------------------
+// ENTRÉE 1 — points bruts (rejeu).
+// -----------------------------------------------------------------------------------------
 
 describe('buildHeatmap — présence', () => {
   it('un lieu fréquenté donne UNE bosse, centrée là où le joueur était', () => {
@@ -159,9 +216,6 @@ describe('buildHeatmap — échelle par quantiles', () => {
 
   it("un seul point extrême n'écrase pas le reste de la carte (ce qu'un étalonnage sur le max ferait)", () => {
     const grande: ReplayBounds = { minX: 0, minY: 0, maxX: 64, maxY: 64 }
-    // Un match plausible : tout le terrain parcouru, un lieu DISPUTÉ où l'on s'attarde
-    // (5 s), et UN point extrême où une vie reste plantée 100 s — un joueur qui campe, ou
-    // le corps d'un déconnecté.
     const g = buildHeatmap(
       docWith([parcours(0, 60), still(1, 20, 20, 50), still(2, 50, 50, 1_000)], grande),
       grande,
@@ -171,13 +225,9 @@ describe('buildHeatmap — échelle par quantiles', () => {
     const ordinaire = cellOf(g, 20, 20)
     const extreme = cellOf(g, 50, 50)
 
-    // L'extrême est bien extrême : plus de dix fois le lieu ordinaire.
     expect(g.value[extreme] / g.value[ordinaire]).toBeGreaterThan(10)
-    // Étalonné sur le MAX, le lieu ordinaire tomberait sous un dixième de l'échelle...
     expect(g.value[ordinaire] / g.value[extreme]).toBeLessThan(0.1)
-    // ...alors que l'échelle par quantiles le garde chaud, donc lisible.
     expect(heatIntensity(g, ordinaire)).toBeGreaterThan(0.5)
-    // Et le haut d'échelle reste dans la population ordinaire, pas sur l'extrême.
     expect(g.hi).toBeLessThan(g.value[extreme])
   })
 })
@@ -200,6 +250,17 @@ describe('heatIntensity', () => {
     expect(heatIntensity(g, 1)).toBe(0)
     expect(heatIntensity(g, 2)).toBe(1)
   })
+
+  it('SNAPSHOT LÉGER — intensités sur une petite grille, sans canvas (entrée points)', () => {
+    const g: HeatGrid = {
+      mode: 'presence',
+      cell: 1, nx: 3, ny: 2, minX: 0, minY: 0,
+      value: Float32Array.from([0, 2, 4, 6, 8, 10]),
+      lo: 2, hi: 8, filled: 5,
+    }
+    const intensities = Array.from(g.value, (_, i) => heatIntensity(g, i))
+    expect(intensities).toEqual([null, 0, 1 / 3, 2 / 3, 1, 1])
+  })
 })
 
 describe('heatRamp', () => {
@@ -211,38 +272,27 @@ describe('heatRamp', () => {
     expect(ramp).toHaveLength(HEAT_RAMP_STEPS)
     const alphas = alphasDe(ramp)
     expect(alphas[0]).toBeCloseTo(0.12, 3)
-    // A8 (2026-08-18) : le plafond monte de 0,55 à 0,75 — le levier que la mesure du lot
-    // R2-V a chiffré comme cinq fois plus efficace que l'abaissement du quantile bas.
     expect(alphas[alphas.length - 1]).toBeCloseTo(0.75, 3)
     for (let i = 1; i < alphas.length; i++) expect(alphas[i]).toBeGreaterThan(alphas[i - 1])
   })
 
-  /**
-   * A8 — TROIS POINTS : bleu -> rouge -> violet, le violet AUX EXTRÊMES seulement. Le test
-   * tient la règle par les couleurs des trois positions clés : début, milieu, fin.
-   */
   it('à trois arrêts, la couleur change DEUX fois et le dernier ne peint que le haut', () => {
     const ramp = heatRamp(['#0000ff', '#ff0000', '#800080'])
     expect(ramp).toHaveLength(HEAT_RAMP_STEPS)
     expect(rgbDe(ramp[0])).toEqual([0, 0, 255])
     expect(rgbDe(ramp[HEAT_RAMP_STEPS - 1])).toEqual([128, 0, 128])
-    // Le point milieu ne tombe sur AUCUN palier (64 paliers, donc pas de rang central) : le
-    // rouge est pur entre les deux qui l'encadrent, à un cran de quantification près.
     for (const i of [31, 32]) {
       const [r, g, b] = rgbDe(ramp[i])
       expect(r).toBeGreaterThan(248)
       expect(g).toBe(0)
       expect(b).toBeLessThan(6)
     }
-    // Dans la moitié BASSE, le rouge ne fait que monter et le bleu que descendre : aucun
-    // retour de violet — « aux extrêmes rares » se tient.
     for (let i = 1; i < (HEAT_RAMP_STEPS - 1) / 2; i++) {
       const [r, , b] = rgbDe(ramp[i])
       const [rp, , bp] = rgbDe(ramp[i - 1])
       expect(r).toBeGreaterThanOrEqual(rp)
       expect(b).toBeLessThanOrEqual(bp)
     }
-    // L'opacité, elle, ne connaît pas les segments : elle monte de bout en bout.
     const alphas = alphasDe(ramp)
     for (let i = 1; i < alphas.length; i++) expect(alphas[i]).toBeGreaterThan(alphas[i - 1])
   })
@@ -257,8 +307,18 @@ describe('heatRamp', () => {
 })
 
 describe('drawHeatmapLayer', () => {
-  const view = { bounds: { minX: 0, minY: 0, maxX: 4, maxY: 4 }, width: 100, height: 100, pad: 0 }
+  /** view équivalente à l'ancien `{bounds:{0,0,4,4}, width:100, height:100, pad:0}` du
+   *  `CanvasView` du rejeu — recalculée ICI via les mêmes primitives (`worldToCanvas`,
+   *  `canvasScale`) que `projectTo`/`scaleOf` (features/match-replay/model/replayView.ts),
+   *  puisque ce noyau n'importe pas ce type de feature. */
+  const bounds: ReplayBounds = { minX: 0, minY: 0, maxX: 4, maxY: 4 }
   const ramp = ['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.55)']
+
+  function viewFor(grid: HeatGrid, width: number, height: number) {
+    const step = grid.cell * canvasScale(bounds, width, height, 0)
+    const topLeft = worldToCanvas({ x: grid.minX, y: grid.minY + grid.ny * grid.cell }, bounds, width, height, 0)
+    return { topLeft, step }
+  }
 
   /** Une grille 4x2 : une plage de trois cellules identiques, une cellule chaude, du vide. */
   function grid(): HeatGrid {
@@ -272,22 +332,19 @@ describe('drawHeatmapLayer', () => {
 
   it('ne peint QUE les cellules fréquentées, et fusionne les voisines de même palier', () => {
     const { ops, ctx } = recordingContext()
-    drawHeatmapLayer(ctx, grid(), view, { ramp, k: 1 })
-    // Trois cellules égales = UN rectangle ; la cellule chaude = un second. Rien d'autre :
-    // les quatre cellules vides ne produisent aucun trait.
+    drawHeatmapLayer(ctx, grid(), viewFor(grid(), 100, 100), { ramp, k: 1 })
+    // Trois cellules égales = UN rectangle ; la cellule chaude = un second. Rien d'autre.
     expect(count(ops, 'fillRect')).toBe(2)
   })
 
   it('donne à la cellule la plus chaude le dernier palier de la rampe', () => {
     const { ops, ctx } = recordingContext()
-    drawHeatmapLayer(ctx, grid(), view, { ramp, k: 1 })
+    drawHeatmapLayer(ctx, grid(), viewFor(grid(), 100, 100), { ramp, k: 1 })
     const styles = ops.filter((o) => o.op === 'set fillStyle').map((o) => o.args[0])
     expect(styles).toEqual([ramp[0], ramp[ramp.length - 1]])
   })
 
   it('aligne les bords sur des pixels physiques : deux plages voisines partagent le MÊME bord', () => {
-    // Une ligne de deux plages distinctes : le bord droit de la première doit tomber
-    // exactement sur le bord gauche de la seconde, sinon une couture claire apparaît.
     const g: HeatGrid = {
       mode: 'presence',
       cell: 1, nx: 2, ny: 1, minX: 0, minY: 0,
@@ -295,7 +352,7 @@ describe('drawHeatmapLayer', () => {
       lo: 1, hi: 10, filled: 2,
     }
     const { ops, ctx } = recordingContext()
-    drawHeatmapLayer(ctx, g, { ...view, width: 101, height: 101 }, { ramp, k: 2 })
+    drawHeatmapLayer(ctx, g, viewFor(g, 101, 101), { ramp, k: 2 })
     const rects = ops.filter((o) => o.op === 'fillRect').map((o) => o.args as number[])
     expect(rects).toHaveLength(2)
     expect(rects[0][0] + rects[0][2]).toBe(rects[1][0])
@@ -303,19 +360,11 @@ describe('drawHeatmapLayer', () => {
 
   it('une rampe vide ne peint rien — le calque disparaît plutôt que de mentir', () => {
     const { ops, ctx } = recordingContext()
-    drawHeatmapLayer(ctx, grid(), view, { ramp: [], k: 1 })
+    drawHeatmapLayer(ctx, grid(), viewFor(grid(), 100, 100), { ramp: [], k: 1 })
     expect(count(ops, 'fillRect')).toBe(0)
   })
 })
 
-/**
- * V2 (retour utilisateur du 2026-08-18) — LA PORTÉE DE TEMPS.
- *
- * MESURE PRÉALABLE, ET ELLE CORRIGE LA PRÉMISSE : la carte du 16/08 était DÉJÀ celle de tout
- * le match — `accumulatePresence` ne portait aucune borne. Ce que ce lot ajoute, c'est la
- * borne ; ces tests vérifient donc les deux choses qui comptent — sans borne, RIEN ne change ;
- * avec elle, l'avenir du film ne compte pas.
- */
 describe('buildHeatmap — portée de temps (V2, 2026-08-18)', () => {
   /** Un joueur qui reste en (8, 8) pendant les 10 premières images, puis en (30, 30). */
   function deuxLieux() {
@@ -323,9 +372,7 @@ describe('buildHeatmap — portée de temps (V2, 2026-08-18)', () => {
     for (let t = 0; t <= 10; t++) a.push({ t, x: 8, y: 8 })
     const b: ReplayPoint[] = []
     for (let t = 11; t <= 20; t++) b.push({ t, x: 30, y: 30 })
-    return docWith([
-      { slot: 0, team: 0, points: [...a, ...b] },
-    ])
+    return docWith([{ slot: 0, team: 0, points: [...a, ...b] }])
   }
 
   it('sans borne : le comportement du 16/08, tout le film compte', () => {
@@ -345,12 +392,73 @@ describe('buildHeatmap — portée de temps (V2, 2026-08-18)', () => {
   })
 
   it('éliminations : une mort postérieure à l image courante ne se compte pas', () => {
-    const morts = [
-      { x: 30, y: 30, frame: 5 },
-      { x: 12, y: 30, frame: 40 },
-    ]
+    const morts = [{ x: 30, y: 30, frame: 5 }, { x: 12, y: 30, frame: 40 }]
     const g = buildHeatmap(deuxLieux(), BOUNDS, 'kills', morts, 10) as HeatGrid
     expect(g.value[cellOf(g, 30, 30)]).toBeGreaterThan(0)
     expect(g.value[cellOf(g, 12, 30)]).toBe(0)
+  })
+})
+
+// -----------------------------------------------------------------------------------------
+// ENTRÉE 2 — cellules pré-agrégées (tactique). `tacticalGridFromRaster` (le point d'entrée
+// applicatif) est testé dans `features/tactical/tacticalView.logic.test.ts` — ici, le noyau
+// nu : la fabrication et le dessin, indépendamment de la conversion bornes -> pas de grille.
+// -----------------------------------------------------------------------------------------
+
+describe('buildTacticalGrid — assemble sans recalculer', () => {
+  it('reprend l’échelle et le compte servis, tels quels', () => {
+    const g = buildTacticalGrid(
+      [{ col: 0, row: 0, value: 5 }],
+      { cell: 2, nx: 3, ny: 3, minX: 10, minY: 20 },
+      { lo: 1, hi: 9 },
+      7,
+    )
+    expect(g).toEqual({
+      cell: 2, nx: 3, ny: 3, minX: 10, minY: 20,
+      cells: [{ col: 0, row: 0, value: 5 }],
+      lo: 1, hi: 9, filled: 7,
+    })
+  })
+})
+
+describe('tacticalIntensity — SNAPSHOT LÉGER sur une petite grille (entrée cellules)', () => {
+  it('même règle que heatIntensity : sous lo -> 0, au-dessus de hi -> saturé à 1', () => {
+    const g: TacticalGrid = {
+      cell: 1, nx: 3, ny: 2, minX: 0, minY: 0,
+      cells: [],
+      lo: 2, hi: 8, filled: 5,
+    }
+    const valeurs = [0, 2, 4, 6, 8, 10]
+    expect(valeurs.map((v) => tacticalIntensity(g, v))).toEqual([null, 0, 1 / 3, 2 / 3, 1, 1])
+  })
+})
+
+describe('drawTacticalHeatmap', () => {
+  const ramp = ['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.55)']
+
+  function grid(): TacticalGrid {
+    return {
+      cell: 1, nx: 4, ny: 2, minX: 0, minY: 0,
+      cells: [
+        { col: 0, row: 0, value: 1 }, { col: 1, row: 0, value: 1 }, { col: 2, row: 0, value: 1 },
+        { col: 3, row: 1, value: 10 },
+      ],
+      lo: 1, hi: 10, filled: 4,
+    }
+  }
+
+  it('ne peint QUE les cellules connues, fusionne les voisines de même palier, PAS de Y-flip', () => {
+    const { ops, ctx } = recordingContext()
+    drawTacticalHeatmap(ctx, grid(), { topLeftWorld: { x: 0, y: 0 }, scale: 25 }, { ramp, k: 1 })
+    expect(count(ops, 'fillRect')).toBe(2)
+    // Sans Y-flip, la ligne 0 (col 0-2, value 1) est peinte EN HAUT (y0 = 0).
+    const rects = ops.filter((o) => o.op === 'fillRect').map((o) => o.args as number[])
+    expect(rects[0][1]).toBe(0)
+  })
+
+  it('une rampe vide ne peint rien', () => {
+    const { ops, ctx } = recordingContext()
+    drawTacticalHeatmap(ctx, grid(), { topLeftWorld: { x: 0, y: 0 }, scale: 25 }, { ramp: [], k: 1 })
+    expect(count(ops, 'fillRect')).toBe(0)
   })
 })
