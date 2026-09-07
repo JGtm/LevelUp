@@ -1516,14 +1516,50 @@ Depend de 7C : l'item 7.7 (7B, nuage isolement x couverture de la page Escouade)
 2026-09-07**, cf. case 7.7.
 
 ### Phase 8 — Cloture
-- [ ] 8.1 `.ai/thought_log.md` ; 8.2 `REGISTRE_REPORTS.md` si report ; 8.3 `make gate-push`
-      puis CI verte au niveau JOB ; 8.4 revue adversariale du diff integral avant merge
+- [x] 8.1 `.ai/thought_log.md` — entree de cloture ajoutee le 2026-09-07 (lot Q8,
+      `.ai/PLAN_ORCHESTRATION_2026-09-07.md`).
+- [~] 8.2 `REGISTRE_REPORTS.md` si report — le registre propre au chantier Tactique est
+      `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md` (decision utilisateur 2026-09-07, §0.4 du plan
+      d'orchestration) ; chaque entree traitee par Q8 y est marquee TRAITE, les decouvertes
+      nouvelles y sont consignees non traitees.
+- [~] 8.3 `make gate-push` puis CI verte au niveau JOB — remplace par la doctrine de vague de
+      `.ai/PLAN_ORCHESTRATION_2026-09-07.md` §0.7 (decision utilisateur 2026-09-07) : la CI
+      n'est consultee qu'UNE fois par vague, par le superviseur, apres le dernier push de la
+      vague — pas par lot. Q8 fournit son propre gate local complet (§5 du brief Q8) ; la
+      confirmation CI reste au superviseur.
+- [~] 8.4 revue adversariale du diff integral avant merge — remplace par la doctrine de vague
+      (meme decision) : UNE SEULE revue adversariale par vague, sur le diff CUMULE de tous les
+      lots, juste avant leur fusion dans `feat/v75` — pas une revue par lot. Les trois constats
+      de la revue Phase 5/7B DEJA effectuee (`.ai/V7.5/REVUE_TACTIQUE_PHASES_5_7B_2026-09-07.md`,
+      P0=0/P1=2/P2=1) sont corriges par Q8 (item 1 du brief).
 
 ## 5. Prepare pour l'ouverture au public (sans rien exposer en V1)
 Raster anonyme ; drilldown = frontiere (ownership XUID) ; sidecars par match, pas par joueur
 (« Tout le monde » = sommer plus de sidecars) ; plancher par cellule deja la.
 
 ## 6. Journal
+- 2026-09-07 : **Phase 8 — CLOTURE REELLE (lot Q8, `.ai/PLAN_ORCHESTRATION_2026-09-07.md`).**
+  La phase 8 restait NON close malgre le titre du commit `05548d4e4` (§1.2 du plan
+  d'orchestration) : cases 8.1-8.4 vides, la revue adversariale du diff integral jamais faite.
+  Q8 statue les quatre cases (voir §Phase 8 ci-dessus) et corrige les trois constats de la
+  revue Phase 5/7B enfin effectuee le 07/09
+  (`.ai/V7.5/REVUE_TACTIQUE_PHASES_5_7B_2026-09-07.md`, P0=0/P1=2/P2=1) : reserve
+  `echantillon_faible` rendue sur les tuiles KPI Tactique ET sur le nuage Escouade, quatre
+  cles i18n mortes retirees. Egalement traites par Q8 (registre Tactique) : `replay.EtatParti`
+  et son `case` supprimes (morts depuis 7C.9, jamais reintroduits), `teammates_left` ecrit a 0
+  avec commentaire (colonne append-only conservee, ADR 0026) ; regex de lecture brute elargie
+  a `match_kill_events`/`kill_positions`/`match_bomb_stats` (mutation testee, 0 lecteur
+  existant touche) ; refus de cablage des positions passe en WARN + compteur dedie ;
+  `settingsStore.Load()` en erreur loggue avant degradation chez les deux appelants
+  reellement silencieux (`cmd/server/main.go` cron de purge, `api/server_apiv1.go`
+  instanceLockedFn — `api/wire/registry.go` loggait deja) ; pont non publiable
+  (`IndexDisagreements > 0`) compte a part de « morts sans lieu » ; test d'orthogonalite
+  `end_cause`/`named_by` rejoue sur un VRAI pont (`ResolveSlotXUID` + fermeture par
+  reapparition), plus trois litteraux ; test film reel repare (roster construit depuis
+  `replay.ScanDeaths(film)`, `t.Fatal` si aucun film n'a produit vies ET contextes) — a
+  rejouer sur le poste principal (fixtures non versionnees, commande dans le rapport Q8).
+  L'entree « `LEFT JOIN match_registry` sans test » est fermee comme CADUQUE dans
+  `DECOUVERTES_TACTIQUE` (le JOIN a disparu avec 7C.9, en INNER depuis, cf. §7C du registre).
 - 2026-09-07 : **item 7.7 (7B) CLOSE — le nuage isolement x couverture de la page
   Escouade.** Depuis que 7C a pose `match_death_context`/`MortsAvecContexte`, le lot ne
   demandait plus AUCUN nouvel algo : decouper par SESSION deux mesures deja ecrites —

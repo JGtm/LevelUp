@@ -43,6 +43,12 @@ const (
 	metricIsolationSansEquipe        = "killsource_isolement_mort_sans_equipe"
 	metricIsolationDeathsNoPlace     = "killsource_isolement_morts_sans_lieu"
 	metricIsolationWriteFail         = "killsource_isolement_erreurs_ecriture"
+	// metricIsolationPontNonPublicable : le pont slot->xuid est refuse (`IndexDisagreements >
+	// 0`, cf. replay.PontPubliable) — cause DISTINCTE de « sans lieu » (Q8,
+	// .ai/DECOUVERTES_TACTIQUE_2026-09-07.md) : sans ce compteur dedie, un pont non publiable
+	// faisait tomber TOUTES les morts du match dans killsource_isolement_morts_sans_lieu, qui
+	// ne dit normalement qu'« une victime precise n'a pas de position au film ».
+	metricIsolationPontNonPublicable = "killsource_isolement_pont_non_publiable"
 )
 
 // projeterFaitsDIsolement ecrit `match_lives` et `match_death_context` a partir de ce que la
@@ -77,6 +83,7 @@ func (c *KillSourceCollector) projeterFaitsDIsolement(
 	observability.AddInt(metricIsolationVictimeNonResolue, int64(ecarts.victimeNonResolue))
 	observability.AddInt(metricIsolationSansEquipe, int64(ecarts.sansEquipe))
 	observability.AddInt(metricIsolationDeathsNoPlace, int64(ecarts.sansLieu))
+	observability.AddInt(metricIsolationPontNonPublicable, int64(ecarts.pontNonPublicable))
 
 	if err := c.writeIsolationFacts(ctx, matchID, persist.LivesBatch{
 		MatchID: matchID, DecoderRev: IsolationDecoderRev, Lives: lives, Contexts: contexts,
@@ -92,7 +99,8 @@ func (c *KillSourceCollector) projeterFaitsDIsolement(
 	slog.InfoContext(ctx, "killsource: isolement — faits ecrits",
 		"match_id", matchID, "vies", len(lives), "contextes", len(contexts),
 		"morts_journal", len(deaths), "victimes_non_resolues", ecarts.victimeNonResolue,
-		"morts_sans_equipe", ecarts.sansEquipe, "morts_sans_lieu", ecarts.sansLieu)
+		"morts_sans_equipe", ecarts.sansEquipe, "morts_sans_lieu", ecarts.sansLieu,
+		"pont_non_publicable", ecarts.pontNonPublicable)
 }
 
 // writeIsolationFacts : l'ecriture, sous son PROPRE lease court — meme raison que writePositions
@@ -150,6 +158,7 @@ type ecartsDeProjection struct {
 	victimeNonResolue int // bot, ou nom que le roster ne resout pas
 	sansEquipe        int // aucune ligne d'equipe en base pour cette victime
 	sansLieu          int // le film ne montre pas la victime a cet instant
+	pontNonPublicable int // le pont slot->xuid est refuse (IndexDisagreements > 0)
 }
 
 func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
@@ -162,6 +171,17 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 		if _, connue := equipes[m.VictimeXUID]; !connue {
 			ecarts.sansEquipe++
 		}
+	}
+	// PONT NON PUBLICABLE (`IndexDisagreements > 0`) : le NOMMAGE des vies est faux, pas
+	// seulement telle ou telle victime sans lieu — `replay.ContextesDesMorts` refuserait de
+	// toute facon (meme garde), mais melanger cette cause dans `sansLieu` ferait croire a un
+	// probleme localise a chaque victime plutot qu'a un pont casse pour le match entier.
+	if !replay.PontPubliable(mat.report) {
+		ecarts.pontNonPublicable = len(journal) - ecarts.sansEquipe
+		if ecarts.pontNonPublicable < 0 {
+			ecarts.pontNonPublicable = 0
+		}
+		return nil, ecarts
 	}
 	ctxs := replay.ContextesDesMorts(replay.EntreeContexteMorts{
 		Positions: mat.positions,
@@ -184,8 +204,12 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 			TeammatesVisible:    c.Visibles,
 			TeammatesWaiting:    c.EnAttente,
 			TeammatesOutOfSight: c.HorsDeVue,
-			TeammatesLeft:       c.Partis,
-			TeammatesTotal:      c.Total,
+			// TeammatesLeft (colonne `teammates_left`) : toujours 0. `analysis/replay` n'a
+			// plus produit l'état « parti » depuis 7C.9 (2026-09-07, retrait du calage
+			// horloge API/film qui pouvait sortir une mort « isolée » à tort) — la COLONNE
+			// reste (append-only, ADR 0026), écrite à 0 plutôt que migrée.
+			TeammatesLeft:  0,
+			TeammatesTotal: c.Total,
 		})
 	}
 	return out, ecarts

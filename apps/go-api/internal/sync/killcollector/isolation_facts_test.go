@@ -118,6 +118,30 @@ func TestJournalDesMorts_EcarteUneVictimeNonResolue(t *testing.T) {
 	}
 }
 
+// TestToDeathContextRows_PontNonPublicable_CompteDedie — Q8 (2026-09-07) : un pont refuse
+// (IndexDisagreements > 0) ne doit PAS tomber dans « morts sans lieu ». Avant ce compteur
+// dedie, cette cause (pont casse pour TOUT le match) se melangeait avec « cette victime
+// precise n'a pas de position au film », deux diagnostics differents sous un seul nombre.
+func TestToDeathContextRows_PontNonPublicable_CompteDedie(t *testing.T) {
+	mat := materiauDIsolement{report: replay.OwnerReport{IndexDisagreements: 1}}
+	ids := MatchIdentities{Equipes: map[string]int{"111": 0}}
+	deaths := []persist.KillEventInsert{{TimeMS: 1000, VictimXUID: "111"}}
+
+	rows, ecarts := toDeathContextRows(mat, ids, deaths)
+
+	if rows != nil {
+		t.Fatalf("contextes = %+v, attendu aucun : le pont est refuse pour tout le match", rows)
+	}
+	if ecarts.pontNonPublicable != 1 {
+		t.Fatalf("pontNonPublicable = %d, attendu 1", ecarts.pontNonPublicable)
+	}
+	if ecarts.sansLieu != 0 {
+		t.Fatalf("sansLieu = %d, attendu 0 : la cause est le pont, pas l'absence de lieu au "+
+			"film — les deux compteurs ne doivent jamais se substituer l'un a l'autre",
+			ecarts.sansLieu)
+	}
+}
+
 // TestPostSyncDeps_SansResolveurDeCarte_LaCaptureEstDesarmee — la garde de la capture au
 // post-sync.
 //

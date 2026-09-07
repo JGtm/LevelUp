@@ -5,7 +5,7 @@
  * pied de carte NOMME les deux planchers (session, échantillon) plutôt que de les
  * recopier en dur côté client ; et les deux langues rendent deux textes.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
@@ -14,7 +14,20 @@ import type { SquadEchangeJoueur, SquadIsolementPoint, SquadNuageIsolement } fro
 
 import { SquadIsolementNuageCard } from './SquadIsolementNuageCard'
 
-beforeEach(() => useAppShellStore.setState({ locale: 'fr' }))
+// jsdom n'a pas de canvas : on mocke echarts-for-react (comme FirstBloodLanes) pour
+// capturer l'option ECharts construite, notamment le formatter de tooltip.
+const captured: Array<Record<string, unknown>> = []
+vi.mock('echarts-for-react', () => ({
+  default: (props: Record<string, unknown>) => {
+    captured.push(props)
+    return <div data-testid="isolement-nuage-stub" />
+  },
+}))
+
+beforeEach(() => {
+  useAppShellStore.setState({ locale: 'fr' })
+  captured.length = 0
+})
 afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
 
 const joueurs: SquadEchangeJoueur[] = [
@@ -92,5 +105,43 @@ describe('SquadIsolementNuageCard', () => {
     expect(fr.length).toBeGreaterThan(0)
     expect(en.length).toBeGreaterThan(0)
     expect(en).not.toBe(fr)
+  })
+
+  it('la réserve « échantillon faible » se lit dans le tooltip d’un point atténué, pas seulement dans son opacité', async () => {
+    renderWithProviders(
+      <SquadIsolementNuageCard
+        nuage={nuageDe({
+          points: [point({ part_isolee: isoCouverture(4, 10, true) })],
+        })}
+        joueurs={joueurs}
+      />,
+    )
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = captured[captured.length - 1].option as {
+      tooltip: { formatter: (p: unknown) => string }
+      series: Array<{ data: Array<{ raw: SquadIsolementPoint }> }>
+    }
+    const datum = option.series[0].data[0]
+    const html = option.tooltip.formatter({ data: datum })
+    expect(html).toContain('échantillon faible')
+  })
+
+  it('un point non atténué ne porte aucune mention « échantillon faible » dans son tooltip', async () => {
+    renderWithProviders(
+      <SquadIsolementNuageCard
+        nuage={nuageDe({
+          points: [point({ part_isolee: isoCouverture(4, 10, false) })],
+        })}
+        joueurs={joueurs}
+      />,
+    )
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = captured[captured.length - 1].option as {
+      tooltip: { formatter: (p: unknown) => string }
+      series: Array<{ data: Array<{ raw: SquadIsolementPoint }> }>
+    }
+    const datum = option.series[0].data[0]
+    const html = option.tooltip.formatter({ data: datum })
+    expect(html).not.toContain('échantillon faible')
   })
 })

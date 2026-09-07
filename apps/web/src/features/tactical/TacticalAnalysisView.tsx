@@ -186,16 +186,38 @@ function buildKpiCards(t: TacticalText, locale: Locale, data: TacticalRaster): K
       id: 'tactical-trade',
       label: t.kpiTrade,
       primary: pct.format(data.echange.taux),
-      secondary: t.kpiSecondary(data.echange.brut, data.echange.n),
+      secondary: kpiSecondaryWithReserve(t, data.echange.brut, data.echange.n, data.echange.echantillon_faible),
     })
   }
   if (data.isolement) {
+    const sansRayon = data.matchs_sans_rayon ?? 0
     cards.push({
       id: 'tactical-isolation',
       label: t.kpiIsolation,
       primary: pct.format(data.isolement.taux),
-      secondary: t.kpiSecondary(data.isolement.brut, data.isolement.n),
+      secondary: kpiSecondaryWithReserve(t, data.isolement.brut, data.isolement.n, data.isolement.echantillon_faible),
+      custom:
+        sansRayon > 0 ? (
+          <span className="text-2xs text-muted-foreground" data-testid="tactical-isolation-no-radius">
+            {t.kpiNoRadiusNote(sansRayon)}
+          </span>
+        ) : undefined,
     })
   }
   return cards
+}
+
+/**
+ * kpiSecondaryWithReserve — accole la réserve d'échantillon faible au sous-titre,
+ * MÊME FORME que `SquadEchangeKpi.tsx` pour la même mesure d'échange (le drapeau
+ * `echantillon_faible` interdit de comparer la valeur, il ne la cache pas).
+ */
+function kpiSecondaryWithReserve(
+  t: TacticalText,
+  brut: number,
+  n: number,
+  echantillonFaible: boolean,
+): string {
+  const base = t.kpiSecondary(brut, n)
+  return echantillonFaible ? `${base} — ${t.lowSample}` : base
 }
