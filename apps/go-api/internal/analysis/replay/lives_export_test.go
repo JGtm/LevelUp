@@ -173,22 +173,47 @@ func TestViesNommees_OrdreTotal(t *testing.T) {
 // deux dans un seul champ obligeait à choisir entre nommer le joueur et dire qu'il a survécu,
 // et le choix fait le comptait mort.
 //
-// CE TEST NE PASSE PAS PAR UNE FIXTURE DE FERMETURE — elles demandent des tirs et tout
-// l'appareil de `closures.go`. Il vérifie l'INVARIANT sur la structure elle-même : aucune
-// combinaison ne peut faire dire « mort » à une provenance de fermeture, parce que les deux
-// champs ne sont écrits ni au même endroit ni pour la même raison.
+// FIXTURE RÉELLE, PAS TROIS LITTÉRAUX (Q8, 2026-09-07) : la version précédente construisait
+// trois `VieNommee{}` à la main et vérifiait une implication sur ces littéraux — elle ne
+// prouvait donc RIEN sur `ResolveSlotXUID`/`closeByRespawn`, seulement que le test savait
+// écrire ce qu'il voulait lire. Celle-ci fait tourner le VRAI pont : deux vies de 111
+// calibrent la fenêtre de réapparition (même gap que TestFermetureBAttribueSurUneSeuleMort-
+// DansLaFenetre, 8 000 ms), puis une troisième vie ANONYME (slot 2, jamais nommée par une
+// mort — aucune mort ne finit près de 21 000 ms) tombe dans cette fenêtre après la mort de
+// 222 et est nommée par FERMETURE B (`closeByRespawn`, fire = nil : `ResolveSlotXUID` n'a
+// aucun flux de tirs). Le film ne coupe jamais ce slot : sa vie court jusqu'au bout de ce
+// qu'il montre, donc `film_end` — exactement le survivant que le P0 de la ronde 2 confondait
+// avec un mort.
 func TestViesNommees_LesDeuxAxesSontOrthogonaux(t *testing.T) {
-	vies := []VieNommee{
-		{XUID: 1, Cause: CauseVieFinFilm, NomPar: NomParFermeture}, // le survivant du P0
-		{XUID: 2, Cause: CauseVieCoupure, NomPar: NomParFermeture}, // le vehicule
-		{XUID: 3, Cause: CauseVieMort, NomPar: NomParMort},         // la mort ordinaire
+	pos := pisteContinue(1, 0, 1_000_000)                          // 111, meurt a 1 000 ms
+	pos = append(pos, pisteContinue(3, 9_000_000, 10_000_000)...)  // 111 reapparait, meurt a 10 000 ms
+	pos = append(pos, pisteContinue(2, 20_000_000, 21_000_000)...) // ANONYME : personne ne le nomme par une mort
+	morts := []Death{
+		{XUID: 111, TimeMS: 1_000},
+		{XUID: 111, TimeMS: 10_000},
+		{XUID: 222, TimeMS: 12_000}, // ne termine aucune vie : candidat libre pour la fermeture B
 	}
-	for _, v := range vies {
-		estMort := v.Cause == CauseVieMort
-		if v.NomPar == NomParFermeture && estMort {
-			t.Fatalf("%+v : une vie nommee par FERMETURE ne peut pas etre morte — c'est "+
-				"exactement le contresens du P0 de la ronde 2", v)
+	_, rep := ResolveSlotXUID(pos, morts, indexDe(111, 222))
+
+	vies := rep.ViesNommees()
+	var survivant *VieNommee
+	for i, v := range vies {
+		if v.XUID == 222 {
+			survivant = &vies[i]
 		}
+	}
+	if survivant == nil {
+		t.Fatalf("aucune vie pour 222 — la fermeture par reapparition devait nommer le slot "+
+			"anonyme (20-21 s), rapport %+v", rep)
+	}
+	if survivant.NomPar != NomParFermeture {
+		t.Fatalf("nomPar = %q, attendu %q : ce corps n'est identifie que par elimination "+
+			"(aucune mort ne le termine)", survivant.NomPar, NomParFermeture)
+	}
+	if survivant.Cause != CauseVieFinFilm {
+		t.Fatalf("%+v : une vie nommee par FERMETURE et jamais coupee ni appariee par une "+
+			"mort doit sortir %q — c'est exactement le contresens du P0 de la ronde 2 "+
+			"(un survivant compte mort)", *survivant, CauseVieFinFilm)
 	}
 }
 

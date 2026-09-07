@@ -2,17 +2,19 @@ package replay
 
 // death_context_test.go — LES ÉTATS D'UN COÉQUIPIER, chacun avec son mode de panne.
 //
-// Chaque état existe parce que le confondre avec un autre produit un faux verdict :
+// Chaque état actif (V1 : visible / en attente / hors de vue) existe parce que le
+// confondre avec un autre produit un faux verdict :
 //
 //	visible confondu avec hors de vue    une mort à 3 m d'un coéquipier sort « isolée » ;
 //	hors de vue confondu avec en attente un coéquipier en véhicule est compté mort, et la mort
 //	                                     sort « équipe à terre » (défaut P0 de la ronde 1) ;
-//	parti confondu avec hors de vue      un joueur déconnecté à la première minute reste un
-//	                                     coéquipier disponible jusqu'à la fin ;
-//	absent confondu avec hors de vue     un `joined_in_progress` « accompagne » des morts
-//	                                     survenues avant son arrivée ;
 //	mort confondu avec visible           la réplication s'arrête ~34 ms APRÈS la mort, donc un
 //	                                     joueur mort depuis 500 ms a encore une position fraîche.
+//
+// « parti » et « absent » (calage horloge API/film) NE SONT PAS des états V1 — 7C.9 a
+// retiré leur calcul le 2026-09-07 (FAIT FAUX POSSIBLE : un coéquipier présent en début de
+// partie pouvait sortir « parti » avant même d'être entré) ; `EtatParti` et son `case` ont
+// été supprimés en clôture (Q8), ce fichier ne les couvre donc plus.
 //
 // LE PONT EST LE VRAI (`ResolveSlotXUID`) : les fixtures nomment leurs vies par des morts du
 // fil, comme un film. Poser un `SlotXUID` à la main court-circuitait le nommage — donc aussi le
@@ -82,15 +84,17 @@ func corpusDeReference() ([]filmdec.BipedPosition, []Death, []MortDuJournal) {
 	return pos, mortsFilm, journal
 }
 
-// TestContextesDesMorts_LesQuatreEtats — LE CAS DE RÉFÉRENCE.
-func TestContextesDesMorts_LesQuatreEtats(t *testing.T) {
+// TestContextesDesMorts_LesTroisEtats — LE CAS DE RÉFÉRENCE (V1 : visible / en attente /
+// hors de vue — le quatrième état, « parti », a été retiré en clôture Q8 : cf. le
+// commentaire de `EtatVisible` et alii dans death_context.go).
+func TestContextesDesMorts_LesTroisEtats(t *testing.T) {
 	pos, mortsFilm, journal := corpusDeReference()
 	out := ContextesDesMorts(dcEntree(pos, mortsFilm, journal))
 
 	c := contexteDe(t, out, 111, 10_000)
-	if c.Visibles != 1 || c.EnAttente != 1 || c.HorsDeVue != 1 || c.Partis != 0 {
-		t.Fatalf("etats = visible %d / attente %d / hors de vue %d / parti %d, "+
-			"attendu 1/1/1/0 — %+v", c.Visibles, c.EnAttente, c.HorsDeVue, c.Partis, c)
+	if c.Visibles != 1 || c.EnAttente != 1 || c.HorsDeVue != 1 {
+		t.Fatalf("etats = visible %d / attente %d / hors de vue %d, "+
+			"attendu 1/1/1 — %+v", c.Visibles, c.EnAttente, c.HorsDeVue, c)
 	}
 	if c.Total != 3 {
 		t.Fatalf("total = %d, attendu 3 coequipiers : l'ADVERSAIRE visible a 1 m ne doit "+
@@ -257,7 +261,7 @@ func TestContextesDesMorts_SlotRecycleNeRefusePas(t *testing.T) {
 func TestContextesDesMorts_LaSommeDesEtatsFaitLeTotal(t *testing.T) {
 	pos, mortsFilm, journal := corpusDeReference()
 	for _, c := range ContextesDesMorts(dcEntree(pos, mortsFilm, journal)) {
-		if somme := c.Visibles + c.EnAttente + c.HorsDeVue + c.Partis; somme != c.Total {
+		if somme := c.Visibles + c.EnAttente + c.HorsDeVue; somme != c.Total {
 			t.Fatalf("%+v : somme des etats = %d, total = %d", c, somme, c.Total)
 		}
 	}
