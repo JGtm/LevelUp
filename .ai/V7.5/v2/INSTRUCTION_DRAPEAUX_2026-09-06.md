@@ -400,24 +400,141 @@ se fait a 2,3 m du socle de son PROPRE camp, les deux drapeaux sont dehors, et l
 drapeau en jeu se tait. La regle qui la reparerait (« une prise au socle S ne porte pas sur le
 drapeau de S ») reste REFUTEE par la faute de 6 569 sur le meme film.
 
+## 8 quater. Corrections R1 — jamais son propre drapeau, et les retours remettent les deux etats
+
+La revue adversariale **DRAPEAUX-R1** valide la cause premiere et confirme que rien n'est perdu ni
+invente (trois spans rallonges controles par les positions ET par le calque des actions), mais
+elle refuse la livraison sur **un P0** : le lot servait un resultat FAUX NEUF. Quatre constats,
+les quatre traites ici.
+
+### C1 (P0) — une capture datee passait sur le drapeau de sa propre equipe
+
+Sur `64e8adfa`, a 527 555 ms, un joueur de l'equipe 1 ramasse a **2,4 m de son propre socle** ; le
+drapeau adverse git a **11,2 m**, au-dela de `flagPickupRadiusM` = 8, et les deux drapeaux passent
+pour « en jeu » — la regle 2 se tait, la regle 3 aussi. Restait le repli `nearestSpawn`, que
+l'en-tete du meme fichier declare pourtant FAUX pour une prise : il designe le socle le plus
+proche, celui du PRENEUR. Le portage — et la **capture** de 529 075 ms qu'il porte — basculaient
+sur le drapeau du camp de leur auteur. Le document se contredisait : il publiait ce drapeau
+`home` a la frame 5168 et `carried` par un joueur de son propre camp a la 5169.
+
+**L'INVARIANT DUR, pose avant toute geometrie.** En CTF on RENVOIE son drapeau, on ne le porte
+pas : c'est la regle du mode, tranchee par l'utilisateur, et elle prime sur toute inference. Tout
+candidat qui aboutit au drapeau de l'equipe du porteur est **REFUSE** (`ownFlagRefused`) ; s'il ne
+reste qu'un candidat — l'autre drapeau — il est pris ; s'il n'en reste aucun, le portage sort
+**NON ATTRIBUE** (`flagIndex` = -1, `unresolved`) et n'est publie sur aucun drapeau. **On n'invente
+jamais un drapeau.**
+
+**L'equipe du porteur ne vient pas du film** : elle arrive par `FlagInput.TeamOf`, une table
+xuid -> equipe **DEJA RESOLUE** par l'appelant — la meme forme et la meme frontiere que
+`FlagInput.Identity` : `analysis/replay` recoit une table, jamais des lignes de match. Une equipe
+inconnue (-1 en base) n'y entre pas : on ne refuse que sur une equipe LUE. Table vide (CLI hors
+ligne, ouvrier sans faits) : l'invariant **se tait**, et l'artefact est celui d'avant a l'octet
+pres — c'est `TestFlagInvariantSansEquipeConnueSeTait`.
+
+**LE CABLAGE S'EST TU UNE FOIS, ET LA MESURE L'A DIT.** La premiere cuisson R1 rendait
+`ownFlagRefused = 0` : la table remontait bien de `replaybuild` jusqu'a `FlagInput`, mais
+`attachFlagCarries` ne la recopiait pas dans `FlagCarryScan`. Un chainon muet ne casse aucun test
+unitaire — d'ou le garde-rail ajoute chez l'appelant
+(`TestFlagInputDescendLesEquipesJusquAuScan`, plus `TestFlagInputPorteLesEquipesDesLignesDeMatch`
+pour la table elle-meme).
+
+### C4 — un retour remet `sol` **ET** `enJeu`, jamais l'un sans l'autre
+
+La note du fichier avouait une limite en n'en disant que la moitie : « les retours credites et les
+rentrees d'objet [...] ne peuvent que laisser un drapeau en jeu de trop, ce qui fait **TAIRE** la
+troisieme regle ». Vrai pour `enJeu` ; **faux pour `sol`**, qui alimente la regle 2 —
+**prioritaire** — et pouvait donc la faire **MENTIR**, en rattachant une prise a une position de
+lacher devenue caduque. `assignFlags` consomme desormais les deux chaines : `flag_returns` (qui ne
+nomme pas son drapeau : applique au SEUL qui git au sol, meme abstention qu'en aval) et les
+rentrees d'objet (qui nomment le leur par leur socle). Les evenements sont ordonnes comme dans
+`assembleFlagLives` : fin, puis retour, puis rentree, puis prise.
+
+### C2 — le champ mort `flagCarryRaw.reprise`
+
+Ecrit trois fois, **jamais lu** : la garde livree est `flagTenuParUnAutre`, qui ne consulte que
+`t0` / `t1` / `flagIndex`. Son commentaire affirmait pourtant que `flag_carries_lives.go` s'en
+sert — une doc inversee doublee d'un commentaire d'entretien dans `closeByCarrierKills`. Champ et
+commentaires **supprimes** (CLAUDE.md regle 7).
+
+### C3 — les recouvrements se comptent PAR DRAPEAU
+
+`countFlagOverlaps` exigeait **plus de deux** portages ouverts, **tous drapeaux confondus** :
+`flagIndex` n'y entrait pas, si bien que deux porteurs du MEME drapeau — le recouvrement qui fait
+vraiment se contredire le calque, et le cas nominal d'un CTF a deux drapeaux — n'y entraient
+jamais. Mesure du relecteur sur un banc a deux porteurs et un drapeau : `overlaps = 0`,
+`closedOverlaps = 0`. Le seuil est desormais « plus d'UN portage sur LE MEME drapeau », les
+portages non attribues exclus. La note de `flag_carries_lives.go` qui s'appuyait sur ce compteur
+est corrigee.
+
+### Mesure — `64e8adfa`, la ou le P0 se voyait
+
+| | base `0930cc692` | HEAD revu `33aad602c` | **HEAD R1** |
+|---|---|---|---|
+| captures publiees sur le drapeau de LEUR AUTEUR | 1 | **2** (P0) | **0** |
+| portages sur son propre drapeau | 13 | 7 | **0** |
+| spans masques (1 frame + `dropped`) | 41 | 0 | 0 |
+| duree totale portee | 2 441 | 4 388 | **4 438** |
+| joueurs dont la duree BAISSE vs base | — | 0 | **0** |
+
+Les **trois** captures de l'oracle sont desormais sur le drapeau adverse — y compris celle de
+472 578 ms, **deja fausse a la base** (le P1 preexistant que la revue mettait hors perimetre) :
+l'invariant la repare aussi. Couverture : `ownFlagRefused = 4`, `unresolved = 0`,
+`assignedByPlay = 4`, `overlaps` / `closedOverlaps` = 12 / 12 (comptes par drapeau).
+
+### Les trois temoins mandates ne bougent pas
+
+`replay-diff` du HEAD revu contre le HEAD R1 — **aucun ecart de donnee**, seuls les compteurs que
+C3 et C4 rendent justes :
+
+```
+bcb6d393   2 ecarts / 684 mesures   overlaps 0 -> 4 · closedOverlaps 0 -> 4
+e94163af   3 ecarts / 650 mesures   overlaps 0 -> 1 · closedOverlaps 0 -> 1 · assignedByPlay 1 -> 0
+c0a82e88   aucune difference (574 mesures identiques)
+```
+
+Sur `e94163af` (drapeau NEUTRE, un seul socle) `assignedByPlay` tombe a 0 parce que les retours
+remettent `enJeu` : la regle 3 se tait la ou elle repondait, et le repli rend **le meme** drapeau —
+il n'y en a qu'un. Les spans sont identiques au bit pres. Les trois temoins gardent 0 portage sur
+son propre drapeau, leurs captures sur le drapeau adverse, 0 span masque et **aucune perte de
+duree par joueur** contre la base.
+
+### Tests, prouves par mutation
+
+`internal/analysis/replay/flag_invariant_test.go` — cinq tests : le refus et son unique repli, le
+silence sans equipe lue, **l'abstention qui n'invente rien** (un seul socle : `unresolved = 1`,
+aucun span publie), le retour qui remet les deux etats, et les recouvrements par drapeau.
+
+```
+M-E  l invariant « jamais son propre drapeau » retire
+     --- FAIL: TestFlagInvariantJamaisSonPropreDrapeau    drapeau d equipe 1 porte par [1], attendu [1 3]
+     --- FAIL: TestFlagInvariantSansCandidatNInventeRien  un portage non attribue a ete publie
+M-F  le refus INVENTE un drapeau (index 0) au lieu de s abstenir
+     --- FAIL: TestFlagInvariantSansCandidatNInventeRien  attendu 1 refus et 1 portage non attribue
+M-G  le retour ne remet que enJeu, pas sol
+     --- FAIL: TestFlagRetourRemetLeSolEtEnJeu            drapeau d equipe 1 porte par [1 2], attendu [1]
+M-H  les recouvrements redeviennent tous drapeaux confondus
+     --- FAIL: TestFlagOverlapsComptesParDrapeau          overlaps 0, closedOverlaps 0
+```
+
+**M-G a d'abord SURVECU**, et c'est instructif : sur une carte a deux drapeaux, l'invariant dur ne
+laisse qu'un candidat et masque l'effet de `sol`. Le test a ete refait **sans equipe connue**, la
+seule facon d'isoler le constat C4 — l'invariant s'y tait, et c'est bien l'etat du sol qui tranche.
+
 ## 9. Decouvertes, notees et NON traitees
 
 Les decouvertes n° 2 (spans masques) et n° 3 (compteur de couverture) de la premiere redaction
-sont **TRAITEES** au §8 ter. Il reste une entree.
+sont **TRAITEES** au §8 ter ; la n° 1 (les fautes residuelles de `64e8adfa`) l'est au §8 quater —
+l'invariant dur les ferme toutes, y compris la capture qui etait deja fausse a la base. Il reste
+une observation, qui n'appartient pas a ce lot.
 
-1. **`64e8adfa` garde 7 portages sur leur propre drapeau (13 avant ce lot), et une capture y
-   change de drapeau.** Le film a **2 manches** et `closedOverlaps = 10` — une contradiction
-   entre faits dates, deja publiee par la couverture. Aux sept instants restants, ou bien les
-   DEUX drapeaux sont dehors (la troisieme regle d'attribution se tait a dessein), ou bien
-   `enJeu` est PERIME parce que le drapeau est rentre par un `flag_returns` ou une rentree
-   d'objet, que `assignFlags` ne voit pas. **Consequence a dire** : la capture de 529 075 ms
-   passe du drapeau adverse a celui du camp de son auteur, parce que le portage de 5 169 est
-   l'une de ces sept fautes (prise a 2,3 m du socle de son PROPRE camp, les deux drapeaux
-   dehors). **Une regle tentante est REFUTEE sur pieces** : « une PRISE au socle S ne porte pas
-   sur le drapeau de S » repare six fautes sur sept et CONTREDIT la septieme (frame 6 569 : un
-   joueur de l'equipe 1 prend a 2,6 m du socle de l'equipe 0, et la bonne reponse est justement
-   le drapeau de l'equipe 0). *Reprise* : faire PARTAGER a l'attribution la machine a etats de
-   `assembleFlagLives` (retours credites + rentrees d'objet, qui nomment leur socle) au lieu d'en
-   ecrire une seconde copie — la regle du depot interdit la troisieme copie d'un meme motif.
-   Controle de reprise : les 7 fautes a 0 et la capture de 529 075 ms revenue sur le drapeau
-   adverse, sans bouger `bcb6d393`, `e94163af`, `c0a82e88` ni `cde26226`.
+1. **Un porteur nomme par le PONT n'est pas localisable dans le document** (observation O1 de la
+   revue DRAPEAUX-R1). Sur `bcb6d393`, les 9 portages de `2535429985869093` entre les frames 3129
+   et 3388 sont servis `carried` par ce xuid, alors qu'AUCUNE piste publiee ne porte ce xuid apres
+   la frame 2736 : la seconde vie du slot 536 est ANONYME dans `tracks`. Le serveur la nomme par
+   le pont canonique (`attachFlagCarryPositions`, `noTrack = 0`) mais ne le dit pas au document ;
+   le client joint par XUID (`flagCarriesLayer.ts`, `flagPointAt`) et retombe sur la position
+   figee du span — le drapeau reste immobile au point de prise pendant que le porteur court.
+   **PREEXISTANT et NON AGGRAVE EN POSITION** : a la base, les memes frames etaient `dropped` aux
+   memes coordonnees ; seul l'ETAT publie change. *Reprise* : c'est le sujet du lot des vies
+   anonymes (nommer la vie dans `tracks`, ou faire porter au span la cle de vie qui le localise),
+   pas celui de l'attribution des drapeaux.
