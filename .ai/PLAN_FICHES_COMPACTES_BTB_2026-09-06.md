@@ -533,27 +533,83 @@ sur la rangée), âge négatif « dans X s ». `npm run lint`, `npm run lint:col
 
 Fichiers : `ui/ReplayTeams.tsx`, tests.
 
-- [ ] 4.1 Match `BTB` à effectifs inégaux (12v9 après départs) : un seul gabarit sur toute
-      la colonne, les deux camps en compacte.
-- [ ] 4.2 Sièges relayés en BTB : le compte ne bouge pas, la fiche suit l'occupant.
-- [ ] 4.3 Chaîne exacte de la classe de grille assertée (technique `rosterHeight.guard`).
-- [ ] 4.4 Titre sans décodage film (document sans `sh`/`hp`, sans inventaire) en compacte :
-      cellules vides, aucune barre, aucun zéro.
-- [ ] 4.5 En-tête sans catégorie sur un roster de 24 : densité normale, DOM de la colonne
-      identique à celui d'aujourd'hui (aucun repli sur les effectifs — D1).
+Les cinq cas de COLONNE vivent dans un nouveau fichier `ui/ReplayTeams.density.test.tsx`
+(un cas = un `it`, document NU : une vie par siège, avec ou sans vitalité, horloge établie par
+`originMs: 0` / `frameIntervalMs: 100`) ; le sixième, un cas de TUILE, est le `it` (l) de
+`ui/ReplayPlayerCard.compact.test.tsx`. Exécuté le 2026-09-07.
 
-**Gate 4** : les cinq cas sont des `it` verts ; `T_EXIST`, `T_DIFF`, `T_DOM`.
+- [x] 4.1 Match `BTB` à effectifs inégaux (12v9 après départs) : un seul gabarit sur toute
+      la colonne, les deux camps en compacte.
+      Fait : 21 corps de 31, 0 de 35 ; deux conteneurs distincts de 12 et 9 enfants, tous deux
+      à la chaîne `SEATS_GRID_CLASS` ; 21 tuiles `rounded-md border`.
+- [x] 4.2 Sièges relayés en BTB : le compte ne bouge pas, la fiche suit l'occupant.
+      Fait : `Nord12` (`left_in_progress`, 20:00:10Z) relayé par `Zulu` (`joined_in_progress`,
+      même seconde, camp `t0`) à l'image 100 ; à l'image 50 : 24 corps, `Nord12` présent, `Zulu`
+      absent ; `rerender` à 150 : 24 corps, `Zulu` présent, `Nord12` absent — la vie de `Nord12`
+      reste ouverte jusqu'à 300, donc sans appariement la colonne compterait 25. Grille
+      compacte aux deux images.
+- [x] 4.3 Chaîne exacte de la classe de grille assertée (technique `rosterHeight.guard`).
+      Fait : au SOURCE (commentaires ôtés — l'en-tête de la constante cite lui-même `calc(`) :
+      `'grid min-h-0 flex-1 auto-rows-max grid-cols-[repeat(auto-fill,minmax(115px,1fr))] gap-1 overflow-y-auto'`
+      et `'flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto'` présents à l'octet, aucun
+      `calc(`, aucun espace dans la valeur arbitraire, un seul `grid-cols-[` ; au DOM : `BTB` →
+      grille sur les deux camps, sans catégorie → colonne simple sur les deux.
+- [x] 4.4 Titre sans décodage film (document sans `sh`/`hp`, sans inventaire) en compacte :
+      cellules vides, aucune barre, aucun zéro.
+      Fait : 24 corps de 31 ; 0 `Bouclier` / `Santé`, 0 `role=img`, 0 `svg` ; tableau à
+      compteurs NON NULS (2/1/3) pour qu'un « 0 » soit un zéro inventé → aucun `0`, aucun
+      `×` / `%` / `m / r`, aucune infobulle de grenade / inventaire / munitions ; 24 cellules
+      d'arme vides sous « armes non lues sur cette vie » ; les largeurs fixes du DOM sont
+      EXACTEMENT 24 × [48, 14, 16] px, toutes à `textContent` vide (règle « cellule fixe,
+      jamais un décalage ») ; 24 triplets « 2/1/3 », aucun « ? ».
+- [x] 4.5 En-tête sans catégorie sur un roster de 24 : densité normale, DOM de la colonne
+      identique à celui d'aujourd'hui (aucun repli sur les effectifs — D1).
+      Fait : cinq en-têtes qui ne disent pas `BTB` (`undefined`, `null`, `start_time` seul,
+      `Arena`, `''`) rendent le MÊME `innerHTML` à l'octet ; 24 corps de 35, 0 de 31, colonne
+      simple sur les deux camps, 24 tuiles `rounded-lg border px-2.5 py-2`, ni `auto-fill` ni
+      `rounded-md` ; contre-épreuve : le même document et le même tableau sous `BTB` diffèrent
+      et portent `auto-fill`.
+- [x] 4.6 (ajouté par le superviseur, 2026-09-07) Les couches d'effets de la tuile
+      (`replay-card-fx`, `ZoneFxOverlay` et ses enfants capteur / translocation, filigrane)
+      gardaient `rounded-lg` (8 px) sur une tuile compacte en `rounded-md` (6 px).
+      Fait : `TILE_LAYOUT.layerRadius` (`'rounded-lg'` pour 35 — la chaîne d'aujourd'hui à
+      l'octet —, `'rounded-md'` pour 31), littéraux en clair ; `ZoneFxOverlay` et
+      `ReplayObjectiveMark` reçoivent `radiusClass` ; commentaires de `ReplayPlayerCard` et de
+      `playerCardFx.ts` (« `inset-0 rounded-lg` ») réécrits. Test (l) : aucun `rounded-lg` dans
+      la colonne BTB, couche sous le contenu (Charlie), incrustation (Charlie, Delta) et
+      filigrane (India) en `rounded-md` ; au source, plus aucun `className="…rounded-lg"` dans
+      les deux fichiers, capteur et translocation composés sur `${radiusClass}`. Fixture 4v4
+      md5 `a650f6b57ba38463ddeabf4ef7694817` inchangé, 6v6 `4dc466cc…` inchangé.
+
+**Gate 4** : les six cas sont des `it` verts ; `T_EXIST`, `T_DIFF`, `T_DOM`. **Passé le
+2026-09-07** (journal).
 
 ### Étape 5 — Gates de livraison, perf, revue
 
-- [ ] 5.1 `T_ALL` (codes de sortie vérifiés).
-- [ ] 5.2 Perf APRÈS, volet JS, même protocole que 0.4 ; comparaison aux seuils ; si
+- [x] 5.1 `T_ALL` (codes de sortie vérifiés).
+      Fait (2026-09-07, avant-plan) : `rm node_modules/.tmp` + `npx tsc -b --force` exit 0 ;
+      `npm run lint` exit 0 (27 avertissements préexistants hors périmètre, inchangés depuis le
+      gate 3 ; `eslint --max-warnings 0` sur les six fichiers touchés à l'étape 4-5 : exit 0) ;
+      `npm run lint:colors` 0 violation ; `npm run test:run` : 618 fichiers verts + 1 sauté (le
+      perf test, `REPLAY_PERF` absent), **6 440 tests verts, 16 sautés, exit 0**, 88 s. `tsc`
+      rejoué après la retouche du perf test (5.2) : exit 0.
+- [x] 5.2 Perf APRÈS, volet JS, même protocole que 0.4 ; comparaison aux seuils ; si
       dégradation, `inventoryAt` calculé une fois (I4) puis nouvelle mesure.
+      Fait (2026-09-07) : mesuré et consigné au journal, trois passes. **Recadrage utilisateur du
+      même jour : le chiffre est une information, pas un gate — aucune optimisation, la
+      boucle « si dépassement » est retirée.** Écart au protocole, dit : le perf test montait
+      `<ReplayTeams>` SANS en-tête, donc en gabarit NORMAL sur le témoin BTB aussi (il date de
+      l'étape 0, avant `mode_category`) — la tuile compacte et la lecture `inventoryAt` de
+      `handCellHint` n'y passaient jamais. Ajout ADDITIF d'une troisième ligne (le témoin BTB
+      sous `mode_category: 'BTB'`) ; les deux lignes de 0.4 restent mesurées telles quelles.
 - [ ] 5.3 Gate visuel (utilisateur, son gate habituel) : ouvrir le rejeu du témoin BTB
       `4f77afc1` sur le dev local — 24 fiches visibles, gamertags lisibles, lecture fluide à
       1× — et le rejeu du témoin 4v4 `000d5950` — rien n'a changé. Le compact qui apparaît sur
       le BTB prouve au passage que la catégorie `BTB` arrive bien à la page.
-- [ ] 5.4 Revue adversariale du diff (skill `adversarial-review`) avant merge.
+- [~] 5.4 Revue adversariale du diff — **retirée le 2026-09-07** (décision utilisateur : lot
+      d'interface, hors des lots à risque que CLAUDE.md réserve à cette revue). Couvert par la
+      revue du plan à quatre angles et par la relecture de chaque diff par le superviseur, gates
+      rejoués à chaque étape.
 - [ ] 5.5 Entrée `.ai/thought_log.md` (date, titre, statut, décision, résultats, suite).
 - [ ] 5.6 `delivery-checklist` déroulée ; DEMANDER l'autorisation de commit final et de
       merge dans `feat/v75` ; après poussée : `gh run list --branch feat/fiches-compactes
@@ -649,6 +705,44 @@ _(une ligne par gate : date, gate, commandes, résultat chiffré)_
   le test compact ; la géométrie est `absolute inset-0` dans le wrapper de la cellule) et le
   rendu réel de l'animation d'échange à une cellule (`--replay-dx` posé, asserté nulle part —
   le gate visuel 5.3 les verra). L'étape 4 n'est PAS commencée.
+- **2026-09-07 — gate 4** (avant-plan, codes de sortie lus) : `ui/ReplayTeams.density.test.tsx`
+  5/5 (deux premiers rouges = erreurs du TEST, corrigées dans le test : le commentaire de
+  `ReplayTeams.tsx` cite `calc(` — commentaires ôtés avant le contrôle ; la tuile compacte rend
+  ses TROIS cellules fixes vides, 48/14/16, pas la seule cellule d'arme — asserté tel quel ; un
+  troisième sur le `title` du triplet, qui porte la FDA quand les trois compteurs sont lus) ;
+  `ui/ReplayPlayerCard.compact.test.tsx` 20/20 (19 + le (l) du 4.6) ; `T_EXIST` 70/70 ; `T_DIFF`
+  0 ligne ; `T_DOM` 2/2, md5 4v4 `a650f6b57ba38463ddeabf4ef7694817` et 6v6
+  `4dc466cc773622a09671d07bdb9efe8a` inchangés après le rayon des couches ; `cardGabarit.guard`
+  6/6, `cardGabarit.test` 3/3, `cardDensity.test` 11/11 — **7 fichiers, 117 tests, exit 0**.
+  Fichiers touchés : `ui/ReplayPlayerCard.tsx` (`layerRadius`), `ui/ReplayObjectiveMark.tsx`
+  (`radiusClass`), `model/playerCardFx.ts` (commentaire), les deux tests. Aucun `git commit`.
+- **2026-09-07 — 5.1** : voir l'item (tsc 0 / lint 0 / lint:colors 0 / test:run 6 440 verts, exit 0).
+- **2026-09-07 — 5.2, mesure JS APRÈS** (`REPLAY_PERF=1 REPLAY_PERF_DIR=<principal>/data/cache/replays/halo_infinite
+  npx vitest run src/features/match-replay/ui/ReplayTeams.perf.test.tsx`, hors sandbox, exit 0,
+  3 passes de ~6 s ; même protocole que 0.4 — jsdom, 5 répétitions, médiane des médianes,
+  100 rerender après 20 d'échauffement, cadence 1,5 image — plus la ligne compacte ajoutée) :
+
+  | Témoin | Gabarit | Colonne p50 (3 passes) | Colonne p95 | Modèle seul p50 | Modèle p95 |
+  |---|---|---|---|---|---|
+  | BTB `4f77afc1` (25 fiches, base 5 000) | normal (sans en-tête, = 0.4) | **1,357 / 1,356 / 1,351 ms** | 1,943 / 1,893 / 1,855 | 0,087 / 0,086 / 0,084 | 0,097 |
+  | BTB `4f77afc1` | **compacte (`mode_category: 'BTB'`)** | **1,308 / 1,299 / 1,305 ms** | 1,849 / 1,508 / 1,541 | 0,091 / 0,086 / 0,088 | 0,098 |
+  | 4v4 `000d5950` (8 fiches, base 2 243) | normal (= 0.4) | **0,781 / 0,725 / 0,747 ms** | 1,336 / 1,028 / 1,259 | 0,050 / 0,049 / 0,049 | 0,065 |
+
+  Face aux seuils : BTB colonne p50 ≤ 3,28 ms → 1,31 ms (compacte) et 1,36 ms (normale),
+  tenu ; 4v4 colonne p50 dans 1,58-1,74 ms → **0,73-0,78 ms, HORS fenêtre par le bas**. Cette
+  sortie n'est pas un effet du lot : le MODÈLE SEUL, dont le code n'a pas changé depuis
+  l'extraction (0,168 ms AVANT, 0,166 au contrôle du gate 1), mesure lui aussi 0,087 ms, soit
+  −48 %, et le 4v4 normal — qui rend, nœud pour nœud, la fixture prise avant le lot — baisse
+  dans la même proportion (−55 %). L'état de la machine entre les deux sessions (charge, pas
+  d'horloge) explique la translation ; la comparaison ABSOLUE à l'AVANT n'est donc pas
+  interprétable, et c'est la comparaison INTRA-passe qui informe : sur le même témoin, dans la
+  même passe, **la tuile compacte coûte 3,5 % de MOINS que la normale** (1,30 contre 1,35 ms,
+  stable sur les trois passes ; p95 1,5-1,8 contre 1,9) — la lecture `inventoryAt` de plus par
+  fiche compacte (3.2) est absorbée par les cellules en moins (munitions, boîte de stock, score,
+  seconde arme). Aucune optimisation appliquée (recadrage utilisateur : le chiffre est une
+  information, pas un gate). Le perf test reste sauté sans `REPLAY_PERF` (1 fichier sauté dans
+  `test:run`). `tsc` et `eslint --max-warnings 0` sur le perf test modifié : exit 0.
+  **Les items 5.3 à 5.6 ne sont pas commencés** (superviseur et utilisateur).
 
 ## Ce que ce plan NE fait pas
 
@@ -712,3 +806,18 @@ _(une ligne par gate : date, gate, commandes, résultat chiffré)_
 - (3.1) Le test compact n'exerce pas le badge de lancer (`GrenadeThrowBadge`) : aucune fixture
   de lancer (`grenadeThrows`) n'a été bâtie — la couverture existante du badge vit dans les
   tests du gabarit normal. À couvrir si le gate visuel 5.3 montre un défaut sur 48 px.
+- (4.6) Le test (l) n'exerce pas au DOM l'anneau du capteur adverse ni le fourreau de
+  translocation en compacte (le document du test compact ne pose ni capteur ni translocation) :
+  leur rayon est asserté au SOURCE (composition sur `${radiusClass}`). Le gate visuel 5.3 les
+  verra s'ils surviennent sur le témoin.
+- (5.2) L'en-tête de `ui/ReplayTeams.perf.test.tsx` dit encore « la peinture et les animations
+  CSS … sont le volet navigateur, remis à l'utilisateur (DevTools) » : ce volet a été RETIRÉ
+  le 2026-09-07 (I4, décision utilisateur). Doc périmée d'une phrase, non traitée (hors item).
+- (5.2) Les chiffres AVANT de 0.4 (BTB 2,98 ms, 4v4 1,66 ms, modèle 0,17 ms) ont été pris sur
+  une machine dans un autre état : la même mesure, code du modèle inchangé, rend aujourd'hui
+  moitié moins sur toutes les lignes. Une fenêtre absolue (« 4v4 dans 1,58-1,74 ms ») ne tient
+  pas d'une session à l'autre ; un seuil RELATIF intra-passe (compacte / normale sur le même
+  témoin) serait le seul robuste. Non traité — noté pour la revue 5.4.
+- (4.3) Le commentaire de tête des constantes de grille de `ReplayTeams.tsx` cite `calc(` en
+  prose : un garde qui grep le source brut (comme `rosterHeight.guard`) le prendrait pour une
+  faute. Le test 4.3 ôte les commentaires avant de chercher ; non traité côté source.

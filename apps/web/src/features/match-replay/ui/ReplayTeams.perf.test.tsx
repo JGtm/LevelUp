@@ -37,6 +37,7 @@ import { ReplayTeams } from './ReplayTeams'
 import { REPLAY_TEXT } from '../i18n/i18n'
 import { teleportMoments } from '../model/placementTeleport'
 import { playerCardReadings, type CardFxScene } from '../model/playerCardReadings'
+import type { PresenceHeader } from '../model/presenceFeed'
 import { buildSeats, groupSeatsByTeam, seatOccupantAt } from '../model/seatLogic'
 import { racineDuDepot } from '../test/featureFiles'
 import { scoreboardRow } from '../test/scoreboardRow'
@@ -57,10 +58,19 @@ const REPEATS = 5
 const STEP = 1.5
 const BASE_FRAME = 5_000
 
-const TEMOINS = [
+/**
+ * LES TROIS MESURES. Les deux premières sont celles de l'étape 0 (AVANT), sans en-tête : la
+ * colonne y rend le gabarit NORMAL sur les deux témoins — c'est la base, et elle reste
+ * mesurée telle quelle. La troisième (ajoutée au 5.2, 2026-09-07) rejoue le témoin BTB sous
+ * `mode_category: 'BTB'` : c'est la TUILE COMPACTE, donc le vrai APRÈS du lot — sans elle, la
+ * lecture d'inventaire supplémentaire de `handCellHint` (jamais faite en normal) ne serait
+ * jamais dans la mesure, et le seuil serait tenu à vide.
+ */
+const TEMOINS: readonly { nom: string; fichier: string; header?: PresenceHeader }[] = [
   { nom: 'BTB 12v12 (4f77afc1)', fichier: '4f77afc1.json' },
   { nom: '4v4 (000d5950)', fichier: '000d5950.json' },
-] as const
+  { nom: 'BTB 12v12 (4f77afc1) — tuile compacte (mode_category BTB)', fichier: '4f77afc1.json', header: { mode_category: 'BTB' } },
+]
 
 function dossierTemoins(): string {
   return process.env.REPLAY_PERF_DIR ?? join(racineDuDepot(), 'data', 'cache', 'replays', 'halo_infinite')
@@ -121,7 +131,7 @@ function arrondi(s: Stats): Record<keyof Stats, number> {
 }
 
 /** Une répétition de la colonne : échauffement, puis SAMPLES rerender profilés. */
-function mesurerColonne(doc: ReplayDocumentReady, base: number): Stats {
+function mesurerColonne(doc: ReplayDocumentReady, base: number, header?: PresenceHeader): Stats {
   const scoreboard = tableauDepuisRoster(doc)
   const durees: number[] = []
   let mesure = false
@@ -130,7 +140,7 @@ function mesurerColonne(doc: ReplayDocumentReady, base: number): Stats {
   }
   const arbre = (frame: number) => (
     <Profiler id="ReplayTeams" onRender={onRender}>
-      <ReplayTeams doc={doc} scoreboard={scoreboard} frame={frame} locale="fr" />
+      <ReplayTeams doc={doc} scoreboard={scoreboard} frame={frame} locale="fr" header={header} />
     </Profiler>
   )
   const vue = render(arbre(base))
@@ -203,11 +213,12 @@ describe.skipIf(!process.env.REPLAY_PERF)('ReplayTeams — mesure JS de la colon
         const colonne: Stats[] = []
         const modele: Stats[] = []
         for (let r = 0; r < REPEATS; r++) {
-          colonne.push(mesurerColonne(doc, base))
+          colonne.push(mesurerColonne(doc, base, temoin.header))
           modele.push(mesurerModele(doc, base))
         }
         const resultat = {
           temoin: temoin.fichier,
+          gabarit: temoin.header?.mode_category ?? 'normal',
           fiches: doc.roster.length,
           images: doc.frameCount,
           base,
