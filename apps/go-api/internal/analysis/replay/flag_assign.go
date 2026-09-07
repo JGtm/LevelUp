@@ -13,6 +13,20 @@ import "sort"
 // rattachement est donc GEOMETRIQUE, et l'etiquette d'equipe vient du catalogue de carte
 // (`flag_spawn.team_index`, `replaybuild/flagspawns.go`), par le socle retenu.
 //
+// # L'INVARIANT DUR, AVANT TOUTE GEOMETRIE : JAMAIS SON PROPRE DRAPEAU
+//
+// En CTF on RENVOIE son drapeau, on ne le porte pas — c'est la regle du mode, tranchee par
+// l'utilisateur, et elle prime sur toute inference geometrique. Un portage n'est donc JAMAIS
+// pose sur le drapeau de l'equipe de son porteur : tout candidat qui y aboutit est REFUSE.
+// S'il ne reste qu'un candidat — l'autre drapeau —, il est pris ; s'il n'en reste aucun, le
+// portage sort NON ATTRIBUE (`flagIndex` = -1, compte en `unresolved`) et n'est publie sur
+// aucun drapeau. **On n'invente jamais un drapeau.**
+//
+// L'EQUIPE DU PORTEUR NE VIENT PAS DU FILM : elle arrive par `FlagInput.TeamOf`, une table
+// xuid -> equipe DEJA RESOLUE par l'appelant, exactement comme le pont d'identite. Table vide
+// (CLI hors ligne, ouvrier sans faits) : l'invariant se tait, et le comportement est celui
+// d'avant, a l'octet pres.
+//
 // # LES TROIS REGLES, DANS CET ORDRE
 //
 //	un VOL (`flag_steals`) se fait AU SOCLE      le drapeau du socle le plus proche ;
@@ -48,6 +62,11 @@ type flagGroundEvent struct {
 	at    int64
 	close bool
 	carry int
+	// retour : un `flag_returns` credite — il ne nomme pas son drapeau, on l'applique au SEUL
+	// qui git au sol. home : une RENTREE de l'objet, qui nomme le sien par son socle.
+	retour bool
+	home   bool
+	flag   int
 }
 
 // flagGroundTimeline rend les prises et les fins de tous les portages, dans l'ordre du TEMPS.
@@ -56,19 +75,42 @@ type flagGroundEvent struct {
 // ([flagLifeClose] avant [flagLifeOpen]), et pour la meme raison : un drapeau libere dans la
 // meme milliseconde se reprend tout de suite, et c'est le cas NOMINAL (`bcb6d393`, la fin d'un
 // portage et la prise du suivant tombent toutes deux a 180 531 ms).
-func flagGroundTimeline(raws []flagCarryRaw) []flagGroundEvent {
+func flagGroundTimeline(raws []flagCarryRaw, scan FlagCarryScan,
+	ctx flagCarryCtx) []flagGroundEvent {
 	out := make([]flagGroundEvent, 0, 2*len(raws))
 	for i := range raws {
 		out = append(out, flagGroundEvent{at: raws[i].t0, carry: i})
-		out = append(out, flagGroundEvent{at: raws[i].t1, close: true, carry: i})
+		out = append(out, flagGroundEvent{at: raws[i].t1, close: true, carry: i, flag: -1})
+	}
+	for _, t := range flagReturnTimes(scan) {
+		out = append(out, flagGroundEvent{at: t, retour: true, carry: -1, flag: -1})
+	}
+	for _, h := range flagObjectHomecomings(scan, ctx) {
+		out = append(out, flagGroundEvent{at: h.at, home: true, carry: -1, flag: h.flag})
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].at != out[j].at {
 			return out[i].at < out[j].at
 		}
-		return out[i].close && !out[j].close
+		return flagGroundRang(out[i]) < flagGroundRang(out[j])
 	})
 	return out
+}
+
+// flagGroundRang ordonne les evenements simultanes, dans le MEME ordre qu'`assembleFlagLives` :
+// une fin libere le drapeau, puis un retour ou une rentree le ramene chez lui, puis seulement une
+// prise le reclame.
+func flagGroundRang(e flagGroundEvent) int {
+	switch {
+	case e.close:
+		return 0
+	case e.retour:
+		return 1
+	case e.home:
+		return 2
+	default:
+		return 3
+	}
 }
 
 // flagGround est l'etat des drapeaux pendant le parcours : ou chacun GIT, et lequel est EN JEU.
@@ -76,16 +118,52 @@ type flagGround struct {
 	// sol[f] est la position du drapeau f POSE AU SOL, nil quand il n'y est pas — dans une
 	// main, ou chez lui.
 	sol []*[2]float32
-	// enJeu[f] dit que le drapeau f a quitte son socle et n'y est pas rentre. Une CAPTURE l'y
-	// ramene ; un lacher ne l'y ramene pas. Les retours credites et les rentrees d'objet ne
-	// sont pas connus ici (ils vivent dans `assembleFlagLives`, en aval) : ils ne peuvent que
-	// laisser un drapeau « en jeu » de trop, ce qui fait taire la troisieme regle au lieu de
-	// la faire mentir.
+	// enJeu[f] dit que le drapeau f a quitte son socle et n'y est pas rentre.
+	//
+	// TROIS FAITS L'Y RAMENENT, et il a fallu la revue DRAPEAUX-R1 pour que les trois soient
+	// la : la CAPTURE, le RETOUR CREDITE (`flag_returns`) et la RENTREE DE L'OBJET a son socle.
+	// Les deux derniers manquaient, et la note qui l'avouait ne disait que la moitie du
+	// probleme (constat C4) : elle affirmait qu'ils « ne peuvent que laisser un drapeau en jeu
+	// de trop, ce qui fait TAIRE la troisieme regle ». Vrai pour `enJeu` ; FAUX pour `sol`,
+	// qui alimente la regle 2 — prioritaire — et pouvait donc la faire MENTIR, en rattachant
+	// une prise a une position de lacher devenue caduque. Un retour remet desormais les DEUX.
 	enJeu []bool
+	// teamOf est la table xuid -> equipe fournie par l'appelant (`FlagInput.TeamOf`). Vide :
+	// l'invariant « jamais son propre drapeau » se tait, faute d'equipe lue.
+	teamOf map[string]int
 }
 
 // prendre note qu'un drapeau vient d'etre pris : il quitte le sol, et il est en jeu.
 func (g *flagGround) prendre(f int) { g.sol[f], g.enJeu[f] = nil, true }
+
+// rentrer ramene un drapeau CHEZ LUI : il n'est plus au sol, et il n'est plus en jeu. Les deux,
+// jamais l'un sans l'autre — `sol` perime fait mentir la regle 2, `enJeu` perime fait taire la
+// regle 3 (revue DRAPEAUX-R1, constat C4).
+func (g *flagGround) rentrer(f int) {
+	if f < 0 || f >= len(g.sol) {
+		return
+	}
+	g.sol[f], g.enJeu[f] = nil, false
+}
+
+// seulAuSol rend l'UNIQUE drapeau pose au sol, ou -1 quand il y en a zero ou plusieurs.
+//
+// C'est la meme abstention qu'`applyFlagReturn` en aval, et pour la meme raison : un
+// `flag_returns` est credite au joueur qui TOUCHE le drapeau de son equipe, l'evenement ne
+// nomme ni l'objet ni le camp. A deux drapeaux au sol, rien ne les departage.
+func (g *flagGround) seulAuSol() int {
+	seul := -1
+	for f, p := range g.sol {
+		if p == nil {
+			continue
+		}
+		if seul >= 0 {
+			return -1
+		}
+		seul = f
+	}
+	return seul
+}
 
 // poser applique la FIN d'un portage : une capture renvoie le drapeau chez lui, tout le reste le
 // laisse au sol, a l'endroit du lacher.
@@ -132,27 +210,88 @@ func (g *flagGround) choisir(r flagCarryRaw, spawns []FlagSpawn) (int, bool) {
 	return nearestSpawn(spawns, r.x0, r.y0), false
 }
 
-// assignFlags attribue chaque portage a un drapeau (index dans la liste des socles).
-func assignFlags(raws []flagCarryRaw, spawns []FlagSpawn, cov *FlagCarriesCoverage) {
+// sonPropreDrapeau dit que le drapeau `f` appartient a l'equipe du porteur — ce qu'aucune regle
+// du mode n'autorise. Rend faux des qu'une des deux equipes est inconnue : on ne refuse que sur
+// une equipe LUE, jamais sur une absence.
+func sonPropreDrapeau(spawns []FlagSpawn, f int, equipe int, connue bool) bool {
+	if !connue || equipe == TeamNeutral || f < 0 || f >= len(spawns) {
+		return false
+	}
+	return spawns[f].Team == equipe
+}
+
+// autreDrapeau rend l'UNIQUE drapeau qui n'est pas celui de l'equipe du porteur, ou -1 quand il
+// n'y en a pas exactement un. C'est le seul repli autorise apres un refus : a deux candidats
+// restants, rien ne tranche, et le portage sort NON ATTRIBUE.
+func autreDrapeau(spawns []FlagSpawn, equipe int, connue bool) int {
+	seul := -1
+	for f := range spawns {
+		if sonPropreDrapeau(spawns, f, equipe, connue) {
+			continue
+		}
+		if seul >= 0 {
+			return -1
+		}
+		seul = f
+	}
+	return seul
+}
+
+// assignFlags attribue chaque portage a un drapeau (index dans la liste des socles), ou le
+// laisse NON ATTRIBUE (`flagIndex` = -1) quand l'invariant refuse tous les candidats.
+func assignFlags(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx,
+	cov *FlagCarriesCoverage) {
+	spawns := scan.Spawns
 	if len(spawns) == 0 {
 		for i := range raws {
 			raws[i].flagIndex = 0
 		}
 		return
 	}
-	g := &flagGround{sol: make([]*[2]float32, len(spawns)), enJeu: make([]bool, len(spawns))}
-	for _, ev := range flagGroundTimeline(raws) {
-		if ev.close {
-			g.poser(raws[ev.carry])
-			continue
-		}
-		f, parElimination := g.choisir(raws[ev.carry], spawns)
-		if parElimination {
-			cov.AssignedByPlay++
-		}
-		raws[ev.carry].flagIndex = f
-		g.prendre(f)
+	g := &flagGround{
+		sol: make([]*[2]float32, len(spawns)), enJeu: make([]bool, len(spawns)),
+		teamOf: scan.TeamOf,
 	}
+	for _, ev := range flagGroundTimeline(raws, scan, ctx) {
+		switch {
+		case ev.home:
+			g.rentrer(ev.flag)
+		case ev.retour:
+			g.rentrer(g.seulAuSol())
+		case ev.close:
+			g.poser(raws[ev.carry])
+		default:
+			g.ouvrir(raws, ev.carry, spawns, cov)
+		}
+	}
+}
+
+// ouvrir attribue UNE prise, sous l'invariant dur, et note ce que la regle a decide.
+func (g *flagGround) ouvrir(raws []flagCarryRaw, i int, spawns []FlagSpawn,
+	cov *FlagCarriesCoverage) {
+	equipe, connue := g.equipeDe(raws[i].xuid)
+	f, parElimination := g.choisir(raws[i], spawns)
+	if sonPropreDrapeau(spawns, f, equipe, connue) {
+		// LE REPLI A DESIGNE SON PROPRE DRAPEAU : refuse. Il ne reste au plus qu'un candidat.
+		cov.OwnFlagRefused++
+		f, parElimination = autreDrapeau(spawns, equipe, connue), false
+	}
+	raws[i].flagIndex = f
+	if f < 0 {
+		cov.Unresolved++
+		return
+	}
+	if parElimination {
+		cov.AssignedByPlay++
+	}
+	g.prendre(f)
+}
+
+// equipeDe rend l'equipe du porteur, et si elle est connue. Table vide : elle ne l'est jamais,
+// et l'invariant se tait.
+func (g *flagGround) equipeDe(xuid string) (int, bool) {
+	t, ok := g.teamOf[xuid]
+	return t, ok
 }
 
 // nearestDroppedFlag rend l'index du drapeau LACHE le plus proche du point, ou -1 si aucun n'est

@@ -93,6 +93,21 @@ type FlagInput struct {
 	// lignes de match ; la regle qui la complete, et les faits qu'elle consomme, vivent chez
 	// l'appelant.
 	Identity objectiveevents.RoundIdentity
+	// TeamOf est la table xuid -> EQUIPE du match, DEJA RESOLUE par l'appelant — la meme forme
+	// et la meme frontiere que [FlagInput.Identity] : ce paquet recoit une table, jamais des
+	// lignes de match.
+	//
+	// A QUOI ELLE SERT, ET POURQUOI ELLE EST INDISPENSABLE (revue DRAPEAUX-R1, constat C1,
+	// 2026-09-07). En CTF on RENVOIE son drapeau, on ne le porte pas : c'est la regle du mode,
+	// et elle prime sur toute inference geometrique. Sans equipe, le calque ne pouvait que
+	// deviner — et son repli sur le socle le plus proche a pose une prise, puis la CAPTURE
+	// qu'elle porte, sur le drapeau du camp de son auteur (`64e8adfa`, prise a 527 555 ms a
+	// 2,4 m de son propre socle, drapeau adverse au sol a 11,2 m). Avec elle, tout candidat
+	// qui aboutit au drapeau du porteur est REFUSE.
+	//
+	// FACULTATIVE : vide, l'invariant se tait et le calque reste publiable hors ligne, a
+	// l'octet pres comme avant.
+	TeamOf map[string]int
 }
 
 // decodeFilmCarrierMarks balaye le marqueur de portage et JOURNALISE ce qu'il en est.
@@ -147,6 +162,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 		Signals: signals,
 		Events:  objectiveevents.NamedEventsFrom(in.Records, objectiveevents.ObjectiveTypeFlag),
 		Spawns:  in.Spawns,
+		TeamOf:  in.TeamOf,
 	}
 	// HORS CTF, LE CALQUE S'ARRETE ICI — ET C'EST UN CORRECTIF DE PRODUCTION (2026-08-18).
 	//

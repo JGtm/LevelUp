@@ -103,7 +103,7 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 			Truncated:  truncated,
 		},
 		objectives: identifiedEvents(ctx, matchID, deaths, recs, facts, pont),
-		flag:       flagInput(recs, film, pont),
+		flag:       flagInput(recs, film, pont, facts),
 		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:      skullInput(recs, isSkullVariant(facts.GameVariantName)),
 		bomb:       bombInput(film, isBombVariant(facts.GameVariantName)),
@@ -208,12 +208,33 @@ func vipInput(recs []objectiveevents.StatRecord, isVip bool) replay.VipInput {
 // lignes de match, `CompletedByLines` rend le pont par morts inchange et l'artefact reste
 // exactement celui d'avant — la propriete « publiable hors ligne » est conservee.
 func flagInput(recs []objectiveevents.StatRecord, film *filmsource.Film,
-	pont *pontParManche) replay.FlagInput {
+	pont *pontParManche, facts port.MatchFacts) replay.FlagInput {
 	return withFlagIdentity(replay.FlagInput{
 		Scanned: true,
 		Records: recs,
 		Bursts:  objectiveevents.CaptureBurstTimes(film),
+		TeamOf:  equipesParXUID(facts),
 	}, pont)
+}
+
+// equipesParXUID rend la table xuid -> equipe des lignes de match, pour l'invariant « jamais son
+// propre drapeau » du calque du drapeau (revue DRAPEAUX-R1, C1).
+//
+// UNE EQUIPE INCONNUE N'ENTRE PAS : la base ecrit -1 quand elle ne la porte pas, et l'invariant
+// ne doit refuser que sur une equipe LUE. Sans lignes de match, la table est nil et l'invariant
+// se tait — la meme degradation que le pont d'identite.
+func equipesParXUID(facts port.MatchFacts) map[string]int {
+	var out map[string]int
+	for _, p := range facts.Players {
+		if p.XUID == "" || p.TeamID < 0 {
+			continue
+		}
+		if out == nil {
+			out = make(map[string]int, len(facts.Players))
+		}
+		out[p.XUID] = p.TeamID
+	}
+	return out
 }
 
 // withFlagIdentity pose le pont COMPLETE sur l'entree du calque — et SEULEMENT sur un film que

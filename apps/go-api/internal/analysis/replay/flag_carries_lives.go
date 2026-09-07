@@ -171,13 +171,19 @@ func flagLifeTimeline(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx,
 //	  (`reprise`)                 (`bcb6d393` : 11 fois sur 16) — il n'y a AUCUN lacher date, le
 //	                              modele borne lui-meme le sejour au sol a zero ;
 //	un RECOUVREMENT              deux portages du meme drapeau se chevauchent — une incoherence
-//	                              que la couverture publie deja (`overlaps`, `closedOverlaps`).
-//	                              Publier le lacher de l'un ECRASERAIT le portage de l'autre.
+//	                              que `overlaps` / `closedOverlaps` comptent PAR DRAPEAU depuis
+//	                              la revue DRAPEAUX-R1 (avant elle, le seuil « plus de deux
+//	                              portages tous drapeaux confondus » ratait ce cas, et seul
+//	                              `dropsWithheld` en gardait trace). Publier le lacher de l'un
+//	                              ECRASERAIT le portage de l'autre.
 //
 // LE BIAIS EST CELUI QUE L'EN-TETE DE `flag_carries.go` ASSUME : se tromper en dessinant le
 // drapeau dans une main qui ne le tient plus, jamais en le posant au sol alors qu'un joueur
 // court avec. Ce qui est ecarte ici n'est pas perdu : le recouvrement reste compte.
 func flagTenuParUnAutre(raws []flagCarryRaw, i int) bool {
+	if raws[i].flagIndex < 0 {
+		return false // portage NON ATTRIBUE : il ne pretend tenir aucun drapeau.
+	}
 	for j := range raws {
 		if j == i || raws[j].flagIndex != raws[i].flagIndex {
 			continue

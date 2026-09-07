@@ -1,3 +1,51 @@
+## [2026-09-07] Drapeaux, corrections DRAPEAUX-R1 : jamais son propre drapeau (P0 leve) — Complete
+
+**Le mandat.** La revue adversariale DRAPEAUX-R1 valide la cause premiere et confirme que rien
+n'est perdu ni invente (trois spans rallonges controles par les positions ET par le calque des
+actions, quatre mutations rouges, chaine de contrat idempotente, gates verts : 6 conditions sur
+7). Elle refuse la livraison sur **un P0** : le lot servait un resultat FAUX NEUF. Sur
+`64e8adfa`, la capture de 529 075 ms — un fait DATE par l'oracle — passait du drapeau adverse a
+celui du camp de son auteur. Trois constats P2 completaient le tableau.
+
+**Decision technique principale.** Le repli geometrique ne pouvait pas etre repare par plus de
+geometrie : c'est la REGLE DU MODE qui manquait. En CTF on RENVOIE son drapeau, on ne le porte
+pas — donc un portage n'est JAMAIS pose sur le drapeau de l'equipe de son porteur. L'invariant est
+pose AVANT toute inference : tout candidat qui y aboutit est REFUSE (`ownFlagRefused`) ; s'il ne
+reste qu'un candidat il est pris ; s'il n'en reste aucun le portage sort NON ATTRIBUE
+(`unresolved`) et n'est publie sur aucun drapeau — **on n'invente jamais un drapeau**. L'equipe du
+porteur n'etant pas dans le film, elle arrive par `FlagInput.TeamOf`, table xuid -> equipe DEJA
+RESOLUE par l'appelant : exactement la frontiere de `FlagInput.Identity`, `analysis/replay` ne
+voit toujours aucun fait de match. Table vide : l'invariant se tait, l'artefact hors ligne est
+celui d'avant a l'octet pres. Deuxieme correction (C4) : les `flag_returns` et les rentrees
+d'objet remettent desormais `enJeu` **ET** `sol` — la note du fichier n'avouait que la moitie du
+probleme, `sol` perime pouvant faire MENTIR la regle 2, qui est prioritaire. C2 : le champ mort
+`flagCarryRaw.reprise` et sa doc inversee supprimes. C3 : `countFlagOverlaps` compte par DRAPEAU
+(le seuil « plus de deux, tous drapeaux confondus » ratait le cas nominal).
+
+**Resultats observes.** `64e8adfa` : captures publiees sur le drapeau de leur auteur
+**1 (base) / 2 (HEAD revu) -> 0** — les trois captures de l'oracle sont sur le drapeau adverse, y
+compris celle de 472 578 ms **deja fausse a la base**, que la revue mettait hors perimetre et que
+l'invariant repare aussi ; portages sur son propre drapeau **13 / 7 -> 0** ; `ownFlagRefused = 4`,
+`unresolved = 0` ; aucune perte de duree par joueur contre la base (total 2 441 -> 4 438). Les
+trois temoins mandates sont INCHANGES en donnees (`c0a82e88` identique aux 574 mesures ;
+`bcb6d393` et `e94163af` ne bougent que par les compteurs que C3 et C4 rendent justes), avec
+0 portage sur son propre drapeau, captures sur le drapeau adverse et 0 span masque. Cinq tests
+neufs, quatre mutations rouge puis vert. **Une lecon de methode** : M-G (le retour ne remet que
+`enJeu`) a d'abord SURVECU — sur une carte a deux drapeaux l'invariant dur ne laisse qu'un
+candidat et masque l'effet de `sol` ; le test a ete refait sans equipe connue, la seule facon
+d'isoler ce constat. **Une lecon de cablage** : la premiere cuisson R1 rendait
+`ownFlagRefused = 0` parce qu'`attachFlagCarries` ne recopiait pas `TeamOf` dans
+`FlagCarryScan` — un chainon muet ne casse aucun test unitaire, d'ou les deux garde-rails ajoutes
+chez l'appelant.
+
+**Conclusion / prochaine etape.** Le schema reste **46** : la sortie change dans le MEME bump,
+aucun artefact 46 n'a ete diffuse. Le registre porte une entree close de plus (les constats C2 et
+C3) et UNE observation ouverte, qui n'appartient pas a ce lot : sur `bcb6d393`, un porteur nomme
+par le PONT n'est pas localisable dans le document servi (vie ANONYME dans `tracks`, le client
+joint par XUID et fige le drapeau au point de prise) — preexistant, non aggrave en position, a
+traiter par le lot des vies anonymes. Detail :
+`.ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md` §8 quater.
+
 ## [2026-09-07] Drapeaux, complement : une lecture vraie n'est ni perdue ni masquee — Complete
 
 **Le mandat.** Le pilote refuse la cloture du lot drapeaux en l'etat : sa decouverte n° 2 faisait
