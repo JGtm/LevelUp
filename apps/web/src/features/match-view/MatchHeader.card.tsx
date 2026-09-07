@@ -30,6 +30,7 @@ import {
   type MatchViewLocale,
 } from './i18n'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
+import { useOutcomeLabel } from '@/lib/i18n/fieldMappings'
 import type { MatchViewHeader as MatchViewHeaderData, MatchViewRank } from '@/lib/api/types'
 import { formatDuration } from './MatchHeader.utils'
 import { PerfRankRow } from './MatchHeader.perfRank'
@@ -356,10 +357,13 @@ interface OutcomeRowProps {
 }
 
 function OutcomeRow({ header, outcomeColor, locale }: OutcomeRowProps) {
+  // Le backend sert la CLÉ canonique d'issue (win|loss|tie|dnf, D5 2026-09-07) — le web
+  // localise depuis les mappings du titre, jamais un texte reçu de l'API.
+  const outcomeLabel = useOutcomeLabel(header.outcome ?? '')
   return (
     <div className="flex flex-wrap items-baseline gap-2">
       <span className="text-2xl font-bold" style={{ color: outcomeColor ?? undefined }}>
-        {header.outcome_label}
+        {outcomeLabel}
       </span>
       {header.score_label && (
         <>

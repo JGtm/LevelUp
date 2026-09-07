@@ -207,16 +207,18 @@ type CareerCSRResponse struct {
 
 // TopMatchDTO représente un match dans le top/pire performance.
 type TopMatchDTO struct {
-	MatchID          string   `json:"match_id"`
-	StartTime        *string  `json:"start_time"`
-	PerformanceScore float64  `json:"performance_score"`
-	MapUI            *string  `json:"map_ui"`
-	ModeUI           *string  `json:"mode_ui"`
-	OutcomeCode      int      `json:"outcome_code"`
-	OutcomeLabel     string   `json:"outcome_label"`
-	Kills            int      `json:"kills"`
-	Deaths           int      `json:"deaths"`
-	KDA              *float64 `json:"kda"`
+	MatchID          string  `json:"match_id"`
+	StartTime        *string `json:"start_time"`
+	PerformanceScore float64 `json:"performance_score"`
+	MapUI            *string `json:"map_ui"`
+	ModeUI           *string `json:"mode_ui"`
+	OutcomeCode      int     `json:"outcome_code"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06). Vide si le code brut n'est
+	// pas mappé (omitempty). Le web localise via useOutcomeLabel — jamais de texte ici.
+	Outcome string   `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
+	Kills   int      `json:"kills"`
+	Deaths  int      `json:"deaths"`
+	KDA     *float64 `json:"kda"`
 }
 
 // CareerTopMatchesResponse est la réponse de GET /pages/career/top-matches.

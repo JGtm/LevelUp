@@ -125,8 +125,10 @@ type MatchHistoryRow struct {
 	StartTime      time.Time `json:"start_time"`
 	StartTimeLabel string    `json:"start_time_label"`
 	OutcomeCode    int       `json:"outcome_code"`
-	OutcomeLabel   string    `json:"outcome_label"`
-	ScoreLabel     string    `json:"score_label"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06) ; vide si non mappée. Le
+	// web localise via useOutcomeLabel — jamais de texte servi ici.
+	Outcome    string `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
+	ScoreLabel string `json:"score_label"`
 	// ScoreKind dit CE QUE porte ScoreLabel : "points" (score du mode rendu par l'API) ou
 	// "rounds" (manches gagnées). Alimente l'infobulle d'en-tête de colonne, qui explique
 	// que la colonne montre les manches quand le mode s'y joue. Vide = pas de score.

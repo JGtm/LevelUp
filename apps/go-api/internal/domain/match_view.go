@@ -39,7 +39,9 @@ type MatchViewHeader struct {
 	StartTime      *time.Time `json:"start_time,omitempty"`
 	StartTimeLabel string     `json:"start_time_label"`
 	OutcomeCode    *int       `json:"outcome_code,omitempty"`
-	OutcomeLabel   string     `json:"outcome_label"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06) ; vide si non mappée. Le
+	// web localise via useOutcomeLabel — jamais de texte servi ici (2026-09-07).
+	Outcome string `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
 	// OutcomeColor : valeur hex legacy. Deprecated (anti-pattern CLAUDE.md
 	// règle 20 — aucun hex côté backend). Utiliser OutcomeColorToken pour
 	// les nouveaux consommateurs front qui appellent tokenCssVar().
@@ -213,7 +215,9 @@ type MatchSummaryKpis struct {
 
 // MatchPersonalResult : résultat personnel du joueur.
 type MatchPersonalResult struct {
-	OutcomeLabel string `json:"outcome_label"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06) ; vide si non mappée. Le
+	// web localise via useOutcomeLabel — jamais de texte servi ici.
+	Outcome string `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
 	// OutcomeColor : hex legacy (deprecated, cf. MatchViewHeader.OutcomeColor).
 	OutcomeColor string `json:"outcome_color"`
 	// OutcomeColorToken : token sémantique (cf. MatchViewHeader.OutcomeColorToken).
@@ -610,10 +614,12 @@ type MatchScoreboardRow struct {
 	// Mécaniques de kill NATIVES Halo 5 (assassinats + compétences spartiate :
 	// ground pound, shoulder bash). nil hors h5 (omitempty) ; affichage gated
 	// front via la capability native_kill_mechanics.
-	AssassinationKills *int   `json:"assassination_kills,omitempty"`
-	GroundPoundKills   *int   `json:"ground_pound_kills,omitempty"`
-	ShoulderBashKills  *int   `json:"shoulder_bash_kills,omitempty"`
-	OutcomeLabel       string `json:"outcome_label"`
+	AssassinationKills *int `json:"assassination_kills,omitempty"`
+	GroundPoundKills   *int `json:"ground_pound_kills,omitempty"`
+	ShoulderBashKills  *int `json:"shoulder_bash_kills,omitempty"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06) ; vide si non mappée. Le
+	// web localise via useOutcomeLabel — jamais de texte servi ici.
+	Outcome string `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
 	// Combat yield (V7)
 	TopWeaponID         *int64   `json:"top_weapon_id,omitempty"`
 	TopWeaponLabel      string   `json:"top_weapon_label,omitempty"`

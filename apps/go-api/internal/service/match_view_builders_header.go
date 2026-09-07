@@ -45,7 +45,6 @@ func buildMatchHeader(
 ) domain.MatchViewHeader {
 	h := domain.MatchViewHeader{
 		MatchID:      matchID,
-		OutcomeLabel: "-",
 		OutcomeColor: mvHexOutcomeUnknown,
 		PerfDisplay:  "-",
 		IsFavorite:   isFavorite,
@@ -177,42 +176,30 @@ func applyMatchHeaderMapImage(
 		"map_name_en", strDeref(meta.MapNameEN))
 }
 
-// applyMatchHeaderOutcome remplit OutcomeCode/Label/Color. Le score, lui, est posé par
-// applyMatchHeaderScore : il dépend de la table `[rounds_decide]`, portée par le service
-// (même raison que le flag « Prolongation » — buildMatchHeader est déjà à la limite de
-// paramètres).
-//
-// Le libellé posé ici est le REPLI FR : le mot du TITRE (outcomes.toml, localisé) est appliqué
-// juste après par applyMatchHeaderOutcomeLabel, pour la même raison que les deux lignes
-// ci-dessus — le jeu d'outcomes est porté par le service, pas par le builder.
+// applyMatchHeaderOutcome remplit OutcomeCode/Color. La CLÉ canonique (Outcome), elle, est
+// posée par applyMatchHeaderOutcomeKey — elle a besoin du jeu d'outcomes du titre, porté par
+// le service, pas par le builder (même raison que le score : cf. applyMatchHeaderScore).
 func applyMatchHeaderOutcome(h *domain.MatchViewHeader, stats *domain.PlayerMatchStatsRaw) {
 	if stats == nil || stats.OutcomeCode == 0 {
 		return
 	}
 	code := stats.OutcomeCode
 	h.OutcomeCode = &code
-	h.OutcomeLabel = outcomeLabel(code)
 	h.OutcomeColor = outcomeColor(code)
 	h.OutcomeColorToken = outcomeColorToken(code)
 }
 
-// applyMatchHeaderOutcomeLabel pose LE MOT DE L'ISSUE tel que le titre le dit, dans la locale
-// de la requête (2026-09-07).
+// applyMatchHeaderOutcomeKey pose la CLÉ CANONIQUE de l'issue (win|loss|tie|dnf, MT-06),
+// traduite depuis le raw_code du titre (2026-09-07, décision D5 : le Go sert la clé, le web
+// localise via useOutcomeLabel — plus de texte FR/EN fabriqué côté serveur).
 //
-// L'en-tête servait « Victoire / Défaite / Égalité / Abandon » depuis une map Go écrite en
-// français : sous UI anglaise, la carte d'en-tête ET l'écran de fin du rejeu — qui reprend ce
-// champ — annonçaient un mot français, pendant que le même écran vu depuis un adversaire prenait
-// son titre dans `outcomes.toml` et sortait « Loss ». Deux vocabulaires sur un seul panneau.
-//
-// Sans jeu d'outcomes (adapter non câblé, titre sans TOML), resolveOutcomeLabel replie sur la
-// map FR : le champ garde alors exactement la valeur posée par applyMatchHeaderOutcome.
-func applyMatchHeaderOutcomeLabel(
-	ctx context.Context, h *domain.MatchViewHeader, outcomes *mappings.OutcomeMappingSet,
-) {
+// Sans jeu d'outcomes (adapter non câblé, titre sans TOML) ou code non mappé : "" — ce n'est
+// pas un repli, il n'y a rien à traduire (omitempty côté JSON).
+func applyMatchHeaderOutcomeKey(h *domain.MatchViewHeader, outcomes *mappings.OutcomeMappingSet) {
 	if h.OutcomeCode == nil {
 		return
 	}
-	h.OutcomeLabel = resolveOutcomeLabel(ctx, outcomes, *h.OutcomeCode)
+	h.Outcome = outcomeKey(outcomes, *h.OutcomeCode)
 }
 
 // applyMatchHeaderEnrichment renseigne PerfDisplay/Color, IsExcluded, DominanceFlag/Badge.
