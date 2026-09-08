@@ -1,3 +1,90 @@
+## [2026-09-08] Lot P2-bis — Le résidu de R2 sur `d9781168` : l'exclusion temporelle — Complété
+
+**Le fait.** P2 avait tenu trois de ses quatre engagements chiffrés, pas le quatrième :
+`d9781168` gardait `coverage.bridge.unnamedLives` à **19 → 19**, avec
+`identity.coverage.bipedSlot = {direct 0, deduit 142, non_resolu 34}` et `parElimination = 0`.
+
+**Ce que l'instruction a trouvé, et c'est la vraie découverte du lot : la prémisse de R2 était
+fausse.** R2 disait « 19 vies sans nom, toutes sur UN slot, un joueur qui ne meurt jamais du
+match ». La feuille dit le contraire en une ligne : morts par joueur 19, 21, 13, 23, 14, 19, 16,
+19 — **minimum 13, aucun joueur à zéro mort**. Les 19 vies sont sur **18 slots distincts**, et
+**18 slots muets** subsistent : l'unicité manque des DEUX côtés, donc `rosterSansVie` rend zéro
+candidat et l'élimination sur le roster sort avant même son journal. Le code de P2 n'était pas
+en panne — le cas qu'il ferme n'existe pas sur ce film. Le vrai cas « joueur à zéro mort » existe
+bien, mais PAR MANCHE, et c'est le pont statborg qui le résout déjà (`d9781168` manche 1, slot 12
+→ `elimination_roster`, parce que `DinoR00` n'a aucune mort en manche 1). La vérification de R2
+était statuée `[~]` « couverte ailleurs » et n'avait jamais été faite sur ce film : la leçon est
+qu'un `[~]` sur une VÉRIFICATION de fait n'est pas un statut, c'est un report.
+
+**Décision technique principale.** L'élimination sur le roster est portée de « tout le match » à
+« l'intervalle d'UNE VIE » — `resolveByTemporalExclusion`, quatrième étape de
+`BuildIdentityRegistry`, fonction pure. Un joueur n'occupe qu'un slot de bipède à la fois : les
+candidats d'une vie sans nom sont les xuids du roster qu'AUCUNE vie NOMMÉE ne place ailleurs
+pendant son intervalle. Un seul → c'est lui ; deux → on se tait ; **zéro → la lecture se
+contredit**, on se tait aussi et on alarme. Itérée jusqu'au point fixe (nommer une vie retire son
+occupant des candidats des vies qui la chevauchent — deux tours sur `d9781168`), avec abstention
+sur les conflits (deux vies forcées sur le même joueur et qui se chevauchent). Provenance
+`exclusion_temporelle`, vies marquées DÉDUITES, `cause` de fin jamais touchée : une déduction
+ajoute une présence, elle ne fabrique pas une mort.
+
+**Trois garde-fous, et ils refusent.** (1) roster de la feuille OBLIGATOIRE — sans lui l'univers
+des candidats se réduit aux joueurs que le fil des morts nomme, et un joueur absent de l'univers
+ferait passer un candidat FAUX pour unique ; (2) aucun bot déclaré — un bot occupe un slot sans
+porter de xuid, sa vie est « anonyme » au sens du registre ; (3) occupation simultanée ≤ roster —
+plus de vies que de joueurs, c'est que la découpe ou le roster est faux, la prémisse « un joueur,
+un slot » ne tient plus.
+
+**Corroboration indépendante.** Le pont statborg, qui ne partage aucune donnée avec le pont des
+bipèdes, nomme le slot 12 de la manche 1 par élimination (`DinoR00`, zéro mort en manche 1) ;
+l'exclusion temporelle attribue au même joueur la vie `575 [2773..4224]`, qui couvre toute la fin
+de cette manche. Deux méthodes, la même conclusion.
+
+**Résultats observés (re-cuisson locale des 10 témoins, avant = HEAD 50, après = P2-bis).**
+`d9781168` `unnamedLives` **19 → 15** et `bipedSlot` `142/34 → 152/24` (10 vies nommées,
+1 contradiction) ; `51ebbc0f` **8 → 3** (`76/11 → 84/3`) ; `64e8adfa` **11 → 7** ;
+`fb1a1a72` **3 → 2** ; `bf15f7ab` **1 → 0** ; `c0a82e88` `non_resolu` **1 → 0** ; `3372e7eb`,
+`084a804d`, `bcb6d393`, `c75f33b8` inchangés. **Aucun calque ne perd** : tirs rattachés
++187 (`d9781168`), +149 (`51ebbc0f`), +147 (`64e8adfa`), +28, +12 ; `shots.noSlot`
+700 → 513, 187 → 38, 360 → 213 ; ramassages sans auteur 47 → 24 et 26 → 1. **Le temps de portage
+du crâne par équipe ne bouge pas** : 172,5 / 158,8 s, 36 portages (feuille 191 / 196).
+`scoreTimeline` et `identity.statborgSlots` identiques octet pour octet : les écarts K/D/A fermés
+par P2 sont intacts. Golden `assembly_000d5950` inchangé.
+
+**Deux compteurs d'échec qui MONTENT, instruits.** `slotCollisions` 0 → 1 (`d9781168` slot 637,
+`fb1a1a72` slot 622) et `unnamedLivesContested` 0 → 2 (`d9781168`). Même cause : le registre EN
+SAIT DAVANTAGE. La collision de slot existait déjà et le pont aplati la servait en silence au
+premier occupant ; les deux pistes contestées étaient nommées « par la vie suivante » faute de
+voisine à gauche, et la voisine gauche désigne maintenant un AUTRE joueur. Le gate corpus les
+lira en PERTE (`internal/replaydiff/polarite.go`) : ils sont **à accepter**, les masquer
+demanderait d'écraser le pont aplati ou de garder un nommage par défaut d'alternative.
+
+**Structure.** Les POSEURS du registre sortent dans `identity_registry_mutations.go`
+(`identity_registry.go` était à 471 L pour un seuil de 500 — découverte 3 de P2) ; deuxième
+entrée DATÉE de l'allowlist `archlint/no_identity_bridge_outside_registry_test.go`, justifiée :
+ce sont les deux moitiés du même producteur, aucune règle de nommage n'y vit, et les deux
+décideurs restent hors allowlist. Un slot que deux joueurs se partagent devient AMBIGU au lieu
+d'être écrasé. La voie publiée se lit dans `nomPar`, plus dans `deducedLives` (avec deux voies de
+déduction, `deducedLives` ne dit plus laquelle).
+
+**Gates (exit codes).** `gofmt -l internal/ cmd/ contracttest/` vide (0) · `go build ./internal/...`
+0 · `go vet ./internal/analysis/replay/...` 0 · `go test -count=1` vert sur
+`analysis/replay`, `replaybuild`, `service/replayview`, `sync/killcollector`, plus `archlint`,
+`games/canonical` et `contracttest` · `golangci-lint run --new-from-merge-base=origin/main
+./internal/analysis/replay/...` **0 issues** · goldens : `git status --short -- testdata/` vide.
+**10 mutations jouées, toutes rouges.**
+
+**Conclusion / prochaine étape.** R2 est clos avec résidu ÉCRIT : 13 pistes de `d9781168` restent
+sans nom — 10 grappes de frontière de manche (les slots sont partitionnés par manche,
+512..557 / 558..601 / 602..671 : aucune continuité de slot à exploiter au titre du §0.4), 2 vies
+courtes en pleine manche, 1 contradiction (slot 641, zéro candidat). Trois entrées au registre
+des reports. La condition de reprise est la même pour toutes : le lien DIRECT slot de bipède ↔
+index de joueur (inventaire P1, E2 — `ti=5`, `ManagedPropertyFilmIndex`), plan décodeur d'après
+v7.5.0. Reste au superviseur : le gate corpus sur le parc (les deux hausses de compteur d'échec
+sont à accepter avec la ligne du registre), puis `backfill-killsource` et la re-cuisson au
+schéma 50.
+
+---
+
 ## [2026-09-08] Lot P2 — Registre d'identité des joueurs (vague 3, lot P du plan v2) — Complété
 
 **Décision technique principale.** « L'INDEX EST L'INDEX » (décision utilisateur du 2026-09-07,
