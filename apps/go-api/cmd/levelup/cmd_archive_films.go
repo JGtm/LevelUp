@@ -58,6 +58,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -86,6 +87,41 @@ type archiveOptions struct {
 	rps           int
 	dryRun        bool
 	sauterMarques bool
+	// matchs : cible explicite (repetable `--match`). Vide = tout match sans film du registre.
+	// Chaque valeur est un identifiant COMPLET de match ou son identifiant COURT de film
+	// (8 hex, `title.FilmShortMatchID`) — c est la cle du cache et du manifeste de corpus
+	// (`config/replay_corpus.toml`), donc ce qu un temoin absent du parc donne a recuperer.
+	matchs listeMatchs
+}
+
+// listeMatchs : valeur repetable de drapeau, normalisee en minuscules.
+type listeMatchs []string
+
+func (l *listeMatchs) String() string { return strings.Join(*l, ",") }
+
+func (l *listeMatchs) Set(v string) error {
+	v = strings.ToLower(strings.TrimSpace(v))
+	if v == "" {
+		return fmt.Errorf("--match : identifiant vide")
+	}
+	*l = append(*l, v)
+	return nil
+}
+
+// matchCible : le match est-il demande par `--match` ? Une cible vide accepte tout ; sinon
+// l identifiant complet OU son identifiant court de film doit figurer dans la cible.
+func matchCible(cible []string, matchID string) bool {
+	if len(cible) == 0 {
+		return true
+	}
+	id := strings.ToLower(matchID)
+	court := strings.ToLower(titlePkg.FilmShortMatchID(matchID))
+	for _, c := range cible {
+		if c == id || c == court {
+			return true
+		}
+	}
+	return false
 }
 
 func runArchiveFilms(cfg *config.AppConfig, args []string) error {
@@ -100,6 +136,8 @@ func runArchiveFilms(cfg *config.AppConfig, args []string) error {
 	fs.BoolVar(&o.sauterMarques, "sauter-marques", false,
 		"exclure les matchs deja marques « film absent » par le pipeline (economise des requetes, "+
 			"au prix de ne jamais reverifier un marqueur ancien)")
+	fs.Var(&o.matchs, "match", "ne traiter QUE ce match (repetable) : identifiant complet ou identifiant "+
+		"court de film (8 hex) — pour recuperer un temoin de corpus absent du parc")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -230,7 +268,7 @@ func filmsManquants(ctx context.Context, cfg *config.AppConfig, o archiveOptions
 		if err := rows.Scan(&id); err != nil {
 			return nil, fmt.Errorf("registre des matchs (scan): %w", err)
 		}
-		if filmDejaEnCache(cacheRoot, id) {
+		if !matchCible(o.matchs, id) || filmDejaEnCache(cacheRoot, id) {
 			continue
 		}
 		out = append(out, id)
