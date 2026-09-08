@@ -48,6 +48,8 @@ var compteursDEchec = map[string]bool{
 	"ambiguousReturns": true,
 	"ambiguousSlot":    true,
 	"shotsNoRide":      true,
+	// `bombStats.coverage.periodsNoBridge` (E2-bis) : periodes de portage de bombe sans pont, 2 -> 0.
+	"periodsNoBridge": true,
 }
 
 // marqueurParXUID : segment des cles ventilees par joueur (`.../par-xuid/<xuid>`,
@@ -87,7 +89,10 @@ func groupesConserves(a, b map[string]Mesure) map[string]bool {
 	}
 	out := map[string]bool{}
 	for g := range presents {
-		if proches(sa[g], sb[g]) {
+		// Somme conservee OU en hausse : la part attribuee peut monter (des ramassages qui
+		// n'avaient pas d'auteur en trouvent un) pendant qu'un joueur en perd au profit d'un
+		// autre — c'est encore une reattribution. Seule une somme qui BAISSE est une perte.
+		if proches(sa[g], sb[g]) || sb[g] > sa[g] {
 			out[g] = true
 		}
 	}
@@ -137,7 +142,9 @@ func estCompteurDeMethode(k string) bool {
 // couverture. L'axe est ignore : c'est le chemin aplati qui porte le sens.
 func estCompteurDEchec(k string) bool {
 	_, chemin := decouper(k)
-	if !strings.HasPrefix(chemin, prefixeCouverture) {
+	// La couverture vit en tete du document (`coverage.*`) ou dans un calque qui porte la
+	// sienne (`bombStats.coverage.*`) : c'est le SEGMENT `coverage` qui compte, pas sa position.
+	if !strings.HasPrefix(chemin, prefixeCouverture) && !strings.Contains(chemin, "."+prefixeCouverture) {
 		return false
 	}
 	i := strings.LastIndexByte(chemin, '.')

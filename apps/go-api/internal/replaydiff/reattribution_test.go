@@ -34,6 +34,21 @@ func TestComparer_ReattributionASommeConservee(t *testing.T) {
 		t.Fatalf("somme non conservee : attendu une perte, obtenu %+v", rap.Differences)
 	}
 
+	// Somme qui MONTE (15 -> 20) : un joueur perd 2, un autre gagne 7 (des ramassages sans auteur
+	// ont trouve le leur) — encore une reattribution, la perte individuelle est un changement.
+	rap = Comparer(
+		Empreinte{Mesures: map[string]Mesure{kA: num(10), kB: num(5)}},
+		Empreinte{Mesures: map[string]Mesure{kA: num(8), kB: num(12)}},
+	)
+	if bil := rap.Bilans["armes"]; bil.Pertes != 0 {
+		t.Fatalf("somme en hausse : aucune perte attendue, obtenu %+v", rap.Differences)
+	}
+
+	// `bombStats.coverage.periodsNoBridge` : un compteur d'echec porte par un calque.
+	if !estCompteurDEchec(cle("assaut", "bombStats.coverage.periodsNoBridge")) {
+		t.Fatal("periodsNoBridge sous bombStats.coverage est un compteur d'echec")
+	}
+
 	// Les durees par joueur suivent la meme regle (`.../duree-totale/par-xuid/`), et les vies
 	// par joueur (`tracks/vies-par-xuid/`).
 	kD1, kD2 := cle("vehicules", "vehicles.rides/duree-totale/par-xuid/111"), cle("vehicules", "vehicles.rides/duree-totale/par-xuid/222")
