@@ -53,9 +53,18 @@ var identityBridgeScope = []string{
 
 // identityBridgeAllowlist : les fichiers autorisés à toucher les tables brutes du pont.
 //
-//	identity_registry.go   2026-09-08, lot P2 — LE REGISTRE. Seul producteur.
+//	identity_registry.go             2026-09-08, lot P2 — LE REGISTRE. Type, construction,
+//	                                 accesseurs. Seul producteur.
+//	identity_registry_mutations.go   2026-09-08, lot P2-bis — LES POSEURS, extraits du fichier
+//	                                 ci-dessus qui atteignait 471 L pour un seuil de 500
+//	                                 (découverte 3 du lot P2) au moment d'ajouter une seconde
+//	                                 voie de déduction. Ce sont les deux MOITIÉS du même
+//	                                 producteur, pas une seconde porte : aucune RÈGLE de nommage
+//	                                 n'y vit — les décideurs (`_elimination.go`, `_exclusion.go`)
+//	                                 restent hors allowlist et passent par ces poseurs.
 var identityBridgeAllowlist = map[string]string{
-	"identity_registry.go": "2026-09-08, lot P2 — le registre, seul producteur du pont",
+	"identity_registry.go":           "2026-09-08, lot P2 — le registre, seul producteur du pont",
+	"identity_registry_mutations.go": "2026-09-08, lot P2-bis — les poseurs du registre",
 }
 
 // identityBridgePatterns : les motifs interdits hors de l'allowlist, avec ce qu'ils protègent.

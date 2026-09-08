@@ -113,6 +113,10 @@ type IdentityRegistry struct {
 	// pour le lien publie. Zero quand l'elimination ne s'est pas appliquee.
 	eliminatedSlot uint32
 	eliminatedXUID uint64
+	// excluded compte les vies nommees par EXCLUSION TEMPORELLE (cf.
+	// identity_registry_exclusion.go) ; excludedContradictions compte celles qu AUCUN joueur ne
+	// peut occuper — une contradiction de la lecture, pas une abstention ordinaire.
+	excluded, excludedContradictions int
 }
 
 // BuildIdentityRegistry construit le registre d'identite du film. PURE : aucune I/O.
@@ -123,11 +127,15 @@ type IdentityRegistry struct {
 //  2. le PONT PAR MORTS nomme les vies que le film ne nomme pas, et VERIFIE les liens directs ;
 //  3. l'ELIMINATION SUR LE ROSTER ferme le cas d'unicite — un seul xuid sans vie, un seul slot
 //     sans nom ;
-//  4. ce qui resiste est publie « non resolu » et COMPTE, avec son alarme.
+//  4. l'EXCLUSION TEMPORELLE porte la meme elimination a l'echelle d'UNE VIE — un joueur
+//     n'occupe qu'un slot a la fois, donc une vie dont un seul joueur du roster est libre sur
+//     tout l'intervalle lui revient (lot P2-bis) ;
+//  5. ce qui resiste est publie « non resolu » et COMPTE, avec son alarme.
 func BuildIdentityRegistry(in IdentityInput) IdentityRegistry {
 	reg := IdentityRegistry{deducedLives: map[int]bool{}}
 	reg.own = buildOwners(indexBySlot(in.Positions), in.Deaths, in.PlayerIndices, in.Fire)
 	reg.resolveByRosterElimination(in)
+	reg.resolveByTemporalExclusion(in)
 	reg.Section = buildIdentitySection(reg, in)
 	return reg
 }
@@ -401,42 +409,6 @@ func (r IdentityRegistry) DeathOffsetMatches() int { return r.own.DeathOffsetMat
 // ViesNommeesParLaLecture rend le nombre de vies que le FIL DES MORTS a nommées — la lecture
 // seule, avant toute déduction. Zéro = le pont n'a pas été construit.
 func (r IdentityRegistry) ViesNommeesParLaLecture() int { return r.own.DeathsNamed }
-
-// poserIdentiteDeduite pose une identité DÉDUITE sur toutes les vies anonymes d'un slot, et fait
-// suivre les tables du pont. Rend le nombre de vies nommées.
-//
-// # POURQUOI C'EST ICI ET NULLE PART AILLEURS
-//
-// Les trois tables (`lives`, `SlotXUID`, `Owner`) doivent bouger ENSEMBLE : deux d'entre elles
-// qui divergeraient diraient deux choses du même slot, et c'est exactement l'invariant
-// qu'`ownersFromLives` impose déjà aux lectures. Le décideur (l'élimination) reste en dehors.
-//
-// LA CAUSE DE FIN N'EST PAS TOUCHÉE : une déduction dit à QUI la vie appartient, jamais COMMENT
-// elle s'est terminée. Confondre les deux fabrique une mort pour un survivant.
-func (r *IdentityRegistry) poserIdentiteDeduite(slot uint32, xuid uint64, pi int, piConnu bool) int {
-	n := 0
-	for i := range r.own.lives {
-		if r.own.lives[i].slot != slot || r.own.lives[i].xuid != 0 {
-			continue
-		}
-		r.own.lives[i].xuid = xuid
-		r.own.lives[i].nomPar = NomParElimination
-		r.deducedLives[i] = true
-		n++
-	}
-	if n == 0 {
-		return 0
-	}
-	if r.own.SlotXUID != nil {
-		r.own.SlotXUID[slot] = xuid
-	}
-	if piConnu && r.own.Owner != nil {
-		if _, deja := r.own.Owner[slot]; !deja {
-			r.own.Owner[slot] = pi
-		}
-	}
-	return n
-}
 
 // FermeturesParTir / FermeturesParReapparition / FermeturesContestees / FermeturesRefusees :
 // ce que les fermetures ont ajouté et refusé (cf. closures.go). Publiés par la santé du pont.

@@ -178,7 +178,7 @@ func identityPlayers(in IdentityInput) []IdentityPlayer {
 func identityBipedSlots(r IdentityRegistry, c IdentityClock) []IdentityBipedSlot {
 	lives := r.Vies()
 	out := make([]IdentityBipedSlot, 0, len(lives))
-	for i, l := range lives {
+	for _, l := range lives {
 		lien := canonical.Link{From: c.frameOf(l.from), To: c.frameOf(l.to)}
 		var xuid string
 		if l.xuid == 0 {
@@ -188,10 +188,10 @@ func identityBipedSlots(r IdentityRegistry, c IdentityClock) []IdentityBipedSlot
 		} else {
 			xuid = strconv.FormatUint(l.xuid, 10)
 			lien.Source = canonical.LinkInferred
+			// LA VOIE SE LIT DANS `nomPar`, PAS DANS `deducedLives` (correctif P2-bis) : depuis
+			// que le registre a DEUX voies de deduction, `deducedLives` ne dit plus LAQUELLE.
+			// Il ne dit que « c'est une deduction », ce que `LinkInferred` porte deja.
 			lien.Method = methodeDeNommage(l.nomPar)
-			if r.deducedLives[i] {
-				lien.Method = canonical.MethodRosterElimination
-			}
 		}
 		out = append(out, IdentityBipedSlot{Slot: l.slot, XUID: xuid, Link: lien})
 	}
@@ -208,6 +208,8 @@ func methodeDeNommage(nomPar string) canonical.LinkMethod {
 		return canonical.MethodClosure
 	case NomParElimination:
 		return canonical.MethodRosterElimination
+	case NomParExclusionTemporelle:
+		return canonical.MethodTemporalExclusion
 	}
 	return canonical.MethodNone
 }

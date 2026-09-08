@@ -57,6 +57,8 @@ func (r IdentityRegistry) logRegistry(matchID string) {
 		"viesTotal", r.ViesTotal(), "lecturesIndex", r.LecturesIndex(),
 		"desaccordsIndex", r.DesaccordsIndex(), "collisionsSlot", r.CollisionsDeSlot(),
 		"parElimination", r.eliminated,
+		"parExclusionTemporelle", r.excluded,
+		"viesSansAucunCandidat", r.excludedContradictions,
 		"liensDirects", total.Direct, "liensDeduits", total.Inferred,
 		"liensNonResolus", total.Unresolved)
 	if r.DesaccordsIndex() > 0 {
