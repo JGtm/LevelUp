@@ -84,6 +84,14 @@ function coverageFixture(deathOffsetMs?: number): NonNullable<ReplayDocument['co
       closedByRespawn: 0,
       closedContested: 0,
       closedRefused: 0,
+      // Lien direct corps ↔ joueur (schéma 50 amendé, lot E2) : sans incidence ici non plus,
+      // mais le type les exige — la fixture doit rester un document VALIDE, pas un fragment.
+      concordant: 0,
+      discordant: 0,
+      bridgeNamedLives: 0,
+      directByCreation: 0,
+      directByCreationPropagated: 0,
+      bodiesWithCreation: 0,
     },
   }
 }
