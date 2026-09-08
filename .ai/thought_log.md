@@ -39,6 +39,80 @@ n'ouvre pas tant que `feat/v2-restes-r6` et `feat/raster-document-unique` (domai
 fusionnes ; il devra budgeter la reecriture de `match_lives` / `match_death_context` par
 `levelup backfill-killsource` qu'impose un bump d'`IsolationDecoderRev`, et porter l'amendement du
 §0.7 (registre = fonction pure de `analysis/replay`) a son premier commit.
+## [2026-09-07] Orchestration — vague 2, lot M3 = R7 du plan restes (budget de candidats du calage) — Complete
+
+**Decision technique principale.** Lot R7 de `.ai/PLAN_V2_RESTES_2026-09-07.md` (= M3 de
+`.ai/PLAN_ORCHESTRATION_2026-09-07.md`), execute dans le worktree dedie `LevelUp-wt-m3-calage`
+(branche `feat/v2-restes-r7` depuis `feat/v2-restes-r6` @ `0a3c4bc42`). Perimetre FERME a R7.
+
+Le constat D3 de la revue PONT-R2 etait fige par un test de DOCUMENTATION
+(`TestUnAmasPlusGrosQueLeVraiCalageALARMEAuLieuDeSeTaire`, `pont_marge_test.go`) : un amas de
+morts distinctes plus nombreux que le vrai calage remplissait le budget de 3 candidats de
+`bestDeathOffset` ; l'alarme de marge se declenchait, mais le calage rendu etait FAUX.
+
+**Diagnostic, ecrit avant tout code** (journal `.ai/V7.5/v2/RESTES_R7_2026-09-07.md` §1, mesure
+par instrumentation jetable de `voteDeathOffsets`) : DEUX GRANDEURS DIFFERENTES. Ce qui VOTE est
+le nombre de MORTS DISTINCTES appariables — le dedoublonnage de PONT-R1/C1 etait fait par mort
+et SEULEMENT par mort. Ce qui COMPTE (`refineDeathOffset` -> `countDeathMatches`) est un
+appariement 1:1, chaque fin de vie servant une seule fois (`nearestFreeEnd` marque `used`). Un
+amas de M morts groupees vise donc CHAQUE fin de vie isolee du film et y depose M voix alors
+qu'UNE SEULE paire y est realisable. Sur la fixture adversariale : les paniers a 216 300 et
+233 625 pesaient 21 voix pour 2 appariements reels, quand le vrai calage (199 950) en pesait 15
+pour 15 reels. Le vote rendait `[216300 233625 -190050]`, l'affinage `n = 2, 2, 1`, et
+`bestDeathOffset` sortait `off=216350 n=2 second=2` — marge 2:2, alarme, calage faux.
+
+**Correctif : dedoublonnage par FIN DE VIE en plus de celui par mort** (seconde piste du
+registre). `voteDeathOffsets` appelle desormais deux fois un helper neuf,
+`paniersParPivot(pivots, autres, pivotEstFin)` — une passe pivotee sur les morts, une sur les
+fins — et la voix d'un panier devient `min(morts distinctes, fins distinctes)`. Ce n'est pas un
+reglage : c'est la borne de Hall/Konig de l'appariement 1:1 maximal du panier, donc un MAJORANT
+EXACT de ce que l'affinage y mesurera. **Aucun seuil nouveau** : `deathOffsetCandidats` (3),
+`deathOffsetMargeMin` (2), `deathMatchWindowMS` (150), `deathOffsetStepMS` (10) sont inchangees.
+Le budget ADAPTATIF (premiere piste du registre) est ECARTE : il aurait laisse le classement
+faux et exige d'affiner les quinze paniers fantomes avant d'atteindre le vrai calage.
+
+**Resultats observes.** Fixture adversariale : vote `[199950 216300 233625]`, affinage
+`n = 15, 2, 2`, `bestDeathOffset` rend `off=200000 n=15 second=2` — le calage EXACT, marge x7,5,
+alarme eteinte. Le test de documentation est RETOURNE en test de mutation et renomme
+`TestUnAmasPlusGrosQueLeVraiCalageNEmportePasLeBudget` : il exige le vrai calage, teste
+`voteDeathOffsets` SEUL (sans quoi une defense en profondeur de l'appelant masquerait la mutation
+du vote), verifie que `warnIfCalageEtroit` se TAIT. Mutation jouee (`min(n, parFin[g][b])` ->
+`n`) : rouge sur la garde du composant ET sur l'assertion de bout en bout (`le calage retenu
+apparie 2 morts (calage 216350), attendu 15`), vert apres restauration. **Baseline INCHANGEE** :
+verifie sur pieces, le test renomme n'est pas dans `.ai/baselines/tests_pre_migration.jsonl`
+(datee du 2026-06-26 ; le test date du 2026-09-07).
+
+**Un effet du ratchet lint, corrige a la source.** La premiere passe du gate a sorti `unparam`
+sur `voteDeathOffsets` (« `k` always receives `deathOffsetCandidats` (3) »). Attribution
+VERIFIEE, pas supposee : le meme `golangci-lint run --new-from-merge-base=origin/main` joue dans
+un worktree detache sur `feat/v2-restes-r6` rend 0 issues — la fonction n'existe pas sur
+`origin/main` et la reecriture de son corps la sort du gel du ratchet. Corrige plutot que
+masque : les quatre appelants passaient tous `deathOffsetCandidats`, le parametre est retire et
+la constante lue en local (comportement identique, un levier mort en moins).
+
+**AUCUN GOLDEN NE BOUGE, DONC AUCUN BUMP.** `go test ./internal/analysis/replay/ -run Golden
+-update` puis `git diff --exit-code -- internal/analysis/replay/testdata/` : EXIT=0.
+`SchemaVersion` reste **48**, aucune entree ajoutee a `document_chronicle.go`, le 49 reste
+disponible pour le premier lot qui changera reellement le contenu cuit (P2). C'est le resultat
+attendu : la ou le vote localisait deja le vrai calage, `min(morts, fins)` vaut le compte des
+morts, et tout le contenu cuit est identique au bit pres.
+
+**Gates (codes de sortie reels, worktree M3).** `gofmt -l ./internal/ ./cmd/` liste vide ;
+`go build ./...` EXIT=0 ; `go vet ./internal/analysis/replay/... ./internal/replaybuild/...`
+EXIT=0 ; `go test -count=1 ./internal/analysis/replay/... ./internal/replaybuild/...
+./internal/service/replayview/...` EXIT=0 (cliquet de parite inclus, 0,505 s) ;
+`golangci-lint run --new-from-merge-base=origin/main` sur les deux paquets : 0 issues, EXIT=0.
+Jamais de `go test ./...` global ; aucun `t.Skip`, aucun test desactive, aucune allowlist
+elargie.
+
+**Conclusion / prochaine etape.** Entree D3 du registre FERMEE. Ce worktree ne porte AUCUN film :
+`make replay-corpus-gate` (mode base) et les temoins chiffres `d9781168` (157:15) et `51ebbc0f`
+(71:8) — attendus IDENTIQUES hors numero, marges inchangees — restent a jouer par le SUPERVISEUR
+sur le poste principal ; les commandes exactes et les valeurs attendues sont au §6 du journal du
+lot, et elles n'ont PAS ete simulees. Trois decouvertes consignees sans etre traitees (§3 du plan
+v2) : `lives.go` etait deja a 509 L et passe a 538 L (dette accrue, non creee — rattachee a
+l'entree de registre ouverte par R0) ; le cout du vote double sans avoir pu etre mesure sur un
+film reel ; le registre citait un chemin de test perime, corrige en fermant l'entree.
 
 ## [2026-09-07] Orchestration — vague 1, lot Q6 = R0 du plan restes (dette mecanique rejeu) — Complete
 

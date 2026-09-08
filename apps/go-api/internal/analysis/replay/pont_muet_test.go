@@ -342,7 +342,7 @@ func TestLeVoteNeDesignePasLAmasEnPREMIER(t *testing.T) {
 			const origine = 5_000_000
 			lives, deaths := pontFixtureAmas(origine, 30_000, cas.morts, cas.kFins, cas.mMorts, 400_040)
 
-			candidats := voteDeathOffsets(lifeEndsMS(lives), deaths, deathOffsetCandidats)
+			candidats := voteDeathOffsets(lifeEndsMS(lives), deaths)
 
 			if len(candidats) == 0 {
 				t.Fatalf("le vote ne désigne aucun candidat")
