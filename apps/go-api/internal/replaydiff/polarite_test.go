@@ -44,6 +44,23 @@ func TestComparer_CompteursDEchecLusAlEnvers(t *testing.T) {
 	}
 }
 
+// Une voie de nommage (`coverage.bridge.namedBy*`) qui cede a une autre n'est ni un gain ni une
+// perte : un CHANGEMENT. Mutation : retirer le cas `estCompteurDeMethode` dans `ajouter` -> rouge.
+func TestComparer_VoiesDeNommageSontDesChangements(t *testing.T) {
+	num := func(v float64) Mesure { return Mesure{EstNum: true, Num: v} }
+	k := cle("couverture", "coverage.bridge.namedByNextLife")
+	rap := Comparer(Empreinte{Mesures: map[string]Mesure{k: num(13)}}, Empreinte{Mesures: map[string]Mesure{k: num(8)}})
+	if len(rap.Differences) != 1 || rap.Differences[0].Sens != SensChangement {
+		t.Fatalf("namedByNextLife 13 -> 8 doit etre un changement, obtenu %+v", rap.Differences)
+	}
+	if bil := rap.Bilans["couverture"]; bil.Changements != 1 || bil.Pertes != 0 || bil.Gains != 0 {
+		t.Fatalf("bilan : %+v", bil)
+	}
+	if !estCompteurDEchec(cle("couverture", "coverage.flagCarries.noTrack")) {
+		t.Fatal("noTrack est un compteur d'echec")
+	}
+}
+
 func TestEstCompteurDEchec_HorsCouvertureJamais(t *testing.T) {
 	if estCompteurDEchec(cle("objectifs", "unpublished")) {
 		t.Fatal("hors du chemin coverage., aucune inversion")
