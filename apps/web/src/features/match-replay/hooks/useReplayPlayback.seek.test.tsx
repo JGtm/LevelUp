@@ -55,24 +55,30 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function monter(frame: number) {
+function monter(frame: number, extra: { playWindow?: ReplayWindowBounds | null; openAtFrame?: number | null } = {}) {
   const frameRef = createRef<number>() as RefObject<number>
   frameRef.current = frame
   const draw = vi.fn()
   const soundTick = vi.fn()
-  const view = renderHook(() =>
-    useReplayPlayback({
-      doc: DOC,
-      playWindow: FENETRE,
-      baseFps: 10,
-      speed: 1,
-      renderWidth: 480,
-      frameRef,
-      draw,
-      soundTick,
-      onEnded: vi.fn(),
-      onTransportGesture: vi.fn(),
-    }),
+  // Défaut par DÉSTRUCTURATION, pas `??` : un `playWindow: null` explicite (« pas de fenêtre »)
+  // ne doit PAS retomber sur FENETRE — seul `undefined` (absence de la clé) le doit.
+  const { playWindow = FENETRE, openAtFrame } = extra
+  const view = renderHook(
+    (props: { playWindow: ReplayWindowBounds | null; openAtFrame?: number | null }) =>
+      useReplayPlayback({
+        doc: DOC,
+        playWindow: props.playWindow,
+        baseFps: 10,
+        speed: 1,
+        renderWidth: 480,
+        frameRef,
+        draw,
+        soundTick,
+        openAtFrame: props.openAtFrame,
+        onEnded: vi.fn(),
+        onTransportGesture: vi.fn(),
+      }),
+    { initialProps: { playWindow, openAtFrame } },
   )
   return { ...view, frameRef, draw, soundTick }
 }
@@ -132,5 +138,44 @@ describe('useReplayPlayback — `seekToFrame`, le saut vers un instant nommé', 
       result.current.stepFrames(1)
     })
     expect(result.current.playing).toBe(false)
+  })
+})
+
+// ─── openAtFrame — le lien tactique (`?t=&clock=`, lot M1b, 2026-09-08) ────────────────────
+
+describe('useReplayPlayback — `openAtFrame`, le lien tactique ouvert à une frame précise', () => {
+  it('pose le curseur à la frame demandée au montage, via le MÊME `seekTo` (peint, fait battre le son)', () => {
+    const { frameRef, draw, soundTick } = monter(0, { openAtFrame: 25 })
+    // `seekTo` ne borne QUE par la fenêtre de gameplay — [leadInFrame=9, endFrame=40] ici.
+    expect(frameRef.current).toBe(25)
+    expect(draw).toHaveBeenCalled()
+    expect(soundTick).toHaveBeenCalled()
+  })
+
+  it('`openAtFrame` absent (null/undefined) : comportement d’avant ce lot, cadrage au préambule', () => {
+    const { frameRef } = monter(0, { openAtFrame: null })
+    expect(frameRef.current).toBe(FENETRE.leadInFrame)
+  })
+
+  it('ne se répète jamais : un `openAtFrame` appliqué ne reprend pas la main sur une frise déplacée depuis', () => {
+    const { result, frameRef, rerender } = monter(0, { openAtFrame: 12 })
+    expect(frameRef.current).toBe(12)
+    act(() => {
+      result.current.seekToFrame(30) // l'utilisateur déplace la frise depuis.
+    })
+    expect(frameRef.current).toBe(30)
+    // Un rendu qui repropose LA MÊME valeur ne doit rien reposer.
+    rerender({ playWindow: FENETRE, openAtFrame: 12 })
+    expect(frameRef.current).toBe(30)
+  })
+
+  it('GAGNE SUR LE CADRAGE AU COUP D’ENVOI même si la fenêtre de gameplay arrive APRÈS (Match View asynchrone)', () => {
+    // Sans fenêtre au montage (comportement « avant ce lot » : image zéro) puis la fenêtre
+    // arrive — le cadrage au préambule ne doit PAS écraser le lien déjà posé, même à une
+    // frame antérieure au préambule (2 < leadInFrame=9).
+    const { frameRef, rerender } = monter(0, { playWindow: null, openAtFrame: 2 })
+    expect(frameRef.current).toBe(2)
+    rerender({ playWindow: FENETRE, openAtFrame: 2 })
+    expect(frameRef.current).toBe(2)
   })
 })

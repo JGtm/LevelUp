@@ -1,14 +1,15 @@
 /**
- * TacticalCellCard — la carte « Cellule sélectionnée » (item 5.6, complétée par le lot M1
- * — lien « voir dans le rejeu »).
+ * TacticalCellCard — la carte « Cellule sélectionnée » (item 5.6, posée par le lot M1
+ * — lien « voir dans le rejeu » ; horloge EXACTE, lot M1b du 2026-09-08).
  *
  * Ce que ces tests cadenassent :
  *   - aucune cellule sélectionnée -> le placeholder, aucune section de contributions ;
  *   - chargement des contributions -> le message d'attente, pas de liste ;
  *   - contributions vides -> le message vide, jamais le placeholder de la cellule (la
  *     valeur agrégée reste affichée) ;
- *   - NOMINAL -> chaque contribution est un lien `?frame=` construit par `instantToFrame`,
- *     vers la route du rejeu du bon match ;
+ *   - NOMINAL -> chaque contribution est un lien `?t=<instant_ms>&clock=<clock>` (JAMAIS
+ *     une frame pré-calculée ici — la route convertit, cf. TacticalCellCard.tsx) vers la
+ *     route du rejeu du bon match, avec LE CLOCK DE LA CONTRIBUTION (pas une valeur fixe) ;
  *   - `matchsNonOuvrables` -> le pied de liste seulement quand il est strictement positif
  *     (0 => rien, jamais un zéro qui suggérerait une absence de restriction).
  *
@@ -27,9 +28,21 @@ import { TacticalCellCard } from './TacticalCellCard'
 
 vi.mock('@tanstack/react-router', () => ({
   useRouter: () => ({
-    buildLocation: ({ params }: { params: { titleSlug: string; playerSlug: string; matchId: string } }) => ({
-      href: `/${params.titleSlug}/players/${params.playerSlug}/matches/${params.matchId}/replay`,
-    }),
+    buildLocation: ({
+      params,
+      search,
+    }: {
+      params: { titleSlug: string; playerSlug: string; matchId: string }
+      search?: Record<string, unknown>
+    }) => {
+      const base = `/${params.titleSlug}/players/${params.playerSlug}/matches/${params.matchId}/replay`
+      const qs = search
+        ? Object.entries(search)
+            .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
+            .join('&')
+        : ''
+      return { href: qs ? `${base}?${qs}` : base }
+    },
   }),
 }))
 
@@ -55,6 +68,7 @@ function contribution(overrides: Partial<TacticalContribution> = {}): TacticalCo
   return {
     match_id: 'm1',
     instant_ms: 4200,
+    clock: 'match',
     xuid: '2533274000000001',
     match_started_at: '2026-09-01T12:00:00Z',
     ...overrides,
@@ -102,13 +116,25 @@ describe('TacticalCellCard — contributions vides', () => {
 })
 
 describe('TacticalCellCard — NOMINAL : liste de contributions avec lien de rejeu', () => {
-  it('construit un lien `?frame=` vers la route du rejeu du match', () => {
-    renderCard({ contributions: [contribution({ match_id: 'm1', instant_ms: 4200 })] })
+  it('construit un lien `?t=&clock=` (horloge MATCH) vers la route du rejeu du match', () => {
+    renderCard({
+      contributions: [contribution({ match_id: 'm1', instant_ms: 4200, clock: 'match' })],
+    })
     const lien = screen.getByTestId('tactical-cell-contribution-link')
-    // 4200 ms / 100 ms (pas par défaut) = frame 42.
     expect(lien).toHaveAttribute(
       'href',
-      '/halo_infinite/players/JGtm/matches/m1/replay?frame=42',
+      '/halo_infinite/players/JGtm/matches/m1/replay?t=4200&clock=match',
+    )
+  })
+
+  it('construit un lien `?t=&clock=` (horloge FILM) pour une contribution `temps`/`routes`', () => {
+    renderCard({
+      contributions: [contribution({ match_id: 'm1', instant_ms: 4200, clock: 'film' })],
+    })
+    const lien = screen.getByTestId('tactical-cell-contribution-link')
+    expect(lien).toHaveAttribute(
+      'href',
+      '/halo_infinite/players/JGtm/matches/m1/replay?t=4200&clock=film',
     )
   })
 
@@ -121,8 +147,8 @@ describe('TacticalCellCard — NOMINAL : liste de contributions avec lien de rej
     })
     const liens = screen.getAllByTestId('tactical-cell-contribution-link')
     expect(liens).toHaveLength(2)
-    expect(liens[0]).toHaveAttribute('href', expect.stringContaining('/matches/tard/replay?frame=20'))
-    expect(liens[1]).toHaveAttribute('href', expect.stringContaining('/matches/tot/replay?frame=5'))
+    expect(liens[0]).toHaveAttribute('href', expect.stringContaining('/matches/tard/replay?t=2000&clock=match'))
+    expect(liens[1]).toHaveAttribute('href', expect.stringContaining('/matches/tot/replay?t=500&clock=match'))
   })
 })
 

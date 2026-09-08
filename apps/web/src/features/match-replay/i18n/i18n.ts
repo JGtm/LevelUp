@@ -23,6 +23,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     restart: 'Recommencer',
     loading: 'Chargement du rejeu…',
     empty: 'Aucun rejeu 2D disponible pour ce match.',
+    openAtUncalibratedTitle: 'Instant non calé sur cet artefact',
+    openAtUncalibratedDescription:
+      'Le lien demandait un instant précis, mais ce rejeu n’a pas encore le calage nécessaire pour l’atteindre exactement. Recuisson nécessaire — le rejeu s’ouvre au début.',
     speed: 'Vitesse',
     time: 'Temps de match',
     skipBackFmt: (seconds) => `Reculer de ${seconds} s`,
@@ -445,6 +448,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     restart: 'Restart',
     loading: 'Loading replay…',
     empty: 'No 2D replay available for this match.',
+    openAtUncalibratedTitle: 'Instant not calibrated on this artifact',
+    openAtUncalibratedDescription:
+      'The link asked for a precise instant, but this replay doesn’t yet have the calibration needed to reach it exactly. Recook needed — the replay opens from the start.',
     speed: 'Speed',
     time: 'Match time',
     skipBackFmt: (seconds) => `Back ${seconds} s`,
