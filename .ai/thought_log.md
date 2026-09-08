@@ -101050,3 +101050,10 @@ soit compris : le garde-fou a refuse le `git checkout --` dans ce depot partage.
   M1b (decalage match -> film du lien cellule, bump 49 + recuisson) — decision utilisateur.
 - Restes consignes : portees/experiences de l'Explorer (contrat VALUE FR avec ~80 fichiers web, lot
   dedie), `labels.go` armes (repli seede vivant), tier CSR persiste en clair (migration de donnees).
+
+## [2026-09-08] Orchestration — films temoins recuperes, gate corpus du calage COMPLET (Complete)
+- `levelup archive-films --match …` (option de ciblage ajoutee, commit `7bc70bc2b` sur l'integration) :
+  8 films sauves (239 chunks) en 1 min 04 avec les tokens de JGtm, 0 expire.
+- `replay-corpus-gate --base feat/v2-restes-r6` sur les 7 temoins du manifeste : 0 perte, 1 gain
+  (`bf15f7ab` Slayer), 48/48 partout, dont `d9781168` et `51ebbc0f`. Le budget du calage (M3)
+  est prouve sur le parc.
