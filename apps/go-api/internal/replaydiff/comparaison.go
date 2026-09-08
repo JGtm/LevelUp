@@ -101,6 +101,10 @@ func (r *Rapport) ajouter(k string, a, b *Mesure) {
 		return
 	}
 	d.Axe, d.Metrique = axe, metrique
+	if estCompteurDEchec(k) {
+		// Un compteur d'echec se lit a l'envers (polarite.go) : sa baisse est le gain cherche.
+		d.Sens = inverserSens(d.Sens)
+	}
 	r.Differences = append(r.Differences, d)
 	bil := r.Bilans[axe]
 	bil.Axe = axe
