@@ -964,8 +964,18 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE : un artefact < 48 porte des pistes non nommées, et sur ces
 	//   cinq films un calque d'objectifs et une courbe de score non recalés faute d'origine.
 	//   Détail : .ai/V7.5/v2/PONT_MUET_2026-09-07.md.
-	if SchemaVersion != 48 {
-		t.Fatalf("SchemaVersion = %d, attendu 48 : incrémenter exige une raison écrite ci-dessus "+
+	// v48 -> v49 (2026-09-08, lot M1b, décision utilisateur ferme « corriger le décalage ») :
+	//   bridge.deathOffsetMs, LE CALAGE lui-même (`horlogeFilm = horlogeMatch + deathOffsetMs`),
+	//   déjà calculé à la cuisson (v48 ne publiait que sa MARGE). Champ optionnel, pointeur —
+	//   la RÈGLE de tête aurait dû dire « pas de bump ». Elle monte quand même, EXPRÈS : c'est
+	//   la clé de reprise du backfill, exactement comme v2->v3 et v3->v4 ci-dessus — sans elle
+	//   un artefact ancien répondrait « calage inconnu » indéfiniment, faute de recuisson
+	//   déclenchée. Le lien « voir dans le rejeu » posé depuis une cellule Tactique (lot M1)
+	//   ouvrait une APPROXIMATION pour 4 questions sur 6 (`morts`/`kills`/`gagne`/`isole`, sur
+	//   l'horloge du MATCH) faute de ce calage publié — cf.
+	//   `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`. Détail : `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
+	if SchemaVersion != 49 {
+		t.Fatalf("SchemaVersion = %d, attendu 49 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
