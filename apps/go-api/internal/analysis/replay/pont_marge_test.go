@@ -5,9 +5,11 @@ package replay
 // Sorti de `pont_muet_test.go` apres la ronde PONT-R2 : ce fichier-la franchissait les 500
 // lignes du depot. Le decoupage suit la frontiere du sujet — `pont_muet_test.go` porte le
 // CALAGE et le ROSTER (ce que le lot repare), celui-ci porte la SURVEILLANCE du calage : la
-// marge publiee, son alarme, la fusion des paniers voisins dont depend son exactitude, et la
-// limite connue du filet. Les fixtures communes (`pontVie`, `pontFixture`) restent chez le
-// premier ; meme paquet, aucun duplicata.
+// marge publiee, son alarme, la fusion des paniers voisins dont depend son exactitude, et le
+// dedoublonnage par fin de vie qui empeche un amas de morts de voler le budget de candidats
+// (lot R7, 2026-09-07 : la « limite connue du filet » de PONT-R2/D3 est FERMEE, et son test de
+// documentation retourne en test de mutation). Les fixtures communes (`pontVie`,
+// `pontFixture`) restent chez le premier ; meme paquet, aucun duplicata.
 
 import (
 	"bytes"
@@ -139,7 +141,7 @@ func TestDeuxPaniersDuMemePlateauNeComptentQuUneFois(t *testing.T) {
 
 	// Le vote rend bien DEUX candidats bruts distants de plus d'une largeur de panier : sans
 	// cela la fixture ne prouverait rien.
-	candidats := voteDeathOffsets(lifeEndsMS(lives), deaths, deathOffsetCandidats)
+	candidats := voteDeathOffsets(lifeEndsMS(lives), deaths)
 	if len(candidats) < 2 || absI64(candidats[0]-candidats[1]) <= deathMatchWindowMS {
 		t.Fatalf("candidats %v : la fixture n'expose plus deux paniers distincts", candidats)
 	}
@@ -159,6 +161,10 @@ func TestDeuxPaniersDuMemePlateauNeComptentQuUneFois(t *testing.T) {
 // pontFixtureAmasPlusGrosQueLeVrai est la fixture ADVERSARIALE de PONT-R2/D3 : un vrai calage
 // propre de quinze paires 1:1, et un amas de VINGT morts distinctes — plus que le vrai calage
 // n'en apparie — groupées dans un seul panier mais ne disposant que de cinq fins de vie.
+//
+// L'amas ne triche pas seulement par son propre panier (20 morts pour 5 fins) : chacune de ses
+// vingt morts vise AUSSI chaque fin de vie isolée du vrai calage, et y dépose vingt voix pour
+// une seule paire réalisable. Ce sont ces « paniers fantômes » qui remplissaient le budget.
 func pontFixtureAmasPlusGrosQueLeVrai() ([]lifeSpan, []Death) {
 	var lives []lifeSpan
 	var deaths []Death
@@ -178,40 +184,66 @@ func pontFixtureAmasPlusGrosQueLeVrai() ([]lifeSpan, []Death) {
 	return lives, deaths
 }
 
-// TestUnAmasPlusGrosQueLeVraiCalageALARMEAuLieuDeSeTaire — TEST DE DOCUMENTATION du report
-// PONT-R2/D3. Il ne décrit pas un comportement souhaitable : il FIGE le fait que la limite
-// connue du filet ne se franchit pas en silence.
+// TestUnAmasPlusGrosQueLeVraiCalageNEmportePasLeBudget — LE TEST DE MUTATION du dédoublonnage
+// PAR FIN DE VIE (constat PONT-R2/D3, fermé par le lot R7 le 2026-09-07).
 //
-// LA LIMITE. Le dédoublonnage par mort (correctif de PONT-R1/C1) a un effet de bord : un amas
-// de M morts distinctes groupées dépose M voix dans un panier DIFFÉRENT pour CHACUNE des fins
-// séparées du vrai calage. Dès que M dépasse le nombre de morts du vrai calage et que celui-ci
-// a au moins `deathOffsetCandidats` fins séparées, ces « paniers fantômes » remplissent à eux
-// seuls le budget de candidats : ni le vrai calage ni celui de l'amas n'est jamais examiné.
+// Ce test EXIGEAIT jadis le défaut : sous le nom `…ALARMEAuLieuDeSeTaire`, il figeait le fait
+// que le calage rendu était faux (2 appariements pour 15 réels) mais que l'alarme de marge le
+// disait. Le correctif retourne l'exigence : le VRAI calage doit être rendu.
 //
-// POURQUOI CE N'EST PAS CORRIGÉ ICI. La précondition est extrême — il faut un amas de morts
-// DISTINCTES plus nombreux que la totalité des morts appariables du film, quand un multi-kill
-// réel plafonne à trois ou quatre. Non mesurée sur les 106 films du parc. Le report et sa
-// condition de reprise sont au registre (`.ai/V7.5/REGISTRE_REPORTS.md`).
+// CE QUI ÉTAIT FAUX. Le vote comptait les MORTS appariables ; l'affinage, lui, apparie 1:1
+// (chaque fin de vie sert une seule fois). Les vingt morts de l'amas visaient donc chaque fin
+// de vie isolée du vrai calage et y déposaient vingt voix pour UNE paire réalisable : ces
+// paniers fantômes remplissaient le budget de `deathOffsetCandidats` et ni le vrai calage ni
+// celui de l'amas n'était jamais affiné.
 //
-// CE QUE CE TEST GARANTIT : dans ce cas, le calage retenu n'atteint pas le vrai (15) ET
-// l'alarme de marge SE DÉCLENCHE. Si un correctif futur fait mieux, ce test rougit — et c'est
-// exactement ce qu'on attend de lui.
-func TestUnAmasPlusGrosQueLeVraiCalageALARMEAuLieuDeSeTaire(t *testing.T) {
+// ROUGE SI la voix d'un panier redevient le seul compte des morts (`min(n, parFin[g][b])`
+// neutralisé dans `voteDeathOffsets`) : le vote rend alors `[216300 233625 -190050]`, aucun de
+// ces trois n'apparie plus de 2 morts, et le calage servi est faux.
+//
+// LE COMPOSANT EST TESTÉ SEUL (méthode §1 du plan v2) : `voteDeathOffsets` doit LOCALISER le
+// vrai calage, avant même que `bestDeathOffset` ne l'affine — sans quoi une défense en
+// profondeur de l'appelant masquerait la mutation du vote.
+func TestUnAmasPlusGrosQueLeVraiCalageNEmportePasLeBudget(t *testing.T) {
 	lives, deaths := pontFixtureAmasPlusGrosQueLeVrai()
+	ends := lifeEndsMS(lives)
 	const vraiCalage = 200_000
 
-	// Le vrai calage EXISTE : un balayage exhaustif le trouverait. C'est la LOCALISATION en
-	// trois candidats qui échoue, pas l'affinage.
-	if reel := countDeathMatches(lifeEndsMS(lives), deaths, vraiCalage); reel != 15 {
+	// L'ORACLE est le balayage exhaustif : au vrai calage, quinze morts s'apparient. La fixture
+	// n'a aucune ambiguïté sur la bonne réponse.
+	if reel := countDeathMatches(ends, deaths, vraiCalage); reel != 15 {
 		t.Fatalf("le vrai calage apparie %d morts, attendu 15 : la fixture a dérivé", reel)
 	}
 
-	_, n, second := bestDeathOffset(lives, deaths)
-
-	if n >= 15 {
-		t.Fatalf("le calage retenu apparie %d : la limite de PONT-R2/D3 est franchie — "+
-			"retirer ce test de documentation et fermer le report au registre", n)
+	// LE VOTE SEUL : le vrai calage doit être dans le budget, à moins d'une demi-largeur de
+	// panier de sa valeur exacte.
+	candidats := voteDeathOffsets(ends, deaths)
+	localise := false
+	for _, c := range candidats {
+		if absI64(c-vraiCalage) <= deathMatchWindowMS {
+			localise = true
+		}
 	}
+	if !localise {
+		t.Fatalf("candidats %v : le vrai calage %d n'est pas localisé — l'amas de 20 morts "+
+			"distinctes remplit encore le budget de %d paniers avec des voix qu'aucun "+
+			"appariement 1:1 ne peut honorer", candidats, vraiCalage, deathOffsetCandidats)
+	}
+
+	off, n, second := bestDeathOffset(lives, deaths)
+
+	if n != 15 {
+		t.Fatalf("le calage retenu apparie %d morts (calage %d), attendu 15 : le vote a de "+
+			"nouveau perdu le vrai calage contre l'amas", n, off)
+	}
+	if off != vraiCalage {
+		t.Fatalf("calage retenu %d, attendu %d : le bon compte est atteint sur un plateau qui "+
+			"n'est pas le bon", off, vraiCalage)
+	}
+
+	// ET L'ALARME SE TAIT : la marge redevient franche (15 contre 2), donc le calage n'est plus
+	// « trop peu distinct ». C'est le pendant de l'ancienne exigence — l'alarme criait parce
+	// que le résultat était faux.
 	prev := slog.Default()
 	var buf bytes.Buffer
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
@@ -219,8 +251,7 @@ func TestUnAmasPlusGrosQueLeVraiCalageALARMEAuLieuDeSeTaire(t *testing.T) {
 
 	BridgeHealth{DeathOffsetMatched: n, DeathOffsetRunnerUp: second}.warnIfCalageEtroit()
 
-	if !strings.Contains(buf.String(), "calage du fil des morts trop peu distinct") {
-		t.Fatalf("calage %d contre %d : la limite est franchie EN SILENCE — c'est le seul "+
-			"point qui rendrait ce report bloquant. Journal : %q", n, second, buf.String())
+	if strings.Contains(buf.String(), "calage du fil des morts trop peu distinct") {
+		t.Fatalf("marge %d:%d — alarme sur un calage désormais franc : %q", n, second, buf.String())
 	}
 }

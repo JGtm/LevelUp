@@ -223,7 +223,7 @@ func bestDeathOffset(lives []lifeSpan, deaths []Death) (int64, int, int) {
 	}
 	var meilleurOff int64
 	meilleurN, secondN := -1, 0
-	for _, panier := range voteDeathOffsets(ends, deaths, deathOffsetCandidats) {
+	for _, panier := range voteDeathOffsets(ends, deaths) {
 		off, n := refineDeathOffset(ends, deaths, panier)
 		// Deux paniers voisins peuvent affiner vers le MÊME plateau : le compter comme
 		// « deuxième candidat » ferait croire à une marge nulle là où il n'y a qu'un calage.
@@ -262,36 +262,41 @@ func bestDeathOffset(lives []lifeSpan, deaths []Death) (int64, int, int) {
 // bruit — 96 voix pour 24 fins et 4 morts, de quoi passer devant le vrai calage. Dédoublonnées
 // par mort, elles n'en pèsent plus que `m`.
 //
-// DEUX GRILLES DÉCALÉES D'UNE DEMI-LARGEUR, et il les faut : un calage qui tombe sur une
-// frontière de panier verrait ses voix coupées en deux, et une grille unique le manquerait au
-// profit d'un panier plus dense ailleurs. La seconde grille le rend entier.
-func voteDeathOffsets(ends []int64, deaths []Death, k int) []int64 {
+// ET AUTANT PAR FIN DE VIE, ce qui ferme le constat PONT-R2/D3. Dédoublonner d'un seul côté
+// laissait le vote compter une grandeur que l'affinage ne mesure PAS : le vote comptait les
+// morts appariables, quand [countDeathMatches] apparie 1:1 (chaque fin de vie sert une seule
+// fois). Un amas de `M` morts distinctes vise donc CHAQUE fin de vie isolée du film et y dépose
+// `M` voix pour UNE SEULE paire réalisable — 20 voix pour 1 appariement, mesuré sur la fixture
+// adversariale de `pont_marge_test.go`, assez pour remplir le budget de [deathOffsetCandidats]
+// et faire rendre 2 appariements là où le vrai calage en apparie 15.
+//
+// La voix d'un panier est donc `min(morts distinctes, fins de vie distinctes)` : c'est la borne
+// de Hall/König de l'appariement 1:1 maximal du panier, donc un MAJORANT EXACT de ce que
+// l'affinage y mesurera. Le vote et l'affinage comptent enfin la même grandeur, et aucun seuil
+// n'est introduit.
+//
+// LE BUDGET N'EST PLUS UN PARAMÈTRE : les quatre appelants passaient tous
+// [deathOffsetCandidats], et un levier que personne ne bouge est du code mort déguisé en
+// souplesse (`unparam` le signalait, lot R7).
+func voteDeathOffsets(ends []int64, deaths []Death) []int64 {
+	const k = deathOffsetCandidats
 	const w = deathMatchWindowMS
-	grids := [2]map[int64]int{{}, {}}
-	vus := [2]map[int64]bool{{}, {}}
-	for _, d := range deaths {
-		clear(vus[0])
-		clear(vus[1])
-		for _, e := range ends {
-			diff := e - d.TimeMS
-			for g, b := range [2]int64{floorDivI64(diff, w), floorDivI64(diff+w/2, w)} {
-				if !vus[g][b] {
-					vus[g][b] = true
-					grids[g][b]++
-				}
-			}
-		}
+	instantsMorts := make([]int64, len(deaths))
+	for i, d := range deaths {
+		instantsMorts[i] = d.TimeMS
 	}
+	parMort := paniersParPivot(instantsMorts, ends, false) // pivot = les morts
+	parFin := paniersParPivot(ends, instantsMorts, true)   // pivot = les fins de vie
 	type panier struct {
 		centre int64
 		voix   int
 	}
 	var tous []panier
-	for g := range grids {
+	for g := range parMort {
 		shift := int64(g) * (w / 2)
-		for b, n := range grids[g] {
+		for b, n := range parMort[g] {
 			// Le centre du panier, ramené sur l'axe des écarts.
-			tous = append(tous, panier{centre: b*w + w/2 - shift, voix: n})
+			tous = append(tous, panier{centre: b*w + w/2 - shift, voix: min(n, parFin[g][b])})
 		}
 	}
 	// L'ordre d'itération d'une map n'est pas garanti : à égalité de voix, le plus petit centre
@@ -320,6 +325,35 @@ func voteDeathOffsets(ends []int64, deaths []Death, k int) []int64 {
 		}
 	}
 	return out
+}
+
+// paniersParPivot compte, pour chacun des paniers des DEUX grilles décalées d'une demi-largeur,
+// le nombre de PIVOTS DISTINCTS qui y déposent au moins un écart. Le pivot est le côté
+// dédoublonné : une fin de vie qui vise dix morts d'un même panier n'y pèse qu'une voix.
+//
+// L'écart d'un couple est toujours `fin de vie − instant de mort` ; `pivotEstFin` dit de quel
+// côté vient le pivot, pour que les deux passes indexent LE MÊME panier.
+func paniersParPivot(pivots, autres []int64, pivotEstFin bool) [2]map[int64]int {
+	const w = deathMatchWindowMS
+	grids := [2]map[int64]int{{}, {}}
+	vus := [2]map[int64]bool{{}, {}}
+	for _, p := range pivots {
+		clear(vus[0])
+		clear(vus[1])
+		for _, a := range autres {
+			diff := a - p
+			if pivotEstFin {
+				diff = p - a
+			}
+			for g, b := range [2]int64{floorDivI64(diff, w), floorDivI64(diff+w/2, w)} {
+				if !vus[g][b] {
+					vus[g][b] = true
+					grids[g][b]++
+				}
+			}
+		}
+	}
+	return grids
 }
 
 // refineDeathOffset garde la règle historique — pas de [deathOffsetStepMS], plateau centré —
