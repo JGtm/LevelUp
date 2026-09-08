@@ -4870,6 +4870,8 @@ export interface components {
             /** Format: int64 */
             deathOffsetMatched: number;
             /** Format: int64 */
+            deathOffsetMs?: number;
+            /** Format: int64 */
             deathOffsetRunnerUp: number;
             /** Format: int64 */
             fromReading: number;
@@ -11757,6 +11759,7 @@ export interface components {
             matchs_non_ouvrables: number;
         };
         TacticalContribution: {
+            clock: string;
             /** Format: int64 */
             instant_ms: number;
             match_id: string;
