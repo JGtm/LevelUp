@@ -24,18 +24,32 @@ import "strings"
 const prefixeCouverture = "coverage."
 
 // compteursDEchec : dernier segment de cle -> compteur d'echec (une baisse est un gain).
-// Ajouts dates : 2026-09-08 (lot P2).
+// Ajouts dates : 2026-09-08 (lot P2) ; `noTrack` le 2026-09-08 (P2-bis, `flagCarries.noTrack`).
 var compteursDEchec = map[string]bool{
 	"unpublished":           true,
 	"unnamedLives":          true,
 	"unnamedLivesContested": true,
 	"noSlot":                true,
+	"noTrack":               true,
 	"outOfWindow":           true,
 	"ambiguous":             true,
 	"closedRefused":         true,
 	"closedContested":       true,
 	"indexDisagreements":    true,
 	"slotCollisions":        true,
+}
+
+// prefixeMethode : les compteurs `coverage.bridge.namedBy*` disent PAR QUELLE VOIE une vie a ete
+// nommee (fil des morts, vie voisine, fermeture, exclusion...). Ils se deplacent entre eux quand
+// une voie plus sure prend le pas sur une voie de repli (P2-bis, 2026-09-08 : `namedByNextLife`
+// 13 -> 8 sur `d9781168` parce que l'exclusion temporelle nomme d'abord) : ni gain ni perte, un
+// CHANGEMENT. La richesse, elle, se lit sur `livesNamed` / `unnamedLives`.
+const prefixeMethode = "coverage.bridge.namedBy"
+
+// estCompteurDeMethode dit si la mesure `k` est un compteur de voie de nommage.
+func estCompteurDeMethode(k string) bool {
+	_, chemin := decouper(k)
+	return strings.HasPrefix(chemin, prefixeMethode)
 }
 
 // estCompteurDEchec dit si la mesure `k` (cle d'empreinte `axe/chemin`, ex.
