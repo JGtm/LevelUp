@@ -1,3 +1,45 @@
+## [2026-09-08] Lot M1 — lien « voir dans le rejeu » depuis une cellule (Tactique S.1) — Complete
+
+**Decision technique principale.** Reprise d'un exécutant précédent coupé par une limite de
+quota, sur `feat/tactique-lien-rejeu` (base `feat/v75` @ `6a1496e30`), worktree
+`LevelUp-wt-m1-cellule`. État hérité vérifié sur pièces (diff complet lu avant tout code) :
+S.1.1 (contrat `POST /players/{player_slug}/tactical/{map_id}/cellule`, domaine
+`tactical_cellule.go`, port `MatchsOuvrables`, repo `tactical_repo_ownership.go`, service
+`tactical_service_cellule.go`) et S.1.2 (web `TacticalCellCard`, `useTacticalCellule`, clé
+de query title-scopée, wiring `TacticalAnalysisView`) étaient DÉJÀ posés et cohérents avec
+le brief — bonne architecture, bonne doc, ownership ADR 0029 correctement défensif (filtre
+après lecture, jamais de confiance dans le scope filtrant déjà par construction). Manquant
+identifié dans S.1.3 : les tests Go (service/handler/repo) étaient complets, mais AUCUN
+test web sur la logique pure (`instantToFrame`) ni sur le rendu de `TacticalCellCard`
+(lien `?frame=`, footer conditionnel) — complété dans cette passe plutôt que déclaré fait
+par erreur. Découverte du décalage d'horloge match/film pour 4 des 6 questions
+(documentée dans le code depuis la première passe mais jamais réellement consignée au
+registre) : ajoutée à `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`, non traitée (hors périmètre
+M1, condition de reprise notée).
+
+**Résultats observés.** Ajouts de cette passe : 8 tests `instantToFrame` dans
+`tacticalView.logic.test.ts` (pas par défaut, pas explicite, arrondi, bornes 0/négatif) ;
+nouveau fichier `TacticalCellCard.test.tsx` (8 tests : placeholder, chargement, vide, lien
+`?frame=` construit par contribution, ordre des liens, footer 0 vs >0). Gates rejoués au
+complet : `gofmt -l` vide ; `go build ./internal/...` propre ; `go vet` des paquets touchés
+propre ; `go test -count=1 ./internal/service/... ./internal/api/... ./internal/platform/duckdb/... ./internal/domain/...`
+vert ; `go test ./internal/platform/duckdb/ -run 'NoRaw|Mesuree'` vert ; `archlint` +
+`internal/sync` (no_slug_comparison, no_art_patterns) verts ; `go run ./cmd/openapi-gen -check`
+à jour ; `make generate-types` sans dérive (diff stable à 92 lignes avant/après régénération) ;
+`golangci-lint run --new-from-merge-base=origin/main ./...` 0 issue ; web `npm run typecheck`
+propre ; `npm run lint` 0 erreur (29 warnings préexistants, hors périmètre tactical) ;
+`npx vitest run --pool=forks` 657/658 fichiers verts, 7006/7023 tests verts (skips
+préexistants) ; `lint:colors` et `lint:fields` propres. Aucun test supprimé ni renommé :
+`.ai/baselines/tests_pre_migration.jsonl` inchangé.
+
+**Conclusion / prochaine étape.** S.1.1, S.1.2, S.1.3 cochés `[x]` avec preuve dans
+`.ai/PLAN_TACTIQUE_SUITE_2026-09-07.md` ; M1 coché dans
+`.ai/PLAN_ORCHESTRATION_2026-09-07.md` (vague 2). Reste ouvert, hors périmètre M1 : le
+décalage d'horloge match/film qui rend `?frame=` approximatif pour 4 questions sur 6
+(reprise possible : publier `DeathOffsetMS` par match dans le contrat). Commits par
+chemins explicites (Go+contrat / web / journal) puis `git push -u origin
+feat/tactique-lien-rejeu`, sans fusion (décision de l'utilisateur).
+
 ## [2026-09-07] Orchestration — ouverture de la vague 3, lot P1 (inventaire du registre d'identite) — Complete
 
 **Decision technique principale.** Vague 3 du plan `.ai/PLAN_ORCHESTRATION_2026-09-07.md` ouverte a

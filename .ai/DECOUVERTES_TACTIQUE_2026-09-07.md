@@ -144,3 +144,19 @@ ce fichier prend le relais a partir de 7C et recoit toute nouvelle decouverte.
   import du fichier disparu) : il reste vert et pertinent, seul le commentaire est perime.
   NON TRAITE (renommage/reecriture du commentaire hors perimetre Q7 — fix cosmetique sans
   gate a risque). Reprise : prochain lot qui touche ce fichier, ou toilettage documentaire.
+
+## Lot M1 — lien « voir dans le rejeu » depuis une cellule (branche `feat/tactique-lien-rejeu`)
+
+- 2026-09-07/08 ; `apps/go-api/internal/domain/tactical_cellule.go` (doc de
+  `TacticalContribution.InstantMs`) + `apps/web/src/features/tactical/tacticalView.logic.ts`
+  (doc de `instantToFrame`) ; pour les questions `morts`/`kills`/`gagne`/`isole`,
+  `instant_ms` est sur l'horloge du MATCH (`match_kill_events.time_ms` /
+  `match_death_context.time_ms`), DISTINCTE de l'horloge du FILM que consomme `?frame=`
+  (`analysis/replay/lives_export.go` etablit `horlogeFilm = horlogeMatch + DeathOffsetMS`,
+  decalage PAR MATCH mesure de 3,6 a 50,8 s, non publie dans le contrat). Seules `temps` et
+  `routes` (instant tire du sidecar de raster, deja en horloge film) donnent une frame
+  EXACTE. Decision du lot (assumee, pas un defaut a corriger dans ce lot) : le lien est
+  construit pour LES SIX questions plutot que d'en priver quatre sur six, avec cette reserve
+  documentee. Condition de reprise : publier `DeathOffsetMS` par match dans le contrat (ou
+  une frame deja convertie cote Go) pour que `morts`/`kills`/`gagne`/`isole` ouvrent le rejeu
+  a l'instant exact.
