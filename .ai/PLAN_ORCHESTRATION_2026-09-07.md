@@ -281,6 +281,13 @@ débits de lecture et les décomptes de liens viennent du balayage du lot, non r
   `.ai/V7.5/film_re/SONDAGE_E2_BIPEDE_INDEX_2026-09-08.md`. Préalable : trancher le cas des bots
   (index lu 8 hors table sur `c75f33b8`) — doctrine : index hors table = `non_resolu` + compteur,
   jamais inventé ; instruction dans le lot d intégration. Lot suivant : **P-décodeur E2 (I1-I5)**.
+- **D14 (2026-09-08, utilisateur)** : PAS DE REPLI par les morts pour les vies sans record de création lu.
+  Le pont par morts devient vérification seule ; les 5-13 % restants sont INSTRUITS vie par vie et
+  classés par cause : (a) vie découpée par un trou de réplication → lien PROPAGÉ par (slot, génération)
+  (même record, source directe) ; (b) record présent mais non lu → améliorer le lecteur ; (c) bot / index
+  hors table → `non_resolu` ; (d) record réellement absent (prouvé) → `non_resolu` compté, classe qui
+  doit rester petite. Objectif : `bipedSlot.direct` ≥ 95 %, `non_resolu` entièrement ventilé, 0 vie
+  nommée par le pont. Exécutant relancé avec ce brief (I0 bots déjà tranché : espace d index partagé).
 
 ## 5. Décisions qui appartiennent à l'utilisateur (avec recommandation ; à trancher avant le lot concerné)
 
