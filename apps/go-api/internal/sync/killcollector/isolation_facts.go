@@ -121,7 +121,24 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // un changement de la regle de visibilite ou de l'ordre des etats doit faire redecoder les faits
 // d'isolement SANS forcer un redecodage du journal des morts, qui n'a pas bouge. Meme espace de
 // valeurs, meme colonne `decoder_rev`, unites de fraicheur differentes.
-const IsolationDecoderRev = "isolement-2026-09-07"
+//
+// # POURQUOI ELLE BOUGE LE 2026-09-08 (lot P2, registre d'identite)
+//
+// Le collecteur ne construit plus son pont par [replay.ResolveSlotXUID] mais par
+// [replay.BuildIdentityRegistry], la MEME fonction pure que la cuisson — et il lui passe le
+// ROSTER DE LA FEUILLE (`ids.XUIDs`), qu'il ne lui passait pas. Cela ouvre l'identite par
+// ELIMINATION : un joueur qui ne meurt JAMAIS de tout le match, dont aucune vie ne portait de
+// nom, est desormais nomme quand il ne reste qu'une affectation possible (`d9781168` : 19 vies
+// sans nom sur un seul slot). Les lignes de `match_lives` et de `match_death_context` changent
+// donc de CONTENU — pas de forme.
+//
+// CE QUE LE BUMP DECLENCHE : `matchsAJour` (cmd_backfill_killsource_selection.go) exige que
+// `match_lives_latest` porte la revision COURANTE ; tous les matchs qui ont des positions ET des
+// equipes sortent de cette selection, sont re-decodes, et ecrivent une NOUVELLE PASSE dans les
+// deux tables (append-only, ADR 0026 — les vues `_latest` basculent d'un bloc). Le journal des
+// morts, lui, n'est PAS reecrit : [KillSourceDecoderRev] ne bouge pas, et c'est tout l'objet des
+// deux revisions separees. Commande : `levelup backfill-killsource`.
+const IsolationDecoderRev = "isolement-2026-09-08-registre"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
 //
