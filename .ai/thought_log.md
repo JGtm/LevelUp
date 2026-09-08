@@ -101031,3 +101031,22 @@ soit compris : le garde-fou a refuse le `git checkout --` dans ce depot partage.
   sans `availableTitles` apres `9af8aea41`, commit parallele).
 - Vague 2 en vol : M1 (lien cellule -> rejeu), M3 (budget du calage, Opus), M5 L2+L5
   (accueil, rangs) ; M2 et M6 livres non fusionnes ; M4 apres M3.
+
+## [2026-09-07] Orchestration — gate corpus du lot M3 (budget du calage) joue sur le poste principal
+- `replay-corpus-gate --base feat/v2-restes-r6 --parc-root LevelUp-go-migration` : 2 temoins sur 7
+  presents dans le parc (`fb1a1a72` CTF multi-manche : 48/48, 0 gain, 0 perte ; `bf15f7ab` Slayer :
+  48/48, 1 gain, 0 perte) ; 5 temoins ABSENTS du parc local (`bcb6d393`, `d9781168`, `c75f33b8`,
+  `51ebbc0f`, `084a804d` : ni manifeste ni chunks) — le gate sort en couverture incomplete, pas en
+  perte. Les temoins chiffres du lot (`d9781168` 157:15, `51ebbc0f` 71:8) ne sont donc PAS
+  verifiables ici tant que ces films ne sont pas re-telecharges. Decision utilisateur demandee.
+
+## [2026-09-08] Orchestration — vague 2 : six lots livres, deux decisions en attente (En cours)
+- Livres NON fusionnes : M2 `feat/v2-restes-r6`, M6 `feat/raster-document-unique`, M3
+  `feat/v2-restes-r7`, M1 `feat/tactique-lien-rejeu`, M5 L2+L5 `feat/libelles-accueil-rangs`,
+  L3 `feat/libelles-modes-playlists`, L4 `feat/libelles-armes` (empiles : v75 <- L2+L5 <- L3 <- L4 ;
+  v75 <- R0(fusionne) <- R6 <- R7). Deux executants coupes par le quota (M1, L3) repris par des
+  executants frais sur le WIP non commite — sans perte.
+- Bloque : M4 (diagnostics) et les chiffres temoins de M3 — 8 films temoins absents du parc local ;
+  M1b (decalage match -> film du lien cellule, bump 49 + recuisson) — decision utilisateur.
+- Restes consignes : portees/experiences de l'Explorer (contrat VALUE FR avec ~80 fichiers web, lot
+  dedie), `labels.go` armes (repli seede vivant), tier CSR persiste en clair (migration de donnees).
