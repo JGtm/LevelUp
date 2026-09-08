@@ -185,6 +185,17 @@ test `:memory:` dédié à `QTacticalIsolement` (entre dans Q8 si la revue le ju
   `real_start_time` après P2 ; séquençage P2-P5 §3 repris tel quel. P2 lancé le 2026-09-08 (Opus,
   `feat/v2-p2-registre-joueurs`, worktree `LevelUp-wt-p2`, commits fréquents) — go utilisateur
   « ok go pour la vague 3 ».
+- **P2 [x] 2026-09-08** (`feat/v2-p2-registre-joueurs`, 6 commits Opus + polarité du gate `632bd20c8` + P2-bis
+  `1496b386c`..`fd07570bc`, poussée, NON fusionnée) : registre pur `BuildIdentityRegistry` (liens directs
+  d abord, pont par morts en repli et vérification, élimination sur le roster, exclusion temporelle),
+  section `identity` publiée (schéma 50), 18 lecteurs du rejeu + collecteur migrés, garde-rail à
+  allowlist datée. MESURÉ par le superviseur (base 49 / HEAD 50, 10 témoins) : 0 perte de calque ;
+  `3372e7eb` unpublished 35 → 0 ; écart K/D/A `51ebbc0f` 9 → 0, `d9781168` 10 → 0 ; `unnamedLives`
+  `d9781168` 19 → 15, `51ebbc0f` 8 → 3, `64e8adfa` 11 → 7, `bf15f7ab` 1 → 0 ; portage du crâne inchangé ;
+  tirs rattachés +187/+149/+147. Résidu 13 pistes expliqué (grappes de fin de manche, attend le lien
+  décodeur E2). Deux compteurs d échec MONTENT honnêtement (`slotCollisions` 0 → 1, `unnamedLivesContested`
+  0 → 2 : collision jusque-là servie en silence) — à accepter au gate corpus (registre). `filmIndex`
+  8/8 direct partout ; `bipedSlot.direct` 0 partout (E2).
   R1, R2, R3 ne s'exécutent pas séparément.
 - **S.3** (Tactique) : après P1 selon son verdict, avec le calage prescrit par P1.
 - **L6, L7, L8** (narratif, erreurs API, Discord) : après décisions §5.
