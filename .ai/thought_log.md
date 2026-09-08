@@ -101747,3 +101747,20 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
   qu'une collision auparavant masquee est maintenant dite — le gate (polarite corrigee) les lira en
   perte ; a accepter explicitement (registre), pas a masquer.
 - Sondage decodeur E2 lance (Opus, diagnostic seul, 3 hypotheses, 3 films) selon D12/D13.
+
+## [2026-09-08] Orchestration — gate corpus apres P2-bis : chaque « perte » instruite (Complete)
+- `coverage.bridge.namedByNextLife` en baisse partout : voie de nommage qui cede a l'exclusion
+  temporelle — compteur de METHODE, ni gain ni perte. Comparateur corrige (`namedBy*` = changement ;
+  `flagCarries.noTrack` ajoute aux compteurs d'echec), commit `2654e5e04` sur la branche P2.
+- `slotCollisions` 0 -> 1 (`fb1a1a72` slot 622, `d9781168` slot 637), `unnamedLivesContested` 0 -> 2 :
+  echecs qui MONTENT parce qu'ils sont enfin dits (le pont aplati servait la collision au premier
+  occupant en silence). ACCEPTES, pas masques.
+- `tracks/par-xuid` 18 -> 17 (`fb1a1a72`, …403277) et 21 -> 19 (`d9781168`, …553276) : pistes
+  REATTRIBUEES (147 et 174 pistes totales inchangees ; `sans xuid` 3 -> 2 et 19 -> 15) — la collision
+  corrigee rend a l'autre occupant ou marque « contestee ». Rien de jete.
+- `flagCarries duree-totale …613055` 500 -> 400 (`64e8adfa`) : le portage [6645..6853] devient
+  [6645..6753] + [6754..6853] par …763167 — la feuille date un `flag_grabs` de …763167 a t=6755 et
+  …613055 meurt a 6712 : la base prolongeait un portage FANTOME apres la mort du porteur. Prise
+  datee = perte legitime (plan v2 §1), et une correction.
+- Reste pour P5 : un mecanisme d'ACCEPTATION datee dans le manifeste du corpus (`[[temoin.accepte]]`
+  metrique / avant / apres / raison) pour que « 0 perte » garde son sens sans masquer les compteurs.
