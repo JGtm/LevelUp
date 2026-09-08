@@ -101693,3 +101693,39 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
 - Vague 3 (paradigme P) : un inventaire P1 est deja sur `feat/v75` (`77200cb7a`, autre session) ;
   a relire contre les axes (i) lecteurs hors rejeu et (j) registre pur avant P2. Non demarree
   sans accord utilisateur.
+
+## [2026-09-08] Orchestration — P2 livre, gate corpus, polarite des compteurs d'echec (En cours)
+- P2 (`feat/v2-p2-registre-joueurs`, 6 commits Opus) : gate corpus contre `feat/v75` sur les
+  7 temoins du manifeste = 0 perte, gains 7 (`d9781168`) et 6 (`51ebbc0f`).
+- Manifeste ETENDU (scratchpad : + `3372e7eb`, `64e8adfa`, `c0a82e88`) : 3 « pertes » qui sont les
+  gains attendus (`objectives.unpublished` 35 -> 0, `bridge.unnamedLives` 1 -> 0, `shots.noSlot`
+  35 -> 15) — le comparateur `replaydiff` lisait toute baisse comme une perte, y compris les
+  compteurs d'ECHEC (plan v2 §1 : « compteur d'echec qui baisse = gain »). Correctif sur la
+  branche P2 : `internal/replaydiff/polarite.go` (liste fermee et datee des compteurs d'echec,
+  inversion du sens, `deathOffsetRunnerUp` exclu — nombre de voix), tests ; commits `50a9e01f8`
+  (predicat sur la mauvaise forme de cle — son test le disait, commite par erreur avant
+  lecture du resultat) puis `632bd20c8` (cle `axe/chemin`, vert).
+- Prochaine etape : rejouer le gate etendu avec artefacts conserves, lire les compteurs de
+  couverture sur `3372e7eb` (unpublished 35 -> 0 attendu), `d9781168` (unnamedLives 19 -> 0),
+  `51ebbc0f` (ecart K/D/A 9 -> 0), puis P3.
+
+## [2026-09-08] Orchestration — P2 mesure sur pieces (En cours)
+- Gate corpus etendu (10 temoins, polarite corrigee) : 0 perte ; gains 28 (`3372e7eb`), 21
+  (`c0a82e88`), 7 (`d9781168`), 6 (`51ebbc0f`).
+- Compteurs lus dans les artefacts base (49) / HEAD (50) : `3372e7eb` objectives.unpublished
+  35 -> 0 (attached 76/76) ; `c0a82e88` unnamedLives 1 -> 0, shots.noSlot 35 -> 15, objectives.noSlot
+  69 inchange ; ecart K/D/A (somme des manches, scoreTimeline vs feuille) : `51ebbc0f` 9 -> 0,
+  `d9781168` 10 -> 0, `64e8adfa` 16 -> 16 (5 statborg non resolus, attendu), `3372e7eb` 0, `fb1a1a72` 0.
+- NON TENU : `d9781168` bridge.unnamedLives 19 -> 19 (identity.coverage bipedSlot : 142 deduits,
+  34 non resolus, 0 par elimination). R2 reste ouvert -> P2-bis (instruction vie par vie) avant P3.
+- Registre : filmIndex 8/8 direct sur tous les temoins ; bipedSlot 0 direct (trou E2, attendu) ;
+  statborgSlot 16/16 deduits sur `51ebbc0f`, 11 deduits + 5 non resolus sur `64e8adfa`.
+
+## [2026-09-08] Orchestration — decision : gel du decodeur maintenu, lien corps <-> index consigne
+- Question utilisateur : « on n'est plus cense passer par les morts, il y a plus propre avec l'index ».
+  Reponse sur pieces : P a generalise l'index partout ou le film le porte ; le corps (ti=35) n'a pas
+  de champ d'identite dans le decodeur actuel — le repli par morts ne sert plus qu'a ce lien.
+- Decision : gel du decodeur MAINTENU (budget quota) ; entree de registre ouverte avec l'hypothese
+  utilisateur (entite bipede porteuse de l'index, trajectoires/inventaire enfants) et la piste
+  `NOTE_PROJECTILE_OWNER_2026-09-01.md:70` (espace de handles dom1 commun aux bipedes) ; critere de
+  succes = `identity.coverage.bipedSlot.direct`. Reprise au plan decodeur post-v7.5.0.
