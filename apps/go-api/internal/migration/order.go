@@ -55,11 +55,19 @@ var canonicalOrder = []string{
 	"drop_playlists_catalog_secondary_indexes",              // metadata
 	"create_milestone_catalog_metadata",                     // metadata
 	"create_prestige_metadata_schema",                       // metadata
-	"purge_weapons_name_fr_column",                          // metadata (V721-05.1 : rebuild CTAS-swap, doit suivre add_weapon_registry — cf. order_dependency_test.go)
-	"rebuild_catalog_fetch_queue_drop_art_indexes",          // metadata
-	"seed_ranked_playlists_catalog",                         // metadata
-	"challenge_template_add_source_column",                  // metadata
-	"add_template_tagging_columns",                          // metadata
+	// purge_weapon_families_labels_columns (plan libellés en dur, lot M5 L4, 2026-09-08) :
+	// rebuild CTAS-swap, doit suivre add_weapon_registry (créateur de weapon_families) —
+	// cf. order_dependency_test.go. Placée ici (juste avant sa cousine name_fr) pour
+	// reproduire l'ordre d'enregistrement naturel (tri par nom de fichier :
+	// steps_metadata_purge_weapon_families_labels.go précède
+	// steps_metadata_purge_weapons_name_fr.go) — TestSortByCanonicalIsNoOpOnCurrentRegistry
+	// l'exige.
+	"purge_weapon_families_labels_columns",         // metadata
+	"purge_weapons_name_fr_column",                 // metadata (V721-05.1 : rebuild CTAS-swap, doit suivre add_weapon_registry — cf. order_dependency_test.go)
+	"rebuild_catalog_fetch_queue_drop_art_indexes", // metadata
+	"seed_ranked_playlists_catalog",                // metadata
+	"challenge_template_add_source_column",         // metadata
+	"add_template_tagging_columns",                 // metadata
 	// Baseline squashée v1 (chantier N4, plan PLAN_MIGRATION_SQUASH_BASELINE_2026-07) :
 	// remplace les 33 steps title-owned contigus create_base_player_schema..
 	// player_append_only_csr_snapshots_v1 (bornes M3a). Cf. steps_player_baseline.go.

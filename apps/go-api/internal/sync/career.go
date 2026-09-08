@@ -266,11 +266,11 @@ func AugmentWithActiveRankedCSRs(
 		}
 		switch locale {
 		case "fr":
-			res.PlaylistName = pl.NameFR
+			res.PlaylistName = pl.NameFR()
 		case "":
 			// skip : garder le PlaylistName renvoyé par l'API.
 		default:
-			res.PlaylistName = pl.NameEN
+			res.PlaylistName = pl.NameEN()
 		}
 		res.Queue = pl.Queue
 		res.Input = pl.Input

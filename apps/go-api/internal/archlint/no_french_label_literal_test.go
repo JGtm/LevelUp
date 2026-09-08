@@ -71,6 +71,15 @@ var accentedLiteralRE = regexp.MustCompile(`[éèêàùçÉÈÊÀÙÇ]`)
 
 // frenchLabelAllowlist : compte du jour (2026-09-07, mesuré par ce test), par fichier
 // relatif à `internal/`. TOTAL au jour de la mesure : 132 fichiers, 538 littéraux (après retrait Q4 de 3 fichiers tombés à zéro).
+// Mise à jour 2026-09-07 (lot M5, L5) : compare_service.go 3 → 2 (csrUnrankedLabel migré
+// vers la clé canonique "unranked", D5) — 132 fichiers, 537 littéraux.
+// Mise à jour 2026-09-08 (lot M5, L3) : rankedplaylists.go 15 → 0, retiré de la liste
+// (NameEN/NameFR lisent désormais ranked_playlists_labels.toml) — 131 fichiers, 522
+// littéraux.
+// Mise à jour 2026-09-08 (lot M5, L4) : games/weapons/registry.go 22 → 0, retiré de la
+// liste (weaponRegistryFamilies ne porte plus de libellé EN/FR, colonnes purgées de
+// weapon_families — champ mort, cf. commentaire ci-dessous) — 130 fichiers, 500
+// littéraux.
 // Familles connues (cf. plan libellés §2) annotées ; le reste (essentiel : messages
 // d'erreur des handlers, famille F/D6) attend la décision utilisateur D6 avant tri fin.
 var frenchLabelAllowlist = map[string]int{
@@ -89,17 +98,48 @@ var frenchLabelAllowlist = map[string]int{
 	"service/synthesis_service_builders.go":        1,
 	"service/synthesis_service_legacy.go":          5,
 
-	// L3 — modes / playlists / catégories (cible : assets.toml).
-	"analysis/playlist_label.go":                             2,
-	"games/halo_infinite/rankedplaylists/rankedplaylists.go": 15,
-	"service/match_history_service.go":                       2,
+	// L3 — modes / playlists / catégories (cible : assets.toml). rankedplaylists.go
+	// retiré le 2026-09-08 (lot M5 L3, branche feat/libelles-modes-playlists) :
+	// NameEN/NameFR sont devenues des méthodes lisant ranked_playlists_labels.toml
+	// (embarqué, mêmes loader/validation que assets.toml — cf. commentaire du TOML
+	// pour la justification de l'emplacement et sa condition de reprise) : 15 → 0.
+	// match_history_service.go (expTypePVPRanked/expTypePVPUnranked) NON traité :
+	// la VALUE canonique FR est un CONTRAT testé avec la cascade de filtres du web
+	// (GH5-2, ~80 fichiers `apps/web/src` matchent dessus, ex.
+	// features/_shared/experienceCascade.ts, commentaire « NE PAS traduire ces
+	// chaînes ici ») — le LABEL, lui, est déjà localisé FR/EN (expTypeLabelEN).
+	// Migrer la VALUE vers une clé neutre exige un lot dédié coordonné back+front
+	// (cf. .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §11, découverte M5 L3).
+	"analysis/playlist_label.go":       2,
+	"service/match_history_service.go": 2,
 
-	// L4 — armes (cible : mappings/fields.toml ou assets.toml).
-	"games/weapons/labels.go":   12,
-	"games/weapons/registry.go": 22,
+	// L4 — armes. registry.go retiré le 2026-09-08 (lot M5 L4, branche
+	// feat/libelles-armes) : les 22 littéraux étaient les libellés EN/FR de
+	// `weaponRegistryFamilies` (table weapon_families) — vérifié sur pièces (grep Go +
+	// web) qu'AUCUN lecteur ne sélectionne jamais name_en/name_fr depuis cette table
+	// (le sunburst « Frags par arme », apps/web/src/lib/i18n/manifests/frags.toml, ne
+	// localise que les niveaux classe/rôle, jamais le niveau famille ; le nom PAR ARME
+	// est une source distincte et déjà correcte, weapon_name_labels/weapon_names.toml,
+	// V72-06). Champ mort plutôt qu'à migrer (règle dépôt « 0 code mort ») : colonnes
+	// purgées par la migration purge_weapon_families_labels_columns (rebuild CTAS-swap,
+	// calqué sur purge_weapons_name_fr_column/V721-05.1 — DuckDB refuse ALTER ... DROP
+	// COLUMN sous PK) : 22 → 0.
+	// labels.go (table weapon_labels) NON traité — DONNÉES seedées (même statut que
+	// cmd/seed-weapon-labels, hors périmètre du plan sauf preuve de convergence) : LIVE,
+	// lu par platform/duckdb/weapon_resolver.go comme repli de nom pour les sentinelles
+	// (grenade/mêlée/véhicule) et les ids sans weapon_key — migrer ce repli vers un TOML
+	// dupliquerait weapon_names.toml (déjà la SOURCE UNIQUE depuis V72-06) sans rien
+	// résoudre. Cf. .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §13 (découverte M5 L4).
+	"games/weapons/labels.go": 12,
 
-	// L5 — rangs / CSR (cible existante : mappings/ranks.go).
-	"service/compare_service.go": 3,
+	// L5 — rangs / CSR. mappings/ranks.go (RankCatalog) est le rang de CARRIÈRE,
+	// PAS le tier CSR (découverte lot M5, 2026-09-07 : la carte du plan datait —
+	// doctrine RE-VÉRIFIER). csrUnrankedLabel = "Non classé" (D5) migré vers la
+	// clé canonique "unranked" (lib/skillTiers.ts::localizeTierLabel côté web) :
+	// 3 → 2 littéraux. Les 2 restants sont des messages `logBestEffortErr` (family
+	// F, hors périmètre L5 — le wrapper n'est pas reconnu par l'exclusion slog.*/
+	// fmt.Errorf de ce garde-rail).
+	"service/compare_service.go": 2,
 
 	// L8 — notifications Discord (D8 tranché : langue du compte propriétaire).
 	"notify/discord.go": 34,

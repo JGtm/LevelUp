@@ -572,7 +572,7 @@ func iso8601Seconds(s string) float64 {
 // plName mappe un Playlist.AssetId vers son nom catalogue (sinon id court).
 func plName(assetID string) string {
 	if pl, ok := rankedplaylists.Lookup(assetID); ok {
-		return pl.NameEN
+		return pl.NameEN()
 	}
 	if assetID == "" {
 		return "(inconnu)"
