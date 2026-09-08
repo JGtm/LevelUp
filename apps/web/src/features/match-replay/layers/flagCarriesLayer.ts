@@ -145,6 +145,25 @@ const FLAG_WING_H = 6.5 * FLAG_GLYPH_SCALE
 /** Décalage du glyphe par rapport au point qu'il qualifie (au-dessus et à droite du marqueur). */
 const FLAG_OFFSET_X = 6
 const FLAG_OFFSET_Y = 2
+
+/**
+ * glyphIsOffset — QUELS ÉTATS ÉCARTENT LE GLYPHE DE SA POSITION (2026-09-08).
+ *
+ * `carried` SEUL, et la raison est dans le nom même du décalage : il existe pour ne pas
+ * recouvrir le pion du porteur. Les trois autres états — `carried_open` (porté mais fin non
+ * datée), `dropped`, `home` — désignent un LIEU, pas un joueur, et un lieu doit être dit à sa
+ * position exacte : c'est là que se pose l'anneau de la zone de retour, le marqueur de livraison
+ * et le socle, tous ancrés sur la position brute.
+ *
+ * `carried_open` prend la règle du lieu et non celle du portage : son incertitude porte sur la
+ * FIN du portage, pas sur la position, et le fanion creux la dit déjà.
+ */
+// `string` et non `FlagState`, comme `flagBlinkAlpha` juste à côté : l'état publié par le
+// document est une chaîne libre, et un état inconnu doit se comporter comme un LIEU (pas de
+// décalage) plutôt que faire échouer le typage sur une donnée qu'on ne maîtrise pas.
+export function glyphIsOffset(state: string): boolean {
+  return state === 'carried'
+}
 const FLAG_STROKE_WIDTH = 1.6
 /**
  * LISERÉ À L'ENCRE DU FOND — débord de chaque côté du trait, en pixels d'écran.
@@ -267,7 +286,8 @@ export function drawFlagCarries(
     // LA BASE D'ABORD, et seulement quand le drapeau n'y est pas : c'est le fond de la lecture,
     // le glyphe vivant se pose par-dessus (ils coïncident quand l'état est `home`).
     if (anchor && now.state !== 'home') {
-      drawFlagGlyph(ctx, px(anchor), { ink, outline, alpha: ALPHA_FAINT, hollow: true })
+      // LA BASE N'EST JAMAIS DÉCALÉE : c'est un lieu fixe, aucun pion ne s'y tient.
+      drawFlagGlyph(ctx, px(anchor), { ink, outline, alpha: ALPHA_FAINT, hollow: true, offset: false })
     }
     const at = px(flagPointAt(now, frame, layer.posOf))
     drawFlagGlyph(ctx, at, {
@@ -275,6 +295,7 @@ export function drawFlagCarries(
       outline,
       alpha: flagBlinkAlpha(now.state, frame, layer.style.reducedMotion),
       hollow: now.state === 'carried_open',
+      offset: glyphIsOffset(now.state),
     })
   }
   ctx.globalAlpha = 1
@@ -288,6 +309,21 @@ export interface FlagGlyphPaint {
   alpha: number
   /** Fanion CREUX (liseré seul) : l'état est incertain, ou la base est vide. */
   hollow: boolean
+  /**
+   * LE GLYPHE S'ÉCARTE-T-IL DU POINT QU'IL QUALIFIE ? (2026-09-08)
+   *
+   * Vrai pour le seul état `carried`, et c'est exactement ce que `FLAG_OFFSET_X/Y` dit de
+   * lui-même : « au-dessus et à droite DU MARQUEUR ». Le décalage a été conçu pour ne pas
+   * recouvrir le pion du PORTEUR — il n'a de sens que là où ce pion existe.
+   *
+   * FAUX AILLEURS, ET C'EST UNE CORRECTION (retour utilisateur : « pourquoi le cercle n'a pas le
+   * pied du drapeau comme centre ? », puis « même sur le point de livraison c'est pareil »). Un
+   * drapeau au sol, à sa base ou sur son point de livraison n'a aucun marqueur à éviter : le
+   * décalage y faisait simplement MENTIR la position. Toutes les décorations d'objectif posées
+   * au même endroit — anneau de zone de retour, marqueur de livraison, marqueur d'apparition —
+   * ancrent sur la position brute ; le glyphe était le SEUL objet décalé du calque.
+   */
+  offset: boolean
 }
 
 /** Chemin de la HAMPE — tracé deux fois par glyphe (liseré puis trait), jamais recopié. */
@@ -381,8 +417,8 @@ export function drawFlagGlyph(
   at: XY,
   paint: FlagGlyphPaint,
 ): void {
-  const x = at.x + FLAG_OFFSET_X
-  const foot = at.y - FLAG_OFFSET_Y
+  const x = at.x + (paint.offset ? FLAG_OFFSET_X : 0)
+  const foot = at.y - (paint.offset ? FLAG_OFFSET_Y : 0)
   const top = foot - FLAG_POLE_H
   ctx.globalAlpha = paint.alpha
   // La pointe du fanion est un angle aigu : en `miter` le liseré y pousserait une aiguille
@@ -440,8 +476,12 @@ export function flagAt(
     if (!now) continue
     const w = flagPointAt(now, frame, layer.posOf)
     const c = projectTo(view, w)
-    const cx = c.x + FLAG_OFFSET_X
-    const cy = c.y - FLAG_OFFSET_Y - FLAG_POLE_H / 2
+    // MÊME RÈGLE DE DÉCALAGE QUE LE TRACÉ (2026-09-08) : elle dépend désormais de l'ÉTAT. La
+    // recopier sans la condition rendrait la cible de survol à 6 px du glyphe sur trois états
+    // sur quatre — et un écart de cible ne se voit pas, il se subit.
+    const decale = glyphIsOffset(now.state)
+    const cx = c.x + (decale ? FLAG_OFFSET_X : 0)
+    const cy = c.y - (decale ? FLAG_OFFSET_Y : 0) - FLAG_POLE_H / 2
     const d = (cx - at.x) * (cx - at.x) + (cy - at.y) * (cy - at.y)
     if (d <= bestD) {
       bestD = d
