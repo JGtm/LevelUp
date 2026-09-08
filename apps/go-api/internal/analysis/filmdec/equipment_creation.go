@@ -370,6 +370,21 @@ func matchEquipmentNewHeader(pay []byte, p int, band map[uint32]bool) (slot, gen
 func matchWorldObjectNewHeader(
 	pay []byte, p int, band map[uint32]bool, ti uint32,
 ) (slot, gen uint32, ok bool) {
+	return matchWorldObjectNewHeaderIn(pay, p, func(s uint32) bool { return band[s] }, ti)
+}
+
+// matchWorldObjectNewHeaderIn est la MÊME reconnaissance, la bande passée en PRÉDICAT.
+//
+// POURQUOI CETTE FORME EXISTE (lot E2, 2026-09-08). Le balayage des créations de BIPÈDE
+// (biped_creation.go) tient sa bande en [SlotBand] DENSE — un tableau indexé, parce qu'il
+// interroge la bande une fois par bit candidat du payload, soit des dizaines de millions de fois
+// par film (cf. slot_band_dense.go). Convertir cette bande en `map[uint32]bool` pour appeler la
+// forme ci-dessus annulerait exactement le gain que le type dense existe pour obtenir. Le
+// prédicat est donc le point de passage COMMUN, et il n'y a toujours qu'UNE reconnaissance
+// d'en-tête NEW dans le paquet — pas une seconde copie qui divergerait au premier correctif.
+func matchWorldObjectNewHeaderIn(
+	pay []byte, p int, dansLaBande func(uint32) bool, ti uint32,
+) (slot, gen uint32, ok bool) {
 	if PeekBits(pay, p, 1) != 0 { // un record DELTA ouvre sur 1
 		return 0, 0, false
 	}
@@ -380,7 +395,7 @@ func matchWorldObjectNewHeader(
 		return 0, 0, false
 	}
 	slot = uint32(PeekBits(pay, p+woNewTypeBits, woNewSlotBits))
-	if !band[slot] {
+	if !dansLaBande(slot) {
 		return 0, 0, false
 	}
 	return slot, uint32(PeekBits(pay, p+woNewTypeBits+woNewSlotBits, woNewGenBits)), true
