@@ -233,14 +233,43 @@ func (r IdentityRegistry) VieDeduite(i int) bool { return r.deducedLives[i] }
 // lecture et laquelle une deduction. Le faire ailleurs demanderait de republier `deducedLives`,
 // et une seconde lecture de la meme table est exactement ce que ce fichier existe pour empecher.
 func (r IdentityRegistry) TracesDeduites(tracks []Track, origin, step uint64) map[int]bool {
-	out := map[int]bool{}
 	if len(r.deducedLives) == 0 {
-		return out
+		return map[int]bool{}
 	}
+	return r.tracesDontLaVie(tracks, origin, step, func(li int, _ lifeSpan) bool {
+		return r.deducedLives[li]
+	})
+}
+
+// TracesCloturesParMort rend les INDICES des pistes dont la vie se termine par une MORT LUE
+// (`CauseVieMort`) — la seule fin que le fil des morts date.
+//
+// POURQUOI ELLE EXISTE (correctif E2-bis). Les lecteurs de durée qui recousent un silence de
+// réplication (`equipment_episodes.spanFor`) doivent s'arrêter à une mort et à elle seule : un
+// état actif qui enjambe une mort est une mesure FAUSSE, un état coupé à un simple trou est une
+// mesure incomplète. Ils lisaient cette frontière dans « la vie porte un nom », proxy exact tant
+// que le fil des morts était la SEULE voie de nommage — `nameLivesByDeaths` posait le xuid de la
+// victime sur la vie que sa mort achève. Depuis le lot E2, le FILM nomme les vies à leur
+// CRÉATION : toutes portent un nom, et le proxy déclare une mort à chaque trou de réplication.
+// Mesure : `084a804d` slot 620, camo `[3105..3672]` retombé à `[3105..3120]` — 552 frames sur un
+// épisode que rien n'interrompt. La cause de fin est DANS le registre : c'est lui qui la sert.
+func (r IdentityRegistry) TracesCloturesParMort(tracks []Track, origin, step uint64) map[int]bool {
+	return r.tracesDontLaVie(tracks, origin, step, func(_ int, l lifeSpan) bool {
+		return l.cause == CauseVieMort
+	})
+}
+
+// tracesDontLaVie apparie chaque piste à une vie du MÊME slot qui la recouvre et retient les
+// pistes dont cette vie satisfait le prédicat. Le corps commun de [IdentityRegistry.TracesDeduites]
+// et [IdentityRegistry.TracesCloturesParMort] : deux appariements identiques à vingt lignes d'écart
+// divergeraient.
+func (r IdentityRegistry) tracesDontLaVie(tracks []Track, origin, step uint64,
+	garde func(int, lifeSpan) bool) map[int]bool {
+	out := map[int]bool{}
 	for i := range tracks {
 		from, to := trackSpanUS(tracks[i], origin, step)
 		for li, l := range r.own.lives {
-			if !r.deducedLives[li] || l.slot != tracks[i].Slot {
+			if l.slot != tracks[i].Slot || !garde(li, l) {
 				continue
 			}
 			if minI64(to, l.to) >= maxI64(from, l.from) {
