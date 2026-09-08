@@ -1,6 +1,9 @@
 package replaydiff
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // Une mesure par joueur dont la SOMME sur tous les joueurs est conservee a change de main, pas
 // de valeur : reattribution = changement, ni gain ni perte. Une somme qui baisse reste une perte.
@@ -17,11 +20,15 @@ func TestComparer_ReattributionASommeConservee(t *testing.T) {
 		t.Fatalf("attendu 2 ecarts, obtenu %+v", rap.Differences)
 	}
 	for _, d := range rap.Differences {
-		if d.Sens != SensChangement {
-			t.Errorf("%s/%s : sens %q, attendu changement (somme 15 = 15)", d.Axe, d.Metrique, d.Sens)
+		attendu := SensGain // le joueur 222 gagne : un gain reste un gain
+		if strings.HasSuffix(d.Metrique, "/111") {
+			attendu = SensChangement // le joueur 111 perd ce que 222 gagne : reattribution
+		}
+		if d.Sens != attendu {
+			t.Errorf("%s/%s : sens %q, attendu %q (somme 15 = 15)", d.Axe, d.Metrique, d.Sens, attendu)
 		}
 	}
-	if bil := rap.Bilans["armes"]; bil.Pertes != 0 || bil.Gains != 0 || bil.Changements != 2 {
+	if bil := rap.Bilans["armes"]; bil.Pertes != 0 || bil.Gains != 1 || bil.Changements != 1 {
 		t.Errorf("bilan armes : %+v", bil)
 	}
 

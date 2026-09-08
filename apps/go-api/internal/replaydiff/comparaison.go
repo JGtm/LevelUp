@@ -112,9 +112,10 @@ func (r *Rapport) ajouter(k string, a, b *Mesure) {
 	case estCompteurDeMethode(k):
 		// Une voie de nommage qui cede a une autre n'est ni un gain ni une perte (polarite.go).
 		d.Sens = SensChangement
-	case estReattribution(k, r.conserves):
-		// Une mesure par joueur dont la somme sur tous les joueurs est conservee a change de
-		// main, pas de valeur : une REATTRIBUTION (polarite.go, `groupesConserves`).
+	case (d.Sens == SensPerte || d.Sens == SensDisparu) && estReattribution(k, r.conserves):
+		// Une BAISSE chez un joueur, dans un groupe dont la somme ne baisse pas, a change de
+		// main, pas de valeur : une REATTRIBUTION (polarite.go, `groupesConserves`). Les
+		// hausses et les apparitions restent des gains — un calque neuf est un gain.
 		d.Sens = SensChangement
 	}
 	r.Differences = append(r.Differences, d)
