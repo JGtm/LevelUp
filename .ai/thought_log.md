@@ -101774,3 +101774,7 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
   table sur `c75f33b8`).
 - Prochaine etape : lot P-decodeur E2 (I1 lecteur `ScanBipedCreations` + I2 publication `direct`
   + I3 pont = verification comptee + I4 gate + I5 goldens), Opus, base P2 ; puis P3/P4 alleges, P5.
+- D14 (utilisateur) : plus de repli par les morts ; le residu de vies sans record est instruit par
+  cause (trou de replication -> propagation par (slot, generation) ; record non lu -> lecteur ;
+  bot/hors table ; absent prouve). Executant E2 arrete puis relance sur son worktree (I0 bots deja
+  tranche : espace d'index partage, index 8 non resolu).
