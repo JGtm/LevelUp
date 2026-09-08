@@ -216,18 +216,54 @@ d'`assignFlags`), 7 fautes d'attribution avant l'invariant, machine à états de
       `bcb6d393` (mono-manche) identique hors numéro ; `d9781168` (crâne) temps de portage ne baisse pas.
 - [ ] Gates ; revue ; journal ; registre (entrées `64e8adfa`, machine à états, `enJeu` fermées).
 
-### R4 — Écart résiduel aux compteurs de la feuille sur `51ebbc0f` (diagnostic ; bump seulement si correctif)
+### R4 — Écart résiduel aux compteurs de la feuille sur `51ebbc0f` (diagnostic ; bump seulement si correctif) — [x] DIAGNOSTIC RENDU 2026-09-08 (lot M4, worktree `LevelUp-wt-m4-diag`, branche `feat/v2-restes-r4r5-diag`)
 Fait : après le lot pont (schéma 48), écart cumulé K/D/A 69 (avant 94), les 8 joueurs sous la feuille.
-- [ ] Par joueur et par manche : frags/morts/assistances du document contre la feuille ; localiser les événements
+- [x] Par joueur et par manche : frags/morts/assistances du document contre la feuille ; localiser les événements
       manquants (après la dernière frame de la grille ? hors fenêtre de manche ? morts non appariées : lire
       `coverage.bridge.deathOffsetMatched` et le nombre de morts du fil).
-- [ ] Verdict : source (film incomplet : registre + `slog`) ou lecteur (correctif, tests, témoins, bump 49).
+      **L'écart vaut 9, pas 69** (le 69 n'est plus reproductible : les films témoins ont été re-téléchargés le
+      2026-09-08 — attribution faite par une cuisson à `ee4084c14`, identique à l'octet à celle du HEAD). **7 joueurs
+      sur 8 sont EXACTS** ; tout l'écart tombe sur `2535469889270266`, dont la **manche 0 n'est publiée nulle part**
+      (K −8, A −1, D 0). Les trois hypothèses du plan sont ÉCARTÉES sur pièces : dernière émission de chaque joueur
+      entre les frames 2706 et 4369 pour 4514 frames, `truncated=false`, `originResolved=true`,
+      `deathOffsetMatched/RunnerUp` 71:10 (marge ×7,1). Détail : `.ai/V7.5/v2/RESTES_R4_R5_2026-09-08.md` §2.
+- [x] Verdict : source (film incomplet : registre + `slog`) ou lecteur (correctif, tests, témoins, bump 49).
+      **VERDICT : LECTEUR — défaut de NOMMAGE.** `objectiveevents.bestDeathClaim`
+      (`slotidentity_deaths.go:229`, seuil `deathInstantMin = 3` ligne 50) ne peut pas nommer un couple
+      (slot, manche) quand le joueur y meurt moins de trois fois — le joueur fautif meurt **0 fois** en manche 0 ;
+      `RoundIdentity.CompletedByLines` (`slotidentity_rounds.go:239`), le rattrapage écrit exactement pour ce trou,
+      est **gardé MONO-MANCHE** ; `buildPlayerScores` (`score_timeline.go:298`) ne passe de toute façon jamais
+      `ScoreInput.Lines` au chemin multi-manche. Généralité mesurée : 8 couples (xuid, manche) perdus sur 3 films,
+      et dans les 8 cas le joueur meurt 0 ou 1 fois dans la manche perdue — aucun contre-exemple.
+- [!] **Correctif : REPORTÉ AU LOT SUIVANT** — lot de diagnostic (aucun fichier de code modifié), et le bump 49 est
+      tenu par un lot en vol. La forme est écrite et chiffrée (journal §4) : `RoundIdentity.CompletedByElimination`
+      (par manche, exactement un slot émetteur non nommé et exactement un xuid libre → appariement forcé, contrôlé
+      par le résidu de la feuille), `in.Lines` passé à `buildPlayerScores`, même complétion chaînée dans
+      `pontParManche.identite()` (`matchfacts.go:337`). Cinq tests par mutation listés. Portée mesurée : ferme
+      `51ebbc0f` (9 → 0) et `d9781168` (10 → 0), NE ferme PAS `64e8adfa` (5 couples, pas d'unicité — cas général du
+      chantier P). Bump de schéma requis.
 
-### R5 — Re-vérification au schéma 48/49 : CTF multi-manche, calques VIP et crâne
-- [ ] `make replay-corpus-gate --reference=parc` (informatif) + contrôle par la feuille sur `fb1a1a72` (3 manches),
+### R5 — Re-vérification au schéma 48/49 : CTF multi-manche, calques VIP et crâne — [x] DIAGNOSTIC RENDU 2026-09-08 (lot M4)
+- [x] `make replay-corpus-gate --reference=parc` (informatif) + contrôle par la feuille sur `fb1a1a72` (3 manches),
       `51ebbc0f`, `64e8adfa` : captures/vols par joueur = feuille ; VIP (`vip_crown.go`) et crâne (`skull_carries.go`)
       sur un film de chaque variante : 0 portage perdu, durées ≥ parc, aucune identité inventée.
-- [ ] Fermer ou rouvrir (avec chiffres) les entrées « CTF multi-manche » et « calques VIP/crâne » du registre.
+      **`--reference=parc` est DÉGÉNÉRÉ : les 7 témoins sont ABSENTS du parc** (aucun artefact de référence ;
+      la clé PNY ne porte que les schémas 2 et 20, antérieurs aux calques). Le mode d'autorité a donc été joué :
+      `--reference=base --base feat/v2-restes-r6` sort en **0, 0 perte sur 7/7**, 1 gain (`bf15f7ab`,
+      `deathOffsetRunnerUp` 12 → 13, le seul effet du correctif R7 sur tout le corpus — l'item resté « à jouer par
+      le superviseur » de R7 est ainsi CLOS). Captures = score : `bcb6d393` **3/0 exact**, `64e8adfa` 2/2 contre
+      2/3 (une capture manquante, MÊME cause qu'en R4), `fb1a1a72` 0/0 contre 0/1. Crâne : `d9781168` **36
+      portages** (le résidu de 30 n'existe plus), `51ebbc0f` **19**, 0 anonyme, base == HEAD à l'octet — mais
+      **6 portages sur 36 tombent hors de toute vie bipède du porteur** (portages fantômes, toujours ouverts).
+      Aucune identité inventée sur les 5 films contrôlés. Détail : `.ai/V7.5/v2/RESTES_R4_R5_2026-09-08.md` §5.
+- [~] VIP : **aucun film VIP au parc** — recensement de la variante des 466 films du cache, aucune variante VIP,
+      aucun artefact portant `vipCrown`. L'item est requalifié « sans témoin », pas « vérifié » : entrée de registre
+      dédiée, avec sa condition de reprise (un film VIP au cache).
+- [x] Fermer ou rouvrir (avec chiffres) les entrées « CTF multi-manche » et « calques VIP/crâne » du registre.
+      Fermées : volet « origine du fil » de l'entrée `51ebbc0f` (`originResolved` vrai sur 8 témoins sur 8) ;
+      item superviseur de R7. Rouvertes avec chiffres : « CTF multi-manche » (hypothèse (a) RÉFUTÉE sur `fb1a1a72` :
+      le pont des compteurs y est parfait, écart 0, et pourtant `objectives` 3/637 ; les deux CTF multi-manche ne
+      relèvent pas du même chantier), « portages fantômes du crâne » (6/36 et 1/19). Quatre entrées nouvelles.
 
 ### R6 — Constats P2 de l'audit et web — CLOS le 2026-09-07 (lot `feat/v2-restes-r6`, M2 du plan d'orchestration)
 - [x] Les 5 P2 de `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md` (section « Constats retenus », gravité P2) :
@@ -295,6 +331,20 @@ est faux.
   d'une). Ordre de grandeur négligeable devant l'affinage, mais **non mesuré sur un film réel** :
   aucun film dans le worktree M3. À relever au prochain lot qui cuit un film BTB (P2) si la
   durée de cuisson bouge.
+- **[R4/R5, 2026-09-08] Le parc d'artefacts ne porte plus aucun des 7 témoins du corpus** :
+  `--reference=parc` ne compare rien (7/7 ABSENT, code 2 sans `--allow-missing`). La re-cuisson
+  est déjà prévue par R9 ; d'ici là, aucun balayage « parc » ne prouve une non-régression.
+- **[R4/R5, 2026-09-08] `fb1a1a72` : le pont statborg est muet à 99,5 %** (`objectives` 3/637
+  nommées, `flagCarries` absent, `teamIdentity` `unresolved`) alors que le pont des COMPTEURS y
+  est parfait (écart K/D/A = 0). La cause n'est pas celle que le registre supposait — c'est le
+  chantier P (registre d'identité des entités). NON TRAITÉ.
+- **[R4/R5, 2026-09-08] Modification locale non commise dans le checkout principal** :
+  `data/titles/halo_infinite/reference/map_weapon_pads.json` (mtime 2026-09-07 21:07), antérieure
+  à ce lot. Sans effet ici (les catalogues sont copiés depuis `--source-root`, propre), mais elle
+  rendrait un balayage futur imputable à tort à un diff de révision.
+- **[R4/R5, 2026-09-08] `c75f33b8` (Assaut, 3 manches) : 2 actions d'objectif disponibles, 0
+  attachée** (`noSlot 2`) et 14 vies anonymes ; **`084a804d` : 80 vies anonymes sur 353** (le plus
+  mauvais taux du corpus) et 23 actions hors fenêtre. Non instruits, hors périmètre.
 - **[R7, 2026-09-07] Chemin périmé au registre** : l'entrée D3 citait le test dans
   `pont_muet_test.go` alors que PONT-R2 l'avait déplacé dans `pont_marge_test.go`. Corrigé en
   fermant l'entrée ; aucune autre occurrence.

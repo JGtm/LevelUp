@@ -1,3 +1,66 @@
+## [2026-09-08] Orchestration — vague 2, lot M4 = R4 et R5 du plan restes (diagnostics) — Complete
+
+**Nature du lot.** DIAGNOSTIC : aucun fichier de code n'a ete modifie. Worktree dedie
+`LevelUp-wt-m4-diag`, branche `feat/v2-restes-r4r5-diag` depuis `feat/v2-restes-r7` @ `52adb276a`.
+Perimetre FERME a R4 et R5 de `.ai/PLAN_V2_RESTES_2026-09-07.md`. Journal complet :
+`.ai/V7.5/v2/RESTES_R4_R5_2026-09-08.md`.
+
+**Decision technique principale — la racine de travail se fait par COPIE, pas par jonction.**
+L'instruction prevoyait des jonctions NTFS (`mklink /J`) vers `film_chunks`, `film_manifests` et
+`data/titles` du principal. Elles n'ont pas ete creees : `cmd/replay-corpus-gate` a remplace cette
+technique par une isolation STRUCTURELLE (il copie les catalogues depuis `--source-root` et les
+chunks du film depuis `--parc-root` dans une racine physiquement distincte, cf. l'en-tete de
+`staging.go`). Aucune jonction creee donc aucune a retirer ; le parc est verifie intact (129
+entrees de `replays`, 466 de `film_chunks`, `git status -- data` sans nouveaute).
+
+**Resultats observes.**
+
+1. **R4 — VERDICT : LECTEUR.** L'ecart cumule K/D/A a la feuille sur `51ebbc0f` vaut **9**, pas 69 :
+   **7 joueurs sur 8 sont EXACTS** et tout l'ecart tombe sur `2535469889270266`, dont la manche 0
+   n'est publiee nulle part (K -8, A -1, D 0). Les trois hypotheses du plan sont ECARTEES sur
+   pieces (derniere emission entre les frames 2706 et 4369 pour 4514 frames ; `truncated=false` ;
+   `originResolved=true` ; `deathOffsetMatched/RunnerUp` 71:10, marge x7,1). La cause est un DEFAUT
+   DE NOMMAGE : `objectiveevents.bestDeathClaim` (`slotidentity_deaths.go:229`, seuil
+   `deathInstantMin = 3` ligne 50) ne peut nommer un couple (slot, manche) qu'avec TROIS morts
+   coincidentes, et ce joueur meurt **0 fois** en manche 0 ; `RoundIdentity.CompletedByLines`
+   (`slotidentity_rounds.go:239`), le rattrapage ecrit exactement pour ce trou, est GARDE
+   MONO-MANCHE ; `buildPlayerScores` (`score_timeline.go:298`) ne passe de toute facon jamais
+   `ScoreInput.Lines` au chemin multi-manche. Generalite : **8 couples (xuid, manche) perdus sur 3
+   films, et dans les 8 cas le joueur meurt 0 ou 1 fois dans la manche perdue** — aucun
+   contre-exemple. Le meme defaut fait perdre une CAPTURE DE DRAPEAU sur `64e8adfa` (manche 1,
+   equipe 1 : 2 captures publiees pour un score de 3). Correctif propose (non ecrit, reporte) :
+   `RoundIdentity.CompletedByElimination` — par manche, exactement un slot emetteur non nomme et
+   exactement un xuid libre = appariement force, controle par le residu de la feuille ; il ferme
+   `51ebbc0f` (9 -> 0) et `d9781168` (10 -> 0), pas `64e8adfa` (pas d'unicite).
+
+2. **R5 — le balayage `--reference=parc` est DEGENERE** : les 7 temoins du corpus sont ABSENTS du
+   parc (`data/cache/replays/halo_infinite` n'en porte aucun). Le mode d'autorite a donc ete joue :
+   `--reference=base --base feat/v2-restes-r6` sort en 0 avec **0 perte sur 7 temoins sur 7**, un
+   seul gain (`bf15f7ab`, `deathOffsetRunnerUp` 12 -> 13). Cela CLOT l'item que R7 avait laisse au
+   superviseur. Crane : `d9781168` **36** portages (le residu de 30 n'existe plus), `51ebbc0f` 19,
+   0 anonyme, base == HEAD a l'octet ; mais les PORTAGES FANTOMES du registre sont toujours la et
+   se chiffrent (6/36 et 1/19 hors de toute vie bipede du porteur, les deux cas de 2026-08-28
+   reproduits a l'identique). VIP : **aucun film VIP au parc** — recensement de la variante des 466
+   films du cache, aucune variante VIP, aucun `vipCrown` : l'item est requalifie « sans temoin ».
+
+3. **Ce qui a bouge sans que le lecteur bouge.** Les marges citees au registre (`51ebbc0f` 71:8,
+   `d9781168` 157:15) valent aujourd'hui 71:10 et 143:18, et l'ecart de 69 n'est pas reproductible.
+   Attribution FAITE par une troisieme cuisson, a `ee4084c14` (la revision meme qui avait mesure ces
+   valeurs) : artefacts **identiques a l'octet** a ceux du HEAD sur ces deux films. Ce sont les
+   FILMS qui ont change — manifestes dates du 2026-09-08 08:32-08:33, les re-telechargements du
+   jour. Lecon generale : quand un temoin est re-telecharge, les grandeurs que les commentaires de
+   code citent doivent etre re-mesurees dans le meme commit, sinon un lot futur lira une neutralite
+   fausse.
+
+**Conclusion / prochaine etape.** R4 et R5 sont statues (`[x]` diagnostic rendu ; le correctif R4
+est `[!]` reporte au lot suivant, cause et forme ecrites ; le volet VIP de R5 est `[~]` faute de
+temoin). M4 est coche au plan d'orchestration. Registre : 4 entrees nouvelles (defaut de nommage
+par manche, parc sans temoins, films re-telecharges, VIP sans temoin), 2 fermetures (volet
+« origine du fil » de `51ebbc0f`, item superviseur de R7), 2 re-ouvertures chiffrees (CTF
+multi-manche — hypothese (a) REFUTEE sur `fb1a1a72`, ou le pont des compteurs est parfait alors que
+`objectives` ne nomme que 3 actions sur 637 —, portages fantomes du crane). Le lot suivant ecrit le
+correctif de nommage par manche, avec son bump de schema et ses cinq tests par mutation.
+
 ## [2026-09-07] Orchestration — vague 2, lot M3 = R7 du plan restes (budget de candidats du calage) — Complete
 
 **Decision technique principale.** Lot R7 de `.ai/PLAN_V2_RESTES_2026-09-07.md` (= M3 de
