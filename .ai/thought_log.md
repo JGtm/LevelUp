@@ -101687,3 +101687,9 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
   deploiement : migration `purge_weapon_families_labels_columns` au boot ; parc d'artefacts < 49
   a recuire (`backfill-replay --only-existing`, un film a la fois) pour le lien exact ;
   capture des positions au sync (cout a observer).
+
+## [2026-09-08] Orchestration — vague 2 : CI verte (Complete)
+- `feat/v75` = `66e90be64`. CI run 34201813049 : 8 jobs verts, E2E skip. Vagues 1 et 2 closes.
+- Vague 3 (paradigme P) : un inventaire P1 est deja sur `feat/v75` (`77200cb7a`, autre session) ;
+  a relire contre les axes (i) lecteurs hors rejeu et (j) registre pur avant P2. Non demarree
+  sans accord utilisateur.
