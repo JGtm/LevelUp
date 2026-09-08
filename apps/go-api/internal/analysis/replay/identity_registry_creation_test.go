@@ -114,23 +114,83 @@ func TestCreationSePropageAuxAutresViesDuMemeCorps(t *testing.T) {
 	}
 }
 
-// TestCreationSeTaitSurDesLecturesDivergentes : deux records du MEME slot portant des index
-// DIFFERENTS. Seule la vie qui CONTIENT la date d'un record est nommee ; les autres passent
-// `non_resolu`, cause `lectures_divergentes`.
+// TestCreationPartageUnSlotRecycleEntreSesDeuxCorps : LE POOL DE HANDLES REBOUCLE, et le siege
+// change d'occupant. Deux records du MEME slot, dates et d'index differents : chaque vie revient
+// au corps que le slot portait AU DEBUT de cette vie.
 //
-// LE REFUS EST MESURE A ZERO SUR LES CINQ FILMS, et c'est pour cela qu'il doit etre teste : rien
-// dans le materiau d'aujourd'hui ne le declencherait, donc rien ne dirait qu'il a disparu.
+// MESURE QUI L'IMPOSE (E2-bis) : `084a804d` — 379 records pour 256 slots, 123 slots a deux
+// records (`gen=1` en tete de film, `gen=2` apres la 11e minute). Le lot E2 refusait ces
+// 59 vies en bloc (`lectures_divergentes`), et les calques perdaient avec elles la moitie du
+// bornage de leurs episodes.
 //
-// MUTATION : faire rendre a `indexPour` le premier index quand les lectures divergent -> la
-// seconde vie du slot 100 est nommee, rouge.
-func TestCreationSeTaitSurDesLecturesDivergentes(t *testing.T) {
+// MUTATION : grouper les records par slot SANS leur date (rendre `indexAuDebutDe` le premier
+// index) -> la seconde vie du slot 100 porte 111, rouge.
+func TestCreationPartageUnSlotRecycleEntreSesDeuxCorps(t *testing.T) {
 	in := filmDeuxCorps()
-	in.BipedCreations = append(in.BipedCreations, creationDe(100, 30_000_000, 1))
+	// Le second corps du slot 100 nait pendant le trou de replication, avant sa seconde vie ;
+	// un TROISIEME sejour suit, que ce record n'ouvre pas — c'est lui qui exerce le partage.
+	in.BipedCreations = append(in.BipedCreations, creationDe(100, 12_000_000, 1))
+	for t := uint64(24_000_000); t <= 28_000_000; t += 500_000 {
+		in.Positions = append(in.Positions, posAt(100, t, 1, 1, 1))
+	}
+	in.Clock.FrameCount = 281
+	reg := BuildIdentityRegistry(in)
+	var vues, propagees int
+	for _, l := range reg.Vies() {
+		if l.slot != 100 {
+			continue
+		}
+		vues++
+		attendu := uint64(111)
+		if l.from > 10_000_000 {
+			attendu = 222
+		}
+		if l.xuid != attendu {
+			t.Fatalf("vie 100[%d..%d] : xuid = %d, attendu %d — chaque vie revient au corps qui "+
+				"tenait le slot a son debut", l.from, l.to, l.xuid, attendu)
+		}
+		if l.nomPar == NomParCreationPropagee {
+			propagees++
+		}
+	}
+	if vues != 3 {
+		t.Fatalf("vies du slot 100 = %d, attendu 3", vues)
+	}
+	if propagees != 1 {
+		t.Fatalf("vies propagees du slot 100 = %d, attendu 1 (le troisieme sejour, que le second "+
+			"record n'ouvre pas)", propagees)
+	}
+	c := reg.Section.Coverage.BipedSlot
+	if c.UnresolvedByCause.DivergentReadings != 0 {
+		t.Fatalf("cause `lectures_divergentes` = %d, attendu 0 : un slot recycle n'est pas une "+
+			"divergence (%+v)", c.UnresolvedByCause.DivergentReadings, c)
+	}
+}
+
+// TestCreationSeTaitSurUneVieAnterieureAuxLecturesDivergentes : une vie qui commence AVANT le
+// premier record de son slot, sur un slot dont les records portent des index DIFFERENTS. Aucun
+// corps n'est etabli a cet instant et departager serait un choix : `non_resolu`, cause
+// `lectures_divergentes`.
+//
+// LE REFUS EST MESURE A ZERO SUR LES DIX TEMOINS (la creation precede toujours la replication),
+// et c'est pour cela qu'il doit etre teste : rien dans le materiau d'aujourd'hui ne le
+// declencherait, donc rien ne dirait qu'il a disparu.
+//
+// MUTATION : faire rendre a `indexAuDebutDe` le premier index quand aucun record ne precede la
+// vie -> la premiere vie du slot 100 est nommee, rouge.
+func TestCreationSeTaitSurUneVieAnterieureAuxLecturesDivergentes(t *testing.T) {
+	in := filmDeuxCorps()
+	// Les DEUX records du slot 100 sont posterieurs a sa premiere vie ([1 s..4 s]).
+	in.BipedCreations = []filmdec.BipedCreation{
+		creationDe(100, 12_000_000, 0),
+		creationDe(100, 30_000_000, 1),
+		creationDe(200, 1_000_000, 1),
+	}
 	reg := BuildIdentityRegistry(in)
 	for _, l := range reg.Vies() {
-		if l.slot == 100 && l.from > 10_000_000 && l.xuid != 0 {
-			t.Fatalf("une vie a ete nommee (%d) malgre deux lectures divergentes sur son corps",
-				l.xuid)
+		if l.slot == 100 && l.from < 10_000_000 && l.xuid != 0 {
+			t.Fatalf("la vie 100[%d..%d] a ete nommee (%d) alors qu'aucun record ne la precede "+
+				"sur un slot aux lectures divergentes", l.from, l.to, l.xuid)
 		}
 	}
 	c := reg.Section.Coverage.BipedSlot

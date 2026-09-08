@@ -10,28 +10,35 @@ package replay
 // LECTURE : le film ECRIT a qui appartient ce corps. Jusqu'au lot E2, le registre l'ignorait et
 // devinait la meme chose par le fil des morts.
 //
-// # POURQUOI LA PROPAGATION N'EST PAS UNE DEDUCTION
+// # LE CORPS EST (SLOT, GENERATION), ET LE POOL REBOUCLE (correctif E2-bis, 2026-09-08)
 //
-// Mesure du lot E2 sur cinq films (538 vies, 499 slots) : **un seul record de creation par
-// slot**, generation invariante a 1, et l'ensemble des slots qui portent des VIES egale
-// exactement l'ensemble des slots qui portent une LECTURE. Dans un film, un slot de bipede est
-// donc UN CORPS du debut a la fin — le pool de handles ne reboucle pas a cette echelle.
+// Mesure du lot E2 sur cinq films (538 vies, 499 slots) : un seul record de creation par slot,
+// generation invariante a 1. La regle qui en etait tiree — « dans un film, un slot de bipede est
+// UN CORPS du debut a la fin » — est FAUSSE des que le film est assez long : sur `084a804d`
+// (Fortitude Heavies, 24 joueurs, 16 min), 379 records couvrent 256 slots et **123 slots portent
+// deux records, l'un `gen=1` en tete de film, l'autre `gen=2` apres la 11e minute**, avec des
+// index de participant differents. Le pool de handles reboucle : le slot est un SIEGE, le corps
+// est la paire `(slot, generation)`.
 //
-// Une vie sans record propre est alors le MEME corps qu'une decoupe a `lifeGapUS` (5 s) a separe
-// d'un sejour continu : embarquement en vehicule, occultation, trou de replication, ou le trou
-// d'ouverture entre l'apparition du corps et le coup d'envoi. Lui appliquer le record de son
-// slot, ce n'est pas deviner un occupant : c'est lire le MEME record. D'ou `LinkDirect` et une
-// voie qui le NOMME (`creation_bipede_propagee`), plutot qu'un `LinkInferred` qui la ferait
-// passer pour une supposition.
+// D'ou la regle de partage, qui est une LECTURE et non une deduction :
 //
-// # ET CE QU'ELLE REFUSE, MESURE A ZERO AUJOURD'HUI
+//	un record de creation OUVRE un corps sur son slot, a sa date ;
+//	ce corps occupe le slot JUSQU'AU RECORD SUIVANT du meme slot ;
+//	une vie appartient donc au corps que le slot portait AU DEBUT DE CETTE VIE — l'index du
+//	dernier record date au plus tard a cet instant.
 //
-// Si deux records du MEME slot portaient des index DIFFERENTS, la propagation deviendrait un
-// choix : seules les vies qu un record OUVRE sont alors nommees, par ce record-la, et les autres
-// passent `non_resolu` cause `lectures_divergentes`. Ce refus n'a jamais eu a jouer (0 slot a
-// deux records sur les cinq films), et c'est precisement pour cela qu'il doit exister : le jour
-// ou le pool rebouclerait dans un film plus long, la propagation par slot deviendrait fausse
-// sans lui.
+// Sur un slot a record unique, cette regle rend exactement ce que le lot E2 posait : toutes les
+// vies portent l'index de l'unique record (`creation_bipede_propagee` pour celles que la decoupe
+// a `lifeGapUS` a separees du sejour que le record ouvre). Sur un slot recycle, chaque vie va au
+// corps qui vivait quand elle commence, au lieu de tomber en bloc dans le refus.
+//
+// # CE QUE LA REGLE REFUSE ENCORE
+//
+// Une vie qui commence AVANT le premier record de son slot, sur un slot dont les records portent
+// des index DIFFERENTS : aucun corps n'est alors etabli a cet instant et departager serait un
+// choix. Elle passe `non_resolu`, cause `lectures_divergentes`, comptee et alarmee. Le refus est
+// mesure a zero sur les dix temoins — la creation precede toujours la replication (lot E2, cas
+// a2 : jusqu'a 23 s d'avance) — et c'est pourquoi il doit exister.
 //
 // # L'INDEX QUI N'EST PAS DANS LA TABLE (verdict I0 du lot E2)
 //
@@ -54,8 +61,9 @@ import (
 //
 //	NomParCreation           le record de creation du corps OUVRE cette vie — c est le sejour
 //	                         qu'il inaugure (cf. appliquerAuCorps pour la regle exacte).
-//	NomParCreationPropagee   le record du MEME corps ouvre un AUTRE de ses sejours — la decoupe a
-//	                         `lifeGapUS` les a separes. Meme record, meme corps, meme lecture.
+//	NomParCreationPropagee   le record du corps qui OCCUPAIT le slot au debut de cette vie ouvre
+//	                         un AUTRE de ses sejours — la decoupe a `lifeGapUS` les a separes.
+//	                         Meme record, meme corps, meme lecture.
 const (
 	NomParCreation         = "biped_creation"
 	NomParCreationPropagee = "biped_creation_propagee"
@@ -72,6 +80,11 @@ type creationReport struct {
 	// IndexBot : lectures dont l'index est celui d'un bot DECLARE. Comptees a part, jamais
 	// alarmees (verdict I0) : le corps est identifie, il n'a simplement pas de xuid.
 	IndexBot int
+	// Recycled : slots qui portent PLUSIEURS records de creation, donc plusieurs corps
+	// successifs. Le temoin du rebouclage du pool de handles — celui que le lot E2 avait
+	// mesure a zero sur cinq films et que `084a804d` porte a 123 sur 256 slots. Il n'alarme
+	// pas : c'est un fait du film, et la regle de partage le lit (cf. indexAuDebutDe).
+	Recycled int
 	// causes : indice de vie -> cause de non-resolution. Une vie absente de cette table est
 	// nommee ; une vie presente ne l'est pas, et la table DIT pourquoi.
 	causes map[int]canonical.LinkMethod
@@ -103,6 +116,11 @@ func nommerViesParCreations(lives []lifeSpan, creations []filmdec.BipedCreation,
 	}
 	corps := corpsParSlot(creations)
 	rep.Slots = len(corps)
+	for _, c := range corps {
+		if len(c.dates) > 1 {
+			rep.Recycled++
+		}
+	}
 	if len(corps) == 0 {
 		// AUCUNE LECTURE DIRECTE : toutes les vies sont `sans_record`, et c'est la SEULE
 		// situation ou le pont par morts garde un role de nommage (cf. identity_registry.go).
@@ -159,12 +177,14 @@ func (r *creationReport) appliquerAuCorps(lives []lifeSpan, vies []int, c corpsL
 	for _, i := range vies {
 		pi, ouverte := ouvertes[i]
 		if !ouverte {
-			if len(c.index) != 1 {
-				// LECTURES DIVERGENTES : la propagation deviendrait un choix. On se tait.
+			occupant, connu := c.indexAuDebutDe(lives[i])
+			if !connu {
+				// AUCUN CORPS ETABLI A CET INSTANT, ET DES LECTURES DIVERGENTES : departager
+				// serait un choix. On se tait.
 				r.causes[i] = canonical.MethodDivergentReadings
 				continue
 			}
-			pi = c.index[0]
+			pi = occupant
 		}
 		if !r.poser(lives, i, int(pi), t) {
 			continue
@@ -216,6 +236,32 @@ func (c corpsLu) viesOuvertes(lives []lifeSpan, vies []int) map[int]uint32 {
 	return out
 }
 
+// indexAuDebutDe rend l'index de participant du corps que le slot portait AU DEBUT de cette vie
+// : celui du DERNIER record de creation date au plus tard a cet instant.
+//
+// C'est la lecture du recyclage : un record ouvre un corps, ce corps tient le slot jusqu'au
+// record suivant. Le second retour est faux dans le seul cas ou aucun corps n'est etabli — la
+// vie precede le premier record du slot — ET ou les records de ce slot divergent, donc ou le
+// premier record n'est pas une reponse mais un choix. Sur un slot a lecture unique, la vie
+// anterieure au record garde cet unique index : c'est le MEME corps, la creation precedant
+// toujours la replication (lot E2, cas a2).
+func (c corpsLu) indexAuDebutDe(l lifeSpan) (uint32, bool) {
+	k := -1
+	for j := range c.dates {
+		if c.dates[j].tUS > l.from {
+			break
+		}
+		k = j
+	}
+	if k >= 0 {
+		return c.dates[k].index, true
+	}
+	if len(c.index) == 1 {
+		return c.index[0], true
+	}
+	return 0, false
+}
+
 // corpsLu est ce que les records d'UN slot etablissent : les index lus, et leurs dates.
 type corpsLu struct {
 	// index est l'ensemble des index de participant lus sur ce slot, en ordre croissant. Plus
@@ -225,10 +271,13 @@ type corpsLu struct {
 	dates []dateDeCreation
 }
 
-// dateDeCreation associe l'instant d'un record a l'index qu'il porte.
+// dateDeCreation associe l'instant d'un record a l'index qu'il porte et a la GENERATION du
+// handle qu'il ouvre — le numero du corps sur ce siege, celui qui distingue deux occupants
+// successifs d'un slot recycle.
 type dateDeCreation struct {
 	tUS   int64
 	index uint32
+	gen   uint32
 }
 
 // corpsParSlot groupe les records de creation par slot. Les records SANS index ne sont pas des
@@ -244,7 +293,8 @@ func corpsParSlot(creations []filmdec.BipedCreation) map[uint32]corpsLu {
 			continue
 		}
 		e := out[c.Slot]
-		e.dates = append(e.dates, dateDeCreation{tUS: int64(c.TimestampUS), index: c.ParticipantIndex})
+		e.dates = append(e.dates,
+			dateDeCreation{tUS: int64(c.TimestampUS), index: c.ParticipantIndex, gen: c.Generation})
 		if vus[c.Slot] == nil {
 			vus[c.Slot] = map[uint32]bool{}
 		}
@@ -256,8 +306,15 @@ func corpsParSlot(creations []filmdec.BipedCreation) map[uint32]corpsLu {
 	}
 	for s, e := range out {
 		// L'ORDRE EST IMPOSE : l'artefact doit etre reproductible a l'octet, et l'ordre des
-		// records d'un chunk n'est pas garanti stable entre deux lectures.
-		sort.Slice(e.dates, func(i, j int) bool { return e.dates[i].tUS < e.dates[j].tUS })
+		// records d'un chunk n'est pas garanti stable entre deux lectures. La GENERATION
+		// departage deux records de meme date — sans elle, deux corps du meme siege pourraient
+		// s'echanger leur rang d'une cuisson a l'autre.
+		sort.Slice(e.dates, func(i, j int) bool {
+			if e.dates[i].tUS != e.dates[j].tUS {
+				return e.dates[i].tUS < e.dates[j].tUS
+			}
+			return e.dates[i].gen < e.dates[j].gen
+		})
 		sort.Slice(e.index, func(i, j int) bool { return e.index[i] < e.index[j] })
 		out[s] = e
 	}
@@ -295,7 +352,8 @@ func indexDesBotsDeclares(bots []BotIdentity) map[int]bool {
 func (r creationReport) alarmerSurLesRefus(matchID string, causes canonical.UnresolvedCauses) {
 	slog.Info("rejeu : lien direct corps -> joueur",
 		"match_id", matchID, "records", r.Records, "corps", r.Slots,
-		"direct", r.Direct, "propage", r.Propagated, "indexBot", r.IndexBot)
+		"direct", r.Direct, "propage", r.Propagated, "indexBot", r.IndexBot,
+		"slotsRecycles", r.Recycled)
 	if causes.IndexOutOfTable > r.IndexBot {
 		slog.Warn("rejeu : index de participant LU mais absent de la table publiee — vies NON "+
 			"rattachees (verdict I0 : participant que PlayerIndexTable ne nomme pas)",
@@ -303,8 +361,9 @@ func (r creationReport) alarmerSurLesRefus(matchID string, causes canonical.Unre
 			"dontBotsDeclares", r.IndexBot)
 	}
 	if causes.DivergentReadings > 0 {
-		slog.Warn("rejeu : deux records de creation du MEME corps portent des index differents — "+
-			"la propagation se tait", "match_id", matchID, "vies", causes.DivergentReadings)
+		slog.Warn("rejeu : vie anterieure au premier record de son slot RECYCLE — aucun corps "+
+			"etabli a cet instant, le partage se tait",
+			"match_id", matchID, "vies", causes.DivergentReadings, "slotsRecycles", r.Recycled)
 	}
 	if r.Slots > 0 && causes.NoCreationRecord > 0 {
 		slog.Warn("rejeu : vies de bipede sans record de creation sur un film qui en porte — "+
