@@ -101732,3 +101732,6 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
 - Amendement immediat (utilisateur) : ce lien est A RESOUDRE AVANT v7.5.0, pas apres — bloquant de
   release (D12). Le gel general du decodeur tient, cet item seul en est exempte ; lancement des que
   le quota le permet. Vague 3 = P3, P4, P-decodeur (E2), P5.
+- D13 (utilisateur) : vague 3 reordonnee — P2-bis -> sondage decodeur E2 (diagnostic borne) ->
+  P3/P4 alleges (aucune heuristique nouvelle) -> P5. Rien d'abandonne ; les heuristiques de
+  deduction sortent du perimetre de P3/P4, le sondage decide de leur forme.

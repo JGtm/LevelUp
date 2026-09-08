@@ -255,6 +255,12 @@ débits de lecture et les décomptes de liens viennent du balayage du lot, non r
   seul, 2-3 films) puis branchement additif sous corpus gate, à lancer dès que le quota le permet
   (après P3-P4, ou en parallèle si budget). Entrée de registre datée ; critère de succès
   `identity.coverage.bipedSlot.direct`. Vague 3 devient : P3, P4, **P-décodeur (E2)**, P5.
+- **D13 (2026-09-08, utilisateur, « go avec ta reco »)** : RÉORDONNANCEMENT — P2-bis (résidu) → **sondage
+  décodeur E2 AVANT P3** (Opus, diagnostic seul, borné : le film porte-t-il le propriétaire d un corps
+  et d un objet, et où ; critère `bipedSlot.direct`) → P3 et P4 ALLÉGÉS (registre, machine à états
+  unique, migration des lecteurs ; ZÉRO heuristique nouvelle : un lien que le film ne donne pas est
+  publié `non_resolu` et compté, jamais deviné par géométrie) → P5. Rien n est abandonné : les
+  heuristiques de déduction prévues par P3/P4 sont retirées de leur périmètre, pas le reste.
 
 ## 5. Décisions qui appartiennent à l'utilisateur (avec recommandation ; à trancher avant le lot concerné)
 
