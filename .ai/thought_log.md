@@ -101735,3 +101735,15 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
 - D13 (utilisateur) : vague 3 reordonnee — P2-bis -> sondage decodeur E2 (diagnostic borne) ->
   P3/P4 alleges (aucune heuristique nouvelle) -> P5. Rien d'abandonne ; les heuristiques de
   deduction sortent du perimetre de P3/P4, le sondage decide de leur forme.
+
+## [2026-09-08] Orchestration — P2 clos (P2-bis), sondage decodeur E2 lance (En cours)
+- P2-bis (Opus) : la premisse de R2 etait fausse sur `d9781168` (aucun joueur a zero mort sur tout
+  le match ; le cas existe PAR MANCHE et le statborg le resout deja). Regle nouvelle « exclusion
+  temporelle » (un joueur n'occupe qu'un corps a la fois ; candidat unique -> nomme ; deux -> silence ;
+  zero -> contradiction + alarme), provenance `exclusion_temporelle`, 10 mutations rouges. Chiffres :
+  unnamedLives d9781168 19 -> 15, 51ebbc0f 8 -> 3, 64e8adfa 11 -> 7, fb1a1a72 3 -> 2, bf15f7ab 1 -> 0 ;
+  aucune perte ; +187/+149/+147 tirs rattaches. Residu 13 pistes explique -> lien decodeur E2.
+- `slotCollisions` 0 -> 1 et `unnamedLivesContested` 0 -> 2 : compteurs d'echec qui MONTENT parce
+  qu'une collision auparavant masquee est maintenant dite — le gate (polarite corrigee) les lira en
+  perte ; a accepter explicitement (registre), pas a masquer.
+- Sondage decodeur E2 lance (Opus, diagnostic seul, 3 hypotheses, 3 films) selon D12/D13.
