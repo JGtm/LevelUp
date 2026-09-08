@@ -109,8 +109,15 @@ func TestBridgeHealthJSONKeysAreDistinct(t *testing.T) {
 	// ce qui écrase des clés JSON en silence. Le compilateur ne dit rien. Ce test compte
 	// les clés effectivement sérialisées : elles doivent être aussi nombreuses que les
 	// champs de la structure.
+	//
+	// DeathOffsetMs (lot M1b, 2026-09-08) EST SERVI NON-NIL ICI, et c'est nécessaire : le
+	// pointeur porte `omitempty`, un nil serait donc absent du JSON et ferait chuter `len(m)`
+	// sous `NumField()` sans qu'aucun tag ne se recouvre — un faux positif que ce test
+	// existe justement pour éviter.
+	offsetMs := int64(7)
 	raw, err := json.Marshal(BridgeHealth{Slots: 1, FromReading: 2,
-		LivesNamed: 4, LivesTotal: 5, IndexReadings: 26, IndexDisagreements: 0, SlotCollisions: 10})
+		LivesNamed: 4, LivesTotal: 5, IndexReadings: 26, IndexDisagreements: 0, SlotCollisions: 10,
+		DeathOffsetMs: &offsetMs})
 	if err != nil {
 		t.Fatalf("serialisation : %v", err)
 	}
@@ -123,8 +130,45 @@ func TestBridgeHealthJSONKeysAreDistinct(t *testing.T) {
 	}
 	// Les valeurs doivent aussi survivre au tour complet : une cle ecrasee garderait la
 	// derniere valeur ecrite, ce que le seul compte de cles ne verrait pas toujours.
-	if m["slots"] != 1 || m["fromReading"] != 2 || m["indexReadings"] != 26 || m["slotCollisions"] != 10 {
+	if m["slots"] != 1 || m["fromReading"] != 2 || m["indexReadings"] != 26 || m["slotCollisions"] != 10 ||
+		m["deathOffsetMs"] != 7 {
 		t.Errorf("valeurs alterees par la serialisation : %s", raw)
+	}
+}
+
+// TestDeathOffsetMsAbsentWhenBridgeUnmatched verrouille le PIÈGE que le lot M1b existe pour
+// fermer : `DeathOffsetMS` reste à sa valeur zéro du struct tant qu'aucune mort n'est
+// appariée (pont non construit, ou vote sans panier retenu) — publier ce zéro comme un
+// calage MESURÉ serait un mensonge que rien, côté client, ne pourrait détecter. La garde,
+// donc, n'est PAS `DeathOffsetMS != 0` mais `DeathOffsetMatches > 0`, testée aux deux bornes.
+func TestDeathOffsetMsAbsentWhenBridgeUnmatched(t *testing.T) {
+	empty := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, OwnerReport{}, false, nil)
+	if got := empty.Bridge.DeathOffsetMs; got != nil {
+		t.Fatalf("pont non construit (0 mort appariee) : deathOffsetMs = %d, attendu nil", *got)
+	}
+
+	// Zero appariements mais un DeathOffsetMS non nul dans le struct : le zero-value du champ
+	// est le SEUL etat qu'un pont non construit peut produire (buildOwners), mais ce test
+	// isole delibérément `buildCoverage` de `buildOwners` pour prouver que c'est bien le
+	// COMPTE, et non la valeur, qui commande la publication.
+	zeroMatchesButOffsetSet := OwnerReport{DeathOffsetMS: 12_345, DeathOffsetMatches: 0}
+	refused := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, zeroMatchesButOffsetSet, false, nil)
+	if got := refused.Bridge.DeathOffsetMs; got != nil {
+		t.Fatalf("0 mort appariee malgre un DeathOffsetMS non nul : deathOffsetMs = %d, attendu nil (le compte commande, pas la valeur)", *got)
+	}
+
+	known := OwnerReport{DeathOffsetMS: 12_345, DeathOffsetMatches: 71}
+	present := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, known, false, nil)
+	if got := present.Bridge.DeathOffsetMs; got == nil || *got != 12_345 {
+		t.Fatalf("calage connu (71 appariements) : deathOffsetMs = %v, attendu *12345", got)
+	}
+
+	// Calage mesure EXACTEMENT a zero (horloges deja alignees) : une mesure valide, distincte
+	// de l'absence — c'est exactement le piege que le pointeur (plutot qu'un int nu) evite.
+	knownZero := OwnerReport{DeathOffsetMS: 0, DeathOffsetMatches: 15}
+	presentZero := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, knownZero, false, nil)
+	if got := presentZero.Bridge.DeathOffsetMs; got == nil || *got != 0 {
+		t.Fatalf("calage connu et mesure a zero : deathOffsetMs = %v, attendu *0 (pas absent)", got)
 	}
 }
 

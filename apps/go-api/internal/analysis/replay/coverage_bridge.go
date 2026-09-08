@@ -73,6 +73,21 @@ type BridgeHealth struct {
 	// `deathOffsetMargeMin` est doublée d'un `slog.Warn` à la cuisson.
 	DeathOffsetMatched  int `json:"deathOffsetMatched"`
 	DeathOffsetRunnerUp int `json:"deathOffsetRunnerUp"`
+	// DeathOffsetMs est LE CALAGE LUI-MÊME (lot M1b, 2026-09-08) : `horlogeFilm = horlogeMatch +
+	// DeathOffsetMs` (cf. `OwnerReport.DeathOffsetMS`, `lives_export.go`). Publié pour que le
+	// client puisse convertir un instant reçu sur l'horloge du MATCH (contrat
+	// `TacticalContribution`, questions `morts`/`kills`/`gagne`/`isole`) en frame EXACTE du
+	// rejeu, plutôt que l'approximation que `?frame=` servait jusqu'ici pour ces quatre
+	// questions sur six (décalage mesuré de 3,6 à 50,8 s selon le match — cf.
+	// `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`).
+	//
+	// POINTEUR, PAS int64 : MÊME PIÈGE omitempty que `ReplayDocument.OriginMs`/`T0FilmMs`
+	// (document.go). ZÉRO N'EST PAS UNE VALEUR PAR DÉFAUT ACCEPTABLE — un film dont le calage
+	// mesuré vaut exactement 0 ms est un cas réel (horloges déjà alignées), et l'omettre le
+	// ferait relire comme « calage inconnu ». ABSENT (nil) veut dire, et seulement : le pont
+	// n'a pas été construit ou n'a apparié AUCUNE mort (`OwnerReport.DeathOffsetMatches == 0`,
+	// cf. buildCoverage) — le calage n'existe alors pas, ce n'est pas une valeur.
+	DeathOffsetMs *int64 `json:"deathOffsetMs,omitempty"`
 	// ClosedByShot : entrées ajoutées par la fermeture A (le corps disponible).
 	ClosedByShot int `json:"closedByShot"`
 	// ClosedByRespawn : entrées ajoutées par la fermeture B (la réapparition).

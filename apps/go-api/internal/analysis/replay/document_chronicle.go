@@ -957,3 +957,29 @@ package replay
 // La version monte pour la meme raison qu'aux montees v39 a v47 : un artefact < 48 porte des
 // pistes non nommees et, sur cinq films, un calque d'objectifs et une courbe de score non
 // recales faute d'origine. Detail : .ai/V7.5/v2/PONT_MUET_2026-09-07.md.
+//
+// v49 (2026-09-08, lot M1b — décision utilisateur ferme, « corriger le décalage ») : le
+// document publie `coverage.bridge.deathOffsetMs` — le calage `DeathOffsetMS` du pont
+// d'identité lui-même (`horlogeFilm = horlogeMatch + deathOffsetMs`), déjà CALCULÉ à la
+// cuisson (v48 publiait sa MARGE, `deathOffsetMatched`/`deathOffsetRunnerUp`, jamais la
+// valeur). Champ additif, pointeur `*int64` : absent (nil) quand le pont n'a pas été
+// construit ou n'a apparié aucune mort (`OwnerReport.DeathOffsetMatches == 0`) — jamais un
+// zéro qui se lirait comme un calage exact (cf. BridgeHealth.DeathOffsetMs, coverage_bridge.go).
+//
+//	pourquoi     le lien « voir dans le rejeu » posé depuis une cellule Tactique (lot M1,
+//	             `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`) portait un instant EXACT pour
+//	             deux questions sur six (`temps`/`routes`, déjà sur l'horloge du film) et une
+//	             APPROXIMATION pour les quatre autres (`morts`/`kills`/`gagne`/`isole`, sur
+//	             l'horloge du MATCH) — le décalage par match n'était publié nulle part. Le
+//	             web ne peut PAS le mesurer lui-même (il n'a que l'artefact, jamais le film).
+//	le contrat   `TacticalContribution` publie désormais `clock` (`"match"` ou `"film"`) à
+//	             côté de `instant_ms` ; le web attend le document du rejeu (qui porte
+//	             l'offset) avant de convertir, et n'ouvre plus jamais un instant approché en
+//	             le présentant comme exact — cf. `tactical_service_cellule.go`,
+//	             `lib/replay/replayLogic.resolveTacticalReplayInstant` côté web.
+//
+// EXCEPTION AU CRITÈRE HABITUEL DE BUMP (assumée, cf. le commentaire de `SchemaVersion`) :
+// le champ est optionnel et le web sait déjà lire son absence sans regarder la version —
+// le bump sert seulement à faire recuire tout le parc < 49 en une passe
+// (`backfill-replay`), pour qu'un artefact ancien cesse de répondre « calage inconnu » faute
+// de recuisson déclenchée. Détail : `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
