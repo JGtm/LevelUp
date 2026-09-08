@@ -67,6 +67,10 @@ type filmStats struct {
 	// `game_variant_name` — TOUTE la famille bomb, One Bomb comprise depuis le 2026-09-04
 	// (cf. replaybuild/zones.go, isBombVariant).
 	bomb replay.BombInput
+	// statborgIdentity est le pont slot d entite -> xuid PAR MANCHE, deja resolu pour les deux
+	// calques d objectif. Il voyage jusqu au document parce que le REGISTRE d identite le
+	// publie avec sa provenance (`identity.statborgSlots`) — il ne le recalcule pas.
+	statborgIdentity objectiveevents.RoundIdentity
 }
 
 // readFilmStats decode les enregistrements d'entite et assemble les entrees des deux calques.
@@ -114,6 +118,7 @@ func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 		vip:               vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:             skullInput(recs, isSkullVariant(facts.GameVariantName)),
 		bomb:              bombInput(film, isBombVariant(facts.GameVariantName)),
+		statborgIdentity:  pont.identite(),
 	}
 }
 
@@ -332,9 +337,19 @@ type pontParManche struct {
 }
 
 // identite rend le pont, en le resolvant au premier appel.
+//
+// TROIS VOIES CHAINEES, DANS L'ORDRE DE LA FORCE DE PREUVE (lot P2, 2026-09-08) : les instants
+// de mort, puis le triplet de la feuille (MONO-MANCHE seulement — le triplet apparie des totaux
+// de match), puis l'ELIMINATION par manche, qui ne suppose rien du contenu et se controle sur le
+// residu de la feuille. Sans cette derniere, les ACTIONS d'objectif d'un joueur qui meurt moins
+// de trois fois dans une manche restaient sans auteur alors que les COMPTEURS, eux, allaient
+// etre completes par le meme mecanisme (`buildPlayerScores`) — deux lecteurs du meme pont
+// n'auraient plus dit la meme chose du meme match.
 func (p *pontParManche) identite() objectiveevents.RoundIdentity {
 	if !p.resolu {
-		p.id = objectiveevents.ResolveRoundIdentity(p.recs, p.deaths).CompletedByLines(p.recs, p.lines)
+		p.id = objectiveevents.ResolveRoundIdentity(p.recs, p.deaths).
+			CompletedByLines(p.recs, p.lines).
+			CompletedByElimination(p.recs, p.lines)
 		p.resolu = true
 	}
 	return p.id

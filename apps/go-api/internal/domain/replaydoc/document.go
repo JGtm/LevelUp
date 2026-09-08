@@ -66,6 +66,7 @@ type ReplayDocument struct {
 	BombStats           *BombMatchStats         `json:"bombStats,omitempty"`
 	BombEvents          []BombEvent             `json:"bombEvents,omitempty"`
 	Coverage            *Coverage               `json:"coverage,omitempty"`
+	Identity            *IdentitySection        `json:"identity,omitempty"`
 }
 
 // Bounds est l'étendue alignée sur les axes de tous les points de trajectoire, dans le
@@ -112,6 +113,10 @@ type RosterEntry struct {
 	FilmIndex int    `json:"filmIndex"`
 	Name      string `json:"name,omitempty"`
 	Bot       bool   `json:"bot,omitempty"`
+	// Bid est l identifiant STABLE d un bot, forme `bid(N.0)` — la meme que la base emploie
+	// (schema 50). Vide pour un humain, et vide pour un bot dont la declaration ne portait pas
+	// d identifiant : un `bid(0.0)` invente joindrait deux bots distincts.
+	Bid string `json:"bid,omitempty"`
 }
 
 // Shot est un tir décodé, placé à la position de son tireur.

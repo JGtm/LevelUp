@@ -983,3 +983,41 @@ package replay
 // le bump sert seulement à faire recuire tout le parc < 49 en une passe
 // (`backfill-replay`), pour qu'un artefact ancien cesse de répondre « calage inconnu » faute
 // de recuisson déclenchée. Détail : `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
+
+// v50 (2026-09-08, lot P2 — REGISTRE D'IDENTITÉ DES JOUEURS) : le document publie POUR LA
+// PREMIÈRE FOIS sur quoi repose chaque nom qu'il sert, l'identifiant stable des bots, et il
+// nomme les joueurs que le pont par morts ne pouvait pas atteindre.
+//
+//	ce qui change   1. `identity` — la section du registre : `players` (index de joueur ↔ xuid,
+//	                   ou `bid(N.0)` pour un bot), `bipedSlots` (l'occupation d'un slot BORNÉE
+//	                   en frames, une ligne PAR VIE), `statborgSlots` (le slot d'entité par
+//	                   MANCHE), et `coverage` — le décompte des liens PAR PROVENANCE.
+//	                2. `roster[].bid` — l'identifiant stable d'un bot, forme `bid(N.0)`.
+//	                3. le NOMMAGE des vies change : un slot dont aucune vie n'est nommée, quand
+//	                   il ne reste qu'un seul joueur du roster sans aucune vie, est nommé par
+//	                   ELIMINATION. Des pistes jusqu'ici anonymes portent donc un xuid.
+//	                4. les actions d'objectif ne sont plus JETÉES quand leur auteur n'a pas de
+//	                   trajectoire publiée (`coverage.objectives.unpublished` tombe à zéro,
+//	                   `attached` monte d'autant).
+//
+//	pourquoi        « L'INDEX EST L'INDEX » (décision utilisateur du 2026-09-07, plan v2 §0.7).
+//	                Le film porte des liens DIRECTS — l'index de joueur des chunks de
+//	                réplication, le `BotID` de BOT_METADATA — et le document les remplaçait par
+//	                des déductions sans jamais le dire. Quinze calques et deux lecteurs hors
+//	                rejeu reconstruisaient chacun leur pont, avec leurs propres gardes. Trois
+//	                faits mesurés en découlaient : `3372e7eb` jetait 35 actions d'objectif sur
+//	                76 ; `d9781168` publiait 19 vies sans nom, toutes sur le slot d'un joueur
+//	                qui ne meurt jamais ; `51ebbc0f` perdait la manche 0 d'un joueur (écart
+//	                cumulé K/D/A de 9 contre la feuille de match).
+//
+//	le contrat      la section est OPTIONNELLE et additive (`identity,omitempty`) ; un artefact
+//	                antérieur au schéma 50 n'en porte pas, et le client doit lire son absence.
+//	                `roster[].bid` est optionnel de la même façon — vide pour un humain, et vide
+//	                pour un bot dont la déclaration ne portait pas d'identifiant (un `bid(0.0)`
+//	                inventé joindrait deux bots distincts).
+//
+//	ce que le lot   les liens que le film ne porte PAS restent déduits, et ils le DISENT :
+//	n'a pas fait    slot de bipède ↔ index de joueur (aucune identité dans `BipedPosition`),
+//	                slot de statborg ↔ joueur, équipe d'un joueur (elle vit dans la base, pas
+//	                dans le film). Leur branchement appartient au plan DÉCODEUR d'après v7.5.0
+//	                (inventaire P1, colonne « exige travail décodeur »).

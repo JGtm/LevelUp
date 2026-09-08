@@ -371,6 +371,13 @@ const NULLABLE_ARRAY_PATHS = [
   // Les socles de carte croises (allumes seulement) : meme regime que mapObjectives —
   // servis a la requete, consommes par le calque des socles avec son propre repli.
   'mapWeaponPads.pads',
+  // LE REGISTRE D'IDENTITE (schema 50, lot P2) : trois listes nullables sous un objet qui a le
+  // droit d'etre absent, meme regime que `scoreTimeline`. La frontiere les comble ; l'OBJET,
+  // lui, reste optionnel — un artefact anterieur au schema 50 n'en porte aucun, et cela ne se
+  // confond pas avec un registre vide.
+  'identity.players',
+  'identity.bipedSlots',
+  'identity.statborgSlots',
 ] as const
 
 /**

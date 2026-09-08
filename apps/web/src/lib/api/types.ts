@@ -2808,6 +2808,10 @@ export type ReplayTeamScore = components['schemas']['TeamScore']
 export type ReplayTeamHold = components['schemas']['TeamHold']
 export type ReplayPlayerScore = components['schemas']['PlayerScore']
 export type ReplayScoreTimeline = components['schemas']['ScoreTimeline']
+// LE REGISTRE D'IDENTITE (schema 50) : sur quoi repose chaque nom que le document sert —
+// lien direct lu dans le film, pont par morts, fermeture, elimination sur le roster, ou rien
+// du tout (`non_resolu`, publie et compte, jamais invente).
+export type ReplayIdentitySection = components['schemas']['IdentitySection']
 // La COUVERTURE du calque de score : par quelle voie l'identité des équipes a été résolue
 // (`teamIdentity` : a | b | unresolved), si le mode porte le compteur, si la lecture a été
 // tronquée, et le nombre de points publiés. `oracle` dit à quelle grandeur le décodage a été

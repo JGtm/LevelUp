@@ -153,6 +153,18 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // qui arriverait avec `g: null` ferait tomber la boîte de grenades à l'exécution.
     grenadeReads: (raw.grenadeReads ?? []).map((gr) => ({ ...gr, g: gr.g ?? [] })),
     grenades: raw.grenades ?? [],
+    // LE REGISTRE D'IDENTITÉ (schéma 50) : ses trois listes se comblent, l'OBJET garde le droit
+    // d'être absent. Un artefact antérieur au schéma 50 n'en porte aucun, et un objet vide se
+    // lirait « le registre a été calculé, il n'a rien trouvé » — le contraire de « personne n'a
+    // regardé ». Même régime que `scoreTimeline`.
+    identity: raw.identity
+      ? {
+          ...raw.identity,
+          players: raw.identity.players ?? [],
+          bipedSlots: raw.identity.bipedSlots ?? [],
+          statborgSlots: raw.identity.statborgSlots ?? [],
+        }
+      : undefined,
     inventory: (raw.inventory ?? []).map((inv) => ({ ...inv, am: inv.am ?? [], g: inv.g ?? [] })),
     loadouts: (raw.loadouts ?? []).map((lo) => ({ ...lo, w: lo.w ?? [] })),
     // Le TYPE des morts que personne ne revendique (chute, hors-limites, sa propre arme) :
