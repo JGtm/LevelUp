@@ -188,11 +188,11 @@ test `:memory:` dédié à `QTacticalIsolement` (entre dans Q8 si la revue le ju
 | # | Lot | Source | Exécutant | Gate de clôture | Statut |
 |---|---|---|---|---|---|
 | P1 | Inventaire : table des entités (identifiant dans le film, durée de vie, liens DIRECTS, replis avec `fichier:ligne` du calque), axes (a)-(h) du plan v2 + (i) lecteurs hors rejeu + (j) emplacement du registre ; VERDICT écrit ROSTER pour S.3 ; séquençage P2-P5 ; questions ouvertes avec leur témoin | v2 lot P item P1 ; §1.2 et §4 ici | Opus, effort élevé | `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md` complet (aucun axe vide), registre, thought_log, commit `docs(restes/p1):` poussé ; ZÉRO code | [x] 2026-09-07 : `7cbec66f4` sur `feat/p1-inventaire`, poussé (`origin` confirmé) ; livrable 569 L, 9 entités, axes (a) à (j) tous statués, 18 liens directs contre 23 replis, 3 découvertes au registre ; **0 fichier de code touché** (vérifié sur pièces par le superviseur) ; verdicts en §4.2 |
-| P2 | Registre des joueurs (= R1 + R2) : table d'identité unique publiée, lien direct à 100 %, pont par morts en repli et vérification, migration des lecteurs joueurs, garde-rail anti-pont maison | v2 lot P | Opus | ouvre après P1 statué ET après fusion des lots rejeu en vol (règle §0.6) | [ ] |
+| P2 | Registre des joueurs (= R1 + R2) : table d'identité unique publiée, lien direct à 100 %, pont par morts en repli et vérification, migration des lecteurs joueurs, garde-rail anti-pont maison | v2 lot P | Opus | ouvre après P1 statué ET après fusion des lots rejeu en vol (règle §0.6) | [x] 2026-09-08 : `feat/v2-p2-registre-joueurs` (`333c7f3e9`, `d9548a5dc`, `58da800a1`, `871cfaa51`, base `feat/v75` `7254b3853`, poussée, worktree `LevelUp-wt-p2`) ; `BuildIdentityRegistry` PURE dans `analysis/replay`, appelée par `replaybuild` ET par `sync/killcollector` (amendement §0.7 / D11 porté au 1er commit) ; types canoniques `games/canonical/film_identity.go` (enums fermées, aucun slug) ; section `identity` publiée jusqu'au contrat (+ `roster[].bid`, E9 fermé côté Go) ; bump **49 → 50** (le 49 était pris par M1b) + chronique + cliquet 56 → 57 + goldens (un seul écart : le numéro de schéma — témoin de neutralité) ; R1 (actions jamais jetées), R2 (élimination sur le roster) et le correctif R4 reporté par M4 livrés ; 18 lecteurs migrés + les 2 hors rejeu, `killpos_bridge.go` supprimé ; garde-rail `archlint` allowlist datée à UNE entrée, 7 mutations jouées ROUGE ; `IsolationDecoderRev` bumpée → `levelup backfill-killsource` ; gates verts (vet, 53 paquets `ok`, intégration `-p 1` 11 paquets, parité, `openapi-gen -check`, lint 0 issue, web typecheck + vitest 7 024 tests). **Témoins chiffrés et `replay-corpus-gate` `[!]` : à jouer par le SUPERVISEUR** (aucun film dans le worktree), commandes et chiffres attendus au §7 de `.ai/V7.5/v2/RESTES_P2_2026-09-08.md` |
 | P3 | Registre des objets d'objectif (= R3) | v2 lot P | Opus | ouvre après P2 | [ ] |
 | P4 | Registre des véhicules et assets | v2 lot P | Opus | ouvre après P3 | [ ] |
 | P5 | Clôture du paradigme (gate corpus 0 perte, chronique 49, garde-rail identité, doc FR/EN) + UNE revue adversariale sur le diff cumulé P2-P5 (règle §0.5) | v2 lot P | Opus | `make replay-corpus-gate` | [ ] |
-| S.3 | Arrivées/départs (Tactique) — verdict ROSTER de P1 rendu : **NON**, le film ne porte pas les entrées/sorties. S.3 se fera donc par calage `real_start_time` / `t0_quality`, APRÈS P2 | Tactique S.3, D10 | Sonnet, effort moyen | à ouvrir après la clôture de P2 | [ ] dégelé sous condition le 2026-09-07 |
+| S.3 | Arrivées/départs (Tactique) — verdict ROSTER de P1 rendu : **NON**, le film ne porte pas les entrées/sorties. S.3 se fera donc par calage `real_start_time` / `t0_quality`, APRÈS P2 | Tactique S.3, D10 | Sonnet, effort moyen | à ouvrir après la clôture de P2 | [ ] OUVRABLE depuis le 2026-09-08 (P2 clos, branche non fusionnée : attendre la fusion dans `feat/v75`) |
 | L6 / L7 / L8 | Narratif (gabarits par titre, D7), erreurs API (`code` seul, D6), Discord (langue du compte, D8) | Libellés | Sonnet | — | [ ] |
 | R9 | Release : séquence Notion, tag `v7.5.0`, push `main` | v2 R9 | Utilisateur | — | [ ] |
 
@@ -295,6 +295,16 @@ suivies et n'est jamais touché ; suppression locale seulement, `origin` gardé 
   parc), le web convertit `?t=` (horloge match) en frame avec le document chargé ; en l'absence
   d'offset (artefact ancien) le lien ne s'affiche pas pour ces quatre questions. À faire AVANT
   la fusion de la vague 2 ou consigné comme réserve visible à l'écran.
+
+- 2026-09-08 ; lot P2 (`feat/v2-p2-registre-joueurs`) ; `roster[].bid` est publié côté Go et au
+  contrat, mais `apps/web/src/lib/replay/rosterLogic.ts:100,122-128` joint toujours les bots par le
+  NOM NU (`botKey(entry.name)`) — deux bots homonymes fusionnent toujours. Le brief de P2 fige le
+  web. Reprise : lot web dédié, APRÈS la re-cuisson du parc au schéma 50 (R9), pour que les
+  artefacts servis portent le champ.
+- 2026-09-08 ; lot P2 ; les vies nommées par FERMETURE (`closures.go`) ne sont pas marquées
+  « déduites » dans `unnamed.deduced` — une fermeture est pourtant une déduction, et les lecteurs
+  qui prouvent une ABSENCE (`carrierPresenceOf`) ne s'en abstiennent pas. Préexistant, non aggravé.
+  Reprise : P5, avec le garde-rail global d'identité.
 
 ## 7. Reprise de session
 
