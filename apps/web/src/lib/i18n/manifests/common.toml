@@ -2052,6 +2052,10 @@ en = "Coaching"
 fr = "Réalisations"
 en = "Achievements"
 
+[common.nav.tab_tactique]
+fr = "Tactique"
+en = "Tactical"
+
 [common.nav.tab_leaderboard]
 fr = "Classements"
 en = "Leaderboards"

@@ -145,6 +145,17 @@ export const L1_SECTIONS: L1Section[] = [
       { key: 'objectives', labelKey: 'common.nav.tab_objectives', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs' },
       { key: 'coaching', labelKey: 'common.nav.tab_coaching', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching' },
       { key: 'realisations', labelKey: 'common.nav.tab_realisations', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations' },
+      // TACTIQUE EST LE MIROIR EXACT DU 5e ONGLET DE `AscensionLayout` (2026-09-08). La page
+      // portait ses cinq onglets en L2 depuis le 2026-09-06 ; le dropdown L1, lui, en comptait
+      // quatre — la page existait sans qu'aucun menu n'y mène. Même position (dernière) et même
+      // porte (`replay`) qu'au L2 : deux listes qui divergeraient sur l'ordre ou sur la
+      // capability se liraient comme deux fonctionnalités différentes.
+      {
+        key: 'tactique',
+        labelKey: 'common.nav.tab_tactique',
+        path: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique',
+        capability: 'replay',
+      },
     ],
   },
   {
