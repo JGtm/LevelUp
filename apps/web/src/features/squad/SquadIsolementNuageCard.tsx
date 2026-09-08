@@ -28,6 +28,7 @@ import { resolveToken } from '@/lib/accessibility'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { intlLocale } from '@/lib/formatters'
+import { withLowSampleNote } from '@/lib/formatters/lowSampleNote'
 import type { SquadEchangeJoueur, SquadNuageIsolement, SquadIsolementPoint } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -36,6 +37,7 @@ import {
   medianesNuage,
   opaciteDuPoint,
   PLANCHER_MORTS_SESSION,
+  pointAttenue,
   tailleDuPoint,
   type MedianesNuage,
 } from './squadIsolement.logic'
@@ -210,7 +212,7 @@ function buildNuageOption(
       formatter: (params: unknown) => {
         const p = (params as { data?: EchartScatterDatum }).data?.raw
         if (!p) return ''
-        return t.tooltip({
+        const base = t.tooltip({
           gamertag: escapeHtml((p.gamertag ?? '') as string),
           session: escapeHtml(p.session_label ?? ''),
           isoRate: pctFmt.format(p.part_isolee.taux),
@@ -220,6 +222,11 @@ function buildNuageOption(
           covBrut: p.couverture.brut,
           covN: p.couverture.n,
         })
+        // L'opacité réduite (opaciteDuPoint) n'est pas un signal fiable à elle
+        // seule (contraste, daltonisme) : le tooltip nomme explicitement la
+        // réserve d'échantillon faible, par la forme unique du dépôt (`withLowSampleNote`,
+        // séparateur HTML : le tooltip ECharts est du HTML).
+        return withLowSampleNote(base, pointAttenue(p), t.lowSample, '<br/>')
       },
     },
     legend: { ...getLegendNames(series), textStyle: { color: tc.axisLabel } },

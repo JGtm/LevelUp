@@ -611,7 +611,8 @@ export interface MatchHistoryRow {
   start_time: string
   start_time_label: string
   outcome_code: number | null
-  outcome_label: string
+  /** Clé canonique d'issue (MT-06) : le web localise via useOutcomeLabel/useOutcomeMapping. */
+  outcome?: 'win' | 'loss' | 'tie' | 'dnf'
   score_label: string
   map_ui: string
   mode_ui: string
@@ -690,7 +691,8 @@ export interface ExplorerMatchRow {
   map_ui: string
   mode_ui: string
   playlist_label: string
-  outcome_label: string
+  /** Clé canonique d'issue (MT-06) : le web localise via useOutcomeLabel/useOutcomeMapping. */
+  outcome?: 'win' | 'loss' | 'tie' | 'dnf'
   outcome_code: number
   score_label: string
   is_with_friends: boolean
@@ -828,7 +830,8 @@ export interface ExplorerCommonMatchRow {
   mode_ui: string
   were_teammates: boolean
   player_outcome: number
-  outcome_label: string
+  /** Clé canonique d'issue (MT-06) : le web localise via useOutcomeLabel/useOutcomeMapping. */
+  outcome?: 'win' | 'loss' | 'tie' | 'dnf'
   kills: number
   deaths: number
   kda: number
@@ -980,7 +983,8 @@ export interface RecentMatchItem {
   title: string
   detail: string
   started_at: string | null
-  outcome_label: string
+  // outcome_label supprimé côté Go le 2026-09-07 (D4/D5, lot Q4) : 0 lecteur ici — le mot
+  // d'issue, quand il existe, est déjà dans `title` (composite résolu par le backend).
   outcome_tone: string
   score_label?: string | null
   narrative_badges?: string[]
@@ -1935,7 +1939,8 @@ export interface MatchScoreboardRow {
   assassination_kills?: number | null
   ground_pound_kills?: number | null
   shoulder_bash_kills?: number | null
-  outcome_label: string
+  /** Clé canonique d'issue (MT-06) : le web localise via useOutcomeLabel/useOutcomeMapping. */
+  outcome?: 'win' | 'loss' | 'tie' | 'dnf'
   /** V7 — combat yield */
   top_weapon_id?: number | null
   top_weapon_label?: string | null
@@ -3122,3 +3127,10 @@ export type BornesMonde = components['schemas']['BornesMonde']
 export type EchelleTactique = components['schemas']['EchelleTactique']
 export type TacticalCouverture = components['schemas']['Couverture']
 export type TacticalGrappe = components['schemas']['TacticalGrappe']
+
+// Le DÉTAIL D'UNE CELLULE (lien « voir dans le rejeu », lot M1) : mêmes raisons de typage
+// sur le contrat généré que les deux lectures ci-dessus — un renommage côté Go casse `tsc`
+// ici plutôt que de se découvrir à l'exécution.
+export type TacticalCelluleBody = components['schemas']['TacticalCelluleBody']
+export type TacticalCelluleReponse = components['schemas']['TacticalCelluleReponse']
+export type TacticalContribution = components['schemas']['TacticalContribution']

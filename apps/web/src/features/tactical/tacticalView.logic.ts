@@ -7,7 +7,7 @@
  */
 import type { BornesMonde, CelluleTactique, EchelleTactique } from '@/lib/api/types'
 
-import { buildTacticalGrid, type TacticalGrid } from './heatPaint'
+import { buildTacticalGrid, type TacticalGrid } from '@/lib/replay/heatPaint'
 import type { TacticalText } from './i18n'
 
 /** Les six lectures offertes par la barre d'outils — même vocabulaire que le contrat
@@ -125,4 +125,47 @@ export function trouveCellule(
   row: number,
 ): CelluleTactique | null {
   return cellules.find((c) => c.col === col && c.lig === row) ?? null
+}
+
+/**
+ * TACTICAL_REPLAY_FRAME_INTERVAL_MS — le pas d'échantillonnage de l'artefact de rejeu, en
+ * millisecondes. MÊME VALEUR que `analysis/replay.DefaultFrameIntervalMS` côté Go
+ * (source unique, dépôt) : le contrat `TacticalCelluleReponse` ne la publie pas encore par
+ * contribution — elle est aujourd'hui CONSTANTE pour tout le parc (aucune variation par
+ * titre ou par match observée). Si un jour l'artefact adopte un pas variable, cette
+ * constante devra devenir un champ du contrat plutôt qu'une hypothèse côté web.
+ */
+export const TACTICAL_REPLAY_FRAME_INTERVAL_MS = 100
+
+/**
+ * instantToFrame — convertit un instant (millisecondes) en index de frame, sur l'axe que
+ * `playbackStore`/`?frame=` du lecteur 2D consomment (`lib/replay/replayLogic.frameToMs` :
+ * `frame * frameIntervalMs` = ms écoulées depuis le début du rejeu).
+ *
+ * CONVERSION MÉCANIQUE SEULE — ELLE NE CORRIGE AUCUN DÉCALAGE D'HORLOGE. Vérifié sur pièces
+ * (lot M1, item 1) : `instant_ms` n'est PAS toujours sur le même axe temporel selon la
+ * question (cf. la doc de `TacticalContribution.InstantMs` côté Go) —
+ *
+ *   temps, routes            l'instant est DÉJÀ sur l'horloge du FILM (ms écoulées depuis
+ *                            le début du rejeu) : la frame obtenue est EXACTE.
+ *   morts, kills, gagne,
+ *   isole                    l'instant vient de l'horloge du MATCH (`match_kill_events.
+ *                            time_ms`), qui diffère de celle du film d'un décalage PAR
+ *                            MATCH (`DeathOffsetMS`, `analysis/replay/lives_export.go`)
+ *                            NON PUBLIÉ dans ce contrat. La frame obtenue est donc une
+ *                            APPROXIMATION (écart mesuré de 3,6 à 50,8 s sur les films
+ *                            témoins, `analysis/replay/origin.go`) — décalage constant sur
+ *                            tout le match, pas un bruit aléatoire, mais réel.
+ *
+ * Décision du lot M1 (découverte consignée, non traitée : `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`) :
+ * le lien est construit pour LES SIX questions (le contrat ne distingue pas la provenance
+ * de l'instant), avec cette réserve documentée plutôt qu'un lien manquant pour quatre
+ * questions sur six.
+ */
+export function instantToFrame(
+  instantMs: number,
+  frameIntervalMs: number = TACTICAL_REPLAY_FRAME_INTERVAL_MS,
+): number {
+  if (!(frameIntervalMs > 0) || !(instantMs >= 0)) return 0
+  return Math.round(instantMs / frameIntervalMs)
 }

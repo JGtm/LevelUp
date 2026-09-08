@@ -69,11 +69,15 @@ export function getTacticalText(locale: Locale) {
     kpiTrade: m('tactical.kpi.trade'),
     kpiIsolation: m('tactical.kpi.isolation'),
     kpiSecondary: (brut: number, n: number) => m('tactical.kpi.secondary', { brut, n }),
+    // Réserve d'échantillon des tuiles KPI « Échange » / « Isolement » : même clé
+    // et même forme (accolée au secondaire) que `SquadEchangeKpi` pour la même
+    // mesure — le drapeau `echantillon_faible` interdit de comparer, il ne cache
+    // pas la valeur.
+    lowSample: m('tactical.kpi.low_sample'),
+    // Note de couverture de la tuile « Morts en isolement » : `matchs_sans_rayon`
+    // est déjà publié par le contrat (aucun calcul côté web).
+    kpiNoRadiusNote: (n: number) => m('tactical.kpi.no_radius_note', { n }),
     planTitle: m('tactical.plan.title'),
-    planOf: (map: string) => m('tactical.plan.title_of', { map }),
-    footerHeatmap: m('tactical.plan.footer_heatmap'),
-    footerRoutes: m('tactical.plan.footer_routes'),
-    footerEmpty: m('tactical.plan.footer_empty'),
     footerFloor: (n: number) => m('tactical.plan.footer_floor', { n }),
     sourceReplay: m('tactical.plan.source_replay'),
     sourceJournal: m('tactical.plan.source_journal'),
@@ -85,6 +89,13 @@ export function getTacticalText(locale: Locale) {
     cellPlaceholder: m('tactical.cell.placeholder'),
     cellPlaceholderDescription: m('tactical.cell.placeholder_description'),
     cellMatches: (n: number) => m('tactical.cell.matches', { n }),
+    // Contributions et lien vers le rejeu (lot M1, Tactique S.1).
+    cellContributionsTitle: m('tactical.cell.contributions_title'),
+    cellContributionsLoading: m('tactical.cell.contributions_loading'),
+    cellContributionsEmpty: m('tactical.cell.contributions_empty'),
+    cellContributionLabel: (date: string, instant: string) =>
+      m('tactical.cell.contribution_label', { date, instant }),
+    cellFooterNotOpenable: (n: number) => m('tactical.cell.footer_not_openable', { n }),
 
     // ── Titre de la vue, barre d'outils ──────────────────────────────────────
     analysisPageTitle: (map: string, question: string) =>

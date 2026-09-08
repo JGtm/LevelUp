@@ -77,6 +77,10 @@ func skillTierLabel(en string) string {
 // base = rows post-cascade post-PickedSoloSessions (avant les filtres Explorer).
 // Pour chaque outcome X candidat, on simule selected ∪ {X} et on applique tous
 // les autres filtres (ranked, skill, perf + Explorer-cascade).
+//
+// Label sert la CLÉ CANONIQUE (win|loss|tie|dnf), pas un texte — le web libelle (D5,
+// 2026-09-07). candidates est une liste fixe de codes Halo (dette multi-titre existante de
+// ce fichier, hors périmètre : cf. .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §9).
 func computeAvailableOutcomes(
 	base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest, replays port.ReplayAvailability,
 ) []domain.LabelValue {
@@ -91,7 +95,7 @@ func computeAvailableOutcomes(
 		rs = filterByPerfTiers(rs, req.PerfTiers)
 		rs = applyExplorerMatchFilters(rs, req, replays)
 		out = append(out, domain.LabelValue{
-			Label: outcomeLabel(o),
+			Label: outcomeKeyFromHaloCode(o),
 			Value: strconv.Itoa(o),
 			Count: len(rs),
 		})

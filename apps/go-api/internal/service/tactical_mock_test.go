@@ -9,28 +9,33 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"levelup/go-api/internal/domain"
 )
 
 // mockTacticalRepo double port.TacticalRepository et retient ce qu'on lui demande.
 type mockTacticalRepo struct {
-	maps     []domain.TacticalMapRow
-	pos      domain.TacticalPositions
-	ev       domain.TacticalKillEvents
-	univ     domain.TacticalUnivers
-	morts    domain.TacticalMortsContexte
-	errMaps  error
-	errPos   error
-	errEv    error
-	errUniv  error
-	errMorts error
+	maps      []domain.TacticalMapRow
+	pos       domain.TacticalPositions
+	ev        domain.TacticalKillEvents
+	univ      domain.TacticalUnivers
+	morts     domain.TacticalMortsContexte
+	ouvrables map[string]time.Time
+	errMaps   error
+	errPos    error
+	errEv     error
+	errUniv   error
+	errMorts  error
+	errOuvr   error
 
-	vuMaps  domain.TacticalQuery
-	vuPos   domain.TacticalQuery
-	vuEv    domain.TacticalQuery
-	vuUniv  domain.TacticalQuery
-	vuMorts domain.TacticalQuery
+	vuMaps      domain.TacticalQuery
+	vuPos       domain.TacticalQuery
+	vuEv        domain.TacticalQuery
+	vuUniv      domain.TacticalQuery
+	vuMorts     domain.TacticalQuery
+	vuOuvrXUID  string
+	vuOuvrMatch []string
 }
 
 // Univers : la lecture d'OCCUPATION (phase 6) n'a besoin que de l'univers — ses valeurs
@@ -97,6 +102,27 @@ func (m *mockTacticalRepo) MortsAvecContexte(_ context.Context, q domain.Tactica
 		if garde[d.MatchID] {
 			out.Morts = append(out.Morts, d)
 		}
+	}
+	return out, nil
+}
+
+// MatchsOuvrables double la verification d'ownership (ADR 0029, lot M1) : sans seed
+// explicite (`m.ouvrables == nil`), TOUS les match_id demandes sont ouvrables — un double
+// plus strict que la production par defaut cacherait le comportement nominal derriere un
+// seed obligatoire sur chaque test qui n'a rien a voir avec l'ownership. Un test qui VEUT
+// verifier le refus seede `ouvrables` lui-meme, sans le match etranger.
+func (m *mockTacticalRepo) MatchsOuvrables(_ context.Context, xuid string, matchIDs []string) (map[string]time.Time, error) {
+	m.vuOuvrXUID = xuid
+	m.vuOuvrMatch = matchIDs
+	if m.errOuvr != nil {
+		return nil, m.errOuvr
+	}
+	if m.ouvrables != nil {
+		return m.ouvrables, nil
+	}
+	out := make(map[string]time.Time, len(matchIDs))
+	for _, id := range matchIDs {
+		out[id] = time.Time{}
 	}
 	return out, nil
 }

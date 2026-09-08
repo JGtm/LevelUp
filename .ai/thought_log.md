@@ -1,3 +1,86 @@
+## [2026-09-08] Lot M1 — lien « voir dans le rejeu » depuis une cellule (Tactique S.1) — Complete
+
+**Decision technique principale.** Reprise d'un exécutant précédent coupé par une limite de
+quota, sur `feat/tactique-lien-rejeu` (base `feat/v75` @ `6a1496e30`), worktree
+`LevelUp-wt-m1-cellule`. État hérité vérifié sur pièces (diff complet lu avant tout code) :
+S.1.1 (contrat `POST /players/{player_slug}/tactical/{map_id}/cellule`, domaine
+`tactical_cellule.go`, port `MatchsOuvrables`, repo `tactical_repo_ownership.go`, service
+`tactical_service_cellule.go`) et S.1.2 (web `TacticalCellCard`, `useTacticalCellule`, clé
+de query title-scopée, wiring `TacticalAnalysisView`) étaient DÉJÀ posés et cohérents avec
+le brief — bonne architecture, bonne doc, ownership ADR 0029 correctement défensif (filtre
+après lecture, jamais de confiance dans le scope filtrant déjà par construction). Manquant
+identifié dans S.1.3 : les tests Go (service/handler/repo) étaient complets, mais AUCUN
+test web sur la logique pure (`instantToFrame`) ni sur le rendu de `TacticalCellCard`
+(lien `?frame=`, footer conditionnel) — complété dans cette passe plutôt que déclaré fait
+par erreur. Découverte du décalage d'horloge match/film pour 4 des 6 questions
+(documentée dans le code depuis la première passe mais jamais réellement consignée au
+registre) : ajoutée à `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`, non traitée (hors périmètre
+M1, condition de reprise notée).
+
+**Résultats observés.** Ajouts de cette passe : 8 tests `instantToFrame` dans
+`tacticalView.logic.test.ts` (pas par défaut, pas explicite, arrondi, bornes 0/négatif) ;
+nouveau fichier `TacticalCellCard.test.tsx` (8 tests : placeholder, chargement, vide, lien
+`?frame=` construit par contribution, ordre des liens, footer 0 vs >0). Gates rejoués au
+complet : `gofmt -l` vide ; `go build ./internal/...` propre ; `go vet` des paquets touchés
+propre ; `go test -count=1 ./internal/service/... ./internal/api/... ./internal/platform/duckdb/... ./internal/domain/...`
+vert ; `go test ./internal/platform/duckdb/ -run 'NoRaw|Mesuree'` vert ; `archlint` +
+`internal/sync` (no_slug_comparison, no_art_patterns) verts ; `go run ./cmd/openapi-gen -check`
+à jour ; `make generate-types` sans dérive (diff stable à 92 lignes avant/après régénération) ;
+`golangci-lint run --new-from-merge-base=origin/main ./...` 0 issue ; web `npm run typecheck`
+propre ; `npm run lint` 0 erreur (29 warnings préexistants, hors périmètre tactical) ;
+`npx vitest run --pool=forks` 657/658 fichiers verts, 7006/7023 tests verts (skips
+préexistants) ; `lint:colors` et `lint:fields` propres. Aucun test supprimé ni renommé :
+`.ai/baselines/tests_pre_migration.jsonl` inchangé.
+
+**Conclusion / prochaine étape.** S.1.1, S.1.2, S.1.3 cochés `[x]` avec preuve dans
+`.ai/PLAN_TACTIQUE_SUITE_2026-09-07.md` ; M1 coché dans
+`.ai/PLAN_ORCHESTRATION_2026-09-07.md` (vague 2). Reste ouvert, hors périmètre M1 : le
+décalage d'horloge match/film qui rend `?frame=` approximatif pour 4 questions sur 6
+(reprise possible : publier `DeathOffsetMS` par match dans le contrat). Commits par
+chemins explicites (Go+contrat / web / journal) puis `git push -u origin
+feat/tactique-lien-rejeu`, sans fusion (décision de l'utilisateur).
+
+## [2026-09-07] Orchestration — ouverture de la vague 3, lot P1 (inventaire du registre d'identite) — Complete
+
+**Decision technique principale.** Vague 3 du plan `.ai/PLAN_ORCHESTRATION_2026-09-07.md` ouverte a
+la demande de l'utilisateur alors que Q4, Q8 (vague 1) et la vague 2 ne sont pas clos. Verifie sur
+pieces avant d'ouvrir : P1 est un lot SANS CODE (inventaire, journal seul), il ne peut donc entrer en
+conflit avec aucun lot en vol ; P2, qui touche `analysis/replay` et le collecteur, reste ferme jusqu'a
+la fusion des lots du domaine rejeu (regle §0.6, un seul lot par domaine). Lot execute par un agent
+Opus, brief ferme, worktree dedie `LevelUp-wt-p1-inventaire`, branche `feat/p1-inventaire` depuis
+`feat/v75` @ `22d76a738`.
+
+**Resultats observes.** Livrable `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md` (569 L, commit
+`7cbec66f4`, pousse) : 9 entites inventoriees, axes (a) a (j) tous statues, 18 liens directs contre
+23 replis, sequencage P2-P5, questions ouvertes assorties de leur temoin. Trois verdicts qui engagent
+la suite :
+- ROSTER (axe d) : **NON**, le film ne porte pas les entrees/sorties de joueurs. `PlayerActiveInGame`
+  (ti=5 i18) et `PlayerPendingJoinInProgress` (ti=5 i19) sont decodes et publies par la sonde
+  `SetPlayerStateHook` (`internal/analysis/filmdec/components_player.go:94,182-190`) mais n'ont aucun
+  consommateur de production et un debit de 163 et 105 lectures sur 22 films. S.3 (Tactique) se fera
+  donc par calage `real_start_time` / `t0_quality`, APRES P2 : D10 confirmee.
+- Le trou central est le slot de bipede (E2) : zero lien direct, cinq replis empiles ; objets,
+  vehicules et armes au sol en dependent pour nommer porteur, occupant et ramasseur. C'est ce qui
+  ordonne P2 avant P3, P4 et P5.
+- TEMPS et MANCHES : negatifs. ti=0 n'est pas replique (1 enregistrement sur 22 films) ; la seule
+  horloge directe est `Packet.TS` + `start_ms`, deja lue par le statborg
+  (`internal/analysis/objectiveevents/statborg.go:199`) et jamais par la grille de frames, ancree sur
+  le premier paquet de position (`internal/analysis/replay/build.go:49`).
+
+**Controle du superviseur (sur pieces, non delegue).** Verifies : les deux composants de roster sans
+consommateur de production, l'ancrage de la grille de frames, l'horloge du statborg, la contradiction
+de `internal/analysis/replay/vehicle_rides.go:29-31` (l'evenement NOMME le vehicule depuis le lot V8,
+`filmdec/event_list.go:317-320`), et l'absence totale de fichier de code dans le diff
+(`git diff --name-only feat/v75..feat/p1-inventaire` : 4 fichiers, tous sous `.ai/`). Les debits de
+lecture et les decomptes de liens viennent du balayage du lot, non re-mesures.
+
+**Conclusion / prochaine etape.** P1 clos et cochee (plan v2 §2 lot P, plan d'orchestration §4.1 avec
+les verdicts en §4.2). Trois decouvertes consignees au registre, non traitees (doc inversee vehicule
+-> P4 ; plomberie ti=0 sans porteur -> plan decodeur ; `bid(N.0)` lu mais non publie -> P2). P2
+n'ouvre pas tant que `feat/v2-restes-r6` et `feat/raster-document-unique` (domaine rejeu) ne sont pas
+fusionnes ; il devra budgeter la reecriture de `match_lives` / `match_death_context` par
+`levelup backfill-killsource` qu'impose un bump d'`IsolationDecoderRev`, et porter l'amendement du
+§0.7 (registre = fonction pure de `analysis/replay`) a son premier commit.
 ## [2026-09-07] Orchestration — vague 2, lot M3 = R7 du plan restes (budget de candidats du calage) — Complete
 
 **Decision technique principale.** Lot R7 de `.ai/PLAN_V2_RESTES_2026-09-07.md` (= M3 de
@@ -180,6 +263,207 @@ d'autres fichiers du paquet `internal/analysis/replay` (tests de recherche/golde
 plupart) et `internal/service/replayview/parity_test.go` depassent deja 500 L, sans lien avec ce
 lot. Commit(s) par chemins explicites sur `feat/v2-restes-r0`, push `origin`. Pas de fusion (lot
 suivant du plan restes : P/R1, decision utilisateur en attente sur le choix P vs R1-R3 sequentiel).
+## [2026-09-07] Tactique — clôture réelle (Q8) — Complété
+
+**Contexte.** Lot Q8 de `.ai/PLAN_ORCHESTRATION_2026-09-07.md` : la phase 8 du chantier
+Tactique restait non close malgré le titre du commit `05548d4e4` (§1.2 du plan
+d'orchestration) — cases 8.1-8.4 vides, revue adversariale du diff intégral jamais faite.
+Worktree `LevelUp-wt-q8-tactique`, branche `feat/tactique-cloture` = `feat/peintre-chaleur-unique`
+(déjà livrée) fusionnée avec `feat/mojibake-garde-rail` (déjà livrée) : auto-merge propre, aucun
+conflit de code (seuls `.ai/PLAN_ORCHESTRATION_2026-09-07.md` et `.ai/thought_log.md`, gardés
+des deux côtés).
+
+**Décision technique principale.** Fermer la phase 8 en traitant EXACTEMENT les items du
+brief (périmètre fermé), rien de plus :
+1. Web — les trois constats de la revue Phase 5/7B (`.ai/V7.5/REVUE_TACTIQUE_PHASES_5_7B_
+   2026-09-07.md`, P0=0/P1=2/P2=1) : réserve `echantillon_faible` accolée au `secondary` des
+   tuiles KPI Tactique « Échange »/« Isolement » (même forme que `SquadEchangeKpi.tsx`, clé
+   `tactical.kpi.low_sample`) ; réserve rendue dans le tooltip du nuage
+   `SquadIsolementNuageCard` (même ligne de code que le fix, 210-223 — pas une troisième
+   forme) ; quatre clés i18n mortes (`planOf`/`footerHeatmap`/`footerRoutes`/`footerEmpty`)
+   supprimées de `tactical.toml` + `i18n.ts` après grep à zéro consommateur. `matchs_sans_rayon`
+   (déjà publié) : note de couverture sur la tuile Isolement, clé `tactical.kpi.no_radius_note`.
+2. Go — `replay.EtatParti` et son `case` supprimés (morts depuis 7C.9, jamais réintroduits) ;
+   champ `Partis` retiré de `ContexteMort` ; `teammates_left` écrit à 0 avec commentaire
+   (colonne append-only conservée, ADR 0026, pas de migration de schéma).
+3. Go — registre Tactique : regex `no_raw_rating_reads_test.go` élargie à
+   `match_kill_events`/`kill_positions`/`match_bomb_stats` (mutation testée : un littéral hors
+   vue fait rougir le test ; **P0 = 0**, tous les lecteurs existants passaient déjà par
+   `_latest`) ; refus de câblage des positions (`positions.go`, cas config — capability
+   présente, `WithPositionCapture` absent) passé en WARN + compteur dédié
+   `killsource_positions_non_cablees` (le cas « titre sans la capability », fréquent et non
+   pathologique, reste Debug) ; `settingsStore.Load()` en erreur loggué en WARN avant
+   dégradation aux deux appelants réellement silencieux (`cmd/server/main.go` cron de purge,
+   `internal/api/server_apiv1.go` `instanceLockedFn` — `api/wire/registry.go` loggait déjà,
+   vérifié sur pièces) ; compteur dédié `killsource_isolement_pont_non_publiable` pour ne plus
+   mélanger « pont refusé pour tout le match » et « cette victime précise sans lieu » ; test
+   d'orthogonalité `end_cause`/`named_by` (`lives_export_test.go`) rejoué sur un VRAI pont
+   (`ResolveSlotXUID` + `closeByRespawn`, fire = nil) au lieu de trois littéraux ; test film
+   réel réparé (roster `filmRoster` construit depuis `replay.ScanDeaths(film)` — gamertag/xuid
+   réels — au lieu de `fakeRoster{}` vide qui vidait `Equipes` et sautait la projection sur
+   chaque film ; `t.Fatal` remplace le `t.Skipf` final) ; entrée « LEFT JOIN match_registry
+   sans test » fermée CADUQUE (vérifié sur pièces : le JOIN a disparu avec 7C.9).
+4. Docs — phase 8 statuée (8.1 `[x]`, 8.2/8.3/8.4 `[~]` référençant la doctrine de vague de
+   l'orchestration — décision utilisateur 2026-09-07) ; entrée de clôture au §6 du plan
+   Tactique ; `DECOUVERTES_TACTIQUE_2026-09-07.md` : chaque entrée traitée marquée « TRAITÉ le
+   2026-09-07 (Q8) », une découverte nouvelle consignée non traitée (`cmd/server/main.go:722`,
+   un troisième appelant silencieux de `settingsStore.Load()` hors périmètre Q8).
+
+**Résultats observés (gates, tous verts).** Go : `gofmt -l` vide ; `go build -p 2 ./...` ;
+`go vet` des paquets touchés ; `go test -p 2 -count=1 ./internal/analysis/replay/...
+./internal/platform/duckdb/... ./internal/api/... ./internal/sync/killcollector/...` (13
+paquets, tous `ok`) ; `go test -tags=integration -p 1 -count=1 ./internal/sync/...
+./internal/persist/...` (14 paquets, tous `ok`, ~4 min) ; les 5 tests de
+`no_art_patterns_test.go` verts ; `golangci-lint run --new-from-merge-base=origin/main ./...`
+→ 0 issue. Web : typecheck propre ; lint 0 erreur / 29 warnings (baseline inchangée) ;
+`vitest run --pool=forks` complet → 654 fichiers passés + 1 skip, 6986 tests passés + 17 skips
+(skips préexistants, aucun nouveau) ; `lint:colors` 0 violation ; `lint:fields` 0 violation.
+Le test film réel Go (`TestKillSourceFaitsDIsolementFilmReel`) compile sous `-tags=integration`
+et skip proprement sans `KILLSOURCE_FIXTURES` (vérifié) — **pas rejoué avec les fixtures**
+(107 Mo, non versionnées) : à faire par le superviseur sur le poste principal, commande exacte
+consignée dans `DECOUVERTES_TACTIQUE_2026-09-07.md` et le rapport de session.
+
+**Conclusion / prochaine étape.** Phase 8 close côté exécution. Reste au superviseur (doctrine
+de vague, §0.7 du plan d'orchestration) : rejouer le test film réel avec `KILLSOURCE_FIXTURES`,
+consulter la CI une fois en fin de vague 1, mener la revue adversariale unique sur le diff
+cumulé de la vague avant fusion dans `feat/v75`. Commits par chemins (web/Go/docs) sur
+`feat/tactique-cloture`, poussés, PAS fusionnés.
+
+## [2026-09-07] Q7 — un seul peintre de chaleur (`lib/replay/heatPaint.ts`) — Complete
+
+**Diagnostic (sur pieces).** Deux implementations : `features/match-replay/layers/
+heatmapLayer.ts` (461 L, `buildHeatmap` accumule des points bruts de trajectoire et les
+LISSE elle-meme — noyau gaussien, etalonnage p50/p95, peint a `k = devicePixelRatio` via son
+`CanvasView`) et `features/tactical/heatPaint.ts` (228 L, copie du 2026-09-07, `buildTacticalGrid`
+empaquette des cellules DEJA agregees/echelonnees par le serveur, peint a `k = 1`, geometrie
+sans Y-flip car le canvas tactique est cadre exactement sur les bornes du raster). COMMUN a
+l'octet pres : `heatRamp`/`parseHex`/`mixHex` (rampe 3 points, opacite 0,12->0,75), le calcul
+d'intensite [0,1] (`heatIntensity`/`tacticalIntensity`, meme formule), et le tracé canvas
+(fusion des cellules voisines de meme palier en un rectangle, bords alignes au pixel physique
+`k`). DIFFERENT : la fabrication (accumulation+lissage vs empaquetage) et la projection
+monde->canvas (Y invers cote rejeu via `projectTo`/`scaleOf` de `features/match-replay/model/
+replayView.ts`, pas cote tactique).
+
+**Decision technique.** Noyau unique dans `apps/web/src/lib/replay/heatPaint.ts` (498 L,
+fonctions <= 34 L). Le tracé commun est UNE fonction privee `drawHeatmap(ctx, source,
+geometry, style)` parametree par deux petites interfaces : `HeatSource` (lire une valeur en
+`(row, col)`, dense ou eparse) et `HeatGeometry` (situer les bords physiques d'une cellule) —
+c'est cette abstraction qui absorbe le Y-flip SANS que le noyau importe `CanvasView`
+(interdit : `lib/` ne doit jamais dependre de `features/`). `drawHeatmapLayer` et
+`drawTacticalHeatmap` restent deux fonctions EXPORTEES du noyau (pas des adaptateurs dans les
+features) : chacune construit son `HeatSource`/`HeatGeometry` puis delegue. Consequence :
+`features/match-replay/layers/heatmapLayer.ts` devient vide (tout son contenu etait deja
+generique) et disparait ; `useReplayStaticLayers.ts` devient le seul point qui calcule
+`{topLeft, step}` via `projectTo`/`scaleOf` de son `CanvasView` avant d'appeler le noyau.
+`GridFrame` (cell/nx/ny/minX/minY) est factorise et partage entre `HeatGrid` et
+`TacticalGrid` (`extends`). Un `tacticalIntensity` symetrique de `heatIntensity` est
+re-expose (aucun appelant de production ne l'utilise, mais il rend l'entree « cellules »
+testable sans canvas, meme regle que l'entree « points »).
+
+**Resultats observes.** Fichiers crees : `lib/replay/heatPaint.ts` (noyau), `heatPaint.test.ts`
+(migre de `heatmapLayer.test.ts` + snapshot leger d'intensites pour l'entree points),
+`heatPaint.guard.test.ts` (garde-rail des cinq noms). Fichiers supprimes : `features/
+match-replay/layers/heatmapLayer.ts` + son `.test.ts`, `features/tactical/heatPaint.ts`.
+Consommateurs migres (import seul, sauf mention) : `useReplayHeatmap.ts`,
+`useReplayStaticLayers.ts` (+ calcul `{topLeft, step}`), `useReplaySettings.ts`,
+`ReplayHeatmapLegend.tsx`, `ReplayHeatmapSection.tsx`, `TacticalPlanCard.tsx` (+ `view`
+simplifiee, `width`/`height`/`k` retires car inutilises par `drawTacticalHeatmap`),
+`tacticalView.logic.ts`. `tacticalView.logic.test.ts` : 4 tests ajoutes pour
+`tacticalGridFromRaster` (aucun n'existait avant ce lot) + 1 snapshot leger d'intensites.
+Garde-rail joue en mutation : copie de `drawTacticalHeatmap` dans `features/tactical/` ->
+rouge (`AssertionError: ... redefini hors du noyau canonique`) -> fichier retire -> vert.
+Gates : `npm run typecheck` (`tsc -b`) 0 erreur ; `npm run lint` 0 erreur, 29 warnings
+(baseline inchangee, aucun dans les fichiers touches) ; `npx vitest run --pool=forks` 653
+fichiers / 6979 tests verts, 2 fichiers / 18 tests skip (pre-existants) ; `lint:colors` 0
+violation ; `lint:fields` 0 violation (220 labels scannes) ; `crossFeatureBoundary.guard`
+vert (inchange par ce lot — aucun import cross-feature nouveau) ; `heatPaint.guard.test.ts`
+vert (6 tests).
+
+**Conclusion / prochaine etape.** S.2.1/S.2.2 du plan Tactique et Q7 de l'orchestration
+coches. Une decouverte consignee sans traitement : `heatmapLayer.guard.test.ts` (reste en
+place, il teste `ReplayHeatmapLegend.tsx`) documente encore un fichier disparu dans son
+en-tete — toilettage hors perimetre. Commit(s) sur `feat/peintre-chaleur-unique` (issue de
+`feat/v75`), push demande a l'utilisateur avant fusion — ne PAS fusionner dans `feat/v75`
+sans validation.
+## [2026-09-07] P1 — Inventaire des entites du film et de leurs liens (lot P du plan v2) — Complete
+
+**Decision technique principale.** Lot de JOURNAL, zero code : le livrable est
+`.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`, contrat des phases P2 a P5. Il inventorie les
+neuf entites que le decodeur expose deja (index de joueur, slot de bipede, slot de statborg joueur
+et equipe, objet d objectif, zone, vehicule, arme au sol / equipement, bot), avec pour chacune son
+identifiant dans le film, sa duree de vie, ses liens DIRECTS, ses liens par REPLI (calque et ligne
+exacte) et deux colonnes de faisabilite. Les dix axes (a)-(j) portent chacun un verdict ecrit.
+Amendement §0.7 du plan v2 redige mot pour mot (decision D11) : le registre est une fonction PURE
+de `internal/analysis/replay`, appelee par `replaybuild` ET par le collecteur de sync, sans aucune
+dependance a l artefact cuit.
+
+**Resultats observes.**
+- **VERDICT ROSTER (axe d), en tete du document : NON.** Le film ne porte pas les entrees/sorties
+  de joueurs. `player-active-in-game-component` (ti=5 i18) et
+  `player-pending-join-in-progress-spawn-component` (ti=5 i19) sont decodes
+  (`filmdec/components_player.go:182-190`) et publies par hook (`:94`), mais sans aucun consommateur
+  de production et avec 163 et 105 lectures pour 22 films (LOTBP_PHASE0 §P.0.1/§P.0.5, verdict
+  « NON TENU (denominateur) »). **S.3 se fera donc par calage `real_start_time` / `t0_quality`,
+  APRES P2** — conforme a D10.
+- **TEMPS (a) et MANCHES (b) : NEGATIFS pour cause d absence de porteur.** L entite moteur de partie
+  (ti=0) n est pas repliquee : 1 record sur 22 films et 1 269 000 records certains. L horloge de
+  manche, les etats et le numero de manche officiels n existent pas dans le film. La seule horloge
+  DIRECTE est le couple (horodatage moteur du paquet, `start_ms` du manifeste,
+  `filmsource/film.go:39-43`), deja employe par le statborg (`objectiveevents/statborg.go:199`) et
+  jamais par la grille de frames, qui est ancree sur le premier paquet de POSITION
+  (`replay/build.go:49`, `:530-533`).
+- **EQUIPES (c) : le film ne porte l equipe d aucun joueur** (`replay/document.go:1474-1479`,
+  `Track.Team = -1`) ; la base est source unique, pas verification. Le composant
+  `game-engine-team-mapping-component` est traverse et ses valeurs jetees
+  (`filmdec/components_team_mapping.go:33-45`), et il appartient a ti=0.
+- **BOTS (e) : le lien direct EXISTE et n est pas publie.** `BotID` (= le N de `bid(N.0)`) est lu du
+  paquet type 12 et deja utilise comme cle exacte pour les relais
+  (`replaybuild/replaybuild.go:500-508`), mais l artefact ne le porte pas, si bien que le web joint
+  par le NOM NU (`apps/web/src/lib/replay/rosterLogic.ts:122-128`). Gain le moins cher du lot P.
+- **PROVENANCE (g) : cinq exemplaires incompatibles existent deja** (`NomPar*`, `BridgeHealth`,
+  `vehicleResolvedBy` interne, `EquipmentPlacement.Origin`, `Pickup.Origin`, `ScoreIdentity*`). Le
+  document propose la forme exacte d un type unique `Link{Source, Method, Readings, Metric, From, To}`,
+  avec bornes temporelles OBLIGATOIRES — c est ce qui interdit de rejouer le defaut P0-2 du pont
+  aplati.
+- **LECTEURS HORS REJEU (i) : reponse explicite.** Un bump d `IsolationDecoderRev` a P2 impose bien
+  une reecriture par `levelup backfill-killsource` : la selection `matchsAJour`
+  (`cmd/levelup/cmd_backfill_killsource_selection.go:89-101`) sort de « a jour » tout match ayant des
+  positions ET des equipes, qui ecrit alors une NOUVELLE passe append-only dans `match_lives` et
+  `match_death_context` ; les vues `_latest` basculent d un bloc. Le journal des morts n est pas
+  reecrit tant que `KillSourceDecoderRev` ne bouge pas. Liste complete des 17 lecteurs du pont
+  fournie, `fichier:ligne`.
+- **Compte des liens (decompte par entite au §1.2 du document)** : 18 liens DIRECTS disponibles
+  aujourd hui contre 23 liens par REPLI, plus 2 liens de source externe (equipe, arrivees) qui ne
+  viennent pas du film. Le trou est le slot de BIPEDE (E2) : **0 lien direct**, cinq replis empiles
+  pour repondre a une seule question — quel joueur occupe ce slot a cet instant — et c est de ce
+  trou que dependent les objets d objectif, les vehicules et les ramassages pour nommer leur
+  porteur. D ou l ordre P2 avant P3/P4/P5. Exigent du travail decodeur (donc plan d apres v7.5.0) :
+  slot de bipede <-> index de joueur, slot statborg <-> joueur, equipe, attachement porteur <->
+  objet, identite de zone, vehicule de l embarquement (partiel), instance <-> socle.
+
+**Conclusion / prochaine etape.** P1 est clos, tous les axes statues, aucun item differe. Trois
+decouvertes consignees au registre (`.ai/V7.5/REGISTRE_REPORTS.md`) : commentaire perime de
+`vehicle_rides.go:29-31` (doc inversee, a corriger en P4), plomberie ti=0 sans flux (plan decodeur
+d apres v7.5.0, ne rien supprimer), `bid` de bot non publie (a fermer en P2). Prochaine etape : P2 —
+registre des joueurs, fonction pure de `analysis/replay`, bump 49, migration des 17 lecteurs et
+garde-rail a allowlist datee. S.3 reste gele derriere P2, avec le calage prescrit ci-dessus.
+
+## [2026-09-07] Remise de la probabilité de victoire attendue (expected_win_prob) — Complété
+
+**Décision technique principale.** Nouvelle capability title-level `CapExpectedWinProb`
+("expected_win_prob"), non accordée à aucun titre. Approche chirurgicale : ne désactive QUE
+la probabilité de victoire LUSR (pas les K/D/A attendus qui restent sous `CapExpectedStats`).
+Les données restent calculées et stockées dans `match_skill_rank.expected_win_prob` pour
+analyse interne — seul l'affichage est masqué.
+
+**Résultats observés.** Tests de parité verts (constante ↔ knownCapabilities ↔ miroir TS ↔
+consommateurs ↔ allowlist orpheline). TypeScript compile. 3 lieux d'affichage gatés :
+carte `MatchWinProbCard` (détail match), colonne "Prob. vic." (Progression), colonne
+(Synergies escouade).
+
+**Prochaine étape.** Pour réactiver : accorder `CapExpectedWinProb` au titre concerné dans
+`registry.go` (Infinite) ou `title.toml` (autre titre), et retirer l'entrée de
+`orphanCapabilityAllowlist`.
 
 ## [2026-09-07] Fusion `origin/feat/v75` -> `feat/tactique` (worktree `LevelUp-wt-tactique`) — Complete
 
@@ -100649,6 +100933,212 @@ corruption secondaire NBSP/guillemet-droit constatee sur 6 sites, a anticiper si
 sont un jour traites pour le mojibake (D9, hors branche). Commit(s) sur `feat/mojibake-garde-rail`
 (worktree `LevelUp-wt-q3-mojibake`), push `origin`. Pas de fusion dans `feat/v75` (accord
 utilisateur prealable requis, regle CLAUDE.md n°16).
+## [2026-09-07] Orchestration — vague 1, lot Q5 : flakes CI import async + worker persist (Complete)
+
+**Statut** : Complete
+
+**Decision technique principale** : deux flakes distincts, deux causes distinctes, aucune n'exigeait
+de changer le comportement de code de prod — les deux points de synchronisation necessaires
+existaient deja, simplement non branches par les tests.
+- (a) `internal/api/handlers` `TestStartImport_HappyPathReturns202WithJobID` : `StartImport` lance
+  `go h.runImport(...)` et rend la main immediatement ; le test retournait sans attendre cette
+  goroutine, qui continue d'ecrire dans `h.jobStore` (JSON) et sous `h.stashDir`/le fichier temp —
+  tous sous `t.TempDir()`. Sous charge parallele Windows, `t.TempDir()` tente son `RemoveAll` avant
+  que la goroutine ait fini d'ecrire -> "Le repertoire n'est pas vide". Correctif : le test attend
+  l'etat terminal du job via `pollJobUntilDone` (helper DEJA existant dans
+  `openspartan_import_e2e_test.go`, meme package `handlers` — reutilise, pas duplique) avant de
+  rendre la main.
+- (b) `internal/persist` `TestWorker_Run_PersistsAndACKs` : le poll attendait `persister.count()==3`
+  (incremente DANS `Persist`, donc AVANT l'ACK) comme signal pour verifier ensuite que les 3 WAL
+  sont supprimes — mais la suppression (ACK) a lieu APRES, dans le meme `Worker.handle` synchrone.
+  Sous charge (CI, runner partage), la fenetre entre "Persist retourne" et "WAL reellement
+  supprime" (I/O disque en file d'attente) s'elargit, et l'assertion de suppression tombait avant
+  l'ACK reel du 3e batch (51,9 s en CI vs 0,08 s en local — attente implicite sur le MAUVAIS signal,
+  pas un vrai timeout court). Correctif : synchronisation sur le hook `OnPersistOK` deja expose par
+  `Worker` (se declenche apres l'ACK, cf. `internal/persist/worker.go:184-188`) — aucun changement
+  de code de prod, le hook existait deja et n'etait pas branche par ce test.
+
+**Resultats observes (sur pieces)** :
+- Taux d'echec AVANT correctif (reproduction locale, hors charge CI reelle) : 0/20 sur les deux
+  tests (`go test -count=20 -p 8 -run <Nom>`) — les deux flakes sont etablis par les registres CI
+  (runs Windows charges), pas reproductibles en isolation locale sans la contention reelle d'un
+  runner partage ; corrige sur analyse de la cause (lecture du code), pas sur observation d'un
+  rouge local.
+- Taux d'echec APRES correctif : 0/20 x2 (deux runs consecutifs, (a) 3.8s/3.7s puis (a) 5.3s/5.6s
+  reproductibilite confirmee, (b) 0.16s/0.20s x2) ; `go test -count=1 ./internal/api/handlers/
+  ./internal/persist/` vert (exit 0) ; `go test -tags=integration -p 1 -count=1 ./internal/persist/`
+  vert (exit 0, 45-50s, coherent avec le budget anti-ART attendu) ; `go vet` des deux paquets
+  propre ; `gofmt -l` vide sur les deux fichiers modifies.
+- Fichiers touches : `apps/go-api/internal/api/handlers/openspartan_import_test.go` (import `time`
+  + attente `pollJobUntilDone` en fin de test) ; `apps/go-api/internal/persist/worker_test.go`
+  (`w.OnPersistOK` + attente par canal a la place du poll sur `persister.count()`).
+
+**Decouverte consignee, non traitee** : `TestWorker_Run_PersistFailure_NoACK` (meme fichier,
+ligne ~120) attend un `time.Sleep(200ms)` fixe de la meme famille — non prouve instable a ce jour,
+hors perimetre STRICT du lot (deux tests nommes uniquement). Registre `.ai/V7.5/REGISTRE_REPORTS.md`.
+
+**Conclusion / prochaine etape** : les deux entrees R8 du `.ai/PLAN_V2_RESTES_2026-09-07.md` sont
+cochees `[x]` avec preuve ; les deux entrees du registre `.ai/V7.5/REGISTRE_REPORTS.md` sont barrees
+et closes ; Q5 coche `[x]` dans `.ai/PLAN_ORCHESTRATION_2026-09-07.md`. Commit(s) sur
+`feat/ci-flakes-import-worker` (worktree dedie `LevelUp-wt-q5-flakes`), push vers origin ; pas de
+fusion dans `feat/v75` (decision utilisateur a la fin de la vague).
+
+## [2026-09-07] Orchestration — vague 1, lot Q4 (issue de match, cle canonique, D5) — Complete
+
+**Decision technique principale.** D5 (utilisateur, ferme) : le Go sert la CLE canonique
+d'issue (`win|loss|tie|dnf`, MT-06), jamais un texte — abandon de l'option transitoire
+"le Go localise depuis le TOML" du lot `feat/outcome-cle-canonique` (branche supprimee par
+le superviseur, Q1). Re-verifie sur pieces les 8 DTO portant `OutcomeLabel`
+(`TopMatchDTO`, `CommonMatchRow`, `ExplorerMatchesRow`, `RecentMatchItem`,
+`MatchHistoryRow`, `MatchViewHeader`, `MatchPersonalResult`, `MatchScoreboardRow`) et leurs
+producteurs. Deux mecanismes de resolution retenus selon ce qui est disponible au site
+d'appel : `outcomeKey(outcomes, code)` (adapter du titre cable — MatchViewHeader,
+MatchHistoryRow/ExplorerMatchesRow via `rowFormatters`, MatchPersonalResult et
+MatchScoreboardRow via un `*mappings.OutcomeMappingSet` neuf thread dans
+`buildSummaryTabFull`/`buildTeamTabFull`) et `outcomeKeyFromHaloCode(code)` (repli
+Halo-only, pour CareerService/ExplorerService qui n'ont PAS d'adapter semantique cable —
+dette multi-titre existante, hors perimetre Q4, consignee §9/§10 du plan libelles).
+`domain.RecentMatchItem.OutcomeLabel` supprime (D4, 0 lecteur verifie dans
+`apps/web/src/features/home` et ailleurs) — mais son texte alimentait AUSSI le composite
+`Title` ("Victoire · Aquarius") via `home_locale.go`'s `outcomeLabelForLocale` : plutot que
+perdre ce mot ou reintroduire une map FR, `RecentMatchesOptions.OutcomeText` (resolveur
+injecte par `home_service.go` depuis l'adapter du titre, `analysis` reste pur) le fournit ;
+`Title` degrade proprement (carte seule) si la cle est vide. **Verdict CSV (item 1)** :
+`handlers/match_history.go` Export() est un fichier CSV rendu SERVEUR (`encoding/csv`),
+sans JS pour localiser — seule exception a "jamais de texte cote Go" : `MatchHistoryService.
+OutcomeText(ctx, code)` resout le mot depuis l'adapter du titre (jamais une map Go),
+appele par ligne dans l'export. `duelOutcomeLabel` (Explorer, `explorer_service_convert.go:60`)
+verifie DEJA conforme a D5 (cle `win|loss|other` sur un champ `Outcome`, pas `outcome_label`)
+— `[~]` couvert, non touche (la description du plan orchestration attendait `duel_outcome`/
+`won|lost` : carte perimee, doctrine RE-VERIFIER confirmee). Options du filtre "Resultat"
+de l'Explorer (`computeAvailableOutcomes`) : `Label` sert desormais `outcomeKeyFromHaloCode(o)`
+au lieu d'un mot FR — le web l'ignorait deja (i18n local `explorer.toml`), donc 0 impact
+visuel, juste retrait du dernier mot FR en dur de ce site.
+
+**Resultats observes.** Go : `internal/service/outcome_label.go` reecrit (outcomeKey/
+outcomeText/outcomeTextByKey/outcomeKeyFromHaloCode) ; 7 champs domain renommes
+`OutcomeLabel`->`Outcome` (json `outcome,omitempty`, tag `enum:"win,loss,tie,dnf"`) ; 1 champ
+supprime (`RecentMatchItem.OutcomeLabel`) ; `home_locale.go` perd `homeOutcomeLabelFallback`,
+`homeOutcomeLabels`, `homeOutcomeLabelsEN`, `outcomeLabelForLocale`, `outcomeLabel` (0 appelant
+production restant, verifie) ; `MatchHistoryService.rowFormatters` perd son parametre `ctx`
+(plus besoin de locale pour une cle) ; nouvelle methode `MatchHistoryService.OutcomeText` +
+ajoutee a `port.MatchHistoryService` (3 mocks de tests mis a jour). Contrat :
+`api/openapi_manual_fragment.yaml` (`CareerTopMatch.outcome_label`->`outcome` + enum),
+`go run ./cmd/openapi-gen` (696782 octets, `-check` vert), `npm run generate-types`
+(`generated.ts` : 8 sites `outcome_label`->`outcome` avec enum TS, commite). Web : 1 lecteur
+reel migre (`MatchHeader.card.tsx` `OutcomeRow` -> `useOutcomeLabel(header.outcome ?? '')`,
+import `@/lib/i18n/fieldMappings`) ; ~20 fixtures de tests adaptees (renommage ou suppression
+du champ selon le DTO) ; `MatchHeader.test.tsx` seme le cache TanStack Query
+(`fieldMappingsQueryKey('halo_infinite','fr')`) au lieu d'attendre un texte fabrique -
+patron repris de `ReplayVictoryOverlay.test.tsx`. **Garde-rail final** :
+`internal/archlint/no_french_label_literal_test.go` — ratchet PAR FICHIER (pas un total,
+different de `filmdec_package_vars_test.go`), scan AST (pas regex) du perimetre
+`internal/{service,analysis,api/handlers,notify,games}` hors `_test.go`/`migrations/`
+(CLAUDE.md §2.H, oubli du brief initial corrige sur pieces) /arguments directs de
+`slog.*`/`fmt.Errorf`. **Compte du jour : 132 fichiers, 538 litteraux** — tres au-dela des
+~15 fichiers de l'inventaire §2 du plan libelles (echantillon non exhaustif, l'essentiel
+etant des messages d'erreur `api/handlers/*` de la famille F/D6 jamais catalogues un par
+un). Genere via un script Go jetable (scratchpad, non commite) reutilisant EXACTEMENT la
+logique du test pour eviter une transcription manuelle de 130+ lignes. Gates GO : `gofmt -l`
+vide, `go build ./internal/...` (0), `go vet` sur les 6 paquets cibles (0),
+`golangci-lint run --new-from-merge-base=origin/main ./...` (0 issue — 2 warnings
+`nolint:PLR0913` deja presents dans le style etabli du fichier, pas une regression),
+`go test -count=1` vert sur `service/…` (incl. `fragdist`/`replayview`/`teammates`),
+`analysis/…` (incl. tous les sous-paquets), `domain/…`, `api/…` (incl. `handlers`,
+`humacore`, `middleware`, `wire`), `archlint/…`, `games/…` (incl. tous les sous-paquets) —
+`TestStartImport_HappyPathReturns202WithJobID` a flake une fois (flake CONNU, lot Q5, non
+lie a ce diff : reproduit vert 4x en isolation et en suite complete). Gates WEB :
+`npm run typecheck` (0 erreur), `npm run lint` (0 erreur, 29 warnings preexistants sans
+rapport), `npx vitest run --pool=forks` (**6965 tests passes, 17 skipped, 653 fichiers**),
+`lint:fields` (0 violation, 220 labels FR/EN a verifier — inchange), `lint:colors`
+(0 violation).
+
+**Conclusion / prochaine etape.** Etape close : `.ai/PLAN_ORCHESTRATION_2026-09-07.md` ligne
+Q4 cochee ; `.ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md` §4 L1 statue CLOS (forme = option 1) et
+garde-rail final pose ; 4 decouvertes hors perimetre consignees dans une nouvelle section
+`## 10. DECOUVERTES DE L'EXECUTION (Q4, 2026-09-07)` du plan libelles : (a) l'ampleur reelle
+du garde-rail final (132 fichiers vs ~15 attendus) ; (b) `MatchPersonalResult`/le
+`outcome` par ligne de scoreboard sans lecteur web trouve (candidat code mort plus large que
+Q4, pas traite — extension de perimetre non autorisee) ; (c) `match_history_explorer_options.go`
+porte aussi des labels FR en dur pour perf-tier/CSR-tier (famille D/L5, meme fichier que le
+site touche) ; (d) le filtre Explorer ignore deja le champ backend `Label` pour la dimension
+outcome (candidat champ mort au meme titre que (b)). Rien traite au-dela du perimetre Q4.
+Commit(s) sur `feat/issue-cle-canonique` (worktree `LevelUp-wt-q4-outcome`, base
+`feat/mojibake-garde-rail`), push `origin`. Pas de fusion dans `feat/v75` (accord
+utilisateur prealable requis, regle CLAUDE.md n°16). Pages a verifier a l'ecran par
+l'utilisateur (parite FR/EN) : Match View (en-tete + ecran de fin du rejeu 2D), Explorer
+(export CSV), historique des parties, Carriere (top matchs), accueil (tuiles de matchs
+recents).
+
+## [2026-09-07] Orchestration — cloture de la vague 1 (Complete)
+- Six lots fusionnes dans la branche d'integration `wt/orchestration-0907` au-dessus de
+  `666b02d17` (mojibake, flakes CI, issue par cle canonique, dette mecanique du rejeu, peintre
+  de chaleur unique, cloture Tactique) : zero conflit de code, conflits docs seulement (plan
+  d'orchestration : version du superviseur ; autres `.ai` : union).
+- Gates de fin de vague, tous exit 0 : gofmt, build, vet, unit (analysis/service/domain/api/
+  archlint/games/platform/replaybuild/notify/sync/persist), integration `-p 1` (sync, persist,
+  migration, wire), test film reel `TestKillSourceFaitsDIsolementFilmReel` PASS en 21 s sur
+  `data/cache/film_chunks` du poste principal, `openapi-gen -check`, golangci-lint 0 issue ;
+  web : npm ci, typecheck, lint 0 erreur, vitest 654 fichiers / 6 986 tests, couleurs, libelles,
+  `generated.ts` a jour.
+- Revue adversariale UNIQUE (Sonnet, contexte frais, diff cumule 163 fichiers) :
+  `.ai/V7.5/REVUE_VAGUE1_2026-09-07.md` — P0 0, P1 1, P2 7. Le P1 (trois copies du motif
+  « texte — echantillon faible », deux separateurs) est corrige dans la meme branche :
+  `lib/formatters/lowSampleNote.ts` (`withLowSampleNote`), trois sites migres, garde-rail
+  `lowSampleNote.guard.test.ts` (mutation jouee : une copie dans features/ -> rouge). Les P2
+  restent au rapport (dette consignee, non traitee).
+- Prochaine etape : avance rapide de `feat/v75`, push, UN controle de CI ; puis vague 2
+  (M2 et M6 deja livres, restent M1, M3, M4, M5).
+## [2026-09-07] Vagabond/Nomad recuit et valide, et le reste du parc declare a l'optimum — Complete
+
+**Demande.** « On a regenere des map background dernierement, regen la map Vagabond/Nomad selon
+les memes criteres. » Vagabond = Nomad, cle Forge `105f5d84-8de1-4908-af3a-1c4f3bf9d642`.
+
+**Ce que « les memes criteres » recouvrait — mesure avant d'agir.** La derniere fournee
+(`b510d8340` « Ajustements graphiques », 06/09, 11 fonds) n'est PAS une recuisson : dimensions
+identiques au pixel pres, aucun reglage ni code modifie, et la seule transition de pixels mesuree
+est `transparent -> gris plein` (forest 11 712 px vers 178,178,178 ; Fragmentation 115 138 ;
+ridgeline 12 310 ; Live Fire 30 519 vers 251). C'est un bouchage de trous applique aux images.
+Il ne s'appliquait pas a Vagabond : 0 pixel transparent enclos dans son fond publie comme dans le
+nouveau. Le levier restant etait donc la recuisson, ce qu'un controle sur `forest` a confirme :
+la meme commande ne reproduit plus le cadre d'aout (1 229x1 431 contre 1 423x1 562 publie), donc
+la CHAINE a bouge depuis les gates du 26 au 30/08.
+
+**Vagabond, a reglages CONSTANTS.** Entree gatee le 30/08 laissee intacte (encre, maillage en
+reference + niveau haut, rognage au maillage, rognage aux zones a 1 m). Mesures : couverture
+98,3 % (carte jugee couverte), 4 633 objets poses sur 4 709, 26 zones de callout, 7,0 % de
+matiere hors zones rognee, ecart median aux ancres -0,226 m (etalonnage -0,29 m), 9 ancres sur 9
+avec du sol. Cadre 1 261x1 267 -> 1 224x1 203, echelle inchangee (0,04213 m/px), calage rededuit
+du cadre utile. Verdict utilisateur sur planche avant/apres : « grave mieux la tienne! Je valide
+elle remplace l'ancienne ». Publie, registre a VALIDEE 07/09 aux deux lignes, `raison` completee
+du verbatim et des chiffres, `gateLe` porte au 07/09.
+
+**LE LOT DE 29 EST REFUSE, ET C'EST UN RESULTAT.** L'utilisateur a designe 29 fonds sur une
+planche de selection (les 106 publies en miniatures a cocher). Les 29 ont ete recuites en scratch,
+un processus par carte : 29 images, 0 echec, 0 non cuisinable. Chiffres : 28 cartes sur 29
+rendent EXACTEMENT le meme compte d'ancres avec du sol qu'avant, aucune n'en perd, Thunderhead en
+gagne (36/36 -> 46/46, catalogue d'objectifs enrichi). Deux cuissons degradees sans effet sur
+l'image (Bazaar et Aquarius : « aucun volume d'eau dans le sddt », leur reglage en demande, le
+module n'en declare pas). Verdict sur planche avant/apres : **« tout etait bien avant, on avait
+atteint l'optimum »**. RIEN N'EST PUBLIE de ce lot — les 29 images restent en scratch.
+Enseignement a retenir : sur ces 29 cartes, l'evolution de la chaine depuis fin aout ne change
+plus le rendu ; le parc y est stable. Vagabond etait la carte restee en arriere.
+
+**Deux pieges d'outillage, tous deux payes ici.**
+1. `mapfond-build` resout la racine du depot par `db_profiles.json`, qui n'existe QUE dans le
+   depot principal : lance depuis un worktree, il lit ET ecrit dans le principal. Or celui-ci est
+   sur `wt/cartes-revue-par-carte`, restee a `6568cce52` — sans les ajustements graphiques du
+   06/09, sans Live Fire/Detachment/Argyle, sans Absolution/Insolence : 22 fonds plus vieux.
+   Cuire depuis la aurait ecrase des retouches par des versions perimees. Parade :
+   `LEVELUP_REPO_ROOT` sur le worktree (l'env court-circuite la recherche du marqueur), plus la
+   copie des entrees hors depot (`.ai/re_dump/mapvar`, `.ai/re_dump/navmesh`, gitignorees).
+2. Un seul chevauchement entre les 11 fonds retouches a la main et les 29 recuits : Threshold
+   (`ddbb3a00`). La recuisson repart de la geometrie et ne conserve pas le bouchage manuel — signale
+   avant le vote, et le vote a tranche pour l'avant.
+
+**Reste ouvert.** Le depot PRINCIPAL porte encore, non commites, les cinq fichiers de la premiere
+publication de Vagabond (fond, sidecar, registre, reglages, journal) faite avant que le piege n°1
+soit compris : le garde-fou a refuse le `git checkout --` dans ce depot partage. A restaurer.
 
 ## [2026-09-07] Orchestration — vague 2, lot M2 = v2 R6 (constats P2 audit vies + drawnSwapAt web) — Complete
 

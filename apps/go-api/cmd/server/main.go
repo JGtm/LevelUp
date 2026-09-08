@@ -1417,7 +1417,17 @@ func main() {
 	// /admin/monitoring/crons (ReportCronRun).
 	if settingsStore != nil {
 		replayPurgeCron := scheduler.NewReplayPurgeCron(cfg.RepoRoot, func() int {
-			if s, _ := settingsStore.Load(); s != nil {
+			s, err := settingsStore.Load()
+			if err != nil {
+				// LOGUE AVANT DE DÉGRADER (règle n°3) : sans cette ligne, un
+				// app_settings.json illisible faisait passer la fenêtre à 0 EN SILENCE —
+				// c'est-à-dire rétention illimitée, donc purge désactivée sans un mot (Q8,
+				// .ai/DECOUVERTES_TACTIQUE_2026-09-07.md).
+				slog.WarnContext(ctx, "replay_purge_cron: settings illisibles, "+
+					"rétention illimitée (purge désactivée)", "err", err)
+				return 0
+			}
+			if s != nil {
 				return s.ReplayRetentionMonths
 			}
 			return 0

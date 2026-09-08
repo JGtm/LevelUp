@@ -361,6 +361,13 @@ type TacticalKillPosition struct {
 
 	KillerX, KillerY float64
 	VictimX, VictimY float64
+
+	// TimeMs est l'instant de la mort, sur l'horloge de l'artefact de rejeu (le meme axe
+	// que consomme `?frame=` du lecteur 2D) — ajoute pour le lien « voir dans le rejeu »
+	// depuis une cellule (item S.1 du plan Tactique, lot M1). Absent des lectures de
+	// placement agregees (elles n'en ont pas besoin) ; publie uniquement par le detail
+	// d'une cellule (TacticalContribution.InstantMs).
+	TimeMs int64
 }
 
 // MortContexte est une mort LOCALISEE de l'univers, avec ce que le collecteur a mesure de son
@@ -377,6 +384,10 @@ type MortContexte struct {
 	// PlusProcheM : distance au coequipier VISIBLE le plus proche. nil = aucun visible.
 	PlusProcheM         *float64
 	Visibles, HorsDeVue int
+
+	// TimeMs est l'instant de la mort (memes raisons que TacticalKillPosition.TimeMs) —
+	// ajoute pour le detail d'une cellule de la lecture « isole » (lot M1).
+	TimeMs int64
 }
 
 // TacticalMortsContexte : l'univers ET ses morts localisees avec leur voisinage.

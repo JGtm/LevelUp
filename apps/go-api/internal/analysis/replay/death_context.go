@@ -65,12 +65,18 @@ func arrondiMetres(v float64) float64 {
 // rayon de radar le plus court (18 m en Arène).
 const FenetreVisibiliteMs = 1000
 
-// Les quatre états d'un coéquipier à l'instant d'une mort.
+// Les trois états actifs d'un coéquipier à l'instant d'une mort.
+//
+// Un quatrième état (« parti », déduit d'un calage horloge API/film sur `ArriveeMS`/
+// `DepartMS`) a existé puis a été retiré par 7C.9 (2026-09-07) : le calage produisait un
+// FAIT FAUX POSSIBLE (cf. .ai/DECOUVERTES_TACTIQUE_2026-09-07.md, section 7C) — un
+// coéquipier présent en début de partie pouvait sortir « parti » avant même d'être
+// entré, gonflant le compte de morts isolées. `EtatParti` n'était plus jamais produit
+// depuis ce retrait ; supprimé en clôture (Q8) avec son `case` et le champ `Partis`.
 const (
 	EtatVisible   = "visible"
 	EtatEnAttente = "waiting"
 	EtatHorsDeVue = "out_of_sight"
-	EtatParti     = "left"
 )
 
 // MortDuJournal est une mort telle que la BASE la porte : une victime et un instant, sur
@@ -111,9 +117,9 @@ type ContexteMort struct {
 	// PlusProcheM : distance 2D HORIZONTALE au coéquipier VISIBLE le plus proche, en mètres
 	// monde, arrondie à 2 décimales. nil = aucun coéquipier visible, ou victime sans position
 	// — une absence de mesure, jamais une distance infinie ni un zéro.
-	PlusProcheM                            *float64
-	Visibles, EnAttente, HorsDeVue, Partis int
-	Total                                  int
+	PlusProcheM                    *float64
+	Visibles, EnAttente, HorsDeVue int
+	Total                          int
 }
 
 // PontPubliable dit si le NOMMAGE des vies est assez sûr pour qu'on en tire des faits écrits en
@@ -182,8 +188,6 @@ func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID, vies map[uint
 		}
 		c.Total++
 		switch etatDUnCoequipier(pos, vies, mortsPar, autre, m.TempsMS) {
-		case EtatParti:
-			c.Partis++
 		case EtatVisible:
 			c.Visibles++
 			if p, ok := pos.visibleA(autre, m.TempsMS); ok {

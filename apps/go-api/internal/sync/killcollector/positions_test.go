@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/haloclient"
@@ -328,13 +329,22 @@ func TestCollectPositions_CapabiliteAbsenteNeTenteAucuneEcriture(t *testing.T) {
 	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, killRefValide(), killRefValide())
 }
 
+// TestCollectPositions_NonCableNeTenteAucuneEcriture — Q8 (2026-09-07) : ce cas est une
+// REGRESSION DE CABLAGE (la capability est la, WithPositionCapture non fourni), pas une
+// non-applicabilite de titre — il journalise desormais en WARN et compte
+// metricPositionsNotWired, pour qu'une table neuve restee vide en prod se remarque.
 func TestCollectPositions_NonCableNeTenteAucuneEcriture(t *testing.T) {
+	avant := observability.LoadCounter(metricPositionsNotWired)
 	c := &KillSourceCollector{
 		caps:          games.CapabilityMap{games.CapFilmKillPositions: games.CapSupported},
 		acquireShared: panicWriter,
 		// mapNames / mapBounds volontairement nil : WithPositionCapture jamais appele.
 	}
 	c.collectPositions(context.Background(), "m1", nil, MatchIdentities{}, killRefValide(), killRefValide())
+	if got := observability.LoadCounter(metricPositionsNotWired) - avant; got != 1 {
+		t.Errorf("%s a bougé de %d, attendu 1 : un cablage manquant doit se compter",
+			metricPositionsNotWired, got)
+	}
 }
 
 func TestCollectPositions_AucuneIdentiteResolueNeTenteAucuneEcriture(t *testing.T) {

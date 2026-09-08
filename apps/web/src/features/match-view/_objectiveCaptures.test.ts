@@ -25,7 +25,6 @@ function sbRow(partial: Partial<MatchScoreboardRow>): MatchScoreboardRow {
     perfect_kills: null,
     power_weapon_kills: null,
     melee_kills: null,
-    outcome_label: '',
     ...partial,
   } as MatchScoreboardRow
 }

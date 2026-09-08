@@ -21,14 +21,18 @@ import (
 type fakeTacticalSvc struct {
 	page    domain.TacticalMapsPage
 	raster  domain.TacticalRaster
+	cellule domain.TacticalCelluleReponse
 	errMaps error
 	errRast error
+	errCell error
 
 	vuCarte    string
 	vuQuestion string
 	vuQui      string
 	vuScope    domain.TacticalScope
 	vuAppele   bool
+
+	vuCelluleReq domain.TacticalCelluleRequest
 }
 
 func (f *fakeTacticalSvc) MapsPlayed(_ context.Context, scope domain.TacticalScope) (domain.TacticalMapsPage, error) {
@@ -40,6 +44,11 @@ func (f *fakeTacticalSvc) Raster(_ context.Context, req domain.TacticalRasterReq
 	f.vuCarte, f.vuQuestion, f.vuQui = req.MapID, req.Question, req.Qui
 	f.vuScope, f.vuAppele = req.Scope, true
 	return f.raster, f.errRast
+}
+
+func (f *fakeTacticalSvc) Cellule(_ context.Context, req domain.TacticalCelluleRequest) (domain.TacticalCelluleReponse, error) {
+	f.vuCelluleReq, f.vuAppele = req, true
+	return f.cellule, f.errCell
 }
 
 // newTacticalRouter monte l'onglet avec un service de rejeu qui n'a AUCUN fond : les tests

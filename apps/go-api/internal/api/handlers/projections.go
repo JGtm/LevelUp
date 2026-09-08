@@ -21,7 +21,7 @@ func BuildExplorerRowFromMatchHistory(item domain.MatchHistoryRow) domain.Explor
 		ModeUI:              item.ModeUI,
 		PlaylistLabel:       item.PlaylistLabel,
 		OutcomeCode:         item.OutcomeCode,
-		OutcomeLabel:        item.OutcomeLabel,
+		Outcome:             item.Outcome,
 		ScoreLabel:          item.ScoreLabel,
 		ScoreKind:           item.ScoreKind,
 		IsWithFriends:       item.IsWithFriends,

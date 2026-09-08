@@ -42,10 +42,11 @@ func TestNoRawAppendOnlyReads(t *testing.T) {
 	//
 	// `match_lives` / `match_death_context` AJOUTÉES LE 2026-09-07 (lot 7C.8) : append-only,
 	// vues `_latest` PAR PASSE — une lecture brute y servirait un MÉLANGE de décodages, pas
-	// seulement une ligne périmée. Trois autres tables append-only du dépôt manquent encore à
-	// cette liste (`match_kill_events`, `kill_positions`, `match_bomb_stats`) : découverte
-	// consignée au §7 du plan Tactique, NON traitée ici (hors périmètre).
-	rawRe := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+(match_skill_rank|match_csrs|player_csr_snapshots|pve_match_stats|match_lives|match_death_context)(_latest)?\b`)
+	// seulement une ligne périmée. `match_kill_events` / `kill_positions` / `match_bomb_stats`
+	// AJOUTÉES LE 2026-09-07 (clôture Q8) : même famille append-only, découverte consignée au
+	// §7 du plan Tactique — tous leurs lecteurs actuels (platform/duckdb, api, analysis)
+	// passaient déjà par `_latest`, l'ajout n'a fait rougir aucun lecteur existant.
+	rawRe := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+(match_skill_rank|match_csrs|player_csr_snapshots|pve_match_stats|match_lives|match_death_context|match_kill_events|kill_positions|match_bomb_stats)(_latest)?\b`)
 
 	// Allowlist datée (2026-07-02) — lectures brutes VOLONTAIRES et documentées.
 	allow := map[string]string{

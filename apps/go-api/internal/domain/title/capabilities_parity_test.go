@@ -140,10 +140,13 @@ func TestCapabilityLiteralsInFrontAreDeclaredInGo(t *testing.T) {
 // L'allowlist est DÉCROISSANTE : `TestOrphanCapabilityAllowlistIsCurrent` fait échouer
 // la suite dès qu'une entrée n'a plus lieu d'être.
 var orphanCapabilityAllowlist = map[string]string{
-	// VIDE au 2026-09-06 : l'entrée temporaire `weapon_range`, posée le même jour en
-	// attendant son gate d'affichage, a été retirée par le lot 5 du plan
-	// .ai/PLAN_DUELS_PORTEE_2026-09-06.md — `useCapability('weapon_range')` existe
-	// désormais dans apps/web/src (SynthesisPage.tsx), la capability a son consommateur.
+	// 2026-09-07 — la probabilité de victoire attendue (LUSR TrueSkill 2) est REMISÉE :
+	// le modèle n'est pas assez fiable sur certaines compositions/modes pour être exposé.
+	// Les données restent calculées et stockées ; la capability sera accordée quand le
+	// modèle sera recalibré. Consommateurs front : useCapability('expected_win_prob')
+	// dans MatchStatCards, TimeseriesPage.progression, SquadSynergyHistoryTable.
+	// Retrait cible : quand la prédiction est jugée fiable → accorder à halo_infinite.
+	"expected_win_prob": "2026-09-07 remisée — prédiction LUSR pas assez fiable, données stockées, reprise au recalibrage",
 }
 
 // TestCapabilitiesGrantedByAPublicTitle — toute capability déclarée côté Go doit
