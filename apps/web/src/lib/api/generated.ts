@@ -4674,6 +4674,21 @@ export interface components {
             /** Format: double */
             value: number;
         };
+        BipedLinkCounts: {
+            /** Format: int64 */
+            catalogue: number;
+            /** Format: int64 */
+            deduit: number;
+            /** Format: int64 */
+            direct: number;
+            /** Format: int64 */
+            direct_propage: number;
+            /** Format: int64 */
+            externe: number;
+            /** Format: int64 */
+            non_resolu: number;
+            non_resolu_par_cause: components["schemas"]["UnresolvedCauses"];
+        };
         BombArming: {
             /** Format: int64 */
             fuseMs: number;
@@ -4860,6 +4875,10 @@ export interface components {
         };
         BridgeHealth: {
             /** Format: int64 */
+            bodiesWithCreation: number;
+            /** Format: int64 */
+            bridgeNamedLives: number;
+            /** Format: int64 */
             closedByRespawn: number;
             /** Format: int64 */
             closedByShot: number;
@@ -4868,11 +4887,19 @@ export interface components {
             /** Format: int64 */
             closedRefused: number;
             /** Format: int64 */
+            concordant: number;
+            /** Format: int64 */
             deathOffsetMatched: number;
             /** Format: int64 */
             deathOffsetMs?: number;
             /** Format: int64 */
             deathOffsetRunnerUp: number;
+            /** Format: int64 */
+            directByCreation: number;
+            /** Format: int64 */
+            directByCreationPropagated: number;
+            /** Format: int64 */
+            discordant: number;
             /** Format: int64 */
             fromReading: number;
             /** Format: int64 */
@@ -7081,7 +7108,7 @@ export interface components {
             xuid?: string;
         };
         IdentityCoverage: {
-            bipedSlot: components["schemas"]["LinkCounts"];
+            bipedSlot: components["schemas"]["BipedLinkCounts"];
             filmIndex: components["schemas"]["LinkCounts"];
             statborgSlot: components["schemas"]["LinkCounts"];
         };
@@ -12392,6 +12419,14 @@ export interface components {
             };
             /** Format: int64 */
             count: number;
+        };
+        UnresolvedCauses: {
+            /** Format: int64 */
+            index_hors_table: number;
+            /** Format: int64 */
+            lectures_divergentes: number;
+            /** Format: int64 */
+            sans_record: number;
         };
         UserPrestige: {
             /** Format: int64 */

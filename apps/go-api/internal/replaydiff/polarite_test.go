@@ -72,3 +72,44 @@ func TestEstCompteurDEchec_HorsCouvertureJamais(t *testing.T) {
 		t.Fatal("unpublished est un compteur d'echec")
 	}
 }
+
+// TestFermeturesSontDesVoiesPasDesRichesses — LE LOT E2 LES A REDUITES A ZERO, ET C'EST UN GAIN.
+//
+// `closedByShot` / `closedByRespawn` disent par quelle preuve une FERMETURE a comble le pont.
+// Une fermeture ne s'applique qu'aux slots que la lecture n'a pas nommes : quand le lien direct
+// corps -> joueur en nomme 100 %, elles tombent a zero. Sans cette regle, le gate corpus refusait
+// exactement le progres du lot (mesure : 2/5/5/3/2 -> 0 sur les cinq films).
+//
+// MUTATION : retirer `coverage.bridge.closedBy` de `prefixesMethode` -> ROUGE.
+func TestFermeturesSontDesVoiesPasDesRichesses(t *testing.T) {
+	for _, c := range []string{
+		"coverage.bridge.closedByShot",
+		"coverage.bridge.closedByRespawn",
+	} {
+		if !estCompteurDeMethode(cle("couverture", c)) {
+			t.Errorf("%s n'est pas lu comme une voie : sa disparition sortira en PERTE alors "+
+				"qu'elle dit que la lecture a pris le pas sur la deduction", c)
+		}
+	}
+	// `closedContested` / `closedRefused` restent des ECHECS : ils comptent ce que la fermeture
+	// a REFUSE, pas la voie par laquelle elle a conclu.
+	for _, c := range []string{"coverage.bridge.closedContested", "coverage.bridge.closedRefused"} {
+		if estCompteurDeMethode(cle("couverture", c)) {
+			t.Errorf("%s est lu comme une voie : c'est un refus, il doit rester un echec", c)
+		}
+		if !estCompteurDEchec(cle("couverture", c)) {
+			t.Errorf("%s n'est plus lu comme un echec", c)
+		}
+	}
+}
+
+// TestNoBridgeEstUnCompteurDEchec : `coverage.bombCarries.noBridge` compte les portages de bombe
+// qu'aucun pont ne nommait. Sa BAISSE est un gain — le meme defaut que `noTrack` la veille.
+//
+// MUTATION : retirer `noBridge` de `compteursDEchec` -> ROUGE.
+func TestNoBridgeEstUnCompteurDEchec(t *testing.T) {
+	if !estCompteurDEchec(cle("couverture", "coverage.bombCarries.noBridge")) {
+		t.Error("coverage.bombCarries.noBridge n'est pas lu comme un echec : sa disparition " +
+			"sortira en perte alors que plus aucun portage n'est orphelin")
+	}
+}

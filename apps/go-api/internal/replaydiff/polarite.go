@@ -37,19 +37,37 @@ var compteursDEchec = map[string]bool{
 	"closedContested":       true,
 	"indexDisagreements":    true,
 	"slotCollisions":        true,
+	// `noBridge` le 2026-09-08 (lot E2) : `coverage.bombCarries.noBridge` compte les portages de
+	// bombe qu AUCUN pont ne nommait. Le lien direct corps -> joueur le ramene de 2 a 0 sur
+	// `c75f33b8`, et le gate lisait cette disparition comme une perte — le meme defaut que
+	// `noTrack` la veille, sur un compteur dont le NOM dit qu il est un echec.
+	"noBridge": true,
 }
 
-// prefixeMethode : les compteurs `coverage.bridge.namedBy*` disent PAR QUELLE VOIE une vie a ete
+// prefixesMethode : les compteurs `coverage.bridge.namedBy*` disent PAR QUELLE VOIE une vie a ete
 // nommee (fil des morts, vie voisine, fermeture, exclusion...). Ils se deplacent entre eux quand
 // une voie plus sure prend le pas sur une voie de repli (P2-bis, 2026-09-08 : `namedByNextLife`
 // 13 -> 8 sur `d9781168` parce que l'exclusion temporelle nomme d'abord) : ni gain ni perte, un
 // CHANGEMENT. La richesse, elle, se lit sur `livesNamed` / `unnamedLives`.
-const prefixeMethode = "coverage.bridge.namedBy"
+//
+// `coverage.bridge.closedBy*` (2026-09-08, lot E2) EST LA MEME FAMILLE, et pour la meme raison :
+// `closedByShot` et `closedByRespawn` disent par quelle preuve une FERMETURE a comble le pont —
+// une DEDUCTION, qui ne s'applique par construction qu'aux slots que la lecture n'a pas nommes.
+// Quand le lien direct corps -> joueur nomme 100 % des corps (mesure du lot : 5 films sur 5), les
+// fermetures n'ont plus rien a fermer et ces deux compteurs tombent a ZERO. Ce n'est pas une
+// richesse perdue — c'est une voie de repli devenue inutile, et `livesNamed` / `unnamedLives` le
+// disent a leur place.
+var prefixesMethode = []string{"coverage.bridge.namedBy", "coverage.bridge.closedBy"}
 
 // estCompteurDeMethode dit si la mesure `k` est un compteur de voie de nommage.
 func estCompteurDeMethode(k string) bool {
 	_, chemin := decouper(k)
-	return strings.HasPrefix(chemin, prefixeMethode)
+	for _, p := range prefixesMethode {
+		if strings.HasPrefix(chemin, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // estCompteurDEchec dit si la mesure `k` (cle d'empreinte `axe/chemin`, ex.

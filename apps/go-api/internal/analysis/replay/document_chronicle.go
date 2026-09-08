@@ -1021,3 +1021,43 @@ package replay
 //	                slot de statborg ↔ joueur, équipe d'un joueur (elle vit dans la base, pas
 //	                dans le film). Leur branchement appartient au plan DÉCODEUR d'après v7.5.0
 //	                (inventaire P1, colonne « exige travail décodeur »).
+
+// v50 AMENDÉ (2026-09-08, lot P-décodeur E2 — LE LIEN DIRECT CORPS ↔ JOUEUR). Le numéro ne
+// bouge pas : le lot P n'est pas fusionné, le contenu cuit change encore sous ce schéma. Ce que
+// la chronique ci-dessus rangeait dans « ce que le lot n'a pas fait » — « slot de bipède ↔ index
+// de joueur : aucune identité dans `BipedPosition` » — EST FAIT, et par une LECTURE.
+//
+//	ce qui change   1. le record de CRÉATION d'un bipède (`ti=35`) porte l'index de participant
+//	                   de son propriétaire, à `+67` bits de l'en-tête NEW (`filmdec.ScanBipedCreations`).
+//	                   `identity.bipedSlots[].link.source` passe de `deduit` à **`direct`**, voie
+//	                   `creation_bipede` — ou `creation_bipede_propagee` pour les autres séjours
+//	                   du MÊME corps, qu'une découpe à `lifeGapUS` a séparés.
+//	                2. `identity.coverage.bipedSlot` gagne `direct_propage` (sous-compte de
+//	                   `direct`) et `non_resolu_par_cause` : la somme des causes ÉGALE
+//	                   `non_resolu`, « non résolu » ne se publie plus sans son motif.
+//	                3. `coverage.bridge` gagne `concordant` / `discordant` / `bridgeNamedLives`
+//	                   / `directByCreation` / `directByCreationPropagated` / `bodiesWithCreation`.
+//	                   LE PONT PAR MORTS NE NOMME PLUS : il pose la cause de fin et VÉRIFIE.
+//	                4. des NOMS CHANGENT, et c'est le but. L'appariement glouton du pont
+//	                   départageait par l'ordre des slots quand deux vies finissent au même
+//	                   instant : 13 vies sur `d9781168`, 4 sur `64e8adfa`, 10 sur `c75f33b8`
+//	                   portaient le joueur que le film écrit sur une AUTRE vie.
+//
+//	mesuré          `identity.coverage.bipedSlot.direct` : 0 % → **100 %** sur `d9781168`,
+//	                `bf15f7ab`, `64e8adfa`, `3372e7eb` ; **97,7 %** sur `c75f33b8`, dont les
+//	                deux vies restantes lisent un index que `identity.players` ne publie pas
+//	                (`non_resolu_par_cause.index_hors_table = 2`, verdict I0 du lot).
+//	                `coverage.bridge.unnamedLives` : 15/0/7/8/14 → **0/0/0/0/1**.
+//	                `coverage.shots.noSlot` : 513/12/213/289/450 → **64/12/13/10/119**.
+//	                `slotCollisions` de `d9781168` : 1 → **0** — le film ne porte qu'UN corps par
+//	                slot, la collision était une erreur du pont.
+//	                `scoreTimeline` et `identity.statborgSlots` : **identiques octet pour octet**
+//	                sur les cinq films — E2 ne touche que le pont des BIPÈDES.
+//
+//	le contrat      strictement ADDITIF : aucun champ retiré, aucune clé renommée. Un client qui
+//	                lisait `bipedSlot.direct` lit maintenant un compte non nul ; un client qui
+//	                lisait `link.method` voit deux voies de plus, à ajouter à son énumération.
+//
+//	ce que le lot   il ne touche NI le pont statborg (`64e8adfa` garde ses 5 couples perdus, écart
+//	n'a pas fait    K/D/A 16 inchangé) NI l'équipe d'un joueur (elle vit dans la base). Détail,
+//	                mesures et instruction du résidu : `.ai/V7.5/v2/RESTES_E2_2026-09-08.md`.
