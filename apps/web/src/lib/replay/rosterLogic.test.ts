@@ -17,6 +17,7 @@ import {
   nameResolver,
   playerName,
   playerStateAt,
+  rosterEntryKey,
   sideResolver,
   vitalityPresence,
 } from './rosterLogic'
@@ -68,6 +69,20 @@ function row(xuid: string, gamertag: string, side: string | null): MatchScoreboa
     outcome: 'win',
   }
 }
+
+describe('rosterEntryKey — la clé de jointure roster -> joueur, DANS LE MÊME ESPACE que ReplayPlayer.xuid (P2-5)', () => {
+  it('rend le xuid tel quel pour une entrée avec xuid', () => {
+    expect(rosterEntryKey({ xuid: 'a1' })).toBe('a1')
+  })
+
+  it('rend `bot:<nom>` pour un BOT — jamais son xuid nu (`\'\'`)', () => {
+    expect(rosterEntryKey({ xuid: '', bot: true, name: 'B1 [bot]' })).toBe('bot:B1 [bot]')
+  })
+
+  it('rend une chaîne vide pour une entrée bot sans nom (rien à construire)', () => {
+    expect(rosterEntryKey({ xuid: '', bot: true })).toBe('')
+  })
+})
 
 describe('buildPlayers', () => {
   it('regroupe les vies par joueur et joint le scoreboard par xuid', () => {

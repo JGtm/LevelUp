@@ -135,6 +135,33 @@ describe('buildEquipmentUsage — le pont slot -> joueur -> équipe', () => {
     } as Partial<ReplayDocument>)
     expect(buildEquipmentUsage(doc, SB).byPlayer.map((r) => r.name)).toEqual(['Alpha'])
   })
+
+  /**
+   * P2-4 (audit vies anonymes, 2026-09-06) : un slot de bipède est réattribué entre
+   * réapparitions ET entre manches — son propriétaire n'est donc pas une constante du
+   * match. `indexBySlot` (agrégat DERNIER GAGNANT) créditait tous les gestes du slot au
+   * DERNIER occupant, y compris ceux tombés dans la fenêtre d'un occupant précédent :
+   * sur un film multi-manche ou avec remplaçant, la ligne du joueur de la manche 1
+   * affichait 0 quand celle de son successeur portait la somme des deux. Mutation :
+   * remplacer `tallyOfSlotAt`/`buildSlotOwnership` par l'ancien `tallyOfSlot`/`indexBySlot`
+   * fait échouer ce test (Alpha retombe à 0, Bravo monte à 2).
+   */
+  it('attribue un geste à la vie qui occupe le slot À L’INSTANT du geste, pas au dernier occupant (P2-4)', () => {
+    const doc = temoin({
+      tracks: [
+        vie(1, 'a1', 0, 50), // manche 1 : Alpha tient le slot 1
+        vie(1, 'a2', 60, 150), // manche 2 : le slot 1 est RECYCLÉ pour Bravo
+      ],
+      grappleLines: [
+        { slot: 1, t0: 20, t1: 25, ax: 0, ay: 0 }, // pendant la vie d'Alpha
+        { slot: 1, t0: 100, t1: 105, ax: 0, ay: 0 }, // pendant la vie de Bravo
+      ],
+    } as Partial<ReplayDocument>)
+    const u = buildEquipmentUsage(doc, SB)
+    const parNom = new Map(u.byPlayer.map((r) => [r.name, r]))
+    expect(parNom.get('Alpha')?.grapplePulls).toBe(1)
+    expect(parNom.get('Bravo')?.grapplePulls).toBe(1)
+  })
 })
 
 describe('buildEquipmentUsage — les épisodes d’état actif (camouflage, surbouclier)', () => {
@@ -342,6 +369,33 @@ describe('buildEquipmentUsage — grenades lancées', () => {
     const u = buildEquipmentUsage(doc, SB)
     expect(u.byPlayer.map((r) => r.name)).toEqual(['Alpha'])
     expect(u.unattributed.grenades).toEqual({ 0: 1 })
+  })
+
+  /**
+   * P2-5 (audit vies anonymes, 2026-09-06) : un BOT n'a pas de xuid au roster (`xuid: ''`),
+   * sa clé de jointure est `bot:<nom>` (`ReplayPlayer.xuid`, cf. rosterLogic.botKey) — jamais
+   * son xuid nu, qui reste vide des deux côtés de la comparaison mais ne correspond à AUCUN
+   * joueur construit. `byFilmIndex` comparait `entry.xuid` à `player.xuid` directement : un
+   * lancer de grenade d'un bot ne rejoignait donc jamais sa ligne. Mutation : revenir à
+   * `players.find((p) => p.xuid === entry.xuid)` (sans dérivation par `botKey`) fait échouer
+   * ce test (le bot retombe à `{}`, l'orphelin monte à `{2: 1}`).
+   */
+  it('attribue le lancer d’un BOT par index de film — la clé de jointure n’est pas son xuid nu (P2-5)', () => {
+    const doc = temoin({
+      roster: [
+        { filmIndex: 0, xuid: 'a1', name: 'Alpha' },
+        { filmIndex: 5, xuid: '', bot: true, name: 'B1 [bot]' },
+      ],
+      tracks: [
+        vie(1, 'a1'),
+        { slot: 7, bot: 'B1 [bot]', team: -1, startFrame: 0, endFrame: 100, points: [{ t: 0, x: 0, y: 0 }] },
+      ],
+      grenades: [{ slot: 7, rank: 2, t: 10, i: 5, s: 'x', x: 0, y: 0 }],
+    } as Partial<ReplayDocument>)
+    const u = buildEquipmentUsage(doc, SB)
+    const bot = u.byPlayer.find((r) => r.xuid === 'bot:B1 [bot]')
+    expect(bot?.grenades).toEqual({ 2: 1 })
+    expect(u.unattributed.grenades).toEqual({})
   })
 })
 
