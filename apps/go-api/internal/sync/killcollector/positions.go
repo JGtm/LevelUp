@@ -280,10 +280,7 @@ func buildPositionRows(
 	// LE ROSTER DE LA FEUILLE ENTRE ICI, et c est un CHANGEMENT DE SORTIE : il rend possible
 	// l identite par ELIMINATION pour un joueur qui ne meurt jamais (cf.
 	// `replay.NomParElimination`). C est la raison du bump d [IsolationDecoderRev].
-	reg := replay.BuildIdentityRegistry(replay.IdentityInput{
-		Positions: positions, Deaths: deathsFilm, PlayerIndices: idx,
-		RosterXUIDs: rosterUint64(ids.XUIDs), MatchID: matchID,
-	})
+	reg := replay.BuildIdentityRegistry(entreeDuRegistre(positions, deathsFilm, idx, ids, matchID))
 	slotXUID := reg.PontParSlot()
 	if len(slotXUID) == 0 {
 		observability.AddInt(metricPositionsNoBridge, 1)
@@ -445,4 +442,24 @@ func publishPositionsPass(ctx context.Context, matchID string, rep replay.KillPo
 		"match_id", matchID, "kills", rep.Kills, "deux_cotes", rep.Both,
 		"tueur_seul", rep.KillerOnly, "victime_seule", rep.VictimOnly,
 		"sans_position", rep.Dropped, "sans_pont_identite", rep.NoBridge, "lignes", rowsWritten)
+}
+
+// entreeDuRegistre assemble ce que le collecteur donne au registre d'identite. PURE — aucun film,
+// aucune base : c'est la COUTURE par laquelle un test pince ce que la production transmet.
+//
+// # POURQUOI ELLE EXISTE PLUTOT QU'UN LITTERAL EN LIGNE
+//
+// Le champ qui compte ici est `RosterXUIDs` : sans lui, l'identite par ELIMINATION n'a aucun
+// candidat, et un joueur qui ne meurt jamais reste anonyme dans `match_lives` — le defaut meme
+// que le lot P2 ferme, et la raison du bump d'[IsolationDecoderRev]. Ecrit en ligne, son retrait
+// laissait toute la suite verte : les tests du registre construisent leur propre entree, et le
+// seul test qui traverse `buildPositionRows` exige un film (integration, `KILLSOURCE_FIXTURES`).
+// C'est exactement le defaut que `composerPassePositions` avait deja corrige pour le decalage
+// d'entame (constat B1 de la revue du 2026-09-06).
+func entreeDuRegistre(positions []filmdec.BipedPosition, deaths []replay.Death,
+	idx replay.PlayerIndexTable, ids MatchIdentities, matchID string) replay.IdentityInput {
+	return replay.IdentityInput{
+		Positions: positions, Deaths: deaths, PlayerIndices: idx,
+		RosterXUIDs: rosterUint64(ids.XUIDs), MatchID: matchID,
+	}
 }

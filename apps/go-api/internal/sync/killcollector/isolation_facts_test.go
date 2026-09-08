@@ -211,3 +211,78 @@ func registreDeTest(pos []filmdec.BipedPosition, desaccords int) replay.Identity
 		},
 	})
 }
+
+// TestRegistreDuCollecteurNommeParElimination — LE COLLECTEUR NOMME CE QU'IL NE NOMMAIT PAS.
+//
+// # CE QUE CE TEST EXIGE, ET POURQUOI IL JUSTIFIE LE BUMP D'[IsolationDecoderRev]
+//
+// Avant le lot P2, le pont du collecteur (`replay.ResolveSlotXUID`) ne recevait PAS le roster de
+// la feuille : un joueur qui ne meurt jamais n'avait aucune vie nommee, et ses lignes de
+// `match_lives` n'existaient tout simplement pas. Le registre, lui, recoit `ids.XUIDs` et ferme
+// le cas d'unicite par ELIMINATION. Les deux tables changent donc de CONTENU — c'est cela que la
+// revision de decodeur fait re-ecrire.
+//
+// MUTATION : retirer `RosterXUIDs` de l'entree du registre (positions.go) -> le slot 2 reste
+// anonyme, `ViesNommees()` n'en porte qu'une, ROUGE.
+func TestRegistreDuCollecteurNommeParElimination(t *testing.T) {
+	// Slot 1 : une vie que la mort de 111 termine. Slot 2 : une vie continue, jamais terminee.
+	var pos []filmdec.BipedPosition
+	for t := int64(0); t <= 10_000; t += 100 {
+		pos = append(pos,
+			filmdec.BipedPosition{Slot: 1, TimestampUS: uint64(t) * 1000, HasWorld: true},
+			filmdec.BipedPosition{Slot: 2, TimestampUS: uint64(t) * 1000, HasWorld: true})
+	}
+	entree := replay.IdentityInput{
+		Positions: pos,
+		Deaths:    []replay.Death{{XUID: 111, TimeMS: 10_000}},
+		PlayerIndices: replay.PlayerIndexTable{
+			ByXUID: map[uint64]int{111: 0}, Readings: 26,
+		},
+	}
+
+	sansRoster := replay.BuildIdentityRegistry(entree)
+	if n := len(sansRoster.ViesNommees()); n != 1 {
+		t.Fatalf("sans roster : %d vie(s) nommee(s), attendu 1 (le seul joueur qui meurt)", n)
+	}
+
+	// AVEC LE ROSTER DE LA FEUILLE — ce que la production passe depuis le lot P2.
+	entree.RosterXUIDs = rosterUint64([]string{"111", "222"})
+	avecRoster := replay.BuildIdentityRegistry(entree)
+	vies := avecRoster.ViesNommees()
+	if len(vies) != 2 {
+		t.Fatalf("avec roster : %d vie(s) nommee(s), attendu 2", len(vies))
+	}
+	var parElimination int
+	for _, v := range vies {
+		if v.NomPar == replay.NomParElimination {
+			parElimination++
+			if v.Cause == replay.CauseVieMort {
+				t.Fatal("l'elimination a fabrique une MORT : une deduction ajoute une presence, " +
+					"elle ne termine jamais une vie")
+			}
+		}
+	}
+	if parElimination != 1 {
+		t.Fatalf("vies nommees par elimination = %d, attendu 1", parElimination)
+	}
+}
+
+// TestRegistreDuCollecteurSeTaitADeuxCandidats — LA CONTRE-EPREUVE : deux joueurs du roster sans
+// aucune vie, l'unicite disparait, et rien n'est nomme. On n'invente jamais un occupant.
+func TestRegistreDuCollecteurSeTaitADeuxCandidats(t *testing.T) {
+	var pos []filmdec.BipedPosition
+	for t := int64(0); t <= 10_000; t += 100 {
+		pos = append(pos,
+			filmdec.BipedPosition{Slot: 1, TimestampUS: uint64(t) * 1000, HasWorld: true},
+			filmdec.BipedPosition{Slot: 2, TimestampUS: uint64(t) * 1000, HasWorld: true})
+	}
+	reg := replay.BuildIdentityRegistry(replay.IdentityInput{
+		Positions:     pos,
+		Deaths:        []replay.Death{{XUID: 111, TimeMS: 10_000}},
+		PlayerIndices: replay.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 26},
+		RosterXUIDs:   rosterUint64([]string{"111", "222", "333"}),
+	})
+	if n := len(reg.ViesNommees()); n != 1 {
+		t.Fatalf("%d vie(s) nommee(s), attendu 1 : deux candidats libres ne se departagent pas", n)
+	}
+}
