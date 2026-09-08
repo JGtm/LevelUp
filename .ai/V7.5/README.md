@@ -95,6 +95,13 @@ sept grandeurs de non-régression des trois films, encore citées comme gate par
   et la vérification de l’inventaire qui l’a précédée : `film_re/PLAN_TABLE_ECS.md`.
 - **Format du film** : `film_re/GRAMMAIRE_RECORD_FILM.md` puis
   `film_re/RECETTE_DECODAGE_FILM_CHUNKS.md`.
+- **Proprietaire d'un corps (qui occupe ce slot de bipede)** :
+  `film_re/SONDAGE_E2_BIPEDE_INDEX_2026-09-08.md` — POSITIF. Le record de CREATION d'une entite
+  `ti=35` porte l'index de participant sur 5 bits (`ECS_ReadEntityRefIndex5`, offset +67 de
+  l'en-tete) ; 90,3 / 86,8 / 95,0 % des vies nommees directement sur trois films, temoin fantome
+  a zero. Il ferme le point aveugle E2 de `v2/RESTES_P1_INVENTAIRE_2026-09-07.md` et montre que
+  le pont par morts ECHANGE les noms de deux vies qui finissent a la meme image (7 paires).
+  Mesures brutes : `film_re/mesures_e2_2026-09-08/`.
 - **Reverse externe / handoff** : `film_re/HANDOFF_FILM_EXTRACTION_EXTERNAL_DEV.md`,
   `film_re/GITHUB_RE_FINDINGS_EN.md` (EN).
 - **Cartes** : `cartes/HANDOFF_MAP_GEOMETRY_FROM_MODULES.md`.

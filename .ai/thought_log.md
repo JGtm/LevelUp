@@ -1,3 +1,59 @@
+## [2026-09-08] Sondage E2 — le film NOMME le proprietaire d'un bipede — Complété
+
+**Le fait, et il retourne le point aveugle central de l'inventaire P1.** E2 y était classé « 0
+lien direct, 5 replis empilés » : rien dans `filmdec.BipedPosition` ne dit à qui appartient un
+corps. C'est vrai des POSITIONS, et faux du film. Le record de CRÉATION (type NEW) d'une entité
+bipède `ti=35` porte l'index de participant absolu de son propriétaire, sur 5 bits, dans son
+default-state (`FUN_140F44C38`, porté bit-exact dans `filmdec/default_state.go`) — troisième
+feuille du prologue, `ECS_ReadEntityRefIndex5` (`FUN_1407f2058` : `R(1)` porte INVERSÉE puis
+`R(5)`), à l'offset +67 de l'en-tête du record. Le décodeur la consommait déjà pour rester
+aligné ; il jetait sa valeur. C'est exactement le défaut corrigé pour `ti=37` le 2026-08-15, et
+l'hypothèse de l'utilisateur (« l'entité bipède avait l'index ») était juste.
+
+**La primitive n'est pas une inconnue : la production la lit déjà ailleurs.** `FUN_1407f2058`
+est la même que celle des deux champs du dead-state (`EnumA` victime, `EnumB` tueur), que
+`killsource/walk.go:224` traite comme des index de participant validés `< nPlay`. La note
+`NOTE_PROJECTILE_OWNER_2026-09-01.md` avait fermé la piste sur `ti=37` (503/503 porte FERMÉE) et
+sa réserve n°2 étendait le négatif « par référence » à d'autres archétypes. Sur `ti=35` la porte
+est OUVERTE **529 fois sur 529**. Le négatif ne s'étendait pas.
+
+**Décision de méthode, et c'est elle qui a fait la mesure.** Deux passes. La CHAÎNE séquentielle
+(World amorcé par images-clés + `DecodeFrameRecords`, recette de `game_entities_chain_test.go`)
+donne des records certains mais rares — 7, 2, 8 par film ; elle sert à établir la SIGNATURE du
+record (version 13, porte de représentation ouverte, mot `player-representation-name` =
+`0x1876BDA0`, constant sur les cinq films). L'ANCRAGE bit à bit reprend ensuite le balayage
+d'en-tête NEW d'`equipment_creation.go` avec cette signature de 32 bits pour gate. **Témoin
+fantôme (bande de même cardinalité, slots jamais occupés par un bipède) : 0 lecture sur les cinq
+films.** La voie qui semblait naturelle — le gate i0 de `decodeBipedI0Pos` — est RÉFUTÉE et c'est
+un acquis à garder : le default-state du bipède n'est porté qu'à ~120 bits sur ~380, donc l'ancre
+i0 calculée après lui est fausse par construction (1 847 ancres, 181 acceptées, 170 à plus de
+10 000 quanta de la trajectoire réelle de leur propre slot).
+
+**Résultats mesurés.** Vies de bipède nommées DIRECTEMENT : `d9781168` 159/176 (90,3 %),
+`bf15f7ab` 79/91 (86,8 %), `64e8adfa` 134/141 (95,0 %) — 372 sur 408. Sur 398 lectures, le champ
+de 5 bits (0..31 possibles) tombe **toujours** dans le roster publié (0..7) ; 14 vies portent
+deux lectures, **zéro divergence**. Contre le pont par morts : 329 concordants, 18 discordants,
+39 vies neuves (dont les vies d'ouverture, qu'un pont par morts ne peut structurellement pas
+nommer).
+
+**La découverte qui change le statut du pont.** Les discordances vont par PAIRES EXACTEMENT
+ÉCHANGÉES — sept, toutes entre deux vies qui se terminent à la même image (fin de manche, fin de
+film). C'est la signature du départage arbitraire de `nameLivesByDeaths` (`replay/lives.go:462`,
+`ps[i].li < ps[j].li` à écarts égaux), et c'est la famille « grappes de frontière de manche »
+déjà inscrite au registre par P2-bis. Le pont ne se contente pas de laisser des vies sans nom :
+sur ces paires, **il en nomme à tort**. La lecture directe tranche.
+
+**Conclusion / prochaine étape.** Critère d'arrêt du sondage atteint sur H1 (≥ 90 % sur un film) :
+H2 (flux `ti=5` complet) et H3 (propriétés gérées) restent fermées, statut `[!]` assumé. Aucune
+ligne de `filmdec` / `himap` / `analysis/replay` touchée, aucune sonde committée (elles
+déclencheraient `no_film_reread`, `no_rewritten_slot_band` et `no_unbounded_film_loop` — les
+garde-rails qui existent pour ça) ; la source de la sonde de mesure et les cinq TSV sont archivés
+sous `.ai/V7.5/film_re/mesures_e2_2026-09-08/`. Le plan d'intégration ADDITIF est écrit en cinq
+items (§4 du sondage, ~420 L Go + tests + recuisson des goldens), avec un préalable non
+négociable : trancher le cas des bots — sur `c75f33b8`, la lecture rend un index (8) que
+`identity.players` ne publie pas, et l'index 11 du bot déclaré n'apparaît jamais. Trois entrées
+au registre des reports.
+
 ## [2026-09-08] Lot P2-bis — Le résidu de R2 sur `d9781168` : l'exclusion temporelle — Complété
 
 **Le fait.** P2 avait tenu trois de ses quatre engagements chiffrés, pas le quatrième :
