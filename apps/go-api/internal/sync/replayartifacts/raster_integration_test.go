@@ -147,9 +147,17 @@ func TestRun_DeposeLeSidecarDeRaster(t *testing.T) {
 	}
 }
 
-// TestRun_ProjectionEnEchecNArretePasLeCycle — un artefact range mais illisible compte en
-// echec et laisse le reste du cycle intact. Le sidecar est best-effort : il ne doit jamais
-// casser une synchronisation, mais il ne doit jamais se taire non plus.
+// TestRun_ProjectionEnEchecNArretePasLeCycle — un artefact au document inutilisable
+// compte en echec et laisse le reste du cycle intact. Le sidecar est best-effort : il ne
+// doit jamais casser une synchronisation, mais il ne doit jamais se taire non plus.
+//
+// AVANT LE LOT M6 (double lecture, cf. `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`), ce test
+// corrompait le fichier SUR DISQUE apres rangement et laissait `projeterRastersTactiques`
+// le relire pour declencher l'echec — un usage du meme defaut qu'il fermait ailleurs.
+// `projeterRastersTactiques` prend desormais le document DEJA LU (`artefactLu.doc`, comme
+// les trois autres familles) : il ne rouvre plus le fichier, donc une corruption posee
+// APRES le rangement ne serait plus vue. L'echec se declenche ici par un DOCUMENT
+// inutilisable (matchId vide) — le meme cas que `TestProjeterRasterTactique_Refus`.
 func TestRun_ProjectionEnEchecNArretePasLeCycle(t *testing.T) {
 	db := baseRegistre(t)
 	racine := racineCuisson(t)
@@ -158,9 +166,6 @@ func TestRun_ProjectionEnEchecNArretePasLeCycle(t *testing.T) {
 	inscrireAuRegistre(t, db, sain, time.Date(2026, 6, 2, 12, 0, 0, 0, time.UTC), 0)
 	inscrireAuRegistre(t, db, casse, time.Date(2026, 6, 2, 13, 0, 0, 0, time.UTC), 0)
 
-	// L'enfant rend un document VALIDE pour les deux matchs : les deux artefacts sont ranges
-	// par `Run`. C'est l'ecriture explicite plus bas qui corrompt le second APRES rangement —
-	// la projection du lot doit compter cet echec ET rester saine pour l'autre match.
 	d := depsCuisson(t, racine, db, func(_ context.Context, req BuildOneRequest) (BuildOneResult, error) {
 		return BuildOneResult{Blob: documentCuit(t, req.MatchID)}, nil
 	})
@@ -169,15 +174,14 @@ func TestRun_ProjectionEnEchecNArretePasLeCycle(t *testing.T) {
 	avantEchecs := observability.LoadCounterT("", CompteurRastersEchecs)
 	avantEcrits := observability.LoadCounterT("", CompteurRastersEcrits)
 	pr := titlePkg.NewPathResolver(racine)
-	// Un artefact CORROMPU APRES RANGEMENT : la situation reelle d'un fichier abime sur
-	// disque. La projection doit le compter en echec ET traiter le suivant.
-	if err := os.WriteFile(pr.ReplayArtifactPath(titlePkg.DefaultSlug, casse),
-		[]byte(`{"schemaVersion":`), 0o644); err != nil {
-		t.Fatalf("corrompre l'artefact: %v", err)
+	saneDoc, _, err := lireDocumentRange(pr.ReplayArtifactPath(titlePkg.DefaultSlug, sain))
+	if err != nil {
+		t.Fatalf("lecture de l'artefact sain range par Run: %v", err)
 	}
 	projeterRastersTactiques(context.Background(), d, []artefactLu{
-		{matchID: casse, path: pr.ReplayArtifactPath(titlePkg.DefaultSlug, casse)},
-		{matchID: sain, path: pr.ReplayArtifactPath(titlePkg.DefaultSlug, sain)},
+		{matchID: casse, path: pr.ReplayArtifactPath(titlePkg.DefaultSlug, casse),
+			doc: &replay.ReplayDocument{SchemaVersion: replay.SchemaVersion}},
+		{matchID: sain, path: pr.ReplayArtifactPath(titlePkg.DefaultSlug, sain), doc: saneDoc},
 	})
 
 	if apres := observability.LoadCounterT("", CompteurRastersEchecs); apres != avantEchecs+1 {
