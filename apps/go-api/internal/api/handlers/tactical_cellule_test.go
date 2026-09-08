@@ -20,7 +20,7 @@ import (
 func TestTacticalHandler_CelluleNominal(t *testing.T) {
 	svc := &fakeTacticalSvc{cellule: domain.TacticalCelluleReponse{
 		Contributions: []domain.TacticalContribution{
-			{MatchID: "m1", InstantMs: 4200, XUID: "2533274000000001"},
+			{MatchID: "m1", InstantMs: 4200, XUID: "2533274000000001", Clock: domain.TacticalClockMatch},
 		},
 		MatchsNonOuvrables: 1,
 	}}
@@ -47,6 +47,9 @@ func TestTacticalHandler_CelluleNominal(t *testing.T) {
 	}
 	if len(got.Contributions) != 1 || got.Contributions[0].MatchID != "m1" || got.Contributions[0].InstantMs != 4200 {
 		t.Errorf("contributions = %+v", got.Contributions)
+	}
+	if got.Contributions[0].Clock != domain.TacticalClockMatch {
+		t.Errorf("clock = %q, want %q (traverse le contrat, lot M1b)", got.Contributions[0].Clock, domain.TacticalClockMatch)
 	}
 	if got.MatchsNonOuvrables != 1 {
 		t.Errorf("matchs_non_ouvrables = %d, want 1", got.MatchsNonOuvrables)

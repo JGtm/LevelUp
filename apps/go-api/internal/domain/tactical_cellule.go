@@ -3,7 +3,8 @@ package domain
 import "time"
 
 // tactical_cellule.go — LE DETAIL D'UNE CELLULE : le lien « voir dans le rejeu » depuis
-// une case de la grille tactique (Tactique S.1, lot M1 du plan d'orchestration 2026-09-07).
+// une case de la grille tactique (Tactique S.1, lot M1 du plan d'orchestration 2026-09-07 ;
+// horloge exacte, lot M1b du 2026-09-08).
 //
 // # CE QUE CETTE LECTURE AJOUTE A LA LECTURE DE PLACEMENT
 //
@@ -22,6 +23,12 @@ import "time"
 // `/filters/match-ids`, sur la base du joueur) ce compte est TOUJOURS zero ; la garde
 // protege un appelant qui poserait un match_id etranger dans le corps de la requete — meme
 // surface de requete que le raster (`match_ids` en liste blanche).
+
+// Valeurs de TacticalContribution.Clock — cf. sa doc pour la regle par question.
+const (
+	TacticalClockMatch = "match"
+	TacticalClockFilm  = "film"
+)
 
 // TacticalCelluleRequest est la demande de detail d'une cellule.
 type TacticalCelluleRequest struct {
@@ -42,27 +49,33 @@ type TacticalContribution struct {
 	MatchID string `json:"match_id"`
 
 	// InstantMs est l'instant CONTRIBUTEUR, en millisecondes — MAIS PAS TOUJOURS SUR LA
-	// MEME HORLOGE (verifie sur pieces, item 1 du lot M1) :
-	//
-	//	temps, routes            l'horloge de l'ARTEFACT de rejeu (frame x FrameIntervalMs,
-	//	                         cf. sidecar `PremieresEntrees`/`Routes`) — le MEME axe que
-	//	                         `?frame=` du lecteur 2D, conversion exacte.
-	//	morts, kills, gagne,
-	//	isole                    l'horloge du MATCH (`match_kill_events.time_ms` /
-	//	                         `match_death_context.time_ms`), DISTINCTE de celle du film :
-	//	                         `analysis/replay/lives_export.go` etablit
-	//	                         `horlogeFilm = horlogeMatch + DeathOffsetMS`, un decalage PAR
-	//	                         MATCH (mesure 3,6 a 50,8 s sur les films temoins,
-	//	                         `analysis/replay/origin.go`) qui n'est PUBLIE NULLE PART hors
-	//	                         de la construction de l'artefact. Le web ne peut donc PAS
-	//	                         convertir cet instant en frame exacte avec les seules donnees
-	//	                         de ce contrat — decouverte consignee (lot M1,
-	//	                         `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`), non traitee ici.
-	//
-	// La conversion en frame elle-meme (division par le pas d'echantillonnage de l'artefact,
-	// une notion du LECTEUR) se fait cote web, par une fonction pure (`instantToFrame`),
-	// jamais ici.
+	// MEME HORLOGE (verifie sur pieces, item 1 du lot M1). Cf. `Clock` ci-dessous pour la
+	// regle par question.
 	InstantMs int64 `json:"instant_ms"`
+
+	// Clock dit sur QUELLE HORLOGE `InstantMs` est exprime — ajoute par le lot M1b
+	// (2026-09-08, decision utilisateur : « corriger le decalage ») pour que le WEB puisse
+	// convertir un instant exact plutot que de deviner :
+	//
+	//	TacticalClockFilm ("film")    temps, routes — l'horloge de l'ARTEFACT de rejeu
+	//	                              (frame x FrameIntervalMs, cf. sidecar
+	//	                              `PremieresEntrees`/`Routes`) — le MEME axe que le
+	//	                              lecteur 2D, conversion exacte et directe.
+	//	TacticalClockMatch ("match")  morts, kills, gagne, isole — l'horloge du MATCH
+	//	                              (`match_kill_events.time_ms` /
+	//	                              `match_death_context.time_ms`), DISTINCTE de celle du
+	//	                              film : `analysis/replay/lives_export.go` etablit
+	//	                              `horlogeFilm = horlogeMatch + DeathOffsetMS`, un
+	//	                              decalage PAR MATCH (mesure 3,6 a 50,8 s sur les films
+	//	                              temoins) publie par `coverage.bridge.deathOffsetMs`
+	//	                              DEPUIS LE SCHEMA 49 SEULEMENT.
+	//
+	// LE SERVICE NE CONVERTIT PAS LUI-MEME : il n'a pas toujours l'artefact de rejeu sous la
+	// main (cuisson asynchrone, artefact absent ou trop vieux) — c'est le WEB qui convertit,
+	// au moment d'ouvrir le rejeu, quand le document (et donc l'offset) est charge
+	// (`lib/replay/replayLogic.resolveTacticalReplayInstant`). Decouverte du lot M1
+	// (`.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`) : TRAITEE le 2026-09-08 par ce champ.
+	Clock string `json:"clock"`
 
 	// XUID est le joueur dont l'evenement a produit cette contribution (victime, tueur, ou
 	// proprietaire de la piste, selon la question) — PAS necessairement le joueur de la

@@ -1,15 +1,24 @@
 // Package service — tactical_service_cellule.go : LE DETAIL D'UNE CELLULE (lien « voir
-// dans le rejeu », Tactique S.1, lot M1 du plan d'orchestration 2026-09-07).
+// dans le rejeu », Tactique S.1, lot M1 du plan d'orchestration 2026-09-07 ; horloge
+// exacte, lot M1b du 2026-09-08).
 //
 // Fichier separe des autres lectures : celle-ci ne rend pas une VALEUR agregee, elle rend
 // les CONTRIBUTIONS individuelles d'une cellule deja affichee — {match_id, instant_ms,
-// xuid} — pour que le web ouvre le rejeu 2D du bon match au bon instant.
+// clock, xuid} — pour que le web ouvre le rejeu 2D du bon match au bon instant.
 //
-// ─── TROIS SOURCES, MEME DISPATCH QUE Raster ───────────────────────────────────
+// ─── TROIS SOURCES, MEME DISPATCH QUE Raster — ET LEUR HORLOGE (`Clock`) ───────
 //
-//	morts / kills / gagne   kill_positions_latest x match_kill_events_latest (repo.KillPositions).
-//	isole                   match_death_context_latest (repo.MortsAvecContexte).
-//	temps / routes          sidecars de raster deposes a la cuisson (port.TacticalRasterStore).
+//	morts / kills / gagne   kill_positions_latest x match_kill_events_latest (repo.KillPositions),
+//	                        Clock = domain.TacticalClockMatch.
+//	isole                   match_death_context_latest (repo.MortsAvecContexte),
+//	                        Clock = domain.TacticalClockMatch.
+//	temps / routes          sidecars de raster deposes a la cuisson (port.TacticalRasterStore),
+//	                        Clock = domain.TacticalClockFilm.
+//
+// LE SERVICE NE CONVERTIT JAMAIS `InstantMs` LUI-MEME (decision M1b) : il ne lit pas
+// l'artefact de rejeu pour ca — un artefact n'est pas toujours cuit — il se contente de
+// PUBLIER l'horloge. La conversion en frame exacte (instant + offset si horloge match, puis
+// ms -> frame) se fait cote web, quand le document du rejeu est charge.
 //
 // ─── OWNERSHIP (ADR 0029) ───────────────────────────────────────────────────────
 //
@@ -150,6 +159,7 @@ func (s *TacticalService) celluleDeKills(ctx context.Context, req domain.Tactica
 			if celluleCorrespond(grille, p.VictimX, p.VictimY, req.Col, req.Lig) {
 				out = append(out, domain.TacticalContribution{
 					MatchID: p.MatchID, InstantMs: p.TimeMs, XUID: p.VictimXUID,
+					Clock: domain.TacticalClockMatch,
 				})
 			}
 		}
@@ -157,6 +167,7 @@ func (s *TacticalService) celluleDeKills(ctx context.Context, req domain.Tactica
 			if celluleCorrespond(grille, p.KillerX, p.KillerY, req.Col, req.Lig) {
 				out = append(out, domain.TacticalContribution{
 					MatchID: p.MatchID, InstantMs: p.TimeMs, XUID: p.KillerXUID,
+					Clock: domain.TacticalClockMatch,
 				})
 			}
 		}
@@ -215,6 +226,7 @@ func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalC
 		}
 		out = append(out, domain.TacticalContribution{
 			MatchID: m.MatchID, InstantMs: m.TimeMs, XUID: m.VictimXUID,
+			Clock: domain.TacticalClockMatch,
 		})
 	}
 	return out, nil
@@ -290,6 +302,7 @@ func contributionsDuSidecar(sc *domain.TacticalRasterSidecar, matchID, question 
 					MatchID:   matchID,
 					InstantMs: int64(route.DebutFrame) * int64(sc.FrameIntervalMs),
 					XUID:      j.XUID,
+					Clock:     domain.TacticalClockFilm,
 				})
 			}
 		default: // domain.TacticalQuestionTemps
@@ -301,6 +314,7 @@ func contributionsDuSidecar(sc *domain.TacticalRasterSidecar, matchID, question 
 					MatchID:   matchID,
 					InstantMs: int64(e.Frame) * int64(sc.FrameIntervalMs),
 					XUID:      j.XUID,
+					Clock:     domain.TacticalClockFilm,
 				})
 			}
 		}
