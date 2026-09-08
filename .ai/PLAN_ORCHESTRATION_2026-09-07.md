@@ -177,7 +177,14 @@ test `:memory:` dédié à `QTacticalIsolement` (entre dans Q8 si la revue le ju
   (le film porte-t-il les entrées/sorties ? sinon S.3 se fait par calage `real_start_time` /
   `t0_quality`, comme prévu, mais APRÈS P2).
 - **P2 → P5** : Opus, une phase = un lot clos (gate + journal), UNE revue adversariale à la
-  clôture de P5 sur le diff cumulé (règle §0.5), bump 49 unique.
+  clôture de P5 sur le diff cumulé (règle §0.5), bump 50 unique (49 pris par le lien exact le
+  2026-09-08).
+- **Statut** : P1 [x] 2026-09-07 par une autre session (`77200cb7a`,
+  `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`), vérifié par le superviseur le 08/09 : axes
+  (i) et (j) couverts, verdict roster = le film ne porte pas les entrées/sorties → S.3 par calage
+  `real_start_time` après P2 ; séquençage P2-P5 §3 repris tel quel. P2 lancé le 2026-09-08 (Opus,
+  `feat/v2-p2-registre-joueurs`, worktree `LevelUp-wt-p2`, commits fréquents) — go utilisateur
+  « ok go pour la vague 3 ».
   R1, R2, R3 ne s'exécutent pas séparément.
 - **S.3** (Tactique) : après P1 selon son verdict, avec le calage prescrit par P1.
 - **L6, L7, L8** (narratif, erreurs API, Discord) : après décisions §5.
@@ -241,6 +248,13 @@ consommateur de production, l'ancrage de la grille de frames sur le premier paqu
 statborg, la contradiction de `vehicle_rides.go`, et l'absence totale de fichier de code dans le
 diff (`git diff --name-only feat/v75..feat/p1-inventaire` : 4 fichiers, tous sous `.ai/`). Les
 débits de lecture et les décomptes de liens viennent du balayage du lot, non re-mesurés.
+
+- **D12 (2026-09-08, utilisateur)** : le lien slot de bipède ↔ index de joueur est un BLOQUANT DE LA
+  RELEASE v7.5.0 (« sinon on a un truc bricolé et pas fiable/stable »). Le gel du décodeur (§0.6 du
+  plan v2) reste, ce seul item en est exempté : sondage borné de rétro-ingénierie (Opus, diagnostic
+  seul, 2-3 films) puis branchement additif sous corpus gate, à lancer dès que le quota le permet
+  (après P3-P4, ou en parallèle si budget). Entrée de registre datée ; critère de succès
+  `identity.coverage.bipedSlot.direct`. Vague 3 devient : P3, P4, **P-décodeur (E2)**, P5.
 
 ## 5. Décisions qui appartiennent à l'utilisateur (avec recommandation ; à trancher avant le lot concerné)
 

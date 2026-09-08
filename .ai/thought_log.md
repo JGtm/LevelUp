@@ -101729,3 +101729,6 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
   utilisateur (entite bipede porteuse de l'index, trajectoires/inventaire enfants) et la piste
   `NOTE_PROJECTILE_OWNER_2026-09-01.md:70` (espace de handles dom1 commun aux bipedes) ; critere de
   succes = `identity.coverage.bipedSlot.direct`. Reprise au plan decodeur post-v7.5.0.
+- Amendement immediat (utilisateur) : ce lien est A RESOUDRE AVANT v7.5.0, pas apres — bloquant de
+  release (D12). Le gel general du decodeur tient, cet item seul en est exempte ; lancement des que
+  le quota le permet. Vague 3 = P3, P4, P-decodeur (E2), P5.
