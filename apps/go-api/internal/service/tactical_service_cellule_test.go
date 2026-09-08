@@ -9,6 +9,9 @@ package service
 //	les trois faces         morts (victime), kills (tueur), gagne (les deux) ;
 //	isole                   memes exclusions que rasterIsole (rayon, equipe a terre) ;
 //	temps / routes          l'instant vient du sidecar (frame x FrameIntervalMs) ;
+//	Clock (lot M1b)         match pour morts/kills/gagne/isole, film pour temps/routes —
+//	                        chaque test de question verifie SA valeur (mutation : inverser
+//	                        les deux constantes dans le service rougit ces assertions) ;
 //	OWNERSHIP (ADR 0029)    un match d'un autre joueur n'apparait dans AUCUNE
 //	                        contribution mais est COMPTE dans MatchsNonOuvrables ;
 //	le tri                  date de match decroissante puis instant croissant.
@@ -85,6 +88,9 @@ func TestCellule_Morts_NeGardeQueLaCelluleDemandee(t *testing.T) {
 	if got.Contributions[0].XUID != tsMoi {
 		t.Errorf("xuid = %q, want %q (la victime, question morts)", got.Contributions[0].XUID, tsMoi)
 	}
+	if got.Contributions[0].Clock != domain.TacticalClockMatch {
+		t.Errorf("clock = %q, want %q (« morts » est sur l'horloge du match)", got.Contributions[0].Clock, domain.TacticalClockMatch)
+	}
 }
 
 // TestCellule_Kills_ProjectionTueur : « kills » attribue la contribution au TUEUR, a sa
@@ -102,6 +108,9 @@ func TestCellule_Kills_ProjectionTueur(t *testing.T) {
 	}
 	if len(got.Contributions) != 1 || got.Contributions[0].XUID != tsMoi || got.Contributions[0].InstantMs != 4200 {
 		t.Fatalf("contributions = %+v, want moi a l'instant 4200 (position du tueur)", got.Contributions)
+	}
+	if got.Contributions[0].Clock != domain.TacticalClockMatch {
+		t.Errorf("clock = %q, want %q (« kills » est sur l'horloge du match)", got.Contributions[0].Clock, domain.TacticalClockMatch)
 	}
 }
 
@@ -123,6 +132,10 @@ func TestCellule_Gagne_LesDeuxFaces(t *testing.T) {
 	if len(gotTueur.Contributions) != 1 || gotTueur.Contributions[0].XUID != tsMoi {
 		t.Fatalf("cote tueur = %+v, want une contribution a moi", gotTueur.Contributions)
 	}
+	if gotTueur.Contributions[0].Clock != domain.TacticalClockMatch {
+		t.Errorf("clock (cote tueur) = %q, want %q (« gagne » est sur l'horloge du match)",
+			gotTueur.Contributions[0].Clock, domain.TacticalClockMatch)
+	}
 
 	gotVictime, err := svc.Cellule(context.Background(), celluleDemande(repo, domain.TacticalQuestionGagne, domain.TacticalQuiAdversaires, 40, 40))
 	if err != nil {
@@ -130,6 +143,10 @@ func TestCellule_Gagne_LesDeuxFaces(t *testing.T) {
 	}
 	if len(gotVictime.Contributions) != 1 || gotVictime.Contributions[0].XUID != tsAdv {
 		t.Fatalf("cote victime = %+v, want une contribution a l'adversaire", gotVictime.Contributions)
+	}
+	if gotVictime.Contributions[0].Clock != domain.TacticalClockMatch {
+		t.Errorf("clock (cote victime) = %q, want %q (« gagne » est sur l'horloge du match)",
+			gotVictime.Contributions[0].Clock, domain.TacticalClockMatch)
 	}
 }
 
@@ -153,6 +170,9 @@ func TestCellule_Isole(t *testing.T) {
 	}
 	if len(got.Contributions) != 1 || got.Contributions[0].XUID != tsMoi || got.Contributions[0].InstantMs != 7000 {
 		t.Fatalf("contributions = %+v, want une mort isolee a moi, instant 7000", got.Contributions)
+	}
+	if got.Contributions[0].Clock != domain.TacticalClockMatch {
+		t.Errorf("clock = %q, want %q (« isole » est sur l'horloge du match)", got.Contributions[0].Clock, domain.TacticalClockMatch)
 	}
 }
 
@@ -197,6 +217,9 @@ func TestCellule_Temps(t *testing.T) {
 	if want := int64(30 * 100); got.Contributions[0].InstantMs != want {
 		t.Errorf("instant_ms = %d, want %d (30 frames x 100 ms)", got.Contributions[0].InstantMs, want)
 	}
+	if got.Contributions[0].Clock != domain.TacticalClockFilm {
+		t.Errorf("clock = %q, want %q (« temps » est deja sur l'horloge du film)", got.Contributions[0].Clock, domain.TacticalClockFilm)
+	}
 }
 
 // TestCellule_Routes : une route qui TRAVERSE la cellule demandee contribue avec son
@@ -229,6 +252,9 @@ func TestCellule_Routes(t *testing.T) {
 	}
 	if want := int64(10 * 200); got.Contributions[0].InstantMs != want {
 		t.Errorf("instant_ms = %d, want %d (le DEBUT de la route, pas le passage)", got.Contributions[0].InstantMs, want)
+	}
+	if got.Contributions[0].Clock != domain.TacticalClockFilm {
+		t.Errorf("clock = %q, want %q (« routes » est deja sur l'horloge du film)", got.Contributions[0].Clock, domain.TacticalClockFilm)
 	}
 }
 
