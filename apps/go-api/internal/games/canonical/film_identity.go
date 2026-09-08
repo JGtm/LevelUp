@@ -133,6 +133,11 @@ const (
 	// MethodRosterElimination : il ne reste qu'une affectation possible entre un xuid libre et
 	// un slot sans nom. Ce n'est pas une deduction par ressemblance, c'est un appariement force.
 	MethodRosterElimination LinkMethod = "elimination_roster"
+	// MethodTemporalExclusion : la MEME elimination, portee de « tout le match » a
+	// « l'intervalle d'une vie ». Un joueur n'occupe qu'un slot a la fois : les joueurs qu'une
+	// vie nommee place ailleurs pendant l'intervalle sont exclus, et s'il n'en reste qu'un,
+	// c'est lui. Deux candidats, ou zero (la lecture se contredit) : on se tait.
+	MethodTemporalExclusion LinkMethod = "exclusion_temporelle"
 	// MethodDeathInstants : les instants de mort apparies au fil (pont statborg par manche).
 	MethodDeathInstants LinkMethod = "instants_de_mort"
 	// MethodSheetTriplet : le triplet K/D/A confronte a la feuille de match.
