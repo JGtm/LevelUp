@@ -1,0 +1,86 @@
+# ranked_playlists_labels.toml — libellés EN/FR des playlists CLASSÉES de référence
+# (rankedplaylists.go). Embarqué (go:embed) DANS le package, pas dans
+# config/titles/halo_infinite/mappings/ : ce fichier alimente un usage interne
+# Go (sync/leaderboard/migrations, fallback quand asset_translations n'a pas
+# encore la traduction) et n'est pas — à ce jour — exposé au web via
+# /api/v1/titles/{slug}/field-mappings (cf. .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md
+# §11, découverte M5 L3 : un lot futur peut le déplacer vers le assets.toml
+# canonique du titre + brancher useAssetLabel('playlist_ranked', id) côté web
+# si ce besoin apparaît).
+#
+# Parsé par internal/games/mappings.LoadAssetsFromBytes (même format que
+# config/titles/{slug}/mappings/assets.toml : [assets.{kind}.{id}], labels.en/fr
+# obligatoires, display_order unique par kind) — réutilise le loader et sa
+# validation de parité FR/EN au lieu d'un parseur ad hoc.
+#
+# Source des données : mesure 2026-05 via le proxy public SpartanRecord
+# (HaloDotAPI metadata, ranked=true) — identique à rankedplaylists.go avant ce
+# lot (aucun changement de valeur, seulement de source).
+
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+[assets.playlist_ranked."edfef3ac-9cbe-4fa2-b949-8f29deafd483"]
+labels = { en = "Ranked Arena", fr = "Arène classée" }
+display_order = 1
+
+[assets.playlist_ranked."dcb2e24e-05fb-4390-8076-32a0cdb4326e"]
+labels = { en = "Ranked Slayer", fr = "Assassin classé" }
+display_order = 2
+
+[assets.playlist_ranked."fa5aa2a3-2428-4912-a023-e1eeea7b877c"]
+labels = { en = "Ranked Doubles", fr = "Duo classé" }
+display_order = 3
+
+[assets.playlist_ranked."c94cb508-2fbd-450a-81db-bb74f7741d45"]
+labels = { en = "RANKED LEGACY", fr = "Legacy classé" }
+display_order = 4
+
+[assets.playlist_ranked."6233381c-fc96-40b9-b1ff-f6a4de72dd7a"]
+labels = { en = "Ranked Snipers", fr = "Snipers classés" }
+display_order = 5
+
+[assets.playlist_ranked."57e417dd-7366-4dda-9bdd-2802151d5e81"]
+labels = { en = "Ranked Tactical", fr = "Tactique classé" }
+display_order = 6
+
+[assets.playlist_ranked."71734db4-4b8e-4682-9206-62b6eff92582"]
+labels = { en = "Ranked FFA", fr = "Chacun pour soi classé" }
+display_order = 7
+
+[assets.playlist_ranked."28bfa5f4-89b0-47dc-86e8-1a7cc5b593fc"]
+labels = { en = "RANKED 1V1 SHOWDOWN", fr = "Duel classé" }
+display_order = 8
+
+[assets.playlist_ranked."a4a4453c-7a91-4b27-b952-2456c5ce3205"]
+labels = { en = "Ranked S&D Extraction", fr = "Extraction classée" }
+display_order = 9
+
+[assets.playlist_ranked."6dc5f699-d6d9-41c4-bdf8-7ae11dec2d1b"]
+labels = { en = "Ranked Squad Battle", fr = "Bataille d'escouade classée" }
+display_order = 10
+
+[assets.playlist_ranked."f3738fae-bd09-4fd1-9dea-e32f546bbbfd"]
+labels = { en = "Ranked Survivors", fr = "Survivants classés" }
+display_order = 11
+
+[assets.playlist_ranked."0b42053a-32c5-4c2d-b8b8-5f07274a0117"]
+labels = { en = "HaloWC FFA Qualifier", fr = "Qualifications HaloWC (Chacun pour soi)" }
+display_order = 12
+
+[assets.playlist_ranked."7c60fb3e-656c-4ada-a085-293562642e50"]
+labels = { en = "RANKED TACTICAL OLD", fr = "Tactique classé (ancien)" }
+display_order = 13
+
+[assets.playlist_ranked."a883e7e1-9aca-4296-9009-3733a0ca8081"]
+labels = { en = "RANKED SNIPERS OLD", fr = "Snipers classés (ancien)" }
+display_order = 14
+
+[assets.playlist_ranked."f7eb8c71-fedb-4696-8c0f-96025e285ffd"]
+labels = { en = "Ranked Arena (Solo-Duo MnK)", fr = "Arène classée (Solo-Duo CSM)" }
+display_order = 15
+
+[assets.playlist_ranked."f7f30787-f607-436b-bdec-44c65bc2ecef"]
+labels = { en = "Ranked Arena (Solo-Duo Controller)", fr = "Arène classée (Solo-Duo Manette)" }
+display_order = 16

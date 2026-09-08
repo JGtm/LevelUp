@@ -399,8 +399,10 @@ func playlistName(id, locale, frOfficial, enOfficial, canonical string) string {
 		if enOfficial != "" {
 			return enOfficial
 		}
-		if hasPL && pl.NameEN != "" {
-			return pl.NameEN
+		if hasPL {
+			if en := pl.NameEN(); en != "" {
+				return en
+			}
 		}
 		if canonical != "" {
 			return canonical
@@ -408,16 +410,20 @@ func playlistName(id, locale, frOfficial, enOfficial, canonical string) string {
 		if frOfficial != "" {
 			return frOfficial
 		}
-		if hasPL && pl.NameFR != "" {
-			return pl.NameFR
+		if hasPL {
+			if fr := pl.NameFR(); fr != "" {
+				return fr
+			}
 		}
 		return id
 	}
 	if frOfficial != "" {
 		return frOfficial
 	}
-	if hasPL && pl.NameFR != "" {
-		return pl.NameFR
+	if hasPL {
+		if fr := pl.NameFR(); fr != "" {
+			return fr
+		}
 	}
 	if canonical != "" {
 		return canonical
@@ -527,11 +533,11 @@ func scanCatalogColumn(ctx context.Context, db *sql.DB, q string, displayFn func
 // playlistDisplayName résout un asset_id de playlist en libellé (FR > EN > id).
 func playlistDisplayName(assetID string) string {
 	if pl, ok := rankedplaylists.Lookup(assetID); ok {
-		if pl.NameFR != "" {
-			return pl.NameFR
+		if fr := pl.NameFR(); fr != "" {
+			return fr
 		}
-		if pl.NameEN != "" {
-			return pl.NameEN
+		if en := pl.NameEN(); en != "" {
+			return en
 		}
 	}
 	return assetID

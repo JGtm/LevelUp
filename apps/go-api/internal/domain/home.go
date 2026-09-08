@@ -239,14 +239,21 @@ type HighlightSlide struct {
 // RecentMatchItem représente un match récent dans la timeline.
 type RecentMatchItem struct {
 	MatchID   string     `json:"match_id"`
-	Title     string     `json:"title"`
 	Detail    string     `json:"detail"`
 	StartedAt *time.Time `json:"started_at,omitempty"`
 	// OutcomeLabel supprimé le 2026-09-07 (D4/D5, lot Q4) : 0 lecteur dans
 	// apps/web/src/features/home (grep vérifié) — le mot FR/EN venait de deux maps Go
 	// (home_locale.go), la 3e source du même mot avec match_history et l'accueil legacy.
 	// git garde l'historique si un lecteur apparaît un jour ; alors passer par la clé
-	// canonique (cf. Title, qui porte le mot résolu via l'adapter du titre).
+	// canonique OutcomeTone (win|loss|tie|dnf) + useOutcomeLabel côté web.
+	//
+	// Title (composite Go "<mot d'issue> · <carte>") supprimé le 2026-09-07 (lot M5,
+	// L2) : seul lecteur web (MatchCard.buildMatchHeading) ne l'utilisait qu'en
+	// DERNIER repli, quand map_ui ET mode_ui manquaient tous les deux — un cas où le
+	// mot d'issue résolu côté Go n'apportait rien de plus qu'un texte de repli
+	// générique. Le web compose désormais le repli depuis les clés déjà servies
+	// (OutcomeTone est la clé canonique win|loss|tie|dnf, cf. outcomes.toml) : plus
+	// besoin d'un texte pré-assemblé côté serveur pour ce DTO. git garde l'historique.
 	OutcomeTone     string   `json:"outcome_tone"`
 	ScoreLabel      *string  `json:"score_label,omitempty"`
 	NarrativeBadges []string `json:"narrative_badges,omitempty"`

@@ -122,6 +122,244 @@ décalage d'horloge match/film qui rend `?frame=` approximatif pour 4 questions 
 (reprise possible : publier `DeathOffsetMS` par match dans le contrat). Commits par
 chemins explicites (Go+contrat / web / journal) puis `git push -u origin
 feat/tactique-lien-rejeu`, sans fusion (décision de l'utilisateur).
+## [2026-09-08] Lot M5 (fin) — libelles en dur, famille L4 armes — Complete
+
+**Decision technique principale.** Execution du lot M5, derniere partie : L4 (armes),
+plan d'orchestration section M5, source .ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md
+section 2.C / section 4 L4 / sections 9-12. Worktree dedie LevelUp-wt-m5c-armes, branche
+feat/libelles-armes depuis feat/libelles-modes-playlists (2f190c543). Skills invoques :
+plan-execution, arch-rules, canonical-types, db-schema, frontend-patterns. Decisions
+utilisateur fermes appliquees : option 1 (le Go sert des cles, le web localise),
+jamais de comparaison de slug, jamais de libelle FR/EN en dur cote Go, un champ *_label
+sans lecteur web est supprime.
+
+Inventaire sur pieces AVANT de coder (doctrine RE-VERIFIER) : les deux sites cites par
+l'inventaire du plan (section 2.C) sont tous les deux des tables SEMEES dans
+metadata.duckdb (weapon_families, weapon_labels), pas des libelles Go a servir
+directement a un DTO. Distinction (a)/(b) de la consigne d'execution appliquee :
+- internal/games/weapons/registry.go:317+ (weaponRegistryFamilies, 22 litteraux) : EN/FR
+  par famille d'arme ("battle_rifle" -> "Battle Rifle"/"Fusil de combat"...), seedes dans
+  weapon_families. Grep exhaustif Go ET web (apps/web/src/lib/i18n/manifests/frags.toml,
+  qui localise deja le sunburst "Frags par arme" niveaux classe/role) : AUCUN lecteur ne
+  selectionne jamais name_en/name_fr depuis cette table. Champ mort avere -> cas (a) mais
+  DEAD, donc traite par SUPPRESSION (regle CLAUDE.md n7, 0 code mort) et non par
+  migration TOML (qui aurait recopie du contenu mort dans un second fichier). Purge des
+  2 colonnes via une migration CTAS-swap dediee (purge_weapon_families_labels_columns),
+  calquee EXACTEMENT sur le precedent direct du meme paquet
+  (purge_weapons_name_fr_column, V721-05.1, 2026-07 - DuckDB refuse ALTER TABLE DROP
+  COLUMN sous PK/index). weaponFamilyRow reduit a struct{ key string }.
+- internal/games/weapons/labels.go (ApplyLabels, table weapon_labels, 12 litteraux) :
+  NON traite, cas (b) explicitement designe comme DONNEES par la consigne d'execution
+  (meme statut que cmd/seed-weapon-labels/ops/seed_*, hors perimetre sauf preuve de
+  convergence). Verifie LIVE (contrairement a weapon_families) :
+  platform/duckdb/weapon_resolver.go lit encore weapon_labels comme repli de nom pour
+  les 3 sentinelles (grenade/melee/vehicule, ids 0/1/2 sans weapon_key) et tout weapon_id
+  inconnu du registre - architecture voulue depuis V72-06 (weapon_name_labels/
+  weapon_names.toml est deja la SOURCE UNIQUE pour le reste). Migrer ce repli vers un
+  TOML dupliquerait cette source unique sans rien resoudre : aucune convergence trouvee.
+
+**Actions.**
+- Nouvelle migration internal/migration/steps_metadata_purge_weapon_families_labels.go
+  (+ 5 tests dedies, tag integration) : rebuild CTAS-swap idempotent, garde anti-perte
+  (rebuilt==before), ordonnee juste avant purge_weapons_name_fr_column dans
+  canonicalOrder (order.go) pour reproduire l'ordre d'enregistrement naturel par nom de
+  fichier (TestSortByCanonicalIsNoOpOnCurrentRegistry l'exige) ; dependance declaree
+  dans order_dependency_test.go (doit suivre add_weapon_registry).
+- registry.go : weaponFamilyRow -> struct{ key string } ; CREATE TABLE weapon_families
+  reduit a (family_key VARCHAR PRIMARY KEY) ; seedWeaponFamilies n'ecrit plus que la
+  cle ; weaponRegistryFamilies reduit a une liste de cles. 1 litteral residuel hors
+  famille ("Banished (SPNKr modifie)", champ manufacturer - lui aussi jamais lu, verifie
+  par grep) anglicise ("modified") plutot que traduit, pour coherence avec le reste du
+  champ (EN partout ailleurs) : 22 -> 0.
+- Nouveau ratchet dedie internal/archlint/no_weapon_family_label_literal_test.go ::
+  TestNoNewWeaponFamilyLabelLiteral (frere de TestNoNewModePlaylistLabelLiteral, L3) :
+  interdit la reintroduction d'un champ de struct "en, fr string" dans
+  internal/games/weapons, allowlist vide.
+- Ratchet no_french_label_literal_test.go : games/weapons/registry.go retire de
+  l'allowlist (22 -> 0) ; games/weapons/labels.go inchange (12, justifie DONNEES) ;
+  131 -> 130 fichiers, 522 -> 500 litteraux.
+- golangci-lint --new-from-merge-base a expose 4 nouveaux goconst (roleShotgun,
+  famRocketLauncher, clsUnattributed, clsOther) sur des lignes de weaponRegistryFamilies
+  qui ont change de forme (le refactor a fait entrer ces lignes dans le diff) - meme
+  phenomene deja consigne comme decouverte L3 (section 12). Corrige par extraction de
+  constantes (pas une regression fonctionnelle).
+
+**Decouvertes consignees, NON traitees** (plan libelles section 13) : (1)
+internal/domain/match_view.go (WeaponLabel, TopWeaponLabel) sert un libelle DEJA
+LOCALISE cote serveur (option 2, pas la cle canonique option 1/D5) - ecart de doctrine
+reel mais preexistant (V72-06, anterieur a D5), chantier fullstack separe (meme famille
+de risque que expTypePVPRanked/Unranked, decouverte L3) ; (2) weapons.manufacturer est
+egalement un champ mort (meme nature que weapon_families avant purge) - hors perimetre
+libelles (pas un FR/EN, dette technique plus large) ; (3) si les 3 sentinelles de
+weapon_labels rejoignent un jour le registre par weapon_key, cette table deviendrait a
+son tour un repli mort comme weapon_families l'etait - a re-verifier a ce moment, pas
+avant.
+
+**Resultats observes.** Gates Go : gofmt -l vide, go build ./internal/... ./cmd/...
+propre, go vet des paquets touches propre, go test -count=1 du perimetre instruit
+(service/analysis/domain/api/archlint/games/sync/platform-duckdb) tous verts, go test
+-tags=integration sur internal/migration et internal/games/weapons (nouvelle migration +
+ses 5 tests) verts, openapi-gen -check a jour (0 diff, aucun changement de contrat DTO),
+make generate-types 0 diff sur generated.ts, golangci-lint run
+--new-from-merge-base=origin/main 0 issue apres extraction des 4 constantes. Web (npm ci
+dans le worktree, purge node_modules/.tmp) : AUCUN fichier web modifie (le champ mort
+eteint etait une colonne DB, pas un DTO API) ; gates relances par prudence : typecheck
+propre, lint 0 erreur / 29 warnings (baseline inchangee), lint:colors 0 violation,
+lint:fields 0 violation, npx vitest run --pool=forks 656 fichiers / 6993 tests verts (17
+skipped, meme baseline que L3).
+
+**Conclusion / prochaine etape.** L4 clos et coche (plan libelles section 4, plan
+d'orchestration section M5). Lot M5 entierement termine (L2+L3+L4+L5, sur 2 sessions).
+Aucune page a verifier a l'ecran pour l'utilisateur (0 changement visuel - les deux
+libelles d'armes etaient soit deja morts soit deja corrects niveau UI). Commits sur
+feat/libelles-armes, poussee vers origin, non fusionnee. Prochaine etape possible (hors
+perimetre de ce lot, a decider avec l'utilisateur) : lot dedie pour migrer
+WeaponLabel/TopWeaponLabel (match_view.go) de l'option 2 vers la cle canonique (option
+1/D5), en coordination avec le web (killfeed, scoreboard, frag breakdown).
+
+## [2026-09-08] Lot M5 (seconde moitie) — libelles en dur, famille L3 modes/playlists — Complete
+
+**Decision technique principale.** Reprise de l'execution du lot M5, partie L3 (modes / playlists
+/ categories / portees), plan d'orchestration §3 source `.ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md`
+§2.B/§4/§9-11. Reprise d'un executant precedent coupe par une limite de quota : worktree herite
+`LevelUp-wt-m5b-modes`, branche `feat/libelles-modes-playlists` (base `feat/libelles-accueil-rangs`
+@ `92ae3fe3d`), 9 fichiers modifies non commites + 1 nouveau TOML. Skills invoques : plan-execution,
+halo-modes, arch-rules, canonical-types, frontend-patterns. Decision utilisateur ferme : option 1
+(Go sert des cles, web localise via useAssetLabel/useFieldLabel), jamais de comparaison de slug.
+
+Etat herite verifie sur pieces AVANT de continuer (git status/diff, doctrine RE-VERIFIER) :
+`rankedplaylists.go` (Playlist.NameEN/NameFR passes de champs litteraux a des methodes lisant un
+nouveau `ranked_playlists_labels.toml` embarque) + 5 call-sites adaptes (career.go,
+csr_history_backfill.go, leaderboard_world_repo.go, migrations/ranked_playlists.go,
+probe-world-stats/main.go) + leurs tests. Le point d'attention de la reprise portait sur
+l'emplacement du TOML (embarque dans le paquet Go vs `config/titles/halo_infinite/mappings/`) :
+verifie qu'un chemin de chargement par-titre EXISTE pour cette famille (kind+id+labels EN/FR =
+meme forme que `assets.toml`, charge par `mappings.Registry.LoadFromConfigDir(repoRoot, ...)`) mais
+qu'il est INAPPLICABLE aux 3 appelants reels (migration DB + 2 jobs de sync, tous des fonctions
+pures sans repoRoot/Registry threade, et un `go:embed` ne peut de toute facon pas traverser vers
+`config/titles/`) — embed conserve, condition de reprise consignee (§11 du plan libelles).
+
+**Actions.**
+- `internal/games/halo_infinite/mode_category.go` : `[~]` deja conforme (verifie sur pieces) — les
+  8 categories retournees sont des CLES qui matchent `[assets.mode.*]` de `assets.toml`, resolues
+  cote web via `useAssetLabel('mode', value)` (`MediaToolbar.tsx`). Pas d'action.
+- `internal/analysis/home_canonical*.go::labelForLocale` : `[~]` re-confirme donnee (pas litteral) —
+  `assetLabels()` lit `canonical.AssetReference.Labels`, peuple par match depuis la DB.
+- `rankedplaylists.go` : `[x]` herite complete + corrige. Deux fichiers de test de `internal/sync`
+  (`career_ranked_augment_test.go`, `csr_history_backfill_test.go`) cassaient encore la compilation
+  (reference aux anciens champs NameEN/NameFR) — l'executant precedent n'avait pas fait tourner
+  `go vet`/`go test` sur `internal/sync` avant de s'arreter. Corriges (methodes + reecriture du test
+  `UsesProvidedList` qui construisait un `Playlist{NameEN: "Dynamic"}` desormais impossible, remplace
+  par la verification du comportement reel deja documente : une playlist hors reference resout un
+  nom vide). `golangci-lint --new-from-merge-base` a aussi revele un `goconst` neuf sur `"crossplay"`
+  (14 occurrences, expose par le refactor qui a fait entrer ces lignes dans le diff) — extrait en
+  constantes `queueOpen`/`queueSoloDuo`/`inputCrossplay`/`inputMnK`/`inputController`.
+- `internal/service/match_history_service.go::expTypePVPRanked/Unranked` : `[!]` NON TRAITE,
+  justifie. La VALUE (pas le Label, deja localise FR/EN) est un CONTRAT teste et documente dans le
+  code (GH5-2) avec la cascade de filtres web — ~80 fichiers `apps/web/src` en dependent, dont
+  `experienceCascade.ts` avec le commentaire explicite "NE PAS traduire ces chaines ici". Migrer la
+  VALUE vers une cle neutre exige un lot fullstack dedie et coordonne, hors perimetre d'une reprise
+  "modes/playlists".
+- `migrations/mode_playlist_fr.go` : `[~]` confirme hors perimetre (migration, CLAUDE.md §2.H).
+
+Ratchets : `no_french_label_literal_test.go` — `rankedplaylists.go` retire de l'allowlist (15 -> 0,
+131 fichiers / 522 litteraux, etait 132/537). Nouveau ratchet
+`no_bare_resolve_mode_ui_test.go::TestNoNewModePlaylistLabelLiteral` (interdit un nouveau champ
+struct litteral `NameEN:`/`NameFR:` — grandfathered `analysis/skill_v2/tier.go`, famille TIER CSR
+distincte deja suivie en decouverte L5).
+
+**Decouvertes consignees, NON traitees** (plan libelles §12) : (1) seam DI absent entre
+`mappings.Registry` (boot, repoRoot) et les appelants purs de `rankedplaylists` (migration/sync) —
+bloque une migration future du TOML vers `config/titles/` sans threading explicite ; (2)
+`match_history_service.go` VALUE FR canonique couplee a ~80 fichiers web (contrat GH5-2) — lot
+dedie requis ; (3) `golangci-lint --new-from-merge-base` peut se declencher sur du code
+fonctionnellement inchange des qu'un refactor mecanique deplace la ligne dans le diff.
+
+**Resultats observes.** Gates Go : `gofmt -l` vide, `go build ./internal/... ./cmd/...` propre,
+`go vet` des paquets touches propre, `go test -count=1 ./internal/service/... ./internal/analysis/...
+./internal/domain/... ./internal/api/... ./internal/archlint/... ./internal/games/...
+./internal/sync/ ./internal/platform/duckdb/...` tous verts. `openapi-gen -check` : a jour, 0 diff.
+`make generate-types` : 0 diff sur `generated.ts`. `golangci-lint run
+--new-from-merge-base=origin/main ./...` : 0 issue (apres correction du goconst). Web (node_modules
+reinstalle dans le worktree, absent au depart) : `npm run typecheck` propre, `npm run lint` : 0
+erreur / 29 warnings (baseline inchangee, fichiers non touches), `lint:colors` 0 violation,
+`lint:fields` 0 violation, `npx vitest run --pool=forks` : 656 fichiers / 6993 tests verts (1
+skipped, meme baseline).
+
+**Conclusion / prochaine etape.** L3 clos et coche (plan libelles §4, plan d'orchestration §3 M5 —
+statut "L3 [x]"). L4 (armes) reste `[ ]`, seul restant du lot M5. Pages a verifier a l'ecran par
+l'utilisateur (FR et EN) : Carriere (nom des playlists classees dans l'historique CSR) ; aucun
+changement visuel attendu sur Explorer/filtre portee (VALUE inchangee, non traitee). Commits sur
+`feat/libelles-modes-playlists`, poussee vers origin, non fusionnee.
+
+## [2026-09-07] Lot M5 (premiere moitie) — libelles en dur, familles L2 accueil + L5 rangs — Complete
+
+**Decision technique principale.** Execution du lot M5 (plan d'orchestration §3, source
+`.ai/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md`), perimetre FERME a L2 (accueil) et L5 (rangs) par
+consigne d'execution — PAS L3 (modes), PAS L4 (armes). Worktree dedie `LevelUp-wt-m5-libelles`,
+branche `feat/libelles-accueil-rangs` depuis `feat/v75` @ `6a1496e30`. Skills invoques :
+plan-execution, arch-rules, canonical-types, frontend-patterns. Decision utilisateur D5 (option 1
+partout, "la cle canonique est ce qu'il y a de plus solide") appliquee aux deux familles.
+
+Inventaire sur pieces AVANT de coder (doctrine RE-VERIFIER, la carte du plan datait) :
+- L2 : `internal/analysis/home_locale.go` ne portait DEJA PLUS aucune paire
+  `labelForLocale(locale, fr, en)` avec des litteraux FR/EN en dur — les maps `homeOutcomeLabels*`
+  avaient disparu avec Q4 (lot L1). Les appels restants de `labelForLocale`/`labelFR` (dans
+  `home_canonical*.go`) resolvent des NOMS D'ASSET dynamiques (map/mode/playlist) depuis
+  `canonical.AssetReference.Labels`, peuples a la sync depuis `metadata.asset_translations` /
+  `mode_name_tr` (DB) — famille L3 (modes/playlists), pas un litteral Go, donc HORS PERIMETRE de
+  ce lot. `buildHomeNarrativeBadges` sert deja des cles ("dominant", "humiliation"...), conforme.
+  Seul point reellement en dur : `domain.RecentMatchItem.Title`, composite Go
+  `"<mot d'issue> · <carte>"` assemble dans `home_canonical_recent.go` via
+  `RecentMatchesOptions.OutcomeText`. Un seul lecteur web (`match-card.tsx::buildMatchHeading`),
+  et seulement en DERNIER repli quand `map_ui` ET `mode_ui` manquent tous les deux (le cas nominal
+  est deja couvert par `MapUI`/`ModeUI`, servis a part).
+- L5 : `internal/service/compare_service.go::csrUnrankedLabel = "Non classe"`. Decouverte majeure :
+  `internal/games/mappings/ranks.go` (cible supposee par le plan) est le catalogue du rang de
+  CARRIERE (XP, "General Platine VI"), PAS le tier CSR (Bronze..Onyx) — deux systemes distincts,
+  la carte du plan les confondait.
+
+**Actions.**
+- L2 : supprime `domain.RecentMatchItem.Title`, `analysis.RecentMatchesOptions.OutcomeText`, la
+  construction `label`/`title` dans `home_canonical_recent.go`, et
+  `outcomes := outcomesOf(s.semantic)` + `OutcomeText: func(...)` dans `home_service.go` (regle 7,
+  0 code mort). Web : `match-card.tsx::buildMatchHeading` et l'alt de repli composent desormais le
+  texte depuis la meme cle i18n que le placeholder d'image (`common.match_card.map_unknown`),
+  jamais un composite pre-assemble cote Go. `OutcomeTone` (deja la cle canonique win/loss/tie/dnf)
+  reste disponible pour un futur lecteur via `useOutcomeLabel`.
+- L5 : `csrUnrankedLabel` migre vers la cle canonique `"unranked"`. Le web (`ComparePage.tsx`)
+  passait deja `display` a `lib/skillTiers.ts::localizeTierLabel` (mecanisme CLIENT-SIDE existant,
+  pas de TOML, qui localise deja tous les noms de palier CSR) : cle `"unranked"` ajoutee au meme
+  canal (`TIER_NAME_BY_KEY`) plutot que d'en ouvrir un nouveau. Ratchet
+  `no_french_label_literal_test.go` : `compare_service.go` 3 -> 2 littéraux (allowlist resserree,
+  total du fichier remis a jour a 537).
+
+**Decouvertes consignees, NON traitees** (plan libelles §11) : (1) `csrRankLabel`/`skillTierLabel`
+(compare_service.go) formatent encore le tier CSR en clair ("Platine IV", bug visible sous UI EN) —
+calcul duplique EN TROIS ENDROITS (compare_service.go, home_canonical_skill.go, sync/csr_writes.go)
+au-dela du seuil de 2 copies (regle 6) ; sync/csr_writes.go va plus loin en PERSISTANT le libelle FR
+dans `match_skill_rank.tier_label` (table append-only ADR 0026) — corriger a la racine exige une
+migration de donnees, hors format de ce lot ; (2) `match_history_explorer_options.go::skillTierLabel`
++ `perfTierLabel` : `.Label` mort (le web ne lit que `.value`/`.count`), deja repere au lot Q4 (§10)
+"Reprise: L5", toujours non traite (perimetre a trancher : L5 strict = CSR seulement, ou nouvelle
+famille pour les paliers de perf ?).
+
+**Resultats observes.** Gates Go : `gofmt -l` vide, `go build ./internal/...` propre, `go vet` des
+paquets touches propre, `go test -count=1 ./internal/service/... ./internal/analysis/...
+./internal/domain/... ./internal/api/... ./internal/archlint/... ./internal/games/...` : tous verts
+(y compris `TestNoNewFrenchLabelLiteral`). `openapi-gen -check` : a jour (HomePageResponse n'est pas
+modelise dans le contrat — TODO Sprint 32 preexistant, donc 0 impact). `make generate-types` : 0 diff
+sur `generated.ts`. `golangci-lint run --new-from-merge-base=origin/main ./...` : 0 issue. Web :
+`npm run typecheck` propre, `npx vitest run --pool=forks` : 656 fichiers / 6993 tests verts (17
+skipped, meme baseline), `npm run lint` : 0 erreur / 29 warnings (baseline inchangee), `lint:colors`
+0 violation, `lint:fields` 0 violation.
+
+**Conclusion / prochaine etape.** L2 et L5 clos et coches (plan libelles §4, plan d'orchestration §3
+M5 — statut "L2+L5 [x]", L3/L4 restent `[ ]` pour la seconde moitie du lot M5). Pages a verifier a
+l'ecran par l'utilisateur (FR et EN) : Accueil (tuiles de matchs recents — cas rare sans carte NI
+mode) et Comparaison de joueurs (ligne CSR d'un joueur non classe). Commits sur
+`feat/libelles-accueil-rangs`, poussee vers origin, non fusionnee (attend l'accord utilisateur comme
+les autres lots de la vague).
 
 ## [2026-09-07] Orchestration — ouverture de la vague 3, lot P1 (inventaire du registre d'identite) — Complete
 

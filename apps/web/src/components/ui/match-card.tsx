@@ -66,7 +66,10 @@ function buildMatchHeading(match: RecentMatchItem, locale: Locale): string {
     return `${normalizedMode} ${connector} ${match.map_ui}`
   }
 
-  return normalizedMode ?? match.map_ui ?? match.title
+  // Dernier repli (mode ET carte absents) : plus de composite pré-assemblé côté
+  // Go (`title` supprimé le 2026-09-07, lot M5 L2 — D5, jamais de texte composé
+  // côté backend) — même texte-clé que le placeholder d'image ci-dessous.
+  return normalizedMode ?? match.map_ui ?? formatMessage(commonManifest, 'common.match_card.map_unknown', locale)
 }
 
 export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlug, onClick, onToggleFavorite, favoriteDisabled }: MatchCardProps) {
@@ -124,7 +127,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
         {m.map_image_url ? (
           <img
             src={m.map_image_url}
-            alt={m.map_ui ?? m.title}
+            alt={m.map_ui ?? t('common.match_card.map_unknown')}
             className="w-full h-full object-cover"
             loading="lazy"
             onError={(e) => {

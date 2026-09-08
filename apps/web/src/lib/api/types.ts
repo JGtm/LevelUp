@@ -980,11 +980,14 @@ export interface HighlightItem {
 
 export interface RecentMatchItem {
   match_id: string
-  title: string
   detail: string
   started_at: string | null
-  // outcome_label supprimé côté Go le 2026-09-07 (D4/D5, lot Q4) : 0 lecteur ici — le mot
-  // d'issue, quand il existe, est déjà dans `title` (composite résolu par le backend).
+  // outcome_label supprimé côté Go le 2026-09-07 (D4/D5, lot Q4) : 0 lecteur ici.
+  // title (composite Go "<mot d'issue> · <carte>") supprimé le 2026-09-07 (lot M5
+  // L2) : seul lecteur (MatchCard.buildMatchHeading) ne s'en servait qu'en DERNIER
+  // repli, quand map_ui ET mode_ui manquaient tous les deux. outcome_tone EST la
+  // clé canonique de l'issue (win|loss|tie|dnf, cf. outcomes.toml) — à résoudre
+  // via useOutcomeLabel si un lecteur en a besoin un jour.
   outcome_tone: string
   score_label?: string | null
   narrative_badges?: string[]
