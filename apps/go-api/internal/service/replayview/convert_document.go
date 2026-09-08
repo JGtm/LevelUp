@@ -66,6 +66,7 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		BombStats:           ptrOf(v.BombStats, toBombMatchStats),
 		BombEvents:          sliceOf(v.BombEvents, toBombEvent),
 		Coverage:            ptrOf(v.Coverage, toCoverage),
+		Identity:            ptrOf(v.Identity, toIdentitySection),
 	}
 }
 
@@ -113,6 +114,7 @@ func toRosterEntry(v replay.RosterEntry) replaydoc.RosterEntry {
 		FilmIndex: v.FilmIndex,
 		Name:      v.Name,
 		Bot:       v.Bot,
+		Bid:       v.Bid,
 	}
 }
 

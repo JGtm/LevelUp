@@ -164,6 +164,13 @@ var replaySchemas = []struct {
 	{"Coverage", replaydoc.Coverage{}},
 	{"LayerCoverage", replaydoc.LayerCoverage{}},
 	{"BridgeHealth", replaydoc.BridgeHealth{}},
+	{"IdentitySection", replaydoc.IdentitySection{}},
+	{"IdentityPlayer", replaydoc.IdentityPlayer{}},
+	{"IdentityBipedSlot", replaydoc.IdentityBipedSlot{}},
+	{"IdentityStatborgSlot", replaydoc.IdentityStatborgSlot{}},
+	{"IdentityCoverage", replaydoc.IdentityCoverage{}},
+	{"LinkCounts", replaydoc.LinkCounts{}},
+	{"Link", replaydoc.Link{}},
 }
 
 // wantReplayDocumentFields : le nombre de champs que l artefact publie. Ecrit ici pour que le
@@ -664,9 +671,24 @@ var replaySchemas = []struct {
 //	                      cuisson ne fera plus monter celui-ci. Le champ `schemaVersion` du corps
 //	                      continue de porter la version STOCKEE, celle qui pilote la re-cuisson.
 //
+//
+//	56 -> 57  2026-09-08  UN champ, LE REGISTRE D IDENTITE (lot P2 du plan v2, schema stocke 50) :
+//	                      - `identity` : les liens entre les entites du film et les joueurs
+//	                        (`players`, `bipedSlots`, `statborgSlots`) avec la PROVENANCE de
+//	                        chacun (`direct` / `catalogue` / `externe` / `deduit` /
+//	                        `non_resolu`), la voie exacte qui l a produit, et les BORNES de
+//	                        frames entre lesquelles il vaut. Plus `identity.coverage`, le
+//	                        decompte par famille et par provenance — ce que le gate corpus
+//	                        compare pour refuser qu un lien `direct` redevienne `deduit`.
+//	                      Sept types imbriques entrent a `replaySchemas` DANS CE LOT :
+//	                      `IdentitySection`, `IdentityPlayer`, `IdentityBipedSlot`,
+//	                      `IdentityStatborgSlot`, `IdentityCoverage`, `LinkCounts`, `Link`.
+//	                      `roster[].bid` nait au meme moment SANS faire monter ce compte : il
+//	                      est un champ de `RosterEntry`, pas du document.
+//
 // Les vingt et une fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 56
+const wantReplayDocumentFields = 57
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

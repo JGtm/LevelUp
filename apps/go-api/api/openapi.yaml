@@ -14484,6 +14484,97 @@ components:
         spartan_id:
           type: string
       type: object
+    IdentityBipedSlot:
+      additionalProperties: false
+      properties:
+        link:
+          $ref: '#/components/schemas/Link'
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        xuid:
+          type: string
+      required:
+        - slot
+        - link
+      type: object
+    IdentityCoverage:
+      additionalProperties: false
+      properties:
+        bipedSlot:
+          $ref: '#/components/schemas/LinkCounts'
+        playerIndex:
+          $ref: '#/components/schemas/LinkCounts'
+        statborgSlot:
+          $ref: '#/components/schemas/LinkCounts'
+      required:
+        - playerIndex
+        - bipedSlot
+        - statborgSlot
+      type: object
+    IdentityPlayer:
+      additionalProperties: false
+      properties:
+        bid:
+          type: string
+        filmIndex:
+          format: int64
+          type: integer
+        link:
+          $ref: '#/components/schemas/Link'
+        name:
+          type: string
+        xuid:
+          type: string
+      required:
+        - filmIndex
+        - link
+      type: object
+    IdentitySection:
+      additionalProperties: false
+      properties:
+        bipedSlots:
+          items:
+            $ref: '#/components/schemas/IdentityBipedSlot'
+          type:
+            - array
+            - "null"
+        coverage:
+          $ref: '#/components/schemas/IdentityCoverage'
+        players:
+          items:
+            $ref: '#/components/schemas/IdentityPlayer'
+          type:
+            - array
+            - "null"
+        statborgSlots:
+          items:
+            $ref: '#/components/schemas/IdentityStatborgSlot'
+          type:
+            - array
+            - "null"
+      required:
+        - coverage
+      type: object
+    IdentityStatborgSlot:
+      additionalProperties: false
+      properties:
+        link:
+          $ref: '#/components/schemas/Link'
+        round:
+          format: int64
+          type: integer
+        slot:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - slot
+        - round
+        - link
+      type: object
     ImpactEventSummary:
       additionalProperties: false
       properties:
@@ -15495,6 +15586,55 @@ components:
         - target_val
         - horizon
         - impact
+      type: object
+    Link:
+      additionalProperties: false
+      properties:
+        from:
+          format: int64
+          type: integer
+        method:
+          type: string
+        metric:
+          format: double
+          type: number
+        readings:
+          format: int64
+          type: integer
+        source:
+          type: string
+        to:
+          format: int64
+          type: integer
+      required:
+        - source
+        - from
+        - to
+      type: object
+    LinkCounts:
+      additionalProperties: false
+      properties:
+        catalogue:
+          format: int64
+          type: integer
+        deduit:
+          format: int64
+          type: integer
+        direct:
+          format: int64
+          type: integer
+        externe:
+          format: int64
+          type: integer
+        non_resolu:
+          format: int64
+          type: integer
+      required:
+        - direct
+        - catalogue
+        - externe
+        - deduit
+        - non_resolu
       type: object
     ListResult:
       additionalProperties: false
@@ -21596,6 +21736,8 @@ components:
           type:
             - array
             - "null"
+        identity:
+          $ref: '#/components/schemas/IdentitySection'
         inventory:
           items:
             $ref: '#/components/schemas/Inventory'
@@ -21840,6 +21982,8 @@ components:
     RosterEntry:
       additionalProperties: false
       properties:
+        bid:
+          type: string
         bot:
           type: boolean
         filmIndex:

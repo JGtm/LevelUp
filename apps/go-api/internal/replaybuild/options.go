@@ -30,11 +30,14 @@ func (b *Builder) buildReplayOptions(
 		// meme que le lot declare corriger. Mesure : `c0a82e88`, 17 actions nommees par le
 		// film, 12 identifiees par le pont par manche.
 		ObjectivesUnnamed: stats.objectivesUnnamed,
-		Score:             stats.score,
-		Flag:              stats.flag,
-		Vip:               stats.vip,
-		Skull:             stats.skull,
-		Bomb:              stats.bomb,
+		// LE PONT DU STATBORG VOYAGE POUR ETRE PUBLIE, PAS POUR ETRE REFAIT : le registre
+		// d'identite en tire `identity.statborgSlots` avec la provenance de chaque couple.
+		StatborgIdentity: stats.statborgIdentity,
+		Score:            stats.score,
+		Flag:             stats.flag,
+		Vip:              stats.vip,
+		Skull:            stats.skull,
+		Bomb:             stats.bomb,
 		Zone: replay.ZoneInput{Zones: cat.zones, Roles: cat.zoneRoles, TeamByXUID: teamByXUID(facts),
 			Hill: isHillVariant(facts.GameVariantName)},
 		MapQuant:         &entry,

@@ -60,7 +60,22 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// porte déjà son auteur), mais parce que la fermeture A a besoin de savoir QUAND un joueur
 	// agit sans avoir de corps nommé. Cf. closures.go.
 	refs := fireRefs(fire)
-	own := buildOwners(indexBySlot(sorted), opt.Deaths, opt.PlayerIndices, refs)
+	// LE REGISTRE D'IDENTITE EST LE SEUL PRODUCTEUR DE LIENS (lot P2, 2026-09-08). Il compose
+	// les lectures directes (index de joueur, `bid`), le pont par morts et l'elimination sur le
+	// roster, publie la provenance de chaque lien, et expose des accesseurs qui portent DEJA
+	// leurs gardes — aucun calque ne reconstruit son propre pont (garde-rail `archlint`).
+	reg := BuildIdentityRegistry(IdentityInput{
+		Positions: sorted, Deaths: opt.Deaths, PlayerIndices: opt.PlayerIndices,
+		Bots: opt.Bots, Fire: refs, RosterXUIDs: opt.RosterXUIDs,
+		Statborg: StatborgIdentityInput{
+			Identity: opt.StatborgIdentity, Records: scoreRecordsOf(opt.Score)},
+		Clock:   IdentityClock{OriginUS: origin, StepUS: step, FrameCount: doc.FrameCount},
+		MatchID: matchID,
+	})
+	if !reg.Section.Empty() {
+		doc.Identity = &reg.Section
+	}
+	own := reg.Report()
 	// L'IDENTITÉ se pose sur les traces dès que le pont existe : sans elle, un client ne peut
 	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe. Le nommage se fait
 	// PAR VIE depuis le 2026-09-02 — un slot recyclé porte une identité par occupant.
@@ -77,15 +92,18 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// apres les quatre passes ci-dessus est un DEFAUT du pont, pas une categorie de donnee : il
 	// se repare par l'OCCUPATION DU SLOT DANS LE TEMPS, et le residu se compte et s'alarme
 	// (cf. unnamed_lives.go).
-	unnamed := nameRemainingLives(doc.Tracks, own.lives, own.SlotXUID, own.SlotAmbiguous, origin, step)
+	unnamed := nameRemainingLives(doc.Tracks, reg, origin, step)
+	// LES VIES QUE LE REGISTRE A DEDUITES rejoignent le residu de nommage : leur identite
+	// etablit qu'un joueur etait la, jamais qu'un AUTRE n'y etait pas. Les lecteurs qui prouvent
+	// une ABSENCE (le gate de presence des portages) doivent pouvoir s'en abstenir.
+	for i := range reg.TracesDeduites(doc.Tracks, origin, step) {
+		unnamed.deduced[i] = true
+	}
 	logUnnamedLives(matchID, doc.Tracks, unnamed)
 	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths), opt.Bots)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, own.DeathOffsetMS, own.DeathOffsetMatches)
-	slog.Info("pont slot->joueur",
-		"slots", len(own.Owner), "viesNommees", own.DeathsNamed, "viesTotal", own.LivesTotal,
-		"lecturesIndex", own.IndexReadings, "desaccordsIndex", own.IndexDisagreements,
-		"collisionsSlot", own.SlotCollisions)
+	reg.logRegistry(matchID)
 
 	// Chaque calque rend sa COUVERTURE en même temps que son contenu. Le filtrage par
 	// trajectoire publiée qui suit est lui aussi compté, sous une catégorie distincte.
@@ -109,7 +127,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	grenCov.warnIfLossy("grenades")
 
 	clock := replayScoreClock(&doc, interval, matchID)
-	objCov := attachObjectiveActions(&doc, opt, own, clock)
+	objCov := attachObjectiveActions(&doc, opt, reg, clock)
 	scoreCov := attachScoreTimeline(&doc, opt.Score, opt.Deaths, clock, matchID)
 
 	// L'ETAT ACTIF des deux familles mesurees (camo, surbouclier) : episodes dates par

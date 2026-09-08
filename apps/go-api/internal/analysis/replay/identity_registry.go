@@ -159,6 +159,30 @@ func (r IdentityRegistry) PontEpure() map[uint32]uint64 { return r.own.NamingBri
 // SlotsAmbigus rend les slots dont les vies nommees designent des joueurs DIFFERENTS.
 func (r IdentityRegistry) SlotsAmbigus() map[uint32]bool { return r.own.SlotAmbiguous }
 
+// PontDeSlot rend le xuid que le pont aplati donne a ce slot — VIDE si le slot est AMBIGU.
+//
+// Le pont garde le PREMIER occupant nomme d'un slot que deux joueurs se partagent : le servir
+// publierait un nom arbitraire sur une vie que la lecture n'a pas nommee. C'est la meme
+// abstention que [IdentityRegistry.XUIDAt], et pour la meme raison.
+func (r IdentityRegistry) PontDeSlot(slot uint32) string {
+	if r.own.SlotAmbiguous[slot] {
+		return ""
+	}
+	if x, ok := r.own.SlotXUID[slot]; ok && x != 0 {
+		return strconv.FormatUint(x, 10)
+	}
+	return ""
+}
+
+// scoreRecordsOf rend les enregistrements de statborg que l'appelant a deja decodes, ou rien.
+// Le registre ne decode jamais : il PUBLIE ce que la lecture a rendu.
+func scoreRecordsOf(in *ScoreInput) []objectiveevents.StatRecord {
+	if in == nil {
+		return nil
+	}
+	return in.Records
+}
+
 // XUIDAt rend le joueur qui OCCUPE ce slot a cet instant du film (microsecondes) : la vie qui
 // couvre l'instant si elle est nommee, sinon le pont par slot — et rien du tout sur un slot
 // ambigu. Chaine vide = personne ne le nomme.

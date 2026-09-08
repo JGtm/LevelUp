@@ -974,8 +974,28 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   ouvrait une APPROXIMATION pour 4 questions sur 6 (`morts`/`kills`/`gagne`/`isole`, sur
 	//   l'horloge du MATCH) faute de ce calage publié — cf.
 	//   `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`. Détail : `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
-	if SchemaVersion != 49 {
-		t.Fatalf("SchemaVersion = %d, attendu 49 : incrémenter exige une raison écrite ci-dessus "+
+	// v49 -> v50 (2026-09-08, lot P2 — REGISTRE D'IDENTITÉ DES JOUEURS) : la section `identity`
+	//   naît (`players`, `bipedSlots`, `statborgSlots`, `coverage`), `roster[].bid` publie
+	//   l'identifiant stable des bots, et LE CONTENU CUIT CHANGE — la règle exige donc le bump,
+	//   il n'est pas là que pour déclencher la recuisson. Trois changements de contenu :
+	//   (1) NOMMAGE PAR ÉLIMINATION SUR LE ROSTER : un slot dont aucune vie n'est nommée, quand
+	//   il ne reste qu'un seul joueur du roster sans aucune vie, est nommé. Des pistes jusqu'ici
+	//   anonymes portent un xuid (`d9781168` : 19 vies sans nom, toutes sur le slot d'un joueur
+	//   qui ne meurt jamais).
+	//   (2) LES ACTIONS D'OBJECTIF NE SONT PLUS JETÉES quand leur auteur n'a pas de trajectoire
+	//   publiée : `coverage.objectives.unpublished` tombe à zéro et `attached` monte d'autant
+	//   (`3372e7eb` : 35 actions sur 76 supprimées jusqu'ici). Une lecture vraie du film ne se
+	//   jette pas parce qu'un AUTRE calque est incomplet ; le client sait déjà s'en abstenir au
+	//   rendu (`buildObjectivePulses`).
+	//   (3) LES COMPTEURS MULTI-MANCHE reçoivent la feuille : un couple (slot, manche) que le
+	//   pont par morts ne peut pas nommer — un joueur qui meurt moins de trois fois dans la
+	//   manche — est complété par ÉLIMINATION, contrôlée par le résidu de la feuille
+	//   (`51ebbc0f` : écart cumulé K/D/A de 9 contre la feuille, un joueur à 0 mort en manche 0).
+	//   POURQUOI LA VERSION MONTE : un artefact < 50 porte des vies anonymes réparables, des
+	//   actions d'objectif manquantes et des manches de joueur non publiées.
+	//   Détail : `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`.
+	if SchemaVersion != 50 {
+		t.Fatalf("SchemaVersion = %d, attendu 50 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

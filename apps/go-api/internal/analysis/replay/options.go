@@ -197,6 +197,14 @@ type Options struct {
 	// EN AMONT du point d'équilibre, donc son compte doit descendre depuis l'amont. Zéro = le
 	// pont a nommé tout ce que le film nommait, ou l'appelant ne mesure pas cet écart.
 	ObjectivesUnnamed int
+	// StatborgIdentity est le pont slot d'entité statborg -> xuid PAR MANCHE, résolu par
+	// l'appelant (`replaybuild.pontParManche`) et déjà partagé par les calques d'objectif.
+	//
+	// POURQUOI ELLE ENTRE ICI. Le registre d'identité PUBLIE ce lien avec sa provenance
+	// (`identity.statborgSlots`) ; il ne le recalcule pas — un second déroulage complet du
+	// compteur de morts par cuisson est précisément ce que la mémorisation de `pontParManche`
+	// existe pour éviter. Résolveur vide = aucun lien de statborg publié.
+	StatborgIdentity objectiveevents.RoundIdentity
 	// Score : de quoi construire LA COURBE DE SCORE (entrée de DONNÉES comme Objectives ; cf. score_timeline.go et build_score.go). Nil = ni calque ni couverture de score.
 	Score *ScoreInput
 	// Flag : de quoi construire LA VIE DES DRAPEAUX de CTF (entrée de DONNÉES comme Score ; cf.

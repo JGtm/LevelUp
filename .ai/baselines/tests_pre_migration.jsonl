@@ -61406,7 +61406,7 @@
 {"Time":"2026-09-05T23:46:38.6662237+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestBuildObjectiveActionsMapsOntoFrameAxis","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.6662237+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestBuildObjectiveActionsCountsOutOfWindow","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.6662237+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestBuildObjectiveActionsRefusesUnidentified","Elapsed":0}
-{"Time":"2026-09-05T23:46:38.6662237+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestDropUnpublishedActionsKeepsTheInvariant","Elapsed":0}
+{"Time":"2026-09-05T23:46:38.6662237+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestActionsSansTrajectoirePubliéeSontQuandMemePubliees","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.6662237+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestObjectiveActionJSONShape","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.6662237+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestDocumentOmitsEmptyObjectives","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.6662237+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestBuildObjectiveActionsSubtractsOrigin","Elapsed":0}
