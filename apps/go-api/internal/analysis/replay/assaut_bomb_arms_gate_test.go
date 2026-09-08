@@ -155,10 +155,10 @@ func baMesurer(t *testing.T, cache, id string) baFilm {
 	if err != nil {
 		t.Fatalf("%s : horloge du film illisible : %v", id, err)
 	}
-	offset := int(int64(filmClockUS)/1000 - own.DeathOffsetMS)
+	offset := int(int64(filmClockUS)/1000 - own.DeathOffsetMS())
 	t.Logf("%s : recalage film -> match = %d ms (premier paquet %d ms, deathOffset %d ms) "+
 		"— AFFICHAGE SEUL, la mesure passe par attachBombStats",
-		id, offset, int64(filmClockUS)/1000, own.DeathOffsetMS)
+		id, offset, int64(filmClockUS)/1000, own.DeathOffsetMS())
 	doc := ReplayDocument{MatchID: id, BombArmings: armings,
 		Coverage: &Coverage{BombArmings: armCov}}
 	attachBombStats(&doc, Options{FilmClockOriginUS: filmClockUS,

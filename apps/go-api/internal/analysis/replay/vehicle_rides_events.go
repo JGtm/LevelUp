@@ -272,7 +272,7 @@ func vehicleRideFromEpisode(
 	r.Aim = vehicleRideAimOf(in.aimBySlot[ep.slot], ep.startUS, ep.endUS, in.clock)
 	// L OCCUPANT EST CELUI DE L INSTANT D EMBARQUEMENT, pas le premier occupant du slot —
 	// meme correctif et meme helper que la voie par trou (cf. vehicle_rides.go, constat P1-7).
-	r.XUID = in.own.xuidAt(ep.slot, ep.startUS)
+	r.XUID = in.reg.XUIDAt(ep.slot, ep.startUS)
 	return life.key, r, ep, true
 }
 

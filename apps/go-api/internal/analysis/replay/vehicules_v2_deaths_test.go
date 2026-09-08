@@ -13,7 +13,7 @@ package replay
 // CE QUE CET INSTRUMENT REUTILISE, sans rien recopier :
 //   - positions JOUEUR : filmdec.ScanFilmBipedPositions (chemin de production, monde en metres) ;
 //   - fil des morts : ScanFilmDeaths ; index joueur : ScanFilmPlayerIndices + injectiveOrEmpty ;
-//   - PONT slot->xuid + CALAGE d'horloge : buildOwners (own.SlotXUID, own.DeathOffsetMS). Le calage
+//   - PONT slot->xuid + CALAGE d'horloge : buildOwners (own.PontParSlot(), own.DeathOffsetMS()). Le calage
 //     est celui, PROUVE, du pont de production : horlogeFilm_ms = death.TimeMS + DeathOffsetMS ;
 //   - vies + trajectoires VEHICULE : filmdec.ScanFilmWorldObjectKeyframes (recensement, bornes de
 //     vie) et filmdec.ScanFilmBipedPositionsForBand (grammaire dyn.-prec., monde en metres).
@@ -123,13 +123,13 @@ func v2dProcessFilm(t *testing.T, dir string, entry filmdec.MapQuantEntry, ag *v
 		t.Logf("index joueur illisible (%v) — pont sans identite", err)
 	}
 	table, _ := injectiveOrEmpty(idx)
-	own := buildOwners(tracks, deaths, table, nil)
-	xuidSlots := v2dInvertSlotXUID(own.SlotXUID)
+	own := regDe(buildOwners(tracks, deaths, table, nil))
+	xuidSlots := v2dInvertSlotXUID(own.PontParSlot())
 
 	kf := filmdec.ScanFilmWorldObjectKeyframes(dir, filmdec.VehicleTypeIndex)
 	vtracks := v2dVehicleTracks(dir, kf.Band, worldRange, lay)
 
-	fr := v2dScoreFilm(kf, vtracks, tracks, deaths, xuidSlots, own.DeathOffsetMS)
+	fr := v2dScoreFilm(kf, vtracks, tracks, deaths, xuidSlots, own.DeathOffsetMS())
 	ag.films++
 	ag.lives += fr.lives
 	ag.withEnd += fr.withEnd
@@ -139,14 +139,14 @@ func v2dProcessFilm(t *testing.T, dir string, entry filmdec.MapQuantEntry, ag *v
 	ag.despawn += fr.despawn
 	ag.witnessTemporal += fr.witnessTemporal
 	ag.deaths += len(deaths)
-	ag.bridgeMatched += own.DeathOffsetMatches
+	ag.bridgeMatched += own.DeathOffsetMatches()
 	ag.vNoSlot += fr.vNoSlot
 	ag.vGapTooBig += fr.vGapTooBig
 	ag.vSampled += fr.vSampled
 	ag.dists = append(ag.dists, fr.dists...)
 
 	t.Logf("V2D %s — offset %d ms (%d/%d vies joueur calees) · %d morts · vies veh %d (fin serree %d, avec pos %d) · DETRUIT temp %d / spatio %d · DESPAWN %d · temoin temp %d",
-		shortOf(dir), own.DeathOffsetMS, own.DeathOffsetMatches, own.LivesTotal,
+		shortOf(dir), own.DeathOffsetMS(), own.DeathOffsetMatches(), own.ViesTotal(),
 		len(deaths), fr.lives, fr.withEnd, fr.withPos,
 		fr.detruitTemporal, fr.detruitSpatio, fr.despawn, fr.witnessTemporal)
 }

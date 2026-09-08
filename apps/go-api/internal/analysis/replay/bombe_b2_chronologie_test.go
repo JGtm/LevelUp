@@ -140,9 +140,10 @@ func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, 
 	if err != nil {
 		t.Logf("%s : index de joueur illisible (%v) — pont par le seul fil des morts", id, err)
 	}
-	slotXUID, rep := ResolveSlotXUID(pos, deaths, idx)
+	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths, PlayerIndices: idx})
+	slotXUID, rep := reg.PontParSlot(), reg
 	t.Logf("%s : %d transitions bombe/crane, pont slot->xuid : %d slots nommés (vies=%d)",
-		id, len(evs), len(slotXUID), rep.LivesTotal)
+		id, len(evs), len(slotXUID), rep.ViesTotal())
 	return evs, slotXUID, deaths
 }
 

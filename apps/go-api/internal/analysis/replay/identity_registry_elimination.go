@@ -38,11 +38,11 @@ const NomParElimination = "elimination"
 // resolveByRosterElimination nomme les vies du seul slot muet quand il ne reste qu'un seul xuid
 // du roster sans aucune vie. Ne fait RIEN dans tout autre cas.
 func (r *IdentityRegistry) resolveByRosterElimination(in IdentityInput) {
-	if r.own.DeathsNamed == 0 || len(r.own.lives) == 0 {
+	if r.ViesNommeesParLaLecture() == 0 || len(r.Vies()) == 0 {
 		return
 	}
-	libres := rosterSansVie(r.own.lives, rosterCandidat(in))
-	muets := slotsSansVieNommee(r.own.lives)
+	libres := rosterSansVie(r.Vies(), rosterCandidat(in))
+	muets := slotsSansVieNommee(r.Vies())
 	if len(libres) != 1 || len(muets) != 1 {
 		if len(libres) > 0 && len(muets) > 0 {
 			slog.Info("rejeu : elimination sur le roster impossible — l'unicite manque",
@@ -51,29 +51,14 @@ func (r *IdentityRegistry) resolveByRosterElimination(in IdentityInput) {
 		return
 	}
 	xuid, slot := libres[0], muets[0]
-	for i := range r.own.lives {
-		if r.own.lives[i].slot != slot || r.own.lives[i].xuid != 0 {
-			continue
-		}
-		r.own.lives[i].xuid = xuid
-		r.own.lives[i].nomPar = NomParElimination
-		r.deducedLives[i] = true
-		r.eliminated++
-	}
-	if r.eliminated == 0 {
+	pi, connu := in.PlayerIndices.ByXUID[xuid]
+	// LA MUTATION DES TABLES BRUTES VIT DANS LE REGISTRE, jamais ici : ce fichier DECIDE
+	// (l'unicite), le registre POSE. C'est ce qui garde `identity_registry.go` seule entree du
+	// pont — l'objet meme du garde-rail `archlint`.
+	if r.eliminated = r.poserIdentiteDeduite(slot, xuid, pi, connu); r.eliminated == 0 {
 		return
 	}
 	r.eliminatedSlot, r.eliminatedXUID = slot, xuid
-	// LE PONT APLATI SUIT LES VIES, sans quoi les deux tables du meme registre diraient deux
-	// choses du meme slot (c'est l'invariant qu'`ownersFromLives` impose deja aux lectures).
-	if r.own.SlotXUID != nil {
-		r.own.SlotXUID[slot] = xuid
-	}
-	if pi, connu := in.PlayerIndices.ByXUID[xuid]; connu && r.own.Owner != nil {
-		if _, deja := r.own.Owner[slot]; !deja {
-			r.own.Owner[slot] = pi
-		}
-	}
 	slog.Info("rejeu : identite posee par elimination sur le roster",
 		"match_id", in.MatchID, "slot", slot, "xuid", xuid, "vies", r.eliminated)
 }

@@ -28,7 +28,6 @@ package replay
 // fonction, donc un seul nommage : deux tables du meme film ne peuvent plus diverger.
 
 import (
-	"log/slog"
 	"strconv"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -133,10 +132,6 @@ func BuildIdentityRegistry(in IdentityInput) IdentityRegistry {
 	return reg
 }
 
-// Report rend le rapport du pont, pour les lecteurs qui publient sa SANTE (couverture) et non
-// ses liens. Il ne donne acces a aucune table : les tables passent par les accesseurs.
-func (r IdentityRegistry) Report() OwnerReport { return r.own }
-
 // Vies rend les vies decoupees et nommees, telles que le registre les a laissees.
 func (r IdentityRegistry) Vies() []lifeSpan { return r.own.lives }
 
@@ -193,9 +188,6 @@ func (r IdentityRegistry) XUIDAt(slot uint32, tUS uint64) string {
 // DeathOffsetMS rend le calage du fil des morts sur l'horloge du film
 // (`horlogeFilm = horlogeMatch + DeathOffsetMS`).
 func (r IdentityRegistry) DeathOffsetMS() int64 { return r.own.DeathOffsetMS }
-
-// ViesNommees rend les vies nommees sur l'horloge du MATCH (cf. lives_export.go).
-func (r IdentityRegistry) ViesNommees() []VieNommee { return r.own.ViesNommees() }
 
 // PontPubliable dit si le NOMMAGE des vies est assez sur pour qu'on en tire des faits ECRITS EN
 // BASE. Cf. death_context.go pour les deux criteres et ce qu'ils refusent.
@@ -337,36 +329,6 @@ func indexToXUIDOf(xuidToIndex map[uint64]int) map[int]uint64 {
 	return out
 }
 
-// logRegistry alarme sur ce que le registre n'a PAS su nommer. Un lien non resolu se publie et
-// se compte (doctrine §0.2) ; il ne se tait jamais.
-func (r IdentityRegistry) logRegistry(matchID string) {
-	slog.Info("rejeu : registre d'identite",
-		"match_id", matchID,
-		"slots", len(r.own.Owner), "viesNommees", r.own.DeathsNamed,
-		"viesTotal", r.own.LivesTotal, "lecturesIndex", r.own.IndexReadings,
-		"desaccordsIndex", r.own.IndexDisagreements, "collisionsSlot", r.own.SlotCollisions,
-		"parElimination", r.eliminated,
-		"liensDirects", r.Section.Coverage.Total().Direct,
-		"liensDeduits", r.Section.Coverage.Total().Inferred,
-		"liensNonResolus", r.Section.Coverage.Total().Unresolved)
-	if r.own.IndexDisagreements > 0 {
-		slog.Warn("rejeu : desaccord de lecture de l'index de joueur — liens directs NON publies",
-			"match_id", matchID, "desaccords", r.own.IndexDisagreements)
-	}
-	if n := r.Section.Coverage.Total().Unresolved; n > 0 {
-		slog.Warn("rejeu : liens d'identite NON RESOLUS — publies et comptes, jamais inventes",
-			"match_id", matchID, "liens", n)
-	}
-}
-
-// eliminationXUIDText rend le xuid retenu par l'elimination en decimal, ou une chaine vide.
-func (r IdentityRegistry) eliminationXUIDText() string {
-	if r.eliminatedXUID == 0 {
-		return ""
-	}
-	return strconv.FormatUint(r.eliminatedXUID, 10)
-}
-
 // xuidAt rend le joueur qui OCCUPE ce slot à cet instant : la vie qui couvre l'instant si elle
 // est nommée, sinon le pont par slot. Chaîne vide = ni l'une ni l'autre ne le nomme.
 //
@@ -430,4 +392,80 @@ func (r OwnerReport) NamingBridge() map[uint32]uint64 {
 		}
 	}
 	return out
+}
+
+// DeathOffsetMatches rend le nombre de morts que le calage apparie — le DENOMINATEUR sans lequel
+// un calage ne se juge pas (zero = le pont n'a pas ete construit, ou l'affinage n'a rien apparie).
+func (r IdentityRegistry) DeathOffsetMatches() int { return r.own.DeathOffsetMatches }
+
+// ViesNommeesParLaLecture rend le nombre de vies que le FIL DES MORTS a nommées — la lecture
+// seule, avant toute déduction. Zéro = le pont n'a pas été construit.
+func (r IdentityRegistry) ViesNommeesParLaLecture() int { return r.own.DeathsNamed }
+
+// poserIdentiteDeduite pose une identité DÉDUITE sur toutes les vies anonymes d'un slot, et fait
+// suivre les tables du pont. Rend le nombre de vies nommées.
+//
+// # POURQUOI C'EST ICI ET NULLE PART AILLEURS
+//
+// Les trois tables (`lives`, `SlotXUID`, `Owner`) doivent bouger ENSEMBLE : deux d'entre elles
+// qui divergeraient diraient deux choses du même slot, et c'est exactement l'invariant
+// qu'`ownersFromLives` impose déjà aux lectures. Le décideur (l'élimination) reste en dehors.
+//
+// LA CAUSE DE FIN N'EST PAS TOUCHÉE : une déduction dit à QUI la vie appartient, jamais COMMENT
+// elle s'est terminée. Confondre les deux fabrique une mort pour un survivant.
+func (r *IdentityRegistry) poserIdentiteDeduite(slot uint32, xuid uint64, pi int, piConnu bool) int {
+	n := 0
+	for i := range r.own.lives {
+		if r.own.lives[i].slot != slot || r.own.lives[i].xuid != 0 {
+			continue
+		}
+		r.own.lives[i].xuid = xuid
+		r.own.lives[i].nomPar = NomParElimination
+		r.deducedLives[i] = true
+		n++
+	}
+	if n == 0 {
+		return 0
+	}
+	if r.own.SlotXUID != nil {
+		r.own.SlotXUID[slot] = xuid
+	}
+	if piConnu && r.own.Owner != nil {
+		if _, deja := r.own.Owner[slot]; !deja {
+			r.own.Owner[slot] = pi
+		}
+	}
+	return n
+}
+
+// FermeturesParTir / FermeturesParReapparition / FermeturesContestees / FermeturesRefusees :
+// ce que les fermetures ont ajouté et refusé (cf. closures.go). Publiés par la santé du pont.
+func (r IdentityRegistry) FermeturesParTir() int          { return r.own.Closures.byShot }
+func (r IdentityRegistry) FermeturesParReapparition() int { return r.own.Closures.byRespawn }
+func (r IdentityRegistry) FermeturesContestees() int      { return r.own.Closures.contested }
+func (r IdentityRegistry) FermeturesRefusees() int        { return r.own.Closures.refused }
+
+// SlotsParLaLecture rend le nombre de slots que la LECTURE SEULE a nommés (avant fermetures).
+func (r IdentityRegistry) SlotsParLaLecture() int { return r.own.FromDeaths }
+
+// ViesTotal / LecturesIndex / DesaccordsIndex / CollisionsDeSlot / CalageSecond : les
+// dénominateurs et les témoins que la couverture publie.
+func (r IdentityRegistry) ViesTotal() int        { return r.own.LivesTotal }
+func (r IdentityRegistry) LecturesIndex() int    { return r.own.IndexReadings }
+func (r IdentityRegistry) DesaccordsIndex() int  { return r.own.IndexDisagreements }
+func (r IdentityRegistry) CollisionsDeSlot() int { return r.own.SlotCollisions }
+func (r IdentityRegistry) CalageSecond() int     { return r.own.DeathOffsetRunnerUp }
+
+// CalageSiConnu rend le calage du fil des morts, ou nil quand il n'est pas CONNU — pas seulement
+// quand il vaut zéro (cf. BridgeHealth.DeathOffsetMs, lot M1b).
+//
+// LE TÉMOIN DE CONNAISSANCE EST `DeathOffsetMatches > 0`, PAS `DeathOffsetMS != 0`. Un calage à
+// zéro exact (horloges déjà alignées) est une mesure valide qu'il ne faut pas confondre avec son
+// absence.
+func (r IdentityRegistry) CalageSiConnu() *int64 {
+	if r.own.DeathOffsetMatches <= 0 {
+		return nil
+	}
+	v := r.own.DeathOffsetMS
+	return &v
 }

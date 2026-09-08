@@ -142,7 +142,7 @@ func TestBridgeHealthJSONKeysAreDistinct(t *testing.T) {
 // calage MESURÉ serait un mensonge que rien, côté client, ne pourrait détecter. La garde,
 // donc, n'est PAS `DeathOffsetMS != 0` mais `DeathOffsetMatches > 0`, testée aux deux bornes.
 func TestDeathOffsetMsAbsentWhenBridgeUnmatched(t *testing.T) {
-	empty := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, OwnerReport{}, false, nil)
+	empty := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, IdentityRegistry{}, false, nil)
 	if got := empty.Bridge.DeathOffsetMs; got != nil {
 		t.Fatalf("pont non construit (0 mort appariee) : deathOffsetMs = %d, attendu nil", *got)
 	}
@@ -151,13 +151,13 @@ func TestDeathOffsetMsAbsentWhenBridgeUnmatched(t *testing.T) {
 	// est le SEUL etat qu'un pont non construit peut produire (buildOwners), mais ce test
 	// isole delibérément `buildCoverage` de `buildOwners` pour prouver que c'est bien le
 	// COMPTE, et non la valeur, qui commande la publication.
-	zeroMatchesButOffsetSet := OwnerReport{DeathOffsetMS: 12_345, DeathOffsetMatches: 0}
+	zeroMatchesButOffsetSet := regDe(OwnerReport{DeathOffsetMS: 12_345, DeathOffsetMatches: 0})
 	refused := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, zeroMatchesButOffsetSet, false, nil)
 	if got := refused.Bridge.DeathOffsetMs; got != nil {
 		t.Fatalf("0 mort appariee malgre un DeathOffsetMS non nul : deathOffsetMs = %d, attendu nil (le compte commande, pas la valeur)", *got)
 	}
 
-	known := OwnerReport{DeathOffsetMS: 12_345, DeathOffsetMatches: 71}
+	known := regDe(OwnerReport{DeathOffsetMS: 12_345, DeathOffsetMatches: 71})
 	present := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, known, false, nil)
 	if got := present.Bridge.DeathOffsetMs; got == nil || *got != 12_345 {
 		t.Fatalf("calage connu (71 appariements) : deathOffsetMs = %v, attendu *12345", got)
@@ -165,7 +165,7 @@ func TestDeathOffsetMsAbsentWhenBridgeUnmatched(t *testing.T) {
 
 	// Calage mesure EXACTEMENT a zero (horloges deja alignees) : une mesure valide, distincte
 	// de l'absence — c'est exactement le piege que le pointeur (plutot qu'un int nu) evite.
-	knownZero := OwnerReport{DeathOffsetMS: 0, DeathOffsetMatches: 15}
+	knownZero := regDe(OwnerReport{DeathOffsetMS: 0, DeathOffsetMatches: 15})
 	presentZero := buildCoverage(LayerCoverage{}, LayerCoverage{}, LayerCoverage{}, knownZero, false, nil)
 	if got := presentZero.Bridge.DeathOffsetMs; got == nil || *got != 0 {
 		t.Fatalf("calage connu et mesure a zero : deathOffsetMs = %v, attendu *0 (pas absent)", got)

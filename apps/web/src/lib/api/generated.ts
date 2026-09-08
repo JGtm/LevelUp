@@ -7082,7 +7082,7 @@ export interface components {
         };
         IdentityCoverage: {
             bipedSlot: components["schemas"]["LinkCounts"];
-            playerIndex: components["schemas"]["LinkCounts"];
+            filmIndex: components["schemas"]["LinkCounts"];
             statborgSlot: components["schemas"]["LinkCounts"];
         };
         IdentityPlayer: {

@@ -109,7 +109,7 @@ func TestBombePortageGate(t *testing.T) {
 // recalage d'horloge de la jointure d'armement (cf. bomb_arms.go) : le gate de `bomb_arms`
 // réutilise cette extraction plutôt que d'en payer une seconde sur le même film.
 func bpExtraire(t *testing.T, cache, id string) (
-	[]HeldObjectPeriod, []BombCarry, *BombCarriesCoverage, OwnerReport,
+	[]HeldObjectPeriod, []BombCarry, *BombCarriesCoverage, IdentityRegistry,
 ) {
 	t.Helper()
 	dir := filepath.Join(cache, "film_chunks", id)
@@ -140,8 +140,9 @@ func bpExtraire(t *testing.T, cache, id string) (
 	if err != nil {
 		t.Logf("%s : index de joueur illisible (%v) — pont par le seul fil des morts", id, err)
 	}
-	slotXUID, own := ResolveSlotXUID(pos, deaths, idx)
-	events := bombHeldEventsOf(changes, own.DeathOffsetMS)
+	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths, PlayerIndices: idx})
+	slotXUID, own := reg.PontParSlot(), reg
+	events := bombHeldEventsOf(changes, own.DeathOffsetMS())
 	carry := BuildHeldObjectCarry(events, slotXUID, deaths)
 	carries, cov := buildBombCarries(carry, matchClock{origin: 0, step: 1000, frames: 1 << 20}, carrierPresence{})
 	return carry.Periods, carries, cov, own

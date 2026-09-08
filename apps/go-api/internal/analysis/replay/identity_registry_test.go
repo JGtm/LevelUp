@@ -206,3 +206,9 @@ func TestBidDuBotEstPublie(t *testing.T) {
 		t.Fatalf("bid fabrique pour un bot sans identifiant : %q", b)
 	}
 }
+
+// regDe fabrique un registre autour d'un rapport de pont deja construit. Sert aux tests des
+// calques, qui exercent un rapport monte a la main plutot qu'un film complet.
+func regDe(r OwnerReport) IdentityRegistry {
+	return IdentityRegistry{own: r, deducedLives: map[int]bool{}}
+}

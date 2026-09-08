@@ -54,7 +54,7 @@ func toLink(v canonical.Link) replaydoc.Link {
 
 func toIdentityCoverage(v replay.IdentityCoverage) replaydoc.IdentityCoverage {
 	return replaydoc.IdentityCoverage{
-		PlayerIndex:  toLinkCounts(v.PlayerIndex),
+		FilmIndex:    toLinkCounts(v.FilmIndex),
 		BipedSlot:    toLinkCounts(v.BipedSlot),
 		StatborgSlot: toLinkCounts(v.StatborgSlot),
 	}

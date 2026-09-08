@@ -61,12 +61,13 @@ func (s *invMortStat) taux(w int64) float64 {
 func invMortMeasure(
 	pos []filmdec.BipedPosition, fire []filmdec.FireEvent,
 	inv []KeyframeInventory, deaths []Death, idx PlayerIndexTable,
-) (vide, plein *invMortStat, own OwnerReport) {
-	own = buildOwners(indexBySlot(pos), deaths, idx, fireRefs(fire))
+) (vide, plein *invMortStat, own IdentityRegistry) {
+	own = BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths,
+		PlayerIndices: idx, Fire: fireRefs(fire)})
 	// LES MEMES PIECES QUE LA PRODUCTION : le regroupement des morts par victime et la recherche
 	// de la mort qui precede viennent de inventory_dead_readings.go. Une seconde implementation
 	// mesurerait autre chose que ce que le code publie.
-	byXUID := deathTimesByVictimMS(deaths, own.DeathOffsetMS)
+	byXUID := deathTimesByVictimMS(deaths, own.DeathOffsetMS())
 	vide, plein = newInvMortStat(), newInvMortStat()
 	for _, r := range inv {
 		st := plein
@@ -74,7 +75,7 @@ func invMortMeasure(
 			st = vide
 		}
 		st.total++
-		x, ok := own.SlotXUID[r.Slot]
+		x, ok := own.PontParSlot()[r.Slot]
 		if !ok {
 			continue
 		}
@@ -122,10 +123,10 @@ func TestInventaireRecordVideRecouvrementMorts(t *testing.T) {
 }
 
 // invMortReport rend le tableau de la mesure, categorie par fenetre.
-func invMortReport(film string, vide, plein *invMortStat, own OwnerReport) string {
+func invMortReport(film string, vide, plein *invMortStat, own IdentityRegistry) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "\nfilm %s — decalage du fil des morts %d ms (%d appariements)\n",
-		film, own.DeathOffsetMS, own.DeathOffsetMatches)
+		film, own.DeathOffsetMS(), own.DeathOffsetMatches())
 	fmt.Fprintf(&b, "lectures VIDES %d (attribuees %d) · lectures PLEINES %d (attribuees %d)\n",
 		vide.total, vide.attribues, plein.total, plein.attribues)
 	fmt.Fprintf(&b, "%-10s %14s %14s %8s\n", "fenetre", "vide", "plein (temoin)", "rapport")
@@ -166,7 +167,7 @@ func TestInventaireRecordVideCorpus(t *testing.T) {
 		invMortAccumulate(totalVide, vide)
 		invMortAccumulate(totalPlein, plein)
 	}
-	t.Log(invMortReport("TOTAL corpus", totalVide, totalPlein, OwnerReport{}))
+	t.Log(invMortReport("TOTAL corpus", totalVide, totalPlein, IdentityRegistry{}))
 	// LE CORPUS CONCLUT, IL NE SE CONTENTE PAS DE PUBLIER. Sans assertion, une degradation du
 	// pont d'identite ou du calage d'horloge passait en silence : le tableau s'affichait, personne
 	// ne le lisait, et l'etiquette « mort » restait posee a l'ecran sur une mesure qui ne la
@@ -213,7 +214,7 @@ func invMortAccumulate(dst, src *invMortStat) {
 
 // invMortFilm rejoue sur un film du cache la MEME sequence de decodage que la production, pour
 // les seules entrees que la mesure consomme.
-func invMortFilm(t *testing.T, dir string) (*invMortStat, *invMortStat, OwnerReport) {
+func invMortFilm(t *testing.T, dir string) (*invMortStat, *invMortStat, IdentityRegistry) {
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
@@ -225,7 +226,7 @@ func invMortFilm(t *testing.T, dir string) (*invMortStat, *invMortStat, OwnerRep
 	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Logf("%s : positions illisibles : %v", dir, err)
-		return nil, nil, OwnerReport{}
+		return nil, nil, IdentityRegistry{}
 	}
 	fire, err := filmdec.ScanFilmFireEvents(dir)
 	if err != nil {
@@ -240,17 +241,17 @@ func invMortFilm(t *testing.T, dir string) (*invMortStat, *invMortStat, OwnerRep
 	inv, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0)
 	if err != nil {
 		t.Logf("%s : inventaire illisible : %v", dir, err)
-		return nil, nil, OwnerReport{}
+		return nil, nil, IdentityRegistry{}
 	}
 	deaths, err := ScanFilmDeaths(dir)
 	if err != nil {
 		t.Logf("%s : fil des morts illisible : %v", dir, err)
-		return nil, nil, OwnerReport{}
+		return nil, nil, IdentityRegistry{}
 	}
 	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Logf("%s : index de joueur illisible : %v", dir, err)
-		return nil, nil, OwnerReport{}
+		return nil, nil, IdentityRegistry{}
 	}
 	table, _ := injectiveOrEmpty(idx)
 	vide, plein, own := invMortMeasure(pos, fire, inv, deaths, table)

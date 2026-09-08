@@ -246,7 +246,7 @@ func TestAttachFlagCarriesDescendLesEquipesJusquAuScan(t *testing.T) {
 		},
 	}
 
-	attachFlagCarries(doc, Options{Flag: in}, OwnerReport{},
+	attachFlagCarries(doc, Options{Flag: in}, IdentityRegistry{},
 		replayClock{origin: 0, step: 100_000, frames: 100})
 
 	cov := doc.Coverage.FlagCarries

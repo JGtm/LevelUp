@@ -61322,9 +61322,9 @@
 {"Time":"2026-09-05T23:46:37.0357458+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestInventoryCoverageBalances","Elapsed":0}
 {"Time":"2026-09-05T23:46:37.0357458+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestInventoryCoverageAbsentWhenNothingToRead","Elapsed":0}
 {"Time":"2026-09-05T23:46:37.0362694+02:00","Action":"skip","Package":"levelup/go-api/internal/analysis/replay","Test":"TestInventaireTrousMesure","Elapsed":0}
-{"Time":"2026-09-05T23:46:37.0362694+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestResolveSlotXUID_ComposeLaLectureSeule","Elapsed":0}
-{"Time":"2026-09-05T23:46:37.0362694+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestResolveSlotXUID_SansMortsRendUnPontVide","Elapsed":0}
-{"Time":"2026-09-05T23:46:37.0362694+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestResolveSlotXUID_SansIndexDeJoueurRendUnPontVide","Elapsed":0}
+{"Time":"2026-09-05T23:46:37.0362694+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestRegistreComposeLaLectureSeule","Elapsed":0}
+{"Time":"2026-09-05T23:46:37.0362694+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestRegistreSansMortsRendUnPontVide","Elapsed":0}
+{"Time":"2026-09-05T23:46:37.0362694+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestRegistreSansIndexDeJoueurRendUnPontVide","Elapsed":0}
 {"Time":"2026-09-05T23:46:37.0362694+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestKillPositionsPlaceLesDeuxJoueurs","Elapsed":0}
 {"Time":"2026-09-05T23:46:37.0362694+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestKillPositionsLaisseNilHorsTolerance","Elapsed":0}
 {"Time":"2026-09-05T23:46:37.0362694+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/replay","Test":"TestKillPositionsNEcritRienSansAucunePosition","Elapsed":0}

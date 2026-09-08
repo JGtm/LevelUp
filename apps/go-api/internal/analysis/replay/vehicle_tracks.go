@@ -99,7 +99,7 @@ type vehicleLife struct {
 
 // buildVehicleTracks assemble les vies publiables, leur couverture et le bilan de rattachement.
 func buildVehicleTracks(
-	scan VehicleScan, bipeds []filmdec.BipedPosition, own OwnerReport, clock replayClock,
+	scan VehicleScan, bipeds []filmdec.BipedPosition, reg IdentityRegistry, clock replayClock,
 ) ([]VehicleTrack, VehicleCoverage, vehicleRideStats) {
 	// `AimReads` compte ce que le FILM a rendu, pas ce que les episodes en retiennent : c est lui
 	// qui distingue « aucun occupant ne visait » de « le decodeur n a rien lu ».
@@ -112,7 +112,7 @@ func buildVehicleTracks(
 	spawns := vehicleSpawnsByLife(scan.Creations)
 	bySlot := vehiclePositionsBySlot(scan.Positions)
 	rides, st := buildVehicleRides(vehicleRideInputs{
-		vehBySlot: bySlot, bipeds: bipeds, events: scan.Events, own: own, lives: lives,
+		vehBySlot: bySlot, bipeds: bipeds, events: scan.Events, reg: reg, lives: lives,
 		aimBySlot: vehicleAimBySlot(scan.Aims),
 		drawable:  vehicleDrawableLives(lives, spawns, bySlot), clock: clock,
 	})
