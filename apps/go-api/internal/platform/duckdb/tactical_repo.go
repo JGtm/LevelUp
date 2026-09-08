@@ -193,12 +193,17 @@ func (r *TacticalRepo) habillerNomsFR(ctx context.Context, rows []domain.Tactica
 //
 // Dans les deux cas c'est l'appelant qui tranche : une identite vide n'appartient a
 // aucun axe « qui », faute d'equipe connue.
+// `kp.time_ms` VOYAGE DANS LE SELECT (ajout lot M1, 2026-09-07) : c'est l'INSTANT
+// CONTRIBUTEUR qu'un detail de cellule doit pouvoir citer pour ouvrir le rejeu 2D au bon
+// moment (`?frame=`). Il fait partie de la clef du GROUP BY, donc le projeter ne change ni
+// le nombre de lignes ni les gardes ci-dessus — seule une colonne de plus est lue.
 const QTacticalPositions = `
 SELECT kp.match_id,
        COALESCE(kp.killer_xuid, '')     AS killer_xuid,
        COALESCE(min(e.victim_xuid), '') AS victim_xuid,
        min(kp.killer_x) AS killer_x, min(kp.killer_y) AS killer_y,
-       min(kp.victim_x) AS victim_x, min(kp.victim_y) AS victim_y
+       min(kp.victim_x) AS victim_x, min(kp.victim_y) AS victim_y,
+       kp.time_ms AS time_ms
 FROM %s kp
 JOIN match_kill_events_latest e
     ON e.match_id = kp.match_id
@@ -251,7 +256,7 @@ func (r *TacticalRepo) KillPositions(ctx context.Context, q domain.TacticalQuery
 	err = scanRows(ctx, rows, "TacticalRepo.KillPositions", func(sc rowScanner) error {
 		var p domain.TacticalKillPosition
 		if err := sc.Scan(&p.MatchID, &p.KillerXUID, &p.VictimXUID,
-			&p.KillerX, &p.KillerY, &p.VictimX, &p.VictimY); err != nil {
+			&p.KillerX, &p.KillerY, &p.VictimX, &p.VictimY, &p.TimeMs); err != nil {
 			return err
 		}
 		out.Points = append(out.Points, p)
