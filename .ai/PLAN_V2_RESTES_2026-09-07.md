@@ -205,9 +205,14 @@ le dernier lecteur encore cadencé sur le pont par morts pour son identité.
       par la feuille) ; `fb1a1a72` (3 manches) sans perte ; `bf15f7ab` (Slayer) identique hors numéro.
 - [x] Bump 49 + chronique + ratchet + golden ; gates ; revue ; journal ; registre (entrée `3372e7eb` fermée).
 
-### R2 — Vies sur un slot que nulle mort ne termine — [x] CLOS 2026-09-08 DANS P2 (bump 50)
-Fait : `d9781168` (Oddball, à manches) : 19 vies sans nom, toutes sur UN slot sans aucune vie nommée = un joueur qui
-ne meurt jamais de tout le match (doctrine §0.4 : les vies se terminent aux frontières de manche sans mort).
+### R2 — Vies sur un slot que nulle mort ne termine — [x] CLOS 2026-09-08 DANS P2 puis P2-bis (bump 50), RÉSIDU ÉCRIT
+Fait (énoncé d'origine, **RÉFUTÉ sur pièces le 2026-09-08 par P2-bis**) : `d9781168` (Oddball, à manches) : 19 vies
+sans nom, toutes sur UN slot sans aucune vie nommée = un joueur qui ne meurt jamais de tout le match (doctrine §0.4 :
+les vies se terminent aux frontières de manche sans mort).
+**CE QUE LA MESURE DIT** (`.ai/V7.5/v2/RESTES_P2_2026-09-08.md` §B) : aucun joueur de `d9781168` n'a zéro mort (13 au
+minimum à la feuille), les 19 vies sont sur **18 slots distincts** et **18 slots muets** subsistent — l'unicité manque
+des DEUX côtés, d'où `parElimination = 0`. Le cas « joueur à zéro mort » existe bien, mais PAR MANCHE, et c'est le
+pont statborg qui le ferme (`d9781168` manche 1, slot 12 → `elimination_roster`).
 - [~] Vérification (1 h, avant tout code) : croiser le slot sans nom avec la feuille : le joueur à 0 mort est-il
       unique ? Ses frags/assistances de la feuille se retrouvent-ils sur les kills attribués à ce slot (calque des
       fermetures) ? Résultat au journal.
@@ -216,8 +221,24 @@ ne meurt jamais de tout le match (doctrine §0.4 : les vies se terminent aux fro
       `.ai/V7.5/README.md` et les notes de rétro-ingénierie ; diagnostic seul si cela exige de toucher `filmdec`).
 - [x] Implémentation dans la passe de nommage (`unnamed_lives.go`) : nouvelle cause `byElimination` comptée et
       journalisée ; jamais si deux candidats ; les vies ainsi nommées portent `deduced = true` (pas une mort).
-- [!] Tests par mutation ; témoins : `d9781168` 19 → 0 (ou résidu expliqué), temps de portage par équipe ne baisse
-      pas (172,5 / 158,8 s minimum ; feuille 191 / 196), `51ebbc0f` 8 → ?, un film entièrement nommé identique.
+- [x] **Source d'identité sans mort n°3, ajoutée par P2-bis** : l'ÉLIMINATION PAR EXCLUSION TEMPORELLE — un joueur
+      n'occupe qu'un slot de bipède à la fois, donc les candidats d'une vie sans nom sont les xuids du roster
+      qu'aucune vie NOMMÉE ne place ailleurs sur son intervalle ; un seul → c'est lui, deux → silence, zéro → la
+      lecture se contredit (silence + alarme). Itérée jusqu'au point fixe, abstention sur les conflits. Trois
+      garde-fous : roster de la feuille obligatoire, aucun bot déclaré, occupation simultanée ≤ roster. Voie
+      canonique `exclusion_temporelle`, vies marquées DÉDUITES, `cause` de fin jamais touchée.
+- [x] Tests par mutation : **10 mutations jouées, toutes rouges** (sorties collées au journal §B.6).
+- [x] Témoins (re-cuisson locale des 10, journal §B.7) : `d9781168` `unnamedLives` **19 → 15** et
+      `bipedSlot.non_resolu` **34 → 24** — RÉSIDU DE 13 PISTES EXPLIQUÉ VIE PAR VIE (§B.2, §B.5) ; temps de portage
+      du crâne par équipe **inchangé, 172,5 / 158,8 s** (feuille 191 / 196) ; `51ebbc0f` **8 → 3**,
+      `64e8adfa` **11 → 7**, `fb1a1a72` **3 → 2**, `bf15f7ab` **1 → 0**, `c0a82e88` `non_resolu` **1 → 0** ;
+      `3372e7eb`, `084a804d`, `bcb6d393`, `c75f33b8` **inchangés**. Gains de calque : tirs rattachés
+      +187 / +149 / +147 / +28 / +12, ramassages sans auteur 47 → 24 et 26 → 1. `scoreTimeline` et
+      `identity.statborgSlots` identiques : les écarts K/D/A fermés par P2 ne bougent pas.
+- [!] **Résidu** : 13 pistes de `d9781168` restent sans nom — grappes de frontière de manche (10), vies courtes en
+      pleine manche (2), une contradiction à zéro candidat (1, slot 641). Condition de reprise inscrite au registre :
+      le lien DIRECT slot de bipède ↔ index de joueur (inventaire P1, E2 ; `ti=5`, `ManagedPropertyFilmIndex`), plan
+      décodeur d'après v7.5.0.
 - [x] Gates ; revue ; journal ; registre.
 
 **Précisions de statut (lot P2, 2026-09-08 — `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`)** :
