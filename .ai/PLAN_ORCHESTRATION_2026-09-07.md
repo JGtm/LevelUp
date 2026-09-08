@@ -272,6 +272,15 @@ débits de lecture et les décomptes de liens viennent du balayage du lot, non r
   unique, migration des lecteurs ; ZÉRO heuristique nouvelle : un lien que le film ne donne pas est
   publié `non_resolu` et compté, jamais deviné par géométrie) → P5. Rien n est abandonné : les
   heuristiques de déduction prévues par P3/P4 sont retirées de leur périmètre, pas le reste.
+- **Sondage E2 [x] 2026-09-08** (`feat/v2-sondage-e2`, `eaa35ba06`, Opus, diagnostic seul) : le record de
+  CRÉATION d une entité bipède `ti=35` porte l index de participant du propriétaire (`+67` R(5),
+  primitive `ECS_ReadEntityRefIndex5`, déjà consommée puis jetée par le décodeur). Couverture directe
+  mesurée : `d9781168` 90,3 %, `bf15f7ab` 86,8 %, `64e8adfa` 95,0 % (372/408 vies), 0 fantôme ;
+  contre le pont par morts : 329 concordants, 18 discordants dont 7 paires ÉCHANGÉES (le pont nomme
+  à tort), 39 vies neuves. Spécification et plan d intégration additif I1-I5 (~420 L) dans
+  `.ai/V7.5/film_re/SONDAGE_E2_BIPEDE_INDEX_2026-09-08.md`. Préalable : trancher le cas des bots
+  (index lu 8 hors table sur `c75f33b8`) — doctrine : index hors table = `non_resolu` + compteur,
+  jamais inventé ; instruction dans le lot d intégration. Lot suivant : **P-décodeur E2 (I1-I5)**.
 
 ## 5. Décisions qui appartiennent à l'utilisateur (avec recommandation ; à trancher avant le lot concerné)
 

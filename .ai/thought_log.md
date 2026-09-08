@@ -101764,3 +101764,13 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
   datee = perte legitime (plan v2 §1), et une correction.
 - Reste pour P5 : un mecanisme d'ACCEPTATION datee dans le manifeste du corpus (`[[temoin.accepte]]`
   metrique / avant / apres / raison) pour que « 0 perte » garde son sens sans masquer les compteurs.
+
+## [2026-09-08] Orchestration — sondage decodeur E2 : le film nomme le proprietaire du corps (Complete)
+- H1 suffit : record NEW de l'entite bipede ti=35, `+67` R(5) = index de participant absolu
+  (`ECS_ReadEntityRefIndex5`), version 13, signature `player-representation-name` 0x1876BDA0
+  constante sur 5 films ; 529/529 portes ouvertes, 527/529 dans le roster ; couverture directe 87-95 %
+  (372/408 vies), 0 fantome ; 7 paires echangees par le pont par morts (il nomme a tort, pas
+  seulement se tait). H2/H3 non ouvertes (critere d'arret atteint). Bots a trancher (index 8 hors
+  table sur `c75f33b8`).
+- Prochaine etape : lot P-decodeur E2 (I1 lecteur `ScanBipedCreations` + I2 publication `direct`
+  + I3 pont = verification comptee + I4 gate + I5 goldens), Opus, base P2 ; puis P3/P4 alleges, P5.
