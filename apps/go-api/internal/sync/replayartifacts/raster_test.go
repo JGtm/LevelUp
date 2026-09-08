@@ -195,15 +195,29 @@ func TestEcrireSidecarRaster_CreeLeDossierEtRelit(t *testing.T) {
 
 // TestProjeterRastersTactiques_LotDuCycle — l'etape du fil de l'eau : elle depose ce
 // qu'elle peut, et un match en echec n'empeche NI les suivants NI le reste de la cuisson.
+//
+// LES DEUX ENTREES PORTENT DEJA LEUR `doc` (lot M6) : c'est l'invariant reel que
+// [lireArtefacts] etablit avant tout appel — un artefact illisible (JSON casse) n'atteint
+// plus jamais cette fonction, il est ecarte plus haut. L'echec teste ici est donc celui
+// que `projeterRasterDepuisDocument` peut encore lever sur un document VALIDE : un
+// matchId absent (meme cas que TestProjeterRasterTactique_Refus).
 func TestProjeterRastersTactiques_LotDuCycle(t *testing.T) {
 	root := t.TempDir()
 	pr := titlePkg.NewPathResolver(root)
 	bon := ecrireFichier(t, "bon.json", artefactImmobile)
-	casse := ecrireFichier(t, "casse.json", `{"schemaVersion":`)
+	bonDoc, _, err := lireDocumentRange(bon)
+	if err != nil {
+		t.Fatalf("lecture de l'artefact sain: %v", err)
+	}
+	sansID := ecrireFichier(t, "sansid.json", `{"schemaVersion":39,"tracks":[]}`)
+	sansIDDoc, _, err := lireDocumentRange(sansID)
+	if err != nil {
+		t.Fatalf("lecture de l'artefact sans matchId: %v", err)
+	}
 	d := Deps{RepoRoot: root, TitleSlug: titlePkg.DefaultSlug, Gamertag: "TestGT"}
 	projeterRastersTactiques(context.Background(), d, []artefactLu{
-		{matchID: "aaaaaaaa-0000-0000-0000-000000000000", path: casse},
-		{matchID: "000d5950-1234-4abc-9def-0123456789ab", path: bon},
+		{matchID: "aaaaaaaa-0000-0000-0000-000000000000", path: sansID, doc: sansIDDoc},
+		{matchID: "000d5950-1234-4abc-9def-0123456789ab", path: bon, doc: bonDoc},
 	})
 	if _, err := os.Stat(pr.TacticalRasterPath(titlePkg.DefaultSlug, "000d5950")); err != nil {
 		t.Fatalf("le sidecar du match sain n'a pas ete depose alors qu'un autre a echoue : %v", err)
