@@ -92,9 +92,13 @@ type IdentityCoverage struct {
 	// FilmIndex : les liens « index de joueur du film <-> identite ». Nomme d apres
 	// `RosterEntry.FilmIndex` — un index est un ORDRE LOCAL, valable dans CE film seulement, et
 	// jamais une identite (ratchet `no_player_index_identity_test.go`).
-	FilmIndex    canonical.LinkCounts `json:"filmIndex"`
-	BipedSlot    canonical.LinkCounts `json:"bipedSlot"`
-	StatborgSlot canonical.LinkCounts `json:"statborgSlot"`
+	FilmIndex canonical.LinkCounts `json:"filmIndex"`
+	// BipedSlot porte DEUX ventilations de plus que ses voisines, et elle seule : la part de
+	// `direct` obtenue par PROPAGATION du record d'un corps a ses autres sejours, et la CAUSE de
+	// chaque `non_resolu`. Les deux n'existent que la ou un meme record couvre plusieurs liens
+	// et ou l'echec est instruit (cf. canonical.BipedLinkCounts).
+	BipedSlot    canonical.BipedLinkCounts `json:"bipedSlot"`
+	StatborgSlot canonical.LinkCounts      `json:"statborgSlot"`
 }
 
 // Total agrege les trois familles — le chiffre unique du journal, jamais celui du gate (qui
@@ -125,6 +129,15 @@ func buildIdentitySection(r IdentityRegistry, in IdentityInput) IdentitySection 
 	}
 	for _, b := range s.BipedSlots {
 		s.Coverage.BipedSlot.Add(b.Link.Source)
+		if b.Link.Source == canonical.LinkUnresolved {
+			// LA CAUSE VOYAGE DANS `Method`, comme pour [canonical.MethodContested] : un
+			// `non_resolu` sans cause ne se corrige pas. La somme des causes EGALE `Unresolved`,
+			// et c'est l'invariant que `TestCouvertureBipedeVentileChaqueNonResolu` verifie.
+			s.Coverage.BipedSlot.UnresolvedByCause.AddCause(b.Link.Method)
+		}
+		if b.Link.Method == canonical.MethodBipedCreationPropagated {
+			s.Coverage.BipedSlot.DirectPropagated++
+		}
 	}
 	for _, t := range s.StatborgSlots {
 		s.Coverage.StatborgSlot.Add(t.Link.Source)
@@ -178,30 +191,45 @@ func identityPlayers(in IdentityInput) []IdentityPlayer {
 func identityBipedSlots(r IdentityRegistry, c IdentityClock) []IdentityBipedSlot {
 	lives := r.Vies()
 	out := make([]IdentityBipedSlot, 0, len(lives))
-	for _, l := range lives {
+	for i, l := range lives {
 		lien := canonical.Link{From: c.frameOf(l.from), To: c.frameOf(l.to)}
 		var xuid string
 		if l.xuid == 0 {
-			// RIEN NE L'A NOMMEE : la ligne se publie quand meme, et elle DIT qu'elle n'est pas
-			// resolue. La jeter ferait de la couverture un compte de rescapes.
-			lien.Source, lien.Method = canonical.LinkUnresolved, canonical.MethodNone
+			// RIEN NE L'A NOMMEE : la ligne se publie quand meme, elle DIT qu'elle n'est pas
+			// resolue, et depuis le lot E2 elle dit POURQUOI. La jeter ferait de la couverture
+			// un compte de rescapes ; la publier sans cause en ferait un constat sans prise.
+			lien.Source, lien.Method = canonical.LinkUnresolved, r.CauseNonResolue(i)
 		} else {
 			xuid = strconv.FormatUint(l.xuid, 10)
-			lien.Source = canonical.LinkInferred
 			// LA VOIE SE LIT DANS `nomPar`, PAS DANS `deducedLives` (correctif P2-bis) : depuis
 			// que le registre a DEUX voies de deduction, `deducedLives` ne dit plus LAQUELLE.
 			// Il ne dit que « c'est une deduction », ce que `LinkInferred` porte deja.
 			lien.Method = methodeDeNommage(l.nomPar)
+			lien.Source = provenanceDeNommage(l.nomPar)
 		}
 		out = append(out, IdentityBipedSlot{Slot: l.slot, XUID: xuid, Link: lien})
 	}
 	return out
 }
 
+// provenanceDeNommage dit si la voie est une LECTURE du film ou une DEDUCTION. Le record de
+// creation ECRIT le proprietaire du corps : il est `direct`, propagation comprise (le meme record
+// applique au meme corps reste une lecture). Tout le reste deduit.
+func provenanceDeNommage(nomPar string) canonical.LinkSource {
+	if nomParLecture(nomPar) {
+		return canonical.LinkDirect
+	}
+	return canonical.LinkInferred
+}
+
 // methodeDeNommage traduit l'axe `nomPar` d'une vie en voie canonique. Un `nomPar` inconnu
 // rend [canonical.MethodNone] : le producteur ne doit pas inventer une voie qu'il ne connait pas.
 func methodeDeNommage(nomPar string) canonical.LinkMethod {
 	switch nomPar {
+	case NomParCreation:
+		return canonical.MethodBipedCreation
+	case NomParCreationPropagee:
+		return canonical.MethodBipedCreationPropagated
 	case NomParMort:
 		return canonical.MethodDeathBridge
 	case NomParFermeture:

@@ -281,7 +281,7 @@ func adsBalayage(t *testing.T, dir string) ([]filmdec.BipedPosition, map[uint32]
 	}
 	table, collisions := injectiveOrEmpty(idx)
 	tracks := indexBySlot(pos)
-	own := regDe(buildOwners(tracks, deaths, table, nil))
+	own := regDe(buildOwnersDeTest(tracks, deaths, table, nil))
 	t.Logf("PONT — %d slots nommes sur %d vies · decalage d'horloge %d ms (%d fins de vie appariees)"+
 		" · collisions d'index %d", len(own.PontParSlot()), own.ViesTotal(), own.DeathOffsetMS(),
 		own.DeathOffsetMatches(), collisions)

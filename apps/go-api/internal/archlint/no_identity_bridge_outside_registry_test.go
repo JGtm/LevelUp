@@ -62,9 +62,20 @@ var identityBridgeScope = []string{
 //	                                 producteur, pas une seconde porte : aucune RÈGLE de nommage
 //	                                 n'y vit — les décideurs (`_elimination.go`, `_exclusion.go`)
 //	                                 restent hors allowlist et passent par ces poseurs.
+//	identity_registry_pont.go        2026-09-08, lot E2 — LA CONSTRUCTION du pont brut
+//	                                 (`buildOwners`) et les deux méthodes d'`OwnerReport` qui
+//	                                 portent une garde (`xuidAt`, `NamingBridge`), extraites du
+//	                                 registre passé à 505 L quand le LIEN DIRECT corps ↔ joueur y
+//	                                 est entré. TROISIÈME MOITIÉ du même producteur, à la même
+//	                                 condition que la deuxième : aucune RÈGLE de nommage n'y vit.
+//	                                 Les TROIS décideurs — `_creation.go` (le lien direct et sa
+//	                                 propagation), `_elimination.go`, `_exclusion.go` — et le
+//	                                 témoin `_bridge.go` restent HORS allowlist : ils travaillent
+//	                                 sur `[]lifeSpan`, jamais sur les tables brutes.
 var identityBridgeAllowlist = map[string]string{
 	"identity_registry.go":           "2026-09-08, lot P2 — le registre, seul producteur du pont",
 	"identity_registry_mutations.go": "2026-09-08, lot P2-bis — les poseurs du registre",
+	"identity_registry_pont.go":      "2026-09-08, lot E2 — la construction du pont brut",
 }
 
 // identityBridgePatterns : les motifs interdits hors de l'allowlist, avec ce qu'ils protègent.

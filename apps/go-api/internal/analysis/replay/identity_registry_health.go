@@ -25,6 +25,13 @@ func (r IdentityRegistry) SanteDuPont() BridgeHealth {
 		ClosedByRespawn:     r.FermeturesParReapparition(),
 		ClosedContested:     r.FermeturesContestees(),
 		ClosedRefused:       r.FermeturesRefusees(),
+
+		Concordant:                 r.PontConcordant(),
+		Discordant:                 r.PontDiscordant(),
+		BridgeNamedLives:           r.ViesNommeesParLePont(),
+		DirectByCreation:           r.ViesParCreation(),
+		DirectByCreationPropagated: r.ViesParCreationPropagee(),
+		BodiesWithCreation:         r.CorpsAvecCreation(),
 	}
 }
 
@@ -56,11 +63,27 @@ func (r IdentityRegistry) logRegistry(matchID string) {
 		"slots", len(r.IndexParSlot()), "viesNommees", r.ViesNommeesParLaLecture(),
 		"viesTotal", r.ViesTotal(), "lecturesIndex", r.LecturesIndex(),
 		"desaccordsIndex", r.DesaccordsIndex(), "collisionsSlot", r.CollisionsDeSlot(),
+		"parCreation", r.ViesParCreation(), "parCreationPropagee", r.ViesParCreationPropagee(),
+		"corpsAvecCreation", r.CorpsAvecCreation(),
+		"pontConcordant", r.PontConcordant(), "pontDiscordant", r.PontDiscordant(),
+		"viesNommeesParLePont", r.ViesNommeesParLePont(),
 		"parElimination", r.eliminated,
 		"parExclusionTemporelle", r.excluded,
 		"viesSansAucunCandidat", r.excludedContradictions,
 		"liensDirects", total.Direct, "liensDeduits", total.Inferred,
 		"liensNonResolus", total.Unresolved)
+	r.creation.alarmerSurLesRefus(matchID, r.Section.Coverage.BipedSlot.UnresolvedByCause)
+	if r.PontDiscordant() > 0 {
+		slog.Warn("rejeu : le pont par morts contredit le lien direct sur des vies — le film "+
+			"fait foi, les noms du pont sont ecartes",
+			"match_id", matchID, "discordances", r.PontDiscordant(),
+			"concordances", r.PontConcordant())
+	}
+	if r.ViesNommeesParLePont() > 0 {
+		slog.Warn("rejeu : AUCUNE lecture directe corps -> joueur — le pont par morts a nomme en "+
+			"degradation complete (cf. identity_registry_bridge.go)",
+			"match_id", matchID, "vies", r.ViesNommeesParLePont())
+	}
 	if r.DesaccordsIndex() > 0 {
 		slog.Warn("rejeu : desaccord de lecture de l'index de joueur — liens directs NON publies",
 			"match_id", matchID, "desaccords", r.DesaccordsIndex())

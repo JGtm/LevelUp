@@ -43,6 +43,29 @@ type BridgeHealth struct {
 	// SlotCollisions : slots dont les vies nommées désignent des joueurs différents. Non
 	// nul, la table slot -> joueur n'est pas représentable et le verdict le dit.
 	SlotCollisions int `json:"slotCollisions"`
+	// Concordant / Discordant : LE PONT PAR MORTS EN TÉMOIN (lot E2, 2026-09-08). Depuis que le
+	// record de création du bipède ÉCRIT le propriétaire du corps, le pont ne nomme plus : il
+	// confronte. Parmi les vies qu'une mort du fil termine ET que la lecture directe nomme,
+	// `Concordant` compte celles dont la victime est le joueur lu, `Discordant` les autres.
+	//
+	// LE DIRECT L'EMPORTE TOUJOURS, et c'est pourquoi ces deux compteurs existent : sans eux, la
+	// correction serait muette. Le sondage E2 en attend ~7 paires exactement échangées sur
+	// `d9781168` et `64e8adfa` — des fins de vie simultanées que l'appariement glouton du pont
+	// départageait par l'ordre des slots.
+	Concordant int `json:"concordant"`
+	Discordant int `json:"discordant"`
+	// BridgeNamedLives : les vies que le pont par morts a NOMMÉES. Zéro sur tout film dont les
+	// créations sont lues — non nul, il dit que le registre n'a reçu AUCUNE lecture directe et
+	// qu'il a dégradé en entier (cf. identity_registry_bridge.go, kill-switch daté).
+	BridgeNamedLives int `json:"bridgeNamedLives"`
+	// DirectByCreation / DirectByCreationPropagated : les vies que le RECORD DE CRÉATION nomme,
+	// selon que sa date tombe dans leur intervalle ou sur un autre séjour du même corps. La
+	// seconde est un SOUS-COMPTE de la première famille, pas un total à part.
+	DirectByCreation           int `json:"directByCreation"`
+	DirectByCreationPropagated int `json:"directByCreationPropagated"`
+	// BodiesWithCreation : les corps (slots) dont un record de création a été lu — le
+	// DÉNOMINATEUR de la couverture directe. Zéro = aucune lecture directe sur ce film.
+	BodiesWithCreation int `json:"bodiesWithCreation"`
 	// NamedByPreviousLife / NamedByNextLife / NamedBySlotBridge : ce que le NOMMAGE FINAL a
 	// réparé, par voie (cf. unnamed_lives.go). Depuis la décision produit du 2026-09-07 — « les
 	// vies anonymes n'existent pas » — une piste publiée sans identité est un DÉFAUT du pont ;

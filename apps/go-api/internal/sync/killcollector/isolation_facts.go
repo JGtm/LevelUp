@@ -138,7 +138,22 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // deux tables (append-only, ADR 0026 — les vues `_latest` basculent d'un bloc). Le journal des
 // morts, lui, n'est PAS reecrit : [KillSourceDecoderRev] ne bouge pas, et c'est tout l'objet des
 // deux revisions separees. Commande : `levelup backfill-killsource`.
-const IsolationDecoderRev = "isolement-2026-09-08-registre"
+//
+// # POURQUOI ELLE BOUGE UNE SECONDE FOIS LE 2026-09-08 (lot E2, lien direct corps -> joueur)
+//
+// La valeur `isolement-2026-09-08-registre` a ete posee par le lot P2 et **n'a jamais ete
+// livree** (branche non fusionnee, aucun backfill joue en production). Elle est donc remplacee
+// plutot que doublee — mais elle ne pouvait pas etre CONSERVEE : un poste qui aurait joue le
+// backfill sur la branche P2 porterait deja cette revision, et ses lignes seraient exclues a vie
+// du redecodage alors que leur CONTENU change de nouveau, et cette fois a la racine.
+//
+// Ce qui change : le collecteur passe desormais au registre les RECORDS DE CREATION DE BIPEDE
+// (`filmdec.ScanBipedCreations`), et le nommage des vies bascule du pont par morts — un
+// appariement glouton qui departageait par l'ordre des slots quand deux vies finissent au meme
+// instant — a une LECTURE du film. `match_lives.xuid` change donc sur les vies que le pont
+// echangeait (7 paires exactement echangees mesurees sur deux films) et se remplit sur les vies
+// qu'aucune mort ne terminait (vies d'ouverture, survivants).
+const IsolationDecoderRev = "isolement-2026-09-08-creation-bipede"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
 //

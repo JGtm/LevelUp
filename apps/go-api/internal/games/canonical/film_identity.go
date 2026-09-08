@@ -145,6 +145,30 @@ const (
 	// MethodContested : deux candidats subsistent, rien ne les departage. Va toujours avec
 	// [LinkUnresolved] : l'identite n'est pas absente, elle est INDECIDABLE.
 	MethodContested LinkMethod = "conteste"
+	// MethodBipedCreation : le record de CREATION du bipede porte l'index de participant de son
+	// proprietaire (`ECS_ReadEntityRefIndex5`, +67 bits apres l'en-tete NEW `ti=35`). C'est une
+	// LECTURE du film, pas une deduction : elle va avec [LinkDirect].
+	MethodBipedCreation LinkMethod = "creation_bipede"
+	// MethodBipedCreationPropagated : le MEME record, applique a une autre vie du MEME corps.
+	//
+	// CE N'EST PAS UNE DEDUCTION, et c'est pourquoi elle va aussi avec [LinkDirect] : un film
+	// porte UN SEUL record de creation par slot de bipede (mesure du lot E2 : 538 vies sur cinq
+	// films, 0 slot a deux records, generation invariante). Une vie sans record propre est donc
+	// le MEME corps qu'une decoupe a `lifeGapUS` a separee d'un sejour continu — pas un autre
+	// occupant qu'on devinerait.
+	MethodBipedCreationPropagated LinkMethod = "creation_bipede_propagee"
+	// Les TROIS CAUSES de non-resolution d'un slot de bipede. Elles vont toujours avec
+	// [LinkUnresolved] et ventilent [BipedLinkCounts.UnresolvedByCause] : « non resolu » sans sa
+	// cause ne se corrige pas, il se contemple.
+	//
+	//	MethodIndexOutOfTable    l'index LU n'est pas dans la table publiee (participant que
+	//	                         `PlayerIndexTable` ne nomme pas — bot non declare, verdict I0).
+	//	MethodNoCreationRecord   aucun record de creation n'a ete lu sur ce corps.
+	//	MethodDivergentReadings  deux records du meme slot portent des index DIFFERENTS : la
+	//	                         propagation deviendrait un choix, donc on se tait.
+	MethodIndexOutOfTable   LinkMethod = "index_hors_table"
+	MethodNoCreationRecord  LinkMethod = "sans_record"
+	MethodDivergentReadings LinkMethod = "lectures_divergentes"
 	// MethodNone : aucune voie — le lien n'a jamais eu de candidat.
 	MethodNone LinkMethod = ""
 )
@@ -216,4 +240,57 @@ func (c *LinkCounts) Add(s LinkSource) {
 // Total rend le nombre de liens comptes, toutes provenances confondues.
 func (c LinkCounts) Total() int {
 	return c.Direct + c.Catalog + c.External + c.Inferred + c.Unresolved
+}
+
+// BipedLinkCounts est [LinkCounts] pour la famille du SLOT DE BIPEDE, avec les deux
+// ventilations que cette famille — et elle seule — sait produire.
+//
+// # POURQUOI UNE FORME A PART PLUTOT QUE DEUX CHAMPS DE PLUS DANS `LinkCounts`
+//
+// `direct_propage` et `non_resolu_par_cause` n'ont de sens que la ou UN MEME record couvre
+// plusieurs liens et ou l'echec porte une cause instruite. L'index de joueur (une table lue une
+// fois) et le slot de statborg (un pont par manche) n'ont ni l'un ni l'autre : leur servir deux
+// objets vides ferait croire a une ventilation qui n'existe pas.
+//
+// [LinkCounts] est EMBARQUE, donc `direct` / `deduit` / `non_resolu` restent au meme niveau dans
+// le JSON et le gate corpus continue de les comparer sans rien savoir de ce type.
+type BipedLinkCounts struct {
+	LinkCounts
+	// DirectPropagated est la PART de `Direct` obtenue en appliquant le record de creation d'un
+	// corps a une autre vie du MEME corps. Sous-compte, jamais un total a part : le brief du lot
+	// E2 dit « direct (dont propages) », et un gate qui surveille `direct` doit voir la somme.
+	DirectPropagated int `json:"direct_propage"`
+	// UnresolvedByCause ventile `Unresolved`. La somme de ses champs EGALE `Unresolved` : un
+	// non-resolu sans cause serait exactement le silence que le registre existe pour interdire.
+	UnresolvedByCause UnresolvedCauses `json:"non_resolu_par_cause"`
+}
+
+// UnresolvedCauses ventile les liens non resolus d'un slot de bipede par CAUSE PROUVEE.
+type UnresolvedCauses struct {
+	// IndexOutOfTable : l'index est LU, il n'est simplement pas dans la table publiee.
+	IndexOutOfTable int `json:"index_hors_table"`
+	// NoCreationRecord : aucun record de creation n'a ete lu sur ce corps.
+	NoCreationRecord int `json:"sans_record"`
+	// DivergentReadings : deux records du meme slot portent des index differents.
+	DivergentReadings int `json:"lectures_divergentes"`
+}
+
+// Total rend le nombre de causes comptees — l'invariant que le producteur verifie contre
+// `Unresolved`.
+func (c UnresolvedCauses) Total() int {
+	return c.IndexOutOfTable + c.NoCreationRecord + c.DivergentReadings
+}
+
+// AddCause incremente la cause que la voie designe. Une voie qui n'est pas une cause de
+// non-resolution n'incremente RIEN : la somme cesse alors d'egaler `Unresolved`, et c'est
+// l'invariant du producteur qui le dit — pas un silence.
+func (c *UnresolvedCauses) AddCause(m LinkMethod) {
+	switch m {
+	case MethodIndexOutOfTable:
+		c.IndexOutOfTable++
+	case MethodNoCreationRecord:
+		c.NoCreationRecord++
+	case MethodDivergentReadings:
+		c.DivergentReadings++
+	}
 }

@@ -57,6 +57,14 @@ type IdentityClock struct {
 type IdentityInput struct {
 	// Positions : les positions de bipede DEJA decodees (`filmdec.ScanBipedPositions`).
 	Positions []filmdec.BipedPosition
+	// BipedCreations : les records de CREATION de bipede deja decodes
+	// (`filmdec.ScanBipedCreations`). C'est le lien DIRECT corps -> joueur : le film ECRIT
+	// l'index de participant du proprietaire dans le default-state du record.
+	//
+	// VIDE = LE REGISTRE N'A AUCUNE LECTURE DIRECTE, et il le publie
+	// (`BridgeHealth.BridgeNamedLives` non nul). Ce n'est pas une option : c'est la degradation
+	// declaree d'un producteur qui ne porte pas encore ce canal.
+	BipedCreations []filmdec.BipedCreation
 	// Deaths : le fil des morts du film — il nomme chaque vie par sa victime.
 	Deaths []Death
 	// PlayerIndices : le lien DIRECT identite -> index de joueur, lu dans les chunks de
@@ -117,23 +125,33 @@ type IdentityRegistry struct {
 	// identity_registry_exclusion.go) ; excludedContradictions compte celles qu AUCUN joueur ne
 	// peut occuper — une contradiction de la lecture, pas une abstention ordinaire.
 	excluded, excludedContradictions int
+	// creation porte ce que la LECTURE DIRECTE du record de creation a pose et refuse, avec la
+	// cause de chaque refus (cf. identity_registry_creation.go).
+	creation creationReport
+	// bridge porte la confrontation du pont par morts au lien direct : concordances,
+	// discordances, et le compte des vies que le pont a NOMMEES — non nul seulement quand le
+	// registre n'a recu aucune lecture directe (cf. identity_registry_bridge.go).
+	bridge bridgeVerification
 }
 
 // BuildIdentityRegistry construit le registre d'identite du film. PURE : aucune I/O.
 //
 // L'ORDRE DES ETAPES EST LA DOCTRINE, ET IL N'EST PAS NEGOCIABLE :
 //
-//  1. les liens DIRECTS (index de joueur <-> xuid, `bid` <-> bot) sont poses tels quels ;
-//  2. le PONT PAR MORTS nomme les vies que le film ne nomme pas, et VERIFIE les liens directs ;
+//  1. les liens DIRECTS sont poses D'ABORD et a 100 % — index de joueur <-> xuid, `bid` <-> bot,
+//     et depuis le lot E2 le lien CORPS <-> JOUEUR que le record de creation du bipede ECRIT
+//     (`identity_registry_creation.go`), propage aux autres vies du meme corps ;
+//  2. le PONT PAR MORTS ne nomme plus : il pose la CAUSE de fin et VERIFIE le lien direct — une
+//     discordance s'inscrit et alarme, elle n'ecrase jamais (`identity_registry_bridge.go`) ;
 //  3. l'ELIMINATION SUR LE ROSTER ferme le cas d'unicite — un seul xuid sans vie, un seul slot
 //     sans nom ;
 //  4. l'EXCLUSION TEMPORELLE porte la meme elimination a l'echelle d'UNE VIE — un joueur
 //     n'occupe qu'un slot a la fois, donc une vie dont un seul joueur du roster est libre sur
 //     tout l'intervalle lui revient (lot P2-bis) ;
-//  5. ce qui resiste est publie « non resolu » et COMPTE, avec son alarme.
+//  5. ce qui resiste est publie « non resolu » AVEC SA CAUSE et COMPTE, avec son alarme.
 func BuildIdentityRegistry(in IdentityInput) IdentityRegistry {
 	reg := IdentityRegistry{deducedLives: map[int]bool{}}
-	reg.own = buildOwners(indexBySlot(in.Positions), in.Deaths, in.PlayerIndices, in.Fire)
+	reg.own, reg.creation, reg.bridge = buildOwners(in)
 	reg.resolveByRosterElimination(in)
 	reg.resolveByTemporalExclusion(in)
 	reg.Section = buildIdentitySection(reg, in)
@@ -234,174 +252,6 @@ func (r IdentityRegistry) TracesDeduites(tracks []Track, origin, step uint64) ma
 	return out
 }
 
-// buildOwners construit le pont a partir du seul fil des morts.
-//
-// PAS DE REPLI. Si le film ne porte pas son fil des morts, le pont est VIDE et aucun tir n'est
-// publie — c'est le comportement voulu. Un rejeu muet se voit ; un rejeu qui pose des tirs sur
-// le mauvais joueur ne se voit pas, et c'est bien pire.
-//
-// APPELANT UNIQUE : [BuildIdentityRegistry]. Le garde-rail `archlint` l'exige.
-func buildOwners(tracks map[uint32]slotTrack, deaths []Death, idx PlayerIndexTable,
-	fire []FireEventRef) OwnerReport {
-	rep := OwnerReport{Owner: map[uint32]int{}, SlotXUID: map[uint32]uint64{}}
-	if len(deaths) == 0 || len(tracks) == 0 || len(idx.ByXUID) == 0 {
-		return rep
-	}
-	lives := buildLifeSpans(tracks)
-	rep.LivesTotal = len(lives)
-	off, matched, second := bestDeathOffset(lives, deaths)
-	rep.DeathOffsetMS, rep.DeathOffsetMatches = off, matched
-	rep.DeathOffsetRunnerUp = second
-	rep.DeathsNamed = nameLivesByDeaths(lives, deaths, off)
-	rep.lives = lives
-	if rep.DeathsNamed == 0 {
-		return rep
-	}
-	rep.IndexReadings = idx.Readings
-	rep.IndexDisagreements = idx.Disagreements
-	owners, byXUID, ambigus := ownersFromLives(lives, idx.ByXUID)
-	rep.SlotAmbiguous = ambigus
-	rep.SlotCollisions = len(ambigus)
-	rep.FromDeaths = len(owners)
-	// LES FERMETURES VIENNENT APRES LA LECTURE, JAMAIS A SA PLACE (cf. closures.go). Elles ne
-	// touchent que les vies que le fil des morts n'a pas nommees, et elles s'abstiennent des que
-	// deux candidats subsistent. `FromDeaths` est fige AVANT, pour que l'ecart entre lui et
-	// `len(Owner)` reste lisible : c'est exactement ce que les fermetures ont ajoute.
-	rep.Owner, rep.Closures = closeBridge(tracks, owners, lives, deaths, off, idx.ByXUID, fire)
-	rep.SlotXUID = extendSlotXUID(byXUID, rep.Owner, idx.ByXUID)
-	// LES FERMETURES NOMMENT AUSSI LA VIE (lot identite des vies, 2026-09-02) : le nommage des
-	// tracks se fait desormais PAR VIE, et une vie fermee sans identite redeviendrait anonyme a
-	// l'ecran alors que le pont la connait. C'est LA VIE QUE LA FERMETURE A DESIGNEE qui est
-	// nommee (`closureReport.closedLife`), pas « l'unique vie anonyme du slot ».
-	nameClosedLives(rep.lives, rep.Owner, rep.Closures.closedLife, idx.ByXUID)
-	return rep
-}
-
-// nameClosedLives pose l'identite d'une fermeture sur LA VIE QU'ELLE A DESIGNEE.
-//
-// `closed` vient des fermetures elles-memes (slot -> indice de vie ; -1 = deux vies designees,
-// donc abstention). Une vie deja nommee par le fil des morts n'est jamais reecrite : la lecture
-// prime sur la deduction, comme partout dans ce pont.
-func nameClosedLives(lives []lifeSpan, after, closed map[uint32]int, xuidToIndex map[uint64]int) {
-	if len(closed) == 0 {
-		return
-	}
-	indexToXUID := indexToXUIDOf(xuidToIndex)
-	for slot, life := range closed {
-		if life < 0 || life >= len(lives) || lives[life].xuid != 0 {
-			continue
-		}
-		pi, known := after[slot]
-		if !known {
-			continue
-		}
-		if x, ok := indexToXUID[pi]; ok {
-			lives[life].xuid = x
-			// LA FERMETURE NOMME, ELLE NE TERMINE PAS. Elle dit « un autre corps est reapparu,
-			// donc celui-ci etait celui-la » — rien sur la facon dont la vie s'est terminee.
-			// `cause` reste donc ce que la decoupe a etabli (fin du film, ou coupure), et c'est
-			// exactement ce qui empeche de refabriquer une mort pour un survivant.
-			lives[life].nomPar = NomParFermeture
-		}
-	}
-}
-
-// extendSlotXUID pose l'identite sur les slots que les fermetures ont attribues. Sans cela, un
-// slot deduit porterait des tirs sans que le client puisse nommer son joueur — les deux tables
-// diraient deux choses differentes du meme pont, ce que `ownersFromLives` interdit deja.
-func extendSlotXUID(byXUID map[uint32]uint64, owner map[uint32]int,
-	xuidToIndex map[uint64]int) map[uint32]uint64 {
-	indexToXUID := indexToXUIDOf(xuidToIndex)
-	out := make(map[uint32]uint64, len(owner))
-	for s, x := range byXUID {
-		out[s] = x
-	}
-	for s, pi := range owner {
-		if _, ok := out[s]; ok {
-			continue
-		}
-		if x, ok := indexToXUID[pi]; ok {
-			out[s] = x
-		}
-	}
-	return out
-}
-
-// indexToXUIDOf renverse la table identite -> index. Un helper plutot que deux boucles
-// identiques a vingt lignes d'ecart : la troisieme copie derive.
-func indexToXUIDOf(xuidToIndex map[uint64]int) map[int]uint64 {
-	out := make(map[int]uint64, len(xuidToIndex))
-	for x, i := range xuidToIndex {
-		out[i] = x
-	}
-	return out
-}
-
-// xuidAt rend le joueur qui OCCUPE ce slot à cet instant : la vie qui couvre l'instant si elle
-// est nommée, sinon le pont par slot. Chaîne vide = ni l'une ni l'autre ne le nomme.
-//
-// POURQUOI L'INSTANT COMPTE (correctif du 2026-09-06, constat P1-7). `SlotXUID` est une identité
-// UNIQUE PAR SLOT pour tout le match : `ownersFromLives` garde la PREMIÈRE vie nommée et jette
-// les suivantes en collision, et `buildLifeSpans` trie par slot puis chronologiquement — c'est
-// donc le PREMIER occupant, quel que soit l'instant demandé. Sur un slot de biped recyclé entre
-// deux joueurs nommés (9 artefacts du parc portent `slotCollisions > 0`), tout lecteur qui
-// interroge le pont sans son instant crédite le premier occupant.
-//
-// LE MOTIF EST CELUI DU DÉPÔT — « par vie d'abord, pont en repli » (cf. `tracksByXUID`) — et
-// c'est ici qu'il vit pour tous ses lecteurs : la table par vie est déjà DANS cet objet.
-func (r OwnerReport) xuidAt(slot uint32, tUS uint64) string {
-	t := int64(tUS)
-	for _, l := range r.lives {
-		if l.slot != slot || l.xuid == 0 || t < l.from || t > l.to {
-			continue
-		}
-		return strconv.FormatUint(l.xuid, 10)
-	}
-	// LE REPLI PAR SLOT S'ABSTIENT SUR UN SLOT AMBIGU (2026-09-07). `SlotXUID` y garde le
-	// PREMIER occupant nommé, par ordre des vies : le servir à un instant que sa vie ne couvre
-	// pas reviendrait à publier un nom arbitraire, et c'est exactement ce que cette méthode
-	// existe pour éviter. Sans vie couvrante ET sur un slot à plusieurs occupants, on se tait.
-	if r.SlotAmbiguous[slot] {
-		return ""
-	}
-	if x, ok := r.SlotXUID[slot]; ok && x != 0 {
-		return strconv.FormatUint(x, 10)
-	}
-	return ""
-}
-
-// NamingBridge rend le pont slot -> joueur DÉBARRASSÉ DES SLOTS AMBIGUS — celui que doit
-// employer tout lecteur qui s'en sert pour NOMMER une piste.
-//
-// POURQUOI IL EXISTE (constat C2 de la revue VIES-R1, 2026-09-07). `SlotXUID` garde le PREMIER
-// occupant nommé d'un slot que deux joueurs se partagent : c'est un choix par l'ORDRE DES VIES.
-// `xuidAt` et `bridgeOfSlot` s'en abstiennent déjà, mais le helper partagé `xuidOfPublishedTrack`
-// ne le pouvait pas — il ne reçoit qu'une map. Résultat mesuré sur `084a804d` slot 734 : la passe
-// de nommage REFUSE (`contested = 1`) et le helper servait quand même `2535430265968559`, si bien
-// que `samplesByXUID` indexait les positions de la piste contestée sous le premier occupant —
-// une capture de zone pouvait être géolocalisée sur la trajectoire d'un AUTRE joueur.
-//
-// PLUTÔT QUE DE FAIRE DESCENDRE `SlotAmbiguous` DANS QUATRE CHAÎNES d'appel (les zones, les
-// pistes de porteur de drapeau, les actions d'objectif, les morts neutres), on retire les slots
-// ambigus À LA SOURCE : le lecteur ne peut plus oublier la garde, puisqu'il n'a plus de quoi
-// l'enfreindre.
-//
-// `SlotXUID` RESTE INCHANGÉ pour ses autres consommateurs (ramassages, marques de portage, frags
-// sous équipement actif) : leur exemption est explicite au cadrage de l'audit, et la modifier
-// sortirait du périmètre de cette revue.
-func (r OwnerReport) NamingBridge() map[uint32]uint64 {
-	if len(r.SlotAmbiguous) == 0 {
-		return r.SlotXUID
-	}
-	out := make(map[uint32]uint64, len(r.SlotXUID))
-	for s, x := range r.SlotXUID {
-		if !r.SlotAmbiguous[s] {
-			out[s] = x
-		}
-	}
-	return out
-}
-
 // DeathOffsetMatches rend le nombre de morts que le calage apparie — le DENOMINATEUR sans lequel
 // un calage ne se juge pas (zero = le pont n'a pas ete construit, ou l'affinage n'a rien apparie).
 func (r IdentityRegistry) DeathOffsetMatches() int { return r.own.DeathOffsetMatches }
@@ -419,6 +269,17 @@ func (r IdentityRegistry) FermeturesRefusees() int        { return r.own.Closure
 
 // SlotsParLaLecture rend le nombre de slots que la LECTURE SEULE a nommés (avant fermetures).
 func (r IdentityRegistry) SlotsParLaLecture() int { return r.own.FromDeaths }
+
+// ViesParCreation / ViesParCreationPropagee : les vies que le RECORD DE CREATION nomme, selon
+// que sa date tombe dans leur intervalle ou sur un autre sejour du meme corps. La seconde est un
+// SOUS-COMPTE de la couverture directe, jamais un total a part.
+func (r IdentityRegistry) ViesParCreation() int         { return r.creation.Direct }
+func (r IdentityRegistry) ViesParCreationPropagee() int { return r.creation.Propagated }
+func (r IdentityRegistry) CorpsAvecCreation() int       { return r.creation.Slots }
+func (r IdentityRegistry) LecturesDIndexDeBot() int     { return r.creation.IndexBot }
+func (r IdentityRegistry) PontConcordant() int          { return r.bridge.Concordant }
+func (r IdentityRegistry) PontDiscordant() int          { return r.bridge.Discordant }
+func (r IdentityRegistry) ViesNommeesParLePont() int    { return r.bridge.NamedByBridge }
 
 // ViesTotal / LecturesIndex / DesaccordsIndex / CollisionsDeSlot / CalageSecond : les
 // dénominateurs et les témoins que la couverture publie.

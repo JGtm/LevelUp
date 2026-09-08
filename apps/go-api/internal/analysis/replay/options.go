@@ -152,6 +152,14 @@ type Options struct {
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
 	// ni lancer n'est publié.
 	PlayerIndices PlayerIndexTable
+	// BipedCreations : les records de CRÉATION de bipède du film (`filmdec.ScanBipedCreations`).
+	// C'est le lien DIRECT corps -> joueur : le film écrit l'index de participant du
+	// propriétaire dans le default-state du record (lot E2, 2026-09-08).
+	//
+	// VIDE = LE REGISTRE DÉGRADE EN ENTIER sur le pont par morts, et il le publie
+	// (`coverage.bridge.bridgeNamedLives` non nul). Ce n'est pas une option à activer : c'est
+	// l'état d'un producteur qui ne porte pas encore ce canal.
+	BipedCreations []filmdec.BipedCreation
 	// RosterXUIDs : les joueurs de la FEUILLE DE MATCH, fournis par l'assembleur. Ils
 	// COMPLÈTENT le roster que le fil des morts donne (`rosterFromDeaths`) avant la lecture
 	// de l'index de joueur.

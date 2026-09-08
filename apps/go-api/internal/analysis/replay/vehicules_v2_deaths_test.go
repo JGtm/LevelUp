@@ -123,7 +123,7 @@ func v2dProcessFilm(t *testing.T, dir string, entry filmdec.MapQuantEntry, ag *v
 		t.Logf("index joueur illisible (%v) — pont sans identite", err)
 	}
 	table, _ := injectiveOrEmpty(idx)
-	own := regDe(buildOwners(tracks, deaths, table, nil))
+	own := regDe(buildOwnersDeTest(tracks, deaths, table, nil))
 	xuidSlots := v2dInvertSlotXUID(own.PontParSlot())
 
 	kf := filmdec.ScanFilmWorldObjectKeyframes(dir, filmdec.VehicleTypeIndex)

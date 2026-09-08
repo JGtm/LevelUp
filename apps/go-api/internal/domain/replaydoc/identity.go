@@ -72,9 +72,12 @@ type Link struct {
 // IdentityCoverage compte les liens par type d'entite et par provenance.
 type IdentityCoverage struct {
 	// FilmIndex : les liens « index de joueur du film <-> identite ».
-	FilmIndex    LinkCounts `json:"filmIndex"`
-	BipedSlot    LinkCounts `json:"bipedSlot"`
-	StatborgSlot LinkCounts `json:"statborgSlot"`
+	FilmIndex LinkCounts `json:"filmIndex"`
+	// BipedSlot porte deux ventilations de plus que ses voisines : la part de `direct` obtenue
+	// en PROPAGEANT le record de creation d'un corps a ses autres sejours, et la CAUSE de chaque
+	// `non_resolu`. Elles n'ont de sens que pour cette famille (lot E2, 2026-09-08).
+	BipedSlot    BipedLinkCounts `json:"bipedSlot"`
+	StatborgSlot LinkCounts      `json:"statborgSlot"`
 }
 
 // LinkCounts est le decompte d'une famille de liens par provenance.
@@ -84,4 +87,26 @@ type LinkCounts struct {
 	External   int `json:"externe"`
 	Inferred   int `json:"deduit"`
 	Unresolved int `json:"non_resolu"`
+}
+
+// BipedLinkCounts est [LinkCounts] pour la famille du slot de bipede, avec ses deux ventilations
+// propres. `LinkCounts` est EMBARQUE : `direct` / `deduit` / `non_resolu` restent au meme niveau
+// dans le JSON servi que dans celui de ses voisines.
+type BipedLinkCounts struct {
+	LinkCounts
+	// DirectPropagated est la PART de `Direct` obtenue en appliquant le record de creation d'un
+	// corps a une autre de ses vies. Sous-compte, jamais un total a part.
+	DirectPropagated int `json:"direct_propage"`
+	// UnresolvedByCause ventile `Unresolved`. La somme de ses champs EGALE `Unresolved`.
+	UnresolvedByCause UnresolvedCauses `json:"non_resolu_par_cause"`
+}
+
+// UnresolvedCauses ventile les liens non resolus d'un slot de bipede par cause prouvee.
+type UnresolvedCauses struct {
+	// IndexOutOfTable : l'index est LU, il n'est pas dans la table publiee.
+	IndexOutOfTable int `json:"index_hors_table"`
+	// NoCreationRecord : aucun record de creation n'a ete lu sur ce corps.
+	NoCreationRecord int `json:"sans_record"`
+	// DivergentReadings : deux records du meme slot portent des index differents.
+	DivergentReadings int `json:"lectures_divergentes"`
 }
