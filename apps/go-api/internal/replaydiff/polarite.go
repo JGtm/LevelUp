@@ -42,6 +42,62 @@ var compteursDEchec = map[string]bool{
 	// `c75f33b8`, et le gate lisait cette disparition comme une perte — le meme defaut que
 	// `noTrack` la veille, sur un compteur dont le NOM dit qu il est un echec.
 	"noBridge": true,
+	// 2026-09-08 (lot E2-bis) : `coverage.flagCarries.ambiguousReturns` / `ambiguousSlot` et
+	// `coverage.vehicles.shotsNoRide` — des ECHECS que le lien direct fait baisser (3 -> 2, 1 -> 0,
+	// 2768 -> 2265 sur `084a804d`) et que le gate lisait en perte.
+	"ambiguousReturns": true,
+	"ambiguousSlot":    true,
+	"shotsNoRide":      true,
+}
+
+// marqueurParXUID : segment des cles ventilees par joueur (`.../par-xuid/<xuid>`,
+// `tracks/vies-par-xuid/<xuid>`, `.../duree-totale/par-xuid/<xuid>`).
+const marqueurParXUID = "par-xuid/"
+
+// groupeParXUID rend la cle de GROUPE d'une mesure ventilee par joueur (tout ce qui precede
+// l'identifiant), et false si la mesure n'est pas ventilee.
+func groupeParXUID(k string) (string, bool) {
+	i := strings.LastIndex(k, marqueurParXUID)
+	if i < 0 {
+		return "", false
+	}
+	return k[:i+len(marqueurParXUID)], true
+}
+
+// groupesConserves : les groupes par joueur dont la SOMME sur tous les joueurs est la meme des
+// deux cotes. Une baisse chez un joueur y est une REATTRIBUTION — ce que le lien direct
+// corps -> joueur (lot E2, 2026-09-08) fait a raison quand il rend a l'un ce que le pont par
+// morts attribuait a l'autre (ramassages : 114, 402, 332... identiques ; trajets en vehicule :
+// 74 et 28 995 frames conserves) — pas une perte. Une somme qui baisse reste une perte a
+// instruire ; une somme qui monte, un gain.
+func groupesConserves(a, b map[string]Mesure) map[string]bool {
+	sa, sb := map[string]float64{}, map[string]float64{}
+	presents := map[string]bool{}
+	for k, m := range a {
+		if g, ok := groupeParXUID(k); ok && m.EstNum {
+			sa[g] += m.Num
+			presents[g] = true
+		}
+	}
+	for k, m := range b {
+		if g, ok := groupeParXUID(k); ok && m.EstNum {
+			sb[g] += m.Num
+			presents[g] = true
+		}
+	}
+	out := map[string]bool{}
+	for g := range presents {
+		if proches(sa[g], sb[g]) {
+			out[g] = true
+		}
+	}
+	return out
+}
+
+// estReattribution dit si la mesure `k` appartient a un groupe par joueur conserve.
+func estReattribution(k string, conserves map[string]bool) bool {
+	g, ok := groupeParXUID(k)
+	return ok && conserves[g]
 }
 
 // prefixesMethode : les compteurs `coverage.bridge.namedBy*` disent PAR QUELLE VOIE une vie a ete
@@ -57,7 +113,13 @@ var compteursDEchec = map[string]bool{
 // fermetures n'ont plus rien a fermer et ces deux compteurs tombent a ZERO. Ce n'est pas une
 // richesse perdue — c'est une voie de repli devenue inutile, et `livesNamed` / `unnamedLives` le
 // disent a leur place.
-var prefixesMethode = []string{"coverage.bridge.namedBy", "coverage.bridge.closedBy"}
+//
+// `coverage.flagCarries.homeBy*` / `assignedBy*` (2026-09-08, lot E2-bis) : par quelle voie un
+// retour ou une attribution de drapeau a ete tranche (objet, marqueur, jeu...) — meme famille.
+var prefixesMethode = []string{
+	"coverage.bridge.namedBy", "coverage.bridge.closedBy",
+	"coverage.flagCarries.homeBy", "coverage.flagCarries.assignedBy",
+}
 
 // estCompteurDeMethode dit si la mesure `k` est un compteur de voie de nommage.
 func estCompteurDeMethode(k string) bool {
