@@ -312,32 +312,41 @@ function ReplayPage() {
               }}
               feedEntries={feedEntries}
               media={model.media}
+              /* LES TROIS SURCOUCHES SE POSENT SUR LA CARTE, PAS SUR LE LECTEUR (2026-09-08,
+                 retour utilisateur : « message et image défaite/victoire centrer sur la hauteur
+                 de la map, là ça prend la hauteur du lecteur en compte, ce qui n'est pas
+                 correct »).
+
+                 Elles étaient montées ICI, sœurs de `ReplayCanvas` : leur `inset-0` couvrait
+                 alors la bannière de score, la carte ET la barre de lecture, et le bloc
+                 « DÉFAITE » tombait 106 px sous le centre du terrain. Les envelopper d'un
+                 `relative` à ce niveau ne suffisait pas — `ReplayCanvas` rend LUI AUSSI la barre
+                 de lecture. Elles descendent donc dans le conteneur de la toile, seul endroit
+                 dont les bornes sont celles de la carte (cf. `ReplayCanvasProps.mapOverlays`).
+
+                 LES TROIS, ET PAS LE SEUL ÉCRAN DE FIN : le message inter-manche partage son
+                 bloc et ses styles (`replayOverlayStyles.ts`) — n'en déplacer qu'un les aurait
+                 posés à deux hauteurs différentes ; et le compte à rebours de la bombe, qui se
+                 veut « en haut du terrain », se posait en haut du LECTEUR. */
+              mapOverlays={
+                <>
+                  <ReplayVictoryOverlay
+                    doc={data}
+                    scoreboard={scoreboard}
+                    xuidMeta={xuidMeta}
+                    outcomeCode={matchView?.header.outcome_code}
+                    viewpoint={viewpoint.xuid}
+                    finalScore={model.score}
+                    playWindow={playWindow}
+                    frame={frame}
+                    titleSlug={params.titleSlug}
+                    locale={locale}
+                  />
+                  <ReplayRoundBreakOverlay doc={data} frame={frame} locale={locale} />
+                  <ReplayBombCountdownOverlay doc={data} frame={frame} locale={locale} />
+                </>
+              }
             />
-            {/* L'ÉCRAN DE FIN DE MATCH, dérivé de la position de lecture (D-B5) : il apparaît
-                quand la lecture atteint la borne de fin et disparaît dès qu'on remonte la
-                frise. Il laisse passer les clics — la frise est dessous. */}
-            <ReplayVictoryOverlay
-              doc={data}
-              scoreboard={scoreboard}
-              xuidMeta={xuidMeta}
-              outcomeCode={matchView?.header.outcome_code}
-              viewpoint={viewpoint.xuid}
-              finalScore={model.score}
-              playWindow={playWindow}
-              frame={frame}
-              titleSlug={params.titleSlug}
-              locale={locale}
-            />
-            {/* LE MESSAGE INTER-MANCHE (Oddball et modes multi-manche), dérivé de la position
-                de lecture comme l'écran de fin : « Manche N terminée » paraît brièvement à la
-                bascule d'une manche à la suivante et laisse passer les clics. Sur un mode à
-                manche unique, il ne se rend jamais. */}
-            <ReplayRoundBreakOverlay doc={data} frame={frame} locale={locale} />
-            {/* LE COMPTE À REBOURS DE LA BOMBE (Assaut, schéma 29), dérivé de la position de
-                lecture comme le message inter-manche : « Bombe armée — 4,9 s » et sa barre de
-                mèche, en haut du terrain, pendant les ~5 s qui précèdent l'explosion. Hors des
-                variantes couvertes (One Bomb comprise), le calque est vide : rien ne se rend. */}
-            <ReplayBombCountdownOverlay doc={data} frame={frame} locale={locale} />
           </section>
           {/* FICHES AU-DESSUS, FIL EN DESSOUS, même largeur (demande du 2026-08-24) : un
               rejeu se lit en balayant du terrain vers les joueurs, puis vers l'événement.

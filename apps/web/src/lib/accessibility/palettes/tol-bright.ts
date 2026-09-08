@@ -77,6 +77,9 @@ export const tolBrightPalette: Palette = {
   'divergent-neutral': NEUTRAL_GREY,
   'divergent-neg':     TOL_RED,
 
+  // ── Objectif sans camp ─────────────────────────────────────────────────────
+  'zone-neutral':      NEUTRAL_GREY,
+
   // ── Statuts UI ─────────────────────────────────────────────────────────────
   'success':     TOL_GREEN,  // vert UI conventionnel (statut, pas binaire)
   'warning':     TOL_YELLOW,

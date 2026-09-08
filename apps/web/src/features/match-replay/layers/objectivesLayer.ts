@@ -127,13 +127,28 @@ function unit2D(x: number | undefined, y: number | undefined): XY {
 export interface ObjectivesStyle {
   /** Couleur d'un index d'équipe ; -1 (neutre) rend l'encre neutre du thème. */
   colorOfTeam: (team: number) => string
+  /**
+   * LE LISERÉ D'UN OBJECTIF SANS CAMP (2026-09-08) — l'encre du FOND, posée sous le contour.
+   *
+   * Il n'existe QUE pour `team === -1`, et c'est tout son sens : un objectif tenu porte la
+   * couleur de son camp, qui le détache déjà ; un objectif neutre est gris, et un gris posé sur
+   * un fond de carte photographique se dissout selon la zone. Le liseré à l'encre du fond lui
+   * rend un bord franc sans lui inventer de couleur — la même technique que le glyphe de drapeau
+   * et les marques (`useReplayInks.mark.outline`), et la seule qui marche dans les DEUX thèmes.
+   */
+  neutralOutline: string
 }
+
+/** `team` d'un objectif que PERSONNE ne tient — arbitré côté serveur. */
+const TEAM_NONE = -1
 
 // Réglages du calque : assez francs pour se lire sous les trajectoires, assez bas pour
 // ne pas concurrencer les joueurs (mêmes ordres de grandeur que les callouts).
 const ZONE_FILL_ALPHA = 0.09
 const ZONE_STROKE_ALPHA = 0.6
 const ZONE_STROKE_WIDTH = 1.5
+/** Débord du liseré d'un objectif SANS CAMP, de chaque côté du contour (cf. ObjectivesStyle). */
+const ZONE_RIM_PAD = 1.2
 const MARKER_SIZE = 5.5
 const MARKER_RING = 8
 const MARKER_ALPHA = 0.9
@@ -153,13 +168,14 @@ export function drawObjectivesLayer(
 
   for (const e of elements) {
     const color = style.colorOfTeam(e.team)
-    if (e.kind === 'zone') drawZone(ctx, e, px, scale, color)
+    const rim = e.team === TEAM_NONE ? style.neutralOutline : null
+    if (e.kind === 'zone') drawZone(ctx, e, px, scale, color, rim)
   }
   // Les marqueurs par-dessus les zones : une livraison ponctuelle vit parfois DANS son
   // cylindre (mesuré sur Catalyst) et doit rester visible.
   for (const e of elements) {
     if (e.kind !== 'marker') continue
-    drawMarker(ctx, e, px, style.colorOfTeam(e.team))
+    drawMarker(ctx, e, px, style.colorOfTeam(e.team), e.team === TEAM_NONE ? style.neutralOutline : null)
   }
   ctx.globalAlpha = 1
 }
@@ -171,11 +187,20 @@ function drawZone(
   px: (p: XY) => XY,
   scale: number,
   color: string,
+  rim: string | null,
 ): void {
   traceZonePath(ctx, e, px, scale)
   ctx.globalAlpha = ZONE_FILL_ALPHA
   ctx.fillStyle = color
   ctx.fill()
+  // LE LISERÉ D'ABORD, PLUS ÉPAIS, ET LE CONTOUR PAR-DESSUS : c'est ce qui lui laisse un bord
+  // franc sur un fond clair comme sur un fond sombre. L'ordre inverse le mangerait.
+  if (rim !== null) {
+    ctx.globalAlpha = ZONE_STROKE_ALPHA
+    ctx.strokeStyle = rim
+    ctx.lineWidth = ZONE_STROKE_WIDTH + 2 * ZONE_RIM_PAD
+    ctx.stroke()
+  }
   ctx.globalAlpha = ZONE_STROKE_ALPHA
   ctx.strokeStyle = color
   ctx.lineWidth = ZONE_STROKE_WIDTH
@@ -192,6 +217,7 @@ function drawMarker(
   e: ObjectiveElementReady,
   px: (p: XY) => XY,
   color: string,
+  rim: string | null,
 ): void {
   const c = px(e)
   ctx.globalAlpha = MARKER_ALPHA
@@ -203,6 +229,13 @@ function drawMarker(
   ctx.lineTo(c.x, c.y + MARKER_SIZE)
   ctx.lineTo(c.x - MARKER_SIZE, c.y)
   ctx.closePath()
+  // Même geste que la zone : le liseré sous la silhouette, jamais par-dessus (cf. drawZone).
+  if (rim !== null) {
+    ctx.strokeStyle = rim
+    ctx.lineWidth = 2 * ZONE_RIM_PAD
+    ctx.stroke()
+    ctx.strokeStyle = color
+  }
   ctx.fill()
   if (e.role.endsWith('_delivery')) {
     ctx.lineWidth = 1.5

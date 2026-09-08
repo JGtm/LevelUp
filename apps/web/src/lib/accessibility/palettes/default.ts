@@ -34,6 +34,14 @@ export const defaultPalette: Palette = {
   'divergent-neutral': '#60A5FA',
   'divergent-neg':     '#EF4444', // red-500
 
+  // ── Objectif sans camp ─────────────────────────────────────────────────────
+  // Gris (gray-400). C'EST LE SEUL POSTE OÙ CETTE PALETTE NE SUIT PAS `divergent-neutral`, et
+  // c'est délibéré : le bleu ci-dessus est bon pour une jauge signée, il est mauvais sur une
+  // CARTE où « allié » se dit déjà en bleu (retour utilisateur du 2026-09-08). Les trois
+  // palettes daltoniennes rendaient déjà `divergent-neutral` gris — elles n'avaient donc pas le
+  // défaut, et donnent ici la même valeur qu'elles utilisent déjà pour « pas de direction ».
+  'zone-neutral': '#9CA3AF',
+
   // ── Statuts UI ─────────────────────────────────────────────────────────────
   'success':     '#10B981',
   'warning':     '#F59E0B',

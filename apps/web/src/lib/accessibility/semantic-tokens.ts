@@ -28,6 +28,20 @@ export type SemanticToken =
   | 'divergent-neutral'
   | 'divergent-neg'
 
+  // ── Objectif SANS CAMP (1) ─────────────────────────────────────────────────
+  //
+  // L'encre d'une zone, d'une base ou d'un socle que PERSONNE ne tient. Elle existe à part de
+  // `divergent-neutral` pour une raison mesurable (retour utilisateur du 2026-09-08 : « sur les
+  // bases, quand elles sont neutres, on a toujours un bleu neutre ») : sur la palette PAR DÉFAUT
+  // `divergent-neutral` vaut `#60A5FA`, un BLEU — et sur une carte où « allié » se dit déjà en
+  // bleu, un neutre bleu ne se distingue pas. Les palettes daltoniennes, elles, le rendent déjà
+  // gris ; le défaut n'existait donc que sur la palette par défaut, ce qui explique qu'il ait
+  // survécu aux relectures.
+  //
+  // ACHROMATIQUE DANS TOUTES LES PALETTES, ET C'EST SA DÉFINITION : « aucun camp » n'a pas de
+  // direction à porter. Aucune palette n'a de raison de lui donner une teinte.
+  | 'zone-neutral'
+
   // ── Statuts UI (4) ─────────────────────────────────────────────────────────
   | 'success'
   | 'warning'
@@ -168,6 +182,7 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'outcome-win', 'outcome-loss', 'outcome-draw', 'outcome-dnf',
   'perf-tier-1', 'perf-tier-2', 'perf-tier-3', 'perf-tier-4', 'perf-tier-5',
   'divergent-pos', 'divergent-neutral', 'divergent-neg',
+  'zone-neutral',
   'success', 'warning', 'info', 'destructive',
   'compare-a', 'compare-b', 'compare-c',
   'squad-player-1', 'squad-player-2', 'squad-player-3', 'squad-player-4',
