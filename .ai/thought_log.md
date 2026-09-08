@@ -1,3 +1,60 @@
+## [2026-09-08] Lot P2 — Registre d'identité des joueurs (vague 3, lot P du plan v2) — Complété
+
+**Décision technique principale.** « L'INDEX EST L'INDEX » (décision utilisateur du 2026-09-07,
+plan v2 §0.7, amendée par D11) devient du code : `BuildIdentityRegistry(in IdentityInput)
+IdentityRegistry`, fonction PURE de `internal/analysis/replay` — aucune I/O, aucune base, aucun
+`filmsource.Film` — appelée par `replaybuild` À LA CUISSON **et** par `sync/killcollector` AU
+SYNC. L'amendement du §0.7 est porté au premier commit, comme le prescrivait P1.
+
+L'ordre des étapes est la doctrine et il est écrit dans le code : (1) les liens DIRECTS
+(`PlayerIndexTable` index ↔ xuid, `BotID` ↔ `bid(N.0)`) posés d'abord et à 100 % ; (2) le pont par
+morts en REPLI pour le seul lien que le film ne donne pas (slot de bipède ↔ joueur — le trou E2 de
+l'inventaire) et en VÉRIFICATION (désaccord d'index → `slog.Warn` + compteur, jamais un nom
+inventé) ; (3) l'ÉLIMINATION sur le roster quand il ne reste qu'une affectation possible ; (4) ce
+qui résiste est publié « non résolu » et COMPTÉ.
+
+**Ce que le lot ferme, avec la mesure de départ.** R1 : les actions d'objectif ne sont plus JETÉES
+quand leur auteur n'a pas de trajectoire publiée (`3372e7eb`, 35 sur 76 supprimées) — une lecture
+vraie du film ne se jette pas parce qu'un AUTRE calque est incomplet, et le client sait déjà s'en
+abstenir au rendu. R2 : un slot dont aucune vie n'est nommée, quand il ne reste qu'un joueur du
+roster sans aucune vie, est nommé par élimination (`d9781168`, 19 vies) — `deduced = true`, `cause`
+INCHANGÉE : une déduction ajoute une présence, elle ne fabrique jamais une mort (P0 de la ronde 2
+du 07/09). R4, reporté par le lot M4 : `RoundIdentity.CompletedByElimination` par manche, contrôlée
+par le RÉSIDU de la feuille, plus `Lines` enfin passé à `buildPlayerScores` en multi-manche, plus le
+même chaînage dans `pontParManche.identite()` — sans quoi les ACTIONS et les COMPTEURS auraient dit
+deux choses du même match.
+
+**Ce qui change structurellement.** `OwnerReport` devient un champ PRIVÉ du registre ; les quinze
+calques et les deux lecteurs hors rejeu passent par des accesseurs qui portent DÉJÀ leurs gardes
+(`PontEpure` retire les slots ambigus, `XUIDAt` préfère la vie qui couvre l'instant). Un lecteur ne
+peut plus oublier une garde : il n'a plus de quoi l'enfreindre. `killpos_bridge.go` est supprimé
+(règle 7). Garde-rail `archlint/no_identity_bridge_outside_registry_test.go`, allowlist DATÉE à UNE
+entrée. Effet de bord révélateur : le ratchet `no_player_index_identity_test.go` a refusé mon champ
+`IdentityCoverage.PlayerIndex` — renommé `FilmIndex`, le garde-rail existant a fait son travail
+dans le lot même.
+
+**Résultats observés.** Schéma 49 → 50 (le 49 était pris par M1b) avec chronique, cliquet de champs
+56 → 57, goldens régénérés : UN SEUL écart, « schema 49 » → « schema 50 » sur
+`assembly_000d5950.golden`, aucun autre octet — témoin de neutralité (ce film n'a ni slot muet
+unique ni action sans piste). Journal de cuisson du golden : 8 liens directs, 93 déduits, 12 non
+résolus. Sept mutations jouées ROUGE puis restaurées VERT (élimination retirée, « exactement un »
+relâché des deux côtés, contrôle du résidu retiré, `.own.` ajouté dans un calque, `RosterXUIDs`
+retiré de la couture du collecteur). `IsolationDecoderRev` bumpée : `match_lives` et
+`match_death_context` doivent être réécrits par `levelup backfill-killsource` (append-only, ADR
+0026 ; le journal des morts n'est PAS touché). Gates : `gofmt` vide, build, vet, 53 paquets `ok`,
+intégration `-p 1` 11 paquets `ok`, parité `replayview`, `openapi-gen -check`, lint
+`--new-from-merge-base` **0 issues**, web typecheck + vitest 658 fichiers / 7 024 tests.
+
+**Conclusion / prochaine étape.** Les témoins chiffrés (`3372e7eb` 35 → 0, `d9781168` 19 → 0,
+`51ebbc0f` écart 9 → 0, `fb1a1a72` sans perte, `bf15f7ab` identique hors numéro) et
+`make replay-corpus-gate` sont `[!]` — **à jouer par le superviseur** : ce worktree n'a aucun film,
+c'est une dépendance externe et non un report de commodité. Commandes exactes et chiffres attendus
+au §7 du journal `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`. `64e8adfa` reste à 16 d'écart et il faut le
+dire : 5 couples sans unicité, cas général qui appartient au lien direct index ↔ slot de statborg
+que le film ne porte pas (plan décodeur d'après v7.5.0). Suite : P3 (registre des objets
+d'objectif), qui n'ouvre qu'après la clôture de P2. Branche `feat/v2-p2-registre-joueurs` poussée,
+NON fusionnée.
+
 ## [2026-09-08] Lot M1b — corriger le décalage d'horloge du lien « voir dans le rejeu » — Complete
 
 **Décision technique principale.** Reprise de la découverte non traitée du lot M1

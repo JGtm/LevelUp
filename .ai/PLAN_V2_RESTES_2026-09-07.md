@@ -145,10 +145,18 @@ mesuré par la part de liens directs dans la provenance, sous les garde-rails ex
       l'artefact, pour que l'UI puisse l'afficher et que le gate corpus refuse toute régression d'un lien direct vers
       un lien déduit ; (h) le MULTI-TITRE — types d'entités canoniques (`internal/games/canonical`) pour qu'un autre
       titre puisse alimenter le même registre par son adapter.
-- [ ] P2 — Registre des joueurs (= R1 + R2) : table d'identité unique (index ↔ xuid ↔ slots de statborg et de bipède
-      dans le temps), publiée (`identity`), source et couverture par lien, lien direct à 100 %, pont par morts en
-      repli et vérification, élimination sur le roster, rien de jeté. Migration des lecteurs joueurs (actions,
-      portages, épisodes, zones, fermetures, usage de session) vers la table ; garde-rail contre tout pont maison.
+- [x] P2 — Registre des joueurs (= R1 + R2) — **CLOS le 2026-09-08** : `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`
+      (branche `feat/v2-p2-registre-joueurs`, worktree `LevelUp-wt-p2`, commits `333c7f3e9` `d9548a5dc`
+      `58da800a1` `871cfaa51`). `BuildIdentityRegistry` : fonction PURE de `internal/analysis/replay`, appelée
+      par `replaybuild` ET par `sync/killcollector` (amendement §0.7 / D11 porté au premier commit). Section
+      `identity` publiée (players / bipedSlots bornés en frames / statborgSlots par manche + couverture par
+      provenance), types canoniques dans `internal/games/canonical/film_identity.go` (enums fermées, aucun slug).
+      Liens DIRECTS à 100 % (`PlayerIndexTable`, `bid(N.0)`), pont par morts en repli ET vérification,
+      élimination sur le roster, rien de jeté. 18 lecteurs migrés + les 2 hors rejeu ; `killpos_bridge.go`
+      supprimé ; garde-rail `archlint/no_identity_bridge_outside_registry_test.go` (allowlist datée, UNE entrée),
+      mutation jouée. Bump 49 → 50 + chronique + cliquet 56 → 57 + goldens (un seul écart : le numéro de schéma).
+      `IsolationDecoderRev` bumpée → `levelup backfill-killsource`. **Témoins chiffrés et gate corpus `[!]` : à
+      jouer par le superviseur** (aucun film dans le worktree) — commandes et chiffres attendus au §7 du journal.
 - [ ] P3 — Registre des objets d'objectif (= R3) : chaque drapeau/crâne/bombe/zone identifié par son objet du film,
       avec équipe propriétaire et socle tels que le film ou le catalogue les donnent (jamais « le socle le plus
       proche » quand l'objet est connu), cycle de vie par manche (§0.4 : replacement sans événement daté → fermeture
@@ -163,7 +171,7 @@ mesuré par la part de liens directs dans la provenance, sous les garde-rails ex
 Les lots R1, R2, R3 ci-dessous restent la description détaillée des faits que P2 et P3 doivent fermer ; ils ne
 s'exécutent pas séparément si P est retenu. S'il est différé, R1 → R3 s'exécutent tels quels.
 
-### R1 — Actions d'objectif écartées par le pont statborg (bump 49 ; ⊂ P2)
+### R1 — Actions d'objectif écartées par le pont statborg — [x] CLOS 2026-09-08 DANS P2 (bump 50, le 49 était pris par M1b)
 Fait : `3372e7eb`, 35 actions d'objectif sur 76 restent `unpublished` ; elles appartiennent aux 2 joueurs à 0 mort
 (roster désormais 8/8 grâce à `Options.RosterXUIDs`, mais le pont des actions exige `deathInstantMin = 3`).
 Principe (user) : UNE ACTION EST UNE ACTION, que son auteur meure ou non. Le seuil de morts n'est pas une propriété
@@ -175,42 +183,51 @@ l'action doit toujours être publiée (sous l'identité résolue, sinon « non r
 doit venir d'autres voies quand les morts manquent (élimination sur le roster, table d'index joueur du film).
 C'est la même racine que le premier lot du chantier (ports de drapeau des porteurs à moins de trois morts) : R1 est
 le dernier lecteur encore cadencé sur le pont par morts pour son identité.
-- [ ] Mesure : sur les 7 témoins du manifeste `config/replay_corpus.toml` + `3372e7eb` + `c0a82e88`, relever
+- [~] Mesure : sur les 7 témoins du manifeste `config/replay_corpus.toml` + `3372e7eb` + `c0a82e88`, relever
       `coverage.objectives.{available,attached,unpublished,noSlot}` ; identifier la fonction qui pose le seuil (grep
       `deathInstantMin`) et son appelant dans `replaybuild` (`identifiedEvents`, `pontParManche`).
-- [ ] Inventaire des identifiants (avant toute conception, journal) : pour chaque flux du film consommé par le rejeu
+- [~] Inventaire des identifiants (avant toute conception, journal) : pour chaque flux du film consommé par le rejeu
       (actions d'objectif/statborg, positions de bipède, morts, ramassages, véhicules, équipement), QUELLE clé il
       porte (index de joueur, slot de statborg, slot de bipède, xuid) et QUELS liens directs le film fournit entre
       ces clés (pied de film, `PlayerIndexTable`, `bid(N.0)`, `ManagedPropertyFilmIndex`, `ti=5`, en-têtes de roster :
       `.ai/V7.5/README.md` et notes de rétro-ingénierie). Tableau clé → source directe → lien manquant.
-- [ ] Conception (doctrine §0.7) : une table d'identité unique par film dans `replaybuild`, publiée dans l'artefact
+- [x] Conception (doctrine §0.7) : une table d'identité unique par film dans `replaybuild`, publiée dans l'artefact
       (section `identity`, servie jusqu'au contrat, avec source et couverture par lien) ; les actions sont
       nommées par le lien DIRECT index ↔ xuid à 100 % ; le pont par morts (`deathInstantMin`) ne sert plus qu'aux
       liens sans source directe, et vérifie les liens directs (désaccord → `slog.Warn` + compteur, jamais un nom
       inventé) ; un index sans lien direct ni repli se résout par élimination sur le roster (`resolvedByElimination`)
       ou reste « non résolu » ET PUBLIÉ (l'action n'est jamais jetée). Garde-rail : test qui interdit à un calque de
       reconstruire un pont (allowlist datée des seuls producteurs de la table).
-- [ ] Tests par mutation : élimination retirée → rouge ; deux candidats pour un index → reste non publié (rouge si on
+- [x] Tests par mutation : élimination retirée → rouge ; deux candidats pour un index → reste non publié (rouge si on
       en choisit un) ; film mono-manche entièrement nommé → identique hors numéro.
-- [ ] Témoins : `3372e7eb` unpublished 35 → 0 (ou résidu expliqué joueur par joueur), actions par joueur = feuille
+- [!] Témoins : `3372e7eb` unpublished 35 → 0 (ou résidu expliqué joueur par joueur), actions par joueur = feuille
       (`flag_captures`, `flag_steals`, zones) ; `c0a82e88` `noSlot` 69 → ? (chaque baisse = une action nommée, vérifiée
       par la feuille) ; `fb1a1a72` (3 manches) sans perte ; `bf15f7ab` (Slayer) identique hors numéro.
-- [ ] Bump 49 + chronique + ratchet + golden ; gates ; revue ; journal ; registre (entrée `3372e7eb` fermée).
+- [x] Bump 49 + chronique + ratchet + golden ; gates ; revue ; journal ; registre (entrée `3372e7eb` fermée).
 
-### R2 — Vies sur un slot que nulle mort ne termine (même bump 49 ; ⊂ P2)
+### R2 — Vies sur un slot que nulle mort ne termine — [x] CLOS 2026-09-08 DANS P2 (bump 50)
 Fait : `d9781168` (Oddball, à manches) : 19 vies sans nom, toutes sur UN slot sans aucune vie nommée = un joueur qui
 ne meurt jamais de tout le match (doctrine §0.4 : les vies se terminent aux frontières de manche sans mort).
-- [ ] Vérification (1 h, avant tout code) : croiser le slot sans nom avec la feuille : le joueur à 0 mort est-il
+- [~] Vérification (1 h, avant tout code) : croiser le slot sans nom avec la feuille : le joueur à 0 mort est-il
       unique ? Ses frags/assistances de la feuille se retrouvent-ils sur les kills attribués à ce slot (calque des
       fermetures) ? Résultat au journal.
-- [ ] Sources d'identité sans mort, par ordre de coût : (a) élimination sur le roster (un seul xuid sans slot, un seul
+- [x] Sources d'identité sans mort, par ordre de coût : (a) élimination sur le roster (un seul xuid sans slot, un seul
       slot sans nom) ; (b) `PlayerIndexTable` / `ManagedPropertyFilmIndex` / `ti=5` (jamais branchés : voir
       `.ai/V7.5/README.md` et les notes de rétro-ingénierie ; diagnostic seul si cela exige de toucher `filmdec`).
-- [ ] Implémentation dans la passe de nommage (`unnamed_lives.go`) : nouvelle cause `byElimination` comptée et
+- [x] Implémentation dans la passe de nommage (`unnamed_lives.go`) : nouvelle cause `byElimination` comptée et
       journalisée ; jamais si deux candidats ; les vies ainsi nommées portent `deduced = true` (pas une mort).
-- [ ] Tests par mutation ; témoins : `d9781168` 19 → 0 (ou résidu expliqué), temps de portage par équipe ne baisse
+- [!] Tests par mutation ; témoins : `d9781168` 19 → 0 (ou résidu expliqué), temps de portage par équipe ne baisse
       pas (172,5 / 158,8 s minimum ; feuille 191 / 196), `51ebbc0f` 8 → ?, un film entièrement nommé identique.
-- [ ] Gates ; revue ; journal ; registre.
+- [x] Gates ; revue ; journal ; registre.
+
+**Précisions de statut (lot P2, 2026-09-08 — `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`)** :
+`[~]` = couvert ailleurs — la MESURE de R1 et l'INVENTAIRE des identifiants ont été rendus par le
+lot P1 (`.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`, table des 9 entités et décompte des
+liens) ; la VÉRIFICATION de R2 (le joueur à 0 mort est-il unique ?) est rendue par le diagnostic
+R4 (`RESTES_R4_R5_2026-09-08.md` §2, 8 couples perdus sur 3 films, 0 ou 1 mort dans les 8 cas).
+`[!]` = non traité ici — les TÉMOINS CHIFFRÉS exigent des films, et le worktree `LevelUp-wt-p2`
+n'en a aucun : ils sont à jouer par le superviseur, commandes exactes et chiffres attendus au §7
+du journal de P2. C'est une dépendance externe, pas un report de commodité.
 
 ### R3 — Reset des objets aux frontières de manche (même bump 49 ; ⊂ P3)
 Fait : `64e8adfa` (CTF 2 manches) : `closedOverlaps = 10`, états `enJeu`/`sol` périmés (un `flag_returns` invisible
@@ -248,7 +265,12 @@ Fait : après le lot pont (schéma 48), écart cumulé K/D/A 69 (avant 94), les 
       est **gardé MONO-MANCHE** ; `buildPlayerScores` (`score_timeline.go:298`) ne passe de toute façon jamais
       `ScoreInput.Lines` au chemin multi-manche. Généralité mesurée : 8 couples (xuid, manche) perdus sur 3 films,
       et dans les 8 cas le joueur meurt 0 ou 1 fois dans la manche perdue — aucun contre-exemple.
-- [!] **Correctif : REPORTÉ AU LOT SUIVANT** — lot de diagnostic (aucun fichier de code modifié), et le bump 49 est
+- [x] **Correctif : LIVRÉ PAR P2 le 2026-09-08** (l'énoncé ci-dessous est celui du report, tenu mot pour mot :
+      `CompletedByElimination` par manche contrôlée par le résidu de la feuille, `in.Lines` passé à
+      `buildPlayerScores`, même complétion chaînée dans `pontParManche.identite()` ; les cinq tests par mutation
+      écrits, trois mutations jouées ROUGE. Bump 50, le 49 étant pris par M1b. Détail :
+      `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`). Énoncé d'origine :
+- [~] **Correctif : REPORTÉ AU LOT SUIVANT** — lot de diagnostic (aucun fichier de code modifié), et le bump 49 est
       tenu par un lot en vol. La forme est écrite et chiffrée (journal §4) : `RoundIdentity.CompletedByElimination`
       (par manche, exactement un slot émetteur non nommé et exactement un xuid libre → appariement forcé, contrôlé
       par le résidu de la feuille), `in.Lines` passé à `buildPlayerScores`, même complétion chaînée dans
@@ -375,6 +397,20 @@ est faux.
 - **[R7, 2026-09-07] Chemin périmé au registre** : l'entrée D3 citait le test dans
   `pont_muet_test.go` alors que PONT-R2 l'avait déplacé dans `pont_marge_test.go`. Corrigé en
   fermant l'entrée ; aucune autre occurrence.
+
+- **[P2, 2026-09-08] La jointure web des bots reste par NOM NU.** `roster[].bid` est publié (Go +
+  contrat + `generated.ts`), mais `apps/web/src/lib/replay/rosterLogic.ts:100,122-128` joint
+  toujours sur `botKey(entry.name)`. Le brief de P2 fige le web. NON TRAITÉ — lot web dédié, après
+  la re-cuisson du parc au schéma 50 (R9).
+- **[P2, 2026-09-08] Les vies nommées par FERMETURE ne sont pas marquées « déduites ».**
+  `unnamed.deduced` ne reçoit que le nommage final et, depuis P2, l'élimination — une fermeture est
+  pourtant une déduction du même ordre, et les lecteurs qui prouvent une ABSENCE ne s'en abstiennent
+  pas. Préexistant, non aggravé. NON TRAITÉ — reprise en P5.
+- **[P2, 2026-09-08] `identity_registry.go` est à 471 L** (seuil 500). Une sixième famille de liens
+  (P3, P4) le fera franchir le seuil. NON TRAITÉ — à découper en P3.
+- **[P2, 2026-09-08] `coverage.objectives.unpublished` devient structurellement nul** : plus rien
+  n'est rejeté par ce calque. Le champ reste au contrat pour les tirs et les grenades. NON TRAITÉ —
+  revue du contrat de couverture en P5.
 
 ## 4. Reprise de session
 
