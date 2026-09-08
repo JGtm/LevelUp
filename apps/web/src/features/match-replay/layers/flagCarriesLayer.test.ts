@@ -498,3 +498,52 @@ describe('FLAG_STATES', () => {
     expect([...FLAG_STATES].sort()).toEqual(['carried', 'carried_open', 'dropped', 'home'])
   })
 })
+
+describe('ancrage du glyphe — le décalage ne vaut que pour un PORTEUR (2026-09-08)', () => {
+  /**
+   * Retours utilisateur du 2026-09-08 : « pourquoi le cercle n'a pas le pied du drapeau comme
+   * centre ? », puis « même sur le point de livraison c'est pareil ».
+   *
+   * `FLAG_OFFSET_X/Y` était appliqué à TOUS les états, alors que toutes les décorations posées
+   * au même endroit — anneau de zone de retour, marqueur de livraison, marqueur d'apparition —
+   * ancrent sur la position brute. Le glyphe était le seul objet décalé du calque, et il l'était
+   * partout. La hampe part du PIED, et tous les `moveTo` d'un même glyphe partagent son
+   * abscisse ; le glyphe VIVANT étant peint EN DERNIER (la base atténuée le précède quand le
+   * drapeau n'y est pas), c'est le DERNIER `moveTo` qui le désigne.
+   */
+  function abscisseDeLaHampe(carry: ReplayFlagCarryReady, frame: number): number {
+    const { ctx, calls } = mockCtx()
+    drawFlagCarries(ctx, layerWith(null), [carry], VIEW, frame)
+    const moveTos = calls.filter((c) => c.method === 'moveTo')
+    expect(moveTos.length).toBeGreaterThan(0)
+    return moveTos[moveTos.length - 1].args[0] as number
+  }
+
+  it('drapeau AU SOL : le pied tombe sur la position projetée exacte', () => {
+    // `dropped` de FLAG_0 : (5,5) monde, au centre d'une vue 0..10 — donc au centre du canvas.
+    const attendu = projeteX(5)
+    expect(abscisseDeLaHampe(FLAG_0, 25)).toBeCloseTo(attendu, 5)
+  })
+
+  it('drapeau À SA BASE : le pied tombe lui aussi sur la position exacte', () => {
+    expect(abscisseDeLaHampe(FLAG_0, 35)).toBeCloseTo(projeteX(1), 5)
+  })
+
+  it('drapeau PORTÉ : le décalage subsiste — il évite le pion du porteur', () => {
+    const layer = layerWith({ x: 5, y: 5 })
+    const { ctx, calls } = mockCtx()
+    drawFlagCarries(ctx, layer, [FLAG_0], VIEW, 15)
+    // Le premier glyphe dessiné est la BASE atténuée (le drapeau n'y est pas), non décalée ;
+    // le second est le glyphe VIVANT, porté, donc décalé.
+    const moveTos = calls.filter((c) => c.method === 'moveTo')
+    expect(moveTos.length).toBeGreaterThanOrEqual(2)
+    expect(moveTos[0].args[0] as number).toBeCloseTo(projeteX(1), 5)
+    expect(moveTos[moveTos.length - 1].args[0] as number).toBeCloseTo(projeteX(5) + 6, 5)
+  })
+})
+
+/** L'abscisse canvas d'une abscisse monde, dans VIEW — même projection que le calque. */
+function projeteX(xMonde: number): number {
+  const usable = VIEW.width - 2 * VIEW.pad
+  return VIEW.pad + ((xMonde - VIEW.bounds.minX) / (VIEW.bounds.maxX - VIEW.bounds.minX)) * usable
+}
