@@ -1,3 +1,64 @@
+## [2026-09-08] Lot E2-bis — les pertes du gate corpus, instruites une par une et corrigées — Complété
+
+**Décision technique principale : le corps d'un joueur est la paire `(slot, génération)`, pas le
+slot.** Le lot E2 avait mesuré sur cinq films « un seul record de création par slot, génération
+invariante à 1 » et en avait tiré la règle « dans un film, un slot de bipède est UN CORPS du début
+à la fin ». Le gate corpus l'a réfutée sur le sixième : `084a804d` (Fortitude Heavies, 24 joueurs,
+16 min) porte **379 records pour 256 slots**, dont **123 slots à deux records** — `gen=1` en tête
+de film, `gen=2` après la 11e minute, avec des index de participant différents. Le pool de handles
+reboucle dès que le film est assez long. Le refus `lectures_divergentes`, écrit par E2 pour ce
+jour-là, refusait alors 59 vies EN BLOC au lieu de départager deux corps. La règle livrée est une
+lecture, pas une déduction : un record ouvre un corps, ce corps tient le slot jusqu'au record
+suivant, une vie revient au corps que le slot portait à son début.
+
+**La méthode qui a produit le résultat : reproduire le gate en local avant d'écrire une ligne.**
+La racine de cuisson de base du gate P2 était polluée — la mesure I5 du lot E2 y avait cuit ses
+cinq films au code E2 (schéma 50), écrasant cinq des dix artefacts de base. Elle a été refaite
+entièrement, et le binaire de base vérifié : les cinq artefacts 49 survivants sont reproduits à
+l'octet. Les 78 lignes de perte du gate se reproduisent alors exactement en local, ce qui donne la
+boucle courte — cuire, diffuser, instruire, corriger, re-cuire — sans jamais repasser par le parc.
+
+**Résultats observés.** Treize lignes de perte instruites, toutes tranchées :
+
+- **Sept sont des RÉATTRIBUTIONS à total constant, prouvées par la somme.** Ramassages :
+  totaux identiques sur les sept films, part attribuée 460 → 540, 285 → 332, 129 → 174…
+  Véhicules sur `084a804d` : **74 trajets avant, 74 après, 28 995 frames avant, 28 995 après**,
+  `ridesNamed` 52 → 74. Pistes : totaux identiques, anonymes 19 → 0 et 3 → 0. L'hypothèse du brief
+  (« le trajet tombe dans un trou entre deux vies ») est donc réfutée par la mesure : rien ne tombe.
+- **Deux « pertes de vie de bot » sont des lectures FAUSSES que le film corrige.** Le relais
+  (`successions.go`) ne réclame que les pistes anonymes ; il avait nommé « bot » deux corps
+  d'humains qui n'ont jamais quitté le match (`bcb6d393` slot 536, `c75f33b8` slot 578), et en base
+  ces deux joueurs portaient des chaînes de vies IMPOSSIBLES (trois vies simultanées).
+- **Trois lignes acceptées, confirmées sur pièces** : le portage de crâne qui ne survit plus d'une
+  frame à la mort de son porteur (vérifié : cette vie se termine bien par une mort) ; le portage de
+  drapeau coupé à 6753 par une PRISE DATÉE nouvelle (total porté 4049 → 4228) ; la voie
+  `homeByObject` remplacée par le marqueur.
+- **Deux P0 réels, corrigés.** (1) `trackFrameWindows` lisait « une mort ferme cette vie » dans
+  « la vie porte un nom » — proxy exact tant que le fil des morts était la seule voie de nommage,
+  faux depuis que le film nomme TOUTES les vies à leur création : l'épisode de camo `[3105..3672]`
+  du slot 620 retombait à 16 frames. La cause de fin est dans le registre (`CauseVieMort`), il la
+  sert désormais (`TracesCloturesParMort`). (2) L'invariant « jamais son propre drapeau » se
+  repliait sur « l'autre drapeau, s'il est unique » — règle qui ne sait trancher que sur DEUX
+  socles ; `084a804d` en porte SIX, et quatre portages y sortaient non attribués. Le refus rejoue
+  désormais les mêmes trois règles sur les seuls socles adverses.
+
+Mesure finale sur les dix témoins : `084a804d` `non_resolu` **59 → 1** sur 353 vies,
+`unnamedLives` 80 → 0, `equipmentEpisodes` durée **rétablie à 3676** (base), `flagCarries.spans`
+26 → **29**, `unresolved` **0**. Neuf films sur dix sont bit à bit identiques entre HEAD E2 et
+E2-bis ; seul `64e8adfa` bouge en plus (`assignedByPlay` 4 → 8, zéro perte). Cinq mutations jouées
+rouges. Goldens inchangés, tous les gates verts (`gofmt`, `build`, `vet`, tests des 54 paquets,
+intégration, `openapi-gen -check`, `golangci-lint --new-from-merge-base` 0 issue).
+
+**Conclusion / prochaine étape.** Le contenu cuit change sous le schéma **50** inchangé (le lot P
+n'est pas fusionné). Reste au superviseur, sur le poste principal : le gate corpus complet sur le
+parc, `backfill-killsource` (l'`IsolationDecoderRev` du lot E2 n'a pas rebumpé) et la re-cuisson du
+parc. Quatre découvertes portées au registre, dont deux qui commandent un lot ultérieur :
+`attachEpisodeKills` crédite encore par le pont APLATI (faux sur un slot recyclé), et les corps de
+bot réels — ceux dont l'index est hors `PlayerIndexTable` — n'ont plus aucune voie de nommage
+directe. Branche `feat/v2-decodeur-e2`, poussée, **non fusionnée**.
+
+---
+
 ## [2026-09-08] P-décodeur E2 — le lien DIRECT corps ↔ joueur, intégré ; le pont par morts déclassé — Complété
 
 **Décision technique principale : « direct » se mesure sur le CORPS, pas sur la vie.** Le sondage
