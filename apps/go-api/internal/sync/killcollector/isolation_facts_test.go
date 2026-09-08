@@ -65,20 +65,13 @@ func TestProjeterFaitsDIsolement_EchecDEcriture_NEstPasBloquant(t *testing.T) {
 
 // materiauAvecUneVie : un matériau minimal portant UNE vie nommée.
 //
-// LE PONT EST LE VRAI (`ResolveSlotXUID`) : une trajectoire de slot, une mort du fil qui la
-// clôt, une table d'index. Fabriquer un `OwnerReport` à la main aurait demandé d'exporter un
-// constructeur de test depuis `replay` — du code de production qui n'existe que pour les tests,
+// LE REGISTRE EST LE VRAI (`replay.BuildIdentityRegistry`) : une trajectoire de slot, une mort
+// du fil qui la clôt, une table d index. Fabriquer un pont à la main aurait demandé d exporter un
+// constructeur de test depuis `replay` — du code de production qui n existe que pour les tests,
 // et qui aurait de surcroît court-circuité le nommage.
 func materiauAvecUneVie() materiauDIsolement {
-	pos := []filmdec.BipedPosition{}
-	for t := int64(0); t <= 10_000; t += 100 {
-		pos = append(pos, filmdec.BipedPosition{
-			Slot: 1, TimestampUS: uint64(t) * 1000, HasWorld: true,
-		})
-	}
-	_, rep := replay.ResolveSlotXUID(pos, []replay.Death{{XUID: 111, TimeMS: 10_000}},
-		replay.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 26})
-	return materiauDIsolement{report: rep, positions: pos}
+	pos := positionsDUneVie()
+	return materiauDIsolement{registre: registreDeTest(pos, 0), positions: pos}
 }
 
 // TestToLifeRows_TraduitSansRienInventer — la traduction pure vers les lignes écrivables.
@@ -123,7 +116,9 @@ func TestJournalDesMorts_EcarteUneVictimeNonResolue(t *testing.T) {
 // dedie, cette cause (pont casse pour TOUT le match) se melangeait avec « cette victime
 // precise n'a pas de position au film », deux diagnostics differents sous un seul nombre.
 func TestToDeathContextRows_PontNonPublicable_CompteDedie(t *testing.T) {
-	mat := materiauDIsolement{report: replay.OwnerReport{IndexDisagreements: 1}}
+	// UN DESACCORD DE LECTURE se fabrique par la TABLE D INDEX, la seule entree publique qui le
+	// porte : le registre le recopie tel quel. Aucun constructeur de test cote production.
+	mat := materiauDIsolement{registre: registreDeTest(positionsDUneVie(), 1)}
 	ids := MatchIdentities{Equipes: map[string]int{"111": 0}}
 	deaths := []persist.KillEventInsert{{TimeMS: 1000, VictimXUID: "111"}}
 
@@ -190,4 +185,29 @@ func TestAvecCapture_CableLesDeuxOuAucune(t *testing.T) {
 	if !c.AvecCapture(complet).CaptureCablee() {
 		t.Fatal("capture NON cablee avec des deps completes")
 	}
+}
+
+// positionsDUneVie : une trajectoire continue de dix secondes sur un slot.
+func positionsDUneVie() []filmdec.BipedPosition {
+	pos := []filmdec.BipedPosition{}
+	for t := int64(0); t <= 10_000; t += 100 {
+		pos = append(pos, filmdec.BipedPosition{
+			Slot: 1, TimestampUS: uint64(t) * 1000, HasWorld: true,
+		})
+	}
+	return pos
+}
+
+// registreDeTest construit le VRAI registre (`replay.BuildIdentityRegistry`) : une trajectoire,
+// une mort du fil qui la clôt, une table d'index. `desaccords` injecte un désaccord de lecture
+// par la table d'index — la seule entrée publique qui le porte, et celle que la production
+// alimente (`replay.ScanPlayerIndices`).
+func registreDeTest(pos []filmdec.BipedPosition, desaccords int) replay.IdentityRegistry {
+	return replay.BuildIdentityRegistry(replay.IdentityInput{
+		Positions: pos,
+		Deaths:    []replay.Death{{XUID: 111, TimeMS: 10_000}},
+		PlayerIndices: replay.PlayerIndexTable{
+			ByXUID: map[uint64]int{111: 0}, Readings: 26, Disagreements: desaccords,
+		},
+	})
 }

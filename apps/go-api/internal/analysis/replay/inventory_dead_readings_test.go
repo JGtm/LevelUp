@@ -43,7 +43,7 @@ func TestBuildInventoryMarqueLesLecturesVides(t *testing.T) {
 func TestMarkInventoryDeadReadings(t *testing.T) {
 	const slot, xuid = uint32(7), uint64(42)
 	clk := replayClock{origin: 0, step: 100_000, frames: 10_000}
-	own := OwnerReport{SlotXUID: map[uint32]uint64{slot: xuid}, DeathOffsetMS: 1_000}
+	own := regDe(OwnerReport{SlotXUID: map[uint32]uint64{slot: xuid}, DeathOffsetMS: 1_000})
 	// Mort a 10 000 ms d'horloge FILM (9 000 ms d'horloge match + 1 000 de decalage).
 	deaths := []Death{{XUID: xuid, TimeMS: 9_000}}
 
@@ -76,7 +76,7 @@ func TestMarkInventoryDeadReadingsNeTouchePasAuxPleines(t *testing.T) {
 	inv := []Inventory{{T: 101, Slot: slot, G: []uint32{2, 0, 0, 0}}}
 	n := markInventoryDeadReadings(inv,
 		[]Death{{XUID: xuid, TimeMS: 10_000}},
-		OwnerReport{SlotXUID: map[uint32]uint64{slot: xuid}},
+		regDe(OwnerReport{SlotXUID: map[uint32]uint64{slot: xuid}}),
 		replayClock{origin: 0, step: 100_000, frames: 1_000})
 	if n != 0 || inv[0].Empty != "" {
 		t.Errorf("lecture pleine marquee %q (%d requalifiee(s)) : seule une lecture vide se requalifie",
@@ -91,13 +91,13 @@ func TestMarkInventoryDeadReadingsSansFilDesMorts(t *testing.T) {
 	deaths := []Death{{XUID: 42, TimeMS: 10_000}}
 	for nom, appel := range map[string]func(inv []Inventory) int{
 		"sans morts": func(inv []Inventory) int {
-			return markInventoryDeadReadings(inv, nil, OwnerReport{SlotXUID: map[uint32]uint64{7: 42}}, clk)
+			return markInventoryDeadReadings(inv, nil, regDe(OwnerReport{SlotXUID: map[uint32]uint64{7: 42}}), clk)
 		},
 		"sans pont": func(inv []Inventory) int {
-			return markInventoryDeadReadings(inv, deaths, OwnerReport{}, clk)
+			return markInventoryDeadReadings(inv, deaths, IdentityRegistry{}, clk)
 		},
 		"slot non ponte": func(inv []Inventory) int {
-			return markInventoryDeadReadings(inv, deaths, OwnerReport{SlotXUID: map[uint32]uint64{9: 42}}, clk)
+			return markInventoryDeadReadings(inv, deaths, regDe(OwnerReport{SlotXUID: map[uint32]uint64{9: 42}}), clk)
 		},
 	} {
 		t.Run(nom, func(t *testing.T) {

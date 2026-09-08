@@ -18,13 +18,13 @@ import "testing"
 
 // bombDocOptions rend les options minimales pour armer `attachBombStats` : la garde de mode, le
 // pont d'horloge des ARMEMENTS (celui qui ne doit PAS toucher aux kills) et les couples.
-func bombDocOptions(kills MatchKillsInput) (Options, OwnerReport) {
+func bombDocOptions(kills MatchKillsInput) (Options, IdentityRegistry) {
 	opt := Options{
 		Bomb:              BombInput{CarryScanned: true},
 		FilmClockOriginUS: 1_000_000,
 		MatchKills:        kills,
 	}
-	own := OwnerReport{SlotXUID: map[uint32]uint64{1: 7}, DeathOffsetMS: 6000}
+	own := regDe(OwnerReport{SlotXUID: map[uint32]uint64{1: 7}, DeathOffsetMS: 6000})
 	return opt, own
 }
 

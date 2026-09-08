@@ -14504,12 +14504,12 @@ components:
       properties:
         bipedSlot:
           $ref: '#/components/schemas/LinkCounts'
-        playerIndex:
+        filmIndex:
           $ref: '#/components/schemas/LinkCounts'
         statborgSlot:
           $ref: '#/components/schemas/LinkCounts'
       required:
-        - playerIndex
+        - filmIndex
         - bipedSlot
         - statborgSlot
       type: object

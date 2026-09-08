@@ -73,7 +73,7 @@ func (c *KillSourceCollector) projeterFaitsDIsolement(
 		return
 	}
 
-	lives := toLifeRows(mat.report.ViesNommees())
+	lives := toLifeRows(mat.registre.ViesNommees())
 	if len(lives) == 0 {
 		slog.DebugContext(ctx, "killsource: isolement — aucune vie nommee, rien a projeter",
 			"match_id", matchID)
@@ -125,11 +125,11 @@ const IsolationDecoderRev = "isolement-2026-09-07"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
 //
-// LE RAPPORT SUFFIT : il porte le pont, les vies nommees et le calage d'horloge. Une version
-// precedente recopiait aussi `SlotXUID` — un doublon de `report.SlotXUID`, et surtout le pont
+// LE REGISTRE SUFFIT : il porte le pont, les vies nommees et le calage d horloge. Une version
+// precedente recopiait aussi `SlotXUID` — un doublon du pont du registre, et surtout le pont
 // APLATI que la correction P0-2 a cesse d'employer.
 type materiauDIsolement struct {
-	report    replay.OwnerReport
+	registre  replay.IdentityRegistry
 	positions []filmdec.BipedPosition
 }
 
@@ -176,7 +176,7 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 	// seulement telle ou telle victime sans lieu — `replay.ContextesDesMorts` refuserait de
 	// toute facon (meme garde), mais melanger cette cause dans `sansLieu` ferait croire a un
 	// probleme localise a chaque victime plutot qu'a un pont casse pour le match entier.
-	if !replay.PontPubliable(mat.report) {
+	if !mat.registre.PontPubliable() {
 		ecarts.pontNonPublicable = len(journal) - ecarts.sansEquipe
 		if ecarts.pontNonPublicable < 0 {
 			ecarts.pontNonPublicable = 0
@@ -185,7 +185,7 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 	}
 	ctxs := replay.ContextesDesMorts(replay.EntreeContexteMorts{
 		Positions: mat.positions,
-		Report:    mat.report,
+		Registre:  mat.registre,
 		Journal:   journal,
 		Equipes:   equipes,
 	})

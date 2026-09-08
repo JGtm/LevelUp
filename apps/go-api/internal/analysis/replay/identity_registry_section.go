@@ -89,7 +89,10 @@ type IdentityStatborgSlot struct {
 
 // IdentityCoverage est le recapitulatif des liens PAR TYPE D'ENTITE et par provenance.
 type IdentityCoverage struct {
-	PlayerIndex  canonical.LinkCounts `json:"playerIndex"`
+	// FilmIndex : les liens « index de joueur du film <-> identite ». Nomme d apres
+	// `RosterEntry.FilmIndex` — un index est un ORDRE LOCAL, valable dans CE film seulement, et
+	// jamais une identite (ratchet `no_player_index_identity_test.go`).
+	FilmIndex    canonical.LinkCounts `json:"filmIndex"`
 	BipedSlot    canonical.LinkCounts `json:"bipedSlot"`
 	StatborgSlot canonical.LinkCounts `json:"statborgSlot"`
 }
@@ -98,11 +101,11 @@ type IdentityCoverage struct {
 // compare famille par famille : une famille qui monte ne doit pas masquer celle qui baisse).
 func (c IdentityCoverage) Total() canonical.LinkCounts {
 	return canonical.LinkCounts{
-		Direct:     c.PlayerIndex.Direct + c.BipedSlot.Direct + c.StatborgSlot.Direct,
-		Catalog:    c.PlayerIndex.Catalog + c.BipedSlot.Catalog + c.StatborgSlot.Catalog,
-		External:   c.PlayerIndex.External + c.BipedSlot.External + c.StatborgSlot.External,
-		Inferred:   c.PlayerIndex.Inferred + c.BipedSlot.Inferred + c.StatborgSlot.Inferred,
-		Unresolved: c.PlayerIndex.Unresolved + c.BipedSlot.Unresolved + c.StatborgSlot.Unresolved,
+		Direct:     c.FilmIndex.Direct + c.BipedSlot.Direct + c.StatborgSlot.Direct,
+		Catalog:    c.FilmIndex.Catalog + c.BipedSlot.Catalog + c.StatborgSlot.Catalog,
+		External:   c.FilmIndex.External + c.BipedSlot.External + c.StatborgSlot.External,
+		Inferred:   c.FilmIndex.Inferred + c.BipedSlot.Inferred + c.StatborgSlot.Inferred,
+		Unresolved: c.FilmIndex.Unresolved + c.BipedSlot.Unresolved + c.StatborgSlot.Unresolved,
 	}
 }
 
@@ -118,7 +121,7 @@ func buildIdentitySection(r IdentityRegistry, in IdentityInput) IdentitySection 
 		StatborgSlots: identityStatborgSlots(in),
 	}
 	for _, p := range s.Players {
-		s.Coverage.PlayerIndex.Add(p.Link.Source)
+		s.Coverage.FilmIndex.Add(p.Link.Source)
 	}
 	for _, b := range s.BipedSlots {
 		s.Coverage.BipedSlot.Add(b.Link.Source)
@@ -173,7 +176,7 @@ func identityPlayers(in IdentityInput) []IdentityPlayer {
 // identityBipedSlots publie une ligne PAR VIE — jamais une par slot. C'est ce qui interdit de
 // rejouer le defaut P0-2 sur un slot recycle.
 func identityBipedSlots(r IdentityRegistry, c IdentityClock) []IdentityBipedSlot {
-	lives := r.own.lives
+	lives := r.Vies()
 	out := make([]IdentityBipedSlot, 0, len(lives))
 	for i, l := range lives {
 		lien := canonical.Link{From: c.frameOf(l.from), To: c.frameOf(l.to)}

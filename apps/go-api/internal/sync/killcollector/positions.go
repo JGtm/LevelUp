@@ -271,18 +271,31 @@ func buildPositionRows(
 		observability.AddInt(metricPositionsAmbiguous, int64(idx.Disagreements))
 	}
 
-	slotXUID, owners := replay.ResolveSlotXUID(positions, deathsFilm, idx)
+	// LE REGISTRE D IDENTITE EST LA MEME FONCTION PURE QUE LA CUISSON (lot P2, decision D11).
+	// Le collecteur l appelle avec ce qu il a DEJA lu — positions, fil des morts, table d index,
+	// roster de la feuille — et sans axe de frames : il n ecrit pas d artefact, il ecrit des vies
+	// et des contextes de mort sur l horloge du MATCH. Deux producteurs, un seul nommage : les
+	// deux tables du meme film ne peuvent plus diverger.
+	//
+	// LE ROSTER DE LA FEUILLE ENTRE ICI, et c est un CHANGEMENT DE SORTIE : il rend possible
+	// l identite par ELIMINATION pour un joueur qui ne meurt jamais (cf.
+	// `replay.NomParElimination`). C est la raison du bump d [IsolationDecoderRev].
+	reg := replay.BuildIdentityRegistry(replay.IdentityInput{
+		Positions: positions, Deaths: deathsFilm, PlayerIndices: idx,
+		RosterXUIDs: rosterUint64(ids.XUIDs), MatchID: matchID,
+	})
+	slotXUID := reg.PontParSlot()
 	if len(slotXUID) == 0 {
 		observability.AddInt(metricPositionsNoBridge, 1)
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf(
 			"pont slot->xuid vide (vies=%d nommees=%d lectures_index=%d)",
-			owners.LivesTotal, owners.DeathsNamed, owners.IndexReadings)
+			reg.ViesTotal(), reg.ViesNommeesParLaLecture(), reg.LecturesIndex())
 	}
 
-	// LE MATERIAU REMONTE TEL QUEL : le rapport porte les vies nommees et le calage d horloge,
+	// LE MATERIAU REMONTE TEL QUEL : le registre porte les vies nommees et le calage d horloge,
 	// les positions portent le monde. La projection des faits d isolement s en sert sans
 	// rescanner le film (cf. isolation_facts.go).
-	mat := materiauDIsolement{report: owners, positions: positions}
+	mat := materiauDIsolement{registre: reg, positions: positions}
 	return composerPassePositions(positions, slotXUID, kills, int64(originUS), matchID), mat, nil
 }
 

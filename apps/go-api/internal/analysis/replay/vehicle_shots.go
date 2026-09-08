@@ -60,7 +60,7 @@ type vehicleShotRide struct {
 // attachVehicleShots publie, dans `doc.Shots`, les tirs des joueurs embarqués et met la
 // couverture à jour. Rien à faire sans épisode ni orphelin — le document sort inchangé.
 func attachVehicleShots(
-	doc *ReplayDocument, orphans []orphanShot, own OwnerReport, clock replayClock,
+	doc *ReplayDocument, orphans []orphanShot, reg IdentityRegistry, clock replayClock,
 ) {
 	cov := doc.Coverage
 	if len(orphans) == 0 || len(doc.Vehicles) == 0 || cov == nil {
@@ -70,7 +70,7 @@ func attachVehicleShots(
 	if len(rides) == 0 {
 		return
 	}
-	slotsOf := vehicleSlotsByPlayer(own.Owner)
+	slotsOf := vehicleSlotsByPlayer(reg.IndexParSlot())
 	published := publishedSlots(doc.Tracks)
 	var added []Shot
 	for _, o := range orphans {

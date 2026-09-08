@@ -113,8 +113,9 @@ type vehicleRideInputs struct {
 	// aimBySlot porte la VISEE de chaque occupant, indexee par SON slot bipede et triee par
 	// instant (cf. vehicle_rides_aim.go). Vide : les episodes sortent sans serie de visee.
 	aimBySlot map[uint32][]filmdec.BipedAim
-	// own donne le pont slot -> xuid. Vide : les episodes sortent anonymes, pas supprimes.
-	own OwnerReport
+	// reg est le REGISTRE D IDENTITE : il donne l occupant d un slot A UN INSTANT. Vide : les
+	// episodes sortent anonymes, pas supprimes.
+	reg IdentityRegistry
 	// lives sont les vies de vehicule, avec leur fenetre — c est elle qui rattache un episode a
 	// une GENERATION, que le nuage de positions ne porte pas.
 	lives []vehicleLife
@@ -284,7 +285,7 @@ func vehicleRideOf(
 	// la fiche creditait le mauvais conducteur. `xuidAt` lit la vie qui couvre l instant, et ne
 	// retombe sur le pont par slot qu a defaut — vide quand ni l une ni l autre ne nomme, ce
 	// que le contrat prevoit explicitement (l episode reste publie, son occupant est inconnu).
-	r.XUID = in.own.xuidAt(g.slot, startUS)
+	r.XUID = in.reg.XUIDAt(g.slot, startUS)
 	return r
 }
 

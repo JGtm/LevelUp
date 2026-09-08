@@ -351,9 +351,9 @@ func skullGrabCount(recs []objectiveevents.StatRecord) int {
 // attachSkullCarries pose les periodes de portage du crane sur le document, avec leur couverture.
 //
 // LE PONT D'IDENTITE (slot statborg -> xuid) SE FAIT ICI, comme pour la couronne et le drapeau,
-// par les seuls INSTANTS DE MORT et PAR MANCHE — aucune base. `own.DeathOffsetMS` cale l'horloge
+// par les seuls INSTANTS DE MORT et PAR MANCHE — aucune base. `reg.DeathOffsetMS()` cale l'horloge
 // des enregistrements (meme horloge que le fil des morts) sur l'axe des frames.
-func attachSkullCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock replayClock,
+func attachSkullCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, clock replayClock,
 	deduced map[int]bool) {
 	in := opt.Skull
 	if !in.Scanned {
@@ -366,7 +366,7 @@ func attachSkullCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock
 	}
 	carries, cov := buildSkullCarries(scan, matchClock{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
-		deathOffsetMS: own.DeathOffsetMS,
+		deathOffsetMS: reg.DeathOffsetMS(),
 	}, carrierPresenceOf(doc.Tracks, deduced))
 	doc.SkullCarries = carries
 	if doc.Coverage != nil {

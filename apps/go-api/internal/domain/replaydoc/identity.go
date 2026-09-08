@@ -71,7 +71,8 @@ type Link struct {
 
 // IdentityCoverage compte les liens par type d'entite et par provenance.
 type IdentityCoverage struct {
-	PlayerIndex  LinkCounts `json:"playerIndex"`
+	// FilmIndex : les liens « index de joueur du film <-> identite ».
+	FilmIndex    LinkCounts `json:"filmIndex"`
 	BipedSlot    LinkCounts `json:"bipedSlot"`
 	StatborgSlot LinkCounts `json:"statborgSlot"`
 }

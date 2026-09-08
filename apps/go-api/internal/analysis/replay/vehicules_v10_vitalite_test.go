@@ -123,7 +123,7 @@ func v10VitaliteUnFilm(t *testing.T, root string, f v0Film) []v10Vie {
 		return nil
 	}
 	rides, _ := buildVehicleRides(vehicleRideInputs{
-		vehBySlot: ctx.vehBySlot, bipeds: ctx.bip, events: ctx.scan.Events, own: ctx.own,
+		vehBySlot: ctx.vehBySlot, bipeds: ctx.bip, events: ctx.scan.Events, reg: ctx.own,
 		lives:    ctx.lives,
 		drawable: vehicleDrawableLives(ctx.lives, ctx.spawns, ctx.vehBySlot), clock: ctx.clock,
 	})

@@ -133,8 +133,8 @@ func TestSondeDuelsBouclier(t *testing.T) {
 		matchID, carte, len(kills), ecartes, nonPubliables, len(equipes), len(positions), len(slotXUID))
 	t.Logf("PONT : %d vies, %d nommees, %d lectures d'index, %d desaccords, %d collisions de slot, "+
 		"calage du fil des morts %d ms sur %d morts appariees",
-		owners.LivesTotal, owners.DeathsNamed, owners.IndexReadings, owners.IndexDisagreements,
-		owners.SlotCollisions, owners.DeathOffsetMS, owners.DeathOffsetMatches)
+		owners.ViesTotal(), owners.ViesNommeesParLaLecture(), owners.LecturesIndex(), owners.DesaccordsIndex(),
+		owners.CollisionsDeSlot(), owners.DeathOffsetMS(), owners.DeathOffsetMatches())
 	t.Logf("HORLOGE : origine du film %d us — les instants du feed (horloge du MATCH) sont poses "+
 		"sur l'horloge du FILM par tUS = time_ms*1000 + origine, comme le fait la production "+
 		"(positions.go -> BuildKillPositions)", origin)
@@ -354,7 +354,7 @@ func duelsBFilmDir(root, matchID string) string {
 // joueur est celui de `match_participants`, comme en production (rosterUint64 dans positions.go).
 func duelsBPontIdentite(
 	t *testing.T, film *filmsource.Film, positions []filmdec.BipedPosition, equipes map[uint64]int64,
-) (map[uint32]uint64, replay.OwnerReport) {
+) (map[uint32]uint64, replay.IdentityRegistry) {
 	t.Helper()
 	deaths, err := replay.ScanDeaths(film)
 	if err != nil {
@@ -368,10 +368,13 @@ func duelsBPontIdentite(
 	if err != nil {
 		t.Fatalf("index de joueur : %v", err)
 	}
-	slotXUID, owners := replay.ResolveSlotXUID(positions, deaths, idx)
+	owners := replay.BuildIdentityRegistry(replay.IdentityInput{
+		Positions: positions, Deaths: deaths, PlayerIndices: idx, RosterXUIDs: roster,
+	})
+	slotXUID := owners.PontParSlot()
 	if len(slotXUID) == 0 {
 		t.Fatalf("pont slot->xuid vide (vies=%d nommees=%d lectures=%d) : rien a mesurer",
-			owners.LivesTotal, owners.DeathsNamed, owners.IndexReadings)
+			owners.ViesTotal(), owners.ViesNommeesParLaLecture(), owners.LecturesIndex())
 	}
 	return slotXUID, owners
 }

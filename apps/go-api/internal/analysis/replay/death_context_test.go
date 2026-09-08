@@ -48,10 +48,10 @@ func mortFilm(xuid uint64, tMS int64) Death { return Death{XUID: xuid, TimeMS: t
 
 // dcEntree monte une entrée : le pont est construit par `ResolveSlotXUID`, le vrai.
 func dcEntree(pos []filmdec.BipedPosition, mortsFilm []Death, journal []MortDuJournal) EntreeContexteMorts {
-	_, rep := ResolveSlotXUID(pos, mortsFilm, indexDe(111, 222, 333, 444, 999))
+	rep := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: mortsFilm, PlayerIndices: indexDe(111, 222, 333, 444, 999)})
 	return EntreeContexteMorts{
 		Positions: pos,
-		Report:    rep,
+		Registre:  rep,
 		Journal:   journal,
 		Equipes:   map[uint64]int{111: 0, 222: 0, 333: 0, 444: 0, 999: 1},
 	}
@@ -233,7 +233,7 @@ func TestContextesDesMorts_MortSansLieu_NeSortPas(t *testing.T) {
 func TestContextesDesMorts_IndexIncoherent_RienNeSort(t *testing.T) {
 	pos, mortsFilm, journal := corpusDeReference()
 	e := dcEntree(pos, mortsFilm, journal)
-	e.Report.IndexDisagreements = 1
+	e.Registre.own.IndexDisagreements = 1
 
 	if out := ContextesDesMorts(e); len(out) != 0 {
 		t.Fatalf("contextes = %+v, attendu aucun : une identite lue de deux facons rend le "+
@@ -249,7 +249,7 @@ func TestContextesDesMorts_IndexIncoherent_RienNeSort(t *testing.T) {
 func TestContextesDesMorts_SlotRecycleNeRefusePas(t *testing.T) {
 	pos, mortsFilm, journal := corpusDeReference()
 	e := dcEntree(pos, mortsFilm, journal)
-	e.Report.SlotCollisions = 3
+	e.Registre.own.SlotCollisions = 3
 
 	if out := ContextesDesMorts(e); len(out) == 0 {
 		t.Fatal("aucun contexte : un slot RECYCLE ne doit pas faire refuser la projection — " +
@@ -284,8 +284,8 @@ func TestContextesDesMorts_HorlogeDuFilmConvertie(t *testing.T) {
 	e := dcEntree(pos, mortsFilm, journal)
 	e.Equipes = map[uint64]int{111: 0, 222: 0}
 
-	if e.Report.DeathOffsetMS != dec {
-		t.Fatalf("DeathOffsetMS = %d, attendu %d", e.Report.DeathOffsetMS, dec)
+	if e.Registre.DeathOffsetMS() != dec {
+		t.Fatalf("DeathOffsetMS = %d, attendu %d", e.Registre.DeathOffsetMS(), dec)
 	}
 	c := contexteDe(t, ContextesDesMorts(e), 111, 10_000)
 	if c.Visibles != 1 {

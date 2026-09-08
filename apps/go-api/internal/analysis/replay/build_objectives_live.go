@@ -154,7 +154,7 @@ func flagFilmSignalsOf(in FlagInput) objectiveevents.FlagFilmSignals {
 // + DeathOffsetMS) : les evenements nommes sont dates sur l'horloge du MATCH, les images-cles et
 // les positions sur celle du FILM. Sans ce calage, le controle du marqueur comparerait deux
 // horloges differentes et ne confirmerait rien.
-func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock replayClock) {
+func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, clock replayClock) {
 	in := opt.Flag
 	signals := flagFilmSignalsOf(in)
 	scan := FlagCarryScan{
@@ -190,9 +190,9 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 	scan.Free = flagFreeLives(opt.Pads.Weapons, opt.Labels.ObjectiveObjects)
 	carries, cov := buildFlagCarries(scan, flagCarryCtx{
 		matchClock: matchClock{origin: clock.origin, step: clock.step, frames: clock.frames,
-			deathOffsetMS: own.DeathOffsetMS},
+			deathOffsetMS: reg.DeathOffsetMS()},
 		tracks: doc.Tracks, deaths: opt.Deaths,
-		slotXUID: own.NamingBridge(), slotAmbiguous: own.SlotAmbiguous,
+		slotXUID: reg.PontEpure(), slotAmbiguous: reg.SlotsAmbigus(),
 	})
 	if cov != nil {
 		cov.ObjectLives = len(scan.Free)
