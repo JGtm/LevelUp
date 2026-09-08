@@ -1190,3 +1190,28 @@ describe('ReplayTeams — lecture d’inventaire VIDE (schéma 19)', () => {
     expect(screen.queryByText('Inventaire indisponible')).toBeNull()
   })
 })
+
+describe('ReplayTeams — la grille des camps ne peut pas déborder', () => {
+  /**
+   * GARDE-RAIL DU 2026-09-08 (retour utilisateur : « les fiches toujours rognées à cause des
+   * longs gamertags »).
+   *
+   * `1fr` vaut `minmax(auto, 1fr)`, et le minimum `auto` d'une piste est son MIN-CONTENT — que
+   * le nom du joueur fixe au texte ENTIER, puisque `truncate` pose `white-space: nowrap`. La
+   * grille dépassait alors son conteneur et le `overflow-hidden` du parent rognait la
+   * différence EN SILENCE (563 px de colonnes dans 480 px de place, mesurés sur un 4v4 aux
+   * gamertags longs).
+   *
+   * JSDOM NE MET RIEN EN PAGE : il ne calcule aucun min-content, donc la mesure qui a établi le
+   * défaut (`scrollWidth > clientWidth`) est irreproductible ici. Ce test fixe donc la CAUSE
+   * plutôt que le symptôme — le zéro explicite dans la borne basse — et c'est lui qui survivra
+   * à une régénération des fixations DOM voisines.
+   */
+  it('borne basse à ZÉRO : une piste peut descendre sous son min-content', () => {
+    const vue = renderTeams({})
+    const grille = vue.container.querySelector<HTMLElement>('div.grid.h-full.min-h-0')
+    expect(grille).not.toBeNull()
+    expect(grille?.style.gridTemplateColumns).toContain('minmax(0,')
+    expect(grille?.style.gridTemplateColumns).not.toMatch(/repeat\(\d+,\s*1fr\)/)
+  })
+})
