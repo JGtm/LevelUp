@@ -80,6 +80,9 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   // Le raster de placement (vue d'analyse, phase 5) compte les matchs du titre courant,
   // même raison que `tacticalMaps`.
   tacticalRaster: () => queryKeys.tacticalRaster(P, T, 'map-1', 'h'),
+  // Le détail d'une cellule (lien « voir dans le rejeu », lot M1) : même raison que
+  // `tacticalRaster`.
+  tacticalCellule: () => queryKeys.tacticalCellule(P, T, 'map-1', 'h'),
   // Escouade / synthèse / sessions / compare.
   teammates: () => queryKeys.teammates(P, T, 'h', []),
   synthesis: () => queryKeys.synthesis(P, T, 'h'),

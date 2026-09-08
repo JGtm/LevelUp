@@ -111,7 +111,15 @@ qui restent déduits sont publiés comme tels (provenance). Les flux non décod�
 états de mode, roster, horloge) font l'objet d'un plan DÉCODEUR séparé après v7.5.0 et le déplacement sous
 `games/halo_infinite/film/` : un item par flux, additif (nouveau type d'enregistrement lu, jamais une réécriture),
 mesuré par la part de liens directs dans la provenance, sous les garde-rails existants (corpus `gamefiles`, goldens).
-- [ ] P1 — Inventaire (journal, avant tout code) : pour chaque entité que le décodeur expose déjà (index de joueur,
+- [x] P1 — Inventaire (journal, avant tout code) — **RENDU le 2026-09-07 :
+      `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`** (branche `feat/p1-inventaire`, aucun code touché).
+      Neuf entités inventoriées, axes (a) à (j) statués, séquençage P2-P5 posé, questions ouvertes assorties de
+      leur témoin. **VERDICT ROSTER (axe d) : NON — le film ne porte pas les entrées/sorties de joueurs
+      (ti=5 i18/i19 décodés mais sans flux : 163 et 105 lectures sur 22 films) ; S.3 se fera par calage
+      `real_start_time` / `t0_quality`, APRÈS P2.** L'amendement du §0.7 exigé par la décision D11
+      (`.ai/PLAN_ORCHESTRATION_2026-09-07.md` §1.2 condition 2) est rédigé mot pour mot au §2 (j) de
+      l'inventaire : **il se porte ici au premier commit de P2**, pas avant. Énoncé d'origine, conservé :
+      pour chaque entité que le décodeur expose déjà (index de joueur,
       slot de bipède, objet d'objectif, véhicule, arme au sol, équipement, socle/zone) : son identifiant dans le film,
       sa durée de vie (création/replacement/destruction, frontières de manche), les liens DIRECTS que le film donne
       (porteur ↔ objet, occupant ↔ véhicule, objet ↔ équipe propriétaire, objet ↔ socle) et les liens que seul un
@@ -274,11 +282,25 @@ est faux.
       SUPERVISEUR** (ce worktree n'a aucun film) — commandes exactes au §6 du journal.
 
 ### R8 — Flakes CI hors rejeu (doctrine : tout rouge se répare, même préexistant)
-- [ ] `internal/api/handlers` `TestStartImport_HappyPathReturns202WithJobID` : le job d'import asynchrone survit au
+- [x] `internal/api/handlers` `TestStartImport_HappyPathReturns202WithJobID` : le job d'import asynchrone survit au
       retour HTTP (`jobs.Store` écrit après la fin du test → `TempDir RemoveAll`) : attendre la fin du job dans le
-      test (ou fermer le store) ; preuve : `-count=20` vert sous charge (`-p 8`).
-- [ ] `internal/persist` `TestWorker_Run_PersistsAndACKs` : assertion de système de fichiers sur runner chargé
+      test (ou fermer le store) ; preuve : `-count=20` vert sous charge (`-p 8`). **CLOS 2026-09-07** — le test attend
+      désormais l'état terminal du job (`pollJobUntilDone`, helper déjà existant dans
+      `openspartan_import_e2e_test.go`, même package) avant de rendre la main. Preuve :
+      `go test -count=20 -p 8 -run TestStartImport_HappyPathReturns202WithJobID ./internal/api/handlers/` vert deux
+      fois de suite (3.8s puis 3.7s) ; `go test -count=1 ./internal/api/handlers/` vert. Taux d'échec observé avant
+      correctif : 0/20 en local (le flake est spécifique à la charge CI réelle, non reproduit hors CI — corrigé sur
+      analyse de la cause, pas sur observation locale d'un rouge).
+- [x] `internal/persist` `TestWorker_Run_PersistsAndACKs` : assertion de système de fichiers sur runner chargé
       (51,9 s en CI contre 0,08 s en local) : identifier l'attente implicite, la remplacer par une synchronisation.
+      **CLOS 2026-09-07** — l'attente implicite était `persister.count()==3` (incrémenté dans `Persist`, AVANT l'ACK)
+      utilisée comme proxy pour "les 3 WAL sont supprimés" (qui n'a lieu qu'après, dans `Worker.handle`) : sous charge,
+      la fenêtre entre les deux se creuse. Remplacé par une synchronisation explicite sur le hook `OnPersistOK` déjà
+      exposé par `Worker` (se déclenche après l'ACK) — aucun changement du code de prod, le hook existait déjà et
+      n'était simplement pas branché par ce test. Preuve : `-count=20 -p 8` vert deux fois de suite (0.16s les deux
+      fois) ; `go test -count=1 ./internal/persist/` vert ; `go test -tags=integration -p 1 -count=1 ./internal/persist/`
+      vert (50.4s, exit 0). Taux d'échec observé avant correctif : 0/20 en local (idem ci-dessus, flake propre à la
+      charge CI).
 
 ### R9 — Release (séquence Notion « Backlog LevelUp », dans l'ordre ; prévenir le user avant tout push sur `main`)
 - [ ] Re-cuisson du parc au dernier schéma (`backfill-replay`, un film à la fois, verrou `filmproc`), puis recompter

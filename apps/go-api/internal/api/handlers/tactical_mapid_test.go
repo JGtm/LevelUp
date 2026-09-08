@@ -172,6 +172,24 @@ func TestTacticalMapID_RasterRefuseLesChemins(t *testing.T) {
 	}
 }
 
+// TestTacticalMapID_CelluleRefuseLesChemins — meme garde que le raster : le detail d'une
+// cellule (lot M1) valide le map_id AVANT toute resolution de service, meme code d'absence
+// (`tactical_map_unknown`).
+func TestTacticalMapID_CelluleRefuseLesChemins(t *testing.T) {
+	for _, hostile := range mapIDsHostilesURL {
+		svc := &fakeTacticalSvc{}
+		w := appelPost(t, newTacticalRouter(tacticalFactory(svc, nil)),
+			"/players/JGtm/tactical/"+hostile+"/cellule", `{"cellule":{"col":1,"lig":1}}`)
+		if w.Code != http.StatusNotFound {
+			t.Errorf("map_id %q : status=%d, attendu 404 — body=%s", hostile, w.Code, w.Body.String())
+		}
+		verifieCodeSiJSON(t, hostile, w.Body.String(), "tactical_map_unknown")
+		if svc.vuAppele {
+			t.Errorf("map_id %q : le service ne doit pas etre appele", hostile)
+		}
+	}
+}
+
 // TestTacticalMapID_IndiscernableDUneCarteInconnue — un map_id HOSTILE et un map_id
 // LEGITIME mais inconnu rendent EXACTEMENT la meme reponse. C'est la propriete qui empeche
 // l'oracle : rien ne dit a l'appelant laquelle des deux frontieres il a heurtee.

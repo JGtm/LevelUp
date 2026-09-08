@@ -10,6 +10,7 @@ package port
 
 import (
 	"context"
+	"time"
 
 	"levelup/go-api/internal/domain"
 )
@@ -40,6 +41,11 @@ type TacticalService interface {
 	// Raster rend la lecture de placement d'une carte pour une question
 	// (domain.TacticalQuestion*) et un axe (domain.TacticalQui*).
 	Raster(ctx context.Context, req domain.TacticalRasterRequest) (domain.TacticalRaster, error)
+
+	// Cellule rend le detail d'UNE cellule de la grille : les contributions OUVRABLES par
+	// l'appelant (ADR 0029) et le compte de celles ecartees (lot M1, Tactique S.1). Memes
+	// refus types que Raster.
+	Cellule(ctx context.Context, req domain.TacticalCelluleRequest) (domain.TacticalCelluleReponse, error)
 }
 
 // TacticalRepository — onglet Tactique (plan .ai/PLAN_TACTIQUE_2026-09-06.md,
@@ -111,6 +117,18 @@ type TacticalRepository interface {
 	//
 	// Meme portee que KillPositions : tous les joueurs, l'axe « qui » se tranche au service.
 	MortsAvecContexte(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalMortsContexte, error)
+
+	// MatchsOuvrables verifie, pour la liste de match_id donnee, lesquels `playerXUID` a
+	// REELLEMENT joues (ADR 0029, meme garde que Couche B / IsParticipant) et rend leur
+	// date de debut canonique — le tri des contributions d'une cellule s'appuie dessus. Un
+	// match_id ABSENT du resultat n'est PAS ouvrable par ce joueur : ni erreur, ni zero-value
+	// ambigu, une absence explicite dans la map.
+	//
+	// Ajoutee pour le detail d'une cellule (lot M1) : les trois lectures ci-dessus filtrent
+	// deja par `mp.xuid = ?` dans leur SELECT, donc leurs resultats sont ouvrables PAR
+	// CONSTRUCTION — cette methode sert a verifier le PERIMETRE DEMANDE lui-meme (le corps
+	// de la requete, avant toute lecture), pour compter ce qu'il contient de non ouvrable.
+	MatchsOuvrables(ctx context.Context, playerXUID string, matchIDs []string) (map[string]time.Time, error)
 }
 
 // TacticalRasterStore lit les SIDECARS de raster tactique — l'occupation d'un match,

@@ -1,10 +1,13 @@
-// Tests — LE MOT DE L'ISSUE, dit par le titre et dans la langue de la requête (2026-09-07).
+// Tests — LA CLÉ DE L'ISSUE, dite par le titre (décision D5, 2026-09-07).
 //
-// CE QU'ILS PROTÈGENT. Le libellé sortait d'une map Go écrite en français : sous UI anglaise
-// l'en-tête de la Match View annonçait « Victoire », pendant que l'écran de fin du rejeu, vu
-// depuis un adversaire, prenait son titre dans `outcomes.toml` et disait « Loss ». Deux
-// vocabulaires sur un seul panneau. Ces cas fixent la règle inverse : un seul mot, celui du
-// TOML du titre, dans la locale demandée — et le repli FR seulement quand le titre se tait.
+// CE QU'ILS PROTÈGENT. Le libellé sortait d'une map Go écrite en français (ou d'un couple
+// FR/EN localisé serveur, option transitoire depuis abandonnée) : sous UI anglaise l'en-tête
+// de la Match View annonçait « Victoire », pendant que l'écran de fin du rejeu, vu depuis un
+// adversaire, prenait son titre dans `outcomes.toml` et disait « Loss ». Deux vocabulaires
+// sur un seul panneau. La règle désormais : le Go sert une CLÉ canonique (win|loss|tie|dnf),
+// jamais un texte — le web localise (useOutcomeLabel/useOutcomeMapping). Seule exception :
+// l'export CSV, fichier rendu serveur sans JS pour localiser, qui a besoin d'un texte —
+// résolu depuis l'adapter sémantique du titre, jamais une map Go (outcomeText).
 package service
 
 import (
@@ -31,7 +34,60 @@ func ctxLocale(locale string) context.Context {
 	return ctxkeys.WithTitleSlug(ctxkeys.WithLocale(context.Background(), locale), "titre_de_test")
 }
 
-func TestResolveOutcomeLabel_LocaleDeLaRequete(t *testing.T) {
+// LA CLÉ : le chokepoint unique servi à tout DTO d'issue.
+func TestOutcomeKey_TitreCable(t *testing.T) {
+	outcomes := outcomesDeTest()
+	cas := map[int]string{
+		domain.OutcomeWin:  "win",
+		domain.OutcomeLoss: "loss",
+		domain.OutcomeDraw: "tie",
+		domain.OutcomeDNF:  "dnf",
+	}
+	for code, want := range cas {
+		if got := outcomeKey(outcomes, code); got != want {
+			t.Errorf("outcomeKey(%d) = %q, attendu %q", code, got, want)
+		}
+	}
+}
+
+// Titre non câblé (adapter nil) : la clé est vide, ce n'est pas un repli — il n'y a rien à
+// traduire, jamais de panic.
+func TestOutcomeKey_AdapterNil(t *testing.T) {
+	if got := outcomeKey(nil, domain.OutcomeWin); got != "" {
+		t.Errorf("outcomeKey(nil, WIN) = %q, attendu vide", got)
+	}
+}
+
+// Code brut non mappé par le titre (0, ou valeur aberrante) : vide également.
+func TestOutcomeKey_CodeInconnu(t *testing.T) {
+	if got := outcomeKey(outcomesDeTest(), 0); got != "" {
+		t.Errorf("outcomeKey(0) = %q, attendu vide", got)
+	}
+	if got := outcomeKey(outcomesDeTest(), 99); got != "" {
+		t.Errorf("outcomeKey(99) = %q, attendu vide", got)
+	}
+}
+
+// outcomeKeyFromHaloCode : le repli Halo-only pour les DTO sans adapter câblé
+// (CareerService, ExplorerService).
+func TestOutcomeKeyFromHaloCode(t *testing.T) {
+	cas := map[int]string{
+		domain.OutcomeWin:  "win",
+		domain.OutcomeLoss: "loss",
+		domain.OutcomeDraw: "tie",
+		domain.OutcomeDNF:  "dnf",
+		0:                  "",
+		99:                 "",
+	}
+	for code, want := range cas {
+		if got := outcomeKeyFromHaloCode(code); got != want {
+			t.Errorf("outcomeKeyFromHaloCode(%d) = %q, attendu %q", code, got, want)
+		}
+	}
+}
+
+// LE TEXTE : réservé à l'export CSV. Dépend de la locale, contrairement à la clé.
+func TestOutcomeText_LocaleDeLaRequete(t *testing.T) {
 	outcomes := outcomesDeTest()
 	cas := []struct {
 		locale string
@@ -40,66 +96,37 @@ func TestResolveOutcomeLabel_LocaleDeLaRequete(t *testing.T) {
 	}{
 		{"fr", domain.OutcomeWin, "Victoire"},
 		{"fr", domain.OutcomeLoss, "Défaite"},
-		{"fr", domain.OutcomeDraw, "Égalité"},
-		{"fr", domain.OutcomeDNF, "Abandon"},
 		{"en", domain.OutcomeWin, "Victory"},
 		{"en", domain.OutcomeLoss, "Defeat"},
-		{"en", domain.OutcomeDraw, "Tie"},
-		{"en", domain.OutcomeDNF, "DNF"},
 	}
 	for _, c := range cas {
-		if got := resolveOutcomeLabel(ctxLocale(c.locale), outcomes, c.code); got != c.want {
-			t.Errorf("resolveOutcomeLabel(%s, %d) = %q, attendu %q", c.locale, c.code, got, c.want)
+		if got := outcomeText(outcomes, c.locale, c.code); got != c.want {
+			t.Errorf("outcomeText(%s, %d) = %q, attendu %q", c.locale, c.code, got, c.want)
 		}
 	}
 }
 
-// Sans locale explicite, le contexte rend « fr » (ctxkeys) : le comportement d'avant le
-// chantier tient à l'octet — c'est la garantie de non-régression de l'UI française.
-func TestResolveOutcomeLabel_SansLocaleResteFrancais(t *testing.T) {
-	got := resolveOutcomeLabel(context.Background(), outcomesDeTest(), domain.OutcomeWin)
-	if got != "Victoire" {
-		t.Errorf("locale absente : %q, attendu %q", got, "Victoire")
+// Sans adapter câblé, outcomeText dégrade sur "" (jamais un mot français fabriqué) — la
+// dégradation gracieuse du titre remplace l'ancien repli FR.
+func TestOutcomeText_AdapterNilRendVide(t *testing.T) {
+	if got := outcomeText(nil, "en", domain.OutcomeWin); got != "" {
+		t.Errorf("outcomeText(nil, en, WIN) = %q, attendu vide", got)
 	}
 }
 
-// Le repli : titre sans jeu d'outcomes. Jamais de panic, jamais de chaîne vide — le mot FR
-// d'avant. C'est le chemin instrumenté par le kill-switch daté d'outcome_label.go.
-func TestResolveOutcomeLabel_RepliQuandLeTitreSeTait(t *testing.T) {
-	for code, want := range map[int]string{
-		domain.OutcomeWin:  "Victoire",
-		domain.OutcomeLoss: "Défaite",
-		domain.OutcomeDraw: "Égalité",
-		domain.OutcomeDNF:  "Abandon",
-	} {
-		// Même sous UI anglaise : sans mapping il n'y a rien à traduire, et un panneau vide
-		// serait pire qu'un mot français.
-		if got := resolveOutcomeLabel(ctxLocale("en"), nil, code); got != want {
-			t.Errorf("repli (jeu nil), code %d : %q, attendu %q", code, got, want)
-		}
+func TestOutcomeTextByKey(t *testing.T) {
+	outcomes := outcomesDeTest()
+	if got := outcomeTextByKey(outcomes, "fr", "win"); got != "Victoire" {
+		t.Errorf("outcomeTextByKey(fr, win) = %q, attendu Victoire", got)
 	}
-}
-
-// Titre qui expose un jeu d'outcomes SANS raw_code : le pont int→canonique n'existe pas, la
-// résolution échoue proprement et le repli sert. Cas réel d'un titre à ajouter.
-func TestResolveOutcomeLabel_RepliQuandLeCodeBrutNestPasMappe(t *testing.T) {
-	sansCode := mappings.NewOutcomeMappingSet("titre_sans_raw_code", 1, map[string]mappings.OutcomeMapping{
-		"win": {Key: "win", Labels: map[string]string{"en": "Victory", "fr": "Victoire"}},
-	})
-	if got := resolveOutcomeLabel(ctxLocale("en"), sansCode, domain.OutcomeWin); got != "Victoire" {
-		t.Errorf("repli (raw_code absent) : %q, attendu %q", got, "Victoire")
+	if got := outcomeTextByKey(outcomes, "en", "win"); got != "Victory" {
+		t.Errorf("outcomeTextByKey(en, win) = %q, attendu Victory", got)
 	}
-}
-
-// Un code que NI le titre NI le repli ne connaissent (0 = pas d'issue enregistrée) : le tiret
-// d'avant. Ce n'est pas un repli — rien n'a été perdu, et le log du kill-switch ne se déclenche
-// pas sur ce chemin (sinon le critère « 0 repli sur 30 j » ne serait jamais atteignable).
-func TestResolveOutcomeLabel_CodeInconnuRendLeTiret(t *testing.T) {
-	if got := resolveOutcomeLabel(ctxLocale("fr"), outcomesDeTest(), 0); got != outcomeLabelUnknown {
-		t.Errorf("code 0 : %q, attendu %q", got, outcomeLabelUnknown)
+	if got := outcomeTextByKey(outcomes, "en", ""); got != "" {
+		t.Errorf("outcomeTextByKey(en, clé vide) = %q, attendu vide", got)
 	}
-	if got := resolveOutcomeLabel(ctxLocale("fr"), nil, 99); got != outcomeLabelUnknown {
-		t.Errorf("code 99 sans jeu : %q, attendu %q", got, outcomeLabelUnknown)
+	if got := outcomeTextByKey(outcomes, "en", "clé_inconnue"); got != "clé_inconnue" {
+		t.Errorf("outcomeTextByKey(en, clé inconnue) = %q, attendu la clé telle quelle", got)
 	}
 }
 
@@ -109,7 +136,7 @@ func TestOutcomesOf_AdapterNil(t *testing.T) {
 	}
 }
 
-// semantiqueDeTest — un adapter sémantique réduit à ce que le libellé d'issue lui demande.
+// semantiqueDeTest — un adapter sémantique réduit à ce que la clé d'issue lui demande.
 type semantiqueDeTest struct{ outcomes *mappings.OutcomeMappingSet }
 
 func (s semantiqueDeTest) TitleSlug() string                     { return "titre_de_test" }
@@ -119,57 +146,76 @@ func (s semantiqueDeTest) Ranks() *mappings.RankCatalog          { return nil }
 func (s semantiqueDeTest) Assets() *mappings.AssetMappingSet     { return nil }
 func (s semantiqueDeTest) Outcomes() *mappings.OutcomeMappingSet { return s.outcomes }
 
-// LES LIGNES DE L'HISTORIQUE / DE L'EXPLORER (et l'export CSV, qui recopie le champ) : même
-// chokepoint que l'en-tête. Le résolveur y était figé sur « fr », locale de la requête ignorée.
-func TestRowFormatters_LibelleDIssueSuitLaLocale(t *testing.T) {
+// LES LIGNES DE L'HISTORIQUE / DE L'EXPLORER : même chokepoint que l'en-tête — la clé, pas un
+// texte, et elle ne dépend PAS de la locale (contrairement à l'ancien résolveur figé sur fr).
+func TestRowFormatters_CleDIssue(t *testing.T) {
 	svc := NewMatchHistoryService(nil, "").WithSemantic(semantiqueDeTest{outcomes: outcomesDeTest()})
-	for locale, want := range map[string]string{"fr": "Victoire", "en": "Victory"} {
-		f := svc.rowFormatters(ctxLocale(locale), nil)
-		if got := f.outcomeLabelFor(domain.OutcomeWin); got != want {
-			t.Errorf("ligne d'historique (%s) : %q, attendu %q", locale, got, want)
-		}
+	f := svc.rowFormatters(nil)
+	if got := f.outcomeKeyFor(domain.OutcomeWin); got != "win" {
+		t.Errorf("ligne d'historique : %q, attendu %q", got, "win")
+	}
+	if got := f.outcomeKeyFor(domain.OutcomeLoss); got != "loss" {
+		t.Errorf("ligne d'historique : %q, attendu %q", got, "loss")
 	}
 }
 
-// Service sans adapter sémantique : le repli FR, comme avant — jamais de champ vide.
+// Service sans adapter sémantique : repli Halo-only (outcomeKeyFromHaloCode), jamais de champ
+// vide alors qu'on connaît le code brut Halo.
 func TestRowFormatters_SansAdapterSemantique(t *testing.T) {
-	f := NewMatchHistoryService(nil, "").rowFormatters(ctxLocale("en"), nil)
-	if got := f.outcomeLabelFor(domain.OutcomeLoss); got != "Défaite" {
-		t.Errorf("ligne sans adapter : %q, attendu %q", got, "Défaite")
+	f := NewMatchHistoryService(nil, "").rowFormatters(nil)
+	if got := f.outcomeKeyFor(domain.OutcomeLoss); got != "loss" {
+		t.Errorf("ligne sans adapter : %q, attendu %q", got, "loss")
+	}
+}
+
+// L'export CSV : MatchHistoryService.OutcomeText, seule surface qui rend du texte, localisé
+// à la locale de ctx.
+func TestMatchHistoryService_OutcomeText(t *testing.T) {
+	svc := NewMatchHistoryService(nil, "").WithSemantic(semantiqueDeTest{outcomes: outcomesDeTest()})
+	if got := svc.OutcomeText(ctxLocale("fr"), domain.OutcomeWin); got != "Victoire" {
+		t.Errorf("OutcomeText(fr, WIN) = %q, attendu Victoire", got)
+	}
+	if got := svc.OutcomeText(ctxLocale("en"), domain.OutcomeWin); got != "Victory" {
+		t.Errorf("OutcomeText(en, WIN) = %q, attendu Victory", got)
+	}
+}
+
+// Sans adapter câblé, OutcomeText rend "" — dégradation propre, jamais de mot français en dur.
+func TestMatchHistoryService_OutcomeText_SansAdapter(t *testing.T) {
+	svc := NewMatchHistoryService(nil, "")
+	if got := svc.OutcomeText(ctxLocale("en"), domain.OutcomeWin); got != "" {
+		t.Errorf("OutcomeText sans adapter = %q, attendu vide", got)
 	}
 }
 
 // L'EN-TÊTE DE LA MATCH VIEW, bout en bout : c'est le champ que lit la carte d'en-tête ET
-// l'écran de fin du rejeu 2D. Sous UI anglaise il disait « Victoire » ; il dit « Victory ».
-func TestApplyMatchHeaderOutcomeLabel_EnTeteLocalise(t *testing.T) {
+// l'écran de fin du rejeu 2D. Il porte désormais la clé, pas un mot d'une langue donnée.
+func TestApplyMatchHeaderOutcomeKey_EnTeteLocalise(t *testing.T) {
 	outcomes := outcomesDeTest()
-	for locale, want := range map[string]string{"fr": "Défaite", "en": "Defeat"} {
-		h := domain.MatchViewHeader{}
-		applyMatchHeaderOutcome(&h, &domain.PlayerMatchStatsRaw{OutcomeCode: domain.OutcomeLoss})
-		applyMatchHeaderOutcomeLabel(ctxLocale(locale), &h, outcomes)
-		if h.OutcomeLabel != want {
-			t.Errorf("en-tête (%s) : %q, attendu %q", locale, h.OutcomeLabel, want)
-		}
+	h := domain.MatchViewHeader{}
+	applyMatchHeaderOutcome(&h, &domain.PlayerMatchStatsRaw{OutcomeCode: domain.OutcomeLoss})
+	applyMatchHeaderOutcomeKey(&h, outcomes)
+	if h.Outcome != "loss" {
+		t.Errorf("en-tête : %q, attendu %q", h.Outcome, "loss")
 	}
 }
 
-// Titre non câblé : l'en-tête garde EXACTEMENT le libellé posé par le builder — la passe de
-// localisation ne peut jamais vider le champ ni le remplacer par une clé brute.
-func TestApplyMatchHeaderOutcomeLabel_SansJeuDOutcomes(t *testing.T) {
+// Titre non câblé : la clé reste vide — jamais un mot fabriqué, jamais un panic.
+func TestApplyMatchHeaderOutcomeKey_SansJeuDOutcomes(t *testing.T) {
 	h := domain.MatchViewHeader{}
 	applyMatchHeaderOutcome(&h, &domain.PlayerMatchStatsRaw{OutcomeCode: domain.OutcomeWin})
-	applyMatchHeaderOutcomeLabel(ctxLocale("en"), &h, nil)
-	if h.OutcomeLabel != "Victoire" {
-		t.Errorf("en-tête sans jeu d'outcomes : %q, attendu %q", h.OutcomeLabel, "Victoire")
+	applyMatchHeaderOutcomeKey(&h, nil)
+	if h.Outcome != "" {
+		t.Errorf("en-tête sans jeu d'outcomes : %q, attendu vide", h.Outcome)
 	}
 }
 
 // Match sans issue enregistrée : le builder n'a rien posé (OutcomeCode nil) et la passe ne
-// touche à rien — le tiret initial de l'en-tête survit.
-func TestApplyMatchHeaderOutcomeLabel_SansCodeDIssue(t *testing.T) {
-	h := domain.MatchViewHeader{OutcomeLabel: outcomeLabelUnknown}
-	applyMatchHeaderOutcomeLabel(ctxLocale("en"), &h, outcomesDeTest())
-	if h.OutcomeLabel != outcomeLabelUnknown {
-		t.Errorf("en-tête sans code : %q, attendu %q", h.OutcomeLabel, outcomeLabelUnknown)
+// touche à rien.
+func TestApplyMatchHeaderOutcomeKey_SansCodeDIssue(t *testing.T) {
+	h := domain.MatchViewHeader{}
+	applyMatchHeaderOutcomeKey(&h, outcomesDeTest())
+	if h.Outcome != "" {
+		t.Errorf("en-tête sans code : %q, attendu vide", h.Outcome)
 	}
 }

@@ -34,10 +34,12 @@ type CommonMatchRow struct {
 	ModeUI        string    `json:"mode_ui"`
 	WereTeammates bool      `json:"were_teammates"`
 	PlayerOutcome int       `json:"player_outcome"`
-	OutcomeLabel  string    `json:"outcome_label"`
-	Kills         int       `json:"kills"`
-	Deaths        int       `json:"deaths"`
-	KDA           float64   `json:"kda"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06) ; vide si non mappée. Le
+	// web localise via useOutcomeLabel — jamais de texte servi ici.
+	Outcome string  `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
+	Kills   int     `json:"kills"`
+	Deaths  int     `json:"deaths"`
+	KDA     float64 `json:"kda"`
 }
 
 // ExplorerEncounterStats : stats agrégées du couple (player_courant, target),
@@ -431,8 +433,10 @@ type ExplorerMatchesRow struct {
 	ModeUI         *string   `json:"mode_ui"`
 	PlaylistLabel  *string   `json:"playlist_label"`
 	OutcomeCode    int       `json:"outcome_code"`
-	OutcomeLabel   string    `json:"outcome_label"`
-	ScoreLabel     string    `json:"score_label"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06) ; vide si non mappée. Le
+	// web localise via useOutcomeLabel — jamais de texte servi ici.
+	Outcome    string `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
+	ScoreLabel string `json:"score_label"`
 	// ScoreKind dit CE QUE porte ScoreLabel : "points" (score du mode rendu par l'API) ou
 	// "rounds" (manches gagnées). L'en-tête de colonne porte une infobulle qui l'explique ;
 	// le client localise la mention, le serveur ne met aucun mot de langue dans le libellé.

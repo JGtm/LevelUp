@@ -41,6 +41,10 @@ func (m *mockMatchHistoryForExplorer) ExportCSV(_ context.Context, _ domain.Matc
 	return nil, nil
 }
 
+func (m *mockMatchHistoryForExplorer) OutcomeText(_ context.Context, _ int) string {
+	return ""
+}
+
 func newExplorerRouter(
 	explorerF handlers.ExplorerAuthFactory,
 	matchHistF handlers.ContextFactory[port.MatchHistoryService],

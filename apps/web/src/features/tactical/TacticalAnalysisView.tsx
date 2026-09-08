@@ -11,10 +11,10 @@
  * et les y ajouter pour trois réglages de confort — perdus de toute façon au clic sur
  * une autre carte — aurait touché la route sans nécessité.
  *
- * `?frame=` (lien vers le rejeu depuis une cellule) est REPORTÉ AU LOT D
- * (`playbackStore`, item 5.5 du plan) : `CelluleTactique` ne publie qu'un COMPTE de
- * matchs contributeurs, jamais leurs identifiants — rien à quoi lier tant que ce
- * contrat ne change pas.
+ * `?frame=` (lien vers le rejeu depuis une cellule) est servi par `TacticalCellCard` depuis
+ * le lot M1 (Tactique S.1) : `useTacticalCellule` résout les contributions {match_id,
+ * instant_ms, xuid} de la cellule sélectionnée, avec le MÊME périmètre que le raster —
+ * la requête ne part QUE quand une cellule est sélectionnée (`selected !== null`).
  */
 import { useMemo, useState } from 'react'
 
@@ -23,10 +23,11 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import type { TacticalRaster } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
+import { withLowSampleNote } from '@/lib/formatters/lowSampleNote'
 import type { Locale } from '@/lib/i18n/locale'
 
 import type { TacticalText } from './i18n'
-import { useTacticalRaster } from './queries'
+import { useTacticalCellule, useTacticalRaster } from './queries'
 import { TacticalCellCard } from './TacticalCellCard'
 import { TacticalPlanCard } from './TacticalPlanCard'
 import { TacticalToolbar } from './TacticalToolbar'
@@ -102,6 +103,16 @@ export function TacticalAnalysisView({
   const celluleSelectionnee =
     selected && raster.data ? trouveCellule(raster.data.cellules ?? [], selected.col, selected.row) : null
 
+  // LE DÉTAIL D'UNE CELLULE (lot M1) : MÊME périmètre + question + qui + spawn que le
+  // raster, plus l'adresse cliquée. `selected` à `null` → la requête n'est pas lancée
+  // (cf. `useTacticalCellule`), ce qui est l'état NORMAL avant tout clic.
+  const cellule = useTacticalCellule(
+    playerSlug,
+    mapId,
+    selected ? { col: selected.col, lig: selected.row } : null,
+    params,
+  )
+
   return (
     <>
       <h2
@@ -147,7 +158,16 @@ export function TacticalAnalysisView({
             matchsNonCuisables={raster.data.matchs_non_cuisables ?? 0}
             onCellSelect={(col, row) => setSelected({ col, row })}
           />
-          <TacticalCellCard t={t} locale={locale} question={question} cellule={celluleSelectionnee} />
+          <TacticalCellCard
+            t={t}
+            locale={locale}
+            playerSlug={playerSlug}
+            question={question}
+            cellule={celluleSelectionnee}
+            contributions={cellule.data?.contributions ?? null}
+            contributionsLoading={cellule.isPending && selected !== null}
+            matchsNonOuvrables={cellule.data?.matchs_non_ouvrables ?? 0}
+          />
         </div>
       )}
     </>
@@ -186,16 +206,37 @@ function buildKpiCards(t: TacticalText, locale: Locale, data: TacticalRaster): K
       id: 'tactical-trade',
       label: t.kpiTrade,
       primary: pct.format(data.echange.taux),
-      secondary: t.kpiSecondary(data.echange.brut, data.echange.n),
+      secondary: kpiSecondaryWithReserve(t, data.echange.brut, data.echange.n, data.echange.echantillon_faible),
     })
   }
   if (data.isolement) {
+    const sansRayon = data.matchs_sans_rayon ?? 0
     cards.push({
       id: 'tactical-isolation',
       label: t.kpiIsolation,
       primary: pct.format(data.isolement.taux),
-      secondary: t.kpiSecondary(data.isolement.brut, data.isolement.n),
+      secondary: kpiSecondaryWithReserve(t, data.isolement.brut, data.isolement.n, data.isolement.echantillon_faible),
+      custom:
+        sansRayon > 0 ? (
+          <span className="text-2xs text-muted-foreground" data-testid="tactical-isolation-no-radius">
+            {t.kpiNoRadiusNote(sansRayon)}
+          </span>
+        ) : undefined,
     })
   }
   return cards
+}
+
+/**
+ * kpiSecondaryWithReserve — accole la réserve d'échantillon faible au sous-titre, par la
+ * forme unique du dépôt (`withLowSampleNote`, même source que `SquadEchangeKpi.tsx` : le
+ * drapeau `echantillon_faible` interdit de comparer la valeur, il ne la cache pas).
+ */
+function kpiSecondaryWithReserve(
+  t: TacticalText,
+  brut: number,
+  n: number,
+  echantillonFaible: boolean,
+): string {
+  return withLowSampleNote(t.kpiSecondary(brut, n), echantillonFaible, t.lowSample)
 }

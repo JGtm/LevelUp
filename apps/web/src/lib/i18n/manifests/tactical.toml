@@ -198,22 +198,6 @@ en = "Isolated deaths"
 fr = "Plan"
 en = "Plan"
 
-[tactical.plan.title_of]
-fr = "Plan de {map}"
-en = "Plan of {map}"
-
-[tactical.plan.footer_heatmap]
-fr = "Échelle quantile p50 vers p95, saturée au-delà. Une cellule jamais atteinte reste vide — elle n'est pas peinte en froid."
-en = "Quantile scale p50 to p95, saturated beyond. An unreached cell remains empty — it is not painted cold."
-
-[tactical.plan.footer_routes]
-fr = "15 premières secondes de chaque vie, une ligne par vie à 17% d'opacité : la route de consensus apparait par empilement."
-en = "First 15 seconds of each life, one line per life at 17% opacity: consensus route appears by layering."
-
-[tactical.plan.footer_empty]
-fr = "Aucune donnée mesurable pour cette question."
-en = "No measurable data for this question."
-
 # Status messages
 [tactical.status.pending]
 fr = "Traitement en cours : {n, plural, one {# match} other {# matchs}} en attente de cuisson"
@@ -239,6 +223,27 @@ en = "{n, plural, one {# distinct match} other {# distinct matches}} contributed
 [tactical.cell.placeholder_description]
 fr = "Sélectionne une cellule du plan pour voir son détail."
 en = "Select a plan cell to see its detail."
+
+# Détail d'une cellule — contributions et lien vers le rejeu (lot M1, Tactique S.1).
+[tactical.cell.contributions_title]
+fr = "Voir dans le rejeu"
+en = "View in replay"
+
+[tactical.cell.contributions_loading]
+fr = "Chargement des contributions…"
+en = "Loading contributions…"
+
+[tactical.cell.contributions_empty]
+fr = "Aucun match ouvrable pour cette cellule."
+en = "No openable match for this cell."
+
+[tactical.cell.contribution_label]
+fr = "Match du {date} à {instant} — ouvrir dans le rejeu"
+en = "Match of {date} at {instant} — open in replay"
+
+[tactical.cell.footer_not_openable]
+fr = "{n, plural, one {# match compté non ouvrable} other {# matchs comptés non ouvrables}}"
+en = "{n, plural, one {# match counted, not openable} other {# matches counted, not openable}}"
 
 # ── Titre de la vue d'analyse ─────────────────────────────────────────────────
 [tactical.analysis.page_title]
@@ -335,3 +340,11 @@ en = "Widen the period, the squad, or change the starting spawn to measure more 
 [tactical.kpi.secondary]
 fr = "{brut, number} sur {n, number}"
 en = "{brut, number} out of {n, number}"
+
+[tactical.kpi.low_sample]
+fr = "échantillon faible"
+en = "small sample"
+
+[tactical.kpi.no_radius_note]
+fr = "{n, plural, one {# match sans rayon connu, écarté} other {# matchs sans rayon connu, écartés}}"
+en = "{n, plural, one {# match with unknown radius, excluded} other {# matches with unknown radius, excluded}}"

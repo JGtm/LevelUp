@@ -6207,6 +6207,42 @@ paths:
       summary: Sert l'image du fond d'une carte de l'onglet Tactique
       tags:
         - tactical
+  /players/{player_slug}/tactical/{map_id}/cellule:
+    post:
+      operationId: getTacticalCellule
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: map_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TacticalCelluleBody'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TacticalCelluleReponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: 'Detail d''une cellule : les contributions ouvrables par l''appelant, pour ouvrir le rejeu au bon instant'
+      tags:
+        - tactical
   /players/{player_slug}/tactical/{map_id}/raster:
     post:
       operationId: getTacticalRaster
@@ -10227,13 +10263,18 @@ components:
         mode_ui:
           nullable: true
           type: string
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
+          nullable: true
+          type: string
         outcome_code:
           format: int64
           nullable: true
           type: integer
-        outcome_label:
-          nullable: true
-          type: string
         performance_score:
           format: float
           nullable: true
@@ -10978,7 +11019,12 @@ components:
           type: string
         mode_ui:
           type: string
-        outcome_label:
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
           type: string
         player_outcome:
           format: int64
@@ -10995,7 +11041,6 @@ components:
         - mode_ui
         - were_teammates
         - player_outcome
-        - outcome_label
         - kills
         - deaths
         - kda
@@ -12751,11 +12796,16 @@ components:
           type:
             - string
             - "null"
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
+          type: string
         outcome_code:
           format: int64
           type: integer
-        outcome_label:
-          type: string
         overtime_seconds:
           format: int64
           type: integer
@@ -12810,7 +12860,6 @@ components:
         - mode_ui
         - playlist_label
         - outcome_code
-        - outcome_label
         - score_label
         - is_with_friends
         - experience_type_label
@@ -16549,11 +16598,16 @@ components:
           type:
             - string
             - "null"
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
+          type: string
         outcome_code:
           format: int64
           type: integer
-        outcome_label:
-          type: string
         overtime_seconds:
           format: int64
           type: integer
@@ -16619,7 +16673,6 @@ components:
         - start_time
         - start_time_label
         - outcome_code
-        - outcome_label
         - score_label
         - map_ui
         - mode_ui
@@ -17060,11 +17113,16 @@ components:
     MatchPersonalResult:
       additionalProperties: false
       properties:
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
+          type: string
         outcome_color:
           type: string
         outcome_color_token:
-          type: string
-        outcome_label:
           type: string
         rank_in_team:
           format: int64
@@ -17073,7 +17131,6 @@ components:
           format: int64
           type: integer
       required:
-        - outcome_label
         - outcome_color
       type: object
     MatchPlayerFact:
@@ -17441,7 +17498,12 @@ components:
         offensive_conversion:
           format: double
           type: number
-        outcome_label:
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
           type: string
         perfect_kills:
           format: int64
@@ -17492,7 +17554,6 @@ components:
         - xuid
         - gamertag
         - is_me
-        - outcome_label
       type: object
     MatchScoreboardSkillRank:
       additionalProperties: false
@@ -17752,14 +17813,19 @@ components:
           type: string
         mode_ui:
           type: string
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
+          type: string
         outcome_code:
           format: int64
           type: integer
         outcome_color:
           type: string
         outcome_color_token:
-          type: string
-        outcome_label:
           type: string
         overtime_seconds:
           format: int64
@@ -17804,7 +17870,6 @@ components:
       required:
         - match_id
         - start_time_label
-        - outcome_label
         - outcome_color
         - dominance_flag
         - had_bot_teammate
@@ -25765,6 +25830,88 @@ components:
         - exists
         - rows
       type: object
+    TacticalCelluleAdresse:
+      additionalProperties: false
+      properties:
+        col:
+          description: Colonne de la cellule, ancree sur l'origine du monde (comme CelluleTactique.col).
+          format: int64
+          type: integer
+        lig:
+          description: Ligne de la cellule, ancree sur l'origine du monde (comme CelluleTactique.lig).
+          format: int64
+          type: integer
+      required:
+        - col
+        - lig
+      type: object
+    TacticalCelluleBody:
+      additionalProperties: false
+      properties:
+        cellule:
+          $ref: '#/components/schemas/TacticalCelluleAdresse'
+          description: La cellule dont on demande le detail (col, lig).
+        coequipiers:
+          description: XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade ».
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        match_ids:
+          description: 'Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match.'
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        question:
+          description: 'Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts.'
+          type: string
+        qui:
+          description: 'Axe : moi | escouade | adv. Defaut : moi.'
+          type: string
+        spawn:
+          description: 'Identifiant d''une grappe de reapparition : restreint l''univers aux matchs dont MA premiere vie en part.'
+          type: string
+      required:
+        - cellule
+      type: object
+    TacticalCelluleReponse:
+      additionalProperties: false
+      properties:
+        contributions:
+          items:
+            $ref: '#/components/schemas/TacticalContribution'
+          type:
+            - array
+            - "null"
+        matchs_non_ouvrables:
+          format: int64
+          type: integer
+      required:
+        - contributions
+        - matchs_non_ouvrables
+      type: object
+    TacticalContribution:
+      additionalProperties: false
+      properties:
+        instant_ms:
+          format: int64
+          type: integer
+        match_id:
+          type: string
+        match_started_at:
+          format: date-time
+          type: string
+        xuid:
+          type: string
+      required:
+        - match_id
+        - instant_ms
+        - xuid
+        - match_started_at
+      type: object
     TacticalGrappe:
       additionalProperties: false
       properties:
@@ -27060,11 +27207,16 @@ components:
           type:
             - string
             - "null"
+        outcome:
+          enum:
+            - win
+            - loss
+            - tie
+            - dnf
+          type: string
         outcome_code:
           format: int64
           type: integer
-        outcome_label:
-          type: string
         performance_score:
           format: double
           type: number
@@ -27079,7 +27231,6 @@ components:
         - map_ui
         - mode_ui
         - outcome_code
-        - outcome_label
         - kills
         - deaths
         - kda

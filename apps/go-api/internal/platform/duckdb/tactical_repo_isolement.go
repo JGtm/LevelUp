@@ -47,12 +47,17 @@ import (
 // LE FILTRE `publishable` EST CELUI DU JOURNAL : une passe non publiable est juste en AGREGAT et
 // fausse ligne par ligne (marge de bijection nulle, cas BTB). Une lecture qui nomme une mort
 // exige donc `publishable = TRUE`, comme le kill feed et la timeline.
+// `e.time_ms` VOYAGE DANS LE SELECT (ajout lot M1, 2026-09-07) : il fait deja partie de la
+// clef du GROUP BY (avec match_id et feed_killer_xuid), donc le projeter ne change ni le
+// nombre de lignes ni les gardes — c'est l'INSTANT CONTRIBUTEUR qu'un detail de cellule doit
+// pouvoir citer.
 const QTacticalIsolement = `
 SELECT e.match_id, min(e.victim_xuid) AS victim_xuid,
        min(p.victim_x) AS victim_x, min(p.victim_y) AS victim_y,
        min(c.nearest_teammate_m) AS nearest_teammate_m,
        min(c.teammates_visible) AS teammates_visible,
-       min(c.teammates_out_of_sight) AS teammates_out_of_sight
+       min(c.teammates_out_of_sight) AS teammates_out_of_sight,
+       e.time_ms AS time_ms
 FROM match_kill_events_latest e
 JOIN match_death_context_latest c
   ON c.match_id = e.match_id AND c.victim_xuid = e.victim_xuid AND c.time_ms = e.time_ms
@@ -116,7 +121,7 @@ func scanMortContexte(sc rowScanner) (domain.MortContexte, error) {
 	var m domain.MortContexte
 	var proche sql.NullFloat64
 	if err := sc.Scan(&m.MatchID, &m.VictimXUID, &m.X, &m.Y,
-		&proche, &m.Visibles, &m.HorsDeVue); err != nil {
+		&proche, &m.Visibles, &m.HorsDeVue, &m.TimeMs); err != nil {
 		return m, err
 	}
 	if proche.Valid {

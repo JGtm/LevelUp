@@ -2,7 +2,8 @@
  * TacticalPlanCard — la carte « Plan » de la vue d'analyse (item 5.4).
  *
  * LE FOND (`<img>`, MÊME convention que `TacticalMapTile`) ET LE CALQUE DE CHALEUR
- * (`<canvas>`, `drawTacticalHeatmap` de `heatPaint.ts`) PARTAGENT EXACTEMENT LE MÊME
+ * (`<canvas>`, `drawTacticalHeatmap` de `lib/replay/heatPaint.ts` — noyau partagé avec le
+ * rejeu depuis le lot Q7, 2026-09-07) PARTAGENT EXACTEMENT LE MÊME
  * CADRE : le conteneur est mis à l'aspect-ratio DU MONDE (bornes du raster), jamais un
  * 16:9 fixe — sinon `object-cover` rognerait l'image sur un axe que le calque, lui, ne
  * rogne pas, et les deux se désaligneraient au clic. Sans bornes valides, rien n'est
@@ -21,7 +22,7 @@ import { resolveToken } from '@/lib/accessibility/resolveToken'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { BornesMonde } from '@/lib/api/types'
 
-import { drawTacticalHeatmap, heatRamp, type TacticalGrid } from './heatPaint'
+import { drawTacticalHeatmap, heatRamp, type TacticalGrid } from '@/lib/replay/heatPaint'
 import type { TacticalText } from './i18n'
 import { useTacticalMapBackgroundUrl } from './queries'
 import {
@@ -86,12 +87,7 @@ export function TacticalPlanCard({
     if (!ctx) return
     ctx.clearRect(0, 0, width, height)
     const scale = width / (bornes.max_x - bornes.min_x)
-    drawTacticalHeatmap(
-      ctx,
-      grid,
-      { width, height, topLeftWorld: { x: 0, y: 0 }, scale, k: 1 },
-      { ramp, k: 1 },
-    )
+    drawTacticalHeatmap(ctx, grid, { topLeftWorld: { x: 0, y: 0 }, scale }, { ramp, k: 1 })
   }, [grid, ramp, bornes, bornesValides])
 
   function handleClick(event: React.MouseEvent<HTMLCanvasElement>) {

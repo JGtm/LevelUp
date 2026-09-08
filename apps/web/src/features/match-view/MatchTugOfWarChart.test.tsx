@@ -50,7 +50,7 @@ interface OptionLike {
 }
 
 function sb(xuid: string, gamertag: string, teamSide: string, isMe = false): MatchScoreboardRow {
-  return { xuid, gamertag, team_side: teamSide, is_me: isMe, outcome_label: 'Win' } as MatchScoreboardRow
+  return { xuid, gamertag, team_side: teamSide, is_me: isMe, outcome: 'win' } as MatchScoreboardRow
 }
 
 function ev(actorXuid: string, tMs: number): MatchHighlightEvent {

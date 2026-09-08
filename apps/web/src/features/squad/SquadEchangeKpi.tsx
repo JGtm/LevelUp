@@ -19,6 +19,7 @@ import { useMemo } from 'react'
 import { KPIStrip, type KPICardData } from '@/components/layout/KPIStrip'
 import { formatSignedPoints } from '@/lib/baseline'
 import { intlLocale } from '@/lib/formatters'
+import { withLowSampleNote } from '@/lib/formatters/lowSampleNote'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { useSquadContext } from './SquadContext'
@@ -48,10 +49,12 @@ export function SquadEchangeKpi() {
   // (`ecartEchange`), pas ici : inlinés, ils n'étaient couverts par aucun test.
   const { ecart, ecartPoints, pleinHistorique } = ecartEchange(echange)
   // La réserve d'échantillon faible s'affiche AVEC la valeur : elle ne la cache pas,
-  // elle interdit de la comparer.
-  const secondaire = echange.couverture.echantillon_faible
-    ? `${t.kpiSecondary(echange.couverture.brut, echange.couverture.n)} — ${t.lowSample}`
-    : t.kpiSecondary(echange.couverture.brut, echange.couverture.n)
+  // elle interdit de la comparer (forme unique : `withLowSampleNote`).
+  const secondaire = withLowSampleNote(
+    t.kpiSecondary(echange.couverture.brut, echange.couverture.n),
+    echange.couverture.echantillon_faible,
+    t.lowSample,
+  )
 
   const card: KPICardData = {
     id: 'squad-echange',

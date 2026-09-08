@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 
-import type { HeatmapMode, HeatmapSpan } from '../layers/heatmapLayer'
+import type { HeatmapMode, HeatmapSpan } from '../../../lib/replay/heatPaint'
 import {
   persistPreference,
   readStoredChoice,

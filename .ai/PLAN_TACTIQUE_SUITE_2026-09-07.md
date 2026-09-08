@@ -32,7 +32,7 @@ ne l'a pas encore.
 Ce que le contrat porte deja : par cellule, la valeur et le nombre de matchs contributeurs ; pour
 `temps`/`routes` le sidecar connait l'instant contributeur (`frame` de premiere entree /
 debut de vie) ; pour `morts`/`kills`/`gagne` le journal porte `time_ms`.
-- [ ] S.1.1 Contrat : `POST .../tactical/{map_id}/cellule` (ou champ optionnel de la reponse
+- [x] S.1.1 Contrat : `POST .../tactical/{map_id}/cellule` (ou champ optionnel de la reponse
       raster sur demande `cellule: {col,row}`) qui rend, pour UNE cellule, la liste des
       contributions `{match_id, instant_ms, xuid}` **filtree par l'ownership XUID** (ADR 0029 :
       seuls les matchs ouvrables par l'appelant) + `matchs_non_ouvrables` (compte). Service :
@@ -40,23 +40,69 @@ debut de vie) ; pour `morts`/`kills`/`gagne` le journal porte `time_ms`.
       questions de base, depuis les sidecars pour `temps`/`routes` (le sidecar porte `frame` par
       spawn/route ; pour `temps`, l'instant de premiere entree est dans `Raster` — verifier ce
       que le schema 6 publie, sinon consigner « temps sans instant »).
-- [ ] S.1.2 Web : `TacticalCellCard` liste les contributions (match, date, instant) avec un lien
+      PREUVE (lot M1, branche `feat/tactique-lien-rejeu`) : endpoint
+      `POST /players/{player_slug}/tactical/{map_id}/cellule` (`api/openapi.yaml`,
+      schemas `TacticalCelluleBody`/`TacticalCelluleReponse`/`TacticalContribution`) ;
+      domaine `internal/domain/tactical_cellule.go` ; port
+      `TacticalRepository.MatchsOuvrables` (`internal/port/tactical.go`) implemente par
+      `internal/platform/duckdb/tactical_repo_ownership.go` (EXISTS sur
+      `match_participants`, meme garde que la Couche B ADR 0029) ; service
+      `internal/service/tactical_service_cellule.go` (dispatch morts/kills/gagne ->
+      `KillPositions`, isole -> `MortsAvecContexte`, temps/routes -> sidecars, `TimeMs`
+      toujours present au schema 6 courant — aucun cas de « temps sans instant »
+      rencontre, note dans le fichier). Filtrage d'ownership APRES lecture (defense en
+      profondeur), tri date desc puis instant croissant.
+- [x] S.1.2 Web : `TacticalCellCard` liste les contributions (match, date, instant) avec un lien
       vers la route du rejeu et `?frame=` (modele D : lire comment `replay.tsx` consomme le
       parametre apres le lot D — `playbackStore`), `footer` = « N matchs comptes non ouvrables ».
-- [ ] S.1.3 Tests : service (ownership : un match d'un autre joueur n'apparait pas mais compte),
+      PREUVE : `apps/web/src/features/tactical/TacticalCellCard.tsx` (liste de contributions,
+      lien `?frame=` via `router.buildLocation` + `instantToFrame`, footer conditionnel
+      `matchsNonOuvrables > 0`) ; hook `useTacticalCellule` (`queries.ts`, requete seulement
+      si une cellule est selectionnee) ; cle `queryKeys.tacticalCellule` (`lib/query/keys.ts`,
+      title-scopee, garde `keys.title-slug.guard.test.ts` mis a jour) ; wiring dans
+      `TacticalAnalysisView.tsx` ; i18n FR/EN complete (`tactical.toml` +
+      `generated/tactical.ts`).
+- [x] S.1.3 Tests : service (ownership : un match d'un autre joueur n'apparait pas mais compte),
       handler, logique pure web (instant -> frame), rendu de la carte.
-- **Gate** : `?frame=` positionne le rejeu (test de la route) ; filtrage d'acces teste ;
-  typecheck + vitest ; `go test` service/handler ; contrat regenere.
+      PREUVE : Go — `internal/service/tactical_service_cellule_test.go` (ownership,
+      filtre de cellule, trois faces morts/kills/gagne, isole, temps, routes, tri, refus
+      carte/question/capability) ; `internal/platform/duckdb/tactical_repo_ownership_test.go`
+      (`:memory:`, MatchsOuvrables mien/tiers, date canonique, doublon, listes vides) ;
+      `internal/api/handlers/tactical_cellule_test.go` + `tactical_mapid_test.go`
+      (nominal, defauts, 404 carte inconnue, 503 capability, formes hostiles de map_id).
+      Web — COMPLETE dans cette reprise (les tests Go et le contrat existaient deja, la
+      logique pure et le rendu de carte manquaient) : `instantToFrame` teste dans
+      `tacticalView.logic.test.ts` (pas par defaut, pas explicite, arrondi, bornes 0/negatif) ;
+      rendu ajoute dans `TacticalCellCard.test.tsx` (placeholder, chargement, vide, lien
+      `?frame=` construit, ordre des liens, footer conditionnel 0 vs >0).
+- **Gate** : `?frame=` positionne le rejeu (test de la route, deja couvert par le lot D —
+  `replay.gate.test.tsx`) ; filtrage d'acces teste ; typecheck + vitest ; `go test`
+  service/handler ; contrat regenere. TOUS VERTS le 2026-09-08 (voir thought_log).
 
-## S.2 — Un seul peintre de chaleur (item 5.1, fusion avec D.13)
+## S.2 — Un seul peintre de chaleur (item 5.1, fusion avec D.13) — FAIT (lot Q7, 2026-09-07,
+branche `feat/peintre-chaleur-unique`)
 
-- [ ] S.2.1 Remplacer `features/tactical/heatPaint.ts` par le peintre partage de `lib/replay/`
-      (lot D) : adapter l'entree « cellules pre-agregees » si le peintre partage ne l'a pas
-      (extension dans `lib/replay/`, pas une troisieme copie) ; supprimer `heatPaint.ts`.
-- [ ] S.2.2 Garde-rail grep : aucune seconde implementation du noyau (`buildHeatmap` /
-      `drawHeatmapLayer`) hors `lib/replay/` (self-check positif).
-- **Gate** : rendu identique (test de `tacticalGridFromRaster` + snapshot leger) ; typecheck ;
-  vitest ; garde-rail vert.
+- [x] S.2.1 Deplace (pas juste remplace, cf. AMENDEMENT en tete de fichier) le noyau
+      `features/match-replay/layers/heatmapLayer.ts` (buildHeatmap/drawHeatmapLayer/heatRamp)
+      vers `lib/replay/heatPaint.ts`, y ajoute l'entree « cellules pre-agregees »
+      (buildTacticalGrid/drawTacticalHeatmap, ex-`features/tactical/heatPaint.ts`) ; les DEUX
+      fichiers copies sont SUPPRIMES (le rejeu et le tactique importent desormais le noyau
+      commun ; `drawHeatmap` interne partage la fusion de plages + alignement pixel, parametre
+      par `HeatSource`/`HeatGeometry` pour que le Y-flip du rejeu et son absence cote tactique
+      restent chacun dans leur adaptateur).
+- [x] S.2.2 Garde-rail `lib/replay/heatPaint.guard.test.ts` : grep (`import.meta.glob`) sur
+      les cinq noms (`buildHeatmap`, `drawHeatmapLayer`, `drawTacticalHeatmap`,
+      `buildTacticalGrid`, `heatRamp`) — rouge si definis hors de `heatPaint.ts`, et
+      self-check positif qu'ils y sont bien. Mutation jouee (copie de
+      `drawTacticalHeatmap` dans `features/tactical/` -> rouge -> retiree -> vert).
+- **Gate** : rendu identique — `tacticalGridFromRaster` (4 tests ajoutes, aucun test
+  existant n'en avait avant Q7) + snapshot leger d'intensites pour les deux entrees ;
+  `heatmapLayer.test.ts` migre tel quel vers `lib/replay/heatPaint.test.ts` (memes
+  assertions, `view` de `drawHeatmapLayer` recalculee via les memes primitives
+  `worldToCanvas`/`canvasScale` puisque le noyau n'importe plus `CanvasView`) ; typecheck
+  (`tsc -b`) vert ; vitest complet 653 fichiers / 6979 tests verts (18 skip pre-existants) ;
+  `crossFeatureBoundary.guard` vert ; garde-rail Q7 vert. Decouvertes : voir
+  `.ai/DECOUVERTES_TACTIQUE_2026-09-07.md` (section « Lot Q7 »).
 
 ## S.3 — Arrivees et departs dans le contexte de mort (premiere entree du registre)
 

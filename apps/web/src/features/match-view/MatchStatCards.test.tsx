@@ -11,9 +11,13 @@ vi.mock('@/lib/damage/effectiveHp', () => ({
   useProvidesTeamMmr: () => caps.teamMmr,
 }))
 
-// Locale FR fixe (le sélecteur reçoit un state minimal).
+// Locale FR fixe (le sélecteur reçoit un state minimal). `availableTitles` vide :
+// `useCapability` (gate `expected_win_prob` depuis 9af8aea41) rend `true` quand le titre
+// courant n'est pas dans la liste — les cas « winProb absent » se pilotent par la valeur.
 vi.mock('@/stores/appShellStore', () => ({
-  useAppShellStore: (sel: (s: { locale: string }) => unknown) => sel({ locale: 'fr' }),
+  useAppShellStore: (
+    sel: (s: { locale: string; availableTitles: never[]; currentTitle: string }) => unknown,
+  ) => sel({ locale: 'fr', availableTitles: [], currentTitle: 'halo_infinite' }),
 }))
 
 const kpis: MatchSummaryKpis = {
