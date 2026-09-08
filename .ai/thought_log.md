@@ -101810,3 +101810,9 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
   recycle) ; `shotsNoRide`/`ambiguous*` non classes echecs (P5) ; les corps de bots REELS n'ont plus
   de voie de nommage directe (index hors table) — question decodeur : ou est l'index des bots ?
 - Gate corpus sur le parc relance (superviseur).
+- Gate corpus apres E2-bis (superviseur) : les deux P0 ont disparu du detail ; restent des baisses
+  PAR JOUEUR a somme conservee (ramassages, trajets, pistes = reattributions prouvees), 3 compteurs
+  d'echec non classes et 2 voies de drapeau. Comparateur amende sur la branche E2 (`112d8fdaa`) :
+  un groupe `par-xuid` a somme conservee = CHANGEMENT (reattribution), `ambiguousReturns` /
+  `ambiguousSlot` / `shotsNoRide` = echecs, `flagCarries.homeBy*` / `assignedBy*` = voies ; tests.
+  Gate relance.
