@@ -101778,3 +101778,16 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
   cause (trou de replication -> propagation par (slot, generation) ; record non lu -> lecteur ;
   bot/hors table ; absent prouve). Executant E2 arrete puis relance sur son worktree (I0 bots deja
   tranche : espace d'index partage, index 8 non resolu).
+
+## [2026-09-08] Orchestration — E2 livre ; gate corpus : pertes calque par calque -> E2-bis (En cours)
+- E2 (`feat/v2-decodeur-e2`, 7 commits Opus) : residu instruit par cause — 51 vies decoupees par un
+  trou de replication (propagees par le slot : UN slot = UN corps sur tout le film, generation
+  invariante), 0 record non lu, 2 index hors table (bot), 0 record absent. Couverture directe
+  100/100/100/100/97,7 %, 0 vie nommee par le pont, 27 vies renommees a raison, collisions a 0.
+- Gate corpus 10 temoins (base v75) : gains massifs MAIS pertes non vues par la mesure d'E2 (qui ne
+  regardait que nommage et scores) : vies de BOTS perdues (`bcb6d393` 1 -> 0, `c75f33b8` 2 -> 1,
+  bombStats.players 7 -> 6), VEHICULES `084a804d` rides 2711 -> 687 etc., ramassages/episodes par
+  joueur en baisse sur 6 films, flag spans 26 -> 23. Hypotheses : l'index hors table ecrase la voie
+  bot ; un corps en vehicule n'est pas replique et le trajet tombe dans un trou entre deux vies
+  directes (le pont aplati couvrait tout le slot). E2-bis lance (Opus) : instruction ligne par ligne,
+  correctifs dans le registre (identite du slot sur toute la duree du corps), 0 perte hors acceptees.
