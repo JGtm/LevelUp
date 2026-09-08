@@ -24,7 +24,15 @@ package replay
 // SchemaVersion est incrémenté quand la forme de ReplayDocument change d'une façon que le
 // client web doit gérer. L'ajout de champs OPTIONNELS (omitempty) ne casse pas le client
 // et n'incrémente pas la version ; seul un changement cassant le fait.
-const SchemaVersion = 48
+//
+// EXCEPTION ASSUMÉE AU 2026-09-08 (v49, lot M1b, décision utilisateur ferme) : le champ ajouté
+// (`coverage.bridge.deathOffsetMs`) est bien optionnel — le web sait déjà distinguer « connu »
+// de « absent » sur le seul pointeur, sans regarder cette version. Le bump n'est donc pas
+// exigé par la RÈGLE ci-dessus ; il est posé quand même pour que `backfill-replay` recuise
+// tout le parc < 49 en une passe (plutôt que de laisser un artefact ancien répondre « calage
+// inconnu » indéfiniment faute de recuisson déclenchée) — cf.
+// `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
+const SchemaVersion = 49
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

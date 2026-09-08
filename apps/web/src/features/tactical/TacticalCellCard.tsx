@@ -1,6 +1,7 @@
 /**
  * TacticalCellCard — la carte « Cellule sélectionnée » de la vue d'analyse (item 5.6,
- * complétée par le lot M1 — Tactique S.1, « voir dans le rejeu »).
+ * posée par le lot M1 — Tactique S.1, « voir dans le rejeu » ; horloge EXACTE, lot M1b du
+ * 2026-09-08, décision utilisateur ferme « corriger le décalage »).
  *
  * DEUX BLOCS : la valeur agrégée du raster (toujours servie avec la cellule), PUIS les
  * CONTRIBUTIONS individuelles (`useTacticalCellule`, lancée uniquement quand une cellule
@@ -10,10 +11,14 @@
  * carte ne fait qu'afficher `matchs_non_ouvrables` en pied de liste (0 → rien, jamais un
  * zéro qui inviterait à le lire comme une absence de restriction).
  *
- * `?frame=` EST UNE APPROXIMATION POUR QUATRE QUESTIONS SUR SIX — voir la doc de
- * `instantToFrame` (tacticalView.logic.ts) : le lien ouvre TOUJOURS le bon match, à un
- * instant exact pour « temps »/« routes », approché pour les quatre autres (décalage
- * d'horloge par match non publié — découverte consignée, lot M1).
+ * LE LIEN PORTE `?t=<instant_ms>&clock=<c.clock>`, JAMAIS UNE FRAME PRÉ-CALCULÉE ICI. Cette
+ * carte n'a pas l'artefact de rejeu sous la main (il n'est pas toujours cuit) et ne peut donc
+ * PAS savoir si l'instant est déjà exact (`clock: "film"`, questions `temps`/`routes`) ou
+ * doit être recalé par un décalage publié seulement quand le document est chargé (`clock:
+ * "match"`, questions `morts`/`kills`/`gagne`/`isole`) : c'est la ROUTE du rejeu qui
+ * convertit, une fois le document ouvert (`lib/replay/replayLogic.resolveTacticalReplayInstant`).
+ * `instantToFrame` (tacticalView.logic.ts) est mort depuis ce lot — cette conversion a
+ * remplacé sa seule utilisation, et il a été retiré avec ses tests.
  */
 import { useRouter } from '@tanstack/react-router'
 
@@ -26,7 +31,7 @@ import { formatClock } from '@/lib/replay/replayLogic'
 import { useTitleSlug } from '@/lib/title-routing'
 
 import type { TacticalText } from './i18n'
-import { instantToFrame, unitForQuestion, type TacticalQuestion } from './tacticalView.logic'
+import { unitForQuestion, type TacticalQuestion } from './tacticalView.logic'
 
 export interface TacticalCellCardProps {
   t: TacticalText
@@ -122,12 +127,18 @@ function TacticalCellContributions({
           {contributions.map((c, i) => {
             const date = dateFmt.format(new Date(c.match_started_at))
             const instant = formatClock(c.instant_ms)
-            const frame = instantToFrame(c.instant_ms)
-            const base = router.buildLocation({
+            const href = router.buildLocation({
               to: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay',
               params: { titleSlug, playerSlug, matchId: c.match_id },
+              // `t` est une CHAÎNE dans le schéma de la route (pas un nombre) : `FullSearchSchema`
+              // fusionne tous les schémas de recherche du dépôt, et un champ numérique y casse
+              // des lecteurs sans rapport qui supposent chaque valeur déjà une chaîne
+              // (`HelpPage.tsx`/`SettingsPage.tsx`, `new URLSearchParams(location.search)`).
+              // `c.clock` est un `string` côté contrat généré (Go publie `"match"`/`"film"`
+              // par construction, domain.TacticalClockMatch/Film) : la route revalide au
+              // moment de le lire (`z.enum`), ce cast n'écarte donc aucune garde réelle.
+              search: { t: String(c.instant_ms), clock: c.clock as 'match' | 'film' },
             }).href
-            const href = `${base}${base.includes('?') ? '&' : '?'}frame=${frame}`
             return (
               <li key={`${c.match_id}-${c.instant_ms}-${i}`}>
                 <a
