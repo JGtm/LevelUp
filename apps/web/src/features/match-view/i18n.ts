@@ -396,8 +396,15 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceColAvg: 'Distance moyenne',
     killDistanceMinLabel: 'Plus proche',
     killDistanceMaxLabel: 'Plus loin',
+    // CE MESSAGE A ÉTÉ CORRIGÉ LE 2026-09-08 PARCE QU'IL ÉTAIT FAUX. Il annonçait un décodage
+    // « pas encore joué » sur des matchs où le film EST décodé : le témoin du diagnostic, Origin
+    // du 7 septembre, porte 65 positions de kill — plus que le match voisin qui, lui, affiche le
+    // bloc. La vraie cause est ailleurs : la passe de décodage n'a pas autorisé la publication
+    // LIGNE PAR LIGNE (`match_kill_events.publishable`, marge de bijection nulle), et le lecteur
+    // de distances l'exige. Le message envoyait donc l'utilisateur relancer un travail déjà fait
+    // — l'anti-pattern « doc inversée » du CLAUDE.md, appliqué à une chaîne d'interface.
     killDistanceEmpty:
-      "Distances non mesurées sur ce match — elles demandent le décodage du film (positions du tueur et de la victime), qui n'a pas encore été joué ici.",
+      'Distances non mesurées sur ce match — le film a bien été décodé, mais la passe n’a pas pu attribuer chaque élimination avec assez de certitude pour publier une distance par frag.',
     killDistancePlayerHeaderFmt: (gamertag, measured, total) =>
       `${gamertag} — ${measured}/${total} frags mesurés`,
     killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
@@ -710,8 +717,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceColAvg: 'Average distance',
     killDistanceMinLabel: 'Closest',
     killDistanceMaxLabel: 'Farthest',
+    // Cf. la note attachée à la version FR : ce message annonçait un décodage non joué sur des
+    // matchs où le film EST décodé.
     killDistanceEmpty:
-      'No measured distances on this match — they require decoding the film (killer and victim positions), which has not been run here yet.',
+      'No measured distances on this match — the film was decoded, but the pass could not attribute each kill confidently enough to publish a per-kill distance.',
     killDistancePlayerHeaderFmt: (gamertag, measured, total) =>
       `${gamertag} — ${measured}/${total} measured kills`,
     killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,

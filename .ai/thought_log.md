@@ -1,3 +1,62 @@
+## [2026-09-08] Vague A — le lot court des 7 correctifs — Complete (non commite, attente utilisateur)
+
+Worktree dedie `LevelUp-wt-lot-court`, branche `wt/lot-court` depuis `feat/v75` (7254b3853).
+25 fichiers, +436 / -60. **Rien n'est commite** : regle 16 du CLAUDE.md, demander avant.
+
+**Les sept etapes, chacune avec son gate passe.**
+A1 `ReplayTeams.tsx:184` `1fr` -> `minmax(0, 1fr)` · A2 onglet Tactique en L1 (+ cle i18n FR/EN,
+manifestes regeneres) · A3 trait de lecture 1 -> 3 px, opacite 40 -> 55 % · A4 les trois surcouches
+de carte descendent dans le conteneur de la toile · A5 message d'etat vide de « Distance par arme »
+rendu honnete (FR + EN) · A6 nouveau jeton `zone-neutral` + lisere a l'encre du fond pour les
+objectifs sans camp · A7 `FLAG_OFFSET_*` conditionne au seul etat `carried`.
+
+**Trois choses que l'execution a apprises, et qui valent plus que les correctifs.**
+
+1. **A1 : les fixations DOM ont casse, et c'etait le signal attendu.** Leur en-tete dit « toute
+   divergence est une regression 4v4, jamais une fixture a regenerer ». Avant de regenerer j'ai
+   diffe les instantanes CARACTERE PAR CARACTERE : **une seule difference sur 68 478 caracteres**
+   (`1fr` -> `minmax(0, 1fr)`), et le `git diff --word-diff` des deux fixtures ne rend que
+   `+minmax(0,` et `+)`, rien de retire. C'est la verification qui autorise la regeneration — pas
+   le fait que le test soit rouge.
+
+2. **A4 : ma premiere correction ne marchait pas, et seule la MESURE l'a dit.** J'avais enveloppe
+   `<ReplayCanvas>` d'un `relative` depuis la page. Mesure a l'ecran : overlay 711 px pour une
+   carte de 471, ecart 106 px — INCHANGE. La cause : `ReplayCanvas` ne rend pas que la toile, il
+   rend AUSSI la barre de lecture. Le bon ancrage etait un cran plus bas, dans son conteneur
+   `relative mx-auto` (l. 670), via une prop `mapOverlays`. Apres correction : overlay 181/471,
+   **ecart 0 px**. Lecon : un gate visuel n'est pas une formalite, il rattrape ce que le typage et
+   les tests laissent passer.
+
+3. **A6 etait sous-estime dans le plan.** `Palette = Record<SemanticToken, string>` : ajouter un
+   jeton oblige les 4 palettes d'accessibilite, `ALL_TOKENS`, l'union, `globals.css`, plus les
+   instantanes de couverture. Et le parametre `neutral` de `useZoneStates` portait une decision
+   DATEE du 2026-08-25 (« pas de variable de layout pour un fait de jeu »). Je l'ai honoree :
+   jeton semantique pour le remplissage, et pour le contour la technique deja documentee du
+   **lisere a l'encre du fond** (`useReplayInks.mark.outline`, `--background`) — celle dont le
+   commentaire decrit mot pour mot ce que l'utilisateur demandait (« en sombre le remplissage est
+   clair et le lisere sombre, en clair l'inverse »). Constat au passage : le defaut n'existait que
+   sur la palette PAR DEFAUT — les trois palettes daltoniennes rendaient deja `divergent-neutral`
+   gris, ce qui explique qu'il ait survecu aux relectures.
+
+**Extension de perimetre assumee sur A4.** Le plan ne visait que l'ecran de fin. J'ai deplace les
+TROIS surcouches : le message inter-manche partage le bloc et les styles de l'ecran de fin
+(`replayOverlayStyles.ts`) — n'en deplacer qu'un les aurait poses a deux hauteurs differentes,
+c'est-a-dire une divergence que le correctif AURAIT CREEE. Ce n'est pas un fix opportuniste, c'est
+la coherence de la correction elle-meme.
+
+**Mutation jouee sur A1** (rouge sans le correctif, vert avec). Sur A2 et A7 les tests portent sur
+des elements qui n'existent que grace au changement, la mutation y est tautologique.
+
+**Gates de cloture.** Suite web complete **7 032 tests verts, 0 echec** (rejouee apres la
+correction d'A4) · `tsc -b` propre · `lint:colors` 0 violation · `lint:fields` 0 violation ·
+gates visuels A1 (235+235 = 480, aucun rognage), A3 (3 px), A4 (ecart 0), A7 (anneau et pied du
+drapeau concentriques a l'image 790).
+
+**Reste a faire avant merge** : une revue adversariale unique sur le diff de vague, puis
+`delivery-checklist`. **Le point 5 (fond de carte d'Isolement) n'est PAS dans cette vague** — il
+est classe chantier dans le diagnostic, la regle de `coversPlayedArea` demandant une decision de
+forme (quel percentile, quelle marge, et faut-il journaliser).
+
 ## [2026-09-08] Lot M1b — corriger le décalage d'horloge du lien « voir dans le rejeu » — Complete
 
 **Décision technique principale.** Reprise de la découverte non traitée du lot M1
