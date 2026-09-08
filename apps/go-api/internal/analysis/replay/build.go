@@ -65,7 +65,8 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// roster, publie la provenance de chaque lien, et expose des accesseurs qui portent DEJA
 	// leurs gardes — aucun calque ne reconstruit son propre pont (garde-rail `archlint`).
 	reg := BuildIdentityRegistry(IdentityInput{
-		Positions: sorted, Deaths: opt.Deaths, PlayerIndices: opt.PlayerIndices,
+		Positions: sorted, BipedCreations: opt.BipedCreations,
+		Deaths: opt.Deaths, PlayerIndices: opt.PlayerIndices,
 		Bots: opt.Bots, Fire: refs, RosterXUIDs: opt.RosterXUIDs,
 		Statborg: StatborgIdentityInput{
 			Identity: opt.StatborgIdentity, Records: scoreRecordsOf(opt.Score)},

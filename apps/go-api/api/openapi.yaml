@@ -8788,6 +8788,38 @@ components:
         - match_id
         - value
       type: object
+    BipedLinkCounts:
+      additionalProperties: false
+      properties:
+        catalogue:
+          format: int64
+          type: integer
+        deduit:
+          format: int64
+          type: integer
+        direct:
+          format: int64
+          type: integer
+        direct_propage:
+          format: int64
+          type: integer
+        externe:
+          format: int64
+          type: integer
+        non_resolu:
+          format: int64
+          type: integer
+        non_resolu_par_cause:
+          $ref: '#/components/schemas/UnresolvedCauses'
+      required:
+        - direct_propage
+        - non_resolu_par_cause
+        - direct
+        - catalogue
+        - externe
+        - deduit
+        - non_resolu
+      type: object
     BombArming:
       additionalProperties: false
       properties:
@@ -9221,6 +9253,12 @@ components:
     BridgeHealth:
       additionalProperties: false
       properties:
+        bodiesWithCreation:
+          format: int64
+          type: integer
+        bridgeNamedLives:
+          format: int64
+          type: integer
         closedByRespawn:
           format: int64
           type: integer
@@ -9233,6 +9271,9 @@ components:
         closedRefused:
           format: int64
           type: integer
+        concordant:
+          format: int64
+          type: integer
         deathOffsetMatched:
           format: int64
           type: integer
@@ -9240,6 +9281,15 @@ components:
           format: int64
           type: integer
         deathOffsetRunnerUp:
+          format: int64
+          type: integer
+        directByCreation:
+          format: int64
+          type: integer
+        directByCreationPropagated:
+          format: int64
+          type: integer
+        discordant:
           format: int64
           type: integer
         fromReading:
@@ -9286,6 +9336,12 @@ components:
         - indexReadings
         - indexDisagreements
         - slotCollisions
+        - concordant
+        - discordant
+        - bridgeNamedLives
+        - directByCreation
+        - directByCreationPropagated
+        - bodiesWithCreation
         - namedByPreviousLife
         - namedByNextLife
         - namedBySlotBridge
@@ -14503,7 +14559,7 @@ components:
       additionalProperties: false
       properties:
         bipedSlot:
-          $ref: '#/components/schemas/LinkCounts'
+          $ref: '#/components/schemas/BipedLinkCounts'
         filmIndex:
           $ref: '#/components/schemas/LinkCounts'
         statborgSlot:
@@ -27559,6 +27615,23 @@ components:
         - count
         - badge_count
         - by_category
+      type: object
+    UnresolvedCauses:
+      additionalProperties: false
+      properties:
+        index_hors_table:
+          format: int64
+          type: integer
+        lectures_divergentes:
+          format: int64
+          type: integer
+        sans_record:
+          format: int64
+          type: integer
+      required:
+        - index_hors_table
+        - sans_record
+        - lectures_divergentes
       type: object
     UserPrestige:
       additionalProperties: false

@@ -55,8 +55,20 @@ func toLink(v canonical.Link) replaydoc.Link {
 func toIdentityCoverage(v replay.IdentityCoverage) replaydoc.IdentityCoverage {
 	return replaydoc.IdentityCoverage{
 		FilmIndex:    toLinkCounts(v.FilmIndex),
-		BipedSlot:    toLinkCounts(v.BipedSlot),
+		BipedSlot:    toBipedLinkCounts(v.BipedSlot),
 		StatborgSlot: toLinkCounts(v.StatborgSlot),
+	}
+}
+
+func toBipedLinkCounts(v canonical.BipedLinkCounts) replaydoc.BipedLinkCounts {
+	return replaydoc.BipedLinkCounts{
+		LinkCounts:       toLinkCounts(v.LinkCounts),
+		DirectPropagated: v.DirectPropagated,
+		UnresolvedByCause: replaydoc.UnresolvedCauses{
+			IndexOutOfTable:   v.UnresolvedByCause.IndexOutOfTable,
+			NoCreationRecord:  v.UnresolvedByCause.NoCreationRecord,
+			DivergentReadings: v.UnresolvedByCause.DivergentReadings,
+		},
 	}
 }
 

@@ -116,7 +116,7 @@ func aimOracle(t *testing.T, dir string, pos []filmdec.BipedPosition) {
 	t.Logf("COUT — ScanFilmPlayerIndices : %s", time.Since(debut).Round(time.Millisecond))
 	table, collisions := injectiveOrEmpty(idx)
 	tracks := indexBySlot(pos)
-	own := regDe(buildOwners(tracks, deaths, table, nil))
+	own := regDe(buildOwnersDeTest(tracks, deaths, table, nil))
 	t.Logf("ORACLE — fil : %d instants de kill, %d couples retenus, %d instants ambigus ecartes",
 		nKills, len(couples), ambigus)
 	t.Logf("  pont slot->xuid : %d slots nommes sur %d vies · decalage d'horloge %d ms"+

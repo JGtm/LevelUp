@@ -44,7 +44,7 @@ type Observer func(step string, v any)
 // BuildFromFilm sans etape ici fait echouer le test.
 var BuildFromFilmSteps = []string{
 	"translocations",
-	"positions", "fire", "loadouts",
+	"positions", "bipedCreations", "fire", "loadouts",
 	"heldWeaponChanges", "heldWeaponChanges.stats",
 	"pickups", "pickups.stats",
 	"inventory", "inventory.stats",

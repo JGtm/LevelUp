@@ -98,7 +98,7 @@ func psLoad(t *testing.T, dir string) psInputs {
 			idx, _ = injectiveOrEmpty(raw)
 		}
 	}
-	in.own = regDe(buildOwners(tracks, in.deaths, idx, fireRefs(in.shots)))
+	in.own = regDe(buildOwnersDeTest(tracks, in.deaths, idx, fireRefs(in.shots)))
 	return in
 }
 

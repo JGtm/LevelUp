@@ -74,7 +74,7 @@ func TestPickupsBridgeNamesPickers(t *testing.T) {
 	if err != nil {
 		fire = nil
 	}
-	own := regDe(buildOwners(indexBySlot(positions), deaths, table, fireRefs(fire)))
+	own := regDe(buildOwnersDeTest(indexBySlot(positions), deaths, table, fireRefs(fire)))
 
 	t.Logf("== PONT slot -> joueur, EXERCE sur les ramassages natifs · %s ==", dir)
 	t.Logf("ramassages natifs : %d (listes multiples %d) · morts %d · slots ponts %d · "+

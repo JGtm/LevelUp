@@ -185,7 +185,7 @@ func v4Pont(
 		t.Logf("V4 : index joueur illisible (%v) — pont sans identite", err)
 	}
 	table, _ := injectiveOrEmpty(idx)
-	return regDe(buildOwners(indexBySlot(bip), deaths, table, fireRefs(fire)))
+	return regDe(buildOwnersDeTest(indexBySlot(bip), deaths, table, fireRefs(fire)))
 }
 
 // v4Horloge rend l horloge du document (origine = premier paquet, pas = FrameIntervalMS defaut).
