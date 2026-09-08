@@ -27,7 +27,7 @@ package replay
 // # ET CE QU'ELLE REFUSE, MESURE A ZERO AUJOURD'HUI
 //
 // Si deux records du MEME slot portaient des index DIFFERENTS, la propagation deviendrait un
-// choix : seules les vies qui CONTIENNENT la date d'un record sont alors nommees, les autres
+// choix : seules les vies qu un record OUVRE sont alors nommees, par ce record-la, et les autres
 // passent `non_resolu` cause `lectures_divergentes`. Ce refus n'a jamais eu a jouer (0 slot a
 // deux records sur les cinq films), et c'est precisement pour cela qu'il doit exister : le jour
 // ou le pool rebouclerait dans un film plus long, la propagation par slot deviendrait fausse
@@ -52,9 +52,10 @@ import (
 // Les DEUX voies de nommage par le record de creation. Elles repondent a « comment sait-on a qui
 // cette vie appartient », et toutes deux disent : LE FILM L'ECRIT.
 //
-//	NomParCreation           le record de creation du corps est date DANS l'intervalle de la vie.
-//	NomParCreationPropagee   le record du MEME corps est date ailleurs — la decoupe a `lifeGapUS`
-//	                         a separe un sejour continu. Meme record, meme corps, meme lecture.
+//	NomParCreation           le record de creation du corps OUVRE cette vie — c est le sejour
+//	                         qu'il inaugure (cf. appliquerAuCorps pour la regle exacte).
+//	NomParCreationPropagee   le record du MEME corps ouvre un AUTRE de ses sejours — la decoupe a
+//	                         `lifeGapUS` les a separes. Meme record, meme corps, meme lecture.
 const (
 	NomParCreation         = "biped_creation"
 	NomParCreationPropagee = "biped_creation_propagee"
@@ -65,8 +66,8 @@ const (
 type creationReport struct {
 	// Records / Slots : le denominateur de la lecture — records recus, slots couverts.
 	Records, Slots int
-	// Direct / Propagated : les vies nommees, selon que le record est date DANS leur intervalle
-	// ou ailleurs sur le meme corps. `Propagated` est un SOUS-COMPTE de la couverture directe.
+	// Direct / Propagated : les vies nommees, selon que le record OUVRE cette vie ou un AUTRE
+	// sejour du meme corps. `Propagated` est un SOUS-COMPTE de la couverture directe.
 	Direct, Propagated int
 	// IndexBot : lectures dont l'index est celui d'un bot DECLARE. Comptees a part, jamais
 	// alarmees (verdict I0) : le corps est identifie, il n'a simplement pas de xuid.
@@ -111,47 +112,108 @@ func nommerViesParCreations(lives []lifeSpan, creations []filmdec.BipedCreation,
 		return rep
 	}
 	versXUID, versBot := indexToXUIDOf(idx.ByXUID), indexDesBotsDeclares(bots)
-	for i := range lives {
-		c, ok := corps[lives[i].slot]
+	for slot, vies := range indicesDeViesParSlot(lives) {
+		c, ok := corps[slot]
 		if !ok {
-			rep.causes[i] = canonical.MethodNoCreationRecord
+			for _, i := range vies {
+				rep.causes[i] = canonical.MethodNoCreationRecord
+			}
 			continue
 		}
-		rep.appliquer(lives, i, c, versXUID, versBot)
+		rep.appliquerAuCorps(lives, vies, c, resolutionDIndex{versXUID: versXUID, versBot: versBot})
 	}
 	return rep
 }
 
-// appliquer pose (ou refuse) le lien d'UN corps sur UNE vie. Extraite pour tenir sous les
-// seuils, et parce que chaque `return` y est une decision nommee.
-func (r *creationReport) appliquer(lives []lifeSpan, i int, c corpsLu,
-	versXUID map[int]uint64, versBot map[int]bool) {
-	lu, dedans, ok := c.indexPour(lives[i])
-	if !ok {
-		r.causes[i] = canonical.MethodDivergentReadings
-		return
+// resolutionDIndex porte les deux resolutions d un index de participant. Une structure plutot que
+// parametres de plus : le depot borne a cinq, et les deux vont toujours ensemble.
+type resolutionDIndex struct {
+	versXUID map[int]uint64
+	versBot  map[int]bool
+}
+
+// indicesDeViesParSlot groupe les INDICES des vies par slot, dans l'ordre chronologique.
+//
+// L'ordre vient de `buildLifeSpans`, qui trie par slot puis par instant : le groupement le
+// conserve. C'est ce qui permet de dire QUELLE vie un record OUVRE.
+func indicesDeViesParSlot(lives []lifeSpan) map[uint32][]int {
+	out := map[uint32][]int{}
+	for i := range lives {
+		out[lives[i].slot] = append(out[lives[i].slot], i)
 	}
-	pi := int(lu)
-	if versBot[pi] {
+	return out
+}
+
+// appliquerAuCorps pose (ou refuse) le lien d'UN corps sur TOUTES ses vies.
+//
+// # « DIRECT » EST LA VIE QUE LE RECORD OUVRE, PAS CELLE QUI CONTIENT SA DATE
+//
+// Mesure du lot E2 : sur les cinq films, AUCUN record de creation ne tombe dans l'intervalle
+// d'une vie — le moteur cree l'entite, puis replique ses positions dans un paquet ULTERIEUR. Un
+// partage par containment rendrait donc « propage » partout, ce qui serait exact au sens litteral
+// et faux au sens utile : le record ouvre bien UNE vie, celle du sejour qu'il inaugure. La regle
+// retenue est donc « la premiere vie du corps qui n'est pas deja terminee a la date du record »,
+// et il y a exactement un `direct` par record.
+func (r *creationReport) appliquerAuCorps(lives []lifeSpan, vies []int, c corpsLu, t resolutionDIndex) {
+	ouvertes := c.viesOuvertes(lives, vies)
+	for _, i := range vies {
+		pi, ouverte := ouvertes[i]
+		if !ouverte {
+			if len(c.index) != 1 {
+				// LECTURES DIVERGENTES : la propagation deviendrait un choix. On se tait.
+				r.causes[i] = canonical.MethodDivergentReadings
+				continue
+			}
+			pi = c.index[0]
+		}
+		if !r.poser(lives, i, int(pi), t) {
+			continue
+		}
+		if ouverte {
+			lives[i].nomPar = NomParCreation
+			r.Direct++
+			continue
+		}
+		lives[i].nomPar = NomParCreationPropagee
+		r.Propagated++
+	}
+}
+
+// poser resout l'index en xuid et l'ecrit sur la vie. Rend false — avec sa cause — quand l'index
+// n'est pas dans la table publiee : un participant que l'artefact ne nomme pas ne se rattache
+// JAMAIS au premier venu (verdict I0).
+func (r *creationReport) poser(lives []lifeSpan, i, pi int, t resolutionDIndex) bool {
+	if t.versBot[pi] {
 		// BOT DECLARE : le corps est identifie, il n'y a pas de xuid a poser. La lecture se
 		// compte, la vie garde ses autres voies, et rien n'alarme (verdict I0).
 		r.IndexBot++
 		r.causes[i] = canonical.MethodIndexOutOfTable
-		return
+		return false
 	}
-	x, connu := versXUID[pi]
+	x, connu := t.versXUID[pi]
 	if !connu {
 		r.causes[i] = canonical.MethodIndexOutOfTable
-		return
+		return false
 	}
 	lives[i].xuid = x
-	if dedans {
-		lives[i].nomPar = NomParCreation
-		r.Direct++
-		return
+	return true
+}
+
+// viesOuvertes apparie chaque record du corps a LA VIE QU'IL OUVRE : la premiere vie du slot que
+// le record ne trouve pas deja terminee, et qu'aucun record anterieur n'a deja ouverte. Rend
+// l'index de participant par indice de vie.
+func (c corpsLu) viesOuvertes(lives []lifeSpan, vies []int) map[int]uint32 {
+	out := map[int]uint32{}
+	for _, d := range c.dates {
+		for _, i := range vies {
+			if _, deja := out[i]; deja || lives[i].to < d.tUS {
+				continue
+			}
+			out[i] = d.index
+			break
+		}
 	}
-	lives[i].nomPar = NomParCreationPropagee
-	r.Propagated++
+	return out
 }
 
 // corpsLu est ce que les records d'UN slot etablissent : les index lus, et leurs dates.
@@ -167,24 +229,6 @@ type corpsLu struct {
 type dateDeCreation struct {
 	tUS   int64
 	index uint32
-}
-
-// indexPour rend l'index de participant qui vaut pour cette vie, et si un record est date DANS
-// son intervalle.
-//
-// LA REGLE EST ECRITE ICI, ET ELLE TIENT EN DEUX LIGNES : records concordants -> leur index
-// vaut pour toutes les vies du corps ; records divergents -> seule une vie qui CONTIENT la date
-// d'un record est nommee, par ce record-la, et les autres se taisent.
-func (c corpsLu) indexPour(l lifeSpan) (pi uint32, dedans bool, ok bool) {
-	for _, d := range c.dates {
-		if d.tUS >= l.from && d.tUS <= l.to {
-			return d.index, true, true
-		}
-	}
-	if len(c.index) != 1 {
-		return 0, false, false
-	}
-	return c.index[0], false, true
 }
 
 // corpsParSlot groupe les records de creation par slot. Les records SANS index ne sont pas des
