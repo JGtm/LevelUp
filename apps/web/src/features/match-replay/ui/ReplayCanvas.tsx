@@ -115,6 +115,14 @@ interface ReplayCanvasProps {
    */
   playbackStore: PlaybackStore
   /**
+   * OUVRIR LE REJEU À UNE FRAME PRÉCISE (lot M1b, 2026-09-08) : posé par la route depuis un
+   * lien tactique déjà converti (`resolveTacticalReplayInstant` + `msToFrames`, jamais ici —
+   * ce composant ne fait QUE positionner). Appliqué UNE SEULE FOIS au chargement, borné à la
+   * fenêtre de gameplay comme tout autre saut (cf. `useReplayPlayback`). `null`/`undefined` =
+   * comportement d'avant ce lot (cadrage au coup d'envoi, `playWindow.leadInFrame`).
+   */
+  openAtFrame?: number | null
+  /**
    * Fond de carte figé. Absent = pas d'image CALÉE pour cette carte, et le rejeu retombe sur
    * le sol reconstruit. C'est une LACUNE, pas un mode : `map_structure` ne contient que DEUX
    * fichiers, et 129 vues du dessus dessinées dorment dans `static/maps` sans le calage qui
@@ -182,7 +190,7 @@ interface ReplayCanvasProps {
 }
 
 export function ReplayCanvas({
-  doc, locale, playWindow, playbackStore, background, callouts, scoreboard, xuidMeta, marks,
+  doc, locale, playWindow, playbackStore, openAtFrame, background, callouts, scoreboard, xuidMeta, marks,
   viewpoint, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT,
 }: ReplayCanvasProps) {
@@ -592,7 +600,7 @@ export function ReplayCanvas({
   // LA LECTURE (état lu/pause, boucle rAF, curseur de la frise, ARRÊT SUR L'ÉTAT FINAL) vit
   // dans useReplayPlayback : le canvas garde le DESSIN, le hook porte le TEMPS.
   const playback = useReplayPlayback({
-    doc, playWindow, baseFps, speed: multiplier, renderWidth, frameRef, draw,
+    doc, playWindow, baseFps, speed: multiplier, renderWidth, frameRef, draw, openAtFrame,
     soundTick: sound.tick, onEnded: sound.endMatch, onTransportGesture: sound.wake, onPlayingChange: sound.setTransportPlaying,
   })
   // LA FRISE ET SON CLAVIER (planche 2a) vivent dans useReplayTimeline — treizième extraction

@@ -331,6 +331,7 @@ func buildCoverage(shots, grenades, objectives LayerCoverage, own OwnerReport,
 		SlotCollisions:      own.SlotCollisions,
 		DeathOffsetMatched:  own.DeathOffsetMatches,
 		DeathOffsetRunnerUp: own.DeathOffsetRunnerUp,
+		DeathOffsetMs:       deathOffsetMsIfKnown(own),
 		ClosedByShot:        own.Closures.byShot,
 		ClosedByRespawn:     own.Closures.byRespawn,
 		ClosedContested:     own.Closures.contested,
@@ -347,6 +348,23 @@ func buildCoverage(shots, grenades, objectives LayerCoverage, own OwnerReport,
 			"bridge":     verdictOfBridge(b),
 		},
 	}
+}
+
+// deathOffsetMsIfKnown rend le calage `DeathOffsetMS` du pont, ou nil quand il n'est pas
+// CONNU — pas seulement quand il vaut zéro (cf. BridgeHealth.DeathOffsetMs, lot M1b).
+//
+// LE TÉMOIN DE CONNAISSANCE EST `DeathOffsetMatches > 0`, PAS `DeathOffsetMS != 0`. Un calage
+// à zéro exact (horloges déjà alignées) est une mesure valide qu'il ne faut pas confondre
+// avec son absence. `DeathOffsetMatches` vaut zéro dans les deux cas où le calage n'a pas de
+// sens : le pont n'a pas été construit (buildOwners rend un OwnerReport vide) ou l'affinage
+// n'a apparié aucune mort — dans les deux cas `DeathOffsetMS` reste à sa valeur zéro du
+// struct, qui ne doit alors PAS être publiée comme un calage mesuré.
+func deathOffsetMsIfKnown(own OwnerReport) *int64 {
+	if own.DeathOffsetMatches <= 0 {
+		return nil
+	}
+	v := own.DeathOffsetMS
+	return &v
 }
 
 // slotFor rend le slot du joueur pi à l'instant tUS, et la cause du rejet le cas échéant.

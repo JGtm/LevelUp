@@ -176,6 +176,14 @@ export interface ReplayPlaybackOptions {
    * `useReplaySound.setTransportPlaying`). Optionnel : les autres appelants n'ont rien à dire.
    */
   onPlayingChange?: (playing: boolean) => void
+  /**
+   * OUVRIR À UNE FRAME PRÉCISE (lot M1b, 2026-09-08) : posé une seule fois par la route depuis
+   * un lien tactique déjà converti (cf. `ReplayCanvasProps.openAtFrame`). Gagne sur le cadrage
+   * au coup d'envoi (`leadInFrame`) même si celui-ci arrive APRÈS (la fenêtre de gameplay vient
+   * de la Match View, potentiellement plus tard que ce document) — cf. l'effet plus bas et son
+   * garde `appliedOpenAtFrameRef`.
+   */
+  openAtFrame?: number | null
 }
 
 /** Ce que la barre de lecture reçoit — l'état à afficher et les commandes. */
@@ -220,8 +228,13 @@ export interface ReplayPlayback {
 }
 
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
-  const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw } = o
+  const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw, openAtFrame } = o
   const { soundTick, onEnded, onTransportGesture, onPlayingChange } = o
+  // POSÉ VRAI DÈS QUE `openAtFrame` A ÉTÉ APPLIQUÉ (voir l'effet plus bas) : empêche le
+  // cadrage au coup d'envoi (juste en dessous) d'écraser un lien tactique déjà positionné si
+  // la fenêtre de gameplay arrive PLUS TARD (Match View asynchrone) sur un instant antérieur
+  // au coup d'envoi.
+  const appliedOpenAtFrameRef = useRef(false)
   const sliderRef = useRef<HTMLInputElement>(null)
   // LA LECTURE AUTOMATIQUE EST UN RÉGLAGE, LU UNE FOIS (cf. l'en-tête, § du même nom).
   const [playing, setPlaying] = useState(() => readStoredFlag(AUTOPLAY_KEY, AUTOPLAY_DEFAULT))
@@ -282,7 +295,12 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   // LE COUP D'ENVOI (moins son préambule), DÈS QUE LA FENÊTRE SE CONNAÎT (cf. l'en-tête) : elle
   // arrive avec la Match View, donc après le premier rendu. On ne pose le curseur que s'il est
   // encore EN DEÇÀ — le repositionnement ne recule jamais la lecture.
+  //
+  // `!appliedOpenAtFrameRef.current` (lot M1b) : un lien tactique déjà positionné ne doit
+  // JAMAIS être repris par ce cadrage, même sur un instant antérieur au coup d'envoi (la
+  // fenêtre de gameplay, asynchrone, peut arriver APRÈS l'application du lien).
   useEffect(() => {
+    if (appliedOpenAtFrameRef.current) return
     if (frameRef.current < leadInFrame) {
       frameRef.current = leadInFrame
       writeCursor(leadInFrame)
@@ -367,6 +385,21 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     soundTick(frameToMs(next, doc))
     draw()
   }
+
+  // OUVRIR AU LIEN TACTIQUE (lot M1b, 2026-09-08) : appliqué UNE SEULE FOIS — `openAtFrame`
+  // peut arriver dès le premier rendu (frame déjà convertie par la route) ou rester `null`
+  // tant que le document ne l'a pas résolu, mais une fois posé il ne doit jamais être répété
+  // (un utilisateur qui a depuis déplacé la frise ne doit pas y être ramené). Passe par le
+  // MÊME `seekTo` que la frise et les repères d'entrée/sortie — pas un chemin de pose séparé.
+  // `seekTo` se recrée à chaque rendu (fermeture sur `leadInFrame`/`endFrame`) ; le garde
+  // `appliedOpenAtFrameRef` rend la ré-exécution inoffensive, l'inclure en dépendance ferait
+  // tourner cet effet à chaque rendu pour rien.
+  useEffect(() => {
+    if (openAtFrame == null || appliedOpenAtFrameRef.current) return
+    appliedOpenAtFrameRef.current = true
+    seekTo(openAtFrame)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAtFrame])
 
   const seekBy = (seconds: number) => seekTo(frameRef.current + seconds * baseFps)
 

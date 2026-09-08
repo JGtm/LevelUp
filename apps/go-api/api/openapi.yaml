@@ -9236,6 +9236,9 @@ components:
         deathOffsetMatched:
           format: int64
           type: integer
+        deathOffsetMs:
+          format: int64
+          type: integer
         deathOffsetRunnerUp:
           format: int64
           type: integer
@@ -25896,6 +25899,8 @@ components:
     TacticalContribution:
       additionalProperties: false
       properties:
+        clock:
+          type: string
         instant_ms:
           format: int64
           type: integer
@@ -25909,6 +25914,7 @@ components:
       required:
         - match_id
         - instant_ms
+        - clock
         - xuid
         - match_started_at
       type: object

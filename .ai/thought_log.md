@@ -1,3 +1,86 @@
+## [2026-09-08] Lot M1b — corriger le décalage d'horloge du lien « voir dans le rejeu » — Complete
+
+**Décision technique principale.** Reprise de la découverte non traitée du lot M1
+(`.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`) : le lien tactique ouvrait une APPROXIMATION pour
+quatre questions sur six (`morts`/`kills`/`gagne`/`isole`, horloge du MATCH) faute du calage
+`DeathOffsetMS` publié. Décision utilisateur ferme du 2026-09-08 : corriger, pas garder la
+réserve. Worktree dédié `LevelUp-wt-m1b-offset`, branche `feat/tactique-lien-rejeu-exact`
+(base `feat/v2-restes-r7`, fusion sans conflit de code de `feat/tactique-lien-rejeu` — 3
+conflits `.ai/*.md` admissibles, résolus en gardant les deux côtés).
+
+**Forme retenue.** (1) Go : `coverage.bridge.deathOffsetMs` (`*int64`, additif, pointeur —
+même piège `omitempty` que `OriginMs`/`T0FilmMs` : absent seulement quand
+`OwnerReport.DeathOffsetMatches == 0`, JAMAIS un zéro comme calage par défaut, garde-rail
+`TestDeathOffsetMsAbsentWhenBridgeUnmatched`). Bump `SchemaVersion` 48 → 49 — EXCEPTION
+assumée à la règle « un champ optionnel de plus n'incrémente pas la version » (même
+justification que v2→v3/v3→v4 : clé de reprise du backfill), documentée dans les trois
+endroits qui doivent s'accorder (`document.go`, chronique `document_chronicle.go`, ratchet
+`structure_test.go`). Miroir `internal/domain/replaydoc.BridgeHealth` +
+`service/replayview.toBridgeHealth` mis à jour (découverte en cours de route : le DTO servi
+est un JUMEAU séparé du document stocké, gardé aligné par le cliquet de parité
+`replayview/parity_test.go` — sans lui `openapi-gen` n'aurait rien généré pour ce champ, et
+je l'ai d'abord manqué). (2) Contrat cellule : `TacticalContribution.Clock` (`"match"`/
+`"film"`) publié PAR QUESTION dans `tactical_service_cellule.go` — le service ne lit jamais
+l'artefact pour convertir, il publie l'horloge et laisse le web faire la conversion quand le
+document (et son offset) est chargé. (3) Web : deux fonctions PURES dans
+`lib/replay/replayLogic.ts` — `resolveTacticalReplayInstant` (instant + offset si
+`clock=match`, direct si `clock=film`, refuse par `unknown-offset` si l'offset manque) et
+`resolveTacticalOpenAtFrame` (texte de l'URL → frame, compose la précédente avec
+`msToFrames` déjà existant — pas de nouvelle fonction `msToFrame`, l'inverse existait déjà et
+n'avait qu'un test d'aller simple, complété par un aller-retour). Lien `?t=<instant_ms>&clock=`
+(uniforme pour les deux horloges — `t` reste une CHAÎNE dans `validateSearch`, jamais un
+nombre : `FullSearchSchema` de TanStack Router fusionne tous les schémas de recherche du
+dépôt, et un champ numérique y cassait `HelpPage.tsx`/`SettingsPage.tsx`, sans rapport avec
+ce lot — découvert par le typecheck, corrigé en gardant `t` en chaîne côté route et en
+convertissant au composant). `instantToFrame`/`TACTICAL_REPLAY_FRAME_INTERVAL_MS` retirés
+(morts, plus aucun appelant) avec leurs 8 tests.
+
+**Découverte traitée dans ce même lot (hors périmètre strict mais bloquante pour livrer
+l'intention du brief) : `?frame=` posé par M1 n'était PAS câblé côté route.**
+`replay.tsx` n'avait ni `validateSearch` ni lecture de la query — le lien de M1 n'a JAMAIS
+positionné le rejeu, y compris pour `temps`/`routes` (déjà exactes). Corrigé dans ce lot
+puisque la route devait de toute façon apprendre à lire `?t=&clock=` : `openAtFrame` ajouté à
+`ReplayCanvasProps`/`useReplayPlayback`, appliqué UNE FOIS via le `seekTo` existant (même
+chemin que les repères de frise, pas un nouveau mécanisme de pose), avec un garde
+(`appliedOpenAtFrameRef`) qui l'empêche d'être repris par le cadrage au coup d'envoi si la
+fenêtre de gameplay arrive après (Match View asynchrone) — et qui l'empêche de se répéter si
+l'utilisateur a depuis déplacé la frise.
+
+**Résultats observés.** Golden régénéré : `assembly_000d5950.golden`, écart = `schema 48` →
+`schema 49`, RIEN D'AUTRE (aucun contenu cuit ne change — le champ publie une valeur déjà
+calculée). `generate-types` : diff stable à 6 lignes (2 pour `deathOffsetMs`, 1+2 pour
+`clock`, requis). Tests ajoutés : Go — `TestDeathOffsetMsAbsentWhenBridgeUnmatched` (les deux
+bornes du piège omitempty), 6 assertions de `clock` par question dans
+`tactical_service_cellule_test.go` (mutation : inverser `TacticalClockMatch`/`Film` entre les
+branches du service rougit chacune), `TestBridgeHealthJSONKeysAreDistinct` étendu. Web —
+`tacticalReplayInstant.test.ts` (nouveau fichier, extrait de `replayLogic.test.ts` pour tenir
+sous 500 L) : `resolveTacticalReplayInstant` (film/match/zéro/négatif/inconnu) et
+`resolveTacticalOpenAtFrame` (les 3 scénarios demandés : offset connu, offset inconnu, clock
+film) ; `msToFrames`/`frameToMs` aller-retour ajouté ; `useReplayPlayback.seek.test.tsx` +4
+tests `openAtFrame` (pose au montage, absent = comportement d'avant, ne se répète jamais,
+gagne sur le cadrage même si la fenêtre arrive après) ; `TacticalCellCard.test.tsx` réécrit
+pour `?t=&clock=`.
+
+**Gates (exit codes réels, ce worktree, aucun film).** `gofmt -l .` vide (exit 0) ;
+`go build ./internal/...` exit 0 ; `go vet` (paquets du lot) exit 0 ; `go test -count=1`
+(analysis/replay, replaybuild, service, api, domain, service/replayview) exit 0, tout vert ;
+`openapi-gen -check` exit 0 ; `golangci-lint run --new-from-merge-base=origin/main ./...` 0
+issue ; web `npm run typecheck` propre ; `npm run lint` 0 erreur (29 warnings préexistants,
+aucun nouveau) ; `lint:colors`/`lint:fields` propres ; `npx vitest run --pool=forks` 658/659
+fichiers verts, 7023/7040 tests verts (17 skips préexistants, identiques à M1) — aucun test
+supprimé sans mise à jour de la baseline (les 8 tests `instantToFrame` retirés ne figuraient
+pas dans `.ai/baselines/tests_pre_migration.jsonl`, datés du 2026-09-07/08, postérieurs à la
+baseline du 26/06).
+
+**Conclusion / prochaine étape.** M1b coché dans `.ai/PLAN_ORCHESTRATION_2026-09-07.md` (§3,
+nouvelle ligne après M3) ; découverte M1 marquée TRAITÉE dans `DECOUVERTES_TACTIQUE`
+(`.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`) ; chronique dédiée
+`.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md` ; nouvelle entrée de registre (parc < 49, recuisson
+nécessaire). Reste au SUPERVISEUR (aucun film dans ce worktree) : recuire le parc
+(`backfill-replay`, seuil < 49) et rejouer `make replay-corpus-gate` — commandes exactes dans
+le rapport du lot. Commits par chemins explicites, push `feat/tactique-lien-rejeu-exact`,
+PAS de fusion (décision de l'utilisateur, comme M1).
+
 ## [2026-09-08] Lot M1 — lien « voir dans le rejeu » depuis une cellule (Tactique S.1) — Complete
 
 **Decision technique principale.** Reprise d'un exécutant précédent coupé par une limite de

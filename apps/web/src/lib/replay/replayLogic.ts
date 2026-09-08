@@ -307,6 +307,89 @@ export function msToFrames(ms: number, doc: ReplayDocumentReady): number {
 }
 
 /**
+ * L'instant demandé par un lien tactique (`?t=&clock=`, cf. `TacticalCellCard`) — la clé
+ * dit sur QUELLE HORLOGE `t` est exprimé, même vocabulaire que `TacticalContribution.clock`
+ * côté Go (`domain/tactical_cellule.go`) : `"film"` (déjà l'axe que ce module consomme) ou
+ * `"match"` (l'horloge du match, décalée de `deathOffsetMs` par rapport au film).
+ */
+export interface TacticalReplayTarget {
+  t: number
+  clock: 'match' | 'film'
+}
+
+/** Résultat de `resolveTacticalReplayInstant` — soit un instant EXACT sur l'horloge du
+ *  film, soit le constat que le calage manque pour le rendre exact. */
+export type ResolvedReplayInstant = { status: 'ms'; ms: number } | { status: 'unknown-offset' }
+
+/**
+ * resolveTacticalReplayInstant — convertit l'instant d'un lien tactique en millisecondes
+ * sur l'HORLOGE DU FILM, celle que `msToFrames`/`frameToMs` consomment (lot M1b, 2026-09-08,
+ * décision utilisateur ferme : « corriger le décalage »).
+ *
+ * `clock: 'film'` (questions `temps`/`routes`) : `t` EST DÉJÀ sur cet axe, aucune conversion.
+ * `clock: 'match'` (questions `morts`/`kills`/`gagne`/`isole`) : `horlogeFilm = horlogeMatch +
+ * deathOffsetMs` (cf. `analysis/replay/lives_export.go` côté Go) — `deathOffsetMs` vient de
+ * `coverage.bridge.deathOffsetMs`, publié depuis le schéma 49 SEULEMENT, et absent (`null`/
+ * `undefined`) quand le pont d'identité n'a apparié aucune mort. PAS DE REPLI SUR ZÉRO dans ce
+ * dernier cas : un décalage mesuré de 3,6 à 50,8 s selon le match (`DECOUVERTES_TACTIQUE_
+ * 2026-09-07.md`) rendrait un saut FAUX que rien, à l'écran, ne distinguerait d'un saut exact —
+ * `unknown-offset` porte ce refus jusqu'à l'appelant, qui affiche un avis plutôt que de deviner.
+ *
+ * FONCTION PURE, VOLONTAIREMENT DÉCOUPLÉE DE `ReplayDocumentReady` : elle ne prend que les
+ * deux nombres dont elle a besoin, pas le document entier — le SEUL appelant (la route du
+ * rejeu) a le document sous la main pour en tirer `coverage?.bridge?.deathOffsetMs` et pour
+ * le passage final à `msToFrames`, qui reste distinct (une fonction, une responsabilité).
+ */
+export function resolveTacticalReplayInstant(
+  target: TacticalReplayTarget,
+  deathOffsetMs: number | null | undefined,
+): ResolvedReplayInstant {
+  if (target.clock === 'film') return { status: 'ms', ms: target.t }
+  if (deathOffsetMs == null) return { status: 'unknown-offset' }
+  return { status: 'ms', ms: target.t + deathOffsetMs }
+}
+
+/** Ce que la route du rejeu tire d'un lien tactique une fois le document chargé. */
+export interface TacticalOpenAtFrame {
+  /** La frame à laquelle ouvrir le rejeu, ou `null` : pas de lien, lien malformé, document
+   *  pas encore chargé, ou calage inconnu (voir `showUncalibratedNotice`). */
+  openAtFrame: number | null
+  /** `true` quand `clock: 'match'` demandait un calage que ce document ne publie pas — la
+   *  route affiche alors un avis plutôt que d'ouvrir sur un saut approximatif. */
+  showUncalibratedNotice: boolean
+}
+
+/**
+ * resolveTacticalOpenAtFrame — LA fonction que la route du rejeu appelle pour un lien
+ * tactique (`?t=&clock=`), du texte brut de l'URL à la frame prête pour `ReplayCanvas.
+ * openAtFrame` (lot M1b, 2026-09-08). Compose `resolveTacticalReplayInstant` (l'instant sur
+ * l'horloge du film) et `msToFrames` (l'instant en frame) — SÉPARÉES parce qu'elles ne
+ * changent pas pour la même raison (l'une porte la règle de calage, l'autre l'échelle de
+ * l'artefact), RÉUNIES ici parce que c'est la SEULE combinaison que la route a besoin
+ * d'appeler.
+ *
+ * `search.t` EST UNE CHAÎNE (pas un nombre) : cf. la doc de `Route.validateSearch` dans
+ * `replay.tsx` — un champ numérique dans le schéma de recherche de CETTE route empoisonnerait
+ * le schéma GLOBAL que TanStack Router fusionne entre toutes les routes.
+ *
+ * `doc` ABSENT (document pas encore chargé) rend `{ openAtFrame: null, showUncalibratedNotice:
+ * false }` — PAS un avis : l'avis ne se prononce QUE lorsque le document est là et dit
+ * lui-même « je n'ai pas ce calage ». Avant ça, la page est en chargement, pas en défaut.
+ */
+export function resolveTacticalOpenAtFrame(
+  search: { t?: string; clock?: 'match' | 'film' },
+  doc: ReplayDocumentReady | undefined,
+): TacticalOpenAtFrame {
+  const none: TacticalOpenAtFrame = { openAtFrame: null, showUncalibratedNotice: false }
+  if (search.t == null || !search.clock || !doc) return none
+  const tMs = Number(search.t)
+  if (!Number.isFinite(tMs) || tMs < 0) return none
+  const resolved = resolveTacticalReplayInstant({ t: tMs, clock: search.clock }, doc.coverage?.bridge.deathOffsetMs)
+  if (resolved.status === 'unknown-offset') return { openAtFrame: null, showUncalibratedNotice: true }
+  return { openAtFrame: Math.round(msToFrames(resolved.ms, doc)), showUncalibratedNotice: false }
+}
+
+/**
  * formatClock formate une durée en `m:ss` (chronomètre du rejeu). IL TRONQUE, et c'est la
  * convention d'un lecteur : « 1:05 » vaut « on est dans la 66e seconde », pas « on en est à
  * 66 s arrondi ». Toutes les surfaces visibles du rejeu le partagent (horloge, fil des

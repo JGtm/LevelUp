@@ -75,10 +75,15 @@ type BridgeHealth struct {
 	// concurrents (71 contre 8, 157 contre 15 sur les témoins du parc).
 	DeathOffsetMatched  int `json:"deathOffsetMatched"`
 	DeathOffsetRunnerUp int `json:"deathOffsetRunnerUp"`
-	ClosedByShot        int `json:"closedByShot"`
-	ClosedByRespawn     int `json:"closedByRespawn"`
-	ClosedContested     int `json:"closedContested"`
-	ClosedRefused       int `json:"closedRefused"`
+	// DeathOffsetMs est LE CALAGE LUI-MEME (lot M1b, 2026-09-08) : `horlogeFilm = horlogeMatch +
+	// DeathOffsetMs`. Pointeur, meme piege omitempty que `OriginMs`/`T0FilmMs` (document.go) :
+	// absent (nil) veut dire, et seulement, que le pont n'a apparie aucune mort — un calage
+	// mesure a zero (horloges deja alignees) est une valeur, pas une absence.
+	DeathOffsetMs   *int64 `json:"deathOffsetMs,omitempty"`
+	ClosedByShot    int    `json:"closedByShot"`
+	ClosedByRespawn int    `json:"closedByRespawn"`
+	ClosedContested int    `json:"closedContested"`
+	ClosedRefused   int    `json:"closedRefused"`
 }
 
 // T0FilmCoverage est le VERDICT du detecteur de coup d'envoi, servi a cote du champ

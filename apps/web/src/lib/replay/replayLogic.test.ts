@@ -143,12 +143,21 @@ describe('échelle temporelle', () => {
     expect(framesPerSecond(makeDoc())).toBe(60))
   it('frameToMs suit le temps réel', () => expect(frameToMs(4985, doc)).toBe(498_500))
   it('msToFrames est l’inverse', () => expect(msToFrames(8000, doc)).toBe(80))
+  it('msToFrames est l’inverse EXACTE de frameToMs (aller-retour)', () => {
+    for (const frame of [0, 1, 42, 4985, 12_000]) {
+      expect(msToFrames(frameToMs(frame, doc), doc)).toBe(frame)
+    }
+  })
   it('formatClock formate en m:ss', () => {
     expect(formatClock(498_500)).toBe('8:18')
     expect(formatClock(9_000)).toBe('0:09')
     expect(formatClock(-5)).toBe('0:00')
   })
 })
+
+// resolveTacticalReplayInstant / resolveTacticalOpenAtFrame (lot M1b, lien tactique
+// `?t=&clock=`) sont testées à part : `tacticalReplayInstant.test.ts`, dans ce même dossier
+// (seuil des 500 lignes de ce fichier-ci).
 
 describe('fenêtre de vie', () => {
   const track: ReplayTrackReady = { slot: 1, team: -1, points: pts, startFrame: 5, endFrame: 15 }

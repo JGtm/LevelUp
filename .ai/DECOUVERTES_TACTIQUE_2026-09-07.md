@@ -160,3 +160,20 @@ ce fichier prend le relais a partir de 7C et recoit toute nouvelle decouverte.
   documentee. Condition de reprise : publier `DeathOffsetMS` par match dans le contrat (ou
   une frame deja convertie cote Go) pour que `morts`/`kills`/`gagne`/`isole` ouvrent le rejeu
   a l'instant exact.
+
+  **TRAITE le 2026-09-08 (lot M1b, decision utilisateur ferme « corriger le decalage »).**
+  `coverage.bridge.deathOffsetMs` publie cote Go (pointeur, additif, bump SchemaVersion
+  48->49 pour la reprise du backfill) ; le contrat `TacticalContribution` publie `clock`
+  (`"match"`/`"film"`) par question au lieu de laisser le web deviner ; le lien devient
+  `?t=<instant_ms>&clock=<clock>` (le service ne convertit jamais lui-meme, il n'a pas
+  toujours l'artefact) ; la route du rejeu attend le document, convertit
+  (`lib/replay/replayLogic.resolveTacticalReplayInstant` + `resolveTacticalOpenAtFrame`,
+  fonctions pures testees) et positionne `ReplayCanvas` via `openAtFrame` — offset inconnu
+  (artefact < 49, ou pont qui n'a apparie aucune mort) : le rejeu s'ouvre au debut et affiche
+  un avis FR/EN, jamais un saut approximatif presente comme exact. `instantToFrame` retire
+  (mort). Decouverte au passage : `?frame=` de M1 n'etait PAS cable cote route (`replay.tsx`
+  n'avait aucun `validateSearch` ni lecture de la query) — le lien de M1 n'ouvrait donc jamais
+  le rejeu au bon instant, meme pour `temps`/`routes` ; corrige dans ce meme lot
+  (`openAtFrame` sur `ReplayCanvas`/`useReplayPlayback`). Detail :
+  `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`. Reste ouvert : le parc d'artefacts anterieur au
+  schema 49 n'a pas ce calage — recuisson necessaire (`.ai/V7.5/REGISTRE_REPORTS.md`).
