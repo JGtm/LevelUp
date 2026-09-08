@@ -101791,3 +101791,22 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
   bot ; un corps en vehicule n'est pas replique et le trajet tombe dans un trou entre deux vies
   directes (le pont aplati couvrait tout le slot). E2-bis lance (Opus) : instruction ligne par ligne,
   correctifs dans le registre (identite du slot sur toute la duree du corps), 0 perte hors acceptees.
+
+## [2026-09-08] Orchestration — E2-bis rendu : pertes instruites, deux P0 corriges, corps = (slot, generation) (En cours)
+- Banc de mesure d'E2 pollue (5 artefacts de base ecrases par sa mesure I5) : refait, base
+  reproduite a l'octet, les 78 pertes du gate reproduites en local (`replay-diff`).
+- Refutation : `084a804d` porte 379 records pour 256 slots (123 slots a deux records, gen 1 puis
+  gen 2 apres la 11e minute) — « un slot = un corps » etait vrai sur 5 films, faux sur le 6e ;
+  le refus `lectures_divergentes` jetait 59 vies. Correctif `453b719fc` : le corps est (slot, gen),
+  une vie revient au corps qui tenait le slot a son debut.
+- Verdicts : bots 1->0 / 2->1 = REATTRIBUTIONS CORRIGEES (le relais nommait « bot » des corps
+  d'humains, chaines de 3 vies simultanees) ; ramassages, pistes, episode, bombStats = reattributions
+  a totaux constants (bombCarries 7 -> 9) ; vehicules 74 trajets / 28 995 frames conserves,
+  `ridesNamed` 52 -> 74 (hypothese du trou REFUTEE) ; 2 P0 : `equipmentEpisodes` (la borne lisait
+  « nom » pour « mort », `45c850637`) et `flagCarries.unresolved` 0 -> 4 (repli a 2 socles sur un film
+  a 6, `f7709ae01`) ; skull 1 frame, flag 500 -> 400, homeByObject : acceptees et confirmees.
+- Apres : `084a804d` non_resolu 59 -> 1 / 353, unnamedLives 80 -> 0, episodes = base ; 9 films sur
+  10 identiques a E2 a l'octet. Decouvertes : `attachEpisodeKills` sur le pont aplati (faux sur slot
+  recycle) ; `shotsNoRide`/`ambiguous*` non classes echecs (P5) ; les corps de bots REELS n'ont plus
+  de voie de nommage directe (index hors table) — question decodeur : ou est l'index des bots ?
+- Gate corpus sur le parc relance (superviseur).
