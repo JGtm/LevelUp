@@ -38,14 +38,16 @@ var compteursDEchec = map[string]bool{
 	"slotCollisions":        true,
 }
 
-// estCompteurDEchec dit si la mesure `cle` (chemin aplati, ex. `coverage.objectives.unpublished`)
-// est un compteur d'echec de la couverture.
-func estCompteurDEchec(cle string) bool {
-	if !strings.HasPrefix(cle, prefixeCouverture) {
+// estCompteurDEchec dit si la mesure `k` (cle d'empreinte `axe/chemin`, ex.
+// `couverture/coverage.objectives.unpublished`, cf. `cle()`) est un compteur d'echec de la
+// couverture. L'axe est ignore : c'est le chemin aplati qui porte le sens.
+func estCompteurDEchec(k string) bool {
+	_, chemin := decouper(k)
+	if !strings.HasPrefix(chemin, prefixeCouverture) {
 		return false
 	}
-	i := strings.LastIndexByte(cle, '.')
-	return compteursDEchec[cle[i+1:]]
+	i := strings.LastIndexByte(chemin, '.')
+	return compteursDEchec[chemin[i+1:]]
 }
 
 // inverserSens retourne le sens d'un ecart pour un compteur d'echec : une baisse (perte
