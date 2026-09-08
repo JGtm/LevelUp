@@ -429,6 +429,15 @@ type RosterEntry struct {
 	// son Name porte le suffixe « [bot] », comme la base l'écrit. FilmIndex est le slot du
 	// roster de réplication que le paquet type 12 déclare.
 	Bot bool `json:"bot,omitempty"`
+	// Bid est l'identifiant STABLE d'un bot, forme `bid(N.0)` — la même que `match_participants`
+	// écrit (schéma 50).
+	//
+	// IL ÉTAIT LU DEPUIS TOUJOURS ET N'ÉTAIT PAS PUBLIÉ (inventaire P1, E9). Faute de l'avoir,
+	// la jointure web d'un bot se faisait sur le NOM NU — égalité de chaîne des deux côtés —,
+	// et le commentaire de `rosterLogic.ts` le disait lui-même : deux bots homonymes fusionnent.
+	// Vide pour un humain, et vide pour un bot dont la déclaration ne portait pas d'identifiant :
+	// un `bid(0.0)` inventé joindrait deux bots distincts.
+	Bid string `json:"bid,omitempty"`
 }
 
 // Loadout est l'ensemble des armes PORTÉES par un slot à un instant de référence.

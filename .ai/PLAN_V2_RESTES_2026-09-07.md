@@ -28,9 +28,14 @@
    bipède que le film contient), il est utilisé à 100 %, jamais remplacé par une déduction. Le pont par morts n'est
    qu'un REPLI pour les liens que le film ne donne pas directement (aujourd'hui : slot de bipède ↔ index, faute de
    champ d'identité dans `BipedPosition`), et une VÉRIFICATION des liens directs. UNE table d'identité par film,
-   calculée une fois dans `replaybuild`, publiée dans l'artefact (section `identity` : index ↔ xuid, slot de
-   statborg ↔ index, slot de bipède ↔ index dans le temps, avec la source et la couverture de chaque lien) ; tous
-   les calques la consomment ; aucun calque ne reconstruit son propre pont (garde-rail).
+   **calculée par une FONCTION PURE de `internal/analysis/replay`**, appelée **par `replaybuild` ET par le
+   collecteur de sync** — parce que les données d'un match sont complètes au sync, seul le rejeu attend la
+   cuisson —, publiée dans l'artefact (section `identity` : index ↔ xuid, slot de statborg ↔ index, slot de
+   bipède ↔ index dans le temps, avec la source et la couverture de chaque lien) ; tous les calques et tous les
+   lecteurs hors rejeu la consomment ; aucun calque ni aucun collecteur ne reconstruit son propre pont
+   (garde-rail : allowlist datée des seuls producteurs).
+   *(Amendement porté le 2026-09-08 au premier commit de P2, décision D11 du plan d'orchestration §5, rédigé mot
+   pour mot au §2 (j) de `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`.)*
 
 ## 1. Méthode commune à tous les lots
 
