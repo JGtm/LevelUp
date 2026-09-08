@@ -271,7 +271,7 @@ func (r IdentityRegistry) FermeturesRefusees() int        { return r.own.Closure
 func (r IdentityRegistry) SlotsParLaLecture() int { return r.own.FromDeaths }
 
 // ViesParCreation / ViesParCreationPropagee : les vies que le RECORD DE CREATION nomme, selon
-// que sa date tombe dans leur intervalle ou sur un autre sejour du meme corps. La seconde est un
+// qu'il OUVRE cette vie ou un AUTRE sejour du meme corps. La seconde est un
 // SOUS-COMPTE de la couverture directe, jamais un total a part.
 func (r IdentityRegistry) ViesParCreation() int         { return r.creation.Direct }
 func (r IdentityRegistry) ViesParCreationPropagee() int { return r.creation.Propagated }

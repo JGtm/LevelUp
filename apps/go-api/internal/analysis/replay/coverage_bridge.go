@@ -59,8 +59,10 @@ type BridgeHealth struct {
 	// qu'il a dégradé en entier (cf. identity_registry_bridge.go, kill-switch daté).
 	BridgeNamedLives int `json:"bridgeNamedLives"`
 	// DirectByCreation / DirectByCreationPropagated : les vies que le RECORD DE CRÉATION nomme,
-	// selon que sa date tombe dans leur intervalle ou sur un autre séjour du même corps. La
-	// seconde est un SOUS-COMPTE de la première famille, pas un total à part.
+	// selon qu'il OUVRE cette vie ou un AUTRE séjour du même corps. La création précède toujours la
+	// première position répliquée (mesuré : 0 record sur 499 tombe dans l'intervalle de sa vie), si
+	// bien que « direct » désigne le séjour que le record INAUGURE, jamais celui qui contient sa
+	// date. La seconde est un SOUS-COMPTE de la première, pas un total à part.
 	DirectByCreation           int `json:"directByCreation"`
 	DirectByCreationPropagated int `json:"directByCreationPropagated"`
 	// BodiesWithCreation : les corps (slots) dont un record de création a été lu — le

@@ -69,7 +69,7 @@ type BridgeHealth struct {
 	// sont lues — non nul, le registre n'a reçu aucune lecture directe et a dégradé en entier.
 	BridgeNamedLives int `json:"bridgeNamedLives"`
 	// DirectByCreation / DirectByCreationPropagated : les vies que le RECORD DE CRÉATION nomme,
-	// selon que sa date tombe dans leur intervalle ou sur un autre séjour du même corps.
+	// selon qu'il OUVRE cette vie ou un AUTRE séjour du même corps.
 	// BodiesWithCreation : les corps dont un record a été lu — le dénominateur.
 	DirectByCreation           int `json:"directByCreation"`
 	DirectByCreationPropagated int `json:"directByCreationPropagated"`
