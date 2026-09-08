@@ -101670,3 +101670,20 @@ deja documentee ci-dessus (doc stale de document.go, corrigee dans le commit pui
 directement le code touche). Commit sur `feat/raster-document-unique` (worktree
 `LevelUp-wt-m6-raster`, base `feat/mojibake-garde-rail`), push `origin`. Pas de fusion dans
 `feat/v75` (accord utilisateur prealable requis, regle CLAUDE.md n°16).
+
+## [2026-09-08] Orchestration — cloture de la vague 2 (Complete)
+- Neuf branches fusionnees dans l'integration `wt/orchestration-0907` au-dessus de `feat/v75`
+  (`6a1496e30`) : R6, R7, R4/R5 (docs), raster document unique, lien cellule + lien exact
+  (schema 49), libelles L2+L5, L3, L4 ; `archive-films --match` ; zero conflit de code.
+- Gates : Go gofmt/build/vet/integration `-p 1`/openapi/lint exit 0 ; unit : 1 rouge =
+  `TestSquadServiceV2_GetSquadPage_LoaderRunsInParallel` (seuil temporel, 5/5 vert isole,
+  consigne au registre) ; web : typecheck, lint 0 erreur, vitest 658 fichiers / 7 024 tests,
+  couleurs, libelles, `generated.ts` a jour ; gate corpus 49 vs v75 : 7/7 temoins, 0 perte,
+  gains = version + `deathOffsetMs`.
+- Revue adversariale UNIQUE (Sonnet, sans sous-agent) : P0 0, P1 0, P2 1 (calage : cas
+  theorique des fins de vie rares, non reproduit — reserve pour le plan decodeur) ;
+  `.ai/V7.5/REVUE_VAGUE2_2026-09-08.md`.
+- Prochaine etape : avance rapide de `feat/v75`, push, UN controle de CI. POINTS PROD au
+  deploiement : migration `purge_weapon_families_labels_columns` au boot ; parc d'artefacts < 49
+  a recuire (`backfill-replay --only-existing`, un film a la fois) pour le lien exact ;
+  capture des positions au sync (cout a observer).
