@@ -1,3 +1,65 @@
+## [2026-09-08] P-décodeur E2 — le lien DIRECT corps ↔ joueur, intégré ; le pont par morts déclassé — Complété
+
+**Décision technique principale : « direct » se mesure sur le CORPS, pas sur la vie.** Le sondage
+avait établi la spécification bit-exacte du record de création (`ti=35`, index de participant à
+`+67`). Restait à savoir ce qu'on ferait des 5 à 13 % de vies qu'il ne désigne pas. Le brief
+initial prévoyait un repli par le pont par morts ; l'utilisateur l'a amendé en cours de lot — « je
+ne vois pas le besoin d'un repli ; il faut chercher à comprendre les 5 à 13 % restants ». C'est
+cet amendement qui a produit le résultat, parce qu'il a forcé l'instruction avant le code.
+
+**Le fait qui commande tout, et il a été trouvé SANS relire un film.** Les cinq TSV de mesure du
+sondage étaient versionnés ; confrontés aux artefacts cuits, ils disent : **un seul record de
+création par slot**, génération invariante à 1, et l'ensemble des slots qui portent des VIES égale
+EXACTEMENT l'ensemble des slots qui portent une LECTURE (160=160, 83=83, 138=138, 38=38, 80=80).
+Donc, dans un film, un slot de bipède est UN CORPS du début à la fin — le pool de handles ne
+reboucle pas à cette échelle. Les 53 vies du résidu se rangent alors en deux causes seulement :
+51 sont d'AUTRES SÉJOURS du même corps (une découpe à `lifeGapUS` a séparé un séjour continu :
+trou d'ouverture, embarquement en véhicule, occultation), et 2 lisent l'index 8 de `c75f33b8`, que
+la table publiée ne nomme pas. **Zéro « record présent mais non lu », zéro « record absent »** :
+il n'y avait pas de lecteur à améliorer.
+
+**Ce que cela change de doctrine.** Propager le record d'un corps à ses autres séjours n'est pas
+une déduction, c'est le MÊME record : le lien reste `direct`, avec une voie qui le dit
+(`creation_bipede_propagee`). Et le pont par morts, qui départageait par l'ordre des slots quand
+deux vies finissent au même instant, cesse de nommer : il pose la cause de fin — la seule chose
+que lui seul sache — et il VÉRIFIE. `nameLivesByDeaths` est supprimé.
+
+**Résultats observés, re-cuisson locale des cinq films (même schéma 50).**
+`identity.coverage.bipedSlot.direct` : **0 % → 100 / 100 / 100 / 100 / 97,7 %**.
+`coverage.bridge.unnamedLives` : **15 / 0 / 7 / 8 / 14 → 0 / 0 / 0 / 0 / 1**.
+`coverage.shots.noSlot` : **513 / 12 / 213 / 289 / 450 → 64 / 12 / 13 / 10 / 119**.
+**27 vies** portaient le joueur que le film écrit sur une AUTRE vie (13 + 4 + 10) — le direct les
+corrige, et les deux hausses de compteur d'échec que P2-bis avait dû faire accepter sur
+`d9781168` (`slotCollisions` +1, `unnamedLivesContested` +2) **redescendent à zéro** : le film ne
+porte qu'un corps par slot, la collision était une erreur du pont. Zéro compteur d'échec ne monte
+sur les cinq films. `scoreTimeline` et `identity.statborgSlots` sont identiques octet pour octet
+(l'écart K/D/A ne bouge pas : 0 / 0 / 16 / 0 / 21 — E2 ne touche pas le pont statborg).
+
+**La seule grandeur qui baisse, et pourquoi c'est un gain.** Le portage du crâne de `d9781168`
+passe de 172,5 à 172,4 s pour l'équipe 0 : UNE frame, sur UN portage. La vie du porteur était
+nommée par `exclusion_temporelle`, donc DÉDUITE, donc le gate de présence s'abstenait de la rogner
+(« une identité déduite ajoute une présence, elle n'en retire jamais une », règle de P2-bis). Elle
+est maintenant une LECTURE : le portage est rogné à la dernière frame de son porteur. Un portage
+ne survit plus d'une frame à son porteur.
+
+**Ce qui a résisté, et qui est écrit.** Une branche fait encore nommer le pont : quand le registre
+ne reçoit AUCUN record de création. Elle ne s'exécute sur aucun film (`bridgeNamedLives = 0`
+partout) ; elle existe pour le fixture d'assemblage `inputs_000d5950.bin.gz`, figé AVANT ce canal,
+dont le film n'est plus au parc (vérifié : 466 films, `000d5950` absent, donc pas régénérable).
+Sans elle le golden tomberait de 483/519 tirs à 0. Kill-switch daté, critère de retrait mesurable,
+inscrit au registre.
+
+**Conclusion / prochaine étape.** Le trou central de l'inventaire P1 (« E2 : zéro lien direct,
+cinq replis empilés ») est fermé, et quatre entrées du registre des reports avec lui. Reste au
+superviseur : le `replay-corpus-gate` complet sur le parc (une seule ligne à accepter,
+`flagCarries.homeByObject` sur `3372e7eb`), `levelup backfill-killsource` (la révision d'isolement
+a bougé), et la re-cuisson du parc. La suite du décodeur est nommée : le lien direct index de
+joueur ↔ slot de STATBORG, à sonder par la même voie (le default-state de `ti=5` porte lui aussi
+un index de joueur, en `R(6)`) — c'est lui qui tient les écarts K/D/A de `64e8adfa` et `c75f33b8`.
+
+Branche `feat/v2-decodeur-e2`, poussée, **non fusionnée**. Journal complet :
+`.ai/V7.5/v2/RESTES_E2_2026-09-08.md`.
+
 ## [2026-09-08] Sondage E2 — le film NOMME le proprietaire d'un bipede — Complété
 
 **Le fait, et il retourne le point aveugle central de l'inventaire P1.** E2 y était classé « 0
