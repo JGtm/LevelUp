@@ -50,6 +50,11 @@ const GEOMETRY_TOKEN: SemanticToken = 'divergent-neutral'
  */
 const NEUTRAL_TOKEN: SemanticToken = 'divergent-neutral'
 /**
+ * L'encre d'un objectif SANS CAMP sur la carte — distincte de `NEUTRAL_TOKEN` depuis le
+ * 2026-09-08, cf. `ReplayInks.zone`. Achromatique dans toutes les palettes.
+ */
+const ZONE_NEUTRAL_TOKEN: SemanticToken = 'zone-neutral'
+/**
  * Événements ponctuels. Le LANCER emprunte un token d'information ; le TIR, lui, ne prend plus
  * aucun token de données : sa couleur dit la NATURE DE LA DÉCHARGE et vient des teintes
  * diégétiques du thème (fxInk.ts, décision utilisateur du 2026-08-15). Le token d'alerte reste
@@ -146,6 +151,22 @@ export interface ReplayInks {
   floor: ReplayFloorInk
   /** Encre SÉMANTIQUE du « aucun camp » : objectifs neutres, zone que personne ne tient. */
   neutral: string
+  /**
+   * L'encre d'une ZONE, d'une BASE ou d'un SOCLE que personne ne tient — le remplissage et son
+   * liseré (2026-09-08).
+   *
+   * POURQUOI ELLE NE PEUT PAS ÊTRE `neutral` (retour utilisateur : « sur les bases, quand elles
+   * sont neutres, on a toujours un bleu neutre, il faut du blanc/gris avec un contour noir ou
+   * blanc »). `neutral` vaut `divergent-neutral`, que la palette PAR DÉFAUT rend `#60A5FA` — un
+   * bleu. Sur une jauge signée il est bon ; sur une CARTE où « allié » se dit déjà en bleu, il
+   * ne se distingue plus de l'équipe. Le nouveau jeton `zone-neutral` est ACHROMATIQUE dans
+   * toutes les palettes : « aucun camp » n'a pas de direction à porter.
+   *
+   * LE LISERÉ EST L'ENCRE DU FOND, et c'est la technique déjà employée par les marques et par le
+   * glyphe de drapeau (`mark.outline`) : en sombre le remplissage est clair et le liseré sombre,
+   * en clair l'inverse. Un blanc et un noir écrits en dur n'auraient pas fait cela.
+   */
+  zone: { fill: string; outline: string }
   /** Encre par NATURE de socle (cf. PAD_FAMILY_TOKENS) : power-up, arme de puissance, râtelier. */
   pad: Readonly<Record<PadFamily, string>>
   /** Teintes des éclairs de bouche, lues une fois par thème (jamais par image). */
@@ -192,6 +213,7 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       grenade: resolveToken(GRENADE_TOKEN),
       floor: { fill: resolveToken(GEOMETRY_TOKEN), edge: readInk('--muted-foreground') },
       neutral: resolveToken(NEUTRAL_TOKEN),
+      zone: { fill: resolveToken(ZONE_NEUTRAL_TOKEN), outline: readInk('--background') },
       pad: {
         powerup: resolveToken(PAD_FAMILY_TOKENS.powerup),
         power: resolveToken(PAD_FAMILY_TOKENS.power),

@@ -19,7 +19,7 @@
  * joueurs sur le film témoin), et un joueur changeait donc de teinte à chaque réapparition.
  * Les tokens de série ne servent plus qu'aux ZONES NOMMÉES, qui sont des lieux, pas des gens.
  */
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 
 import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
@@ -103,6 +103,15 @@ import { useReplayDrag } from '../hooks/useReplayDrag'
 interface ReplayCanvasProps {
   doc: ReplayDocumentReady
   locale: ReplayLocale
+  /**
+   * CE QUI SE POSE SUR LA CARTE, et rien d'autre (2026-09-08) : l'écran de fin, le message
+   * inter-manche, le compte à rebours de la bombe.
+   *
+   * Ce composant les rend DANS le conteneur de la toile, dont les bornes sont celles du terrain.
+   * La page les montait en frères de lui, où leur `inset-0` couvrait la bannière de score, la
+   * carte ET la barre de lecture — 106 px de décalage mesurés sur l'écran de fin.
+   */
+  mapOverlays?: ReactNode
   /**
    * LA FENÊTRE DE GAMEPLAY, calculée UNE fois par la page (`replayWindow.ts`) : elle borne la
    * lecture et la frise, et recale l'horloge affichée. `null` = pas de cadrage établi (artefact
@@ -192,7 +201,7 @@ interface ReplayCanvasProps {
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, callouts, scoreboard, xuidMeta, marks,
   viewpoint, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
-  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT,
+  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
   // `null` compris, et les six destinataires du relais (son, zones, drapeaux, déflagration,
@@ -234,6 +243,7 @@ export function ReplayCanvas({
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, rift: riftInk, mark: markInk,
+    zone: zoneInk,
   } = useReplayInks(paletteVersion)
   // COULEURS DISTINCTES PAR JOUEUR (option du tiroir, 2026-08-24) : une série stable par joueur
   // à la place de la couleur d'équipe — le camp reste dit par les fiches, le fil et le bandeau.
@@ -279,7 +289,12 @@ export function ReplayCanvas({
   // la requête) : normalisés une fois, comme les callouts. Absents = pas de calque.
   const mapObjectives = useMemo(() => normalizeMapObjectives(doc.mapObjectives), [doc.mapObjectives])
   // L'ÉTAT VIVANT DES ZONES (schémas 16-18) : encres, jointure du catalogue, tenue de la jauge (useZoneStates).
-  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc, viewpoint)
+  // L'ENCRE DU « AUCUN CAMP » DES ZONES N'EST PLUS `neutralInk` DEPUIS LE 2026-09-08 : celui-ci
+  // vaut `divergent-neutral`, que la palette par défaut rend BLEU — indistinguable de l'allié sur
+  // une carte (retour utilisateur). `zoneInk.fill` est achromatique dans toutes les palettes.
+  // Les autres lecteurs de `neutralInk` (marques, socles, véhicules) ne sont PAS touchés : leur
+  // neutre ne se pose pas sur un fond de carte en face d'une couleur d'équipe.
+  const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, zoneInk.fill, doc, viewpoint)
 
   const teamCascades = useTeamCascades(scoreboard, xuidMeta, locale)
 
@@ -324,7 +339,7 @@ export function ReplayCanvas({
     frozen: drag.dragging,
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
-    objectives: { elements: mapObjectives, colorOfTeam: zones.colorOfTeam },
+    objectives: { elements: mapObjectives, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline },
   })
 
   // LES EMPLACEMENTS D'ARME (schéma 11) : tracé, survol et infobulle dans un seul hook. Ils
@@ -501,7 +516,7 @@ export function ReplayCanvas({
             }),
           'etat-zones': (_c, fr) => drawZoneStates(ctx, zones, doc.zoneStates, view, fr),
           'pulses-objectif': () =>
-            drawObjectivePulses(ctx, objectivePulses, view, win, { colorOfTeam: zones.colorOfTeam }, reducedMotion),
+            drawObjectivePulses(ctx, objectivePulses, view, win, { colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline }, reducedMotion),
           morts: (_c, _fr, k) =>
             drawKillFxLayer(ctx, killFx, view, win, {
               colorOfSlot: colorOfSlotOrLast, // FRONTIERE : kill posthume/echange apres la fin de vie.
@@ -673,6 +688,18 @@ export function ReplayCanvas({
                 locale={locale} width={renderWidth} ownerNameOf={nameOfSlot} playWindow={playWindow}
                 placement={placements.hover.hover} pad={weaponPads.hover} flag={flags.hover}
               />
+              {/* LES SURCOUCHES DE LA CARTE (2026-09-08) : écran de fin, message inter-manche,
+                  compte à rebours de la bombe. Elles arrivent de la page, mais elles se posent
+                  ICI — dans le conteneur de la TOILE, le seul dont les bornes sont celles du
+                  terrain.
+
+                  ELLES ÉTAIENT SŒURS DE CE COMPOSANT dans la page, et leur `inset-0` couvrait
+                  donc la bannière de score, la carte ET la barre de lecture : mesuré à la fin
+                  d'un rejeu, le bloc « DÉFAITE » tombait 106 px sous le centre de la carte
+                  (retour utilisateur : « ça prend la hauteur du lecteur en compte, ce qui n'est
+                  pas correct »). Les remonter d'un cran dans la page ne suffisait pas — ce
+                  composant rend AUSSI la barre de lecture. Le seul ancrage juste est celui-ci. */}
+              {mapOverlays}
             </div>
             {/* LA LÉGENDE S'ANCRE AU BLOC, PLUS À LA TOILE (2026-09-02, retour utilisateur :
                 « il faut le mettre sur le côté gauche du bloc avec un léger padding »). Elle
