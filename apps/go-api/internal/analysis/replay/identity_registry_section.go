@@ -181,10 +181,11 @@ func identityBipedSlots(r IdentityRegistry, c IdentityClock) []IdentityBipedSlot
 	for i, l := range lives {
 		lien := canonical.Link{From: c.frameOf(l.from), To: c.frameOf(l.to)}
 		var xuid string
-		switch {
-		case l.xuid == 0:
+		if l.xuid == 0 {
+			// RIEN NE L'A NOMMEE : la ligne se publie quand meme, et elle DIT qu'elle n'est pas
+			// resolue. La jeter ferait de la couverture un compte de rescapes.
 			lien.Source, lien.Method = canonical.LinkUnresolved, canonical.MethodNone
-		default:
+		} else {
 			xuid = strconv.FormatUint(l.xuid, 10)
 			lien.Source = canonical.LinkInferred
 			lien.Method = methodeDeNommage(l.nomPar)
