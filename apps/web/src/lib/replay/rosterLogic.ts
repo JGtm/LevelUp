@@ -14,7 +14,7 @@
  *
  * Tout ce fichier est PUR : aucun React, aucun canvas, donc testable.
  */
-import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { MatchScoreboardRow, ReplayRosterEntry } from '@/lib/api/types'
 import { displayPlayerName, stripBotSuffix } from '@/lib/players/displayName'
 
 import { refineAbilityReading, refineWeaponsReading } from './changeRefine'
@@ -49,6 +49,21 @@ export interface ReplayPlayer {
 /** Clé d'identité d'un bot dans les tables de ce fichier — jamais affichée. */
 export function botKey(name: string): string {
   return `bot:${name}`
+}
+
+/**
+ * rosterEntryKey — la clé d'identité d'une entrée de roster, DANS LE MÊME ESPACE que
+ * `ReplayPlayer.xuid` construit par `buildPlayers` ci-dessous : le xuid quand il existe,
+ * sinon `botKey(name)` pour un bot (`RosterEntry.xuid` vaut `''` pour un bot, jamais un xuid
+ * réel — schéma 36). Un appelant qui compare `entry.xuid` directement à `player.xuid` ne fait
+ * jamais matcher un bot (constat P2-5, audit vies anonymes 2026-09-06 : `equipmentUsageLogic`
+ * et `playerCardReadings` en portaient chacun une occurrence). Centralisée ici pour que les
+ * deux jointures roster -> joueur du dépôt qui en avaient besoin partagent une seule
+ * dérivation (règle des ≤ 2 copies, CLAUDE.md n°6) ; `seatLogic.filmIndexByIdentity` porte sa
+ * propre copie inline correcte, non touchée par ce lot (hors périmètre).
+ */
+export function rosterEntryKey(entry: Pick<ReplayRosterEntry, 'xuid' | 'bot' | 'name'>): string {
+  return entry.xuid || (entry.bot && entry.name ? botKey(entry.name) : '')
 }
 
 /**
