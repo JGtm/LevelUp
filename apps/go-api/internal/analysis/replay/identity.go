@@ -151,10 +151,27 @@ func FamilyOfWeaponID(id string) (uint32, bool) {
 }
 
 // BotIdentity est un bot tel que le film le DÉCLARE (BOT_METADATA), réduit à ce que
-// l'assemblage consomme : son index de roster et son nom d'affichage.
+// l'assemblage consomme : son index de roster, son nom d'affichage, et son IDENTIFIANT STABLE.
 type BotIdentity struct {
 	FilmIndex int
 	Name      string
+	// BotID est le N de `bid(N.0)` — l'identifiant que la base emploie pour ce bot.
+	//
+	// IL ÉTAIT LU ET NON PUBLIÉ (inventaire P1, E9). `replaybuild` s'en sert déjà comme clé
+	// EXACTE pour les relais (`byID[b.BotID]` puis `fmt.Sscanf(p.XUID, "bid(%d.0)", &id)`),
+	// mais il ne traversait pas jusqu'à l'artefact : la jointure web des bots se faisait donc
+	// sur le NOM NU, et deux bots homonymes fusionnaient. Zéro quand la déclaration ne le
+	// porte pas ; [BotIdentity.Bid] rend alors une chaîne vide plutôt qu'un `bid(0.0)` faux.
+	BotID int
+}
+
+// Bid rend l'identifiant stable du bot dans la forme de la base, `bid(N.0)`. Chaîne vide quand
+// le film n'a pas déclaré d'identifiant : un `bid(0.0)` inventé joindrait deux bots distincts.
+func (b BotIdentity) Bid() string {
+	if b.BotID <= 0 {
+		return ""
+	}
+	return "bid(" + strconv.Itoa(b.BotID) + ".0)"
 }
 
 // buildRoster publie les joueurs du film — humains du fil des morts, puis bots déclarés —
@@ -186,7 +203,8 @@ func buildRoster(idx PlayerIndexTable, names map[uint64]string, bots []BotIdenti
 			continue
 		}
 		seen[b.Name] = true
-		out = append(out, RosterEntry{FilmIndex: b.FilmIndex, Name: b.Name, Bot: true})
+		out = append(out, RosterEntry{FilmIndex: b.FilmIndex, Name: b.Name, Bot: true,
+			Bid: b.Bid()})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].FilmIndex != out[j].FilmIndex {
