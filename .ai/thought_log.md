@@ -1,3 +1,34 @@
+## [2026-09-09] Plan master — vague 0 (consolidation) et vague 1 (P1 visibles) closes — Complete
+
+**Decision technique principale.** Un plan master (`.ai/PLAN_MASTER_2026-09-09.md`) ordonne sept
+documents apres verification sur pieces ; l'arbitrage suit criticite x gain / effort. La vague B
+(identites interverties) est ABANDONNEE au profit de la preuve E2 (7 paires echangees par le pont
+par morts, lien direct `ti=35` fusionne) ; sa verification (`swap.sh` = 0 sur 4 temoins) suit la
+recuisson. Le lot « pont aplati » (six consommateurs de `PontParSlot`) reste en P5 (decision
+utilisateur). Aucun tag, aucun push sur `main` (consigne ferme).
+
+**Resultats observes — vague 0.** `main` -> `feat/v75` (`2751a484f`, 4 conflits docs), vague A
+`wt/lot-court` (`e7926ded3`), 93+23 fichiers des trois chantiers du 09-09 commites
+(`9212a1b0e`, `cca3ffc16`), E2 fusionne (`4dec9bd65`) apres gate corpus complet : 9 lignes de
+perte sur 4 temoins, toutes instruites (la neuvieme : proprietaire du slot 625 de `fb1a1a72`
+corrige, bornes identiques) et acceptees au registre. `backfill-killsource` (737 films, 1 967
+matchs) puis chaine de backfills locaux avec checkpoints et sauvegarde de la base (medailles du
+fil, T0, cache appauvri, recuisson schema 50, T0 film, resume d'usage, stats d'Assaut) lances
+detaches ; serveur de dev arrete pour la duree. Case Notion « recuisson schema 48 » passee a 50.
+
+**Resultats observes — vague 1.** Sept livrables sur `feat/vague1-integration`, fusionnes dans
+`feat/v75` : escouade A0-A3 (ADR 0033, ecart « 4 sur 7 » explique), medailles de la frise en
+images (piste 18 -> 24 px), ETag fort + 304 centralises (4 sites, garde-rail grep), grille
+canonique (padding, absence hachuree, allowlist datee a 4 sites), nuage d'isolement (mediane par
+joueur, quadrants, pointille), Synthese sur le wrapper. Revue adversariale unique : 2 constats
+recevables, 0 jete, corriges et testes (`82d27bd3b`). Gates finaux : Go verts, tsc 0, vitest
+7 149 / 673 fichiers, `generated.ts` stable. Registre : bots reels anonymes apres E2 consignes
+(voie API arrivees/departs d'abord) ; lignes L505/L506 (audit anti-bombe-RAM) perimees vs Notion.
+
+**Conclusion / prochaine etape.** Push de `feat/v75` et UNE CI de vague. Lot 1.7 (`kill_positions`
+par passe, Opus) en cours. Puis vague 2 (equipement E0..E6) apres la recuisson ; revues
+navigateur (retours UI, L2, frise) au redemarrage du serveur.
+
 ## [2026-09-09] Lot 1.5 : ecart escouade explique (A3), nuage d'isolement (C3), heatmap Synthese migree (C2) — Complete
 
 **Contexte** : lot 1.5 du master plan, trois items independants executes dans l'ordre prescrit,
