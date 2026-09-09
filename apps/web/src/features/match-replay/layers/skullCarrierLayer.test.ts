@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { type CanvasView } from '../model/replayView'
 import type { ReplaySkullCarry } from '../../../lib/replay/replayNormalize'
 import { drawSkullCarrier, skullCarrierActiveAt, type SkullCarrierInput } from './skullCarrierLayer'
+import { OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 
 const carry = (over: Partial<ReplaySkullCarry>): ReplaySkullCarry => ({
   xuid: '2533274806055812',
@@ -71,5 +72,23 @@ describe('drawSkullCarrier', () => {
     }
     drawSkullCarrier(ctx, layer, [carry({ t0: 0, t1: 40 })], view, 80)
     expect(fill).not.toHaveBeenCalled()
+  })
+
+  /**
+   * BORNAGE HORS CADRE (plan escouade hors cadre, chantier B, phase B3, décision D3,
+   * 2026-09-10). Même vue que les autres cas : 1 unité monde = 2 px canvas.
+   */
+  it('PORTÉ ET HORS CADRE : le crâne est PLAQUÉ À LA MARGE, jamais projeté hors toile', () => {
+    const arc = vi.fn()
+    const ctx = { beginPath: vi.fn(), arc, fill: vi.fn(), stroke: vi.fn() } as unknown as CanvasRenderingContext2D
+    const layer: SkullCarrierInput = {
+      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      // Monde (1000, 25) -> canvas brut (2000, 150) : très au-delà de la toile (200x200).
+      posOf: () => ({ x: 1000, y: 25 }),
+    }
+    drawSkullCarrier(ctx, layer, [carry({ t0: 0, t1: 100 })], view, 10)
+    const [cx] = arc.mock.calls[0] as number[]
+    expect(cx).toBeCloseTo(view.width - OFFSCREEN_MARGIN_PX, 5)
+    expect(cx).toBeLessThan(2000)
   })
 })

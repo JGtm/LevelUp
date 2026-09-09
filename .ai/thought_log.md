@@ -104105,3 +104105,22 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
   PRE-EXISTANT (ReplayCanvas.tsx:532, zoneInk.outline, hors diff de ce lot).
 - Prochaine etape : phase B3 (porteurs d'objectif : flagCarriesLayer, bombCarrierLayer,
   skullCarrierLayer, decision sur vipCrownLayer).
+
+## [2026-09-10] Escouade hors cadre — Phase B3 porteurs d'objectif (Complete)
+- TDD : test ROUGE par calque (position brute non bornee obtenue au lieu de la marge
+  attendue), puis cablage de `edgeMarkFor` dans `flagCarriesLayer.drawFlagCarries` (seul le
+  glyphe PORTE, jamais dropped/home), `bombCarrierLayer.drawBombCarrier` (seule la bombe
+  portee, jamais au sol) et `skullCarrierLayer.drawSkullCarrier`. Chaque calque garde un test
+  de non-regression prouvant que les positions de CARTE (sol/base) restent non bornees.
+- Decision technique : les trois calques ne mettent encore rien a l'echelle de l'ecran (pas
+  de `k`/`dpr`) -- marge fixee a echelle=1, coherent avec leur convention existante, consigne
+  en decouverte pour un futur lot d'homogeneisation.
+- Decision produit : `vipCrownLayer` NON traite `[!]`, justifie -- hors du perimetre D3 (seuls
+  drapeau/crane/bombe y figurent) et meme raison que D5 (pas de decoration cumulee sur la
+  fleche) ; verifie sur piece qu'aucune regression n'est introduite (comportement hors cadre
+  identique avant/apres, la couronne ne se dessinait deja pas).
+- Resultats observes : 2622/2622 tests match-replay verts (1 skip inchange), tsc -b --force
+  exit 0, eslint --max-warnings=0 sur les 6 fichiers touches : 0 avertissement, 0 couleur en
+  dur.
+- Prochaine etape : phase B4 (parite export, revue navigateur a statuer superviseur, i18n
+  distance deja resolue en B2).
