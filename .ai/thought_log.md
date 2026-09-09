@@ -1,3 +1,62 @@
+## [2026-09-09] E3 « servi ou gache » — les grandeurs manquantes au grain session (Go) — Complete
+
+**Decision technique principale.** La jointure rang de palette -> famille se fait sur la
+RACINE du libelle publie par `abilityLabels`, et NON sur la table exacte du manifeste
+(`AbilityPalette.Families`, `replay_labels.toml`) que les calques d'impulsions et de charges
+emploient. Raison : ceux-la tournent A LA CONSTRUCTION du document, quand la palette est en
+main ; `BuildUsageSummary` est une fonction PURE DU DOCUMENT DEJA CUIT — c'est precisement ce
+qui permet a `levelup backfill-usage-summary` de re-resumer le parc SANS re-decoder un film.
+Le document ne publie que rang -> texte bilingue. Deuxieme et derniere copie de cette table
+(la premiere est `EQUIPMENT_CHANGE_FAMILY_STEMS` cote web, livree en E2) — plafond de la
+regle CLAUDE.md n6. De surcroit la table du manifeste ne suffirait pas : les deux bonus
+(rangs 8 et 9) sont NOMMES sans porter de `family`.
+
+**Deuxieme decision.** Les quatre ventilations persistees parlent UN SEUL vocabulaire, celui
+des POSES (`powerup_camo`, jamais `camo`) — la ou le web nomme un bonus par son episode dans
+`kept` et par sa pose dans `dropped`, puis ponte les deux. L'agregat de session joint donc
+taken/spent/kept/dropped sur UNE cle, sans dictionnaire ; le seul endroit qui traduit est la
+lecture du cote « utilise » des deux bonus (leur compte d'episodes).
+
+**Troisieme decision.** Nouvelle famille de cles `equipment_<famille>` a cote de
+`deployed_<famille>`, plutot que d'accrocher les issues a cette derniere. Deux raisons
+mesurees : (1) une famille PRISE mais JAMAIS POSEE n'aurait aucune ligne — or c'est le cas du
+capteur au parc (4 objets utilises sur 36 pris, mesure E0.4), exactement l'histoire que le
+bloc doit raconter ; (2) la valeur d'une barre empilee doit etre la SOMME DE SES SEGMENTS,
+pas un compte de gestes, sinon la pile deborde ou laisse un trou. `deployed_*` reste servi et
+rendu par la page Sessions actuelle — E4 tranchera s'il disparait, et devra alors le retirer
+du contrat dans le meme lot (consigne au §6 du plan).
+
+**Resultats observes.** `go test ./...` vert (suite complete). `go test -tags=integration
+-p 1 -count=1 ./...` vert. `go test ./internal/sync/ -run NoART` vert (aucune entree ajoutee
+a l'allowlist anti-ART : l'ecriture reste INSERT-only). `golangci-lint
+--new-from-merge-base=origin/main` : 0 issue. `npx tsc -b --force` silencieux.
+`make openapi-gen` + `make generate-types` : +32 lignes d'openapi, +17 de generated.ts, les
+deux commites, aucun diff residuel.
+
+**Echecs TDD observes.** (1) Les six tests de projection ne compilaient pas — champs
+`TakenByFamily`/`SpentByFamily`/`KeptByFamily` et `Match.EquipmentChanges` inexistants.
+(2) La migration a echoue sur `Parser Error: Adding columns with constraints not yet
+supported` : DuckDB refuse NOT NULL sur un ADD COLUMN — corrige en `DEFAULT '{}'` seul, le
+persister ecrivant toujours une valeur et le lecteur COALESCE-ant. (3) Un test de contrat
+partait d'une premisse fausse (« aucune ligne d'equipement pour un corpus sans prise ») : le
+code avait raison, une POSE est une issue meme sans prise mesuree — c'est le test qui a ete
+corrige, pas le code. (4) Le ratchet `no_french_label_literal_test.go` a rejete le stem
+accentue `réparation` ; verification faite, le manifeste ecrit « champ de reparation » SANS
+accent, donc ce stem ne s'appariait a rien meme cote web — remplace par sa forme reellement
+publiee, aucune allowlist agrandie. (5) `golangci-lint` a signale trois `goconst` (`wall`,
+`sensor`, `repulsor`) — deux constantes de famille ajoutees, le litteral `wall` du stem
+remplace par la constante existante.
+
+**Ce qui n'a PAS ete fait, et pourquoi.** E3.11 (recuisson du parc) est `[~] superviseur` :
+elle exige d'ouvrir `shared_matches_v2.duckdb` en RW, donc le serveur de dev arrete — la
+consigne de la tache interdit toute ouverture de base sous `data/`. Commande exacte au
+journal du plan ; `--force` n'est PAS necessaire, la cle de reprise est (summary_rev,
+artifact_schema) et le passage us3 -> us4 suffit a faire reprendre chaque match.
+
+**Prochaine etape.** E4 (Sessions : la barre combinee) peut lire `outcomes` sur les
+grandeurs `equipment_<famille>` — apres la recuisson, sans laquelle les colonnes neuves sont
+vides sur tout le corpus.
+
 ## [2026-09-09] E2 « servi ou gache » — colonne d'issue fusionnee (vue match) — Complete
 
 **Decision technique principale.** Le perimetre declare (equipmentUsageColumns.ts,

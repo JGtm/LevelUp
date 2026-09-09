@@ -71,7 +71,7 @@ somme est le nombre d'objets ramassés SUR LA CARTE.
 |---|---|---|
 | **Utilisé** | Famille A : le canal d'activation de la famille (tableau §1 bis). Famille B : `deployed`. `spent` sert de témoin commun | Lu par la vue match, sauf translocateur et propulseur. **MESURÉ E0** : 416 objets sur 1 223 pris (34,0 %) |
 | **Lâché en mourant** | `dropped` | Lu par la vue match. **MESURÉ E0** : 440 sur 1 223 (36,0 %) |
-| **Gardé sans l'utiliser** | `taken` sans `spent` ni `dropped` | **À brancher** — le canal existe, aucun écran d'usage ne le lit. **MESURÉ E0** : 337 sur 1 223 (27,6 %), et 30 (2,5 %) restent NON EXPLIQUÉS |
+| **Gardé sans l'utiliser** | `taken` sans `spent` ni `dropped` | **BRANCHÉ** (vue match E2 ; résumé de session E3, révision `us4`) — dérivé, jamais lu d'un canal : `max(0, taken - utilisé - lâché)`, clampé. **MESURÉ E0** : 337 sur 1 223 (27,6 %), et 30 (2,5 %) restent NON EXPLIQUÉS |
 
 ### Mesure E0 du 2026-09-09 — ce que le canal vaut sur le parc
 
@@ -151,16 +151,37 @@ pour Sessions, Solo et Escouade, quoi qu'en dise le document de rejeu.
 | `CamoEpisodes` / `CamoMS` / `CamoKills` | oui |
 | `OvershieldEpisodes` / `OvershieldMS` / `OvershieldKills` | oui |
 | `DeployedByFamily` | oui — **ventilé par famille** |
-| `DroppedObjects` | oui — **TOTAL SEULEMENT.** `DroppedByFamily` existe en mémoire mais **la DDL ne le porte pas** (`usage_summary.go:88`) |
+| `DroppedObjects` | oui — total ; `DroppedByFamily` **persistée depuis `us4`** (E3, 2026-09-09) |
 | `GrenadesThrown` | oui (produit, non affiché) |
 | `PadPickups` / `PadPickupsByWeapon` | oui — familles d'arme en 8 hexa |
-| **`taken` / `spent` (ramassages, consommations)** | **NON** |
-| **Gardé jusqu'à la fin du match** | **NON** |
+| **`taken` / `spent` (ramassages, consommations)** | **oui depuis `us4`** — `TakenByFamily` / `SpentByFamily` |
+| **Gardé jusqu'à la fin du match** | **oui depuis `us4`** — `KeptByFamily`, DÉRIVÉ (`max(0, taken - utilisé - lâché)`) |
 
-**Conséquence directe, et c'est la seule vraie différence entre les pages :** la vue match
-peut tout servir sans recuisson (elle lit le document) ; Sessions, Solo et Escouade ne
-peuvent servir aujourd'hui ni la ventilation des lâchers par famille, ni le dénominateur des
-ramassages, ni la troisième issue. Les leur donner = nouveau champ de résumé + **recuisson**.
+**Mise à jour du 2026-09-09 (étape E3 du plan équipement).** Les quatre lignes en gras
+ci-dessus étaient toutes « NON » jusqu'à ce jour : c'est ce que l'étape E3 a changé. Le
+résumé porte désormais les trois issues, ventilées par famille, dans les colonnes
+`taken_json` / `spent_json` / `kept_json` / `dropped_json` de `match_usage_players`
+(migration `shared_match_usage_players_outcomes_v1`), et l'agrégat de session les publie sur
+des grandeurs `equipment_<famille>` avec deux taux de référence qui EXCLUENT le joueur (P7).
+
+**Trois points à ne pas re-découvrir :**
+
+1. **Les quatre ventilations parlent le vocabulaire des POSES** (`powerup_camo`, jamais
+   `camo`) — le web, lui, nomme un bonus par son ÉPISODE dans `kept` et par sa POSE dans
+   `dropped`, et ponte les deux (`droppedFamilyOf`). Côté Go il n'y a qu'une clé.
+2. **La jointure rang -> famille se fait sur la RACINE DU LIBELLÉ** (`abilityLabels`), PAS
+   sur `AbilityPalette.Families` du manifeste : le résumé est une fonction pure du document
+   DÉJÀ CUIT, la palette n'y est plus en main — c'est ce qui permet de re-résumer sans
+   re-décoder. Et la table du manifeste ne suffirait pas : les deux bonus sont nommés sans
+   porter de `family`.
+3. **Une recuisson reste nécessaire** pour que ces colonnes se remplissent sur les matchs
+   déjà résumés : `UsageSummaryRev` est passée à `us4`, ce qui suffit à faire reprendre
+   chaque match par `levelup backfill-usage-summary` (sans `--force`) — mais tant que cette
+   passe n'a pas tourné, les colonnes sont vides et les grandeurs `equipment_*` absentes.
+
+**Ce qui reste vrai :** la vue match peut tout servir sans recuisson (elle lit le document) ;
+Sessions, Solo et Escouade lisent la base et ne voient donc jamais mieux que la dernière
+passe de résumé.
 
 `UsageSummaryRev` (`usage_summary.go:65`) est la clé de reprise du backfill : **changer une
 règle d'attribution ici DOIT incrémenter cette révision**, sinon le backfill saute les
@@ -170,13 +191,15 @@ matchs à re-résumer.
 
 - **Vue match, « Usages d'équipement »** (`features/match-replay/model/equipmentUsageLogic.ts`) —
   lit `grappleLines`, `equipmentEpisodes`, `equipmentPlacements` (deployed ET dropped),
-  `grenades`. **Ne lit PAS `equipmentChanges`** : ni exploité, ni exclu, simplement jamais
-  branché sur cet écran.
+  `grenades`, et **`equipmentChanges` depuis l'étape E2 du 2026-09-09** (la phrase précédente
+  de ce paragraphe disait « ne lit PAS » : c'était vrai jusqu'à ce jour-là). Il y sert au seul
+  calcul du GARDÉ, par famille.
 - **`equipmentChanges` est bien vivant ailleurs** : `abilityChargeLogic.ts`,
   `placementTeleport.ts`, `riftStations.ts`, `equipmentChangeSound.ts`. Le brancher sur la
   fiche d'usage n'est donc pas un défrichage.
 - **Page Sessions** (`features/session-detail/`) — lit le bloc `usage` de la réponse, donc
-  uniquement le tableau du §3.
+  uniquement le tableau du §3 — qui porte les trois issues depuis l'étape E3 (grandeurs
+  `equipment_<famille>` et leur champ `outcomes`), sous réserve de la recuisson.
 - **Solo / Synthèse et Escouade** — **aucun bloc d'usage**, ni front ni contrat.
 
 ## 5. Décisions en vigueur, et l'amendement en attente
@@ -188,7 +211,7 @@ matchs à re-résumer.
 | D9 (vague C) | « Déployé » et « lâché » fusionnés en UNE colonne par famille, barre empilée, échelle commune | **CORRIGÉE le 2026-09-09** : les power-ups n'en sortent plus. La règle est « deux définitions de utilisé » (§1 bis), pas « bonus vs déployable » |
 | — (2026-09-09) | Les deux lectures — « est-ce que je fais ma part » et « est-ce que je gaspille » — sont COMBINÉES en une barre : sa longueur est ma part de l'équipe, son remplissage est l'issue, le nombre à droite est mon TAUX D'UTILISATION | Ferme, à dessiner |
 | — (2026-09-09) | On ne compte pas les charges | Ferme |
-| — (2026-09-09) | Un objet gardé jusqu'à la fin du match compte comme NON UTILISÉ | Ferme, **à brancher** |
+| — (2026-09-09) | Un objet gardé jusqu'à la fin du match compte comme NON UTILISÉ | Ferme, **branché** : vue match (E2), résumé de session (E3, `us4`) |
 
 **Amendement proposé à D9.** Son raisonnement — les bonus ne se déploient jamais, donc leur
 barre serait 100 % « lâché » — est juste **si la barre se construit sur le seul canal des
