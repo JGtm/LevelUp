@@ -410,6 +410,19 @@ cd apps/web && npx eslint src/features/squad --max-warnings=0
   pas nommée. Un dénominateur affiché « objets pris » devra dire lequel des deux il compte.
   Non instruit.
 
+- **Nouvelle, E3 du 2026-09-09 — TEST D'INTÉGRATION ROUGE, PRÉEXISTANT** :
+  `internal/api/wire` / `TestOuvrierReel_ConstruitEtLivre` (tag `integration`) échoue sur
+  trois mesures figées d'identité — « 0 vies anonymes, attendu 1 » et le xuid
+  `2535458702376288` nommé par le film mais absent des mesures figées. **Prouvé préexistant** :
+  le même test, rejoué au point de branche `32821ba86` dans un worktree détaché jetable,
+  échoue à l'identique et produit le même artefact à l'octet près. L'attente figée a été
+  périmée par le lot de nommage des vies (elle réclame une vie anonyme que le décodeur ne
+  produit plus) ; à rapprocher de l'entrée « recuisson du parc au schéma 50 » du
+  `REGISTRE_REPORTS`. Personne ne l'avait vu parce que le gate de la vague 2 n'a pas rejoué
+  la suite d'intégration après ce lot. **Non instruit** (hors périmètre E3) — mais il faut
+  le traiter avant `make gate-push` du §7, sinon la clôture du chantier ne peut pas être
+  verte.
+
 - **Nouvelle, E3 du 2026-09-09** : le stem `réparation` de la reconnaissance rang -> famille
   côté web (`EQUIPMENT_CHANGE_FAMILY_STEMS`, `equipmentUsageLogic.ts`) ne s'apparie à RIEN :
   le manifeste écrit « champ de reparation » SANS accent (`replay_labels.toml`, rang 23), et
@@ -731,11 +744,24 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
   famille.
 
   **Gates, tous passés sur l'arbre final** : `gofmt -l` silencieux · `go build ./...` ·
-  `go vet ./...` · `go test ./...` vert · `go test -tags=integration -p 1 -count=1 ./...`
-  vert · `go test ./internal/sync/ -run NoART` vert · `golangci-lint
-  --new-from-merge-base=origin/main` **0 issue** · `make openapi-gen` + `make generate-types`
-  (+32 lignes openapi, +17 generated.ts, commitées, aucun diff résiduel) ·
-  `npx tsc -b --force` silencieux.
+  `go vet ./...` · `go test ./...` **vert (suite complète)** · `go test ./internal/sync/
+  -run NoART` vert · `golangci-lint --new-from-merge-base=origin/main` **0 issue** ·
+  `make openapi-gen` + `make generate-types` (+32 lignes openapi, +17 generated.ts,
+  commitées, aucun diff résiduel) · `npx tsc -b --force` silencieux.
+
+  **`go test -tags=integration -p 1 -count=1 ./...` : UN ÉCHEC, PRÉEXISTANT — prouvé, pas
+  supposé.** `internal/api/wire` / `TestOuvrierReel_ConstruitEtLivre` échoue sur trois
+  mesures figées d'IDENTITÉ : « 0 vies anonymes, attendu 1 », et le xuid
+  `2535458702376288` « nommé par le film mais absent des mesures figées ». Vérification faite
+  en rejouant le MÊME test au point de branche `32821ba86`, dans un worktree détaché jetable
+  (supprimé depuis — ni ma branche ni mon worktree touchés) : **échec identique, et l'artefact
+  produit est le même à l'octet près (291 655 octets, 22 trajectoires, 781 frames)**. Le diff
+  de cette étape ne touche AUCUN fichier du chemin de décodage ou de nommage d'identité —
+  c'est une attente figée que le lot de nommage par record de création a périmée (elle attend
+  une vie anonyme qui n'existe plus). Rapproché de l'entrée « recuisson du parc au schéma 50 »
+  du `REGISTRE_REPORTS`. **Non traité : hors périmètre E3** (règle « zéro fix opportuniste »),
+  reporté au §6. Tous les autres paquets d'intégration, dont `migration/` et `persist/` — les
+  deux que ce lot touche — sont verts.
 
 - **2026-09-09 — E3.11 statué `[~] superviseur` : LA RECUISSON RESTE À FAIRE.**
   Elle exige d'ouvrir `shared_matches_v2.duckdb` en **RW**, donc **serveur de dev arrêté**

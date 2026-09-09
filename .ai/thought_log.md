@@ -26,12 +26,23 @@ pas un compte de gestes, sinon la pile deborde ou laisse un trou. `deployed_*` r
 rendu par la page Sessions actuelle — E4 tranchera s'il disparait, et devra alors le retirer
 du contrat dans le meme lot (consigne au §6 du plan).
 
-**Resultats observes.** `go test ./...` vert (suite complete). `go test -tags=integration
--p 1 -count=1 ./...` vert. `go test ./internal/sync/ -run NoART` vert (aucune entree ajoutee
-a l'allowlist anti-ART : l'ecriture reste INSERT-only). `golangci-lint
---new-from-merge-base=origin/main` : 0 issue. `npx tsc -b --force` silencieux.
-`make openapi-gen` + `make generate-types` : +32 lignes d'openapi, +17 de generated.ts, les
-deux commites, aucun diff residuel.
+**Resultats observes.** `go test ./...` vert (suite complete). `go test ./internal/sync/
+-run NoART` vert (aucune entree ajoutee a l'allowlist anti-ART : l'ecriture reste
+INSERT-only). `golangci-lint --new-from-merge-base=origin/main` : 0 issue. `npx tsc -b
+--force` silencieux. `make openapi-gen` + `make generate-types` : +32 lignes d'openapi, +17
+de generated.ts, les deux commites, aucun diff residuel.
+
+`go test -tags=integration -p 1 -count=1 ./...` : UN ECHEC, **preexistant et prouve tel**.
+`internal/api/wire` / `TestOuvrierReel_ConstruitEtLivre` echoue sur trois mesures figees
+d'IDENTITE (« 0 vies anonymes, attendu 1 » ; xuid 2535458702376288 nomme par le film mais
+absent des mesures figees). Je ne l'ai pas suppose : j'ai rejoue le MEME test au point de
+branche `32821ba86` dans un worktree detache jetable (supprime depuis — ni ma branche ni mon
+worktree touches), echec identique et artefact identique a l'octet pres (291 655 octets,
+22 trajectoires, 781 frames). Mon diff ne touche aucun fichier du chemin de decodage ni du
+nommage d'identite. L'attente figee a ete perimee par le lot de nommage des vies : elle
+reclame une vie anonyme que le decodeur ne produit plus. Non traite (hors perimetre, regle
+« zero fix opportuniste »), consigne au §6 du plan — a resorber avant le `make gate-push` de
+cloture. `migration/` et `persist/`, les deux paquets que ce lot touche, sont verts.
 
 **Echecs TDD observes.** (1) Les six tests de projection ne compilaient pas — champs
 `TakenByFamily`/`SpentByFamily`/`KeptByFamily` et `Match.EquipmentChanges` inexistants.
