@@ -101693,3 +101693,61 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
 - Vague 3 (paradigme P) : un inventaire P1 est deja sur `feat/v75` (`77200cb7a`, autre session) ;
   a relire contre les axes (i) lecteurs hors rejeu et (j) registre pur avant P2. Non demarree
   sans accord utilisateur.
+
+## [2026-09-09] Fonds de carte — étape 1 (ETag/304 centralisé) — Complete
+
+**Décision technique principale.** Exécution de l'étape 1 SEULE du plan
+`.ai/PLAN_FONDS_CARTE_WEBP_ETAG_2026-09-09.md` (étapes 0/2/3/4/5 reportées par le
+superviseur), sous TDD strict. Amendement S5 du superviseur corrige le plan : l'enquête
+préalable affirmait qu'aucun 304 n'existait dans `handlers/` — FAUX, vérifié sur pièces :
+`writeJSONCached` (helpers.go:95-121, avant migration) posait déjà SA PROPRE logique ETag
+(format `"%x"` sur 8 octets, sans liste ni préfixe `W/`) et répondait 304 ; `assets.go:217`
+posait un ETag jamais honoré (pas de lecture d'`If-None-Match`, donc inerte). Avec les
+2 sites du plan (replay.go, tactical.go) cela fait 4 occurrences du motif, pas 3 — la
+règle n°6 du dépôt (≤ 2 copies) impose donc de migrer LES QUATRE vers un helper unique,
+pas seulement les trois annoncés. Créé `apps/go-api/internal/api/handlers/cache_http.go`
+— `servirBlobAvecETag(w, r, blob, contentType, cacheControl)` : ETag fort
+`"sha256-<12 hex>"` (D7, calculé sur `sum[:6]`), `If-None-Match` analysé en liste
+séparée par virgules avec préfixe faible `W/` toléré et wildcard `*` ; 304 sans corps ni
+`Content-Length` ; sinon Content-Type + Cache-Control (si non vide) + Content-Length +
+corps.
+
+**TDD — échec observé avant implémentation.** `cache_http_test.go` et
+`cache_http_routes_test.go` écrits en premier (référençant `servirBlobAvecETag`
+inexistante) : `go vet ./internal/api/handlers/...` a échoué avec 8 occurrences
+`undefined: servirBlobAvecETag` (log conservé). Une fois `cache_http.go` créé mais AVANT
+la migration des 4 appelants, `go test -run 'TestNoRawETag|TestWriteJSONCached'` a
+échoué comme attendu : le garde-rail grep listait `assets.go` et `helpers.go` comme
+contrevenants, et `TestWriteJSONCached_ListeAvecPrefixeFaible_304` recevait 200 au lieu
+de 304 (l'ancienne logique de `writeJSONCached` ne gérait ni liste ni `W/`). Migration
+des 4 sites (replay.go:148-180, tactical.go:281-316, assets.go:217, helpers.go:95-121)
+→ tous les tests passent.
+
+**Preuve que le garde-rail mord (exigée par le superviseur).** Mutation temporaire d'un
+`w.Header().Set("ETag", "mutation-temporaire-preuve-garde-rail")` réintroduit dans
+replay.go : `TestNoRawETagHandlingOutsideCacheHTTP` échoue en nommant `replay.go` comme
+contrevenant. Mutation revertée aussitôt (`git diff --stat` confirme 0 delta résiduel) ;
+le test repasse au vert.
+
+**Résultats observés (sorties réelles).**
+```
+go test ./internal/api/handlers/     -> ok  levelup/go-api/internal/api/handlers  9.575s
+go build ./...                       -> exit 0
+go vet ./internal/api/...            -> exit 0
+golangci-lint run --new-from-merge-base=origin/main ./internal/api/handlers/ -> 0 issues.
+```
+
+**Découvertes non traitées (consignées dans le plan, § Découvertes) :** les trois
+endpoints Huma (`capabilities.go`, `feature_matrix.go`, `field_mappings.go` — et
+`home.go` en écho) calculent CHACUN leur propre `sha256.Sum256(body)` pour l'ETag via un
+champ de sortie `header:"ETag"` — 3 copies indépendantes du calcul, mais qui NE PEUVENT
+PAS appeler `servirBlobAvecETag` (Huma sérialise depuis une struct de sortie, pas
+d'écriture directe sur `http.ResponseWriter`). Hors périmètre de l'étape 1 : le contrat
+HTTP est différent (déclaratif vs writer direct), pas un simple `Header().Set`/`Write`
+brut. Non traité, noté pour un chantier séparé si la règle des 2 copies doit s'appliquer
+au calcul du hash indépendamment du branchement HTTP.
+
+**Conclusion / prochaine étape.** Étape 1 close : gate vert, items de l'étape statués
+`[x]`, plan mis à jour (cases + amendement S5 + Découvertes), commit sur
+`feat/fonds-carte-etag` (worktree `LevelUp-wt-fonds-etag`, base `feat/v75`). Étapes 0/2/3/4/5
+NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push sur `main`.
