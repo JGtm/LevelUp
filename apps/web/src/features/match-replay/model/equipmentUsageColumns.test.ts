@@ -105,36 +105,36 @@ describe('partitionUsageGroups — les élus en avant, le reste replié', () => 
   const partition = partitionUsageGroups(groupesDe(TEMOIN))
 
   it('met EN AVANT les familles élues, dans l’ordre écrit des groupes', () => {
-    expect(partition.forward.map((g) => g.key)).toEqual([
-      'episodes',
-      'deployed',
-      'dropped',
-      'grenades',
+    // E2 (2026-09-09) : `deployed`/`dropped` ont fusionné en `equipment` — une colonne par
+    // famille, empilée sur ses issues (P2/P3). Le vote continue de juger PAR FAMILLE : sensor
+    // et threat_seeker (élus) entrent en avant, wall et translocator_beacon (non élus) se
+    // replient — même mécanique qu'avant la fusion, sur un groupe unique.
+    expect(partition.forward.map((g) => g.key)).toEqual(['episodes', 'equipment', 'grenades'])
+    // L'ordre INTERNE de PLACEMENT_RENDER survit dans la partition (sensor avant seeker) ;
+    // les deux power-ups (élus par le pont D5) suivent, dans l'ordre de `EPISODE_FAMILIES`.
+    expect(colonnes(partition.forward, 'equipment')).toEqual([
+      'equipment.sensor',
+      'equipment.threat_seeker',
+      'equipment.camo',
+      'equipment.overshield',
     ])
-    // L'ordre INTERNE de PLACEMENT_RENDER survit dans la partition (sensor avant seeker).
-    expect(colonnes(partition.forward, 'deployed')).toEqual([
-      'deployed.sensor',
-      'deployed.threat_seeker',
-    ])
-    expect(colonnes(partition.forward, 'dropped')).toEqual(['dropped.powerup_overshield'])
   })
 
   it('REPLIE le grappin et les familles votées non, dans le même ordre écrit', () => {
-    expect(partition.collapsed.map((g) => g.key)).toEqual(['grapple', 'deployed', 'dropped'])
-    // L'ordre INTERNE survit aussi côté replié (wall avant translocator, wall avant field).
-    expect(colonnes(partition.collapsed, 'deployed')).toEqual([
-      'deployed.wall',
-      'deployed.translocator_beacon',
-    ])
-    expect(colonnes(partition.collapsed, 'dropped')).toEqual([
-      'dropped.wall',
-      'dropped.repair_field',
+    expect(partition.collapsed.map((g) => g.key)).toEqual(['grapple', 'equipment'])
+    // L'ordre INTERNE survit aussi côté replié (wall avant translocator, avant field) — les
+    // TROIS issues de `wall` (posé au moins une fois ET lâché une fois dans TEMOIN) tiennent
+    // dans SA SEULE colonne fusionnée, plus besoin de la retrouver dans deux groupes.
+    expect(colonnes(partition.collapsed, 'equipment')).toEqual([
+      'equipment.wall',
+      'equipment.translocator_beacon',
+      'equipment.repair_field',
     ])
   })
 
   it('compte les colonnes masquées — le N du bouton « Voir plus (N) »', () => {
-    // 1 grappin + 2 déployées + 2 lâchées.
-    expect(partition.collapsedColumnCount).toBe(5)
+    // 1 grappin + 3 familles d'équipement non élues (wall, translocator_beacon, repair_field).
+    expect(partition.collapsedColumnCount).toBe(4)
   })
 
   it('ne perd AUCUNE colonne : partition = repartition exacte des groupes d’entrée', () => {
@@ -158,6 +158,11 @@ describe('partitionUsageGroups — le pont D5 (socle -> épisode)', () => {
       'overshield.kills',
     ])
     expect(partition.collapsed.map((g) => g.key)).not.toContain('episodes')
+    // Le MÊME pont élit AUSSI leur colonne dans le groupe `equipment` fusionné (E2) : deux
+    // effets d'un seul et même pont, jamais une seconde règle.
+    expect(colonnes(partition.forward, 'equipment')).toEqual(
+      expect.arrayContaining(['equipment.camo', 'equipment.overshield']),
+    )
   })
 })
 
@@ -182,7 +187,7 @@ describe('partitionUsageGroups — les grenades (D4) et le cas sans repli', () =
     )
     expect(partition.collapsed).toEqual([])
     expect(partition.collapsedColumnCount).toBe(0)
-    expect(partition.forward.map((g) => g.key)).toEqual(['deployed'])
+    expect(partition.forward.map((g) => g.key)).toEqual(['equipment'])
   })
 })
 
@@ -190,12 +195,69 @@ describe('uniqueUsageGroups — une famille de geste, une occurrence', () => {
   it('fusionne les deux morceaux d’un groupe mixte pour la légende et la vue des parts', () => {
     const partition = partitionUsageGroups(groupesDe(TEMOIN))
     const deplie = uniqueUsageGroups([...partition.forward, ...partition.collapsed])
-    expect(deplie.map((g) => g.key)).toEqual([
-      'episodes',
-      'deployed',
-      'dropped',
-      'grenades',
-      'grapple',
+    expect(deplie.map((g) => g.key)).toEqual(['episodes', 'equipment', 'grenades', 'grapple'])
+  })
+})
+
+describe('equipmentGroup — la pile empilée (E2, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md)', () => {
+  /** La colonne fusionnée d'une seule famille, et la ligne d'Alpha, par le VRAI pipeline. */
+  function colonneEquipement(over: Partial<ReplayDocument>, family: string) {
+    const doc = testReplayDoc({
+      frameCount: 200,
+      frameIntervalMs: 100,
+      roster: [{ filmIndex: 0, xuid: 'a1', name: 'Alpha' }],
+      tracks: [vie(1, 'a1')],
+      ...over,
+    } as Partial<ReplayDocument>)
+    const usage = buildEquipmentUsage(doc, SB)
+    const groups = usageColumnGroups(usage, doc, t, 'fr')
+    const group = groups.find((g) => g.key === 'equipment')
+    const column = group?.columns.find((c) => c.key === `equipment.${family}`)
+    const alpha = usage.byPlayer.find((r) => r.name === 'Alpha')
+    return { column, alpha }
+  }
+
+  it('une cellule à UN SEUL segment non nul reste lisible : les trois segments existent, deux à zéro', () => {
+    const { column, alpha } = colonneEquipement(
+      { equipmentPlacements: [pose('sensor', 'deployed', 1)] } as Partial<ReplayDocument>,
+      'sensor',
+    )
+    expect(column?.value(alpha!)).toBe(1)
+    const segments = column?.segments?.(alpha!)
+    expect(segments?.map((s) => [s.key, s.value])).toEqual([
+      ['used', 1],
+      ['kept', 0],
+      ['dropped', 0],
+    ])
+    // Chaque segment garde son ENCRE et son NOM — la lisibilité d'UN segment ne dépend pas
+    // des deux autres, à zéro ou pas.
+    expect(segments?.every((s) => typeof s.color === 'string' && s.color.length > 0)).toBe(true)
+    expect(segments?.every((s) => typeof s.label === 'string' && s.label.length > 0)).toBe(true)
+  })
+
+  it('une cellule à TROIS segments non nuls empile utilisé, gardé et lâché (P1)', () => {
+    // Trois prises (`taken`) du même mur : une déployée, une lâchée, une GARDÉE (dérivée :
+    // 3 pris - 1 utilisé - 1 lâché = 1 gardé, décision utilisateur du 2026-09-09).
+    const { column, alpha } = colonneEquipement(
+      {
+        abilityLabels: { '5': { fr: 'Mur de protection', en: 'Drop wall' } },
+        equipmentChanges: [
+          { t: 1, slot: 1, kind: 'taken', r: 5, from: -1 },
+          { t: 2, slot: 1, kind: 'taken', r: 5, from: -1 },
+          { t: 3, slot: 1, kind: 'taken', r: 5, from: -1 },
+        ],
+        equipmentPlacements: [
+          pose('wall', 'deployed', 1, '0x528fce46'),
+          pose('wall', 'dropped', 1, '0xdead'),
+        ],
+      } as unknown as Partial<ReplayDocument>,
+      'wall',
+    )
+    expect(column?.value(alpha!)).toBe(3)
+    expect(column?.segments?.(alpha!)?.map((s) => [s.key, s.value])).toEqual([
+      ['used', 1],
+      ['kept', 1],
+      ['dropped', 1],
     ])
   })
 })

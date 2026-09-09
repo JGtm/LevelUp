@@ -18,8 +18,10 @@ import { formatDurationMMSS } from '@/lib/formatters/duration'
 
 import { catalogText } from '../i18n/catalogLabel'
 import { PLACEMENT_RENDER } from '../layers/equipmentPlacementsLayer'
+import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
+import { usageOutcomeColor } from './equipmentUsageChart'
 import type { EquipmentUsage, EquipmentUsageTally } from './equipmentUsageLogic'
-import { isGameChangerFamily } from './gameChangers'
+import { droppedFamilyOf, isGameChangerFamily } from './gameChangers'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplayText } from '../i18n/i18nContract'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -29,14 +31,16 @@ import { padEquipmentFamilyOf } from './weaponPadFamilies'
 /**
  * equipmentFamilyLabel — le nom d'une famille de pose, par la cascade des tables existantes.
  *
- * 1. socle de bonus (`powerup_*`) : `padEquipmentFamily` ;
+ * 1. socle de bonus (`powerup_*`), OU son vocabulaire d'ÉPISODE (`camo`/`overshield`, pont
+ *    `droppedFamilyOf` — E2, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md, la colonne fusionnée
+ *    équipement les nomme par leur épisode) : `padEquipmentFamily` ;
  * 2. famille dessinée : sa RÈGLE DE RENDU a un libellé dans `placementFamily` ;
  * 3. famille dessinée en point neutre (`unnamed`) : « objet non identifié » ;
  * 4. sinon l'identifiant brut — la seule chose vraie qu'on puisse écrire d'une famille qu'aucune
  *    table ne nomme (même règle que les armes hors catalogue, cf. `padNameFor`).
  */
 export function equipmentFamilyLabel(family: string, t: ReplayText): string {
-  const powerup = padEquipmentFamilyOf(family)
+  const powerup = padEquipmentFamilyOf(droppedFamilyOf(family))
   if (powerup) return t.padEquipmentFamily[powerup]
   const kind = PLACEMENT_RENDER[family]
   if (kind && kind !== 'unnamed' && kind !== 'dropped') return t.placementFamily[kind]
@@ -55,12 +59,14 @@ export function grenadeTypeLabel(
 }
 
 /**
- * LES CINQ FAMILLES DE GESTE, et il n'y en a pas une sixième. Ces clés sont l'axe de
- * regroupement de tout ce que la section montre : les colonnes de la grille, la couleur des
- * barres, et les lignes de la vue « part de chaque équipe ». Le typage les rend exhaustives —
- * une famille ajoutée ici force la table des encres à la peindre (cf. `equipmentUsageChart`).
+ * LES QUATRE FAMILLES DE GESTE (E2, 2026-09-09 : `deployed` et `dropped` FUSIONNENT en
+ * `equipment` — une seule colonne par famille, empilée sur ses issues, P2/P3). Ces clés sont
+ * l'axe de regroupement de tout ce que la section montre : les groupes de colonnes, la couleur
+ * des barres, et les lignes de la vue « part de chaque équipe ». Le typage les rend
+ * exhaustives — une famille ajoutée ici force la table des encres à la peindre
+ * (cf. `equipmentUsageChart`).
  */
-export type UsageGroupKey = 'grapple' | 'episodes' | 'deployed' | 'dropped' | 'grenades'
+export type UsageGroupKey = 'grapple' | 'episodes' | 'equipment' | 'grenades'
 
 /**
  * Une colonne : son en-tête, sa VALEUR pour un compteur, et comment cette valeur s'écrit.
@@ -89,6 +95,16 @@ export interface UsageColumn {
    * équipements (décision D4) — pas un défaut de prudence, une exclusion écrite.
    */
   family?: string
+  /**
+   * LA PILE D'ISSUE DE LA CELLULE (E2, optionnel — `ValueGridCell.segments`, E1). ABSENTE =
+   * cellule simple, comme toute colonne hors du groupe `equipment` (grappin, grenades…).
+   * Chaque segment porte sa VALEUR BRUTE : `buildValueGrid` calcule sa part de la borne, qui
+   * reste celle de `value()` — LE TOTAL DE LA PILE (P1 : la somme des trois issues est le
+   * nombre d'objets pris).
+   */
+  segments?: (
+    tally: EquipmentUsageTally,
+  ) => Array<{ key: string; value: number; color: string; label: string }> | undefined
 }
 
 /** Un groupe de colonnes : l'en-tête de premier niveau et sa réserve de mesure. */
@@ -169,24 +185,7 @@ export function usageColumnGroups(
     })
   }
   if (usage.columns.episodes.length > 0) groups.push(activeEpisodesGroup(usage, u))
-  for (const [key, families, label, hint, pick] of [
-    ['deployed', usage.columns.deployed, u.groupDeployed, u.groupDeployedHint, 'deployed'],
-    ['dropped', usage.columns.dropped, u.groupDropped, u.groupDroppedHint, 'dropped'],
-  ] as const) {
-    if (families.length === 0) continue
-    groups.push({
-      key,
-      label,
-      hint,
-      columns: families.map((family) => ({
-        key: `${key}.${family}`,
-        label: equipmentFamilyLabel(family, t),
-        value: (x: EquipmentUsageTally) => intValue(x[pick][family]),
-        format: intFormat,
-        family,
-      })),
-    })
-  }
+  if (usage.columns.equipment.length > 0) groups.push(equipmentGroup(usage, u, t))
   if (usage.columns.grenades.length > 0) {
     groups.push({
       key: 'grenades',
@@ -245,6 +244,85 @@ function activeEpisodesGroup(
         family: fam,
       },
     ]),
+  }
+}
+
+/** Vrai pour les deux familles dont le côté « utilisé » vient des ÉPISODES, pas des poses. */
+function isEpisodeMeasuredFamily(family: string): boolean {
+  return family === EQUIP_FAMILY_CAMO || family === EQUIP_FAMILY_OVERSHIELD
+}
+
+/**
+ * equipmentPileParts — LES TROIS ISSUES D'UNE FAMILLE (P1), pour UN compteur.
+ *
+ *  - `used` : le côté « utilisé » (P2) — les épisodes pour les deux power-ups, les poses
+ *    déployées pour tout le reste ;
+ *  - `dropped` : lâché en mourant (`tally.dropped`, ponté vers son vocabulaire de pose pour
+ *    les power-ups — `droppedFamilyOf`) ;
+ *  - `kept` : gardé sans l'utiliser, DÉJÀ DÉRIVÉ par `equipmentUsageLogic.ts`
+ *    (`taken - used - dropped`, cf. `tally.kept`) — rien à recalculer ici.
+ */
+function equipmentPileParts(
+  tally: EquipmentUsageTally,
+  family: string,
+): { used: number; kept: number; dropped: number } {
+  const used = isEpisodeMeasuredFamily(family)
+    ? intValue(tally.episodes[family]?.count)
+    : intValue(tally.deployed[family])
+  const dropped = intValue(tally.dropped[droppedFamilyOf(family)])
+  const kept = intValue(tally.kept[family])
+  return { used, kept, dropped }
+}
+
+/**
+ * equipmentGroup — LA COLONNE FUSIONNÉE « équipement » (E2) : une colonne PAR FAMILLE, empilée
+ * sur ses trois issues dans l'ORDRE DU §3.1 (table normative des couleurs) — utilisé, gardé
+ * sans l'utiliser, lâché en mourant. REMPLACE les anciens groupes `deployed`/`dropped`
+ * (décision P2/P3 : un seul graphe équipement, jamais deux sections « activés »/« déployés »).
+ *
+ * LES DEUX POWER-UPS Y ENTRENT AUSSI (décision D9 AMENDÉE le 2026-09-09, cf. §5 de la
+ * référence canaux) : la rédaction initiale de D9 les excluait par erreur — un bonus ACTIVÉ
+ * est mesuré par `equipmentEpisodes`, il doit donc porter une colonne ici, avec le canal des
+ * épisodes comme côté « utilisé » (P2). Leur libellé bilingue passe par la même cascade que
+ * les familles posées (`equipmentFamilyLabel`, pontée par `droppedFamilyOf`).
+ *
+ * LE RÉPULSEUR N'A PAS DE COLONNE (P4) : `usage.columns.equipment` ne le porte jamais (aucune
+ * famille de `KEPT_FAMILIES` ne le nomme, cf. `equipmentUsageLogic.ts`), donc il ne peut pas
+ * apparaître ici — pas un filtre à écrire, une absence de mesure déjà actée en amont.
+ */
+function equipmentGroup(
+  usage: EquipmentUsage,
+  u: ReplayText['equipmentUsage'],
+  t: ReplayText,
+): UsageColumnGroup {
+  return {
+    key: 'equipment',
+    label: u.groupEquipment,
+    hint: u.groupEquipmentHint,
+    columns: usage.columns.equipment.map((family) => ({
+      key: `equipment.${family}`,
+      label: equipmentFamilyLabel(family, t),
+      value: (x: EquipmentUsageTally) => {
+        const { used, kept, dropped } = equipmentPileParts(x, family)
+        return used + kept + dropped
+      },
+      format: intFormat,
+      family,
+      segments: (x: EquipmentUsageTally) => {
+        const { used, kept, dropped } = equipmentPileParts(x, family)
+        if (used + kept + dropped === 0) return undefined
+        return [
+          { key: 'used', value: used, color: usageOutcomeColor('used'), label: u.outcomeUsedFmt(used) },
+          { key: 'kept', value: kept, color: usageOutcomeColor('kept'), label: u.outcomeKeptFmt(kept) },
+          {
+            key: 'dropped',
+            value: dropped,
+            color: usageOutcomeColor('dropped'),
+            label: u.outcomeDroppedFmt(dropped),
+          },
+        ]
+      },
+    })),
   }
 }
 

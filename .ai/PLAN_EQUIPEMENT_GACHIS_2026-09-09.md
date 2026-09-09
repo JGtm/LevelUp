@@ -211,21 +211,21 @@ cd apps/web && npx vitest run src/components/charts && npx tsc -b --force
 
 **Périmètre fermé :**
 
-- [ ] E2.1 `features/match-replay/model/equipmentUsageColumns.ts` — `UsageGroupKey` :
+- [x] E2.1 `features/match-replay/model/equipmentUsageColumns.ts` — `UsageGroupKey` :
       `'deployed' | 'dropped'` → `'equipment'`. Une colonne par famille, deux ou trois
       segments par cellule. Le `Record` exhaustif force toutes les tables à suivre
-- [ ] E2.2 Même fichier — les familles d'ACTIVATION entrent dans la colonne avec le canal
+- [x] E2.2 Même fichier — les familles d'ACTIVATION entrent dans la colonne avec le canal
       des épisodes comme côté « utilisé » (décision P2). **Ne PAS les exclure** : la
       rédaction initiale de la décision D9 du plan de la vague C le demandait, elle a été
       corrigée le 2026-09-09
-- [ ] E2.3 Même fichier — **exclure le répulseur** (décision P4) et les grenades (décision D5
+- [x] E2.3 Même fichier — **exclure le répulseur** (décision P4) et les grenades (décision D5
       de la vague C, toujours en vigueur)
-- [ ] E2.4 `features/match-replay/model/equipmentUsageChart.ts` — `USAGE_GROUP_TOKENS` perd
+- [x] E2.4 `features/match-replay/model/equipmentUsageChart.ts` — `USAGE_GROUP_TOKENS` perd
       `dropped` ; les couleurs de segment viennent du §3.1
-- [ ] E2.5 `features/match-replay/i18n/i18n.ts` — libellés FR **et** EN. Le total de cellule
+- [x] E2.5 `features/match-replay/i18n/i18n.ts` — libellés FR **et** EN. Le total de cellule
       s'écrit « N objets pris », **jamais « ramassés »** (décision P12)
-- [ ] E2.6 Afficher la réserve de couverture sous le tableau (décision P13)
-- [ ] E2.7 Tests : un power-up entre bien dans la colonne fusionnée ; le répulseur n'y est
+- [x] E2.6 Afficher la réserve de couverture sous le tableau (décision P13)
+- [x] E2.7 Tests : un power-up entre bien dans la colonne fusionnée ; le répulseur n'y est
       pas ; une cellule à un seul segment reste lisible
 
 **Gate** :
@@ -410,6 +410,15 @@ cd apps/web && npx eslint src/features/squad --max-warnings=0
   pas nommée. Un dénominateur affiché « objets pris » devra dire lequel des deux il compte.
   Non instruit.
 
+- **Nouvelle, E2 du 2026-09-09** : `npx eslint src/features/match-replay src/components/charts
+  --max-warnings=0` échoue sur 9 avertissements dans cinq fichiers (`ReplayExportDialog.tsx`,
+  `useReplayVehicles.ts`, `useReplaySound.ts`, `ReplayCanvas.tsx`, `ReplayFeedName.tsx`) —
+  `react-hooks/exhaustive-deps`, `react-refresh/only-export-components`,
+  `react-hooks/preserve-manual-memoization`. Vérifié PRÉEXISTANT : `git diff
+  feat/v75...HEAD --stat` est vide sur les cinq fichiers, aucun n'est touché par ce chantier.
+  Dette de lint antérieure — un `--max-warnings=0` sur ces dossiers ne peut donc pas passer
+  tel quel tant qu'elle n'est pas résorbée. Non traité (hors périmètre E1/E2).
+
 ---
 
 ## 7. Clôture de chantier
@@ -569,3 +578,55 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
   dans la pile fusionnée (leur compte d'épisodes y sert de côté « utilisé », P2/D9 amendée) :
   légère redite du compte d'épisodes entre les deux blocs, jugée préférable à la suppression
   d'une fonctionnalité existante (durée, frags sous effet) hors du périmètre écrit de E2.
+
+- **2026-09-09 — E2 CLOSE.** Tous les items `[x]`. Résumé technique :
+  - `equipmentUsageLogic.ts` : nouveau champ `EquipmentUsageTally.kept` (dérivé, jamais lu
+    d'un canal — `max(0, taken - utilisé - lâché)`), nouvelle fonction exportée
+    `equipmentChangeFamilyOf` (reconnaissance rang -> famille par racine de libellé, même
+    patron que `abilityChargeLogic.ts`/`placementTeleport.ts`), nouveau champ
+    `EquipmentUsage.unnamedTaken` (réserve match, jamais une ligne de joueur), nouveau champ
+    additif `EquipmentUsageColumns.equipment` (liste fusionnée, `deployed`/`dropped`/`episodes`
+    restent INCHANGÉS pour ne pas rouvrir leurs ~10 assertions hors périmètre déclaré).
+  - `equipmentUsageColumns.ts` : `UsageGroupKey` perd `deployed`/`dropped`, gagne `equipment` ;
+    nouvelle fonction `equipmentGroup` construisant une colonne par famille avec `segments`
+    (used/kept/dropped, ordre du §3.1) ; `equipmentFamilyLabel` pontée vers
+    `padEquipmentFamily` pour camo/overshield via `droppedFamilyOf` (nouveau, `gameChangers.ts`,
+    pont INVERSE de `EPISODE_FAMILY_OF_POWERUP`, CLAUDE.md n°6).
+  - `equipmentUsageChart.ts` : `USAGE_GROUP_TOKENS` perd `dropped`, `deployed` renommé
+    `equipment` (même jeton `frag-shoulder`) ; nouveaux `USAGE_OUTCOME_TOKENS`/
+    `usageOutcomeColor` (§3.1 : `divergent-pos`/`divergent-neutral`/`divergent-neg`) ;
+    `usageGestureCount('equipment', ...)` somme déployés + lâchés + activations des deux
+    power-ups (la duplication du compte d'épisode avec la ligne `episodes` est documentée,
+    pas un bug).
+  - `i18nContract.ts` + `i18n.ts` : `groupDeployed`/`groupDropped` remplacés par
+    `groupEquipment`, quatre nouveaux formats d'issue (`outcomeUsedFmt`/`outcomeKeptFmt`/
+    `outcomeDroppedFmt`/`outcomeTotalTakenFmt` — total = « N objets pris », jamais
+    « ramassés », P12) et deux formats de réserve (`coverageUnknownOriginFmt`/
+    `coverageUnnamedTakenFmt`), FR et EN.
+  - `MatchEquipmentUsageSection.tsx` : `UsageFootnotes` affiche les DEUX réserves de
+    couverture (P13) — poses d'origine inconnue (`coverage.placements.byFamilyOrigin`,
+    clés `*/unknown`) et objets pris sans famille connue (`usage.unnamedTaken`). Ce fichier
+    n'était pas nommé dans le périmètre déclaré de E2, mais l'item E2.6 (« sous le tableau »)
+    l'exige structurellement — seul fichier qui rend quelque chose sous la carte.
+  - Tests neufs : `equipmentUsageLogic.kept.test.ts` (extrait de `equipmentUsageLogic.test.ts`,
+    seuil de 500 lignes du dépôt franchi par les ajouts E2 — fixtures partagées déplacées vers
+    `test/equipmentUsageFixtures.ts`, CLAUDE.md n°6) ; ajouts dans `equipmentUsageColumns.test.ts`
+    (pile à un et trois segments) et `MatchEquipmentUsageSection.test.tsx` (les deux réserves,
+    et leur silence quand rien ne les justifie).
+  - **Comment « gardé » est dérivé** : au niveau du web, PAR JOUEUR ET PAR FAMILLE, depuis
+    `doc.equipmentChanges` — `taken` compté par famille canonique (résolue via
+    `equipmentChangeFamilyOf`), moins le côté « utilisé » déjà connu (poses déployées pour les
+    déployables, compte d'épisodes pour les deux power-ups), moins `dropped` (ponté vers son
+    vocabulaire de pose pour les power-ups). Clampé à zéro : l'écart résiduel mesuré par E0.4
+    (2,45 % toutes familles, médiane 0,00 %) ne peut jamais produire un gardé négatif.
+  - **Gates** : `npx vitest run src/components/charts src/features/match-replay/model` (999
+    tests après les ajouts E2, vert), `npx vitest run` complet (673 fichiers, 7166 tests, 1
+    fichier / 17 tests skippés — préexistants, non touchés — vert), `npx tsc -b --force`
+    (silencieux), les deux greps couleur (IDENTIQUES à la baseline `feat/v75`, aucune ligne
+    nouvelle). `npx eslint src/features/match-replay src/components/charts --max-warnings=0`
+    échoue sur **9 avertissements PRÉEXISTANTS**, dans des fichiers hors diff de toute la
+    branche (`ReplayExportDialog.tsx`, `useReplayVehicles.ts`, `useReplaySound.ts`,
+    `ReplayCanvas.tsx`, `ReplayFeedName.tsx` — vérifié `git diff feat/v75...HEAD --stat`
+    vide sur les cinq) : dette de lint antérieure à ce chantier, non traitée (règle « zéro
+    fix opportuniste hors périmètre »). Zéro nouveau problème lint dans les fichiers touchés
+    par E1/E2.

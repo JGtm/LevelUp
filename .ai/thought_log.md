@@ -1,3 +1,40 @@
+## [2026-09-09] E2 « servi ou gache » — colonne d'issue fusionnee (vue match) — Complete
+
+**Decision technique principale.** Le perimetre declare (equipmentUsageColumns.ts,
+equipmentUsageChart.ts, i18n.ts) presupposait une plomberie non nommee : le « garde » se
+derive cote web depuis `doc.equipmentChanges`, ce qui a force l'extension d'
+`equipmentUsageLogic.ts` (nouveau champ `kept` derive — `max(0, taken - utilise - lache)`,
+jamais lu d'un canal ; nouvelle fonction `equipmentChangeFamilyOf`, reconnaissance rang ->
+famille par racine de libelle bilingue, meme patron que `abilityChargeLogic.ts` ;
+nouveau champ `unnamedTaken`, reserve MATCH pour les prises sans famille connue) et de
+`gameChangers.ts` (pont inverse `droppedFamilyOf`, episode -> socle, CLAUDE.md n6).
+`deployed`/`dropped`/`episodes` restent INCHANGES dans `EquipmentUsageColumns` (evite de
+casser ~10 assertions hors perimetre) ; un champ ADDITIF `equipment: string[]` porte la
+liste fusionnee. Le groupe d'affichage `episodes` (compte/duree/frags) reste rendu tel quel
+EN PLUS de la colonne fusionnee pour camo/surbouclier — legere redite documentee, jugee
+preferable a supprimer une fonctionnalite existante hors perimetre ecrit.
+
+**Resultats observes.** Perimetre E2 : 999 tests verts (`components/charts` +
+`match-replay/model`). Suite complete : 673 fichiers, 7166 tests, 1 fichier/17 tests skippes
+(preexistants) — vert, zero regression. `npx tsc -b --force` silencieux. Les deux greps
+couleur du plan sont IDENTIQUES a la baseline `feat/v75` (verifie par `git grep` sur les deux
+refs). `npx eslint --max-warnings=0` echoue sur 9 avertissements PREEXISTANTS dans 5 fichiers
+hors diff de toute la branche (verifie `git diff feat/v75...HEAD --stat` vide) — dette de
+lint anterieure, non traitee, consignee au §6 du plan.
+
+**Ce qui a change cote UI.** `equipmentUsageColumns.ts` : `UsageGroupKey` perd
+`deployed`/`dropped`, gagne `equipment` (une colonne par famille, pile a trois segments
+used/kept/dropped, ordre du §3.1). `equipmentUsageChart.ts` : nouveaux
+`USAGE_OUTCOME_TOKENS`/`usageOutcomeColor` (divergent-pos/neutral/neg). i18n : nouveaux
+`groupEquipment`, quatre formats d'issue, deux formats de reserve, FR+EN.
+`MatchEquipmentUsageSection.tsx` (hors liste de fichiers du plan mais requis structurellement
+par E2.6) : deux lignes de reserve sous le tableau — poses d'origine inconnue et objets pris
+sans famille connue (P13 amendee).
+
+**Prochaine etape.** E3 (backend, le lot lourd) : porter les trois issues au grain session
+(nouveaux champs `UsagePlayerSummary`, migration, recuisson) — Sessions/Solo/Escouade ne
+peuvent rien servir de neuf avant cette etape.
+
 ## [2026-09-09] E1 « servi ou gache » — cellule empilee dans ValueGrid — Complete
 
 **Decision technique principale.** `ValueGridInput.segments?` et `ValueGridCell.segments?`

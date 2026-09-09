@@ -105,10 +105,31 @@ export interface EquipmentUsageText {
    * sont des sous-colonnes du MÊME état mesuré.
    */
   activeKillsFamily: Record<'camo' | 'overshield', string>
-  groupDeployed: string
-  groupDeployedHint: string
-  groupDropped: string
-  groupDroppedHint: string
+  /**
+   * LA COLONNE FUSIONNÉE « équipement » (E2, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : REMPLACE
+   * `groupDeployed`/`groupDropped` — une famille, trois issues empilées (utilisé / gardé sans
+   * l'utiliser / lâché en mourant), jamais deux sections séparées « activés »/« déployés »
+   * (P2/P3).
+   */
+  groupEquipment: string
+  groupEquipmentHint: string
+  /**
+   * LES TROIS ISSUES D'UNE PILE (P1), formatées pour l'infobulle d'UN segment — pas pour un
+   * en-tête de colonne (celui-ci reste `equipmentFamilyLabel`). Le total de la cellule
+   * s'écrit « N objets pris », JAMAIS « ramassés » (P12) : `outcomeTotalTakenFmt`.
+   */
+  outcomeUsedFmt: (count: number) => string
+  outcomeKeptFmt: (count: number) => string
+  outcomeDroppedFmt: (count: number) => string
+  outcomeTotalTakenFmt: (count: number) => string
+  /**
+   * LA RÉSERVE DE COUVERTURE, sous le tableau (P13) : les poses d'origine INCONNUE (existant,
+   * ~5 % du parc) et les objets pris dont le rang n'a pas de famille connue (AMENDEMENT du
+   * 2026-09-09 à la sortie de E0 — décision utilisateur : on garde les trois issues, la
+   * réserve se montre au lieu de disqualifier la troisième).
+   */
+  coverageUnknownOriginFmt: (count: number) => string
+  coverageUnnamedTakenFmt: (count: number) => string
   groupGrenades: string
   groupGrenadesHint: string
   /** Repli quand le catalogue du titre ne nomme pas ce rang de grenade (le rang reste vrai). */

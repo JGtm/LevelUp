@@ -165,20 +165,24 @@ export function ValueGrid({ model, rowHeaderLabel }: Props) {
  * conteneur parent (`role="img"` sur le rail lui-même, inchangé).
  */
 function ValueGridStack({ segments }: { segments: ValueGridSegment[] }) {
-  let left = 0
+  // Décalage cumulé PRÉCALCULÉ par un pli pur (pas de mutation pendant le rendu, cf. règle
+  // `react-hooks/immutability`) : le décalage du segment `i` est la somme des fractions qui
+  // le précèdent.
+  const positioned = segments.reduce<Array<{ seg: ValueGridSegment; left: number }>>((acc, seg) => {
+    const left = acc.length > 0 ? acc[acc.length - 1].left + acc[acc.length - 1].seg.fraction : 0
+    return [...acc, { seg, left }]
+  }, [])
   return (
     <>
-      {segments.map((seg) => {
-        const style = {
-          left: `${left * 100}%`,
-          width: `${seg.fraction * 100}%`,
-          backgroundColor: seg.color,
-        }
-        left += seg.fraction
-        return (
-          <div key={seg.key} className="absolute top-0 h-full" style={style} role="img" aria-label={seg.label} />
-        )
-      })}
+      {positioned.map(({ seg, left }) => (
+        <div
+          key={seg.key}
+          className="absolute top-0 h-full"
+          style={{ left: `${left * 100}%`, width: `${seg.fraction * 100}%`, backgroundColor: seg.color }}
+          role="img"
+          aria-label={seg.label}
+        />
+      ))}
     </>
   )
 }
