@@ -286,18 +286,18 @@ cd apps/web && npx tsc -b --force
 
 > Cette page a été livrée le 2026-09-09. **Ne toucher que ce qui suit.**
 
-- [ ] E4.1 `features/session-detail/SessionUsageForms.tsx` — `UsageGauge` : le remplissage
+- [x] E4.1 `features/session-detail/SessionUsageForms.tsx` — `UsageGauge` : le remplissage
       devient une pile à trois segments (§3.1), la longueur reste la part. Le trait de
       parité ne bouge pas
-- [ ] E4.2 Même fichier — les deux repères de taux DANS la tranche (décision P7), aux jetons
+- [x] E4.2 Même fichier — les deux repères de taux DANS la tranche (décision P7), aux jetons
       du §3.2. Ce sont des marques, jamais des chiffres affichés
-- [ ] E4.3 `features/session-detail/usageLogic.ts` — projeter les trois issues et les deux
+- [x] E4.3 `features/session-detail/usageLogic.ts` — projeter les trois issues et les deux
       taux de référence depuis le contrat étendu en E3
-- [ ] E4.4 `features/session-detail/usageI18n.ts` — libellés des trois issues et des deux
+- [x] E4.4 `features/session-detail/usageI18n.ts` — libellés des trois issues et des deux
       repères, FR **et** EN, parité par typage
-- [ ] E4.5 La ligne « Objets lâchés » **disparaît de la liste des grandeurs** : une mort
+- [x] E4.5 La ligne « Objets lâchés » **disparaît de la liste des grandeurs** : une mort
       n'est pas un geste, elle est devenue un segment
-- [ ] E4.6 Tests : la pile respecte l'ordre utilisé → lâché → gardé ; une famille sans
+- [x] E4.6 Tests : la pile respecte l'ordre utilisé → lâché → gardé ; une famille sans
       troisième issue rend deux segments ; le compte brut reste en infobulle
 
 **Gate** :
@@ -445,6 +445,28 @@ cd apps/web && npx eslint src/features/squad --max-warnings=0
   Sessions rend aujourd'hui la première, et E4 décidera si la seconde la remplace à l'écran.
   Si E4 la remplace, `deployed_*` devra être RETIRÉ du contrat dans le même lot (règle « 0
   code mort »). Noté, non traité.
+  - **Suite, E4 du 2026-09-09** : E4 REMPLACE `deployed_<famille>` / `camo_episodes` /
+    `overshield_episodes` par `equipment_<famille>` à l'écran, MAIS la consigne de cette
+    tâche interdit explicitement de retirer `deployed_*` du contrat ou du code Go dans ce
+    lot (E5 tranchera « quand tous les consommateurs seront connus »). La clause « 0 code
+    mort » de cette découverte est donc VOLONTAIREMENT non honorée ICI, sur instruction
+    explicite reçue — pas un oubli. Web : `equipmentMetrics()` (`usageLogic.ts`) SUPPLANTE
+    `deployed_<famille>`/`camo_episodes`/`overshield_episodes` par leur `equipment_<famille>`
+    homonyme quand les deux coexistent (dédoublonnage par identité de famille,
+    `equipmentBilanFamilyOf`) ; sans équivalent (grappin — `equipmentOutcomeStems` côté Go
+    ne le nomme pas), la grandeur GESTE reste seule, rendu inchangé. Sur les données
+    mesurées au parc (E0/E3), `deployed[fam] ⇒ bilan[fam]` pour les 6 familles déployables :
+    en pratique `deployed_<famille>` ne s'affichera donc JAMAIS sur une session réelle — seul
+    reste un chemin de repli structurel (théorique) pour une famille future du manifeste que
+    `equipmentOutcomeStems` ne nommerait pas encore. **Consommateurs web restants de
+    `deployed_*` après ce lot** : `metricKind`/`METRIC_RANK`/`metricLabel`/
+    `USAGE_METRIC_TOKENS` (classification et repli, `usageLogic.ts`) et `deployedFamilyLabel`
+    (`usageI18n.ts`) — tous conservés comme chemin de repli, plus aucun consommateur qui
+    l'affiche en pratique sur le parc actuel. La cadence (`ValueGrid`) et la bande de
+    régularité de l'Équipement basculent EN MÊME TEMPS que la jauge (même liste `metrics`
+    unifiée, P3 « un seul graphe ») : la cadence d'un mur, par exemple, devient un débit
+    d'OBJETS (utilisé+gardé+lâché) et non plus de POSES — décision d'exécution assumée, dans
+    le droit fil de ce que ce chantier mesure, à signaler si elle surprend en revue.
 
 - **Nouvelle, E2 du 2026-09-09** : `npx eslint src/features/match-replay src/components/charts
   --max-warnings=0` échoue sur 9 avertissements dans cinq fichiers (`ReplayExportDialog.tsx`,
@@ -454,6 +476,23 @@ cd apps/web && npx eslint src/features/squad --max-warnings=0
   feat/v75...HEAD --stat` est vide sur les cinq fichiers, aucun n'est touché par ce chantier.
   Dette de lint antérieure — un `--max-warnings=0` sur ces dossiers ne peut donc pas passer
   tel quel tant qu'elle n'est pas résorbée. Non traité (hors périmètre E1/E2).
+
+- **Nouvelle, E4 du 2026-09-09** : `deployedFamilyLabel` (`usageI18n.ts`, préexistant, écrit
+  avant ce chantier) classe les familles `deployed_<famille>` sur des ALIAS DE RENDU
+  (`'rift'`, `'shroud'`, `'seeker'`, `'field'` — vocabulaire de `PLACEMENT_RENDER` côté vue
+  match) au lieu des VRAIES clés que `deployed_<famille>` porte réellement (celles du
+  manifeste : `translocator_beacon`, `shroud_screen`, `threat_seeker`, `repair_field` —
+  vérifié sur pièces, `replay_labels.toml` et `sessionusage.PlayerRow.DeployedByFamily`,
+  clé = `p.Family` du document, jamais l'alias de rendu). Ces quatre `case` ne matchent donc
+  JAMAIS en pratique : une session avec un translocateur/écran occultant/traqueur/champ de
+  réparation en `deployed_*` retombe toujours sur le repli `metricDeployedFmt(family)`
+  (« Équipement translocator_beacon » au lieu de « Translocateur »). Bug préexistant,
+  découvert en lisant le code pour bâtir `equipmentFamilyLabel` (E4, qui lui utilise les
+  VRAIES clés). Sans conséquence pour E4 (les familles concernées basculent sur
+  `equipment_<famille>` dès qu'elles ont une activité mesurée — cf. entrée ci-dessus) ; reste
+  un défaut visible sur le SEUL chemin de repli résiduel (famille avec geste mais sans
+  bilan). Non traité (hors périmètre E4, `deployedFamilyLabel` n'est pas un fichier que E4
+  modifie pour cette raison).
 
 ---
 
@@ -787,3 +826,93 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
   N prises sans famille connue, N slots non rattaches, N consommations a chaine trouee` —
   à rapprocher des mesures E0.2 (25,21 % de rangs non nommés) et E0.3 (1,12 %). **Consigner
   le compte d'écrits au journal une fois la passe faite.**
+
+- **2026-09-09 — E4 CLOSE.** Six items `[x]`. Périmètre : `apps/web/src/features/session-detail/`
+  (`SessionUsageForms.tsx`, `usageLogic.ts`, `usageI18n.ts` et leurs tests), plus deux fichiers
+  hors liste déclarée mais structurellement exigés (même précédent que E2/`MatchEquipmentUsageSection.tsx`) :
+  `apps/web/src/lib/api/types.ts` (alias manquant `SessionUsageOutcomes`, sans lequel le contrat
+  étendu en E3 n'est pas typable côté web) et `SessionUsageSection.tsx` (une ligne : câbler
+  `outcomes: m.outcomes` dans `metricGaugeRows`, sans quoi la projection E4.3 n'atteint jamais
+  l'écran).
+
+  **TDD, échecs observés AVANT le code** (dans l'ordre) :
+  1. `usageLogic.test.ts` : 10 tests rouges (`equipmentMetrics` ne filtrait pas `dropped_objects`,
+     `equipmentBilanFamilyOf`/`equipment` inexistants, `buildGaugeRow` ne portait ni `segments`
+     ni `teammatesRatePct`/`opponentsRatePct`, `metricLabel('equipment_*')` non géré).
+  2. `SessionUsageForms.test.tsx` : 4 tests rouges (`[data-outcome-key]`/`[data-outcome-ref]`
+     absents du DOM, `[data-outcome-fill]` absent du cas sans issues).
+  Les deux suites sont passées au vert par l'implémentation qui suit, sans modifier les
+  assertions pour les faire passer artificiellement.
+
+  **Décisions de conception prises à l'exécution :**
+
+  1. **`equipmentMetrics()` SUPPLANTE `deployed_<famille>` / `camo_episodes` /
+     `overshield_episodes` par leur `equipment_<famille>` homonyme** quand les deux coexistent
+     (dédoublonnage par identité de famille via `equipmentBilanFamilyOf`, nouvelle fonction).
+     Sans équivalent (grappin — la table Go `equipmentOutcomeStems` ne le nomme pas), la
+     grandeur GESTE reste seule, rendu STRICTEMENT INCHANGÉ. Conséquence assumée et consignée
+     au §6 (entrée E3 « deployed_<famille> et equipment_<famille> coexistent ») : la CADENCE
+     (ValueGrid) et la BANDE DE RÉGULARITÉ de la famille basculent EN MÊME TEMPS que la jauge,
+     puisque les trois formes partagent la MÊME liste `metrics` (P3 — un seul graphe). Sur les
+     données mesurées (E0/E3), toute famille `deployed_*` avec activité a TOUJOURS son
+     `equipment_*` homonyme (`deployed[fam] ⇒ bilan[fam]`) : en pratique `deployed_*` ne
+     s'affiche donc plus jamais sur une session réelle du parc — reste un repli théorique pour
+     une famille future non encore nommée par `equipmentOutcomeStems`. `deployed_*` N'A PAS été
+     retiré du contrat Go ni du code Go, sur instruction explicite de cette tâche (le plan, à
+     l'entrée §6 correspondante, disait le contraire — « si E4 la remplace, retirer `deployed_*`
+     du contrat » — la consigne reçue prévaut, E5 tranchera avec la vue d'ensemble des
+     consommateurs).
+  2. **`SessionUsageOutcomes` ne s'attache qu'aux DEUX jauges de PART DU JOUEUR** (`player-of-team`,
+     `player-of-lobby`), jamais à `team-of-lobby` : les trois issues sont une grandeur du JOUEUR
+     (domaine Go : « les trois issues du JOUEUR »), quand la première jauge mesure la part de
+     MON ÉQUIPE dans le lobby — une population sans porteur individuel. `buildGaugeRow` prend un
+     paramètre `withOutcomes` par sous-jauge plutôt qu'un seul indicateur au niveau de la ligne.
+  3. **Les deux repères de taux sont positionnés en POURCENTAGE DE LA TRANCHE**, pas du rail
+     entier : `teammatesRatePct`/`opponentsRatePct` sont posés tels quels par `buildGaugeRow`
+     (aucun calcul composé `valuePct × ratePct`), et `SessionUsageForms.tsx` les rend `left: X%`
+     À L'INTÉRIEUR du conteneur déjà large de `valuePct` — le même dénominateur que les segments
+     de la pile, sans arithmétique dans le composant.
+  4. **Aucun aria-label individuel sur les segments/repères** (`aria-hidden="true"` sur tout le
+     conteneur `UsageOutcomeStack`) : le texte qui compte (comptes bruts + taux) est fondu dans
+     le `tooltip` COMBINÉ du rail entier (`gaugeOutcomeTipFmt`/`gaugeReferenceTipFmt`, nouveaux
+     formatteurs FR/EN) — même contrat d'accessibilité que le trait de parité existant, qui n'a
+     jamais eu sa propre aria-label.
+  5. **`equipmentFamilyLabel` (nouvelle fonction, `usageI18n.ts`) utilise les VRAIES clés de
+     famille du bilan** (`translocator_beacon`, `shroud_screen`, `threat_seeker`, `repair_field`,
+     vocabulaire Go de `equipmentOutcomeStems`), PAS les alias de rendu (`rift`/`shroud`/
+     `seeker`/`field`) que `deployedFamilyLabel` utilise déjà et qui ne matchent JAMAIS les
+     vraies clés de `deployed_<famille>` — bug préexistant découvert en écrivant cette fonction,
+     consigné au §6, non corrigé (hors périmètre E4, fichier/fonction différents). Nouvelle clé
+     i18n `equipTranslocator` (« Translocateur » / « Translocator ») : le seul label qui
+     n'existait sous AUCUNE forme correcte côté dictionnaire (les trois autres réutilisent
+     `equipShroud`/`equipSeeker`/`equipField`, dont le TEXTE était déjà juste).
+  6. **`metricLabel`/`t.metricDropped` ne sont PAS supprimés** malgré que `dropped_objects` ne
+     soit plus jamais affiché (E4.5) : le contrat Go publie toujours cette clé inconditionnellement
+     (une des « cinq grandeurs fixes », `sessionusage.metricKeys`), donc `metricKind`/`metricLabel`
+     doivent rester capables de la classer sans planter — c'est le FILTRE d'affichage
+     (`equipmentMetrics`) qui l'exclut de la liste rendue, pas la classification elle-même. Ce
+     n'est pas du code mort au sens CLAUDE.md n°7 (rien n'est débranché du routing : la fonction
+     reste un classifieur exhaustif d'un contrat encore émis tel quel).
+
+  **Gates, tous exécutés sur l'arbre final** :
+  - `cd apps/web && rm -rf node_modules/.tmp && npx vitest run src/features/session-detail` —
+    **19 fichiers, 146 tests, vert** (dont les 14 tests neufs E4 + 2 tests d'intégration
+    ajoutés au gate `SessionUsageSection.gate.test.tsx`, hors liste déclarée mais nécessaires
+    pour prouver le câblage bout en bout de E4.3/E4.5).
+  - `npx tsc -b --force` — silencieux, code de sortie 0.
+  - `npx eslint src/features/session-detail --max-warnings=0` — silencieux, code de sortie 0.
+  - Les deux greps couleur du §3.4 (`grep hex` / `grep tailwind couleur`) sur
+    `apps/web/src/features/` et `apps/web/src/components/` : les fichiers touchés par E4
+    (session-detail, types.ts) ne portent AUCUNE ligne nouvelle — les 29/25 correspondances
+    trouvées globalement sont toutes hors périmètre E4, vérifiées PRÉEXISTANTES (aucune dans
+    les fichiers du diff de cette étape).
+
+  **Consommateurs web restants de `deployed_*` après ce lot** (question posée par la tâche) :
+  `metricKind`, `METRIC_RANK`, `metricLabel`, `USAGE_METRIC_TOKENS['deployed_other'|'wall']`
+  (classification/repli, `usageLogic.ts`) et `deployedFamilyLabel` (`usageI18n.ts`) — tous
+  conservés comme chemin de repli pour une famille sans `equipment_<famille>` homonyme. Plus
+  aucun consommateur ne l'AFFICHE en pratique sur le parc mesuré (E0/E3) : chaque famille
+  déployable avec activité a désormais son homonyme `equipment_<famille>`, qui la supplante.
+
+  **Prochaine étape** : E5 (bloc partagé, Solo/Synthèse) — décidera, avec la vue d'ensemble
+  des consommateurs ci-dessus, si `deployed_*` sort du contrat Go.

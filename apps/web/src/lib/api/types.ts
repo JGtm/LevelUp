@@ -2157,6 +2157,7 @@ export type SessionPageResponse = components['schemas']['SessionPageResponse']
 
 export type SessionUsageBlock = components['schemas']['SessionUsageBlock']
 export type SessionUsageMetric = components['schemas']['SessionUsageMetric']
+export type SessionUsageOutcomes = components['schemas']['SessionUsageOutcomes']
 export type SessionUsageMatchPoint = components['schemas']['SessionUsageMatchPoint']
 export type SessionUsageSquadPlayer = components['schemas']['SessionUsageSquadPlayer']
 export type SessionUsageSquadShare = components['schemas']['SessionUsageSquadShare']
