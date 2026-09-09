@@ -41,11 +41,16 @@ import type { UsageText } from './usageI18n'
 import type { UsageTrackSegment } from './usageLobbyTrackModel'
 import type { UsageBandCell } from './usageRegularityBandModel'
 
-/** Largeur de la colonne des libellés de grandeur (alignée sur ValueGrid). */
-const LABEL_WIDTH = 152
+/**
+ * Largeur de la colonne des libellés de grandeur (alignée sur ValueGrid).
+ * EXPORTÉE depuis le 2026-09-09 (E5.8) : `UsageCountsGrid.tsx` (variante comptes,
+ * Synthèse/Escouade) aligne sa propre grille sur ces mêmes constantes plutôt que de
+ * les redéfinir (CLAUDE.md n°6).
+ */
+export const LABEL_WIDTH = 152
 /** Largeur mini d'une colonne de jauge, et gouttière (alignées sur ValueGrid). */
-const GAUGE_MIN = 150
-const COLUMN_GAP = 14
+export const GAUGE_MIN = 150
+export const COLUMN_GAP = 14
 
 /** L'encre du trait de parité — jeton distinct, jamais une teinte de donnée. */
 const PARITY_INK = tokenCssVar('warning')
@@ -142,7 +147,14 @@ function UsageOutcomeStack({
   )
 }
 
-function UsageGauge({ gauge }: { gauge: UsageGaugeModel }) {
+/**
+ * EXPORTÉE depuis le 2026-09-09 (E5.8) : `UsageCountsGrid.tsx` (variante comptes,
+ * Synthèse/Escouade, P9) réutilise cette MÊME cellule (rail + pile d'issues + repères
+ * de taux + texte) — seul `gauge.valuePct` change de sens (longueur relative à l'axe
+ * des comptes au lieu d'une part d'équipe) et `gauge.parityPct` reste toujours `null`
+ * (P9 : « aucun trait de parité »). Aucune seconde copie du rendu (CLAUDE.md n°6).
+ */
+export function UsageGauge({ gauge }: { gauge: UsageGaugeModel }) {
   return (
     <>
       <Tooltip content={gauge.tooltip} className="w-full">
