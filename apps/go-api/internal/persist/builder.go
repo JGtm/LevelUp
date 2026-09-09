@@ -88,6 +88,10 @@ func (b *BatchBuilder) AddKillerVictim(rows []KillerVictimInsert) *BatchBuilder 
 }
 
 // AddKillPositions ajoute les rows kill_positions (positions monde par kill).
+//
+// Le sous-batch d'un match forme UNE PASSE : toutes ses lignes recevront le même
+// `decode_pass` à l'écriture, et la vue `kill_positions_latest` ne rend que la
+// dernière passe entière du match.
 func (b *BatchBuilder) AddKillPositions(rows []KillPositionInsert) *BatchBuilder {
 	b.batch.Shared.KillPositions = append(b.batch.Shared.KillPositions, rows...)
 	return b

@@ -81,11 +81,13 @@ func TestKillPositionPersistPass_EcritEtRelitParLaVue(t *testing.T) {
 	}
 }
 
-// TestKillPositionPersistPass_ReDecodeNeSupprimeQueLaClePartagee — le dedoublonnage de
-// `kill_positions_latest` est PAR LIGNE (match_id, killer_xuid, time_ms), pas par passe entiere
-// (contrairement a match_kill_events/decode_pass) : un re-decodage qui ne retrouve QU UNE partie
-// des kills ne doit PAS effacer les positions des kills qu il n a pas retrouves.
-func TestKillPositionPersistPass_ReDecodeNeSupprimeQueLaClePartagee(t *testing.T) {
+// TestKillPositionPersistPass_ReDecodeSupersedeLaPasseEntiere — LE cas que le lot 1.7 ferme
+// (2026-09-09). `kill_positions_latest` arbitrait par CLE (match_id, killer_xuid, time_ms) :
+// une passe B qui ne retrouvait PLUS la position d un frag n ecrivait aucune ligne pour lui,
+// et la ligne de la passe A restait servie A JAMAIS, melangee aux nouvelles. La vue arbitre
+// desormais par DERNIERE PASSE ENTIERE par match, comme sa soeur kill_openings_latest : la
+// position rétractee disparait de la vue, la table brute la garde (append-only).
+func TestKillPositionPersistPass_ReDecodeSupersedeLaPasseEntiere(t *testing.T) {
 	db := openKillPositionTestDB(t)
 	ctx := context.Background()
 	p := NewKillPositionPersister(db)
@@ -98,7 +100,7 @@ func TestKillPositionPersistPass_ReDecodeNeSupprimeQueLaClePartagee(t *testing.T
 		t.Fatalf("passe A: %v", err)
 	}
 
-	// La passe B ne retrouve QUE le premier kill (le second n a pas de position cette fois) —
+	// La passe B ne retrouve QUE le premier kill (le second n a plus de position localisable) —
 	// elle ne le publie donc pas du tout (BuildKillPositions n ecrit jamais de ligne vide).
 	passeB := []KillPositionInsert{
 		{MatchID: "m2", KillerXUID: "111", TimeMS: 1000, KillerX: f64(9), KillerY: f64(9), KillerZ: f64(9)},
@@ -107,12 +109,20 @@ func TestKillPositionPersistPass_ReDecodeNeSupprimeQueLaClePartagee(t *testing.T
 		t.Fatalf("passe B: %v", err)
 	}
 
+	var brut int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM kill_positions WHERE match_id = 'm2'`).Scan(&brut); err != nil {
+		t.Fatalf("select table brute: %v", err)
+	}
+	if brut != 3 {
+		t.Errorf("table brute = %d lignes, attendu 3 (append-only : rien n est supprime)", brut)
+	}
+
 	var n int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM kill_positions_latest WHERE match_id = 'm2'`).Scan(&n); err != nil {
 		t.Fatalf("select vue: %v", err)
 	}
-	if n != 2 {
-		t.Fatalf("kill_positions_latest = %d lignes, attendu 2 (le kill 222 de la passe A survit)", n)
+	if n != 1 {
+		t.Fatalf("kill_positions_latest = %d lignes, attendu 1 (la passe B fait foi ENTIERE)", n)
 	}
 
 	var kx111 float64
@@ -121,7 +131,71 @@ func TestKillPositionPersistPass_ReDecodeNeSupprimeQueLaClePartagee(t *testing.T
 		t.Fatalf("select 111: %v", err)
 	}
 	if kx111 != 9 {
-		t.Errorf("killer_x du kill 111 = %v, attendu 9 (la ligne la PLUS RECENTE)", kx111)
+		t.Errorf("killer_x du kill 111 = %v, attendu 9 (la passe la PLUS RECENTE)", kx111)
+	}
+
+	// Explicite, parce que c est LE fait qui compte : plus aucune ligne pour le frag rétracté.
+	var survivante int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM kill_positions_latest
+		WHERE match_id = 'm2' AND time_ms = 2000`).Scan(&survivante); err != nil {
+		t.Fatalf("select survivante: %v", err)
+	}
+	if survivante != 0 {
+		t.Errorf("%d ligne(s) a t=2000 dans la vue, attendu 0 (la vue arbitre par PASSE, pas par cle)",
+			survivante)
+	}
+}
+
+// TestKillPositionPersistPass_UnSeulDecodePassParPasse — toutes les lignes d une passe portent
+// la MEME generation. Deux generations dans une seule passe feraient rendre a la vue une
+// FRACTION de passe, ce qui est pire qu une passe entiere perimee.
+func TestKillPositionPersistPass_UnSeulDecodePassParPasse(t *testing.T) {
+	db := openKillPositionTestDB(t)
+	if err := NewKillPositionPersister(db).PersistPass(context.Background(), "m7", []KillPositionInsert{
+		{MatchID: "m7", KillerXUID: "111", TimeMS: 1000, KillerX: f64(1)},
+		{MatchID: "m7", KillerXUID: "222", TimeMS: 2000, KillerX: f64(2)},
+		{MatchID: "m7", KillerXUID: "333", TimeMS: 3000, KillerX: f64(3)},
+	}); err != nil {
+		t.Fatalf("PersistPass: %v", err)
+	}
+	var distincts int
+	if err := db.QueryRow(
+		`SELECT COUNT(DISTINCT decode_pass) FROM kill_positions WHERE match_id = 'm7'`).Scan(&distincts); err != nil {
+		t.Fatalf("select: %v", err)
+	}
+	if distincts != 1 {
+		t.Errorf("%d decode_pass distincts sur une seule passe, attendu 1", distincts)
+	}
+}
+
+// TestKillPositionPersistPass_PasseVideNeRetractePas — LA BORNE de la retractation, la meme
+// que pour kill_openings : une passe qui ne resout AUCUNE position du match n ecrit RIEN (ni
+// ligne, ni decode_pass neuf), donc la vue continue de servir la passe precedente ENTIERE.
+// C est assume — la seule alternative serait une ligne sentinelle qu aucun lecteur n exploite —
+// et c est epingle ici pour qu un changement de doctrine le dise.
+func TestKillPositionPersistPass_PasseVideNeRetractePas(t *testing.T) {
+	db := openKillPositionTestDB(t)
+	ctx := context.Background()
+	p := NewKillPositionPersister(db)
+
+	if err := p.PersistPass(ctx, "m6", []KillPositionInsert{
+		{MatchID: "m6", KillerXUID: "111", TimeMS: 1000, KillerX: f64(1)},
+	}); err != nil {
+		t.Fatalf("passe A: %v", err)
+	}
+	if err := p.PersistPass(ctx, "m6", nil); err != nil {
+		t.Fatalf("passe B vide: %v", err)
+	}
+
+	var n int
+	var kx float64
+	if err := db.QueryRow(
+		`SELECT COUNT(*), min(killer_x) FROM kill_positions_latest WHERE match_id = 'm6'`).Scan(&n, &kx); err != nil {
+		t.Fatalf("select vue: %v", err)
+	}
+	if n != 1 || kx != 1 {
+		t.Errorf("vue = %d ligne(s) / killer_x %v, attendu 1 / 1 — une passe VIDE n ecrit aucune "+
+			"generation, la passe A reste donc servie ENTIERE (comportement assume)", n, kx)
 	}
 }
 

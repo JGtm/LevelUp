@@ -1452,6 +1452,11 @@ func Steps() []migration.Migration {
 	// Schéma de référence inter-titres : positions monde par kill (Halo 5 natif,
 	// Infinite plus tard). Cf. steps_shared_kill_positions.go.
 	steps = append(steps, sharedKillPositionsSteps()...)
+	// Bascule de kill_positions sur un arbitrage PAR PASSE (decode_pass) : une position
+	// qu'un re-décodage ne retrouve plus doit disparaître de la vue, pas survivre à jamais.
+	// Cf. steps_shared_kill_positions_pass.go. L'ordre d'exécution réel vient de
+	// migration.canonicalOrder (ce step y suit shared_append_only_kill_positions_v1).
+	steps = append(steps, sharedKillPositionsPassSteps()...)
 	// Table SOEUR de kill_positions : les positions un temps-pour-tuer AVANT le coup fatal
 	// (proxy d'entame, D5 du plan duels/portée). Créée directement append-only.
 	// Cf. steps_shared_kill_openings.go.

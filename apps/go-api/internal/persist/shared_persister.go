@@ -116,7 +116,7 @@ func (p *SharedPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 	if err := persistKillerVictim(ctx, tx, s.KillerVictim); err != nil {
 		return err
 	}
-	if err := persistKillPositions(ctx, tx, s.KillPositions); err != nil {
+	if err := persistKillPositionsPass(ctx, tx, s.KillPositions); err != nil {
 		return err
 	}
 	if err := persistHighlightEvents(ctx, tx, s.HighlightEvents); err != nil {
@@ -407,7 +407,11 @@ func persistKillerVictim(ctx context.Context, tx *sql.Tx, rows []KillerVictimIns
 	return nil
 }
 
-func persistKillPositions(ctx context.Context, tx *sql.Tx, rows []KillPositionInsert) error {
+// persistKillPositions écrit UNE PASSE de positions — INSERT purs, toutes les lignes sous le
+// MÊME `pass`. C'est `pass` que la vue `kill_positions_latest` retient, ENTIER, pour un match
+// (lot 1.7, 2026-09-09) : deux valeurs dans une même passe feraient rendre à la vue une
+// FRACTION de passe, ce qui est pire qu'une passe entière périmée.
+func persistKillPositions(ctx context.Context, tx *sql.Tx, pass string, rows []KillPositionInsert) error {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -415,10 +419,10 @@ func persistKillPositions(ctx context.Context, tx *sql.Tx, rows []KillPositionIn
 		// INSERT pur — table append-only (positions par kill, jamais ré-écrites).
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO kill_positions (
-				match_id, killer_xuid, time_ms,
+				match_id, decode_pass, killer_xuid, time_ms,
 				killer_x, killer_y, killer_z, victim_x, victim_y, victim_z
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			r.MatchID, r.KillerXUID, r.TimeMS,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			r.MatchID, pass, r.KillerXUID, r.TimeMS,
 			r.KillerX, r.KillerY, r.KillerZ, r.VictimX, r.VictimY, r.VictimZ,
 		)
 		if err != nil {
