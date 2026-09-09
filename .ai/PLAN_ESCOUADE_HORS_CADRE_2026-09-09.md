@@ -404,13 +404,36 @@ production touches B0-B3 : 0 occurrence.
 
 ### Phase B4 — parite export et finition
 
-- `[ ]` B4.1 Verifier sur piece que l'export video passe par les MEMES peintres
-  (`bindPainters` / `composeScene`) : la parite doit etre gratuite, pas supposee.
-- `[ ]` B4.2 Revue navigateur : zoom 2x et 3x sur un match temoin, plusieurs joueurs hors
-  cadre du meme cote, lisibilite des etiquettes.
-- `[ ]` B4.3 i18n de l'unite de distance (FR + EN) si un libelle est necessaire.
+- `[x]` B4.1 Verifie sur piece (pas suppose) que l'export video passe par les MEMES peintres.
+  Chaine remontee jusqu'au bout : `ReplayCanvas.tsx` declare `const redraw = useCallback(() =>
+  drawRef.current(), [])` (une seule reference, ligne 329) et la passe telle quelle a
+  `useReplayCapture({..., redraw, ...})` ; `useReplayCapture.ts:304-313`
+  (`useExportSeam`) la relaie SANS Copie a `useReplayExport({..., redraw: redraw ?? bidon,
+  ...})` ; `useReplayExport.ts` (`paintExportFrame`) appelle `o.redraw()` pour CHAQUE image du
+  clip. `redraw()` invoque `drawRef.current()`, c'est-a-dire EXACTEMENT le `draw()` qui
+  compose `composeScene(ctx, sceneLayers(buildScene(ctx, frame)), frame, dpr)` en lecture
+  normale. Les calques modifies par ce chantier (`drawTracksLayer`, `drawFlagCarries`,
+  `drawBombCarrier`, `drawSkullCarrier`) sont appeles DEPUIS `buildScene`, jamais recopies
+  cote export : la parite est donc STRUCTURELLE (une seule fonction de dessin, deux
+  appelants), pas une supposition. Rien a cabler : verification pure, aucun code touche.
+- `[~]` B4.2 Revue navigateur : **couvert par le superviseur** (hors de portee de cet
+  exécutant — pas d'acces navigateur dans ce lot). Procedure exacte et criteres a l'ecran
+  detailles dans le rapport de cloture de ce lot (match a choisir avec >= 2 coequipiers
+  simultanement eloignes sur une carte BTB/moyenne-grande ; zooms 2x puis 3x via le controle
+  de zoom ; deplacement au pave directionnel pour sortir plusieurs joueurs du meme cote ;
+  verifier fleche + nom + distance, croix de mort bornee sans texte, glyphe d'objectif porte
+  borne, VIP non borne (connu, D3), et parite d'un export video couvrant l'instant).
+- `[~]` B4.3 i18n de l'unite de distance (FR + EN) : **deja fait en B2**, pas differe.
+  `offscreenMarkerFmt` (`i18nContract.ts` + `i18n.ts`, FR/EN) compose « nom · N m » — « m »
+  est le symbole international du metre, identique dans les deux langues (pas un
+  anglicisme), et la parite de TYPAGE (regle CLAUDE.md n°1) est neanmoins tenue par le
+  contrat `Record<ReplayLocale, ReplayText>`. Rien a ajouter ici.
 
-**Gate B4** : `make check-types` · `make test-web` · revue navigateur consignee.
+**Gate B4 passe** (2026-09-10, hors B4.2 superviseur) : `npx vitest run src/features/match-replay`
+181 fichiers / 2622 tests verts, 1 skipped (inchange) · `npx tsc -b --force` (purge
+`node_modules/.tmp` prealable) exit 0. Aucun fichier de production supplementaire touche pour
+cette phase (B4.1 = lecture seule, B4.3 = deja livre en B2) : pas de nouvel eslint/grep
+necessaire au-dela de ceux deja passes aux phases B0-B3.
 
 ---
 
