@@ -40,7 +40,10 @@ var sourcesDesNommages = []struct {
 	fichier string
 	prefixe string
 }{
-	{"internal/analysis/replay/lives.go", "NomPar"},
+	// Le REPERTOIRE, pas le seul lives.go : le registre d'identite (E2, P2) declare ses voies
+	// dans identity_registry_*.go, et le garde qui ne lisait que lives.go a laisse passer
+	// quatre voies inconnues du persister (736 films refuses le 2026-09-09).
+	{"internal/analysis/replay", "NomPar"},
 	{"internal/persist/lives_persister.go", "NommePar"},
 }
 
@@ -89,20 +92,43 @@ func comparer(t *testing.T, apiRoot, colonne string, sources []struct {
 
 // motifConstante capture la valeur litterale d'une constante `Prefixe... = "valeur"`.
 func motifConstante(prefixe string) *regexp.Regexp {
-	return regexp.MustCompile(`(?m)^\s*` + prefixe + `\w*\s*=\s*"([^"]+)"`)
+	// `const NomParX = "..."` sur une ligne ET `NomParX = "..."` dans un bloc const : les deux
+	// formes coexistent dans le paquet replay (lives.go en bloc, identity_registry_*.go en ligne).
+	return regexp.MustCompile(`(?m)^\s*(?:const\s+)?` + prefixe + `\w*\s*=\s*"([^"]+)"`)
 }
 
 // valeursDeclarees rend les valeurs litterales, triees (l'ordre de declaration n'est pas une
 // propriete a figer, seul l'ENSEMBLE compte).
 func valeursDeclarees(t *testing.T, chemin, prefixe string) []string {
 	t.Helper()
-	data, err := os.ReadFile(chemin)
+	info, err := os.Stat(chemin)
 	if err != nil {
-		t.Fatalf("lecture %s: %v", chemin, err)
+		t.Fatalf("stat %s: %v", chemin, err)
+	}
+	var fichiers []string
+	if info.IsDir() {
+		entrees, err := os.ReadDir(chemin)
+		if err != nil {
+			t.Fatalf("lecture du repertoire %s: %v", chemin, err)
+		}
+		for _, e := range entrees {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
+				continue
+			}
+			fichiers = append(fichiers, filepath.Join(chemin, e.Name()))
+		}
+	} else {
+		fichiers = []string{chemin}
 	}
 	var out []string
-	for _, m := range motifConstante(prefixe).FindAllStringSubmatch(string(data), -1) {
-		out = append(out, m[1])
+	for _, f := range fichiers {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatalf("lecture %s: %v", f, err)
+		}
+		for _, m := range motifConstante(prefixe).FindAllStringSubmatch(string(data), -1) {
+			out = append(out, m[1])
+		}
 	}
 	sort.Strings(out)
 	return out

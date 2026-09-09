@@ -48,7 +48,8 @@ type LifeInsert struct {
 	EndMS   int64  `json:"end_ms"`
 	// EndCause : comment la vie s'est terminee (`death` | `film_end` | `cut`).
 	EndCause string `json:"end_cause"`
-	// NamedBy : comment on sait a qui elle appartient (`death` | `closure`). ORTHOGONAL a
+	// NamedBy : comment on sait a qui elle appartient (`death` | `closure` | `biped_creation` |
+	// `biped_creation_propagee` | `elimination` | `exclusion_temporelle`). ORTHOGONAL a
 	// EndCause — les confondre fait compter mort un survivant nomme par fermeture.
 	NamedBy string `json:"named_by"`
 }
@@ -210,7 +211,8 @@ func validateLife(l *LifeInsert, matchID string, i int) error {
 		return fmt.Errorf("persist: match_lives %s ligne #%d: end_cause %q inconnue", matchID, i, l.EndCause)
 	}
 	switch l.NamedBy {
-	case NommeParMort, NommeParFermeture:
+	case NommeParMort, NommeParFermeture, NommeParCreation, NommeParCreationPropagee,
+		NommeParElimination, NommeParExclusionTemporelle:
 	default:
 		return fmt.Errorf("persist: match_lives %s ligne #%d: named_by %q inconnu", matchID, i, l.NamedBy)
 	}
@@ -252,4 +254,13 @@ const (
 
 	NommeParMort      = "death"
 	NommeParFermeture = "closure"
+	// Voies du registre d'identite (lot E2, 2026-09-08) : le lien DIRECT corps -> joueur lu dans
+	// le record de creation du bipede (et propage aux autres sejours du meme corps), l'elimination
+	// sur le roster et l'exclusion temporelle. Oubliees a la livraison d'E2 : la passe
+	// `backfill-killsource` du 2026-09-09 a refuse les 736 films (« named_by "biped_creation"
+	// inconnu ») — le garde-rail `no_life_cause_divergence_test` ne lisait que lives.go.
+	NommeParCreation            = "biped_creation"
+	NommeParCreationPropagee    = "biped_creation_propagee"
+	NommeParElimination         = "elimination"
+	NommeParExclusionTemporelle = "exclusion_temporelle"
 )
