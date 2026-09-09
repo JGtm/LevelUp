@@ -166,30 +166,69 @@ identique, aucun residu).
 
 ### Phase A2 — TDD frontend : source unique pour la L2
 
-- `[ ]` A2.1 **TEST ROUGE** `apps/web/src/features/squad/squadSessionCounts.test.ts` : une
+- `[x]` A2.1 **TEST ROUGE** `apps/web/src/features/squad/squadSessionCounts.test.ts` : une
   fonction pure `squadSessionCount(label, compositionSessions, fallback)` rend
   `{ shown, total }` depuis `composition_sessions` SEUL des que la reponse teammates est la,
   et ne retombe sur `/filters/resolve` que pendant le chargement initial. Echec attendu : le
-  module n'existe pas.
-- `[ ]` A2.2 `squadSessionCounts.ts` : le module pur. `mergeSessionCounts` y est absorbe
-  (une seule regle de compte cote web) et son ancien site d'appel migre — regle 6 CLAUDE.md
-  (factorisation + garde-rail, jamais l'une sans l'autre).
-- `[ ]` A2.3 **TEST ROUGE** `PeriodSessionRail.test.tsx` : quand un `sessionCount` est
-  fourni, le rail affiche « 4 sur 7 » et NON le compte de son store.
-- `[ ]` A2.4 `PeriodSessionRail.tsx` : props optionnelles `sessionCount?: (label) => {shown,
-  total} | undefined` et `matchCount` alimente par la composition. Aucune page qui ne passe
-  pas la prop ne change de rendu (les autres pages sont hors perimetre).
-- `[ ]` A2.5 `SquadLayout.tsx` : le rail recoit le compte composition ; `totalAfter` cesse
-  d'alimenter `matchCount`. `getSessionCount` du `SessionMultiSelect` passe par le meme
-  module.
-- `[ ]` A2.6 **RATCHET** `apps/web/src/features/squad/singleCountSource.guard.test.ts` :
-  aucun fichier de `features/squad/` ne lit `total_matches_after_filters` ni
-  `session_options` pour en tirer un compte de matchs. Allowlist vide, datee, avec le motif.
+  module n'existe pas. **Echec observe** (avant tout code) : `Failed to resolve import
+  "./squadSessionCounts"` (Vite). 9 cas ecrits, dont "SOURCE UNIQUE : la composition prime
+  meme si son nombre est plus BAS que le repli" (scenario 7 vs 4 explicite de l'ADR 0033).
+- `[x]` A2.2 `squadSessionCounts.ts` : le module pur (`squadSessionCount` +
+  `squadSessionShownCount`, variante 1-nombre pour SessionMultiSelect). `mergeSessionCounts`
+  ABSORBE (retire de `squadPending.ts`, tests migres vers `squadSessionCounts.test.ts`, ancien
+  bloc de test remplace par un commentaire de renvoi) et son ancien site d'appel
+  (`SquadLayout.tsx`) migre — regle 6 CLAUDE.md.
+- `[x]` A2.3 **TEST ROUGE** `PeriodSessionRail.test.tsx` : quand un `sessionCount` est
+  fourni, le rail affiche « 4 sur 7 » et NON le compte de son store. **Echec observe** (avant
+  code) : 2/10 tests rouges (le texte "4 sur 7"/"3 match" attendu absent, `sessionCount`
+  silencieusement ignore par le composant) ; le 3e cas ("sans sessionCount, rendu inchange")
+  passait deja au vert — verifie AVANT le code que c'est bien parce que le comportement par
+  defaut est deja correct (pages hors perimetre), pas un faux negatif du test.
+- `[x]` A2.4 `PeriodSessionRail.tsx` : prop optionnelle `sessionCount?: (label) =>
+  {shown, total} | undefined`, cablee UNIQUEMENT sur `SessionRail` (le seul mode qui lisait le
+  compte brut `session.match_count` sans passer par la prop `matchCount` existante — c'est
+  exactement le point du defaut mesure 7 vs 4). Nouveau texte `matchCountOfRosterSuffix`
+  ("4 sur 7 matchs" / "4 of 7 matches") a cote de `matchCountSuffix` existant ; reutilise ce
+  dernier quand `shown === total` (pas de "X sur X" redondant). Aucune page qui ne passe pas
+  la prop ne change de rendu (verifie par le 3e cas A2.3 + tests existants tous verts).
+- `[x]` A2.5 `SquadLayout.tsx` : le rail recoit `sessionCount={getSessionCount}` (compo
+  composition, source unique). `getSessionCount`/`getSessionShownCount` passent tous deux par
+  `squadSessionCounts.ts` (`SessionMultiSelect.getMatchCount` <- `squadSessionShownCount`).
+  **DECOUVERTE traitee dans le perimetre de l'item** (necessaire au ratchet A2.6, allowlist
+  vide) : `totalAfter` (lecture directe de `total_matches_after_filters`, population du
+  JOUEUR PRINCIPAL) alimentait `matchCount` du rail (tous modes hors session unique) ET la
+  visibilite du bouton "Voir les matchs". Retire des deux : `matchCount` n'est plus passe
+  (aucun total composition fiable pour period/multi-session/all-time dans ce lot — afficher
+  rien plutot qu'un nombre faux) ; le bouton se fie desormais a `squadEntryMatchId` seul
+  (1er match de `match_history` = population escouade, deja suffisant : la condition
+  `totalAfter > 0` etait redondante). L'extraction du repli `/filters/resolve`
+  (`session_options.all_sessions`) est centralisee dans `resolveSquadSessionFallback`
+  (squadSessionCounts.ts) — SquadLayout.tsx ne lit plus `session_options` directement.
+- `[x]` A2.6 **RATCHET** `apps/web/src/features/squad/singleCountSource.guard.test.ts` :
+  aucun fichier de `features/squad/` (recursif — `charts/`, `components/`, `v2/` inclus) ne
+  lit `total_matches_after_filters` ni `session_options` pour en tirer un compte de matchs.
+  Allowlist vide et datee (2026-09-09) : SEUL `squadSessionCounts.ts` (module canonique) et
+  le garde-rail lui-meme (il NOMME les litteraux en prose) sont exclus du scan, par
+  CONCEPTION (comparaison de nom de fichier dans le walker), pas par exception nominative.
+  **Preuve de mordant** : le premier jet du garde-rail (avant le refactor
+  `resolveSquadSessionFallback`) a bien ECHOUE sur `SquadLayout.tsx` (lecture directe de
+  `session_options`) — la correction est venue APRES cette detection, pas avant.
 
-**Gate A2** : `make check-types` · `make test-web` (les 3 tests ci-dessus verts) ·
-`npx eslint` sur les fichiers touches.
+**Gate A2 passe** : `make check-types` 0 erreur (2 iterations : un premier `null` non
+autorise dans `ResolvedWithSessionOptions.all_sessions`, corrige) · `make test-web` 7032
+passed / 17 skipped / 0 failed (suite complete, aucune regression) · `npx eslint` sur les 8
+fichiers touches : 0 issue.
 
 ### Phase A3 — lisibilite de l'ecart (D1)
+
+**EN ATTENTE (2026-09-09) — pas `[!]`, coordination inter-sessions.** A3.3 touche
+`apps/web/src/features/squad/i18n.ts`, fichier que le worktree PARTAGE
+(`LevelUp-go-migration`) modifie actuellement sans commit (cf. regle memoire « worktree
+dedie obligatoire »). Toucher ce fichier depuis ce worktree dedie risquerait un conflit de
+fusion sur du travail en vol ailleurs. Le lot s'arrete donc proprement apres le gate A2 ; le
+superviseur ordonnera l'execution de A3 (et du chantier B) une fois ce conflit potentiel
+leve. Aucun item A3 n'est traite ni juge hors-perimetre : la case reste a cocher au prochain
+lot.
 
 - `[ ]` A3.1 **TEST ROUGE** rendu : sous composition exacte avec des ecartes, la L2 porte
   « 4 sur 7 » et une info-bulle listant chaque match ecarte (date, carte, coequipier

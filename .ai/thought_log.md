@@ -1,3 +1,40 @@
+## [2026-09-09] Population escouade : la L2 lit la meme source que la page — Phase A2 close
+
+**Chantier** `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, branche `wt/escouade-hors-cadre`,
+worktree dedie. Suite de A1 (backend) : cablage cote web, avec ratchet anti-regression.
+
+**Decision technique principale** — le vrai bug (rail 7 vs page 4) vivait dans
+`PeriodSessionRail.SessionRail` : en mode session UNIQUE (le cas du 27/08), ce sous-composant
+lit `session.match_count` (population du joueur principal, `/filters/resolve`) directement,
+sans jamais passer par la prop `matchCount` existante (celle-ci n'alimente QUE les modes
+multi-session/periode/all-time). Nouvelle prop `sessionCount?: (label) => {shown,total} |
+undefined`, cablee uniquement sur `SessionRail`, source unique = `squadSessionCounts.ts`
+(nouveau module, absorbe l'ancien `mergeSessionCounts`).
+
+**Decouverte traitee dans le perimetre de A2.5** (necessaire pour que le ratchet A2.6 passe
+avec une allowlist VIDE) : `SquadLayout.tsx` lisait encore `total_matches_after_filters`
+(pour `matchCount` du rail ET la visibilite du bouton "Voir les matchs") et `session_options`
+directement (pour le repli). Les deux retires : `matchCount` n'est plus alimente pour les
+modes hors session unique dans ce lot (rien de fiable a afficher plutot qu'un nombre faux) ;
+le bouton se fie desormais a `squadEntryMatchId` seul (deja suffisant, la condition
+`totalAfter>0` etait redondante) ; le repli `/filters/resolve` est extrait par
+`resolveSquadSessionFallback` dans le module canonique.
+
+**Resultats observes** — TDD respecte sur 2 modules : `squadSessionCounts.test.ts` (echec de
+resolution de module observe AVANT code, 9 cas verts apres) et `PeriodSessionRail.test.tsx`
+(2/10 cas rouges observes AVANT code — prop ignoree —, 10/10 verts apres). Le ratchet
+`singleCountSource.guard.test.ts` a lui-meme ECHOUE une premiere fois pendant sa redaction
+(sur `SquadLayout.tsx` avant le refactor `resolveSquadSessionFallback`), preuve de mordant
+avant meme la clotoure de l'item.
+
+**Gate A2** : `make check-types` 0 erreur · `make test-web` 7032 passed / 17 skipped / 0
+failed (suite complete) · `npx eslint` sur les 8 fichiers touches : 0 issue.
+
+**Conclusion / prochaine etape** : Phase A3 (lisibilite/info-bulle, D1) EN ATTENTE — touche
+`features/squad/i18n.ts` que le worktree partage modifie sans commit ; le superviseur
+tranchera la coordination avant de l'ordonner. Chantier B (bornage hors cadre) non commence,
+hors perimetre de ce lot.
+
 ## [2026-09-09] Population escouade : l'ecart est publie par l'API — Phase A1 close
 
 **Chantier** `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, branche `wt/escouade-hors-cadre`,
