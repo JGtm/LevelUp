@@ -262,3 +262,8 @@ de cocher ; fusion dans `feat/v75` seulement avec l'accord de l'utilisateur.
   alimentés par les artefacts locaux (rangs, corps hors table, camps) et l'API authentifiée
   (dates, cartes, modes, camps via le volet navigateur). Les réponses arrivent dans la base de
   la page : à relire au début de la vague 3 avant de nommer les familles. En vol : E6.1bis.
+- **2026-09-10 (00:05)** — **Vague 2 close.** CI de `feat/v75` VERTE sur `1cfbf9cea` (CI,
+  Deploy Pre-Check, ADR 0021 Gate, Secrets). Bilan : E0-E6 livrés et fusionnés, E6.1bis
+  (contrat Escouade) attrapé avant la CI, revue double 0 P0 / 0 P1 / 2 P2, `make gate-push`
+  vert, 64 résumés d'usage recuits au us4, artefact d'investigation Theater publié. Vague 3
+  ouverte : 3.1 et 3.2 indépendants (escouade / tactique), 3.3 après mesure.
