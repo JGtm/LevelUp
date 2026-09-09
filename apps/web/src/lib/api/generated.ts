@@ -11364,6 +11364,7 @@ export interface components {
         SquadPageV2Response: {
             capabilities?: components["schemas"]["CapabilityGap"][] | null;
             charts?: components["schemas"]["SquadCharts"];
+            equipment_usage?: components["schemas"]["EquipmentUsageBlock"];
             header?: components["schemas"]["SquadHeader"];
             main_player: string;
             period: string;

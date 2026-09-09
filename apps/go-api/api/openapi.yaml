@@ -24975,6 +24975,8 @@ components:
             - "null"
         charts:
           $ref: '#/components/schemas/SquadCharts'
+        equipment_usage:
+          $ref: '#/components/schemas/EquipmentUsageBlock'
         header:
           $ref: '#/components/schemas/SquadHeader'
         main_player:
