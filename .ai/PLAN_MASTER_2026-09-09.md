@@ -137,6 +137,16 @@ P3 → P4 → P5 du paradigme (Opus, orchestration §4) ; audit anti-bombe-RAM (
 R08 score en direct (demande utilisateur du 20/08, décodeur `ti=6` prêt sans appelant), R09
 cadrage étiré sur cartes Forge, R99 gate visuel des fonds (XS côté utilisateur, débloque R06).
 
+### Revues navigateur de la vague 1 (superviseur, 2026-09-09, serveur local relancé après les backfills)
+
+| Écran | Verdict |
+|---|---|
+| Rejeu Origin `8bc6074f`, point de vue JGtm | **OK** : badge image « Revirement — Tuez un ennemi qui vous a attaqué en premier » rendu à 3:49 sur la piste (titre + description) ; fond de carte Origin affiché sous le rejeu (route `replay/background.png` via le helper ETag) |
+| Escouade, session du 27 août, composition stricte cochée (3 coéquipiers sélectionnés) | **OK** : un seul nombre partout — rail « 7 matchs », résultats 7 (6 V / 1 D). Le cas « 4 sur 7 » n'apparaît pas avec cette sélection (rien n'est écarté) ; couvert par les tests A3, filtres de l'utilisateur non modifiés |
+| Tactique, liste des cartes | **OK** : fonds de carte servis sur toutes les vignettes (route `tactical/{map}/background.png`) |
+| Tactique, plan d'Illusion | Couverture **26,6 % → 67,9 %** après le backfill des positions, 38 matchs retenus ; plan toujours vide (cause A, lot 3.2). **Découverte** : canvas 1 070 × 13 375 px non peint (registre) — à traiter dans le lot 3.2 |
+| « Retours UI » du 09-09 (tuiles, catalogue) | Non revu séparément : les trois pages ci-dessus rendent sans erreur console visible ; à confirmer par l'utilisateur à l'usage |
+
 ## 5. Registre des reports — sort décidé (tri Opus du 09-09, vérifié sur pièces par le superviseur)
 
 **Clôtures administratives (le texte du registre ou le dépôt prouvent la résolution) :**
