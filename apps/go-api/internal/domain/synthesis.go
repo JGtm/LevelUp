@@ -161,6 +161,14 @@ type SynthesisPageV2Response struct {
 	// Gated (registry SynthesisCtx) + data-driven (front n'affiche que les KPI > 0).
 	// Cf. PLAN_V72_OBJECTIVE_STATS.md.
 	ObjectiveStats *ObjectiveAggregate `json:"objective_stats,omitempty"`
+
+	// Bloc « servi ou gâché » de l'équipement, en variante COMPTES (décision P9 du
+	// PLAN_EQUIPEMENT_GACHIS_2026-09-09) : une ligne par famille, les trois issues,
+	// les deux taux de référence qui m'excluent, et les comptes des deux donuts.
+	// Attaché à la réponse existante — jamais un endpoint dédié, même patron que le
+	// bloc de la page Sessions. nil quand le scope filtré n'a aucun match ;
+	// Available=false avec raison machine pour un titre sans film.usage_summary.
+	EquipmentUsage *EquipmentUsageBlock `json:"equipment_usage,omitempty"`
 }
 
 // SynthesisWeaponKillEntry est une ligne du classement frags par arme. Class/Role
