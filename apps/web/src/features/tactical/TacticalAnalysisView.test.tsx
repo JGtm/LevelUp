@@ -22,6 +22,7 @@ import { renderWithProviders } from '@/test/render-utils'
 
 import { getTacticalText } from './i18n'
 import { TacticalAnalysisView } from './TacticalAnalysisView'
+import { PLAN_ASPECT_DEFAUT, PLAN_HAUTEUR_MAX_PX } from './tacticalView.logic'
 
 const getBlob = vi.fn()
 vi.mock('@/lib/api/client', async (importOriginal) => {
@@ -160,6 +161,32 @@ describe('TacticalAnalysisView — états de la lecture', () => {
     renderVue()
     expect(screen.getByText(t.planEmptyNoMatchTitle)).toBeInTheDocument()
     expect(screen.queryByText(t.planEmptyDensityTitle)).not.toBeInTheDocument()
+  })
+
+  // UN PLAN VIDE GARDE UN CADRE DE TAILLE NORMALE (lot 3.2) : ni canvas de 13 375 px, ni
+  // carte qui se rétracte à la hauteur d'un message.
+  it('VIDE : le cadre du plan reste posé, au rapport du fond, hauteur bornée', () => {
+    mockRaster({ data: { ...RASTER_VIDE, bornes: { ...BORNES, valide: false } } })
+    renderVue()
+    const cadre = screen.getByTestId('tactical-plan-frame')
+    // jsdom normalise `aspect-ratio: <n>` en « <n> / 1 ».
+    expect(cadre.style.aspectRatio).toBe(`${PLAN_ASPECT_DEFAUT} / 1`)
+    expect(cadre.style.maxWidth).toBe(`${PLAN_ASPECT_DEFAUT * PLAN_HAUTEUR_MAX_PX}px`)
+    // Aucun calque de chaleur à peindre : le canevas n'est pas monté.
+    expect(screen.queryByTestId('tactical-plan-canvas')).not.toBeInTheDocument()
+  })
+
+  it('des bornes très allongées ne rendent plus un cadre de 13 375 px', () => {
+    mockRaster({
+      data: {
+        ...RASTER_NOMINAL,
+        bornes: { min_x: 0, max_x: 8, min_y: 0, max_y: 100, valide: true },
+      },
+    })
+    renderVue()
+    const cadre = screen.getByTestId('tactical-plan-frame')
+    // Largeur plafonnée à 0,08 x 720 px : la hauteur ne peut plus dépasser 720 px.
+    expect(cadre.style.maxWidth).toBe(`${0.08 * PLAN_HAUTEUR_MAX_PX}px`)
   })
 
   it('NOMINAL : les KPI, le canevas du plan, le placeholder de la cellule', () => {

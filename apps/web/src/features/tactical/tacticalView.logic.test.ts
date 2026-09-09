@@ -7,9 +7,12 @@ import { getTacticalText } from './i18n'
 import {
   cellFromClick,
   pageTitle,
+  PLAN_ASPECT_DEFAUT,
+  PLAN_HAUTEUR_MAX_PX,
   planCanvasView,
   planEmptyReason,
   planEmptyText,
+  planFrameStyle,
   ratioSafe,
   sourceForQuestion,
   statusMessages,
@@ -193,6 +196,48 @@ describe('planEmptyText — le titre et la description de chaque cause', () => {
       title: tFr.planEmptyNoMatchTitle,
       description: tFr.planEmptyNoMatchDescription,
     })
+  })
+})
+
+// ─── planFrameStyle — LA TAILLE DU CADRE, ET SON DÉFAUT ─────────────────────────
+
+describe('planFrameStyle — le cadre du plan ne dégénère jamais', () => {
+  it('prend le rapport EXACT des bornes quand elles sont exploitables', () => {
+    // 100 m x 50 m -> 2:1. C'est ce qui garde le clic et la peinture alignés.
+    expect(planFrameStyle(BORNES).aspectRatio).toBe(2)
+  })
+
+  it('borne la hauteur : une largeur maximale déduite du rapport et du plafond', () => {
+    expect(planFrameStyle(BORNES).maxWidth).toBe(`${2 * PLAN_HAUTEUR_MAX_PX}px`)
+  })
+
+  // LE DÉFAUT CONSTATÉ LE 2026-09-09 : canvas 1 070 x 13 375 px sur le plan d'Illusion.
+  // Un rapport de 1/12,5 sur une largeur de conteneur libre donne une hauteur qui n'est
+  // plus une page. Le rapport reste EXACT (sans quoi la peinture se désaligne du clic) ;
+  // c'est la hauteur qui est plafonnée, par une largeur maximale.
+  it('un rapport très allongé reste exact mais ne peut plus faire 13 375 px de haut', () => {
+    const allongees: BornesMonde = { min_x: 0, max_x: 8, min_y: 0, max_y: 100, valide: true }
+    const cadre = planFrameStyle(allongees)
+    expect(cadre.aspectRatio).toBeCloseTo(0.08, 6)
+    // 0,08 x 720 = 57,6 px de large, donc 720 px de haut au plus — jamais 13 375.
+    expect(cadre.maxWidth).toBe(`${0.08 * PLAN_HAUTEUR_MAX_PX}px`)
+  })
+
+  it('des bornes inexploitables rendent le cadre par défaut, jamais un rapport dégénéré', () => {
+    const cas: BornesMonde[] = [
+      { ...BORNES, valide: false },
+      { min_x: 0, max_x: 0, min_y: 0, max_y: 0, valide: true },
+      { min_x: 0, max_x: 100, min_y: 0, max_y: 0, valide: true },
+      { min_x: 0, max_x: Number.POSITIVE_INFINITY, min_y: 0, max_y: 50, valide: true },
+      { min_x: 0, max_x: Number.NaN, min_y: 0, max_y: 50, valide: true },
+    ]
+    for (const bornes of cas) {
+      expect(planFrameStyle(bornes).aspectRatio).toBe(PLAN_ASPECT_DEFAUT)
+    }
+  })
+
+  it('le rapport par défaut est celui des vignettes de carte (le même fond)', () => {
+    expect(PLAN_ASPECT_DEFAUT).toBe(16 / 9)
   })
 })
 

@@ -6,8 +6,12 @@
  * rejeu depuis le lot Q7, 2026-09-07) PARTAGENT EXACTEMENT LE MÊME
  * CADRE : le conteneur est mis à l'aspect-ratio DU MONDE (bornes du raster), jamais un
  * 16:9 fixe — sinon `object-cover` rognerait l'image sur un axe que le calque, lui, ne
- * rogne pas, et les deux se désaligneraient au clic. Sans bornes valides, rien n'est
- * peint (état vide : `EmptyStateNotice`).
+ * rogne pas, et les deux se désaligneraient au clic.
+ *
+ * LE CADRE EST POSÉ MÊME QUAND RIEN N'EST PEINT (lot 3.2, 2026-09-09), et sa hauteur est
+ * BORNÉE (`planFrameStyle`) : sans bornes exploitables il prend le rapport du fond, et
+ * l'état vide se pose PAR-DESSUS. Auparavant, l'état vide remplaçait le cadre, et un
+ * rapport très allongé rendait un canvas de 1 070 x 13 375 px.
  *
  * COULEURS : rampe d'INTENSITÉ (bleu → rouge → violet), MÊME token que la carte de
  * chaleur du rejeu (`useReplayHeatmap.ts`) — grandeur neutre (des morts, des kills, du
@@ -30,6 +34,7 @@ import {
   planCanvasView,
   planEmptyReason,
   planEmptyText,
+  planFrameStyle,
   sourceForQuestion,
   statusMessages,
   TACTICAL_CELL_FLOOR,
@@ -80,9 +85,10 @@ export function TacticalPlanCard({
   }, [paletteVersion])
 
   const bornesValides = bornes.valide && bornes.max_x > bornes.min_x && bornes.max_y > bornes.min_y
-  const aspect = bornesValides
-    ? (bornes.max_x - bornes.min_x) / (bornes.max_y - bornes.min_y)
-    : 16 / 9
+  // LE CADRE EST TOUJOURS POSÉ, plein ou vide : rapport des bornes quand elles disent
+  // quelque chose, rapport du fond sinon, hauteur bornée dans les deux cas
+  // (cf. `planFrameStyle` — c'est ce qui ferme le canvas de 13 375 px).
+  const cadre = planFrameStyle(bornes)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -148,24 +154,28 @@ export function TacticalPlanCard({
             ))}
           </div>
         )}
-        {raisonVide ? (
-          <EmptyStateNotice {...planEmptyText(t, raisonVide, matchsRetenus, pasM)} />
-        ) : (
-          <div
-            className="relative w-full overflow-hidden rounded-md bg-muted"
-            style={{ aspectRatio: aspect }}
-          >
-            {fond && (
-              <img src={fond} alt="" aria-hidden className="h-full w-full object-cover" />
-            )}
+        <div
+          className="relative w-full overflow-hidden rounded-md bg-muted"
+          style={cadre}
+          data-testid="tactical-plan-frame"
+        >
+          {fond && <img src={fond} alt="" aria-hidden className="h-full w-full object-cover" />}
+          {raisonVide ? (
+            // L'ÉTAT VIDE SE POSE SUR LE CADRE, il ne le remplace pas : la carte garde la
+            // taille qu'elle aura une fois remplie, et le message dit ce qui manque
+            // au-dessus du fond plutôt qu'à la place de tout.
+            <div className="absolute inset-0 flex items-center justify-center p-3">
+              <EmptyStateNotice {...planEmptyText(t, raisonVide, matchsRetenus, pasM)} />
+            </div>
+          ) : (
             <canvas
               ref={canvasRef}
               className="absolute inset-0 h-full w-full cursor-crosshair"
               onClick={handleClick}
               data-testid="tactical-plan-canvas"
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </SectionCard>
   )
