@@ -20,6 +20,8 @@ import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
 import { SynthesisWeaponAccuracyChart } from './SynthesisWeaponAccuracyChart'
 import { AccentCard, SectionSubtitle } from './SynthesisCards'
 import { SynthesisWeaponRangeSection } from './SynthesisWeaponRangeSection'
+import { EquipmentUsageSection } from '@/features/_shared/usage/EquipmentUsageSection'
+import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
 import { useSynthesisFragCharts } from './useSynthesisFragCharts'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
@@ -50,6 +52,7 @@ import type {
   SynthesisWeaponAccuracyEntry,
   SynthesisWeaponRange,
   ObjectiveAggregate,
+  EquipmentUsageBlock,
 } from '@/lib/api/types'
 import { formatDurationMMSS } from '@/lib/formatters/duration'
 // EXPERIENCE_TO_CASCADE + setsEqual : source unique partagée avec useLocalFilterBar (H3).
@@ -123,9 +126,11 @@ interface SynthesisOverviewSectionProps {
   weaponRange?: SynthesisWeaponRange
   combatProfile?: CombatProfileBlock | null
   objectiveStats?: ObjectiveAggregate | null
+  // PLAN_EQUIPEMENT_GACHIS_2026-09-09 (E5.8) — bloc « servi ou gâché », variante comptes.
+  equipmentUsage?: EquipmentUsageBlock
   playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, weaponRange, combatProfile, objectiveStats, playerSlug }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, weaponRange, combatProfile, objectiveStats, equipmentUsage, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -510,6 +515,12 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
             d'elle-même quand le bloc est absent (rien de mesuré sur le scope). */}
         {hasWeaponRange && <SynthesisWeaponRangeSection range={weaponRange} />}
 
+        {/* Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09,
+            E5.8-E5.10) — variante comptes (P9), une ligne par famille. Aucune requête
+            neuve : le bloc arrive avec cette même réponse de page. La section se retire
+            d'elle-même quand le bloc est absent ou indisponible pour ce titre. */}
+        <EquipmentUsageSection usage={equipmentUsage} mode="solo" t={USAGE_TEXT[locale]} locale={locale} />
+
     </section>
   )
 }
@@ -789,6 +800,7 @@ export function SynthesisPage() {
           weaponRange={data.weapon_range}
           combatProfile={data.combat_profile}
           objectiveStats={data.objective_stats}
+          equipmentUsage={data.equipment_usage}
           playerSlug={playerSlug}
         />
       )}

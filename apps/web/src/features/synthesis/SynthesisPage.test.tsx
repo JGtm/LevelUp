@@ -41,6 +41,15 @@ describe('SynthesisPage', () => {
     expect(container).toBeTruthy()
   })
 
+  // PLAN_EQUIPEMENT_GACHIS_2026-09-09 (E5.13) : le bloc « servi ou gâché » de la
+  // fixture (synthesisFixture.equipment_usage) atteint bien l'écran — preuve du
+  // câblage bout en bout (aucune requête neuve : même réponse /pages/synthesis).
+  it("affiche le bloc « servi ou gâché » quand la réponse le porte", async () => {
+    renderWithProviders(<SynthesisPage />)
+    expect(await screen.findByText("Usages d'équipement")).toBeInTheDocument()
+    expect(await screen.findByText('Contrôle des armes spéciales')).toBeInTheDocument()
+  })
+
   it('ne rend pas de loader plein écran pendant le chargement (TopProgressBar globale)', () => {
     const { container } = renderWithProviders(<SynthesisPage />)
     expect(container.firstChild).toBeNull()
