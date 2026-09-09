@@ -321,21 +321,21 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     expect(vue.getByText(t.equipmentUsage.coverageUnknownOriginFmt(3))).toBeTruthy()
   })
 
-  it('affiche la RÉSERVE « objets pris sans famille connue » (P13 amendée, 2026-09-09)', () => {
+  it('ne rend JAMAIS les objets pris sans famille connue (décision utilisateur 2026-09-09)', () => {
     poserArtefact({
       ...TEMOIN,
-      // Aucune table `abilityLabels` : le rang 5 n'a aucun nom dans ce film.
+      // Aucune table `abilityLabels` : le rang 5 n'a aucun nom dans ce film. Il est compté par la
+      // logique (`unnamedTaken`, outillage d'investigation) mais aucune ligne ni note ne le montre.
       equipmentChanges: [{ t: 5, slot: 1, kind: 'taken', r: 5, from: -1 }],
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
-    expect(vue.getByText(t.equipmentUsage.coverageUnnamedTakenFmt(1))).toBeTruthy()
+    expect(vue.queryByText(/sans famille connue|without a known family/i)).toBeNull()
   })
 
   it('ne montre AUCUNE réserve quand rien ne la justifie', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
     expect(vue.queryByText(t.equipmentUsage.coverageUnknownOriginFmt(1))).toBeNull()
-    expect(vue.queryByText(t.equipmentUsage.coverageUnnamedTakenFmt(1))).toBeNull()
   })
 
   it('n’ouvre AUCUNE colonne pour le répulseur ni le propulseur, et dit pourquoi', () => {

@@ -357,8 +357,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       outcomeTotalTakenFmt: (count) => `${count} objet${count > 1 ? 's' : ''} pris`,
       coverageUnknownOriginFmt: (count) =>
         `${count} pose${count > 1 ? 's' : ''} d'origine inconnue (ni déployée, ni lâchée avec certitude).`,
-      coverageUnnamedTakenFmt: (count) =>
-        `${count} objet${count > 1 ? 's' : ''} pris sans famille connue (le film ne nomme pas ce rang).`,
       groupGrenades: 'Grenades lancées',
       groupGrenadesHint:
         "Les lancers lus dans le film, par type. L'auteur du lancer est écrit dans le film — ce n'est pas une déduction de proximité.",
@@ -782,8 +780,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       outcomeTotalTakenFmt: (count) => `${count} object${count > 1 ? 's' : ''} taken`,
       coverageUnknownOriginFmt: (count) =>
         `${count} placement${count > 1 ? 's' : ''} of unknown origin (neither deployed nor dropped for certain).`,
-      coverageUnnamedTakenFmt: (count) =>
-        `${count} object${count > 1 ? 's' : ''} taken without a known family (the film does not name this rank).`,
       groupGrenades: 'Grenades thrown',
       groupGrenadesHint:
         'Throws read from the film, by type. The thrower is written in the film — not inferred from proximity.',
