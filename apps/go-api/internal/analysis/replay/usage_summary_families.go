@@ -37,6 +37,10 @@ const (
 	usageFamilyPowerupCamo       = "powerup_camo"
 	usageFamilyPowerupOvershield = "powerup_overshield"
 	usageFamilyWall              = "wall"
+	// Ajoutées le 2026-09-09 (étape E3) : la table de reconnaissance des issues et
+	// ses tests franchissent le seuil de goconst pour ces deux clés à leur tour.
+	usageFamilySensor   = "sensor"
+	usageFamilyRepulsor = "repulsor"
 )
 
 // usageGrenadeFamilies — les familles de GRENADE du manifeste (liste `gggl` du jeu).
@@ -56,7 +60,7 @@ var usageGrenadeFamilies = map[string]bool{
 // d'impulsions ; le répulseur n'a aucun canal mesuré) — même décision que
 // PLACEMENT_RENDER côté web (valeurs `null` explicites).
 var usageCarriedCapacityFamilies = map[string]bool{
-	usageFamilyGrapple: true, usageFamilyThruster: true, "repulsor": true,
+	usageFamilyGrapple: true, usageFamilyThruster: true, usageFamilyRepulsor: true,
 }
 
 // usagePowerupFamilies — les BONUS ramassés au sol. Un power-up n'est jamais un

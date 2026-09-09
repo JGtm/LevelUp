@@ -62,7 +62,7 @@ import "sort"
 // dont la passe courante porte (UsageSummaryRev, SchemaVersion) est à jour ; changer
 // une règle d'attribution ici DOIT incrémenter cette révision, sinon le backfill
 // sautera des matchs à re-résumer.
-const UsageSummaryRev = "us3"
+const UsageSummaryRev = "us4"
 
 // UsagePlayerSummary — les usages d'UN joueur sur UN match, prêt à persister.
 type UsagePlayerSummary struct {
@@ -87,11 +87,23 @@ type UsagePlayerSummary struct {
 	DeployedByFamily map[string]int
 	// DroppedObjects : les objets LÂCHÉS à la mort, HORS grenades (décision
 	// utilisateur 2026-09-04). DroppedByFamily les ventile — la somme des valeurs
-	// vaut DroppedObjects, l'invariant est testé. LA VENTILATION N'EST PAS
-	// PERSISTÉE : la DDL ne porte que dropped_objects (§3 du handoff), le champ
-	// n'existe que pour prouver l'invariant de classification à la projection.
+	// vaut DroppedObjects, l'invariant est testé. LA VENTILATION EST PERSISTÉE
+	// DEPUIS `us4` (étape E3, 2026-09-09) : sans elle la page Sessions ne pouvait
+	// servir qu'un total de lâchers, jamais l'issue d'une famille.
 	DroppedObjects  int
 	DroppedByFamily map[string]int
+	// TakenByFamily / SpentByFamily : les RAMASSAGES et les CONSOMMATIONS du canal
+	// `equipmentChanges`, ventilés par famille du bilan (vocabulaire des POSES —
+	// cf. usage_summary_outcomes.go). Une prise dont le rang n'a pas de libellé
+	// dans ce film n'entre dans AUCUNE famille : elle se compte à la couverture
+	// (UsageMatchSummary.EquipmentChanges), jamais dans une grandeur.
+	TakenByFamily map[string]int
+	SpentByFamily map[string]int
+	// KeptByFamily : GARDÉ SANS L'UTILISER — la troisième issue (décision P1),
+	// DÉRIVÉE et jamais lue d'un canal : `max(0, taken - utilisé - lâché)`, la
+	// formule exacte de la vue match (equipmentUsageLogic.ts, étape E2). Le
+	// clamp absorbe le fait qu'une POSE EST UNE CHARGE, PAS UN OBJET.
+	KeptByFamily map[string]int
 	// GrenadesThrown : les lancers de grenade (`grenades[]`). Produit mais non
 	// affiché par la page Sessions (§3 du handoff) — il coûte trois lignes.
 	GrenadesThrown int
@@ -140,6 +152,11 @@ type UsageMatchSummary struct {
 	// WeaponPads : les socles d'ARME présents, un par socle du document, dans
 	// l'ordre du document (stable côté build).
 	WeaponPads []UsageWeaponPad
+	// EquipmentChanges : ce que le canal des ramassages n'a PAS su rattacher.
+	// NON PERSISTÉ et hors de toute métrique (décision utilisateur 2026-09-09) —
+	// c'est un témoin d'outillage, journalisé par les deux producteurs de passes
+	// (post-sync et backfill CLI).
+	EquipmentChanges UsageChangeCoverage
 }
 
 // UsageSummary — la projection complète d'un artefact.
@@ -178,6 +195,11 @@ func BuildUsageSummary(doc *ReplayDocument) UsageSummary {
 		}
 	}
 	tallyUsagePads(doc, players, &out.Match)
+	// LES ISSUES EN DERNIER, ET DANS CET ORDRE : `deriveUsageKept` soustrait des
+	// grandeurs que les tallies ci-dessus viennent de poser (poses déployées,
+	// épisodes, lâchers). L'inverser rendrait un gardé égal aux prises.
+	out.Match.EquipmentChanges = tallyUsageEquipmentChanges(doc, players, slotOwner)
+	deriveUsageKept(players)
 
 	out.Players = players.rows()
 	return out
