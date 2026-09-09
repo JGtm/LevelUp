@@ -65,6 +65,58 @@ autre executant dans un autre worktree, non touches. Pas de push, pas de fusion 
 superviseur).
 
 ---
+## [2026-09-09] Equipement E5 (partie Go, E5.4-E5.7) + E6.1 — le bloc « servi ou gache » au grain periode — Complete
+
+**Decision technique principale.** Publier un type A PART, `domain.EquipmentUsageBlock`,
+plutot que reutiliser `SessionUsageBlock` pour la Synthese et l'Escouade : le point par match,
+les cadences par dix minutes et les deux parites du bloc de session n'ont aucun lecteur sur un
+scope de periode, et sur une Synthese « all » le seul `per_match` peserait plus que tout le
+reste de la reponse. Le bloc est attache aux DEUX reponses de page existantes
+(`SynthesisPageV2Response`, `SquadPageV2Response`) — jamais d'endpoint dedie, meme patron que
+le bloc de la page Sessions. Il porte une ligne par famille (trois issues + les deux taux de
+reference qui excluent le sujet), une ligne par joueur suivi toutes familles confondues, et
+les CINQ comptes exclusifs de chacun des deux donuts ; aucun pourcentage de part n'est calcule
+cote Go (decisions P9/P10/P11), les quatre parts font exactement le lobby et le front fera les
+arcs.
+
+Deuxieme decision, prise a l'execution et a signaler : `ResolveTrackedSquad` (grain session,
+regle de l'INTERSECTION — allie dans tous les matchs) rend toujours vide sur un scope de
+periode, ce qui priverait le donut de sa part « mes amis ». Ajout de son jumeau documente
+`ResolveScopeFriends` (meme machine `alliesOf`, regle de l'UNION), et convention inverse
+assumee : sans ami configure, aucun ami — retenir les trois allies les plus frequents d'une
+file d'attente nommerait « mes amis » des inconnus.
+
+Zero requete neuve : les trois lectures de la page Sessions prennent deja un scope FERME de
+`match_id` (`SELECT ... WHERE match_id IN (...)`, aucun filtre de session) — seule la liste
+d'identifiants change d'une page a l'autre, `internal/platform/duckdb/` n'a recu aucune ligne.
+Quatre factorisations plutot que des copies : `computeOutcomes` (source unique du remplissage
+de barre, le sujet devient un parametre — sur une ligne de coequipier, « le reste de mon
+equipe » est mon camp moins CE coequipier), `sessionusage.BuildMatchInputs`,
+`measuredMatches`, et `synthesisMatchIDs` (la boucle « rows -> match_ids » etait deja en trois
+exemplaires : plafond de la regle CLAUDE.md n°6, un quatrieme l'aurait franchi).
+
+**Resultats observes.** Quatre commits sur `feat/equipement-e5-go` (worktree dedie
+`LevelUp-wt-equipement-e5-go`, cree a un chemin malforme `C:\c\Users\...` et relocalise par
+`git worktree move`). Gates sur l'arbre final, codes de sortie verifies : `go build ./...`,
+`go vet ./...`, `go test ./...` verts (aucun `--- FAIL:`) ; integration `-tags=integration
+-p 1 -count=1` sur duckdb (160 s), service (19 s), api (24 s), handlers (18 s), wire (16 s)
+verts ; `golangci-lint run --new-from-merge-base=feat/v75 ./...` = **0 issues** ;
+`make openapi-gen` + `make generate-types` rejoues, `git status` VIDE sur `openapi.yaml` et
+`generated.ts` ; `npx tsc -b --force` sortie 0 ; `grep -rn 'slug == '` sur les fichiers du lot
+= 0. TDD respecte : chaque etape a demarre par un echec de compilation observe (types et
+fonctions indefinis) avant implementation.
+
+Trois decouvertes consignees au §6 du plan, non instruites : la clause `IN (...)` porte un
+parametre par match du scope et la Synthese « all » est le plus large scope du produit
+(patron deja en vigueur pour trois autres lecteurs) ; aucun garde-rail grep pose pour
+`synthesisMatchIDs` (le « litteral ancien » est un acces de champ legitime, un ratchet
+produirait des faux positifs) ; le test d'integration `TestOuvrierReel_ConstruitEtLivre`,
+consigne ROUGE PREEXISTANT par E3, passe VERT sur ce worktree — l'entree E3 n'est pas retiree.
+
+**Conclusion / prochaine etape.** La partie Go de E5 et E6 est close ; le contrat
+`equipment_usage` est publie et type cote web. Reste la partie web : E5.1-E5.3 (extraction du
+bloc partage), E5.8-E5.13 (Synthese, variante comptes + deux donuts) et E6.2-E6.5 (Escouade,
+une ligne par coequipier). Aucun push, aucune fusion.
 
 ## [2026-09-09] Master plan, vague 2 — E3 fusionne dans feat/v75, resumes d'usage recuits au us4 (E3.11), E4 lance — Complete
 

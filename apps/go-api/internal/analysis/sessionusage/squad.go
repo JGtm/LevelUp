@@ -71,6 +71,63 @@ func ResolveTrackedSquad(
 	return out
 }
 
+// ResolveScopeFriends — les amis configurés qui ont été MES ALLIÉS dans AU MOINS
+// UN match du scope, classés par nombre de matchs partagés décroissant (gamertag
+// croissant à égalité), plafonnés à MaxTrackedSquadPlayers. C'est le résolveur du
+// grain PÉRIODE (bloc « servi ou gâché » des pages Synthèse et Escouade, étapes E5
+// et E6.1).
+//
+// POURQUOI PAS ResolveTrackedSquad, son jumeau ci-dessus. Sa règle est
+// l'INTERSECTION — allié dans TOUS les matchs du scope — parce qu'une part de
+// SESSION n'est exacte que si la ligne d'un joueur couvre toute la session. Sur un
+// scope de période (la Synthèse en compte des mois, l'Escouade tous les matchs
+// partagés), aucun allié n'est présent partout : l'intersection y rendrait
+// toujours vide, et le donut n'aurait jamais de part « mes amis ». Le bloc de
+// période, lui, attribue ligne à ligne (match, joueur) : l'union garde des parts
+// EXCLUSIVES et EXHAUSTIVES sans exiger cette présence continue. Les deux règles
+// cohabitent donc, chacune sur son grain, et partagent la même machine (alliesOf).
+//
+// SANS AMI CONFIGURÉ, AUCUN AMI — l'inverse de la convention de
+// ResolveTrackedSquad (« liste vide = aucune restriction »), et c'est délibéré :
+// sur un scope de période, retenir les trois alliés les plus fréquents nommerait
+// « mes amis » des inconnus rencontrés en file d'attente.
+func ResolveScopeFriends(
+	playerXUID string, participants []ParticipantRow, friendGamertags []string,
+) []domain.SessionUsageSquadPlayer {
+	friendSet := lowerSet(friendGamertags)
+	if friendSet == nil {
+		return nil
+	}
+	shared := map[string]int{}
+	byXUID := map[string]string{}
+	for _, allies := range alliesOf(playerXUID, participants) {
+		for xuid, gt := range allies {
+			if _, ok := friendSet[strings.ToLower(gt)]; !ok {
+				continue
+			}
+			shared[xuid]++
+			byXUID[xuid] = gt
+		}
+	}
+	out := make([]domain.SessionUsageSquadPlayer, 0, len(shared))
+	for xuid := range shared {
+		out = append(out, domain.SessionUsageSquadPlayer{XUID: xuid, Gamertag: byXUID[xuid]})
+	}
+	sort.Slice(out, func(a, b int) bool {
+		if shared[out[a].XUID] != shared[out[b].XUID] {
+			return shared[out[a].XUID] > shared[out[b].XUID]
+		}
+		if !strings.EqualFold(out[a].Gamertag, out[b].Gamertag) {
+			return strings.ToLower(out[a].Gamertag) < strings.ToLower(out[b].Gamertag)
+		}
+		return out[a].XUID < out[b].XUID
+	})
+	if len(out) > MaxTrackedSquadPlayers {
+		out = out[:MaxTrackedSquadPlayers]
+	}
+	return out
+}
+
 // alliesOf — par match, les alliés du joueur (même camp, hors lui-même), map
 // xuid -> gamertag. Un match où le camp du joueur est inconnu n'a pas d'allié.
 func alliesOf(playerXUID string, participants []ParticipantRow) map[string]map[string]string {

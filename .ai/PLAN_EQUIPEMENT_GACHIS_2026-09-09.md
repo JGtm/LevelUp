@@ -358,11 +358,11 @@ cd apps/web && npx eslint src/features/session-detail --max-warnings=0
 
 **Périmètre fermé — Go :**
 
-- [ ] E5.4 `internal/domain/` — publier le bloc d'usage pour la Synthèse, en types canoniques
-- [ ] E5.5 `internal/service/` — l'orchestration ; **aucun SQL inline**
-- [ ] E5.6 `internal/platform/duckdb/` — réutiliser la lecture de la page Sessions ; n'écrire
+- [x] E5.4 `internal/domain/` — publier le bloc d'usage pour la Synthèse, en types canoniques
+- [x] E5.5 `internal/service/` — l'orchestration ; **aucun SQL inline**
+- [x] E5.6 `internal/platform/duckdb/` — réutiliser la lecture de la page Sessions ; n'écrire
       une requête neuve qu'après avoir vérifié qu'aucune ne convient
-- [ ] E5.7 `make openapi-gen` + `make generate-types`
+- [x] E5.7 `make openapi-gen` + `make generate-types`
 
 **Périmètre fermé — Web :**
 
@@ -388,7 +388,7 @@ cd apps/web && npx tsc -b --force && npx eslint src/features --max-warnings=0
 
 ### E6 — Escouade
 
-- [ ] E6.1 Go — même publication que E5, agrégée **par joueur suivi** (réutiliser
+- [x] E6.1 Go — même publication que E5, agrégée **par joueur suivi** (réutiliser
       `ResolveTrackedSquad`, déjà en place pour le contexte escouade de Sessions)
 - [ ] E6.2 Web — les deux graphes, **une ligne par coéquipier** au lieu d'une par famille.
       Variante comptes (décision P9)
@@ -560,6 +560,30 @@ cd apps/web && npx eslint src/features/squad --max-warnings=0
   catégorie déjà connue du dépôt (cf. thought_log, vague 2 : « un flake temporel consigne »).
 
 ---
+
+- **Nouvelle, E5-Go du 2026-09-09** : la clause `IN (...)` des trois lectures du résumé
+  d'usage porte UN PARAMÈTRE PAR MATCH DU SCOPE (`Placeholders(len(matchIDs))`,
+  `platform/duckdb/shared_query_helpers.go:49` — aucun découpage par lots dans le paquet).
+  C'est déjà le patron de trois lecteurs de la Synthèse (`loadObjectiveStats`,
+  `loadWeaponKillRows`, `loadWeaponAccuracy`), mais le scope Synthèse en période « all » est
+  le PLUS LARGE du produit : le bloc d'usage y hérite donc d'une requête à plusieurs
+  milliers de paramètres. Rien n'a été mesuré, rien n'a été changé — le lot réutilise le
+  patron en vigueur plutôt que d'en inventer un second. Non instruit.
+
+- **Nouvelle, E5-Go du 2026-09-09** : `synthesisMatchIDs` centralise une boucle qui existait
+  en TROIS exemplaires dans `synthesis_service.go` (plafond de la règle CLAUDE.md n°6 —
+  un quatrième l'aurait franchi) ; les trois copies sont migrées, mais AUCUN garde-rail grep
+  n'a été posé, contrairement à ce que la règle demande. Justification : le « littéral
+  ancien » est un accès de champ légitime (`r.Summary.MatchID`) employé ailleurs pour de
+  bonnes raisons, et un ratchet dessus produirait des faux positifs. À trancher si le motif
+  réapparaît. Non instruit au-delà de la migration des trois copies.
+
+- **Observation, E5-Go du 2026-09-09** : le test d'intégration `internal/api/wire` /
+  `TestOuvrierReel_ConstruitEtLivre`, consigné ROUGE PRÉEXISTANT par E3 ci-dessus, passe
+  VERT sur ce worktree (`go test -tags=integration -p 1 -count=1 ./internal/api/...`,
+  2026-09-09). Rien n'a été fait pour cela — l'écart tient probablement à l'artefact local
+  que le test consomme. L'entrée E3 n'est PAS retirée : elle reste à vérifier sur la machine
+  qui l'a vue rouge. Non instruit.
 
 ## 7. Clôture de chantier
 
@@ -1116,3 +1140,102 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
   **Conclusion** : chantier E5.1-E5.3 + les deux scissions obligatoires terminé et vérifié
   sur pièces. Pas de push, pas de fusion (décision superviseur — un autre exécutant mène en
   parallèle E5.4-E5.13, Go + Synthèse/Escouade, dans un worktree différent).
+- **2026-09-09 — E5 (partie Go : E5.4 à E5.7) et E6.1, CLOS**. Branche
+  `feat/equipement-e5-go` (worktree dédié `LevelUp-wt-equipement-e5-go`), quatre commits.
+
+  **Ce qui est publié.** Un type à part, `domain.EquipmentUsageBlock`
+  (`internal/domain/equipment_usage.go`), attaché aux DEUX réponses de page existantes —
+  `SynthesisPageV2Response.equipment_usage` et `SquadPageV2Response.equipment_usage`, jamais
+  un endpoint dédié (même patron que le bloc de la page Sessions). Il porte : `families[]`
+  (une ligne par famille du bilan que le JOUEUR a touchée, triée du plus pris au moins pris,
+  chacune embarquant `SessionUsageOutcomes` — trois issues, prises, taux d'utilisation, et
+  les deux taux de référence qui excluent le sujet) ; `players[]` (une ligne par sujet,
+  TOUTES familles confondues, le joueur de la route en tête puis les coéquipiers suivis, avec
+  en plus `pad_pickups`) ; `tracked_players[]` (les identités, ordre d'affichage) ; et
+  `equipment_parties` / `weapon_pad_parties`, les CINQ comptes exclusifs de chacun des deux
+  donuts (`lobby_total`, `player`, `friends`, `rest_of_team`, `opponents`, plus
+  `by_friend[]`). **Aucun pourcentage de part n'est calculé côté Go** (décisions P10/P11) :
+  les quatre parts font exactement le lobby, le front fera les arcs et les deux sous-totaux.
+
+  **Pourquoi un type à part et non `SessionUsageBlock`** : le point par match, les cadences
+  par dix minutes et les deux parités du bloc de session n'ont aucun lecteur sur un scope de
+  période, et sur une Synthèse « all » le seul `per_match` pèserait plus que tout le reste de
+  la réponse.
+
+  **Deux scopes, assumé et documenté** : les lignes (familles, joueurs) portent sur TOUT le
+  scope mesuré, comme `PlayerTotal` côté session ; les deux donuts portent sur les seuls
+  matchs à camp CONNU, numérateurs ET dénominateurs (règle de scope de `computeMetric`).
+  C'est la seule façon d'avoir des parts qui ferment : mêler les deux ferait un donut dont la
+  somme des parts ne vaudrait pas son centre. Scope sans aucun camp connu (FFA intégral) :
+  les deux donuts sont ABSENTS, jamais servis à zéro.
+
+  **Réutilisations, et ce qui a été factorisé plutôt que recopié.**
+  1. `computeOutcomes(sujet, familles, mesurés)` extrait de `attachOutcomes`
+     (`sessionusage/usage_outcomes.go`) : SOURCE UNIQUE du remplissage de barre, appelée par
+     la page Sessions (une famille, le joueur de la route) et par le bloc de période (une
+     famille pour la Synthèse, toutes familles pour l'Escouade). Le sujet devient un
+     paramètre — sur une ligne de coéquipier, « le reste de mon équipe » est mon camp moins
+     CE coéquipier (décision P7 appliquée à chaque ligne, pas seulement à la mienne).
+  2. `sessionusage.BuildMatchInputs` extrait de `buildSessionUsageInput` : l'assemblage
+     commun des `MatchInput` ; le builder de session n'ajoute plus que l'échelle de temps des
+     cadences, qui lui est propre.
+  3. `measuredMatches` extrait de `ComputeUsage`.
+  4. `synthesisMatchIDs` : la boucle « rows -> match_ids » existait en TROIS exemplaires dans
+     `synthesis_service.go` — plafond de la règle CLAUDE.md n°6 ; les trois sont migrées, un
+     quatrième exemplaire l'aurait franchi (garde-rail non posé — justification au §6).
+  5. `buildEquipmentUsageBlock` (`service/equipment_usage_block.go`) : UN seul assemblage
+     pour les deux pages — un helper de package, jamais un service qui en appelle un autre.
+
+  **E5.6 — aucune requête neuve, et c'est prouvé sur pièces.** Les trois lectures de la page
+  Sessions (`duckdb.SessionUsageRepo` : `LoadUsageFilms`, `LoadUsagePlayers`,
+  `LoadParticipants`) prennent DÉJÀ un scope FERMÉ de `match_id` — leurs trois requêtes sont
+  un `SELECT ... WHERE match_id IN (...)` sans aucun filtre de session, temporel ou autre
+  (l'en-tête du fichier le dit explicitement : « TROIS LECTURES, TOUTES SUR UN SCOPE FERMÉ DE
+  match_id (aucun filtre temporel) »). Seule la liste d'identifiants change d'une page à
+  l'autre. `internal/platform/duckdb/` n'a donc reçu AUCUNE ligne dans ce lot. Vues `_latest`
+  uniquement, lecture seule, aucune migration.
+
+  **Résolution des amis — une décision prise à l'exécution, à signaler.**
+  `ResolveTrackedSquad` (grain session) exige d'être allié dans TOUS les matchs du scope. Sur
+  un scope de période (Synthèse : des mois ; Escouade : tous les matchs partagés), cette
+  intersection rend toujours vide, et la part « mes amis » du donut n'existerait jamais. J'ai
+  donc ajouté son jumeau `ResolveScopeFriends` (`sessionusage/squad.go`, bâti sur la MÊME
+  machine `alliesOf`, documenté juste sous lui) : allié dans AU MOINS UN match, classé par
+  matchs partagés décroissants, plafonné à `MaxTrackedSquadPlayers`. L'attribution du bloc de
+  période se faisant ligne à ligne (match, joueur), l'union garde des parts exclusives et
+  exhaustives sans exiger la présence continue. Deuxième écart assumé : **sans ami configuré,
+  aucun ami** — l'inverse de la convention de `ResolveTrackedSquad` (« liste vide = aucune
+  restriction »), parce que retenir les trois alliés les plus fréquents d'une file d'attente
+  nommerait « mes amis » des inconnus.
+
+  **E6.1 — l'Escouade.** Même bloc, même assemblage, même repo ; le scope est
+  `matchIDsOf(resp.SharedMatches)` et les « amis » sont les coéquipiers SÉLECTIONNÉS dans
+  l'UI (`teammateGTs`), passés au résolveur qui n'invente donc personne : il fait la jointure
+  gamertag -> xuid contre `match_participants`. Effet de bord voulu : un coéquipier
+  sélectionné qui se trouve en FACE sur les matchs partagés compte du côté « eux » (le camp
+  prime sur l'amitié dans le classement d'une ligne) — l'intersection de la page porte sur
+  les `match_id`, jamais sur le camp, et sans cette priorité « eux » cesserait d'être « le
+  lobby moins mon camp ».
+
+  **Ce que le lot ne publie PAS, et pourquoi.** Aucune issue pour les armes spéciales : au
+  grain session le canal `shots` (« a tiré », décision P5) n'est pas persisté — seul
+  `pad_pickups` l'est. Le contrat sert donc un COMPTE de prises de socle par joueur, sans
+  remplissage, et le dit dans le type. Aucune ventilation des socles PAR FAMILLE D'ARME non
+  plus : le donut des armes n'en a pas besoin (ses parts sont des joueurs) et la page
+  Escouade lit une ligne par coéquipier, pas par famille — publier des clés hexadécimales
+  sans le catalogue d'armes du titre n'aurait servi personne. Les clés `deployed_*` sont
+  restées au contrat, conformément à la décision superviseur.
+
+  **Gates, tous exécutés sur l'arbre final, codes de sortie vérifiés** :
+  - `go build ./...` + `go vet ./...` + `go test ./...` — VERT (aucun `--- FAIL:`).
+  - `go test -tags=integration -p 1 -count=1 ./internal/platform/duckdb/ ./internal/service/ ./internal/api/...`
+    — VERT (duckdb 160 s, service 19 s, api 24 s, handlers 18 s, wire 16 s).
+  - `golangci-lint run --new-from-merge-base=feat/v75 ./...` — **0 issues**.
+  - `make openapi-gen && make generate-types` rejoués sur l'arbre final : `git status --short`
+    sur `openapi.yaml` et `generated.ts` VIDE (aucun diff résiduel).
+  - `cd apps/web && npx tsc -b --force` — silencieux, sortie 0.
+  - `grep -rn 'slug == '` sur les fichiers du lot : **0**.
+
+  **Prochaine étape** : la partie web de E5 (E5.1-E5.3 extraction du bloc partagé,
+  E5.8-E5.13 Synthèse) et E6.2-E6.5 (Escouade), qui consomment `equipment_usage` tel que
+  `generated.ts` le décrit désormais.
