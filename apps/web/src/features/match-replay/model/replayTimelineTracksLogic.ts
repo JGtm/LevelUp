@@ -21,6 +21,7 @@
  * même programme (TS1149). C'est aussi le patron du dépôt (killFeedLogic, victoryLogic).
  */
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
+import type { MedalEvent } from './killFeedLogic'
 import type { ReplayWindowBounds } from './replayWindow'
 
 /**
@@ -101,17 +102,20 @@ export interface TrackMark {
   /** Instant, pour l'infobulle (mm:ss déjà mis en forme par l'appelant). */
   clock: string
   /**
-   * LES MÉDAILLES DE CETTE MARQUE, en libellés déjà résolus — vide quand il n'y en a pas.
+   * LES MÉDAILLES DE CETTE MARQUE, identité complète (cf. `MedalEvent`) — vide quand il n'y en a
+   * pas. EN IMAGES DEPUIS LE 2026-09-09 (décision D7, plan « vague C ») : la marque ne porte plus
+   * qu'un libellé, elle porte de quoi dessiner le badge du jeu (`imageUrl`) et nourrir son
+   * infobulle (`label`, `description`) — cf. `ui/MedalBadges.tsx`, déjà employé par le fil.
    *
    * Elles ne prennent PAS de repère à elles quand un kill les porte (décision 9 du plan) : la
    * majorité des médailles tombe à moins de 500 ms d'un kill déjà dessiné, et un second glyphe
-   * au même endroit doublerait la frise sans rien ajouter. La marque existante reçoit un ANNEAU
-   * et l'infobulle les nomme.
+   * au même endroit doublerait la frise sans rien ajouter. La marque existante reçoit le badge
+   * en SURIMPRESSION.
    *
    * UN LIBELLÉ VIDE N'ENTRE PAS (matchs d'avant le backfill des médailles du fil) : la
    * décoration dirait « il s'est passé quelque chose » sans pouvoir dire quoi.
    */
-  medals: readonly string[]
+  medals: readonly MedalEvent[]
   /**
    * L'acteur est-il un AMI du compte connecté (marque `friend` de `playerMarks`) ?
    *
@@ -154,8 +158,8 @@ export interface TrackKill {
   replayMs: number
   /** xuid du tueur (celui à qui la marque appartient). */
   xuid: string
-  /** Libellés des médailles décrochées SUR ce kill (cf. `TrackMark.medals`). */
-  medals: readonly string[]
+  /** Médailles décrochées SUR ce kill, identité complète (cf. `TrackMark.medals`). */
+  medals: readonly MedalEvent[]
 }
 
 /** Une mort, réduite de même. `xuid` est celui du défunt. */
@@ -170,8 +174,8 @@ export interface TrackMedal {
   key: string
   replayMs: number
   xuid: string
-  /** Le libellé, non vide par construction (cf. `reduceFeed`). */
-  label: string
+  /** La médaille elle-même, identité complète et libellé non vide par construction (cf. `reduceFeed`). */
+  medal: MedalEvent
 }
 
 /**
@@ -229,7 +233,7 @@ export function buildEventTracks(
     replayMs: number,
     kind: TrackMark['kind'],
     xuid: string,
-    medals: readonly string[] = [],
+    medals: readonly MedalEvent[] = [],
   ): TrackMark => ({
     key,
     ratio: ratioOfMs(replayMs, frameIntervalMs, scale),
@@ -253,7 +257,7 @@ export function buildEventTracks(
   }
   for (const m of events.medals) {
     if (audience.viewpoint == null || m.xuid !== audience.viewpoint) continue
-    const at = marque(m.key, m.replayMs, 'medal', m.xuid, [m.label])
+    const at = marque(m.key, m.replayMs, 'medal', m.xuid, [m.medal])
     if (at.ratio < 0 || at.ratio > 1) continue
     own.push(at)
   }

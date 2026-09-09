@@ -149,29 +149,40 @@ describe('reduceFeed — les FRAGS de la piste Dominance', () => {
 
 /**
  * LES MÉDAILLES (2026-09-07, lot L4). Deux chemins qui ne se confondent pas : rattachée à un
- * kill, la médaille voyage AVEC lui en libellés (la marque existe déjà, elle recevra un anneau) ;
- * orpheline, elle prend une entrée à elle. Sans libellé, rien — sur les matchs d'avant le
- * backfill, une décoration muette ne dirait pas ce qui a été décroché.
+ * kill, la médaille voyage AVEC lui EN IDENTITÉ COMPLÈTE (la marque existe déjà, elle recevra le
+ * badge du jeu — décision D7, 2026-09-09, qui remplace l'ancien libellé nu par le `MedalEvent`
+ * entier) ; orpheline, elle prend une entrée à elle. Sans libellé, rien — sur les matchs d'avant
+ * le backfill, une décoration muette ne dirait pas ce qui a été décroché.
  */
 describe('reduceFeed — les médailles', () => {
-  it('les médailles d’un kill le suivent en LIBELLÉS, pas en repère de plus', () => {
-    const decore = [{ label: 'Doublé' }, { label: 'Vengeance' }] as never
-    const { kills, medals } = reduceFeed([killEntry({ medals: decore })], VIEWPOINT)
-    expect(kills[0].medals).toEqual(['Doublé', 'Vengeance'])
+  it('les médailles d’un kill le suivent en IDENTITÉ COMPLÈTE, pas en repère de plus', () => {
+    const doublé = { label: 'Doublé' } as never
+    const vengeance = { label: 'Vengeance' } as never
+    const { kills, medals } = reduceFeed(
+      [killEntry({ medals: [doublé, vengeance] as never })],
+      VIEWPOINT,
+    )
+    expect(kills[0].medals).toEqual([doublé, vengeance])
     expect(medals).toEqual([])
   })
 
   it('un libellé VIDE ne décore rien : la marque reste nue plutôt que muette', () => {
-    const sansNom = [{ label: '' }, { label: 'Doublé' }] as never
-    const { kills } = reduceFeed([killEntry({ medals: sansNom })], VIEWPOINT)
-    expect(kills[0].medals).toEqual(['Doublé'])
+    const sansNom = { label: '' } as never
+    const doublé = { label: 'Doublé' } as never
+    const { kills } = reduceFeed(
+      [killEntry({ medals: [sansNom, doublé] as never })],
+      VIEWPOINT,
+    )
+    expect(kills[0].medals).toEqual([doublé])
   })
 
   it('une MÉDAILLE SEULE n’est ni un kill ni une mort : elle sort par sa propre liste', () => {
     const { kills, deaths, medals } = reduceFeed([medalEntry()], VIEWPOINT)
     expect(kills).toEqual([])
     expect(deaths).toEqual([])
-    expect(medals).toEqual([{ key: 'm1', replayMs: 21_000, xuid: 'me', label: 'Capture' }])
+    expect(medals).toEqual([
+      { key: 'm1', replayMs: 21_000, xuid: 'me', medal: { xuid: 'me', label: 'Capture' } },
+    ])
   })
 
   it('une médaille seule SANS LIBELLÉ ne sort pas : rien à nommer, rien à dessiner', () => {
