@@ -18,18 +18,51 @@ import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken } from '@/lib/accessibility'
+import type { Locale } from '@/lib/i18n/locale'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettingsDraftStore, type ColorPalette } from '@/stores/settingsDraftStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
 import { heatmapRampTokens } from './heatmapColors'
-import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from './_utils'
+import {
+  CHART_BG,
+  escapeHtml,
+  getAxisBase,
+  getEChartsThemeColors,
+  getTooltipBase,
+  type EChartsThemeColors,
+} from './_utils'
+
+/**
+ * Libellé de la légende affichée quand la série contient au moins une case
+ * `value: null` (décision D3, plan vague C formes 2026-09-08). Dictionnaire local
+ * plutôt qu'un manifeste TOML : une seule chaîne, propre à ce wrapper — parité
+ * FR/EN garantie par le typage `Record<Locale, T>` (même patron que
+ * `lib/review/i18n.ts`).
+ */
+const HEATMAP_EMPTY_CELL_TEXT: Record<Locale, string> = {
+  fr: 'Aucune mesure sur cet axe',
+  en: 'No measurement on this axis',
+}
+
+/** Caractère affiché SUR une case vide (décision D3 : « un tiret »), au lieu de rien. */
+const EMPTY_CELL_LABEL = '—'
+
+/** Épaisseur du liseré entre cases (décision D2 — « c'est aéré et joli »). */
+const CELL_BORDER_WIDTH = 4
+/** Arrondi des coins de case (décision D2). */
+const CELL_BORDER_RADIUS = 2
 
 export interface ChartPointHeatmap {
   x: string
   y: string
   /**
-   * Valeur de la cellule, ou `null` pour une case VIDE — non peinte, hors échelle,
-   * sans étiquette (ajout 2026-09-06, correction W1).
+   * Valeur de la cellule, ou `null` pour une case VIDE — hors échelle (le
+   * visualMap ne la classe pas) mais désormais VISIBLE : hachurée, avec un tiret,
+   * et nommée par la légende du graphe (décision D3, plan vague C formes
+   * 2026-09-08). Avant cette décision (ajout 2026-09-06, correction W1) elle était
+   * non peinte et sans étiquette — la doctrine du dépôt l'a corrigé : « l'absence a
+   * sa propre forme, jamais un vide ».
    *
    * POURQUOI UNE CASE VIDE PLUTÔT QU'UNE CASE ABSENTE. Les axes de ce wrapper sont
    * DÉDUITS de l'ordre d'apparition des points : omettre une case décale les
@@ -64,6 +97,14 @@ export interface Heatmap2DChartProps {
   /** Min/max forcés du visualMap (default = auto-fit). */
   valueRange?: [number, number]
   /**
+   * Plafond de saturation OPTIONNEL du visualMap (`max`) — la maquette sature à 30
+   * (points d'intensité) : au-delà, une case garde la couleur la plus chaude au lieu
+   * d'étirer l'échelle. Ignoré si `valueRange` est fourni (celui-ci fixe déjà min ET
+   * max). Absent = comportement HISTORIQUE inchangé (max = valeur réelle la plus
+   * haute) — n'affecte donc aucun consommateur existant tant qu'il ne le passe pas.
+   */
+  saturationCap?: number
+  /**
    * Contenu HTML du tooltip d'une cellule. Absent = le libellé historique de la
    * heatmap joueur × carte (taux de victoire + nombre de matchs), qui ne convient
    * qu'à ce cas d'usage — toute autre donnée DOIT passer sa propre fonction, sinon
@@ -83,16 +124,24 @@ export function Heatmap2DChart({
   height,
   paletteMode = 'sequential',
   valueRange,
+  saturationCap,
   formatTooltip,
 }: Heatmap2DChartProps) {
   // Palette d'accessibilité active : pilote la rampe CVD-safe (rebuild via
   // useColorPaletteVersion dans ChartCard + ce sélecteur au changement de palette).
   const colorPalette = useSettingsDraftStore((s) => s.localUiPrefs.colorPalette)
+  const locale = useAppShellStore((s) => s.locale)
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointHeatmap>[]) =>
-      buildHeatmap2DOption(s, { paletteMode, valueRange, colorPalette, formatTooltip }),
-    [paletteMode, valueRange, colorPalette, formatTooltip],
+      buildHeatmap2DOption(s, { paletteMode, valueRange, saturationCap, colorPalette, formatTooltip }),
+    [paletteMode, valueRange, saturationCap, colorPalette, formatTooltip],
   )
+
+  // Décision D3 : une case sans mesure se nomme, sans que l'appelant ait à le
+  // demander — c'est ce qui permet aux quatre consommateurs existants d'hériter
+  // sans modification. Pas de légende quand aucune case n'est vide (comportement
+  // historique inchangé pour ces séries-là).
+  const hasEmptyCell = series.some((s) => s.datapoints.some((d) => d.value == null))
 
   return (
     <ChartCard
@@ -103,6 +152,13 @@ export function Heatmap2DChart({
       emptyMessage={emptyMessage}
       height={height}
       buildOption={buildOption}
+      legend={
+        hasEmptyCell ? (
+          <p className="text-xs text-muted-foreground" data-testid="heatmap-empty-cell-legend">
+            {HEATMAP_EMPTY_CELL_TEXT[locale]}
+          </p>
+        ) : undefined
+      }
     />
   )
 }
@@ -110,9 +166,67 @@ export function Heatmap2DChart({
 interface BuildOpts {
   paletteMode?: HeatmapPaletteMode
   valueRange?: [number, number]
+  /** Plafond de saturation optionnel du visualMap (`max`) — cf. doc de la prop du composant. */
+  saturationCap?: number
   /** Palette d'accessibilité active — pilote la rampe CVD-safe (cf. heatmapColors). */
   colorPalette?: ColorPalette
   formatTooltip?: (point: ChartPointHeatmap) => string
+}
+
+/**
+ * Tuple brut d'une case : `[xIndex, yIndex, value, detail?]`. `value` vaut `'-'`
+ * pour une case vide (convention ECharts « pas de donnée », cf. commentaire de
+ * `buildCellData`).
+ */
+type HeatCellTuple = [number, number, number | string, Record<string, unknown> | undefined]
+
+/**
+ * Une case peut être un tuple brut (cas historique, cases mesurées) ou un objet
+ * `{ value, itemStyle }` quand elle porte un style PROPRE à elle seule — c'est le
+ * cas d'une case vide, qui reçoit une hachure que les cases voisines n'ont pas.
+ * ECharts accepte les deux formes dans le même tableau `data` (il lit `data.value`
+ * quand l'élément n'est pas un tableau).
+ */
+type HeatCellDatum = HeatCellTuple | { value: HeatCellTuple; itemStyle: Record<string, unknown> }
+
+/** Lit le tuple `[x, y, value, detail]` d'une case, quelle que soit sa forme. */
+function heatCellTuple(d: HeatCellDatum): HeatCellTuple {
+  return Array.isArray(d) ? d : d.value
+}
+
+/**
+ * Style d'une case VIDE (décision D3) : fond neutre (au lieu d'invisible/transparent)
+ * + hachure diagonale dans l'encre des axes. Même patron de décal que
+ * `features/match-view/MatchSummaryCharts.tsx` (`DECAL_HATCH`), mais en tokens de
+ * thème plutôt qu'en rgba en dur, car ce composant n'a pas la même exemption —
+ * `getEChartsThemeColors()` résout déjà les deux teintes nécessaires.
+ */
+function emptyCellItemStyle(tc: EChartsThemeColors) {
+  return {
+    color: tc.splitLine,
+    decal: {
+      symbol: 'rect',
+      symbolSize: 0.8,
+      dashArrayX: [1, 0],
+      dashArrayY: [4, 4],
+      rotation: -Math.PI / 4,
+      color: tc.axisLabel,
+    },
+  }
+}
+
+/**
+ * Construit le tableau `data` ECharts à partir des datapoints. Une case VIDE
+ * (`value: null`) part en tuple `'-'` (convention ECharts « pas de donnée » — la
+ * valeur ne classe pas dans le visualMap) MAIS, contrairement à une case mesurée,
+ * porte un `itemStyle` d'objet propre : c'est ce qui la rend visible (décision D3)
+ * sans changer le rendu des cases mesurées, qui restent de simples tuples.
+ */
+function buildCellData(dps: ChartPointHeatmap[], xs: string[], ys: string[], tc: EChartsThemeColors): HeatCellDatum[] {
+  return dps.map((d) => {
+    const tuple: HeatCellTuple = [xs.indexOf(d.x), ys.indexOf(d.y), d.value ?? '-', d.detail]
+    return d.value == null ? { value: tuple, itemStyle: emptyCellItemStyle(tc) } : tuple
+  })
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -120,7 +234,7 @@ export function buildHeatmap2DOption(
   series: ChartSeries<ChartPointHeatmap>[],
   opts: BuildOpts = {},
 ): EChartsCoreOption {
-  const { paletteMode = 'sequential', valueRange, colorPalette = 'default' } = opts
+  const { paletteMode = 'sequential', valueRange, saturationCap, colorPalette = 'default' } = opts
   const { formatTooltip } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -144,34 +258,33 @@ export function buildHeatmap2DOption(
     }
   }
 
-  // ECharts heatmap data : [xIndex, yIndex, value, detail].
-  //
-  // Une case VIDE part en `'-'` : c'est la valeur « pas de donnée » d'ECharts — la
-  // cellule n'est pas peinte, le visualMap ne la classe pas, et son étiquette est
-  // vide. `null` ferait la même chose côté rendu mais casserait le `Math.min`
-  // ci-dessous ; les valeurs vides sont donc écartées AVANT le calcul de l'échelle.
-  const data = dps.map((d) => [xs.indexOf(d.x), ys.indexOf(d.y), d.value ?? '-', d.detail])
+  const tc = getEChartsThemeColors()
+  const data = buildCellData(dps, xs, ys, tc)
 
   const remplies = dps.filter((d): d is ChartPointHeatmap & { value: number } => d.value != null)
   const valeurs = remplies.map((d) => d.value)
   const minV = valueRange?.[0] ?? (valeurs.length > 0 ? Math.min(...valeurs) : 0)
-  const maxV = valueRange?.[1] ?? (valeurs.length > 0 ? Math.max(...valeurs) : 0)
+  // Plafond de saturation : ignoré si valueRange fixe déjà le max. Absent des deux
+  // → comportement historique (max = valeur réelle la plus haute).
+  const maxV = valueRange?.[1] ?? saturationCap ?? (valeurs.length > 0 ? Math.max(...valeurs) : 0)
 
   // Rampe centralisée : en palette d'accessibilité, une heatmap séquentielle
   // bascule sur la rampe de fréquence (luminance monotone, CVD-safe).
   const colors = heatmapRampTokens(paletteMode, colorPalette).map(resolveToken)
 
-  const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
 
   return {
     backgroundColor: CHART_BG,
     grid: { top: 24, bottom: 80, left: 96, right: 24 },
+    // Requis pour qu'ECharts applique les `itemStyle.decal` posés à la main
+    // ci-dessus (même flag que `MatchSummaryCharts.ARIA_DECAL`).
+    aria: { decal: { show: true } },
     tooltip: {
       ...getTooltipBase(tc),
       position: 'top',
-      formatter: (params: { data: [number, number, number | string, Record<string, unknown>?] }) => {
-        const [xi, yi, brut, detail] = params.data
+      formatter: (params: { data: HeatCellDatum }) => {
+        const [xi, yi, brut, detail] = heatCellTuple(params.data)
         // Case vide : rien à dire, pas même « 0 ».
         if (typeof brut !== 'number') return ''
         const v = brut
@@ -199,12 +312,20 @@ export function buildHeatmap2DOption(
         name: main.key,
         type: 'heatmap',
         data,
+        // Décision D2 : liseré = padding visuel entre cases. `borderColor` prend
+        // l'encre du FOND DE CARTE (tc.card, cf. doc de `EChartsThemeColors.card`) :
+        // ça détache chaque case de sa voisine sans introduire de couleur nouvelle.
+        itemStyle: {
+          borderWidth: CELL_BORDER_WIDTH,
+          borderColor: tc.card,
+          borderRadius: CELL_BORDER_RADIUS,
+        },
         label: {
           show: true,
-          formatter: (params: { data: [number, number, number | string, Record<string, unknown>?] }) => {
-            const [, , brut, detail] = params.data
-            // Case vide : aucune étiquette (un « 0 » se lirait comme une mesure).
-            if (typeof brut !== 'number') return ''
+          formatter: (params: { data: HeatCellDatum }) => {
+            const [, , brut, detail] = heatCellTuple(params.data)
+            // Case vide : un tiret (décision D3) — un « 0 » se lirait comme une mesure.
+            if (typeof brut !== 'number') return EMPTY_CELL_LABEL
             return String(detail?.count ?? 0)
           },
         },

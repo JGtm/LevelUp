@@ -103144,3 +103144,53 @@ au calcul du hash indépendamment du branchement HTTP.
 `[x]`, plan mis à jour (cases + amendement S5 + Découvertes), commit sur
 `feat/fonds-carte-etag` (worktree `LevelUp-wt-fonds-etag`, base `feat/v75`). Étapes 0/2/3/4/5
 NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push sur `main`.
+## [2026-09-09] Vague C formes — lot 1.4 : C1 (Heatmap2DChart) + C2 garde-rail seulement (Complete)
+- Perimetre : lots C1 et C2 du plan `.ai/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md`, C2 restreint
+  au garde-rail (migration de `SynthesisHeatmapChart.tsx` REPORTEE par consigne explicite du
+  superviseur pour cette execution — non traitee).
+- **Decision technique C1** : `Heatmap2DChart.tsx` etendu sans casser les 4 consommateurs
+  existants (« ils heritent »). D2 (padding) : `itemStyle` SERIE (`borderWidth: 4`,
+  `borderColor: tc.card`, `borderRadius: 2`) — `tc.card` documente deja exactement cet usage
+  (« encre de separation »). D3 (absence visible) : les cases mesurees restent des tuples bruts
+  `[x,y,valeur,detail]` ; une case `value: null` devient un objet `{ value, itemStyle }` PROPRE
+  (fond `tc.splitLine` + `decal` hachure diagonale encre `tc.axisLabel`, `aria.decal.show: true`
+  requis cote option — meme flag que `MatchSummaryCharts.ARIA_DECAL`), etiquette `EMPTY_CELL_LABEL
+  = '—'`. Legende FR/EN (`HEATMAP_EMPTY_CELL_TEXT`, dictionnaire local `Record<Locale,string>`,
+  meme patron que `lib/review/i18n.ts`) rendue par le COMPOSANT (pas le builder pur) via la prop
+  `legend` de `ChartCard`, uniquement si la serie contient au moins une case vide — donc AUCUN
+  changement visible pour les consommateurs sans case vide. Plafond de saturation : prop
+  `saturationCap?: number`, ignoree si `valueRange` fourni, absente par defaut => comportement
+  historique inchange (teste explicitement).
+- **Resultats observes** : tests etendus dans `Heatmap2DChart.test.ts` (hachure/decal sur case
+  vide, tiret, `borderWidth > 0`, non-regression sans plafond, plafond actif, priorite de
+  `valueRange` sur `saturationCap`) + nouveau `Heatmap2DChart.test.tsx` (legende FR/EN au niveau
+  composant, absente si aucune case vide). Garde-rail C2 `heatmapSingleImpl.guard.test.ts` :
+  allowlist DATEE 2026-09-09 des 5 sites reeves par grep avant ecriture (`SynthesisHeatmapChart.tsx`
+  migration prevue lot C2 differe ; `ActivityCalendarChart.tsx`, `ExplorerActivityHeatmapChart.tsx`,
+  `RelationsMomentsHeatmap.tsx`, `squadMapHeatmapChart.ts` decision S6 du superviseur, hors
+  perimetre vague C). Mordant PROUVE : ajout temporaire de
+  `features/tactical/_tmpHeatmapProbe.ts` avec un litteral heatmap => test ROUGE
+  (`AssertionError: ... features/tactical/_tmpHeatmapProbe.ts`), fichier supprime, test revert
+  VERT. Le fichier de garde-rail evite deliberement de citer le litteral entre apostrophes
+  simples dans ses commentaires/titres de test, pour ne pas polluer le grep de sanity-check du
+  gate (`grep -rn "type: 'heatmap'" ...` doit rendre EXACTEMENT les 5 sites, verifie).
+- **Verification obligatoire** : `UsageRegularityBand`
+  (`features/session-detail/SessionUsageForms.tsx:276`) garde son `gap-[3px]` intact — verifie sur
+  pieces, statue `[~]` (non migre, miniature DOM/CSS assumee).
+- **Gates executes** (worktree `LevelUp-wt-formes`, branche `feat/formes-maquettes` depuis
+  `feat/v75`) : `npx vitest run src/components/charts` => 283/283 verts (32 fichiers) ; `npx
+  vitest run src/features/synthesis src/features/squad src/features/tactical
+  src/features/session-detail` => 1089/1089 verts (14 skip preexistants, `canvas` non installe =
+  warning attendu jsdom) ; `npm run typecheck` (`tsc -b`) => 0 erreur ; `npx eslint` sur les 4
+  fichiers touches/crees => 0 erreur ; grep du gate => exactement les 5 sites allowlistes.
+  `node_modules` du worktree relie par jonction Windows vers celui de
+  `LevelUp-go-migration/apps/web` (lockfile identique verifie par diff) — pas de reinstallation.
+- **Decouvertes NON traitees** (consignees dans le plan copie, section Decouvertes) :
+  `features/squad/squadEchange.logic.ts:200-203` documente l'ANCIEN comportement invisible des
+  cases vides — doc desormais partiellement inversee par C1, hors perimetre (consommateur, "ils
+  heritent") ; a corriger avec la migration de `SquadEchangeMatrixCard` ou une tache dediee.
+- **Conclusion / prochaine etape** : lot 1.4 clos (C1 fait, C2 garde-rail fait, migration
+  Synthesis explicitement differee). Reste a la charge d'une session future : lot C2 complet
+  (migration `SynthesisHeatmapChart.tsx` en mode divergent) quand le superviseur leve le report,
+  et le nettoyage du commentaire stale de `squadEchange.logic.ts`. Pas de fusion vers `feat/v75`
+  a ce stade (accord utilisateur prealable requis, regle CLAUDE.md n°16).
