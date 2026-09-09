@@ -123,8 +123,9 @@ describe('les options injectées — graphe de portée', () => {
     // morts, losange.
     const children = range.option.series[0].renderItem!({ dataIndex: 1 }, API).children
     expect(children.map((c) => c.type)).toEqual(['rect', 'polygon', 'rect', 'polygon'])
+    // Encres de la convention frags/morts de l'app : `chart-series-1` / `outcome-loss`.
     expect(children[0].style.fill).toBe(defaultPalette['chart-series-1'])
-    expect(children[2].style.fill).toBe(defaultPalette['chart-series-3'])
+    expect(children[2].style.fill).toBe(defaultPalette['outcome-loss'])
     expect(children[0].style.fill).not.toBe(children[2].style.fill)
   })
 
@@ -164,10 +165,14 @@ describe('les options injectées — graphe de dénivelé', () => {
   const colorOf = (option: EChartsOption, name: string) =>
     option.series.find((s) => s.name === name)?.itemStyle?.color
 
-  it('d’en haut emprunte l’encre des morts, d’en bas celle des frags', async () => {
+  it('la rampe du dénivelé est INDÉPENDANTE des encres frags/morts', async () => {
+    // Une seule teinte, du clair (d'en bas) au foncé (d'en haut). Elle n'emprunte PAS
+    // l'encre des morts : un segment rouge « d'en haut » se lirait comme un jugement, alors
+    // que le dénivelé ne dit que d'où part le tir.
     const { elevation } = await mountAndCapture()
     expect(colorOf(elevation.option, "d'en haut (> +1 m)")).toBe(defaultPalette['chart-series-3'])
     expect(colorOf(elevation.option, "d'en bas (< −1 m)")).toBe(defaultPalette['chart-series-1'])
+    expect(colorOf(elevation.option, "d'en haut (> +1 m)")).not.toBe(defaultPalette['outcome-loss'])
   })
 
   it('« à niveau » passe par la NORMALISATION de couleur — zrender ne parse pas oklch', async () => {

@@ -1,5 +1,5 @@
 /**
- * usageLogic.test.ts — la logique du bloc « usages d'équipement, socles et
+ * usageLogic.test.ts — la logique du bloc « usages d'équipement, armes spéciales et
  * objectifs » (S3). Les invariants éprouvés sont ceux de la doctrine §1 :
  * un champ ABSENT du contrat n'est JAMAIS un zéro (nil ≠ 0), les parts et parités
  * se formatent au dixième, la piste du lobby refuse de découper sans frontière
@@ -105,13 +105,11 @@ describe('buildGaugeRow — jauges de parts et parités', () => {
   it('rend les trois dénominateurs du §7 avec leurs textes d honnêteté', () => {
     const row = buildGaugeRow({
       key: 'pads',
-      label: 'Prises de socle',
+      label: 'Toutes armes spéciales',
       shares,
       teamParityPct: 25,
       lobbyParityPct: 12.5,
       teamOfLobbyParityPct: 50,
-      rangeMinPct: 5,
-      rangeMaxPct: 40,
       t,
       locale: 'fr',
     })
@@ -120,11 +118,32 @@ describe('buildGaugeRow — jauges de parts et parités', () => {
     expect(camp.honestyText).toBe('20 sur 43')
     expect(joueurEquipe.valueText).toBe('20,5 %')
     expect(joueurEquipe.parityPct).toBe(25)
-    // L étendue n existe QUE sur la jauge joueur/équipe.
-    expect(joueurEquipe.rangeMinPct).toBe(5)
-    expect(joueurEquipe.rangeMaxPct).toBe(40)
-    expect(camp.rangeMinPct).toBeNull()
     expect(joueurLobby.honestyText).toBe('9 sur 43')
+    // L ORDRE EST UN CONTRAT DE RENDU : la grille montre la 2e jauge seule quand le
+    // repli est fermé (PRIMARY_GAUGE_INDEX, SessionUsageForms). Si cet ordre change,
+    // c est « ma part dans le lobby » qui s affiche par défaut, sans que rien ne casse.
+    expect(row.gauges.map((g) => g.key)).toEqual([
+      'team-of-lobby',
+      'player-of-team',
+      'player-of-lobby',
+    ])
+    // Le compte brut vit dans l INFOBULLE, plus dans la cellule (D2).
+    expect(joueurEquipe.tooltip).toContain('9 sur 20')
+  })
+
+  it('marque un total : la ligne « toutes armes » se sépare de ses familles', () => {
+    const row = buildGaugeRow({
+      key: 'pads',
+      label: 'Toutes armes spéciales',
+      shares,
+      teamParityPct: 25,
+      lobbyParityPct: 12.5,
+      teamOfLobbyParityPct: 50,
+      isTotal: true,
+      t,
+      locale: 'fr',
+    })
+    expect(row.isTotal).toBe(true)
   })
 
   it('nil ≠ 0 : un scope à camp inconnu rend des jauges vides, jamais 0 %', () => {

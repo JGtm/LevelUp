@@ -1650,9 +1650,28 @@ en = "Output = offensive efficiency: how well damage is turned into kills. Resis
 # Aide pédagogique UNIQUE du graphe « Écart cumulé au FDA attendu » (Séries
 # temporelles + Sessions) : le graphe n'en avait aucune. Langage simple, pas de
 # vocabulaire statistique — l'important est la PENTE, pas la valeur absolue.
+#
+# Reecrit le 2026-09-09 (retour utilisateur : trop long) — 4 phrases ramenees a 2. Ce qui
+# a saute : la ligne 0 et le pointille, tous deux LISIBLES sur le graphe. Ce qui reste :
+# ce que l'ecart mesure, et la pente comme seul signal a suivre.
 [common.charts.fda_gap_tooltip]
-fr = "À chaque match, le FDA réel est comparé au FDA attendu (le niveau prévu face à cette opposition). La courbe additionne ces écarts match après match : elle monte quand la performance dépasse l'attendu, elle descend quand elle est en dessous. Sa pente est le signal à suivre — au-dessus de la ligne 0 la performance est en avance sur l'attendu, en dessous elle est en retard. Le trait fin en pointillés est le FDA attendu de chaque match."
-en = "For every match, actual KDA is compared to the KDA expected against that opposition. The line adds up those gaps match after match: it rises when performance beats expectations and falls when it falls short. Watch its slope above all — above the 0 line performance is ahead of expectations, below it it is behind. The thin dashed line is each match's expected KDA."
+fr = "La courbe additionne, match après match, l'écart entre le FDA réel et le FDA attendu face à l'opposition rencontrée. Elle monte quand la performance dépasse l'attendu, elle descend sinon : c'est la pente qui compte."
+en = "The line adds up, match after match, the gap between actual KDA and the KDA expected against the opposition faced. It rises when performance beats expectations and falls when it does not: the slope is what counts."
+
+# Aide pedagogique UNIQUE du profil « Intensite » (Sessions + Series temporelles +
+# Escouade). Elle vivait en TROIS copies quasi identiques — une par surface, deja
+# divergentes de formulation. Centralisee ici le 2026-09-09 avec son garde-rail
+# (`components/charts/intensityTooltipText.guard.test.ts`), sur le patron de
+# `fda_gap_tooltip`. Reecrite au passage : 4 phrases ramenees a 3.
+[common.charts.intensity_tooltip]
+fr = "Le match est découpé en 10 tranches. Le trait plein montre à quel moment arrivent les frags, du début (gauche) à la fin (droite). La zone colorée dit à quel point le profil varie d'un match à l'autre."
+en = "The match is split into 10 slices. The solid line shows when kills happen, from the start (left) to the end (right). The shaded band shows how much the profile varies from match to match."
+
+# Phrase AJOUTEE a la precedente sur la seule surface Escouade, la seule qui superpose
+# une courbe agregee d'equipe. Separee et non dupliquee : le tronc commun reste unique.
+[common.charts.intensity_tooltip_team]
+fr = "À partir de 3 joueurs, la courbe « Équipe » superposée montre le même profil pour l'escouade entière : au-dessus, le joueur est plus actif que le groupe sur cette tranche."
+en = 'From 3 players on, the overlaid "Team" curve shows the same profile for the whole squad: above it, the player is more active than the group on that slice.'
 
 # Axes du profil « Intensité » (Escouade / Séries temporelles / Sessions). L'axe X
 # ne montre que 3 repères (début / milieu / fin du match) ; rangeSuffix complète la

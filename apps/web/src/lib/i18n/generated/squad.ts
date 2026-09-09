@@ -50,7 +50,6 @@ export const squadManifest = {
   "squad.echange.delay_bin": { fr: "{start, number}-{end, number} s", en: "{start, number}-{end, number} s" },
   "squad.echange.delay_bin_open": { fr: "au-delà de {start, number} s", en: "beyond {start, number} s" },
   "squad.echange.delay_label": { fr: "Distribution du délai d'échange", en: "Trade delay distribution" },
-  "squad.echange.delay_narrative": { fr: "{inWindow, number} ripostes sur {total, number} arrivent dans la fenêtre de {seconds, number} s ; les {outside, number} autres sont montrées et ne comptent pas.", en: "{inWindow, number} counter-kills out of {total, number} land inside the {seconds, number} s window; the other {outside, number} are shown and do not count." },
   "squad.echange.delay_narrative_empty": { fr: "Aucune riposte mesurée sur la sélection.", en: "No counter-kill measured in this selection." },
   "squad.echange.delay_out_of_window_suffix": { fr: "hors fenêtre", en: "outside window" },
   "squad.echange.delay_title": { fr: "Délai d'échange", en: "Trade delay" },

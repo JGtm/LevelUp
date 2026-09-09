@@ -327,9 +327,8 @@ en = "Intensity"
 fr = "Répartition des frags par phase de match"
 en = "Frag distribution across match phases"
 
-[session.detail.chart_intensity_tooltip]
-fr = "Chaque match est découpé en 10 tranches de durée égale. Le trait plein montre à quel moment tes frags tombent : à gauche le début du match, à droite la fin. La zone colorée autour dit à quel point ça change d'un match à l'autre — large, tu joues très différemment selon les parties ; étroite, tu fais toujours à peu près pareil. Le pointillé est le niveau d'un match où tes frags seraient répartis également du début à la fin : au-dessus, c'est un moment fort de tes matchs, en dessous un moment creux."
-en = "Each match is split into 10 equal slices. The solid line shows when your kills happen: start of the match on the left, end on the right. The shaded band around it shows how much this changes from match to match — wide means you play very differently depending on the game, narrow means you play much the same way every time. The dashed line is the level of a match where your kills would be spread evenly from start to finish: above it is a strong stretch of your matches, below it a quiet one."
+# Aide du profil « Intensite » : centralisee le 2026-09-09 dans
+# `common.charts.intensity_tooltip` (elle vivait en trois copies divergentes).
 
 [session.detail.chart_intensity_median]
 fr = "Médiane"
@@ -357,8 +356,8 @@ fr = "Balance du match"
 en = "Match balance"
 
 [session.detail.net_lives_average_caption]
-fr = "Balance moyenne par match"
-en = "Average balance per match"
+fr = "Avantage net par match"
+en = "Net advantage per match"
 
 [session.detail.net_lives_average_unit]
 fr = "vies/match"

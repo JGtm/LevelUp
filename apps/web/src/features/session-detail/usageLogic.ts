@@ -1,5 +1,5 @@
 /**
- * usageLogic.ts — LA PROJECTION DU BLOC « usages d'équipement, socles et objectifs »
+ * usageLogic.ts — LA PROJECTION DU BLOC « usages d'équipement, armes spéciales et objectifs »
  * d'une session (chantier session-usage S3, handoff §1 : la grammaire des formes).
  *
  * TOUT AXE EST NORMALISÉ (doctrine §1) : parts en %, cadences par dix minutes. Les
@@ -27,7 +27,7 @@ import type {
 } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
-import type { UsageText } from './usageI18n'
+import { deployedFamilyLabel, type UsageText } from './usageI18n'
 
 // ─── Formatage (parts, cadences, comptes, durées) ────────────────────────────────
 
@@ -133,7 +133,7 @@ export function metricLabel(key: string, t: UsageText): string {
     case 'pads':
       return t.metricPads
     case 'deployed_other':
-      return t.metricDeployedFmt(key.slice(DEPLOYED_PREFIX.length))
+      return deployedFamilyLabel(key.slice(DEPLOYED_PREFIX.length), t)
     case 'other':
       return key
   }
@@ -186,7 +186,7 @@ export function equipmentMetrics(
     })
 }
 
-/** La grandeur « prises de socle » du bloc contrôle des armes spéciales. */
+/** Le TOTAL des ramassages d'armes spéciales (clé `pad_pickups` du contrat). */
 export function padMetric(
   metrics: SessionUsageMetric[] | null | undefined,
 ): SessionUsageMetric | null {
@@ -208,15 +208,25 @@ export function teamOfLobbyParityPct(
   return (teamSizeAvg / lobbySizeAvg) * 100
 }
 
-// ─── Forme « écart à la parité / jauge double avec étendue » ─────────────────────
+// ─── Forme « écart à la parité » ─────────────────────────────────────────────────
 
-/** Une jauge 0..100 % : sa valeur, son trait de parité, son étendue éventuelle. */
+/**
+ * Une jauge 0..100 % : sa valeur, son trait de parité, ses deux textes.
+ *
+ * PLUS D'ÉTENDUE MIN/MAX (revue de lisibilité 2026-09-09, D3). Le rail portait un second
+ * trait fin, sans légende, disant l'écart entre le meilleur et le pire match — la BANDE DE
+ * RÉGULARITÉ de la même carte dit exactement cela, case par match, et se lit. Deux formes
+ * pour une information, dont une muette : celle qui ne parle pas a été retirée du modèle,
+ * pas seulement cachée du rendu (règle « 0 code mort »).
+ *
+ * `honestyText` (le compte brut) reste dans le MODÈLE mais ne sort plus en cellule : il
+ * n'apparaît que dans `tooltip`. Un pourcentage doublé de sa fraction dans une colonne de
+ * 3 lignes triple la charge de lecture sans rien ajouter (D2).
+ */
 export interface UsageGaugeModel {
   key: string
   valuePct: number | null
   parityPct: number | null
-  rangeMinPct: number | null
-  rangeMaxPct: number | null
   valueText: string
   honestyText: string
   tooltip: string
@@ -227,9 +237,16 @@ export interface UsageGaugeRowModel {
   key: string
   label: string
   gauges: UsageGaugeModel[]
+  /**
+   * Cette ligne est le TOTAL des lignes qui la précèdent (D6) — la grille la sépare d'un
+   * filet et la pose en teinte secondaire. Le seul cas aujourd'hui : « toutes armes
+   * spéciales », qui est exactement la somme de ses familles ; affichée comme leur égale,
+   * elle se lisait comme une grandeur de plus.
+   */
+  isTotal?: boolean
 }
 
-/** Le sous-ensemble « parts » commun aux métriques, familles de socle et rôles. */
+/** Le sous-ensemble « parts » commun aux grandeurs, familles d'arme et rôles. */
 export interface UsageSharesLike {
   player_total: number
   team_total?: number
@@ -247,18 +264,20 @@ export interface UsageGaugeRowInput {
   teamParityPct: number | null | undefined
   lobbyParityPct: number | null | undefined
   teamOfLobbyParityPct: number | null | undefined
-  /** Étendue match par match de la part joueur/équipe (métriques seulement). */
-  rangeMinPct?: number | null
-  rangeMaxPct?: number | null
+  /** Cette grandeur est le total des lignes qui la précèdent (cf. `UsageGaugeRowModel`). */
+  isTotal?: boolean
   t: UsageText
   locale: Locale
 }
 
 /**
- * buildGaugeRow — les trois jauges d'une grandeur : mon camp / lobby, joueur / son
- * équipe (avec étendue quand elle est publiée), joueur / lobby. Chaque jauge écrit
- * sa part (l'axe) ET son compte brut (l'honnêteté, en texte). Une part absente du
- * contrat rend une jauge VIDE au tiret — jamais un 0 %.
+ * buildGaugeRow — les trois jauges d'une grandeur : mon équipe dans le lobby, ma part
+ * dans mon équipe, ma part dans le lobby. Chaque jauge porte sa part (l'axe) et son
+ * compte brut (l'honnêteté, en infobulle seulement — D2). Une part absente du contrat
+ * rend une jauge VIDE au tiret — jamais un 0 %.
+ *
+ * L'ORDRE DES JAUGES EST UN CONTRAT DE RENDU : la 2e (`player-of-team`) est celle que la
+ * grille montre seule quand le repli est fermé — `PRIMARY_GAUGE_INDEX`, SessionUsageForms.
  */
 export function buildGaugeRow(input: UsageGaugeRowInput): UsageGaugeRowModel {
   const { shares, t, locale } = input
@@ -272,7 +291,6 @@ export function buildGaugeRow(input: UsageGaugeRowInput): UsageGaugeRowModel {
     parityPct: number | null | undefined,
     numerator: number | null | undefined,
     denominator: number | null | undefined,
-    range?: { min?: number | null; max?: number | null },
   ): UsageGaugeModel => {
     const valueText = formatUsagePct(valuePct, locale)
     const honestyText = t.honestyFmt(count(numerator), count(denominator))
@@ -280,8 +298,6 @@ export function buildGaugeRow(input: UsageGaugeRowInput): UsageGaugeRowModel {
       key,
       valuePct: valuePct ?? null,
       parityPct: parityPct ?? null,
-      rangeMinPct: range?.min ?? null,
-      rangeMaxPct: range?.max ?? null,
       valueText,
       honestyText,
       tooltip: t.gaugeTipFmt(input.label, gaugeLabel, valueText, honestyText),
@@ -291,6 +307,7 @@ export function buildGaugeRow(input: UsageGaugeRowInput): UsageGaugeRowModel {
   return {
     key: input.key,
     label: input.label,
+    isTotal: input.isTotal,
     gauges: [
       gauge(
         'team-of-lobby',
@@ -307,7 +324,6 @@ export function buildGaugeRow(input: UsageGaugeRowInput): UsageGaugeRowModel {
         input.teamParityPct,
         shares.player_total,
         shares.team_total,
-        { min: input.rangeMinPct, max: input.rangeMaxPct },
       ),
       gauge(
         'player-of-lobby',

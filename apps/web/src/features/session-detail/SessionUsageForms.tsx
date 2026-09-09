@@ -1,7 +1,6 @@
 /**
  * SessionUsageForms — LE RENDU DES FORMES PROPRES de la grammaire session-usage
- * (handoff §1) : « écart à la parité / jauge double avec étendue », « piste du
- * lobby » et « bande de régularité ». Les grilles alignées, elles, passent par la
+ * (handoff §1) : « écart à la parité », « piste du lobby » et « bande de régularité ». Les grilles alignées, elles, passent par la
  * primitive partagée `components/charts/ValueGrid`.
  *
  * DOM ET CSS, PAS ECHARTS — le même choix mesuré que `ValueGrid` : ces formes sont
@@ -24,8 +23,9 @@
  *
  * Aucun calcul ici : tout vient de `usageLogic.ts`.
  */
-import { Fragment, type CSSProperties } from 'react'
+import { Fragment, useState, type CSSProperties } from 'react'
 
+import { CollapsedItemsToggle } from '@/components/ui/collapsed-items-toggle'
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
 
@@ -55,7 +55,16 @@ function clampPct(v: number): number {
   return Math.max(0, Math.min(100, v))
 }
 
-// ─── Écart à la parité / jauge double avec étendue ───────────────────────────────
+// ─── Écart à la parité ───────────────────────────────────────────────────────────
+
+/**
+ * L'INDEX DE LA JAUGE MONTRÉE SEULE quand le repli est fermé : « ma part dans mon
+ * équipe » (2e de `buildGaugeRow`). C'est le seul des trois dénominateurs qui réponde à
+ * la question que le lecteur se pose — est-ce que je porte mon équipe ou est-ce que je la
+ * suis. Les deux autres rapportent la même mesure au lobby ; ils sont VRAIS mais
+ * secondaires, et trois rails par ligne rendaient la grille illisible (D4).
+ */
+const PRIMARY_GAUGE_INDEX = 1
 
 /**
  * UsageGauge — DEUX cellules de grille (rail, puis texte), jamais un flex local :
@@ -63,6 +72,10 @@ function clampPct(v: number): number {
  * l'axe gradué du pied mesure vraiment les rails qu'il borde (revue adversariale
  * 2026-09-05 : un flex rail+texte donnait des rails raccourcis par leur propre
  * texte, et des graduations 50/100 qui ne tombaient sur rien).
+ *
+ * LE COMPTE BRUT N'EST PLUS ÉCRIT DANS LA CELLULE (D2) — il est dans l'infobulle du
+ * rail, où il était déjà. « 49,3 % (105 sur 213) » sur trois lignes de trois colonnes
+ * faisait neuf fractions à lire pour neuf pourcentages qui suffisaient.
  */
 function UsageGauge({ gauge }: { gauge: UsageGaugeModel }) {
   return (
@@ -80,17 +93,6 @@ function UsageGauge({ gauge }: { gauge: UsageGaugeModel }) {
               style={{ width: `${clampPct(gauge.valuePct)}%`, backgroundColor: ALLY_INK }}
             />
           )}
-          {gauge.rangeMinPct != null && gauge.rangeMaxPct != null && (
-            <div
-              className="absolute top-[-4px] h-[2px]"
-              style={{
-                left: `${clampPct(gauge.rangeMinPct)}%`,
-                width: `${clampPct(gauge.rangeMaxPct) - clampPct(gauge.rangeMinPct)}%`,
-                backgroundColor: ALLY_INK,
-                opacity: 0.55,
-              }}
-            />
-          )}
           {gauge.parityPct != null && (
             <div
               className="absolute top-[-2px] h-[15px] w-[2px]"
@@ -99,74 +101,108 @@ function UsageGauge({ gauge }: { gauge: UsageGaugeModel }) {
           )}
         </div>
       </Tooltip>
-      <span className="whitespace-nowrap text-right text-3xs tabular-nums">
-        <span className="text-foreground">{gauge.valueText}</span>{' '}
-        <span className="text-muted-foreground">({gauge.honestyText})</span>
+      <span className="whitespace-nowrap text-right text-3xs tabular-nums text-foreground">
+        {gauge.valueText}
       </span>
     </>
   )
 }
 
-/** L'axe gradué 0 · 50 · 100 % d'une colonne de jauges, avec son intitulé. */
-function GaugeAxis({ title }: { title: string }) {
+/** L'axe gradué 0 · 50 · 100 % d'une colonne de jauges. */
+function GaugeAxis() {
   return (
     <div className="relative mt-1 h-[15px] border-t border-border text-3xs text-muted-foreground tabular-nums">
       <span className="absolute left-0 top-0.5">0</span>
       <span className="absolute left-1/2 top-0.5 -translate-x-1/2">50</span>
-      <span className="absolute right-0 top-0.5">{`100 — ${title}`}</span>
+      <span className="absolute right-0 top-0.5">100 %</span>
     </div>
   )
 }
 
 /**
- * UsageGaugeGrid — les jauges de parts alignées en trois colonnes (les trois
- * dénominateurs du §7), une ligne par grandeur, un axe gradué par colonne.
+ * UsageGaugeGrid — les jauges de parts, UNE colonne par défaut (« ma part dans mon
+ * équipe ») et les deux autres dénominateurs derrière un repli, une ligne par grandeur,
+ * un axe gradué par colonne rendue.
+ *
+ * L'ÉTAT DU REPLI N'EST PAS PERSISTÉ et vit ici, pas chez l'appelant : les trois cartes
+ * du bloc ont chacune leur grille, et une préférence partagée ferait s'ouvrir la carte
+ * des objectifs parce qu'on a déplié celle de l'équipement (même décision que le repli
+ * « game changers » de la vue match, D3 de son plan).
  */
 export function UsageGaugeGrid({ rows, t }: { rows: UsageGaugeRowModel[]; t: UsageText }) {
+  const [expanded, setExpanded] = useState(false)
   if (rows.length === 0) return null
-  const gaugeCount = rows[0].gauges.length
+
+  const allHeaders = [t.gaugeTeamOfLobby, t.gaugePlayerOfTeam, t.gaugePlayerOfLobby]
+  // Les index de jauge rendus. Une ligne qui n'aurait pas la jauge primaire (contrat
+  // partiel) retombe sur la première : mieux vaut la mauvaise colonne que rien.
+  const total = rows[0].gauges.length
+  const primary = PRIMARY_GAUGE_INDEX < total ? PRIMARY_GAUGE_INDEX : 0
+  const shown = expanded ? rows[0].gauges.map((_, i) => i) : [primary]
+  const hidden = total - shown.length
+
   // Chaque colonne de jauge = DEUX sous-colonnes : le rail (élastique, borné) puis le
   // texte (à la largeur du plus long de la colonne). Ainsi tous les rails d'une colonne
   // sont de même largeur, et l'axe gradué du pied (posé dans la sous-colonne rail
   // seulement) mesure exactement ce qu'il borde.
   const gridStyle: CSSProperties = {
-    gridTemplateColumns: `${LABEL_WIDTH}px repeat(${gaugeCount}, minmax(${GAUGE_MIN}px, 1fr) max-content)`,
-    minWidth: LABEL_WIDTH + gaugeCount * (GAUGE_MIN + COLUMN_GAP),
+    gridTemplateColumns: `${LABEL_WIDTH}px repeat(${shown.length}, minmax(${GAUGE_MIN}px, 1fr) max-content)`,
+    minWidth: LABEL_WIDTH + shown.length * (GAUGE_MIN + COLUMN_GAP),
     columnGap: COLUMN_GAP,
   }
-  const headers = [t.gaugeTeamOfLobby, t.gaugePlayerOfTeam, t.gaugePlayerOfLobby]
   return (
     <div className="overflow-x-auto">
       <div className="grid items-center gap-y-[6px]" style={gridStyle}>
         <div aria-hidden="true" />
-        {headers.slice(0, gaugeCount).map((h) => (
+        {shown.map((gaugeIndex, i) => (
           <div
-            key={h}
-            className="mb-1 whitespace-nowrap border-b border-border pb-1.5 text-3xs font-semibold uppercase tracking-wider"
+            key={allHeaders[gaugeIndex] ?? gaugeIndex}
+            className="mb-1 flex items-center justify-between gap-2 whitespace-nowrap border-b border-border pb-1.5 text-3xs font-semibold uppercase tracking-wider"
             style={{ gridColumn: 'span 2' }}
           >
-            {h}
+            <span>{allHeaders[gaugeIndex]}</span>
+            {/* Le bouton vit dans le DERNIER en-tête rendu : à droite de la seule
+                colonne quand c'est replié, à droite de la dernière quand c'est ouvert. */}
+            {i === shown.length - 1 && (
+              <CollapsedItemsToggle
+                count={expanded ? total - 1 : hidden}
+                expanded={expanded}
+                onToggle={() => setExpanded((v) => !v)}
+                showLabelFmt={t.sharesShowMoreFmt}
+                hideLabel={t.sharesHide}
+                hint={t.sharesHint}
+              />
+            )}
           </div>
         ))}
-        {rows.map((row) => (
+        {rows.map((row, rowIndex) => (
           <Fragment key={row.key}>
-            <div className="overflow-hidden whitespace-nowrap text-xs" title={row.label}>
+            {/* Un TOTAL se sépare de ses propres composantes par un filet pleine largeur
+                (`1 / -1`), jamais par une bordure sur la seule cellule de libellé : le
+                filet doit traverser les rails, sinon la ligne se lit comme une grandeur
+                de plus. Filet omis en tête de grille — il n'y aurait rien au-dessus. */}
+            {row.isTotal && rowIndex > 0 && (
+              <div className="mt-0.5 border-t border-border pt-0.5" style={{ gridColumn: '1 / -1' }} />
+            )}
+            <div
+              className={`overflow-hidden whitespace-nowrap text-xs${row.isTotal ? ' text-muted-foreground' : ''}`}
+              title={row.label}
+            >
               <span className="truncate">{row.label}</span>
             </div>
-            {row.gauges.map((g) => (
-              <UsageGauge key={g.key} gauge={g} />
+            {shown.map((gaugeIndex) => (
+              <UsageGauge key={row.gauges[gaugeIndex].key} gauge={row.gauges[gaugeIndex]} />
             ))}
           </Fragment>
         ))}
         <div aria-hidden="true" />
-        {headers.slice(0, gaugeCount).map((h) => (
-          <Fragment key={h}>
-            <GaugeAxis title={t.axisSharePct} />
+        {shown.map((gaugeIndex) => (
+          <Fragment key={`axis-${gaugeIndex}`}>
+            <GaugeAxis />
             <div aria-hidden="true" />
           </Fragment>
         ))}
       </div>
-      <p className="pt-1.5 text-[11px] text-muted-foreground">{t.parityLegend}</p>
     </div>
   )
 }

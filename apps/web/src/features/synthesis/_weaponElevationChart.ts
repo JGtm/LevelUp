@@ -78,8 +78,13 @@ export function buildWeaponElevationOption({
     name: labels.segments[key],
     type: 'bar',
     stack,
-    barWidth: 7,
-    barGap: '55%',
+    // 11 px et non 7 : à 7 px les trois segments d'une barre étaient trop minces pour
+    // qu'on lise leur part, et les nombres inscrits dedans débordaient de leur segment
+    // (retour utilisateur 2026-09-09 : « les barres doivent être plus épaisses »). Deux
+    // barres de 11 px plus leur écart tiennent dans la bande de WEAPON_RANGE_ROW_PX (34 px),
+    // la MÊME que le graphe de portée — les deux graphes restent alignés ligne à ligne.
+    barWidth: 11,
+    barGap: '40%',
     itemStyle: { color: colors[key], borderColor: cardColor, borderWidth: 1 },
     label: {
       show: true,

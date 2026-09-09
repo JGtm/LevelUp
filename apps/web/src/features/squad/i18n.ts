@@ -133,8 +133,16 @@ export interface SquadText {
     totalRows: (n: number) => string
     /** aria-label/tooltip du lien « Ouvrir sur Halo Waypoint » (I19). */
     waypointAriaLabel: string
+    /**
+     * En-tête de la colonne Halo Waypoint (retour utilisateur 2026-09-09), abrégé en
+     * « HW » : la colonne ne fait qu'une icône de large. Nom propre, donc identique
+     * FR/EN — mais declaré dans les deux locales, la parité est un invariant de typage.
+     */
+    waypointHeader: string
     /** aria-label/tooltip du lien interne vers le rejeu 2D du match. */
     replayAriaLabel: string
+    /** En-tête de la colonne « Rejeu » (retour utilisateur 2026-09-09). */
+    replayHeader: string
     /** aria-label du bouton de tri d'un en-tête « Trier par {col} » (I16). */
     sortByAriaLabel: (col: string) => string
     /** Tooltips d'en-tête de colonne (V72-04, icône ⓘ). */
@@ -222,8 +230,6 @@ export interface SquadText {
     title: string
     /** Sous-titre de la carte Intensité (profil médian + enveloppe). */
     subtitle: string
-    /** Tooltip d'aide : courbe / zone d'irrégularité / repère / courbe d'équipe. */
-    tooltip: string
     /** Libellé tooltip du trait médian. */
     medianLabel: string
     /** Libellé tooltip de la fourchette interquartile. */
@@ -238,8 +244,10 @@ export interface SquadText {
     rendementCardTitle: string
     /** Titre COURT de la carte Résistance (la définition vit dans l'aide ⓘ). */
     resistanceCardTitle: string
-    /** Aide ⓘ des deux cartes : formule des indicateurs + pivot « une vie ». */
-    help: string
+    /** Aide ⓘ de la carte Rendement : ce que vaut une vie de dégâts infligés. */
+    rendementHelp: string
+    /** Aide ⓘ de la carte Résistance : ce qui est encaissé avant chaque mort. */
+    resistanceHelp: string
     /** Nom de l'indicateur offensif au survol (« Rendement »). */
     offensiveMetric: string
     /** Nom de l'indicateur défensif au survol (« Résistance »). */
@@ -479,7 +487,9 @@ const FR_TEXT: SquadText = {
     pageOf: (cur, total) => `Page ${cur} / ${total}`,
     totalRows: (n) => `${n} match${n > 1 ? 's' : ''}`,
     waypointAriaLabel: 'Ouvrir sur Halo Waypoint',
+    waypointHeader: 'HW',
     replayAriaLabel: 'Ouvrir le rejeu 2D du match',
+    replayHeader: 'Rejeu',
     sortByAriaLabel: (col) => `Trier par ${col}`,
     scoreTooltip:
       "Score final de la partie : l'équipe puis l'équipe adverse. Sur les modes qui se jouent en manches, ce sont les MANCHES gagnées et perdues qui sont affichées — le score en points de l'API peut y donner l'avantage au camp qui a perdu.",
@@ -596,7 +606,6 @@ const FR_TEXT: SquadText = {
   intensity: {
     title: 'Intensité',
     subtitle: 'Répartition des frags par phase de match',
-    tooltip: 'Chaque match est découpé en 10 tranches de durée égale. Le trait plein montre à quel moment les frags du joueur tombent : à gauche le début du match, à droite la fin. La zone colorée autour dit à quel point ça change d\'un match à l\'autre — large, le joueur joue très différemment selon les parties ; étroite, il fait toujours à peu près pareil. Le pointillé horizontal est le niveau d\'un match où les frags seraient répartis également du début à la fin. À partir de 3 joueurs, la courbe pointillée « Équipe » superposée montre le même profil pour l\'escouade entière : au-dessus, le joueur est plus actif que le groupe sur cette tranche.',
     medianLabel: 'Médiane',
     envelopeLabel: 'Enveloppe P25–P75',
     refLabel: '10 %',
@@ -605,7 +614,10 @@ const FR_TEXT: SquadText = {
   efficiencySeries: {
     rendementCardTitle: 'Rendement',
     resistanceCardTitle: 'Résistance',
-    help: 'Une courbe par joueur, match par match, sur une échelle où 100 % vaut exactement une vie de Spartan. Rendement = ce qu\'une vie de dégâts infligés rapporte en frags effectifs (frags + assistances / 3) : 100 % = un frag effectif par vie dépensée, 130 % = un tiers de mieux. Résistance = ce qui est encaissé avant chaque mort, rapporté à une vie : 100 % = une vie exactement, 150 % = la moitié en plus. Au-dessus du repère « 1 vie » (fond vert) la performance est meilleure, en dessous (fond rouge) moins bonne, dans les deux cartes. L\'échelle 50–200 % est la même à chaque session : deux sessions se comparent directement. Survoler un match affiche les valeurs brutes.',
+    rendementHelp:
+      'Ce qu\'une vie de dégâts infligés vous rapporte en frags effectifs (frags + assistances / 3). 100 % = un frag par vie dépensée. Au-dessus du repère (fond vert), vos dégâts portent ; en dessous (fond rouge), ils se dispersent.',
+    resistanceHelp:
+      'Les dégâts encaissés avant chaque mort, rapportés à une vie de Spartan. 100 % = une vie exactement. Au-dessus du repère (fond vert), vous survivez à plus que votre barre de vie ; en dessous (fond rouge), vous tombez plus tôt.',
     offensiveMetric: 'Rendement',
     defensiveMetric: 'Résistance',
     oneLife: '1 vie',
@@ -623,7 +635,7 @@ const FR_TEXT: SquadText = {
     deathsLabel: 'Morts',
     bonusLabel: 'Bonus',
     bonusInfo:
-      'Bonus = assistances ÷ 3 : dans le FDA, 3 assistances valent 1 frag (FDA = (frags + assistances/3) − morts). La série empile ce bonus au-dessus des frags du match ; elle est masquée par défaut, clique « Bonus » pour l\'afficher.',
+      'Bonus = assistances ÷ 3 : dans le FDA, 3 assistances valent 1 frag (FDA = (frags + assistances/3) − morts). La série empile ce bonus au-dessus des frags du match ; elle est masquée par défaut.',
     assistsTitle: 'Assistances',
     kdaTitle: 'FDA',
     accuracyTitle: 'Précision',
@@ -825,7 +837,9 @@ const EN_TEXT: SquadText = {
     pageOf: (cur, total) => `Page ${cur} / ${total}`,
     totalRows: (n) => `${n} match${n > 1 ? 'es' : ''}`,
     waypointAriaLabel: 'Open on Halo Waypoint',
+    waypointHeader: 'HW',
     replayAriaLabel: 'Open the 2D replay of the match',
+    replayHeader: 'Replay',
     sortByAriaLabel: (col) => `Sort by ${col}`,
     scoreTooltip:
       'Final match score: the team, then the opposing team. In modes played in rounds, the ROUNDS won and lost are shown instead — the API point score can favour the losing side there.',
@@ -942,7 +956,6 @@ const EN_TEXT: SquadText = {
   intensity: {
     title: 'Intensity',
     subtitle: 'Frag distribution across match phases',
-    tooltip: 'Each match is split into 10 equal slices. The solid line shows when the player\'s kills happen: start of the match on the left, end on the right. The shaded band around it shows how much this changes from match to match — wide means the player plays very differently depending on the game, narrow means they play much the same way every time. The horizontal dashed line is the level of a match where kills would be spread evenly from start to finish. From 3 players on, the overlaid "Team" dashed curve shows the same profile for the whole squad: above it, the player is more active than the group on that slice.',
     medianLabel: 'Median',
     envelopeLabel: 'P25–P75 envelope',
     refLabel: '10%',
@@ -951,7 +964,10 @@ const EN_TEXT: SquadText = {
   efficiencySeries: {
     rendementCardTitle: 'Efficiency',
     resistanceCardTitle: 'Resistance',
-    help: 'One curve per player, match by match, on a scale where 100% is exactly one Spartan life. Efficiency = what one life worth of damage dealt buys in effective kills (kills + assists / 3): 100% means one effective kill per life spent, 130% means a third better. Resistance = what is absorbed before each death, measured against one life: 100% is exactly one life, 150% is half again as much. Above the "1 life" marker (green background) performance is better, below it (red background) it falls short — in both cards. The 50–200% scale never changes, so two sessions compare directly. Hovering a match shows the raw values.',
+    rendementHelp:
+      'What one life worth of damage dealt earns you in effective kills (kills + assists / 3). 100% = one kill per life spent. Above the marker (green band), your damage lands; below it (red band), it scatters.',
+    resistanceHelp:
+      'The damage absorbed before each death, measured against one Spartan life. 100% = exactly one life. Above the marker (green band), you outlast your own health bar; below it (red band), you go down sooner.',
     offensiveMetric: 'Efficiency',
     defensiveMetric: 'Resistance',
     oneLife: '1 life',
@@ -969,7 +985,7 @@ const EN_TEXT: SquadText = {
     deathsLabel: 'Deaths',
     bonusLabel: 'Bonus',
     bonusInfo:
-      'Bonus = assists ÷ 3: in KDA, 3 assists count as 1 kill (KDA = (kills + assists/3) − deaths). The series stacks that bonus on top of the match kills; it is hidden by default, click "Bonus" to show it.',
+      'Bonus = assists ÷ 3: in KDA, 3 assists count as 1 kill (KDA = (kills + assists/3) − deaths). The series stacks that bonus on top of the match kills; it is hidden by default.',
     assistsTitle: 'Assists',
     kdaTitle: 'KDA',
     accuracyTitle: 'Accuracy',

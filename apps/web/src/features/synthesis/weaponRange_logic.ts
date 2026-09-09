@@ -7,7 +7,7 @@
  * `_weaponElevationChart.ts`.
  */
 import type { ManifestLocale } from '@/lib/i18n/format'
-import type { WeaponBelowThreshold, SynthesisWeaponRange } from '@/lib/api/types'
+import type { SynthesisWeaponRange } from '@/lib/api/types'
 
 /**
  * WEAPON_RANGE_MIN_MEASURED — MIROIR de `analysis.WeaponRangeMinMeasured` (Go), sous le
@@ -39,23 +39,6 @@ interface LabelledWeapon {
 export function resolveWeaponLabel(w: LabelledWeapon, locale: ManifestLocale): string {
   const label = locale === 'en' ? w.label_en : w.label
   return label && label.trim() !== '' ? label : w.weapon_key
-}
-
-/**
- * belowThresholdNames — « Hydra (6), Disrupteur (4) », ou `null` si la liste est vide.
- *
- * L'ORDRE VIENT DU BACKEND (effectif décroissant puis clé) et n'est pas rejoué : deux tris
- * du même fait divergeraient. `null` plutôt que chaîne vide : l'appelant doit pouvoir
- * OMETTRE le demi-énoncé, pas afficher « frags : ».
- */
-export function belowThresholdNames(
-  entries: readonly WeaponBelowThreshold[] | null | undefined,
-  locale: ManifestLocale,
-  fmtCount: (n: number) => string,
-): string | null {
-  const list = entries ?? []
-  if (list.length === 0) return null
-  return list.map((e) => `${resolveWeaponLabel(e, locale)} (${fmtCount(e.measured)})`).join(', ')
 }
 
 /**

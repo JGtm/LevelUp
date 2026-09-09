@@ -237,7 +237,6 @@ func metricValue(key string, p *PlayerRow) int {
 // durTeam, calculés par l'appelant), numérateur et dénominateur.
 func computeMetric(playerXUID, key string, measured []MatchInput, durAll, durTeam float64) domain.SessionUsageMetric {
 	out := domain.SessionUsageMetric{Key: key}
-	var minShare, maxShare *float64
 	var teamSum, playerTeamScope, lobbyTeamScope float64 // scope camp connu
 	var playerDur, teamDur, lobbyDur float64             // scope durée connue
 	teamKnown, aboveTeamParity := false, 0
@@ -264,12 +263,6 @@ func computeMetric(playerXUID, key string, measured []MatchInput, durAll, durTea
 			point.TeamShareOfLobbyPct = sharePct(float64(t), float64(l))
 		}
 		if s := point.PlayerShareOfTeamPct; s != nil {
-			if minShare == nil || *s < *minShare {
-				minShare = s
-			}
-			if maxShare == nil || *s > *maxShare {
-				maxShare = s
-			}
 			if m.TeamSize > 0 && *s > 100/float64(m.TeamSize) {
 				aboveTeamParity++
 			}
@@ -290,7 +283,6 @@ func computeMetric(playerXUID, key string, measured []MatchInput, durAll, durTea
 		out.MatchesAboveTeamParity = &aboveTeamParity
 	}
 	out.PlayerShareOfLobbyPct = sharePct(out.PlayerTotal, out.LobbyTotal)
-	out.PlayerShareOfTeamMinPct, out.PlayerShareOfTeamMaxPct = minShare, maxShare
 	out.PlayerPer10Min = per10Min(playerDur, durAll)
 	out.LobbyPer10Min = per10Min(lobbyDur, durAll)
 	return out

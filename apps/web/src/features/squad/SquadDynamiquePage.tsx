@@ -11,6 +11,7 @@
  */
 import { useMemo } from 'react'
 import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
+import { intensityTooltipText } from '@/components/charts/intensityTooltipText'
 import { firstBloodMaxSec, toFirstBloodSeries } from '@/features/_shared/firstBlood'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadContext } from './SquadContext'
@@ -66,7 +67,7 @@ export function SquadDynamiquePage() {
       <SquadIntensityProfileChart
         title={t.intensity.title}
         subtitle={t.intensity.subtitle}
-        tooltip={t.intensity.tooltip}
+        tooltip={intensityTooltipText(locale, { withTeam: true })}
         medianLabel={t.intensity.medianLabel}
         envelopeLabel={t.intensity.envelopeLabel}
         refLabel={t.intensity.refLabel}

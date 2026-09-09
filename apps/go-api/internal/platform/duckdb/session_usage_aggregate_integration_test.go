@@ -223,11 +223,7 @@ func TestSessionUsageAggregate_DePersisterAuBloc(t *testing.T) {
 	if !proche(pad.PlayerPer10Min, 5*600.0/900) {
 		t.Errorf("cadence joueur = %v, attendu 3.333", pad.PlayerPer10Min)
 	}
-	// ── Étendue + matchs au-dessus de la parité DU match ────────────────────────
-	if !proche(pad.PlayerShareOfTeamMinPct, 100.0/3) || !proche(pad.PlayerShareOfTeamMaxPct, 80) {
-		t.Errorf("étendue = (%v, %v), attendu (33.33, 80)",
-			pad.PlayerShareOfTeamMinPct, pad.PlayerShareOfTeamMaxPct)
-	}
+	// ── Matchs au-dessus de la parité DU match ──────────────────────────────────
 	if pad.MatchesAboveTeamParity == nil || *pad.MatchesAboveTeamParity != 1 || pad.MatchesAboveLobbyParity != 1 {
 		t.Errorf("au-dessus parité = (%v, %d), attendu (1, 1)",
 			pad.MatchesAboveTeamParity, pad.MatchesAboveLobbyParity)

@@ -97,7 +97,7 @@ describe('buildWeaponElevationOption — deux piles de trois segments', () => {
       "d'en bas",
     ])
     expect(ELEVATION_KEYS).toEqual(['above', 'level', 'below'])
-    expect(s.every((x) => x.type === 'bar' && x.barWidth === 7 && x.barGap === '55%')).toBe(true)
+    expect(s.every((x) => x.type === 'bar' && x.barWidth === 11 && x.barGap === '40%')).toBe(true)
   })
 
   it('les MÊMES catégories, dans le MÊME ordre que le graphe de portée', () => {
@@ -112,7 +112,7 @@ describe('buildWeaponElevationOption — deux piles de trois segments', () => {
       labels: { kills: 'f', deaths: 'm', percentiles: 'p', noMeasure: 'n' },
     }) as { yAxis: { data: string[] } }
     expect(optionOf(LINES).yAxis.data).toEqual(portee.yAxis.data)
-    expect(optionOf(LINES).yAxis.data).toEqual(['hinf_commando ×64/—', 'BR75 ×281/402'])
+    expect(optionOf(LINES).yAxis.data).toEqual(['hinf_commando', 'BR75'])
     expect(optionOf(LINES).xAxis.max).toBe(100)
   })
 

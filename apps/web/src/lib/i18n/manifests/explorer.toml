@@ -368,9 +368,23 @@ en = "Open"
 fr = "Ouvrir sur Halo Waypoint"
 en = "Open on Halo Waypoint"
 
+# En-tete de la colonne « Halo Waypoint » (retour utilisateur 2026-09-09). Abrege en
+# « HW » : la colonne ne fait qu'une icone de large, le nom entier l'elargirait pour
+# rien. Identique FR et EN — c'est un nom propre — mais les deux locales restent
+# declarees : la parite est un invariant de typage du manifest (ADR 0003).
+[explorer.matches.col_waypoint]
+fr = "HW"
+en = "HW"
+
 [explorer.matches.col_replay_aria]
 fr = "Ouvrir le rejeu 2D du match"
 en = "Open the 2D replay of the match"
+
+# En-tete de la colonne « Rejeu » (retour utilisateur 2026-09-09) : la colonne
+# etait servie sans en-tete, seule colonne anonyme du tableau.
+[explorer.matches.col_replay]
+fr = "Rejeu"
+en = "Replay"
 
 [explorer.matches.sort_by]
 fr = "Trier par {col}"

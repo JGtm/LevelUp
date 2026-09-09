@@ -17,7 +17,7 @@
  * s'affiche en haut.
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { resolveToken, tokenCssVar } from '@/lib/accessibility'
+import { resolveToken } from '@/lib/accessibility'
 import {
   CHART_BG,
   escapeHtml,
@@ -25,6 +25,7 @@ import {
   getEChartsThemeColors,
   getLegendBase,
   getTooltipBase,
+  legendEntries,
 } from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { MapBreakdownRow } from '@/lib/api/types'
@@ -103,7 +104,9 @@ export function buildWinRateVsHistoryBulletOption(
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
 
-  const histColor = tokenCssVar('chart-series-1')
+  // `resolveToken` et NON `tokenCssVar` : ECharts peint dans un canvas, qui n'évalue pas
+  // `var(--ac-chart-series-1)` — la barre historique recevait une couleur invalide.
+  const histColor = resolveToken('chart-series-1')
   const histData = sorted.map((r) =>
     r.historical_win_rate !== undefined
       ? { value: toPercent(r.historical_win_rate), itemStyle: { color: histColor, opacity: 0.85 } }
@@ -127,7 +130,18 @@ export function buildWinRateVsHistoryBulletOption(
       axisPointer: { type: 'shadow' },
       formatter: bulletTooltipFormatter(sorted, mapLabelOf, countsLabel),
     },
-    legend: { ...getLegendBase(tc), data: [historyLabel, sessionLabel] },
+    // Couleurs portées par les ENTRÉES de légende : la barre de session est colorée au
+    // POINT (une teinte par carte selon l'écart) et ne donne donc aucune couleur de série
+    // à ECharts, qui retombait sur sa palette par défaut.
+    legend: {
+      ...getLegendBase(tc),
+      data: legendEntries([
+        { name: historyLabel, color: histColor },
+        // La session est peinte selon son ÉCART à l'historique (au-dessus / à parité / en
+        // dessous) : la pastille porte la teinte de PARITÉ, seule des trois qui ne juge pas.
+        { name: sessionLabel, color: resolveToken('divergent-neutral') },
+      ]),
+    },
     xAxis: {
       ...axis,
       type: 'value',

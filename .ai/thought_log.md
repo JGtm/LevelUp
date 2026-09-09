@@ -1,3 +1,711 @@
+## [2026-09-09] Diagnostic triple : compteur L2 escouade, sortie de cadre au rejeu, familles d'equipement — Complete (aucun code modifie)
+
+**Demande utilisateur** : trois verifications, sans livraison. (1) session du 27 aout,
+composition exacte : la page affiche moins de matchs que la ligne L2 ; (2) que devient le
+point d'un joueur qui sort du canevas pendant le rejeu ; (3) sens de « seuls camo et
+surbouclier sont des familles de socle publiees ».
+
+**1 — Compteur L2 : source non unifiee restante.** `3862ff083` avait unifie le compte du
+`SessionMultiSelect` sur `composition_sessions.match_count` (population post-intersection ET
+post-`filterExactComposition`, `teammates_service.go:426` apres le filtre pose en 335-336).
+La ligne L2 n'a PAS ete unifiee : `PeriodSessionRail` lit `resolvedContext.session_options.
+all_sessions` (`PeriodSessionRail.tsx:215`, `session.match_count` en 449) et recoit
+`matchCount={totalAfter}` = `previewResolve.counts.total_matches_after_filters`
+(`SquadLayout.tsx:313`, `734`). Ces deux nombres viennent de `FiltersService.
+ResolveFiltersFromRowsAt` : population du JOUEUR PRINCIPAL filtree par match_context/session/
+cascade, qui ignore et la composition selectionnee et `filter_exact_composition`. Le rail est
+donc structurellement >= au corps de page des que l'option est active.
+
+**Mesure sur la session du 27 aout 2026** (`diag_q` sur `shared_matches_v2`, xuid JGtm
+`2533274823110022`) : 8 matchs joues, dont 7 avec Madina97294 + Chocoboflor. Exclus par la
+composition exacte : `a0c36016` (Nilton410, rang 4 du top coequipiers « avec amis »),
+`faff9935` et `94a28b8b` (passivemarquise, rang 35) -> 4 matchs en page contre ~7 en L2.
+
+**Le match du crash de Chocoboflor n'est PAS la cause.** `2cf24f30` (19:39 UTC) porte bien
+`present_at_completion = FALSE` pour Chocoboflor et un bot `bid(3.0)` en `joined_in_progress`
+a sa place ; ni `Q30SquadMatchesSharedQuery` ni `Q32bMainTeamParticipantsTemplate` ne filtrent
+sur la presence, et les bots sont hors du top coequipiers (`NOT LIKE 'bid(%'`) donc hors
+`extraPool` : ce match est CONSERVE par `matchHasExactComposition`. L'ecart vient des trois
+matchs a quatrieme coequipier connu.
+
+**2 — Sortie de cadre au rejeu : le point disparait, il ne colle pas.** `worldToCanvas`
+(`replayLogic.ts:108`) est une projection affine sans bornage ; `projectTo` ne fait que
+l'alimenter, et `drawTracksLayer` dessine a la coordonnee projetee telle quelle. Hors toile,
+le trace est ecrete par le bitmap du canvas : rognage progressif au bord puis disparition,
+aucun debordement possible dans le composant parent. Le cas n'existe qu'a zoom > 1 (ou apres
+deplacement) : `sceneBounds` a zoom 1 retombe sur `doc.bounds`, que `boundsOf` (`geometry.go:
+170`) calcule comme la boite englobante EXACTE des points publies.
+
+**3 — « Familles de socle publiees » : deux limites distinctes, meme couple de noms.**
+(a) Etat ACTIF (`equipmentEpisodes`, `document.go:148`) : camo et surbouclier seulement, parce
+que seuls ces deux effets ont une voie mesuree dans le film (i28 queue[1] binaire ; i5 non
+clampe, q > 64). (b) SOCLES (`powerup_pads.go`) : le filtre est le PREFIXE `powerup_` sur les
+familles `eqip` du manifeste, et `replay_labels.toml` n'en nomme que deux
+(`powerup_overshield` 0xb781197a, `powerup_camo` 0xe7be9f5c) — un power-up ajoute au TOML
+apparaitrait sans toucher au Go. Les 19 autres familles d'equipement du manifeste ne sont pas
+« non gerees » : elles passent par `abilities[]` (porte), `equipmentChanges` (ramassage /
+consommation), `equipmentPlacements` (poses, familles wall/sensor/other) et le bilan
+`MatchEquipmentUsageSection`.
+
+**Conclusion / prochaine etape** : le correctif du point 1 consiste a alimenter le rail
+escouade avec `composition_sessions` (comme `SessionMultiSelect`) plutot qu'avec
+`/filters/resolve` — `PeriodSessionRail` etant partage par plusieurs pages, l'injection doit
+rester optionnelle. Non engage : en attente de l'arbitrage utilisateur.
+
+## [2026-09-09] Lisibilite des cartes d'usage de la page Sessions — Complete
+
+**Demande utilisateur** : les blocs « Usages d'equipement », « Controle des armes speciales »
+et la vue « Parts et parites » portent trop de texte pour ce qu'ils disent. Maquettes
+avant/apres soumises et validees (artefact « Refonte des cartes d'usage »), decisions D1..D8
+consignees dans `.ai/PLAN_SESSION_USAGE_LISIBILITE_2026-09-09.md`. Trois etapes, toutes closes.
+
+**Decision technique principale** — trier chaque texte de la carte en CHIFFRE ou METHODE.
+Un chiffre reste a l'ecran (il ne se survole pas) ; toute methode — lecture des barres, trait
+de parite, cases de regularite, corollaire « episode actif != bonus ramasse » — part dans
+UNE aide d'en-tete par carte (`cardHint*`), portee par le LIBELLE du titre et non par une
+icone (convention V73-L2 2.4c, `lib/table/columnMeta`). Les pieds « equipement » et
+« objectifs » disparaissent, celui des armes speciales passe de quatre paragraphes a trois
+lignes de comptes.
+
+Trois retraits assumes, chacun parce que la MEME information est deja portee, en mieux,
+ailleurs dans la meme carte :
+- l'etendue min/max de la part joueur/equipe (deux traits fins sans legende sur le rail)
+  — la bande de regularite dit la meme dispersion, case par match. Retiree du RENDU, du
+  MODELE et du CALCUL Go, puis du contrat (voir plus bas) ;
+- le compte brut colle au pourcentage dans chaque cellule (« 49,3 % (105 sur 213) ») — il
+  est deja dans l'infobulle du rail, ou il reste ;
+- le compte « matchs au-dessus de la parite LOBBY » de la bande — orphelin : les cases se
+  teintent contre la parite d'EQUIPE, aucune case ne representait ce second compte.
+
+Deux changements de forme : une seule colonne de jauges rendue par defaut (« ma part dans
+mon equipe », le seul des trois denominateurs qui reponde a « est-ce que je porte mon
+equipe »), les deux autres derriere `CollapsedItemsToggle` ; et `pad_pickups`, qui est
+EXACTEMENT la somme des familles d'armes affichees au-dessus, cesse d'etre une ligne de meme
+rang que ses composantes — il passe SOUS elles, marque `isTotal`, separe par un filet pleine
+largeur et pose en teinte secondaire.
+
+Vocabulaire : le mot « socle » n'atteint plus l'ecran (c'est le vocabulaire de la MESURE,
+pas celui du lecteur ; le code garde `pad_*`, cle du contrat). Les cles machine non plus :
+`deployed_sensor` s'affichait « Equipements deployes (sensor) » et devient « Capteur de
+menaces » (`deployedFamilyLabel`, 2e copie assumee du dictionnaire `placementFamily` de la
+vue match — a la 3e, centraliser dans `components/` avec garde-rail).
+
+**Noms d'armes (etape 2)** — les lignes par famille affichaient la cle hexadecimale brute
+(« Famille d'arme a2b3c4d5 »). Le sidecar ne stocke que cette cle : la resolution se fait
+donc A LA REQUETE contre le catalogue du titre (`replaylabels.Load`), meme arbitrage mot
+pour mot que `service/replay_weapon_labels.go` — les 23 artefacts locaux et toute la prod
+resteraient muets jusqu'a une re-cuisson si on figeait le nom au build. Nouveau champ
+`SessionUsagePadFamily.FamilyLabel` (omitempty) ; une famille hors catalogue GARDE sa cle,
+regle du chantier rejeu (« un nom approchant se lit comme une certitude »). `repoRoot` porte
+par `WithSessionUsage` plutot qu'un `With*` de plus : il n'a d'utilite que pour ce bloc.
+
+**Session comparee (etape 3)** — le drawer n'affichait rien a droite non par choix de
+lecture mais parce que le bloc n'etait jamais calcule pour la session comparee.
+`attachSessionUsage` scinde en `buildSessionUsage` (une session) + un attacheur qui sert les
+deux, MIROIR d'`attachSessionEventBlocks` ; `CompareUsage` au contrat ; reutilise
+`compareMatchesForEvents` pour que les deux colonnes parlent des memes matchs. Drawer ouvert
+= version compacte des DEUX cotes (demande utilisateur) : le compact retire les trois formes
+LARGES (bande de regularite, piste du lobby, grilles famille x role et joueur x role) et
+garde ce qu'on vient comparer — parts et cadences. Rien n'est retire du calcul.
+
+**Contrat nettoye** : `player_share_of_team_min_pct` / `_max_pct` n'avaient plus aucun
+lecteur apres le retrait de l'etendue — champs calcules et publies pour personne. Retires du
+domain, de `computeMetric`, de l'openapi et de `generated.ts` (0 code mort, regle 7).
+
+**Resultats observes** — `go test ./...` exit 0 et `go vet ./...` exit 0 ;
+`go test -tags=integration -p 1 ./internal/platform/duckdb/ -run SessionUsage` exit 0 (le
+diff touche un test d'integration DuckDB) ; `npx tsc -b --force` exit 0 ;
+`npx eslint src/features/session-detail --max-warnings=0` exit 0 ; `npx vitest run`
+664 fichiers / 7066 tests verts, 0 echec. 9 tests ajoutes (4 sur la resolution des noms
+d'armes, 2 sur la session comparee, 3 sur le repli des jauges et le compte brut en
+infobulle).
+
+**Doc inversee corrigee dans le meme lot** (anti-pattern n°9) : les en-tetes de
+`SessionUsageSection`, `SessionUsageForms`, `usageLogic`, `usageGrids`, `usageI18n` et des
+deux fichiers de test decrivaient encore l'etendue, les « socles » et un corollaire en pied
+de carte qui n'existent plus.
+
+**Prochaine etape** — rien de fonctionnel en attente. Le lot n'est PAS commite : ce worktree
+porte des modifications d'autres sessions, le commit se fera par chemins explicites apres
+arbitrage de la branche avec l'utilisateur.
+
+## [2026-09-09] Retours UI : rejeu sur les tuiles, blocs de catalogue denses, lisibilite des graphes — Complete
+
+**Retours utilisateur (8 points, un seul lot)**, tous traites.
+
+**Decisions techniques**
+
+1. `net_lives_average_caption` : « Balance moyenne par match » -> « Avantage net par match »
+   (EN « Net advantage per match »). Le calcul ne bouge pas ; c'est la formulation qui
+   n'exprimait pas l'idee (des vies d'avantage, pas une ligne comptable). Une seule surface :
+   la pastille de Sessions (le jumeau Escouade n'en a pas).
+2. Colonne « Rejeu » : les deux tableaux qui la portent (Explorer, Synergies escouade) la
+   servaient sans en-tete — seule colonne anonyme. `explorer.matches.col_replay` (manifest) et
+   `matchHistory.replayHeader` (i18n escouade). Le commentaire « en-tete vide donc pas de tri »
+   est corrige : la colonne reste non triable parce qu'elle n'a pas de valeur d'acces.
+2bis. En-tete de la colonne Halo Waypoint (meme retour, tranche apres coup) : « HW » dans
+   les deux tableaux. Abrege parce que la colonne ne fait qu'une icone de large. Nom propre,
+   donc identique FR/EN — les deux locales restent declarees (parite = invariant de typage,
+   ADR 0003). Aucun bouton de tri n'apparait : les deux tableaux branchent sur
+   `getCanSort()`, faux pour une colonne d'affichage sans accesseur.
+
+3. Bouton de rejeu des tuiles de match : il EXISTAIT deja (icone nue 20x16 a 60 % d'opacite,
+   collee au nom de playlist) — invisible en pratique, d'ou le retour « je ne le vois pas ».
+   Verifie AVANT de coder que la chaine de donnees etait saine : `AvailableSet` -> `Has` ->
+   `applyReplayAvailabilityToRecentItems` (home_service.go:457) est bien cablee et posee APRES
+   le cache ; le champ traverse le DTO et le type TS. Le defaut etait donc purement visuel.
+   Correctif : variante `button` sur `MatchReplayLink` (cadre 28 px) plutot qu'un TROISIEME
+   composant de lien de rejeu (CLAUDE.md n°6 — il en existe deja deux), et deplacement dans la
+   rangee « badge solo/escouade + placement », hors du garde `hasMatchMeta` pour qu'un match
+   sans placement garde son bouton.
+4. Remerciements : ajout de Reclaimer (Gravemind2401), reference du decodeur de geometrie de
+   cartes (`internal/himap` : SBSP, filtres de maillage, groupes SDDT). Les 3 surfaces
+   (ACKNOWLEDGMENTS, README EN, README FR).
+5. Pied de page seul a l'ecran pendant le chargement : l'`AppShell` posait `<Outlet/>` et
+   `<AppFooter/>` dans un conteneur sans hauteur minimale ; une page dont les donnees arrivent
+   ne rend qu'un placeholder d'une ligne, donc le pied de page remontait en haut puis se
+   faisait repousser (saut de mise en page a chaque navigation). Colonne `flex min-h-full` +
+   `flex-1` sur l'Outlet : pied de page toujours sous la ligne de flottaison. Ce n'etait pas
+   une bonne pratique, c'etait un defaut.
+6. Pages Medailles et Citations : un bloc pleine largeur par categorie quel que soit son
+   contenu. Le commit `610aaeb23`, cite comme correctif, ne touchait PAS ces pages (il portait
+   sur les cartes de l'onglet Escouade) — cible manquee. Nouveau helper pur
+   `lib/layout/blockRowPacking` : largeur en colonnes d'une grille de 6 selon le NOMBRE de
+   vignettes (<=3 -> tiers, <=8 -> demi, sinon plein), packing glouton qui PRESERVE l'ordre de
+   tri, piste fantome pour les colonnes libres de la derniere rangee (pas de dilatation — c'est
+   le defaut qu'on corrige). Classe `.block-row` (globals.css) pour retomber a une colonne
+   sous 768 px, largeur passee en `--block-row-cols`.
+7. « Premier frag / premiere mort » : les tokens etaient bons (`outcome-win`/`outcome-loss`),
+   c'est l'opacite qui delavait — nuage 0.55 -> 0.85, barre d'avance (l'element PRINCIPAL,
+   le plus pale des trois) 0.32 -> 0.5. Un seul composant partage : Sessions, Escouade et
+   Series temporelles corriges d'un coup.
+
+**Effet de bord assume** : la regeneration des manifests i18n a resynchronise
+`generated/{home,match_view,explorer}.ts` (cles presentes en TOML, absentes du genere) et
+`generated/{squad,synthesis}.ts` (travail en vol d'une autre session, TOML deja edite).
+Typecheck vert : aucune cle referencee n'a disparu.
+
+**Resultats** : `tsc -b` exit 0 ; vitest SUITE COMPLETE 7060 passes / 17 skipped / 0 echec ;
+`lint:colors` 0 violation ; `lint:fields` 0 violation ; eslint 0 erreur (2 avertissements
+TanStack Table preexistants).
+
+**GO NON COMPILE** : `go build ./...` echoue dans ce worktree partage sur du travail EN VOL
+d'une autre session — `internal/domain/session_usage.go` a perdu `PlayerShareOfTeam{Min,Max}Pct`
+alors que `internal/analysis/sessionusage/usage.go:293` les lit encore. Rien a voir avec ce
+lot. Le correctif Go et son garde-rail sont donc verifies par `gofmt` (syntaxe) et par
+l'extraction manuelle du meme invariant (aucune option de HomeCtx ne manque chez
+HomeCtxWithAuth), pas par `go test`. A rejouer des que le build du module est repare.
+
+8. Tooltips raccourcis (choix utilisateur sur 3 propositions par tooltip).
+   - « Ecart cumule au FDA attendu » : 4 phrases -> 2. Ce qui saute est ce que le graphe
+     MONTRE deja (la ligne 0, le pointille) ; ce qui reste est ce qu'il ne montre pas (ce que
+     l'ecart mesure, et la pente comme signal). Une seule cle, deja centralisee.
+   - « Intensite » : 4 phrases -> 3, et surtout CENTRALISATION. L'aide vivait en TROIS copies
+     (Sessions, Series temporelles, Escouade), deja divergentes de formulation (« tes frags »,
+     « les frags », « les frags du joueur »). Ecrire la nouvelle version aurait fait une
+     quatrieme divergence : `common.charts.intensity_tooltip` + `..._team` (la phrase de la
+     courbe d'equipe, seule difference legitime), helper `components/charts/
+     intensityTooltipText.ts` — une FONCTION et non un composant, parce que
+     `SquadIntensityProfileChart` recoit son aide en `string`. Les 3 anciennes cles sont
+     supprimees (regle n°7) et un garde-rail grep interdit le retour du litteral
+     (`intensityTooltipText.guard.test.ts`, regle n°6).
+
+9. CAUSE RACINE du « bouton de rejeu invisible sur les tuiles » — ce n'etait PAS un
+   probleme de presentation, et mon correctif du point 3 ne l'aurait pas resolu seul.
+   L'utilisateur a donne un match precis (b1ad85eb-...), dont l'artefact existe sur le
+   disque. Trace : `/pages/home` est servi par `reg.HomeCtxWithAuth` (server_apiv1.go:773),
+   PAS par `HomeCtx` — et `WithReplay` n'existait QUE sur `HomeCtx`, la jumelle qui ne sert
+   que l'injection OpenGraph (og_inject.go:101). Donc `replaySvc` nil, `replayAvailability`
+   nil, `applyReplayAvailabilityToRecentItems` no-op : AUCUNE tuile d'accueil n'a JAMAIS
+   porte `has_replay`, ni avant ni apres mon deplacement du lien. Diff des deux factories :
+   `WithReplay` etait la SEULE option presente chez l'une et absente de l'autre.
+   Le meme oubli avait deja eu lieu sur `WithRoundsDecide` (le commentaire du fichier le
+   raconte). Mode de panne commun : dependance optionnelle nil -> degradation silencieuse,
+   qu'aucun typage ni test de service ne peut attraper. Correctif : `WithReplay` dans
+   `HomeCtxWithAuth`, plus un garde-rail de PARITE des deux factories
+   (`home_factories_parity_test.go` : toute option `With*` de HomeCtx doit exister chez
+   HomeCtxWithAuth, allowlist vide + sentinelle nominative sur WithReplay).
+
+**LECON** : quand un element d'UI « ne s'affiche pas », verifier que la donnee qui le
+conditionne arrive VRAIMENT sur l'endpoint concerne, avant de conclure a un defaut visuel.
+J'avais lu le cablage de `applyReplayAvailabilityToRecentItems` et conclu « chaine saine »
+sans remonter jusqu'a QUELLE factory sert la route — deux factories, une seule cablee.
+
+**NON VERIFIE EN NAVIGATEUR** : aucun acces navigateur dans cette session (extension Chrome
+non connectee, et l'API refuse la requete hors session). Les points 3, 5, 6 et 7 sont des
+changements visuels dont la validation finale revient a l'utilisateur.
+
+## [2026-09-09] Legendes de graphes : la palette d'ECharts s'invitait dans 12 legendes — Complete
+
+**Retour utilisateur** : « les couleurs des legendes ne suivent pas les couleurs du graphe »,
+sur une vingtaine de graphes des pages Solo, Sessions, Synthese et Escouade.
+
+**Cause racine UNIQUE, etablie AVANT toute modification** par rendu hors navigateur
+(`echarts.init(null, null, { ssr: true, renderer: 'svg' })`, sonde jetable) : ECharts peint
+l'icone d'une entree de legende a partir du style de la SERIE. Une serie `bar` dont la couleur
+ne vit que sur ses POINTS (`data: [{ value, itemStyle: { color } }]` — barres colorees par
+seuil, par palier de performance, par joueur) n'a aucun style de serie : le moteur retombe sur
+SA palette par defaut (`#5070dd`, `#b6d634`, ...) et la legende annonce une couleur absente du
+graphe. Une entree `legend.data` sous forme d'OBJET portant `itemStyle.color` reprend la main —
+verifie sur la meme sonde avant d'ecrire une ligne de correctif.
+
+**Correctif** : un helper unique `legendEntries()` dans `components/charts/_utils.ts`, plus
+`LEGEND_ITEM_WIDTH_LINE` (30 px) pour que l'icone d'une courbe tiretee montre plus d'un tiret.
+Migres : taux de victoire et performance par carte (Solo + Escouade), les six sous-charts de
+performance escouade, Rang & MMR equipe, Stats par minute (qui n'avait plus de legende du
+tout), Rendement/Resistance de Sessions, FDA de la page Solo.
+
+**Le FDA a ete coupe en deux series** (decision utilisateur) : une pastille unique ne peut pas
+annoncer deux couleurs. `FDA >= 1` en vert, `FDA < 1` en rouge, superposees par
+`barGap: -100%`, chacune masquable ; l'infobulle filtre la serie sans valeur pour ne pas
+afficher un « — » qui se lirait comme une donnee manquante.
+
+**Deux graphes changeaient de LANGAGE, pas seulement de couleur.** « Rendement » /
+« Resistance » portaient l'identite des joueurs par une etiquette de fin de courbe — canal
+qu'aucun autre graphe n'emploie, et qui ne se clique pas ; « Isolement et couverture » posait
+sa propre mise en forme de legende. Les deux passent au socle commun.
+
+**Garde-rail** (`components/charts/legendPalette.guard.test.ts`) : chaque graphe migre est
+RENDU hors navigateur et aucune couleur de `tokens.color.theme` (lue dans le paquet ECharts,
+jamais recopiee) ne doit apparaitre. Verifie qu'il mord : `legend.data` remis en chaines nues
+sur un graphe = deux tests rouges. Un trait d'epaisseur nulle est ignore — zrender ecrit un
+`stroke` sur toute forme, y compris invisible, et le compter accusait « Performance » pour une
+couleur que personne ne voit.
+
+**Trois nettoyages de texte demandes** : les mentions de position de la portee par arme, le
+seuil de publication et la note de couverture de la Synthese, la phrase narrative et la
+couverture du delai d'echange. Chaque suppression a entraine celle de sa cle i18n et de son
+accesseur (`belowThresholdNames`, `squad.echange.delay_narrative`) — le garde-rail
+« aucun accesseur que rien n'affiche » ne laisse pas de code mort.
+
+**Non verifie a l'ecran** : le serveur de dev local est derriere l'authentification Xbox et je
+ne saisis pas d'identifiants. Les preuves sont le rendu SSR et la suite complete (7041 tests
+verts, typecheck, eslint 0 erreur, lints couleurs/champs propres).
+
+**E7 — aides « Rendement » / « Resistance », choix utilisateur applique.** Variante 3 pour les
+deux, moins sa derniere phrase (l'echelle stable d'une session a l'autre) et sans le verbe
+« concluent », remplace par « portent ». L'aide UNIQUE de 120 mots qui definissait les deux
+indicateurs a la fois est decoupee en deux (`rendementHelp` / `resistanceHelp`, FR + EN) :
+sur la carte Rendement on lisait la definition de la Resistance avant la sienne. Report sur
+trois surfaces, avec la MEME phrase adaptee au support : cartes Escouade (avec la mention des
+zones de fond, elles en ont), tuiles Match view (sans — une tuile KPI n'a pas de zones),
+tuile hero de l'accueil (version COMBINEE, elle porte les deux indicateurs sous un libelle
+abrege). `MatchVsStatCard` gagne une prop `help` optionnelle : absente, aucun noeud ajoute.
+
+Trois tests neufs verrouillent le decoupage — echanger les deux textes, ou en recabler un sur
+l'autre, echoue desormais sur Escouade comme sur Match view.
+
+**Etat final** : 662 fichiers de test, 7048 verts ; typecheck (cache `.tsbuildinfo` purge
+avant, cf. piege `delivery-checklist` §2) ; eslint 0 erreur ; lints couleurs et champs
+propres. Plan clos : `.ai/PLAN_LEGENDES_COULEURS_RETOURS_2026-09-09.md`.
+
+**Prochaine etape** : rien n'est committe (regle « demander avant tout commit »). En attente
+de l'accord utilisateur, et d'une verification a l'ecran que je n'ai pas pu faire.
+
+## [2026-09-08] Trois plans de vague issus du diagnostic des 22 retours — Complete
+
+**Decision utilisateur : trois vagues, un plan chacune.** Rediges sous la grille `plan-review`,
+notamment son §9 (executabilite par un agent) : perimetre FERME par etape, gate en commandes
+exactes, statuts [x]/[~]/[!] sans case vide a la cloture, interdiction des fixes hors perimetre
+avec section Decouvertes, protocole de reprise, renvoi a `plan-execution`.
+
+- `.ai/PLAN_RETOURS_VAGUE_A_LOT_COURT_2026-09-08.md` — 7 correctifs prouves, branche
+  `feat/retours-lot-court`, worktree dedie. Aucun ne touche la donnee ni un contrat dAPI.
+  6 decisions prises davance (largeur du trait, ancrage de lecran de fin, NOUVEAU jeton
+  `zone-neutral` — ni `divergent-neutral` ni `outcome-draw` ne conviennent, les deux sont bleus,
+  cest exactement le defaut signale).
+- `.ai/PLAN_RETOURS_VAGUE_B_IDENTITES_2026-09-08.md` — le P0, en DEUX phases. **La phase 1 est une
+  contre-verification adverse qui peut CLORE le plan** : ma these repose sur une heuristique
+  (mediane de spawn) et je me suis deja trompe une fois sur ce point precis. Trois angles
+  dattaque : lhypothese de spawn groupe par mode, le sens de lerreur (film vs scoreboard), et
+  la causalite de la simultaneite des fins de vie. La phase 2 nexiste que si les trois
+  confirment.
+- `.ai/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md` — 5 lots (C1/C3/C5 independants, C2 depend de
+  C1, C4 autonome) + la recuisson des 15 artefacts en tache hors lot. 8 decisions prises,
+  dont : on ETEND `Heatmap2DChart` au lieu den creer un second ; la mediane pour le gros point
+  du nuage ; les medailles en images (annule les decisions 9 et 14 du plan frise).
+
+**Point de methode qui a structure les trois plans.** Chaque vague porte UNE revue adversariale
+en fin de vague, jamais par lot — regle du depot. Et la vague B inverse la charge de la preuve :
+sa premiere phase cherche a me refuter, parce que sur ce meme point 4 javais conclu REFUTE a
+tort en premiere passe et que cest lutilisateur qui la rattrape.
+
+## [2026-09-08] Rejeu CTF — le glyphe de drapeau est le SEUL objet decale de la couche objectifs — Complete
+
+**Constat utilisateur en deux temps** : « pourquoi le cercle na pas le pied du drapeau comme
+centre ? » puis « meme sur le point de livraison cest pareil ».
+
+**Cause unique, mesuree.** `flagCarriesLayer.ts:384-385` dessine le glyphe a `at.x + FLAG_OFFSET_X`
+(+6 px) et `at.y - FLAG_OFFSET_Y` (-2 px). TOUTES les autres decorations dobjectif ancrent sur la
+position BRUTE : anneau de zone de retour (`flagReturnZone.ts:324`), marqueur de livraison et
+marqueur dapparition (`objectivesLayer.ts:196`, `const c = px(e)`). `grep -n FLAG_OFFSET`
+ne rend que 4 occurrences, toutes dans `flagCarriesLayer.ts` : le glyphe est le seul objet decale
+du calque, et il lest PARTOUT — base, point de livraison, zone de retour.
+
+**Le decalage a une raison, mais elle ne vaut que dans UN etat.** Son commentaire le dit :
+« au-dessus et a droite DU MARQUEUR » — il a ete concu pour ne pas recouvrir le pion du PORTEUR.
+Un drapeau `dropped` ou `home` na aucun marqueur a eviter : le decalage y fait simplement mentir
+la position. Effet de bord qui confirme la lecture : la cible de survol (l.443-444) reprend le
+decalage PLUS la demi-hampe — anneau, glyphe et survol ont donc TROIS ancrages distincts.
+
+**Correctif retenu (a planifier, pas fait ici)** : conditionner `FLAG_OFFSET_*` a letat
+`carried`. Un seul `if`, et les trois ecarts se referment ensemble. Lautre option — decaler
+lanneau aussi — est refusee : le rayon de la zone de retour (1,3 m) est une distance de JEU
+mesuree, son centre doit rester la position vraie.
+
+**Reproduction** : rejeu Origin `8bc6074f`, image 790 (0:56), deux drapeaux au sol.
+
+## [2026-09-08] Retours utilisateur — 4 derniers points instruits, P0 caracterise — Complete
+
+**Point 4 (P0) — CAUSE TROUVEE, signature 4/4.** Les deux joueurs intervertis ont leur premiere
+vie reelle qui se termine A LA MEME IMAGE : Origin 774/774, Goliath 462/462, Bazaar 176/176,
+The Pit 775/776. Deux morts simultanees, deux corps, et le pont doit decider lequel nomme quelle
+vie ; quand les deux morts sont de camps opposes, se tromper produit exactement l interversion
+propre observee. Ca explique AUSSI la resorption : des la vie suivante les fins se separent,
+l appariement redevient univoque, l identite se corrige seule (Origin image 874, Goliath 543).
+
+**Pourquoi publishable ne le voit pas, et c est structurel.** LineByLinePublishable mesure la
+marge de bijection GLOBALE (indice de film -> joueur, une fois par match). Le defaut est dans
+l appariement PAR VIE (fin de vie <-> mort du fil). Deux mecanismes, deux marges : la premiere
+peut etre franche pendant que la seconde est nulle. D ou 3 interversions sur 4 dans des matchs
+declares entierement publiables. Le departage existe et il est gratuit — le camp spawne groupe —
+et il n est pas consulte. Instrument de non-regression pret : .ai/diagnostics/.../swap.sh.
+
+**Point 10a — REFUTE, vu a l ecran.** Le cercle de zone de retour EST dessine : rejeu Origin,
+image 790 (0:56), deux anneaux rouges autour des deux drapeaux au sol. Chaine verifiee de bout
+en bout (regle publiee, spans dropped, buildFlagReturnDrops, drawFlagReturnZones appele avant le
+glyphe). Je ne reproduis pas l absence : il faut le match et l instant pour aller plus loin.
+
+**Point 22 — JE ME SUIS TROMPE en premiere passe.** J avais ecrit qu aucun composant de grille
+canonique n existait : components/charts/Heatmap2DChart.tsx EST ce composant, et c est celui que
+la maquette designe par son etiquette. Il est deja conforme sur la valeur en clair, la rampe
+CVD-safe et la case impossible EMISE. Deux ecarts seulement, et ce sont ceux que l utilisateur
+pointe : (1) PAS DE PADDING entre cases (aucun itemStyle.borderWidth/borderRadius) ; (2) la case
+vide est NON PEINTE au lieu d etre hachuree avec un tiret — ce qui contredit la doctrine propre
+du depot (l absence a sa propre forme, jamais un vide). Deux implementations restent HORS
+wrapper : SynthesisHeatmapChart (option ECharts a la main) et UsageRegularityBand (DOM/CSS,
+cases de 14 px sans valeur — miniature legitime). Le chantier n est donc pas de creer un
+composant mais d ajouter deux traits au wrapper puis de migrer les deux echappees.
+
+**Point 13 residu — clos.** Les 20 medias recents ne pointent vers AUCUN match du registre :
+le 2026-01-25 le registre s arrete a 15:52 UTC et le clip est a 16:17. Rien a associer. Deux
+causes possibles non departageables sans l API (sync interrompue, ou parties hors profils
+suivis). shared_pve ne les explique pas (20 lignes au total). Portee mineure.
+
+**Lecon de methode.** Deux de mes conclusions de premiere passe etaient fausses (point 4 refute
+a tort, point 22 sur l absence de composant canonique). Dans les deux cas la faute est la meme :
+j ai conclu sur une source qui ne pouvait pas porter la preuve — des lignes non publiees pour le
+point 4, un grep de features/ sans regarder components/charts/ pour le 22. Verifier une ABSENCE
+demande de chercher la ou la chose vivrait si elle existait.
+
+## [2026-09-08] Retours utilisateur — variantes par contexte, tableau ecart, 3 points clos — Complete
+
+**Question utilisateur : les variantes par contexte sont-elles implementees ?** Reponse mesuree :
+OUI la ou le bloc existe, mais il ne existe que sur DEUX pages sur quatre.
+
+# Seconde passe — 2026-09-08 (variantes par contexte, et clôture de 3 des 7 points ouverts)
+
+## La taxonomie des maquettes — SCOPE × CONTEXTE × VARIANTE
+
+Chaque bloc des deux maquettes porte une étiquette en haut à droite, et elle n'est pas décorative :
+
+- **SCOPE** — `UNE SOIRÉE` (des **cadences**, normalisées par dix minutes de jeu) ou
+  `LA PART DU LOBBY` (des **parts**, avec l'équipe d'en face pour dénominateur) ;
+- **CONTEXTE** — `SOLO` ou `ESCOUADE` ;
+- **VARIANTE** — `A`, `B`, `C` (formes concurrentes d'une même question).
+
+Relevé complet :
+
+| Bloc | Étiquette |
+|---|---|
+| Ma part, dans mon équipe et dans le lobby | `LA PART DU LOBBY · SOLO B` |
+| Cadence de gestes, match par match | `UNE SOIRÉE · SOLO A` |
+| Étendue et moyenne de la session | `UNE SOIRÉE · SOLO B` |
+| Régularité match par match | `LA PART DU LOBBY · ESCOUADE B` |
+| Ce que mon camp prend du lobby | `LA PART DU LOBBY · ESCOUADE C` |
+| Cadence de chacun sur la session | `UNE SOIRÉE · ESCOUADE A` |
+| Qui porte quel geste dans l'escouade | `UNE SOIRÉE · ESCOUADE B` |
+| Écart à la parité, par famille d'arme | `LA PART DU LOBBY · SOLO A` puis `· ESCOUADE A` |
+| Ma part des prises de socle, et sa dispersion | `LA PART DU LOBBY · SOLO B` |
+| Taux de rafle par arme | `UNE SOIRÉE · SOLO B` |
+| Les deux frises : quand, et qui | `LA PART DU LOBBY · ESCOUADE B, RÉUNIES` |
+| Emprise de l'escouade, match par match | `UNE SOIRÉE · ESCOUADE B` |
+| Taux de rafle de chaque coéquipier | `UNE SOIRÉE · ESCOUADE C` |
+
+> **Contrainte utilisateur du 2026-09-08 : la page Sessions ne prend que les graphes NORMALISÉS,
+> et seulement ceux qui PEUVENT l'être.** Vérifié — elle la respecte déjà :
+> `session-detail/usageLogic.ts:5` porte en en-tête « **TOUT AXE EST NORMALISÉ (doctrine §1) :
+> parts en %, cadences par dix minutes.** »
+
+## Les variantes par contexte SONT implémentées — mais sur une seule page
+
+`SessionUsageSection.tsx` porte **les trois blocs** de la maquette, et **résout le contexte
+Solo/Escouade CÔTÉ SERVEUR** : « le bloc porte `squad_players` et des lignes `squad` par grandeur —
+vides en solo. À l'écran, l'escouade ajoute une ligne par coéquipier dans les grilles et découpe la
+piste du lobby par joueur ; le solo garde moi + les agrégats. »
+
+`SessionUsageForms.tsx` implémente trois des quatre formes canoniques — « écart à la parité / jauge
+double avec étendue », « piste du lobby », « bande de régularité » — les grilles alignées passant
+par la primitive partagée `components/charts/ValueGrid`. Les jetons y sont conformes
+(`team-ally` pour nous, `squad-player-*` par joueur, `warning` pour la parité, **hachure neutre
+anonyme pour eux**, gamme `divergent-*` pour la bande).
+
+## Tableau d'écart — point 18
+
+| Page | Usages d'équipement | Contrôle des armes spéciales | Objectifs |
+|---|---|---|---|
+| **Sessions** | OUI — `SessionUsageSection` (Solo **et** Escouade) | OUI | OUI |
+| **Match view** | OUI — `MatchEquipmentUsageSection` (onglet Chronologie) | OUI — `MatchPadControlSection` | OUI — `MatchObjectivesSection` |
+| **Escouade** | **ABSENT** | **ABSENT** | OUI — `SquadObjectivesPanel` + `SquadObjectiveStatsPanel` |
+| **Solo / Synthèse** | **ABSENT** | **ABSENT** | Partiel — bloc de compteurs, pas les formes de la maquette |
+
+Preuve de l'absence : le bloc `Usage` n'existe que sur `domain/session_page.go:145`
+(`Usage *SessionUsageBlock`). Aucun équivalent sur la page Escouade ni sur la Synthèse, et zéro
+occurrence de `pad_control` / `equipment_usage` dans `features/squad/` ou `features/synthesis/`.
+
+**Conclusion du point 18 : ce ne sont pas les VARIANTES qui manquent, ce sont deux PAGES.** Les
+variantes Solo et Escouade coexistent correctement là où le bloc existe.
+
+## Point 20 — le nuage d'isolement : trois écarts à la maquette
+
+> **Constat utilisateur du 2026-09-08 : « je ne voyais que 4 points, soit le nombre de joueurs,
+> alors que normalement on a un nuage de points par joueur, avec un gros point pour la moyenne. »**
+> La maquette lui donne raison mot pour mot : « **Un petit point par session, un gros point par
+> joueur** — la taille dit le nombre de morts », et sa légende sépare `· une session` des gros
+> points étiquetés (`Karst · n=24`).
+
+1. **LE GROS POINT PAR JOUEUR N'EXISTE PAS.** `SquadIsolementNuageCard.tsx:4` déclare « Un point
+   par (joueur, session) », et `seriesParJoueur` ne construit qu'une série de points de session par
+   joueur. **Aucun agrégat par joueur n'est tracé** — ni moyenne, ni médiane, ni étiquette de nom.
+   C'est l'élément le plus lisible de la maquette, et il manque.
+   *(La maquette ne tranche pas moyenne vs médiane : elle dit « un gros point par joueur » et
+   « la taille dit le nombre de morts ». À trancher — la médiane est cohérente avec le reste de la
+   page, qui médiane déjà ses lignes de repère.)*
+2. **Les quatre libellés de quadrant ne sont affichés NULLE PART.** `quadrantDuPoint`
+   (`squadIsolement.logic.ts:66`) est exporté et testé, les quatre clés existent
+   (`squadIsolementStrings.ts:20-23`, manifeste i18n généré) — et **rien ne les consomme** :
+
+   ```bash
+   grep -rn "quadrantDuPoint\|isolement.quadrant" apps/web/src --include=*.ts --include=*.tsx \
+     | grep -v "\.test\.\|generated/squad.ts"
+   # -> seulement la definition et la table de chaines. Aucun appelant.
+   ```
+
+   C'est l'anti-pattern **n°1 du CLAUDE.md, « dead code museum »** — du code mort maintenu en vie
+   par des tests verts, et la cause directe des coins non étiquetés.
+3. **L'échantillon faible se dit en OPACITÉ, la maquette le dit en CERCLE POINTILLÉ**
+   (`pointAttenue` vs la légende `moins de 30 morts` à cercle pointillé). Divergence mineure mais
+   réelle.
+
+Ce qui EST conforme : `markLine` (les deux médianes) et `markArea` (la zone de danger) sont bien
+implémentés, et la taille du point suit `morts_examinees`.
+
+**Note de lecture** : la page était filtrée sur **1 session** au moment du constat. À ce périmètre,
+un point par (joueur, session) donne exactement 4 points — le nuage dégénère par construction. La
+maquette, elle, tourne sur 62 matchs d'escouade.
+
+## Point 14 bis — CLOS : les tables vides sont VOULUES
+
+`match_weapon_hit_distance` et `weapon_accuracy` sont vides **par décision datée**, pas par panne.
+`games/halo_infinite/adapter_data.go:200` :
+
+```go
+games.CapWeaponAccuracy: games.CapNotExposed,
+```
+
+Commentaire attaché : « Précision par arme : REMISÉE le 2026-09-01 (`not_exposed`). Le numérateur
+film s'est révélé NON FIABLE au recalage : […] les armes automatiques ressortent à 0,9-3,3 % vs
+~40 % côté API (`RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01`, commit `945c9fdb7`). […] **Cette clé
+data-level gate le numérateur film (`collectHits`) : `not_exposed` implique que la passe film ne
+s'exécute pas pour Infinite.** »
+
+Le persister est bien câblé (`sync/killcollector/hits.go:198`) : c'est la passe qui ne tourne pas.
+**Et ça ne change rien au point 14** : « Distance par arme » ne lit pas ces tables — elle lit
+`kill_positions` + `publishable` (`kill_measured.go:173`). Le diagnostic du point 14 tient.
+
+## Point 19 C — CLOS : `0xD7915565` est un inconnu ASSUMÉ
+
+`layers/useReplayWeaponPads.ts:84` documente la cascade de nommage et conclut : « sinon
+l'identifiant lui-même — et **c'est VOULU** pour une arme hors catalogue du titre (l'hexadécimal
+est alors la seule chose vraie qu'on puisse écrire, cf. la famille `0xD7915565` du registre des
+reports) ». Le test le nomme `INCONNUE`.
+
+Les `weaponLabels` du document comptent 18 entrées, indexées à la fois en 8 et en 16 hexa
+(`0x0A1992BC` et `0x0A1992BC42C9679F`) ; `0xD7915565` n'y est pas. **Ce n'est donc pas un défaut de
+résolution mais un trou de catalogue, connu et inscrit au registre des reports.**
+
+Reste valide en revanche : la catégorie **« Non attribué — 7 % »** du sunburst (environ 786 frags),
+et l'illisibilité des étiquettes de l'anneau extérieur (points 19 A et 19 B).
+
+## Point 8 — CLOS pour l'essentiel : `shotsNoRide` ne compte pas ce que je croyais
+
+`analysis/replay/vehicle_shots.go` définit le verdict : « `vehicleShotNoRide` : aucun épisode de ce
+tireur ne couvre l'instant. **C'est le cas nominal d'un tir à pied que le pont n'a pas su placer —
+il n'a rien à voir avec un véhicule.** »
+
+Les 188 (Isolation) à 2 957 (Flood Gulch) « écartés » sont donc des tirs À PIED non placés, pas des
+tirs de véhicule perdus. Sur Isolation, `shotsAmbiguous: 0` et `shotsUnplaced: 0` : **aucun
+orphelin ne tombe dans une fenêtre de chevauchée**, ce qui est cohérent avec les 3 chevauchées du
+match (un Mongoose — sans arme — et deux Ghost courts).
+
+**Ce qui reste vrai** : seuls 2 artefacts sur 64 publient des tirs de véhicule, et le vrai facteur
+limitant est le nombre de chevauchées ARMÉES dans le parc, pas un défaut de rattachement. À
+recroiser après la recuisson des 15 artefacts du schéma 38 (point 6).
+
+## [2026-09-08] Retours utilisateur — maquettes d'echange et d'equipement DEPOUILLEES — Complete
+
+**Le blocage etait technique, pas un droit d'acces.** Les trois artefacts (`2ec1b8eb`, `4c520da6`,
+`19e7eca1`) sont bien partages publiquement. Trois obstacles empiles :
+1. l'outil `Artifact read` refuse un artefact public lu par un non-membre (fonction non activee) ;
+2. le contenu vit dans une **iframe cross-origin** (`*.frame.claudeusercontent.com`) : ni
+   `get_page_text`, ni `fetch`, ni une navigation directe sur l'URL de frame (elle redirige vers
+   l'enveloppe) ne l'atteignent ;
+3. **les evenements de defilement ne traversent pas cette iframe** — molette, `Page_Down`, glisser
+   d'ascenseur : tout est avale, et la capture rend indefiniment la meme vue.
+
+**La parade, a reutiliser telle quelle.** Depuis la page parente (meme origine, donc scriptable) :
+allonger l'iframe (`iframe.style.height = '7000px'`) et liberer ses ancetres (`height:auto`,
+`maxHeight:none`, `overflow:visible`, `position:static`). La PAGE devient alors defilable, et
+`window.scrollTo(0, N)` + capture par paliers donne tout le contenu. Note : sur ces pages
+`Page.captureScreenshot` expire environ une fois sur deux — il suffit de relancer la capture seule.
+
+**Ce que les maquettes disent, et qui manquait au registre.**
+
+`2ec1b8eb` « Les formes retenues » : quatre formes canoniques nommees (Ecart a la parite, Jauge
+double, Piste du lobby, Grille et bande), deux lentilles distinctes (cadences par dix minutes vs
+parts avec l'equipe d'en face pour reference, jamais affichee), et **la regle grenades ecrite noir
+sur blanc** : « Les grenades sont sorties du bloc : ce ne sont pas des equipements. » Douze blocs,
+deux domaines (usages d'equipement, controle des armes speciales) x deux contextes (solo, escouade).
+Les colonnes sont PILOTEES PAR LA DONNEE : une famille inutilisee n'a pas de colonne.
+
+`4c520da6` « L'echange sur la page Escouade » : cinq graphes candidats, **chacun etiquete par son
+wrapper du catalogue existant** (`KPIStrip`, `HistogramChart`, `Heatmap2DChart`, `ScatterChart`,
+`BarGroupedChart`), sa page cible et son statut (quatre V1, un candidat). Regle transverse :
+**jamais un taux seul** — toujours accompagne du compte brut ET d'une quantite par match.
+
+**La doctrine de heatmap, enfin ecrite.** La grille de reference (« Regularite match par match »)
+**se designe elle-meme comme reutilisable** pour « Performance par joueur x carte », et nomme ce
+qui rend la reprise sure : les jetons `perf-tier-*` et les libelles de palier. Ses traits :
+valeur en clair dans la case, deux couleurs divergentes seulement, intensite saturee a 30 points,
+**hachures pour l'absence de mesure** (jamais un vide ni un zero), etiquettes de colonne sur deux
+lignes, legende horizontale sous la grille. **Et surtout — insistance utilisateur — du PADDING
+entre les cases : rectangles arrondis nettement detaches, aere.** Le meme trait se retrouve sur la
+heatmap « Qui couvre qui » de `4c520da6` : c'est une propriete transverse de la forme, pas un
+detail d'une maquette. Une reprise qui colle les cases rate l'essentiel.
+
+**Etat du dépôt cote code : toujours zero ligne modifiee.** Constat structurel ajoute : il n'existe
+**aucun composant de grille canonique partage** — `heatmapColors.ts`, `SquadMapHeatmapChart`,
+`MatchPositionsHeatmap`, `layers/heatmapLayer` et `TacticalMapTile` sont cinq implementations
+independantes. Le chantier d'unification devra creer le composant d'apres la maquette, migrer les
+cinq lecteurs, et poser le garde-rail exige par la regle n°6.
+
+## [2026-09-08] Diagnostic retours utilisateur — CORRECTION apres retour du 2026-09-08 — Complete
+
+**Ce que j'avais rate, et pourquoi.** Sur le point 4 (« des joueurs attribues a la mauvaise
+equipe », match Origin `8bc6074f`) j'avais conclu REFUTE. L'utilisateur a maintenu son constat.
+Il avait raison : **Chocoboflor (t0) et StevenW5318 (t1) sont INTERVERTIS sur les 77 premieres
+secondes**. Preuve : Origin est une carte CTF symetrique (base t0 a x~-22, base t1 a x~+22) et les
+positions de depart de vie le montrent — Chocoboflor spawne a x=+22.62 (base adverse),
+StevenW5318 a x=-22.51. Les vies 3 (images 874+) retombent du bon cote (x=-13.09 / x=+13.74) :
+l'interversion se resorbe.
+
+**Mes deux « preuves » initiales ne valaient rien, et la lecon est generale.** (1) « Zero frag
+allie » se lit sur `match_kill_events`, table dont AUCUNE ligne n'est publiable sur ce match
+(`publishable` 0/81) : je comparais des equipes sur des lignes que le produit n'affiche jamais.
+(2) « Le scoreboard API concorde » : il vient de l'API Halo, pas du film — il ne peut pas, par
+construction, reveler un defaut du film. **Regle a retenir : pour refuter un constat sur le RENDU
+du rejeu, la preuve doit venir de l'artefact, jamais d'une source qui ne l'alimente pas.**
+
+**Le defaut de conception que ca revele.** `LineByLinePublishable()` est consulte par
+`replaybuild/kills.go:79` et `replaybuild.go:405` — donc pour taire le kill feed et les morts sans
+revendication. **Rien ne le consulte pour la GEOMETRIE** : pistes, pions de carte et fiches joueur
+sont publies avec les identites douteuses, sans reserve. Le fil se tait pendant que la carte
+affirme. Et `coverage.bridge` se declare sain (`indexDisagreements: 0`, `slotCollisions: 0`) : le
+chantier « vies anonymes » ne couvre pas ce cas, qui porte sur des vies NOMMEES et mal nommees.
+
+**Second constat confirme par le retour : les vehicules.** Les deux Behemoth n'ont pas
+`vehicles: []` mais **pas de bloc `coverage.vehicles` DU TOUT** — le balayage n'a jamais tourne.
+Ce sont **15 artefacts sur 64, tous au schema 38** (les 49 autres sont au 48). Le souvenir de
+l'utilisateur (mongooses + warthog sur ce Behemoth slayer) est donc compatible : les vehicules
+etaient la, l'artefact ne les a jamais regardes. Correctif = recuisson des 15, pas du code.
+
+**Decisions produit prises par l'utilisateur.** (a) **Les medailles de la frise doivent etre des
+IMAGES** avec titre et description en infobulle — annule les decisions 9 et 14 de
+`PLAN_FRISE_POINT_DE_VUE_2026-09-06.md` ; `MedalBadges` existe deja et le kill feed l'emploie
+(`ReplayKillFeed.tsx:344,508`). (b) Grenades : le nombre importe peu, **le defaut est qu'un lancer
+sur cinq n'a AUCUN sort connu** et que l'ecran ne le dit pas — il manque un troisieme etat publie,
+pas un effet. (c) « Portee des engagements » : la version Solo est bonne, c'est sa **variante
+multi-joueur sur Escouade** qui manque, et sa forme n'est pas arretee — chantier separe.
+(d) Les 84 medias 2018-2019 sont des medias **Halo 5** mal ranges : point clos.
+
+**Acces aux artefacts de maquette : toujours bloque.** Trois tentatives infructueuses
+(`/public/artifacts/<uuid>` -> page introuvable ; `/code/artifact/<uuid>` sur Chrome non
+authentifie -> page not found ; `switch_browser` -> aucune extension n'a repondu en 2 min).
+Les points 18, 20 et 22 restent non tranchables.
+
+**Etat.** Registre mis a jour (`.ai/diagnostics/RETOURS_2026-09-08/`), 9 captures. Toujours zero
+ligne de code modifiee. Le point 4 passe en P0 : c'est le seul constat ou l'ecran AFFIRME UN FAUX.
+
+## [2026-09-08] Diagnostic des 22 retours utilisateur (rejeu, charts, medias, tactique) — Complete
+
+**Perimetre.** Audit sur pieces des 22 points remontes par l'utilisateur le 2026-09-08, sans
+aucune correction (doctrine `adversarial-audit` : l'audit ne corrige pas). Registre unique :
+`.ai/diagnostics/RETOURS_2026-09-08/DIAGNOSTIC_RETOURS_UTILISATEUR_2026-09-08.md`, requetes
+reproductibles dans `requetes.md`, 8 captures dans `captures/`.
+
+**Piege ecarte d'entree.** Le binaire `tmp_server.exe` de la racine date du 1er septembre et ne
+declare NI `replay` NI `weapon_range` : la page de rejeu rendait « Indisponible pour ce titre ».
+Tout a ete remesure sur un binaire reconstruit depuis HEAD. Lecon : ne jamais juger la branche
+sur un binaire de scratch.
+
+**Decouverte structurante.** Une cause racine unique explique 5 points (2, 12, 14, 19, 21) :
+`match_kill_events.publishable` vaut FALSE sur **498 matchs sur 1384 (36 %)** et sur **5 des 8
+derniers matchs synchronises**. Six lecteurs l'exigent (Q21b/Q21c kill feed, paires d'assistance
+match ET escouade, `kill_measured`, `tactical_repo`) : ils s'eteignent donc ENSEMBLE, ce qui
+donne l'impression de cinq regressions distinctes.
+
+**Constats a correctif court (6).** Fiches rognees = `ReplayTeams.tsx:184` `repeat(N, 1fr)` au
+lieu de `minmax(0, 1fr)` — prouve par mutation live (563 px de contenu dans 480 px, 83 px
+rognes ; apres correctif 480/480 et les gamertags longs tronquent) ; onglet Tactique absent de
+`navL1Sections.tsx` (present en L2, absent du dropdown L1) ; trait de lecture a `w-px` ; ecran
+de fin ancre sur la `<section>` entiere donc 89 px sous le centre de la carte (mesure DOM) ;
+message d'etat vide de « Distance par arme » FACTUELLEMENT FAUX (il dit « decodage non joue »
+alors qu'Origin a 65 positions de kill, plus qu'Isolation qui affiche le bloc) ; encre neutre
+des zones = `divergent-neutral` = `#60A5FA`, un bleu.
+
+**Constats a instruire (5).** `coversPlayedArea` teste un contenant STRICT sur les bornes BRUTES :
+deux points aberrants (chute hors terrain) suppriment le fond de carte d'Isolation alors que 99 %
+des positions tiennent dans l'image, et sans aucun log. Fermeture des spans de portage de drapeau
+~2 s trop tardive : 124 tirs pendant portage sur Origin, dont 48 % dans les 20 dernieres frames du
+span et 0 % dans les 20 premieres — l'asymetrie date le defaut. `attachVehicleShots` ne publie de
+tirs que sur 2 artefacts sur 129 (`shots: 0`, `shotsNoRide` jusqu'a 2957) : d'ou l'absence totale
+d'effet UI/son au tir en vehicule, le cablage etant complet. Plancher tactique de 3 matchs
+distincts par cellule de 0,5 m, hors d'atteinte avec 115 evenements localises. Tables
+`match_weapon_hit_distance` et `weapon_accuracy` VIDES sur tout le parc malgre un persister cable.
+
+**Constats refutes (3).** Aucune erreur d'equipe sur Origin : 31 paires tueur/victime, toutes
+inter-equipes, scoreboard API conforme a `match_participants` — ce que l'utilisateur a vu est le
+RELAIS DE SIEGE (`seatLogic.buildSeats`), qui masque un arrivant derriere son predecesseur. Le
+graphe « Portee des engagements » EST implemente et conforme a la maquette du 2026-09-06 (verifie
+a l'ecran, element pour element) : il est simplement tout en bas de Solo > Synthese. Les medailles
+de la frise SONT dessinees (anneau `ring-1` mesure dans le DOM, titre « 3:49 — Revirement ») : le
+defaut est la lisibilite d'un anneau de 1 px autour d'une barre de 3x8 px, pas une perte de donnee.
+
+**Ecart medias entierement explique.** 104 medias sans match en local contre 17 en prod : 84 des
+104 sont des captures de 2018-2019, ANTERIEURES a la sortie de Halo Infinite (registre depuis le
+2021-11-19). Les 17 de 2026 sont exactement le residu vu en prod. Effet de bord decouvert : les
+143 associations existantes datent toutes d'une passe unique du 2026-06-24 — le backfill ne tourne
+plus depuis.
+
+**Escalades sans proposition d'action.** Semantique binaire de `publishable` (decision
+d'architecture). Direction du cone de visee en vehicule : l'utilisateur demande le cap du chassis,
+ce qui inverse la mesure du lot V11 (ecart median 15,7-21,8 deg contre la visee de l'occupant).
+Trois artefacts de maquette (`2ec1b8eb`, `19e7eca1`, `4c520da6`) illisibles depuis la session
+(« public non-member reader ») : les points 18, 20 et 22 restent non tranchables sans eux.
+
+**Prochaine etape.** Aucun code modifie. Les 6 correctifs courts sont candidats a un lot unique
+sous `plan-execution` ; les 5 chantiers demandent un cadrage sous `plan-review`.
+
 ## [2026-09-08] Lot M1b — corriger le décalage d'horloge du lien « voir dans le rejeu » — Complete
 
 **Décision technique principale.** Reprise de la découverte non traitée du lot M1
@@ -101693,3 +102401,17 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
 - Vague 3 (paradigme P) : un inventaire P1 est deja sur `feat/v75` (`77200cb7a`, autre session) ;
   a relire contre les axes (i) lecteurs hors rejeu et (j) registre pur avant P2. Non demarree
   sans accord utilisateur.
+
+## [2026-09-09] Vite config : __dirname -> import.meta.dirname
+
+Statut : Complete
+
+Decision technique : `vite.config.ts` utilisait `__dirname` pour l'alias `@`, ce qui
+declenche un avertissement du futur `configLoader: 'native'` de Vite (chargement ESM natif,
+ou `__dirname` n'existe pas). Remplace par `import.meta.dirname` (Node >= 20.11 ; poste en
+v24.13.1). L'option `VITE_CONFIG_NATIVE_IGNORE_WARNING` a ete ecartee : elle masque la cause
+au lieu de la corriger.
+
+Resultats observes : `make check-types` vert.
+
+Conclusion : rien d'autre a faire ; l'avertissement disparait au prochain demarrage de vite.

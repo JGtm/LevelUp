@@ -285,6 +285,7 @@ Ce projet est sous licence MIT. Voir [LICENSE](../../LICENSE) pour plus de déta
 
 - **Andy Curtis** ([acurtis166](https://github.com/acurtis166)) pour [SPNKr](https://github.com/acurtis166/SPNKr)
 - **Den Delimarsky** ([dend](https://github.com/dend)) pour [Grunt](https://github.com/dend/grunt) et [OpenSpartan](https://github.com/OpenSpartan)
+- **Gravemind2401** ([Gravemind2401](https://github.com/Gravemind2401)) pour [Reclaimer](https://github.com/Gravemind2401/Reclaimer)
 
 Voir aussi [ACKNOWLEDGMENTS.md](../ACKNOWLEDGMENTS.md).
 

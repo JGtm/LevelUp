@@ -416,7 +416,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       },
       {
         id: 'waypoint',
-        header: '',
+        // En-tête « HW » (retour utilisateur 2026-09-09) : abrégé de Halo Waypoint —
+        // la colonne ne fait qu'une icône de large. Même traitement que sa voisine
+        // « Rejeu » : une colonne d'icône se nomme quand même.
+        header: t('explorer.matches.col_waypoint'),
         cell: (ctx) => (
           <a
             href={buildWaypointMatchUrl(playerSlug, ctx.row.original.match_id, currentTitleSlug)}
@@ -452,14 +455,15 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       },
       {
         id: 'replay',
-        header: '',
+        // En-tête « Rejeu » / « Replay » (retour utilisateur 2026-09-09) : la colonne
+        // était la seule anonyme du tableau — l'icône seule ne se nomme pas.
+        header: t('explorer.matches.col_replay'),
         // Lien INTERNE vers la page de rejeu 2D — composant partagé avec le tableau
         // Synergies (lib/match-nav/MatchReplayLink), qui porte la règle d'affichage :
         // rien n'est rendu sans artefact.
         //
         // JAMAIS TRIABLE, comme sa jumelle de SquadSynergyHistoryTable : la colonne n'a
-        // pas de valeur d'accès, donc un tri n'ordonnerait rien — et son en-tête est vide,
-        // ce qui produirait un bouton focalisable sans nom accessible.
+        // pas de valeur d'accès, donc un tri n'ordonnerait rien.
         enableSorting: false,
         cell: (ctx) => (
           <MatchReplayLink

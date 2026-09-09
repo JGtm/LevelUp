@@ -104,9 +104,6 @@ type SessionUsageMetric struct {
 	PlayerPer10Min *float64 `json:"player_per_10min,omitempty"`
 	TeamPer10Min   *float64 `json:"team_per_10min,omitempty"`
 	LobbyPer10Min  *float64 `json:"lobby_per_10min,omitempty"`
-	// Étendue match par match de la part joueur/équipe (bornes de la jauge).
-	PlayerShareOfTeamMinPct *float64 `json:"player_share_of_team_min_pct,omitempty"`
-	PlayerShareOfTeamMaxPct *float64 `json:"player_share_of_team_max_pct,omitempty"`
 	// Matchs où la part du joueur dépasse LA PARITÉ DU MATCH (100/effectif de CE
 	// match, pas la moyenne de session), contre chacun des deux dénominateurs.
 	// MatchesAboveTeamParity : nil quand aucun match mesuré n'a de camp connu
@@ -122,8 +119,16 @@ type SessionUsageMetric struct {
 
 // SessionUsagePadFamily — ventilation des prises de socle d'ARME nommées par clé
 // de famille NORMALISÉE (replay.PadWeaponFamilyKey : huit hexa minuscules).
+//
+// FamilyLabel est le NOM de l'arme dans la langue de la requête, résolu au service
+// contre le catalogue du titre (`session_page_usage_labels.go`, patron
+// `replay_weapon_labels.go`). ABSENT quand le catalogue ne connaît pas la famille :
+// le client affiche alors la clé, jamais un nom approchant — même règle que le
+// catalogue du rejeu (« un nom approchant se lit comme une certitude »). La clé,
+// elle, reste TOUJOURS servie : c'est elle qui identifie la ligne.
 type SessionUsagePadFamily struct {
-	FamilyKey string `json:"family_key"`
+	FamilyKey   string `json:"family_key"`
+	FamilyLabel string `json:"family_label,omitempty"`
 	SessionUsageShares
 }
 

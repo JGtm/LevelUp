@@ -16,11 +16,13 @@
  * tuile porte le sien, la carte porte sa note de couverture, et les armes écartées par le
  * seuil de publication sont NOMMÉES plutôt que tues.
  */
-import { useCallback, useMemo, type ReactNode } from 'react'
+import { useCallback, useMemo } from 'react'
 
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { ChartLegend, type ChartLegendItem } from '@/components/charts/ChartLegend'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken, tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import type { SynthesisWeaponRange } from '@/lib/api/types'
@@ -43,18 +45,42 @@ import {
   type WeaponRangeLine,
 } from './_weaponRangeChart'
 import { SynthesisWeaponRangeTable } from './SynthesisWeaponRangeTable'
-import {
-  WEAPON_RANGE_MIN_MEASURED,
-  belowThresholdNames,
-  hasWeaponRangeRows,
-} from './weaponRange_logic'
+import { WEAPON_RANGE_MIN_MEASURED, hasWeaponRangeRows } from './weaponRange_logic'
 import { useRangeFormats, type RangeFormats, type Translate } from './weaponRangeText'
 
-/** Encres de la section — un seul endroit, partagé par les graphes et les deux légendes. */
+/**
+ * Les deux graphes vivent DANS la carte de section : leur propre `ChartCard` ne doit poser
+ * aucun chrome, sinon on lit un cadre dans un cadre (retour utilisateur 2026-09-09 : « le
+ * bloc du graphe contient un bloc qui contient le graphe »). `border-none` et non `border-0`
+ * — la première règle porte sur le STYLE de bordure et gagne quel que soit l'ordre
+ * d'émission des utilitaires de largeur.
+ */
+const NESTED_CHART_CHROME = 'rounded-none border-none bg-transparent shadow-none'
+
+/**
+ * Encres de la section — un seul endroit, partagé par les graphes et les deux légendes.
+ *
+ * FRAGS ET MORTS SUIVENT LA CONVENTION DE TOUTE L'APP (retour utilisateur 2026-09-09) :
+ * `chart-series-1` pour ce qu'on fait, `outcome-loss` pour ce qu'on subit — les mêmes deux
+ * encres que « Évolution Frags / Morts », la cadence de l'Explorateur ou le profil de combat.
+ * Le côté « morts » empruntait jusqu'ici `chart-series-3`, qui est l'encre des ASSISTANCES
+ * ailleurs : deux bleus voisins pour deux faits opposés.
+ */
 const KILLS_TOKEN: SemanticToken = 'chart-series-1'
-const DEATHS_TOKEN: SemanticToken = 'chart-series-3'
+const DEATHS_TOKEN: SemanticToken = 'outcome-loss'
 const MEDIAN_TOKEN: SemanticToken = 'perf-tier-2'
 const DELTA_TOKEN: SemanticToken = 'chart-series-4'
+
+/**
+ * Encres du DÉNIVELÉ — indépendantes de celles des frags/morts, et c'est voulu.
+ *
+ * Le dénivelé ne dit pas qui tue qui, il dit d'OÙ : une rampe d'une seule teinte, du clair
+ * (d'en bas) au foncé (d'en haut), plus le gris des libellés d'axe pour « à niveau ». Les
+ * accrocher à `KILLS_TOKEN`/`DEATHS_TOKEN` ferait dire à la couleur ce qu'elle ne dit pas
+ * (le rouge des morts sur un segment « d'en haut » se lirait comme un jugement).
+ */
+const ELEVATION_ABOVE_TOKEN: SemanticToken = 'chart-series-3'
+const ELEVATION_BELOW_TOKEN: SemanticToken = 'chart-series-1'
 
 /** Les trois libellés de classe, résolus une fois — graphe ET légende lisent la même source. */
 function elevationLabels(t: Translate): Record<ElevationKey, string> {
@@ -126,152 +152,85 @@ function RangeTiles({ range, t, f }: { range: SynthesisWeaponRange; t: Translate
   )
 }
 
-// ─── Légendes HTML ────────────────────────────────────────────────────────────
+// ─── Légendes et sous-titres ──────────────────────────────────────────────────
 
 /**
- * Une entrée de légende porte TROIS choses : la pastille, le libellé, et la POSITION de la
- * série dans le graphe (« bâton du haut »). L'identité n'est jamais confiée à la couleur
- * seule — un daltonien lit la position et le nom.
+ * Les deux légendes passent par `<ChartLegend>`, le composant commun à tous les graphes de
+ * l'app (retour utilisateur 2026-09-09 : « ça ne suit pas la nomenclature de tous les autres
+ * graphes »). Elles sont posées EN PIED DE GRAPHE, centrées, via la prop `legend` de
+ * `ChartCard` — plus en tête de bloc à droite du sous-titre.
  *
- * `swatchClass` sert la seule classe qui n'a pas de token d'accessibilité : « à niveau »
- * emprunte le gris des libellés d'axe (`--muted-foreground`), la MÊME encre que le graphe.
- *
- * `emphasis` suit la maquette validée : seule la légende de PORTÉE met son libellé en avant
- * (deux séries à distinguer, chacune suivie de sa position entre parenthèses) ; celle du
- * dénivelé rend ses trois noms NUS, dans le gris du texte secondaire — trois classes d'une
- * même mesure, qu'aucune ne doit dominer.
+ * Les mentions de position (« bâton du haut », « bâton du bas, l'arme est celle du tueur »)
+ * sont retirées : elles doublaient l'ordre déjà lisible sur le graphe et rendaient la ligne
+ * de légende deux fois plus longue que la légende elle-même.
  */
-function LegendItem({
-  color,
-  swatchClass,
-  name,
-  hint,
-  emphasis,
-}: {
-  color?: string
-  swatchClass?: string
-  name: string
-  hint?: string
-  emphasis?: boolean
-}) {
-  return (
-    <li className="inline-flex items-center gap-1.5">
-      <span
-        aria-hidden="true"
-        className={`inline-block h-2 w-3 rounded-sm ${swatchClass ?? ''}`}
-        style={color ? { backgroundColor: color } : undefined}
-      />
-      {emphasis ? <b className="font-medium text-foreground">{name}</b> : <span>{name}</span>}
-      {hint && <span>{' '}{hint}</span>}
-    </li>
-  )
+function rangeLegendItems(t: Translate): ChartLegendItem[] {
+  return [
+    { label: t('synthesis.weapon_range.side_kills'), color: tokenCssVar(KILLS_TOKEN) },
+    { label: t('synthesis.weapon_range.side_deaths'), color: tokenCssVar(DEATHS_TOKEN) },
+  ]
 }
 
-function SubtitleRow({
-  title,
-  detail,
-  children,
-}: {
-  title: string
-  detail: string
-  children: ReactNode
-}) {
-  return (
-    <div className="flex flex-wrap items-baseline justify-between gap-3 px-3 pt-2.5">
-      <p className="text-xs font-semibold text-foreground">
-        {title} <span className="font-normal text-muted-foreground">{detail}</span>
-      </p>
-      {children}
-    </div>
-  )
-}
-
-function RangeLegend({ t }: { t: Translate }) {
-  return (
-    <ul
-      aria-label={t('synthesis.weapon_range.legend_label')}
-      className="flex flex-wrap gap-3.5 text-3xs text-muted-foreground"
-    >
-      <LegendItem
-        emphasis
-        color={tokenCssVar(KILLS_TOKEN)}
-        name={t('synthesis.weapon_range.side_kills')}
-        hint={t('synthesis.weapon_range.side_kills_position')}
-      />
-      <LegendItem
-        emphasis
-        color={tokenCssVar(DEATHS_TOKEN)}
-        name={t('synthesis.weapon_range.side_deaths')}
-        hint={t('synthesis.weapon_range.side_deaths_position')}
-      />
-    </ul>
-  )
-}
-
-function ElevationLegend({ t }: { t: Translate }) {
+/**
+ * `à niveau` emprunte le gris des libellés d'axe (`--muted-foreground`), la MÊME encre que
+ * son segment dans le graphe : c'est la seule des trois classes qui n'a pas de token
+ * d'accessibilité, d'où la variable CSS brute plutôt qu'un `tokenCssVar`.
+ */
+function elevationLegendItems(t: Translate): ChartLegendItem[] {
   const labels = elevationLabels(t)
-  const swatch = (key: ElevationKey) => {
-    if (key === 'above') return { color: tokenCssVar(DEATHS_TOKEN) }
-    if (key === 'below') return { color: tokenCssVar(KILLS_TOKEN) }
-    return { swatchClass: 'bg-muted-foreground' }
+  const color: Record<ElevationKey, string> = {
+    above: tokenCssVar(ELEVATION_ABOVE_TOKEN),
+    level: 'var(--muted-foreground)',
+    below: tokenCssVar(ELEVATION_BELOW_TOKEN),
   }
+  return ELEVATION_KEYS.map((key) => ({ key, label: labels[key], color: color[key] }))
+}
+
+/**
+ * SubtitleRow — le titre d'un des deux blocs, et son mode d'emploi dans une aide ⓘ.
+ *
+ * Le détail de lecture (« bâton du 10e au 90e centile, losange sur la médiane ») était écrit
+ * en clair à côté du titre : trois lignes de texte gris au-dessus de chaque graphe, lues une
+ * fois puis jamais. Il vit désormais derrière l'icône, comme partout ailleurs dans l'app.
+ */
+function SubtitleRow({ title, help }: { title: string; help: string }) {
   return (
-    <ul
-      aria-label={t('synthesis.weapon_range.legend_elevation_label')}
-      className="flex flex-wrap gap-3.5 text-3xs text-muted-foreground"
-    >
-      {ELEVATION_KEYS.map((key) => (
-        <LegendItem key={key} {...swatch(key)} name={labels[key]} />
-      ))}
-    </ul>
+    <p className="flex items-center gap-1.5 px-3 pt-2.5 text-xs font-semibold text-foreground">
+      {title}
+      <InfoTooltip content={help} iconClass="w-3.5 h-3.5" />
+    </p>
   )
 }
 
-// ─── Pied de carte : seuil, couverture, tableau ───────────────────────────────
+// ─── Pied de carte : le tableau dépliable ─────────────────────────────────────
 
+/**
+ * RangeFooter — le tableau dépliable, et lui seul.
+ *
+ * La ligne « Sous le seuil de N mesures — … » et la note de couverture ont été retirées le
+ * 2026-09-09 (demande utilisateur) : deux paragraphes de texte gris sous chaque carte, qui
+ * répétaient une réserve déjà portée par les dénominateurs de chaque tuile (« 1 214 frags
+ * mesurés sur 1 602 ») et par l'infobulle de chaque arme.
+ */
 function RangeFooter({
-  range,
   lines,
-  locale,
   t,
   f,
 }: {
-  range: SynthesisWeaponRange
   lines: WeaponRangeLine[]
-  locale: ManifestLocale
   t: Translate
   f: RangeFormats
 }) {
-  const belowKills = belowThresholdNames(range.below_threshold_kills, locale, f.count)
-  const belowDeaths = belowThresholdNames(range.below_threshold_deaths, locale, f.count)
-  const halves = [
-    belowKills && t('synthesis.weapon_range.below_threshold_kills', { names: belowKills }),
-    belowDeaths && t('synthesis.weapon_range.below_threshold_deaths', { names: belowDeaths }),
-  ].filter((s): s is string => Boolean(s))
+  if (lines.length === 0) return null
   return (
-    <>
-      {halves.length > 0 && (
-        <p className="mt-1.5 border-t border-border px-3 pt-2 text-3xs text-muted-foreground">
-          <b className="font-medium text-foreground">
-            {t('synthesis.weapon_range.below_threshold_title', { min: WEAPON_RANGE_MIN_MEASURED })}
-          </b>
-          {` — ${halves.join(' · ')}`}
-        </p>
-      )}
-      <p className="px-3 pb-2 pt-1 text-3xs text-muted-foreground">
-        {t('synthesis.weapon_range.coverage_note')}
-      </p>
-      {lines.length > 0 && (
-        <details className="pb-2">
-          <summary className="cursor-pointer px-3 py-1 text-xs text-muted-foreground">
-            {t('synthesis.weapon_range.table_summary')}
-          </summary>
-          <div className="overflow-x-auto px-3 pb-1">
-            <SynthesisWeaponRangeTable lines={lines} t={t} f={f} />
-          </div>
-        </details>
-      )}
-    </>
+    <details className="border-t border-border pb-2">
+      <summary className="cursor-pointer px-3 py-1 text-xs text-muted-foreground">
+        {t('synthesis.weapon_range.table_summary')}
+      </summary>
+      <div className="overflow-x-auto px-3 pb-1">
+        <SynthesisWeaponRangeTable lines={lines} t={t} f={f} />
+      </div>
+    </details>
   )
 }
 
@@ -318,9 +277,9 @@ function useWeaponRangeOptions(lines: WeaponRangeLine[], f: RangeFormats, t: Tra
       // pas lire — au survol, `lift()` rendait `undefined` et le segment « à niveau » perdait
       // son remplissage. Normalisation par le navigateur, cf. `lib/echarts/cssColorToHex.ts`.
       colors: {
-        above: resolveToken(DEATHS_TOKEN),
+        above: resolveToken(ELEVATION_ABOVE_TOKEN),
         level: cssColorToHex(tc.axisLabel),
-        below: resolveToken(KILLS_TOKEN),
+        below: resolveToken(ELEVATION_BELOW_TOKEN),
       },
       cardColor: tc.card,
       fmtPercent: f.percent,
@@ -367,33 +326,40 @@ function RangeCardBody({
   }
   return (
     <>
-            <SubtitleRow
-              title={t('synthesis.weapon_range.range_subtitle')}
-              detail={t('synthesis.weapon_range.range_subtitle_detail')}
-            >
-              <RangeLegend t={t} />
-            </SubtitleRow>
-            <ChartCard
-              series={series}
-              buildOption={buildRange}
-              height={height}
-              className="border-0 shadow-none"
-            />
+      <SubtitleRow
+        title={t('synthesis.weapon_range.range_subtitle')}
+        help={t('synthesis.weapon_range.range_subtitle_detail')}
+      />
+      <ChartCard
+        series={series}
+        buildOption={buildRange}
+        height={height}
+        className={NESTED_CHART_CHROME}
+        legend={
+          <ChartLegend
+            items={rangeLegendItems(t)}
+            ariaLabel={t('synthesis.weapon_range.legend_label')}
+          />
+        }
+      />
 
-            <SubtitleRow
-              title={t('synthesis.weapon_range.elevation_subtitle')}
-              detail={t('synthesis.weapon_range.elevation_subtitle_detail')}
-            >
-              <ElevationLegend t={t} />
-            </SubtitleRow>
-            <ChartCard
-              series={series}
-              buildOption={buildElevation}
-              height={height}
-              className="border-0 shadow-none"
-            />
-          </>
-
+      <SubtitleRow
+        title={t('synthesis.weapon_range.elevation_subtitle')}
+        help={t('synthesis.weapon_range.elevation_subtitle_detail')}
+      />
+      <ChartCard
+        series={series}
+        buildOption={buildElevation}
+        height={height}
+        className={NESTED_CHART_CHROME}
+        legend={
+          <ChartLegend
+            items={elevationLegendItems(t)}
+            ariaLabel={t('synthesis.weapon_range.legend_elevation_label')}
+          />
+        }
+      />
+    </>
   )
 }
 
@@ -449,7 +415,7 @@ export function SynthesisWeaponRangeSection({ range }: SynthesisWeaponRangeSecti
             </span>
           </span>
         )}
-        footer={<RangeFooter range={range} lines={lines} locale={locale} t={t} f={f} />}
+        footer={<RangeFooter lines={lines} t={t} f={f} />}
       >
         <RangeCardBody
           publiable={publiable}

@@ -68,6 +68,10 @@ type SessionPageService struct {
 	sessionUsageRepo port.SessionUsageRepository
 	usageXUID        string
 	usageFriends     teammates.FriendGamertagsResolver
+	// repoRoot (optionnel) : racine du dépôt, pour charger le catalogue d'armes du
+	// TITRE et nommer les familles de socle du bloc usage (session_page_usage_labels.go).
+	// Vide → les familles gardent leur clé, ce qui est un rendu valide, pas une panne.
+	repoRoot string
 }
 
 // NewSessionPageService crée un SessionPageService.
@@ -282,9 +286,12 @@ func (s *SessionPageService) GetPage(
 	// des placements — best-effort, dégrade gracieusement si le repo ne le fournit pas.
 	s.attachLobbySizes(ctx, resp.Matches, resp.CompareMatches)
 
-	// Bloc « usages d'équipement, socles et objectifs » de la session courante
-	// (chantier session-usage S2) — best-effort, cf. session_page_usage.go.
-	s.attachSessionUsage(ctx, &resp, currentMatches, req.Filters.MatchContext)
+	// Bloc « usages d'équipement, armes spéciales et objectifs » — session courante ET
+	// session comparée (D8), best-effort, cf. session_page_usage.go. Réutilise
+	// compareMatchesForEvents : le même sous-ensemble que les blocs event-based, donc
+	// les deux colonnes du drawer parlent bien des mêmes matchs.
+	s.attachSessionUsage(ctx, &resp, currentMatches, compareMatchesForEvents,
+		req.Filters.MatchContext, req.Locale)
 
 	slog.InfoContext(ctx, "session page generated",
 		"resolved_session", currentLabel,

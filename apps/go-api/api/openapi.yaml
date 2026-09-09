@@ -22978,6 +22978,8 @@ components:
             - "null"
         compare_session:
           $ref: '#/components/schemas/SessionCompareEntry'
+        compare_usage:
+          $ref: '#/components/schemas/SessionUsageBlock'
         current_session:
           $ref: '#/components/schemas/SessionCompareEntry'
         first_blood:
@@ -23134,12 +23136,6 @@ components:
         player_share_of_lobby_pct:
           format: double
           type: number
-        player_share_of_team_max_pct:
-          format: double
-          type: number
-        player_share_of_team_min_pct:
-          format: double
-          type: number
         player_share_of_team_pct:
           format: double
           type: number
@@ -23171,6 +23167,8 @@ components:
       additionalProperties: false
       properties:
         family_key:
+          type: string
+        family_label:
           type: string
         lobby_total:
           format: double

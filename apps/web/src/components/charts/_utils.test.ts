@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   formatDateShort,
   formatNumber,
+  legendEntries,
   outcomeColor,
   seriesColor,
   stackedAxisExtent,
@@ -125,6 +126,35 @@ describe('_utils', () => {
     it('NaN/Infinity → "-"', () => {
       expect(formatNumber(NaN)).toBe('-')
       expect(formatNumber(Infinity)).toBe('-')
+    })
+  })
+
+  describe('legendEntries', () => {
+    it("porte la couleur sur la pastille ET sur le trait de l'icône", () => {
+      expect(legendEntries([{ name: 'Frags', color: '#123456' }])).toEqual([
+        {
+          name: 'Frags',
+          itemStyle: { color: '#123456', borderColor: '#123456' },
+          lineStyle: { color: '#123456' },
+        },
+      ])
+    })
+
+    it('reproduit le pointillé quand la série est tiretée', () => {
+      const [entry] = legendEntries([{ name: 'MMR équipe', color: '#abcdef', dashed: true }])
+      expect(entry.lineStyle).toEqual({ color: '#abcdef', type: 'dashed' })
+    })
+
+    it("conserve l'ordre et les noms — ce sont les clés de sélection ECharts", () => {
+      const entries = legendEntries([
+        { name: 'a', color: '#111111' },
+        { name: 'b', color: '#222222' },
+      ])
+      expect(entries.map((e) => e.name)).toEqual(['a', 'b'])
+    })
+
+    it('liste vide → aucune entrée (une légende sans série ne se fabrique pas)', () => {
+      expect(legendEntries([])).toEqual([])
     })
   })
 })

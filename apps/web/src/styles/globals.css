@@ -339,6 +339,23 @@
     max-width: 1320px;
   }
 
+  /* Rangée de blocs de catalogue (Médailles / Citations) : les largeurs viennent du
+     COMPTAGE des vignettes, calculé en TS (lib/layout/blockRowPacking) et passé en
+     `--block-row-cols`. Une variable CSS plutôt qu'un style inline seul : c'est le seul
+     moyen d'annuler la grille sous 768 px, où une seule colonne tient. */
+  .block-row {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  @media (min-width: 768px) {
+    .block-row {
+      grid-template-columns: var(--block-row-cols, 1fr);
+    }
+  }
+
   /* Text-shadow adaptatif : noir en dark, blanc en light — pour textes sur images de bannière. */
   :root[data-theme='dark'] .text-shadow-adaptive {
     text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);

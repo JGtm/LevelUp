@@ -19,7 +19,9 @@ import {
   getEChartsThemeColors,
   getLegendBase,
   getTooltipBase,
+  legendEntries,
   stackedAxisExtent,
+  LEGEND_ITEM_WIDTH_LINE,
 } from '@/components/charts/_utils'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { hexComplement, resolveToken } from '@/lib/accessibility'
@@ -33,6 +35,13 @@ function withAlpha(hex: string, alpha: number): string {
   if (isNaN(r) || isNaN(g) || isNaN(b)) return hex
   return `rgba(${r},${g},${b},${alpha})` // color-allow: 2026-09-06 (revue R1, C5) — CONVERSION d une couleur DEJA resolue (hex du theme) en rgba pour son alpha : ce helper ne nomme aucune couleur
 }
+
+/**
+ * Repli quand aucune couleur n'est attribuée à un joueur : un gris STRUCTUREL, qui ne nomme
+ * aucune couleur de charte. Constante et non littéral répété — il servait déjà cinq fois
+ * dans ce fichier (règle CLAUDE.md n°6, ≤ 2 copies).
+ */
+const NO_PLAYER_COLOR = '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
 
 /** 5 zones Y de 20 pts chacune, du pire (tier-5) au meilleur (tier-1). */
 const PERF_ZONES: Array<{ yMin: number; yMax: number; token: SemanticToken }> = [
@@ -154,7 +163,7 @@ export function buildPerformanceLineOption(
     : undefined
 
   const series = players.map((player, idx) => {
-    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const color = opts.colorByPlayer[player] ?? NO_PLAYER_COLOR
     const rawData = new Array<number | null>(n).fill(null)
     for (const p of rows[player]) {
       const idx = p.match_order
@@ -209,7 +218,16 @@ export function buildPerformanceLineOption(
       axisPointer: { type: isBar ? 'shadow' : 'line' },
       valueFormatter: (v: unknown) => fmtVal(typeof v === 'number' ? v : null, decimals, suffix),
     },
-    legend: { ...getLegendBase(tc), data: players },
+    // Couleur portée par l'ENTRÉE de légende : en mode barres, chaque barre porte SA
+    // couleur (celle du joueur, ou son opposé colorimétrique sous le seuil) et la série n'en
+    // porte aucune — ECharts retombait alors sur SA palette par défaut, sans rapport avec le
+    // graphe. La pastille prend la couleur de BASE du joueur, celle de son identité.
+    legend: {
+      ...getLegendBase(tc),
+      data: legendEntries(
+        players.map((p) => ({ name: p, color: opts.colorByPlayer[p] ?? NO_PLAYER_COLOR })),
+      ),
+    },
     xAxis: {
       ...axis,
       type: 'category',
@@ -265,7 +283,7 @@ export function buildKillsDeathsButterflyOption(
   const positiveStacks: Array<Array<Array<number | null>>> = []
   const negativeStacks: Array<Array<Array<number | null>>> = []
   for (const player of players) {
-    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const color = opts.colorByPlayer[player] ?? NO_PLAYER_COLOR
     const negColor = hexComplement(color) // hue +180°, opaque — même convention que squadPerMinuteChart
     const killsHidden = hiddenPlayers.has(player) || hiddenTypes.has(opts.killsLabel)
     const deathsHidden = hiddenPlayers.has(player) || hiddenTypes.has(opts.deathsLabel)
@@ -365,7 +383,7 @@ export function buildHsPerfectOption(
   const emptyData = new Array<number | null>(n).fill(null)
   const series: Array<Record<string, unknown>> = []
   for (const player of players) {
-    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const color = opts.colorByPlayer[player] ?? NO_PLAYER_COLOR
     const hsHidden = hiddenPlayers.has(player) || hiddenTypes.has(opts.hsLabel)
     const perfectHidden = hiddenPlayers.has(player) || hiddenTypes.has(opts.perfectLabel)
     const hsData = new Array<number | null>(n).fill(null)
@@ -452,10 +470,13 @@ export function buildTeamMMROption(
   // On ne crée une série que si le joueur a au moins un point de cette nature.
   type BarItem = { value: number | null; itemStyle: { color: string; opacity: number } }
   const nullItem = (c: string): BarItem => ({ value: null, itemStyle: { color: c, opacity: 0 } })
-  const legendData: string[] = []
+  // Entrées de légende AVEC leur couleur : les barres CSR/LUSR sont colorées au point (couleur
+  // du joueur, ou son opposé quand le rang recule) et la courbe MMR est tiretée — sans couleur
+  // explicite ici, la légende annonçait la palette par défaut d'ECharts.
+  const legendData: Array<{ name: string; color: string; dashed?: boolean }> = []
 
   for (const player of players) {
-    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const color = opts.colorByPlayer[player] ?? NO_PLAYER_COLOR
     const negColor = hexComplement(color)
 
     const csrData: BarItem[] = Array.from({ length: n }, () => nullItem(color))
@@ -472,8 +493,8 @@ export function buildTeamMMROption(
       else { lusrData[p.match_order] = item; hasLusr = true } // "lusr" ou type inconnu
     }
 
-    if (hasCsr)  { allSeries.push({ name: `${player} — CSR`,  type: 'bar', barMaxWidth: 12, data: csrData,  z: 2 }); legendData.push(`${player} — CSR`) }
-    if (hasLusr) { allSeries.push({ name: `${player} — LUSR`, type: 'bar', barMaxWidth: 12, data: lusrData, z: 2 }); legendData.push(`${player} — LUSR`) }
+    if (hasCsr)  { allSeries.push({ name: `${player} — CSR`,  type: 'bar', barMaxWidth: 12, data: csrData,  z: 2 }); legendData.push({ name: `${player} — CSR`,  color }) }
+    if (hasLusr) { allSeries.push({ name: `${player} — LUSR`, type: 'bar', barMaxWidth: 12, data: lusrData, z: 2 }); legendData.push({ name: `${player} — LUSR`, color }) }
   }
 
   // Une seule courbe pour le MMR d'équipe (partagé par tous les joueurs de l'escouade).
@@ -490,7 +511,7 @@ export function buildTeamMMROption(
       connectNulls: false,
       z: 3,
     })
-    legendData.push(opts.mmrLabel)
+    legendData.push({ name: opts.mmrLabel, color: tc.text, dashed: true })
   }
 
   if (allSeries.length === 0) return { backgroundColor: CHART_BG }
@@ -504,7 +525,13 @@ export function buildTeamMMROption(
       axisPointer: { type: 'shadow' },
       valueFormatter: (v: unknown) => (typeof v === 'number' ? v.toFixed(0) : '-'),
     },
-    legend: { ...getLegendBase(tc), data: legendData, type: 'scroll' },
+    // Pastille élargie : la courbe « MMR équipe » est tiretée, illisible à 12 px.
+    legend: {
+      ...getLegendBase(tc),
+      itemWidth: LEGEND_ITEM_WIDTH_LINE,
+      data: legendEntries(legendData),
+      type: 'scroll',
+    },
     xAxis: {
       ...axis,
       type: 'category',

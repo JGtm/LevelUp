@@ -42,6 +42,22 @@ const BAR_GAP = 4
 /** Demi-diagonale du losange de médiane. */
 const DIAMOND_RADIUS = 5
 
+/**
+ * WEAPON_KEYS_WITHOUT_RANGE — les pseudo-armes pour lesquelles une DISTANCE N'A PAS DE SENS.
+ *
+ * « Chute et environnement » (`hinf_environment`) agrège les morts par chute, écrasement ou
+ * élément de décor : la « distance tueur → victime » y mesure l'écart entre la victime et
+ * un point de géométrie, pas une portée d'engagement. La ligne polluait l'axe et tirait la
+ * médiane (retrait demandé le 2026-09-09).
+ *
+ * FILTRE CÔTÉ FRONT, ET C'EST UN PIS-ALLER ASSUMÉ : la place durable de cette exclusion est
+ * le classifieur de sources côté Go (`port.KillSourceClassifier`), qui sait déjà rattacher
+ * un `source_tag` à sa nature — le contrat de portée ne porte pas la classe de l'arme, donc
+ * le front n'a que la clé pour trancher. Un `Set` et non un test d'égalité : un autre titre
+ * ajoute sa clé sans réécrire la condition.
+ */
+const WEAPON_KEYS_WITHOUT_RANGE = new Set(['hinf_environment'])
+
 /** Une arme projetée pour les DEUX graphes de la section — côté absent = `null`. */
 export interface WeaponRangeLine {
   weaponKey: string
@@ -65,25 +81,31 @@ export function weaponRangeLines(
   weapons: readonly WeaponRangeRow[] | null | undefined,
   locale: ManifestLocale,
 ): WeaponRangeLine[] {
-  return (weapons ?? []).map((w) => ({
-    weaponKey: w.weapon_key,
-    label: resolveWeaponLabel(w, locale),
-    kills: w.kills ?? null,
-    deaths: w.deaths ?? null,
-  }))
+  return (weapons ?? [])
+    .filter((w) => !WEAPON_KEYS_WITHOUT_RANGE.has(w.weapon_key))
+    .map((w) => ({
+      weaponKey: w.weapon_key,
+      label: resolveWeaponLabel(w, locale),
+      kills: w.kills ?? null,
+      deaths: w.deaths ?? null,
+    }))
 }
 
 /**
- * weaponRangeCategoryLabel — « Fusil de combat BR75 ×281/402 ».
+ * weaponRangeCategoryLabel — le nom de l'arme, nu.
  *
- * Les deux effectifs sont TOUJOURS écrits, dans l'ordre des bâtons (frags puis morts), un
- * tiret cadratin marquant le côté sans mesure. Écrire un seul nombre quand un côté manque
- * laisserait le lecteur deviner LEQUEL : « ×39 » ne dit pas si l'arme n'a jamais tué ou
- * jamais tué CE joueur.
+ * L'étiquette portait jusqu'au 2026-09-09 le suffixe « ×281/402 » (frags puis morts
+ * mesurés). Retiré à la demande de l'utilisateur : deux nombres collés à chaque nom d'arme
+ * allongeaient la gouttière de gauche sans être lus, alors que les DEUX effectifs sont déjà
+ * écrits dans l'infobulle de la ligne (« Mes frags — 281 : … ») et dans le tableau
+ * dépliable, où ils ont une colonne à eux.
+ *
+ * La fonction reste la SOURCE UNIQUE de l'étiquette : les deux graphes de la section
+ * (portée et dénivelé) partagent le même axe de catégories, et deux fabrications
+ * séparées divergeraient au premier changement.
  */
 export function weaponRangeCategoryLabel(line: WeaponRangeLine): string {
-  const n = (side: WeaponRangeSide | null) => (side ? String(side.measured) : '—')
-  return `${line.label} ×${n(line.kills)}/${n(line.deaths)}`
+  return line.label
 }
 
 /** Hauteur du graphe : une bande par arme, plus la place des axes. */

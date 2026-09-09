@@ -39,9 +39,10 @@ interface Props {
   /** Premiers frag/mort par match de la session — calculés côté Go (payload). */
   firstBlood?: FirstBloodPlayerSeriesDTO[]
   /**
-   * Bloc « usages d'équipement, socles et objectifs » (S3) — servi UNIQUEMENT pour
-   * la session courante (le contrat ne le calcule pas pour la session comparée) :
-   * la colonne principale le passe, le drawer compare non → pas de bloc fantôme.
+   * Bloc « usages d'équipement, armes spéciales et objectifs » — servi pour LES DEUX
+   * sessions depuis le 2026-09-09 (D8) : la colonne principale reçoit `usage`, le
+   * drawer `compare_usage`. Absent du payload (vieux serveur, session sans match) →
+   * le composant ne rend rien, pas de bloc fantôme.
    */
   usage?: SessionUsageBlock
 }
@@ -74,10 +75,11 @@ export function SessionColumnBody({
         firstBlood={firstBlood}
       />
 
-      {/* Blocs « usages d'équipement, socles et objectifs » (S3) — session courante
-          seulement (prop absente côté drawer). Le composant gère lui-même ses états
+      {/* Blocs « usages d'équipement, armes spéciales et objectifs ». `compact` suit la
+          colonne : drawer ouvert = version compacte DES DEUX CÔTÉS, sinon les deux
+          colonnes ne se compareraient pas. Le composant gère lui-même ses états
           indisponible / sans film ; absent du payload → rien. */}
-      <SessionUsageSection usage={usage} meLabel={playerSlug} />
+      <SessionUsageSection usage={usage} meLabel={playerSlug} compact={compact} />
 
       {/* Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau). */}
       <div className="space-y-3">

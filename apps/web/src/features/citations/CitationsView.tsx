@@ -5,10 +5,11 @@
  * cartes par catégorie + grille de CitationCard. La barre de filtres est un slot
  * optionnel (Infinite uniquement).
  */
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { CitationCard } from './CitationCard'
 import type { ManifestLocale } from '@/lib/i18n/format'
+import { packBlockRows, rowGridTemplate } from '@/lib/layout/blockRowPacking'
 import type { CitationsViewModel } from '@/lib/citations/types'
 
 interface CitationsViewProps {
@@ -49,21 +50,31 @@ export function CitationsView({
         {vm.categories.length === 0 ? (
           <EmptyStateCard title={emptyTitle} description={emptyDescription} />
         ) : (
-          vm.categories.map((group) => (
-            <div key={group.category} className="rounded-lg border border-border bg-card">
-              <div className="flex items-center justify-between border-b border-border px-3 py-2 text-sm font-medium">
-                <span>{categoryLabel(group.category)}</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  {group.completed} / {group.items.length} {completedSuffix}
-                </span>
-              </div>
-              <div className="p-3">
-                <div className="flex flex-wrap justify-center gap-x-5 gap-y-4">
-                  {group.items.map((item) => (
-                    <CitationCard key={item.key} item={item} locale={locale} />
-                  ))}
+          // Largeur de chaque catégorie proportionnelle à SON contenu, ordre préservé
+          // (retour utilisateur 2026-09-09) — cf. lib/layout/blockRowPacking.
+          packBlockRows(vm.categories, (g) => g.items.length).map((row) => (
+            <div
+              key={row.blocks[0].category}
+              className="block-row"
+              style={{ '--block-row-cols': rowGridTemplate(row) } as CSSProperties}
+            >
+              {row.blocks.map((group) => (
+                <div key={group.category} className="rounded-lg border border-border bg-card">
+                  <div className="flex items-center justify-between border-b border-border px-3 py-2 text-sm font-medium">
+                    <span>{categoryLabel(group.category)}</span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {group.completed} / {group.items.length} {completedSuffix}
+                    </span>
+                  </div>
+                  <div className="p-3">
+                    <div className="flex flex-wrap justify-center gap-x-5 gap-y-4">
+                      {group.items.map((item) => (
+                        <CitationCard key={item.key} item={item} locale={locale} />
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           ))
         )}

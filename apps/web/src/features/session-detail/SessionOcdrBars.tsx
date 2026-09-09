@@ -13,7 +13,15 @@ import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  escapeHtml,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
+  legendEntries,
+} from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 import { useOffensiveConversionP80, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
@@ -90,10 +98,15 @@ export function buildSessionOcdrBarsOption(
         return lines.join('<br/>')
       },
     },
+    // Socle de légende COMMUN (`getLegendBase`) et couleurs portées par les entrées : les
+    // barres sont colorées au POINT, donc ECharts n'avait aucune couleur de série et
+    // retombait sur sa palette par défaut.
     legend: {
-      data: showDr ? [opts.ocLabel, opts.drLabel] : [opts.ocLabel],
-      textStyle: { color: tc.axisLabel },
-      bottom: 0,
+      ...getLegendBase(tc),
+      data: legendEntries([
+        { name: opts.ocLabel, color: ocColor },
+        ...(showDr ? [{ name: opts.drLabel, color: drColor }] : []),
+      ]),
     },
     xAxis: {
       ...axis,

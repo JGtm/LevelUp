@@ -341,7 +341,7 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 	// session-usage S2) : gated par film.usage_summary (Infinite ; absente pour
 	// Halo 5 → bloc Available=false avec raison machine). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
-		svc = svc.WithSessionUsage(duckdb.NewSessionUsageRepo(pdb), pdb.XUID, r.friendGamertagsResolver())
+		svc = svc.WithSessionUsage(duckdb.NewSessionUsageRepo(pdb), pdb.XUID, r.friendGamertagsResolver(), r.cfg.RepoRoot)
 	}
 	if pdb.Metadata != nil {
 		// Placement X/Y dans la colonne Rang : résolveur season_id → seuil CSR (5/10),

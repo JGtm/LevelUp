@@ -12,7 +12,10 @@
  *     maximal avec la couleur positive, options d'accessibilité héritées
  *     automatiquement (hexComplement opère sur la couleur résolue par la palette).
  *   - Axe zéro en blanc gras (zerolinewidth=2 ↔ ECharts splitLine[0] custom).
- *   - Pas de légende (le mapping joueur→couleur est dans la pill / combobox de la page).
+ *   - Légende en pied de graphe, une pastille par joueur à sa couleur de BASE (celle des
+ *     frags et des assistances ; les morts en portent l'opposé colorimétrique). Rétablie le
+ *     2026-09-09 : « ce graphe n'a plus de légende ». La pill de la page dit bien qui est
+ *     sélectionné, elle ne dit pas quelle barre est à qui — c'est le rôle de la légende.
  *   - Label sur barre = valeur ABSOLUE (frags positifs, morts négatifs vers le bas
  *     mais lus en valeur positive).
  */
@@ -22,7 +25,9 @@ import {
   escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
+  getLegendBase,
   getTooltipBase,
+  legendEntries,
 } from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadPerMinuteEntry } from '@/lib/api/types'
@@ -34,6 +39,9 @@ export interface SquadPerMinuteOpts {
   metricLabels: { frags: string; deaths: string; assists: string }
   perMinuteSuffix: string // ex: " /min" pour tooltip
 }
+
+/** Repli quand aucune couleur n'est attribuée au joueur — gris structurel, pas une charte. */
+const NO_PLAYER_COLOR = '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
 
 function fmt(v: number): string {
   return v.toFixed(2)
@@ -53,7 +61,7 @@ export function buildSquadPerMinuteOption(
 
   // 1 série bar par joueur, 3 valeurs (frags, -deaths, assists).
   const echSeries = rows.map((r) => {
-    const color = opts.colorByPlayer[r.player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const color = opts.colorByPlayer[r.player] ?? NO_PLAYER_COLOR
     const negColor = hexComplement(color) // hue +180°, opaque — accessibilité héritée de la palette active
     return {
       name: r.player,
@@ -80,7 +88,17 @@ export function buildSquadPerMinuteOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 24, bottom: 36, left: 8, right: 24, containLabel: true },
+    // `bottom: 56` (et non 36) : la légende se pose au ras du bas, il lui faut sa bande.
+    grid: { top: 24, bottom: 56, left: 8, right: 24, containLabel: true },
+    legend: {
+      ...getLegendBase(tc),
+      data: legendEntries(
+        rows.map((r) => ({
+          name: r.player,
+          color: opts.colorByPlayer[r.player] ?? NO_PLAYER_COLOR,
+        })),
+      ),
+    },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',

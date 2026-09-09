@@ -446,16 +446,16 @@ fr = "Portée"
 en = "Range"
 
 [synthesis.weapon_range.range_subtitle_detail]
-fr = "— bâton du 10e au 90e centile, losange sur la médiane"
-en = "— bar from the 10th to the 90th percentile, diamond on the median"
+fr = "Le bâton court du 10e au 90e centile ; le losange marque la médiane. Frags au-dessus, morts en dessous — sur les morts, l'arme est celle du tueur."
+en = "The bar runs from the 10th to the 90th percentile; the diamond marks the median. Kills on top, deaths below — on deaths, the weapon is the killer's."
 
 [synthesis.weapon_range.elevation_subtitle]
 fr = "Dénivelé"
 en = "Elevation"
 
 [synthesis.weapon_range.elevation_subtitle_detail]
-fr = "— d'où vous avez fragué, d'où l'on vous a fragué, à ±1 m près"
-en = "— where you killed from, where you were killed from, to within ±1 m"
+fr = "D'où vous avez fragué et d'où l'on vous a fragué, à ±1 m près. Deux barres par arme : vos frags au-dessus, vos morts en dessous."
+en = "Where you killed from and where you were killed from, to within ±1 m. Two bars per weapon: your kills on top, your deaths below."
 
 [synthesis.weapon_range.legend_label]
 fr = "Légende"
@@ -472,14 +472,6 @@ en = "My kills"
 [synthesis.weapon_range.side_deaths]
 fr = "Mes morts"
 en = "My deaths"
-
-[synthesis.weapon_range.side_kills_position]
-fr = "(bâton du haut)"
-en = "(top bar)"
-
-[synthesis.weapon_range.side_deaths_position]
-fr = "(bâton du bas, l'arme est celle du tueur)"
-en = "(bottom bar, the weapon is the killer's)"
 
 [synthesis.weapon_range.percentiles]
 fr = "p10 · médiane · p90"
@@ -500,22 +492,6 @@ en = "level"
 [synthesis.weapon_range.elev_below]
 fr = "d'en bas (< −1 m)"
 en = "from below (< −1 m)"
-
-[synthesis.weapon_range.below_threshold_title]
-fr = "Sous le seuil de {min, number} mesures"
-en = "Below the {min, number} measurement threshold"
-
-[synthesis.weapon_range.below_threshold_kills]
-fr = "frags : {names}"
-en = "kills: {names}"
-
-[synthesis.weapon_range.below_threshold_deaths]
-fr = "morts : {names}"
-en = "deaths: {names}"
-
-[synthesis.weapon_range.coverage_note]
-fr = "Ne compte que les frags et les morts dont la position du tueur ET de la victime est mesurée ; tous n'ont pas de position (couverture partielle)."
-en = "Only counts kills and deaths where both the killer and victim position are measured; not all of them have a position (partial coverage)."
 
 [synthesis.weapon_range.table_summary]
 fr = "Voir en tableau"

@@ -440,6 +440,7 @@ export function SessionDetailPage() {
                   scale={compareScale}
                   intensityRows={data.compare_intensity_rows ?? []}
                   firstBlood={data.compare_first_blood ?? []}
+                  usage={data.compare_usage}
                 />
               ) : isCompareLoading ? (
                 <div className="flex items-center justify-center py-12">

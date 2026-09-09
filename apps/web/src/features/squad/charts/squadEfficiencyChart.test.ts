@@ -270,12 +270,21 @@ describe('buildSquadEfficiencyOption', () => {
     expect((opt.series as unknown as PlayerSeries[])[1].markArea).toBeUndefined()
   })
 
-  it('étiquette de FIN de courbe = gamertag à la couleur du joueur (remplace la légende)', () => {
+  it('légende en pied de graphe : un joueur, sa couleur — plus d’étiquette de fin', () => {
+    // 2026-09-09 : l'identité passait par une étiquette au bout de la courbe, un canal que
+    // ces deux cartes étaient seules à employer. La légende la remplace — même socle que
+    // partout ailleurs, et chaque joueur y devient masquable d'un clic.
     const opt = buildSquadEfficiencyOption(rows, PLAYERS, opts('offensive'))
     const series = opt.series as unknown as PlayerSeries[]
-    expect(opt.legend).toBeUndefined()
-    expect(series[0].endLabel).toMatchObject({ show: true, formatter: 'Me', color: '#aaa' })
-    expect(series[1].endLabel).toMatchObject({ show: true, formatter: 'F1', color: '#bbb' })
+    expect(series[0].endLabel).toBeUndefined()
+    expect(series[1].endLabel).toBeUndefined()
+    const legend = opt.legend as unknown as {
+      data: Array<{ name: string; itemStyle: { color: string } }>
+    }
+    expect(legend.data.map((e) => [e.name, e.itemStyle.color])).toEqual([
+      ['Me', '#aaa'],
+      ['F1', '#bbb'],
+    ])
   })
 
   it('libellés de match sur l\'axe X (numéro + carte quand elle est connue)', () => {

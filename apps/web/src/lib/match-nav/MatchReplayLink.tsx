@@ -27,6 +27,28 @@ import { themedIconSrc } from '@/lib/themedIcon'
 import { useTitleSlug } from '@/lib/title-routing'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
+/**
+ * Présentation du lien. Les DEUX portes, la route et l'icône sont communes : seule
+ * change l'enveloppe. Un composant séparé par présentation ferait diverger la règle
+ * d'affichage (CLAUDE.md n°6).
+ *   - `icon`   : cellule de tableau, boîte de 20x16 px sans cadre (Explorer, Synergies).
+ *   - `button` : bouton cadré de 28 px, pour une tuile de match où l'icône nue passait
+ *                inaperçue (retour utilisateur 2026-09-09).
+ */
+type ReplayLinkVariant = 'icon' | 'button'
+
+/** Enveloppe du lien et taille de l'icône, par présentation. */
+const VARIANT_CLASS: Record<ReplayLinkVariant, { link: string; img: string }> = {
+  icon: {
+    link: 'group inline-flex h-4 w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground transition-colors',
+    img: 'h-full w-full shrink-0 object-contain opacity-60 group-hover:opacity-100 transition-opacity',
+  },
+  button: {
+    link: 'group inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+    img: 'h-3.5 w-[18px] shrink-0 object-contain opacity-80 group-hover:opacity-100 transition-opacity',
+  },
+}
+
 interface MatchReplayLinkProps {
   /** `has_replay` de la ligne : un artefact de rejeu existe pour ce match. */
   available: boolean
@@ -34,9 +56,17 @@ interface MatchReplayLinkProps {
   playerSlug: string
   /** aria-label + tooltip, fourni par l'i18n de la feature appelante (FR/EN). */
   label: string
+  /** Présentation (défaut `icon` : la cellule de tableau, cas d'origine). */
+  variant?: ReplayLinkVariant
 }
 
-export function MatchReplayLink({ available, matchId, playerSlug, label }: MatchReplayLinkProps) {
+export function MatchReplayLink({
+  available,
+  matchId,
+  playerSlug,
+  label,
+  variant = 'icon',
+}: MatchReplayLinkProps) {
   const titleSlug = useTitleSlug()
   const titreARejeu = useCapability('replay')
   // Thème LOCAL déjà tranché par le store (`dark` | `light`) : l'icône est un raster à
@@ -54,7 +84,7 @@ export function MatchReplayLink({ available, matchId, playerSlug, label }: Match
       // une image dans un flex au sein d'une cellule à largeur automatique est
       // dimensionnée différemment selon le moteur (invisible sous Firefox, correcte
       // sous Chrome — constaté 2026-07-26 sur la colonne Waypoint voisine).
-      className="group inline-flex h-4 w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+      className={VARIANT_CLASS[variant].link}
     >
       <img
         src={themedIconSrc('replay', theme)}
@@ -64,7 +94,7 @@ export function MatchReplayLink({ available, matchId, playerSlug, label }: Match
         // l'icône n'est pas carrée, le `fill` par défaut la déformerait.
         width={20}
         height={16}
-        className="h-full w-full shrink-0 object-contain opacity-60 group-hover:opacity-100 transition-opacity"
+        className={VARIANT_CLASS[variant].img}
       />
     </Link>
   )

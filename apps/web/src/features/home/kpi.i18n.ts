@@ -17,6 +17,8 @@ interface KPITextDict {
     totalTime: string
     favoritePlaylist: string
     offDef: string
+    /** Aide ⓘ de la tuile Rendement / Résistance : les DEUX indicateurs en un texte. */
+    offDefHelp: string
     favoriteWeapon: string
     matches: string
     kda: string
@@ -56,6 +58,7 @@ export function getKPIText(locale?: string | null): KPITextDict {
       totalTime: t(loc, 'home.kpi.total_time'),
       favoritePlaylist: t(loc, 'home.kpi.favorite_playlist'),
       offDef: t(loc, 'home.kpi.off_def'),
+      offDefHelp: t(loc, 'home.kpi.off_def_help'),
       favoriteWeapon: t(loc, 'home.kpi.favorite_weapon'),
       matches: t(loc, 'home.kpi.matches_label'),
       kda: t(loc, 'home.kpi.kda_label'),
