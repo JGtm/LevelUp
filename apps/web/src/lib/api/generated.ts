@@ -6170,6 +6170,73 @@ export interface components {
             /** Format: int64 */
             withOwner: number;
         };
+        EquipmentUsageBlock: {
+            available: boolean;
+            equipment_parties?: components["schemas"]["EquipmentUsageParties"];
+            families?: components["schemas"]["EquipmentUsageFamilyLine"][] | null;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            players?: components["schemas"]["EquipmentUsagePlayerLine"][] | null;
+            tracked_players?: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            unavailable_reason?: string;
+            weapon_pad_parties?: components["schemas"]["EquipmentUsageParties"];
+        };
+        EquipmentUsageFamilyLine: {
+            /** Format: double */
+            dropped: number;
+            family_key: string;
+            /** Format: double */
+            kept: number;
+            /** Format: double */
+            opponents_used_rate_pct?: number;
+            /** Format: double */
+            taken: number;
+            /** Format: double */
+            teammates_used_rate_pct?: number;
+            /** Format: double */
+            used: number;
+            /** Format: double */
+            used_rate_pct?: number;
+        };
+        EquipmentUsageFriendCount: {
+            /** Format: double */
+            value: number;
+            xuid: string;
+        };
+        EquipmentUsageParties: {
+            by_friend?: components["schemas"]["EquipmentUsageFriendCount"][] | null;
+            /** Format: double */
+            friends: number;
+            /** Format: double */
+            lobby_total: number;
+            /** Format: double */
+            opponents: number;
+            /** Format: double */
+            player: number;
+            /** Format: double */
+            rest_of_team: number;
+        };
+        EquipmentUsagePlayerLine: {
+            /** Format: double */
+            dropped: number;
+            /** Format: double */
+            kept: number;
+            /** Format: double */
+            opponents_used_rate_pct?: number;
+            /** Format: double */
+            pad_pickups: number;
+            /** Format: double */
+            taken: number;
+            /** Format: double */
+            teammates_used_rate_pct?: number;
+            /** Format: double */
+            used: number;
+            /** Format: double */
+            used_rate_pct?: number;
+            xuid: string;
+        };
         ExplorerBriefing: {
             baseline?: components["schemas"]["ExplorerBriefingBaseline"];
             context_split?: components["schemas"]["ExplorerBriefingContextSplit"];
@@ -11775,6 +11842,7 @@ export interface components {
             combat_profile?: components["schemas"]["CombatProfileBlock"];
             comparison_metrics: components["schemas"]["ComparisonMetricItem"][] | null;
             detailed_stats: components["schemas"]["SynthesisDetailedStats"];
+            equipment_usage?: components["schemas"]["EquipmentUsageBlock"];
             frag_distribution?: components["schemas"]["FragDistribution"];
             heatmap_data: components["schemas"]["TemporalHeatmapCell"][] | null;
             highlights_preview: components["schemas"]["SynthesisHighlightsPreview"];
