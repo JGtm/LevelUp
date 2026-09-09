@@ -309,7 +309,11 @@ git commit -m "refactor(phase2): ..."
   de données par titre (mutualisation HTTP `platform/httpx`, `TitleSyncRunner` ; amende 0027) ·
   `0032` **score des modes à manches** (table mesurée `regulation.toml [rounds_decide]` +
   `analysis.ReadTeamScore` : sur ces modes le score en points peut donner la victoire au
-  perdant — afficher les manches).
+  perdant — afficher les manches) · `0033` **population escouade, un seul compte**
+  (appartenance d'un match à la session d'une composition indépendante de la présence à la
+  fin — quitter un match n'est pas quitter la session ; `composition_sessions[].match_count`
+  seule source d'un compte de session, `/filters/resolve` en repli de chargement seulement ;
+  2 ratchets).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

@@ -42,6 +42,7 @@ interface RailText {
   nextSeasonTitle: string
   positionLabel: (idx: number, total: number) => string
   matchCountSuffix: (n: number) => string
+  matchCountOfRosterSuffix: (shown: number, total: number) => string
   multiSessionLabel: (n: number) => string
   multiSessionTooltip: string
   allTimeLabel: (n: number) => string
@@ -73,6 +74,10 @@ const TEXTS: Record<Locale, RailText> = {
     nextSeasonTitle: 'Saison suivante',
     positionLabel: (idx, total) => `${idx + 1} / ${total}`,
     matchCountSuffix: (n) => ` · ${n} match${n > 1 ? 's' : ''}`,
+    // ADR 0033 (chantier A2) : écart composition exacte publié en clair —
+    // "4 sur 7 matchs" plutôt qu'un nombre qui ne correspondrait à rien
+    // d'affiché ailleurs sur la page.
+    matchCountOfRosterSuffix: (shown, total) => ` · ${shown} sur ${total} match${total > 1 ? 's' : ''}`,
     multiSessionLabel: (n) => `${n} sessions sélectionnées`,
     multiSessionTooltip: 'Désélectionnez des sessions pour activer la navigation',
     allTimeLabel: (n) => `Toutes les sessions (${n})`,
@@ -102,6 +107,7 @@ const TEXTS: Record<Locale, RailText> = {
     nextSeasonTitle: 'Next season',
     positionLabel: (idx, total) => `${idx + 1} / ${total}`,
     matchCountSuffix: (n) => ` · ${n} match${n > 1 ? 'es' : ''}`,
+    matchCountOfRosterSuffix: (shown, total) => ` · ${shown} of ${total} match${total > 1 ? 'es' : ''}`,
     multiSessionLabel: (n) => `${n} sessions selected`,
     multiSessionTooltip: 'Deselect sessions to enable navigation',
     allTimeLabel: (n) => `All sessions (${n})`,
@@ -197,6 +203,15 @@ interface PeriodSessionRailProps {
   matchCount?: number | null
   /** Élément rendu au centre, après le compteur (ex. bouton « Voir les matchs »). */
   trailing?: React.ReactNode
+  /**
+   * Mode session UNIQUEMENT : surcharge le compte affiché par la population
+   * réelle d'un contexte composition (ADR 0033 — `{ shown, total }`, "4 sur 7"
+   * quand un écart existe, sinon `shown === total`). Le compte natif de la
+   * session (`session.match_count`, population du joueur principal via
+   * `/filters/resolve`) reste utilisé pour les labels/pages qui ne passent pas
+   * cette prop (Stats solo, etc. — hors périmètre, rendu inchangé).
+   */
+  sessionCount?: (label: string) => { shown: number; total: number } | undefined
 }
 
 /** Composant principal — dispatcher selon le mode (session / multi-session / period / season). */
@@ -204,6 +219,7 @@ export function PeriodSessionRail({
   filterStore = useSoloFilterStore,
   matchCount,
   trailing,
+  sessionCount,
 }: PeriodSessionRailProps = {}) {
   const filterContext = filterStore((s) => s.filterContext)
   const resolvedContext = filterStore((s) => s.resolvedContext)
@@ -246,6 +262,7 @@ export function PeriodSessionRail({
         t={t}
         filterStore={filterStore}
         centerExtra={extraSessionOnly}
+        sessionCount={sessionCount}
       />
     )
   }
@@ -401,9 +418,10 @@ interface SessionRailProps {
   t: RailText
   filterStore: FilterStore
   centerExtra?: React.ReactNode
+  sessionCount?: (label: string) => { shown: number; total: number } | undefined
 }
 
-function SessionRail({ session, index, total, locale, t, filterStore, centerExtra }: SessionRailProps) {
+function SessionRail({ session, index, total, locale, t, filterStore, centerExtra, sessionCount }: SessionRailProps) {
   const formattedLabel = formatSessionLabel(
     session.label,
     session.started_at_utc,
@@ -416,6 +434,18 @@ function SessionRail({ session, index, total, locale, t, filterStore, centerExtr
 
   const canGoPrev = index < total - 1
   const canGoNext = index > 0
+
+  // ADR 0033 : source unique de la population escouade — `composition` (quand
+  // fournie par la page) prime TOUJOURS sur `session.match_count` (population
+  // du joueur principal, /filters/resolve). `undefined` = pas de contexte
+  // composition (page hors périmètre escouade) → compte natif inchangé.
+  const composition = sessionCount?.(session.label)
+  const countSuffix = composition
+    ? composition.shown > 0 &&
+      (composition.shown === composition.total
+        ? t.matchCountSuffix(composition.shown)
+        : t.matchCountOfRosterSuffix(composition.shown, composition.total))
+    : session.match_count > 0 && t.matchCountSuffix(session.match_count)
 
   return (
     <RailFrame
@@ -446,7 +476,7 @@ function SessionRail({ session, index, total, locale, t, filterStore, centerExtr
           )}
           <span className="shrink-0 text-xs text-muted-foreground" aria-live="polite">
             ({t.positionLabel(index, total)}
-            {session.match_count > 0 && t.matchCountSuffix(session.match_count)})
+            {countSuffix})
           </span>
         </>
       }

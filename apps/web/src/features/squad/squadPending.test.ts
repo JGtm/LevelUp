@@ -9,11 +9,7 @@
  * que les autres filtres n'avaient aucun effet sur les sessions et inversement.
  */
 import { describe, expect, it } from 'vitest'
-import {
-  deriveSquadPending,
-  decideCompositionReanchor,
-  mergeSessionCounts,
-} from './squadPending'
+import { deriveSquadPending, decideCompositionReanchor } from './squadPending'
 import {
   reconcileSquadSessionLabels,
   stripSessionCountSuffix,
@@ -300,41 +296,7 @@ describe('decideCompositionReanchor', () => {
   })
 })
 
-// Compteurs de sessions unifiés (le « 11/8/6/5 ») : le sélecteur doit afficher le
-// compte « commencés ensemble » servi par teammates, pas celui de /filters/resolve.
-describe('mergeSessionCounts', () => {
-  const fallback = [
-    { label: 'S1 (11)', match_count_filtered: 8 },
-    { label: 'S2 (4)', match_count_filtered: 4 },
-  ]
-
-  it('le compte « ensemble » de la composition prime sur celui de filters/resolve', () => {
-    const merged = mergeSessionCounts(fallback, [{ label: 'S1 (11)', match_count: 6 }])
-    expect(merged.get('S1 (11)')).toBe(6)
-  })
-
-  it('sessions non couvertes par la composition : repli sur filters/resolve', () => {
-    const merged = mergeSessionCounts(fallback, [{ label: 'S1 (11)', match_count: 6 }])
-    expect(merged.get('S2 (4)')).toBe(4)
-  })
-
-  it('réponse teammates pas encore arrivée → uniquement le repli', () => {
-    const merged = mergeSessionCounts(fallback, [])
-    expect(merged.get('S1 (11)')).toBe(8)
-    expect(merged.size).toBe(2)
-  })
-
-  it('match_count absent ou nul → on garde le repli (pas de session affichée à 0)', () => {
-    const merged = mergeSessionCounts(fallback, [
-      { label: 'S1 (11)' },
-      { label: 'S2 (4)', match_count: 0 },
-    ])
-    expect(merged.get('S1 (11)')).toBe(8)
-    expect(merged.get('S2 (4)')).toBe(4)
-  })
-
-  it('session connue de la composition seule (absente du repli) → exposée', () => {
-    const merged = mergeSessionCounts(fallback, [{ label: 'S3 (2)', match_count: 2 }])
-    expect(merged.get('S3 (2)')).toBe(2)
-  })
-})
+// Compteurs de sessions unifiés (le « 11/8/6/5 ») : couvert désormais par
+// `squadSessionCounts.test.ts` (ADR 0033, chantier A2 — mergeSessionCounts
+// absorbé dans `squadSessionCount`/`squadSessionShownCount`, une seule règle
+// de compte côté web, CLAUDE.md règle 6).

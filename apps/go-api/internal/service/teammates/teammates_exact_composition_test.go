@@ -71,9 +71,12 @@ func TestMatchHasExactComposition_MonoSelection(t *testing.T) {
 // échoué / non tenté) => rows inchangés (dégradation gracieuse, page non blanchie).
 func TestFilterExactComposition_NilMapGraceful(t *testing.T) {
 	rows := []domain.SquadMatchRow{makeSquadRow("m1", "Bazaar", domain.OutcomeWin)}
-	got := filterExactComposition(rows, nil, setXUIDs("xc"), []string{"xa"})
+	got, excluded := filterExactComposition(rows, nil, setXUIDs("xc"), []string{"xa"})
 	if len(got) != 1 {
 		t.Errorf("map nil doit laisser les rows intactes, got %d", len(got))
+	}
+	if len(excluded) != 0 {
+		t.Errorf("map nil doit ne rien exclure, got %d", len(excluded))
 	}
 }
 
@@ -257,3 +260,110 @@ func TestGetPage_ExactComposition_ExtraKnownTeammateExcluded(t *testing.T) {
 		t.Errorf("LoadMapStatsForSquad squadXUIDs: want 2 (xa,xb), got %v", repo.mapStatsSquadXUIDs)
 	}
 }
+
+// newExactCompositionGapRepo : composition {AllyA, AllyB}, UNE session "S1" avec
+// 5 matchs "commencés ensemble" (roster) : m1 exact (gardé), m2 écarté par
+// Nilton410 seul, m3 écarté par passivemarquise seul, m4 écarté par un xuid connu
+// SANS gamertag résolu (repli "Joueur <4 derniers>", même repli que Q32b), m5
+// écarté par Nilton410 ET passivemarquise ensemble. Scénario ADR 0033 : l'écart
+// affiché doit nommer, match par match, le(s) coéquipier(s) responsable(s).
+func newExactCompositionGapRepo() *mockSquadRepo {
+	tS1 := time.Date(2026, 8, 27, 19, 0, 0, 0, time.UTC)
+	shared := []domain.SquadMatchRow{
+		makeSquadRowSess("m1", "Bazaar", domain.OutcomeWin, "S1", tS1),
+		makeSquadRowSess("m2", "Bazaar", domain.OutcomeWin, "S1", tS1),
+		makeSquadRowSess("m3", "Bazaar", domain.OutcomeLoss, "S1", tS1),
+		makeSquadRowSess("m4", "Bazaar", domain.OutcomeWin, "S1", tS1),
+		makeSquadRowSess("m5", "Bazaar", domain.OutcomeLoss, "S1", tS1),
+	}
+	return &mockSquadRepo{
+		topRows: []domain.TopTeammateRow{
+			{XUID: "xa", Gamertag: "AllyA", GamesTogether: 10},
+			{XUID: "xb", Gamertag: "AllyB", GamesTogether: 10},
+			{XUID: "xn", Gamertag: "Nilton410", GamesTogether: 4},
+			{XUID: "xp", Gamertag: "passivemarquise", GamesTogether: 5},
+			// xu : connu (dans le pool) mais SANS gamertag résolu côté Q29 — cas
+			// du repli "Joueur <4 derniers>".
+			{XUID: "xuid0009", Gamertag: "", GamesTogether: 1},
+		},
+		squadRowsByTeammate: map[string][]domain.SquadMatchRow{
+			"xa": shared,
+			"xb": shared,
+		},
+		allyRows: []domain.AllyParticipant{
+			ally("m1", "px"), ally("m1", "xa"), ally("m1", "xb"),
+			ally("m2", "px"), ally("m2", "xa"), ally("m2", "xb"), ally("m2", "xn"),
+			ally("m3", "px"), ally("m3", "xa"), ally("m3", "xb"), ally("m3", "xp"),
+			ally("m4", "px"), ally("m4", "xa"), ally("m4", "xb"), ally("m4", "xuid0009"),
+			ally("m5", "px"), ally("m5", "xa"), ally("m5", "xb"), ally("m5", "xn"), ally("m5", "xp"),
+		},
+	}
+}
+
+// TestGetPage_ExactComposition_PublishesRosterCountAndExcludedMatches : A1 —
+// publier l'écart (ADR 0033, critère 3). Sous filter_exact_composition=true, la
+// session "S1" doit porter le compte AVANT filtre exclusif
+// (CompositionSessionEntry.MatchCountRoster = 5, le roster "commencés ensemble")
+// à côté du compte SOURCE UNIQUE déjà publié (MatchCount = 1, post-filtre), et la
+// liste des matchs écartés avec le(s) coéquipier(s) responsable(s) nommés.
+//
+// ÉCHEC ATTENDU (TDD rouge) : domain.CompositionSessionEntry et domain.CompositionExcludedMatch
+// n'existent pas encore — échec de COMPILATION, pas d'assertion.
+func TestGetPage_ExactComposition_PublishesRosterCountAndExcludedMatches(t *testing.T) {
+	repo := newExactCompositionGapRepo()
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(
+		newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test",
+	)
+
+	resp, err := svc.GetPage(context.Background(), "px", domain.TeammatesQueryRequest{
+		SelectedGamertags:      []string{"AllyA", "AllyB"},
+		FilterExactComposition: true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(resp.CompositionSessions) != 1 {
+		t.Fatalf("CompositionSessions: want 1 session (S1), got %d", len(resp.CompositionSessions))
+	}
+	s1 := resp.CompositionSessions[0]
+	if s1.Label != "S1" {
+		t.Fatalf("Label: want S1, got %s", s1.Label)
+	}
+	if s1.MatchCount != 1 {
+		t.Errorf("MatchCount (source unique, post-filtre): want 1 (m1), got %d", s1.MatchCount)
+	}
+	if s1.MatchCountRoster != 5 {
+		t.Errorf("MatchCountRoster (AVANT filtre exclusif, roster): want 5, got %d", s1.MatchCountRoster)
+	}
+	if len(s1.ExcludedByExactComposition) != 4 {
+		t.Fatalf("ExcludedByExactComposition: want 4 matchs écartés (m2,m3,m4,m5), got %d", len(s1.ExcludedByExactComposition))
+	}
+
+	byMatch := map[string]domain.CompositionExcludedMatch{}
+	for _, ex := range s1.ExcludedByExactComposition {
+		byMatch[ex.MatchID] = ex
+	}
+	if got := byMatch["m2"].ExtraGamertags; len(got) != 1 || got[0] != "Nilton410" {
+		t.Errorf("m2 écarté par Nilton410 seul: got %v", got)
+	}
+	if got := byMatch["m3"].ExtraGamertags; len(got) != 1 || got[0] != "passivemarquise" {
+		t.Errorf("m3 écarté par passivemarquise seul: got %v", got)
+	}
+	if got := byMatch["m4"].ExtraGamertags; len(got) != 1 || got[0] != "Joueur 0009" {
+		t.Errorf("m4 écarté par un xuid sans gamertag résolu (repli): got %v", got)
+	}
+	if got := byMatch["m5"].ExtraGamertags; len(got) != 2 || got[0] != "Nilton410" || got[1] != "passivemarquise" {
+		t.Errorf("m5 écarté par Nilton410 ET passivemarquise: got %v", got)
+	}
+	if byMatch["m4"].MapUI != "Bazaar" {
+		t.Errorf("MapUI de l'écarté m4: want Bazaar, got %s", byMatch["m4"].MapUI)
+	}
+	if !byMatch["m2"].StartTime.Equal(tS1Gap) {
+		t.Errorf("StartTime de l'écarté m2: want %v, got %v", tS1Gap, byMatch["m2"].StartTime)
+	}
+}
+
+// tS1Gap : StartTime de la session S1 du scénario newExactCompositionGapRepo,
+// pour vérifier que StartTime est bien porté par ExcludedMatch.
+var tS1Gap = time.Date(2026, 8, 27, 19, 0, 0, 0, time.UTC)

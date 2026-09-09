@@ -1162,6 +1162,116 @@ dire : 5 couples sans unicité, cas général qui appartient au lien direct inde
 que le film ne porte pas (plan décodeur d'après v7.5.0). Suite : P3 (registre des objets
 d'objectif), qui n'ouvre qu'après la clôture de P2. Branche `feat/v2-p2-registre-joueurs` poussée,
 NON fusionnée.
+## [2026-09-09] Population escouade : la L2 lit la meme source que la page — Phase A2 close
+
+**Chantier** `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, branche `wt/escouade-hors-cadre`,
+worktree dedie. Suite de A1 (backend) : cablage cote web, avec ratchet anti-regression.
+
+**Decision technique principale** — le vrai bug (rail 7 vs page 4) vivait dans
+`PeriodSessionRail.SessionRail` : en mode session UNIQUE (le cas du 27/08), ce sous-composant
+lit `session.match_count` (population du joueur principal, `/filters/resolve`) directement,
+sans jamais passer par la prop `matchCount` existante (celle-ci n'alimente QUE les modes
+multi-session/periode/all-time). Nouvelle prop `sessionCount?: (label) => {shown,total} |
+undefined`, cablee uniquement sur `SessionRail`, source unique = `squadSessionCounts.ts`
+(nouveau module, absorbe l'ancien `mergeSessionCounts`).
+
+**Decouverte traitee dans le perimetre de A2.5** (necessaire pour que le ratchet A2.6 passe
+avec une allowlist VIDE) : `SquadLayout.tsx` lisait encore `total_matches_after_filters`
+(pour `matchCount` du rail ET la visibilite du bouton "Voir les matchs") et `session_options`
+directement (pour le repli). Les deux retires : `matchCount` n'est plus alimente pour les
+modes hors session unique dans ce lot (rien de fiable a afficher plutot qu'un nombre faux) ;
+le bouton se fie desormais a `squadEntryMatchId` seul (deja suffisant, la condition
+`totalAfter>0` etait redondante) ; le repli `/filters/resolve` est extrait par
+`resolveSquadSessionFallback` dans le module canonique.
+
+**Resultats observes** — TDD respecte sur 2 modules : `squadSessionCounts.test.ts` (echec de
+resolution de module observe AVANT code, 9 cas verts apres) et `PeriodSessionRail.test.tsx`
+(2/10 cas rouges observes AVANT code — prop ignoree —, 10/10 verts apres). Le ratchet
+`singleCountSource.guard.test.ts` a lui-meme ECHOUE une premiere fois pendant sa redaction
+(sur `SquadLayout.tsx` avant le refactor `resolveSquadSessionFallback`), preuve de mordant
+avant meme la clotoure de l'item.
+
+**Gate A2** : `make check-types` 0 erreur · `make test-web` 7032 passed / 17 skipped / 0
+failed (suite complete) · `npx eslint` sur les 8 fichiers touches : 0 issue.
+
+**Conclusion / prochaine etape** : Phase A3 (lisibilite/info-bulle, D1) EN ATTENTE — touche
+`features/squad/i18n.ts` que le worktree partage modifie sans commit ; le superviseur
+tranchera la coordination avant de l'ordonner. Chantier B (bornage hors cadre) non commence,
+hors perimetre de ce lot.
+
+## [2026-09-09] Population escouade : l'ecart est publie par l'API — Phase A1 close
+
+**Chantier** `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, branche `wt/escouade-hors-cadre`,
+worktree dedie. Suite de la phase A0 (ADR 0033) : publier, sous l'option composition exacte,
+le compte AVANT filtre exclusif et les matchs ecartes avec le coequipier responsable nomme.
+
+**Decision technique principale** — `filterExactComposition` (auparavant un simple filtre)
+rend desormais `(kept, excluded []domain.SquadMatchRow)` en UN SEUL balayage plutot que deux
+regles paralleles (rejete un design "recalculer les ecartes a part" qui aurait pu diverger
+de `matchHasExactComposition`). Le predicat booleen existant reste verrouille par ses tests ;
+un nouveau frere `extraPresentOn(team, extraPool)` NOMME les xuids fautifs au lieu de rendre
+un simple bool. `teammates_service.go` etant deja a 508 lignes (dette gelee, seuil CLAUDE.md
+500L), toute la logique d'assemblage de `CompositionSessionEntry`
+(roster/gardes/ecartes -> par session) part dans un nouveau fichier
+`teammates_service_composition_sessions.go` plutot que de faire grossir le god-file.
+
+**Decouverte traitee dans le perimetre de A1.2** : le nom `ExcludedMatch` prescrit par le
+plan collisionne avec un type domain existant sans rapport (exclusion MANUELLE d'un match
+par l'utilisateur, `match_exclusion.go`). Renomme en `CompositionExcludedMatch`, justifie en
+GoDoc. Consigne en §8 Decouvertes du plan pour memoire (deja resolu, rien a re-traiter).
+
+**Resultats observes** — TDD respecte : le test A1.1
+(`TestGetPage_ExactComposition_PublishesRosterCountAndExcludedMatches`) a d'abord ECHOUE en
+COMPILATION (`MatchCountRoster`/`ExcludedByExactComposition` inexistants,
+`domain.CompositionExcludedMatch` indefini), observe AVANT toute implementation. Apres code :
+vert, avec un scenario a 4 matchs ecartes (Nilton410 seul, passivemarquise seul, un xuid
+connu SANS gamertag resolu -> repli "Joueur 0009" meme convention que Q32b, et les deux
+ensemble -> `extra_gamertags` trie). Log `teammates.exact_composition_gap` observe :
+`sessions=1 kept_matches=1 excluded_matches=4 distinct_culprits=3`.
+
+**Gate A1** : test A1.1 vert · `go test ./internal/...` 100% pass (repo entier, y compris le
+golden test `openapi.yaml`) · `go vet ./...` exit 0 · `make go-api-lint` 0 issue ·
+`make generate-types` verifie IDEMPOTENT (deuxieme run : diff identique). Blocage leve en
+cours de route : le worktree dedie n'avait jamais eu `npm install` (`node_modules/` absent)
+— `make install-web` execute (prerequis d'outillage necessaire au gate, pas un fix hors
+perimetre).
+
+**Conclusion / prochaine etape** : phase A2 — cote web, source unique pour la L2
+(`squadSessionCounts.ts`), en TDD rouge.
+
+## [2026-09-09] Population escouade : la regle est ecrite (ADR 0033) + deux ratchets — Phase A0 close
+
+**Chantier** `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, branche `wt/escouade-hors-cadre`,
+worktree dedie. Deuxieme occurrence du meme defaut : le compte de matchs d'une session
+escouade differe entre la ligne L2 et le corps de page. Mesure du 27 aout : 7 cote rail
+(`/filters/resolve`, population du joueur principal) contre 4 cote page (`composition_sessions`,
+population reelle). `3862ff083` avait unifie le selecteur de sessions, pas le rail.
+
+**Decision technique principale** — la regle d'appartenance d'un match a la session d'une
+composition n'etait ecrite NULLE PART et tenait par accident. ADR 0033 (EN-only, regle 15) la
+fixe : le main a joue le match ET chaque coequipier selectionne figure sur son equipe alliee,
+**independamment de sa presence a la fin**. Quitter un match n'est pas quitter la session
+(cadrage utilisateur : crash du jeu, du PC, deconnexion). `composition_sessions[].match_count`
+devient la source UNIQUE d'un compte de session en contexte escouade ; `/filters/resolve` n'est
+qu'un repli de chargement.
+
+**Resultats observes** — le match du crash mesure (`2cf24f30`, 27/08 19:39 UTC : Chocoboflor
+`present_at_completion=false`, bot `bid(3.0)` en remplacement) est bien CONSERVE par le moteur
+actuel. L'ecart de la session venait de trois autres matchs, ou un coequipier connu hors
+selection etait sur l'equipe (Nilton410 rang 4, passivemarquise rang 35).
+
+Deux verrous poses, declares RATCHETS et non TDD (le moteur passait deja) :
+`composition_presence_test.go` (scenario du crash sur toutes les surfaces + aucun champ de
+presence dans les types de population) et `no_presence_filter_test.go` (grep sur les 4 sources
+SQL de la population escouade, allowlist VIDE et datee). **Mordant prouve par mutation** : avec
+`AND p2.present_at_completion` injecte dans `Q30SquadMatchesSharedQuery` et un champ
+`PresentAtCompletion` ajoute a `domain.AllyParticipant`, les deux tests echouent avec le bon
+message ; revert verifie.
+
+**Gate A0** : `go vet ./...` 0 · `go test ./internal/service/teammates/... ./internal/platform/duckdb/...` ok.
+
+**Conclusion / prochaine etape** : phase A1 — publier l'ecart (compte avant filtre exclusif +
+matchs ecartes avec le coequipier responsable nomme), en TDD rouge cette fois.
 
 ## [2026-09-08] Lot M1b — corriger le décalage d'horloge du lien « voir dans le rejeu » — Complete
 
