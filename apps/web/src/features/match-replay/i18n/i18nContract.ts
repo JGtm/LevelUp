@@ -210,6 +210,15 @@ export interface ReplayText {
   loading: string
   empty: string
   /**
+   * L'ÉTIQUETTE DE LA FLÈCHE HORS CADRE (plan escouade hors cadre, chantier B, décision D2,
+   * 2026-09-10) : le nom du joueur (ou du porteur d'objectif) ET la distance jusqu'à sa
+   * position réelle, hors du cadre visible à zoom serré (2x/3x). Le symbole du mètre (« m »)
+   * est IDENTIQUE en français et en anglais — ce n'est pas un anglicisme à traduire — mais la
+   * composition passe quand même par ce contrat pour garder la parité de typage (règle
+   * CLAUDE.md n°1 : toute string UI en FR ET EN).
+   */
+  offscreenMarkerFmt: (name: string, meters: number) => string
+  /**
    * AVIS « INSTANT NON CALÉ » (lot M1b, 2026-09-08) : un lien tactique demandait un instant
    * sur l'horloge du MATCH, mais l'artefact de ce match n'a pas de calage connu (`coverage.
    * bridge.deathOffsetMs` absent — schéma antérieur à 49, ou pont d'identité qui n'a apparié

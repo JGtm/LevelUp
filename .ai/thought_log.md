@@ -104088,3 +104088,20 @@ NON traitées dans ce lot (hors périmètre confié). Pas de fusion, pas de push
 - Resultats observes : 9/9 tests offscreenChevron verts, 652/652 tests du dossier `layers/`
   verts, `npx tsc -b --force` exit 0.
 - Prochaine etape : phase B2 (cablage sur `drawLivingTrack`/`drawDeathMark`).
+
+## [2026-09-10] Escouade hors cadre — Phase B2 cablage marqueurs joueurs (Complete)
+- TDD : test ROUGE (`count(ops,'rotate')` attendu 1, obtenu 0 sur 3 cas), puis cablage de
+  `edgeMarkFor` dans `drawLivingTrack` (branche complete, return immediat comme le pion
+  embarque) et `drawDeathMark` (meme fondu DEATH_ALPHA*fade, sans nom ni distance, D6).
+- Decision technique : `OFFSCREEN_MARGIN_PX` (16px ecran de reference) canonique dans
+  `edgeClamp.ts`, partagee par B2 et bientot B3 (jamais une copie locale, CLAUDE.md n°6).
+  `MarkerStyle.offscreenLabelOf` recoit le texte deja compose par l'appelant -- le calque ne
+  connait aucune locale. Resolu preventivement l'item B4.3 (i18n unite de distance) : ajout de
+  `offscreenMarkerFmt` a `i18nContract.ts`/`i18n.ts` (FR/EN, "m" identique dans les deux
+  langues mais parite de typage tenue), cable dans ReplayCanvas.tsx.
+- Resultats observes : 2617/2617 tests match-replay verts (1 skip inchange), tsc -b --force
+  exit 0, ReplayTeams.perf.test.tsx toujours gate `REPLAY_PERF=1` (skip inchange, aucun de ses
+  imports touche). eslint --max-warnings=0 sur les 10 fichiers touches B0-B2 : 1 avertissement
+  PRE-EXISTANT (ReplayCanvas.tsx:532, zoneInk.outline, hors diff de ce lot).
+- Prochaine etape : phase B3 (porteurs d'objectif : flagCarriesLayer, bombCarrierLayer,
+  skullCarrierLayer, decision sur vipCrownLayer).

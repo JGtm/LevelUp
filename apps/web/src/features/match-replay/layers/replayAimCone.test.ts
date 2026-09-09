@@ -71,6 +71,7 @@ function style(over: Partial<MarkerStyle> = {}): MarkerStyle {
     selfInk: "rgb(4 4 4)",
     deathInk: "rgb(5 5 5)",
     labelStroke: "rgb(8 12 18)",
+    offscreenLabelOf: (name, meters) => `${name} · ${Math.round(meters)} m`,
     ...over,
   };
 }

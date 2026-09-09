@@ -17,6 +17,7 @@ import { describe, expect, it } from "vitest";
 import { drawTracksLayer, type MarkerStyle } from "./replayMarkers";
 import type { ReplayTrackReady } from "../../../lib/replay/replayNormalize";
 import type { PlayerMarkKind } from "../../../lib/replay/playerMarks";
+import { edgeMarkFor, OFFSCREEN_MARGIN_PX } from "../model/edgeClamp";
 import {
   count,
   recordingContext,
@@ -70,9 +71,17 @@ function style(over: Partial<MarkerStyle> = {}): MarkerStyle {
     selfInk: "rgb(4 4 4)",
     deathInk: "rgb(5 5 5)",
     labelStroke: "rgb(8 12 18)",
+    offscreenLabelOf: (name, meters) => `${name} · ${Math.round(meters)} m`,
     ...over,
   };
 }
+
+/**
+ * Un point BIEN HORS des bornes du cadrage (`VIEW` : monde 0..10, toile 200x100, pad 4) — à
+ * droite, dans la bande verticale utile, pour rester loin des coins et garder les tests de
+ * suppression lisibles (un seul axe borné).
+ */
+const OFFSCREEN_POINT = { t: 50, x: 1000, y: 5, z: 0, h: 90 };
 
 /** trace rend les primitives émises par le calque pour une vie et un style donnés. */
 function trace(
@@ -547,5 +556,102 @@ describe('pion embarqué (lot véhicules, C7, 2026-09-02)', () => {
     const ops = trace({ embarkedAtSlot: () => true }, dead)
     expect(count(ops, 'moveTo')).toBe(0) // la croix de mort trace deux `moveTo`/`lineTo`
     expect(count(ops, 'stroke')).toBe(0)
+  })
+})
+
+/**
+ * BORNAGE HORS CADRE (plan escouade hors cadre, chantier B, phase B2, 2026-09-10).
+ *
+ * Le gabarit de la flèche (`offscreenChevron.ts`) est lui-même testé à part (4 sommets,
+ * échelle écran, pivot, couleur) : ici, on vérifie seulement le CÂBLAGE — qu'un joueur hors
+ * cadre EST bien redirigé vers la flèche, et qu'il ne dessine PLUS RIEN d'autre.
+ */
+describe('bornage hors cadre — joueur VIVANT (B2.1)', () => {
+  it('hors fenêtre : dessine la flèche (rotate + gabarit), et RIEN d’autre (ni traînée, ni cône, ni anneau d’apparition, ni marqueur d’étage)', () => {
+    // Vie EN COURS D'APPARITION (startFrame = frame courant) et EN HAUTEUR (z = z.max) : si le
+    // moindre bout du marqueur normal survivait à la branche hors cadre, l'anneau d'apparition
+    // et l'anneau d'étage se verraient dans le relevé.
+    const offscreenAtFloor10 = { ...OFFSCREEN_POINT, z: 10 }
+    const track = singlePointTrack(512, {
+      startFrame: 50,
+      points: [
+        { t: 45, x: 4, y: 5, z: 10, h: 90 },
+        offscreenAtFloor10,
+      ],
+    })
+    const ops = trace({ showAim: true, showTrail: true, z: { min: 0, max: 10 } }, track)
+    // La flèche EST dessinée : signature exclusive du gabarit (aucun autre tracé de ce calque
+    // n'appelle `rotate`), à ses 4 sommets exacts (cf. offscreenChevron.test.ts).
+    expect(count(ops, 'rotate')).toBe(1)
+    expect(
+      ops.filter((o) => o.op === 'moveTo' || o.op === 'lineTo').map((o) => o.args),
+    ).toEqual([
+      [1, 0],
+      [-0.75, -0.7],
+      [-0.35, 0],
+      [-0.75, 0.7],
+    ])
+    // RIEN D'AUTRE : aucun `arc` (marqueur, anneaux d'étage, anneau d'apparition, cône de
+    // visée — tous en émettent), et le nom reste écrit (D2 : la flèche porte le nom). La
+    // distance attendue vient de la MÊME géométrie que `edgeClamp.test.ts` (pas d'arithmétique
+    // recopiée à la main ici) : le câblage se vérifie, pas la formule.
+    expect(count(ops, 'arc')).toBe(0)
+    expect(count(ops, 'createRadialGradient')).toBe(0)
+    const mark = edgeMarkFor(offscreenAtFloor10, VIEW, OFFSCREEN_MARGIN_PX, 1)
+    expect(mark).not.toBeNull()
+    expect(ops.find((o) => o.op === 'fillText')?.args[0]).toBe(
+      `Spartan · ${Math.round(mark!.distanceM)} m`,
+    )
+  })
+
+  it('dedans : comportement INCHANGÉ (aucune flèche, aucune régression du marqueur normal)', () => {
+    const ops = trace()
+    expect(count(ops, 'rotate')).toBe(0)
+    expect(count(ops, 'arc')).toBeGreaterThan(0)
+  })
+
+  it('sans nom résolu : la flèche se dessine SEULE, sans étiquette (comme le marqueur normal)', () => {
+    const track = singlePointTrack(512, { points: [OFFSCREEN_POINT] })
+    const ops = trace({ nameOfSlot: () => null }, track)
+    expect(count(ops, 'rotate')).toBe(1)
+    expect(count(ops, 'fillText')).toBe(0)
+  })
+})
+
+describe('bornage hors cadre — CROIX DE MORT (B2.3, décision D6)', () => {
+  it('hors fenêtre : la croix est plaquée à la marge, au MÊME fondu, SANS nom ni distance', () => {
+    const dead = singlePointTrack(512, {
+      endFrame: 50,
+      points: [OFFSCREEN_POINT],
+    })
+    const early = trace({ frame: 55 }, dead)
+    const late = trace({ frame: 65 }, dead)
+    // La flèche remplace la croix en X, mais garde le MÊME calcul de fondu (DEATH_ALPHA * fade,
+    // strictement décroissant avec l'âge) — vérifié en comparant les deux instants, comme le
+    // fait déjà le test de la croix normale.
+    expect(count(early, 'rotate')).toBe(1)
+    expect(count(late, 'rotate')).toBe(1)
+    const alphaOf = (ops: CanvasOp[]) => {
+      const i = ops.findIndex((o) => o.op === 'rotate')
+      for (let j = i - 1; j >= 0; j--) {
+        if (ops[j].op === 'set globalAlpha') return ops[j].args[0] as number
+      }
+      return 1
+    }
+    expect(alphaOf(late)).toBeLessThan(alphaOf(early))
+    // TOUJOURS À L'ENCRE DE MORT, jamais la couleur d'équipe (même règle que la croix normale).
+    expect(
+      early.filter((o) => o.op === 'set fillStyle').map((o) => o.args[0]),
+    ).toContain('rgb(5 5 5)')
+    // SANS NOM NI DISTANCE (D6) : aucun texte, contrairement au joueur vivant hors cadre.
+    expect(count(early, 'fillText')).toBe(0)
+    expect(count(early, 'strokeText')).toBe(0)
+  })
+
+  it('dedans : comportement INCHANGÉ (la croix en X normale, aucune flèche)', () => {
+    const dead = singlePointTrack(512, { endFrame: 50 })
+    const ops = trace({ frame: 55 }, dead)
+    expect(count(ops, 'rotate')).toBe(0)
+    expect(count(ops, 'moveTo')).toBe(2)
   })
 })

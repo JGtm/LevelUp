@@ -32,6 +32,15 @@
 import type { XY } from '../../../lib/replay/replayLogic'
 import { type CanvasView, projectTo, scaleOf } from './replayView'
 
+/**
+ * OFFSCREEN_MARGIN_PX — la marge de bornage CANONIQUE du chantier B, en pixels d'écran de
+ * référence (avant mise à l'échelle par `k`). Tous les calques qui bornent un glyphe à la
+ * marge (joueurs vivants, croix de mort, porteurs d'objectif) la PARTAGENT — jamais une copie
+ * locale (CLAUDE.md n°6) : une marge qui diverge d'un calque à l'autre ferait flotter les
+ * repères à des distances différentes du bord pour le même cadrage.
+ */
+export const OFFSCREEN_MARGIN_PX = 16
+
 /** Ce que le bornage rend pour un point hors cadre : où le poser, vers où, à quelle distance. */
 export interface EdgeMark {
   /** Position CANVAS où plaquer le repère, bornée à la marge sur les deux axes. */
