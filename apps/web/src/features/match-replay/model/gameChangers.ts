@@ -83,6 +83,20 @@ const GAME_CHANGER_EPISODE_FAMILIES: readonly string[] = Object.entries(EPISODE_
   .map(([, episode]) => episode)
 
 /**
+ * droppedFamilyOf — LE PONT INVERSE de `EPISODE_FAMILY_OF_POWERUP` : famille d'ÉPISODE
+ * (`camo`, `overshield`) -> famille de POSE/SOCLE (`powerup_camo`, `powerup_overshield`).
+ * Même table, lue dans l'autre sens — jamais une seconde vérité (CLAUDE.md n°6). Sert au
+ * bilan d'équipement fusionné (E2, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : `tally.dropped`
+ * nomme un power-up par son socle, `tally.episodes` / `tally.kept` le nomment par son épisode.
+ * Une famille hors des deux power-ups se rend TELLE QUELLE — c'est déjà son nom de pose (mur,
+ * capteur…), les deux vocabulaires coïncident pour elle.
+ */
+export function droppedFamilyOf(episodeFamily: string): string {
+  const entry = Object.entries(EPISODE_FAMILY_OF_POWERUP).find(([, ep]) => ep === episodeFamily)
+  return entry ? entry[0] : episodeFamily
+}
+
+/**
  * isGameChangerFamily — cette famille est-elle élue ? Répond dans les DEUX vocabulaires :
  * la famille de socle/pose (`powerup_camo`, `sensor`) directement par la liste votée, la
  * famille d'épisode (`camo`) par le pont D5. Une famille inconnue n'est jamais promue.

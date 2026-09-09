@@ -12,3 +12,11 @@ package replay
 // recevait donc un geste qui n'est pas le sien — precisement la regle que le correctif us2
 // declarait avoir supprimee. C'est deja le traitement des vies de BOT, pour la meme raison.
 // Tout resume produit sous `us2` est donc a refaire sur un film a slot recycle.
+// us4 (2026-09-09) — LES TROIS ISSUES D'UN OBJET PRIS entrent dans le resume (etape E3 du
+// PLAN_EQUIPEMENT_GACHIS). La projection lit desormais `equipmentChanges` (canal jusqu'ici
+// ignore de tout ecran d'usage) et publie quatre ventilations par famille : les prises
+// (`taken`), les consommations (`spent`), les lachers (`dropped` — deja calcule en memoire,
+// jamais persiste avant) et le GARDE SANS L'UTILISER, derive par `max(0, taken - utilise -
+// lache)`. Sans cette montee, aucun match deja resume ne serait re-projete et les quatre
+// colonnes neuves resteraient vides sur tout le corpus : la cle de reprise du backfill est
+// (summary_rev, artifact_schema), pas la presence des colonnes.

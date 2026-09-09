@@ -15,65 +15,11 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
+import type { ReplayDocument } from '@/lib/api/types'
 
 import { buildEquipmentUsage, tallyIsEmpty } from './equipmentUsageLogic'
+import { pose, SB, temoin, vie } from '../test/equipmentUsageFixtures'
 import { testReplayDoc } from '../test/testDoc'
-
-/** Une vie : le slot, son propriétaire, et deux points pour que la fenêtre existe. */
-function vie(slot: number, xuid: string, start = 0, end = 100) {
-  return {
-    slot,
-    xuid,
-    team: -1,
-    startFrame: start,
-    endFrame: end,
-    points: [
-      { t: start, x: 0, y: 0 },
-      { t: end, x: 1, y: 1 },
-    ],
-  }
-}
-
-/** Une pose d'équipement (les champs que l'agrégation lit). */
-function pose(family: string, origin: string, owner: number, id = '0xaaaa') {
-  return { family, origin, owner, id, t0: 10, t1: 20, x: 0, y: 0 }
-}
-
-const SB: MatchScoreboardRow[] = [
-  { xuid: 'a1', gamertag: 'Alpha', team_side: 't0' },
-  { xuid: 'a2', gamertag: 'Bravo', team_side: 't0' },
-  { xuid: 'b1', gamertag: 'Charlie', team_side: 't1' },
-] as MatchScoreboardRow[]
-
-/**
- * LE TÉMOIN. Trois joueurs au scoreboard (deux camps) plus un QUATRIÈME que le film voit vivre
- * et que le scoreboard ignore ; un slot de caméra (vie sans xuid) qui porte pourtant des gestes.
- *
- * Frames à 100 ms : un épisode de 50 frames dure 5 000 ms — les durées sont donc lisibles à
- * l'œil dans les attentes ci-dessous.
- */
-function temoin(over: Partial<ReplayDocument> = {}) {
-  return testReplayDoc({
-    frameCount: 200,
-    frameIntervalMs: 100,
-    roster: [
-      { filmIndex: 0, xuid: 'a1', name: 'Alpha' },
-      { filmIndex: 1, xuid: 'a2', name: 'Bravo' },
-      { filmIndex: 2, xuid: 'b1', name: 'Charlie' },
-      { filmIndex: 3, xuid: 'orphelin', name: 'Delta' },
-    ],
-    tracks: [
-      vie(1, 'a1'),
-      vie(2, 'a2'),
-      vie(3, 'b1'),
-      vie(4, 'orphelin'),
-      // Une vie SANS propriétaire : caméra ou spectateur de fin de partie.
-      { slot: 9, team: -1, startFrame: 0, endFrame: 100, points: [{ t: 0, x: 0, y: 0 }] },
-    ],
-    ...over,
-  } as Partial<ReplayDocument>)
-}
 
 describe('buildEquipmentUsage — le pont slot -> joueur -> équipe', () => {
   it('attribue les tractions de grappin au propriétaire de la vie, pas au slot', () => {
@@ -510,6 +456,13 @@ describe('buildEquipmentUsage — la double porte', () => {
     const u = buildEquipmentUsage(testReplayDoc(), undefined)
     expect(u.hasData).toBe(false)
     expect(u.byPlayer).toEqual([])
-    expect(u.columns).toEqual({ grapple: false, episodes: [], deployed: [], dropped: [], grenades: [] })
+    expect(u.columns).toEqual({
+      grapple: false,
+      episodes: [],
+      deployed: [],
+      dropped: [],
+      grenades: [],
+      equipment: [],
+    })
   })
 })

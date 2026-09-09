@@ -89,13 +89,58 @@ type SessionUsageMatchPoint struct {
 	TeamShareOfLobbyPct   *float64 `json:"team_share_of_lobby_pct,omitempty"`
 }
 
+// SessionUsageOutcomes — LES TROIS ISSUES d'un objet d'équipement pris, portées
+// par les grandeurs "equipment_<famille>" et par elles seules (étape E3,
+// PLAN_EQUIPEMENT_GACHIS_2026-09-09 ; décision P1). Les trois sont exclusives et
+// leur somme vaut le total de la grandeur : c'est ce qui permet à la barre de
+// porter DEUX lectures à la fois (sa longueur est ma part, son remplissage est
+// l'issue — décision P6).
+//
+// « UTILISÉ » A DEUX DÉFINITIONS et le lecteur ne voit pas la différence
+// (décision P2) : un équipement d'ACTIVATION sert quand il est activé (les deux
+// bonus, par le canal des épisodes), un DÉPLOYABLE sert quand il est posé. Le
+// contrat ne distingue pas les deux — c'est un détail de calcul, tranché côté Go.
+//
+// LES DEUX TAUX DE RÉFÉRENCE M'EXCLUENT (décision P7) : se comparer à une moyenne
+// qui vous contient amortit le signal. « Le reste de mon équipe » est mon camp
+// MOINS moi ; « eux » est le lobby MOINS mon camp. Les deux sont nil quand leur
+// dénominateur est vide — jamais un 0 % inventé pour dire « personne n'en a pris ».
+type SessionUsageOutcomes struct {
+	// Used / Kept / Dropped : les trois issues du JOUEUR sur tout le scope mesuré.
+	// Leur somme vaut SessionUsageShares.PlayerTotal de la même métrique.
+	Used    float64 `json:"used"`
+	Kept    float64 `json:"kept"`
+	Dropped float64 `json:"dropped"`
+	// Taken : les PRISES du canal `equipmentChanges` — le dénominateur d'honnêteté
+	// (texte), jamais l'axe. Il DIFFÈRE de la somme des trois issues : pour un
+	// déployable, une pose est une CHARGE et non un objet (un capteur pris une fois
+	// et lancé quatre fois donne 4 poses pour 1 prise), et l'écart résiduel mesuré
+	// est absorbé par le clamp du gardé. Zéro = le canal n'a nommé aucune prise de
+	// cette famille sur le scope, ce qui n'annule pas les issues mesurées.
+	Taken float64 `json:"taken"`
+	// UsedRatePct : ma part utilisée de la barre — 100*used/(used+kept+dropped).
+	// nil quand la barre est vide.
+	UsedRatePct *float64 `json:"used_rate_pct,omitempty"`
+	// TeammatesUsedRatePct : le même taux pour MON ÉQUIPE MOINS MOI.
+	TeammatesUsedRatePct *float64 `json:"teammates_used_rate_pct,omitempty"`
+	// OpponentsUsedRatePct : le même taux pour LE LOBBY MOINS MON ÉQUIPE.
+	OpponentsUsedRatePct *float64 `json:"opponents_used_rate_pct,omitempty"`
+}
+
 // SessionUsageMetric — UNE grandeur agrégée sur les matchs MESURÉS de la session.
 // Clés servies : "grapple_pulls", "camo_episodes", "overshield_episodes",
-// "dropped_objects", "pad_pickups", et "deployed_<famille>" par famille déployée
-// observée (ensemble ouvert — manifeste du titre, ex. "deployed_wall").
+// "dropped_objects", "pad_pickups", "deployed_<famille>" par famille déployée
+// observée (ensemble ouvert — manifeste du titre, ex. "deployed_wall"), et
+// "equipment_<famille>" par famille du BILAN D'ÉQUIPEMENT (étape E3) — la seule
+// dont la valeur est un compte d'OBJETS et non de gestes, et la seule qui porte
+// Outcomes.
 type SessionUsageMetric struct {
 	Key string `json:"key"`
 	SessionUsageShares
+	// Outcomes : les trois issues, sur les grandeurs "equipment_<famille>"
+	// UNIQUEMENT. Absent partout ailleurs — un titre dont le canal des ramassages
+	// n'est pas mesuré ne publie RIEN ici, jamais des zéros.
+	Outcomes *SessionUsageOutcomes `json:"outcomes,omitempty"`
 	// Cadences par DIX MINUTES de jeu mesuré À DURÉE CONNUE — numérateur ET
 	// dénominateur sur ces seuls matchs (un match sans échelle de temps n'entre
 	// dans aucune cadence : compté au numérateur seul, il la gonflerait en

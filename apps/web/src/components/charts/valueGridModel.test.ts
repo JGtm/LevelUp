@@ -150,3 +150,51 @@ describe('buildValueGrid — l’infobulle porte l’identité, la grandeur et l
     expect(m.cells[0][0].tooltip).toBe('Alpha — Grenades : 40')
   })
 })
+
+describe('buildValueGrid — la cellule empilée (E1, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md)', () => {
+  it('une cellule à trois segments s’empile sur la borne du TOTAL de la pile', () => {
+    // Colonne unique, une seule ligne : la pile utilisé=5 / gardé=3 / lâché=2 totalise 10,
+    // et c'est CE total (porté par `value`) qui fixe la borne de colonne — pas la somme des
+    // segments recalculée à part (les deux DOIVENT coïncider, à la charge de l'appelant).
+    const m = buildValueGrid({
+      rows: [{ key: 'a', label: 'Alpha', group: 't0' }],
+      columns: [{ key: 'mur', label: 'Mur' }],
+      value: () => 10,
+      format: (v) => String(v),
+      color: () => 'var(--ac-divergent-pos)',
+      tooltip: (_r, _c, text) => text,
+      segments: () => [
+        { key: 'used', value: 5, color: 'var(--ac-divergent-pos)', label: 'Utilisé : 5' },
+        { key: 'kept', value: 3, color: 'var(--ac-divergent-neutral)', label: 'Gardé : 3' },
+        { key: 'dropped', value: 2, color: 'var(--ac-divergent-neg)', label: 'Lâché : 2' },
+      ],
+    })
+    expect(m.columns[0].bound).toBe(10)
+    expect(m.cells[0][0].segments).toEqual([
+      { key: 'used', value: 5, fraction: 0.5, color: 'var(--ac-divergent-pos)', label: 'Utilisé : 5' },
+      { key: 'kept', value: 3, fraction: 0.3, color: 'var(--ac-divergent-neutral)', label: 'Gardé : 3' },
+      { key: 'dropped', value: 2, fraction: 0.2, color: 'var(--ac-divergent-neg)', label: 'Lâché : 2' },
+    ])
+    // Le total de la cellule reste lisible comme avant, à côté de la pile.
+    expect(m.cells[0][0]).toMatchObject({ value: 10, text: '10', fraction: 1 })
+  })
+
+  it('une cellule SANS segment rend EXACTEMENT comme avant — non-régression de la grille des objectifs', () => {
+    // `segments` absent du tout : le comportement (et la forme de la cellule) ne bouge pas.
+    const sansCallback = grille()
+    expect(sansCallback.cells[0][0].segments).toBeUndefined()
+
+    // `segments` fourni mais rendant `undefined` pour CETTE cellule (cas d'un appelant qui
+    // n'empile qu'une partie de ses colonnes, comme `equipmentUsageColumns.ts`) : même repli.
+    const avecCallbackVide = buildValueGrid({
+      rows: ROWS,
+      columns: COLS,
+      value: (r, c) => VALEURS[r][c],
+      format: (v) => String(v),
+      color: () => 'var(--ac-team-ally)',
+      tooltip: (r, c, text) => `${ROWS[r].label} — ${COLS[c].label} : ${text}`,
+      segments: () => undefined,
+    })
+    expect(avecCallbackVide.cells[0][0]).toEqual(sansCallback.cells[0][0])
+  })
+})

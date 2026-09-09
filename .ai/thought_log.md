@@ -75,6 +75,170 @@ sur un terrain plat, et l'absence de piste reste signalee par une etendue invers
 `make go-api-test` : 28 paquets ok, 0 FAIL.
 
 ---
+## [2026-09-09] E3 « servi ou gache » — les grandeurs manquantes au grain session (Go) — Complete
+
+**Decision technique principale.** La jointure rang de palette -> famille se fait sur la
+RACINE du libelle publie par `abilityLabels`, et NON sur la table exacte du manifeste
+(`AbilityPalette.Families`, `replay_labels.toml`) que les calques d'impulsions et de charges
+emploient. Raison : ceux-la tournent A LA CONSTRUCTION du document, quand la palette est en
+main ; `BuildUsageSummary` est une fonction PURE DU DOCUMENT DEJA CUIT — c'est precisement ce
+qui permet a `levelup backfill-usage-summary` de re-resumer le parc SANS re-decoder un film.
+Le document ne publie que rang -> texte bilingue. Deuxieme et derniere copie de cette table
+(la premiere est `EQUIPMENT_CHANGE_FAMILY_STEMS` cote web, livree en E2) — plafond de la
+regle CLAUDE.md n6. De surcroit la table du manifeste ne suffirait pas : les deux bonus
+(rangs 8 et 9) sont NOMMES sans porter de `family`.
+
+**Deuxieme decision.** Les quatre ventilations persistees parlent UN SEUL vocabulaire, celui
+des POSES (`powerup_camo`, jamais `camo`) — la ou le web nomme un bonus par son episode dans
+`kept` et par sa pose dans `dropped`, puis ponte les deux. L'agregat de session joint donc
+taken/spent/kept/dropped sur UNE cle, sans dictionnaire ; le seul endroit qui traduit est la
+lecture du cote « utilise » des deux bonus (leur compte d'episodes).
+
+**Troisieme decision.** Nouvelle famille de cles `equipment_<famille>` a cote de
+`deployed_<famille>`, plutot que d'accrocher les issues a cette derniere. Deux raisons
+mesurees : (1) une famille PRISE mais JAMAIS POSEE n'aurait aucune ligne — or c'est le cas du
+capteur au parc (4 objets utilises sur 36 pris, mesure E0.4), exactement l'histoire que le
+bloc doit raconter ; (2) la valeur d'une barre empilee doit etre la SOMME DE SES SEGMENTS,
+pas un compte de gestes, sinon la pile deborde ou laisse un trou. `deployed_*` reste servi et
+rendu par la page Sessions actuelle — E4 tranchera s'il disparait, et devra alors le retirer
+du contrat dans le meme lot (consigne au §6 du plan).
+
+**Resultats observes.** `go test ./...` vert (suite complete). `go test ./internal/sync/
+-run NoART` vert (aucune entree ajoutee a l'allowlist anti-ART : l'ecriture reste
+INSERT-only). `golangci-lint --new-from-merge-base=origin/main` : 0 issue. `npx tsc -b
+--force` silencieux. `make openapi-gen` + `make generate-types` : +32 lignes d'openapi, +17
+de generated.ts, les deux commites, aucun diff residuel.
+
+`go test -tags=integration -p 1 -count=1 ./...` : UN ECHEC, **preexistant et prouve tel**.
+`internal/api/wire` / `TestOuvrierReel_ConstruitEtLivre` echoue sur trois mesures figees
+d'IDENTITE (« 0 vies anonymes, attendu 1 » ; xuid 2535458702376288 nomme par le film mais
+absent des mesures figees). Je ne l'ai pas suppose : j'ai rejoue le MEME test au point de
+branche `32821ba86` dans un worktree detache jetable (supprime depuis — ni ma branche ni mon
+worktree touches), echec identique et artefact identique a l'octet pres (291 655 octets,
+22 trajectoires, 781 frames). Mon diff ne touche aucun fichier du chemin de decodage ni du
+nommage d'identite. L'attente figee a ete perimee par le lot de nommage des vies : elle
+reclame une vie anonyme que le decodeur ne produit plus. Non traite (hors perimetre, regle
+« zero fix opportuniste »), consigne au §6 du plan — a resorber avant le `make gate-push` de
+cloture. `migration/` et `persist/`, les deux paquets que ce lot touche, sont verts.
+
+**Echecs TDD observes.** (1) Les six tests de projection ne compilaient pas — champs
+`TakenByFamily`/`SpentByFamily`/`KeptByFamily` et `Match.EquipmentChanges` inexistants.
+(2) La migration a echoue sur `Parser Error: Adding columns with constraints not yet
+supported` : DuckDB refuse NOT NULL sur un ADD COLUMN — corrige en `DEFAULT '{}'` seul, le
+persister ecrivant toujours une valeur et le lecteur COALESCE-ant. (3) Un test de contrat
+partait d'une premisse fausse (« aucune ligne d'equipement pour un corpus sans prise ») : le
+code avait raison, une POSE est une issue meme sans prise mesuree — c'est le test qui a ete
+corrige, pas le code. (4) Le ratchet `no_french_label_literal_test.go` a rejete le stem
+accentue `réparation` ; verification faite, le manifeste ecrit « champ de reparation » SANS
+accent, donc ce stem ne s'appariait a rien meme cote web — remplace par sa forme reellement
+publiee, aucune allowlist agrandie. (5) `golangci-lint` a signale trois `goconst` (`wall`,
+`sensor`, `repulsor`) — deux constantes de famille ajoutees, le litteral `wall` du stem
+remplace par la constante existante.
+
+**Ce qui n'a PAS ete fait, et pourquoi.** E3.11 (recuisson du parc) est `[~] superviseur` :
+elle exige d'ouvrir `shared_matches_v2.duckdb` en RW, donc le serveur de dev arrete — la
+consigne de la tache interdit toute ouverture de base sous `data/`. Commande exacte au
+journal du plan ; `--force` n'est PAS necessaire, la cle de reprise est (summary_rev,
+artifact_schema) et le passage us3 -> us4 suffit a faire reprendre chaque match.
+
+**Prochaine etape.** E4 (Sessions : la barre combinee) peut lire `outcomes` sur les
+grandeurs `equipment_<famille>` — apres la recuisson, sans laquelle les colonnes neuves sont
+vides sur tout le corpus.
+
+## [2026-09-09] E2 « servi ou gache » — colonne d'issue fusionnee (vue match) — Complete
+
+**Decision technique principale.** Le perimetre declare (equipmentUsageColumns.ts,
+equipmentUsageChart.ts, i18n.ts) presupposait une plomberie non nommee : le « garde » se
+derive cote web depuis `doc.equipmentChanges`, ce qui a force l'extension d'
+`equipmentUsageLogic.ts` (nouveau champ `kept` derive — `max(0, taken - utilise - lache)`,
+jamais lu d'un canal ; nouvelle fonction `equipmentChangeFamilyOf`, reconnaissance rang ->
+famille par racine de libelle bilingue, meme patron que `abilityChargeLogic.ts` ;
+nouveau champ `unnamedTaken`, reserve MATCH pour les prises sans famille connue) et de
+`gameChangers.ts` (pont inverse `droppedFamilyOf`, episode -> socle, CLAUDE.md n6).
+`deployed`/`dropped`/`episodes` restent INCHANGES dans `EquipmentUsageColumns` (evite de
+casser ~10 assertions hors perimetre) ; un champ ADDITIF `equipment: string[]` porte la
+liste fusionnee. Le groupe d'affichage `episodes` (compte/duree/frags) reste rendu tel quel
+EN PLUS de la colonne fusionnee pour camo/surbouclier — legere redite documentee, jugee
+preferable a supprimer une fonctionnalite existante hors perimetre ecrit.
+
+**Resultats observes.** Perimetre E2 : 999 tests verts (`components/charts` +
+`match-replay/model`). Suite complete : 673 fichiers, 7166 tests, 1 fichier/17 tests skippes
+(preexistants) — vert, zero regression. `npx tsc -b --force` silencieux. Les deux greps
+couleur du plan sont IDENTIQUES a la baseline `feat/v75` (verifie par `git grep` sur les deux
+refs). `npx eslint --max-warnings=0` echoue sur 9 avertissements PREEXISTANTS dans 5 fichiers
+hors diff de toute la branche (verifie `git diff feat/v75...HEAD --stat` vide) — dette de
+lint anterieure, non traitee, consignee au §6 du plan.
+
+**Ce qui a change cote UI.** `equipmentUsageColumns.ts` : `UsageGroupKey` perd
+`deployed`/`dropped`, gagne `equipment` (une colonne par famille, pile a trois segments
+used/kept/dropped, ordre du §3.1). `equipmentUsageChart.ts` : nouveaux
+`USAGE_OUTCOME_TOKENS`/`usageOutcomeColor` (divergent-pos/neutral/neg). i18n : nouveaux
+`groupEquipment`, quatre formats d'issue, deux formats de reserve, FR+EN.
+`MatchEquipmentUsageSection.tsx` (hors liste de fichiers du plan mais requis structurellement
+par E2.6) : deux lignes de reserve sous le tableau — poses d'origine inconnue et objets pris
+sans famille connue (P13 amendee).
+
+**Prochaine etape.** E3 (backend, le lot lourd) : porter les trois issues au grain session
+(nouveaux champs `UsagePlayerSummary`, migration, recuisson) — Sessions/Solo/Escouade ne
+peuvent rien servir de neuf avant cette etape.
+
+## [2026-09-09] E1 « servi ou gache » — cellule empilee dans ValueGrid — Complete
+
+**Decision technique principale.** `ValueGridInput.segments?` et `ValueGridCell.segments?`
+optionnels dans `components/charts/valueGridModel.ts` : la borne de colonne continue de se
+calculer sur `value()` (le TOTAL de la pile), jamais sur une somme des segments recalculee a
+part — a la charge de l'appelant de les construire coherents. `ValueGrid.tsx` rend la pile via
+un sous-composant `ValueGridStack` (segments dans l'ordre du tableau, chacun avec son propre
+`aria-label`, le conteneur du rail gardant le sien).
+
+**Decision utilisateur recue en tete de tache, qui amende la sortie de E0.** E0 avait conclu a
+un arret propre (25,21 % de rangs non nommes > seuil 15 %), troisieme issue `[!]`. L'utilisateur
+tranche : on garde les TROIS issues ; les objets pris dont le rang n'a pas de famille connue ne
+sont pas caches, ils forment une ligne de reserve visible sous le tableau (« N objets pris sans
+famille connue », decision P13). Ecrit au journal du plan.
+
+**Resultats observes.** `npx vitest run src/components/charts` : 34 fichiers, 307 tests, vert.
+`npx tsc -b --force` : silencieux, vert. Test de non-regression explicite : une cellule sans
+callback `segments`, ou dont le callback rend `undefined` pour cette cellule (cas d'un appelant
+qui n'empile qu'une partie de ses colonnes), rend un objet cellule strictement egal a l'ancien
+comportement — verifie par egalite structurelle contre la meme grille sans le champ.
+
+**Prochaine etape.** E2 : la colonne d'issue par famille dans la vue match
+(`equipmentUsageColumns.ts`, `equipmentUsageChart.ts`, i18n), avec le derive « garde » depuis
+`doc.equipmentChanges` cote web (aucune re-cuisson serveur).
+
+## [2026-09-09] E0 « servi ou gache » — le canal equipmentChanges mesure, le NOMMAGE bloque — Complete
+
+**Decision technique principale.** Instrument jetable en `*_research_test.go` sous
+`internal/analysis/replay/`, lecture seule des 64 artefacts cuits du parc (aucune base ouverte,
+une passe de backfill les tient). La jointure `Slot` -> joueur passe par le REGISTRE D'IDENTITE
+PUBLIE dans l'artefact (`identity.bipedSlots` et ses bornes par vie), pas par `buildPlayers` /
+`indexBySlot` qui travaillent sur des positions de film. La fermeture de l'identite
+`taken ~ utilise + lache + garde` est testee PAR FENETRE de `taken` et non par evenement : une
+pose est une charge, pas un objet (le mur en publie deux), et la fenetre dedoublonne les deux
+sans table d'identifiants. Le seul ecart non circulaire est la fenetre fermee par un `spent`
+qu'aucun canal d'usage ne voit.
+
+**Resultats observes (64 artefacts, schema 50).** Volumes : 1 880 changements, 1 422 `taken`,
+458 `spent`, aucun autre `Kind`, 1 372 slots porteurs. Emissions manquees 71/1 954 = 3,63 %.
+Rangs de palette NON nommes 453/1 797 = **25,21 %** (dont 148 dus a 8 artefacts sans table
+`abilityLabels`, et 305 a des rangs non etablis : 19, 10, 22). Slots non rattaches 21/1 880 =
+1,12 % (17 slots sur 1 372 = 1,24 %). Identite : 1 223 fenetres classables, 416 utilise /
+440 lache / 337 garde / **30 non expliques (2,45 %)** ; ecart median 0,00 % sur 488 couples
+(joueur, famille), pire cas a >= 5 prises 20,00 %. Repulseur : 375 objets pris, **0** utilise —
+son negatif mesure est confirme, la decision P4 tient.
+
+**Conclusion.** Le critere d'arret du plan est franchi sur le NOMMAGE (25,21 % > 15 %), pas sur
+l'identite (mediane 0,00 % < 10 %) : **arret propre**, la troisieme issue passe `[!]` et les
+etapes suivantes livreraient deux segments. Trois noms de rangs (19, 10, 22) feraient tomber le
+taux sous le seuil — chantier de manifeste, pas de canal. Cinq mesures ecrites au §2 de
+`.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`, instrument supprime (E0.5), decouvertes au §6
+du plan (capteur 49/302 et mur 295/251 confirmes a l'identique ; toutes les autres familles sont
+entre 1:6 et 1:12, l'exception est le mur).
+
+**Prochaine etape.** Decision utilisateur : ouvrir E1 a deux segments, ou nommer d'abord les
+rangs 19, 10 et 22 puis remesurer.
+
 ## [2026-09-09] P0 — match_lives refusait les voies de nommage du registre d'identite — Complete
 
 **Decision technique principale.** Le persister de `match_lives` valide `named_by` contre une liste

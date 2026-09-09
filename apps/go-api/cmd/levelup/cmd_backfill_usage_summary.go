@@ -46,6 +46,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"sort"
 	"strings"
@@ -80,6 +81,9 @@ type bilanUsageBackfill struct {
 	// Totaux du corpus projete, pour les controles croises de session (--dry-run).
 	totalNommees, totalAnonymes int
 	totalPowerups               map[string]int
+	// couverture : ce que le canal des ramassages n a PAS su rattacher sur le corpus
+	// (etape E3.8). Ni une erreur ni une metrique — un temoin d incompletude.
+	couverture replay.UsageChangeCoverage
 }
 
 func runBackfillUsageSummary(cfg *config.AppConfig, args []string) error {
@@ -143,7 +147,27 @@ func runBackfillUsageSummary(cfg *config.AppConfig, args []string) error {
 		fmt.Printf("totaux du corpus projete : %d prises nommees, %d anonymes, powerups %s\n",
 			b.totalNommees, b.totalAnonymes, usagePowerupsTexte(b.totalPowerups))
 	}
+	journaliserCouvertureUsageCorpus(ctx, b.couverture)
 	return nil
+}
+
+// journaliserCouvertureUsageCorpus dit ce que le canal des ramassages n a pas su rattacher
+// sur TOUT le corpus projete (etape E3.8) : prises dont le rang de palette n a aucun libelle
+// dans le film, changements dont le slot n ouvre aucune ligne de joueur, consommations dont la
+// chaine du compteur de rotation est trouee. Ce sont des DEGRADATIONS de mesure, pas des
+// erreurs — les grandeurs restent justes, elles sont seulement incompletes. Un corpus
+// entierement rattache ne produit aucune ligne : rien a zero ne se dit.
+func journaliserCouvertureUsageCorpus(ctx context.Context, cov replay.UsageChangeCoverage) {
+	if cov.Total() == 0 {
+		return
+	}
+	slog.WarnContext(ctx, "backfill usage : ramassages non rattaches (mesure incomplete, pas fausse)",
+		"prisesSansFamille", cov.UnnamedRankTaken,
+		"slotsNonRattaches", cov.UnattributedSlot,
+		"consommationsChaineTrouee", cov.SpentUnreliableFrom)
+	fmt.Printf("couverture des ramassages : %d prises sans famille connue, %d slots non rattaches, "+
+		"%d consommations a chaine trouee\n",
+		cov.UnnamedRankTaken, cov.UnattributedSlot, cov.SpentUnreliableFrom)
 }
 
 // candidatsUsage : les matchs a examiner, dans un ordre stable — `--match` seul, sinon tout
@@ -204,6 +228,9 @@ func resumerCorpus(
 		projetes++
 		b.totalNommees += s.Match.PadNamed
 		b.totalAnonymes += s.Match.PadUnnamed
+		b.couverture.UnnamedRankTaken += s.Match.EquipmentChanges.UnnamedRankTaken
+		b.couverture.UnattributedSlot += s.Match.EquipmentChanges.UnattributedSlot
+		b.couverture.SpentUnreliableFrom += s.Match.EquipmentChanges.SpentUnreliableFrom
 		for fam, n := range s.Match.PowerupPadPickups {
 			b.totalPowerups[fam] += n
 		}

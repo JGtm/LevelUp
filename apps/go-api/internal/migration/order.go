@@ -280,6 +280,9 @@ var canonicalOrder = []string{
 	// steps_shared_usage_summary.go précède steps_shared_weapon_*.go) — exigence de
 	// TestSortByCanonicalIsNoOpOnCurrentRegistry.
 	"shared_match_usage_summary_v1", // shared (match_usage_players + match_usage_films, append-only + vues _latest par passe)
+	// Doit SUIVRE le créateur des tables : il en altère une et recrée sa vue (étape E3
+	// du plan équipement, 2026-09-09). Enregistrée juste après lui, dans le même fichier.
+	"shared_match_usage_players_outcomes_v1", // shared (les trois issues d'un objet pris, par famille)
 	// Table SOEUR de match_weapon_shots (distances tireur<->victime des touches, acquis du
 	// chantier precision remis le 2026-09-01). Position dictee par l'ordre d'init
 	// (alphabetique par nom de fichier) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.

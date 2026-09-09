@@ -348,12 +348,15 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       activeCount: 'épisodes',
       activeDuration: 'durée',
       activeKillsFamily: { camo: 'Frags sous camo', overshield: 'Frags sous surbouclier' },
-      groupDeployed: 'Déploiements',
-      groupDeployedHint:
-        "Les objets qu'un joueur a réellement DÉPLOYÉS en cours de vie, par famille. Un mur déployé publie deux poses (l'appareil et ses panneaux) et n'en compte qu'une. Les lancers de grenade ont leur propre colonne ; le grappin, le propulseur et le répulseur agissent sur leur porteur et ne posent rien sur le terrain.",
-      groupDropped: 'Objets lâchés',
-      groupDroppedHint:
-        "Les objets de puissance laissés au sol en mourant — bonus et équipements déployables. Ils restent ramassables : savoir qui en sème change la lecture des échanges suivants. Les grenades et les capacités lâchées ne sont pas comptées — près de neuf poses sur dix, et elles ne disent rien du terrain.",
+      groupEquipment: 'Équipement',
+      groupEquipmentHint:
+        "Chaque objet ramassé finit d'une seule façon : utilisé, gardé sans l'utiliser, ou lâché en mourant. « Utilisé » veut dire ACTIVÉ pour le camouflage et le surbouclier, POSÉ pour le reste (mur, capteur, écran occultant, traqueur, champ de réparation, balise du translocateur). Un mur déployé publie deux poses (l'appareil et ses panneaux) et n'en compte qu'une. Le grappin, le propulseur et le répulseur agissent sur leur porteur et n'ont pas de colonne ici — le répulseur parce qu'aucun canal du film ne mesure son activation, jamais parce qu'il ne sert à rien.",
+      outcomeUsedFmt: (count) => `Utilisé : ${count}`,
+      outcomeKeptFmt: (count) => `Gardé sans l'utiliser : ${count}`,
+      outcomeDroppedFmt: (count) => `Lâché en mourant : ${count}`,
+      outcomeTotalTakenFmt: (count) => `${count} objet${count > 1 ? 's' : ''} pris`,
+      coverageUnknownOriginFmt: (count) =>
+        `${count} pose${count > 1 ? 's' : ''} d'origine inconnue (ni déployée, ni lâchée avec certitude).`,
       groupGrenades: 'Grenades lancées',
       groupGrenadesHint:
         "Les lancers lus dans le film, par type. L'auteur du lancer est écrit dans le film — ce n'est pas une déduction de proximité.",
@@ -768,12 +771,15 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       activeCount: 'episodes',
       activeDuration: 'duration',
       activeKillsFamily: { camo: 'Kills under camo', overshield: 'Kills under overshield' },
-      groupDeployed: 'Deployments',
-      groupDeployedHint:
-        'The objects a player actually DEPLOYED while alive, by family. A deployed drop wall publishes two placements (the device and its panels) and counts as one. Grenade throws have their own column; the grappleshot, thruster and repulsor act on their carrier and put nothing on the ground.',
-      groupDropped: 'Dropped objects',
-      groupDroppedHint:
-        'The power objects left on the ground on death — power-ups and deployable equipment. They remain pickable: knowing who scatters them changes how the next fights read. Dropped grenades and abilities are not counted — nearly nine placements out of ten, and they say nothing about the terrain.',
+      groupEquipment: 'Equipment',
+      groupEquipmentHint:
+        "Every object picked up ends exactly one way: used, kept without using it, or dropped on death. \"Used\" means ACTIVATED for camo and overshield, PLACED for everything else (drop wall, sensor, shroud screen, seeker, repair field, translocator beacon). A deployed drop wall publishes two placements (the device and its panels) and counts as one. The grappleshot, thruster and repulsor act on their carrier and have no column here — the repulsor because no channel of the film measures its activation, never because it does nothing.",
+      outcomeUsedFmt: (count) => `Used: ${count}`,
+      outcomeKeptFmt: (count) => `Kept without using it: ${count}`,
+      outcomeDroppedFmt: (count) => `Dropped on death: ${count}`,
+      outcomeTotalTakenFmt: (count) => `${count} object${count > 1 ? 's' : ''} taken`,
+      coverageUnknownOriginFmt: (count) =>
+        `${count} placement${count > 1 ? 's' : ''} of unknown origin (neither deployed nor dropped for certain).`,
       groupGrenades: 'Grenades thrown',
       groupGrenadesHint:
         'Throws read from the film, by type. The thrower is written in the film — not inferred from proximity.',

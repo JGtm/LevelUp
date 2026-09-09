@@ -90,8 +90,14 @@ func (r *SessionUsageRepo) LoadUsagePlayers(ctx context.Context, matchIDs []stri
 	}
 	defer release()
 
+	// Les quatre ventilations d'issue viennent de la révision de projection `us4`
+	// (étape E3). COALESCE : une ligne écrite avant la migration porte le DEFAULT
+	// '{}', mais un ALTER DuckDB ne pose aucune contrainte NOT NULL — le repli
+	// évite qu'une base au DEFAULT contourné rende un NULL au Scan.
 	q := `SELECT match_id, xuid, grapple_pulls, camo_episodes, overshield_episodes,
-	             dropped_objects, pad_pickups, deployed_json, pad_pickups_json
+	             dropped_objects, pad_pickups, deployed_json, pad_pickups_json,
+	             COALESCE(taken_json, '{}'), COALESCE(spent_json, '{}'),
+	             COALESCE(kept_json, '{}'), COALESCE(dropped_json, '{}')
 	      FROM match_usage_players_latest
 	      WHERE match_id IN (` + Placeholders(len(matchIDs)) + `)`
 	rows, err := db.QueryContext(ctx, q, ToAnySlice(matchIDs)...)
@@ -103,8 +109,10 @@ func (r *SessionUsageRepo) LoadUsagePlayers(ctx context.Context, matchIDs []stri
 	for rows.Next() {
 		var p sessionusage.PlayerRow
 		var deployed, pads string
+		var taken, spent, kept, dropped string
 		if err := rows.Scan(&p.MatchID, &p.XUID, &p.GrapplePulls, &p.CamoEpisodes,
-			&p.OvershieldEpisodes, &p.DroppedObjects, &p.PadPickups, &deployed, &pads); err != nil {
+			&p.OvershieldEpisodes, &p.DroppedObjects, &p.PadPickups, &deployed, &pads,
+			&taken, &spent, &kept, &dropped); err != nil {
 			return nil, fmt.Errorf("SessionUsageRepo: players scan: %w", err)
 		}
 		if p.DeployedByFamily, err = countMapFromJSON(deployed); err != nil {
@@ -113,9 +121,35 @@ func (r *SessionUsageRepo) LoadUsagePlayers(ctx context.Context, matchIDs []stri
 		if p.PadPickupsByFamily, err = countMapFromJSON(pads); err != nil {
 			return nil, fmt.Errorf("SessionUsageRepo: %s/%s pad_pickups_json: %w", p.MatchID, p.XUID, err)
 		}
+		if err := scanUsageOutcomes(&p, taken, spent, kept, dropped); err != nil {
+			return nil, err
+		}
 		out = append(out, p)
 	}
 	return out, rows.Err()
+}
+
+// scanUsageOutcomes décode les quatre ventilations d'issue sur une ligne. Extrait
+// de LoadUsagePlayers pour la garder sous le plafond de taille de fonction du
+// dépôt ; une seule erreur suffit à refuser la ligne, jamais un décodage partiel.
+func scanUsageOutcomes(p *sessionusage.PlayerRow, taken, spent, kept, dropped string) error {
+	for _, f := range []struct {
+		nom string
+		raw string
+		dst *map[string]int
+	}{
+		{"taken_json", taken, &p.TakenByFamily},
+		{"spent_json", spent, &p.SpentByFamily},
+		{"kept_json", kept, &p.KeptByFamily},
+		{"dropped_json", dropped, &p.DroppedByFamily},
+	} {
+		m, err := countMapFromJSON(f.raw)
+		if err != nil {
+			return fmt.Errorf("SessionUsageRepo: %s/%s %s: %w", p.MatchID, p.XUID, f.nom, err)
+		}
+		*f.dst = m
+	}
+	return nil
 }
 
 // LoadParticipants retourne les participants du scope (bots inclus : ils

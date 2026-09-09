@@ -16,12 +16,18 @@
  * L'INFOBULLE EST AU SURVOL *ET* AU FOCUS CLAVIER : chaque barre est focusable et porte son
  * texte en `aria-label`, donc la valeur reste atteignable sans souris comme au lecteur d'écran.
  * L'ensemble défile HORIZONTALEMENT dans son propre conteneur — jamais le corps de la page.
+ *
+ * UNE CELLULE PEUT S'EMPILER (E1, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : `cell.segments`
+ * absent rend l'unique aplat d'avant, PIXEL POUR PIXEL (non-régression de la grille des
+ * objectifs de match-view, qui ne fournit jamais de segments). Présent, chaque segment se
+ * dessine dans l'ORDRE DU TABLEAU, l'un après l'autre sur la même largeur de rail, et porte
+ * SON PROPRE `aria-label` — le conteneur externe garde le sien (le total), comme avant.
  */
 import { Fragment } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
 
-import type { ValueGridModel } from './valueGridModel'
+import type { ValueGridModel, ValueGridSegment } from './valueGridModel'
 
 /** Largeur de la colonne des noms, et largeur mini d'une colonne de valeurs (px). */
 const NAME_WIDTH = 152
@@ -98,13 +104,17 @@ export function ValueGrid({ model, rowHeaderLabel }: Props) {
                       role="img"
                       aria-label={cell.tooltip}
                     >
-                      <div
-                        className="absolute left-0 top-0 h-full"
-                        style={{
-                          width: `${cell.fraction * 100}%`,
-                          backgroundColor: cell.color,
-                        }}
-                      />
+                      {cell.segments ? (
+                        <ValueGridStack segments={cell.segments} />
+                      ) : (
+                        <div
+                          className="absolute left-0 top-0 h-full"
+                          style={{
+                            width: `${cell.fraction * 100}%`,
+                            backgroundColor: cell.color,
+                          }}
+                        />
+                      )}
                     </div>
                   </Tooltip>
                   <span
@@ -141,5 +151,38 @@ export function ValueGrid({ model, rowHeaderLabel }: Props) {
         ))}
       </div>
     </div>
+  )
+}
+
+/**
+ * ValueGridStack — LES SEGMENTS D'UNE CELLULE EMPILÉE, dans l'ordre du tableau d'entrée.
+ *
+ * Chaque segment occupe la part de rail que porte SA PROPRE fraction (déjà calculée contre la
+ * borne de colonne par `buildValueGrid`) — les fractions ne sont PAS renormalisées entre elles :
+ * la pile s'arrête avant le bord du rail quand son total est sous la borne, exactement comme le
+ * ferait l'aplat unique d'une cellule simple. Chaque segment porte son propre `aria-label`
+ * (E1.2) : le lecteur d'écran peut détailler la pile, en plus du total que porte déjà le
+ * conteneur parent (`role="img"` sur le rail lui-même, inchangé).
+ */
+function ValueGridStack({ segments }: { segments: ValueGridSegment[] }) {
+  // Décalage cumulé PRÉCALCULÉ par un pli pur (pas de mutation pendant le rendu, cf. règle
+  // `react-hooks/immutability`) : le décalage du segment `i` est la somme des fractions qui
+  // le précèdent.
+  const positioned = segments.reduce<Array<{ seg: ValueGridSegment; left: number }>>((acc, seg) => {
+    const left = acc.length > 0 ? acc[acc.length - 1].left + acc[acc.length - 1].seg.fraction : 0
+    return [...acc, { seg, left }]
+  }, [])
+  return (
+    <>
+      {positioned.map(({ seg, left }) => (
+        <div
+          key={seg.key}
+          className="absolute top-0 h-full"
+          style={{ left: `${left * 100}%`, width: `${seg.fraction * 100}%`, backgroundColor: seg.color }}
+          role="img"
+          aria-label={seg.label}
+        />
+      ))}
+    </>
   )
 }

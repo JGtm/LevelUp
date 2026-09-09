@@ -164,8 +164,9 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
     for (const famille of [
       t.equipmentUsage.groupGrapple,
       t.equipmentUsage.groupActive,
-      t.equipmentUsage.groupDeployed,
-      t.equipmentUsage.groupDropped,
+      // E2 (2026-09-09) : `groupDeployed`/`groupDropped` ont fusionné en UNE colonne
+      // « équipement » par famille (P2/P3) — plus de section séparée à chercher ici.
+      t.equipmentUsage.groupEquipment,
       t.equipmentUsage.groupGrenades,
     ]) {
       expect(vue.getAllByText(famille).length).toBeGreaterThan(0)
@@ -308,6 +309,35 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     expect(vue.getByText(t.equipmentUsage.coverageGrappleFmt(3, 3))).toBeTruthy()
   })
 
+  it('affiche la RÉSERVE de couverture sous le tableau (P13) : poses d’origine inconnue', () => {
+    poserArtefact({
+      ...TEMOIN,
+      coverage: {
+        ...TEMOIN.coverage,
+        placements: { byFamilyOrigin: { 'sensor/deployed': 2, 'wall/unknown': 3 } },
+      },
+    } as unknown as Partial<ReplayDocument>)
+    const vue = afficher()
+    expect(vue.getByText(t.equipmentUsage.coverageUnknownOriginFmt(3))).toBeTruthy()
+  })
+
+  it('ne rend JAMAIS les objets pris sans famille connue (décision utilisateur 2026-09-09)', () => {
+    poserArtefact({
+      ...TEMOIN,
+      // Aucune table `abilityLabels` : le rang 5 n'a aucun nom dans ce film. Il est compté par la
+      // logique (`unnamedTaken`, outillage d'investigation) mais aucune ligne ni note ne le montre.
+      equipmentChanges: [{ t: 5, slot: 1, kind: 'taken', r: 5, from: -1 }],
+    } as unknown as Partial<ReplayDocument>)
+    const vue = afficher()
+    expect(vue.queryByText(/sans famille connue|without a known family/i)).toBeNull()
+  })
+
+  it('ne montre AUCUNE réserve quand rien ne la justifie', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    expect(vue.queryByText(t.equipmentUsage.coverageUnknownOriginFmt(1))).toBeNull()
+  })
+
   it('n’ouvre AUCUNE colonne pour le répulseur ni le propulseur, et dit pourquoi', () => {
     poserArtefact({
       ...TEMOIN,
@@ -318,8 +348,9 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
     expect(vue.getByText(t.equipmentUsage.notMeasured)).toBeTruthy()
-    expect(vue.queryByText(t.equipmentUsage.groupDeployed)).toBeNull()
-    expect(vue.queryByText(t.equipmentUsage.groupDropped)).toBeNull()
+    // Le témoin garde les épisodes camo/surbouclier de TEMOIN (non écrasés) : la colonne
+    // « équipement » existe donc toujours pour EUX (E2, décision D9 amendée), mais ni le
+    // répulseur ni le propulseur n'y ouvrent de colonne — c'est ce que ce test protège.
     expect(vue.queryByText('repulsor')).toBeNull()
     expect(vue.queryByText('thruster')).toBeNull()
   })
@@ -395,7 +426,7 @@ describe('MatchEquipmentUsageSection — parité FR/EN', () => {
     const en = REPLAY_TEXT.en
     expect(vue.getByRole('region', { name: en.equipmentUsage.title })).toBeTruthy()
     expect(vue.getByRole('region', { name: en.equipmentUsage.viewByPlayer })).toBeTruthy()
-    expect(vue.getAllByText(en.equipmentUsage.groupDeployed).length).toBeGreaterThan(0)
+    expect(vue.getAllByText(en.equipmentUsage.groupEquipment).length).toBeGreaterThan(0)
     // Le catalogue du document est bilingue : le type de grenade suit la langue.
     expect(vue.getByText('Frag')).toBeTruthy()
     expect(vue.getByText(en.placementFamily.sensor)).toBeTruthy()
