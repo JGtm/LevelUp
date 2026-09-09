@@ -1,3 +1,28 @@
+## [2026-09-09] E1 « servi ou gache » — cellule empilee dans ValueGrid — Complete
+
+**Decision technique principale.** `ValueGridInput.segments?` et `ValueGridCell.segments?`
+optionnels dans `components/charts/valueGridModel.ts` : la borne de colonne continue de se
+calculer sur `value()` (le TOTAL de la pile), jamais sur une somme des segments recalculee a
+part — a la charge de l'appelant de les construire coherents. `ValueGrid.tsx` rend la pile via
+un sous-composant `ValueGridStack` (segments dans l'ordre du tableau, chacun avec son propre
+`aria-label`, le conteneur du rail gardant le sien).
+
+**Decision utilisateur recue en tete de tache, qui amende la sortie de E0.** E0 avait conclu a
+un arret propre (25,21 % de rangs non nommes > seuil 15 %), troisieme issue `[!]`. L'utilisateur
+tranche : on garde les TROIS issues ; les objets pris dont le rang n'a pas de famille connue ne
+sont pas caches, ils forment une ligne de reserve visible sous le tableau (« N objets pris sans
+famille connue », decision P13). Ecrit au journal du plan.
+
+**Resultats observes.** `npx vitest run src/components/charts` : 34 fichiers, 307 tests, vert.
+`npx tsc -b --force` : silencieux, vert. Test de non-regression explicite : une cellule sans
+callback `segments`, ou dont le callback rend `undefined` pour cette cellule (cas d'un appelant
+qui n'empile qu'une partie de ses colonnes), rend un objet cellule strictement egal a l'ancien
+comportement — verifie par egalite structurelle contre la meme grille sans le champ.
+
+**Prochaine etape.** E2 : la colonne d'issue par famille dans la vue match
+(`equipmentUsageColumns.ts`, `equipmentUsageChart.ts`, i18n), avec le derive « garde » depuis
+`doc.equipmentChanges` cote web (aucune re-cuisson serveur).
+
 ## [2026-09-09] E0 « servi ou gache » — le canal equipmentChanges mesure, le NOMMAGE bloque — Complete
 
 **Decision technique principale.** Instrument jetable en `*_research_test.go` sous

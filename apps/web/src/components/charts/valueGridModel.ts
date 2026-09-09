@@ -25,6 +25,14 @@
  * n'entre ni dans le maximum de la colonne ni dans son total. Un zéro mesuré, lui, est une
  * mesure et compte comme telle.
  *
+ * UNE CELLULE PEUT S'EMPILER (E1, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : `segments` est
+ * OPTIONNEL sur `ValueGridInput` — une colonne qui n'en fournit pas rend EXACTEMENT comme
+ * avant (non-régression de la grille des objectifs de match-view, qui n'en fournit jamais).
+ * Quand il est fourni, la BORNE DE COLONNE reste calculée sur `value()` — LE TOTAL DE LA PILE,
+ * jamais la somme des segments recalculée ailleurs : les deux DOIVENT coïncider, c'est
+ * à l'appelant de les construire cohérents (cf. `equipmentUsageColumns.ts`, qui bâtit `value`
+ * comme la somme de ses propres segments).
+ *
  * Pur : aucun React, aucune couleur en dur, aucune langue — l'appelant fournit les libellés,
  * les encres (jetons résolus) et le formatage.
  */
@@ -78,6 +86,27 @@ export interface ValueGridInput {
   tooltip: (rowIndex: number, colIndex: number, text: string) => string
   /** Ce qu'écrit une cellule NON MESURÉE. Défaut : le tiret cadratin. */
   notMeasured?: string
+  /**
+   * LA PILE D'UNE CELLULE (E1, optionnel) : les segments dans l'ORDRE VOULU à l'écran, chacun
+   * avec sa VALEUR BRUTE (pas une fraction — `buildValueGrid` la calcule contre la borne de
+   * colonne, la même pour tous les segments d'une colonne). Absent ou `undefined` pour une
+   * cellule = comportement inchangé (cellule simple, `ValueGridCell.segments` reste absent).
+   */
+  segments?: (
+    rowIndex: number,
+    colIndex: number,
+  ) => Array<{ key: string; value: number; color: string; label: string }> | undefined
+}
+
+/** Un segment empilé d'une cellule : sa valeur, sa part de la borne, son encre, son nom. */
+export interface ValueGridSegment {
+  key: string
+  value: number
+  /** Part de la borne de colonne, dans [0, 1] — jamais la part du total de la cellule. */
+  fraction: number
+  color: string
+  /** Nom du segment, posé en `aria-label` (même contrat d'accessibilité qu'une cellule simple). */
+  label: string
 }
 
 /** Une cellule projetée : sa valeur, son texte, sa longueur relative, son encre. */
@@ -88,6 +117,8 @@ export interface ValueGridCell {
   fraction: number
   color: string
   tooltip: string
+  /** Absent = cellule simple. Présent = pile de segments, dans l'ordre du tableau d'entrée. */
+  segments?: ValueGridSegment[]
 }
 
 /** Une colonne projetée : son en-tête, son total, et ses trois graduations. */
@@ -170,12 +201,21 @@ export function buildValueGrid(input: ValueGridInput): ValueGridModel {
       const v = value(rowIndex, colIndex)
       const text = v == null ? notMeasured : format(v, colIndex)
       const bound = projected[colIndex].bound
+      const rawSegments = input.segments?.(rowIndex, colIndex)
+      const segments =
+        rawSegments && rawSegments.length > 0
+          ? rawSegments.map((s) => ({
+              ...s,
+              fraction: Math.max(0, Math.min(1, s.value / bound)),
+            }))
+          : undefined
       return {
         value: v,
         text,
         fraction: v == null ? 0 : Math.max(0, Math.min(1, v / bound)),
         color: color(rowIndex, colIndex),
         tooltip: tooltip(rowIndex, colIndex, text),
+        ...(segments ? { segments } : {}),
       }
     }),
   )
