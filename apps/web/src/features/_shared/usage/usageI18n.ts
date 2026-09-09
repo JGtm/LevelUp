@@ -1,6 +1,11 @@
 /**
  * usageI18n.ts — LE DICTIONNAIRE DU BLOC « usages d'équipement, armes spéciales et objectifs »
- * de la page Sessions (chantier session-usage, S3).
+ * (chantier session-usage, S3).
+ *
+ * Déménagé de `session-detail/usageI18n.ts` vers ici le 2026-09-09 (étape E5.1,
+ * PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : le bloc devient importable par `features/synthesis`
+ * et `features/squad` sans violer `lint-cross-feature-imports` — déplacement pur, contenu
+ * inchangé.
  *
  * PARITÉ FR/EN PAR TYPAGE : `Record<Locale, UsageText>` — une clé ajoutée d'un côté
  * casse la compilation de l'autre. Il vit à part du manifeste TOML de la page Sessions :
@@ -44,7 +49,7 @@ export interface UsageText {
   /** Raisons du bloc indisponible (contrat : unavailable_reason machine).
    *  `unsupported` N'A PAS DE LIBELLE, et c'est voulu : depuis le 2026-09-05 ce cas
    *  MASQUE le bloc au lieu de l'annoncer (un titre sans decodeur de film n'aura jamais
-   *  de resume d'usage — la carte etait un bloc mort). Cf. usageLogic.usageAvailability. */
+   *  de resume d'usage — la carte etait un bloc mort). Cf. usageAvailability. */
   unavailableLoadFailed: string
   unavailableNoMeasured: string
   /** Titres des vues à l'intérieur des cartes. */
