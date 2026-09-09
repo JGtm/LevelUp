@@ -11364,7 +11364,6 @@ export interface components {
         SquadPageV2Response: {
             capabilities?: components["schemas"]["CapabilityGap"][] | null;
             charts?: components["schemas"]["SquadCharts"];
-            equipment_usage?: components["schemas"]["EquipmentUsageBlock"];
             header?: components["schemas"]["SquadHeader"];
             main_player: string;
             period: string;
@@ -12105,6 +12104,7 @@ export interface components {
             composition_sessions?: components["schemas"]["CompositionSessionEntry"][] | null;
             data_issues?: components["schemas"]["DataIssue"][] | null;
             echange?: components["schemas"]["SquadEchange"];
+            equipment_usage?: components["schemas"]["EquipmentUsageBlock"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             frag_classes?: {
                 [key: string]: components["schemas"]["FragClassEntry"][] | null;

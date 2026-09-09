@@ -1420,21 +1420,18 @@ export interface TeammatesPageResponse {
    *  Non vide => l'UI doit le signaler (fin des chiffres non reproductibles). */
   data_issues?: DataIssue[]
   /**
-   * Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09, E6) —
-   * variante comptes (P9), une ligne par coéquipier suivi.
+   * Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09, E6
+   * puis E6.1bis) — variante comptes (P9), une ligne par coéquipier SÉLECTIONNÉ.
    *
-   * ÉCART DE CONTRAT CONSIGNÉ (E6.2, 2026-09-09) : le Go publie aujourd'hui ce bloc
-   * sur `domain.SquadPageV2Response` (`GET /pages/squad/v2`) — vérifié sur pièces,
-   * `internal/domain/squad_v2.go:48`. Cette page-ci (`TeammatesPageResponse`,
-   * `POST /pages/teammates`, le SEUL endpoint que `SquadLayout`/`useTeammates` appelle
-   * en production ; `/pages/squad/v2` n'est fetché par AUCUNE page web hormis son
-   * sous-chemin `/engagement`) ne reçoit pas encore ce champ côté service
-   * (`teammates_service.go` n'a pas de `WithEquipmentUsage`). Le champ est déclaré ICI
-   * pour que <EquipmentUsageSection> soit branché et honnête : tant que le Go ne
-   * l'ajoute pas à `TeammatesPageResponse`, il vaut `undefined` et la section s'auto-
-   * masque (même contrat que `usageAvailability` : absent = rien, jamais un graphe à
-   * zéro) — zéro nouvelle requête réseau, zéro donnée fabriquée. Suite : brancher
-   * `service.buildEquipmentUsageBlock` (déjà écrit) depuis `TeammatesService`.
+   * ÉCART DE CONTRAT CORRIGÉ (E6.1bis, 2026-09-09) : E6.1 avait publié ce bloc sur
+   * `domain.SquadPageV2Response` (`GET /pages/squad/v2`), une réponse que la page
+   * Escouade réelle (`SquadLayout`/`useTeammates`) ne fetch jamais. E6.1bis a
+   * déplacé la publication vers `TeammatesPageResponse` (`POST /pages/teammates`,
+   * le SEUL endpoint que la page appelle), câblée par
+   * `TeammatesService.WithEquipmentUsage` (`internal/service/teammates/teammates_service_usage.go`).
+   * Absent = scope filtré sans match ; `available:false` avec raison machine pour
+   * un titre sans `film.usage_summary` (même contrat que les autres blocs
+   * best-effort).
    */
   equipment_usage?: EquipmentUsageBlock
 }
