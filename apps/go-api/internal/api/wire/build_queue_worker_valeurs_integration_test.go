@@ -107,7 +107,13 @@ const (
 	// nomme par l OCCUPATION DU SLOT DANS LE TEMPS (unnamed_lives.go). Sur ce fixture elle en
 	// resout UNE des deux ; la seconde tombe sur un slot qu aucune vie nommee ne touche et que
 	// le pont ne nomme pas — elle reste comptee (`coverage.bridge.unnamedLives`) et alarmee.
-	valeurNbAnonymes = 1
+	//
+	// 1 -> 0 au schema 50 (lot E2, fusionne le 2026-09-09) : le registre d'identite lit le
+	// LIEN DIRECT corps -> joueur dans le record de creation du bipede (ti=35). La derniere vie
+	// anonyme du fixture est celle de `2535458702376288`, le seul joueur a 0 mort a l'API — que
+	// le fil des morts ne pouvait par construction jamais nommer. C'est exactement le gain
+	// attendu d'E2 ; la mesure est refigee telle quelle (CI rouge du 2026-09-09, run 34374373099).
+	valeurNbAnonymes = 0
 	// valeurOriginMS : l'instant de la frame 0 sur l'horloge du fil des éliminations.
 	// C'EST LA VALEUR QUE TOUT LE RECALAGE CLIENT SOUSTRAIT (`replayMs = event_time_ms +
 	// t0_ms − originMs`) : la décaler d'une seule milliseconde décale tout le rejeu.
@@ -127,8 +133,12 @@ const (
 // (unnamed_lives.go) lui rend la vie que le fil des morts ne fermait pas, par l'occupation de son
 // slot dans le temps. C'est le gain attendu de la décision « les vies anonymes n'existent pas »,
 // et c'est le SEUL joueur du fixture qu'il concerne. La mesure reste figée telle quelle.
+//
+// `2535458702376288` ENTRE au schema 50 (lot E2, 2026-09-09) avec UNE vie : 0 mort a l'API, donc
+// jamais nomme par le fil des morts ; nomme par le record de creation de son bipede.
 var valeurViesParXUID = map[string]int{
 	"2533274823110022": 3,
+	"2535458702376288": 1,
 	"2533275001554469": 5,
 	"2535429692041611": 3,
 	"2535432531943478": 2,
@@ -231,6 +241,7 @@ func assertHorlogeEtGrille(t *testing.T, doc replaydoc.ReplayDocument) {
 
 // assertRoster fige les vies publiées ET les confronte à l'oracle : le film ne nomme QUE les
 // joueurs que l'API donne morts au moins une fois — le seul joueur à 0 mort (2535458702376288)
+// (Depuis E2, schema 50 — 2026-09-09 : ce joueur a 0 mort EST nomme, par le record de creation de son bipede.)
 // est aussi le seul absent du roster nommé. C'est un fait des deux chaînes, pas une tautologie.
 func assertRoster(t *testing.T, doc replaydoc.ReplayDocument) {
 	t.Helper()
@@ -259,11 +270,15 @@ func assertRoster(t *testing.T, doc replaydoc.ReplayDocument) {
 			t.Errorf("roster : xuid %s nommé par le film mais absent des mesures figées", xuid)
 		}
 	}
+	// Depuis E2 (schema 50), un joueur a 0 mort a l'API PEUT etre nomme par le film (record de
+	// creation de son bipede) : l'implication n'a plus qu'un sens — tout joueur mort au moins une
+	// fois DOIT etre nomme. L'ancienne equivalence (0 mort <=> absent) encodait la limite du seul
+	// fil des morts, qui n'est plus la voie de nommage.
 	for _, o := range oracleAPI {
 		_, nomme := vies[o.XUID]
-		if (o.Deaths > 0) != nomme {
-			t.Errorf("roster ↔ oracle : %s a %d mort(s) à l'API et %s du roster nommé du film",
-				o.XUID, o.Deaths, map[bool]string{true: "fait partie", false: "est absent"}[nomme])
+		if o.Deaths > 0 && !nomme {
+			t.Errorf("roster ↔ oracle : %s a %d mort(s) à l'API et est absent du roster nommé du film",
+				o.XUID, o.Deaths)
 		}
 	}
 }
