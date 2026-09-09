@@ -26297,6 +26297,10 @@ components:
           description: Ligne de la cellule, ancree sur l'origine du monde (comme CelluleTactique.lig).
           format: int64
           type: integer
+        pas_m:
+          description: 'Pas de la grille sur laquelle (col, lig) est adressee, en metres — celui publie par la lecture agregee (TacticalRaster.pas_m). Absent ou <= 0 : pas par defaut (0,5 m).'
+          format: double
+          type: number
       required:
         - col
         - lig

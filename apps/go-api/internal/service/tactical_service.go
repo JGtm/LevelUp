@@ -44,7 +44,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/coordination"
-	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
@@ -238,13 +237,13 @@ func (s *TacticalService) rasterDeKills(ctx context.Context, out *domain.Tactica
 
 	points := projeter(lecture, question, cible(lecture.Univers.Equipes, qui, s.xuid, scope.Coequipiers))
 	out.EvenementsLocalises = len(points)
-	raster, err := rasteriser(mesure, question, points)
+	lue, err := rasteriser(mesure, question, points)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: rasterisage en echec",
 			"player", s.xuid, "map_id", carte, "question", question, "err", err)
 		return fmt.Errorf("tactique: rasterisage: %w", err)
 	}
-	remplirRaster(out, raster, question)
+	remplirRaster(out, lue.Raster, question)
 	s.lireLeJournal(ctx, out, scope)
 
 	s.logger.InfoContext(ctx, "tactique: lecture de placement",
@@ -252,6 +251,7 @@ func (s *TacticalService) rasterDeKills(ctx context.Context, out *domain.Tactica
 		"question", question, "qui", qui,
 		"matchs_filtres", out.MatchsFiltres, "matchs_retenus", out.MatchsRetenus,
 		"coequipiers", len(scope.Coequipiers),
+		"pas_m", out.PasM, "densite_suffisante", lue.Suffisante, "pas_essayes", lue.Tentatives,
 		"cellules", len(out.Cellules), "points_ignores", out.PointsIgnores,
 		"evenements_journal", out.EvenementsJournal,
 		"evenements_localises", out.EvenementsLocalises,
@@ -322,43 +322,6 @@ func facesDeLaQuestion(question string) (prendVictime, prendTueur bool) {
 		return true, false
 	}
 	return question != domain.TacticalQuestionKills, question != domain.TacticalQuestionMorts
-}
-
-// rasteriser choisit la forme de rasterisage qu'exige la question : SIGNEE pour
-// « ou je gagne » (les resultats font partie de l'entree), simple sinon.
-func rasteriser(univers domain.TacticalUnivers, question string, points []domain.PositionSample) (*tactical.Raster, error) {
-	g := tactical.GrilleParDefaut()
-	if question == domain.TacticalQuestionGagne {
-		resultats := make(map[string]int, len(univers.Matchs))
-		for _, m := range univers.Matchs {
-			resultats[m.MatchID] = m.Outcome
-		}
-		return tactical.RasteriseAvecResultats(g, resultats, points)
-	}
-	ids := make([]string, 0, len(univers.Matchs))
-	for _, m := range univers.Matchs {
-		ids = append(ids, m.MatchID)
-	}
-	return tactical.Rasterise(g, ids, points)
-}
-
-// remplirRaster habille la reponse : cellules, echelle, cadre.
-func remplirRaster(out *domain.TacticalRaster, raster *tactical.Raster, question string) {
-	if question == domain.TacticalQuestionGagne {
-		out.Cellules = raster.CellulesSignees()
-		out.Echelle = tactical.EchelleSymetrique(out.Cellules)
-		// Les DEUX denominateurs de la lecture signee, sur l'univers entier : ils ne
-		// valent pas MatchsRetenus, et leur somme lui est en general inferieure (les
-		// nuls et les resultats inconnus ne participent a aucun cote).
-		out.MatchsVictoire = raster.NbMatchsResultat(domain.OutcomeWin)
-		out.MatchsDefaite = raster.NbMatchsResultat(domain.OutcomeLoss)
-	} else {
-		out.Cellules = raster.Cellules()
-		out.Echelle = tactical.Echelle(out.Cellules)
-	}
-	out.PasM = raster.PasM()
-	out.Bornes = raster.Bornes()
-	out.PointsIgnores = raster.PointsIgnores()
 }
 
 // lireLeJournal fait UN SEUL passage sur le journal des morts, et en tire DEUX

@@ -99,6 +99,15 @@ export function tacticalGridFromRaster(
  * utilise pour peindre le fond ET la heatmap, donc le clic s'inverse par une simple
  * règle de trois. `null` si les bornes sont invalides, le canvas est vide, ou le clic
  * tombe hors de sa surface.
+ *
+ * L'ADRESSE RENDUE EST ANCRÉE SUR L'ORIGINE DU MONDE (`floor(x / pas)`), jamais sur
+ * `min_x` : c'est la convention du serveur (`analysis/tactical.Grille.Cellule`), donc
+ * celle de `CelluleTactique.col/lig` et de la requête de détail de cellule. Une adresse
+ * relative aux bornes ne coïncidait avec celle du serveur que sur une carte calée
+ * exactement sur (0, 0) — et `trouveCellule` ne retrouvait alors plus rien.
+ *
+ * `pasM` EST LE PAS PUBLIÉ PAR LA LECTURE (`TacticalRaster.pas_m`), pas une constante :
+ * depuis le pas adaptatif (lot 3.2), la même carte peut se lire à 0,5, 1 ou 2 m.
  */
 export function cellFromClick(
   clickX: number,
@@ -113,9 +122,35 @@ export function cellFromClick(
   const worldX = bornes.min_x + (clickX / canvasWidth) * (bornes.max_x - bornes.min_x)
   const worldY = bornes.min_y + (clickY / canvasHeight) * (bornes.max_y - bornes.min_y)
   return {
-    col: Math.floor((worldX - bornes.min_x) / pasM),
-    row: Math.floor((worldY - bornes.min_y) / pasM),
+    col: Math.floor(worldX / pasM),
+    row: Math.floor(worldY / pasM),
   }
+}
+
+/**
+ * planCanvasView — la projection monde -> canvas du calque de chaleur : ce que
+ * `drawTacticalHeatmap` attend (`TacticalLayerView`).
+ *
+ * POURQUOI `topLeftWorld` N'EST PAS (0, 0). Le peintre place une cellule à
+ * `topLeftWorld.x + col × pas × scale`, et `col` est l'adresse SERVEUR — ancrée sur
+ * l'origine du monde. Le canvas, lui, commence à `min_x`. L'origine du monde tombe donc
+ * à `−min_x × scale` pixels du bord gauche, et c'est cette valeur-là qu'il faut passer :
+ * avec (0, 0), tout le calque était décalé de `min_x` mètres, c'est-à-dire entièrement
+ * hors du canvas sur une carte dont les coordonnées ne partent pas de zéro.
+ *
+ * L'ÉCHELLE EST UNIFORME (px par mètre, lue sur X) : le conteneur est mis à l'aspect-ratio
+ * du monde, donc la même échelle vaut sur les deux axes.
+ */
+export function planCanvasView(
+  bornes: BornesMonde,
+  canvasWidth: number,
+): { topLeftWorld: { x: number; y: number }; scale: number } | null {
+  const largeurMonde = bornes.max_x - bornes.min_x
+  if (!bornes.valide || !(largeurMonde > 0) || !(canvasWidth > 0)) return null
+  const scale = canvasWidth / largeurMonde
+  // `0 - v` plutôt que `-v` : sur des bornes calées à l'origine, `-0` est un pixel comme
+  // les autres pour le canvas, mais il se compare mal (et se lit mal au débogage).
+  return { topLeftWorld: { x: 0 - bornes.min_x * scale, y: 0 - bornes.min_y * scale }, scale }
 }
 
 /** trouveCellule — la cellule serveur à (col, row), ou `null` si jamais atteinte. */

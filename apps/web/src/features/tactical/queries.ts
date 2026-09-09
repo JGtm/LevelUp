@@ -223,11 +223,15 @@ export function useTacticalRaster(
  * `cellule` à `null` = AUCUNE CELLULE SÉLECTIONNÉE : la requête N'EST PAS lancée. Ce n'est
  * pas un cas d'attente comme `matchIds === null` (le périmètre non résolu) — c'est l'état
  * NORMAL avant tout clic, et il ne doit déclencher aucun appel réseau.
+ *
+ * `pas_m` VOYAGE AVEC L'ADRESSE : une adresse de cellule n'a de sens qu'à un pas donné, et
+ * depuis le pas adaptatif (lot 3.2) la lecture peut avoir retenu 0,5, 1 ou 2 m. On renvoie
+ * donc le `pas_m` que la lecture agrégée a publié — jamais une constante.
  */
 export function useTacticalCellule(
   playerSlug: string,
   mapId: string,
-  cellule: { col: number; lig: number } | null,
+  cellule: { col: number; lig: number; pas_m: number } | null,
   params: {
     match_ids: string[] | null
     coequipiers?: string[]

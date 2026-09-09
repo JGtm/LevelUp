@@ -7,6 +7,7 @@ import { getTacticalText } from './i18n'
 import {
   cellFromClick,
   pageTitle,
+  planCanvasView,
   ratioSafe,
   sourceForQuestion,
   statusMessages,
@@ -116,6 +117,42 @@ describe('cellFromClick — la cellule (col, row) sous un clic canvas', () => {
 
   it('un pas de grille nul ou négatif ne rend rien', () => {
     expect(cellFromClick(10, 10, 200, 100, BORNES, 0)).toBeNull()
+  })
+
+  // L'ADRESSE EST ANCRÉE SUR L'ORIGINE DU MONDE, PAS SUR LES BORNES DE LA LECTURE — même
+  // convention que `CelluleTactique.col/lig` côté serveur (`tactical.Grille.Cellule`).
+  // Une adresse relative aux bornes ne retrouvait aucune cellule serveur dès que la
+  // carte n'était pas calée sur (0, 0), c'est-à-dire sur toutes les cartes réelles.
+  it('rend une adresse ancrée sur l’origine du monde, bornes négatives comprises', () => {
+    const bornes: BornesMonde = { min_x: -20, max_x: -10, min_y: -8, max_y: -4, valide: true }
+    // Coin haut-gauche du canvas = (-20, -8) monde ; pas de 2 m -> (-10, -4).
+    expect(cellFromClick(0, 0, 200, 80, bornes, 2)).toEqual({ col: -10, row: -4 })
+    // Centre du canvas = (-15, -6) monde -> colonne -8, ligne -3.
+    expect(cellFromClick(100, 40, 200, 80, bornes, 2)).toEqual({ col: -8, row: -3 })
+  })
+
+  it('suit le pas publié : la même position rend une adresse différente à 0,5 et à 2 m', () => {
+    expect(cellFromClick(100, 50, 200, 100, BORNES, 0.5)).toEqual({ col: 100, row: 50 })
+    expect(cellFromClick(100, 50, 200, 100, BORNES, 2)).toEqual({ col: 25, row: 12 })
+  })
+})
+
+// ─── planCanvasView — la projection monde -> canvas du calque de chaleur ─────────
+
+describe('planCanvasView — le cadrage du calque de chaleur', () => {
+  it('pose l’origine du canvas sur (min_x, min_y), pas sur l’origine du monde', () => {
+    const bornes: BornesMonde = { min_x: -20, max_x: -10, min_y: -8, max_y: -4, valide: true }
+    // 200 px pour 10 m -> 20 px/m ; la colonne 0 du monde (x = 0) tomberait à 400 px.
+    expect(planCanvasView(bornes, 200)).toEqual({ topLeftWorld: { x: 400, y: 160 }, scale: 20 })
+  })
+
+  it('rend une origine nulle quand les bornes partent de (0, 0)', () => {
+    expect(planCanvasView(BORNES, 200)).toEqual({ topLeftWorld: { x: 0, y: 0 }, scale: 2 })
+  })
+
+  it('ne rend rien sur des bornes invalides ou un canvas vide', () => {
+    expect(planCanvasView({ ...BORNES, valide: false }, 200)).toBeNull()
+    expect(planCanvasView(BORNES, 0)).toBeNull()
   })
 })
 

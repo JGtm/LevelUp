@@ -162,6 +162,21 @@ describe('TacticalAnalysisView — états de la lecture', () => {
     ).toBeInTheDocument()
   })
 
+  // LE PAS RETENU EST AFFICHÉ, PAS DEVINÉ (lot 3.2, décision D6) : depuis le pas
+  // adaptatif, deux cartes peuvent se lire à deux résolutions différentes — sans le dire,
+  // elles ne se comparent plus.
+  it('NOMINAL : le pied du plan annonce le pas de grille publié par le serveur', () => {
+    mockRaster({ data: { ...RASTER_NOMINAL, pas_m: 2 } })
+    renderVue()
+    expect(screen.getByTestId('tactical-plan-grid-step')).toHaveTextContent('Grille : 2 m par cellule')
+  })
+
+  it('NOMINAL : un pas fractionnaire s’affiche dans la locale de la page', () => {
+    mockRaster({ data: { ...RASTER_NOMINAL, pas_m: 0.5 } })
+    renderVue()
+    expect(screen.getByTestId('tactical-plan-grid-step')).toHaveTextContent('Grille : 0,5 m par cellule')
+  })
+
   it('la carte Plan omet échange/isolement quand le contrat ne les publie pas', () => {
     mockRaster({ data: { ...RASTER_NOMINAL, echange: undefined, isolement: undefined } })
     renderVue()
