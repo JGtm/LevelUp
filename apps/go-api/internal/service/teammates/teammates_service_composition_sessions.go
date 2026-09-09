@@ -78,8 +78,10 @@ func sessionMatchCounts(rows []domain.SquadMatchRow) map[string]int {
 
 // groupExcludedBySession construit, pour chaque session, la liste des matchs
 // écartés par le filtre composition exacte avec le(s) coéquipier(s) responsable(s)
-// nommés (jamais un xuid nu, jamais une liste vide sous exclusion — repli "Joueur
-// <4 derniers>", même convention que Q32b).
+// nommés (jamais un xuid nu — repli "Joueur <4 derniers>", même convention que
+// Q32b). Une liste vide n'est possible que si l'équipe alliée du match est INCONNUE
+// (aucune ligne de participant) : le filtre écarte alors le match sans fautif à
+// nommer, et le contrat domain le documente (revue adversariale vague 1).
 func groupExcludedBySession(
 	excluded []domain.SquadMatchRow,
 	teamByMatch map[string]map[string]struct{},

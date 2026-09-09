@@ -12,6 +12,9 @@ package handlers
 //     séparée par virgules, préfixe faible W/, wildcard *, en-tête illisible).
 
 import (
+	"bytes"
+	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -263,5 +266,33 @@ func TestWriteJSONCached_EnTeteIllisible_200(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Errorf("status = %d, attendu 200", w.Code)
+	}
+}
+
+// ecrivainCasse simule un client parti : Write echoue toujours.
+type ecrivainCasse struct{ http.ResponseWriter }
+
+func (e ecrivainCasse) Write([]byte) (int, error) { return 0, errors.New("broken pipe") }
+
+// TestServirBlobAvecETag_EcritureInterrompue_Journalisee : revue adversariale vague 1
+// (2026-09-09). Une ecriture interrompue ne panique pas et n'est PAS avalee : le helper
+// journalise en WARN avec l'erreur et le chemin (regle 3 du depot), comme le faisaient
+// les handlers avant la centralisation.
+func TestServirBlobAvecETag_EcritureInterrompue_Journalisee(t *testing.T) {
+	var buf bytes.Buffer
+	ancien := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(ancien) })
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/x/background.png", nil)
+	servirBlobAvecETag(ecrivainCasse{rec}, req, []byte("abc"), "image/png", "")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("statut: want 200, got %d", rec.Code)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "ecriture interrompue") || !strings.Contains(out, "broken pipe") || !strings.Contains(out, "/api/x/background.png") {
+		t.Fatalf("l'erreur d'ecriture doit etre journalisee avec err et path, journal=%q", out)
 	}
 }

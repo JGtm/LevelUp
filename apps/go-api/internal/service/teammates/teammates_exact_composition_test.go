@@ -367,3 +367,49 @@ func TestGetPage_ExactComposition_PublishesRosterCountAndExcludedMatches(t *test
 // tS1Gap : StartTime de la session S1 du scénario newExactCompositionGapRepo,
 // pour vérifier que StartTime est bien porté par ExcludedMatch.
 var tS1Gap = time.Date(2026, 8, 27, 19, 0, 0, 0, time.UTC)
+
+// TestGetPage_ExactComposition_RosterMatchSansEquipeConnue : revue adversariale
+// vague 1 (2026-09-09). Un match du roster dont AUCUNE ligne d'allié n'est chargée
+// (couverture partielle des participants) est écarté par le filtre exclusif sans
+// fautif nommable : ExtraGamertags est publié VIDE (non nil, sérialisé "[]"), jamais
+// un repli inventé — c'est le seul cas où la liste est vide, et le web le rend par
+// « coéquipier inconnu ».
+func TestGetPage_ExactComposition_RosterMatchSansEquipeConnue(t *testing.T) {
+	repo := newExactCompositionGapRepo()
+	sansM2 := repo.allyRows[:0:0]
+	for _, a := range repo.allyRows {
+		if a.MatchID != "m2" {
+			sansM2 = append(sansM2, a)
+		}
+	}
+	repo.allyRows = sansM2
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(
+		newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test",
+	)
+	resp, err := svc.GetPage(context.Background(), "px", domain.TeammatesQueryRequest{
+		SelectedGamertags:      []string{"AllyA", "AllyB"},
+		FilterExactComposition: true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.CompositionSessions) != 1 {
+		t.Fatalf("CompositionSessions: want 1, got %d", len(resp.CompositionSessions))
+	}
+	s1 := resp.CompositionSessions[0]
+	if s1.MatchCount != 1 || s1.MatchCountRoster != 5 {
+		t.Fatalf("comptes: want 1 sur 5, got %d sur %d", s1.MatchCount, s1.MatchCountRoster)
+	}
+	var m2 *domain.CompositionExcludedMatch
+	for i := range s1.ExcludedByExactComposition {
+		if s1.ExcludedByExactComposition[i].MatchID == "m2" {
+			m2 = &s1.ExcludedByExactComposition[i]
+		}
+	}
+	if m2 == nil {
+		t.Fatalf("m2 (equipe alliee inconnue) doit rester ecarte")
+	}
+	if m2.ExtraGamertags == nil || len(m2.ExtraGamertags) != 0 {
+		t.Errorf("m2 sans equipe connue : ExtraGamertags doit etre vide et non nil, got %#v", m2.ExtraGamertags)
+	}
+}

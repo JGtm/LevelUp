@@ -13,6 +13,7 @@ package handlers
 import (
 	"crypto/sha256"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -40,7 +41,13 @@ func servirBlobAvecETag(w http.ResponseWriter, r *http.Request, blob []byte, con
 	}
 	w.Header().Set("Content-Length", strconv.Itoa(len(blob)))
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(blob)
+	if _, err := w.Write(blob); err != nil {
+		// Client parti (pipe casse, delai reseau) : degradation best-effort, mais
+		// JAMAIS en silence (regle 3 du depot) — les handlers migres journalisaient
+		// cette coupure avant la centralisation, le helper en herite.
+		slog.WarnContext(r.Context(), "reponse blob : ecriture interrompue",
+			"err", err, "path", r.URL.Path, "content_type", contentType, "octets", len(blob))
+	}
 }
 
 // calculerETagFort dérive un ETag fort du contenu servi (D7) : `sha256-` suivi de
