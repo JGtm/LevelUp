@@ -1,3 +1,35 @@
+## [2026-09-09] E0 « servi ou gache » — le canal equipmentChanges mesure, le NOMMAGE bloque — Complete
+
+**Decision technique principale.** Instrument jetable en `*_research_test.go` sous
+`internal/analysis/replay/`, lecture seule des 64 artefacts cuits du parc (aucune base ouverte,
+une passe de backfill les tient). La jointure `Slot` -> joueur passe par le REGISTRE D'IDENTITE
+PUBLIE dans l'artefact (`identity.bipedSlots` et ses bornes par vie), pas par `buildPlayers` /
+`indexBySlot` qui travaillent sur des positions de film. La fermeture de l'identite
+`taken ~ utilise + lache + garde` est testee PAR FENETRE de `taken` et non par evenement : une
+pose est une charge, pas un objet (le mur en publie deux), et la fenetre dedoublonne les deux
+sans table d'identifiants. Le seul ecart non circulaire est la fenetre fermee par un `spent`
+qu'aucun canal d'usage ne voit.
+
+**Resultats observes (64 artefacts, schema 50).** Volumes : 1 880 changements, 1 422 `taken`,
+458 `spent`, aucun autre `Kind`, 1 372 slots porteurs. Emissions manquees 71/1 954 = 3,63 %.
+Rangs de palette NON nommes 453/1 797 = **25,21 %** (dont 148 dus a 8 artefacts sans table
+`abilityLabels`, et 305 a des rangs non etablis : 19, 10, 22). Slots non rattaches 21/1 880 =
+1,12 % (17 slots sur 1 372 = 1,24 %). Identite : 1 223 fenetres classables, 416 utilise /
+440 lache / 337 garde / **30 non expliques (2,45 %)** ; ecart median 0,00 % sur 488 couples
+(joueur, famille), pire cas a >= 5 prises 20,00 %. Repulseur : 375 objets pris, **0** utilise —
+son negatif mesure est confirme, la decision P4 tient.
+
+**Conclusion.** Le critere d'arret du plan est franchi sur le NOMMAGE (25,21 % > 15 %), pas sur
+l'identite (mediane 0,00 % < 10 %) : **arret propre**, la troisieme issue passe `[!]` et les
+etapes suivantes livreraient deux segments. Trois noms de rangs (19, 10, 22) feraient tomber le
+taux sous le seuil — chantier de manifeste, pas de canal. Cinq mesures ecrites au §2 de
+`.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`, instrument supprime (E0.5), decouvertes au §6
+du plan (capteur 49/302 et mur 295/251 confirmes a l'identique ; toutes les autres familles sont
+entre 1:6 et 1:12, l'exception est le mur).
+
+**Prochaine etape.** Decision utilisateur : ouvrir E1 a deux segments, ou nommer d'abord les
+rangs 19, 10 et 22 puis remesurer.
+
 ## [2026-09-09] P0 — match_lives refusait les voies de nommage du registre d'identite — Complete
 
 **Decision technique principale.** Le persister de `match_lives` valide `named_by` contre une liste

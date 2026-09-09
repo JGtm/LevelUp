@@ -162,17 +162,17 @@ l'utilisateur. **Zéro fix hors périmètre** : toute découverte va au §6, non
 **Périmètre fermé — instrument de mesure jetable, sous `apps/go-api/internal/analysis/replay/`
 en `*_research_test.go` (patron `filmdec/r11_*_research_test.go`) :**
 
-- [ ] E0.1 Sur au moins 20 artefacts locaux : compter les `equipmentChanges` par `Kind`,
+- [x] E0.1 Sur au moins 20 artefacts locaux : compter les `equipmentChanges` par `Kind`,
       et le nombre de `Slot` distincts. Publier le taux d'émissions manquées lu dans la
       couverture
-- [ ] E0.2 Établir la jointure **rang de palette → famille** : pour chaque `EquipmentChange.R`,
+- [x] E0.2 Établir la jointure **rang de palette → famille** : pour chaque `EquipmentChange.R`,
       retrouver le nom via `abilityLabels`. Mesurer le taux de rangs NON nommés. Une famille
       sans nom ne compte dans aucune ligne
-- [ ] E0.3 Établir la jointure **`Slot` → joueur** avec le pont du rejeu (`buildPlayers`,
+- [x] E0.3 Établir la jointure **`Slot` → joueur** avec le pont du rejeu (`buildPlayers`,
       `indexBySlot`) — un slot est une VIE. Mesurer le taux de slots non rattachés
-- [ ] E0.4 Sur les mêmes artefacts, vérifier l'identité `taken ≈ utilisé + lâché + gardé`
+- [x] E0.4 Sur les mêmes artefacts, vérifier l'identité `taken ≈ utilisé + lâché + gardé`
       par joueur et par famille. Publier l'écart médian et le pire cas
-- [ ] E0.5 Écrire les résultats dans `.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` (§2,
+- [x] E0.5 Écrire les résultats dans `.ai/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` (§2,
       colonne « État »), **avec les chiffres**, et supprimer l'instrument
 
 **Gate** :
@@ -382,8 +382,33 @@ cd apps/web && npx eslint src/features/squad --max-warnings=0
   lâchers sur le parc (1:6), quand le mur est à 1:1 (295/251). Vrai comportement de jeu ou
   défaut de classement d'origine — chantier à part. **L'étape E0 donnera des chiffres
   utiles : les reporter ici sans enquêter.**
+  - **Chiffres E0 du 2026-09-09, reportés SANS enquête** (64 artefacts, recensement brut des
+    poses). Les deux chiffres hérités sont CONFIRMÉS À L'IDENTIQUE : capteur **49 / 302**,
+    mur **295 / 251**. Le rapport 1:6 du capteur n'est pas isolé — c'est le mur qui est
+    l'exception : grappin 52/604, propulseur 36/463, répulseur 61/303, écran occultant 9/60,
+    traqueur 3/16, champ de réparation 3/13, translocateur 0/8, surbouclier 0/9. Autrement
+    dit **toutes les familles sauf le mur sont autour de 1:6 à 1:12**, et l'anomalie à
+    expliquer est le 1:1 du mur — probablement la double publication de ses poses (appareil
+    + panneaux) côté `deployed`, qui double son numérateur. Rien de plus n'a été cherché.
+  - Vu au même endroit : à l'issue de la classification par fenêtre, le capteur ne compte que
+    **4 objets « utilisés » sur 36 pris** et le traqueur **3 sur 29** — cohérent avec le
+    rapport de poses ci-dessus, et cohérent avec un défaut d'attribution du poseur plutôt
+    qu'avec un joueur qui garderait son capteur. Non instruit.
 
-_(à compléter en cours d'exécution)_
+- **Nouvelle, E0 du 2026-09-09** : **8 artefacts sur 64 (12,5 %) ne portent AUCUNE table
+  `abilityLabels`** — leur palette de capacités n'est pas classée, donc aucun de leurs rangs
+  ne reçoit de nom. À eux seuls ils pèsent 148 des 453 rangs muets (32,7 %). Ce n'est pas un
+  défaut du canal `equipmentChanges` : c'est le classement de palette (`replay/abilities.go`
+  + `markers` de `replay_labels.toml`) qui ne signe pas ces films. Non instruit.
+
+- **Nouvelle, E0 du 2026-09-09** : un rang **32** apparaît une fois dans le corpus, hors de
+  tous les `markers` déclarés (famille A : 1..12, 23 ; famille B : 19..22). Une lecture
+  isolée, aucune conclusion. Non instruit.
+
+- **Nouvelle, E0 du 2026-09-09** : **1 422 `taken` mais seulement 1 223 fenêtres classables** —
+  les 199 écarts sont des prises dont le rang n'a pas de famille connue ou dont la vie n'est
+  pas nommée. Un dénominateur affiché « objets pris » devra dire lequel des deux il compte.
+  Non instruit.
 
 ---
 
@@ -473,3 +498,38 @@ CORPUS : 64 artefacts lus dans <depot>/data/cache/replays/halo_infinite
   translocator_beacon  deployees     0 · lachees     8 · origine inconnue     0
   TOUTES FAMILLES      deployees   820 · lachees  9937 · origine inconnue   681 — RESERVE DE COUVERTURE des poses 681/11438 (5.95 %)
 ```
+
+- **2026-09-09 — E0 CLOSE. DÉCISION DE SORTIE : ARRÊT PROPRE.** Les cinq items sont `[x]`, le
+  gate (`go test ./internal/analysis/replay/ -run Research -v`) est vert, les cinq mesures
+  sont au §2 du document de référence, l'instrument est supprimé.
+
+  **Le critère d'arrêt du plan est franchi sur UN de ses deux seuils :**
+
+  | Critère du plan | Seuil | Mesuré | Verdict |
+  |---|---|---|---|
+  | Taux de rangs de palette NON nommés | > 15 % → arrêt | **25,21 %** (453/1 797) | **FRANCHI** |
+  | Écart médian de E0.4 | > 10 % → arrêt | **0,00 %** (médiane sur 488 couples) | tenu |
+
+  Application littérale de la règle écrite : **la troisième issue (« gardé sans l'utiliser »)
+  devient `[!]` et les étapes E2 à E6 livrent DEUX segments** (utilisé / lâché) au lieu de
+  trois, jusqu'à décision contraire de l'utilisateur.
+
+  **Ce que la mesure dit vraiment, pour que l'arbitrage soit possible.** Le seuil franchi
+  porte sur le NOMMAGE, pas sur la fiabilité de la troisième issue — dont l'écart propre est
+  de 2,45 % toutes familles (30 fenêtres sur 1 223 fermées par un `spent` qu'aucun canal
+  d'usage ne voit), médiane 0,00 %. Les 25,21 % se décomposent en deux causes réparables et
+  disjointes : **8,2 % des lectures** viennent de 8 artefacts sur 64 dont la palette n'est pas
+  classée (réparation : classer la palette de ces films), et **17,0 %** de rangs non établis,
+  concentrés sur trois d'entre eux — 19 (mur, famille B, 167 lectures), 10 (95) et 22
+  (capteur, famille B, 90). Les rangs 19 et 22 sont délibérément non nommés faute d'un
+  SECOND relevé Theater (`replay_labels.toml`, famille B) ; le rang 10 est signalé depuis le
+  2026-08-14 comme « le premier trou à combler ». **Trois noms de rangs feraient tomber le
+  taux sous le seuil** — c'est un chantier de manifeste, pas de canal.
+
+  **Ce qui reste vrai quoi qu'il arrive** : le canal `equipmentChanges` tient (3,63 %
+  d'émissions manquées, 1,12 % d'événements non rattachés à un joueur, aucun `Kind`
+  inattendu), et le répulseur confirme son négatif mesuré (375 objets pris, **zéro** classé
+  utilisé). La décision P4 — pas de ligne pour lui — est validée par la mesure.
+
+  **Prochaine étape : décision utilisateur.** Ouvrir E1 avec deux segments, ou combler
+  d'abord les trois rangs de palette et remesurer.

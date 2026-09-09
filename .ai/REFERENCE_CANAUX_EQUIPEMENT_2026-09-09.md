@@ -19,10 +19,10 @@ MATCH. Ce qui remonte au grain session est une autre affaire — §3.
 | `equipmentEpisodes` | L'état ACTIF : **camouflage** et **surbouclier** seulement. Nombre d'épisodes, durée, frags pendant | Par VIE | Deux familles seulement, « parce que deux seulement sont mesurées — les autres restent sans état plutôt que devinés » (`document.go:147`) |
 | `equipmentPlacements` `origin: deployed` | Les DÉPLOIEMENTS d'objets sur la carte, par famille (`wall` / `sensor` / `other`) | Par pose, poseur mesuré | `t1` est une mise au repos, pas une disparition. ~5 % des poses sont `origin: unknown` |
 | `equipmentPlacements` `origin: dropped` | Ce qui TOMBE à la mort : déployables **et bonus** | Par pose | Classé `dropped` à < 200 ms et < 1,5 m de la dernière position du porteur. Les deux populations sont séparées par trois ordres de grandeur |
-| `equipmentChanges` | Les RAMASSAGES (`taken`) et les CONSOMMATIONS (`spent`), datés à la ms | Par VIE (`Slot`) | Les annonces de RÉAPPARITION en sont écartées. Témoin de complétude : ~16 émissions manquées sur 319 |
+| `equipmentChanges` | Les RAMASSAGES (`taken`) et les CONSOMMATIONS (`spent`), datés à la ms | Par VIE (`Slot`) | Les annonces de RÉAPPARITION en sont écartées. Témoin de complétude : ~16 émissions manquées sur 319 sur trois films ; **71 sur 1 954 = 3,63 % sur les 64 artefacts du parc** (mesure E0 du 2026-09-09, §2) |
 | `grappleLines` | Les TRACTIONS de grappin — la seule activation de capacité mesurée et attribuée | Par VIE | — |
 | `abilityCharges` | Les CHARGES RESTANTES, lues au changement | Par VIE | **Grappin et propulseur SEULEMENT.** Rien n'est transmis au ramassage, donc le maximum n'est pas établissable. Le répulseur n'arme jamais ce canal (négatif mesuré, rapport R11) |
-| `abilityLabels` | Nomme les RANGS de capacité, palette propre au match | Match | Une capacité non classée ne reçoit aucun nom |
+| `abilityLabels` | Nomme les RANGS de capacité, palette propre au match | Match | Une capacité non classée ne reçoit aucun nom. **25,21 % des rangs lus par `equipmentChanges` ne sont pas nommés** — dont 8 artefacts sur 64 SANS table du tout (mesure E0, §2) |
 | `padPickups` × `weaponPads` | Les socles d'ARME (famille en 8 hexa) et les socles de BONUS vidés (`powerup_*`) | Match, ramasseur nommé depuis le schéma 30 | Un socle de bonus n'est jamais rattachable à un joueur |
 
 ### Négatifs MESURÉS — ne pas les rechercher à nouveau
@@ -69,9 +69,53 @@ somme est le nombre d'objets ramassés SUR LA CARTE.
 
 | Issue | Canal | État |
 |---|---|---|
-| **Utilisé** | Famille A : le canal d'activation de la famille (tableau §1 bis). Famille B : `deployed`. `spent` sert de témoin commun | Lu par la vue match, sauf translocateur et propulseur |
-| **Lâché en mourant** | `dropped` | Lu par la vue match |
-| **Gardé sans l'utiliser** | `taken` sans `spent` ni `dropped` | **À brancher** — le canal existe, aucun écran d'usage ne le lit |
+| **Utilisé** | Famille A : le canal d'activation de la famille (tableau §1 bis). Famille B : `deployed`. `spent` sert de témoin commun | Lu par la vue match, sauf translocateur et propulseur. **MESURÉ E0** : 416 objets sur 1 223 pris (34,0 %) |
+| **Lâché en mourant** | `dropped` | Lu par la vue match. **MESURÉ E0** : 440 sur 1 223 (36,0 %) |
+| **Gardé sans l'utiliser** | `taken` sans `spent` ni `dropped` | **À brancher** — le canal existe, aucun écran d'usage ne le lit. **MESURÉ E0** : 337 sur 1 223 (27,6 %), et 30 (2,5 %) restent NON EXPLIQUÉS |
+
+### Mesure E0 du 2026-09-09 — ce que le canal vaut sur le parc
+
+Instrument jetable (`replay/e0_gachis_research_test.go`, supprimé après mesure), 64 artefacts
+du parc local au schéma 50 recuits le 2026-09-09. Sortie brute intégrale : journal de
+`.ai/PLAN_EQUIPEMENT_GACHIS_2026-09-09.md`. Les cinq mesures :
+
+| # | Mesure | Résultat |
+|---|---|---|
+| 1 | **Volumes** `equipmentChanges` | 1 880 changements publiés sur 64/64 artefacts : **1 422 `taken`** (75,6 %), **458 `spent`** (24,4 %), **aucun autre `Kind`**. 1 372 slots distincts porteurs (un slot = une VIE) |
+| 2 | **Émissions manquées** (témoin de rotation) | **71 sur 1 954** publiées + manquées = **3,63 %**. 58 sauts de compteur, 95 émissions récupérées (schéma 38), 96 vies dont la première émission est hors norme, 1 répétition. 1 096 annonces de réapparition écartées |
+| 3 | **Rangs de palette NON nommés** | **453 sur 1 797 = 25,21 %**. Deux causes disjointes : **148** (8,2 % des lectures) parce que **8 artefacts sur 64 n'ont AUCUNE table `abilityLabels`** — palette du film non classée ; **305** parce que le rang n'est établi nulle part (19 : 167 lectures, 10 : 95, 22 : 90, 32 : 1). Aucun rang nommé par le manifeste ne manque à la table d'un film qui en a une (0/453) |
+| 4 | **Slots non rattachés à un joueur** | **21 événements sur 1 880 = 1,12 %** ; **17 slots porteurs sur 1 372 = 1,24 %**. Jointure par le registre d'identité PUBLIÉ dans l'artefact (`identity.bipedSlots`, bornes par vie) — les 64 artefacts portent tous la section |
+| 5 | **Écart de l'identité `taken ≈ utilisé + lâché + gardé`** | Sur 488 couples (joueur, famille) : **médiane 0,00 %**, pire cas à dénominateur substantiel (≥ 5 prises) **20,00 %**. Toutes familles confondues : **30 fenêtres sur 1 223 (2,45 %)** se ferment par un `spent` qu'aucun canal d'usage ne voit. Pires familles : traqueur 20,7 % (6/29), capteur 13,9 % (5/36), champ de réparation 9,1 % (2/22) |
+
+**Ventilation des issues par famille** (fenêtres de `taken`, une pose = une charge donc
+dédoublonnée par fenêtre) :
+
+| Famille | Pris | Utilisé | Lâché | Gardé | Non expliqué |
+|---|---|---|---|---|---|
+| répulseur | 375 | **0** | 210 | 161 | 4 (1,1 %) |
+| grappin | 306 | 145 | 96 | 65 | 0 |
+| mur | 128 | 50 | 54 | 24 | 0 |
+| propulseur | 111 | 43 | 35 | 28 | 5 (4,5 %) |
+| camouflage | 96 | 80 | 6 | 5 | 5 (5,2 %) |
+| surbouclier | 82 | 73 | 6 | 3 | 0 |
+| translocateur | 38 | 16 | 6 | 13 | 3 (7,9 %) |
+| capteur | 36 | 4 | 11 | 16 | 5 (13,9 %) |
+| traqueur | 29 | 3 | 12 | 8 | 6 (20,7 %) |
+| champ de réparation | 22 | 2 | 4 | 14 | 2 (9,1 %) |
+| **total** | **1 223** | **416** | **440** | **337** | **30 (2,45 %)** |
+
+> Le **répulseur** est la démonstration du négatif mesuré : 375 objets pris, **zéro** classé
+> « utilisé » — non parce qu'il ne sert jamais, mais parce qu'aucun canal ne le mesure. C'est
+> la raison de la décision P4 (pas de ligne pour lui) ; une ligne dirait « 0 utilisation ».
+
+> **Réserve de couverture des poses, remesurée** : 681 poses d'origine inconnue sur 11 438 =
+> **5,95 %** (820 déployées, 9 937 lâchées). Le chiffre « ~5 % » du §1 tient.
+
+**Ce que le total NE couvre pas.** 1 223 fenêtres pour 1 422 `taken` : les 199 restants
+portent un rang sans famille connue ou tombent sur une vie non nommée. Et hors de toute
+fenêtre de `taken`, le parc porte **2 024 usages et 9 495 lâchers** — l'équipement de
+RÉAPPARITION, qui n'est jamais `taken` par construction. Le dénominateur des trois issues
+est donc bien « objets ramassés SUR LA CARTE », jamais « équipement porté ».
 
 **Deux pièges d'unité, tranchés :**
 
