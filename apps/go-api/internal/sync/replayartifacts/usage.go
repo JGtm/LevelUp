@@ -109,6 +109,7 @@ func persisterResumesUsage(ctx context.Context, d Deps, b *bilanDerivations, lus
 	if len(prets) == 0 {
 		return
 	}
+	journaliserCouvertureUsage(ctx, d, prets)
 	if d.AcquireWriter == nil {
 		// DÉGRADATION VOULUE, PAS UN SILENCE : même cas que le report du T0 — un chemin
 		// de sync sans writer câblé cuit ses artefacts mais ne résume rien.
@@ -153,6 +154,38 @@ func echecUsage(b *bilanDerivations, prets []resumeUsagePret) {
 	for i := range prets {
 		b.echec(prets[i].matchID)
 	}
+}
+
+// journaliserCouvertureUsage dit CE QUE LE CANAL DES RAMASSAGES N'A PAS SU RATTACHER sur le
+// lot (étape E3.8) : prises dont le rang de palette n'a aucun libellé dans le film, changements
+// dont le slot n'ouvre aucune ligne de joueur, consommations dont la chaîne du compteur est
+// trouée. Ce sont des DÉGRADATIONS de mesure, pas des erreurs : les grandeurs restent justes,
+// elles sont seulement incomplètes — et sans ce journal elles le seraient EN SILENCE.
+//
+// UN SEUL WARN POUR LE LOT, AVEC LES COMPTES : une ligne par match noierait le cycle (au parc,
+// un quart des rangs lus ne sont pas nommés — mesure E0.2). Rien à zéro ne se dit : un lot
+// entièrement rattaché ne produit aucune ligne.
+func journaliserCouvertureUsage(ctx context.Context, d Deps, prets []resumeUsagePret) {
+	var cov replay.UsageChangeCoverage
+	films := 0
+	for i := range prets {
+		c := prets[i].summary.Match.EquipmentChanges
+		if c.Total() > 0 {
+			films++
+		}
+		cov.UnnamedRankTaken += c.UnnamedRankTaken
+		cov.UnattributedSlot += c.UnattributedSlot
+		cov.SpentUnreliableFrom += c.SpentUnreliableFrom
+	}
+	if cov.Total() == 0 {
+		return
+	}
+	slog.WarnContext(ctx, "post-sync: résumé d'usage — ramassages non rattachés (mesure incomplète, pas fausse)",
+		"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "matchs", len(prets),
+		"matchsConcernes", films,
+		"prisesSansFamille", cov.UnnamedRankTaken,
+		"slotsNonRattaches", cov.UnattributedSlot,
+		"consommationsChaineTrouee", cov.SpentUnreliableFrom)
 }
 
 // projeterResumesUsage projette tous les documents du lot, AVANT tout writer.

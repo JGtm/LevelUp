@@ -23392,6 +23392,8 @@ components:
         matches_above_team_parity:
           format: int64
           type: integer
+        outcomes:
+          $ref: '#/components/schemas/SessionUsageOutcomes'
         per_match:
           items:
             $ref: '#/components/schemas/SessionUsageMatchPoint'
@@ -23430,6 +23432,36 @@ components:
         - matches_above_lobby_parity
         - player_total
         - lobby_total
+      type: object
+    SessionUsageOutcomes:
+      additionalProperties: false
+      properties:
+        dropped:
+          format: double
+          type: number
+        kept:
+          format: double
+          type: number
+        opponents_used_rate_pct:
+          format: double
+          type: number
+        taken:
+          format: double
+          type: number
+        teammates_used_rate_pct:
+          format: double
+          type: number
+        used:
+          format: double
+          type: number
+        used_rate_pct:
+          format: double
+          type: number
+      required:
+        - used
+        - kept
+        - dropped
+        - taken
       type: object
     SessionUsagePadFamily:
       additionalProperties: false

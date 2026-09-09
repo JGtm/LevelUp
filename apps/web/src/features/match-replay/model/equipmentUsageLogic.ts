@@ -52,10 +52,11 @@
  * il ne nomme rien. La mise en colonnes et les libellés vivent dans `equipmentUsageColumns.ts`
  * (extrait le 2026-08-25, seuil de taille), le rendu dans `MatchEquipmentUsageSection.tsx`.
  */
-import type { MatchScoreboardRow } from '@/lib/api/types'
+import { REPLAY_NO_ABILITY_RANK, type MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
 
 import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
+import { droppedFamilyOf } from './gameChangers'
 import { PLACEMENT_RENDER, placementIsDeployedObject } from '../layers/equipmentPlacementsLayer'
 import { placementIsDroppedPower, PLACEMENT_DROPPED_FAMILIES } from './placementDropped'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -66,6 +67,74 @@ import { padEquipmentFamilyOf, type PadEquipmentFamilyKey } from './weaponPadFam
 /** Les deux familles dont l'ÉTAT ACTIF est mesuré (identifiants stables du document). */
 export const EPISODE_FAMILIES = [EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD] as const
 export type EquipmentEpisodeFamily = (typeof EPISODE_FAMILIES)[number]
+
+/**
+ * LES FAMILLES DU BILAN « SERVI OU GÂCHÉ » (E2, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : les
+ * six déployables (mêmes clés que `deployed`/`dropped`, tirées de `PLACEMENT_RENDER`) et les
+ * deux power-ups (mêmes clés que `episodes` — `camo`/`overshield`, PAS `powerup_*`, qui nomme
+ * le MÊME objet côté pose : cf. `droppedFamilyOf`). Le répulseur, le grappin, le propulseur et
+ * le translocateur (en tant qu'ACTIVATION, distincte de sa balise `translocator_beacon` posée)
+ * n'y figurent PAS : leur activation n'est mesurée par aucun canal ici mobilisé (P4), ou ils
+ * portent déjà leur propre colonne (grappin).
+ */
+const KEPT_FAMILIES: readonly string[] = [
+  'wall',
+  'sensor',
+  'translocator_beacon',
+  'shroud_screen',
+  'threat_seeker',
+  'repair_field',
+  EQUIP_FAMILY_CAMO,
+  EQUIP_FAMILY_OVERSHIELD,
+]
+
+/** Vrai pour les deux familles dont le côté « utilisé » vient des ÉPISODES, pas des poses. */
+function isEpisodeMeasuredFamily(family: string): boolean {
+  return family === EQUIP_FAMILY_CAMO || family === EQUIP_FAMILY_OVERSHIELD
+}
+
+/**
+ * EQUIPMENT_CHANGE_FAMILY_STEMS — LA RECONNAISSANCE RANG -> FAMILLE DE `equipmentChanges`, sur
+ * la RACINE du libellé publié par `abilityLabels` (même patron que `CHARGE_FAMILY_STEMS` de
+ * `abilityChargeLogic.ts` et `translocatorRanks` de `placementTeleport.ts` : l'artefact ne
+ * publie AUCUNE table rang->famille, seulement rang->texte bilingue). Une famille absente d'ici
+ * — grappin, propulseur, répulseur — reste HORS BILAN (P4) sans qu'on y pense : elle a un
+ * libellé (donc n'entre pas dans la réserve « sans famille connue »), simplement aucun stem ne
+ * la reconnaît.
+ */
+const EQUIPMENT_CHANGE_FAMILY_STEMS: Readonly<Record<string, readonly string[]>> = {
+  wall: ['mur', 'wall'],
+  sensor: ['capteur', 'sensor'],
+  translocator_beacon: ['translocat'],
+  shroud_screen: ['occultant', 'shroud'],
+  threat_seeker: ['traqueur', 'seeker'],
+  repair_field: ['réparation', 'repair'],
+  [EQUIP_FAMILY_CAMO]: ['camouflage'],
+  [EQUIP_FAMILY_OVERSHIELD]: ['surbouclier', 'overshield'],
+}
+
+/**
+ * equipmentChangeFamilyOf — la famille CANONIQUE (vocabulaire `KEPT_FAMILIES`) que nomme le
+ * rang `r` d'un `equipmentChanges`, ou `null` quand :
+ *  - le rang est HORS BILAN (label connu mais hors `EQUIPMENT_CHANGE_FAMILY_STEMS` : grappin,
+ *    propulseur, répulseur) — silencieux, une exclusion PRODUIT, pas une mesure manquante ;
+ *  - le rang n'a PAS DE LABEL DU TOUT (`abilityLabels?.[String(r)]` absent) — c'est la RÉSERVE
+ *    « objets pris sans famille connue » — COMPTÉE mais JAMAIS AFFICHÉE (décision utilisateur
+ *    2026-09-09 : identification par relevé Theater guidé, hors interface),
+ *    distinguée par l'appelant via `labels?.[String(r)] == null`, jamais devinée ici.
+ */
+export function equipmentChangeFamilyOf(
+  labels: ReplayDocumentReady['abilityLabels'],
+  rank: number,
+): string | null {
+  const label = labels?.[String(rank)]
+  if (!label) return null
+  const text = `${label.fr ?? ''} ${label.en ?? ''}`.toLowerCase()
+  for (const [family, stems] of Object.entries(EQUIPMENT_CHANGE_FAMILY_STEMS)) {
+    if (stems.some((stem) => text.includes(stem))) return family
+  }
+  return null
+}
 
 /**
  * Un état actif cumulé : combien d'épisodes, combien de temps en tout, et combien de frags
@@ -99,6 +168,14 @@ export interface EquipmentUsageTally {
   dropped: Record<string, number>
   /** Lancers de grenade, par RANG du catalogue du document (`grenadeLabels[rank]`). */
   grenades: Record<number, number>
+  /**
+   * GARDÉS SANS LES UTILISER (E2, décision utilisateur 2026-09-09 amendant P1) : DÉRIVÉ, jamais
+   * lu directement d'un canal — `max(0, taken - utilisé - lâché)` par famille de
+   * `KEPT_FAMILIES`, où `taken` vient de `equipmentChanges` (cf. `equipmentChangeFamilyOf`).
+   * L'écart résiduel mesuré par E0.4 (2,45 % toutes familles, médiane 0,00 %) est absorbé par
+   * le clamp à zéro plutôt qu'affiché comme un gardé négatif.
+   */
+  kept: Record<string, number>
 }
 
 /** La ligne d'un joueur : son identité, son camp, ses grandeurs. */
@@ -128,6 +205,15 @@ export interface EquipmentUsageColumns {
   deployed: string[]
   dropped: string[]
   grenades: number[]
+  /**
+   * LA LISTE FUSIONNÉE (E2) : les déployables ET les deux power-ups, canonique
+   * (`KEPT_FAMILIES`), ADDITIVE aux quatre champs ci-dessus — `deployed`/`dropped`/`episodes`
+   * restent inchangés pour ne pas rouvrir leurs consommateurs existants. Une famille y figure
+   * dès qu'au moins un joueur l'a utilisée, lâchée, OU gardée sans l'utiliser : un objet gardé
+   * du premier au dernier instant du match, jamais posé ni lâché, doit quand même ouvrir sa
+   * colonne — sinon il n'a nulle part où se lire.
+   */
+  equipment: string[]
 }
 
 /**
@@ -178,13 +264,23 @@ export interface EquipmentUsage {
    * pour que la somme des lignes ne mente pas sur le total du film.
    */
   unattributed: EquipmentUsageTally
+  /**
+   * OBJETS PRIS DONT LE RANG N'A PAS DE FAMILLE CONNUE (P13 amendée, décision utilisateur
+   * 2026-09-09) : ni caché, ni forcé dans une famille au hasard — au niveau du MATCH, jamais
+   * une ligne de joueur (aucun porteur n'y est mis en cause, même raison que `powerupPickups`).
+   * Vient des `taken` de `equipmentChanges` dont `abilityLabels?.[String(r)]` est absent : soit
+   * le film n'a AUCUNE table (8 artefacts sur 64 mesurés par E0), soit ce rang précis n'y
+   * figure pas. Un rang NOMMÉ mais hors bilan (grappin, propulseur, répulseur) n'y entre PAS —
+   * c'est une exclusion produit (P4), pas une famille inconnue.
+   */
+  unnamedTaken: number
   /** Faux = aucune grandeur non nulle : l'écran ne doit rien rendre (double porte). */
   hasData: boolean
 }
 
 /** Un compteur vide. Chaque appel rend un NOUVEL objet : les tables ne se partagent pas. */
 function emptyTally(): EquipmentUsageTally {
-  return { grapplePulls: 0, episodes: {}, deployed: {}, dropped: {}, grenades: {} }
+  return { grapplePulls: 0, episodes: {}, deployed: {}, dropped: {}, grenades: {}, kept: {} }
 }
 
 /** Incrémente une case de table, en la créant au besoin. */
@@ -213,13 +309,14 @@ function mergeTally(dst: EquipmentUsageTally, src: EquipmentUsageTally): void {
   for (const [fam, n] of Object.entries(src.deployed)) bump(dst.deployed, fam, n)
   for (const [fam, n] of Object.entries(src.dropped)) bump(dst.dropped, fam, n)
   for (const [rank, n] of Object.entries(src.grenades)) bump(dst.grenades, Number(rank), n)
+  for (const [fam, n] of Object.entries(src.kept)) bump(dst.kept, fam, n)
 }
 
 /** Vrai si le compteur porte au moins une grandeur non nulle. */
 export function tallyIsEmpty(t: EquipmentUsageTally): boolean {
   if (t.grapplePulls > 0) return false
   if (Object.values(t.episodes).some((e) => e.count > 0)) return false
-  return ![t.deployed, t.dropped, t.grenades].some((m) => Object.values(m).some((n) => n > 0))
+  return ![t.deployed, t.dropped, t.grenades, t.kept].some((m) => Object.values(m).some((n) => n > 0))
 }
 
 /**
@@ -310,6 +407,42 @@ export function buildEquipmentUsage(
   // LE LANCER PORTE SON AUTEUR : `i`, l'index de joueur du film — jamais `slot` (cf. en-tête).
   for (const g of doc.grenades) bump(tallyOfFilmIndex(g.i).grenades, g.rank)
 
+  // LES PRISES (`equipmentChanges` `taken`), par compteur ET par famille CANONIQUE — un
+  // scratch LOCAL, jamais posé sur `EquipmentUsageTally` : ce n'est pas une grandeur affichée,
+  // seulement l'entrée du calcul de `kept` ci-dessous (E2, décision utilisateur 2026-09-09).
+  const takenByTally = new Map<EquipmentUsageTally, Record<string, number>>()
+  let unnamedTaken = 0
+  for (const c of doc.equipmentChanges) {
+    if (c.kind !== 'taken') continue
+    if (!doc.abilityLabels?.[String(c.r)]) {
+      // Aucun label pour ce rang, dans CE film : réserve « sans famille connue » (P13
+      // amendée), au niveau du match — jamais un porteur mis en cause pour une non-mesure.
+      if (c.r !== REPLAY_NO_ABILITY_RANK) unnamedTaken += 1
+      continue
+    }
+    const family = equipmentChangeFamilyOf(doc.abilityLabels, c.r)
+    // Labellisé mais hors bilan (grappin, propulseur, répulseur) : exclusion PRODUIT (P4),
+    // pas une famille inconnue — elle ne rejoint donc PAS la réserve ci-dessus.
+    if (!family) continue
+    const t = tallyOfSlotAt(c.slot, c.t)
+    const rec = takenByTally.get(t) ?? {}
+    rec[family] = (rec[family] ?? 0) + 1
+    takenByTally.set(t, rec)
+  }
+  // LE GARDÉ SE DÉRIVE APRÈS COUP, une fois `deployed`/`dropped`/`episodes` posés pour CE
+  // compteur : `taken` sans usage ni lâcher pour la même famille (règle validée par E0.4).
+  for (const [t, taken] of takenByTally) {
+    for (const family of KEPT_FAMILIES) {
+      const takenN = taken[family] ?? 0
+      if (takenN === 0) continue
+      const usedN = isEpisodeMeasuredFamily(family)
+        ? (t.episodes[family]?.count ?? 0)
+        : (t.deployed[family] ?? 0)
+      const droppedN = t.dropped[droppedFamilyOf(family)] ?? 0
+      t.kept[family] = Math.max(0, takenN - usedN - droppedN)
+    }
+  }
+
   const byTeam = teamsOf(players, tallies)
   const byPlayer = byTeam.flatMap((g) => g.players)
   const powerupPickups = countPowerupPickups(doc)
@@ -323,6 +456,7 @@ export function buildEquipmentUsage(
     powerupPickups,
     powerupPickupsTotal,
     unattributed,
+    unnamedTaken,
     hasData: powerupPickupsTotal > 0 || byPlayer.some((r) => !tallyIsEmpty(r)),
   }
 }
@@ -371,12 +505,30 @@ function columnsOf(rows: EquipmentUsageRow[]): EquipmentUsageColumns {
   const deployedUsed = used((r) => r.deployed)
   const droppedUsed = used((r) => r.dropped)
   const grenadesUsed = used((r) => r.grenades)
+  const keptUsed = used((r) => r.kept)
+  // LA COLONNE « ÉQUIPEMENT » FUSIONNÉE (E2) : une famille de `KEPT_FAMILIES` y entre dès
+  // qu'AU MOINS UN joueur l'a utilisée (déployée, ou activée pour les deux power-ups), lâchée,
+  // OU gardée sans l'utiliser — un objet gardé du début à la fin, jamais posé ni lâché, doit
+  // quand même ouvrir sa colonne. Ordre ÉCRIT : `PLACEMENT_RENDER` d'abord (même ordre que
+  // `deployed`), les deux power-ups ensuite.
+  const equipmentUsed = KEPT_FAMILIES.filter((f) => {
+    if (isEpisodeMeasuredFamily(f)) {
+      return (
+        rows.some((r) => (r.episodes[f]?.count ?? 0) > 0) ||
+        droppedUsed.has(droppedFamilyOf(f)) ||
+        keptUsed.has(f)
+      )
+    }
+    return deployedUsed.has(f) || droppedUsed.has(f) || keptUsed.has(f)
+  })
+  const equipmentOrder = [...Object.keys(PLACEMENT_RENDER), ...EPISODE_FAMILIES]
   return {
     grapple: rows.some((r) => r.grapplePulls > 0),
     episodes: EPISODE_FAMILIES.filter((f) => rows.some((r) => (r.episodes[f]?.count ?? 0) > 0)),
     deployed: Object.keys(PLACEMENT_RENDER).filter((f) => deployedUsed.has(f)),
     dropped: PLACEMENT_DROPPED_FAMILIES.filter((f) => droppedUsed.has(f)),
     grenades: [...grenadesUsed].map(Number).sort((a, b) => a - b),
+    equipment: equipmentOrder.filter((f) => equipmentUsed.includes(f)),
   }
 }
 

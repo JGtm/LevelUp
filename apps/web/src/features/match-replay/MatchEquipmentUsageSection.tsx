@@ -323,6 +323,21 @@ function UsageTeamShares({ rows, t }: { rows: UsageShareRow[]; t: ReplayText }) 
 }
 
 /**
+ * unknownOriginPlacements — LA RÉSERVE DE COUVERTURE DES POSES (P13, première moitié) : la
+ * somme des poses `famille/unknown` de `coverage.placements.byFamilyOrigin` — ~5 % du parc
+ * mesurés par E0 (681/11 438). `origin: 'unknown'` n'est ni un déploiement ni un lâcher
+ * (schéma antérieur au 10, ou pose sans poseur mesuré) : elle ne doit être comptée dans
+ * AUCUNE des deux vues, et pourtant elle a eu lieu — elle se montre ici plutôt que se taire.
+ */
+function unknownOriginPlacements(cov: EquipmentUsage['coverage']): number {
+  let total = 0
+  for (const [key, n] of Object.entries(cov.placementsByFamilyOrigin)) {
+    if (key.endsWith('/unknown')) total += n
+  }
+  return total
+}
+
+/**
  * UsageFootnotes — la ligne ANONYME du match, les dénominateurs, et ce qui n'est pas mesuré.
  *
  * La ligne des socles de bonus est HORS DES DEUX VUES, et ce n'est pas une question de place :
@@ -330,6 +345,14 @@ function UsageTeamShares({ rows, t }: { rows: UsageShareRow[]; t: ReplayText }) 
  * cet écran n'a pas été repensé pour l'exploiter — il l'est par `MatchPadControlSection`, juste
  * en dessous dans l'onglet). Une colonne, même intitulée « anonyme », finirait par se lire comme
  * une grandeur de joueur.
+ *
+ * LES DEUX RÉSERVES DE COUVERTURE (P13, E2.6) FERMENT LA LISTE, JUSTE AVANT `notMeasured` : la
+ * réserve NE SE CACHE PAS (amendement du 2026-09-09 à la sortie de E0 — décision utilisateur,
+ * cf. journal du plan). `unknownOriginPlacements` existait déjà en germe dans `coverage` ;
+ * `unnamedTaken` (E2, `equipmentUsageLogic.ts`) compte les objets pris dont le rang n'a pas de
+ * famille connue ; il N'EST PAS RENDU (décision utilisateur 2026-09-09 : ces objets ne
+ * s'affichent pas dans l'interface, ils seront identifiés par un relevé Theater guidé). Le
+ * compteur reste publié par la logique pour l'outillage d'investigation.
  */
 function UsageFootnotes({ usage, t }: { usage: EquipmentUsage; t: ReplayText }) {
   const u = t.equipmentUsage
@@ -338,6 +361,7 @@ function UsageFootnotes({ usage, t }: { usage: EquipmentUsage; t: ReplayText }) 
   const detail = Object.entries(usage.powerupPickups)
     .map(([family, n]) => `${equipmentFamilyLabel(family, t)} ${n}`)
     .join(' · ')
+  const posesInconnues = unknownOriginPlacements(cov)
   return (
     <div className="space-y-1 border-t border-border px-3 pb-2 pt-2 text-[11px] text-muted-foreground">
       {usage.powerupPickupsTotal > 0 && (
@@ -358,6 +382,7 @@ function UsageFootnotes({ usage, t }: { usage: EquipmentUsage; t: ReplayText }) 
         <p>{u.coverageGrappleFmt(cov.grapplePulls, cov.grapplePullLives)}</p>
       )}
       {orphelins > 0 && <p>{u.unattributedFmt(orphelins)}</p>}
+      {posesInconnues > 0 && <p>{u.coverageUnknownOriginFmt(posesInconnues)}</p>}
       <p>{u.notMeasured}</p>
     </div>
   )

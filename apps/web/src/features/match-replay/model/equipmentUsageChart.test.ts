@@ -25,7 +25,7 @@ import type { UsageColumnGroup } from './equipmentUsageColumns'
 import type { EquipmentUsageTally, EquipmentUsageTeam } from './equipmentUsageLogic'
 
 function tally(over: Partial<EquipmentUsageTally> = {}): EquipmentUsageTally {
-  return { grapplePulls: 0, episodes: {}, deployed: {}, dropped: {}, grenades: {}, ...over }
+  return { grapplePulls: 0, episodes: {}, deployed: {}, dropped: {}, grenades: {}, kept: {}, ...over }
 }
 
 const ALPHA = tally({
@@ -111,7 +111,7 @@ const VISUAL = {
 }
 
 describe('l’encre d’une famille de geste', () => {
-  it('donne une teinte DIFFÉRENTE à chacune des cinq familles', () => {
+  it('donne une teinte DIFFÉRENTE à chacune des quatre familles (E2 : deployed+dropped -> equipment)', () => {
     const encres = Object.values(USAGE_GROUP_TOKENS)
     expect(new Set(encres).size).toBe(encres.length)
   })
@@ -134,11 +134,16 @@ describe('usageGestureCount — la part se compte en GESTES', () => {
     expect(usageGestureCount(ALPHA, 'episodes')).toBe(1)
   })
 
-  it('somme les familles d’une même catégorie de pose', () => {
-    expect(usageGestureCount(tally({ deployed: { wall: 2, sensor: 1 } }), 'deployed')).toBe(3)
+  it('somme les familles déployées et lâchées de la colonne équipement fusionnée (E2)', () => {
+    expect(usageGestureCount(tally({ deployed: { wall: 2, sensor: 1 } }), 'equipment')).toBe(3)
+    expect(usageGestureCount(tally({ dropped: { wall: 1 } }), 'equipment')).toBe(1)
     expect(usageGestureCount(ALPHA, 'grenades')).toBe(4)
     expect(usageGestureCount(ALPHA, 'grapple')).toBe(2)
-    expect(usageGestureCount(ALPHA, 'dropped')).toBe(0)
+  })
+
+  it('ajoute les activations des deux power-ups (leur « utilisé » vient des épisodes, pas d’une pose)', () => {
+    const t = tally({ episodes: { camo: { count: 2, ms: 1000, kills: 0 } }, deployed: { wall: 1 } })
+    expect(usageGestureCount(t, 'equipment')).toBe(3)
   })
 })
 
